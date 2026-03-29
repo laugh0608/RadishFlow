@@ -82,7 +82,10 @@ impl ThermoSystem {
     }
 
     pub fn component_ids(&self) -> Vec<ComponentId> {
-        self.components.iter().map(|component| component.id.clone()).collect()
+        self.components
+            .iter()
+            .map(|component| component.id.clone())
+            .collect()
     }
 
     pub fn validate_mole_fractions(&self, mole_fractions: &[f64]) -> RfResult<()> {

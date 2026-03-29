@@ -195,10 +195,7 @@ impl RfError {
     }
 
     pub fn missing_entity(entity: &'static str, id: impl fmt::Display) -> Self {
-        Self::new(
-            ErrorCode::MissingEntity,
-            format!("missing {entity} `{id}`"),
-        )
+        Self::new(ErrorCode::MissingEntity, format!("missing {entity} `{id}`"))
     }
 
     pub fn invalid_connection(message: impl Into<String>) -> Self {

@@ -83,8 +83,7 @@ impl TpFlashSolver for PlaceholderTpFlashSolver {
             ));
         }
 
-        let overall_mole_fractions =
-            Self::build_composition(thermo, &input.overall_mole_fractions);
+        let overall_mole_fractions = Self::build_composition(thermo, &input.overall_mole_fractions);
         let overall_phase =
             PhaseState::new(PhaseLabel::Overall, 1.0, overall_mole_fractions.clone());
 

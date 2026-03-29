@@ -19,6 +19,7 @@ RadishFlow 是一个以 Rust 为核心、以 Rust UI 为主界面、以 .NET 10 
 - 第一批基础 crate 已从空壳推进到可继续开发的边界结构
 - `.NET 10` 适配层目录与解决方案骨架已初始化
 - MVP 边界、迁移边界和协作约定已在 `docs/` 与 `AGENTS.md` 中冻结
+- 仓库治理、PR 检查、文本格式约束和基础协作规则正在补齐
 
 当前仍未开始的内容：
 
@@ -26,6 +27,16 @@ RadishFlow 是一个以 Rust 为核心、以 Rust UI 为主界面、以 .NET 10 
 - 单元模块与 flowsheet 求解闭环
 - Rust FFI 与 `.NET 10` 运行时联通
 - 外部 PME 冒烟验证
+
+## 当前阶段优先项
+
+现阶段优先项暂时从“推进功能主线”切换为“先夯地基”：
+
+- 完善仓库规范与协作约定
+- 建立分支、PR 和 CI 规则
+- 完善代码与文档格式约束
+- 完善 App 架构规划与功能边界文档
+- 建立稳定的阶段目标、进度记录和设计口径
 
 ## 快速开始
 
@@ -51,9 +62,11 @@ cargo check
 
 - `docs/README.md`: 文档总索引
 - `docs/architecture/overview.md`: 当前仓库分层与模块边界
+- `docs/architecture/app-architecture.md`: 桌面 App 架构规划
 - `docs/mvp/scope.md`: MVP 范围、非目标与近期开发节奏
 - `docs/thermo/mvp-model.md`: 热力学与闪蒸的当前契约
 - `docs/capeopen/boundary.md`: Rust 与 .NET 10 的 CAPE-OPEN 边界
+- `docs/adr/0001-branch-and-pr-governance.md`: 分支与 PR 治理策略
 - `docs/devlogs/README.md`: 周志规范与索引
 
 ## 协作入口
