@@ -540,6 +540,7 @@ RadishFlow Studio
 - `AuthSessionState` 与 `EntitlementState` 当前已经作为 `AppState` 外层状态骨架落入 `rf-ui`
 - 登录态和授权态继续保持在 `AppState` 外层应用状态，不混进 `FlowsheetDocument`
 - `rf-ui` 当前只承载运行时授权状态和控制面 DTO，不直接持久化 `StoredAuthCacheIndex`
+- `apps/radishflow-studio` 当前已经补上“下载完成 -> 写入 `<cache-root>/packages/.../manifest.json` / `payload.rfpkg` -> 写回 `<cache-root>/auth/.../index.json`”的单一路径
 
 ### `rf-store`
 
@@ -681,6 +682,7 @@ RadishFlow Studio
 - `PropertyPackageProvider` 的本地缓存实现必须显式接收应用私有缓存根目录和 `StoredAuthCacheIndex`，而不是自己推断登录态或联网刷新授权
 - provider 构造阶段就应校验 `StoredAuthCacheIndex`、本地 `manifest.json` 和本地 `payload.rfpkg` 三者是否一致，不把索引漂移问题拖进求解热路径
 - provider 当前只暴露“未过期、存在本地 payload、manifest/payload 与索引一致”的本地包；`RemoteEvaluationService` 记录不进入本地 provider 列表
+- 当前仓库已在 `examples/sample-components/property-packages/` 提供首个真实样例包，用于校验上述本地缓存链路和 provider 装载行为
 
 ### `rf-solver`
 
@@ -795,7 +797,7 @@ scope 当前建议按“产品.资源.动作”命名，而不是继续使用过
 在继续深化后端与桌面接入代码之前，当前更值得优先收口以下事项：
 
 1. 细化 `AuthSessionState` / `EntitlementState` 与 UI 面板、状态栏之间的事件流
-2. 在已接通的本地 `manifest.json` / `payload.rfpkg` 读写之上，补真实下载完成后的落盘路径与样例包生成流程
-3. 在已接通的 `PropertyPackageProvider` 本地缓存实现之上，补更完整的包加载链测试和首个实际包样例
+2. 在已接通的下载落盘路径之上，补真实控制面下载响应到 `StoredPropertyPackagePayload` 的映射与写入流程
+3. 在已接通的 `PropertyPackageProvider` 本地缓存实现之上，补更多实际包样例和加载/替换场景测试
 4. 决定控制面 JSON 契约到 `rf-ui` 运行时 DTO 的协议映射层放在何处，以及是否直接引入 serde DTO
 5. 决定离线租约后续是否需要设备绑定键模型

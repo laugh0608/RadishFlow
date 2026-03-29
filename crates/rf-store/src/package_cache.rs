@@ -1,10 +1,11 @@
 use std::collections::BTreeSet;
+use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 
 use rf_types::{ComponentId, RfError, RfResult};
 use serde::{Deserialize, Serialize};
 
-use crate::auth_cache::StoredPropertyPackageSource;
+use crate::auth_cache::{StoredPropertyPackageRecord, StoredPropertyPackageSource};
 
 pub const STORED_PROPERTY_PACKAGE_MANIFEST_KIND: &str = "radishflow.property-package-manifest";
 pub const STORED_PROPERTY_PACKAGE_PAYLOAD_KIND: &str = "radishflow.property-package-payload";
@@ -102,6 +103,64 @@ impl StoredPropertyPackageManifest {
         }
 
         Ok(())
+    }
+
+    pub fn validate_against_record(&self, record: &StoredPropertyPackageRecord) -> RfResult<()> {
+        self.validate()?;
+        record.validate()?;
+
+        if record.package_id != self.package_id {
+            return Err(RfError::invalid_input(format!(
+                "stored property package record package_id `{}` does not match manifest package_id `{}`",
+                record.package_id, self.package_id
+            )));
+        }
+
+        if record.version != self.version {
+            return Err(RfError::invalid_input(format!(
+                "stored property package record version `{}` does not match manifest version `{}`",
+                record.version, self.version
+            )));
+        }
+
+        if record.source != self.source {
+            return Err(RfError::invalid_input(format!(
+                "stored property package record source `{:?}` does not match manifest source `{:?}`",
+                record.source, self.source
+            )));
+        }
+
+        if !record.hash.is_empty() && !self.hash.is_empty() && record.hash != self.hash {
+            return Err(RfError::invalid_input(format!(
+                "stored property package record hash `{}` does not match manifest hash `{}`",
+                record.hash, self.hash
+            )));
+        }
+
+        if record.size_bytes != 0 && self.size_bytes != 0 && record.size_bytes != self.size_bytes {
+            return Err(RfError::invalid_input(format!(
+                "stored property package record size `{}` does not match manifest size `{}`",
+                record.size_bytes, self.size_bytes
+            )));
+        }
+
+        if record.expires_at != self.expires_at {
+            return Err(RfError::invalid_input(format!(
+                "stored property package record expiration `{:?}` does not match manifest expiration `{:?}`",
+                record.expires_at, self.expires_at
+            )));
+        }
+
+        Ok(())
+    }
+
+    pub fn package_directory_path_under(&self, cache_root: impl AsRef<Path>) -> PathBuf {
+        cache_root.as_ref().join(
+            crate::layout::StoredAuthCacheLayout::package_directory_relative_path(
+                &self.package_id,
+                &self.version,
+            ),
+        )
     }
 }
 
@@ -271,6 +330,45 @@ impl StoredPropertyPackagePayload {
                     component.id.as_str()
                 )));
             }
+        }
+
+        Ok(())
+    }
+
+    pub fn component_ids(&self) -> Vec<ComponentId> {
+        self.components
+            .iter()
+            .map(|component| component.id.clone())
+            .collect()
+    }
+
+    pub fn validate_against_manifest(
+        &self,
+        manifest: &StoredPropertyPackageManifest,
+    ) -> RfResult<()> {
+        self.validate()?;
+        manifest.validate()?;
+
+        if self.package_id != manifest.package_id {
+            return Err(RfError::invalid_input(format!(
+                "stored property package payload package_id `{}` does not match manifest package_id `{}`",
+                self.package_id, manifest.package_id
+            )));
+        }
+
+        if self.version != manifest.version {
+            return Err(RfError::invalid_input(format!(
+                "stored property package payload version `{}` does not match manifest version `{}`",
+                self.version, manifest.version
+            )));
+        }
+
+        let payload_component_ids = self.component_ids();
+        if payload_component_ids != manifest.component_ids {
+            return Err(RfError::invalid_input(format!(
+                "stored property package payload components {:?} do not match manifest components {:?}",
+                payload_component_ids, manifest.component_ids
+            )));
         }
 
         Ok(())

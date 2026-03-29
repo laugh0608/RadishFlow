@@ -1,9 +1,12 @@
 use std::collections::BTreeSet;
+use std::path::Path;
 use std::time::SystemTime;
 
 use rf_store::{
     StoredAuthCacheIndex, StoredCredentialReference, StoredEntitlementCache,
-    StoredPropertyPackageRecord, StoredPropertyPackageSource,
+    StoredPropertyPackageManifest, StoredPropertyPackagePayload, StoredPropertyPackageRecord,
+    StoredPropertyPackageSource, write_auth_cache_index, write_property_package_manifest,
+    write_property_package_payload,
 };
 use rf_types::{RfError, RfResult};
 use rf_ui::{
@@ -79,55 +82,42 @@ pub fn record_downloaded_package(
     downloaded_at: SystemTime,
 ) -> RfResult<()> {
     index.validate()?;
-    ensure_package_download_allowed(index, manifest)?;
+    let record = build_downloaded_package_record(index, manifest, lease_grant, downloaded_at)?;
+    upsert_downloaded_package_record(index, record)
+}
 
-    if manifest.package_id != lease_grant.package_id {
-        return Err(RfError::invalid_input(format!(
-            "lease grant package_id `{}` does not match manifest package_id `{}`",
-            lease_grant.package_id, manifest.package_id
-        )));
-    }
+pub fn persist_downloaded_package_to_cache(
+    cache_root: impl AsRef<Path>,
+    index: &mut StoredAuthCacheIndex,
+    manifest: &PropertyPackageManifest,
+    lease_grant: &PropertyPackageLeaseGrant,
+    payload: &StoredPropertyPackagePayload,
+    downloaded_at: SystemTime,
+) -> RfResult<()> {
+    index.validate()?;
+    let record = build_downloaded_package_record(index, manifest, lease_grant, downloaded_at)?;
+    let stored_manifest = build_stored_downloaded_manifest(index, manifest, lease_grant)?;
+    stored_manifest.validate_against_record(&record)?;
+    payload.validate_against_manifest(&stored_manifest)?;
 
-    if manifest.version != lease_grant.version {
-        return Err(RfError::invalid_input(format!(
-            "lease grant version `{}` does not match manifest version `{}`",
-            lease_grant.version, manifest.version
-        )));
-    }
+    let cache_root = cache_root.as_ref();
+    let mut updated_index = index.clone();
+    upsert_downloaded_package_record(&mut updated_index, record.clone())?;
 
-    if !manifest.hash.is_empty() && manifest.hash != lease_grant.hash {
-        return Err(RfError::invalid_input(format!(
-            "lease grant hash `{}` does not match manifest hash `{}`",
-            lease_grant.hash, manifest.hash
-        )));
-    }
+    write_property_package_payload(
+        record.payload_path_under(cache_root).ok_or_else(|| {
+            RfError::invalid_input(format!(
+                "downloaded package `{}` is missing a local payload path",
+                record.package_id
+            ))
+        })?,
+        payload,
+    )?;
+    write_property_package_manifest(record.manifest_path_under(cache_root), &stored_manifest)?;
+    write_auth_cache_index(updated_index.index_path_under(cache_root), &updated_index)?;
 
-    if manifest.size_bytes != 0 && manifest.size_bytes != lease_grant.size_bytes {
-        return Err(RfError::invalid_input(format!(
-            "lease grant size `{}` does not match manifest size `{}`",
-            lease_grant.size_bytes, manifest.size_bytes
-        )));
-    }
-
-    let mut record = StoredPropertyPackageRecord::new(
-        manifest.package_id.clone(),
-        manifest.version.clone(),
-        stored_source_from_manifest_source(manifest.source)?,
-        lease_grant.hash.clone(),
-        lease_grant.size_bytes,
-        downloaded_at,
-    );
-    record.expires_at = Some(active_package_expiration(index)?);
-
-    index
-        .property_packages
-        .retain(|existing| existing.package_id != manifest.package_id);
-    index.property_packages.push(record);
-    index
-        .property_packages
-        .sort_by(|left, right| left.package_id.cmp(&right.package_id));
-
-    index.validate()
+    *index = updated_index;
+    Ok(())
 }
 
 pub fn apply_offline_refresh_to_auth_cache(
@@ -275,6 +265,102 @@ fn stored_source_from_manifest_source(
     }
 }
 
+fn build_downloaded_package_record(
+    index: &StoredAuthCacheIndex,
+    manifest: &PropertyPackageManifest,
+    lease_grant: &PropertyPackageLeaseGrant,
+    downloaded_at: SystemTime,
+) -> RfResult<StoredPropertyPackageRecord> {
+    ensure_package_download_allowed(index, manifest)?;
+
+    if manifest.source != PropertyPackageSource::RemoteDerivedPackage {
+        return Err(RfError::invalid_input(format!(
+            "downloaded package persistence only supports remote derived packages, received `{:?}`",
+            manifest.source
+        )));
+    }
+
+    if manifest.package_id != lease_grant.package_id {
+        return Err(RfError::invalid_input(format!(
+            "lease grant package_id `{}` does not match manifest package_id `{}`",
+            lease_grant.package_id, manifest.package_id
+        )));
+    }
+
+    if manifest.version != lease_grant.version {
+        return Err(RfError::invalid_input(format!(
+            "lease grant version `{}` does not match manifest version `{}`",
+            lease_grant.version, manifest.version
+        )));
+    }
+
+    if !manifest.hash.is_empty() && manifest.hash != lease_grant.hash {
+        return Err(RfError::invalid_input(format!(
+            "lease grant hash `{}` does not match manifest hash `{}`",
+            lease_grant.hash, manifest.hash
+        )));
+    }
+
+    if manifest.size_bytes != 0 && manifest.size_bytes != lease_grant.size_bytes {
+        return Err(RfError::invalid_input(format!(
+            "lease grant size `{}` does not match manifest size `{}`",
+            lease_grant.size_bytes, manifest.size_bytes
+        )));
+    }
+
+    let mut record = StoredPropertyPackageRecord::new(
+        manifest.package_id.clone(),
+        manifest.version.clone(),
+        stored_source_from_manifest_source(manifest.source)?,
+        lease_grant.hash.clone(),
+        lease_grant.size_bytes,
+        downloaded_at,
+    );
+    record.expires_at = Some(active_package_expiration(index)?);
+    Ok(record)
+}
+
+fn build_stored_downloaded_manifest(
+    index: &StoredAuthCacheIndex,
+    manifest: &PropertyPackageManifest,
+    lease_grant: &PropertyPackageLeaseGrant,
+) -> RfResult<StoredPropertyPackageManifest> {
+    let mut stored_manifest = StoredPropertyPackageManifest::new(
+        manifest.package_id.clone(),
+        manifest.version.clone(),
+        stored_source_from_manifest_source(manifest.source)?,
+        manifest.component_ids.clone(),
+    );
+    stored_manifest.hash = if manifest.hash.is_empty() {
+        lease_grant.hash.clone()
+    } else {
+        manifest.hash.clone()
+    };
+    stored_manifest.size_bytes = if manifest.size_bytes == 0 {
+        lease_grant.size_bytes
+    } else {
+        manifest.size_bytes
+    };
+    stored_manifest.expires_at = Some(active_package_expiration(index)?);
+    stored_manifest.validate()?;
+    Ok(stored_manifest)
+}
+
+fn upsert_downloaded_package_record(
+    index: &mut StoredAuthCacheIndex,
+    record: StoredPropertyPackageRecord,
+) -> RfResult<()> {
+    index
+        .property_packages
+        .retain(|existing| existing.package_id != record.package_id);
+    index.property_packages.push(record);
+    index
+        .property_packages
+        .sort_by(|left, right| left.package_id.cmp(&right.package_id));
+
+    index.validate()
+}
+
 fn ensure_package_download_allowed(
     index: &StoredAuthCacheIndex,
     manifest: &PropertyPackageManifest,
@@ -334,11 +420,15 @@ fn manifest_matches_cached_record(
 #[cfg(test)]
 mod tests {
     use std::collections::BTreeSet;
-    use std::time::{Duration, UNIX_EPOCH};
+    use std::fs;
+    use std::path::PathBuf;
+    use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
     use rf_store::{
         StoredAuthCacheIndex, StoredCredentialReference, StoredEntitlementCache,
-        StoredPropertyPackageRecord, StoredPropertyPackageSource,
+        StoredPropertyPackagePayload, StoredPropertyPackageRecord, StoredPropertyPackageSource,
+        StoredThermoComponent, read_auth_cache_index, read_property_package_manifest,
+        read_property_package_payload,
     };
     use rf_ui::{
         AuthSessionState, AuthenticatedUser, EntitlementSnapshot, EntitlementState,
@@ -348,7 +438,7 @@ mod tests {
 
     use crate::{
         apply_offline_refresh_to_auth_cache, build_auth_cache_index, build_offline_refresh_request,
-        record_downloaded_package, sync_auth_cache_index,
+        persist_downloaded_package_to_cache, record_downloaded_package, sync_auth_cache_index,
     };
 
     fn timestamp(seconds: u64) -> std::time::SystemTime {
@@ -632,5 +722,93 @@ mod tests {
         assert_eq!(index.property_packages[0].package_id, "pkg-1");
         assert_eq!(index.property_packages[0].expires_at, Some(timestamp(950)));
         assert_eq!(index.last_synced_at, Some(timestamp(210)));
+    }
+
+    #[test]
+    fn persist_downloaded_package_to_cache_writes_assets_and_index_under_cache_root() {
+        let root = unique_temp_path("downloaded-package-cache");
+        let mut index = StoredAuthCacheIndex::new(
+            "https://id.radish.local",
+            "user-123",
+            StoredCredentialReference::new("radishflow-studio", "user-credential"),
+        );
+        index.entitlement = Some(StoredEntitlementCache {
+            subject_id: "user-123".to_string(),
+            tenant_id: Some("tenant-1".to_string()),
+            synced_at: timestamp(100),
+            issued_at: timestamp(90),
+            expires_at: timestamp(500),
+            offline_lease_expires_at: Some(timestamp(900)),
+            feature_keys: BTreeSet::from(["desktop-login".to_string()]),
+            allowed_package_ids: BTreeSet::from(["pkg-1".to_string()]),
+        });
+        let mut manifest = PropertyPackageManifest::new(
+            "pkg-1",
+            "2026.03.1",
+            PropertyPackageSource::RemoteDerivedPackage,
+        );
+        manifest.hash = "sha256:new".to_string();
+        manifest.size_bytes = 1024;
+        manifest.component_ids = vec![rf_types::ComponentId::new("methane")];
+        let payload = StoredPropertyPackagePayload::new(
+            "pkg-1",
+            "2026.03.1",
+            vec![StoredThermoComponent::new(
+                rf_types::ComponentId::new("methane"),
+                "Methane",
+            )],
+        );
+        let lease_grant = PropertyPackageLeaseGrant {
+            package_id: "pkg-1".to_string(),
+            version: "2026.03.1".to_string(),
+            lease_id: "lease-1".to_string(),
+            download_url: "https://assets.radish.local/lease-1".to_string(),
+            hash: "sha256:new".to_string(),
+            size_bytes: 1024,
+            expires_at: timestamp(210),
+        };
+
+        persist_downloaded_package_to_cache(
+            &root,
+            &mut index,
+            &manifest,
+            &lease_grant,
+            &payload,
+            timestamp(200),
+        )
+        .expect("expected downloaded package persistence");
+
+        let cached_record = &index.property_packages[0];
+        let stored_manifest =
+            read_property_package_manifest(cached_record.manifest_path_under(&root))
+                .expect("expected stored manifest read");
+        let stored_payload = read_property_package_payload(
+            cached_record
+                .payload_path_under(&root)
+                .expect("expected payload path"),
+        )
+        .expect("expected stored payload read");
+        let stored_index = read_auth_cache_index(index.index_path_under(&root))
+            .expect("expected stored auth cache index");
+
+        assert_eq!(stored_manifest.package_id, "pkg-1");
+        assert_eq!(stored_manifest.hash, "sha256:new");
+        assert_eq!(stored_manifest.expires_at, Some(timestamp(900)));
+        assert_eq!(stored_payload.package_id, "pkg-1");
+        assert_eq!(stored_index.property_packages.len(), 1);
+        assert_eq!(
+            stored_index.property_packages[0].downloaded_at,
+            timestamp(200)
+        );
+
+        fs::remove_dir_all(&root).expect("expected temp dir cleanup");
+    }
+
+    fn unique_temp_path(name: &str) -> PathBuf {
+        let unique = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("expected time after epoch")
+            .as_nanos();
+        std::env::temp_dir().join(format!("radishflow-{name}-{unique}"))
     }
 }

@@ -4,9 +4,9 @@ use std::time::SystemTime;
 use rf_store::{
     StoredAntoineCoefficients, StoredAuthCacheIndex, StoredLiquidPhaseModel,
     StoredPropertyPackageClassification, StoredPropertyPackageManifest,
-    StoredPropertyPackagePayload, StoredPropertyPackageRecord, StoredPropertyPackageSource,
-    StoredThermoComponent, StoredThermoMethod, StoredVaporPhaseModel,
-    read_property_package_manifest, read_property_package_payload,
+    StoredPropertyPackagePayload, StoredPropertyPackageSource, StoredThermoComponent,
+    StoredThermoMethod, StoredVaporPhaseModel, read_property_package_manifest,
+    read_property_package_payload,
 };
 use rf_types::{ComponentId, PhaseLabel, RfError, RfResult};
 
@@ -319,7 +319,7 @@ impl CachedPropertyPackageProvider {
 
             let manifest_path = record.manifest_path_under(cache_root);
             let stored_manifest = read_property_package_manifest(&manifest_path)?;
-            validate_record_matches_manifest(record, &stored_manifest)?;
+            stored_manifest.validate_against_record(record)?;
 
             let payload_path = record.payload_path_under(cache_root).ok_or_else(|| {
                 RfError::invalid_input(format!(
@@ -328,7 +328,7 @@ impl CachedPropertyPackageProvider {
                 ))
             })?;
             let stored_payload = read_property_package_payload(&payload_path)?;
-            validate_payload_matches_manifest(&stored_payload, &stored_manifest)?;
+            stored_payload.validate_against_manifest(&stored_manifest)?;
 
             let runtime_manifest = property_package_manifest_from_stored(stored_manifest)?;
             let runtime_system = thermo_system_from_stored_payload(stored_payload);
@@ -412,95 +412,6 @@ impl ThermoProvider for PlaceholderThermoProvider {
             "phase enthalpy evaluation is not implemented yet",
         ))
     }
-}
-
-fn validate_record_matches_manifest(
-    record: &StoredPropertyPackageRecord,
-    manifest: &StoredPropertyPackageManifest,
-) -> RfResult<()> {
-    manifest.validate()?;
-
-    if record.package_id != manifest.package_id {
-        return Err(RfError::invalid_input(format!(
-            "stored property package record package_id `{}` does not match manifest package_id `{}`",
-            record.package_id, manifest.package_id
-        )));
-    }
-
-    if record.version != manifest.version {
-        return Err(RfError::invalid_input(format!(
-            "stored property package record version `{}` does not match manifest version `{}`",
-            record.version, manifest.version
-        )));
-    }
-
-    if record.source != manifest.source {
-        return Err(RfError::invalid_input(format!(
-            "stored property package record source `{:?}` does not match manifest source `{:?}`",
-            record.source, manifest.source
-        )));
-    }
-
-    if !record.hash.is_empty() && !manifest.hash.is_empty() && record.hash != manifest.hash {
-        return Err(RfError::invalid_input(format!(
-            "stored property package record hash `{}` does not match manifest hash `{}`",
-            record.hash, manifest.hash
-        )));
-    }
-
-    if record.size_bytes != 0
-        && manifest.size_bytes != 0
-        && record.size_bytes != manifest.size_bytes
-    {
-        return Err(RfError::invalid_input(format!(
-            "stored property package record size `{}` does not match manifest size `{}`",
-            record.size_bytes, manifest.size_bytes
-        )));
-    }
-
-    if record.expires_at != manifest.expires_at {
-        return Err(RfError::invalid_input(format!(
-            "stored property package record expiration `{:?}` does not match manifest expiration `{:?}`",
-            record.expires_at, manifest.expires_at
-        )));
-    }
-
-    Ok(())
-}
-
-fn validate_payload_matches_manifest(
-    payload: &StoredPropertyPackagePayload,
-    manifest: &StoredPropertyPackageManifest,
-) -> RfResult<()> {
-    payload.validate()?;
-
-    if payload.package_id != manifest.package_id {
-        return Err(RfError::invalid_input(format!(
-            "stored property package payload package_id `{}` does not match manifest package_id `{}`",
-            payload.package_id, manifest.package_id
-        )));
-    }
-
-    if payload.version != manifest.version {
-        return Err(RfError::invalid_input(format!(
-            "stored property package payload version `{}` does not match manifest version `{}`",
-            payload.version, manifest.version
-        )));
-    }
-
-    let payload_component_ids = payload
-        .components
-        .iter()
-        .map(|component| component.id.clone())
-        .collect::<Vec<_>>();
-    if payload_component_ids != manifest.component_ids {
-        return Err(RfError::invalid_input(format!(
-            "stored property package payload components {:?} do not match manifest components {:?}",
-            payload_component_ids, manifest.component_ids
-        )));
-    }
-
-    Ok(())
 }
 
 fn property_package_manifest_from_stored(
@@ -607,7 +518,8 @@ mod tests {
     use rf_store::{
         StoredAuthCacheIndex, StoredCredentialReference, StoredPropertyPackageManifest,
         StoredPropertyPackagePayload, StoredPropertyPackageRecord, StoredPropertyPackageSource,
-        StoredThermoComponent, write_property_package_manifest, write_property_package_payload,
+        StoredThermoComponent, read_property_package_manifest, read_property_package_payload,
+        write_property_package_manifest, write_property_package_payload,
     };
 
     use super::{
@@ -808,6 +720,55 @@ mod tests {
         fs::remove_dir_all(&root).expect("expected temp dir cleanup");
     }
 
+    #[test]
+    fn cached_provider_loads_example_property_package_files() {
+        let root = unique_temp_path("cached-provider-example");
+        let example_manifest_path = example_package_path("manifest.json");
+        let example_payload_path = example_package_path("payload.rfpkg");
+        let manifest =
+            read_property_package_manifest(&example_manifest_path).expect("expected manifest read");
+        let payload =
+            read_property_package_payload(&example_payload_path).expect("expected payload read");
+
+        let mut index = StoredAuthCacheIndex::new(
+            "https://id.radish.local",
+            "user-123",
+            StoredCredentialReference::new("radishflow-studio", "user-credential"),
+        );
+        let mut record = StoredPropertyPackageRecord::new(
+            &manifest.package_id,
+            &manifest.version,
+            manifest.source,
+            manifest.hash.clone(),
+            manifest.size_bytes,
+            timestamp(100),
+        );
+        record.expires_at = manifest.expires_at;
+
+        write_property_package_manifest(record.manifest_path_under(&root), &manifest)
+            .expect("expected manifest write");
+        write_property_package_payload(
+            record
+                .payload_path_under(&root)
+                .expect("expected payload path"),
+            &payload,
+        )
+        .expect("expected payload write");
+        index.property_packages.push(record);
+
+        let provider = CachedPropertyPackageProvider::new_at(&root, &index, timestamp(150))
+            .expect("expected cached provider");
+        let system = provider
+            .load_system("binary-hydrocarbon-lite-v1")
+            .expect("expected thermo system");
+
+        assert_eq!(system.component_count(), 2);
+        assert_eq!(system.components[0].id.as_str(), "methane");
+        assert_eq!(system.components[1].id.as_str(), "ethane");
+
+        fs::remove_dir_all(&root).expect("expected temp dir cleanup");
+    }
+
     fn timestamp(seconds: u64) -> SystemTime {
         UNIX_EPOCH + Duration::from_secs(seconds)
     }
@@ -818,5 +779,11 @@ mod tests {
             .expect("expected time after epoch")
             .as_nanos();
         std::env::temp_dir().join(format!("radishflow-{name}-{unique}"))
+    }
+
+    fn example_package_path(file_name: &str) -> PathBuf {
+        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../../examples/sample-components/property-packages/binary-hydrocarbon-lite-v1")
+            .join(file_name)
     }
 }

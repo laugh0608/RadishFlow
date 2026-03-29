@@ -38,7 +38,7 @@ RadishFlow 的目标架构已经冻结为三层：
 | --- | --- | --- |
 | `rf-types` | 基础 ID、枚举、错误类型 | 已建立第一批基础类型 |
 | `rf-model` | 组分、流股、单元、流程图对象模型 | 已建立第一批领域数据结构 |
-| `rf-thermo` | 热力学数据结构与热力学接口 | 已建立最小 API、内存 provider 与基于本地缓存目录/授权缓存索引的 `PropertyPackageProvider` 实现 |
+| `rf-thermo` | 热力学数据结构与热力学接口 | 已建立最小 API、内存 provider、基于本地缓存目录/授权缓存索引的 `PropertyPackageProvider` 实现，并用首个真实样例包覆盖装载测试 |
 | `rf-flash` | `TP Flash` 输入输出契约与求解器接口 | 已建立最小 API，占位实现 |
 | `rf-unitops` | 单元模块行为抽象 | 仍为占位 |
 | `rf-flowsheet` | 连接关系与图结构校验 | 仍为占位 |
@@ -54,7 +54,7 @@ RadishFlow 的目标架构已经冻结为三层：
 | --- | --- | --- |
 | `rf-ui` | UI 状态与行为逻辑 | 已建立 `AppState`、授权态、求解态与控制面 DTO 骨架 |
 | `rf-canvas` | 流程图画布能力 | 占位 |
-| `apps/radishflow-studio` | 桌面入口程序 | 已建立 auth cache sync 桥接骨架与测试 |
+| `apps/radishflow-studio` | 桌面入口程序 | 已建立 auth cache sync 桥接、下载完成后的本地缓存落盘路径与测试 |
 
 原因很直接：在 `M2/M3` 之前过早推进 UI，会掩盖内核尚未定型的问题。
 
