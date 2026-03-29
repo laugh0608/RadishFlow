@@ -43,7 +43,7 @@ RadishFlow 的目标架构已经冻结为三层：
 | `rf-unitops` | 单元模块行为抽象 | 仍为占位 |
 | `rf-flowsheet` | 连接关系与图结构校验 | 仍为占位 |
 | `rf-solver` | 顺序模块法求解器 | 仍为占位 |
-| `rf-store` | JSON 存储与授权缓存索引 | 已建立项目文件 / 授权缓存 JSON 读写、版本校验与相对路径布局骨架 |
+| `rf-store` | JSON 存储与授权缓存索引 | 已建立项目文件 / 授权缓存 JSON 读写、迁移分发、版本校验与相对路径布局骨架 |
 | `rf-ffi` | Rust 与 .NET 的 C ABI 边界 | 仍为占位 |
 
 ### Rust Studio UI

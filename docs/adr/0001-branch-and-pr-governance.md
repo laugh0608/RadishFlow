@@ -61,6 +61,7 @@ Accepted
 
 - PR 模板
 - GitHub Actions PR 检查工作流
+  - 当前默认只在目标分支为 `master` 的 Pull Request 上自动触发
 - 文本编码与文件格式检查脚本
 - Rust workspace 基础校验入口
 - `master` ruleset 模板

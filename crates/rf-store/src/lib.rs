@@ -235,6 +235,60 @@ mod tests {
     }
 
     #[test]
+    fn parse_rejects_newer_project_file_schema_with_migration_hint() {
+        let json = r#"{
+  "kind": "radishflow.project-file",
+  "schemaVersion": 2,
+  "document": {
+    "revision": 0,
+    "flowsheet": {
+      "name": "demo",
+      "components": {},
+      "streams": {},
+      "units": {}
+    },
+    "metadata": {
+      "documentId": "doc-1",
+      "title": "Demo Project",
+      "schemaVersion": 1,
+      "createdAt": "1970-01-01T00:00:10Z",
+      "updatedAt": "1970-01-01T00:00:10Z"
+    }
+  }
+}"#;
+
+        let error = parse_project_file_json(json).expect_err("expected newer schema error");
+
+        assert_eq!(error.code().as_str(), "invalid_input");
+        assert!(error.message().contains("newer than supported version"));
+        assert!(error.message().contains("add a migration in rf-store"));
+    }
+
+    #[test]
+    fn parse_rejects_auth_cache_index_without_schema_version() {
+        let json = r#"{
+  "kind": "radishflow.auth-cache-index",
+  "schemaVersion": 0,
+  "authorityUrl": "https://id.radish.local",
+  "subjectId": "user-123",
+  "credential": {
+    "service": "radishflow-studio",
+    "account": "user-123-primary"
+  },
+  "propertyPackages": []
+}"#;
+
+        let error = parse_auth_cache_index_json(json).expect_err("expected older schema error");
+
+        assert_eq!(error.code().as_str(), "invalid_input");
+        assert!(
+            error
+                .message()
+                .contains("missing required field `schemaVersion`")
+        );
+    }
+
+    #[test]
     fn write_project_file_creates_parent_directories_and_round_trips() {
         let root = unique_temp_path("project-write");
         let path = root.join("nested").join("demo.rfproj.json");

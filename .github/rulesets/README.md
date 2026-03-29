@@ -25,7 +25,8 @@
 
 - `dev` 是当前常态开发分支
 - 当前阶段不启用 branch protection
-- 仍建议在 `dev` 上保持 CI 通过
+- 当前默认不要求 push 到 `dev` 时自动触发仓库检查
+- 仓库检查默认收口在指向 `master` 的 Pull Request 上；如需额外检查，可手动触发 workflow
 - 如后续进入多人并行开发，再评估是否对 `dev` 追加保护
 
 ## 应用方式

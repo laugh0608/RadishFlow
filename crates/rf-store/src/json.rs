@@ -5,8 +5,11 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use rf_types::{RfError, RfResult};
 use serde::Serialize;
 use serde::de::DeserializeOwned;
+use serde_json::Value;
 use time::{OffsetDateTime, format_description::well_known::Rfc3339};
 
+use crate::auth_cache::{STORED_AUTH_CACHE_INDEX_KIND, STORED_AUTH_CACHE_SCHEMA_VERSION};
+use crate::project::{STORED_PROJECT_FILE_KIND, STORED_PROJECT_FILE_SCHEMA_VERSION};
 use crate::{StoredAuthCacheIndex, StoredProjectFile};
 
 pub fn read_project_file(path: impl AsRef<Path>) -> RfResult<StoredProjectFile> {
@@ -25,7 +28,10 @@ pub fn write_project_file(
 }
 
 pub fn parse_project_file_json(contents: &str) -> RfResult<StoredProjectFile> {
-    let project_file: StoredProjectFile = parse_json(contents, "deserialize stored project file")?;
+    let raw_value: Value = parse_json(contents, "deserialize stored project file envelope")?;
+    let migrated_value = migrate_project_file_value(raw_value)?;
+    let project_file: StoredProjectFile =
+        parse_json_value(migrated_value, "deserialize stored project file body")?;
     project_file.validate()?;
     Ok(project_file)
 }
@@ -55,8 +61,10 @@ pub fn write_auth_cache_index(
 }
 
 pub fn parse_auth_cache_index_json(contents: &str) -> RfResult<StoredAuthCacheIndex> {
+    let raw_value: Value = parse_json(contents, "deserialize stored auth cache index envelope")?;
+    let migrated_value = migrate_auth_cache_index_value(raw_value)?;
     let auth_cache_index: StoredAuthCacheIndex =
-        parse_json(contents, "deserialize stored auth cache index")?;
+        parse_json_value(migrated_value, "deserialize stored auth cache index body")?;
     auth_cache_index.validate()?;
     Ok(auth_cache_index)
 }
@@ -88,6 +96,14 @@ where
         .map_err(|error| RfError::invalid_input(format!("{action}: {error}")))
 }
 
+fn parse_json_value<T>(value: Value, action: &str) -> RfResult<T>
+where
+    T: DeserializeOwned,
+{
+    serde_json::from_value(value)
+        .map_err(|error| RfError::invalid_input(format!("{action}: {error}")))
+}
+
 fn to_pretty_json<T>(value: &T, action: &str) -> RfResult<String>
 where
     T: Serialize,
@@ -98,6 +114,104 @@ where
 
 fn map_io_error(action: &str, path: &Path, error: &std::io::Error) -> RfError {
     RfError::invalid_input(format!("{action} `{}`: {error}", path.display()))
+}
+
+fn migrate_project_file_value(value: Value) -> RfResult<Value> {
+    let envelope = parse_stored_envelope(&value, "stored project file")?;
+
+    if envelope.kind.as_deref() != Some(STORED_PROJECT_FILE_KIND) {
+        return Err(RfError::invalid_input(format!(
+            "unsupported stored project file kind `{}`",
+            envelope.kind.unwrap_or_default()
+        )));
+    }
+
+    match envelope.schema_version {
+        STORED_PROJECT_FILE_SCHEMA_VERSION => migrate_project_file_v1_to_current(value),
+        version if version > STORED_PROJECT_FILE_SCHEMA_VERSION => Err(newer_schema_error(
+            "stored project file",
+            version,
+            STORED_PROJECT_FILE_SCHEMA_VERSION,
+        )),
+        version => Err(older_schema_error(
+            "stored project file",
+            version,
+            STORED_PROJECT_FILE_SCHEMA_VERSION,
+        )),
+    }
+}
+
+fn migrate_auth_cache_index_value(value: Value) -> RfResult<Value> {
+    let envelope = parse_stored_envelope(&value, "stored auth cache index")?;
+
+    if envelope.kind.as_deref() != Some(STORED_AUTH_CACHE_INDEX_KIND) {
+        return Err(RfError::invalid_input(format!(
+            "unsupported stored auth cache index kind `{}`",
+            envelope.kind.unwrap_or_default()
+        )));
+    }
+
+    match envelope.schema_version {
+        STORED_AUTH_CACHE_SCHEMA_VERSION => migrate_auth_cache_index_v1_to_current(value),
+        version if version > STORED_AUTH_CACHE_SCHEMA_VERSION => Err(newer_schema_error(
+            "stored auth cache index",
+            version,
+            STORED_AUTH_CACHE_SCHEMA_VERSION,
+        )),
+        version => Err(older_schema_error(
+            "stored auth cache index",
+            version,
+            STORED_AUTH_CACHE_SCHEMA_VERSION,
+        )),
+    }
+}
+
+fn migrate_project_file_v1_to_current(value: Value) -> RfResult<Value> {
+    Ok(value)
+}
+
+fn migrate_auth_cache_index_v1_to_current(value: Value) -> RfResult<Value> {
+    Ok(value)
+}
+
+fn parse_stored_envelope(value: &Value, entity_name: &str) -> RfResult<StoredEnvelope> {
+    let envelope: StoredEnvelope = serde_json::from_value(value.clone()).map_err(|error| {
+        RfError::invalid_input(format!("deserialize {entity_name} envelope: {error}"))
+    })?;
+
+    if envelope.kind.is_none() {
+        return Err(RfError::invalid_input(format!(
+            "{entity_name} is missing required field `kind`"
+        )));
+    }
+
+    if envelope.schema_version == 0 {
+        return Err(RfError::invalid_input(format!(
+            "{entity_name} is missing required field `schemaVersion`"
+        )));
+    }
+
+    Ok(envelope)
+}
+
+fn newer_schema_error(entity_name: &str, version: u32, supported_version: u32) -> RfError {
+    RfError::invalid_input(format!(
+        "{entity_name} schema version `{version}` is newer than supported version `{supported_version}`; add a migration in rf-store before loading it"
+    ))
+}
+
+fn older_schema_error(entity_name: &str, version: u32, supported_version: u32) -> RfError {
+    RfError::invalid_input(format!(
+        "{entity_name} schema version `{version}` is older than supported version `{supported_version}`; add an explicit migration path in rf-store before loading it"
+    ))
+}
+
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct StoredEnvelope {
+    kind: Option<String>,
+    #[serde(default)]
+    schema_version: u32,
 }
 
 pub mod time_format {
