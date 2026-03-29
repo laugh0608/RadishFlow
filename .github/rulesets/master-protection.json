@@ -47,7 +47,10 @@
         "do_not_enforce_on_create": true,
         "required_status_checks": [
           {
-            "context": "PR Checks / validate"
+            "context": "PR Checks / Repo Hygiene"
+          },
+          {
+            "context": "PR Checks / Rust Baseline"
           }
         ],
         "strict_required_status_checks_policy": true

@@ -99,19 +99,21 @@ vYY.M.RELEASE.DDXX
 当前仓库自动化口径冻结为：
 
 - `pull_request -> master`
-  - 由 `PR Checks` workflow 自动执行仓库检查
+  - 由 `PR Checks` workflow 执行 `Repo Hygiene` 与 `Rust Baseline`
 - `push tag -> v*-dev`
-  - 由 `Release Checks` workflow 自动执行仓库检查
+  - 由 `Release Checks` workflow 执行 `Repo Hygiene` 与 `Rust Baseline`
 - `push tag -> v*-test`
-  - 由 `Release Checks` workflow 自动执行仓库检查
+  - 由 `Release Checks` workflow 执行 `Repo Hygiene` 与 `Rust Baseline`
 - `push tag -> v*-release`
-  - 由 `Release Checks` workflow 自动执行仓库检查
+  - 由 `Release Checks` workflow 执行 `Repo Hygiene` 与 `Rust Baseline`
 - `workflow_dispatch`
-  - 允许手动触发 `Release Checks` 补跑
+  - 允许手动触发 `Release Checks` 补跑同一组检查
 
 当前补充口径：
 
-- `master` ruleset 要求的状态检查固定为 `PR Checks / validate`
+- `master` ruleset 要求的状态检查固定为 `PR Checks / Repo Hygiene` 与 `PR Checks / Rust Baseline`
+- 当前向 `Radish` 对齐为拆分式门禁，但不引入当前仓库暂不存在的 `Frontend Lint` 或 `pull_request -> dev` 默认门禁
+- 仓库检查正式由 Rust `xtask` 实现，`.ps1` 与 `.sh` 只保留为调用包装层
 - 不再让 PR 检查与 tag / 手动检查共用同一个 workflow 名称，避免 required check 名称与实际上报名漂移
 
 当前明确不做：

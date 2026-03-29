@@ -17,6 +17,7 @@
 ```text
 cargo check
 pwsh ./scripts/check-repo.ps1
+./scripts/check-repo.sh
 ```
 
 ## 风险与后续

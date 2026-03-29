@@ -22,7 +22,8 @@ RadishFlow 是一个以 Rust 为核心、以 Rust UI 为主界面、以 .NET 10 
 - `apps/radishflow-studio` 已建立 auth cache sync 桥接、控制面 HTTP client、entitlement/lease/download/offline refresh 应用层编排，以及下载缓存落盘与回滚链路
 - `.NET 10` 适配层目录与解决方案骨架已初始化
 - MVP 边界、迁移边界和协作约定已在 `docs/` 与 `AGENTS.md` 中冻结
-- 仓库治理、PR 检查、文本格式约束和基础协作规则正在补齐
+- 仓库治理、拆分式 PR 检查、文本格式约束和基础协作规则已完成第一版收口
+- 基于 Rust `xtask` 的跨平台仓库校验入口已接通，`.ps1` / `.sh` 脚本只保留为平台包装层
 
 当前仍未开始的内容：
 
@@ -54,7 +55,15 @@ RadishFlow 是一个以 Rust 为核心、以 Rust UI 为主界面、以 .NET 10 
 
 ```powershell
 cargo check
+pwsh ./scripts/check-repo.ps1
 ```
+
+```bash
+cargo check
+./scripts/check-repo.sh
+```
+
+`scripts/check-repo.ps1` 与 `scripts/check-repo.sh` 当前复用同一套 Rust `xtask` 实现；前者面向本地 Windows 使用习惯，后者面向 Linux/macOS runner 与后续自动化场景。
 
 `.NET 10` 适配层目前仍处于目录与职责冻结阶段，当前阶段不作为主开发入口。
 
@@ -103,8 +112,8 @@ vYY.M.RELEASE
 
 当前仓库检查工作流默认响应两类事件：
 
-- 指向 `master` 的 Pull Request
-- 规范发布 tag 的 push
+- 指向 `master` 的 Pull Request，由 `PR Checks` 执行 `Repo Hygiene` 与 `Rust Baseline`
+- 规范发布 tag 的 push 与手动补跑，由 `Release Checks` 执行同一组检查
 
 详细规则见 `docs/architecture/versioning.md`。
 

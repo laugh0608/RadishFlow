@@ -17,7 +17,8 @@
 - 禁止 force push
 - 禁止删除分支
 - 仅允许通过 Pull Request 合并
-- 要求 `PR Checks / validate` 检查通过
+- 要求 `PR Checks / Repo Hygiene` 与 `PR Checks / Rust Baseline` 检查通过
+- `PR Checks` 当前拆分为 `Repo Hygiene` 与 `Rust Baseline` 两个 job，保留拆分式门禁，但不引入当前仓库并不存在的 `Frontend Lint`
 - `PR Checks` 只响应 `pull_request -> master`，避免与 tag / 手动检查共用同一个 workflow 名称后产生状态名漂移
 - 限制合并方式为 `squash` / `rebase`
 - 管理员仅可通过 Pull Request 方式绕过规则，不开放直接 push
@@ -27,8 +28,13 @@
 - `dev` 是当前常态开发分支
 - 当前阶段不启用 branch protection
 - 当前默认不要求 push 到 `dev` 时自动触发仓库检查
-- 仓库检查默认收口在指向 `master` 的 Pull Request 上；tag 与手动补跑改由独立的 `Release Checks` workflow 承担
+- 当前也不仿照 `Radish` 对 `pull_request -> dev` 强制收口；tag 与手动补跑改由独立的 `Release Checks` workflow 承担
 - 如后续进入多人并行开发，再评估是否对 `dev` 追加保护
+
+## 检查入口
+
+- `scripts/check-repo.ps1` 与 `scripts/check-repo.sh` 当前复用同一套 Rust `xtask` 实现
+- CI 当前默认在 Linux runner 上使用 `.sh` 入口，本地 Windows 仍可继续使用 `.ps1`
 
 ## 应用方式
 

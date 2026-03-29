@@ -115,7 +115,7 @@
 - `bindings/c/`: C 头文件与绑定产物落点
 - `examples/`: 示例流程、样例数据、PME 验证样例
 - `tests/`: Rust 集成测试、黄金样例、互操作测试
-- `scripts/`: 自动化脚本占位目录
+- `scripts/`: 仓库检查与自动化脚本
 
 ## AI 执行边界
 
@@ -155,10 +155,10 @@
 
 补充说明：
 
-- `scripts/` 目录下的 PowerShell 脚本当前仍是占位，不应视为正式验证入口
+- `scripts/check-repo.ps1` 与 `scripts/check-repo.sh` 当前是正式仓库级验证入口，复用同一套 Rust `xtask` 实现
 - `.NET 10` 解决方案当前仍是骨架，不应作为现阶段主验证基线
 - 如果某一步改动只涉及文档，仍应至少确认工作区未引入额外脏改动
-- 仓库治理或 CI 改动优先执行 `pwsh ./scripts/check-repo.ps1`
+- 仓库治理或 CI 改动优先执行 `pwsh ./scripts/check-repo.ps1`；在 Linux/macOS/CI 中执行 `./scripts/check-repo.sh`
 
 ## 当前实现约定
 

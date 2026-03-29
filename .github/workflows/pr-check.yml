@@ -8,13 +8,35 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: pr-checks-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  validate:
+  repo-hygiene:
+    name: Repo Hygiene
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust artifacts
+        uses: Swatinem/rust-cache@v2
+
+      - name: Check repository hygiene
+        run: ./scripts/check-text-files.sh
+
+  rust-baseline:
+    name: Rust Baseline
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
@@ -24,6 +46,5 @@ jobs:
       - name: Cache Rust artifacts
         uses: Swatinem/rust-cache@v2
 
-      - name: Run repository checks
-        shell: pwsh
-        run: ./scripts/check-repo.ps1
+      - name: Run rust baseline
+        run: ./scripts/check-repo.sh --skip-text-files

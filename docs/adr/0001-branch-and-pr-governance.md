@@ -50,7 +50,7 @@ Accepted
 1. 创建远端 `dev` 分支
 2. 将默认分支切换为 `dev`，或至少把开发 PR 默认目标改为 `dev`
 3. 对 `master` 启用 branch protection
-4. 要求 `master` 通过 `PR Checks / validate` 状态检查
+4. 要求 `master` 通过 `PR Checks / Repo Hygiene` 与 `PR Checks / Rust Baseline` 状态检查
 5. 对 `master` 开启 “Require a pull request before merging”
 6. 配置管理员仅通过 PR 绕过，不开放直接 push
 7. `dev` 当前不配置 branch protection
@@ -62,8 +62,10 @@ Accepted
 - PR 模板
 - GitHub Actions PR 检查工作流
   - `PR Checks` 当前默认只在目标分支为 `master` 的 Pull Request 上自动触发
+  - 当前拆分为 `Repo Hygiene` 与 `Rust Baseline` 两个 job，保留拆分式门禁，但不引入当前仓库并不存在的 `Frontend Lint`
   - 规范 tag push 与手动补跑改由独立的 `Release Checks` workflow 承担，避免 PR required check 名称漂移
 - 文本编码与文件格式检查脚本
+  - 正式实现源收口到 Rust `xtask`，`.ps1` 与 `.sh` 仅作为平台包装层
 - Rust workspace 基础校验入口
 - `master` ruleset 模板
 
