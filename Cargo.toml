@@ -16,7 +16,11 @@ members = [
 ]
 
 [workspace.package]
+version = "0.1.0"
 edition = "2024"
-license = "MIT"
-authors = ["laugh0608"]
+license-file = "LICENSE"
+authors = ["DaBaiLuoBo (laugh0608)"]
 rust-version = "1.86"
+repository = "https://github.com/laugh0608/RadishFlow"
+homepage = "https://github.com/laugh0608/RadishFlow"
+publish = false

@@ -44,6 +44,7 @@ RadishFlow 是一个以 Rust 为核心、以 Rust UI 为主界面、以 .NET 10 
 - `master` 是稳定主线，只接受 PR 合并
 - 当前阶段只要求保护 `master`
 - 管理员可通过 PR 方式绕过 `master` 规则，但不应直接 push 到 `master`
+
 ## 快速开始
 
 本仓库当前以 Rust workspace 为主工作入口：
@@ -81,7 +82,13 @@ cargo check
 - `AGENTS.md`: 仓库协作约定、阶段边界与工作流
 - `docs/devlogs/2026-W13.md`: 当前阶段首份开发日志
 
+## 许可
+
+当前仓库采用自定义的 source-available 许可。
+默认允许阅读源码用于个人参考和学习，但不默认授予复制、分发、修改、衍生开发或商业使用权利。
+
+完整条款见 `LICENSE` 文件。
+
 ## 参考仓库
 
 - [CapeOpenCore](https://github.com/laugh0608/CapeOpenCore): 当前阶段用于提取 CAPE-OPEN 接口、GUID、异常语义与注册语义的参考仓库。
-
