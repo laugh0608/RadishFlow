@@ -56,6 +56,10 @@ version = "0.1.0"
 [[package]]
 name = "rf-ui"
 version = "0.1.0"
+dependencies = [
+ "rf-model",
+ "rf-types",
+]
 
 [[package]]
 name = "rf-unitops"
