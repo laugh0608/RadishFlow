@@ -54,7 +54,7 @@ RadishFlow 的目标架构已经冻结为三层：
 | --- | --- | --- |
 | `rf-ui` | UI 状态与行为逻辑 | 已建立 `AppState`、授权态、求解态与控制面 DTO 骨架 |
 | `rf-canvas` | 流程图画布能力 | 占位 |
-| `apps/radishflow-studio` | 桌面入口程序 | 已建立 auth cache sync 桥接、下载获取抽象、基于 `reqwest + rustls` 的真实 HTTP transport、HTTP 请求/响应适配层、可重试/不可重试失败分类、下载 JSON 到本地 payload DTO 的协议映射、摘要校验、失败回滚与测试 |
+| `apps/radishflow-studio` | 桌面入口程序 | 已建立 auth cache sync 桥接、控制面 HTTP client、entitlement / manifest / lease / offline refresh 编排、下载获取抽象、基于 `reqwest + rustls` 的真实 HTTP transport、HTTP 请求/响应适配层、可重试/不可重试失败分类、下载 JSON 到本地 payload DTO 的协议映射、摘要校验、失败回滚与测试 |
 
 原因很直接：在 `M2/M3` 之前过早推进 UI，会掩盖内核尚未定型的问题。
 

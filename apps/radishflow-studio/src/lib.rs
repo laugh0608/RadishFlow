@@ -1,4 +1,6 @@
 mod auth_cache_sync;
+mod control_plane_client;
+mod control_plane_sync;
 mod property_package_download;
 mod property_package_download_client;
 
@@ -6,6 +8,16 @@ pub use auth_cache_sync::{
     apply_offline_refresh_to_auth_cache, build_auth_cache_index, build_offline_refresh_request,
     persist_downloaded_package_to_cache, record_downloaded_package, sync_auth_cache_index,
 };
+pub use control_plane_client::{
+    HttpRadishFlowControlPlaneClient, RadishFlowControlPlaneClient,
+    RadishFlowControlPlaneClientError, RadishFlowControlPlaneClientErrorKind,
+    RadishFlowControlPlaneEndpoints, RadishFlowControlPlaneHttpMethod,
+    RadishFlowControlPlaneHttpRequest, RadishFlowControlPlaneHttpResponse,
+    RadishFlowControlPlaneHttpTransport, RadishFlowControlPlaneHttpTransportError,
+    RadishFlowControlPlaneHttpTransportErrorKind, RadishFlowControlPlaneResponse,
+    ReqwestRadishFlowControlPlaneHttpTransport, ReqwestRadishFlowControlPlaneHttpTransportOptions,
+};
+pub use control_plane_sync::{EntitlementSyncResult, RadishFlowControlPlaneSyncService};
 pub use property_package_download::{
     PROPERTY_PACKAGE_DOWNLOAD_KIND, PROPERTY_PACKAGE_DOWNLOAD_SCHEMA_VERSION,
     PropertyPackageDownload, PropertyPackageDownloadAntoineCoefficients,

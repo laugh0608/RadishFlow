@@ -591,6 +591,8 @@ RadishFlow Studio
 - `apps/radishflow-studio` 当前也已补上 `PropertyPackageDownload` JSON 到 `StoredPropertyPackagePayload` 的首版协议映射，不让该协议直接扩散到 `rf-store` 或 `rf-thermo`
 - `apps/radishflow-studio` 当前也已补上下载获取抽象、基于规范化 payload 的摘要校验和失败回滚，不让真实 HTTP 细节反向污染存储与热路径边界
 - `apps/radishflow-studio` 当前也已补上下载抓取失败分类和有限次重试策略，为后续真实 HTTP adapter 预留固定语义边界
+- `apps/radishflow-studio` 当前也已补上控制面 `entitlement` / `manifest` / `lease` / `offline refresh` 的 HTTP client、JSON 协议映射和 `reqwest + rustls` 真实 transport
+- `apps/radishflow-studio` 当前也已补上 entitlement 同步、离线租约刷新、按 manifest 申请 lease 并下载入缓存的应用层编排，不让控制面调用路径继续散落
 
 ### `rf-store`
 
@@ -847,7 +849,7 @@ scope 当前建议按“产品.资源.动作”命名，而不是继续使用过
 在继续深化后端与桌面接入代码之前，当前更值得优先收口以下事项：
 
 1. 细化 `AuthSessionState` / `EntitlementState` 与 UI 面板、状态栏之间的事件流
-2. 在已接通的下载 JSON 映射之上，补真实 HTTP 下载、摘要校验和失败回滚策略
+2. 在已接通的控制面 HTTP client 和下载通道之上，细化联网失败后的用户提示、刷新节奏和重试触发口径
 3. 在已接通的 `PropertyPackageProvider` 本地缓存实现之上，补更多实际包样例和加载/替换场景测试
-4. 决定其余控制面 JSON 契约到运行时 DTO 的协议映射层是否继续统一收口到应用层
+4. 继续保持其余控制面 JSON 契约到运行时 DTO 的协议映射层统一收口到应用层
 5. 决定离线租约后续是否需要设备绑定键模型
