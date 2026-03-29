@@ -19,6 +19,7 @@ pub use property_package_download_client::{
     PropertyPackageDownloadHttpRequest, PropertyPackageDownloadHttpResponse,
     PropertyPackageDownloadHttpTransport, PropertyPackageDownloadHttpTransportError,
     PropertyPackageDownloadHttpTransportErrorKind, PropertyPackageDownloadResponse,
-    PropertyPackageDownloadRetryPolicy, download_property_package_to_cache,
+    PropertyPackageDownloadRetryPolicy, ReqwestPropertyPackageDownloadHttpTransport,
+    ReqwestPropertyPackageDownloadHttpTransportOptions, download_property_package_to_cache,
     download_property_package_to_cache_with_retry_policy,
 };

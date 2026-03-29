@@ -1,4 +1,5 @@
 use std::path::Path;
+use std::time::Duration;
 use std::time::SystemTime;
 
 use rf_store::StoredAuthCacheIndex;
@@ -284,6 +285,60 @@ impl<Transport> HttpPropertyPackageDownloadFetcher<Transport> {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ReqwestPropertyPackageDownloadHttpTransportOptions {
+    pub request_timeout: Duration,
+    pub user_agent: String,
+}
+
+impl Default for ReqwestPropertyPackageDownloadHttpTransportOptions {
+    fn default() -> Self {
+        Self {
+            request_timeout: Duration::from_secs(30),
+            user_agent: format!("radishflow-studio/{}", env!("CARGO_PKG_VERSION")),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct ReqwestPropertyPackageDownloadHttpTransport {
+    client: reqwest::blocking::Client,
+}
+
+impl ReqwestPropertyPackageDownloadHttpTransport {
+    pub fn new() -> RfResult<Self> {
+        Self::with_options(ReqwestPropertyPackageDownloadHttpTransportOptions::default())
+    }
+
+    pub fn with_options(
+        options: ReqwestPropertyPackageDownloadHttpTransportOptions,
+    ) -> RfResult<Self> {
+        if options.request_timeout == Duration::ZERO {
+            return Err(RfError::invalid_input(
+                "reqwest property package download transport timeout must be greater than zero",
+            ));
+        }
+
+        if options.user_agent.trim().is_empty() {
+            return Err(RfError::invalid_input(
+                "reqwest property package download transport user_agent must not be empty",
+            ));
+        }
+
+        let client = reqwest::blocking::Client::builder()
+            .timeout(options.request_timeout)
+            .user_agent(options.user_agent)
+            .build()
+            .map_err(|error| {
+                RfError::invalid_input(format!(
+                    "build reqwest property package download transport: {error}"
+                ))
+            })?;
+
+        Ok(Self { client })
+    }
+}
+
 pub trait PropertyPackageDownloadFetcher {
     fn fetch_download(
         &self,
@@ -306,6 +361,38 @@ where
             .map_err(map_http_transport_error)?;
 
         property_package_download_response_from_http(lease_grant, response)
+    }
+}
+
+impl PropertyPackageDownloadHttpTransport for ReqwestPropertyPackageDownloadHttpTransport {
+    fn send(
+        &self,
+        request: &PropertyPackageDownloadHttpRequest,
+    ) -> Result<PropertyPackageDownloadHttpResponse, PropertyPackageDownloadHttpTransportError>
+    {
+        let accept_header = request.accept_content_types.join(", ");
+        let response = self
+            .client
+            .get(&request.url)
+            .header(reqwest::header::ACCEPT, accept_header)
+            .send()
+            .map_err(map_reqwest_transport_error)?;
+
+        let status_code = response.status().as_u16();
+        let content_type = response
+            .headers()
+            .get(reqwest::header::CONTENT_TYPE)
+            .and_then(|value| value.to_str().ok())
+            .map(str::to_string);
+        let received_at = SystemTime::now();
+        let body = response.text().map_err(map_reqwest_transport_error)?;
+
+        Ok(PropertyPackageDownloadHttpResponse {
+            status_code,
+            body,
+            content_type,
+            received_at,
+        })
     }
 }
 
@@ -504,12 +591,27 @@ fn property_package_download_response_from_http(
     }
 }
 
+fn map_reqwest_transport_error(error: reqwest::Error) -> PropertyPackageDownloadHttpTransportError {
+    if error.is_connect() {
+        PropertyPackageDownloadHttpTransportError::connection_unavailable(error.to_string())
+    } else if error.is_timeout() {
+        PropertyPackageDownloadHttpTransportError::timeout(error.to_string())
+    } else if error.is_body() {
+        PropertyPackageDownloadHttpTransportError::other_transient(error.to_string())
+    } else {
+        PropertyPackageDownloadHttpTransportError::other_permanent(error.to_string())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::cell::{Cell, RefCell};
     use std::collections::BTreeSet;
     use std::fs;
+    use std::io::{Read, Write};
+    use std::net::TcpListener;
     use std::path::PathBuf;
+    use std::thread;
     use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
     use rf_store::{
@@ -525,8 +627,9 @@ mod tests {
         PropertyPackageDownloadHttpRequest, PropertyPackageDownloadHttpResponse,
         PropertyPackageDownloadHttpTransport, PropertyPackageDownloadHttpTransportError,
         PropertyPackageDownloadResponse, PropertyPackageDownloadRetryPolicy,
-        download_property_package_to_cache, download_property_package_to_cache_with_retry_policy,
-        parse_property_package_download_json,
+        ReqwestPropertyPackageDownloadHttpTransport,
+        ReqwestPropertyPackageDownloadHttpTransportOptions, download_property_package_to_cache,
+        download_property_package_to_cache_with_retry_policy, parse_property_package_download_json,
     };
 
     struct StaticDownloadFetcher {
@@ -913,6 +1016,62 @@ mod tests {
         );
     }
 
+    #[test]
+    fn reqwest_transport_fetches_local_http_response() {
+        let server = spawn_http_server(
+            "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: 2\r\nConnection: close\r\n\r\n{}"
+                .to_string(),
+        );
+        let transport = ReqwestPropertyPackageDownloadHttpTransport::with_options(
+            ReqwestPropertyPackageDownloadHttpTransportOptions {
+                request_timeout: Duration::from_secs(5),
+                user_agent: "radishflow-test".to_string(),
+            },
+        )
+        .expect("expected reqwest transport");
+
+        let response = transport
+            .send(&PropertyPackageDownloadHttpRequest::new(server.url()))
+            .expect("expected reqwest fetch");
+        let request_text = server.request_text();
+
+        assert_eq!(response.status_code, 200);
+        assert_eq!(response.body, "{}");
+        assert_eq!(response.content_type, Some("application/json".to_string()));
+        assert!(request_text.contains("get /download http/1.1"));
+        assert!(request_text.contains("accept: application/json"));
+        assert!(request_text.contains("user-agent: radishflow-test"));
+    }
+
+    #[test]
+    fn reqwest_transport_maps_connection_errors() {
+        let closed_listener = TcpListener::bind("127.0.0.1:0").expect("expected free port");
+        let address = closed_listener
+            .local_addr()
+            .expect("expected local address");
+        drop(closed_listener);
+
+        let transport = ReqwestPropertyPackageDownloadHttpTransport::with_options(
+            ReqwestPropertyPackageDownloadHttpTransportOptions {
+                request_timeout: Duration::from_millis(200),
+                user_agent: "radishflow-test".to_string(),
+            },
+        )
+        .expect("expected reqwest transport");
+
+        let error = transport
+            .send(&PropertyPackageDownloadHttpRequest::new(format!(
+                "http://{address}/download"
+            )))
+            .expect_err("expected connection error");
+
+        assert!(matches!(
+            error.kind,
+            super::PropertyPackageDownloadHttpTransportErrorKind::ConnectionUnavailable
+                | super::PropertyPackageDownloadHttpTransportErrorKind::Timeout
+        ));
+    }
+
     fn sample_auth_cache_index() -> StoredAuthCacheIndex {
         let mut index = StoredAuthCacheIndex::new(
             "https://id.radish.local",
@@ -975,5 +1134,66 @@ mod tests {
             .expect("expected time after epoch")
             .as_nanos();
         std::env::temp_dir().join(format!("radishflow-{name}-{unique}"))
+    }
+
+    struct LocalHttpTestServer {
+        address: std::net::SocketAddr,
+        request_text: std::sync::Arc<std::sync::Mutex<Option<String>>>,
+        thread: Option<thread::JoinHandle<()>>,
+    }
+
+    impl LocalHttpTestServer {
+        fn url(&self) -> String {
+            format!("http://{}/download", self.address)
+        }
+
+        fn request_text(mut self) -> String {
+            if let Some(thread) = self.thread.take() {
+                thread.join().expect("expected local http server join");
+            }
+
+            self.request_text
+                .lock()
+                .expect("expected request text lock")
+                .clone()
+                .expect("expected captured request")
+        }
+    }
+
+    fn spawn_http_server(response_text: String) -> LocalHttpTestServer {
+        let listener = TcpListener::bind("127.0.0.1:0").expect("expected local listener");
+        let address = listener.local_addr().expect("expected local address");
+        let request_text = std::sync::Arc::new(std::sync::Mutex::new(None));
+        let request_text_for_thread = request_text.clone();
+
+        let thread = thread::spawn(move || {
+            let (mut stream, _) = listener.accept().expect("expected client connection");
+            let mut buffer = Vec::new();
+            let mut chunk = [0u8; 1024];
+            loop {
+                let read = stream.read(&mut chunk).expect("expected request read");
+                if read == 0 {
+                    break;
+                }
+                buffer.extend_from_slice(&chunk[..read]);
+                if buffer.windows(4).any(|window| window == b"\r\n\r\n") {
+                    break;
+                }
+            }
+            *request_text_for_thread
+                .lock()
+                .expect("expected request text lock") =
+                Some(String::from_utf8_lossy(&buffer).to_ascii_lowercase());
+            stream
+                .write_all(response_text.as_bytes())
+                .expect("expected response write");
+            stream.flush().expect("expected response flush");
+        });
+
+        LocalHttpTestServer {
+            address,
+            request_text,
+            thread: Some(thread),
+        }
     }
 }
