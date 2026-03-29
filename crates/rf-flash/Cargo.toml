@@ -2,3 +2,8 @@
 name = "rf-flash"
 version = "0.1.0"
 edition = "2024"
+
+[dependencies]
+rf-model = { path = "../rf-model" }
+rf-thermo = { path = "../rf-thermo" }
+rf-types = { path = "../rf-types" }

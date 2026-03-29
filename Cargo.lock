@@ -17,6 +17,11 @@ version = "0.1.0"
 [[package]]
 name = "rf-flash"
 version = "0.1.0"
+dependencies = [
+ "rf-model",
+ "rf-thermo",
+ "rf-types",
+]
 
 [[package]]
 name = "rf-flowsheet"
@@ -25,6 +30,9 @@ version = "0.1.0"
 [[package]]
 name = "rf-model"
 version = "0.1.0"
+dependencies = [
+ "rf-types",
+]
 
 [[package]]
 name = "rf-solver"
@@ -37,6 +45,9 @@ version = "0.1.0"
 [[package]]
 name = "rf-thermo"
 version = "0.1.0"
+dependencies = [
+ "rf-types",
+]
 
 [[package]]
 name = "rf-types"
