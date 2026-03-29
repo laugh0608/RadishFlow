@@ -123,6 +123,11 @@ App 与交互层当前进一步冻结以下口径：
 - 截至 2026-03-29，控制面 `entitlement / manifest / lease / offline refresh` HTTP client 与应用层编排也已提前收口完成
 - 当前剩余重点已经进一步转向联网失败策略细化、数值主线和求解闭环，而不是继续停留在第一轮 DTO 草案
 
+补充对齐：
+
+- 明天（2026-03-30）优先在已接通的控制面 client 与应用层编排之上，细化授权刷新后的 UI 事件流、联网失败提示和离线刷新触发策略
+- 之后优先恢复 `rf-thermo` / `rf-flash` 数值主线，再进入 `rf-solver` 的无回路顺序模块法与首个可求解 flowsheet 示例
+
 ### 2026-W16
 
 - 在 `rf-thermo` 中实现 Antoine 饱和蒸气压
