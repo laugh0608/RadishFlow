@@ -61,7 +61,8 @@ Accepted
 
 - PR 模板
 - GitHub Actions PR 检查工作流
-  - 当前默认只在目标分支为 `master` 的 Pull Request 上自动触发
+  - `PR Checks` 当前默认只在目标分支为 `master` 的 Pull Request 上自动触发
+  - 规范 tag push 与手动补跑改由独立的 `Release Checks` workflow 承担，避免 PR required check 名称漂移
 - 文本编码与文件格式检查脚本
 - Rust workspace 基础校验入口
 - `master` ruleset 模板
@@ -79,3 +80,4 @@ Accepted
 
 - 需要维护远端 `master` 保护设置
 - 开发节奏从“直接提交”切换为“分支 + PR”
+

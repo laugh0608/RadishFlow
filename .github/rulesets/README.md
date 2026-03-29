@@ -18,6 +18,7 @@
 - 禁止删除分支
 - 仅允许通过 Pull Request 合并
 - 要求 `PR Checks / validate` 检查通过
+- `PR Checks` 只响应 `pull_request -> master`，避免与 tag / 手动检查共用同一个 workflow 名称后产生状态名漂移
 - 限制合并方式为 `squash` / `rebase`
 - 管理员仅可通过 Pull Request 方式绕过规则，不开放直接 push
 
@@ -26,7 +27,7 @@
 - `dev` 是当前常态开发分支
 - 当前阶段不启用 branch protection
 - 当前默认不要求 push 到 `dev` 时自动触发仓库检查
-- 仓库检查默认收口在指向 `master` 的 Pull Request 上；如需额外检查，可手动触发 workflow
+- 仓库检查默认收口在指向 `master` 的 Pull Request 上；tag 与手动补跑改由独立的 `Release Checks` workflow 承担
 - 如后续进入多人并行开发，再评估是否对 `dev` 追加保护
 
 ## 应用方式
@@ -46,3 +47,4 @@ gh api repos/<owner>/<repo>/rulesets --method POST --input .github/rulesets/mast
 - 仓库 Merge options 中启用 `Squash merging` 与 `Rebase merging`
 - 关闭 `Merge commits`
 - 如后续增加 `CODEOWNERS`，再决定是否开启 code owner review
+

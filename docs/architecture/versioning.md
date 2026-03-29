@@ -99,15 +99,20 @@ vYY.M.RELEASE.DDXX
 当前仓库自动化口径冻结为：
 
 - `pull_request -> master`
-  - 自动执行仓库检查
+  - 由 `PR Checks` workflow 自动执行仓库检查
 - `push tag -> v*-dev`
-  - 自动执行仓库检查
+  - 由 `Release Checks` workflow 自动执行仓库检查
 - `push tag -> v*-test`
-  - 自动执行仓库检查
+  - 由 `Release Checks` workflow 自动执行仓库检查
 - `push tag -> v*-release`
-  - 自动执行仓库检查
+  - 由 `Release Checks` workflow 自动执行仓库检查
 - `workflow_dispatch`
-  - 允许手动补跑
+  - 允许手动触发 `Release Checks` 补跑
+
+当前补充口径：
+
+- `master` ruleset 要求的状态检查固定为 `PR Checks / validate`
+- 不再让 PR 检查与 tag / 手动检查共用同一个 workflow 名称，避免 required check 名称与实际上报名漂移
 
 当前明确不做：
 
@@ -169,3 +174,4 @@ vYY.M.RELEASE.DDXX
 1. 是否在首个对外版本前统一把 workspace crate version 从 `0.1.0` 切到发布口径
 2. 是否需要补一份 RadishFlow 的发布操作清单，覆盖 version 更新、tag、Release Notes 和验收记录
 3. tag push 后除仓库检查外，后续是否需要增加打包、工件归档或安装包产出流程
+
