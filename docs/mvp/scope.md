@@ -53,6 +53,10 @@ App 与交互层当前进一步冻结以下口径：
 - 求解控制采用 `SimulationMode(Active/Hold)` 与 `RunStatus` 分离模型
 - 求解结果采用独立 `SolveSnapshot`，不直接覆盖文档对象
 - 结果快照应保留按步展开能力，为撤回/前进和脚本化扩展留接口
+- `DocumentMetadata` 只保存文档身份与序列化元信息，不保存文件路径、求解态和用户偏好
+- `UserPreferences` 只保存应用级偏好与快照窗口策略，不污染文档语义
+- `CommandHistory` 只记录语义化文档命令，运行控制和文档生命周期动作不进入撤回栈
+- `SolveSessionState` 必须绑定当前观察的文档修订号，`SolveSnapshot` 由工作区持有有界历史窗口
 
 ## 当前阶段优先目标
 
@@ -89,10 +93,10 @@ App 与交互层当前进一步冻结以下口径：
 
 ### 2026-W15
 
-- 冻结 `AppState`、`WorkspaceState`、`FlowsheetDocument` 的基础结构
-- 冻结字段级草稿提交流程和命令历史边界
-- 冻结 `SimulationMode` / `RunStatus` / `SolveSnapshot` 关系
-- 明确 UI 交互层与求解层的数据边界
+- 冻结 `AppState`、`WorkspaceState`、`FlowsheetDocument`、`DocumentMetadata`、`UserPreferences` 的字段边界
+- 冻结字段级草稿提交流程、`CommandHistory` 边界和工作区保存态口径
+- 冻结 `SolveSessionState`、`DiagnosticSummary`、`SolvePendingReason` 与 `SolveSnapshot` 的关系
+- 明确 UI 交互层、求解层和快照历史之间的数据所有权
 
 ### 2026-W16
 
