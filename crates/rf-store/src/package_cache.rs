@@ -371,6 +371,12 @@ impl StoredPropertyPackagePayload {
             )));
         }
 
+        crate::integrity::validate_property_package_payload_integrity(
+            self,
+            &manifest.hash,
+            manifest.size_bytes,
+        )?;
+
         Ok(())
     }
 }

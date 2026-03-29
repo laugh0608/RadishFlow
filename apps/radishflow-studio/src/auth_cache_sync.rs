@@ -1,12 +1,13 @@
 use std::collections::BTreeSet;
-use std::path::Path;
+use std::fs;
+use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 
 use rf_store::{
     StoredAuthCacheIndex, StoredCredentialReference, StoredEntitlementCache,
     StoredPropertyPackageManifest, StoredPropertyPackagePayload, StoredPropertyPackageRecord,
-    StoredPropertyPackageSource, write_auth_cache_index, write_property_package_manifest,
-    write_property_package_payload,
+    StoredPropertyPackageSource, auth_cache_index_to_pretty_json,
+    property_package_manifest_to_pretty_json, property_package_payload_to_pretty_json,
 };
 use rf_types::{RfError, RfResult};
 use rf_ui::{
@@ -94,30 +95,15 @@ pub fn persist_downloaded_package_to_cache(
     payload: &StoredPropertyPackagePayload,
     downloaded_at: SystemTime,
 ) -> RfResult<()> {
-    index.validate()?;
-    let record = build_downloaded_package_record(index, manifest, lease_grant, downloaded_at)?;
-    let stored_manifest = build_stored_downloaded_manifest(index, manifest, lease_grant)?;
-    stored_manifest.validate_against_record(&record)?;
-    payload.validate_against_manifest(&stored_manifest)?;
-
-    let cache_root = cache_root.as_ref();
-    let mut updated_index = index.clone();
-    upsert_downloaded_package_record(&mut updated_index, record.clone())?;
-
-    write_property_package_payload(
-        record.payload_path_under(cache_root).ok_or_else(|| {
-            RfError::invalid_input(format!(
-                "downloaded package `{}` is missing a local payload path",
-                record.package_id
-            ))
-        })?,
+    persist_downloaded_package_to_cache_with_store(
+        cache_root.as_ref(),
+        index,
+        manifest,
+        lease_grant,
         payload,
-    )?;
-    write_property_package_manifest(record.manifest_path_under(cache_root), &stored_manifest)?;
-    write_auth_cache_index(updated_index.index_path_under(cache_root), &updated_index)?;
-
-    *index = updated_index;
-    Ok(())
+        downloaded_at,
+        &StdCacheFileStore,
+    )
 }
 
 pub fn apply_offline_refresh_to_auth_cache(
@@ -161,6 +147,209 @@ pub fn apply_offline_refresh_to_auth_cache(
     index.entitlement = Some(stored_entitlement);
     index.last_synced_at = Some(response.refreshed_at);
     index.validate()
+}
+
+fn persist_downloaded_package_to_cache_with_store<Store>(
+    cache_root: &Path,
+    index: &mut StoredAuthCacheIndex,
+    manifest: &PropertyPackageManifest,
+    lease_grant: &PropertyPackageLeaseGrant,
+    payload: &StoredPropertyPackagePayload,
+    downloaded_at: SystemTime,
+    store: &Store,
+) -> RfResult<()>
+where
+    Store: CacheFileStore,
+{
+    index.validate()?;
+    let record = build_downloaded_package_record(index, manifest, lease_grant, downloaded_at)?;
+    let stored_manifest = build_stored_downloaded_manifest(index, manifest, lease_grant)?;
+    stored_manifest.validate_against_record(&record)?;
+    payload.validate_against_manifest(&stored_manifest)?;
+
+    let mut updated_index = index.clone();
+    upsert_downloaded_package_record(&mut updated_index, record.clone())?;
+
+    let writes = vec![
+        PendingCacheWrite::new(
+            record.payload_path_under(cache_root).ok_or_else(|| {
+                RfError::invalid_input(format!(
+                    "downloaded package `{}` is missing a local payload path",
+                    record.package_id
+                ))
+            })?,
+            property_package_payload_to_pretty_json(payload)?.into_bytes(),
+        ),
+        PendingCacheWrite::new(
+            record.manifest_path_under(cache_root),
+            property_package_manifest_to_pretty_json(&stored_manifest)?.into_bytes(),
+        ),
+        PendingCacheWrite::new(
+            updated_index.index_path_under(cache_root),
+            auth_cache_index_to_pretty_json(&updated_index)?.into_bytes(),
+        ),
+    ];
+
+    write_cache_files_with_rollback(store, &writes).map_err(|error| {
+        RfError::invalid_input(format!(
+            "persist downloaded package `{}` to cache: {}",
+            record.package_id,
+            error.message()
+        ))
+    })?;
+
+    *index = updated_index;
+    Ok(())
+}
+
+trait CacheFileStore {
+    fn read_existing(&self, path: &Path) -> RfResult<Option<Vec<u8>>>;
+
+    fn write_all(&self, path: &Path, contents: &[u8]) -> RfResult<()>;
+
+    fn remove_file(&self, path: &Path) -> RfResult<()>;
+}
+
+#[derive(Debug, Clone, Copy)]
+struct StdCacheFileStore;
+
+impl CacheFileStore for StdCacheFileStore {
+    fn read_existing(&self, path: &Path) -> RfResult<Option<Vec<u8>>> {
+        match fs::read(path) {
+            Ok(contents) => Ok(Some(contents)),
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(None),
+            Err(error) => Err(map_cache_io_error("read existing cache file", path, &error)),
+        }
+    }
+
+    fn write_all(&self, path: &Path, contents: &[u8]) -> RfResult<()> {
+        if let Some(parent) = path.parent() {
+            fs::create_dir_all(parent).map_err(|error| {
+                map_cache_io_error("create cache parent directories", parent, &error)
+            })?;
+        }
+
+        fs::write(path, contents)
+            .map_err(|error| map_cache_io_error("write cache file", path, &error))
+    }
+
+    fn remove_file(&self, path: &Path) -> RfResult<()> {
+        match fs::remove_file(path) {
+            Ok(()) => {
+                prune_empty_parent_directories(path);
+                Ok(())
+            }
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
+            Err(error) => Err(map_cache_io_error("remove cache file", path, &error)),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+struct PendingCacheWrite {
+    path: PathBuf,
+    contents: Vec<u8>,
+}
+
+impl PendingCacheWrite {
+    fn new(path: PathBuf, contents: Vec<u8>) -> Self {
+        Self { path, contents }
+    }
+}
+
+#[derive(Debug, Clone)]
+struct CacheRollbackEntry {
+    path: PathBuf,
+    original_contents: Option<Vec<u8>>,
+}
+
+fn write_cache_files_with_rollback<Store>(
+    store: &Store,
+    writes: &[PendingCacheWrite],
+) -> RfResult<()>
+where
+    Store: CacheFileStore,
+{
+    let mut rollback_entries = Vec::with_capacity(writes.len());
+
+    for write in writes {
+        rollback_entries.push(CacheRollbackEntry {
+            path: write.path.clone(),
+            original_contents: store.read_existing(&write.path)?,
+        });
+
+        if let Err(error) = store.write_all(&write.path, &write.contents) {
+            let rollback_message = rollback_cache_files(store, &rollback_entries);
+            return match rollback_message {
+                Ok(()) => Err(error),
+                Err(rollback_error) => Err(RfError::invalid_input(format!(
+                    "{}; rollback also failed: {}",
+                    error.message(),
+                    rollback_error.message()
+                ))),
+            };
+        }
+    }
+
+    Ok(())
+}
+
+fn rollback_cache_files<Store>(
+    store: &Store,
+    rollback_entries: &[CacheRollbackEntry],
+) -> RfResult<()>
+where
+    Store: CacheFileStore,
+{
+    let mut rollback_errors = Vec::new();
+
+    for entry in rollback_entries.iter().rev() {
+        let result = match &entry.original_contents {
+            Some(original_contents) => store.write_all(&entry.path, original_contents),
+            None => store.remove_file(&entry.path),
+        };
+
+        if let Err(error) = result {
+            rollback_errors.push(format!("`{}`: {}", entry.path.display(), error.message()));
+        }
+    }
+
+    if rollback_errors.is_empty() {
+        Ok(())
+    } else {
+        Err(RfError::invalid_input(format!(
+            "restore cache files after failure: {}",
+            rollback_errors.join("; ")
+        )))
+    }
+}
+
+fn map_cache_io_error(action: &str, path: &Path, error: &std::io::Error) -> RfError {
+    RfError::invalid_input(format!("{action} `{}`: {error}", path.display()))
+}
+
+fn prune_empty_parent_directories(path: &Path) {
+    for parent in path.ancestors().skip(1) {
+        if parent.as_os_str().is_empty() {
+            break;
+        }
+
+        match fs::remove_dir(parent) {
+            Ok(()) => {}
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+            Err(error)
+                if matches!(
+                    error.kind(),
+                    std::io::ErrorKind::DirectoryNotEmpty
+                        | std::io::ErrorKind::PermissionDenied
+                        | std::io::ErrorKind::InvalidInput
+                ) =>
+            {
+                break;
+            }
+            Err(_) => break,
+        }
+    }
 }
 
 fn resolve_auth_identity(
@@ -294,6 +483,20 @@ fn build_downloaded_package_record(
         )));
     }
 
+    if lease_grant.hash.trim().is_empty() {
+        return Err(RfError::invalid_input(format!(
+            "lease grant for package `{}` must contain a non-empty hash",
+            lease_grant.package_id
+        )));
+    }
+
+    if lease_grant.size_bytes == 0 {
+        return Err(RfError::invalid_input(format!(
+            "lease grant for package `{}` must contain a non-zero size_bytes",
+            lease_grant.package_id
+        )));
+    }
+
     if !manifest.hash.is_empty() && manifest.hash != lease_grant.hash {
         return Err(RfError::invalid_input(format!(
             "lease grant hash `{}` does not match manifest hash `{}`",
@@ -419,23 +622,29 @@ fn manifest_matches_cached_record(
 
 #[cfg(test)]
 mod tests {
+    use std::cell::Cell;
     use std::collections::BTreeSet;
     use std::fs;
-    use std::path::PathBuf;
+    use std::path::{Path, PathBuf};
     use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
     use rf_store::{
         StoredAuthCacheIndex, StoredCredentialReference, StoredEntitlementCache,
         StoredPropertyPackagePayload, StoredPropertyPackageRecord, StoredPropertyPackageSource,
-        StoredThermoComponent, read_auth_cache_index, read_property_package_manifest,
-        read_property_package_payload,
+        StoredThermoComponent, property_package_payload_integrity, read_auth_cache_index,
+        read_property_package_manifest, read_property_package_payload, write_auth_cache_index,
+        write_property_package_manifest, write_property_package_payload,
     };
+    use rf_types::{RfError, RfResult};
     use rf_ui::{
         AuthSessionState, AuthenticatedUser, EntitlementSnapshot, EntitlementState,
         OfflineLeaseRefreshResponse, PropertyPackageLeaseGrant, PropertyPackageManifest,
         PropertyPackageManifestList, PropertyPackageSource, SecureCredentialHandle, TokenLease,
     };
 
+    use super::{
+        CacheFileStore, StdCacheFileStore, persist_downloaded_package_to_cache_with_store,
+    };
     use crate::{
         apply_offline_refresh_to_auth_cache, build_auth_cache_index, build_offline_refresh_request,
         persist_downloaded_package_to_cache, record_downloaded_package, sync_auth_cache_index,
@@ -747,9 +956,6 @@ mod tests {
             "2026.03.1",
             PropertyPackageSource::RemoteDerivedPackage,
         );
-        manifest.hash = "sha256:new".to_string();
-        manifest.size_bytes = 1024;
-        manifest.component_ids = vec![rf_types::ComponentId::new("methane")];
         let payload = StoredPropertyPackagePayload::new(
             "pkg-1",
             "2026.03.1",
@@ -758,13 +964,18 @@ mod tests {
                 "Methane",
             )],
         );
+        let integrity =
+            property_package_payload_integrity(&payload).expect("expected payload integrity");
+        manifest.hash = integrity.hash.clone();
+        manifest.size_bytes = integrity.size_bytes;
+        manifest.component_ids = vec![rf_types::ComponentId::new("methane")];
         let lease_grant = PropertyPackageLeaseGrant {
             package_id: "pkg-1".to_string(),
             version: "2026.03.1".to_string(),
             lease_id: "lease-1".to_string(),
             download_url: "https://assets.radish.local/lease-1".to_string(),
-            hash: "sha256:new".to_string(),
-            size_bytes: 1024,
+            hash: integrity.hash.clone(),
+            size_bytes: integrity.size_bytes,
             expires_at: timestamp(210),
         };
 
@@ -792,7 +1003,7 @@ mod tests {
             .expect("expected stored auth cache index");
 
         assert_eq!(stored_manifest.package_id, "pkg-1");
-        assert_eq!(stored_manifest.hash, "sha256:new");
+        assert_eq!(stored_manifest.hash, integrity.hash);
         assert_eq!(stored_manifest.expires_at, Some(timestamp(900)));
         assert_eq!(stored_payload.package_id, "pkg-1");
         assert_eq!(stored_index.property_packages.len(), 1);
@@ -804,11 +1015,212 @@ mod tests {
         fs::remove_dir_all(&root).expect("expected temp dir cleanup");
     }
 
+    #[test]
+    fn persist_downloaded_package_to_cache_restores_previous_files_when_manifest_write_fails() {
+        let root = unique_temp_path("downloaded-package-rollback");
+        let mut index = StoredAuthCacheIndex::new(
+            "https://id.radish.local",
+            "user-123",
+            StoredCredentialReference::new("radishflow-studio", "user-credential"),
+        );
+        index.entitlement = Some(StoredEntitlementCache {
+            subject_id: "user-123".to_string(),
+            tenant_id: Some("tenant-1".to_string()),
+            synced_at: timestamp(100),
+            issued_at: timestamp(90),
+            expires_at: timestamp(500),
+            offline_lease_expires_at: Some(timestamp(900)),
+            feature_keys: BTreeSet::from(["desktop-login".to_string()]),
+            allowed_package_ids: BTreeSet::from(["pkg-1".to_string()]),
+        });
+
+        let existing_payload = StoredPropertyPackagePayload::new(
+            "pkg-1",
+            "2026.03.1",
+            vec![StoredThermoComponent::new(
+                rf_types::ComponentId::new("methane"),
+                "Methane Legacy",
+            )],
+        );
+        let existing_integrity = property_package_payload_integrity(&existing_payload)
+            .expect("expected existing payload integrity");
+        let existing_record = sample_cached_record(
+            "pkg-1",
+            "2026.03.1",
+            &existing_integrity.hash,
+            existing_integrity.size_bytes,
+            timestamp(120),
+            timestamp(900),
+        );
+        let existing_manifest = sample_stored_manifest(
+            "pkg-1",
+            "2026.03.1",
+            &existing_integrity.hash,
+            existing_integrity.size_bytes,
+            timestamp(900),
+        );
+        index.property_packages.push(existing_record.clone());
+        write_property_package_payload(
+            existing_record
+                .payload_path_under(&root)
+                .expect("expected existing payload path"),
+            &existing_payload,
+        )
+        .expect("expected existing payload write");
+        write_property_package_manifest(
+            existing_record.manifest_path_under(&root),
+            &existing_manifest,
+        )
+        .expect("expected existing manifest write");
+        write_auth_cache_index(index.index_path_under(&root), &index)
+            .expect("expected existing auth cache write");
+
+        let updated_payload = StoredPropertyPackagePayload::new(
+            "pkg-1",
+            "2026.03.1",
+            vec![StoredThermoComponent::new(
+                rf_types::ComponentId::new("methane"),
+                "Methane Updated",
+            )],
+        );
+        let updated_integrity = property_package_payload_integrity(&updated_payload)
+            .expect("expected updated payload integrity");
+        let mut manifest = PropertyPackageManifest::new(
+            "pkg-1",
+            "2026.03.1",
+            PropertyPackageSource::RemoteDerivedPackage,
+        );
+        manifest.hash = updated_integrity.hash.clone();
+        manifest.size_bytes = updated_integrity.size_bytes;
+        manifest.component_ids = vec![rf_types::ComponentId::new("methane")];
+        let lease_grant = PropertyPackageLeaseGrant {
+            package_id: "pkg-1".to_string(),
+            version: "2026.03.1".to_string(),
+            lease_id: "lease-1".to_string(),
+            download_url: "https://assets.radish.local/lease-1".to_string(),
+            hash: updated_integrity.hash,
+            size_bytes: updated_integrity.size_bytes,
+            expires_at: timestamp(210),
+        };
+        let store = FailingCacheFileStore::new(2);
+
+        let error = persist_downloaded_package_to_cache_with_store(
+            &root,
+            &mut index,
+            &manifest,
+            &lease_grant,
+            &updated_payload,
+            timestamp(200),
+            &store,
+        )
+        .expect_err("expected manifest write failure");
+
+        assert_eq!(error.code().as_str(), "invalid_input");
+        assert!(error.message().contains("simulated write failure"));
+
+        let restored_payload = read_property_package_payload(
+            existing_record
+                .payload_path_under(&root)
+                .expect("expected restored payload path"),
+        )
+        .expect("expected restored payload read");
+        let restored_manifest =
+            read_property_package_manifest(existing_record.manifest_path_under(&root))
+                .expect("expected restored manifest read");
+        let restored_index = read_auth_cache_index(index.index_path_under(&root))
+            .expect("expected restored index read");
+
+        assert_eq!(restored_payload, existing_payload);
+        assert_eq!(restored_manifest, existing_manifest);
+        assert_eq!(
+            restored_index.property_packages[0].hash,
+            existing_integrity.hash
+        );
+        assert_eq!(index.property_packages[0].hash, existing_integrity.hash);
+
+        fs::remove_dir_all(&root).expect("expected temp dir cleanup");
+    }
+
     fn unique_temp_path(name: &str) -> PathBuf {
         let unique = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .expect("expected time after epoch")
             .as_nanos();
         std::env::temp_dir().join(format!("radishflow-{name}-{unique}"))
+    }
+
+    fn sample_cached_record(
+        package_id: &str,
+        version: &str,
+        hash: &str,
+        size_bytes: u64,
+        downloaded_at: SystemTime,
+        expires_at: SystemTime,
+    ) -> StoredPropertyPackageRecord {
+        let mut record = StoredPropertyPackageRecord::new(
+            package_id,
+            version,
+            StoredPropertyPackageSource::RemoteDerivedPackage,
+            hash,
+            size_bytes,
+            downloaded_at,
+        );
+        record.expires_at = Some(expires_at);
+        record
+    }
+
+    fn sample_stored_manifest(
+        package_id: &str,
+        version: &str,
+        hash: &str,
+        size_bytes: u64,
+        expires_at: SystemTime,
+    ) -> rf_store::StoredPropertyPackageManifest {
+        let mut manifest = rf_store::StoredPropertyPackageManifest::new(
+            package_id,
+            version,
+            StoredPropertyPackageSource::RemoteDerivedPackage,
+            vec![rf_types::ComponentId::new("methane")],
+        );
+        manifest.hash = hash.to_string();
+        manifest.size_bytes = size_bytes;
+        manifest.expires_at = Some(expires_at);
+        manifest
+    }
+
+    struct FailingCacheFileStore {
+        writes: Cell<usize>,
+        fail_on_write: usize,
+    }
+
+    impl FailingCacheFileStore {
+        fn new(fail_on_write: usize) -> Self {
+            Self {
+                writes: Cell::new(0),
+                fail_on_write,
+            }
+        }
+    }
+
+    impl CacheFileStore for FailingCacheFileStore {
+        fn read_existing(&self, path: &Path) -> RfResult<Option<Vec<u8>>> {
+            StdCacheFileStore.read_existing(path)
+        }
+
+        fn write_all(&self, path: &Path, contents: &[u8]) -> RfResult<()> {
+            StdCacheFileStore.write_all(path, contents)?;
+
+            let write_number = self.writes.get() + 1;
+            self.writes.set(write_number);
+            if write_number == self.fail_on_write {
+                return Err(RfError::invalid_input("simulated write failure"));
+            }
+
+            Ok(())
+        }
+
+        fn remove_file(&self, path: &Path) -> RfResult<()> {
+            StdCacheFileStore.remove_file(path)
+        }
     }
 }

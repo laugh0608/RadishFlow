@@ -1,5 +1,6 @@
 mod auth_cache_sync;
 mod property_package_download;
+mod property_package_download_client;
 
 pub use auth_cache_sync::{
     apply_offline_refresh_to_auth_cache, build_auth_cache_index, build_offline_refresh_request,
@@ -11,4 +12,8 @@ pub use property_package_download::{
     PropertyPackageDownloadComponent, PropertyPackageDownloadLiquidPhaseModel,
     PropertyPackageDownloadMethod, PropertyPackageDownloadVaporPhaseModel,
     parse_property_package_download_json, persist_downloaded_package_response_to_cache,
+};
+pub use property_package_download_client::{
+    PropertyPackageDownloadFetcher, PropertyPackageDownloadResponse,
+    download_property_package_to_cache,
 };

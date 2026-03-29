@@ -518,8 +518,9 @@ mod tests {
     use rf_store::{
         StoredAuthCacheIndex, StoredCredentialReference, StoredPropertyPackageManifest,
         StoredPropertyPackagePayload, StoredPropertyPackageRecord, StoredPropertyPackageSource,
-        StoredThermoComponent, read_property_package_manifest, read_property_package_payload,
-        write_property_package_manifest, write_property_package_payload,
+        StoredThermoComponent, property_package_payload_integrity, read_property_package_manifest,
+        read_property_package_payload, write_property_package_manifest,
+        write_property_package_payload,
     };
 
     use super::{
@@ -588,23 +589,11 @@ mod tests {
             "methane-basic-v1",
             "2026.03.1",
             StoredPropertyPackageSource::RemoteDerivedPackage,
-            "sha256:pkg-1",
-            512,
+            "",
+            0,
             timestamp(100),
         );
         record.expires_at = Some(timestamp(800));
-        let manifest = {
-            let mut manifest = StoredPropertyPackageManifest::new(
-                "methane-basic-v1",
-                "2026.03.1",
-                StoredPropertyPackageSource::RemoteDerivedPackage,
-                vec![ComponentId::new("methane")],
-            );
-            manifest.hash = "sha256:pkg-1".to_string();
-            manifest.size_bytes = 512;
-            manifest.expires_at = Some(timestamp(800));
-            manifest
-        };
         let payload = StoredPropertyPackagePayload::new(
             "methane-basic-v1",
             "2026.03.1",
@@ -613,6 +602,22 @@ mod tests {
                 "Methane",
             )],
         );
+        let integrity =
+            property_package_payload_integrity(&payload).expect("expected payload integrity");
+        let manifest = {
+            let mut manifest = StoredPropertyPackageManifest::new(
+                "methane-basic-v1",
+                "2026.03.1",
+                StoredPropertyPackageSource::RemoteDerivedPackage,
+                vec![ComponentId::new("methane")],
+            );
+            manifest.hash = integrity.hash.clone();
+            manifest.size_bytes = integrity.size_bytes;
+            manifest.expires_at = Some(timestamp(800));
+            manifest
+        };
+        record.hash = integrity.hash.clone();
+        record.size_bytes = integrity.size_bytes;
 
         write_property_package_manifest(record.manifest_path_under(&root), &manifest)
             .expect("expected manifest write");
@@ -631,7 +636,7 @@ mod tests {
 
         assert_eq!(manifests.len(), 1);
         assert_eq!(manifests[0].package_id, "methane-basic-v1");
-        assert_eq!(manifests[0].hash, "sha256:pkg-1");
+        assert_eq!(manifests[0].hash, integrity.hash);
         let system = provider
             .load_system("methane-basic-v1")
             .expect("expected thermo system");
@@ -680,7 +685,7 @@ mod tests {
             "2026.03.1",
             StoredPropertyPackageSource::RemoteDerivedPackage,
             "sha256:expected",
-            256,
+            0,
             timestamp(100),
         );
         record.expires_at = Some(timestamp(500));
@@ -690,9 +695,20 @@ mod tests {
             StoredPropertyPackageSource::RemoteDerivedPackage,
             vec![ComponentId::new("methane")],
         );
-        manifest.hash = "sha256:actual".to_string();
-        manifest.size_bytes = 256;
+        let payload = StoredPropertyPackagePayload::new(
+            "pkg-1",
+            "2026.03.1",
+            vec![StoredThermoComponent::new(
+                ComponentId::new("methane"),
+                "Methane",
+            )],
+        );
+        let integrity =
+            property_package_payload_integrity(&payload).expect("expected payload integrity");
+        manifest.hash = integrity.hash;
+        manifest.size_bytes = integrity.size_bytes;
         manifest.expires_at = Some(timestamp(500));
+        record.size_bytes = integrity.size_bytes;
 
         write_property_package_manifest(record.manifest_path_under(&root), &manifest)
             .expect("expected manifest write");
@@ -700,14 +716,7 @@ mod tests {
             record
                 .payload_path_under(&root)
                 .expect("expected payload path"),
-            &StoredPropertyPackagePayload::new(
-                "pkg-1",
-                "2026.03.1",
-                vec![StoredThermoComponent::new(
-                    ComponentId::new("methane"),
-                    "Methane",
-                )],
-            ),
+            &payload,
         )
         .expect("expected payload write");
         index.property_packages.push(record);

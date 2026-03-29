@@ -1,4 +1,5 @@
 mod auth_cache;
+mod integrity;
 mod json;
 mod layout;
 mod package_cache;
@@ -7,6 +8,10 @@ mod project;
 pub use auth_cache::{
     StoredAuthCacheIndex, StoredCredentialReference, StoredEntitlementCache,
     StoredPropertyPackageRecord, StoredPropertyPackageSource,
+};
+pub use integrity::{
+    StoredPropertyPackagePayloadIntegrity, property_package_payload_integrity,
+    validate_property_package_payload_integrity,
 };
 pub use json::{
     auth_cache_index_to_pretty_json, parse_auth_cache_index_json, parse_project_file_json,

@@ -262,7 +262,7 @@ mod tests {
 
     use rf_store::{
         StoredAuthCacheIndex, StoredCredentialReference, StoredEntitlementCache,
-        StoredLiquidPhaseModel, read_property_package_payload,
+        StoredLiquidPhaseModel, property_package_payload_integrity, read_property_package_payload,
     };
     use rf_types::ComponentId;
     use rf_ui::{PropertyPackageLeaseGrant, PropertyPackageManifest, PropertyPackageSource};
@@ -319,21 +319,27 @@ mod tests {
             feature_keys: BTreeSet::from(["desktop-login".to_string()]),
             allowed_package_ids: BTreeSet::from(["binary-hydrocarbon-lite-v1".to_string()]),
         });
+        let payload = parse_property_package_download_json(&sample_download_json())
+            .expect("expected sample download")
+            .to_stored_payload()
+            .expect("expected stored payload");
+        let integrity =
+            property_package_payload_integrity(&payload).expect("expected payload integrity");
         let mut manifest = PropertyPackageManifest::new(
             "binary-hydrocarbon-lite-v1",
             "2026.03.1",
             PropertyPackageSource::RemoteDerivedPackage,
         );
-        manifest.hash = "sha256:binary-hydrocarbon-lite-v1-2026.03.1".to_string();
-        manifest.size_bytes = 2048;
+        manifest.hash = integrity.hash.clone();
+        manifest.size_bytes = integrity.size_bytes;
         manifest.component_ids = vec![ComponentId::new("methane"), ComponentId::new("ethane")];
         let lease_grant = PropertyPackageLeaseGrant {
             package_id: "binary-hydrocarbon-lite-v1".to_string(),
             version: "2026.03.1".to_string(),
             lease_id: "lease-1".to_string(),
             download_url: "https://assets.radish.local/lease-1".to_string(),
-            hash: "sha256:binary-hydrocarbon-lite-v1-2026.03.1".to_string(),
-            size_bytes: 2048,
+            hash: integrity.hash,
+            size_bytes: integrity.size_bytes,
             expires_at: timestamp(210),
         };
 
