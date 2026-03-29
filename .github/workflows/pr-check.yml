@@ -4,6 +4,11 @@ on:
   pull_request:
     branches:
       - master
+  push:
+    tags:
+      - 'v*-dev'
+      - 'v*-test'
+      - 'v*-release'
   workflow_dispatch:
 
 permissions:

@@ -188,6 +188,23 @@ impl PropertyPackageManifest {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PropertyPackageManifestList {
+    pub schema_version: u32,
+    pub generated_at: SystemTime,
+    pub packages: Vec<PropertyPackageManifest>,
+}
+
+impl PropertyPackageManifestList {
+    pub fn new(generated_at: SystemTime, packages: Vec<PropertyPackageManifest>) -> Self {
+        Self {
+            schema_version: 1,
+            generated_at,
+            packages,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EntitlementSnapshot {
     pub subject_id: String,
     pub tenant_id: Option<String>,
@@ -196,6 +213,84 @@ pub struct EntitlementSnapshot {
     pub offline_lease_expires_at: Option<SystemTime>,
     pub features: BTreeSet<String>,
     pub allowed_package_ids: BTreeSet<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PropertyPackageLeaseRequest {
+    pub version: String,
+    pub current_hash: Option<String>,
+    pub installation_id: Option<String>,
+}
+
+impl PropertyPackageLeaseRequest {
+    pub fn new(version: impl Into<String>) -> Self {
+        Self {
+            version: version.into(),
+            current_hash: None,
+            installation_id: None,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PropertyPackageLeaseGrant {
+    pub package_id: String,
+    pub version: String,
+    pub lease_id: String,
+    pub download_url: String,
+    pub hash: String,
+    pub size_bytes: u64,
+    pub expires_at: SystemTime,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct OfflineLeaseRefreshRequest {
+    pub package_ids: BTreeSet<String>,
+    pub current_offline_lease_expires_at: Option<SystemTime>,
+    pub installation_id: Option<String>,
+}
+
+impl OfflineLeaseRefreshRequest {
+    pub fn new(package_ids: BTreeSet<String>) -> Self {
+        Self {
+            package_ids,
+            current_offline_lease_expires_at: None,
+            installation_id: None,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct OfflineLeaseRefreshResponse {
+    pub refreshed_at: SystemTime,
+    pub snapshot: EntitlementSnapshot,
+    pub manifest_list: PropertyPackageManifestList,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum PropertyPackageUsageEventKind {
+    PackageLoaded,
+    LeaseRequested,
+    RemoteEvaluationRequested,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PropertyPackageUsageEvent {
+    pub package_id: String,
+    pub version: String,
+    pub event_kind: PropertyPackageUsageEventKind,
+    pub occurred_at: SystemTime,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct AuditUsageRequest {
+    pub events: Vec<PropertyPackageUsageEvent>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AuditUsageAck {
+    pub accepted_at: SystemTime,
+    pub accepted_count: usize,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -239,6 +334,23 @@ impl EntitlementState {
         self.status = EntitlementStatus::Active;
         self.last_synced_at = Some(synced_at);
         self.last_error = None;
+    }
+
+    pub fn update_from_manifest_list(
+        &mut self,
+        snapshot: EntitlementSnapshot,
+        manifest_list: PropertyPackageManifestList,
+        synced_at: SystemTime,
+    ) {
+        self.update(snapshot, manifest_list.packages, synced_at);
+    }
+
+    pub fn apply_offline_refresh(&mut self, response: OfflineLeaseRefreshResponse) {
+        self.update_from_manifest_list(
+            response.snapshot,
+            response.manifest_list,
+            response.refreshed_at,
+        );
     }
 
     pub fn mark_lease_expired(&mut self, message: impl Into<String>) {

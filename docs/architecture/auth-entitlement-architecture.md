@@ -381,6 +381,118 @@ RadishFlow Studio
 - 不必为 manifest 清单额外引入第二个“不透明响应头协议”
 - 客户端可以用 `generatedAt` 和本地 `lastSyncedAt` 做最小对账
 
+### `PropertyPackageLeaseRequest`
+
+`POST /api/radishflow/property-packages/{packageId}/lease` 当前建议最小请求体：
+
+```json
+{
+  "version": "2026.03.1",
+  "currentHash": "sha256:...",
+  "installationId": "studio-installation-001"
+}
+```
+
+冻结边界：
+
+- `version` 当前为必填，用于避免客户端租到错误版本
+- `currentHash` 当前为可选，用于服务端决定是否允许复用本地缓存
+- `installationId` 当前先保留为可选字段，为后续设备绑定或实例级审计留口
+
+### `PropertyPackageLeaseGrant`
+
+`POST /api/radishflow/property-packages/{packageId}/lease` 当前建议最小响应体：
+
+```json
+{
+  "packageId": "binary-hydrocarbon-lite-v1",
+  "version": "2026.03.1",
+  "leaseId": "lease-001",
+  "downloadUrl": "https://assets.radish.local/leases/lease-001/download",
+  "hash": "sha256:...",
+  "sizeBytes": 123456,
+  "expiresAt": "2026-03-29T10:30:00Z"
+}
+```
+
+冻结边界：
+
+- 返回值只允许包含短时下载租约，不直接回传包体内容
+- `leaseId` 用于审计和问题追溯，不等于长期凭据
+- `expiresAt` 明确租约有效期，避免客户端把短时 URL 当长期缓存入口
+
+### `OfflineLeaseRefreshRequest`
+
+`POST /api/radishflow/offline-leases/refresh` 当前建议最小请求体：
+
+```json
+{
+  "packageIds": ["binary-hydrocarbon-lite-v1"],
+  "currentOfflineLeaseExpiresAt": "2026-04-05T10:00:00Z",
+  "installationId": "studio-installation-001"
+}
+```
+
+冻结边界：
+
+- `packageIds` 用于让控制面知道当前客户端仍依赖哪些包
+- `currentOfflineLeaseExpiresAt` 用于服务端判断是否应续期或收紧授权
+- `installationId` 当前继续保留为后续设备绑定扩展口
+
+### `OfflineLeaseRefreshResponse`
+
+`POST /api/radishflow/offline-leases/refresh` 当前建议最小响应体：
+
+```json
+{
+  "refreshedAt": "2026-03-29T10:10:00Z",
+  "snapshot": {
+    "schemaVersion": 1,
+    "subjectId": "user-123",
+    "tenantId": "tenant-001",
+    "issuedAt": "2026-03-29T10:10:00Z",
+    "expiresAt": "2026-03-29T11:10:00Z",
+    "offlineLeaseExpiresAt": "2026-04-06T10:10:00Z",
+    "features": ["desktop-login", "local-thermo-packages"],
+    "allowedPackageIds": ["binary-hydrocarbon-lite-v1"]
+  },
+  "manifestList": {
+    "schemaVersion": 1,
+    "generatedAt": "2026-03-29T10:10:00Z",
+    "packages": []
+  }
+}
+```
+
+冻结边界：
+
+- 响应必须同时返回新的 `EntitlementSnapshot`
+- `manifestList` 当前允许为空数组，但不省略容器对象
+- 桌面端用该响应同时刷新授权态和本地 manifest 展示态
+
+### `AuditUsageRequest`
+
+`POST /api/radishflow/audit/usage` 当前建议最小请求体：
+
+```json
+{
+  "events": [
+    {
+      "packageId": "binary-hydrocarbon-lite-v1",
+      "version": "2026.03.1",
+      "eventKind": "package-loaded",
+      "occurredAt": "2026-03-29T10:12:00Z"
+    }
+  ]
+}
+```
+
+冻结边界：
+
+- 当前只要求“批量事件上报”容器，不为每类事件发明独立资源路径
+- `eventKind` 当前先建议收口为 `package-loaded`、`lease-requested`、`remote-evaluation-requested`
+- 当前不要求把文档内容、求解详情或明文参数打进审计事件
+
 ### `PropertyAssetSource`
 
 建议先冻结为三类：

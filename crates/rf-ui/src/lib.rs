@@ -6,9 +6,12 @@ mod run;
 mod state;
 
 pub use auth::{
-    AuthSessionState, AuthSessionStatus, AuthenticatedUser, EntitlementSnapshot, EntitlementState,
-    EntitlementStatus, PropertyPackageClassification, PropertyPackageManifest,
-    PropertyPackageSource, SecureCredentialHandle, TokenLease,
+    AuditUsageAck, AuditUsageRequest, AuthSessionState, AuthSessionStatus, AuthenticatedUser,
+    EntitlementSnapshot, EntitlementState, EntitlementStatus, OfflineLeaseRefreshRequest,
+    OfflineLeaseRefreshResponse, PropertyPackageClassification, PropertyPackageLeaseGrant,
+    PropertyPackageLeaseRequest, PropertyPackageManifest, PropertyPackageManifestList,
+    PropertyPackageSource, PropertyPackageUsageEvent, PropertyPackageUsageEventKind,
+    SecureCredentialHandle, TokenLease,
 };
 pub use commands::{
     CanvasPoint, CommandHistory, CommandHistoryEntry, CommandValue, DocumentCommand,
@@ -36,9 +39,9 @@ mod tests {
     use crate::{
         AppState, AuthSessionStatus, AuthenticatedUser, CanvasPoint, CommandHistory,
         CommandHistoryEntry, DiagnosticSeverity, DiagnosticSummary, DocumentCommand,
-        DocumentMetadata, EntitlementSnapshot, FlowsheetDocument, PropertyPackageManifest,
-        PropertyPackageSource, RunStatus, SecureCredentialHandle, SimulationMode,
-        SolvePendingReason, SolveSnapshot, TokenLease,
+        DocumentMetadata, EntitlementSnapshot, FlowsheetDocument, OfflineLeaseRefreshResponse,
+        PropertyPackageManifest, PropertyPackageManifestList, PropertyPackageSource, RunStatus,
+        SecureCredentialHandle, SimulationMode, SolvePendingReason, SolveSnapshot, TokenLease,
     };
 
     fn timestamp(seconds: u64) -> std::time::SystemTime {
@@ -240,5 +243,71 @@ mod tests {
         assert_eq!(app_state.auth_session.status, AuthSessionStatus::SignedOut);
         assert!(app_state.entitlement.snapshot.is_none());
         assert!(app_state.entitlement.package_manifests.is_empty());
+    }
+
+    #[test]
+    fn entitlement_sync_from_manifest_list_indexes_packages() {
+        let mut app_state = AppState::new(sample_document());
+        let snapshot = EntitlementSnapshot {
+            subject_id: "user-123".to_string(),
+            tenant_id: Some("tenant-1".to_string()),
+            issued_at: timestamp(100),
+            expires_at: timestamp(400),
+            offline_lease_expires_at: Some(timestamp(700)),
+            features: ["local-thermo-packages".to_string()].into_iter().collect(),
+            allowed_package_ids: ["binary-hydrocarbon-lite-v1".to_string()]
+                .into_iter()
+                .collect(),
+        };
+        let manifests = PropertyPackageManifestList::new(
+            timestamp(140),
+            vec![PropertyPackageManifest::new(
+                "binary-hydrocarbon-lite-v1",
+                "2026.03.1",
+                PropertyPackageSource::RemoteDerivedPackage,
+            )],
+        );
+
+        app_state
+            .entitlement
+            .update_from_manifest_list(snapshot, manifests, timestamp(150));
+
+        assert_eq!(app_state.entitlement.package_manifests.len(), 1);
+        assert_eq!(app_state.entitlement.last_synced_at, Some(timestamp(150)));
+    }
+
+    #[test]
+    fn offline_refresh_response_updates_entitlement_state() {
+        let mut app_state = AppState::new(sample_document());
+        let snapshot = EntitlementSnapshot {
+            subject_id: "user-123".to_string(),
+            tenant_id: Some("tenant-1".to_string()),
+            issued_at: timestamp(200),
+            expires_at: timestamp(500),
+            offline_lease_expires_at: Some(timestamp(900)),
+            features: ["local-thermo-packages".to_string()].into_iter().collect(),
+            allowed_package_ids: ["pkg-1".to_string()].into_iter().collect(),
+        };
+        let response = OfflineLeaseRefreshResponse {
+            refreshed_at: timestamp(210),
+            snapshot,
+            manifest_list: PropertyPackageManifestList::new(
+                timestamp(205),
+                vec![PropertyPackageManifest::new(
+                    "pkg-1",
+                    "2026.03.1",
+                    PropertyPackageSource::RemoteDerivedPackage,
+                )],
+            ),
+        };
+
+        app_state.entitlement.apply_offline_refresh(response);
+
+        assert_eq!(
+            app_state.entitlement.status,
+            crate::EntitlementStatus::Active
+        );
+        assert_eq!(app_state.entitlement.last_synced_at, Some(timestamp(210)));
+        assert!(app_state.entitlement.is_package_allowed("pkg-1"));
     }
 }

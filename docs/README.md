@@ -5,6 +5,7 @@
 | 文档 | 说明 |
 | --- | --- |
 | `architecture/overview.md` | 当前仓库的分层、crate 边界与阶段职责 |
+| `architecture/versioning.md` | 项目版本命名、Git tag 与发布轨道约定 |
 | `architecture/app-architecture.md` | 桌面 App 的壳层、状态与模块边界规划 |
 | `architecture/auth-entitlement-architecture.md` | 桌面登录、授权、远端物性资产与本地求解边界 |
 | `mvp/scope.md` | 第一阶段 MVP 的冻结范围、非目标与近期开发节奏 |
@@ -29,8 +30,9 @@
 4. `mvp/scope.md`
 5. `architecture/auth-entitlement-architecture.md`
 6. `architecture/app-architecture.md`
-7. `capeopen/boundary.md`
-8. `adr/0001-branch-and-pr-governance.md`
+7. `architecture/versioning.md`
+8. `capeopen/boundary.md`
+9. `adr/0001-branch-and-pr-governance.md`
 
 ## 文档维护约定
 

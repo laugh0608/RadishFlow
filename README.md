@@ -69,6 +69,7 @@ cargo check
 
 - `docs/README.md`: 文档总索引
 - `docs/architecture/overview.md`: 当前仓库分层与模块边界
+- `docs/architecture/versioning.md`: 项目版本命名、tag 与发布轨道约定
 - `docs/architecture/app-architecture.md`: 桌面 App 架构规划
 - `docs/architecture/auth-entitlement-architecture.md`: 桌面登录、授权与远端物性资产架构
 - `docs/mvp/scope.md`: MVP 范围、非目标与近期开发节奏
@@ -82,6 +83,27 @@ cargo check
 
 - `AGENTS.md`: 仓库协作约定、阶段边界与工作流
 - `docs/devlogs/2026-W13.md`: 当前阶段首份开发日志
+
+## 版本与 Tag
+
+RadishFlow 当前参考 `Radish` 的版本命名方式，采用日历版本号：
+
+```text
+vYY.M.RELEASE
+```
+
+发布轨道 tag 当前继续采用：
+
+- `v*-dev`
+- `v*-test`
+- `v*-release`
+
+当前仓库检查工作流默认响应两类事件：
+
+- 指向 `master` 的 Pull Request
+- 规范发布 tag 的 push
+
+详细规则见 `docs/architecture/versioning.md`。
 
 ## 许可
 
