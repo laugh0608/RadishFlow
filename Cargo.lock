@@ -56,6 +56,11 @@ dependencies = [
 [[package]]
 name = "radishflow-studio"
 version = "0.1.0"
+dependencies = [
+ "rf-store",
+ "rf-types",
+ "rf-ui",
+]
 
 [[package]]
 name = "rf-canvas"

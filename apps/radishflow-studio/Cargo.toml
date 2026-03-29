@@ -8,3 +8,8 @@ license-file.workspace = true
 repository.workspace = true
 homepage.workspace = true
 publish.workspace = true
+
+[dependencies]
+rf-store = { path = "../../crates/rf-store" }
+rf-types = { path = "../../crates/rf-types" }
+rf-ui = { path = "../../crates/rf-ui" }

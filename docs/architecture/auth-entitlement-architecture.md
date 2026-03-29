@@ -420,6 +420,7 @@ RadishFlow Studio
 - 返回值只允许包含短时下载租约，不直接回传包体内容
 - `leaseId` 用于审计和问题追溯，不等于长期凭据
 - `expiresAt` 明确租约有效期，避免客户端把短时 URL 当长期缓存入口
+- 该字段当前只表达下载 URL / 下载租约的有效期，不直接写入 `StoredPropertyPackageRecord.expiresAt`
 
 ### `OfflineLeaseRefreshRequest`
 
@@ -506,6 +507,20 @@ RadishFlow Studio
 
 ## RadishFlow 内部模块边界
 
+### `apps/radishflow-studio`
+
+职责：
+
+- 作为应用组合根装配 `rf-ui`、`rf-store`、`rf-thermo` 与后续控制面客户端
+- 承接 `AuthSessionState` / `EntitlementState` 与 `StoredAuthCacheIndex` 之间的桥接和同步
+- 负责把离线刷新、下载完成和缓存索引更新收口成单一路径
+
+不应承担：
+
+- 重新发明独立授权模型
+- 把控制面 DTO 直接塞回 `FlowsheetDocument`
+- 让桥接逻辑反向扩散成 `rf-ui -> rf-store` 或 `rf-store -> rf-ui` 直接依赖
+
 ### `rf-ui`
 
 职责：
@@ -524,6 +539,7 @@ RadishFlow Studio
 
 - `AuthSessionState` 与 `EntitlementState` 当前已经作为 `AppState` 外层状态骨架落入 `rf-ui`
 - 登录态和授权态继续保持在 `AppState` 外层应用状态，不混进 `FlowsheetDocument`
+- `rf-ui` 当前只承载运行时授权状态和控制面 DTO，不直接持久化 `StoredAuthCacheIndex`
 
 ### `rf-store`
 
@@ -629,6 +645,7 @@ RadishFlow Studio
 
 - `payload.rfpkg` 只在 `LocalBundled` / `RemoteDerivedPackage` 下出现；`RemoteEvaluationService` 不要求本地 payload 文件
 - `StoredPropertyPackageRecord` 当前正式只记录相对路径，方便缓存根目录迁移与跨设备导入时做路径重定位
+- `StoredPropertyPackageRecord.expiresAt` 当前正式跟随授权快照中的离线租约/授权过期时间，不直接复用 `PropertyPackageLeaseGrant.expiresAt` 的短时下载 URL 过期时间
 - 授权缓存索引是“运行态缓存真相源”，项目文件仍然只描述用户编辑的流程图语义
 
 ### `rf-thermo`
