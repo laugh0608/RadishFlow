@@ -12,6 +12,22 @@ RadishFlow 的目标架构已经冻结为三层：
 
 第一阶段只要求三层边界清晰，不要求三层都立即进入完整实现。
 
+同时，当前还补充冻结一个 **外部控制面**：
+
+4. Radish Platform Identity And Entitlement Control Plane
+
+这不是桌面进程内部的新层，而是产品外部依赖的服务平面，用于承担：
+
+- OIDC 登录
+- RadishFlow 专属授权
+- 受控物性资产清单与租约
+- 派生数据包分发
+
+不承担：
+
+- 本地主求解循环
+- CAPE-OPEN/COM 适配
+
 ## 当前仓库分层
 
 ### Rust Core
@@ -48,6 +64,7 @@ RadishFlow 的目标架构已经冻结为三层：
 - 字段级草稿提交
 - `SimulationMode` / `RunStatus` 分离
 - 独立 `SolveSnapshot`
+- OIDC / 授权 / 远端资产保护作为外部控制面，而不是塞进 Rust Core
 
 这些决定的目的是先把 UI 和求解层之间的长期接口边界定清楚，再决定具体控件和交互实现。
 
@@ -71,6 +88,9 @@ RadishFlow 的目标架构已经冻结为三层：
 - CAPE-OPEN/COM 适配全部放在 `.NET 10` 中
 - 第一阶段只导出自有 Unit Operation PMC，不支持加载第三方 CAPE-OPEN 模型
 - Rust 与 .NET 边界只允许句柄、基础数值、UTF-8 字符串和 JSON
+- 桌面端登录统一走 OIDC Authorization Code + PKCE，不内置长期 `client_secret`
+- 高价值物性资产不默认完整下发到客户端
+- 远端服务只承担控制面与资产分发面，不吞掉本地求解热路径
 
 ## 当前开发策略
 

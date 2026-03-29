@@ -70,6 +70,7 @@ cargo check
 - `docs/README.md`: 文档总索引
 - `docs/architecture/overview.md`: 当前仓库分层与模块边界
 - `docs/architecture/app-architecture.md`: 桌面 App 架构规划
+- `docs/architecture/auth-entitlement-architecture.md`: 桌面登录、授权与远端物性资产架构
 - `docs/mvp/scope.md`: MVP 范围、非目标与近期开发节奏
 - `docs/thermo/mvp-model.md`: 热力学与闪蒸的当前契约
 - `docs/capeopen/boundary.md`: Rust 与 .NET 10 的 CAPE-OPEN 边界
@@ -92,3 +93,4 @@ cargo check
 ## 参考仓库
 
 - [CapeOpenCore](https://github.com/laugh0608/CapeOpenCore): 当前阶段用于提取 CAPE-OPEN 接口、GUID、异常语义与注册语义的参考仓库。
+- `D:\Code\Radish`: 当前阶段用于参考 OIDC / Auth / Client Registration 能力的统一平台仓库。

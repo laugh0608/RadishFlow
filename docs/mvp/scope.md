@@ -58,6 +58,16 @@ App 与交互层当前进一步冻结以下口径：
 - `CommandHistory` 只记录语义化文档命令，运行控制和文档生命周期动作不进入撤回栈
 - `SolveSessionState` 必须绑定当前观察的文档修订号，`SolveSnapshot` 由工作区持有有界历史窗口
 
+认证、授权与受控物性资产当前进一步冻结以下口径：
+
+- 桌面端统一走 `OIDC Authorization Code + PKCE`
+- RadishFlow 桌面端是 `public client`，不内置长期 `client_secret`
+- 登录默认采用系统浏览器 + loopback redirect，不照搬 Web 客户端 `localStorage` token 方案
+- Access Token / Refresh Token 只允许落在操作系统安全存储
+- 高价值原始物性资产不默认完整下发到客户端
+- 本地求解热路径继续本地执行，远端服务只承担身份、授权、租约、清单和派生包分发
+- 允许引入离线租约与本地派生物性包缓存，但不承诺客户端绝对防提取
+
 ## 当前阶段优先目标
 
 在真正恢复主线功能推进前，当前阶段优先目标先调整为仓库地基建设：
@@ -97,6 +107,7 @@ App 与交互层当前进一步冻结以下口径：
 - 冻结字段级草稿提交流程、`CommandHistory` 边界和工作区保存态口径
 - 冻结 `SolveSessionState`、`DiagnosticSummary`、`SolvePendingReason` 与 `SolveSnapshot` 的关系
 - 明确 UI 交互层、求解层和快照历史之间的数据所有权
+- 冻结桌面登录、授权、离线租约与远端资产控制面的总体边界
 
 ### 2026-W16
 
