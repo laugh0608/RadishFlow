@@ -41,6 +41,9 @@ version = "0.1.0"
 [[package]]
 name = "rf-store"
 version = "0.1.0"
+dependencies = [
+ "rf-model",
+]
 
 [[package]]
 name = "rf-thermo"

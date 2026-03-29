@@ -5,6 +5,10 @@ use std::time::SystemTime;
 use rf_model::Flowsheet;
 use rf_types::{StreamId, UnitId};
 
+use crate::auth::{
+    AuthSessionState, AuthenticatedUser, EntitlementSnapshot, EntitlementState,
+    PropertyPackageManifest, TokenLease,
+};
 use crate::commands::{CommandHistory, CommandHistoryEntry, DocumentCommand};
 use crate::diagnostics::DiagnosticSummary;
 use crate::ids::{DocumentId, SolveSnapshotId};
@@ -315,6 +319,8 @@ impl WorkspaceState {
 #[derive(Debug, Clone, PartialEq)]
 pub struct AppState {
     pub workspace: WorkspaceState,
+    pub auth_session: AuthSessionState,
+    pub entitlement: EntitlementState,
     pub preferences: UserPreferences,
     pub log_feed: AppLogFeed,
 }
@@ -325,6 +331,8 @@ impl AppState {
         let workspace = WorkspaceState::new(document, &preferences.panel_defaults);
         Self {
             workspace,
+            auth_session: AuthSessionState::default(),
+            entitlement: EntitlementState::default(),
             preferences,
             log_feed: AppLogFeed::default(),
         }
@@ -373,6 +381,35 @@ impl AppState {
         self.workspace
             .solve_session
             .hold_with_failure(revision, status, summary);
+    }
+
+    pub fn begin_browser_login(&mut self, authority_url: impl Into<String>) {
+        self.auth_session.begin_browser_login(authority_url);
+    }
+
+    pub fn complete_login(
+        &mut self,
+        authority_url: impl Into<String>,
+        user: AuthenticatedUser,
+        token_lease: TokenLease,
+        authenticated_at: DateTimeUtc,
+    ) {
+        self.auth_session
+            .complete_login(authority_url, user, token_lease, authenticated_at);
+    }
+
+    pub fn update_entitlement(
+        &mut self,
+        snapshot: EntitlementSnapshot,
+        manifests: Vec<PropertyPackageManifest>,
+        synced_at: DateTimeUtc,
+    ) {
+        self.entitlement.update(snapshot, manifests, synced_at);
+    }
+
+    pub fn clear_auth_session(&mut self) {
+        self.auth_session.clear();
+        self.entitlement.clear();
     }
 }
 

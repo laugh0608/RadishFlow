@@ -1,3 +1,6 @@
+use std::collections::BTreeMap;
+use std::time::SystemTime;
+
 use rf_types::{ComponentId, PhaseLabel, RfError, RfResult};
 
 #[derive(Debug, Clone, PartialEq)]
@@ -196,6 +199,77 @@ impl PlaceholderThermoProvider {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum PropertyPackageSource {
+    LocalBundled,
+    RemoteDerivedPackage,
+    RemoteEvaluationService,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PropertyPackageManifest {
+    pub package_id: String,
+    pub version: String,
+    pub source: PropertyPackageSource,
+    pub component_ids: Vec<ComponentId>,
+    pub expires_at: Option<SystemTime>,
+}
+
+impl PropertyPackageManifest {
+    pub fn new(
+        package_id: impl Into<String>,
+        version: impl Into<String>,
+        source: PropertyPackageSource,
+        component_ids: Vec<ComponentId>,
+    ) -> Self {
+        Self {
+            package_id: package_id.into(),
+            version: version.into(),
+            source,
+            component_ids,
+            expires_at: None,
+        }
+    }
+}
+
+pub trait PropertyPackageProvider {
+    fn list_manifests(&self) -> Vec<PropertyPackageManifest>;
+
+    fn load_system(&self, package_id: &str) -> RfResult<ThermoSystem>;
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct InMemoryPropertyPackageProvider {
+    packages: BTreeMap<String, (PropertyPackageManifest, ThermoSystem)>,
+}
+
+impl InMemoryPropertyPackageProvider {
+    pub fn new(entries: Vec<(PropertyPackageManifest, ThermoSystem)>) -> Self {
+        let packages = entries
+            .into_iter()
+            .map(|(manifest, system)| (manifest.package_id.clone(), (manifest, system)))
+            .collect();
+
+        Self { packages }
+    }
+}
+
+impl PropertyPackageProvider for InMemoryPropertyPackageProvider {
+    fn list_manifests(&self) -> Vec<PropertyPackageManifest> {
+        self.packages
+            .values()
+            .map(|(manifest, _)| manifest.clone())
+            .collect()
+    }
+
+    fn load_system(&self, package_id: &str) -> RfResult<ThermoSystem> {
+        self.packages
+            .get(package_id)
+            .map(|(_, system)| system.clone())
+            .ok_or_else(|| RfError::missing_entity("property package", package_id))
+    }
+}
+
 impl ThermoProvider for PlaceholderThermoProvider {
     fn system(&self) -> &ThermoSystem {
         &self.system
@@ -227,5 +301,46 @@ impl ThermoProvider for PlaceholderThermoProvider {
         Err(RfError::not_implemented(
             "phase enthalpy evaluation is not implemented yet",
         ))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{
+        InMemoryPropertyPackageProvider, PropertyPackageManifest, PropertyPackageProvider,
+        PropertyPackageSource, ThermoComponent, ThermoSystem,
+    };
+    use rf_types::ComponentId;
+
+    #[test]
+    fn package_provider_returns_manifest_and_system_for_known_package() {
+        let methane_id = ComponentId::new("methane");
+        let system = ThermoSystem::new(vec![ThermoComponent::new(methane_id.clone(), "Methane")]);
+        let manifest = PropertyPackageManifest::new(
+            "methane-basic-v1",
+            "2026.03.1",
+            PropertyPackageSource::RemoteDerivedPackage,
+            vec![methane_id],
+        );
+        let provider = InMemoryPropertyPackageProvider::new(vec![(manifest, system.clone())]);
+
+        let manifests = provider.list_manifests();
+        assert_eq!(manifests.len(), 1);
+        assert_eq!(manifests[0].package_id, "methane-basic-v1");
+
+        let loaded = provider
+            .load_system("methane-basic-v1")
+            .expect("expected thermo system");
+        assert_eq!(loaded, system);
+    }
+
+    #[test]
+    fn package_provider_reports_missing_package() {
+        let provider = InMemoryPropertyPackageProvider::default();
+        let error = provider
+            .load_system("missing-package")
+            .expect_err("expected missing package error");
+
+        assert_eq!(error.code().as_str(), "missing_entity");
     }
 }

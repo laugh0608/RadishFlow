@@ -345,8 +345,8 @@ RadishFlow Studio
 
 当前补充说明：
 
-- 现有 `AppState` 文档尚未正式加入 `AuthSessionState`
-- 后续若接入桌面登录，应把登录态和授权态放在 `AppState` 外层应用状态，而不是混进 `FlowsheetDocument`
+- `AuthSessionState` 与 `EntitlementState` 当前已经作为 `AppState` 外层状态骨架落入 `rf-ui`
+- 登录态和授权态继续保持在 `AppState` 外层应用状态，不混进 `FlowsheetDocument`
 
 ### `rf-store`
 
@@ -362,6 +362,13 @@ RadishFlow Studio
 - 把 Access Token 明文写进项目文件
 - 把授权租约和项目文档混成同一个 JSON 根对象
 
+当前第一版骨架建议分成两类顶层对象：
+
+- `StoredProjectFile`
+  - 只表示项目文件真相源
+- `StoredAuthCacheIndex`
+  - 只表示授权缓存、派生包缓存索引与安全凭据引用
+
 ### `rf-thermo`
 
 职责：
@@ -374,6 +381,13 @@ RadishFlow Studio
 - 直接发 OIDC 请求
 - 直接管理刷新 token
 - 在热路径中自己决定联网鉴权
+
+当前第一版接口方向已经冻结为：
+
+- `ThermoProvider`
+  - 面向求解热路径的本地热力学接口
+- `PropertyPackageProvider`
+  - 面向受控派生物性包的加载与清单接口
 
 ### `rf-solver`
 
@@ -464,8 +478,8 @@ RadishFlow Studio
 
 在正式写后端与桌面接入代码之前，建议先做以下文档和类型收口：
 
-1. 在 `rf-ui` 侧补 `AuthSessionState` / `EntitlementState` 草案
-2. 在 `rf-store` 侧补“项目文件”与“授权缓存索引”分离模型
-3. 在 `rf-thermo` 侧补 `PropertyPackageProvider` 接口草案
+1. 细化 `AuthSessionState` / `EntitlementState` 与 UI 面板、状态栏之间的事件流
+2. 细化 `StoredProjectFile` / `StoredAuthCacheIndex` 的 JSON 契约与文件布局
+3. 细化 `PropertyPackageProvider` 如何与本地缓存目录和 `rf-store` 索引对接
 4. 在控制面文档中进一步细化 `EntitlementSnapshot` 和 `PropertyPackageManifest` JSON 契约
 5. 明确 `radishflow-studio` 客户端注册信息与 scope 命名

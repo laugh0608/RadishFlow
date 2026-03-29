@@ -1,9 +1,15 @@
+mod auth;
 mod commands;
 mod diagnostics;
 mod ids;
 mod run;
 mod state;
 
+pub use auth::{
+    AuthSessionState, AuthSessionStatus, AuthenticatedUser, EntitlementSnapshot, EntitlementState,
+    EntitlementStatus, PropertyPackageClassification, PropertyPackageManifest,
+    PropertyPackageSource, SecureCredentialHandle, TokenLease,
+};
 pub use commands::{
     CanvasPoint, CommandHistory, CommandHistoryEntry, CommandValue, DocumentCommand,
 };
@@ -28,9 +34,11 @@ mod tests {
     use rf_types::UnitId;
 
     use crate::{
-        AppState, CanvasPoint, CommandHistory, CommandHistoryEntry, DiagnosticSeverity,
-        DiagnosticSummary, DocumentCommand, DocumentMetadata, FlowsheetDocument, RunStatus,
-        SimulationMode, SolvePendingReason, SolveSnapshot,
+        AppState, AuthSessionStatus, AuthenticatedUser, CanvasPoint, CommandHistory,
+        CommandHistoryEntry, DiagnosticSeverity, DiagnosticSummary, DocumentCommand,
+        DocumentMetadata, EntitlementSnapshot, FlowsheetDocument, PropertyPackageManifest,
+        PropertyPackageSource, RunStatus, SecureCredentialHandle, SimulationMode,
+        SolvePendingReason, SolveSnapshot, TokenLease,
     };
 
     fn timestamp(seconds: u64) -> std::time::SystemTime {
@@ -154,5 +162,83 @@ mod tests {
             app_state.workspace.solve_session.pending_reason,
             Some(SolvePendingReason::ModeActivated)
         );
+    }
+
+    #[test]
+    fn completing_login_tracks_authenticated_session_without_plaintext_tokens() {
+        let mut app_state = AppState::new(sample_document());
+        let credential_handle =
+            SecureCredentialHandle::new("radishflow-studio", "user-123-primary");
+        let token_lease = TokenLease::new(timestamp(300), credential_handle.clone());
+        let mut user = AuthenticatedUser::new("user-123", "luobo");
+        user.tenant_id = Some("tenant-1".to_string());
+
+        app_state.begin_browser_login("https://id.radish.local");
+        app_state.complete_login("https://id.radish.local", user, token_lease, timestamp(200));
+
+        assert_eq!(
+            app_state.auth_session.status,
+            AuthSessionStatus::Authenticated
+        );
+        assert_eq!(
+            app_state
+                .auth_session
+                .token_lease
+                .as_ref()
+                .map(|lease| lease.credential_handle.account.as_str()),
+            Some(credential_handle.account.as_str())
+        );
+    }
+
+    #[test]
+    fn entitlement_sync_indexes_manifests_by_package_id() {
+        let mut app_state = AppState::new(sample_document());
+        let snapshot = EntitlementSnapshot {
+            subject_id: "user-123".to_string(),
+            tenant_id: Some("tenant-1".to_string()),
+            issued_at: timestamp(100),
+            expires_at: timestamp(400),
+            offline_lease_expires_at: Some(timestamp(700)),
+            features: ["local-thermo-packages".to_string()].into_iter().collect(),
+            allowed_package_ids: ["binary-hydrocarbon-lite-v1".to_string()]
+                .into_iter()
+                .collect(),
+        };
+        let mut manifest = PropertyPackageManifest::new(
+            "binary-hydrocarbon-lite-v1",
+            "2026.03.1",
+            PropertyPackageSource::RemoteDerivedPackage,
+        );
+        manifest.size_bytes = 1024;
+
+        app_state.update_entitlement(snapshot, vec![manifest], timestamp(150));
+
+        assert!(
+            app_state
+                .entitlement
+                .is_package_allowed("binary-hydrocarbon-lite-v1")
+        );
+        assert_eq!(app_state.entitlement.package_manifests.len(), 1);
+    }
+
+    #[test]
+    fn clearing_auth_session_also_clears_entitlement_state() {
+        let mut app_state = AppState::new(sample_document());
+        let snapshot = EntitlementSnapshot {
+            subject_id: "user-123".to_string(),
+            tenant_id: None,
+            issued_at: timestamp(100),
+            expires_at: timestamp(400),
+            offline_lease_expires_at: None,
+            features: Default::default(),
+            allowed_package_ids: ["pkg-1".to_string()].into_iter().collect(),
+        };
+
+        app_state.update_entitlement(snapshot, vec![], timestamp(120));
+        app_state.clear_auth_session();
+
+        assert_eq!(app_state.auth_session.status, AuthSessionStatus::SignedOut);
+        assert!(app_state.entitlement.snapshot.is_none());
+        assert!(app_state.entitlement.package_manifests.is_empty());
     }
 }
