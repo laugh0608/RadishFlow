@@ -1,0 +1,56 @@
+RadishFlow Source-Available License
+Version 1.0, March 29, 2026
+
+Copyright (c) 2026 RadishFlow Project Owner. All rights reserved.
+
+1. Overview
+This repository is source-available. You may view and read the source code
+on authorized platforms (for example, GitHub) for personal reference and study.
+
+2. No License Grant
+Except for the limited right in Section 1, no license is granted to you,
+whether express or implied, including but not limited to:
+- copyright rights
+- patent rights
+- trademark rights
+- any right to exploit this software or related materials
+
+3. Restrictions
+Without prior written permission from the copyright owner, you must not:
+- copy, reproduce, mirror, or redistribute this project (in whole or part)
+- modify, adapt, translate, reverse engineer, or create derivative works
+- publish, sublicense, sell, rent, or otherwise provide this project to others
+- use this project for any commercial purpose
+- remove or alter copyright, attribution, or legal notices
+
+4. Contributions
+If you submit any pull request, patch, issue attachment, or other contribution,
+you represent that you have the legal right to submit it.
+Unless otherwise agreed in writing, you grant the copyright owner a perpetual,
+worldwide, non-exclusive, royalty-free, irrevocable right to use, modify,
+relicense, and distribute your contribution.
+
+5. Third-Party Components
+This license applies only to the original content of this repository.
+Third-party components, dependencies, fonts, icons, or assets remain subject
+to their own licenses.
+
+6. Disclaimer of Warranty
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO MERCHANTABILITY, FITNESS FOR A PARTICULAR
+PURPOSE, AND NON-INFRINGEMENT.
+
+7. Limitation of Liability
+IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY CLAIM,
+DAMAGES, OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT, OR
+OTHERWISE, ARISING FROM, OUT OF, OR IN CONNECTION WITH THE SOFTWARE OR THE USE
+OR OTHER DEALINGS IN THE SOFTWARE.
+
+8. Commercial Use and Licensing Requests
+For commercial use, redistribution, or any use not explicitly permitted by this
+license, contact:
+laugh0608@foxmail.com
+
+9. Governing Priority
+If there is any conflict between this file and other repository documents,
+this LICENSE file prevails for licensing terms.

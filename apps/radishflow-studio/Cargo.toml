@@ -1,0 +1,18 @@
+[package]
+name = "radishflow-studio"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license-file.workspace = true
+repository.workspace = true
+homepage.workspace = true
+publish.workspace = true
+
+[dependencies]
+reqwest = { version = "0.12", default-features = false, features = ["blocking", "rustls-tls"] }
+rf-store = { path = "../../crates/rf-store" }
+rf-types = { path = "../../crates/rf-types" }
+rf-ui = { path = "../../crates/rf-ui" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"

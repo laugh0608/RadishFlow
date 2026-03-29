@@ -1,0 +1,27 @@
+[workspace]
+resolver = "2"
+members = [
+    "apps/radishflow-studio",
+    "crates/rf-types",
+    "crates/rf-model",
+    "crates/rf-thermo",
+    "crates/rf-flash",
+    "crates/rf-unitops",
+    "crates/rf-flowsheet",
+    "crates/rf-solver",
+    "crates/rf-store",
+    "crates/rf-ui",
+    "crates/rf-canvas",
+    "crates/rf-ffi",
+    "xtask",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+license-file = "LICENSE"
+authors = ["DaBaiLuoBo (laugh0608)"]
+rust-version = "1.86"
+repository = "https://github.com/laugh0608/RadishFlow"
+homepage = "https://github.com/laugh0608/RadishFlow"
+publish = false

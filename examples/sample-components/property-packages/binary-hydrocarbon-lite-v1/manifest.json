@@ -1,0 +1,13 @@
+{
+  "kind": "radishflow.property-package-manifest",
+  "schemaVersion": 1,
+  "packageId": "binary-hydrocarbon-lite-v1",
+  "version": "2026.03.1",
+  "classification": "derived",
+  "source": "remote-derived-package",
+  "hash": "sha256:8da4606ca634aa7401d9637d9ca120f521d15e85213da9f5a4940e8007f5a75f",
+  "sizeBytes": 720,
+  "componentIds": ["methane", "ethane"],
+  "leaseRequired": true,
+  "expiresAt": "1970-01-01T00:15:00Z"
+}
