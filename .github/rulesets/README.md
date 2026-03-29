@@ -17,8 +17,9 @@
 - 禁止 force push
 - 禁止删除分支
 - 仅允许通过 Pull Request 合并
-- 要求 `PR Checks / Repo Hygiene` 与 `PR Checks / Rust Baseline` 检查通过
+- 要求 `Repo Hygiene` 与 `Rust Baseline` 检查通过
 - `PR Checks` 当前拆分为 `Repo Hygiene` 与 `Rust Baseline` 两个 job，保留拆分式门禁，但不引入当前仓库并不存在的 `Frontend Lint`
+- GitHub 对 Actions required status checks 当前按 job 名匹配，不看 workflow 前缀或事件后缀，因此 ruleset 中固定写 job 名
 - `PR Checks` 只响应 `pull_request -> master`，避免与 tag / 手动检查共用同一个 workflow 名称后产生状态名漂移
 - 限制合并方式为 `squash` / `rebase`
 - 管理员仅可通过 Pull Request 方式绕过规则，不开放直接 push

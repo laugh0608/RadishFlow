@@ -111,8 +111,9 @@ vYY.M.RELEASE.DDXX
 
 当前补充口径：
 
-- `master` ruleset 要求的状态检查固定为 `PR Checks / Repo Hygiene` 与 `PR Checks / Rust Baseline`
-- 当前向 `Radish` 对齐为拆分式门禁，但不引入当前仓库暂不存在的 `Frontend Lint` 或 `pull_request -> dev` 默认门禁
+- `master` ruleset 要求的状态检查固定为 `Repo Hygiene` 与 `Rust Baseline`
+- GitHub 对 Actions required status checks 当前按 job 名匹配，不看 workflow 前缀或事件后缀
+- 当前向 Radish 对齐为拆分式门禁，但不引入当前仓库暂不存在的 Frontend Lint 或 pull_request -> dev 默认门禁
 - 仓库检查正式由 Rust `xtask` 实现，`.ps1` 与 `.sh` 只保留为调用包装层
 - 不再让 PR 检查与 tag / 手动检查共用同一个 workflow 名称，避免 required check 名称与实际上报名漂移
 
