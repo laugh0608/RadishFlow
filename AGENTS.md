@@ -169,6 +169,10 @@
 - 相标签当前只保留 `overall`、`liquid`、`vapor`
 - `rf-model` 只承载对象模型，不提前承载求解策略或 COM 语义
 - `rf-thermo` 与 `rf-flash` 先稳定接口，再补 Antoine、Raoult 和 Rachford-Rice
+- MVP 保持单文档工作区，但源码仍按职责拆分，不以单文件承载全部状态
+- 属性编辑采用字段级草稿态，语义提交后才写回文档并形成命令
+- 求解控制采用 `SimulationMode(Active/Hold)` 与 `RunStatus` 分离模型
+- 求解结果采用独立 `SolveSnapshot`，不直接覆盖 `FlowsheetDocument`
 
 ## 常见偏航点
 

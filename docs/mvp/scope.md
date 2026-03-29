@@ -45,6 +45,15 @@
 - `rf-thermo` 与 `rf-flash` 先定接口，再补 Antoine、Raoult 和 Rachford-Rice
 - `.NET 10` 适配层在 `M4` 前只允许文档和最小占位，不提前展开复杂运行时实现
 
+App 与交互层当前进一步冻结以下口径：
+
+- MVP 保持单文档工作区，不急于做多文档容器
+- 单文档工作区不等于单文件实现，源码仍按职责拆分
+- 属性编辑采用字段级草稿态，语义提交后才写回文档
+- 求解控制采用 `SimulationMode(Active/Hold)` 与 `RunStatus` 分离模型
+- 求解结果采用独立 `SolveSnapshot`，不直接覆盖文档对象
+- 结果快照应保留按步展开能力，为撤回/前进和脚本化扩展留接口
+
 ## 当前阶段优先目标
 
 在真正恢复主线功能推进前，当前阶段优先目标先调整为仓库地基建设：
@@ -80,24 +89,31 @@
 
 ### 2026-W15
 
+- 冻结 `AppState`、`WorkspaceState`、`FlowsheetDocument` 的基础结构
+- 冻结字段级草稿提交流程和命令历史边界
+- 冻结 `SimulationMode` / `RunStatus` / `SolveSnapshot` 关系
+- 明确 UI 交互层与求解层的数据边界
+
+### 2026-W16
+
 - 在 `rf-thermo` 中实现 Antoine 饱和蒸气压
 - 在 `rf-thermo` 中实现理想体系 `K` 值估算
 - 在 `rf-flash` 中实现 Rachford-Rice 和真正的二元 `TP Flash`
 - 在 `tests/thermo-golden` 与 `tests/flash-golden` 建立首批黄金样例
 
-### 2026-W16
+### 2026-W17
 
 - 在 `rf-unitops` 中建立 `Feed`、`Mixer`、`Flash Drum` 的最小统一接口
 - 在 `rf-flowsheet` 中建立端口连接与基本校验
 - 明确单元输入输出的标准流股接口
 
-### 2026-W17
+### 2026-W18
 
 - 在 `rf-solver` 中实现无回路顺序模块法
 - 在 `rf-store` 中建立最小 JSON 格式
 - 在 `examples/flowsheets` 中增加第一个可求解示例
 
-### 2026-W18 以后
+### 2026-W19 以后
 
 - 设计 `rf-ffi` 的句柄式 C ABI
 - 衔接 `.NET 10` 适配层
