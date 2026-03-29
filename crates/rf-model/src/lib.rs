@@ -3,10 +3,11 @@ use std::collections::BTreeMap;
 use rf_types::{
     ComponentId, PhaseLabel, PortDirection, PortKind, RfError, RfResult, StreamId, UnitId,
 };
+use serde::{Deserialize, Serialize};
 
 pub type Composition = BTreeMap<ComponentId, f64>;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Component {
     pub id: ComponentId,
     pub name: String,
@@ -28,7 +29,7 @@ impl Component {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct PhaseState {
     pub label: PhaseLabel,
     pub phase_fraction: f64,
@@ -47,7 +48,7 @@ impl PhaseState {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct MaterialStreamState {
     pub id: StreamId,
     pub name: String,
@@ -83,7 +84,7 @@ impl MaterialStreamState {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct UnitPort {
     pub name: String,
     pub direction: PortDirection,
@@ -107,7 +108,7 @@ impl UnitPort {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct UnitNode {
     pub id: UnitId,
     pub name: String,
@@ -131,7 +132,7 @@ impl UnitNode {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Flowsheet {
     pub name: String,
     pub components: BTreeMap<ComponentId, Component>,

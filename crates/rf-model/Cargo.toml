@@ -11,3 +11,4 @@ publish.workspace = true
 
 [dependencies]
 rf-types = { path = "../rf-types" }
+serde = { version = "1", features = ["derive"] }
