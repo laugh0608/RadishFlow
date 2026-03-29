@@ -10,6 +10,7 @@
 | `thermo/mvp-model.md` | 热力学与 `TP Flash` 的最小接口与后续实现顺序 |
 | `capeopen/boundary.md` | Rust Core 与 .NET 10 CAPE-OPEN 适配层边界 |
 | `adr/0001-branch-and-pr-governance.md` | 分支、PR 与保护规则治理决策 |
+| `../.github/rulesets/master-protection.json` | `master` 保护规则模板 |
 | `devlogs/README.md` | 按周分文件的开发日志规范 |
 | `devlogs/2026-W13.md` | 2026 第 13 周开发日志 |
 | `radishflow-architecture-draft.md` | RadishFlow 的目标架构草案 |

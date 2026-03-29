@@ -8,7 +8,6 @@ on:
   push:
     branches:
       - dev
-      - codex/dev
   workflow_dispatch:
 
 permissions:
@@ -33,4 +32,3 @@ jobs:
       - name: Run repository checks
         shell: pwsh
         run: ./scripts/check-repo.ps1
-

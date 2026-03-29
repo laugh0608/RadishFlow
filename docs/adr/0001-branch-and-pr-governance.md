@@ -34,13 +34,14 @@ Accepted
 - 禁止直接 push
 - 必须通过 PR 合并
 - 必须通过仓库检查
-- 建议至少 1 个 review
+- 管理员仅可通过 PR 方式绕过规则
+- 允许在单人开发阶段保留管理员 PR 直过能力
 
 ### `dev` 规则
 
-- 建议同样禁止直接 push，统一通过 PR 合并
 - 允许作为当前阶段默认目标分支
-- 必须通过仓库检查
+- 当前阶段不启用分支保护
+- 仍建议保留 CI 检查和 PR 习惯，但不作为强制规则
 
 ## 需要在 GitHub 仓库设置中完成的动作
 
@@ -49,10 +50,10 @@ Accepted
 1. 创建远端 `dev` 分支
 2. 将默认分支切换为 `dev`，或至少把开发 PR 默认目标改为 `dev`
 3. 对 `master` 启用 branch protection
-4. 对 `dev` 启用 branch protection
-5. 要求通过 `PR Checks / validate` 状态检查
-6. 开启 “Require a pull request before merging”
-7. 可选开启 “Require approvals”
+4. 要求 `master` 通过 `PR Checks / validate` 状态检查
+5. 对 `master` 开启 “Require a pull request before merging”
+6. 配置管理员仅通过 PR 绕过，不开放直接 push
+7. `dev` 当前不配置 branch protection
 
 ## 仓库内已落地的支撑项
 
@@ -62,6 +63,7 @@ Accepted
 - GitHub Actions PR 检查工作流
 - 文本编码与文件格式检查脚本
 - Rust workspace 基础校验入口
+- `master` ruleset 模板
 
 ## 影响
 
@@ -70,9 +72,9 @@ Accepted
 - `master` 可以保持稳定
 - `dev` 可以作为当前阶段的真实集成面
 - 文档、规范、脚本和代码都能纳入统一 PR 检查
+- 单人开发阶段仍保留必要的管理员 PR 绕过能力
 
 代价：
 
-- 需要维护远端分支保护设置
+- 需要维护远端 `master` 保护设置
 - 开发节奏从“直接提交”切换为“分支 + PR”
-

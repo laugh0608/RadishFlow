@@ -38,6 +38,12 @@ RadishFlow 是一个以 Rust 为核心、以 Rust UI 为主界面、以 .NET 10 
 - 完善 App 架构规划与功能边界文档
 - 建立稳定的阶段目标、进度记录和设计口径
 
+## 当前分支策略
+
+- `dev` 是当前常态开发分支
+- `master` 是稳定主线，只接受 PR 合并
+- 当前阶段只要求保护 `master`
+- 管理员可通过 PR 方式绕过 `master` 规则，但不应直接 push 到 `master`
 ## 快速开始
 
 本仓库当前以 Rust workspace 为主工作入口：
@@ -67,6 +73,7 @@ cargo check
 - `docs/thermo/mvp-model.md`: 热力学与闪蒸的当前契约
 - `docs/capeopen/boundary.md`: Rust 与 .NET 10 的 CAPE-OPEN 边界
 - `docs/adr/0001-branch-and-pr-governance.md`: 分支与 PR 治理策略
+- `.github/rulesets/master-protection.json`: `master` 分支保护规则模板
 - `docs/devlogs/README.md`: 周志规范与索引
 
 ## 协作入口
