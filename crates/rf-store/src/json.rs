@@ -9,8 +9,15 @@ use serde_json::Value;
 use time::{OffsetDateTime, format_description::well_known::Rfc3339};
 
 use crate::auth_cache::{STORED_AUTH_CACHE_INDEX_KIND, STORED_AUTH_CACHE_SCHEMA_VERSION};
+use crate::package_cache::{
+    STORED_PROPERTY_PACKAGE_MANIFEST_KIND, STORED_PROPERTY_PACKAGE_PAYLOAD_KIND,
+    STORED_PROPERTY_PACKAGE_SCHEMA_VERSION,
+};
 use crate::project::{STORED_PROJECT_FILE_KIND, STORED_PROJECT_FILE_SCHEMA_VERSION};
-use crate::{StoredAuthCacheIndex, StoredProjectFile};
+use crate::{
+    StoredAuthCacheIndex, StoredProjectFile, StoredPropertyPackageManifest,
+    StoredPropertyPackagePayload,
+};
 
 pub fn read_project_file(path: impl AsRef<Path>) -> RfResult<StoredProjectFile> {
     let path = path.as_ref();
@@ -74,6 +81,94 @@ pub fn auth_cache_index_to_pretty_json(
 ) -> RfResult<String> {
     auth_cache_index.validate()?;
     to_pretty_json(auth_cache_index, "serialize stored auth cache index")
+}
+
+pub fn read_property_package_manifest(
+    path: impl AsRef<Path>,
+) -> RfResult<StoredPropertyPackageManifest> {
+    let path = path.as_ref();
+    let contents = fs::read_to_string(path)
+        .map_err(|error| map_io_error("read stored property package manifest", path, &error))?;
+    parse_property_package_manifest_json(&contents)
+}
+
+pub fn write_property_package_manifest(
+    path: impl AsRef<Path>,
+    manifest: &StoredPropertyPackageManifest,
+) -> RfResult<()> {
+    manifest.validate()?;
+    write_json_file(
+        path.as_ref(),
+        manifest,
+        "write stored property package manifest",
+    )
+}
+
+pub fn parse_property_package_manifest_json(
+    contents: &str,
+) -> RfResult<StoredPropertyPackageManifest> {
+    let raw_value: Value = parse_json(
+        contents,
+        "deserialize stored property package manifest envelope",
+    )?;
+    let migrated_value = migrate_property_package_manifest_value(raw_value)?;
+    let manifest: StoredPropertyPackageManifest = parse_json_value(
+        migrated_value,
+        "deserialize stored property package manifest body",
+    )?;
+    manifest.validate()?;
+    Ok(manifest)
+}
+
+pub fn property_package_manifest_to_pretty_json(
+    manifest: &StoredPropertyPackageManifest,
+) -> RfResult<String> {
+    manifest.validate()?;
+    to_pretty_json(manifest, "serialize stored property package manifest")
+}
+
+pub fn read_property_package_payload(
+    path: impl AsRef<Path>,
+) -> RfResult<StoredPropertyPackagePayload> {
+    let path = path.as_ref();
+    let contents = fs::read_to_string(path)
+        .map_err(|error| map_io_error("read stored property package payload", path, &error))?;
+    parse_property_package_payload_json(&contents)
+}
+
+pub fn write_property_package_payload(
+    path: impl AsRef<Path>,
+    payload: &StoredPropertyPackagePayload,
+) -> RfResult<()> {
+    payload.validate()?;
+    write_json_file(
+        path.as_ref(),
+        payload,
+        "write stored property package payload",
+    )
+}
+
+pub fn parse_property_package_payload_json(
+    contents: &str,
+) -> RfResult<StoredPropertyPackagePayload> {
+    let raw_value: Value = parse_json(
+        contents,
+        "deserialize stored property package payload envelope",
+    )?;
+    let migrated_value = migrate_property_package_payload_value(raw_value)?;
+    let payload: StoredPropertyPackagePayload = parse_json_value(
+        migrated_value,
+        "deserialize stored property package payload body",
+    )?;
+    payload.validate()?;
+    Ok(payload)
+}
+
+pub fn property_package_payload_to_pretty_json(
+    payload: &StoredPropertyPackagePayload,
+) -> RfResult<String> {
+    payload.validate()?;
+    to_pretty_json(payload, "serialize stored property package payload")
 }
 
 fn write_json_file<T>(path: &Path, value: &T, action: &str) -> RfResult<()>
@@ -166,11 +261,73 @@ fn migrate_auth_cache_index_value(value: Value) -> RfResult<Value> {
     }
 }
 
+fn migrate_property_package_manifest_value(value: Value) -> RfResult<Value> {
+    let envelope = parse_stored_envelope(&value, "stored property package manifest")?;
+
+    if envelope.kind.as_deref() != Some(STORED_PROPERTY_PACKAGE_MANIFEST_KIND) {
+        return Err(RfError::invalid_input(format!(
+            "unsupported stored property package manifest kind `{}`",
+            envelope.kind.unwrap_or_default()
+        )));
+    }
+
+    match envelope.schema_version {
+        STORED_PROPERTY_PACKAGE_SCHEMA_VERSION => {
+            migrate_property_package_manifest_v1_to_current(value)
+        }
+        version if version > STORED_PROPERTY_PACKAGE_SCHEMA_VERSION => Err(newer_schema_error(
+            "stored property package manifest",
+            version,
+            STORED_PROPERTY_PACKAGE_SCHEMA_VERSION,
+        )),
+        version => Err(older_schema_error(
+            "stored property package manifest",
+            version,
+            STORED_PROPERTY_PACKAGE_SCHEMA_VERSION,
+        )),
+    }
+}
+
+fn migrate_property_package_payload_value(value: Value) -> RfResult<Value> {
+    let envelope = parse_stored_envelope(&value, "stored property package payload")?;
+
+    if envelope.kind.as_deref() != Some(STORED_PROPERTY_PACKAGE_PAYLOAD_KIND) {
+        return Err(RfError::invalid_input(format!(
+            "unsupported stored property package payload kind `{}`",
+            envelope.kind.unwrap_or_default()
+        )));
+    }
+
+    match envelope.schema_version {
+        STORED_PROPERTY_PACKAGE_SCHEMA_VERSION => {
+            migrate_property_package_payload_v1_to_current(value)
+        }
+        version if version > STORED_PROPERTY_PACKAGE_SCHEMA_VERSION => Err(newer_schema_error(
+            "stored property package payload",
+            version,
+            STORED_PROPERTY_PACKAGE_SCHEMA_VERSION,
+        )),
+        version => Err(older_schema_error(
+            "stored property package payload",
+            version,
+            STORED_PROPERTY_PACKAGE_SCHEMA_VERSION,
+        )),
+    }
+}
+
 fn migrate_project_file_v1_to_current(value: Value) -> RfResult<Value> {
     Ok(value)
 }
 
 fn migrate_auth_cache_index_v1_to_current(value: Value) -> RfResult<Value> {
+    Ok(value)
+}
+
+fn migrate_property_package_manifest_v1_to_current(value: Value) -> RfResult<Value> {
+    Ok(value)
+}
+
+fn migrate_property_package_payload_v1_to_current(value: Value) -> RfResult<Value> {
     Ok(value)
 }
 

@@ -10,4 +10,5 @@ homepage.workspace = true
 publish.workspace = true
 
 [dependencies]
+rf-store = { path = "../rf-store" }
 rf-types = { path = "../rf-types" }

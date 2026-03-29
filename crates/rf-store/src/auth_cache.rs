@@ -1,5 +1,5 @@
 use std::collections::BTreeSet;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 
 use rf_types::{RfError, RfResult};
@@ -109,6 +109,16 @@ impl StoredPropertyPackageRecord {
             .unwrap_or(false)
     }
 
+    pub fn manifest_path_under(&self, cache_root: impl AsRef<Path>) -> PathBuf {
+        cache_root.as_ref().join(&self.manifest_relative_path)
+    }
+
+    pub fn payload_path_under(&self, cache_root: impl AsRef<Path>) -> Option<PathBuf> {
+        self.payload_relative_path
+            .as_ref()
+            .map(|path| cache_root.as_ref().join(path))
+    }
+
     pub fn validate(&self) -> RfResult<()> {
         if self.package_id.trim().is_empty() {
             return Err(RfError::invalid_input(
@@ -186,6 +196,10 @@ impl StoredAuthCacheIndex {
 
     pub fn index_relative_path(&self) -> PathBuf {
         StoredAuthCacheLayout::index_relative_path(&self.authority_url, &self.subject_id)
+    }
+
+    pub fn index_path_under(&self, cache_root: impl AsRef<Path>) -> PathBuf {
+        cache_root.as_ref().join(self.index_relative_path())
     }
 
     pub fn validate(&self) -> RfResult<()> {

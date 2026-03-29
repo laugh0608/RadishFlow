@@ -1,6 +1,7 @@
 mod auth_cache;
 mod json;
 mod layout;
+mod package_cache;
 mod project;
 
 pub use auth_cache::{
@@ -9,13 +10,22 @@ pub use auth_cache::{
 };
 pub use json::{
     auth_cache_index_to_pretty_json, parse_auth_cache_index_json, parse_project_file_json,
-    project_file_to_pretty_json, read_auth_cache_index, read_project_file, write_auth_cache_index,
-    write_project_file,
+    parse_property_package_manifest_json, parse_property_package_payload_json,
+    project_file_to_pretty_json, property_package_manifest_to_pretty_json,
+    property_package_payload_to_pretty_json, read_auth_cache_index, read_project_file,
+    read_property_package_manifest, read_property_package_payload, write_auth_cache_index,
+    write_project_file, write_property_package_manifest, write_property_package_payload,
 };
 pub use layout::{
     STORED_AUTH_CACHE_INDEX_FILE_NAME, STORED_AUTH_ROOT_DIR, STORED_PACKAGE_CACHE_ROOT_DIR,
     STORED_PROPERTY_PACKAGE_MANIFEST_FILE_NAME, STORED_PROPERTY_PACKAGE_PAYLOAD_FILE_NAME,
     StoredAuthCacheLayout,
+};
+pub use package_cache::{
+    STORED_PROPERTY_PACKAGE_MANIFEST_KIND, STORED_PROPERTY_PACKAGE_PAYLOAD_KIND,
+    STORED_PROPERTY_PACKAGE_SCHEMA_VERSION, StoredAntoineCoefficients, StoredLiquidPhaseModel,
+    StoredPropertyPackageClassification, StoredPropertyPackageManifest,
+    StoredPropertyPackagePayload, StoredThermoComponent, StoredThermoMethod, StoredVaporPhaseModel,
 };
 pub use project::{
     DateTimeUtc, STORED_PROJECT_FILE_EXTENSION, StoredDocumentMetadata, StoredProjectDocument,
@@ -35,10 +45,14 @@ mod tests {
     use crate::{
         STORED_PROJECT_FILE_EXTENSION, StoredAuthCacheIndex, StoredAuthCacheLayout,
         StoredCredentialReference, StoredDocumentMetadata, StoredEntitlementCache,
-        StoredProjectFile, StoredPropertyPackageRecord, StoredPropertyPackageSource,
+        StoredProjectFile, StoredPropertyPackageManifest, StoredPropertyPackagePayload,
+        StoredPropertyPackageRecord, StoredPropertyPackageSource, StoredThermoComponent,
         auth_cache_index_to_pretty_json, parse_auth_cache_index_json, parse_project_file_json,
-        project_file_to_pretty_json, read_auth_cache_index, read_project_file,
-        write_auth_cache_index, write_project_file,
+        parse_property_package_manifest_json, parse_property_package_payload_json,
+        project_file_to_pretty_json, property_package_manifest_to_pretty_json,
+        property_package_payload_to_pretty_json, read_auth_cache_index, read_project_file,
+        read_property_package_manifest, read_property_package_payload, write_auth_cache_index,
+        write_project_file, write_property_package_manifest, write_property_package_payload,
     };
 
     fn timestamp(seconds: u64) -> std::time::SystemTime {
@@ -202,6 +216,52 @@ mod tests {
     }
 
     #[test]
+    fn property_package_manifest_round_trips_as_camel_case_json() {
+        let mut manifest = StoredPropertyPackageManifest::new(
+            "binary-hydrocarbon-lite-v1",
+            "2026.03.1",
+            StoredPropertyPackageSource::RemoteDerivedPackage,
+            vec![ComponentId::new("methane"), ComponentId::new("ethane")],
+        );
+        manifest.hash = "sha256:pkg-1".to_string();
+        manifest.size_bytes = 1024;
+        manifest.expires_at = Some(timestamp(700));
+
+        let json =
+            property_package_manifest_to_pretty_json(&manifest).expect("expected manifest json");
+        let round_trip = parse_property_package_manifest_json(&json)
+            .expect("expected manifest parse round trip");
+
+        assert_eq!(round_trip, manifest);
+        assert!(json.contains("\"kind\": \"radishflow.property-package-manifest\""));
+        assert!(json.contains("\"schemaVersion\": 1"));
+        assert!(json.contains("\"leaseRequired\": true"));
+        assert!(json.contains("\"componentIds\": ["));
+    }
+
+    #[test]
+    fn property_package_payload_round_trips_as_camel_case_json() {
+        let mut methane = StoredThermoComponent::new(ComponentId::new("methane"), "Methane");
+        methane.liquid_heat_capacity_j_per_mol_k = Some(35.0);
+        let mut payload = StoredPropertyPackagePayload::new(
+            "binary-hydrocarbon-lite-v1",
+            "2026.03.1",
+            vec![methane],
+        );
+        payload.method = Default::default();
+
+        let json =
+            property_package_payload_to_pretty_json(&payload).expect("expected payload json");
+        let round_trip =
+            parse_property_package_payload_json(&json).expect("expected payload parse round trip");
+
+        assert_eq!(round_trip, payload);
+        assert!(json.contains("\"kind\": \"radishflow.property-package-payload\""));
+        assert!(json.contains("\"schemaVersion\": 1"));
+        assert!(json.contains("\"liquidPhaseModel\": \"ideal-solution\""));
+    }
+
+    #[test]
     fn parse_rejects_wrong_project_file_kind() {
         let json = r#"{
   "kind": "wrong-kind",
@@ -318,6 +378,48 @@ mod tests {
         let loaded = read_auth_cache_index(&path).expect("expected auth cache read");
 
         assert_eq!(loaded, auth_cache);
+        fs::remove_dir_all(&root).expect("expected temp dir cleanup");
+    }
+
+    #[test]
+    fn write_property_package_assets_create_parent_directories_and_round_trip() {
+        let root = unique_temp_path("package-cache-write");
+        let manifest_path = root
+            .join("packages")
+            .join("pkg-1")
+            .join("2026.03.1")
+            .join("manifest.json");
+        let payload_path = root
+            .join("packages")
+            .join("pkg-1")
+            .join("2026.03.1")
+            .join("payload.rfpkg");
+        let manifest = StoredPropertyPackageManifest::new(
+            "pkg-1",
+            "2026.03.1",
+            StoredPropertyPackageSource::LocalBundled,
+            vec![ComponentId::new("methane")],
+        );
+        let payload = StoredPropertyPackagePayload::new(
+            "pkg-1",
+            "2026.03.1",
+            vec![StoredThermoComponent::new(
+                ComponentId::new("methane"),
+                "Methane",
+            )],
+        );
+
+        write_property_package_manifest(&manifest_path, &manifest)
+            .expect("expected manifest write");
+        write_property_package_payload(&payload_path, &payload).expect("expected payload write");
+
+        let loaded_manifest =
+            read_property_package_manifest(&manifest_path).expect("expected manifest read");
+        let loaded_payload =
+            read_property_package_payload(&payload_path).expect("expected payload read");
+
+        assert_eq!(loaded_manifest, manifest);
+        assert_eq!(loaded_payload, payload);
         fs::remove_dir_all(&root).expect("expected temp dir cleanup");
     }
 }

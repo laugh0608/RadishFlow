@@ -110,6 +110,7 @@ dependencies = [
 name = "rf-thermo"
 version = "0.1.0"
 dependencies = [
+ "rf-store",
  "rf-types",
 ]
 

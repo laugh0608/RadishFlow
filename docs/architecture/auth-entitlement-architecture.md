@@ -555,12 +555,16 @@ RadishFlow Studio
 - 把 Access Token 明文写进项目文件
 - 把授权租约和项目文档混成同一个 JSON 根对象
 
-当前第一版骨架建议分成两类顶层对象：
+当前第一版骨架建议分成两类根索引对象 + 两类本地包实体 DTO：
 
 - `StoredProjectFile`
   - 只表示项目文件真相源
 - `StoredAuthCacheIndex`
   - 只表示授权缓存、派生包缓存索引与安全凭据引用
+- `StoredPropertyPackageManifest`
+  - 只表示本地 `manifest.json` 的持久化元信息真相源
+- `StoredPropertyPackagePayload`
+  - 只表示本地 `payload.rfpkg` 的持久化 thermo payload DTO
 
 当前进一步冻结以下 JSON DTO 与文件布局约定：
 
@@ -568,6 +572,8 @@ RadishFlow Studio
 - `StoredProjectFile.kind` 固定为 `radishflow.project-file`
 - `StoredProjectFile.document.metadata.documentId` 作为文档稳定身份，不依赖文件路径
 - `StoredAuthCacheIndex.kind` 固定为 `radishflow.auth-cache-index`
+- `StoredPropertyPackageManifest.kind` 固定为 `radishflow.property-package-manifest`
+- `StoredPropertyPackagePayload.kind` 固定为 `radishflow.property-package-payload`
 - 授权缓存索引和派生包缓存继续放在应用私有缓存根目录，不与项目文件同目录混放
 - 授权缓存索引只保存相对缓存路径和安全凭据引用，不保存绝对缓存路径与明文 token
 
@@ -646,6 +652,8 @@ RadishFlow Studio
 - `payload.rfpkg` 只在 `LocalBundled` / `RemoteDerivedPackage` 下出现；`RemoteEvaluationService` 不要求本地 payload 文件
 - `StoredPropertyPackageRecord` 当前正式只记录相对路径，方便缓存根目录迁移与跨设备导入时做路径重定位
 - `StoredPropertyPackageRecord.expiresAt` 当前正式跟随授权快照中的离线租约/授权过期时间，不直接复用 `PropertyPackageLeaseGrant.expiresAt` 的短时下载 URL 过期时间
+- 本地 `manifest.json` 当前固定为带 `kind` / `schemaVersion` 的 camelCase JSON DTO，并显式校验 `source`、`classification` 与 `leaseRequired` 一致性
+- 本地 `payload.rfpkg` 当前第一版内部仍采用带 `kind` / `schemaVersion` 的 JSON DTO，承载 `ThermoSystem` 所需的组分、Antoine 参数占位和相模型信息；后续若改为压缩包或二进制格式，必须通过显式迁移切换
 - 授权缓存索引是“运行态缓存真相源”，项目文件仍然只描述用户编辑的流程图语义
 
 ### `rf-thermo`
@@ -667,6 +675,12 @@ RadishFlow Studio
   - 面向求解热路径的本地热力学接口
 - `PropertyPackageProvider`
   - 面向受控派生物性包的加载与清单接口
+
+当前进一步冻结以下本地缓存 provider 行为：
+
+- `PropertyPackageProvider` 的本地缓存实现必须显式接收应用私有缓存根目录和 `StoredAuthCacheIndex`，而不是自己推断登录态或联网刷新授权
+- provider 构造阶段就应校验 `StoredAuthCacheIndex`、本地 `manifest.json` 和本地 `payload.rfpkg` 三者是否一致，不把索引漂移问题拖进求解热路径
+- provider 当前只暴露“未过期、存在本地 payload、manifest/payload 与索引一致”的本地包；`RemoteEvaluationService` 记录不进入本地 provider 列表
 
 ### `rf-solver`
 
@@ -781,7 +795,7 @@ scope 当前建议按“产品.资源.动作”命名，而不是继续使用过
 在继续深化后端与桌面接入代码之前，当前更值得优先收口以下事项：
 
 1. 细化 `AuthSessionState` / `EntitlementState` 与 UI 面板、状态栏之间的事件流
-2. 把本地 `manifest.json` / `payload.rfpkg` 的实体读写补到 `rf-store`，而不只停在索引路径约定
-3. 细化 `PropertyPackageProvider` 如何与本地缓存目录和 `rf-store` 索引对接
+2. 在已接通的本地 `manifest.json` / `payload.rfpkg` 读写之上，补真实下载完成后的落盘路径与样例包生成流程
+3. 在已接通的 `PropertyPackageProvider` 本地缓存实现之上，补更完整的包加载链测试和首个实际包样例
 4. 决定控制面 JSON 契约到 `rf-ui` 运行时 DTO 的协议映射层放在何处，以及是否直接引入 serde DTO
 5. 决定离线租约后续是否需要设备绑定键模型

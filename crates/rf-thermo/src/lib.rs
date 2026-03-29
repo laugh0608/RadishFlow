@@ -1,6 +1,13 @@
 use std::collections::BTreeMap;
 use std::time::SystemTime;
 
+use rf_store::{
+    StoredAntoineCoefficients, StoredAuthCacheIndex, StoredLiquidPhaseModel,
+    StoredPropertyPackageClassification, StoredPropertyPackageManifest,
+    StoredPropertyPackagePayload, StoredPropertyPackageRecord, StoredPropertyPackageSource,
+    StoredThermoComponent, StoredThermoMethod, StoredVaporPhaseModel,
+    read_property_package_manifest, read_property_package_payload,
+};
 use rf_types::{ComponentId, PhaseLabel, RfError, RfResult};
 
 #[derive(Debug, Clone, PartialEq)]
@@ -275,7 +282,89 @@ impl InMemoryPropertyPackageProvider {
     }
 }
 
+#[derive(Debug, Clone, Default)]
+pub struct CachedPropertyPackageProvider {
+    packages: BTreeMap<String, (PropertyPackageManifest, ThermoSystem)>,
+}
+
+impl CachedPropertyPackageProvider {
+    pub fn new(
+        cache_root: impl AsRef<std::path::Path>,
+        auth_cache_index: &StoredAuthCacheIndex,
+    ) -> RfResult<Self> {
+        Self::new_at(cache_root, auth_cache_index, SystemTime::now())
+    }
+
+    pub fn new_at(
+        cache_root: impl AsRef<std::path::Path>,
+        auth_cache_index: &StoredAuthCacheIndex,
+        now: SystemTime,
+    ) -> RfResult<Self> {
+        auth_cache_index.validate()?;
+
+        let cache_root = cache_root.as_ref();
+        let mut packages = BTreeMap::new();
+
+        for record in &auth_cache_index.property_packages {
+            if record.is_expired_at(now) {
+                continue;
+            }
+
+            if matches!(
+                record.source,
+                StoredPropertyPackageSource::RemoteEvaluationService
+            ) {
+                continue;
+            }
+
+            let manifest_path = record.manifest_path_under(cache_root);
+            let stored_manifest = read_property_package_manifest(&manifest_path)?;
+            validate_record_matches_manifest(record, &stored_manifest)?;
+
+            let payload_path = record.payload_path_under(cache_root).ok_or_else(|| {
+                RfError::invalid_input(format!(
+                    "stored property package `{}` is missing a local payload path",
+                    record.package_id
+                ))
+            })?;
+            let stored_payload = read_property_package_payload(&payload_path)?;
+            validate_payload_matches_manifest(&stored_payload, &stored_manifest)?;
+
+            let runtime_manifest = property_package_manifest_from_stored(stored_manifest)?;
+            let runtime_system = thermo_system_from_stored_payload(stored_payload);
+            let package_id = runtime_manifest.package_id.clone();
+
+            if packages
+                .insert(package_id.clone(), (runtime_manifest, runtime_system))
+                .is_some()
+            {
+                return Err(RfError::invalid_input(format!(
+                    "duplicate cached property package `{package_id}` found in auth cache index"
+                )));
+            }
+        }
+
+        Ok(Self { packages })
+    }
+}
+
 impl PropertyPackageProvider for InMemoryPropertyPackageProvider {
+    fn list_manifests(&self) -> Vec<PropertyPackageManifest> {
+        self.packages
+            .values()
+            .map(|(manifest, _)| manifest.clone())
+            .collect()
+    }
+
+    fn load_system(&self, package_id: &str) -> RfResult<ThermoSystem> {
+        self.packages
+            .get(package_id)
+            .map(|(_, system)| system.clone())
+            .ok_or_else(|| RfError::missing_entity("property package", package_id))
+    }
+}
+
+impl PropertyPackageProvider for CachedPropertyPackageProvider {
     fn list_manifests(&self) -> Vec<PropertyPackageManifest> {
         self.packages
             .values()
@@ -325,11 +414,206 @@ impl ThermoProvider for PlaceholderThermoProvider {
     }
 }
 
+fn validate_record_matches_manifest(
+    record: &StoredPropertyPackageRecord,
+    manifest: &StoredPropertyPackageManifest,
+) -> RfResult<()> {
+    manifest.validate()?;
+
+    if record.package_id != manifest.package_id {
+        return Err(RfError::invalid_input(format!(
+            "stored property package record package_id `{}` does not match manifest package_id `{}`",
+            record.package_id, manifest.package_id
+        )));
+    }
+
+    if record.version != manifest.version {
+        return Err(RfError::invalid_input(format!(
+            "stored property package record version `{}` does not match manifest version `{}`",
+            record.version, manifest.version
+        )));
+    }
+
+    if record.source != manifest.source {
+        return Err(RfError::invalid_input(format!(
+            "stored property package record source `{:?}` does not match manifest source `{:?}`",
+            record.source, manifest.source
+        )));
+    }
+
+    if !record.hash.is_empty() && !manifest.hash.is_empty() && record.hash != manifest.hash {
+        return Err(RfError::invalid_input(format!(
+            "stored property package record hash `{}` does not match manifest hash `{}`",
+            record.hash, manifest.hash
+        )));
+    }
+
+    if record.size_bytes != 0
+        && manifest.size_bytes != 0
+        && record.size_bytes != manifest.size_bytes
+    {
+        return Err(RfError::invalid_input(format!(
+            "stored property package record size `{}` does not match manifest size `{}`",
+            record.size_bytes, manifest.size_bytes
+        )));
+    }
+
+    if record.expires_at != manifest.expires_at {
+        return Err(RfError::invalid_input(format!(
+            "stored property package record expiration `{:?}` does not match manifest expiration `{:?}`",
+            record.expires_at, manifest.expires_at
+        )));
+    }
+
+    Ok(())
+}
+
+fn validate_payload_matches_manifest(
+    payload: &StoredPropertyPackagePayload,
+    manifest: &StoredPropertyPackageManifest,
+) -> RfResult<()> {
+    payload.validate()?;
+
+    if payload.package_id != manifest.package_id {
+        return Err(RfError::invalid_input(format!(
+            "stored property package payload package_id `{}` does not match manifest package_id `{}`",
+            payload.package_id, manifest.package_id
+        )));
+    }
+
+    if payload.version != manifest.version {
+        return Err(RfError::invalid_input(format!(
+            "stored property package payload version `{}` does not match manifest version `{}`",
+            payload.version, manifest.version
+        )));
+    }
+
+    let payload_component_ids = payload
+        .components
+        .iter()
+        .map(|component| component.id.clone())
+        .collect::<Vec<_>>();
+    if payload_component_ids != manifest.component_ids {
+        return Err(RfError::invalid_input(format!(
+            "stored property package payload components {:?} do not match manifest components {:?}",
+            payload_component_ids, manifest.component_ids
+        )));
+    }
+
+    Ok(())
+}
+
+fn property_package_manifest_from_stored(
+    stored_manifest: StoredPropertyPackageManifest,
+) -> RfResult<PropertyPackageManifest> {
+    stored_manifest.validate()?;
+
+    let source = property_package_source_from_stored(stored_manifest.source);
+    let classification =
+        property_package_classification_from_stored(stored_manifest.classification);
+
+    let mut manifest = PropertyPackageManifest::new(
+        stored_manifest.package_id,
+        stored_manifest.version,
+        source,
+        stored_manifest.component_ids,
+    );
+    manifest.classification = classification;
+    manifest.hash = stored_manifest.hash;
+    manifest.size_bytes = stored_manifest.size_bytes;
+    manifest.expires_at = stored_manifest.expires_at;
+    Ok(manifest)
+}
+
+fn thermo_system_from_stored_payload(payload: StoredPropertyPackagePayload) -> ThermoSystem {
+    let components = payload
+        .components
+        .into_iter()
+        .map(thermo_component_from_stored)
+        .collect();
+
+    ThermoSystem {
+        components,
+        method: thermo_method_from_stored(payload.method),
+    }
+}
+
+fn thermo_component_from_stored(component: StoredThermoComponent) -> ThermoComponent {
+    ThermoComponent {
+        id: component.id,
+        name: component.name,
+        antoine: component.antoine.map(antoine_coefficients_from_stored),
+        liquid_heat_capacity_j_per_mol_k: component.liquid_heat_capacity_j_per_mol_k,
+        vapor_heat_capacity_j_per_mol_k: component.vapor_heat_capacity_j_per_mol_k,
+    }
+}
+
+fn antoine_coefficients_from_stored(
+    coefficients: StoredAntoineCoefficients,
+) -> AntoineCoefficients {
+    AntoineCoefficients::new(coefficients.a, coefficients.b, coefficients.c)
+}
+
+fn thermo_method_from_stored(method: StoredThermoMethod) -> ThermoMethod {
+    ThermoMethod {
+        liquid_phase_model: liquid_phase_model_from_stored(method.liquid_phase_model),
+        vapor_phase_model: vapor_phase_model_from_stored(method.vapor_phase_model),
+    }
+}
+
+fn liquid_phase_model_from_stored(model: StoredLiquidPhaseModel) -> LiquidPhaseModel {
+    match model {
+        StoredLiquidPhaseModel::IdealSolution => LiquidPhaseModel::IdealSolution,
+    }
+}
+
+fn vapor_phase_model_from_stored(model: StoredVaporPhaseModel) -> VaporPhaseModel {
+    match model {
+        StoredVaporPhaseModel::IdealGas => VaporPhaseModel::IdealGas,
+    }
+}
+
+fn property_package_source_from_stored(
+    source: StoredPropertyPackageSource,
+) -> PropertyPackageSource {
+    match source {
+        StoredPropertyPackageSource::LocalBundled => PropertyPackageSource::LocalBundled,
+        StoredPropertyPackageSource::RemoteDerivedPackage => {
+            PropertyPackageSource::RemoteDerivedPackage
+        }
+        StoredPropertyPackageSource::RemoteEvaluationService => {
+            PropertyPackageSource::RemoteEvaluationService
+        }
+    }
+}
+
+fn property_package_classification_from_stored(
+    classification: StoredPropertyPackageClassification,
+) -> PropertyPackageClassification {
+    match classification {
+        StoredPropertyPackageClassification::Derived => PropertyPackageClassification::Derived,
+        StoredPropertyPackageClassification::RemoteOnly => {
+            PropertyPackageClassification::RemoteOnly
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
+    use std::fs;
+    use std::path::PathBuf;
+    use std::time::{Duration, SystemTime, UNIX_EPOCH};
+
+    use rf_store::{
+        StoredAuthCacheIndex, StoredCredentialReference, StoredPropertyPackageManifest,
+        StoredPropertyPackagePayload, StoredPropertyPackageRecord, StoredPropertyPackageSource,
+        StoredThermoComponent, write_property_package_manifest, write_property_package_payload,
+    };
+
     use super::{
-        InMemoryPropertyPackageProvider, PropertyPackageClassification, PropertyPackageManifest,
-        PropertyPackageProvider, PropertyPackageSource, ThermoComponent, ThermoSystem,
+        CachedPropertyPackageProvider, InMemoryPropertyPackageProvider,
+        PropertyPackageClassification, PropertyPackageManifest, PropertyPackageProvider,
+        PropertyPackageSource, ThermoComponent, ThermoSystem,
     };
     use rf_types::ComponentId;
 
@@ -378,5 +662,161 @@ mod tests {
             manifest.classification,
             PropertyPackageClassification::RemoteOnly
         );
+    }
+
+    #[test]
+    fn cached_provider_loads_local_packages_from_store_cache_layout() {
+        let root = unique_temp_path("cached-provider");
+        let mut index = StoredAuthCacheIndex::new(
+            "https://id.radish.local",
+            "user-123",
+            StoredCredentialReference::new("radishflow-studio", "user-credential"),
+        );
+        let mut record = StoredPropertyPackageRecord::new(
+            "methane-basic-v1",
+            "2026.03.1",
+            StoredPropertyPackageSource::RemoteDerivedPackage,
+            "sha256:pkg-1",
+            512,
+            timestamp(100),
+        );
+        record.expires_at = Some(timestamp(800));
+        let manifest = {
+            let mut manifest = StoredPropertyPackageManifest::new(
+                "methane-basic-v1",
+                "2026.03.1",
+                StoredPropertyPackageSource::RemoteDerivedPackage,
+                vec![ComponentId::new("methane")],
+            );
+            manifest.hash = "sha256:pkg-1".to_string();
+            manifest.size_bytes = 512;
+            manifest.expires_at = Some(timestamp(800));
+            manifest
+        };
+        let payload = StoredPropertyPackagePayload::new(
+            "methane-basic-v1",
+            "2026.03.1",
+            vec![StoredThermoComponent::new(
+                ComponentId::new("methane"),
+                "Methane",
+            )],
+        );
+
+        write_property_package_manifest(record.manifest_path_under(&root), &manifest)
+            .expect("expected manifest write");
+        write_property_package_payload(
+            record
+                .payload_path_under(&root)
+                .expect("expected payload path"),
+            &payload,
+        )
+        .expect("expected payload write");
+        index.property_packages.push(record);
+
+        let provider = CachedPropertyPackageProvider::new_at(&root, &index, timestamp(700))
+            .expect("expected cached provider");
+        let manifests = provider.list_manifests();
+
+        assert_eq!(manifests.len(), 1);
+        assert_eq!(manifests[0].package_id, "methane-basic-v1");
+        assert_eq!(manifests[0].hash, "sha256:pkg-1");
+        let system = provider
+            .load_system("methane-basic-v1")
+            .expect("expected thermo system");
+        assert_eq!(system.component_count(), 1);
+        assert_eq!(system.components[0].name, "Methane");
+
+        fs::remove_dir_all(&root).expect("expected temp dir cleanup");
+    }
+
+    #[test]
+    fn cached_provider_skips_expired_records_before_touching_disk() {
+        let root = unique_temp_path("cached-provider-expired");
+        let mut index = StoredAuthCacheIndex::new(
+            "https://id.radish.local",
+            "user-123",
+            StoredCredentialReference::new("radishflow-studio", "user-credential"),
+        );
+        let mut record = StoredPropertyPackageRecord::new(
+            "expired-pkg",
+            "2026.03.1",
+            StoredPropertyPackageSource::RemoteDerivedPackage,
+            "sha256:expired",
+            256,
+            timestamp(100),
+        );
+        record.expires_at = Some(timestamp(200));
+        index.property_packages.push(record);
+
+        let provider = CachedPropertyPackageProvider::new_at(&root, &index, timestamp(300))
+            .expect("expected cached provider");
+
+        assert!(provider.list_manifests().is_empty());
+        fs::remove_dir_all(&root).ok();
+    }
+
+    #[test]
+    fn cached_provider_rejects_manifest_mismatch_against_index_record() {
+        let root = unique_temp_path("cached-provider-mismatch");
+        let mut index = StoredAuthCacheIndex::new(
+            "https://id.radish.local",
+            "user-123",
+            StoredCredentialReference::new("radishflow-studio", "user-credential"),
+        );
+        let mut record = StoredPropertyPackageRecord::new(
+            "pkg-1",
+            "2026.03.1",
+            StoredPropertyPackageSource::RemoteDerivedPackage,
+            "sha256:expected",
+            256,
+            timestamp(100),
+        );
+        record.expires_at = Some(timestamp(500));
+        let mut manifest = StoredPropertyPackageManifest::new(
+            "pkg-1",
+            "2026.03.1",
+            StoredPropertyPackageSource::RemoteDerivedPackage,
+            vec![ComponentId::new("methane")],
+        );
+        manifest.hash = "sha256:actual".to_string();
+        manifest.size_bytes = 256;
+        manifest.expires_at = Some(timestamp(500));
+
+        write_property_package_manifest(record.manifest_path_under(&root), &manifest)
+            .expect("expected manifest write");
+        write_property_package_payload(
+            record
+                .payload_path_under(&root)
+                .expect("expected payload path"),
+            &StoredPropertyPackagePayload::new(
+                "pkg-1",
+                "2026.03.1",
+                vec![StoredThermoComponent::new(
+                    ComponentId::new("methane"),
+                    "Methane",
+                )],
+            ),
+        )
+        .expect("expected payload write");
+        index.property_packages.push(record);
+
+        let error = CachedPropertyPackageProvider::new_at(&root, &index, timestamp(300))
+            .expect_err("expected manifest mismatch");
+
+        assert_eq!(error.code().as_str(), "invalid_input");
+        assert!(error.message().contains("does not match manifest hash"));
+        fs::remove_dir_all(&root).expect("expected temp dir cleanup");
+    }
+
+    fn timestamp(seconds: u64) -> SystemTime {
+        UNIX_EPOCH + Duration::from_secs(seconds)
+    }
+
+    fn unique_temp_path(name: &str) -> PathBuf {
+        let unique = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("expected time after epoch")
+            .as_nanos();
+        std::env::temp_dir().join(format!("radishflow-{name}-{unique}"))
     }
 }
