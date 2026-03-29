@@ -13,3 +13,5 @@ publish.workspace = true
 rf-store = { path = "../../crates/rf-store" }
 rf-types = { path = "../../crates/rf-types" }
 rf-ui = { path = "../../crates/rf-ui" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"

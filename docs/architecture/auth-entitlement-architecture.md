@@ -422,6 +422,44 @@ RadishFlow Studio
 - `expiresAt` 明确租约有效期，避免客户端把短时 URL 当长期缓存入口
 - 该字段当前只表达下载 URL / 下载租约的有效期，不直接写入 `StoredPropertyPackageRecord.expiresAt`
 
+### `PropertyPackageDownload`
+
+桌面端通过 `downloadUrl` 拉取包体后，当前第一版建议响应体直接采用 JSON 下载 DTO：
+
+```json
+{
+  "kind": "radishflow.property-package-download",
+  "schemaVersion": 1,
+  "packageId": "binary-hydrocarbon-lite-v1",
+  "version": "2026.03.1",
+  "components": [
+    {
+      "id": "methane",
+      "name": "Methane",
+      "antoine": {
+        "a": 8.987,
+        "b": 659.7,
+        "c": -16.7
+      },
+      "liquidHeatCapacityJPerMolK": 35.0,
+      "vaporHeatCapacityJPerMolK": 36.5
+    }
+  ],
+  "method": {
+    "liquidPhaseModel": "ideal-solution",
+    "vaporPhaseModel": "ideal-gas"
+  }
+}
+```
+
+冻结边界：
+
+- 下载 DTO 当前固定为 `kind = radishflow.property-package-download`、`schemaVersion = 1`
+- 下载 DTO 是控制面 / 资产分发协议对象，不直接等同于本地 `StoredPropertyPackagePayload`
+- 当前协议映射层正式收口到 `apps/radishflow-studio`，由应用层把下载 JSON 映射为 `StoredPropertyPackagePayload` 并继续走本地缓存落盘
+- `rf-store` 继续只理解本地持久化 DTO，不直接理解控制面下载协议
+- `rf-thermo` 继续只理解本地缓存结果，不直接解析下载响应 JSON
+
 ### `OfflineLeaseRefreshRequest`
 
 `POST /api/radishflow/offline-leases/refresh` 当前建议最小请求体：
@@ -541,6 +579,7 @@ RadishFlow Studio
 - 登录态和授权态继续保持在 `AppState` 外层应用状态，不混进 `FlowsheetDocument`
 - `rf-ui` 当前只承载运行时授权状态和控制面 DTO，不直接持久化 `StoredAuthCacheIndex`
 - `apps/radishflow-studio` 当前已经补上“下载完成 -> 写入 `<cache-root>/packages/.../manifest.json` / `payload.rfpkg` -> 写回 `<cache-root>/auth/.../index.json`”的单一路径
+- `apps/radishflow-studio` 当前也已补上 `PropertyPackageDownload` JSON 到 `StoredPropertyPackagePayload` 的首版协议映射，不让该协议直接扩散到 `rf-store` 或 `rf-thermo`
 
 ### `rf-store`
 
@@ -682,7 +721,7 @@ RadishFlow Studio
 - `PropertyPackageProvider` 的本地缓存实现必须显式接收应用私有缓存根目录和 `StoredAuthCacheIndex`，而不是自己推断登录态或联网刷新授权
 - provider 构造阶段就应校验 `StoredAuthCacheIndex`、本地 `manifest.json` 和本地 `payload.rfpkg` 三者是否一致，不把索引漂移问题拖进求解热路径
 - provider 当前只暴露“未过期、存在本地 payload、manifest/payload 与索引一致”的本地包；`RemoteEvaluationService` 记录不进入本地 provider 列表
-- 当前仓库已在 `examples/sample-components/property-packages/` 提供首个真实样例包，用于校验上述本地缓存链路和 provider 装载行为
+- 当前仓库已在 `examples/sample-components/property-packages/` 提供首个真实样例包和对应下载 JSON，用于校验上述本地缓存链路、协议映射和 provider 装载行为
 
 ### `rf-solver`
 
@@ -797,7 +836,7 @@ scope 当前建议按“产品.资源.动作”命名，而不是继续使用过
 在继续深化后端与桌面接入代码之前，当前更值得优先收口以下事项：
 
 1. 细化 `AuthSessionState` / `EntitlementState` 与 UI 面板、状态栏之间的事件流
-2. 在已接通的下载落盘路径之上，补真实控制面下载响应到 `StoredPropertyPackagePayload` 的映射与写入流程
+2. 在已接通的下载 JSON 映射之上，补真实 HTTP 下载、摘要校验和失败回滚策略
 3. 在已接通的 `PropertyPackageProvider` 本地缓存实现之上，补更多实际包样例和加载/替换场景测试
-4. 决定控制面 JSON 契约到 `rf-ui` 运行时 DTO 的协议映射层放在何处，以及是否直接引入 serde DTO
+4. 决定其余控制面 JSON 契约到运行时 DTO 的协议映射层是否继续统一收口到应用层
 5. 决定离线租约后续是否需要设备绑定键模型
