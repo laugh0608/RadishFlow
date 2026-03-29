@@ -247,15 +247,37 @@ RadishFlow Studio
 建议最小资源：
 
 - `GET /api/radishflow/entitlements/current`
-  - 返回当前用户的授权快照
+  - 返回当前用户的 `EntitlementSnapshot`
 - `GET /api/radishflow/property-packages/manifest`
-  - 返回当前授权可见的派生资产清单
+  - 返回当前授权可见的 `PropertyPackageManifest[]`
 - `POST /api/radishflow/property-packages/{packageId}/lease`
-  - 返回某个派生资产包的下载租约或访问票据
+  - 返回某个派生资产包的短时下载租约或访问票据
 - `POST /api/radishflow/offline-leases/refresh`
-  - 刷新桌面端离线租约
+  - 刷新桌面端离线租约，并返回新的授权快照
 - `POST /api/radishflow/audit/usage`
   - 上传关键受控资产使用审计
+
+当前进一步冻结以下接口语义：
+
+- `GET /api/radishflow/entitlements/current`
+  - 桌面端默认授权请求包含 `openid profile offline_access`
+  - 控制面 Bearer token 至少具备 `radishflow.control.read`
+  - `200 OK` 响应体就是单个 `EntitlementSnapshot`
+  - 响应只表达“当前用户此刻可做什么”，不夹带物性包二进制或本地缓存路径
+- `GET /api/radishflow/property-packages/manifest`
+  - Bearer token 必须具备 `radishflow.assets.read`
+  - `200 OK` 返回带 `generatedAt` 的清单容器，其中 `packages` 为 `PropertyPackageManifest[]`
+  - manifest 只提供展示、校验和下载前置元信息，不直接提供长期下载 URL
+- `POST /api/radishflow/property-packages/{packageId}/lease`
+  - Bearer token 必须具备 `radishflow.assets.lease`
+  - 请求体至少携带 `version`，用于避免客户端租到错误版本
+  - 返回值只允许包含短时票据、到期时间、摘要校验和下载入口，不直接回传物性包内容
+- `POST /api/radishflow/offline-leases/refresh`
+  - 刷新后返回新的 `EntitlementSnapshot` 和新的 `offlineLeaseExpiresAt`
+  - 桌面端用它更新本地授权缓存索引，但仍不把 token 明文写入 JSON
+- `POST /api/radishflow/audit/usage`
+  - 当前只记关键受控资产访问与加载事件
+  - 当前不把每一步单元迭代都上报到控制面
 
 ### 可选高级接口
 
@@ -272,6 +294,7 @@ RadishFlow Studio
 
 ```json
 {
+  "schemaVersion": 1,
   "subjectId": "user-123",
   "tenantId": "tenant-001",
   "issuedAt": "2026-03-29T10:00:00Z",
@@ -291,9 +314,12 @@ RadishFlow Studio
 
 语义边界：
 
+- `schemaVersion` 当前冻结为 `1`，用于控制面 JSON 向后兼容
 - 描述当前用户“被允许做什么”
 - 不直接携带完整物性数据
 - 不承担本地缓存文件索引
+- `issuedAt` / `expiresAt` 由服务端生成，不由客户端自行推断
+- `allowedPackageIds` 只表达授权白名单，不反向替代 manifest 明细
 
 ### `PropertyPackageManifest`
 
@@ -301,20 +327,59 @@ RadishFlow Studio
 
 ```json
 {
+  "schemaVersion": 1,
   "packageId": "binary-hydrocarbon-lite-v1",
   "version": "2026.03.1",
   "classification": "derived",
   "source": "download",
   "hash": "sha256:...",
   "sizeBytes": 123456,
+  "componentIds": ["methane", "ethane"],
+  "leaseRequired": true,
   "expiresAt": "2026-04-05T10:00:00Z"
 }
 ```
 
 语义边界：
 
+- `schemaVersion` 当前冻结为 `1`
+- `classification` 当前建议只允许 `derived` / `remote-only`
+- `source` 当前建议只允许 `bundled` / `download` / `remote-eval`
 - 描述可见资产，不直接下发资产内容
+- `componentIds` 只描述包覆盖范围，不直接替代包内数据
+- `leaseRequired` 用于区分“可直接使用的本地 bundled 资产”和“需要额外租约的受控下载包”
 - 用于让桌面端知道“哪些包可下、版本是什么、有效期多久”
+
+### `PropertyPackageManifestList`
+
+`GET /api/radishflow/property-packages/manifest` 当前建议返回以下容器，而不是裸数组：
+
+```json
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-03-29T10:00:05Z",
+  "packages": [
+    {
+      "schemaVersion": 1,
+      "packageId": "binary-hydrocarbon-lite-v1",
+      "version": "2026.03.1",
+      "classification": "derived",
+      "source": "download",
+      "hash": "sha256:...",
+      "sizeBytes": 123456,
+      "componentIds": ["methane", "ethane"],
+      "leaseRequired": true,
+      "expiresAt": "2026-04-05T10:00:00Z"
+    }
+  ]
+}
+```
+
+这样做的原因：
+
+- 后续可以在容器层增加分页、生成时间和服务端游标
+- 不必为 manifest 清单额外引入第二个“不透明响应头协议”
+- 客户端可以用 `generatedAt` 和本地 `lastSyncedAt` 做最小对账
 
 ### `PropertyAssetSource`
 
@@ -368,6 +433,91 @@ RadishFlow Studio
   - 只表示项目文件真相源
 - `StoredAuthCacheIndex`
   - 只表示授权缓存、派生包缓存索引与安全凭据引用
+
+当前进一步冻结以下 JSON DTO 与文件布局约定：
+
+- 项目文件继续采用用户选择路径下的单文件 `*.rfproj.json`
+- `StoredProjectFile.kind` 固定为 `radishflow.project-file`
+- `StoredProjectFile.document.metadata.documentId` 作为文档稳定身份，不依赖文件路径
+- `StoredAuthCacheIndex.kind` 固定为 `radishflow.auth-cache-index`
+- 授权缓存索引和派生包缓存继续放在应用私有缓存根目录，不与项目文件同目录混放
+- 授权缓存索引只保存相对缓存路径和安全凭据引用，不保存绝对缓存路径与明文 token
+
+建议的项目文件 JSON 轮廓：
+
+```json
+{
+  "kind": "radishflow.project-file",
+  "schemaVersion": 1,
+  "document": {
+    "revision": 12,
+    "flowsheet": {
+      "...": "..."
+    },
+    "metadata": {
+      "documentId": "doc-1",
+      "title": "Demo Project",
+      "schemaVersion": 1,
+      "createdAt": "2026-03-29T09:00:00Z",
+      "updatedAt": "2026-03-29T10:10:00Z"
+    }
+  }
+}
+```
+
+建议的授权缓存索引 JSON 轮廓：
+
+```json
+{
+  "kind": "radishflow.auth-cache-index",
+  "schemaVersion": 1,
+  "authorityUrl": "https://id.radish.local",
+  "subjectId": "user-123",
+  "credential": {
+    "service": "radishflow-studio",
+    "account": "user-123-primary"
+  },
+  "entitlement": {
+    "subjectId": "user-123",
+    "tenantId": "tenant-001",
+    "syncedAt": "2026-03-29T10:05:00Z",
+    "issuedAt": "2026-03-29T10:00:00Z",
+    "expiresAt": "2026-03-29T11:00:00Z",
+    "offlineLeaseExpiresAt": "2026-04-05T10:00:00Z",
+    "featureKeys": ["desktop-login", "local-thermo-packages"],
+    "allowedPackageIds": ["binary-hydrocarbon-lite-v1"]
+  },
+  "propertyPackages": [
+    {
+      "packageId": "binary-hydrocarbon-lite-v1",
+      "version": "2026.03.1",
+      "source": "remote-derived-package",
+      "manifestRelativePath": "packages/binary-hydrocarbon-lite-v1/2026.03.1/manifest.json",
+      "payloadRelativePath": "packages/binary-hydrocarbon-lite-v1/2026.03.1/payload.rfpkg",
+      "hash": "sha256:...",
+      "sizeBytes": 123456,
+      "downloadedAt": "2026-03-29T10:05:10Z",
+      "expiresAt": "2026-04-05T10:00:00Z"
+    }
+  ],
+  "lastSyncedAt": "2026-03-29T10:05:00Z"
+}
+```
+
+建议的文件布局：
+
+```text
+<chosen-project-path>/<name>.rfproj.json
+<app-private-cache-root>/auth/<sanitized-authority>/<subject-id>/index.json
+<app-private-cache-root>/packages/<package-id>/<version>/manifest.json
+<app-private-cache-root>/packages/<package-id>/<version>/payload.rfpkg
+```
+
+补充边界：
+
+- `payload.rfpkg` 只在 `LocalBundled` / `RemoteDerivedPackage` 下出现；`RemoteEvaluationService` 不要求本地 payload 文件
+- `StoredPropertyPackageRecord` 当前正式只记录相对路径，方便缓存根目录迁移与跨设备导入时做路径重定位
+- 授权缓存索引是“运行态缓存真相源”，项目文件仍然只描述用户编辑的流程图语义
 
 ### `rf-thermo`
 
@@ -426,15 +576,37 @@ RadishFlow Studio
 
 - `client_id = radishflow-studio`
 
-建议权限：
+当前建议把客户端注册进一步冻结为：
 
-- Authorization Code
-- Refresh Token
-- PKCE required
-- loopback redirect 列表
-- RadishFlow 专属 scope，例如：
-  - `radishflow-control`
-  - `radishflow-assets`
+- `application_type = native`
+- `grant_types = authorization_code refresh_token`
+- `response_types = code`
+- `token_endpoint_auth_method = none`
+- `require_pkce = true`
+- `redirect_uris`
+  - `http://127.0.0.1:{ephemeral-port}/oidc/callback`
+  - `http://localhost:{ephemeral-port}/oidc/callback`
+- `post_logout_redirect_uris`
+  - `http://127.0.0.1:{ephemeral-port}/oidc/logout-callback`
+  - `http://localhost:{ephemeral-port}/oidc/logout-callback`
+
+scope 当前建议按“产品.资源.动作”命名，而不是继续使用过宽泛的单块 scope：
+
+- 标准 OIDC scope：
+  - `openid`
+  - `profile`
+  - `offline_access`
+- RadishFlow 资源 scope：
+  - `radishflow.control.read`
+  - `radishflow.assets.read`
+  - `radishflow.assets.lease`
+  - `radishflow.audit.write`
+
+当前建议：
+
+- 登录与授权同步默认请求 `openid profile offline_access radishflow.control.read radishflow.assets.read radishflow.assets.lease`
+- `radishflow.audit.write` 允许后续单独补到审计上报通道，不强制绑在首版登录请求里
+- 不再建议使用 `radishflow-control`、`radishflow-assets` 这种边界过宽的 scope 名称
 
 ## MVP 范围建议
 
@@ -448,6 +620,7 @@ RadishFlow Studio
 - 派生物性包 manifest 返回
 - 受控资产下载租约
 - 本地安全存储 token
+- `StoredProjectFile` / `StoredAuthCacheIndex` JSON DTO 与文件布局冻结
 
 ### M2：离线与审计
 
@@ -479,7 +652,7 @@ RadishFlow Studio
 在正式写后端与桌面接入代码之前，建议先做以下文档和类型收口：
 
 1. 细化 `AuthSessionState` / `EntitlementState` 与 UI 面板、状态栏之间的事件流
-2. 细化 `StoredProjectFile` / `StoredAuthCacheIndex` 的 JSON 契约与文件布局
+2. 把 `StoredProjectFile` / `StoredAuthCacheIndex` 真正落到 JSON 读写实现和版本迁移入口
 3. 细化 `PropertyPackageProvider` 如何与本地缓存目录和 `rf-store` 索引对接
-4. 在控制面文档中进一步细化 `EntitlementSnapshot` 和 `PropertyPackageManifest` JSON 契约
-5. 明确 `radishflow-studio` 客户端注册信息与 scope 命名
+4. 细化下载租约、离线刷新与审计事件的请求/响应 DTO
+5. 决定离线租约后续是否需要设备绑定键模型

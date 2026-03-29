@@ -206,11 +206,20 @@ pub enum PropertyPackageSource {
     RemoteEvaluationService,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum PropertyPackageClassification {
+    Derived,
+    RemoteOnly,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PropertyPackageManifest {
     pub package_id: String,
     pub version: String,
+    pub classification: PropertyPackageClassification,
     pub source: PropertyPackageSource,
+    pub hash: String,
+    pub size_bytes: u64,
     pub component_ids: Vec<ComponentId>,
     pub expires_at: Option<SystemTime>,
 }
@@ -225,7 +234,10 @@ impl PropertyPackageManifest {
         Self {
             package_id: package_id.into(),
             version: version.into(),
+            classification: PropertyPackageClassification::Derived,
             source,
+            hash: String::new(),
+            size_bytes: 0,
             component_ids,
             expires_at: None,
         }

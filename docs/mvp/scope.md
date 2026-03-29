@@ -67,6 +67,8 @@ App 与交互层当前进一步冻结以下口径：
 - 高价值原始物性资产不默认完整下发到客户端
 - 本地求解热路径继续本地执行，远端服务只承担身份、授权、租约、清单和派生包分发
 - 允许引入离线租约与本地派生物性包缓存，但不承诺客户端绝对防提取
+- 项目文件继续固定为单文件 `*.rfproj.json` 真相源，授权缓存索引与派生包缓存继续留在应用私有缓存根目录
+- MVP 默认不把 `snapshot_history`、token 明文或授权缓存索引混进项目文件
 
 ## 当前阶段优先目标
 
@@ -108,6 +110,7 @@ App 与交互层当前进一步冻结以下口径：
 - 冻结 `SolveSessionState`、`DiagnosticSummary`、`SolvePendingReason` 与 `SolveSnapshot` 的关系
 - 明确 UI 交互层、求解层和快照历史之间的数据所有权
 - 冻结桌面登录、授权、离线租约与远端资产控制面的总体边界
+- 冻结 `StoredProjectFile` / `StoredAuthCacheIndex` JSON DTO、相对缓存路径布局、客户端注册与 scope 命名
 
 ### 2026-W16
 
@@ -125,7 +128,7 @@ App 与交互层当前进一步冻结以下口径：
 ### 2026-W18
 
 - 在 `rf-solver` 中实现无回路顺序模块法
-- 在 `rf-store` 中建立最小 JSON 格式
+- 在 `rf-store` 中把当前 DTO 真正落成 JSON 读写实现与迁移入口
 - 在 `examples/flowsheets` 中增加第一个可求解示例
 
 ### 2026-W19 以后

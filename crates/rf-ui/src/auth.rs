@@ -1,6 +1,8 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::time::SystemTime;
 
+use rf_types::ComponentId;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum AuthSessionStatus {
     SignedOut,
@@ -162,6 +164,7 @@ pub struct PropertyPackageManifest {
     pub source: PropertyPackageSource,
     pub hash: String,
     pub size_bytes: u64,
+    pub component_ids: Vec<ComponentId>,
     pub expires_at: Option<SystemTime>,
 }
 
@@ -178,6 +181,7 @@ impl PropertyPackageManifest {
             source,
             hash: String::new(),
             size_bytes: 0,
+            component_ids: Vec::new(),
             expires_at: None,
         }
     }
