@@ -1,0 +1,22 @@
+[workspace]
+resolver = "2"
+members = [
+    "apps/radishflow-studio",
+    "crates/rf-types",
+    "crates/rf-model",
+    "crates/rf-thermo",
+    "crates/rf-flash",
+    "crates/rf-unitops",
+    "crates/rf-flowsheet",
+    "crates/rf-solver",
+    "crates/rf-store",
+    "crates/rf-ui",
+    "crates/rf-canvas",
+    "crates/rf-ffi",
+]
+
+[workspace.package]
+edition = "2024"
+license = "MIT"
+authors = ["laugh0608"]
+rust-version = "1.86"
