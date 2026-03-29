@@ -190,6 +190,8 @@
 - 使用简洁明确的 Conventional Commits 风格
 - 优先把代码改动和文档改动按主题拆分，而不是混成大提交
 - 不添加 AI 协作者署名
+- 小修改提交时，commit message 保持一条简洁说明即可
+- 大修改提交时，除了首行 commit message 外，优先补充 3~6 条简短说明，概括本次主要变更点
 - 提交前至少确认本次改动对应的最小验证已经执行
 
 示例：
@@ -198,6 +200,16 @@
 feat: implement binary tp flash solver
 docs: refine mvp planning notes
 chore: initialize workspace skeleton
+```
+
+大修改示例：
+
+```text
+docs(auth): refine control plane contracts
+
+- 更改了 EntitlementSnapshot JSON 契约
+- 完善了 PropertyPackageManifest 清单字段
+- 修复了客户端注册与 scope 命名口径不一致
 ```
 
 ## 文档与开发日志更新要求
