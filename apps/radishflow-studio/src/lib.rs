@@ -14,8 +14,11 @@ pub use property_package_download::{
     parse_property_package_download_json, persist_downloaded_package_response_to_cache,
 };
 pub use property_package_download_client::{
-    PropertyPackageDownloadFetchError, PropertyPackageDownloadFetchErrorKind,
-    PropertyPackageDownloadFetcher, PropertyPackageDownloadResponse,
+    HttpPropertyPackageDownloadFetcher, PropertyPackageDownloadFetchError,
+    PropertyPackageDownloadFetchErrorKind, PropertyPackageDownloadFetcher,
+    PropertyPackageDownloadHttpRequest, PropertyPackageDownloadHttpResponse,
+    PropertyPackageDownloadHttpTransport, PropertyPackageDownloadHttpTransportError,
+    PropertyPackageDownloadHttpTransportErrorKind, PropertyPackageDownloadResponse,
     PropertyPackageDownloadRetryPolicy, download_property_package_to_cache,
     download_property_package_to_cache_with_retry_policy,
 };
