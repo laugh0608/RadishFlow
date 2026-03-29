@@ -112,6 +112,11 @@ App 与交互层当前进一步冻结以下口径：
 - 冻结桌面登录、授权、离线租约与远端资产控制面的总体边界
 - 冻结 `StoredProjectFile` / `StoredAuthCacheIndex` JSON DTO、相对缓存路径布局、客户端注册与 scope 命名
 
+补充说明：
+
+- 截至 2026-03-29，上述大部分基础冻结项已提前完成，不再视为后续待办
+- 当前剩余重点已经转向“缓存实体落盘”和“provider 接线”，而不是继续补第一轮 DTO 草案
+
 ### 2026-W16
 
 - 在 `rf-thermo` 中实现 Antoine 饱和蒸气压
@@ -128,7 +133,8 @@ App 与交互层当前进一步冻结以下口径：
 ### 2026-W18
 
 - 在 `rf-solver` 中实现无回路顺序模块法
-- 在 `rf-store` 中把当前 DTO 真正落成 JSON 读写实现与迁移入口
+- 在 `rf-store` 中补本地 `PropertyPackageManifest` / `payload` 实体文件读写，并把缓存根目录布局真正接入代码
+- 在 `rf-thermo` 中把 `PropertyPackageProvider` 与本地缓存目录和授权缓存索引接起来
 - 在 `examples/flowsheets` 中增加第一个可求解示例
 
 ### 2026-W19 以后

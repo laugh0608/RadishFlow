@@ -17,6 +17,9 @@ RadishFlow 是一个以 Rust 为核心、以 Rust UI 为主界面、以 .NET 10 
 
 - Rust workspace 骨架已建立并可 `cargo check`
 - 第一批基础 crate 已从空壳推进到可继续开发的边界结构
+- `rf-ui` 已建立 `AppState`、授权态、求解态与控制面 DTO 骨架
+- `rf-store` 已建立项目文件 / 授权缓存索引的 JSON 读写与迁移分发入口
+- `apps/radishflow-studio` 已建立 auth cache sync 应用层桥接骨架
 - `.NET 10` 适配层目录与解决方案骨架已初始化
 - MVP 边界、迁移边界和协作约定已在 `docs/` 与 `AGENTS.md` 中冻结
 - 仓库治理、PR 检查、文本格式约束和基础协作规则正在补齐

@@ -778,10 +778,10 @@ scope 当前建议按“产品.资源.动作”命名，而不是继续使用过
 
 ## 后续落地建议
 
-在正式写后端与桌面接入代码之前，建议先做以下文档和类型收口：
+在继续深化后端与桌面接入代码之前，当前更值得优先收口以下事项：
 
 1. 细化 `AuthSessionState` / `EntitlementState` 与 UI 面板、状态栏之间的事件流
-2. 把 `StoredProjectFile` / `StoredAuthCacheIndex` 真正落到 JSON 读写实现和版本迁移入口
+2. 把本地 `manifest.json` / `payload.rfpkg` 的实体读写补到 `rf-store`，而不只停在索引路径约定
 3. 细化 `PropertyPackageProvider` 如何与本地缓存目录和 `rf-store` 索引对接
-4. 细化下载租约、离线刷新与审计事件的请求/响应 DTO
+4. 决定控制面 JSON 契约到 `rf-ui` 运行时 DTO 的协议映射层放在何处，以及是否直接引入 serde DTO
 5. 决定离线租约后续是否需要设备绑定键模型

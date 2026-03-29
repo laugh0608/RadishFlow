@@ -158,6 +158,7 @@ pub enum PropertyPackageClassification {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PropertyPackageManifest {
+    pub schema_version: u32,
     pub package_id: String,
     pub version: String,
     pub classification: PropertyPackageClassification,
@@ -165,6 +166,7 @@ pub struct PropertyPackageManifest {
     pub hash: String,
     pub size_bytes: u64,
     pub component_ids: Vec<ComponentId>,
+    pub lease_required: bool,
     pub expires_at: Option<SystemTime>,
 }
 
@@ -174,14 +176,26 @@ impl PropertyPackageManifest {
         version: impl Into<String>,
         source: PropertyPackageSource,
     ) -> Self {
+        let classification = match source {
+            PropertyPackageSource::RemoteEvaluationService => {
+                PropertyPackageClassification::RemoteOnly
+            }
+            PropertyPackageSource::LocalBundled | PropertyPackageSource::RemoteDerivedPackage => {
+                PropertyPackageClassification::Derived
+            }
+        };
+        let lease_required = matches!(source, PropertyPackageSource::RemoteDerivedPackage);
+
         Self {
+            schema_version: 1,
             package_id: package_id.into(),
             version: version.into(),
-            classification: PropertyPackageClassification::Derived,
+            classification,
             source,
             hash: String::new(),
             size_bytes: 0,
             component_ids: Vec::new(),
+            lease_required,
             expires_at: None,
         }
     }
@@ -206,6 +220,7 @@ impl PropertyPackageManifestList {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EntitlementSnapshot {
+    pub schema_version: u32,
     pub subject_id: String,
     pub tenant_id: Option<String>,
     pub issued_at: SystemTime,

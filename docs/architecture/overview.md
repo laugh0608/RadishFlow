@@ -38,7 +38,7 @@ RadishFlow 的目标架构已经冻结为三层：
 | --- | --- | --- |
 | `rf-types` | 基础 ID、枚举、错误类型 | 已建立第一批基础类型 |
 | `rf-model` | 组分、流股、单元、流程图对象模型 | 已建立第一批领域数据结构 |
-| `rf-thermo` | 热力学数据结构与热力学接口 | 已建立最小 API，占位实现 |
+| `rf-thermo` | 热力学数据结构与热力学接口 | 已建立最小 API、`PropertyPackageProvider` 骨架与内存占位实现 |
 | `rf-flash` | `TP Flash` 输入输出契约与求解器接口 | 已建立最小 API，占位实现 |
 | `rf-unitops` | 单元模块行为抽象 | 仍为占位 |
 | `rf-flowsheet` | 连接关系与图结构校验 | 仍为占位 |
@@ -48,13 +48,13 @@ RadishFlow 的目标架构已经冻结为三层：
 
 ### Rust Studio UI
 
-当前 UI 相关 crate 只保留目录骨架，不进入主线：
+当前 UI 相关 crate 已进入“状态骨架与应用边界冻结”阶段，但仍未进入具体界面实现主线：
 
 | crate | 当前职责 | 当前状态 |
 | --- | --- | --- |
-| `rf-ui` | UI 状态与行为逻辑 | 占位 |
+| `rf-ui` | UI 状态与行为逻辑 | 已建立 `AppState`、授权态、求解态与控制面 DTO 骨架 |
 | `rf-canvas` | 流程图画布能力 | 占位 |
-| `apps/radishflow-studio` | 桌面入口程序 | 最小壳程序 |
+| `apps/radishflow-studio` | 桌面入口程序 | 已建立 auth cache sync 桥接骨架与测试 |
 
 原因很直接：在 `M2/M3` 之前过早推进 UI，会掩盖内核尚未定型的问题。
 

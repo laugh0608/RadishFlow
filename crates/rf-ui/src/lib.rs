@@ -194,9 +194,31 @@ mod tests {
     }
 
     #[test]
+    fn manifest_defaults_match_control_plane_contract_shape() {
+        let bundled = PropertyPackageManifest::new(
+            "bundled-pkg",
+            "2026.03.1",
+            PropertyPackageSource::LocalBundled,
+        );
+        let remote_eval = PropertyPackageManifest::new(
+            "remote-eval-pkg",
+            "2026.03.1",
+            PropertyPackageSource::RemoteEvaluationService,
+        );
+
+        assert_eq!(bundled.schema_version, 1);
+        assert!(!bundled.lease_required);
+        assert_eq!(
+            remote_eval.classification,
+            crate::PropertyPackageClassification::RemoteOnly
+        );
+    }
+
+    #[test]
     fn entitlement_sync_indexes_manifests_by_package_id() {
         let mut app_state = AppState::new(sample_document());
         let snapshot = EntitlementSnapshot {
+            schema_version: 1,
             subject_id: "user-123".to_string(),
             tenant_id: Some("tenant-1".to_string()),
             issued_at: timestamp(100),
@@ -228,6 +250,7 @@ mod tests {
     fn clearing_auth_session_also_clears_entitlement_state() {
         let mut app_state = AppState::new(sample_document());
         let snapshot = EntitlementSnapshot {
+            schema_version: 1,
             subject_id: "user-123".to_string(),
             tenant_id: None,
             issued_at: timestamp(100),
@@ -249,6 +272,7 @@ mod tests {
     fn entitlement_sync_from_manifest_list_indexes_packages() {
         let mut app_state = AppState::new(sample_document());
         let snapshot = EntitlementSnapshot {
+            schema_version: 1,
             subject_id: "user-123".to_string(),
             tenant_id: Some("tenant-1".to_string()),
             issued_at: timestamp(100),
@@ -280,6 +304,7 @@ mod tests {
     fn offline_refresh_response_updates_entitlement_state() {
         let mut app_state = AppState::new(sample_document());
         let snapshot = EntitlementSnapshot {
+            schema_version: 1,
             subject_id: "user-123".to_string(),
             tenant_id: Some("tenant-1".to_string()),
             issued_at: timestamp(200),

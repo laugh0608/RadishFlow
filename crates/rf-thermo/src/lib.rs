@@ -231,10 +231,19 @@ impl PropertyPackageManifest {
         source: PropertyPackageSource,
         component_ids: Vec<ComponentId>,
     ) -> Self {
+        let classification = match source {
+            PropertyPackageSource::RemoteEvaluationService => {
+                PropertyPackageClassification::RemoteOnly
+            }
+            PropertyPackageSource::LocalBundled | PropertyPackageSource::RemoteDerivedPackage => {
+                PropertyPackageClassification::Derived
+            }
+        };
+
         Self {
             package_id: package_id.into(),
             version: version.into(),
-            classification: PropertyPackageClassification::Derived,
+            classification,
             source,
             hash: String::new(),
             size_bytes: 0,
@@ -319,8 +328,8 @@ impl ThermoProvider for PlaceholderThermoProvider {
 #[cfg(test)]
 mod tests {
     use super::{
-        InMemoryPropertyPackageProvider, PropertyPackageManifest, PropertyPackageProvider,
-        PropertyPackageSource, ThermoComponent, ThermoSystem,
+        InMemoryPropertyPackageProvider, PropertyPackageClassification, PropertyPackageManifest,
+        PropertyPackageProvider, PropertyPackageSource, ThermoComponent, ThermoSystem,
     };
     use rf_types::ComponentId;
 
@@ -354,5 +363,20 @@ mod tests {
             .expect_err("expected missing package error");
 
         assert_eq!(error.code().as_str(), "missing_entity");
+    }
+
+    #[test]
+    fn remote_evaluation_manifest_defaults_to_remote_only() {
+        let manifest = PropertyPackageManifest::new(
+            "remote-eval-pkg",
+            "2026.03.1",
+            PropertyPackageSource::RemoteEvaluationService,
+            vec![],
+        );
+
+        assert_eq!(
+            manifest.classification,
+            PropertyPackageClassification::RemoteOnly
+        );
     }
 }

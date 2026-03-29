@@ -376,6 +376,7 @@ mod tests {
         offline_lease_expires_at: Option<u64>,
     ) -> EntitlementState {
         let snapshot = EntitlementSnapshot {
+            schema_version: 1,
             subject_id: subject_id.to_string(),
             tenant_id: Some("tenant-1".to_string()),
             issued_at: timestamp(100),
@@ -599,6 +600,7 @@ mod tests {
             ));
 
         let snapshot = EntitlementSnapshot {
+            schema_version: 1,
             subject_id: "user-123".to_string(),
             tenant_id: Some("tenant-1".to_string()),
             issued_at: timestamp(200),
