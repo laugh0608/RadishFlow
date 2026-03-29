@@ -2,7 +2,7 @@
 
 RadishFlow 是一个以 Rust 为核心、以 Rust UI 为主界面、以 .NET 10 负责 CAPE-OPEN/COM 适配的稳态流程模拟软件。
 
-## 当前目标
+## 项目定位
 
 第一阶段只追求最小可运行闭环：
 
@@ -11,21 +11,55 @@ RadishFlow 是一个以 Rust 为核心、以 Rust UI 为主界面、以 .NET 10 
 - .NET 10 暴露自有 CAPE-OPEN Unit Operation PMC
 - 外部 PME 能识别并调用至少一个自有模型
 
+## 当前状态
+
+截至 2026-03-29，仓库已经完成以下初始化工作：
+
+- Rust workspace 骨架已建立并可 `cargo check`
+- 第一批基础 crate 已从空壳推进到可继续开发的边界结构
+- `.NET 10` 适配层目录与解决方案骨架已初始化
+- MVP 边界、迁移边界和协作约定已在 `docs/` 与 `AGENTS.md` 中冻结
+
+当前仍未开始的内容：
+
+- 真正的二元 `TP Flash` 数值实现
+- 单元模块与 flowsheet 求解闭环
+- Rust FFI 与 `.NET 10` 运行时联通
+- 外部 PME 冒烟验证
+
+## 快速开始
+
+本仓库当前以 Rust workspace 为主工作入口：
+
+```powershell
+cargo check
+```
+
+`.NET 10` 适配层目前仍处于目录与职责冻结阶段，当前阶段不作为主开发入口。
+
 ## 仓库结构
 
 - `apps/radishflow-studio/`: Rust 桌面应用
-- `crates/`: Rust 核心、UI、求解与 FFI
+- `crates/`: Rust 核心、UI、求解与 FFI crates
 - `adapters/dotnet-capeopen/`: .NET 10 CAPE-OPEN/COM 适配层
-- `docs/`: 架构、MVP 和迁移文档
+- `docs/`: 架构、MVP、边界、周志与迁移文档
 - `examples/`: 示例流程与 PME 验证样例
 - `tests/`: 数值回归与互操作测试
+- `assets/`: 图标、主题与示例数据占位目录
 
-## 参考文档
+## 文档入口
 
-- `docs/radishflow-architecture-draft.md`
-- `docs/radishflow-startup-checklist.md`
-- `docs/radishflow-mvp-roadmap.md`
-- `docs/radishflow-capeopen-asset-checklist.md`
+- `docs/README.md`: 文档总索引
+- `docs/architecture/overview.md`: 当前仓库分层与模块边界
+- `docs/mvp/scope.md`: MVP 范围、非目标与近期开发节奏
+- `docs/thermo/mvp-model.md`: 热力学与闪蒸的当前契约
+- `docs/capeopen/boundary.md`: Rust 与 .NET 10 的 CAPE-OPEN 边界
+- `docs/devlogs/README.md`: 周志规范与索引
+
+## 协作入口
+
+- `AGENTS.md`: 仓库协作约定、阶段边界与工作流
+- `docs/devlogs/2026-W13.md`: 当前阶段首份开发日志
 
 ## 参考仓库
 
