@@ -1,20 +1,20 @@
 # Architecture Overview
 
-更新时间：2026-03-29
+更新时间：2026-03-30
 
 ## 目标
 
-RadishFlow 的目标架构已经冻结为三层：
+RadishFlow 的目标架构已经冻结为“桌面端三层 + 外部控制面”：
 
 1. Rust Core
 2. Rust Studio UI
 3. .NET 10 CAPE-OPEN Bridge
 
-第一阶段只要求三层边界清晰，不要求三层都立即进入完整实现。
+第一阶段只要求桌面三层边界清晰，不要求三层都立即进入完整实现。
 
 同时，当前还补充冻结一个 **外部控制面**：
 
-4. Radish Platform Identity And Entitlement Control Plane
+4. RadishFlow Control Plane (`ASP.NET Core / .NET 10`, External)
 
 这不是桌面进程内部的新层，而是产品外部依赖的服务平面，用于承担：
 
@@ -22,6 +22,7 @@ RadishFlow 的目标架构已经冻结为三层：
 - RadishFlow 专属授权
 - 受控物性资产清单与租约
 - 派生数据包分发
+- 审计与撤销入口
 
 不承担：
 
@@ -80,6 +81,18 @@ RadishFlow 的目标架构已经冻结为三层：
 | `RadishFlow.CapeOpen.Registration` | 注册与反注册工具 | 目录占位 |
 | `RadishFlow.CapeOpen.SmokeTests` | 冒烟测试 | 目录占位 |
 
+### External .NET 10 Control Plane
+
+外部控制面当前不在本仓库内实现，但系统级职责与技术口径已经冻结：
+
+| 组件 | 当前职责 | 当前状态 |
+| --- | --- | --- |
+| `Radish.Auth` | OIDC 身份源与统一登录 | 外部平台依赖 |
+| `RadishFlow Control Plane` | `ASP.NET Core / .NET 10` 授权、manifest、lease、offline refresh、audit API | 体系结构已冻结；当前仓库已有客户端 DTO 与 HTTP 接线 |
+| `Asset Delivery` | 物性派生包下载入口，优先承载为对象存储 / CDN / 下载网关 | 体系结构已冻结；当前仓库只消费下载协议 |
+
+这里的关键点不是“把服务端代码也搬进当前 Monorepo”，而是先把客户端、桥接层与控制面之间的长期契约固定住。
+
 ## 当前关键边界
 
 第一阶段必须严格遵守以下边界：
@@ -91,6 +104,8 @@ RadishFlow 的目标架构已经冻结为三层：
 - 桌面端登录统一走 OIDC Authorization Code + PKCE，不内置长期 `client_secret`
 - 高价值物性资产不默认完整下发到客户端
 - 远端服务只承担控制面与资产分发面，不吞掉本地求解热路径
+- 外部控制面建议采用 `ASP.NET Core / .NET 10`，不额外引入新的 Go 服务主线
+- 资产分发优先采用对象存储 / CDN + 短时票据，而不是让控制面 API 长期直出大文件
 
 ## 当前开发策略
 
@@ -100,6 +115,7 @@ RadishFlow 的目标架构已经冻结为三层：
 2. 再进入 `rf-unitops`、`rf-flowsheet`、`rf-solver`
 3. 再做 `rf-ffi`
 4. 最后才让 `.NET 10` 适配层真正接入运行时
+5. 在桌面边界稳定后，按既有契约单独推进外部 `.NET 10` 控制面落地与部署
 
 这个顺序的目的，是把数值问题和 COM 互操作问题分开定位，避免后期排错混杂。
 

@@ -1,10 +1,10 @@
 # RadishFlow 架构草案
 
-更新时间：2026-03-29
+更新时间：2026-03-30
 
 ## 文档目的
 
-本文档用于定义一个面向未来的目标架构：在保留 CAPE-OPEN 互操作能力的前提下，构建一个以 Rust 为核心、以 Rust UI 为主界面、以 .NET 10 负责 COM/CAPE-OPEN 适配的新一代稳态流程模拟软件。
+本文档用于定义一个面向未来的目标架构：在保留 CAPE-OPEN 互操作能力的前提下，构建一个以 Rust 为核心、以 Rust UI 为主界面、以 `.NET 10` 负责 COM/CAPE-OPEN 适配、以 `ASP.NET Core / .NET 10` 负责远端授权与受控资产控制面的新一代稳态流程模拟软件。
 
 本文档描述的是**目标仓库与目标系统结构**，不是对当前 `CapeOpenCore` 仓库的立即目录改造说明。当前仓库可以作为 CAPE-OPEN 接口参考与适配层演进基础，但不建议直接原地演化为最终产品结构。
 
@@ -29,6 +29,7 @@
 | 桌面应用 | `RadishFlow Studio` | Rust UI 桌面程序 |
 | 核心引擎 | `RadishFlow Core` | Rust 模拟内核 |
 | CAPE-OPEN 适配层 | `RadishFlow CapeBridge` | .NET 10 COM/CAPE-OPEN 桥接层 |
+| 远端控制面 | `RadishFlow Control Plane` | ASP.NET Core / .NET 10 授权、租约与资产控制面 API |
 | 仓库名 | `RadishFlow` | 目标 Monorepo 名称 |
 
 ## 产品目标
@@ -40,6 +41,7 @@
 - 使用 Rust 实现稳态模拟核心
 - 使用 Rust 实现桌面 UI
 - 使用 .NET 10 实现 CAPE-OPEN/COM 适配层
+- 使用 `ASP.NET Core / .NET 10` 实现远端授权、租约与受控资产控制面
 - 只导出自有 CAPE-OPEN 模型给通用 PME 使用
 - 暂不支持加载第三方 CAPE-OPEN 模型
 - 支持最小化 MVP 热力学与单元模块
@@ -60,11 +62,12 @@
 
 ## 总体架构
 
-系统建议拆分为三层：
+系统建议拆分为桌面进程内三层，加一个独立外部服务平面：
 
 1. Rust Core
 2. Rust Studio UI
 3. .NET 10 CapeBridge
+4. .NET 10 Control Plane (External)
 
 ### Rust Core
 
@@ -102,6 +105,22 @@
 - ECape 异常映射
 - 对 Rust Core 的句柄式调用封装
 
+### .NET 10 Control Plane (External)
+
+负责：
+
+- 对接 `Radish.Auth` 与 OIDC / OAuth 2.0 身份体系
+- 返回 `EntitlementSnapshot`、`PropertyPackageManifest` 与离线租约
+- 为派生物性包签发短时下载票据或签名 URL
+- 管理受控资产审计、撤销与租约刷新
+- 保护 A 级原始物性资产，不让其默认完整下发到桌面端
+
+不负责：
+
+- 本地主求解循环
+- CAPE-OPEN / COM 适配
+- 用在线 RPC 替代本地 `rf-thermo` / `rf-flash` / `rf-solver`
+
 ## 技术选择
 
 ## Rust UI
@@ -118,6 +137,21 @@
 - 比一开始就上更重的桌面方案更适合 MVP
 
 后续如果需要更强的原生桌面风格，可再评估 Slint 或其他方案，但不建议第一阶段更换。
+
+## 外部控制面
+
+第一阶段推荐使用：
+
+- 服务框架：`ASP.NET Core`
+- 运行时：`.NET 10`
+- 资产分发：对象存储 / CDN / 下载网关 + 短时票据或签名 URL
+
+推荐原因：
+
+- 与现有 `Radish.Auth` 的 OIDC / Claims / Policy 体系更容易对齐
+- 与当前已经冻结的 `.NET 10` CAPE-OPEN 适配层处在同一语言生态，避免形成 Rust / .NET / Go 三线并行
+- 控制面本质上是认证、授权、租约与审计 API，不是数值热路径服务
+- 桌面端最终交付形态是“压缩包展开后直接运行”的原生客户端，不以服务端是否也能做单文件产物为决策中心
 
 ## Rust 与 .NET 边界
 
@@ -198,6 +232,11 @@ RadishFlow/
    ├─ themes/
    └─ sample-data/
 ```
+
+说明：
+
+- `Radish.Auth`、`RadishFlow Control Plane` 与资产分发基础设施属于系统外部依赖，当前不作为本仓库 Monorepo 的必备目录
+- 本仓库继续聚焦 Rust 客户端与 `.NET 10` CAPE-OPEN 适配层，不把远端服务端代码强行塞进 Rust workspace
 
 ## 仓库分层说明
 
@@ -516,4 +555,3 @@ Rust 与 .NET 的桥接层。
 - 第一阶段只完成最小稳态模拟闭环
 
 这条路线既保留了 `Radish` 品牌，也最大程度降低了 COM 与 CAPE-OPEN 对核心架构的侵入。
-

@@ -7,7 +7,7 @@
 | `architecture/overview.md` | 当前仓库的分层、crate 边界与阶段职责 |
 | `architecture/versioning.md` | 项目版本命名、Git tag 与发布轨道约定 |
 | `architecture/app-architecture.md` | 桌面 App 的壳层、状态与模块边界规划 |
-| `architecture/auth-entitlement-architecture.md` | 桌面登录、授权、远端物性资产与本地求解边界 |
+| `architecture/auth-entitlement-architecture.md` | 桌面登录、授权、远端 `.NET 10` 控制面与本地求解边界 |
 | `mvp/scope.md` | 第一阶段 MVP 的冻结范围、非目标与近期开发节奏 |
 | `thermo/mvp-model.md` | 热力学与 `TP Flash` 的最小接口与后续实现顺序 |
 | `capeopen/boundary.md` | Rust Core 与 .NET 10 CAPE-OPEN 适配层边界 |
@@ -15,6 +15,7 @@
 | `../.github/rulesets/master-protection.json` | `master` 保护规则模板 |
 | `devlogs/README.md` | 按周分文件的开发日志规范 |
 | `devlogs/2026-W13.md` | 2026 第 13 周开发日志 |
+| `devlogs/2026-W14.md` | 2026 第 14 周开发日志 |
 | `radishflow-architecture-draft.md` | RadishFlow 的目标架构草案 |
 | `radishflow-startup-checklist.md` | 新仓库启动清单与迁移边界 |
 | `radishflow-mvp-roadmap.md` | 第一阶段 MVP 开发路线图 |

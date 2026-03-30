@@ -1,6 +1,6 @@
 # Auth And Entitlement Architecture
 
-更新时间：2026-03-29
+更新时间：2026-03-30
 
 ## 目标
 
@@ -20,7 +20,7 @@
 2. Rust Studio UI
 3. .NET 10 CAPE-OPEN Bridge
 
-认证、授权与远端资产保护属于 **外部控制面**，不是 RadishFlow 桌面进程内部的新业务层。
+认证、授权与远端资产保护属于 **外部控制面**，不是 RadishFlow 桌面进程内部的新业务层；当前正式推荐该控制面采用 `ASP.NET Core / .NET 10` 实现。
 
 ## 背景
 
@@ -60,7 +60,7 @@ RadishFlow 虽然是桌面客户端，但后续会承载一部分高价值、不
 
 ## 当前正式决策
 
-截至 2026-03-29，以下口径正式冻结。
+截至 2026-03-30，以下口径正式冻结。
 
 ### 1. 身份协议
 
@@ -78,6 +78,7 @@ RadishFlow 虽然是桌面客户端，但后续会承载一部分高价值、不
 - RadishFlow 不自建第二套用户系统
 - RadishFlow 另建自己的 **授权与资产控制面 API**，但可以部署在 Radish 平台内
 - 当前建议把这部分能力称为 `RadishFlow Control Plane`
+- `RadishFlow Control Plane` 当前正式推荐采用 `ASP.NET Core / .NET 10`
 
 控制面职责：
 
@@ -93,6 +94,16 @@ RadishFlow 虽然是桌面客户端，但后续会承载一部分高价值、不
 - 主求解循环
 - 全量 TP Flash 在线求解
 - 对每一次单元迭代进行远端同步调用
+
+### 2.1 控制面实现建议
+
+当前进一步冻结以下技术口径：
+
+- 控制面 API 优先采用 `ASP.NET Core / .NET 10`
+- `Radish.Auth` 继续提供 OIDC / OAuth 2.0 身份源，控制面只消费已认证主体与 claims，不重做第二套登录系统
+- 物性派生包下载优先采用对象存储 / CDN / 下载网关，由控制面签发短时票据或签名 URL
+- 密钥、证书和签名材料优先托管在平台密钥设施中，不自创加密协议或自管长期明文密钥
+- 当前不额外引入 Go 作为新的控制面主语言，避免让桌面端、桥接层和控制面形成 Rust / .NET / Go 三套并行技术面
 
 ### 3. 数据分级
 
@@ -184,10 +195,10 @@ RadishFlow Studio (Desktop)
         │    └─ Radish.Auth
         │
         ├─ Entitlement / Lease / Manifest
-        │    └─ RadishFlow Control Plane
+        │    └─ RadishFlow Control Plane (ASP.NET Core / .NET 10)
         │
         ├─ Derived Property Package Download
-        │    └─ RadishFlow Asset Delivery
+        │    └─ Object Storage / CDN / Download Gateway
         │
         └─ Local Solver / Local Thermo / Local UI
              └─ 使用本地已授权的派生资产
@@ -201,6 +212,14 @@ RadishFlow Studio
         └─ Premium Remote Property Evaluation
              └─ 仅面向极少数绝不下发的高价值能力
 ```
+
+### 目标部署口径
+
+当前进一步明确以下部署边界：
+
+- 桌面端继续作为“压缩包展开后即可直接启动”的原生客户端交付，不把服务端进程混入桌面安装产物
+- `RadishFlow Control Plane` 与 `Asset Delivery` 属于远端独立部署服务，不要求与当前仓库共存于同一个 Monorepo
+- 当前仓库继续只维护桌面端所需的 DTO、缓存、下载与协议映射，不把服务端业务逻辑倒灌进 `rf-ui`、`rf-store` 或 `rf-thermo`
 
 ## 桌面端认证流程
 
@@ -245,6 +264,8 @@ RadishFlow Studio
 ### RadishFlow Control Plane
 
 建议最小资源：
+
+- 实现形态建议为 `ASP.NET Core / .NET 10` REST API
 
 - `GET /api/radishflow/entitlements/current`
   - 返回当前用户的 `EntitlementSnapshot`
