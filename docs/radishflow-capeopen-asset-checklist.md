@@ -327,15 +327,15 @@
 
 | 旧仓库来源 | 新仓库目标位置 |
 | --- | --- |
-| `COGuids.cs` | `adapters/dotnet-capeopen/src/RadishFlow.CapeOpen.Interop/Guids/` |
-| `CapeOpen.cs` | `adapters/dotnet-capeopen/src/RadishFlow.CapeOpen.Interop/Metadata/` |
-| `CommonIdl.cs` | `adapters/dotnet-capeopen/src/RadishFlow.CapeOpen.Interop/Common/` |
-| `CoseIDL.cs` | `adapters/dotnet-capeopen/src/RadishFlow.CapeOpen.Interop/Cose/` |
-| `UnitIDL.cs` | `adapters/dotnet-capeopen/src/RadishFlow.CapeOpen.Interop/Unit/` |
-| `ErrorIdl.cs` | `adapters/dotnet-capeopen/src/RadishFlow.CapeOpen.Interop/Errors/` |
-| 异常语义 | `adapters/dotnet-capeopen/src/RadishFlow.CapeOpen.Interop/Exceptions/` |
-| 注册语义参考 | `adapters/dotnet-capeopen/src/RadishFlow.CapeOpen.Registration/` |
-| 单元行为参考 | `adapters/dotnet-capeopen/src/RadishFlow.CapeOpen.UnitOp.Mvp/` |
+| `COGuids.cs` | `adapters/dotnet-capeopen/RadishFlow.CapeOpen.Interop/Guids/` |
+| `CapeOpen.cs` | `adapters/dotnet-capeopen/RadishFlow.CapeOpen.Interop/Metadata/` |
+| `CommonIdl.cs` | `adapters/dotnet-capeopen/RadishFlow.CapeOpen.Interop/Common/` |
+| `CoseIDL.cs` | `adapters/dotnet-capeopen/RadishFlow.CapeOpen.Interop/Cose/` |
+| `UnitIDL.cs` | `adapters/dotnet-capeopen/RadishFlow.CapeOpen.Interop/Unit/` |
+| `ErrorIdl.cs` | `adapters/dotnet-capeopen/RadishFlow.CapeOpen.Interop/Errors/` |
+| 异常语义 | `adapters/dotnet-capeopen/RadishFlow.CapeOpen.Interop/Exceptions/` |
+| 注册语义参考 | `adapters/dotnet-capeopen/RadishFlow.CapeOpen.Registration/` |
+| 单元行为参考 | `adapters/dotnet-capeopen/RadishFlow.CapeOpen.UnitOp.Mvp/` |
 
 ## Definition of Ready
 
@@ -357,4 +357,3 @@
 - 最小单元行为参考
 
 只要把这些资产抽出来，新仓库就能在不继承旧技术债的前提下，建立起自己的 `.NET 10 CAPE-OPEN` 适配层。
-
