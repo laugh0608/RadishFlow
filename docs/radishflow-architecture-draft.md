@@ -204,12 +204,11 @@ RadishFlow/
 │  └─ dotnet-capeopen/
 │     ├─ RadishFlow.CapeOpen.sln
 │     ├─ Directory.Build.props
-│     └─ src/
-│        ├─ RadishFlow.CapeOpen.Interop/
-│        ├─ RadishFlow.CapeOpen.Adapter/
-│        ├─ RadishFlow.CapeOpen.UnitOp.Mvp/
-│        ├─ RadishFlow.CapeOpen.Registration/
-│        └─ RadishFlow.CapeOpen.SmokeTests/
+│     ├─ RadishFlow.CapeOpen.Interop/
+│     ├─ RadishFlow.CapeOpen.Adapter/
+│     ├─ RadishFlow.CapeOpen.UnitOp.Mvp/
+│     ├─ RadishFlow.CapeOpen.Registration/
+│     └─ RadishFlow.CapeOpen.SmokeTests/
 ├─ bindings/
 │  └─ c/
 │     └─ radishflow.h
