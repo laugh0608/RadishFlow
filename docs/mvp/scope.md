@@ -134,24 +134,29 @@ App 与交互层当前进一步冻结以下口径：
 - 今天（2026-03-30）优先在已接通的控制面 client 与应用层编排之上，细化授权刷新后的 UI 事件流、联网失败提示和离线刷新触发策略
 - 之后优先恢复 `rf-thermo` / `rf-flash` 数值主线，再进入 `rf-solver` 的无回路顺序模块法与首个可求解 flowsheet 示例
 
+进一步补充：
+
+- 截至 2026-03-31，`rf-thermo` / `rf-flash` 的最小二元数值主线、黄金样例、`rf-unitops` / `rf-flowsheet` 的第一轮边界，以及 `rf-solver` 的首个无回路闭环都已提前推进
+- 当前近期主线已从“补第一条求解闭环”切换为“扩第二个内建单元、增加第二个示例 flowsheet，并细化求解结果与诊断口径”
+
 ### 2026-W16
 
-- 在 `rf-thermo` 中实现 Antoine 饱和蒸气压
-- 在 `rf-thermo` 中实现理想体系 `K` 值估算
-- 在 `rf-flash` 中实现 Rachford-Rice 和真正的二元 `TP Flash`
-- 在 `tests/thermo-golden` 与 `tests/flash-golden` 建立首批黄金样例
+- 已提前完成 `rf-thermo` 中的 Antoine 饱和蒸气压与理想体系 `K` 值估算
+- 已提前完成 `rf-flash` 中的 Rachford-Rice 和最小二元 `TP Flash`
+- 已提前建立 `tests/thermo-golden` 与 `tests/flash-golden` 的首批黄金样例
 
 ### 2026-W17
 
-- 在 `rf-unitops` 中建立 `Feed`、`Mixer`、`Flash Drum` 的最小统一接口
-- 在 `rf-flowsheet` 中建立端口连接与基本校验
-- 明确单元输入输出的标准流股接口
+- 已提前完成 `rf-unitops` 中 `Feed`、`Mixer`、`Flash Drum` 的最小统一接口
+- 已提前完成 `rf-flowsheet` 中的端口连接与基本校验
+- 已提前明确单元输入输出的标准流股接口与 canonical material ports
 
 ### 2026-W18
 
-- 在 `rf-solver` 中实现无回路顺序模块法
+- 已提前完成 `rf-solver` 中首轮无回路顺序模块法
+- 已提前增加第一个可直接从 `*.rfproj.json` 载入并求解的示例 flowsheet
 - 在已接通的控制面调用编排之上补授权刷新后的 UI 事件流和更细的联网失败策略
-- 在 `examples/flowsheets` 中增加第一个可求解示例
+- 扩第二个内建单元闭环示例，并补更完整的端到端回归样例
 
 ### 2026-W19 以后
 

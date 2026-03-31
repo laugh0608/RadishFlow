@@ -1,5 +1,7 @@
 # Thermo MVP Model
 
+更新时间：2026-03-31
+
 该目录用于沉淀第一阶段热力学模型范围与样例数据。
 
 ## 当前最小边界
@@ -18,7 +20,7 @@
 
 ## 已落地的数据契约
 
-当前最小 API 以“先建边界、后补算法”为原则，已包含：
+当前最小 API 已包含：
 
 - `ThermoComponent`
 - `AntoineCoefficients`
@@ -28,29 +30,39 @@
 - `TpFlashResult`
 - `TpFlashSolver`
 
+## 当前已实现内容
+
+- `rf-thermo` 已实现基于 Antoine 相关式的饱和蒸气压计算
+- `rf-thermo` 已实现基于理想体系假设的 `K` 值估算
+- `rf-flash` 已实现 Rachford-Rice 求解
+- `rf-flash` 已实现最小二元汽液两相 `TP Flash`
+- `rf-flash` 当前已可产出带 `overall` / `liquid` / `vapor` 相态结果的 `MaterialStreamState`
+
 ## 当前刻意未实现的内容
 
-为了避免在第一轮就把范围扩散到完整热力学求解，以下内容仍保持为下一步任务：
+为了避免在第一轮就把范围扩散到完整热力学求解，以下内容仍保持为后续任务：
 
-- Antoine 饱和蒸气压计算
-- Raoult 定律 `K` 值估算
-- Rachford-Rice 求解
-- 真正的汽液两相 `TP Flash`
 - 焓模型的数值实现
+- `PH Flash`
+- `PS Flash`
+- 泡点 / 露点
+- 多物性模型切换与更复杂 EOS
+- 超出当前 MVP 的复杂多组分与更大数据库能力
 
 ## 下一步建议
 
-下一步应在现有接口之上补真正的二元体系计算能力，优先顺序保持为：
+当前数值主线已经从“补第一版算法”切换为“围绕已实现算法建立更稳定的闭环与回归基线”，优先顺序建议保持为：
 
-1. Antoine 饱和蒸气压
-2. 理想体系 `K` 值估算
-3. Rachford-Rice
-4. `TP Flash` 相分率和相组成
+1. 继续补更稳定的黄金样例与边界条件测试
+2. 让 `rf-unitops` / `rf-solver` 复用现有 `TP Flash` 能力形成更完整的可求解流程闭环
+3. 在接口不漂移的前提下，再考虑焓模型和更复杂 flash 能力
+4. 待 MVP 闭环更稳后，再评估更真实 EOS 或更复杂物性模型
 
 ## 测试样例要求
 
-为避免数值接口在后续迭代中漂移，当前阶段应同步建立以下最小验证材料：
+为避免数值接口在后续迭代中漂移，当前阶段应持续维护以下最小验证材料：
 
-- 在 `tests/thermo-golden` 中维护热力学黄金样例
-- 在 `tests/flash-golden` 中维护 `TP Flash` 黄金样例
+- `tests/thermo-golden` 中的热力学黄金样例
+- `tests/flash-golden` 中的 `TP Flash` 黄金样例
+- 与 flowsheet 闭环样例联动的端到端回归样例
 - 黄金样例进入版本控制，数值变更应能够被回归测试直接发现
