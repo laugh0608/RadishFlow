@@ -2,3 +2,4 @@
 
 该目录存放示例流程。
 
+- `feed-mixer-flash.rfproj.json`: 当前最小可求解示例，覆盖 `Feed1 + Feed2 -> Mixer -> Flash Drum`

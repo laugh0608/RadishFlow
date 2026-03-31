@@ -695,6 +695,15 @@ dependencies = [
 [[package]]
 name = "rf-solver"
 version = "0.1.0"
+dependencies = [
+ "rf-flash",
+ "rf-flowsheet",
+ "rf-model",
+ "rf-store",
+ "rf-thermo",
+ "rf-types",
+ "rf-unitops",
+]
 
 [[package]]
 name = "rf-store"
