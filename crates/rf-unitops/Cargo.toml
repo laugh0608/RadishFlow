@@ -8,3 +8,9 @@ license-file.workspace = true
 repository.workspace = true
 homepage.workspace = true
 publish.workspace = true
+
+[dependencies]
+rf-flash = { path = "../rf-flash" }
+rf-model = { path = "../rf-model" }
+rf-thermo = { path = "../rf-thermo" }
+rf-types = { path = "../rf-types" }

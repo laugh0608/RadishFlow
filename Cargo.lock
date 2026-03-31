@@ -678,6 +678,11 @@ dependencies = [
 [[package]]
 name = "rf-flowsheet"
 version = "0.1.0"
+dependencies = [
+ "rf-model",
+ "rf-types",
+ "rf-unitops",
+]
 
 [[package]]
 name = "rf-model"
@@ -730,6 +735,12 @@ dependencies = [
 [[package]]
 name = "rf-unitops"
 version = "0.1.0"
+dependencies = [
+ "rf-flash",
+ "rf-model",
+ "rf-thermo",
+ "rf-types",
+]
 
 [[package]]
 name = "ring"

@@ -526,16 +526,26 @@ Rust 与 .NET 的桥接层。
 
 ## 当前仓库与目标仓库的关系
 
-建议把当前 CapeOpenCore 仓库视为以下资产来源：
+建议把当前外部参考资产视为以下来源：
 
 参考链接：
 
 - [CapeOpenCore](https://github.com/laugh0608/CapeOpenCore)
+- [DWSIM](https://github.com/DanWBR/dwsim)
 
 - CAPE-OPEN 接口定义参考
 - COM 注册行为参考
 - GUID 与属性语义参考
 - 示例 Unit Operation 行为参考
+- `Interfaces / FlowsheetBase / FlowsheetSolver / UnitOperations` 的职责拆分参考
+- 自动化 API、自动化测试入口与 standalone thermo 暴露方式的工程组织参考
+- 图形对象与求解对象分离、由连接关系决定求解顺序的实现思路参考
+
+补充约束：
+
+- `CapeOpenCore` 主要提供 CAPE-OPEN / COM 语义与互操作经验参考
+- `DWSIM` 主要提供大型开源流程模拟器的模块拆分、自动化入口和 flowsheet solver 组织经验参考
+- `DWSIM` 采用 GPL-3.0 许可，因此当前仓库只吸收架构和行为思路，不直接复制其实现代码
 
 不建议：
 

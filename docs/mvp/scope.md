@@ -1,6 +1,6 @@
 # MVP Scope
 
-更新时间：2026-03-30
+更新时间：2026-03-31
 
 ## MVP 目标
 
@@ -43,6 +43,9 @@
 - 相标签当前只保留 `overall`、`liquid`、`vapor`
 - `rf-model` 只负责对象模型，不先塞进求解策略和 COM 语义
 - `rf-thermo` 与 `rf-flash` 先定接口，再补 Antoine、Raoult 和 Rachford-Rice
+- `rf-unitops` 第一轮统一围绕标准 `MaterialStreamState` 输入输出，不提前把 flowsheet 调度或 FFI 细节塞进单元接口
+- `Feed`、`Mixer`、`Flash Drum` 当前先冻结为 canonical material ports：`Feed(outlet)`、`Mixer(inlet_a/inlet_b/outlet)`、`Flash Drum(inlet/liquid/vapor)`
+- `rf-flowsheet` 第一轮连接校验只覆盖 canonical material ports、流股存在性与“一股一源一汇”；终端产品流允许只有 source、没有 sink
 - `.NET 10` 适配层在 `M4` 前只允许文档和最小占位，不提前展开复杂运行时实现
 
 App 与交互层当前进一步冻结以下口径：

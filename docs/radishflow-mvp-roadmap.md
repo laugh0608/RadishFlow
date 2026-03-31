@@ -162,6 +162,12 @@ MVP 阶段明确不做：
 - `rf-solver`
 - `rf-store`
 
+### 当前收口口径
+
+- `rf-unitops` 第一轮统一接口先围绕标准 `MaterialStreamState` 输入输出与必要热力学服务注入
+- `Mixer` 当前先固定为两进一出，`Flash Drum` 当前先固定为一进两出，优先建立第一条可求解闭环
+- `rf-flowsheet` 第一轮只做 canonical material 端口签名、流股存在性与“一股一源一汇”校验，拓扑排序和顺序模块调度继续留给 `rf-solver`
+
 ### 退出标准
 
 - 能打开一个 JSON 示例流程

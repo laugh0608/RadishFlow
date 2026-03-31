@@ -53,7 +53,7 @@
 - 核心技术栈：Rust Core + Rust UI + `.NET 10` CAPE-OPEN/COM 适配层
 - 当前阶段：`M1/M2` 之间，重点是把骨架推进为真正可开发的基础结构
 - 当前工作区：只在 `D:\Code\RadishFlow` 内工作
-- 外部参考：`CapeOpenCore` 仅作为语义和历史经验参考，不在本仓库协作中跨工作区修改
+- 外部参考：`CapeOpenCore` 仅作为 CAPE-OPEN / COM 语义和历史经验参考；`DWSIM` 仅作为模块拆分、自动化入口和 flowsheet solver 组织经验参考；二者都不在本仓库协作中跨工作区修改，也不直接迁移实现代码
 
 ## 当前阶段产品边界
 

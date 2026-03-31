@@ -1,1 +1,295 @@
-pub fn placeholder() {}
+use std::collections::BTreeMap;
+
+use rf_model::Flowsheet;
+use rf_types::{PortDirection, PortKind, RfError, RfResult, StreamId, UnitId};
+use rf_unitops::validate_unit_node;
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MaterialPortRef {
+    pub unit_id: UnitId,
+    pub unit_name: String,
+    pub port_name: String,
+}
+
+impl MaterialPortRef {
+    fn new(unit_id: UnitId, unit_name: String, port_name: String) -> Self {
+        Self {
+            unit_id,
+            unit_name,
+            port_name,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MaterialConnection {
+    pub stream_id: StreamId,
+    pub source: MaterialPortRef,
+    pub sink: Option<MaterialPortRef>,
+}
+
+#[derive(Debug, Clone, Default)]
+struct MaterialEndpoints {
+    source: Option<MaterialPortRef>,
+    sink: Option<MaterialPortRef>,
+}
+
+pub fn validate_connections(flowsheet: &Flowsheet) -> RfResult<Vec<MaterialConnection>> {
+    let mut endpoints_by_stream = BTreeMap::<StreamId, MaterialEndpoints>::new();
+
+    for unit in flowsheet.units.values() {
+        validate_unit_node(unit).map_err(|error| {
+            RfError::invalid_connection(format!(
+                "unit `{}` does not match its canonical built-in port signature: {}",
+                unit.id,
+                error.message()
+            ))
+        })?;
+
+        for port in &unit.ports {
+            if port.kind != PortKind::Material {
+                continue;
+            }
+
+            let stream_id = port.stream_id.clone().ok_or_else(|| {
+                RfError::invalid_connection(format!(
+                    "unit `{}` material port `{}` is not connected to any stream",
+                    unit.id, port.name
+                ))
+            })?;
+            if !flowsheet.streams.contains_key(&stream_id) {
+                return Err(RfError::invalid_connection(format!(
+                    "unit `{}` material port `{}` references missing stream `{}`",
+                    unit.id, port.name, stream_id
+                )));
+            }
+
+            let endpoints = endpoints_by_stream.entry(stream_id.clone()).or_default();
+            let port_ref =
+                MaterialPortRef::new(unit.id.clone(), unit.name.clone(), port.name.clone());
+
+            match port.direction {
+                PortDirection::Outlet => {
+                    if let Some(existing) = &endpoints.source {
+                        return Err(RfError::invalid_connection(format!(
+                            "stream `{}` is produced by both `{}.{}` and `{}.{}`",
+                            stream_id,
+                            existing.unit_id,
+                            existing.port_name,
+                            port_ref.unit_id,
+                            port_ref.port_name
+                        )));
+                    }
+
+                    endpoints.source = Some(port_ref);
+                }
+                PortDirection::Inlet => {
+                    if let Some(existing) = &endpoints.sink {
+                        return Err(RfError::invalid_connection(format!(
+                            "stream `{}` is consumed by both `{}.{}` and `{}.{}`",
+                            stream_id,
+                            existing.unit_id,
+                            existing.port_name,
+                            port_ref.unit_id,
+                            port_ref.port_name
+                        )));
+                    }
+
+                    endpoints.sink = Some(port_ref);
+                }
+            }
+        }
+    }
+
+    for stream_id in flowsheet.streams.keys() {
+        if !endpoints_by_stream.contains_key(stream_id) {
+            return Err(RfError::invalid_connection(format!(
+                "stream `{}` is not connected to any material port",
+                stream_id
+            )));
+        }
+    }
+
+    endpoints_by_stream
+        .into_iter()
+        .map(|(stream_id, endpoints)| {
+            let source = endpoints.source.ok_or_else(|| {
+                RfError::invalid_connection(format!(
+                    "stream `{}` is missing an upstream outlet connection",
+                    stream_id
+                ))
+            })?;
+
+            Ok(MaterialConnection {
+                stream_id,
+                source,
+                sink: endpoints.sink,
+            })
+        })
+        .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::validate_connections;
+    use rf_model::{Composition, Flowsheet, MaterialStreamState, UnitNode, UnitPort};
+    use rf_types::{ComponentId, PortDirection, PortKind};
+    use rf_unitops::{FEED_KIND, build_feed_node, build_flash_drum_node, build_mixer_node};
+
+    fn binary_composition(first: f64, second: f64) -> Composition {
+        [
+            (ComponentId::new("component-a"), first),
+            (ComponentId::new("component-b"), second),
+        ]
+        .into_iter()
+        .collect()
+    }
+
+    fn build_stream(id: &str) -> MaterialStreamState {
+        MaterialStreamState::from_tpzf(
+            id,
+            id,
+            300.0,
+            101_325.0,
+            1.0,
+            binary_composition(0.5, 0.5),
+        )
+    }
+
+    #[test]
+    fn validates_feed_mixer_flash_drum_connection_chain() {
+        let mut flowsheet = Flowsheet::new("demo");
+        for stream_id in [
+            "stream-feed-a",
+            "stream-feed-b",
+            "stream-mix-out",
+            "stream-liquid",
+            "stream-vapor",
+        ] {
+            flowsheet
+                .insert_stream(build_stream(stream_id))
+                .expect("expected stream insert");
+        }
+        for unit in [
+            build_feed_node("feed-a", "Feed A", "stream-feed-a"),
+            build_feed_node("feed-b", "Feed B", "stream-feed-b"),
+            build_mixer_node(
+                "mixer-1",
+                "Mixer",
+                "stream-feed-a",
+                "stream-feed-b",
+                "stream-mix-out",
+            ),
+            build_flash_drum_node(
+                "flash-1",
+                "Flash Drum",
+                "stream-mix-out",
+                "stream-liquid",
+                "stream-vapor",
+            ),
+        ] {
+            flowsheet.insert_unit(unit).expect("expected unit insert");
+        }
+
+        let connections = validate_connections(&flowsheet).expect("expected valid connections");
+
+        assert_eq!(connections.len(), 5);
+        let liquid = connections
+            .iter()
+            .find(|connection| connection.stream_id.as_str() == "stream-liquid")
+            .expect("expected liquid connection");
+        assert!(liquid.sink.is_none());
+    }
+
+    #[test]
+    fn rejects_duplicate_stream_consumers() {
+        let mut flowsheet = Flowsheet::new("demo");
+        for stream_id in [
+            "shared-stream",
+            "stream-b",
+            "stream-out",
+            "stream-liquid",
+            "stream-vapor",
+        ] {
+            flowsheet
+                .insert_stream(build_stream(stream_id))
+                .expect("expected stream insert");
+        }
+        flowsheet
+            .insert_unit(build_feed_node("feed-1", "Feed", "shared-stream"))
+            .expect("expected feed insert");
+        flowsheet
+            .insert_unit(build_mixer_node(
+                "mixer-1",
+                "Mixer",
+                "shared-stream",
+                "stream-b",
+                "stream-out",
+            ))
+            .expect("expected mixer insert");
+        flowsheet
+            .insert_unit(build_flash_drum_node(
+                "flash-1",
+                "Flash Drum",
+                "shared-stream",
+                "stream-liquid",
+                "stream-vapor",
+            ))
+            .expect("expected flash insert");
+
+        let error = validate_connections(&flowsheet).expect_err("expected duplicate sink error");
+
+        assert_eq!(error.code().as_str(), "invalid_connection");
+        assert!(error.message().contains("consumed by both"));
+    }
+
+    #[test]
+    fn rejects_material_port_without_upstream_source() {
+        let mut flowsheet = Flowsheet::new("demo");
+        for stream_id in ["stream-feed-a", "stream-feed-b", "stream-out"] {
+            flowsheet
+                .insert_stream(build_stream(stream_id))
+                .expect("expected stream insert");
+        }
+        flowsheet
+            .insert_unit(build_mixer_node(
+                "mixer-1",
+                "Mixer",
+                "stream-feed-a",
+                "stream-feed-b",
+                "stream-out",
+            ))
+            .expect("expected mixer insert");
+
+        let error = validate_connections(&flowsheet).expect_err("expected missing source error");
+
+        assert_eq!(error.code().as_str(), "invalid_connection");
+        assert!(error.message().contains("missing an upstream outlet connection"));
+    }
+
+    #[test]
+    fn rejects_unknown_unit_port_signature() {
+        let mut flowsheet = Flowsheet::new("demo");
+        flowsheet
+            .insert_stream(build_stream("stream-feed"))
+            .expect("expected stream insert");
+        flowsheet
+            .insert_unit(UnitNode::new(
+                "feed-1",
+                "Feed",
+                FEED_KIND,
+                vec![UnitPort::new(
+                    "unexpected",
+                    PortDirection::Outlet,
+                    PortKind::Material,
+                    Some("stream-feed".into()),
+                )],
+            ))
+            .expect("expected unit insert");
+
+        let error = validate_connections(&flowsheet).expect_err("expected invalid unit error");
+
+        assert_eq!(error.code().as_str(), "invalid_connection");
+        assert!(error.message().contains("canonical built-in port signature"));
+    }
+}
