@@ -1,0 +1,31 @@
+{
+  "name": "binary-hydrocarbon-lite-v1 flash at 300 K, 650 kPa, z=[0.2, 0.8]",
+  "temperatureK": 300.0,
+  "pressurePa": 650000.0,
+  "totalMolarFlowMolS": 10.0,
+  "overallMoleFractions": [0.2, 0.8],
+  "components": [
+    {
+      "id": "methane",
+      "name": "Methane",
+      "antoine": {
+        "a": 8.987,
+        "b": 659.7,
+        "c": -16.7
+      }
+    },
+    {
+      "id": "ethane",
+      "name": "Ethane",
+      "antoine": {
+        "a": 8.952,
+        "b": 699.7,
+        "c": -22.8
+      }
+    }
+  ],
+  "expectedKValues": [1.1988955282274087, 0.952045323067378],
+  "expectedVaporFraction": 0.14839258047004478,
+  "expectedLiquidMoleFractions": [0.19426630373482381, 0.8057336962651762],
+  "expectedVaporMoleFractions": [0.23290500283294777, 0.7670949971670521]
+}

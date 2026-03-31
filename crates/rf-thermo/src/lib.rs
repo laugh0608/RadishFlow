@@ -21,6 +21,34 @@ impl AntoineCoefficients {
     pub fn new(a: f64, b: f64, c: f64) -> Self {
         Self { a, b, c }
     }
+
+    pub fn saturation_pressure_pa(&self, temperature_k: f64) -> RfResult<f64> {
+        if !temperature_k.is_finite() || temperature_k <= 0.0 {
+            return Err(RfError::invalid_input(
+                "temperature must be a finite number greater than zero kelvin",
+            ));
+        }
+
+        let denominator = temperature_k + self.c;
+        if !denominator.is_finite() || denominator.abs() <= f64::EPSILON {
+            return Err(RfError::thermo(
+                "Antoine correlation denominator is zero or non-finite",
+            ));
+        }
+
+        // Current MVP property packages interpret Antoine coefficients as:
+        // ln(P_sat / kPa) = A - B / (T[K] + C)
+        let ln_pressure_kpa = self.a - (self.b / denominator);
+        let saturation_pressure_pa = ln_pressure_kpa.exp() * 1_000.0;
+
+        if !saturation_pressure_pa.is_finite() || saturation_pressure_pa <= 0.0 {
+            return Err(RfError::thermo(
+                "Antoine correlation produced a non-finite saturation pressure",
+            ));
+        }
+
+        Ok(saturation_pressure_pa)
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -41,6 +69,17 @@ impl ThermoComponent {
             liquid_heat_capacity_j_per_mol_k: None,
             vapor_heat_capacity_j_per_mol_k: None,
         }
+    }
+
+    pub fn saturation_pressure_pa(&self, temperature_k: f64) -> RfResult<f64> {
+        let antoine = self.antoine.as_ref().ok_or_else(|| {
+            RfError::thermo(format!(
+                "component `{}` is missing Antoine coefficients",
+                self.id
+            ))
+        })?;
+
+        antoine.saturation_pressure_pa(temperature_k)
     }
 }
 
@@ -388,9 +427,14 @@ impl ThermoProvider for PlaceholderThermoProvider {
     fn estimate_k_values(&self, state: &ThermoState) -> RfResult<Vec<f64>> {
         self.system.validate_state(state)?;
 
-        Err(RfError::not_implemented(
-            "K-value estimation is not implemented yet",
-        ))
+        self.system
+            .components
+            .iter()
+            .map(|component| {
+                let saturation_pressure_pa = component.saturation_pressure_pa(state.temperature_k)?;
+                Ok(saturation_pressure_pa / state.pressure_pa)
+            })
+            .collect()
     }
 
     fn phase_molar_enthalpy(&self, state: &PhaseThermoState) -> RfResult<f64> {
@@ -524,11 +568,64 @@ mod tests {
     };
 
     use super::{
-        CachedPropertyPackageProvider, InMemoryPropertyPackageProvider,
-        PropertyPackageClassification, PropertyPackageManifest, PropertyPackageProvider,
-        PropertyPackageSource, ThermoComponent, ThermoSystem,
+        AntoineCoefficients, CachedPropertyPackageProvider, InMemoryPropertyPackageProvider,
+        PlaceholderThermoProvider, PropertyPackageClassification, PropertyPackageManifest,
+        PropertyPackageProvider, PropertyPackageSource, ThermoComponent, ThermoProvider,
+        ThermoState, ThermoSystem,
     };
     use rf_types::ComponentId;
+
+    fn assert_close(actual: f64, expected: f64, tolerance: f64) {
+        let delta = (actual - expected).abs();
+        assert!(
+            delta <= tolerance,
+            "expected {actual} to be within {tolerance} of {expected}, delta was {delta}"
+        );
+    }
+
+    #[test]
+    fn antoine_coefficients_estimate_saturation_pressure_in_pascal() {
+        let coefficients = AntoineCoefficients::new(5.0, 1_200.0, 0.0);
+        let pressure = coefficients
+            .saturation_pressure_pa(300.0)
+            .expect("expected saturation pressure");
+
+        assert_close(pressure, std::f64::consts::E * 1_000.0, 1e-9);
+    }
+
+    #[test]
+    fn placeholder_provider_estimates_ideal_k_values_from_saturation_pressure() {
+        let mut methane = ThermoComponent::new(ComponentId::new("methane"), "Methane");
+        methane.antoine = Some(AntoineCoefficients::new(50.0_f64.ln(), 0.0, 0.0));
+
+        let mut ethane = ThermoComponent::new(ComponentId::new("ethane"), "Ethane");
+        ethane.antoine = Some(AntoineCoefficients::new(25.0_f64.ln(), 0.0, 0.0));
+
+        let provider = PlaceholderThermoProvider::new(ThermoSystem::binary([methane, ethane]));
+        let state = ThermoState::new(300.0, 50_000.0, vec![0.4, 0.6]);
+
+        let k_values = provider
+            .estimate_k_values(&state)
+            .expect("expected K-value estimation");
+
+        assert_eq!(k_values.len(), 2);
+        assert_close(k_values[0], 1.0, 1e-12);
+        assert_close(k_values[1], 0.5, 1e-12);
+    }
+
+    #[test]
+    fn placeholder_provider_rejects_missing_antoine_coefficients() {
+        let methane = ThermoComponent::new(ComponentId::new("methane"), "Methane");
+        let provider = PlaceholderThermoProvider::new(ThermoSystem::new(vec![methane]));
+        let state = ThermoState::new(300.0, 101_325.0, vec![1.0]);
+
+        let error = provider
+            .estimate_k_values(&state)
+            .expect_err("expected missing Antoine coefficients");
+
+        assert_eq!(error.code().as_str(), "thermo");
+        assert!(error.message().contains("missing Antoine coefficients"));
+    }
 
     #[test]
     fn package_provider_returns_manifest_and_system_for_known_package() {
