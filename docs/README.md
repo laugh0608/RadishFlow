@@ -5,6 +5,7 @@
 | 文档 | 说明 |
 | --- | --- |
 | `architecture/overview.md` | 当前仓库的分层、crate 边界与阶段职责 |
+| `architecture/open-source-references.md` | 可借鉴的开源流程模拟、物性和算法参考清单及许可边界 |
 | `architecture/versioning.md` | 项目版本命名、Git tag 与发布轨道约定 |
 | `architecture/app-architecture.md` | 桌面 App 的壳层、状态与模块边界规划 |
 | `architecture/auth-entitlement-architecture.md` | 桌面登录、授权、远端 `.NET 10` 控制面与本地求解边界 |
