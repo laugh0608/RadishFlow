@@ -10,6 +10,24 @@ use crate::{
     solve_workspace_with_property_package,
 };
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum WorkspaceSolveTrigger {
+    Manual,
+    Automatic,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum WorkspaceSolveSkipReason {
+    HoldMode,
+    NoPendingRequest,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum WorkspaceSolveDispatch {
+    Started(StudioSolveRequest),
+    Skipped(WorkspaceSolveSkipReason),
+}
+
 #[derive(Debug, Clone, Default)]
 pub struct WorkspaceSolveService;
 
@@ -35,10 +53,17 @@ impl WorkspaceSolveService {
     where
         P: PropertyPackageProvider,
     {
-        let request = self.build_request(app_state, package_id)?;
-        app_state.request_manual_run();
-        solve_workspace_with_property_package(app_state, package_provider, &request)?;
-        Ok(request)
+        match self.dispatch_with_property_package(
+            app_state,
+            package_provider,
+            package_id,
+            WorkspaceSolveTrigger::Manual,
+        )? {
+            WorkspaceSolveDispatch::Started(request) => Ok(request),
+            WorkspaceSolveDispatch::Skipped(reason) => {
+                unreachable!("manual workspace solve should never skip, got {reason:?}")
+            }
+        }
     }
 
     pub fn run_from_auth_cache(
@@ -48,10 +73,62 @@ impl WorkspaceSolveService {
         auth_cache_index: &StoredAuthCacheIndex,
         package_id: impl Into<String>,
     ) -> RfResult<StudioSolveRequest> {
+        match self.dispatch_from_auth_cache(
+            app_state,
+            cache_root,
+            auth_cache_index,
+            package_id,
+            WorkspaceSolveTrigger::Manual,
+        )? {
+            WorkspaceSolveDispatch::Started(request) => Ok(request),
+            WorkspaceSolveDispatch::Skipped(reason) => unreachable!(
+                "manual workspace solve from auth cache should never skip, got {reason:?}"
+            ),
+        }
+    }
+
+    pub fn dispatch_with_property_package<P>(
+        &self,
+        app_state: &mut AppState,
+        package_provider: &P,
+        package_id: impl Into<String>,
+        trigger: WorkspaceSolveTrigger,
+    ) -> RfResult<WorkspaceSolveDispatch>
+    where
+        P: PropertyPackageProvider,
+    {
+        if let Some(skip_reason) = should_skip_workspace_solve(app_state, trigger) {
+            return Ok(WorkspaceSolveDispatch::Skipped(skip_reason));
+        }
+
+        if matches!(trigger, WorkspaceSolveTrigger::Manual) {
+            app_state.request_manual_run();
+        }
+
         let request = self.build_request(app_state, package_id)?;
-        app_state.request_manual_run();
+        solve_workspace_with_property_package(app_state, package_provider, &request)?;
+        Ok(WorkspaceSolveDispatch::Started(request))
+    }
+
+    pub fn dispatch_from_auth_cache(
+        &self,
+        app_state: &mut AppState,
+        cache_root: impl AsRef<Path>,
+        auth_cache_index: &StoredAuthCacheIndex,
+        package_id: impl Into<String>,
+        trigger: WorkspaceSolveTrigger,
+    ) -> RfResult<WorkspaceSolveDispatch> {
+        if let Some(skip_reason) = should_skip_workspace_solve(app_state, trigger) {
+            return Ok(WorkspaceSolveDispatch::Skipped(skip_reason));
+        }
+
+        if matches!(trigger, WorkspaceSolveTrigger::Manual) {
+            app_state.request_manual_run();
+        }
+
+        let request = self.build_request(app_state, package_id)?;
         solve_workspace_from_auth_cache(app_state, cache_root, auth_cache_index, &request)?;
-        Ok(request)
+        Ok(WorkspaceSolveDispatch::Started(request))
     }
 }
 
@@ -70,6 +147,28 @@ pub fn build_workspace_solve_request(
     let request = StudioSolveRequest::new(package_id, snapshot_id, sequence);
     request.validate()?;
     Ok(request)
+}
+
+fn should_skip_workspace_solve(
+    app_state: &AppState,
+    trigger: WorkspaceSolveTrigger,
+) -> Option<WorkspaceSolveSkipReason> {
+    if matches!(trigger, WorkspaceSolveTrigger::Manual) {
+        return None;
+    }
+
+    if !matches!(
+        app_state.workspace.solve_session.mode,
+        rf_ui::SimulationMode::Active
+    ) {
+        return Some(WorkspaceSolveSkipReason::HoldMode);
+    }
+
+    if app_state.workspace.solve_session.pending_reason.is_none() {
+        return Some(WorkspaceSolveSkipReason::NoPendingRequest);
+    }
+
+    None
 }
 
 #[cfg(test)]
@@ -92,7 +191,10 @@ mod tests {
     use rf_types::ComponentId;
     use rf_ui::{AppState, DocumentMetadata, FlowsheetDocument, RunStatus};
 
-    use crate::{WorkspaceSolveService, build_workspace_solve_request};
+    use super::{
+        WorkspaceSolveDispatch, WorkspaceSolveService, WorkspaceSolveSkipReason,
+        WorkspaceSolveTrigger, build_workspace_solve_request,
+    };
 
     fn timestamp(seconds: u64) -> std::time::SystemTime {
         UNIX_EPOCH + Duration::from_secs(seconds)
@@ -187,6 +289,118 @@ mod tests {
             RunStatus::Converged
         );
         assert_eq!(app_state.workspace.snapshot_history.len(), 1);
+    }
+
+    #[test]
+    fn automatic_dispatch_skips_when_workspace_is_on_hold() {
+        let provider = sample_provider();
+        let service = WorkspaceSolveService::new();
+        let project = parse_project_file_json(include_str!(
+            "../../../examples/flowsheets/feed-heater-flash.rfproj.json"
+        ))
+        .expect("expected project parse");
+        let mut app_state = AppState::new(FlowsheetDocument::new(
+            project.document.flowsheet,
+            DocumentMetadata::new("doc-auto-hold", "Auto Hold Demo", timestamp(35)),
+        ));
+
+        let dispatch = service
+            .dispatch_with_property_package(
+                &mut app_state,
+                &provider,
+                "binary-hydrocarbon-lite-v1",
+                WorkspaceSolveTrigger::Automatic,
+            )
+            .expect("expected dispatch result");
+
+        assert_eq!(
+            dispatch,
+            WorkspaceSolveDispatch::Skipped(WorkspaceSolveSkipReason::HoldMode)
+        );
+        assert!(app_state.workspace.snapshot_history.is_empty());
+    }
+
+    #[test]
+    fn automatic_dispatch_skips_when_active_workspace_has_no_pending_request() {
+        let provider = sample_provider();
+        let service = WorkspaceSolveService::new();
+        let project = parse_project_file_json(include_str!(
+            "../../../examples/flowsheets/feed-heater-flash.rfproj.json"
+        ))
+        .expect("expected project parse");
+        let mut app_state = AppState::new(FlowsheetDocument::new(
+            project.document.flowsheet,
+            DocumentMetadata::new("doc-auto-clean", "Auto Clean Demo", timestamp(36)),
+        ));
+
+        app_state.set_simulation_mode(rf_ui::SimulationMode::Active);
+        let first = service
+            .run_with_property_package(&mut app_state, &provider, "binary-hydrocarbon-lite-v1")
+            .expect("expected manual solve");
+        assert_eq!(first.sequence, 1);
+
+        let dispatch = service
+            .dispatch_with_property_package(
+                &mut app_state,
+                &provider,
+                "binary-hydrocarbon-lite-v1",
+                WorkspaceSolveTrigger::Automatic,
+            )
+            .expect("expected dispatch result");
+
+        assert_eq!(
+            dispatch,
+            WorkspaceSolveDispatch::Skipped(WorkspaceSolveSkipReason::NoPendingRequest)
+        );
+        assert_eq!(app_state.workspace.snapshot_history.len(), 1);
+    }
+
+    #[test]
+    fn automatic_dispatch_runs_when_active_workspace_has_pending_reason() {
+        let provider = sample_provider();
+        let service = WorkspaceSolveService::new();
+        let project = parse_project_file_json(include_str!(
+            "../../../examples/flowsheets/feed-heater-flash.rfproj.json"
+        ))
+        .expect("expected project parse");
+        let mut app_state = AppState::new(FlowsheetDocument::new(
+            project.document.flowsheet.clone(),
+            DocumentMetadata::new("doc-auto-run", "Auto Run Demo", timestamp(37)),
+        ));
+
+        app_state.set_simulation_mode(rf_ui::SimulationMode::Active);
+        app_state.commit_document_change(
+            rf_ui::DocumentCommand::RenameUnit {
+                unit_id: rf_types::UnitId::new("heater-1"),
+                new_name: "Heater Updated".to_string(),
+            },
+            project.document.flowsheet,
+            timestamp(38),
+        );
+
+        let dispatch = service
+            .dispatch_with_property_package(
+                &mut app_state,
+                &provider,
+                "binary-hydrocarbon-lite-v1",
+                WorkspaceSolveTrigger::Automatic,
+            )
+            .expect("expected dispatch result");
+
+        let request = match dispatch {
+            WorkspaceSolveDispatch::Started(request) => request,
+            WorkspaceSolveDispatch::Skipped(reason) => {
+                panic!("expected automatic dispatch to run, got {reason:?}")
+            }
+        };
+
+        assert_eq!(request.sequence, 1);
+        assert_eq!(request.snapshot_id, "doc-auto-run-rev-1-seq-1");
+        assert_eq!(
+            app_state.workspace.solve_session.status,
+            RunStatus::Converged
+        );
+        assert_eq!(app_state.workspace.solve_session.pending_reason, None);
     }
 
     #[test]
