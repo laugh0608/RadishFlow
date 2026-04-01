@@ -4,6 +4,7 @@ mod control_plane_sync;
 mod property_package_download;
 mod property_package_download_client;
 mod solver_bridge;
+mod workspace_run_command;
 mod workspace_solve_service;
 
 pub use auth_cache_sync::{
@@ -40,6 +41,10 @@ pub use property_package_download_client::{
 pub use solver_bridge::{
     StudioSolveRequest, next_solver_snapshot_sequence, solve_workspace_from_auth_cache,
     solve_workspace_with_property_package,
+};
+pub use workspace_run_command::{
+    WorkspaceRunCommand, WorkspaceRunDispatchResult, WorkspaceRunPackageSelection,
+    dispatch_workspace_run_from_auth_cache, resolve_workspace_run_package_id,
 };
 pub use workspace_solve_service::{
     WorkspaceSolveDispatch, WorkspaceSolveService, WorkspaceSolveSkipReason, WorkspaceSolveTrigger,
