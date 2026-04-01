@@ -1,6 +1,6 @@
 # RadishFlow 架构草案
 
-更新时间：2026-03-31
+更新时间：2026-04-01
 
 ## 文档目的
 
@@ -93,6 +93,7 @@
 - 结果展示
 - 日志与诊断
 - 项目打开保存
+- 受控物性包选择与工作区运行命令编排
 
 ### .NET 10 CapeBridge
 
@@ -250,8 +251,17 @@ RadishFlow/
 - 菜单、工具栏、状态栏
 - 文档生命周期管理
 - 将 `rf-ui`、`rf-canvas`、`rf-solver` 等能力组装为产品
+- 负责 auth cache、本地物性包选择、工作区运行命令与结果回写的应用层编排
 
 不建议在这里直接堆放热力学与求解细节。
+
+当前对齐：
+
+- 已建立控制面 client、auth cache sync 与本地派生包下载落盘编排
+- 已建立 `solver_bridge`，把 `PropertyPackageProvider` / 本地 auth cache 与 `rf-solver`、`rf-ui::AppState` 接通
+- 已建立 `WorkspaceSolveService`，收口默认 request、手动/自动运行门控与工作区求解分发
+- 已建立 `WorkspaceRunCommand`，把“触发类型 + package 选择”抽成更接近桌面命令层的对象
+- 当前默认包选择策略保持保守，只在唯一候选时自动选中，多包场景要求显式指定 package
 
 ## `crates/rf-types`
 
@@ -404,6 +414,11 @@ Rust UI 逻辑层。
 - 这里放“UI 行为逻辑”
 - 不直接承载底层算法实现
 
+当前对齐：
+
+- 已冻结 `AppState`、`WorkspaceState`、`SolveSessionState` 与 `SolveSnapshot` 的最小边界
+- 已具备从 `rf-solver::SolveSnapshot` 映射到 UI 层快照并写回 `AppState` 的桥接
+
 ## `crates/rf-canvas`
 
 流程图画布专用库。
@@ -540,7 +555,7 @@ Rust 与 .NET 的桥接层。
 6. 实现 `rf-ffi`
 7. 用 .NET 10 实现 `RadishFlow.CapeOpen.Adapter`
 8. 导出第一个可被 PME 识别的 Unit Operation PMC
-9. 再建设 `radishflow-studio` 的画布与属性编辑 UI
+9. 在当前已建立的运行命令与求解服务边界之上，再建设 `radishflow-studio` 的画布、属性编辑与最终桌面运行触发入口
 
 ## 当前仓库与目标仓库的关系
 

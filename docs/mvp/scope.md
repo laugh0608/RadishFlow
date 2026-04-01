@@ -1,6 +1,6 @@
 # MVP Scope
 
-更新时间：2026-03-31
+更新时间：2026-04-01
 
 ## MVP 目标
 
@@ -60,6 +60,9 @@ App 与交互层当前进一步冻结以下口径：
 - `UserPreferences` 只保存应用级偏好与快照窗口策略，不污染文档语义
 - `CommandHistory` 只记录语义化文档命令，运行控制和文档生命周期动作不进入撤回栈
 - `SolveSessionState` 必须绑定当前观察的文档修订号，`SolveSnapshot` 由工作区持有有界历史窗口
+- Studio 当前应用层运行入口先冻结为 `WorkspaceRunCommand + WorkspaceSolveService + solver_bridge` 三层，不让 UI 直接拼接底层 provider/solver 细节
+- Studio 当前运行触发先明确区分 `Manual` / `Automatic`，并把 `SimulationMode` / `pending_reason` 的运行门控收口在应用层
+- Studio 当前默认包选择采取保守策略：只有唯一候选包明确时才自动选中；多包场景必须显式指定 package，不在当前阶段隐式猜包
 
 认证、授权与受控物性资产当前进一步冻结以下口径：
 
@@ -138,6 +141,12 @@ App 与交互层当前进一步冻结以下口径：
 
 - 截至 2026-03-31，`rf-thermo` / `rf-flash` 的最小二元数值主线、黄金样例、`rf-unitops` / `rf-flowsheet` 的第一轮边界，以及 `rf-solver` 的首个无回路闭环都已提前推进
 - 当前近期主线已从“补第一条求解闭环”切换为“扩第二个内建单元、增加第二个示例 flowsheet，并细化求解结果与诊断口径”
+
+截至 2026-04-01，再补充对齐：
+
+- `rf-ui` 已能把内核 `SolveSnapshot` 映射并回写到 `AppState`
+- `apps/radishflow-studio` 已具备从物性包加载、工作区运行命令、运行门控到结果回写的最小应用层闭环
+- 当前近期 Studio 主线已从“只有求解 bridge”切换为“继续把运行命令、结果派发和后续异步执行边界收口”
 
 ### 2026-W16
 

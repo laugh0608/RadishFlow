@@ -1,6 +1,6 @@
 # RadishFlow MVP 开发路线图
 
-更新时间：2026-03-31
+更新时间：2026-04-01
 
 ## 文档目的
 
@@ -173,6 +173,10 @@ MVP 阶段明确不做：
 - `rf-solver` 当前已补最小求解诊断层：`SolveSnapshot` 至少包含 summary、仓库级 diagnostics 和逐步执行 step 明细；失败路径至少带 step 序号、unit id / kind 与 inlet stream 上下文
 - `examples/flowsheets` 当前应维护至少三条可直接从 `*.rfproj.json` 载入并求解的示例项目，作为内核闭环回归基线
 - `tests/rust-integration` 当前应作为仓库级 Rust 集成测试入口，覆盖“加载项目 -> 求解 -> 读取结果”的示例流程回归
+- `rf-ui` 当前已具备把 `rf-solver::SolveSnapshot` 回写为 UI 层结果快照的稳定映射
+- `apps/radishflow-studio` 当前已具备 `solver_bridge -> WorkspaceSolveService -> WorkspaceRunCommand` 三级应用层入口，可基于 `PropertyPackageProvider` 或本地 `StoredAuthCacheIndex` 执行真实 solve
+- Studio 当前把运行触发先区分为 `Manual` / `Automatic`，并把 `SimulationMode`、`pending_reason` 与默认 `snapshot_id` / `sequence` 生成收口到应用层
+- Studio 当前默认包选择采取保守策略：只有在唯一候选包明确时才自动选中，多包场景必须显式指定 package
 
 ### 退出标准
 
@@ -181,6 +185,7 @@ MVP 阶段明确不做：
 - 能输出每股流体的基本状态结果
 - 已具备最小集成测试，能覆盖“加载项目 -> 求解 -> 读取结果”的端到端数据流
 - 仓库级验证入口 `scripts/check-repo.ps1` / `scripts/check-repo.sh` 已自动覆盖这些集成测试
+- Studio 应用层已具备显式运行命令 / 服务边界，不要求最终桌面按钮已接通，但不再由 UI 直接拼接底层 provider/solver 调用
 
 ## M4：Rust FFI 与 .NET 10 适配层打通
 
@@ -276,6 +281,18 @@ MVP 阶段明确不做：
 - 今天（2026-03-30）优先细化授权刷新后的 UI 事件流、联网失败提示和离线刷新触发策略
 - 随后恢复 `rf-thermo` / `rf-flash` 数值主线，避免地基建设继续挤占核心算法推进
 - 在数值主线恢复后，再进入 `rf-solver` 无回路顺序模块法和首个可求解 flowsheet 示例
+
+截至 2026-04-01，M3 与 Studio 应用层又进一步前推，当前已完成：
+
+- `solver_bridge`：把 `PropertyPackageProvider` / 本地 auth cache 与 `rf-solver`、`rf-ui::AppState` 接通
+- `WorkspaceSolveService`：把默认 request、手动/自动触发门控与工作区求解分发收口为应用服务入口
+- `WorkspaceRunCommand`：把“触发类型 + package 选择”抽成更接近桌面命令层的对象，并冻结当前默认包选择策略
+
+基于上述进展，当前下一阶段计划调整为：
+
+- 继续把 `WorkspaceRunCommand + WorkspaceSolveService` 接到明确的桌面运行触发点
+- 继续冻结运行结果派发、日志入口与后续异步执行边界
+- 在不打乱当前边界的前提下，再恢复更完整的 Studio 交互流和内核主线推进
 
 ## 推荐工作流
 
