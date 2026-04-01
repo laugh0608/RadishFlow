@@ -261,7 +261,9 @@ RadishFlow/
 - 已建立 `solver_bridge`，把 `PropertyPackageProvider` / 本地 auth cache 与 `rf-solver`、`rf-ui::AppState` 接通
 - 已建立 `WorkspaceSolveService`，收口默认 request、手动/自动运行门控与工作区求解分发
 - 已建立 `WorkspaceRunCommand`，把“触发类型 + package 选择”抽成更接近桌面命令层的对象
+- 已建立 `StudioAppFacade`，把 auth cache 上下文、运行命令、结果派发摘要和后续异步执行边界收口为当前明确的桌面应用入口
 - 当前默认包选择策略保持保守，只在唯一候选时自动选中，多包场景要求显式指定 package
+- Automatic 运行当前先根据 `SimulationMode` / `pending_reason` 决定是否 skip，再决定是否需要 preferred package 解析
 
 ## `crates/rf-types`
 
@@ -555,7 +557,7 @@ Rust 与 .NET 的桥接层。
 6. 实现 `rf-ffi`
 7. 用 .NET 10 实现 `RadishFlow.CapeOpen.Adapter`
 8. 导出第一个可被 PME 识别的 Unit Operation PMC
-9. 在当前已建立的运行命令与求解服务边界之上，再建设 `radishflow-studio` 的画布、属性编辑与最终桌面运行触发入口
+9. 在当前已建立的 `StudioAppFacade + WorkspaceRunCommand + WorkspaceSolveService` 运行边界之上，再建设 `radishflow-studio` 的画布、属性编辑与最终桌面运行触发入口
 
 ## 当前仓库与目标仓库的关系
 

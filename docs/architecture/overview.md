@@ -73,10 +73,10 @@ RadishFlow 的目标架构已经冻结为“桌面端三层 + 外部控制面”
 
 - 从 `PropertyPackageProvider` 或本地 `StoredAuthCacheIndex` 加载 `ThermoSystem`
 - 组装 `PlaceholderThermoProvider + PlaceholderTpFlashSolver + SequentialModularSolver`
-- 通过 `WorkspaceRunCommand + WorkspaceSolveService` 完成包选择解析、默认 request 生成和手动/自动触发门控，再将内核 `SolveSnapshot` 回写到 `rf-ui::AppState`
+- 通过 `StudioAppFacade -> WorkspaceRunCommand -> WorkspaceSolveService -> solver_bridge` 完成 auth cache 上下文承接、包选择解析、默认 request 生成和手动/自动触发门控，再将内核 `SolveSnapshot` 回写到 `rf-ui::AppState`
 - 在求解成功/失败时同步更新 `SolveSessionState` 与 `AppLogFeed`
 
-这意味着当前仓库已从“只有 UI 层快照映射桥”推进到“应用组合层已有明确 service 入口可驱动真实求解”，但仍未把这条入口接成最终桌面命令或交互动作。
+这意味着当前仓库已从“只有 UI 层快照映射桥”推进到“应用组合层已有 facade / command 入口可驱动真实求解”，但仍未把这条入口接成最终桌面命令或交互动作。
 
 这些决定的目的是先把 UI 和求解层之间的长期接口边界定清楚，再决定具体控件和交互实现。
 
