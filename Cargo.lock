@@ -580,7 +580,11 @@ name = "radishflow-studio"
 version = "0.1.0"
 dependencies = [
  "reqwest",
+ "rf-flash",
+ "rf-model",
+ "rf-solver",
  "rf-store",
+ "rf-thermo",
  "rf-types",
  "rf-ui",
  "serde",

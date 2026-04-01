@@ -1,6 +1,6 @@
 # Architecture Overview
 
-更新时间：2026-03-31
+更新时间：2026-04-01
 
 ## 目标
 
@@ -57,7 +57,7 @@ RadishFlow 的目标架构已经冻结为“桌面端三层 + 外部控制面”
 | --- | --- | --- |
 | `rf-ui` | UI 状态与行为逻辑 | 已建立 `AppState`、授权态、求解态与控制面 DTO 骨架，并可把 `rf-solver::SolveSnapshot` 映射为 UI 层结果快照 |
 | `rf-canvas` | 流程图画布能力 | 占位 |
-| `apps/radishflow-studio` | 桌面入口程序 | 已建立 auth cache sync 桥接、控制面 HTTP client、entitlement / manifest / lease / offline refresh 编排、下载获取抽象、基于 `reqwest + rustls` 的真实 HTTP transport、HTTP 请求/响应适配层、可重试/不可重试失败分类、下载 JSON 到本地 payload DTO 的协议映射、摘要校验、失败回滚与测试 |
+| `apps/radishflow-studio` | 桌面入口程序 | 已建立 auth cache sync 桥接、控制面 HTTP client、entitlement / manifest / lease / offline refresh 编排、下载获取抽象、基于 `reqwest + rustls` 的真实 HTTP transport、HTTP 请求/响应适配层、可重试/不可重试失败分类、下载 JSON 到本地 payload DTO 的协议映射、摘要校验、失败回滚与测试；并已补上 `PropertyPackageProvider -> rf-solver -> rf-ui::AppState` 的最小工作区求解桥接，可直接基于已加载物性包或本地 auth cache 执行真实 solve 并回写 UI 快照/日志 |
 
 原因很直接：在 `M2/M3` 之前过早推进 UI，会掩盖内核尚未定型的问题。
 
@@ -68,6 +68,15 @@ RadishFlow 的目标架构已经冻结为“桌面端三层 + 外部控制面”
 - `SimulationMode` / `RunStatus` 分离
 - 独立 `SolveSnapshot`
 - OIDC / 授权 / 远端资产保护作为外部控制面，而不是塞进 Rust Core
+
+同时，Studio 应用层当前已经具备一条可测试的最小真实求解链路：
+
+- 从 `PropertyPackageProvider` 或本地 `StoredAuthCacheIndex` 加载 `ThermoSystem`
+- 组装 `PlaceholderThermoProvider + PlaceholderTpFlashSolver + SequentialModularSolver`
+- 将内核 `SolveSnapshot` 回写到 `rf-ui::AppState`
+- 在求解成功/失败时同步更新 `SolveSessionState` 与 `AppLogFeed`
+
+这意味着当前仓库已从“只有 UI 层快照映射桥”推进到“应用组合层可驱动真实求解”，但仍未把这条入口接成最终桌面命令或交互动作。
 
 这些决定的目的是先把 UI 和求解层之间的长期接口边界定清楚，再决定具体控件和交互实现。
 

@@ -3,6 +3,7 @@ mod control_plane_client;
 mod control_plane_sync;
 mod property_package_download;
 mod property_package_download_client;
+mod solver_bridge;
 
 pub use auth_cache_sync::{
     apply_offline_refresh_to_auth_cache, build_auth_cache_index, build_offline_refresh_request,
@@ -34,4 +35,8 @@ pub use property_package_download_client::{
     PropertyPackageDownloadRetryPolicy, ReqwestPropertyPackageDownloadHttpTransport,
     ReqwestPropertyPackageDownloadHttpTransportOptions, download_property_package_to_cache,
     download_property_package_to_cache_with_retry_policy,
+};
+pub use solver_bridge::{
+    StudioSolveRequest, next_solver_snapshot_sequence, solve_workspace_from_auth_cache,
+    solve_workspace_with_property_package,
 };
