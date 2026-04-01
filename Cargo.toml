@@ -13,6 +13,7 @@ members = [
     "crates/rf-ui",
     "crates/rf-canvas",
     "crates/rf-ffi",
+    "tests/rust-integration",
     "xtask",
 ]
 

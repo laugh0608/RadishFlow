@@ -693,6 +693,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "rf-rust-integration"
+version = "0.1.0"
+dependencies = [
+ "rf-flash",
+ "rf-solver",
+ "rf-store",
+ "rf-thermo",
+ "rf-types",
+]
+
+[[package]]
 name = "rf-solver"
 version = "0.1.0"
 dependencies = [
