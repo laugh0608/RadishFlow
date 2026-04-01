@@ -9,6 +9,7 @@ pub const FEED_KIND: &str = "feed";
 pub const MIXER_KIND: &str = "mixer";
 pub const HEATER_KIND: &str = "heater";
 pub const COOLER_KIND: &str = "cooler";
+pub const VALVE_KIND: &str = "valve";
 pub const FLASH_DRUM_KIND: &str = "flash_drum";
 
 pub const FEED_OUTLET_PORT: &str = "outlet";
@@ -27,6 +28,7 @@ pub enum BuiltinUnitKind {
     Mixer,
     Heater,
     Cooler,
+    Valve,
     FlashDrum,
 }
 
@@ -37,6 +39,7 @@ impl BuiltinUnitKind {
             Self::Mixer => MIXER_KIND,
             Self::Heater => HEATER_KIND,
             Self::Cooler => COOLER_KIND,
+            Self::Valve => VALVE_KIND,
             Self::FlashDrum => FLASH_DRUM_KIND,
         }
     }
@@ -47,6 +50,7 @@ impl BuiltinUnitKind {
             MIXER_KIND => Some(Self::Mixer),
             HEATER_KIND => Some(Self::Heater),
             COOLER_KIND => Some(Self::Cooler),
+            VALVE_KIND => Some(Self::Valve),
             FLASH_DRUM_KIND => Some(Self::FlashDrum),
             _ => None,
         }
@@ -141,6 +145,11 @@ const COOLER_SPEC: UnitOperationSpec = UnitOperationSpec {
     ports: &HEATER_COOLER_PORTS,
 };
 
+const VALVE_SPEC: UnitOperationSpec = UnitOperationSpec {
+    kind: BuiltinUnitKind::Valve,
+    ports: &HEATER_COOLER_PORTS,
+};
+
 const FLASH_DRUM_SPEC: UnitOperationSpec = UnitOperationSpec {
     kind: BuiltinUnitKind::FlashDrum,
     ports: &FLASH_DRUM_PORTS,
@@ -152,6 +161,7 @@ pub fn builtin_unit_spec(kind: BuiltinUnitKind) -> &'static UnitOperationSpec {
         BuiltinUnitKind::Mixer => &MIXER_SPEC,
         BuiltinUnitKind::Heater => &HEATER_SPEC,
         BuiltinUnitKind::Cooler => &COOLER_SPEC,
+        BuiltinUnitKind::Valve => &VALVE_SPEC,
         BuiltinUnitKind::FlashDrum => &FLASH_DRUM_SPEC,
     }
 }
@@ -297,6 +307,15 @@ pub fn build_cooler_node(
     outlet_stream_id: impl Into<StreamId>,
 ) -> UnitNode {
     build_single_inlet_single_outlet_node(id, name, COOLER_KIND, inlet_stream_id, outlet_stream_id)
+}
+
+pub fn build_valve_node(
+    id: impl Into<UnitId>,
+    name: impl Into<String>,
+    inlet_stream_id: impl Into<StreamId>,
+    outlet_stream_id: impl Into<StreamId>,
+) -> UnitNode {
+    build_single_inlet_single_outlet_node(id, name, VALVE_KIND, inlet_stream_id, outlet_stream_id)
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -572,6 +591,65 @@ impl UnitOperation for HeaterCooler {
             self.outlet_stream.name.clone(),
             temperature_k,
             pressure_pa,
+            total_flow,
+            overall_mole_fractions.clone(),
+        );
+
+        if total_flow > 0.0 {
+            outlet_stream.phases.push(PhaseState::new(
+                PhaseLabel::Overall,
+                1.0,
+                overall_mole_fractions,
+            ));
+        }
+
+        let mut outputs = UnitOperationOutputs::new();
+        outputs.insert_material_stream(HEATER_COOLER_OUTLET_PORT, outlet_stream);
+        Ok(outputs)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct Valve {
+    outlet_stream: MaterialStreamState,
+}
+
+impl Valve {
+    pub fn new(outlet_stream: MaterialStreamState) -> Self {
+        Self { outlet_stream }
+    }
+}
+
+impl UnitOperation for Valve {
+    fn kind(&self) -> BuiltinUnitKind {
+        BuiltinUnitKind::Valve
+    }
+
+    fn run(
+        &self,
+        _services: &UnitOperationServices<'_>,
+        inputs: &UnitOperationInputs,
+    ) -> RfResult<UnitOperationOutputs> {
+        inputs.validate_against_spec(self.spec())?;
+
+        let inlet = inputs.require_stream(HEATER_COOLER_INLET_PORT)?;
+        let inlet_temperature_k = validated_temperature(inlet)?;
+        let inlet_pressure_pa = validated_pressure(inlet)?;
+        let outlet_pressure_pa = validated_pressure(&self.outlet_stream)?;
+        if outlet_pressure_pa > inlet_pressure_pa {
+            return Err(RfError::invalid_input(format!(
+                "valve outlet pressure `{outlet_pressure_pa}` Pa cannot exceed inlet pressure `{inlet_pressure_pa}` Pa for stream `{}`",
+                inlet.id
+            )));
+        }
+
+        let total_flow = validated_total_flow(inlet)?;
+        let overall_mole_fractions = normalized_composition(inlet)?;
+        let mut outlet_stream = MaterialStreamState::from_tpzf(
+            self.outlet_stream.id.clone(),
+            self.outlet_stream.name.clone(),
+            inlet_temperature_k,
+            outlet_pressure_pa,
             total_flow,
             overall_mole_fractions.clone(),
         );
@@ -895,8 +973,8 @@ mod tests {
         FLASH_DRUM_VAPOR_PORT, Feed, FlashDrum, HEATER_COOLER_INLET_PORT,
         HEATER_COOLER_OUTLET_PORT, HeaterCooler, MIXER_INLET_A_PORT, MIXER_INLET_B_PORT,
         MIXER_OUTLET_PORT, Mixer, StreamTarget, UnitOperation, UnitOperationInputs,
-        UnitOperationServices, build_cooler_node, build_feed_node, build_flash_drum_node,
-        build_heater_node, build_mixer_node, validate_unit_node,
+        UnitOperationServices, Valve, build_cooler_node, build_feed_node, build_flash_drum_node,
+        build_heater_node, build_mixer_node, build_valve_node, validate_unit_node,
     };
     use rf_flash::{PlaceholderTpFlashSolver, TpFlashSolver};
     use rf_model::{Composition, MaterialStreamState};
@@ -964,6 +1042,7 @@ mod tests {
         let mixer = build_mixer_node("mixer-1", "Mixer", "stream-a", "stream-b", "stream-out");
         let heater = build_heater_node("heater-1", "Heater", "stream-in", "stream-out");
         let cooler = build_cooler_node("cooler-1", "Cooler", "stream-in", "stream-out");
+        let valve = build_valve_node("valve-1", "Valve", "stream-in", "stream-out");
         let flash = build_flash_drum_node(
             "flash-1",
             "Flash Drum",
@@ -976,6 +1055,7 @@ mod tests {
         validate_unit_node(&mixer).expect("expected mixer spec");
         validate_unit_node(&heater).expect("expected heater spec");
         validate_unit_node(&cooler).expect("expected cooler spec");
+        validate_unit_node(&valve).expect("expected valve spec");
         validate_unit_node(&flash).expect("expected flash drum spec");
     }
 
@@ -1091,6 +1171,80 @@ mod tests {
         );
         assert_eq!(outlet.phases.len(), 1);
         assert_eq!(outlet.phases[0].label, PhaseLabel::Overall);
+    }
+
+    #[test]
+    fn valve_updates_outlet_pressure_and_preserves_inlet_state() {
+        let inlet = build_stream(
+            "stream-feed",
+            "Feed",
+            315.0,
+            120_000.0,
+            5.0,
+            binary_composition(0.25, 0.75),
+        );
+        let outlet_template = build_stream(
+            "stream-valve-out",
+            "Valve Outlet",
+            350.0,
+            90_000.0,
+            0.0,
+            binary_composition(0.5, 0.5),
+        );
+        let valve = Valve::new(outlet_template);
+
+        let inputs =
+            UnitOperationInputs::new().with_material_stream(HEATER_COOLER_INLET_PORT, inlet);
+        let outputs = valve
+            .run(&UnitOperationServices::default(), &inputs)
+            .expect("expected valve output");
+
+        let outlet = outputs
+            .stream(HEATER_COOLER_OUTLET_PORT)
+            .expect("expected valve outlet stream");
+        assert_eq!(outlet.id.as_str(), "stream-valve-out");
+        assert_close(outlet.temperature_k, 315.0, 1e-12);
+        assert_close(outlet.pressure_pa, 90_000.0, 1e-12);
+        assert_close(outlet.total_molar_flow_mol_s, 5.0, 1e-12);
+        assert_close(
+            *outlet
+                .overall_mole_fractions
+                .get(&ComponentId::new("component-a"))
+                .expect("expected component-a"),
+            0.25,
+            1e-12,
+        );
+        assert_eq!(outlet.phases.len(), 1);
+        assert_eq!(outlet.phases[0].label, PhaseLabel::Overall);
+    }
+
+    #[test]
+    fn valve_rejects_outlet_pressure_higher_than_inlet_pressure() {
+        let inlet = build_stream(
+            "stream-feed",
+            "Feed",
+            315.0,
+            120_000.0,
+            5.0,
+            binary_composition(0.25, 0.75),
+        );
+        let outlet_template = build_stream(
+            "stream-valve-out",
+            "Valve Outlet",
+            300.0,
+            125_000.0,
+            0.0,
+            binary_composition(0.5, 0.5),
+        );
+        let valve = Valve::new(outlet_template);
+
+        let inputs =
+            UnitOperationInputs::new().with_material_stream(HEATER_COOLER_INLET_PORT, inlet);
+        let error = valve
+            .run(&UnitOperationServices::default(), &inputs)
+            .expect_err("expected valve pressure validation error");
+
+        assert!(error.message().contains("cannot exceed inlet pressure"));
     }
 
     #[test]

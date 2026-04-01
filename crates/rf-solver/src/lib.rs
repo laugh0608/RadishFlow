@@ -9,7 +9,7 @@ use rf_unitops::{
     BuiltinUnitKind, COOLER_KIND, FEED_KIND, FEED_OUTLET_PORT, FLASH_DRUM_KIND,
     FLASH_DRUM_LIQUID_PORT, FLASH_DRUM_VAPOR_PORT, Feed, FlashDrum, HEATER_COOLER_OUTLET_PORT,
     HEATER_KIND, HeaterCooler, MIXER_KIND, MIXER_OUTLET_PORT, Mixer, StreamTarget, UnitOperation,
-    UnitOperationInputs, UnitOperationServices, validate_unit_node,
+    UnitOperationInputs, UnitOperationServices, VALVE_KIND, Valve, validate_unit_node,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -212,6 +212,10 @@ fn instantiate_operation(
                 outlet.clone(),
             )?))
         }
+        VALVE_KIND => {
+            let outlet = stream_for_port(unit, HEATER_COOLER_OUTLET_PORT, flowsheet)?;
+            Ok(Box::new(Valve::new(outlet.clone())))
+        }
         FLASH_DRUM_KIND => {
             let liquid = stream_target_for_port(unit, FLASH_DRUM_LIQUID_PORT, flowsheet)?;
             let vapor = stream_target_for_port(unit, FLASH_DRUM_VAPOR_PORT, flowsheet)?;
@@ -287,7 +291,10 @@ mod tests {
         AntoineCoefficients, PlaceholderThermoProvider, ThermoComponent, ThermoSystem,
     };
     use rf_types::{ComponentId, PhaseLabel};
-    use rf_unitops::{build_feed_node, build_flash_drum_node, build_heater_node, build_mixer_node};
+    use rf_unitops::{
+        build_feed_node, build_flash_drum_node, build_heater_node, build_mixer_node,
+        build_valve_node,
+    };
 
     use super::{FlowsheetSolver, SequentialModularSolver, SolveStatus, SolverServices};
 
@@ -494,6 +501,73 @@ mod tests {
         flowsheet
     }
 
+    fn build_feed_valve_flash_flowsheet() -> Flowsheet {
+        let mut flowsheet = Flowsheet::new("feed-valve-flash");
+        for component in [
+            Component::new("component-a", "Component A"),
+            Component::new("component-b", "Component B"),
+        ] {
+            flowsheet
+                .insert_component(component)
+                .expect("expected component insert");
+        }
+
+        for stream in [
+            build_stream(
+                "stream-feed",
+                "Feed",
+                315.0,
+                120_000.0,
+                5.0,
+                binary_composition(0.35, 0.65),
+            ),
+            build_stream(
+                "stream-throttled",
+                "Valve Outlet",
+                300.0,
+                90_000.0,
+                0.0,
+                binary_composition(0.5, 0.5),
+            ),
+            build_stream(
+                "stream-liquid",
+                "Liquid Outlet",
+                315.0,
+                90_000.0,
+                0.0,
+                binary_composition(0.5, 0.5),
+            ),
+            build_stream(
+                "stream-vapor",
+                "Vapor Outlet",
+                315.0,
+                90_000.0,
+                0.0,
+                binary_composition(0.5, 0.5),
+            ),
+        ] {
+            flowsheet
+                .insert_stream(stream)
+                .expect("expected stream insert");
+        }
+
+        for unit in [
+            build_feed_node("feed-1", "Feed", "stream-feed"),
+            build_valve_node("valve-1", "Valve", "stream-feed", "stream-throttled"),
+            build_flash_drum_node(
+                "flash-1",
+                "Flash Drum",
+                "stream-throttled",
+                "stream-liquid",
+                "stream-vapor",
+            ),
+        ] {
+            flowsheet.insert_unit(unit).expect("expected unit insert");
+        }
+
+        flowsheet
+    }
+
     #[test]
     fn sequential_solver_solves_feed_mixer_flash_chain() {
         let provider = build_provider();
@@ -631,6 +705,77 @@ mod tests {
             .expect("expected heated outlet");
         assert_close(heated.temperature_k, 345.0, 1e-12);
         assert_close(heated.pressure_pa, 95_000.0, 1e-12);
+        assert_eq!(snapshot.steps.len(), 3);
+        assert!(snapshot.stream(&"stream-liquid".into()).is_some());
+        assert!(snapshot.stream(&"stream-vapor".into()).is_some());
+    }
+
+    #[test]
+    fn sequential_solver_solves_feed_valve_flash_chain() {
+        let provider = build_provider();
+        let flash_solver = PlaceholderTpFlashSolver;
+        let services = SolverServices {
+            thermo: &provider,
+            flash_solver: &flash_solver,
+        };
+
+        let snapshot = SequentialModularSolver
+            .solve(&services, &build_feed_valve_flash_flowsheet())
+            .expect("expected solve snapshot");
+
+        assert_eq!(snapshot.status, SolveStatus::Converged);
+        assert_eq!(snapshot.steps.len(), 3);
+        assert_eq!(snapshot.steps[0].unit_id.as_str(), "feed-1");
+        assert_eq!(snapshot.steps[1].unit_id.as_str(), "valve-1");
+        assert_eq!(snapshot.steps[2].unit_id.as_str(), "flash-1");
+
+        let throttled = snapshot
+            .stream(&"stream-throttled".into())
+            .expect("expected valve outlet");
+        assert_close(throttled.temperature_k, 315.0, 1e-12);
+        assert_close(throttled.pressure_pa, 90_000.0, 1e-12);
+        assert_close(throttled.total_molar_flow_mol_s, 5.0, 1e-12);
+        assert_close(
+            *throttled
+                .overall_mole_fractions
+                .get(&ComponentId::new("component-a"))
+                .expect("expected component-a"),
+            0.35,
+            1e-12,
+        );
+
+        let liquid = snapshot
+            .stream(&"stream-liquid".into())
+            .expect("expected liquid outlet");
+        let vapor = snapshot
+            .stream(&"stream-vapor".into())
+            .expect("expected vapor outlet");
+        assert!(liquid.total_molar_flow_mol_s > 0.0);
+        assert!(vapor.total_molar_flow_mol_s > 0.0);
+    }
+
+    #[test]
+    fn sequential_solver_runs_feed_valve_flash_example_project_file() {
+        let provider = build_provider();
+        let flash_solver = PlaceholderTpFlashSolver;
+        let services = SolverServices {
+            thermo: &provider,
+            flash_solver: &flash_solver,
+        };
+        let project = parse_project_file_json(include_str!(
+            "../../../examples/flowsheets/feed-valve-flash.rfproj.json"
+        ))
+        .expect("expected example project parse");
+
+        let snapshot = SequentialModularSolver
+            .solve(&services, &project.document.flowsheet)
+            .expect("expected solve snapshot");
+
+        let throttled = snapshot
+            .stream(&"stream-throttled".into())
+            .expect("expected valve outlet");
+        assert_close(throttled.temperature_k, 315.0, 1e-12);
+        assert_close(throttled.pressure_pa, 90_000.0, 1e-12);
         assert_eq!(snapshot.steps.len(), 3);
         assert!(snapshot.stream(&"stream-liquid".into()).is_some());
         assert!(snapshot.stream(&"stream-vapor".into()).is_some());
