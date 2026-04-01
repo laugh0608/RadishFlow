@@ -7,12 +7,16 @@ use rf_types::{PhaseLabel, PortDirection, PortKind, RfError, RfResult, StreamId,
 
 pub const FEED_KIND: &str = "feed";
 pub const MIXER_KIND: &str = "mixer";
+pub const HEATER_KIND: &str = "heater";
+pub const COOLER_KIND: &str = "cooler";
 pub const FLASH_DRUM_KIND: &str = "flash_drum";
 
 pub const FEED_OUTLET_PORT: &str = "outlet";
 pub const MIXER_INLET_A_PORT: &str = "inlet_a";
 pub const MIXER_INLET_B_PORT: &str = "inlet_b";
 pub const MIXER_OUTLET_PORT: &str = "outlet";
+pub const HEATER_COOLER_INLET_PORT: &str = "inlet";
+pub const HEATER_COOLER_OUTLET_PORT: &str = "outlet";
 pub const FLASH_DRUM_INLET_PORT: &str = "inlet";
 pub const FLASH_DRUM_LIQUID_PORT: &str = "liquid";
 pub const FLASH_DRUM_VAPOR_PORT: &str = "vapor";
@@ -21,6 +25,8 @@ pub const FLASH_DRUM_VAPOR_PORT: &str = "vapor";
 pub enum BuiltinUnitKind {
     Feed,
     Mixer,
+    Heater,
+    Cooler,
     FlashDrum,
 }
 
@@ -29,6 +35,8 @@ impl BuiltinUnitKind {
         match self {
             Self::Feed => FEED_KIND,
             Self::Mixer => MIXER_KIND,
+            Self::Heater => HEATER_KIND,
+            Self::Cooler => COOLER_KIND,
             Self::FlashDrum => FLASH_DRUM_KIND,
         }
     }
@@ -37,6 +45,8 @@ impl BuiltinUnitKind {
         match value {
             FEED_KIND => Some(Self::Feed),
             MIXER_KIND => Some(Self::Mixer),
+            HEATER_KIND => Some(Self::Heater),
+            COOLER_KIND => Some(Self::Cooler),
             FLASH_DRUM_KIND => Some(Self::FlashDrum),
             _ => None,
         }
@@ -80,6 +90,19 @@ const MIXER_PORTS: [UnitPortDefinition; 3] = [
     },
 ];
 
+const HEATER_COOLER_PORTS: [UnitPortDefinition; 2] = [
+    UnitPortDefinition {
+        name: HEATER_COOLER_INLET_PORT,
+        direction: PortDirection::Inlet,
+        kind: PortKind::Material,
+    },
+    UnitPortDefinition {
+        name: HEATER_COOLER_OUTLET_PORT,
+        direction: PortDirection::Outlet,
+        kind: PortKind::Material,
+    },
+];
+
 const FLASH_DRUM_PORTS: [UnitPortDefinition; 3] = [
     UnitPortDefinition {
         name: FLASH_DRUM_INLET_PORT,
@@ -108,6 +131,16 @@ const MIXER_SPEC: UnitOperationSpec = UnitOperationSpec {
     ports: &MIXER_PORTS,
 };
 
+const HEATER_SPEC: UnitOperationSpec = UnitOperationSpec {
+    kind: BuiltinUnitKind::Heater,
+    ports: &HEATER_COOLER_PORTS,
+};
+
+const COOLER_SPEC: UnitOperationSpec = UnitOperationSpec {
+    kind: BuiltinUnitKind::Cooler,
+    ports: &HEATER_COOLER_PORTS,
+};
+
 const FLASH_DRUM_SPEC: UnitOperationSpec = UnitOperationSpec {
     kind: BuiltinUnitKind::FlashDrum,
     ports: &FLASH_DRUM_PORTS,
@@ -117,6 +150,8 @@ pub fn builtin_unit_spec(kind: BuiltinUnitKind) -> &'static UnitOperationSpec {
     match kind {
         BuiltinUnitKind::Feed => &FEED_SPEC,
         BuiltinUnitKind::Mixer => &MIXER_SPEC,
+        BuiltinUnitKind::Heater => &HEATER_SPEC,
+        BuiltinUnitKind::Cooler => &COOLER_SPEC,
         BuiltinUnitKind::FlashDrum => &FLASH_DRUM_SPEC,
     }
 }
@@ -212,21 +247,9 @@ pub fn build_mixer_node(
         name,
         MIXER_KIND,
         vec![
-            material_port(
-                MIXER_INLET_A_PORT,
-                PortDirection::Inlet,
-                inlet_a_stream_id,
-            ),
-            material_port(
-                MIXER_INLET_B_PORT,
-                PortDirection::Inlet,
-                inlet_b_stream_id,
-            ),
-            material_port(
-                MIXER_OUTLET_PORT,
-                PortDirection::Outlet,
-                outlet_stream_id,
-            ),
+            material_port(MIXER_INLET_A_PORT, PortDirection::Inlet, inlet_a_stream_id),
+            material_port(MIXER_INLET_B_PORT, PortDirection::Inlet, inlet_b_stream_id),
+            material_port(MIXER_OUTLET_PORT, PortDirection::Outlet, outlet_stream_id),
         ],
     )
 }
@@ -243,11 +266,7 @@ pub fn build_flash_drum_node(
         name,
         FLASH_DRUM_KIND,
         vec![
-            material_port(
-                FLASH_DRUM_INLET_PORT,
-                PortDirection::Inlet,
-                inlet_stream_id,
-            ),
+            material_port(FLASH_DRUM_INLET_PORT, PortDirection::Inlet, inlet_stream_id),
             material_port(
                 FLASH_DRUM_LIQUID_PORT,
                 PortDirection::Outlet,
@@ -260,6 +279,24 @@ pub fn build_flash_drum_node(
             ),
         ],
     )
+}
+
+pub fn build_heater_node(
+    id: impl Into<UnitId>,
+    name: impl Into<String>,
+    inlet_stream_id: impl Into<StreamId>,
+    outlet_stream_id: impl Into<StreamId>,
+) -> UnitNode {
+    build_single_inlet_single_outlet_node(id, name, HEATER_KIND, inlet_stream_id, outlet_stream_id)
+}
+
+pub fn build_cooler_node(
+    id: impl Into<UnitId>,
+    name: impl Into<String>,
+    inlet_stream_id: impl Into<StreamId>,
+    outlet_stream_id: impl Into<StreamId>,
+) -> UnitNode {
+    build_single_inlet_single_outlet_node(id, name, COOLER_KIND, inlet_stream_id, outlet_stream_id)
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -462,7 +499,10 @@ impl UnitOperation for Mixer {
         }
 
         let temperature_k = weighted_average_by_flow(
-            [(flow_a, inlet_a.temperature_k), (flow_b, inlet_b.temperature_k)],
+            [
+                (flow_a, inlet_a.temperature_k),
+                (flow_b, inlet_b.temperature_k),
+            ],
             "mixer outlet temperature",
         )?;
         let pressure_pa = validated_pressure(inlet_a)?.min(validated_pressure(inlet_b)?);
@@ -476,12 +516,76 @@ impl UnitOperation for Mixer {
             total_flow,
             overall_mole_fractions.clone(),
         );
-        outlet_stream
-            .phases
-            .push(PhaseState::new(PhaseLabel::Overall, 1.0, overall_mole_fractions));
+        outlet_stream.phases.push(PhaseState::new(
+            PhaseLabel::Overall,
+            1.0,
+            overall_mole_fractions,
+        ));
 
         let mut outputs = UnitOperationOutputs::new();
         outputs.insert_material_stream(MIXER_OUTLET_PORT, outlet_stream);
+        Ok(outputs)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct HeaterCooler {
+    kind: BuiltinUnitKind,
+    outlet_stream: MaterialStreamState,
+}
+
+impl HeaterCooler {
+    pub fn new(kind: BuiltinUnitKind, outlet_stream: MaterialStreamState) -> RfResult<Self> {
+        match kind {
+            BuiltinUnitKind::Heater | BuiltinUnitKind::Cooler => Ok(Self {
+                kind,
+                outlet_stream,
+            }),
+            _ => Err(RfError::invalid_input(format!(
+                "heater/cooler operation cannot be created with unit kind `{}`",
+                kind.as_str()
+            ))),
+        }
+    }
+}
+
+impl UnitOperation for HeaterCooler {
+    fn kind(&self) -> BuiltinUnitKind {
+        self.kind
+    }
+
+    fn run(
+        &self,
+        _services: &UnitOperationServices<'_>,
+        inputs: &UnitOperationInputs,
+    ) -> RfResult<UnitOperationOutputs> {
+        inputs.validate_against_spec(self.spec())?;
+
+        let inlet = inputs.require_stream(HEATER_COOLER_INLET_PORT)?;
+        let temperature_k = validated_temperature(&self.outlet_stream)?;
+        let pressure_pa = validated_pressure(&self.outlet_stream)?;
+        let total_flow = validated_total_flow(inlet)?;
+        let overall_mole_fractions = normalized_composition(inlet)?;
+
+        let mut outlet_stream = MaterialStreamState::from_tpzf(
+            self.outlet_stream.id.clone(),
+            self.outlet_stream.name.clone(),
+            temperature_k,
+            pressure_pa,
+            total_flow,
+            overall_mole_fractions.clone(),
+        );
+
+        if total_flow > 0.0 {
+            outlet_stream.phases.push(PhaseState::new(
+                PhaseLabel::Overall,
+                1.0,
+                overall_mole_fractions,
+            ));
+        }
+
+        let mut outputs = UnitOperationOutputs::new();
+        outputs.insert_material_stream(HEATER_COOLER_OUTLET_PORT, outlet_stream);
         Ok(outputs)
     }
 }
@@ -565,6 +669,32 @@ fn material_port(
     stream_id: impl Into<StreamId>,
 ) -> UnitPort {
     UnitPort::new(name, direction, PortKind::Material, Some(stream_id.into()))
+}
+
+fn build_single_inlet_single_outlet_node(
+    id: impl Into<UnitId>,
+    name: impl Into<String>,
+    kind: impl Into<String>,
+    inlet_stream_id: impl Into<StreamId>,
+    outlet_stream_id: impl Into<StreamId>,
+) -> UnitNode {
+    UnitNode::new(
+        id,
+        name,
+        kind,
+        vec![
+            material_port(
+                HEATER_COOLER_INLET_PORT,
+                PortDirection::Inlet,
+                inlet_stream_id,
+            ),
+            material_port(
+                HEATER_COOLER_OUTLET_PORT,
+                PortDirection::Outlet,
+                outlet_stream_id,
+            ),
+        ],
+    )
 }
 
 fn format_port_names(port_names: &[String]) -> String {
@@ -668,10 +798,7 @@ fn mixed_composition(streams: [&MaterialStreamState; 2]) -> RfResult<Composition
         .collect())
 }
 
-fn weighted_average_by_flow(
-    items: [(f64, f64); 2],
-    label: &str,
-) -> RfResult<f64> {
+fn weighted_average_by_flow(items: [(f64, f64); 2], label: &str) -> RfResult<f64> {
     let mut numerator = 0.0;
     let mut denominator = 0.0;
 
@@ -764,11 +891,12 @@ fn build_phase_outlet_stream(
 #[cfg(test)]
 mod tests {
     use super::{
-        FEED_OUTLET_PORT, FLASH_DRUM_INLET_PORT, FLASH_DRUM_LIQUID_PORT,
-        FLASH_DRUM_VAPOR_PORT, Feed, FlashDrum, MIXER_INLET_A_PORT, MIXER_INLET_B_PORT,
+        BuiltinUnitKind, FEED_OUTLET_PORT, FLASH_DRUM_INLET_PORT, FLASH_DRUM_LIQUID_PORT,
+        FLASH_DRUM_VAPOR_PORT, Feed, FlashDrum, HEATER_COOLER_INLET_PORT,
+        HEATER_COOLER_OUTLET_PORT, HeaterCooler, MIXER_INLET_A_PORT, MIXER_INLET_B_PORT,
         MIXER_OUTLET_PORT, Mixer, StreamTarget, UnitOperation, UnitOperationInputs,
-        UnitOperationServices, build_feed_node, build_flash_drum_node, build_mixer_node,
-        validate_unit_node,
+        UnitOperationServices, build_cooler_node, build_feed_node, build_flash_drum_node,
+        build_heater_node, build_mixer_node, validate_unit_node,
     };
     use rf_flash::{PlaceholderTpFlashSolver, TpFlashSolver};
     use rf_model::{Composition, MaterialStreamState};
@@ -833,13 +961,9 @@ mod tests {
     #[test]
     fn builtin_unit_nodes_match_canonical_specs() {
         let feed = build_feed_node("feed-1", "Feed", "stream-feed");
-        let mixer = build_mixer_node(
-            "mixer-1",
-            "Mixer",
-            "stream-a",
-            "stream-b",
-            "stream-out",
-        );
+        let mixer = build_mixer_node("mixer-1", "Mixer", "stream-a", "stream-b", "stream-out");
+        let heater = build_heater_node("heater-1", "Heater", "stream-in", "stream-out");
+        let cooler = build_cooler_node("cooler-1", "Cooler", "stream-in", "stream-out");
         let flash = build_flash_drum_node(
             "flash-1",
             "Flash Drum",
@@ -850,6 +974,8 @@ mod tests {
 
         validate_unit_node(&feed).expect("expected feed spec");
         validate_unit_node(&mixer).expect("expected mixer spec");
+        validate_unit_node(&heater).expect("expected heater spec");
+        validate_unit_node(&cooler).expect("expected cooler spec");
         validate_unit_node(&flash).expect("expected flash drum spec");
     }
 
@@ -866,7 +992,10 @@ mod tests {
         let feed = Feed::new(outlet_stream.clone());
 
         let outputs = feed
-            .run(&UnitOperationServices::default(), &UnitOperationInputs::new())
+            .run(
+                &UnitOperationServices::default(),
+                &UnitOperationInputs::new(),
+            )
             .expect("expected feed output");
 
         assert_eq!(outputs.stream(FEED_OUTLET_PORT), Some(&outlet_stream));
@@ -919,6 +1048,52 @@ mod tests {
     }
 
     #[test]
+    fn heater_cooler_updates_outlet_tp_and_preserves_flow_and_composition() {
+        let inlet = build_stream(
+            "stream-feed",
+            "Feed",
+            300.0,
+            120_000.0,
+            5.0,
+            binary_composition(0.25, 0.75),
+        );
+        let outlet_template = build_stream(
+            "stream-heated",
+            "Heated Outlet",
+            345.0,
+            95_000.0,
+            0.0,
+            binary_composition(0.5, 0.5),
+        );
+        let heater = HeaterCooler::new(BuiltinUnitKind::Heater, outlet_template)
+            .expect("expected heater operation");
+
+        let inputs =
+            UnitOperationInputs::new().with_material_stream(HEATER_COOLER_INLET_PORT, inlet);
+        let outputs = heater
+            .run(&UnitOperationServices::default(), &inputs)
+            .expect("expected heater output");
+
+        let outlet = outputs
+            .stream(HEATER_COOLER_OUTLET_PORT)
+            .expect("expected heater outlet stream");
+        assert_eq!(outlet.id.as_str(), "stream-heated");
+        assert_close(outlet.temperature_k, 345.0, 1e-12);
+        assert_close(outlet.pressure_pa, 95_000.0, 1e-12);
+        assert_close(outlet.total_molar_flow_mol_s, 5.0, 1e-12);
+        assert_close(
+            *outlet
+                .overall_mole_fractions
+                .get(&ComponentId::new("component-a"))
+                .expect("expected component-a"),
+            0.25,
+            1e-12,
+        );
+        assert_eq!(outlet.phases.len(), 1);
+        assert_eq!(outlet.phases[0].label, PhaseLabel::Overall);
+    }
+
+    #[test]
     fn flash_drum_splits_feed_into_liquid_and_vapor_outlets() {
         let provider = build_provider([2.0, 0.5], 100_000.0);
         let flash_solver = PlaceholderTpFlashSolver;
@@ -934,8 +1109,7 @@ mod tests {
             8.0,
             binary_composition(0.5, 0.5),
         );
-        let inputs =
-            UnitOperationInputs::new().with_material_stream(FLASH_DRUM_INLET_PORT, feed);
+        let inputs = UnitOperationInputs::new().with_material_stream(FLASH_DRUM_INLET_PORT, feed);
         let services = UnitOperationServices {
             thermo: Some(&provider),
             flash_solver: Some(&flash_solver as &dyn TpFlashSolver),

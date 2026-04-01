@@ -41,9 +41,9 @@ RadishFlow 的目标架构已经冻结为“桌面端三层 + 外部控制面”
 | `rf-model` | 组分、流股、单元、流程图对象模型 | 已建立第一批领域数据结构 |
 | `rf-thermo` | 热力学数据结构与热力学接口 | 已建立最小 API、内存 provider、基于本地缓存目录/授权缓存索引的 `PropertyPackageProvider` 实现，并用首个真实样例包覆盖装载测试 |
 | `rf-flash` | `TP Flash` 输入输出契约与求解器接口 | 已建立最小 API，并已实现最小二元 `TP Flash`、Rachford-Rice 与黄金样例 |
-| `rf-unitops` | 单元模块行为抽象 | 已建立内建单元规范、统一流股输入输出接口，并实现 `Feed`、`Mixer`、`Flash Drum` 的最小行为边界 |
+| `rf-unitops` | 单元模块行为抽象 | 已建立内建单元规范、统一流股输入输出接口，并实现 `Feed`、`Mixer`、`Heater/Cooler`、`Flash Drum` 的最小行为边界 |
 | `rf-flowsheet` | 连接关系与图结构校验 | 已建立首轮材料端口连接校验，覆盖 canonical port signature、流股存在性与“一股一源一汇”约束 |
-| `rf-solver` | 顺序模块法求解器 | 已建立首轮无回路顺序模块法，可执行 `Feed + Mixer + Flash Drum` 闭环，并产出最小 `SolveSnapshot` |
+| `rf-solver` | 顺序模块法求解器 | 已建立首轮无回路顺序模块法，可执行 `Feed + Mixer + Flash Drum` 与 `Feed -> Heater -> Flash Drum` 闭环，并产出最小 `SolveSnapshot` |
 | `rf-store` | JSON 存储与授权缓存索引 | 已建立项目文件 / 授权缓存 / 本地包 `manifest.json` / `payload.rfpkg` 的 JSON 读写、迁移分发、版本校验与相对路径布局 |
 | `rf-ffi` | Rust 与 .NET 的 C ABI 边界 | 仍为占位 |
 
@@ -142,4 +142,4 @@ RadishFlow 的目标架构已经冻结为“桌面端三层 + 外部控制面”
 ## 初始化阶段结论
 
 截至 2026-03-29，仓库初始化阶段已经从“纯目录骨架”进入“可继续开发的基础结构”阶段。  
-接下来的重点不再是增加目录，而是补充算法、测试和最小闭环。
+接下来的重点不再是增加目录，而是继续补充算法、测试覆盖和最小闭环样例厚度。
