@@ -11,4 +11,10 @@ publish.workspace = true
 
 [dependencies]
 rf-model = { path = "../rf-model" }
+rf-solver = { path = "../rf-solver" }
 rf-types = { path = "../rf-types" }
+
+[dev-dependencies]
+rf-flash = { path = "../rf-flash" }
+rf-store = { path = "../rf-store" }
+rf-thermo = { path = "../rf-thermo" }

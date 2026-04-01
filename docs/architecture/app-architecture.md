@@ -288,6 +288,7 @@
 - `sequence` 用于区分同一 `document_revision` 上的多次运行
 - `summary` 是结果入口摘要，完整诊断和按步执行数据分开放在 `diagnostics` / `steps`
 - 快照实体由 `WorkspaceState.snapshot_history` 持有，并按有界窗口保留
+- 当前实现允许先由内核 `rf-solver::SolveSnapshot` 生成最小求解结果，再在 `rf-ui` 中映射为 UI 层 `SolveSnapshot`，避免 UI 层直接依赖内核内部执行细节结构
 
 ## 最小状态草案
 

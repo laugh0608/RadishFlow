@@ -33,7 +33,12 @@ pub use state::{
 mod tests {
     use std::time::{Duration, UNIX_EPOCH};
 
+    use rf_flash::PlaceholderTpFlashSolver;
     use rf_model::Flowsheet;
+    use rf_solver::{FlowsheetSolver, SequentialModularSolver, SolverServices};
+    use rf_thermo::{
+        AntoineCoefficients, PlaceholderThermoProvider, ThermoComponent, ThermoSystem,
+    };
     use rf_types::UnitId;
 
     use crate::{
@@ -52,6 +57,25 @@ mod tests {
         let flowsheet = Flowsheet::new("demo");
         let metadata = DocumentMetadata::new("doc-1", "Demo", timestamp(10));
         FlowsheetDocument::new(flowsheet, metadata)
+    }
+
+    fn sample_solver_provider() -> PlaceholderThermoProvider {
+        let pressure_pa = 100_000.0_f64;
+        let mut first = ThermoComponent::new("component-a", "Component A");
+        first.antoine = Some(AntoineCoefficients::new(
+            ((2.0_f64 * pressure_pa) / 1_000.0_f64).ln(),
+            0.0,
+            0.0,
+        ));
+
+        let mut second = ThermoComponent::new("component-b", "Component B");
+        second.antoine = Some(AntoineCoefficients::new(
+            ((0.5_f64 * pressure_pa) / 1_000.0_f64).ln(),
+            0.0,
+            0.0,
+        ));
+
+        PlaceholderThermoProvider::new(ThermoSystem::binary([first, second]))
     }
 
     #[test]
@@ -334,5 +358,49 @@ mod tests {
         );
         assert_eq!(app_state.entitlement.last_synced_at, Some(timestamp(210)));
         assert!(app_state.entitlement.is_package_allowed("pkg-1"));
+    }
+
+    #[test]
+    fn storing_solver_snapshot_maps_solver_diagnostics_into_ui_snapshot() {
+        let mut app_state = AppState::new(sample_document());
+        let provider = sample_solver_provider();
+        let flash_solver = PlaceholderTpFlashSolver;
+        let services = SolverServices {
+            thermo: &provider,
+            flash_solver: &flash_solver,
+        };
+        let project = rf_store::parse_project_file_json(include_str!(
+            "../../../examples/flowsheets/feed-heater-flash.rfproj.json"
+        ))
+        .expect("expected project parse");
+        let solver_snapshot = SequentialModularSolver
+            .solve(&services, &project.document.flowsheet)
+            .expect("expected solve snapshot");
+
+        app_state.store_solver_snapshot("snapshot-solver-1", 1, &solver_snapshot);
+
+        let stored = app_state
+            .workspace
+            .snapshot_history
+            .back()
+            .expect("expected stored snapshot");
+        assert_eq!(stored.status, RunStatus::Converged);
+        assert_eq!(stored.summary.diagnostic_count, 4);
+        assert_eq!(stored.diagnostics[0].code, "solver.execution_order");
+        assert_eq!(stored.steps.len(), 3);
+        assert_eq!(stored.steps[1].unit_id.as_str(), "heater-1");
+        assert_eq!(
+            stored.steps[1].streams[0].stream_id.as_str(),
+            "stream-heated"
+        );
+        assert_eq!(
+            app_state
+                .workspace
+                .solve_session
+                .latest_snapshot
+                .as_ref()
+                .map(|id| id.as_str()),
+            Some("snapshot-solver-1")
+        );
     }
 }

@@ -17,17 +17,46 @@ pub enum SolveStatus {
     Converged,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum SolveDiagnosticSeverity {
+    Info,
+    Warning,
+    Error,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SolveDiagnosticSummary {
+    pub highest_severity: SolveDiagnosticSeverity,
+    pub primary_message: String,
+    pub diagnostic_count: usize,
+    pub related_unit_ids: Vec<UnitId>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SolveDiagnostic {
+    pub severity: SolveDiagnosticSeverity,
+    pub code: String,
+    pub message: String,
+    pub related_unit_ids: Vec<UnitId>,
+    pub related_stream_ids: Vec<StreamId>,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct UnitSolveStep {
+    pub index: usize,
     pub unit_id: UnitId,
     pub unit_name: String,
     pub unit_kind: String,
+    pub consumed_stream_ids: Vec<StreamId>,
     pub produced_stream_ids: Vec<StreamId>,
+    pub summary: String,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct SolveSnapshot {
     pub status: SolveStatus,
+    pub summary: SolveDiagnosticSummary,
+    pub diagnostics: Vec<SolveDiagnostic>,
     pub streams: BTreeMap<StreamId, MaterialStreamState>,
     pub steps: Vec<UnitSolveStep>,
 }
@@ -35,6 +64,10 @@ pub struct SolveSnapshot {
 impl SolveSnapshot {
     pub fn stream(&self, id: &StreamId) -> Option<&MaterialStreamState> {
         self.streams.get(id)
+    }
+
+    pub fn step(&self, index: usize) -> Option<&UnitSolveStep> {
+        self.steps.get(index)
     }
 }
 
@@ -63,16 +96,32 @@ impl FlowsheetSolver for SequentialModularSolver {
         let execution_order = topological_unit_order(flowsheet)?;
         let mut solved_streams = BTreeMap::<StreamId, MaterialStreamState>::new();
         let mut steps = Vec::with_capacity(execution_order.len());
+        let mut diagnostics = vec![SolveDiagnostic {
+            severity: SolveDiagnosticSeverity::Info,
+            code: "solver.execution_order".to_string(),
+            message: format!(
+                "resolved acyclic execution order for {} unit(s): [{}]",
+                execution_order.len(),
+                execution_order
+                    .iter()
+                    .map(|unit_id| unit_id.as_str())
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ),
+            related_unit_ids: execution_order.clone(),
+            related_stream_ids: Vec::new(),
+        }];
         let unit_services = UnitOperationServices {
             thermo: Some(services.thermo),
             flash_solver: Some(services.flash_solver),
         };
 
-        for unit_id in execution_order {
-            let unit = flowsheet.unit(&unit_id)?;
+        for (step_index, unit_id) in execution_order.iter().enumerate() {
+            let unit = flowsheet.unit(unit_id)?;
             let spec = validate_unit_node(unit)?;
             let operation = instantiate_operation(unit, flowsheet)?;
             let mut inputs = UnitOperationInputs::new();
+            let mut consumed_stream_ids = Vec::new();
 
             for port in spec
                 .ports
@@ -80,6 +129,7 @@ impl FlowsheetSolver for SequentialModularSolver {
                 .filter(|port| port.direction == PortDirection::Inlet)
             {
                 let stream = resolved_stream_for_port(unit, port.name, &solved_streams)?;
+                consumed_stream_ids.push(stream.id.clone());
                 inputs.insert_material_stream(port.name, stream.clone());
             }
 
@@ -87,9 +137,11 @@ impl FlowsheetSolver for SequentialModularSolver {
                 RfError::new(
                     error.code(),
                     format!(
-                        "unit `{}` (`{}`) execution failed: {}",
+                        "step {} unit `{}` (`{}`) execution failed after consuming [{}]: {}",
+                        step_index + 1,
                         unit.id,
                         unit.kind,
+                        format_stream_ids(&consumed_stream_ids),
                         error.message()
                     ),
                 )
@@ -103,24 +155,67 @@ impl FlowsheetSolver for SequentialModularSolver {
             {
                 let stream = outputs.stream(port.name).ok_or_else(|| {
                     RfError::invalid_input(format!(
-                        "unit `{}` did not produce expected outlet port `{}`",
-                        unit.id, port.name
+                        "step {} unit `{}` did not produce expected outlet port `{}`",
+                        step_index + 1,
+                        unit.id,
+                        port.name
                     ))
                 })?;
                 produced_stream_ids.push(stream.id.clone());
                 solved_streams.insert(stream.id.clone(), stream.clone());
             }
 
+            let summary = format!(
+                "executed unit `{}` (`{}`) with {} inlet stream(s) [{}] and produced {} outlet stream(s) [{}]",
+                unit.id,
+                unit.kind,
+                consumed_stream_ids.len(),
+                format_stream_ids(&consumed_stream_ids),
+                produced_stream_ids.len(),
+                format_stream_ids(&produced_stream_ids),
+            );
+            diagnostics.push(SolveDiagnostic {
+                severity: SolveDiagnosticSeverity::Info,
+                code: "solver.unit_executed".to_string(),
+                message: format!("step {}: {}", step_index + 1, summary),
+                related_unit_ids: vec![unit.id.clone()],
+                related_stream_ids: consumed_stream_ids
+                    .iter()
+                    .cloned()
+                    .chain(produced_stream_ids.iter().cloned())
+                    .collect(),
+            });
             steps.push(UnitSolveStep {
+                index: step_index,
                 unit_id: unit.id.clone(),
                 unit_name: unit.name.clone(),
                 unit_kind: unit.kind.clone(),
+                consumed_stream_ids,
                 produced_stream_ids,
+                summary,
             });
         }
 
+        let related_unit_ids = steps
+            .iter()
+            .map(|step| step.unit_id.clone())
+            .collect::<Vec<_>>();
+        let summary = SolveDiagnosticSummary {
+            highest_severity: SolveDiagnosticSeverity::Info,
+            primary_message: format!(
+                "solved flowsheet with {} unit(s), {} diagnostic entry(ies), and {} resulting stream(s)",
+                steps.len(),
+                diagnostics.len(),
+                solved_streams.len()
+            ),
+            diagnostic_count: diagnostics.len(),
+            related_unit_ids,
+        };
+
         Ok(SolveSnapshot {
             status: SolveStatus::Converged,
+            summary,
+            diagnostics,
             streams: solved_streams,
             steps,
         })
@@ -282,6 +377,18 @@ fn find_port<'a>(unit: &'a UnitNode, port_name: &str) -> RfResult<&'a UnitPort> 
         })
 }
 
+fn format_stream_ids(stream_ids: &[StreamId]) -> String {
+    if stream_ids.is_empty() {
+        return "<none>".to_owned();
+    }
+
+    stream_ids
+        .iter()
+        .map(|stream_id| stream_id.as_str())
+        .collect::<Vec<_>>()
+        .join(", ")
+}
+
 #[cfg(test)]
 mod tests {
     use rf_flash::PlaceholderTpFlashSolver;
@@ -296,7 +403,10 @@ mod tests {
         build_valve_node,
     };
 
-    use super::{FlowsheetSolver, SequentialModularSolver, SolveStatus, SolverServices};
+    use super::{
+        FlowsheetSolver, SequentialModularSolver, SolveDiagnosticSeverity, SolveStatus,
+        SolverServices,
+    };
 
     fn assert_close(actual: f64, expected: f64, tolerance: f64) {
         let delta = (actual - expected).abs();
@@ -582,11 +692,25 @@ mod tests {
             .expect("expected solve snapshot");
 
         assert_eq!(snapshot.status, SolveStatus::Converged);
+        assert_eq!(
+            snapshot.summary.highest_severity,
+            SolveDiagnosticSeverity::Info
+        );
+        assert_eq!(snapshot.summary.diagnostic_count, 5);
         assert_eq!(snapshot.steps.len(), 4);
+        assert_eq!(snapshot.steps[0].index, 0);
         assert_eq!(snapshot.steps[0].unit_id.as_str(), "feed-a");
         assert_eq!(snapshot.steps[1].unit_id.as_str(), "feed-b");
         assert_eq!(snapshot.steps[2].unit_id.as_str(), "mixer-1");
         assert_eq!(snapshot.steps[3].unit_id.as_str(), "flash-1");
+        assert_eq!(snapshot.steps[2].consumed_stream_ids.len(), 2);
+        assert!(
+            snapshot.steps[2]
+                .summary
+                .contains("produced 1 outlet stream")
+        );
+        assert_eq!(snapshot.diagnostics[0].code, "solver.execution_order");
+        assert_eq!(snapshot.diagnostics[1].code, "solver.unit_executed");
 
         let mixer_out = snapshot
             .stream(&"stream-mix-out".into())
@@ -632,6 +756,7 @@ mod tests {
             .expect("expected solve snapshot");
 
         assert_eq!(snapshot.status, SolveStatus::Converged);
+        assert_eq!(snapshot.summary.related_unit_ids.len(), 4);
         assert_eq!(snapshot.steps.len(), 4);
         assert!(snapshot.stream(&"stream-liquid".into()).is_some());
         assert!(snapshot.stream(&"stream-vapor".into()).is_some());
@@ -651,10 +776,16 @@ mod tests {
             .expect("expected solve snapshot");
 
         assert_eq!(snapshot.status, SolveStatus::Converged);
+        assert_eq!(snapshot.summary.diagnostic_count, 4);
         assert_eq!(snapshot.steps.len(), 3);
         assert_eq!(snapshot.steps[0].unit_id.as_str(), "feed-1");
         assert_eq!(snapshot.steps[1].unit_id.as_str(), "heater-1");
         assert_eq!(snapshot.steps[2].unit_id.as_str(), "flash-1");
+        assert_eq!(
+            snapshot.steps[1].consumed_stream_ids,
+            vec!["stream-feed".into()]
+        );
+        assert!(snapshot.steps[1].summary.contains("heater-1"));
 
         let heated = snapshot
             .stream(&"stream-heated".into())
@@ -724,10 +855,16 @@ mod tests {
             .expect("expected solve snapshot");
 
         assert_eq!(snapshot.status, SolveStatus::Converged);
+        assert_eq!(snapshot.summary.diagnostic_count, 4);
         assert_eq!(snapshot.steps.len(), 3);
         assert_eq!(snapshot.steps[0].unit_id.as_str(), "feed-1");
         assert_eq!(snapshot.steps[1].unit_id.as_str(), "valve-1");
         assert_eq!(snapshot.steps[2].unit_id.as_str(), "flash-1");
+        assert_eq!(
+            snapshot.steps[1].consumed_stream_ids,
+            vec!["stream-feed".into()]
+        );
+        assert!(snapshot.steps[1].summary.contains("valve-1"));
 
         let throttled = snapshot
             .stream(&"stream-throttled".into())
@@ -779,5 +916,28 @@ mod tests {
         assert_eq!(snapshot.steps.len(), 3);
         assert!(snapshot.stream(&"stream-liquid".into()).is_some());
         assert!(snapshot.stream(&"stream-vapor".into()).is_some());
+    }
+
+    #[test]
+    fn sequential_solver_reports_step_context_for_unit_execution_failures() {
+        let provider = build_provider();
+        let flash_solver = PlaceholderTpFlashSolver;
+        let services = SolverServices {
+            thermo: &provider,
+            flash_solver: &flash_solver,
+        };
+        let mut flowsheet = build_feed_valve_flash_flowsheet();
+        flowsheet
+            .streams
+            .get_mut(&"stream-throttled".into())
+            .expect("expected throttled stream")
+            .pressure_pa = 130_000.0;
+
+        let error = SequentialModularSolver
+            .solve(&services, &flowsheet)
+            .expect_err("expected valve execution failure");
+
+        assert!(error.message().contains("step 2 unit `valve-1` (`valve`)"));
+        assert!(error.message().contains("after consuming [stream-feed]"));
     }
 }

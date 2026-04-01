@@ -43,7 +43,7 @@ RadishFlow 的目标架构已经冻结为“桌面端三层 + 外部控制面”
 | `rf-flash` | `TP Flash` 输入输出契约与求解器接口 | 已建立最小 API，并已实现最小二元 `TP Flash`、Rachford-Rice 与黄金样例 |
 | `rf-unitops` | 单元模块行为抽象 | 已建立内建单元规范、统一流股输入输出接口，并实现 `Feed`、`Mixer`、`Heater/Cooler`、`Valve`、`Flash Drum` 的最小行为边界 |
 | `rf-flowsheet` | 连接关系与图结构校验 | 已建立首轮材料端口连接校验，覆盖 canonical port signature、流股存在性与“一股一源一汇”约束 |
-| `rf-solver` | 顺序模块法求解器 | 已建立首轮无回路顺序模块法，可执行 `Feed + Mixer + Flash Drum`、`Feed -> Heater -> Flash Drum` 与 `Feed -> Valve -> Flash Drum` 闭环，并产出最小 `SolveSnapshot` |
+| `rf-solver` | 顺序模块法求解器 | 已建立首轮无回路顺序模块法，可执行 `Feed + Mixer + Flash Drum`、`Feed -> Heater -> Flash Drum` 与 `Feed -> Valve -> Flash Drum` 闭环，并产出带 summary / diagnostics / step 明细的最小 `SolveSnapshot` |
 | `rf-store` | JSON 存储与授权缓存索引 | 已建立项目文件 / 授权缓存 / 本地包 `manifest.json` / `payload.rfpkg` 的 JSON 读写、迁移分发、版本校验与相对路径布局 |
 | `rf-ffi` | Rust 与 .NET 的 C ABI 边界 | 仍为占位 |
 
@@ -55,7 +55,7 @@ RadishFlow 的目标架构已经冻结为“桌面端三层 + 外部控制面”
 
 | crate | 当前职责 | 当前状态 |
 | --- | --- | --- |
-| `rf-ui` | UI 状态与行为逻辑 | 已建立 `AppState`、授权态、求解态与控制面 DTO 骨架 |
+| `rf-ui` | UI 状态与行为逻辑 | 已建立 `AppState`、授权态、求解态与控制面 DTO 骨架，并可把 `rf-solver::SolveSnapshot` 映射为 UI 层结果快照 |
 | `rf-canvas` | 流程图画布能力 | 占位 |
 | `apps/radishflow-studio` | 桌面入口程序 | 已建立 auth cache sync 桥接、控制面 HTTP client、entitlement / manifest / lease / offline refresh 编排、下载获取抽象、基于 `reqwest + rustls` 的真实 HTTP transport、HTTP 请求/响应适配层、可重试/不可重试失败分类、下载 JSON 到本地 payload DTO 的协议映射、摘要校验、失败回滚与测试 |
 

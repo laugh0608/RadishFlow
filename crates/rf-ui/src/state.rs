@@ -353,6 +353,21 @@ impl AppState {
         self.workspace.store_snapshot(snapshot, limit);
     }
 
+    pub fn store_solver_snapshot(
+        &mut self,
+        id: impl Into<SolveSnapshotId>,
+        sequence: u64,
+        snapshot: &rf_solver::SolveSnapshot,
+    ) {
+        let ui_snapshot = SolveSnapshot::from_solver_snapshot(
+            id,
+            self.workspace.document.revision,
+            sequence,
+            snapshot,
+        );
+        self.store_snapshot(ui_snapshot);
+    }
+
     pub fn mark_saved(&mut self, path: impl Into<PathBuf>) {
         let path = path.into();
         self.workspace.mark_saved(path.clone());
