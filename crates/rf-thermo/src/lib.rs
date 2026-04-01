@@ -431,7 +431,8 @@ impl ThermoProvider for PlaceholderThermoProvider {
             .components
             .iter()
             .map(|component| {
-                let saturation_pressure_pa = component.saturation_pressure_pa(state.temperature_k)?;
+                let saturation_pressure_pa =
+                    component.saturation_pressure_pa(state.temperature_k)?;
                 Ok(saturation_pressure_pa / state.pressure_pa)
             })
             .collect()

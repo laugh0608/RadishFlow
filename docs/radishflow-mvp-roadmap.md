@@ -153,6 +153,7 @@ MVP 阶段明确不做：
 ### 推荐示例流程
 
 - `Feed -> Heater -> Flash Drum`
+- `Feed -> Valve -> Flash Drum`
 - `Feed1 + Feed2 -> Mixer -> Flash Drum`
 
 ### 推荐 crate 分工
@@ -166,9 +167,11 @@ MVP 阶段明确不做：
 
 - `rf-unitops` 第一轮统一接口先围绕标准 `MaterialStreamState` 输入输出与必要热力学服务注入
 - `Mixer` 当前先固定为两进一出，`Flash Drum` 当前先固定为一进两出，优先建立第一条可求解闭环
+- `Heater/Cooler` 与 `Valve` 当前先沿用“一进一出”最小接口，并以 outlet 流股模板承载当前阶段目标状态设定
 - `rf-flowsheet` 第一轮只做 canonical material 端口签名、流股存在性与“一股一源一汇”校验，拓扑排序和顺序模块调度继续留给 `rf-solver`
-- `rf-solver` 第一轮先只支持无回路、内建单元和标准材料流股执行，并以 `Feed1 + Feed2 -> Mixer -> Flash Drum` 作为第一个端到端样例
-- `examples/flowsheets` 当前应维护至少一个可直接从 `*.rfproj.json` 载入并求解的示例项目，作为内核闭环回归基线
+- `rf-solver` 第一轮先只支持无回路、内建单元和标准材料流股执行，当前已覆盖 `Feed1 + Feed2 -> Mixer -> Flash Drum`、`Feed -> Heater -> Flash Drum` 与 `Feed -> Valve -> Flash Drum`
+- `examples/flowsheets` 当前应维护至少三条可直接从 `*.rfproj.json` 载入并求解的示例项目，作为内核闭环回归基线
+- `tests/rust-integration` 当前应作为仓库级 Rust 集成测试入口，覆盖“加载项目 -> 求解 -> 读取结果”的示例流程回归
 
 ### 退出标准
 
@@ -176,6 +179,7 @@ MVP 阶段明确不做：
 - 能完成一次完整求解
 - 能输出每股流体的基本状态结果
 - 已具备最小集成测试，能覆盖“加载项目 -> 求解 -> 读取结果”的端到端数据流
+- 仓库级验证入口 `scripts/check-repo.ps1` / `scripts/check-repo.sh` 已自动覆盖这些集成测试
 
 ## M4：Rust FFI 与 .NET 10 适配层打通
 

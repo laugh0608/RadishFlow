@@ -138,7 +138,10 @@ impl PlaceholderTpFlashSolver {
     }
 
     fn normalize_composition(values: Vec<f64>) -> RfResult<Vec<f64>> {
-        if values.iter().any(|value| !value.is_finite() || *value < 0.0) {
+        if values
+            .iter()
+            .any(|value| !value.is_finite() || *value < 0.0)
+        {
             return Err(RfError::flash(
                 "phase composition contains a non-finite or negative value",
             ));
@@ -175,7 +178,10 @@ impl TpFlashSolver for PlaceholderTpFlashSolver {
             )));
         }
 
-        if k_values.iter().any(|value| !value.is_finite() || *value <= 0.0) {
+        if k_values
+            .iter()
+            .any(|value| !value.is_finite() || *value <= 0.0)
+        {
             return Err(RfError::flash(
                 "K-values must be finite numbers greater than zero",
             ));
@@ -189,7 +195,8 @@ impl TpFlashSolver for PlaceholderTpFlashSolver {
             PhaseState::new(PhaseLabel::Overall, 1.0, overall_mole_fractions.clone());
 
         let liquid_mole_fractions = Self::normalize_composition(
-            input.overall_mole_fractions
+            input
+                .overall_mole_fractions
                 .iter()
                 .zip(k_values.iter())
                 .map(|(z_i, k_i)| z_i / (1.0 + vapor_fraction * (k_i - 1.0)))
@@ -275,19 +282,18 @@ mod tests {
         let pressure_pa = 100_000.0;
         let provider = build_provider([2.0, 0.5], pressure_pa);
         let solver = PlaceholderTpFlashSolver;
-        let input = TpFlashInput::new(
-            "stream-1",
-            "Feed",
-            300.0,
-            pressure_pa,
-            10.0,
-            vec![0.5, 0.5],
-        );
+        let input = TpFlashInput::new("stream-1", "Feed", 300.0, pressure_pa, 10.0, vec![0.5, 0.5]);
 
-        let result = solver.flash(&provider, &input).expect("expected flash result");
+        let result = solver
+            .flash(&provider, &input)
+            .expect("expected flash result");
 
         assert_eq!(result.status, FlashStatus::Converged);
-        assert_close(result.vapor_fraction.expect("expected vapor fraction"), 0.5, 1e-10);
+        assert_close(
+            result.vapor_fraction.expect("expected vapor fraction"),
+            0.5,
+            1e-10,
+        );
 
         let liquid = result
             .stream
@@ -336,13 +342,37 @@ mod tests {
             vec![0.25, 0.75],
         );
 
-        let result = solver.flash(&provider, &input).expect("expected flash result");
+        let result = solver
+            .flash(&provider, &input)
+            .expect("expected flash result");
 
         assert_eq!(result.status, FlashStatus::Converged);
-        assert_close(result.vapor_fraction.expect("expected vapor fraction"), 0.0, 1e-12);
+        assert_close(
+            result.vapor_fraction.expect("expected vapor fraction"),
+            0.0,
+            1e-12,
+        );
         assert_eq!(result.stream.phases.len(), 2);
-        assert!(result.stream.phases.iter().any(|phase| phase.label == PhaseLabel::Overall));
-        assert!(result.stream.phases.iter().any(|phase| phase.label == PhaseLabel::Liquid));
-        assert!(!result.stream.phases.iter().any(|phase| phase.label == PhaseLabel::Vapor));
+        assert!(
+            result
+                .stream
+                .phases
+                .iter()
+                .any(|phase| phase.label == PhaseLabel::Overall)
+        );
+        assert!(
+            result
+                .stream
+                .phases
+                .iter()
+                .any(|phase| phase.label == PhaseLabel::Liquid)
+        );
+        assert!(
+            !result
+                .stream
+                .phases
+                .iter()
+                .any(|phase| phase.label == PhaseLabel::Vapor)
+        );
     }
 }

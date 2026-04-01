@@ -146,14 +146,7 @@ mod tests {
     }
 
     fn build_stream(id: &str) -> MaterialStreamState {
-        MaterialStreamState::from_tpzf(
-            id,
-            id,
-            300.0,
-            101_325.0,
-            1.0,
-            binary_composition(0.5, 0.5),
-        )
+        MaterialStreamState::from_tpzf(id, id, 300.0, 101_325.0, 1.0, binary_composition(0.5, 0.5))
     }
 
     #[test]
@@ -264,7 +257,11 @@ mod tests {
         let error = validate_connections(&flowsheet).expect_err("expected missing source error");
 
         assert_eq!(error.code().as_str(), "invalid_connection");
-        assert!(error.message().contains("missing an upstream outlet connection"));
+        assert!(
+            error
+                .message()
+                .contains("missing an upstream outlet connection")
+        );
     }
 
     #[test]
@@ -290,6 +287,10 @@ mod tests {
         let error = validate_connections(&flowsheet).expect_err("expected invalid unit error");
 
         assert_eq!(error.code().as_str(), "invalid_connection");
-        assert!(error.message().contains("canonical built-in port signature"));
+        assert!(
+            error
+                .message()
+                .contains("canonical built-in port signature")
+        );
     }
 }

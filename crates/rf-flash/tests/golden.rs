@@ -88,7 +88,9 @@ fn binary_hydrocarbon_lite_flash_case_matches_expected_result() {
         case.overall_mole_fractions.clone(),
     );
 
-    let result = solver.flash(&provider, &input).expect("expected flash result");
+    let result = solver
+        .flash(&provider, &input)
+        .expect("expected flash result");
 
     assert_eq!(result.status, FlashStatus::Converged);
     assert_close(
