@@ -6,7 +6,7 @@ use rf_store::StoredAuthCacheIndex;
 use rf_thermo::{
     CachedPropertyPackageProvider, PlaceholderThermoProvider, PropertyPackageProvider,
 };
-use rf_types::RfResult;
+use rf_types::{RfError, RfResult};
 use rf_ui::{AppLogLevel, AppState, DiagnosticSeverity, DiagnosticSummary, RunStatus};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -28,6 +28,28 @@ impl StudioSolveRequest {
             sequence,
         }
     }
+
+    pub fn validate(&self) -> RfResult<()> {
+        if self.package_id.trim().is_empty() {
+            return Err(RfError::invalid_input(
+                "studio solve request must contain a non-empty package_id",
+            ));
+        }
+
+        if self.snapshot_id.trim().is_empty() {
+            return Err(RfError::invalid_input(
+                "studio solve request must contain a non-empty snapshot_id",
+            ));
+        }
+
+        if self.sequence == 0 {
+            return Err(RfError::invalid_input(
+                "studio solve request sequence must be greater than zero",
+            ));
+        }
+
+        Ok(())
+    }
 }
 
 pub fn next_solver_snapshot_sequence(app_state: &AppState) -> u64 {
@@ -47,6 +69,8 @@ pub fn solve_workspace_with_property_package<P>(
 where
     P: PropertyPackageProvider,
 {
+    request.validate()?;
+
     let revision = app_state.workspace.document.revision;
     let package_id = request.package_id.as_str();
     app_state.workspace.solve_session.begin_checking(revision);
