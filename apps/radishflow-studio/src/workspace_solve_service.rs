@@ -36,6 +36,14 @@ impl WorkspaceSolveService {
         Self
     }
 
+    pub fn skip_reason(
+        &self,
+        app_state: &AppState,
+        trigger: WorkspaceSolveTrigger,
+    ) -> Option<WorkspaceSolveSkipReason> {
+        should_skip_workspace_solve(app_state, trigger)
+    }
+
     pub fn build_request(
         &self,
         app_state: &AppState,
@@ -97,7 +105,7 @@ impl WorkspaceSolveService {
     where
         P: PropertyPackageProvider,
     {
-        if let Some(skip_reason) = should_skip_workspace_solve(app_state, trigger) {
+        if let Some(skip_reason) = self.skip_reason(app_state, trigger) {
             return Ok(WorkspaceSolveDispatch::Skipped(skip_reason));
         }
 
@@ -118,7 +126,7 @@ impl WorkspaceSolveService {
         package_id: impl Into<String>,
         trigger: WorkspaceSolveTrigger,
     ) -> RfResult<WorkspaceSolveDispatch> {
-        if let Some(skip_reason) = should_skip_workspace_solve(app_state, trigger) {
+        if let Some(skip_reason) = self.skip_reason(app_state, trigger) {
             return Ok(WorkspaceSolveDispatch::Skipped(skip_reason));
         }
 

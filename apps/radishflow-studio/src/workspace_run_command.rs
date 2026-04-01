@@ -41,7 +41,7 @@ impl WorkspaceRunCommand {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct WorkspaceRunDispatchResult {
-    pub package_id: String,
+    pub package_id: Option<String>,
     pub dispatch: WorkspaceSolveDispatch,
 }
 
@@ -52,6 +52,13 @@ pub fn dispatch_workspace_run_from_auth_cache(
     auth_cache_index: &StoredAuthCacheIndex,
     command: &WorkspaceRunCommand,
 ) -> RfResult<WorkspaceRunDispatchResult> {
+    if let Some(skip_reason) = solve_service.skip_reason(app_state, command.trigger) {
+        return Ok(WorkspaceRunDispatchResult {
+            package_id: None,
+            dispatch: WorkspaceSolveDispatch::Skipped(skip_reason),
+        });
+    }
+
     let package_id =
         resolve_workspace_run_package_id(app_state, auth_cache_index, &command.package)?;
     let dispatch = solve_service.dispatch_from_auth_cache(
@@ -63,7 +70,7 @@ pub fn dispatch_workspace_run_from_auth_cache(
     )?;
 
     Ok(WorkspaceRunDispatchResult {
-        package_id,
+        package_id: Some(package_id),
         dispatch,
     })
 }
@@ -340,7 +347,30 @@ mod tests {
         )
         .expect("expected dispatch result");
 
-        assert_eq!(result.package_id, "pkg-1");
+        assert_eq!(result.package_id, None);
+        assert_eq!(
+            result.dispatch,
+            WorkspaceSolveDispatch::Skipped(WorkspaceSolveSkipReason::HoldMode)
+        );
+    }
+
+    #[test]
+    fn automatic_command_skips_before_preferred_package_resolution() {
+        let mut app_state = AppState::new(sample_document());
+        let auth_cache_index = sample_auth_cache_index(&["pkg-1", "pkg-2"]);
+        let service = WorkspaceSolveService::new();
+        let command = WorkspaceRunCommand::automatic_preferred();
+
+        let result = dispatch_workspace_run_from_auth_cache(
+            &mut app_state,
+            &service,
+            "D:\\cache-root",
+            &auth_cache_index,
+            &command,
+        )
+        .expect("expected dispatch result");
+
+        assert_eq!(result.package_id, None);
         assert_eq!(
             result.dispatch,
             WorkspaceSolveDispatch::Skipped(WorkspaceSolveSkipReason::HoldMode)

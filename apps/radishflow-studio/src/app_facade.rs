@@ -1,0 +1,339 @@
+use std::path::Path;
+
+use rf_store::StoredAuthCacheIndex;
+use rf_types::RfResult;
+use rf_ui::{AppState, RunStatus, latest_snapshot_id};
+
+use crate::{
+    WorkspaceRunCommand, WorkspaceRunDispatchResult, WorkspaceSolveDispatch, WorkspaceSolveService,
+    dispatch_workspace_run_from_auth_cache,
+};
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum StudioAppCommand {
+    RunWorkspace(WorkspaceRunCommand),
+}
+
+impl StudioAppCommand {
+    pub fn run_workspace(command: WorkspaceRunCommand) -> Self {
+        Self::RunWorkspace(command)
+    }
+
+    pub fn execution_boundary(&self) -> StudioAppExecutionBoundary {
+        match self {
+            Self::RunWorkspace(_) => {
+                StudioAppExecutionBoundary::Inline(StudioAppExecutionLane::WorkspaceSolve)
+            }
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum StudioAppExecutionLane {
+    WorkspaceSolve,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum StudioAppExecutionBoundary {
+    Inline(StudioAppExecutionLane),
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct StudioAppAuthCacheContext<'a> {
+    pub cache_root: &'a Path,
+    pub auth_cache_index: &'a StoredAuthCacheIndex,
+}
+
+impl<'a> StudioAppAuthCacheContext<'a> {
+    pub fn new(cache_root: &'a Path, auth_cache_index: &'a StoredAuthCacheIndex) -> Self {
+        Self {
+            cache_root,
+            auth_cache_index,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioWorkspaceRunDispatch {
+    pub package_id: Option<String>,
+    pub solve_dispatch: WorkspaceSolveDispatch,
+    pub latest_snapshot_id: Option<String>,
+    pub run_status: RunStatus,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum StudioAppResultDispatch {
+    WorkspaceRun(StudioWorkspaceRunDispatch),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioAppCommandOutcome {
+    pub boundary: StudioAppExecutionBoundary,
+    pub dispatch: StudioAppResultDispatch,
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct StudioAppFacade {
+    solve_service: WorkspaceSolveService,
+}
+
+impl StudioAppFacade {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn execute_with_auth_cache(
+        &self,
+        app_state: &mut AppState,
+        context: &StudioAppAuthCacheContext<'_>,
+        command: &StudioAppCommand,
+    ) -> RfResult<StudioAppCommandOutcome> {
+        let boundary = command.execution_boundary();
+        let dispatch = match command {
+            StudioAppCommand::RunWorkspace(run_command) => StudioAppResultDispatch::WorkspaceRun(
+                self.run_workspace_from_auth_cache(app_state, context, run_command)?,
+            ),
+        };
+
+        Ok(StudioAppCommandOutcome { boundary, dispatch })
+    }
+
+    pub fn run_workspace_from_auth_cache(
+        &self,
+        app_state: &mut AppState,
+        context: &StudioAppAuthCacheContext<'_>,
+        command: &WorkspaceRunCommand,
+    ) -> RfResult<StudioWorkspaceRunDispatch> {
+        let result = dispatch_workspace_run_from_auth_cache(
+            app_state,
+            &self.solve_service,
+            context.cache_root,
+            context.auth_cache_index,
+            command,
+        )?;
+
+        Ok(map_workspace_run_dispatch(app_state, result))
+    }
+}
+
+fn map_workspace_run_dispatch(
+    app_state: &AppState,
+    result: WorkspaceRunDispatchResult,
+) -> StudioWorkspaceRunDispatch {
+    StudioWorkspaceRunDispatch {
+        package_id: result.package_id,
+        solve_dispatch: result.dispatch,
+        latest_snapshot_id: latest_snapshot_id(&app_state.workspace)
+            .map(|snapshot_id| snapshot_id.as_str().to_string()),
+        run_status: app_state.workspace.solve_session.status,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::path::{Path, PathBuf};
+    use std::time::{Duration, SystemTime, UNIX_EPOCH};
+
+    use rf_model::Flowsheet;
+    use rf_store::{
+        StoredAntoineCoefficients, StoredAuthCacheIndex, StoredCredentialReference,
+        StoredPropertyPackageManifest, StoredPropertyPackagePayload, StoredPropertyPackageRecord,
+        StoredPropertyPackageSource, StoredThermoComponent, parse_project_file_json,
+        property_package_payload_integrity, write_property_package_manifest,
+        write_property_package_payload,
+    };
+    use rf_types::ComponentId;
+    use rf_ui::{AppState, DocumentMetadata, FlowsheetDocument, RunStatus};
+
+    use super::{
+        StudioAppAuthCacheContext, StudioAppCommand, StudioAppExecutionBoundary,
+        StudioAppExecutionLane, StudioAppFacade, StudioAppResultDispatch,
+    };
+    use crate::{WorkspaceRunCommand, WorkspaceRunPackageSelection, WorkspaceSolveDispatch};
+
+    fn timestamp(seconds: u64) -> std::time::SystemTime {
+        UNIX_EPOCH + Duration::from_secs(seconds)
+    }
+
+    fn sample_document() -> FlowsheetDocument {
+        let flowsheet = Flowsheet::new("demo");
+        let metadata = DocumentMetadata::new("doc-1", "Demo", timestamp(10));
+        FlowsheetDocument::new(flowsheet, metadata)
+    }
+
+    fn sample_auth_cache_index(package_ids: &[&str]) -> StoredAuthCacheIndex {
+        let mut index = StoredAuthCacheIndex::new(
+            "https://id.radish.local",
+            "user-123",
+            StoredCredentialReference::new("radishflow-studio", "user-123-primary"),
+        );
+        index.property_packages = package_ids
+            .iter()
+            .map(|package_id| {
+                let mut record = StoredPropertyPackageRecord::new(
+                    *package_id,
+                    "2026.03.1",
+                    StoredPropertyPackageSource::RemoteDerivedPackage,
+                    "sha256:test",
+                    128,
+                    timestamp(20),
+                );
+                record.expires_at = Some(timestamp(9_999_999_999));
+                record
+            })
+            .collect();
+        index
+    }
+
+    fn unique_temp_path(name: &str) -> PathBuf {
+        let unique = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("expected time after epoch")
+            .as_nanos();
+        std::env::temp_dir().join(format!("radishflow-{name}-{unique}"))
+    }
+
+    fn write_cached_package(
+        cache_root: &Path,
+        auth_cache_index: &mut StoredAuthCacheIndex,
+        package_id: &str,
+    ) {
+        let mut first = StoredThermoComponent::new(ComponentId::new("component-a"), "Component A");
+        first.antoine = Some(StoredAntoineCoefficients::new(
+            ((2.0_f64 * 100_000.0_f64) / 1_000.0_f64).ln(),
+            0.0,
+            0.0,
+        ));
+        let mut second = StoredThermoComponent::new(ComponentId::new("component-b"), "Component B");
+        second.antoine = Some(StoredAntoineCoefficients::new(
+            ((0.5_f64 * 100_000.0_f64) / 1_000.0_f64).ln(),
+            0.0,
+            0.0,
+        ));
+
+        let payload =
+            StoredPropertyPackagePayload::new(package_id, "2026.03.1", vec![first, second]);
+        let integrity =
+            property_package_payload_integrity(&payload).expect("expected payload integrity");
+        let expires_at = Some(SystemTime::now() + Duration::from_secs(3_600));
+        let mut manifest = StoredPropertyPackageManifest::new(
+            package_id,
+            "2026.03.1",
+            StoredPropertyPackageSource::RemoteDerivedPackage,
+            vec![
+                ComponentId::new("component-a"),
+                ComponentId::new("component-b"),
+            ],
+        );
+        manifest.hash = integrity.hash.clone();
+        manifest.size_bytes = integrity.size_bytes;
+        manifest.expires_at = expires_at;
+        let mut record = StoredPropertyPackageRecord::new(
+            &manifest.package_id,
+            &manifest.version,
+            StoredPropertyPackageSource::RemoteDerivedPackage,
+            manifest.hash.clone(),
+            manifest.size_bytes,
+            timestamp(60),
+        );
+        record.expires_at = expires_at;
+
+        write_property_package_manifest(record.manifest_path_under(cache_root), &manifest)
+            .expect("expected manifest write");
+        write_property_package_payload(
+            record
+                .payload_path_under(cache_root)
+                .expect("expected payload path"),
+            &payload,
+        )
+        .expect("expected payload write");
+        auth_cache_index.property_packages.push(record);
+    }
+
+    #[test]
+    fn facade_runs_workspace_command_from_auth_cache() {
+        let cache_root = unique_temp_path("app-facade-run");
+        let mut auth_cache_index = StoredAuthCacheIndex::new(
+            "https://id.radish.local",
+            "user-123",
+            StoredCredentialReference::new("radishflow-studio", "user-123-primary"),
+        );
+        write_cached_package(
+            &cache_root,
+            &mut auth_cache_index,
+            "binary-hydrocarbon-lite-v1",
+        );
+        let facade = StudioAppFacade::new();
+        let project = parse_project_file_json(include_str!(
+            "../../../examples/flowsheets/feed-heater-flash.rfproj.json"
+        ))
+        .expect("expected project parse");
+        let mut app_state = AppState::new(FlowsheetDocument::new(
+            project.document.flowsheet,
+            DocumentMetadata::new("doc-app-facade", "App Facade Demo", timestamp(70)),
+        ));
+        let context = StudioAppAuthCacheContext::new(&cache_root, &auth_cache_index);
+        let command = StudioAppCommand::run_workspace(WorkspaceRunCommand::manual(
+            "binary-hydrocarbon-lite-v1",
+        ));
+
+        let outcome = facade
+            .execute_with_auth_cache(&mut app_state, &context, &command)
+            .expect("expected app facade run");
+
+        assert_eq!(
+            outcome.boundary,
+            StudioAppExecutionBoundary::Inline(StudioAppExecutionLane::WorkspaceSolve)
+        );
+        let dispatch = match outcome.dispatch {
+            StudioAppResultDispatch::WorkspaceRun(dispatch) => dispatch,
+        };
+        assert_eq!(
+            dispatch.package_id,
+            Some("binary-hydrocarbon-lite-v1".to_string())
+        );
+        assert_eq!(
+            dispatch.solve_dispatch,
+            WorkspaceSolveDispatch::Started(crate::StudioSolveRequest::new(
+                "binary-hydrocarbon-lite-v1",
+                "doc-app-facade-rev-0-seq-1",
+                1,
+            ))
+        );
+        assert_eq!(
+            dispatch.latest_snapshot_id.as_deref(),
+            Some("doc-app-facade-rev-0-seq-1")
+        );
+        assert_eq!(dispatch.run_status, RunStatus::Converged);
+
+        std::fs::remove_dir_all(cache_root).expect("expected temp dir cleanup");
+    }
+
+    #[test]
+    fn facade_skips_automatic_workspace_command_before_package_resolution() {
+        let auth_cache_index = sample_auth_cache_index(&["pkg-1", "pkg-2"]);
+        let facade = StudioAppFacade::new();
+        let mut app_state = AppState::new(sample_document());
+        let cache_root = PathBuf::from("D:\\cache-root");
+        let context = StudioAppAuthCacheContext::new(&cache_root, &auth_cache_index);
+        let command = StudioAppCommand::run_workspace(WorkspaceRunCommand::new(
+            crate::WorkspaceSolveTrigger::Automatic,
+            WorkspaceRunPackageSelection::Preferred,
+        ));
+
+        let outcome = facade
+            .execute_with_auth_cache(&mut app_state, &context, &command)
+            .expect("expected skip outcome");
+
+        let dispatch = match outcome.dispatch {
+            StudioAppResultDispatch::WorkspaceRun(dispatch) => dispatch,
+        };
+        assert_eq!(dispatch.package_id, None);
+        assert_eq!(
+            dispatch.solve_dispatch,
+            WorkspaceSolveDispatch::Skipped(crate::WorkspaceSolveSkipReason::HoldMode)
+        );
+        assert_eq!(dispatch.latest_snapshot_id, None);
+        assert_eq!(dispatch.run_status, RunStatus::Idle);
+    }
+}
