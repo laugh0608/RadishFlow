@@ -18,11 +18,14 @@ fn main() {
                     if let Some(snapshot_id) = dispatch.latest_snapshot_id {
                         println!("Latest snapshot: {snapshot_id}");
                     }
+                    if let Some(summary) = dispatch.latest_snapshot_summary {
+                        println!("Summary: {summary}");
+                    }
+                    println!("Log entries: {}", dispatch.log_entry_count);
+                    if let Some(entry) = dispatch.latest_log_entry {
+                        println!("Latest log: {:?}: {}", entry.level, entry.message);
+                    }
                 }
-            }
-
-            if let Some(summary) = report.latest_snapshot_summary {
-                println!("Summary: {summary}");
             }
 
             if !report.log_entries.is_empty() {

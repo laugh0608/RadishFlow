@@ -39,7 +39,6 @@ impl Default for StudioBootstrapConfig {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StudioBootstrapReport {
     pub outcome: StudioAppCommandOutcome,
-    pub latest_snapshot_summary: Option<String>,
     pub log_entries: Vec<AppLogEntry>,
 }
 
@@ -59,11 +58,6 @@ pub fn run_studio_bootstrap(config: &StudioBootstrapConfig) -> RfResult<StudioBo
 
     Ok(StudioBootstrapReport {
         outcome,
-        latest_snapshot_summary: app_state
-            .workspace
-            .snapshot_history
-            .back()
-            .map(|snapshot| snapshot.summary.primary_message.clone()),
         log_entries: app_state.log_feed.entries.iter().cloned().collect(),
     })
 }
@@ -249,9 +243,10 @@ mod tests {
             WorkspaceSolveDispatch::Started(_)
         ));
         assert_eq!(
-            report.latest_snapshot_summary.as_deref(),
+            dispatch.latest_snapshot_summary.as_deref(),
             Some("solved flowsheet with 3 unit(s), 4 diagnostic entry(ies), and 4 resulting stream(s)")
         );
+        assert_eq!(dispatch.log_entry_count, 1);
         assert_eq!(report.log_entries.len(), 1);
     }
 
@@ -271,7 +266,8 @@ mod tests {
             WorkspaceSolveDispatch::Skipped(WorkspaceSolveSkipReason::HoldMode)
         );
         assert_eq!(dispatch.run_status, RunStatus::Idle);
-        assert!(report.latest_snapshot_summary.is_none());
+        assert!(dispatch.latest_snapshot_summary.is_none());
+        assert_eq!(dispatch.log_entry_count, 1);
         assert_eq!(report.log_entries.len(), 1);
         assert_eq!(
             report.log_entries[0].message,
@@ -294,5 +290,6 @@ mod tests {
             StudioAppResultDispatch::WorkspaceRun(dispatch) => dispatch,
         };
         assert_eq!(dispatch.package_id.as_deref(), Some("binary-hydrocarbon-lite-v1"));
+        assert_eq!(dispatch.log_entry_count, 1);
     }
 }

@@ -2,7 +2,7 @@ use std::path::Path;
 
 use rf_store::StoredAuthCacheIndex;
 use rf_types::RfResult;
-use rf_ui::{AppLogLevel, AppState, RunStatus, latest_snapshot_id};
+use rf_ui::{AppLogEntry, AppLogLevel, AppState, RunStatus, latest_snapshot_id};
 
 use crate::{
     WorkspaceRunCommand, WorkspaceRunDispatchResult, WorkspaceSolveDispatch, WorkspaceSolveService,
@@ -59,7 +59,10 @@ pub struct StudioWorkspaceRunDispatch {
     pub package_id: Option<String>,
     pub solve_dispatch: WorkspaceSolveDispatch,
     pub latest_snapshot_id: Option<String>,
+    pub latest_snapshot_summary: Option<String>,
     pub run_status: RunStatus,
+    pub log_entry_count: usize,
+    pub latest_log_entry: Option<AppLogEntry>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -146,7 +149,14 @@ fn map_workspace_run_dispatch(
         solve_dispatch: result.dispatch,
         latest_snapshot_id: latest_snapshot_id(&app_state.workspace)
             .map(|snapshot_id| snapshot_id.as_str().to_string()),
+        latest_snapshot_summary: app_state
+            .workspace
+            .snapshot_history
+            .back()
+            .map(|snapshot| snapshot.summary.primary_message.clone()),
         run_status: app_state.workspace.solve_session.status,
+        log_entry_count: app_state.log_feed.entries.len(),
+        latest_log_entry: app_state.log_feed.entries.back().cloned(),
     }
 }
 
@@ -325,7 +335,18 @@ mod tests {
             dispatch.latest_snapshot_id.as_deref(),
             Some("doc-app-facade-rev-0-seq-1")
         );
+        assert_eq!(
+            dispatch.latest_snapshot_summary.as_deref(),
+            Some("solved flowsheet with 3 unit(s), 4 diagnostic entry(ies), and 4 resulting stream(s)")
+        );
         assert_eq!(dispatch.run_status, RunStatus::Converged);
+        assert_eq!(dispatch.log_entry_count, 1);
+        assert_eq!(
+            dispatch.latest_log_entry.as_ref().map(|entry| entry.message.as_str()),
+            Some(
+                "Solved document revision 0 with property package `binary-hydrocarbon-lite-v1` into snapshot `doc-app-facade-rev-0-seq-1`"
+            )
+        );
         assert_eq!(app_state.log_feed.entries.len(), 1);
 
         std::fs::remove_dir_all(cache_root).expect("expected temp dir cleanup");
@@ -356,7 +377,13 @@ mod tests {
             WorkspaceSolveDispatch::Skipped(crate::WorkspaceSolveSkipReason::HoldMode)
         );
         assert_eq!(dispatch.latest_snapshot_id, None);
+        assert_eq!(dispatch.latest_snapshot_summary, None);
         assert_eq!(dispatch.run_status, RunStatus::Idle);
+        assert_eq!(dispatch.log_entry_count, 1);
+        assert_eq!(
+            dispatch.latest_log_entry.as_ref().map(|entry| entry.message.as_str()),
+            Some("Skipped workspace run because simulation mode is Hold")
+        );
         assert_eq!(app_state.log_feed.entries.len(), 1);
         assert_eq!(
             app_state.log_feed.entries[0].message,

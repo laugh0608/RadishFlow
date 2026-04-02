@@ -736,6 +736,7 @@ pub struct StepSnapshot {
 - 失败时调用 `record_failure(...)` 并追加 `AppLogFeed` 错误日志
 - Automatic 命中 `HoldMode` / `NoPendingRequest` 的 skip 当前也会写入 `AppLogFeed`
 - `main.rs` 当前已通过 `run_studio_bootstrap(...)` 把这条链路接到一个明确的桌面进程触发点，并输出最小运行摘要
+- `StudioWorkspaceRunDispatch` 当前已补充 `latest_snapshot_summary`、`log_entry_count` 与 `latest_log_entry`，让入口层先消费结构化运行摘要，而不是直接翻读完整 `AppState`
 
 当前明确还没做的事：
 
