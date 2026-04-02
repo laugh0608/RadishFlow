@@ -4,6 +4,7 @@ mod diagnostics;
 mod ids;
 mod run;
 mod run_panel;
+mod run_panel_view;
 mod state;
 
 pub use auth::{
@@ -27,6 +28,7 @@ pub use run_panel::{
     RunPanelActionId, RunPanelActionModel, RunPanelCommandModel, RunPanelIntent,
     RunPanelPackageSelection, RunPanelState,
 };
+pub use run_panel_view::{RunPanelActionProminence, RunPanelRenderableAction, RunPanelViewModel};
 pub use state::{
     AppLogEntry, AppLogFeed, AppLogLevel, AppState, AppTheme, DateTimeUtc, DocumentMetadata,
     DraftValidationState, DraftValue, FieldDraft, FlowsheetDocument, InspectorDraftState,
@@ -51,8 +53,8 @@ mod tests {
         CommandHistoryEntry, DiagnosticSeverity, DiagnosticSummary, DocumentCommand,
         DocumentMetadata, EntitlementSnapshot, FlowsheetDocument, OfflineLeaseRefreshResponse,
         PropertyPackageManifest, PropertyPackageManifestList, PropertyPackageSource,
-        RunPanelActionId, RunPanelState, RunStatus, SecureCredentialHandle, SimulationMode,
-        SolvePendingReason, SolveSnapshot, TokenLease,
+        RunPanelActionId, RunPanelActionProminence, RunPanelState, RunPanelViewModel, RunStatus,
+        SecureCredentialHandle, SimulationMode, SolvePendingReason, SolveSnapshot, TokenLease,
     };
 
     fn timestamp(seconds: u64) -> std::time::SystemTime {
@@ -239,6 +241,27 @@ mod tests {
                 .label,
             "Resume"
         );
+    }
+
+    #[test]
+    fn run_panel_view_model_consumes_primary_and_secondary_actions() {
+        let app_state = AppState::new(sample_document());
+
+        let view = RunPanelViewModel::from_state(&app_state.workspace.run_panel);
+
+        assert_eq!(view.mode_label, "Hold");
+        assert_eq!(view.status_label, "Idle");
+        assert_eq!(view.pending_label, Some("Snapshot missing"));
+        assert_eq!(view.primary_action.id, RunPanelActionId::Resume);
+        assert_eq!(view.primary_action.label, "Resume");
+        assert_eq!(
+            view.primary_action.prominence,
+            RunPanelActionProminence::Primary
+        );
+        assert_eq!(view.secondary_actions.len(), 3);
+        assert_eq!(view.secondary_actions[0].id, RunPanelActionId::RunManual);
+        assert_eq!(view.secondary_actions[1].id, RunPanelActionId::SetHold);
+        assert_eq!(view.secondary_actions[2].id, RunPanelActionId::SetActive);
     }
 
     #[test]

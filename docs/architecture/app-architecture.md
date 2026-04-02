@@ -85,7 +85,7 @@
 - `result_panel`
 - `log_panel`
 
-截至 2026-04-02，`rf-ui` 已先落地最小 `run_panel::RunPanelState`，用于承接运行栏摘要；当前又进一步补出 `RunPanelCommandModel`，把“主动作是谁、按钮是否显示、按钮是否可点”冻结到 UI 自有模型里。更细的事件流编排仍继续留在 Studio 层收口。
+截至 2026-04-02，`rf-ui` 已先落地最小 `run_panel::RunPanelState`，用于承接运行栏摘要；当前又进一步补出 `RunPanelCommandModel` 与 `RunPanelViewModel`，把“主动作是谁、按钮是否显示、按钮是否可点，以及最小运行栏该如何消费这些动作”冻结到 UI 自有模型里。更细的事件流编排仍继续留在 Studio 层收口。
 
 ### `rf-canvas`
 
@@ -225,6 +225,7 @@
 - `snapshot_history` 负责持有不可变快照实体，`SolveSessionState` 只保留引用
 - `run_panel` 只持有面向运行栏的已派生摘要，不反向取代 `solve_session`、`snapshot_history` 或 `log_feed`
 - `run_panel` 当前也负责持有最小按钮/命令模型，不让按钮启用判断散落到 Studio 或最终视图层
+- 运行栏最终最小视图入口当前应消费 `RunPanelViewModel`，而不是重新拼装 `can_run_manual` / `can_resume` 之类摘要布尔值
 
 ### `FlowsheetDocument`
 
@@ -758,6 +759,8 @@ pub struct StepSnapshot {
 - `rf-ui` 当前已新增 `RunPanelState`，并由 `AppState::refresh_run_panel_state(...)` 基于 `SolveSessionState`、最新 `SolveSnapshot` 和最新日志自动推导；Studio 也可通过 `WorkspaceControlState -> RunPanelState` 的映射把控制面摘要写回 UI 状态
 - `rf-ui` 当前也已补出自有 `RunPanelIntent` / `RunPanelPackageSelection`；Studio 继续只负责把这些 UI 意图映射为 `WorkspaceControlAction` 并执行，避免 `rf-ui` 反向依赖 Studio 类型
 - `rf-ui` 当前已把运行栏按钮模型冻结为 `RunPanelCommandModel`：`Run`、`Resume`、`Hold`、`Active` 的按钮描述、可见性、可用性和默认主动作都由 UI 层派生，不再依赖 Studio 侧临时判断
+- `rf-ui` 当前也已补出 `RunPanelViewModel`，把主按钮/次按钮槽位、状态标签和最小渲染所需的运行栏数据冻结为 UI 内部展示 DTO
+- `run_studio_bootstrap(...)` 与 `main.rs` 当前已开始直接消费 `RunPanelViewModel`，作为第一处真实的最小运行栏渲染入口，而不再只打印控制面布尔摘要
 
 当前明确还没做的事：
 

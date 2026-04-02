@@ -61,11 +61,11 @@ App 与交互层当前进一步冻结以下口径：
 - `CommandHistory` 只记录语义化文档命令，运行控制和文档生命周期动作不进入撤回栈
 - `SolveSessionState` 必须绑定当前观察的文档修订号，`SolveSnapshot` 由工作区持有有界历史窗口
 - Studio 当前应用层运行入口先冻结为 `StudioAppFacade + WorkspaceRunCommand + WorkspaceSolveService + solver_bridge` 四层，不让 UI 直接拼接底层 provider/solver 细节
-- `rf-ui` 当前运行栏状态先冻结为 `RunPanelState + RunPanelIntent + RunPanelCommandModel`，把按钮意图、主动作和启用判断留在 UI 层，不让视图层或 Studio 侧重复发明一套按钮语义
+- `rf-ui` 当前运行栏状态先冻结为 `RunPanelState + RunPanelIntent + RunPanelCommandModel + RunPanelViewModel`，把按钮意图、主动作、按钮槽位和最小渲染所需状态都留在 UI 层，不让视图层或 Studio 侧重复发明一套按钮语义
 - Studio 当前运行触发先明确区分 `Manual` / `Automatic`，并把 `SimulationMode` / `pending_reason` 的运行门控收口在应用层
 - Studio 当前默认包选择采取保守策略：只有唯一候选包明确时才自动选中；多包场景必须显式指定 package，不在当前阶段隐式猜包
 - Studio 当前 Automatic 触发在命中 `HoldMode` / `NoPendingRequest` 时应先返回 skip，再决定是否需要 package 解析，避免多包缓存场景下的无意义失败
-- 当前最小桌面入口 `run_studio_bootstrap` 也已改为直接消费 `RunPanelIntent`，确保“桌面触发点 -> UI 意图 -> Studio 控制动作”边界在样例入口里就成立
+- 当前最小桌面入口 `run_studio_bootstrap` 也已改为直接消费 `RunPanelIntent`，并向入口层输出 `RunPanelViewModel`，确保“桌面触发点 -> UI 意图 -> Studio 控制动作 -> UI 视图 DTO”边界在样例入口里就成立
 
 认证、授权与受控物性资产当前进一步冻结以下口径：
 

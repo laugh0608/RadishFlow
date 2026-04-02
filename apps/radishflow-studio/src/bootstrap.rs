@@ -18,7 +18,7 @@ use rf_store::{
 use rf_types::{RfError, RfResult};
 use rf_ui::{
     AppLogEntry, AppState, DocumentMetadata, FlowsheetDocument, RunPanelIntent,
-    RunPanelPackageSelection,
+    RunPanelPackageSelection, RunPanelViewModel,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -47,6 +47,7 @@ impl Default for StudioBootstrapConfig {
 pub struct StudioBootstrapReport {
     pub outcome: WorkspaceControlActionOutcome,
     pub control_state: WorkspaceControlState,
+    pub run_panel: RunPanelViewModel,
     pub log_entries: Vec<AppLogEntry>,
 }
 
@@ -71,6 +72,7 @@ pub fn run_studio_bootstrap(config: &StudioBootstrapConfig) -> RfResult<StudioBo
     Ok(StudioBootstrapReport {
         outcome,
         control_state: snapshot_workspace_control_state(&app_state),
+        run_panel: RunPanelViewModel::from_state(&app_state.workspace.run_panel),
         log_entries: app_state.log_feed.entries.iter().cloned().collect(),
     })
 }
@@ -278,6 +280,10 @@ mod tests {
                 "solved flowsheet with 3 unit(s), 4 diagnostic entry(ies), and 4 resulting stream(s)"
             )
         );
+        assert_eq!(report.run_panel.mode_label, "Hold");
+        assert_eq!(report.run_panel.status_label, "Converged");
+        assert_eq!(report.run_panel.primary_action.label, "Run");
+        assert_eq!(report.run_panel.secondary_actions.len(), 3);
         assert_eq!(dispatch.log_entry_count, 1);
         assert_eq!(report.log_entries.len(), 1);
     }
@@ -351,6 +357,8 @@ mod tests {
             StudioAppResultDispatch::WorkspaceRun(_) => panic!("expected workspace mode dispatch"),
         }
         assert_eq!(report.control_state.simulation_mode, SimulationMode::Active);
+        assert_eq!(report.run_panel.mode_label, "Active");
+        assert_eq!(report.run_panel.primary_action.label, "Run");
         assert_eq!(report.log_entries.len(), 1);
         assert_eq!(
             report.log_entries[0].message,
