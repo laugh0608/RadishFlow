@@ -1,43 +1,11 @@
 use radishflow_studio::{StudioAppResultDispatch, StudioBootstrapConfig, run_studio_bootstrap};
+use rf_ui::RunPanelTextView;
 
 fn print_run_panel(report: &radishflow_studio::StudioBootstrapReport) {
-    println!("Run panel:");
-    println!("  Mode: {}", report.run_panel.mode_label);
-    println!("  Status: {}", report.run_panel.status_label);
-    if let Some(pending) = report.run_panel.pending_label {
-        println!("  Pending: {pending}");
-    }
-    if let Some(snapshot_id) = report.run_panel.latest_snapshot_id.as_deref() {
-        println!("  Latest snapshot: {snapshot_id}");
-    }
-    if let Some(summary) = report.run_panel.latest_snapshot_summary.as_deref() {
-        println!("  Summary: {summary}");
-    }
-    if let Some(message) = report.run_panel.latest_log_message.as_deref() {
-        println!("  Latest log: {message}");
-    }
-    println!(
-        "  Primary action: {} [{}]",
-        report.run_panel.primary_action.label,
-        if report.run_panel.primary_action.enabled {
-            "enabled"
-        } else {
-            "disabled"
-        }
-    );
-    if !report.run_panel.secondary_actions.is_empty() {
-        println!("  Secondary actions:");
-        for action in &report.run_panel.secondary_actions {
-            println!(
-                "    - {} [{}]",
-                action.label,
-                if action.enabled {
-                    "enabled"
-                } else {
-                    "disabled"
-                }
-            );
-        }
+    let text = RunPanelTextView::from_view_model(&report.run_panel);
+    println!("{}:", text.title);
+    for line in text.lines {
+        println!("  {line}");
     }
 }
 

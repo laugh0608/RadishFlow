@@ -4,6 +4,7 @@ mod diagnostics;
 mod ids;
 mod run;
 mod run_panel;
+mod run_panel_text;
 mod run_panel_view;
 mod state;
 
@@ -28,6 +29,7 @@ pub use run_panel::{
     RunPanelActionId, RunPanelActionModel, RunPanelCommandModel, RunPanelIntent,
     RunPanelPackageSelection, RunPanelState,
 };
+pub use run_panel_text::RunPanelTextView;
 pub use run_panel_view::{RunPanelActionProminence, RunPanelRenderableAction, RunPanelViewModel};
 pub use state::{
     AppLogEntry, AppLogFeed, AppLogLevel, AppState, AppTheme, DateTimeUtc, DocumentMetadata,
@@ -53,8 +55,9 @@ mod tests {
         CommandHistoryEntry, DiagnosticSeverity, DiagnosticSummary, DocumentCommand,
         DocumentMetadata, EntitlementSnapshot, FlowsheetDocument, OfflineLeaseRefreshResponse,
         PropertyPackageManifest, PropertyPackageManifestList, PropertyPackageSource,
-        RunPanelActionId, RunPanelActionProminence, RunPanelState, RunPanelViewModel, RunStatus,
-        SecureCredentialHandle, SimulationMode, SolvePendingReason, SolveSnapshot, TokenLease,
+        RunPanelActionId, RunPanelActionProminence, RunPanelState, RunPanelTextView,
+        RunPanelViewModel, RunStatus, SecureCredentialHandle, SimulationMode, SolvePendingReason,
+        SolveSnapshot, TokenLease,
     };
 
     fn timestamp(seconds: u64) -> std::time::SystemTime {
@@ -262,6 +265,29 @@ mod tests {
         assert_eq!(view.secondary_actions[0].id, RunPanelActionId::RunManual);
         assert_eq!(view.secondary_actions[1].id, RunPanelActionId::SetHold);
         assert_eq!(view.secondary_actions[2].id, RunPanelActionId::SetActive);
+    }
+
+    #[test]
+    fn run_panel_text_view_renders_primary_and_secondary_actions() {
+        let app_state = AppState::new(sample_document());
+        let view = RunPanelViewModel::from_state(&app_state.workspace.run_panel);
+
+        let text = RunPanelTextView::from_view_model(&view);
+
+        assert_eq!(text.title, "Run panel");
+        assert_eq!(text.lines[0], "Mode: Hold");
+        assert_eq!(text.lines[1], "Status: Idle");
+        assert!(
+            text.lines
+                .iter()
+                .any(|line| line == "Pending: Snapshot missing")
+        );
+        assert!(
+            text.lines
+                .iter()
+                .any(|line| line == "Primary action: Resume [enabled]")
+        );
+        assert!(text.lines.iter().any(|line| line == "  - Run [enabled]"));
     }
 
     #[test]
