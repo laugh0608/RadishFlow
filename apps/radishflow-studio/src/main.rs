@@ -7,12 +7,20 @@ fn main() {
         Ok(report) => {
             println!("RadishFlow Studio bootstrap");
             println!("Project: {}", config.project_path.display());
+            println!("Control mode: {:?}", report.control_state.simulation_mode);
+            println!("Control pending: {:?}", report.control_state.pending_reason);
+            println!("Control status: {:?}", report.control_state.run_status);
+            println!(
+                "Control actions: run_manual={}, resume={}, set_hold={}, set_active={}",
+                report.control_state.can_run_manual,
+                report.control_state.can_resume,
+                report.control_state.can_set_hold,
+                report.control_state.can_set_active
+            );
 
             match report.outcome.dispatch {
                 StudioAppResultDispatch::WorkspaceRun(dispatch) => {
                     println!("Run status: {:?}", dispatch.run_status);
-                    println!("Mode: {:?}", dispatch.simulation_mode);
-                    println!("Pending: {:?}", dispatch.pending_reason);
                     println!("Dispatch: {:?}", dispatch.solve_dispatch);
                     if let Some(package_id) = dispatch.package_id {
                         println!("Package: {package_id}");
@@ -30,8 +38,6 @@ fn main() {
                 }
                 StudioAppResultDispatch::WorkspaceMode(dispatch) => {
                     println!("Run status: {:?}", dispatch.run_status);
-                    println!("Mode: {:?}", dispatch.simulation_mode);
-                    println!("Pending: {:?}", dispatch.pending_reason);
                     if let Some(snapshot_id) = dispatch.latest_snapshot_id {
                         println!("Latest snapshot: {snapshot_id}");
                     }

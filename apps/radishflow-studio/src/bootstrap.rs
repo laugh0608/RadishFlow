@@ -13,7 +13,10 @@ use rf_store::{
 use rf_types::{RfError, RfResult};
 use rf_ui::{AppLogEntry, AppState, DocumentMetadata, FlowsheetDocument};
 
-use crate::{StudioAppCommand, StudioAppCommandOutcome, StudioAppFacade, StudioAppAuthCacheContext};
+use crate::{
+    StudioAppAuthCacheContext, StudioAppCommand, StudioAppCommandOutcome, StudioAppFacade,
+    WorkspaceControlState, snapshot_workspace_control_state,
+};
 use crate::WorkspaceRunCommand;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -39,6 +42,7 @@ impl Default for StudioBootstrapConfig {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StudioBootstrapReport {
     pub outcome: StudioAppCommandOutcome,
+    pub control_state: WorkspaceControlState,
     pub log_entries: Vec<AppLogEntry>,
 }
 
@@ -58,6 +62,7 @@ pub fn run_studio_bootstrap(config: &StudioBootstrapConfig) -> RfResult<StudioBo
 
     Ok(StudioBootstrapReport {
         outcome,
+        control_state: snapshot_workspace_control_state(&app_state),
         log_entries: app_state.log_feed.entries.iter().cloned().collect(),
     })
 }
@@ -234,6 +239,8 @@ mod tests {
             StudioAppResultDispatch::WorkspaceRun(dispatch) => dispatch,
             StudioAppResultDispatch::WorkspaceMode(_) => panic!("expected workspace run dispatch"),
         };
+        assert_eq!(report.control_state.simulation_mode, dispatch.simulation_mode);
+        assert_eq!(report.control_state.run_status, dispatch.run_status);
         assert_eq!(dispatch.run_status, RunStatus::Converged);
         assert_eq!(
             dispatch.package_id.as_deref(),
@@ -263,6 +270,8 @@ mod tests {
             StudioAppResultDispatch::WorkspaceRun(dispatch) => dispatch,
             StudioAppResultDispatch::WorkspaceMode(_) => panic!("expected workspace run dispatch"),
         };
+        assert_eq!(report.control_state.simulation_mode, dispatch.simulation_mode);
+        assert_eq!(report.control_state.run_status, dispatch.run_status);
         assert_eq!(
             dispatch.solve_dispatch,
             WorkspaceSolveDispatch::Skipped(WorkspaceSolveSkipReason::HoldMode)
@@ -292,6 +301,7 @@ mod tests {
             StudioAppResultDispatch::WorkspaceRun(dispatch) => dispatch,
             StudioAppResultDispatch::WorkspaceMode(_) => panic!("expected workspace run dispatch"),
         };
+        assert_eq!(report.control_state.simulation_mode, dispatch.simulation_mode);
         assert_eq!(dispatch.package_id.as_deref(), Some("binary-hydrocarbon-lite-v1"));
         assert_eq!(dispatch.log_entry_count, 1);
     }

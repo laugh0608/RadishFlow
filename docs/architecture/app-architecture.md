@@ -711,6 +711,9 @@ pub struct StepSnapshot {
 
 - `StudioAppFacade::{execute_with_auth_cache, run_workspace_from_auth_cache}`
 - `StudioAppFacade::{resume_workspace_from_auth_cache, set_workspace_simulation_mode}`
+- `WorkspaceControlAction::{RunManual, Resume, SetMode}`
+- `snapshot_workspace_control_state(...)`
+- `dispatch_workspace_control_action_with_auth_cache(...)`
 - `WorkspaceRunCommand::{manual, automatic_preferred}`
 - `dispatch_workspace_run_from_auth_cache(...)`
 - `WorkspaceSolveService::{build_request, run_with_property_package, run_from_auth_cache}`
@@ -726,6 +729,7 @@ pub struct StepSnapshot {
 - 以 `AppState.workspace.document` 作为当前求解输入
 - 由 `StudioAppFacade` 作为当前明确的桌面应用命令入口，统一承接 auth cache 上下文、运行命令执行、结果派发摘要和后续异步执行边界占位
 - `StudioAppCommand` 当前已显式区分 `RunWorkspace`、`ResumeWorkspace` 和 `SetWorkspaceSimulationMode` 三类应用命令，便于后续 UI 直接绑定运行控制动作
+- `workspace_control` 模块当前已把这三类应用命令进一步收口为更接近运行栏/状态栏的 `WorkspaceControlAction`
 - 由 `WorkspaceRunCommand` 承接“触发类型 + package 选择”这一层更接近 UI 的运行请求
 - `WorkspaceRunCommand` 当前已改为在 Automatic 且命中 `HoldMode` / `NoPendingRequest` 时先返回 skip，再决定是否需要 package 解析，避免多包场景下因无意义的 preferred 解析而提前失败
 - 默认包选择当前采取保守策略：无 entitlement 时仅在本地缓存中唯一包可选时自动选中；有 entitlement 时仅在“本地缓存 ∩ entitlement manifests”唯一时自动选中，多包场景必须显式指定 package
@@ -741,11 +745,13 @@ pub struct StepSnapshot {
 - `main.rs` 当前已通过 `run_studio_bootstrap(...)` 把这条链路接到一个明确的桌面进程触发点，并输出最小运行摘要
 - `StudioWorkspaceRunDispatch` 当前已补充 `simulation_mode`、`pending_reason`、`latest_snapshot_summary`、`log_entry_count` 与 `latest_log_entry`，让入口层先消费结构化运行摘要，而不是直接翻读完整 `AppState`
 - `StudioWorkspaceModeDispatch` 当前已作为独立结果派发对象承接模式切换结果，避免 UI 侧把“切换模式”和“发起运行”混成同一种返回值
+- `WorkspaceControlState` 当前已作为运行栏/状态栏摘要对象，统一提供 mode、status、pending、最新快照摘要和当前可触发动作集合
+- `run_studio_bootstrap(...)` 当前也已把 `WorkspaceControlState` 收进 bootstrap report，作为最小桌面入口对运行栏契约的直接消费样例
 
 当前明确还没做的事：
 
 - 虽然已有 `StudioAppFacade` 作为应用命令入口，并且已接到 `main.rs` 的最小 bootstrap 触发点，但还没有把它正式挂到最终桌面命令、按钮或运行服务入口
-- 虽然已补出 `ResumeWorkspace` 作为 `Hold -> Active` 的显式应用命令，但还没有在 `rf-ui` 中冻结“手动运行 / 自动运行 / Hold 恢复”的完整 UI 事件流和按钮绑定口径
+- 虽然已补出 `WorkspaceControlAction` / `WorkspaceControlState` 这一层运行栏契约，也已补出 `ResumeWorkspace` 作为 `Hold -> Active` 的显式应用命令，但还没有在 `rf-ui` 中冻结“手动运行 / 自动运行 / Hold 恢复”的完整 UI 事件流和按钮绑定口径
 - 当前虽然已有 `StudioAppFacade`，但结果派发对象仍是最小摘要形态，真正的后台任务调度、取消和更细的事件总线还没有冻结
 
 ## 结果快照模型
