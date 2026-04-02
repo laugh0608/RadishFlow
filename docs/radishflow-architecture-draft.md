@@ -263,7 +263,8 @@ RadishFlow/
 - 已建立 `WorkspaceRunCommand`，把“触发类型 + package 选择”抽成更接近桌面命令层的对象
 - 已建立 `StudioAppFacade`，把 auth cache 上下文、运行命令、结果派发摘要和后续异步执行边界收口为当前明确的桌面应用入口
 - 已建立 `workspace_control`，把运行栏 / 状态栏动作入口与状态摘要收口为 `WorkspaceControlAction` / `WorkspaceControlState`
-- 当前最小桌面入口 `run_studio_bootstrap` / `main.rs` 已改为通过 `RunPanelIntent -> WorkspaceControlAction -> StudioAppFacade` 触发运行链路
+- 已建立 `run_panel_driver`，把运行栏 widget 的构建、激活和事件分发回收为单独应用层入口
+- 当前最小桌面入口 `run_studio_bootstrap` / `main.rs` 已改为默认通过 `StudioBootstrapTrigger::WidgetPrimaryAction -> RunPanelWidgetEvent -> run_panel_driver -> WorkspaceControlAction -> StudioAppFacade` 触发运行链路，同时仍保留显式 `RunPanelIntent` 兼容入口
 - 当前默认包选择策略保持保守，只在唯一候选时自动选中，多包场景要求显式指定 package
 - Automatic 运行当前先根据 `SimulationMode` / `pending_reason` 决定是否 skip，再决定是否需要 preferred package 解析
 
@@ -425,6 +426,8 @@ Rust UI 逻辑层。
 - 已补 `RunPanelState`，用于承接运行栏摘要
 - 已补 `RunPanelIntent` / `RunPanelPackageSelection`，用于表达 UI 自有运行意图
 - 已补 `RunPanelCommandModel`，把 `Run/Resume/Hold/Active` 的主动作、可见性与可用性冻结到 UI 层
+- 已补 `RunPanelViewModel` / `RunPanelTextView` / `RunPanelPresentation`，把最小渲染与文本展示组织收回 UI 层
+- 已补 `RunPanelWidgetModel` / `RunPanelWidgetEvent`，把最小 widget 激活语义冻结到 UI 层
 
 ## `crates/rf-canvas`
 
@@ -562,7 +565,7 @@ Rust 与 .NET 的桥接层。
 6. 实现 `rf-ffi`
 7. 用 .NET 10 实现 `RadishFlow.CapeOpen.Adapter`
 8. 导出第一个可被 PME 识别的 Unit Operation PMC
-9. 在当前已建立的 `RunPanelIntent + WorkspaceControlAction + StudioAppFacade + WorkspaceRunCommand + WorkspaceSolveService` 运行边界之上，再建设 `radishflow-studio` 的画布、属性编辑与最终桌面运行触发入口
+9. 在当前已建立的 `RunPanelWidgetModel + run_panel_driver + WorkspaceControlAction + StudioAppFacade + WorkspaceRunCommand + WorkspaceSolveService` 运行边界之上，再建设 `radishflow-studio` 的画布、属性编辑与最终桌面运行触发入口
 
 ## 当前仓库与目标仓库的关系
 

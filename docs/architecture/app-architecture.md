@@ -85,7 +85,7 @@
 - `result_panel`
 - `log_panel`
 
-截至 2026-04-02，`rf-ui` 已先落地最小 `run_panel::RunPanelState`，用于承接运行栏摘要；当前又进一步补出 `RunPanelCommandModel` 与 `RunPanelViewModel`，把“主动作是谁、按钮是否显示、按钮是否可点，以及最小运行栏该如何消费这些动作”冻结到 UI 自有模型里。更细的事件流编排仍继续留在 Studio 层收口。
+截至 2026-04-02，`rf-ui` 已先落地最小 `run_panel::RunPanelState`，用于承接运行栏摘要；当前又进一步补出 `RunPanelCommandModel`、`RunPanelViewModel`、`RunPanelPresentation` 与 `RunPanelWidgetModel`，把“主动作是谁、按钮是否显示、按钮是否可点，以及最小运行栏该如何渲染和激活这些动作”冻结到 UI 自有模型里。更细的事件流编排继续留在 Studio 层的 `workspace_control` / `run_panel_driver` 收口。
 
 ### `rf-canvas`
 
@@ -751,11 +751,11 @@ pub struct StepSnapshot {
 - 成功时调用 `AppState::store_solver_snapshot(...)`，把求解结果映射为 UI 层 `SolveSnapshot`
 - 失败时调用 `record_failure(...)` 并追加 `AppLogFeed` 错误日志
 - Automatic 命中 `HoldMode` / `NoPendingRequest` 的 skip 当前也会写入 `AppLogFeed`
-- `main.rs` 当前已通过 `run_studio_bootstrap(...)` + `RunPanelIntent` 把这条链路接到一个明确的桌面进程触发点，并输出最小运行摘要
+- `main.rs` 当前已通过 `run_studio_bootstrap(...)` + `StudioBootstrapTrigger` 把这条链路接到一个明确的桌面进程触发点，并输出最小运行摘要
 - `StudioWorkspaceRunDispatch` 当前已补充 `simulation_mode`、`pending_reason`、`latest_snapshot_summary`、`log_entry_count` 与 `latest_log_entry`，让入口层先消费结构化运行摘要，而不是直接翻读完整 `AppState`
 - `StudioWorkspaceModeDispatch` 当前已作为独立结果派发对象承接模式切换结果，避免 UI 侧把“切换模式”和“发起运行”混成同一种返回值
 - `WorkspaceControlState` 当前已作为运行栏/状态栏摘要对象，统一提供 mode、status、pending、最新快照摘要和当前可触发动作集合
-- `run_studio_bootstrap(...)` 当前也已把 `RunPanelIntent` 作为配置入口、把 `WorkspaceControlState` 收进 bootstrap report，作为最小桌面入口对运行栏契约的直接消费样例
+- `run_studio_bootstrap(...)` 当前也已把 `StudioBootstrapTrigger::{Intent, WidgetPrimaryAction, WidgetAction}` 作为配置入口，并通过 `run_panel_driver` 回收 `RunPanelWidgetModel + WorkspaceControlState`，作为最小桌面入口对运行栏契约的直接消费样例
 - `rf-ui` 当前已新增 `RunPanelState`，并由 `AppState::refresh_run_panel_state(...)` 基于 `SolveSessionState`、最新 `SolveSnapshot` 和最新日志自动推导；Studio 也可通过 `WorkspaceControlState -> RunPanelState` 的映射把控制面摘要写回 UI 状态
 - `rf-ui` 当前也已补出自有 `RunPanelIntent` / `RunPanelPackageSelection`；Studio 继续只负责把这些 UI 意图映射为 `WorkspaceControlAction` 并执行，避免 `rf-ui` 反向依赖 Studio 类型
 - `rf-ui` 当前已把运行栏按钮模型冻结为 `RunPanelCommandModel`：`Run`、`Resume`、`Hold`、`Active` 的按钮描述、可见性、可用性和默认主动作都由 UI 层派生，不再依赖 Studio 侧临时判断
@@ -772,7 +772,7 @@ pub struct StepSnapshot {
 当前明确还没做的事：
 
 - 虽然已有 `StudioAppFacade` 作为应用命令入口，并且已接到 `main.rs` 的最小 bootstrap 触发点，但还没有把它正式挂到最终桌面命令、按钮或运行服务入口
-- 虽然已补出 `WorkspaceControlAction` / `WorkspaceControlState` 这一层运行栏契约，也已补出 `ResumeWorkspace` 作为 `Hold -> Active` 的显式应用命令，并已在 `rf-ui` 中冻结最小 `RunPanelState`；但“手动运行 / 自动运行 / Hold 恢复”的完整 UI 事件流和按钮绑定口径仍未最终冻结
+- 虽然已补出 `WorkspaceControlAction` / `WorkspaceControlState` 这一层运行栏契约，也已补出 `ResumeWorkspace` 作为 `Hold -> Active` 的显式应用命令，并已在 `rf-ui` 中冻结到 `RunPanelWidgetModel`、在 Studio 中冻结到 `run_panel_driver`；但“手动运行 / 自动运行 / Hold 恢复”的完整桌面 UI 事件流和最终按钮绑定口径仍未最终冻结
 - 当前虽然已有 `StudioAppFacade`，但结果派发对象仍是最小摘要形态，真正的后台任务调度、取消和更细的事件总线还没有冻结
 
 ## 结果快照模型
