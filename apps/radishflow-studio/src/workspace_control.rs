@@ -1,7 +1,7 @@
 use rf_types::RfResult;
 use rf_ui::{
-    AppLogEntry, AppState, RunPanelIntent, RunPanelPackageSelection, RunPanelState, RunStatus,
-    SimulationMode, SolvePendingReason,
+    AppLogEntry, AppState, RunPanelCommandModel, RunPanelIntent, RunPanelPackageSelection,
+    RunPanelState, RunStatus, SimulationMode, SolvePendingReason,
 };
 
 use crate::{
@@ -83,7 +83,7 @@ pub fn snapshot_workspace_control_state(app_state: &AppState) -> WorkspaceContro
 pub fn map_workspace_control_state_to_run_panel_state(
     state: &WorkspaceControlState,
 ) -> RunPanelState {
-    RunPanelState {
+    let mut run_panel = RunPanelState {
         simulation_mode: state.simulation_mode,
         run_status: state.run_status,
         pending_reason: state.pending_reason,
@@ -97,7 +97,10 @@ pub fn map_workspace_control_state_to_run_panel_state(
         can_resume: state.can_resume,
         can_set_hold: state.can_set_hold,
         can_set_active: state.can_set_active,
-    }
+        commands: RunPanelCommandModel::default(),
+    };
+    run_panel.commands = RunPanelCommandModel::from_state(&run_panel);
+    run_panel
 }
 
 pub fn map_run_panel_package_selection_to_workspace_run_package_selection(

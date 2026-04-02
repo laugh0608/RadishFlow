@@ -23,7 +23,10 @@ pub use run::{
     RunStatus, SimulationMode, SolvePendingReason, SolveSessionState, SolveSnapshot, StepSnapshot,
     StreamStateSnapshot, UnitExecutionSnapshot,
 };
-pub use run_panel::{RunPanelIntent, RunPanelPackageSelection, RunPanelState};
+pub use run_panel::{
+    RunPanelActionId, RunPanelActionModel, RunPanelCommandModel, RunPanelIntent,
+    RunPanelPackageSelection, RunPanelState,
+};
 pub use state::{
     AppLogEntry, AppLogFeed, AppLogLevel, AppState, AppTheme, DateTimeUtc, DocumentMetadata,
     DraftValidationState, DraftValue, FieldDraft, FlowsheetDocument, InspectorDraftState,
@@ -47,9 +50,9 @@ mod tests {
         AppState, AuthSessionStatus, AuthenticatedUser, CanvasPoint, CommandHistory,
         CommandHistoryEntry, DiagnosticSeverity, DiagnosticSummary, DocumentCommand,
         DocumentMetadata, EntitlementSnapshot, FlowsheetDocument, OfflineLeaseRefreshResponse,
-        PropertyPackageManifest, PropertyPackageManifestList, PropertyPackageSource, RunPanelState,
-        RunStatus, SecureCredentialHandle, SimulationMode, SolvePendingReason, SolveSnapshot,
-        TokenLease,
+        PropertyPackageManifest, PropertyPackageManifestList, PropertyPackageSource,
+        RunPanelActionId, RunPanelState, RunStatus, SecureCredentialHandle, SimulationMode,
+        SolvePendingReason, SolveSnapshot, TokenLease,
     };
 
     fn timestamp(seconds: u64) -> std::time::SystemTime {
@@ -219,7 +222,22 @@ mod tests {
                 can_resume: true,
                 can_set_hold: false,
                 can_set_active: true,
+                commands: app_state.workspace.run_panel.commands.clone(),
             }
+        );
+        assert_eq!(
+            app_state.workspace.run_panel.commands.primary_action,
+            RunPanelActionId::Resume
+        );
+        assert_eq!(
+            app_state
+                .workspace
+                .run_panel
+                .commands
+                .action(RunPanelActionId::Resume)
+                .expect("expected resume action")
+                .label,
+            "Resume"
         );
     }
 
@@ -266,6 +284,19 @@ mod tests {
         assert_eq!(
             app_state.workspace.run_panel.latest_log_message.as_deref(),
             Some("solver failed")
+        );
+        assert_eq!(
+            app_state.workspace.run_panel.commands.primary_action,
+            RunPanelActionId::RunManual
+        );
+        assert!(
+            !app_state
+                .workspace
+                .run_panel
+                .commands
+                .action(RunPanelActionId::Resume)
+                .expect("expected resume action")
+                .enabled
         );
     }
 
