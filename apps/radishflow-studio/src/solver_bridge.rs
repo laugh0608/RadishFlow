@@ -119,7 +119,7 @@ where
         request.sequence,
         &solver_snapshot,
     );
-    app_state.log_feed.push(
+    app_state.push_log(
         AppLogLevel::Info,
         format!(
             "Solved document revision {} with property package `{}` into snapshot `{}`",
@@ -148,7 +148,7 @@ fn record_solve_failure(app_state: &mut AppState, revision: u64, message: String
         related_unit_ids: Vec::new(),
     };
     app_state.record_failure(revision, RunStatus::Error, summary);
-    app_state.log_feed.push(AppLogLevel::Error, message);
+    app_state.push_log(AppLogLevel::Error, message);
 }
 
 #[cfg(test)]

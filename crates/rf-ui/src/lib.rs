@@ -3,6 +3,7 @@ mod commands;
 mod diagnostics;
 mod ids;
 mod run;
+mod run_panel;
 mod state;
 
 pub use auth::{
@@ -22,6 +23,7 @@ pub use run::{
     RunStatus, SimulationMode, SolvePendingReason, SolveSessionState, SolveSnapshot, StepSnapshot,
     StreamStateSnapshot, UnitExecutionSnapshot,
 };
+pub use run_panel::RunPanelState;
 pub use state::{
     AppLogEntry, AppLogFeed, AppLogLevel, AppState, AppTheme, DateTimeUtc, DocumentMetadata,
     DraftValidationState, DraftValue, FieldDraft, FlowsheetDocument, InspectorDraftState,
@@ -45,8 +47,9 @@ mod tests {
         AppState, AuthSessionStatus, AuthenticatedUser, CanvasPoint, CommandHistory,
         CommandHistoryEntry, DiagnosticSeverity, DiagnosticSummary, DocumentCommand,
         DocumentMetadata, EntitlementSnapshot, FlowsheetDocument, OfflineLeaseRefreshResponse,
-        PropertyPackageManifest, PropertyPackageManifestList, PropertyPackageSource, RunStatus,
-        SecureCredentialHandle, SimulationMode, SolvePendingReason, SolveSnapshot, TokenLease,
+        PropertyPackageManifest, PropertyPackageManifestList, PropertyPackageSource, RunPanelState,
+        RunStatus, SecureCredentialHandle, SimulationMode, SolvePendingReason, SolveSnapshot,
+        TokenLease,
     };
 
     fn timestamp(seconds: u64) -> std::time::SystemTime {
@@ -188,6 +191,81 @@ mod tests {
         assert_eq!(
             app_state.workspace.solve_session.pending_reason,
             Some(SolvePendingReason::ModeActivated)
+        );
+        assert_eq!(
+            app_state.workspace.run_panel.simulation_mode,
+            SimulationMode::Active
+        );
+        assert_eq!(
+            app_state.workspace.run_panel.pending_reason,
+            Some(SolvePendingReason::ModeActivated)
+        );
+    }
+
+    #[test]
+    fn initial_run_panel_reflects_hold_idle_without_snapshot() {
+        let app_state = AppState::new(sample_document());
+
+        assert_eq!(
+            app_state.workspace.run_panel,
+            RunPanelState {
+                simulation_mode: SimulationMode::Hold,
+                run_status: RunStatus::Idle,
+                pending_reason: Some(SolvePendingReason::SnapshotMissing),
+                latest_snapshot_id: None,
+                latest_snapshot_summary: None,
+                latest_log_message: None,
+                can_run_manual: true,
+                can_resume: true,
+                can_set_hold: false,
+                can_set_active: true,
+            }
+        );
+    }
+
+    #[test]
+    fn storing_snapshot_updates_run_panel_summary() {
+        let mut app_state = AppState::new(sample_document());
+        let snapshot = SolveSnapshot::new(
+            "snapshot-ui-1",
+            0,
+            1,
+            RunStatus::Converged,
+            DiagnosticSummary::new(0, DiagnosticSeverity::Info, "snapshot ok"),
+        );
+
+        app_state.store_snapshot(snapshot);
+
+        assert_eq!(
+            app_state.workspace.run_panel.latest_snapshot_id.as_deref(),
+            Some("snapshot-ui-1")
+        );
+        assert_eq!(
+            app_state
+                .workspace
+                .run_panel
+                .latest_snapshot_summary
+                .as_deref(),
+            Some("snapshot ok")
+        );
+        assert_eq!(
+            app_state.workspace.run_panel.run_status,
+            RunStatus::Converged
+        );
+    }
+
+    #[test]
+    fn recording_failure_updates_run_panel_status_and_log_message() {
+        let mut app_state = AppState::new(sample_document());
+        let summary = DiagnosticSummary::new(0, DiagnosticSeverity::Error, "solve failed");
+
+        app_state.push_log(crate::AppLogLevel::Error, "solver failed");
+        app_state.record_failure(0, RunStatus::Error, summary);
+
+        assert_eq!(app_state.workspace.run_panel.run_status, RunStatus::Error);
+        assert_eq!(
+            app_state.workspace.run_panel.latest_log_message.as_deref(),
+            Some("solver failed")
         );
     }
 

@@ -13,11 +13,11 @@ use rf_store::{
 use rf_types::{RfError, RfResult};
 use rf_ui::{AppLogEntry, AppState, DocumentMetadata, FlowsheetDocument};
 
+use crate::WorkspaceRunCommand;
 use crate::{
     StudioAppAuthCacheContext, StudioAppCommand, StudioAppCommandOutcome, StudioAppFacade,
     WorkspaceControlState, snapshot_workspace_control_state,
 };
-use crate::WorkspaceRunCommand;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StudioBootstrapConfig {
@@ -119,14 +119,12 @@ fn seed_sample_auth_cache(
 
     write_property_package_manifest(record.manifest_path_under(cache_root), &manifest)?;
     write_property_package_payload(
-        record
-            .payload_path_under(cache_root)
-            .ok_or_else(|| {
-                RfError::invalid_input(format!(
-                    "sample property package `{}` is missing a local payload path",
-                    manifest.package_id
-                ))
-            })?,
+        record.payload_path_under(cache_root).ok_or_else(|| {
+            RfError::invalid_input(format!(
+                "sample property package `{}` is missing a local payload path",
+                manifest.package_id
+            ))
+        })?,
         &payload,
     )?;
 
@@ -137,7 +135,10 @@ fn seed_sample_auth_cache(
     );
     auth_cache_index.property_packages.push(record);
     auth_cache_index.last_synced_at = Some(downloaded_at);
-    write_auth_cache_index(auth_cache_index.index_path_under(cache_root), &auth_cache_index)?;
+    write_auth_cache_index(
+        auth_cache_index.index_path_under(cache_root),
+        &auth_cache_index,
+    )?;
     Ok(auth_cache_index)
 }
 
@@ -239,7 +240,10 @@ mod tests {
             StudioAppResultDispatch::WorkspaceRun(dispatch) => dispatch,
             StudioAppResultDispatch::WorkspaceMode(_) => panic!("expected workspace run dispatch"),
         };
-        assert_eq!(report.control_state.simulation_mode, dispatch.simulation_mode);
+        assert_eq!(
+            report.control_state.simulation_mode,
+            dispatch.simulation_mode
+        );
         assert_eq!(report.control_state.run_status, dispatch.run_status);
         assert_eq!(dispatch.run_status, RunStatus::Converged);
         assert_eq!(
@@ -252,7 +256,9 @@ mod tests {
         ));
         assert_eq!(
             dispatch.latest_snapshot_summary.as_deref(),
-            Some("solved flowsheet with 3 unit(s), 4 diagnostic entry(ies), and 4 resulting stream(s)")
+            Some(
+                "solved flowsheet with 3 unit(s), 4 diagnostic entry(ies), and 4 resulting stream(s)"
+            )
         );
         assert_eq!(dispatch.log_entry_count, 1);
         assert_eq!(report.log_entries.len(), 1);
@@ -270,7 +276,10 @@ mod tests {
             StudioAppResultDispatch::WorkspaceRun(dispatch) => dispatch,
             StudioAppResultDispatch::WorkspaceMode(_) => panic!("expected workspace run dispatch"),
         };
-        assert_eq!(report.control_state.simulation_mode, dispatch.simulation_mode);
+        assert_eq!(
+            report.control_state.simulation_mode,
+            dispatch.simulation_mode
+        );
         assert_eq!(report.control_state.run_status, dispatch.run_status);
         assert_eq!(
             dispatch.solve_dispatch,
@@ -301,8 +310,14 @@ mod tests {
             StudioAppResultDispatch::WorkspaceRun(dispatch) => dispatch,
             StudioAppResultDispatch::WorkspaceMode(_) => panic!("expected workspace run dispatch"),
         };
-        assert_eq!(report.control_state.simulation_mode, dispatch.simulation_mode);
-        assert_eq!(dispatch.package_id.as_deref(), Some("binary-hydrocarbon-lite-v1"));
+        assert_eq!(
+            report.control_state.simulation_mode,
+            dispatch.simulation_mode
+        );
+        assert_eq!(
+            dispatch.package_id.as_deref(),
+            Some("binary-hydrocarbon-lite-v1")
+        );
         assert_eq!(dispatch.log_entry_count, 1);
     }
 }

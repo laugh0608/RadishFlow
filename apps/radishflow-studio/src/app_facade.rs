@@ -9,8 +9,7 @@ use rf_ui::{
 
 use crate::{
     WorkspaceRunCommand, WorkspaceRunDispatchResult, WorkspaceRunPackageSelection,
-    WorkspaceSolveDispatch, WorkspaceSolveService, WorkspaceSolveSkipReason,
-    WorkspaceSolveTrigger,
+    WorkspaceSolveDispatch, WorkspaceSolveService, WorkspaceSolveSkipReason, WorkspaceSolveTrigger,
     dispatch_workspace_run_from_auth_cache,
 };
 
@@ -129,11 +128,9 @@ impl StudioAppFacade {
             StudioAppCommand::RunWorkspace(run_command) => StudioAppResultDispatch::WorkspaceRun(
                 self.run_workspace_from_auth_cache(app_state, context, run_command)?,
             ),
-            StudioAppCommand::ResumeWorkspace(selection) => {
-                StudioAppResultDispatch::WorkspaceRun(self.resume_workspace_from_auth_cache(
-                    app_state, context, selection,
-                )?)
-            }
+            StudioAppCommand::ResumeWorkspace(selection) => StudioAppResultDispatch::WorkspaceRun(
+                self.resume_workspace_from_auth_cache(app_state, context, selection)?,
+            ),
             StudioAppCommand::SetWorkspaceSimulationMode(mode) => {
                 StudioAppResultDispatch::WorkspaceMode(
                     self.set_workspace_simulation_mode(app_state, *mode),
@@ -169,9 +166,7 @@ impl StudioAppFacade {
         selection: &WorkspaceRunPackageSelection,
     ) -> RfResult<StudioWorkspaceRunDispatch> {
         app_state.set_simulation_mode(SimulationMode::Active);
-        app_state
-            .log_feed
-            .push(AppLogLevel::Info, "Activated workspace simulation mode");
+        app_state.push_log(AppLogLevel::Info, "Activated workspace simulation mode");
 
         self.run_workspace_from_auth_cache(
             app_state,
@@ -186,7 +181,7 @@ impl StudioAppFacade {
         mode: SimulationMode,
     ) -> StudioWorkspaceModeDispatch {
         app_state.set_simulation_mode(mode);
-        app_state.log_feed.push(
+        app_state.push_log(
             AppLogLevel::Info,
             format!(
                 "Set workspace simulation mode to {}",
@@ -199,7 +194,7 @@ impl StudioAppFacade {
 
 fn record_workspace_run_dispatch(app_state: &mut AppState, result: &WorkspaceRunDispatchResult) {
     if let WorkspaceSolveDispatch::Skipped(reason) = result.dispatch {
-        app_state.log_feed.push(
+        app_state.push_log(
             AppLogLevel::Info,
             format!(
                 "Skipped workspace run because {}",
@@ -276,7 +271,10 @@ mod tests {
         write_property_package_payload,
     };
     use rf_types::ComponentId;
-    use rf_ui::{AppState, DocumentMetadata, FlowsheetDocument, RunStatus, SimulationMode, SolvePendingReason};
+    use rf_ui::{
+        AppState, DocumentMetadata, FlowsheetDocument, RunStatus, SimulationMode,
+        SolvePendingReason,
+    };
 
     use super::{
         StudioAppAuthCacheContext, StudioAppCommand, StudioAppExecutionBoundary,
@@ -442,12 +440,17 @@ mod tests {
         assert_eq!(dispatch.pending_reason, None);
         assert_eq!(
             dispatch.latest_snapshot_summary.as_deref(),
-            Some("solved flowsheet with 3 unit(s), 4 diagnostic entry(ies), and 4 resulting stream(s)")
+            Some(
+                "solved flowsheet with 3 unit(s), 4 diagnostic entry(ies), and 4 resulting stream(s)"
+            )
         );
         assert_eq!(dispatch.run_status, RunStatus::Converged);
         assert_eq!(dispatch.log_entry_count, 1);
         assert_eq!(
-            dispatch.latest_log_entry.as_ref().map(|entry| entry.message.as_str()),
+            dispatch
+                .latest_log_entry
+                .as_ref()
+                .map(|entry| entry.message.as_str()),
             Some(
                 "Solved document revision 0 with property package `binary-hydrocarbon-lite-v1` into snapshot `doc-app-facade-rev-0-seq-1`"
             )
@@ -492,7 +495,10 @@ mod tests {
         assert_eq!(dispatch.run_status, RunStatus::Idle);
         assert_eq!(dispatch.log_entry_count, 1);
         assert_eq!(
-            dispatch.latest_log_entry.as_ref().map(|entry| entry.message.as_str()),
+            dispatch
+                .latest_log_entry
+                .as_ref()
+                .map(|entry| entry.message.as_str()),
             Some("Skipped workspace run because simulation mode is Hold")
         );
         assert_eq!(app_state.log_feed.entries.len(), 1);
@@ -531,7 +537,10 @@ mod tests {
         assert_eq!(dispatch.run_status, RunStatus::Idle);
         assert_eq!(dispatch.log_entry_count, 1);
         assert_eq!(
-            dispatch.latest_log_entry.as_ref().map(|entry| entry.message.as_str()),
+            dispatch
+                .latest_log_entry
+                .as_ref()
+                .map(|entry| entry.message.as_str()),
             Some("Set workspace simulation mode to Active")
         );
     }
@@ -559,8 +568,7 @@ mod tests {
             DocumentMetadata::new("doc-app-resume", "App Resume Demo", timestamp(70)),
         ));
         let context = StudioAppAuthCacheContext::new(&cache_root, &auth_cache_index);
-        let command =
-            StudioAppCommand::resume_workspace(WorkspaceRunPackageSelection::Preferred);
+        let command = StudioAppCommand::resume_workspace(WorkspaceRunPackageSelection::Preferred);
 
         let outcome = facade
             .execute_with_auth_cache(&mut app_state, &context, &command)
@@ -587,7 +595,10 @@ mod tests {
         assert_eq!(dispatch.run_status, RunStatus::Converged);
         assert_eq!(dispatch.log_entry_count, 2);
         assert_eq!(
-            dispatch.latest_log_entry.as_ref().map(|entry| entry.message.as_str()),
+            dispatch
+                .latest_log_entry
+                .as_ref()
+                .map(|entry| entry.message.as_str()),
             Some(
                 "Solved document revision 0 with property package `binary-hydrocarbon-lite-v1` into snapshot `doc-app-resume-rev-0-seq-1`"
             )

@@ -85,6 +85,8 @@
 - `result_panel`
 - `log_panel`
 
+截至 2026-04-02，`rf-ui` 已先落地最小 `run_panel::RunPanelState`，用于承接运行栏摘要；完整按钮绑定和更细 UI 事件流仍继续留在 Studio 层收口。
+
 ### `rf-canvas`
 
 这是纯画布能力层，不应承载流程求解或业务决策。
@@ -212,6 +214,7 @@
 - `command_history: CommandHistory`
 - `solve_session: SolveSessionState`
 - `snapshot_history: VecDeque<SolveSnapshot>`
+- `run_panel: RunPanelState`
 
 冻结边界：
 
@@ -220,6 +223,7 @@
 - `selection`、`panels`、`drafts` 都是瞬时 UI 状态，不能污染文档真相源
 - `command_history`、`solve_session`、`snapshot_history` 并列存在，互不吞并
 - `snapshot_history` 负责持有不可变快照实体，`SolveSessionState` 只保留引用
+- `run_panel` 只持有面向运行栏的已派生摘要，不反向取代 `solve_session`、`snapshot_history` 或 `log_feed`
 
 ### `FlowsheetDocument`
 
@@ -314,6 +318,7 @@ pub struct WorkspaceState {
     pub command_history: CommandHistory,
     pub solve_session: SolveSessionState,
     pub snapshot_history: VecDeque<SolveSnapshot>,
+    pub run_panel: RunPanelState,
 }
 
 pub struct FlowsheetDocument {
@@ -404,6 +409,7 @@ pub enum SolvePendingReason {
 - `SolveSessionState` 只引用快照，不直接内嵌完整结果对象
 - `WorkspaceState.snapshot_history` 明确承担快照所有权
 - `CommandHistory` 与 `SolveSessionState` 并列，而不是互相吞并
+- `RunPanelState` 当前作为 `WorkspaceState` 的派生 UI 状态对象存在，不额外引入 `rf-ui -> studio` 反向依赖
 
 ## 字段级冻结口径
 
@@ -747,11 +753,12 @@ pub struct StepSnapshot {
 - `StudioWorkspaceModeDispatch` 当前已作为独立结果派发对象承接模式切换结果，避免 UI 侧把“切换模式”和“发起运行”混成同一种返回值
 - `WorkspaceControlState` 当前已作为运行栏/状态栏摘要对象，统一提供 mode、status、pending、最新快照摘要和当前可触发动作集合
 - `run_studio_bootstrap(...)` 当前也已把 `WorkspaceControlState` 收进 bootstrap report，作为最小桌面入口对运行栏契约的直接消费样例
+- `rf-ui` 当前已新增 `RunPanelState`，并由 `AppState::refresh_run_panel_state(...)` 基于 `SolveSessionState`、最新 `SolveSnapshot` 和最新日志自动推导；Studio 也可通过 `WorkspaceControlState -> RunPanelState` 的映射把控制面摘要写回 UI 状态
 
 当前明确还没做的事：
 
 - 虽然已有 `StudioAppFacade` 作为应用命令入口，并且已接到 `main.rs` 的最小 bootstrap 触发点，但还没有把它正式挂到最终桌面命令、按钮或运行服务入口
-- 虽然已补出 `WorkspaceControlAction` / `WorkspaceControlState` 这一层运行栏契约，也已补出 `ResumeWorkspace` 作为 `Hold -> Active` 的显式应用命令，但还没有在 `rf-ui` 中冻结“手动运行 / 自动运行 / Hold 恢复”的完整 UI 事件流和按钮绑定口径
+- 虽然已补出 `WorkspaceControlAction` / `WorkspaceControlState` 这一层运行栏契约，也已补出 `ResumeWorkspace` 作为 `Hold -> Active` 的显式应用命令，并已在 `rf-ui` 中冻结最小 `RunPanelState`；但“手动运行 / 自动运行 / Hold 恢复”的完整 UI 事件流和按钮绑定口径仍未最终冻结
 - 当前虽然已有 `StudioAppFacade`，但结果派发对象仍是最小摘要形态，真正的后台任务调度、取消和更细的事件总线还没有冻结
 
 ## 结果快照模型

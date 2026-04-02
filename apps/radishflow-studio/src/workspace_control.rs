@@ -1,12 +1,9 @@
 use rf_types::RfResult;
-use rf_ui::{
-    AppLogEntry, AppState, RunStatus, SimulationMode, SolvePendingReason, latest_snapshot_id,
-};
+use rf_ui::{AppLogEntry, AppState, RunPanelState, RunStatus, SimulationMode, SolvePendingReason};
 
 use crate::{
     StudioAppAuthCacheContext, StudioAppCommand, StudioAppExecutionBoundary, StudioAppFacade,
-    StudioAppResultDispatch,
-    WorkspaceRunCommand, WorkspaceRunPackageSelection,
+    StudioAppResultDispatch, WorkspaceRunCommand, WorkspaceRunPackageSelection,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -31,12 +28,10 @@ impl WorkspaceControlAction {
 
     pub fn to_app_command(&self) -> StudioAppCommand {
         match self {
-            Self::RunManual(package) => {
-                StudioAppCommand::run_workspace(WorkspaceRunCommand::new(
-                    crate::WorkspaceSolveTrigger::Manual,
-                    package.clone(),
-                ))
-            }
+            Self::RunManual(package) => StudioAppCommand::run_workspace(WorkspaceRunCommand::new(
+                crate::WorkspaceSolveTrigger::Manual,
+                package.clone(),
+            )),
             Self::Resume(package) => StudioAppCommand::resume_workspace(package.clone()),
             Self::SetMode(mode) => StudioAppCommand::set_workspace_simulation_mode(*mode),
         }
@@ -66,24 +61,39 @@ pub struct WorkspaceControlActionOutcome {
 }
 
 pub fn snapshot_workspace_control_state(app_state: &AppState) -> WorkspaceControlState {
-    let simulation_mode = app_state.workspace.solve_session.mode;
+    let run_panel = &app_state.workspace.run_panel;
 
     WorkspaceControlState {
-        simulation_mode,
-        run_status: app_state.workspace.solve_session.status,
-        pending_reason: app_state.workspace.solve_session.pending_reason,
-        latest_snapshot_id: latest_snapshot_id(&app_state.workspace)
-            .map(|snapshot_id| snapshot_id.as_str().to_string()),
-        latest_snapshot_summary: app_state
-            .workspace
-            .snapshot_history
-            .back()
-            .map(|snapshot| snapshot.summary.primary_message.clone()),
+        simulation_mode: run_panel.simulation_mode,
+        run_status: run_panel.run_status,
+        pending_reason: run_panel.pending_reason,
+        latest_snapshot_id: run_panel.latest_snapshot_id.clone(),
+        latest_snapshot_summary: run_panel.latest_snapshot_summary.clone(),
         latest_log_entry: app_state.log_feed.entries.back().cloned(),
         can_run_manual: true,
-        can_resume: matches!(simulation_mode, SimulationMode::Hold),
-        can_set_hold: !matches!(simulation_mode, SimulationMode::Hold),
-        can_set_active: !matches!(simulation_mode, SimulationMode::Active),
+        can_resume: run_panel.can_resume,
+        can_set_hold: run_panel.can_set_hold,
+        can_set_active: run_panel.can_set_active,
+    }
+}
+
+pub fn map_workspace_control_state_to_run_panel_state(
+    state: &WorkspaceControlState,
+) -> RunPanelState {
+    RunPanelState {
+        simulation_mode: state.simulation_mode,
+        run_status: state.run_status,
+        pending_reason: state.pending_reason,
+        latest_snapshot_id: state.latest_snapshot_id.clone(),
+        latest_snapshot_summary: state.latest_snapshot_summary.clone(),
+        latest_log_message: state
+            .latest_log_entry
+            .as_ref()
+            .map(|entry| entry.message.clone()),
+        can_run_manual: state.can_run_manual,
+        can_resume: state.can_resume,
+        can_set_hold: state.can_set_hold,
+        can_set_active: state.can_set_active,
     }
 }
 
@@ -96,6 +106,9 @@ pub fn dispatch_workspace_control_action_with_auth_cache(
     let command = action.to_app_command();
     let outcome = facade.execute_with_auth_cache(app_state, context, &command)?;
     let control_state = snapshot_workspace_control_state(app_state);
+    app_state.sync_run_panel_state(map_workspace_control_state_to_run_panel_state(
+        &control_state,
+    ));
 
     Ok(WorkspaceControlActionOutcome {
         action: action.clone(),
@@ -126,13 +139,12 @@ mod tests {
 
     use super::{
         WorkspaceControlAction, dispatch_workspace_control_action_with_auth_cache,
-        snapshot_workspace_control_state,
+        map_workspace_control_state_to_run_panel_state, snapshot_workspace_control_state,
     };
     use crate::{
         StudioAppAuthCacheContext, StudioAppCommand, StudioAppExecutionBoundary,
         StudioAppExecutionLane, StudioAppFacade, StudioAppResultDispatch,
-        WorkspaceRunPackageSelection,
-        WorkspaceSolveDispatch,
+        WorkspaceRunPackageSelection, WorkspaceSolveDispatch,
     };
 
     fn timestamp(seconds: u64) -> std::time::SystemTime {
@@ -242,7 +254,10 @@ mod tests {
 
         assert_eq!(state.simulation_mode, SimulationMode::Hold);
         assert_eq!(state.run_status, RunStatus::Idle);
-        assert_eq!(state.pending_reason, Some(SolvePendingReason::SnapshotMissing));
+        assert_eq!(
+            state.pending_reason,
+            Some(SolvePendingReason::SnapshotMissing)
+        );
         assert!(state.can_run_manual);
         assert!(state.can_resume);
         assert!(!state.can_set_hold);
@@ -250,11 +265,21 @@ mod tests {
     }
 
     #[test]
+    fn control_state_maps_into_rf_ui_run_panel_state() {
+        let app_state = AppState::new(sample_document());
+
+        let run_panel = map_workspace_control_state_to_run_panel_state(
+            &snapshot_workspace_control_state(&app_state),
+        );
+
+        assert_eq!(run_panel, app_state.workspace.run_panel);
+    }
+
+    #[test]
     fn control_action_maps_manual_run_to_workspace_run_command() {
-        let action =
-            WorkspaceControlAction::run_manual(WorkspaceRunPackageSelection::Explicit(
-                "pkg-1".to_string(),
-            ));
+        let action = WorkspaceControlAction::run_manual(WorkspaceRunPackageSelection::Explicit(
+            "pkg-1".to_string(),
+        ));
 
         let command = action.to_app_command();
 
@@ -300,6 +325,10 @@ mod tests {
         assert_eq!(outcome.control_state.simulation_mode, SimulationMode::Hold);
         assert!(!outcome.control_state.can_set_hold);
         assert!(outcome.control_state.can_set_active);
+        assert_eq!(
+            app_state.workspace.run_panel.simulation_mode,
+            SimulationMode::Hold
+        );
     }
 
     #[test]
@@ -348,10 +377,17 @@ mod tests {
             }
             _ => panic!("expected workspace run dispatch"),
         }
-        assert_eq!(outcome.control_state.simulation_mode, SimulationMode::Active);
+        assert_eq!(
+            outcome.control_state.simulation_mode,
+            SimulationMode::Active
+        );
         assert_eq!(outcome.control_state.run_status, RunStatus::Converged);
         assert!(!outcome.control_state.can_resume);
         assert!(outcome.control_state.can_set_hold);
+        assert_eq!(
+            app_state.workspace.run_panel.run_status,
+            RunStatus::Converged
+        );
 
         std::fs::remove_dir_all(cache_root).expect("expected temp dir cleanup");
     }
