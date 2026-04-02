@@ -289,7 +289,7 @@ MVP 阶段明确不做：
 - `WorkspaceSolveService`：把默认 request、手动/自动触发门控与工作区求解分发收口为应用服务入口
 - `WorkspaceRunCommand`：把“触发类型 + package 选择”抽成更接近桌面命令层的对象，并冻结当前默认包选择策略
 - `StudioAppFacade`：把 auth cache 上下文、运行命令、结果派发摘要和后续异步执行边界收口为明确的桌面应用入口
-- `run_studio_bootstrap` + `apps/radishflow-studio/src/main.rs`：把样例项目加载、本地样例 auth cache 构造和 `StudioAppFacade` 手动运行命令接成最小桌面进程触发点
+- `run_studio_bootstrap` + `apps/radishflow-studio/src/main.rs`：把样例项目加载、本地样例 auth cache 构造和 `RunPanelIntent -> WorkspaceControlAction -> StudioAppFacade` 链路接成最小桌面进程触发点
 - Studio 当前已把 Automatic skip 原因补进 `AppLogFeed`，避免“入口触发但未运行”完全静默
 - Studio 当前已把 `StudioWorkspaceRunDispatch` 扩成结构化摘要，统一派发最新 snapshot 摘要和最新日志摘要给入口层消费
 - Studio 当前已把 `StudioAppCommand` 扩成显式运行控制命令，覆盖 `RunWorkspace`、`ResumeWorkspace` 与 `SetWorkspaceSimulationMode`
@@ -300,7 +300,7 @@ MVP 阶段明确不做：
 
 基于上述进展，当前下一阶段计划调整为：
 
-- 在已接通的 `main.rs` 最小 bootstrap 入口、显式 app command 和 `WorkspaceControlAction` 契约基础上，继续把 `StudioAppFacade + WorkspaceRunCommand + WorkspaceSolveService` 接到明确的 UI 运行命令、按钮或运行服务入口
+- 在已接通的 `main.rs` 最小 bootstrap 入口、`RunPanelIntent` 和 `WorkspaceControlAction` 契约基础上，继续把 `StudioAppFacade + WorkspaceRunCommand + WorkspaceSolveService` 接到明确的 UI 运行命令、按钮或运行服务入口
 - 继续冻结运行结果派发、日志入口与后续异步执行边界
 - 在不打乱当前边界的前提下，再恢复更完整的 Studio 交互流和内核主线推进
 

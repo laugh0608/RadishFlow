@@ -2,6 +2,11 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
+use crate::{
+    StudioAppAuthCacheContext, StudioAppFacade, WorkspaceControlActionOutcome,
+    WorkspaceControlState, dispatch_run_panel_intent_with_auth_cache,
+    snapshot_workspace_control_state,
+};
 use rf_model::Flowsheet;
 use rf_store::{
     StoredAntoineCoefficients, StoredAuthCacheIndex, StoredCredentialReference,
@@ -11,18 +16,15 @@ use rf_store::{
     write_property_package_payload,
 };
 use rf_types::{RfError, RfResult};
-use rf_ui::{AppLogEntry, AppState, DocumentMetadata, FlowsheetDocument};
-
-use crate::WorkspaceRunCommand;
-use crate::{
-    StudioAppAuthCacheContext, StudioAppCommand, StudioAppCommandOutcome, StudioAppFacade,
-    WorkspaceControlState, snapshot_workspace_control_state,
+use rf_ui::{
+    AppLogEntry, AppState, DocumentMetadata, FlowsheetDocument, RunPanelIntent,
+    RunPanelPackageSelection,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StudioBootstrapConfig {
     pub project_path: PathBuf,
-    pub command: WorkspaceRunCommand,
+    pub intent: RunPanelIntent,
 }
 
 impl Default for StudioBootstrapConfig {
@@ -34,14 +36,16 @@ impl Default for StudioBootstrapConfig {
                 .join("examples")
                 .join("flowsheets")
                 .join("feed-heater-flash.rfproj.json"),
-            command: WorkspaceRunCommand::manual("binary-hydrocarbon-lite-v1"),
+            intent: RunPanelIntent::run_manual(RunPanelPackageSelection::explicit(
+                "binary-hydrocarbon-lite-v1",
+            )),
         }
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StudioBootstrapReport {
-    pub outcome: StudioAppCommandOutcome,
+    pub outcome: WorkspaceControlActionOutcome,
     pub control_state: WorkspaceControlState,
     pub log_entries: Vec<AppLogEntry>,
 }
@@ -57,8 +61,12 @@ pub fn run_studio_bootstrap(config: &StudioBootstrapConfig) -> RfResult<StudioBo
     )?;
     let context = StudioAppAuthCacheContext::new(cache_root.path(), &auth_cache_index);
     let facade = StudioAppFacade::new();
-    let command = StudioAppCommand::run_workspace(config.command.clone());
-    let outcome = facade.execute_with_auth_cache(&mut app_state, &context, &command)?;
+    let outcome = dispatch_run_panel_intent_with_auth_cache(
+        &facade,
+        &mut app_state,
+        &context,
+        &config.intent,
+    )?;
 
     Ok(StudioBootstrapReport {
         outcome,
@@ -94,7 +102,7 @@ fn seed_sample_auth_cache(
     flowsheet: &Flowsheet,
     package_id: &str,
 ) -> RfResult<StoredAuthCacheIndex> {
-    let downloaded_at = SystemTime::now();
+    let downloaded_at = normalized_system_time_now()?;
     let payload = build_bootstrap_payload(flowsheet, package_id)?;
     let integrity = property_package_payload_integrity(&payload)?;
     let mut manifest = StoredPropertyPackageManifest::new(
@@ -140,6 +148,16 @@ fn seed_sample_auth_cache(
         &auth_cache_index,
     )?;
     Ok(auth_cache_index)
+}
+
+fn normalized_system_time_now() -> RfResult<SystemTime> {
+    let seconds = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map_err(|error| {
+            RfError::invalid_input(format!("normalize current timestamp failed: {error}"))
+        })?
+        .as_secs();
+    Ok(UNIX_EPOCH + Duration::from_secs(seconds))
 }
 
 fn build_bootstrap_payload(
@@ -219,12 +237,12 @@ impl Drop for TemporaryCacheRoot {
 
 #[cfg(test)]
 mod tests {
-    use rf_ui::RunStatus;
+    use rf_ui::{RunPanelIntent, RunPanelPackageSelection, RunStatus, SimulationMode};
 
     use super::{StudioBootstrapConfig, run_studio_bootstrap};
     use crate::{
         StudioAppExecutionBoundary, StudioAppExecutionLane, StudioAppResultDispatch,
-        WorkspaceRunCommand, WorkspaceSolveDispatch, WorkspaceSolveSkipReason,
+        WorkspaceSolveDispatch,
     };
 
     #[test]
@@ -265,12 +283,12 @@ mod tests {
     }
 
     #[test]
-    fn bootstrap_reports_skip_for_automatic_trigger() {
+    fn bootstrap_resumes_workspace_from_hold_via_run_panel_intent() {
         let report = run_studio_bootstrap(&StudioBootstrapConfig {
-            command: WorkspaceRunCommand::automatic_preferred(),
+            intent: RunPanelIntent::resume(RunPanelPackageSelection::preferred()),
             ..StudioBootstrapConfig::default()
         })
-        .expect("expected bootstrap skip");
+        .expect("expected bootstrap resume");
 
         let dispatch = match report.outcome.dispatch {
             StudioAppResultDispatch::WorkspaceRun(dispatch) => dispatch,
@@ -281,27 +299,23 @@ mod tests {
             dispatch.simulation_mode
         );
         assert_eq!(report.control_state.run_status, dispatch.run_status);
-        assert_eq!(
+        assert_eq!(dispatch.run_status, RunStatus::Converged);
+        assert!(matches!(
             dispatch.solve_dispatch,
-            WorkspaceSolveDispatch::Skipped(WorkspaceSolveSkipReason::HoldMode)
-        );
-        assert_eq!(dispatch.run_status, RunStatus::Idle);
-        assert!(dispatch.latest_snapshot_summary.is_none());
-        assert_eq!(dispatch.log_entry_count, 1);
-        assert_eq!(report.log_entries.len(), 1);
+            WorkspaceSolveDispatch::Started(_)
+        ));
+        assert_eq!(dispatch.log_entry_count, 2);
+        assert_eq!(report.log_entries.len(), 2);
         assert_eq!(
             report.log_entries[0].message,
-            "Skipped workspace run because simulation mode is Hold"
+            "Activated workspace simulation mode"
         );
     }
 
     #[test]
     fn bootstrap_accepts_preferred_package_selection_when_single_cached_package_exists() {
         let report = run_studio_bootstrap(&StudioBootstrapConfig {
-            command: WorkspaceRunCommand::new(
-                crate::WorkspaceSolveTrigger::Manual,
-                crate::WorkspaceRunPackageSelection::Preferred,
-            ),
+            intent: RunPanelIntent::run_manual(RunPanelPackageSelection::preferred()),
             ..StudioBootstrapConfig::default()
         })
         .expect("expected preferred package bootstrap run");
@@ -319,5 +333,28 @@ mod tests {
             Some("binary-hydrocarbon-lite-v1")
         );
         assert_eq!(dispatch.log_entry_count, 1);
+    }
+
+    #[test]
+    fn bootstrap_can_switch_workspace_mode_from_run_panel_intent() {
+        let report = run_studio_bootstrap(&StudioBootstrapConfig {
+            intent: RunPanelIntent::set_mode(SimulationMode::Active),
+            ..StudioBootstrapConfig::default()
+        })
+        .expect("expected mode intent bootstrap run");
+
+        match report.outcome.dispatch {
+            StudioAppResultDispatch::WorkspaceMode(dispatch) => {
+                assert_eq!(dispatch.simulation_mode, SimulationMode::Active);
+                assert_eq!(dispatch.run_status, RunStatus::Idle);
+            }
+            StudioAppResultDispatch::WorkspaceRun(_) => panic!("expected workspace mode dispatch"),
+        }
+        assert_eq!(report.control_state.simulation_mode, SimulationMode::Active);
+        assert_eq!(report.log_entries.len(), 1);
+        assert_eq!(
+            report.log_entries[0].message,
+            "Set workspace simulation mode to Active"
+        );
     }
 }
