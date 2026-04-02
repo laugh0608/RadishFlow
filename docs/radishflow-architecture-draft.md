@@ -1,6 +1,6 @@
 # RadishFlow 架构草案
 
-更新时间：2026-04-01
+更新时间：2026-04-02
 
 ## 文档目的
 
@@ -262,6 +262,8 @@ RadishFlow/
 - 已建立 `WorkspaceSolveService`，收口默认 request、手动/自动运行门控与工作区求解分发
 - 已建立 `WorkspaceRunCommand`，把“触发类型 + package 选择”抽成更接近桌面命令层的对象
 - 已建立 `StudioAppFacade`，把 auth cache 上下文、运行命令、结果派发摘要和后续异步执行边界收口为当前明确的桌面应用入口
+- 已建立 `workspace_control`，把运行栏 / 状态栏动作入口与状态摘要收口为 `WorkspaceControlAction` / `WorkspaceControlState`
+- 当前最小桌面入口 `run_studio_bootstrap` / `main.rs` 已改为通过 `RunPanelIntent -> WorkspaceControlAction -> StudioAppFacade` 触发运行链路
 - 当前默认包选择策略保持保守，只在唯一候选时自动选中，多包场景要求显式指定 package
 - Automatic 运行当前先根据 `SimulationMode` / `pending_reason` 决定是否 skip，再决定是否需要 preferred package 解析
 
@@ -420,6 +422,9 @@ Rust UI 逻辑层。
 
 - 已冻结 `AppState`、`WorkspaceState`、`SolveSessionState` 与 `SolveSnapshot` 的最小边界
 - 已具备从 `rf-solver::SolveSnapshot` 映射到 UI 层快照并写回 `AppState` 的桥接
+- 已补 `RunPanelState`，用于承接运行栏摘要
+- 已补 `RunPanelIntent` / `RunPanelPackageSelection`，用于表达 UI 自有运行意图
+- 已补 `RunPanelCommandModel`，把 `Run/Resume/Hold/Active` 的主动作、可见性与可用性冻结到 UI 层
 
 ## `crates/rf-canvas`
 
@@ -557,7 +562,7 @@ Rust 与 .NET 的桥接层。
 6. 实现 `rf-ffi`
 7. 用 .NET 10 实现 `RadishFlow.CapeOpen.Adapter`
 8. 导出第一个可被 PME 识别的 Unit Operation PMC
-9. 在当前已建立的 `StudioAppFacade + WorkspaceRunCommand + WorkspaceSolveService` 运行边界之上，再建设 `radishflow-studio` 的画布、属性编辑与最终桌面运行触发入口
+9. 在当前已建立的 `RunPanelIntent + WorkspaceControlAction + StudioAppFacade + WorkspaceRunCommand + WorkspaceSolveService` 运行边界之上，再建设 `radishflow-studio` 的画布、属性编辑与最终桌面运行触发入口
 
 ## 当前仓库与目标仓库的关系
 
