@@ -16,6 +16,12 @@ pub struct RunPanelRenderableAction {
     pub prominence: RunPanelActionProminence,
 }
 
+impl RunPanelRenderableAction {
+    pub fn dispatchable_intent(&self) -> Option<RunPanelIntent> {
+        self.enabled.then(|| self.intent.clone())
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RunPanelViewModel {
     pub mode_label: &'static str,
@@ -69,6 +75,23 @@ impl RunPanelViewModel {
                 })
                 .collect(),
         }
+    }
+
+    pub fn action(&self, id: RunPanelActionId) -> Option<&RunPanelRenderableAction> {
+        if self.primary_action.id == id {
+            return Some(&self.primary_action);
+        }
+
+        self.secondary_actions.iter().find(|action| action.id == id)
+    }
+
+    pub fn dispatchable_intent(&self, id: RunPanelActionId) -> Option<RunPanelIntent> {
+        self.action(id)
+            .and_then(RunPanelRenderableAction::dispatchable_intent)
+    }
+
+    pub fn dispatchable_primary_intent(&self) -> Option<RunPanelIntent> {
+        self.primary_action.dispatchable_intent()
     }
 }
 

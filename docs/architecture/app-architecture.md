@@ -761,6 +761,7 @@ pub struct StepSnapshot {
 - `rf-ui` 当前已把运行栏按钮模型冻结为 `RunPanelCommandModel`：`Run`、`Resume`、`Hold`、`Active` 的按钮描述、可见性、可用性和默认主动作都由 UI 层派生，不再依赖 Studio 侧临时判断
 - `rf-ui` 当前也已补出 `RunPanelViewModel`，把主按钮/次按钮槽位、状态标签和最小渲染所需的运行栏数据冻结为 UI 内部展示 DTO
 - `rf-ui` 当前进一步补出 `RunPanelTextView`，把当前 bootstrap/CLI 入口所需的最小文本渲染组织也收回 UI 层
+- `rf-ui` 当前进一步把“动作是否可触发、触发后产出哪个 `RunPanelIntent`”也冻结进 `RunPanelViewModel` / `RunPanelRenderableAction`，避免最终 widget 再抄一遍启用判断
 - `run_studio_bootstrap(...)` 与 `main.rs` 当前已开始直接消费这组运行栏视图 DTO，而不再只打印控制面布尔摘要或在 Studio 里手拼文本布局
 
 当前明确还没做的事：

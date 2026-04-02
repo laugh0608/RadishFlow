@@ -291,6 +291,26 @@ mod tests {
     }
 
     #[test]
+    fn run_panel_view_model_returns_dispatchable_intents_for_enabled_actions() {
+        let app_state = AppState::new(sample_document());
+        let view = RunPanelViewModel::from_state(&app_state.workspace.run_panel);
+
+        assert_eq!(
+            view.dispatchable_primary_intent(),
+            Some(crate::RunPanelIntent::resume(
+                crate::RunPanelPackageSelection::preferred()
+            ))
+        );
+        assert_eq!(
+            view.dispatchable_intent(RunPanelActionId::RunManual),
+            Some(crate::RunPanelIntent::run_manual(
+                crate::RunPanelPackageSelection::preferred()
+            ))
+        );
+        assert_eq!(view.dispatchable_intent(RunPanelActionId::SetHold), None);
+    }
+
+    #[test]
     fn storing_snapshot_updates_run_panel_summary() {
         let mut app_state = AppState::new(sample_document());
         let snapshot = SolveSnapshot::new(
