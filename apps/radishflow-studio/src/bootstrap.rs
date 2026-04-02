@@ -3,10 +3,10 @@ use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use crate::{
-    RunPanelWidgetDispatchOutcome, StudioAppAuthCacheContext, StudioAppFacade,
-    WorkspaceControlActionOutcome, WorkspaceControlState,
-    dispatch_run_panel_intent_with_auth_cache, dispatch_run_panel_widget_event_with_auth_cache,
-    snapshot_workspace_control_state,
+    RunPanelDriverOutcome, RunPanelWidgetDispatchOutcome, StudioAppAuthCacheContext,
+    StudioAppFacade, WorkspaceControlActionOutcome, WorkspaceControlState,
+    dispatch_run_panel_intent_with_auth_cache, dispatch_run_panel_primary_action_with_auth_cache,
+    dispatch_run_panel_widget_action_with_auth_cache, snapshot_run_panel_driver_state,
 };
 use rf_model::Flowsheet;
 use rf_store::{
@@ -31,6 +31,7 @@ pub struct StudioBootstrapConfig {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum StudioBootstrapTrigger {
     Intent(RunPanelIntent),
+    WidgetPrimaryAction,
     WidgetAction(RunPanelActionId),
 }
 
@@ -43,7 +44,7 @@ impl Default for StudioBootstrapConfig {
                 .join("examples")
                 .join("flowsheets")
                 .join("feed-heater-flash.rfproj.json"),
-            trigger: StudioBootstrapTrigger::WidgetAction(RunPanelActionId::RunManual),
+            trigger: StudioBootstrapTrigger::WidgetPrimaryAction,
         }
     }
 }
@@ -68,11 +69,12 @@ pub fn run_studio_bootstrap(config: &StudioBootstrapConfig) -> RfResult<StudioBo
     let context = StudioAppAuthCacheContext::new(cache_root.path(), &auth_cache_index);
     let facade = StudioAppFacade::new();
     let outcome = dispatch_bootstrap_trigger(&facade, &mut app_state, &context, &config.trigger)?;
+    let driver_state = snapshot_run_panel_driver_state(&app_state);
 
     Ok(StudioBootstrapReport {
         outcome,
-        control_state: snapshot_workspace_control_state(&app_state),
-        run_panel: RunPanelWidgetModel::from_state(&app_state.workspace.run_panel),
+        control_state: driver_state.control_state,
+        run_panel: driver_state.widget,
         log_entries: app_state.log_feed.entries.iter().cloned().collect(),
     })
 }
@@ -87,27 +89,50 @@ fn dispatch_bootstrap_trigger(
         StudioBootstrapTrigger::Intent(intent) => {
             dispatch_run_panel_intent_with_auth_cache(facade, app_state, context, intent)
         }
+        StudioBootstrapTrigger::WidgetPrimaryAction => {
+            match dispatch_run_panel_primary_action_with_auth_cache(facade, app_state, context)? {
+                RunPanelDriverOutcome {
+                    dispatch: RunPanelWidgetDispatchOutcome::Executed(outcome),
+                    ..
+                } => Ok(outcome),
+                RunPanelDriverOutcome {
+                    dispatch: RunPanelWidgetDispatchOutcome::IgnoredDisabled { action_id },
+                    ..
+                } => Err(RfError::invalid_input(format!(
+                    "bootstrap primary widget action `{:?}` is currently disabled",
+                    action_id
+                ))),
+                RunPanelDriverOutcome {
+                    dispatch: RunPanelWidgetDispatchOutcome::IgnoredMissing { action_id },
+                    ..
+                } => Err(RfError::invalid_input(format!(
+                    "bootstrap primary widget action `{:?}` is missing from current widget model",
+                    action_id
+                ))),
+            }
+        }
         StudioBootstrapTrigger::WidgetAction(action_id) => {
-            let widget = RunPanelWidgetModel::from_state(&app_state.workspace.run_panel);
-            match dispatch_run_panel_widget_event_with_auth_cache(
-                facade,
-                app_state,
-                context,
-                &widget.activate(*action_id),
+            match dispatch_run_panel_widget_action_with_auth_cache(
+                facade, app_state, context, *action_id,
             )? {
-                RunPanelWidgetDispatchOutcome::Executed(outcome) => Ok(outcome),
-                RunPanelWidgetDispatchOutcome::IgnoredDisabled { action_id } => {
-                    Err(RfError::invalid_input(format!(
-                        "bootstrap widget action `{:?}` is currently disabled",
-                        action_id
-                    )))
-                }
-                RunPanelWidgetDispatchOutcome::IgnoredMissing { action_id } => {
-                    Err(RfError::invalid_input(format!(
-                        "bootstrap widget action `{:?}` is missing from current widget model",
-                        action_id
-                    )))
-                }
+                RunPanelDriverOutcome {
+                    dispatch: RunPanelWidgetDispatchOutcome::Executed(outcome),
+                    ..
+                } => Ok(outcome),
+                RunPanelDriverOutcome {
+                    dispatch: RunPanelWidgetDispatchOutcome::IgnoredDisabled { action_id },
+                    ..
+                } => Err(RfError::invalid_input(format!(
+                    "bootstrap widget action `{:?}` is currently disabled",
+                    action_id
+                ))),
+                RunPanelDriverOutcome {
+                    dispatch: RunPanelWidgetDispatchOutcome::IgnoredMissing { action_id },
+                    ..
+                } => Err(RfError::invalid_input(format!(
+                    "bootstrap widget action `{:?}` is missing from current widget model",
+                    action_id
+                ))),
             }
         }
     }
@@ -318,12 +343,12 @@ mod tests {
                 "solved flowsheet with 3 unit(s), 4 diagnostic entry(ies), and 4 resulting stream(s)"
             )
         );
-        assert_eq!(report.run_panel.view().mode_label, "Hold");
+        assert_eq!(report.run_panel.view().mode_label, "Active");
         assert_eq!(report.run_panel.view().status_label, "Converged");
         assert_eq!(report.run_panel.view().primary_action.label, "Run");
-        assert_eq!(report.run_panel.view().secondary_actions.len(), 3);
-        assert_eq!(dispatch.log_entry_count, 1);
-        assert_eq!(report.log_entries.len(), 1);
+        assert_eq!(report.run_panel.view().secondary_actions.len(), 2);
+        assert_eq!(dispatch.log_entry_count, 2);
+        assert_eq!(report.log_entries.len(), 2);
     }
 
     #[test]
@@ -424,5 +449,17 @@ mod tests {
         };
         assert_eq!(dispatch.run_status, RunStatus::Converged);
         assert_eq!(report.run_panel.view().primary_action.label, "Run");
+    }
+
+    #[test]
+    fn bootstrap_default_trigger_runs_via_primary_widget_action() {
+        let report = run_studio_bootstrap(&StudioBootstrapConfig::default())
+            .expect("expected primary widget bootstrap run");
+
+        let dispatch = match report.outcome.dispatch {
+            StudioAppResultDispatch::WorkspaceRun(dispatch) => dispatch,
+            StudioAppResultDispatch::WorkspaceMode(_) => panic!("expected workspace run dispatch"),
+        };
+        assert_eq!(dispatch.run_status, RunStatus::Converged);
     }
 }

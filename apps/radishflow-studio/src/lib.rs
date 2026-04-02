@@ -5,6 +5,7 @@ mod control_plane_client;
 mod control_plane_sync;
 mod property_package_download;
 mod property_package_download_client;
+mod run_panel_driver;
 mod solver_bridge;
 mod workspace_control;
 mod workspace_run_command;
@@ -48,6 +49,10 @@ pub use property_package_download_client::{
     PropertyPackageDownloadRetryPolicy, ReqwestPropertyPackageDownloadHttpTransport,
     ReqwestPropertyPackageDownloadHttpTransportOptions, download_property_package_to_cache,
     download_property_package_to_cache_with_retry_policy,
+};
+pub use run_panel_driver::{
+    RunPanelDriverOutcome, RunPanelDriverState, dispatch_run_panel_primary_action_with_auth_cache,
+    dispatch_run_panel_widget_action_with_auth_cache, snapshot_run_panel_driver_state,
 };
 pub use solver_bridge::{
     StudioSolveRequest, next_solver_snapshot_sequence, solve_workspace_from_auth_cache,
