@@ -232,6 +232,7 @@ mod tests {
         );
         let dispatch = match report.outcome.dispatch {
             StudioAppResultDispatch::WorkspaceRun(dispatch) => dispatch,
+            StudioAppResultDispatch::WorkspaceMode(_) => panic!("expected workspace run dispatch"),
         };
         assert_eq!(dispatch.run_status, RunStatus::Converged);
         assert_eq!(
@@ -260,6 +261,7 @@ mod tests {
 
         let dispatch = match report.outcome.dispatch {
             StudioAppResultDispatch::WorkspaceRun(dispatch) => dispatch,
+            StudioAppResultDispatch::WorkspaceMode(_) => panic!("expected workspace run dispatch"),
         };
         assert_eq!(
             dispatch.solve_dispatch,
@@ -288,6 +290,7 @@ mod tests {
 
         let dispatch = match report.outcome.dispatch {
             StudioAppResultDispatch::WorkspaceRun(dispatch) => dispatch,
+            StudioAppResultDispatch::WorkspaceMode(_) => panic!("expected workspace run dispatch"),
         };
         assert_eq!(dispatch.package_id.as_deref(), Some("binary-hydrocarbon-lite-v1"));
         assert_eq!(dispatch.log_entry_count, 1);

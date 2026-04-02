@@ -291,10 +291,12 @@ MVP 阶段明确不做：
 - `run_studio_bootstrap` + `apps/radishflow-studio/src/main.rs`：把样例项目加载、本地样例 auth cache 构造和 `StudioAppFacade` 手动运行命令接成最小桌面进程触发点
 - Studio 当前已把 Automatic skip 原因补进 `AppLogFeed`，避免“入口触发但未运行”完全静默
 - Studio 当前已把 `StudioWorkspaceRunDispatch` 扩成结构化摘要，统一派发最新 snapshot 摘要和最新日志摘要给入口层消费
+- Studio 当前已把 `StudioAppCommand` 扩成显式运行控制命令，覆盖 `RunWorkspace`、`ResumeWorkspace` 与 `SetWorkspaceSimulationMode`
+- Studio 当前已补出 `ResumeWorkspace` 这一条 `Hold -> Active` 恢复路径，并把 `simulation_mode` / `pending_reason` 一并纳入结果派发
 
 基于上述进展，当前下一阶段计划调整为：
 
-- 在已接通的 `main.rs` 最小 bootstrap 入口基础上，继续把 `StudioAppFacade + WorkspaceRunCommand + WorkspaceSolveService` 接到明确的 UI 运行命令、按钮或运行服务入口
+- 在已接通的 `main.rs` 最小 bootstrap 入口和显式 app command 基础上，继续把 `StudioAppFacade + WorkspaceRunCommand + WorkspaceSolveService` 接到明确的 UI 运行命令、按钮或运行服务入口
 - 继续冻结运行结果派发、日志入口与后续异步执行边界
 - 在不打乱当前边界的前提下，再恢复更完整的 Studio 交互流和内核主线推进
 

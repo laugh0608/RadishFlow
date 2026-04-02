@@ -11,10 +11,27 @@ fn main() {
             match report.outcome.dispatch {
                 StudioAppResultDispatch::WorkspaceRun(dispatch) => {
                     println!("Run status: {:?}", dispatch.run_status);
+                    println!("Mode: {:?}", dispatch.simulation_mode);
+                    println!("Pending: {:?}", dispatch.pending_reason);
                     println!("Dispatch: {:?}", dispatch.solve_dispatch);
                     if let Some(package_id) = dispatch.package_id {
                         println!("Package: {package_id}");
                     }
+                    if let Some(snapshot_id) = dispatch.latest_snapshot_id {
+                        println!("Latest snapshot: {snapshot_id}");
+                    }
+                    if let Some(summary) = dispatch.latest_snapshot_summary {
+                        println!("Summary: {summary}");
+                    }
+                    println!("Log entries: {}", dispatch.log_entry_count);
+                    if let Some(entry) = dispatch.latest_log_entry {
+                        println!("Latest log: {:?}: {}", entry.level, entry.message);
+                    }
+                }
+                StudioAppResultDispatch::WorkspaceMode(dispatch) => {
+                    println!("Run status: {:?}", dispatch.run_status);
+                    println!("Mode: {:?}", dispatch.simulation_mode);
+                    println!("Pending: {:?}", dispatch.pending_reason);
                     if let Some(snapshot_id) = dispatch.latest_snapshot_id {
                         println!("Latest snapshot: {snapshot_id}");
                     }

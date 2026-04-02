@@ -2,17 +2,23 @@ use std::path::Path;
 
 use rf_store::StoredAuthCacheIndex;
 use rf_types::RfResult;
-use rf_ui::{AppLogEntry, AppLogLevel, AppState, RunStatus, latest_snapshot_id};
+use rf_ui::{
+    AppLogEntry, AppLogLevel, AppState, RunStatus, SimulationMode, SolvePendingReason,
+    latest_snapshot_id,
+};
 
 use crate::{
-    WorkspaceRunCommand, WorkspaceRunDispatchResult, WorkspaceSolveDispatch, WorkspaceSolveService,
-    WorkspaceSolveSkipReason,
+    WorkspaceRunCommand, WorkspaceRunDispatchResult, WorkspaceRunPackageSelection,
+    WorkspaceSolveDispatch, WorkspaceSolveService, WorkspaceSolveSkipReason,
+    WorkspaceSolveTrigger,
     dispatch_workspace_run_from_auth_cache,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum StudioAppCommand {
     RunWorkspace(WorkspaceRunCommand),
+    ResumeWorkspace(WorkspaceRunPackageSelection),
+    SetWorkspaceSimulationMode(SimulationMode),
 }
 
 impl StudioAppCommand {
@@ -20,10 +26,21 @@ impl StudioAppCommand {
         Self::RunWorkspace(command)
     }
 
+    pub fn resume_workspace(selection: WorkspaceRunPackageSelection) -> Self {
+        Self::ResumeWorkspace(selection)
+    }
+
+    pub fn set_workspace_simulation_mode(mode: SimulationMode) -> Self {
+        Self::SetWorkspaceSimulationMode(mode)
+    }
+
     pub fn execution_boundary(&self) -> StudioAppExecutionBoundary {
         match self {
-            Self::RunWorkspace(_) => {
+            Self::RunWorkspace(_) | Self::ResumeWorkspace(_) => {
                 StudioAppExecutionBoundary::Inline(StudioAppExecutionLane::WorkspaceSolve)
+            }
+            Self::SetWorkspaceSimulationMode(_) => {
+                StudioAppExecutionBoundary::Inline(StudioAppExecutionLane::WorkspaceControl)
             }
         }
     }
@@ -32,6 +49,7 @@ impl StudioAppCommand {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StudioAppExecutionLane {
     WorkspaceSolve,
+    WorkspaceControl,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -58,6 +76,19 @@ impl<'a> StudioAppAuthCacheContext<'a> {
 pub struct StudioWorkspaceRunDispatch {
     pub package_id: Option<String>,
     pub solve_dispatch: WorkspaceSolveDispatch,
+    pub simulation_mode: SimulationMode,
+    pub pending_reason: Option<SolvePendingReason>,
+    pub latest_snapshot_id: Option<String>,
+    pub latest_snapshot_summary: Option<String>,
+    pub run_status: RunStatus,
+    pub log_entry_count: usize,
+    pub latest_log_entry: Option<AppLogEntry>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioWorkspaceModeDispatch {
+    pub simulation_mode: SimulationMode,
+    pub pending_reason: Option<SolvePendingReason>,
     pub latest_snapshot_id: Option<String>,
     pub latest_snapshot_summary: Option<String>,
     pub run_status: RunStatus,
@@ -68,6 +99,7 @@ pub struct StudioWorkspaceRunDispatch {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum StudioAppResultDispatch {
     WorkspaceRun(StudioWorkspaceRunDispatch),
+    WorkspaceMode(StudioWorkspaceModeDispatch),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -97,6 +129,16 @@ impl StudioAppFacade {
             StudioAppCommand::RunWorkspace(run_command) => StudioAppResultDispatch::WorkspaceRun(
                 self.run_workspace_from_auth_cache(app_state, context, run_command)?,
             ),
+            StudioAppCommand::ResumeWorkspace(selection) => {
+                StudioAppResultDispatch::WorkspaceRun(self.resume_workspace_from_auth_cache(
+                    app_state, context, selection,
+                )?)
+            }
+            StudioAppCommand::SetWorkspaceSimulationMode(mode) => {
+                StudioAppResultDispatch::WorkspaceMode(
+                    self.set_workspace_simulation_mode(app_state, *mode),
+                )
+            }
         };
 
         Ok(StudioAppCommandOutcome { boundary, dispatch })
@@ -118,6 +160,40 @@ impl StudioAppFacade {
         record_workspace_run_dispatch(app_state, &result);
 
         Ok(map_workspace_run_dispatch(app_state, result))
+    }
+
+    pub fn resume_workspace_from_auth_cache(
+        &self,
+        app_state: &mut AppState,
+        context: &StudioAppAuthCacheContext<'_>,
+        selection: &WorkspaceRunPackageSelection,
+    ) -> RfResult<StudioWorkspaceRunDispatch> {
+        app_state.set_simulation_mode(SimulationMode::Active);
+        app_state
+            .log_feed
+            .push(AppLogLevel::Info, "Activated workspace simulation mode");
+
+        self.run_workspace_from_auth_cache(
+            app_state,
+            context,
+            &WorkspaceRunCommand::new(WorkspaceSolveTrigger::Automatic, selection.clone()),
+        )
+    }
+
+    pub fn set_workspace_simulation_mode(
+        &self,
+        app_state: &mut AppState,
+        mode: SimulationMode,
+    ) -> StudioWorkspaceModeDispatch {
+        app_state.set_simulation_mode(mode);
+        app_state.log_feed.push(
+            AppLogLevel::Info,
+            format!(
+                "Set workspace simulation mode to {}",
+                describe_simulation_mode(mode)
+            ),
+        );
+        map_workspace_mode_dispatch(app_state)
     }
 }
 
@@ -147,6 +223,8 @@ fn map_workspace_run_dispatch(
     StudioWorkspaceRunDispatch {
         package_id: result.package_id,
         solve_dispatch: result.dispatch,
+        simulation_mode: app_state.workspace.solve_session.mode,
+        pending_reason: app_state.workspace.solve_session.pending_reason,
         latest_snapshot_id: latest_snapshot_id(&app_state.workspace)
             .map(|snapshot_id| snapshot_id.as_str().to_string()),
         latest_snapshot_summary: app_state
@@ -157,6 +235,30 @@ fn map_workspace_run_dispatch(
         run_status: app_state.workspace.solve_session.status,
         log_entry_count: app_state.log_feed.entries.len(),
         latest_log_entry: app_state.log_feed.entries.back().cloned(),
+    }
+}
+
+fn map_workspace_mode_dispatch(app_state: &AppState) -> StudioWorkspaceModeDispatch {
+    StudioWorkspaceModeDispatch {
+        simulation_mode: app_state.workspace.solve_session.mode,
+        pending_reason: app_state.workspace.solve_session.pending_reason,
+        latest_snapshot_id: latest_snapshot_id(&app_state.workspace)
+            .map(|snapshot_id| snapshot_id.as_str().to_string()),
+        latest_snapshot_summary: app_state
+            .workspace
+            .snapshot_history
+            .back()
+            .map(|snapshot| snapshot.summary.primary_message.clone()),
+        run_status: app_state.workspace.solve_session.status,
+        log_entry_count: app_state.log_feed.entries.len(),
+        latest_log_entry: app_state.log_feed.entries.back().cloned(),
+    }
+}
+
+fn describe_simulation_mode(mode: SimulationMode) -> &'static str {
+    match mode {
+        SimulationMode::Active => "Active",
+        SimulationMode::Hold => "Hold",
     }
 }
 
@@ -174,7 +276,7 @@ mod tests {
         write_property_package_payload,
     };
     use rf_types::ComponentId;
-    use rf_ui::{AppState, DocumentMetadata, FlowsheetDocument, RunStatus};
+    use rf_ui::{AppState, DocumentMetadata, FlowsheetDocument, RunStatus, SimulationMode, SolvePendingReason};
 
     use super::{
         StudioAppAuthCacheContext, StudioAppCommand, StudioAppExecutionBoundary,
@@ -318,6 +420,7 @@ mod tests {
         );
         let dispatch = match outcome.dispatch {
             StudioAppResultDispatch::WorkspaceRun(dispatch) => dispatch,
+            StudioAppResultDispatch::WorkspaceMode(_) => panic!("expected workspace run dispatch"),
         };
         assert_eq!(
             dispatch.package_id,
@@ -335,6 +438,8 @@ mod tests {
             dispatch.latest_snapshot_id.as_deref(),
             Some("doc-app-facade-rev-0-seq-1")
         );
+        assert_eq!(dispatch.simulation_mode, SimulationMode::Hold);
+        assert_eq!(dispatch.pending_reason, None);
         assert_eq!(
             dispatch.latest_snapshot_summary.as_deref(),
             Some("solved flowsheet with 3 unit(s), 4 diagnostic entry(ies), and 4 resulting stream(s)")
@@ -370,11 +475,17 @@ mod tests {
 
         let dispatch = match outcome.dispatch {
             StudioAppResultDispatch::WorkspaceRun(dispatch) => dispatch,
+            StudioAppResultDispatch::WorkspaceMode(_) => panic!("expected workspace run dispatch"),
         };
         assert_eq!(dispatch.package_id, None);
         assert_eq!(
             dispatch.solve_dispatch,
             WorkspaceSolveDispatch::Skipped(crate::WorkspaceSolveSkipReason::HoldMode)
+        );
+        assert_eq!(dispatch.simulation_mode, SimulationMode::Hold);
+        assert_eq!(
+            dispatch.pending_reason,
+            Some(SolvePendingReason::SnapshotMissing)
         );
         assert_eq!(dispatch.latest_snapshot_id, None);
         assert_eq!(dispatch.latest_snapshot_summary, None);
@@ -389,5 +500,99 @@ mod tests {
             app_state.log_feed.entries[0].message,
             "Skipped workspace run because simulation mode is Hold"
         );
+    }
+
+    #[test]
+    fn facade_sets_workspace_simulation_mode_without_running_solver() {
+        let auth_cache_index = sample_auth_cache_index(&["pkg-1"]);
+        let facade = StudioAppFacade::new();
+        let mut app_state = AppState::new(sample_document());
+        let cache_root = PathBuf::from("D:\\cache-root");
+        let context = StudioAppAuthCacheContext::new(&cache_root, &auth_cache_index);
+        let command = StudioAppCommand::set_workspace_simulation_mode(SimulationMode::Active);
+
+        let outcome = facade
+            .execute_with_auth_cache(&mut app_state, &context, &command)
+            .expect("expected mode dispatch");
+
+        assert_eq!(
+            outcome.boundary,
+            StudioAppExecutionBoundary::Inline(StudioAppExecutionLane::WorkspaceControl)
+        );
+        let dispatch = match outcome.dispatch {
+            StudioAppResultDispatch::WorkspaceMode(dispatch) => dispatch,
+            StudioAppResultDispatch::WorkspaceRun(_) => panic!("expected workspace mode dispatch"),
+        };
+        assert_eq!(dispatch.simulation_mode, SimulationMode::Active);
+        assert_eq!(
+            dispatch.pending_reason,
+            Some(SolvePendingReason::ModeActivated)
+        );
+        assert_eq!(dispatch.run_status, RunStatus::Idle);
+        assert_eq!(dispatch.log_entry_count, 1);
+        assert_eq!(
+            dispatch.latest_log_entry.as_ref().map(|entry| entry.message.as_str()),
+            Some("Set workspace simulation mode to Active")
+        );
+    }
+
+    #[test]
+    fn facade_resumes_workspace_from_hold_and_runs_automatic_dispatch() {
+        let cache_root = unique_temp_path("app-facade-resume");
+        let mut auth_cache_index = StoredAuthCacheIndex::new(
+            "https://id.radish.local",
+            "user-123",
+            StoredCredentialReference::new("radishflow-studio", "user-123-primary"),
+        );
+        write_cached_package(
+            &cache_root,
+            &mut auth_cache_index,
+            "binary-hydrocarbon-lite-v1",
+        );
+        let facade = StudioAppFacade::new();
+        let project = parse_project_file_json(include_str!(
+            "../../../examples/flowsheets/feed-heater-flash.rfproj.json"
+        ))
+        .expect("expected project parse");
+        let mut app_state = AppState::new(FlowsheetDocument::new(
+            project.document.flowsheet,
+            DocumentMetadata::new("doc-app-resume", "App Resume Demo", timestamp(70)),
+        ));
+        let context = StudioAppAuthCacheContext::new(&cache_root, &auth_cache_index);
+        let command =
+            StudioAppCommand::resume_workspace(WorkspaceRunPackageSelection::Preferred);
+
+        let outcome = facade
+            .execute_with_auth_cache(&mut app_state, &context, &command)
+            .expect("expected app facade resume");
+
+        assert_eq!(
+            outcome.boundary,
+            StudioAppExecutionBoundary::Inline(StudioAppExecutionLane::WorkspaceSolve)
+        );
+        let dispatch = match outcome.dispatch {
+            StudioAppResultDispatch::WorkspaceRun(dispatch) => dispatch,
+            StudioAppResultDispatch::WorkspaceMode(_) => panic!("expected workspace run dispatch"),
+        };
+        assert_eq!(
+            dispatch.solve_dispatch,
+            WorkspaceSolveDispatch::Started(crate::StudioSolveRequest::new(
+                "binary-hydrocarbon-lite-v1",
+                "doc-app-resume-rev-0-seq-1",
+                1,
+            ))
+        );
+        assert_eq!(dispatch.simulation_mode, SimulationMode::Active);
+        assert_eq!(dispatch.pending_reason, None);
+        assert_eq!(dispatch.run_status, RunStatus::Converged);
+        assert_eq!(dispatch.log_entry_count, 2);
+        assert_eq!(
+            dispatch.latest_log_entry.as_ref().map(|entry| entry.message.as_str()),
+            Some(
+                "Solved document revision 0 with property package `binary-hydrocarbon-lite-v1` into snapshot `doc-app-resume-rev-0-seq-1`"
+            )
+        );
+
+        std::fs::remove_dir_all(cache_root).expect("expected temp dir cleanup");
     }
 }
