@@ -1,6 +1,6 @@
 # RadishFlow MVP 开发路线图
 
-更新时间：2026-04-01
+更新时间：2026-04-02
 
 ## 文档目的
 
@@ -282,16 +282,18 @@ MVP 阶段明确不做：
 - 随后恢复 `rf-thermo` / `rf-flash` 数值主线，避免地基建设继续挤占核心算法推进
 - 在数值主线恢复后，再进入 `rf-solver` 无回路顺序模块法和首个可求解 flowsheet 示例
 
-截至 2026-04-01，M3 与 Studio 应用层又进一步前推，当前已完成：
+截至 2026-04-02，M3 与 Studio 应用层又进一步前推，当前已完成：
 
 - `solver_bridge`：把 `PropertyPackageProvider` / 本地 auth cache 与 `rf-solver`、`rf-ui::AppState` 接通
 - `WorkspaceSolveService`：把默认 request、手动/自动触发门控与工作区求解分发收口为应用服务入口
 - `WorkspaceRunCommand`：把“触发类型 + package 选择”抽成更接近桌面命令层的对象，并冻结当前默认包选择策略
 - `StudioAppFacade`：把 auth cache 上下文、运行命令、结果派发摘要和后续异步执行边界收口为明确的桌面应用入口
+- `run_studio_bootstrap` + `apps/radishflow-studio/src/main.rs`：把样例项目加载、本地样例 auth cache 构造和 `StudioAppFacade` 手动运行命令接成最小桌面进程触发点
+- Studio 当前已把 Automatic skip 原因补进 `AppLogFeed`，避免“入口触发但未运行”完全静默
 
 基于上述进展，当前下一阶段计划调整为：
 
-- 继续把 `StudioAppFacade + WorkspaceRunCommand + WorkspaceSolveService` 接到明确的桌面运行触发点
+- 在已接通的 `main.rs` 最小 bootstrap 入口基础上，继续把 `StudioAppFacade + WorkspaceRunCommand + WorkspaceSolveService` 接到明确的 UI 运行命令、按钮或运行服务入口
 - 继续冻结运行结果派发、日志入口与后续异步执行边界
 - 在不打乱当前边界的前提下，再恢复更完整的 Studio 交互流和内核主线推进
 

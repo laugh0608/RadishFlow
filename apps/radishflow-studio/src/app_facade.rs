@@ -2,10 +2,11 @@ use std::path::Path;
 
 use rf_store::StoredAuthCacheIndex;
 use rf_types::RfResult;
-use rf_ui::{AppState, RunStatus, latest_snapshot_id};
+use rf_ui::{AppLogLevel, AppState, RunStatus, latest_snapshot_id};
 
 use crate::{
     WorkspaceRunCommand, WorkspaceRunDispatchResult, WorkspaceSolveDispatch, WorkspaceSolveService,
+    WorkspaceSolveSkipReason,
     dispatch_workspace_run_from_auth_cache,
 };
 
@@ -111,8 +112,28 @@ impl StudioAppFacade {
             context.auth_cache_index,
             command,
         )?;
+        record_workspace_run_dispatch(app_state, &result);
 
         Ok(map_workspace_run_dispatch(app_state, result))
+    }
+}
+
+fn record_workspace_run_dispatch(app_state: &mut AppState, result: &WorkspaceRunDispatchResult) {
+    if let WorkspaceSolveDispatch::Skipped(reason) = result.dispatch {
+        app_state.log_feed.push(
+            AppLogLevel::Info,
+            format!(
+                "Skipped workspace run because {}",
+                describe_workspace_skip_reason(reason)
+            ),
+        );
+    }
+}
+
+fn describe_workspace_skip_reason(reason: WorkspaceSolveSkipReason) -> &'static str {
+    match reason {
+        WorkspaceSolveSkipReason::HoldMode => "simulation mode is Hold",
+        WorkspaceSolveSkipReason::NoPendingRequest => "there is no pending solve request",
     }
 }
 
@@ -305,6 +326,7 @@ mod tests {
             Some("doc-app-facade-rev-0-seq-1")
         );
         assert_eq!(dispatch.run_status, RunStatus::Converged);
+        assert_eq!(app_state.log_feed.entries.len(), 1);
 
         std::fs::remove_dir_all(cache_root).expect("expected temp dir cleanup");
     }
@@ -335,5 +357,10 @@ mod tests {
         );
         assert_eq!(dispatch.latest_snapshot_id, None);
         assert_eq!(dispatch.run_status, RunStatus::Idle);
+        assert_eq!(app_state.log_feed.entries.len(), 1);
+        assert_eq!(
+            app_state.log_feed.entries[0].message,
+            "Skipped workspace run because simulation mode is Hold"
+        );
     }
 }

@@ -1,6 +1,6 @@
 # App Architecture
 
-更新时间：2026-04-01
+更新时间：2026-04-02
 
 ## 当前目标
 
@@ -705,7 +705,7 @@ pub struct StepSnapshot {
 
 ## 当前已落地的求解桥接
 
-截至 2026-04-01，`apps/radishflow-studio` 已经实现最小应用层求解桥接，并通过单元测试与仓库级验证覆盖。
+截至 2026-04-02，`apps/radishflow-studio` 已经实现最小应用层求解桥接，并通过单元测试与仓库级验证覆盖。
 
 当前已落地入口：
 
@@ -717,6 +717,8 @@ pub struct StepSnapshot {
 - `solve_workspace_with_property_package(...)`
 - `solve_workspace_from_auth_cache(...)`
 - `next_solver_snapshot_sequence(...)`
+- `run_studio_bootstrap(...)`
+- `src/main.rs` 当前最小 bootstrap 运行入口
 
 当前桥接行为：
 
@@ -732,10 +734,12 @@ pub struct StepSnapshot {
 - 组装 `PlaceholderThermoProvider + PlaceholderTpFlashSolver + SequentialModularSolver`
 - 成功时调用 `AppState::store_solver_snapshot(...)`，把求解结果映射为 UI 层 `SolveSnapshot`
 - 失败时调用 `record_failure(...)` 并追加 `AppLogFeed` 错误日志
+- Automatic 命中 `HoldMode` / `NoPendingRequest` 的 skip 当前也会写入 `AppLogFeed`
+- `main.rs` 当前已通过 `run_studio_bootstrap(...)` 把这条链路接到一个明确的桌面进程触发点，并输出最小运行摘要
 
 当前明确还没做的事：
 
-- 虽然已有 `StudioAppFacade` 作为应用命令入口，但还没有把它正式挂到最终桌面命令、按钮或运行服务入口
+- 虽然已有 `StudioAppFacade` 作为应用命令入口，并且已接到 `main.rs` 的最小 bootstrap 触发点，但还没有把它正式挂到最终桌面命令、按钮或运行服务入口
 - 还没有在 `rf-ui` 中冻结“手动运行 / 自动运行 / Hold 恢复”的完整应用事件流
 - 当前虽然已有 `StudioAppFacade`，但结果派发对象仍是最小摘要形态，真正的后台任务调度、取消和更细的事件总线还没有冻结
 
