@@ -301,6 +301,7 @@ MVP 阶段明确不做：
 - `rf-ui` 当前已不只拥有运行意图类型，还拥有最小按钮模型、文本渲染 DTO、`RunPanelPresentation` 与 `RunPanelWidgetModel`；后续真正视图层接线时不必再重新发明运行栏启用判断、按钮槽位组织、文本布局或按钮激活语义
 - 当前最小桌面入口 `run_studio_bootstrap` / `main.rs` 已开始直接消费 `RunPanelWidgetModel`，作为真正的最小运行栏组件/消费层
 - Studio 当前也已补出 `RunPanelWidgetEvent -> WorkspaceControlAction` 的分发桥，使最小 widget 交互结果能够回到既有应用命令链路
+- `run_studio_bootstrap` 当前也已补出 `StudioBootstrapTrigger::{Intent, WidgetAction}`，默认通过 `WidgetAction(RunManual)` 驱动这条链路，而不再只验证裸 `RunPanelIntent`
 
 基于上述进展，当前下一阶段计划调整为：
 

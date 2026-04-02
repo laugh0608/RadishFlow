@@ -15,7 +15,7 @@ fn main() {
         Ok(report) => {
             println!("RadishFlow Studio bootstrap");
             println!("Project: {}", config.project_path.display());
-            println!("Requested intent: {:?}", config.intent);
+            println!("Requested trigger: {:?}", config.trigger);
             println!("Control mode: {:?}", report.control_state.simulation_mode);
             println!("Control pending: {:?}", report.control_state.pending_reason);
             println!("Control status: {:?}", report.control_state.run_status);

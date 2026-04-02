@@ -3,8 +3,9 @@ use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use crate::{
-    StudioAppAuthCacheContext, StudioAppFacade, WorkspaceControlActionOutcome,
-    WorkspaceControlState, dispatch_run_panel_intent_with_auth_cache,
+    RunPanelWidgetDispatchOutcome, StudioAppAuthCacheContext, StudioAppFacade,
+    WorkspaceControlActionOutcome, WorkspaceControlState,
+    dispatch_run_panel_intent_with_auth_cache, dispatch_run_panel_widget_event_with_auth_cache,
     snapshot_workspace_control_state,
 };
 use rf_model::Flowsheet;
@@ -17,14 +18,20 @@ use rf_store::{
 };
 use rf_types::{RfError, RfResult};
 use rf_ui::{
-    AppLogEntry, AppState, DocumentMetadata, FlowsheetDocument, RunPanelIntent,
-    RunPanelPackageSelection, RunPanelWidgetModel,
+    AppLogEntry, AppState, DocumentMetadata, FlowsheetDocument, RunPanelActionId, RunPanelIntent,
+    RunPanelWidgetModel,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StudioBootstrapConfig {
     pub project_path: PathBuf,
-    pub intent: RunPanelIntent,
+    pub trigger: StudioBootstrapTrigger,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum StudioBootstrapTrigger {
+    Intent(RunPanelIntent),
+    WidgetAction(RunPanelActionId),
 }
 
 impl Default for StudioBootstrapConfig {
@@ -36,9 +43,7 @@ impl Default for StudioBootstrapConfig {
                 .join("examples")
                 .join("flowsheets")
                 .join("feed-heater-flash.rfproj.json"),
-            intent: RunPanelIntent::run_manual(RunPanelPackageSelection::explicit(
-                "binary-hydrocarbon-lite-v1",
-            )),
+            trigger: StudioBootstrapTrigger::WidgetAction(RunPanelActionId::RunManual),
         }
     }
 }
@@ -62,12 +67,7 @@ pub fn run_studio_bootstrap(config: &StudioBootstrapConfig) -> RfResult<StudioBo
     )?;
     let context = StudioAppAuthCacheContext::new(cache_root.path(), &auth_cache_index);
     let facade = StudioAppFacade::new();
-    let outcome = dispatch_run_panel_intent_with_auth_cache(
-        &facade,
-        &mut app_state,
-        &context,
-        &config.intent,
-    )?;
+    let outcome = dispatch_bootstrap_trigger(&facade, &mut app_state, &context, &config.trigger)?;
 
     Ok(StudioBootstrapReport {
         outcome,
@@ -75,6 +75,42 @@ pub fn run_studio_bootstrap(config: &StudioBootstrapConfig) -> RfResult<StudioBo
         run_panel: RunPanelWidgetModel::from_state(&app_state.workspace.run_panel),
         log_entries: app_state.log_feed.entries.iter().cloned().collect(),
     })
+}
+
+fn dispatch_bootstrap_trigger(
+    facade: &StudioAppFacade,
+    app_state: &mut AppState,
+    context: &StudioAppAuthCacheContext<'_>,
+    trigger: &StudioBootstrapTrigger,
+) -> RfResult<WorkspaceControlActionOutcome> {
+    match trigger {
+        StudioBootstrapTrigger::Intent(intent) => {
+            dispatch_run_panel_intent_with_auth_cache(facade, app_state, context, intent)
+        }
+        StudioBootstrapTrigger::WidgetAction(action_id) => {
+            let widget = RunPanelWidgetModel::from_state(&app_state.workspace.run_panel);
+            match dispatch_run_panel_widget_event_with_auth_cache(
+                facade,
+                app_state,
+                context,
+                &widget.activate(*action_id),
+            )? {
+                RunPanelWidgetDispatchOutcome::Executed(outcome) => Ok(outcome),
+                RunPanelWidgetDispatchOutcome::IgnoredDisabled { action_id } => {
+                    Err(RfError::invalid_input(format!(
+                        "bootstrap widget action `{:?}` is currently disabled",
+                        action_id
+                    )))
+                }
+                RunPanelWidgetDispatchOutcome::IgnoredMissing { action_id } => {
+                    Err(RfError::invalid_input(format!(
+                        "bootstrap widget action `{:?}` is missing from current widget model",
+                        action_id
+                    )))
+                }
+            }
+        }
+    }
 }
 
 fn app_state_from_project_file(
@@ -239,9 +275,11 @@ impl Drop for TemporaryCacheRoot {
 
 #[cfg(test)]
 mod tests {
-    use rf_ui::{RunPanelIntent, RunPanelPackageSelection, RunStatus, SimulationMode};
+    use rf_ui::{
+        RunPanelActionId, RunPanelIntent, RunPanelPackageSelection, RunStatus, SimulationMode,
+    };
 
-    use super::{StudioBootstrapConfig, run_studio_bootstrap};
+    use super::{StudioBootstrapConfig, StudioBootstrapTrigger, run_studio_bootstrap};
     use crate::{
         StudioAppExecutionBoundary, StudioAppExecutionLane, StudioAppResultDispatch,
         WorkspaceSolveDispatch,
@@ -291,7 +329,9 @@ mod tests {
     #[test]
     fn bootstrap_resumes_workspace_from_hold_via_run_panel_intent() {
         let report = run_studio_bootstrap(&StudioBootstrapConfig {
-            intent: RunPanelIntent::resume(RunPanelPackageSelection::preferred()),
+            trigger: StudioBootstrapTrigger::Intent(RunPanelIntent::resume(
+                RunPanelPackageSelection::preferred(),
+            )),
             ..StudioBootstrapConfig::default()
         })
         .expect("expected bootstrap resume");
@@ -321,7 +361,9 @@ mod tests {
     #[test]
     fn bootstrap_accepts_preferred_package_selection_when_single_cached_package_exists() {
         let report = run_studio_bootstrap(&StudioBootstrapConfig {
-            intent: RunPanelIntent::run_manual(RunPanelPackageSelection::preferred()),
+            trigger: StudioBootstrapTrigger::Intent(RunPanelIntent::run_manual(
+                RunPanelPackageSelection::preferred(),
+            )),
             ..StudioBootstrapConfig::default()
         })
         .expect("expected preferred package bootstrap run");
@@ -344,7 +386,9 @@ mod tests {
     #[test]
     fn bootstrap_can_switch_workspace_mode_from_run_panel_intent() {
         let report = run_studio_bootstrap(&StudioBootstrapConfig {
-            intent: RunPanelIntent::set_mode(SimulationMode::Active),
+            trigger: StudioBootstrapTrigger::Intent(RunPanelIntent::set_mode(
+                SimulationMode::Active,
+            )),
             ..StudioBootstrapConfig::default()
         })
         .expect("expected mode intent bootstrap run");
@@ -364,5 +408,21 @@ mod tests {
             report.log_entries[0].message,
             "Set workspace simulation mode to Active"
         );
+    }
+
+    #[test]
+    fn bootstrap_can_dispatch_run_via_widget_action() {
+        let report = run_studio_bootstrap(&StudioBootstrapConfig {
+            trigger: StudioBootstrapTrigger::WidgetAction(RunPanelActionId::RunManual),
+            ..StudioBootstrapConfig::default()
+        })
+        .expect("expected widget action bootstrap run");
+
+        let dispatch = match report.outcome.dispatch {
+            StudioAppResultDispatch::WorkspaceRun(dispatch) => dispatch,
+            StudioAppResultDispatch::WorkspaceMode(_) => panic!("expected workspace run dispatch"),
+        };
+        assert_eq!(dispatch.run_status, RunStatus::Converged);
+        assert_eq!(report.run_panel.view().primary_action.label, "Run");
     }
 }

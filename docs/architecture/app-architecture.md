@@ -765,6 +765,7 @@ pub struct StepSnapshot {
 - `rf-ui` 当前已用 `RunPanelPresentation` 把 `view + text + dispatchable intent` 收口为单一运行栏组件入口
 - `rf-ui` 当前进一步补出 `RunPanelWidgetModel` / `RunPanelWidgetEvent`，把最小 widget 激活语义也收回 UI 层
 - Studio 当前也已补出 `dispatch_run_panel_widget_event_with_auth_cache(...)`，把 widget 激活结果正式接回 `WorkspaceControlAction` 链路
+- `run_studio_bootstrap(...)` 当前已补出 `StudioBootstrapTrigger::{Intent, WidgetAction}`，并默认走 widget action 路径，作为最小桌面入口对运行栏组件驱动的第一版接线
 - `run_studio_bootstrap(...)` 与 `main.rs` 当前已开始直接消费这组运行栏组件/交互 DTO，而不再只打印控制面布尔摘要或在 Studio 里手拼文本布局
 
 当前明确还没做的事：
