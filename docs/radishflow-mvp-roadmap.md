@@ -298,8 +298,9 @@ MVP 阶段明确不做：
 - Studio 当前已补出 `WorkspaceControlAction` / `WorkspaceControlState` 这一层更接近运行栏 / 状态栏的 UI 入口契约，并在 bootstrap 入口中直接消费
 - Studio 当前已把 `WorkspaceControlState` 映射回 `rf_ui::RunPanelState`，从而让 `rf-ui` 正式消费最小运行栏状态对象，而不反向依赖 Studio 类型
 - `rf-ui` 当前已补出 `RunPanelIntent` / `RunPanelPackageSelection`，Studio 当前已提供对应映射与分发入口，为后续按钮、菜单或快捷键接线保留稳定接口
-- `rf-ui` 当前已不只拥有运行意图类型，还拥有最小按钮模型、文本渲染 DTO 与 `RunPanelPresentation`；后续真正视图层接线时不必再重新发明运行栏启用判断、按钮槽位组织或文本布局
-- 当前最小桌面入口 `run_studio_bootstrap` / `main.rs` 已开始直接消费 `RunPanelPresentation`，作为真正的最小运行栏组件/消费层
+- `rf-ui` 当前已不只拥有运行意图类型，还拥有最小按钮模型、文本渲染 DTO、`RunPanelPresentation` 与 `RunPanelWidgetModel`；后续真正视图层接线时不必再重新发明运行栏启用判断、按钮槽位组织、文本布局或按钮激活语义
+- 当前最小桌面入口 `run_studio_bootstrap` / `main.rs` 已开始直接消费 `RunPanelWidgetModel`，作为真正的最小运行栏组件/消费层
+- Studio 当前也已补出 `RunPanelWidgetEvent -> WorkspaceControlAction` 的分发桥，使最小 widget 交互结果能够回到既有应用命令链路
 
 基于上述进展，当前下一阶段计划调整为：
 

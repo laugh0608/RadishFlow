@@ -1,7 +1,7 @@
 use rf_types::RfResult;
 use rf_ui::{
     AppLogEntry, AppState, RunPanelCommandModel, RunPanelIntent, RunPanelPackageSelection,
-    RunPanelState, RunStatus, SimulationMode, SolvePendingReason,
+    RunPanelState, RunPanelWidgetEvent, RunStatus, SimulationMode, SolvePendingReason,
 };
 
 use crate::{
@@ -61,6 +61,13 @@ pub struct WorkspaceControlActionOutcome {
     pub boundary: StudioAppExecutionBoundary,
     pub dispatch: StudioAppResultDispatch,
     pub control_state: WorkspaceControlState,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum RunPanelWidgetDispatchOutcome {
+    Executed(WorkspaceControlActionOutcome),
+    IgnoredDisabled { action_id: rf_ui::RunPanelActionId },
+    IgnoredMissing { action_id: rf_ui::RunPanelActionId },
 }
 
 pub fn snapshot_workspace_control_state(app_state: &AppState) -> WorkspaceControlState {
@@ -142,6 +149,30 @@ pub fn dispatch_run_panel_intent_with_auth_cache(
     )
 }
 
+pub fn dispatch_run_panel_widget_event_with_auth_cache(
+    facade: &StudioAppFacade,
+    app_state: &mut AppState,
+    context: &StudioAppAuthCacheContext<'_>,
+    event: &RunPanelWidgetEvent,
+) -> RfResult<RunPanelWidgetDispatchOutcome> {
+    match event {
+        RunPanelWidgetEvent::Dispatched { intent, .. } => {
+            dispatch_run_panel_intent_with_auth_cache(facade, app_state, context, intent)
+                .map(RunPanelWidgetDispatchOutcome::Executed)
+        }
+        RunPanelWidgetEvent::Disabled { action_id } => {
+            Ok(RunPanelWidgetDispatchOutcome::IgnoredDisabled {
+                action_id: *action_id,
+            })
+        }
+        RunPanelWidgetEvent::Missing { action_id } => {
+            Ok(RunPanelWidgetDispatchOutcome::IgnoredMissing {
+                action_id: *action_id,
+            })
+        }
+    }
+}
+
 pub fn dispatch_workspace_control_action_with_auth_cache(
     facade: &StudioAppFacade,
     app_state: &mut AppState,
@@ -179,11 +210,12 @@ mod tests {
     use rf_types::ComponentId;
     use rf_ui::{
         AppState, DocumentMetadata, FlowsheetDocument, RunPanelIntent, RunPanelPackageSelection,
-        RunStatus, SimulationMode, SolvePendingReason,
+        RunPanelWidgetEvent, RunPanelWidgetModel, RunStatus, SimulationMode, SolvePendingReason,
     };
 
     use super::{
-        WorkspaceControlAction, dispatch_run_panel_intent_with_auth_cache,
+        RunPanelWidgetDispatchOutcome, WorkspaceControlAction,
+        dispatch_run_panel_intent_with_auth_cache, dispatch_run_panel_widget_event_with_auth_cache,
         dispatch_workspace_control_action_with_auth_cache,
         map_run_panel_intent_to_workspace_control_action,
         map_workspace_control_state_to_run_panel_state, snapshot_workspace_control_state,
@@ -494,5 +526,109 @@ mod tests {
         );
 
         std::fs::remove_dir_all(cache_root).expect("expected temp dir cleanup");
+    }
+
+    #[test]
+    fn dispatching_run_panel_widget_event_runs_through_widget_and_workspace_control() {
+        let cache_root = unique_temp_path("run-panel-widget");
+        let mut auth_cache_index = StoredAuthCacheIndex::new(
+            "https://id.radish.local",
+            "user-123",
+            StoredCredentialReference::new("radishflow-studio", "user-123-primary"),
+        );
+        write_cached_package(
+            &cache_root,
+            &mut auth_cache_index,
+            "binary-hydrocarbon-lite-v1",
+        );
+        let facade = StudioAppFacade::new();
+        let project = parse_project_file_json(include_str!(
+            "../../../examples/flowsheets/feed-heater-flash.rfproj.json"
+        ))
+        .expect("expected project parse");
+        let mut app_state = AppState::new(FlowsheetDocument::new(
+            project.document.flowsheet,
+            DocumentMetadata::new(
+                "doc-run-panel-widget",
+                "Run Panel Widget Demo",
+                timestamp(90),
+            ),
+        ));
+        let context = StudioAppAuthCacheContext::new(&cache_root, &auth_cache_index);
+        let widget = RunPanelWidgetModel::from_state(&app_state.workspace.run_panel);
+
+        let outcome = dispatch_run_panel_widget_event_with_auth_cache(
+            &facade,
+            &mut app_state,
+            &context,
+            &widget.activate_primary(),
+        )
+        .expect("expected widget event dispatch");
+
+        match outcome {
+            RunPanelWidgetDispatchOutcome::Executed(outcome) => {
+                assert_eq!(outcome.control_state.run_status, RunStatus::Converged);
+            }
+            _ => panic!("expected executed widget dispatch"),
+        }
+        assert_eq!(
+            app_state.workspace.run_panel.run_status,
+            RunStatus::Converged
+        );
+
+        std::fs::remove_dir_all(cache_root).expect("expected temp dir cleanup");
+    }
+
+    #[test]
+    fn dispatching_disabled_run_panel_widget_event_is_ignored() {
+        let auth_cache_index = sample_auth_cache_index(&["pkg-1"]);
+        let facade = StudioAppFacade::new();
+        let mut app_state = AppState::new(sample_document());
+        let cache_root = PathBuf::from("D:\\cache-root");
+        let context = StudioAppAuthCacheContext::new(&cache_root, &auth_cache_index);
+        let widget = RunPanelWidgetModel::from_state(&app_state.workspace.run_panel);
+
+        let outcome = dispatch_run_panel_widget_event_with_auth_cache(
+            &facade,
+            &mut app_state,
+            &context,
+            &widget.activate(rf_ui::RunPanelActionId::SetHold),
+        )
+        .expect("expected ignored widget dispatch");
+
+        assert_eq!(
+            outcome,
+            RunPanelWidgetDispatchOutcome::IgnoredDisabled {
+                action_id: rf_ui::RunPanelActionId::SetHold
+            }
+        );
+        assert_eq!(app_state.workspace.run_panel.run_status, RunStatus::Idle);
+    }
+
+    #[test]
+    fn dispatching_missing_run_panel_widget_event_is_ignored() {
+        let auth_cache_index = sample_auth_cache_index(&["pkg-1"]);
+        let facade = StudioAppFacade::new();
+        let mut app_state = AppState::new(sample_document());
+        let cache_root = PathBuf::from("D:\\cache-root");
+        let context = StudioAppAuthCacheContext::new(&cache_root, &auth_cache_index);
+
+        let outcome = dispatch_run_panel_widget_event_with_auth_cache(
+            &facade,
+            &mut app_state,
+            &context,
+            &RunPanelWidgetEvent::Missing {
+                action_id: rf_ui::RunPanelActionId::Resume,
+            },
+        )
+        .expect("expected missing widget dispatch");
+
+        assert_eq!(
+            outcome,
+            RunPanelWidgetDispatchOutcome::IgnoredMissing {
+                action_id: rf_ui::RunPanelActionId::Resume
+            }
+        );
+        assert_eq!(app_state.workspace.run_panel.run_status, RunStatus::Idle);
     }
 }

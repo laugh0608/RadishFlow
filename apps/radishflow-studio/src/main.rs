@@ -1,7 +1,7 @@
 use radishflow_studio::{StudioAppResultDispatch, StudioBootstrapConfig, run_studio_bootstrap};
 
 fn print_run_panel(report: &radishflow_studio::StudioBootstrapReport) {
-    let text = &report.run_panel.text;
+    let text = report.run_panel.text();
     println!("{}:", text.title);
     for line in &text.lines {
         println!("  {line}");

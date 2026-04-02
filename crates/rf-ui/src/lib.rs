@@ -7,6 +7,7 @@ mod run_panel;
 mod run_panel_presenter;
 mod run_panel_text;
 mod run_panel_view;
+mod run_panel_widget;
 mod state;
 
 pub use auth::{
@@ -33,6 +34,7 @@ pub use run_panel::{
 pub use run_panel_presenter::RunPanelPresentation;
 pub use run_panel_text::RunPanelTextView;
 pub use run_panel_view::{RunPanelActionProminence, RunPanelRenderableAction, RunPanelViewModel};
+pub use run_panel_widget::{RunPanelWidgetEvent, RunPanelWidgetModel};
 pub use state::{
     AppLogEntry, AppLogFeed, AppLogLevel, AppState, AppTheme, DateTimeUtc, DocumentMetadata,
     DraftValidationState, DraftValue, FieldDraft, FlowsheetDocument, InspectorDraftState,
@@ -58,8 +60,8 @@ mod tests {
         DocumentMetadata, EntitlementSnapshot, FlowsheetDocument, OfflineLeaseRefreshResponse,
         PropertyPackageManifest, PropertyPackageManifestList, PropertyPackageSource,
         RunPanelActionId, RunPanelActionProminence, RunPanelPresentation, RunPanelState,
-        RunPanelTextView, RunPanelViewModel, RunStatus, SecureCredentialHandle, SimulationMode,
-        SolvePendingReason, SolveSnapshot, TokenLease,
+        RunPanelTextView, RunPanelViewModel, RunPanelWidgetEvent, RunPanelWidgetModel, RunStatus,
+        SecureCredentialHandle, SimulationMode, SolvePendingReason, SolveSnapshot, TokenLease,
     };
 
     fn timestamp(seconds: u64) -> std::time::SystemTime {
@@ -325,6 +327,27 @@ mod tests {
             Some(crate::RunPanelIntent::resume(
                 crate::RunPanelPackageSelection::preferred()
             ))
+        );
+    }
+
+    #[test]
+    fn run_panel_widget_dispatches_primary_action_and_blocks_disabled_actions() {
+        let app_state = AppState::new(sample_document());
+
+        let widget = RunPanelWidgetModel::from_state(&app_state.workspace.run_panel);
+
+        assert_eq!(
+            widget.activate_primary(),
+            RunPanelWidgetEvent::Dispatched {
+                action_id: RunPanelActionId::Resume,
+                intent: crate::RunPanelIntent::resume(crate::RunPanelPackageSelection::preferred()),
+            }
+        );
+        assert_eq!(
+            widget.activate(RunPanelActionId::SetHold),
+            RunPanelWidgetEvent::Disabled {
+                action_id: RunPanelActionId::SetHold,
+            }
         );
     }
 
