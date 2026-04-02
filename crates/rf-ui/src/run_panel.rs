@@ -38,3 +38,40 @@ impl RunPanelState {
         }
     }
 }
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum RunPanelPackageSelection {
+    Explicit(String),
+    Preferred,
+}
+
+impl RunPanelPackageSelection {
+    pub fn explicit(package_id: impl Into<String>) -> Self {
+        Self::Explicit(package_id.into())
+    }
+
+    pub fn preferred() -> Self {
+        Self::Preferred
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum RunPanelIntent {
+    RunManual(RunPanelPackageSelection),
+    Resume(RunPanelPackageSelection),
+    SetMode(SimulationMode),
+}
+
+impl RunPanelIntent {
+    pub fn run_manual(package: RunPanelPackageSelection) -> Self {
+        Self::RunManual(package)
+    }
+
+    pub fn resume(package: RunPanelPackageSelection) -> Self {
+        Self::Resume(package)
+    }
+
+    pub fn set_mode(mode: SimulationMode) -> Self {
+        Self::SetMode(mode)
+    }
+}

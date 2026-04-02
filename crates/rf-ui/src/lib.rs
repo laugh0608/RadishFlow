@@ -23,7 +23,7 @@ pub use run::{
     RunStatus, SimulationMode, SolvePendingReason, SolveSessionState, SolveSnapshot, StepSnapshot,
     StreamStateSnapshot, UnitExecutionSnapshot,
 };
-pub use run_panel::RunPanelState;
+pub use run_panel::{RunPanelIntent, RunPanelPackageSelection, RunPanelState};
 pub use state::{
     AppLogEntry, AppLogFeed, AppLogLevel, AppState, AppTheme, DateTimeUtc, DocumentMetadata,
     DraftValidationState, DraftValue, FieldDraft, FlowsheetDocument, InspectorDraftState,

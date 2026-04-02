@@ -1,5 +1,8 @@
 use rf_types::RfResult;
-use rf_ui::{AppLogEntry, AppState, RunPanelState, RunStatus, SimulationMode, SolvePendingReason};
+use rf_ui::{
+    AppLogEntry, AppState, RunPanelIntent, RunPanelPackageSelection, RunPanelState, RunStatus,
+    SimulationMode, SolvePendingReason,
+};
 
 use crate::{
     StudioAppAuthCacheContext, StudioAppCommand, StudioAppExecutionBoundary, StudioAppFacade,
@@ -97,6 +100,45 @@ pub fn map_workspace_control_state_to_run_panel_state(
     }
 }
 
+pub fn map_run_panel_package_selection_to_workspace_run_package_selection(
+    selection: &RunPanelPackageSelection,
+) -> WorkspaceRunPackageSelection {
+    match selection {
+        RunPanelPackageSelection::Explicit(package_id) => {
+            WorkspaceRunPackageSelection::Explicit(package_id.clone())
+        }
+        RunPanelPackageSelection::Preferred => WorkspaceRunPackageSelection::Preferred,
+    }
+}
+
+pub fn map_run_panel_intent_to_workspace_control_action(
+    intent: &RunPanelIntent,
+) -> WorkspaceControlAction {
+    match intent {
+        RunPanelIntent::RunManual(selection) => WorkspaceControlAction::run_manual(
+            map_run_panel_package_selection_to_workspace_run_package_selection(selection),
+        ),
+        RunPanelIntent::Resume(selection) => WorkspaceControlAction::resume(
+            map_run_panel_package_selection_to_workspace_run_package_selection(selection),
+        ),
+        RunPanelIntent::SetMode(mode) => WorkspaceControlAction::set_mode(*mode),
+    }
+}
+
+pub fn dispatch_run_panel_intent_with_auth_cache(
+    facade: &StudioAppFacade,
+    app_state: &mut AppState,
+    context: &StudioAppAuthCacheContext<'_>,
+    intent: &RunPanelIntent,
+) -> RfResult<WorkspaceControlActionOutcome> {
+    dispatch_workspace_control_action_with_auth_cache(
+        facade,
+        app_state,
+        context,
+        &map_run_panel_intent_to_workspace_control_action(intent),
+    )
+}
+
 pub fn dispatch_workspace_control_action_with_auth_cache(
     facade: &StudioAppFacade,
     app_state: &mut AppState,
@@ -133,12 +175,14 @@ mod tests {
     };
     use rf_types::ComponentId;
     use rf_ui::{
-        AppState, DocumentMetadata, FlowsheetDocument, RunStatus, SimulationMode,
-        SolvePendingReason,
+        AppState, DocumentMetadata, FlowsheetDocument, RunPanelIntent, RunPanelPackageSelection,
+        RunStatus, SimulationMode, SolvePendingReason,
     };
 
     use super::{
-        WorkspaceControlAction, dispatch_workspace_control_action_with_auth_cache,
+        WorkspaceControlAction, dispatch_run_panel_intent_with_auth_cache,
+        dispatch_workspace_control_action_with_auth_cache,
+        map_run_panel_intent_to_workspace_control_action,
         map_workspace_control_state_to_run_panel_state, snapshot_workspace_control_state,
     };
     use crate::{
@@ -296,6 +340,18 @@ mod tests {
     }
 
     #[test]
+    fn run_panel_intent_maps_to_workspace_control_action() {
+        let action = map_run_panel_intent_to_workspace_control_action(&RunPanelIntent::resume(
+            RunPanelPackageSelection::preferred(),
+        ));
+
+        assert_eq!(
+            action,
+            WorkspaceControlAction::resume(WorkspaceRunPackageSelection::Preferred)
+        );
+    }
+
+    #[test]
     fn dispatching_hold_mode_action_returns_mode_dispatch_and_control_state() {
         let auth_cache_index = sample_auth_cache_index(&["pkg-1"]);
         let facade = StudioAppFacade::new();
@@ -384,6 +440,51 @@ mod tests {
         assert_eq!(outcome.control_state.run_status, RunStatus::Converged);
         assert!(!outcome.control_state.can_resume);
         assert!(outcome.control_state.can_set_hold);
+        assert_eq!(
+            app_state.workspace.run_panel.run_status,
+            RunStatus::Converged
+        );
+
+        std::fs::remove_dir_all(cache_root).expect("expected temp dir cleanup");
+    }
+
+    #[test]
+    fn dispatching_run_panel_intent_runs_through_workspace_control_action() {
+        let cache_root = unique_temp_path("run-panel-intent");
+        let mut auth_cache_index = StoredAuthCacheIndex::new(
+            "https://id.radish.local",
+            "user-123",
+            StoredCredentialReference::new("radishflow-studio", "user-123-primary"),
+        );
+        write_cached_package(
+            &cache_root,
+            &mut auth_cache_index,
+            "binary-hydrocarbon-lite-v1",
+        );
+        let facade = StudioAppFacade::new();
+        let project = parse_project_file_json(include_str!(
+            "../../../examples/flowsheets/feed-heater-flash.rfproj.json"
+        ))
+        .expect("expected project parse");
+        let mut app_state = AppState::new(FlowsheetDocument::new(
+            project.document.flowsheet,
+            DocumentMetadata::new(
+                "doc-run-panel-intent",
+                "Run Panel Intent Demo",
+                timestamp(80),
+            ),
+        ));
+        let context = StudioAppAuthCacheContext::new(&cache_root, &auth_cache_index);
+
+        let outcome = dispatch_run_panel_intent_with_auth_cache(
+            &facade,
+            &mut app_state,
+            &context,
+            &RunPanelIntent::run_manual(RunPanelPackageSelection::preferred()),
+        )
+        .expect("expected run panel intent dispatch");
+
+        assert_eq!(outcome.control_state.run_status, RunStatus::Converged);
         assert_eq!(
             app_state.workspace.run_panel.run_status,
             RunStatus::Converged

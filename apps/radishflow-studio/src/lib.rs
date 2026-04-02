@@ -53,7 +53,10 @@ pub use solver_bridge::{
 };
 pub use workspace_control::{
     WorkspaceControlAction, WorkspaceControlActionOutcome, WorkspaceControlState,
-    dispatch_workspace_control_action_with_auth_cache, snapshot_workspace_control_state,
+    dispatch_run_panel_intent_with_auth_cache, dispatch_workspace_control_action_with_auth_cache,
+    map_run_panel_intent_to_workspace_control_action,
+    map_run_panel_package_selection_to_workspace_run_package_selection,
+    map_workspace_control_state_to_run_panel_state, snapshot_workspace_control_state,
 };
 pub use workspace_run_command::{
     WorkspaceRunCommand, WorkspaceRunDispatchResult, WorkspaceRunPackageSelection,

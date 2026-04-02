@@ -754,6 +754,7 @@ pub struct StepSnapshot {
 - `WorkspaceControlState` 当前已作为运行栏/状态栏摘要对象，统一提供 mode、status、pending、最新快照摘要和当前可触发动作集合
 - `run_studio_bootstrap(...)` 当前也已把 `WorkspaceControlState` 收进 bootstrap report，作为最小桌面入口对运行栏契约的直接消费样例
 - `rf-ui` 当前已新增 `RunPanelState`，并由 `AppState::refresh_run_panel_state(...)` 基于 `SolveSessionState`、最新 `SolveSnapshot` 和最新日志自动推导；Studio 也可通过 `WorkspaceControlState -> RunPanelState` 的映射把控制面摘要写回 UI 状态
+- `rf-ui` 当前也已补出自有 `RunPanelIntent` / `RunPanelPackageSelection`；Studio 继续只负责把这些 UI 意图映射为 `WorkspaceControlAction` 并执行，避免 `rf-ui` 反向依赖 Studio 类型
 
 当前明确还没做的事：
 
