@@ -76,8 +76,8 @@ RadishFlow 的目标架构已经冻结为“桌面端三层 + 外部控制面”
 - 通过 `StudioAppFacade -> WorkspaceRunCommand -> WorkspaceSolveService -> solver_bridge` 完成 auth cache 上下文承接、包选择解析、默认 request 生成和手动/自动触发门控，再将内核 `SolveSnapshot` 回写到 `rf-ui::AppState`
 - 当前最小桌面入口 `run_studio_bootstrap` / `main.rs` 已改为通过 `RunPanelIntent -> WorkspaceControlAction -> StudioAppFacade` 触发这条链路，避免桌面入口绕过 UI 意图层
 - `rf-ui` 当前已把 `Run / Resume / Hold / Active` 的主动作选择、可见性与可用性冻结为 `RunPanelCommandModel`，避免按钮判断散落在 Studio 或最终视图层
-- `rf-ui` 当前也已补出 `RunPanelViewModel` 与 `RunPanelTextView`，让最小入口可以直接消费主按钮/次按钮槽位和文本布局，而不是继续读取摘要布尔值自行拼装动作
-- `run_studio_bootstrap` / `main.rs` 当前已开始直接消费这套运行栏视图 DTO，形成第一处最小真实渲染入口
+- `rf-ui` 当前也已补出 `RunPanelViewModel`、`RunPanelTextView` 与 `RunPanelPresentation`，让最小入口可以直接消费主按钮/次按钮槽位、文本布局和可触发动作，而不是继续读取摘要布尔值自行拼装动作
+- `run_studio_bootstrap` / `main.rs` 当前已开始直接消费这套运行栏组件 DTO，形成第一处最小真实渲染入口
 - 在求解成功/失败时同步更新 `SolveSessionState` 与 `AppLogFeed`
 
 这意味着当前仓库已从“只有 UI 层快照映射桥”推进到“应用组合层已有 facade / command 入口可驱动真实求解”，但仍未把这条入口接成最终桌面命令或交互动作。

@@ -4,6 +4,7 @@ mod diagnostics;
 mod ids;
 mod run;
 mod run_panel;
+mod run_panel_presenter;
 mod run_panel_text;
 mod run_panel_view;
 mod state;
@@ -29,6 +30,7 @@ pub use run_panel::{
     RunPanelActionId, RunPanelActionModel, RunPanelCommandModel, RunPanelIntent,
     RunPanelPackageSelection, RunPanelState,
 };
+pub use run_panel_presenter::RunPanelPresentation;
 pub use run_panel_text::RunPanelTextView;
 pub use run_panel_view::{RunPanelActionProminence, RunPanelRenderableAction, RunPanelViewModel};
 pub use state::{
@@ -55,9 +57,9 @@ mod tests {
         CommandHistoryEntry, DiagnosticSeverity, DiagnosticSummary, DocumentCommand,
         DocumentMetadata, EntitlementSnapshot, FlowsheetDocument, OfflineLeaseRefreshResponse,
         PropertyPackageManifest, PropertyPackageManifestList, PropertyPackageSource,
-        RunPanelActionId, RunPanelActionProminence, RunPanelState, RunPanelTextView,
-        RunPanelViewModel, RunStatus, SecureCredentialHandle, SimulationMode, SolvePendingReason,
-        SolveSnapshot, TokenLease,
+        RunPanelActionId, RunPanelActionProminence, RunPanelPresentation, RunPanelState,
+        RunPanelTextView, RunPanelViewModel, RunStatus, SecureCredentialHandle, SimulationMode,
+        SolvePendingReason, SolveSnapshot, TokenLease,
     };
 
     fn timestamp(seconds: u64) -> std::time::SystemTime {
@@ -308,6 +310,22 @@ mod tests {
             ))
         );
         assert_eq!(view.dispatchable_intent(RunPanelActionId::SetHold), None);
+    }
+
+    #[test]
+    fn run_panel_presentation_combines_view_text_and_dispatchable_intents() {
+        let app_state = AppState::new(sample_document());
+
+        let presentation = RunPanelPresentation::from_state(&app_state.workspace.run_panel);
+
+        assert_eq!(presentation.view.primary_action.label, "Resume");
+        assert_eq!(presentation.text.title, "Run panel");
+        assert_eq!(
+            presentation.dispatchable_primary_intent(),
+            Some(crate::RunPanelIntent::resume(
+                crate::RunPanelPackageSelection::preferred()
+            ))
+        );
     }
 
     #[test]

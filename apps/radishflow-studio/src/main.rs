@@ -1,10 +1,9 @@
 use radishflow_studio::{StudioAppResultDispatch, StudioBootstrapConfig, run_studio_bootstrap};
-use rf_ui::RunPanelTextView;
 
 fn print_run_panel(report: &radishflow_studio::StudioBootstrapReport) {
-    let text = RunPanelTextView::from_view_model(&report.run_panel);
+    let text = &report.run_panel.text;
     println!("{}:", text.title);
-    for line in text.lines {
+    for line in &text.lines {
         println!("  {line}");
     }
 }
