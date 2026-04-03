@@ -1,6 +1,6 @@
 # RadishFlow MVP 开发路线图
 
-更新时间：2026-04-02
+更新时间：2026-04-03
 
 ## 文档目的
 
@@ -303,12 +303,14 @@ MVP 阶段明确不做：
 - Studio 当前也已补出 `RunPanelWidgetEvent -> WorkspaceControlAction` 的分发桥，使最小 widget 交互结果能够回到既有应用命令链路
 - Studio 当前也已补出 `run_panel_driver`，把最小运行栏组件驱动流程收口成单独应用层入口
 - `run_studio_bootstrap` 当前也已补出 `StudioBootstrapTrigger::{Intent, WidgetPrimaryAction, WidgetAction}`，默认通过 `WidgetPrimaryAction` 驱动这条链路，而不再只验证裸 `RunPanelIntent`
+- Studio 当前也已补出 entitlement control / panel / startup preflight / session scheduler / session driver，使 entitlement panel 动作、启动预检、失败退避与下一次检查时机正式留在 Studio 应用层
+- Studio 当前也已补出 `EntitlementSessionEvent::{SessionStarted, LoginCompleted, TimerElapsed, EntitlementCommandCompleted}`，让 bootstrap 自动预检和 entitlement 命令完成后的 session state 推进共享统一事件入口
 
 基于上述进展，当前下一阶段计划调整为：
 
-- 在已接通的 `main.rs` 最小 bootstrap 入口、`RunPanelWidgetModel`、`run_panel_driver` 与 `StudioBootstrapTrigger` 契约基础上，继续把 `StudioAppFacade + WorkspaceRunCommand + WorkspaceSolveService` 接到更完整的 UI 运行命令、按钮或运行服务入口
+- 在已接通的 `main.rs` 最小 bootstrap 入口、`RunPanelWidgetModel`、`run_panel_driver`、entitlement session driver 与 `StudioBootstrapTrigger` 契约基础上，继续把 `StudioAppFacade + WorkspaceRunCommand + WorkspaceSolveService` 和 entitlement session event 接到更完整的 UI 运行命令、登录完成事件与定时调度入口
 - 继续冻结运行结果派发、日志入口与后续异步执行边界
-- 在不打乱当前边界的前提下，再恢复更完整的 Studio 交互流和内核主线推进
+- 在不打乱当前边界的前提下，再恢复更完整的 Studio 交互流、联网提示位置与内核主线推进
 
 ## 推荐工作流
 
