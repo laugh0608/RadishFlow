@@ -1,6 +1,34 @@
 use crate::run::{RunStatus, SimulationMode, SolvePendingReason, SolveSessionState, SolveSnapshot};
 use crate::state::AppLogEntry;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RunPanelNoticeLevel {
+    Info,
+    Warning,
+    Error,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RunPanelNotice {
+    pub level: RunPanelNoticeLevel,
+    pub title: String,
+    pub message: String,
+}
+
+impl RunPanelNotice {
+    pub fn new(
+        level: RunPanelNoticeLevel,
+        title: impl Into<String>,
+        message: impl Into<String>,
+    ) -> Self {
+        Self {
+            level,
+            title: title.into(),
+            message: message.into(),
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RunPanelState {
     pub simulation_mode: SimulationMode,
@@ -9,6 +37,7 @@ pub struct RunPanelState {
     pub latest_snapshot_id: Option<String>,
     pub latest_snapshot_summary: Option<String>,
     pub latest_log_message: Option<String>,
+    pub notice: Option<RunPanelNotice>,
     pub can_run_manual: bool,
     pub can_resume: bool,
     pub can_set_hold: bool,
@@ -36,6 +65,7 @@ impl RunPanelState {
             latest_snapshot_summary: latest_snapshot
                 .map(|snapshot| snapshot.summary.primary_message.clone()),
             latest_log_message: latest_log_entry.map(|entry| entry.message.clone()),
+            notice: None,
             can_run_manual: true,
             can_resume,
             can_set_hold,

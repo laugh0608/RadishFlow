@@ -13,6 +13,14 @@ impl RunPanelTextView {
             format!("Status: {}", view.status_label),
         ];
 
+        if let Some(notice) = view.notice.as_ref() {
+            lines.push(format!(
+                "Notice: {} [{}]",
+                notice.title,
+                notice_level_label(notice.level)
+            ));
+            lines.push(format!("Notice detail: {}", notice.message));
+        }
         if let Some(pending) = view.pending_label {
             lines.push(format!("Pending: {pending}"));
         }
@@ -49,4 +57,12 @@ impl RunPanelTextView {
 
 fn enabled_label(enabled: bool) -> &'static str {
     if enabled { "enabled" } else { "disabled" }
+}
+
+fn notice_level_label(level: crate::RunPanelNoticeLevel) -> &'static str {
+    match level {
+        crate::RunPanelNoticeLevel::Info => "info",
+        crate::RunPanelNoticeLevel::Warning => "warning",
+        crate::RunPanelNoticeLevel::Error => "error",
+    }
 }

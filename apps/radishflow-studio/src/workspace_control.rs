@@ -1,12 +1,14 @@
 use rf_types::RfResult;
 use rf_ui::{
     AppLogEntry, AppState, RunPanelCommandModel, RunPanelIntent, RunPanelPackageSelection,
-    RunPanelState, RunPanelWidgetEvent, RunStatus, SimulationMode, SolvePendingReason,
+    RunPanelNotice, RunPanelNoticeLevel, RunPanelState, RunPanelWidgetEvent, RunStatus,
+    SimulationMode, SolvePendingReason,
 };
 
 use crate::{
     StudioAppAuthCacheContext, StudioAppCommand, StudioAppExecutionBoundary, StudioAppFacade,
-    StudioAppResultDispatch, WorkspaceRunCommand, WorkspaceRunPackageSelection,
+    StudioAppResultDispatch, StudioWorkspaceRunOutcome, WorkspaceRunCommand,
+    WorkspaceRunPackageSelection,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -49,6 +51,7 @@ pub struct WorkspaceControlState {
     pub latest_snapshot_id: Option<String>,
     pub latest_snapshot_summary: Option<String>,
     pub latest_log_entry: Option<AppLogEntry>,
+    pub notice: Option<RunPanelNotice>,
     pub can_run_manual: bool,
     pub can_resume: bool,
     pub can_set_hold: bool,
@@ -80,6 +83,7 @@ pub fn snapshot_workspace_control_state(app_state: &AppState) -> WorkspaceContro
         latest_snapshot_id: run_panel.latest_snapshot_id.clone(),
         latest_snapshot_summary: run_panel.latest_snapshot_summary.clone(),
         latest_log_entry: app_state.log_feed.entries.back().cloned(),
+        notice: run_panel.notice.clone(),
         can_run_manual: true,
         can_resume: run_panel.can_resume,
         can_set_hold: run_panel.can_set_hold,
@@ -100,6 +104,7 @@ pub fn map_workspace_control_state_to_run_panel_state(
             .latest_log_entry
             .as_ref()
             .map(|entry| entry.message.clone()),
+        notice: state.notice.clone(),
         can_run_manual: state.can_run_manual,
         can_resume: state.can_resume,
         can_set_hold: state.can_set_hold,
@@ -181,7 +186,8 @@ pub fn dispatch_workspace_control_action_with_auth_cache(
 ) -> RfResult<WorkspaceControlActionOutcome> {
     let command = action.to_app_command();
     let outcome = facade.execute_with_auth_cache(app_state, context, &command)?;
-    let control_state = snapshot_workspace_control_state(app_state);
+    let mut control_state = snapshot_workspace_control_state(app_state);
+    control_state.notice = notice_from_dispatch(&outcome.dispatch);
     app_state.sync_run_panel_state(map_workspace_control_state_to_run_panel_state(
         &control_state,
     ));
@@ -192,6 +198,70 @@ pub fn dispatch_workspace_control_action_with_auth_cache(
         dispatch: outcome.dispatch,
         control_state,
     })
+}
+
+fn notice_from_dispatch(dispatch: &StudioAppResultDispatch) -> Option<RunPanelNotice> {
+    match dispatch {
+        StudioAppResultDispatch::WorkspaceRun(dispatch) => match &dispatch.outcome {
+            StudioWorkspaceRunOutcome::Started(request) => Some(RunPanelNotice::new(
+                RunPanelNoticeLevel::Info,
+                "Run completed",
+                format!(
+                    "workspace run used package `{}` and produced snapshot `{}`",
+                    request.package_id, request.snapshot_id
+                ),
+            )),
+            StudioWorkspaceRunOutcome::Skipped(reason) => Some(RunPanelNotice::new(
+                RunPanelNoticeLevel::Info,
+                "Run skipped",
+                match reason {
+                    crate::WorkspaceSolveSkipReason::HoldMode => {
+                        "workspace is in Hold mode".to_string()
+                    }
+                    crate::WorkspaceSolveSkipReason::NoPendingRequest => {
+                        "workspace has no pending solve request".to_string()
+                    }
+                },
+            )),
+            StudioWorkspaceRunOutcome::Blocked(blocked) => Some(RunPanelNotice::new(
+                RunPanelNoticeLevel::Warning,
+                notice_title_for_blocked_outcome(blocked.reason),
+                blocked.message.clone(),
+            )),
+            StudioWorkspaceRunOutcome::Failed(failed) => Some(RunPanelNotice::new(
+                RunPanelNoticeLevel::Error,
+                notice_title_for_failed_outcome(failed.reason),
+                failed.message.clone(),
+            )),
+        },
+        StudioAppResultDispatch::WorkspaceMode(dispatch) => dispatch.latest_log_entry.as_ref().map(
+            |entry| RunPanelNotice::new(RunPanelNoticeLevel::Info, "Mode updated", entry.message.clone()),
+        ),
+    }
+}
+
+fn notice_title_for_blocked_outcome(
+    reason: crate::StudioWorkspaceRunBlockedReason,
+) -> &'static str {
+    match reason {
+        crate::StudioWorkspaceRunBlockedReason::CachedPackageMissing => "Run blocked",
+        crate::StudioWorkspaceRunBlockedReason::ExplicitPackageSelectionRequired => {
+            "Package selection required"
+        }
+        crate::StudioWorkspaceRunBlockedReason::EntitlementMismatch => {
+            "Entitlement update required"
+        }
+        crate::StudioWorkspaceRunBlockedReason::InvalidSelection => "Run blocked",
+    }
+}
+
+fn notice_title_for_failed_outcome(reason: crate::StudioWorkspaceRunFailedReason) -> &'static str {
+    match reason {
+        crate::StudioWorkspaceRunFailedReason::LocalCacheUnavailable => {
+            "Local cache unavailable"
+        }
+        crate::StudioWorkspaceRunFailedReason::SolveFailed => "Run failed",
+    }
 }
 
 #[cfg(test)]
@@ -337,6 +407,7 @@ mod tests {
             state.pending_reason,
             Some(SolvePendingReason::SnapshotMissing)
         );
+        assert!(state.notice.is_none());
         assert!(state.can_run_manual);
         assert!(state.can_resume);
         assert!(!state.can_set_hold);
@@ -472,6 +543,14 @@ mod tests {
             outcome.control_state.simulation_mode,
             SimulationMode::Active
         );
+        assert_eq!(
+            outcome
+                .control_state
+                .notice
+                .as_ref()
+                .map(|notice| (notice.level, notice.title.as_str())),
+            Some((rf_ui::RunPanelNoticeLevel::Info, "Run completed"))
+        );
         assert_eq!(outcome.control_state.run_status, RunStatus::Converged);
         assert!(!outcome.control_state.can_resume);
         assert!(outcome.control_state.can_set_hold);
@@ -568,6 +647,14 @@ mod tests {
         match outcome {
             RunPanelWidgetDispatchOutcome::Executed(outcome) => {
                 assert_eq!(outcome.control_state.run_status, RunStatus::Converged);
+                assert_eq!(
+                    outcome
+                        .control_state
+                        .notice
+                        .as_ref()
+                        .map(|notice| notice.title.as_str()),
+                    Some("Run completed")
+                );
             }
             _ => panic!("expected executed widget dispatch"),
         }
@@ -630,5 +717,50 @@ mod tests {
             }
         );
         assert_eq!(app_state.workspace.run_panel.run_status, RunStatus::Idle);
+    }
+
+    #[test]
+    fn blocked_workspace_run_updates_run_panel_notice() {
+        let auth_cache_index = sample_auth_cache_index(&["pkg-1", "pkg-2"]);
+        let facade = StudioAppFacade::new();
+        let mut app_state = AppState::new(sample_document());
+        let cache_root = PathBuf::from("D:\\cache-root");
+        let context = StudioAppAuthCacheContext::new(&cache_root, &auth_cache_index);
+
+        let outcome = dispatch_workspace_control_action_with_auth_cache(
+            &facade,
+            &mut app_state,
+            &context,
+            &WorkspaceControlAction::run_manual(WorkspaceRunPackageSelection::Preferred),
+        )
+        .expect("expected blocked control action");
+
+        match outcome.dispatch {
+            StudioAppResultDispatch::WorkspaceRun(dispatch) => {
+                assert!(matches!(
+                    dispatch.outcome,
+                    StudioWorkspaceRunOutcome::Blocked(_)
+                ));
+            }
+            _ => panic!("expected workspace run dispatch"),
+        }
+        assert_eq!(outcome.control_state.run_status, RunStatus::Idle);
+        assert_eq!(
+            outcome
+                .control_state
+                .notice
+                .as_ref()
+                .map(|notice| (notice.level, notice.title.as_str())),
+            Some((rf_ui::RunPanelNoticeLevel::Warning, "Package selection required"))
+        );
+        assert_eq!(
+            app_state
+                .workspace
+                .run_panel
+                .notice
+                .as_ref()
+                .map(|notice| notice.message.as_str()),
+            Some("multiple cached property packages are available; explicit package selection is required")
+        );
     }
 }

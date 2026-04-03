@@ -29,7 +29,7 @@ pub use run::{
 };
 pub use run_panel::{
     RunPanelActionId, RunPanelActionModel, RunPanelCommandModel, RunPanelIntent,
-    RunPanelPackageSelection, RunPanelState,
+    RunPanelNotice, RunPanelNoticeLevel, RunPanelPackageSelection, RunPanelState,
 };
 pub use run_panel_presenter::RunPanelPresentation;
 pub use run_panel_text::RunPanelTextView;
@@ -227,6 +227,7 @@ mod tests {
                 latest_snapshot_id: None,
                 latest_snapshot_summary: None,
                 latest_log_message: None,
+                notice: None,
                 can_run_manual: true,
                 can_resume: true,
                 can_set_hold: false,
@@ -292,6 +293,30 @@ mod tests {
                 .any(|line| line == "Primary action: Resume [enabled]")
         );
         assert!(text.lines.iter().any(|line| line == "  - Run [enabled]"));
+    }
+
+    #[test]
+    fn run_panel_text_view_renders_notice_when_present() {
+        let mut state = AppState::new(sample_document()).workspace.run_panel;
+        state.notice = Some(crate::RunPanelNotice::new(
+            crate::RunPanelNoticeLevel::Warning,
+            "Run blocked",
+            "explicit package selection is required",
+        ));
+
+        let view = RunPanelViewModel::from_state(&state);
+        let text = RunPanelTextView::from_view_model(&view);
+
+        assert!(
+            text.lines
+                .iter()
+                .any(|line| line == "Notice: Run blocked [warning]")
+        );
+        assert!(
+            text.lines
+                .iter()
+                .any(|line| line == "Notice detail: explicit package selection is required")
+        );
     }
 
     #[test]

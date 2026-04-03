@@ -1,5 +1,5 @@
 use crate::run::{RunStatus, SimulationMode, SolvePendingReason};
-use crate::run_panel::{RunPanelActionId, RunPanelIntent, RunPanelState};
+use crate::run_panel::{RunPanelActionId, RunPanelIntent, RunPanelNotice, RunPanelState};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RunPanelActionProminence {
@@ -30,6 +30,7 @@ pub struct RunPanelViewModel {
     pub latest_snapshot_id: Option<String>,
     pub latest_snapshot_summary: Option<String>,
     pub latest_log_message: Option<String>,
+    pub notice: Option<RunPanelNotice>,
     pub primary_action: RunPanelRenderableAction,
     pub secondary_actions: Vec<RunPanelRenderableAction>,
 }
@@ -56,6 +57,7 @@ impl RunPanelViewModel {
             latest_snapshot_id: state.latest_snapshot_id.clone(),
             latest_snapshot_summary: state.latest_snapshot_summary.clone(),
             latest_log_message: state.latest_log_message.clone(),
+            notice: state.notice.clone(),
             primary_action: RunPanelRenderableAction {
                 id: primary_action.id,
                 label: primary_action.label,
