@@ -13,6 +13,7 @@ use crate::commands::{CommandHistory, CommandHistoryEntry, DocumentCommand};
 use crate::diagnostics::DiagnosticSummary;
 use crate::ids::{DocumentId, SolveSnapshotId};
 use crate::run::{RunStatus, SimulationMode, SolvePendingReason, SolveSessionState, SolveSnapshot};
+use crate::run_panel::RunPanelState;
 
 pub type DateTimeUtc = SystemTime;
 
@@ -259,11 +260,15 @@ pub struct WorkspaceState {
     pub command_history: CommandHistory,
     pub solve_session: SolveSessionState,
     pub snapshot_history: VecDeque<SolveSnapshot>,
+    pub run_panel: RunPanelState,
 }
 
 impl WorkspaceState {
     pub fn new(document: FlowsheetDocument, panel_defaults: &PanelLayoutPreferences) -> Self {
         let revision = document.revision;
+        let solve_session = SolveSessionState::new(revision);
+        let run_panel = RunPanelState::from_runtime(&solve_session, None, None);
+
         Self {
             document,
             document_path: None,
@@ -272,8 +277,9 @@ impl WorkspaceState {
             panels: UiPanelsState::from_preferences(panel_defaults),
             drafts: InspectorDraftState::default(),
             command_history: CommandHistory::new(),
-            solve_session: SolveSessionState::new(revision),
+            solve_session,
             snapshot_history: VecDeque::new(),
+            run_panel,
         }
     }
 
@@ -313,6 +319,7 @@ impl WorkspaceState {
         self.snapshot_history.clear();
         self.solve_session.latest_snapshot = None;
         self.solve_session.pending_reason = Some(SolvePendingReason::SnapshotMissing);
+        self.run_panel = RunPanelState::from_runtime(&self.solve_session, None, None);
     }
 }
 
@@ -329,13 +336,15 @@ impl AppState {
     pub fn new(document: FlowsheetDocument) -> Self {
         let preferences = UserPreferences::default();
         let workspace = WorkspaceState::new(document, &preferences.panel_defaults);
-        Self {
+        let mut app_state = Self {
             workspace,
             auth_session: AuthSessionState::default(),
             entitlement: EntitlementState::default(),
             preferences,
             log_feed: AppLogFeed::default(),
-        }
+        };
+        app_state.refresh_run_panel_state();
+        app_state
     }
 
     pub fn commit_document_change(
@@ -344,13 +353,32 @@ impl AppState {
         next_flowsheet: Flowsheet,
         changed_at: DateTimeUtc,
     ) -> u64 {
-        self.workspace
-            .commit_document_change(command, next_flowsheet, changed_at)
+        let revision = self
+            .workspace
+            .commit_document_change(command, next_flowsheet, changed_at);
+        self.refresh_run_panel_state();
+        revision
     }
 
     pub fn store_snapshot(&mut self, snapshot: SolveSnapshot) {
         let limit = self.preferences.effective_snapshot_history_limit();
         self.workspace.store_snapshot(snapshot, limit);
+        self.refresh_run_panel_state();
+    }
+
+    pub fn store_solver_snapshot(
+        &mut self,
+        id: impl Into<SolveSnapshotId>,
+        sequence: u64,
+        snapshot: &rf_solver::SolveSnapshot,
+    ) {
+        let ui_snapshot = SolveSnapshot::from_solver_snapshot(
+            id,
+            self.workspace.document.revision,
+            sequence,
+            snapshot,
+        );
+        self.store_snapshot(ui_snapshot);
     }
 
     pub fn mark_saved(&mut self, path: impl Into<PathBuf>) {
@@ -371,16 +399,37 @@ impl AppState {
             SimulationMode::Active => self.workspace.solve_session.activate(),
             SimulationMode::Hold => self.workspace.solve_session.mode = SimulationMode::Hold,
         }
+        self.refresh_run_panel_state();
     }
 
     pub fn request_manual_run(&mut self) {
         self.workspace.solve_session.request_manual_run();
+        self.refresh_run_panel_state();
     }
 
     pub fn record_failure(&mut self, revision: u64, status: RunStatus, summary: DiagnosticSummary) {
         self.workspace
             .solve_session
             .hold_with_failure(revision, status, summary);
+        self.refresh_run_panel_state();
+    }
+
+    pub fn sync_run_panel_state(&mut self, state: RunPanelState) {
+        self.workspace.run_panel = state;
+    }
+
+    pub fn refresh_run_panel_state(&mut self) {
+        let state = RunPanelState::from_runtime(
+            &self.workspace.solve_session,
+            self.workspace.snapshot_history.back(),
+            self.log_feed.entries.back(),
+        );
+        self.sync_run_panel_state(state);
+    }
+
+    pub fn push_log(&mut self, level: AppLogLevel, message: impl Into<String>) {
+        self.log_feed.push(level, message);
+        self.refresh_run_panel_state();
     }
 
     pub fn begin_browser_login(&mut self, authority_url: impl Into<String>) {

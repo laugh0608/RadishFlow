@@ -1,6 +1,6 @@
 # RadishFlow 架构草案
 
-更新时间：2026-03-30
+更新时间：2026-04-03
 
 ## 文档目的
 
@@ -93,6 +93,7 @@
 - 结果展示
 - 日志与诊断
 - 项目打开保存
+- 受控物性包选择与工作区运行命令编排
 
 ### .NET 10 CapeBridge
 
@@ -250,8 +251,24 @@ RadishFlow/
 - 菜单、工具栏、状态栏
 - 文档生命周期管理
 - 将 `rf-ui`、`rf-canvas`、`rf-solver` 等能力组装为产品
+- 负责 auth cache、本地物性包选择、工作区运行命令与结果回写的应用层编排
 
 不建议在这里直接堆放热力学与求解细节。
+
+当前对齐：
+
+- 已建立控制面 client、auth cache sync 与本地派生包下载落盘编排
+- 已建立 `solver_bridge`，把 `PropertyPackageProvider` / 本地 auth cache 与 `rf-solver`、`rf-ui::AppState` 接通
+- 已建立 `WorkspaceSolveService`，收口默认 request、手动/自动运行门控与工作区求解分发
+- 已建立 `WorkspaceRunCommand`，把“触发类型 + package 选择”抽成更接近桌面命令层的对象
+- 已建立 `StudioAppFacade`，把 auth cache 上下文、运行命令、结果派发摘要和后续异步执行边界收口为当前明确的桌面应用入口
+- 已建立 `workspace_control`，把运行栏 / 状态栏动作入口与状态摘要收口为 `WorkspaceControlAction` / `WorkspaceControlState`
+- 已建立 `run_panel_driver`，把运行栏 widget 的构建、激活和事件分发回收为单独应用层入口
+- 已建立 `entitlement_control`、`entitlement_panel_driver`、`entitlement_preflight` 与 `entitlement_session_driver`，把 entitlement panel 动作、启动预检、会话内调度和显式 session event 宿主收口为 Studio 应用层入口
+- 当前最小桌面入口 `run_studio_bootstrap` / `main.rs` 已改为默认通过 `StudioBootstrapTrigger::WidgetPrimaryAction -> RunPanelWidgetEvent -> run_panel_driver -> WorkspaceControlAction -> StudioAppFacade` 触发运行链路，同时仍保留显式 `RunPanelIntent` 兼容入口
+- 当前 entitlement 会话调度也已通过 `EntitlementSessionEvent::{SessionStarted, LoginCompleted, TimerElapsed, EntitlementCommandCompleted}` 形成统一事件语义，并由 Studio 侧维护失败退避与下一次建议检查时机
+- 当前默认包选择策略保持保守，只在唯一候选时自动选中，多包场景要求显式指定 package
+- Automatic 运行当前先根据 `SimulationMode` / `pending_reason` 决定是否 skip，再决定是否需要 preferred package 解析
 
 ## `crates/rf-types`
 
@@ -327,6 +344,12 @@ MVP 建议内容：
 
 建议每个单元都实现统一的求解接口，输入输出尽量使用标准化流股与参数对象。
 
+当前对齐：
+
+- 已建立首轮内建单元规范
+- 已实现 `Feed`、`Mixer`、`Flash Drum` 的最小行为边界
+- 当前统一围绕标准 `MaterialStreamState` 输入输出与必要热力学服务注入
+
 ## `crates/rf-flowsheet`
 
 流程图结构层。
@@ -339,6 +362,12 @@ MVP 建议内容：
 - 拓扑排序前置检查
 
 不负责具体数值求解。
+
+当前对齐：
+
+- 已建立首轮材料端口连接校验
+- 当前先冻结为 canonical material ports、流股存在性与“一股一源一汇”约束
+- 拓扑排序与执行调度继续留给 `rf-solver`
 
 ## `crates/rf-solver`
 
@@ -355,6 +384,12 @@ MVP 建议内容：
 - recycle 收敛
 - tear stream
 - 更复杂的求解策略
+
+当前对齐：
+
+- 已建立首轮无回路顺序模块法
+- 当前支持内建 `Feed`、`Mixer`、`Flash Drum` 的标准材料流股执行
+- 已形成第一个可从 `*.rfproj.json` 载入到求解输出的最小闭环样例
 
 ## `crates/rf-store`
 
@@ -385,6 +420,16 @@ Rust UI 逻辑层。
 
 - 这里放“UI 行为逻辑”
 - 不直接承载底层算法实现
+
+当前对齐：
+
+- 已冻结 `AppState`、`WorkspaceState`、`SolveSessionState` 与 `SolveSnapshot` 的最小边界
+- 已具备从 `rf-solver::SolveSnapshot` 映射到 UI 层快照并写回 `AppState` 的桥接
+- 已补 `RunPanelState`，用于承接运行栏摘要
+- 已补 `RunPanelIntent` / `RunPanelPackageSelection`，用于表达 UI 自有运行意图
+- 已补 `RunPanelCommandModel`，把 `Run/Resume/Hold/Active` 的主动作、可见性与可用性冻结到 UI 层
+- 已补 `RunPanelViewModel` / `RunPanelTextView` / `RunPanelPresentation`，把最小渲染与文本展示组织收回 UI 层
+- 已补 `RunPanelWidgetModel` / `RunPanelWidgetEvent`，把最小 widget 激活语义冻结到 UI 层
 
 ## `crates/rf-canvas`
 
@@ -522,20 +567,30 @@ Rust 与 .NET 的桥接层。
 6. 实现 `rf-ffi`
 7. 用 .NET 10 实现 `RadishFlow.CapeOpen.Adapter`
 8. 导出第一个可被 PME 识别的 Unit Operation PMC
-9. 再建设 `radishflow-studio` 的画布与属性编辑 UI
+9. 在当前已建立的 `RunPanelWidgetModel + run_panel_driver + WorkspaceControlAction + StudioAppFacade + WorkspaceRunCommand + WorkspaceSolveService` 运行边界之上，再建设 `radishflow-studio` 的画布、属性编辑与最终桌面运行触发入口
 
 ## 当前仓库与目标仓库的关系
 
-建议把当前 CapeOpenCore 仓库视为以下资产来源：
+建议把当前外部参考资产视为以下来源：
 
 参考链接：
 
 - [CapeOpenCore](https://github.com/laugh0608/CapeOpenCore)
+- [DWSIM](https://github.com/DanWBR/dwsim)
 
 - CAPE-OPEN 接口定义参考
 - COM 注册行为参考
 - GUID 与属性语义参考
 - 示例 Unit Operation 行为参考
+- `Interfaces / FlowsheetBase / FlowsheetSolver / UnitOperations` 的职责拆分参考
+- 自动化 API、自动化测试入口与 standalone thermo 暴露方式的工程组织参考
+- 图形对象与求解对象分离、由连接关系决定求解顺序的实现思路参考
+
+补充约束：
+
+- `CapeOpenCore` 主要提供 CAPE-OPEN / COM 语义与互操作经验参考
+- `DWSIM` 主要提供大型开源流程模拟器的模块拆分、自动化入口和 flowsheet solver 组织经验参考
+- `DWSIM` 采用 GPL-3.0 许可，因此当前仓库只吸收架构和行为思路，不直接复制其实现代码
 
 不建议：
 

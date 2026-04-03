@@ -1,6 +1,6 @@
 # Auth And Entitlement Architecture
 
-更新时间：2026-03-30
+更新时间：2026-04-03
 
 ## 目标
 
@@ -582,6 +582,7 @@ RadishFlow Studio
 - 作为应用组合根装配 `rf-ui`、`rf-store`、`rf-thermo` 与后续控制面客户端
 - 承接 `AuthSessionState` / `EntitlementState` 与 `StoredAuthCacheIndex` 之间的桥接和同步
 - 负责把离线刷新、下载完成和缓存索引更新收口成单一路径
+- 负责 entitlement panel driver、启动预检、会话内调度策略与 session event 宿主
 
 不应承担：
 
@@ -614,6 +615,9 @@ RadishFlow Studio
 - `apps/radishflow-studio` 当前也已补上下载抓取失败分类和有限次重试策略，为后续真实 HTTP adapter 预留固定语义边界
 - `apps/radishflow-studio` 当前也已补上控制面 `entitlement` / `manifest` / `lease` / `offline refresh` 的 HTTP client、JSON 协议映射和 `reqwest + rustls` 真实 transport
 - `apps/radishflow-studio` 当前也已补上 entitlement 同步、离线租约刷新、按 manifest 申请 lease 并下载入缓存的应用层编排，不让控制面调用路径继续散落
+- `apps/radishflow-studio` 当前也已补出 entitlement panel driver，把 `rf-ui` 的 entitlement widget event 正式桥接回 `StudioAppFacade` 的 control plane command
+- `apps/radishflow-studio` 当前也已补出 entitlement startup preflight 与 session scheduler，最小规则收口为“缺失快照先 sync、离线租约临近过期先 refresh、entitlement snapshot 临近过期补 sync”
+- `apps/radishflow-studio` 当前也已补出 `entitlement_session_driver`，把 `SessionStarted`、`LoginCompleted`、`TimerElapsed` 与 `EntitlementCommandCompleted` 这类会话事件收口为统一应用层入口，并把失败退避、下一次建议检查时机和 session state 回写固定在 Studio 侧
 
 ### `rf-store`
 
@@ -869,8 +873,8 @@ scope 当前建议按“产品.资源.动作”命名，而不是继续使用过
 
 在继续深化后端与桌面接入代码之前，当前更值得优先收口以下事项：
 
-1. 细化 `AuthSessionState` / `EntitlementState` 与 UI 面板、状态栏之间的事件流
-2. 在已接通的控制面 HTTP client 和下载通道之上，细化联网失败后的用户提示、刷新节奏和重试触发口径
+1. 在已补出的 `entitlement_session_driver + EntitlementSessionEvent` 基础上，把 `LoginCompleted`、定时器到达 `next_check_at` 和网络恢复等真实 GUI 生命周期事件接到统一会话宿主
+2. 在已接通的控制面 HTTP client、下载通道和 session scheduler 之上，细化联网失败后的用户提示、刷新节奏和重试触发口径
 3. 在已接通的 `PropertyPackageProvider` 本地缓存实现之上，补更多实际包样例和加载/替换场景测试
 4. 继续保持其余控制面 JSON 契约到运行时 DTO 的协议映射层统一收口到应用层
 5. 决定离线租约后续是否需要设备绑定键模型

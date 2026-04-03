@@ -12,3 +12,7 @@ publish.workspace = true
 [dependencies]
 rf-store = { path = "../rf-store" }
 rf-types = { path = "../rf-types" }
+
+[dev-dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"

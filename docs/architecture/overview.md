@@ -1,6 +1,6 @@
 # Architecture Overview
 
-更新时间：2026-03-30
+更新时间：2026-04-02
 
 ## 目标
 
@@ -40,12 +40,14 @@ RadishFlow 的目标架构已经冻结为“桌面端三层 + 外部控制面”
 | `rf-types` | 基础 ID、枚举、错误类型 | 已建立第一批基础类型 |
 | `rf-model` | 组分、流股、单元、流程图对象模型 | 已建立第一批领域数据结构 |
 | `rf-thermo` | 热力学数据结构与热力学接口 | 已建立最小 API、内存 provider、基于本地缓存目录/授权缓存索引的 `PropertyPackageProvider` 实现，并用首个真实样例包覆盖装载测试 |
-| `rf-flash` | `TP Flash` 输入输出契约与求解器接口 | 已建立最小 API，占位实现 |
-| `rf-unitops` | 单元模块行为抽象 | 仍为占位 |
-| `rf-flowsheet` | 连接关系与图结构校验 | 仍为占位 |
-| `rf-solver` | 顺序模块法求解器 | 仍为占位 |
+| `rf-flash` | `TP Flash` 输入输出契约与求解器接口 | 已建立最小 API，并已实现最小二元 `TP Flash`、Rachford-Rice 与黄金样例 |
+| `rf-unitops` | 单元模块行为抽象 | 已建立内建单元规范、统一流股输入输出接口，并实现 `Feed`、`Mixer`、`Heater/Cooler`、`Valve`、`Flash Drum` 的最小行为边界 |
+| `rf-flowsheet` | 连接关系与图结构校验 | 已建立首轮材料端口连接校验，覆盖 canonical port signature、流股存在性与“一股一源一汇”约束 |
+| `rf-solver` | 顺序模块法求解器 | 已建立首轮无回路顺序模块法，可执行 `Feed + Mixer + Flash Drum`、`Feed -> Heater -> Flash Drum` 与 `Feed -> Valve -> Flash Drum` 闭环，并产出带 summary / diagnostics / step 明细的最小 `SolveSnapshot` |
 | `rf-store` | JSON 存储与授权缓存索引 | 已建立项目文件 / 授权缓存 / 本地包 `manifest.json` / `payload.rfpkg` 的 JSON 读写、迁移分发、版本校验与相对路径布局 |
 | `rf-ffi` | Rust 与 .NET 的 C ABI 边界 | 仍为占位 |
+
+当前仓库级集成测试也已正式落到 `tests/rust-integration` workspace crate，并由 `cargo test --workspace`、`scripts/check-repo.ps1` 与 `scripts/check-repo.sh` 自动覆盖三条示例 flowsheet 回归。
 
 ### Rust Studio UI
 
@@ -53,9 +55,9 @@ RadishFlow 的目标架构已经冻结为“桌面端三层 + 外部控制面”
 
 | crate | 当前职责 | 当前状态 |
 | --- | --- | --- |
-| `rf-ui` | UI 状态与行为逻辑 | 已建立 `AppState`、授权态、求解态与控制面 DTO 骨架 |
+| `rf-ui` | UI 状态与行为逻辑 | 已建立 `AppState`、授权态、求解态与控制面 DTO 骨架；已补 `RunPanelState`、`RunPanelIntent`、`RunPanelCommandModel`、`RunPanelViewModel`、`RunPanelPresentation` 与 `RunPanelWidgetModel`，并可把 `rf-solver::SolveSnapshot` 映射为 UI 层结果快照 |
 | `rf-canvas` | 流程图画布能力 | 占位 |
-| `apps/radishflow-studio` | 桌面入口程序 | 已建立 auth cache sync 桥接、控制面 HTTP client、entitlement / manifest / lease / offline refresh 编排、下载获取抽象、基于 `reqwest + rustls` 的真实 HTTP transport、HTTP 请求/响应适配层、可重试/不可重试失败分类、下载 JSON 到本地 payload DTO 的协议映射、摘要校验、失败回滚与测试 |
+| `apps/radishflow-studio` | 桌面入口程序 | 已建立 auth cache sync 桥接、控制面 HTTP client、entitlement / manifest / lease / offline refresh 编排、下载获取抽象、基于 `reqwest + rustls` 的真实 HTTP transport、HTTP 请求/响应适配层、可重试/不可重试失败分类、下载 JSON 到本地 payload DTO 的协议映射、摘要校验、失败回滚与测试；并已补上 `PropertyPackageProvider -> rf-solver -> rf-ui::AppState` 的最小工作区求解桥接，可直接基于已加载物性包或本地 auth cache 执行真实 solve 并回写 UI 快照/日志 |
 
 原因很直接：在 `M2/M3` 之前过早推进 UI，会掩盖内核尚未定型的问题。
 
@@ -66,6 +68,19 @@ RadishFlow 的目标架构已经冻结为“桌面端三层 + 外部控制面”
 - `SimulationMode` / `RunStatus` 分离
 - 独立 `SolveSnapshot`
 - OIDC / 授权 / 远端资产保护作为外部控制面，而不是塞进 Rust Core
+
+同时，Studio 应用层当前已经具备一条可测试的最小真实求解链路：
+
+- 从 `PropertyPackageProvider` 或本地 `StoredAuthCacheIndex` 加载 `ThermoSystem`
+- 组装 `PlaceholderThermoProvider + PlaceholderTpFlashSolver + SequentialModularSolver`
+- 通过 `StudioAppFacade -> WorkspaceRunCommand -> WorkspaceSolveService -> solver_bridge` 完成 auth cache 上下文承接、包选择解析、默认 request 生成和手动/自动触发门控，再将内核 `SolveSnapshot` 回写到 `rf-ui::AppState`
+- 当前最小桌面入口 `run_studio_bootstrap` / `main.rs` 已改为默认通过 `WidgetPrimaryAction -> RunPanelWidgetEvent -> run_panel_driver -> WorkspaceControlAction -> StudioAppFacade` 触发这条链路，同时保留显式 `RunPanelIntent` 兼容入口，避免桌面入口绕过 UI 组件层
+- `rf-ui` 当前已把 `Run / Resume / Hold / Active` 的主动作选择、可见性与可用性冻结为 `RunPanelCommandModel`，避免按钮判断散落在 Studio 或最终视图层
+- `rf-ui` 当前也已补出 `RunPanelViewModel`、`RunPanelTextView`、`RunPanelPresentation` 与 `RunPanelWidgetModel`，让最小入口可以直接消费主按钮/次按钮槽位、文本布局和最小交互语义，而不是继续读取摘要布尔值自行拼装动作
+- `run_studio_bootstrap` / `main.rs` 当前已开始直接消费这套运行栏组件 DTO，而 `run_panel_driver` 已负责回收新的 widget/control state，形成第一处最小真实组件驱动入口
+- 在求解成功/失败时同步更新 `SolveSessionState` 与 `AppLogFeed`
+
+这意味着当前仓库已从“只有 UI 层快照映射桥”推进到“应用组合层已有 facade / command 入口可驱动真实求解”，但仍未把这条入口接成最终桌面命令或交互动作。
 
 这些决定的目的是先把 UI 和求解层之间的长期接口边界定清楚，再决定具体控件和交互实现。
 
@@ -142,4 +157,4 @@ RadishFlow 的目标架构已经冻结为“桌面端三层 + 外部控制面”
 ## 初始化阶段结论
 
 截至 2026-03-29，仓库初始化阶段已经从“纯目录骨架”进入“可继续开发的基础结构”阶段。  
-接下来的重点不再是增加目录，而是补充算法、测试和最小闭环。
+接下来的重点不再是增加目录，而是继续补充算法、测试覆盖和最小闭环样例厚度。

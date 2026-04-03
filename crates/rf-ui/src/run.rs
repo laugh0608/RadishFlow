@@ -82,6 +82,73 @@ impl SolveSnapshot {
             steps: Vec::new(),
         }
     }
+
+    pub fn from_solver_snapshot(
+        id: impl Into<SolveSnapshotId>,
+        document_revision: u64,
+        sequence: u64,
+        snapshot: &rf_solver::SolveSnapshot,
+    ) -> Self {
+        Self {
+            id: id.into(),
+            document_revision,
+            sequence,
+            status: map_solver_status(snapshot.status),
+            summary: DiagnosticSummary {
+                document_revision,
+                highest_severity: map_solver_severity(snapshot.summary.highest_severity),
+                primary_message: snapshot.summary.primary_message.clone(),
+                diagnostic_count: snapshot.summary.diagnostic_count,
+                related_unit_ids: snapshot.summary.related_unit_ids.clone(),
+            },
+            diagnostics: snapshot
+                .diagnostics
+                .iter()
+                .map(|diagnostic| DiagnosticSnapshot {
+                    severity: map_solver_severity(diagnostic.severity),
+                    code: diagnostic.code.clone(),
+                    message: diagnostic.message.clone(),
+                    related_unit_ids: diagnostic.related_unit_ids.clone(),
+                })
+                .collect(),
+            steps: snapshot
+                .steps
+                .iter()
+                .map(|step| StepSnapshot {
+                    index: step.index,
+                    unit_id: step.unit_id.clone(),
+                    summary: step.summary.clone(),
+                    execution: UnitExecutionSnapshot {
+                        unit_id: step.unit_id.clone(),
+                        status: RunStatus::Converged,
+                        summary: step.summary.clone(),
+                    },
+                    streams: step
+                        .produced_stream_ids
+                        .iter()
+                        .map(|stream_id| StreamStateSnapshot {
+                            stream_id: stream_id.clone(),
+                            label: stream_id.as_str().to_string(),
+                        })
+                        .collect(),
+                })
+                .collect(),
+        }
+    }
+}
+
+fn map_solver_status(status: rf_solver::SolveStatus) -> RunStatus {
+    match status {
+        rf_solver::SolveStatus::Converged => RunStatus::Converged,
+    }
+}
+
+fn map_solver_severity(severity: rf_solver::SolveDiagnosticSeverity) -> crate::DiagnosticSeverity {
+    match severity {
+        rf_solver::SolveDiagnosticSeverity::Info => crate::DiagnosticSeverity::Info,
+        rf_solver::SolveDiagnosticSeverity::Warning => crate::DiagnosticSeverity::Warning,
+        rf_solver::SolveDiagnosticSeverity::Error => crate::DiagnosticSeverity::Error,
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]

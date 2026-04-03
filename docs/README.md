@@ -5,6 +5,7 @@
 | 文档 | 说明 |
 | --- | --- |
 | `architecture/overview.md` | 当前仓库的分层、crate 边界与阶段职责 |
+| `architecture/open-source-references.md` | 可借鉴的开源流程模拟、物性和算法参考清单及许可边界 |
 | `architecture/versioning.md` | 项目版本命名、Git tag 与发布轨道约定 |
 | `architecture/app-architecture.md` | 桌面 App 的壳层、状态与模块边界规划 |
 | `architecture/auth-entitlement-architecture.md` | 桌面登录、授权、远端 `.NET 10` 控制面与本地求解边界 |
@@ -45,3 +46,10 @@
 
 - [CapeOpenCore](https://github.com/laugh0608/CapeOpenCore)
 - `D:\Code\Radish`: 当前用于参考 OIDC / Auth / Client Registration 形态的统一平台仓库
+- [DWSIM](https://github.com/DanWBR/dwsim): 用于参考 `Interfaces / FlowsheetBase / FlowsheetSolver / UnitOperations` 的职责拆分、自动化测试入口组织方式，以及图形对象与求解对象分离的工程经验
+
+补充约束：
+
+- `DWSIM` 仅作为行为和架构参考，不直接迁移实现代码
+- 其 GPL-3.0 许可要求决定了当前仓库不应复制或改写式移植其源码
+- 当前阶段只吸收对 `rf-unitops`、`rf-flowsheet`、`rf-solver`、自动化入口与测试组织有帮助的结构经验，不把其完整功能范围提前引入 MVP

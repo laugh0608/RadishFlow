@@ -1,6 +1,6 @@
 # MVP Scope
 
-更新时间：2026-03-30
+更新时间：2026-04-02
 
 ## MVP 目标
 
@@ -43,6 +43,9 @@
 - 相标签当前只保留 `overall`、`liquid`、`vapor`
 - `rf-model` 只负责对象模型，不先塞进求解策略和 COM 语义
 - `rf-thermo` 与 `rf-flash` 先定接口，再补 Antoine、Raoult 和 Rachford-Rice
+- `rf-unitops` 第一轮统一围绕标准 `MaterialStreamState` 输入输出，不提前把 flowsheet 调度或 FFI 细节塞进单元接口
+- `Feed`、`Mixer`、`Flash Drum` 当前先冻结为 canonical material ports：`Feed(outlet)`、`Mixer(inlet_a/inlet_b/outlet)`、`Flash Drum(inlet/liquid/vapor)`
+- `rf-flowsheet` 第一轮连接校验只覆盖 canonical material ports、流股存在性与“一股一源一汇”；终端产品流允许只有 source、没有 sink
 - `.NET 10` 适配层在 `M4` 前只允许文档和最小占位，不提前展开复杂运行时实现
 
 App 与交互层当前进一步冻结以下口径：
@@ -57,6 +60,15 @@ App 与交互层当前进一步冻结以下口径：
 - `UserPreferences` 只保存应用级偏好与快照窗口策略，不污染文档语义
 - `CommandHistory` 只记录语义化文档命令，运行控制和文档生命周期动作不进入撤回栈
 - `SolveSessionState` 必须绑定当前观察的文档修订号，`SolveSnapshot` 由工作区持有有界历史窗口
+- Studio 当前应用层运行入口先冻结为 `StudioAppFacade + WorkspaceRunCommand + WorkspaceSolveService + solver_bridge` 四层，不让 UI 直接拼接底层 provider/solver 细节
+- `rf-ui` 当前运行栏状态先冻结为 `RunPanelState + RunPanelIntent + RunPanelCommandModel + RunPanelWidgetModel`，把按钮意图、主动作、按钮槽位、文本布局和最小渲染/触发所需状态都留在 UI 层，不让视图层或 Studio 侧重复发明一套按钮语义
+- Studio 当前对运行栏的最小消费也已前推到 `RunPanelWidgetEvent`，不再只接受裸 `RunPanelIntent`
+- Studio 当前也已补出 `run_panel_driver`，把最小运行栏驱动逻辑留在应用层，而不散落在入口层
+- 当前最小桌面入口 `run_studio_bootstrap` 也已补出 `StudioBootstrapTrigger`，允许样例入口显式选择“走 intent 触发”“走主按钮触发”或“走指定 widget action 触发”
+- Studio 当前运行触发先明确区分 `Manual` / `Automatic`，并把 `SimulationMode` / `pending_reason` 的运行门控收口在应用层
+- Studio 当前默认包选择采取保守策略：只有唯一候选包明确时才自动选中；多包场景必须显式指定 package，不在当前阶段隐式猜包
+- Studio 当前 Automatic 触发在命中 `HoldMode` / `NoPendingRequest` 时应先返回 skip，再决定是否需要 package 解析，避免多包缓存场景下的无意义失败
+- 当前最小桌面入口 `run_studio_bootstrap` 也已改为默认走 `StudioBootstrapTrigger::WidgetPrimaryAction`，并向入口层输出 `RunPanelWidgetModel`，确保“桌面触发点 -> UI 组件动作 -> Studio driver / 控制动作 -> UI 组件 DTO”边界在样例入口里就成立
 
 认证、授权与受控物性资产当前进一步冻结以下口径：
 
@@ -131,24 +143,35 @@ App 与交互层当前进一步冻结以下口径：
 - 今天（2026-03-30）优先在已接通的控制面 client 与应用层编排之上，细化授权刷新后的 UI 事件流、联网失败提示和离线刷新触发策略
 - 之后优先恢复 `rf-thermo` / `rf-flash` 数值主线，再进入 `rf-solver` 的无回路顺序模块法与首个可求解 flowsheet 示例
 
+进一步补充：
+
+- 截至 2026-03-31，`rf-thermo` / `rf-flash` 的最小二元数值主线、黄金样例、`rf-unitops` / `rf-flowsheet` 的第一轮边界，以及 `rf-solver` 的首个无回路闭环都已提前推进
+- 当前近期主线已从“补第一条求解闭环”切换为“扩第二个内建单元、增加第二个示例 flowsheet，并细化求解结果与诊断口径”
+
+截至 2026-04-01，再补充对齐：
+
+- `rf-ui` 已能把内核 `SolveSnapshot` 映射并回写到 `AppState`
+- `apps/radishflow-studio` 已具备从物性包加载、工作区运行命令、运行门控到结果回写的最小应用层闭环
+- 当前近期 Studio 主线已从“只有求解 bridge”切换为“继续把运行命令、结果派发和后续异步执行边界收口”
+
 ### 2026-W16
 
-- 在 `rf-thermo` 中实现 Antoine 饱和蒸气压
-- 在 `rf-thermo` 中实现理想体系 `K` 值估算
-- 在 `rf-flash` 中实现 Rachford-Rice 和真正的二元 `TP Flash`
-- 在 `tests/thermo-golden` 与 `tests/flash-golden` 建立首批黄金样例
+- 已提前完成 `rf-thermo` 中的 Antoine 饱和蒸气压与理想体系 `K` 值估算
+- 已提前完成 `rf-flash` 中的 Rachford-Rice 和最小二元 `TP Flash`
+- 已提前建立 `tests/thermo-golden` 与 `tests/flash-golden` 的首批黄金样例
 
 ### 2026-W17
 
-- 在 `rf-unitops` 中建立 `Feed`、`Mixer`、`Flash Drum` 的最小统一接口
-- 在 `rf-flowsheet` 中建立端口连接与基本校验
-- 明确单元输入输出的标准流股接口
+- 已提前完成 `rf-unitops` 中 `Feed`、`Mixer`、`Flash Drum` 的最小统一接口
+- 已提前完成 `rf-flowsheet` 中的端口连接与基本校验
+- 已提前明确单元输入输出的标准流股接口与 canonical material ports
 
 ### 2026-W18
 
-- 在 `rf-solver` 中实现无回路顺序模块法
+- 已提前完成 `rf-solver` 中首轮无回路顺序模块法
+- 已提前增加第一个可直接从 `*.rfproj.json` 载入并求解的示例 flowsheet
 - 在已接通的控制面调用编排之上补授权刷新后的 UI 事件流和更细的联网失败策略
-- 在 `examples/flowsheets` 中增加第一个可求解示例
+- 扩第二个内建单元闭环示例，并补更完整的端到端回归样例
 
 ### 2026-W19 以后
 

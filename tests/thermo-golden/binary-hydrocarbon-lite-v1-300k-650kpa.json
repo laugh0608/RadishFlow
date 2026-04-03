@@ -1,0 +1,28 @@
+{
+  "name": "binary-hydrocarbon-lite-v1 at 300 K and 650 kPa",
+  "temperatureK": 300.0,
+  "pressurePa": 650000.0,
+  "overallMoleFractions": [0.2, 0.8],
+  "components": [
+    {
+      "id": "methane",
+      "name": "Methane",
+      "antoine": {
+        "a": 8.987,
+        "b": 659.7,
+        "c": -16.7
+      }
+    },
+    {
+      "id": "ethane",
+      "name": "Ethane",
+      "antoine": {
+        "a": 8.952,
+        "b": 699.7,
+        "c": -22.8
+      }
+    }
+  ],
+  "expectedSaturationPressurePa": [779282.0933478157, 618829.4599937957],
+  "expectedKValues": [1.1988955282274087, 0.952045323067378]
+}

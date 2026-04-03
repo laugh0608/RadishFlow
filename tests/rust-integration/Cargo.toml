@@ -1,0 +1,17 @@
+[package]
+name = "rf-rust-integration"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license-file.workspace = true
+repository.workspace = true
+homepage.workspace = true
+publish.workspace = true
+
+[dependencies]
+rf-flash = { path = "../../crates/rf-flash" }
+rf-solver = { path = "../../crates/rf-solver" }
+rf-store = { path = "../../crates/rf-store" }
+rf-thermo = { path = "../../crates/rf-thermo" }
+rf-types = { path = "../../crates/rf-types" }

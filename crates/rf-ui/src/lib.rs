@@ -1,27 +1,55 @@
 mod auth;
 mod commands;
 mod diagnostics;
+mod entitlement_panel;
+mod entitlement_panel_presenter;
+mod entitlement_panel_text;
+mod entitlement_panel_view;
+mod entitlement_panel_widget;
 mod ids;
 mod run;
+mod run_panel;
+mod run_panel_presenter;
+mod run_panel_text;
+mod run_panel_view;
+mod run_panel_widget;
 mod state;
 
 pub use auth::{
     AuditUsageAck, AuditUsageRequest, AuthSessionState, AuthSessionStatus, AuthenticatedUser,
-    EntitlementSnapshot, EntitlementState, EntitlementStatus, OfflineLeaseRefreshRequest,
-    OfflineLeaseRefreshResponse, PropertyPackageClassification, PropertyPackageLeaseGrant,
-    PropertyPackageLeaseRequest, PropertyPackageManifest, PropertyPackageManifestList,
-    PropertyPackageSource, PropertyPackageUsageEvent, PropertyPackageUsageEventKind,
-    SecureCredentialHandle, TokenLease,
+    EntitlementNotice, EntitlementNoticeLevel, EntitlementSnapshot, EntitlementState,
+    EntitlementStatus, OfflineLeaseRefreshRequest, OfflineLeaseRefreshResponse,
+    PropertyPackageClassification, PropertyPackageLeaseGrant, PropertyPackageLeaseRequest,
+    PropertyPackageManifest, PropertyPackageManifestList, PropertyPackageSource,
+    PropertyPackageUsageEvent, PropertyPackageUsageEventKind, SecureCredentialHandle, TokenLease,
 };
 pub use commands::{
     CanvasPoint, CommandHistory, CommandHistoryEntry, CommandValue, DocumentCommand,
 };
 pub use diagnostics::{DiagnosticSeverity, DiagnosticSnapshot, DiagnosticSummary};
+pub use entitlement_panel::{
+    EntitlementActionId, EntitlementActionModel, EntitlementCommandModel, EntitlementIntent,
+    EntitlementPanelState,
+};
+pub use entitlement_panel_presenter::EntitlementPanelPresentation;
+pub use entitlement_panel_text::EntitlementPanelTextView;
+pub use entitlement_panel_view::{
+    EntitlementActionProminence, EntitlementPanelViewModel, EntitlementRenderableAction,
+};
+pub use entitlement_panel_widget::{EntitlementPanelWidgetEvent, EntitlementPanelWidgetModel};
 pub use ids::{DocumentId, SolveSnapshotId};
 pub use run::{
     RunStatus, SimulationMode, SolvePendingReason, SolveSessionState, SolveSnapshot, StepSnapshot,
     StreamStateSnapshot, UnitExecutionSnapshot,
 };
+pub use run_panel::{
+    RunPanelActionId, RunPanelActionModel, RunPanelCommandModel, RunPanelIntent, RunPanelNotice,
+    RunPanelNoticeLevel, RunPanelPackageSelection, RunPanelState,
+};
+pub use run_panel_presenter::RunPanelPresentation;
+pub use run_panel_text::RunPanelTextView;
+pub use run_panel_view::{RunPanelActionProminence, RunPanelRenderableAction, RunPanelViewModel};
+pub use run_panel_widget::{RunPanelWidgetEvent, RunPanelWidgetModel};
 pub use state::{
     AppLogEntry, AppLogFeed, AppLogLevel, AppState, AppTheme, DateTimeUtc, DocumentMetadata,
     DraftValidationState, DraftValue, FieldDraft, FlowsheetDocument, InspectorDraftState,
@@ -33,15 +61,24 @@ pub use state::{
 mod tests {
     use std::time::{Duration, UNIX_EPOCH};
 
+    use rf_flash::PlaceholderTpFlashSolver;
     use rf_model::Flowsheet;
+    use rf_solver::{FlowsheetSolver, SequentialModularSolver, SolverServices};
+    use rf_thermo::{
+        AntoineCoefficients, PlaceholderThermoProvider, ThermoComponent, ThermoSystem,
+    };
     use rf_types::UnitId;
 
     use crate::{
         AppState, AuthSessionStatus, AuthenticatedUser, CanvasPoint, CommandHistory,
         CommandHistoryEntry, DiagnosticSeverity, DiagnosticSummary, DocumentCommand,
-        DocumentMetadata, EntitlementSnapshot, FlowsheetDocument, OfflineLeaseRefreshResponse,
-        PropertyPackageManifest, PropertyPackageManifestList, PropertyPackageSource, RunStatus,
-        SecureCredentialHandle, SimulationMode, SolvePendingReason, SolveSnapshot, TokenLease,
+        DocumentMetadata, EntitlementActionId, EntitlementPanelState, EntitlementPanelWidgetEvent,
+        EntitlementPanelWidgetModel, EntitlementSnapshot, FlowsheetDocument,
+        OfflineLeaseRefreshResponse, PropertyPackageManifest, PropertyPackageManifestList,
+        PropertyPackageSource, RunPanelActionId, RunPanelActionProminence, RunPanelPresentation,
+        RunPanelState, RunPanelTextView, RunPanelViewModel, RunPanelWidgetEvent,
+        RunPanelWidgetModel, RunStatus, SecureCredentialHandle, SimulationMode, SolvePendingReason,
+        SolveSnapshot, TokenLease,
     };
 
     fn timestamp(seconds: u64) -> std::time::SystemTime {
@@ -52,6 +89,25 @@ mod tests {
         let flowsheet = Flowsheet::new("demo");
         let metadata = DocumentMetadata::new("doc-1", "Demo", timestamp(10));
         FlowsheetDocument::new(flowsheet, metadata)
+    }
+
+    fn sample_solver_provider() -> PlaceholderThermoProvider {
+        let pressure_pa = 100_000.0_f64;
+        let mut first = ThermoComponent::new("component-a", "Component A");
+        first.antoine = Some(AntoineCoefficients::new(
+            ((2.0_f64 * pressure_pa) / 1_000.0_f64).ln(),
+            0.0,
+            0.0,
+        ));
+
+        let mut second = ThermoComponent::new("component-b", "Component B");
+        second.antoine = Some(AntoineCoefficients::new(
+            ((0.5_f64 * pressure_pa) / 1_000.0_f64).ln(),
+            0.0,
+            0.0,
+        ));
+
+        PlaceholderThermoProvider::new(ThermoSystem::binary([first, second]))
     }
 
     #[test]
@@ -165,6 +221,235 @@ mod tests {
             app_state.workspace.solve_session.pending_reason,
             Some(SolvePendingReason::ModeActivated)
         );
+        assert_eq!(
+            app_state.workspace.run_panel.simulation_mode,
+            SimulationMode::Active
+        );
+        assert_eq!(
+            app_state.workspace.run_panel.pending_reason,
+            Some(SolvePendingReason::ModeActivated)
+        );
+    }
+
+    #[test]
+    fn initial_run_panel_reflects_hold_idle_without_snapshot() {
+        let app_state = AppState::new(sample_document());
+
+        assert_eq!(
+            app_state.workspace.run_panel,
+            RunPanelState {
+                simulation_mode: SimulationMode::Hold,
+                run_status: RunStatus::Idle,
+                pending_reason: Some(SolvePendingReason::SnapshotMissing),
+                latest_snapshot_id: None,
+                latest_snapshot_summary: None,
+                latest_log_message: None,
+                notice: None,
+                can_run_manual: true,
+                can_resume: true,
+                can_set_hold: false,
+                can_set_active: true,
+                commands: app_state.workspace.run_panel.commands.clone(),
+            }
+        );
+        assert_eq!(
+            app_state.workspace.run_panel.commands.primary_action,
+            RunPanelActionId::Resume
+        );
+        assert_eq!(
+            app_state
+                .workspace
+                .run_panel
+                .commands
+                .action(RunPanelActionId::Resume)
+                .expect("expected resume action")
+                .label,
+            "Resume"
+        );
+    }
+
+    #[test]
+    fn run_panel_view_model_consumes_primary_and_secondary_actions() {
+        let app_state = AppState::new(sample_document());
+
+        let view = RunPanelViewModel::from_state(&app_state.workspace.run_panel);
+
+        assert_eq!(view.mode_label, "Hold");
+        assert_eq!(view.status_label, "Idle");
+        assert_eq!(view.pending_label, Some("Snapshot missing"));
+        assert_eq!(view.primary_action.id, RunPanelActionId::Resume);
+        assert_eq!(view.primary_action.label, "Resume");
+        assert_eq!(
+            view.primary_action.prominence,
+            RunPanelActionProminence::Primary
+        );
+        assert_eq!(view.secondary_actions.len(), 3);
+        assert_eq!(view.secondary_actions[0].id, RunPanelActionId::RunManual);
+        assert_eq!(view.secondary_actions[1].id, RunPanelActionId::SetHold);
+        assert_eq!(view.secondary_actions[2].id, RunPanelActionId::SetActive);
+    }
+
+    #[test]
+    fn run_panel_text_view_renders_primary_and_secondary_actions() {
+        let app_state = AppState::new(sample_document());
+        let view = RunPanelViewModel::from_state(&app_state.workspace.run_panel);
+
+        let text = RunPanelTextView::from_view_model(&view);
+
+        assert_eq!(text.title, "Run panel");
+        assert_eq!(text.lines[0], "Mode: Hold");
+        assert_eq!(text.lines[1], "Status: Idle");
+        assert!(
+            text.lines
+                .iter()
+                .any(|line| line == "Pending: Snapshot missing")
+        );
+        assert!(
+            text.lines
+                .iter()
+                .any(|line| line == "Primary action: Resume [enabled]")
+        );
+        assert!(text.lines.iter().any(|line| line == "  - Run [enabled]"));
+    }
+
+    #[test]
+    fn run_panel_text_view_renders_notice_when_present() {
+        let mut state = AppState::new(sample_document()).workspace.run_panel;
+        state.notice = Some(crate::RunPanelNotice::new(
+            crate::RunPanelNoticeLevel::Warning,
+            "Run blocked",
+            "explicit package selection is required",
+        ));
+
+        let view = RunPanelViewModel::from_state(&state);
+        let text = RunPanelTextView::from_view_model(&view);
+
+        assert!(
+            text.lines
+                .iter()
+                .any(|line| line == "Notice: Run blocked [warning]")
+        );
+        assert!(
+            text.lines
+                .iter()
+                .any(|line| line == "Notice detail: explicit package selection is required")
+        );
+    }
+
+    #[test]
+    fn run_panel_view_model_returns_dispatchable_intents_for_enabled_actions() {
+        let app_state = AppState::new(sample_document());
+        let view = RunPanelViewModel::from_state(&app_state.workspace.run_panel);
+
+        assert_eq!(
+            view.dispatchable_primary_intent(),
+            Some(crate::RunPanelIntent::resume(
+                crate::RunPanelPackageSelection::preferred()
+            ))
+        );
+        assert_eq!(
+            view.dispatchable_intent(RunPanelActionId::RunManual),
+            Some(crate::RunPanelIntent::run_manual(
+                crate::RunPanelPackageSelection::preferred()
+            ))
+        );
+        assert_eq!(view.dispatchable_intent(RunPanelActionId::SetHold), None);
+    }
+
+    #[test]
+    fn run_panel_presentation_combines_view_text_and_dispatchable_intents() {
+        let app_state = AppState::new(sample_document());
+
+        let presentation = RunPanelPresentation::from_state(&app_state.workspace.run_panel);
+
+        assert_eq!(presentation.view.primary_action.label, "Resume");
+        assert_eq!(presentation.text.title, "Run panel");
+        assert_eq!(
+            presentation.dispatchable_primary_intent(),
+            Some(crate::RunPanelIntent::resume(
+                crate::RunPanelPackageSelection::preferred()
+            ))
+        );
+    }
+
+    #[test]
+    fn run_panel_widget_dispatches_primary_action_and_blocks_disabled_actions() {
+        let app_state = AppState::new(sample_document());
+
+        let widget = RunPanelWidgetModel::from_state(&app_state.workspace.run_panel);
+
+        assert_eq!(
+            widget.activate_primary(),
+            RunPanelWidgetEvent::Dispatched {
+                action_id: RunPanelActionId::Resume,
+                intent: crate::RunPanelIntent::resume(crate::RunPanelPackageSelection::preferred()),
+            }
+        );
+        assert_eq!(
+            widget.activate(RunPanelActionId::SetHold),
+            RunPanelWidgetEvent::Disabled {
+                action_id: RunPanelActionId::SetHold,
+            }
+        );
+    }
+
+    #[test]
+    fn storing_snapshot_updates_run_panel_summary() {
+        let mut app_state = AppState::new(sample_document());
+        let snapshot = SolveSnapshot::new(
+            "snapshot-ui-1",
+            0,
+            1,
+            RunStatus::Converged,
+            DiagnosticSummary::new(0, DiagnosticSeverity::Info, "snapshot ok"),
+        );
+
+        app_state.store_snapshot(snapshot);
+
+        assert_eq!(
+            app_state.workspace.run_panel.latest_snapshot_id.as_deref(),
+            Some("snapshot-ui-1")
+        );
+        assert_eq!(
+            app_state
+                .workspace
+                .run_panel
+                .latest_snapshot_summary
+                .as_deref(),
+            Some("snapshot ok")
+        );
+        assert_eq!(
+            app_state.workspace.run_panel.run_status,
+            RunStatus::Converged
+        );
+    }
+
+    #[test]
+    fn recording_failure_updates_run_panel_status_and_log_message() {
+        let mut app_state = AppState::new(sample_document());
+        let summary = DiagnosticSummary::new(0, DiagnosticSeverity::Error, "solve failed");
+
+        app_state.push_log(crate::AppLogLevel::Error, "solver failed");
+        app_state.record_failure(0, RunStatus::Error, summary);
+
+        assert_eq!(app_state.workspace.run_panel.run_status, RunStatus::Error);
+        assert_eq!(
+            app_state.workspace.run_panel.latest_log_message.as_deref(),
+            Some("solver failed")
+        );
+        assert_eq!(
+            app_state.workspace.run_panel.commands.primary_action,
+            RunPanelActionId::RunManual
+        );
+        assert!(
+            !app_state
+                .workspace
+                .run_panel
+                .commands
+                .action(RunPanelActionId::Resume)
+                .expect("expected resume action")
+                .enabled
+        );
     }
 
     #[test]
@@ -190,6 +475,100 @@ mod tests {
                 .as_ref()
                 .map(|lease| lease.credential_handle.account.as_str()),
             Some(credential_handle.account.as_str())
+        );
+    }
+
+    #[test]
+    fn entitlement_panel_disables_actions_when_session_is_signed_out() {
+        let app_state = AppState::new(sample_document());
+
+        let state =
+            EntitlementPanelState::from_runtime(&app_state.auth_session, &app_state.entitlement);
+
+        assert_eq!(
+            state.commands.primary_action,
+            EntitlementActionId::SyncEntitlement
+        );
+        assert!(
+            !state
+                .commands
+                .action(EntitlementActionId::SyncEntitlement)
+                .expect("expected sync action")
+                .enabled
+        );
+        assert!(
+            !state
+                .commands
+                .action(EntitlementActionId::RefreshOfflineLease)
+                .expect("expected refresh action")
+                .enabled
+        );
+    }
+
+    #[test]
+    fn entitlement_panel_prefers_offline_refresh_when_session_is_active() {
+        let mut app_state = AppState::new(sample_document());
+        let token_lease = TokenLease::new(
+            timestamp(300),
+            SecureCredentialHandle::new("radishflow-studio", "user-123-primary"),
+        );
+        app_state.complete_login(
+            "https://id.radish.local",
+            AuthenticatedUser::new("user-123", "luobo"),
+            token_lease,
+            timestamp(200),
+        );
+        app_state.update_entitlement(
+            EntitlementSnapshot {
+                schema_version: 1,
+                subject_id: "user-123".to_string(),
+                tenant_id: Some("tenant-1".to_string()),
+                issued_at: timestamp(100),
+                expires_at: timestamp(400),
+                offline_lease_expires_at: Some(timestamp(700)),
+                features: ["desktop-login".to_string()].into_iter().collect(),
+                allowed_package_ids: ["binary-hydrocarbon-lite-v1".to_string()]
+                    .into_iter()
+                    .collect(),
+            },
+            vec![PropertyPackageManifest::new(
+                "binary-hydrocarbon-lite-v1",
+                "2026.03.1",
+                PropertyPackageSource::RemoteDerivedPackage,
+            )],
+            timestamp(150),
+        );
+
+        let state =
+            EntitlementPanelState::from_runtime(&app_state.auth_session, &app_state.entitlement);
+        let widget = EntitlementPanelWidgetModel::from_state(&state);
+
+        assert_eq!(
+            state.commands.primary_action,
+            EntitlementActionId::RefreshOfflineLease
+        );
+        assert_eq!(widget.view().primary_action.label, "Refresh offline lease");
+        assert!(widget.view().primary_action.enabled);
+    }
+
+    #[test]
+    fn entitlement_widget_reports_disabled_and_missing_actions() {
+        let app_state = AppState::new(sample_document());
+        let state =
+            EntitlementPanelState::from_runtime(&app_state.auth_session, &app_state.entitlement);
+        let widget = EntitlementPanelWidgetModel::from_state(&state);
+
+        assert_eq!(
+            widget.activate(EntitlementActionId::SyncEntitlement),
+            EntitlementPanelWidgetEvent::Disabled {
+                action_id: EntitlementActionId::SyncEntitlement
+            }
+        );
+        assert_eq!(
+            widget.activate_primary(),
+            EntitlementPanelWidgetEvent::Disabled {
+                action_id: EntitlementActionId::SyncEntitlement
+            }
         );
     }
 
@@ -334,5 +713,49 @@ mod tests {
         );
         assert_eq!(app_state.entitlement.last_synced_at, Some(timestamp(210)));
         assert!(app_state.entitlement.is_package_allowed("pkg-1"));
+    }
+
+    #[test]
+    fn storing_solver_snapshot_maps_solver_diagnostics_into_ui_snapshot() {
+        let mut app_state = AppState::new(sample_document());
+        let provider = sample_solver_provider();
+        let flash_solver = PlaceholderTpFlashSolver;
+        let services = SolverServices {
+            thermo: &provider,
+            flash_solver: &flash_solver,
+        };
+        let project = rf_store::parse_project_file_json(include_str!(
+            "../../../examples/flowsheets/feed-heater-flash.rfproj.json"
+        ))
+        .expect("expected project parse");
+        let solver_snapshot = SequentialModularSolver
+            .solve(&services, &project.document.flowsheet)
+            .expect("expected solve snapshot");
+
+        app_state.store_solver_snapshot("snapshot-solver-1", 1, &solver_snapshot);
+
+        let stored = app_state
+            .workspace
+            .snapshot_history
+            .back()
+            .expect("expected stored snapshot");
+        assert_eq!(stored.status, RunStatus::Converged);
+        assert_eq!(stored.summary.diagnostic_count, 4);
+        assert_eq!(stored.diagnostics[0].code, "solver.execution_order");
+        assert_eq!(stored.steps.len(), 3);
+        assert_eq!(stored.steps[1].unit_id.as_str(), "heater-1");
+        assert_eq!(
+            stored.steps[1].streams[0].stream_id.as_str(),
+            "stream-heated"
+        );
+        assert_eq!(
+            app_state
+                .workspace
+                .solve_session
+                .latest_snapshot
+                .as_ref()
+                .map(|id| id.as_str()),
+            Some("snapshot-solver-1")
+        );
     }
 }

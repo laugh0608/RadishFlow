@@ -11,7 +11,11 @@ publish.workspace = true
 
 [dependencies]
 reqwest = { version = "0.12", default-features = false, features = ["blocking", "rustls-tls"] }
+rf-flash = { path = "../../crates/rf-flash" }
+rf-model = { path = "../../crates/rf-model" }
+rf-solver = { path = "../../crates/rf-solver" }
 rf-store = { path = "../../crates/rf-store" }
+rf-thermo = { path = "../../crates/rf-thermo" }
 rf-types = { path = "../../crates/rf-types" }
 rf-ui = { path = "../../crates/rf-ui" }
 serde = { version = "1", features = ["derive"] }

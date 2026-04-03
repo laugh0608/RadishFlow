@@ -1,0 +1,138 @@
+{
+  "kind": "radishflow.project-file",
+  "schemaVersion": 1,
+  "document": {
+    "revision": 0,
+    "flowsheet": {
+      "name": "feed-valve-flash",
+      "components": {
+        "component-a": {
+          "id": "component-a",
+          "name": "Component A",
+          "formula": null
+        },
+        "component-b": {
+          "id": "component-b",
+          "name": "Component B",
+          "formula": null
+        }
+      },
+      "streams": {
+        "stream-feed": {
+          "id": "stream-feed",
+          "name": "Feed",
+          "temperature_k": 315.0,
+          "pressure_pa": 120000.0,
+          "total_molar_flow_mol_s": 5.0,
+          "overall_mole_fractions": {
+            "component-a": 0.35,
+            "component-b": 0.65
+          },
+          "phases": []
+        },
+        "stream-throttled": {
+          "id": "stream-throttled",
+          "name": "Valve Outlet",
+          "temperature_k": 300.0,
+          "pressure_pa": 90000.0,
+          "total_molar_flow_mol_s": 0.0,
+          "overall_mole_fractions": {
+            "component-a": 0.5,
+            "component-b": 0.5
+          },
+          "phases": []
+        },
+        "stream-liquid": {
+          "id": "stream-liquid",
+          "name": "Liquid Outlet",
+          "temperature_k": 315.0,
+          "pressure_pa": 90000.0,
+          "total_molar_flow_mol_s": 0.0,
+          "overall_mole_fractions": {
+            "component-a": 0.5,
+            "component-b": 0.5
+          },
+          "phases": []
+        },
+        "stream-vapor": {
+          "id": "stream-vapor",
+          "name": "Vapor Outlet",
+          "temperature_k": 315.0,
+          "pressure_pa": 90000.0,
+          "total_molar_flow_mol_s": 0.0,
+          "overall_mole_fractions": {
+            "component-a": 0.5,
+            "component-b": 0.5
+          },
+          "phases": []
+        }
+      },
+      "units": {
+        "feed-1": {
+          "id": "feed-1",
+          "name": "Feed",
+          "kind": "feed",
+          "ports": [
+            {
+              "name": "outlet",
+              "direction": "outlet",
+              "kind": "material",
+              "stream_id": "stream-feed"
+            }
+          ]
+        },
+        "valve-1": {
+          "id": "valve-1",
+          "name": "Valve",
+          "kind": "valve",
+          "ports": [
+            {
+              "name": "inlet",
+              "direction": "inlet",
+              "kind": "material",
+              "stream_id": "stream-feed"
+            },
+            {
+              "name": "outlet",
+              "direction": "outlet",
+              "kind": "material",
+              "stream_id": "stream-throttled"
+            }
+          ]
+        },
+        "flash-1": {
+          "id": "flash-1",
+          "name": "Flash Drum",
+          "kind": "flash_drum",
+          "ports": [
+            {
+              "name": "inlet",
+              "direction": "inlet",
+              "kind": "material",
+              "stream_id": "stream-throttled"
+            },
+            {
+              "name": "liquid",
+              "direction": "outlet",
+              "kind": "material",
+              "stream_id": "stream-liquid"
+            },
+            {
+              "name": "vapor",
+              "direction": "outlet",
+              "kind": "material",
+              "stream_id": "stream-vapor"
+            }
+          ]
+        }
+      }
+    },
+    "metadata": {
+      "documentId": "example-feed-valve-flash",
+      "title": "Feed Valve Flash Example",
+      "schemaVersion": 1,
+      "createdAt": "2026-04-01T00:00:00Z",
+      "updatedAt": "2026-04-01T00:00:00Z"
+    }
+  }
+}
