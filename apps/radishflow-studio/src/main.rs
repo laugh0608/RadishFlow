@@ -35,6 +35,27 @@ fn main() {
                 println!("Preflight action: {:?}", preflight.decision.action);
                 println!("Preflight reason: {}", preflight.decision.reason);
             }
+            println!(
+                "Entitlement next check: {:?}",
+                report.entitlement_session_schedule.next_check_at
+            );
+            println!(
+                "Entitlement next sync window: {:?}",
+                report.entitlement_session_schedule.next_sync_at
+            );
+            println!(
+                "Entitlement next offline refresh window: {:?}",
+                report.entitlement_session_schedule.next_offline_refresh_at
+            );
+            if let Some(action) = report.entitlement_session_schedule.recommended_action {
+                println!("Entitlement recommended action: {:?}", action);
+            }
+            if let Some(reason) = report.entitlement_session_schedule.recommended_reason {
+                println!("Entitlement schedule reason: {reason}");
+            }
+            if report.entitlement_session_schedule.blocked_by_backoff {
+                println!("Entitlement scheduler is currently backing off");
+            }
 
             match report.outcome.dispatch {
                 StudioAppResultDispatch::WorkspaceRun(dispatch) => {
