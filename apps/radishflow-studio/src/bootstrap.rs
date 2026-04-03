@@ -307,7 +307,7 @@ mod tests {
     use super::{StudioBootstrapConfig, StudioBootstrapTrigger, run_studio_bootstrap};
     use crate::{
         StudioAppExecutionBoundary, StudioAppExecutionLane, StudioAppResultDispatch,
-        WorkspaceSolveDispatch,
+        StudioWorkspaceRunOutcome,
     };
 
     #[test]
@@ -334,8 +334,8 @@ mod tests {
             Some("binary-hydrocarbon-lite-v1")
         );
         assert!(matches!(
-            dispatch.solve_dispatch,
-            WorkspaceSolveDispatch::Started(_)
+            dispatch.outcome,
+            StudioWorkspaceRunOutcome::Started(_)
         ));
         assert_eq!(
             dispatch.latest_snapshot_summary.as_deref(),
@@ -372,8 +372,8 @@ mod tests {
         assert_eq!(report.control_state.run_status, dispatch.run_status);
         assert_eq!(dispatch.run_status, RunStatus::Converged);
         assert!(matches!(
-            dispatch.solve_dispatch,
-            WorkspaceSolveDispatch::Started(_)
+            dispatch.outcome,
+            StudioWorkspaceRunOutcome::Started(_)
         ));
         assert_eq!(dispatch.log_entry_count, 2);
         assert_eq!(report.log_entries.len(), 2);

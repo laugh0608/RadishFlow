@@ -223,7 +223,7 @@ mod tests {
     use crate::{
         StudioAppAuthCacheContext, StudioAppCommand, StudioAppExecutionBoundary,
         StudioAppExecutionLane, StudioAppFacade, StudioAppResultDispatch,
-        WorkspaceRunPackageSelection, WorkspaceSolveDispatch,
+        StudioWorkspaceRunOutcome, WorkspaceRunPackageSelection,
     };
 
     fn timestamp(seconds: u64) -> std::time::SystemTime {
@@ -461,8 +461,8 @@ mod tests {
         match outcome.dispatch {
             StudioAppResultDispatch::WorkspaceRun(dispatch) => {
                 assert!(matches!(
-                    dispatch.solve_dispatch,
-                    WorkspaceSolveDispatch::Started(_)
+                    dispatch.outcome,
+                    StudioWorkspaceRunOutcome::Started(_)
                 ));
                 assert_eq!(dispatch.simulation_mode, SimulationMode::Active);
             }

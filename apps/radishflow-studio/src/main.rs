@@ -24,7 +24,7 @@ fn main() {
             match report.outcome.dispatch {
                 StudioAppResultDispatch::WorkspaceRun(dispatch) => {
                     println!("Run status: {:?}", dispatch.run_status);
-                    println!("Dispatch: {:?}", dispatch.solve_dispatch);
+                    println!("Outcome: {:?}", dispatch.outcome);
                     if let Some(package_id) = dispatch.package_id {
                         println!("Package: {package_id}");
                     }

@@ -14,7 +14,9 @@ mod workspace_solve_service;
 pub use app_facade::{
     StudioAppAuthCacheContext, StudioAppCommand, StudioAppCommandOutcome,
     StudioAppExecutionBoundary, StudioAppExecutionLane, StudioAppFacade, StudioAppResultDispatch,
-    StudioWorkspaceModeDispatch, StudioWorkspaceRunDispatch,
+    StudioWorkspaceModeDispatch, StudioWorkspaceRunBlocked, StudioWorkspaceRunBlockedReason,
+    StudioWorkspaceRunDispatch, StudioWorkspaceRunFailed, StudioWorkspaceRunFailedReason,
+    StudioWorkspaceRunOutcome,
 };
 pub use auth_cache_sync::{
     apply_offline_refresh_to_auth_cache, build_auth_cache_index, build_offline_refresh_request,

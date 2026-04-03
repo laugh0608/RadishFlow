@@ -1,16 +1,16 @@
 use std::path::Path;
 
 use rf_store::StoredAuthCacheIndex;
-use rf_types::RfResult;
+use rf_types::{ErrorCode, RfError, RfResult};
 use rf_ui::{
-    AppLogEntry, AppLogLevel, AppState, RunStatus, SimulationMode, SolvePendingReason,
-    latest_snapshot_id,
+    AppLogEntry, AppLogLevel, AppState, DiagnosticSeverity, DiagnosticSummary, RunStatus,
+    SimulationMode, SolvePendingReason, latest_snapshot_id,
 };
 
 use crate::{
-    WorkspaceRunCommand, WorkspaceRunDispatchResult, WorkspaceRunPackageSelection,
-    WorkspaceSolveDispatch, WorkspaceSolveService, WorkspaceSolveSkipReason, WorkspaceSolveTrigger,
-    dispatch_workspace_run_from_auth_cache,
+    StudioSolveRequest, WorkspaceRunCommand, WorkspaceRunPackageSelection, WorkspaceSolveDispatch,
+    WorkspaceSolveService, WorkspaceSolveSkipReason, WorkspaceSolveTrigger,
+    resolve_workspace_run_package_id,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -74,7 +74,7 @@ impl<'a> StudioAppAuthCacheContext<'a> {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StudioWorkspaceRunDispatch {
     pub package_id: Option<String>,
-    pub solve_dispatch: WorkspaceSolveDispatch,
+    pub outcome: StudioWorkspaceRunOutcome,
     pub simulation_mode: SimulationMode,
     pub pending_reason: Option<SolvePendingReason>,
     pub latest_snapshot_id: Option<String>,
@@ -82,6 +82,40 @@ pub struct StudioWorkspaceRunDispatch {
     pub run_status: RunStatus,
     pub log_entry_count: usize,
     pub latest_log_entry: Option<AppLogEntry>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum StudioWorkspaceRunBlockedReason {
+    CachedPackageMissing,
+    ExplicitPackageSelectionRequired,
+    EntitlementMismatch,
+    InvalidSelection,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioWorkspaceRunBlocked {
+    pub reason: StudioWorkspaceRunBlockedReason,
+    pub message: String,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum StudioWorkspaceRunFailedReason {
+    LocalCacheUnavailable,
+    SolveFailed,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioWorkspaceRunFailed {
+    pub reason: StudioWorkspaceRunFailedReason,
+    pub message: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum StudioWorkspaceRunOutcome {
+    Started(StudioSolveRequest),
+    Skipped(WorkspaceSolveSkipReason),
+    Blocked(StudioWorkspaceRunBlocked),
+    Failed(StudioWorkspaceRunFailed),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -147,16 +181,53 @@ impl StudioAppFacade {
         context: &StudioAppAuthCacheContext<'_>,
         command: &WorkspaceRunCommand,
     ) -> RfResult<StudioWorkspaceRunDispatch> {
-        let result = dispatch_workspace_run_from_auth_cache(
+        if let Some(skip_reason) = self.solve_service.skip_reason(app_state, command.trigger) {
+            let outcome = StudioWorkspaceRunOutcome::Skipped(skip_reason);
+            record_workspace_run_outcome(app_state, &outcome);
+            return Ok(map_workspace_run_dispatch(app_state, None, outcome));
+        }
+
+        let package_id = match resolve_workspace_run_package_id(
             app_state,
-            &self.solve_service,
+            context.auth_cache_index,
+            &command.package,
+        ) {
+            Ok(package_id) => package_id,
+            Err(error) => {
+                let blocked = map_workspace_run_blocked(&error);
+                let outcome = StudioWorkspaceRunOutcome::Blocked(blocked);
+                record_workspace_run_outcome(app_state, &outcome);
+                return Ok(map_workspace_run_dispatch(app_state, None, outcome));
+            }
+        };
+
+        match self.solve_service.dispatch_from_auth_cache(
+            app_state,
             context.cache_root,
             context.auth_cache_index,
-            command,
-        )?;
-        record_workspace_run_dispatch(app_state, &result);
-
-        Ok(map_workspace_run_dispatch(app_state, result))
+            package_id.clone(),
+            command.trigger,
+        ) {
+            Ok(dispatch) => {
+                let outcome = map_workspace_solve_dispatch(dispatch);
+                record_workspace_run_outcome(app_state, &outcome);
+                Ok(map_workspace_run_dispatch(
+                    app_state,
+                    Some(package_id),
+                    outcome,
+                ))
+            }
+            Err(error) => {
+                let failed = map_workspace_run_failed(app_state, &package_id, &error);
+                let outcome = StudioWorkspaceRunOutcome::Failed(failed);
+                record_workspace_run_outcome(app_state, &outcome);
+                Ok(map_workspace_run_dispatch(
+                    app_state,
+                    Some(package_id),
+                    outcome,
+                ))
+            }
+        }
     }
 
     pub fn resume_workspace_from_auth_cache(
@@ -192,15 +263,117 @@ impl StudioAppFacade {
     }
 }
 
-fn record_workspace_run_dispatch(app_state: &mut AppState, result: &WorkspaceRunDispatchResult) {
-    if let WorkspaceSolveDispatch::Skipped(reason) = result.dispatch {
-        app_state.push_log(
-            AppLogLevel::Info,
-            format!(
-                "Skipped workspace run because {}",
-                describe_workspace_skip_reason(reason)
-            ),
-        );
+fn record_workspace_run_outcome(app_state: &mut AppState, outcome: &StudioWorkspaceRunOutcome) {
+    match outcome {
+        StudioWorkspaceRunOutcome::Started(_) => {}
+        StudioWorkspaceRunOutcome::Skipped(reason) => {
+            push_log_if_needed(
+                app_state,
+                AppLogLevel::Info,
+                &format!(
+                    "Skipped workspace run because {}",
+                    describe_workspace_skip_reason(*reason)
+                ),
+            );
+        }
+        StudioWorkspaceRunOutcome::Blocked(blocked) => {
+            push_log_if_needed(
+                app_state,
+                AppLogLevel::Warning,
+                &format!("Blocked workspace run because {}", blocked.message),
+            );
+        }
+        StudioWorkspaceRunOutcome::Failed(failed) => {
+            if !matches!(app_state.workspace.solve_session.status, RunStatus::Error) {
+                let revision = app_state.workspace.document.revision;
+                let summary = DiagnosticSummary {
+                    document_revision: revision,
+                    highest_severity: DiagnosticSeverity::Error,
+                    primary_message: failed.message.clone(),
+                    diagnostic_count: 1,
+                    related_unit_ids: Vec::new(),
+                };
+                app_state.record_failure(revision, RunStatus::Error, summary);
+            }
+            push_log_if_needed(app_state, AppLogLevel::Error, &failed.message);
+        }
+    }
+}
+
+fn push_log_if_needed(app_state: &mut AppState, level: AppLogLevel, message: &str) {
+    let duplicated = app_state
+        .log_feed
+        .entries
+        .back()
+        .map(|entry| entry.level == level && entry.message == message)
+        .unwrap_or(false);
+    if !duplicated {
+        app_state.push_log(level, message.to_string());
+    }
+}
+
+fn map_workspace_solve_dispatch(dispatch: WorkspaceSolveDispatch) -> StudioWorkspaceRunOutcome {
+    match dispatch {
+        WorkspaceSolveDispatch::Started(request) => StudioWorkspaceRunOutcome::Started(request),
+        WorkspaceSolveDispatch::Skipped(reason) => StudioWorkspaceRunOutcome::Skipped(reason),
+    }
+}
+
+fn map_workspace_run_blocked(error: &RfError) -> StudioWorkspaceRunBlocked {
+    let reason = match error.code() {
+        ErrorCode::MissingEntity => StudioWorkspaceRunBlockedReason::CachedPackageMissing,
+        ErrorCode::InvalidInput => {
+            if error.message().contains("explicit package selection") {
+                StudioWorkspaceRunBlockedReason::ExplicitPackageSelectionRequired
+            } else if error.message().contains("entitlement manifests")
+                || error
+                    .message()
+                    .contains("matches current entitlement manifests")
+            {
+                StudioWorkspaceRunBlockedReason::EntitlementMismatch
+            } else {
+                StudioWorkspaceRunBlockedReason::InvalidSelection
+            }
+        }
+        _ => StudioWorkspaceRunBlockedReason::InvalidSelection,
+    };
+
+    StudioWorkspaceRunBlocked {
+        reason,
+        message: error.message().to_string(),
+    }
+}
+
+fn map_workspace_run_failed(
+    app_state: &AppState,
+    package_id: &str,
+    error: &RfError,
+) -> StudioWorkspaceRunFailed {
+    let latest_solver_error = app_state
+        .log_feed
+        .entries
+        .back()
+        .filter(|entry| entry.level == AppLogLevel::Error)
+        .map(|entry| entry.message.clone());
+
+    if matches!(app_state.workspace.solve_session.status, RunStatus::Error) {
+        return StudioWorkspaceRunFailed {
+            reason: StudioWorkspaceRunFailedReason::SolveFailed,
+            message: latest_solver_error.unwrap_or_else(|| {
+                format!(
+                    "workspace run with property package `{package_id}` failed: {}",
+                    error.message()
+                )
+            }),
+        };
+    }
+
+    StudioWorkspaceRunFailed {
+        reason: StudioWorkspaceRunFailedReason::LocalCacheUnavailable,
+        message: format!(
+            "failed to prepare local property package cache for `{package_id}`: {}",
+            error.message()
+        ),
     }
 }
 
@@ -213,11 +386,12 @@ fn describe_workspace_skip_reason(reason: WorkspaceSolveSkipReason) -> &'static 
 
 fn map_workspace_run_dispatch(
     app_state: &AppState,
-    result: WorkspaceRunDispatchResult,
+    package_id: Option<String>,
+    outcome: StudioWorkspaceRunOutcome,
 ) -> StudioWorkspaceRunDispatch {
     StudioWorkspaceRunDispatch {
-        package_id: result.package_id,
-        solve_dispatch: result.dispatch,
+        package_id,
+        outcome,
         simulation_mode: app_state.workspace.solve_session.mode,
         pending_reason: app_state.workspace.solve_session.pending_reason,
         latest_snapshot_id: latest_snapshot_id(&app_state.workspace)
@@ -279,8 +453,11 @@ mod tests {
     use super::{
         StudioAppAuthCacheContext, StudioAppCommand, StudioAppExecutionBoundary,
         StudioAppExecutionLane, StudioAppFacade, StudioAppResultDispatch,
+        StudioWorkspaceRunBlocked,
+        StudioWorkspaceRunBlockedReason, StudioWorkspaceRunFailedReason,
+        StudioWorkspaceRunOutcome,
     };
-    use crate::{WorkspaceRunCommand, WorkspaceRunPackageSelection, WorkspaceSolveDispatch};
+    use crate::{WorkspaceRunCommand, WorkspaceRunPackageSelection};
 
     fn timestamp(seconds: u64) -> std::time::SystemTime {
         UNIX_EPOCH + Duration::from_secs(seconds)
@@ -425,8 +602,8 @@ mod tests {
             Some("binary-hydrocarbon-lite-v1".to_string())
         );
         assert_eq!(
-            dispatch.solve_dispatch,
-            WorkspaceSolveDispatch::Started(crate::StudioSolveRequest::new(
+            dispatch.outcome,
+            StudioWorkspaceRunOutcome::Started(crate::StudioSolveRequest::new(
                 "binary-hydrocarbon-lite-v1",
                 "doc-app-facade-rev-0-seq-1",
                 1,
@@ -482,8 +659,8 @@ mod tests {
         };
         assert_eq!(dispatch.package_id, None);
         assert_eq!(
-            dispatch.solve_dispatch,
-            WorkspaceSolveDispatch::Skipped(crate::WorkspaceSolveSkipReason::HoldMode)
+            dispatch.outcome,
+            StudioWorkspaceRunOutcome::Skipped(crate::WorkspaceSolveSkipReason::HoldMode)
         );
         assert_eq!(dispatch.simulation_mode, SimulationMode::Hold);
         assert_eq!(
@@ -583,8 +760,8 @@ mod tests {
             StudioAppResultDispatch::WorkspaceMode(_) => panic!("expected workspace run dispatch"),
         };
         assert_eq!(
-            dispatch.solve_dispatch,
-            WorkspaceSolveDispatch::Started(crate::StudioSolveRequest::new(
+            dispatch.outcome,
+            StudioWorkspaceRunOutcome::Started(crate::StudioSolveRequest::new(
                 "binary-hydrocarbon-lite-v1",
                 "doc-app-resume-rev-0-seq-1",
                 1,
@@ -605,5 +782,87 @@ mod tests {
         );
 
         std::fs::remove_dir_all(cache_root).expect("expected temp dir cleanup");
+    }
+
+    #[test]
+    fn facade_returns_blocked_dispatch_when_preferred_package_is_ambiguous() {
+        let auth_cache_index = sample_auth_cache_index(&["pkg-1", "pkg-2"]);
+        let facade = StudioAppFacade::new();
+        let mut app_state = AppState::new(sample_document());
+        let cache_root = PathBuf::from("D:\\cache-root");
+        let context = StudioAppAuthCacheContext::new(&cache_root, &auth_cache_index);
+
+        let dispatch = facade
+            .run_workspace_from_auth_cache(
+                &mut app_state,
+                &context,
+                &WorkspaceRunCommand::new(
+                    crate::WorkspaceSolveTrigger::Manual,
+                    WorkspaceRunPackageSelection::Preferred,
+                ),
+            )
+            .expect("expected blocked dispatch");
+
+        assert_eq!(dispatch.package_id, None);
+        assert_eq!(
+            dispatch.outcome,
+            StudioWorkspaceRunOutcome::Blocked(StudioWorkspaceRunBlocked {
+                reason: StudioWorkspaceRunBlockedReason::ExplicitPackageSelectionRequired,
+                message:
+                    "multiple cached property packages are available; explicit package selection is required"
+                        .to_string(),
+            })
+        );
+        assert_eq!(dispatch.run_status, RunStatus::Idle);
+        assert_eq!(dispatch.log_entry_count, 1);
+        assert_eq!(
+            dispatch
+                .latest_log_entry
+                .as_ref()
+                .map(|entry| (entry.level, entry.message.as_str())),
+            Some((
+                rf_ui::AppLogLevel::Warning,
+                "Blocked workspace run because multiple cached property packages are available; explicit package selection is required",
+            ))
+        );
+    }
+
+    #[test]
+    fn facade_returns_failed_dispatch_when_local_cache_files_are_unavailable() {
+        let cache_root = unique_temp_path("app-facade-failed");
+        let auth_cache_index = sample_auth_cache_index(&["pkg-1"]);
+        let facade = StudioAppFacade::new();
+        let mut app_state = AppState::new(sample_document());
+        let context = StudioAppAuthCacheContext::new(&cache_root, &auth_cache_index);
+
+        let dispatch = facade
+            .run_workspace_from_auth_cache(
+                &mut app_state,
+                &context,
+                &WorkspaceRunCommand::manual("pkg-1"),
+            )
+            .expect("expected failed dispatch");
+
+        assert_eq!(dispatch.package_id, Some("pkg-1".to_string()));
+        match dispatch.outcome {
+            StudioWorkspaceRunOutcome::Failed(failed) => {
+                assert_eq!(
+                    failed.reason,
+                    StudioWorkspaceRunFailedReason::LocalCacheUnavailable
+                );
+                assert!(failed.message.contains("failed to prepare local property package cache"));
+            }
+            other => panic!("expected failed dispatch, got {other:?}"),
+        }
+        assert_eq!(dispatch.run_status, RunStatus::Error);
+        assert_eq!(
+            dispatch
+                .latest_log_entry
+                .as_ref()
+                .map(|entry| entry.level),
+            Some(rf_ui::AppLogLevel::Error)
+        );
+
+        std::fs::remove_dir_all(cache_root).ok();
     }
 }
