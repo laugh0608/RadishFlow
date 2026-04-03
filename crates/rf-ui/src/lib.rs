@@ -12,11 +12,11 @@ mod state;
 
 pub use auth::{
     AuditUsageAck, AuditUsageRequest, AuthSessionState, AuthSessionStatus, AuthenticatedUser,
-    EntitlementSnapshot, EntitlementState, EntitlementStatus, OfflineLeaseRefreshRequest,
-    OfflineLeaseRefreshResponse, PropertyPackageClassification, PropertyPackageLeaseGrant,
-    PropertyPackageLeaseRequest, PropertyPackageManifest, PropertyPackageManifestList,
-    PropertyPackageSource, PropertyPackageUsageEvent, PropertyPackageUsageEventKind,
-    SecureCredentialHandle, TokenLease,
+    EntitlementNotice, EntitlementNoticeLevel, EntitlementSnapshot, EntitlementState,
+    EntitlementStatus, OfflineLeaseRefreshRequest, OfflineLeaseRefreshResponse,
+    PropertyPackageClassification, PropertyPackageLeaseGrant, PropertyPackageLeaseRequest,
+    PropertyPackageManifest, PropertyPackageManifestList, PropertyPackageSource,
+    PropertyPackageUsageEvent, PropertyPackageUsageEventKind, SecureCredentialHandle, TokenLease,
 };
 pub use commands::{
     CanvasPoint, CommandHistory, CommandHistoryEntry, CommandValue, DocumentCommand,

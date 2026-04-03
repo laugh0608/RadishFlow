@@ -52,6 +52,16 @@ fn main() {
                         println!("Latest log: {:?}: {}", entry.level, entry.message);
                     }
                 }
+                StudioAppResultDispatch::Entitlement(dispatch) => {
+                    println!("Entitlement status: {:?}", dispatch.entitlement_status);
+                    println!("Entitlement outcome: {:?}", dispatch.outcome);
+                    if let Some(notice) = dispatch.notice {
+                        println!("Entitlement notice: {:?}: {}", notice.level, notice.message);
+                    }
+                    if let Some(entry) = dispatch.latest_log_entry {
+                        println!("Latest log: {:?}: {}", entry.level, entry.message);
+                    }
+                }
             }
 
             if !report.log_entries.is_empty() {

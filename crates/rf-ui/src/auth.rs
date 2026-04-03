@@ -144,6 +144,34 @@ pub enum EntitlementStatus {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum EntitlementNoticeLevel {
+    Info,
+    Warning,
+    Error,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct EntitlementNotice {
+    pub level: EntitlementNoticeLevel,
+    pub title: String,
+    pub message: String,
+}
+
+impl EntitlementNotice {
+    pub fn new(
+        level: EntitlementNoticeLevel,
+        title: impl Into<String>,
+        message: impl Into<String>,
+    ) -> Self {
+        Self {
+            level,
+            title: title.into(),
+            message: message.into(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum PropertyPackageSource {
     LocalBundled,
     RemoteDerivedPackage,
@@ -315,6 +343,7 @@ pub struct EntitlementState {
     pub package_manifests: BTreeMap<String, PropertyPackageManifest>,
     pub last_synced_at: Option<SystemTime>,
     pub last_error: Option<String>,
+    pub notice: Option<EntitlementNotice>,
 }
 
 impl Default for EntitlementState {
@@ -325,6 +354,7 @@ impl Default for EntitlementState {
             package_manifests: BTreeMap::new(),
             last_synced_at: None,
             last_error: None,
+            notice: None,
         }
     }
 }
@@ -333,6 +363,7 @@ impl EntitlementState {
     pub fn begin_sync(&mut self) {
         self.status = EntitlementStatus::Syncing;
         self.last_error = None;
+        self.notice = None;
     }
 
     pub fn update(
@@ -349,6 +380,7 @@ impl EntitlementState {
         self.status = EntitlementStatus::Active;
         self.last_synced_at = Some(synced_at);
         self.last_error = None;
+        self.notice = None;
     }
 
     pub fn update_from_manifest_list(
@@ -376,6 +408,18 @@ impl EntitlementState {
     pub fn record_error(&mut self, message: impl Into<String>) {
         self.status = EntitlementStatus::Error;
         self.last_error = Some(message.into());
+    }
+
+    pub fn record_nonblocking_error(&mut self, message: impl Into<String>) {
+        self.last_error = Some(message.into());
+    }
+
+    pub fn set_notice(&mut self, notice: EntitlementNotice) {
+        self.notice = Some(notice);
+    }
+
+    pub fn clear_notice(&mut self) {
+        self.notice = None;
     }
 
     pub fn clear(&mut self) {

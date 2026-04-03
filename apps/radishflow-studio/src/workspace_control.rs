@@ -237,6 +237,7 @@ fn notice_from_dispatch(dispatch: &StudioAppResultDispatch) -> Option<RunPanelNo
         StudioAppResultDispatch::WorkspaceMode(dispatch) => dispatch.latest_log_entry.as_ref().map(
             |entry| RunPanelNotice::new(RunPanelNoticeLevel::Info, "Mode updated", entry.message.clone()),
         ),
+        StudioAppResultDispatch::Entitlement(_) => None,
     }
 }
 

@@ -322,6 +322,7 @@ mod tests {
         let dispatch = match report.outcome.dispatch {
             StudioAppResultDispatch::WorkspaceRun(dispatch) => dispatch,
             StudioAppResultDispatch::WorkspaceMode(_) => panic!("expected workspace run dispatch"),
+            StudioAppResultDispatch::Entitlement(_) => panic!("expected workspace run dispatch"),
         };
         assert_eq!(
             report.control_state.simulation_mode,
@@ -364,6 +365,7 @@ mod tests {
         let dispatch = match report.outcome.dispatch {
             StudioAppResultDispatch::WorkspaceRun(dispatch) => dispatch,
             StudioAppResultDispatch::WorkspaceMode(_) => panic!("expected workspace run dispatch"),
+            StudioAppResultDispatch::Entitlement(_) => panic!("expected workspace run dispatch"),
         };
         assert_eq!(
             report.control_state.simulation_mode,
@@ -396,6 +398,7 @@ mod tests {
         let dispatch = match report.outcome.dispatch {
             StudioAppResultDispatch::WorkspaceRun(dispatch) => dispatch,
             StudioAppResultDispatch::WorkspaceMode(_) => panic!("expected workspace run dispatch"),
+            StudioAppResultDispatch::Entitlement(_) => panic!("expected workspace run dispatch"),
         };
         assert_eq!(
             report.control_state.simulation_mode,
@@ -424,6 +427,7 @@ mod tests {
                 assert_eq!(dispatch.run_status, RunStatus::Idle);
             }
             StudioAppResultDispatch::WorkspaceRun(_) => panic!("expected workspace mode dispatch"),
+            StudioAppResultDispatch::Entitlement(_) => panic!("expected workspace mode dispatch"),
         }
         assert_eq!(report.control_state.simulation_mode, SimulationMode::Active);
         assert_eq!(report.run_panel.view().mode_label, "Active");
@@ -446,6 +450,7 @@ mod tests {
         let dispatch = match report.outcome.dispatch {
             StudioAppResultDispatch::WorkspaceRun(dispatch) => dispatch,
             StudioAppResultDispatch::WorkspaceMode(_) => panic!("expected workspace run dispatch"),
+            StudioAppResultDispatch::Entitlement(_) => panic!("expected workspace run dispatch"),
         };
         assert_eq!(dispatch.run_status, RunStatus::Converged);
         assert_eq!(report.run_panel.view().primary_action.label, "Run");
@@ -459,6 +464,7 @@ mod tests {
         let dispatch = match report.outcome.dispatch {
             StudioAppResultDispatch::WorkspaceRun(dispatch) => dispatch,
             StudioAppResultDispatch::WorkspaceMode(_) => panic!("expected workspace run dispatch"),
+            StudioAppResultDispatch::Entitlement(_) => panic!("expected workspace run dispatch"),
         };
         assert_eq!(dispatch.run_status, RunStatus::Converged);
     }

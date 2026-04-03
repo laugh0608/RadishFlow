@@ -18,6 +18,8 @@ pub enum StudioAppCommand {
     RunWorkspace(WorkspaceRunCommand),
     ResumeWorkspace(WorkspaceRunPackageSelection),
     SetWorkspaceSimulationMode(SimulationMode),
+    SyncEntitlement,
+    RefreshOfflineLease,
 }
 
 impl StudioAppCommand {
@@ -33,6 +35,14 @@ impl StudioAppCommand {
         Self::SetWorkspaceSimulationMode(mode)
     }
 
+    pub fn sync_entitlement() -> Self {
+        Self::SyncEntitlement
+    }
+
+    pub fn refresh_offline_lease() -> Self {
+        Self::RefreshOfflineLease
+    }
+
     pub fn execution_boundary(&self) -> StudioAppExecutionBoundary {
         match self {
             Self::RunWorkspace(_) | Self::ResumeWorkspace(_) => {
@@ -40,6 +50,9 @@ impl StudioAppCommand {
             }
             Self::SetWorkspaceSimulationMode(_) => {
                 StudioAppExecutionBoundary::Inline(StudioAppExecutionLane::WorkspaceControl)
+            }
+            Self::SyncEntitlement | Self::RefreshOfflineLease => {
+                StudioAppExecutionBoundary::Inline(StudioAppExecutionLane::EntitlementControl)
             }
         }
     }
@@ -49,6 +62,7 @@ impl StudioAppCommand {
 pub enum StudioAppExecutionLane {
     WorkspaceSolve,
     WorkspaceControl,
+    EntitlementControl,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -64,6 +78,21 @@ pub struct StudioAppAuthCacheContext<'a> {
 
 impl<'a> StudioAppAuthCacheContext<'a> {
     pub fn new(cache_root: &'a Path, auth_cache_index: &'a StoredAuthCacheIndex) -> Self {
+        Self {
+            cache_root,
+            auth_cache_index,
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct StudioAppMutableAuthCacheContext<'a> {
+    pub cache_root: &'a Path,
+    pub auth_cache_index: &'a mut StoredAuthCacheIndex,
+}
+
+impl<'a> StudioAppMutableAuthCacheContext<'a> {
+    pub fn new(cache_root: &'a Path, auth_cache_index: &'a mut StoredAuthCacheIndex) -> Self {
         Self {
             cache_root,
             auth_cache_index,
@@ -133,6 +162,7 @@ pub struct StudioWorkspaceModeDispatch {
 pub enum StudioAppResultDispatch {
     WorkspaceRun(StudioWorkspaceRunDispatch),
     WorkspaceMode(StudioWorkspaceModeDispatch),
+    Entitlement(crate::StudioEntitlementActionOutcome),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -170,6 +200,67 @@ impl StudioAppFacade {
                     self.set_workspace_simulation_mode(app_state, *mode),
                 )
             }
+            StudioAppCommand::SyncEntitlement | StudioAppCommand::RefreshOfflineLease => {
+                return Err(RfError::invalid_input(
+                    "control plane entitlement commands require mutable auth cache context and access token",
+                ));
+            }
+        };
+
+        Ok(StudioAppCommandOutcome { boundary, dispatch })
+    }
+
+    pub fn execute_with_control_plane<Client>(
+        &self,
+        app_state: &mut AppState,
+        context: &mut StudioAppMutableAuthCacheContext<'_>,
+        control_plane_client: &Client,
+        access_token: &str,
+        command: &StudioAppCommand,
+    ) -> RfResult<StudioAppCommandOutcome>
+    where
+        Client: crate::RadishFlowControlPlaneClient,
+    {
+        let boundary = command.execution_boundary();
+        let dispatch = match command {
+            StudioAppCommand::RunWorkspace(run_command) => {
+                let readonly_context =
+                    StudioAppAuthCacheContext::new(context.cache_root, &*context.auth_cache_index);
+                StudioAppResultDispatch::WorkspaceRun(self.run_workspace_from_auth_cache(
+                    app_state,
+                    &readonly_context,
+                    run_command,
+                )?)
+            }
+            StudioAppCommand::ResumeWorkspace(selection) => {
+                let readonly_context =
+                    StudioAppAuthCacheContext::new(context.cache_root, &*context.auth_cache_index);
+                StudioAppResultDispatch::WorkspaceRun(self.resume_workspace_from_auth_cache(
+                    app_state,
+                    &readonly_context,
+                    selection,
+                )?)
+            }
+            StudioAppCommand::SetWorkspaceSimulationMode(mode) => {
+                StudioAppResultDispatch::WorkspaceMode(
+                    self.set_workspace_simulation_mode(app_state, *mode),
+                )
+            }
+            StudioAppCommand::SyncEntitlement => StudioAppResultDispatch::Entitlement(
+                crate::sync_entitlement_with_control_plane(
+                    control_plane_client,
+                    app_state,
+                    access_token,
+                ),
+            ),
+            StudioAppCommand::RefreshOfflineLease => StudioAppResultDispatch::Entitlement(
+                crate::refresh_offline_lease_with_control_plane(
+                    control_plane_client,
+                    app_state,
+                    context.auth_cache_index,
+                    access_token,
+                ),
+            ),
         };
 
         Ok(StudioAppCommandOutcome { boundary, dispatch })
@@ -439,6 +530,7 @@ mod tests {
     use rf_model::Flowsheet;
     use rf_store::{
         StoredAntoineCoefficients, StoredAuthCacheIndex, StoredCredentialReference,
+        StoredEntitlementCache,
         StoredPropertyPackageManifest, StoredPropertyPackagePayload, StoredPropertyPackageRecord,
         StoredPropertyPackageSource, StoredThermoComponent, parse_project_file_json,
         property_package_payload_integrity, write_property_package_manifest,
@@ -446,18 +538,26 @@ mod tests {
     };
     use rf_types::ComponentId;
     use rf_ui::{
-        AppState, DocumentMetadata, FlowsheetDocument, RunStatus, SimulationMode,
-        SolvePendingReason,
+        AppState, AuthenticatedUser, DocumentMetadata, EntitlementSnapshot, FlowsheetDocument,
+        OfflineLeaseRefreshRequest, OfflineLeaseRefreshResponse, PropertyPackageLeaseGrant,
+        PropertyPackageLeaseRequest, PropertyPackageManifest, PropertyPackageManifestList,
+        PropertyPackageSource, RunStatus, SecureCredentialHandle, SimulationMode,
+        SolvePendingReason, TokenLease,
     };
 
     use super::{
         StudioAppAuthCacheContext, StudioAppCommand, StudioAppExecutionBoundary,
         StudioAppExecutionLane, StudioAppFacade, StudioAppResultDispatch,
-        StudioWorkspaceRunBlocked,
+        StudioAppMutableAuthCacheContext, StudioWorkspaceRunBlocked,
         StudioWorkspaceRunBlockedReason, StudioWorkspaceRunFailedReason,
         StudioWorkspaceRunOutcome,
     };
-    use crate::{WorkspaceRunCommand, WorkspaceRunPackageSelection};
+    use crate::{
+        RadishFlowControlPlaneClient, RadishFlowControlPlaneClientError,
+        RadishFlowControlPlaneClientErrorKind, RadishFlowControlPlaneResponse,
+        StudioEntitlementAction, StudioEntitlementFailureReason, StudioEntitlementOutcome,
+        WorkspaceRunCommand, WorkspaceRunPackageSelection,
+    };
 
     fn timestamp(seconds: u64) -> std::time::SystemTime {
         UNIX_EPOCH + Duration::from_secs(seconds)
@@ -490,6 +590,21 @@ mod tests {
                 record
             })
             .collect();
+        index
+    }
+
+    fn sample_entitled_auth_cache_index(package_ids: &[&str]) -> StoredAuthCacheIndex {
+        let mut index = sample_auth_cache_index(package_ids);
+        index.entitlement = Some(StoredEntitlementCache {
+            subject_id: "user-123".to_string(),
+            tenant_id: Some("tenant-1".to_string()),
+            synced_at: timestamp(100),
+            issued_at: timestamp(90),
+            expires_at: timestamp(500),
+            offline_lease_expires_at: Some(timestamp(700)),
+            feature_keys: std::collections::BTreeSet::from(["desktop-login".to_string()]),
+            allowed_package_ids: package_ids.iter().map(|item| item.to_string()).collect(),
+        });
         index
     }
 
@@ -558,6 +673,57 @@ mod tests {
         auth_cache_index.property_packages.push(record);
     }
 
+    fn sample_snapshot() -> EntitlementSnapshot {
+        EntitlementSnapshot {
+            schema_version: 1,
+            subject_id: "user-123".to_string(),
+            tenant_id: Some("tenant-1".to_string()),
+            issued_at: timestamp(100),
+            expires_at: timestamp(500),
+            offline_lease_expires_at: Some(timestamp(900)),
+            features: std::collections::BTreeSet::from(["desktop-login".to_string()]),
+            allowed_package_ids: std::collections::BTreeSet::from([
+                "binary-hydrocarbon-lite-v1".to_string(),
+            ]),
+        }
+    }
+
+    fn sample_manifest() -> PropertyPackageManifest {
+        let mut manifest = PropertyPackageManifest::new(
+            "binary-hydrocarbon-lite-v1",
+            "2026.03.1",
+            PropertyPackageSource::RemoteDerivedPackage,
+        );
+        manifest.hash = "sha256:pkg-1".to_string();
+        manifest.size_bytes = 1024;
+        manifest.expires_at = Some(timestamp(900));
+        manifest
+    }
+
+    fn sample_manifest_list() -> PropertyPackageManifestList {
+        PropertyPackageManifestList::new(timestamp(205), vec![sample_manifest()])
+    }
+
+    fn sample_offline_refresh_response() -> OfflineLeaseRefreshResponse {
+        OfflineLeaseRefreshResponse {
+            refreshed_at: timestamp(210),
+            snapshot: sample_snapshot(),
+            manifest_list: sample_manifest_list(),
+        }
+    }
+
+    fn complete_login(app_state: &mut AppState) {
+        app_state.complete_login(
+            "https://id.radish.local",
+            AuthenticatedUser::new("user-123", "luobo"),
+            TokenLease::new(
+                timestamp(400),
+                SecureCredentialHandle::new("radishflow-studio", "user-123-primary"),
+            ),
+            timestamp(120),
+        );
+    }
+
     #[test]
     fn facade_runs_workspace_command_from_auth_cache() {
         let cache_root = unique_temp_path("app-facade-run");
@@ -596,6 +762,7 @@ mod tests {
         let dispatch = match outcome.dispatch {
             StudioAppResultDispatch::WorkspaceRun(dispatch) => dispatch,
             StudioAppResultDispatch::WorkspaceMode(_) => panic!("expected workspace run dispatch"),
+            StudioAppResultDispatch::Entitlement(_) => panic!("expected workspace run dispatch"),
         };
         assert_eq!(
             dispatch.package_id,
@@ -656,6 +823,7 @@ mod tests {
         let dispatch = match outcome.dispatch {
             StudioAppResultDispatch::WorkspaceRun(dispatch) => dispatch,
             StudioAppResultDispatch::WorkspaceMode(_) => panic!("expected workspace run dispatch"),
+            StudioAppResultDispatch::Entitlement(_) => panic!("expected workspace run dispatch"),
         };
         assert_eq!(dispatch.package_id, None);
         assert_eq!(
@@ -705,6 +873,7 @@ mod tests {
         let dispatch = match outcome.dispatch {
             StudioAppResultDispatch::WorkspaceMode(dispatch) => dispatch,
             StudioAppResultDispatch::WorkspaceRun(_) => panic!("expected workspace mode dispatch"),
+            StudioAppResultDispatch::Entitlement(_) => panic!("expected workspace mode dispatch"),
         };
         assert_eq!(dispatch.simulation_mode, SimulationMode::Active);
         assert_eq!(
@@ -758,6 +927,7 @@ mod tests {
         let dispatch = match outcome.dispatch {
             StudioAppResultDispatch::WorkspaceRun(dispatch) => dispatch,
             StudioAppResultDispatch::WorkspaceMode(_) => panic!("expected workspace run dispatch"),
+            StudioAppResultDispatch::Entitlement(_) => panic!("expected workspace run dispatch"),
         };
         assert_eq!(
             dispatch.outcome,
@@ -864,5 +1034,166 @@ mod tests {
         );
 
         std::fs::remove_dir_all(cache_root).ok();
+    }
+
+    #[test]
+    fn facade_executes_entitlement_sync_through_control_plane_context() {
+        let facade = StudioAppFacade::new();
+        let mut app_state = AppState::new(sample_document());
+        let cache_root = PathBuf::from("D:\\cache-root");
+        let mut auth_cache_index = sample_entitled_auth_cache_index(&["binary-hydrocarbon-lite-v1"]);
+        let mut context = StudioAppMutableAuthCacheContext::new(&cache_root, &mut auth_cache_index);
+        let client = ScriptedControlPlaneClient::success();
+
+        let outcome = facade
+            .execute_with_control_plane(
+                &mut app_state,
+                &mut context,
+                &client,
+                "access-token",
+                &StudioAppCommand::sync_entitlement(),
+            )
+            .expect("expected entitlement sync dispatch");
+
+        assert_eq!(
+            outcome.boundary,
+            StudioAppExecutionBoundary::Inline(StudioAppExecutionLane::EntitlementControl)
+        );
+        match outcome.dispatch {
+            StudioAppResultDispatch::Entitlement(dispatch) => {
+                assert_eq!(dispatch.action, StudioEntitlementAction::SyncEntitlement);
+                assert_eq!(dispatch.outcome, StudioEntitlementOutcome::Synced);
+            }
+            other => panic!("expected entitlement dispatch, got {other:?}"),
+        }
+        assert!(app_state.entitlement.is_package_allowed("binary-hydrocarbon-lite-v1"));
+    }
+
+    #[test]
+    fn facade_executes_offline_refresh_through_control_plane_context() {
+        let facade = StudioAppFacade::new();
+        let mut app_state = AppState::new(sample_document());
+        complete_login(&mut app_state);
+        app_state.update_entitlement(sample_snapshot(), vec![sample_manifest()], timestamp(150));
+        let cache_root = PathBuf::from("D:\\cache-root");
+        let mut auth_cache_index = sample_entitled_auth_cache_index(&["binary-hydrocarbon-lite-v1"]);
+        let mut context = StudioAppMutableAuthCacheContext::new(&cache_root, &mut auth_cache_index);
+        let client = ScriptedControlPlaneClient::offline_refresh_failure(
+            RadishFlowControlPlaneClientError::unauthorized("token expired"),
+        );
+
+        let outcome = facade
+            .execute_with_control_plane(
+                &mut app_state,
+                &mut context,
+                &client,
+                "access-token",
+                &StudioAppCommand::refresh_offline_lease(),
+            )
+            .expect("expected offline refresh dispatch");
+
+        match outcome.dispatch {
+            StudioAppResultDispatch::Entitlement(dispatch) => match dispatch.outcome {
+                StudioEntitlementOutcome::Failed(failure) => {
+                    assert_eq!(
+                        failure.reason,
+                        StudioEntitlementFailureReason::AuthenticationRequired
+                    );
+                }
+                other => panic!("expected failed entitlement outcome, got {other:?}"),
+            },
+            other => panic!("expected entitlement dispatch, got {other:?}"),
+        }
+        assert_eq!(app_state.auth_session.status, rf_ui::AuthSessionStatus::Error);
+    }
+
+    #[derive(Debug, Clone)]
+    struct ScriptedControlPlaneClient {
+        entitlement_response: Result<
+            RadishFlowControlPlaneResponse<EntitlementSnapshot>,
+            RadishFlowControlPlaneClientError,
+        >,
+        manifest_response: Result<
+            RadishFlowControlPlaneResponse<PropertyPackageManifestList>,
+            RadishFlowControlPlaneClientError,
+        >,
+        refresh_response: Result<
+            RadishFlowControlPlaneResponse<OfflineLeaseRefreshResponse>,
+            RadishFlowControlPlaneClientError,
+        >,
+    }
+
+    impl ScriptedControlPlaneClient {
+        fn success() -> Self {
+            Self {
+                entitlement_response: Ok(RadishFlowControlPlaneResponse::new(
+                    sample_snapshot(),
+                    timestamp(200),
+                )),
+                manifest_response: Ok(RadishFlowControlPlaneResponse::new(
+                    sample_manifest_list(),
+                    timestamp(210),
+                )),
+                refresh_response: Ok(RadishFlowControlPlaneResponse::new(
+                    sample_offline_refresh_response(),
+                    timestamp(220),
+                )),
+            }
+        }
+
+        fn offline_refresh_failure(error: RadishFlowControlPlaneClientError) -> Self {
+            Self {
+                refresh_response: Err(error),
+                ..Self::success()
+            }
+        }
+    }
+
+    impl RadishFlowControlPlaneClient for ScriptedControlPlaneClient {
+        fn fetch_entitlement_snapshot(
+            &self,
+            _access_token: &str,
+        ) -> Result<
+            RadishFlowControlPlaneResponse<EntitlementSnapshot>,
+            RadishFlowControlPlaneClientError,
+        > {
+            self.entitlement_response.clone()
+        }
+
+        fn fetch_property_package_manifest_list(
+            &self,
+            _access_token: &str,
+        ) -> Result<
+            RadishFlowControlPlaneResponse<PropertyPackageManifestList>,
+            RadishFlowControlPlaneClientError,
+        > {
+            self.manifest_response.clone()
+        }
+
+        fn request_property_package_lease(
+            &self,
+            _access_token: &str,
+            _package_id: &str,
+            _request: &PropertyPackageLeaseRequest,
+        ) -> Result<
+            RadishFlowControlPlaneResponse<PropertyPackageLeaseGrant>,
+            RadishFlowControlPlaneClientError,
+        > {
+            Err(RadishFlowControlPlaneClientError::new(
+                RadishFlowControlPlaneClientErrorKind::OtherPermanent,
+                "lease request is not used in app facade tests",
+            ))
+        }
+
+        fn refresh_offline_leases(
+            &self,
+            _access_token: &str,
+            _request: &OfflineLeaseRefreshRequest,
+        ) -> Result<
+            RadishFlowControlPlaneResponse<OfflineLeaseRefreshResponse>,
+            RadishFlowControlPlaneClientError,
+        > {
+            self.refresh_response.clone()
+        }
     }
 }

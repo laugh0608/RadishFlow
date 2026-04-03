@@ -3,6 +3,7 @@ mod auth_cache_sync;
 mod bootstrap;
 mod control_plane_client;
 mod control_plane_sync;
+mod entitlement_control;
 mod property_package_download;
 mod property_package_download_client;
 mod run_panel_driver;
@@ -13,10 +14,10 @@ mod workspace_solve_service;
 
 pub use app_facade::{
     StudioAppAuthCacheContext, StudioAppCommand, StudioAppCommandOutcome,
-    StudioAppExecutionBoundary, StudioAppExecutionLane, StudioAppFacade, StudioAppResultDispatch,
-    StudioWorkspaceModeDispatch, StudioWorkspaceRunBlocked, StudioWorkspaceRunBlockedReason,
-    StudioWorkspaceRunDispatch, StudioWorkspaceRunFailed, StudioWorkspaceRunFailedReason,
-    StudioWorkspaceRunOutcome,
+    StudioAppExecutionBoundary, StudioAppExecutionLane, StudioAppFacade,
+    StudioAppMutableAuthCacheContext, StudioAppResultDispatch, StudioWorkspaceModeDispatch,
+    StudioWorkspaceRunBlocked, StudioWorkspaceRunBlockedReason, StudioWorkspaceRunDispatch,
+    StudioWorkspaceRunFailed, StudioWorkspaceRunFailedReason, StudioWorkspaceRunOutcome,
 };
 pub use auth_cache_sync::{
     apply_offline_refresh_to_auth_cache, build_auth_cache_index, build_offline_refresh_request,
@@ -35,6 +36,11 @@ pub use control_plane_client::{
     ReqwestRadishFlowControlPlaneHttpTransport, ReqwestRadishFlowControlPlaneHttpTransportOptions,
 };
 pub use control_plane_sync::{EntitlementSyncResult, RadishFlowControlPlaneSyncService};
+pub use entitlement_control::{
+    StudioEntitlementAction, StudioEntitlementActionOutcome, StudioEntitlementFailure,
+    StudioEntitlementFailureReason, StudioEntitlementOutcome,
+    refresh_offline_lease_with_control_plane, sync_entitlement_with_control_plane,
+};
 pub use property_package_download::{
     PROPERTY_PACKAGE_DOWNLOAD_KIND, PROPERTY_PACKAGE_DOWNLOAD_SCHEMA_VERSION,
     PropertyPackageDownload, PropertyPackageDownloadAntoineCoefficients,
