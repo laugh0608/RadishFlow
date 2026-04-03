@@ -3,15 +3,15 @@ use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use crate::{
-    EntitlementPreflightOutcome, EntitlementSessionPanelDriverOutcome, EntitlementSessionPolicy,
-    EntitlementSessionSchedule, EntitlementSessionState, EntitlementSessionTickDriverOutcome,
-    RadishFlowControlPlaneClient, RadishFlowControlPlaneClientError,
+    EntitlementPreflightOutcome, EntitlementSessionEvent, EntitlementSessionEventDriverOutcome,
+    EntitlementSessionPanelDriverOutcome, EntitlementSessionPolicy, EntitlementSessionSchedule,
+    EntitlementSessionState, RadishFlowControlPlaneClient, RadishFlowControlPlaneClientError,
     RadishFlowControlPlaneClientErrorKind, RadishFlowControlPlaneResponse, RunPanelDriverOutcome,
     RunPanelWidgetDispatchOutcome, StudioAppAuthCacheContext, StudioAppCommandOutcome,
     StudioAppFacade, StudioAppMutableAuthCacheContext, WorkspaceControlState,
+    dispatch_entitlement_session_event_with_control_plane,
     dispatch_entitlement_session_panel_primary_action_with_control_plane,
     dispatch_entitlement_session_panel_widget_action_with_control_plane,
-    dispatch_entitlement_session_tick_driver_with_control_plane,
     dispatch_run_panel_intent_with_auth_cache, dispatch_run_panel_primary_action_with_auth_cache,
     dispatch_run_panel_widget_action_with_auth_cache, snapshot_entitlement_session_driver_state,
     snapshot_run_panel_driver_state,
@@ -137,7 +137,10 @@ pub fn run_studio_bootstrap(config: &StudioBootstrapConfig) -> RfResult<StudioBo
     );
 
     Ok(StudioBootstrapReport {
-        entitlement_preflight: entitlement_session_tick.tick.preflight,
+        entitlement_preflight: match entitlement_session_tick.outcome {
+            crate::EntitlementSessionEventOutcome::Tick(tick) => tick.preflight,
+            crate::EntitlementSessionEventOutcome::RecordedCommand { .. } => None,
+        },
         entitlement_session_schedule: entitlement_driver_state.schedule,
         outcome,
         control_state: driver_state.control_state,
@@ -156,26 +159,29 @@ fn dispatch_bootstrap_entitlement_session_tick(
     mode: &StudioBootstrapEntitlementPreflight,
     policy: &EntitlementSessionPolicy,
     session_state: &mut EntitlementSessionState,
-) -> RfResult<EntitlementSessionTickDriverOutcome> {
+) -> RfResult<EntitlementSessionEventDriverOutcome> {
     if matches!(mode, StudioBootstrapEntitlementPreflight::Skip) {
         let now = normalized_system_time_now()?;
-        return Ok(EntitlementSessionTickDriverOutcome {
-            tick: crate::EntitlementSessionTickOutcome {
-                preflight: None,
-                schedule: crate::snapshot_entitlement_session_schedule(
-                    app_state,
-                    now,
-                    policy,
-                    session_state,
-                ),
-            },
+        return Ok(EntitlementSessionEventDriverOutcome {
+            event: EntitlementSessionEvent::SessionStarted,
+            outcome: crate::EntitlementSessionEventOutcome::Tick(
+                crate::EntitlementSessionTickOutcome {
+                    preflight: None,
+                    schedule: crate::snapshot_entitlement_session_schedule(
+                        app_state,
+                        now,
+                        policy,
+                        session_state,
+                    ),
+                },
+            ),
             state: snapshot_entitlement_session_driver_state(app_state, now, policy, session_state),
         });
     }
 
     let mut context = StudioAppMutableAuthCacheContext::new(cache_root, auth_cache_index);
     let now = normalized_system_time_now()?;
-    dispatch_entitlement_session_tick_driver_with_control_plane(
+    dispatch_entitlement_session_event_with_control_plane(
         facade,
         app_state,
         &mut context,
@@ -184,6 +190,7 @@ fn dispatch_bootstrap_entitlement_session_tick(
         now,
         policy,
         session_state,
+        EntitlementSessionEvent::SessionStarted,
     )
 }
 
