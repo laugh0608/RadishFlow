@@ -8,6 +8,7 @@ use rf_store::{
     StoredPropertyPackageManifest, StoredPropertyPackagePayload, StoredPropertyPackageRecord,
     StoredPropertyPackageSource, auth_cache_index_to_pretty_json,
     property_package_manifest_to_pretty_json, property_package_payload_to_pretty_json,
+    write_property_package_manifest,
 };
 use rf_types::{RfError, RfResult};
 use rf_ui::{
@@ -147,6 +148,29 @@ pub fn apply_offline_refresh_to_auth_cache(
     index.entitlement = Some(stored_entitlement);
     index.last_synced_at = Some(response.refreshed_at);
     index.validate()
+}
+
+pub fn persist_offline_refresh_manifests_to_cache(
+    cache_root: impl AsRef<Path>,
+    index: &StoredAuthCacheIndex,
+    response: &OfflineLeaseRefreshResponse,
+) -> RfResult<()> {
+    index.validate()?;
+    let cache_root = cache_root.as_ref();
+
+    for record in &index.property_packages {
+        let Some(manifest) = response.manifest_list.packages.iter().find(|manifest| {
+            manifest.package_id == record.package_id && manifest.version == record.version
+        }) else {
+            continue;
+        };
+
+        let stored_manifest = build_stored_refreshed_manifest(record, manifest)?;
+        stored_manifest.validate_against_record(record)?;
+        write_property_package_manifest(record.manifest_path_under(cache_root), &stored_manifest)?;
+    }
+
+    Ok(())
 }
 
 fn persist_downloaded_package_to_cache_with_store<Store>(
@@ -545,6 +569,31 @@ fn build_stored_downloaded_manifest(
         manifest.size_bytes
     };
     stored_manifest.expires_at = Some(active_package_expiration(index)?);
+    stored_manifest.validate()?;
+    Ok(stored_manifest)
+}
+
+fn build_stored_refreshed_manifest(
+    record: &StoredPropertyPackageRecord,
+    manifest: &PropertyPackageManifest,
+) -> RfResult<StoredPropertyPackageManifest> {
+    let mut stored_manifest = StoredPropertyPackageManifest::new(
+        manifest.package_id.clone(),
+        manifest.version.clone(),
+        stored_source_from_manifest_source(manifest.source)?,
+        manifest.component_ids.clone(),
+    );
+    stored_manifest.hash = if manifest.hash.is_empty() {
+        record.hash.clone()
+    } else {
+        manifest.hash.clone()
+    };
+    stored_manifest.size_bytes = if manifest.size_bytes == 0 {
+        record.size_bytes
+    } else {
+        manifest.size_bytes
+    };
+    stored_manifest.expires_at = record.expires_at;
     stored_manifest.validate()?;
     Ok(stored_manifest)
 }

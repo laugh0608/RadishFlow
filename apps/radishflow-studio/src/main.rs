@@ -24,11 +24,17 @@ fn main() {
             println!("RadishFlow Studio bootstrap");
             println!("Project: {}", config.project_path.display());
             println!("Requested trigger: {:?}", config.trigger);
+            println!("Entitlement preflight: {:?}", config.entitlement_preflight);
             println!("Control mode: {:?}", report.control_state.simulation_mode);
             println!("Control pending: {:?}", report.control_state.pending_reason);
             println!("Control status: {:?}", report.control_state.run_status);
             print_run_panel(&report);
             print_entitlement_panel(&report);
+
+            if let Some(preflight) = report.entitlement_preflight.as_ref() {
+                println!("Preflight action: {:?}", preflight.decision.action);
+                println!("Preflight reason: {}", preflight.decision.reason);
+            }
 
             match report.outcome.dispatch {
                 StudioAppResultDispatch::WorkspaceRun(dispatch) => {

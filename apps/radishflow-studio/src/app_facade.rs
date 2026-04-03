@@ -257,6 +257,7 @@ impl StudioAppFacade {
                 crate::refresh_offline_lease_with_control_plane(
                     control_plane_client,
                     app_state,
+                    context.cache_root,
                     context.auth_cache_index,
                     access_token,
                 ),

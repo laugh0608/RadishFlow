@@ -1,3 +1,5 @@
+use std::path::Path;
+
 use rf_store::StoredAuthCacheIndex;
 use rf_types::RfResult;
 use rf_ui::{
@@ -9,7 +11,7 @@ use rf_ui::{
 use crate::{
     RadishFlowControlPlaneClient, RadishFlowControlPlaneClientError,
     RadishFlowControlPlaneClientErrorKind, apply_offline_refresh_to_auth_cache,
-    build_offline_refresh_request,
+    build_offline_refresh_request, persist_offline_refresh_manifests_to_cache,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -103,6 +105,7 @@ where
 pub fn refresh_offline_lease_with_control_plane<Client>(
     client: &Client,
     app_state: &mut AppState,
+    cache_root: &Path,
     auth_cache_index: &mut StoredAuthCacheIndex,
     access_token: &str,
 ) -> StudioEntitlementActionOutcome
@@ -115,7 +118,12 @@ where
     let outcome = match build_offline_refresh_request(auth_cache_index) {
         Ok(request) => match client.refresh_offline_leases(access_token, &request) {
             Ok(response) => {
-                match apply_offline_refresh_success(app_state, auth_cache_index, response.value) {
+                match apply_offline_refresh_success(
+                    app_state,
+                    cache_root,
+                    auth_cache_index,
+                    response.value,
+                ) {
                     Ok(()) => {
                         let notice = EntitlementNotice::new(
                             EntitlementNoticeLevel::Info,
@@ -237,10 +245,12 @@ fn validate_manifest_sync_consistency(
 
 fn apply_offline_refresh_success(
     app_state: &mut AppState,
+    cache_root: &Path,
     auth_cache_index: &mut StoredAuthCacheIndex,
     response: OfflineLeaseRefreshResponse,
 ) -> RfResult<()> {
     apply_offline_refresh_to_auth_cache(auth_cache_index, &response)?;
+    persist_offline_refresh_manifests_to_cache(cache_root, auth_cache_index, &response)?;
     app_state.entitlement.apply_offline_refresh(response);
     Ok(())
 }
@@ -484,11 +494,13 @@ mod tests {
         let client = ScriptedControlPlaneClient::success();
         let mut app_state = sample_app_state();
         app_state.update_entitlement(sample_snapshot(), vec![sample_manifest()], timestamp(150));
+        let cache_root = std::env::temp_dir().join("radishflow-entitlement-refresh-test");
         let mut auth_cache_index = sample_auth_cache_index();
 
         let dispatch = refresh_offline_lease_with_control_plane(
             &client,
             &mut app_state,
+            &cache_root,
             &mut auth_cache_index,
             "access",
         );
@@ -507,6 +519,7 @@ mod tests {
         );
         assert_eq!(auth_cache_index.last_synced_at, Some(timestamp(210)));
         assert_eq!(dispatch.last_synced_at, Some(timestamp(210)));
+        std::fs::remove_dir_all(cache_root).ok();
     }
 
     #[test]
@@ -517,11 +530,13 @@ mod tests {
         let mut app_state = sample_app_state();
         complete_login(&mut app_state);
         app_state.update_entitlement(sample_snapshot(), vec![sample_manifest()], timestamp(150));
+        let cache_root = std::env::temp_dir().join("radishflow-entitlement-refresh-auth-error");
         let mut auth_cache_index = sample_auth_cache_index();
 
         let dispatch = refresh_offline_lease_with_control_plane(
             &client,
             &mut app_state,
+            &cache_root,
             &mut auth_cache_index,
             "access",
         );
@@ -543,6 +558,7 @@ mod tests {
             dispatch.notice.as_ref().map(|notice| notice.title.as_str()),
             Some("Login required")
         );
+        std::fs::remove_dir_all(cache_root).ok();
     }
 
     fn sample_app_state() -> rf_ui::AppState {

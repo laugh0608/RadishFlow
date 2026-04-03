@@ -4,13 +4,15 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use crate::{
     EntitlementPanelDriverOutcome, EntitlementPanelWidgetDispatchOutcome,
-    RadishFlowControlPlaneClient, RadishFlowControlPlaneClientError,
-    RadishFlowControlPlaneClientErrorKind, RadishFlowControlPlaneResponse, RunPanelDriverOutcome,
-    RunPanelWidgetDispatchOutcome, StudioAppAuthCacheContext, StudioAppCommandOutcome,
-    StudioAppFacade, StudioAppMutableAuthCacheContext, WorkspaceControlState,
+    EntitlementPreflightOutcome, EntitlementPreflightPolicy, RadishFlowControlPlaneClient,
+    RadishFlowControlPlaneClientError, RadishFlowControlPlaneClientErrorKind,
+    RadishFlowControlPlaneResponse, RunPanelDriverOutcome, RunPanelWidgetDispatchOutcome,
+    StudioAppAuthCacheContext, StudioAppCommandOutcome, StudioAppFacade,
+    StudioAppMutableAuthCacheContext, WorkspaceControlState,
     dispatch_entitlement_panel_primary_action_with_control_plane,
     dispatch_entitlement_panel_widget_action_with_control_plane,
-    dispatch_run_panel_intent_with_auth_cache, dispatch_run_panel_primary_action_with_auth_cache,
+    dispatch_entitlement_preflight_with_control_plane, dispatch_run_panel_intent_with_auth_cache,
+    dispatch_run_panel_primary_action_with_auth_cache,
     dispatch_run_panel_widget_action_with_auth_cache, snapshot_entitlement_panel_driver_state,
     snapshot_run_panel_driver_state,
 };
@@ -35,6 +37,8 @@ use rf_ui::{
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StudioBootstrapConfig {
     pub project_path: PathBuf,
+    pub entitlement_preflight: StudioBootstrapEntitlementPreflight,
+    pub entitlement_seed: StudioBootstrapEntitlementSeed,
     pub trigger: StudioBootstrapTrigger,
 }
 
@@ -47,6 +51,19 @@ pub enum StudioBootstrapTrigger {
     EntitlementWidgetAction(EntitlementActionId),
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum StudioBootstrapEntitlementPreflight {
+    Skip,
+    Auto,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum StudioBootstrapEntitlementSeed {
+    Synced,
+    MissingSnapshot,
+    LeaseExpiringSoon,
+}
+
 impl Default for StudioBootstrapConfig {
     fn default() -> Self {
         let workspace_root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
@@ -56,6 +73,8 @@ impl Default for StudioBootstrapConfig {
                 .join("examples")
                 .join("flowsheets")
                 .join("feed-heater-flash.rfproj.json"),
+            entitlement_preflight: StudioBootstrapEntitlementPreflight::Auto,
+            entitlement_seed: StudioBootstrapEntitlementSeed::Synced,
             trigger: StudioBootstrapTrigger::WidgetPrimaryAction,
         }
     }
@@ -63,6 +82,7 @@ impl Default for StudioBootstrapConfig {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StudioBootstrapReport {
+    pub entitlement_preflight: Option<EntitlementPreflightOutcome>,
     pub outcome: StudioAppCommandOutcome,
     pub control_state: WorkspaceControlState,
     pub run_panel: RunPanelWidgetModel,
@@ -78,11 +98,20 @@ pub fn run_studio_bootstrap(config: &StudioBootstrapConfig) -> RfResult<StudioBo
         cache_root.path(),
         &project_file.document.flowsheet,
         "binary-hydrocarbon-lite-v1",
+        config.entitlement_seed,
     )?;
     seed_bootstrap_runtime_state(&mut app_state, &seeded_auth_cache);
     let control_plane_client = BootstrapControlPlaneClient::from_seed(&seeded_auth_cache);
     let mut auth_cache_index = seeded_auth_cache.auth_cache_index;
     let facade = StudioAppFacade::new();
+    let entitlement_preflight = dispatch_bootstrap_entitlement_preflight(
+        &facade,
+        &mut app_state,
+        cache_root.path(),
+        &mut auth_cache_index,
+        &control_plane_client,
+        &config.entitlement_preflight,
+    )?;
     let outcome = dispatch_bootstrap_trigger(
         &facade,
         &mut app_state,
@@ -95,12 +124,37 @@ pub fn run_studio_bootstrap(config: &StudioBootstrapConfig) -> RfResult<StudioBo
     let entitlement_driver_state = snapshot_entitlement_panel_driver_state(&app_state);
 
     Ok(StudioBootstrapReport {
+        entitlement_preflight,
         outcome,
         control_state: driver_state.control_state,
         run_panel: driver_state.widget,
         entitlement_panel: entitlement_driver_state.widget,
         log_entries: app_state.log_feed.entries.iter().cloned().collect(),
     })
+}
+
+fn dispatch_bootstrap_entitlement_preflight(
+    facade: &StudioAppFacade,
+    app_state: &mut AppState,
+    cache_root: &Path,
+    auth_cache_index: &mut StoredAuthCacheIndex,
+    control_plane_client: &BootstrapControlPlaneClient,
+    mode: &StudioBootstrapEntitlementPreflight,
+) -> RfResult<Option<EntitlementPreflightOutcome>> {
+    if matches!(mode, StudioBootstrapEntitlementPreflight::Skip) {
+        return Ok(None);
+    }
+
+    let mut context = StudioAppMutableAuthCacheContext::new(cache_root, auth_cache_index);
+    dispatch_entitlement_preflight_with_control_plane(
+        facade,
+        app_state,
+        &mut context,
+        control_plane_client,
+        "bootstrap-access-token",
+        normalized_system_time_now()?,
+        &EntitlementPreflightPolicy::default(),
+    )
 }
 
 fn dispatch_bootstrap_trigger(
@@ -243,6 +297,7 @@ struct BootstrapSeedState {
     snapshot: EntitlementSnapshot,
     manifest: PropertyPackageManifest,
     synced_at: SystemTime,
+    seed_mode: StudioBootstrapEntitlementSeed,
 }
 
 #[derive(Debug, Clone)]
@@ -371,6 +426,7 @@ fn seed_sample_auth_cache(
     cache_root: &Path,
     flowsheet: &Flowsheet,
     package_id: &str,
+    seed_mode: StudioBootstrapEntitlementSeed,
 ) -> RfResult<BootstrapSeedState> {
     let downloaded_at = normalized_system_time_now()?;
     let payload = build_bootstrap_payload(flowsheet, package_id)?;
@@ -411,19 +467,26 @@ fn seed_sample_auth_cache(
         "bootstrap-user",
         StoredCredentialReference::new("radishflow-studio", "bootstrap-user-primary"),
     );
-    let snapshot = bootstrap_snapshot(package_id, downloaded_at);
-    auth_cache_index.entitlement = Some(StoredEntitlementCache {
-        subject_id: snapshot.subject_id.clone(),
-        tenant_id: snapshot.tenant_id.clone(),
-        synced_at: downloaded_at,
-        issued_at: snapshot.issued_at,
-        expires_at: snapshot.expires_at,
-        offline_lease_expires_at: snapshot.offline_lease_expires_at,
-        feature_keys: snapshot.features.clone(),
-        allowed_package_ids: snapshot.allowed_package_ids.clone(),
-    });
+    let snapshot = bootstrap_snapshot(package_id, downloaded_at, seed_mode);
+    if !matches!(seed_mode, StudioBootstrapEntitlementSeed::MissingSnapshot) {
+        auth_cache_index.entitlement = Some(StoredEntitlementCache {
+            subject_id: snapshot.subject_id.clone(),
+            tenant_id: snapshot.tenant_id.clone(),
+            synced_at: downloaded_at,
+            issued_at: snapshot.issued_at,
+            expires_at: snapshot.expires_at,
+            offline_lease_expires_at: snapshot.offline_lease_expires_at,
+            feature_keys: snapshot.features.clone(),
+            allowed_package_ids: snapshot.allowed_package_ids.clone(),
+        });
+    }
     auth_cache_index.property_packages.push(record);
-    auth_cache_index.last_synced_at = Some(downloaded_at);
+    auth_cache_index.last_synced_at =
+        if matches!(seed_mode, StudioBootstrapEntitlementSeed::MissingSnapshot) {
+            None
+        } else {
+            Some(downloaded_at)
+        };
     write_auth_cache_index(
         auth_cache_index.index_path_under(cache_root),
         &auth_cache_index,
@@ -436,8 +499,10 @@ fn seed_sample_auth_cache(
             &integrity.hash,
             integrity.size_bytes,
             downloaded_at,
+            payload.component_ids(),
         ),
         synced_at: downloaded_at,
+        seed_mode,
     })
 }
 
@@ -451,21 +516,40 @@ fn seed_bootstrap_runtime_state(app_state: &mut AppState, seed: &BootstrapSeedSt
         ),
         seed.synced_at,
     );
-    app_state.update_entitlement(
-        seed.snapshot.clone(),
-        vec![seed.manifest.clone()],
-        seed.synced_at,
-    );
+    if !matches!(
+        seed.seed_mode,
+        StudioBootstrapEntitlementSeed::MissingSnapshot
+    ) {
+        app_state.update_entitlement(
+            seed.snapshot.clone(),
+            vec![seed.manifest.clone()],
+            seed.synced_at,
+        );
+    }
 }
 
-fn bootstrap_snapshot(package_id: &str, synced_at: SystemTime) -> EntitlementSnapshot {
+fn bootstrap_snapshot(
+    package_id: &str,
+    synced_at: SystemTime,
+    seed_mode: StudioBootstrapEntitlementSeed,
+) -> EntitlementSnapshot {
+    let offline_lease_expires_at = match seed_mode {
+        StudioBootstrapEntitlementSeed::Synced => Some(synced_at + Duration::from_secs(7_200)),
+        StudioBootstrapEntitlementSeed::MissingSnapshot => {
+            Some(synced_at + Duration::from_secs(7_200))
+        }
+        StudioBootstrapEntitlementSeed::LeaseExpiringSoon => {
+            Some(synced_at + Duration::from_secs(10))
+        }
+    };
+
     EntitlementSnapshot {
         schema_version: 1,
         subject_id: "bootstrap-user".to_string(),
         tenant_id: Some("bootstrap-tenant".to_string()),
         issued_at: synced_at - Duration::from_secs(60),
         expires_at: synced_at + Duration::from_secs(3_600),
-        offline_lease_expires_at: Some(synced_at + Duration::from_secs(7_200)),
+        offline_lease_expires_at,
         features: std::collections::BTreeSet::from(["desktop-login".to_string()]),
         allowed_package_ids: std::collections::BTreeSet::from([package_id.to_string()]),
     }
@@ -476,6 +560,7 @@ fn bootstrap_manifest(
     hash: &str,
     size_bytes: u64,
     downloaded_at: SystemTime,
+    component_ids: Vec<rf_types::ComponentId>,
 ) -> PropertyPackageManifest {
     let mut manifest = PropertyPackageManifest::new(
         package_id,
@@ -484,6 +569,7 @@ fn bootstrap_manifest(
     );
     manifest.hash = hash.to_string();
     manifest.size_bytes = size_bytes;
+    manifest.component_ids = component_ids;
     manifest.expires_at = Some(downloaded_at + Duration::from_secs(3_600));
     manifest
 }
@@ -580,10 +666,14 @@ mod tests {
         SimulationMode,
     };
 
-    use super::{StudioBootstrapConfig, StudioBootstrapTrigger, run_studio_bootstrap};
+    use super::{
+        StudioBootstrapConfig, StudioBootstrapEntitlementSeed, StudioBootstrapTrigger,
+        run_studio_bootstrap,
+    };
     use crate::{
-        StudioAppExecutionBoundary, StudioAppExecutionLane, StudioAppResultDispatch,
-        StudioEntitlementAction, StudioEntitlementOutcome, StudioWorkspaceRunOutcome,
+        EntitlementPreflightAction, StudioAppExecutionBoundary, StudioAppExecutionLane,
+        StudioAppResultDispatch, StudioEntitlementAction, StudioEntitlementOutcome,
+        StudioWorkspaceRunOutcome,
     };
 
     #[test]
@@ -626,6 +716,7 @@ mod tests {
         assert_eq!(report.run_panel.view().secondary_actions.len(), 2);
         assert_eq!(dispatch.log_entry_count, 2);
         assert_eq!(report.log_entries.len(), 2);
+        assert_eq!(report.entitlement_preflight, None);
     }
 
     #[test]
@@ -659,6 +750,7 @@ mod tests {
             report.log_entries[0].message,
             "Activated workspace simulation mode"
         );
+        assert_eq!(report.entitlement_preflight, None);
     }
 
     #[test]
@@ -685,6 +777,7 @@ mod tests {
             Some("binary-hydrocarbon-lite-v1")
         );
         assert_eq!(dispatch.log_entry_count, 1);
+        assert_eq!(report.entitlement_preflight, None);
     }
 
     #[test]
@@ -713,6 +806,7 @@ mod tests {
             report.log_entries[0].message,
             "Set workspace simulation mode to Active"
         );
+        assert_eq!(report.entitlement_preflight, None);
     }
 
     #[test]
@@ -730,6 +824,7 @@ mod tests {
         };
         assert_eq!(dispatch.run_status, RunStatus::Converged);
         assert_eq!(report.run_panel.view().primary_action.label, "Run");
+        assert_eq!(report.entitlement_preflight, None);
     }
 
     #[test]
@@ -743,6 +838,7 @@ mod tests {
             StudioAppResultDispatch::Entitlement(_) => panic!("expected workspace run dispatch"),
         };
         assert_eq!(dispatch.run_status, RunStatus::Converged);
+        assert_eq!(report.entitlement_preflight, None);
     }
 
     #[test]
@@ -782,6 +878,7 @@ mod tests {
             report.log_entries[0].message,
             "Synced entitlement snapshot and property package manifests from control plane"
         );
+        assert_eq!(report.entitlement_preflight, None);
     }
 
     #[test]
@@ -825,5 +922,74 @@ mod tests {
             report.log_entries[0].message,
             "Refreshed offline lease state from control plane"
         );
+        assert_eq!(report.entitlement_preflight, None);
+    }
+
+    #[test]
+    fn bootstrap_auto_preflight_syncs_when_snapshot_is_missing() {
+        let report = run_studio_bootstrap(&StudioBootstrapConfig {
+            entitlement_seed: StudioBootstrapEntitlementSeed::MissingSnapshot,
+            ..StudioBootstrapConfig::default()
+        })
+        .expect("expected bootstrap run with entitlement preflight sync");
+
+        let preflight = report
+            .entitlement_preflight
+            .as_ref()
+            .expect("expected preflight outcome");
+        assert_eq!(
+            preflight.decision.action,
+            EntitlementPreflightAction::SyncEntitlement
+        );
+        match &preflight.outcome.dispatch {
+            StudioAppResultDispatch::Entitlement(dispatch) => {
+                assert_eq!(dispatch.action, StudioEntitlementAction::SyncEntitlement);
+                assert_eq!(dispatch.outcome, StudioEntitlementOutcome::Synced);
+            }
+            other => panic!("expected entitlement preflight dispatch, got {other:?}"),
+        }
+        match report.outcome.dispatch {
+            StudioAppResultDispatch::WorkspaceRun(dispatch) => {
+                assert_eq!(dispatch.run_status, RunStatus::Converged);
+            }
+            other => panic!("expected workspace run after preflight, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn bootstrap_auto_preflight_refreshes_when_lease_is_expiring() {
+        let report = run_studio_bootstrap(&StudioBootstrapConfig {
+            entitlement_seed: StudioBootstrapEntitlementSeed::LeaseExpiringSoon,
+            ..StudioBootstrapConfig::default()
+        })
+        .expect("expected bootstrap run with entitlement preflight refresh");
+
+        let preflight = report
+            .entitlement_preflight
+            .as_ref()
+            .expect("expected preflight outcome");
+        assert_eq!(
+            preflight.decision.action,
+            EntitlementPreflightAction::RefreshOfflineLease
+        );
+        match &preflight.outcome.dispatch {
+            StudioAppResultDispatch::Entitlement(dispatch) => {
+                assert_eq!(
+                    dispatch.action,
+                    StudioEntitlementAction::RefreshOfflineLease
+                );
+                assert_eq!(
+                    dispatch.outcome,
+                    StudioEntitlementOutcome::OfflineLeaseRefreshed
+                );
+            }
+            other => panic!("expected entitlement preflight dispatch, got {other:?}"),
+        }
+        match report.outcome.dispatch {
+            StudioAppResultDispatch::WorkspaceRun(dispatch) => {
+                assert_eq!(dispatch.run_status, RunStatus::Converged);
+            }
+            other => panic!("expected workspace run after preflight, got {other:?}"),
+        }
     }
 }
