@@ -3,14 +3,18 @@ use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use crate::{
+    RadishFlowControlPlaneClient, RadishFlowControlPlaneClientError,
+    RadishFlowControlPlaneClientErrorKind, RadishFlowControlPlaneResponse,
     RunPanelDriverOutcome, RunPanelWidgetDispatchOutcome, StudioAppAuthCacheContext,
-    StudioAppFacade, WorkspaceControlActionOutcome, WorkspaceControlState,
+    StudioAppCommand, StudioAppCommandOutcome, StudioAppFacade, StudioAppMutableAuthCacheContext,
+    WorkspaceControlState,
     dispatch_run_panel_intent_with_auth_cache, dispatch_run_panel_primary_action_with_auth_cache,
     dispatch_run_panel_widget_action_with_auth_cache, snapshot_run_panel_driver_state,
 };
 use rf_model::Flowsheet;
 use rf_store::{
     StoredAntoineCoefficients, StoredAuthCacheIndex, StoredCredentialReference,
+    StoredEntitlementCache,
     StoredPropertyPackageManifest, StoredPropertyPackagePayload, StoredPropertyPackageRecord,
     StoredPropertyPackageSource, StoredThermoComponent, property_package_payload_integrity,
     read_project_file, write_auth_cache_index, write_property_package_manifest,
@@ -18,8 +22,11 @@ use rf_store::{
 };
 use rf_types::{RfError, RfResult};
 use rf_ui::{
-    AppLogEntry, AppState, DocumentMetadata, FlowsheetDocument, RunPanelActionId, RunPanelIntent,
-    RunPanelWidgetModel,
+    AppLogEntry, AppState, AuthenticatedUser, DocumentMetadata, EntitlementSnapshot,
+    FlowsheetDocument, OfflineLeaseRefreshRequest, OfflineLeaseRefreshResponse,
+    PropertyPackageLeaseGrant, PropertyPackageLeaseRequest, PropertyPackageManifest,
+    PropertyPackageManifestList, PropertyPackageSource, RunPanelActionId, RunPanelIntent,
+    RunPanelWidgetModel, SecureCredentialHandle, TokenLease,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -33,6 +40,8 @@ pub enum StudioBootstrapTrigger {
     Intent(RunPanelIntent),
     WidgetPrimaryAction,
     WidgetAction(RunPanelActionId),
+    SyncEntitlement,
+    RefreshOfflineLease,
 }
 
 impl Default for StudioBootstrapConfig {
@@ -51,7 +60,7 @@ impl Default for StudioBootstrapConfig {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StudioBootstrapReport {
-    pub outcome: WorkspaceControlActionOutcome,
+    pub outcome: StudioAppCommandOutcome,
     pub control_state: WorkspaceControlState,
     pub run_panel: RunPanelWidgetModel,
     pub log_entries: Vec<AppLogEntry>,
@@ -61,14 +70,23 @@ pub fn run_studio_bootstrap(config: &StudioBootstrapConfig) -> RfResult<StudioBo
     let project_file = read_project_file(&config.project_path)?;
     let mut app_state = app_state_from_project_file(&project_file, &config.project_path);
     let cache_root = TemporaryCacheRoot::new("studio-bootstrap")?;
-    let auth_cache_index = seed_sample_auth_cache(
+    let seeded_auth_cache = seed_sample_auth_cache(
         cache_root.path(),
         &project_file.document.flowsheet,
         "binary-hydrocarbon-lite-v1",
     )?;
-    let context = StudioAppAuthCacheContext::new(cache_root.path(), &auth_cache_index);
+    seed_bootstrap_runtime_state(&mut app_state, &seeded_auth_cache);
+    let control_plane_client = BootstrapControlPlaneClient::from_seed(&seeded_auth_cache);
+    let mut auth_cache_index = seeded_auth_cache.auth_cache_index;
     let facade = StudioAppFacade::new();
-    let outcome = dispatch_bootstrap_trigger(&facade, &mut app_state, &context, &config.trigger)?;
+    let outcome = dispatch_bootstrap_trigger(
+        &facade,
+        &mut app_state,
+        cache_root.path(),
+        &mut auth_cache_index,
+        &config.trigger,
+        &control_plane_client,
+    )?;
     let driver_state = snapshot_run_panel_driver_state(&app_state);
 
     Ok(StudioBootstrapReport {
@@ -82,19 +100,27 @@ pub fn run_studio_bootstrap(config: &StudioBootstrapConfig) -> RfResult<StudioBo
 fn dispatch_bootstrap_trigger(
     facade: &StudioAppFacade,
     app_state: &mut AppState,
-    context: &StudioAppAuthCacheContext<'_>,
+    cache_root: &Path,
+    auth_cache_index: &mut StoredAuthCacheIndex,
     trigger: &StudioBootstrapTrigger,
-) -> RfResult<WorkspaceControlActionOutcome> {
+    control_plane_client: &BootstrapControlPlaneClient,
+) -> RfResult<StudioAppCommandOutcome> {
     match trigger {
         StudioBootstrapTrigger::Intent(intent) => {
-            dispatch_run_panel_intent_with_auth_cache(facade, app_state, context, intent)
+            let context = StudioAppAuthCacheContext::new(cache_root, &*auth_cache_index);
+            command_outcome_from_workspace_control(dispatch_run_panel_intent_with_auth_cache(
+                facade, app_state, &context, intent,
+            )?)
         }
         StudioBootstrapTrigger::WidgetPrimaryAction => {
-            match dispatch_run_panel_primary_action_with_auth_cache(facade, app_state, context)? {
+            let context = StudioAppAuthCacheContext::new(cache_root, &*auth_cache_index);
+            match dispatch_run_panel_primary_action_with_auth_cache(
+                facade, app_state, &context,
+            )? {
                 RunPanelDriverOutcome {
                     dispatch: RunPanelWidgetDispatchOutcome::Executed(outcome),
                     ..
-                } => Ok(outcome),
+                } => command_outcome_from_workspace_control(outcome),
                 RunPanelDriverOutcome {
                     dispatch: RunPanelWidgetDispatchOutcome::IgnoredDisabled { action_id },
                     ..
@@ -112,13 +138,14 @@ fn dispatch_bootstrap_trigger(
             }
         }
         StudioBootstrapTrigger::WidgetAction(action_id) => {
+            let context = StudioAppAuthCacheContext::new(cache_root, &*auth_cache_index);
             match dispatch_run_panel_widget_action_with_auth_cache(
-                facade, app_state, context, *action_id,
+                facade, app_state, &context, *action_id,
             )? {
                 RunPanelDriverOutcome {
                     dispatch: RunPanelWidgetDispatchOutcome::Executed(outcome),
                     ..
-                } => Ok(outcome),
+                } => command_outcome_from_workspace_control(outcome),
                 RunPanelDriverOutcome {
                     dispatch: RunPanelWidgetDispatchOutcome::IgnoredDisabled { action_id },
                     ..
@@ -135,6 +162,142 @@ fn dispatch_bootstrap_trigger(
                 ))),
             }
         }
+        StudioBootstrapTrigger::SyncEntitlement => {
+            let mut context = StudioAppMutableAuthCacheContext::new(cache_root, auth_cache_index);
+            facade.execute_with_control_plane(
+                app_state,
+                &mut context,
+                control_plane_client,
+                "bootstrap-access-token",
+                &StudioAppCommand::sync_entitlement(),
+            )
+        }
+        StudioBootstrapTrigger::RefreshOfflineLease => {
+            let mut context = StudioAppMutableAuthCacheContext::new(cache_root, auth_cache_index);
+            facade.execute_with_control_plane(
+                app_state,
+                &mut context,
+                control_plane_client,
+                "bootstrap-access-token",
+                &StudioAppCommand::refresh_offline_lease(),
+            )
+        }
+    }
+}
+
+fn command_outcome_from_workspace_control(
+    outcome: crate::WorkspaceControlActionOutcome,
+) -> RfResult<StudioAppCommandOutcome> {
+    Ok(StudioAppCommandOutcome {
+        boundary: outcome.boundary,
+        dispatch: outcome.dispatch,
+    })
+}
+
+#[derive(Debug, Clone)]
+struct BootstrapSeedState {
+    auth_cache_index: StoredAuthCacheIndex,
+    snapshot: EntitlementSnapshot,
+    manifest: PropertyPackageManifest,
+    synced_at: SystemTime,
+}
+
+#[derive(Debug, Clone)]
+struct BootstrapControlPlaneClient {
+    synced_snapshot: EntitlementSnapshot,
+    manifest_list: PropertyPackageManifestList,
+    sync_received_at: SystemTime,
+    refresh_response: OfflineLeaseRefreshResponse,
+    refresh_received_at: SystemTime,
+}
+
+impl BootstrapControlPlaneClient {
+    fn from_seed(seed: &BootstrapSeedState) -> Self {
+        let sync_received_at = seed.synced_at + Duration::from_secs(300);
+        let refresh_received_at = seed.synced_at + Duration::from_secs(600);
+
+        let mut synced_snapshot = seed.snapshot.clone();
+        synced_snapshot.expires_at = sync_received_at + Duration::from_secs(3_600);
+        synced_snapshot.offline_lease_expires_at = Some(sync_received_at + Duration::from_secs(7_200));
+
+        let mut refreshed_snapshot = synced_snapshot.clone();
+        refreshed_snapshot.offline_lease_expires_at =
+            Some(refresh_received_at + Duration::from_secs(7_200));
+
+        Self {
+            synced_snapshot: synced_snapshot.clone(),
+            manifest_list: PropertyPackageManifestList::new(
+                sync_received_at,
+                vec![seed.manifest.clone()],
+            ),
+            sync_received_at,
+            refresh_response: OfflineLeaseRefreshResponse {
+                refreshed_at: refresh_received_at,
+                snapshot: refreshed_snapshot,
+                manifest_list: PropertyPackageManifestList::new(
+                    refresh_received_at,
+                    vec![seed.manifest.clone()],
+                ),
+            },
+            refresh_received_at,
+        }
+    }
+}
+
+impl RadishFlowControlPlaneClient for BootstrapControlPlaneClient {
+    fn fetch_entitlement_snapshot(
+        &self,
+        _access_token: &str,
+    ) -> Result<
+        RadishFlowControlPlaneResponse<EntitlementSnapshot>,
+        RadishFlowControlPlaneClientError,
+    > {
+        Ok(RadishFlowControlPlaneResponse::new(
+            self.synced_snapshot.clone(),
+            self.sync_received_at,
+        ))
+    }
+
+    fn fetch_property_package_manifest_list(
+        &self,
+        _access_token: &str,
+    ) -> Result<
+        RadishFlowControlPlaneResponse<PropertyPackageManifestList>,
+        RadishFlowControlPlaneClientError,
+    > {
+        Ok(RadishFlowControlPlaneResponse::new(
+            self.manifest_list.clone(),
+            self.sync_received_at,
+        ))
+    }
+
+    fn request_property_package_lease(
+        &self,
+        _access_token: &str,
+        _package_id: &str,
+        _request: &PropertyPackageLeaseRequest,
+    ) -> Result<
+        RadishFlowControlPlaneResponse<PropertyPackageLeaseGrant>,
+        RadishFlowControlPlaneClientError,
+    > {
+        Err(RadishFlowControlPlaneClientError::new(
+            RadishFlowControlPlaneClientErrorKind::OtherPermanent,
+            "bootstrap control plane client does not issue property package leases",
+        ))
+    }
+
+    fn refresh_offline_leases(
+        &self,
+        _access_token: &str,
+        _request: &OfflineLeaseRefreshRequest,
+    ) -> Result<
+        RadishFlowControlPlaneResponse<OfflineLeaseRefreshResponse>,
+        RadishFlowControlPlaneClientError,
+    > {
+        Ok(RadishFlowControlPlaneResponse::new(
+            self.refresh_response.clone(),
+            self.refresh_received_at,
+        ))
     }
 }
 
@@ -164,7 +327,7 @@ fn seed_sample_auth_cache(
     cache_root: &Path,
     flowsheet: &Flowsheet,
     package_id: &str,
-) -> RfResult<StoredAuthCacheIndex> {
+) -> RfResult<BootstrapSeedState> {
     let downloaded_at = normalized_system_time_now()?;
     let payload = build_bootstrap_payload(flowsheet, package_id)?;
     let integrity = property_package_payload_integrity(&payload)?;
@@ -204,13 +367,76 @@ fn seed_sample_auth_cache(
         "bootstrap-user",
         StoredCredentialReference::new("radishflow-studio", "bootstrap-user-primary"),
     );
+    let snapshot = bootstrap_snapshot(package_id, downloaded_at);
+    auth_cache_index.entitlement = Some(StoredEntitlementCache {
+        subject_id: snapshot.subject_id.clone(),
+        tenant_id: snapshot.tenant_id.clone(),
+        synced_at: downloaded_at,
+        issued_at: snapshot.issued_at,
+        expires_at: snapshot.expires_at,
+        offline_lease_expires_at: snapshot.offline_lease_expires_at,
+        feature_keys: snapshot.features.clone(),
+        allowed_package_ids: snapshot.allowed_package_ids.clone(),
+    });
     auth_cache_index.property_packages.push(record);
     auth_cache_index.last_synced_at = Some(downloaded_at);
     write_auth_cache_index(
         auth_cache_index.index_path_under(cache_root),
         &auth_cache_index,
     )?;
-    Ok(auth_cache_index)
+    Ok(BootstrapSeedState {
+        auth_cache_index,
+        snapshot,
+        manifest: bootstrap_manifest(package_id, &integrity.hash, integrity.size_bytes, downloaded_at),
+        synced_at: downloaded_at,
+    })
+}
+
+fn seed_bootstrap_runtime_state(app_state: &mut AppState, seed: &BootstrapSeedState) {
+    app_state.complete_login(
+        "https://id.radish.local",
+        AuthenticatedUser::new("bootstrap-user", "bootstrap-demo"),
+        TokenLease::new(
+            seed.snapshot.expires_at,
+            SecureCredentialHandle::new("radishflow-studio", "bootstrap-user-primary"),
+        ),
+        seed.synced_at,
+    );
+    app_state.update_entitlement(
+        seed.snapshot.clone(),
+        vec![seed.manifest.clone()],
+        seed.synced_at,
+    );
+}
+
+fn bootstrap_snapshot(package_id: &str, synced_at: SystemTime) -> EntitlementSnapshot {
+    EntitlementSnapshot {
+        schema_version: 1,
+        subject_id: "bootstrap-user".to_string(),
+        tenant_id: Some("bootstrap-tenant".to_string()),
+        issued_at: synced_at - Duration::from_secs(60),
+        expires_at: synced_at + Duration::from_secs(3_600),
+        offline_lease_expires_at: Some(synced_at + Duration::from_secs(7_200)),
+        features: std::collections::BTreeSet::from(["desktop-login".to_string()]),
+        allowed_package_ids: std::collections::BTreeSet::from([package_id.to_string()]),
+    }
+}
+
+fn bootstrap_manifest(
+    package_id: &str,
+    hash: &str,
+    size_bytes: u64,
+    downloaded_at: SystemTime,
+) -> PropertyPackageManifest {
+    let mut manifest = PropertyPackageManifest::new(
+        package_id,
+        "2026.04.2",
+        PropertyPackageSource::RemoteDerivedPackage,
+    );
+    manifest.hash = hash.to_string();
+    manifest.size_bytes = size_bytes;
+    manifest.expires_at = Some(downloaded_at + Duration::from_secs(3_600));
+    manifest
 }
 
 fn normalized_system_time_now() -> RfResult<SystemTime> {
@@ -307,7 +533,7 @@ mod tests {
     use super::{StudioBootstrapConfig, StudioBootstrapTrigger, run_studio_bootstrap};
     use crate::{
         StudioAppExecutionBoundary, StudioAppExecutionLane, StudioAppResultDispatch,
-        StudioWorkspaceRunOutcome,
+        StudioEntitlementAction, StudioEntitlementOutcome, StudioWorkspaceRunOutcome,
     };
 
     #[test]
@@ -467,5 +693,71 @@ mod tests {
             StudioAppResultDispatch::Entitlement(_) => panic!("expected workspace run dispatch"),
         };
         assert_eq!(dispatch.run_status, RunStatus::Converged);
+    }
+
+    #[test]
+    fn bootstrap_can_sync_entitlement_via_control_plane_trigger() {
+        let report = run_studio_bootstrap(&StudioBootstrapConfig {
+            trigger: StudioBootstrapTrigger::SyncEntitlement,
+            ..StudioBootstrapConfig::default()
+        })
+        .expect("expected entitlement sync bootstrap run");
+
+        assert_eq!(
+            report.outcome.boundary,
+            StudioAppExecutionBoundary::Inline(StudioAppExecutionLane::EntitlementControl)
+        );
+        match report.outcome.dispatch {
+            StudioAppResultDispatch::Entitlement(dispatch) => {
+                assert_eq!(dispatch.action, StudioEntitlementAction::SyncEntitlement);
+                assert_eq!(dispatch.outcome, StudioEntitlementOutcome::Synced);
+                assert_eq!(dispatch.notice.as_ref().map(|notice| notice.title.as_str()), Some("Entitlement synced"));
+            }
+            StudioAppResultDispatch::WorkspaceRun(_) => panic!("expected entitlement dispatch"),
+            StudioAppResultDispatch::WorkspaceMode(_) => panic!("expected entitlement dispatch"),
+        }
+        assert_eq!(report.control_state.run_status, RunStatus::Idle);
+        assert_eq!(report.run_panel.view().primary_action.label, "Resume");
+        assert_eq!(report.log_entries.len(), 1);
+        assert_eq!(
+            report.log_entries[0].message,
+            "Synced entitlement snapshot and property package manifests from control plane"
+        );
+    }
+
+    #[test]
+    fn bootstrap_can_refresh_offline_lease_via_control_plane_trigger() {
+        let report = run_studio_bootstrap(&StudioBootstrapConfig {
+            trigger: StudioBootstrapTrigger::RefreshOfflineLease,
+            ..StudioBootstrapConfig::default()
+        })
+        .expect("expected offline refresh bootstrap run");
+
+        assert_eq!(
+            report.outcome.boundary,
+            StudioAppExecutionBoundary::Inline(StudioAppExecutionLane::EntitlementControl)
+        );
+        match report.outcome.dispatch {
+            StudioAppResultDispatch::Entitlement(dispatch) => {
+                assert_eq!(dispatch.action, StudioEntitlementAction::RefreshOfflineLease);
+                assert_eq!(
+                    dispatch.outcome,
+                    StudioEntitlementOutcome::OfflineLeaseRefreshed
+                );
+                assert_eq!(
+                    dispatch.notice.as_ref().map(|notice| notice.title.as_str()),
+                    Some("Offline lease refreshed")
+                );
+            }
+            StudioAppResultDispatch::WorkspaceRun(_) => panic!("expected entitlement dispatch"),
+            StudioAppResultDispatch::WorkspaceMode(_) => panic!("expected entitlement dispatch"),
+        }
+        assert_eq!(report.control_state.run_status, RunStatus::Idle);
+        assert_eq!(report.run_panel.view().primary_action.label, "Resume");
+        assert_eq!(report.log_entries.len(), 1);
+        assert_eq!(
+            report.log_entries[0].message,
+            "Refreshed offline lease state from control plane"
+        );
     }
 }
