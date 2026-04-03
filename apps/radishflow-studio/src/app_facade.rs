@@ -246,13 +246,13 @@ impl StudioAppFacade {
                     self.set_workspace_simulation_mode(app_state, *mode),
                 )
             }
-            StudioAppCommand::SyncEntitlement => StudioAppResultDispatch::Entitlement(
-                crate::sync_entitlement_with_control_plane(
+            StudioAppCommand::SyncEntitlement => {
+                StudioAppResultDispatch::Entitlement(crate::sync_entitlement_with_control_plane(
                     control_plane_client,
                     app_state,
                     access_token,
-                ),
-            ),
+                ))
+            }
             StudioAppCommand::RefreshOfflineLease => StudioAppResultDispatch::Entitlement(
                 crate::refresh_offline_lease_with_control_plane(
                     control_plane_client,
@@ -530,11 +530,10 @@ mod tests {
     use rf_model::Flowsheet;
     use rf_store::{
         StoredAntoineCoefficients, StoredAuthCacheIndex, StoredCredentialReference,
-        StoredEntitlementCache,
-        StoredPropertyPackageManifest, StoredPropertyPackagePayload, StoredPropertyPackageRecord,
-        StoredPropertyPackageSource, StoredThermoComponent, parse_project_file_json,
-        property_package_payload_integrity, write_property_package_manifest,
-        write_property_package_payload,
+        StoredEntitlementCache, StoredPropertyPackageManifest, StoredPropertyPackagePayload,
+        StoredPropertyPackageRecord, StoredPropertyPackageSource, StoredThermoComponent,
+        parse_project_file_json, property_package_payload_integrity,
+        write_property_package_manifest, write_property_package_payload,
     };
     use rf_types::ComponentId;
     use rf_ui::{
@@ -547,10 +546,9 @@ mod tests {
 
     use super::{
         StudioAppAuthCacheContext, StudioAppCommand, StudioAppExecutionBoundary,
-        StudioAppExecutionLane, StudioAppFacade, StudioAppResultDispatch,
-        StudioAppMutableAuthCacheContext, StudioWorkspaceRunBlocked,
-        StudioWorkspaceRunBlockedReason, StudioWorkspaceRunFailedReason,
-        StudioWorkspaceRunOutcome,
+        StudioAppExecutionLane, StudioAppFacade, StudioAppMutableAuthCacheContext,
+        StudioAppResultDispatch, StudioWorkspaceRunBlocked, StudioWorkspaceRunBlockedReason,
+        StudioWorkspaceRunFailedReason, StudioWorkspaceRunOutcome,
     };
     use crate::{
         RadishFlowControlPlaneClient, RadishFlowControlPlaneClientError,
@@ -683,7 +681,7 @@ mod tests {
             offline_lease_expires_at: Some(timestamp(900)),
             features: std::collections::BTreeSet::from(["desktop-login".to_string()]),
             allowed_package_ids: std::collections::BTreeSet::from([
-                "binary-hydrocarbon-lite-v1".to_string(),
+                "binary-hydrocarbon-lite-v1".to_string()
             ]),
         }
     }
@@ -1020,16 +1018,17 @@ mod tests {
                     failed.reason,
                     StudioWorkspaceRunFailedReason::LocalCacheUnavailable
                 );
-                assert!(failed.message.contains("failed to prepare local property package cache"));
+                assert!(
+                    failed
+                        .message
+                        .contains("failed to prepare local property package cache")
+                );
             }
             other => panic!("expected failed dispatch, got {other:?}"),
         }
         assert_eq!(dispatch.run_status, RunStatus::Error);
         assert_eq!(
-            dispatch
-                .latest_log_entry
-                .as_ref()
-                .map(|entry| entry.level),
+            dispatch.latest_log_entry.as_ref().map(|entry| entry.level),
             Some(rf_ui::AppLogLevel::Error)
         );
 
@@ -1041,7 +1040,8 @@ mod tests {
         let facade = StudioAppFacade::new();
         let mut app_state = AppState::new(sample_document());
         let cache_root = PathBuf::from("D:\\cache-root");
-        let mut auth_cache_index = sample_entitled_auth_cache_index(&["binary-hydrocarbon-lite-v1"]);
+        let mut auth_cache_index =
+            sample_entitled_auth_cache_index(&["binary-hydrocarbon-lite-v1"]);
         let mut context = StudioAppMutableAuthCacheContext::new(&cache_root, &mut auth_cache_index);
         let client = ScriptedControlPlaneClient::success();
 
@@ -1066,7 +1066,11 @@ mod tests {
             }
             other => panic!("expected entitlement dispatch, got {other:?}"),
         }
-        assert!(app_state.entitlement.is_package_allowed("binary-hydrocarbon-lite-v1"));
+        assert!(
+            app_state
+                .entitlement
+                .is_package_allowed("binary-hydrocarbon-lite-v1")
+        );
     }
 
     #[test]
@@ -1076,7 +1080,8 @@ mod tests {
         complete_login(&mut app_state);
         app_state.update_entitlement(sample_snapshot(), vec![sample_manifest()], timestamp(150));
         let cache_root = PathBuf::from("D:\\cache-root");
-        let mut auth_cache_index = sample_entitled_auth_cache_index(&["binary-hydrocarbon-lite-v1"]);
+        let mut auth_cache_index =
+            sample_entitled_auth_cache_index(&["binary-hydrocarbon-lite-v1"]);
         let mut context = StudioAppMutableAuthCacheContext::new(&cache_root, &mut auth_cache_index);
         let client = ScriptedControlPlaneClient::offline_refresh_failure(
             RadishFlowControlPlaneClientError::unauthorized("token expired"),
@@ -1104,7 +1109,10 @@ mod tests {
             },
             other => panic!("expected entitlement dispatch, got {other:?}"),
         }
-        assert_eq!(app_state.auth_session.status, rf_ui::AuthSessionStatus::Error);
+        assert_eq!(
+            app_state.auth_session.status,
+            rf_ui::AuthSessionStatus::Error
+        );
     }
 
     #[derive(Debug, Clone)]

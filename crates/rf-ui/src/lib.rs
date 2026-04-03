@@ -1,6 +1,11 @@
 mod auth;
 mod commands;
 mod diagnostics;
+mod entitlement_panel;
+mod entitlement_panel_presenter;
+mod entitlement_panel_text;
+mod entitlement_panel_view;
+mod entitlement_panel_widget;
 mod ids;
 mod run;
 mod run_panel;
@@ -22,14 +27,24 @@ pub use commands::{
     CanvasPoint, CommandHistory, CommandHistoryEntry, CommandValue, DocumentCommand,
 };
 pub use diagnostics::{DiagnosticSeverity, DiagnosticSnapshot, DiagnosticSummary};
+pub use entitlement_panel::{
+    EntitlementActionId, EntitlementActionModel, EntitlementCommandModel, EntitlementIntent,
+    EntitlementPanelState,
+};
+pub use entitlement_panel_presenter::EntitlementPanelPresentation;
+pub use entitlement_panel_text::EntitlementPanelTextView;
+pub use entitlement_panel_view::{
+    EntitlementActionProminence, EntitlementPanelViewModel, EntitlementRenderableAction,
+};
+pub use entitlement_panel_widget::{EntitlementPanelWidgetEvent, EntitlementPanelWidgetModel};
 pub use ids::{DocumentId, SolveSnapshotId};
 pub use run::{
     RunStatus, SimulationMode, SolvePendingReason, SolveSessionState, SolveSnapshot, StepSnapshot,
     StreamStateSnapshot, UnitExecutionSnapshot,
 };
 pub use run_panel::{
-    RunPanelActionId, RunPanelActionModel, RunPanelCommandModel, RunPanelIntent,
-    RunPanelNotice, RunPanelNoticeLevel, RunPanelPackageSelection, RunPanelState,
+    RunPanelActionId, RunPanelActionModel, RunPanelCommandModel, RunPanelIntent, RunPanelNotice,
+    RunPanelNoticeLevel, RunPanelPackageSelection, RunPanelState,
 };
 pub use run_panel_presenter::RunPanelPresentation;
 pub use run_panel_text::RunPanelTextView;
@@ -57,11 +72,13 @@ mod tests {
     use crate::{
         AppState, AuthSessionStatus, AuthenticatedUser, CanvasPoint, CommandHistory,
         CommandHistoryEntry, DiagnosticSeverity, DiagnosticSummary, DocumentCommand,
-        DocumentMetadata, EntitlementSnapshot, FlowsheetDocument, OfflineLeaseRefreshResponse,
-        PropertyPackageManifest, PropertyPackageManifestList, PropertyPackageSource,
-        RunPanelActionId, RunPanelActionProminence, RunPanelPresentation, RunPanelState,
-        RunPanelTextView, RunPanelViewModel, RunPanelWidgetEvent, RunPanelWidgetModel, RunStatus,
-        SecureCredentialHandle, SimulationMode, SolvePendingReason, SolveSnapshot, TokenLease,
+        DocumentMetadata, EntitlementActionId, EntitlementPanelState, EntitlementPanelWidgetEvent,
+        EntitlementPanelWidgetModel, EntitlementSnapshot, FlowsheetDocument,
+        OfflineLeaseRefreshResponse, PropertyPackageManifest, PropertyPackageManifestList,
+        PropertyPackageSource, RunPanelActionId, RunPanelActionProminence, RunPanelPresentation,
+        RunPanelState, RunPanelTextView, RunPanelViewModel, RunPanelWidgetEvent,
+        RunPanelWidgetModel, RunStatus, SecureCredentialHandle, SimulationMode, SolvePendingReason,
+        SolveSnapshot, TokenLease,
     };
 
     fn timestamp(seconds: u64) -> std::time::SystemTime {
@@ -458,6 +475,100 @@ mod tests {
                 .as_ref()
                 .map(|lease| lease.credential_handle.account.as_str()),
             Some(credential_handle.account.as_str())
+        );
+    }
+
+    #[test]
+    fn entitlement_panel_disables_actions_when_session_is_signed_out() {
+        let app_state = AppState::new(sample_document());
+
+        let state =
+            EntitlementPanelState::from_runtime(&app_state.auth_session, &app_state.entitlement);
+
+        assert_eq!(
+            state.commands.primary_action,
+            EntitlementActionId::SyncEntitlement
+        );
+        assert!(
+            !state
+                .commands
+                .action(EntitlementActionId::SyncEntitlement)
+                .expect("expected sync action")
+                .enabled
+        );
+        assert!(
+            !state
+                .commands
+                .action(EntitlementActionId::RefreshOfflineLease)
+                .expect("expected refresh action")
+                .enabled
+        );
+    }
+
+    #[test]
+    fn entitlement_panel_prefers_offline_refresh_when_session_is_active() {
+        let mut app_state = AppState::new(sample_document());
+        let token_lease = TokenLease::new(
+            timestamp(300),
+            SecureCredentialHandle::new("radishflow-studio", "user-123-primary"),
+        );
+        app_state.complete_login(
+            "https://id.radish.local",
+            AuthenticatedUser::new("user-123", "luobo"),
+            token_lease,
+            timestamp(200),
+        );
+        app_state.update_entitlement(
+            EntitlementSnapshot {
+                schema_version: 1,
+                subject_id: "user-123".to_string(),
+                tenant_id: Some("tenant-1".to_string()),
+                issued_at: timestamp(100),
+                expires_at: timestamp(400),
+                offline_lease_expires_at: Some(timestamp(700)),
+                features: ["desktop-login".to_string()].into_iter().collect(),
+                allowed_package_ids: ["binary-hydrocarbon-lite-v1".to_string()]
+                    .into_iter()
+                    .collect(),
+            },
+            vec![PropertyPackageManifest::new(
+                "binary-hydrocarbon-lite-v1",
+                "2026.03.1",
+                PropertyPackageSource::RemoteDerivedPackage,
+            )],
+            timestamp(150),
+        );
+
+        let state =
+            EntitlementPanelState::from_runtime(&app_state.auth_session, &app_state.entitlement);
+        let widget = EntitlementPanelWidgetModel::from_state(&state);
+
+        assert_eq!(
+            state.commands.primary_action,
+            EntitlementActionId::RefreshOfflineLease
+        );
+        assert_eq!(widget.view().primary_action.label, "Refresh offline lease");
+        assert!(widget.view().primary_action.enabled);
+    }
+
+    #[test]
+    fn entitlement_widget_reports_disabled_and_missing_actions() {
+        let app_state = AppState::new(sample_document());
+        let state =
+            EntitlementPanelState::from_runtime(&app_state.auth_session, &app_state.entitlement);
+        let widget = EntitlementPanelWidgetModel::from_state(&state);
+
+        assert_eq!(
+            widget.activate(EntitlementActionId::SyncEntitlement),
+            EntitlementPanelWidgetEvent::Disabled {
+                action_id: EntitlementActionId::SyncEntitlement
+            }
+        );
+        assert_eq!(
+            widget.activate_primary(),
+            EntitlementPanelWidgetEvent::Disabled {
+                action_id: EntitlementActionId::SyncEntitlement
+            }
         );
     }
 

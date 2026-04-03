@@ -8,6 +8,14 @@ fn print_run_panel(report: &radishflow_studio::StudioBootstrapReport) {
     }
 }
 
+fn print_entitlement_panel(report: &radishflow_studio::StudioBootstrapReport) {
+    let text = report.entitlement_panel.text();
+    println!("{}:", text.title);
+    for line in &text.lines {
+        println!("  {line}");
+    }
+}
+
 fn main() {
     let config = StudioBootstrapConfig::default();
 
@@ -20,6 +28,7 @@ fn main() {
             println!("Control pending: {:?}", report.control_state.pending_reason);
             println!("Control status: {:?}", report.control_state.run_status);
             print_run_panel(&report);
+            print_entitlement_panel(&report);
 
             match report.outcome.dispatch {
                 StudioAppResultDispatch::WorkspaceRun(dispatch) => {

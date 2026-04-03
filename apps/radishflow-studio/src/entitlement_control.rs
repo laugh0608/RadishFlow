@@ -114,40 +114,38 @@ where
 
     let outcome = match build_offline_refresh_request(auth_cache_index) {
         Ok(request) => match client.refresh_offline_leases(access_token, &request) {
-            Ok(response) => match apply_offline_refresh_success(
-                app_state,
-                auth_cache_index,
-                response.value,
-            ) {
-                Ok(()) => {
-                    let notice = EntitlementNotice::new(
-                        EntitlementNoticeLevel::Info,
-                        "Offline lease refreshed",
-                        "offline lease state and cached package permissions were refreshed",
-                    );
-                    app_state.entitlement.set_notice(notice);
-                    push_log_if_needed(
-                        app_state,
-                        AppLogLevel::Info,
-                        "Refreshed offline lease state from control plane",
-                    );
-                    StudioEntitlementOutcome::OfflineLeaseRefreshed
+            Ok(response) => {
+                match apply_offline_refresh_success(app_state, auth_cache_index, response.value) {
+                    Ok(()) => {
+                        let notice = EntitlementNotice::new(
+                            EntitlementNoticeLevel::Info,
+                            "Offline lease refreshed",
+                            "offline lease state and cached package permissions were refreshed",
+                        );
+                        app_state.entitlement.set_notice(notice);
+                        push_log_if_needed(
+                            app_state,
+                            AppLogLevel::Info,
+                            "Refreshed offline lease state from control plane",
+                        );
+                        StudioEntitlementOutcome::OfflineLeaseRefreshed
+                    }
+                    Err(error) => {
+                        let failure = StudioEntitlementFailure {
+                            reason: StudioEntitlementFailureReason::LocalStateInvalid,
+                            message: error.message().to_string(),
+                        };
+                        apply_entitlement_failure(
+                            app_state,
+                            previous_status,
+                            had_snapshot,
+                            &failure,
+                            StudioEntitlementAction::RefreshOfflineLease,
+                        );
+                        StudioEntitlementOutcome::Failed(failure)
+                    }
                 }
-                Err(error) => {
-                    let failure = StudioEntitlementFailure {
-                        reason: StudioEntitlementFailureReason::LocalStateInvalid,
-                        message: error.message().to_string(),
-                    };
-                    apply_entitlement_failure(
-                        app_state,
-                        previous_status,
-                        had_snapshot,
-                        &failure,
-                        StudioEntitlementAction::RefreshOfflineLease,
-                    );
-                    StudioEntitlementOutcome::Failed(failure)
-                }
-            },
+            }
             Err(error) => {
                 let failure = map_client_error_to_failure(error);
                 apply_entitlement_failure(
@@ -217,16 +215,20 @@ fn validate_manifest_sync_consistency(
     let mut seen = std::collections::BTreeSet::new();
     for manifest in &manifest_list.packages {
         if !seen.insert(manifest.package_id.clone()) {
-            return Err(RadishFlowControlPlaneClientError::invalid_response(format!(
-                "control plane manifest list contains duplicate package `{}`",
-                manifest.package_id
-            )));
+            return Err(RadishFlowControlPlaneClientError::invalid_response(
+                format!(
+                    "control plane manifest list contains duplicate package `{}`",
+                    manifest.package_id
+                ),
+            ));
         }
         if !snapshot.allowed_package_ids.contains(&manifest.package_id) {
-            return Err(RadishFlowControlPlaneClientError::invalid_response(format!(
-                "control plane manifest list returned package `{}` outside allowedPackageIds",
-                manifest.package_id
-            )));
+            return Err(RadishFlowControlPlaneClientError::invalid_response(
+                format!(
+                    "control plane manifest list returned package `{}` outside allowedPackageIds",
+                    manifest.package_id
+                ),
+            ));
         }
     }
 
@@ -358,10 +360,7 @@ fn log_payload_for_failure(
         | StudioEntitlementFailureReason::LocalStateInvalid => AppLogLevel::Error,
     };
 
-    (
-        level,
-        format!("{action_label} failed: {}", failure.message),
-    )
+    (level, format!("{action_label} failed: {}", failure.message))
 }
 
 fn push_log_if_needed(app_state: &mut AppState, level: AppLogLevel, message: &str) {
@@ -429,7 +428,10 @@ mod tests {
 
         assert_eq!(dispatch.action, StudioEntitlementAction::SyncEntitlement);
         assert_eq!(dispatch.outcome, StudioEntitlementOutcome::Synced);
-        assert_eq!(dispatch.entitlement_status, rf_ui::EntitlementStatus::Active);
+        assert_eq!(
+            dispatch.entitlement_status,
+            rf_ui::EntitlementStatus::Active
+        );
         assert_eq!(
             dispatch.notice.as_ref().map(|notice| notice.title.as_str()),
             Some("Entitlement synced")
@@ -450,11 +452,7 @@ mod tests {
             RadishFlowControlPlaneClientError::connection_unavailable("offline"),
         );
         let mut app_state = sample_app_state();
-        app_state.update_entitlement(
-            sample_snapshot(),
-            vec![sample_manifest()],
-            timestamp(150),
-        );
+        app_state.update_entitlement(sample_snapshot(), vec![sample_manifest()], timestamp(150));
 
         let dispatch = sync_entitlement_with_control_plane(&client, &mut app_state, "access");
 
@@ -467,7 +465,10 @@ mod tests {
             }
             other => panic!("expected failure dispatch, got {other:?}"),
         }
-        assert_eq!(dispatch.entitlement_status, rf_ui::EntitlementStatus::Active);
+        assert_eq!(
+            dispatch.entitlement_status,
+            rf_ui::EntitlementStatus::Active
+        );
         assert_eq!(
             dispatch.notice.as_ref().map(|notice| notice.title.as_str()),
             Some("Connection unavailable")
@@ -482,11 +483,7 @@ mod tests {
     fn refresh_offline_lease_updates_auth_cache_and_notice() {
         let client = ScriptedControlPlaneClient::success();
         let mut app_state = sample_app_state();
-        app_state.update_entitlement(
-            sample_snapshot(),
-            vec![sample_manifest()],
-            timestamp(150),
-        );
+        app_state.update_entitlement(sample_snapshot(), vec![sample_manifest()], timestamp(150));
         let mut auth_cache_index = sample_auth_cache_index();
 
         let dispatch = refresh_offline_lease_with_control_plane(
@@ -500,7 +497,10 @@ mod tests {
             dispatch.action,
             StudioEntitlementAction::RefreshOfflineLease
         );
-        assert_eq!(dispatch.outcome, StudioEntitlementOutcome::OfflineLeaseRefreshed);
+        assert_eq!(
+            dispatch.outcome,
+            StudioEntitlementOutcome::OfflineLeaseRefreshed
+        );
         assert_eq!(
             dispatch.notice.as_ref().map(|notice| notice.title.as_str()),
             Some("Offline lease refreshed")
@@ -516,11 +516,7 @@ mod tests {
         );
         let mut app_state = sample_app_state();
         complete_login(&mut app_state);
-        app_state.update_entitlement(
-            sample_snapshot(),
-            vec![sample_manifest()],
-            timestamp(150),
-        );
+        app_state.update_entitlement(sample_snapshot(), vec![sample_manifest()], timestamp(150));
         let mut auth_cache_index = sample_auth_cache_index();
 
         let dispatch = refresh_offline_lease_with_control_plane(
@@ -539,7 +535,10 @@ mod tests {
             }
             other => panic!("expected failure dispatch, got {other:?}"),
         }
-        assert_eq!(app_state.auth_session.status, rf_ui::AuthSessionStatus::Error);
+        assert_eq!(
+            app_state.auth_session.status,
+            rf_ui::AuthSessionStatus::Error
+        );
         assert_eq!(
             dispatch.notice.as_ref().map(|notice| notice.title.as_str()),
             Some("Login required")

@@ -3,30 +3,33 @@ use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use crate::{
+    EntitlementPanelDriverOutcome, EntitlementPanelWidgetDispatchOutcome,
     RadishFlowControlPlaneClient, RadishFlowControlPlaneClientError,
-    RadishFlowControlPlaneClientErrorKind, RadishFlowControlPlaneResponse,
-    RunPanelDriverOutcome, RunPanelWidgetDispatchOutcome, StudioAppAuthCacheContext,
-    StudioAppCommand, StudioAppCommandOutcome, StudioAppFacade, StudioAppMutableAuthCacheContext,
-    WorkspaceControlState,
+    RadishFlowControlPlaneClientErrorKind, RadishFlowControlPlaneResponse, RunPanelDriverOutcome,
+    RunPanelWidgetDispatchOutcome, StudioAppAuthCacheContext, StudioAppCommandOutcome,
+    StudioAppFacade, StudioAppMutableAuthCacheContext, WorkspaceControlState,
+    dispatch_entitlement_panel_primary_action_with_control_plane,
+    dispatch_entitlement_panel_widget_action_with_control_plane,
     dispatch_run_panel_intent_with_auth_cache, dispatch_run_panel_primary_action_with_auth_cache,
-    dispatch_run_panel_widget_action_with_auth_cache, snapshot_run_panel_driver_state,
+    dispatch_run_panel_widget_action_with_auth_cache, snapshot_entitlement_panel_driver_state,
+    snapshot_run_panel_driver_state,
 };
 use rf_model::Flowsheet;
 use rf_store::{
     StoredAntoineCoefficients, StoredAuthCacheIndex, StoredCredentialReference,
-    StoredEntitlementCache,
-    StoredPropertyPackageManifest, StoredPropertyPackagePayload, StoredPropertyPackageRecord,
-    StoredPropertyPackageSource, StoredThermoComponent, property_package_payload_integrity,
-    read_project_file, write_auth_cache_index, write_property_package_manifest,
-    write_property_package_payload,
+    StoredEntitlementCache, StoredPropertyPackageManifest, StoredPropertyPackagePayload,
+    StoredPropertyPackageRecord, StoredPropertyPackageSource, StoredThermoComponent,
+    property_package_payload_integrity, read_project_file, write_auth_cache_index,
+    write_property_package_manifest, write_property_package_payload,
 };
 use rf_types::{RfError, RfResult};
 use rf_ui::{
-    AppLogEntry, AppState, AuthenticatedUser, DocumentMetadata, EntitlementSnapshot,
-    FlowsheetDocument, OfflineLeaseRefreshRequest, OfflineLeaseRefreshResponse,
-    PropertyPackageLeaseGrant, PropertyPackageLeaseRequest, PropertyPackageManifest,
-    PropertyPackageManifestList, PropertyPackageSource, RunPanelActionId, RunPanelIntent,
-    RunPanelWidgetModel, SecureCredentialHandle, TokenLease,
+    AppLogEntry, AppState, AuthenticatedUser, DocumentMetadata, EntitlementActionId,
+    EntitlementPanelWidgetModel, EntitlementSnapshot, FlowsheetDocument,
+    OfflineLeaseRefreshRequest, OfflineLeaseRefreshResponse, PropertyPackageLeaseGrant,
+    PropertyPackageLeaseRequest, PropertyPackageManifest, PropertyPackageManifestList,
+    PropertyPackageSource, RunPanelActionId, RunPanelIntent, RunPanelWidgetModel,
+    SecureCredentialHandle, TokenLease,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -40,8 +43,8 @@ pub enum StudioBootstrapTrigger {
     Intent(RunPanelIntent),
     WidgetPrimaryAction,
     WidgetAction(RunPanelActionId),
-    SyncEntitlement,
-    RefreshOfflineLease,
+    EntitlementWidgetPrimaryAction,
+    EntitlementWidgetAction(EntitlementActionId),
 }
 
 impl Default for StudioBootstrapConfig {
@@ -63,6 +66,7 @@ pub struct StudioBootstrapReport {
     pub outcome: StudioAppCommandOutcome,
     pub control_state: WorkspaceControlState,
     pub run_panel: RunPanelWidgetModel,
+    pub entitlement_panel: EntitlementPanelWidgetModel,
     pub log_entries: Vec<AppLogEntry>,
 }
 
@@ -88,11 +92,13 @@ pub fn run_studio_bootstrap(config: &StudioBootstrapConfig) -> RfResult<StudioBo
         &control_plane_client,
     )?;
     let driver_state = snapshot_run_panel_driver_state(&app_state);
+    let entitlement_driver_state = snapshot_entitlement_panel_driver_state(&app_state);
 
     Ok(StudioBootstrapReport {
         outcome,
         control_state: driver_state.control_state,
         run_panel: driver_state.widget,
+        entitlement_panel: entitlement_driver_state.widget,
         log_entries: app_state.log_feed.entries.iter().cloned().collect(),
     })
 }
@@ -114,9 +120,7 @@ fn dispatch_bootstrap_trigger(
         }
         StudioBootstrapTrigger::WidgetPrimaryAction => {
             let context = StudioAppAuthCacheContext::new(cache_root, &*auth_cache_index);
-            match dispatch_run_panel_primary_action_with_auth_cache(
-                facade, app_state, &context,
-            )? {
+            match dispatch_run_panel_primary_action_with_auth_cache(facade, app_state, &context)? {
                 RunPanelDriverOutcome {
                     dispatch: RunPanelWidgetDispatchOutcome::Executed(outcome),
                     ..
@@ -162,25 +166,64 @@ fn dispatch_bootstrap_trigger(
                 ))),
             }
         }
-        StudioBootstrapTrigger::SyncEntitlement => {
+        StudioBootstrapTrigger::EntitlementWidgetPrimaryAction => {
             let mut context = StudioAppMutableAuthCacheContext::new(cache_root, auth_cache_index);
-            facade.execute_with_control_plane(
+            match dispatch_entitlement_panel_primary_action_with_control_plane(
+                facade,
                 app_state,
                 &mut context,
                 control_plane_client,
                 "bootstrap-access-token",
-                &StudioAppCommand::sync_entitlement(),
-            )
+            )? {
+                EntitlementPanelDriverOutcome {
+                    dispatch: EntitlementPanelWidgetDispatchOutcome::Executed(outcome),
+                    ..
+                } => Ok(outcome),
+                EntitlementPanelDriverOutcome {
+                    dispatch: EntitlementPanelWidgetDispatchOutcome::IgnoredDisabled { action_id },
+                    ..
+                } => Err(RfError::invalid_input(format!(
+                    "bootstrap entitlement primary widget action `{:?}` is currently disabled",
+                    action_id
+                ))),
+                EntitlementPanelDriverOutcome {
+                    dispatch: EntitlementPanelWidgetDispatchOutcome::IgnoredMissing { action_id },
+                    ..
+                } => Err(RfError::invalid_input(format!(
+                    "bootstrap entitlement primary widget action `{:?}` is missing from current widget model",
+                    action_id
+                ))),
+            }
         }
-        StudioBootstrapTrigger::RefreshOfflineLease => {
+        StudioBootstrapTrigger::EntitlementWidgetAction(action_id) => {
             let mut context = StudioAppMutableAuthCacheContext::new(cache_root, auth_cache_index);
-            facade.execute_with_control_plane(
+            match dispatch_entitlement_panel_widget_action_with_control_plane(
+                facade,
                 app_state,
                 &mut context,
                 control_plane_client,
                 "bootstrap-access-token",
-                &StudioAppCommand::refresh_offline_lease(),
-            )
+                *action_id,
+            )? {
+                EntitlementPanelDriverOutcome {
+                    dispatch: EntitlementPanelWidgetDispatchOutcome::Executed(outcome),
+                    ..
+                } => Ok(outcome),
+                EntitlementPanelDriverOutcome {
+                    dispatch: EntitlementPanelWidgetDispatchOutcome::IgnoredDisabled { action_id },
+                    ..
+                } => Err(RfError::invalid_input(format!(
+                    "bootstrap entitlement widget action `{:?}` is currently disabled",
+                    action_id
+                ))),
+                EntitlementPanelDriverOutcome {
+                    dispatch: EntitlementPanelWidgetDispatchOutcome::IgnoredMissing { action_id },
+                    ..
+                } => Err(RfError::invalid_input(format!(
+                    "bootstrap entitlement widget action `{:?}` is missing from current widget model",
+                    action_id
+                ))),
+            }
         }
     }
 }
@@ -218,7 +261,8 @@ impl BootstrapControlPlaneClient {
 
         let mut synced_snapshot = seed.snapshot.clone();
         synced_snapshot.expires_at = sync_received_at + Duration::from_secs(3_600);
-        synced_snapshot.offline_lease_expires_at = Some(sync_received_at + Duration::from_secs(7_200));
+        synced_snapshot.offline_lease_expires_at =
+            Some(sync_received_at + Duration::from_secs(7_200));
 
         let mut refreshed_snapshot = synced_snapshot.clone();
         refreshed_snapshot.offline_lease_expires_at =
@@ -387,7 +431,12 @@ fn seed_sample_auth_cache(
     Ok(BootstrapSeedState {
         auth_cache_index,
         snapshot,
-        manifest: bootstrap_manifest(package_id, &integrity.hash, integrity.size_bytes, downloaded_at),
+        manifest: bootstrap_manifest(
+            package_id,
+            &integrity.hash,
+            integrity.size_bytes,
+            downloaded_at,
+        ),
         synced_at: downloaded_at,
     })
 }
@@ -527,7 +576,8 @@ impl Drop for TemporaryCacheRoot {
 #[cfg(test)]
 mod tests {
     use rf_ui::{
-        RunPanelActionId, RunPanelIntent, RunPanelPackageSelection, RunStatus, SimulationMode,
+        EntitlementActionId, RunPanelActionId, RunPanelIntent, RunPanelPackageSelection, RunStatus,
+        SimulationMode,
     };
 
     use super::{StudioBootstrapConfig, StudioBootstrapTrigger, run_studio_bootstrap};
@@ -698,7 +748,9 @@ mod tests {
     #[test]
     fn bootstrap_can_sync_entitlement_via_control_plane_trigger() {
         let report = run_studio_bootstrap(&StudioBootstrapConfig {
-            trigger: StudioBootstrapTrigger::SyncEntitlement,
+            trigger: StudioBootstrapTrigger::EntitlementWidgetAction(
+                EntitlementActionId::SyncEntitlement,
+            ),
             ..StudioBootstrapConfig::default()
         })
         .expect("expected entitlement sync bootstrap run");
@@ -711,13 +763,20 @@ mod tests {
             StudioAppResultDispatch::Entitlement(dispatch) => {
                 assert_eq!(dispatch.action, StudioEntitlementAction::SyncEntitlement);
                 assert_eq!(dispatch.outcome, StudioEntitlementOutcome::Synced);
-                assert_eq!(dispatch.notice.as_ref().map(|notice| notice.title.as_str()), Some("Entitlement synced"));
+                assert_eq!(
+                    dispatch.notice.as_ref().map(|notice| notice.title.as_str()),
+                    Some("Entitlement synced")
+                );
             }
             StudioAppResultDispatch::WorkspaceRun(_) => panic!("expected entitlement dispatch"),
             StudioAppResultDispatch::WorkspaceMode(_) => panic!("expected entitlement dispatch"),
         }
         assert_eq!(report.control_state.run_status, RunStatus::Idle);
         assert_eq!(report.run_panel.view().primary_action.label, "Resume");
+        assert_eq!(
+            report.entitlement_panel.view().primary_action.label,
+            "Refresh offline lease"
+        );
         assert_eq!(report.log_entries.len(), 1);
         assert_eq!(
             report.log_entries[0].message,
@@ -728,7 +787,7 @@ mod tests {
     #[test]
     fn bootstrap_can_refresh_offline_lease_via_control_plane_trigger() {
         let report = run_studio_bootstrap(&StudioBootstrapConfig {
-            trigger: StudioBootstrapTrigger::RefreshOfflineLease,
+            trigger: StudioBootstrapTrigger::EntitlementWidgetPrimaryAction,
             ..StudioBootstrapConfig::default()
         })
         .expect("expected offline refresh bootstrap run");
@@ -739,7 +798,10 @@ mod tests {
         );
         match report.outcome.dispatch {
             StudioAppResultDispatch::Entitlement(dispatch) => {
-                assert_eq!(dispatch.action, StudioEntitlementAction::RefreshOfflineLease);
+                assert_eq!(
+                    dispatch.action,
+                    StudioEntitlementAction::RefreshOfflineLease
+                );
                 assert_eq!(
                     dispatch.outcome,
                     StudioEntitlementOutcome::OfflineLeaseRefreshed
@@ -754,6 +816,10 @@ mod tests {
         }
         assert_eq!(report.control_state.run_status, RunStatus::Idle);
         assert_eq!(report.run_panel.view().primary_action.label, "Resume");
+        assert_eq!(
+            report.entitlement_panel.view().primary_action.label,
+            "Refresh offline lease"
+        );
         assert_eq!(report.log_entries.len(), 1);
         assert_eq!(
             report.log_entries[0].message,

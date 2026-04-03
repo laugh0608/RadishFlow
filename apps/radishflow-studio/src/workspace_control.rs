@@ -1,7 +1,7 @@
 use rf_types::RfResult;
 use rf_ui::{
-    AppLogEntry, AppState, RunPanelCommandModel, RunPanelIntent, RunPanelPackageSelection,
-    RunPanelNotice, RunPanelNoticeLevel, RunPanelState, RunPanelWidgetEvent, RunStatus,
+    AppLogEntry, AppState, RunPanelCommandModel, RunPanelIntent, RunPanelNotice,
+    RunPanelNoticeLevel, RunPanelPackageSelection, RunPanelState, RunPanelWidgetEvent, RunStatus,
     SimulationMode, SolvePendingReason,
 };
 
@@ -234,9 +234,15 @@ fn notice_from_dispatch(dispatch: &StudioAppResultDispatch) -> Option<RunPanelNo
                 failed.message.clone(),
             )),
         },
-        StudioAppResultDispatch::WorkspaceMode(dispatch) => dispatch.latest_log_entry.as_ref().map(
-            |entry| RunPanelNotice::new(RunPanelNoticeLevel::Info, "Mode updated", entry.message.clone()),
-        ),
+        StudioAppResultDispatch::WorkspaceMode(dispatch) => {
+            dispatch.latest_log_entry.as_ref().map(|entry| {
+                RunPanelNotice::new(
+                    RunPanelNoticeLevel::Info,
+                    "Mode updated",
+                    entry.message.clone(),
+                )
+            })
+        }
         StudioAppResultDispatch::Entitlement(_) => None,
     }
 }
@@ -258,9 +264,7 @@ fn notice_title_for_blocked_outcome(
 
 fn notice_title_for_failed_outcome(reason: crate::StudioWorkspaceRunFailedReason) -> &'static str {
     match reason {
-        crate::StudioWorkspaceRunFailedReason::LocalCacheUnavailable => {
-            "Local cache unavailable"
-        }
+        crate::StudioWorkspaceRunFailedReason::LocalCacheUnavailable => "Local cache unavailable",
         crate::StudioWorkspaceRunFailedReason::SolveFailed => "Run failed",
     }
 }
@@ -752,7 +756,10 @@ mod tests {
                 .notice
                 .as_ref()
                 .map(|notice| (notice.level, notice.title.as_str())),
-            Some((rf_ui::RunPanelNoticeLevel::Warning, "Package selection required"))
+            Some((
+                rf_ui::RunPanelNoticeLevel::Warning,
+                "Package selection required"
+            ))
         );
         assert_eq!(
             app_state
@@ -761,7 +768,9 @@ mod tests {
                 .notice
                 .as_ref()
                 .map(|notice| notice.message.as_str()),
-            Some("multiple cached property packages are available; explicit package selection is required")
+            Some(
+                "multiple cached property packages are available; explicit package selection is required"
+            )
         );
     }
 }
