@@ -6,6 +6,7 @@ mod control_plane_sync;
 mod entitlement_control;
 mod entitlement_panel_driver;
 mod entitlement_preflight;
+mod entitlement_session_driver;
 mod property_package_download;
 mod property_package_download_client;
 mod run_panel_driver;
@@ -59,6 +60,15 @@ pub use entitlement_preflight::{
     decide_entitlement_preflight_action, dispatch_entitlement_preflight_with_control_plane,
     dispatch_entitlement_session_tick_with_control_plane, record_entitlement_session_dispatch,
     record_entitlement_session_outcome, snapshot_entitlement_session_schedule,
+};
+pub use entitlement_session_driver::{
+    EntitlementSessionDriverState, EntitlementSessionPanelDriverOutcome,
+    EntitlementSessionTickDriverOutcome,
+    dispatch_entitlement_session_panel_primary_action_with_control_plane,
+    dispatch_entitlement_session_panel_widget_action_with_control_plane,
+    dispatch_entitlement_session_panel_widget_event_with_control_plane,
+    dispatch_entitlement_session_tick_driver_with_control_plane,
+    snapshot_entitlement_session_driver_state,
 };
 pub use property_package_download::{
     PROPERTY_PACKAGE_DOWNLOAD_KIND, PROPERTY_PACKAGE_DOWNLOAD_SCHEMA_VERSION,

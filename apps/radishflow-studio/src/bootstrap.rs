@@ -3,18 +3,17 @@ use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use crate::{
-    EntitlementPanelDriverOutcome, EntitlementPanelWidgetDispatchOutcome,
-    EntitlementPreflightOutcome, EntitlementSessionPolicy, EntitlementSessionSchedule,
-    EntitlementSessionState, RadishFlowControlPlaneClient, RadishFlowControlPlaneClientError,
+    EntitlementPreflightOutcome, EntitlementSessionPanelDriverOutcome, EntitlementSessionPolicy,
+    EntitlementSessionSchedule, EntitlementSessionState, EntitlementSessionTickDriverOutcome,
+    RadishFlowControlPlaneClient, RadishFlowControlPlaneClientError,
     RadishFlowControlPlaneClientErrorKind, RadishFlowControlPlaneResponse, RunPanelDriverOutcome,
     RunPanelWidgetDispatchOutcome, StudioAppAuthCacheContext, StudioAppCommandOutcome,
-    StudioAppFacade, StudioAppMutableAuthCacheContext, StudioAppResultDispatch,
-    WorkspaceControlState, dispatch_entitlement_panel_primary_action_with_control_plane,
-    dispatch_entitlement_panel_widget_action_with_control_plane,
-    dispatch_entitlement_session_tick_with_control_plane,
+    StudioAppFacade, StudioAppMutableAuthCacheContext, WorkspaceControlState,
+    dispatch_entitlement_session_panel_primary_action_with_control_plane,
+    dispatch_entitlement_session_panel_widget_action_with_control_plane,
+    dispatch_entitlement_session_tick_driver_with_control_plane,
     dispatch_run_panel_intent_with_auth_cache, dispatch_run_panel_primary_action_with_auth_cache,
-    dispatch_run_panel_widget_action_with_auth_cache, record_entitlement_session_dispatch,
-    snapshot_entitlement_panel_driver_state, snapshot_entitlement_session_schedule,
+    dispatch_run_panel_widget_action_with_auth_cache, snapshot_entitlement_session_driver_state,
     snapshot_run_panel_driver_state,
 };
 use rf_model::Flowsheet;
@@ -125,20 +124,12 @@ pub fn run_studio_bootstrap(config: &StudioBootstrapConfig) -> RfResult<StudioBo
         &mut auth_cache_index,
         &config.trigger,
         &control_plane_client,
+        &session_policy,
+        &mut entitlement_session_state,
     )?;
     let schedule_now = normalized_system_time_now()?;
-    if let StudioAppResultDispatch::Entitlement(dispatch) = &outcome.dispatch {
-        record_entitlement_session_dispatch(
-            &mut entitlement_session_state,
-            dispatch.action,
-            &dispatch.outcome,
-            schedule_now,
-            &session_policy,
-        );
-    }
     let driver_state = snapshot_run_panel_driver_state(&app_state);
-    let entitlement_driver_state = snapshot_entitlement_panel_driver_state(&app_state);
-    let entitlement_session_schedule = snapshot_entitlement_session_schedule(
+    let entitlement_driver_state = snapshot_entitlement_session_driver_state(
         &app_state,
         schedule_now,
         &session_policy,
@@ -146,12 +137,12 @@ pub fn run_studio_bootstrap(config: &StudioBootstrapConfig) -> RfResult<StudioBo
     );
 
     Ok(StudioBootstrapReport {
-        entitlement_preflight: entitlement_session_tick.preflight,
-        entitlement_session_schedule,
+        entitlement_preflight: entitlement_session_tick.tick.preflight,
+        entitlement_session_schedule: entitlement_driver_state.schedule,
         outcome,
         control_state: driver_state.control_state,
         run_panel: driver_state.widget,
-        entitlement_panel: entitlement_driver_state.widget,
+        entitlement_panel: entitlement_driver_state.panel.widget,
         log_entries: app_state.log_feed.entries.iter().cloned().collect(),
     })
 }
@@ -165,18 +156,26 @@ fn dispatch_bootstrap_entitlement_session_tick(
     mode: &StudioBootstrapEntitlementPreflight,
     policy: &EntitlementSessionPolicy,
     session_state: &mut EntitlementSessionState,
-) -> RfResult<crate::EntitlementSessionTickOutcome> {
+) -> RfResult<EntitlementSessionTickDriverOutcome> {
     if matches!(mode, StudioBootstrapEntitlementPreflight::Skip) {
         let now = normalized_system_time_now()?;
-        return Ok(crate::EntitlementSessionTickOutcome {
-            preflight: None,
-            schedule: snapshot_entitlement_session_schedule(app_state, now, policy, session_state),
+        return Ok(EntitlementSessionTickDriverOutcome {
+            tick: crate::EntitlementSessionTickOutcome {
+                preflight: None,
+                schedule: crate::snapshot_entitlement_session_schedule(
+                    app_state,
+                    now,
+                    policy,
+                    session_state,
+                ),
+            },
+            state: snapshot_entitlement_session_driver_state(app_state, now, policy, session_state),
         });
     }
 
     let mut context = StudioAppMutableAuthCacheContext::new(cache_root, auth_cache_index);
     let now = normalized_system_time_now()?;
-    dispatch_entitlement_session_tick_with_control_plane(
+    dispatch_entitlement_session_tick_driver_with_control_plane(
         facade,
         app_state,
         &mut context,
@@ -195,6 +194,8 @@ fn dispatch_bootstrap_trigger(
     auth_cache_index: &mut StoredAuthCacheIndex,
     trigger: &StudioBootstrapTrigger,
     control_plane_client: &BootstrapControlPlaneClient,
+    policy: &EntitlementSessionPolicy,
+    session_state: &mut EntitlementSessionState,
 ) -> RfResult<StudioAppCommandOutcome> {
     match trigger {
         StudioBootstrapTrigger::Intent(intent) => {
@@ -253,26 +254,31 @@ fn dispatch_bootstrap_trigger(
         }
         StudioBootstrapTrigger::EntitlementWidgetPrimaryAction => {
             let mut context = StudioAppMutableAuthCacheContext::new(cache_root, auth_cache_index);
-            match dispatch_entitlement_panel_primary_action_with_control_plane(
+            match dispatch_entitlement_session_panel_primary_action_with_control_plane(
                 facade,
                 app_state,
                 &mut context,
                 control_plane_client,
                 "bootstrap-access-token",
+                normalized_system_time_now()?,
+                policy,
+                session_state,
             )? {
-                EntitlementPanelDriverOutcome {
-                    dispatch: EntitlementPanelWidgetDispatchOutcome::Executed(outcome),
+                EntitlementSessionPanelDriverOutcome {
+                    dispatch: crate::EntitlementPanelWidgetDispatchOutcome::Executed(outcome),
                     ..
                 } => Ok(outcome),
-                EntitlementPanelDriverOutcome {
-                    dispatch: EntitlementPanelWidgetDispatchOutcome::IgnoredDisabled { action_id },
+                EntitlementSessionPanelDriverOutcome {
+                    dispatch:
+                        crate::EntitlementPanelWidgetDispatchOutcome::IgnoredDisabled { action_id },
                     ..
                 } => Err(RfError::invalid_input(format!(
                     "bootstrap entitlement primary widget action `{:?}` is currently disabled",
                     action_id
                 ))),
-                EntitlementPanelDriverOutcome {
-                    dispatch: EntitlementPanelWidgetDispatchOutcome::IgnoredMissing { action_id },
+                EntitlementSessionPanelDriverOutcome {
+                    dispatch:
+                        crate::EntitlementPanelWidgetDispatchOutcome::IgnoredMissing { action_id },
                     ..
                 } => Err(RfError::invalid_input(format!(
                     "bootstrap entitlement primary widget action `{:?}` is missing from current widget model",
@@ -282,27 +288,32 @@ fn dispatch_bootstrap_trigger(
         }
         StudioBootstrapTrigger::EntitlementWidgetAction(action_id) => {
             let mut context = StudioAppMutableAuthCacheContext::new(cache_root, auth_cache_index);
-            match dispatch_entitlement_panel_widget_action_with_control_plane(
+            match dispatch_entitlement_session_panel_widget_action_with_control_plane(
                 facade,
                 app_state,
                 &mut context,
                 control_plane_client,
                 "bootstrap-access-token",
+                normalized_system_time_now()?,
+                policy,
+                session_state,
                 *action_id,
             )? {
-                EntitlementPanelDriverOutcome {
-                    dispatch: EntitlementPanelWidgetDispatchOutcome::Executed(outcome),
+                EntitlementSessionPanelDriverOutcome {
+                    dispatch: crate::EntitlementPanelWidgetDispatchOutcome::Executed(outcome),
                     ..
                 } => Ok(outcome),
-                EntitlementPanelDriverOutcome {
-                    dispatch: EntitlementPanelWidgetDispatchOutcome::IgnoredDisabled { action_id },
+                EntitlementSessionPanelDriverOutcome {
+                    dispatch:
+                        crate::EntitlementPanelWidgetDispatchOutcome::IgnoredDisabled { action_id },
                     ..
                 } => Err(RfError::invalid_input(format!(
                     "bootstrap entitlement widget action `{:?}` is currently disabled",
                     action_id
                 ))),
-                EntitlementPanelDriverOutcome {
-                    dispatch: EntitlementPanelWidgetDispatchOutcome::IgnoredMissing { action_id },
+                EntitlementSessionPanelDriverOutcome {
+                    dispatch:
+                        crate::EntitlementPanelWidgetDispatchOutcome::IgnoredMissing { action_id },
                     ..
                 } => Err(RfError::invalid_input(format!(
                     "bootstrap entitlement widget action `{:?}` is missing from current widget model",
