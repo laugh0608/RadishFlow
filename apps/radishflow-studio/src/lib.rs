@@ -56,8 +56,9 @@ pub use entitlement_panel_driver::{
 pub use entitlement_preflight::{
     EntitlementPreflightAction, EntitlementPreflightDecision, EntitlementPreflightOutcome,
     EntitlementPreflightPolicy, EntitlementSessionBackoff, EntitlementSessionPolicy,
-    EntitlementSessionSchedule, EntitlementSessionState, EntitlementSessionTickOutcome,
-    decide_entitlement_preflight_action, dispatch_entitlement_preflight_with_control_plane,
+    EntitlementSessionRuntime, EntitlementSessionSchedule, EntitlementSessionState,
+    EntitlementSessionTickOutcome, decide_entitlement_preflight_action,
+    dispatch_entitlement_preflight_with_control_plane,
     dispatch_entitlement_session_tick_with_control_plane, record_entitlement_session_dispatch,
     record_entitlement_session_outcome, snapshot_entitlement_session_schedule,
 };

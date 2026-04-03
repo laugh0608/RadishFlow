@@ -5,10 +5,9 @@ use rf_ui::{AppState, EntitlementActionId, EntitlementPanelWidgetEvent};
 
 use crate::{
     EntitlementPanelDriverState, EntitlementPanelWidgetDispatchOutcome, EntitlementSessionPolicy,
-    EntitlementSessionSchedule, EntitlementSessionState, EntitlementSessionTickOutcome,
-    RadishFlowControlPlaneClient, StudioAppCommandOutcome, StudioAppFacade,
-    StudioAppMutableAuthCacheContext, StudioEntitlementActionOutcome,
-    dispatch_entitlement_panel_widget_event_with_control_plane,
+    EntitlementSessionRuntime, EntitlementSessionSchedule, EntitlementSessionState,
+    EntitlementSessionTickOutcome, RadishFlowControlPlaneClient, StudioAppCommandOutcome,
+    StudioEntitlementActionOutcome, dispatch_entitlement_panel_widget_event_with_control_plane,
     dispatch_entitlement_session_tick_with_control_plane, record_entitlement_session_dispatch,
     snapshot_entitlement_panel_driver_state, snapshot_entitlement_session_schedule,
 };
@@ -42,7 +41,7 @@ pub enum EntitlementSessionEvent {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum EntitlementSessionEventOutcome {
-    Tick(EntitlementSessionTickOutcome),
+    Tick(Box<EntitlementSessionTickOutcome>),
     RecordedCommand {
         action: crate::StudioEntitlementAction,
     },
@@ -69,43 +68,20 @@ pub fn snapshot_entitlement_session_driver_state(
 }
 
 pub fn dispatch_entitlement_session_tick_driver_with_control_plane<Client>(
-    facade: &StudioAppFacade,
-    app_state: &mut AppState,
-    context: &mut StudioAppMutableAuthCacheContext<'_>,
-    control_plane_client: &Client,
-    access_token: &str,
-    now: SystemTime,
-    policy: &EntitlementSessionPolicy,
-    session_state: &mut EntitlementSessionState,
+    runtime: &mut EntitlementSessionRuntime<'_, '_, Client>,
 ) -> RfResult<EntitlementSessionTickDriverOutcome>
 where
     Client: RadishFlowControlPlaneClient,
 {
-    let tick = dispatch_entitlement_session_tick_with_control_plane(
-        facade,
-        app_state,
-        context,
-        control_plane_client,
-        access_token,
-        now,
-        policy,
-        session_state,
-    )?;
-    let state = snapshot_entitlement_session_driver_state(app_state, now, policy, session_state);
+    let tick = dispatch_entitlement_session_tick_with_control_plane(runtime)?;
+    let state = snapshot_runtime_state(runtime);
 
     Ok(EntitlementSessionTickDriverOutcome { tick, state })
 }
 
 pub fn dispatch_entitlement_session_event_with_control_plane<Client>(
-    facade: &StudioAppFacade,
-    app_state: &mut AppState,
-    context: &mut StudioAppMutableAuthCacheContext<'_>,
-    control_plane_client: &Client,
-    access_token: &str,
-    now: SystemTime,
-    policy: &EntitlementSessionPolicy,
-    session_state: &mut EntitlementSessionState,
     event: EntitlementSessionEvent,
+    runtime: &mut EntitlementSessionRuntime<'_, '_, Client>,
 ) -> RfResult<EntitlementSessionEventDriverOutcome>
 where
     Client: RadishFlowControlPlaneClient,
@@ -113,32 +89,23 @@ where
     let outcome = match &event {
         EntitlementSessionEvent::SessionStarted
         | EntitlementSessionEvent::LoginCompleted
-        | EntitlementSessionEvent::TimerElapsed => EntitlementSessionEventOutcome::Tick(
-            dispatch_entitlement_session_tick_with_control_plane(
-                facade,
-                app_state,
-                context,
-                control_plane_client,
-                access_token,
-                now,
-                policy,
-                session_state,
-            )?,
-        ),
+        | EntitlementSessionEvent::TimerElapsed => EntitlementSessionEventOutcome::Tick(Box::new(
+            dispatch_entitlement_session_tick_with_control_plane(runtime)?,
+        )),
         EntitlementSessionEvent::EntitlementCommandCompleted(dispatch) => {
             record_entitlement_session_dispatch(
-                session_state,
+                runtime.session_state,
                 dispatch.action,
                 &dispatch.outcome,
-                now,
-                policy,
+                runtime.now,
+                runtime.policy,
             );
             EntitlementSessionEventOutcome::RecordedCommand {
                 action: dispatch.action,
             }
         }
     };
-    let state = snapshot_entitlement_session_driver_state(app_state, now, policy, session_state);
+    let state = snapshot_runtime_state(runtime);
 
     Ok(EntitlementSessionEventDriverOutcome {
         event,
@@ -148,87 +115,66 @@ where
 }
 
 pub fn dispatch_entitlement_session_panel_widget_event_with_control_plane<Client>(
-    facade: &StudioAppFacade,
-    app_state: &mut AppState,
-    context: &mut StudioAppMutableAuthCacheContext<'_>,
-    control_plane_client: &Client,
-    access_token: &str,
-    now: SystemTime,
-    policy: &EntitlementSessionPolicy,
-    session_state: &mut EntitlementSessionState,
     event: &EntitlementPanelWidgetEvent,
+    runtime: &mut EntitlementSessionRuntime<'_, '_, Client>,
 ) -> RfResult<EntitlementSessionPanelDriverOutcome>
 where
     Client: RadishFlowControlPlaneClient,
 {
     let dispatch = dispatch_entitlement_panel_widget_event_with_control_plane(
-        facade,
-        app_state,
-        context,
-        control_plane_client,
-        access_token,
+        runtime.facade,
+        runtime.app_state,
+        runtime.context,
+        runtime.control_plane_client,
+        runtime.access_token,
         event,
     )?;
     if let EntitlementPanelWidgetDispatchOutcome::Executed(outcome) = &dispatch {
-        record_panel_command_outcome(session_state, outcome, now, policy);
+        record_panel_command_outcome(runtime.session_state, outcome, runtime.now, runtime.policy);
     }
-    let state = snapshot_entitlement_session_driver_state(app_state, now, policy, session_state);
+    let state = snapshot_runtime_state(runtime);
 
     Ok(EntitlementSessionPanelDriverOutcome { dispatch, state })
 }
 
 pub fn dispatch_entitlement_session_panel_widget_action_with_control_plane<Client>(
-    facade: &StudioAppFacade,
-    app_state: &mut AppState,
-    context: &mut StudioAppMutableAuthCacheContext<'_>,
-    control_plane_client: &Client,
-    access_token: &str,
-    now: SystemTime,
-    policy: &EntitlementSessionPolicy,
-    session_state: &mut EntitlementSessionState,
     action_id: EntitlementActionId,
+    runtime: &mut EntitlementSessionRuntime<'_, '_, Client>,
 ) -> RfResult<EntitlementSessionPanelDriverOutcome>
 where
     Client: RadishFlowControlPlaneClient,
 {
-    let widget = snapshot_entitlement_panel_driver_state(app_state).widget;
+    let widget = snapshot_entitlement_panel_driver_state(runtime.app_state).widget;
     dispatch_entitlement_session_panel_widget_event_with_control_plane(
-        facade,
-        app_state,
-        context,
-        control_plane_client,
-        access_token,
-        now,
-        policy,
-        session_state,
         &widget.activate(action_id),
+        runtime,
     )
 }
 
 pub fn dispatch_entitlement_session_panel_primary_action_with_control_plane<Client>(
-    facade: &StudioAppFacade,
-    app_state: &mut AppState,
-    context: &mut StudioAppMutableAuthCacheContext<'_>,
-    control_plane_client: &Client,
-    access_token: &str,
-    now: SystemTime,
-    policy: &EntitlementSessionPolicy,
-    session_state: &mut EntitlementSessionState,
+    runtime: &mut EntitlementSessionRuntime<'_, '_, Client>,
 ) -> RfResult<EntitlementSessionPanelDriverOutcome>
 where
     Client: RadishFlowControlPlaneClient,
 {
-    let widget = snapshot_entitlement_panel_driver_state(app_state).widget;
+    let widget = snapshot_entitlement_panel_driver_state(runtime.app_state).widget;
     dispatch_entitlement_session_panel_widget_event_with_control_plane(
-        facade,
-        app_state,
-        context,
-        control_plane_client,
-        access_token,
-        now,
-        policy,
-        session_state,
         &widget.activate_primary(),
+        runtime,
+    )
+}
+
+fn snapshot_runtime_state<Client>(
+    runtime: &EntitlementSessionRuntime<'_, '_, Client>,
+) -> EntitlementSessionDriverState
+where
+    Client: RadishFlowControlPlaneClient,
+{
+    snapshot_entitlement_session_driver_state(
+        runtime.app_state,
+        runtime.now,
+        runtime.policy,
+        runtime.session_state,
     )
 }
 
@@ -272,10 +218,11 @@ mod tests {
     };
     use crate::{
         EntitlementPanelWidgetDispatchOutcome, EntitlementPreflightAction,
-        EntitlementSessionPolicy, EntitlementSessionState, RadishFlowControlPlaneClient,
-        RadishFlowControlPlaneClientError, RadishFlowControlPlaneClientErrorKind,
-        RadishFlowControlPlaneResponse, StudioAppFacade, StudioAppMutableAuthCacheContext,
-        StudioAppResultDispatch, StudioEntitlementAction, StudioEntitlementOutcome,
+        EntitlementSessionPolicy, EntitlementSessionRuntime, EntitlementSessionState,
+        RadishFlowControlPlaneClient, RadishFlowControlPlaneClientError,
+        RadishFlowControlPlaneClientErrorKind, RadishFlowControlPlaneResponse, StudioAppFacade,
+        StudioAppMutableAuthCacheContext, StudioAppResultDispatch, StudioEntitlementAction,
+        StudioEntitlementOutcome,
     };
 
     fn timestamp(seconds: u64) -> std::time::SystemTime {
@@ -469,18 +416,20 @@ mod tests {
         app_state.entitlement.clear();
         let mut context = StudioAppMutableAuthCacheContext::new(&cache_root, &mut auth_cache_index);
         let mut session_state = EntitlementSessionState::default();
+        let policy = EntitlementSessionPolicy::default();
+        let mut runtime = EntitlementSessionRuntime {
+            facade: &facade,
+            app_state: &mut app_state,
+            context: &mut context,
+            control_plane_client: &client,
+            access_token: "access-token",
+            now: timestamp(200),
+            policy: &policy,
+            session_state: &mut session_state,
+        };
 
-        let outcome = dispatch_entitlement_session_tick_driver_with_control_plane(
-            &facade,
-            &mut app_state,
-            &mut context,
-            &client,
-            "access-token",
-            timestamp(200),
-            &EntitlementSessionPolicy::default(),
-            &mut session_state,
-        )
-        .expect("expected session tick");
+        let outcome = dispatch_entitlement_session_tick_driver_with_control_plane(&mut runtime)
+            .expect("expected session tick");
 
         let preflight = outcome.tick.preflight.expect("expected preflight");
         assert_eq!(
@@ -505,17 +454,21 @@ mod tests {
         app_state.entitlement.clear();
         let mut context = StudioAppMutableAuthCacheContext::new(&cache_root, &mut auth_cache_index);
         let mut session_state = EntitlementSessionState::default();
+        let policy = EntitlementSessionPolicy::default();
+        let mut runtime = EntitlementSessionRuntime {
+            facade: &facade,
+            app_state: &mut app_state,
+            context: &mut context,
+            control_plane_client: &client,
+            access_token: "access-token",
+            now: timestamp(200),
+            policy: &policy,
+            session_state: &mut session_state,
+        };
 
         let outcome = dispatch_entitlement_session_event_with_control_plane(
-            &facade,
-            &mut app_state,
-            &mut context,
-            &client,
-            "access-token",
-            timestamp(200),
-            &EntitlementSessionPolicy::default(),
-            &mut session_state,
             EntitlementSessionEvent::SessionStarted,
+            &mut runtime,
         )
         .expect("expected session started event dispatch");
 
@@ -560,17 +513,21 @@ mod tests {
             notice: None,
             latest_log_entry: None,
         };
+        let policy = EntitlementSessionPolicy::default();
+        let mut runtime = EntitlementSessionRuntime {
+            facade: &facade,
+            app_state: &mut app_state,
+            context: &mut context,
+            control_plane_client: &client,
+            access_token: "access-token",
+            now: timestamp(220),
+            policy: &policy,
+            session_state: &mut session_state,
+        };
 
         let outcome = dispatch_entitlement_session_event_with_control_plane(
-            &facade,
-            &mut app_state,
-            &mut context,
-            &client,
-            "access-token",
-            timestamp(220),
-            &EntitlementSessionPolicy::default(),
-            &mut session_state,
             EntitlementSessionEvent::EntitlementCommandCompleted(action_outcome),
+            &mut runtime,
         )
         .expect("expected command completed event dispatch");
 
@@ -605,18 +562,21 @@ mod tests {
         let mut auth_cache_index = sample_auth_cache_index();
         let mut context = StudioAppMutableAuthCacheContext::new(&cache_root, &mut auth_cache_index);
         let mut session_state = EntitlementSessionState::default();
+        let policy = EntitlementSessionPolicy::default();
+        let mut runtime = EntitlementSessionRuntime {
+            facade: &facade,
+            app_state: &mut app_state,
+            context: &mut context,
+            control_plane_client: &client,
+            access_token: "access-token",
+            now: timestamp(200),
+            policy: &policy,
+            session_state: &mut session_state,
+        };
 
-        let outcome = dispatch_entitlement_session_panel_primary_action_with_control_plane(
-            &facade,
-            &mut app_state,
-            &mut context,
-            &client,
-            "access-token",
-            timestamp(200),
-            &EntitlementSessionPolicy::default(),
-            &mut session_state,
-        )
-        .expect("expected panel primary action");
+        let outcome =
+            dispatch_entitlement_session_panel_primary_action_with_control_plane(&mut runtime)
+                .expect("expected panel primary action");
 
         match outcome.dispatch {
             EntitlementPanelWidgetDispatchOutcome::Executed(outcome) => match outcome.dispatch {
@@ -654,17 +614,21 @@ mod tests {
         let mut auth_cache_index = sample_auth_cache_index();
         let mut context = StudioAppMutableAuthCacheContext::new(&cache_root, &mut auth_cache_index);
         let mut session_state = EntitlementSessionState::default();
+        let policy = EntitlementSessionPolicy::default();
+        let mut runtime = EntitlementSessionRuntime {
+            facade: &facade,
+            app_state: &mut app_state,
+            context: &mut context,
+            control_plane_client: &client,
+            access_token: "access-token",
+            now: timestamp(200),
+            policy: &policy,
+            session_state: &mut session_state,
+        };
 
         let outcome = crate::dispatch_entitlement_session_panel_widget_action_with_control_plane(
-            &facade,
-            &mut app_state,
-            &mut context,
-            &client,
-            "access-token",
-            timestamp(200),
-            &EntitlementSessionPolicy::default(),
-            &mut session_state,
             EntitlementActionId::SyncEntitlement,
+            &mut runtime,
         )
         .expect("expected disabled session panel dispatch");
 

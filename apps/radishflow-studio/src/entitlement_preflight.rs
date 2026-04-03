@@ -97,6 +97,20 @@ pub struct EntitlementSessionTickOutcome {
     pub schedule: EntitlementSessionSchedule,
 }
 
+pub struct EntitlementSessionRuntime<'a, 'cache, Client>
+where
+    Client: RadishFlowControlPlaneClient,
+{
+    pub facade: &'a StudioAppFacade,
+    pub app_state: &'a mut AppState,
+    pub context: &'a mut StudioAppMutableAuthCacheContext<'cache>,
+    pub control_plane_client: &'a Client,
+    pub access_token: &'a str,
+    pub now: SystemTime,
+    pub policy: &'a EntitlementSessionPolicy,
+    pub session_state: &'a mut EntitlementSessionState,
+}
+
 pub fn decide_entitlement_preflight_action(
     app_state: &AppState,
     now: SystemTime,
@@ -127,13 +141,10 @@ pub fn decide_entitlement_preflight_action(
         });
     }
 
-    let Some(offline_lease_expires_at) = entitlement
+    let offline_lease_expires_at = entitlement
         .snapshot
         .as_ref()
-        .and_then(|snapshot| snapshot.offline_lease_expires_at)
-    else {
-        return None;
-    };
+        .and_then(|snapshot| snapshot.offline_lease_expires_at)?;
 
     if now >= offline_lease_expires_at {
         return Some(EntitlementPreflightDecision {
@@ -203,22 +214,17 @@ pub fn snapshot_entitlement_session_schedule(
 }
 
 pub fn dispatch_entitlement_session_tick_with_control_plane<Client>(
-    facade: &StudioAppFacade,
-    app_state: &mut AppState,
-    context: &mut StudioAppMutableAuthCacheContext<'_>,
-    control_plane_client: &Client,
-    access_token: &str,
-    now: SystemTime,
-    policy: &EntitlementSessionPolicy,
-    session_state: &mut EntitlementSessionState,
+    runtime: &mut EntitlementSessionRuntime<'_, '_, Client>,
 ) -> RfResult<EntitlementSessionTickOutcome>
 where
     Client: RadishFlowControlPlaneClient,
 {
-    let immediate = decide_entitlement_session_action(app_state, now, policy);
+    let immediate =
+        decide_entitlement_session_action(runtime.app_state, runtime.now, runtime.policy);
     let preflight = match immediate {
         Some(decision)
-            if active_backoff_for_action(session_state, decision.action, now).is_none() =>
+            if active_backoff_for_action(runtime.session_state, decision.action, runtime.now)
+                .is_none() =>
         {
             let intent = match decision.action {
                 EntitlementPreflightAction::SyncEntitlement => {
@@ -229,21 +235,31 @@ where
                 }
             };
             let outcome = dispatch_entitlement_panel_intent_with_control_plane(
-                facade,
-                app_state,
-                context,
-                control_plane_client,
-                access_token,
+                runtime.facade,
+                runtime.app_state,
+                runtime.context,
+                runtime.control_plane_client,
+                runtime.access_token,
                 &intent,
             )?;
             let preflight = EntitlementPreflightOutcome { decision, outcome };
-            record_entitlement_session_outcome(session_state, &preflight, now, policy)?;
+            record_entitlement_session_outcome(
+                runtime.session_state,
+                &preflight,
+                runtime.now,
+                runtime.policy,
+            )?;
             Some(preflight)
         }
         _ => None,
     };
 
-    let schedule = snapshot_entitlement_session_schedule(app_state, now, policy, session_state);
+    let schedule = snapshot_entitlement_session_schedule(
+        runtime.app_state,
+        runtime.now,
+        runtime.policy,
+        runtime.session_state,
+    );
     Ok(EntitlementSessionTickOutcome {
         preflight,
         schedule,
@@ -546,7 +562,7 @@ mod tests {
 
     use super::{
         EntitlementPreflightAction, EntitlementPreflightPolicy, EntitlementSessionPolicy,
-        EntitlementSessionState, decide_entitlement_preflight_action,
+        EntitlementSessionRuntime, EntitlementSessionState, decide_entitlement_preflight_action,
         dispatch_entitlement_preflight_with_control_plane,
         dispatch_entitlement_session_tick_with_control_plane, record_entitlement_session_dispatch,
         snapshot_entitlement_session_schedule,
@@ -930,17 +946,19 @@ mod tests {
         let mut context = StudioAppMutableAuthCacheContext::new(&cache_root, &mut auth_cache_index);
         let mut session_state = EntitlementSessionState::default();
 
-        let tick = dispatch_entitlement_session_tick_with_control_plane(
-            &facade,
-            &mut app_state,
-            &mut context,
-            &client,
-            "access-token",
-            timestamp(200),
-            &EntitlementSessionPolicy::default(),
-            &mut session_state,
-        )
-        .expect("expected scheduler tick");
+        let policy = EntitlementSessionPolicy::default();
+        let mut runtime = EntitlementSessionRuntime {
+            facade: &facade,
+            app_state: &mut app_state,
+            context: &mut context,
+            control_plane_client: &client,
+            access_token: "access-token",
+            now: timestamp(200),
+            policy: &policy,
+            session_state: &mut session_state,
+        };
+        let tick = dispatch_entitlement_session_tick_with_control_plane(&mut runtime)
+            .expect("expected scheduler tick");
 
         let preflight = tick.preflight.expect("expected executed session tick");
         assert_eq!(
@@ -974,6 +992,7 @@ mod tests {
             vec![sample_manifest()],
             timestamp(150),
         );
+        let policy = EntitlementSessionPolicy::default();
         let mut session_state = EntitlementSessionState::default();
         record_entitlement_session_dispatch(
             &mut session_state,
@@ -983,13 +1002,13 @@ mod tests {
                 message: "token expired".to_string(),
             }),
             timestamp(200),
-            &EntitlementSessionPolicy::default(),
+            &policy,
         );
 
         let schedule = snapshot_entitlement_session_schedule(
             &app_state,
             timestamp(205),
-            &EntitlementSessionPolicy::default(),
+            &policy,
             &session_state,
         );
 
@@ -1019,25 +1038,29 @@ mod tests {
         let cache_root = PathBuf::from("D:\\cache-root");
         let mut auth_cache_index = sample_auth_cache_index(&snapshot);
         let mut context = StudioAppMutableAuthCacheContext::new(&cache_root, &mut auth_cache_index);
-        let mut session_state = EntitlementSessionState::default();
-        session_state.backoff = Some(super::EntitlementSessionBackoff {
-            action: EntitlementPreflightAction::RefreshOfflineLease,
-            failure_reason: StudioEntitlementFailureReason::ConnectionUnavailable,
-            consecutive_failures: 2,
-            retry_not_before: timestamp(190),
-        });
+        let policy = EntitlementSessionPolicy::default();
+        let mut session_state = EntitlementSessionState {
+            backoff: Some(super::EntitlementSessionBackoff {
+                action: EntitlementPreflightAction::RefreshOfflineLease,
+                failure_reason: StudioEntitlementFailureReason::ConnectionUnavailable,
+                consecutive_failures: 2,
+                retry_not_before: timestamp(190),
+            }),
+            ..EntitlementSessionState::default()
+        };
 
-        let tick = dispatch_entitlement_session_tick_with_control_plane(
-            &facade,
-            &mut app_state,
-            &mut context,
-            &client,
-            "access-token",
-            timestamp(200),
-            &EntitlementSessionPolicy::default(),
-            &mut session_state,
-        )
-        .expect("expected scheduler tick");
+        let mut runtime = EntitlementSessionRuntime {
+            facade: &facade,
+            app_state: &mut app_state,
+            context: &mut context,
+            control_plane_client: &client,
+            access_token: "access-token",
+            now: timestamp(200),
+            policy: &policy,
+            session_state: &mut session_state,
+        };
+        let tick = dispatch_entitlement_session_tick_with_control_plane(&mut runtime)
+            .expect("expected scheduler tick");
 
         let preflight = tick.preflight.expect("expected executed session tick");
         assert_eq!(

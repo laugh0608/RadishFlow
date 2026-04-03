@@ -68,7 +68,7 @@ pub struct WorkspaceControlActionOutcome {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RunPanelWidgetDispatchOutcome {
-    Executed(WorkspaceControlActionOutcome),
+    Executed(Box<WorkspaceControlActionOutcome>),
     IgnoredDisabled { action_id: rf_ui::RunPanelActionId },
     IgnoredMissing { action_id: rf_ui::RunPanelActionId },
 }
@@ -163,7 +163,7 @@ pub fn dispatch_run_panel_widget_event_with_auth_cache(
     match event {
         RunPanelWidgetEvent::Dispatched { intent, .. } => {
             dispatch_run_panel_intent_with_auth_cache(facade, app_state, context, intent)
-                .map(RunPanelWidgetDispatchOutcome::Executed)
+                .map(|outcome| RunPanelWidgetDispatchOutcome::Executed(Box::new(outcome)))
         }
         RunPanelWidgetEvent::Disabled { action_id } => {
             Ok(RunPanelWidgetDispatchOutcome::IgnoredDisabled {
