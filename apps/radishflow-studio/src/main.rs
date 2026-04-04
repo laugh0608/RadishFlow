@@ -1,6 +1,6 @@
 use radishflow_studio::{
-    EntitlementSessionEventOutcome, StudioAppResultDispatch, StudioBootstrapConfig,
-    StudioBootstrapDispatch, StudioRuntime, StudioRuntimeEffect,
+    EntitlementSessionEventOutcome, StudioAppResultDispatch, StudioRuntime, StudioRuntimeConfig,
+    StudioRuntimeDispatch, StudioRuntimeEffect, StudioRuntimeReport,
 };
 
 fn print_text_view(title: &str, lines: &[String]) {
@@ -10,13 +10,13 @@ fn print_text_view(title: &str, lines: &[String]) {
     }
 }
 
-fn print_run_panel(report: &radishflow_studio::StudioBootstrapReport) {
+fn print_run_panel(report: &StudioRuntimeReport) {
     let text = report.run_panel.text();
     print_text_view(text.title, &text.lines);
 }
 
 fn main() {
-    let config = StudioBootstrapConfig::default();
+    let config = StudioRuntimeConfig::default();
 
     let mut runtime = match StudioRuntime::new(&config) {
         Ok(runtime) => runtime,
@@ -65,7 +65,7 @@ fn main() {
             }
 
             match report.dispatch {
-                StudioBootstrapDispatch::AppCommand(outcome) => match outcome.dispatch {
+                StudioRuntimeDispatch::AppCommand(outcome) => match outcome.dispatch {
                     StudioAppResultDispatch::WorkspaceRun(dispatch) => {
                         println!("Run status: {:?}", dispatch.run_status);
                         println!("Outcome: {:?}", dispatch.outcome);
@@ -107,7 +107,7 @@ fn main() {
                         }
                     }
                 },
-                StudioBootstrapDispatch::EntitlementSessionEvent(outcome) => {
+                StudioRuntimeDispatch::EntitlementSessionEvent(outcome) => {
                     println!("Entitlement session event: {:?}", outcome.event);
                     match outcome.outcome {
                         EntitlementSessionEventOutcome::Tick(tick) => {

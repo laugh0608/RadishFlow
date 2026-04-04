@@ -122,7 +122,12 @@ pub use solver_bridge::{
     StudioSolveRequest, next_solver_snapshot_sequence, solve_workspace_from_auth_cache,
     solve_workspace_with_property_package,
 };
-pub use studio_runtime::{StudioRuntime, StudioRuntimeEffect, StudioRuntimeOutput};
+pub use studio_runtime::{
+    StudioRuntime, StudioRuntimeConfig, StudioRuntimeDispatch, StudioRuntimeEffect,
+    StudioRuntimeEntitlementPreflight, StudioRuntimeEntitlementSeed,
+    StudioRuntimeEntitlementSessionEvent, StudioRuntimeOutput, StudioRuntimeReport,
+    StudioRuntimeTrigger,
+};
 pub use workspace_control::{
     RunPanelWidgetDispatchOutcome, WorkspaceControlAction, WorkspaceControlActionOutcome,
     WorkspaceControlState, dispatch_run_panel_intent_with_auth_cache,

@@ -311,11 +311,12 @@ MVP 阶段明确不做：
 - Studio 当前也已把 bootstrap 最小入口继续收成可复用 session，并开始覆盖多宿主事件序列测试，验证共享 runtime 下 `TimerElapsed / NetworkRestored / WindowForegrounded` 的连续推进语义
 - Studio 当前也已补出 `StudioRuntime`，把 bootstrap 内部可复用 session 上提为共享顶层入口，让 `run_studio_bootstrap(...)` 与 `main.rs` 统一走同一条 `StudioBootstrapTrigger -> entitlement host runtime / app facade` 分发链
 - Studio 当前也已在 `StudioRuntime` 顶层补出 `StudioRuntimeOutput / StudioRuntimeEffect`，把 entitlement timer effect 正式作为运行时宿主输出暴露出来，后续真实桌面框架不必继续从 bootstrap 报告里翻字段取 effect
+- Studio 当前也已给顶层 runtime 补出正式 `StudioRuntimeConfig / Trigger / Report / Dispatch` 命名，让真实宿主可先脱离 `StudioBootstrap*` 命名耦合，再继续推进具体 GUI 接线
 
 基于上述进展，当前下一阶段计划调整为：
 
 - 在已接通的 `main.rs` 最小 bootstrap 入口、`RunPanelWidgetModel`、`run_panel_driver`、entitlement session driver 与 `StudioBootstrapTrigger` 契约基础上，继续把 `StudioAppFacade + WorkspaceRunCommand + WorkspaceSolveService` 和 entitlement session event 接到更完整的 UI 运行命令、登录完成事件与定时调度入口
-- 在已补出的 `StudioRuntime + StudioRuntimeOutput` 共享入口基础上，继续决定真实桌面框架里的 timer 句柄、窗口生命周期事件与后台任务宿主如何接到这条统一 runtime 链路
+- 在已补出的 `StudioRuntimeConfig + Trigger + Report + Output` 共享入口基础上，继续决定真实桌面框架里的 timer 句柄、窗口生命周期事件与后台任务宿主如何接到这条统一 runtime 链路
 - 继续冻结运行结果派发、日志入口与后续异步执行边界
 - 在不打乱当前边界的前提下，再恢复更完整的 Studio 交互流、联网提示位置与内核主线推进
 

@@ -624,6 +624,7 @@ RadishFlow Studio
 - `apps/radishflow-studio` 当前又已把 bootstrap 初始化与单次 trigger 执行收为可复用 session，并补出 `TimerElapsed -> NetworkRestored -> WindowForegrounded` 这类连续宿主事件序列验证，确认共享 host runtime 下会持续复用同一份 timer effect / snapshot 推进
 - `apps/radishflow-studio` 当前又已补出 `StudioRuntime`，把上述可复用 session 再上提成共享顶层 app-runtime 入口；`run_studio_bootstrap(...)` 与 `apps/radishflow-studio/src/main.rs` 现已统一通过这层分发 `StudioBootstrapTrigger`，不再各自保留一套 entitlement host runtime 驱动和展示收口逻辑
 - `apps/radishflow-studio` 当前又已在 `StudioRuntime` 顶层补出 `StudioRuntimeOutput / StudioRuntimeEffect`，把 entitlement timer 这类宿主侧 effect 从 `StudioBootstrapReport` 内部字段再上提一层，帮助后续真实 GUI 宿主直接消费 runtime 输出，而不必反向依赖 bootstrap 报告细节
+- `apps/radishflow-studio` 当前又已给顶层 runtime 补出正式 `StudioRuntimeConfig / Trigger / Report / Dispatch` 命名，`main.rs` 已开始只消费这组顶层契约；`StudioBootstrap*` 继续保留为兼容最小 bootstrap 入口，而不是再作为真实宿主的首选接口
 
 ### `rf-store`
 
