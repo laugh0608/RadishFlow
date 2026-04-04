@@ -1,8 +1,9 @@
 use radishflow_studio::{
-    EntitlementSessionEventOutcome, StudioAppResultDispatch, StudioRuntimeConfig,
-    StudioRuntimeDispatch, StudioRuntimeReport, StudioRuntimeTimerHostCommand,
-    StudioRuntimeTimerHostTransition, StudioWindowHostEvent, StudioWindowHostRetirement,
-    StudioWindowSession, StudioWindowTimerDriverAckResult, StudioWindowTimerDriverTransition,
+    EntitlementSessionEventOutcome, StudioAppResultDispatch, StudioAppWindowHostGlobalEvent,
+    StudioAppWindowHostManager, StudioRuntimeConfig, StudioRuntimeDispatch, StudioRuntimeReport,
+    StudioRuntimeTimerHostCommand, StudioRuntimeTimerHostTransition, StudioWindowHostEvent,
+    StudioWindowHostRetirement, StudioWindowTimerDriverAckResult,
+    StudioWindowTimerDriverTransition,
 };
 
 fn print_text_view(title: &str, lines: &[String]) {
@@ -19,7 +20,7 @@ fn print_run_panel(report: &StudioRuntimeReport) {
 
 fn main() {
     let config = StudioRuntimeConfig::default();
-    let mut window_session = match StudioWindowSession::new(&config) {
+    let mut window_manager = match StudioAppWindowHostManager::new(&config) {
         Ok(runtime) => runtime,
         Err(error) => {
             eprintln!(
@@ -30,10 +31,14 @@ fn main() {
             std::process::exit(1);
         }
     };
-    let window = window_session.open_window();
+    let window = window_manager.open_window();
     println!(
         "Opened window host #{} as {:?}",
         window.window_id, window.role
+    );
+    println!(
+        "Foreground window: {:?}",
+        window_manager.foreground_window_id()
     );
     if let Some(slot) = window.restored_entitlement_timer.as_ref() {
         println!("Restored parked timer slot into window host: {:?}", slot);
@@ -43,11 +48,11 @@ fn main() {
         println!("  registration commands are now auto-applied by session adapter");
     }
 
-    match window_session.dispatch_trigger(window.window_id, &config.trigger) {
+    match window_manager.dispatch_trigger(window.window_id, &config.trigger) {
         Ok(dispatch) => {
-            let window_event = dispatch.host_output.window_event;
-            let timer_driver_commands = dispatch.host_output.timer_driver_commands;
-            let report = dispatch.host_output.runtime_output.report;
+            let window_event = dispatch.dispatch.host_output.window_event;
+            let timer_driver_commands = dispatch.dispatch.host_output.timer_driver_commands;
+            let report = dispatch.dispatch.host_output.runtime_output.report;
             println!("RadishFlow Studio bootstrap");
             println!("Project: {}", config.project_path.display());
             println!("Requested trigger: {:?}", config.trigger);
@@ -138,10 +143,10 @@ fn main() {
                 for command in &timer_driver_commands {
                     println!("  host command: {:?}", command);
                 }
-                for transition in &dispatch.timer_driver_transitions {
+                for transition in &dispatch.dispatch.timer_driver_transitions {
                     print_timer_driver_transition(transition);
                 }
-                for ack in &dispatch.timer_driver_acks {
+                for ack in &dispatch.dispatch.timer_driver_acks {
                     print_timer_driver_ack(ack);
                 }
             }
@@ -214,23 +219,38 @@ fn main() {
                 }
             }
 
-            if let Some(shutdown) = window_session.close_window(window.window_id) {
-                if let Some(slot) = shutdown.host_shutdown.cleared_entitlement_timer {
+            if let Some(global_dispatch) = window_manager
+                .dispatch_global_event(StudioAppWindowHostGlobalEvent::NetworkRestored)
+                .expect("expected global network restored dispatch")
+            {
+                println!(
+                    "Global network restored routed to window #{}",
+                    global_dispatch.target_window_id
+                );
+            }
+
+            if let Some(shutdown) = window_manager.close_window(window.window_id) {
+                if let Some(slot) = shutdown.shutdown.host_shutdown.cleared_entitlement_timer {
                     println!("Window host shutdown cleared timer slot: {:?}", slot);
                 }
-                if !shutdown.host_shutdown.timer_driver_commands.is_empty() {
+                if !shutdown
+                    .shutdown
+                    .host_shutdown
+                    .timer_driver_commands
+                    .is_empty()
+                {
                     println!("Window host shutdown driver commands:");
-                    for command in &shutdown.host_shutdown.timer_driver_commands {
+                    for command in &shutdown.shutdown.host_shutdown.timer_driver_commands {
                         println!("  host command: {:?}", command);
                     }
-                    for transition in &shutdown.timer_driver_transitions {
+                    for transition in &shutdown.shutdown.timer_driver_transitions {
                         print_timer_driver_transition(transition);
                     }
-                    for ack in &shutdown.timer_driver_acks {
+                    for ack in &shutdown.shutdown.timer_driver_acks {
                         print_timer_driver_ack(ack);
                     }
                 }
-                match shutdown.host_shutdown.retirement {
+                match shutdown.shutdown.host_shutdown.retirement {
                     StudioWindowHostRetirement::None => {}
                     StudioWindowHostRetirement::Transferred {
                         new_owner_window_id,
@@ -250,6 +270,10 @@ fn main() {
                         }
                     }
                 }
+                println!(
+                    "Next foreground window: {:?}",
+                    shutdown.next_foreground_window_id
+                );
             }
         }
         Err(error) => {

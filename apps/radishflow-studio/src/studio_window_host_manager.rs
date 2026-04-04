@@ -1,0 +1,321 @@
+use std::collections::BTreeSet;
+
+use rf_types::{RfError, RfResult};
+
+use crate::{
+    StudioRuntimeConfig, StudioRuntimeTrigger, StudioWindowHostId, StudioWindowHostLifecycleEvent,
+    StudioWindowHostRegistration, StudioWindowHostRetirement, StudioWindowSession,
+    StudioWindowSessionDispatch, StudioWindowSessionShutdown,
+};
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum StudioAppWindowHostGlobalEvent {
+    LoginCompleted,
+    NetworkRestored,
+    TimerElapsed,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioAppWindowHostDispatch {
+    pub target_window_id: StudioWindowHostId,
+    pub dispatch: StudioWindowSessionDispatch,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioAppWindowHostClose {
+    pub window_id: StudioWindowHostId,
+    pub shutdown: StudioWindowSessionShutdown,
+    pub next_foreground_window_id: Option<StudioWindowHostId>,
+}
+
+pub struct StudioAppWindowHostManager {
+    session: StudioWindowSession,
+    registered_windows: BTreeSet<StudioWindowHostId>,
+    foreground_window_id: Option<StudioWindowHostId>,
+}
+
+impl StudioAppWindowHostManager {
+    pub fn new(config: &StudioRuntimeConfig) -> RfResult<Self> {
+        Ok(Self {
+            session: StudioWindowSession::new(config)?,
+            registered_windows: BTreeSet::new(),
+            foreground_window_id: None,
+        })
+    }
+
+    pub fn session(&self) -> &StudioWindowSession {
+        &self.session
+    }
+
+    pub fn foreground_window_id(&self) -> Option<StudioWindowHostId> {
+        self.foreground_window_id
+    }
+
+    pub fn registered_windows(&self) -> Vec<StudioWindowHostId> {
+        self.registered_windows.iter().copied().collect()
+    }
+
+    pub fn open_window(&mut self) -> StudioWindowHostRegistration {
+        let registration = self.session.open_window();
+        self.registered_windows.insert(registration.window_id);
+        if self.foreground_window_id.is_none() {
+            self.foreground_window_id = Some(registration.window_id);
+        }
+        registration
+    }
+
+    pub fn dispatch_trigger(
+        &mut self,
+        window_id: StudioWindowHostId,
+        trigger: &StudioRuntimeTrigger,
+    ) -> RfResult<StudioAppWindowHostDispatch> {
+        self.ensure_registered_window(window_id)?;
+        let dispatch = self.session.dispatch_trigger(window_id, trigger)?;
+
+        Ok(StudioAppWindowHostDispatch {
+            target_window_id: window_id,
+            dispatch,
+        })
+    }
+
+    pub fn focus_window(
+        &mut self,
+        window_id: StudioWindowHostId,
+    ) -> RfResult<StudioAppWindowHostDispatch> {
+        self.ensure_registered_window(window_id)?;
+        self.foreground_window_id = Some(window_id);
+        let dispatch = self.session.dispatch_lifecycle_event(
+            window_id,
+            StudioWindowHostLifecycleEvent::WindowForegrounded,
+        )?;
+
+        Ok(StudioAppWindowHostDispatch {
+            target_window_id: window_id,
+            dispatch,
+        })
+    }
+
+    pub fn dispatch_global_event(
+        &mut self,
+        event: StudioAppWindowHostGlobalEvent,
+    ) -> RfResult<Option<StudioAppWindowHostDispatch>> {
+        let Some(target_window_id) = self.resolve_global_event_target(event) else {
+            return Ok(None);
+        };
+
+        let lifecycle_event = match event {
+            StudioAppWindowHostGlobalEvent::LoginCompleted => {
+                StudioWindowHostLifecycleEvent::LoginCompleted
+            }
+            StudioAppWindowHostGlobalEvent::NetworkRestored => {
+                StudioWindowHostLifecycleEvent::NetworkRestored
+            }
+            StudioAppWindowHostGlobalEvent::TimerElapsed => {
+                StudioWindowHostLifecycleEvent::TimerElapsed
+            }
+        };
+        let dispatch = self
+            .session
+            .dispatch_lifecycle_event(target_window_id, lifecycle_event)?;
+
+        Ok(Some(StudioAppWindowHostDispatch {
+            target_window_id,
+            dispatch,
+        }))
+    }
+
+    pub fn close_window(
+        &mut self,
+        window_id: StudioWindowHostId,
+    ) -> Option<StudioAppWindowHostClose> {
+        self.registered_windows.remove(&window_id);
+        let shutdown = self.session.close_window(window_id)?;
+
+        if self.foreground_window_id == Some(window_id) {
+            self.foreground_window_id = match shutdown.host_shutdown.retirement {
+                StudioWindowHostRetirement::Transferred {
+                    new_owner_window_id,
+                    ..
+                } => Some(new_owner_window_id),
+                StudioWindowHostRetirement::None | StudioWindowHostRetirement::Parked { .. } => {
+                    self.registered_windows.iter().next().copied()
+                }
+            };
+        }
+
+        Some(StudioAppWindowHostClose {
+            window_id,
+            shutdown,
+            next_foreground_window_id: self.foreground_window_id,
+        })
+    }
+
+    fn resolve_global_event_target(
+        &self,
+        event: StudioAppWindowHostGlobalEvent,
+    ) -> Option<StudioWindowHostId> {
+        if self.registered_windows.is_empty() {
+            return None;
+        }
+
+        match event {
+            StudioAppWindowHostGlobalEvent::TimerElapsed => self
+                .session
+                .host_port()
+                .entitlement_timer_owner()
+                .or(self.foreground_window_id)
+                .or_else(|| self.registered_windows.iter().next().copied()),
+            StudioAppWindowHostGlobalEvent::LoginCompleted
+            | StudioAppWindowHostGlobalEvent::NetworkRestored => self
+                .foreground_window_id
+                .or_else(|| self.registered_windows.iter().next().copied()),
+        }
+    }
+
+    fn ensure_registered_window(&self, window_id: StudioWindowHostId) -> RfResult<()> {
+        if self.registered_windows.contains(&window_id) {
+            return Ok(());
+        }
+
+        Err(RfError::invalid_input(format!(
+            "window host `{window_id}` is not registered with app host manager"
+        )))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{
+        StudioAppWindowHostGlobalEvent, StudioAppWindowHostManager,
+        StudioRuntimeEntitlementPreflight, StudioRuntimeEntitlementSeed,
+        StudioRuntimeEntitlementSessionEvent, StudioRuntimeTrigger, StudioWindowHostRole,
+        StudioWindowTimerDriverTransition,
+    };
+
+    fn lease_expiring_config() -> crate::StudioRuntimeConfig {
+        crate::StudioRuntimeConfig {
+            entitlement_preflight: StudioRuntimeEntitlementPreflight::Skip,
+            entitlement_seed: StudioRuntimeEntitlementSeed::LeaseExpiringSoon,
+            ..crate::StudioRuntimeConfig::default()
+        }
+    }
+
+    #[test]
+    fn app_window_host_manager_tracks_foreground_window_across_open_and_close() {
+        let mut manager =
+            StudioAppWindowHostManager::new(&lease_expiring_config()).expect("expected manager");
+        let first = manager.open_window();
+        let second = manager.open_window();
+
+        assert_eq!(first.role, StudioWindowHostRole::EntitlementTimerOwner);
+        assert_eq!(manager.foreground_window_id(), Some(first.window_id));
+        assert_eq!(
+            manager.registered_windows(),
+            vec![first.window_id, second.window_id]
+        );
+
+        let close = manager
+            .close_window(first.window_id)
+            .expect("expected first window close");
+
+        assert_eq!(close.next_foreground_window_id, Some(second.window_id));
+        assert_eq!(manager.foreground_window_id(), Some(second.window_id));
+    }
+
+    #[test]
+    fn app_window_host_manager_focuses_window_through_single_entry() {
+        let mut manager =
+            StudioAppWindowHostManager::new(&lease_expiring_config()).expect("expected manager");
+        let first = manager.open_window();
+        let second = manager.open_window();
+
+        let dispatch = manager
+            .focus_window(second.window_id)
+            .expect("expected focus dispatch");
+
+        assert_eq!(dispatch.target_window_id, second.window_id);
+        assert_eq!(manager.foreground_window_id(), Some(second.window_id));
+        assert_eq!(
+            dispatch.dispatch.host_output.runtime_output.trigger,
+            StudioRuntimeTrigger::EntitlementSessionEvent(
+                StudioRuntimeEntitlementSessionEvent::WindowForegrounded
+            )
+        );
+        assert_eq!(
+            manager.session().host_port().entitlement_timer_owner(),
+            Some(first.window_id)
+        );
+    }
+
+    #[test]
+    fn app_window_host_manager_routes_global_timer_elapsed_to_current_owner() {
+        let mut manager =
+            StudioAppWindowHostManager::new(&lease_expiring_config()).expect("expected manager");
+        let first = manager.open_window();
+        let second = manager.open_window();
+        let _ = manager
+            .dispatch_trigger(
+                first.window_id,
+                &StudioRuntimeTrigger::EntitlementSessionEvent(
+                    StudioRuntimeEntitlementSessionEvent::TimerElapsed,
+                ),
+            )
+            .expect("expected first timer dispatch");
+        let _ = manager
+            .focus_window(second.window_id)
+            .expect("expected second window focus");
+
+        let dispatch = manager
+            .dispatch_global_event(StudioAppWindowHostGlobalEvent::TimerElapsed)
+            .expect("expected global timer dispatch")
+            .expect("expected routed timer dispatch");
+
+        assert_eq!(dispatch.target_window_id, first.window_id);
+        assert!(matches!(
+            dispatch.dispatch.timer_driver_transitions.as_slice(),
+            [StudioWindowTimerDriverTransition::KeepNativeTimer { window_id, .. }]
+            if *window_id == first.window_id
+        ));
+    }
+
+    #[test]
+    fn app_window_host_manager_routes_global_network_restored_to_foreground_window() {
+        let mut manager =
+            StudioAppWindowHostManager::new(&lease_expiring_config()).expect("expected manager");
+        let first = manager.open_window();
+        let second = manager.open_window();
+        let _ = manager
+            .focus_window(second.window_id)
+            .expect("expected second window focus");
+
+        let dispatch = manager
+            .dispatch_global_event(StudioAppWindowHostGlobalEvent::NetworkRestored)
+            .expect("expected global network dispatch")
+            .expect("expected routed network dispatch");
+
+        assert_eq!(dispatch.target_window_id, second.window_id);
+        assert_eq!(
+            dispatch.dispatch.host_output.runtime_output.trigger,
+            StudioRuntimeTrigger::EntitlementSessionEvent(
+                StudioRuntimeEntitlementSessionEvent::NetworkRestored
+            )
+        );
+        assert_eq!(manager.foreground_window_id(), Some(second.window_id));
+        assert_eq!(
+            manager.registered_windows(),
+            vec![first.window_id, second.window_id]
+        );
+    }
+
+    #[test]
+    fn app_window_host_manager_ignores_global_events_without_windows() {
+        let mut manager =
+            StudioAppWindowHostManager::new(&lease_expiring_config()).expect("expected manager");
+
+        let dispatch = manager
+            .dispatch_global_event(StudioAppWindowHostGlobalEvent::NetworkRestored)
+            .expect("expected global network dispatch");
+
+        assert!(dispatch.is_none());
+    }
+}
