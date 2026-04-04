@@ -96,6 +96,8 @@ struct BootstrapSessionResources<'a> {
     control_plane_client: &'a BootstrapControlPlaneClient,
     policy: &'a EntitlementSessionPolicy,
     session_state: &'a mut EntitlementSessionState,
+    current_timer: Option<crate::EntitlementSessionTimerArm>,
+    last_host_snapshot: Option<EntitlementSessionHostSnapshot>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -137,6 +139,8 @@ pub fn run_studio_bootstrap(config: &StudioBootstrapConfig) -> RfResult<StudioBo
         control_plane_client: &control_plane_client,
         policy: &session_policy,
         session_state: &mut entitlement_session_state,
+        current_timer: None,
+        last_host_snapshot: None,
     };
     let entitlement_session_tick = dispatch_bootstrap_entitlement_session_tick(
         &facade,
@@ -146,13 +150,18 @@ pub fn run_studio_bootstrap(config: &StudioBootstrapConfig) -> RfResult<StudioBo
     let dispatch = dispatch_bootstrap_trigger(&facade, &config.trigger, &mut session_resources)?;
     let schedule_now = normalized_system_time_now()?;
     let driver_state = snapshot_run_panel_driver_state(session_resources.app_state);
-    let entitlement_host = snapshot_entitlement_session_host(
-        session_resources.app_state,
-        schedule_now,
-        &session_policy,
-        session_resources.session_state,
-        None,
-    );
+    let entitlement_host = session_resources
+        .last_host_snapshot
+        .clone()
+        .unwrap_or_else(|| {
+            snapshot_entitlement_session_host(
+                session_resources.app_state,
+                schedule_now,
+                &session_policy,
+                session_resources.session_state,
+                session_resources.current_timer.as_ref(),
+            )
+        });
 
     Ok(StudioBootstrapReport {
         entitlement_preflight: match entitlement_session_tick.outcome {
@@ -174,7 +183,7 @@ fn dispatch_bootstrap_entitlement_session_tick(
 ) -> RfResult<EntitlementSessionEventDriverOutcome> {
     if matches!(mode, StudioBootstrapEntitlementPreflight::Skip) {
         let now = normalized_system_time_now()?;
-        return Ok(EntitlementSessionEventDriverOutcome {
+        let outcome = EntitlementSessionEventDriverOutcome {
             event: EntitlementSessionEvent::SessionStarted,
             outcome: crate::EntitlementSessionEventOutcome::Tick(Box::new(
                 crate::EntitlementSessionTickOutcome {
@@ -193,7 +202,17 @@ fn dispatch_bootstrap_entitlement_session_tick(
                 session.policy,
                 session.session_state,
             ),
-        });
+        };
+        let current_timer = session.current_timer.clone();
+        let snapshot = snapshot_entitlement_session_host(
+            session.app_state,
+            now,
+            session.policy,
+            session.session_state,
+            current_timer.as_ref(),
+        );
+        record_bootstrap_entitlement_host_snapshot(session, snapshot);
+        return Ok(outcome);
     }
 
     let mut context =
@@ -209,10 +228,20 @@ fn dispatch_bootstrap_entitlement_session_tick(
         policy: session.policy,
         session_state: session.session_state,
     };
-    dispatch_entitlement_session_event_with_control_plane(
+    let outcome = dispatch_entitlement_session_event_with_control_plane(
         EntitlementSessionEvent::SessionStarted,
         &mut runtime,
-    )
+    )?;
+    let current_timer = session.current_timer.clone();
+    let snapshot = snapshot_entitlement_session_host(
+        session.app_state,
+        now,
+        session.policy,
+        session.session_state,
+        current_timer.as_ref(),
+    );
+    record_bootstrap_entitlement_host_snapshot(session, snapshot);
+    Ok(outcome)
 }
 
 fn dispatch_bootstrap_trigger(
@@ -335,6 +364,7 @@ fn dispatch_bootstrap_entitlement_host_trigger(
     session: &mut BootstrapSessionResources<'_>,
     trigger: EntitlementSessionHostTrigger,
 ) -> RfResult<StudioBootstrapDispatch> {
+    let current_timer = session.current_timer.clone();
     let mut context =
         StudioAppMutableAuthCacheContext::new(session.cache_root, session.auth_cache_index);
     let mut runtime = EntitlementSessionRuntime {
@@ -347,8 +377,12 @@ fn dispatch_bootstrap_entitlement_host_trigger(
         policy: session.policy,
         session_state: session.session_state,
     };
-    let outcome =
-        dispatch_entitlement_session_host_trigger_with_control_plane(trigger, None, &mut runtime)?;
+    let outcome = dispatch_entitlement_session_host_trigger_with_control_plane(
+        trigger,
+        current_timer.as_ref(),
+        &mut runtime,
+    )?;
+    record_bootstrap_entitlement_host_snapshot(session, outcome.snapshot.clone());
     match outcome.dispatch {
         EntitlementSessionHostDispatch::Event(outcome) => {
             Ok(StudioBootstrapDispatch::EntitlementSessionEvent(outcome))
@@ -372,6 +406,14 @@ fn dispatch_bootstrap_entitlement_host_trigger(
             action_id
         ))),
     }
+}
+
+fn record_bootstrap_entitlement_host_snapshot(
+    session: &mut BootstrapSessionResources<'_>,
+    snapshot: EntitlementSessionHostSnapshot,
+) {
+    session.current_timer = snapshot.state.next_timer.clone();
+    session.last_host_snapshot = Some(snapshot);
 }
 
 fn command_outcome_from_workspace_control(
@@ -1209,7 +1251,7 @@ mod tests {
         );
         assert!(matches!(
             report.entitlement_host.timer_command,
-            Some(crate::EntitlementSessionTimerCommand::Schedule { .. })
+            Some(crate::EntitlementSessionTimerCommand::Reschedule { .. })
         ));
         assert_eq!(
             report
