@@ -1,6 +1,6 @@
 use radishflow_studio::{
     EntitlementSessionEventOutcome, StudioAppResultDispatch, StudioBootstrapConfig,
-    StudioBootstrapDispatch, StudioRuntime,
+    StudioBootstrapDispatch, StudioRuntime, StudioRuntimeEffect,
 };
 
 fn print_text_view(title: &str, lines: &[String]) {
@@ -30,8 +30,9 @@ fn main() {
         }
     };
 
-    match runtime.dispatch_trigger(&config.trigger) {
-        Ok(report) => {
+    match runtime.dispatch_trigger_output(&config.trigger) {
+        Ok(output) => {
+            let report = output.report;
             println!("RadishFlow Studio bootstrap");
             println!("Project: {}", config.project_path.display());
             println!("Requested trigger: {:?}", config.trigger);
@@ -50,6 +51,17 @@ fn main() {
             if let Some(preflight) = report.entitlement_preflight.as_ref() {
                 println!("Preflight action: {:?}", preflight.decision.action);
                 println!("Preflight reason: {}", preflight.decision.reason);
+            }
+
+            if !output.effects.is_empty() {
+                println!("Runtime effects:");
+                for effect in &output.effects {
+                    match effect {
+                        StudioRuntimeEffect::EntitlementTimer(effect) => {
+                            println!("  - Entitlement timer: {:?}", effect);
+                        }
+                    }
+                }
             }
 
             match report.dispatch {
