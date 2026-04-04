@@ -628,6 +628,7 @@ RadishFlow Studio
 - `apps/radishflow-studio` 当前又已在 `StudioRuntime` 顶层补出带稳定 `id`、`follow_up trigger` 与 `ack` 状态的宿主 effect 协议，当前至少覆盖 entitlement timer 这一类 effect，使真实 GUI 宿主可以显式区分“待应用 / 已应用 / 已过时”的宿主动作，并直接复用 runtime 提供的 `TimerElapsed` 回灌 trigger
 - `apps/radishflow-studio` 当前又已在其上补出 `StudioRuntimeTimerHostCommand` 薄层，把 entitlement timer 的 `Arm / Rearm / Keep / Clear`、effect id 与 follow-up trigger 收成专门 timer 宿主消费面，避免真实 GUI 继续从 generic host effect 列表手工二次映射
 - `apps/radishflow-studio` 当前又已在其上补出 `StudioRuntimeTimerHostState / Transition`，把 timer 槽位当前持有状态、stale command 忽略逻辑与 `apply command -> ack` 闭环都收成纯数据状态机，使真实 GUI 可直接接线到单窗口或多窗口宿主的 timer 句柄管理
+- `apps/radishflow-studio` 当前又已补出 `StudioWindowHostState` 与 `StudioRuntimeHostPort`，把单个窗口宿主实例对 entitlement timer 槽位的持有、替换、ack 与销毁清理收口成正式容器；`main.rs` 这类入口当前只消费 host port，不再自行拼装 `StudioRuntime + StudioRuntimeTimerHostState + ack`
 
 ### `rf-store`
 

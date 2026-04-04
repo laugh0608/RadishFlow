@@ -1,7 +1,7 @@
 use radishflow_studio::{
-    EntitlementSessionEventOutcome, StudioAppResultDispatch, StudioRuntime, StudioRuntimeConfig,
-    StudioRuntimeDispatch, StudioRuntimeReport, StudioRuntimeTimerHostCommand,
-    StudioRuntimeTimerHostState, StudioRuntimeTimerHostTransition,
+    EntitlementSessionEventOutcome, StudioAppResultDispatch, StudioRuntimeConfig,
+    StudioRuntimeDispatch, StudioRuntimeHostPort, StudioRuntimeReport,
+    StudioRuntimeTimerHostCommand, StudioRuntimeTimerHostTransition, StudioWindowHostEvent,
 };
 
 fn print_text_view(title: &str, lines: &[String]) {
@@ -18,9 +18,7 @@ fn print_run_panel(report: &StudioRuntimeReport) {
 
 fn main() {
     let config = StudioRuntimeConfig::default();
-    let mut timer_host_state = StudioRuntimeTimerHostState::default();
-
-    let mut runtime = match StudioRuntime::new(&config) {
+    let mut host_port = match StudioRuntimeHostPort::new(&config) {
         Ok(runtime) => runtime,
         Err(error) => {
             eprintln!(
@@ -32,10 +30,10 @@ fn main() {
         }
     };
 
-    match runtime.dispatch_trigger_output(&config.trigger) {
+    match host_port.dispatch_trigger(&config.trigger) {
         Ok(output) => {
-            let timer_command = output.entitlement_timer_host_command();
-            let report = output.report;
+            let window_event = output.window_event;
+            let report = output.runtime_output.report;
             println!("RadishFlow Studio bootstrap");
             println!("Project: {}", config.project_path.display());
             println!("Requested trigger: {:?}", config.trigger);
@@ -56,62 +54,66 @@ fn main() {
                 println!("Preflight reason: {}", preflight.decision.reason);
             }
 
-            if let Some(command) = timer_command {
+            if let Some(event) = window_event {
                 println!("Runtime timer command:");
-                let transition = timer_host_state.apply_command(&command);
-                match &command {
-                    StudioRuntimeTimerHostCommand::KeepTimer {
-                        effect_id,
-                        timer,
-                        follow_up_trigger,
+                match event {
+                    StudioWindowHostEvent::EntitlementTimerApplied {
+                        command,
+                        transition,
+                        ack,
                     } => {
-                        println!("  - #{} Keep {:?}", effect_id, timer);
-                        println!("    follow-up trigger: {:?}", follow_up_trigger);
-                    }
-                    StudioRuntimeTimerHostCommand::ArmTimer {
-                        effect_id,
-                        timer,
-                        follow_up_trigger,
-                    } => {
-                        println!("  - #{} Arm {:?}", effect_id, timer);
-                        println!("    follow-up trigger: {:?}", follow_up_trigger);
-                    }
-                    StudioRuntimeTimerHostCommand::RearmTimer {
-                        effect_id,
-                        previous,
-                        next,
-                        follow_up_trigger,
-                    } => {
-                        println!("  - #{} Rearm {:?} -> {:?}", effect_id, previous, next);
-                        println!("    follow-up trigger: {:?}", follow_up_trigger);
-                    }
-                    StudioRuntimeTimerHostCommand::ClearTimer {
-                        effect_id,
-                        previous,
-                        follow_up_trigger,
-                    } => {
-                        println!("  - #{} Clear {:?}", effect_id, previous);
-                        println!("    follow-up trigger: {:?}", follow_up_trigger);
-                    }
-                }
-                println!("Timer host transition: {:?}", transition);
-                println!(
-                    "Timer host ack: {:?}",
-                    runtime.acknowledge_entitlement_timer_host_command(&command)
-                );
-                match &transition {
-                    StudioRuntimeTimerHostTransition::KeepTimer { slot, .. }
-                    | StudioRuntimeTimerHostTransition::ArmTimer { slot, .. } => {
-                        println!("Timer host slot: {:?}", slot);
-                    }
-                    StudioRuntimeTimerHostTransition::RearmTimer { next, .. } => {
-                        println!("Timer host slot: {:?}", next);
-                    }
-                    StudioRuntimeTimerHostTransition::ClearTimer { previous, .. } => {
-                        println!("Timer host cleared: {:?}", previous);
-                    }
-                    StudioRuntimeTimerHostTransition::IgnoreStale { current, .. } => {
-                        println!("Timer host current: {:?}", current);
+                        match &command {
+                            StudioRuntimeTimerHostCommand::KeepTimer {
+                                effect_id,
+                                timer,
+                                follow_up_trigger,
+                            } => {
+                                println!("  - #{} Keep {:?}", effect_id, timer);
+                                println!("    follow-up trigger: {:?}", follow_up_trigger);
+                            }
+                            StudioRuntimeTimerHostCommand::ArmTimer {
+                                effect_id,
+                                timer,
+                                follow_up_trigger,
+                            } => {
+                                println!("  - #{} Arm {:?}", effect_id, timer);
+                                println!("    follow-up trigger: {:?}", follow_up_trigger);
+                            }
+                            StudioRuntimeTimerHostCommand::RearmTimer {
+                                effect_id,
+                                previous,
+                                next,
+                                follow_up_trigger,
+                            } => {
+                                println!("  - #{} Rearm {:?} -> {:?}", effect_id, previous, next);
+                                println!("    follow-up trigger: {:?}", follow_up_trigger);
+                            }
+                            StudioRuntimeTimerHostCommand::ClearTimer {
+                                effect_id,
+                                previous,
+                                follow_up_trigger,
+                            } => {
+                                println!("  - #{} Clear {:?}", effect_id, previous);
+                                println!("    follow-up trigger: {:?}", follow_up_trigger);
+                            }
+                        }
+                        println!("Timer host transition: {:?}", transition);
+                        println!("Timer host ack: {:?}", ack);
+                        match &transition {
+                            StudioRuntimeTimerHostTransition::KeepTimer { slot, .. }
+                            | StudioRuntimeTimerHostTransition::ArmTimer { slot, .. } => {
+                                println!("Timer host slot: {:?}", slot);
+                            }
+                            StudioRuntimeTimerHostTransition::RearmTimer { next, .. } => {
+                                println!("Timer host slot: {:?}", next);
+                            }
+                            StudioRuntimeTimerHostTransition::ClearTimer { previous, .. } => {
+                                println!("Timer host cleared: {:?}", previous);
+                            }
+                            StudioRuntimeTimerHostTransition::IgnoreStale { current, .. } => {
+                                println!("Timer host current: {:?}", current);
+                            }
+                        }
                     }
                 }
             }
@@ -182,6 +184,11 @@ fn main() {
                 for entry in report.log_entries {
                     println!("  - {:?}: {}", entry.level, entry.message);
                 }
+            }
+
+            let shutdown = host_port.prepare_shutdown();
+            if let Some(slot) = shutdown.cleared_entitlement_timer {
+                println!("Window host shutdown cleared timer slot: {:?}", slot);
             }
         }
         Err(error) => {

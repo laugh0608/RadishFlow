@@ -15,6 +15,7 @@ mod property_package_download_client;
 mod run_panel_driver;
 mod solver_bridge;
 mod studio_runtime;
+mod studio_window_host;
 mod workspace_control;
 mod workspace_run_command;
 mod workspace_solve_service;
@@ -130,6 +131,10 @@ pub use studio_runtime::{
     StudioRuntimeOutput, StudioRuntimeReport, StudioRuntimeTimerHandleSlot,
     StudioRuntimeTimerHostCommand, StudioRuntimeTimerHostState, StudioRuntimeTimerHostTransition,
     StudioRuntimeTrigger,
+};
+pub use studio_window_host::{
+    StudioRuntimeHostPort, StudioRuntimeHostPortOutput, StudioWindowHostEvent,
+    StudioWindowHostShutdown, StudioWindowHostState,
 };
 pub use workspace_control::{
     RunPanelWidgetDispatchOutcome, WorkspaceControlAction, WorkspaceControlActionOutcome,
