@@ -5,10 +5,10 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use crate::{
     EntitlementPreflightOutcome, EntitlementSessionEvent, EntitlementSessionEventDriverOutcome,
     EntitlementSessionHostDispatch, EntitlementSessionHostRuntime,
-    EntitlementSessionHostRuntimeOutput,
-    EntitlementSessionHostTrigger, EntitlementSessionLifecycleEvent,
-    EntitlementSessionPanelDriverOutcome, EntitlementSessionPolicy, EntitlementSessionRuntime,
-    EntitlementSessionState, RadishFlowControlPlaneClient, RadishFlowControlPlaneClientError,
+    EntitlementSessionHostRuntimeOutput, EntitlementSessionHostTrigger,
+    EntitlementSessionLifecycleEvent, EntitlementSessionPanelDriverOutcome,
+    EntitlementSessionPolicy, EntitlementSessionRuntime, EntitlementSessionState,
+    RadishFlowControlPlaneClient, RadishFlowControlPlaneClientError,
     RadishFlowControlPlaneClientErrorKind, RadishFlowControlPlaneResponse, RunPanelDriverOutcome,
     RunPanelWidgetDispatchOutcome, StudioAppAuthCacheContext, StudioAppCommandOutcome,
     StudioAppFacade, StudioAppMutableAuthCacheContext, WorkspaceControlState,
@@ -90,13 +90,26 @@ impl Default for StudioBootstrapConfig {
 }
 
 struct BootstrapSessionResources<'a> {
+    facade: &'a StudioAppFacade,
     app_state: &'a mut AppState,
     cache_root: &'a Path,
     auth_cache_index: &'a mut StoredAuthCacheIndex,
     control_plane_client: &'a BootstrapControlPlaneClient,
     policy: &'a EntitlementSessionPolicy,
     session_state: &'a mut EntitlementSessionState,
+    host_runtime: &'a mut EntitlementSessionHostRuntime,
+}
+
+struct BootstrapSession {
+    app_state: AppState,
+    cache_root: TemporaryCacheRoot,
+    auth_cache_index: StoredAuthCacheIndex,
+    control_plane_client: BootstrapControlPlaneClient,
+    facade: StudioAppFacade,
+    session_policy: EntitlementSessionPolicy,
+    entitlement_session_state: EntitlementSessionState,
     host_runtime: EntitlementSessionHostRuntime,
+    entitlement_preflight: Option<EntitlementPreflightOutcome>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -116,63 +129,11 @@ pub enum StudioBootstrapDispatch {
 }
 
 pub fn run_studio_bootstrap(config: &StudioBootstrapConfig) -> RfResult<StudioBootstrapReport> {
-    let project_file = read_project_file(&config.project_path)?;
-    let mut app_state = app_state_from_project_file(&project_file, &config.project_path);
-    let cache_root = TemporaryCacheRoot::new("studio-bootstrap")?;
-    let seeded_auth_cache = seed_sample_auth_cache(
-        cache_root.path(),
-        &project_file.document.flowsheet,
-        "binary-hydrocarbon-lite-v1",
-        config.entitlement_seed,
-    )?;
-    seed_bootstrap_runtime_state(&mut app_state, &seeded_auth_cache);
-    let control_plane_client = BootstrapControlPlaneClient::from_seed(&seeded_auth_cache);
-    let mut auth_cache_index = seeded_auth_cache.auth_cache_index;
-    let facade = StudioAppFacade::new();
-    let session_policy = EntitlementSessionPolicy::default();
-    let mut entitlement_session_state = EntitlementSessionState::default();
-    let mut session_resources = BootstrapSessionResources {
-        app_state: &mut app_state,
-        cache_root: cache_root.path(),
-        auth_cache_index: &mut auth_cache_index,
-        control_plane_client: &control_plane_client,
-        policy: &session_policy,
-        session_state: &mut entitlement_session_state,
-        host_runtime: EntitlementSessionHostRuntime::default(),
-    };
-    let entitlement_session_tick = dispatch_bootstrap_entitlement_session_tick(
-        &facade,
-        &config.entitlement_preflight,
-        &mut session_resources,
-    )?;
-    let dispatch = dispatch_bootstrap_trigger(&facade, &config.trigger, &mut session_resources)?;
-    let schedule_now = normalized_system_time_now()?;
-    let driver_state = snapshot_run_panel_driver_state(session_resources.app_state);
-    let entitlement_host = match session_resources.host_runtime.last_output() {
-        Some(output) => output,
-        None => session_resources.host_runtime.snapshot(
-            session_resources.app_state,
-            schedule_now,
-            &session_policy,
-            session_resources.session_state,
-        ),
-    };
-
-    Ok(StudioBootstrapReport {
-        entitlement_preflight: match entitlement_session_tick.outcome {
-            crate::EntitlementSessionEventOutcome::Tick(tick) => tick.preflight,
-            crate::EntitlementSessionEventOutcome::RecordedCommand { .. } => None,
-        },
-        entitlement_host,
-        dispatch,
-        control_state: driver_state.control_state,
-        run_panel: driver_state.widget,
-        log_entries: app_state.log_feed.entries.iter().cloned().collect(),
-    })
+    let mut session = BootstrapSession::new(config)?;
+    session.run_trigger(&config.trigger)
 }
 
 fn dispatch_bootstrap_entitlement_session_tick(
-    facade: &StudioAppFacade,
     mode: &StudioBootstrapEntitlementPreflight,
     session: &mut BootstrapSessionResources<'_>,
 ) -> RfResult<EntitlementSessionEventDriverOutcome> {
@@ -211,7 +172,7 @@ fn dispatch_bootstrap_entitlement_session_tick(
         StudioAppMutableAuthCacheContext::new(session.cache_root, session.auth_cache_index);
     let now = normalized_system_time_now()?;
     let mut runtime = EntitlementSessionRuntime {
-        facade,
+        facade: session.facade,
         app_state: session.app_state,
         context: &mut context,
         control_plane_client: session.control_plane_client,
@@ -234,7 +195,6 @@ fn dispatch_bootstrap_entitlement_session_tick(
 }
 
 fn dispatch_bootstrap_trigger(
-    facade: &StudioAppFacade,
     trigger: &StudioBootstrapTrigger,
     session: &mut BootstrapSessionResources<'_>,
 ) -> RfResult<StudioBootstrapDispatch> {
@@ -243,7 +203,7 @@ fn dispatch_bootstrap_trigger(
             let context =
                 StudioAppAuthCacheContext::new(session.cache_root, &*session.auth_cache_index);
             command_outcome_from_workspace_control(dispatch_run_panel_intent_with_auth_cache(
-                facade,
+                session.facade,
                 session.app_state,
                 &context,
                 intent,
@@ -253,7 +213,7 @@ fn dispatch_bootstrap_trigger(
             let context =
                 StudioAppAuthCacheContext::new(session.cache_root, &*session.auth_cache_index);
             match dispatch_run_panel_primary_action_with_auth_cache(
-                facade,
+                session.facade,
                 session.app_state,
                 &context,
             )? {
@@ -281,7 +241,7 @@ fn dispatch_bootstrap_trigger(
             let context =
                 StudioAppAuthCacheContext::new(session.cache_root, &*session.auth_cache_index);
             match dispatch_run_panel_widget_action_with_auth_cache(
-                facade,
+                session.facade,
                 session.app_state,
                 &context,
                 *action_id,
@@ -308,14 +268,12 @@ fn dispatch_bootstrap_trigger(
         }
         StudioBootstrapTrigger::EntitlementWidgetPrimaryAction => {
             dispatch_bootstrap_entitlement_host_trigger(
-                facade,
                 session,
                 EntitlementSessionHostTrigger::PanelPrimaryAction,
             )
         }
         StudioBootstrapTrigger::EntitlementWidgetAction(action_id) => {
             dispatch_bootstrap_entitlement_host_trigger(
-                facade,
                 session,
                 EntitlementSessionHostTrigger::PanelAction(*action_id),
             )
@@ -343,20 +301,19 @@ fn dispatch_bootstrap_trigger(
                     )
                 }
             };
-            dispatch_bootstrap_entitlement_host_trigger(facade, session, trigger)
+            dispatch_bootstrap_entitlement_host_trigger(session, trigger)
         }
     }
 }
 
 fn dispatch_bootstrap_entitlement_host_trigger(
-    facade: &StudioAppFacade,
     session: &mut BootstrapSessionResources<'_>,
     trigger: EntitlementSessionHostTrigger,
 ) -> RfResult<StudioBootstrapDispatch> {
     let mut context =
         StudioAppMutableAuthCacheContext::new(session.cache_root, session.auth_cache_index);
     let mut runtime = EntitlementSessionRuntime {
-        facade,
+        facade: session.facade,
         app_state: session.app_state,
         context: &mut context,
         control_plane_client: session.control_plane_client,
@@ -402,6 +359,97 @@ fn command_outcome_from_workspace_control(
             dispatch: outcome.dispatch,
         },
     ))
+}
+
+impl BootstrapSession {
+    fn new(config: &StudioBootstrapConfig) -> RfResult<Self> {
+        let project_file = read_project_file(&config.project_path)?;
+        let mut app_state = app_state_from_project_file(&project_file, &config.project_path);
+        let cache_root = TemporaryCacheRoot::new("studio-bootstrap")?;
+        let seeded_auth_cache = seed_sample_auth_cache(
+            cache_root.path(),
+            &project_file.document.flowsheet,
+            "binary-hydrocarbon-lite-v1",
+            config.entitlement_seed,
+        )?;
+        seed_bootstrap_runtime_state(&mut app_state, &seeded_auth_cache);
+        let control_plane_client = BootstrapControlPlaneClient::from_seed(&seeded_auth_cache);
+        let mut session = Self {
+            app_state,
+            cache_root,
+            auth_cache_index: seeded_auth_cache.auth_cache_index,
+            control_plane_client,
+            facade: StudioAppFacade::new(),
+            session_policy: EntitlementSessionPolicy::default(),
+            entitlement_session_state: EntitlementSessionState::default(),
+            host_runtime: EntitlementSessionHostRuntime::default(),
+            entitlement_preflight: None,
+        };
+        session.run_initial_preflight(&config.entitlement_preflight)?;
+        Ok(session)
+    }
+
+    fn run_initial_preflight(
+        &mut self,
+        mode: &StudioBootstrapEntitlementPreflight,
+    ) -> RfResult<()> {
+        let entitlement_session_tick = {
+            let mut session_resources = self.resources();
+            dispatch_bootstrap_entitlement_session_tick(mode, &mut session_resources)?
+        };
+        self.entitlement_preflight = match entitlement_session_tick.outcome {
+            crate::EntitlementSessionEventOutcome::Tick(tick) => tick.preflight,
+            crate::EntitlementSessionEventOutcome::RecordedCommand { .. } => None,
+        };
+        Ok(())
+    }
+
+    fn run_trigger(&mut self, trigger: &StudioBootstrapTrigger) -> RfResult<StudioBootstrapReport> {
+        let dispatch = {
+            let mut session_resources = self.resources();
+            dispatch_bootstrap_trigger(trigger, &mut session_resources)?
+        };
+        self.build_report(dispatch)
+    }
+
+    fn build_report(
+        &mut self,
+        dispatch: StudioBootstrapDispatch,
+    ) -> RfResult<StudioBootstrapReport> {
+        let schedule_now = normalized_system_time_now()?;
+        let driver_state = snapshot_run_panel_driver_state(&self.app_state);
+        let entitlement_host = match self.host_runtime.last_output() {
+            Some(output) => output,
+            None => self.host_runtime.snapshot(
+                &self.app_state,
+                schedule_now,
+                &self.session_policy,
+                &self.entitlement_session_state,
+            ),
+        };
+
+        Ok(StudioBootstrapReport {
+            entitlement_preflight: self.entitlement_preflight.clone(),
+            entitlement_host,
+            dispatch,
+            control_state: driver_state.control_state,
+            run_panel: driver_state.widget,
+            log_entries: self.app_state.log_feed.entries.iter().cloned().collect(),
+        })
+    }
+
+    fn resources(&mut self) -> BootstrapSessionResources<'_> {
+        BootstrapSessionResources {
+            facade: &self.facade,
+            app_state: &mut self.app_state,
+            cache_root: self.cache_root.path(),
+            auth_cache_index: &mut self.auth_cache_index,
+            control_plane_client: &self.control_plane_client,
+            policy: &self.session_policy,
+            session_state: &mut self.entitlement_session_state,
+            host_runtime: &mut self.host_runtime,
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -780,14 +828,15 @@ mod tests {
     };
 
     use super::{
-        StudioBootstrapConfig, StudioBootstrapDispatch, StudioBootstrapEntitlementSeed,
+        BootstrapSession, StudioBootstrapConfig, StudioBootstrapDispatch,
+        StudioBootstrapEntitlementSeed,
         StudioBootstrapEntitlementSessionEvent, StudioBootstrapTrigger, run_studio_bootstrap,
     };
     use crate::{
         EntitlementPreflightAction, EntitlementSessionEvent, EntitlementSessionEventOutcome,
-        EntitlementSessionHostTimerEffect,
-        StudioAppExecutionBoundary, StudioAppExecutionLane, StudioAppResultDispatch,
-        StudioEntitlementAction, StudioEntitlementOutcome, StudioWorkspaceRunOutcome,
+        EntitlementSessionHostTimerEffect, StudioAppExecutionBoundary, StudioAppExecutionLane,
+        StudioAppResultDispatch, StudioEntitlementAction, StudioEntitlementOutcome,
+        StudioWorkspaceRunOutcome,
     };
 
     #[test]
@@ -1275,6 +1324,88 @@ mod tests {
             report.entitlement_host.timer_effect,
             Some(EntitlementSessionHostTimerEffect::RearmTimer { .. })
         ));
+    }
+
+    #[test]
+    fn bootstrap_session_replays_entitlement_host_event_sequence_with_stable_timer_effects() {
+        let config = StudioBootstrapConfig {
+            entitlement_preflight: super::StudioBootstrapEntitlementPreflight::Skip,
+            entitlement_seed: StudioBootstrapEntitlementSeed::LeaseExpiringSoon,
+            ..StudioBootstrapConfig::default()
+        };
+        let mut session = BootstrapSession::new(&config).expect("expected bootstrap session");
+
+        let timer_elapsed = session
+            .run_trigger(&StudioBootstrapTrigger::EntitlementSessionEvent(
+                StudioBootstrapEntitlementSessionEvent::TimerElapsed,
+            ))
+            .expect("expected timer elapsed event");
+        let network_restored = session
+            .run_trigger(&StudioBootstrapTrigger::EntitlementSessionEvent(
+                StudioBootstrapEntitlementSessionEvent::NetworkRestored,
+            ))
+            .expect("expected network restored event");
+        let window_foregrounded = session
+            .run_trigger(&StudioBootstrapTrigger::EntitlementSessionEvent(
+                StudioBootstrapEntitlementSessionEvent::WindowForegrounded,
+            ))
+            .expect("expected window foregrounded event");
+
+        match &session_event(&timer_elapsed).outcome {
+            EntitlementSessionEventOutcome::Tick(tick) => {
+                let preflight = tick
+                    .preflight
+                    .as_ref()
+                    .expect("expected refresh preflight on timer elapsed");
+                assert_eq!(
+                    preflight.decision.action,
+                    EntitlementPreflightAction::RefreshOfflineLease
+                );
+            }
+            other => panic!("expected tick outcome, got {other:?}"),
+        }
+        assert!(matches!(
+            timer_elapsed.entitlement_host.timer_effect,
+            Some(EntitlementSessionHostTimerEffect::RearmTimer { .. })
+        ));
+
+        match &session_event(&network_restored).outcome {
+            EntitlementSessionEventOutcome::Tick(tick) => {
+                assert!(
+                    tick.preflight.is_none(),
+                    "expected no preflight after refresh, got {:?}",
+                    tick.preflight
+                );
+            }
+            other => panic!("expected tick outcome, got {other:?}"),
+        }
+        assert!(matches!(
+            network_restored.entitlement_host.timer_effect,
+            Some(EntitlementSessionHostTimerEffect::KeepTimer { .. })
+        ));
+
+        match &session_event(&window_foregrounded).outcome {
+            EntitlementSessionEventOutcome::Tick(tick) => {
+                assert!(
+                    tick.preflight.is_none(),
+                    "expected no preflight after refresh, got {:?}",
+                    tick.preflight
+                );
+            }
+            other => panic!("expected tick outcome, got {other:?}"),
+        }
+        assert!(matches!(
+            window_foregrounded.entitlement_host.timer_effect,
+            Some(EntitlementSessionHostTimerEffect::KeepTimer { .. })
+        ));
+        assert_eq!(
+            network_restored.entitlement_host.snapshot.state.next_timer,
+            window_foregrounded
+                .entitlement_host
+                .snapshot
+                .state
+                .next_timer
+        );
     }
 
     #[test]
