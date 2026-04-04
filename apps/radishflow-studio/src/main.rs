@@ -1,10 +1,10 @@
 use radishflow_studio::{
     EntitlementSessionEventOutcome, StudioAppHostCloseWindowResult, StudioAppHostController,
-    StudioAppHostGlobalEventResult, StudioAppHostOpenWindowResult,
-    StudioAppHostWindowDispatchResult, StudioAppResultDispatch, StudioAppWindowHostGlobalEvent,
-    StudioRuntimeConfig, StudioRuntimeDispatch, StudioRuntimeReport, StudioRuntimeTimerHostCommand,
-    StudioRuntimeTimerHostTransition, StudioWindowHostEvent, StudioWindowHostRetirement,
-    StudioWindowTimerDriverAckResult, StudioWindowTimerDriverTransition,
+    StudioAppHostEntitlementTimerEffect, StudioAppHostGlobalEventResult,
+    StudioAppHostOpenWindowResult, StudioAppHostWindowDispatchResult, StudioAppResultDispatch,
+    StudioAppWindowHostGlobalEvent, StudioRuntimeConfig, StudioRuntimeDispatch,
+    StudioRuntimeReport, StudioWindowHostRetirement, StudioWindowTimerDriverAckResult,
+    StudioWindowTimerDriverTransition,
 };
 
 fn print_text_view(title: &str, lines: &[String]) {
@@ -58,10 +58,11 @@ fn main() {
         "dispatch initial trigger",
     );
     let dispatch_state = dispatch.projection.state.clone();
-    let dispatch = dispatch.dispatch;
-    let window_event = dispatch.dispatch.host_output.window_event;
-    let timer_driver_commands = dispatch.dispatch.host_output.timer_driver_commands;
-    let report = dispatch.dispatch.host_output.runtime_output.report;
+    let effects = dispatch.effects;
+    let report = effects.runtime_report;
+    let entitlement_timer_effect = effects.entitlement_timer_effect;
+    let native_timer_transitions = effects.native_timer_transitions;
+    let native_timer_acks = effects.native_timer_acks;
     println!("RadishFlow Studio bootstrap");
     println!("Project: {}", config.project_path.display());
     println!("Requested trigger: {:?}", config.trigger);
@@ -83,80 +84,16 @@ fn main() {
         println!("Preflight reason: {}", preflight.decision.reason);
     }
 
-    if let Some(event) = window_event {
+    if let Some(effect) = entitlement_timer_effect.as_ref() {
         println!("Runtime timer command:");
-        match event {
-            StudioWindowHostEvent::EntitlementTimerApplied {
-                window_id,
-                command,
-                transition,
-                ack,
-            } => {
-                println!("  owner window: #{window_id}");
-                match &command {
-                    StudioRuntimeTimerHostCommand::KeepTimer {
-                        effect_id,
-                        timer,
-                        follow_up_trigger,
-                    } => {
-                        println!("  - #{} Keep {:?}", effect_id, timer);
-                        println!("    follow-up trigger: {:?}", follow_up_trigger);
-                    }
-                    StudioRuntimeTimerHostCommand::ArmTimer {
-                        effect_id,
-                        timer,
-                        follow_up_trigger,
-                    } => {
-                        println!("  - #{} Arm {:?}", effect_id, timer);
-                        println!("    follow-up trigger: {:?}", follow_up_trigger);
-                    }
-                    StudioRuntimeTimerHostCommand::RearmTimer {
-                        effect_id,
-                        previous,
-                        next,
-                        follow_up_trigger,
-                    } => {
-                        println!("  - #{} Rearm {:?} -> {:?}", effect_id, previous, next);
-                        println!("    follow-up trigger: {:?}", follow_up_trigger);
-                    }
-                    StudioRuntimeTimerHostCommand::ClearTimer {
-                        effect_id,
-                        previous,
-                        follow_up_trigger,
-                    } => {
-                        println!("  - #{} Clear {:?}", effect_id, previous);
-                        println!("    follow-up trigger: {:?}", follow_up_trigger);
-                    }
-                }
-                println!("Timer host transition: {:?}", transition);
-                println!("Timer host ack: {:?}", ack);
-                match &transition {
-                    StudioRuntimeTimerHostTransition::KeepTimer { slot, .. }
-                    | StudioRuntimeTimerHostTransition::ArmTimer { slot, .. } => {
-                        println!("Timer host slot: {:?}", slot);
-                    }
-                    StudioRuntimeTimerHostTransition::RearmTimer { next, .. } => {
-                        println!("Timer host slot: {:?}", next);
-                    }
-                    StudioRuntimeTimerHostTransition::ClearTimer { previous, .. } => {
-                        println!("Timer host cleared: {:?}", previous);
-                    }
-                    StudioRuntimeTimerHostTransition::IgnoreStale { current, .. } => {
-                        println!("Timer host current: {:?}", current);
-                    }
-                }
-            }
-        }
+        print_entitlement_timer_effect(effect);
     }
-    if !timer_driver_commands.is_empty() {
+    if !native_timer_transitions.is_empty() {
         println!("Timer driver commands:");
-        for command in &timer_driver_commands {
-            println!("  host command: {:?}", command);
-        }
-        for transition in &dispatch.dispatch.timer_driver_transitions {
+        for transition in &native_timer_transitions {
             print_timer_driver_transition(transition);
         }
-        for ack in &dispatch.dispatch.timer_driver_acks {
+        for ack in &native_timer_acks {
             print_timer_driver_ack(ack);
         }
     }
@@ -251,29 +188,22 @@ fn main() {
     }
 
     let close = expect_close_window(&mut app_host, window.window_id, "close initial window");
+    let close_state = close.projection.state.clone();
     match close.close {
         Some(shutdown) => {
-            if let Some(slot) = shutdown.shutdown.host_shutdown.cleared_entitlement_timer {
+            if let Some(slot) = shutdown.cleared_entitlement_timer {
                 println!("Window host shutdown cleared timer slot: {:?}", slot);
             }
-            if !shutdown
-                .shutdown
-                .host_shutdown
-                .timer_driver_commands
-                .is_empty()
-            {
+            if !shutdown.native_timer_transitions.is_empty() {
                 println!("Window host shutdown driver commands:");
-                for command in &shutdown.shutdown.host_shutdown.timer_driver_commands {
-                    println!("  host command: {:?}", command);
-                }
-                for transition in &shutdown.shutdown.timer_driver_transitions {
+                for transition in &shutdown.native_timer_transitions {
                     print_timer_driver_transition(transition);
                 }
-                for ack in &shutdown.shutdown.timer_driver_acks {
+                for ack in &shutdown.native_timer_acks {
                     print_timer_driver_ack(ack);
                 }
             }
-            match shutdown.shutdown.host_shutdown.retirement {
+            match shutdown.retirement {
                 StudioWindowHostRetirement::None => {}
                 StudioWindowHostRetirement::Transferred {
                     new_owner_window_id,
@@ -297,10 +227,82 @@ fn main() {
                 "Next foreground window: {:?}",
                 shutdown.next_foreground_window_id
             );
-            println!("App host state: {:?}", close.projection.state);
+            println!("App host state: {:?}", close_state);
         }
         None => {
             println!("Window host close ignored for window #{}", window.window_id);
+        }
+    }
+}
+
+fn print_entitlement_timer_effect(effect: &StudioAppHostEntitlementTimerEffect) {
+    match effect {
+        StudioAppHostEntitlementTimerEffect::Keep {
+            owner_window_id,
+            effect_id,
+            slot,
+            follow_up_trigger,
+            ack,
+        } => {
+            println!("  owner window: #{owner_window_id}");
+            println!("  - #{} Keep {:?}", effect_id, slot.timer);
+            println!("    follow-up trigger: {:?}", follow_up_trigger);
+            println!("Timer host slot: {:?}", slot);
+            println!("Timer host ack: {:?}", ack);
+        }
+        StudioAppHostEntitlementTimerEffect::Arm {
+            owner_window_id,
+            effect_id,
+            slot,
+            follow_up_trigger,
+            ack,
+        } => {
+            println!("  owner window: #{owner_window_id}");
+            println!("  - #{} Arm {:?}", effect_id, slot.timer);
+            println!("    follow-up trigger: {:?}", follow_up_trigger);
+            println!("Timer host slot: {:?}", slot);
+            println!("Timer host ack: {:?}", ack);
+        }
+        StudioAppHostEntitlementTimerEffect::Rearm {
+            owner_window_id,
+            effect_id,
+            previous_slot,
+            next_slot,
+            follow_up_trigger,
+            ack,
+        } => {
+            println!("  owner window: #{owner_window_id}");
+            println!(
+                "  - #{} Rearm {:?} -> {:?}",
+                effect_id, previous_slot, next_slot.timer
+            );
+            println!("    follow-up trigger: {:?}", follow_up_trigger);
+            println!("Timer host slot: {:?}", next_slot);
+            println!("Timer host ack: {:?}", ack);
+        }
+        StudioAppHostEntitlementTimerEffect::Clear {
+            owner_window_id,
+            effect_id,
+            previous_slot,
+            follow_up_trigger,
+            ack,
+        } => {
+            println!("  owner window: #{owner_window_id}");
+            println!("  - #{} Clear {:?}", effect_id, previous_slot);
+            println!("    follow-up trigger: {:?}", follow_up_trigger);
+            println!("Timer host cleared: {:?}", previous_slot);
+            println!("Timer host ack: {:?}", ack);
+        }
+        StudioAppHostEntitlementTimerEffect::IgnoreStale {
+            owner_window_id,
+            stale_effect_id,
+            current_slot,
+            ack,
+        } => {
+            println!("  owner window: #{owner_window_id}");
+            println!("  - Ignore stale effect #{}", stale_effect_id);
+            println!("Timer host current: {:?}", current_slot);
+            println!("Timer host ack: {:?}", ack);
         }
     }
 }

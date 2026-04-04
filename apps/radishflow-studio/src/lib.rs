@@ -128,12 +128,13 @@ pub use solver_bridge::{
     solve_workspace_with_property_package,
 };
 pub use studio_app_host::{
-    StudioAppHost, StudioAppHostChangeSet, StudioAppHostCloseWindowResult, StudioAppHostCommand,
-    StudioAppHostCommandOutcome, StudioAppHostController, StudioAppHostEntitlementTimerState,
-    StudioAppHostEntitlementTimerStateChange, StudioAppHostGlobalEventResult,
-    StudioAppHostOpenWindowResult, StudioAppHostOutput, StudioAppHostProjection,
-    StudioAppHostSnapshot, StudioAppHostState, StudioAppHostStore, StudioAppHostTimerSlotChange,
-    StudioAppHostWindowChange, StudioAppHostWindowDispatchResult,
+    StudioAppHost, StudioAppHostChangeSet, StudioAppHostCloseEffects,
+    StudioAppHostCloseWindowResult, StudioAppHostCommand, StudioAppHostCommandOutcome,
+    StudioAppHostController, StudioAppHostDispatchEffects, StudioAppHostEntitlementTimerEffect,
+    StudioAppHostEntitlementTimerState, StudioAppHostEntitlementTimerStateChange,
+    StudioAppHostGlobalEventResult, StudioAppHostOpenWindowResult, StudioAppHostOutput,
+    StudioAppHostProjection, StudioAppHostSnapshot, StudioAppHostState, StudioAppHostStore,
+    StudioAppHostTimerSlotChange, StudioAppHostWindowChange, StudioAppHostWindowDispatchResult,
     StudioAppHostWindowSelectionChange, StudioAppHostWindowSnapshot, StudioAppHostWindowState,
 };
 pub use studio_runtime::{

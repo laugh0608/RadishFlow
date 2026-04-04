@@ -5,8 +5,11 @@ use rf_types::{RfError, RfResult};
 use crate::{
     StudioAppWindowHostClose, StudioAppWindowHostCommand, StudioAppWindowHostCommandOutcome,
     StudioAppWindowHostDispatch, StudioAppWindowHostGlobalEvent, StudioAppWindowHostManager,
-    StudioRuntimeConfig, StudioRuntimeTimerHandleSlot, StudioRuntimeTrigger, StudioWindowHostId,
-    StudioWindowHostRegistration, StudioWindowHostRole,
+    StudioRuntimeConfig, StudioRuntimeHostAckResult, StudioRuntimeReport,
+    StudioRuntimeTimerHandleSlot, StudioRuntimeTrigger, StudioWindowHostEvent, StudioWindowHostId,
+    StudioWindowHostRegistration, StudioWindowHostRetirement, StudioWindowHostRole,
+    StudioWindowSessionDispatch, StudioWindowTimerDriverAckResult,
+    StudioWindowTimerDriverTransition,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -243,19 +246,77 @@ pub struct StudioAppHostOpenWindowResult {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StudioAppHostWindowDispatchResult {
     pub projection: StudioAppHostProjection,
-    pub dispatch: StudioAppWindowHostDispatch,
+    pub target_window_id: StudioWindowHostId,
+    pub effects: StudioAppHostDispatchEffects,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StudioAppHostGlobalEventResult {
     pub projection: StudioAppHostProjection,
-    pub dispatch: Option<StudioAppWindowHostDispatch>,
+    pub dispatch: Option<StudioAppHostWindowDispatchResult>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StudioAppHostCloseWindowResult {
     pub projection: StudioAppHostProjection,
-    pub close: Option<StudioAppWindowHostClose>,
+    pub close: Option<StudioAppHostCloseEffects>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum StudioAppHostEntitlementTimerEffect {
+    Keep {
+        owner_window_id: StudioWindowHostId,
+        effect_id: u64,
+        slot: StudioRuntimeTimerHandleSlot,
+        follow_up_trigger: Option<StudioRuntimeTrigger>,
+        ack: StudioRuntimeHostAckResult,
+    },
+    Arm {
+        owner_window_id: StudioWindowHostId,
+        effect_id: u64,
+        slot: StudioRuntimeTimerHandleSlot,
+        follow_up_trigger: Option<StudioRuntimeTrigger>,
+        ack: StudioRuntimeHostAckResult,
+    },
+    Rearm {
+        owner_window_id: StudioWindowHostId,
+        effect_id: u64,
+        previous_slot: Option<StudioRuntimeTimerHandleSlot>,
+        next_slot: StudioRuntimeTimerHandleSlot,
+        follow_up_trigger: Option<StudioRuntimeTrigger>,
+        ack: StudioRuntimeHostAckResult,
+    },
+    Clear {
+        owner_window_id: StudioWindowHostId,
+        effect_id: u64,
+        previous_slot: Option<StudioRuntimeTimerHandleSlot>,
+        follow_up_trigger: Option<StudioRuntimeTrigger>,
+        ack: StudioRuntimeHostAckResult,
+    },
+    IgnoreStale {
+        owner_window_id: StudioWindowHostId,
+        stale_effect_id: u64,
+        current_slot: Option<StudioRuntimeTimerHandleSlot>,
+        ack: StudioRuntimeHostAckResult,
+    },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioAppHostDispatchEffects {
+    pub runtime_report: StudioRuntimeReport,
+    pub entitlement_timer_effect: Option<StudioAppHostEntitlementTimerEffect>,
+    pub native_timer_transitions: Vec<StudioWindowTimerDriverTransition>,
+    pub native_timer_acks: Vec<StudioWindowTimerDriverAckResult>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioAppHostCloseEffects {
+    pub window_id: StudioWindowHostId,
+    pub cleared_entitlement_timer: Option<StudioRuntimeTimerHandleSlot>,
+    pub retirement: StudioWindowHostRetirement,
+    pub next_foreground_window_id: Option<StudioWindowHostId>,
+    pub native_timer_transitions: Vec<StudioWindowTimerDriverTransition>,
+    pub native_timer_acks: Vec<StudioWindowTimerDriverAckResult>,
 }
 
 pub struct StudioAppHost {
@@ -385,7 +446,8 @@ impl StudioAppHostController {
 
         Ok(StudioAppHostWindowDispatchResult {
             projection,
-            dispatch,
+            target_window_id: dispatch.target_window_id,
+            effects: dispatch_effects_from_session(dispatch.dispatch),
         })
     }
 
@@ -403,7 +465,8 @@ impl StudioAppHostController {
 
         Ok(StudioAppHostWindowDispatchResult {
             projection,
-            dispatch,
+            target_window_id: dispatch.target_window_id,
+            effects: dispatch_effects_from_session(dispatch.dispatch),
         })
     }
 
@@ -414,7 +477,13 @@ impl StudioAppHostController {
         let (outcome, projection) =
             self.execute_command(StudioAppHostCommand::DispatchGlobalEvent { event })?;
         let dispatch = match outcome {
-            StudioAppHostCommandOutcome::WindowDispatched(dispatch) => Some(dispatch),
+            StudioAppHostCommandOutcome::WindowDispatched(dispatch) => {
+                Some(StudioAppHostWindowDispatchResult {
+                    projection: projection.clone(),
+                    target_window_id: dispatch.target_window_id,
+                    effects: dispatch_effects_from_session(dispatch.dispatch),
+                })
+            }
             StudioAppHostCommandOutcome::IgnoredGlobalEvent { .. } => None,
             other => {
                 return Err(RfError::invalid_input(format!(
@@ -436,7 +505,9 @@ impl StudioAppHostController {
         let (outcome, projection) =
             self.execute_command(StudioAppHostCommand::CloseWindow { window_id })?;
         let close = match outcome {
-            StudioAppHostCommandOutcome::WindowClosed(close) => Some(close),
+            StudioAppHostCommandOutcome::WindowClosed(close) => {
+                Some(close_effects_from_shutdown(close))
+            }
             StudioAppHostCommandOutcome::IgnoredClose { .. } => None,
             other => {
                 return Err(RfError::invalid_input(format!(
@@ -456,6 +527,96 @@ impl StudioAppHostController {
             let projection = self.store.apply_output(&output);
             (output.outcome, projection)
         })
+    }
+}
+
+fn dispatch_effects_from_session(
+    dispatch: StudioWindowSessionDispatch,
+) -> StudioAppHostDispatchEffects {
+    StudioAppHostDispatchEffects {
+        runtime_report: dispatch.host_output.runtime_output.report,
+        entitlement_timer_effect: dispatch
+            .host_output
+            .window_event
+            .map(entitlement_timer_effect_from_window_event),
+        native_timer_transitions: dispatch.timer_driver_transitions,
+        native_timer_acks: dispatch.timer_driver_acks,
+    }
+}
+
+fn close_effects_from_shutdown(close: StudioAppWindowHostClose) -> StudioAppHostCloseEffects {
+    StudioAppHostCloseEffects {
+        window_id: close.window_id,
+        cleared_entitlement_timer: close.shutdown.host_shutdown.cleared_entitlement_timer,
+        retirement: close.shutdown.host_shutdown.retirement,
+        next_foreground_window_id: close.next_foreground_window_id,
+        native_timer_transitions: close.shutdown.timer_driver_transitions,
+        native_timer_acks: close.shutdown.timer_driver_acks,
+    }
+}
+
+fn entitlement_timer_effect_from_window_event(
+    event: StudioWindowHostEvent,
+) -> StudioAppHostEntitlementTimerEffect {
+    match event {
+        StudioWindowHostEvent::EntitlementTimerApplied {
+            window_id,
+            command,
+            transition,
+            ack,
+        } => match transition {
+            crate::StudioRuntimeTimerHostTransition::KeepTimer {
+                slot,
+                follow_up_trigger,
+            } => StudioAppHostEntitlementTimerEffect::Keep {
+                owner_window_id: window_id,
+                effect_id: command.effect_id(),
+                slot,
+                follow_up_trigger,
+                ack,
+            },
+            crate::StudioRuntimeTimerHostTransition::ArmTimer {
+                slot,
+                follow_up_trigger,
+            } => StudioAppHostEntitlementTimerEffect::Arm {
+                owner_window_id: window_id,
+                effect_id: command.effect_id(),
+                slot,
+                follow_up_trigger,
+                ack,
+            },
+            crate::StudioRuntimeTimerHostTransition::RearmTimer {
+                previous,
+                next,
+                follow_up_trigger,
+            } => StudioAppHostEntitlementTimerEffect::Rearm {
+                owner_window_id: window_id,
+                effect_id: command.effect_id(),
+                previous_slot: previous,
+                next_slot: next,
+                follow_up_trigger,
+                ack,
+            },
+            crate::StudioRuntimeTimerHostTransition::ClearTimer {
+                previous,
+                follow_up_trigger,
+            } => StudioAppHostEntitlementTimerEffect::Clear {
+                owner_window_id: window_id,
+                effect_id: command.effect_id(),
+                previous_slot: previous,
+                follow_up_trigger,
+                ack,
+            },
+            crate::StudioRuntimeTimerHostTransition::IgnoreStale {
+                current,
+                stale_effect_id,
+            } => StudioAppHostEntitlementTimerEffect::IgnoreStale {
+                owner_window_id: window_id,
+                stale_effect_id,
+                current_slot: current,
+                ack,
+            },
+        },
     }
 }
 
@@ -621,11 +782,12 @@ fn map_outcome(outcome: StudioAppWindowHostCommandOutcome) -> StudioAppHostComma
 mod tests {
     use crate::{
         StudioAppHost, StudioAppHostCommand, StudioAppHostCommandOutcome, StudioAppHostController,
-        StudioAppHostEntitlementTimerState, StudioAppHostStore, StudioAppHostTimerSlotChange,
-        StudioAppHostWindowChange, StudioAppHostWindowSelectionChange,
-        StudioAppWindowHostGlobalEvent, StudioRuntimeEntitlementPreflight,
-        StudioRuntimeEntitlementSeed, StudioRuntimeEntitlementSessionEvent, StudioRuntimeTrigger,
-        StudioWindowHostRetirement, StudioWindowHostRole,
+        StudioAppHostEntitlementTimerEffect, StudioAppHostEntitlementTimerState,
+        StudioAppHostStore, StudioAppHostTimerSlotChange, StudioAppHostWindowChange,
+        StudioAppHostWindowSelectionChange, StudioAppWindowHostGlobalEvent,
+        StudioRuntimeEntitlementPreflight, StudioRuntimeEntitlementSeed,
+        StudioRuntimeEntitlementSessionEvent, StudioRuntimeTrigger, StudioWindowHostRetirement,
+        StudioWindowHostRole,
     };
 
     fn lease_expiring_config() -> crate::StudioRuntimeConfig {
@@ -1283,10 +1445,21 @@ mod tests {
             .and_then(|window| window.entitlement_timer.clone())
             .expect("expected timer slot");
 
-        assert_eq!(
-            dispatched.dispatch.target_window_id,
-            opened.registration.window_id
-        );
+        assert_eq!(dispatched.target_window_id, opened.registration.window_id);
+        assert!(matches!(
+            dispatched.effects.entitlement_timer_effect,
+            Some(StudioAppHostEntitlementTimerEffect::Rearm {
+                owner_window_id,
+                effect_id: 1,
+                ..
+            }) if owner_window_id == opened.registration.window_id
+        ));
+        assert!(matches!(
+            dispatched.effects.native_timer_transitions.as_slice(),
+            [crate::StudioWindowTimerDriverTransition::RearmNativeTimer { window_id, .. }]
+            if *window_id == opened.registration.window_id
+        ));
+        assert_eq!(dispatched.effects.native_timer_acks.len(), 1);
         assert_eq!(
             controller.state().entitlement_timer,
             StudioAppHostEntitlementTimerState::Owned {
@@ -1318,5 +1491,43 @@ mod tests {
             .expect("expected ignored close");
         assert!(ignored_close.close.is_none());
         assert!(ignored_close.projection.state.windows.is_empty());
+    }
+
+    #[test]
+    fn app_host_controller_maps_close_side_effects_into_gui_facing_summary() {
+        let mut controller =
+            StudioAppHostController::new(&lease_expiring_config()).expect("expected controller");
+        let opened = controller.open_window().expect("expected window open");
+        let _ = controller
+            .dispatch_window_trigger(
+                opened.registration.window_id,
+                StudioRuntimeTrigger::EntitlementSessionEvent(
+                    StudioRuntimeEntitlementSessionEvent::TimerElapsed,
+                ),
+            )
+            .expect("expected timer trigger");
+
+        let closed = controller
+            .close_window(opened.registration.window_id)
+            .expect("expected close");
+        let close = closed.close.expect("expected close effects");
+
+        assert_eq!(close.window_id, opened.registration.window_id);
+        assert!(matches!(
+            close.retirement,
+            StudioWindowHostRetirement::Parked {
+                parked_entitlement_timer: Some(_)
+            }
+        ));
+        assert!(matches!(
+            close.native_timer_transitions.as_slice(),
+            [crate::StudioWindowTimerDriverTransition::ParkNativeTimer { from_window_id, .. }]
+            if *from_window_id == opened.registration.window_id
+        ));
+        assert!(close.native_timer_acks.is_empty());
+        assert!(matches!(
+            closed.projection.state.entitlement_timer,
+            StudioAppHostEntitlementTimerState::Parked { .. }
+        ));
     }
 }
