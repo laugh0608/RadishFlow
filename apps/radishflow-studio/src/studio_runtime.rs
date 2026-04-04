@@ -186,6 +186,10 @@ impl StudioRuntimeTimerHostState {
         self.entitlement_timer.as_ref()
     }
 
+    pub fn restore(&mut self, slot: StudioRuntimeTimerHandleSlot) {
+        self.entitlement_timer = Some(slot);
+    }
+
     pub fn clear(&mut self) -> Option<StudioRuntimeTimerHandleSlot> {
         self.entitlement_timer.take()
     }

@@ -2,6 +2,7 @@ use radishflow_studio::{
     EntitlementSessionEventOutcome, StudioAppResultDispatch, StudioRuntimeConfig,
     StudioRuntimeDispatch, StudioRuntimeHostPort, StudioRuntimeReport,
     StudioRuntimeTimerHostCommand, StudioRuntimeTimerHostTransition, StudioWindowHostEvent,
+    StudioWindowHostRetirement,
 };
 
 fn print_text_view(title: &str, lines: &[String]) {
@@ -29,8 +30,16 @@ fn main() {
             std::process::exit(1);
         }
     };
+    let window = host_port.open_window();
+    println!(
+        "Opened window host #{} as {:?}",
+        window.window_id, window.role
+    );
+    if let Some(slot) = window.restored_entitlement_timer.as_ref() {
+        println!("Restored parked timer slot into window host: {:?}", slot);
+    }
 
-    match host_port.dispatch_trigger(&config.trigger) {
+    match host_port.dispatch_trigger(window.window_id, &config.trigger) {
         Ok(output) => {
             let window_event = output.window_event;
             let report = output.runtime_output.report;
@@ -58,10 +67,12 @@ fn main() {
                 println!("Runtime timer command:");
                 match event {
                     StudioWindowHostEvent::EntitlementTimerApplied {
+                        window_id,
                         command,
                         transition,
                         ack,
                     } => {
+                        println!("  owner window: #{window_id}");
                         match &command {
                             StudioRuntimeTimerHostCommand::KeepTimer {
                                 effect_id,
@@ -186,9 +197,30 @@ fn main() {
                 }
             }
 
-            let shutdown = host_port.prepare_shutdown();
-            if let Some(slot) = shutdown.cleared_entitlement_timer {
-                println!("Window host shutdown cleared timer slot: {:?}", slot);
+            if let Some(shutdown) = host_port.close_window(window.window_id) {
+                if let Some(slot) = shutdown.cleared_entitlement_timer {
+                    println!("Window host shutdown cleared timer slot: {:?}", slot);
+                }
+                match shutdown.retirement {
+                    StudioWindowHostRetirement::None => {}
+                    StudioWindowHostRetirement::Transferred {
+                        new_owner_window_id,
+                        restored_entitlement_timer,
+                    } => {
+                        println!("Timer ownership transferred to window #{new_owner_window_id}");
+                        if let Some(slot) = restored_entitlement_timer {
+                            println!("Transferred timer slot: {:?}", slot);
+                        }
+                    }
+                    StudioWindowHostRetirement::Parked {
+                        parked_entitlement_timer,
+                    } => {
+                        println!("Timer ownership parked after last window closed");
+                        if let Some(slot) = parked_entitlement_timer {
+                            println!("Parked timer slot: {:?}", slot);
+                        }
+                    }
+                }
             }
         }
         Err(error) => {

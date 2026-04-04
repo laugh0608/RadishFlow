@@ -316,6 +316,7 @@ MVP 阶段明确不做：
 - Studio 当前也已在其上补出 `StudioRuntimeTimerHostCommand`，把 entitlement timer 的宿主动作进一步收成专门 timer 薄层，真实 GUI 不必再先理解 generic host effect 列表
 - Studio 当前也已在其上补出 `StudioRuntimeTimerHostState / Transition`，把 timer 当前槽位状态与 stale command 处理显式化，真实 GUI 可以直接照着“apply command -> 更新 state -> ack”接线
 - Studio 当前也已进一步补出 `StudioWindowHostState + StudioRuntimeHostPort`，把单窗口宿主实例对 timer state 的创建、替换与销毁清理收成正式容器，最小入口不再手工拼接 runtime、timer state 与 ack
+- Studio 当前也已继续把 `StudioRuntimeHostPort` 上提为应用级多窗口宿主容器，并冻结首版所有权规则：entitlement timer 全局只允许一个 owner 窗口持有；owner 销毁时优先转移到剩余窗口，否则 parked 并在下一个 owner 窗口打开时恢复
 
 基于上述进展，当前下一阶段计划调整为：
 
@@ -324,6 +325,7 @@ MVP 阶段明确不做：
 - 在已补出的 host effect `id + follow_up + ack` 协议基础上，继续决定真实桌面框架里的 timer 句柄生命周期、apply 时机与 ack 回写时机
 - 在已补出的 `StudioRuntimeTimerHostCommand` 薄层基础上，继续决定真实桌面框架里的 timer 句柄保存位置与多窗口/单窗口宿主边界
 - 在已补出的 `StudioRuntimeTimerHostState / Transition` 与 `StudioWindowHostState + StudioRuntimeHostPort` 基础上，继续决定真实桌面框架里的具体 GUI timer handle、窗口重建迁移策略与多窗口所有权口径
+- 在已补出的多窗口 `StudioRuntimeHostPort` 所有权/转移/park 语义基础上，继续决定真实桌面框架里的具体 GUI timer handle 绑定与窗口前后台事件来源
 - 继续冻结运行结果派发、日志入口与后续异步执行边界
 - 在不打乱当前边界的前提下，再恢复更完整的 Studio 交互流、联网提示位置与内核主线推进
 

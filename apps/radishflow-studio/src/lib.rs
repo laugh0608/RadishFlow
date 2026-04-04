@@ -133,7 +133,8 @@ pub use studio_runtime::{
     StudioRuntimeTrigger,
 };
 pub use studio_window_host::{
-    StudioRuntimeHostPort, StudioRuntimeHostPortOutput, StudioWindowHostEvent,
+    StudioRuntimeHostPort, StudioRuntimeHostPortOutput, StudioWindowHostEvent, StudioWindowHostId,
+    StudioWindowHostRegistration, StudioWindowHostRetirement, StudioWindowHostRole,
     StudioWindowHostShutdown, StudioWindowHostState,
 };
 pub use workspace_control::{
