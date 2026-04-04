@@ -5,6 +5,7 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use crate::{
     EntitlementPreflightOutcome, EntitlementSessionEvent, EntitlementSessionEventDriverOutcome,
     EntitlementSessionHostDispatch, EntitlementSessionHostTrigger,
+    EntitlementSessionLifecycleEvent,
     EntitlementSessionPanelDriverOutcome, EntitlementSessionPolicy, EntitlementSessionRuntime,
     EntitlementSessionSchedule, EntitlementSessionState, RadishFlowControlPlaneClient,
     RadishFlowControlPlaneClientError, RadishFlowControlPlaneClientErrorKind,
@@ -70,6 +71,8 @@ pub enum StudioBootstrapEntitlementSeed {
 pub enum StudioBootstrapEntitlementSessionEvent {
     LoginCompleted,
     TimerElapsed,
+    NetworkRestored,
+    WindowForegrounded,
 }
 
 impl Default for StudioBootstrapConfig {
@@ -305,10 +308,24 @@ fn dispatch_bootstrap_trigger(
         StudioBootstrapTrigger::EntitlementSessionEvent(event) => {
             let trigger = match event {
                 StudioBootstrapEntitlementSessionEvent::LoginCompleted => {
-                    EntitlementSessionHostTrigger::LoginCompleted
+                    EntitlementSessionHostTrigger::LifecycleEvent(
+                        EntitlementSessionLifecycleEvent::LoginCompleted,
+                    )
                 }
                 StudioBootstrapEntitlementSessionEvent::TimerElapsed => {
-                    EntitlementSessionHostTrigger::TimerElapsed
+                    EntitlementSessionHostTrigger::LifecycleEvent(
+                        EntitlementSessionLifecycleEvent::TimerElapsed,
+                    )
+                }
+                StudioBootstrapEntitlementSessionEvent::NetworkRestored => {
+                    EntitlementSessionHostTrigger::LifecycleEvent(
+                        EntitlementSessionLifecycleEvent::NetworkRestored,
+                    )
+                }
+                StudioBootstrapEntitlementSessionEvent::WindowForegrounded => {
+                    EntitlementSessionHostTrigger::LifecycleEvent(
+                        EntitlementSessionLifecycleEvent::WindowForegrounded,
+                    )
                 }
             };
             dispatch_bootstrap_entitlement_host_trigger(facade, session, trigger)
@@ -346,14 +363,14 @@ fn dispatch_bootstrap_entitlement_host_trigger(
             dispatch: crate::EntitlementPanelWidgetDispatchOutcome::IgnoredDisabled { action_id },
             ..
         }) => Err(RfError::invalid_input(format!(
-            "bootstrap entitlement widget action `{:?}` is currently disabled",
+            "bootstrap entitlement action `{:?}` is currently disabled",
             action_id
         ))),
         EntitlementSessionHostDispatch::Panel(EntitlementSessionPanelDriverOutcome {
             dispatch: crate::EntitlementPanelWidgetDispatchOutcome::IgnoredMissing { action_id },
             ..
         }) => Err(RfError::invalid_input(format!(
-            "bootstrap entitlement widget action `{:?}` is missing from current widget model",
+            "bootstrap entitlement action `{:?}` is missing from current widget model",
             action_id
         ))),
     }
@@ -1130,6 +1147,64 @@ mod tests {
         }
         assert_eq!(report.entitlement_preflight, None);
         assert_eq!(report.control_state.run_status, RunStatus::Idle);
+    }
+
+    #[test]
+    fn bootstrap_can_dispatch_network_restored_session_event() {
+        let report = run_studio_bootstrap(&StudioBootstrapConfig {
+            entitlement_preflight: super::StudioBootstrapEntitlementPreflight::Skip,
+            entitlement_seed: StudioBootstrapEntitlementSeed::LeaseExpiringSoon,
+            trigger: StudioBootstrapTrigger::EntitlementSessionEvent(
+                StudioBootstrapEntitlementSessionEvent::NetworkRestored,
+            ),
+            ..StudioBootstrapConfig::default()
+        })
+        .expect("expected network restored session event");
+
+        let outcome = session_event(&report);
+        assert_eq!(outcome.event, EntitlementSessionEvent::TimerElapsed);
+        match &outcome.outcome {
+            EntitlementSessionEventOutcome::Tick(tick) => {
+                let preflight = tick
+                    .preflight
+                    .as_ref()
+                    .expect("expected offline refresh preflight");
+                assert_eq!(
+                    preflight.decision.action,
+                    EntitlementPreflightAction::RefreshOfflineLease
+                );
+            }
+            other => panic!("expected tick outcome, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn bootstrap_can_dispatch_window_foregrounded_session_event() {
+        let report = run_studio_bootstrap(&StudioBootstrapConfig {
+            entitlement_preflight: super::StudioBootstrapEntitlementPreflight::Skip,
+            entitlement_seed: StudioBootstrapEntitlementSeed::LeaseExpiringSoon,
+            trigger: StudioBootstrapTrigger::EntitlementSessionEvent(
+                StudioBootstrapEntitlementSessionEvent::WindowForegrounded,
+            ),
+            ..StudioBootstrapConfig::default()
+        })
+        .expect("expected window foregrounded session event");
+
+        let outcome = session_event(&report);
+        assert_eq!(outcome.event, EntitlementSessionEvent::TimerElapsed);
+        match &outcome.outcome {
+            EntitlementSessionEventOutcome::Tick(tick) => {
+                let preflight = tick
+                    .preflight
+                    .as_ref()
+                    .expect("expected offline refresh preflight");
+                assert_eq!(
+                    preflight.decision.action,
+                    EntitlementPreflightAction::RefreshOfflineLease
+                );
+            }
+            other => panic!("expected tick outcome, got {other:?}"),
+        }
     }
 
     fn app_command(report: &super::StudioBootstrapReport) -> &crate::StudioAppCommandOutcome {

@@ -10,11 +10,18 @@ use crate::{
     dispatch_entitlement_session_panel_widget_action_with_control_plane,
 };
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum EntitlementSessionHostTrigger {
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum EntitlementSessionLifecycleEvent {
     SessionStarted,
     LoginCompleted,
     TimerElapsed,
+    NetworkRestored,
+    WindowForegrounded,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum EntitlementSessionHostTrigger {
+    LifecycleEvent(EntitlementSessionLifecycleEvent),
     EntitlementCommandCompleted(crate::StudioEntitlementActionOutcome),
     PanelPrimaryAction,
     PanelAction(EntitlementActionId),
@@ -41,21 +48,9 @@ where
     Client: RadishFlowControlPlaneClient,
 {
     let dispatch = match &trigger {
-        EntitlementSessionHostTrigger::SessionStarted => EntitlementSessionHostDispatch::Event(
+        EntitlementSessionHostTrigger::LifecycleEvent(event) => EntitlementSessionHostDispatch::Event(
             dispatch_entitlement_session_event_with_control_plane(
-                EntitlementSessionEvent::SessionStarted,
-                runtime,
-            )?,
-        ),
-        EntitlementSessionHostTrigger::LoginCompleted => EntitlementSessionHostDispatch::Event(
-            dispatch_entitlement_session_event_with_control_plane(
-                EntitlementSessionEvent::LoginCompleted,
-                runtime,
-            )?,
-        ),
-        EntitlementSessionHostTrigger::TimerElapsed => EntitlementSessionHostDispatch::Event(
-            dispatch_entitlement_session_event_with_control_plane(
-                EntitlementSessionEvent::TimerElapsed,
+                map_lifecycle_event_to_session_event(*event),
                 runtime,
             )?,
         ),
@@ -89,6 +84,33 @@ where
     })
 }
 
+pub fn dispatch_entitlement_session_lifecycle_event_with_control_plane<Client>(
+    event: EntitlementSessionLifecycleEvent,
+    runtime: &mut EntitlementSessionRuntime<'_, '_, Client>,
+) -> RfResult<EntitlementSessionHostOutcome>
+where
+    Client: RadishFlowControlPlaneClient,
+{
+    dispatch_entitlement_session_host_trigger_with_control_plane(
+        EntitlementSessionHostTrigger::LifecycleEvent(event),
+        runtime,
+    )
+}
+
+fn map_lifecycle_event_to_session_event(event: EntitlementSessionLifecycleEvent) -> EntitlementSessionEvent {
+    match event {
+        EntitlementSessionLifecycleEvent::SessionStarted => EntitlementSessionEvent::SessionStarted,
+        EntitlementSessionLifecycleEvent::LoginCompleted => {
+            EntitlementSessionEvent::LoginCompleted
+        }
+        EntitlementSessionLifecycleEvent::TimerElapsed
+        | EntitlementSessionLifecycleEvent::NetworkRestored
+        | EntitlementSessionLifecycleEvent::WindowForegrounded => {
+            EntitlementSessionEvent::TimerElapsed
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::path::PathBuf;
@@ -105,7 +127,9 @@ mod tests {
 
     use super::{
         EntitlementSessionHostDispatch, EntitlementSessionHostTrigger,
+        EntitlementSessionLifecycleEvent,
         dispatch_entitlement_session_host_trigger_with_control_plane,
+        dispatch_entitlement_session_lifecycle_event_with_control_plane,
     };
     use crate::{
         EntitlementPreflightAction, EntitlementSessionEventOutcome, EntitlementSessionPolicy,
@@ -281,7 +305,9 @@ mod tests {
         };
 
         let outcome = dispatch_entitlement_session_host_trigger_with_control_plane(
-            EntitlementSessionHostTrigger::LoginCompleted,
+            EntitlementSessionHostTrigger::LifecycleEvent(
+                EntitlementSessionLifecycleEvent::LoginCompleted,
+            ),
             &mut runtime,
         )
         .expect("expected session host login event");
@@ -350,6 +376,50 @@ mod tests {
                 other => panic!("expected executed panel dispatch, got {other:?}"),
             },
             other => panic!("expected panel dispatch, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn lifecycle_network_restored_reuses_timer_elapsed_path() {
+        let facade = StudioAppFacade::new();
+        let client = ScriptedControlPlaneClient;
+        let mut app_state = AppState::new(sample_document());
+        complete_login(&mut app_state);
+        app_state.update_entitlement(sample_snapshot(210), vec![sample_manifest()], timestamp(150));
+        let cache_root = PathBuf::from("D:\\cache-root");
+        let mut auth_cache_index = sample_auth_cache_index();
+        let mut context = StudioAppMutableAuthCacheContext::new(&cache_root, &mut auth_cache_index);
+        let mut session_state = EntitlementSessionState::default();
+        let policy = EntitlementSessionPolicy::default();
+        let mut runtime = EntitlementSessionRuntime {
+            facade: &facade,
+            app_state: &mut app_state,
+            context: &mut context,
+            control_plane_client: &client,
+            access_token: "access-token",
+            now: timestamp(200),
+            policy: &policy,
+            session_state: &mut session_state,
+        };
+
+        let outcome = dispatch_entitlement_session_lifecycle_event_with_control_plane(
+            EntitlementSessionLifecycleEvent::NetworkRestored,
+            &mut runtime,
+        )
+        .expect("expected network restored lifecycle event");
+
+        match outcome.dispatch {
+            EntitlementSessionHostDispatch::Event(event) => match event.outcome {
+                EntitlementSessionEventOutcome::Tick(tick) => {
+                    let preflight = tick.preflight.expect("expected preflight");
+                    assert_eq!(
+                        preflight.decision.action,
+                        EntitlementPreflightAction::RefreshOfflineLease
+                    );
+                }
+                other => panic!("expected tick outcome, got {other:?}"),
+            },
+            other => panic!("expected event dispatch, got {other:?}"),
         }
     }
 }

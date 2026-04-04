@@ -66,7 +66,9 @@ pub use entitlement_preflight::{
 };
 pub use entitlement_session_host::{
     EntitlementSessionHostDispatch, EntitlementSessionHostOutcome, EntitlementSessionHostTrigger,
+    EntitlementSessionLifecycleEvent,
     dispatch_entitlement_session_host_trigger_with_control_plane,
+    dispatch_entitlement_session_lifecycle_event_with_control_plane,
 };
 pub use entitlement_session_driver::{
     EntitlementSessionDriverState, EntitlementSessionEvent, EntitlementSessionEventDriverOutcome,
