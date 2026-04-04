@@ -81,6 +81,32 @@ pub enum StudioRuntimeTimerHostCommand {
 }
 
 impl StudioRuntimeTimerHostCommand {
+    pub fn effect_id(&self) -> StudioRuntimeHostEffectId {
+        match self {
+            Self::KeepTimer { effect_id, .. }
+            | Self::ArmTimer { effect_id, .. }
+            | Self::RearmTimer { effect_id, .. }
+            | Self::ClearTimer { effect_id, .. } => *effect_id,
+        }
+    }
+
+    pub fn follow_up_trigger(&self) -> Option<&StudioRuntimeTrigger> {
+        match self {
+            Self::KeepTimer {
+                follow_up_trigger, ..
+            }
+            | Self::ArmTimer {
+                follow_up_trigger, ..
+            }
+            | Self::RearmTimer {
+                follow_up_trigger, ..
+            }
+            | Self::ClearTimer {
+                follow_up_trigger, ..
+            } => follow_up_trigger.as_ref(),
+        }
+    }
+
     fn from_host_effect(effect: &StudioRuntimeHostEffect) -> Option<Self> {
         let follow_up_trigger = match &effect.follow_up {
             Some(StudioRuntimeHostFollowUp::DispatchTrigger(trigger)) => Some(trigger.clone()),
@@ -116,6 +142,129 @@ impl StudioRuntimeTimerHostCommand {
                 }
             },
         }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioRuntimeTimerHandleSlot {
+    pub effect_id: StudioRuntimeHostEffectId,
+    pub timer: EntitlementSessionTimerArm,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct StudioRuntimeTimerHostState {
+    entitlement_timer: Option<StudioRuntimeTimerHandleSlot>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum StudioRuntimeTimerHostTransition {
+    KeepTimer {
+        slot: StudioRuntimeTimerHandleSlot,
+        follow_up_trigger: Option<StudioRuntimeTrigger>,
+    },
+    ArmTimer {
+        slot: StudioRuntimeTimerHandleSlot,
+        follow_up_trigger: Option<StudioRuntimeTrigger>,
+    },
+    RearmTimer {
+        previous: Option<StudioRuntimeTimerHandleSlot>,
+        next: StudioRuntimeTimerHandleSlot,
+        follow_up_trigger: Option<StudioRuntimeTrigger>,
+    },
+    ClearTimer {
+        previous: Option<StudioRuntimeTimerHandleSlot>,
+        follow_up_trigger: Option<StudioRuntimeTrigger>,
+    },
+    IgnoreStale {
+        current: Option<StudioRuntimeTimerHandleSlot>,
+        stale_effect_id: StudioRuntimeHostEffectId,
+    },
+}
+
+impl StudioRuntimeTimerHostState {
+    pub fn entitlement_timer(&self) -> Option<&StudioRuntimeTimerHandleSlot> {
+        self.entitlement_timer.as_ref()
+    }
+
+    pub fn apply_command(
+        &mut self,
+        command: &StudioRuntimeTimerHostCommand,
+    ) -> StudioRuntimeTimerHostTransition {
+        if self.is_stale(command.effect_id()) {
+            return StudioRuntimeTimerHostTransition::IgnoreStale {
+                current: self.entitlement_timer.clone(),
+                stale_effect_id: command.effect_id(),
+            };
+        }
+
+        match command {
+            StudioRuntimeTimerHostCommand::KeepTimer {
+                effect_id,
+                timer,
+                follow_up_trigger,
+            } => {
+                let slot = StudioRuntimeTimerHandleSlot {
+                    effect_id: *effect_id,
+                    timer: timer.clone(),
+                };
+                self.entitlement_timer = Some(slot.clone());
+                StudioRuntimeTimerHostTransition::KeepTimer {
+                    slot,
+                    follow_up_trigger: follow_up_trigger.clone(),
+                }
+            }
+            StudioRuntimeTimerHostCommand::ArmTimer {
+                effect_id,
+                timer,
+                follow_up_trigger,
+            } => {
+                let slot = StudioRuntimeTimerHandleSlot {
+                    effect_id: *effect_id,
+                    timer: timer.clone(),
+                };
+                self.entitlement_timer = Some(slot.clone());
+                StudioRuntimeTimerHostTransition::ArmTimer {
+                    slot,
+                    follow_up_trigger: follow_up_trigger.clone(),
+                }
+            }
+            StudioRuntimeTimerHostCommand::RearmTimer {
+                effect_id,
+                next,
+                follow_up_trigger,
+                ..
+            } => {
+                let previous = self.entitlement_timer.clone();
+                let slot = StudioRuntimeTimerHandleSlot {
+                    effect_id: *effect_id,
+                    timer: next.clone(),
+                };
+                self.entitlement_timer = Some(slot.clone());
+                StudioRuntimeTimerHostTransition::RearmTimer {
+                    previous,
+                    next: slot,
+                    follow_up_trigger: follow_up_trigger.clone(),
+                }
+            }
+            StudioRuntimeTimerHostCommand::ClearTimer {
+                effect_id: _,
+                follow_up_trigger,
+                ..
+            } => {
+                let previous = self.entitlement_timer.take();
+                StudioRuntimeTimerHostTransition::ClearTimer {
+                    previous,
+                    follow_up_trigger: follow_up_trigger.clone(),
+                }
+            }
+        }
+    }
+
+    fn is_stale(&self, effect_id: StudioRuntimeHostEffectId) -> bool {
+        self.entitlement_timer
+            .as_ref()
+            .map(|slot| slot.effect_id > effect_id)
+            .unwrap_or(false)
     }
 }
 
@@ -240,6 +389,13 @@ impl StudioRuntime {
             .find_map(|effect| StudioRuntimeTimerHostCommand::from_host_effect(&effect))
     }
 
+    pub fn acknowledge_entitlement_timer_host_command(
+        &mut self,
+        command: &StudioRuntimeTimerHostCommand,
+    ) -> StudioRuntimeHostAckResult {
+        self.acknowledge_host_effect(command.effect_id())
+    }
+
     fn build_host_effects(&mut self, report: &StudioRuntimeReport) -> Vec<StudioRuntimeHostEffect> {
         let mut host_effects = Vec::new();
 
@@ -286,7 +442,7 @@ mod tests {
         StudioRuntimeDispatch, StudioRuntimeEffect, StudioRuntimeEntitlementPreflight,
         StudioRuntimeEntitlementSeed, StudioRuntimeEntitlementSessionEvent,
         StudioRuntimeHostAckStatus, StudioRuntimeHostFollowUp, StudioRuntimeTimerHostCommand,
-        StudioRuntimeTrigger,
+        StudioRuntimeTimerHostState, StudioRuntimeTimerHostTransition, StudioRuntimeTrigger,
     };
 
     #[test]
@@ -532,6 +688,80 @@ mod tests {
             pending_command,
             StudioRuntimeTimerHostCommand::RearmTimer { .. }
         ));
+    }
+
+    #[test]
+    fn timer_host_state_applies_pending_command_and_tracks_current_slot() {
+        let config = StudioRuntimeConfig {
+            entitlement_preflight: StudioRuntimeEntitlementPreflight::Skip,
+            entitlement_seed: StudioRuntimeEntitlementSeed::LeaseExpiringSoon,
+            ..StudioRuntimeConfig::default()
+        };
+        let mut runtime = StudioRuntime::new(&config).expect("expected studio runtime");
+        let output = runtime
+            .dispatch_trigger_output(&StudioRuntimeTrigger::EntitlementSessionEvent(
+                StudioRuntimeEntitlementSessionEvent::TimerElapsed,
+            ))
+            .expect("expected timer elapsed output");
+        let command = output
+            .entitlement_timer_host_command()
+            .expect("expected timer host command");
+        let mut host_state = StudioRuntimeTimerHostState::default();
+
+        let transition = host_state.apply_command(&command);
+        assert!(matches!(
+            transition,
+            StudioRuntimeTimerHostTransition::RearmTimer { .. }
+        ));
+        let slot = host_state
+            .entitlement_timer()
+            .expect("expected current timer slot after apply");
+        assert_eq!(slot.effect_id, command.effect_id());
+        assert_eq!(
+            runtime
+                .acknowledge_entitlement_timer_host_command(&command)
+                .status,
+            StudioRuntimeHostAckStatus::Applied
+        );
+    }
+
+    #[test]
+    fn timer_host_state_ignores_stale_command_after_newer_timer_is_applied() {
+        let config = StudioRuntimeConfig {
+            entitlement_preflight: StudioRuntimeEntitlementPreflight::Skip,
+            entitlement_seed: StudioRuntimeEntitlementSeed::LeaseExpiringSoon,
+            ..StudioRuntimeConfig::default()
+        };
+        let mut runtime = StudioRuntime::new(&config).expect("expected studio runtime");
+        let first_output = runtime
+            .dispatch_trigger_output(&StudioRuntimeTrigger::EntitlementSessionEvent(
+                StudioRuntimeEntitlementSessionEvent::TimerElapsed,
+            ))
+            .expect("expected first output");
+        let first_command = first_output
+            .entitlement_timer_host_command()
+            .expect("expected first timer command");
+        let second_output = runtime
+            .dispatch_trigger_output(&StudioRuntimeTrigger::EntitlementSessionEvent(
+                StudioRuntimeEntitlementSessionEvent::NetworkRestored,
+            ))
+            .expect("expected second output");
+        let second_command = second_output
+            .entitlement_timer_host_command()
+            .expect("expected second timer command");
+        let mut host_state = StudioRuntimeTimerHostState::default();
+
+        let _ = host_state.apply_command(&second_command);
+        let stale_transition = host_state.apply_command(&first_command);
+
+        assert!(matches!(
+            stale_transition,
+            StudioRuntimeTimerHostTransition::IgnoreStale { .. }
+        ));
+        assert_eq!(
+            host_state.entitlement_timer().map(|slot| slot.effect_id),
+            Some(second_command.effect_id())
+        );
     }
 
     fn session_event(

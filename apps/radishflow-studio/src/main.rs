@@ -1,6 +1,7 @@
 use radishflow_studio::{
     EntitlementSessionEventOutcome, StudioAppResultDispatch, StudioRuntime, StudioRuntimeConfig,
     StudioRuntimeDispatch, StudioRuntimeReport, StudioRuntimeTimerHostCommand,
+    StudioRuntimeTimerHostState, StudioRuntimeTimerHostTransition,
 };
 
 fn print_text_view(title: &str, lines: &[String]) {
@@ -17,6 +18,7 @@ fn print_run_panel(report: &StudioRuntimeReport) {
 
 fn main() {
     let config = StudioRuntimeConfig::default();
+    let mut timer_host_state = StudioRuntimeTimerHostState::default();
 
     let mut runtime = match StudioRuntime::new(&config) {
         Ok(runtime) => runtime,
@@ -56,7 +58,8 @@ fn main() {
 
             if let Some(command) = timer_command {
                 println!("Runtime timer command:");
-                match command {
+                let transition = timer_host_state.apply_command(&command);
+                match &command {
                     StudioRuntimeTimerHostCommand::KeepTimer {
                         effect_id,
                         timer,
@@ -89,6 +92,26 @@ fn main() {
                     } => {
                         println!("  - #{} Clear {:?}", effect_id, previous);
                         println!("    follow-up trigger: {:?}", follow_up_trigger);
+                    }
+                }
+                println!("Timer host transition: {:?}", transition);
+                println!(
+                    "Timer host ack: {:?}",
+                    runtime.acknowledge_entitlement_timer_host_command(&command)
+                );
+                match &transition {
+                    StudioRuntimeTimerHostTransition::KeepTimer { slot, .. }
+                    | StudioRuntimeTimerHostTransition::ArmTimer { slot, .. } => {
+                        println!("Timer host slot: {:?}", slot);
+                    }
+                    StudioRuntimeTimerHostTransition::RearmTimer { next, .. } => {
+                        println!("Timer host slot: {:?}", next);
+                    }
+                    StudioRuntimeTimerHostTransition::ClearTimer { previous, .. } => {
+                        println!("Timer host cleared: {:?}", previous);
+                    }
+                    StudioRuntimeTimerHostTransition::IgnoreStale { current, .. } => {
+                        println!("Timer host current: {:?}", current);
                     }
                 }
             }
