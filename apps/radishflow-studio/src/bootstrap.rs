@@ -7,7 +7,8 @@ use crate::{
     EntitlementSessionHostDispatch, EntitlementSessionHostTrigger,
     EntitlementSessionLifecycleEvent,
     EntitlementSessionPanelDriverOutcome, EntitlementSessionPolicy, EntitlementSessionRuntime,
-    EntitlementSessionSchedule, EntitlementSessionState, RadishFlowControlPlaneClient,
+    EntitlementSessionSchedule, EntitlementSessionState, EntitlementSessionTimerArm,
+    RadishFlowControlPlaneClient,
     RadishFlowControlPlaneClientError, RadishFlowControlPlaneClientErrorKind,
     RadishFlowControlPlaneResponse, RunPanelDriverOutcome, RunPanelWidgetDispatchOutcome,
     StudioAppAuthCacheContext, StudioAppCommandOutcome, StudioAppFacade,
@@ -15,7 +16,9 @@ use crate::{
     dispatch_entitlement_session_host_trigger_with_control_plane,
     dispatch_entitlement_session_event_with_control_plane,
     dispatch_run_panel_intent_with_auth_cache, dispatch_run_panel_primary_action_with_auth_cache,
-    dispatch_run_panel_widget_action_with_auth_cache, snapshot_entitlement_session_driver_state,
+    dispatch_run_panel_widget_action_with_auth_cache,
+    snapshot_entitlement_session_driver_state,
+    snapshot_entitlement_session_panel_driver_state_with_host_notice,
     snapshot_run_panel_driver_state,
 };
 use rf_model::Flowsheet;
@@ -104,6 +107,8 @@ struct BootstrapSessionResources<'a> {
 pub struct StudioBootstrapReport {
     pub entitlement_preflight: Option<EntitlementPreflightOutcome>,
     pub entitlement_session_schedule: EntitlementSessionSchedule,
+    pub entitlement_timer_arm: Option<EntitlementSessionTimerArm>,
+    pub entitlement_host_notice: Option<rf_ui::EntitlementNotice>,
     pub dispatch: StudioBootstrapDispatch,
     pub control_state: WorkspaceControlState,
     pub run_panel: RunPanelWidgetModel,
@@ -155,6 +160,19 @@ pub fn run_studio_bootstrap(config: &StudioBootstrapConfig) -> RfResult<StudioBo
         &session_policy,
         session_resources.session_state,
     );
+    let entitlement_panel_driver_state = snapshot_entitlement_session_panel_driver_state_with_host_notice(
+        session_resources.app_state,
+        schedule_now,
+        &session_policy,
+        session_resources.session_state,
+    );
+
+    let entitlement_host_state = crate::snapshot_entitlement_session_host_state(
+        session_resources.app_state,
+        schedule_now,
+        &session_policy,
+        session_resources.session_state,
+    );
 
     Ok(StudioBootstrapReport {
         entitlement_preflight: match entitlement_session_tick.outcome {
@@ -162,10 +180,12 @@ pub fn run_studio_bootstrap(config: &StudioBootstrapConfig) -> RfResult<StudioBo
             crate::EntitlementSessionEventOutcome::RecordedCommand { .. } => None,
         },
         entitlement_session_schedule: entitlement_driver_state.schedule,
+        entitlement_timer_arm: entitlement_host_state.next_timer,
+        entitlement_host_notice: entitlement_host_state.host_notice,
         dispatch,
         control_state: driver_state.control_state,
         run_panel: driver_state.widget,
-        entitlement_panel: entitlement_driver_state.panel.widget,
+        entitlement_panel: entitlement_panel_driver_state.widget,
         log_entries: app_state.log_feed.entries.iter().cloned().collect(),
     })
 }
@@ -811,6 +831,26 @@ mod tests {
         assert_eq!(dispatch.log_entry_count, 2);
         assert_eq!(report.log_entries.len(), 2);
         assert_eq!(report.entitlement_preflight, None);
+        assert_eq!(
+            report.entitlement_timer_arm.as_ref().map(|timer| timer.event),
+            Some(crate::EntitlementSessionLifecycleEvent::TimerElapsed)
+        );
+        assert_eq!(
+            report
+                .entitlement_host_notice
+                .as_ref()
+                .map(|notice| notice.title.as_str()),
+            Some("Automatic check scheduled")
+        );
+        assert_eq!(
+            report
+                .entitlement_panel
+                .view()
+                .notice
+                .as_ref()
+                .map(|notice| notice.title.as_str()),
+            Some("Automatic check scheduled")
+        );
     }
 
     #[test]
@@ -1147,6 +1187,17 @@ mod tests {
         }
         assert_eq!(report.entitlement_preflight, None);
         assert_eq!(report.control_state.run_status, RunStatus::Idle);
+        assert_eq!(
+            report.entitlement_timer_arm.as_ref().map(|timer| timer.event),
+            Some(crate::EntitlementSessionLifecycleEvent::TimerElapsed)
+        );
+        assert_eq!(
+            report
+                .entitlement_host_notice
+                .as_ref()
+                .map(|notice| notice.title.as_str()),
+            Some("Automatic check scheduled")
+        );
     }
 
     #[test]

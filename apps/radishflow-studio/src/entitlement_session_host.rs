@@ -1,10 +1,15 @@
+use std::time::{Duration, SystemTime};
+
 use rf_types::RfResult;
-use rf_ui::EntitlementActionId;
+use rf_ui::{EntitlementActionId, EntitlementNotice, EntitlementNoticeLevel};
 
 use crate::{
+    EntitlementPanelDriverState,
     EntitlementSessionDriverState, EntitlementSessionEvent,
     EntitlementSessionEventDriverOutcome, EntitlementSessionPanelDriverOutcome,
     EntitlementSessionRuntime, RadishFlowControlPlaneClient,
+    snapshot_entitlement_panel_driver_state,
+    snapshot_entitlement_session_driver_state,
     dispatch_entitlement_session_event_with_control_plane,
     dispatch_entitlement_session_panel_primary_action_with_control_plane,
     dispatch_entitlement_session_panel_widget_action_with_control_plane,
@@ -33,11 +38,65 @@ pub enum EntitlementSessionHostDispatch {
     Panel(EntitlementSessionPanelDriverOutcome),
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum EntitlementSessionTimerReason {
+    ImmediateCheck,
+    ScheduledCheck,
+    BackoffRetry,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct EntitlementSessionTimerArm {
+    pub event: EntitlementSessionLifecycleEvent,
+    pub due_at: SystemTime,
+    pub delay: Duration,
+    pub reason: EntitlementSessionTimerReason,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct EntitlementSessionHostState {
+    pub driver: EntitlementSessionDriverState,
+    pub next_timer: Option<EntitlementSessionTimerArm>,
+    pub host_notice: Option<EntitlementNotice>,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EntitlementSessionHostOutcome {
     pub trigger: EntitlementSessionHostTrigger,
     pub dispatch: EntitlementSessionHostDispatch,
-    pub state: EntitlementSessionDriverState,
+    pub state: EntitlementSessionHostState,
+}
+
+pub fn snapshot_entitlement_session_host_state(
+    app_state: &rf_ui::AppState,
+    now: SystemTime,
+    policy: &crate::EntitlementSessionPolicy,
+    session_state: &crate::EntitlementSessionState,
+) -> EntitlementSessionHostState {
+    let driver = snapshot_entitlement_session_driver_state(app_state, now, policy, session_state);
+    let next_timer = timer_arm_from_schedule(&driver.schedule, now);
+    let host_notice = host_notice_from_schedule(&driver.schedule, next_timer.as_ref());
+
+    EntitlementSessionHostState {
+        driver,
+        next_timer,
+        host_notice,
+    }
+}
+
+pub fn snapshot_entitlement_session_panel_driver_state_with_host_notice(
+    app_state: &rf_ui::AppState,
+    now: SystemTime,
+    policy: &crate::EntitlementSessionPolicy,
+    session_state: &crate::EntitlementSessionState,
+) -> EntitlementPanelDriverState {
+    let host_state = snapshot_entitlement_session_host_state(app_state, now, policy, session_state);
+    let mut panel = snapshot_entitlement_panel_driver_state(app_state);
+    if panel.panel_state.notice.is_none() {
+        panel.panel_state.notice = host_state.host_notice;
+        panel.widget = rf_ui::EntitlementPanelWidgetModel::from_state(&panel.panel_state);
+    }
+    panel
 }
 
 pub fn dispatch_entitlement_session_host_trigger_with_control_plane<Client>(
@@ -72,10 +131,12 @@ where
             )?,
         ),
     };
-    let state = match &dispatch {
-        EntitlementSessionHostDispatch::Event(outcome) => outcome.state.clone(),
-        EntitlementSessionHostDispatch::Panel(outcome) => outcome.state.clone(),
-    };
+    let state = snapshot_entitlement_session_host_state(
+        runtime.app_state,
+        runtime.now,
+        runtime.policy,
+        runtime.session_state,
+    );
 
     Ok(EntitlementSessionHostOutcome {
         trigger,
@@ -111,6 +172,59 @@ fn map_lifecycle_event_to_session_event(event: EntitlementSessionLifecycleEvent)
     }
 }
 
+fn timer_arm_from_schedule(
+    schedule: &crate::EntitlementSessionSchedule,
+    now: SystemTime,
+) -> Option<EntitlementSessionTimerArm> {
+    let due_at = schedule.next_check_at?;
+    let delay = due_at.duration_since(now).unwrap_or(Duration::ZERO);
+    let reason = if schedule.blocked_by_backoff {
+        EntitlementSessionTimerReason::BackoffRetry
+    } else if schedule.recommended_action.is_some() && delay == Duration::ZERO {
+        EntitlementSessionTimerReason::ImmediateCheck
+    } else {
+        EntitlementSessionTimerReason::ScheduledCheck
+    };
+
+    Some(EntitlementSessionTimerArm {
+        event: EntitlementSessionLifecycleEvent::TimerElapsed,
+        due_at,
+        delay,
+        reason,
+    })
+}
+
+fn host_notice_from_schedule(
+    schedule: &crate::EntitlementSessionSchedule,
+    timer: Option<&EntitlementSessionTimerArm>,
+) -> Option<EntitlementNotice> {
+    if schedule.blocked_by_backoff {
+        let backoff = schedule.backoff.as_ref()?;
+        return Some(EntitlementNotice::new(
+            EntitlementNoticeLevel::Warning,
+            "Automatic retry scheduled",
+            format!(
+                "entitlement session will retry {:?} after backoff at {:?}",
+                backoff.action, backoff.retry_not_before
+            ),
+        ));
+    }
+
+    let timer = timer?;
+    if timer.reason == EntitlementSessionTimerReason::ScheduledCheck {
+        return Some(EntitlementNotice::new(
+            EntitlementNoticeLevel::Info,
+            "Automatic check scheduled",
+            format!(
+                "entitlement session will trigger {:?} at {:?}",
+                timer.event, timer.due_at
+            ),
+        ));
+    }
+
+    None
+}
+
 #[cfg(test)]
 mod tests {
     use std::path::PathBuf;
@@ -127,9 +241,12 @@ mod tests {
 
     use super::{
         EntitlementSessionHostDispatch, EntitlementSessionHostTrigger,
+        EntitlementSessionTimerReason,
         EntitlementSessionLifecycleEvent,
         dispatch_entitlement_session_host_trigger_with_control_plane,
         dispatch_entitlement_session_lifecycle_event_with_control_plane,
+        snapshot_entitlement_session_panel_driver_state_with_host_notice,
+        snapshot_entitlement_session_host_state,
     };
     use crate::{
         EntitlementPreflightAction, EntitlementSessionEventOutcome, EntitlementSessionPolicy,
@@ -173,6 +290,16 @@ mod tests {
             allowed_package_ids: ["binary-hydrocarbon-lite-v1".to_string()]
                 .into_iter()
                 .collect(),
+        }
+    }
+
+    fn sample_snapshot_with_expiry(
+        expires_at: u64,
+        offline_lease_expires_at: u64,
+    ) -> EntitlementSnapshot {
+        EntitlementSnapshot {
+            expires_at: timestamp(expires_at),
+            ..sample_snapshot(offline_lease_expires_at)
         }
     }
 
@@ -325,6 +452,10 @@ mod tests {
             },
             other => panic!("expected event dispatch, got {other:?}"),
         }
+        assert_eq!(
+            outcome.state.next_timer.as_ref().map(|timer| timer.reason),
+            Some(EntitlementSessionTimerReason::ImmediateCheck)
+        );
     }
 
     #[test]
@@ -421,5 +552,145 @@ mod tests {
             },
             other => panic!("expected event dispatch, got {other:?}"),
         }
+        assert_eq!(
+            outcome.state.next_timer.as_ref().map(|timer| timer.reason),
+            Some(EntitlementSessionTimerReason::ImmediateCheck)
+        );
+    }
+
+    #[test]
+    fn snapshot_host_state_marks_immediate_timer_when_check_is_due_now() {
+        let mut app_state = AppState::new(sample_document());
+        complete_login(&mut app_state);
+        app_state.entitlement.clear();
+
+        let state = snapshot_entitlement_session_host_state(
+            &app_state,
+            timestamp(200),
+            &EntitlementSessionPolicy::default(),
+            &EntitlementSessionState::default(),
+        );
+
+        let timer = state.next_timer.expect("expected timer arm");
+        assert_eq!(timer.delay, Duration::ZERO);
+        assert_eq!(timer.reason, EntitlementSessionTimerReason::ImmediateCheck);
+        assert_eq!(timer.event, EntitlementSessionLifecycleEvent::TimerElapsed);
+        assert!(state.host_notice.is_none());
+    }
+
+    #[test]
+    fn snapshot_host_state_marks_backoff_retry_when_scheduler_is_blocked() {
+        let mut app_state = AppState::new(sample_document());
+        complete_login(&mut app_state);
+        app_state.update_entitlement(sample_snapshot(210), vec![sample_manifest()], timestamp(150));
+        let policy = EntitlementSessionPolicy::default();
+        let session_state = EntitlementSessionState {
+            backoff: Some(crate::EntitlementSessionBackoff {
+                action: EntitlementPreflightAction::RefreshOfflineLease,
+                failure_reason: crate::StudioEntitlementFailureReason::ConnectionUnavailable,
+                consecutive_failures: 1,
+                retry_not_before: timestamp(260),
+            }),
+            ..EntitlementSessionState::default()
+        };
+
+        let state = snapshot_entitlement_session_host_state(
+            &app_state,
+            timestamp(200),
+            &policy,
+            &session_state,
+        );
+
+        let timer = state.next_timer.expect("expected timer arm");
+        assert_eq!(timer.delay, Duration::from_secs(60));
+        assert_eq!(timer.reason, EntitlementSessionTimerReason::BackoffRetry);
+        assert_eq!(
+            state.host_notice.as_ref().map(|notice| notice.title.as_str()),
+            Some("Automatic retry scheduled")
+        );
+    }
+
+    #[test]
+    fn snapshot_host_state_exposes_scheduled_check_notice() {
+        let mut app_state = AppState::new(sample_document());
+        complete_login(&mut app_state);
+        app_state.update_entitlement(
+            sample_snapshot_with_expiry(5_000, 9_000),
+            vec![sample_manifest()],
+            timestamp(150),
+        );
+
+        let state = snapshot_entitlement_session_host_state(
+            &app_state,
+            timestamp(200),
+            &EntitlementSessionPolicy::default(),
+            &EntitlementSessionState::default(),
+        );
+
+        let timer = state.next_timer.expect("expected timer arm");
+        assert_eq!(timer.reason, EntitlementSessionTimerReason::ScheduledCheck);
+        assert_eq!(
+            state.host_notice.as_ref().map(|notice| notice.title.as_str()),
+            Some("Automatic check scheduled")
+        );
+    }
+
+    #[test]
+    fn panel_driver_uses_host_notice_when_runtime_notice_is_absent() {
+        let mut app_state = AppState::new(sample_document());
+        complete_login(&mut app_state);
+        app_state.update_entitlement(
+            sample_snapshot_with_expiry(5_000, 9_000),
+            vec![sample_manifest()],
+            timestamp(150),
+        );
+
+        let panel = snapshot_entitlement_session_panel_driver_state_with_host_notice(
+            &app_state,
+            timestamp(200),
+            &EntitlementSessionPolicy::default(),
+            &EntitlementSessionState::default(),
+        );
+
+        assert_eq!(
+            panel
+                .panel_state
+                .notice
+                .as_ref()
+                .map(|notice| notice.title.as_str()),
+            Some("Automatic check scheduled")
+        );
+    }
+
+    #[test]
+    fn panel_driver_preserves_runtime_notice_over_host_notice() {
+        let mut app_state = AppState::new(sample_document());
+        complete_login(&mut app_state);
+        app_state.update_entitlement(
+            sample_snapshot_with_expiry(5_000, 9_000),
+            vec![sample_manifest()],
+            timestamp(150),
+        );
+        app_state.entitlement.set_notice(rf_ui::EntitlementNotice::new(
+            rf_ui::EntitlementNoticeLevel::Info,
+            "Runtime notice",
+            "runtime notice should win",
+        ));
+
+        let panel = snapshot_entitlement_session_panel_driver_state_with_host_notice(
+            &app_state,
+            timestamp(200),
+            &EntitlementSessionPolicy::default(),
+            &EntitlementSessionState::default(),
+        );
+
+        assert_eq!(
+            panel
+                .panel_state
+                .notice
+                .as_ref()
+                .map(|notice| notice.title.as_str()),
+            Some("Runtime notice")
+        );
     }
 }

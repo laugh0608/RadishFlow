@@ -65,10 +65,13 @@ pub use entitlement_preflight::{
     record_entitlement_session_outcome, snapshot_entitlement_session_schedule,
 };
 pub use entitlement_session_host::{
-    EntitlementSessionHostDispatch, EntitlementSessionHostOutcome, EntitlementSessionHostTrigger,
-    EntitlementSessionLifecycleEvent,
+    EntitlementSessionHostDispatch, EntitlementSessionHostOutcome, EntitlementSessionHostState,
+    EntitlementSessionHostTrigger, EntitlementSessionLifecycleEvent,
+    EntitlementSessionTimerArm, EntitlementSessionTimerReason,
     dispatch_entitlement_session_host_trigger_with_control_plane,
     dispatch_entitlement_session_lifecycle_event_with_control_plane,
+    snapshot_entitlement_session_panel_driver_state_with_host_notice,
+    snapshot_entitlement_session_host_state,
 };
 pub use entitlement_session_driver::{
     EntitlementSessionDriverState, EntitlementSessionEvent, EntitlementSessionEventDriverOutcome,

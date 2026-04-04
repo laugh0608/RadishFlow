@@ -618,7 +618,7 @@ RadishFlow Studio
 - `apps/radishflow-studio` 当前也已补出 entitlement panel driver，把 `rf-ui` 的 entitlement widget event 正式桥接回 `StudioAppFacade` 的 control plane command
 - `apps/radishflow-studio` 当前也已补出 entitlement startup preflight 与 session scheduler，最小规则收口为“缺失快照先 sync、离线租约临近过期先 refresh、entitlement snapshot 临近过期补 sync”
 - `apps/radishflow-studio` 当前也已补出 `entitlement_session_driver`，把 `SessionStarted`、`LoginCompleted`、`TimerElapsed` 与 `EntitlementCommandCompleted` 这类会话事件收口为统一应用层入口，并把失败退避、下一次建议检查时机和 session state 回写固定在 Studio 侧
-- `apps/radishflow-studio` 当前也已补出 `entitlement_session_host`，把 session event、entitlement panel 主动作和指定动作进一步收口为统一宿主触发入口，并显式补出 `NetworkRestored` / `WindowForegrounded` 这类 GUI 生命周期事件到现有 session tick 语义的映射，避免 bootstrap 或后续 GUI 生命周期宿主继续手写 runtime 分发
+- `apps/radishflow-studio` 当前也已补出 `entitlement_session_host`，把 session event、entitlement panel 主动作和指定动作进一步收口为统一宿主触发入口，并显式补出 `NetworkRestored` / `WindowForegrounded` 这类 GUI 生命周期事件到现有 session tick 语义的映射；同时 host 当前已可把 `next_check_at` 收口为可直接 arm 的 timer 请求对象，并额外给出宿主侧建议 notice；当 runtime 自身没有 entitlement notice 时，宿主可把这类提示覆盖到 panel 视图层，但不回写 `EntitlementState`
 
 ### `rf-store`
 

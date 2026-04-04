@@ -59,6 +59,15 @@ fn main() {
             if report.entitlement_session_schedule.blocked_by_backoff {
                 println!("Entitlement scheduler is currently backing off");
             }
+            if let Some(timer) = report.entitlement_timer_arm.as_ref() {
+                println!("Entitlement timer event: {:?}", timer.event);
+                println!("Entitlement timer due at: {:?}", timer.due_at);
+                println!("Entitlement timer delay: {:?}", timer.delay);
+                println!("Entitlement timer reason: {:?}", timer.reason);
+            }
+            if let Some(notice) = report.entitlement_host_notice.as_ref() {
+                println!("Entitlement host notice: {:?}: {}", notice.level, notice.message);
+            }
 
             match report.dispatch {
                 StudioBootstrapDispatch::AppCommand(outcome) => match outcome.dispatch {
