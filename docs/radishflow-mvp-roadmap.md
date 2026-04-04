@@ -324,6 +324,7 @@ MVP 阶段明确不做：
 - Studio 当前也已继续把 `StudioAppWindowHostManager` 上提为标准 app host 命令面，新增 `StudioAppWindowHostCommand / Outcome`，让未来 GUI 通过单一入口处理打开/关闭窗口、前后台切换、runtime trigger 与全局事件，而不是外层自己拼调用顺序
 - Studio 当前也已继续把 app host 命令面再收成正式顶层容器，新增 `StudioAppHost + StudioAppHostSnapshot`，让 GUI 在执行命令后能直接拿到 registered windows、每个窗口的 role/foreground/timer slot、timer-owner 与 parked timer 快照，而不是再分别查询 manager 与 host port
 - Studio 当前也已继续把 app host 输出推进到正式变更边界，新增 `StudioAppHostChangeSet`，让 GUI 在执行命令后可直接消费窗口新增/移除/更新、foreground 迁移、timer-owner 迁移与 parked timer 变化，而不是自行 diff snapshot
+- Studio 当前也已继续把 app host 输出进一步收口为正式宿主状态层，新增 `StudioAppHostState + StudioAppHostStore + StudioAppHostProjection`，让 GUI 可持有单一 app host state，并由 store 统一推进 `StudioAppHostOutput -> state/projection`，不再自己组合 `outcome + snapshot + changes` 与 timer owner / parked timer 语义
 
 基于上述进展，当前下一阶段计划调整为：
 
@@ -336,6 +337,7 @@ MVP 阶段明确不做：
 - 在已补出的 `StudioAppWindowHostManager + StudioAppWindowHostCommand` 基础上，继续决定真实桌面框架里的 app 生命周期、窗口创建销毁与后台任务事件如何统一接到这条宿主命令面
 - 在已补出的 `StudioAppHost + StudioAppHostSnapshot` 基础上，继续决定真实桌面框架里的 app state store、窗口 registry 与后台任务宿主是否直接复用这份快照作为单一真相源
 - 在已补出的 `StudioAppHost + StudioAppHostSnapshot + StudioAppHostChangeSet` 基础上，继续决定真实桌面框架里的 app state store、窗口 registry 与后台任务宿主如何直接消费正式 snapshot/change 输出，而不是在 GUI 层自行做二次 diff
+- 在已补出的 `StudioAppHostState + StudioAppHostStore + StudioAppHostProjection` 基础上，继续决定真实桌面框架里的 app 生命周期宿主、窗口创建销毁入口与后台任务桥接是否直接围绕这份正式 state/projection 接线
 - 继续冻结运行结果派发、日志入口与后续异步执行边界
 - 在不打乱当前边界的前提下，再恢复更完整的 Studio 交互流、联网提示位置与内核主线推进
 

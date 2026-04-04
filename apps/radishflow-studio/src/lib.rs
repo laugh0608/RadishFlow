@@ -129,8 +129,10 @@ pub use solver_bridge::{
 };
 pub use studio_app_host::{
     StudioAppHost, StudioAppHostChangeSet, StudioAppHostCommand, StudioAppHostCommandOutcome,
-    StudioAppHostOutput, StudioAppHostSnapshot, StudioAppHostTimerSlotChange,
-    StudioAppHostWindowChange, StudioAppHostWindowSelectionChange, StudioAppHostWindowSnapshot,
+    StudioAppHostEntitlementTimerState, StudioAppHostEntitlementTimerStateChange,
+    StudioAppHostOutput, StudioAppHostProjection, StudioAppHostSnapshot, StudioAppHostState,
+    StudioAppHostStore, StudioAppHostTimerSlotChange, StudioAppHostWindowChange,
+    StudioAppHostWindowSelectionChange, StudioAppHostWindowSnapshot, StudioAppHostWindowState,
 };
 pub use studio_runtime::{
     StudioRuntime, StudioRuntimeConfig, StudioRuntimeDispatch, StudioRuntimeEffect,

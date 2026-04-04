@@ -48,6 +48,8 @@ pub struct StudioAppHostWindowSnapshot {
     pub entitlement_timer: Option<StudioRuntimeTimerHandleSlot>,
 }
 
+pub type StudioAppHostWindowState = StudioAppHostWindowSnapshot;
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum StudioAppHostWindowChange {
     Added {
@@ -83,6 +85,78 @@ pub struct StudioAppHostSnapshot {
     pub parked_entitlement_timer: Option<StudioRuntimeTimerHandleSlot>,
 }
 
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub enum StudioAppHostEntitlementTimerState {
+    #[default]
+    Idle,
+    Owned {
+        owner_window_id: StudioWindowHostId,
+        slot: Option<StudioRuntimeTimerHandleSlot>,
+    },
+    Parked {
+        slot: StudioRuntimeTimerHandleSlot,
+    },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioAppHostState {
+    pub registered_windows: Vec<StudioWindowHostId>,
+    pub windows: Vec<StudioAppHostWindowState>,
+    pub foreground_window_id: Option<StudioWindowHostId>,
+    pub entitlement_timer: StudioAppHostEntitlementTimerState,
+}
+
+impl StudioAppHostState {
+    pub fn from_snapshot(snapshot: &StudioAppHostSnapshot) -> Self {
+        Self {
+            registered_windows: snapshot.registered_windows.clone(),
+            windows: snapshot.windows.clone(),
+            foreground_window_id: snapshot.foreground_window_id,
+            entitlement_timer: entitlement_timer_state_from_snapshot(snapshot),
+        }
+    }
+
+    pub fn window(&self, window_id: StudioWindowHostId) -> Option<&StudioAppHostWindowState> {
+        self.windows
+            .iter()
+            .find(|window| window.window_id == window_id)
+    }
+
+    pub fn entitlement_timer_owner_window_id(&self) -> Option<StudioWindowHostId> {
+        match self.entitlement_timer {
+            StudioAppHostEntitlementTimerState::Owned {
+                owner_window_id, ..
+            } => Some(owner_window_id),
+            StudioAppHostEntitlementTimerState::Idle
+            | StudioAppHostEntitlementTimerState::Parked { .. } => None,
+        }
+    }
+
+    pub fn parked_entitlement_timer(&self) -> Option<&StudioRuntimeTimerHandleSlot> {
+        match &self.entitlement_timer {
+            StudioAppHostEntitlementTimerState::Parked { slot } => Some(slot),
+            StudioAppHostEntitlementTimerState::Idle
+            | StudioAppHostEntitlementTimerState::Owned { .. } => None,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioAppHostEntitlementTimerStateChange {
+    pub previous: StudioAppHostEntitlementTimerState,
+    pub current: StudioAppHostEntitlementTimerState,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioAppHostProjection {
+    pub state: StudioAppHostState,
+    pub added_windows: Vec<StudioAppHostWindowState>,
+    pub removed_window_ids: Vec<StudioWindowHostId>,
+    pub updated_windows: Vec<StudioAppHostWindowState>,
+    pub foreground_window_change: Option<StudioAppHostWindowSelectionChange>,
+    pub entitlement_timer_change: Option<StudioAppHostEntitlementTimerStateChange>,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StudioAppHostChangeSet {
     pub window_changes: Vec<StudioAppHostWindowChange>,
@@ -96,6 +170,68 @@ pub struct StudioAppHostOutput {
     pub outcome: StudioAppHostCommandOutcome,
     pub snapshot: StudioAppHostSnapshot,
     pub changes: StudioAppHostChangeSet,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioAppHostStore {
+    state: StudioAppHostState,
+}
+
+impl StudioAppHostStore {
+    pub fn new(initial_state: StudioAppHostState) -> Self {
+        Self {
+            state: initial_state,
+        }
+    }
+
+    pub fn from_snapshot(snapshot: &StudioAppHostSnapshot) -> Self {
+        Self::new(StudioAppHostState::from_snapshot(snapshot))
+    }
+
+    pub fn state(&self) -> &StudioAppHostState {
+        &self.state
+    }
+
+    pub fn project_output(&self, output: &StudioAppHostOutput) -> StudioAppHostProjection {
+        let next_state = StudioAppHostState::from_snapshot(&output.snapshot);
+        let mut added_windows = Vec::new();
+        let mut removed_window_ids = Vec::new();
+        let mut updated_windows = Vec::new();
+
+        for change in &output.changes.window_changes {
+            match change {
+                StudioAppHostWindowChange::Added { current } => {
+                    added_windows.push(current.clone());
+                }
+                StudioAppHostWindowChange::Removed { previous } => {
+                    removed_window_ids.push(previous.window_id);
+                }
+                StudioAppHostWindowChange::Updated { current, .. } => {
+                    updated_windows.push(current.clone());
+                }
+            }
+        }
+
+        let entitlement_timer_change = diff_entitlement_timer_state(
+            &self.state.entitlement_timer,
+            &next_state.entitlement_timer,
+        );
+
+        StudioAppHostProjection {
+            state: next_state,
+            added_windows,
+            removed_window_ids,
+            updated_windows,
+            foreground_window_change: output.changes.foreground_window_change.clone(),
+            entitlement_timer_change,
+        }
+    }
+
+    pub fn apply_output(&mut self, output: &StudioAppHostOutput) -> StudioAppHostProjection {
+        let projection = self.project_output(output);
+        self.state = projection.state.clone();
+        projection
+    }
 }
 
 pub struct StudioAppHost {
@@ -263,6 +399,42 @@ fn diff_timer_slot(
     })
 }
 
+fn entitlement_timer_state_from_snapshot(
+    snapshot: &StudioAppHostSnapshot,
+) -> StudioAppHostEntitlementTimerState {
+    if let Some(owner_window_id) = snapshot.entitlement_timer_owner_window_id {
+        let slot = snapshot
+            .windows
+            .iter()
+            .find(|window| window.window_id == owner_window_id)
+            .and_then(|window| window.entitlement_timer.clone());
+        return StudioAppHostEntitlementTimerState::Owned {
+            owner_window_id,
+            slot,
+        };
+    }
+
+    if let Some(slot) = snapshot.parked_entitlement_timer.clone() {
+        return StudioAppHostEntitlementTimerState::Parked { slot };
+    }
+
+    StudioAppHostEntitlementTimerState::Idle
+}
+
+fn diff_entitlement_timer_state(
+    previous: &StudioAppHostEntitlementTimerState,
+    current: &StudioAppHostEntitlementTimerState,
+) -> Option<StudioAppHostEntitlementTimerStateChange> {
+    if previous == current {
+        return None;
+    }
+
+    Some(StudioAppHostEntitlementTimerStateChange {
+        previous: previous.clone(),
+        current: current.clone(),
+    })
+}
+
 fn map_command(command: StudioAppHostCommand) -> StudioAppWindowHostCommand {
     match command {
         StudioAppHostCommand::OpenWindow => StudioAppWindowHostCommand::OpenWindow,
@@ -305,11 +477,11 @@ fn map_outcome(outcome: StudioAppWindowHostCommandOutcome) -> StudioAppHostComma
 mod tests {
     use crate::{
         StudioAppHost, StudioAppHostCommand, StudioAppHostCommandOutcome,
-        StudioAppHostTimerSlotChange, StudioAppHostWindowChange,
-        StudioAppHostWindowSelectionChange, StudioAppWindowHostGlobalEvent,
-        StudioRuntimeEntitlementPreflight, StudioRuntimeEntitlementSeed,
-        StudioRuntimeEntitlementSessionEvent, StudioRuntimeTrigger, StudioWindowHostRetirement,
-        StudioWindowHostRole,
+        StudioAppHostEntitlementTimerState, StudioAppHostStore, StudioAppHostTimerSlotChange,
+        StudioAppHostWindowChange, StudioAppHostWindowSelectionChange,
+        StudioAppWindowHostGlobalEvent, StudioRuntimeEntitlementPreflight,
+        StudioRuntimeEntitlementSeed, StudioRuntimeEntitlementSessionEvent, StudioRuntimeTrigger,
+        StudioWindowHostRetirement, StudioWindowHostRole,
     };
 
     fn lease_expiring_config() -> crate::StudioRuntimeConfig {
@@ -775,5 +947,165 @@ mod tests {
         assert_eq!(output.changes.foreground_window_change, None);
         assert_eq!(output.changes.entitlement_timer_owner_change, None);
         assert_eq!(output.changes.parked_entitlement_timer_change, None);
+    }
+
+    #[test]
+    fn app_host_store_projects_output_into_single_state_boundary() {
+        let mut app_host = StudioAppHost::new(&lease_expiring_config()).expect("expected app host");
+        let mut store = StudioAppHostStore::from_snapshot(&app_host.snapshot());
+
+        let first_open = app_host
+            .execute_command(StudioAppHostCommand::OpenWindow)
+            .expect("expected first window open");
+        let first_projection = store.apply_output(&first_open);
+        let first_window = first_projection
+            .added_windows
+            .first()
+            .expect("expected first added window");
+
+        assert_eq!(
+            first_projection.state.registered_windows,
+            vec![first_window.window_id]
+        );
+        assert_eq!(
+            first_projection.state.foreground_window_id,
+            Some(first_window.window_id)
+        );
+        assert_eq!(
+            first_projection.state.entitlement_timer,
+            StudioAppHostEntitlementTimerState::Owned {
+                owner_window_id: first_window.window_id,
+                slot: None,
+            }
+        );
+        assert_eq!(first_projection.removed_window_ids, Vec::<u64>::new());
+        assert!(first_projection.updated_windows.is_empty());
+
+        let second_open = app_host
+            .execute_command(StudioAppHostCommand::OpenWindow)
+            .expect("expected second window open");
+        let second_projection = store.apply_output(&second_open);
+        let second_window = second_projection
+            .added_windows
+            .first()
+            .expect("expected second added window");
+
+        assert_eq!(
+            second_projection.state.registered_windows,
+            vec![first_window.window_id, second_window.window_id]
+        );
+        assert_eq!(
+            second_projection.state.entitlement_timer,
+            StudioAppHostEntitlementTimerState::Owned {
+                owner_window_id: first_window.window_id,
+                slot: None,
+            }
+        );
+
+        let focused = app_host
+            .execute_command(StudioAppHostCommand::FocusWindow {
+                window_id: second_window.window_id,
+            })
+            .expect("expected focus command");
+        let focused_projection = store.apply_output(&focused);
+
+        assert_eq!(
+            focused_projection.state.foreground_window_id,
+            Some(second_window.window_id)
+        );
+        assert_eq!(focused_projection.added_windows, Vec::new());
+        assert_eq!(focused_projection.removed_window_ids, Vec::<u64>::new());
+        assert_eq!(focused_projection.updated_windows.len(), 2);
+        assert_eq!(
+            focused_projection.state.entitlement_timer,
+            StudioAppHostEntitlementTimerState::Owned {
+                owner_window_id: first_window.window_id,
+                slot: focused_projection
+                    .state
+                    .window(first_window.window_id)
+                    .and_then(|window| window.entitlement_timer.clone()),
+            }
+        );
+        assert!(focused_projection.entitlement_timer_change.is_some());
+    }
+
+    #[test]
+    fn app_host_store_collapses_owner_and_parked_timer_semantics() {
+        let mut app_host = StudioAppHost::new(&lease_expiring_config()).expect("expected app host");
+        let mut store = StudioAppHostStore::from_snapshot(&app_host.snapshot());
+
+        let opened = app_host
+            .execute_command(StudioAppHostCommand::OpenWindow)
+            .expect("expected window open");
+        let opened_projection = store.apply_output(&opened);
+        let window_id = opened_projection
+            .added_windows
+            .first()
+            .expect("expected opened window")
+            .window_id;
+
+        let triggered = app_host
+            .execute_command(StudioAppHostCommand::DispatchWindowTrigger {
+                window_id,
+                trigger: StudioRuntimeTrigger::EntitlementSessionEvent(
+                    StudioRuntimeEntitlementSessionEvent::TimerElapsed,
+                ),
+            })
+            .expect("expected timer trigger");
+        let triggered_projection = store.apply_output(&triggered);
+        let owned_slot = triggered_projection
+            .state
+            .window(window_id)
+            .and_then(|window| window.entitlement_timer.clone())
+            .expect("expected owned timer slot");
+
+        assert_eq!(
+            triggered_projection.state.entitlement_timer,
+            StudioAppHostEntitlementTimerState::Owned {
+                owner_window_id: window_id,
+                slot: Some(owned_slot.clone()),
+            }
+        );
+
+        let closed = app_host
+            .execute_command(StudioAppHostCommand::CloseWindow { window_id })
+            .expect("expected close command");
+        let closed_projection = store.apply_output(&closed);
+
+        assert!(closed_projection.state.windows.is_empty());
+        assert_eq!(
+            closed_projection.state.entitlement_timer,
+            StudioAppHostEntitlementTimerState::Parked {
+                slot: owned_slot.clone(),
+            }
+        );
+        assert_eq!(closed_projection.removed_window_ids, vec![window_id]);
+
+        let reopened = app_host
+            .execute_command(StudioAppHostCommand::OpenWindow)
+            .expect("expected reopen");
+        let reopened_projection = store.apply_output(&reopened);
+        let reopened_window_id = reopened_projection
+            .added_windows
+            .first()
+            .expect("expected reopened window")
+            .window_id;
+
+        assert_eq!(
+            reopened_projection.state.entitlement_timer,
+            StudioAppHostEntitlementTimerState::Owned {
+                owner_window_id: reopened_window_id,
+                slot: reopened_projection
+                    .state
+                    .window(reopened_window_id)
+                    .and_then(|window| window.entitlement_timer.clone()),
+            }
+        );
+        assert!(
+            reopened_projection
+                .state
+                .parked_entitlement_timer()
+                .is_none()
+        );
     }
 }
