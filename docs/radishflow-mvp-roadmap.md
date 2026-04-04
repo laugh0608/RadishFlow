@@ -328,6 +328,15 @@ MVP 阶段明确不做：
 - Studio 当前也已继续把 app host 命令入口进一步收口为 `StudioAppHostController`，并补出按 GUI 意图命名的 typed result，让最小入口不再直接消费 `StudioAppHostOutput` 或 match raw command outcome
 - Studio 当前也已继续把 GUI 宿主副作用收口到 controller 返回值，补出 dispatch/close effect summary，让最小入口不再直接翻读 `StudioWindowSessionDispatch`、`StudioRuntimeHostPortOutput` 或 close raw shutdown 细节
 
+截至 2026-04-04，Studio entitlement 宿主边界已进一步形成一条可直接面向真实 GUI 的正式分层：
+
+- `StudioRuntime / StudioRuntimeHostPort` 负责共享 runtime 与多窗口 timer owner 规则
+- `StudioWindowSession / StudioAppWindowHostManager` 负责窗口会话与 app 级窗口注册表、foreground、全局事件路由
+- `StudioAppHost / StudioAppHostState / Store / Projection` 负责 app 级宿主真相源与状态推进
+- `StudioAppHostController + effect summary` 负责 GUI 命令入口与宿主副作用消费面
+
+当前最小入口 `apps/radishflow-studio/src/main.rs` 已开始直接消费上述正式边界，而不再继续翻读 bootstrap、session 或 raw command outcome 细节。
+
 基于上述进展，当前下一阶段计划调整为：
 
 - 在已接通的 `main.rs` 最小 bootstrap 入口、`RunPanelWidgetModel`、`run_panel_driver`、entitlement session driver 与 `StudioBootstrapTrigger` 契约基础上，继续把 `StudioAppFacade + WorkspaceRunCommand + WorkspaceSolveService` 和 entitlement session event 接到更完整的 UI 运行命令、登录完成事件与定时调度入口
