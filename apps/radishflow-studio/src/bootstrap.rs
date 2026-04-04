@@ -8,6 +8,7 @@ use crate::{
     EntitlementSessionLifecycleEvent,
     EntitlementSessionPanelDriverOutcome, EntitlementSessionPolicy, EntitlementSessionRuntime,
     EntitlementSessionSchedule, EntitlementSessionState, EntitlementSessionTimerArm,
+    EntitlementSessionTimerCommand,
     RadishFlowControlPlaneClient,
     RadishFlowControlPlaneClientError, RadishFlowControlPlaneClientErrorKind,
     RadishFlowControlPlaneResponse, RunPanelDriverOutcome, RunPanelWidgetDispatchOutcome,
@@ -16,6 +17,7 @@ use crate::{
     dispatch_entitlement_session_host_trigger_with_control_plane,
     dispatch_entitlement_session_event_with_control_plane,
     dispatch_run_panel_intent_with_auth_cache, dispatch_run_panel_primary_action_with_auth_cache,
+    plan_entitlement_session_timer_command,
     dispatch_run_panel_widget_action_with_auth_cache,
     snapshot_entitlement_session_driver_state,
     snapshot_entitlement_session_panel_driver_state_with_host_notice,
@@ -108,6 +110,7 @@ pub struct StudioBootstrapReport {
     pub entitlement_preflight: Option<EntitlementPreflightOutcome>,
     pub entitlement_session_schedule: EntitlementSessionSchedule,
     pub entitlement_timer_arm: Option<EntitlementSessionTimerArm>,
+    pub entitlement_timer_command: Option<EntitlementSessionTimerCommand>,
     pub entitlement_host_notice: Option<rf_ui::EntitlementNotice>,
     pub dispatch: StudioBootstrapDispatch,
     pub control_state: WorkspaceControlState,
@@ -173,6 +176,10 @@ pub fn run_studio_bootstrap(config: &StudioBootstrapConfig) -> RfResult<StudioBo
         &session_policy,
         session_resources.session_state,
     );
+    let entitlement_timer_command = plan_entitlement_session_timer_command(
+        None,
+        entitlement_host_state.next_timer.as_ref(),
+    );
 
     Ok(StudioBootstrapReport {
         entitlement_preflight: match entitlement_session_tick.outcome {
@@ -181,6 +188,7 @@ pub fn run_studio_bootstrap(config: &StudioBootstrapConfig) -> RfResult<StudioBo
         },
         entitlement_session_schedule: entitlement_driver_state.schedule,
         entitlement_timer_arm: entitlement_host_state.next_timer,
+        entitlement_timer_command,
         entitlement_host_notice: entitlement_host_state.host_notice,
         dispatch,
         control_state: driver_state.control_state,
@@ -835,6 +843,10 @@ mod tests {
             report.entitlement_timer_arm.as_ref().map(|timer| timer.event),
             Some(crate::EntitlementSessionLifecycleEvent::TimerElapsed)
         );
+        assert!(matches!(
+            report.entitlement_timer_command,
+            Some(crate::EntitlementSessionTimerCommand::Schedule { .. })
+        ));
         assert_eq!(
             report
                 .entitlement_host_notice
@@ -1191,6 +1203,10 @@ mod tests {
             report.entitlement_timer_arm.as_ref().map(|timer| timer.event),
             Some(crate::EntitlementSessionLifecycleEvent::TimerElapsed)
         );
+        assert!(matches!(
+            report.entitlement_timer_command,
+            Some(crate::EntitlementSessionTimerCommand::Schedule { .. })
+        ));
         assert_eq!(
             report
                 .entitlement_host_notice

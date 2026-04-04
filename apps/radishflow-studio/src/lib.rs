@@ -67,9 +67,10 @@ pub use entitlement_preflight::{
 pub use entitlement_session_host::{
     EntitlementSessionHostDispatch, EntitlementSessionHostOutcome, EntitlementSessionHostState,
     EntitlementSessionHostTrigger, EntitlementSessionLifecycleEvent,
-    EntitlementSessionTimerArm, EntitlementSessionTimerReason,
+    EntitlementSessionTimerArm, EntitlementSessionTimerCommand, EntitlementSessionTimerReason,
     dispatch_entitlement_session_host_trigger_with_control_plane,
     dispatch_entitlement_session_lifecycle_event_with_control_plane,
+    plan_entitlement_session_timer_command,
     snapshot_entitlement_session_panel_driver_state_with_host_notice,
     snapshot_entitlement_session_host_state,
 };

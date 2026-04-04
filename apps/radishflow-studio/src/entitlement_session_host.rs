@@ -54,6 +54,23 @@ pub struct EntitlementSessionTimerArm {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub enum EntitlementSessionTimerCommand {
+    Keep {
+        timer: EntitlementSessionTimerArm,
+    },
+    Schedule {
+        timer: EntitlementSessionTimerArm,
+    },
+    Reschedule {
+        previous: EntitlementSessionTimerArm,
+        next: EntitlementSessionTimerArm,
+    },
+    Clear {
+        previous: EntitlementSessionTimerArm,
+    },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EntitlementSessionHostState {
     pub driver: EntitlementSessionDriverState,
     pub next_timer: Option<EntitlementSessionTimerArm>,
@@ -81,6 +98,28 @@ pub fn snapshot_entitlement_session_host_state(
         driver,
         next_timer,
         host_notice,
+    }
+}
+
+pub fn plan_entitlement_session_timer_command(
+    current: Option<&EntitlementSessionTimerArm>,
+    next: Option<&EntitlementSessionTimerArm>,
+) -> Option<EntitlementSessionTimerCommand> {
+    match (current, next) {
+        (Some(current), Some(next)) if current == next => Some(EntitlementSessionTimerCommand::Keep {
+            timer: current.clone(),
+        }),
+        (None, Some(next)) => Some(EntitlementSessionTimerCommand::Schedule {
+            timer: next.clone(),
+        }),
+        (Some(current), Some(next)) => Some(EntitlementSessionTimerCommand::Reschedule {
+            previous: current.clone(),
+            next: next.clone(),
+        }),
+        (Some(current), None) => Some(EntitlementSessionTimerCommand::Clear {
+            previous: current.clone(),
+        }),
+        (None, None) => None,
     }
 }
 
@@ -241,10 +280,12 @@ mod tests {
 
     use super::{
         EntitlementSessionHostDispatch, EntitlementSessionHostTrigger,
+        EntitlementSessionTimerArm, EntitlementSessionTimerCommand,
         EntitlementSessionTimerReason,
         EntitlementSessionLifecycleEvent,
         dispatch_entitlement_session_host_trigger_with_control_plane,
         dispatch_entitlement_session_lifecycle_event_with_control_plane,
+        plan_entitlement_session_timer_command,
         snapshot_entitlement_session_panel_driver_state_with_host_notice,
         snapshot_entitlement_session_host_state,
     };
@@ -691,6 +732,80 @@ mod tests {
                 .as_ref()
                 .map(|notice| notice.title.as_str()),
             Some("Runtime notice")
+        );
+    }
+
+    #[test]
+    fn timer_command_schedules_when_previous_timer_is_missing() {
+        let next = EntitlementSessionTimerArm {
+            event: EntitlementSessionLifecycleEvent::TimerElapsed,
+            due_at: timestamp(260),
+            delay: Duration::from_secs(60),
+            reason: EntitlementSessionTimerReason::ScheduledCheck,
+        };
+
+        let command = plan_entitlement_session_timer_command(None, Some(&next));
+
+        assert_eq!(
+            command,
+            Some(EntitlementSessionTimerCommand::Schedule { timer: next })
+        );
+    }
+
+    #[test]
+    fn timer_command_keeps_when_timer_is_unchanged() {
+        let timer = EntitlementSessionTimerArm {
+            event: EntitlementSessionLifecycleEvent::TimerElapsed,
+            due_at: timestamp(260),
+            delay: Duration::from_secs(60),
+            reason: EntitlementSessionTimerReason::ScheduledCheck,
+        };
+
+        let command = plan_entitlement_session_timer_command(Some(&timer), Some(&timer));
+
+        assert_eq!(
+            command,
+            Some(EntitlementSessionTimerCommand::Keep { timer })
+        );
+    }
+
+    #[test]
+    fn timer_command_reschedules_when_due_time_changes() {
+        let previous = EntitlementSessionTimerArm {
+            event: EntitlementSessionLifecycleEvent::TimerElapsed,
+            due_at: timestamp(260),
+            delay: Duration::from_secs(60),
+            reason: EntitlementSessionTimerReason::ScheduledCheck,
+        };
+        let next = EntitlementSessionTimerArm {
+            event: EntitlementSessionLifecycleEvent::TimerElapsed,
+            due_at: timestamp(800),
+            delay: Duration::from_secs(600),
+            reason: EntitlementSessionTimerReason::BackoffRetry,
+        };
+
+        let command = plan_entitlement_session_timer_command(Some(&previous), Some(&next));
+
+        assert_eq!(
+            command,
+            Some(EntitlementSessionTimerCommand::Reschedule { previous, next })
+        );
+    }
+
+    #[test]
+    fn timer_command_clears_when_timer_is_no_longer_needed() {
+        let previous = EntitlementSessionTimerArm {
+            event: EntitlementSessionLifecycleEvent::TimerElapsed,
+            due_at: timestamp(260),
+            delay: Duration::from_secs(60),
+            reason: EntitlementSessionTimerReason::ScheduledCheck,
+        };
+
+        let command = plan_entitlement_session_timer_command(Some(&previous), None);
+
+        assert_eq!(
+            command,
+            Some(EntitlementSessionTimerCommand::Clear { previous })
         );
     }
 }

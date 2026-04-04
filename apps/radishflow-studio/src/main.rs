@@ -65,6 +65,9 @@ fn main() {
                 println!("Entitlement timer delay: {:?}", timer.delay);
                 println!("Entitlement timer reason: {:?}", timer.reason);
             }
+            if let Some(command) = report.entitlement_timer_command.as_ref() {
+                println!("Entitlement timer command: {:?}", command);
+            }
             if let Some(notice) = report.entitlement_host_notice.as_ref() {
                 println!("Entitlement host notice: {:?}: {}", notice.level, notice.message);
             }
