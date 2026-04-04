@@ -28,7 +28,7 @@ fn main() {
             println!("Control pending: {:?}", report.control_state.pending_reason);
             println!("Control status: {:?}", report.control_state.run_status);
             print_run_panel(&report);
-            let entitlement_host = report.entitlement_host.presentation();
+            let entitlement_host = &report.entitlement_host.presentation;
             print_text_view(
                 entitlement_host.panel.text.title,
                 &entitlement_host.panel.text.lines,

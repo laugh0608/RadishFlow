@@ -9,6 +9,7 @@ mod entitlement_preflight;
 mod entitlement_session_driver;
 mod entitlement_session_host;
 mod entitlement_session_host_presentation;
+mod entitlement_session_host_runtime;
 mod property_package_download;
 mod property_package_download_client;
 mod run_panel_driver;
@@ -90,6 +91,10 @@ pub use entitlement_session_host::{
 };
 pub use entitlement_session_host_presentation::{
     EntitlementSessionHostPresentation, EntitlementSessionHostTextView,
+};
+pub use entitlement_session_host_runtime::{
+    EntitlementSessionHostRuntime, EntitlementSessionHostRuntimeDispatchOutcome,
+    EntitlementSessionHostRuntimeOutput, EntitlementSessionHostTimerEffect,
 };
 pub use property_package_download::{
     PROPERTY_PACKAGE_DOWNLOAD_KIND, PROPERTY_PACKAGE_DOWNLOAD_SCHEMA_VERSION,

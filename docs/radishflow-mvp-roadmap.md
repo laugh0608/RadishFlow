@@ -307,6 +307,7 @@ MVP 阶段明确不做：
 - Studio 当前也已补出 `EntitlementSessionEvent::{SessionStarted, LoginCompleted, TimerElapsed, EntitlementCommandCompleted}`，让 bootstrap 自动预检和 entitlement 命令完成后的 session state 推进共享统一事件入口
 - Studio 当前也已补出 `entitlement_session_host`，把 entitlement session event 与 entitlement panel 动作统一收口为宿主触发入口，并补出 `NetworkRestored` / `WindowForegrounded` 到既有 session tick 语义的映射；host 当前也已能把 `next_check_at` 收口为 timer arm 摘要、宿主建议 notice 与 `Schedule / Reschedule / Keep / Clear` 定时器决策，并进一步聚合成单一 `EntitlementSessionHostSnapshot`；当前又补出 `EntitlementSessionHostContext`，把当前已挂 timer 与上一份 host snapshot 的推进逻辑收回 host 模块，使 bootstrap / `main.rs` 与后续 GUI 宿主不再手写 control plane runtime 分发、多字段拼装或上下文记忆；bootstrap 最小入口当前也已能直接演练 `Reschedule / Keep` 语义而不是每次都从 `Schedule` 起步
 - Studio 当前也已补出 `EntitlementSessionHostPresentation / TextView`，把 `main.rs` 仍在分散拼装的 entitlement host schedule/timer/notice 文本输出收回宿主模块，最小入口直接消费正式 host presentation
+- Studio 当前也已补出 `EntitlementSessionHostRuntimeOutput / TimerEffect / Runtime`，把 `Schedule / Reschedule / Keep / Clear` 继续收成更贴近桌面宿主的 timer effect，并让 bootstrap 不再直接解释低层 host context
 
 基于上述进展，当前下一阶段计划调整为：
 

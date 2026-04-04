@@ -3,7 +3,7 @@ use std::fmt::Debug;
 use rf_ui::{EntitlementNoticeLevel, EntitlementPanelPresentation};
 
 use crate::{
-    EntitlementSessionHostSnapshot, EntitlementSessionTimerArm, EntitlementSessionTimerCommand,
+    EntitlementSessionHostSnapshot, EntitlementSessionHostTimerEffect, EntitlementSessionTimerArm,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -50,11 +50,11 @@ impl EntitlementSessionHostTextView {
                     .unwrap_or_else(|| "None".to_string())
             ),
             format!(
-                "Timer command: {}",
+                "Timer effect: {}",
                 snapshot
-                    .timer_command
+                    .timer_effect()
                     .as_ref()
-                    .map(format_timer_command)
+                    .map(format_timer_effect)
                     .unwrap_or_else(|| "None".to_string())
             ),
         ];
@@ -119,23 +119,23 @@ fn format_timer_arm(timer: &EntitlementSessionTimerArm) -> String {
     )
 }
 
-fn format_timer_command(command: &EntitlementSessionTimerCommand) -> String {
-    match command {
-        EntitlementSessionTimerCommand::Keep { timer } => {
-            format!("Keep {}", format_timer_arm(timer))
+fn format_timer_effect(effect: &EntitlementSessionHostTimerEffect) -> String {
+    match effect {
+        EntitlementSessionHostTimerEffect::KeepTimer { timer } => {
+            format!("Keep timer {}", format_timer_arm(timer))
         }
-        EntitlementSessionTimerCommand::Schedule { timer } => {
-            format!("Schedule {}", format_timer_arm(timer))
+        EntitlementSessionHostTimerEffect::ArmTimer { timer } => {
+            format!("Arm timer {}", format_timer_arm(timer))
         }
-        EntitlementSessionTimerCommand::Reschedule { previous, next } => {
+        EntitlementSessionHostTimerEffect::RearmTimer { previous, next } => {
             format!(
-                "Reschedule {} -> {}",
+                "Rearm timer {} -> {}",
                 format_timer_arm(previous),
                 format_timer_arm(next)
             )
         }
-        EntitlementSessionTimerCommand::Clear { previous } => {
-            format!("Clear {}", format_timer_arm(previous))
+        EntitlementSessionHostTimerEffect::ClearTimer { previous } => {
+            format!("Clear timer {}", format_timer_arm(previous))
         }
     }
 }

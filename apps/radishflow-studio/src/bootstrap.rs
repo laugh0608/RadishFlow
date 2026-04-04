@@ -4,7 +4,8 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use crate::{
     EntitlementPreflightOutcome, EntitlementSessionEvent, EntitlementSessionEventDriverOutcome,
-    EntitlementSessionHostContext, EntitlementSessionHostDispatch, EntitlementSessionHostSnapshot,
+    EntitlementSessionHostDispatch, EntitlementSessionHostRuntime,
+    EntitlementSessionHostRuntimeOutput,
     EntitlementSessionHostTrigger, EntitlementSessionLifecycleEvent,
     EntitlementSessionPanelDriverOutcome, EntitlementSessionPolicy, EntitlementSessionRuntime,
     EntitlementSessionState, RadishFlowControlPlaneClient, RadishFlowControlPlaneClientError,
@@ -12,10 +13,8 @@ use crate::{
     RunPanelWidgetDispatchOutcome, StudioAppAuthCacheContext, StudioAppCommandOutcome,
     StudioAppFacade, StudioAppMutableAuthCacheContext, WorkspaceControlState,
     dispatch_entitlement_session_event_with_control_plane,
-    dispatch_entitlement_session_host_trigger_with_context_and_control_plane,
     dispatch_run_panel_intent_with_auth_cache, dispatch_run_panel_primary_action_with_auth_cache,
     dispatch_run_panel_widget_action_with_auth_cache, snapshot_entitlement_session_driver_state,
-    snapshot_entitlement_session_host, snapshot_entitlement_session_host_with_context,
     snapshot_run_panel_driver_state,
 };
 use rf_model::Flowsheet;
@@ -97,13 +96,13 @@ struct BootstrapSessionResources<'a> {
     control_plane_client: &'a BootstrapControlPlaneClient,
     policy: &'a EntitlementSessionPolicy,
     session_state: &'a mut EntitlementSessionState,
-    host_context: EntitlementSessionHostContext,
+    host_runtime: EntitlementSessionHostRuntime,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StudioBootstrapReport {
     pub entitlement_preflight: Option<EntitlementPreflightOutcome>,
-    pub entitlement_host: EntitlementSessionHostSnapshot,
+    pub entitlement_host: EntitlementSessionHostRuntimeOutput,
     pub dispatch: StudioBootstrapDispatch,
     pub control_state: WorkspaceControlState,
     pub run_panel: RunPanelWidgetModel,
@@ -139,7 +138,7 @@ pub fn run_studio_bootstrap(config: &StudioBootstrapConfig) -> RfResult<StudioBo
         control_plane_client: &control_plane_client,
         policy: &session_policy,
         session_state: &mut entitlement_session_state,
-        host_context: EntitlementSessionHostContext::default(),
+        host_runtime: EntitlementSessionHostRuntime::default(),
     };
     let entitlement_session_tick = dispatch_bootstrap_entitlement_session_tick(
         &facade,
@@ -149,19 +148,15 @@ pub fn run_studio_bootstrap(config: &StudioBootstrapConfig) -> RfResult<StudioBo
     let dispatch = dispatch_bootstrap_trigger(&facade, &config.trigger, &mut session_resources)?;
     let schedule_now = normalized_system_time_now()?;
     let driver_state = snapshot_run_panel_driver_state(session_resources.app_state);
-    let entitlement_host = session_resources
-        .host_context
-        .last_snapshot()
-        .cloned()
-        .unwrap_or_else(|| {
-            snapshot_entitlement_session_host(
-                session_resources.app_state,
-                schedule_now,
-                &session_policy,
-                session_resources.session_state,
-                session_resources.host_context.current_timer(),
-            )
-        });
+    let entitlement_host = match session_resources.host_runtime.last_output() {
+        Some(output) => output,
+        None => session_resources.host_runtime.snapshot(
+            session_resources.app_state,
+            schedule_now,
+            &session_policy,
+            session_resources.session_state,
+        ),
+    };
 
     Ok(StudioBootstrapReport {
         entitlement_preflight: match entitlement_session_tick.outcome {
@@ -203,12 +198,11 @@ fn dispatch_bootstrap_entitlement_session_tick(
                 session.session_state,
             ),
         };
-        snapshot_entitlement_session_host_with_context(
+        session.host_runtime.snapshot(
             session.app_state,
             now,
             session.policy,
             session.session_state,
-            &mut session.host_context,
         );
         return Ok(outcome);
     }
@@ -230,12 +224,11 @@ fn dispatch_bootstrap_entitlement_session_tick(
         EntitlementSessionEvent::SessionStarted,
         &mut runtime,
     )?;
-    snapshot_entitlement_session_host_with_context(
+    session.host_runtime.snapshot(
         session.app_state,
         now,
         session.policy,
         session.session_state,
-        &mut session.host_context,
     );
     Ok(outcome)
 }
@@ -372,11 +365,9 @@ fn dispatch_bootstrap_entitlement_host_trigger(
         policy: session.policy,
         session_state: session.session_state,
     };
-    let outcome = dispatch_entitlement_session_host_trigger_with_context_and_control_plane(
-        trigger,
-        &mut session.host_context,
-        &mut runtime,
-    )?;
+    let outcome = session
+        .host_runtime
+        .dispatch_trigger_with_control_plane(trigger, &mut runtime)?;
     match outcome.dispatch {
         EntitlementSessionHostDispatch::Event(outcome) => {
             Ok(StudioBootstrapDispatch::EntitlementSessionEvent(outcome))
@@ -794,6 +785,7 @@ mod tests {
     };
     use crate::{
         EntitlementPreflightAction, EntitlementSessionEvent, EntitlementSessionEventOutcome,
+        EntitlementSessionHostTimerEffect,
         StudioAppExecutionBoundary, StudioAppExecutionLane, StudioAppResultDispatch,
         StudioEntitlementAction, StudioEntitlementOutcome, StudioWorkspaceRunOutcome,
     };
@@ -842,6 +834,7 @@ mod tests {
         assert_eq!(
             report
                 .entitlement_host
+                .snapshot
                 .state
                 .next_timer
                 .as_ref()
@@ -849,12 +842,13 @@ mod tests {
             Some(crate::EntitlementSessionLifecycleEvent::TimerElapsed)
         );
         assert!(matches!(
-            report.entitlement_host.timer_command,
-            Some(crate::EntitlementSessionTimerCommand::Schedule { .. })
+            report.entitlement_host.timer_effect,
+            Some(EntitlementSessionHostTimerEffect::ArmTimer { .. })
         ));
         assert_eq!(
             report
                 .entitlement_host
+                .snapshot
                 .state
                 .host_notice
                 .as_ref()
@@ -864,9 +858,9 @@ mod tests {
         assert_eq!(
             report
                 .entitlement_host
+                .presentation
                 .panel
-                .widget
-                .view()
+                .view
                 .notice
                 .as_ref()
                 .map(|notice| notice.title.as_str()),
@@ -1027,9 +1021,9 @@ mod tests {
         assert_eq!(
             report
                 .entitlement_host
+                .presentation
                 .panel
-                .widget
-                .view()
+                .view
                 .primary_action
                 .label,
             "Refresh offline lease"
@@ -1077,9 +1071,9 @@ mod tests {
         assert_eq!(
             report
                 .entitlement_host
+                .presentation
                 .panel
-                .widget
-                .view()
+                .view
                 .primary_action
                 .label,
             "Refresh offline lease"
@@ -1188,9 +1182,9 @@ mod tests {
         assert_eq!(
             report
                 .entitlement_host
+                .presentation
                 .panel
-                .widget
-                .view()
+                .view
                 .primary_action
                 .label,
             "Refresh offline lease"
@@ -1229,6 +1223,7 @@ mod tests {
         assert_eq!(
             report
                 .entitlement_host
+                .snapshot
                 .state
                 .next_timer
                 .as_ref()
@@ -1236,18 +1231,50 @@ mod tests {
             Some(crate::EntitlementSessionLifecycleEvent::TimerElapsed)
         );
         assert!(matches!(
-            report.entitlement_host.timer_command,
-            Some(crate::EntitlementSessionTimerCommand::Reschedule { .. })
+            report.entitlement_host.timer_effect,
+            Some(EntitlementSessionHostTimerEffect::RearmTimer { .. })
         ));
         assert_eq!(
             report
                 .entitlement_host
+                .snapshot
                 .state
                 .host_notice
                 .as_ref()
                 .map(|notice| notice.title.as_str()),
             Some("Automatic check scheduled")
         );
+    }
+
+    #[test]
+    fn bootstrap_entitlement_host_report_exposes_runtime_presentation_and_effect() {
+        let report = run_studio_bootstrap(&StudioBootstrapConfig {
+            entitlement_preflight: super::StudioBootstrapEntitlementPreflight::Skip,
+            entitlement_seed: StudioBootstrapEntitlementSeed::LeaseExpiringSoon,
+            trigger: StudioBootstrapTrigger::EntitlementSessionEvent(
+                StudioBootstrapEntitlementSessionEvent::TimerElapsed,
+            ),
+            ..StudioBootstrapConfig::default()
+        })
+        .expect("expected timer elapsed session event");
+
+        assert_eq!(
+            report.entitlement_host.presentation.text.title,
+            "Entitlement host"
+        );
+        assert!(
+            report
+                .entitlement_host
+                .presentation
+                .text
+                .lines
+                .iter()
+                .any(|line| line.starts_with("Timer effect: Rearm timer"))
+        );
+        assert!(matches!(
+            report.entitlement_host.timer_effect,
+            Some(EntitlementSessionHostTimerEffect::RearmTimer { .. })
+        ));
     }
 
     #[test]

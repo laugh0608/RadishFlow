@@ -620,6 +620,7 @@ RadishFlow Studio
 - `apps/radishflow-studio` 当前也已补出 `entitlement_session_driver`，把 `SessionStarted`、`LoginCompleted`、`TimerElapsed` 与 `EntitlementCommandCompleted` 这类会话事件收口为统一应用层入口，并把失败退避、下一次建议检查时机和 session state 回写固定在 Studio 侧
 - `apps/radishflow-studio` 当前也已补出 `entitlement_session_host`，把 session event、entitlement panel 主动作和指定动作进一步收口为统一宿主触发入口，并显式补出 `NetworkRestored` / `WindowForegrounded` 这类 GUI 生命周期事件到现有 session tick 语义的映射；同时 host 当前已可把 `next_check_at` 收口为可直接 arm 的 timer 请求对象，并进一步产出 `Schedule / Reschedule / Keep / Clear` 这类宿主侧定时器决策；当 runtime 自身没有 entitlement notice 时，宿主可把这类提示覆盖到 panel 视图层，但不回写 `EntitlementState`；当前又进一步补出 `EntitlementSessionHostSnapshot`，把 schedule、timer arm、timer command、host notice 与 panel driver state 聚合成单一宿主消费对象，并补出 `EntitlementSessionHostContext` 负责保留当前已挂 timer 与上一份 snapshot，让 bootstrap 或后续 GUI 宿主不必再各自重复实现这套上下文推进逻辑
 - `apps/radishflow-studio` 当前又已补出 `EntitlementSessionHostPresentation / TextView`，把 host snapshot 的 schedule/timer/timer command/host notice 文本消费正式收口回宿主模块，`main.rs` 这类最小入口不再继续手写 entitlement host 输出拼装
+- `apps/radishflow-studio` 当前又已在其上补出 `EntitlementSessionHostRuntimeOutput / TimerEffect / Runtime`，把 `Schedule / Reschedule / Keep / Clear` 进一步翻译成更接近真实桌面宿主的 timer effect，并由 bootstrap 直接消费这一层，而不是继续自己持有和解释低层 host context
 
 ### `rf-store`
 

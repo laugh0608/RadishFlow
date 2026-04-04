@@ -860,10 +860,10 @@ mod tests {
         );
         assert!(
             text.lines.iter().any(|line| {
-                line.starts_with("Timer command: Schedule TimerElapsed")
+                line.starts_with("Timer effect: Arm timer TimerElapsed")
                     && line.contains("ScheduledCheck")
             }),
-            "expected timer command line, got {:?}",
+            "expected timer effect line, got {:?}",
             text.lines
         );
         assert!(
