@@ -16,6 +16,24 @@ pub enum StudioAppWindowHostGlobalEvent {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub enum StudioAppWindowHostCommand {
+    OpenWindow,
+    DispatchTrigger {
+        window_id: StudioWindowHostId,
+        trigger: StudioRuntimeTrigger,
+    },
+    FocusWindow {
+        window_id: StudioWindowHostId,
+    },
+    DispatchGlobalEvent {
+        event: StudioAppWindowHostGlobalEvent,
+    },
+    CloseWindow {
+        window_id: StudioWindowHostId,
+    },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StudioAppWindowHostDispatch {
     pub target_window_id: StudioWindowHostId,
     pub dispatch: StudioWindowSessionDispatch,
@@ -26,6 +44,19 @@ pub struct StudioAppWindowHostClose {
     pub window_id: StudioWindowHostId,
     pub shutdown: StudioWindowSessionShutdown,
     pub next_foreground_window_id: Option<StudioWindowHostId>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum StudioAppWindowHostCommandOutcome {
+    WindowOpened(StudioWindowHostRegistration),
+    WindowDispatched(StudioAppWindowHostDispatch),
+    WindowClosed(StudioAppWindowHostClose),
+    IgnoredGlobalEvent {
+        event: StudioAppWindowHostGlobalEvent,
+    },
+    IgnoredClose {
+        window_id: StudioWindowHostId,
+    },
 }
 
 pub struct StudioAppWindowHostManager {
@@ -53,6 +84,43 @@ impl StudioAppWindowHostManager {
 
     pub fn registered_windows(&self) -> Vec<StudioWindowHostId> {
         self.registered_windows.iter().copied().collect()
+    }
+
+    pub fn execute_command(
+        &mut self,
+        command: StudioAppWindowHostCommand,
+    ) -> RfResult<StudioAppWindowHostCommandOutcome> {
+        match command {
+            StudioAppWindowHostCommand::OpenWindow => Ok(
+                StudioAppWindowHostCommandOutcome::WindowOpened(self.open_window()),
+            ),
+            StudioAppWindowHostCommand::DispatchTrigger { window_id, trigger } => {
+                let dispatch = self.dispatch_trigger(window_id, &trigger)?;
+                Ok(StudioAppWindowHostCommandOutcome::WindowDispatched(
+                    dispatch,
+                ))
+            }
+            StudioAppWindowHostCommand::FocusWindow { window_id } => {
+                let dispatch = self.focus_window(window_id)?;
+                Ok(StudioAppWindowHostCommandOutcome::WindowDispatched(
+                    dispatch,
+                ))
+            }
+            StudioAppWindowHostCommand::DispatchGlobalEvent { event } => {
+                match self.dispatch_global_event(event)? {
+                    Some(dispatch) => Ok(StudioAppWindowHostCommandOutcome::WindowDispatched(
+                        dispatch,
+                    )),
+                    None => Ok(StudioAppWindowHostCommandOutcome::IgnoredGlobalEvent { event }),
+                }
+            }
+            StudioAppWindowHostCommand::CloseWindow { window_id } => {
+                match self.close_window(window_id) {
+                    Some(close) => Ok(StudioAppWindowHostCommandOutcome::WindowClosed(close)),
+                    None => Ok(StudioAppWindowHostCommandOutcome::IgnoredClose { window_id }),
+                }
+            }
+        }
     }
 
     pub fn open_window(&mut self) -> StudioWindowHostRegistration {
@@ -186,6 +254,7 @@ impl StudioAppWindowHostManager {
 #[cfg(test)]
 mod tests {
     use crate::{
+        StudioAppWindowHostCommand, StudioAppWindowHostCommandOutcome,
         StudioAppWindowHostGlobalEvent, StudioAppWindowHostManager,
         StudioRuntimeEntitlementPreflight, StudioRuntimeEntitlementSeed,
         StudioRuntimeEntitlementSessionEvent, StudioRuntimeTrigger, StudioWindowHostRole,
@@ -317,5 +386,123 @@ mod tests {
             .expect("expected global network dispatch");
 
         assert!(dispatch.is_none());
+    }
+
+    #[test]
+    fn app_window_host_manager_executes_commands_through_single_entry() {
+        let mut manager =
+            StudioAppWindowHostManager::new(&lease_expiring_config()).expect("expected manager");
+        let first = match manager
+            .execute_command(StudioAppWindowHostCommand::OpenWindow)
+            .expect("expected first window open")
+        {
+            StudioAppWindowHostCommandOutcome::WindowOpened(registration) => registration,
+            other => panic!("expected window opened outcome, got {other:?}"),
+        };
+        let second = match manager
+            .execute_command(StudioAppWindowHostCommand::OpenWindow)
+            .expect("expected second window open")
+        {
+            StudioAppWindowHostCommandOutcome::WindowOpened(registration) => registration,
+            other => panic!("expected window opened outcome, got {other:?}"),
+        };
+
+        assert_eq!(first.role, StudioWindowHostRole::EntitlementTimerOwner);
+        assert_eq!(second.role, StudioWindowHostRole::Observer);
+
+        let focus = manager
+            .execute_command(StudioAppWindowHostCommand::FocusWindow {
+                window_id: second.window_id,
+            })
+            .expect("expected focus command");
+        match focus {
+            StudioAppWindowHostCommandOutcome::WindowDispatched(dispatch) => {
+                assert_eq!(dispatch.target_window_id, second.window_id);
+            }
+            other => panic!("expected focus dispatch outcome, got {other:?}"),
+        }
+        assert_eq!(manager.foreground_window_id(), Some(second.window_id));
+
+        let trigger = manager
+            .execute_command(StudioAppWindowHostCommand::DispatchTrigger {
+                window_id: first.window_id,
+                trigger: StudioRuntimeTrigger::EntitlementSessionEvent(
+                    StudioRuntimeEntitlementSessionEvent::TimerElapsed,
+                ),
+            })
+            .expect("expected trigger command");
+        match trigger {
+            StudioAppWindowHostCommandOutcome::WindowDispatched(dispatch) => {
+                assert_eq!(dispatch.target_window_id, first.window_id);
+            }
+            other => panic!("expected trigger dispatch outcome, got {other:?}"),
+        }
+
+        let global = manager
+            .execute_command(StudioAppWindowHostCommand::DispatchGlobalEvent {
+                event: StudioAppWindowHostGlobalEvent::TimerElapsed,
+            })
+            .expect("expected global event command");
+        match global {
+            StudioAppWindowHostCommandOutcome::WindowDispatched(dispatch) => {
+                assert_eq!(dispatch.target_window_id, first.window_id);
+            }
+            other => panic!("expected global dispatch outcome, got {other:?}"),
+        }
+
+        let close = manager
+            .execute_command(StudioAppWindowHostCommand::CloseWindow {
+                window_id: first.window_id,
+            })
+            .expect("expected close command");
+        match close {
+            StudioAppWindowHostCommandOutcome::WindowClosed(close) => {
+                assert_eq!(close.window_id, first.window_id);
+                assert_eq!(close.next_foreground_window_id, Some(second.window_id));
+            }
+            other => panic!("expected close outcome, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn app_window_host_manager_command_entry_surfaces_ignored_cases() {
+        let mut manager =
+            StudioAppWindowHostManager::new(&lease_expiring_config()).expect("expected manager");
+
+        let ignored_global = manager
+            .execute_command(StudioAppWindowHostCommand::DispatchGlobalEvent {
+                event: StudioAppWindowHostGlobalEvent::NetworkRestored,
+            })
+            .expect("expected ignored global event");
+        assert_eq!(
+            ignored_global,
+            StudioAppWindowHostCommandOutcome::IgnoredGlobalEvent {
+                event: StudioAppWindowHostGlobalEvent::NetworkRestored,
+            }
+        );
+
+        let window = match manager
+            .execute_command(StudioAppWindowHostCommand::OpenWindow)
+            .expect("expected window open")
+        {
+            StudioAppWindowHostCommandOutcome::WindowOpened(registration) => registration,
+            other => panic!("expected window opened outcome, got {other:?}"),
+        };
+        let _ = manager
+            .execute_command(StudioAppWindowHostCommand::CloseWindow {
+                window_id: window.window_id,
+            })
+            .expect("expected first close");
+        let ignored_close = manager
+            .execute_command(StudioAppWindowHostCommand::CloseWindow {
+                window_id: window.window_id,
+            })
+            .expect("expected ignored close");
+        assert_eq!(
+            ignored_close,
+            StudioAppWindowHostCommandOutcome::IgnoredClose {
+                window_id: window.window_id,
+            }
+        );
     }
 }

@@ -1,8 +1,9 @@
 use radishflow_studio::{
-    EntitlementSessionEventOutcome, StudioAppResultDispatch, StudioAppWindowHostGlobalEvent,
+    EntitlementSessionEventOutcome, StudioAppResultDispatch, StudioAppWindowHostCommand,
+    StudioAppWindowHostCommandOutcome, StudioAppWindowHostDispatch, StudioAppWindowHostGlobalEvent,
     StudioAppWindowHostManager, StudioRuntimeConfig, StudioRuntimeDispatch, StudioRuntimeReport,
     StudioRuntimeTimerHostCommand, StudioRuntimeTimerHostTransition, StudioWindowHostEvent,
-    StudioWindowHostRetirement, StudioWindowTimerDriverAckResult,
+    StudioWindowHostRegistration, StudioWindowHostRetirement, StudioWindowTimerDriverAckResult,
     StudioWindowTimerDriverTransition,
 };
 
@@ -31,7 +32,11 @@ fn main() {
             std::process::exit(1);
         }
     };
-    let window = window_manager.open_window();
+    let window = expect_window_opened(
+        &mut window_manager,
+        StudioAppWindowHostCommand::OpenWindow,
+        "open initial window",
+    );
     println!(
         "Opened window host #{} as {:?}",
         window.window_id, window.role
@@ -48,240 +53,310 @@ fn main() {
         println!("  registration commands are now auto-applied by session adapter");
     }
 
-    match window_manager.dispatch_trigger(window.window_id, &config.trigger) {
-        Ok(dispatch) => {
-            let window_event = dispatch.dispatch.host_output.window_event;
-            let timer_driver_commands = dispatch.dispatch.host_output.timer_driver_commands;
-            let report = dispatch.dispatch.host_output.runtime_output.report;
-            println!("RadishFlow Studio bootstrap");
-            println!("Project: {}", config.project_path.display());
-            println!("Requested trigger: {:?}", config.trigger);
-            println!("Entitlement preflight: {:?}", config.entitlement_preflight);
-            println!("Control mode: {:?}", report.control_state.simulation_mode);
-            println!("Control pending: {:?}", report.control_state.pending_reason);
-            println!("Control status: {:?}", report.control_state.run_status);
-            print_run_panel(&report);
-            let entitlement_host = &report.entitlement_host.presentation;
-            print_text_view(
-                entitlement_host.panel.text.title,
-                &entitlement_host.panel.text.lines,
-            );
-            print_text_view(entitlement_host.text.title, &entitlement_host.text.lines);
+    let dispatch = expect_window_dispatch(
+        &mut window_manager,
+        StudioAppWindowHostCommand::DispatchTrigger {
+            window_id: window.window_id,
+            trigger: config.trigger.clone(),
+        },
+        "dispatch initial trigger",
+    );
+    let window_event = dispatch.dispatch.host_output.window_event;
+    let timer_driver_commands = dispatch.dispatch.host_output.timer_driver_commands;
+    let report = dispatch.dispatch.host_output.runtime_output.report;
+    println!("RadishFlow Studio bootstrap");
+    println!("Project: {}", config.project_path.display());
+    println!("Requested trigger: {:?}", config.trigger);
+    println!("Entitlement preflight: {:?}", config.entitlement_preflight);
+    println!("Control mode: {:?}", report.control_state.simulation_mode);
+    println!("Control pending: {:?}", report.control_state.pending_reason);
+    println!("Control status: {:?}", report.control_state.run_status);
+    print_run_panel(&report);
+    let entitlement_host = &report.entitlement_host.presentation;
+    print_text_view(
+        entitlement_host.panel.text.title,
+        &entitlement_host.panel.text.lines,
+    );
+    print_text_view(entitlement_host.text.title, &entitlement_host.text.lines);
 
-            if let Some(preflight) = report.entitlement_preflight.as_ref() {
-                println!("Preflight action: {:?}", preflight.decision.action);
-                println!("Preflight reason: {}", preflight.decision.reason);
-            }
+    if let Some(preflight) = report.entitlement_preflight.as_ref() {
+        println!("Preflight action: {:?}", preflight.decision.action);
+        println!("Preflight reason: {}", preflight.decision.reason);
+    }
 
-            if let Some(event) = window_event {
-                println!("Runtime timer command:");
-                match event {
-                    StudioWindowHostEvent::EntitlementTimerApplied {
-                        window_id,
-                        command,
-                        transition,
-                        ack,
+    if let Some(event) = window_event {
+        println!("Runtime timer command:");
+        match event {
+            StudioWindowHostEvent::EntitlementTimerApplied {
+                window_id,
+                command,
+                transition,
+                ack,
+            } => {
+                println!("  owner window: #{window_id}");
+                match &command {
+                    StudioRuntimeTimerHostCommand::KeepTimer {
+                        effect_id,
+                        timer,
+                        follow_up_trigger,
                     } => {
-                        println!("  owner window: #{window_id}");
-                        match &command {
-                            StudioRuntimeTimerHostCommand::KeepTimer {
-                                effect_id,
-                                timer,
-                                follow_up_trigger,
-                            } => {
-                                println!("  - #{} Keep {:?}", effect_id, timer);
-                                println!("    follow-up trigger: {:?}", follow_up_trigger);
-                            }
-                            StudioRuntimeTimerHostCommand::ArmTimer {
-                                effect_id,
-                                timer,
-                                follow_up_trigger,
-                            } => {
-                                println!("  - #{} Arm {:?}", effect_id, timer);
-                                println!("    follow-up trigger: {:?}", follow_up_trigger);
-                            }
-                            StudioRuntimeTimerHostCommand::RearmTimer {
-                                effect_id,
-                                previous,
-                                next,
-                                follow_up_trigger,
-                            } => {
-                                println!("  - #{} Rearm {:?} -> {:?}", effect_id, previous, next);
-                                println!("    follow-up trigger: {:?}", follow_up_trigger);
-                            }
-                            StudioRuntimeTimerHostCommand::ClearTimer {
-                                effect_id,
-                                previous,
-                                follow_up_trigger,
-                            } => {
-                                println!("  - #{} Clear {:?}", effect_id, previous);
-                                println!("    follow-up trigger: {:?}", follow_up_trigger);
-                            }
-                        }
-                        println!("Timer host transition: {:?}", transition);
-                        println!("Timer host ack: {:?}", ack);
-                        match &transition {
-                            StudioRuntimeTimerHostTransition::KeepTimer { slot, .. }
-                            | StudioRuntimeTimerHostTransition::ArmTimer { slot, .. } => {
-                                println!("Timer host slot: {:?}", slot);
-                            }
-                            StudioRuntimeTimerHostTransition::RearmTimer { next, .. } => {
-                                println!("Timer host slot: {:?}", next);
-                            }
-                            StudioRuntimeTimerHostTransition::ClearTimer { previous, .. } => {
-                                println!("Timer host cleared: {:?}", previous);
-                            }
-                            StudioRuntimeTimerHostTransition::IgnoreStale { current, .. } => {
-                                println!("Timer host current: {:?}", current);
-                            }
-                        }
+                        println!("  - #{} Keep {:?}", effect_id, timer);
+                        println!("    follow-up trigger: {:?}", follow_up_trigger);
+                    }
+                    StudioRuntimeTimerHostCommand::ArmTimer {
+                        effect_id,
+                        timer,
+                        follow_up_trigger,
+                    } => {
+                        println!("  - #{} Arm {:?}", effect_id, timer);
+                        println!("    follow-up trigger: {:?}", follow_up_trigger);
+                    }
+                    StudioRuntimeTimerHostCommand::RearmTimer {
+                        effect_id,
+                        previous,
+                        next,
+                        follow_up_trigger,
+                    } => {
+                        println!("  - #{} Rearm {:?} -> {:?}", effect_id, previous, next);
+                        println!("    follow-up trigger: {:?}", follow_up_trigger);
+                    }
+                    StudioRuntimeTimerHostCommand::ClearTimer {
+                        effect_id,
+                        previous,
+                        follow_up_trigger,
+                    } => {
+                        println!("  - #{} Clear {:?}", effect_id, previous);
+                        println!("    follow-up trigger: {:?}", follow_up_trigger);
+                    }
+                }
+                println!("Timer host transition: {:?}", transition);
+                println!("Timer host ack: {:?}", ack);
+                match &transition {
+                    StudioRuntimeTimerHostTransition::KeepTimer { slot, .. }
+                    | StudioRuntimeTimerHostTransition::ArmTimer { slot, .. } => {
+                        println!("Timer host slot: {:?}", slot);
+                    }
+                    StudioRuntimeTimerHostTransition::RearmTimer { next, .. } => {
+                        println!("Timer host slot: {:?}", next);
+                    }
+                    StudioRuntimeTimerHostTransition::ClearTimer { previous, .. } => {
+                        println!("Timer host cleared: {:?}", previous);
+                    }
+                    StudioRuntimeTimerHostTransition::IgnoreStale { current, .. } => {
+                        println!("Timer host current: {:?}", current);
                     }
                 }
             }
-            if !timer_driver_commands.is_empty() {
-                println!("Timer driver commands:");
-                for command in &timer_driver_commands {
+        }
+    }
+    if !timer_driver_commands.is_empty() {
+        println!("Timer driver commands:");
+        for command in &timer_driver_commands {
+            println!("  host command: {:?}", command);
+        }
+        for transition in &dispatch.dispatch.timer_driver_transitions {
+            print_timer_driver_transition(transition);
+        }
+        for ack in &dispatch.dispatch.timer_driver_acks {
+            print_timer_driver_ack(ack);
+        }
+    }
+
+    match report.dispatch {
+        StudioRuntimeDispatch::AppCommand(outcome) => match outcome.dispatch {
+            StudioAppResultDispatch::WorkspaceRun(dispatch) => {
+                println!("Run status: {:?}", dispatch.run_status);
+                println!("Outcome: {:?}", dispatch.outcome);
+                if let Some(package_id) = dispatch.package_id {
+                    println!("Package: {package_id}");
+                }
+                if let Some(snapshot_id) = dispatch.latest_snapshot_id {
+                    println!("Latest snapshot: {snapshot_id}");
+                }
+                if let Some(summary) = dispatch.latest_snapshot_summary {
+                    println!("Summary: {summary}");
+                }
+                println!("Log entries: {}", dispatch.log_entry_count);
+                if let Some(entry) = dispatch.latest_log_entry {
+                    println!("Latest log: {:?}: {}", entry.level, entry.message);
+                }
+            }
+            StudioAppResultDispatch::WorkspaceMode(dispatch) => {
+                println!("Run status: {:?}", dispatch.run_status);
+                if let Some(snapshot_id) = dispatch.latest_snapshot_id {
+                    println!("Latest snapshot: {snapshot_id}");
+                }
+                if let Some(summary) = dispatch.latest_snapshot_summary {
+                    println!("Summary: {summary}");
+                }
+                println!("Log entries: {}", dispatch.log_entry_count);
+                if let Some(entry) = dispatch.latest_log_entry {
+                    println!("Latest log: {:?}: {}", entry.level, entry.message);
+                }
+            }
+            StudioAppResultDispatch::Entitlement(dispatch) => {
+                println!("Entitlement status: {:?}", dispatch.entitlement_status);
+                println!("Entitlement outcome: {:?}", dispatch.outcome);
+                if let Some(notice) = dispatch.notice {
+                    println!("Entitlement notice: {:?}: {}", notice.level, notice.message);
+                }
+                if let Some(entry) = dispatch.latest_log_entry {
+                    println!("Latest log: {:?}: {}", entry.level, entry.message);
+                }
+            }
+        },
+        StudioRuntimeDispatch::EntitlementSessionEvent(outcome) => {
+            println!("Entitlement session event: {:?}", outcome.event);
+            match outcome.outcome {
+                EntitlementSessionEventOutcome::Tick(tick) => {
+                    if let Some(preflight) = tick.preflight {
+                        println!("Session action: {:?}", preflight.decision.action);
+                        println!("Session reason: {}", preflight.decision.reason);
+                    } else {
+                        println!("Session action: None");
+                    }
+                }
+                EntitlementSessionEventOutcome::RecordedCommand { action } => {
+                    println!("Session recorded command: {:?}", action);
+                }
+            }
+        }
+    }
+
+    if !report.log_entries.is_empty() {
+        println!("Logs:");
+        for entry in report.log_entries {
+            println!("  - {:?}: {}", entry.level, entry.message);
+        }
+    }
+
+    match expect_command_outcome(
+        &mut window_manager,
+        StudioAppWindowHostCommand::DispatchGlobalEvent {
+            event: StudioAppWindowHostGlobalEvent::NetworkRestored,
+        },
+        "dispatch global network restored",
+    ) {
+        StudioAppWindowHostCommandOutcome::WindowDispatched(global_dispatch) => {
+            println!(
+                "Global network restored routed to window #{}",
+                global_dispatch.target_window_id
+            );
+        }
+        StudioAppWindowHostCommandOutcome::IgnoredGlobalEvent { event } => {
+            println!("Global event ignored: {:?}", event);
+        }
+        other => {
+            eprintln!("Unexpected app host outcome: {:?}", other);
+            std::process::exit(1);
+        }
+    }
+
+    match expect_command_outcome(
+        &mut window_manager,
+        StudioAppWindowHostCommand::CloseWindow {
+            window_id: window.window_id,
+        },
+        "close initial window",
+    ) {
+        StudioAppWindowHostCommandOutcome::WindowClosed(shutdown) => {
+            if let Some(slot) = shutdown.shutdown.host_shutdown.cleared_entitlement_timer {
+                println!("Window host shutdown cleared timer slot: {:?}", slot);
+            }
+            if !shutdown
+                .shutdown
+                .host_shutdown
+                .timer_driver_commands
+                .is_empty()
+            {
+                println!("Window host shutdown driver commands:");
+                for command in &shutdown.shutdown.host_shutdown.timer_driver_commands {
                     println!("  host command: {:?}", command);
                 }
-                for transition in &dispatch.dispatch.timer_driver_transitions {
+                for transition in &shutdown.shutdown.timer_driver_transitions {
                     print_timer_driver_transition(transition);
                 }
-                for ack in &dispatch.dispatch.timer_driver_acks {
+                for ack in &shutdown.shutdown.timer_driver_acks {
                     print_timer_driver_ack(ack);
                 }
             }
-
-            match report.dispatch {
-                StudioRuntimeDispatch::AppCommand(outcome) => match outcome.dispatch {
-                    StudioAppResultDispatch::WorkspaceRun(dispatch) => {
-                        println!("Run status: {:?}", dispatch.run_status);
-                        println!("Outcome: {:?}", dispatch.outcome);
-                        if let Some(package_id) = dispatch.package_id {
-                            println!("Package: {package_id}");
-                        }
-                        if let Some(snapshot_id) = dispatch.latest_snapshot_id {
-                            println!("Latest snapshot: {snapshot_id}");
-                        }
-                        if let Some(summary) = dispatch.latest_snapshot_summary {
-                            println!("Summary: {summary}");
-                        }
-                        println!("Log entries: {}", dispatch.log_entry_count);
-                        if let Some(entry) = dispatch.latest_log_entry {
-                            println!("Latest log: {:?}: {}", entry.level, entry.message);
-                        }
+            match shutdown.shutdown.host_shutdown.retirement {
+                StudioWindowHostRetirement::None => {}
+                StudioWindowHostRetirement::Transferred {
+                    new_owner_window_id,
+                    restored_entitlement_timer,
+                } => {
+                    println!("Timer ownership transferred to window #{new_owner_window_id}");
+                    if let Some(slot) = restored_entitlement_timer {
+                        println!("Transferred timer slot: {:?}", slot);
                     }
-                    StudioAppResultDispatch::WorkspaceMode(dispatch) => {
-                        println!("Run status: {:?}", dispatch.run_status);
-                        if let Some(snapshot_id) = dispatch.latest_snapshot_id {
-                            println!("Latest snapshot: {snapshot_id}");
-                        }
-                        if let Some(summary) = dispatch.latest_snapshot_summary {
-                            println!("Summary: {summary}");
-                        }
-                        println!("Log entries: {}", dispatch.log_entry_count);
-                        if let Some(entry) = dispatch.latest_log_entry {
-                            println!("Latest log: {:?}: {}", entry.level, entry.message);
-                        }
-                    }
-                    StudioAppResultDispatch::Entitlement(dispatch) => {
-                        println!("Entitlement status: {:?}", dispatch.entitlement_status);
-                        println!("Entitlement outcome: {:?}", dispatch.outcome);
-                        if let Some(notice) = dispatch.notice {
-                            println!("Entitlement notice: {:?}: {}", notice.level, notice.message);
-                        }
-                        if let Some(entry) = dispatch.latest_log_entry {
-                            println!("Latest log: {:?}: {}", entry.level, entry.message);
-                        }
-                    }
-                },
-                StudioRuntimeDispatch::EntitlementSessionEvent(outcome) => {
-                    println!("Entitlement session event: {:?}", outcome.event);
-                    match outcome.outcome {
-                        EntitlementSessionEventOutcome::Tick(tick) => {
-                            if let Some(preflight) = tick.preflight {
-                                println!("Session action: {:?}", preflight.decision.action);
-                                println!("Session reason: {}", preflight.decision.reason);
-                            } else {
-                                println!("Session action: None");
-                            }
-                        }
-                        EntitlementSessionEventOutcome::RecordedCommand { action } => {
-                            println!("Session recorded command: {:?}", action);
-                        }
+                }
+                StudioWindowHostRetirement::Parked {
+                    parked_entitlement_timer,
+                } => {
+                    println!("Timer ownership parked after last window closed");
+                    if let Some(slot) = parked_entitlement_timer {
+                        println!("Parked timer slot: {:?}", slot);
                     }
                 }
             }
-
-            if !report.log_entries.is_empty() {
-                println!("Logs:");
-                for entry in report.log_entries {
-                    println!("  - {:?}: {}", entry.level, entry.message);
-                }
-            }
-
-            if let Some(global_dispatch) = window_manager
-                .dispatch_global_event(StudioAppWindowHostGlobalEvent::NetworkRestored)
-                .expect("expected global network restored dispatch")
-            {
-                println!(
-                    "Global network restored routed to window #{}",
-                    global_dispatch.target_window_id
-                );
-            }
-
-            if let Some(shutdown) = window_manager.close_window(window.window_id) {
-                if let Some(slot) = shutdown.shutdown.host_shutdown.cleared_entitlement_timer {
-                    println!("Window host shutdown cleared timer slot: {:?}", slot);
-                }
-                if !shutdown
-                    .shutdown
-                    .host_shutdown
-                    .timer_driver_commands
-                    .is_empty()
-                {
-                    println!("Window host shutdown driver commands:");
-                    for command in &shutdown.shutdown.host_shutdown.timer_driver_commands {
-                        println!("  host command: {:?}", command);
-                    }
-                    for transition in &shutdown.shutdown.timer_driver_transitions {
-                        print_timer_driver_transition(transition);
-                    }
-                    for ack in &shutdown.shutdown.timer_driver_acks {
-                        print_timer_driver_ack(ack);
-                    }
-                }
-                match shutdown.shutdown.host_shutdown.retirement {
-                    StudioWindowHostRetirement::None => {}
-                    StudioWindowHostRetirement::Transferred {
-                        new_owner_window_id,
-                        restored_entitlement_timer,
-                    } => {
-                        println!("Timer ownership transferred to window #{new_owner_window_id}");
-                        if let Some(slot) = restored_entitlement_timer {
-                            println!("Transferred timer slot: {:?}", slot);
-                        }
-                    }
-                    StudioWindowHostRetirement::Parked {
-                        parked_entitlement_timer,
-                    } => {
-                        println!("Timer ownership parked after last window closed");
-                        if let Some(slot) = parked_entitlement_timer {
-                            println!("Parked timer slot: {:?}", slot);
-                        }
-                    }
-                }
-                println!(
-                    "Next foreground window: {:?}",
-                    shutdown.next_foreground_window_id
-                );
-            }
+            println!(
+                "Next foreground window: {:?}",
+                shutdown.next_foreground_window_id
+            );
         }
+        StudioAppWindowHostCommandOutcome::IgnoredClose { window_id } => {
+            println!("Window host close ignored for window #{window_id}");
+        }
+        other => {
+            eprintln!("Unexpected app host outcome: {:?}", other);
+            std::process::exit(1);
+        }
+    }
+}
+
+fn expect_command_outcome(
+    window_manager: &mut StudioAppWindowHostManager,
+    command: StudioAppWindowHostCommand,
+    context: &str,
+) -> StudioAppWindowHostCommandOutcome {
+    match window_manager.execute_command(command) {
+        Ok(outcome) => outcome,
         Err(error) => {
             eprintln!(
-                "RadishFlow Studio bootstrap failed [{}]: {}",
+                "RadishFlow Studio host command failed during {} [{}]: {}",
+                context,
                 error.code().as_str(),
                 error.message()
             );
+            std::process::exit(1);
+        }
+    }
+}
+
+fn expect_window_opened(
+    window_manager: &mut StudioAppWindowHostManager,
+    command: StudioAppWindowHostCommand,
+    context: &str,
+) -> StudioWindowHostRegistration {
+    match expect_command_outcome(window_manager, command, context) {
+        StudioAppWindowHostCommandOutcome::WindowOpened(registration) => registration,
+        other => {
+            eprintln!("Unexpected app host outcome: {:?}", other);
+            std::process::exit(1);
+        }
+    }
+}
+
+fn expect_window_dispatch(
+    window_manager: &mut StudioAppWindowHostManager,
+    command: StudioAppWindowHostCommand,
+    context: &str,
+) -> StudioAppWindowHostDispatch {
+    match expect_command_outcome(window_manager, command, context) {
+        StudioAppWindowHostCommandOutcome::WindowDispatched(dispatch) => dispatch,
+        other => {
+            eprintln!("Unexpected app host outcome: {:?}", other);
             std::process::exit(1);
         }
     }
