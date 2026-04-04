@@ -14,6 +14,7 @@ mod property_package_download;
 mod property_package_download_client;
 mod run_panel_driver;
 mod solver_bridge;
+mod studio_runtime;
 mod workspace_control;
 mod workspace_run_command;
 mod workspace_solve_service;
@@ -121,6 +122,7 @@ pub use solver_bridge::{
     StudioSolveRequest, next_solver_snapshot_sequence, solve_workspace_from_auth_cache,
     solve_workspace_with_property_package,
 };
+pub use studio_runtime::StudioRuntime;
 pub use workspace_control::{
     RunPanelWidgetDispatchOutcome, WorkspaceControlAction, WorkspaceControlActionOutcome,
     WorkspaceControlState, dispatch_run_panel_intent_with_auth_cache,

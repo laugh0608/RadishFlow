@@ -1,6 +1,6 @@
 use radishflow_studio::{
     EntitlementSessionEventOutcome, StudioAppResultDispatch, StudioBootstrapConfig,
-    StudioBootstrapDispatch, run_studio_bootstrap,
+    StudioBootstrapDispatch, StudioRuntime,
 };
 
 fn print_text_view(title: &str, lines: &[String]) {
@@ -18,7 +18,19 @@ fn print_run_panel(report: &radishflow_studio::StudioBootstrapReport) {
 fn main() {
     let config = StudioBootstrapConfig::default();
 
-    match run_studio_bootstrap(&config) {
+    let mut runtime = match StudioRuntime::new(&config) {
+        Ok(runtime) => runtime,
+        Err(error) => {
+            eprintln!(
+                "RadishFlow Studio bootstrap failed [{}]: {}",
+                error.code().as_str(),
+                error.message()
+            );
+            std::process::exit(1);
+        }
+    };
+
+    match runtime.dispatch_trigger(&config.trigger) {
         Ok(report) => {
             println!("RadishFlow Studio bootstrap");
             println!("Project: {}", config.project_path.display());

@@ -15,7 +15,7 @@ use crate::{
     dispatch_entitlement_session_event_with_control_plane,
     dispatch_run_panel_intent_with_auth_cache, dispatch_run_panel_primary_action_with_auth_cache,
     dispatch_run_panel_widget_action_with_auth_cache, snapshot_entitlement_session_driver_state,
-    snapshot_run_panel_driver_state,
+    snapshot_run_panel_driver_state, studio_runtime::StudioRuntime,
 };
 use rf_model::Flowsheet;
 use rf_store::{
@@ -100,7 +100,7 @@ struct BootstrapSessionResources<'a> {
     host_runtime: &'a mut EntitlementSessionHostRuntime,
 }
 
-struct BootstrapSession {
+pub(crate) struct BootstrapSession {
     app_state: AppState,
     cache_root: TemporaryCacheRoot,
     auth_cache_index: StoredAuthCacheIndex,
@@ -129,8 +129,8 @@ pub enum StudioBootstrapDispatch {
 }
 
 pub fn run_studio_bootstrap(config: &StudioBootstrapConfig) -> RfResult<StudioBootstrapReport> {
-    let mut session = BootstrapSession::new(config)?;
-    session.run_trigger(&config.trigger)
+    let mut runtime = StudioRuntime::new(config)?;
+    runtime.dispatch_trigger(&config.trigger)
 }
 
 fn dispatch_bootstrap_entitlement_session_tick(
@@ -362,7 +362,7 @@ fn command_outcome_from_workspace_control(
 }
 
 impl BootstrapSession {
-    fn new(config: &StudioBootstrapConfig) -> RfResult<Self> {
+    pub(crate) fn new(config: &StudioBootstrapConfig) -> RfResult<Self> {
         let project_file = read_project_file(&config.project_path)?;
         let mut app_state = app_state_from_project_file(&project_file, &config.project_path);
         let cache_root = TemporaryCacheRoot::new("studio-bootstrap")?;
@@ -404,7 +404,10 @@ impl BootstrapSession {
         Ok(())
     }
 
-    fn run_trigger(&mut self, trigger: &StudioBootstrapTrigger) -> RfResult<StudioBootstrapReport> {
+    pub(crate) fn run_trigger(
+        &mut self,
+        trigger: &StudioBootstrapTrigger,
+    ) -> RfResult<StudioBootstrapReport> {
         let dispatch = {
             let mut session_resources = self.resources();
             dispatch_bootstrap_trigger(trigger, &mut session_resources)?
@@ -449,6 +452,18 @@ impl BootstrapSession {
             session_state: &mut self.entitlement_session_state,
             host_runtime: &mut self.host_runtime,
         }
+    }
+
+    pub(crate) fn entitlement_preflight(&self) -> Option<&EntitlementPreflightOutcome> {
+        self.entitlement_preflight.as_ref()
+    }
+
+    pub(crate) fn host_runtime(&self) -> &EntitlementSessionHostRuntime {
+        &self.host_runtime
+    }
+
+    pub(crate) fn app_state(&self) -> &AppState {
+        &self.app_state
     }
 }
 
@@ -828,14 +843,13 @@ mod tests {
     };
 
     use super::{
-        BootstrapSession, StudioBootstrapConfig, StudioBootstrapDispatch,
-        StudioBootstrapEntitlementSeed,
+        StudioBootstrapConfig, StudioBootstrapDispatch, StudioBootstrapEntitlementSeed,
         StudioBootstrapEntitlementSessionEvent, StudioBootstrapTrigger, run_studio_bootstrap,
     };
     use crate::{
         EntitlementPreflightAction, EntitlementSessionEvent, EntitlementSessionEventOutcome,
         EntitlementSessionHostTimerEffect, StudioAppExecutionBoundary, StudioAppExecutionLane,
-        StudioAppResultDispatch, StudioEntitlementAction, StudioEntitlementOutcome,
+        StudioAppResultDispatch, StudioEntitlementAction, StudioEntitlementOutcome, StudioRuntime,
         StudioWorkspaceRunOutcome,
     };
 
@@ -1333,20 +1347,20 @@ mod tests {
             entitlement_seed: StudioBootstrapEntitlementSeed::LeaseExpiringSoon,
             ..StudioBootstrapConfig::default()
         };
-        let mut session = BootstrapSession::new(&config).expect("expected bootstrap session");
+        let mut runtime = StudioRuntime::new(&config).expect("expected studio runtime");
 
-        let timer_elapsed = session
-            .run_trigger(&StudioBootstrapTrigger::EntitlementSessionEvent(
+        let timer_elapsed = runtime
+            .dispatch_trigger(&StudioBootstrapTrigger::EntitlementSessionEvent(
                 StudioBootstrapEntitlementSessionEvent::TimerElapsed,
             ))
             .expect("expected timer elapsed event");
-        let network_restored = session
-            .run_trigger(&StudioBootstrapTrigger::EntitlementSessionEvent(
+        let network_restored = runtime
+            .dispatch_trigger(&StudioBootstrapTrigger::EntitlementSessionEvent(
                 StudioBootstrapEntitlementSessionEvent::NetworkRestored,
             ))
             .expect("expected network restored event");
-        let window_foregrounded = session
-            .run_trigger(&StudioBootstrapTrigger::EntitlementSessionEvent(
+        let window_foregrounded = runtime
+            .dispatch_trigger(&StudioBootstrapTrigger::EntitlementSessionEvent(
                 StudioBootstrapEntitlementSessionEvent::WindowForegrounded,
             ))
             .expect("expected window foregrounded event");
