@@ -128,8 +128,9 @@ pub use solver_bridge::{
     solve_workspace_with_property_package,
 };
 pub use studio_app_host::{
-    StudioAppHost, StudioAppHostCommand, StudioAppHostCommandOutcome, StudioAppHostOutput,
-    StudioAppHostSnapshot, StudioAppHostWindowSnapshot,
+    StudioAppHost, StudioAppHostChangeSet, StudioAppHostCommand, StudioAppHostCommandOutcome,
+    StudioAppHostOutput, StudioAppHostSnapshot, StudioAppHostTimerSlotChange,
+    StudioAppHostWindowChange, StudioAppHostWindowSelectionChange, StudioAppHostWindowSnapshot,
 };
 pub use studio_runtime::{
     StudioRuntime, StudioRuntimeConfig, StudioRuntimeDispatch, StudioRuntimeEffect,

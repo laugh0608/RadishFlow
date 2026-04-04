@@ -1,3 +1,5 @@
+use std::collections::{BTreeMap, BTreeSet};
+
 use rf_types::RfResult;
 
 use crate::{
@@ -47,6 +49,32 @@ pub struct StudioAppHostWindowSnapshot {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub enum StudioAppHostWindowChange {
+    Added {
+        current: StudioAppHostWindowSnapshot,
+    },
+    Removed {
+        previous: StudioAppHostWindowSnapshot,
+    },
+    Updated {
+        previous: StudioAppHostWindowSnapshot,
+        current: StudioAppHostWindowSnapshot,
+    },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioAppHostWindowSelectionChange {
+    pub previous: Option<StudioWindowHostId>,
+    pub current: Option<StudioWindowHostId>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioAppHostTimerSlotChange {
+    pub previous: Option<StudioRuntimeTimerHandleSlot>,
+    pub current: Option<StudioRuntimeTimerHandleSlot>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StudioAppHostSnapshot {
     pub registered_windows: Vec<StudioWindowHostId>,
     pub windows: Vec<StudioAppHostWindowSnapshot>,
@@ -56,9 +84,18 @@ pub struct StudioAppHostSnapshot {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioAppHostChangeSet {
+    pub window_changes: Vec<StudioAppHostWindowChange>,
+    pub foreground_window_change: Option<StudioAppHostWindowSelectionChange>,
+    pub entitlement_timer_owner_change: Option<StudioAppHostWindowSelectionChange>,
+    pub parked_entitlement_timer_change: Option<StudioAppHostTimerSlotChange>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StudioAppHostOutput {
     pub outcome: StudioAppHostCommandOutcome,
     pub snapshot: StudioAppHostSnapshot,
+    pub changes: StudioAppHostChangeSet,
 }
 
 pub struct StudioAppHost {
@@ -127,16 +164,103 @@ impl StudioAppHost {
         &mut self,
         command: StudioAppHostCommand,
     ) -> RfResult<StudioAppHostOutput> {
+        let previous_snapshot = self.snapshot();
         let outcome = self
             .window_host_manager
             .execute_command(map_command(command))
             .map(map_outcome)?;
+        let snapshot = self.snapshot();
 
         Ok(StudioAppHostOutput {
             outcome,
-            snapshot: self.snapshot(),
+            changes: diff_app_host_snapshots(&previous_snapshot, &snapshot),
+            snapshot,
         })
     }
+}
+
+fn diff_app_host_snapshots(
+    previous: &StudioAppHostSnapshot,
+    current: &StudioAppHostSnapshot,
+) -> StudioAppHostChangeSet {
+    let previous_windows = snapshot_windows_by_id(&previous.windows);
+    let current_windows = snapshot_windows_by_id(&current.windows);
+    let mut window_ids = BTreeSet::new();
+    window_ids.extend(previous_windows.keys().copied());
+    window_ids.extend(current_windows.keys().copied());
+
+    let mut window_changes = Vec::new();
+    for window_id in window_ids {
+        match (
+            previous_windows.get(&window_id),
+            current_windows.get(&window_id),
+        ) {
+            (None, Some(current)) => window_changes.push(StudioAppHostWindowChange::Added {
+                current: current.clone(),
+            }),
+            (Some(previous), None) => window_changes.push(StudioAppHostWindowChange::Removed {
+                previous: previous.clone(),
+            }),
+            (Some(previous), Some(current)) if previous != current => {
+                window_changes.push(StudioAppHostWindowChange::Updated {
+                    previous: previous.clone(),
+                    current: current.clone(),
+                })
+            }
+            (Some(_), Some(_)) | (None, None) => {}
+        }
+    }
+
+    StudioAppHostChangeSet {
+        window_changes,
+        foreground_window_change: diff_window_selection(
+            previous.foreground_window_id,
+            current.foreground_window_id,
+        ),
+        entitlement_timer_owner_change: diff_window_selection(
+            previous.entitlement_timer_owner_window_id,
+            current.entitlement_timer_owner_window_id,
+        ),
+        parked_entitlement_timer_change: diff_timer_slot(
+            previous.parked_entitlement_timer.as_ref(),
+            current.parked_entitlement_timer.as_ref(),
+        ),
+    }
+}
+
+fn snapshot_windows_by_id(
+    windows: &[StudioAppHostWindowSnapshot],
+) -> BTreeMap<StudioWindowHostId, StudioAppHostWindowSnapshot> {
+    windows
+        .iter()
+        .cloned()
+        .map(|window| (window.window_id, window))
+        .collect()
+}
+
+fn diff_window_selection(
+    previous: Option<StudioWindowHostId>,
+    current: Option<StudioWindowHostId>,
+) -> Option<StudioAppHostWindowSelectionChange> {
+    if previous == current {
+        return None;
+    }
+
+    Some(StudioAppHostWindowSelectionChange { previous, current })
+}
+
+fn diff_timer_slot(
+    previous: Option<&StudioRuntimeTimerHandleSlot>,
+    current: Option<&StudioRuntimeTimerHandleSlot>,
+) -> Option<StudioAppHostTimerSlotChange> {
+    if previous == current {
+        return None;
+    }
+
+    Some(StudioAppHostTimerSlotChange {
+        previous: previous.cloned(),
+        current: current.cloned(),
+    })
 }
 
 fn map_command(command: StudioAppHostCommand) -> StudioAppWindowHostCommand {
@@ -181,9 +305,11 @@ fn map_outcome(outcome: StudioAppWindowHostCommandOutcome) -> StudioAppHostComma
 mod tests {
     use crate::{
         StudioAppHost, StudioAppHostCommand, StudioAppHostCommandOutcome,
-        StudioAppWindowHostGlobalEvent, StudioRuntimeEntitlementPreflight,
-        StudioRuntimeEntitlementSeed, StudioRuntimeEntitlementSessionEvent, StudioRuntimeTrigger,
-        StudioWindowHostRetirement, StudioWindowHostRole,
+        StudioAppHostTimerSlotChange, StudioAppHostWindowChange,
+        StudioAppHostWindowSelectionChange, StudioAppWindowHostGlobalEvent,
+        StudioRuntimeEntitlementPreflight, StudioRuntimeEntitlementSeed,
+        StudioRuntimeEntitlementSessionEvent, StudioRuntimeTrigger, StudioWindowHostRetirement,
+        StudioWindowHostRole,
     };
 
     fn lease_expiring_config() -> crate::StudioRuntimeConfig {
@@ -230,6 +356,32 @@ mod tests {
                 entitlement_timer: None,
             }]
         );
+        assert_eq!(
+            first.changes.window_changes,
+            vec![StudioAppHostWindowChange::Added {
+                current: crate::StudioAppHostWindowSnapshot {
+                    window_id: first_window.window_id,
+                    role: StudioWindowHostRole::EntitlementTimerOwner,
+                    is_foreground: true,
+                    entitlement_timer: None,
+                },
+            }]
+        );
+        assert_eq!(
+            first.changes.foreground_window_change,
+            Some(StudioAppHostWindowSelectionChange {
+                previous: None,
+                current: Some(first_window.window_id),
+            })
+        );
+        assert_eq!(
+            first.changes.entitlement_timer_owner_change,
+            Some(StudioAppHostWindowSelectionChange {
+                previous: None,
+                current: Some(first_window.window_id),
+            })
+        );
+        assert_eq!(first.changes.parked_entitlement_timer_change, None);
 
         let second = app_host
             .execute_command(StudioAppHostCommand::OpenWindow)
@@ -258,6 +410,19 @@ mod tests {
             StudioWindowHostRole::Observer
         );
         assert!(!second.snapshot.windows[1].is_foreground);
+        assert_eq!(
+            second.changes.window_changes,
+            vec![StudioAppHostWindowChange::Added {
+                current: crate::StudioAppHostWindowSnapshot {
+                    window_id: second_window.window_id,
+                    role: StudioWindowHostRole::Observer,
+                    is_foreground: false,
+                    entitlement_timer: None,
+                },
+            }]
+        );
+        assert_eq!(second.changes.foreground_window_change, None);
+        assert_eq!(second.changes.entitlement_timer_owner_change, None);
 
         let focused = app_host
             .execute_command(StudioAppHostCommand::FocusWindow {
@@ -281,6 +446,48 @@ mod tests {
                 entitlement_timer: None,
             }
         );
+        let focused_owner_timer = focused.snapshot.windows[0].entitlement_timer.clone();
+        assert_eq!(
+            focused.changes.window_changes,
+            vec![
+                StudioAppHostWindowChange::Updated {
+                    previous: crate::StudioAppHostWindowSnapshot {
+                        window_id: first_window.window_id,
+                        role: StudioWindowHostRole::EntitlementTimerOwner,
+                        is_foreground: true,
+                        entitlement_timer: None,
+                    },
+                    current: crate::StudioAppHostWindowSnapshot {
+                        window_id: first_window.window_id,
+                        role: StudioWindowHostRole::EntitlementTimerOwner,
+                        is_foreground: false,
+                        entitlement_timer: focused_owner_timer,
+                    },
+                },
+                StudioAppHostWindowChange::Updated {
+                    previous: crate::StudioAppHostWindowSnapshot {
+                        window_id: second_window.window_id,
+                        role: StudioWindowHostRole::Observer,
+                        is_foreground: false,
+                        entitlement_timer: None,
+                    },
+                    current: crate::StudioAppHostWindowSnapshot {
+                        window_id: second_window.window_id,
+                        role: StudioWindowHostRole::Observer,
+                        is_foreground: true,
+                        entitlement_timer: None,
+                    },
+                },
+            ]
+        );
+        assert_eq!(
+            focused.changes.foreground_window_change,
+            Some(StudioAppHostWindowSelectionChange {
+                previous: Some(first_window.window_id),
+                current: Some(second_window.window_id),
+            })
+        );
+        assert_eq!(focused.changes.entitlement_timer_owner_change, None);
     }
 
     #[test]
@@ -315,6 +522,29 @@ mod tests {
                 .map(|slot| slot.effect_id),
             Some(1)
         );
+        let triggered_timer = triggered.snapshot.windows[0]
+            .entitlement_timer
+            .clone()
+            .expect("expected timer slot");
+        assert_eq!(
+            triggered.changes.window_changes,
+            vec![StudioAppHostWindowChange::Updated {
+                previous: crate::StudioAppHostWindowSnapshot {
+                    window_id: first.window_id,
+                    role: StudioWindowHostRole::EntitlementTimerOwner,
+                    is_foreground: true,
+                    entitlement_timer: None,
+                },
+                current: crate::StudioAppHostWindowSnapshot {
+                    window_id: first.window_id,
+                    role: StudioWindowHostRole::EntitlementTimerOwner,
+                    is_foreground: true,
+                    entitlement_timer: Some(triggered_timer.clone()),
+                },
+            }]
+        );
+        assert_eq!(triggered.changes.foreground_window_change, None);
+        assert_eq!(triggered.changes.entitlement_timer_owner_change, None);
 
         let closed = app_host
             .execute_command(StudioAppHostCommand::CloseWindow {
@@ -348,6 +578,43 @@ mod tests {
                 .map(|slot| slot.effect_id),
             Some(1)
         );
+        let parked_timer = closed
+            .snapshot
+            .parked_entitlement_timer
+            .clone()
+            .expect("expected parked timer");
+        assert_eq!(
+            closed.changes.window_changes,
+            vec![StudioAppHostWindowChange::Removed {
+                previous: crate::StudioAppHostWindowSnapshot {
+                    window_id: first.window_id,
+                    role: StudioWindowHostRole::EntitlementTimerOwner,
+                    is_foreground: true,
+                    entitlement_timer: Some(triggered_timer.clone()),
+                },
+            }]
+        );
+        assert_eq!(
+            closed.changes.foreground_window_change,
+            Some(StudioAppHostWindowSelectionChange {
+                previous: Some(first.window_id),
+                current: None,
+            })
+        );
+        assert_eq!(
+            closed.changes.entitlement_timer_owner_change,
+            Some(StudioAppHostWindowSelectionChange {
+                previous: Some(first.window_id),
+                current: None,
+            })
+        );
+        assert_eq!(
+            closed.changes.parked_entitlement_timer_change,
+            Some(StudioAppHostTimerSlotChange {
+                previous: None,
+                current: Some(parked_timer.clone()),
+            })
+        );
 
         let reopened = app_host
             .execute_command(StudioAppHostCommand::OpenWindow)
@@ -361,10 +628,128 @@ mod tests {
                 .map(|slot| slot.effect_id),
             Some(1)
         );
+        let restored_timer = reopened.snapshot.windows[0]
+            .entitlement_timer
+            .clone()
+            .expect("expected restored timer");
         assert!(matches!(
             reopened.outcome,
             StudioAppHostCommandOutcome::WindowOpened(_)
         ));
+        assert_eq!(
+            reopened.changes.window_changes,
+            vec![StudioAppHostWindowChange::Added {
+                current: crate::StudioAppHostWindowSnapshot {
+                    window_id: reopened.snapshot.windows[0].window_id,
+                    role: StudioWindowHostRole::EntitlementTimerOwner,
+                    is_foreground: true,
+                    entitlement_timer: Some(restored_timer.clone()),
+                },
+            }]
+        );
+        assert_eq!(
+            reopened.changes.foreground_window_change,
+            Some(StudioAppHostWindowSelectionChange {
+                previous: None,
+                current: Some(reopened.snapshot.windows[0].window_id),
+            })
+        );
+        assert_eq!(
+            reopened.changes.entitlement_timer_owner_change,
+            Some(StudioAppHostWindowSelectionChange {
+                previous: None,
+                current: Some(reopened.snapshot.windows[0].window_id),
+            })
+        );
+        assert_eq!(
+            reopened.changes.parked_entitlement_timer_change,
+            Some(StudioAppHostTimerSlotChange {
+                previous: Some(parked_timer),
+                current: None,
+            })
+        );
+    }
+
+    #[test]
+    fn app_host_change_set_captures_owner_transfer_on_close() {
+        let mut app_host = StudioAppHost::new(&lease_expiring_config()).expect("expected app host");
+        let first = match app_host
+            .execute_command(StudioAppHostCommand::OpenWindow)
+            .expect("expected first window open")
+            .outcome
+        {
+            StudioAppHostCommandOutcome::WindowOpened(registration) => registration,
+            other => panic!("expected window opened outcome, got {other:?}"),
+        };
+        let second = match app_host
+            .execute_command(StudioAppHostCommand::OpenWindow)
+            .expect("expected second window open")
+            .outcome
+        {
+            StudioAppHostCommandOutcome::WindowOpened(registration) => registration,
+            other => panic!("expected window opened outcome, got {other:?}"),
+        };
+        let _ = app_host
+            .execute_command(StudioAppHostCommand::DispatchWindowTrigger {
+                window_id: first.window_id,
+                trigger: StudioRuntimeTrigger::EntitlementSessionEvent(
+                    StudioRuntimeEntitlementSessionEvent::TimerElapsed,
+                ),
+            })
+            .expect("expected timer trigger");
+
+        let closed = app_host
+            .execute_command(StudioAppHostCommand::CloseWindow {
+                window_id: first.window_id,
+            })
+            .expect("expected owner close");
+        let transferred_timer = closed.snapshot.windows[0]
+            .entitlement_timer
+            .clone()
+            .expect("expected transferred timer");
+
+        assert_eq!(
+            closed.changes.window_changes,
+            vec![
+                StudioAppHostWindowChange::Removed {
+                    previous: crate::StudioAppHostWindowSnapshot {
+                        window_id: first.window_id,
+                        role: StudioWindowHostRole::EntitlementTimerOwner,
+                        is_foreground: true,
+                        entitlement_timer: Some(transferred_timer.clone()),
+                    },
+                },
+                StudioAppHostWindowChange::Updated {
+                    previous: crate::StudioAppHostWindowSnapshot {
+                        window_id: second.window_id,
+                        role: StudioWindowHostRole::Observer,
+                        is_foreground: false,
+                        entitlement_timer: None,
+                    },
+                    current: crate::StudioAppHostWindowSnapshot {
+                        window_id: second.window_id,
+                        role: StudioWindowHostRole::EntitlementTimerOwner,
+                        is_foreground: true,
+                        entitlement_timer: Some(transferred_timer),
+                    },
+                },
+            ]
+        );
+        assert_eq!(
+            closed.changes.foreground_window_change,
+            Some(StudioAppHostWindowSelectionChange {
+                previous: Some(first.window_id),
+                current: Some(second.window_id),
+            })
+        );
+        assert_eq!(
+            closed.changes.entitlement_timer_owner_change,
+            Some(StudioAppHostWindowSelectionChange {
+                previous: Some(first.window_id),
+                current: Some(second.window_id),
+            })
+        );
+        assert_eq!(closed.changes.parked_entitlement_timer_change, None);
     }
 
     #[test]
@@ -386,5 +771,9 @@ mod tests {
         assert!(output.snapshot.registered_windows.is_empty());
         assert!(output.snapshot.windows.is_empty());
         assert!(output.snapshot.foreground_window_id.is_none());
+        assert!(output.changes.window_changes.is_empty());
+        assert_eq!(output.changes.foreground_window_change, None);
+        assert_eq!(output.changes.entitlement_timer_owner_change, None);
+        assert_eq!(output.changes.parked_entitlement_timer_change, None);
     }
 }
