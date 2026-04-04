@@ -319,6 +319,7 @@ MVP 阶段明确不做：
 - Studio 当前也已继续把 `StudioRuntimeHostPort` 上提为应用级多窗口宿主容器，并冻结首版所有权规则：entitlement timer 全局只允许一个 owner 窗口持有；owner 销毁时优先转移到剩余窗口，否则 parked 并在下一个 owner 窗口打开时恢复
 - Studio 当前也已继续把 GUI adapter 口径补齐，新增 `StudioWindowHostTimerDriverCommand` 与 `StudioWindowHostLifecycleEvent`，把窗口宿主该如何操作原生 timer handle 以及如何回灌生命周期事件进一步固定为正式 host port 契约
 - Studio 当前也已继续把原生 timer adapter state/ack 收成独立层，新增 `StudioWindowTimerDriverState / Transition / Ack`，让 GUI 在消费 host port 后只需执行明确的 native timer 操作并回写 handle
+- Studio 当前也已继续把两层 adapter 再收为单一 `StudioWindowSession` 会话入口，让未来 GUI 以“窗口会话”而不是“分别操作 host port 和 timer driver state”的方式接线
 
 基于上述进展，当前下一阶段计划调整为：
 

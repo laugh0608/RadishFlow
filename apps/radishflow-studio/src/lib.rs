@@ -16,6 +16,7 @@ mod run_panel_driver;
 mod solver_bridge;
 mod studio_runtime;
 mod studio_window_host;
+mod studio_window_session;
 mod studio_window_timer_driver;
 mod workspace_control;
 mod workspace_run_command;
@@ -138,6 +139,9 @@ pub use studio_window_host::{
     StudioWindowHostLifecycleEvent, StudioWindowHostRegistration, StudioWindowHostRetirement,
     StudioWindowHostRole, StudioWindowHostShutdown, StudioWindowHostState,
     StudioWindowHostTimerDriverCommand,
+};
+pub use studio_window_session::{
+    StudioWindowSession, StudioWindowSessionDispatch, StudioWindowSessionShutdown,
 };
 pub use studio_window_timer_driver::{
     StudioWindowNativeTimerBinding, StudioWindowNativeTimerHandleId,

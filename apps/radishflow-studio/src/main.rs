@@ -1,10 +1,8 @@
 use radishflow_studio::{
     EntitlementSessionEventOutcome, StudioAppResultDispatch, StudioRuntimeConfig,
-    StudioRuntimeDispatch, StudioRuntimeHostPort, StudioRuntimeReport,
-    StudioRuntimeTimerHostCommand, StudioRuntimeTimerHostTransition, StudioWindowHostEvent,
-    StudioWindowHostRetirement, StudioWindowHostTimerDriverCommand,
-    StudioWindowTimerDriverAckStatus, StudioWindowTimerDriverState,
-    StudioWindowTimerDriverTransition,
+    StudioRuntimeDispatch, StudioRuntimeReport, StudioRuntimeTimerHostCommand,
+    StudioRuntimeTimerHostTransition, StudioWindowHostEvent, StudioWindowHostRetirement,
+    StudioWindowSession, StudioWindowTimerDriverAckResult, StudioWindowTimerDriverTransition,
 };
 
 fn print_text_view(title: &str, lines: &[String]) {
@@ -21,9 +19,7 @@ fn print_run_panel(report: &StudioRuntimeReport) {
 
 fn main() {
     let config = StudioRuntimeConfig::default();
-    let mut next_native_timer_handle_id = 1_u64;
-    let mut timer_driver_state = StudioWindowTimerDriverState::default();
-    let mut host_port = match StudioRuntimeHostPort::new(&config) {
+    let mut window_session = match StudioWindowSession::new(&config) {
         Ok(runtime) => runtime,
         Err(error) => {
             eprintln!(
@@ -34,7 +30,7 @@ fn main() {
             std::process::exit(1);
         }
     };
-    let window = host_port.open_window();
+    let window = window_session.open_window();
     println!(
         "Opened window host #{} as {:?}",
         window.window_id, window.role
@@ -44,18 +40,14 @@ fn main() {
     }
     if !window.timer_driver_commands.is_empty() {
         println!("Window host driver commands:");
-        apply_timer_driver_commands(
-            &mut timer_driver_state,
-            &window.timer_driver_commands,
-            &mut next_native_timer_handle_id,
-        );
+        println!("  registration commands are now auto-applied by session adapter");
     }
 
-    match host_port.dispatch_trigger(window.window_id, &config.trigger) {
-        Ok(output) => {
-            let window_event = output.window_event;
-            let timer_driver_commands = output.timer_driver_commands;
-            let report = output.runtime_output.report;
+    match window_session.dispatch_trigger(window.window_id, &config.trigger) {
+        Ok(dispatch) => {
+            let window_event = dispatch.host_output.window_event;
+            let timer_driver_commands = dispatch.host_output.timer_driver_commands;
+            let report = dispatch.host_output.runtime_output.report;
             println!("RadishFlow Studio bootstrap");
             println!("Project: {}", config.project_path.display());
             println!("Requested trigger: {:?}", config.trigger);
@@ -143,11 +135,15 @@ fn main() {
             }
             if !timer_driver_commands.is_empty() {
                 println!("Timer driver commands:");
-                apply_timer_driver_commands(
-                    &mut timer_driver_state,
-                    &timer_driver_commands,
-                    &mut next_native_timer_handle_id,
-                );
+                for command in &timer_driver_commands {
+                    println!("  host command: {:?}", command);
+                }
+                for transition in &dispatch.timer_driver_transitions {
+                    print_timer_driver_transition(transition);
+                }
+                for ack in &dispatch.timer_driver_acks {
+                    print_timer_driver_ack(ack);
+                }
             }
 
             match report.dispatch {
@@ -218,19 +214,23 @@ fn main() {
                 }
             }
 
-            if let Some(shutdown) = host_port.close_window(window.window_id) {
-                if let Some(slot) = shutdown.cleared_entitlement_timer {
+            if let Some(shutdown) = window_session.close_window(window.window_id) {
+                if let Some(slot) = shutdown.host_shutdown.cleared_entitlement_timer {
                     println!("Window host shutdown cleared timer slot: {:?}", slot);
                 }
-                if !shutdown.timer_driver_commands.is_empty() {
+                if !shutdown.host_shutdown.timer_driver_commands.is_empty() {
                     println!("Window host shutdown driver commands:");
-                    apply_timer_driver_commands(
-                        &mut timer_driver_state,
-                        &shutdown.timer_driver_commands,
-                        &mut next_native_timer_handle_id,
-                    );
+                    for command in &shutdown.host_shutdown.timer_driver_commands {
+                        println!("  host command: {:?}", command);
+                    }
+                    for transition in &shutdown.timer_driver_transitions {
+                        print_timer_driver_transition(transition);
+                    }
+                    for ack in &shutdown.timer_driver_acks {
+                        print_timer_driver_ack(ack);
+                    }
                 }
-                match shutdown.retirement {
+                match shutdown.host_shutdown.retirement {
                     StudioWindowHostRetirement::None => {}
                     StudioWindowHostRetirement::Transferred {
                         new_owner_window_id,
@@ -259,32 +259,6 @@ fn main() {
                 error.message()
             );
             std::process::exit(1);
-        }
-    }
-}
-
-fn apply_timer_driver_commands(
-    state: &mut StudioWindowTimerDriverState,
-    commands: &[StudioWindowHostTimerDriverCommand],
-    next_native_timer_handle_id: &mut u64,
-) {
-    for command in commands {
-        println!("  host command: {:?}", command);
-        let transition = state.apply_command(command);
-        print_timer_driver_transition(&transition);
-
-        match transition {
-            StudioWindowTimerDriverTransition::ArmNativeTimer { window_id, .. }
-            | StudioWindowTimerDriverTransition::RearmNativeTimer { window_id, .. } => {
-                let handle_id = *next_native_timer_handle_id;
-                *next_native_timer_handle_id += 1;
-                let ack = state.acknowledge_native_timer(window_id, handle_id);
-                println!("  native timer ack: {:?}", ack);
-                if ack.status != StudioWindowTimerDriverAckStatus::Applied {
-                    println!("  native timer ack did not apply");
-                }
-            }
-            _ => {}
         }
     }
 }
@@ -368,4 +342,8 @@ fn print_timer_driver_transition(transition: &StudioWindowTimerDriverTransition)
             );
         }
     }
+}
+
+fn print_timer_driver_ack(ack: &StudioWindowTimerDriverAckResult) {
+    println!("  native timer ack: {:?}", ack);
 }
