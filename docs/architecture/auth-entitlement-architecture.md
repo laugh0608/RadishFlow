@@ -630,6 +630,7 @@ RadishFlow Studio
 - `apps/radishflow-studio` 当前又已在其上补出 `StudioRuntimeTimerHostState / Transition`，把 timer 槽位当前持有状态、stale command 忽略逻辑与 `apply command -> ack` 闭环都收成纯数据状态机，使真实 GUI 可直接接线到单窗口或多窗口宿主的 timer 句柄管理
 - `apps/radishflow-studio` 当前又已补出 `StudioWindowHostState` 与 `StudioRuntimeHostPort`，把单个窗口宿主实例对 entitlement timer 槽位的持有、替换、ack 与销毁清理收口成正式容器；`main.rs` 这类入口当前只消费 host port，不再自行拼装 `StudioRuntime + StudioRuntimeTimerHostState + ack`
 - `apps/radishflow-studio` 当前又已继续把 `StudioRuntimeHostPort` 提升为应用级多窗口宿主容器，补出 `StudioWindowHostId`、稳定 `entitlement timer owner`、owner 窗口销毁后的同进程转移与最后一个窗口关闭后的 parked timer 恢复口径；当前正式规则是“全局 entitlement timer 只归一个窗口宿主持有，其余窗口只观察 runtime，不各自复制 timer state”
+- `apps/radishflow-studio` 当前又已在 `StudioRuntimeHostPort` 之上补出 `StudioWindowHostTimerDriverCommand` 与 `StudioWindowHostLifecycleEvent`，把“原生 timer handle 该 arm/rearm/keep/clear/transfer/park/restore 什么”和“GUI 生命周期事件如何映射到 runtime”都正式收口到宿主端口，未来 GUI 不再自己解释 `transition/retirement` 或手写 `StudioRuntimeTrigger` 映射
 
 ### `rf-store`
 

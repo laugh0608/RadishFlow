@@ -317,6 +317,7 @@ MVP 阶段明确不做：
 - Studio 当前也已在其上补出 `StudioRuntimeTimerHostState / Transition`，把 timer 当前槽位状态与 stale command 处理显式化，真实 GUI 可以直接照着“apply command -> 更新 state -> ack”接线
 - Studio 当前也已进一步补出 `StudioWindowHostState + StudioRuntimeHostPort`，把单窗口宿主实例对 timer state 的创建、替换与销毁清理收成正式容器，最小入口不再手工拼接 runtime、timer state 与 ack
 - Studio 当前也已继续把 `StudioRuntimeHostPort` 上提为应用级多窗口宿主容器，并冻结首版所有权规则：entitlement timer 全局只允许一个 owner 窗口持有；owner 销毁时优先转移到剩余窗口，否则 parked 并在下一个 owner 窗口打开时恢复
+- Studio 当前也已继续把 GUI adapter 口径补齐，新增 `StudioWindowHostTimerDriverCommand` 与 `StudioWindowHostLifecycleEvent`，把窗口宿主该如何操作原生 timer handle 以及如何回灌生命周期事件进一步固定为正式 host port 契约
 
 基于上述进展，当前下一阶段计划调整为：
 

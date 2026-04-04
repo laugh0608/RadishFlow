@@ -134,8 +134,9 @@ pub use studio_runtime::{
 };
 pub use studio_window_host::{
     StudioRuntimeHostPort, StudioRuntimeHostPortOutput, StudioWindowHostEvent, StudioWindowHostId,
-    StudioWindowHostRegistration, StudioWindowHostRetirement, StudioWindowHostRole,
-    StudioWindowHostShutdown, StudioWindowHostState,
+    StudioWindowHostLifecycleEvent, StudioWindowHostRegistration, StudioWindowHostRetirement,
+    StudioWindowHostRole, StudioWindowHostShutdown, StudioWindowHostState,
+    StudioWindowHostTimerDriverCommand,
 };
 pub use workspace_control::{
     RunPanelWidgetDispatchOutcome, WorkspaceControlAction, WorkspaceControlActionOutcome,

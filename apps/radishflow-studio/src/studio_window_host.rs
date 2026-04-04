@@ -10,6 +10,53 @@ use crate::{
 
 pub type StudioWindowHostId = u64;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum StudioWindowHostLifecycleEvent {
+    LoginCompleted,
+    TimerElapsed,
+    NetworkRestored,
+    WindowForegrounded,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum StudioWindowHostTimerDriverCommand {
+    Arm {
+        window_id: StudioWindowHostId,
+        slot: StudioRuntimeTimerHandleSlot,
+    },
+    Rearm {
+        window_id: StudioWindowHostId,
+        previous_slot: Option<StudioRuntimeTimerHandleSlot>,
+        next_slot: StudioRuntimeTimerHandleSlot,
+    },
+    Keep {
+        window_id: StudioWindowHostId,
+        slot: StudioRuntimeTimerHandleSlot,
+    },
+    Clear {
+        window_id: StudioWindowHostId,
+        previous_slot: Option<StudioRuntimeTimerHandleSlot>,
+    },
+    IgnoreStale {
+        window_id: StudioWindowHostId,
+        current_slot: Option<StudioRuntimeTimerHandleSlot>,
+        stale_effect_id: u64,
+    },
+    Transfer {
+        from_window_id: StudioWindowHostId,
+        to_window_id: StudioWindowHostId,
+        slot: StudioRuntimeTimerHandleSlot,
+    },
+    Park {
+        from_window_id: StudioWindowHostId,
+        slot: StudioRuntimeTimerHandleSlot,
+    },
+    RestoreParked {
+        window_id: StudioWindowHostId,
+        slot: StudioRuntimeTimerHandleSlot,
+    },
+}
+
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct StudioWindowHostState {
     entitlement_timer: StudioRuntimeTimerHostState,
@@ -37,6 +84,7 @@ impl StudioWindowHostState {
             was_entitlement_timer_owner: false,
             cleared_entitlement_timer: self.entitlement_timer.clear(),
             retirement: StudioWindowHostRetirement::None,
+            timer_driver_commands: Vec::new(),
         }
     }
 }
@@ -62,6 +110,7 @@ pub struct StudioWindowHostRegistration {
     pub window_id: StudioWindowHostId,
     pub role: StudioWindowHostRole,
     pub restored_entitlement_timer: Option<StudioRuntimeTimerHandleSlot>,
+    pub timer_driver_commands: Vec<StudioWindowHostTimerDriverCommand>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -82,12 +131,14 @@ pub struct StudioWindowHostShutdown {
     pub was_entitlement_timer_owner: bool,
     pub cleared_entitlement_timer: Option<StudioRuntimeTimerHandleSlot>,
     pub retirement: StudioWindowHostRetirement,
+    pub timer_driver_commands: Vec<StudioWindowHostTimerDriverCommand>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StudioRuntimeHostPortOutput {
     pub runtime_output: crate::StudioRuntimeOutput,
     pub window_event: Option<StudioWindowHostEvent>,
+    pub timer_driver_commands: Vec<StudioWindowHostTimerDriverCommand>,
 }
 
 pub struct StudioRuntimeHostPort {
@@ -142,13 +193,45 @@ impl StudioRuntimeHostPort {
             } else {
                 None
             };
+        let mut timer_driver_commands = Vec::new();
+        if let Some(slot) = restored_entitlement_timer.clone() {
+            timer_driver_commands
+                .push(StudioWindowHostTimerDriverCommand::RestoreParked { window_id, slot });
+        }
         self.windows.insert(window_id, state);
 
         StudioWindowHostRegistration {
             window_id,
             role,
             restored_entitlement_timer,
+            timer_driver_commands,
         }
+    }
+
+    pub fn dispatch_lifecycle_event(
+        &mut self,
+        window_id: StudioWindowHostId,
+        event: StudioWindowHostLifecycleEvent,
+    ) -> RfResult<StudioRuntimeHostPortOutput> {
+        let trigger = match event {
+            StudioWindowHostLifecycleEvent::LoginCompleted => {
+                crate::StudioRuntimeEntitlementSessionEvent::LoginCompleted
+            }
+            StudioWindowHostLifecycleEvent::TimerElapsed => {
+                crate::StudioRuntimeEntitlementSessionEvent::TimerElapsed
+            }
+            StudioWindowHostLifecycleEvent::NetworkRestored => {
+                crate::StudioRuntimeEntitlementSessionEvent::NetworkRestored
+            }
+            StudioWindowHostLifecycleEvent::WindowForegrounded => {
+                crate::StudioRuntimeEntitlementSessionEvent::WindowForegrounded
+            }
+        };
+
+        self.dispatch_trigger(
+            window_id,
+            &StudioRuntimeTrigger::EntitlementSessionEvent(trigger),
+        )
     }
 
     pub fn dispatch_trigger(
@@ -164,10 +247,15 @@ impl StudioRuntimeHostPort {
 
         let runtime_output = self.runtime.dispatch_trigger_output(trigger)?;
         let window_event = self.apply_runtime_output(window_id, &runtime_output);
+        let timer_driver_commands = window_event
+            .as_ref()
+            .map(timer_driver_commands_from_event)
+            .unwrap_or_default();
 
         Ok(StudioRuntimeHostPortOutput {
             runtime_output,
             window_event,
+            timer_driver_commands,
         })
     }
 
@@ -179,6 +267,7 @@ impl StudioRuntimeHostPort {
         let mut shutdown = state.prepare_shutdown();
         shutdown.window_id = window_id;
         shutdown.was_entitlement_timer_owner = self.entitlement_timer_owner == Some(window_id);
+        shutdown.timer_driver_commands = Vec::new();
 
         if shutdown.was_entitlement_timer_owner {
             if let Some(new_owner_window_id) = self.windows.keys().next().copied() {
@@ -193,12 +282,29 @@ impl StudioRuntimeHostPort {
                     new_owner_window_id,
                     restored_entitlement_timer: shutdown.cleared_entitlement_timer.clone(),
                 };
+                if let Some(slot) = shutdown.cleared_entitlement_timer.clone() {
+                    shutdown.timer_driver_commands.push(
+                        StudioWindowHostTimerDriverCommand::Transfer {
+                            from_window_id: window_id,
+                            to_window_id: new_owner_window_id,
+                            slot,
+                        },
+                    );
+                }
             } else {
                 self.entitlement_timer_owner = None;
                 self.parked_entitlement_timer = shutdown.cleared_entitlement_timer.clone();
                 shutdown.retirement = StudioWindowHostRetirement::Parked {
                     parked_entitlement_timer: shutdown.cleared_entitlement_timer.clone(),
                 };
+                if let Some(slot) = shutdown.cleared_entitlement_timer.clone() {
+                    shutdown
+                        .timer_driver_commands
+                        .push(StudioWindowHostTimerDriverCommand::Park {
+                            from_window_id: window_id,
+                            slot,
+                        });
+                }
             }
         }
 
@@ -267,7 +373,8 @@ mod tests {
         StudioRuntimeEntitlementSessionEvent, StudioRuntimeHostAckStatus, StudioRuntimeHostPort,
         StudioRuntimeHostPortOutput, StudioRuntimeTimerHostCommand,
         StudioRuntimeTimerHostTransition, StudioRuntimeTrigger, StudioWindowHostEvent,
-        StudioWindowHostRetirement, StudioWindowHostRole,
+        StudioWindowHostLifecycleEvent, StudioWindowHostRetirement, StudioWindowHostRole,
+        StudioWindowHostTimerDriverCommand,
     };
 
     fn lease_expiring_config() -> crate::StudioRuntimeConfig {
@@ -283,6 +390,7 @@ mod tests {
         let mut host_port =
             StudioRuntimeHostPort::new(&lease_expiring_config()).expect("expected host port");
         let window = host_port.open_window();
+        assert!(window.timer_driver_commands.is_empty());
 
         let output = host_port
             .dispatch_trigger(
@@ -312,6 +420,11 @@ mod tests {
                 assert_eq!(ack.status, StudioRuntimeHostAckStatus::Applied);
             }
         }
+        assert!(matches!(
+            output.timer_driver_commands.as_slice(),
+            [StudioWindowHostTimerDriverCommand::Rearm { window_id, previous_slot: None, next_slot }]
+            if *window_id == window.window_id && next_slot.effect_id == 1
+        ));
         assert_eq!(
             host_port
                 .window_state(window.window_id)
@@ -378,6 +491,11 @@ mod tests {
                 assert_eq!(ack.status, StudioRuntimeHostAckStatus::Applied);
             }
         }
+        assert!(matches!(
+            output.timer_driver_commands.as_slice(),
+            [StudioWindowHostTimerDriverCommand::Keep { window_id, slot }]
+            if *window_id == first.window_id && slot.effect_id == 2
+        ));
         assert_eq!(
             host_port
                 .window_state(first.window_id)
@@ -431,6 +549,11 @@ mod tests {
                 restored_entitlement_timer: cleared_entitlement_timer,
             }
         );
+        assert!(matches!(
+            shutdown.timer_driver_commands.as_slice(),
+            [StudioWindowHostTimerDriverCommand::Transfer { from_window_id, to_window_id, slot }]
+            if *from_window_id == first.window_id && *to_window_id == second.window_id && slot.effect_id == 1
+        ));
         assert_eq!(host_port.entitlement_timer_owner(), Some(second.window_id));
         assert!(
             host_port
@@ -466,6 +589,11 @@ mod tests {
                 parked_entitlement_timer: shutdown.cleared_entitlement_timer.clone(),
             }
         );
+        assert!(matches!(
+            shutdown.timer_driver_commands.as_slice(),
+            [StudioWindowHostTimerDriverCommand::Park { from_window_id, slot }]
+            if *from_window_id == first.window_id && slot.effect_id == 1
+        ));
         assert!(host_port.entitlement_timer_owner().is_none());
         assert_eq!(
             host_port
@@ -477,6 +605,11 @@ mod tests {
         let reopened = host_port.open_window();
 
         assert_eq!(reopened.role, StudioWindowHostRole::EntitlementTimerOwner);
+        assert!(matches!(
+            reopened.timer_driver_commands.as_slice(),
+            [StudioWindowHostTimerDriverCommand::RestoreParked { window_id, slot }]
+            if *window_id == reopened.window_id && slot.effect_id == 1
+        ));
         assert_eq!(
             reopened
                 .restored_entitlement_timer
@@ -499,10 +632,82 @@ mod tests {
         );
     }
 
+    #[test]
+    fn runtime_host_port_maps_lifecycle_event_without_exposing_runtime_trigger_shape() {
+        let mut host_port =
+            StudioRuntimeHostPort::new(&lease_expiring_config()).expect("expected host port");
+        let window = host_port.open_window();
+
+        let output = host_port
+            .dispatch_lifecycle_event(
+                window.window_id,
+                StudioWindowHostLifecycleEvent::TimerElapsed,
+            )
+            .expect("expected lifecycle dispatch output");
+
+        assert_eq!(
+            output.runtime_output.trigger,
+            StudioRuntimeTrigger::EntitlementSessionEvent(
+                StudioRuntimeEntitlementSessionEvent::TimerElapsed
+            )
+        );
+        assert!(matches!(
+            output.timer_driver_commands.as_slice(),
+            [StudioWindowHostTimerDriverCommand::Rearm { window_id, next_slot, .. }]
+            if *window_id == window.window_id && next_slot.effect_id == 1
+        ));
+    }
+
     fn timer_event(output: &StudioRuntimeHostPortOutput) -> &StudioWindowHostEvent {
         output
             .window_event
             .as_ref()
             .expect("expected window host event")
+    }
+}
+
+fn timer_driver_commands_from_event(
+    event: &StudioWindowHostEvent,
+) -> Vec<StudioWindowHostTimerDriverCommand> {
+    match event {
+        StudioWindowHostEvent::EntitlementTimerApplied {
+            window_id,
+            transition,
+            ..
+        } => match transition {
+            StudioRuntimeTimerHostTransition::KeepTimer { slot, .. } => {
+                vec![StudioWindowHostTimerDriverCommand::Keep {
+                    window_id: *window_id,
+                    slot: slot.clone(),
+                }]
+            }
+            StudioRuntimeTimerHostTransition::ArmTimer { slot, .. } => {
+                vec![StudioWindowHostTimerDriverCommand::Arm {
+                    window_id: *window_id,
+                    slot: slot.clone(),
+                }]
+            }
+            StudioRuntimeTimerHostTransition::RearmTimer { previous, next, .. } => {
+                vec![StudioWindowHostTimerDriverCommand::Rearm {
+                    window_id: *window_id,
+                    previous_slot: previous.clone(),
+                    next_slot: next.clone(),
+                }]
+            }
+            StudioRuntimeTimerHostTransition::ClearTimer { previous, .. } => {
+                vec![StudioWindowHostTimerDriverCommand::Clear {
+                    window_id: *window_id,
+                    previous_slot: previous.clone(),
+                }]
+            }
+            StudioRuntimeTimerHostTransition::IgnoreStale {
+                current,
+                stale_effect_id,
+            } => vec![StudioWindowHostTimerDriverCommand::IgnoreStale {
+                window_id: *window_id,
+                current_slot: current.clone(),
+                stale_effect_id: *stale_effect_id,
+            }],
+        },
     }
 }
