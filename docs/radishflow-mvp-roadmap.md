@@ -322,6 +322,7 @@ MVP 阶段明确不做：
 - Studio 当前也已继续把两层 adapter 再收为单一 `StudioWindowSession` 会话入口，让未来 GUI 以“窗口会话”而不是“分别操作 host port 和 timer driver state”的方式接线
 - Studio 当前也已继续把单窗口会话上提到应用级多窗口入口，新增 `StudioAppWindowHostManager`，把窗口注册表、foreground window 和全局宿主事件路由统一收口
 - Studio 当前也已继续把 `StudioAppWindowHostManager` 上提为标准 app host 命令面，新增 `StudioAppWindowHostCommand / Outcome`，让未来 GUI 通过单一入口处理打开/关闭窗口、前后台切换、runtime trigger 与全局事件，而不是外层自己拼调用顺序
+- Studio 当前也已继续把 app host 命令面再收成正式顶层容器，新增 `StudioAppHost + StudioAppHostSnapshot`，让 GUI 在执行命令后能直接拿到 registered/foreground/timer-owner/parked timer 快照，而不是再分别查询 manager 与 host port
 
 基于上述进展，当前下一阶段计划调整为：
 
@@ -332,6 +333,7 @@ MVP 阶段明确不做：
 - 在已补出的 `StudioRuntimeTimerHostState / Transition` 与 `StudioWindowHostState + StudioRuntimeHostPort` 基础上，继续决定真实桌面框架里的具体 GUI timer handle、窗口重建迁移策略与多窗口所有权口径
 - 在已补出的多窗口 `StudioRuntimeHostPort` 所有权/转移/park 语义基础上，继续决定真实桌面框架里的具体 GUI timer handle 绑定与窗口前后台事件来源
 - 在已补出的 `StudioAppWindowHostManager + StudioAppWindowHostCommand` 基础上，继续决定真实桌面框架里的 app 生命周期、窗口创建销毁与后台任务事件如何统一接到这条宿主命令面
+- 在已补出的 `StudioAppHost + StudioAppHostSnapshot` 基础上，继续决定真实桌面框架里的 app state store、窗口 registry 与后台任务宿主是否直接复用这份快照作为单一真相源
 - 继续冻结运行结果派发、日志入口与后续异步执行边界
 - 在不打乱当前边界的前提下，再恢复更完整的 Studio 交互流、联网提示位置与内核主线推进
 

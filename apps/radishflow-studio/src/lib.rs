@@ -14,6 +14,7 @@ mod property_package_download;
 mod property_package_download_client;
 mod run_panel_driver;
 mod solver_bridge;
+mod studio_app_host;
 mod studio_runtime;
 mod studio_window_host;
 mod studio_window_host_manager;
@@ -125,6 +126,10 @@ pub use run_panel_driver::{
 pub use solver_bridge::{
     StudioSolveRequest, next_solver_snapshot_sequence, solve_workspace_from_auth_cache,
     solve_workspace_with_property_package,
+};
+pub use studio_app_host::{
+    StudioAppHost, StudioAppHostCommand, StudioAppHostCommandOutcome, StudioAppHostOutput,
+    StudioAppHostSnapshot,
 };
 pub use studio_runtime::{
     StudioRuntime, StudioRuntimeConfig, StudioRuntimeDispatch, StudioRuntimeEffect,

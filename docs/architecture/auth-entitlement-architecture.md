@@ -635,6 +635,7 @@ RadishFlow Studio
 - `apps/radishflow-studio` 当前又已在其上补出 `StudioWindowSession`，把窗口打开/关闭、生命周期事件分发、host port 输出消费以及 timer driver ack 全部收进单一会话 adapter；`main.rs` 这类入口当前不再直接同时持有 `StudioRuntimeHostPort` 和 `StudioWindowTimerDriverState`
 - `apps/radishflow-studio` 当前又已在其上补出 `StudioAppWindowHostManager`，把多窗口注册表、foreground window、全局 `TimerElapsed / NetworkRestored / LoginCompleted` 事件路由与 owner 关闭后的前台窗口切换继续收成 app 级宿主容器
 - `apps/radishflow-studio` 当前又已在 `StudioAppWindowHostManager` 之上补出 `StudioAppWindowHostCommand / StudioAppWindowHostCommandOutcome`，把窗口打开、关闭、聚焦、runtime trigger 分发和全局宿主事件统一成单一 app host 命令入口；后续真实 GUI 应优先消费这一层，而不是分别手写 manager 方法调用序列
+- `apps/radishflow-studio` 当前又已在其上补出 `StudioAppHost`，把 app host 命令执行与 `StudioAppHostSnapshot` 聚合成单一顶层容器；snapshot 当前至少冻结 `registered windows`、`foreground window`、`entitlement timer owner` 与 `parked entitlement timer`，让 GUI 不必在命令执行后再分别反查 manager 与 host port
 
 ### `rf-store`
 
