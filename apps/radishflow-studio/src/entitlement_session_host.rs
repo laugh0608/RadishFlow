@@ -832,6 +832,73 @@ mod tests {
     }
 
     #[test]
+    fn snapshot_host_text_view_summarizes_schedule_timer_and_notice() {
+        let mut app_state = AppState::new(sample_document());
+        complete_login(&mut app_state);
+        app_state.update_entitlement(
+            sample_snapshot_with_expiry(5_000, 9_000),
+            vec![sample_manifest()],
+            timestamp(150),
+        );
+
+        let snapshot = snapshot_entitlement_session_host(
+            &app_state,
+            timestamp(200),
+            &EntitlementSessionPolicy::default(),
+            &EntitlementSessionState::default(),
+            None,
+        );
+        let text = snapshot.text();
+
+        assert_eq!(text.title, "Entitlement host");
+        assert!(
+            text.lines
+                .iter()
+                .any(|line| line.starts_with("Next check: SystemTime")),
+            "expected next check line, got {:?}",
+            text.lines
+        );
+        assert!(
+            text.lines.iter().any(|line| {
+                line.starts_with("Timer command: Schedule TimerElapsed")
+                    && line.contains("ScheduledCheck")
+            }),
+            "expected timer command line, got {:?}",
+            text.lines
+        );
+        assert!(
+            text.lines
+                .iter()
+                .any(|line| line == "Host notice: Automatic check scheduled [info]"),
+            "expected host notice line, got {:?}",
+            text.lines
+        );
+    }
+
+    #[test]
+    fn snapshot_host_presentation_reuses_panel_presentation() {
+        let mut app_state = AppState::new(sample_document());
+        complete_login(&mut app_state);
+        app_state.update_entitlement(
+            sample_snapshot_with_expiry(5_000, 9_000),
+            vec![sample_manifest()],
+            timestamp(150),
+        );
+
+        let snapshot = snapshot_entitlement_session_host(
+            &app_state,
+            timestamp(200),
+            &EntitlementSessionPolicy::default(),
+            &EntitlementSessionState::default(),
+            None,
+        );
+        let presentation = snapshot.presentation();
+
+        assert_eq!(presentation.panel, snapshot.panel.widget.presentation);
+        assert_eq!(presentation.text, snapshot.text());
+    }
+
+    #[test]
     fn host_context_records_snapshot_and_advances_current_timer() {
         let mut app_state = AppState::new(sample_document());
         complete_login(&mut app_state);

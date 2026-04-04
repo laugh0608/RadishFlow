@@ -3,20 +3,16 @@ use radishflow_studio::{
     StudioBootstrapDispatch, run_studio_bootstrap,
 };
 
-fn print_run_panel(report: &radishflow_studio::StudioBootstrapReport) {
-    let text = report.run_panel.text();
-    println!("{}:", text.title);
-    for line in &text.lines {
+fn print_text_view(title: &str, lines: &[String]) {
+    println!("{title}:");
+    for line in lines {
         println!("  {line}");
     }
 }
 
-fn print_entitlement_panel(report: &radishflow_studio::StudioBootstrapReport) {
-    let text = report.entitlement_host.panel.widget.text();
-    println!("{}:", text.title);
-    for line in &text.lines {
-        println!("  {line}");
-    }
+fn print_run_panel(report: &radishflow_studio::StudioBootstrapReport) {
+    let text = report.run_panel.text();
+    print_text_view(text.title, &text.lines);
 }
 
 fn main() {
@@ -32,48 +28,16 @@ fn main() {
             println!("Control pending: {:?}", report.control_state.pending_reason);
             println!("Control status: {:?}", report.control_state.run_status);
             print_run_panel(&report);
-            print_entitlement_panel(&report);
+            let entitlement_host = report.entitlement_host.presentation();
+            print_text_view(
+                entitlement_host.panel.text.title,
+                &entitlement_host.panel.text.lines,
+            );
+            print_text_view(entitlement_host.text.title, &entitlement_host.text.lines);
 
             if let Some(preflight) = report.entitlement_preflight.as_ref() {
                 println!("Preflight action: {:?}", preflight.decision.action);
                 println!("Preflight reason: {}", preflight.decision.reason);
-            }
-            let entitlement_schedule = &report.entitlement_host.state.driver.schedule;
-            println!(
-                "Entitlement next check: {:?}",
-                entitlement_schedule.next_check_at
-            );
-            println!(
-                "Entitlement next sync window: {:?}",
-                entitlement_schedule.next_sync_at
-            );
-            println!(
-                "Entitlement next offline refresh window: {:?}",
-                entitlement_schedule.next_offline_refresh_at
-            );
-            if let Some(action) = entitlement_schedule.recommended_action {
-                println!("Entitlement recommended action: {:?}", action);
-            }
-            if let Some(reason) = entitlement_schedule.recommended_reason {
-                println!("Entitlement schedule reason: {reason}");
-            }
-            if entitlement_schedule.blocked_by_backoff {
-                println!("Entitlement scheduler is currently backing off");
-            }
-            if let Some(timer) = report.entitlement_host.state.next_timer.as_ref() {
-                println!("Entitlement timer event: {:?}", timer.event);
-                println!("Entitlement timer due at: {:?}", timer.due_at);
-                println!("Entitlement timer delay: {:?}", timer.delay);
-                println!("Entitlement timer reason: {:?}", timer.reason);
-            }
-            if let Some(command) = report.entitlement_host.timer_command.as_ref() {
-                println!("Entitlement timer command: {:?}", command);
-            }
-            if let Some(notice) = report.entitlement_host.state.host_notice.as_ref() {
-                println!(
-                    "Entitlement host notice: {:?}: {}",
-                    notice.level, notice.message
-                );
             }
 
             match report.dispatch {
