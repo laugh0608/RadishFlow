@@ -3,6 +3,8 @@ use radishflow_studio::{
     StudioRuntimeDispatch, StudioRuntimeHostPort, StudioRuntimeReport,
     StudioRuntimeTimerHostCommand, StudioRuntimeTimerHostTransition, StudioWindowHostEvent,
     StudioWindowHostRetirement, StudioWindowHostTimerDriverCommand,
+    StudioWindowTimerDriverAckStatus, StudioWindowTimerDriverState,
+    StudioWindowTimerDriverTransition,
 };
 
 fn print_text_view(title: &str, lines: &[String]) {
@@ -19,6 +21,8 @@ fn print_run_panel(report: &StudioRuntimeReport) {
 
 fn main() {
     let config = StudioRuntimeConfig::default();
+    let mut next_native_timer_handle_id = 1_u64;
+    let mut timer_driver_state = StudioWindowTimerDriverState::default();
     let mut host_port = match StudioRuntimeHostPort::new(&config) {
         Ok(runtime) => runtime,
         Err(error) => {
@@ -40,9 +44,11 @@ fn main() {
     }
     if !window.timer_driver_commands.is_empty() {
         println!("Window host driver commands:");
-        for command in &window.timer_driver_commands {
-            print_timer_driver_command(command);
-        }
+        apply_timer_driver_commands(
+            &mut timer_driver_state,
+            &window.timer_driver_commands,
+            &mut next_native_timer_handle_id,
+        );
     }
 
     match host_port.dispatch_trigger(window.window_id, &config.trigger) {
@@ -137,9 +143,11 @@ fn main() {
             }
             if !timer_driver_commands.is_empty() {
                 println!("Timer driver commands:");
-                for command in &timer_driver_commands {
-                    print_timer_driver_command(command);
-                }
+                apply_timer_driver_commands(
+                    &mut timer_driver_state,
+                    &timer_driver_commands,
+                    &mut next_native_timer_handle_id,
+                );
             }
 
             match report.dispatch {
@@ -216,9 +224,11 @@ fn main() {
                 }
                 if !shutdown.timer_driver_commands.is_empty() {
                     println!("Window host shutdown driver commands:");
-                    for command in &shutdown.timer_driver_commands {
-                        print_timer_driver_command(command);
-                    }
+                    apply_timer_driver_commands(
+                        &mut timer_driver_state,
+                        &shutdown.timer_driver_commands,
+                        &mut next_native_timer_handle_id,
+                    );
                 }
                 match shutdown.retirement {
                     StudioWindowHostRetirement::None => {}
@@ -253,72 +263,108 @@ fn main() {
     }
 }
 
-fn print_timer_driver_command(command: &StudioWindowHostTimerDriverCommand) {
-    match command {
-        StudioWindowHostTimerDriverCommand::Arm { window_id, slot } => {
+fn apply_timer_driver_commands(
+    state: &mut StudioWindowTimerDriverState,
+    commands: &[StudioWindowHostTimerDriverCommand],
+    next_native_timer_handle_id: &mut u64,
+) {
+    for command in commands {
+        println!("  host command: {:?}", command);
+        let transition = state.apply_command(command);
+        print_timer_driver_transition(&transition);
+
+        match transition {
+            StudioWindowTimerDriverTransition::ArmNativeTimer { window_id, .. }
+            | StudioWindowTimerDriverTransition::RearmNativeTimer { window_id, .. } => {
+                let handle_id = *next_native_timer_handle_id;
+                *next_native_timer_handle_id += 1;
+                let ack = state.acknowledge_native_timer(window_id, handle_id);
+                println!("  native timer ack: {:?}", ack);
+                if ack.status != StudioWindowTimerDriverAckStatus::Applied {
+                    println!("  native timer ack did not apply");
+                }
+            }
+            _ => {}
+        }
+    }
+}
+
+fn print_timer_driver_transition(transition: &StudioWindowTimerDriverTransition) {
+    match transition {
+        StudioWindowTimerDriverTransition::ArmNativeTimer {
+            window_id,
+            previous_binding,
+            slot,
+        } => {
             println!(
-                "  - Arm native timer on window #{} with {:?}",
-                window_id, slot
+                "  - Arm native timer on window #{}: {:?} -> {:?}",
+                window_id, previous_binding, slot
             );
         }
-        StudioWindowHostTimerDriverCommand::Rearm {
+        StudioWindowTimerDriverTransition::KeepNativeTimer { window_id, binding } => {
+            println!(
+                "  - Keep native timer handle #{} on window #{} for {:?}",
+                binding.handle_id, window_id, binding.slot
+            );
+        }
+        StudioWindowTimerDriverTransition::RearmNativeTimer {
             window_id,
-            previous_slot,
+            previous_binding,
             next_slot,
         } => {
             println!(
                 "  - Rearm native timer on window #{}: {:?} -> {:?}",
-                window_id, previous_slot, next_slot
+                window_id, previous_binding, next_slot
             );
         }
-        StudioWindowHostTimerDriverCommand::Keep { window_id, slot } => {
-            println!(
-                "  - Keep native timer on window #{} as {:?}",
-                window_id, slot
-            );
-        }
-        StudioWindowHostTimerDriverCommand::Clear {
+        StudioWindowTimerDriverTransition::ClearNativeTimer {
             window_id,
-            previous_slot,
+            previous_binding,
         } => {
             println!(
                 "  - Clear native timer on window #{} from {:?}",
-                window_id, previous_slot
+                window_id, previous_binding
             );
         }
-        StudioWindowHostTimerDriverCommand::IgnoreStale {
+        StudioWindowTimerDriverTransition::IgnoreStale {
             window_id,
-            current_slot,
+            current_binding,
             stale_effect_id,
         } => {
             println!(
-                "  - Ignore stale timer effect #{} on window #{} with current {:?}",
-                stale_effect_id, window_id, current_slot
+                "  - Ignore stale timer effect #{} on window #{} with {:?}",
+                stale_effect_id, window_id, current_binding
             );
         }
-        StudioWindowHostTimerDriverCommand::Transfer {
+        StudioWindowTimerDriverTransition::TransferNativeTimer {
             from_window_id,
             to_window_id,
-            slot,
+            binding,
+            requested_slot,
         } => {
             println!(
-                "  - Transfer native timer {:?} from window #{} to #{}",
-                slot, from_window_id, to_window_id
+                "  - Transfer native timer {:?} from window #{} to #{} for {:?}",
+                binding, from_window_id, to_window_id, requested_slot
             );
         }
-        StudioWindowHostTimerDriverCommand::Park {
+        StudioWindowTimerDriverTransition::ParkNativeTimer {
             from_window_id,
-            slot,
+            binding,
+            requested_slot,
         } => {
             println!(
-                "  - Park native timer {:?} after closing window #{}",
-                slot, from_window_id
+                "  - Park native timer {:?} after closing window #{} for {:?}",
+                binding, from_window_id, requested_slot
             );
         }
-        StudioWindowHostTimerDriverCommand::RestoreParked { window_id, slot } => {
+        StudioWindowTimerDriverTransition::RestoreParkedTimer {
+            window_id,
+            binding,
+            requested_slot,
+        } => {
             println!(
-                "  - Restore parked native timer {:?} into window #{}",
-                slot, window_id
+                "  - Restore parked native timer {:?} into window #{} for {:?}",
+                binding, window_id, requested_slot
             );
         }
     }
