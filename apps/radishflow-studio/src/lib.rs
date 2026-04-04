@@ -129,7 +129,7 @@ pub use solver_bridge::{
 };
 pub use studio_app_host::{
     StudioAppHost, StudioAppHostCommand, StudioAppHostCommandOutcome, StudioAppHostOutput,
-    StudioAppHostSnapshot,
+    StudioAppHostSnapshot, StudioAppHostWindowSnapshot,
 };
 pub use studio_runtime::{
     StudioRuntime, StudioRuntimeConfig, StudioRuntimeDispatch, StudioRuntimeEffect,

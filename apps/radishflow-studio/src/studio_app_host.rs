@@ -4,7 +4,7 @@ use crate::{
     StudioAppWindowHostClose, StudioAppWindowHostCommand, StudioAppWindowHostCommandOutcome,
     StudioAppWindowHostDispatch, StudioAppWindowHostGlobalEvent, StudioAppWindowHostManager,
     StudioRuntimeConfig, StudioRuntimeTimerHandleSlot, StudioRuntimeTrigger, StudioWindowHostId,
-    StudioWindowHostRegistration,
+    StudioWindowHostRegistration, StudioWindowHostRole,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -39,8 +39,17 @@ pub enum StudioAppHostCommandOutcome {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioAppHostWindowSnapshot {
+    pub window_id: StudioWindowHostId,
+    pub role: StudioWindowHostRole,
+    pub is_foreground: bool,
+    pub entitlement_timer: Option<StudioRuntimeTimerHandleSlot>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StudioAppHostSnapshot {
     pub registered_windows: Vec<StudioWindowHostId>,
+    pub windows: Vec<StudioAppHostWindowSnapshot>,
     pub foreground_window_id: Option<StudioWindowHostId>,
     pub entitlement_timer_owner_window_id: Option<StudioWindowHostId>,
     pub parked_entitlement_timer: Option<StudioRuntimeTimerHandleSlot>,
@@ -68,14 +77,43 @@ impl StudioAppHost {
     }
 
     pub fn snapshot(&self) -> StudioAppHostSnapshot {
+        let registered_windows = self.window_host_manager.registered_windows();
+        let foreground_window_id = self.window_host_manager.foreground_window_id();
+        let entitlement_timer_owner_window_id = self
+            .window_host_manager
+            .session()
+            .host_port()
+            .entitlement_timer_owner();
+        let windows = registered_windows
+            .iter()
+            .copied()
+            .map(|window_id| {
+                let role = if entitlement_timer_owner_window_id == Some(window_id) {
+                    StudioWindowHostRole::EntitlementTimerOwner
+                } else {
+                    StudioWindowHostRole::Observer
+                };
+                let entitlement_timer = self
+                    .window_host_manager
+                    .session()
+                    .host_port()
+                    .window_state(window_id)
+                    .and_then(|state| state.entitlement_timer().cloned());
+
+                StudioAppHostWindowSnapshot {
+                    window_id,
+                    role,
+                    is_foreground: foreground_window_id == Some(window_id),
+                    entitlement_timer,
+                }
+            })
+            .collect();
+
         StudioAppHostSnapshot {
-            registered_windows: self.window_host_manager.registered_windows(),
-            foreground_window_id: self.window_host_manager.foreground_window_id(),
-            entitlement_timer_owner_window_id: self
-                .window_host_manager
-                .session()
-                .host_port()
-                .entitlement_timer_owner(),
+            registered_windows,
+            windows,
+            foreground_window_id,
+            entitlement_timer_owner_window_id,
             parked_entitlement_timer: self
                 .window_host_manager
                 .session()
@@ -183,6 +221,15 @@ mod tests {
             first.snapshot.entitlement_timer_owner_window_id,
             Some(first_window.window_id)
         );
+        assert_eq!(
+            first.snapshot.windows,
+            vec![crate::StudioAppHostWindowSnapshot {
+                window_id: first_window.window_id,
+                role: StudioWindowHostRole::EntitlementTimerOwner,
+                is_foreground: true,
+                entitlement_timer: None,
+            }]
+        );
 
         let second = app_host
             .execute_command(StudioAppHostCommand::OpenWindow)
@@ -200,6 +247,17 @@ mod tests {
             second.snapshot.foreground_window_id,
             Some(first_window.window_id)
         );
+        assert_eq!(second.snapshot.windows.len(), 2);
+        assert_eq!(
+            second.snapshot.windows[0].role,
+            StudioWindowHostRole::EntitlementTimerOwner
+        );
+        assert!(second.snapshot.windows[0].is_foreground);
+        assert_eq!(
+            second.snapshot.windows[1].role,
+            StudioWindowHostRole::Observer
+        );
+        assert!(!second.snapshot.windows[1].is_foreground);
 
         let focused = app_host
             .execute_command(StudioAppHostCommand::FocusWindow {
@@ -213,6 +271,15 @@ mod tests {
         assert_eq!(
             focused.snapshot.entitlement_timer_owner_window_id,
             Some(first_window.window_id)
+        );
+        assert_eq!(
+            focused.snapshot.windows[1],
+            crate::StudioAppHostWindowSnapshot {
+                window_id: second_window.window_id,
+                role: StudioWindowHostRole::Observer,
+                is_foreground: true,
+                entitlement_timer: None,
+            }
         );
     }
 
@@ -240,6 +307,14 @@ mod tests {
             triggered.snapshot.entitlement_timer_owner_window_id,
             Some(first.window_id)
         );
+        assert_eq!(triggered.snapshot.windows.len(), 1);
+        assert_eq!(
+            triggered.snapshot.windows[0]
+                .entitlement_timer
+                .as_ref()
+                .map(|slot| slot.effect_id),
+            Some(1)
+        );
 
         let closed = app_host
             .execute_command(StudioAppHostCommand::CloseWindow {
@@ -262,6 +337,7 @@ mod tests {
             other => panic!("expected window closed outcome, got {other:?}"),
         }
         assert!(closed.snapshot.registered_windows.is_empty());
+        assert!(closed.snapshot.windows.is_empty());
         assert!(closed.snapshot.foreground_window_id.is_none());
         assert!(closed.snapshot.entitlement_timer_owner_window_id.is_none());
         assert_eq!(
@@ -278,6 +354,13 @@ mod tests {
             .expect("expected reopen");
         assert_eq!(reopened.snapshot.parked_entitlement_timer, None);
         assert_eq!(reopened.snapshot.registered_windows.len(), 1);
+        assert_eq!(
+            reopened.snapshot.windows[0]
+                .entitlement_timer
+                .as_ref()
+                .map(|slot| slot.effect_id),
+            Some(1)
+        );
         assert!(matches!(
             reopened.outcome,
             StudioAppHostCommandOutcome::WindowOpened(_)
@@ -301,6 +384,7 @@ mod tests {
             }
         );
         assert!(output.snapshot.registered_windows.is_empty());
+        assert!(output.snapshot.windows.is_empty());
         assert!(output.snapshot.foreground_window_id.is_none());
     }
 }
