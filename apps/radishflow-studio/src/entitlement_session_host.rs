@@ -82,6 +82,27 @@ pub struct EntitlementSessionHostSnapshot {
     pub panel: EntitlementPanelDriverState,
 }
 
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct EntitlementSessionHostContext {
+    current_timer: Option<EntitlementSessionTimerArm>,
+    last_snapshot: Option<EntitlementSessionHostSnapshot>,
+}
+
+impl EntitlementSessionHostContext {
+    pub fn current_timer(&self) -> Option<&EntitlementSessionTimerArm> {
+        self.current_timer.as_ref()
+    }
+
+    pub fn last_snapshot(&self) -> Option<&EntitlementSessionHostSnapshot> {
+        self.last_snapshot.as_ref()
+    }
+
+    pub fn record_snapshot(&mut self, snapshot: EntitlementSessionHostSnapshot) {
+        self.current_timer = snapshot.state.next_timer.clone();
+        self.last_snapshot = Some(snapshot);
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EntitlementSessionHostOutcome {
     pub trigger: EntitlementSessionHostTrigger,
@@ -162,6 +183,24 @@ pub fn snapshot_entitlement_session_host(
     }
 }
 
+pub fn snapshot_entitlement_session_host_with_context(
+    app_state: &rf_ui::AppState,
+    now: SystemTime,
+    policy: &crate::EntitlementSessionPolicy,
+    session_state: &crate::EntitlementSessionState,
+    context: &mut EntitlementSessionHostContext,
+) -> EntitlementSessionHostSnapshot {
+    let snapshot = snapshot_entitlement_session_host(
+        app_state,
+        now,
+        policy,
+        session_state,
+        context.current_timer(),
+    );
+    context.record_snapshot(snapshot.clone());
+    snapshot
+}
+
 pub fn dispatch_entitlement_session_host_trigger_with_control_plane<Client>(
     trigger: EntitlementSessionHostTrigger,
     current_timer: Option<&EntitlementSessionTimerArm>,
@@ -224,6 +263,39 @@ where
     dispatch_entitlement_session_host_trigger_with_control_plane(
         EntitlementSessionHostTrigger::LifecycleEvent(event),
         current_timer,
+        runtime,
+    )
+}
+
+pub fn dispatch_entitlement_session_host_trigger_with_context_and_control_plane<Client>(
+    trigger: EntitlementSessionHostTrigger,
+    context: &mut EntitlementSessionHostContext,
+    runtime: &mut EntitlementSessionRuntime<'_, '_, Client>,
+) -> RfResult<EntitlementSessionHostOutcome>
+where
+    Client: RadishFlowControlPlaneClient,
+{
+    let current_timer = context.current_timer.clone();
+    let outcome = dispatch_entitlement_session_host_trigger_with_control_plane(
+        trigger,
+        current_timer.as_ref(),
+        runtime,
+    )?;
+    context.record_snapshot(outcome.snapshot.clone());
+    Ok(outcome)
+}
+
+pub fn dispatch_entitlement_session_lifecycle_event_with_context_and_control_plane<Client>(
+    event: EntitlementSessionLifecycleEvent,
+    context: &mut EntitlementSessionHostContext,
+    runtime: &mut EntitlementSessionRuntime<'_, '_, Client>,
+) -> RfResult<EntitlementSessionHostOutcome>
+where
+    Client: RadishFlowControlPlaneClient,
+{
+    dispatch_entitlement_session_host_trigger_with_context_and_control_plane(
+        EntitlementSessionHostTrigger::LifecycleEvent(event),
+        context,
         runtime,
     )
 }
@@ -310,13 +382,14 @@ mod tests {
     };
 
     use super::{
-        EntitlementSessionHostDispatch, EntitlementSessionHostTrigger,
-        EntitlementSessionLifecycleEvent, EntitlementSessionTimerArm,
-        EntitlementSessionTimerCommand, EntitlementSessionTimerReason,
+        EntitlementSessionHostContext, EntitlementSessionHostDispatch,
+        EntitlementSessionHostTrigger, EntitlementSessionLifecycleEvent,
+        EntitlementSessionTimerArm, EntitlementSessionTimerCommand, EntitlementSessionTimerReason,
+        dispatch_entitlement_session_host_trigger_with_context_and_control_plane,
         dispatch_entitlement_session_host_trigger_with_control_plane,
         dispatch_entitlement_session_lifecycle_event_with_control_plane,
         plan_entitlement_session_timer_command, snapshot_entitlement_session_host,
-        snapshot_entitlement_session_host_state,
+        snapshot_entitlement_session_host_state, snapshot_entitlement_session_host_with_context,
         snapshot_entitlement_session_panel_driver_state_with_host_notice,
     };
     use crate::{
@@ -756,6 +829,84 @@ mod tests {
                 .map(|notice| notice.title.as_str()),
             Some("Automatic check scheduled")
         );
+    }
+
+    #[test]
+    fn host_context_records_snapshot_and_advances_current_timer() {
+        let mut app_state = AppState::new(sample_document());
+        complete_login(&mut app_state);
+        app_state.update_entitlement(
+            sample_snapshot_with_expiry(5_000, 9_000),
+            vec![sample_manifest()],
+            timestamp(150),
+        );
+        let mut context = EntitlementSessionHostContext::default();
+
+        let snapshot = snapshot_entitlement_session_host_with_context(
+            &app_state,
+            timestamp(200),
+            &EntitlementSessionPolicy::default(),
+            &EntitlementSessionState::default(),
+            &mut context,
+        );
+
+        assert_eq!(
+            context.current_timer().map(|timer| timer.reason),
+            Some(EntitlementSessionTimerReason::ScheduledCheck)
+        );
+        assert_eq!(context.last_snapshot(), Some(&snapshot));
+    }
+
+    #[test]
+    fn host_context_dispatch_reuses_current_timer_for_keep() {
+        let facade = StudioAppFacade::new();
+        let client = ScriptedControlPlaneClient;
+        let mut app_state = AppState::new(sample_document());
+        complete_login(&mut app_state);
+        app_state.update_entitlement(
+            sample_snapshot_with_expiry(5_000, 9_000),
+            vec![sample_manifest()],
+            timestamp(150),
+        );
+        let cache_root = PathBuf::from("D:\\cache-root");
+        let mut auth_cache_index = sample_auth_cache_index();
+        let mut auth_context =
+            StudioAppMutableAuthCacheContext::new(&cache_root, &mut auth_cache_index);
+        let mut session_state = EntitlementSessionState::default();
+        let policy = EntitlementSessionPolicy::default();
+        let mut host_context = EntitlementSessionHostContext::default();
+        snapshot_entitlement_session_host_with_context(
+            &app_state,
+            timestamp(200),
+            &policy,
+            &session_state,
+            &mut host_context,
+        );
+        let mut runtime = EntitlementSessionRuntime {
+            facade: &facade,
+            app_state: &mut app_state,
+            context: &mut auth_context,
+            control_plane_client: &client,
+            access_token: "access-token",
+            now: timestamp(200),
+            policy: &policy,
+            session_state: &mut session_state,
+        };
+
+        let outcome = dispatch_entitlement_session_host_trigger_with_context_and_control_plane(
+            EntitlementSessionHostTrigger::LifecycleEvent(
+                EntitlementSessionLifecycleEvent::WindowForegrounded,
+            ),
+            &mut host_context,
+            &mut runtime,
+        )
+        .expect("expected window foregrounded host dispatch");
+
+        assert!(matches!(
+            outcome.snapshot.timer_command,
+            Some(EntitlementSessionTimerCommand::Keep { .. })
+        ));
+        assert_eq!(host_context.last_snapshot(), Some(&outcome.snapshot));
     }
 
     #[test]

@@ -75,13 +75,16 @@ pub use entitlement_session_driver::{
     snapshot_entitlement_session_driver_state,
 };
 pub use entitlement_session_host::{
-    EntitlementSessionHostDispatch, EntitlementSessionHostOutcome, EntitlementSessionHostSnapshot,
-    EntitlementSessionHostState, EntitlementSessionHostTrigger, EntitlementSessionLifecycleEvent,
-    EntitlementSessionTimerArm, EntitlementSessionTimerCommand, EntitlementSessionTimerReason,
+    EntitlementSessionHostContext, EntitlementSessionHostDispatch, EntitlementSessionHostOutcome,
+    EntitlementSessionHostSnapshot, EntitlementSessionHostState, EntitlementSessionHostTrigger,
+    EntitlementSessionLifecycleEvent, EntitlementSessionTimerArm, EntitlementSessionTimerCommand,
+    EntitlementSessionTimerReason,
+    dispatch_entitlement_session_host_trigger_with_context_and_control_plane,
     dispatch_entitlement_session_host_trigger_with_control_plane,
+    dispatch_entitlement_session_lifecycle_event_with_context_and_control_plane,
     dispatch_entitlement_session_lifecycle_event_with_control_plane,
     plan_entitlement_session_timer_command, snapshot_entitlement_session_host,
-    snapshot_entitlement_session_host_state,
+    snapshot_entitlement_session_host_state, snapshot_entitlement_session_host_with_context,
     snapshot_entitlement_session_panel_driver_state_with_host_notice,
 };
 pub use property_package_download::{

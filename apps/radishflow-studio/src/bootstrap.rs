@@ -4,18 +4,19 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use crate::{
     EntitlementPreflightOutcome, EntitlementSessionEvent, EntitlementSessionEventDriverOutcome,
-    EntitlementSessionHostDispatch, EntitlementSessionHostSnapshot, EntitlementSessionHostTrigger,
-    EntitlementSessionLifecycleEvent, EntitlementSessionPanelDriverOutcome,
-    EntitlementSessionPolicy, EntitlementSessionRuntime, EntitlementSessionState,
-    RadishFlowControlPlaneClient, RadishFlowControlPlaneClientError,
+    EntitlementSessionHostContext, EntitlementSessionHostDispatch, EntitlementSessionHostSnapshot,
+    EntitlementSessionHostTrigger, EntitlementSessionLifecycleEvent,
+    EntitlementSessionPanelDriverOutcome, EntitlementSessionPolicy, EntitlementSessionRuntime,
+    EntitlementSessionState, RadishFlowControlPlaneClient, RadishFlowControlPlaneClientError,
     RadishFlowControlPlaneClientErrorKind, RadishFlowControlPlaneResponse, RunPanelDriverOutcome,
     RunPanelWidgetDispatchOutcome, StudioAppAuthCacheContext, StudioAppCommandOutcome,
     StudioAppFacade, StudioAppMutableAuthCacheContext, WorkspaceControlState,
     dispatch_entitlement_session_event_with_control_plane,
-    dispatch_entitlement_session_host_trigger_with_control_plane,
+    dispatch_entitlement_session_host_trigger_with_context_and_control_plane,
     dispatch_run_panel_intent_with_auth_cache, dispatch_run_panel_primary_action_with_auth_cache,
     dispatch_run_panel_widget_action_with_auth_cache, snapshot_entitlement_session_driver_state,
-    snapshot_entitlement_session_host, snapshot_run_panel_driver_state,
+    snapshot_entitlement_session_host, snapshot_entitlement_session_host_with_context,
+    snapshot_run_panel_driver_state,
 };
 use rf_model::Flowsheet;
 use rf_store::{
@@ -96,8 +97,7 @@ struct BootstrapSessionResources<'a> {
     control_plane_client: &'a BootstrapControlPlaneClient,
     policy: &'a EntitlementSessionPolicy,
     session_state: &'a mut EntitlementSessionState,
-    current_timer: Option<crate::EntitlementSessionTimerArm>,
-    last_host_snapshot: Option<EntitlementSessionHostSnapshot>,
+    host_context: EntitlementSessionHostContext,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -139,8 +139,7 @@ pub fn run_studio_bootstrap(config: &StudioBootstrapConfig) -> RfResult<StudioBo
         control_plane_client: &control_plane_client,
         policy: &session_policy,
         session_state: &mut entitlement_session_state,
-        current_timer: None,
-        last_host_snapshot: None,
+        host_context: EntitlementSessionHostContext::default(),
     };
     let entitlement_session_tick = dispatch_bootstrap_entitlement_session_tick(
         &facade,
@@ -151,15 +150,16 @@ pub fn run_studio_bootstrap(config: &StudioBootstrapConfig) -> RfResult<StudioBo
     let schedule_now = normalized_system_time_now()?;
     let driver_state = snapshot_run_panel_driver_state(session_resources.app_state);
     let entitlement_host = session_resources
-        .last_host_snapshot
-        .clone()
+        .host_context
+        .last_snapshot()
+        .cloned()
         .unwrap_or_else(|| {
             snapshot_entitlement_session_host(
                 session_resources.app_state,
                 schedule_now,
                 &session_policy,
                 session_resources.session_state,
-                session_resources.current_timer.as_ref(),
+                session_resources.host_context.current_timer(),
             )
         });
 
@@ -203,15 +203,13 @@ fn dispatch_bootstrap_entitlement_session_tick(
                 session.session_state,
             ),
         };
-        let current_timer = session.current_timer.clone();
-        let snapshot = snapshot_entitlement_session_host(
+        snapshot_entitlement_session_host_with_context(
             session.app_state,
             now,
             session.policy,
             session.session_state,
-            current_timer.as_ref(),
+            &mut session.host_context,
         );
-        record_bootstrap_entitlement_host_snapshot(session, snapshot);
         return Ok(outcome);
     }
 
@@ -232,15 +230,13 @@ fn dispatch_bootstrap_entitlement_session_tick(
         EntitlementSessionEvent::SessionStarted,
         &mut runtime,
     )?;
-    let current_timer = session.current_timer.clone();
-    let snapshot = snapshot_entitlement_session_host(
+    snapshot_entitlement_session_host_with_context(
         session.app_state,
         now,
         session.policy,
         session.session_state,
-        current_timer.as_ref(),
+        &mut session.host_context,
     );
-    record_bootstrap_entitlement_host_snapshot(session, snapshot);
     Ok(outcome)
 }
 
@@ -364,7 +360,6 @@ fn dispatch_bootstrap_entitlement_host_trigger(
     session: &mut BootstrapSessionResources<'_>,
     trigger: EntitlementSessionHostTrigger,
 ) -> RfResult<StudioBootstrapDispatch> {
-    let current_timer = session.current_timer.clone();
     let mut context =
         StudioAppMutableAuthCacheContext::new(session.cache_root, session.auth_cache_index);
     let mut runtime = EntitlementSessionRuntime {
@@ -377,12 +372,11 @@ fn dispatch_bootstrap_entitlement_host_trigger(
         policy: session.policy,
         session_state: session.session_state,
     };
-    let outcome = dispatch_entitlement_session_host_trigger_with_control_plane(
+    let outcome = dispatch_entitlement_session_host_trigger_with_context_and_control_plane(
         trigger,
-        current_timer.as_ref(),
+        &mut session.host_context,
         &mut runtime,
     )?;
-    record_bootstrap_entitlement_host_snapshot(session, outcome.snapshot.clone());
     match outcome.dispatch {
         EntitlementSessionHostDispatch::Event(outcome) => {
             Ok(StudioBootstrapDispatch::EntitlementSessionEvent(outcome))
@@ -406,14 +400,6 @@ fn dispatch_bootstrap_entitlement_host_trigger(
             action_id
         ))),
     }
-}
-
-fn record_bootstrap_entitlement_host_snapshot(
-    session: &mut BootstrapSessionResources<'_>,
-    snapshot: EntitlementSessionHostSnapshot,
-) {
-    session.current_timer = snapshot.state.next_timer.clone();
-    session.last_host_snapshot = Some(snapshot);
 }
 
 fn command_outcome_from_workspace_control(
