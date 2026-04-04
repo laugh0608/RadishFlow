@@ -1,6 +1,6 @@
 use radishflow_studio::{
     EntitlementSessionEventOutcome, StudioAppResultDispatch, StudioRuntime, StudioRuntimeConfig,
-    StudioRuntimeDispatch, StudioRuntimeEffect, StudioRuntimeReport,
+    StudioRuntimeDispatch, StudioRuntimeEffect, StudioRuntimeHostFollowUp, StudioRuntimeReport,
 };
 
 fn print_text_view(title: &str, lines: &[String]) {
@@ -53,12 +53,20 @@ fn main() {
                 println!("Preflight reason: {}", preflight.decision.reason);
             }
 
-            if !output.effects.is_empty() {
-                println!("Runtime effects:");
-                for effect in &output.effects {
-                    match effect {
-                        StudioRuntimeEffect::EntitlementTimer(effect) => {
-                            println!("  - Entitlement timer: {:?}", effect);
+            if !output.host_effects.is_empty() {
+                println!("Runtime host effects:");
+                for effect in &output.host_effects {
+                    print!("  - #{} ", effect.id);
+                    match &effect.effect {
+                        StudioRuntimeEffect::EntitlementTimer(timer_effect) => {
+                            println!("Entitlement timer: {:?}", timer_effect);
+                        }
+                    }
+                    if let Some(follow_up) = &effect.follow_up {
+                        match follow_up {
+                            StudioRuntimeHostFollowUp::DispatchTrigger(trigger) => {
+                                println!("    follow-up trigger: {:?}", trigger);
+                            }
                         }
                     }
                 }

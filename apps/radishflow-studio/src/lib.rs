@@ -125,8 +125,9 @@ pub use solver_bridge::{
 pub use studio_runtime::{
     StudioRuntime, StudioRuntimeConfig, StudioRuntimeDispatch, StudioRuntimeEffect,
     StudioRuntimeEntitlementPreflight, StudioRuntimeEntitlementSeed,
-    StudioRuntimeEntitlementSessionEvent, StudioRuntimeOutput, StudioRuntimeReport,
-    StudioRuntimeTrigger,
+    StudioRuntimeEntitlementSessionEvent, StudioRuntimeHostAckResult, StudioRuntimeHostAckStatus,
+    StudioRuntimeHostEffect, StudioRuntimeHostEffectId, StudioRuntimeHostFollowUp,
+    StudioRuntimeOutput, StudioRuntimeReport, StudioRuntimeTrigger,
 };
 pub use workspace_control::{
     RunPanelWidgetDispatchOutcome, WorkspaceControlAction, WorkspaceControlActionOutcome,
