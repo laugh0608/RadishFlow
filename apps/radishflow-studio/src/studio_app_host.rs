@@ -1,6 +1,6 @@
 use std::collections::{BTreeMap, BTreeSet};
 
-use rf_types::RfResult;
+use rf_types::{RfError, RfResult};
 
 use crate::{
     StudioAppWindowHostClose, StudioAppWindowHostCommand, StudioAppWindowHostCommandOutcome,
@@ -234,6 +234,30 @@ impl StudioAppHostStore {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioAppHostOpenWindowResult {
+    pub projection: StudioAppHostProjection,
+    pub registration: StudioWindowHostRegistration,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioAppHostWindowDispatchResult {
+    pub projection: StudioAppHostProjection,
+    pub dispatch: StudioAppWindowHostDispatch,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioAppHostGlobalEventResult {
+    pub projection: StudioAppHostProjection,
+    pub dispatch: Option<StudioAppWindowHostDispatch>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioAppHostCloseWindowResult {
+    pub projection: StudioAppHostProjection,
+    pub close: Option<StudioAppWindowHostClose>,
+}
+
 pub struct StudioAppHost {
     window_host_manager: StudioAppWindowHostManager,
 }
@@ -311,6 +335,126 @@ impl StudioAppHost {
             outcome,
             changes: diff_app_host_snapshots(&previous_snapshot, &snapshot),
             snapshot,
+        })
+    }
+}
+
+pub struct StudioAppHostController {
+    app_host: StudioAppHost,
+    store: StudioAppHostStore,
+}
+
+impl StudioAppHostController {
+    pub fn new(config: &StudioRuntimeConfig) -> RfResult<Self> {
+        let app_host = StudioAppHost::new(config)?;
+        let store = StudioAppHostStore::from_snapshot(&app_host.snapshot());
+
+        Ok(Self { app_host, store })
+    }
+
+    pub fn state(&self) -> &StudioAppHostState {
+        self.store.state()
+    }
+
+    pub fn open_window(&mut self) -> RfResult<StudioAppHostOpenWindowResult> {
+        let (outcome, projection) = self.execute_command(StudioAppHostCommand::OpenWindow)?;
+        let StudioAppHostCommandOutcome::WindowOpened(registration) = outcome else {
+            return Err(RfError::invalid_input(
+                "app host controller expected window open outcome",
+            ));
+        };
+
+        Ok(StudioAppHostOpenWindowResult {
+            projection,
+            registration,
+        })
+    }
+
+    pub fn dispatch_window_trigger(
+        &mut self,
+        window_id: StudioWindowHostId,
+        trigger: StudioRuntimeTrigger,
+    ) -> RfResult<StudioAppHostWindowDispatchResult> {
+        let (outcome, projection) = self
+            .execute_command(StudioAppHostCommand::DispatchWindowTrigger { window_id, trigger })?;
+        let StudioAppHostCommandOutcome::WindowDispatched(dispatch) = outcome else {
+            return Err(RfError::invalid_input(
+                "app host controller expected window dispatch outcome",
+            ));
+        };
+
+        Ok(StudioAppHostWindowDispatchResult {
+            projection,
+            dispatch,
+        })
+    }
+
+    pub fn focus_window(
+        &mut self,
+        window_id: StudioWindowHostId,
+    ) -> RfResult<StudioAppHostWindowDispatchResult> {
+        let (outcome, projection) =
+            self.execute_command(StudioAppHostCommand::FocusWindow { window_id })?;
+        let StudioAppHostCommandOutcome::WindowDispatched(dispatch) = outcome else {
+            return Err(RfError::invalid_input(
+                "app host controller expected focus dispatch outcome",
+            ));
+        };
+
+        Ok(StudioAppHostWindowDispatchResult {
+            projection,
+            dispatch,
+        })
+    }
+
+    pub fn dispatch_global_event(
+        &mut self,
+        event: StudioAppWindowHostGlobalEvent,
+    ) -> RfResult<StudioAppHostGlobalEventResult> {
+        let (outcome, projection) =
+            self.execute_command(StudioAppHostCommand::DispatchGlobalEvent { event })?;
+        let dispatch = match outcome {
+            StudioAppHostCommandOutcome::WindowDispatched(dispatch) => Some(dispatch),
+            StudioAppHostCommandOutcome::IgnoredGlobalEvent { .. } => None,
+            other => {
+                return Err(RfError::invalid_input(format!(
+                    "app host controller expected global event outcome, got {other:?}"
+                )));
+            }
+        };
+
+        Ok(StudioAppHostGlobalEventResult {
+            projection,
+            dispatch,
+        })
+    }
+
+    pub fn close_window(
+        &mut self,
+        window_id: StudioWindowHostId,
+    ) -> RfResult<StudioAppHostCloseWindowResult> {
+        let (outcome, projection) =
+            self.execute_command(StudioAppHostCommand::CloseWindow { window_id })?;
+        let close = match outcome {
+            StudioAppHostCommandOutcome::WindowClosed(close) => Some(close),
+            StudioAppHostCommandOutcome::IgnoredClose { .. } => None,
+            other => {
+                return Err(RfError::invalid_input(format!(
+                    "app host controller expected close outcome, got {other:?}"
+                )));
+            }
+        };
+
+        Ok(StudioAppHostCloseWindowResult { projection, close })
+    }
+
+    fn execute_command(
+        &mut self,
+        command: StudioAppHostCommand,
+    ) -> RfResult<(StudioAppHostCommandOutcome, StudioAppHostProjection)> {
+        self.app_host.execute_command(command).map(|output| {
+            let projection = self.store.apply_output(&output);
+            (output.outcome, projection)
         })
     }
 }
@@ -476,7 +620,7 @@ fn map_outcome(outcome: StudioAppWindowHostCommandOutcome) -> StudioAppHostComma
 #[cfg(test)]
 mod tests {
     use crate::{
-        StudioAppHost, StudioAppHostCommand, StudioAppHostCommandOutcome,
+        StudioAppHost, StudioAppHostCommand, StudioAppHostCommandOutcome, StudioAppHostController,
         StudioAppHostEntitlementTimerState, StudioAppHostStore, StudioAppHostTimerSlotChange,
         StudioAppHostWindowChange, StudioAppHostWindowSelectionChange,
         StudioAppWindowHostGlobalEvent, StudioRuntimeEntitlementPreflight,
@@ -1107,5 +1251,72 @@ mod tests {
                 .parked_entitlement_timer()
                 .is_none()
         );
+    }
+
+    #[test]
+    fn app_host_controller_advances_state_through_typed_command_methods() {
+        let mut controller =
+            StudioAppHostController::new(&lease_expiring_config()).expect("expected controller");
+
+        let opened = controller.open_window().expect("expected window open");
+        assert_eq!(
+            opened.projection.state.registered_windows,
+            vec![opened.registration.window_id]
+        );
+        assert_eq!(
+            controller.state().foreground_window_id,
+            Some(opened.registration.window_id)
+        );
+
+        let dispatched = controller
+            .dispatch_window_trigger(
+                opened.registration.window_id,
+                StudioRuntimeTrigger::EntitlementSessionEvent(
+                    StudioRuntimeEntitlementSessionEvent::TimerElapsed,
+                ),
+            )
+            .expect("expected trigger dispatch");
+        let owner_slot = dispatched
+            .projection
+            .state
+            .window(opened.registration.window_id)
+            .and_then(|window| window.entitlement_timer.clone())
+            .expect("expected timer slot");
+
+        assert_eq!(
+            dispatched.dispatch.target_window_id,
+            opened.registration.window_id
+        );
+        assert_eq!(
+            controller.state().entitlement_timer,
+            StudioAppHostEntitlementTimerState::Owned {
+                owner_window_id: opened.registration.window_id,
+                slot: Some(owner_slot),
+            }
+        );
+    }
+
+    #[test]
+    fn app_host_controller_returns_optional_results_for_ignored_cases() {
+        let mut controller =
+            StudioAppHostController::new(&lease_expiring_config()).expect("expected controller");
+
+        let ignored_global = controller
+            .dispatch_global_event(StudioAppWindowHostGlobalEvent::NetworkRestored)
+            .expect("expected ignored global event");
+        assert!(ignored_global.dispatch.is_none());
+        assert!(ignored_global.projection.state.windows.is_empty());
+
+        let opened = controller.open_window().expect("expected window open");
+        let closed = controller
+            .close_window(opened.registration.window_id)
+            .expect("expected close");
+        assert!(closed.close.is_some());
+
+        let ignored_close = controller
+            .close_window(opened.registration.window_id)
+            .expect("expected ignored close");
+        assert!(ignored_close.close.is_none());
+        assert!(ignored_close.projection.state.windows.is_empty());
     }
 }

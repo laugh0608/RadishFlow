@@ -1,11 +1,10 @@
 use radishflow_studio::{
-    EntitlementSessionEventOutcome, StudioAppHost, StudioAppHostCommand,
-    StudioAppHostCommandOutcome, StudioAppHostOutput, StudioAppHostProjection, StudioAppHostStore,
-    StudioAppResultDispatch, StudioAppWindowHostGlobalEvent, StudioRuntimeConfig,
-    StudioRuntimeDispatch, StudioRuntimeReport, StudioRuntimeTimerHostCommand,
-    StudioRuntimeTimerHostTransition, StudioWindowHostEvent, StudioWindowHostRegistration,
-    StudioWindowHostRetirement, StudioWindowTimerDriverAckResult,
-    StudioWindowTimerDriverTransition,
+    EntitlementSessionEventOutcome, StudioAppHostCloseWindowResult, StudioAppHostController,
+    StudioAppHostGlobalEventResult, StudioAppHostOpenWindowResult,
+    StudioAppHostWindowDispatchResult, StudioAppResultDispatch, StudioAppWindowHostGlobalEvent,
+    StudioRuntimeConfig, StudioRuntimeDispatch, StudioRuntimeReport, StudioRuntimeTimerHostCommand,
+    StudioRuntimeTimerHostTransition, StudioWindowHostEvent, StudioWindowHostRetirement,
+    StudioWindowTimerDriverAckResult, StudioWindowTimerDriverTransition,
 };
 
 fn print_text_view(title: &str, lines: &[String]) {
@@ -22,7 +21,7 @@ fn print_run_panel(report: &StudioRuntimeReport) {
 
 fn main() {
     let config = StudioRuntimeConfig::default();
-    let mut app_host = match StudioAppHost::new(&config) {
+    let mut app_host = match StudioAppHostController::new(&config) {
         Ok(runtime) => runtime,
         Err(error) => {
             eprintln!(
@@ -33,20 +32,16 @@ fn main() {
             std::process::exit(1);
         }
     };
-    let mut app_host_store = StudioAppHostStore::from_snapshot(&app_host.snapshot());
-    let (window, opened_projection) = expect_window_opened(
-        &mut app_host,
-        &mut app_host_store,
-        StudioAppHostCommand::OpenWindow,
-        "open initial window",
-    );
+
+    let opened = expect_window_opened(&mut app_host, "open initial window");
+    let window = opened.registration;
     println!(
         "Opened window host #{} as {:?}",
         window.window_id, window.role
     );
     println!(
         "Foreground window: {:?}",
-        opened_projection.state.foreground_window_id
+        opened.projection.state.foreground_window_id
     );
     if let Some(slot) = window.restored_entitlement_timer.as_ref() {
         println!("Restored parked timer slot into window host: {:?}", slot);
@@ -56,23 +51,14 @@ fn main() {
         println!("  registration commands are now auto-applied by session adapter");
     }
 
-    let (dispatch, dispatch_projection) = expect_window_dispatch(
+    let dispatch = expect_window_dispatch(
         &mut app_host,
-        &mut app_host_store,
-        StudioAppHostCommand::DispatchWindowTrigger {
-            window_id: window.window_id,
-            trigger: config.trigger.clone(),
-        },
+        window.window_id,
+        config.trigger.clone(),
         "dispatch initial trigger",
     );
-    let dispatch_state = dispatch_projection.state.clone();
-    let dispatch = match dispatch.outcome {
-        StudioAppHostCommandOutcome::WindowDispatched(dispatch) => dispatch,
-        other => {
-            eprintln!("Unexpected app host outcome: {:?}", other);
-            std::process::exit(1);
-        }
-    };
+    let dispatch_state = dispatch.projection.state.clone();
+    let dispatch = dispatch.dispatch;
     let window_event = dispatch.dispatch.host_output.window_event;
     let timer_driver_commands = dispatch.dispatch.host_output.timer_driver_commands;
     let report = dispatch.dispatch.host_output.runtime_output.report;
@@ -243,38 +229,30 @@ fn main() {
         }
     }
 
-    match expect_command_outcome(
+    match expect_global_event(
         &mut app_host,
-        &mut app_host_store,
-        StudioAppHostCommand::DispatchGlobalEvent {
-            event: StudioAppWindowHostGlobalEvent::NetworkRestored,
-        },
+        StudioAppWindowHostGlobalEvent::NetworkRestored,
         "dispatch global network restored",
-    ) {
-        StudioAppHostCommandOutcome::WindowDispatched(global_dispatch) => {
+    )
+    .dispatch
+    {
+        Some(global_dispatch) => {
             println!(
                 "Global network restored routed to window #{}",
                 global_dispatch.target_window_id
             );
         }
-        StudioAppHostCommandOutcome::IgnoredGlobalEvent { event } => {
-            println!("Global event ignored: {:?}", event);
-        }
-        other => {
-            eprintln!("Unexpected app host outcome: {:?}", other);
-            std::process::exit(1);
+        None => {
+            println!(
+                "Global event ignored: {:?}",
+                StudioAppWindowHostGlobalEvent::NetworkRestored
+            );
         }
     }
 
-    match expect_command_outcome(
-        &mut app_host,
-        &mut app_host_store,
-        StudioAppHostCommand::CloseWindow {
-            window_id: window.window_id,
-        },
-        "close initial window",
-    ) {
-        StudioAppHostCommandOutcome::WindowClosed(shutdown) => {
+    let close = expect_close_window(&mut app_host, window.window_id, "close initial window");
+    match close.close {
+        Some(shutdown) => {
             if let Some(slot) = shutdown.shutdown.host_shutdown.cleared_entitlement_timer {
                 println!("Window host shutdown cleared timer slot: {:?}", slot);
             }
@@ -319,52 +297,20 @@ fn main() {
                 "Next foreground window: {:?}",
                 shutdown.next_foreground_window_id
             );
-            println!("App host state: {:?}", app_host_store.state());
+            println!("App host state: {:?}", close.projection.state);
         }
-        StudioAppHostCommandOutcome::IgnoredClose { window_id } => {
-            println!("Window host close ignored for window #{window_id}");
-        }
-        other => {
-            eprintln!("Unexpected app host outcome: {:?}", other);
-            std::process::exit(1);
-        }
-    }
-}
-
-fn expect_command_outcome(
-    app_host: &mut StudioAppHost,
-    app_host_store: &mut StudioAppHostStore,
-    command: StudioAppHostCommand,
-    context: &str,
-) -> StudioAppHostCommandOutcome {
-    match expect_host_output(app_host, app_host_store, command) {
-        Ok((output, _projection)) => output.outcome,
-        Err(error) => {
-            eprintln!(
-                "RadishFlow Studio host command failed during {} [{}]: {}",
-                context,
-                error.code().as_str(),
-                error.message()
-            );
-            std::process::exit(1);
+        None => {
+            println!("Window host close ignored for window #{}", window.window_id);
         }
     }
 }
 
 fn expect_window_opened(
-    app_host: &mut StudioAppHost,
-    app_host_store: &mut StudioAppHostStore,
-    command: StudioAppHostCommand,
+    app_host: &mut StudioAppHostController,
     context: &str,
-) -> (StudioWindowHostRegistration, StudioAppHostProjection) {
-    match expect_host_output(app_host, app_host_store, command) {
-        Ok((output, projection)) => match output.outcome {
-            StudioAppHostCommandOutcome::WindowOpened(registration) => (registration, projection),
-            other => {
-                eprintln!("Unexpected app host outcome: {:?}", other);
-                std::process::exit(1);
-            }
-        },
+) -> StudioAppHostOpenWindowResult {
+    match app_host.open_window() {
+        Ok(result) => result,
         Err(error) => {
             eprintln!(
                 "RadishFlow Studio host command failed during {} [{}]: {}",
@@ -378,13 +324,13 @@ fn expect_window_opened(
 }
 
 fn expect_window_dispatch(
-    app_host: &mut StudioAppHost,
-    app_host_store: &mut StudioAppHostStore,
-    command: StudioAppHostCommand,
+    app_host: &mut StudioAppHostController,
+    window_id: u64,
+    trigger: radishflow_studio::StudioRuntimeTrigger,
     context: &str,
-) -> (StudioAppHostOutput, StudioAppHostProjection) {
-    match expect_host_output(app_host, app_host_store, command) {
-        Ok((output, projection)) => (output, projection),
+) -> StudioAppHostWindowDispatchResult {
+    match app_host.dispatch_window_trigger(window_id, trigger) {
+        Ok(result) => result,
         Err(error) => {
             eprintln!(
                 "RadishFlow Studio host command failed during {} [{}]: {}",
@@ -397,15 +343,42 @@ fn expect_window_dispatch(
     }
 }
 
-fn expect_host_output(
-    app_host: &mut StudioAppHost,
-    app_host_store: &mut StudioAppHostStore,
-    command: StudioAppHostCommand,
-) -> rf_types::RfResult<(StudioAppHostOutput, StudioAppHostProjection)> {
-    app_host.execute_command(command).map(|output| {
-        let projection = app_host_store.apply_output(&output);
-        (output, projection)
-    })
+fn expect_global_event(
+    app_host: &mut StudioAppHostController,
+    event: StudioAppWindowHostGlobalEvent,
+    context: &str,
+) -> StudioAppHostGlobalEventResult {
+    match app_host.dispatch_global_event(event) {
+        Ok(result) => result,
+        Err(error) => {
+            eprintln!(
+                "RadishFlow Studio host command failed during {} [{}]: {}",
+                context,
+                error.code().as_str(),
+                error.message()
+            );
+            std::process::exit(1);
+        }
+    }
+}
+
+fn expect_close_window(
+    app_host: &mut StudioAppHostController,
+    window_id: u64,
+    context: &str,
+) -> StudioAppHostCloseWindowResult {
+    match app_host.close_window(window_id) {
+        Ok(result) => result,
+        Err(error) => {
+            eprintln!(
+                "RadishFlow Studio host command failed during {} [{}]: {}",
+                context,
+                error.code().as_str(),
+                error.message()
+            );
+            std::process::exit(1);
+        }
+    }
 }
 
 fn print_timer_driver_transition(transition: &StudioWindowTimerDriverTransition) {

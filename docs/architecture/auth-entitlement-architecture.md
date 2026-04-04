@@ -638,6 +638,7 @@ RadishFlow Studio
 - `apps/radishflow-studio` 当前又已在其上补出 `StudioAppHost`，把 app host 命令执行与 `StudioAppHostSnapshot` 聚合成单一顶层容器；snapshot 当前至少冻结 `registered windows`、每个窗口的 `role/foreground/timer slot`、`entitlement timer owner` 与 `parked entitlement timer`，让 GUI 不必在命令执行后再分别反查 manager 与 host port
 - `apps/radishflow-studio` 当前又已继续把 `StudioAppHost` 输出推进到 GUI 可直接消费的变更边界，新增 `StudioAppHostChangeSet`，显式表达窗口新增/移除/更新、foreground 迁移、timer owner 迁移与 parked timer 变化；后续 GUI 不应再自己 diff 前后 snapshot
 - `apps/radishflow-studio` 当前又已在其上补出 `StudioAppHostState + StudioAppHostStore + StudioAppHostProjection`，把 GUI 真正持有的 app-level 宿主状态正式冻结为单一 `state` 对象，并把 `StudioAppHostOutput -> state/projection` 的推进收口到 store；当前 `entitlement timer owner + parked timer + foreground` 的组合语义也已进一步收成 `StudioAppHostEntitlementTimerState`，后续 GUI 不应再同时理解 `outcome + snapshot + changes` 才能判断宿主状态
+- `apps/radishflow-studio` 当前又已在其上补出 `StudioAppHostController` 与一组 typed command result，把窗口打开、关闭、聚焦、runtime trigger 与全局事件进一步收口为 GUI 可直接调用的宿主入口；后续 GUI 应优先消费 `controller + state/store`，而不是直接 match `WindowOpened / WindowClosed / WindowDispatched / Ignored*` 这类 raw app host command outcome
 
 ### `rf-store`
 
