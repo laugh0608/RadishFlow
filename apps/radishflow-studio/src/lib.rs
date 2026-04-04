@@ -6,6 +6,7 @@ mod control_plane_sync;
 mod entitlement_control;
 mod entitlement_panel_driver;
 mod entitlement_preflight;
+mod entitlement_session_host;
 mod entitlement_session_driver;
 mod property_package_download;
 mod property_package_download_client;
@@ -28,7 +29,8 @@ pub use auth_cache_sync::{
     record_downloaded_package, sync_auth_cache_index,
 };
 pub use bootstrap::{
-    StudioBootstrapConfig, StudioBootstrapReport, StudioBootstrapTrigger, run_studio_bootstrap,
+    StudioBootstrapConfig, StudioBootstrapDispatch, StudioBootstrapEntitlementSessionEvent,
+    StudioBootstrapReport, StudioBootstrapTrigger, run_studio_bootstrap,
 };
 pub use control_plane_client::{
     HttpRadishFlowControlPlaneClient, RadishFlowControlPlaneClient,
@@ -61,6 +63,10 @@ pub use entitlement_preflight::{
     dispatch_entitlement_preflight_with_control_plane,
     dispatch_entitlement_session_tick_with_control_plane, record_entitlement_session_dispatch,
     record_entitlement_session_outcome, snapshot_entitlement_session_schedule,
+};
+pub use entitlement_session_host::{
+    EntitlementSessionHostDispatch, EntitlementSessionHostOutcome, EntitlementSessionHostTrigger,
+    dispatch_entitlement_session_host_trigger_with_control_plane,
 };
 pub use entitlement_session_driver::{
     EntitlementSessionDriverState, EntitlementSessionEvent, EntitlementSessionEventDriverOutcome,

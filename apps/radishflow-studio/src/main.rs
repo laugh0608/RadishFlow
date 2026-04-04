@@ -1,4 +1,7 @@
-use radishflow_studio::{StudioAppResultDispatch, StudioBootstrapConfig, run_studio_bootstrap};
+use radishflow_studio::{
+    EntitlementSessionEventOutcome, StudioAppResultDispatch, StudioBootstrapConfig,
+    StudioBootstrapDispatch, run_studio_bootstrap,
+};
 
 fn print_run_panel(report: &radishflow_studio::StudioBootstrapReport) {
     let text = report.run_panel.text();
@@ -57,45 +60,63 @@ fn main() {
                 println!("Entitlement scheduler is currently backing off");
             }
 
-            match report.outcome.dispatch {
-                StudioAppResultDispatch::WorkspaceRun(dispatch) => {
-                    println!("Run status: {:?}", dispatch.run_status);
-                    println!("Outcome: {:?}", dispatch.outcome);
-                    if let Some(package_id) = dispatch.package_id {
-                        println!("Package: {package_id}");
+            match report.dispatch {
+                StudioBootstrapDispatch::AppCommand(outcome) => match outcome.dispatch {
+                    StudioAppResultDispatch::WorkspaceRun(dispatch) => {
+                        println!("Run status: {:?}", dispatch.run_status);
+                        println!("Outcome: {:?}", dispatch.outcome);
+                        if let Some(package_id) = dispatch.package_id {
+                            println!("Package: {package_id}");
+                        }
+                        if let Some(snapshot_id) = dispatch.latest_snapshot_id {
+                            println!("Latest snapshot: {snapshot_id}");
+                        }
+                        if let Some(summary) = dispatch.latest_snapshot_summary {
+                            println!("Summary: {summary}");
+                        }
+                        println!("Log entries: {}", dispatch.log_entry_count);
+                        if let Some(entry) = dispatch.latest_log_entry {
+                            println!("Latest log: {:?}: {}", entry.level, entry.message);
+                        }
                     }
-                    if let Some(snapshot_id) = dispatch.latest_snapshot_id {
-                        println!("Latest snapshot: {snapshot_id}");
+                    StudioAppResultDispatch::WorkspaceMode(dispatch) => {
+                        println!("Run status: {:?}", dispatch.run_status);
+                        if let Some(snapshot_id) = dispatch.latest_snapshot_id {
+                            println!("Latest snapshot: {snapshot_id}");
+                        }
+                        if let Some(summary) = dispatch.latest_snapshot_summary {
+                            println!("Summary: {summary}");
+                        }
+                        println!("Log entries: {}", dispatch.log_entry_count);
+                        if let Some(entry) = dispatch.latest_log_entry {
+                            println!("Latest log: {:?}: {}", entry.level, entry.message);
+                        }
                     }
-                    if let Some(summary) = dispatch.latest_snapshot_summary {
-                        println!("Summary: {summary}");
+                    StudioAppResultDispatch::Entitlement(dispatch) => {
+                        println!("Entitlement status: {:?}", dispatch.entitlement_status);
+                        println!("Entitlement outcome: {:?}", dispatch.outcome);
+                        if let Some(notice) = dispatch.notice {
+                            println!("Entitlement notice: {:?}: {}", notice.level, notice.message);
+                        }
+                        if let Some(entry) = dispatch.latest_log_entry {
+                            println!("Latest log: {:?}: {}", entry.level, entry.message);
+                        }
                     }
-                    println!("Log entries: {}", dispatch.log_entry_count);
-                    if let Some(entry) = dispatch.latest_log_entry {
-                        println!("Latest log: {:?}: {}", entry.level, entry.message);
-                    }
-                }
-                StudioAppResultDispatch::WorkspaceMode(dispatch) => {
-                    println!("Run status: {:?}", dispatch.run_status);
-                    if let Some(snapshot_id) = dispatch.latest_snapshot_id {
-                        println!("Latest snapshot: {snapshot_id}");
-                    }
-                    if let Some(summary) = dispatch.latest_snapshot_summary {
-                        println!("Summary: {summary}");
-                    }
-                    println!("Log entries: {}", dispatch.log_entry_count);
-                    if let Some(entry) = dispatch.latest_log_entry {
-                        println!("Latest log: {:?}: {}", entry.level, entry.message);
-                    }
-                }
-                StudioAppResultDispatch::Entitlement(dispatch) => {
-                    println!("Entitlement status: {:?}", dispatch.entitlement_status);
-                    println!("Entitlement outcome: {:?}", dispatch.outcome);
-                    if let Some(notice) = dispatch.notice {
-                        println!("Entitlement notice: {:?}: {}", notice.level, notice.message);
-                    }
-                    if let Some(entry) = dispatch.latest_log_entry {
-                        println!("Latest log: {:?}: {}", entry.level, entry.message);
+                },
+                StudioBootstrapDispatch::EntitlementSessionEvent(outcome) => {
+                    println!("Entitlement session event: {:?}", outcome.event);
+                    match outcome.outcome {
+                        EntitlementSessionEventOutcome::Tick(tick) => {
+                            if let Some(preflight) = tick.preflight {
+                                println!("Session action: {:?}", preflight.decision.action);
+                                println!("Session reason: {}", preflight.decision.reason);
+                            } else {
+                                println!("Session action: None");
+                            }
+                        }
+                        EntitlementSessionEventOutcome::RecordedCommand { action } => {
+                            println!("Session recorded command: {:?}", action);
+                        }
                     }
                 }
             }

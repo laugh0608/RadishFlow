@@ -4,15 +4,15 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use crate::{
     EntitlementPreflightOutcome, EntitlementSessionEvent, EntitlementSessionEventDriverOutcome,
+    EntitlementSessionHostDispatch, EntitlementSessionHostTrigger,
     EntitlementSessionPanelDriverOutcome, EntitlementSessionPolicy, EntitlementSessionRuntime,
     EntitlementSessionSchedule, EntitlementSessionState, RadishFlowControlPlaneClient,
     RadishFlowControlPlaneClientError, RadishFlowControlPlaneClientErrorKind,
     RadishFlowControlPlaneResponse, RunPanelDriverOutcome, RunPanelWidgetDispatchOutcome,
     StudioAppAuthCacheContext, StudioAppCommandOutcome, StudioAppFacade,
     StudioAppMutableAuthCacheContext, WorkspaceControlState,
+    dispatch_entitlement_session_host_trigger_with_control_plane,
     dispatch_entitlement_session_event_with_control_plane,
-    dispatch_entitlement_session_panel_primary_action_with_control_plane,
-    dispatch_entitlement_session_panel_widget_action_with_control_plane,
     dispatch_run_panel_intent_with_auth_cache, dispatch_run_panel_primary_action_with_auth_cache,
     dispatch_run_panel_widget_action_with_auth_cache, snapshot_entitlement_session_driver_state,
     snapshot_run_panel_driver_state,
@@ -50,6 +50,7 @@ pub enum StudioBootstrapTrigger {
     WidgetAction(RunPanelActionId),
     EntitlementWidgetPrimaryAction,
     EntitlementWidgetAction(EntitlementActionId),
+    EntitlementSessionEvent(StudioBootstrapEntitlementSessionEvent),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -63,6 +64,12 @@ pub enum StudioBootstrapEntitlementSeed {
     Synced,
     MissingSnapshot,
     LeaseExpiringSoon,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum StudioBootstrapEntitlementSessionEvent {
+    LoginCompleted,
+    TimerElapsed,
 }
 
 impl Default for StudioBootstrapConfig {
@@ -94,11 +101,17 @@ struct BootstrapSessionResources<'a> {
 pub struct StudioBootstrapReport {
     pub entitlement_preflight: Option<EntitlementPreflightOutcome>,
     pub entitlement_session_schedule: EntitlementSessionSchedule,
-    pub outcome: StudioAppCommandOutcome,
+    pub dispatch: StudioBootstrapDispatch,
     pub control_state: WorkspaceControlState,
     pub run_panel: RunPanelWidgetModel,
     pub entitlement_panel: EntitlementPanelWidgetModel,
     pub log_entries: Vec<AppLogEntry>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum StudioBootstrapDispatch {
+    AppCommand(StudioAppCommandOutcome),
+    EntitlementSessionEvent(EntitlementSessionEventDriverOutcome),
 }
 
 pub fn run_studio_bootstrap(config: &StudioBootstrapConfig) -> RfResult<StudioBootstrapReport> {
@@ -130,7 +143,7 @@ pub fn run_studio_bootstrap(config: &StudioBootstrapConfig) -> RfResult<StudioBo
         &config.entitlement_preflight,
         &mut session_resources,
     )?;
-    let outcome = dispatch_bootstrap_trigger(&facade, &config.trigger, &mut session_resources)?;
+    let dispatch = dispatch_bootstrap_trigger(&facade, &config.trigger, &mut session_resources)?;
     let schedule_now = normalized_system_time_now()?;
     let driver_state = snapshot_run_panel_driver_state(session_resources.app_state);
     let entitlement_driver_state = snapshot_entitlement_session_driver_state(
@@ -146,7 +159,7 @@ pub fn run_studio_bootstrap(config: &StudioBootstrapConfig) -> RfResult<StudioBo
             crate::EntitlementSessionEventOutcome::RecordedCommand { .. } => None,
         },
         entitlement_session_schedule: entitlement_driver_state.schedule,
-        outcome,
+        dispatch,
         control_state: driver_state.control_state,
         run_panel: driver_state.widget,
         entitlement_panel: entitlement_driver_state.panel.widget,
@@ -206,7 +219,7 @@ fn dispatch_bootstrap_trigger(
     facade: &StudioAppFacade,
     trigger: &StudioBootstrapTrigger,
     session: &mut BootstrapSessionResources<'_>,
-) -> RfResult<StudioAppCommandOutcome> {
+) -> RfResult<StudioBootstrapDispatch> {
     match trigger {
         StudioBootstrapTrigger::Intent(intent) => {
             let context =
@@ -276,92 +289,83 @@ fn dispatch_bootstrap_trigger(
             }
         }
         StudioBootstrapTrigger::EntitlementWidgetPrimaryAction => {
-            let mut context =
-                StudioAppMutableAuthCacheContext::new(session.cache_root, session.auth_cache_index);
-            let mut runtime = EntitlementSessionRuntime {
+            dispatch_bootstrap_entitlement_host_trigger(
                 facade,
-                app_state: session.app_state,
-                context: &mut context,
-                control_plane_client: session.control_plane_client,
-                access_token: "bootstrap-access-token",
-                now: normalized_system_time_now()?,
-                policy: session.policy,
-                session_state: session.session_state,
-            };
-            match dispatch_entitlement_session_panel_primary_action_with_control_plane(
-                &mut runtime,
-            )? {
-                EntitlementSessionPanelDriverOutcome {
-                    dispatch: crate::EntitlementPanelWidgetDispatchOutcome::Executed(outcome),
-                    ..
-                } => Ok(outcome),
-                EntitlementSessionPanelDriverOutcome {
-                    dispatch:
-                        crate::EntitlementPanelWidgetDispatchOutcome::IgnoredDisabled { action_id },
-                    ..
-                } => Err(RfError::invalid_input(format!(
-                    "bootstrap entitlement primary widget action `{:?}` is currently disabled",
-                    action_id
-                ))),
-                EntitlementSessionPanelDriverOutcome {
-                    dispatch:
-                        crate::EntitlementPanelWidgetDispatchOutcome::IgnoredMissing { action_id },
-                    ..
-                } => Err(RfError::invalid_input(format!(
-                    "bootstrap entitlement primary widget action `{:?}` is missing from current widget model",
-                    action_id
-                ))),
-            }
+                session,
+                EntitlementSessionHostTrigger::PanelPrimaryAction,
+            )
         }
         StudioBootstrapTrigger::EntitlementWidgetAction(action_id) => {
-            let mut context =
-                StudioAppMutableAuthCacheContext::new(session.cache_root, session.auth_cache_index);
-            let mut runtime = EntitlementSessionRuntime {
+            dispatch_bootstrap_entitlement_host_trigger(
                 facade,
-                app_state: session.app_state,
-                context: &mut context,
-                control_plane_client: session.control_plane_client,
-                access_token: "bootstrap-access-token",
-                now: normalized_system_time_now()?,
-                policy: session.policy,
-                session_state: session.session_state,
-            };
-            match dispatch_entitlement_session_panel_widget_action_with_control_plane(
-                *action_id,
-                &mut runtime,
-            )? {
-                EntitlementSessionPanelDriverOutcome {
-                    dispatch: crate::EntitlementPanelWidgetDispatchOutcome::Executed(outcome),
-                    ..
-                } => Ok(outcome),
-                EntitlementSessionPanelDriverOutcome {
-                    dispatch:
-                        crate::EntitlementPanelWidgetDispatchOutcome::IgnoredDisabled { action_id },
-                    ..
-                } => Err(RfError::invalid_input(format!(
-                    "bootstrap entitlement widget action `{:?}` is currently disabled",
-                    action_id
-                ))),
-                EntitlementSessionPanelDriverOutcome {
-                    dispatch:
-                        crate::EntitlementPanelWidgetDispatchOutcome::IgnoredMissing { action_id },
-                    ..
-                } => Err(RfError::invalid_input(format!(
-                    "bootstrap entitlement widget action `{:?}` is missing from current widget model",
-                    action_id
-                ))),
-            }
+                session,
+                EntitlementSessionHostTrigger::PanelAction(*action_id),
+            )
         }
+        StudioBootstrapTrigger::EntitlementSessionEvent(event) => {
+            let trigger = match event {
+                StudioBootstrapEntitlementSessionEvent::LoginCompleted => {
+                    EntitlementSessionHostTrigger::LoginCompleted
+                }
+                StudioBootstrapEntitlementSessionEvent::TimerElapsed => {
+                    EntitlementSessionHostTrigger::TimerElapsed
+                }
+            };
+            dispatch_bootstrap_entitlement_host_trigger(facade, session, trigger)
+        }
+    }
+}
+
+fn dispatch_bootstrap_entitlement_host_trigger(
+    facade: &StudioAppFacade,
+    session: &mut BootstrapSessionResources<'_>,
+    trigger: EntitlementSessionHostTrigger,
+) -> RfResult<StudioBootstrapDispatch> {
+    let mut context =
+        StudioAppMutableAuthCacheContext::new(session.cache_root, session.auth_cache_index);
+    let mut runtime = EntitlementSessionRuntime {
+        facade,
+        app_state: session.app_state,
+        context: &mut context,
+        control_plane_client: session.control_plane_client,
+        access_token: "bootstrap-access-token",
+        now: normalized_system_time_now()?,
+        policy: session.policy,
+        session_state: session.session_state,
+    };
+    let outcome = dispatch_entitlement_session_host_trigger_with_control_plane(trigger, &mut runtime)?;
+    match outcome.dispatch {
+        EntitlementSessionHostDispatch::Event(outcome) => {
+            Ok(StudioBootstrapDispatch::EntitlementSessionEvent(outcome))
+        }
+        EntitlementSessionHostDispatch::Panel(EntitlementSessionPanelDriverOutcome {
+            dispatch: crate::EntitlementPanelWidgetDispatchOutcome::Executed(outcome),
+            ..
+        }) => Ok(StudioBootstrapDispatch::AppCommand(outcome)),
+        EntitlementSessionHostDispatch::Panel(EntitlementSessionPanelDriverOutcome {
+            dispatch: crate::EntitlementPanelWidgetDispatchOutcome::IgnoredDisabled { action_id },
+            ..
+        }) => Err(RfError::invalid_input(format!(
+            "bootstrap entitlement widget action `{:?}` is currently disabled",
+            action_id
+        ))),
+        EntitlementSessionHostDispatch::Panel(EntitlementSessionPanelDriverOutcome {
+            dispatch: crate::EntitlementPanelWidgetDispatchOutcome::IgnoredMissing { action_id },
+            ..
+        }) => Err(RfError::invalid_input(format!(
+            "bootstrap entitlement widget action `{:?}` is missing from current widget model",
+            action_id
+        ))),
     }
 }
 
 fn command_outcome_from_workspace_control(
     outcome: crate::WorkspaceControlActionOutcome,
-) -> RfResult<StudioAppCommandOutcome> {
-    Ok(StudioAppCommandOutcome {
+) -> RfResult<StudioBootstrapDispatch> {
+    Ok(StudioBootstrapDispatch::AppCommand(StudioAppCommandOutcome {
         boundary: outcome.boundary,
         dispatch: outcome.dispatch,
-    })
+    }))
 }
 
 #[derive(Debug, Clone)]
@@ -740,13 +744,13 @@ mod tests {
     };
 
     use super::{
-        StudioBootstrapConfig, StudioBootstrapEntitlementSeed, StudioBootstrapTrigger,
-        run_studio_bootstrap,
+        StudioBootstrapConfig, StudioBootstrapDispatch, StudioBootstrapEntitlementSeed,
+        StudioBootstrapEntitlementSessionEvent, StudioBootstrapTrigger, run_studio_bootstrap,
     };
     use crate::{
-        EntitlementPreflightAction, StudioAppExecutionBoundary, StudioAppExecutionLane,
-        StudioAppResultDispatch, StudioEntitlementAction, StudioEntitlementOutcome,
-        StudioWorkspaceRunOutcome,
+        EntitlementPreflightAction, EntitlementSessionEvent, EntitlementSessionEventOutcome,
+        StudioAppExecutionBoundary, StudioAppExecutionLane, StudioAppResultDispatch,
+        StudioEntitlementAction, StudioEntitlementOutcome, StudioWorkspaceRunOutcome,
     };
 
     #[test]
@@ -755,10 +759,10 @@ mod tests {
             .expect("expected bootstrap run");
 
         assert_eq!(
-            report.outcome.boundary,
+            app_command(&report).boundary,
             StudioAppExecutionBoundary::Inline(StudioAppExecutionLane::WorkspaceSolve)
         );
-        let dispatch = match report.outcome.dispatch {
+        let dispatch = match &app_command(&report).dispatch {
             StudioAppResultDispatch::WorkspaceRun(dispatch) => dispatch,
             StudioAppResultDispatch::WorkspaceMode(_) => panic!("expected workspace run dispatch"),
             StudioAppResultDispatch::Entitlement(_) => panic!("expected workspace run dispatch"),
@@ -802,7 +806,7 @@ mod tests {
         })
         .expect("expected bootstrap resume");
 
-        let dispatch = match report.outcome.dispatch {
+        let dispatch = match &app_command(&report).dispatch {
             StudioAppResultDispatch::WorkspaceRun(dispatch) => dispatch,
             StudioAppResultDispatch::WorkspaceMode(_) => panic!("expected workspace run dispatch"),
             StudioAppResultDispatch::Entitlement(_) => panic!("expected workspace run dispatch"),
@@ -836,7 +840,7 @@ mod tests {
         })
         .expect("expected preferred package bootstrap run");
 
-        let dispatch = match report.outcome.dispatch {
+        let dispatch = match &app_command(&report).dispatch {
             StudioAppResultDispatch::WorkspaceRun(dispatch) => dispatch,
             StudioAppResultDispatch::WorkspaceMode(_) => panic!("expected workspace run dispatch"),
             StudioAppResultDispatch::Entitlement(_) => panic!("expected workspace run dispatch"),
@@ -863,7 +867,7 @@ mod tests {
         })
         .expect("expected mode intent bootstrap run");
 
-        match report.outcome.dispatch {
+        match &app_command(&report).dispatch {
             StudioAppResultDispatch::WorkspaceMode(dispatch) => {
                 assert_eq!(dispatch.simulation_mode, SimulationMode::Active);
                 assert_eq!(dispatch.run_status, RunStatus::Idle);
@@ -890,7 +894,7 @@ mod tests {
         })
         .expect("expected widget action bootstrap run");
 
-        let dispatch = match report.outcome.dispatch {
+        let dispatch = match &app_command(&report).dispatch {
             StudioAppResultDispatch::WorkspaceRun(dispatch) => dispatch,
             StudioAppResultDispatch::WorkspaceMode(_) => panic!("expected workspace run dispatch"),
             StudioAppResultDispatch::Entitlement(_) => panic!("expected workspace run dispatch"),
@@ -905,7 +909,7 @@ mod tests {
         let report = run_studio_bootstrap(&StudioBootstrapConfig::default())
             .expect("expected primary widget bootstrap run");
 
-        let dispatch = match report.outcome.dispatch {
+        let dispatch = match &app_command(&report).dispatch {
             StudioAppResultDispatch::WorkspaceRun(dispatch) => dispatch,
             StudioAppResultDispatch::WorkspaceMode(_) => panic!("expected workspace run dispatch"),
             StudioAppResultDispatch::Entitlement(_) => panic!("expected workspace run dispatch"),
@@ -925,10 +929,10 @@ mod tests {
         .expect("expected entitlement sync bootstrap run");
 
         assert_eq!(
-            report.outcome.boundary,
+            app_command(&report).boundary,
             StudioAppExecutionBoundary::Inline(StudioAppExecutionLane::EntitlementControl)
         );
-        match report.outcome.dispatch {
+        match &app_command(&report).dispatch {
             StudioAppResultDispatch::Entitlement(dispatch) => {
                 assert_eq!(dispatch.action, StudioEntitlementAction::SyncEntitlement);
                 assert_eq!(dispatch.outcome, StudioEntitlementOutcome::Synced);
@@ -963,10 +967,10 @@ mod tests {
         .expect("expected offline refresh bootstrap run");
 
         assert_eq!(
-            report.outcome.boundary,
+            app_command(&report).boundary,
             StudioAppExecutionBoundary::Inline(StudioAppExecutionLane::EntitlementControl)
         );
-        match report.outcome.dispatch {
+        match &app_command(&report).dispatch {
             StudioAppResultDispatch::Entitlement(dispatch) => {
                 assert_eq!(
                     dispatch.action,
@@ -1021,7 +1025,7 @@ mod tests {
             }
             other => panic!("expected entitlement preflight dispatch, got {other:?}"),
         }
-        match report.outcome.dispatch {
+        match &app_command(&report).dispatch {
             StudioAppResultDispatch::WorkspaceRun(dispatch) => {
                 assert_eq!(dispatch.run_status, RunStatus::Converged);
             }
@@ -1058,11 +1062,93 @@ mod tests {
             }
             other => panic!("expected entitlement preflight dispatch, got {other:?}"),
         }
-        match report.outcome.dispatch {
+        match &app_command(&report).dispatch {
             StudioAppResultDispatch::WorkspaceRun(dispatch) => {
                 assert_eq!(dispatch.run_status, RunStatus::Converged);
             }
             other => panic!("expected workspace run after preflight, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn bootstrap_can_dispatch_login_completed_session_event() {
+        let report = run_studio_bootstrap(&StudioBootstrapConfig {
+            entitlement_preflight: super::StudioBootstrapEntitlementPreflight::Skip,
+            entitlement_seed: StudioBootstrapEntitlementSeed::MissingSnapshot,
+            trigger: StudioBootstrapTrigger::EntitlementSessionEvent(
+                StudioBootstrapEntitlementSessionEvent::LoginCompleted,
+            ),
+            ..StudioBootstrapConfig::default()
+        })
+        .expect("expected login completed session event");
+
+        let outcome = session_event(&report);
+        assert_eq!(outcome.event, EntitlementSessionEvent::LoginCompleted);
+        match &outcome.outcome {
+            EntitlementSessionEventOutcome::Tick(tick) => {
+                let preflight = tick.preflight.as_ref().expect("expected sync preflight");
+                assert_eq!(
+                    preflight.decision.action,
+                    EntitlementPreflightAction::SyncEntitlement
+                );
+            }
+            other => panic!("expected tick outcome, got {other:?}"),
+        }
+        assert_eq!(report.entitlement_preflight, None);
+        assert_eq!(
+            report.entitlement_panel.view().primary_action.label,
+            "Refresh offline lease"
+        );
+    }
+
+    #[test]
+    fn bootstrap_can_dispatch_timer_elapsed_session_event() {
+        let report = run_studio_bootstrap(&StudioBootstrapConfig {
+            entitlement_preflight: super::StudioBootstrapEntitlementPreflight::Skip,
+            entitlement_seed: StudioBootstrapEntitlementSeed::LeaseExpiringSoon,
+            trigger: StudioBootstrapTrigger::EntitlementSessionEvent(
+                StudioBootstrapEntitlementSessionEvent::TimerElapsed,
+            ),
+            ..StudioBootstrapConfig::default()
+        })
+        .expect("expected timer elapsed session event");
+
+        let outcome = session_event(&report);
+        assert_eq!(outcome.event, EntitlementSessionEvent::TimerElapsed);
+        match &outcome.outcome {
+            EntitlementSessionEventOutcome::Tick(tick) => {
+                let preflight = tick
+                    .preflight
+                    .as_ref()
+                    .expect("expected offline refresh preflight");
+                assert_eq!(
+                    preflight.decision.action,
+                    EntitlementPreflightAction::RefreshOfflineLease
+                );
+            }
+            other => panic!("expected tick outcome, got {other:?}"),
+        }
+        assert_eq!(report.entitlement_preflight, None);
+        assert_eq!(report.control_state.run_status, RunStatus::Idle);
+    }
+
+    fn app_command(report: &super::StudioBootstrapReport) -> &crate::StudioAppCommandOutcome {
+        match &report.dispatch {
+            StudioBootstrapDispatch::AppCommand(outcome) => outcome,
+            StudioBootstrapDispatch::EntitlementSessionEvent(_) => {
+                panic!("expected app command dispatch")
+            }
+        }
+    }
+
+    fn session_event(
+        report: &super::StudioBootstrapReport,
+    ) -> &crate::EntitlementSessionEventDriverOutcome {
+        match &report.dispatch {
+            StudioBootstrapDispatch::EntitlementSessionEvent(outcome) => outcome,
+            StudioBootstrapDispatch::AppCommand(_) => {
+                panic!("expected entitlement session event dispatch")
+            }
         }
     }
 }
