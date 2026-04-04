@@ -626,6 +626,7 @@ RadishFlow Studio
 - `apps/radishflow-studio` 当前又已在 `StudioRuntime` 顶层补出 `StudioRuntimeOutput / StudioRuntimeEffect`，把 entitlement timer 这类宿主侧 effect 从 `StudioBootstrapReport` 内部字段再上提一层，帮助后续真实 GUI 宿主直接消费 runtime 输出，而不必反向依赖 bootstrap 报告细节
 - `apps/radishflow-studio` 当前又已给顶层 runtime 补出正式 `StudioRuntimeConfig / Trigger / Report / Dispatch` 命名，`main.rs` 已开始只消费这组顶层契约；`StudioBootstrap*` 继续保留为兼容最小 bootstrap 入口，而不是再作为真实宿主的首选接口
 - `apps/radishflow-studio` 当前又已在 `StudioRuntime` 顶层补出带稳定 `id`、`follow_up trigger` 与 `ack` 状态的宿主 effect 协议，当前至少覆盖 entitlement timer 这一类 effect，使真实 GUI 宿主可以显式区分“待应用 / 已应用 / 已过时”的宿主动作，并直接复用 runtime 提供的 `TimerElapsed` 回灌 trigger
+- `apps/radishflow-studio` 当前又已在其上补出 `StudioRuntimeTimerHostCommand` 薄层，把 entitlement timer 的 `Arm / Rearm / Keep / Clear`、effect id 与 follow-up trigger 收成专门 timer 宿主消费面，避免真实 GUI 继续从 generic host effect 列表手工二次映射
 
 ### `rf-store`
 

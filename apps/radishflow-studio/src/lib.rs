@@ -127,7 +127,7 @@ pub use studio_runtime::{
     StudioRuntimeEntitlementPreflight, StudioRuntimeEntitlementSeed,
     StudioRuntimeEntitlementSessionEvent, StudioRuntimeHostAckResult, StudioRuntimeHostAckStatus,
     StudioRuntimeHostEffect, StudioRuntimeHostEffectId, StudioRuntimeHostFollowUp,
-    StudioRuntimeOutput, StudioRuntimeReport, StudioRuntimeTrigger,
+    StudioRuntimeOutput, StudioRuntimeReport, StudioRuntimeTimerHostCommand, StudioRuntimeTrigger,
 };
 pub use workspace_control::{
     RunPanelWidgetDispatchOutcome, WorkspaceControlAction, WorkspaceControlActionOutcome,

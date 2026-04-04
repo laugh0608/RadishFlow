@@ -1,6 +1,6 @@
 use radishflow_studio::{
     EntitlementSessionEventOutcome, StudioAppResultDispatch, StudioRuntime, StudioRuntimeConfig,
-    StudioRuntimeDispatch, StudioRuntimeEffect, StudioRuntimeHostFollowUp, StudioRuntimeReport,
+    StudioRuntimeDispatch, StudioRuntimeReport, StudioRuntimeTimerHostCommand,
 };
 
 fn print_text_view(title: &str, lines: &[String]) {
@@ -32,6 +32,7 @@ fn main() {
 
     match runtime.dispatch_trigger_output(&config.trigger) {
         Ok(output) => {
+            let timer_command = output.entitlement_timer_host_command();
             let report = output.report;
             println!("RadishFlow Studio bootstrap");
             println!("Project: {}", config.project_path.display());
@@ -53,21 +54,41 @@ fn main() {
                 println!("Preflight reason: {}", preflight.decision.reason);
             }
 
-            if !output.host_effects.is_empty() {
-                println!("Runtime host effects:");
-                for effect in &output.host_effects {
-                    print!("  - #{} ", effect.id);
-                    match &effect.effect {
-                        StudioRuntimeEffect::EntitlementTimer(timer_effect) => {
-                            println!("Entitlement timer: {:?}", timer_effect);
-                        }
+            if let Some(command) = timer_command {
+                println!("Runtime timer command:");
+                match command {
+                    StudioRuntimeTimerHostCommand::KeepTimer {
+                        effect_id,
+                        timer,
+                        follow_up_trigger,
+                    } => {
+                        println!("  - #{} Keep {:?}", effect_id, timer);
+                        println!("    follow-up trigger: {:?}", follow_up_trigger);
                     }
-                    if let Some(follow_up) = &effect.follow_up {
-                        match follow_up {
-                            StudioRuntimeHostFollowUp::DispatchTrigger(trigger) => {
-                                println!("    follow-up trigger: {:?}", trigger);
-                            }
-                        }
+                    StudioRuntimeTimerHostCommand::ArmTimer {
+                        effect_id,
+                        timer,
+                        follow_up_trigger,
+                    } => {
+                        println!("  - #{} Arm {:?}", effect_id, timer);
+                        println!("    follow-up trigger: {:?}", follow_up_trigger);
+                    }
+                    StudioRuntimeTimerHostCommand::RearmTimer {
+                        effect_id,
+                        previous,
+                        next,
+                        follow_up_trigger,
+                    } => {
+                        println!("  - #{} Rearm {:?} -> {:?}", effect_id, previous, next);
+                        println!("    follow-up trigger: {:?}", follow_up_trigger);
+                    }
+                    StudioRuntimeTimerHostCommand::ClearTimer {
+                        effect_id,
+                        previous,
+                        follow_up_trigger,
+                    } => {
+                        println!("  - #{} Clear {:?}", effect_id, previous);
+                        println!("    follow-up trigger: {:?}", follow_up_trigger);
                     }
                 }
             }

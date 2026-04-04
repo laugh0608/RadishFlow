@@ -3,6 +3,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use crate::{
     EntitlementPreflightOutcome, EntitlementSessionHostRuntime, EntitlementSessionHostTimerEffect,
+    EntitlementSessionTimerArm,
 };
 
 pub type StudioRuntimeConfig = crate::bootstrap::StudioBootstrapConfig;
@@ -55,6 +56,70 @@ pub struct StudioRuntimeHostAckResult {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub enum StudioRuntimeTimerHostCommand {
+    KeepTimer {
+        effect_id: StudioRuntimeHostEffectId,
+        timer: EntitlementSessionTimerArm,
+        follow_up_trigger: Option<StudioRuntimeTrigger>,
+    },
+    ArmTimer {
+        effect_id: StudioRuntimeHostEffectId,
+        timer: EntitlementSessionTimerArm,
+        follow_up_trigger: Option<StudioRuntimeTrigger>,
+    },
+    RearmTimer {
+        effect_id: StudioRuntimeHostEffectId,
+        previous: EntitlementSessionTimerArm,
+        next: EntitlementSessionTimerArm,
+        follow_up_trigger: Option<StudioRuntimeTrigger>,
+    },
+    ClearTimer {
+        effect_id: StudioRuntimeHostEffectId,
+        previous: EntitlementSessionTimerArm,
+        follow_up_trigger: Option<StudioRuntimeTrigger>,
+    },
+}
+
+impl StudioRuntimeTimerHostCommand {
+    fn from_host_effect(effect: &StudioRuntimeHostEffect) -> Option<Self> {
+        let follow_up_trigger = match &effect.follow_up {
+            Some(StudioRuntimeHostFollowUp::DispatchTrigger(trigger)) => Some(trigger.clone()),
+            None => None,
+        };
+
+        match &effect.effect {
+            StudioRuntimeEffect::EntitlementTimer(timer_effect) => match timer_effect {
+                EntitlementSessionHostTimerEffect::KeepTimer { timer } => Some(Self::KeepTimer {
+                    effect_id: effect.id,
+                    timer: timer.clone(),
+                    follow_up_trigger,
+                }),
+                EntitlementSessionHostTimerEffect::ArmTimer { timer } => Some(Self::ArmTimer {
+                    effect_id: effect.id,
+                    timer: timer.clone(),
+                    follow_up_trigger,
+                }),
+                EntitlementSessionHostTimerEffect::RearmTimer { previous, next } => {
+                    Some(Self::RearmTimer {
+                        effect_id: effect.id,
+                        previous: previous.clone(),
+                        next: next.clone(),
+                        follow_up_trigger,
+                    })
+                }
+                EntitlementSessionHostTimerEffect::ClearTimer { previous } => {
+                    Some(Self::ClearTimer {
+                        effect_id: effect.id,
+                        previous: previous.clone(),
+                        follow_up_trigger,
+                    })
+                }
+            },
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StudioRuntimeOutput {
     pub trigger: StudioRuntimeTrigger,
     pub report: StudioRuntimeReport,
@@ -78,6 +143,11 @@ impl StudioRuntimeOutput {
         self.host_effects
             .iter()
             .find(|effect| effect.entitlement_timer_effect().is_some())
+    }
+
+    pub fn entitlement_timer_host_command(&self) -> Option<StudioRuntimeTimerHostCommand> {
+        self.entitlement_timer_effect()
+            .and_then(StudioRuntimeTimerHostCommand::from_host_effect)
     }
 }
 
@@ -164,6 +234,12 @@ impl StudioRuntime {
         self.last_applied_host_effect_id
     }
 
+    pub fn pending_entitlement_timer_host_command(&self) -> Option<StudioRuntimeTimerHostCommand> {
+        self.pending_host_effects()
+            .into_iter()
+            .find_map(|effect| StudioRuntimeTimerHostCommand::from_host_effect(&effect))
+    }
+
     fn build_host_effects(&mut self, report: &StudioRuntimeReport) -> Vec<StudioRuntimeHostEffect> {
         let mut host_effects = Vec::new();
 
@@ -209,7 +285,8 @@ mod tests {
         EntitlementSessionHostTimerEffect, StudioRuntime, StudioRuntimeConfig,
         StudioRuntimeDispatch, StudioRuntimeEffect, StudioRuntimeEntitlementPreflight,
         StudioRuntimeEntitlementSeed, StudioRuntimeEntitlementSessionEvent,
-        StudioRuntimeHostAckStatus, StudioRuntimeHostFollowUp, StudioRuntimeTrigger,
+        StudioRuntimeHostAckStatus, StudioRuntimeHostFollowUp, StudioRuntimeTimerHostCommand,
+        StudioRuntimeTrigger,
     };
 
     #[test]
@@ -362,6 +439,10 @@ mod tests {
                 .and_then(|effect| effect.entitlement_timer_effect()),
             Some(EntitlementSessionHostTimerEffect::KeepTimer { .. })
         ));
+        assert!(matches!(
+            network_restored.entitlement_timer_host_command(),
+            Some(StudioRuntimeTimerHostCommand::KeepTimer { .. })
+        ));
     }
 
     #[test]
@@ -384,6 +465,7 @@ mod tests {
         assert_eq!(ack.status, StudioRuntimeHostAckStatus::Applied);
         assert_eq!(runtime.last_applied_host_effect_id(), Some(effect_id));
         assert!(runtime.pending_host_effects().is_empty());
+        assert!(runtime.pending_entitlement_timer_host_command().is_none());
     }
 
     #[test]
@@ -422,6 +504,34 @@ mod tests {
             runtime.acknowledge_host_effect(9_999).status,
             StudioRuntimeHostAckStatus::Unknown
         );
+    }
+
+    #[test]
+    fn studio_runtime_exposes_pending_entitlement_timer_host_command() {
+        let config = StudioRuntimeConfig {
+            entitlement_preflight: StudioRuntimeEntitlementPreflight::Skip,
+            entitlement_seed: StudioRuntimeEntitlementSeed::LeaseExpiringSoon,
+            ..StudioRuntimeConfig::default()
+        };
+        let mut runtime = StudioRuntime::new(&config).expect("expected studio runtime");
+
+        let output = runtime
+            .dispatch_trigger_output(&StudioRuntimeTrigger::EntitlementSessionEvent(
+                StudioRuntimeEntitlementSessionEvent::TimerElapsed,
+            ))
+            .expect("expected timer elapsed output");
+        let output_command = output
+            .entitlement_timer_host_command()
+            .expect("expected timer host command from output");
+        let pending_command = runtime
+            .pending_entitlement_timer_host_command()
+            .expect("expected pending timer host command");
+
+        assert_eq!(pending_command, output_command);
+        assert!(matches!(
+            pending_command,
+            StudioRuntimeTimerHostCommand::RearmTimer { .. }
+        ));
     }
 
     fn session_event(
