@@ -12,7 +12,7 @@ fn print_run_panel(report: &radishflow_studio::StudioBootstrapReport) {
 }
 
 fn print_entitlement_panel(report: &radishflow_studio::StudioBootstrapReport) {
-    let text = report.entitlement_panel.text();
+    let text = report.entitlement_host.panel.widget.text();
     println!("{}:", text.title);
     for line in &text.lines {
         println!("  {line}");
@@ -38,38 +38,42 @@ fn main() {
                 println!("Preflight action: {:?}", preflight.decision.action);
                 println!("Preflight reason: {}", preflight.decision.reason);
             }
+            let entitlement_schedule = &report.entitlement_host.state.driver.schedule;
             println!(
                 "Entitlement next check: {:?}",
-                report.entitlement_session_schedule.next_check_at
+                entitlement_schedule.next_check_at
             );
             println!(
                 "Entitlement next sync window: {:?}",
-                report.entitlement_session_schedule.next_sync_at
+                entitlement_schedule.next_sync_at
             );
             println!(
                 "Entitlement next offline refresh window: {:?}",
-                report.entitlement_session_schedule.next_offline_refresh_at
+                entitlement_schedule.next_offline_refresh_at
             );
-            if let Some(action) = report.entitlement_session_schedule.recommended_action {
+            if let Some(action) = entitlement_schedule.recommended_action {
                 println!("Entitlement recommended action: {:?}", action);
             }
-            if let Some(reason) = report.entitlement_session_schedule.recommended_reason {
+            if let Some(reason) = entitlement_schedule.recommended_reason {
                 println!("Entitlement schedule reason: {reason}");
             }
-            if report.entitlement_session_schedule.blocked_by_backoff {
+            if entitlement_schedule.blocked_by_backoff {
                 println!("Entitlement scheduler is currently backing off");
             }
-            if let Some(timer) = report.entitlement_timer_arm.as_ref() {
+            if let Some(timer) = report.entitlement_host.state.next_timer.as_ref() {
                 println!("Entitlement timer event: {:?}", timer.event);
                 println!("Entitlement timer due at: {:?}", timer.due_at);
                 println!("Entitlement timer delay: {:?}", timer.delay);
                 println!("Entitlement timer reason: {:?}", timer.reason);
             }
-            if let Some(command) = report.entitlement_timer_command.as_ref() {
+            if let Some(command) = report.entitlement_host.timer_command.as_ref() {
                 println!("Entitlement timer command: {:?}", command);
             }
-            if let Some(notice) = report.entitlement_host_notice.as_ref() {
-                println!("Entitlement host notice: {:?}: {}", notice.level, notice.message);
+            if let Some(notice) = report.entitlement_host.state.host_notice.as_ref() {
+                println!(
+                    "Entitlement host notice: {:?}: {}",
+                    notice.level, notice.message
+                );
             }
 
             match report.dispatch {
