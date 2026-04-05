@@ -97,6 +97,10 @@ impl SolveSnapshot {
             summary: DiagnosticSummary {
                 document_revision,
                 highest_severity: map_solver_severity(snapshot.summary.highest_severity),
+                primary_code: snapshot
+                    .diagnostics
+                    .first()
+                    .map(|diagnostic| diagnostic.code.clone()),
                 primary_message: snapshot.summary.primary_message.clone(),
                 diagnostic_count: snapshot.summary.diagnostic_count,
                 related_unit_ids: snapshot.summary.related_unit_ids.clone(),

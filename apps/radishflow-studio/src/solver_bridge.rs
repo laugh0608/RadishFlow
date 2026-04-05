@@ -140,13 +140,8 @@ pub fn solve_workspace_from_auth_cache(
 }
 
 fn record_solve_failure(app_state: &mut AppState, revision: u64, message: String) {
-    let summary = DiagnosticSummary {
-        document_revision: revision,
-        highest_severity: DiagnosticSeverity::Error,
-        primary_message: message.clone(),
-        diagnostic_count: 1,
-        related_unit_ids: Vec::new(),
-    };
+    let summary = DiagnosticSummary::new(revision, DiagnosticSeverity::Error, message.clone())
+        .with_primary_code_from_message();
     app_state.record_failure(revision, RunStatus::Error, summary);
     app_state.push_log(AppLogLevel::Error, message);
 }
@@ -299,7 +294,54 @@ mod tests {
 
         assert!(error.message().contains("missing property package"));
         assert_eq!(app_state.workspace.solve_session.status, RunStatus::Error);
+        assert_eq!(
+            app_state
+                .workspace
+                .solve_session
+                .latest_diagnostic
+                .as_ref()
+                .and_then(|summary| summary.primary_code.as_deref()),
+            None
+        );
         assert_eq!(app_state.log_feed.entries.len(), 1);
+    }
+
+    #[test]
+    fn solve_workspace_records_solver_failure_primary_code_in_summary() {
+        let provider = sample_provider();
+        let project = parse_project_file_json(include_str!(
+            "../../../examples/flowsheets/feed-valve-flash.rfproj.json"
+        ))
+        .expect("expected project parse");
+        let mut flowsheet = project.document.flowsheet;
+        flowsheet
+            .streams
+            .get_mut(&"stream-throttled".into())
+            .expect("expected throttled stream")
+            .pressure_pa = 130_000.0;
+        let mut app_state = AppState::new(FlowsheetDocument::new(
+            flowsheet,
+            DocumentMetadata::new("doc-6", "Valve Failure Demo", timestamp(80)),
+        ));
+
+        let error = solve_workspace_with_property_package(
+            &mut app_state,
+            &provider,
+            &StudioSolveRequest::new("binary-hydrocarbon-lite-v1", "snapshot-failure-1", 1),
+        )
+        .expect_err("expected solve failure");
+
+        assert!(error.message().contains("solver.step.execution:"));
+        assert_eq!(app_state.workspace.solve_session.status, RunStatus::Error);
+        assert_eq!(
+            app_state
+                .workspace
+                .solve_session
+                .latest_diagnostic
+                .as_ref()
+                .and_then(|summary| summary.primary_code.as_deref()),
+            Some("solver.step.execution")
+        );
     }
 
     #[test]

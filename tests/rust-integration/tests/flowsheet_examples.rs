@@ -168,6 +168,106 @@ fn feed_valve_flash_project_solves_end_to_end() {
 }
 
 #[test]
+fn valve_execution_failure_reports_step_execution_code_end_to_end() {
+    let error = solve_example_result(
+        r#"
+{
+  "kind": "radishflow.project-file",
+  "schemaVersion": 1,
+  "document": {
+    "revision": 0,
+    "flowsheet": {
+      "name": "valve-execution-failure",
+      "components": {
+        "component-a": { "id": "component-a", "name": "Component A", "formula": null },
+        "component-b": { "id": "component-b", "name": "Component B", "formula": null }
+      },
+      "streams": {
+        "stream-feed": {
+          "id": "stream-feed",
+          "name": "Feed",
+          "temperature_k": 320.0,
+          "pressure_pa": 100000.0,
+          "total_molar_flow_mol_s": 5.0,
+          "overall_mole_fractions": {
+            "component-a": 0.35,
+            "component-b": 0.65
+          },
+          "phases": []
+        },
+        "stream-throttled": {
+          "id": "stream-throttled",
+          "name": "Throttled Outlet",
+          "temperature_k": 315.0,
+          "pressure_pa": 130000.0,
+          "total_molar_flow_mol_s": 0.0,
+          "overall_mole_fractions": {
+            "component-a": 0.35,
+            "component-b": 0.65
+          },
+          "phases": []
+        }
+      },
+      "units": {
+        "feed-1": {
+          "id": "feed-1",
+          "name": "Feed",
+          "kind": "feed",
+          "ports": [
+            {
+              "name": "outlet",
+              "direction": "outlet",
+              "kind": "material",
+              "stream_id": "stream-feed"
+            }
+          ]
+        },
+        "valve-1": {
+          "id": "valve-1",
+          "name": "Valve",
+          "kind": "valve",
+          "ports": [
+            {
+              "name": "inlet",
+              "direction": "inlet",
+              "kind": "material",
+              "stream_id": "stream-feed"
+            },
+            {
+              "name": "outlet",
+              "direction": "outlet",
+              "kind": "material",
+              "stream_id": "stream-throttled"
+            }
+          ]
+        }
+      }
+    },
+    "metadata": {
+      "documentId": "example-valve-execution-failure",
+      "title": "Valve Execution Failure Example",
+      "schemaVersion": 1,
+      "createdAt": "2026-04-05T00:00:00Z",
+      "updatedAt": "2026-04-05T00:00:00Z"
+    }
+  }
+}
+"#,
+    )
+    .expect_err("expected valve execution failure");
+
+    assert_eq!(error.code().as_str(), "invalid_input");
+    assert!(error.message().contains("solver.step.execution:"));
+    assert!(
+        error
+            .message()
+            .contains("solver step 2 unit execution failed")
+    );
+    assert!(error.message().contains("unit `valve-1` (`valve`)"));
+    assert!(error.message().contains("after consuming [stream-feed]"));
+}
+
+#[test]
 fn unsupported_unit_kind_reports_connection_validation_context_end_to_end() {
     let error = solve_example_result(
         r#"
@@ -229,7 +329,7 @@ fn unsupported_unit_kind_reports_connection_validation_context_end_to_end() {
     assert!(
         error
             .message()
-            .contains("solver connection validation failed")
+            .contains("solver.connection_validation: solver connection validation failed")
     );
     assert!(error.message().contains("unsupported kind `pump`"));
 }
@@ -320,7 +420,7 @@ fn self_loop_cycle_reports_topological_ordering_context_end_to_end() {
     assert!(
         error
             .message()
-            .contains("solver topological ordering failed")
+            .contains("solver.topological_ordering: solver topological ordering failed")
     );
     assert!(error.message().contains("contains a cycle"));
     assert!(error.message().contains("[flash-1]"));
@@ -422,7 +522,11 @@ fn multi_unit_cycle_reports_involved_units_end_to_end() {
     .expect_err("expected multi-unit cycle failure");
 
     assert_eq!(error.code().as_str(), "invalid_input");
-    assert!(error.message().contains("solver topological ordering failed"));
+    assert!(
+        error
+            .message()
+            .contains("solver.topological_ordering: solver topological ordering failed")
+    );
     assert!(error.message().contains("contains a cycle"));
     assert!(error.message().contains("[heater-1, valve-1]"));
 }
@@ -525,7 +629,7 @@ fn missing_upstream_source_reports_connection_validation_context_end_to_end() {
     assert!(
         error
             .message()
-            .contains("solver connection validation failed")
+            .contains("solver.connection_validation: solver connection validation failed")
     );
     assert!(
         error
@@ -615,7 +719,7 @@ fn missing_stream_reference_reports_connection_validation_context_end_to_end() {
     assert!(
         error
             .message()
-            .contains("solver connection validation failed")
+            .contains("solver.connection_validation: solver connection validation failed")
     );
     assert!(
         error
@@ -686,7 +790,7 @@ fn invalid_port_signature_reports_connection_validation_context_end_to_end() {
     assert!(
         error
             .message()
-            .contains("solver connection validation failed")
+            .contains("solver.connection_validation: solver connection validation failed")
     );
     assert!(
         error

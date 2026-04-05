@@ -24,6 +24,52 @@ pub enum SolveDiagnosticSeverity {
     Error,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum SolverDiagnosticCode {
+    ExecutionOrder,
+    UnitExecuted,
+    ConnectionValidation,
+    TopologicalOrdering,
+    StepLookup,
+    StepSpec,
+    StepInstantiation,
+    StepInlet,
+    StepMaterialization,
+    StepExecution,
+}
+
+impl SolverDiagnosticCode {
+    const fn as_str(self) -> &'static str {
+        match self {
+            Self::ExecutionOrder => "solver.execution_order",
+            Self::UnitExecuted => "solver.unit_executed",
+            Self::ConnectionValidation => "solver.connection_validation",
+            Self::TopologicalOrdering => "solver.topological_ordering",
+            Self::StepLookup => "solver.step.lookup",
+            Self::StepSpec => "solver.step.spec",
+            Self::StepInstantiation => "solver.step.instantiation",
+            Self::StepInlet => "solver.step.inlet",
+            Self::StepMaterialization => "solver.step.materialization",
+            Self::StepExecution => "solver.step.execution",
+        }
+    }
+
+    const fn stage_label(self) -> &'static str {
+        match self {
+            Self::ExecutionOrder => "execution order",
+            Self::UnitExecuted => "unit executed",
+            Self::ConnectionValidation => "connection validation",
+            Self::TopologicalOrdering => "topological ordering",
+            Self::StepLookup => "unit lookup",
+            Self::StepSpec => "unit spec validation",
+            Self::StepInstantiation => "operation instantiation",
+            Self::StepInlet => "inlet resolution",
+            Self::StepMaterialization => "output materialization",
+            Self::StepExecution => "unit execution",
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SolveDiagnosticSummary {
     pub highest_severity: SolveDiagnosticSeverity,
@@ -98,7 +144,7 @@ impl FlowsheetSolver for SequentialModularSolver {
         let mut steps = Vec::with_capacity(execution_order.len());
         let mut diagnostics = vec![SolveDiagnostic {
             severity: SolveDiagnosticSeverity::Info,
-            code: "solver.execution_order".to_string(),
+            code: SolverDiagnosticCode::ExecutionOrder.as_str().to_string(),
             message: format!(
                 "resolved acyclic execution order for {} unit(s): [{}]",
                 execution_order.len(),
@@ -117,35 +163,18 @@ impl FlowsheetSolver for SequentialModularSolver {
         };
 
         for (step_index, unit_id) in execution_order.iter().enumerate() {
-            let unit = flowsheet.unit(unit_id).map_err(|error| {
-                solver_stage_error(
-                    format!(
-                        "step {} unit lookup for `{}`",
-                        step_index + 1,
-                        unit_id.as_str()
-                    ),
-                    error,
-                )
-            })?;
+            let step_number = step_index + 1;
+            let unit = flowsheet
+                .unit(unit_id)
+                .map_err(|error| solver_step_lookup_error(step_number, unit_id, error))?;
             let spec = validate_unit_node(unit).map_err(|error| {
-                solver_stage_error(
-                    format!(
-                        "step {} unit spec validation for `{}` (`{}`)",
-                        step_index + 1,
-                        unit.id,
-                        unit.kind
-                    ),
-                    error,
-                )
+                solver_step_error(step_number, unit, SolverDiagnosticCode::StepSpec, error)
             })?;
             let operation = instantiate_operation(unit, flowsheet).map_err(|error| {
-                solver_stage_error(
-                    format!(
-                        "step {} operation instantiation for `{}` (`{}`)",
-                        step_index + 1,
-                        unit.id,
-                        unit.kind
-                    ),
+                solver_step_error(
+                    step_number,
+                    unit,
+                    SolverDiagnosticCode::StepInstantiation,
                     error,
                 )
             })?;
@@ -159,16 +188,7 @@ impl FlowsheetSolver for SequentialModularSolver {
             {
                 let stream = resolved_stream_for_port(unit, port.name, &solved_streams).map_err(
                     |error| {
-                        solver_stage_error(
-                            format!(
-                                "step {} inlet resolution for `{}` (`{}`) port `{}`",
-                                step_index + 1,
-                                unit.id,
-                                unit.kind,
-                                port.name
-                            ),
-                            error,
-                        )
+                        solver_step_error(step_number, unit, SolverDiagnosticCode::StepInlet, error)
                     },
                 )?;
                 consumed_stream_ids.push(stream.id.clone());
@@ -176,17 +196,7 @@ impl FlowsheetSolver for SequentialModularSolver {
             }
 
             let outputs = operation.run(&unit_services, &inputs).map_err(|error| {
-                RfError::new(
-                    error.code(),
-                    format!(
-                        "step {} unit `{}` (`{}`) execution failed after consuming [{}]: {}",
-                        step_index + 1,
-                        unit.id,
-                        unit.kind,
-                        format_stream_ids(&consumed_stream_ids),
-                        error.message()
-                    ),
-                )
+                solver_step_execution_error(step_number, unit, &consumed_stream_ids, error)
             })?;
             let mut produced_stream_ids = Vec::new();
 
@@ -195,20 +205,7 @@ impl FlowsheetSolver for SequentialModularSolver {
                 .iter()
                 .filter(|port| port.direction == PortDirection::Outlet)
             {
-                let stream = outputs.stream(port.name).ok_or_else(|| {
-                    solver_stage_invalid_input(
-                        format!(
-                            "step {} output materialization for `{}` (`{}`)",
-                            step_index + 1,
-                            unit.id,
-                            unit.kind
-                        ),
-                        format!(
-                            "unit `{}` did not produce expected outlet port `{}`",
-                            unit.id, port.name
-                        ),
-                    )
-                })?;
+                let stream = materialized_output_stream(step_number, unit, port.name, &outputs)?;
                 produced_stream_ids.push(stream.id.clone());
                 solved_streams.insert(stream.id.clone(), stream.clone());
             }
@@ -224,7 +221,7 @@ impl FlowsheetSolver for SequentialModularSolver {
             );
             diagnostics.push(SolveDiagnostic {
                 severity: SolveDiagnosticSeverity::Info,
-                code: "solver.unit_executed".to_string(),
+                code: SolverDiagnosticCode::UnitExecuted.as_str().to_string(),
                 message: format!("step {}: {}", step_index + 1, summary),
                 related_unit_ids: vec![unit.id.clone()],
                 related_stream_ids: consumed_stream_ids
@@ -272,7 +269,7 @@ impl FlowsheetSolver for SequentialModularSolver {
 
 fn topological_unit_order(flowsheet: &Flowsheet) -> RfResult<Vec<UnitId>> {
     let connections = validate_connections(flowsheet)
-        .map_err(|error| solver_stage_error("connection validation", error))?;
+        .map_err(|error| solver_stage_error(SolverDiagnosticCode::ConnectionValidation, error))?;
     let mut incoming_counts = flowsheet
         .units
         .keys()
@@ -307,7 +304,7 @@ fn topological_unit_order(flowsheet: &Flowsheet) -> RfResult<Vec<UnitId>> {
             for child_id in children {
                 let count = incoming_counts.get_mut(child_id).ok_or_else(|| {
                     solver_stage_invalid_input(
-                        "topological ordering",
+                        SolverDiagnosticCode::TopologicalOrdering,
                         format!(
                             "internal solver graph missing incoming count for unit `{child_id}`"
                         ),
@@ -329,7 +326,7 @@ fn topological_unit_order(flowsheet: &Flowsheet) -> RfResult<Vec<UnitId>> {
             .collect::<Vec<_>>()
             .join(", ");
         return Err(solver_stage_invalid_input(
-            "topological ordering",
+            SolverDiagnosticCode::TopologicalOrdering,
             format!(
                 "flowsheet contains a cycle or unresolved dependency involving [{}]; only acyclic sequential flowsheets are supported in the current solver",
                 unresolved_units
@@ -340,19 +337,109 @@ fn topological_unit_order(flowsheet: &Flowsheet) -> RfResult<Vec<UnitId>> {
     Ok(ordered)
 }
 
-fn solver_stage_error(stage: impl AsRef<str>, error: RfError) -> RfError {
+fn solver_stage_error(code: SolverDiagnosticCode, error: RfError) -> RfError {
     RfError::new(
         error.code(),
-        format!("solver {} failed: {}", stage.as_ref(), error.message()),
+        format!(
+            "{}: solver {} failed: {}",
+            code.as_str(),
+            code.stage_label(),
+            error.message()
+        ),
     )
 }
 
-fn solver_stage_invalid_input(stage: impl AsRef<str>, message: impl AsRef<str>) -> RfError {
+fn solver_stage_invalid_input(code: SolverDiagnosticCode, message: impl AsRef<str>) -> RfError {
     RfError::invalid_input(format!(
-        "solver {} failed: {}",
-        stage.as_ref(),
+        "{}: solver {} failed: {}",
+        code.as_str(),
+        code.stage_label(),
         message.as_ref()
     ))
+}
+
+fn solver_step_lookup_error(step_number: usize, unit_id: &UnitId, error: RfError) -> RfError {
+    RfError::new(
+        error.code(),
+        format!(
+            "{}: solver step {} {} failed for `{}`: {}",
+            SolverDiagnosticCode::StepLookup.as_str(),
+            step_number,
+            SolverDiagnosticCode::StepLookup.stage_label(),
+            unit_id.as_str(),
+            error.message()
+        ),
+    )
+}
+
+fn solver_step_error(
+    step_number: usize,
+    unit: &UnitNode,
+    code: SolverDiagnosticCode,
+    error: RfError,
+) -> RfError {
+    RfError::new(
+        error.code(),
+        format!(
+            "{}: solver step {} {} failed for {}: {}",
+            code.as_str(),
+            step_number,
+            code.stage_label(),
+            unit_context(unit),
+            error.message()
+        ),
+    )
+}
+
+fn solver_step_invalid_input(
+    step_number: usize,
+    unit: &UnitNode,
+    code: SolverDiagnosticCode,
+    message: impl AsRef<str>,
+) -> RfError {
+    RfError::invalid_input(format!(
+        "{}: solver step {} {} failed for {}: {}",
+        code.as_str(),
+        step_number,
+        code.stage_label(),
+        unit_context(unit),
+        message.as_ref()
+    ))
+}
+
+fn solver_step_execution_error(
+    step_number: usize,
+    unit: &UnitNode,
+    consumed_stream_ids: &[StreamId],
+    error: RfError,
+) -> RfError {
+    RfError::new(
+        error.code(),
+        format!(
+            "{}: solver step {} {} failed for {} after consuming [{}]: {}",
+            SolverDiagnosticCode::StepExecution.as_str(),
+            step_number,
+            SolverDiagnosticCode::StepExecution.stage_label(),
+            unit_context(unit),
+            format_stream_ids(consumed_stream_ids),
+            error.message()
+        ),
+    )
+}
+
+fn solver_context_error(context: impl AsRef<str>, error: RfError) -> RfError {
+    RfError::new(
+        error.code(),
+        format!("{}: {}", context.as_ref(), error.message()),
+    )
+}
+
+fn unit_context(unit: &UnitNode) -> String {
+    format!("unit `{}` (`{}`)", unit.id, unit.kind)
+}
+
+fn unit_port_context(unit: &UnitNode, port_name: &str) -> String {
+    format!("{} port `{}`", unit_context(unit), port_name)
 }
 
 fn instantiate_operation(
@@ -392,8 +479,9 @@ fn instantiate_operation(
             Ok(Box::new(FlashDrum::new(liquid, vapor)))
         }
         _ => Err(RfError::invalid_input(format!(
-            "unit `{}` uses unsupported solver kind `{}`",
-            unit.id, unit.kind
+            "{} uses unsupported solver kind `{}`",
+            unit_context(unit),
+            unit.kind
         ))),
     }
 }
@@ -404,7 +492,16 @@ fn stream_for_port<'a>(
     flowsheet: &'a Flowsheet,
 ) -> RfResult<&'a MaterialStreamState> {
     let stream_id = port_stream_id(unit, port_name)?;
-    flowsheet.stream(stream_id)
+    flowsheet.stream(stream_id).map_err(|error| {
+        solver_context_error(
+            format!(
+                "{} references missing stream `{}`",
+                unit_port_context(unit, port_name),
+                stream_id
+            ),
+            error,
+        )
+    })
 }
 
 fn stream_target_for_port(
@@ -424,9 +521,26 @@ fn resolved_stream_for_port<'a>(
     let stream_id = port_stream_id(unit, port_name)?;
     solved_streams.get(stream_id).ok_or_else(|| {
         RfError::invalid_input(format!(
-            "unit `{}` requires inlet stream `{}` on port `{}` before it has been solved",
-            unit.id, stream_id, port_name
+            "{} requires inlet stream `{}` to be solved before this step",
+            unit_port_context(unit, port_name),
+            stream_id
         ))
+    })
+}
+
+fn materialized_output_stream<'a>(
+    step_number: usize,
+    unit: &UnitNode,
+    port_name: &str,
+    outputs: &'a rf_unitops::UnitOperationOutputs,
+) -> RfResult<&'a MaterialStreamState> {
+    outputs.stream(port_name).ok_or_else(|| {
+        solver_step_invalid_input(
+            step_number,
+            unit,
+            SolverDiagnosticCode::StepMaterialization,
+            format!("missing produced outlet port `{port_name}`"),
+        )
     })
 }
 
@@ -434,8 +548,8 @@ fn port_stream_id<'a>(unit: &'a UnitNode, port_name: &str) -> RfResult<&'a Strea
     let port = find_port(unit, port_name)?;
     port.stream_id.as_ref().ok_or_else(|| {
         RfError::invalid_input(format!(
-            "unit `{}` port `{}` is missing a connected stream id",
-            unit.id, port.name
+            "{} is missing a connected stream id",
+            unit_port_context(unit, &port.name)
         ))
     })
 }
@@ -446,8 +560,8 @@ fn find_port<'a>(unit: &'a UnitNode, port_name: &str) -> RfResult<&'a UnitPort> 
         .find(|port| port.name == port_name)
         .ok_or_else(|| {
             RfError::invalid_input(format!(
-                "unit `{}` does not define port `{port_name}`",
-                unit.id
+                "{} does not define expected port `{port_name}`",
+                unit_context(unit)
             ))
         })
 }
@@ -466,21 +580,25 @@ fn format_stream_ids(stream_ids: &[StreamId]) -> String {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::BTreeMap;
+
     use rf_flash::PlaceholderTpFlashSolver;
     use rf_model::{Component, Composition, Flowsheet, MaterialStreamState, UnitNode, UnitPort};
     use rf_store::parse_project_file_json;
     use rf_thermo::{
         AntoineCoefficients, PlaceholderThermoProvider, ThermoComponent, ThermoSystem,
     };
-    use rf_types::{ComponentId, PhaseLabel, PortDirection, PortKind};
+    use rf_types::{ComponentId, PhaseLabel, PortDirection, PortKind, RfError, StreamId, UnitId};
     use rf_unitops::{
-        build_cooler_node, build_feed_node, build_flash_drum_node, build_heater_node,
-        build_mixer_node, build_valve_node,
+        UnitOperationOutputs, build_cooler_node, build_feed_node, build_flash_drum_node,
+        build_heater_node, build_mixer_node, build_valve_node,
     };
 
     use super::{
         FlowsheetSolver, SequentialModularSolver, SolveDiagnosticSeverity, SolveStatus,
-        SolverServices,
+        SolverDiagnosticCode, SolverServices, find_port, instantiate_operation,
+        materialized_output_stream, port_stream_id, resolved_stream_for_port, solver_step_error,
+        solver_step_execution_error, solver_step_lookup_error, stream_for_port,
     };
 
     fn assert_close(actual: f64, expected: f64, tolerance: f64) {
@@ -1328,7 +1446,12 @@ mod tests {
             .solve(&services, &flowsheet)
             .expect_err("expected valve execution failure");
 
-        assert!(error.message().contains("step 2 unit `valve-1` (`valve`)"));
+        assert!(error.message().contains("solver.step.execution:"));
+        assert!(
+            error
+                .message()
+                .contains("step 2 unit execution failed for unit `valve-1` (`valve`)")
+        );
         assert!(error.message().contains("after consuming [stream-feed]"));
     }
 
@@ -1544,5 +1667,166 @@ mod tests {
         );
         assert!(error.message().contains("contains a cycle"));
         assert!(error.message().contains("[flash-1]"));
+    }
+
+    #[test]
+    fn instantiate_operation_reports_unit_context_for_unsupported_kind() {
+        let flowsheet = Flowsheet::new("unsupported-kind-helper");
+        let unit = UnitNode::new("mystery-1", "Mystery Unit", "pump", Vec::new());
+
+        let error = match instantiate_operation(&unit, &flowsheet) {
+            Ok(_) => panic!("expected unsupported kind"),
+            Err(error) => error,
+        };
+
+        assert_eq!(error.code().as_str(), "invalid_input");
+        assert!(
+            error
+                .message()
+                .contains("unit `mystery-1` (`pump`) uses unsupported solver kind `pump`")
+        );
+    }
+
+    #[test]
+    fn find_port_reports_unit_context_for_missing_port() {
+        let unit = build_feed_node("feed-1", "Feed", "stream-feed");
+
+        let error = find_port(&unit, "missing-port").expect_err("expected missing port");
+
+        assert_eq!(error.code().as_str(), "invalid_input");
+        assert!(
+            error
+                .message()
+                .contains("unit `feed-1` (`feed`) does not define expected port `missing-port`")
+        );
+    }
+
+    #[test]
+    fn port_stream_id_reports_unit_port_context_for_missing_stream_id() {
+        let unit = UnitNode::new(
+            "heater-1",
+            "Heater",
+            "heater",
+            vec![UnitPort::new(
+                "outlet",
+                PortDirection::Outlet,
+                PortKind::Material,
+                None,
+            )],
+        );
+
+        let error =
+            port_stream_id(&unit, "outlet").expect_err("expected missing connected stream id");
+
+        assert_eq!(error.code().as_str(), "invalid_input");
+        assert!(
+            error.message().contains(
+                "unit `heater-1` (`heater`) port `outlet` is missing a connected stream id"
+            )
+        );
+    }
+
+    #[test]
+    fn stream_for_port_reports_unit_port_context_for_missing_stream_reference() {
+        let mut flowsheet = Flowsheet::new("missing-stream-helper");
+        let unit = build_feed_node("feed-1", "Feed", "stream-missing");
+
+        flowsheet
+            .insert_unit(unit.clone())
+            .expect("expected unit insert");
+
+        let error =
+            stream_for_port(&unit, "outlet", &flowsheet).expect_err("expected missing stream");
+
+        assert_eq!(error.code().as_str(), "missing_entity");
+        assert!(error.message().contains(
+            "unit `feed-1` (`feed`) port `outlet` references missing stream `stream-missing`"
+        ));
+    }
+
+    #[test]
+    fn resolved_stream_for_port_reports_unit_port_context_for_unsolved_inlet() {
+        let unit = build_heater_node("heater-1", "Heater", "stream-feed", "stream-heated");
+        let solved_streams = BTreeMap::new();
+
+        let error = resolved_stream_for_port(&unit, "inlet", &solved_streams)
+            .expect_err("expected unsolved inlet stream");
+
+        assert_eq!(error.code().as_str(), "invalid_input");
+        assert!(
+            error
+                .message()
+                .contains("unit `heater-1` (`heater`) port `inlet` requires inlet stream `stream-feed` to be solved before this step")
+        );
+    }
+
+    #[test]
+    fn solver_step_lookup_error_uses_stable_template() {
+        let error = solver_step_lookup_error(
+            3,
+            &UnitId::new("flash-1"),
+            RfError::missing_entity("unit", "flash-1"),
+        );
+
+        assert_eq!(error.code().as_str(), "missing_entity");
+        assert_eq!(
+            error.message(),
+            "solver.step.lookup: solver step 3 unit lookup failed for `flash-1`: missing unit `flash-1`"
+        );
+    }
+
+    #[test]
+    fn solver_step_error_uses_stable_template() {
+        let unit = build_heater_node("heater-1", "Heater", "stream-feed", "stream-heated");
+        let error = solver_step_error(
+            2,
+            &unit,
+            SolverDiagnosticCode::StepSpec,
+            RfError::invalid_input("port mismatch"),
+        );
+
+        assert_eq!(error.code().as_str(), "invalid_input");
+        assert_eq!(
+            error.message(),
+            "solver.step.spec: solver step 2 unit spec validation failed for unit `heater-1` (`heater`): port mismatch"
+        );
+    }
+
+    #[test]
+    fn solver_step_execution_error_uses_stable_code_and_template() {
+        let unit = build_valve_node("valve-1", "Valve", "stream-feed", "stream-throttled");
+        let error = solver_step_execution_error(
+            2,
+            &unit,
+            &[StreamId::new("stream-feed")],
+            RfError::invalid_input("valve outlet pressure cannot exceed inlet pressure"),
+        );
+
+        assert_eq!(error.code().as_str(), "invalid_input");
+        assert_eq!(
+            error.message(),
+            "solver.step.execution: solver step 2 unit execution failed for unit `valve-1` (`valve`) after consuming [stream-feed]: valve outlet pressure cannot exceed inlet pressure"
+        );
+    }
+
+    #[test]
+    fn materialized_output_stream_reports_step_context_for_missing_port() {
+        let unit = build_flash_drum_node(
+            "flash-1",
+            "Flash Drum",
+            "stream-feed",
+            "stream-liquid",
+            "stream-vapor",
+        );
+        let outputs = UnitOperationOutputs::new();
+
+        let error = materialized_output_stream(4, &unit, "liquid", &outputs)
+            .expect_err("expected missing produced outlet port");
+
+        assert_eq!(error.code().as_str(), "invalid_input");
+        assert_eq!(
+            error.message(),
+            "solver.step.materialization: solver step 4 output materialization failed for unit `flash-1` (`flash_drum`): missing produced outlet port `liquid`"
+        );
     }
 }

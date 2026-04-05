@@ -905,6 +905,10 @@ mod tests {
             .back()
             .expect("expected stored snapshot");
         assert_eq!(stored.status, RunStatus::Converged);
+        assert_eq!(
+            stored.summary.primary_code.as_deref(),
+            Some("solver.execution_order")
+        );
         assert_eq!(stored.summary.diagnostic_count, 4);
         assert_eq!(stored.diagnostics[0].code, "solver.execution_order");
         assert_eq!(stored.steps.len(), 3);

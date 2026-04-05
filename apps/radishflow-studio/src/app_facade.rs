@@ -378,13 +378,12 @@ fn record_workspace_run_outcome(app_state: &mut AppState, outcome: &StudioWorksp
         StudioWorkspaceRunOutcome::Failed(failed) => {
             if !matches!(app_state.workspace.solve_session.status, RunStatus::Error) {
                 let revision = app_state.workspace.document.revision;
-                let summary = DiagnosticSummary {
-                    document_revision: revision,
-                    highest_severity: DiagnosticSeverity::Error,
-                    primary_message: failed.message.clone(),
-                    diagnostic_count: 1,
-                    related_unit_ids: Vec::new(),
-                };
+                let summary = DiagnosticSummary::new(
+                    revision,
+                    DiagnosticSeverity::Error,
+                    failed.message.clone(),
+                )
+                .with_primary_code_from_message();
                 app_state.record_failure(revision, RunStatus::Error, summary);
             }
             push_log_if_needed(app_state, AppLogLevel::Error, &failed.message);
@@ -1028,6 +1027,15 @@ mod tests {
             other => panic!("expected failed dispatch, got {other:?}"),
         }
         assert_eq!(dispatch.run_status, RunStatus::Error);
+        assert_eq!(
+            app_state
+                .workspace
+                .solve_session
+                .latest_diagnostic
+                .as_ref()
+                .and_then(|summary| summary.primary_code.as_deref()),
+            None
+        );
         assert_eq!(
             dispatch.latest_log_entry.as_ref().map(|entry| entry.level),
             Some(rf_ui::AppLogLevel::Error)
