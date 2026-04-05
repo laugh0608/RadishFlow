@@ -22,6 +22,7 @@ pub enum StudioAppHostCommand {
     DispatchWindowRunPanelRecoveryAction {
         window_id: StudioWindowHostId,
     },
+    DispatchForegroundRunPanelRecoveryAction,
     FocusWindow {
         window_id: StudioWindowHostId,
     },
@@ -38,6 +39,7 @@ pub enum StudioAppHostCommandOutcome {
     WindowOpened(StudioWindowHostRegistration),
     WindowDispatched(StudioAppWindowHostDispatch),
     WindowClosed(StudioAppWindowHostClose),
+    IgnoredForegroundRunPanelRecovery,
     IgnoredGlobalEvent {
         event: StudioAppWindowHostGlobalEvent,
     },
@@ -475,6 +477,27 @@ impl StudioAppHostController {
         })
     }
 
+    pub fn dispatch_foreground_run_panel_recovery_action(
+        &mut self,
+    ) -> RfResult<Option<StudioAppHostWindowDispatchResult>> {
+        let (outcome, projection) =
+            self.execute_command(StudioAppHostCommand::DispatchForegroundRunPanelRecoveryAction)?;
+
+        match outcome {
+            StudioAppHostCommandOutcome::WindowDispatched(dispatch) => {
+                Ok(Some(StudioAppHostWindowDispatchResult {
+                    projection,
+                    target_window_id: dispatch.target_window_id,
+                    effects: dispatch_effects_from_session(dispatch.dispatch),
+                }))
+            }
+            StudioAppHostCommandOutcome::IgnoredForegroundRunPanelRecovery => Ok(None),
+            other => Err(RfError::invalid_input(format!(
+                "app host controller expected foreground run panel recovery outcome, got {other:?}"
+            ))),
+        }
+    }
+
     pub fn focus_window(
         &mut self,
         window_id: StudioWindowHostId,
@@ -773,6 +796,9 @@ fn map_command(command: StudioAppHostCommand) -> StudioAppWindowHostCommand {
         StudioAppHostCommand::DispatchWindowRunPanelRecoveryAction { window_id } => {
             StudioAppWindowHostCommand::DispatchRunPanelRecoveryAction { window_id }
         }
+        StudioAppHostCommand::DispatchForegroundRunPanelRecoveryAction => {
+            StudioAppWindowHostCommand::DispatchForegroundRunPanelRecoveryAction
+        }
         StudioAppHostCommand::FocusWindow { window_id } => {
             StudioAppWindowHostCommand::FocusWindow { window_id }
         }
@@ -795,6 +821,9 @@ fn map_outcome(outcome: StudioAppWindowHostCommandOutcome) -> StudioAppHostComma
         }
         StudioAppWindowHostCommandOutcome::WindowClosed(close) => {
             StudioAppHostCommandOutcome::WindowClosed(close)
+        }
+        StudioAppWindowHostCommandOutcome::IgnoredForegroundRunPanelRecovery => {
+            StudioAppHostCommandOutcome::IgnoredForegroundRunPanelRecovery
         }
         StudioAppWindowHostCommandOutcome::IgnoredGlobalEvent { event } => {
             StudioAppHostCommandOutcome::IgnoredGlobalEvent { event }
@@ -1577,6 +1606,65 @@ mod tests {
         );
 
         let _ = fs::remove_file(project_path);
+    }
+
+    #[test]
+    fn app_host_controller_dispatches_foreground_run_panel_recovery_action() {
+        let (config, project_path) = solver_failure_config();
+        let mut controller = StudioAppHostController::new(&config).expect("expected controller");
+        let first = controller
+            .open_window()
+            .expect("expected first window open");
+        let second = controller
+            .open_window()
+            .expect("expected second window open");
+        let _ = controller
+            .focus_window(second.registration.window_id)
+            .expect("expected second window focus");
+
+        let _ = controller
+            .dispatch_window_trigger(
+                second.registration.window_id,
+                StudioRuntimeTrigger::WidgetAction(RunPanelActionId::RunManual),
+            )
+            .expect("expected failed run dispatch");
+
+        let recovery = controller
+            .dispatch_foreground_run_panel_recovery_action()
+            .expect("expected foreground recovery call")
+            .expect("expected foreground recovery dispatch");
+
+        assert_eq!(recovery.target_window_id, second.registration.window_id);
+        assert_ne!(recovery.target_window_id, first.registration.window_id);
+        match &recovery.effects.runtime_report.dispatch {
+            crate::StudioRuntimeDispatch::RunPanelRecovery(outcome) => {
+                assert_eq!(
+                    outcome.applied_target,
+                    Some(rf_ui::InspectorTarget::Unit(rf_types::UnitId::new(
+                        "valve-1"
+                    )))
+                );
+            }
+            other => panic!("expected run panel recovery dispatch, got {other:?}"),
+        }
+        assert_eq!(
+            controller.state().foreground_window_id,
+            Some(second.registration.window_id)
+        );
+
+        let _ = fs::remove_file(project_path);
+    }
+
+    #[test]
+    fn app_host_controller_ignores_foreground_run_panel_recovery_without_windows() {
+        let mut controller =
+            StudioAppHostController::new(&lease_expiring_config()).expect("expected controller");
+
+        let recovery = controller
+            .dispatch_foreground_run_panel_recovery_action()
+            .expect("expected optional foreground recovery");
+
+        assert!(recovery.is_none());
     }
 
     #[test]

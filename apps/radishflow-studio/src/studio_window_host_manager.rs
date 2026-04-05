@@ -25,6 +25,7 @@ pub enum StudioAppWindowHostCommand {
     DispatchRunPanelRecoveryAction {
         window_id: StudioWindowHostId,
     },
+    DispatchForegroundRunPanelRecoveryAction,
     FocusWindow {
         window_id: StudioWindowHostId,
     },
@@ -54,6 +55,7 @@ pub enum StudioAppWindowHostCommandOutcome {
     WindowOpened(StudioWindowHostRegistration),
     WindowDispatched(StudioAppWindowHostDispatch),
     WindowClosed(StudioAppWindowHostClose),
+    IgnoredForegroundRunPanelRecovery,
     IgnoredGlobalEvent {
         event: StudioAppWindowHostGlobalEvent,
     },
@@ -109,6 +111,16 @@ impl StudioAppWindowHostManager {
                     dispatch,
                 ))
             }
+            StudioAppWindowHostCommand::DispatchForegroundRunPanelRecoveryAction => {
+                match self.dispatch_foreground_run_panel_recovery_action()? {
+                    Some(dispatch) => Ok(StudioAppWindowHostCommandOutcome::WindowDispatched(
+                        dispatch,
+                    )),
+                    None => {
+                        Ok(StudioAppWindowHostCommandOutcome::IgnoredForegroundRunPanelRecovery)
+                    }
+                }
+            }
             StudioAppWindowHostCommand::FocusWindow { window_id } => {
                 let dispatch = self.focus_window(window_id)?;
                 Ok(StudioAppWindowHostCommandOutcome::WindowDispatched(
@@ -160,6 +172,19 @@ impl StudioAppWindowHostManager {
         window_id: StudioWindowHostId,
     ) -> RfResult<StudioAppWindowHostDispatch> {
         self.dispatch_trigger(window_id, &StudioRuntimeTrigger::WidgetRecoveryAction)
+    }
+
+    pub fn dispatch_foreground_run_panel_recovery_action(
+        &mut self,
+    ) -> RfResult<Option<StudioAppWindowHostDispatch>> {
+        let Some(window_id) = self
+            .foreground_window_id
+            .or_else(|| self.registered_windows.iter().next().copied())
+        else {
+            return Ok(None);
+        };
+
+        self.dispatch_run_panel_recovery_action(window_id).map(Some)
     }
 
     pub fn focus_window(
@@ -547,6 +572,45 @@ mod tests {
         match &recovery.dispatch.host_output.runtime_output.report.dispatch {
             crate::StudioRuntimeDispatch::RunPanelRecovery(outcome) => {
                 assert_eq!(outcome.action.title, "Inspect unit inputs");
+                assert_eq!(
+                    outcome.applied_target,
+                    Some(rf_ui::InspectorTarget::Unit(rf_types::UnitId::new(
+                        "valve-1"
+                    )))
+                );
+            }
+            other => panic!("expected run panel recovery dispatch, got {other:?}"),
+        }
+
+        let _ = fs::remove_file(project_path);
+    }
+
+    #[test]
+    fn app_window_host_manager_dispatches_foreground_run_panel_recovery() {
+        let (config, project_path) = solver_failure_config();
+        let mut manager = StudioAppWindowHostManager::new(&config).expect("expected manager");
+        let first = manager.open_window();
+        let second = manager.open_window();
+        let _ = manager
+            .focus_window(second.window_id)
+            .expect("expected second window focus");
+
+        let _ = manager
+            .dispatch_trigger(
+                second.window_id,
+                &StudioRuntimeTrigger::WidgetAction(RunPanelActionId::RunManual),
+            )
+            .expect("expected failed run dispatch");
+
+        let recovery = manager
+            .dispatch_foreground_run_panel_recovery_action()
+            .expect("expected recovery dispatch")
+            .expect("expected foreground recovery dispatch");
+
+        assert_eq!(recovery.target_window_id, second.window_id);
+        assert_ne!(recovery.target_window_id, first.window_id);
+        match &recovery.dispatch.host_output.runtime_output.report.dispatch {
+            crate::StudioRuntimeDispatch::RunPanelRecovery(outcome) => {
                 assert_eq!(
                     outcome.applied_target,
                     Some(rf_ui::InspectorTarget::Unit(rf_types::UnitId::new(
