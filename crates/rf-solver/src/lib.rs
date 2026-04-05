@@ -322,9 +322,18 @@ fn topological_unit_order(flowsheet: &Flowsheet) -> RfResult<Vec<UnitId>> {
     }
 
     if ordered.len() != incoming_counts.len() {
+        let unresolved_units = incoming_counts
+            .iter()
+            .filter(|(_, count)| **count > 0)
+            .map(|(unit_id, _)| unit_id.as_str())
+            .collect::<Vec<_>>()
+            .join(", ");
         return Err(solver_stage_invalid_input(
             "topological ordering",
-            "flowsheet contains a cycle or unresolved dependency; only acyclic sequential flowsheets are supported in the current solver",
+            format!(
+                "flowsheet contains a cycle or unresolved dependency involving [{}]; only acyclic sequential flowsheets are supported in the current solver",
+                unresolved_units
+            ),
         ));
     }
 
@@ -1471,6 +1480,7 @@ mod tests {
                 .contains("solver topological ordering failed")
         );
         assert!(error.message().contains("contains a cycle"));
+        assert!(error.message().contains("[heater-1, valve-1]"));
     }
 
     #[test]
@@ -1533,5 +1543,6 @@ mod tests {
                 .contains("solver topological ordering failed")
         );
         assert!(error.message().contains("contains a cycle"));
+        assert!(error.message().contains("[flash-1]"));
     }
 }

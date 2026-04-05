@@ -17,8 +17,7 @@ fn solve_example_result(project_json: &str) -> rf_types::RfResult<rf_solver::Sol
     };
     let project = parse_project_file_json(project_json).expect("expected example project parse");
 
-    SequentialModularSolver
-        .solve(&services, &project.document.flowsheet)
+    SequentialModularSolver.solve(&services, &project.document.flowsheet)
 }
 
 #[test]
@@ -227,7 +226,11 @@ fn unsupported_unit_kind_reports_connection_validation_context_end_to_end() {
     .expect_err("expected unsupported unit kind failure");
 
     assert_eq!(error.code().as_str(), "invalid_connection");
-    assert!(error.message().contains("solver connection validation failed"));
+    assert!(
+        error
+            .message()
+            .contains("solver connection validation failed")
+    );
     assert!(error.message().contains("unsupported kind `pump`"));
 }
 
@@ -314,8 +317,13 @@ fn self_loop_cycle_reports_topological_ordering_context_end_to_end() {
     .expect_err("expected self-loop cycle failure");
 
     assert_eq!(error.code().as_str(), "invalid_input");
-    assert!(error.message().contains("solver topological ordering failed"));
+    assert!(
+        error
+            .message()
+            .contains("solver topological ordering failed")
+    );
     assert!(error.message().contains("contains a cycle"));
+    assert!(error.message().contains("[flash-1]"));
 }
 
 #[test]
@@ -413,8 +421,16 @@ fn missing_upstream_source_reports_connection_validation_context_end_to_end() {
     .expect_err("expected missing upstream source failure");
 
     assert_eq!(error.code().as_str(), "invalid_connection");
-    assert!(error.message().contains("solver connection validation failed"));
-    assert!(error.message().contains("missing an upstream outlet connection"));
+    assert!(
+        error
+            .message()
+            .contains("solver connection validation failed")
+    );
+    assert!(
+        error
+            .message()
+            .contains("missing an upstream outlet connection")
+    );
 }
 
 #[test]
@@ -495,8 +511,16 @@ fn missing_stream_reference_reports_connection_validation_context_end_to_end() {
     .expect_err("expected missing stream reference failure");
 
     assert_eq!(error.code().as_str(), "invalid_connection");
-    assert!(error.message().contains("solver connection validation failed"));
-    assert!(error.message().contains("references missing stream `stream-missing`"));
+    assert!(
+        error
+            .message()
+            .contains("solver connection validation failed")
+    );
+    assert!(
+        error
+            .message()
+            .contains("references missing stream `stream-missing`")
+    );
 }
 
 #[test]
@@ -558,7 +582,15 @@ fn invalid_port_signature_reports_connection_validation_context_end_to_end() {
     .expect_err("expected invalid port signature failure");
 
     assert_eq!(error.code().as_str(), "invalid_connection");
-    assert!(error.message().contains("solver connection validation failed"));
-    assert!(error.message().contains("canonical built-in port signature"));
+    assert!(
+        error
+            .message()
+            .contains("solver connection validation failed")
+    );
+    assert!(
+        error
+            .message()
+            .contains("canonical built-in port signature")
+    );
     assert!(error.message().contains("missing required port `outlet`"));
 }
