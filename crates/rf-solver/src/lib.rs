@@ -117,9 +117,38 @@ impl FlowsheetSolver for SequentialModularSolver {
         };
 
         for (step_index, unit_id) in execution_order.iter().enumerate() {
-            let unit = flowsheet.unit(unit_id)?;
-            let spec = validate_unit_node(unit)?;
-            let operation = instantiate_operation(unit, flowsheet)?;
+            let unit = flowsheet.unit(unit_id).map_err(|error| {
+                solver_stage_error(
+                    format!(
+                        "step {} unit lookup for `{}`",
+                        step_index + 1,
+                        unit_id.as_str()
+                    ),
+                    error,
+                )
+            })?;
+            let spec = validate_unit_node(unit).map_err(|error| {
+                solver_stage_error(
+                    format!(
+                        "step {} unit spec validation for `{}` (`{}`)",
+                        step_index + 1,
+                        unit.id,
+                        unit.kind
+                    ),
+                    error,
+                )
+            })?;
+            let operation = instantiate_operation(unit, flowsheet).map_err(|error| {
+                solver_stage_error(
+                    format!(
+                        "step {} operation instantiation for `{}` (`{}`)",
+                        step_index + 1,
+                        unit.id,
+                        unit.kind
+                    ),
+                    error,
+                )
+            })?;
             let mut inputs = UnitOperationInputs::new();
             let mut consumed_stream_ids = Vec::new();
 
@@ -128,7 +157,20 @@ impl FlowsheetSolver for SequentialModularSolver {
                 .iter()
                 .filter(|port| port.direction == PortDirection::Inlet)
             {
-                let stream = resolved_stream_for_port(unit, port.name, &solved_streams)?;
+                let stream = resolved_stream_for_port(unit, port.name, &solved_streams).map_err(
+                    |error| {
+                        solver_stage_error(
+                            format!(
+                                "step {} inlet resolution for `{}` (`{}`) port `{}`",
+                                step_index + 1,
+                                unit.id,
+                                unit.kind,
+                                port.name
+                            ),
+                            error,
+                        )
+                    },
+                )?;
                 consumed_stream_ids.push(stream.id.clone());
                 inputs.insert_material_stream(port.name, stream.clone());
             }
@@ -154,12 +196,18 @@ impl FlowsheetSolver for SequentialModularSolver {
                 .filter(|port| port.direction == PortDirection::Outlet)
             {
                 let stream = outputs.stream(port.name).ok_or_else(|| {
-                    RfError::invalid_input(format!(
-                        "step {} unit `{}` did not produce expected outlet port `{}`",
-                        step_index + 1,
-                        unit.id,
-                        port.name
-                    ))
+                    solver_stage_invalid_input(
+                        format!(
+                            "step {} output materialization for `{}` (`{}`)",
+                            step_index + 1,
+                            unit.id,
+                            unit.kind
+                        ),
+                        format!(
+                            "unit `{}` did not produce expected outlet port `{}`",
+                            unit.id, port.name
+                        ),
+                    )
                 })?;
                 produced_stream_ids.push(stream.id.clone());
                 solved_streams.insert(stream.id.clone(), stream.clone());
@@ -223,7 +271,8 @@ impl FlowsheetSolver for SequentialModularSolver {
 }
 
 fn topological_unit_order(flowsheet: &Flowsheet) -> RfResult<Vec<UnitId>> {
-    let connections = validate_connections(flowsheet)?;
+    let connections =
+        validate_connections(flowsheet).map_err(|error| solver_stage_error("connection validation", error))?;
     let mut incoming_counts = flowsheet
         .units
         .keys()
@@ -272,12 +321,31 @@ fn topological_unit_order(flowsheet: &Flowsheet) -> RfResult<Vec<UnitId>> {
     }
 
     if ordered.len() != incoming_counts.len() {
-        return Err(RfError::invalid_input(
+        return Err(solver_stage_invalid_input(
+            "topological ordering",
             "flowsheet contains a cycle or unresolved dependency; only acyclic sequential flowsheets are supported in the current solver",
         ));
     }
 
     Ok(ordered)
+}
+
+fn solver_stage_error(stage: impl AsRef<str>, error: RfError) -> RfError {
+    RfError::new(
+        error.code(),
+        format!("solver {} failed: {}", stage.as_ref(), error.message()),
+    )
+}
+
+fn solver_stage_invalid_input(
+    stage: impl AsRef<str>,
+    message: impl AsRef<str>,
+) -> RfError {
+    RfError::invalid_input(format!(
+        "solver {} failed: {}",
+        stage.as_ref(),
+        message.as_ref()
+    ))
 }
 
 fn instantiate_operation(
@@ -1085,5 +1153,88 @@ mod tests {
 
         assert!(error.message().contains("step 2 unit `valve-1` (`valve`)"));
         assert!(error.message().contains("after consuming [stream-feed]"));
+    }
+
+    #[test]
+    fn sequential_solver_reports_connection_validation_stage_context() {
+        let provider = build_provider();
+        let flash_solver = PlaceholderTpFlashSolver;
+        let services = SolverServices {
+            thermo: &provider,
+            flash_solver: &flash_solver,
+        };
+        let mut flowsheet = build_feed_valve_flash_flowsheet();
+        flowsheet
+            .units
+            .get_mut(&"flash-1".into())
+            .expect("expected flash unit")
+            .ports
+            .iter_mut()
+            .find(|port| port.name == "inlet")
+            .expect("expected inlet port")
+            .stream_id = Some("stream-feed".into());
+
+        let error = SequentialModularSolver
+            .solve(&services, &flowsheet)
+            .expect_err("expected connection validation failure");
+
+        assert_eq!(error.code().as_str(), "invalid_connection");
+        assert!(error.message().contains("solver connection validation failed"));
+        assert!(error.message().contains("consumed by both"));
+    }
+
+    #[test]
+    fn sequential_solver_reports_topological_ordering_stage_context() {
+        let provider = build_provider();
+        let flash_solver = PlaceholderTpFlashSolver;
+        let services = SolverServices {
+            thermo: &provider,
+            flash_solver: &flash_solver,
+        };
+        let mut flowsheet = Flowsheet::new("heater-valve-cycle");
+        for component in [
+            Component::new("component-a", "Component A"),
+            Component::new("component-b", "Component B"),
+        ] {
+            flowsheet
+                .insert_component(component)
+                .expect("expected component insert");
+        }
+        for stream in [
+            build_stream(
+                "stream-a",
+                "Cycle Stream A",
+                320.0,
+                100_000.0,
+                5.0,
+                binary_composition(0.35, 0.65),
+            ),
+            build_stream(
+                "stream-b",
+                "Cycle Stream B",
+                300.0,
+                95_000.0,
+                5.0,
+                binary_composition(0.35, 0.65),
+            ),
+        ] {
+            flowsheet
+                .insert_stream(stream)
+                .expect("expected stream insert");
+        }
+        for unit in [
+            build_heater_node("heater-1", "Heater", "stream-b", "stream-a"),
+            build_valve_node("valve-1", "Valve", "stream-a", "stream-b"),
+        ] {
+            flowsheet.insert_unit(unit).expect("expected unit insert");
+        }
+
+        let error = SequentialModularSolver
+            .solve(&services, &flowsheet)
+            .expect_err("expected cycle detection failure");
+
+        assert_eq!(error.code().as_str(), "invalid_input");
+        assert!(error.message().contains("solver topological ordering failed"));
+        assert!(error.message().contains("contains a cycle"));
     }
 }
