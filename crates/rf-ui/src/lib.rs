@@ -1,4 +1,5 @@
 mod auth;
+mod canvas_interaction;
 mod commands;
 mod diagnostics;
 mod entitlement_panel;
@@ -23,6 +24,10 @@ pub use auth::{
     PropertyPackageManifest, PropertyPackageManifestList, PropertyPackageSource,
     PropertyPackageUsageEvent, PropertyPackageUsageEventKind, SecureCredentialHandle, TokenLease,
 };
+pub use canvas_interaction::{
+    CanvasInteractionState, CanvasSuggestion, CanvasViewMode, GhostElement, GhostElementKind,
+    StreamAnimationMode, StreamVisualKind, StreamVisualState, SuggestionSource, SuggestionStatus,
+};
 pub use commands::{
     CanvasPoint, CommandHistory, CommandHistoryEntry, CommandValue, DocumentCommand,
 };
@@ -37,7 +42,7 @@ pub use entitlement_panel_view::{
     EntitlementActionProminence, EntitlementPanelViewModel, EntitlementRenderableAction,
 };
 pub use entitlement_panel_widget::{EntitlementPanelWidgetEvent, EntitlementPanelWidgetModel};
-pub use ids::{DocumentId, SolveSnapshotId};
+pub use ids::{CanvasSuggestionId, DocumentId, SolveSnapshotId};
 pub use run::{
     RunStatus, SimulationMode, SolvePendingReason, SolveSessionState, SolveSnapshot, StepSnapshot,
     StreamStateSnapshot, UnitExecutionSnapshot,
@@ -70,15 +75,17 @@ mod tests {
     use rf_types::UnitId;
 
     use crate::{
-        AppState, AuthSessionStatus, AuthenticatedUser, CanvasPoint, CommandHistory,
-        CommandHistoryEntry, DiagnosticSeverity, DiagnosticSummary, DocumentCommand,
-        DocumentMetadata, EntitlementActionId, EntitlementPanelState, EntitlementPanelWidgetEvent,
-        EntitlementPanelWidgetModel, EntitlementSnapshot, FlowsheetDocument,
-        OfflineLeaseRefreshResponse, PropertyPackageManifest, PropertyPackageManifestList,
-        PropertyPackageSource, RunPanelActionId, RunPanelActionProminence, RunPanelPresentation,
-        RunPanelState, RunPanelTextView, RunPanelViewModel, RunPanelWidgetEvent,
-        RunPanelWidgetModel, RunStatus, SecureCredentialHandle, SimulationMode, SolvePendingReason,
-        SolveSnapshot, TokenLease,
+        AppState, AuthSessionStatus, AuthenticatedUser, CanvasPoint, CanvasSuggestion,
+        CanvasSuggestionId, CanvasViewMode, CommandHistory, CommandHistoryEntry,
+        DiagnosticSeverity, DiagnosticSummary, DocumentCommand, DocumentMetadata,
+        EntitlementActionId, EntitlementPanelState, EntitlementPanelWidgetEvent,
+        EntitlementPanelWidgetModel, EntitlementSnapshot, FlowsheetDocument, GhostElement,
+        GhostElementKind, OfflineLeaseRefreshResponse, PropertyPackageManifest,
+        PropertyPackageManifestList, PropertyPackageSource, RunPanelActionId,
+        RunPanelActionProminence, RunPanelPresentation, RunPanelState, RunPanelTextView,
+        RunPanelViewModel, RunPanelWidgetEvent, RunPanelWidgetModel, RunStatus,
+        SecureCredentialHandle, SimulationMode, SolvePendingReason, SolveSnapshot,
+        StreamVisualKind, StreamVisualState, SuggestionSource, SuggestionStatus, TokenLease,
     };
 
     fn timestamp(seconds: u64) -> std::time::SystemTime {
@@ -89,6 +96,25 @@ mod tests {
         let flowsheet = Flowsheet::new("demo");
         let metadata = DocumentMetadata::new("doc-1", "Demo", timestamp(10));
         FlowsheetDocument::new(flowsheet, metadata)
+    }
+
+    fn sample_canvas_suggestion(
+        id: &str,
+        confidence: f32,
+        source: SuggestionSource,
+    ) -> CanvasSuggestion {
+        CanvasSuggestion::new(
+            CanvasSuggestionId::new(id),
+            source,
+            confidence,
+            GhostElement {
+                kind: GhostElementKind::Connection,
+                target_unit_id: UnitId::new("flash-1"),
+                visual_kind: StreamVisualKind::Material,
+                visual_state: StreamVisualState::Suggested,
+            },
+            format!("reason for {id}"),
+        )
     }
 
     fn sample_solver_provider() -> PlaceholderThermoProvider {
@@ -265,6 +291,145 @@ mod tests {
                 .expect("expected resume action")
                 .label,
             "Resume"
+        );
+    }
+
+    #[test]
+    fn workspace_initializes_canvas_interaction_in_planar_mode() {
+        let app_state = AppState::new(sample_document());
+
+        assert_eq!(
+            app_state.workspace.canvas_interaction.view_mode,
+            CanvasViewMode::Planar
+        );
+        assert!(
+            app_state
+                .workspace
+                .canvas_interaction
+                .suggestions
+                .is_empty()
+        );
+        assert_eq!(
+            app_state.workspace.canvas_interaction.focused_suggestion_id,
+            None
+        );
+    }
+
+    #[test]
+    fn replacing_canvas_suggestions_orders_by_confidence_and_focuses_first() {
+        let mut app_state = AppState::new(sample_document());
+        app_state.replace_canvas_suggestions(vec![
+            sample_canvas_suggestion("sug-low", 0.40, SuggestionSource::LocalRules),
+            sample_canvas_suggestion("sug-high", 0.95, SuggestionSource::RadishMind),
+            sample_canvas_suggestion("sug-mid", 0.70, SuggestionSource::LocalRules),
+        ]);
+
+        let suggestions = &app_state.workspace.canvas_interaction.suggestions;
+        assert_eq!(suggestions[0].id.as_str(), "sug-high");
+        assert_eq!(suggestions[1].id.as_str(), "sug-mid");
+        assert_eq!(suggestions[2].id.as_str(), "sug-low");
+        assert_eq!(
+            app_state
+                .workspace
+                .canvas_interaction
+                .focused_suggestion_id
+                .as_ref()
+                .map(|id| id.as_str()),
+            Some("sug-high")
+        );
+        assert_eq!(suggestions[0].status, SuggestionStatus::Focused);
+        assert_eq!(suggestions[1].status, SuggestionStatus::Proposed);
+        assert_eq!(suggestions[2].status, SuggestionStatus::Proposed);
+    }
+
+    #[test]
+    fn tab_accepts_only_high_confidence_suggestions_without_recording_history() {
+        let mut app_state = AppState::new(sample_document());
+        app_state.replace_canvas_suggestions(vec![sample_canvas_suggestion(
+            "sug-high",
+            0.90,
+            SuggestionSource::LocalRules,
+        )]);
+
+        let accepted = app_state.accept_focused_canvas_suggestion_by_tab();
+
+        assert_eq!(
+            accepted.as_ref().map(|item| item.id.as_str()),
+            Some("sug-high")
+        );
+        assert_eq!(app_state.workspace.command_history.len(), 0);
+        assert!(
+            app_state
+                .workspace
+                .command_history
+                .current_entry()
+                .is_none()
+        );
+        assert_eq!(
+            app_state.workspace.canvas_interaction.suggestions[0].status,
+            SuggestionStatus::Accepted
+        );
+        assert_eq!(
+            app_state.workspace.canvas_interaction.focused_suggestion_id,
+            None
+        );
+    }
+
+    #[test]
+    fn tab_does_not_accept_low_confidence_suggestion() {
+        let mut app_state = AppState::new(sample_document());
+        app_state.replace_canvas_suggestions(vec![sample_canvas_suggestion(
+            "sug-low",
+            0.60,
+            SuggestionSource::RadishMind,
+        )]);
+
+        let accepted = app_state.accept_focused_canvas_suggestion_by_tab();
+
+        assert!(accepted.is_none());
+        assert_eq!(app_state.workspace.command_history.len(), 0);
+        assert_eq!(
+            app_state.workspace.canvas_interaction.suggestions[0].status,
+            SuggestionStatus::Focused
+        );
+        assert_eq!(
+            app_state
+                .workspace
+                .canvas_interaction
+                .focused_suggestion_id
+                .as_ref()
+                .map(|id| id.as_str()),
+            Some("sug-low")
+        );
+    }
+
+    #[test]
+    fn document_change_invalidates_canvas_suggestions_but_only_records_document_command() {
+        let mut app_state = AppState::new(sample_document());
+        app_state.replace_canvas_suggestions(vec![sample_canvas_suggestion(
+            "sug-high",
+            0.95,
+            SuggestionSource::LocalRules,
+        )]);
+
+        let next_flowsheet = Flowsheet::new("demo-updated");
+        app_state.commit_document_change(
+            DocumentCommand::MoveUnit {
+                unit_id: UnitId::new("flash-1"),
+                position: CanvasPoint::new(40.0, 20.0),
+            },
+            next_flowsheet,
+            timestamp(20),
+        );
+
+        assert_eq!(app_state.workspace.command_history.len(), 1);
+        assert_eq!(
+            app_state.workspace.canvas_interaction.suggestions[0].status,
+            SuggestionStatus::Invalidated
+        );
+        assert_eq!(
+            app_state.workspace.canvas_interaction.focused_suggestion_id,
+            None
         );
     }
 

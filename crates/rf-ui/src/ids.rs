@@ -37,3 +37,4 @@ macro_rules! define_string_id {
 
 define_string_id!(DocumentId);
 define_string_id!(SolveSnapshotId);
+define_string_id!(CanvasSuggestionId);

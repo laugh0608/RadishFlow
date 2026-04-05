@@ -9,6 +9,7 @@ use crate::auth::{
     AuthSessionState, AuthenticatedUser, EntitlementSnapshot, EntitlementState,
     PropertyPackageManifest, TokenLease,
 };
+use crate::canvas_interaction::{CanvasInteractionState, CanvasSuggestion, CanvasViewMode};
 use crate::commands::{CommandHistory, CommandHistoryEntry, DocumentCommand};
 use crate::diagnostics::DiagnosticSummary;
 use crate::ids::{DocumentId, SolveSnapshotId};
@@ -254,6 +255,7 @@ pub struct WorkspaceState {
     pub document: FlowsheetDocument,
     pub document_path: Option<PathBuf>,
     pub last_saved_revision: Option<u64>,
+    pub canvas_interaction: CanvasInteractionState,
     pub selection: SelectionState,
     pub panels: UiPanelsState,
     pub drafts: InspectorDraftState,
@@ -273,6 +275,7 @@ impl WorkspaceState {
             document,
             document_path: None,
             last_saved_revision: None,
+            canvas_interaction: CanvasInteractionState::default(),
             selection: SelectionState::default(),
             panels: UiPanelsState::from_preferences(panel_defaults),
             drafts: InspectorDraftState::default(),
@@ -292,6 +295,7 @@ impl WorkspaceState {
         let revision = self.document.replace_flowsheet(next_flowsheet, changed_at);
         self.command_history
             .record(CommandHistoryEntry::new(revision, command));
+        self.canvas_interaction.invalidate_all();
         self.solve_session.mark_document_revision_advanced(revision);
         self.drafts.clear();
         revision
@@ -430,6 +434,24 @@ impl AppState {
     pub fn push_log(&mut self, level: AppLogLevel, message: impl Into<String>) {
         self.log_feed.push(level, message);
         self.refresh_run_panel_state();
+    }
+
+    pub fn set_canvas_view_mode(&mut self, view_mode: CanvasViewMode) {
+        self.workspace.canvas_interaction.set_view_mode(view_mode);
+    }
+
+    pub fn replace_canvas_suggestions(&mut self, suggestions: Vec<CanvasSuggestion>) {
+        self.workspace
+            .canvas_interaction
+            .replace_suggestions(suggestions);
+    }
+
+    pub fn accept_focused_canvas_suggestion_by_tab(&mut self) -> Option<CanvasSuggestion> {
+        self.workspace.canvas_interaction.accept_focused_by_tab()
+    }
+
+    pub fn reject_focused_canvas_suggestion(&mut self) -> Option<CanvasSuggestion> {
+        self.workspace.canvas_interaction.reject_focused()
     }
 
     pub fn begin_browser_login(&mut self, authority_url: impl Into<String>) {
