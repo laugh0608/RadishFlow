@@ -317,3 +317,248 @@ fn self_loop_cycle_reports_topological_ordering_context_end_to_end() {
     assert!(error.message().contains("solver topological ordering failed"));
     assert!(error.message().contains("contains a cycle"));
 }
+
+#[test]
+fn missing_upstream_source_reports_connection_validation_context_end_to_end() {
+    let error = solve_example_result(
+        r#"
+{
+  "kind": "radishflow.project-file",
+  "schemaVersion": 1,
+  "document": {
+    "revision": 0,
+    "flowsheet": {
+      "name": "missing-upstream-source",
+      "components": {
+        "component-a": { "id": "component-a", "name": "Component A", "formula": null },
+        "component-b": { "id": "component-b", "name": "Component B", "formula": null }
+      },
+      "streams": {
+        "stream-feed-a": {
+          "id": "stream-feed-a",
+          "name": "Feed A",
+          "temperature_k": 320.0,
+          "pressure_pa": 100000.0,
+          "total_molar_flow_mol_s": 5.0,
+          "overall_mole_fractions": {
+            "component-a": 0.35,
+            "component-b": 0.65
+          },
+          "phases": []
+        },
+        "stream-feed-b": {
+          "id": "stream-feed-b",
+          "name": "Feed B",
+          "temperature_k": 320.0,
+          "pressure_pa": 100000.0,
+          "total_molar_flow_mol_s": 5.0,
+          "overall_mole_fractions": {
+            "component-a": 0.35,
+            "component-b": 0.65
+          },
+          "phases": []
+        },
+        "stream-out": {
+          "id": "stream-out",
+          "name": "Outlet",
+          "temperature_k": 320.0,
+          "pressure_pa": 100000.0,
+          "total_molar_flow_mol_s": 0.0,
+          "overall_mole_fractions": {
+            "component-a": 0.5,
+            "component-b": 0.5
+          },
+          "phases": []
+        }
+      },
+      "units": {
+        "mixer-1": {
+          "id": "mixer-1",
+          "name": "Mixer",
+          "kind": "mixer",
+          "ports": [
+            {
+              "name": "inlet_a",
+              "direction": "inlet",
+              "kind": "material",
+              "stream_id": "stream-feed-a"
+            },
+            {
+              "name": "inlet_b",
+              "direction": "inlet",
+              "kind": "material",
+              "stream_id": "stream-feed-b"
+            },
+            {
+              "name": "outlet",
+              "direction": "outlet",
+              "kind": "material",
+              "stream_id": "stream-out"
+            }
+          ]
+        }
+      }
+    },
+    "metadata": {
+      "documentId": "example-missing-upstream-source",
+      "title": "Missing Upstream Source Example",
+      "schemaVersion": 1,
+      "createdAt": "2026-04-05T00:00:00Z",
+      "updatedAt": "2026-04-05T00:00:00Z"
+    }
+  }
+}
+"#,
+    )
+    .expect_err("expected missing upstream source failure");
+
+    assert_eq!(error.code().as_str(), "invalid_connection");
+    assert!(error.message().contains("solver connection validation failed"));
+    assert!(error.message().contains("missing an upstream outlet connection"));
+}
+
+#[test]
+fn missing_stream_reference_reports_connection_validation_context_end_to_end() {
+    let error = solve_example_result(
+        r#"
+{
+  "kind": "radishflow.project-file",
+  "schemaVersion": 1,
+  "document": {
+    "revision": 0,
+    "flowsheet": {
+      "name": "missing-stream-reference",
+      "components": {
+        "component-a": { "id": "component-a", "name": "Component A", "formula": null },
+        "component-b": { "id": "component-b", "name": "Component B", "formula": null }
+      },
+      "streams": {
+        "stream-feed": {
+          "id": "stream-feed",
+          "name": "Feed",
+          "temperature_k": 320.0,
+          "pressure_pa": 100000.0,
+          "total_molar_flow_mol_s": 5.0,
+          "overall_mole_fractions": {
+            "component-a": 0.35,
+            "component-b": 0.65
+          },
+          "phases": []
+        }
+      },
+      "units": {
+        "feed-1": {
+          "id": "feed-1",
+          "name": "Feed",
+          "kind": "feed",
+          "ports": [
+            {
+              "name": "outlet",
+              "direction": "outlet",
+              "kind": "material",
+              "stream_id": "stream-feed"
+            }
+          ]
+        },
+        "heater-1": {
+          "id": "heater-1",
+          "name": "Heater",
+          "kind": "heater",
+          "ports": [
+            {
+              "name": "inlet",
+              "direction": "inlet",
+              "kind": "material",
+              "stream_id": "stream-feed"
+            },
+            {
+              "name": "outlet",
+              "direction": "outlet",
+              "kind": "material",
+              "stream_id": "stream-missing"
+            }
+          ]
+        }
+      }
+    },
+    "metadata": {
+      "documentId": "example-missing-stream-reference",
+      "title": "Missing Stream Reference Example",
+      "schemaVersion": 1,
+      "createdAt": "2026-04-05T00:00:00Z",
+      "updatedAt": "2026-04-05T00:00:00Z"
+    }
+  }
+}
+"#,
+    )
+    .expect_err("expected missing stream reference failure");
+
+    assert_eq!(error.code().as_str(), "invalid_connection");
+    assert!(error.message().contains("solver connection validation failed"));
+    assert!(error.message().contains("references missing stream `stream-missing`"));
+}
+
+#[test]
+fn invalid_port_signature_reports_connection_validation_context_end_to_end() {
+    let error = solve_example_result(
+        r#"
+{
+  "kind": "radishflow.project-file",
+  "schemaVersion": 1,
+  "document": {
+    "revision": 0,
+    "flowsheet": {
+      "name": "invalid-port-signature",
+      "components": {
+        "component-a": { "id": "component-a", "name": "Component A", "formula": null },
+        "component-b": { "id": "component-b", "name": "Component B", "formula": null }
+      },
+      "streams": {
+        "stream-feed": {
+          "id": "stream-feed",
+          "name": "Feed",
+          "temperature_k": 320.0,
+          "pressure_pa": 100000.0,
+          "total_molar_flow_mol_s": 5.0,
+          "overall_mole_fractions": {
+            "component-a": 0.35,
+            "component-b": 0.65
+          },
+          "phases": []
+        }
+      },
+      "units": {
+        "feed-1": {
+          "id": "feed-1",
+          "name": "Feed",
+          "kind": "feed",
+          "ports": [
+            {
+              "name": "unexpected",
+              "direction": "outlet",
+              "kind": "material",
+              "stream_id": "stream-feed"
+            }
+          ]
+        }
+      }
+    },
+    "metadata": {
+      "documentId": "example-invalid-port-signature",
+      "title": "Invalid Port Signature Example",
+      "schemaVersion": 1,
+      "createdAt": "2026-04-05T00:00:00Z",
+      "updatedAt": "2026-04-05T00:00:00Z"
+    }
+  }
+}
+"#,
+    )
+    .expect_err("expected invalid port signature failure");
+
+    assert_eq!(error.code().as_str(), "invalid_connection");
+    assert!(error.message().contains("solver connection validation failed"));
+    assert!(error.message().contains("canonical built-in port signature"));
+    assert!(error.message().contains("missing required port `outlet`"));
+}
