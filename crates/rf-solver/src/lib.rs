@@ -283,13 +283,11 @@ fn topological_unit_order(flowsheet: &Flowsheet) -> RfResult<Vec<UnitId>> {
 
     for connection in connections {
         if let Some(sink) = connection.sink {
-            if sink.unit_id != connection.source.unit_id {
-                downstream_units
-                    .entry(connection.source.unit_id.clone())
-                    .or_default()
-                    .insert(sink.unit_id.clone());
-                *incoming_counts.entry(sink.unit_id.clone()).or_insert(0) += 1;
-            }
+            downstream_units
+                .entry(connection.source.unit_id.clone())
+                .or_default()
+                .insert(sink.unit_id.clone());
+            *incoming_counts.entry(sink.unit_id.clone()).or_insert(0) += 1;
         }
     }
 
@@ -308,9 +306,12 @@ fn topological_unit_order(flowsheet: &Flowsheet) -> RfResult<Vec<UnitId>> {
         if let Some(children) = downstream_units.get(&unit_id) {
             for child_id in children {
                 let count = incoming_counts.get_mut(child_id).ok_or_else(|| {
-                    RfError::invalid_input(format!(
-                        "internal solver graph missing incoming count for unit `{child_id}`"
-                    ))
+                    solver_stage_invalid_input(
+                        "topological ordering",
+                        format!(
+                            "internal solver graph missing incoming count for unit `{child_id}`"
+                        ),
+                    )
                 })?;
                 *count -= 1;
                 if *count == 0 {
@@ -460,12 +461,10 @@ fn format_stream_ids(stream_ids: &[StreamId]) -> String {
 #[cfg(test)]
 mod tests {
     use rf_flash::PlaceholderTpFlashSolver;
-    use rf_model::{Component, Composition, Flowsheet, MaterialStreamState};
+    use rf_model::{Component, Composition, Flowsheet, MaterialStreamState, UnitNode, UnitPort};
     use rf_store::parse_project_file_json;
-    use rf_thermo::{
-        AntoineCoefficients, PlaceholderThermoProvider, ThermoComponent, ThermoSystem,
-    };
-    use rf_types::{ComponentId, PhaseLabel};
+    use rf_thermo::{AntoineCoefficients, PlaceholderThermoProvider, ThermoComponent, ThermoSystem};
+    use rf_types::{ComponentId, PhaseLabel, PortDirection, PortKind};
     use rf_unitops::{
         build_cooler_node, build_feed_node, build_flash_drum_node, build_heater_node,
         build_mixer_node, build_valve_node,
@@ -1184,6 +1183,57 @@ mod tests {
     }
 
     #[test]
+    fn sequential_solver_reports_unsupported_unit_kind_during_connection_validation() {
+        let provider = build_provider();
+        let flash_solver = PlaceholderTpFlashSolver;
+        let services = SolverServices {
+            thermo: &provider,
+            flash_solver: &flash_solver,
+        };
+        let mut flowsheet = Flowsheet::new("unsupported-unit-kind");
+        for component in [
+            Component::new("component-a", "Component A"),
+            Component::new("component-b", "Component B"),
+        ] {
+            flowsheet
+                .insert_component(component)
+                .expect("expected component insert");
+        }
+        flowsheet
+            .insert_stream(build_stream(
+                "stream-feed",
+                "Feed",
+                320.0,
+                100_000.0,
+                5.0,
+                binary_composition(0.35, 0.65),
+            ))
+            .expect("expected stream insert");
+        flowsheet
+            .insert_unit(UnitNode::new(
+                "mystery-1",
+                "Mystery Unit",
+                "pump",
+                vec![UnitPort::new(
+                    "outlet",
+                    PortDirection::Outlet,
+                    PortKind::Material,
+                    Some("stream-feed".into()),
+                )],
+            ))
+            .expect("expected unit insert");
+
+        let error = SequentialModularSolver
+            .solve(&services, &flowsheet)
+            .expect_err("expected unsupported unit kind failure");
+
+        assert_eq!(error.code().as_str(), "invalid_connection");
+        assert!(error.message().contains("solver connection validation failed"));
+        assert!(error.message().contains("canonical built-in port signature"));
+        assert!(error.message().contains("unsupported kind `pump`"));
+    }
+
+    #[test]
     fn sequential_solver_reports_topological_ordering_stage_context() {
         let provider = build_provider();
         let flash_solver = PlaceholderTpFlashSolver;
@@ -1232,6 +1282,64 @@ mod tests {
         let error = SequentialModularSolver
             .solve(&services, &flowsheet)
             .expect_err("expected cycle detection failure");
+
+        assert_eq!(error.code().as_str(), "invalid_input");
+        assert!(error.message().contains("solver topological ordering failed"));
+        assert!(error.message().contains("contains a cycle"));
+    }
+
+    #[test]
+    fn sequential_solver_reports_self_loop_as_topological_cycle() {
+        let provider = build_provider();
+        let flash_solver = PlaceholderTpFlashSolver;
+        let services = SolverServices {
+            thermo: &provider,
+            flash_solver: &flash_solver,
+        };
+        let mut flowsheet = Flowsheet::new("self-loop");
+        for component in [
+            Component::new("component-a", "Component A"),
+            Component::new("component-b", "Component B"),
+        ] {
+            flowsheet
+                .insert_component(component)
+                .expect("expected component insert");
+        }
+        for stream in [
+            build_stream(
+                "stream-loop",
+                "Loop Stream",
+                320.0,
+                100_000.0,
+                5.0,
+                binary_composition(0.35, 0.65),
+            ),
+            build_stream(
+                "stream-out",
+                "Outlet Stream",
+                300.0,
+                95_000.0,
+                5.0,
+                binary_composition(0.35, 0.65),
+            ),
+        ] {
+            flowsheet
+                .insert_stream(stream)
+                .expect("expected stream insert");
+        }
+        flowsheet
+            .insert_unit(build_flash_drum_node(
+                "flash-1",
+                "Flash Drum",
+                "stream-loop",
+                "stream-loop",
+                "stream-out",
+            ))
+            .expect("expected unit insert");
+
+        let error = SequentialModularSolver
+            .solve(&services, &flowsheet)
+            .expect_err("expected self-loop cycle failure");
 
         assert_eq!(error.code().as_str(), "invalid_input");
         assert!(error.message().contains("solver topological ordering failed"));
