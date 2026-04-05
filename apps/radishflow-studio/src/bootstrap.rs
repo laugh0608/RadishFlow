@@ -10,8 +10,9 @@ use crate::{
     EntitlementSessionPolicy, EntitlementSessionRuntime, EntitlementSessionState,
     RadishFlowControlPlaneClient, RadishFlowControlPlaneClientError,
     RadishFlowControlPlaneClientErrorKind, RadishFlowControlPlaneResponse, RunPanelDriverOutcome,
-    RunPanelWidgetDispatchOutcome, StudioAppAuthCacheContext, StudioAppCommandOutcome,
-    StudioAppFacade, StudioAppMutableAuthCacheContext, WorkspaceControlState,
+    RunPanelRecoveryOutcome, RunPanelWidgetDispatchOutcome, StudioAppAuthCacheContext,
+    StudioAppCommandOutcome, StudioAppFacade, StudioAppMutableAuthCacheContext,
+    WorkspaceControlState, apply_run_panel_recovery_action,
     dispatch_entitlement_session_event_with_control_plane,
     dispatch_run_panel_intent_with_auth_cache, dispatch_run_panel_primary_action_with_auth_cache,
     dispatch_run_panel_widget_action_with_auth_cache, snapshot_entitlement_session_driver_state,
@@ -47,6 +48,7 @@ pub enum StudioBootstrapTrigger {
     Intent(RunPanelIntent),
     WidgetPrimaryAction,
     WidgetAction(RunPanelActionId),
+    WidgetRecoveryAction,
     EntitlementWidgetPrimaryAction,
     EntitlementWidgetAction(EntitlementActionId),
     EntitlementSessionEvent(StudioBootstrapEntitlementSessionEvent),
@@ -125,6 +127,7 @@ pub struct StudioBootstrapReport {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum StudioBootstrapDispatch {
     AppCommand(StudioAppCommandOutcome),
+    RunPanelRecovery(RunPanelRecoveryOutcome),
     EntitlementSessionEvent(EntitlementSessionEventDriverOutcome),
 }
 
@@ -266,6 +269,15 @@ fn dispatch_bootstrap_trigger(
                 ))),
             }
         }
+        StudioBootstrapTrigger::WidgetRecoveryAction => apply_run_panel_recovery_action(
+            session.app_state,
+        )
+        .map(StudioBootstrapDispatch::RunPanelRecovery)
+        .ok_or_else(|| {
+            RfError::invalid_input(
+                "bootstrap run panel recovery action is unavailable in current widget model",
+            )
+        }),
         StudioBootstrapTrigger::EntitlementWidgetPrimaryAction => {
             dispatch_bootstrap_entitlement_host_trigger(
                 session,
@@ -837,14 +849,17 @@ impl Drop for TemporaryCacheRoot {
 
 #[cfg(test)]
 mod tests {
+    use std::path::PathBuf;
+
     use rf_ui::{
         EntitlementActionId, RunPanelActionId, RunPanelIntent, RunPanelPackageSelection, RunStatus,
         SimulationMode,
     };
 
     use super::{
-        StudioBootstrapConfig, StudioBootstrapDispatch, StudioBootstrapEntitlementSeed,
-        StudioBootstrapEntitlementSessionEvent, StudioBootstrapTrigger, run_studio_bootstrap,
+        BootstrapSession, StudioBootstrapConfig, StudioBootstrapDispatch,
+        StudioBootstrapEntitlementSeed, StudioBootstrapEntitlementSessionEvent,
+        StudioBootstrapTrigger, run_studio_bootstrap,
     };
     use crate::{
         EntitlementPreflightAction, EntitlementSessionEvent, EntitlementSessionEventOutcome,
@@ -1037,6 +1052,91 @@ mod tests {
         assert_eq!(dispatch.run_status, RunStatus::Converged);
         assert_eq!(report.run_panel.view().primary_action.label, "Run");
         assert_eq!(report.entitlement_preflight, None);
+    }
+
+    #[test]
+    fn bootstrap_can_dispatch_run_panel_recovery_action() {
+        let error = run_studio_bootstrap(&StudioBootstrapConfig {
+            project_path: PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .join("../..")
+                .join("examples")
+                .join("flowsheets")
+                .join("feed-valve-flash.rfproj.json"),
+            trigger: StudioBootstrapTrigger::WidgetRecoveryAction,
+            ..StudioBootstrapConfig::default()
+        })
+        .expect_err("expected recovery action to be unavailable before failure");
+
+        assert_eq!(
+            error.code().as_str(),
+            "invalid_input",
+            "expected bootstrap trigger to reject recovery before solver failure"
+        );
+
+        let config = StudioBootstrapConfig {
+            project_path: PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .join("../..")
+                .join("examples")
+                .join("flowsheets")
+                .join("feed-valve-flash.rfproj.json"),
+            trigger: StudioBootstrapTrigger::WidgetAction(RunPanelActionId::RunManual),
+            ..StudioBootstrapConfig::default()
+        };
+        let mut session = BootstrapSession::new(&config).expect("expected bootstrap session");
+        session
+            .app_state
+            .workspace
+            .document
+            .flowsheet
+            .streams
+            .get_mut(&rf_types::StreamId::new("stream-throttled"))
+            .expect("expected throttled stream")
+            .pressure_pa = 130_000.0;
+
+        let report = session
+            .run_trigger(&StudioBootstrapTrigger::WidgetAction(
+                RunPanelActionId::RunManual,
+            ))
+            .expect("expected failed run dispatch");
+        match &report.dispatch {
+            StudioBootstrapDispatch::AppCommand(outcome) => match &outcome.dispatch {
+                StudioAppResultDispatch::WorkspaceRun(dispatch) => {
+                    assert!(matches!(
+                        dispatch.outcome,
+                        StudioWorkspaceRunOutcome::Failed(_)
+                    ));
+                }
+                other => panic!("expected workspace run dispatch, got {other:?}"),
+            },
+            other => panic!("expected app command dispatch, got {other:?}"),
+        }
+
+        let recovery_report = session
+            .run_trigger(&StudioBootstrapTrigger::WidgetRecoveryAction)
+            .expect("expected recovery trigger dispatch");
+
+        match &recovery_report.dispatch {
+            StudioBootstrapDispatch::RunPanelRecovery(outcome) => {
+                assert_eq!(outcome.action.title, "Inspect unit inputs");
+                assert_eq!(
+                    outcome.applied_target,
+                    Some(rf_ui::InspectorTarget::Unit(rf_types::UnitId::new(
+                        "valve-1"
+                    )))
+                );
+            }
+            other => panic!("expected run panel recovery dispatch, got {other:?}"),
+        }
+        assert_eq!(
+            recovery_report
+                .run_panel
+                .text()
+                .lines
+                .iter()
+                .find(|line| { line.as_str() == "Suggested target: unit valve-1" }),
+            Some(&"Suggested target: unit valve-1".to_string())
+        );
+        assert!(recovery_report.control_state.notice.is_some());
     }
 
     #[test]
@@ -1483,6 +1583,9 @@ mod tests {
     fn app_command(report: &super::StudioBootstrapReport) -> &crate::StudioAppCommandOutcome {
         match &report.dispatch {
             StudioBootstrapDispatch::AppCommand(outcome) => outcome,
+            StudioBootstrapDispatch::RunPanelRecovery(_) => {
+                panic!("expected app command dispatch")
+            }
             StudioBootstrapDispatch::EntitlementSessionEvent(_) => {
                 panic!("expected app command dispatch")
             }
@@ -1495,6 +1598,9 @@ mod tests {
         match &report.dispatch {
             StudioBootstrapDispatch::EntitlementSessionEvent(outcome) => outcome,
             StudioBootstrapDispatch::AppCommand(_) => {
+                panic!("expected entitlement session event dispatch")
+            }
+            StudioBootstrapDispatch::RunPanelRecovery(_) => {
                 panic!("expected entitlement session event dispatch")
             }
         }

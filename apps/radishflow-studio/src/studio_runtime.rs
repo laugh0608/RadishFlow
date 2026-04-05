@@ -780,6 +780,9 @@ mod tests {
             StudioRuntimeDispatch::AppCommand(_) => {
                 panic!("expected entitlement session event dispatch")
             }
+            StudioRuntimeDispatch::RunPanelRecovery(_) => {
+                panic!("expected entitlement session event dispatch")
+            }
         }
     }
 }

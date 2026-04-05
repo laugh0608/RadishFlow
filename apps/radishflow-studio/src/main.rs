@@ -141,6 +141,11 @@ fn main() {
                 }
             }
         },
+        StudioRuntimeDispatch::RunPanelRecovery(outcome) => {
+            println!("Run panel recovery: {}", outcome.action.title);
+            println!("Recovery detail: {}", outcome.action.detail);
+            println!("Applied target: {:?}", outcome.applied_target);
+        }
         StudioRuntimeDispatch::EntitlementSessionEvent(outcome) => {
             println!("Entitlement session event: {:?}", outcome.event);
             match outcome.outcome {
