@@ -327,6 +327,107 @@ fn self_loop_cycle_reports_topological_ordering_context_end_to_end() {
 }
 
 #[test]
+fn multi_unit_cycle_reports_involved_units_end_to_end() {
+    let error = solve_example_result(
+        r#"
+{
+  "kind": "radishflow.project-file",
+  "schemaVersion": 1,
+  "document": {
+    "revision": 0,
+    "flowsheet": {
+      "name": "heater-valve-cycle",
+      "components": {
+        "component-a": { "id": "component-a", "name": "Component A", "formula": null },
+        "component-b": { "id": "component-b", "name": "Component B", "formula": null }
+      },
+      "streams": {
+        "stream-a": {
+          "id": "stream-a",
+          "name": "Cycle Stream A",
+          "temperature_k": 320.0,
+          "pressure_pa": 100000.0,
+          "total_molar_flow_mol_s": 5.0,
+          "overall_mole_fractions": {
+            "component-a": 0.35,
+            "component-b": 0.65
+          },
+          "phases": []
+        },
+        "stream-b": {
+          "id": "stream-b",
+          "name": "Cycle Stream B",
+          "temperature_k": 300.0,
+          "pressure_pa": 95000.0,
+          "total_molar_flow_mol_s": 5.0,
+          "overall_mole_fractions": {
+            "component-a": 0.35,
+            "component-b": 0.65
+          },
+          "phases": []
+        }
+      },
+      "units": {
+        "heater-1": {
+          "id": "heater-1",
+          "name": "Heater",
+          "kind": "heater",
+          "ports": [
+            {
+              "name": "inlet",
+              "direction": "inlet",
+              "kind": "material",
+              "stream_id": "stream-b"
+            },
+            {
+              "name": "outlet",
+              "direction": "outlet",
+              "kind": "material",
+              "stream_id": "stream-a"
+            }
+          ]
+        },
+        "valve-1": {
+          "id": "valve-1",
+          "name": "Valve",
+          "kind": "valve",
+          "ports": [
+            {
+              "name": "inlet",
+              "direction": "inlet",
+              "kind": "material",
+              "stream_id": "stream-a"
+            },
+            {
+              "name": "outlet",
+              "direction": "outlet",
+              "kind": "material",
+              "stream_id": "stream-b"
+            }
+          ]
+        }
+      }
+    },
+    "metadata": {
+      "documentId": "example-heater-valve-cycle",
+      "title": "Heater Valve Cycle Example",
+      "schemaVersion": 1,
+      "createdAt": "2026-04-05T00:00:00Z",
+      "updatedAt": "2026-04-05T00:00:00Z"
+    }
+  }
+}
+"#,
+    )
+    .expect_err("expected multi-unit cycle failure");
+
+    assert_eq!(error.code().as_str(), "invalid_input");
+    assert!(error.message().contains("solver topological ordering failed"));
+    assert!(error.message().contains("contains a cycle"));
+    assert!(error.message().contains("[heater-1, valve-1]"));
+}
+
+#[test]
 fn missing_upstream_source_reports_connection_validation_context_end_to_end() {
     let error = solve_example_result(
         r#"
