@@ -18,6 +18,8 @@ use crate::{
 pub enum StudioAppHostUiAction {
     RunManualWorkspace,
     ResumeWorkspace,
+    HoldWorkspace,
+    ActivateWorkspace,
     RecoverRunPanelFailure,
 }
 
@@ -26,6 +28,8 @@ pub enum StudioAppHostUiActionDisabledReason {
     NoRegisteredWindow,
     RunManualUnavailable,
     ResumeUnavailable,
+    HoldUnavailable,
+    ActivateUnavailable,
     NoRunPanelRecovery,
 }
 
@@ -1013,6 +1017,8 @@ fn map_ui_action(action: StudioAppHostUiAction) -> StudioAppWindowHostUiAction {
             StudioAppWindowHostUiAction::RunManualWorkspace
         }
         StudioAppHostUiAction::ResumeWorkspace => StudioAppWindowHostUiAction::ResumeWorkspace,
+        StudioAppHostUiAction::HoldWorkspace => StudioAppWindowHostUiAction::HoldWorkspace,
+        StudioAppHostUiAction::ActivateWorkspace => StudioAppWindowHostUiAction::ActivateWorkspace,
         StudioAppHostUiAction::RecoverRunPanelFailure => {
             StudioAppWindowHostUiAction::RecoverRunPanelFailure
         }
@@ -1028,6 +1034,10 @@ fn ui_action_state_from_window_host(
                 StudioAppHostUiAction::RunManualWorkspace
             }
             StudioAppWindowHostUiAction::ResumeWorkspace => StudioAppHostUiAction::ResumeWorkspace,
+            StudioAppWindowHostUiAction::HoldWorkspace => StudioAppHostUiAction::HoldWorkspace,
+            StudioAppWindowHostUiAction::ActivateWorkspace => {
+                StudioAppHostUiAction::ActivateWorkspace
+            }
             StudioAppWindowHostUiAction::RecoverRunPanelFailure => {
                 StudioAppHostUiAction::RecoverRunPanelFailure
             }
@@ -1049,6 +1059,12 @@ fn ui_action_state_from_window_host(
                     }
                     StudioAppWindowHostUiActionDisabledReason::ResumeUnavailable => {
                         StudioAppHostUiActionDisabledReason::ResumeUnavailable
+                    }
+                    StudioAppWindowHostUiActionDisabledReason::HoldUnavailable => {
+                        StudioAppHostUiActionDisabledReason::HoldUnavailable
+                    }
+                    StudioAppWindowHostUiActionDisabledReason::ActivateUnavailable => {
+                        StudioAppHostUiActionDisabledReason::ActivateUnavailable
                     }
                     StudioAppWindowHostUiActionDisabledReason::NoRunPanelRecovery => {
                         StudioAppHostUiActionDisabledReason::NoRunPanelRecovery
@@ -1088,6 +1104,18 @@ fn ui_action_model_from_state(state: StudioAppHostUiActionState) -> StudioAppHos
             110,
             "Resume workspace",
         ),
+        StudioAppHostUiAction::HoldWorkspace => (
+            "run_panel.set_hold",
+            StudioAppHostUiCommandGroup::RunPanel,
+            120,
+            "Hold workspace",
+        ),
+        StudioAppHostUiAction::ActivateWorkspace => (
+            "run_panel.set_active",
+            StudioAppHostUiCommandGroup::RunPanel,
+            130,
+            "Activate workspace",
+        ),
         StudioAppHostUiAction::RecoverRunPanelFailure => (
             "run_panel.recover_failure",
             StudioAppHostUiCommandGroup::Recovery,
@@ -1103,6 +1131,12 @@ fn ui_action_model_from_state(state: StudioAppHostUiActionState) -> StudioAppHos
                 }
                 StudioAppHostUiAction::ResumeWorkspace => {
                     "Dispatch the current resume action in the target window"
+                }
+                StudioAppHostUiAction::HoldWorkspace => {
+                    "Dispatch the current hold action in the target window"
+                }
+                StudioAppHostUiAction::ActivateWorkspace => {
+                    "Dispatch the current activate action in the target window"
                 }
                 StudioAppHostUiAction::RecoverRunPanelFailure => {
                     "Apply the current run panel recovery action in the target window"
@@ -1121,6 +1155,12 @@ fn ui_action_model_from_state(state: StudioAppHostUiActionState) -> StudioAppHos
                 }
                 StudioAppHostUiAction::ResumeWorkspace => {
                     "Open a studio window before resuming the workspace"
+                }
+                StudioAppHostUiAction::HoldWorkspace => {
+                    "Open a studio window before holding the workspace"
+                }
+                StudioAppHostUiAction::ActivateWorkspace => {
+                    "Open a studio window before activating the workspace"
                 }
                 StudioAppHostUiAction::RecoverRunPanelFailure => {
                     "Open a studio window before requesting run panel recovery"
@@ -1143,6 +1183,22 @@ fn ui_action_model_from_state(state: StudioAppHostUiActionState) -> StudioAppHos
         } => (
             false,
             "Resume is currently unavailable in the target window",
+            target_window_id,
+        ),
+        StudioAppHostUiActionAvailability::Disabled {
+            reason: StudioAppHostUiActionDisabledReason::HoldUnavailable,
+            target_window_id,
+        } => (
+            false,
+            "Hold is currently unavailable in the target window",
+            target_window_id,
+        ),
+        StudioAppHostUiActionAvailability::Disabled {
+            reason: StudioAppHostUiActionDisabledReason::ActivateUnavailable,
+            target_window_id,
+        } => (
+            false,
+            "Activate is currently unavailable in the target window",
             target_window_id,
         ),
         StudioAppHostUiActionAvailability::Disabled {
@@ -1304,6 +1360,19 @@ mod tests {
                 },
                 StudioAppHostUiActionState {
                     action: StudioAppHostUiAction::ResumeWorkspace,
+                    availability: StudioAppHostUiActionAvailability::Enabled {
+                        target_window_id: first_window.window_id,
+                    },
+                },
+                StudioAppHostUiActionState {
+                    action: StudioAppHostUiAction::HoldWorkspace,
+                    availability: StudioAppHostUiActionAvailability::Disabled {
+                        reason: StudioAppHostUiActionDisabledReason::HoldUnavailable,
+                        target_window_id: Some(first_window.window_id),
+                    },
+                },
+                StudioAppHostUiActionState {
+                    action: StudioAppHostUiAction::ActivateWorkspace,
                     availability: StudioAppHostUiActionAvailability::Enabled {
                         target_window_id: first_window.window_id,
                     },
@@ -2153,6 +2222,56 @@ mod tests {
     }
 
     #[test]
+    fn app_host_controller_dispatches_activate_via_ui_action() {
+        let mut controller =
+            StudioAppHostController::new(&lease_expiring_config()).expect("expected controller");
+        let opened = controller.open_window().expect("expected window open");
+
+        let activate = controller
+            .dispatch_ui_action(StudioAppHostUiAction::ActivateWorkspace)
+            .expect("expected ui action call")
+            .expect("expected ui action dispatch");
+
+        assert_eq!(activate.target_window_id, opened.registration.window_id);
+        match &activate.effects.runtime_report.dispatch {
+            crate::StudioRuntimeDispatch::AppCommand(outcome) => match &outcome.dispatch {
+                crate::StudioAppResultDispatch::WorkspaceMode(dispatch) => {
+                    assert_eq!(dispatch.simulation_mode, rf_ui::SimulationMode::Active);
+                }
+                other => panic!("expected workspace mode dispatch, got {other:?}"),
+            },
+            other => panic!("expected app command dispatch, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn app_host_controller_dispatches_hold_via_ui_action_after_activation() {
+        let mut controller =
+            StudioAppHostController::new(&lease_expiring_config()).expect("expected controller");
+        let opened = controller.open_window().expect("expected window open");
+        let _ = controller
+            .dispatch_ui_action(StudioAppHostUiAction::ActivateWorkspace)
+            .expect("expected ui action call")
+            .expect("expected ui action dispatch");
+
+        let hold = controller
+            .dispatch_ui_action(StudioAppHostUiAction::HoldWorkspace)
+            .expect("expected ui action call")
+            .expect("expected ui action dispatch");
+
+        assert_eq!(hold.target_window_id, opened.registration.window_id);
+        match &hold.effects.runtime_report.dispatch {
+            crate::StudioRuntimeDispatch::AppCommand(outcome) => match &outcome.dispatch {
+                crate::StudioAppResultDispatch::WorkspaceMode(dispatch) => {
+                    assert_eq!(dispatch.simulation_mode, rf_ui::SimulationMode::Hold);
+                }
+                other => panic!("expected workspace mode dispatch, got {other:?}"),
+            },
+            other => panic!("expected app command dispatch, got {other:?}"),
+        }
+    }
+
+    #[test]
     fn app_host_snapshot_tracks_ui_action_availability_for_recovery() {
         let (config, project_path) = solver_failure_config();
         let mut app_host = StudioAppHost::new(&config).expect("expected app host");
@@ -2198,6 +2317,35 @@ mod tests {
                 .expect("expected resume ui action state"),
             &StudioAppHostUiActionState {
                 action: StudioAppHostUiAction::ResumeWorkspace,
+                availability: StudioAppHostUiActionAvailability::Enabled {
+                    target_window_id: second_window.window_id,
+                },
+            }
+        );
+        assert_eq!(
+            focused
+                .snapshot
+                .ui_actions
+                .iter()
+                .find(|state| state.action == StudioAppHostUiAction::HoldWorkspace)
+                .expect("expected hold ui action state"),
+            &StudioAppHostUiActionState {
+                action: StudioAppHostUiAction::HoldWorkspace,
+                availability: StudioAppHostUiActionAvailability::Disabled {
+                    reason: StudioAppHostUiActionDisabledReason::HoldUnavailable,
+                    target_window_id: Some(second_window.window_id),
+                },
+            }
+        );
+        assert_eq!(
+            focused
+                .snapshot
+                .ui_actions
+                .iter()
+                .find(|state| state.action == StudioAppHostUiAction::ActivateWorkspace)
+                .expect("expected activate ui action state"),
+            &StudioAppHostUiActionState {
+                action: StudioAppHostUiAction::ActivateWorkspace,
                 availability: StudioAppHostUiActionAvailability::Enabled {
                     target_window_id: second_window.window_id,
                 },
@@ -2254,6 +2402,35 @@ mod tests {
                 },
             }
         );
+        assert_eq!(
+            failed_run
+                .snapshot
+                .ui_actions
+                .iter()
+                .find(|state| state.action == StudioAppHostUiAction::HoldWorkspace)
+                .expect("expected hold ui action state"),
+            &StudioAppHostUiActionState {
+                action: StudioAppHostUiAction::HoldWorkspace,
+                availability: StudioAppHostUiActionAvailability::Disabled {
+                    reason: StudioAppHostUiActionDisabledReason::HoldUnavailable,
+                    target_window_id: Some(second_window.window_id),
+                },
+            }
+        );
+        assert_eq!(
+            failed_run
+                .snapshot
+                .ui_actions
+                .iter()
+                .find(|state| state.action == StudioAppHostUiAction::ActivateWorkspace)
+                .expect("expected activate ui action state"),
+            &StudioAppHostUiActionState {
+                action: StudioAppHostUiAction::ActivateWorkspace,
+                availability: StudioAppHostUiActionAvailability::Enabled {
+                    target_window_id: second_window.window_id,
+                },
+            }
+        );
         assert_ne!(
             failed_run
                 .snapshot
@@ -2296,6 +2473,32 @@ mod tests {
                 label: "Resume workspace",
                 enabled: false,
                 detail: "Open a studio window before resuming the workspace",
+                target_window_id: None,
+            })
+        );
+        assert_eq!(
+            disabled.action(StudioAppHostUiAction::HoldWorkspace),
+            Some(&StudioAppHostUiActionModel {
+                action: Some(StudioAppHostUiAction::HoldWorkspace),
+                command_id: "run_panel.set_hold",
+                group: StudioAppHostUiCommandGroup::RunPanel,
+                sort_order: 120,
+                label: "Hold workspace",
+                enabled: false,
+                detail: "Open a studio window before holding the workspace",
+                target_window_id: None,
+            })
+        );
+        assert_eq!(
+            disabled.action(StudioAppHostUiAction::ActivateWorkspace),
+            Some(&StudioAppHostUiActionModel {
+                action: Some(StudioAppHostUiAction::ActivateWorkspace),
+                command_id: "run_panel.set_active",
+                group: StudioAppHostUiCommandGroup::RunPanel,
+                sort_order: 130,
+                label: "Activate workspace",
+                enabled: false,
+                detail: "Open a studio window before activating the workspace",
                 target_window_id: None,
             })
         );
@@ -2346,6 +2549,32 @@ mod tests {
             }
         );
         assert_eq!(
+            no_recovery.actions[2],
+            StudioAppHostUiActionModel {
+                action: Some(StudioAppHostUiAction::HoldWorkspace),
+                command_id: "run_panel.set_hold",
+                group: StudioAppHostUiCommandGroup::RunPanel,
+                sort_order: 120,
+                label: "Hold workspace",
+                enabled: false,
+                detail: "Hold is currently unavailable in the target window",
+                target_window_id: Some(opened.registration.window_id),
+            }
+        );
+        assert_eq!(
+            no_recovery.actions[3],
+            StudioAppHostUiActionModel {
+                action: Some(StudioAppHostUiAction::ActivateWorkspace),
+                command_id: "run_panel.set_active",
+                group: StudioAppHostUiCommandGroup::RunPanel,
+                sort_order: 130,
+                label: "Activate workspace",
+                enabled: true,
+                detail: "Dispatch the current activate action in the target window",
+                target_window_id: Some(opened.registration.window_id),
+            }
+        );
+        assert_eq!(
             no_recovery.action(StudioAppHostUiAction::RecoverRunPanelFailure),
             Some(&StudioAppHostUiActionModel {
                 action: Some(StudioAppHostUiAction::RecoverRunPanelFailure),
@@ -2365,6 +2594,14 @@ mod tests {
         assert_eq!(
             no_recovery.command("run_panel.resume_workspace"),
             no_recovery.action(StudioAppHostUiAction::ResumeWorkspace)
+        );
+        assert_eq!(
+            no_recovery.command("run_panel.set_hold"),
+            no_recovery.action(StudioAppHostUiAction::HoldWorkspace)
+        );
+        assert_eq!(
+            no_recovery.command("run_panel.set_active"),
+            no_recovery.action(StudioAppHostUiAction::ActivateWorkspace)
         );
     }
 
@@ -2458,6 +2695,30 @@ mod tests {
         assert_eq!(
             controller
                 .state()
+                .ui_action_state(StudioAppHostUiAction::HoldWorkspace),
+            Some(&StudioAppHostUiActionState {
+                action: StudioAppHostUiAction::HoldWorkspace,
+                availability: StudioAppHostUiActionAvailability::Disabled {
+                    reason: StudioAppHostUiActionDisabledReason::NoRegisteredWindow,
+                    target_window_id: None,
+                },
+            })
+        );
+        assert_eq!(
+            controller
+                .state()
+                .ui_action_state(StudioAppHostUiAction::ActivateWorkspace),
+            Some(&StudioAppHostUiActionState {
+                action: StudioAppHostUiAction::ActivateWorkspace,
+                availability: StudioAppHostUiActionAvailability::Disabled {
+                    reason: StudioAppHostUiActionDisabledReason::NoRegisteredWindow,
+                    target_window_id: None,
+                },
+            })
+        );
+        assert_eq!(
+            controller
+                .state()
                 .ui_action_state(StudioAppHostUiAction::RecoverRunPanelFailure),
             Some(&StudioAppHostUiActionState {
                 action: StudioAppHostUiAction::RecoverRunPanelFailure,
@@ -2477,6 +2738,16 @@ mod tests {
             .dispatch_ui_action(StudioAppHostUiAction::ResumeWorkspace)
             .expect("expected optional ui action result");
         assert!(resume.is_none());
+
+        let hold = controller
+            .dispatch_ui_action(StudioAppHostUiAction::HoldWorkspace)
+            .expect("expected optional ui action result");
+        assert!(hold.is_none());
+
+        let activate = controller
+            .dispatch_ui_action(StudioAppHostUiAction::ActivateWorkspace)
+            .expect("expected optional ui action result");
+        assert!(activate.is_none());
 
         let recovery = controller
             .dispatch_ui_action(StudioAppHostUiAction::RecoverRunPanelFailure)
@@ -2525,6 +2796,32 @@ mod tests {
             })
         );
         assert_eq!(
+            model.action(StudioAppHostUiAction::HoldWorkspace),
+            Some(&StudioAppHostUiActionModel {
+                action: Some(StudioAppHostUiAction::HoldWorkspace),
+                command_id: "run_panel.set_hold",
+                group: StudioAppHostUiCommandGroup::RunPanel,
+                sort_order: 120,
+                label: "Hold workspace",
+                enabled: false,
+                detail: "Hold is currently unavailable in the target window",
+                target_window_id: Some(opened.registration.window_id),
+            })
+        );
+        assert_eq!(
+            model.action(StudioAppHostUiAction::ActivateWorkspace),
+            Some(&StudioAppHostUiActionModel {
+                action: Some(StudioAppHostUiAction::ActivateWorkspace),
+                command_id: "run_panel.set_active",
+                group: StudioAppHostUiCommandGroup::RunPanel,
+                sort_order: 130,
+                label: "Activate workspace",
+                enabled: true,
+                detail: "Dispatch the current activate action in the target window",
+                target_window_id: Some(opened.registration.window_id),
+            })
+        );
+        assert_eq!(
             model.action(StudioAppHostUiAction::RecoverRunPanelFailure),
             Some(&StudioAppHostUiActionModel {
                 action: Some(StudioAppHostUiAction::RecoverRunPanelFailure),
@@ -2537,7 +2834,7 @@ mod tests {
                 target_window_id: Some(opened.registration.window_id),
             })
         );
-        assert_eq!(model.actions.len(), 3);
+        assert_eq!(model.actions.len(), 5);
 
         let _ = fs::remove_file(project_path);
     }
@@ -2581,6 +2878,44 @@ mod tests {
     }
 
     #[test]
+    fn app_host_controller_reports_disabled_hold_command_without_windows() {
+        let mut controller =
+            StudioAppHostController::new(&lease_expiring_config()).expect("expected controller");
+
+        let dispatch = controller
+            .dispatch_ui_command("run_panel.set_hold")
+            .expect("expected ui command result");
+
+        assert_eq!(
+            dispatch,
+            StudioAppHostUiCommandDispatchResult::IgnoredDisabled {
+                command_id: "run_panel.set_hold".to_string(),
+                detail: "Open a studio window before holding the workspace".to_string(),
+                target_window_id: None,
+            }
+        );
+    }
+
+    #[test]
+    fn app_host_controller_reports_disabled_activate_command_without_windows() {
+        let mut controller =
+            StudioAppHostController::new(&lease_expiring_config()).expect("expected controller");
+
+        let dispatch = controller
+            .dispatch_ui_command("run_panel.set_active")
+            .expect("expected ui command result");
+
+        assert_eq!(
+            dispatch,
+            StudioAppHostUiCommandDispatchResult::IgnoredDisabled {
+                command_id: "run_panel.set_active".to_string(),
+                detail: "Open a studio window before activating the workspace".to_string(),
+                target_window_id: None,
+            }
+        );
+    }
+
+    #[test]
     fn app_host_controller_dispatches_ui_command_by_command_id() {
         let (config, project_path) = solver_failure_config();
         let mut controller = StudioAppHostController::new(&config).expect("expected controller");
@@ -2613,6 +2948,33 @@ mod tests {
     }
 
     #[test]
+    fn app_host_controller_dispatches_activate_ui_command_by_command_id() {
+        let mut controller =
+            StudioAppHostController::new(&lease_expiring_config()).expect("expected controller");
+        let opened = controller.open_window().expect("expected window open");
+
+        let dispatch = controller
+            .dispatch_ui_command("run_panel.set_active")
+            .expect("expected ui command dispatch");
+
+        match dispatch {
+            StudioAppHostUiCommandDispatchResult::Executed(activate) => {
+                assert_eq!(activate.target_window_id, opened.registration.window_id);
+                match &activate.effects.runtime_report.dispatch {
+                    crate::StudioRuntimeDispatch::AppCommand(outcome) => match &outcome.dispatch {
+                        crate::StudioAppResultDispatch::WorkspaceMode(dispatch) => {
+                            assert_eq!(dispatch.simulation_mode, rf_ui::SimulationMode::Active);
+                        }
+                        other => panic!("expected workspace mode dispatch, got {other:?}"),
+                    },
+                    other => panic!("expected app command dispatch, got {other:?}"),
+                }
+            }
+            other => panic!("expected executed ui command dispatch, got {other:?}"),
+        }
+    }
+
+    #[test]
     fn app_host_controller_dispatches_resume_ui_command_by_command_id() {
         let (config, project_path) = solver_failure_config();
         let mut controller = StudioAppHostController::new(&config).expect("expected controller");
@@ -2642,6 +3004,36 @@ mod tests {
         }
 
         let _ = fs::remove_file(project_path);
+    }
+
+    #[test]
+    fn app_host_controller_dispatches_hold_ui_command_by_command_id_after_activation() {
+        let mut controller =
+            StudioAppHostController::new(&lease_expiring_config()).expect("expected controller");
+        let opened = controller.open_window().expect("expected window open");
+        let _ = controller
+            .dispatch_ui_command("run_panel.set_active")
+            .expect("expected activate command dispatch");
+
+        let dispatch = controller
+            .dispatch_ui_command("run_panel.set_hold")
+            .expect("expected ui command dispatch");
+
+        match dispatch {
+            StudioAppHostUiCommandDispatchResult::Executed(hold) => {
+                assert_eq!(hold.target_window_id, opened.registration.window_id);
+                match &hold.effects.runtime_report.dispatch {
+                    crate::StudioRuntimeDispatch::AppCommand(outcome) => match &outcome.dispatch {
+                        crate::StudioAppResultDispatch::WorkspaceMode(dispatch) => {
+                            assert_eq!(dispatch.simulation_mode, rf_ui::SimulationMode::Hold);
+                        }
+                        other => panic!("expected workspace mode dispatch, got {other:?}"),
+                    },
+                    other => panic!("expected app command dispatch, got {other:?}"),
+                }
+            }
+            other => panic!("expected executed ui command dispatch, got {other:?}"),
+        }
     }
 
     #[test]
