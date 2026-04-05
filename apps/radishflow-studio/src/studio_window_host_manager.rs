@@ -22,6 +22,9 @@ pub enum StudioAppWindowHostCommand {
         window_id: StudioWindowHostId,
         trigger: StudioRuntimeTrigger,
     },
+    DispatchRunPanelRecoveryAction {
+        window_id: StudioWindowHostId,
+    },
     FocusWindow {
         window_id: StudioWindowHostId,
     },
@@ -100,6 +103,12 @@ impl StudioAppWindowHostManager {
                     dispatch,
                 ))
             }
+            StudioAppWindowHostCommand::DispatchRunPanelRecoveryAction { window_id } => {
+                let dispatch = self.dispatch_run_panel_recovery_action(window_id)?;
+                Ok(StudioAppWindowHostCommandOutcome::WindowDispatched(
+                    dispatch,
+                ))
+            }
             StudioAppWindowHostCommand::FocusWindow { window_id } => {
                 let dispatch = self.focus_window(window_id)?;
                 Ok(StudioAppWindowHostCommandOutcome::WindowDispatched(
@@ -144,6 +153,13 @@ impl StudioAppWindowHostManager {
             target_window_id: window_id,
             dispatch,
         })
+    }
+
+    pub fn dispatch_run_panel_recovery_action(
+        &mut self,
+        window_id: StudioWindowHostId,
+    ) -> RfResult<StudioAppWindowHostDispatch> {
+        self.dispatch_trigger(window_id, &StudioRuntimeTrigger::WidgetRecoveryAction)
     }
 
     pub fn focus_window(
@@ -253,6 +269,12 @@ impl StudioAppWindowHostManager {
 
 #[cfg(test)]
 mod tests {
+    use std::{
+        fs,
+        path::PathBuf,
+        time::{SystemTime, UNIX_EPOCH},
+    };
+
     use crate::{
         StudioAppWindowHostCommand, StudioAppWindowHostCommandOutcome,
         StudioAppWindowHostGlobalEvent, StudioAppWindowHostManager,
@@ -260,6 +282,7 @@ mod tests {
         StudioRuntimeEntitlementSessionEvent, StudioRuntimeTrigger, StudioWindowHostRole,
         StudioWindowTimerDriverTransition,
     };
+    use rf_ui::RunPanelActionId;
 
     fn lease_expiring_config() -> crate::StudioRuntimeConfig {
         crate::StudioRuntimeConfig {
@@ -267,6 +290,33 @@ mod tests {
             entitlement_seed: StudioRuntimeEntitlementSeed::LeaseExpiringSoon,
             ..crate::StudioRuntimeConfig::default()
         }
+    }
+
+    fn solver_failure_config() -> (crate::StudioRuntimeConfig, PathBuf) {
+        let unique = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("expected time after epoch")
+            .as_nanos();
+        let project_path = std::env::temp_dir().join(format!(
+            "radishflow-window-host-recovery-{unique}.rfproj.json"
+        ));
+        let project_json = include_str!("../../../examples/flowsheets/feed-valve-flash.rfproj.json")
+            .replacen(
+                "\"name\": \"Valve Outlet\",\n          \"temperature_k\": 300.0,\n          \"pressure_pa\": 90000.0,",
+                "\"name\": \"Valve Outlet\",\n          \"temperature_k\": 300.0,\n          \"pressure_pa\": 130000.0,",
+                1,
+            );
+        fs::write(&project_path, project_json).expect("expected temporary failure project");
+
+        (
+            crate::StudioRuntimeConfig {
+                project_path: project_path.clone(),
+                entitlement_preflight: StudioRuntimeEntitlementPreflight::Skip,
+                entitlement_seed: StudioRuntimeEntitlementSeed::Synced,
+                trigger: crate::StudioRuntimeTrigger::WidgetAction(RunPanelActionId::RunManual),
+            },
+            project_path,
+        )
     }
 
     #[test]
@@ -462,6 +512,52 @@ mod tests {
             }
             other => panic!("expected close outcome, got {other:?}"),
         }
+    }
+
+    #[test]
+    fn app_window_host_manager_dispatches_run_panel_recovery_through_typed_entry() {
+        let (config, project_path) = solver_failure_config();
+        let mut manager = StudioAppWindowHostManager::new(&config).expect("expected manager");
+        let window = manager.open_window();
+
+        let run = manager
+            .dispatch_trigger(
+                window.window_id,
+                &StudioRuntimeTrigger::WidgetAction(RunPanelActionId::RunManual),
+            )
+            .expect("expected failed run dispatch");
+        match &run.dispatch.host_output.runtime_output.report.dispatch {
+            crate::StudioRuntimeDispatch::AppCommand(outcome) => match &outcome.dispatch {
+                crate::StudioAppResultDispatch::WorkspaceRun(dispatch) => {
+                    assert!(matches!(
+                        dispatch.outcome,
+                        crate::StudioWorkspaceRunOutcome::Failed(_)
+                    ));
+                }
+                other => panic!("expected workspace run dispatch, got {other:?}"),
+            },
+            other => panic!("expected app command dispatch, got {other:?}"),
+        }
+
+        let recovery = manager
+            .dispatch_run_panel_recovery_action(window.window_id)
+            .expect("expected run panel recovery dispatch");
+
+        assert_eq!(recovery.target_window_id, window.window_id);
+        match &recovery.dispatch.host_output.runtime_output.report.dispatch {
+            crate::StudioRuntimeDispatch::RunPanelRecovery(outcome) => {
+                assert_eq!(outcome.action.title, "Inspect unit inputs");
+                assert_eq!(
+                    outcome.applied_target,
+                    Some(rf_ui::InspectorTarget::Unit(rf_types::UnitId::new(
+                        "valve-1"
+                    )))
+                );
+            }
+            other => panic!("expected run panel recovery dispatch, got {other:?}"),
+        }
+
+        let _ = fs::remove_file(project_path);
     }
 
     #[test]
