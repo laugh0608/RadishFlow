@@ -135,9 +135,11 @@ pub use studio_app_host::{
     StudioAppHostEntitlementTimerState, StudioAppHostEntitlementTimerStateChange,
     StudioAppHostGlobalEventResult, StudioAppHostOpenWindowResult, StudioAppHostOutput,
     StudioAppHostProjection, StudioAppHostSnapshot, StudioAppHostState, StudioAppHostStore,
-    StudioAppHostTimerSlotChange, StudioAppHostUiAction, StudioAppHostWindowChange,
-    StudioAppHostWindowDispatchResult, StudioAppHostWindowSelectionChange,
-    StudioAppHostWindowSnapshot, StudioAppHostWindowState,
+    StudioAppHostTimerSlotChange, StudioAppHostUiAction, StudioAppHostUiActionAvailability,
+    StudioAppHostUiActionDisabledReason, StudioAppHostUiActionModel, StudioAppHostUiActionState,
+    StudioAppHostUiCommandDispatchResult, StudioAppHostUiCommandGroup, StudioAppHostUiCommandModel,
+    StudioAppHostWindowChange, StudioAppHostWindowDispatchResult,
+    StudioAppHostWindowSelectionChange, StudioAppHostWindowSnapshot, StudioAppHostWindowState,
 };
 pub use studio_runtime::{
     StudioRuntime, StudioRuntimeConfig, StudioRuntimeDispatch, StudioRuntimeEffect,
@@ -157,7 +159,8 @@ pub use studio_window_host::{
 pub use studio_window_host_manager::{
     StudioAppWindowHostClose, StudioAppWindowHostCommand, StudioAppWindowHostCommandOutcome,
     StudioAppWindowHostDispatch, StudioAppWindowHostGlobalEvent, StudioAppWindowHostManager,
-    StudioAppWindowHostUiAction,
+    StudioAppWindowHostUiAction, StudioAppWindowHostUiActionAvailability,
+    StudioAppWindowHostUiActionDisabledReason, StudioAppWindowHostUiActionState,
 };
 pub use studio_window_session::{
     StudioWindowSession, StudioWindowSessionDispatch, StudioWindowSessionShutdown,

@@ -1,10 +1,10 @@
 use radishflow_studio::{
     EntitlementSessionEventOutcome, StudioAppHostCloseWindowResult, StudioAppHostController,
     StudioAppHostEntitlementTimerEffect, StudioAppHostGlobalEventResult,
-    StudioAppHostOpenWindowResult, StudioAppHostWindowDispatchResult, StudioAppResultDispatch,
-    StudioAppWindowHostGlobalEvent, StudioRuntimeConfig, StudioRuntimeDispatch,
-    StudioRuntimeReport, StudioWindowHostRetirement, StudioWindowTimerDriverAckResult,
-    StudioWindowTimerDriverTransition,
+    StudioAppHostOpenWindowResult, StudioAppHostState, StudioAppHostWindowDispatchResult,
+    StudioAppResultDispatch, StudioAppWindowHostGlobalEvent, StudioRuntimeConfig,
+    StudioRuntimeDispatch, StudioRuntimeReport, StudioWindowHostRetirement,
+    StudioWindowTimerDriverAckResult, StudioWindowTimerDriverTransition,
 };
 
 fn print_text_view(title: &str, lines: &[String]) {
@@ -68,6 +68,7 @@ fn main() {
     println!("Requested trigger: {:?}", config.trigger);
     println!("Entitlement preflight: {:?}", config.entitlement_preflight);
     println!("App host state: {:?}", dispatch_state);
+    print_ui_actions(&dispatch_state);
     println!("Control mode: {:?}", report.control_state.simulation_mode);
     println!("Control pending: {:?}", report.control_state.pending_reason);
     println!("Control status: {:?}", report.control_state.run_status);
@@ -233,10 +234,37 @@ fn main() {
                 shutdown.next_foreground_window_id
             );
             println!("App host state: {:?}", close_state);
+            print_ui_actions(&close_state);
         }
         None => {
             println!("Window host close ignored for window #{}", window.window_id);
         }
+    }
+}
+
+fn print_ui_actions(state: &StudioAppHostState) {
+    let model = state.ui_command_model();
+    if model.actions.is_empty() {
+        println!("UI actions: none");
+        return;
+    }
+
+    println!("UI actions:");
+    for action in &model.actions {
+        println!(
+            "  - {} ({}) / {:?}#{} [{}] on {:?}",
+            action.label,
+            action.command_id,
+            action.group,
+            action.sort_order,
+            if action.enabled {
+                "enabled"
+            } else {
+                "disabled"
+            },
+            action.target_window_id
+        );
+        println!("    {}", action.detail);
     }
 }
 

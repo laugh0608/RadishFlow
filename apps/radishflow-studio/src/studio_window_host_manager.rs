@@ -1,6 +1,7 @@
 use std::collections::BTreeSet;
 
 use rf_types::{RfError, RfResult};
+use rf_ui::RunPanelWidgetModel;
 
 use crate::{
     StudioRuntimeConfig, StudioRuntimeTrigger, StudioWindowHostId, StudioWindowHostLifecycleEvent,
@@ -19,6 +20,49 @@ pub enum StudioAppWindowHostGlobalEvent {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StudioAppWindowHostUiAction {
     RecoverRunPanelFailure,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum StudioAppWindowHostUiActionDisabledReason {
+    NoRegisteredWindow,
+    NoRunPanelRecovery,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum StudioAppWindowHostUiActionAvailability {
+    Enabled {
+        target_window_id: StudioWindowHostId,
+    },
+    Disabled {
+        reason: StudioAppWindowHostUiActionDisabledReason,
+        target_window_id: Option<StudioWindowHostId>,
+    },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioAppWindowHostUiActionState {
+    pub action: StudioAppWindowHostUiAction,
+    pub availability: StudioAppWindowHostUiActionAvailability,
+}
+
+impl StudioAppWindowHostUiActionState {
+    pub fn enabled(&self) -> bool {
+        matches!(
+            self.availability,
+            StudioAppWindowHostUiActionAvailability::Enabled { .. }
+        )
+    }
+
+    pub fn target_window_id(&self) -> Option<StudioWindowHostId> {
+        match self.availability {
+            StudioAppWindowHostUiActionAvailability::Enabled { target_window_id } => {
+                Some(target_window_id)
+            }
+            StudioAppWindowHostUiActionAvailability::Disabled {
+                target_window_id, ..
+            } => target_window_id,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -98,6 +142,41 @@ impl StudioAppWindowHostManager {
 
     pub fn registered_windows(&self) -> Vec<StudioWindowHostId> {
         self.registered_windows.iter().copied().collect()
+    }
+
+    pub fn ui_action_state(
+        &self,
+        action: StudioAppWindowHostUiAction,
+    ) -> StudioAppWindowHostUiActionState {
+        match action {
+            StudioAppWindowHostUiAction::RecoverRunPanelFailure => {
+                let target_window_id = self
+                    .foreground_window_id
+                    .or_else(|| self.registered_windows.iter().next().copied());
+                let availability = match target_window_id {
+                    Some(target_window_id) if self.run_panel_recovery_available() => {
+                        StudioAppWindowHostUiActionAvailability::Enabled { target_window_id }
+                    }
+                    Some(target_window_id) => StudioAppWindowHostUiActionAvailability::Disabled {
+                        reason: StudioAppWindowHostUiActionDisabledReason::NoRunPanelRecovery,
+                        target_window_id: Some(target_window_id),
+                    },
+                    None => StudioAppWindowHostUiActionAvailability::Disabled {
+                        reason: StudioAppWindowHostUiActionDisabledReason::NoRegisteredWindow,
+                        target_window_id: None,
+                    },
+                };
+
+                StudioAppWindowHostUiActionState {
+                    action,
+                    availability,
+                }
+            }
+        }
+    }
+
+    pub fn ui_action_states(&self) -> Vec<StudioAppWindowHostUiActionState> {
+        vec![self.ui_action_state(StudioAppWindowHostUiAction::RecoverRunPanelFailure)]
     }
 
     pub fn execute_command(
@@ -331,6 +410,19 @@ impl StudioAppWindowHostManager {
             "window host `{window_id}` is not registered with app host manager"
         )))
     }
+
+    fn run_panel_recovery_available(&self) -> bool {
+        let run_panel = &self
+            .session
+            .host_port()
+            .runtime()
+            .app_state()
+            .workspace
+            .run_panel;
+        RunPanelWidgetModel::from_state(run_panel)
+            .recovery_action()
+            .is_some()
+    }
 }
 
 #[cfg(test)]
@@ -344,9 +436,10 @@ mod tests {
     use crate::{
         StudioAppWindowHostCommand, StudioAppWindowHostCommandOutcome,
         StudioAppWindowHostGlobalEvent, StudioAppWindowHostManager, StudioAppWindowHostUiAction,
-        StudioRuntimeEntitlementPreflight, StudioRuntimeEntitlementSeed,
-        StudioRuntimeEntitlementSessionEvent, StudioRuntimeTrigger, StudioWindowHostRole,
-        StudioWindowTimerDriverTransition,
+        StudioAppWindowHostUiActionAvailability, StudioAppWindowHostUiActionDisabledReason,
+        StudioAppWindowHostUiActionState, StudioRuntimeEntitlementPreflight,
+        StudioRuntimeEntitlementSeed, StudioRuntimeEntitlementSessionEvent, StudioRuntimeTrigger,
+        StudioWindowHostRole, StudioWindowTimerDriverTransition,
     };
     use rf_ui::RunPanelActionId;
 
@@ -704,6 +797,57 @@ mod tests {
     }
 
     #[test]
+    fn app_window_host_manager_reports_ui_action_state_for_foreground_recovery() {
+        let (config, project_path) = solver_failure_config();
+        let mut manager = StudioAppWindowHostManager::new(&config).expect("expected manager");
+        let first = manager.open_window();
+        let second = manager.open_window();
+        let _ = manager
+            .focus_window(second.window_id)
+            .expect("expected second window focus");
+
+        let initial = manager.ui_action_state(StudioAppWindowHostUiAction::RecoverRunPanelFailure);
+        assert_eq!(
+            initial,
+            StudioAppWindowHostUiActionState {
+                action: StudioAppWindowHostUiAction::RecoverRunPanelFailure,
+                availability: StudioAppWindowHostUiActionAvailability::Disabled {
+                    reason: StudioAppWindowHostUiActionDisabledReason::NoRunPanelRecovery,
+                    target_window_id: Some(second.window_id),
+                },
+            }
+        );
+        assert!(!initial.enabled());
+        assert_eq!(initial.target_window_id(), Some(second.window_id));
+
+        let _ = manager
+            .dispatch_trigger(
+                second.window_id,
+                &StudioRuntimeTrigger::WidgetAction(RunPanelActionId::RunManual),
+            )
+            .expect("expected failed run dispatch");
+
+        let available =
+            manager.ui_action_state(StudioAppWindowHostUiAction::RecoverRunPanelFailure);
+        assert_eq!(
+            available,
+            StudioAppWindowHostUiActionState {
+                action: StudioAppWindowHostUiAction::RecoverRunPanelFailure,
+                availability: StudioAppWindowHostUiActionAvailability::Enabled {
+                    target_window_id: second.window_id,
+                },
+            }
+        );
+        assert!(available.enabled());
+
+        let states = manager.ui_action_states();
+        assert_eq!(states, vec![available.clone()]);
+        assert_ne!(available.target_window_id(), Some(first.window_id));
+
+        let _ = fs::remove_file(project_path);
+    }
+
+    #[test]
     fn app_window_host_manager_routes_global_recovery_request_to_foreground_window() {
         let (config, project_path) = solver_failure_config();
         let mut manager = StudioAppWindowHostManager::new(&config).expect("expected manager");
@@ -745,6 +889,20 @@ mod tests {
     fn app_window_host_manager_ignores_ui_recovery_action_without_windows() {
         let mut manager =
             StudioAppWindowHostManager::new(&lease_expiring_config()).expect("expected manager");
+
+        let state = manager.ui_action_state(StudioAppWindowHostUiAction::RecoverRunPanelFailure);
+        assert_eq!(
+            state,
+            StudioAppWindowHostUiActionState {
+                action: StudioAppWindowHostUiAction::RecoverRunPanelFailure,
+                availability: StudioAppWindowHostUiActionAvailability::Disabled {
+                    reason: StudioAppWindowHostUiActionDisabledReason::NoRegisteredWindow,
+                    target_window_id: None,
+                },
+            }
+        );
+        assert!(!state.enabled());
+        assert_eq!(state.target_window_id(), None);
 
         let recovery = manager
             .dispatch_ui_action(StudioAppWindowHostUiAction::RecoverRunPanelFailure)
