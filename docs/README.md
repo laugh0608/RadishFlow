@@ -8,6 +8,7 @@
 | `architecture/open-source-references.md` | 可借鉴的开源流程模拟、物性和算法参考清单及许可边界 |
 | `architecture/versioning.md` | 项目版本命名、Git tag 与发布轨道约定 |
 | `architecture/app-architecture.md` | 桌面 App 的壳层、状态与模块边界规划 |
+| `architecture/canvas-interaction-contract.md` | 流程图画布的视图模式、流线视觉状态与 ghost suggestion 交互契约 |
 | `architecture/auth-entitlement-architecture.md` | 桌面登录、授权、远端 `.NET 10` 控制面与本地求解边界 |
 | `mvp/scope.md` | 第一阶段 MVP 的冻结范围、非目标与近期开发节奏 |
 | `thermo/mvp-model.md` | 热力学与 `TP Flash` 的最小接口与后续实现顺序 |
@@ -32,9 +33,10 @@
 4. `mvp/scope.md`
 5. `architecture/auth-entitlement-architecture.md`
 6. `architecture/app-architecture.md`
-7. `architecture/versioning.md`
-8. `capeopen/boundary.md`
-9. `adr/0001-branch-and-pr-governance.md`
+7. `architecture/canvas-interaction-contract.md`
+8. `architecture/versioning.md`
+9. `capeopen/boundary.md`
+10. `adr/0001-branch-and-pr-governance.md`
 
 ## 文档维护约定
 

@@ -1,6 +1,6 @@
 # Architecture Overview
 
-更新时间：2026-04-02
+更新时间：2026-04-05
 
 ## 目标
 
@@ -60,6 +60,12 @@ RadishFlow 的目标架构已经冻结为“桌面端三层 + 外部控制面”
 | `apps/radishflow-studio` | 桌面入口程序 | 已建立 auth cache sync 桥接、控制面 HTTP client、entitlement / manifest / lease / offline refresh 编排、下载获取抽象、基于 `reqwest + rustls` 的真实 HTTP transport、HTTP 请求/响应适配层、可重试/不可重试失败分类、下载 JSON 到本地 payload DTO 的协议映射、摘要校验、失败回滚与测试；并已补上 `PropertyPackageProvider -> rf-solver -> rf-ui::AppState` 的最小工作区求解桥接，可直接基于已加载物性包或本地 auth cache 执行真实 solve 并回写 UI 快照/日志 |
 
 原因很直接：在 `M2/M3` 之前过早推进 UI，会掩盖内核尚未定型的问题。
+
+不过，中后期 Studio 交互方向已经可以先在架构上明确三条原则：
+
+- 流程图画布后续允许在平面视图和立体投影视图之间切换，但两者共享同一套 flowsheet 语义与项目文件，不分裂出第二套编辑模型
+- 物流线、能量流线与信号流线后续应支持静态/动态两种可视化模式，并把“流线类型”和“收敛/待求解/异常状态”拆成正交表达，而不是只靠单一颜色承担所有语义
+- 与 `RadishMind` 的结合后续优先落在“灰态候选补全 + 显式接受”的辅助建模上，例如放置标准单元后显示待补全端口/连线，并由 `Tab` 接受；模型建议不应绕过本地连接校验和文档命令边界
 
 不过 App 架构层面的关键口径已经开始冻结，当前包括：
 
