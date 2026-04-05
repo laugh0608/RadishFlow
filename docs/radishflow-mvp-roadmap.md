@@ -335,6 +335,12 @@ MVP 阶段明确不做：
 - `StudioAppHost / StudioAppHostState / Store / Projection` 负责 app 级宿主真相源与状态推进
 - `StudioAppHostController + effect summary` 负责 GUI 命令入口与宿主副作用消费面
 
+Studio 当前又已继续把这条 GUI 命令入口推进为稳定 host command registry：
+
+- `StudioAppHostController` 当前已提供 `dispatch_ui_command(command_id)`，让菜单、快捷键和命令面板后续可直接按稳定 command id 触发宿主动作
+- 首批已接成真实宿主命令的 run panel command id 为 `run_panel.run_manual`、`run_panel.resume_workspace`、`run_panel.set_hold`、`run_panel.set_active` 与 `run_panel.recover_failure`
+- 后续真实桌面框架在建立原生命令绑定时，应优先复用这组 `UiCommandModel` / command registry，而不是继续让各入口重复拼装运行栏 availability、disabled reason 或窗口前景派发逻辑
+
 当前最小入口 `apps/radishflow-studio/src/main.rs` 已开始直接消费上述正式边界，而不再继续翻读 bootstrap、session 或 raw command outcome 细节。
 
 基于上述进展，当前下一阶段计划调整为：

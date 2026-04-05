@@ -773,6 +773,8 @@ pub struct StepSnapshot {
 
 - 虽然已有 `StudioAppFacade` 作为应用命令入口，并且已接到 `main.rs` 的最小 bootstrap 触发点，但还没有把它正式挂到最终桌面命令、按钮或运行服务入口
 - 虽然已补出 `WorkspaceControlAction` / `WorkspaceControlState` 这一层运行栏契约，也已补出 `ResumeWorkspace` 作为 `Hold -> Active` 的显式应用命令，并已在 `rf-ui` 中冻结到 `RunPanelWidgetModel`、在 Studio 中冻结到 `run_panel_driver`；但“手动运行 / 自动运行 / Hold 恢复”的完整桌面 UI 事件流和最终按钮绑定口径仍未最终冻结
+- Studio 当前又已把 app-host 侧 GUI 动作入口进一步冻结为 `StudioAppHostController::dispatch_ui_command(command_id)`，让菜单、快捷键和命令面板后续都可以直接按稳定 command id 触发，而不必继续持有 `UiAction` 枚举或回退到 raw host outcome
+- 当前首批已接成真实宿主命令的 run panel command registry 为 `run_panel.run_manual`、`run_panel.resume_workspace`、`run_panel.set_hold`、`run_panel.set_active` 与 `run_panel.recover_failure`；后续桌面命令绑定应优先复用这组 registry，而不是在各入口重复解释 availability、disabled reason 或底层 widget 事件
 - 当前虽然已有 `StudioAppFacade`，但结果派发对象仍是最小摘要形态，真正的后台任务调度、取消和更细的事件总线还没有冻结
 
 ## 结果快照模型
