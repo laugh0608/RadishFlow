@@ -52,6 +52,45 @@ fn feed_mixer_flash_project_solves_end_to_end() {
 }
 
 #[test]
+fn feed_mixer_heater_flash_project_solves_end_to_end() {
+    let snapshot = solve_example(include_str!(
+        "../../../examples/flowsheets/feed-mixer-heater-flash.rfproj.json"
+    ));
+
+    assert_eq!(snapshot.status, SolveStatus::Converged);
+    assert_eq!(snapshot.steps.len(), 5);
+
+    let mixed = snapshot
+        .stream(&"stream-mix-out".into())
+        .expect("expected mixer outlet");
+    assert_close(mixed.total_molar_flow_mol_s, 5.0, 1e-12);
+    assert_close(mixed.temperature_k, 336.0, 1e-12);
+    assert_close(
+        *mixed
+            .overall_mole_fractions
+            .get(&ComponentId::new("component-a"))
+            .expect("expected component-a"),
+        0.46,
+        1e-12,
+    );
+
+    let heated = snapshot
+        .stream(&"stream-heated".into())
+        .expect("expected heated outlet");
+    assert_close(heated.temperature_k, 350.0, 1e-12);
+    assert_close(heated.pressure_pa, 95_000.0, 1e-12);
+    assert_close(heated.total_molar_flow_mol_s, 5.0, 1e-12);
+    assert_close(
+        *heated
+            .overall_mole_fractions
+            .get(&ComponentId::new("component-a"))
+            .expect("expected component-a"),
+        0.46,
+        1e-12,
+    );
+}
+
+#[test]
 fn feed_heater_flash_project_solves_end_to_end() {
     let snapshot = solve_example(include_str!(
         "../../../examples/flowsheets/feed-heater-flash.rfproj.json"

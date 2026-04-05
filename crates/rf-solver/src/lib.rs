@@ -271,8 +271,8 @@ impl FlowsheetSolver for SequentialModularSolver {
 }
 
 fn topological_unit_order(flowsheet: &Flowsheet) -> RfResult<Vec<UnitId>> {
-    let connections =
-        validate_connections(flowsheet).map_err(|error| solver_stage_error("connection validation", error))?;
+    let connections = validate_connections(flowsheet)
+        .map_err(|error| solver_stage_error("connection validation", error))?;
     let mut incoming_counts = flowsheet
         .units
         .keys()
@@ -338,10 +338,7 @@ fn solver_stage_error(stage: impl AsRef<str>, error: RfError) -> RfError {
     )
 }
 
-fn solver_stage_invalid_input(
-    stage: impl AsRef<str>,
-    message: impl AsRef<str>,
-) -> RfError {
+fn solver_stage_invalid_input(stage: impl AsRef<str>, message: impl AsRef<str>) -> RfError {
     RfError::invalid_input(format!(
         "solver {} failed: {}",
         stage.as_ref(),
@@ -463,7 +460,9 @@ mod tests {
     use rf_flash::PlaceholderTpFlashSolver;
     use rf_model::{Component, Composition, Flowsheet, MaterialStreamState, UnitNode, UnitPort};
     use rf_store::parse_project_file_json;
-    use rf_thermo::{AntoineCoefficients, PlaceholderThermoProvider, ThermoComponent, ThermoSystem};
+    use rf_thermo::{
+        AntoineCoefficients, PlaceholderThermoProvider, ThermoComponent, ThermoSystem,
+    };
     use rf_types::{ComponentId, PhaseLabel, PortDirection, PortKind};
     use rf_unitops::{
         build_cooler_node, build_feed_node, build_flash_drum_node, build_heater_node,
@@ -664,6 +663,97 @@ mod tests {
         for unit in [
             build_feed_node("feed-1", "Feed", "stream-feed"),
             build_heater_node("heater-1", "Heater", "stream-feed", "stream-heated"),
+            build_flash_drum_node(
+                "flash-1",
+                "Flash Drum",
+                "stream-heated",
+                "stream-liquid",
+                "stream-vapor",
+            ),
+        ] {
+            flowsheet.insert_unit(unit).expect("expected unit insert");
+        }
+
+        flowsheet
+    }
+
+    fn build_feed_mixer_heater_flash_flowsheet() -> Flowsheet {
+        let mut flowsheet = Flowsheet::new("feed-mixer-heater-flash");
+        for component in [
+            Component::new("component-a", "Component A"),
+            Component::new("component-b", "Component B"),
+        ] {
+            flowsheet
+                .insert_component(component)
+                .expect("expected component insert");
+        }
+
+        for stream in [
+            build_stream(
+                "stream-feed-a",
+                "Feed A",
+                300.0,
+                120_000.0,
+                2.0,
+                binary_composition(0.25, 0.75),
+            ),
+            build_stream(
+                "stream-feed-b",
+                "Feed B",
+                360.0,
+                100_000.0,
+                3.0,
+                binary_composition(0.60, 0.40),
+            ),
+            build_stream(
+                "stream-mix-out",
+                "Mixer Outlet",
+                330.0,
+                100_000.0,
+                0.0,
+                binary_composition(0.5, 0.5),
+            ),
+            build_stream(
+                "stream-heated",
+                "Heated Outlet",
+                350.0,
+                95_000.0,
+                0.0,
+                binary_composition(0.5, 0.5),
+            ),
+            build_stream(
+                "stream-liquid",
+                "Liquid Outlet",
+                350.0,
+                95_000.0,
+                0.0,
+                binary_composition(0.5, 0.5),
+            ),
+            build_stream(
+                "stream-vapor",
+                "Vapor Outlet",
+                350.0,
+                95_000.0,
+                0.0,
+                binary_composition(0.5, 0.5),
+            ),
+        ] {
+            flowsheet
+                .insert_stream(stream)
+                .expect("expected stream insert");
+        }
+
+        for unit in [
+            build_feed_node("feed-a", "Feed A", "stream-feed-a"),
+            build_feed_node("feed-b", "Feed B", "stream-feed-b"),
+            build_mixer_node(
+                "mixer-1",
+                "Mixer",
+                "stream-feed-a",
+                "stream-feed-b",
+                "stream-mix-out",
+            ),
+            build_heater_node("heater-1", "Heater", "stream-mix-out", "stream-heated"),
             build_flash_drum_node(
                 "flash-1",
                 "Flash Drum",
@@ -976,6 +1066,85 @@ mod tests {
     }
 
     #[test]
+    fn sequential_solver_solves_feed_mixer_heater_flash_chain() {
+        let provider = build_provider();
+        let flash_solver = PlaceholderTpFlashSolver;
+        let services = SolverServices {
+            thermo: &provider,
+            flash_solver: &flash_solver,
+        };
+
+        let snapshot = SequentialModularSolver
+            .solve(&services, &build_feed_mixer_heater_flash_flowsheet())
+            .expect("expected solve snapshot");
+
+        assert_eq!(snapshot.status, SolveStatus::Converged);
+        assert_eq!(snapshot.summary.diagnostic_count, 6);
+        assert_eq!(snapshot.steps.len(), 5);
+        assert_eq!(snapshot.steps[0].unit_id.as_str(), "feed-a");
+        assert_eq!(snapshot.steps[1].unit_id.as_str(), "feed-b");
+        assert_eq!(snapshot.steps[2].unit_id.as_str(), "mixer-1");
+        assert_eq!(snapshot.steps[3].unit_id.as_str(), "heater-1");
+        assert_eq!(snapshot.steps[4].unit_id.as_str(), "flash-1");
+
+        let mixed = snapshot
+            .stream(&"stream-mix-out".into())
+            .expect("expected mixer outlet");
+        assert_close(mixed.total_molar_flow_mol_s, 5.0, 1e-12);
+        assert_close(mixed.temperature_k, 336.0, 1e-12);
+        assert_close(
+            *mixed
+                .overall_mole_fractions
+                .get(&ComponentId::new("component-a"))
+                .expect("expected component-a"),
+            0.46,
+            1e-12,
+        );
+
+        let heated = snapshot
+            .stream(&"stream-heated".into())
+            .expect("expected heated outlet");
+        assert_close(heated.temperature_k, 350.0, 1e-12);
+        assert_close(heated.pressure_pa, 95_000.0, 1e-12);
+        assert_close(heated.total_molar_flow_mol_s, 5.0, 1e-12);
+        assert_close(
+            *heated
+                .overall_mole_fractions
+                .get(&ComponentId::new("component-a"))
+                .expect("expected component-a"),
+            0.46,
+            1e-12,
+        );
+    }
+
+    #[test]
+    fn sequential_solver_runs_feed_mixer_heater_flash_example_project_file() {
+        let provider = build_provider();
+        let flash_solver = PlaceholderTpFlashSolver;
+        let services = SolverServices {
+            thermo: &provider,
+            flash_solver: &flash_solver,
+        };
+        let project = parse_project_file_json(include_str!(
+            "../../../examples/flowsheets/feed-mixer-heater-flash.rfproj.json"
+        ))
+        .expect("expected example project parse");
+
+        let snapshot = SequentialModularSolver
+            .solve(&services, &project.document.flowsheet)
+            .expect("expected solve snapshot");
+
+        let heated = snapshot
+            .stream(&"stream-heated".into())
+            .expect("expected heated outlet");
+        assert_close(heated.temperature_k, 350.0, 1e-12);
+        assert_close(heated.pressure_pa, 95_000.0, 1e-12);
+        assert_eq!(snapshot.steps.len(), 5);
+        assert!(snapshot.stream(&"stream-liquid".into()).is_some());
+        assert!(snapshot.stream(&"stream-vapor".into()).is_some());
+    }
+
+    #[test]
     fn sequential_solver_solves_feed_cooler_flash_chain() {
         let provider = build_provider();
         let flash_solver = PlaceholderTpFlashSolver;
@@ -1178,7 +1347,11 @@ mod tests {
             .expect_err("expected connection validation failure");
 
         assert_eq!(error.code().as_str(), "invalid_connection");
-        assert!(error.message().contains("solver connection validation failed"));
+        assert!(
+            error
+                .message()
+                .contains("solver connection validation failed")
+        );
         assert!(error.message().contains("consumed by both"));
     }
 
@@ -1228,8 +1401,16 @@ mod tests {
             .expect_err("expected unsupported unit kind failure");
 
         assert_eq!(error.code().as_str(), "invalid_connection");
-        assert!(error.message().contains("solver connection validation failed"));
-        assert!(error.message().contains("canonical built-in port signature"));
+        assert!(
+            error
+                .message()
+                .contains("solver connection validation failed")
+        );
+        assert!(
+            error
+                .message()
+                .contains("canonical built-in port signature")
+        );
         assert!(error.message().contains("unsupported kind `pump`"));
     }
 
@@ -1284,7 +1465,11 @@ mod tests {
             .expect_err("expected cycle detection failure");
 
         assert_eq!(error.code().as_str(), "invalid_input");
-        assert!(error.message().contains("solver topological ordering failed"));
+        assert!(
+            error
+                .message()
+                .contains("solver topological ordering failed")
+        );
         assert!(error.message().contains("contains a cycle"));
     }
 
@@ -1342,7 +1527,11 @@ mod tests {
             .expect_err("expected self-loop cycle failure");
 
         assert_eq!(error.code().as_str(), "invalid_input");
-        assert!(error.message().contains("solver topological ordering failed"));
+        assert!(
+            error
+                .message()
+                .contains("solver topological ordering failed")
+        );
         assert!(error.message().contains("contains a cycle"));
     }
 }

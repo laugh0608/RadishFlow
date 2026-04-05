@@ -47,7 +47,7 @@ RadishFlow 的目标架构已经冻结为“桌面端三层 + 外部控制面”
 | `rf-store` | JSON 存储与授权缓存索引 | 已建立项目文件 / 授权缓存 / 本地包 `manifest.json` / `payload.rfpkg` 的 JSON 读写、迁移分发、版本校验与相对路径布局 |
 | `rf-ffi` | Rust 与 .NET 的 C ABI 边界 | 仍为占位 |
 
-当前仓库级集成测试也已正式落到 `tests/rust-integration` workspace crate，并由 `cargo test --workspace`、`scripts/check-repo.ps1` 与 `scripts/check-repo.sh` 自动覆盖四条示例 flowsheet 回归。
+当前仓库级集成测试也已正式落到 `tests/rust-integration` workspace crate，并由 `cargo test --workspace`、`scripts/check-repo.ps1` 与 `scripts/check-repo.sh` 自动覆盖五条示例 flowsheet 回归。
 
 ### Rust Studio UI
 
