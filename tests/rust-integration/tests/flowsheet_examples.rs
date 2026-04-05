@@ -77,6 +77,31 @@ fn feed_heater_flash_project_solves_end_to_end() {
 }
 
 #[test]
+fn feed_cooler_flash_project_solves_end_to_end() {
+    let snapshot = solve_example(include_str!(
+        "../../../examples/flowsheets/feed-cooler-flash.rfproj.json"
+    ));
+
+    assert_eq!(snapshot.status, SolveStatus::Converged);
+    assert_eq!(snapshot.steps.len(), 3);
+
+    let cooled = snapshot
+        .stream(&"stream-cooled".into())
+        .expect("expected cooled outlet");
+    assert_close(cooled.temperature_k, 305.0, 1e-12);
+    assert_close(cooled.pressure_pa, 98_000.0, 1e-12);
+    assert_close(cooled.total_molar_flow_mol_s, 5.0, 1e-12);
+    assert_close(
+        *cooled
+            .overall_mole_fractions
+            .get(&ComponentId::new("component-a"))
+            .expect("expected component-a"),
+        0.35,
+        1e-12,
+    );
+}
+
+#[test]
 fn feed_valve_flash_project_solves_end_to_end() {
     let snapshot = solve_example(include_str!(
         "../../../examples/flowsheets/feed-valve-flash.rfproj.json"
