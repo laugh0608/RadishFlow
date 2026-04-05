@@ -13,6 +13,7 @@ pub enum StudioAppWindowHostGlobalEvent {
     LoginCompleted,
     NetworkRestored,
     TimerElapsed,
+    RunPanelRecoveryRequested,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -208,6 +209,13 @@ impl StudioAppWindowHostManager {
         &mut self,
         event: StudioAppWindowHostGlobalEvent,
     ) -> RfResult<Option<StudioAppWindowHostDispatch>> {
+        if matches!(
+            event,
+            StudioAppWindowHostGlobalEvent::RunPanelRecoveryRequested
+        ) {
+            return self.dispatch_foreground_run_panel_recovery_action();
+        }
+
         let Some(target_window_id) = self.resolve_global_event_target(event) else {
             return Ok(None);
         };
@@ -222,6 +230,9 @@ impl StudioAppWindowHostManager {
             StudioAppWindowHostGlobalEvent::TimerElapsed => {
                 StudioWindowHostLifecycleEvent::TimerElapsed
             }
+            StudioAppWindowHostGlobalEvent::RunPanelRecoveryRequested => unreachable!(
+                "run panel recovery requests are handled before lifecycle event routing"
+            ),
         };
         let dispatch = self
             .session
@@ -275,7 +286,8 @@ impl StudioAppWindowHostManager {
                 .or(self.foreground_window_id)
                 .or_else(|| self.registered_windows.iter().next().copied()),
             StudioAppWindowHostGlobalEvent::LoginCompleted
-            | StudioAppWindowHostGlobalEvent::NetworkRestored => self
+            | StudioAppWindowHostGlobalEvent::NetworkRestored
+            | StudioAppWindowHostGlobalEvent::RunPanelRecoveryRequested => self
                 .foreground_window_id
                 .or_else(|| self.registered_windows.iter().next().copied()),
         }
@@ -610,6 +622,44 @@ mod tests {
         assert_eq!(recovery.target_window_id, second.window_id);
         assert_ne!(recovery.target_window_id, first.window_id);
         match &recovery.dispatch.host_output.runtime_output.report.dispatch {
+            crate::StudioRuntimeDispatch::RunPanelRecovery(outcome) => {
+                assert_eq!(
+                    outcome.applied_target,
+                    Some(rf_ui::InspectorTarget::Unit(rf_types::UnitId::new(
+                        "valve-1"
+                    )))
+                );
+            }
+            other => panic!("expected run panel recovery dispatch, got {other:?}"),
+        }
+
+        let _ = fs::remove_file(project_path);
+    }
+
+    #[test]
+    fn app_window_host_manager_routes_global_recovery_request_to_foreground_window() {
+        let (config, project_path) = solver_failure_config();
+        let mut manager = StudioAppWindowHostManager::new(&config).expect("expected manager");
+        let first = manager.open_window();
+        let second = manager.open_window();
+        let _ = manager
+            .focus_window(second.window_id)
+            .expect("expected second window focus");
+        let _ = manager
+            .dispatch_trigger(
+                second.window_id,
+                &StudioRuntimeTrigger::WidgetAction(RunPanelActionId::RunManual),
+            )
+            .expect("expected failed run dispatch");
+
+        let dispatch = manager
+            .dispatch_global_event(StudioAppWindowHostGlobalEvent::RunPanelRecoveryRequested)
+            .expect("expected global recovery dispatch")
+            .expect("expected routed recovery dispatch");
+
+        assert_eq!(dispatch.target_window_id, second.window_id);
+        assert_ne!(dispatch.target_window_id, first.window_id);
+        match &dispatch.dispatch.host_output.runtime_output.report.dispatch {
             crate::StudioRuntimeDispatch::RunPanelRecovery(outcome) => {
                 assert_eq!(
                     outcome.applied_target,

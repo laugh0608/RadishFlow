@@ -1656,6 +1656,52 @@ mod tests {
     }
 
     #[test]
+    fn app_host_controller_routes_global_recovery_event_to_foreground_window() {
+        let (config, project_path) = solver_failure_config();
+        let mut controller = StudioAppHostController::new(&config).expect("expected controller");
+        let first = controller
+            .open_window()
+            .expect("expected first window open");
+        let second = controller
+            .open_window()
+            .expect("expected second window open");
+        let _ = controller
+            .focus_window(second.registration.window_id)
+            .expect("expected second window focus");
+        let _ = controller
+            .dispatch_window_trigger(
+                second.registration.window_id,
+                StudioRuntimeTrigger::WidgetAction(RunPanelActionId::RunManual),
+            )
+            .expect("expected failed run dispatch");
+
+        let dispatch = controller
+            .dispatch_global_event(StudioAppWindowHostGlobalEvent::RunPanelRecoveryRequested)
+            .expect("expected global recovery event");
+        let recovery = dispatch.dispatch.expect("expected recovery dispatch");
+
+        assert_eq!(recovery.target_window_id, second.registration.window_id);
+        assert_ne!(recovery.target_window_id, first.registration.window_id);
+        match &recovery.effects.runtime_report.dispatch {
+            crate::StudioRuntimeDispatch::RunPanelRecovery(outcome) => {
+                assert_eq!(
+                    outcome.applied_target,
+                    Some(rf_ui::InspectorTarget::Unit(rf_types::UnitId::new(
+                        "valve-1"
+                    )))
+                );
+            }
+            other => panic!("expected run panel recovery dispatch, got {other:?}"),
+        }
+        assert_eq!(
+            controller.state().foreground_window_id,
+            Some(second.registration.window_id)
+        );
+
+        let _ = fs::remove_file(project_path);
+    }
+
+    #[test]
     fn app_host_controller_ignores_foreground_run_panel_recovery_without_windows() {
         let mut controller =
             StudioAppHostController::new(&lease_expiring_config()).expect("expected controller");
