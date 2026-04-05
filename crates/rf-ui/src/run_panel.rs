@@ -1,3 +1,5 @@
+use rf_types::UnitId;
+
 use crate::run::{RunStatus, SimulationMode, SolvePendingReason, SolveSessionState, SolveSnapshot};
 use crate::state::AppLogEntry;
 
@@ -13,6 +15,7 @@ pub struct RunPanelNotice {
     pub level: RunPanelNoticeLevel,
     pub title: String,
     pub message: String,
+    pub recovery_action: Option<RunPanelRecoveryAction>,
 }
 
 impl RunPanelNotice {
@@ -25,7 +28,55 @@ impl RunPanelNotice {
             level,
             title: title.into(),
             message: message.into(),
+            recovery_action: None,
         }
+    }
+
+    pub fn with_recovery_action(mut self, recovery_action: RunPanelRecoveryAction) -> Self {
+        self.recovery_action = Some(recovery_action);
+        self
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RunPanelRecoveryActionKind {
+    FixConnections,
+    BreakCycle,
+    VerifyUnitExists,
+    InspectUnitSpec,
+    CheckSupportedUnitKind,
+    InspectInletPath,
+    InspectOutputMaterialization,
+    InspectExecutionInputs,
+    RepairLocalCache,
+    InspectFailureDetails,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RunPanelRecoveryAction {
+    pub kind: RunPanelRecoveryActionKind,
+    pub title: &'static str,
+    pub detail: &'static str,
+    pub target_unit_id: Option<UnitId>,
+}
+
+impl RunPanelRecoveryAction {
+    pub fn new(
+        kind: RunPanelRecoveryActionKind,
+        title: &'static str,
+        detail: &'static str,
+    ) -> Self {
+        Self {
+            kind,
+            title,
+            detail,
+            target_unit_id: None,
+        }
+    }
+
+    pub fn with_target_unit(mut self, target_unit_id: impl Into<UnitId>) -> Self {
+        self.target_unit_id = Some(target_unit_id.into());
+        self
     }
 }
 
@@ -65,7 +116,7 @@ impl RunPanelState {
             latest_snapshot_summary: latest_snapshot
                 .map(|snapshot| snapshot.summary.primary_message.clone()),
             latest_log_message: latest_log_entry.map(|entry| entry.message.clone()),
-            notice: None,
+            notice: runtime_notice_from_solve_session(solve_session),
             can_run_manual: true,
             can_resume,
             can_set_hold,
@@ -75,6 +126,102 @@ impl RunPanelState {
         state.commands = RunPanelCommandModel::from_state(&state);
         state
     }
+}
+
+pub fn run_panel_failure_title_for_diagnostic_code(primary_code: Option<&str>) -> &'static str {
+    match primary_code {
+        Some("solver.connection_validation") => "Connection validation failed",
+        Some("solver.topological_ordering") => "Topological ordering failed",
+        Some("solver.step.lookup") => "Unit lookup failed",
+        Some("solver.step.spec") => "Unit specification failed",
+        Some("solver.step.instantiation") => "Operation instantiation failed",
+        Some("solver.step.inlet") => "Inlet resolution failed",
+        Some("solver.step.materialization") => "Output materialization failed",
+        Some("solver.step.execution") => "Unit execution failed",
+        _ => "Run failed",
+    }
+}
+
+pub fn run_panel_failure_recovery_action_for_diagnostic_code(
+    primary_code: Option<&str>,
+) -> Option<RunPanelRecoveryAction> {
+    match primary_code {
+        Some("solver.connection_validation") => Some(RunPanelRecoveryAction::new(
+            RunPanelRecoveryActionKind::FixConnections,
+            "Fix connections",
+            "检查流股连接、端口签名和缺失 stream 引用后再重试。",
+        )),
+        Some("solver.topological_ordering") => Some(RunPanelRecoveryAction::new(
+            RunPanelRecoveryActionKind::BreakCycle,
+            "Break cycle",
+            "消除自环或多单元回路后再重试，当前顺序模块法只支持无回路 flowsheet。",
+        )),
+        Some("solver.step.lookup") => Some(RunPanelRecoveryAction::new(
+            RunPanelRecoveryActionKind::VerifyUnitExists,
+            "Verify unit exists",
+            "确认当前 step 引用的 unit 仍存在于 flowsheet 中。",
+        )),
+        Some("solver.step.spec") => Some(RunPanelRecoveryAction::new(
+            RunPanelRecoveryActionKind::InspectUnitSpec,
+            "Inspect unit specs",
+            "检查该单元的端口配置和必填规格是否完整。",
+        )),
+        Some("solver.step.instantiation") => Some(RunPanelRecoveryAction::new(
+            RunPanelRecoveryActionKind::CheckSupportedUnitKind,
+            "Check supported unit kind",
+            "检查单元 kind 与内建 solver 支持范围是否匹配。",
+        )),
+        Some("solver.step.inlet") => Some(RunPanelRecoveryAction::new(
+            RunPanelRecoveryActionKind::InspectInletPath,
+            "Inspect inlet path",
+            "检查入口连接是否完整，以及上游流股是否应先于该单元求解。",
+        )),
+        Some("solver.step.materialization") => Some(RunPanelRecoveryAction::new(
+            RunPanelRecoveryActionKind::InspectOutputMaterialization,
+            "Inspect outlet materialization",
+            "检查单元是否为每个预期 outlet 产出了对应流股。",
+        )),
+        Some("solver.step.execution") => Some(RunPanelRecoveryAction::new(
+            RunPanelRecoveryActionKind::InspectExecutionInputs,
+            "Inspect unit inputs",
+            "检查单元规格、物性条件和入口状态是否满足执行前提。",
+        )),
+        _ => None,
+    }
+}
+
+pub fn run_panel_failure_notice(
+    message: impl Into<String>,
+    primary_code: Option<&str>,
+    target_unit_id: Option<&UnitId>,
+) -> RunPanelNotice {
+    let mut notice = RunPanelNotice::new(
+        RunPanelNoticeLevel::Error,
+        run_panel_failure_title_for_diagnostic_code(primary_code),
+        message,
+    );
+    if let Some(mut recovery_action) =
+        run_panel_failure_recovery_action_for_diagnostic_code(primary_code)
+    {
+        if let Some(unit_id) = target_unit_id {
+            recovery_action = recovery_action.with_target_unit(unit_id.clone());
+        }
+        notice = notice.with_recovery_action(recovery_action);
+    }
+    notice
+}
+
+fn runtime_notice_from_solve_session(solve_session: &SolveSessionState) -> Option<RunPanelNotice> {
+    if !matches!(solve_session.status, RunStatus::Error) {
+        return None;
+    }
+
+    let summary = solve_session.latest_diagnostic.as_ref()?;
+    Some(run_panel_failure_notice(
+        summary.primary_message.clone(),
+        summary.primary_code.as_deref(),
+        summary.related_unit_ids.first(),
+    ))
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

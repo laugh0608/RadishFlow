@@ -14,7 +14,7 @@ use crate::commands::{CommandHistory, CommandHistoryEntry, DocumentCommand};
 use crate::diagnostics::DiagnosticSummary;
 use crate::ids::{DocumentId, SolveSnapshotId};
 use crate::run::{RunStatus, SimulationMode, SolvePendingReason, SolveSessionState, SolveSnapshot};
-use crate::run_panel::RunPanelState;
+use crate::run_panel::{RunPanelRecoveryAction, RunPanelState};
 
 pub type DateTimeUtc = SystemTime;
 
@@ -452,6 +452,22 @@ impl AppState {
 
     pub fn reject_focused_canvas_suggestion(&mut self) -> Option<CanvasSuggestion> {
         self.workspace.canvas_interaction.reject_focused()
+    }
+
+    pub fn apply_run_panel_recovery_action(
+        &mut self,
+        action: &RunPanelRecoveryAction,
+    ) -> Option<InspectorTarget> {
+        let unit_id = action.target_unit_id.as_ref()?.clone();
+        self.workspace.selection.selected_units.clear();
+        self.workspace.selection.selected_streams.clear();
+        self.workspace
+            .selection
+            .selected_units
+            .insert(unit_id.clone());
+        self.workspace.drafts.active_target = Some(InspectorTarget::Unit(unit_id.clone()));
+        self.workspace.panels.inspector_open = true;
+        Some(InspectorTarget::Unit(unit_id))
     }
 
     pub fn begin_browser_login(&mut self, authority_url: impl Into<String>) {

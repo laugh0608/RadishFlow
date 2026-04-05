@@ -20,6 +20,13 @@ impl RunPanelTextView {
                 notice_level_label(notice.level)
             ));
             lines.push(format!("Notice detail: {}", notice.message));
+            if let Some(recovery_action) = notice.recovery_action.as_ref() {
+                lines.push(format!("Suggested action: {}", recovery_action.title));
+                lines.push(format!("Suggested detail: {}", recovery_action.detail));
+                if let Some(unit_id) = recovery_action.target_unit_id.as_ref() {
+                    lines.push(format!("Suggested target: unit {}", unit_id.as_str()));
+                }
+            }
         }
         if let Some(pending) = view.pending_label {
             lines.push(format!("Pending: {pending}"));

@@ -120,7 +120,8 @@ pub use property_package_download_client::{
     download_property_package_to_cache_with_retry_policy,
 };
 pub use run_panel_driver::{
-    RunPanelDriverOutcome, RunPanelDriverState, dispatch_run_panel_primary_action_with_auth_cache,
+    RunPanelDriverOutcome, RunPanelDriverState, RunPanelRecoveryOutcome,
+    apply_run_panel_recovery_action, dispatch_run_panel_primary_action_with_auth_cache,
     dispatch_run_panel_widget_action_with_auth_cache, snapshot_run_panel_driver_state,
 };
 pub use solver_bridge::{

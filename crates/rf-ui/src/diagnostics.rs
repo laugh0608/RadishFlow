@@ -42,6 +42,11 @@ impl DiagnosticSummary {
         self.primary_code = prefixed_diagnostic_code(&self.primary_message);
         self
     }
+
+    pub fn with_related_unit_ids(mut self, related_unit_ids: Vec<UnitId>) -> Self {
+        self.related_unit_ids = related_unit_ids;
+        self
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

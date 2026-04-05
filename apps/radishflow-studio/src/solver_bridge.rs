@@ -6,7 +6,7 @@ use rf_store::StoredAuthCacheIndex;
 use rf_thermo::{
     CachedPropertyPackageProvider, PlaceholderThermoProvider, PropertyPackageProvider,
 };
-use rf_types::{RfError, RfResult};
+use rf_types::{RfError, RfResult, UnitId};
 use rf_ui::{AppLogLevel, AppState, DiagnosticSeverity, DiagnosticSummary, RunStatus};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -141,9 +141,22 @@ pub fn solve_workspace_from_auth_cache(
 
 fn record_solve_failure(app_state: &mut AppState, revision: u64, message: String) {
     let summary = DiagnosticSummary::new(revision, DiagnosticSeverity::Error, message.clone())
-        .with_primary_code_from_message();
+        .with_primary_code_from_message()
+        .with_related_unit_ids(related_unit_ids_for_message(app_state, &message));
     app_state.record_failure(revision, RunStatus::Error, summary);
     app_state.push_log(AppLogLevel::Error, message);
+}
+
+fn related_unit_ids_for_message(app_state: &AppState, message: &str) -> Vec<UnitId> {
+    app_state
+        .workspace
+        .document
+        .flowsheet
+        .units
+        .keys()
+        .filter(|unit_id| message.contains(unit_id.as_str()))
+        .cloned()
+        .collect()
 }
 
 #[cfg(test)]
@@ -341,6 +354,15 @@ mod tests {
                 .as_ref()
                 .and_then(|summary| summary.primary_code.as_deref()),
             Some("solver.step.execution")
+        );
+        assert_eq!(
+            app_state
+                .workspace
+                .solve_session
+                .latest_diagnostic
+                .as_ref()
+                .map(|summary| summary.related_unit_ids.as_slice()),
+            Some([rf_types::UnitId::new("valve-1")].as_slice())
         );
     }
 

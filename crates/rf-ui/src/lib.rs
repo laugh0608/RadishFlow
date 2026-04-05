@@ -49,12 +49,15 @@ pub use run::{
 };
 pub use run_panel::{
     RunPanelActionId, RunPanelActionModel, RunPanelCommandModel, RunPanelIntent, RunPanelNotice,
-    RunPanelNoticeLevel, RunPanelPackageSelection, RunPanelState,
+    RunPanelNoticeLevel, RunPanelPackageSelection, RunPanelRecoveryAction,
+    RunPanelRecoveryActionKind, RunPanelState, run_panel_failure_notice,
+    run_panel_failure_recovery_action_for_diagnostic_code,
+    run_panel_failure_title_for_diagnostic_code,
 };
 pub use run_panel_presenter::RunPanelPresentation;
 pub use run_panel_text::RunPanelTextView;
 pub use run_panel_view::{RunPanelActionProminence, RunPanelRenderableAction, RunPanelViewModel};
-pub use run_panel_widget::{RunPanelWidgetEvent, RunPanelWidgetModel};
+pub use run_panel_widget::{RunPanelRecoveryWidgetEvent, RunPanelWidgetEvent, RunPanelWidgetModel};
 pub use state::{
     AppLogEntry, AppLogFeed, AppLogLevel, AppState, AppTheme, DateTimeUtc, DocumentMetadata,
     DraftValidationState, DraftValue, FieldDraft, FlowsheetDocument, InspectorDraftState,
@@ -82,8 +85,8 @@ mod tests {
         EntitlementPanelWidgetModel, EntitlementSnapshot, FlowsheetDocument, GhostElement,
         GhostElementKind, OfflineLeaseRefreshResponse, PropertyPackageManifest,
         PropertyPackageManifestList, PropertyPackageSource, RunPanelActionId,
-        RunPanelActionProminence, RunPanelPresentation, RunPanelState, RunPanelTextView,
-        RunPanelViewModel, RunPanelWidgetEvent, RunPanelWidgetModel, RunStatus,
+        RunPanelActionProminence, RunPanelPresentation, RunPanelRecoveryWidgetEvent, RunPanelState,
+        RunPanelTextView, RunPanelViewModel, RunPanelWidgetEvent, RunPanelWidgetModel, RunStatus,
         SecureCredentialHandle, SimulationMode, SolvePendingReason, SolveSnapshot,
         StreamVisualKind, StreamVisualState, SuggestionSource, SuggestionStatus, TokenLease,
     };
@@ -480,11 +483,18 @@ mod tests {
     #[test]
     fn run_panel_text_view_renders_notice_when_present() {
         let mut state = AppState::new(sample_document()).workspace.run_panel;
-        state.notice = Some(crate::RunPanelNotice::new(
-            crate::RunPanelNoticeLevel::Warning,
-            "Run blocked",
-            "explicit package selection is required",
-        ));
+        state.notice = Some(
+            crate::RunPanelNotice::new(
+                crate::RunPanelNoticeLevel::Warning,
+                "Run blocked",
+                "explicit package selection is required",
+            )
+            .with_recovery_action(crate::RunPanelRecoveryAction::new(
+                crate::RunPanelRecoveryActionKind::InspectFailureDetails,
+                "Choose package",
+                "选择明确的 property package 后再运行。",
+            )),
+        );
 
         let view = RunPanelViewModel::from_state(&state);
         let text = RunPanelTextView::from_view_model(&view);
@@ -498,6 +508,22 @@ mod tests {
             text.lines
                 .iter()
                 .any(|line| line == "Notice detail: explicit package selection is required")
+        );
+        assert!(
+            text.lines
+                .iter()
+                .any(|line| line == "Suggested action: Choose package")
+        );
+        assert!(
+            text.lines
+                .iter()
+                .any(|line| line == "Suggested detail: 选择明确的 property package 后再运行。")
+        );
+        assert!(
+            !text
+                .lines
+                .iter()
+                .any(|line| line.starts_with("Suggested target: unit "))
         );
     }
 
@@ -559,6 +585,40 @@ mod tests {
     }
 
     #[test]
+    fn run_panel_widget_exposes_recovery_action_when_solver_failure_targets_unit() {
+        let mut app_state = AppState::new(sample_document());
+        let summary = DiagnosticSummary::new(
+            0,
+            DiagnosticSeverity::Error,
+            "solver.step.inlet: solver step 1 inlet resolution failed for unit `heater-1`",
+        )
+        .with_primary_code("solver.step.inlet")
+        .with_related_unit_ids(vec![UnitId::new("heater-1")]);
+
+        app_state.record_failure(0, RunStatus::Error, summary);
+        let widget = RunPanelWidgetModel::from_state(&app_state.workspace.run_panel);
+
+        assert_eq!(
+            widget.activate_recovery_action(),
+            RunPanelRecoveryWidgetEvent::Requested {
+                action: crate::RunPanelRecoveryAction::new(
+                    crate::RunPanelRecoveryActionKind::InspectInletPath,
+                    "Inspect inlet path",
+                    "检查入口连接是否完整，以及上游流股是否应先于该单元求解。",
+                )
+                .with_target_unit(UnitId::new("heater-1")),
+            }
+        );
+        assert!(
+            widget
+                .text()
+                .lines
+                .iter()
+                .any(|line| line == "Suggested target: unit heater-1")
+        );
+    }
+
+    #[test]
     fn storing_snapshot_updates_run_panel_summary() {
         let mut app_state = AppState::new(sample_document());
         let snapshot = SolveSnapshot::new(
@@ -606,6 +666,15 @@ mod tests {
             app_state.workspace.run_panel.commands.primary_action,
             RunPanelActionId::RunManual
         );
+        assert_eq!(
+            app_state
+                .workspace
+                .run_panel
+                .notice
+                .as_ref()
+                .map(|notice| notice.title.as_str()),
+            Some("Run failed")
+        );
         assert!(
             !app_state
                 .workspace
@@ -615,6 +684,94 @@ mod tests {
                 .expect("expected resume action")
                 .enabled
         );
+    }
+
+    #[test]
+    fn recording_solver_failure_uses_primary_code_for_run_panel_notice_title() {
+        let mut app_state = AppState::new(sample_document());
+        let summary = DiagnosticSummary::new(
+            0,
+            DiagnosticSeverity::Error,
+            "solver.step.execution: solver step 2 unit execution failed",
+        )
+        .with_primary_code("solver.step.execution")
+        .with_related_unit_ids(vec![UnitId::new("heater-1")]);
+
+        app_state.record_failure(0, RunStatus::Error, summary);
+
+        assert_eq!(
+            app_state
+                .workspace
+                .run_panel
+                .notice
+                .as_ref()
+                .map(|notice| notice.title.as_str()),
+            Some("Unit execution failed")
+        );
+        assert_eq!(
+            app_state
+                .workspace
+                .run_panel
+                .notice
+                .as_ref()
+                .and_then(|notice| notice.recovery_action.as_ref())
+                .map(|action| {
+                    (
+                        action.title,
+                        action.detail,
+                        action
+                            .target_unit_id
+                            .as_ref()
+                            .map(|unit_id| unit_id.as_str()),
+                    )
+                }),
+            Some((
+                "Inspect unit inputs",
+                "检查单元规格、物性条件和入口状态是否满足执行前提。",
+                Some("heater-1"),
+            ))
+        );
+    }
+
+    #[test]
+    fn applying_run_panel_recovery_action_selects_unit_and_opens_inspector() {
+        let mut app_state = AppState::new(sample_document());
+        let summary = DiagnosticSummary::new(
+            0,
+            DiagnosticSeverity::Error,
+            "solver.step.spec: solver step 1 unit spec validation failed",
+        )
+        .with_primary_code("solver.step.spec")
+        .with_related_unit_ids(vec![UnitId::new("heater-1")]);
+
+        app_state.record_failure(0, RunStatus::Error, summary);
+        let action = app_state
+            .workspace
+            .run_panel
+            .notice
+            .as_ref()
+            .and_then(|notice| notice.recovery_action.as_ref())
+            .cloned()
+            .expect("expected recovery action");
+
+        let applied_target = app_state.apply_run_panel_recovery_action(&action);
+
+        assert_eq!(
+            applied_target,
+            Some(crate::InspectorTarget::Unit(UnitId::new("heater-1")))
+        );
+        assert!(
+            app_state
+                .workspace
+                .selection
+                .selected_units
+                .contains(&UnitId::new("heater-1"))
+        );
+        assert_eq!(
+            app_state.workspace.drafts.active_target,
+            Some(crate::InspectorTarget::Unit(UnitId::new("heater-1")))
+        );
+        assert!(app_state.workspace.panels.inspector_open);
     }
 
     #[test]
