@@ -1,7 +1,7 @@
 use std::collections::BTreeSet;
 
 use rf_types::{RfError, RfResult};
-use rf_ui::RunPanelWidgetModel;
+use rf_ui::{RunPanelActionId, RunPanelWidgetEvent, RunPanelWidgetModel};
 
 use crate::{
     StudioRuntimeConfig, StudioRuntimeTrigger, StudioWindowHostId, StudioWindowHostLifecycleEvent,
@@ -19,12 +19,16 @@ pub enum StudioAppWindowHostGlobalEvent {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StudioAppWindowHostUiAction {
+    RunManualWorkspace,
+    ResumeWorkspace,
     RecoverRunPanelFailure,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StudioAppWindowHostUiActionDisabledReason {
     NoRegisteredWindow,
+    RunManualUnavailable,
+    ResumeUnavailable,
     NoRunPanelRecovery,
 }
 
@@ -108,7 +112,7 @@ pub enum StudioAppWindowHostCommandOutcome {
     WindowOpened(StudioWindowHostRegistration),
     WindowDispatched(StudioAppWindowHostDispatch),
     WindowClosed(StudioAppWindowHostClose),
-    IgnoredForegroundRunPanelRecovery,
+    IgnoredUiAction,
     IgnoredGlobalEvent {
         event: StudioAppWindowHostGlobalEvent,
     },
@@ -148,35 +152,61 @@ impl StudioAppWindowHostManager {
         &self,
         action: StudioAppWindowHostUiAction,
     ) -> StudioAppWindowHostUiActionState {
-        match action {
-            StudioAppWindowHostUiAction::RecoverRunPanelFailure => {
-                let target_window_id = self
-                    .foreground_window_id
-                    .or_else(|| self.registered_windows.iter().next().copied());
-                let availability = match target_window_id {
-                    Some(target_window_id) if self.run_panel_recovery_available() => {
-                        StudioAppWindowHostUiActionAvailability::Enabled { target_window_id }
-                    }
-                    Some(target_window_id) => StudioAppWindowHostUiActionAvailability::Disabled {
-                        reason: StudioAppWindowHostUiActionDisabledReason::NoRunPanelRecovery,
-                        target_window_id: Some(target_window_id),
-                    },
-                    None => StudioAppWindowHostUiActionAvailability::Disabled {
-                        reason: StudioAppWindowHostUiActionDisabledReason::NoRegisteredWindow,
-                        target_window_id: None,
-                    },
-                };
-
-                StudioAppWindowHostUiActionState {
-                    action,
-                    availability,
+        let target_window_id = self
+            .foreground_window_id
+            .or_else(|| self.registered_windows.iter().next().copied());
+        let availability = match (action, target_window_id) {
+            (StudioAppWindowHostUiAction::RunManualWorkspace, Some(target_window_id))
+                if self.run_panel_action_available(RunPanelActionId::RunManual) =>
+            {
+                StudioAppWindowHostUiActionAvailability::Enabled { target_window_id }
+            }
+            (StudioAppWindowHostUiAction::RunManualWorkspace, Some(target_window_id)) => {
+                StudioAppWindowHostUiActionAvailability::Disabled {
+                    reason: StudioAppWindowHostUiActionDisabledReason::RunManualUnavailable,
+                    target_window_id: Some(target_window_id),
                 }
             }
+            (StudioAppWindowHostUiAction::ResumeWorkspace, Some(target_window_id))
+                if self.run_panel_action_available(RunPanelActionId::Resume) =>
+            {
+                StudioAppWindowHostUiActionAvailability::Enabled { target_window_id }
+            }
+            (StudioAppWindowHostUiAction::ResumeWorkspace, Some(target_window_id)) => {
+                StudioAppWindowHostUiActionAvailability::Disabled {
+                    reason: StudioAppWindowHostUiActionDisabledReason::ResumeUnavailable,
+                    target_window_id: Some(target_window_id),
+                }
+            }
+            (StudioAppWindowHostUiAction::RecoverRunPanelFailure, Some(target_window_id))
+                if self.run_panel_recovery_available() =>
+            {
+                StudioAppWindowHostUiActionAvailability::Enabled { target_window_id }
+            }
+            (StudioAppWindowHostUiAction::RecoverRunPanelFailure, Some(target_window_id)) => {
+                StudioAppWindowHostUiActionAvailability::Disabled {
+                    reason: StudioAppWindowHostUiActionDisabledReason::NoRunPanelRecovery,
+                    target_window_id: Some(target_window_id),
+                }
+            }
+            (_, None) => StudioAppWindowHostUiActionAvailability::Disabled {
+                reason: StudioAppWindowHostUiActionDisabledReason::NoRegisteredWindow,
+                target_window_id: None,
+            },
+        };
+
+        StudioAppWindowHostUiActionState {
+            action,
+            availability,
         }
     }
 
     pub fn ui_action_states(&self) -> Vec<StudioAppWindowHostUiActionState> {
-        vec![self.ui_action_state(StudioAppWindowHostUiAction::RecoverRunPanelFailure)]
+        vec![
+            self.ui_action_state(StudioAppWindowHostUiAction::RunManualWorkspace),
+            self.ui_action_state(StudioAppWindowHostUiAction::ResumeWorkspace),
+            self.ui_action_state(StudioAppWindowHostUiAction::RecoverRunPanelFailure),
+        ]
     }
 
     pub fn execute_command(
@@ -198,9 +228,7 @@ impl StudioAppWindowHostManager {
                     Some(dispatch) => Ok(StudioAppWindowHostCommandOutcome::WindowDispatched(
                         dispatch,
                     )),
-                    None => {
-                        Ok(StudioAppWindowHostCommandOutcome::IgnoredForegroundRunPanelRecovery)
-                    }
+                    None => Ok(StudioAppWindowHostCommandOutcome::IgnoredUiAction),
                 }
             }
             StudioAppWindowHostCommand::DispatchRunPanelRecoveryAction { window_id } => {
@@ -214,9 +242,7 @@ impl StudioAppWindowHostManager {
                     Some(dispatch) => Ok(StudioAppWindowHostCommandOutcome::WindowDispatched(
                         dispatch,
                     )),
-                    None => {
-                        Ok(StudioAppWindowHostCommandOutcome::IgnoredForegroundRunPanelRecovery)
-                    }
+                    None => Ok(StudioAppWindowHostCommandOutcome::IgnoredUiAction),
                 }
             }
             StudioAppWindowHostCommand::FocusWindow { window_id } => {
@@ -270,6 +296,12 @@ impl StudioAppWindowHostManager {
         action: StudioAppWindowHostUiAction,
     ) -> RfResult<Option<StudioAppWindowHostDispatch>> {
         match action {
+            StudioAppWindowHostUiAction::RunManualWorkspace => {
+                self.dispatch_foreground_run_panel_action(RunPanelActionId::RunManual)
+            }
+            StudioAppWindowHostUiAction::ResumeWorkspace => {
+                self.dispatch_foreground_run_panel_action(RunPanelActionId::Resume)
+            }
             StudioAppWindowHostUiAction::RecoverRunPanelFailure => {
                 self.dispatch_foreground_run_panel_recovery_action()
             }
@@ -281,6 +313,29 @@ impl StudioAppWindowHostManager {
         window_id: StudioWindowHostId,
     ) -> RfResult<StudioAppWindowHostDispatch> {
         self.dispatch_trigger(window_id, &StudioRuntimeTrigger::WidgetRecoveryAction)
+    }
+
+    pub fn dispatch_run_panel_action(
+        &mut self,
+        window_id: StudioWindowHostId,
+        action_id: RunPanelActionId,
+    ) -> RfResult<StudioAppWindowHostDispatch> {
+        self.dispatch_trigger(window_id, &StudioRuntimeTrigger::WidgetAction(action_id))
+    }
+
+    pub fn dispatch_foreground_run_panel_action(
+        &mut self,
+        action_id: RunPanelActionId,
+    ) -> RfResult<Option<StudioAppWindowHostDispatch>> {
+        let Some(window_id) = self
+            .foreground_window_id
+            .or_else(|| self.registered_windows.iter().next().copied())
+        else {
+            return Ok(None);
+        };
+
+        self.dispatch_run_panel_action(window_id, action_id)
+            .map(Some)
     }
 
     pub fn dispatch_foreground_run_panel_recovery_action(
@@ -412,6 +467,17 @@ impl StudioAppWindowHostManager {
     }
 
     fn run_panel_recovery_available(&self) -> bool {
+        self.run_panel_widget().recovery_action().is_some()
+    }
+
+    fn run_panel_action_available(&self, action_id: RunPanelActionId) -> bool {
+        matches!(
+            self.run_panel_widget().activate(action_id),
+            RunPanelWidgetEvent::Dispatched { .. }
+        )
+    }
+
+    fn run_panel_widget(&self) -> RunPanelWidgetModel {
         let run_panel = &self
             .session
             .host_port()
@@ -420,8 +486,6 @@ impl StudioAppWindowHostManager {
             .workspace
             .run_panel;
         RunPanelWidgetModel::from_state(run_panel)
-            .recovery_action()
-            .is_some()
     }
 }
 
@@ -797,6 +861,167 @@ mod tests {
     }
 
     #[test]
+    fn app_window_host_manager_dispatches_run_manual_via_ui_action() {
+        let (config, project_path) = solver_failure_config();
+        let mut manager = StudioAppWindowHostManager::new(&config).expect("expected manager");
+        let window = manager.open_window();
+
+        let dispatch = manager
+            .dispatch_ui_action(StudioAppWindowHostUiAction::RunManualWorkspace)
+            .expect("expected ui action dispatch")
+            .expect("expected routed run dispatch");
+
+        assert_eq!(dispatch.target_window_id, window.window_id);
+        assert_eq!(
+            dispatch.dispatch.host_output.runtime_output.trigger,
+            StudioRuntimeTrigger::WidgetAction(RunPanelActionId::RunManual)
+        );
+        match &dispatch.dispatch.host_output.runtime_output.report.dispatch {
+            crate::StudioRuntimeDispatch::AppCommand(outcome) => match &outcome.dispatch {
+                crate::StudioAppResultDispatch::WorkspaceRun(dispatch) => {
+                    assert!(matches!(
+                        dispatch.outcome,
+                        crate::StudioWorkspaceRunOutcome::Failed(_)
+                    ));
+                }
+                other => panic!("expected workspace run dispatch, got {other:?}"),
+            },
+            other => panic!("expected app command dispatch, got {other:?}"),
+        }
+
+        let _ = fs::remove_file(project_path);
+    }
+
+    #[test]
+    fn app_window_host_manager_dispatches_resume_via_ui_action() {
+        let (config, project_path) = solver_failure_config();
+        let mut manager = StudioAppWindowHostManager::new(&config).expect("expected manager");
+        let window = manager.open_window();
+
+        let dispatch = manager
+            .dispatch_ui_action(StudioAppWindowHostUiAction::ResumeWorkspace)
+            .expect("expected ui action dispatch")
+            .expect("expected routed resume dispatch");
+
+        assert_eq!(dispatch.target_window_id, window.window_id);
+        assert_eq!(
+            dispatch.dispatch.host_output.runtime_output.trigger,
+            StudioRuntimeTrigger::WidgetAction(RunPanelActionId::Resume)
+        );
+        match &dispatch.dispatch.host_output.runtime_output.report.dispatch {
+            crate::StudioRuntimeDispatch::AppCommand(outcome) => match &outcome.dispatch {
+                crate::StudioAppResultDispatch::WorkspaceRun(dispatch) => {
+                    assert!(matches!(
+                        dispatch.outcome,
+                        crate::StudioWorkspaceRunOutcome::Failed(_)
+                    ));
+                }
+                other => panic!("expected workspace run dispatch, got {other:?}"),
+            },
+            other => panic!("expected app command dispatch, got {other:?}"),
+        }
+
+        let _ = fs::remove_file(project_path);
+    }
+
+    #[test]
+    fn app_window_host_manager_reports_ui_action_states_for_run_panel_commands() {
+        let (config, project_path) = solver_failure_config();
+        let mut manager = StudioAppWindowHostManager::new(&config).expect("expected manager");
+        let first = manager.open_window();
+        let second = manager.open_window();
+        let _ = manager
+            .focus_window(second.window_id)
+            .expect("expected second window focus");
+
+        let run_manual = manager.ui_action_state(StudioAppWindowHostUiAction::RunManualWorkspace);
+        assert_eq!(
+            run_manual,
+            StudioAppWindowHostUiActionState {
+                action: StudioAppWindowHostUiAction::RunManualWorkspace,
+                availability: StudioAppWindowHostUiActionAvailability::Enabled {
+                    target_window_id: second.window_id,
+                },
+            }
+        );
+        assert!(run_manual.enabled());
+
+        let resume = manager.ui_action_state(StudioAppWindowHostUiAction::ResumeWorkspace);
+        assert_eq!(
+            resume,
+            StudioAppWindowHostUiActionState {
+                action: StudioAppWindowHostUiAction::ResumeWorkspace,
+                availability: StudioAppWindowHostUiActionAvailability::Enabled {
+                    target_window_id: second.window_id,
+                },
+            }
+        );
+        assert!(resume.enabled());
+
+        let initial = manager.ui_action_state(StudioAppWindowHostUiAction::RecoverRunPanelFailure);
+        assert_eq!(
+            initial,
+            StudioAppWindowHostUiActionState {
+                action: StudioAppWindowHostUiAction::RecoverRunPanelFailure,
+                availability: StudioAppWindowHostUiActionAvailability::Disabled {
+                    reason: StudioAppWindowHostUiActionDisabledReason::NoRunPanelRecovery,
+                    target_window_id: Some(second.window_id),
+                },
+            }
+        );
+        assert!(!initial.enabled());
+        assert_eq!(initial.target_window_id(), Some(second.window_id));
+
+        let failed_run = manager
+            .dispatch_trigger(
+                second.window_id,
+                &StudioRuntimeTrigger::WidgetAction(RunPanelActionId::RunManual),
+            )
+            .expect("expected failed run dispatch");
+        assert_eq!(failed_run.target_window_id, second.window_id);
+
+        let recovery = manager.ui_action_state(StudioAppWindowHostUiAction::RecoverRunPanelFailure);
+        assert_eq!(
+            recovery,
+            StudioAppWindowHostUiActionState {
+                action: StudioAppWindowHostUiAction::RecoverRunPanelFailure,
+                availability: StudioAppWindowHostUiActionAvailability::Enabled {
+                    target_window_id: second.window_id,
+                },
+            }
+        );
+        assert!(recovery.enabled());
+
+        let resume_disabled = manager.ui_action_state(StudioAppWindowHostUiAction::ResumeWorkspace);
+        assert_eq!(
+            resume_disabled,
+            StudioAppWindowHostUiActionState {
+                action: StudioAppWindowHostUiAction::ResumeWorkspace,
+                availability: StudioAppWindowHostUiActionAvailability::Disabled {
+                    reason: StudioAppWindowHostUiActionDisabledReason::ResumeUnavailable,
+                    target_window_id: Some(second.window_id),
+                },
+            }
+        );
+        assert!(!resume_disabled.enabled());
+
+        let states = manager.ui_action_states();
+        assert_eq!(
+            states,
+            vec![
+                run_manual.clone(),
+                resume_disabled.clone(),
+                recovery.clone()
+            ]
+        );
+        assert_ne!(run_manual.target_window_id(), Some(first.window_id));
+        assert_ne!(resume_disabled.target_window_id(), Some(first.window_id));
+        assert_ne!(recovery.target_window_id(), Some(first.window_id));
+
+        let _ = fs::remove_file(project_path);
+    }
+
+    #[test]
     fn app_window_host_manager_reports_ui_action_state_for_foreground_recovery() {
         let (config, project_path) = solver_failure_config();
         let mut manager = StudioAppWindowHostManager::new(&config).expect("expected manager");
@@ -841,7 +1066,25 @@ mod tests {
         assert!(available.enabled());
 
         let states = manager.ui_action_states();
-        assert_eq!(states, vec![available.clone()]);
+        assert_eq!(
+            states,
+            vec![
+                StudioAppWindowHostUiActionState {
+                    action: StudioAppWindowHostUiAction::RunManualWorkspace,
+                    availability: StudioAppWindowHostUiActionAvailability::Enabled {
+                        target_window_id: second.window_id,
+                    },
+                },
+                StudioAppWindowHostUiActionState {
+                    action: StudioAppWindowHostUiAction::ResumeWorkspace,
+                    availability: StudioAppWindowHostUiActionAvailability::Disabled {
+                        reason: StudioAppWindowHostUiActionDisabledReason::ResumeUnavailable,
+                        target_window_id: Some(second.window_id),
+                    },
+                },
+                available.clone(),
+            ]
+        );
         assert_ne!(available.target_window_id(), Some(first.window_id));
 
         let _ = fs::remove_file(project_path);
@@ -886,13 +1129,41 @@ mod tests {
     }
 
     #[test]
-    fn app_window_host_manager_ignores_ui_recovery_action_without_windows() {
+    fn app_window_host_manager_ignores_ui_actions_without_windows() {
         let mut manager =
             StudioAppWindowHostManager::new(&lease_expiring_config()).expect("expected manager");
 
-        let state = manager.ui_action_state(StudioAppWindowHostUiAction::RecoverRunPanelFailure);
+        let run_manual = manager.ui_action_state(StudioAppWindowHostUiAction::RunManualWorkspace);
         assert_eq!(
-            state,
+            run_manual,
+            StudioAppWindowHostUiActionState {
+                action: StudioAppWindowHostUiAction::RunManualWorkspace,
+                availability: StudioAppWindowHostUiActionAvailability::Disabled {
+                    reason: StudioAppWindowHostUiActionDisabledReason::NoRegisteredWindow,
+                    target_window_id: None,
+                },
+            }
+        );
+        assert!(!run_manual.enabled());
+        assert_eq!(run_manual.target_window_id(), None);
+
+        let resume = manager.ui_action_state(StudioAppWindowHostUiAction::ResumeWorkspace);
+        assert_eq!(
+            resume,
+            StudioAppWindowHostUiActionState {
+                action: StudioAppWindowHostUiAction::ResumeWorkspace,
+                availability: StudioAppWindowHostUiActionAvailability::Disabled {
+                    reason: StudioAppWindowHostUiActionDisabledReason::NoRegisteredWindow,
+                    target_window_id: None,
+                },
+            }
+        );
+        assert!(!resume.enabled());
+        assert_eq!(resume.target_window_id(), None);
+
+        let recovery = manager.ui_action_state(StudioAppWindowHostUiAction::RecoverRunPanelFailure);
+        assert_eq!(
+            recovery,
             StudioAppWindowHostUiActionState {
                 action: StudioAppWindowHostUiAction::RecoverRunPanelFailure,
                 availability: StudioAppWindowHostUiActionAvailability::Disabled {
@@ -901,14 +1172,24 @@ mod tests {
                 },
             }
         );
-        assert!(!state.enabled());
-        assert_eq!(state.target_window_id(), None);
+        assert!(!recovery.enabled());
+        assert_eq!(recovery.target_window_id(), None);
 
-        let recovery = manager
+        let run_dispatch = manager
+            .dispatch_ui_action(StudioAppWindowHostUiAction::RunManualWorkspace)
+            .expect("expected ui action result");
+        assert!(run_dispatch.is_none());
+
+        let resume_dispatch = manager
+            .dispatch_ui_action(StudioAppWindowHostUiAction::ResumeWorkspace)
+            .expect("expected ui action result");
+        assert!(resume_dispatch.is_none());
+
+        let recovery_dispatch = manager
             .dispatch_ui_action(StudioAppWindowHostUiAction::RecoverRunPanelFailure)
             .expect("expected ui action result");
 
-        assert!(recovery.is_none());
+        assert!(recovery_dispatch.is_none());
     }
 
     #[test]
@@ -930,12 +1211,12 @@ mod tests {
 
         let ignored_action = manager
             .execute_command(StudioAppWindowHostCommand::DispatchUiAction {
-                action: StudioAppWindowHostUiAction::RecoverRunPanelFailure,
+                action: StudioAppWindowHostUiAction::RunManualWorkspace,
             })
             .expect("expected ignored ui action");
         assert_eq!(
             ignored_action,
-            StudioAppWindowHostCommandOutcome::IgnoredForegroundRunPanelRecovery
+            StudioAppWindowHostCommandOutcome::IgnoredUiAction
         );
 
         let window = match manager
