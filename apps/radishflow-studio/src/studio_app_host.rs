@@ -5,12 +5,17 @@ use rf_types::{RfError, RfResult};
 use crate::{
     StudioAppWindowHostClose, StudioAppWindowHostCommand, StudioAppWindowHostCommandOutcome,
     StudioAppWindowHostDispatch, StudioAppWindowHostGlobalEvent, StudioAppWindowHostManager,
-    StudioRuntimeConfig, StudioRuntimeHostAckResult, StudioRuntimeReport,
-    StudioRuntimeTimerHandleSlot, StudioRuntimeTrigger, StudioWindowHostEvent, StudioWindowHostId,
-    StudioWindowHostRegistration, StudioWindowHostRetirement, StudioWindowHostRole,
-    StudioWindowSessionDispatch, StudioWindowTimerDriverAckResult,
+    StudioAppWindowHostUiAction, StudioRuntimeConfig, StudioRuntimeHostAckResult,
+    StudioRuntimeReport, StudioRuntimeTimerHandleSlot, StudioRuntimeTrigger, StudioWindowHostEvent,
+    StudioWindowHostId, StudioWindowHostRegistration, StudioWindowHostRetirement,
+    StudioWindowHostRole, StudioWindowSessionDispatch, StudioWindowTimerDriverAckResult,
     StudioWindowTimerDriverTransition,
 };
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum StudioAppHostUiAction {
+    RecoverRunPanelFailure,
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum StudioAppHostCommand {
@@ -18,6 +23,9 @@ pub enum StudioAppHostCommand {
     DispatchWindowTrigger {
         window_id: StudioWindowHostId,
         trigger: StudioRuntimeTrigger,
+    },
+    DispatchUiAction {
+        action: StudioAppHostUiAction,
     },
     DispatchWindowRunPanelRecoveryAction {
         window_id: StudioWindowHostId,
@@ -477,6 +485,28 @@ impl StudioAppHostController {
         })
     }
 
+    pub fn dispatch_ui_action(
+        &mut self,
+        action: StudioAppHostUiAction,
+    ) -> RfResult<Option<StudioAppHostWindowDispatchResult>> {
+        let (outcome, projection) =
+            self.execute_command(StudioAppHostCommand::DispatchUiAction { action })?;
+
+        match outcome {
+            StudioAppHostCommandOutcome::WindowDispatched(dispatch) => {
+                Ok(Some(StudioAppHostWindowDispatchResult {
+                    projection,
+                    target_window_id: dispatch.target_window_id,
+                    effects: dispatch_effects_from_session(dispatch.dispatch),
+                }))
+            }
+            StudioAppHostCommandOutcome::IgnoredForegroundRunPanelRecovery => Ok(None),
+            other => Err(RfError::invalid_input(format!(
+                "app host controller expected ui action outcome, got {other:?}"
+            ))),
+        }
+    }
+
     pub fn dispatch_foreground_run_panel_recovery_action(
         &mut self,
     ) -> RfResult<Option<StudioAppHostWindowDispatchResult>> {
@@ -793,6 +823,11 @@ fn map_command(command: StudioAppHostCommand) -> StudioAppWindowHostCommand {
         StudioAppHostCommand::DispatchWindowTrigger { window_id, trigger } => {
             StudioAppWindowHostCommand::DispatchTrigger { window_id, trigger }
         }
+        StudioAppHostCommand::DispatchUiAction { action } => {
+            StudioAppWindowHostCommand::DispatchUiAction {
+                action: map_ui_action(action),
+            }
+        }
         StudioAppHostCommand::DispatchWindowRunPanelRecoveryAction { window_id } => {
             StudioAppWindowHostCommand::DispatchRunPanelRecoveryAction { window_id }
         }
@@ -807,6 +842,14 @@ fn map_command(command: StudioAppHostCommand) -> StudioAppWindowHostCommand {
         }
         StudioAppHostCommand::CloseWindow { window_id } => {
             StudioAppWindowHostCommand::CloseWindow { window_id }
+        }
+    }
+}
+
+fn map_ui_action(action: StudioAppHostUiAction) -> StudioAppWindowHostUiAction {
+    match action {
+        StudioAppHostUiAction::RecoverRunPanelFailure => {
+            StudioAppWindowHostUiAction::RecoverRunPanelFailure
         }
     }
 }
@@ -845,11 +888,11 @@ mod tests {
     use crate::{
         StudioAppHost, StudioAppHostCommand, StudioAppHostCommandOutcome, StudioAppHostController,
         StudioAppHostEntitlementTimerEffect, StudioAppHostEntitlementTimerState,
-        StudioAppHostStore, StudioAppHostTimerSlotChange, StudioAppHostWindowChange,
-        StudioAppHostWindowSelectionChange, StudioAppWindowHostGlobalEvent,
-        StudioRuntimeEntitlementPreflight, StudioRuntimeEntitlementSeed,
-        StudioRuntimeEntitlementSessionEvent, StudioRuntimeTrigger, StudioWindowHostRetirement,
-        StudioWindowHostRole,
+        StudioAppHostStore, StudioAppHostTimerSlotChange, StudioAppHostUiAction,
+        StudioAppHostWindowChange, StudioAppHostWindowSelectionChange,
+        StudioAppWindowHostGlobalEvent, StudioRuntimeEntitlementPreflight,
+        StudioRuntimeEntitlementSeed, StudioRuntimeEntitlementSessionEvent, StudioRuntimeTrigger,
+        StudioWindowHostRetirement, StudioWindowHostRole,
     };
     use rf_ui::RunPanelActionId;
 
@@ -1656,6 +1699,53 @@ mod tests {
     }
 
     #[test]
+    fn app_host_controller_dispatches_run_panel_recovery_via_ui_action() {
+        let (config, project_path) = solver_failure_config();
+        let mut controller = StudioAppHostController::new(&config).expect("expected controller");
+        let first = controller
+            .open_window()
+            .expect("expected first window open");
+        let second = controller
+            .open_window()
+            .expect("expected second window open");
+        let _ = controller
+            .focus_window(second.registration.window_id)
+            .expect("expected second window focus");
+        let _ = controller
+            .dispatch_window_trigger(
+                second.registration.window_id,
+                StudioRuntimeTrigger::WidgetAction(RunPanelActionId::RunManual),
+            )
+            .expect("expected failed run dispatch");
+
+        let recovery = controller
+            .dispatch_ui_action(StudioAppHostUiAction::RecoverRunPanelFailure)
+            .expect("expected ui action call")
+            .expect("expected ui action dispatch");
+
+        assert_eq!(recovery.target_window_id, second.registration.window_id);
+        assert_ne!(recovery.target_window_id, first.registration.window_id);
+        match &recovery.effects.runtime_report.dispatch {
+            crate::StudioRuntimeDispatch::RunPanelRecovery(outcome) => {
+                assert_eq!(outcome.action.title, "Inspect unit inputs");
+                assert_eq!(
+                    outcome.applied_target,
+                    Some(rf_ui::InspectorTarget::Unit(rf_types::UnitId::new(
+                        "valve-1"
+                    )))
+                );
+            }
+            other => panic!("expected run panel recovery dispatch, got {other:?}"),
+        }
+        assert_eq!(
+            controller.state().foreground_window_id,
+            Some(second.registration.window_id)
+        );
+
+        let _ = fs::remove_file(project_path);
+    }
+
+    #[test]
     fn app_host_controller_routes_global_recovery_event_to_foreground_window() {
         let (config, project_path) = solver_failure_config();
         let mut controller = StudioAppHostController::new(&config).expect("expected controller");
@@ -1709,6 +1799,18 @@ mod tests {
         let recovery = controller
             .dispatch_foreground_run_panel_recovery_action()
             .expect("expected optional foreground recovery");
+
+        assert!(recovery.is_none());
+    }
+
+    #[test]
+    fn app_host_controller_ignores_ui_recovery_action_without_windows() {
+        let mut controller =
+            StudioAppHostController::new(&lease_expiring_config()).expect("expected controller");
+
+        let recovery = controller
+            .dispatch_ui_action(StudioAppHostUiAction::RecoverRunPanelFailure)
+            .expect("expected optional ui action result");
 
         assert!(recovery.is_none());
     }
