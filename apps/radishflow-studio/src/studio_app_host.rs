@@ -464,6 +464,16 @@ impl StudioAppHost {
         &self.window_host_manager
     }
 
+    pub fn replace_canvas_suggestions(&mut self, suggestions: Vec<rf_ui::CanvasSuggestion>) {
+        self.window_host_manager.replace_canvas_suggestions(suggestions);
+    }
+
+    pub fn accept_focused_canvas_suggestion_by_tab(
+        &mut self,
+    ) -> Option<rf_ui::CanvasSuggestion> {
+        self.window_host_manager.accept_focused_canvas_suggestion_by_tab()
+    }
+
     pub fn snapshot(&self) -> StudioAppHostSnapshot {
         let registered_windows = self.window_host_manager.registered_windows();
         let foreground_window_id = self.window_host_manager.foreground_window_id();
@@ -558,6 +568,16 @@ impl StudioAppHostController {
 
     pub fn state(&self) -> &StudioAppHostState {
         self.store.state()
+    }
+
+    pub fn replace_canvas_suggestions(&mut self, suggestions: Vec<rf_ui::CanvasSuggestion>) {
+        self.app_host.replace_canvas_suggestions(suggestions);
+    }
+
+    pub fn accept_focused_canvas_suggestion_by_tab(
+        &mut self,
+    ) -> Option<rf_ui::CanvasSuggestion> {
+        self.app_host.accept_focused_canvas_suggestion_by_tab()
     }
 
     pub fn open_window(&mut self) -> RfResult<StudioAppHostOpenWindowResult> {

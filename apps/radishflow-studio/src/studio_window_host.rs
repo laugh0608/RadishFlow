@@ -164,6 +164,16 @@ impl StudioRuntimeHostPort {
         &self.runtime
     }
 
+    pub fn replace_canvas_suggestions(&mut self, suggestions: Vec<rf_ui::CanvasSuggestion>) {
+        self.runtime.replace_canvas_suggestions(suggestions);
+    }
+
+    pub fn accept_focused_canvas_suggestion_by_tab(
+        &mut self,
+    ) -> Option<rf_ui::CanvasSuggestion> {
+        self.runtime.accept_focused_canvas_suggestion_by_tab()
+    }
+
     pub fn entitlement_timer_owner(&self) -> Option<StudioWindowHostId> {
         self.entitlement_timer_owner
     }

@@ -45,6 +45,16 @@ impl StudioWindowSession {
         &self.timer_driver_state
     }
 
+    pub fn replace_canvas_suggestions(&mut self, suggestions: Vec<rf_ui::CanvasSuggestion>) {
+        self.host_port.replace_canvas_suggestions(suggestions);
+    }
+
+    pub fn accept_focused_canvas_suggestion_by_tab(
+        &mut self,
+    ) -> Option<rf_ui::CanvasSuggestion> {
+        self.host_port.accept_focused_canvas_suggestion_by_tab()
+    }
+
     pub fn open_window(&mut self) -> StudioWindowHostRegistration {
         let registration = self.host_port.open_window();
         let _ = self.apply_timer_driver_commands(&registration.timer_driver_commands);

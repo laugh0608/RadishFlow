@@ -144,6 +144,16 @@ impl StudioAppWindowHostManager {
         &self.session
     }
 
+    pub fn replace_canvas_suggestions(&mut self, suggestions: Vec<rf_ui::CanvasSuggestion>) {
+        self.session.replace_canvas_suggestions(suggestions);
+    }
+
+    pub fn accept_focused_canvas_suggestion_by_tab(
+        &mut self,
+    ) -> Option<rf_ui::CanvasSuggestion> {
+        self.session.accept_focused_canvas_suggestion_by_tab()
+    }
+
     pub fn foreground_window_id(&self) -> Option<StudioWindowHostId> {
         self.foreground_window_id
     }

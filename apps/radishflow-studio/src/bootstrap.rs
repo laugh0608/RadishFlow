@@ -477,6 +477,16 @@ impl BootstrapSession {
     pub(crate) fn app_state(&self) -> &AppState {
         &self.app_state
     }
+
+    pub(crate) fn replace_canvas_suggestions(&mut self, suggestions: Vec<rf_ui::CanvasSuggestion>) {
+        self.app_state.replace_canvas_suggestions(suggestions);
+    }
+
+    pub(crate) fn accept_focused_canvas_suggestion_by_tab(
+        &mut self,
+    ) -> Option<rf_ui::CanvasSuggestion> {
+        self.app_state.accept_focused_canvas_suggestion_by_tab()
+    }
 }
 
 #[derive(Debug, Clone)]

@@ -1,9 +1,11 @@
 use radishflow_studio::{
     EntitlementSessionEventOutcome, StudioAppHostEntitlementTimerEffect, StudioAppHostState,
-    StudioAppResultDispatch, StudioGuiHost, StudioGuiHostCloseWindowResult,
-    StudioGuiHostDispatch, StudioGuiHostLifecycleDispatch, StudioGuiHostLifecycleEvent,
-    StudioGuiHostWindowOpened, StudioRuntimeConfig, StudioRuntimeDispatch, StudioRuntimeReport,
-    StudioWindowHostRetirement, StudioWindowTimerDriverAckResult, StudioWindowTimerDriverTransition,
+    StudioAppResultDispatch, StudioGuiDriver, StudioGuiDriverDispatch, StudioGuiDriverOutcome,
+    StudioGuiEvent, StudioGuiHostCloseWindowResult, StudioGuiHostCommandOutcome,
+    StudioGuiHostDispatch, StudioGuiHostLifecycleDispatch, StudioGuiHostWindowOpened,
+    StudioGuiNativeTimerEffects, StudioGuiNativeTimerOperation, StudioRuntimeConfig,
+    StudioRuntimeDispatch, StudioRuntimeReport, StudioWindowHostRetirement,
+    StudioWindowTimerDriverAckResult,
 };
 
 fn print_text_view(title: &str, lines: &[String]) {
@@ -20,7 +22,7 @@ fn print_run_panel(report: &StudioRuntimeReport) {
 
 fn main() {
     let config = StudioRuntimeConfig::default();
-    let mut app_host = match StudioGuiHost::new(&config) {
+    let mut app_host = match StudioGuiDriver::new(&config) {
         Ok(runtime) => runtime,
         Err(error) => {
             eprintln!(
@@ -60,8 +62,7 @@ fn main() {
     let effects = dispatch.effects;
     let report = effects.runtime_report;
     let entitlement_timer_effect = effects.entitlement_timer_effect;
-    let native_timer_transitions = effects.native_timer_transitions;
-    let native_timer_acks = effects.native_timer_acks;
+    let native_timers = dispatch.native_timers;
     println!("RadishFlow Studio bootstrap");
     println!("Project: {}", config.project_path.display());
     println!("Requested trigger: {:?}", config.trigger);
@@ -88,14 +89,9 @@ fn main() {
         println!("Runtime timer command:");
         print_entitlement_timer_effect(effect);
     }
-    if !native_timer_transitions.is_empty() {
+    if !native_timers.operations.is_empty() {
         println!("Timer driver commands:");
-        for transition in &native_timer_transitions {
-            print_timer_driver_transition(transition);
-        }
-        for ack in &native_timer_acks {
-            print_timer_driver_ack(ack);
-        }
+        print_native_timer_effects(&native_timers);
     }
 
     match report.dispatch {
@@ -173,7 +169,7 @@ fn main() {
 
     match expect_lifecycle_event(
         &mut app_host,
-        StudioGuiHostLifecycleEvent::NetworkRestored,
+        StudioGuiEvent::NetworkRestored,
         "dispatch lifecycle network restored",
     )
     .dispatch
@@ -187,7 +183,7 @@ fn main() {
         None => {
             println!(
                 "Global event ignored: {:?}",
-                StudioGuiHostLifecycleEvent::NetworkRestored
+                StudioGuiEvent::NetworkRestored
             );
         }
     }
@@ -201,12 +197,7 @@ fn main() {
             }
             if !shutdown.native_timer_transitions.is_empty() {
                 println!("Window host shutdown driver commands:");
-                for transition in &shutdown.native_timer_transitions {
-                    print_timer_driver_transition(transition);
-                }
-                for ack in &shutdown.native_timer_acks {
-                    print_timer_driver_ack(ack);
-                }
+                print_native_timer_effects(&close.native_timers);
             }
             match shutdown.retirement {
                 StudioWindowHostRetirement::None => {}
@@ -339,12 +330,21 @@ fn print_entitlement_timer_effect(effect: &StudioAppHostEntitlementTimerEffect) 
     }
 }
 
-fn expect_window_opened(
-    app_host: &mut StudioGuiHost,
-    context: &str,
-) -> StudioGuiHostWindowOpened {
-    match app_host.open_window() {
-        Ok(result) => result,
+fn expect_window_opened(app_host: &mut StudioGuiDriver, context: &str) -> StudioGuiHostWindowOpened {
+    match app_host.dispatch_event(StudioGuiEvent::OpenWindowRequested) {
+        Ok(StudioGuiDriverDispatch {
+            outcome: StudioGuiDriverOutcome::HostCommand(
+                StudioGuiHostCommandOutcome::WindowOpened(result),
+            ),
+            ..
+        }) => result,
+        Ok(other) => {
+            eprintln!(
+                "RadishFlow Studio host command failed during {}: expected window open outcome, got {:?}",
+                context, other
+            );
+            std::process::exit(1);
+        }
         Err(error) => {
             eprintln!(
                 "RadishFlow Studio host command failed during {} [{}]: {}",
@@ -358,13 +358,25 @@ fn expect_window_opened(
 }
 
 fn expect_window_dispatch(
-    app_host: &mut StudioGuiHost,
+    app_host: &mut StudioGuiDriver,
     window_id: u64,
     trigger: radishflow_studio::StudioRuntimeTrigger,
     context: &str,
 ) -> StudioGuiHostDispatch {
-    match app_host.dispatch_window_trigger(window_id, trigger) {
-        Ok(result) => result,
+    match app_host.dispatch_event(StudioGuiEvent::WindowTriggerRequested { window_id, trigger }) {
+        Ok(StudioGuiDriverDispatch {
+            outcome: StudioGuiDriverOutcome::HostCommand(
+                StudioGuiHostCommandOutcome::WindowDispatched(result),
+            ),
+            ..
+        }) => result,
+        Ok(other) => {
+            eprintln!(
+                "RadishFlow Studio host command failed during {}: expected window dispatch outcome, got {:?}",
+                context, other
+            );
+            std::process::exit(1);
+        }
         Err(error) => {
             eprintln!(
                 "RadishFlow Studio host command failed during {} [{}]: {}",
@@ -378,12 +390,24 @@ fn expect_window_dispatch(
 }
 
 fn expect_lifecycle_event(
-    app_host: &mut StudioGuiHost,
-    event: StudioGuiHostLifecycleEvent,
+    app_host: &mut StudioGuiDriver,
+    event: StudioGuiEvent,
     context: &str,
 ) -> StudioGuiHostLifecycleDispatch {
-    match app_host.dispatch_lifecycle_event(event) {
-        Ok(result) => result,
+    match app_host.dispatch_event(event) {
+        Ok(StudioGuiDriverDispatch {
+            outcome: StudioGuiDriverOutcome::HostCommand(
+                StudioGuiHostCommandOutcome::LifecycleDispatched(result),
+            ),
+            ..
+        }) => result,
+        Ok(other) => {
+            eprintln!(
+                "RadishFlow Studio host command failed during {}: expected lifecycle outcome, got {:?}",
+                context, other
+            );
+            std::process::exit(1);
+        }
         Err(error) => {
             eprintln!(
                 "RadishFlow Studio host command failed during {} [{}]: {}",
@@ -397,12 +421,24 @@ fn expect_lifecycle_event(
 }
 
 fn expect_close_window(
-    app_host: &mut StudioGuiHost,
+    app_host: &mut StudioGuiDriver,
     window_id: u64,
     context: &str,
 ) -> StudioGuiHostCloseWindowResult {
-    match app_host.close_window(window_id) {
-        Ok(result) => result,
+    match app_host.dispatch_event(StudioGuiEvent::CloseWindowRequested { window_id }) {
+        Ok(StudioGuiDriverDispatch {
+            outcome: StudioGuiDriverOutcome::HostCommand(
+                StudioGuiHostCommandOutcome::WindowClosed(result),
+            ),
+            ..
+        }) => result,
+        Ok(other) => {
+            eprintln!(
+                "RadishFlow Studio host command failed during {}: expected close outcome, got {:?}",
+                context, other
+            );
+            std::process::exit(1);
+        }
         Err(error) => {
             eprintln!(
                 "RadishFlow Studio host command failed during {} [{}]: {}",
@@ -415,9 +451,18 @@ fn expect_close_window(
     }
 }
 
-fn print_timer_driver_transition(transition: &StudioWindowTimerDriverTransition) {
+fn print_native_timer_effects(effects: &StudioGuiNativeTimerEffects) {
+    for operation in &effects.operations {
+        print_timer_driver_transition(operation);
+    }
+    for ack in &effects.acks {
+        print_timer_driver_ack(ack);
+    }
+}
+
+fn print_timer_driver_transition(transition: &StudioGuiNativeTimerOperation) {
     match transition {
-        StudioWindowTimerDriverTransition::ArmNativeTimer {
+        StudioGuiNativeTimerOperation::Arm {
             window_id,
             previous_binding,
             slot,
@@ -427,13 +472,13 @@ fn print_timer_driver_transition(transition: &StudioWindowTimerDriverTransition)
                 window_id, previous_binding, slot
             );
         }
-        StudioWindowTimerDriverTransition::KeepNativeTimer { window_id, binding } => {
+        StudioGuiNativeTimerOperation::Keep { window_id, binding } => {
             println!(
                 "  - Keep native timer handle #{} on window #{} for {:?}",
                 binding.handle_id, window_id, binding.slot
             );
         }
-        StudioWindowTimerDriverTransition::RearmNativeTimer {
+        StudioGuiNativeTimerOperation::Rearm {
             window_id,
             previous_binding,
             next_slot,
@@ -443,7 +488,7 @@ fn print_timer_driver_transition(transition: &StudioWindowTimerDriverTransition)
                 window_id, previous_binding, next_slot
             );
         }
-        StudioWindowTimerDriverTransition::ClearNativeTimer {
+        StudioGuiNativeTimerOperation::Clear {
             window_id,
             previous_binding,
         } => {
@@ -452,7 +497,7 @@ fn print_timer_driver_transition(transition: &StudioWindowTimerDriverTransition)
                 window_id, previous_binding
             );
         }
-        StudioWindowTimerDriverTransition::IgnoreStale {
+        StudioGuiNativeTimerOperation::IgnoreStale {
             window_id,
             current_binding,
             stale_effect_id,
@@ -462,7 +507,7 @@ fn print_timer_driver_transition(transition: &StudioWindowTimerDriverTransition)
                 stale_effect_id, window_id, current_binding
             );
         }
-        StudioWindowTimerDriverTransition::TransferNativeTimer {
+        StudioGuiNativeTimerOperation::Transfer {
             from_window_id,
             to_window_id,
             binding,
@@ -473,7 +518,7 @@ fn print_timer_driver_transition(transition: &StudioWindowTimerDriverTransition)
                 binding, from_window_id, to_window_id, requested_slot
             );
         }
-        StudioWindowTimerDriverTransition::ParkNativeTimer {
+        StudioGuiNativeTimerOperation::Park {
             from_window_id,
             binding,
             requested_slot,
@@ -483,7 +528,7 @@ fn print_timer_driver_transition(transition: &StudioWindowTimerDriverTransition)
                 binding, from_window_id, requested_slot
             );
         }
-        StudioWindowTimerDriverTransition::RestoreParkedTimer {
+        StudioGuiNativeTimerOperation::RestoreParked {
             window_id,
             binding,
             requested_slot,

@@ -1,11 +1,13 @@
 use rf_types::RfResult;
+use rf_ui::CanvasSuggestion;
 
 use crate::{
     StudioAppHostCloseEffects, StudioAppHostController, StudioAppHostDispatchEffects,
     StudioAppHostGlobalEventResult, StudioAppHostProjection, StudioAppHostState,
     StudioAppHostUiCommandDispatchResult, StudioAppHostUiCommandModel,
-    StudioAppHostWindowDispatchResult, StudioAppWindowHostGlobalEvent, StudioRuntimeConfig,
-    StudioRuntimeTrigger, StudioWindowHostId, StudioWindowHostRegistration,
+    StudioAppHostWindowDispatchResult, StudioAppWindowHostGlobalEvent, StudioGuiCommandRegistry,
+    StudioGuiNativeTimerEffects, StudioRuntimeConfig, StudioRuntimeTrigger, StudioWindowHostId,
+    StudioWindowHostRegistration,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -21,6 +23,7 @@ pub struct StudioGuiHostDispatch {
     pub target_window_id: StudioWindowHostId,
     pub ui_commands: StudioAppHostUiCommandModel,
     pub effects: StudioAppHostDispatchEffects,
+    pub native_timers: StudioGuiNativeTimerEffects,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -69,6 +72,40 @@ pub struct StudioGuiHostCloseWindowResult {
     pub projection: StudioAppHostProjection,
     pub ui_commands: StudioAppHostUiCommandModel,
     pub close: Option<StudioAppHostCloseEffects>,
+    pub native_timers: StudioGuiNativeTimerEffects,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct StudioGuiHostCanvasSuggestionResult {
+    pub accepted: Option<CanvasSuggestion>,
+    pub ui_commands: StudioAppHostUiCommandModel,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum StudioGuiHostCommand {
+    OpenWindow,
+    DispatchWindowTrigger {
+        window_id: StudioWindowHostId,
+        trigger: StudioRuntimeTrigger,
+    },
+    DispatchLifecycleEvent {
+        event: StudioGuiHostLifecycleEvent,
+    },
+    DispatchUiCommand {
+        command_id: String,
+    },
+    CloseWindow {
+        window_id: StudioWindowHostId,
+    },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum StudioGuiHostCommandOutcome {
+    WindowOpened(StudioGuiHostWindowOpened),
+    WindowDispatched(StudioGuiHostDispatch),
+    LifecycleDispatched(StudioGuiHostLifecycleDispatch),
+    UiCommandDispatched(StudioGuiHostUiCommandDispatchResult),
+    WindowClosed(StudioGuiHostCloseWindowResult),
 }
 
 pub struct StudioGuiHost {
@@ -88,6 +125,44 @@ impl StudioGuiHost {
 
     pub fn ui_commands(&self) -> StudioAppHostUiCommandModel {
         self.state().ui_command_model()
+    }
+
+    pub fn command_registry(&self) -> StudioGuiCommandRegistry {
+        StudioGuiCommandRegistry::from_model(&self.ui_commands())
+    }
+
+    pub fn replace_canvas_suggestions(&mut self, suggestions: Vec<CanvasSuggestion>) {
+        self.controller.replace_canvas_suggestions(suggestions);
+    }
+
+    pub fn accept_focused_canvas_suggestion_by_tab(&mut self) -> StudioGuiHostCanvasSuggestionResult {
+        StudioGuiHostCanvasSuggestionResult {
+            accepted: self.controller.accept_focused_canvas_suggestion_by_tab(),
+            ui_commands: self.ui_commands(),
+        }
+    }
+
+    pub fn execute_command(
+        &mut self,
+        command: StudioGuiHostCommand,
+    ) -> RfResult<StudioGuiHostCommandOutcome> {
+        match command {
+            StudioGuiHostCommand::OpenWindow => {
+                self.open_window().map(StudioGuiHostCommandOutcome::WindowOpened)
+            }
+            StudioGuiHostCommand::DispatchWindowTrigger { window_id, trigger } => self
+                .dispatch_window_trigger(window_id, trigger)
+                .map(StudioGuiHostCommandOutcome::WindowDispatched),
+            StudioGuiHostCommand::DispatchLifecycleEvent { event } => self
+                .dispatch_lifecycle_event(event)
+                .map(StudioGuiHostCommandOutcome::LifecycleDispatched),
+            StudioGuiHostCommand::DispatchUiCommand { command_id } => self
+                .dispatch_ui_command(&command_id)
+                .map(StudioGuiHostCommandOutcome::UiCommandDispatched),
+            StudioGuiHostCommand::CloseWindow { window_id } => self
+                .close_window(window_id)
+                .map(StudioGuiHostCommandOutcome::WindowClosed),
+        }
     }
 
     pub fn open_window(&mut self) -> RfResult<StudioGuiHostWindowOpened> {
@@ -190,17 +265,32 @@ impl StudioGuiHost {
         Ok(StudioGuiHostCloseWindowResult {
             ui_commands: ui_commands_from_projection(&closed.projection),
             projection: closed.projection,
+            native_timers: closed
+                .close
+                .as_ref()
+                .map(|close| {
+                    StudioGuiNativeTimerEffects::from_driver(
+                        &close.native_timer_transitions,
+                        &close.native_timer_acks,
+                    )
+                })
+                .unwrap_or_default(),
             close: closed.close,
         })
     }
 }
 
 fn dispatch_from_controller(dispatch: StudioAppHostWindowDispatchResult) -> StudioGuiHostDispatch {
+    let native_timers = StudioGuiNativeTimerEffects::from_driver(
+        &dispatch.effects.native_timer_transitions,
+        &dispatch.effects.native_timer_acks,
+    );
     StudioGuiHostDispatch {
         ui_commands: ui_commands_from_projection(&dispatch.projection),
         projection: dispatch.projection,
         target_window_id: dispatch.target_window_id,
         effects: dispatch.effects,
+        native_timers,
     }
 }
 
@@ -245,8 +335,9 @@ mod tests {
     use rf_ui::RunPanelActionId;
 
     use crate::{
-        StudioGuiHost, StudioGuiHostLifecycleEvent, StudioGuiHostUiCommandDispatchResult,
-        StudioRuntimeConfig,
+        StudioGuiHost, StudioGuiHostCommand, StudioGuiHostCommandOutcome,
+        StudioGuiHostLifecycleEvent, StudioGuiHostUiCommandDispatchResult,
+        StudioGuiNativeTimerEffects, StudioRuntimeConfig,
         StudioRuntimeEntitlementPreflight, StudioRuntimeEntitlementSeed,
         StudioRuntimeEntitlementSessionEvent, StudioRuntimeTrigger, StudioWindowHostRetirement,
     };
@@ -335,6 +426,13 @@ mod tests {
                         .enabled,
                     true
                 );
+                assert_eq!(
+                    dispatch.native_timers,
+                    StudioGuiNativeTimerEffects::from_driver(
+                        &dispatch.effects.native_timer_transitions,
+                        &dispatch.effects.native_timer_acks,
+                    )
+                );
                 match &dispatch.effects.runtime_report.dispatch {
                     crate::StudioRuntimeDispatch::AppCommand(outcome) => match &outcome.dispatch {
                         crate::StudioAppResultDispatch::WorkspaceRun(run) => {
@@ -377,6 +475,11 @@ mod tests {
             StudioWindowHostRetirement::Parked {
                 parked_entitlement_timer: Some(_)
             }
+        ));
+        assert!(matches!(
+            closed.native_timers.operations.as_slice(),
+            [crate::StudioGuiNativeTimerOperation::Park { from_window_id, .. }]
+            if *from_window_id == opened.registration.window_id
         ));
         assert_eq!(closed.projection.state.windows.len(), 0);
         assert_eq!(
@@ -449,9 +552,52 @@ mod tests {
         let routed = dispatch.dispatch.expect("expected routed timer dispatch");
         assert_eq!(routed.target_window_id, first.registration.window_id);
         assert_ne!(routed.target_window_id, second.registration.window_id);
+        assert!(matches!(
+            routed.native_timers.operations.as_slice(),
+            [crate::StudioGuiNativeTimerOperation::Keep { window_id, .. }]
+            if *window_id == first.registration.window_id
+        ));
         assert_eq!(
             dispatch.projection.state.foreground_window_id,
             Some(second.registration.window_id)
         );
+    }
+
+    #[test]
+    fn gui_host_execute_command_routes_open_ui_command_and_close() {
+        let mut gui_host = StudioGuiHost::new(&lease_expiring_config()).expect("expected gui host");
+
+        let opened = gui_host
+            .execute_command(StudioGuiHostCommand::OpenWindow)
+            .expect("expected open command");
+        let window_id = match opened {
+            StudioGuiHostCommandOutcome::WindowOpened(opened) => opened.registration.window_id,
+            other => panic!("expected window opened outcome, got {other:?}"),
+        };
+
+        let command_dispatch = gui_host
+            .execute_command(StudioGuiHostCommand::DispatchUiCommand {
+                command_id: "run_panel.set_active".to_string(),
+            })
+            .expect("expected ui command dispatch");
+        match command_dispatch {
+            StudioGuiHostCommandOutcome::UiCommandDispatched(
+                StudioGuiHostUiCommandDispatchResult::Executed(dispatch),
+            ) => {
+                assert_eq!(dispatch.target_window_id, window_id);
+            }
+            other => panic!("expected executed ui command outcome, got {other:?}"),
+        }
+
+        let closed = gui_host
+            .execute_command(StudioGuiHostCommand::CloseWindow { window_id })
+            .expect("expected close command");
+        match closed {
+            StudioGuiHostCommandOutcome::WindowClosed(closed) => {
+                assert!(closed.close.is_some());
+                assert!(closed.projection.state.windows.is_empty());
+            }
+            other => panic!("expected window closed outcome, got {other:?}"),
+        }
     }
 }
