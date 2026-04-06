@@ -1,10 +1,9 @@
 use radishflow_studio::{
-    EntitlementSessionEventOutcome, StudioAppHostEntitlementTimerEffect, StudioAppHostState,
-    StudioAppResultDispatch, StudioGuiCanvasState, StudioGuiDriver, StudioGuiDriverDispatch,
-    StudioGuiDriverOutcome, StudioGuiEvent, StudioGuiHostCloseWindowResult,
-    StudioGuiHostCommandOutcome, StudioGuiHostDispatch, StudioGuiHostLifecycleDispatch,
-    StudioGuiHostWindowOpened,
-    StudioGuiNativeTimerEffects, StudioGuiNativeTimerOperation, StudioRuntimeConfig,
+    EntitlementSessionEventOutcome, StudioAppHostEntitlementTimerEffect, StudioAppResultDispatch,
+    StudioGuiDriver, StudioGuiDriverDispatch, StudioGuiDriverOutcome, StudioGuiEvent,
+    StudioGuiHostCloseWindowResult, StudioGuiHostCommandOutcome, StudioGuiHostDispatch,
+    StudioGuiHostLifecycleDispatch, StudioGuiHostWindowOpened, StudioGuiNativeTimerEffects,
+    StudioGuiNativeTimerOperation, StudioGuiWindowModel, StudioRuntimeConfig,
     StudioRuntimeDispatch, StudioRuntimeReport, StudioWindowHostRetirement,
     StudioWindowTimerDriverAckResult,
 };
@@ -21,9 +20,98 @@ fn print_run_panel(report: &StudioRuntimeReport) {
     print_text_view(text.title, &text.lines);
 }
 
-fn print_canvas_state(title: &str, canvas: &StudioGuiCanvasState) {
-    let presentation = canvas.presentation();
-    print_text_view(title, &presentation.text.lines);
+fn print_window_model(title: &str, window: &StudioGuiWindowModel) {
+    let layout = window.layout();
+    println!("{title}:");
+    println!("  {}", layout.titlebar.title);
+    println!("  {}", layout.titlebar.subtitle);
+    println!(
+        "  Titlebar: foreground={:?} windows={} close={}",
+        layout.titlebar.foreground_window_id,
+        layout.titlebar.registered_window_count,
+        if layout.titlebar.close_enabled {
+            "enabled"
+        } else {
+            "disabled"
+        }
+    );
+    println!(
+        "  Layout: center={:?} default_focus={:?}",
+        layout.center_area, layout.default_focus_area
+    );
+    println!("  Panels:");
+    for panel in &layout.panels {
+        println!(
+            "    - {:?} @ {:?} order={} [{}] collapsed={} badge={} :: {}",
+            panel.area_id,
+            panel.dock_region,
+            panel.order,
+            if panel.visible { "visible" } else { "hidden" },
+            panel.collapsed,
+            panel.badge.as_deref().unwrap_or("none"),
+            panel.summary
+        );
+    }
+    println!(
+        "  Commands: {} total / {} enabled",
+        window.commands.total_command_count, window.commands.enabled_command_count
+    );
+    for section in &window.commands.sections {
+        println!("  {}:", section.title);
+        for command in &section.commands {
+            let shortcut = command
+                .shortcut
+                .as_ref()
+                .map(format_shortcut)
+                .unwrap_or_else(|| "none".to_string());
+            println!(
+                "    - {} ({}) [{}] shortcut={} target={:?}",
+                command.label,
+                command.command_id,
+                if command.enabled { "enabled" } else { "disabled" },
+                shortcut,
+                command.target_window_id
+            );
+            println!("      {}", command.detail);
+        }
+    }
+
+    print_text_view(window.canvas.widget.text().title, &window.canvas.widget.text().lines);
+    println!(
+        "Canvas actions: {} enabled / {} total",
+        window.canvas.enabled_action_count,
+        window.canvas.widget.actions.len()
+    );
+    for action in &window.canvas.widget.actions {
+        let shortcut = action
+            .shortcut
+            .as_ref()
+            .map(format_shortcut)
+            .unwrap_or_else(|| "none".to_string());
+        println!(
+            "  - {} [{}] shortcut={} :: {}",
+            action.label,
+            if action.enabled { "enabled" } else { "disabled" },
+            shortcut,
+            action.detail
+        );
+    }
+
+    let run_panel_text = window.runtime.run_panel.text();
+    print_text_view(run_panel_text.title, &run_panel_text.lines);
+    if let Some(entitlement_host) = window.runtime.entitlement_host.as_ref() {
+        print_text_view(
+            entitlement_host.presentation.panel.text.title,
+            &entitlement_host.presentation.panel.text.lines,
+        );
+        print_text_view(
+            entitlement_host.presentation.text.title,
+            &entitlement_host.presentation.text.lines,
+        );
+    }
+    if let Some(entry) = window.runtime.latest_log_entry.as_ref() {
+        println!("Latest window log: {:?}: {}", entry.level, entry.message);
+    }
 }
 
 fn main() {
@@ -50,7 +138,10 @@ fn main() {
         "Foreground window: {:?}",
         opened.projection.state.foreground_window_id
     );
-    print_canvas_state("Canvas suggestions after opening window", &opened.canvas);
+    print_window_model(
+        "Window model after opening window",
+        &app_host.snapshot().window_model(),
+    );
     if let Some(slot) = window.restored_entitlement_timer.as_ref() {
         println!("Restored parked timer slot into window host: {:?}", slot);
     }
@@ -75,8 +166,10 @@ fn main() {
     println!("Requested trigger: {:?}", config.trigger);
     println!("Entitlement preflight: {:?}", config.entitlement_preflight);
     println!("App host state: {:?}", dispatch_state);
-    print_ui_actions(&dispatch_state);
-    print_canvas_state("Canvas suggestions after initial dispatch", &dispatch.canvas);
+    print_window_model(
+        "Window model after initial dispatch",
+        &app_host.snapshot().window_model(),
+    );
     println!("Control mode: {:?}", report.control_state.simulation_mode);
     println!("Control pending: {:?}", report.control_state.pending_reason);
     println!("Control status: {:?}", report.control_state.run_status);
@@ -194,9 +287,9 @@ fn main() {
             );
         }
     }
-    print_canvas_state(
-        "Canvas suggestions after network restored",
-        &lifecycle.canvas,
+    print_window_model(
+        "Window model after network restored",
+        &app_host.snapshot().window_model(),
     );
 
     let close = expect_close_window(&mut app_host, window.window_id, "close initial window");
@@ -235,38 +328,14 @@ fn main() {
                 shutdown.next_foreground_window_id
             );
             println!("App host state: {:?}", close_state);
-            print_ui_actions(&close_state);
+            print_window_model(
+                "Window model after closing window",
+                &app_host.snapshot().window_model(),
+            );
         }
         None => {
             println!("Window host close ignored for window #{}", window.window_id);
         }
-    }
-    print_canvas_state("Canvas suggestions after closing window", &close.canvas);
-}
-
-fn print_ui_actions(state: &StudioAppHostState) {
-    let model = state.ui_command_model();
-    if model.actions.is_empty() {
-        println!("UI actions: none");
-        return;
-    }
-
-    println!("UI actions:");
-    for action in &model.actions {
-        println!(
-            "  - {} ({}) / {:?}#{} [{}] on {:?}",
-            action.label,
-            action.command_id,
-            action.group,
-            action.sort_order,
-            if action.enabled {
-                "enabled"
-            } else {
-                "disabled"
-            },
-            action.target_window_id
-        );
-        println!("    {}", action.detail);
     }
 }
 
@@ -558,4 +627,25 @@ fn print_timer_driver_transition(transition: &StudioGuiNativeTimerOperation) {
 
 fn print_timer_driver_ack(ack: &StudioWindowTimerDriverAckResult) {
     println!("  native timer ack: {:?}", ack);
+}
+
+fn format_shortcut(shortcut: &radishflow_studio::StudioGuiShortcut) -> String {
+    let mut parts = shortcut
+        .modifiers
+        .iter()
+        .map(|modifier| match modifier {
+            radishflow_studio::StudioGuiShortcutModifier::Ctrl => "Ctrl",
+            radishflow_studio::StudioGuiShortcutModifier::Shift => "Shift",
+            radishflow_studio::StudioGuiShortcutModifier::Alt => "Alt",
+        })
+        .collect::<Vec<_>>();
+    let key = match shortcut.key {
+        radishflow_studio::StudioGuiShortcutKey::F5 => "F5",
+        radishflow_studio::StudioGuiShortcutKey::F6 => "F6",
+        radishflow_studio::StudioGuiShortcutKey::F8 => "F8",
+        radishflow_studio::StudioGuiShortcutKey::Tab => "Tab",
+        radishflow_studio::StudioGuiShortcutKey::Escape => "Escape",
+    };
+    parts.push(key);
+    parts.join("+")
 }

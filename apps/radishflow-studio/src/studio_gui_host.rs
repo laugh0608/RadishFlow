@@ -6,8 +6,8 @@ use crate::{
     StudioAppHostGlobalEventResult, StudioAppHostProjection, StudioAppHostState,
     StudioAppHostUiCommandDispatchResult, StudioAppHostUiCommandModel,
     StudioAppHostWindowDispatchResult, StudioAppWindowHostGlobalEvent, StudioGuiCommandRegistry,
-    StudioGuiNativeTimerEffects, StudioRuntimeConfig, StudioRuntimeTrigger, StudioWindowHostId,
-    StudioWindowHostRegistration,
+    StudioGuiNativeTimerEffects, StudioGuiRuntimeSnapshot, StudioGuiSnapshot,
+    StudioRuntimeConfig, StudioRuntimeTrigger, StudioWindowHostId, StudioWindowHostRegistration,
 };
 
 #[derive(Debug, Clone, PartialEq)]
@@ -162,6 +162,21 @@ impl StudioGuiHost {
 
     pub fn command_registry(&self) -> StudioGuiCommandRegistry {
         StudioGuiCommandRegistry::from_model(&self.ui_commands())
+    }
+
+    pub fn snapshot(&self) -> StudioGuiSnapshot {
+        StudioGuiSnapshot {
+            app_host_state: self.state().clone(),
+            ui_commands: self.ui_commands(),
+            command_registry: self.command_registry(),
+            canvas: self.canvas_state().widget(),
+            runtime: StudioGuiRuntimeSnapshot {
+                control_state: self.controller.workspace_control_state(),
+                run_panel: self.controller.run_panel_widget(),
+                entitlement_host: self.controller.entitlement_host_output(),
+                log_entries: self.controller.log_entries(),
+            },
+        }
     }
 
     pub fn refresh_local_canvas_suggestions(&mut self) {

@@ -16,9 +16,13 @@ mod run_panel_driver;
 mod solver_bridge;
 mod studio_app_host;
 mod studio_gui_canvas_presentation;
+mod studio_gui_canvas_widget;
 mod studio_gui_command_registry;
 mod studio_gui_driver;
 mod studio_gui_host;
+mod studio_gui_snapshot;
+mod studio_gui_window_layout;
+mod studio_gui_window_model;
 mod studio_gui_shortcut_router;
 mod studio_gui_timer_host;
 mod studio_local_rules;
@@ -152,6 +156,10 @@ pub use studio_gui_canvas_presentation::{
     StudioGuiCanvasPresentation, StudioGuiCanvasSuggestionViewModel, StudioGuiCanvasTextView,
     StudioGuiCanvasViewModel,
 };
+pub use studio_gui_canvas_widget::{
+    StudioGuiCanvasActionId, StudioGuiCanvasRenderableAction, StudioGuiCanvasWidgetEvent,
+    StudioGuiCanvasWidgetModel,
+};
 pub use studio_gui_command_registry::{
     StudioGuiCommandEntry, StudioGuiCommandRegistry, StudioGuiCommandSection, StudioGuiShortcut,
     StudioGuiShortcutKey, StudioGuiShortcutModifier,
@@ -165,6 +173,15 @@ pub use studio_gui_host::{
     StudioGuiHostCloseWindowResult, StudioGuiHostCommand, StudioGuiHostCommandOutcome,
     StudioGuiHostDispatch, StudioGuiHostGlobalEventDispatch, StudioGuiHostLifecycleDispatch,
     StudioGuiHostLifecycleEvent, StudioGuiHostUiCommandDispatchResult, StudioGuiHostWindowOpened,
+};
+pub use studio_gui_snapshot::{StudioGuiRuntimeSnapshot, StudioGuiSnapshot};
+pub use studio_gui_window_layout::{
+    StudioGuiWindowAreaId, StudioGuiWindowDockRegion, StudioGuiWindowLayoutModel,
+    StudioGuiWindowPanelLayout, StudioGuiWindowTitlebarModel,
+};
+pub use studio_gui_window_model::{
+    StudioGuiWindowCanvasAreaModel, StudioGuiWindowCommandAreaModel, StudioGuiWindowHeaderModel,
+    StudioGuiWindowModel, StudioGuiWindowRuntimeAreaModel,
 };
 pub use studio_gui_shortcut_router::{
     StudioGuiFocusContext, StudioGuiShortcutIgnoreReason, StudioGuiShortcutRoute, route_shortcut,

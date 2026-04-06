@@ -6,7 +6,8 @@ use crate::{
     StudioGuiCommandRegistry, StudioGuiFocusContext, StudioGuiHost,
     StudioGuiHostCanvasInteractionResult, StudioGuiHostCommand, StudioGuiHostCommandOutcome,
     StudioGuiHostLifecycleEvent, StudioGuiShortcut, StudioGuiShortcutIgnoreReason,
-    StudioGuiShortcutRoute, StudioRuntimeConfig, StudioRuntimeTrigger, StudioWindowHostId,
+    StudioGuiShortcutRoute, StudioGuiSnapshot, StudioGuiWindowModel, StudioRuntimeConfig,
+    StudioRuntimeTrigger, StudioWindowHostId,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -43,6 +44,8 @@ pub enum StudioGuiEvent {
 pub struct StudioGuiDriverDispatch {
     pub event: StudioGuiEvent,
     pub outcome: StudioGuiDriverOutcome,
+    pub snapshot: StudioGuiSnapshot,
+    pub window: StudioGuiWindowModel,
     pub state: StudioAppHostState,
     pub ui_commands: StudioAppHostUiCommandModel,
     pub command_registry: StudioGuiCommandRegistry,
@@ -90,6 +93,14 @@ impl StudioGuiDriver {
         &self.host
     }
 
+    pub fn snapshot(&self) -> StudioGuiSnapshot {
+        self.host.snapshot()
+    }
+
+    pub fn window_model(&self) -> StudioGuiWindowModel {
+        self.snapshot().window_model()
+    }
+
     pub fn replace_canvas_suggestions(&mut self, suggestions: Vec<rf_ui::CanvasSuggestion>) {
         self.host.replace_canvas_suggestions(suggestions);
     }
@@ -120,9 +131,13 @@ impl StudioGuiDriver {
                 StudioGuiDriverOutcome::IgnoredShortcut { shortcut, reason }
             }
         };
+        let snapshot = self.host.snapshot();
+        let window = snapshot.window_model();
         Ok(StudioGuiDriverDispatch {
             event,
             outcome,
+            snapshot,
+            window,
             state: self.host.state().clone(),
             ui_commands: self.host.ui_commands(),
             command_registry: self.host.command_registry(),
@@ -323,6 +338,12 @@ mod tests {
             other => panic!("expected window opened outcome, got {other:?}"),
         }
         assert_eq!(dispatch.state.windows.len(), 1);
+        assert_eq!(dispatch.snapshot.app_host_state.windows.len(), 1);
+        assert_eq!(dispatch.window.header.registered_window_count, 1);
+        assert_eq!(
+            dispatch.window.layout().default_focus_area,
+            crate::StudioGuiWindowAreaId::Commands
+        );
         assert_eq!(
             dispatch
                 .command_registry
@@ -333,6 +354,7 @@ mod tests {
             Some(1)
         );
         assert!(dispatch.canvas.suggestions.is_empty());
+        assert_eq!(dispatch.snapshot.canvas.view().suggestion_count, 0);
     }
 
     #[test]
@@ -386,6 +408,17 @@ mod tests {
             .expect("expected open dispatch");
 
         assert_eq!(dispatch.canvas.suggestions.len(), 3);
+        assert_eq!(dispatch.snapshot.canvas.view().suggestion_count, 3);
+        assert_eq!(
+            dispatch
+                .snapshot
+                .runtime
+                .run_panel
+                .view()
+                .primary_action
+                .label,
+            "Resume"
+        );
         assert_eq!(
             dispatch
                 .canvas
@@ -399,6 +432,52 @@ mod tests {
                 "local.flash_drum.create_outlet.flash-1.vapor",
             ]
         );
+
+        let _ = fs::remove_file(project_path);
+    }
+
+    #[test]
+    fn gui_driver_dispatch_snapshot_aggregates_gui_facing_state() {
+        let (config, project_path) = flash_drum_local_rules_config();
+        let mut driver = StudioGuiDriver::new(&config).expect("expected driver");
+
+        let dispatch = driver
+            .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+            .expect("expected open dispatch");
+
+        assert!(
+            dispatch.snapshot.command_registry.sections.len() >= 1,
+            "expected at least one command section in gui snapshot"
+        );
+        assert_eq!(
+            dispatch.snapshot.canvas.primary_action().label,
+            "Accept suggestion"
+        );
+        assert_eq!(dispatch.window.canvas.suggestion_count, 3);
+        assert_eq!(
+            dispatch.window.layout().default_focus_area,
+            crate::StudioGuiWindowAreaId::Canvas
+        );
+        assert_eq!(
+            dispatch
+                .snapshot
+                .command_registry
+                .sections
+                .first()
+                .map(|section| section.title),
+            Some("Run Panel")
+        );
+        assert_eq!(
+            dispatch
+                .snapshot
+                .runtime
+                .control_state
+                .run_status,
+            rf_ui::RunStatus::Idle
+        );
+        assert_eq!(dispatch.window.runtime.run_panel.view().primary_action.label, "Resume");
+        assert!(dispatch.snapshot.runtime.entitlement_host.is_some());
+        assert!(!dispatch.snapshot.runtime.run_panel.view().primary_action.label.is_empty());
 
         let _ = fs::remove_file(project_path);
     }

@@ -504,6 +504,51 @@ impl StudioAppHost {
             .cloned()
     }
 
+    pub fn log_entries(&self) -> Vec<rf_ui::AppLogEntry> {
+        self.window_host_manager
+            .session()
+            .host_port()
+            .runtime()
+            .app_state()
+            .log_feed
+            .entries
+            .iter()
+            .cloned()
+            .collect()
+    }
+
+    pub fn workspace_control_state(&self) -> crate::WorkspaceControlState {
+        crate::snapshot_workspace_control_state(
+            self.window_host_manager
+                .session()
+                .host_port()
+                .runtime()
+                .app_state(),
+        )
+    }
+
+    pub fn run_panel_widget(&self) -> rf_ui::RunPanelWidgetModel {
+        rf_ui::RunPanelWidgetModel::from_state(
+            &self
+                .window_host_manager
+                .session()
+                .host_port()
+                .runtime()
+                .app_state()
+                .workspace
+                .run_panel,
+        )
+    }
+
+    pub fn entitlement_host_output(&self) -> Option<crate::EntitlementSessionHostRuntimeOutput> {
+        self.window_host_manager
+            .session()
+            .host_port()
+            .runtime()
+            .host_runtime()
+            .last_output()
+    }
+
     pub fn active_inspector_target(&self) -> Option<rf_ui::InspectorTarget> {
         self.window_host_manager
             .session()
@@ -654,6 +699,22 @@ impl StudioAppHostController {
 
     pub fn latest_log_entry(&self) -> Option<rf_ui::AppLogEntry> {
         self.app_host.latest_log_entry()
+    }
+
+    pub fn log_entries(&self) -> Vec<rf_ui::AppLogEntry> {
+        self.app_host.log_entries()
+    }
+
+    pub fn workspace_control_state(&self) -> crate::WorkspaceControlState {
+        self.app_host.workspace_control_state()
+    }
+
+    pub fn run_panel_widget(&self) -> rf_ui::RunPanelWidgetModel {
+        self.app_host.run_panel_widget()
+    }
+
+    pub fn entitlement_host_output(&self) -> Option<crate::EntitlementSessionHostRuntimeOutput> {
+        self.app_host.entitlement_host_output()
     }
 
     pub fn active_inspector_target(&self) -> Option<rf_ui::InspectorTarget> {
