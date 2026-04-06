@@ -474,6 +474,18 @@ impl StudioAppHost {
         self.window_host_manager.accept_focused_canvas_suggestion_by_tab()
     }
 
+    pub fn latest_log_entry(&self) -> Option<rf_ui::AppLogEntry> {
+        self.window_host_manager
+            .session()
+            .host_port()
+            .runtime()
+            .app_state()
+            .log_feed
+            .entries
+            .back()
+            .cloned()
+    }
+
     pub fn snapshot(&self) -> StudioAppHostSnapshot {
         let registered_windows = self.window_host_manager.registered_windows();
         let foreground_window_id = self.window_host_manager.foreground_window_id();
@@ -578,6 +590,10 @@ impl StudioAppHostController {
         &mut self,
     ) -> Option<rf_ui::CanvasSuggestion> {
         self.app_host.accept_focused_canvas_suggestion_by_tab()
+    }
+
+    pub fn latest_log_entry(&self) -> Option<rf_ui::AppLogEntry> {
+        self.app_host.latest_log_entry()
     }
 
     pub fn open_window(&mut self) -> RfResult<StudioAppHostOpenWindowResult> {

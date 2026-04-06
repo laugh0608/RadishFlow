@@ -1,5 +1,5 @@
 use rf_types::RfResult;
-use rf_ui::CanvasSuggestion;
+use rf_ui::{AppLogEntry, CanvasSuggestion};
 
 use crate::{
     StudioAppHostCloseEffects, StudioAppHostController, StudioAppHostDispatchEffects,
@@ -78,6 +78,7 @@ pub struct StudioGuiHostCloseWindowResult {
 #[derive(Debug, Clone, PartialEq)]
 pub struct StudioGuiHostCanvasSuggestionResult {
     pub accepted: Option<CanvasSuggestion>,
+    pub latest_log_entry: Option<AppLogEntry>,
     pub ui_commands: StudioAppHostUiCommandModel,
 }
 
@@ -138,6 +139,7 @@ impl StudioGuiHost {
     pub fn accept_focused_canvas_suggestion_by_tab(&mut self) -> StudioGuiHostCanvasSuggestionResult {
         StudioGuiHostCanvasSuggestionResult {
             accepted: self.controller.accept_focused_canvas_suggestion_by_tab(),
+            latest_log_entry: self.controller.latest_log_entry(),
             ui_commands: self.ui_commands(),
         }
     }

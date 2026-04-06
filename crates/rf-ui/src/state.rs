@@ -9,7 +9,9 @@ use crate::auth::{
     AuthSessionState, AuthenticatedUser, EntitlementSnapshot, EntitlementState,
     PropertyPackageManifest, TokenLease,
 };
-use crate::canvas_interaction::{CanvasInteractionState, CanvasSuggestion, CanvasViewMode};
+use crate::canvas_interaction::{
+    CanvasInteractionState, CanvasSuggestion, CanvasViewMode, SuggestionSource,
+};
 use crate::commands::{CommandHistory, CommandHistoryEntry, DocumentCommand};
 use crate::diagnostics::DiagnosticSummary;
 use crate::ids::{DocumentId, SolveSnapshotId};
@@ -447,7 +449,12 @@ impl AppState {
     }
 
     pub fn accept_focused_canvas_suggestion_by_tab(&mut self) -> Option<CanvasSuggestion> {
-        self.workspace.canvas_interaction.accept_focused_by_tab()
+        let accepted = self.workspace.canvas_interaction.accept_focused_by_tab()?;
+        self.push_log(
+            AppLogLevel::Info,
+            format_canvas_suggestion_accept_message(&accepted),
+        );
+        Some(accepted)
     }
 
     pub fn reject_focused_canvas_suggestion(&mut self) -> Option<CanvasSuggestion> {
@@ -502,4 +509,20 @@ impl AppState {
 
 pub fn latest_snapshot_id(workspace: &WorkspaceState) -> Option<&SolveSnapshotId> {
     workspace.solve_session.latest_snapshot.as_ref()
+}
+
+fn format_canvas_suggestion_accept_message(suggestion: &CanvasSuggestion) -> String {
+    format!(
+        "Accepted canvas suggestion `{}` from {} for unit {}",
+        suggestion.id.as_str(),
+        canvas_suggestion_source_label(suggestion.source),
+        suggestion.ghost.target_unit_id.as_str()
+    )
+}
+
+fn canvas_suggestion_source_label(source: SuggestionSource) -> &'static str {
+    match source {
+        SuggestionSource::LocalRules => "local rules",
+        SuggestionSource::RadishMind => "RadishMind",
+    }
 }

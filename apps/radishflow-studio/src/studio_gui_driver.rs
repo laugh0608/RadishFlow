@@ -346,6 +346,7 @@ mod tests {
             StudioGuiDriverOutcome::CanvasSuggestionAccepted(
                 StudioGuiHostCanvasSuggestionResult {
                     accepted: None,
+                    latest_log_entry: None,
                     ui_commands: driver.ui_commands(),
                 }
             )
@@ -398,6 +399,12 @@ mod tests {
                 assert_eq!(
                     result.accepted.as_ref().map(|suggestion| suggestion.id.as_str()),
                     Some("sug-high")
+                );
+                assert_eq!(
+                    result.latest_log_entry.as_ref().map(|entry| entry.message.as_str()),
+                    Some(
+                        "Accepted canvas suggestion `sug-high` from local rules for unit flash-1"
+                    )
                 );
             }
             other => panic!("expected canvas suggestion accepted outcome, got {other:?}"),

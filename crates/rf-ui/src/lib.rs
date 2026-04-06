@@ -78,7 +78,7 @@ mod tests {
     use rf_types::UnitId;
 
     use crate::{
-        AppState, AuthSessionStatus, AuthenticatedUser, CanvasPoint, CanvasSuggestion,
+        AppLogLevel, AppState, AuthSessionStatus, AuthenticatedUser, CanvasPoint, CanvasSuggestion,
         CanvasSuggestionId, CanvasViewMode, CommandHistory, CommandHistoryEntry,
         DiagnosticSeverity, DiagnosticSummary, DocumentCommand, DocumentMetadata,
         EntitlementActionId, EntitlementPanelState, EntitlementPanelWidgetEvent,
@@ -376,6 +376,19 @@ mod tests {
             app_state.workspace.canvas_interaction.focused_suggestion_id,
             None
         );
+        assert_eq!(
+            app_state.log_feed.entries.back(),
+            Some(&crate::AppLogEntry {
+                level: AppLogLevel::Info,
+                message:
+                    "Accepted canvas suggestion `sug-high` from local rules for unit flash-1"
+                        .to_string(),
+            })
+        );
+        assert_eq!(
+            app_state.workspace.run_panel.latest_log_message.as_deref(),
+            Some("Accepted canvas suggestion `sug-high` from local rules for unit flash-1")
+        );
     }
 
     #[test]
@@ -404,6 +417,8 @@ mod tests {
                 .map(|id| id.as_str()),
             Some("sug-low")
         );
+        assert!(app_state.log_feed.entries.is_empty());
+        assert_eq!(app_state.workspace.run_panel.latest_log_message, None);
     }
 
     #[test]
