@@ -15,6 +15,7 @@ mod property_package_download_client;
 mod run_panel_driver;
 mod solver_bridge;
 mod studio_app_host;
+mod studio_gui_host;
 mod studio_runtime;
 mod studio_window_host;
 mod studio_window_host_manager;
@@ -140,6 +141,12 @@ pub use studio_app_host::{
     StudioAppHostUiCommandDispatchResult, StudioAppHostUiCommandGroup, StudioAppHostUiCommandModel,
     StudioAppHostWindowChange, StudioAppHostWindowDispatchResult,
     StudioAppHostWindowSelectionChange, StudioAppHostWindowSnapshot, StudioAppHostWindowState,
+};
+pub use studio_gui_host::{
+    StudioGuiHost, StudioGuiHostCloseWindowResult, StudioGuiHostDispatch,
+    StudioGuiHostGlobalEventDispatch, StudioGuiHostLifecycleDispatch,
+    StudioGuiHostLifecycleEvent, StudioGuiHostUiCommandDispatchResult,
+    StudioGuiHostWindowOpened,
 };
 pub use studio_runtime::{
     StudioRuntime, StudioRuntimeConfig, StudioRuntimeDispatch, StudioRuntimeEffect,

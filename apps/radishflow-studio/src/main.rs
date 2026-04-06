@@ -1,10 +1,9 @@
 use radishflow_studio::{
-    EntitlementSessionEventOutcome, StudioAppHostCloseWindowResult, StudioAppHostController,
-    StudioAppHostEntitlementTimerEffect, StudioAppHostGlobalEventResult,
-    StudioAppHostOpenWindowResult, StudioAppHostState, StudioAppHostWindowDispatchResult,
-    StudioAppResultDispatch, StudioAppWindowHostGlobalEvent, StudioRuntimeConfig,
-    StudioRuntimeDispatch, StudioRuntimeReport, StudioWindowHostRetirement,
-    StudioWindowTimerDriverAckResult, StudioWindowTimerDriverTransition,
+    EntitlementSessionEventOutcome, StudioAppHostEntitlementTimerEffect, StudioAppHostState,
+    StudioAppResultDispatch, StudioGuiHost, StudioGuiHostCloseWindowResult,
+    StudioGuiHostDispatch, StudioGuiHostLifecycleDispatch, StudioGuiHostLifecycleEvent,
+    StudioGuiHostWindowOpened, StudioRuntimeConfig, StudioRuntimeDispatch, StudioRuntimeReport,
+    StudioWindowHostRetirement, StudioWindowTimerDriverAckResult, StudioWindowTimerDriverTransition,
 };
 
 fn print_text_view(title: &str, lines: &[String]) {
@@ -21,7 +20,7 @@ fn print_run_panel(report: &StudioRuntimeReport) {
 
 fn main() {
     let config = StudioRuntimeConfig::default();
-    let mut app_host = match StudioAppHostController::new(&config) {
+    let mut app_host = match StudioGuiHost::new(&config) {
         Ok(runtime) => runtime,
         Err(error) => {
             eprintln!(
@@ -172,10 +171,10 @@ fn main() {
         }
     }
 
-    match expect_global_event(
+    match expect_lifecycle_event(
         &mut app_host,
-        StudioAppWindowHostGlobalEvent::NetworkRestored,
-        "dispatch global network restored",
+        StudioGuiHostLifecycleEvent::NetworkRestored,
+        "dispatch lifecycle network restored",
     )
     .dispatch
     {
@@ -188,7 +187,7 @@ fn main() {
         None => {
             println!(
                 "Global event ignored: {:?}",
-                StudioAppWindowHostGlobalEvent::NetworkRestored
+                StudioGuiHostLifecycleEvent::NetworkRestored
             );
         }
     }
@@ -341,9 +340,9 @@ fn print_entitlement_timer_effect(effect: &StudioAppHostEntitlementTimerEffect) 
 }
 
 fn expect_window_opened(
-    app_host: &mut StudioAppHostController,
+    app_host: &mut StudioGuiHost,
     context: &str,
-) -> StudioAppHostOpenWindowResult {
+) -> StudioGuiHostWindowOpened {
     match app_host.open_window() {
         Ok(result) => result,
         Err(error) => {
@@ -359,11 +358,11 @@ fn expect_window_opened(
 }
 
 fn expect_window_dispatch(
-    app_host: &mut StudioAppHostController,
+    app_host: &mut StudioGuiHost,
     window_id: u64,
     trigger: radishflow_studio::StudioRuntimeTrigger,
     context: &str,
-) -> StudioAppHostWindowDispatchResult {
+) -> StudioGuiHostDispatch {
     match app_host.dispatch_window_trigger(window_id, trigger) {
         Ok(result) => result,
         Err(error) => {
@@ -378,12 +377,12 @@ fn expect_window_dispatch(
     }
 }
 
-fn expect_global_event(
-    app_host: &mut StudioAppHostController,
-    event: StudioAppWindowHostGlobalEvent,
+fn expect_lifecycle_event(
+    app_host: &mut StudioGuiHost,
+    event: StudioGuiHostLifecycleEvent,
     context: &str,
-) -> StudioAppHostGlobalEventResult {
-    match app_host.dispatch_global_event(event) {
+) -> StudioGuiHostLifecycleDispatch {
+    match app_host.dispatch_lifecycle_event(event) {
         Ok(result) => result,
         Err(error) => {
             eprintln!(
@@ -398,10 +397,10 @@ fn expect_global_event(
 }
 
 fn expect_close_window(
-    app_host: &mut StudioAppHostController,
+    app_host: &mut StudioGuiHost,
     window_id: u64,
     context: &str,
-) -> StudioAppHostCloseWindowResult {
+) -> StudioGuiHostCloseWindowResult {
     match app_host.close_window(window_id) {
         Ok(result) => result,
         Err(error) => {
