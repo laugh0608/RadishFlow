@@ -151,6 +151,7 @@ pub enum StudioAppHostCommandOutcome {
 pub struct StudioAppHostWindowSnapshot {
     pub window_id: StudioWindowHostId,
     pub role: StudioWindowHostRole,
+    pub layout_slot: u16,
     pub is_foreground: bool,
     pub entitlement_timer: Option<StudioRuntimeTimerHandleSlot>,
 }
@@ -601,16 +602,24 @@ impl StudioAppHost {
                 } else {
                     StudioWindowHostRole::Observer
                 };
-                let entitlement_timer = self
+                let window_state = self
                     .window_host_manager
                     .session()
                     .host_port()
                     .window_state(window_id)
-                    .and_then(|state| state.entitlement_timer().cloned());
+                    .expect("expected registered window state");
+                let layout_slot = match role {
+                    StudioWindowHostRole::EntitlementTimerOwner => 1,
+                    StudioWindowHostRole::Observer => window_state
+                        .observer_layout_slot()
+                        .expect("expected observer layout slot"),
+                };
+                let entitlement_timer = window_state.entitlement_timer().cloned();
 
                 StudioAppHostWindowSnapshot {
                     window_id,
                     role,
+                    layout_slot,
                     is_foreground: foreground_window_id == Some(window_id),
                     entitlement_timer,
                 }
@@ -1527,6 +1536,7 @@ mod tests {
             vec![crate::StudioAppHostWindowSnapshot {
                 window_id: first_window.window_id,
                 role: StudioWindowHostRole::EntitlementTimerOwner,
+                layout_slot: 1,
                 is_foreground: true,
                 entitlement_timer: None,
             }]
@@ -1574,6 +1584,7 @@ mod tests {
                 current: crate::StudioAppHostWindowSnapshot {
                     window_id: first_window.window_id,
                     role: StudioWindowHostRole::EntitlementTimerOwner,
+                    layout_slot: 1,
                     is_foreground: true,
                     entitlement_timer: None,
                 },
@@ -1628,6 +1639,7 @@ mod tests {
                 current: crate::StudioAppHostWindowSnapshot {
                     window_id: second_window.window_id,
                     role: StudioWindowHostRole::Observer,
+                    layout_slot: 1,
                     is_foreground: false,
                     entitlement_timer: None,
                 },
@@ -1654,6 +1666,7 @@ mod tests {
             crate::StudioAppHostWindowSnapshot {
                 window_id: second_window.window_id,
                 role: StudioWindowHostRole::Observer,
+                layout_slot: 1,
                 is_foreground: true,
                 entitlement_timer: None,
             }
@@ -1666,12 +1679,14 @@ mod tests {
                     previous: crate::StudioAppHostWindowSnapshot {
                         window_id: first_window.window_id,
                         role: StudioWindowHostRole::EntitlementTimerOwner,
+                        layout_slot: 1,
                         is_foreground: true,
                         entitlement_timer: None,
                     },
                     current: crate::StudioAppHostWindowSnapshot {
                         window_id: first_window.window_id,
                         role: StudioWindowHostRole::EntitlementTimerOwner,
+                        layout_slot: 1,
                         is_foreground: false,
                         entitlement_timer: focused_owner_timer,
                     },
@@ -1680,12 +1695,14 @@ mod tests {
                     previous: crate::StudioAppHostWindowSnapshot {
                         window_id: second_window.window_id,
                         role: StudioWindowHostRole::Observer,
+                        layout_slot: 1,
                         is_foreground: false,
                         entitlement_timer: None,
                     },
                     current: crate::StudioAppHostWindowSnapshot {
                         window_id: second_window.window_id,
                         role: StudioWindowHostRole::Observer,
+                        layout_slot: 1,
                         is_foreground: true,
                         entitlement_timer: None,
                     },
@@ -1744,12 +1761,14 @@ mod tests {
                 previous: crate::StudioAppHostWindowSnapshot {
                     window_id: first.window_id,
                     role: StudioWindowHostRole::EntitlementTimerOwner,
+                    layout_slot: 1,
                     is_foreground: true,
                     entitlement_timer: None,
                 },
                 current: crate::StudioAppHostWindowSnapshot {
                     window_id: first.window_id,
                     role: StudioWindowHostRole::EntitlementTimerOwner,
+                    layout_slot: 1,
                     is_foreground: true,
                     entitlement_timer: Some(triggered_timer.clone()),
                 },
@@ -1801,6 +1820,7 @@ mod tests {
                 previous: crate::StudioAppHostWindowSnapshot {
                     window_id: first.window_id,
                     role: StudioWindowHostRole::EntitlementTimerOwner,
+                    layout_slot: 1,
                     is_foreground: true,
                     entitlement_timer: Some(triggered_timer.clone()),
                 },
@@ -1854,6 +1874,7 @@ mod tests {
                 current: crate::StudioAppHostWindowSnapshot {
                     window_id: reopened.snapshot.windows[0].window_id,
                     role: StudioWindowHostRole::EntitlementTimerOwner,
+                    layout_slot: 1,
                     is_foreground: true,
                     entitlement_timer: Some(restored_timer.clone()),
                 },
@@ -1927,6 +1948,7 @@ mod tests {
                     previous: crate::StudioAppHostWindowSnapshot {
                         window_id: first.window_id,
                         role: StudioWindowHostRole::EntitlementTimerOwner,
+                        layout_slot: 1,
                         is_foreground: true,
                         entitlement_timer: Some(transferred_timer.clone()),
                     },
@@ -1935,12 +1957,14 @@ mod tests {
                     previous: crate::StudioAppHostWindowSnapshot {
                         window_id: second.window_id,
                         role: StudioWindowHostRole::Observer,
+                        layout_slot: 1,
                         is_foreground: false,
                         entitlement_timer: None,
                     },
                     current: crate::StudioAppHostWindowSnapshot {
                         window_id: second.window_id,
                         role: StudioWindowHostRole::EntitlementTimerOwner,
+                        layout_slot: 1,
                         is_foreground: true,
                         entitlement_timer: Some(transferred_timer),
                     },

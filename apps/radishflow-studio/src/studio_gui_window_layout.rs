@@ -31,6 +31,7 @@ pub struct StudioGuiWindowLayoutScope {
     pub kind: StudioGuiWindowLayoutScopeKind,
     pub window_id: Option<StudioWindowHostId>,
     pub window_role: Option<StudioWindowHostRole>,
+    pub layout_slot: Option<u16>,
     pub layout_key: String,
 }
 
@@ -68,6 +69,9 @@ pub struct StudioGuiWindowLayoutPersistenceState {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum StudioGuiWindowLayoutMutation {
+    SetCenterArea {
+        area_id: StudioGuiWindowAreaId,
+    },
     SetPanelVisibility {
         area_id: StudioGuiWindowAreaId,
         visible: bool,
@@ -75,6 +79,10 @@ pub enum StudioGuiWindowLayoutMutation {
     SetPanelCollapsed {
         area_id: StudioGuiWindowAreaId,
         collapsed: bool,
+    },
+    SetPanelOrder {
+        area_id: StudioGuiWindowAreaId,
+        order: u8,
     },
     SetRegionWeight {
         dock_region: StudioGuiWindowDockRegion,
@@ -120,6 +128,7 @@ impl Default for StudioGuiWindowLayoutState {
                 kind: StudioGuiWindowLayoutScopeKind::EmptyWorkspace,
                 window_id: None,
                 window_role: None,
+                layout_slot: None,
                 layout_key: "studio.window.empty".to_string(),
             },
             panels: default_panel_states(),
@@ -198,6 +207,15 @@ impl StudioGuiWindowLayoutState {
     pub fn applying_mutation(&self, mutation: &StudioGuiWindowLayoutMutation) -> Self {
         let mut next = self.clone();
         match mutation {
+            StudioGuiWindowLayoutMutation::SetCenterArea { area_id } => {
+                let mut panel = next
+                    .panel(*area_id)
+                    .cloned()
+                    .unwrap_or_else(|| default_panel_state(*area_id));
+                panel.visible = true;
+                upsert_panel_state(&mut next.panels, panel);
+                next.center_area = *area_id;
+            }
             StudioGuiWindowLayoutMutation::SetPanelVisibility { area_id, visible } => {
                 let mut panel = next
                     .panel(*area_id)
@@ -212,6 +230,14 @@ impl StudioGuiWindowLayoutState {
                     .cloned()
                     .unwrap_or_else(|| default_panel_state(*area_id));
                 panel.collapsed = *collapsed;
+                upsert_panel_state(&mut next.panels, panel);
+            }
+            StudioGuiWindowLayoutMutation::SetPanelOrder { area_id, order } => {
+                let mut panel = next
+                    .panel(*area_id)
+                    .cloned()
+                    .unwrap_or_else(|| default_panel_state(*area_id));
+                panel.order = *order;
                 upsert_panel_state(&mut next.panels, panel);
             }
             StudioGuiWindowLayoutMutation::SetRegionWeight {
@@ -236,6 +262,17 @@ impl StudioGuiWindowLayoutState {
             center_area: self.center_area,
             panels: self.panels.clone(),
             region_weights: self.region_weights.clone(),
+        }
+    }
+}
+
+impl StudioGuiWindowLayoutScope {
+    pub fn legacy_layout_key(&self) -> Option<String> {
+        match (self.window_id, self.window_role) {
+            (Some(window_id), Some(window_role)) => {
+                Some(legacy_layout_key_for_window(window_id, window_role))
+            }
+            _ => None,
         }
     }
 }
@@ -359,33 +396,58 @@ fn layout_scope_from_state(
 
     match window_id {
         Some(window_id) => {
-            let window_role = state.window(window_id).map(|window| window.role);
+            let window = state.window(window_id);
+            let window_role = window.map(|window| window.role);
+            let layout_slot = window.map(|window| window.layout_slot);
             StudioGuiWindowLayoutScope {
                 kind: StudioGuiWindowLayoutScopeKind::Window,
                 window_id: Some(window_id),
                 window_role,
-                layout_key: layout_key_for_window(window_id, window_role),
+                layout_slot,
+                layout_key: layout_key_for_window(window_role, layout_slot),
             }
         }
         None => StudioGuiWindowLayoutScope {
             kind: StudioGuiWindowLayoutScopeKind::EmptyWorkspace,
             window_id: None,
             window_role: None,
+            layout_slot: None,
             layout_key: "studio.window.empty".to_string(),
         },
     }
 }
 
 fn layout_key_for_window(
-    window_id: StudioWindowHostId,
     window_role: Option<StudioWindowHostRole>,
+    layout_slot: Option<u16>,
+) -> String {
+    match (window_role, layout_slot) {
+        (Some(StudioWindowHostRole::EntitlementTimerOwner), Some(layout_slot)) => {
+            format!("studio.window.owner.slot-{layout_slot}")
+        }
+        (Some(StudioWindowHostRole::Observer), Some(layout_slot)) => {
+            format!("studio.window.observer.slot-{layout_slot}")
+        }
+        (Some(StudioWindowHostRole::EntitlementTimerOwner), None) => {
+            "studio.window.owner.slot-1".to_string()
+        }
+        (Some(StudioWindowHostRole::Observer), None) => {
+            "studio.window.observer.slot-1".to_string()
+        }
+        (None, Some(layout_slot)) => format!("studio.window.window.slot-{layout_slot}"),
+        (None, None) => "studio.window.window.slot-1".to_string(),
+    }
+}
+
+fn legacy_layout_key_for_window(
+    window_id: StudioWindowHostId,
+    window_role: StudioWindowHostRole,
 ) -> String {
     match window_role {
-        Some(StudioWindowHostRole::EntitlementTimerOwner) => {
+        StudioWindowHostRole::EntitlementTimerOwner => {
             format!("studio.window.owner.{window_id}")
         }
-        Some(StudioWindowHostRole::Observer) => format!("studio.window.observer.{window_id}"),
-        None => format!("studio.window.window.{window_id}"),
+        StudioWindowHostRole::Observer => format!("studio.window.observer.{window_id}"),
     }
 }
 
@@ -448,8 +510,8 @@ fn upsert_panel_state(
         panels[index] = panel;
     } else {
         panels.push(panel);
-        panels.sort_by_key(|candidate| candidate.order);
     }
+    sort_panels(panels);
 }
 
 fn upsert_region_weight(
@@ -466,6 +528,23 @@ fn upsert_region_weight(
     }
 }
 
+fn sort_panels(panels: &mut [StudioGuiWindowPanelLayoutState]) {
+    panels.sort_by_key(|candidate| {
+        (
+            candidate.order,
+            area_sort_rank(candidate.area_id),
+        )
+    });
+}
+
+fn area_sort_rank(area_id: StudioGuiWindowAreaId) -> u8 {
+    match area_id {
+        StudioGuiWindowAreaId::Commands => 1,
+        StudioGuiWindowAreaId::Canvas => 2,
+        StudioGuiWindowAreaId::Runtime => 3,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::{
@@ -476,7 +555,7 @@ mod tests {
 
     use crate::{
         StudioGuiDriver, StudioGuiEvent, StudioGuiWindowAreaId, StudioGuiWindowDockRegion,
-        StudioGuiWindowLayoutScopeKind, StudioRuntimeConfig,
+        StudioGuiWindowLayoutScopeKind, StudioGuiWindowLayoutState, StudioRuntimeConfig,
         StudioRuntimeEntitlementPreflight, StudioRuntimeEntitlementSeed,
         StudioRuntimeEntitlementSessionEvent, StudioRuntimeTrigger,
     };
@@ -543,7 +622,8 @@ mod tests {
         assert_eq!(layout.default_focus_area, StudioGuiWindowAreaId::Canvas);
         assert_eq!(layout.state.scope.kind, StudioGuiWindowLayoutScopeKind::Window);
         assert_eq!(layout.state.scope.window_id, Some(1));
-        assert_eq!(layout.state.scope.layout_key, "studio.window.owner.1");
+        assert_eq!(layout.state.scope.layout_slot, Some(1));
+        assert_eq!(layout.state.scope.layout_key, "studio.window.owner.slot-1");
         assert_eq!(
             layout
                 .state
@@ -591,10 +671,118 @@ mod tests {
             .expect("expected second open dispatch");
         let second_layout_key = second.window.layout_state.scope.layout_key.clone();
 
-        assert_eq!(first_layout_key, "studio.window.owner.1");
-        assert_eq!(second_layout_key, "studio.window.observer.2");
+        assert_eq!(first.window.layout_state.scope.layout_slot, Some(1));
+        assert_eq!(second.window.layout_state.scope.layout_slot, Some(1));
+        assert_eq!(first_layout_key, "studio.window.owner.slot-1");
+        assert_eq!(second_layout_key, "studio.window.observer.slot-1");
         assert_ne!(first_layout_key, second_layout_key);
-        assert_eq!(second.snapshot.layout_state.scope.layout_key, "studio.window.owner.1");
+        assert_eq!(
+            second.snapshot.layout_state.scope.layout_key,
+            "studio.window.owner.slot-1"
+        );
+    }
+
+    #[test]
+    fn studio_gui_window_layout_applies_center_area_and_panel_order_mutations() {
+        let state = StudioGuiWindowLayoutState::default()
+            .applying_mutation(&crate::StudioGuiWindowLayoutMutation::SetPanelVisibility {
+                area_id: StudioGuiWindowAreaId::Runtime,
+                visible: false,
+            })
+            .applying_mutation(&crate::StudioGuiWindowLayoutMutation::SetCenterArea {
+                area_id: StudioGuiWindowAreaId::Runtime,
+            })
+            .applying_mutation(&crate::StudioGuiWindowLayoutMutation::SetPanelOrder {
+                area_id: StudioGuiWindowAreaId::Runtime,
+                order: 5,
+            });
+
+        assert_eq!(state.center_area, StudioGuiWindowAreaId::Runtime);
+        assert_eq!(
+            state
+                .panel(StudioGuiWindowAreaId::Runtime)
+                .map(|panel| (panel.visible, panel.order)),
+            Some((true, 5))
+        );
+        assert_eq!(
+            state
+                .panels
+                .iter()
+                .map(|panel| (panel.area_id, panel.order))
+                .collect::<Vec<_>>(),
+            vec![
+                (StudioGuiWindowAreaId::Runtime, 5),
+                (StudioGuiWindowAreaId::Commands, 10),
+                (StudioGuiWindowAreaId::Canvas, 20),
+            ]
+        );
+    }
+
+    #[test]
+    fn studio_gui_window_layout_keeps_observer_slots_stable_when_peer_closes() {
+        let mut driver = StudioGuiDriver::new(&lease_expiring_config()).expect("expected driver");
+        let first = driver
+            .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+            .expect("expected first open dispatch");
+        let first_window_id = match first.outcome {
+            crate::StudioGuiDriverOutcome::HostCommand(
+                crate::StudioGuiHostCommandOutcome::WindowOpened(opened),
+            ) => opened.registration.window_id,
+            other => panic!("expected first window opened outcome, got {other:?}"),
+        };
+        let second = driver
+            .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+            .expect("expected second open dispatch");
+        let second_window_id = match second.outcome {
+            crate::StudioGuiDriverOutcome::HostCommand(
+                crate::StudioGuiHostCommandOutcome::WindowOpened(opened),
+            ) => opened.registration.window_id,
+            other => panic!("expected second window opened outcome, got {other:?}"),
+        };
+        let third = driver
+            .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+            .expect("expected third open dispatch");
+        let third_window_id = match third.outcome {
+            crate::StudioGuiDriverOutcome::HostCommand(
+                crate::StudioGuiHostCommandOutcome::WindowOpened(opened),
+            ) => opened.registration.window_id,
+            other => panic!("expected third window opened outcome, got {other:?}"),
+        };
+
+        assert_eq!(
+            driver
+                .window_model_for_window(Some(third_window_id))
+                .layout_state
+                .scope
+                .layout_key,
+            "studio.window.observer.slot-2"
+        );
+
+        let _ = driver
+            .dispatch_event(StudioGuiEvent::CloseWindowRequested {
+                window_id: second_window_id,
+            })
+            .expect("expected second window close");
+
+        let remaining_observer = driver.window_model_for_window(Some(third_window_id));
+        assert_eq!(remaining_observer.layout_state.scope.layout_slot, Some(2));
+        assert_eq!(
+            remaining_observer.layout_state.scope.layout_key,
+            "studio.window.observer.slot-2"
+        );
+
+        let _ = driver
+            .dispatch_event(StudioGuiEvent::CloseWindowRequested {
+                window_id: first_window_id,
+            })
+            .expect("expected first window close");
+
+        let promoted_owner = driver.window_model_for_window(Some(third_window_id));
+        assert_eq!(promoted_owner.layout_state.scope.layout_slot, Some(1));
+        assert_eq!(
+            promoted_owner.layout_state.scope.layout_key,
+            "studio.window.owner.slot-1"
+        );
     }
 
     #[test]

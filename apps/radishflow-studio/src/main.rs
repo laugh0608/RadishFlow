@@ -40,10 +40,11 @@ fn print_window_model(title: &str, window: &StudioGuiWindowModel) {
         layout.center_area, layout.default_focus_area
     );
     println!(
-        "  Layout state: scope={:?} window={:?} role={:?} key={}",
+        "  Layout state: scope={:?} window={:?} role={:?} slot={:?} key={}",
         layout.state.scope.kind,
         layout.state.scope.window_id,
         layout.state.scope.window_role,
+        layout.state.scope.layout_slot,
         layout.state.scope.layout_key
     );
     println!("  Region weights:");
@@ -165,6 +166,31 @@ fn main() {
     print_window_model(
         "Window model after collapsing commands panel",
         &layout_update.window,
+    );
+    let centered_runtime = app_host
+        .dispatch_event(StudioGuiEvent::WindowLayoutMutationRequested {
+            window_id: Some(window.window_id),
+            mutation: StudioGuiWindowLayoutMutation::SetCenterArea {
+                area_id: StudioGuiWindowAreaId::Runtime,
+            },
+        })
+        .expect("expected window center update");
+    print_window_model(
+        "Window model after centering runtime area",
+        &centered_runtime.window,
+    );
+    let reordered_runtime = app_host
+        .dispatch_event(StudioGuiEvent::WindowLayoutMutationRequested {
+            window_id: Some(window.window_id),
+            mutation: StudioGuiWindowLayoutMutation::SetPanelOrder {
+                area_id: StudioGuiWindowAreaId::Runtime,
+                order: 5,
+            },
+        })
+        .expect("expected window panel order update");
+    print_window_model(
+        "Window model after moving runtime panel to the first order slot",
+        &reordered_runtime.window,
     );
     if let Some(slot) = window.restored_entitlement_timer.as_ref() {
         println!("Restored parked timer slot into window host: {:?}", slot);

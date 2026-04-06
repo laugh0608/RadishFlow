@@ -284,7 +284,7 @@ mod tests {
     #[test]
     fn studio_layout_file_round_trips_as_camel_case_json() {
         let layout = StoredStudioLayoutFile::new(vec![StoredStudioWindowLayoutEntry {
-            layout_key: "studio.window.owner.1".to_string(),
+            layout_key: "studio.window.owner.slot-1".to_string(),
             center_area: "canvas".to_string(),
             panels: vec![StoredStudioLayoutPanelState {
                 area_id: "commands".to_string(),
@@ -305,7 +305,7 @@ mod tests {
 
         assert_eq!(round_trip, layout);
         assert!(json.contains("\"kind\": \"radishflow.studio-layout-file\""));
-        assert!(json.contains("\"layoutKey\": \"studio.window.owner.1\""));
+        assert!(json.contains("\"layoutKey\": \"studio.window.owner.slot-1\""));
         assert!(json.contains("\"centerArea\": \"canvas\""));
     }
 
@@ -445,7 +445,7 @@ mod tests {
         let root = unique_temp_path("studio-layout-write");
         let path = root.join("layout").join("sample.rfstudio-layout.json");
         let layout = StoredStudioLayoutFile::new(vec![StoredStudioWindowLayoutEntry {
-            layout_key: "studio.window.owner.1".to_string(),
+            layout_key: "studio.window.owner.slot-1".to_string(),
             center_area: "canvas".to_string(),
             panels: vec![StoredStudioLayoutPanelState {
                 area_id: "runtime".to_string(),

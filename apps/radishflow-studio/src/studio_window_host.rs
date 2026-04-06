@@ -61,11 +61,16 @@ pub enum StudioWindowHostTimerDriverCommand {
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct StudioWindowHostState {
     entitlement_timer: StudioRuntimeTimerHostState,
+    observer_layout_slot: Option<u16>,
 }
 
 impl StudioWindowHostState {
     pub fn entitlement_timer(&self) -> Option<&StudioRuntimeTimerHandleSlot> {
         self.entitlement_timer.entitlement_timer()
+    }
+
+    pub fn observer_layout_slot(&self) -> Option<u16> {
+        self.observer_layout_slot
     }
 
     fn apply_timer_command(
@@ -77,6 +82,10 @@ impl StudioWindowHostState {
 
     fn restore_entitlement_timer(&mut self, slot: StudioRuntimeTimerHandleSlot) {
         self.entitlement_timer.restore(slot);
+    }
+
+    fn clear_observer_layout_slot(&mut self) -> Option<u16> {
+        self.observer_layout_slot.take()
     }
 
     pub fn prepare_shutdown(&mut self) -> StudioWindowHostShutdown {
@@ -110,6 +119,7 @@ pub enum StudioWindowHostRole {
 pub struct StudioWindowHostRegistration {
     pub window_id: StudioWindowHostId,
     pub role: StudioWindowHostRole,
+    pub layout_slot: u16,
     pub restored_entitlement_timer: Option<StudioRuntimeTimerHandleSlot>,
     pub timer_driver_commands: Vec<StudioWindowHostTimerDriverCommand>,
 }
@@ -147,6 +157,7 @@ pub struct StudioRuntimeHostPort {
     next_window_id: StudioWindowHostId,
     entitlement_timer_owner: Option<StudioWindowHostId>,
     parked_entitlement_timer: Option<StudioRuntimeTimerHandleSlot>,
+    allocated_observer_layout_slots: BTreeMap<u16, StudioWindowHostId>,
     windows: BTreeMap<StudioWindowHostId, StudioWindowHostState>,
 }
 
@@ -157,6 +168,7 @@ impl StudioRuntimeHostPort {
             next_window_id: 1,
             entitlement_timer_owner: None,
             parked_entitlement_timer: None,
+            allocated_observer_layout_slots: BTreeMap::new(),
             windows: BTreeMap::new(),
         })
     }
@@ -205,13 +217,21 @@ impl StudioRuntimeHostPort {
 
     pub fn open_window(&mut self) -> StudioWindowHostRegistration {
         let window_id = self.allocate_window_id();
-        let role = if self.entitlement_timer_owner.is_none() {
+        let (role, layout_slot, observer_layout_slot) = if self.entitlement_timer_owner.is_none() {
             self.entitlement_timer_owner = Some(window_id);
-            StudioWindowHostRole::EntitlementTimerOwner
+            (StudioWindowHostRole::EntitlementTimerOwner, 1, None)
         } else {
-            StudioWindowHostRole::Observer
+            let observer_layout_slot = self.allocate_observer_layout_slot(window_id);
+            (
+                StudioWindowHostRole::Observer,
+                observer_layout_slot,
+                Some(observer_layout_slot),
+            )
         };
-        let mut state = StudioWindowHostState::default();
+        let mut state = StudioWindowHostState {
+            observer_layout_slot,
+            ..StudioWindowHostState::default()
+        };
         let restored_entitlement_timer =
             if matches!(role, StudioWindowHostRole::EntitlementTimerOwner) {
                 self.parked_entitlement_timer.take().inspect(|slot| {
@@ -230,6 +250,7 @@ impl StudioRuntimeHostPort {
         StudioWindowHostRegistration {
             window_id,
             role,
+            layout_slot,
             restored_entitlement_timer,
             timer_driver_commands,
         }
@@ -291,6 +312,10 @@ impl StudioRuntimeHostPort {
         window_id: StudioWindowHostId,
     ) -> Option<StudioWindowHostShutdown> {
         let mut state = self.windows.remove(&window_id)?;
+        if let Some(observer_layout_slot) = state.clear_observer_layout_slot() {
+            self.allocated_observer_layout_slots
+                .remove(&observer_layout_slot);
+        }
         let mut shutdown = state.prepare_shutdown();
         shutdown.window_id = window_id;
         shutdown.was_entitlement_timer_owner = self.entitlement_timer_owner == Some(window_id);
@@ -298,6 +323,13 @@ impl StudioRuntimeHostPort {
 
         if shutdown.was_entitlement_timer_owner {
             if let Some(new_owner_window_id) = self.windows.keys().next().copied() {
+                if let Some(new_owner_state) = self.windows.get_mut(&new_owner_window_id) {
+                    if let Some(observer_layout_slot) = new_owner_state.clear_observer_layout_slot()
+                    {
+                        self.allocated_observer_layout_slots
+                            .remove(&observer_layout_slot);
+                    }
+                }
                 if let Some(slot) = shutdown.cleared_entitlement_timer.clone() {
                     self.windows
                         .get_mut(&new_owner_window_id)
@@ -390,6 +422,16 @@ impl StudioRuntimeHostPort {
         let window_id = self.next_window_id;
         self.next_window_id += 1;
         window_id
+    }
+
+    fn allocate_observer_layout_slot(&mut self, window_id: StudioWindowHostId) -> u16 {
+        let mut next_slot = 1_u16;
+        while self.allocated_observer_layout_slots.contains_key(&next_slot) {
+            next_slot += 1;
+        }
+        self.allocated_observer_layout_slots
+            .insert(next_slot, window_id);
+        next_slot
     }
 }
 

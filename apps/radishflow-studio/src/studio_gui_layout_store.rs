@@ -175,9 +175,9 @@ mod tests {
         fs::write(&project_path, "{}").expect("expected temp project file");
 
         let layouts = BTreeMap::from([(
-            "studio.window.owner.1".to_string(),
+            "studio.window.owner.slot-1".to_string(),
             StudioGuiWindowLayoutPersistenceState {
-                layout_key: "studio.window.owner.1".to_string(),
+                layout_key: "studio.window.owner.slot-1".to_string(),
                 center_area: StudioGuiWindowAreaId::Canvas,
                 panels: vec![StudioGuiWindowPanelLayoutState {
                     area_id: StudioGuiWindowAreaId::Runtime,

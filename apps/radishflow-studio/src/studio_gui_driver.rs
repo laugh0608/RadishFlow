@@ -898,6 +898,58 @@ mod tests {
             other => panic!("expected window layout update outcome, got {other:?}"),
         }
 
+        let centered = driver
+            .dispatch_event(StudioGuiEvent::WindowLayoutMutationRequested {
+                window_id: Some(second_window_id),
+                mutation: StudioGuiWindowLayoutMutation::SetCenterArea {
+                    area_id: StudioGuiWindowAreaId::Runtime,
+                },
+            })
+            .expect("expected layout center update");
+        match centered.outcome {
+            StudioGuiDriverOutcome::WindowLayoutUpdated(result) => {
+                assert_eq!(result.target_window_id, Some(second_window_id));
+                assert_eq!(result.layout_state.center_area, StudioGuiWindowAreaId::Runtime);
+                assert_eq!(
+                    result
+                        .layout_state
+                        .panel(StudioGuiWindowAreaId::Runtime)
+                        .map(|panel| panel.visible),
+                    Some(true)
+                );
+            }
+            other => panic!("expected window layout update outcome, got {other:?}"),
+        }
+
+        let reordered = driver
+            .dispatch_event(StudioGuiEvent::WindowLayoutMutationRequested {
+                window_id: Some(second_window_id),
+                mutation: StudioGuiWindowLayoutMutation::SetPanelOrder {
+                    area_id: StudioGuiWindowAreaId::Runtime,
+                    order: 5,
+                },
+            })
+            .expect("expected layout order update");
+        match reordered.outcome {
+            StudioGuiDriverOutcome::WindowLayoutUpdated(result) => {
+                assert_eq!(result.target_window_id, Some(second_window_id));
+                assert_eq!(
+                    result
+                        .layout_state
+                        .panels
+                        .iter()
+                        .map(|panel| (panel.area_id, panel.order))
+                        .collect::<Vec<_>>(),
+                    vec![
+                        (StudioGuiWindowAreaId::Runtime, 5),
+                        (StudioGuiWindowAreaId::Commands, 10),
+                        (StudioGuiWindowAreaId::Canvas, 20),
+                    ]
+                );
+            }
+            other => panic!("expected window layout update outcome, got {other:?}"),
+        }
+
         let first_window = driver.window_model_for_window(Some(first_window_id));
         let second_window = driver.window_model_for_window(Some(second_window_id));
 
@@ -913,7 +965,7 @@ mod tests {
                 .layout_state
                 .panel(StudioGuiWindowAreaId::Runtime)
                 .map(|panel| panel.visible),
-            Some(false)
+            Some(true)
         );
         assert_eq!(
             second_window
@@ -935,6 +987,21 @@ mod tests {
                 .region_weight(StudioGuiWindowDockRegion::RightSidebar)
                 .map(|region| region.weight),
             Some(31)
+        );
+        assert_eq!(first_window.layout_state.center_area, StudioGuiWindowAreaId::Canvas);
+        assert_eq!(second_window.layout_state.center_area, StudioGuiWindowAreaId::Runtime);
+        assert_eq!(
+            second_window
+                .layout_state
+                .panels
+                .iter()
+                .map(|panel| (panel.area_id, panel.order))
+                .collect::<Vec<_>>(),
+            vec![
+                (StudioGuiWindowAreaId::Runtime, 5),
+                (StudioGuiWindowAreaId::Commands, 10),
+                (StudioGuiWindowAreaId::Canvas, 20),
+            ]
         );
 
         let layout_path = rf_store::studio_layout_path_for_project(&project_path);

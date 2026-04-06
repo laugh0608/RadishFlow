@@ -266,7 +266,8 @@ mod tests {
             window.runtime.log_entries.last().cloned()
         );
         assert_eq!(window.layout_state.scope.kind, StudioGuiWindowLayoutScopeKind::Window);
-        assert_eq!(window.layout_state.scope.layout_key, "studio.window.owner.1");
+        assert_eq!(window.layout_state.scope.layout_slot, Some(1));
+        assert_eq!(window.layout_state.scope.layout_key, "studio.window.owner.slot-1");
 
         let _ = fs::remove_file(project_path);
     }

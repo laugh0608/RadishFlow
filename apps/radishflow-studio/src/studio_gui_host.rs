@@ -235,6 +235,9 @@ impl StudioGuiHost {
         let layout_state = self
             .layout_state_for_window_from_snapshot(&snapshot, window_id)
             .applying_mutation(&mutation);
+        if let Some(legacy_layout_key) = layout_state.scope.legacy_layout_key() {
+            self.layout_state_overrides.remove(&legacy_layout_key);
+        }
         self.layout_state_overrides.insert(
             layout_state.scope.layout_key.clone(),
             layout_state.persistence_state(),
@@ -453,6 +456,13 @@ impl StudioGuiHost {
         let derived = StudioGuiWindowLayoutState::from_snapshot_for_window(snapshot, window_id);
         self.layout_state_overrides
             .get(&derived.scope.layout_key)
+            .or_else(|| {
+                derived
+                    .scope
+                    .legacy_layout_key()
+                    .as_ref()
+                    .and_then(|legacy_layout_key| self.layout_state_overrides.get(legacy_layout_key))
+            })
             .map(|persisted| derived.merged_with_persisted(persisted))
             .unwrap_or(derived)
     }
@@ -564,7 +574,9 @@ mod tests {
     };
 
     use rf_ui::RunPanelActionId;
-    use rf_store::{read_studio_layout_file, studio_layout_path_for_project};
+    use rf_store::{
+        read_studio_layout_file, studio_layout_path_for_project, write_studio_layout_file,
+    };
 
     use crate::{
         StudioGuiHost, StudioGuiHostCommand, StudioGuiHostCommandOutcome,
@@ -898,9 +910,54 @@ mod tests {
             Some(33)
         );
 
+        let third_update = gui_host
+            .update_window_layout(
+                Some(opened.registration.window_id),
+                StudioGuiWindowLayoutMutation::SetCenterArea {
+                    area_id: StudioGuiWindowAreaId::Runtime,
+                },
+            )
+            .expect("expected center area update");
+        assert_eq!(
+            third_update.layout_state.center_area,
+            StudioGuiWindowAreaId::Runtime
+        );
+
+        let fourth_update = gui_host
+            .update_window_layout(
+                Some(opened.registration.window_id),
+                StudioGuiWindowLayoutMutation::SetPanelOrder {
+                    area_id: StudioGuiWindowAreaId::Runtime,
+                    order: 5,
+                },
+            )
+            .expect("expected panel order update");
+        assert_eq!(
+            fourth_update
+                .layout_state
+                .panels
+                .iter()
+                .map(|panel| (panel.area_id, panel.order))
+                .collect::<Vec<_>>(),
+            vec![
+                (StudioGuiWindowAreaId::Runtime, 5),
+                (StudioGuiWindowAreaId::Commands, 10),
+                (StudioGuiWindowAreaId::Canvas, 20),
+            ]
+        );
+
         let stored = read_studio_layout_file(&layout_path).expect("expected stored layout sidecar");
         assert_eq!(stored.entries.len(), 1);
-        assert_eq!(stored.entries[0].layout_key, "studio.window.owner.1");
+        assert_eq!(stored.entries[0].layout_key, "studio.window.owner.slot-1");
+        assert_eq!(stored.entries[0].center_area, "runtime");
+        assert_eq!(
+            stored.entries[0]
+                .panels
+                .iter()
+                .map(|panel| (panel.area_id.as_str(), panel.order))
+                .collect::<Vec<_>>(),
+            vec![("runtime", 5), ("commands", 10), ("canvas", 20)]
+        );
 
         drop(gui_host);
 
@@ -921,6 +978,68 @@ mod tests {
                 .region_weight(StudioGuiWindowDockRegion::RightSidebar)
                 .map(|region| region.weight),
             Some(33)
+        );
+        assert_eq!(window.layout_state.center_area, StudioGuiWindowAreaId::Runtime);
+        assert_eq!(
+            window
+                .layout_state
+                .panels
+                .iter()
+                .map(|panel| (panel.area_id, panel.order))
+                .collect::<Vec<_>>(),
+            vec![
+                (StudioGuiWindowAreaId::Runtime, 5),
+                (StudioGuiWindowAreaId::Commands, 10),
+                (StudioGuiWindowAreaId::Canvas, 20),
+            ]
+        );
+
+        let _ = fs::remove_file(layout_path);
+        let _ = fs::remove_file(project_path);
+    }
+
+    #[test]
+    fn gui_host_loads_legacy_window_layout_key_for_current_owner_scope() {
+        let (config, project_path, layout_path) = layout_persistence_config();
+        write_studio_layout_file(
+            &layout_path,
+            &rf_store::StoredStudioLayoutFile::new(vec![rf_store::StoredStudioWindowLayoutEntry {
+                layout_key: "studio.window.owner.1".to_string(),
+                center_area: "canvas".to_string(),
+                panels: vec![rf_store::StoredStudioLayoutPanelState {
+                    area_id: "commands".to_string(),
+                    dock_region: "left-sidebar".to_string(),
+                    order: 10,
+                    visible: true,
+                    collapsed: true,
+                }],
+                region_weights: vec![rf_store::StoredStudioLayoutRegionWeight {
+                    dock_region: "right-sidebar".to_string(),
+                    weight: 35,
+                }],
+            }]),
+        )
+        .expect("expected legacy layout sidecar");
+
+        let mut gui_host = StudioGuiHost::new(&config).expect("expected gui host");
+        let opened = gui_host.open_window().expect("expected window open");
+        let window = gui_host.window_model_for_window(Some(opened.registration.window_id));
+
+        assert_eq!(window.layout_state.scope.layout_slot, Some(1));
+        assert_eq!(window.layout_state.scope.layout_key, "studio.window.owner.slot-1");
+        assert_eq!(
+            window
+                .layout_state
+                .panel(StudioGuiWindowAreaId::Commands)
+                .map(|panel| panel.collapsed),
+            Some(true)
+        );
+        assert_eq!(
+            window
+                .layout_state
+                .region_weight(StudioGuiWindowDockRegion::RightSidebar)
+                .map(|region| region.weight),
+            Some(35)
         );
 
         let _ = fs::remove_file(layout_path);
