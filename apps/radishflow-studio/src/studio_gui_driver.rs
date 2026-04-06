@@ -1,11 +1,11 @@
 use rf_types::RfResult;
 
 use crate::{
-    StudioAppHostState, StudioAppHostUiCommandModel, StudioGuiCommandRegistry, StudioGuiHost,
-    StudioGuiFocusContext, StudioGuiHostCommand, StudioGuiHostCommandOutcome,
-    StudioGuiHostLifecycleEvent, StudioGuiHostCanvasSuggestionResult, StudioGuiShortcut,
-    StudioGuiShortcutIgnoreReason, StudioGuiShortcutRoute, StudioRuntimeConfig,
-    StudioRuntimeTrigger, StudioWindowHostId,
+    StudioAppHostState, StudioAppHostUiCommandModel, StudioGuiCanvasState,
+    StudioGuiCommandRegistry, StudioGuiFocusContext, StudioGuiHost,
+    StudioGuiHostCanvasSuggestionResult, StudioGuiHostCommand, StudioGuiHostCommandOutcome,
+    StudioGuiHostLifecycleEvent, StudioGuiShortcut, StudioGuiShortcutIgnoreReason,
+    StudioGuiShortcutRoute, StudioRuntimeConfig, StudioRuntimeTrigger, StudioWindowHostId,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -41,6 +41,7 @@ pub struct StudioGuiDriverDispatch {
     pub state: StudioAppHostState,
     pub ui_commands: StudioAppHostUiCommandModel,
     pub command_registry: StudioGuiCommandRegistry,
+    pub canvas: StudioGuiCanvasState,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -76,6 +77,10 @@ impl StudioGuiDriver {
         self.host.command_registry()
     }
 
+    pub fn canvas_state(&self) -> StudioGuiCanvasState {
+        self.host.canvas_state()
+    }
+
     pub fn host(&self) -> &StudioGuiHost {
         &self.host
     }
@@ -105,6 +110,7 @@ impl StudioGuiDriver {
             state: self.host.state().clone(),
             ui_commands: self.host.ui_commands(),
             command_registry: self.host.command_registry(),
+            canvas: self.host.canvas_state(),
         })
     }
 }
@@ -118,12 +124,11 @@ enum DriverRoute {
     },
 }
 
-fn route_driver_event(
-    event: &StudioGuiEvent,
-    registry: &StudioGuiCommandRegistry,
-) -> DriverRoute {
+fn route_driver_event(event: &StudioGuiEvent, registry: &StudioGuiCommandRegistry) -> DriverRoute {
     match event {
-        StudioGuiEvent::OpenWindowRequested => DriverRoute::HostCommand(StudioGuiHostCommand::OpenWindow),
+        StudioGuiEvent::OpenWindowRequested => {
+            DriverRoute::HostCommand(StudioGuiHostCommand::OpenWindow)
+        }
         StudioGuiEvent::CloseWindowRequested { window_id } => {
             DriverRoute::HostCommand(StudioGuiHostCommand::CloseWindow {
                 window_id: *window_id,
@@ -161,28 +166,38 @@ fn route_driver_event(
                 shortcut: shortcut.clone(),
                 reason,
             },
+        },
+        StudioGuiEvent::LoginCompleted => {
+            DriverRoute::HostCommand(StudioGuiHostCommand::DispatchLifecycleEvent {
+                event: StudioGuiHostLifecycleEvent::LoginCompleted,
+            })
         }
-        StudioGuiEvent::LoginCompleted => DriverRoute::HostCommand(
-            StudioGuiHostCommand::DispatchLifecycleEvent {
-            event: StudioGuiHostLifecycleEvent::LoginCompleted,
-        }),
-        StudioGuiEvent::NetworkRestored => DriverRoute::HostCommand(
-            StudioGuiHostCommand::DispatchLifecycleEvent {
-            event: StudioGuiHostLifecycleEvent::NetworkRestored,
-        }),
-        StudioGuiEvent::EntitlementTimerElapsed => DriverRoute::HostCommand(
-            StudioGuiHostCommand::DispatchLifecycleEvent {
-            event: StudioGuiHostLifecycleEvent::TimerElapsed,
-        }),
-        StudioGuiEvent::RunPanelRecoveryRequested => DriverRoute::HostCommand(
-            StudioGuiHostCommand::DispatchLifecycleEvent {
-            event: StudioGuiHostLifecycleEvent::RunPanelRecoveryRequested,
-        }),
+        StudioGuiEvent::NetworkRestored => {
+            DriverRoute::HostCommand(StudioGuiHostCommand::DispatchLifecycleEvent {
+                event: StudioGuiHostLifecycleEvent::NetworkRestored,
+            })
+        }
+        StudioGuiEvent::EntitlementTimerElapsed => {
+            DriverRoute::HostCommand(StudioGuiHostCommand::DispatchLifecycleEvent {
+                event: StudioGuiHostLifecycleEvent::TimerElapsed,
+            })
+        }
+        StudioGuiEvent::RunPanelRecoveryRequested => {
+            DriverRoute::HostCommand(StudioGuiHostCommand::DispatchLifecycleEvent {
+                event: StudioGuiHostLifecycleEvent::RunPanelRecoveryRequested,
+            })
+        }
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use std::{
+        fs,
+        path::PathBuf,
+        time::{SystemTime, UNIX_EPOCH},
+    };
+
     use crate::{
         StudioGuiDriver, StudioGuiDriverOutcome, StudioGuiEvent, StudioGuiFocusContext,
         StudioGuiHostCanvasSuggestionResult, StudioGuiHostCommandOutcome,
@@ -202,10 +217,43 @@ mod tests {
         }
     }
 
-    fn sample_canvas_suggestion(
-        id: &str,
-        confidence: f32,
-    ) -> rf_ui::CanvasSuggestion {
+    fn flash_drum_local_rules_config() -> (StudioRuntimeConfig, PathBuf) {
+        let timestamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("expected current timestamp")
+            .as_nanos();
+        let project_path = std::env::temp_dir().join(format!(
+            "radishflow-studio-local-rules-{timestamp}.rfproj.json"
+        ));
+        let project =
+            include_str!("../../../examples/flowsheets/feed-heater-flash.rfproj.json")
+                .replacen(
+                    "\"name\": \"inlet\",\n              \"direction\": \"inlet\",\n              \"kind\": \"material\",\n              \"stream_id\": \"stream-heated\"",
+                    "\"name\": \"inlet\",\n              \"direction\": \"inlet\",\n              \"kind\": \"material\",\n              \"stream_id\": null",
+                    1,
+                )
+                .replacen(
+                    "\"name\": \"liquid\",\n              \"direction\": \"outlet\",\n              \"kind\": \"material\",\n              \"stream_id\": \"stream-liquid\"",
+                    "\"name\": \"liquid\",\n              \"direction\": \"outlet\",\n              \"kind\": \"material\",\n              \"stream_id\": null",
+                    1,
+                )
+                .replacen(
+                    "\"name\": \"vapor\",\n              \"direction\": \"outlet\",\n              \"kind\": \"material\",\n              \"stream_id\": \"stream-vapor\"",
+                    "\"name\": \"vapor\",\n              \"direction\": \"outlet\",\n              \"kind\": \"material\",\n              \"stream_id\": null",
+                    1,
+                );
+        fs::write(&project_path, project).expect("expected local rules project");
+
+        (
+            StudioRuntimeConfig {
+                project_path: project_path.clone(),
+                ..lease_expiring_config()
+            },
+            project_path,
+        )
+    }
+
+    fn sample_canvas_suggestion(id: &str, confidence: f32) -> rf_ui::CanvasSuggestion {
         rf_ui::CanvasSuggestion::new(
             rf_ui::CanvasSuggestionId::new(id),
             SuggestionSource::LocalRules,
@@ -229,7 +277,9 @@ mod tests {
             .expect("expected open dispatch");
 
         match dispatch.outcome {
-            StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::WindowOpened(opened)) => {
+            StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::WindowOpened(
+                opened,
+            )) => {
                 assert_eq!(opened.registration.window_id, 1);
             }
             other => panic!("expected window opened outcome, got {other:?}"),
@@ -244,6 +294,7 @@ mod tests {
                 .and_then(|command| command.target_window_id),
             Some(1)
         );
+        assert!(dispatch.canvas.suggestions.is_empty());
     }
 
     #[test]
@@ -253,9 +304,9 @@ mod tests {
             .dispatch_event(StudioGuiEvent::OpenWindowRequested)
             .expect("expected open dispatch");
         let window_id = match open.outcome {
-            StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::WindowOpened(opened)) => {
-                opened.registration.window_id
-            }
+            StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::WindowOpened(
+                opened,
+            )) => opened.registration.window_id,
             other => panic!("expected window opened outcome, got {other:?}"),
         };
 
@@ -266,13 +317,52 @@ mod tests {
             .expect("expected ui command dispatch");
 
         match dispatch.outcome {
-            StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::UiCommandDispatched(
-                StudioGuiHostUiCommandDispatchResult::Executed(executed),
-            )) => {
+            StudioGuiDriverOutcome::HostCommand(
+                StudioGuiHostCommandOutcome::UiCommandDispatched(
+                    StudioGuiHostUiCommandDispatchResult::Executed(executed),
+                ),
+            ) => {
                 assert_eq!(executed.target_window_id, window_id);
             }
             other => panic!("expected executed ui command outcome, got {other:?}"),
         }
+    }
+
+    #[test]
+    fn gui_driver_surfaces_local_rules_canvas_state_from_project() {
+        let (config, project_path) = flash_drum_local_rules_config();
+        let mut driver = StudioGuiDriver::new(&config).expect("expected driver");
+
+        let initial_canvas = driver.canvas_state();
+        assert_eq!(initial_canvas.suggestions.len(), 3);
+        assert_eq!(
+            initial_canvas
+                .focused_suggestion_id
+                .as_ref()
+                .map(|id| id.as_str()),
+            Some("local.flash_drum.connect_inlet.flash-1.stream-heated")
+        );
+
+        let dispatch = driver
+            .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+            .expect("expected open dispatch");
+
+        assert_eq!(dispatch.canvas.suggestions.len(), 3);
+        assert_eq!(
+            dispatch
+                .canvas
+                .suggestions
+                .iter()
+                .map(|suggestion| suggestion.id.as_str())
+                .collect::<Vec<_>>(),
+            vec![
+                "local.flash_drum.connect_inlet.flash-1.stream-heated",
+                "local.flash_drum.create_outlet.flash-1.liquid",
+                "local.flash_drum.create_outlet.flash-1.vapor",
+            ]
+        );
+
+        let _ = fs::remove_file(project_path);
     }
 
     #[test]
@@ -284,9 +374,9 @@ mod tests {
             .expect("expected lifecycle dispatch");
 
         match dispatch.outcome {
-            StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::LifecycleDispatched(
-                lifecycle,
-            )) => {
+            StudioGuiDriverOutcome::HostCommand(
+                StudioGuiHostCommandOutcome::LifecycleDispatched(lifecycle),
+            ) => {
                 assert!(lifecycle.dispatch.is_none());
             }
             other => panic!("expected lifecycle outcome, got {other:?}"),
@@ -312,9 +402,11 @@ mod tests {
             .expect("expected shortcut dispatch");
 
         match dispatch.outcome {
-            StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::UiCommandDispatched(
-                StudioGuiHostUiCommandDispatchResult::Executed(executed),
-            )) => match &executed.effects.runtime_report.dispatch {
+            StudioGuiDriverOutcome::HostCommand(
+                StudioGuiHostCommandOutcome::UiCommandDispatched(
+                    StudioGuiHostUiCommandDispatchResult::Executed(executed),
+                ),
+            ) => match &executed.effects.runtime_report.dispatch {
                 crate::StudioRuntimeDispatch::AppCommand(outcome) => match &outcome.dispatch {
                     crate::StudioAppResultDispatch::WorkspaceMode(mode) => {
                         assert_eq!(mode.simulation_mode, rf_ui::SimulationMode::Active);
@@ -343,14 +435,13 @@ mod tests {
 
         assert_eq!(
             dispatch.outcome,
-            StudioGuiDriverOutcome::CanvasSuggestionAccepted(
-                StudioGuiHostCanvasSuggestionResult {
-                    accepted: None,
-                    applied_target: None,
-                    latest_log_entry: None,
-                    ui_commands: driver.ui_commands(),
-                }
-            )
+            StudioGuiDriverOutcome::CanvasSuggestionAccepted(StudioGuiHostCanvasSuggestionResult {
+                accepted: None,
+                applied_target: None,
+                latest_log_entry: None,
+                ui_commands: driver.ui_commands(),
+                canvas: driver.canvas_state(),
+            })
         );
     }
 
@@ -398,18 +489,24 @@ mod tests {
         match dispatch.outcome {
             StudioGuiDriverOutcome::CanvasSuggestionAccepted(result) => {
                 assert_eq!(
-                    result.accepted.as_ref().map(|suggestion| suggestion.id.as_str()),
+                    result
+                        .accepted
+                        .as_ref()
+                        .map(|suggestion| suggestion.id.as_str()),
                     Some("sug-high")
                 );
                 assert_eq!(
                     result.applied_target,
-                    Some(rf_ui::InspectorTarget::Unit(rf_types::UnitId::new("flash-1")))
+                    Some(rf_ui::InspectorTarget::Unit(rf_types::UnitId::new(
+                        "flash-1"
+                    )))
                 );
                 assert_eq!(
-                    result.latest_log_entry.as_ref().map(|entry| entry.message.as_str()),
-                    Some(
-                        "Accepted canvas suggestion `sug-high` from local rules for unit flash-1"
-                    )
+                    result
+                        .latest_log_entry
+                        .as_ref()
+                        .map(|entry| entry.message.as_str()),
+                    Some("Accepted canvas suggestion `sug-high` from local rules for unit flash-1")
                 );
             }
             other => panic!("expected canvas suggestion accepted outcome, got {other:?}"),

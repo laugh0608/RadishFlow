@@ -15,11 +15,13 @@ mod property_package_download_client;
 mod run_panel_driver;
 mod solver_bridge;
 mod studio_app_host;
+mod studio_gui_canvas_presentation;
 mod studio_gui_command_registry;
 mod studio_gui_driver;
 mod studio_gui_host;
 mod studio_gui_shortcut_router;
 mod studio_gui_timer_host;
+mod studio_local_rules;
 mod studio_runtime;
 mod studio_window_host;
 mod studio_window_host_manager;
@@ -146,22 +148,25 @@ pub use studio_app_host::{
     StudioAppHostWindowChange, StudioAppHostWindowDispatchResult,
     StudioAppHostWindowSelectionChange, StudioAppHostWindowSnapshot, StudioAppHostWindowState,
 };
-pub use studio_gui_host::{
-    StudioGuiHost, StudioGuiHostCloseWindowResult, StudioGuiHostCommand,
-    StudioGuiHostCommandOutcome, StudioGuiHostDispatch, StudioGuiHostGlobalEventDispatch,
-    StudioGuiHostCanvasSuggestionResult, StudioGuiHostLifecycleDispatch, StudioGuiHostLifecycleEvent,
-    StudioGuiHostUiCommandDispatchResult, StudioGuiHostWindowOpened,
+pub use studio_gui_canvas_presentation::{
+    StudioGuiCanvasPresentation, StudioGuiCanvasSuggestionViewModel, StudioGuiCanvasTextView,
+    StudioGuiCanvasViewModel,
+};
+pub use studio_gui_command_registry::{
+    StudioGuiCommandEntry, StudioGuiCommandRegistry, StudioGuiCommandSection, StudioGuiShortcut,
+    StudioGuiShortcutKey, StudioGuiShortcutModifier,
 };
 pub use studio_gui_driver::{
     StudioGuiDriver, StudioGuiDriverDispatch, StudioGuiDriverOutcome, StudioGuiEvent,
 };
-pub use studio_gui_command_registry::{
-    StudioGuiCommandEntry, StudioGuiCommandRegistry, StudioGuiCommandSection,
-    StudioGuiShortcut, StudioGuiShortcutKey, StudioGuiShortcutModifier,
+pub use studio_gui_host::{
+    StudioGuiCanvasState, StudioGuiHost, StudioGuiHostCanvasSuggestionResult,
+    StudioGuiHostCloseWindowResult, StudioGuiHostCommand, StudioGuiHostCommandOutcome,
+    StudioGuiHostDispatch, StudioGuiHostGlobalEventDispatch, StudioGuiHostLifecycleDispatch,
+    StudioGuiHostLifecycleEvent, StudioGuiHostUiCommandDispatchResult, StudioGuiHostWindowOpened,
 };
 pub use studio_gui_shortcut_router::{
-    route_shortcut, StudioGuiFocusContext, StudioGuiShortcutIgnoreReason,
-    StudioGuiShortcutRoute,
+    StudioGuiFocusContext, StudioGuiShortcutIgnoreReason, StudioGuiShortcutRoute, route_shortcut,
 };
 pub use studio_gui_timer_host::{StudioGuiNativeTimerEffects, StudioGuiNativeTimerOperation};
 pub use studio_runtime::{

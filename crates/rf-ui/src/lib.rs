@@ -79,12 +79,11 @@ mod tests {
     use rf_types::UnitId;
 
     use crate::{
-        AppLogLevel, AppState, AuthSessionStatus, AuthenticatedUser,
-        CanvasPoint, CanvasSuggestedMaterialConnection, CanvasSuggestedStreamBinding,
-        CanvasSuggestion, CanvasSuggestionAcceptance, CanvasSuggestionId, CanvasViewMode,
-        CommandHistory, CommandHistoryEntry,
-        DiagnosticSeverity, DiagnosticSummary, DocumentCommand, DocumentMetadata,
-        EntitlementActionId, EntitlementPanelState, EntitlementPanelWidgetEvent,
+        AppLogLevel, AppState, AuthSessionStatus, AuthenticatedUser, CanvasPoint,
+        CanvasSuggestedMaterialConnection, CanvasSuggestedStreamBinding, CanvasSuggestion,
+        CanvasSuggestionAcceptance, CanvasSuggestionId, CanvasViewMode, CommandHistory,
+        CommandHistoryEntry, DiagnosticSeverity, DiagnosticSummary, DocumentCommand,
+        DocumentMetadata, EntitlementActionId, EntitlementPanelState, EntitlementPanelWidgetEvent,
         EntitlementPanelWidgetModel, EntitlementSnapshot, FlowsheetDocument, GhostElement,
         GhostElementKind, OfflineLeaseRefreshResponse, PropertyPackageManifest,
         PropertyPackageManifestList, PropertyPackageSource, RunPanelActionId,
@@ -449,10 +448,7 @@ mod tests {
                 && to_unit_id.as_str() == "flash-1"
                 && to_port == "inlet"
         ));
-        assert_eq!(
-            app_state.workspace.document.revision,
-            1
-        );
+        assert_eq!(app_state.workspace.document.revision, 1);
         assert_eq!(
             app_state
                 .workspace
@@ -485,9 +481,8 @@ mod tests {
             app_state.log_feed.entries.back(),
             Some(&crate::AppLogEntry {
                 level: AppLogLevel::Info,
-                message:
-                    "Accepted canvas suggestion `sug-high` from local rules for unit flash-1"
-                        .to_string(),
+                message: "Accepted canvas suggestion `sug-high` from local rules for unit flash-1"
+                    .to_string(),
             })
         );
         assert_eq!(
@@ -555,17 +550,18 @@ mod tests {
             DocumentMetadata::new("doc-create", "Create", timestamp(10)),
         ));
         app_state.replace_canvas_suggestions(vec![
-            sample_canvas_suggestion("sug-liquid", 0.92, SuggestionSource::LocalRules).with_acceptance(
-                CanvasSuggestionAcceptance::MaterialConnection(CanvasSuggestedMaterialConnection {
-                    stream: CanvasSuggestedStreamBinding::Create {
-                        stream: MaterialStreamState::new("stream-liquid", "Liquid Outlet"),
+            sample_canvas_suggestion("sug-liquid", 0.92, SuggestionSource::LocalRules)
+                .with_acceptance(CanvasSuggestionAcceptance::MaterialConnection(
+                    CanvasSuggestedMaterialConnection {
+                        stream: CanvasSuggestedStreamBinding::Create {
+                            stream: MaterialStreamState::new("stream-liquid", "Liquid Outlet"),
+                        },
+                        source_unit_id: UnitId::new("flash-1"),
+                        source_port: "liquid".to_string(),
+                        sink_unit_id: None,
+                        sink_port: None,
                     },
-                    source_unit_id: UnitId::new("flash-1"),
-                    source_port: "liquid".to_string(),
-                    sink_unit_id: None,
-                    sink_port: None,
-                }),
-            ),
+                )),
         ]);
 
         let accepted = app_state

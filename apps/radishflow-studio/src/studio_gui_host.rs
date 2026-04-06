@@ -1,5 +1,5 @@
 use rf_types::RfResult;
-use rf_ui::{AppLogEntry, CanvasSuggestion};
+use rf_ui::{AppLogEntry, CanvasSuggestion, CanvasSuggestionId};
 
 use crate::{
     StudioAppHostCloseEffects, StudioAppHostController, StudioAppHostDispatchEffects,
@@ -10,23 +10,25 @@ use crate::{
     StudioWindowHostRegistration,
 };
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct StudioGuiHostWindowOpened {
     pub projection: StudioAppHostProjection,
     pub registration: StudioWindowHostRegistration,
     pub ui_commands: StudioAppHostUiCommandModel,
+    pub canvas: StudioGuiCanvasState,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct StudioGuiHostDispatch {
     pub projection: StudioAppHostProjection,
     pub target_window_id: StudioWindowHostId,
     pub ui_commands: StudioAppHostUiCommandModel,
+    pub canvas: StudioGuiCanvasState,
     pub effects: StudioAppHostDispatchEffects,
     pub native_timers: StudioGuiNativeTimerEffects,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum StudioGuiHostUiCommandDispatchResult {
     Executed(StudioGuiHostDispatch),
     IgnoredDisabled {
@@ -41,38 +43,45 @@ pub enum StudioGuiHostUiCommandDispatchResult {
     },
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct StudioGuiHostGlobalEventDispatch {
     pub projection: StudioAppHostProjection,
     pub ui_commands: StudioAppHostUiCommandModel,
+    pub canvas: StudioGuiCanvasState,
     pub dispatch: Option<StudioGuiHostDispatch>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StudioGuiHostLifecycleEvent {
-    WindowForegrounded {
-        window_id: StudioWindowHostId,
-    },
+    WindowForegrounded { window_id: StudioWindowHostId },
     LoginCompleted,
     NetworkRestored,
     TimerElapsed,
     RunPanelRecoveryRequested,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct StudioGuiHostLifecycleDispatch {
     pub event: StudioGuiHostLifecycleEvent,
     pub projection: StudioAppHostProjection,
     pub ui_commands: StudioAppHostUiCommandModel,
+    pub canvas: StudioGuiCanvasState,
     pub dispatch: Option<StudioGuiHostDispatch>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct StudioGuiHostCloseWindowResult {
     pub projection: StudioAppHostProjection,
     pub ui_commands: StudioAppHostUiCommandModel,
+    pub canvas: StudioGuiCanvasState,
     pub close: Option<StudioAppHostCloseEffects>,
     pub native_timers: StudioGuiNativeTimerEffects,
+}
+
+#[derive(Debug, Clone, PartialEq, Default)]
+pub struct StudioGuiCanvasState {
+    pub suggestions: Vec<CanvasSuggestion>,
+    pub focused_suggestion_id: Option<CanvasSuggestionId>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -81,6 +90,7 @@ pub struct StudioGuiHostCanvasSuggestionResult {
     pub applied_target: Option<rf_ui::InspectorTarget>,
     pub latest_log_entry: Option<AppLogEntry>,
     pub ui_commands: StudioAppHostUiCommandModel,
+    pub canvas: StudioGuiCanvasState,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -101,7 +111,7 @@ pub enum StudioGuiHostCommand {
     },
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum StudioGuiHostCommandOutcome {
     WindowOpened(StudioGuiHostWindowOpened),
     WindowDispatched(StudioGuiHostDispatch),
@@ -129,8 +139,20 @@ impl StudioGuiHost {
         self.state().ui_command_model()
     }
 
+    pub fn canvas_state(&self) -> StudioGuiCanvasState {
+        let canvas = self.controller.canvas_interaction();
+        StudioGuiCanvasState {
+            suggestions: canvas.suggestions,
+            focused_suggestion_id: canvas.focused_suggestion_id,
+        }
+    }
+
     pub fn command_registry(&self) -> StudioGuiCommandRegistry {
         StudioGuiCommandRegistry::from_model(&self.ui_commands())
+    }
+
+    pub fn refresh_local_canvas_suggestions(&mut self) {
+        self.controller.refresh_local_canvas_suggestions();
     }
 
     pub fn replace_canvas_suggestions(&mut self, suggestions: Vec<CanvasSuggestion>) {
@@ -150,6 +172,7 @@ impl StudioGuiHost {
                 .and_then(|_| self.controller.latest_log_entry()),
             accepted,
             ui_commands: self.ui_commands(),
+            canvas: self.canvas_state(),
         })
     }
 
@@ -158,9 +181,9 @@ impl StudioGuiHost {
         command: StudioGuiHostCommand,
     ) -> RfResult<StudioGuiHostCommandOutcome> {
         match command {
-            StudioGuiHostCommand::OpenWindow => {
-                self.open_window().map(StudioGuiHostCommandOutcome::WindowOpened)
-            }
+            StudioGuiHostCommand::OpenWindow => self
+                .open_window()
+                .map(StudioGuiHostCommandOutcome::WindowOpened),
             StudioGuiHostCommand::DispatchWindowTrigger { window_id, trigger } => self
                 .dispatch_window_trigger(window_id, trigger)
                 .map(StudioGuiHostCommandOutcome::WindowDispatched),
@@ -180,6 +203,7 @@ impl StudioGuiHost {
         let opened = self.controller.open_window()?;
         Ok(StudioGuiHostWindowOpened {
             ui_commands: ui_commands_from_projection(&opened.projection),
+            canvas: self.canvas_state(),
             projection: opened.projection,
             registration: opened.registration,
         })
@@ -190,15 +214,18 @@ impl StudioGuiHost {
         window_id: StudioWindowHostId,
         trigger: StudioRuntimeTrigger,
     ) -> RfResult<StudioGuiHostDispatch> {
-        self.controller
-            .dispatch_window_trigger(window_id, trigger)
-            .map(dispatch_from_controller)
+        let dispatch = self
+            .controller
+            .dispatch_window_trigger(window_id, trigger)?;
+        Ok(dispatch_from_controller(dispatch, self.canvas_state()))
     }
 
-    pub fn focus_window(&mut self, window_id: StudioWindowHostId) -> RfResult<StudioGuiHostDispatch> {
-        self.controller
-            .focus_window(window_id)
-            .map(dispatch_from_controller)
+    pub fn focus_window(
+        &mut self,
+        window_id: StudioWindowHostId,
+    ) -> RfResult<StudioGuiHostDispatch> {
+        let dispatch = self.controller.focus_window(window_id)?;
+        Ok(dispatch_from_controller(dispatch, self.canvas_state()))
     }
 
     pub fn dispatch_lifecycle_event(
@@ -212,6 +239,7 @@ impl StudioGuiHost {
                     event,
                     projection: dispatch.projection.clone(),
                     ui_commands: dispatch.ui_commands.clone(),
+                    canvas: dispatch.canvas.clone(),
                     dispatch: Some(dispatch),
                 })
             }
@@ -224,6 +252,7 @@ impl StudioGuiHost {
                     event,
                     projection: result.projection,
                     ui_commands: result.ui_commands,
+                    canvas: result.canvas,
                     dispatch: result.dispatch,
                 })
             }
@@ -238,7 +267,7 @@ impl StudioGuiHost {
         match self.controller.dispatch_ui_command(command_id)? {
             StudioAppHostUiCommandDispatchResult::Executed(dispatch) => {
                 Ok(StudioGuiHostUiCommandDispatchResult::Executed(
-                    dispatch_from_controller(dispatch),
+                    dispatch_from_controller(dispatch, self.canvas_state()),
                 ))
             }
             StudioAppHostUiCommandDispatchResult::IgnoredDisabled {
@@ -265,7 +294,7 @@ impl StudioGuiHost {
         event: StudioAppWindowHostGlobalEvent,
     ) -> RfResult<StudioGuiHostGlobalEventDispatch> {
         let result = self.controller.dispatch_global_event(event)?;
-        Ok(global_event_from_controller(result))
+        Ok(global_event_from_controller(result, self.canvas_state()))
     }
 
     pub fn close_window(
@@ -275,6 +304,7 @@ impl StudioGuiHost {
         let closed = self.controller.close_window(window_id)?;
         Ok(StudioGuiHostCloseWindowResult {
             ui_commands: ui_commands_from_projection(&closed.projection),
+            canvas: self.canvas_state(),
             projection: closed.projection,
             native_timers: closed
                 .close
@@ -291,13 +321,17 @@ impl StudioGuiHost {
     }
 }
 
-fn dispatch_from_controller(dispatch: StudioAppHostWindowDispatchResult) -> StudioGuiHostDispatch {
+fn dispatch_from_controller(
+    dispatch: StudioAppHostWindowDispatchResult,
+    canvas: StudioGuiCanvasState,
+) -> StudioGuiHostDispatch {
     let native_timers = StudioGuiNativeTimerEffects::from_driver(
         &dispatch.effects.native_timer_transitions,
         &dispatch.effects.native_timer_acks,
     );
     StudioGuiHostDispatch {
         ui_commands: ui_commands_from_projection(&dispatch.projection),
+        canvas,
         projection: dispatch.projection,
         target_window_id: dispatch.target_window_id,
         effects: dispatch.effects,
@@ -307,24 +341,36 @@ fn dispatch_from_controller(dispatch: StudioAppHostWindowDispatchResult) -> Stud
 
 fn global_event_from_controller(
     result: StudioAppHostGlobalEventResult,
+    canvas: StudioGuiCanvasState,
 ) -> StudioGuiHostGlobalEventDispatch {
     StudioGuiHostGlobalEventDispatch {
         ui_commands: ui_commands_from_projection(&result.projection),
+        canvas: canvas.clone(),
         projection: result.projection.clone(),
-        dispatch: result.dispatch.map(dispatch_from_controller),
+        dispatch: result
+            .dispatch
+            .map(|dispatch| dispatch_from_controller(dispatch, canvas)),
     }
 }
 
-fn ui_commands_from_projection(projection: &StudioAppHostProjection) -> StudioAppHostUiCommandModel {
+fn ui_commands_from_projection(
+    projection: &StudioAppHostProjection,
+) -> StudioAppHostUiCommandModel {
     projection.state.ui_command_model()
 }
 
-fn global_event_from_lifecycle(event: StudioGuiHostLifecycleEvent) -> StudioAppWindowHostGlobalEvent {
+fn global_event_from_lifecycle(
+    event: StudioGuiHostLifecycleEvent,
+) -> StudioAppWindowHostGlobalEvent {
     match event {
         StudioGuiHostLifecycleEvent::WindowForegrounded { .. } => {
-            unreachable!("window foregrounding is routed through focus_window before global mapping")
+            unreachable!(
+                "window foregrounding is routed through focus_window before global mapping"
+            )
         }
-        StudioGuiHostLifecycleEvent::LoginCompleted => StudioAppWindowHostGlobalEvent::LoginCompleted,
+        StudioGuiHostLifecycleEvent::LoginCompleted => {
+            StudioAppWindowHostGlobalEvent::LoginCompleted
+        }
         StudioGuiHostLifecycleEvent::NetworkRestored => {
             StudioAppWindowHostGlobalEvent::NetworkRestored
         }
@@ -348,9 +394,9 @@ mod tests {
     use crate::{
         StudioGuiHost, StudioGuiHostCommand, StudioGuiHostCommandOutcome,
         StudioGuiHostLifecycleEvent, StudioGuiHostUiCommandDispatchResult,
-        StudioGuiNativeTimerEffects, StudioRuntimeConfig,
-        StudioRuntimeEntitlementPreflight, StudioRuntimeEntitlementSeed,
-        StudioRuntimeEntitlementSessionEvent, StudioRuntimeTrigger, StudioWindowHostRetirement,
+        StudioGuiNativeTimerEffects, StudioRuntimeConfig, StudioRuntimeEntitlementPreflight,
+        StudioRuntimeEntitlementSeed, StudioRuntimeEntitlementSessionEvent, StudioRuntimeTrigger,
+        StudioWindowHostRetirement,
     };
 
     fn lease_expiring_config() -> StudioRuntimeConfig {
@@ -366,8 +412,9 @@ mod tests {
             .duration_since(UNIX_EPOCH)
             .expect("expected current timestamp")
             .as_nanos();
-        let project_path = std::env::temp_dir()
-            .join(format!("radishflow-studio-gui-host-failure-{timestamp}.rfproj.json"));
+        let project_path = std::env::temp_dir().join(format!(
+            "radishflow-studio-gui-host-failure-{timestamp}.rfproj.json"
+        ));
         let project =
             include_str!("../../../examples/flowsheets/feed-valve-flash.rfproj.json").replacen(
                 "\"name\": \"Valve Outlet\",\n          \"temperature_k\": 300.0,\n          \"pressure_pa\": 90000.0,",

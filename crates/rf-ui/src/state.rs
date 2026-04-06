@@ -451,7 +451,9 @@ impl AppState {
             .replace_suggestions(suggestions);
     }
 
-    pub fn accept_focused_canvas_suggestion_by_tab(&mut self) -> RfResult<Option<CanvasSuggestion>> {
+    pub fn accept_focused_canvas_suggestion_by_tab(
+        &mut self,
+    ) -> RfResult<Option<CanvasSuggestion>> {
         let focused = self
             .workspace
             .canvas_interaction
@@ -556,7 +558,10 @@ fn apply_canvas_suggestion_acceptance(
 
     let (command, next_flowsheet) = match acceptance {
         CanvasSuggestionAcceptance::MaterialConnection(connection) => {
-            apply_material_connection_acceptance(&app_state.workspace.document.flowsheet, connection)?
+            apply_material_connection_acceptance(
+                &app_state.workspace.document.flowsheet,
+                connection,
+            )?
         }
     };
 
@@ -599,8 +604,7 @@ fn apply_material_connection_acceptance(
         &connection.source_port,
         &stream_id,
     )?;
-    if let (Some(sink_unit_id), Some(sink_port)) =
-        (&connection.sink_unit_id, &connection.sink_port)
+    if let (Some(sink_unit_id), Some(sink_port)) = (&connection.sink_unit_id, &connection.sink_port)
     {
         bind_material_stream_port(&mut next_flowsheet, sink_unit_id, sink_port, &stream_id)?;
     } else if connection.sink_unit_id.is_some() || connection.sink_port.is_some() {
@@ -628,9 +632,10 @@ fn bind_material_stream_port(
     port_name: &str,
     stream_id: &StreamId,
 ) -> RfResult<()> {
-    let unit = flowsheet.units.get_mut(unit_id).ok_or_else(|| {
-        RfError::missing_entity("unit", unit_id)
-    })?;
+    let unit = flowsheet
+        .units
+        .get_mut(unit_id)
+        .ok_or_else(|| RfError::missing_entity("unit", unit_id))?;
     let port = unit
         .ports
         .iter_mut()

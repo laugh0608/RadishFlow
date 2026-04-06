@@ -147,10 +147,11 @@ mod tests {
     use std::time::{Duration, UNIX_EPOCH};
 
     use crate::{
-        EntitlementSessionLifecycleEvent, EntitlementSessionTimerArm, EntitlementSessionTimerReason,
-        StudioGuiNativeTimerEffects, StudioGuiNativeTimerOperation, StudioRuntimeTimerHandleSlot,
-        StudioWindowNativeTimerBinding, StudioWindowTimerDriverAckResult,
-        StudioWindowTimerDriverAckStatus, StudioWindowTimerDriverTransition,
+        EntitlementSessionLifecycleEvent, EntitlementSessionTimerArm,
+        EntitlementSessionTimerReason, StudioGuiNativeTimerEffects, StudioGuiNativeTimerOperation,
+        StudioRuntimeTimerHandleSlot, StudioWindowNativeTimerBinding,
+        StudioWindowTimerDriverAckResult, StudioWindowTimerDriverAckStatus,
+        StudioWindowTimerDriverTransition,
     };
 
     fn slot(effect_id: u64, seconds: u64) -> StudioRuntimeTimerHandleSlot {

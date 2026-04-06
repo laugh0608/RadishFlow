@@ -464,14 +464,20 @@ impl StudioAppHost {
         &self.window_host_manager
     }
 
+    pub fn refresh_local_canvas_suggestions(&mut self) {
+        self.window_host_manager.refresh_local_canvas_suggestions();
+    }
+
     pub fn replace_canvas_suggestions(&mut self, suggestions: Vec<rf_ui::CanvasSuggestion>) {
-        self.window_host_manager.replace_canvas_suggestions(suggestions);
+        self.window_host_manager
+            .replace_canvas_suggestions(suggestions);
     }
 
     pub fn accept_focused_canvas_suggestion_by_tab(
         &mut self,
     ) -> RfResult<Option<rf_ui::CanvasSuggestion>> {
-        self.window_host_manager.accept_focused_canvas_suggestion_by_tab()
+        self.window_host_manager
+            .accept_focused_canvas_suggestion_by_tab()
     }
 
     pub fn latest_log_entry(&self) -> Option<rf_ui::AppLogEntry> {
@@ -495,6 +501,17 @@ impl StudioAppHost {
             .workspace
             .drafts
             .active_target
+            .clone()
+    }
+
+    pub fn canvas_interaction(&self) -> rf_ui::CanvasInteractionState {
+        self.window_host_manager
+            .session()
+            .host_port()
+            .runtime()
+            .app_state()
+            .workspace
+            .canvas_interaction
             .clone()
     }
 
@@ -584,7 +601,8 @@ pub struct StudioAppHostController {
 
 impl StudioAppHostController {
     pub fn new(config: &StudioRuntimeConfig) -> RfResult<Self> {
-        let app_host = StudioAppHost::new(config)?;
+        let mut app_host = StudioAppHost::new(config)?;
+        app_host.refresh_local_canvas_suggestions();
         let store = StudioAppHostStore::from_snapshot(&app_host.snapshot());
 
         Ok(Self { app_host, store })
@@ -598,10 +616,16 @@ impl StudioAppHostController {
         self.app_host.replace_canvas_suggestions(suggestions);
     }
 
+    pub fn refresh_local_canvas_suggestions(&mut self) {
+        self.app_host.refresh_local_canvas_suggestions();
+    }
+
     pub fn accept_focused_canvas_suggestion_by_tab(
         &mut self,
     ) -> RfResult<Option<rf_ui::CanvasSuggestion>> {
-        self.app_host.accept_focused_canvas_suggestion_by_tab()
+        let accepted = self.app_host.accept_focused_canvas_suggestion_by_tab()?;
+        self.app_host.refresh_local_canvas_suggestions();
+        Ok(accepted)
     }
 
     pub fn latest_log_entry(&self) -> Option<rf_ui::AppLogEntry> {
@@ -610,6 +634,10 @@ impl StudioAppHostController {
 
     pub fn active_inspector_target(&self) -> Option<rf_ui::InspectorTarget> {
         self.app_host.active_inspector_target()
+    }
+
+    pub fn canvas_interaction(&self) -> rf_ui::CanvasInteractionState {
+        self.app_host.canvas_interaction()
     }
 
     pub fn open_window(&mut self) -> RfResult<StudioAppHostOpenWindowResult> {
@@ -819,6 +847,7 @@ impl StudioAppHostController {
     ) -> RfResult<(StudioAppHostCommandOutcome, StudioAppHostProjection)> {
         self.app_host.execute_command(command).map(|output| {
             let projection = self.store.apply_output(&output);
+            self.app_host.refresh_local_canvas_suggestions();
             (output.outcome, projection)
         })
     }

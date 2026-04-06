@@ -53,12 +53,8 @@ pub enum GhostElementKind {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum CanvasSuggestedStreamBinding {
-    Existing {
-        stream_id: StreamId,
-    },
-    Create {
-        stream: MaterialStreamState,
-    },
+    Existing { stream_id: StreamId },
+    Create { stream: MaterialStreamState },
 }
 
 #[derive(Debug, Clone, PartialEq)]

@@ -13,9 +13,13 @@ pub enum StudioGuiFocusContext {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum StudioGuiShortcutRoute {
-    DispatchCommandId { command_id: String },
+    DispatchCommandId {
+        command_id: String,
+    },
     RequestCanvasSuggestionAcceptByTab,
-    Ignored { reason: StudioGuiShortcutIgnoreReason },
+    Ignored {
+        reason: StudioGuiShortcutIgnoreReason,
+    },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -83,10 +87,10 @@ fn is_tab(shortcut: &StudioGuiShortcut) -> bool {
 #[cfg(test)]
 mod tests {
     use crate::{
-        route_shortcut, StudioAppHostUiActionModel, StudioAppHostUiCommandGroup,
-        StudioAppHostUiCommandModel, StudioGuiCommandRegistry, StudioGuiFocusContext,
-        StudioGuiShortcut, StudioGuiShortcutIgnoreReason, StudioGuiShortcutKey,
-        StudioGuiShortcutModifier, StudioGuiShortcutRoute,
+        StudioAppHostUiActionModel, StudioAppHostUiCommandGroup, StudioAppHostUiCommandModel,
+        StudioGuiCommandRegistry, StudioGuiFocusContext, StudioGuiShortcut,
+        StudioGuiShortcutIgnoreReason, StudioGuiShortcutKey, StudioGuiShortcutModifier,
+        StudioGuiShortcutRoute, route_shortcut,
     };
 
     fn registry() -> StudioGuiCommandRegistry {
@@ -134,7 +138,10 @@ mod tests {
             StudioGuiFocusContext::CanvasSuggestionFocused,
         );
 
-        assert_eq!(route, StudioGuiShortcutRoute::RequestCanvasSuggestionAcceptByTab);
+        assert_eq!(
+            route,
+            StudioGuiShortcutRoute::RequestCanvasSuggestionAcceptByTab
+        );
     }
 
     #[test]

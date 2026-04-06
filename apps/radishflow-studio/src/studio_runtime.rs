@@ -358,6 +358,10 @@ impl StudioRuntime {
         self.session.app_state()
     }
 
+    pub fn refresh_local_canvas_suggestions(&mut self) {
+        self.session.refresh_local_canvas_suggestions();
+    }
+
     pub fn replace_canvas_suggestions(&mut self, suggestions: Vec<rf_ui::CanvasSuggestion>) {
         self.session.replace_canvas_suggestions(suggestions);
     }

@@ -164,6 +164,10 @@ impl StudioRuntimeHostPort {
         &self.runtime
     }
 
+    pub fn refresh_local_canvas_suggestions(&mut self) {
+        self.runtime.refresh_local_canvas_suggestions();
+    }
+
     pub fn replace_canvas_suggestions(&mut self, suggestions: Vec<rf_ui::CanvasSuggestion>) {
         self.runtime.replace_canvas_suggestions(suggestions);
     }

@@ -1,6 +1,4 @@
-use crate::{
-    StudioAppHostUiCommandGroup, StudioAppHostUiCommandModel, StudioWindowHostId,
-};
+use crate::{StudioAppHostUiCommandGroup, StudioAppHostUiCommandModel, StudioWindowHostId};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum StudioGuiShortcutModifier {

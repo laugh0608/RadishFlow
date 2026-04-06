@@ -45,6 +45,10 @@ impl StudioWindowSession {
         &self.timer_driver_state
     }
 
+    pub fn refresh_local_canvas_suggestions(&mut self) {
+        self.host_port.refresh_local_canvas_suggestions();
+    }
+
     pub fn replace_canvas_suggestions(&mut self, suggestions: Vec<rf_ui::CanvasSuggestion>) {
         self.host_port.replace_canvas_suggestions(suggestions);
     }

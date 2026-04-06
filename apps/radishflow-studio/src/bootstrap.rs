@@ -478,6 +478,21 @@ impl BootstrapSession {
         &self.app_state
     }
 
+    pub(crate) fn refresh_local_canvas_suggestions(&mut self) {
+        let mut suggestions: Vec<_> = self
+            .app_state
+            .workspace
+            .canvas_interaction
+            .suggestions
+            .iter()
+            .filter(|suggestion| suggestion.source != rf_ui::SuggestionSource::LocalRules)
+            .cloned()
+            .collect();
+        suggestions
+            .extend(crate::studio_local_rules::generate_local_canvas_suggestions(&self.app_state));
+        self.app_state.replace_canvas_suggestions(suggestions);
+    }
+
     pub(crate) fn replace_canvas_suggestions(&mut self, suggestions: Vec<rf_ui::CanvasSuggestion>) {
         self.app_state.replace_canvas_suggestions(suggestions);
     }
