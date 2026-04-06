@@ -1,8 +1,9 @@
 use radishflow_studio::{
     EntitlementSessionEventOutcome, StudioAppHostEntitlementTimerEffect, StudioAppHostState,
-    StudioAppResultDispatch, StudioGuiDriver, StudioGuiDriverDispatch, StudioGuiDriverOutcome,
-    StudioGuiEvent, StudioGuiHostCloseWindowResult, StudioGuiHostCommandOutcome,
-    StudioGuiHostDispatch, StudioGuiHostLifecycleDispatch, StudioGuiHostWindowOpened,
+    StudioAppResultDispatch, StudioGuiCanvasState, StudioGuiDriver, StudioGuiDriverDispatch,
+    StudioGuiDriverOutcome, StudioGuiEvent, StudioGuiHostCloseWindowResult,
+    StudioGuiHostCommandOutcome, StudioGuiHostDispatch, StudioGuiHostLifecycleDispatch,
+    StudioGuiHostWindowOpened,
     StudioGuiNativeTimerEffects, StudioGuiNativeTimerOperation, StudioRuntimeConfig,
     StudioRuntimeDispatch, StudioRuntimeReport, StudioWindowHostRetirement,
     StudioWindowTimerDriverAckResult,
@@ -18,6 +19,66 @@ fn print_text_view(title: &str, lines: &[String]) {
 fn print_run_panel(report: &StudioRuntimeReport) {
     let text = report.run_panel.text();
     print_text_view(text.title, &text.lines);
+}
+
+fn print_canvas_state(title: &str, canvas: &StudioGuiCanvasState) {
+    let lines = canvas_summary_lines(canvas);
+    print_text_view(title, &lines);
+}
+
+fn canvas_summary_lines(canvas: &StudioGuiCanvasState) -> Vec<String> {
+    let mut lines = vec![
+        format!(
+            "focused suggestion: {}",
+            canvas
+                .focused_suggestion_id
+                .as_ref()
+                .map(|id| id.as_str())
+                .unwrap_or("none")
+        ),
+        format!("suggestion count: {}", canvas.suggestions.len()),
+    ];
+
+    lines.extend(canvas.suggestions.iter().map(|suggestion| {
+        let focus_marker = if canvas.focused_suggestion_id.as_ref() == Some(&suggestion.id) {
+            "*"
+        } else {
+            "-"
+        };
+        format!(
+            "{focus_marker} {} [{}] source={} confidence={:.2} target={} tab_accept={} reason={}",
+            suggestion.id.as_str(),
+            canvas_suggestion_status_label(suggestion.status),
+            canvas_suggestion_source_label(suggestion.source),
+            suggestion.confidence,
+            suggestion.ghost.target_unit_id.as_str(),
+            if suggestion.can_accept_with_tab() {
+                "yes"
+            } else {
+                "no"
+            },
+            suggestion.reason
+        )
+    }));
+
+    lines
+}
+
+fn canvas_suggestion_source_label(source: rf_ui::SuggestionSource) -> &'static str {
+    match source {
+        rf_ui::SuggestionSource::LocalRules => "local_rules",
+        rf_ui::SuggestionSource::RadishMind => "radish_mind",
+    }
+}
+
+fn canvas_suggestion_status_label(status: rf_ui::SuggestionStatus) -> &'static str {
+    match status {
+        rf_ui::SuggestionStatus::Proposed => "proposed",
+        rf_ui::SuggestionStatus::Focused => "focused",
+        rf_ui::SuggestionStatus::Accepted => "accepted",
+        rf_ui::SuggestionStatus::Rejected => "rejected",
+        rf_ui::SuggestionStatus::Invalidated => "invalidated",
+    }
 }
 
 fn main() {
@@ -44,6 +105,7 @@ fn main() {
         "Foreground window: {:?}",
         opened.projection.state.foreground_window_id
     );
+    print_canvas_state("Canvas suggestions after opening window", &opened.canvas);
     if let Some(slot) = window.restored_entitlement_timer.as_ref() {
         println!("Restored parked timer slot into window host: {:?}", slot);
     }
@@ -69,6 +131,7 @@ fn main() {
     println!("Entitlement preflight: {:?}", config.entitlement_preflight);
     println!("App host state: {:?}", dispatch_state);
     print_ui_actions(&dispatch_state);
+    print_canvas_state("Canvas suggestions after initial dispatch", &dispatch.canvas);
     println!("Control mode: {:?}", report.control_state.simulation_mode);
     println!("Control pending: {:?}", report.control_state.pending_reason);
     println!("Control status: {:?}", report.control_state.run_status);
@@ -167,13 +230,12 @@ fn main() {
         }
     }
 
-    match expect_lifecycle_event(
+    let lifecycle = expect_lifecycle_event(
         &mut app_host,
         StudioGuiEvent::NetworkRestored,
         "dispatch lifecycle network restored",
-    )
-    .dispatch
-    {
+    );
+    match lifecycle.dispatch {
         Some(global_dispatch) => {
             println!(
                 "Global network restored routed to window #{}",
@@ -187,6 +249,10 @@ fn main() {
             );
         }
     }
+    print_canvas_state(
+        "Canvas suggestions after network restored",
+        &lifecycle.canvas,
+    );
 
     let close = expect_close_window(&mut app_host, window.window_id, "close initial window");
     let close_state = close.projection.state.clone();
@@ -230,6 +296,7 @@ fn main() {
             println!("Window host close ignored for window #{}", window.window_id);
         }
     }
+    print_canvas_state("Canvas suggestions after closing window", &close.canvas);
 }
 
 fn print_ui_actions(state: &StudioAppHostState) {
@@ -330,12 +397,14 @@ fn print_entitlement_timer_effect(effect: &StudioAppHostEntitlementTimerEffect) 
     }
 }
 
-fn expect_window_opened(app_host: &mut StudioGuiDriver, context: &str) -> StudioGuiHostWindowOpened {
+fn expect_window_opened(
+    app_host: &mut StudioGuiDriver,
+    context: &str,
+) -> StudioGuiHostWindowOpened {
     match app_host.dispatch_event(StudioGuiEvent::OpenWindowRequested) {
         Ok(StudioGuiDriverDispatch {
-            outcome: StudioGuiDriverOutcome::HostCommand(
-                StudioGuiHostCommandOutcome::WindowOpened(result),
-            ),
+            outcome:
+                StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::WindowOpened(result)),
             ..
         }) => result,
         Ok(other) => {
@@ -365,9 +434,10 @@ fn expect_window_dispatch(
 ) -> StudioGuiHostDispatch {
     match app_host.dispatch_event(StudioGuiEvent::WindowTriggerRequested { window_id, trigger }) {
         Ok(StudioGuiDriverDispatch {
-            outcome: StudioGuiDriverOutcome::HostCommand(
-                StudioGuiHostCommandOutcome::WindowDispatched(result),
-            ),
+            outcome:
+                StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::WindowDispatched(
+                    result,
+                )),
             ..
         }) => result,
         Ok(other) => {
@@ -396,9 +466,10 @@ fn expect_lifecycle_event(
 ) -> StudioGuiHostLifecycleDispatch {
     match app_host.dispatch_event(event) {
         Ok(StudioGuiDriverDispatch {
-            outcome: StudioGuiDriverOutcome::HostCommand(
-                StudioGuiHostCommandOutcome::LifecycleDispatched(result),
-            ),
+            outcome:
+                StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::LifecycleDispatched(
+                    result,
+                )),
             ..
         }) => result,
         Ok(other) => {
@@ -427,9 +498,8 @@ fn expect_close_window(
 ) -> StudioGuiHostCloseWindowResult {
     match app_host.dispatch_event(StudioGuiEvent::CloseWindowRequested { window_id }) {
         Ok(StudioGuiDriverDispatch {
-            outcome: StudioGuiDriverOutcome::HostCommand(
-                StudioGuiHostCommandOutcome::WindowClosed(result),
-            ),
+            outcome:
+                StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::WindowClosed(result)),
             ..
         }) => result,
         Ok(other) => {
@@ -543,4 +613,102 @@ fn print_timer_driver_transition(transition: &StudioGuiNativeTimerOperation) {
 
 fn print_timer_driver_ack(ack: &StudioWindowTimerDriverAckResult) {
     println!("  native timer ack: {:?}", ack);
+}
+
+#[cfg(test)]
+mod tests {
+    use std::{
+        fs,
+        path::PathBuf,
+        time::{SystemTime, UNIX_EPOCH},
+    };
+
+    use radishflow_studio::{
+        StudioGuiDriver, StudioGuiEvent, StudioRuntimeConfig, StudioRuntimeEntitlementPreflight,
+        StudioRuntimeEntitlementSeed,
+    };
+
+    use super::canvas_summary_lines;
+
+    fn lease_expiring_config() -> StudioRuntimeConfig {
+        StudioRuntimeConfig {
+            entitlement_preflight: StudioRuntimeEntitlementPreflight::Skip,
+            entitlement_seed: StudioRuntimeEntitlementSeed::LeaseExpiringSoon,
+            ..StudioRuntimeConfig::default()
+        }
+    }
+
+    fn flash_drum_local_rules_config() -> (StudioRuntimeConfig, PathBuf) {
+        let timestamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("expected current timestamp")
+            .as_nanos();
+        let project_path = std::env::temp_dir().join(format!(
+            "radishflow-studio-main-canvas-{timestamp}.rfproj.json"
+        ));
+        let project =
+            include_str!("../../../examples/flowsheets/feed-heater-flash.rfproj.json")
+                .replacen(
+                    "\"name\": \"inlet\",\n              \"direction\": \"inlet\",\n              \"kind\": \"material\",\n              \"stream_id\": \"stream-heated\"",
+                    "\"name\": \"inlet\",\n              \"direction\": \"inlet\",\n              \"kind\": \"material\",\n              \"stream_id\": null",
+                    1,
+                )
+                .replacen(
+                    "\"name\": \"liquid\",\n              \"direction\": \"outlet\",\n              \"kind\": \"material\",\n              \"stream_id\": \"stream-liquid\"",
+                    "\"name\": \"liquid\",\n              \"direction\": \"outlet\",\n              \"kind\": \"material\",\n              \"stream_id\": null",
+                    1,
+                )
+                .replacen(
+                    "\"name\": \"vapor\",\n              \"direction\": \"outlet\",\n              \"kind\": \"material\",\n              \"stream_id\": \"stream-vapor\"",
+                    "\"name\": \"vapor\",\n              \"direction\": \"outlet\",\n              \"kind\": \"material\",\n              \"stream_id\": null",
+                    1,
+                );
+        fs::write(&project_path, project).expect("expected local rules project");
+
+        (
+            StudioRuntimeConfig {
+                project_path: project_path.clone(),
+                ..lease_expiring_config()
+            },
+            project_path,
+        )
+    }
+
+    #[test]
+    fn canvas_summary_lines_report_empty_canvas_state() {
+        let lines = canvas_summary_lines(&radishflow_studio::StudioGuiCanvasState::default());
+
+        assert_eq!(
+            lines,
+            vec![
+                "focused suggestion: none".to_string(),
+                "suggestion count: 0".to_string(),
+            ]
+        );
+    }
+
+    #[test]
+    fn canvas_summary_lines_consume_driver_dispatch_canvas_state() {
+        let (config, project_path) = flash_drum_local_rules_config();
+        let mut driver = StudioGuiDriver::new(&config).expect("expected driver");
+
+        let dispatch = driver
+            .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+            .expect("expected open dispatch");
+        let lines = canvas_summary_lines(&dispatch.canvas);
+
+        assert_eq!(lines[0], "focused suggestion: local.flash_drum.connect_inlet.flash-1.stream-heated");
+        assert_eq!(lines[1], "suggestion count: 3");
+        assert!(lines.iter().any(|line| {
+            line == "* local.flash_drum.connect_inlet.flash-1.stream-heated [focused] source=local_rules confidence=0.97 target=flash-1 tab_accept=yes reason=Connect stream `stream-heated` to flash drum inlet `inlet`"
+        }));
+        assert!(lines.iter().any(|line| {
+            line == "- local.flash_drum.create_outlet.flash-1.liquid [proposed] source=local_rules confidence=0.93 target=flash-1 tab_accept=yes reason=Create terminal stream `Flash Drum Liquid Outlet` for flash drum outlet `liquid`"
+        }));
+        assert!(lines.iter().any(|line| {
+            line == "- local.flash_drum.create_outlet.flash-1.vapor [proposed] source=local_rules confidence=0.92 target=flash-1 tab_accept=yes reason=Create terminal stream `Flash Drum Vapor Outlet` for flash drum outlet `vapor`"
+        }));
+
+        let _ = fs::remove_file(project_path);
+    }
 }
