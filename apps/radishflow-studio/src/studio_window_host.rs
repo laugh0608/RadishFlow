@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 
 use rf_types::{RfError, RfResult};
+use serde::{Deserialize, Serialize};
 
 use crate::{
     StudioRuntime, StudioRuntimeConfig, StudioRuntimeHostAckResult, StudioRuntimeTimerHandleSlot,
@@ -99,7 +100,7 @@ pub enum StudioWindowHostEvent {
     },
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum StudioWindowHostRole {
     EntitlementTimerOwner,
     Observer,

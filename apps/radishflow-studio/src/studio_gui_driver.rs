@@ -132,7 +132,7 @@ impl StudioGuiDriver {
             }
         };
         let snapshot = self.host.snapshot();
-        let window = snapshot.window_model();
+        let window = snapshot.window_model_for_window(layout_scope_window_id(&outcome));
         Ok(StudioGuiDriverDispatch {
             event,
             outcome,
@@ -143,6 +143,44 @@ impl StudioGuiDriver {
             command_registry: self.host.command_registry(),
             canvas: self.host.canvas_state(),
         })
+    }
+}
+
+fn layout_scope_window_id(outcome: &StudioGuiDriverOutcome) -> Option<StudioWindowHostId> {
+    match outcome {
+        StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::WindowOpened(opened)) => {
+            Some(opened.registration.window_id)
+        }
+        StudioGuiDriverOutcome::HostCommand(
+            StudioGuiHostCommandOutcome::WindowDispatched(dispatch),
+        ) => Some(dispatch.target_window_id),
+        StudioGuiDriverOutcome::HostCommand(
+            StudioGuiHostCommandOutcome::LifecycleDispatched(lifecycle),
+        ) => lifecycle
+            .dispatch
+            .as_ref()
+            .map(|dispatch| dispatch.target_window_id),
+        StudioGuiDriverOutcome::HostCommand(
+            StudioGuiHostCommandOutcome::UiCommandDispatched(
+                crate::StudioGuiHostUiCommandDispatchResult::Executed(dispatch),
+            ),
+        ) => Some(dispatch.target_window_id),
+        StudioGuiDriverOutcome::HostCommand(
+            StudioGuiHostCommandOutcome::UiCommandDispatched(
+                crate::StudioGuiHostUiCommandDispatchResult::IgnoredDisabled {
+                    target_window_id,
+                    ..
+                },
+            ),
+        ) => *target_window_id,
+        StudioGuiDriverOutcome::HostCommand(
+            StudioGuiHostCommandOutcome::UiCommandDispatched(
+                crate::StudioGuiHostUiCommandDispatchResult::IgnoredMissing { .. },
+            ),
+        )
+        | StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::WindowClosed(_))
+        | StudioGuiDriverOutcome::CanvasInteraction(_)
+        | StudioGuiDriverOutcome::IgnoredShortcut { .. } => None,
     }
 }
 

@@ -177,7 +177,9 @@ pub use studio_gui_host::{
 pub use studio_gui_snapshot::{StudioGuiRuntimeSnapshot, StudioGuiSnapshot};
 pub use studio_gui_window_layout::{
     StudioGuiWindowAreaId, StudioGuiWindowDockRegion, StudioGuiWindowLayoutModel,
-    StudioGuiWindowPanelLayout, StudioGuiWindowTitlebarModel,
+    StudioGuiWindowLayoutScope, StudioGuiWindowLayoutScopeKind, StudioGuiWindowLayoutState,
+    StudioGuiWindowPanelLayout, StudioGuiWindowPanelLayoutState,
+    StudioGuiWindowRegionWeight, StudioGuiWindowTitlebarModel,
 };
 pub use studio_gui_window_model::{
     StudioGuiWindowCanvasAreaModel, StudioGuiWindowCommandAreaModel, StudioGuiWindowHeaderModel,

@@ -39,6 +39,17 @@ fn print_window_model(title: &str, window: &StudioGuiWindowModel) {
         "  Layout: center={:?} default_focus={:?}",
         layout.center_area, layout.default_focus_area
     );
+    println!(
+        "  Layout state: scope={:?} window={:?} role={:?} key={}",
+        layout.state.scope.kind,
+        layout.state.scope.window_id,
+        layout.state.scope.window_role,
+        layout.state.scope.layout_key
+    );
+    println!("  Region weights:");
+    for region in &layout.region_weights {
+        println!("    - {:?}: {}", region.dock_region, region.weight);
+    }
     println!("  Panels:");
     for panel in &layout.panels {
         println!(

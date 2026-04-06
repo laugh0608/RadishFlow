@@ -1,6 +1,7 @@
 use crate::{
     EntitlementSessionHostRuntimeOutput, StudioGuiCanvasWidgetModel, StudioGuiCommandRegistry,
-    StudioGuiCommandSection, StudioGuiSnapshot, StudioWindowHostId, WorkspaceControlState,
+    StudioGuiCommandSection, StudioGuiSnapshot, StudioGuiWindowLayoutState, StudioWindowHostId,
+    WorkspaceControlState,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -46,15 +47,24 @@ pub struct StudioGuiWindowModel {
     pub commands: StudioGuiWindowCommandAreaModel,
     pub canvas: StudioGuiWindowCanvasAreaModel,
     pub runtime: StudioGuiWindowRuntimeAreaModel,
+    pub layout_state: StudioGuiWindowLayoutState,
 }
 
 impl StudioGuiWindowModel {
     pub fn from_snapshot(snapshot: &StudioGuiSnapshot) -> Self {
+        Self::from_snapshot_for_window(snapshot, None)
+    }
+
+    pub fn from_snapshot_for_window(
+        snapshot: &StudioGuiSnapshot,
+        window_id: Option<StudioWindowHostId>,
+    ) -> Self {
         Self {
             header: header_from_snapshot(snapshot),
             commands: commands_from_registry(&snapshot.command_registry),
             canvas: canvas_from_snapshot(snapshot),
             runtime: runtime_from_snapshot(snapshot),
+            layout_state: StudioGuiWindowLayoutState::from_snapshot_for_window(snapshot, window_id),
         }
     }
 }
@@ -62,6 +72,13 @@ impl StudioGuiWindowModel {
 impl StudioGuiSnapshot {
     pub fn window_model(&self) -> StudioGuiWindowModel {
         StudioGuiWindowModel::from_snapshot(self)
+    }
+
+    pub fn window_model_for_window(
+        &self,
+        window_id: Option<StudioWindowHostId>,
+    ) -> StudioGuiWindowModel {
+        StudioGuiWindowModel::from_snapshot_for_window(self, window_id)
     }
 }
 
@@ -151,7 +168,8 @@ mod tests {
 
     use crate::{
         StudioGuiDriver, StudioGuiDriverOutcome, StudioGuiEvent, StudioGuiHostCommandOutcome,
-        StudioRuntimeConfig, StudioRuntimeEntitlementPreflight, StudioRuntimeEntitlementSeed,
+        StudioGuiWindowLayoutScopeKind, StudioRuntimeConfig,
+        StudioRuntimeEntitlementPreflight, StudioRuntimeEntitlementSeed,
         StudioRuntimeEntitlementSessionEvent, StudioRuntimeTrigger,
     };
 
@@ -247,6 +265,8 @@ mod tests {
             window.runtime.latest_log_entry,
             window.runtime.log_entries.last().cloned()
         );
+        assert_eq!(window.layout_state.scope.kind, StudioGuiWindowLayoutScopeKind::Window);
+        assert_eq!(window.layout_state.scope.layout_key, "studio.window.owner.1");
 
         let _ = fs::remove_file(project_path);
     }
@@ -282,5 +302,10 @@ mod tests {
         assert_eq!(window.header.entitlement_timer_owner_window_id, None);
         assert!(window.header.has_parked_entitlement_timer);
         assert!(window.header.status_line.contains("timer owner: parked"));
+        assert_eq!(
+            window.layout_state.scope.kind,
+            StudioGuiWindowLayoutScopeKind::EmptyWorkspace
+        );
+        assert_eq!(window.layout_state.scope.layout_key, "studio.window.empty");
     }
 }

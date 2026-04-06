@@ -165,18 +165,18 @@ impl StudioGuiHost {
     }
 
     pub fn snapshot(&self) -> StudioGuiSnapshot {
-        StudioGuiSnapshot {
-            app_host_state: self.state().clone(),
-            ui_commands: self.ui_commands(),
-            command_registry: self.command_registry(),
-            canvas: self.canvas_state().widget(),
-            runtime: StudioGuiRuntimeSnapshot {
+        StudioGuiSnapshot::new(
+            self.state().clone(),
+            self.ui_commands(),
+            self.command_registry(),
+            self.canvas_state().widget(),
+            StudioGuiRuntimeSnapshot {
                 control_state: self.controller.workspace_control_state(),
                 run_panel: self.controller.run_panel_widget(),
                 entitlement_host: self.controller.entitlement_host_output(),
                 log_entries: self.controller.log_entries(),
             },
-        }
+        )
     }
 
     pub fn refresh_local_canvas_suggestions(&mut self) {
