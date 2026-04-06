@@ -1,4 +1,6 @@
-use rf_types::RfResult;
+use std::collections::BTreeMap;
+
+use rf_types::{RfError, RfResult};
 use rf_ui::{AppLogEntry, CanvasSuggestion, CanvasSuggestionId};
 
 use crate::{
@@ -7,6 +9,7 @@ use crate::{
     StudioAppHostUiCommandDispatchResult, StudioAppHostUiCommandModel,
     StudioAppHostWindowDispatchResult, StudioAppWindowHostGlobalEvent, StudioGuiCommandRegistry,
     StudioGuiNativeTimerEffects, StudioGuiRuntimeSnapshot, StudioGuiSnapshot,
+    StudioGuiWindowLayoutMutation, StudioGuiWindowLayoutState, StudioGuiWindowModel,
     StudioRuntimeConfig, StudioRuntimeTrigger, StudioWindowHostId, StudioWindowHostRegistration,
 };
 
@@ -98,6 +101,13 @@ pub struct StudioGuiHostCanvasInteractionResult {
 
 pub type StudioGuiHostCanvasSuggestionResult = StudioGuiHostCanvasInteractionResult;
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioGuiHostWindowLayoutUpdateResult {
+    pub target_window_id: Option<StudioWindowHostId>,
+    pub mutation: StudioGuiWindowLayoutMutation,
+    pub layout_state: StudioGuiWindowLayoutState,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StudioGuiCanvasInteractionAction {
     AcceptFocusedByTab,
@@ -135,12 +145,14 @@ pub enum StudioGuiHostCommandOutcome {
 
 pub struct StudioGuiHost {
     controller: StudioAppHostController,
+    layout_state_overrides: BTreeMap<String, StudioGuiWindowLayoutState>,
 }
 
 impl StudioGuiHost {
     pub fn new(config: &StudioRuntimeConfig) -> RfResult<Self> {
         Ok(Self {
             controller: StudioAppHostController::new(config)?,
+            layout_state_overrides: BTreeMap::new(),
         })
     }
 
@@ -165,7 +177,7 @@ impl StudioGuiHost {
     }
 
     pub fn snapshot(&self) -> StudioGuiSnapshot {
-        StudioGuiSnapshot::new(
+        let mut snapshot = StudioGuiSnapshot::new(
             self.state().clone(),
             self.ui_commands(),
             self.command_registry(),
@@ -176,7 +188,19 @@ impl StudioGuiHost {
                 entitlement_host: self.controller.entitlement_host_output(),
                 log_entries: self.controller.log_entries(),
             },
-        )
+        );
+        snapshot.layout_state = self.layout_state_for_window_from_snapshot(&snapshot, None);
+        snapshot
+    }
+
+    pub fn window_model_for_window(
+        &self,
+        window_id: Option<StudioWindowHostId>,
+    ) -> StudioGuiWindowModel {
+        let snapshot = self.snapshot();
+        let mut window = snapshot.window_model_for_window(window_id);
+        window.layout_state = self.layout_state_for_window_from_snapshot(&snapshot, window_id);
+        window
     }
 
     pub fn refresh_local_canvas_suggestions(&mut self) {
@@ -185,6 +209,32 @@ impl StudioGuiHost {
 
     pub fn replace_canvas_suggestions(&mut self, suggestions: Vec<CanvasSuggestion>) {
         self.controller.replace_canvas_suggestions(suggestions);
+    }
+
+    pub fn update_window_layout(
+        &mut self,
+        window_id: Option<StudioWindowHostId>,
+        mutation: StudioGuiWindowLayoutMutation,
+    ) -> RfResult<StudioGuiHostWindowLayoutUpdateResult> {
+        if let Some(window_id) = window_id.filter(|window_id| self.state().window(*window_id).is_none()) {
+            return Err(RfError::invalid_input(format!(
+                "window host `{window_id}` is not registered for layout updates"
+            )));
+        }
+        let snapshot = self.snapshot();
+        let layout_state = self
+            .layout_state_for_window_from_snapshot(&snapshot, window_id)
+            .applying_mutation(&mutation);
+        self.layout_state_overrides.insert(
+            layout_state.scope.layout_key.clone(),
+            layout_state.clone(),
+        );
+
+        Ok(StudioGuiHostWindowLayoutUpdateResult {
+            target_window_id: layout_state.scope.window_id,
+            mutation,
+            layout_state,
+        })
     }
 
     pub fn accept_focused_canvas_suggestion_by_tab(
@@ -375,6 +425,18 @@ impl StudioGuiHost {
 }
 
 impl StudioGuiHost {
+    fn layout_state_for_window_from_snapshot(
+        &self,
+        snapshot: &StudioGuiSnapshot,
+        window_id: Option<StudioWindowHostId>,
+    ) -> StudioGuiWindowLayoutState {
+        let derived = StudioGuiWindowLayoutState::from_snapshot_for_window(snapshot, window_id);
+        self.layout_state_overrides
+            .get(&derived.scope.layout_key)
+            .map(|persisted| derived.merged_with_persisted(persisted))
+            .unwrap_or(derived)
+    }
+
     fn build_canvas_interaction_result(
         &self,
         action: StudioGuiCanvasInteractionAction,

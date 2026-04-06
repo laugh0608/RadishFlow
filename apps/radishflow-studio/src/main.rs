@@ -3,9 +3,9 @@ use radishflow_studio::{
     StudioGuiDriver, StudioGuiDriverDispatch, StudioGuiDriverOutcome, StudioGuiEvent,
     StudioGuiHostCloseWindowResult, StudioGuiHostCommandOutcome, StudioGuiHostDispatch,
     StudioGuiHostLifecycleDispatch, StudioGuiHostWindowOpened, StudioGuiNativeTimerEffects,
-    StudioGuiNativeTimerOperation, StudioGuiWindowModel, StudioRuntimeConfig,
-    StudioRuntimeDispatch, StudioRuntimeReport, StudioWindowHostRetirement,
-    StudioWindowTimerDriverAckResult,
+    StudioGuiNativeTimerOperation, StudioGuiWindowAreaId, StudioGuiWindowLayoutMutation,
+    StudioGuiWindowModel, StudioRuntimeConfig, StudioRuntimeDispatch, StudioRuntimeReport,
+    StudioWindowHostRetirement, StudioWindowTimerDriverAckResult,
 };
 
 fn print_text_view(title: &str, lines: &[String]) {
@@ -152,6 +152,19 @@ fn main() {
     print_window_model(
         "Window model after opening window",
         &app_host.snapshot().window_model(),
+    );
+    let layout_update = app_host
+        .dispatch_event(StudioGuiEvent::WindowLayoutMutationRequested {
+            window_id: Some(window.window_id),
+            mutation: StudioGuiWindowLayoutMutation::SetPanelCollapsed {
+                area_id: StudioGuiWindowAreaId::Commands,
+                collapsed: true,
+            },
+        })
+        .expect("expected window layout update");
+    print_window_model(
+        "Window model after collapsing commands panel",
+        &layout_update.window,
     );
     if let Some(slot) = window.restored_entitlement_timer.as_ref() {
         println!("Restored parked timer slot into window host: {:?}", slot);

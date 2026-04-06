@@ -172,13 +172,14 @@ pub use studio_gui_host::{
     StudioGuiHostCanvasInteractionResult, StudioGuiHostCanvasSuggestionResult,
     StudioGuiHostCloseWindowResult, StudioGuiHostCommand, StudioGuiHostCommandOutcome,
     StudioGuiHostDispatch, StudioGuiHostGlobalEventDispatch, StudioGuiHostLifecycleDispatch,
-    StudioGuiHostLifecycleEvent, StudioGuiHostUiCommandDispatchResult, StudioGuiHostWindowOpened,
+    StudioGuiHostLifecycleEvent, StudioGuiHostUiCommandDispatchResult,
+    StudioGuiHostWindowLayoutUpdateResult, StudioGuiHostWindowOpened,
 };
 pub use studio_gui_snapshot::{StudioGuiRuntimeSnapshot, StudioGuiSnapshot};
 pub use studio_gui_window_layout::{
     StudioGuiWindowAreaId, StudioGuiWindowDockRegion, StudioGuiWindowLayoutModel,
     StudioGuiWindowLayoutScope, StudioGuiWindowLayoutScopeKind, StudioGuiWindowLayoutState,
-    StudioGuiWindowPanelLayout, StudioGuiWindowPanelLayoutState,
+    StudioGuiWindowLayoutMutation, StudioGuiWindowPanelLayout, StudioGuiWindowPanelLayoutState,
     StudioGuiWindowRegionWeight, StudioGuiWindowTitlebarModel,
 };
 pub use studio_gui_window_model::{

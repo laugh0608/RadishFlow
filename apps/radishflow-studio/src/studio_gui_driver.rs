@@ -5,8 +5,9 @@ use crate::{
     StudioGuiCanvasInteractionAction,
     StudioGuiCommandRegistry, StudioGuiFocusContext, StudioGuiHost,
     StudioGuiHostCanvasInteractionResult, StudioGuiHostCommand, StudioGuiHostCommandOutcome,
-    StudioGuiHostLifecycleEvent, StudioGuiShortcut, StudioGuiShortcutIgnoreReason,
-    StudioGuiShortcutRoute, StudioGuiSnapshot, StudioGuiWindowModel, StudioRuntimeConfig,
+    StudioGuiHostLifecycleEvent, StudioGuiHostWindowLayoutUpdateResult, StudioGuiShortcut,
+    StudioGuiShortcutIgnoreReason, StudioGuiShortcutRoute, StudioGuiSnapshot,
+    StudioGuiWindowLayoutMutation, StudioGuiWindowModel, StudioRuntimeConfig,
     StudioRuntimeTrigger, StudioWindowHostId,
 };
 
@@ -30,6 +31,10 @@ pub enum StudioGuiEvent {
     CanvasSuggestionRejectRequested,
     CanvasSuggestionFocusNextRequested,
     CanvasSuggestionFocusPreviousRequested,
+    WindowLayoutMutationRequested {
+        window_id: Option<StudioWindowHostId>,
+        mutation: StudioGuiWindowLayoutMutation,
+    },
     ShortcutPressed {
         shortcut: StudioGuiShortcut,
         focus_context: StudioGuiFocusContext,
@@ -56,6 +61,7 @@ pub struct StudioGuiDriverDispatch {
 pub enum StudioGuiDriverOutcome {
     HostCommand(StudioGuiHostCommandOutcome),
     CanvasInteraction(StudioGuiHostCanvasInteractionResult),
+    WindowLayoutUpdated(StudioGuiHostWindowLayoutUpdateResult),
     IgnoredShortcut {
         shortcut: StudioGuiShortcut,
         reason: StudioGuiShortcutIgnoreReason,
@@ -101,6 +107,13 @@ impl StudioGuiDriver {
         self.snapshot().window_model()
     }
 
+    pub fn window_model_for_window(
+        &self,
+        window_id: Option<StudioWindowHostId>,
+    ) -> StudioGuiWindowModel {
+        self.host.window_model_for_window(window_id)
+    }
+
     pub fn replace_canvas_suggestions(&mut self, suggestions: Vec<rf_ui::CanvasSuggestion>) {
         self.host.replace_canvas_suggestions(suggestions);
     }
@@ -130,9 +143,14 @@ impl StudioGuiDriver {
             DriverRoute::IgnoredShortcut { shortcut, reason } => {
                 StudioGuiDriverOutcome::IgnoredShortcut { shortcut, reason }
             }
+            DriverRoute::WindowLayoutMutation { window_id, mutation } => {
+                StudioGuiDriverOutcome::WindowLayoutUpdated(
+                    self.host.update_window_layout(window_id, mutation)?,
+                )
+            }
         };
         let snapshot = self.host.snapshot();
-        let window = snapshot.window_model_for_window(layout_scope_window_id(&outcome));
+        let window = self.host.window_model_for_window(layout_scope_window_id(&outcome));
         Ok(StudioGuiDriverDispatch {
             event,
             outcome,
@@ -178,15 +196,28 @@ fn layout_scope_window_id(outcome: &StudioGuiDriverOutcome) -> Option<StudioWind
                 crate::StudioGuiHostUiCommandDispatchResult::IgnoredMissing { .. },
             ),
         )
+        | StudioGuiDriverOutcome::WindowLayoutUpdated(
+            crate::StudioGuiHostWindowLayoutUpdateResult { target_window_id: None, .. },
+        )
         | StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::WindowClosed(_))
         | StudioGuiDriverOutcome::CanvasInteraction(_)
         | StudioGuiDriverOutcome::IgnoredShortcut { .. } => None,
+        StudioGuiDriverOutcome::WindowLayoutUpdated(
+            crate::StudioGuiHostWindowLayoutUpdateResult {
+                target_window_id: Some(window_id),
+                ..
+            },
+        ) => Some(*window_id),
     }
 }
 
 enum DriverRoute {
     HostCommand(StudioGuiHostCommand),
     CanvasInteraction(StudioGuiCanvasInteractionAction),
+    WindowLayoutMutation {
+        window_id: Option<StudioWindowHostId>,
+        mutation: StudioGuiWindowLayoutMutation,
+    },
     IgnoredShortcut {
         shortcut: StudioGuiShortcut,
         reason: StudioGuiShortcutIgnoreReason,
@@ -232,6 +263,12 @@ fn route_driver_event(event: &StudioGuiEvent, registry: &StudioGuiCommandRegistr
         }
         StudioGuiEvent::CanvasSuggestionFocusPreviousRequested => {
             DriverRoute::CanvasInteraction(StudioGuiCanvasInteractionAction::FocusPrevious)
+        }
+        StudioGuiEvent::WindowLayoutMutationRequested { window_id, mutation } => {
+            DriverRoute::WindowLayoutMutation {
+                window_id: *window_id,
+                mutation: mutation.clone(),
+            }
         }
         StudioGuiEvent::ShortcutPressed {
             shortcut,
@@ -293,7 +330,8 @@ mod tests {
         StudioGuiEvent, StudioGuiFocusContext, StudioGuiHostCanvasInteractionResult,
         StudioGuiHostCommandOutcome,
         StudioGuiHostUiCommandDispatchResult, StudioGuiShortcut, StudioGuiShortcutIgnoreReason,
-        StudioGuiShortcutKey, StudioGuiShortcutModifier, StudioRuntimeConfig,
+        StudioGuiShortcutKey, StudioGuiShortcutModifier, StudioGuiWindowAreaId,
+        StudioGuiWindowDockRegion, StudioGuiWindowLayoutMutation, StudioRuntimeConfig,
         StudioRuntimeEntitlementPreflight, StudioRuntimeEntitlementSeed,
     };
     use rf_ui::{
@@ -766,5 +804,153 @@ mod tests {
         }
 
         let _ = fs::remove_file(project_path);
+    }
+
+    #[test]
+    fn gui_driver_updates_window_layout_and_preserves_per_window_overrides() {
+        let mut driver = StudioGuiDriver::new(&lease_expiring_config()).expect("expected driver");
+        let first = driver
+            .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+            .expect("expected first open dispatch");
+        let first_window_id = match first.outcome {
+            StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::WindowOpened(
+                opened,
+            )) => opened.registration.window_id,
+            other => panic!("expected first window opened outcome, got {other:?}"),
+        };
+        let second = driver
+            .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+            .expect("expected second open dispatch");
+        let second_window_id = match second.outcome {
+            StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::WindowOpened(
+                opened,
+            )) => opened.registration.window_id,
+            other => panic!("expected second window opened outcome, got {other:?}"),
+        };
+
+        let hidden_runtime = driver
+            .dispatch_event(StudioGuiEvent::WindowLayoutMutationRequested {
+                window_id: Some(second_window_id),
+                mutation: StudioGuiWindowLayoutMutation::SetPanelVisibility {
+                    area_id: StudioGuiWindowAreaId::Runtime,
+                    visible: false,
+                },
+            })
+            .expect("expected layout visibility update");
+        match hidden_runtime.outcome {
+            StudioGuiDriverOutcome::WindowLayoutUpdated(result) => {
+                assert_eq!(result.target_window_id, Some(second_window_id));
+                assert_eq!(
+                    result
+                        .layout_state
+                        .panel(StudioGuiWindowAreaId::Runtime)
+                        .map(|panel| panel.visible),
+                    Some(false)
+                );
+            }
+            other => panic!("expected window layout update outcome, got {other:?}"),
+        }
+
+        let collapsed_commands = driver
+            .dispatch_event(StudioGuiEvent::WindowLayoutMutationRequested {
+                window_id: Some(second_window_id),
+                mutation: StudioGuiWindowLayoutMutation::SetPanelCollapsed {
+                    area_id: StudioGuiWindowAreaId::Commands,
+                    collapsed: true,
+                },
+            })
+            .expect("expected layout collapsed update");
+        match collapsed_commands.outcome {
+            StudioGuiDriverOutcome::WindowLayoutUpdated(result) => {
+                assert_eq!(result.target_window_id, Some(second_window_id));
+                assert_eq!(
+                    result
+                        .layout_state
+                        .panel(StudioGuiWindowAreaId::Commands)
+                        .map(|panel| panel.collapsed),
+                    Some(true)
+                );
+            }
+            other => panic!("expected window layout update outcome, got {other:?}"),
+        }
+
+        let weighted = driver
+            .dispatch_event(StudioGuiEvent::WindowLayoutMutationRequested {
+                window_id: Some(second_window_id),
+                mutation: StudioGuiWindowLayoutMutation::SetRegionWeight {
+                    dock_region: StudioGuiWindowDockRegion::RightSidebar,
+                    weight: 31,
+                },
+            })
+            .expect("expected layout weight update");
+        match weighted.outcome {
+            StudioGuiDriverOutcome::WindowLayoutUpdated(result) => {
+                assert_eq!(result.target_window_id, Some(second_window_id));
+                assert_eq!(
+                    result
+                        .layout_state
+                        .region_weight(StudioGuiWindowDockRegion::RightSidebar)
+                        .map(|region| region.weight),
+                    Some(31)
+                );
+            }
+            other => panic!("expected window layout update outcome, got {other:?}"),
+        }
+
+        let first_window = driver.window_model_for_window(Some(first_window_id));
+        let second_window = driver.window_model_for_window(Some(second_window_id));
+
+        assert_eq!(
+            first_window
+                .layout_state
+                .panel(StudioGuiWindowAreaId::Runtime)
+                .map(|panel| panel.visible),
+            Some(true)
+        );
+        assert_eq!(
+            second_window
+                .layout_state
+                .panel(StudioGuiWindowAreaId::Runtime)
+                .map(|panel| panel.visible),
+            Some(false)
+        );
+        assert_eq!(
+            second_window
+                .layout_state
+                .panel(StudioGuiWindowAreaId::Commands)
+                .map(|panel| panel.collapsed),
+            Some(true)
+        );
+        assert_eq!(
+            first_window
+                .layout_state
+                .region_weight(StudioGuiWindowDockRegion::RightSidebar)
+                .map(|region| region.weight),
+            Some(24)
+        );
+        assert_eq!(
+            second_window
+                .layout_state
+                .region_weight(StudioGuiWindowDockRegion::RightSidebar)
+                .map(|region| region.weight),
+            Some(31)
+        );
+    }
+
+    #[test]
+    fn gui_driver_rejects_layout_update_for_unknown_window() {
+        let mut driver = StudioGuiDriver::new(&lease_expiring_config()).expect("expected driver");
+
+        let error = driver
+            .dispatch_event(StudioGuiEvent::WindowLayoutMutationRequested {
+                window_id: Some(99),
+                mutation: StudioGuiWindowLayoutMutation::SetPanelCollapsed {
+                    area_id: StudioGuiWindowAreaId::Commands,
+                    collapsed: true,
+                },
+            })
+            .expect_err("expected invalid layout target");
+
+        assert_eq!(error.code().as_str(), "invalid_input");
     }
 }

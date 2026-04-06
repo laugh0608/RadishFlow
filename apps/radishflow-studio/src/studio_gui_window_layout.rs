@@ -58,6 +58,22 @@ pub struct StudioGuiWindowLayoutState {
     pub default_focus_area: StudioGuiWindowAreaId,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum StudioGuiWindowLayoutMutation {
+    SetPanelVisibility {
+        area_id: StudioGuiWindowAreaId,
+        visible: bool,
+    },
+    SetPanelCollapsed {
+        area_id: StudioGuiWindowAreaId,
+        collapsed: bool,
+    },
+    SetRegionWeight {
+        dock_region: StudioGuiWindowDockRegion,
+        weight: u16,
+    },
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StudioGuiWindowTitlebarModel {
     pub title: String,
@@ -152,6 +168,55 @@ impl StudioGuiWindowLayoutState {
         self.region_weights
             .iter()
             .find(|region| region.dock_region == dock_region)
+    }
+
+    pub fn merged_with_persisted(&self, persisted: &Self) -> Self {
+        let mut merged = self.clone();
+
+        for panel in &persisted.panels {
+            upsert_panel_state(&mut merged.panels, panel.clone());
+        }
+        for region in &persisted.region_weights {
+            upsert_region_weight(&mut merged.region_weights, region.clone());
+        }
+
+        merged.center_area = persisted.center_area;
+        merged
+    }
+
+    pub fn applying_mutation(&self, mutation: &StudioGuiWindowLayoutMutation) -> Self {
+        let mut next = self.clone();
+        match mutation {
+            StudioGuiWindowLayoutMutation::SetPanelVisibility { area_id, visible } => {
+                let mut panel = next
+                    .panel(*area_id)
+                    .cloned()
+                    .unwrap_or_else(|| default_panel_state(*area_id));
+                panel.visible = *visible;
+                upsert_panel_state(&mut next.panels, panel);
+            }
+            StudioGuiWindowLayoutMutation::SetPanelCollapsed { area_id, collapsed } => {
+                let mut panel = next
+                    .panel(*area_id)
+                    .cloned()
+                    .unwrap_or_else(|| default_panel_state(*area_id));
+                panel.collapsed = *collapsed;
+                upsert_panel_state(&mut next.panels, panel);
+            }
+            StudioGuiWindowLayoutMutation::SetRegionWeight {
+                dock_region,
+                weight,
+            } => {
+                upsert_region_weight(
+                    &mut next.region_weights,
+                    StudioGuiWindowRegionWeight {
+                        dock_region: *dock_region,
+                        weight: (*weight).max(1),
+                    },
+                );
+            }
+        }
+        next
     }
 }
 
@@ -353,6 +418,32 @@ fn default_region_weights() -> Vec<StudioGuiWindowRegionWeight> {
             weight: 24,
         },
     ]
+}
+
+fn upsert_panel_state(
+    panels: &mut Vec<StudioGuiWindowPanelLayoutState>,
+    panel: StudioGuiWindowPanelLayoutState,
+) {
+    if let Some(index) = panels.iter().position(|candidate| candidate.area_id == panel.area_id) {
+        panels[index] = panel;
+    } else {
+        panels.push(panel);
+        panels.sort_by_key(|candidate| candidate.order);
+    }
+}
+
+fn upsert_region_weight(
+    regions: &mut Vec<StudioGuiWindowRegionWeight>,
+    region: StudioGuiWindowRegionWeight,
+) {
+    if let Some(index) = regions
+        .iter()
+        .position(|candidate| candidate.dock_region == region.dock_region)
+    {
+        regions[index] = region;
+    } else {
+        regions.push(region);
+    }
 }
 
 #[cfg(test)]
