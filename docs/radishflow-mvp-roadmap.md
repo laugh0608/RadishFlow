@@ -1,6 +1,6 @@
 # RadishFlow MVP 开发路线图
 
-更新时间：2026-04-05
+更新时间：2026-04-06
 
 ## 文档目的
 
@@ -179,6 +179,9 @@ MVP 阶段明确不做：
 - `apps/radishflow-studio` 当前已具备 `StudioAppFacade -> WorkspaceRunCommand -> WorkspaceSolveService -> solver_bridge` 四级应用层入口，可基于 `PropertyPackageProvider` 或本地 `StoredAuthCacheIndex` 执行真实 solve
 - Studio 当前把运行触发先区分为 `Manual` / `Automatic`，并把 `SimulationMode`、`pending_reason` 与默认 `snapshot_id` / `sequence` 生成收口到应用层
 - Studio 当前默认包选择采取保守策略：只有在唯一候选包明确时才自动选中，多包场景必须显式指定 package
+- Studio 当前又已形成 `StudioGuiHost / StudioGuiDriver / StudioGuiSnapshot / StudioGuiWindowModel / StudioGuiWindowLayoutState` 这一条 GUI-facing 宿主与窗口布局契约
+- Studio 当前窗口布局状态已覆盖 `panel visibility/collapsed/order`、`center_area`、`region_weights` 与多窗口 `layout scope`
+- Studio 当前窗口布局已独立持久化到 `<project>.rfstudio-layout.json` sidecar，并从基于运行时 `window_id` 的 key 收口到基于 `window_role + layout_slot` 的稳定 key
 
 ### 退出标准
 
@@ -327,6 +330,8 @@ MVP 阶段明确不做：
 - Studio 当前也已继续把 app host 输出进一步收口为正式宿主状态层，新增 `StudioAppHostState + StudioAppHostStore + StudioAppHostProjection`，让 GUI 可持有单一 app host state，并由 store 统一推进 `StudioAppHostOutput -> state/projection`，不再自己组合 `outcome + snapshot + changes` 与 timer owner / parked timer 语义
 - Studio 当前也已继续把 app host 命令入口进一步收口为 `StudioAppHostController`，并补出按 GUI 意图命名的 typed result，让最小入口不再直接消费 `StudioAppHostOutput` 或 match raw command outcome
 - Studio 当前也已继续把 GUI 宿主副作用收口到 controller 返回值，补出 dispatch/close effect summary，让最小入口不再直接翻读 `StudioWindowSessionDispatch`、`StudioRuntimeHostPortOutput` 或 close raw shutdown 细节
+- Studio 当前也已继续把 GUI-facing 窗口状态收口为 `snapshot -> window model -> layout state` 三层契约，并让布局 sidecar 与项目文档分离保存
+- Studio 当前也已继续把布局变更事件正式收口到 `WindowLayoutMutationRequested -> WindowLayoutUpdated(...)`，覆盖 `panel visibility/collapsed/order`、`center_area` 与 `region_weights`
 
 截至 2026-04-04，Studio entitlement 宿主边界已进一步形成一条可直接面向真实 GUI 的正式分层：
 
@@ -354,6 +359,7 @@ Studio 当前又已继续把这条 GUI 命令入口推进为稳定 host command 
 - 在已补出的 `StudioAppWindowHostManager + StudioAppWindowHostCommand` 基础上，继续决定真实桌面框架里的 app 生命周期、窗口创建销毁与后台任务事件如何统一接到这条宿主命令面
 - 在已补出的 `StudioAppHost + StudioAppHostSnapshot` 基础上，继续决定真实桌面框架里的 app state store、窗口 registry 与后台任务宿主是否直接复用这份快照作为单一真相源
 - 在已补出的 `StudioAppHost + StudioAppHostSnapshot + StudioAppHostChangeSet` 基础上，继续决定真实桌面框架里的 app state store、窗口 registry 与后台任务宿主如何直接消费正式 snapshot/change 输出，而不是在 GUI 层自行做二次 diff
+- 在已形成的 `StudioGuiWindowLayoutState` 基础上，继续补真实 dock 编排契约，例如 panel 跨区域移动、dock region 正式 mutation 与更完整的标题栏/窗口 scope 语义
 - 在已补出的 `StudioAppHostState + StudioAppHostStore + StudioAppHostProjection` 基础上，继续决定真实桌面框架里的 app 生命周期宿主、窗口创建销毁入口与后台任务桥接是否直接围绕这份正式 state/projection 接线
 - 在已补出的 `StudioAppHostController + StudioAppHostState + StudioAppHostStore + StudioAppHostProjection` 基础上，继续决定真实桌面框架里的原生窗口事件源、app 生命周期宿主与后台任务入口如何直接走这条正式 controller 边界
 - 在已补出的 app host effect summary 基础上，继续决定真实桌面框架里的 native timer handle、后台任务调度和 close retirement 提示如何直接接到这组正式 GUI 宿主副作用

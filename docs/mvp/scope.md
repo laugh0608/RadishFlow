@@ -1,6 +1,6 @@
 # MVP Scope
 
-更新时间：2026-04-05
+更新时间：2026-04-06
 
 ## MVP 目标
 
@@ -60,6 +60,9 @@ App 与交互层当前进一步冻结以下口径：
 - `UserPreferences` 只保存应用级偏好与快照窗口策略，不污染文档语义
 - `CommandHistory` 只记录语义化文档命令，运行控制和文档生命周期动作不进入撤回栈
 - `SolveSessionState` 必须绑定当前观察的文档修订号，`SolveSnapshot` 由工作区持有有界历史窗口
+- Studio 当前 GUI-facing 宿主边界已形成 `StudioGuiHost + StudioGuiDriver + StudioGuiSnapshot + StudioGuiWindowModel + StudioGuiWindowLayoutState` 这一条正式契约，不再要求 `main.rs` 或未来真实 GUI 手工拼装窗口摘要
+- Studio 当前窗口布局状态已冻结为独立 UI 状态面，覆盖 `panel visibility/collapsed/order`、`center_area`、`region_weights` 与多窗口 `layout scope`
+- Studio 当前多窗口布局 scope 已从运行时 `window_id` 收口到基于 `window_role + layout_slot` 的稳定 key，避免布局恢复直接依赖临时窗口号
 - Studio 当前应用层运行入口先冻结为 `StudioAppFacade + WorkspaceRunCommand + WorkspaceSolveService + solver_bridge` 四层，不让 UI 直接拼接底层 provider/solver 细节
 - `rf-ui` 当前运行栏状态先冻结为 `RunPanelState + RunPanelIntent + RunPanelCommandModel + RunPanelWidgetModel`，把按钮意图、主动作、按钮槽位、文本布局和最小渲染/触发所需状态都留在 UI 层，不让视图层或 Studio 侧重复发明一套按钮语义
 - Studio 当前对运行栏的最小消费也已前推到 `RunPanelWidgetEvent`，不再只接受裸 `RunPanelIntent`
@@ -90,7 +93,8 @@ App 与交互层当前进一步冻结以下口径：
 - 派生物性包分发优先采用对象存储 / CDN / 下载网关 + 短时票据，不把控制面 API 设计成长时大文件出口
 - 允许引入离线租约与本地派生物性包缓存，但不承诺客户端绝对防提取
 - 项目文件继续固定为单文件 `*.rfproj.json` 真相源，授权缓存索引与派生包缓存继续留在应用私有缓存根目录
-- MVP 默认不把 `snapshot_history`、token 明文或授权缓存索引混进项目文件
+- MVP 默认不把 `snapshot_history`、token 明文、授权缓存索引或 Studio 窗口布局状态混进项目文件
+- Studio 当前窗口布局偏好已冻结为项目同目录 sidecar：`<project>.rfstudio-layout.json`
 - 桌面交付默认采用“压缩包 + 主入口 + 附带资源目录”的原生客户端形态，不以单文件可执行为当前阶段目标
 
 ## 当前阶段优先目标

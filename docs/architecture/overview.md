@@ -1,6 +1,6 @@
 # Architecture Overview
 
-更新时间：2026-04-05
+更新时间：2026-04-06
 
 ## 目标
 
@@ -57,7 +57,7 @@ RadishFlow 的目标架构已经冻结为“桌面端三层 + 外部控制面”
 | --- | --- | --- |
 | `rf-ui` | UI 状态与行为逻辑 | 已建立 `AppState`、授权态、求解态与控制面 DTO 骨架；已补 `RunPanelState`、`RunPanelIntent`、`RunPanelCommandModel`、`RunPanelViewModel`、`RunPanelPresentation` 与 `RunPanelWidgetModel`，并可把 `rf-solver::SolveSnapshot` 映射为 UI 层结果快照 |
 | `rf-canvas` | 流程图画布能力 | 占位 |
-| `apps/radishflow-studio` | 桌面入口程序 | 已建立 auth cache sync 桥接、控制面 HTTP client、entitlement / manifest / lease / offline refresh 编排、下载获取抽象、基于 `reqwest + rustls` 的真实 HTTP transport、HTTP 请求/响应适配层、可重试/不可重试失败分类、下载 JSON 到本地 payload DTO 的协议映射、摘要校验、失败回滚与测试；并已补上 `PropertyPackageProvider -> rf-solver -> rf-ui::AppState` 的最小工作区求解桥接，可直接基于已加载物性包或本地 auth cache 执行真实 solve 并回写 UI 快照/日志 |
+| `apps/radishflow-studio` | 桌面入口程序 | 已建立 auth cache sync 桥接、控制面 HTTP client、entitlement / manifest / lease / offline refresh 编排、下载获取抽象、基于 `reqwest + rustls` 的真实 HTTP transport、HTTP 请求/响应适配层、可重试/不可重试失败分类、下载 JSON 到本地 payload DTO 的协议映射、摘要校验、失败回滚与测试；并已补上 `PropertyPackageProvider -> rf-solver -> rf-ui::AppState` 的最小工作区求解桥接，可直接基于已加载物性包或本地 auth cache 执行真实 solve 并回写 UI 快照/日志；当前又已形成 `StudioGuiHost / StudioGuiDriver / StudioGuiSnapshot / StudioGuiWindowModel / StudioGuiWindowLayoutState` 这一条 GUI-facing 宿主与窗口布局契约，并把窗口布局持久化为项目同目录 sidecar |
 
 原因很直接：在 `M2/M3` 之前过早推进 UI，会掩盖内核尚未定型的问题。
 
@@ -85,6 +85,15 @@ RadishFlow 的目标架构已经冻结为“桌面端三层 + 外部控制面”
 - `rf-ui` 当前也已补出 `RunPanelViewModel`、`RunPanelTextView`、`RunPanelPresentation` 与 `RunPanelWidgetModel`，让最小入口可以直接消费主按钮/次按钮槽位、文本布局和最小交互语义，而不是继续读取摘要布尔值自行拼装动作
 - `run_studio_bootstrap` / `main.rs` 当前已开始直接消费这套运行栏组件 DTO，而 `run_panel_driver` 已负责回收新的 widget/control state，形成第一处最小真实组件驱动入口
 - 在求解成功/失败时同步更新 `SolveSessionState` 与 `AppLogFeed`
+
+同时，Studio GUI-facing 状态边界当前也已进一步冻结为：
+
+- `StudioGuiHost` / `StudioGuiDriver` 作为 GUI 面向的平台事件与宿主命令入口
+- `StudioGuiSnapshot` 作为跨模块聚合快照真相源
+- `StudioGuiWindowModel` 作为窗口内容分区模型
+- `StudioGuiWindowLayoutState` 作为正式布局状态契约，覆盖 `panel visibility/collapsed/order`、`center_area`、`region_weights` 与多窗口 `layout scope`
+- 窗口布局持久化继续与项目文档语义分离，当前保存到 `<project>.rfstudio-layout.json` sidecar，而不是混入 `*.rfproj.json`
+- 多窗口布局 key 当前已从运行时 `window_id` 收口为基于 `window_role + layout_slot` 的稳定 scope，避免跨 host 重建时直接依赖临时窗口号
 
 这意味着当前仓库已从“只有 UI 层快照映射桥”推进到“应用组合层已有 facade / command 入口可驱动真实求解”，但仍未把这条入口接成最终桌面命令或交互动作。
 
