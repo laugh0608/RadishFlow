@@ -137,13 +137,20 @@ impl StudioGuiHost {
         self.controller.replace_canvas_suggestions(suggestions);
     }
 
-    pub fn accept_focused_canvas_suggestion_by_tab(&mut self) -> StudioGuiHostCanvasSuggestionResult {
-        StudioGuiHostCanvasSuggestionResult {
-            accepted: self.controller.accept_focused_canvas_suggestion_by_tab(),
-            applied_target: self.controller.active_inspector_target(),
-            latest_log_entry: self.controller.latest_log_entry(),
+    pub fn accept_focused_canvas_suggestion_by_tab(
+        &mut self,
+    ) -> RfResult<StudioGuiHostCanvasSuggestionResult> {
+        let accepted = self.controller.accept_focused_canvas_suggestion_by_tab()?;
+        Ok(StudioGuiHostCanvasSuggestionResult {
+            applied_target: accepted
+                .as_ref()
+                .and_then(|_| self.controller.active_inspector_target()),
+            latest_log_entry: accepted
+                .as_ref()
+                .and_then(|_| self.controller.latest_log_entry()),
+            accepted,
             ui_commands: self.ui_commands(),
-        }
+        })
     }
 
     pub fn execute_command(

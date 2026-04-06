@@ -2,15 +2,18 @@ use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::path::PathBuf;
 use std::time::SystemTime;
 
+use rf_flowsheet::validate_connections;
 use rf_model::Flowsheet;
-use rf_types::{StreamId, UnitId};
+use rf_types::{RfError, RfResult, StreamId, UnitId};
 
 use crate::auth::{
     AuthSessionState, AuthenticatedUser, EntitlementSnapshot, EntitlementState,
     PropertyPackageManifest, TokenLease,
 };
 use crate::canvas_interaction::{
-    CanvasInteractionState, CanvasSuggestion, CanvasViewMode, SuggestionSource,
+    CanvasInteractionState, CanvasSuggestedMaterialConnection, CanvasSuggestedStreamBinding,
+    CanvasSuggestion, CanvasSuggestionAcceptance, CanvasViewMode, SuggestionSource,
+    SuggestionStatus,
 };
 use crate::commands::{CommandHistory, CommandHistoryEntry, DocumentCommand};
 use crate::diagnostics::DiagnosticSummary;
@@ -448,14 +451,42 @@ impl AppState {
             .replace_suggestions(suggestions);
     }
 
-    pub fn accept_focused_canvas_suggestion_by_tab(&mut self) -> Option<CanvasSuggestion> {
-        let accepted = self.workspace.canvas_interaction.accept_focused_by_tab()?;
+    pub fn accept_focused_canvas_suggestion_by_tab(&mut self) -> RfResult<Option<CanvasSuggestion>> {
+        let focused = self
+            .workspace
+            .canvas_interaction
+            .focused_suggestion()
+            .cloned();
+        let Some(focused) = focused else {
+            return Ok(None);
+        };
+        if !focused.can_accept_with_tab() {
+            return Ok(None);
+        }
+
+        if focused.acceptance.is_some() {
+            apply_canvas_suggestion_acceptance(self, &focused)?;
+            let mut accepted = focused;
+            accepted.status = SuggestionStatus::Accepted;
+            apply_canvas_suggestion_target(self, &accepted);
+            self.push_log(
+                AppLogLevel::Info,
+                format_canvas_suggestion_accept_message(&accepted),
+            );
+            return Ok(Some(accepted));
+        }
+
+        let accepted = self
+            .workspace
+            .canvas_interaction
+            .accept_suggestion(&focused.id)
+            .expect("focused suggestion should remain addressable until it is accepted");
         apply_canvas_suggestion_target(self, &accepted);
         self.push_log(
             AppLogLevel::Info,
             format_canvas_suggestion_accept_message(&accepted),
         );
-        Some(accepted)
+        Ok(Some(accepted))
     }
 
     pub fn reject_focused_canvas_suggestion(&mut self) -> Option<CanvasSuggestion> {
@@ -512,6 +543,27 @@ pub fn latest_snapshot_id(workspace: &WorkspaceState) -> Option<&SolveSnapshotId
     workspace.solve_session.latest_snapshot.as_ref()
 }
 
+fn apply_canvas_suggestion_acceptance(
+    app_state: &mut AppState,
+    suggestion: &CanvasSuggestion,
+) -> RfResult<()> {
+    let acceptance = suggestion.acceptance.as_ref().ok_or_else(|| {
+        RfError::invalid_input(format!(
+            "canvas suggestion `{}` is missing an acceptance payload",
+            suggestion.id
+        ))
+    })?;
+
+    let (command, next_flowsheet) = match acceptance {
+        CanvasSuggestionAcceptance::MaterialConnection(connection) => {
+            apply_material_connection_acceptance(&app_state.workspace.document.flowsheet, connection)?
+        }
+    };
+
+    app_state.commit_document_change(command, next_flowsheet, SystemTime::now());
+    Ok(())
+}
+
 fn apply_canvas_suggestion_target(app_state: &mut AppState, suggestion: &CanvasSuggestion) {
     let unit_id = suggestion.ghost.target_unit_id.clone();
     app_state.workspace.selection.selected_units.clear();
@@ -523,6 +575,80 @@ fn apply_canvas_suggestion_target(app_state: &mut AppState, suggestion: &CanvasS
         .insert(unit_id.clone());
     app_state.workspace.drafts.active_target = Some(InspectorTarget::Unit(unit_id));
     app_state.workspace.panels.inspector_open = true;
+}
+
+fn apply_material_connection_acceptance(
+    flowsheet: &Flowsheet,
+    connection: &CanvasSuggestedMaterialConnection,
+) -> RfResult<(DocumentCommand, Flowsheet)> {
+    let mut next_flowsheet = flowsheet.clone();
+    let stream_id = match &connection.stream {
+        CanvasSuggestedStreamBinding::Existing { stream_id } => {
+            next_flowsheet.stream(stream_id)?;
+            stream_id.clone()
+        }
+        CanvasSuggestedStreamBinding::Create { stream } => {
+            next_flowsheet.insert_stream(stream.clone())?;
+            stream.id.clone()
+        }
+    };
+
+    bind_material_stream_port(
+        &mut next_flowsheet,
+        &connection.source_unit_id,
+        &connection.source_port,
+        &stream_id,
+    )?;
+    if let (Some(sink_unit_id), Some(sink_port)) =
+        (&connection.sink_unit_id, &connection.sink_port)
+    {
+        bind_material_stream_port(&mut next_flowsheet, sink_unit_id, sink_port, &stream_id)?;
+    } else if connection.sink_unit_id.is_some() || connection.sink_port.is_some() {
+        return Err(RfError::invalid_input(
+            "canvas suggestion material connection must provide both sink unit and sink port or neither",
+        ));
+    }
+
+    validate_connections(&next_flowsheet)?;
+
+    let command = DocumentCommand::ConnectPorts {
+        stream_id,
+        from_unit_id: connection.source_unit_id.clone(),
+        from_port: connection.source_port.clone(),
+        to_unit_id: connection.sink_unit_id.clone(),
+        to_port: connection.sink_port.clone(),
+    };
+
+    Ok((command, next_flowsheet))
+}
+
+fn bind_material_stream_port(
+    flowsheet: &mut Flowsheet,
+    unit_id: &UnitId,
+    port_name: &str,
+    stream_id: &StreamId,
+) -> RfResult<()> {
+    let unit = flowsheet.units.get_mut(unit_id).ok_or_else(|| {
+        RfError::missing_entity("unit", unit_id)
+    })?;
+    let port = unit
+        .ports
+        .iter_mut()
+        .find(|port| port.name == port_name)
+        .ok_or_else(|| {
+            RfError::invalid_input(format!(
+                "unit `{}` does not expose material port `{}`",
+                unit_id, port_name
+            ))
+        })?;
+    if port.kind != rf_types::PortKind::Material {
+        return Err(RfError::invalid_input(format!(
+            "unit `{}` port `{}` is not a material port",
+            unit_id, port_name
+        )));
+    }
+    port.stream_id = Some(stream_id.clone());
+    Ok(())
 }
 
 fn format_canvas_suggestion_accept_message(suggestion: &CanvasSuggestion) -> String {

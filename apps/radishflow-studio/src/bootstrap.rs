@@ -484,7 +484,7 @@ impl BootstrapSession {
 
     pub(crate) fn accept_focused_canvas_suggestion_by_tab(
         &mut self,
-    ) -> Option<rf_ui::CanvasSuggestion> {
+    ) -> RfResult<Option<rf_ui::CanvasSuggestion>> {
         self.app_state.accept_focused_canvas_suggestion_by_tab()
     }
 }

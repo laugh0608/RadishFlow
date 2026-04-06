@@ -753,6 +753,7 @@ name = "rf-ui"
 version = "0.1.0"
 dependencies = [
  "rf-flash",
+ "rf-flowsheet",
  "rf-model",
  "rf-solver",
  "rf-store",

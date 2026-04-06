@@ -537,6 +537,7 @@ pub enum SolvePendingReason {
 补充冻结口径：
 
 - `MoveUnit` 进入历史栈，因为节点几何位置属于文档语义的一部分
+- 当前 `ConnectPorts` 必须显式携带 `stream_id`，并允许 `to_unit_id / to_port` 为空，以覆盖“复用已有 stream 接到 sink”与“创建 terminal outlet stream”两类正式 material connection 写回
 - `SetSimulationMode`、`RunSolve`、`ClearResults` 属于运行控制动作，直接作用于 `SolveSessionState`
 - `OpenDocument`、`SaveDocument`、`SaveDocumentAs` 属于文档生命周期动作，不进入 undo/redo 历史
 

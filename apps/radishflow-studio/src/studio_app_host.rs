@@ -470,7 +470,7 @@ impl StudioAppHost {
 
     pub fn accept_focused_canvas_suggestion_by_tab(
         &mut self,
-    ) -> Option<rf_ui::CanvasSuggestion> {
+    ) -> RfResult<Option<rf_ui::CanvasSuggestion>> {
         self.window_host_manager.accept_focused_canvas_suggestion_by_tab()
     }
 
@@ -600,7 +600,7 @@ impl StudioAppHostController {
 
     pub fn accept_focused_canvas_suggestion_by_tab(
         &mut self,
-    ) -> Option<rf_ui::CanvasSuggestion> {
+    ) -> RfResult<Option<rf_ui::CanvasSuggestion>> {
         self.app_host.accept_focused_canvas_suggestion_by_tab()
     }
 

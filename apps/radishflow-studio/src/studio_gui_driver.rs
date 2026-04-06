@@ -92,7 +92,7 @@ impl StudioGuiDriver {
             }
             DriverRoute::CanvasSuggestionAcceptRequested => {
                 StudioGuiDriverOutcome::CanvasSuggestionAccepted(
-                    self.host.accept_focused_canvas_suggestion_by_tab(),
+                    self.host.accept_focused_canvas_suggestion_by_tab()?,
                 )
             }
             DriverRoute::IgnoredShortcut { shortcut, reason } => {

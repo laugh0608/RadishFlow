@@ -328,7 +328,25 @@ pub struct CanvasSuggestion {
     pub status: SuggestionStatus,
     pub confidence: f32,
     pub ghost: GhostElement,
+    pub acceptance: Option<CanvasSuggestionAcceptance>,
     pub reason: String,
+}
+
+pub enum CanvasSuggestionAcceptance {
+    MaterialConnection(CanvasSuggestedMaterialConnection),
+}
+
+pub struct CanvasSuggestedMaterialConnection {
+    pub stream: CanvasSuggestedStreamBinding,
+    pub source_unit_id: UnitId,
+    pub source_port: String,
+    pub sink_unit_id: Option<UnitId>,
+    pub sink_port: Option<String>,
+}
+
+pub enum CanvasSuggestedStreamBinding {
+    Existing { stream_id: StreamId },
+    Create { stream: MaterialStreamState },
 }
 
 pub struct GhostElement {
@@ -342,6 +360,7 @@ pub struct GhostElement {
 补充说明：
 
 - `confidence` 只用于 suggestion 排序与默认接受策略，不应直接暴露为业务真相源
+- `acceptance` 是 suggestion 对应的正式接受载荷；它必须足够描述本地文档写回所需的 stream / port 语义，不能再只靠 `target_unit_id` 临时猜命令
 - `reason` 用于解释为什么推荐，便于 UI 提示和后续调试
 - `visual_kind` / `visual_state` 允许 suggestion 与正式流线共用同一套渲染语义
 

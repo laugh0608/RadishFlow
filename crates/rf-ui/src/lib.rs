@@ -25,7 +25,8 @@ pub use auth::{
     PropertyPackageUsageEvent, PropertyPackageUsageEventKind, SecureCredentialHandle, TokenLease,
 };
 pub use canvas_interaction::{
-    CanvasInteractionState, CanvasSuggestion, CanvasViewMode, GhostElement, GhostElementKind,
+    CanvasInteractionState, CanvasSuggestedMaterialConnection, CanvasSuggestedStreamBinding,
+    CanvasSuggestion, CanvasSuggestionAcceptance, CanvasViewMode, GhostElement, GhostElementKind,
     StreamAnimationMode, StreamVisualKind, StreamVisualState, SuggestionSource, SuggestionStatus,
 };
 pub use commands::{
@@ -70,7 +71,7 @@ mod tests {
     use std::time::{Duration, UNIX_EPOCH};
 
     use rf_flash::PlaceholderTpFlashSolver;
-    use rf_model::Flowsheet;
+    use rf_model::{Flowsheet, MaterialStreamState};
     use rf_solver::{FlowsheetSolver, SequentialModularSolver, SolverServices};
     use rf_thermo::{
         AntoineCoefficients, PlaceholderThermoProvider, ThermoComponent, ThermoSystem,
@@ -78,8 +79,10 @@ mod tests {
     use rf_types::UnitId;
 
     use crate::{
-        AppLogLevel, AppState, AuthSessionStatus, AuthenticatedUser, CanvasPoint, CanvasSuggestion,
-        CanvasSuggestionId, CanvasViewMode, CommandHistory, CommandHistoryEntry,
+        AppLogLevel, AppState, AuthSessionStatus, AuthenticatedUser,
+        CanvasPoint, CanvasSuggestedMaterialConnection, CanvasSuggestedStreamBinding,
+        CanvasSuggestion, CanvasSuggestionAcceptance, CanvasSuggestionId, CanvasViewMode,
+        CommandHistory, CommandHistoryEntry,
         DiagnosticSeverity, DiagnosticSummary, DocumentCommand, DocumentMetadata,
         EntitlementActionId, EntitlementPanelState, EntitlementPanelWidgetEvent,
         EntitlementPanelWidgetModel, EntitlementSnapshot, FlowsheetDocument, GhostElement,
@@ -118,6 +121,18 @@ mod tests {
             },
             format!("reason for {id}"),
         )
+    }
+
+    fn sample_existing_connection_acceptance() -> CanvasSuggestionAcceptance {
+        CanvasSuggestionAcceptance::MaterialConnection(CanvasSuggestedMaterialConnection {
+            stream: CanvasSuggestedStreamBinding::Existing {
+                stream_id: rf_types::StreamId::new("stream-feed"),
+            },
+            source_unit_id: UnitId::new("feed-1"),
+            source_port: "outlet".to_string(),
+            sink_unit_id: Some(UnitId::new("flash-1")),
+            sink_port: Some("inlet".to_string()),
+        })
     }
 
     fn sample_solver_provider() -> PlaceholderThermoProvider {
@@ -347,30 +362,108 @@ mod tests {
 
     #[test]
     fn tab_accepts_only_high_confidence_suggestions_without_recording_history() {
-        let mut app_state = AppState::new(sample_document());
-        app_state.replace_canvas_suggestions(vec![sample_canvas_suggestion(
-            "sug-high",
-            0.90,
-            SuggestionSource::LocalRules,
-        )]);
+        let mut flowsheet = Flowsheet::new("demo");
+        flowsheet
+            .insert_component(rf_model::Component::new("component-a", "Component A"))
+            .expect("expected component-a");
+        flowsheet
+            .insert_component(rf_model::Component::new("component-b", "Component B"))
+            .expect("expected component-b");
+        flowsheet
+            .insert_unit(rf_model::UnitNode::new(
+                "feed-1",
+                "Feed",
+                "feed",
+                vec![rf_model::UnitPort::new(
+                    "outlet",
+                    rf_types::PortDirection::Outlet,
+                    rf_types::PortKind::Material,
+                    Some("stream-feed".into()),
+                )],
+            ))
+            .expect("expected feed insert");
+        flowsheet
+            .insert_unit(rf_model::UnitNode::new(
+                "flash-1",
+                "Flash Drum",
+                "flash_drum",
+                vec![
+                    rf_model::UnitPort::new(
+                        "inlet",
+                        rf_types::PortDirection::Inlet,
+                        rf_types::PortKind::Material,
+                        None,
+                    ),
+                    rf_model::UnitPort::new(
+                        "liquid",
+                        rf_types::PortDirection::Outlet,
+                        rf_types::PortKind::Material,
+                        Some("stream-liquid".into()),
+                    ),
+                    rf_model::UnitPort::new(
+                        "vapor",
+                        rf_types::PortDirection::Outlet,
+                        rf_types::PortKind::Material,
+                        Some("stream-vapor".into()),
+                    ),
+                ],
+            ))
+            .expect("expected flash insert");
+        for stream_id in ["stream-feed", "stream-liquid", "stream-vapor"] {
+            flowsheet
+                .insert_stream(MaterialStreamState::new(stream_id, stream_id))
+                .expect("expected stream insert");
+        }
+        let mut app_state = AppState::new(FlowsheetDocument::new(
+            flowsheet,
+            DocumentMetadata::new("doc-accept", "Accept", timestamp(10)),
+        ));
+        app_state.replace_canvas_suggestions(vec![
+            sample_canvas_suggestion("sug-high", 0.90, SuggestionSource::LocalRules)
+                .with_acceptance(sample_existing_connection_acceptance()),
+        ]);
 
-        let accepted = app_state.accept_focused_canvas_suggestion_by_tab();
+        let accepted = app_state
+            .accept_focused_canvas_suggestion_by_tab()
+            .expect("expected suggestion acceptance");
 
         assert_eq!(
             accepted.as_ref().map(|item| item.id.as_str()),
             Some("sug-high")
         );
-        assert_eq!(app_state.workspace.command_history.len(), 0);
-        assert!(
-            app_state
-                .workspace
-                .command_history
-                .current_entry()
-                .is_none()
+        assert_eq!(app_state.workspace.command_history.len(), 1);
+        assert!(matches!(
+            app_state.workspace.command_history.current_entry(),
+            Some(crate::CommandHistoryEntry {
+                command: crate::DocumentCommand::ConnectPorts {
+                    stream_id,
+                    from_unit_id,
+                    from_port,
+                    to_unit_id: Some(to_unit_id),
+                    to_port: Some(to_port),
+                },
+                ..
+            }) if stream_id.as_str() == "stream-feed"
+                && from_unit_id.as_str() == "feed-1"
+                && from_port == "outlet"
+                && to_unit_id.as_str() == "flash-1"
+                && to_port == "inlet"
+        ));
+        assert_eq!(
+            app_state.workspace.document.revision,
+            1
         );
         assert_eq!(
-            app_state.workspace.canvas_interaction.suggestions[0].status,
-            SuggestionStatus::Accepted
+            app_state
+                .workspace
+                .document
+                .flowsheet
+                .units
+                .get(&UnitId::new("flash-1"))
+                .and_then(|unit| unit.ports.iter().find(|port| port.name == "inlet"))
+                .and_then(|port| port.stream_id.as_ref())
+                .map(|stream_id| stream_id.as_str()),
+            Some("stream-feed")
         );
         assert_eq!(
             app_state.workspace.canvas_interaction.focused_suggestion_id,
@@ -404,6 +497,125 @@ mod tests {
     }
 
     #[test]
+    fn tab_accepts_suggestion_that_creates_terminal_outlet_stream() {
+        let mut flowsheet = Flowsheet::new("demo");
+        flowsheet
+            .insert_component(rf_model::Component::new("component-a", "Component A"))
+            .expect("expected component-a");
+        flowsheet
+            .insert_component(rf_model::Component::new("component-b", "Component B"))
+            .expect("expected component-b");
+        flowsheet
+            .insert_unit(rf_model::UnitNode::new(
+                "feed-1",
+                "Feed",
+                "feed",
+                vec![rf_model::UnitPort::new(
+                    "outlet",
+                    rf_types::PortDirection::Outlet,
+                    rf_types::PortKind::Material,
+                    Some("stream-feed".into()),
+                )],
+            ))
+            .expect("expected feed insert");
+        flowsheet
+            .insert_unit(rf_model::UnitNode::new(
+                "flash-1",
+                "Flash Drum",
+                "flash_drum",
+                vec![
+                    rf_model::UnitPort::new(
+                        "inlet",
+                        rf_types::PortDirection::Inlet,
+                        rf_types::PortKind::Material,
+                        Some("stream-feed".into()),
+                    ),
+                    rf_model::UnitPort::new(
+                        "liquid",
+                        rf_types::PortDirection::Outlet,
+                        rf_types::PortKind::Material,
+                        None,
+                    ),
+                    rf_model::UnitPort::new(
+                        "vapor",
+                        rf_types::PortDirection::Outlet,
+                        rf_types::PortKind::Material,
+                        Some("stream-vapor".into()),
+                    ),
+                ],
+            ))
+            .expect("expected flash insert");
+        for stream_id in ["stream-feed", "stream-vapor"] {
+            flowsheet
+                .insert_stream(MaterialStreamState::new(stream_id, stream_id))
+                .expect("expected stream insert");
+        }
+        let mut app_state = AppState::new(FlowsheetDocument::new(
+            flowsheet,
+            DocumentMetadata::new("doc-create", "Create", timestamp(10)),
+        ));
+        app_state.replace_canvas_suggestions(vec![
+            sample_canvas_suggestion("sug-liquid", 0.92, SuggestionSource::LocalRules).with_acceptance(
+                CanvasSuggestionAcceptance::MaterialConnection(CanvasSuggestedMaterialConnection {
+                    stream: CanvasSuggestedStreamBinding::Create {
+                        stream: MaterialStreamState::new("stream-liquid", "Liquid Outlet"),
+                    },
+                    source_unit_id: UnitId::new("flash-1"),
+                    source_port: "liquid".to_string(),
+                    sink_unit_id: None,
+                    sink_port: None,
+                }),
+            ),
+        ]);
+
+        let accepted = app_state
+            .accept_focused_canvas_suggestion_by_tab()
+            .expect("expected terminal outlet suggestion acceptance");
+
+        assert_eq!(
+            accepted.as_ref().map(|item| item.id.as_str()),
+            Some("sug-liquid")
+        );
+        assert!(matches!(
+            app_state.workspace.command_history.current_entry(),
+            Some(crate::CommandHistoryEntry {
+                command: crate::DocumentCommand::ConnectPorts {
+                    stream_id,
+                    from_unit_id,
+                    from_port,
+                    to_unit_id: None,
+                    to_port: None,
+                },
+                ..
+            }) if stream_id.as_str() == "stream-liquid"
+                && from_unit_id.as_str() == "flash-1"
+                && from_port == "liquid"
+        ));
+        assert_eq!(
+            app_state
+                .workspace
+                .document
+                .flowsheet
+                .streams
+                .get(&rf_types::StreamId::new("stream-liquid"))
+                .map(|stream| stream.name.as_str()),
+            Some("Liquid Outlet")
+        );
+        assert_eq!(
+            app_state
+                .workspace
+                .document
+                .flowsheet
+                .units
+                .get(&UnitId::new("flash-1"))
+                .and_then(|unit| unit.ports.iter().find(|port| port.name == "liquid"))
+                .and_then(|port| port.stream_id.as_ref())
+                .map(|stream_id| stream_id.as_str()),
+            Some("stream-liquid")
+        );
+    }
+
+    #[test]
     fn tab_does_not_accept_low_confidence_suggestion() {
         let mut app_state = AppState::new(sample_document());
         app_state.replace_canvas_suggestions(vec![sample_canvas_suggestion(
@@ -412,7 +624,9 @@ mod tests {
             SuggestionSource::RadishMind,
         )]);
 
-        let accepted = app_state.accept_focused_canvas_suggestion_by_tab();
+        let accepted = app_state
+            .accept_focused_canvas_suggestion_by_tab()
+            .expect("expected low-confidence acceptance check");
 
         assert!(accepted.is_none());
         assert_eq!(app_state.workspace.command_history.len(), 0);

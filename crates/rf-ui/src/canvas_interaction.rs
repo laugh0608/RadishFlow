@@ -1,4 +1,5 @@
-use rf_types::UnitId;
+use rf_model::MaterialStreamState;
+use rf_types::{StreamId, UnitId};
 
 use crate::ids::CanvasSuggestionId;
 
@@ -50,6 +51,30 @@ pub enum GhostElementKind {
     StreamName,
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub enum CanvasSuggestedStreamBinding {
+    Existing {
+        stream_id: StreamId,
+    },
+    Create {
+        stream: MaterialStreamState,
+    },
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct CanvasSuggestedMaterialConnection {
+    pub stream: CanvasSuggestedStreamBinding,
+    pub source_unit_id: UnitId,
+    pub source_port: String,
+    pub sink_unit_id: Option<UnitId>,
+    pub sink_port: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum CanvasSuggestionAcceptance {
+    MaterialConnection(CanvasSuggestedMaterialConnection),
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum SuggestionStatus {
     Proposed,
@@ -83,6 +108,7 @@ pub struct CanvasSuggestion {
     pub status: SuggestionStatus,
     pub confidence: f32,
     pub ghost: GhostElement,
+    pub acceptance: Option<CanvasSuggestionAcceptance>,
     pub reason: String,
 }
 
@@ -100,11 +126,17 @@ impl CanvasSuggestion {
             status: SuggestionStatus::Proposed,
             confidence,
             ghost,
+            acceptance: None,
             reason: reason.into(),
         }
     }
 
-    fn can_accept_with_tab(&self) -> bool {
+    pub fn with_acceptance(mut self, acceptance: CanvasSuggestionAcceptance) -> Self {
+        self.acceptance = Some(acceptance);
+        self
+    }
+
+    pub fn can_accept_with_tab(&self) -> bool {
         matches!(
             self.status,
             SuggestionStatus::Proposed | SuggestionStatus::Focused
