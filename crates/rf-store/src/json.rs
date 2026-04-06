@@ -14,9 +14,12 @@ use crate::package_cache::{
     STORED_PROPERTY_PACKAGE_SCHEMA_VERSION,
 };
 use crate::project::{STORED_PROJECT_FILE_KIND, STORED_PROJECT_FILE_SCHEMA_VERSION};
+use crate::studio_layout::{
+    STORED_STUDIO_LAYOUT_FILE_KIND, STORED_STUDIO_LAYOUT_SCHEMA_VERSION,
+};
 use crate::{
     StoredAuthCacheIndex, StoredProjectFile, StoredPropertyPackageManifest,
-    StoredPropertyPackagePayload,
+    StoredPropertyPackagePayload, StoredStudioLayoutFile,
 };
 
 pub fn read_project_file(path: impl AsRef<Path>) -> RfResult<StoredProjectFile> {
@@ -46,6 +49,35 @@ pub fn parse_project_file_json(contents: &str) -> RfResult<StoredProjectFile> {
 pub fn project_file_to_pretty_json(project_file: &StoredProjectFile) -> RfResult<String> {
     project_file.validate()?;
     to_pretty_json(project_file, "serialize stored project file")
+}
+
+pub fn read_studio_layout_file(path: impl AsRef<Path>) -> RfResult<StoredStudioLayoutFile> {
+    let path = path.as_ref();
+    let contents = fs::read_to_string(path)
+        .map_err(|error| map_io_error("read stored studio layout file", path, &error))?;
+    parse_studio_layout_file_json(&contents)
+}
+
+pub fn write_studio_layout_file(
+    path: impl AsRef<Path>,
+    layout_file: &StoredStudioLayoutFile,
+) -> RfResult<()> {
+    layout_file.validate()?;
+    write_json_file(path.as_ref(), layout_file, "write stored studio layout file")
+}
+
+pub fn parse_studio_layout_file_json(contents: &str) -> RfResult<StoredStudioLayoutFile> {
+    let raw_value: Value = parse_json(contents, "deserialize stored studio layout file envelope")?;
+    let migrated_value = migrate_studio_layout_file_value(raw_value)?;
+    let layout_file: StoredStudioLayoutFile =
+        parse_json_value(migrated_value, "deserialize stored studio layout file body")?;
+    layout_file.validate()?;
+    Ok(layout_file)
+}
+
+pub fn studio_layout_file_to_pretty_json(layout_file: &StoredStudioLayoutFile) -> RfResult<String> {
+    layout_file.validate()?;
+    to_pretty_json(layout_file, "serialize stored studio layout file")
 }
 
 pub fn read_auth_cache_index(path: impl AsRef<Path>) -> RfResult<StoredAuthCacheIndex> {
@@ -236,6 +268,31 @@ fn migrate_project_file_value(value: Value) -> RfResult<Value> {
     }
 }
 
+fn migrate_studio_layout_file_value(value: Value) -> RfResult<Value> {
+    let envelope = parse_stored_envelope(&value, "stored studio layout file")?;
+
+    if envelope.kind.as_deref() != Some(STORED_STUDIO_LAYOUT_FILE_KIND) {
+        return Err(RfError::invalid_input(format!(
+            "unsupported stored studio layout file kind `{}`",
+            envelope.kind.unwrap_or_default()
+        )));
+    }
+
+    match envelope.schema_version {
+        STORED_STUDIO_LAYOUT_SCHEMA_VERSION => migrate_studio_layout_file_v1_to_current(value),
+        version if version > STORED_STUDIO_LAYOUT_SCHEMA_VERSION => Err(newer_schema_error(
+            "stored studio layout file",
+            version,
+            STORED_STUDIO_LAYOUT_SCHEMA_VERSION,
+        )),
+        version => Err(older_schema_error(
+            "stored studio layout file",
+            version,
+            STORED_STUDIO_LAYOUT_SCHEMA_VERSION,
+        )),
+    }
+}
+
 fn migrate_auth_cache_index_value(value: Value) -> RfResult<Value> {
     let envelope = parse_stored_envelope(&value, "stored auth cache index")?;
 
@@ -316,6 +373,10 @@ fn migrate_property_package_payload_value(value: Value) -> RfResult<Value> {
 }
 
 fn migrate_project_file_v1_to_current(value: Value) -> RfResult<Value> {
+    Ok(value)
+}
+
+fn migrate_studio_layout_file_v1_to_current(value: Value) -> RfResult<Value> {
     Ok(value)
 }
 

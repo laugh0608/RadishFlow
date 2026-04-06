@@ -1,4 +1,5 @@
 use std::collections::{BTreeMap, BTreeSet};
+use std::path::Path;
 
 use rf_types::{RfError, RfResult};
 
@@ -572,6 +573,17 @@ impl StudioAppHost {
             .clone()
     }
 
+    pub fn document_path(&self) -> Option<&Path> {
+        self.window_host_manager
+            .session()
+            .host_port()
+            .runtime()
+            .app_state()
+            .workspace
+            .document_path
+            .as_deref()
+    }
+
     pub fn snapshot(&self) -> StudioAppHostSnapshot {
         let registered_windows = self.window_host_manager.registered_windows();
         let foreground_window_id = self.window_host_manager.foreground_window_id();
@@ -723,6 +735,10 @@ impl StudioAppHostController {
 
     pub fn canvas_interaction(&self) -> rf_ui::CanvasInteractionState {
         self.app_host.canvas_interaction()
+    }
+
+    pub fn document_path(&self) -> Option<&Path> {
+        self.app_host.document_path()
     }
 
     pub fn open_window(&mut self) -> RfResult<StudioAppHostOpenWindowResult> {

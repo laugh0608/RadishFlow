@@ -808,7 +808,8 @@ mod tests {
 
     #[test]
     fn gui_driver_updates_window_layout_and_preserves_per_window_overrides() {
-        let mut driver = StudioGuiDriver::new(&lease_expiring_config()).expect("expected driver");
+        let (config, project_path) = flash_drum_local_rules_config();
+        let mut driver = StudioGuiDriver::new(&config).expect("expected driver");
         let first = driver
             .dispatch_event(StudioGuiEvent::OpenWindowRequested)
             .expect("expected first open dispatch");
@@ -935,6 +936,10 @@ mod tests {
                 .map(|region| region.weight),
             Some(31)
         );
+
+        let layout_path = rf_store::studio_layout_path_for_project(&project_path);
+        let _ = fs::remove_file(layout_path);
+        let _ = fs::remove_file(project_path);
     }
 
     #[test]

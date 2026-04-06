@@ -58,6 +58,14 @@ pub struct StudioGuiWindowLayoutState {
     pub default_focus_area: StudioGuiWindowAreaId,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioGuiWindowLayoutPersistenceState {
+    pub layout_key: String,
+    pub center_area: StudioGuiWindowAreaId,
+    pub panels: Vec<StudioGuiWindowPanelLayoutState>,
+    pub region_weights: Vec<StudioGuiWindowRegionWeight>,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum StudioGuiWindowLayoutMutation {
     SetPanelVisibility {
@@ -170,7 +178,10 @@ impl StudioGuiWindowLayoutState {
             .find(|region| region.dock_region == dock_region)
     }
 
-    pub fn merged_with_persisted(&self, persisted: &Self) -> Self {
+    pub fn merged_with_persisted(
+        &self,
+        persisted: &StudioGuiWindowLayoutPersistenceState,
+    ) -> Self {
         let mut merged = self.clone();
 
         for panel in &persisted.panels {
@@ -217,6 +228,15 @@ impl StudioGuiWindowLayoutState {
             }
         }
         next
+    }
+
+    pub fn persistence_state(&self) -> StudioGuiWindowLayoutPersistenceState {
+        StudioGuiWindowLayoutPersistenceState {
+            layout_key: self.scope.layout_key.clone(),
+            center_area: self.center_area,
+            panels: self.panels.clone(),
+            region_weights: self.region_weights.clone(),
+        }
     }
 }
 

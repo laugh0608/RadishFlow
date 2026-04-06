@@ -9,8 +9,12 @@ use crate::{
     StudioAppHostUiCommandDispatchResult, StudioAppHostUiCommandModel,
     StudioAppHostWindowDispatchResult, StudioAppWindowHostGlobalEvent, StudioGuiCommandRegistry,
     StudioGuiNativeTimerEffects, StudioGuiRuntimeSnapshot, StudioGuiSnapshot,
-    StudioGuiWindowLayoutMutation, StudioGuiWindowLayoutState, StudioGuiWindowModel,
-    StudioRuntimeConfig, StudioRuntimeTrigger, StudioWindowHostId, StudioWindowHostRegistration,
+    StudioGuiWindowLayoutMutation, StudioGuiWindowLayoutPersistenceState,
+    StudioGuiWindowLayoutState, StudioGuiWindowModel, StudioRuntimeConfig,
+    StudioRuntimeTrigger, StudioWindowHostId, StudioWindowHostRegistration,
+};
+use crate::studio_gui_layout_store::{
+    load_persisted_window_layouts, save_persisted_window_layouts,
 };
 
 #[derive(Debug, Clone, PartialEq)]
@@ -145,14 +149,20 @@ pub enum StudioGuiHostCommandOutcome {
 
 pub struct StudioGuiHost {
     controller: StudioAppHostController,
-    layout_state_overrides: BTreeMap<String, StudioGuiWindowLayoutState>,
+    layout_state_overrides: BTreeMap<String, StudioGuiWindowLayoutPersistenceState>,
 }
 
 impl StudioGuiHost {
     pub fn new(config: &StudioRuntimeConfig) -> RfResult<Self> {
+        let controller = StudioAppHostController::new(config)?;
+        let layout_state_overrides = match controller.document_path() {
+            Some(project_path) => load_persisted_window_layouts(project_path)?,
+            None => BTreeMap::new(),
+        };
+
         Ok(Self {
-            controller: StudioAppHostController::new(config)?,
-            layout_state_overrides: BTreeMap::new(),
+            controller,
+            layout_state_overrides,
         })
     }
 
@@ -227,8 +237,9 @@ impl StudioGuiHost {
             .applying_mutation(&mutation);
         self.layout_state_overrides.insert(
             layout_state.scope.layout_key.clone(),
-            layout_state.clone(),
+            layout_state.persistence_state(),
         );
+        self.persist_window_layouts()?;
 
         Ok(StudioGuiHostWindowLayoutUpdateResult {
             target_window_id: layout_state.scope.window_id,
@@ -425,6 +436,15 @@ impl StudioGuiHost {
 }
 
 impl StudioGuiHost {
+    fn persist_window_layouts(&self) -> RfResult<()> {
+        match self.controller.document_path() {
+            Some(project_path) => {
+                save_persisted_window_layouts(project_path, &self.layout_state_overrides)
+            }
+            None => Ok(()),
+        }
+    }
+
     fn layout_state_for_window_from_snapshot(
         &self,
         snapshot: &StudioGuiSnapshot,
@@ -544,13 +564,15 @@ mod tests {
     };
 
     use rf_ui::RunPanelActionId;
+    use rf_store::{read_studio_layout_file, studio_layout_path_for_project};
 
     use crate::{
         StudioGuiHost, StudioGuiHostCommand, StudioGuiHostCommandOutcome,
         StudioGuiHostLifecycleEvent, StudioGuiHostUiCommandDispatchResult,
-        StudioGuiNativeTimerEffects, StudioRuntimeConfig, StudioRuntimeEntitlementPreflight,
-        StudioRuntimeEntitlementSeed, StudioRuntimeEntitlementSessionEvent, StudioRuntimeTrigger,
-        StudioWindowHostRetirement,
+        StudioGuiNativeTimerEffects, StudioGuiWindowAreaId, StudioGuiWindowLayoutMutation,
+        StudioGuiWindowDockRegion, StudioRuntimeConfig, StudioRuntimeEntitlementPreflight,
+        StudioRuntimeEntitlementSeed, StudioRuntimeEntitlementSessionEvent,
+        StudioRuntimeTrigger, StudioWindowHostRetirement,
     };
 
     fn lease_expiring_config() -> StudioRuntimeConfig {
@@ -584,6 +606,29 @@ mod tests {
                 ..lease_expiring_config()
             },
             project_path,
+        )
+    }
+
+    fn layout_persistence_config() -> (StudioRuntimeConfig, PathBuf, PathBuf) {
+        let timestamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("expected current timestamp")
+            .as_nanos();
+        let project_path = std::env::temp_dir().join(format!(
+            "radishflow-studio-layout-persistence-{timestamp}.rfproj.json"
+        ));
+        let project =
+            include_str!("../../../examples/flowsheets/feed-heater-flash.rfproj.json");
+        fs::write(&project_path, project).expect("expected persistence project");
+        let layout_path = studio_layout_path_for_project(&project_path);
+
+        (
+            StudioRuntimeConfig {
+                project_path: project_path.clone(),
+                ..lease_expiring_config()
+            },
+            project_path,
+            layout_path,
         )
     }
 
@@ -811,5 +856,74 @@ mod tests {
             }
             other => panic!("expected window closed outcome, got {other:?}"),
         }
+    }
+
+    #[test]
+    fn gui_host_persists_window_layout_overrides_into_project_sidecar() {
+        let (config, project_path, layout_path) = layout_persistence_config();
+        let mut gui_host = StudioGuiHost::new(&config).expect("expected gui host");
+        let opened = gui_host.open_window().expect("expected window open");
+
+        let updated = gui_host
+            .update_window_layout(
+                Some(opened.registration.window_id),
+                StudioGuiWindowLayoutMutation::SetPanelCollapsed {
+                    area_id: StudioGuiWindowAreaId::Commands,
+                    collapsed: true,
+                },
+            )
+            .expect("expected layout update");
+        assert_eq!(
+            updated
+                .layout_state
+                .panel(StudioGuiWindowAreaId::Commands)
+                .map(|panel| panel.collapsed),
+            Some(true)
+        );
+
+        let second_update = gui_host
+            .update_window_layout(
+                Some(opened.registration.window_id),
+                StudioGuiWindowLayoutMutation::SetRegionWeight {
+                    dock_region: StudioGuiWindowDockRegion::RightSidebar,
+                    weight: 33,
+                },
+            )
+            .expect("expected region weight update");
+        assert_eq!(
+            second_update
+                .layout_state
+                .region_weight(StudioGuiWindowDockRegion::RightSidebar)
+                .map(|region| region.weight),
+            Some(33)
+        );
+
+        let stored = read_studio_layout_file(&layout_path).expect("expected stored layout sidecar");
+        assert_eq!(stored.entries.len(), 1);
+        assert_eq!(stored.entries[0].layout_key, "studio.window.owner.1");
+
+        drop(gui_host);
+
+        let mut reloaded = StudioGuiHost::new(&config).expect("expected reloaded gui host");
+        let reopened = reloaded.open_window().expect("expected reopened window");
+        let window = reloaded.window_model_for_window(Some(reopened.registration.window_id));
+
+        assert_eq!(
+            window
+                .layout_state
+                .panel(StudioGuiWindowAreaId::Commands)
+                .map(|panel| panel.collapsed),
+            Some(true)
+        );
+        assert_eq!(
+            window
+                .layout_state
+                .region_weight(StudioGuiWindowDockRegion::RightSidebar)
+                .map(|region| region.weight),
+            Some(33)
+        );
+
+        let _ = fs::remove_file(layout_path);
+        let _ = fs::remove_file(project_path);
     }
 }

@@ -20,6 +20,7 @@ mod studio_gui_canvas_widget;
 mod studio_gui_command_registry;
 mod studio_gui_driver;
 mod studio_gui_host;
+mod studio_gui_layout_store;
 mod studio_gui_snapshot;
 mod studio_gui_window_layout;
 mod studio_gui_window_model;
@@ -179,8 +180,9 @@ pub use studio_gui_snapshot::{StudioGuiRuntimeSnapshot, StudioGuiSnapshot};
 pub use studio_gui_window_layout::{
     StudioGuiWindowAreaId, StudioGuiWindowDockRegion, StudioGuiWindowLayoutModel,
     StudioGuiWindowLayoutScope, StudioGuiWindowLayoutScopeKind, StudioGuiWindowLayoutState,
-    StudioGuiWindowLayoutMutation, StudioGuiWindowPanelLayout, StudioGuiWindowPanelLayoutState,
-    StudioGuiWindowRegionWeight, StudioGuiWindowTitlebarModel,
+    StudioGuiWindowLayoutMutation, StudioGuiWindowLayoutPersistenceState,
+    StudioGuiWindowPanelLayout, StudioGuiWindowPanelLayoutState, StudioGuiWindowRegionWeight,
+    StudioGuiWindowTitlebarModel,
 };
 pub use studio_gui_window_model::{
     StudioGuiWindowCanvasAreaModel, StudioGuiWindowCommandAreaModel, StudioGuiWindowHeaderModel,

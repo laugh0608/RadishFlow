@@ -4,6 +4,7 @@ mod json;
 mod layout;
 mod package_cache;
 mod project;
+mod studio_layout;
 
 pub use auth_cache::{
     StoredAuthCacheIndex, StoredCredentialReference, StoredEntitlementCache,
@@ -16,10 +17,12 @@ pub use integrity::{
 pub use json::{
     auth_cache_index_to_pretty_json, parse_auth_cache_index_json, parse_project_file_json,
     parse_property_package_manifest_json, parse_property_package_payload_json,
-    project_file_to_pretty_json, property_package_manifest_to_pretty_json,
-    property_package_payload_to_pretty_json, read_auth_cache_index, read_project_file,
-    read_property_package_manifest, read_property_package_payload, write_auth_cache_index,
-    write_project_file, write_property_package_manifest, write_property_package_payload,
+    parse_studio_layout_file_json, project_file_to_pretty_json,
+    property_package_manifest_to_pretty_json, property_package_payload_to_pretty_json,
+    read_auth_cache_index, read_project_file, read_property_package_manifest,
+    read_property_package_payload, read_studio_layout_file, studio_layout_file_to_pretty_json,
+    write_auth_cache_index, write_project_file, write_property_package_manifest,
+    write_property_package_payload, write_studio_layout_file,
 };
 pub use json::{option_time_format, time_format};
 pub use layout::{
@@ -37,6 +40,12 @@ pub use project::{
     DateTimeUtc, STORED_PROJECT_FILE_EXTENSION, StoredDocumentMetadata, StoredProjectDocument,
     StoredProjectFile,
 };
+pub use studio_layout::{
+    STORED_STUDIO_LAYOUT_FILE_KIND, STORED_STUDIO_LAYOUT_FILE_SUFFIX,
+    STORED_STUDIO_LAYOUT_SCHEMA_VERSION, StoredStudioLayoutFile, StoredStudioLayoutPanelState,
+    StoredStudioLayoutRegionWeight, StoredStudioWindowLayoutEntry,
+    studio_layout_path_for_project,
+};
 
 #[cfg(test)]
 mod tests {
@@ -52,13 +61,18 @@ mod tests {
         STORED_PROJECT_FILE_EXTENSION, StoredAuthCacheIndex, StoredAuthCacheLayout,
         StoredCredentialReference, StoredDocumentMetadata, StoredEntitlementCache,
         StoredProjectFile, StoredPropertyPackageManifest, StoredPropertyPackagePayload,
-        StoredPropertyPackageRecord, StoredPropertyPackageSource, StoredThermoComponent,
+        StoredPropertyPackageRecord, StoredPropertyPackageSource, StoredStudioLayoutFile,
+        StoredStudioLayoutPanelState, StoredStudioLayoutRegionWeight,
+        StoredStudioWindowLayoutEntry, StoredThermoComponent,
         auth_cache_index_to_pretty_json, parse_auth_cache_index_json, parse_project_file_json,
         parse_property_package_manifest_json, parse_property_package_payload_json,
-        project_file_to_pretty_json, property_package_manifest_to_pretty_json,
-        property_package_payload_to_pretty_json, read_auth_cache_index, read_project_file,
-        read_property_package_manifest, read_property_package_payload, write_auth_cache_index,
-        write_project_file, write_property_package_manifest, write_property_package_payload,
+        parse_studio_layout_file_json, project_file_to_pretty_json,
+        property_package_manifest_to_pretty_json, property_package_payload_to_pretty_json,
+        read_auth_cache_index, read_project_file, read_property_package_manifest,
+        read_property_package_payload, read_studio_layout_file, studio_layout_file_to_pretty_json,
+        studio_layout_path_for_project, write_auth_cache_index, write_project_file,
+        write_property_package_manifest, write_property_package_payload,
+        write_studio_layout_file,
     };
 
     fn timestamp(seconds: u64) -> std::time::SystemTime {
@@ -268,6 +282,34 @@ mod tests {
     }
 
     #[test]
+    fn studio_layout_file_round_trips_as_camel_case_json() {
+        let layout = StoredStudioLayoutFile::new(vec![StoredStudioWindowLayoutEntry {
+            layout_key: "studio.window.owner.1".to_string(),
+            center_area: "canvas".to_string(),
+            panels: vec![StoredStudioLayoutPanelState {
+                area_id: "commands".to_string(),
+                dock_region: "left-sidebar".to_string(),
+                order: 10,
+                visible: true,
+                collapsed: false,
+            }],
+            region_weights: vec![StoredStudioLayoutRegionWeight {
+                dock_region: "center-stage".to_string(),
+                weight: 52,
+            }],
+        }]);
+
+        let json = studio_layout_file_to_pretty_json(&layout).expect("expected layout json");
+        let round_trip =
+            parse_studio_layout_file_json(&json).expect("expected layout parse round trip");
+
+        assert_eq!(round_trip, layout);
+        assert!(json.contains("\"kind\": \"radishflow.studio-layout-file\""));
+        assert!(json.contains("\"layoutKey\": \"studio.window.owner.1\""));
+        assert!(json.contains("\"centerArea\": \"canvas\""));
+    }
+
+    #[test]
     fn parse_rejects_wrong_project_file_kind() {
         let json = r#"{
   "kind": "wrong-kind",
@@ -371,6 +413,17 @@ mod tests {
     }
 
     #[test]
+    fn studio_layout_path_uses_project_sidecar_suffix() {
+        let project = PathBuf::from("demo").join("sample.rfproj.json");
+        let sidecar = studio_layout_path_for_project(&project);
+
+        assert_eq!(
+            sidecar,
+            PathBuf::from("demo").join("sample.rfstudio-layout.json")
+        );
+    }
+
+    #[test]
     fn write_auth_cache_index_creates_parent_directories_and_round_trips() {
         let root = unique_temp_path("auth-cache-write");
         let path = root.join("auth").join("tenant").join("index.json");
@@ -384,6 +437,33 @@ mod tests {
         let loaded = read_auth_cache_index(&path).expect("expected auth cache read");
 
         assert_eq!(loaded, auth_cache);
+        fs::remove_dir_all(&root).expect("expected temp dir cleanup");
+    }
+
+    #[test]
+    fn write_studio_layout_file_creates_parent_directories_and_round_trips() {
+        let root = unique_temp_path("studio-layout-write");
+        let path = root.join("layout").join("sample.rfstudio-layout.json");
+        let layout = StoredStudioLayoutFile::new(vec![StoredStudioWindowLayoutEntry {
+            layout_key: "studio.window.owner.1".to_string(),
+            center_area: "canvas".to_string(),
+            panels: vec![StoredStudioLayoutPanelState {
+                area_id: "runtime".to_string(),
+                dock_region: "right-sidebar".to_string(),
+                order: 30,
+                visible: false,
+                collapsed: true,
+            }],
+            region_weights: vec![StoredStudioLayoutRegionWeight {
+                dock_region: "right-sidebar".to_string(),
+                weight: 31,
+            }],
+        }]);
+
+        write_studio_layout_file(&path, &layout).expect("expected studio layout write");
+        let loaded = read_studio_layout_file(&path).expect("expected studio layout read");
+
+        assert_eq!(loaded, layout);
         fs::remove_dir_all(&root).expect("expected temp dir cleanup");
     }
 
