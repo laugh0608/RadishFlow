@@ -450,6 +450,7 @@ impl AppState {
 
     pub fn accept_focused_canvas_suggestion_by_tab(&mut self) -> Option<CanvasSuggestion> {
         let accepted = self.workspace.canvas_interaction.accept_focused_by_tab()?;
+        apply_canvas_suggestion_target(self, &accepted);
         self.push_log(
             AppLogLevel::Info,
             format_canvas_suggestion_accept_message(&accepted),
@@ -509,6 +510,19 @@ impl AppState {
 
 pub fn latest_snapshot_id(workspace: &WorkspaceState) -> Option<&SolveSnapshotId> {
     workspace.solve_session.latest_snapshot.as_ref()
+}
+
+fn apply_canvas_suggestion_target(app_state: &mut AppState, suggestion: &CanvasSuggestion) {
+    let unit_id = suggestion.ghost.target_unit_id.clone();
+    app_state.workspace.selection.selected_units.clear();
+    app_state.workspace.selection.selected_streams.clear();
+    app_state
+        .workspace
+        .selection
+        .selected_units
+        .insert(unit_id.clone());
+    app_state.workspace.drafts.active_target = Some(InspectorTarget::Unit(unit_id));
+    app_state.workspace.panels.inspector_open = true;
 }
 
 fn format_canvas_suggestion_accept_message(suggestion: &CanvasSuggestion) -> String {

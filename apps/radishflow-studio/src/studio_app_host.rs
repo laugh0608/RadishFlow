@@ -486,6 +486,18 @@ impl StudioAppHost {
             .cloned()
     }
 
+    pub fn active_inspector_target(&self) -> Option<rf_ui::InspectorTarget> {
+        self.window_host_manager
+            .session()
+            .host_port()
+            .runtime()
+            .app_state()
+            .workspace
+            .drafts
+            .active_target
+            .clone()
+    }
+
     pub fn snapshot(&self) -> StudioAppHostSnapshot {
         let registered_windows = self.window_host_manager.registered_windows();
         let foreground_window_id = self.window_host_manager.foreground_window_id();
@@ -594,6 +606,10 @@ impl StudioAppHostController {
 
     pub fn latest_log_entry(&self) -> Option<rf_ui::AppLogEntry> {
         self.app_host.latest_log_entry()
+    }
+
+    pub fn active_inspector_target(&self) -> Option<rf_ui::InspectorTarget> {
+        self.app_host.active_inspector_target()
     }
 
     pub fn open_window(&mut self) -> RfResult<StudioAppHostOpenWindowResult> {

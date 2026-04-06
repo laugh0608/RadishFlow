@@ -78,6 +78,7 @@ pub struct StudioGuiHostCloseWindowResult {
 #[derive(Debug, Clone, PartialEq)]
 pub struct StudioGuiHostCanvasSuggestionResult {
     pub accepted: Option<CanvasSuggestion>,
+    pub applied_target: Option<rf_ui::InspectorTarget>,
     pub latest_log_entry: Option<AppLogEntry>,
     pub ui_commands: StudioAppHostUiCommandModel,
 }
@@ -139,6 +140,7 @@ impl StudioGuiHost {
     pub fn accept_focused_canvas_suggestion_by_tab(&mut self) -> StudioGuiHostCanvasSuggestionResult {
         StudioGuiHostCanvasSuggestionResult {
             accepted: self.controller.accept_focused_canvas_suggestion_by_tab(),
+            applied_target: self.controller.active_inspector_target(),
             latest_log_entry: self.controller.latest_log_entry(),
             ui_commands: self.ui_commands(),
         }

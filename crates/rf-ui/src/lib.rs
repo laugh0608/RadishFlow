@@ -377,6 +377,18 @@ mod tests {
             None
         );
         assert_eq!(
+            app_state.workspace.drafts.active_target,
+            Some(crate::InspectorTarget::Unit(UnitId::new("flash-1")))
+        );
+        assert!(
+            app_state
+                .workspace
+                .selection
+                .selected_units
+                .contains(&UnitId::new("flash-1"))
+        );
+        assert!(app_state.workspace.panels.inspector_open);
+        assert_eq!(
             app_state.log_feed.entries.back(),
             Some(&crate::AppLogEntry {
                 level: AppLogLevel::Info,
@@ -417,6 +429,8 @@ mod tests {
                 .map(|id| id.as_str()),
             Some("sug-low")
         );
+        assert!(app_state.workspace.selection.selected_units.is_empty());
+        assert_eq!(app_state.workspace.drafts.active_target, None);
         assert!(app_state.log_feed.entries.is_empty());
         assert_eq!(app_state.workspace.run_panel.latest_log_message, None);
     }
