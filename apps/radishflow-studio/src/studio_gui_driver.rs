@@ -2,8 +2,9 @@ use rf_types::RfResult;
 
 use crate::{
     StudioAppHostState, StudioAppHostUiCommandModel, StudioGuiCanvasState,
+    StudioGuiCanvasInteractionAction,
     StudioGuiCommandRegistry, StudioGuiFocusContext, StudioGuiHost,
-    StudioGuiHostCanvasSuggestionResult, StudioGuiHostCommand, StudioGuiHostCommandOutcome,
+    StudioGuiHostCanvasInteractionResult, StudioGuiHostCommand, StudioGuiHostCommandOutcome,
     StudioGuiHostLifecycleEvent, StudioGuiShortcut, StudioGuiShortcutIgnoreReason,
     StudioGuiShortcutRoute, StudioRuntimeConfig, StudioRuntimeTrigger, StudioWindowHostId,
 };
@@ -24,6 +25,10 @@ pub enum StudioGuiEvent {
     UiCommandRequested {
         command_id: String,
     },
+    CanvasSuggestionAcceptRequested,
+    CanvasSuggestionRejectRequested,
+    CanvasSuggestionFocusNextRequested,
+    CanvasSuggestionFocusPreviousRequested,
     ShortcutPressed {
         shortcut: StudioGuiShortcut,
         focus_context: StudioGuiFocusContext,
@@ -47,7 +52,7 @@ pub struct StudioGuiDriverDispatch {
 #[derive(Debug, Clone, PartialEq)]
 pub enum StudioGuiDriverOutcome {
     HostCommand(StudioGuiHostCommandOutcome),
-    CanvasSuggestionAccepted(StudioGuiHostCanvasSuggestionResult),
+    CanvasInteraction(StudioGuiHostCanvasInteractionResult),
     IgnoredShortcut {
         shortcut: StudioGuiShortcut,
         reason: StudioGuiShortcutIgnoreReason,
@@ -95,11 +100,22 @@ impl StudioGuiDriver {
             DriverRoute::HostCommand(command) => {
                 StudioGuiDriverOutcome::HostCommand(self.host.execute_command(command)?)
             }
-            DriverRoute::CanvasSuggestionAcceptRequested => {
-                StudioGuiDriverOutcome::CanvasSuggestionAccepted(
-                    self.host.accept_focused_canvas_suggestion_by_tab()?,
-                )
-            }
+            DriverRoute::CanvasInteraction(action) => StudioGuiDriverOutcome::CanvasInteraction(
+                match action {
+                    StudioGuiCanvasInteractionAction::AcceptFocusedByTab => {
+                        self.host.accept_focused_canvas_suggestion_by_tab()?
+                    }
+                    StudioGuiCanvasInteractionAction::RejectFocused => {
+                        self.host.reject_focused_canvas_suggestion()?
+                    }
+                    StudioGuiCanvasInteractionAction::FocusNext => {
+                        self.host.focus_next_canvas_suggestion()?
+                    }
+                    StudioGuiCanvasInteractionAction::FocusPrevious => {
+                        self.host.focus_previous_canvas_suggestion()?
+                    }
+                },
+            ),
             DriverRoute::IgnoredShortcut { shortcut, reason } => {
                 StudioGuiDriverOutcome::IgnoredShortcut { shortcut, reason }
             }
@@ -117,7 +133,7 @@ impl StudioGuiDriver {
 
 enum DriverRoute {
     HostCommand(StudioGuiHostCommand),
-    CanvasSuggestionAcceptRequested,
+    CanvasInteraction(StudioGuiCanvasInteractionAction),
     IgnoredShortcut {
         shortcut: StudioGuiShortcut,
         reason: StudioGuiShortcutIgnoreReason,
@@ -152,6 +168,18 @@ fn route_driver_event(event: &StudioGuiEvent, registry: &StudioGuiCommandRegistr
                 command_id: command_id.clone(),
             })
         }
+        StudioGuiEvent::CanvasSuggestionAcceptRequested => {
+            DriverRoute::CanvasInteraction(StudioGuiCanvasInteractionAction::AcceptFocusedByTab)
+        }
+        StudioGuiEvent::CanvasSuggestionRejectRequested => {
+            DriverRoute::CanvasInteraction(StudioGuiCanvasInteractionAction::RejectFocused)
+        }
+        StudioGuiEvent::CanvasSuggestionFocusNextRequested => {
+            DriverRoute::CanvasInteraction(StudioGuiCanvasInteractionAction::FocusNext)
+        }
+        StudioGuiEvent::CanvasSuggestionFocusPreviousRequested => {
+            DriverRoute::CanvasInteraction(StudioGuiCanvasInteractionAction::FocusPrevious)
+        }
         StudioGuiEvent::ShortcutPressed {
             shortcut,
             focus_context,
@@ -159,8 +187,17 @@ fn route_driver_event(event: &StudioGuiEvent, registry: &StudioGuiCommandRegistr
             StudioGuiShortcutRoute::DispatchCommandId { command_id } => {
                 DriverRoute::HostCommand(StudioGuiHostCommand::DispatchUiCommand { command_id })
             }
-            StudioGuiShortcutRoute::RequestCanvasSuggestionAcceptByTab => {
-                DriverRoute::CanvasSuggestionAcceptRequested
+            StudioGuiShortcutRoute::RequestCanvasSuggestionAccept => DriverRoute::CanvasInteraction(
+                StudioGuiCanvasInteractionAction::AcceptFocusedByTab,
+            ),
+            StudioGuiShortcutRoute::RequestCanvasSuggestionReject => DriverRoute::CanvasInteraction(
+                StudioGuiCanvasInteractionAction::RejectFocused,
+            ),
+            StudioGuiShortcutRoute::RequestCanvasSuggestionFocusNext => {
+                DriverRoute::CanvasInteraction(StudioGuiCanvasInteractionAction::FocusNext)
+            }
+            StudioGuiShortcutRoute::RequestCanvasSuggestionFocusPrevious => {
+                DriverRoute::CanvasInteraction(StudioGuiCanvasInteractionAction::FocusPrevious)
             }
             StudioGuiShortcutRoute::Ignored { reason } => DriverRoute::IgnoredShortcut {
                 shortcut: shortcut.clone(),
@@ -199,8 +236,9 @@ mod tests {
     };
 
     use crate::{
-        StudioGuiDriver, StudioGuiDriverOutcome, StudioGuiEvent, StudioGuiFocusContext,
-        StudioGuiHostCanvasSuggestionResult, StudioGuiHostCommandOutcome,
+        StudioGuiCanvasInteractionAction, StudioGuiDriver, StudioGuiDriverOutcome,
+        StudioGuiEvent, StudioGuiFocusContext, StudioGuiHostCanvasInteractionResult,
+        StudioGuiHostCommandOutcome,
         StudioGuiHostUiCommandDispatchResult, StudioGuiShortcut, StudioGuiShortcutIgnoreReason,
         StudioGuiShortcutKey, StudioGuiShortcutModifier, StudioRuntimeConfig,
         StudioRuntimeEntitlementPreflight, StudioRuntimeEntitlementSeed,
@@ -435,8 +473,11 @@ mod tests {
 
         assert_eq!(
             dispatch.outcome,
-            StudioGuiDriverOutcome::CanvasSuggestionAccepted(StudioGuiHostCanvasSuggestionResult {
+            StudioGuiDriverOutcome::CanvasInteraction(StudioGuiHostCanvasInteractionResult {
+                action: StudioGuiCanvasInteractionAction::AcceptFocusedByTab,
                 accepted: None,
+                rejected: None,
+                focused: None,
                 applied_target: None,
                 latest_log_entry: None,
                 ui_commands: driver.ui_commands(),
@@ -487,7 +528,8 @@ mod tests {
             .expect("expected shortcut dispatch");
 
         match dispatch.outcome {
-            StudioGuiDriverOutcome::CanvasSuggestionAccepted(result) => {
+            StudioGuiDriverOutcome::CanvasInteraction(result) => {
+                assert_eq!(result.action, StudioGuiCanvasInteractionAction::AcceptFocusedByTab);
                 assert_eq!(
                     result
                         .accepted
@@ -509,7 +551,103 @@ mod tests {
                     Some("Accepted canvas suggestion `sug-high` from local rules for unit flash-1")
                 );
             }
-            other => panic!("expected canvas suggestion accepted outcome, got {other:?}"),
+            other => panic!("expected canvas interaction outcome, got {other:?}"),
         }
+    }
+
+    #[test]
+    fn gui_driver_focuses_next_canvas_suggestion_from_explicit_event() {
+        let (config, project_path) = flash_drum_local_rules_config();
+        let mut driver = StudioGuiDriver::new(&config).expect("expected driver");
+
+        let dispatch = driver
+            .dispatch_event(StudioGuiEvent::CanvasSuggestionFocusNextRequested)
+            .expect("expected focus-next dispatch");
+
+        match dispatch.outcome {
+            StudioGuiDriverOutcome::CanvasInteraction(result) => {
+                assert_eq!(result.action, StudioGuiCanvasInteractionAction::FocusNext);
+                assert_eq!(
+                    result.focused.as_ref().map(|suggestion| suggestion.id.as_str()),
+                    Some("local.flash_drum.create_outlet.flash-1.liquid")
+                );
+                assert_eq!(
+                    dispatch
+                        .canvas
+                        .focused_suggestion_id
+                        .as_ref()
+                        .map(|id| id.as_str()),
+                    Some("local.flash_drum.create_outlet.flash-1.liquid")
+                );
+            }
+            other => panic!("expected canvas interaction outcome, got {other:?}"),
+        }
+
+        let _ = fs::remove_file(project_path);
+    }
+
+    #[test]
+    fn gui_driver_rejects_focused_canvas_suggestion_from_shortcut() {
+        let (config, project_path) = flash_drum_local_rules_config();
+        let mut driver = StudioGuiDriver::new(&config).expect("expected driver");
+
+        let dispatch = driver
+            .dispatch_event(StudioGuiEvent::ShortcutPressed {
+                shortcut: StudioGuiShortcut {
+                    modifiers: Vec::new(),
+                    key: StudioGuiShortcutKey::Escape,
+                },
+                focus_context: StudioGuiFocusContext::CanvasSuggestionFocused,
+            })
+            .expect("expected reject dispatch");
+
+        match dispatch.outcome {
+            StudioGuiDriverOutcome::CanvasInteraction(result) => {
+                assert_eq!(result.action, StudioGuiCanvasInteractionAction::RejectFocused);
+                assert_eq!(
+                    result
+                        .rejected
+                        .as_ref()
+                        .map(|suggestion| suggestion.id.as_str()),
+                    Some("local.flash_drum.connect_inlet.flash-1.stream-heated")
+                );
+                assert_eq!(
+                    result.focused.as_ref().map(|suggestion| suggestion.id.as_str()),
+                    Some("local.flash_drum.create_outlet.flash-1.liquid")
+                );
+            }
+            other => panic!("expected canvas interaction outcome, got {other:?}"),
+        }
+
+        let _ = fs::remove_file(project_path);
+    }
+
+    #[test]
+    fn gui_driver_routes_ctrl_tab_to_canvas_focus_next() {
+        let (config, project_path) = flash_drum_local_rules_config();
+        let mut driver = StudioGuiDriver::new(&config).expect("expected driver");
+
+        let dispatch = driver
+            .dispatch_event(StudioGuiEvent::ShortcutPressed {
+                shortcut: StudioGuiShortcut {
+                    modifiers: vec![StudioGuiShortcutModifier::Ctrl],
+                    key: StudioGuiShortcutKey::Tab,
+                },
+                focus_context: StudioGuiFocusContext::CanvasSuggestionFocused,
+            })
+            .expect("expected shortcut dispatch");
+
+        match dispatch.outcome {
+            StudioGuiDriverOutcome::CanvasInteraction(result) => {
+                assert_eq!(result.action, StudioGuiCanvasInteractionAction::FocusNext);
+                assert_eq!(
+                    result.focused.as_ref().map(|suggestion| suggestion.id.as_str()),
+                    Some("local.flash_drum.create_outlet.flash-1.liquid")
+                );
+            }
+            other => panic!("expected canvas interaction outcome, got {other:?}"),
+        }
+
+        let _ = fs::remove_file(project_path);
     }
 }

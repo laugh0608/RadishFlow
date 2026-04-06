@@ -85,12 +85,25 @@ pub struct StudioGuiCanvasState {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct StudioGuiHostCanvasSuggestionResult {
+pub struct StudioGuiHostCanvasInteractionResult {
+    pub action: StudioGuiCanvasInteractionAction,
     pub accepted: Option<CanvasSuggestion>,
+    pub rejected: Option<CanvasSuggestion>,
+    pub focused: Option<CanvasSuggestion>,
     pub applied_target: Option<rf_ui::InspectorTarget>,
     pub latest_log_entry: Option<AppLogEntry>,
     pub ui_commands: StudioAppHostUiCommandModel,
     pub canvas: StudioGuiCanvasState,
+}
+
+pub type StudioGuiHostCanvasSuggestionResult = StudioGuiHostCanvasInteractionResult;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum StudioGuiCanvasInteractionAction {
+    AcceptFocusedByTab,
+    RejectFocused,
+    FocusNext,
+    FocusPrevious,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -161,19 +174,44 @@ impl StudioGuiHost {
 
     pub fn accept_focused_canvas_suggestion_by_tab(
         &mut self,
-    ) -> RfResult<StudioGuiHostCanvasSuggestionResult> {
+    ) -> RfResult<StudioGuiHostCanvasInteractionResult> {
         let accepted = self.controller.accept_focused_canvas_suggestion_by_tab()?;
-        Ok(StudioGuiHostCanvasSuggestionResult {
-            applied_target: accepted
-                .as_ref()
-                .and_then(|_| self.controller.active_inspector_target()),
-            latest_log_entry: accepted
-                .as_ref()
-                .and_then(|_| self.controller.latest_log_entry()),
+        Ok(self.build_canvas_interaction_result(
+            StudioGuiCanvasInteractionAction::AcceptFocusedByTab,
             accepted,
-            ui_commands: self.ui_commands(),
-            canvas: self.canvas_state(),
-        })
+            None,
+        ))
+    }
+
+    pub fn reject_focused_canvas_suggestion(&mut self) -> RfResult<StudioGuiHostCanvasInteractionResult> {
+        let rejected = self.controller.reject_focused_canvas_suggestion();
+        Ok(self.build_canvas_interaction_result(
+            StudioGuiCanvasInteractionAction::RejectFocused,
+            None,
+            rejected,
+        ))
+    }
+
+    pub fn focus_next_canvas_suggestion(&mut self) -> RfResult<StudioGuiHostCanvasInteractionResult> {
+        let focused = self.controller.focus_next_canvas_suggestion();
+        Ok(self.build_canvas_interaction_result_with_focus(
+            StudioGuiCanvasInteractionAction::FocusNext,
+            None,
+            None,
+            focused,
+        ))
+    }
+
+    pub fn focus_previous_canvas_suggestion(
+        &mut self,
+    ) -> RfResult<StudioGuiHostCanvasInteractionResult> {
+        let focused = self.controller.focus_previous_canvas_suggestion();
+        Ok(self.build_canvas_interaction_result_with_focus(
+            StudioGuiCanvasInteractionAction::FocusPrevious,
+            None,
+            None,
+            focused,
+        ))
     }
 
     pub fn execute_command(
@@ -318,6 +356,45 @@ impl StudioGuiHost {
                 .unwrap_or_default(),
             close: closed.close,
         })
+    }
+}
+
+impl StudioGuiHost {
+    fn build_canvas_interaction_result(
+        &self,
+        action: StudioGuiCanvasInteractionAction,
+        accepted: Option<CanvasSuggestion>,
+        rejected: Option<CanvasSuggestion>,
+    ) -> StudioGuiHostCanvasInteractionResult {
+        let focused = self
+            .controller
+            .canvas_interaction()
+            .focused_suggestion()
+            .cloned();
+        self.build_canvas_interaction_result_with_focus(action, accepted, rejected, focused)
+    }
+
+    fn build_canvas_interaction_result_with_focus(
+        &self,
+        action: StudioGuiCanvasInteractionAction,
+        accepted: Option<CanvasSuggestion>,
+        rejected: Option<CanvasSuggestion>,
+        focused: Option<CanvasSuggestion>,
+    ) -> StudioGuiHostCanvasInteractionResult {
+        StudioGuiHostCanvasInteractionResult {
+            action,
+            applied_target: accepted
+                .as_ref()
+                .and_then(|_| self.controller.active_inspector_target()),
+            latest_log_entry: accepted
+                .as_ref()
+                .and_then(|_| self.controller.latest_log_entry()),
+            accepted,
+            rejected,
+            focused,
+            ui_commands: self.ui_commands(),
+            canvas: self.canvas_state(),
+        }
     }
 }
 

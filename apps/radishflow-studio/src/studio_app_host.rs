@@ -480,6 +480,18 @@ impl StudioAppHost {
             .accept_focused_canvas_suggestion_by_tab()
     }
 
+    pub fn reject_focused_canvas_suggestion(&mut self) -> Option<rf_ui::CanvasSuggestion> {
+        self.window_host_manager.reject_focused_canvas_suggestion()
+    }
+
+    pub fn focus_next_canvas_suggestion(&mut self) -> Option<rf_ui::CanvasSuggestion> {
+        self.window_host_manager.focus_next_canvas_suggestion()
+    }
+
+    pub fn focus_previous_canvas_suggestion(&mut self) -> Option<rf_ui::CanvasSuggestion> {
+        self.window_host_manager.focus_previous_canvas_suggestion()
+    }
+
     pub fn latest_log_entry(&self) -> Option<rf_ui::AppLogEntry> {
         self.window_host_manager
             .session()
@@ -626,6 +638,18 @@ impl StudioAppHostController {
         let accepted = self.app_host.accept_focused_canvas_suggestion_by_tab()?;
         self.app_host.refresh_local_canvas_suggestions();
         Ok(accepted)
+    }
+
+    pub fn reject_focused_canvas_suggestion(&mut self) -> Option<rf_ui::CanvasSuggestion> {
+        self.app_host.reject_focused_canvas_suggestion()
+    }
+
+    pub fn focus_next_canvas_suggestion(&mut self) -> Option<rf_ui::CanvasSuggestion> {
+        self.app_host.focus_next_canvas_suggestion()
+    }
+
+    pub fn focus_previous_canvas_suggestion(&mut self) -> Option<rf_ui::CanvasSuggestion> {
+        self.app_host.focus_previous_canvas_suggestion()
     }
 
     pub fn latest_log_entry(&self) -> Option<rf_ui::AppLogEntry> {

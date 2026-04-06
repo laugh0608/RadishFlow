@@ -59,6 +59,18 @@ impl StudioWindowSession {
         self.host_port.accept_focused_canvas_suggestion_by_tab()
     }
 
+    pub fn reject_focused_canvas_suggestion(&mut self) -> Option<rf_ui::CanvasSuggestion> {
+        self.host_port.reject_focused_canvas_suggestion()
+    }
+
+    pub fn focus_next_canvas_suggestion(&mut self) -> Option<rf_ui::CanvasSuggestion> {
+        self.host_port.focus_next_canvas_suggestion()
+    }
+
+    pub fn focus_previous_canvas_suggestion(&mut self) -> Option<rf_ui::CanvasSuggestion> {
+        self.host_port.focus_previous_canvas_suggestion()
+    }
+
     pub fn open_window(&mut self) -> StudioWindowHostRegistration {
         let registration = self.host_port.open_window();
         let _ = self.apply_timer_driver_commands(&registration.timer_driver_commands);

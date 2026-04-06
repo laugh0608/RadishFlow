@@ -16,7 +16,10 @@ pub enum StudioGuiShortcutRoute {
     DispatchCommandId {
         command_id: String,
     },
-    RequestCanvasSuggestionAcceptByTab,
+    RequestCanvasSuggestionAccept,
+    RequestCanvasSuggestionReject,
+    RequestCanvasSuggestionFocusNext,
+    RequestCanvasSuggestionFocusPrevious,
     Ignored {
         reason: StudioGuiShortcutIgnoreReason,
     },
@@ -36,10 +39,76 @@ pub fn route_shortcut(
     shortcut: &StudioGuiShortcut,
     focus_context: StudioGuiFocusContext,
 ) -> StudioGuiShortcutRoute {
-    if is_tab(shortcut) {
+    if is_canvas_accept_shortcut(shortcut) {
         return match focus_context {
             StudioGuiFocusContext::CanvasSuggestionFocused => {
-                StudioGuiShortcutRoute::RequestCanvasSuggestionAcceptByTab
+                StudioGuiShortcutRoute::RequestCanvasSuggestionAccept
+            }
+            StudioGuiFocusContext::TextInput => StudioGuiShortcutRoute::Ignored {
+                reason: StudioGuiShortcutIgnoreReason::TextInputOwnsShortcut,
+            },
+            StudioGuiFocusContext::CommandPalette => StudioGuiShortcutRoute::Ignored {
+                reason: StudioGuiShortcutIgnoreReason::CommandPaletteOwnsShortcut,
+            },
+            StudioGuiFocusContext::ModalDialog => StudioGuiShortcutRoute::Ignored {
+                reason: StudioGuiShortcutIgnoreReason::ModalDialogOwnsShortcut,
+            },
+            StudioGuiFocusContext::Global
+            | StudioGuiFocusContext::Canvas
+            | StudioGuiFocusContext::InspectorPanel => StudioGuiShortcutRoute::Ignored {
+                reason: StudioGuiShortcutIgnoreReason::NoCanvasSuggestionFocused,
+            },
+        };
+    }
+
+    if is_canvas_focus_next_shortcut(shortcut) {
+        return match focus_context {
+            StudioGuiFocusContext::CanvasSuggestionFocused => {
+                StudioGuiShortcutRoute::RequestCanvasSuggestionFocusNext
+            }
+            StudioGuiFocusContext::TextInput => StudioGuiShortcutRoute::Ignored {
+                reason: StudioGuiShortcutIgnoreReason::TextInputOwnsShortcut,
+            },
+            StudioGuiFocusContext::CommandPalette => StudioGuiShortcutRoute::Ignored {
+                reason: StudioGuiShortcutIgnoreReason::CommandPaletteOwnsShortcut,
+            },
+            StudioGuiFocusContext::ModalDialog => StudioGuiShortcutRoute::Ignored {
+                reason: StudioGuiShortcutIgnoreReason::ModalDialogOwnsShortcut,
+            },
+            StudioGuiFocusContext::Global
+            | StudioGuiFocusContext::Canvas
+            | StudioGuiFocusContext::InspectorPanel => StudioGuiShortcutRoute::Ignored {
+                reason: StudioGuiShortcutIgnoreReason::NoCanvasSuggestionFocused,
+            },
+        };
+    }
+
+    if is_canvas_focus_previous_shortcut(shortcut) {
+        return match focus_context {
+            StudioGuiFocusContext::CanvasSuggestionFocused => {
+                StudioGuiShortcutRoute::RequestCanvasSuggestionFocusPrevious
+            }
+            StudioGuiFocusContext::TextInput => StudioGuiShortcutRoute::Ignored {
+                reason: StudioGuiShortcutIgnoreReason::TextInputOwnsShortcut,
+            },
+            StudioGuiFocusContext::CommandPalette => StudioGuiShortcutRoute::Ignored {
+                reason: StudioGuiShortcutIgnoreReason::CommandPaletteOwnsShortcut,
+            },
+            StudioGuiFocusContext::ModalDialog => StudioGuiShortcutRoute::Ignored {
+                reason: StudioGuiShortcutIgnoreReason::ModalDialogOwnsShortcut,
+            },
+            StudioGuiFocusContext::Global
+            | StudioGuiFocusContext::Canvas
+            | StudioGuiFocusContext::InspectorPanel => StudioGuiShortcutRoute::Ignored {
+                reason: StudioGuiShortcutIgnoreReason::NoCanvasSuggestionFocused,
+            },
+        };
+    }
+
+    if is_canvas_reject_shortcut(shortcut) {
+        return match focus_context {
+            StudioGuiFocusContext::CanvasSuggestionFocused => {
+                StudioGuiShortcutRoute::RequestCanvasSuggestionReject
             }
             StudioGuiFocusContext::TextInput => StudioGuiShortcutRoute::Ignored {
                 reason: StudioGuiShortcutIgnoreReason::TextInputOwnsShortcut,
@@ -80,8 +149,40 @@ pub fn route_shortcut(
     }
 }
 
-fn is_tab(shortcut: &StudioGuiShortcut) -> bool {
-    matches!(shortcut.key, crate::StudioGuiShortcutKey::Tab)
+fn is_canvas_accept_shortcut(shortcut: &StudioGuiShortcut) -> bool {
+    shortcut.modifiers.is_empty() && matches!(shortcut.key, crate::StudioGuiShortcutKey::Tab)
+}
+
+fn is_canvas_focus_next_shortcut(shortcut: &StudioGuiShortcut) -> bool {
+    has_exact_modifiers(shortcut, &[crate::StudioGuiShortcutModifier::Ctrl])
+        && matches!(shortcut.key, crate::StudioGuiShortcutKey::Tab)
+}
+
+fn is_canvas_focus_previous_shortcut(shortcut: &StudioGuiShortcut) -> bool {
+    has_exact_modifiers(
+        shortcut,
+        &[
+            crate::StudioGuiShortcutModifier::Ctrl,
+            crate::StudioGuiShortcutModifier::Shift,
+        ],
+    ) && matches!(shortcut.key, crate::StudioGuiShortcutKey::Tab)
+}
+
+fn is_canvas_reject_shortcut(shortcut: &StudioGuiShortcut) -> bool {
+    shortcut.modifiers.is_empty() && matches!(shortcut.key, crate::StudioGuiShortcutKey::Escape)
+}
+
+fn has_exact_modifiers(
+    shortcut: &StudioGuiShortcut,
+    expected: &[crate::StudioGuiShortcutModifier],
+) -> bool {
+    let mut actual = shortcut.modifiers.clone();
+    actual.sort();
+
+    let mut expected = expected.to_vec();
+    expected.sort();
+
+    actual == expected
 }
 
 #[cfg(test)]
@@ -140,8 +241,56 @@ mod tests {
 
         assert_eq!(
             route,
-            StudioGuiShortcutRoute::RequestCanvasSuggestionAcceptByTab
+            StudioGuiShortcutRoute::RequestCanvasSuggestionAccept
         );
+    }
+
+    #[test]
+    fn shortcut_router_routes_ctrl_tab_to_canvas_focus_next() {
+        let route = route_shortcut(
+            &registry(),
+            &StudioGuiShortcut {
+                modifiers: vec![StudioGuiShortcutModifier::Ctrl],
+                key: StudioGuiShortcutKey::Tab,
+            },
+            StudioGuiFocusContext::CanvasSuggestionFocused,
+        );
+
+        assert_eq!(route, StudioGuiShortcutRoute::RequestCanvasSuggestionFocusNext);
+    }
+
+    #[test]
+    fn shortcut_router_routes_ctrl_shift_tab_to_canvas_focus_previous() {
+        let route = route_shortcut(
+            &registry(),
+            &StudioGuiShortcut {
+                modifiers: vec![
+                    StudioGuiShortcutModifier::Ctrl,
+                    StudioGuiShortcutModifier::Shift,
+                ],
+                key: StudioGuiShortcutKey::Tab,
+            },
+            StudioGuiFocusContext::CanvasSuggestionFocused,
+        );
+
+        assert_eq!(
+            route,
+            StudioGuiShortcutRoute::RequestCanvasSuggestionFocusPrevious
+        );
+    }
+
+    #[test]
+    fn shortcut_router_routes_escape_to_canvas_reject_when_suggestion_is_focused() {
+        let route = route_shortcut(
+            &registry(),
+            &StudioGuiShortcut {
+                modifiers: Vec::new(),
+                key: StudioGuiShortcutKey::Escape,
+            },
+            StudioGuiFocusContext::CanvasSuggestionFocused,
+        );
+
+        assert_eq!(route, StudioGuiShortcutRoute::RequestCanvasSuggestionReject);
     }
 
     #[test]

@@ -158,6 +158,18 @@ impl StudioAppWindowHostManager {
         self.session.accept_focused_canvas_suggestion_by_tab()
     }
 
+    pub fn reject_focused_canvas_suggestion(&mut self) -> Option<rf_ui::CanvasSuggestion> {
+        self.session.reject_focused_canvas_suggestion()
+    }
+
+    pub fn focus_next_canvas_suggestion(&mut self) -> Option<rf_ui::CanvasSuggestion> {
+        self.session.focus_next_canvas_suggestion()
+    }
+
+    pub fn focus_previous_canvas_suggestion(&mut self) -> Option<rf_ui::CanvasSuggestion> {
+        self.session.focus_previous_canvas_suggestion()
+    }
+
     pub fn foreground_window_id(&self) -> Option<StudioWindowHostId> {
         self.foreground_window_id
     }

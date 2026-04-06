@@ -502,6 +502,18 @@ impl BootstrapSession {
     ) -> RfResult<Option<rf_ui::CanvasSuggestion>> {
         self.app_state.accept_focused_canvas_suggestion_by_tab()
     }
+
+    pub(crate) fn reject_focused_canvas_suggestion(&mut self) -> Option<rf_ui::CanvasSuggestion> {
+        self.app_state.reject_focused_canvas_suggestion()
+    }
+
+    pub(crate) fn focus_next_canvas_suggestion(&mut self) -> Option<rf_ui::CanvasSuggestion> {
+        self.app_state.focus_next_canvas_suggestion()
+    }
+
+    pub(crate) fn focus_previous_canvas_suggestion(&mut self) -> Option<rf_ui::CanvasSuggestion> {
+        self.app_state.focus_previous_canvas_suggestion()
+    }
 }
 
 #[derive(Debug, Clone)]

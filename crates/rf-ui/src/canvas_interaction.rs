@@ -194,6 +194,14 @@ impl CanvasInteractionState {
         Some(rejected)
     }
 
+    pub fn focus_next(&mut self) -> Option<CanvasSuggestion> {
+        self.rotate_focus(FocusDirection::Next)
+    }
+
+    pub fn focus_previous(&mut self) -> Option<CanvasSuggestion> {
+        self.rotate_focus(FocusDirection::Previous)
+    }
+
     pub fn invalidate_all(&mut self) {
         for suggestion in &mut self.suggestions {
             if !suggestion.status.is_terminal() {
@@ -204,24 +212,11 @@ impl CanvasInteractionState {
     }
 
     fn focus_next_available(&mut self) {
-        self.focused_suggestion_id = None;
-
-        for suggestion in &mut self.suggestions {
-            if suggestion.status.is_terminal() {
-                continue;
-            }
-
-            suggestion.status = SuggestionStatus::Proposed;
-        }
-
-        if let Some(next) = self
+        let next_index = self
             .suggestions
-            .iter_mut()
-            .find(|item| !item.status.is_terminal())
-        {
-            next.status = SuggestionStatus::Focused;
-            self.focused_suggestion_id = Some(next.id.clone());
-        }
+            .iter()
+            .position(|item| !item.status.is_terminal());
+        let _ = self.set_focused_index(next_index);
     }
 
     fn update_suggestion_status(
@@ -236,4 +231,59 @@ impl CanvasInteractionState {
         suggestion.status = next_status;
         Some(suggestion.clone())
     }
+
+    fn rotate_focus(&mut self, direction: FocusDirection) -> Option<CanvasSuggestion> {
+        let available_indices = self
+            .suggestions
+            .iter()
+            .enumerate()
+            .filter_map(|(index, suggestion)| (!suggestion.status.is_terminal()).then_some(index))
+            .collect::<Vec<_>>();
+        if available_indices.is_empty() {
+            self.focused_suggestion_id = None;
+            return None;
+        }
+
+        let current_position = self.focused_suggestion_id.as_ref().and_then(|focused_id| {
+            available_indices
+                .iter()
+                .position(|index| self.suggestions[*index].id == *focused_id)
+        });
+        let next_position = match (direction, current_position) {
+            (FocusDirection::Next, Some(position)) => (position + 1) % available_indices.len(),
+            (FocusDirection::Previous, Some(0)) => available_indices.len() - 1,
+            (FocusDirection::Previous, Some(position)) => position - 1,
+            (FocusDirection::Next, None) => 0,
+            (FocusDirection::Previous, None) => available_indices.len() - 1,
+        };
+
+        self.set_focused_index(Some(available_indices[next_position]))
+    }
+
+    fn set_focused_index(&mut self, focused_index: Option<usize>) -> Option<CanvasSuggestion> {
+        self.focused_suggestion_id = None;
+
+        for suggestion in &mut self.suggestions {
+            if suggestion.status.is_terminal() {
+                continue;
+            }
+            suggestion.status = SuggestionStatus::Proposed;
+        }
+
+        let focused_index = focused_index?;
+        let focused = self.suggestions.get_mut(focused_index)?;
+        if focused.status.is_terminal() {
+            return None;
+        }
+
+        focused.status = SuggestionStatus::Focused;
+        self.focused_suggestion_id = Some(focused.id.clone());
+        Some(focused.clone())
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum FocusDirection {
+    Next,
+    Previous,
 }

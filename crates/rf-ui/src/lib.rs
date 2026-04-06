@@ -360,6 +360,101 @@ mod tests {
     }
 
     #[test]
+    fn focus_next_canvas_suggestion_rotates_between_available_entries() {
+        let mut app_state = AppState::new(sample_document());
+        app_state.replace_canvas_suggestions(vec![
+            sample_canvas_suggestion("sug-low", 0.40, SuggestionSource::LocalRules),
+            sample_canvas_suggestion("sug-high", 0.95, SuggestionSource::RadishMind),
+            sample_canvas_suggestion("sug-mid", 0.70, SuggestionSource::LocalRules),
+        ]);
+
+        let next = app_state
+            .focus_next_canvas_suggestion()
+            .expect("expected next focused suggestion");
+        assert_eq!(next.id.as_str(), "sug-mid");
+        assert_eq!(
+            app_state
+                .workspace
+                .canvas_interaction
+                .focused_suggestion_id
+                .as_ref()
+                .map(|id| id.as_str()),
+            Some("sug-mid")
+        );
+
+        let wrapped = app_state
+            .focus_next_canvas_suggestion()
+            .expect("expected wrapped focus");
+        assert_eq!(wrapped.id.as_str(), "sug-low");
+        assert_eq!(
+            app_state
+                .workspace
+                .canvas_interaction
+                .focused_suggestion_id
+                .as_ref()
+                .map(|id| id.as_str()),
+            Some("sug-low")
+        );
+    }
+
+    #[test]
+    fn focus_previous_canvas_suggestion_wraps_to_last_available_entry() {
+        let mut app_state = AppState::new(sample_document());
+        app_state.replace_canvas_suggestions(vec![
+            sample_canvas_suggestion("sug-low", 0.40, SuggestionSource::LocalRules),
+            sample_canvas_suggestion("sug-high", 0.95, SuggestionSource::RadishMind),
+            sample_canvas_suggestion("sug-mid", 0.70, SuggestionSource::LocalRules),
+        ]);
+
+        let previous = app_state
+            .focus_previous_canvas_suggestion()
+            .expect("expected previous focused suggestion");
+        assert_eq!(previous.id.as_str(), "sug-low");
+        assert_eq!(
+            app_state
+                .workspace
+                .canvas_interaction
+                .focused_suggestion_id
+                .as_ref()
+                .map(|id| id.as_str()),
+            Some("sug-low")
+        );
+    }
+
+    #[test]
+    fn rejecting_focused_canvas_suggestion_advances_focus_to_next_available_entry() {
+        let mut app_state = AppState::new(sample_document());
+        app_state.replace_canvas_suggestions(vec![
+            sample_canvas_suggestion("sug-low", 0.40, SuggestionSource::LocalRules),
+            sample_canvas_suggestion("sug-high", 0.95, SuggestionSource::RadishMind),
+            sample_canvas_suggestion("sug-mid", 0.70, SuggestionSource::LocalRules),
+        ]);
+
+        let rejected = app_state
+            .reject_focused_canvas_suggestion()
+            .expect("expected rejected suggestion");
+        assert_eq!(rejected.id.as_str(), "sug-high");
+        assert_eq!(rejected.status, SuggestionStatus::Rejected);
+        assert_eq!(
+            app_state
+                .workspace
+                .canvas_interaction
+                .focused_suggestion_id
+                .as_ref()
+                .map(|id| id.as_str()),
+            Some("sug-mid")
+        );
+        assert_eq!(
+            app_state.workspace.canvas_interaction.suggestions[0].status,
+            SuggestionStatus::Rejected
+        );
+        assert_eq!(
+            app_state.workspace.canvas_interaction.suggestions[1].status,
+            SuggestionStatus::Focused
+        );
+    }
+
+    #[test]
     fn tab_accepts_only_high_confidence_suggestions_without_recording_history() {
         let mut flowsheet = Flowsheet::new("demo");
         flowsheet

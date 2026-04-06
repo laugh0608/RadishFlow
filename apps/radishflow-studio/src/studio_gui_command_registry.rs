@@ -13,6 +13,7 @@ pub enum StudioGuiShortcutKey {
     F6,
     F8,
     Tab,
+    Escape,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]

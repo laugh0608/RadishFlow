@@ -495,6 +495,14 @@ impl AppState {
         self.workspace.canvas_interaction.reject_focused()
     }
 
+    pub fn focus_next_canvas_suggestion(&mut self) -> Option<CanvasSuggestion> {
+        self.workspace.canvas_interaction.focus_next()
+    }
+
+    pub fn focus_previous_canvas_suggestion(&mut self) -> Option<CanvasSuggestion> {
+        self.workspace.canvas_interaction.focus_previous()
+    }
+
     pub fn apply_run_panel_recovery_action(
         &mut self,
         action: &RunPanelRecoveryAction,

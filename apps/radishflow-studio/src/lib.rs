@@ -160,7 +160,8 @@ pub use studio_gui_driver::{
     StudioGuiDriver, StudioGuiDriverDispatch, StudioGuiDriverOutcome, StudioGuiEvent,
 };
 pub use studio_gui_host::{
-    StudioGuiCanvasState, StudioGuiHost, StudioGuiHostCanvasSuggestionResult,
+    StudioGuiCanvasInteractionAction, StudioGuiCanvasState, StudioGuiHost,
+    StudioGuiHostCanvasInteractionResult, StudioGuiHostCanvasSuggestionResult,
     StudioGuiHostCloseWindowResult, StudioGuiHostCommand, StudioGuiHostCommandOutcome,
     StudioGuiHostDispatch, StudioGuiHostGlobalEventDispatch, StudioGuiHostLifecycleDispatch,
     StudioGuiHostLifecycleEvent, StudioGuiHostUiCommandDispatchResult, StudioGuiHostWindowOpened,

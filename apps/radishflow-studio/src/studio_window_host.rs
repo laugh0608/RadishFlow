@@ -178,6 +178,18 @@ impl StudioRuntimeHostPort {
         self.runtime.accept_focused_canvas_suggestion_by_tab()
     }
 
+    pub fn reject_focused_canvas_suggestion(&mut self) -> Option<rf_ui::CanvasSuggestion> {
+        self.runtime.reject_focused_canvas_suggestion()
+    }
+
+    pub fn focus_next_canvas_suggestion(&mut self) -> Option<rf_ui::CanvasSuggestion> {
+        self.runtime.focus_next_canvas_suggestion()
+    }
+
+    pub fn focus_previous_canvas_suggestion(&mut self) -> Option<rf_ui::CanvasSuggestion> {
+        self.runtime.focus_previous_canvas_suggestion()
+    }
+
     pub fn entitlement_timer_owner(&self) -> Option<StudioWindowHostId> {
         self.entitlement_timer_owner
     }
