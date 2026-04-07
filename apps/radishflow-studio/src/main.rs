@@ -3,9 +3,9 @@ use radishflow_studio::{
     StudioGuiDriver, StudioGuiDriverDispatch, StudioGuiDriverOutcome, StudioGuiEvent,
     StudioGuiHostCloseWindowResult, StudioGuiHostCommandOutcome, StudioGuiHostDispatch,
     StudioGuiHostLifecycleDispatch, StudioGuiHostWindowOpened, StudioGuiNativeTimerEffects,
-    StudioGuiNativeTimerOperation, StudioGuiWindowAreaId, StudioGuiWindowDockRegion,
-    StudioGuiWindowLayoutMutation, StudioGuiWindowModel, StudioRuntimeConfig,
-    StudioRuntimeDispatch, StudioRuntimeReport, StudioWindowHostRetirement,
+    StudioGuiNativeTimerOperation, StudioGuiWindowAreaId, StudioGuiWindowDockPlacement,
+    StudioGuiWindowDockRegion, StudioGuiWindowLayoutMutation, StudioGuiWindowModel,
+    StudioRuntimeConfig, StudioRuntimeDispatch, StudioRuntimeReport, StudioWindowHostRetirement,
     StudioWindowTimerDriverAckResult,
 };
 
@@ -207,15 +207,17 @@ fn main() {
     let moved_commands = app_host
         .dispatch_event(StudioGuiEvent::WindowLayoutMutationRequested {
             window_id: Some(window.window_id),
-            mutation: StudioGuiWindowLayoutMutation::SetPanelDockRegion {
+            mutation: StudioGuiWindowLayoutMutation::PlacePanelInDockRegion {
                 area_id: StudioGuiWindowAreaId::Commands,
                 dock_region: StudioGuiWindowDockRegion::RightSidebar,
-                order: Some(4),
+                placement: StudioGuiWindowDockPlacement::Before {
+                    anchor_area_id: StudioGuiWindowAreaId::Runtime,
+                },
             },
         })
         .expect("expected panel dock region update");
     print_window_model(
-        "Window model after moving commands panel into the right sidebar",
+        "Window model after inserting commands panel before runtime in the right sidebar",
         &moved_commands.window,
     );
     if let Some(slot) = window.restored_entitlement_timer.as_ref() {

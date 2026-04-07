@@ -329,8 +329,8 @@ mod tests {
         StudioGuiFocusContext, StudioGuiHostCanvasInteractionResult, StudioGuiHostCommandOutcome,
         StudioGuiHostUiCommandDispatchResult, StudioGuiShortcut, StudioGuiShortcutIgnoreReason,
         StudioGuiShortcutKey, StudioGuiShortcutModifier, StudioGuiWindowAreaId,
-        StudioGuiWindowDockRegion, StudioGuiWindowLayoutMutation, StudioRuntimeConfig,
-        StudioRuntimeEntitlementPreflight, StudioRuntimeEntitlementSeed,
+        StudioGuiWindowDockPlacement, StudioGuiWindowDockRegion, StudioGuiWindowLayoutMutation,
+        StudioRuntimeConfig, StudioRuntimeEntitlementPreflight, StudioRuntimeEntitlementSeed,
     };
     use rf_ui::{
         GhostElement, GhostElementKind, StreamVisualKind, StreamVisualState, SuggestionSource,
@@ -983,10 +983,12 @@ mod tests {
         let moved = driver
             .dispatch_event(StudioGuiEvent::WindowLayoutMutationRequested {
                 window_id: Some(second_window_id),
-                mutation: StudioGuiWindowLayoutMutation::SetPanelDockRegion {
+                mutation: StudioGuiWindowLayoutMutation::PlacePanelInDockRegion {
                     area_id: StudioGuiWindowAreaId::Commands,
                     dock_region: StudioGuiWindowDockRegion::RightSidebar,
-                    order: Some(4),
+                    placement: StudioGuiWindowDockPlacement::Before {
+                        anchor_area_id: StudioGuiWindowAreaId::Runtime,
+                    },
                 },
             })
             .expect("expected layout dock region update");
@@ -996,9 +998,14 @@ mod tests {
                 assert_eq!(
                     result
                         .layout_state
-                        .panel(StudioGuiWindowAreaId::Commands)
-                        .map(|panel| (panel.dock_region, panel.order)),
-                    Some((StudioGuiWindowDockRegion::RightSidebar, 4))
+                        .panels_in_dock_region(StudioGuiWindowDockRegion::RightSidebar)
+                        .into_iter()
+                        .map(|panel| (panel.area_id, panel.order))
+                        .collect::<Vec<_>>(),
+                    vec![
+                        (StudioGuiWindowAreaId::Commands, 10),
+                        (StudioGuiWindowAreaId::Runtime, 20),
+                    ]
                 );
             }
             other => panic!("expected window layout update outcome, got {other:?}"),
@@ -1026,7 +1033,7 @@ mod tests {
                 .layout_state
                 .panel(StudioGuiWindowAreaId::Commands)
                 .map(|panel| (panel.collapsed, panel.dock_region, panel.order)),
-            Some((true, StudioGuiWindowDockRegion::RightSidebar, 4))
+            Some((true, StudioGuiWindowDockRegion::RightSidebar, 10))
         );
         assert_eq!(
             first_window
@@ -1053,24 +1060,19 @@ mod tests {
         assert_eq!(
             second_window
                 .layout_state
-                .panels
-                .iter()
+                .panels_in_dock_region(StudioGuiWindowDockRegion::RightSidebar)
+                .into_iter()
                 .map(|panel| (panel.area_id, panel.dock_region, panel.order))
                 .collect::<Vec<_>>(),
             vec![
                 (
                     StudioGuiWindowAreaId::Commands,
                     StudioGuiWindowDockRegion::RightSidebar,
-                    4,
+                    10,
                 ),
                 (
                     StudioGuiWindowAreaId::Runtime,
                     StudioGuiWindowDockRegion::RightSidebar,
-                    5,
-                ),
-                (
-                    StudioGuiWindowAreaId::Canvas,
-                    StudioGuiWindowDockRegion::CenterStage,
                     20,
                 ),
             ]

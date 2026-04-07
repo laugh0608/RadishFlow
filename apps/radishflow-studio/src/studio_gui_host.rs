@@ -589,10 +589,10 @@ mod tests {
     use crate::{
         StudioGuiHost, StudioGuiHostCommand, StudioGuiHostCommandOutcome,
         StudioGuiHostLifecycleEvent, StudioGuiHostUiCommandDispatchResult,
-        StudioGuiNativeTimerEffects, StudioGuiWindowAreaId, StudioGuiWindowDockRegion,
-        StudioGuiWindowLayoutMutation, StudioRuntimeConfig, StudioRuntimeEntitlementPreflight,
-        StudioRuntimeEntitlementSeed, StudioRuntimeEntitlementSessionEvent, StudioRuntimeTrigger,
-        StudioWindowHostRetirement,
+        StudioGuiNativeTimerEffects, StudioGuiWindowAreaId, StudioGuiWindowDockPlacement,
+        StudioGuiWindowDockRegion, StudioGuiWindowLayoutMutation, StudioRuntimeConfig,
+        StudioRuntimeEntitlementPreflight, StudioRuntimeEntitlementSeed,
+        StudioRuntimeEntitlementSessionEvent, StudioRuntimeTrigger, StudioWindowHostRetirement,
     };
 
     fn lease_expiring_config() -> StudioRuntimeConfig {
@@ -956,41 +956,50 @@ mod tests {
         let fifth_update = gui_host
             .update_window_layout(
                 Some(opened.registration.window_id),
-                StudioGuiWindowLayoutMutation::SetPanelDockRegion {
+                StudioGuiWindowLayoutMutation::PlacePanelInDockRegion {
                     area_id: StudioGuiWindowAreaId::Commands,
                     dock_region: StudioGuiWindowDockRegion::RightSidebar,
-                    order: Some(4),
+                    placement: StudioGuiWindowDockPlacement::Before {
+                        anchor_area_id: StudioGuiWindowAreaId::Runtime,
+                    },
                 },
             )
             .expect("expected panel dock region update");
         assert_eq!(
             fifth_update
                 .layout_state
-                .panel(StudioGuiWindowAreaId::Commands)
-                .map(|panel| (panel.dock_region, panel.order)),
-            Some((StudioGuiWindowDockRegion::RightSidebar, 4))
+                .panels_in_dock_region(StudioGuiWindowDockRegion::RightSidebar)
+                .into_iter()
+                .map(|panel| (panel.area_id, panel.order))
+                .collect::<Vec<_>>(),
+            vec![
+                (StudioGuiWindowAreaId::Commands, 10),
+                (StudioGuiWindowAreaId::Runtime, 20),
+            ]
         );
 
         let stored = read_studio_layout_file(&layout_path).expect("expected stored layout sidecar");
         assert_eq!(stored.entries.len(), 1);
         assert_eq!(stored.entries[0].layout_key, "studio.window.owner.slot-1");
         assert_eq!(stored.entries[0].center_area, "runtime");
+        let mut stored_panels = stored.entries[0]
+            .panels
+            .iter()
+            .map(|panel| {
+                (
+                    panel.area_id.as_str(),
+                    panel.dock_region.as_str(),
+                    panel.order,
+                )
+            })
+            .collect::<Vec<_>>();
+        stored_panels.sort_unstable();
         assert_eq!(
-            stored.entries[0]
-                .panels
-                .iter()
-                .map(|panel| {
-                    (
-                        panel.area_id.as_str(),
-                        panel.dock_region.as_str(),
-                        panel.order,
-                    )
-                })
-                .collect::<Vec<_>>(),
+            stored_panels,
             vec![
-                ("commands", "right-sidebar", 4),
-                ("runtime", "right-sidebar", 5),
                 ("canvas", "center-stage", 20),
+                ("commands", "right-sidebar", 10),
+                ("runtime", "right-sidebar", 20),
             ]
         );
 
@@ -1021,24 +1030,19 @@ mod tests {
         assert_eq!(
             window
                 .layout_state
-                .panels
-                .iter()
+                .panels_in_dock_region(StudioGuiWindowDockRegion::RightSidebar)
+                .into_iter()
                 .map(|panel| (panel.area_id, panel.dock_region, panel.order))
                 .collect::<Vec<_>>(),
             vec![
                 (
                     StudioGuiWindowAreaId::Commands,
                     StudioGuiWindowDockRegion::RightSidebar,
-                    4,
+                    10,
                 ),
                 (
                     StudioGuiWindowAreaId::Runtime,
                     StudioGuiWindowDockRegion::RightSidebar,
-                    5,
-                ),
-                (
-                    StudioGuiWindowAreaId::Canvas,
-                    StudioGuiWindowDockRegion::CenterStage,
                     20,
                 ),
             ]

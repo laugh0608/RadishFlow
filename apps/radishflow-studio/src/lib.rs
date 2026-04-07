@@ -180,9 +180,9 @@ pub use studio_gui_snapshot::{StudioGuiRuntimeSnapshot, StudioGuiSnapshot};
 pub use studio_gui_window_layout::{
     StudioGuiWindowAreaId, StudioGuiWindowDockRegion, StudioGuiWindowLayoutModel,
     StudioGuiWindowLayoutScope, StudioGuiWindowLayoutScopeKind, StudioGuiWindowLayoutState,
-    StudioGuiWindowLayoutMutation, StudioGuiWindowLayoutPersistenceState,
-    StudioGuiWindowPanelLayout, StudioGuiWindowPanelLayoutState, StudioGuiWindowRegionWeight,
-    StudioGuiWindowTitlebarModel,
+    StudioGuiWindowDockPlacement, StudioGuiWindowLayoutMutation,
+    StudioGuiWindowLayoutPersistenceState, StudioGuiWindowPanelLayout,
+    StudioGuiWindowPanelLayoutState, StudioGuiWindowRegionWeight, StudioGuiWindowTitlebarModel,
 };
 pub use studio_gui_window_model::{
     StudioGuiWindowCanvasAreaModel, StudioGuiWindowCommandAreaModel, StudioGuiWindowHeaderModel,

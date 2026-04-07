@@ -67,10 +67,27 @@ pub struct StudioGuiWindowLayoutPersistenceState {
     pub region_weights: Vec<StudioGuiWindowRegionWeight>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum StudioGuiWindowDockPlacement {
+    Start,
+    End,
+    Before {
+        anchor_area_id: StudioGuiWindowAreaId,
+    },
+    After {
+        anchor_area_id: StudioGuiWindowAreaId,
+    },
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum StudioGuiWindowLayoutMutation {
     SetCenterArea {
         area_id: StudioGuiWindowAreaId,
+    },
+    PlacePanelInDockRegion {
+        area_id: StudioGuiWindowAreaId,
+        dock_region: StudioGuiWindowDockRegion,
+        placement: StudioGuiWindowDockPlacement,
     },
     SetPanelDockRegion {
         area_id: StudioGuiWindowAreaId,
@@ -183,6 +200,19 @@ impl StudioGuiWindowLayoutState {
         self.panels.iter().find(|panel| panel.area_id == area_id)
     }
 
+    pub fn panels_in_dock_region(
+        &self,
+        dock_region: StudioGuiWindowDockRegion,
+    ) -> Vec<&StudioGuiWindowPanelLayoutState> {
+        let mut panels = self
+            .panels
+            .iter()
+            .filter(|panel| panel.dock_region == dock_region)
+            .collect::<Vec<_>>();
+        panels.sort_by_key(|panel| (panel.order, area_sort_rank(panel.area_id)));
+        panels
+    }
+
     pub fn region_weight(
         &self,
         dock_region: StudioGuiWindowDockRegion,
@@ -218,11 +248,39 @@ impl StudioGuiWindowLayoutState {
                 upsert_panel_state(&mut next.panels, panel);
                 next.center_area = *area_id;
             }
+            StudioGuiWindowLayoutMutation::PlacePanelInDockRegion {
+                area_id,
+                dock_region,
+                placement,
+            } => {
+                let previous_region = next
+                    .panel(*area_id)
+                    .map(|panel| panel.dock_region)
+                    .unwrap_or_else(|| default_panel_state(*area_id).dock_region);
+                let mut panel = next
+                    .panel(*area_id)
+                    .cloned()
+                    .unwrap_or_else(|| default_panel_state(*area_id));
+                panel.dock_region = *dock_region;
+                if *dock_region == StudioGuiWindowDockRegion::CenterStage {
+                    panel.visible = true;
+                }
+                upsert_panel_state(&mut next.panels, panel);
+                place_panel_in_dock_region(&mut next.panels, *area_id, *dock_region, *placement);
+                if previous_region != *dock_region {
+                    normalize_region_orders(&mut next.panels, previous_region);
+                }
+                reconcile_center_stage_after_panel_move(&mut next, *area_id, *dock_region);
+            }
             StudioGuiWindowLayoutMutation::SetPanelDockRegion {
                 area_id,
                 dock_region,
                 order,
             } => {
+                let previous_region = next
+                    .panel(*area_id)
+                    .map(|panel| panel.dock_region)
+                    .unwrap_or_else(|| default_panel_state(*area_id).dock_region);
                 let mut panel = next
                     .panel(*area_id)
                     .cloned()
@@ -235,6 +293,19 @@ impl StudioGuiWindowLayoutState {
                     panel.visible = true;
                 }
                 upsert_panel_state(&mut next.panels, panel);
+                if previous_region != *dock_region {
+                    if order.is_some() {
+                        normalize_region_orders(&mut next.panels, previous_region);
+                    } else {
+                        place_panel_in_dock_region(
+                            &mut next.panels,
+                            *area_id,
+                            *dock_region,
+                            StudioGuiWindowDockPlacement::End,
+                        );
+                        normalize_region_orders(&mut next.panels, previous_region);
+                    }
+                }
                 reconcile_center_stage_after_panel_move(&mut next, *area_id, *dock_region);
             }
             StudioGuiWindowLayoutMutation::SetPanelVisibility { area_id, visible } => {
@@ -311,6 +382,19 @@ impl StudioGuiWindowLayoutModel {
 
     pub fn panel(&self, area_id: StudioGuiWindowAreaId) -> Option<&StudioGuiWindowPanelLayout> {
         self.panels.iter().find(|panel| panel.area_id == area_id)
+    }
+
+    pub fn panels_in_dock_region(
+        &self,
+        dock_region: StudioGuiWindowDockRegion,
+    ) -> Vec<&StudioGuiWindowPanelLayout> {
+        let mut panels = self
+            .panels
+            .iter()
+            .filter(|panel| panel.dock_region == dock_region)
+            .collect::<Vec<_>>();
+        panels.sort_by_key(|panel| (panel.order, area_sort_rank(panel.area_id)));
+        panels
     }
 
     fn from_areas(
@@ -536,6 +620,66 @@ fn upsert_panel_state(
     sort_panels(panels);
 }
 
+fn place_panel_in_dock_region(
+    panels: &mut Vec<StudioGuiWindowPanelLayoutState>,
+    area_id: StudioGuiWindowAreaId,
+    dock_region: StudioGuiWindowDockRegion,
+    placement: StudioGuiWindowDockPlacement,
+) {
+    let mut ordered_area_ids = panels
+        .iter()
+        .filter(|panel| panel.area_id != area_id && panel.dock_region == dock_region)
+        .map(|panel| panel.area_id)
+        .collect::<Vec<_>>();
+    let insert_index = match placement {
+        StudioGuiWindowDockPlacement::Start => 0,
+        StudioGuiWindowDockPlacement::End => ordered_area_ids.len(),
+        StudioGuiWindowDockPlacement::Before { anchor_area_id } => ordered_area_ids
+            .iter()
+            .position(|candidate| *candidate == anchor_area_id)
+            .unwrap_or(ordered_area_ids.len()),
+        StudioGuiWindowDockPlacement::After { anchor_area_id } => ordered_area_ids
+            .iter()
+            .position(|candidate| *candidate == anchor_area_id)
+            .map(|index| index + 1)
+            .unwrap_or(ordered_area_ids.len()),
+    };
+    ordered_area_ids.insert(insert_index.min(ordered_area_ids.len()), area_id);
+    assign_region_orders(panels, dock_region, &ordered_area_ids);
+}
+
+fn normalize_region_orders(
+    panels: &mut Vec<StudioGuiWindowPanelLayoutState>,
+    dock_region: StudioGuiWindowDockRegion,
+) {
+    let ordered_area_ids = panels
+        .iter()
+        .filter(|panel| panel.dock_region == dock_region)
+        .map(|panel| panel.area_id)
+        .collect::<Vec<_>>();
+    assign_region_orders(panels, dock_region, &ordered_area_ids);
+}
+
+fn assign_region_orders(
+    panels: &mut Vec<StudioGuiWindowPanelLayoutState>,
+    dock_region: StudioGuiWindowDockRegion,
+    ordered_area_ids: &[StudioGuiWindowAreaId],
+) {
+    for (index, area_id) in ordered_area_ids.iter().enumerate() {
+        if let Some(panel) = panels
+            .iter_mut()
+            .find(|panel| panel.area_id == *area_id && panel.dock_region == dock_region)
+        {
+            panel.order = dock_order(index);
+        }
+    }
+    sort_panels(panels);
+}
+
+fn dock_order(index: usize) -> u8 {
+    ((index + 1) * 10).min(u8::MAX as usize) as u8
+}
+
 fn reconcile_center_stage_after_panel_move(
     layout: &mut StudioGuiWindowLayoutState,
     moved_area_id: StudioGuiWindowAreaId,
@@ -617,9 +761,9 @@ mod tests {
     };
 
     use crate::{
-        StudioGuiDriver, StudioGuiEvent, StudioGuiWindowAreaId, StudioGuiWindowDockRegion,
-        StudioGuiWindowLayoutScopeKind, StudioGuiWindowLayoutState, StudioRuntimeConfig,
-        StudioRuntimeEntitlementPreflight, StudioRuntimeEntitlementSeed,
+        StudioGuiDriver, StudioGuiEvent, StudioGuiWindowAreaId, StudioGuiWindowDockPlacement,
+        StudioGuiWindowDockRegion, StudioGuiWindowLayoutScopeKind, StudioGuiWindowLayoutState,
+        StudioRuntimeConfig, StudioRuntimeEntitlementPreflight, StudioRuntimeEntitlementSeed,
         StudioRuntimeEntitlementSessionEvent, StudioRuntimeTrigger,
     };
 
@@ -805,7 +949,7 @@ mod tests {
                 panel.order,
                 panel.visible
             )),
-            Some((StudioGuiWindowDockRegion::CenterStage, 5, true))
+            Some((StudioGuiWindowDockRegion::CenterStage, 10, true))
         );
         assert_eq!(
             state
@@ -813,6 +957,42 @@ mod tests {
                 .map(|panel| (panel.dock_region, panel.order)),
             Some((StudioGuiWindowDockRegion::LeftSidebar, 25))
         );
+    }
+
+    #[test]
+    fn studio_gui_window_layout_places_panels_within_region_by_anchor() {
+        let state = StudioGuiWindowLayoutState::default()
+            .applying_mutation(
+                &crate::StudioGuiWindowLayoutMutation::PlacePanelInDockRegion {
+                    area_id: StudioGuiWindowAreaId::Commands,
+                    dock_region: StudioGuiWindowDockRegion::RightSidebar,
+                    placement: StudioGuiWindowDockPlacement::Before {
+                        anchor_area_id: StudioGuiWindowAreaId::Runtime,
+                    },
+                },
+            )
+            .applying_mutation(
+                &crate::StudioGuiWindowLayoutMutation::PlacePanelInDockRegion {
+                    area_id: StudioGuiWindowAreaId::Runtime,
+                    dock_region: StudioGuiWindowDockRegion::RightSidebar,
+                    placement: StudioGuiWindowDockPlacement::After {
+                        anchor_area_id: StudioGuiWindowAreaId::Commands,
+                    },
+                },
+            );
+
+        assert_eq!(
+            state
+                .panels_in_dock_region(StudioGuiWindowDockRegion::RightSidebar)
+                .into_iter()
+                .map(|panel| (panel.area_id, panel.order))
+                .collect::<Vec<_>>(),
+            vec![
+                (StudioGuiWindowAreaId::Commands, 10),
+                (StudioGuiWindowAreaId::Runtime, 20),
+            ]
+        );
+        assert_eq!(state.center_area, StudioGuiWindowAreaId::Canvas);
     }
 
     #[test]
