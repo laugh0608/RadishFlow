@@ -76,6 +76,7 @@ fn stored_entry_from_persistence(
             .map(|panel| StoredStudioLayoutPanelState {
                 area_id: area_id_key(panel.area_id).to_string(),
                 dock_region: dock_region_key(panel.dock_region).to_string(),
+                stack_group: panel.stack_group,
                 order: panel.order,
                 visible: panel.visible,
                 collapsed: panel.collapsed,
@@ -98,6 +99,7 @@ fn panel_state_from_stored(
     Ok(StudioGuiWindowPanelLayoutState {
         area_id: parse_area_id(&panel.area_id)?,
         dock_region: parse_dock_region(&panel.dock_region)?,
+        stack_group: panel.stack_group,
         order: panel.order,
         visible: panel.visible,
         collapsed: panel.collapsed,
@@ -186,6 +188,7 @@ mod tests {
                     StudioGuiWindowPanelLayoutState {
                         area_id: StudioGuiWindowAreaId::Commands,
                         dock_region: StudioGuiWindowDockRegion::RightSidebar,
+                        stack_group: 20,
                         order: 12,
                         visible: true,
                         collapsed: false,
@@ -193,6 +196,7 @@ mod tests {
                     StudioGuiWindowPanelLayoutState {
                         area_id: StudioGuiWindowAreaId::Runtime,
                         dock_region: StudioGuiWindowDockRegion::CenterStage,
+                        stack_group: 10,
                         order: 5,
                         visible: true,
                         collapsed: true,

@@ -39,6 +39,7 @@ pub struct StudioGuiWindowLayoutScope {
 pub struct StudioGuiWindowPanelLayoutState {
     pub area_id: StudioGuiWindowAreaId,
     pub dock_region: StudioGuiWindowDockRegion,
+    pub stack_group: u8,
     pub order: u8,
     pub visible: bool,
     pub collapsed: bool,
@@ -84,6 +85,11 @@ pub enum StudioGuiWindowLayoutMutation {
     SetCenterArea {
         area_id: StudioGuiWindowAreaId,
     },
+    StackPanelWith {
+        area_id: StudioGuiWindowAreaId,
+        anchor_area_id: StudioGuiWindowAreaId,
+        placement: StudioGuiWindowDockPlacement,
+    },
     PlacePanelInDockRegion {
         area_id: StudioGuiWindowAreaId,
         dock_region: StudioGuiWindowDockRegion,
@@ -126,6 +132,7 @@ pub struct StudioGuiWindowPanelLayout {
     pub area_id: StudioGuiWindowAreaId,
     pub title: &'static str,
     pub dock_region: StudioGuiWindowDockRegion,
+    pub stack_group: u8,
     pub order: u8,
     pub visible: bool,
     pub collapsed: bool,
@@ -209,6 +216,26 @@ impl StudioGuiWindowLayoutState {
             .iter()
             .filter(|panel| panel.dock_region == dock_region)
             .collect::<Vec<_>>();
+        panels.sort_by_key(|panel| {
+            (
+                panel.stack_group,
+                panel.order,
+                area_sort_rank(panel.area_id),
+            )
+        });
+        panels
+    }
+
+    pub fn panels_in_stack_group(
+        &self,
+        dock_region: StudioGuiWindowDockRegion,
+        stack_group: u8,
+    ) -> Vec<&StudioGuiWindowPanelLayoutState> {
+        let mut panels = self
+            .panels
+            .iter()
+            .filter(|panel| panel.dock_region == dock_region && panel.stack_group == stack_group)
+            .collect::<Vec<_>>();
         panels.sort_by_key(|panel| (panel.order, area_sort_rank(panel.area_id)));
         panels
     }
@@ -248,15 +275,57 @@ impl StudioGuiWindowLayoutState {
                 upsert_panel_state(&mut next.panels, panel);
                 next.center_area = *area_id;
             }
+            StudioGuiWindowLayoutMutation::StackPanelWith {
+                area_id,
+                anchor_area_id,
+                placement,
+            } => {
+                let previous = next
+                    .panel(*area_id)
+                    .cloned()
+                    .unwrap_or_else(|| default_panel_state(*area_id));
+                let anchor = next
+                    .panel(*anchor_area_id)
+                    .cloned()
+                    .unwrap_or_else(|| default_panel_state(*anchor_area_id));
+                let mut panel = previous.clone();
+                panel.dock_region = anchor.dock_region;
+                panel.stack_group = anchor.stack_group;
+                if anchor.dock_region == StudioGuiWindowDockRegion::CenterStage {
+                    panel.visible = true;
+                }
+                upsert_panel_state(&mut next.panels, panel);
+                place_panel_in_stack_group(
+                    &mut next.panels,
+                    *area_id,
+                    anchor.dock_region,
+                    anchor.stack_group,
+                    *placement,
+                );
+                if previous.dock_region != anchor.dock_region
+                    || previous.stack_group != anchor.stack_group
+                {
+                    normalize_stack_group(
+                        &mut next.panels,
+                        previous.dock_region,
+                        previous.stack_group,
+                    );
+                }
+                normalize_region_stack_groups(&mut next.panels, anchor.dock_region);
+                if previous.dock_region != anchor.dock_region {
+                    normalize_region_stack_groups(&mut next.panels, previous.dock_region);
+                }
+                reconcile_center_stage_after_panel_move(&mut next, *area_id, anchor.dock_region);
+            }
             StudioGuiWindowLayoutMutation::PlacePanelInDockRegion {
                 area_id,
                 dock_region,
                 placement,
             } => {
-                let previous_region = next
+                let previous = next
                     .panel(*area_id)
-                    .map(|panel| panel.dock_region)
-                    .unwrap_or_else(|| default_panel_state(*area_id).dock_region);
+                    .cloned()
+                    .unwrap_or_else(|| default_panel_state(*area_id));
                 let mut panel = next
                     .panel(*area_id)
                     .cloned()
@@ -267,8 +336,21 @@ impl StudioGuiWindowLayoutState {
                 }
                 upsert_panel_state(&mut next.panels, panel);
                 place_panel_in_dock_region(&mut next.panels, *area_id, *dock_region, *placement);
-                if previous_region != *dock_region {
-                    normalize_region_orders(&mut next.panels, previous_region);
+                if previous.dock_region != *dock_region || previous.stack_group != panel_stack_group(
+                    &next.panels,
+                    *area_id,
+                )
+                .unwrap_or(previous.stack_group)
+                {
+                    normalize_stack_group(
+                        &mut next.panels,
+                        previous.dock_region,
+                        previous.stack_group,
+                    );
+                }
+                normalize_region_stack_groups(&mut next.panels, *dock_region);
+                if previous.dock_region != *dock_region {
+                    normalize_region_stack_groups(&mut next.panels, previous.dock_region);
                 }
                 reconcile_center_stage_after_panel_move(&mut next, *area_id, *dock_region);
             }
@@ -277,6 +359,10 @@ impl StudioGuiWindowLayoutState {
                 dock_region,
                 order,
             } => {
+                let previous_group = next
+                    .panel(*area_id)
+                    .map(|panel| panel.stack_group)
+                    .unwrap_or_else(|| default_panel_state(*area_id).stack_group);
                 let previous_region = next
                     .panel(*area_id)
                     .map(|panel| panel.dock_region)
@@ -295,7 +381,14 @@ impl StudioGuiWindowLayoutState {
                 upsert_panel_state(&mut next.panels, panel);
                 if previous_region != *dock_region {
                     if order.is_some() {
-                        normalize_region_orders(&mut next.panels, previous_region);
+                        let new_stack_group = next_available_stack_group(&next.panels, *dock_region);
+                        if let Some(target) =
+                            next.panels.iter_mut().find(|panel| panel.area_id == *area_id)
+                        {
+                            target.stack_group = new_stack_group;
+                        }
+                        normalize_stack_group(&mut next.panels, previous_region, previous_group);
+                        normalize_region_stack_groups(&mut next.panels, previous_region);
                     } else {
                         place_panel_in_dock_region(
                             &mut next.panels,
@@ -303,7 +396,9 @@ impl StudioGuiWindowLayoutState {
                             *dock_region,
                             StudioGuiWindowDockPlacement::End,
                         );
-                        normalize_region_orders(&mut next.panels, previous_region);
+                        normalize_stack_group(&mut next.panels, previous_region, previous_group);
+                        normalize_region_stack_groups(&mut next.panels, *dock_region);
+                        normalize_region_stack_groups(&mut next.panels, previous_region);
                     }
                 }
                 reconcile_center_stage_after_panel_move(&mut next, *area_id, *dock_region);
@@ -392,6 +487,26 @@ impl StudioGuiWindowLayoutModel {
             .panels
             .iter()
             .filter(|panel| panel.dock_region == dock_region)
+            .collect::<Vec<_>>();
+        panels.sort_by_key(|panel| {
+            (
+                panel.stack_group,
+                panel.order,
+                area_sort_rank(panel.area_id),
+            )
+        });
+        panels
+    }
+
+    pub fn panels_in_stack_group(
+        &self,
+        dock_region: StudioGuiWindowDockRegion,
+        stack_group: u8,
+    ) -> Vec<&StudioGuiWindowPanelLayout> {
+        let mut panels = self
+            .panels
+            .iter()
+            .filter(|panel| panel.dock_region == dock_region && panel.stack_group == stack_group)
             .collect::<Vec<_>>();
         panels.sort_by_key(|panel| (panel.order, area_sort_rank(panel.area_id)));
         panels
@@ -482,6 +597,7 @@ fn build_panel_layout(
         area_id,
         title,
         dock_region: panel_state.dock_region,
+        stack_group: panel_state.stack_group,
         order: panel_state.order,
         visible: panel_state.visible,
         collapsed: panel_state.collapsed,
@@ -567,6 +683,7 @@ fn default_panel_state(area_id: StudioGuiWindowAreaId) -> StudioGuiWindowPanelLa
         StudioGuiWindowAreaId::Commands => StudioGuiWindowPanelLayoutState {
             area_id,
             dock_region: StudioGuiWindowDockRegion::LeftSidebar,
+            stack_group: 10,
             order: 10,
             visible: true,
             collapsed: false,
@@ -574,6 +691,7 @@ fn default_panel_state(area_id: StudioGuiWindowAreaId) -> StudioGuiWindowPanelLa
         StudioGuiWindowAreaId::Canvas => StudioGuiWindowPanelLayoutState {
             area_id,
             dock_region: StudioGuiWindowDockRegion::CenterStage,
+            stack_group: 10,
             order: 20,
             visible: true,
             collapsed: false,
@@ -581,6 +699,7 @@ fn default_panel_state(area_id: StudioGuiWindowAreaId) -> StudioGuiWindowPanelLa
         StudioGuiWindowAreaId::Runtime => StudioGuiWindowPanelLayoutState {
             area_id,
             dock_region: StudioGuiWindowDockRegion::RightSidebar,
+            stack_group: 10,
             order: 30,
             visible: true,
             collapsed: false,
@@ -626,9 +745,39 @@ fn place_panel_in_dock_region(
     dock_region: StudioGuiWindowDockRegion,
     placement: StudioGuiWindowDockPlacement,
 ) {
+    let mut grouped_area_ids =
+        grouped_area_ids_for_region_excluding_area(panels, dock_region, Some(area_id));
+    let insert_index = match placement {
+        StudioGuiWindowDockPlacement::Start => 0,
+        StudioGuiWindowDockPlacement::End => grouped_area_ids.len(),
+        StudioGuiWindowDockPlacement::Before { anchor_area_id } => grouped_area_ids
+            .iter()
+            .position(|group| group.contains(&anchor_area_id))
+            .unwrap_or(grouped_area_ids.len()),
+        StudioGuiWindowDockPlacement::After { anchor_area_id } => grouped_area_ids
+            .iter()
+            .position(|group| group.contains(&anchor_area_id))
+            .map(|index| index + 1)
+            .unwrap_or(grouped_area_ids.len()),
+    };
+    grouped_area_ids.insert(insert_index.min(grouped_area_ids.len()), vec![area_id]);
+    assign_region_stack_groups(panels, dock_region, &grouped_area_ids);
+}
+
+fn place_panel_in_stack_group(
+    panels: &mut Vec<StudioGuiWindowPanelLayoutState>,
+    area_id: StudioGuiWindowAreaId,
+    dock_region: StudioGuiWindowDockRegion,
+    stack_group: u8,
+    placement: StudioGuiWindowDockPlacement,
+) {
     let mut ordered_area_ids = panels
         .iter()
-        .filter(|panel| panel.area_id != area_id && panel.dock_region == dock_region)
+        .filter(|panel| {
+            panel.area_id != area_id
+                && panel.dock_region == dock_region
+                && panel.stack_group == stack_group
+        })
         .map(|panel| panel.area_id)
         .collect::<Vec<_>>();
     let insert_index = match placement {
@@ -645,30 +794,64 @@ fn place_panel_in_dock_region(
             .unwrap_or(ordered_area_ids.len()),
     };
     ordered_area_ids.insert(insert_index.min(ordered_area_ids.len()), area_id);
-    assign_region_orders(panels, dock_region, &ordered_area_ids);
+    assign_stack_group_orders(panels, dock_region, stack_group, &ordered_area_ids);
 }
 
-fn normalize_region_orders(
+fn normalize_stack_group(
     panels: &mut Vec<StudioGuiWindowPanelLayoutState>,
     dock_region: StudioGuiWindowDockRegion,
+    stack_group: u8,
 ) {
     let ordered_area_ids = panels
         .iter()
-        .filter(|panel| panel.dock_region == dock_region)
+        .filter(|panel| panel.dock_region == dock_region && panel.stack_group == stack_group)
         .map(|panel| panel.area_id)
         .collect::<Vec<_>>();
-    assign_region_orders(panels, dock_region, &ordered_area_ids);
+    assign_stack_group_orders(panels, dock_region, stack_group, &ordered_area_ids);
 }
 
-fn assign_region_orders(
+fn normalize_region_stack_groups(
     panels: &mut Vec<StudioGuiWindowPanelLayoutState>,
     dock_region: StudioGuiWindowDockRegion,
+) {
+    let grouped_area_ids = grouped_area_ids_for_region_excluding_area(panels, dock_region, None);
+    assign_region_stack_groups(panels, dock_region, &grouped_area_ids);
+}
+
+fn assign_region_stack_groups(
+    panels: &mut Vec<StudioGuiWindowPanelLayoutState>,
+    dock_region: StudioGuiWindowDockRegion,
+    grouped_area_ids: &[Vec<StudioGuiWindowAreaId>],
+) {
+    for (group_index, group) in grouped_area_ids.iter().enumerate() {
+        let stack_group = dock_group_order(group_index);
+        for area_id in group {
+            if let Some(panel) = panels
+                .iter_mut()
+                .find(|panel| panel.area_id == *area_id && panel.dock_region == dock_region)
+            {
+                panel.stack_group = stack_group;
+            }
+        }
+        assign_stack_group_orders(panels, dock_region, stack_group, group);
+    }
+    sort_panels(panels);
+}
+
+fn assign_stack_group_orders(
+    panels: &mut Vec<StudioGuiWindowPanelLayoutState>,
+    dock_region: StudioGuiWindowDockRegion,
+    stack_group: u8,
     ordered_area_ids: &[StudioGuiWindowAreaId],
 ) {
     for (index, area_id) in ordered_area_ids.iter().enumerate() {
         if let Some(panel) = panels
             .iter_mut()
-            .find(|panel| panel.area_id == *area_id && panel.dock_region == dock_region)
+            .find(|panel| {
+                panel.area_id == *area_id
+                    && panel.dock_region == dock_region
+                    && panel.stack_group == stack_group
+            })
         {
             panel.order = dock_order(index);
         }
@@ -676,7 +859,67 @@ fn assign_region_orders(
     sort_panels(panels);
 }
 
+fn grouped_area_ids_for_region_excluding_area(
+    panels: &[StudioGuiWindowPanelLayoutState],
+    dock_region: StudioGuiWindowDockRegion,
+    excluded_area_id: Option<StudioGuiWindowAreaId>,
+) -> Vec<Vec<StudioGuiWindowAreaId>> {
+    let mut ordered_panels = panels
+        .iter()
+        .filter(|panel| {
+            panel.dock_region == dock_region && Some(panel.area_id) != excluded_area_id
+        })
+        .collect::<Vec<_>>();
+    ordered_panels.sort_by_key(|panel| {
+        (
+            panel.stack_group,
+            panel.order,
+            area_sort_rank(panel.area_id),
+        )
+    });
+
+    let mut groups = Vec::<Vec<StudioGuiWindowAreaId>>::new();
+    let mut current_group = None;
+    for panel in ordered_panels {
+        if current_group != Some(panel.stack_group) {
+            groups.push(Vec::new());
+            current_group = Some(panel.stack_group);
+        }
+        if let Some(group) = groups.last_mut() {
+            group.push(panel.area_id);
+        }
+    }
+    groups
+}
+
+fn panel_stack_group(
+    panels: &[StudioGuiWindowPanelLayoutState],
+    area_id: StudioGuiWindowAreaId,
+) -> Option<u8> {
+    panels
+        .iter()
+        .find(|panel| panel.area_id == area_id)
+        .map(|panel| panel.stack_group)
+}
+
+fn next_available_stack_group(
+    panels: &[StudioGuiWindowPanelLayoutState],
+    dock_region: StudioGuiWindowDockRegion,
+) -> u8 {
+    let max_group = panels
+        .iter()
+        .filter(|panel| panel.dock_region == dock_region)
+        .map(|panel| panel.stack_group)
+        .max()
+        .unwrap_or(0);
+    max_group.saturating_add(10).max(10)
+}
+
 fn dock_order(index: usize) -> u8 {
+    ((index + 1) * 10).min(u8::MAX as usize) as u8
+}
+
+fn dock_group_order(index: usize) -> u8 {
     ((index + 1) * 10).min(u8::MAX as usize) as u8
 }
 
@@ -741,7 +984,14 @@ fn upsert_region_weight(
 }
 
 fn sort_panels(panels: &mut [StudioGuiWindowPanelLayoutState]) {
-    panels.sort_by_key(|candidate| (candidate.order, area_sort_rank(candidate.area_id)));
+    panels.sort_by_key(|candidate| {
+        (
+            dock_region_rank(candidate.dock_region),
+            candidate.stack_group,
+            candidate.order,
+            area_sort_rank(candidate.area_id),
+        )
+    });
 }
 
 fn area_sort_rank(area_id: StudioGuiWindowAreaId) -> u8 {
@@ -749,6 +999,14 @@ fn area_sort_rank(area_id: StudioGuiWindowAreaId) -> u8 {
         StudioGuiWindowAreaId::Commands => 1,
         StudioGuiWindowAreaId::Canvas => 2,
         StudioGuiWindowAreaId::Runtime => 3,
+    }
+}
+
+fn dock_region_rank(dock_region: StudioGuiWindowDockRegion) -> u8 {
+    match dock_region {
+        StudioGuiWindowDockRegion::LeftSidebar => 1,
+        StudioGuiWindowDockRegion::CenterStage => 2,
+        StudioGuiWindowDockRegion::RightSidebar => 3,
     }
 }
 
@@ -921,9 +1179,9 @@ mod tests {
                 .map(|panel| (panel.area_id, panel.order))
                 .collect::<Vec<_>>(),
             vec![
-                (StudioGuiWindowAreaId::Runtime, 5),
                 (StudioGuiWindowAreaId::Commands, 10),
                 (StudioGuiWindowAreaId::Canvas, 20),
+                (StudioGuiWindowAreaId::Runtime, 5),
             ]
         );
     }
@@ -989,10 +1247,54 @@ mod tests {
                 .collect::<Vec<_>>(),
             vec![
                 (StudioGuiWindowAreaId::Commands, 10),
-                (StudioGuiWindowAreaId::Runtime, 20),
+                (StudioGuiWindowAreaId::Runtime, 10),
             ]
         );
         assert_eq!(state.center_area, StudioGuiWindowAreaId::Canvas);
+    }
+
+    #[test]
+    fn studio_gui_window_layout_stacks_panel_with_anchor_group() {
+        let state = StudioGuiWindowLayoutState::default()
+            .applying_mutation(
+                &crate::StudioGuiWindowLayoutMutation::PlacePanelInDockRegion {
+                    area_id: StudioGuiWindowAreaId::Commands,
+                    dock_region: StudioGuiWindowDockRegion::RightSidebar,
+                    placement: StudioGuiWindowDockPlacement::Before {
+                        anchor_area_id: StudioGuiWindowAreaId::Runtime,
+                    },
+                },
+            )
+            .applying_mutation(&crate::StudioGuiWindowLayoutMutation::StackPanelWith {
+                area_id: StudioGuiWindowAreaId::Commands,
+                anchor_area_id: StudioGuiWindowAreaId::Runtime,
+                placement: StudioGuiWindowDockPlacement::Before {
+                    anchor_area_id: StudioGuiWindowAreaId::Runtime,
+                },
+            });
+
+        assert_eq!(
+            state
+                .panels_in_dock_region(StudioGuiWindowDockRegion::RightSidebar)
+                .into_iter()
+                .map(|panel| (panel.area_id, panel.stack_group, panel.order))
+                .collect::<Vec<_>>(),
+            vec![
+                (StudioGuiWindowAreaId::Commands, 10, 10),
+                (StudioGuiWindowAreaId::Runtime, 10, 20),
+            ]
+        );
+        assert_eq!(
+            state
+                .panels_in_stack_group(StudioGuiWindowDockRegion::RightSidebar, 10)
+                .into_iter()
+                .map(|panel| panel.area_id)
+                .collect::<Vec<_>>(),
+            vec![
+                StudioGuiWindowAreaId::Commands,
+                StudioGuiWindowAreaId::Runtime,
+            ]
+        );
     }
 
     #[test]

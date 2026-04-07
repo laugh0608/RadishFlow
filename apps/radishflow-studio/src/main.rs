@@ -55,9 +55,10 @@ fn print_window_model(title: &str, window: &StudioGuiWindowModel) {
     println!("  Panels:");
     for panel in &layout.panels {
         println!(
-            "    - {:?} @ {:?} order={} [{}] collapsed={} badge={} :: {}",
+            "    - {:?} @ {:?} group={} order={} [{}] collapsed={} badge={} :: {}",
             panel.area_id,
             panel.dock_region,
+            panel.stack_group,
             panel.order,
             if panel.visible { "visible" } else { "hidden" },
             panel.collapsed,
@@ -219,6 +220,22 @@ fn main() {
     print_window_model(
         "Window model after inserting commands panel before runtime in the right sidebar",
         &moved_commands.window,
+    );
+    let stacked_commands = app_host
+        .dispatch_event(StudioGuiEvent::WindowLayoutMutationRequested {
+            window_id: Some(window.window_id),
+            mutation: StudioGuiWindowLayoutMutation::StackPanelWith {
+                area_id: StudioGuiWindowAreaId::Commands,
+                anchor_area_id: StudioGuiWindowAreaId::Runtime,
+                placement: StudioGuiWindowDockPlacement::Before {
+                    anchor_area_id: StudioGuiWindowAreaId::Runtime,
+                },
+            },
+        })
+        .expect("expected panel stack update");
+    print_window_model(
+        "Window model after stacking commands with runtime in the right sidebar",
+        &stacked_commands.window,
     );
     if let Some(slot) = window.restored_entitlement_timer.as_ref() {
         println!("Restored parked timer slot into window host: {:?}", slot);

@@ -289,6 +289,7 @@ mod tests {
             panels: vec![StoredStudioLayoutPanelState {
                 area_id: "commands".to_string(),
                 dock_region: "left-sidebar".to_string(),
+                stack_group: 10,
                 order: 10,
                 visible: true,
                 collapsed: false,
@@ -450,6 +451,7 @@ mod tests {
             panels: vec![StoredStudioLayoutPanelState {
                 area_id: "runtime".to_string(),
                 dock_region: "right-sidebar".to_string(),
+                stack_group: 10,
                 order: 30,
                 visible: false,
                 collapsed: true,

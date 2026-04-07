@@ -971,9 +971,9 @@ mod tests {
                         .map(|panel| (panel.area_id, panel.order))
                         .collect::<Vec<_>>(),
                     vec![
-                        (StudioGuiWindowAreaId::Runtime, 5),
                         (StudioGuiWindowAreaId::Commands, 10),
                         (StudioGuiWindowAreaId::Canvas, 20),
+                        (StudioGuiWindowAreaId::Runtime, 5),
                     ]
                 );
             }
@@ -999,6 +999,37 @@ mod tests {
                     result
                         .layout_state
                         .panels_in_dock_region(StudioGuiWindowDockRegion::RightSidebar)
+                        .into_iter()
+                        .map(|panel| (panel.area_id, panel.order))
+                        .collect::<Vec<_>>(),
+                    vec![
+                        (StudioGuiWindowAreaId::Commands, 10),
+                        (StudioGuiWindowAreaId::Runtime, 10),
+                    ]
+                );
+            }
+            other => panic!("expected window layout update outcome, got {other:?}"),
+        }
+
+        let stacked = driver
+            .dispatch_event(StudioGuiEvent::WindowLayoutMutationRequested {
+                window_id: Some(second_window_id),
+                mutation: StudioGuiWindowLayoutMutation::StackPanelWith {
+                    area_id: StudioGuiWindowAreaId::Commands,
+                    anchor_area_id: StudioGuiWindowAreaId::Runtime,
+                    placement: StudioGuiWindowDockPlacement::Before {
+                        anchor_area_id: StudioGuiWindowAreaId::Runtime,
+                    },
+                },
+            })
+            .expect("expected layout stack update");
+        match stacked.outcome {
+            StudioGuiDriverOutcome::WindowLayoutUpdated(result) => {
+                assert_eq!(result.target_window_id, Some(second_window_id));
+                assert_eq!(
+                    result
+                        .layout_state
+                        .panels_in_stack_group(StudioGuiWindowDockRegion::RightSidebar, 10)
                         .into_iter()
                         .map(|panel| (panel.area_id, panel.order))
                         .collect::<Vec<_>>(),
@@ -1032,8 +1063,15 @@ mod tests {
             second_window
                 .layout_state
                 .panel(StudioGuiWindowAreaId::Commands)
-                .map(|panel| (panel.collapsed, panel.dock_region, panel.order)),
-            Some((true, StudioGuiWindowDockRegion::RightSidebar, 10))
+                .map(|panel| {
+                    (
+                        panel.collapsed,
+                        panel.dock_region,
+                        panel.stack_group,
+                        panel.order,
+                    )
+                }),
+            Some((true, StudioGuiWindowDockRegion::RightSidebar, 10, 10))
         );
         assert_eq!(
             first_window
@@ -1062,17 +1100,19 @@ mod tests {
                 .layout_state
                 .panels_in_dock_region(StudioGuiWindowDockRegion::RightSidebar)
                 .into_iter()
-                .map(|panel| (panel.area_id, panel.dock_region, panel.order))
+                .map(|panel| (panel.area_id, panel.dock_region, panel.stack_group, panel.order))
                 .collect::<Vec<_>>(),
             vec![
                 (
                     StudioGuiWindowAreaId::Commands,
                     StudioGuiWindowDockRegion::RightSidebar,
                     10,
+                    10,
                 ),
                 (
                     StudioGuiWindowAreaId::Runtime,
                     StudioGuiWindowDockRegion::RightSidebar,
+                    10,
                     20,
                 ),
             ]

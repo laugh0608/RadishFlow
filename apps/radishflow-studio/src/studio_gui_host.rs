@@ -947,9 +947,9 @@ mod tests {
                 .map(|panel| (panel.area_id, panel.order))
                 .collect::<Vec<_>>(),
             vec![
-                (StudioGuiWindowAreaId::Runtime, 5),
                 (StudioGuiWindowAreaId::Commands, 10),
                 (StudioGuiWindowAreaId::Canvas, 20),
+                (StudioGuiWindowAreaId::Runtime, 5),
             ]
         );
 
@@ -974,6 +974,31 @@ mod tests {
                 .collect::<Vec<_>>(),
             vec![
                 (StudioGuiWindowAreaId::Commands, 10),
+                (StudioGuiWindowAreaId::Runtime, 10),
+            ]
+        );
+
+        let sixth_update = gui_host
+            .update_window_layout(
+                Some(opened.registration.window_id),
+                StudioGuiWindowLayoutMutation::StackPanelWith {
+                    area_id: StudioGuiWindowAreaId::Commands,
+                    anchor_area_id: StudioGuiWindowAreaId::Runtime,
+                    placement: StudioGuiWindowDockPlacement::Before {
+                        anchor_area_id: StudioGuiWindowAreaId::Runtime,
+                    },
+                },
+            )
+            .expect("expected panel stack update");
+        assert_eq!(
+            sixth_update
+                .layout_state
+                .panels_in_stack_group(StudioGuiWindowDockRegion::RightSidebar, 10)
+                .into_iter()
+                .map(|panel| (panel.area_id, panel.order))
+                .collect::<Vec<_>>(),
+            vec![
+                (StudioGuiWindowAreaId::Commands, 10),
                 (StudioGuiWindowAreaId::Runtime, 20),
             ]
         );
@@ -989,6 +1014,7 @@ mod tests {
                 (
                     panel.area_id.as_str(),
                     panel.dock_region.as_str(),
+                    panel.stack_group,
                     panel.order,
                 )
             })
@@ -997,9 +1023,9 @@ mod tests {
         assert_eq!(
             stored_panels,
             vec![
-                ("canvas", "center-stage", 20),
-                ("commands", "right-sidebar", 10),
-                ("runtime", "right-sidebar", 20),
+                ("canvas", "center-stage", 10, 20),
+                ("commands", "right-sidebar", 10, 10),
+                ("runtime", "right-sidebar", 10, 20),
             ]
         );
 
@@ -1032,17 +1058,19 @@ mod tests {
                 .layout_state
                 .panels_in_dock_region(StudioGuiWindowDockRegion::RightSidebar)
                 .into_iter()
-                .map(|panel| (panel.area_id, panel.dock_region, panel.order))
+                .map(|panel| (panel.area_id, panel.dock_region, panel.stack_group, panel.order))
                 .collect::<Vec<_>>(),
             vec![
                 (
                     StudioGuiWindowAreaId::Commands,
                     StudioGuiWindowDockRegion::RightSidebar,
                     10,
+                    10,
                 ),
                 (
                     StudioGuiWindowAreaId::Runtime,
                     StudioGuiWindowDockRegion::RightSidebar,
+                    10,
                     20,
                 ),
             ]
@@ -1063,6 +1091,7 @@ mod tests {
                 panels: vec![rf_store::StoredStudioLayoutPanelState {
                     area_id: "commands".to_string(),
                     dock_region: "left-sidebar".to_string(),
+                    stack_group: 10,
                     order: 10,
                     visible: true,
                     collapsed: true,

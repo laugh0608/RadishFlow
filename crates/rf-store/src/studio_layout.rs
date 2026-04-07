@@ -15,6 +15,8 @@ pub const STORED_STUDIO_LAYOUT_FILE_SUFFIX: &str = ".rfstudio-layout.json";
 pub struct StoredStudioLayoutPanelState {
     pub area_id: String,
     pub dock_region: String,
+    #[serde(default = "default_studio_layout_stack_group")]
+    pub stack_group: u8,
     pub order: u8,
     pub visible: bool,
     pub collapsed: bool,
@@ -134,8 +136,17 @@ impl StoredStudioLayoutPanelState {
                 "stored studio layout panel state must contain a non-empty dock_region",
             ));
         }
+        if self.stack_group == 0 {
+            return Err(RfError::invalid_input(
+                "stored studio layout panel state must contain a stack_group greater than zero",
+            ));
+        }
         Ok(())
     }
+}
+
+fn default_studio_layout_stack_group() -> u8 {
+    10
 }
 
 impl StoredStudioLayoutRegionWeight {
