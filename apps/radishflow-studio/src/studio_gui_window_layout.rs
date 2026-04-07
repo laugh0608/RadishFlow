@@ -146,11 +146,19 @@ pub struct StudioGuiWindowPanelLayout {
     pub dock_region: StudioGuiWindowDockRegion,
     pub stack_group: u8,
     pub order: u8,
+    pub display_mode: StudioGuiWindowPanelDisplayMode,
     pub active_in_stack: bool,
     pub visible: bool,
     pub collapsed: bool,
     pub badge: Option<String>,
     pub summary: String,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum StudioGuiWindowPanelDisplayMode {
+    Standalone,
+    ActiveTab,
+    InactiveTab,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -166,6 +174,7 @@ pub struct StudioGuiWindowStackTabLayout {
 pub struct StudioGuiWindowStackGroupLayout {
     pub dock_region: StudioGuiWindowDockRegion,
     pub stack_group: u8,
+    pub tabbed: bool,
     pub active_area_id: StudioGuiWindowAreaId,
     pub tabs: Vec<StudioGuiWindowStackTabLayout>,
 }
@@ -729,15 +738,26 @@ fn build_panel_layout(
         .panel(area_id)
         .cloned()
         .unwrap_or_else(|| default_panel_state(area_id));
+    let stack_tab_count = state
+        .panels_in_stack_group(panel_state.dock_region, panel_state.stack_group)
+        .len();
     let active_in_stack = state
         .active_panel_in_stack(panel_state.dock_region, panel_state.stack_group)
         == Some(area_id);
+    let display_mode = if stack_tab_count <= 1 {
+        StudioGuiWindowPanelDisplayMode::Standalone
+    } else if active_in_stack {
+        StudioGuiWindowPanelDisplayMode::ActiveTab
+    } else {
+        StudioGuiWindowPanelDisplayMode::InactiveTab
+    };
     StudioGuiWindowPanelLayout {
         area_id,
         title,
         dock_region: panel_state.dock_region,
         stack_group: panel_state.stack_group,
         order: panel_state.order,
+        display_mode,
         active_in_stack,
         visible: panel_state.visible,
         collapsed: panel_state.collapsed,
@@ -777,6 +797,7 @@ fn build_stack_group_layouts(
             StudioGuiWindowStackGroupLayout {
                 dock_region: group.dock_region,
                 stack_group: group.stack_group,
+                tabbed: tabs.len() > 1,
                 active_area_id: group.active_area_id,
                 tabs,
             }
@@ -1430,6 +1451,10 @@ mod tests {
             .panel(StudioGuiWindowAreaId::Commands)
             .expect("expected commands panel");
         assert_eq!(commands.dock_region, StudioGuiWindowDockRegion::LeftSidebar);
+        assert_eq!(
+            commands.display_mode,
+            crate::StudioGuiWindowPanelDisplayMode::Standalone
+        );
         assert!(commands.active_in_stack);
         assert!(commands.visible);
         assert!(!commands.collapsed);
@@ -1447,6 +1472,10 @@ mod tests {
             .panel(StudioGuiWindowAreaId::Runtime)
             .expect("expected runtime panel");
         assert_eq!(runtime.dock_region, StudioGuiWindowDockRegion::RightSidebar);
+        assert_eq!(
+            runtime.display_mode,
+            crate::StudioGuiWindowPanelDisplayMode::Standalone
+        );
         assert!(runtime.active_in_stack);
         assert!(runtime.summary.contains("status=Idle"));
         assert!(runtime.summary.contains("entitlement=attached"));

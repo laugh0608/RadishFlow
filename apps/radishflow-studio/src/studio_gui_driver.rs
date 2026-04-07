@@ -1023,7 +1023,8 @@ mod tests {
                 },
             })
             .expect("expected layout stack update");
-        match stacked.outcome {
+        let stacked_window_layout = stacked.window.layout();
+        match &stacked.outcome {
             StudioGuiDriverOutcome::WindowLayoutUpdated(result) => {
                 assert_eq!(result.target_window_id, Some(second_window_id));
                 assert_eq!(
@@ -1043,6 +1044,24 @@ mod tests {
                         .layout_state
                         .active_panel_in_stack(StudioGuiWindowDockRegion::RightSidebar, 10),
                     Some(StudioGuiWindowAreaId::Commands)
+                );
+                assert_eq!(
+                    stacked_window_layout
+                        .panel(StudioGuiWindowAreaId::Commands)
+                        .map(|panel| panel.display_mode),
+                    Some(crate::StudioGuiWindowPanelDisplayMode::ActiveTab)
+                );
+                assert_eq!(
+                    stacked_window_layout
+                        .panel(StudioGuiWindowAreaId::Runtime)
+                        .map(|panel| panel.display_mode),
+                    Some(crate::StudioGuiWindowPanelDisplayMode::InactiveTab)
+                );
+                assert_eq!(
+                    stacked_window_layout
+                        .stack_group(StudioGuiWindowDockRegion::RightSidebar, 10)
+                        .map(|group| group.tabbed),
+                    Some(true)
                 );
             }
             other => panic!("expected window layout update outcome, got {other:?}"),

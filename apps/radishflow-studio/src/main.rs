@@ -55,11 +55,12 @@ fn print_window_model(title: &str, window: &StudioGuiWindowModel) {
     println!("  Panels:");
     for panel in &layout.panels {
         println!(
-            "    - {:?} @ {:?} group={} order={} active={} [{}] collapsed={} badge={} :: {}",
+            "    - {:?} @ {:?} group={} order={} mode={:?} active={} [{}] collapsed={} badge={} :: {}",
             panel.area_id,
             panel.dock_region,
             panel.stack_group,
             panel.order,
+            panel.display_mode,
             panel.active_in_stack,
             if panel.visible { "visible" } else { "hidden" },
             panel.collapsed,
@@ -82,9 +83,10 @@ fn print_window_model(title: &str, window: &StudioGuiWindowModel) {
             .collect::<Vec<_>>()
             .join(", ");
         println!(
-            "    - {:?} group={} active={:?} tabs=[{}]",
+            "    - {:?} group={} tabbed={} active={:?} tabs=[{}]",
             stack_group.dock_region,
             stack_group.stack_group,
+            stack_group.tabbed,
             stack_group.active_area_id,
             tabs
         );
