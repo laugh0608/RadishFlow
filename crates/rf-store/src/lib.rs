@@ -43,7 +43,8 @@ pub use project::{
 pub use studio_layout::{
     STORED_STUDIO_LAYOUT_FILE_KIND, STORED_STUDIO_LAYOUT_FILE_SUFFIX,
     STORED_STUDIO_LAYOUT_SCHEMA_VERSION, StoredStudioLayoutFile, StoredStudioLayoutPanelState,
-    StoredStudioLayoutRegionWeight, StoredStudioWindowLayoutEntry,
+    StoredStudioLayoutRegionWeight, StoredStudioLayoutStackGroupState,
+    StoredStudioWindowLayoutEntry,
     studio_layout_path_for_project,
 };
 
@@ -63,6 +64,7 @@ mod tests {
         StoredProjectFile, StoredPropertyPackageManifest, StoredPropertyPackagePayload,
         StoredPropertyPackageRecord, StoredPropertyPackageSource, StoredStudioLayoutFile,
         StoredStudioLayoutPanelState, StoredStudioLayoutRegionWeight,
+        StoredStudioLayoutStackGroupState,
         StoredStudioWindowLayoutEntry, StoredThermoComponent,
         auth_cache_index_to_pretty_json, parse_auth_cache_index_json, parse_project_file_json,
         parse_property_package_manifest_json, parse_property_package_payload_json,
@@ -294,6 +296,11 @@ mod tests {
                 visible: true,
                 collapsed: false,
             }],
+            stack_groups: vec![StoredStudioLayoutStackGroupState {
+                dock_region: "left-sidebar".to_string(),
+                stack_group: 10,
+                active_area_id: "commands".to_string(),
+            }],
             region_weights: vec![StoredStudioLayoutRegionWeight {
                 dock_region: "center-stage".to_string(),
                 weight: 52,
@@ -308,6 +315,7 @@ mod tests {
         assert!(json.contains("\"kind\": \"radishflow.studio-layout-file\""));
         assert!(json.contains("\"layoutKey\": \"studio.window.owner.slot-1\""));
         assert!(json.contains("\"centerArea\": \"canvas\""));
+        assert!(json.contains("\"stackGroups\""));
     }
 
     #[test]
@@ -455,6 +463,11 @@ mod tests {
                 order: 30,
                 visible: false,
                 collapsed: true,
+            }],
+            stack_groups: vec![StoredStudioLayoutStackGroupState {
+                dock_region: "right-sidebar".to_string(),
+                stack_group: 10,
+                active_area_id: "runtime".to_string(),
             }],
             region_weights: vec![StoredStudioLayoutRegionWeight {
                 dock_region: "right-sidebar".to_string(),

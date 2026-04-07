@@ -55,15 +55,38 @@ fn print_window_model(title: &str, window: &StudioGuiWindowModel) {
     println!("  Panels:");
     for panel in &layout.panels {
         println!(
-            "    - {:?} @ {:?} group={} order={} [{}] collapsed={} badge={} :: {}",
+            "    - {:?} @ {:?} group={} order={} active={} [{}] collapsed={} badge={} :: {}",
             panel.area_id,
             panel.dock_region,
             panel.stack_group,
             panel.order,
+            panel.active_in_stack,
             if panel.visible { "visible" } else { "hidden" },
             panel.collapsed,
             panel.badge.as_deref().unwrap_or("none"),
             panel.summary
+        );
+    }
+    println!("  Stack groups:");
+    for stack_group in &layout.stack_groups {
+        let tabs = stack_group
+            .tabs
+            .iter()
+            .map(|tab| {
+                format!(
+                    "{:?}{}",
+                    tab.area_id,
+                    if tab.active { "*" } else { "" }
+                )
+            })
+            .collect::<Vec<_>>()
+            .join(", ");
+        println!(
+            "    - {:?} group={} active={:?} tabs=[{}]",
+            stack_group.dock_region,
+            stack_group.stack_group,
+            stack_group.active_area_id,
+            tabs
         );
     }
     println!(
@@ -236,6 +259,18 @@ fn main() {
     print_window_model(
         "Window model after stacking commands with runtime in the right sidebar",
         &stacked_commands.window,
+    );
+    let switched_active_tab = app_host
+        .dispatch_event(StudioGuiEvent::WindowLayoutMutationRequested {
+            window_id: Some(window.window_id),
+            mutation: StudioGuiWindowLayoutMutation::SetActivePanelInStack {
+                area_id: StudioGuiWindowAreaId::Runtime,
+            },
+        })
+        .expect("expected stack active tab update");
+    print_window_model(
+        "Window model after switching the active tab in the right sidebar stack",
+        &switched_active_tab.window,
     );
     if let Some(slot) = window.restored_entitlement_timer.as_ref() {
         println!("Restored parked timer slot into window host: {:?}", slot);

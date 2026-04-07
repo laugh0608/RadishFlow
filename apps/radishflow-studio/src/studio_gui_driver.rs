@@ -1038,6 +1038,12 @@ mod tests {
                         (StudioGuiWindowAreaId::Runtime, 20),
                     ]
                 );
+                assert_eq!(
+                    result
+                        .layout_state
+                        .active_panel_in_stack(StudioGuiWindowDockRegion::RightSidebar, 10),
+                    Some(StudioGuiWindowAreaId::Commands)
+                );
             }
             other => panic!("expected window layout update outcome, got {other:?}"),
         }
@@ -1116,6 +1122,12 @@ mod tests {
                     20,
                 ),
             ]
+        );
+        assert_eq!(
+            second_window
+                .layout_state
+                .active_panel_in_stack(StudioGuiWindowDockRegion::RightSidebar, 10),
+            Some(StudioGuiWindowAreaId::Commands)
         );
 
         let layout_path = rf_store::studio_layout_path_for_project(&project_path);

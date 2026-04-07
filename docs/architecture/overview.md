@@ -91,7 +91,7 @@ RadishFlow 的目标架构已经冻结为“桌面端三层 + 外部控制面”
 - `StudioGuiHost` / `StudioGuiDriver` 作为 GUI 面向的平台事件与宿主命令入口
 - `StudioGuiSnapshot` 作为跨模块聚合快照真相源
 - `StudioGuiWindowModel` 作为窗口内容分区模型
-- `StudioGuiWindowLayoutState` 作为正式布局状态契约，覆盖 `panel dock_region/stack_group/visibility/collapsed/order`、region 内 stack placement、`center_area`、`region_weights` 与多窗口 `layout scope`
+- `StudioGuiWindowLayoutState` 作为正式布局状态契约，覆盖 `panel dock_region/stack_group/visibility/collapsed/order`、stack active tab、region 内 stack placement、`center_area`、`region_weights` 与多窗口 `layout scope`
 - 窗口布局持久化继续与项目文档语义分离，当前保存到 `<project>.rfstudio-layout.json` sidecar，而不是混入 `*.rfproj.json`
 - 多窗口布局 key 当前已从运行时 `window_id` 收口为基于 `window_role + layout_slot` 的稳定 scope，避免跨 host 重建时直接依赖临时窗口号
 

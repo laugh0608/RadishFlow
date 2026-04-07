@@ -1028,6 +1028,17 @@ mod tests {
                 ("runtime", "right-sidebar", 10, 20),
             ]
         );
+        assert_eq!(stored.entries[0].stack_groups.len(), 2);
+        assert_eq!(
+            stored.entries[0]
+                .stack_groups
+                .iter()
+                .find(|group| {
+                    group.dock_region == "right-sidebar" && group.stack_group == 10
+                })
+                .map(|group| group.active_area_id.as_str()),
+            Some("commands")
+        );
 
         drop(gui_host);
 
@@ -1075,6 +1086,12 @@ mod tests {
                 ),
             ]
         );
+        assert_eq!(
+            window
+                .layout_state
+                .active_panel_in_stack(StudioGuiWindowDockRegion::RightSidebar, 10),
+            Some(StudioGuiWindowAreaId::Commands)
+        );
 
         let _ = fs::remove_file(layout_path);
         let _ = fs::remove_file(project_path);
@@ -1096,6 +1113,7 @@ mod tests {
                     visible: true,
                     collapsed: true,
                 }],
+                stack_groups: Vec::new(),
                 region_weights: vec![rf_store::StoredStudioLayoutRegionWeight {
                     dock_region: "right-sidebar".to_string(),
                     weight: 35,

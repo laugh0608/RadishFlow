@@ -24,6 +24,14 @@ pub struct StoredStudioLayoutPanelState {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct StoredStudioLayoutStackGroupState {
+    pub dock_region: String,
+    pub stack_group: u8,
+    pub active_area_id: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct StoredStudioLayoutRegionWeight {
     pub dock_region: String,
     pub weight: u16,
@@ -35,6 +43,8 @@ pub struct StoredStudioWindowLayoutEntry {
     pub layout_key: String,
     pub center_area: String,
     pub panels: Vec<StoredStudioLayoutPanelState>,
+    #[serde(default)]
+    pub stack_groups: Vec<StoredStudioLayoutStackGroupState>,
     pub region_weights: Vec<StoredStudioLayoutRegionWeight>,
 }
 
@@ -109,6 +119,30 @@ impl StoredStudioWindowLayoutEntry {
             }
         }
 
+        let mut stack_keys = BTreeSet::new();
+        for stack_group in &self.stack_groups {
+            stack_group.validate()?;
+            if !stack_keys.insert((stack_group.dock_region.clone(), stack_group.stack_group)) {
+                return Err(RfError::invalid_input(format!(
+                    "stored studio window layout entry `{}` contains duplicate stack group `{}:{}`",
+                    self.layout_key, stack_group.dock_region, stack_group.stack_group
+                )));
+            }
+            if !self.panels.iter().any(|panel| {
+                panel.area_id == stack_group.active_area_id
+                    && panel.dock_region == stack_group.dock_region
+                    && panel.stack_group == stack_group.stack_group
+            }) {
+                return Err(RfError::invalid_input(format!(
+                    "stored studio window layout entry `{}` contains stack group `{}:{}` whose active area `{}` does not exist in the same stack",
+                    self.layout_key,
+                    stack_group.dock_region,
+                    stack_group.stack_group,
+                    stack_group.active_area_id
+                )));
+            }
+        }
+
         let mut dock_regions = BTreeSet::new();
         for region in &self.region_weights {
             region.validate()?;
@@ -147,6 +181,27 @@ impl StoredStudioLayoutPanelState {
 
 fn default_studio_layout_stack_group() -> u8 {
     10
+}
+
+impl StoredStudioLayoutStackGroupState {
+    pub fn validate(&self) -> RfResult<()> {
+        if self.dock_region.trim().is_empty() {
+            return Err(RfError::invalid_input(
+                "stored studio layout stack group state must contain a non-empty dock_region",
+            ));
+        }
+        if self.stack_group == 0 {
+            return Err(RfError::invalid_input(
+                "stored studio layout stack group state must contain a stack_group greater than zero",
+            ));
+        }
+        if self.active_area_id.trim().is_empty() {
+            return Err(RfError::invalid_input(
+                "stored studio layout stack group state must contain a non-empty active_area_id",
+            ));
+        }
+        Ok(())
+    }
 }
 
 impl StoredStudioLayoutRegionWeight {

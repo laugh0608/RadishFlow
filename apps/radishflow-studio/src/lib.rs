@@ -182,7 +182,9 @@ pub use studio_gui_window_layout::{
     StudioGuiWindowLayoutScope, StudioGuiWindowLayoutScopeKind, StudioGuiWindowLayoutState,
     StudioGuiWindowDockPlacement, StudioGuiWindowLayoutMutation,
     StudioGuiWindowLayoutPersistenceState, StudioGuiWindowPanelLayout,
-    StudioGuiWindowPanelLayoutState, StudioGuiWindowRegionWeight, StudioGuiWindowTitlebarModel,
+    StudioGuiWindowPanelLayoutState, StudioGuiWindowRegionWeight,
+    StudioGuiWindowStackGroupLayout, StudioGuiWindowStackGroupState,
+    StudioGuiWindowStackTabLayout, StudioGuiWindowTitlebarModel,
 };
 pub use studio_gui_window_model::{
     StudioGuiWindowCanvasAreaModel, StudioGuiWindowCommandAreaModel, StudioGuiWindowHeaderModel,

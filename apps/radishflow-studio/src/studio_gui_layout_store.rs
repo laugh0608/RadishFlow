@@ -3,14 +3,15 @@ use std::path::Path;
 
 use rf_store::{
     StoredStudioLayoutFile, StoredStudioLayoutPanelState, StoredStudioLayoutRegionWeight,
-    StoredStudioWindowLayoutEntry, read_studio_layout_file, studio_layout_path_for_project,
-    write_studio_layout_file,
+    StoredStudioLayoutStackGroupState, StoredStudioWindowLayoutEntry, read_studio_layout_file,
+    studio_layout_path_for_project, write_studio_layout_file,
 };
 use rf_types::{RfError, RfResult};
 
 use crate::{
     StudioGuiWindowAreaId, StudioGuiWindowDockRegion, StudioGuiWindowLayoutPersistenceState,
     StudioGuiWindowPanelLayoutState, StudioGuiWindowRegionWeight,
+    StudioGuiWindowStackGroupState,
 };
 
 pub fn load_persisted_window_layouts(
@@ -56,6 +57,11 @@ fn persistence_from_stored_entry(
             .into_iter()
             .map(panel_state_from_stored)
             .collect::<RfResult<Vec<_>>>()?,
+        stack_groups: entry
+            .stack_groups
+            .into_iter()
+            .map(stack_group_state_from_stored)
+            .collect::<RfResult<Vec<_>>>()?,
         region_weights: entry
             .region_weights
             .into_iter()
@@ -82,6 +88,15 @@ fn stored_entry_from_persistence(
                 collapsed: panel.collapsed,
             })
             .collect(),
+        stack_groups: entry
+            .stack_groups
+            .into_iter()
+            .map(|stack_group| StoredStudioLayoutStackGroupState {
+                dock_region: dock_region_key(stack_group.dock_region).to_string(),
+                stack_group: stack_group.stack_group,
+                active_area_id: area_id_key(stack_group.active_area_id).to_string(),
+            })
+            .collect(),
         region_weights: entry
             .region_weights
             .into_iter()
@@ -103,6 +118,16 @@ fn panel_state_from_stored(
         order: panel.order,
         visible: panel.visible,
         collapsed: panel.collapsed,
+    })
+}
+
+fn stack_group_state_from_stored(
+    stack_group: StoredStudioLayoutStackGroupState,
+) -> RfResult<StudioGuiWindowStackGroupState> {
+    Ok(StudioGuiWindowStackGroupState {
+        dock_region: parse_dock_region(&stack_group.dock_region)?,
+        stack_group: stack_group.stack_group,
+        active_area_id: parse_area_id(&stack_group.active_area_id)?,
     })
 }
 
@@ -164,6 +189,7 @@ mod tests {
     use crate::{
         StudioGuiWindowAreaId, StudioGuiWindowDockRegion, StudioGuiWindowLayoutPersistenceState,
         StudioGuiWindowPanelLayoutState, StudioGuiWindowRegionWeight,
+        StudioGuiWindowStackGroupState,
     };
 
     use super::{load_persisted_window_layouts, save_persisted_window_layouts};
@@ -200,6 +226,18 @@ mod tests {
                         order: 5,
                         visible: true,
                         collapsed: true,
+                    },
+                ],
+                stack_groups: vec![
+                    StudioGuiWindowStackGroupState {
+                        dock_region: StudioGuiWindowDockRegion::CenterStage,
+                        stack_group: 10,
+                        active_area_id: StudioGuiWindowAreaId::Runtime,
+                    },
+                    StudioGuiWindowStackGroupState {
+                        dock_region: StudioGuiWindowDockRegion::RightSidebar,
+                        stack_group: 20,
+                        active_area_id: StudioGuiWindowAreaId::Commands,
                     },
                 ],
                 region_weights: vec![StudioGuiWindowRegionWeight {
