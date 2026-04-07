@@ -3,6 +3,9 @@ use std::collections::BTreeMap;
 use rf_types::{RfError, RfResult};
 use rf_ui::{AppLogEntry, CanvasSuggestion, CanvasSuggestionId};
 
+use crate::studio_gui_layout_store::{
+    load_persisted_window_layouts, save_persisted_window_layouts,
+};
 use crate::{
     StudioAppHostCloseEffects, StudioAppHostController, StudioAppHostDispatchEffects,
     StudioAppHostGlobalEventResult, StudioAppHostProjection, StudioAppHostState,
@@ -10,11 +13,8 @@ use crate::{
     StudioAppHostWindowDispatchResult, StudioAppWindowHostGlobalEvent, StudioGuiCommandRegistry,
     StudioGuiNativeTimerEffects, StudioGuiRuntimeSnapshot, StudioGuiSnapshot,
     StudioGuiWindowLayoutMutation, StudioGuiWindowLayoutPersistenceState,
-    StudioGuiWindowLayoutState, StudioGuiWindowModel, StudioRuntimeConfig,
-    StudioRuntimeTrigger, StudioWindowHostId, StudioWindowHostRegistration,
-};
-use crate::studio_gui_layout_store::{
-    load_persisted_window_layouts, save_persisted_window_layouts,
+    StudioGuiWindowLayoutState, StudioGuiWindowModel, StudioRuntimeConfig, StudioRuntimeTrigger,
+    StudioWindowHostId, StudioWindowHostRegistration,
 };
 
 #[derive(Debug, Clone, PartialEq)]
@@ -226,7 +226,9 @@ impl StudioGuiHost {
         window_id: Option<StudioWindowHostId>,
         mutation: StudioGuiWindowLayoutMutation,
     ) -> RfResult<StudioGuiHostWindowLayoutUpdateResult> {
-        if let Some(window_id) = window_id.filter(|window_id| self.state().window(*window_id).is_none()) {
+        if let Some(window_id) =
+            window_id.filter(|window_id| self.state().window(*window_id).is_none())
+        {
             return Err(RfError::invalid_input(format!(
                 "window host `{window_id}` is not registered for layout updates"
             )));
@@ -262,7 +264,9 @@ impl StudioGuiHost {
         ))
     }
 
-    pub fn reject_focused_canvas_suggestion(&mut self) -> RfResult<StudioGuiHostCanvasInteractionResult> {
+    pub fn reject_focused_canvas_suggestion(
+        &mut self,
+    ) -> RfResult<StudioGuiHostCanvasInteractionResult> {
         let rejected = self.controller.reject_focused_canvas_suggestion();
         Ok(self.build_canvas_interaction_result(
             StudioGuiCanvasInteractionAction::RejectFocused,
@@ -271,7 +275,9 @@ impl StudioGuiHost {
         ))
     }
 
-    pub fn focus_next_canvas_suggestion(&mut self) -> RfResult<StudioGuiHostCanvasInteractionResult> {
+    pub fn focus_next_canvas_suggestion(
+        &mut self,
+    ) -> RfResult<StudioGuiHostCanvasInteractionResult> {
         let focused = self.controller.focus_next_canvas_suggestion();
         Ok(self.build_canvas_interaction_result_with_focus(
             StudioGuiCanvasInteractionAction::FocusNext,
@@ -461,7 +467,9 @@ impl StudioGuiHost {
                     .scope
                     .legacy_layout_key()
                     .as_ref()
-                    .and_then(|legacy_layout_key| self.layout_state_overrides.get(legacy_layout_key))
+                    .and_then(|legacy_layout_key| {
+                        self.layout_state_overrides.get(legacy_layout_key)
+                    })
             })
             .map(|persisted| derived.merged_with_persisted(persisted))
             .unwrap_or(derived)
@@ -573,18 +581,18 @@ mod tests {
         time::{SystemTime, UNIX_EPOCH},
     };
 
-    use rf_ui::RunPanelActionId;
     use rf_store::{
         read_studio_layout_file, studio_layout_path_for_project, write_studio_layout_file,
     };
+    use rf_ui::RunPanelActionId;
 
     use crate::{
         StudioGuiHost, StudioGuiHostCommand, StudioGuiHostCommandOutcome,
         StudioGuiHostLifecycleEvent, StudioGuiHostUiCommandDispatchResult,
-        StudioGuiNativeTimerEffects, StudioGuiWindowAreaId, StudioGuiWindowLayoutMutation,
-        StudioGuiWindowDockRegion, StudioRuntimeConfig, StudioRuntimeEntitlementPreflight,
-        StudioRuntimeEntitlementSeed, StudioRuntimeEntitlementSessionEvent,
-        StudioRuntimeTrigger, StudioWindowHostRetirement,
+        StudioGuiNativeTimerEffects, StudioGuiWindowAreaId, StudioGuiWindowDockRegion,
+        StudioGuiWindowLayoutMutation, StudioRuntimeConfig, StudioRuntimeEntitlementPreflight,
+        StudioRuntimeEntitlementSeed, StudioRuntimeEntitlementSessionEvent, StudioRuntimeTrigger,
+        StudioWindowHostRetirement,
     };
 
     fn lease_expiring_config() -> StudioRuntimeConfig {
@@ -629,8 +637,7 @@ mod tests {
         let project_path = std::env::temp_dir().join(format!(
             "radishflow-studio-layout-persistence-{timestamp}.rfproj.json"
         ));
-        let project =
-            include_str!("../../../examples/flowsheets/feed-heater-flash.rfproj.json");
+        let project = include_str!("../../../examples/flowsheets/feed-heater-flash.rfproj.json");
         fs::write(&project_path, project).expect("expected persistence project");
         let layout_path = studio_layout_path_for_project(&project_path);
 
@@ -946,6 +953,24 @@ mod tests {
             ]
         );
 
+        let fifth_update = gui_host
+            .update_window_layout(
+                Some(opened.registration.window_id),
+                StudioGuiWindowLayoutMutation::SetPanelDockRegion {
+                    area_id: StudioGuiWindowAreaId::Commands,
+                    dock_region: StudioGuiWindowDockRegion::RightSidebar,
+                    order: Some(4),
+                },
+            )
+            .expect("expected panel dock region update");
+        assert_eq!(
+            fifth_update
+                .layout_state
+                .panel(StudioGuiWindowAreaId::Commands)
+                .map(|panel| (panel.dock_region, panel.order)),
+            Some((StudioGuiWindowDockRegion::RightSidebar, 4))
+        );
+
         let stored = read_studio_layout_file(&layout_path).expect("expected stored layout sidecar");
         assert_eq!(stored.entries.len(), 1);
         assert_eq!(stored.entries[0].layout_key, "studio.window.owner.slot-1");
@@ -954,9 +979,19 @@ mod tests {
             stored.entries[0]
                 .panels
                 .iter()
-                .map(|panel| (panel.area_id.as_str(), panel.order))
+                .map(|panel| {
+                    (
+                        panel.area_id.as_str(),
+                        panel.dock_region.as_str(),
+                        panel.order,
+                    )
+                })
                 .collect::<Vec<_>>(),
-            vec![("runtime", 5), ("commands", 10), ("canvas", 20)]
+            vec![
+                ("commands", "right-sidebar", 4),
+                ("runtime", "right-sidebar", 5),
+                ("canvas", "center-stage", 20),
+            ]
         );
 
         drop(gui_host);
@@ -979,18 +1014,33 @@ mod tests {
                 .map(|region| region.weight),
             Some(33)
         );
-        assert_eq!(window.layout_state.center_area, StudioGuiWindowAreaId::Runtime);
+        assert_eq!(
+            window.layout_state.center_area,
+            StudioGuiWindowAreaId::Runtime
+        );
         assert_eq!(
             window
                 .layout_state
                 .panels
                 .iter()
-                .map(|panel| (panel.area_id, panel.order))
+                .map(|panel| (panel.area_id, panel.dock_region, panel.order))
                 .collect::<Vec<_>>(),
             vec![
-                (StudioGuiWindowAreaId::Runtime, 5),
-                (StudioGuiWindowAreaId::Commands, 10),
-                (StudioGuiWindowAreaId::Canvas, 20),
+                (
+                    StudioGuiWindowAreaId::Commands,
+                    StudioGuiWindowDockRegion::RightSidebar,
+                    4,
+                ),
+                (
+                    StudioGuiWindowAreaId::Runtime,
+                    StudioGuiWindowDockRegion::RightSidebar,
+                    5,
+                ),
+                (
+                    StudioGuiWindowAreaId::Canvas,
+                    StudioGuiWindowDockRegion::CenterStage,
+                    20,
+                ),
             ]
         );
 
@@ -1026,7 +1076,10 @@ mod tests {
         let window = gui_host.window_model_for_window(Some(opened.registration.window_id));
 
         assert_eq!(window.layout_state.scope.layout_slot, Some(1));
-        assert_eq!(window.layout_state.scope.layout_key, "studio.window.owner.slot-1");
+        assert_eq!(
+            window.layout_state.scope.layout_key,
+            "studio.window.owner.slot-1"
+        );
         assert_eq!(
             window
                 .layout_state

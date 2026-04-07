@@ -3,9 +3,10 @@ use radishflow_studio::{
     StudioGuiDriver, StudioGuiDriverDispatch, StudioGuiDriverOutcome, StudioGuiEvent,
     StudioGuiHostCloseWindowResult, StudioGuiHostCommandOutcome, StudioGuiHostDispatch,
     StudioGuiHostLifecycleDispatch, StudioGuiHostWindowOpened, StudioGuiNativeTimerEffects,
-    StudioGuiNativeTimerOperation, StudioGuiWindowAreaId, StudioGuiWindowLayoutMutation,
-    StudioGuiWindowModel, StudioRuntimeConfig, StudioRuntimeDispatch, StudioRuntimeReport,
-    StudioWindowHostRetirement, StudioWindowTimerDriverAckResult,
+    StudioGuiNativeTimerOperation, StudioGuiWindowAreaId, StudioGuiWindowDockRegion,
+    StudioGuiWindowLayoutMutation, StudioGuiWindowModel, StudioRuntimeConfig,
+    StudioRuntimeDispatch, StudioRuntimeReport, StudioWindowHostRetirement,
+    StudioWindowTimerDriverAckResult,
 };
 
 fn print_text_view(title: &str, lines: &[String]) {
@@ -80,7 +81,11 @@ fn print_window_model(title: &str, window: &StudioGuiWindowModel) {
                 "    - {} ({}) [{}] shortcut={} target={:?}",
                 command.label,
                 command.command_id,
-                if command.enabled { "enabled" } else { "disabled" },
+                if command.enabled {
+                    "enabled"
+                } else {
+                    "disabled"
+                },
                 shortcut,
                 command.target_window_id
             );
@@ -88,7 +93,10 @@ fn print_window_model(title: &str, window: &StudioGuiWindowModel) {
         }
     }
 
-    print_text_view(window.canvas.widget.text().title, &window.canvas.widget.text().lines);
+    print_text_view(
+        window.canvas.widget.text().title,
+        &window.canvas.widget.text().lines,
+    );
     println!(
         "Canvas actions: {} enabled / {} total",
         window.canvas.enabled_action_count,
@@ -103,7 +111,11 @@ fn print_window_model(title: &str, window: &StudioGuiWindowModel) {
         println!(
             "  - {} [{}] shortcut={} :: {}",
             action.label,
-            if action.enabled { "enabled" } else { "disabled" },
+            if action.enabled {
+                "enabled"
+            } else {
+                "disabled"
+            },
             shortcut,
             action.detail
         );
@@ -191,6 +203,20 @@ fn main() {
     print_window_model(
         "Window model after moving runtime panel to the first order slot",
         &reordered_runtime.window,
+    );
+    let moved_commands = app_host
+        .dispatch_event(StudioGuiEvent::WindowLayoutMutationRequested {
+            window_id: Some(window.window_id),
+            mutation: StudioGuiWindowLayoutMutation::SetPanelDockRegion {
+                area_id: StudioGuiWindowAreaId::Commands,
+                dock_region: StudioGuiWindowDockRegion::RightSidebar,
+                order: Some(4),
+            },
+        })
+        .expect("expected panel dock region update");
+    print_window_model(
+        "Window model after moving commands panel into the right sidebar",
+        &moved_commands.window,
     );
     if let Some(slot) = window.restored_entitlement_timer.as_ref() {
         println!("Restored parked timer slot into window host: {:?}", slot);

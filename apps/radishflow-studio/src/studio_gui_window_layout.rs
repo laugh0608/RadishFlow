@@ -72,6 +72,11 @@ pub enum StudioGuiWindowLayoutMutation {
     SetCenterArea {
         area_id: StudioGuiWindowAreaId,
     },
+    SetPanelDockRegion {
+        area_id: StudioGuiWindowAreaId,
+        dock_region: StudioGuiWindowDockRegion,
+        order: Option<u8>,
+    },
     SetPanelVisibility {
         area_id: StudioGuiWindowAreaId,
         visible: bool,
@@ -187,10 +192,7 @@ impl StudioGuiWindowLayoutState {
             .find(|region| region.dock_region == dock_region)
     }
 
-    pub fn merged_with_persisted(
-        &self,
-        persisted: &StudioGuiWindowLayoutPersistenceState,
-    ) -> Self {
+    pub fn merged_with_persisted(&self, persisted: &StudioGuiWindowLayoutPersistenceState) -> Self {
         let mut merged = self.clone();
 
         for panel in &persisted.panels {
@@ -215,6 +217,25 @@ impl StudioGuiWindowLayoutState {
                 panel.visible = true;
                 upsert_panel_state(&mut next.panels, panel);
                 next.center_area = *area_id;
+            }
+            StudioGuiWindowLayoutMutation::SetPanelDockRegion {
+                area_id,
+                dock_region,
+                order,
+            } => {
+                let mut panel = next
+                    .panel(*area_id)
+                    .cloned()
+                    .unwrap_or_else(|| default_panel_state(*area_id));
+                panel.dock_region = *dock_region;
+                if let Some(order) = order {
+                    panel.order = *order;
+                }
+                if *dock_region == StudioGuiWindowDockRegion::CenterStage {
+                    panel.visible = true;
+                }
+                upsert_panel_state(&mut next.panels, panel);
+                reconcile_center_stage_after_panel_move(&mut next, *area_id, *dock_region);
             }
             StudioGuiWindowLayoutMutation::SetPanelVisibility { area_id, visible } => {
                 let mut panel = next
@@ -431,9 +452,7 @@ fn layout_key_for_window(
         (Some(StudioWindowHostRole::EntitlementTimerOwner), None) => {
             "studio.window.owner.slot-1".to_string()
         }
-        (Some(StudioWindowHostRole::Observer), None) => {
-            "studio.window.observer.slot-1".to_string()
-        }
+        (Some(StudioWindowHostRole::Observer), None) => "studio.window.observer.slot-1".to_string(),
         (None, Some(layout_slot)) => format!("studio.window.window.slot-{layout_slot}"),
         (None, None) => "studio.window.window.slot-1".to_string(),
     }
@@ -506,12 +525,61 @@ fn upsert_panel_state(
     panels: &mut Vec<StudioGuiWindowPanelLayoutState>,
     panel: StudioGuiWindowPanelLayoutState,
 ) {
-    if let Some(index) = panels.iter().position(|candidate| candidate.area_id == panel.area_id) {
+    if let Some(index) = panels
+        .iter()
+        .position(|candidate| candidate.area_id == panel.area_id)
+    {
         panels[index] = panel;
     } else {
         panels.push(panel);
     }
     sort_panels(panels);
+}
+
+fn reconcile_center_stage_after_panel_move(
+    layout: &mut StudioGuiWindowLayoutState,
+    moved_area_id: StudioGuiWindowAreaId,
+    moved_region: StudioGuiWindowDockRegion,
+) {
+    if moved_region == StudioGuiWindowDockRegion::CenterStage {
+        layout.center_area = moved_area_id;
+        return;
+    }
+
+    if let Some(replacement_area_id) =
+        first_panel_in_region(&layout.panels, StudioGuiWindowDockRegion::CenterStage)
+    {
+        if layout.center_area == moved_area_id {
+            layout.center_area = replacement_area_id;
+        }
+        return;
+    }
+
+    let fallback_area_id = layout
+        .panels
+        .iter()
+        .find(|panel| panel.visible)
+        .map(|panel| panel.area_id)
+        .or_else(|| layout.panels.first().map(|panel| panel.area_id))
+        .unwrap_or(StudioGuiWindowAreaId::Canvas);
+    let mut fallback_panel = layout
+        .panel(fallback_area_id)
+        .cloned()
+        .unwrap_or_else(|| default_panel_state(fallback_area_id));
+    fallback_panel.dock_region = StudioGuiWindowDockRegion::CenterStage;
+    fallback_panel.visible = true;
+    upsert_panel_state(&mut layout.panels, fallback_panel);
+    layout.center_area = fallback_area_id;
+}
+
+fn first_panel_in_region(
+    panels: &[StudioGuiWindowPanelLayoutState],
+    dock_region: StudioGuiWindowDockRegion,
+) -> Option<StudioGuiWindowAreaId> {
+    panels
+        .iter()
+        .find(|panel| panel.dock_region == dock_region)
+        .map(|panel| panel.area_id)
 }
 
 fn upsert_region_weight(
@@ -529,12 +597,7 @@ fn upsert_region_weight(
 }
 
 fn sort_panels(panels: &mut [StudioGuiWindowPanelLayoutState]) {
-    panels.sort_by_key(|candidate| {
-        (
-            candidate.order,
-            area_sort_rank(candidate.area_id),
-        )
-    });
+    panels.sort_by_key(|candidate| (candidate.order, area_sort_rank(candidate.area_id)));
 }
 
 fn area_sort_rank(area_id: StudioGuiWindowAreaId) -> u8 {
@@ -620,7 +683,10 @@ mod tests {
         assert_eq!(layout.titlebar.foreground_window_id, Some(1));
         assert_eq!(layout.center_area, StudioGuiWindowAreaId::Canvas);
         assert_eq!(layout.default_focus_area, StudioGuiWindowAreaId::Canvas);
-        assert_eq!(layout.state.scope.kind, StudioGuiWindowLayoutScopeKind::Window);
+        assert_eq!(
+            layout.state.scope.kind,
+            StudioGuiWindowLayoutScopeKind::Window
+        );
         assert_eq!(layout.state.scope.window_id, Some(1));
         assert_eq!(layout.state.scope.layout_slot, Some(1));
         assert_eq!(layout.state.scope.layout_key, "studio.window.owner.slot-1");
@@ -715,6 +781,62 @@ mod tests {
                 (StudioGuiWindowAreaId::Commands, 10),
                 (StudioGuiWindowAreaId::Canvas, 20),
             ]
+        );
+    }
+
+    #[test]
+    fn studio_gui_window_layout_moves_panels_across_dock_regions() {
+        let state = StudioGuiWindowLayoutState::default()
+            .applying_mutation(&crate::StudioGuiWindowLayoutMutation::SetPanelDockRegion {
+                area_id: StudioGuiWindowAreaId::Runtime,
+                dock_region: StudioGuiWindowDockRegion::CenterStage,
+                order: Some(5),
+            })
+            .applying_mutation(&crate::StudioGuiWindowLayoutMutation::SetPanelDockRegion {
+                area_id: StudioGuiWindowAreaId::Canvas,
+                dock_region: StudioGuiWindowDockRegion::LeftSidebar,
+                order: Some(25),
+            });
+
+        assert_eq!(state.center_area, StudioGuiWindowAreaId::Runtime);
+        assert_eq!(
+            state.panel(StudioGuiWindowAreaId::Runtime).map(|panel| (
+                panel.dock_region,
+                panel.order,
+                panel.visible
+            )),
+            Some((StudioGuiWindowDockRegion::CenterStage, 5, true))
+        );
+        assert_eq!(
+            state
+                .panel(StudioGuiWindowAreaId::Canvas)
+                .map(|panel| (panel.dock_region, panel.order)),
+            Some((StudioGuiWindowDockRegion::LeftSidebar, 25))
+        );
+    }
+
+    #[test]
+    fn studio_gui_window_layout_promotes_visible_panel_when_center_stage_becomes_empty() {
+        let state = StudioGuiWindowLayoutState::default().applying_mutation(
+            &crate::StudioGuiWindowLayoutMutation::SetPanelDockRegion {
+                area_id: StudioGuiWindowAreaId::Canvas,
+                dock_region: StudioGuiWindowDockRegion::RightSidebar,
+                order: None,
+            },
+        );
+
+        assert_eq!(state.center_area, StudioGuiWindowAreaId::Commands);
+        assert_eq!(
+            state
+                .panel(StudioGuiWindowAreaId::Canvas)
+                .map(|panel| panel.dock_region),
+            Some(StudioGuiWindowDockRegion::RightSidebar)
+        );
+        assert_eq!(
+            state
+                .panel(StudioGuiWindowAreaId::Commands)
+                .map(|panel| (panel.dock_region, panel.visible)),
+            Some((StudioGuiWindowDockRegion::CenterStage, true))
         );
     }
 
@@ -814,7 +936,10 @@ mod tests {
         assert_eq!(layout.titlebar.registered_window_count, 0);
         assert!(!layout.titlebar.close_enabled);
         assert_eq!(layout.default_focus_area, StudioGuiWindowAreaId::Runtime);
-        assert_eq!(layout.state.scope.kind, StudioGuiWindowLayoutScopeKind::EmptyWorkspace);
+        assert_eq!(
+            layout.state.scope.kind,
+            StudioGuiWindowLayoutScopeKind::EmptyWorkspace
+        );
         assert_eq!(layout.state.scope.layout_key, "studio.window.empty");
         assert_eq!(
             layout

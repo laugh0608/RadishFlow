@@ -1,14 +1,13 @@
 use rf_types::RfResult;
 
 use crate::{
-    StudioAppHostState, StudioAppHostUiCommandModel, StudioGuiCanvasState,
-    StudioGuiCanvasInteractionAction,
-    StudioGuiCommandRegistry, StudioGuiFocusContext, StudioGuiHost,
+    StudioAppHostState, StudioAppHostUiCommandModel, StudioGuiCanvasInteractionAction,
+    StudioGuiCanvasState, StudioGuiCommandRegistry, StudioGuiFocusContext, StudioGuiHost,
     StudioGuiHostCanvasInteractionResult, StudioGuiHostCommand, StudioGuiHostCommandOutcome,
     StudioGuiHostLifecycleEvent, StudioGuiHostWindowLayoutUpdateResult, StudioGuiShortcut,
     StudioGuiShortcutIgnoreReason, StudioGuiShortcutRoute, StudioGuiSnapshot,
-    StudioGuiWindowLayoutMutation, StudioGuiWindowModel, StudioRuntimeConfig,
-    StudioRuntimeTrigger, StudioWindowHostId,
+    StudioGuiWindowLayoutMutation, StudioGuiWindowModel, StudioRuntimeConfig, StudioRuntimeTrigger,
+    StudioWindowHostId,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -124,8 +123,8 @@ impl StudioGuiDriver {
             DriverRoute::HostCommand(command) => {
                 StudioGuiDriverOutcome::HostCommand(self.host.execute_command(command)?)
             }
-            DriverRoute::CanvasInteraction(action) => StudioGuiDriverOutcome::CanvasInteraction(
-                match action {
+            DriverRoute::CanvasInteraction(action) => {
+                StudioGuiDriverOutcome::CanvasInteraction(match action {
                     StudioGuiCanvasInteractionAction::AcceptFocusedByTab => {
                         self.host.accept_focused_canvas_suggestion_by_tab()?
                     }
@@ -138,19 +137,22 @@ impl StudioGuiDriver {
                     StudioGuiCanvasInteractionAction::FocusPrevious => {
                         self.host.focus_previous_canvas_suggestion()?
                     }
-                },
-            ),
+                })
+            }
             DriverRoute::IgnoredShortcut { shortcut, reason } => {
                 StudioGuiDriverOutcome::IgnoredShortcut { shortcut, reason }
             }
-            DriverRoute::WindowLayoutMutation { window_id, mutation } => {
-                StudioGuiDriverOutcome::WindowLayoutUpdated(
-                    self.host.update_window_layout(window_id, mutation)?,
-                )
-            }
+            DriverRoute::WindowLayoutMutation {
+                window_id,
+                mutation,
+            } => StudioGuiDriverOutcome::WindowLayoutUpdated(
+                self.host.update_window_layout(window_id, mutation)?,
+            ),
         };
         let snapshot = self.host.snapshot();
-        let window = self.host.window_model_for_window(layout_scope_window_id(&outcome));
+        let window = self
+            .host
+            .window_model_for_window(layout_scope_window_id(&outcome));
         Ok(StudioGuiDriverDispatch {
             event,
             outcome,
@@ -169,35 +171,31 @@ fn layout_scope_window_id(outcome: &StudioGuiDriverOutcome) -> Option<StudioWind
         StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::WindowOpened(opened)) => {
             Some(opened.registration.window_id)
         }
-        StudioGuiDriverOutcome::HostCommand(
-            StudioGuiHostCommandOutcome::WindowDispatched(dispatch),
-        ) => Some(dispatch.target_window_id),
-        StudioGuiDriverOutcome::HostCommand(
-            StudioGuiHostCommandOutcome::LifecycleDispatched(lifecycle),
-        ) => lifecycle
+        StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::WindowDispatched(
+            dispatch,
+        )) => Some(dispatch.target_window_id),
+        StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::LifecycleDispatched(
+            lifecycle,
+        )) => lifecycle
             .dispatch
             .as_ref()
             .map(|dispatch| dispatch.target_window_id),
-        StudioGuiDriverOutcome::HostCommand(
-            StudioGuiHostCommandOutcome::UiCommandDispatched(
-                crate::StudioGuiHostUiCommandDispatchResult::Executed(dispatch),
-            ),
-        ) => Some(dispatch.target_window_id),
-        StudioGuiDriverOutcome::HostCommand(
-            StudioGuiHostCommandOutcome::UiCommandDispatched(
-                crate::StudioGuiHostUiCommandDispatchResult::IgnoredDisabled {
-                    target_window_id,
-                    ..
-                },
-            ),
-        ) => *target_window_id,
-        StudioGuiDriverOutcome::HostCommand(
-            StudioGuiHostCommandOutcome::UiCommandDispatched(
-                crate::StudioGuiHostUiCommandDispatchResult::IgnoredMissing { .. },
-            ),
-        )
+        StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::UiCommandDispatched(
+            crate::StudioGuiHostUiCommandDispatchResult::Executed(dispatch),
+        )) => Some(dispatch.target_window_id),
+        StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::UiCommandDispatched(
+            crate::StudioGuiHostUiCommandDispatchResult::IgnoredDisabled {
+                target_window_id, ..
+            },
+        )) => *target_window_id,
+        StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::UiCommandDispatched(
+            crate::StudioGuiHostUiCommandDispatchResult::IgnoredMissing { .. },
+        ))
         | StudioGuiDriverOutcome::WindowLayoutUpdated(
-            crate::StudioGuiHostWindowLayoutUpdateResult { target_window_id: None, .. },
+            crate::StudioGuiHostWindowLayoutUpdateResult {
+                target_window_id: None,
+                ..
+            },
         )
         | StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::WindowClosed(_))
         | StudioGuiDriverOutcome::CanvasInteraction(_)
@@ -264,12 +262,13 @@ fn route_driver_event(event: &StudioGuiEvent, registry: &StudioGuiCommandRegistr
         StudioGuiEvent::CanvasSuggestionFocusPreviousRequested => {
             DriverRoute::CanvasInteraction(StudioGuiCanvasInteractionAction::FocusPrevious)
         }
-        StudioGuiEvent::WindowLayoutMutationRequested { window_id, mutation } => {
-            DriverRoute::WindowLayoutMutation {
-                window_id: *window_id,
-                mutation: mutation.clone(),
-            }
-        }
+        StudioGuiEvent::WindowLayoutMutationRequested {
+            window_id,
+            mutation,
+        } => DriverRoute::WindowLayoutMutation {
+            window_id: *window_id,
+            mutation: mutation.clone(),
+        },
         StudioGuiEvent::ShortcutPressed {
             shortcut,
             focus_context,
@@ -277,12 +276,12 @@ fn route_driver_event(event: &StudioGuiEvent, registry: &StudioGuiCommandRegistr
             StudioGuiShortcutRoute::DispatchCommandId { command_id } => {
                 DriverRoute::HostCommand(StudioGuiHostCommand::DispatchUiCommand { command_id })
             }
-            StudioGuiShortcutRoute::RequestCanvasSuggestionAccept => DriverRoute::CanvasInteraction(
-                StudioGuiCanvasInteractionAction::AcceptFocusedByTab,
-            ),
-            StudioGuiShortcutRoute::RequestCanvasSuggestionReject => DriverRoute::CanvasInteraction(
-                StudioGuiCanvasInteractionAction::RejectFocused,
-            ),
+            StudioGuiShortcutRoute::RequestCanvasSuggestionAccept => {
+                DriverRoute::CanvasInteraction(StudioGuiCanvasInteractionAction::AcceptFocusedByTab)
+            }
+            StudioGuiShortcutRoute::RequestCanvasSuggestionReject => {
+                DriverRoute::CanvasInteraction(StudioGuiCanvasInteractionAction::RejectFocused)
+            }
             StudioGuiShortcutRoute::RequestCanvasSuggestionFocusNext => {
                 DriverRoute::CanvasInteraction(StudioGuiCanvasInteractionAction::FocusNext)
             }
@@ -326,9 +325,8 @@ mod tests {
     };
 
     use crate::{
-        StudioGuiCanvasInteractionAction, StudioGuiDriver, StudioGuiDriverOutcome,
-        StudioGuiEvent, StudioGuiFocusContext, StudioGuiHostCanvasInteractionResult,
-        StudioGuiHostCommandOutcome,
+        StudioGuiCanvasInteractionAction, StudioGuiDriver, StudioGuiDriverOutcome, StudioGuiEvent,
+        StudioGuiFocusContext, StudioGuiHostCanvasInteractionResult, StudioGuiHostCommandOutcome,
         StudioGuiHostUiCommandDispatchResult, StudioGuiShortcut, StudioGuiShortcutIgnoreReason,
         StudioGuiShortcutKey, StudioGuiShortcutModifier, StudioGuiWindowAreaId,
         StudioGuiWindowDockRegion, StudioGuiWindowLayoutMutation, StudioRuntimeConfig,
@@ -544,16 +542,30 @@ mod tests {
             Some("Run Panel")
         );
         assert_eq!(
-            dispatch
-                .snapshot
-                .runtime
-                .control_state
-                .run_status,
+            dispatch.snapshot.runtime.control_state.run_status,
             rf_ui::RunStatus::Idle
         );
-        assert_eq!(dispatch.window.runtime.run_panel.view().primary_action.label, "Resume");
+        assert_eq!(
+            dispatch
+                .window
+                .runtime
+                .run_panel
+                .view()
+                .primary_action
+                .label,
+            "Resume"
+        );
         assert!(dispatch.snapshot.runtime.entitlement_host.is_some());
-        assert!(!dispatch.snapshot.runtime.run_panel.view().primary_action.label.is_empty());
+        assert!(
+            !dispatch
+                .snapshot
+                .runtime
+                .run_panel
+                .view()
+                .primary_action
+                .label
+                .is_empty()
+        );
 
         let _ = fs::remove_file(project_path);
     }
@@ -684,7 +696,10 @@ mod tests {
 
         match dispatch.outcome {
             StudioGuiDriverOutcome::CanvasInteraction(result) => {
-                assert_eq!(result.action, StudioGuiCanvasInteractionAction::AcceptFocusedByTab);
+                assert_eq!(
+                    result.action,
+                    StudioGuiCanvasInteractionAction::AcceptFocusedByTab
+                );
                 assert_eq!(
                     result
                         .accepted
@@ -723,7 +738,10 @@ mod tests {
             StudioGuiDriverOutcome::CanvasInteraction(result) => {
                 assert_eq!(result.action, StudioGuiCanvasInteractionAction::FocusNext);
                 assert_eq!(
-                    result.focused.as_ref().map(|suggestion| suggestion.id.as_str()),
+                    result
+                        .focused
+                        .as_ref()
+                        .map(|suggestion| suggestion.id.as_str()),
                     Some("local.flash_drum.create_outlet.flash-1.liquid")
                 );
                 assert_eq!(
@@ -758,7 +776,10 @@ mod tests {
 
         match dispatch.outcome {
             StudioGuiDriverOutcome::CanvasInteraction(result) => {
-                assert_eq!(result.action, StudioGuiCanvasInteractionAction::RejectFocused);
+                assert_eq!(
+                    result.action,
+                    StudioGuiCanvasInteractionAction::RejectFocused
+                );
                 assert_eq!(
                     result
                         .rejected
@@ -767,7 +788,10 @@ mod tests {
                     Some("local.flash_drum.connect_inlet.flash-1.stream-heated")
                 );
                 assert_eq!(
-                    result.focused.as_ref().map(|suggestion| suggestion.id.as_str()),
+                    result
+                        .focused
+                        .as_ref()
+                        .map(|suggestion| suggestion.id.as_str()),
                     Some("local.flash_drum.create_outlet.flash-1.liquid")
                 );
             }
@@ -796,7 +820,10 @@ mod tests {
             StudioGuiDriverOutcome::CanvasInteraction(result) => {
                 assert_eq!(result.action, StudioGuiCanvasInteractionAction::FocusNext);
                 assert_eq!(
-                    result.focused.as_ref().map(|suggestion| suggestion.id.as_str()),
+                    result
+                        .focused
+                        .as_ref()
+                        .map(|suggestion| suggestion.id.as_str()),
                     Some("local.flash_drum.create_outlet.flash-1.liquid")
                 );
             }
@@ -909,7 +936,10 @@ mod tests {
         match centered.outcome {
             StudioGuiDriverOutcome::WindowLayoutUpdated(result) => {
                 assert_eq!(result.target_window_id, Some(second_window_id));
-                assert_eq!(result.layout_state.center_area, StudioGuiWindowAreaId::Runtime);
+                assert_eq!(
+                    result.layout_state.center_area,
+                    StudioGuiWindowAreaId::Runtime
+                );
                 assert_eq!(
                     result
                         .layout_state
@@ -950,6 +980,30 @@ mod tests {
             other => panic!("expected window layout update outcome, got {other:?}"),
         }
 
+        let moved = driver
+            .dispatch_event(StudioGuiEvent::WindowLayoutMutationRequested {
+                window_id: Some(second_window_id),
+                mutation: StudioGuiWindowLayoutMutation::SetPanelDockRegion {
+                    area_id: StudioGuiWindowAreaId::Commands,
+                    dock_region: StudioGuiWindowDockRegion::RightSidebar,
+                    order: Some(4),
+                },
+            })
+            .expect("expected layout dock region update");
+        match moved.outcome {
+            StudioGuiDriverOutcome::WindowLayoutUpdated(result) => {
+                assert_eq!(result.target_window_id, Some(second_window_id));
+                assert_eq!(
+                    result
+                        .layout_state
+                        .panel(StudioGuiWindowAreaId::Commands)
+                        .map(|panel| (panel.dock_region, panel.order)),
+                    Some((StudioGuiWindowDockRegion::RightSidebar, 4))
+                );
+            }
+            other => panic!("expected window layout update outcome, got {other:?}"),
+        }
+
         let first_window = driver.window_model_for_window(Some(first_window_id));
         let second_window = driver.window_model_for_window(Some(second_window_id));
 
@@ -971,8 +1025,8 @@ mod tests {
             second_window
                 .layout_state
                 .panel(StudioGuiWindowAreaId::Commands)
-                .map(|panel| panel.collapsed),
-            Some(true)
+                .map(|panel| (panel.collapsed, panel.dock_region, panel.order)),
+            Some((true, StudioGuiWindowDockRegion::RightSidebar, 4))
         );
         assert_eq!(
             first_window
@@ -988,19 +1042,37 @@ mod tests {
                 .map(|region| region.weight),
             Some(31)
         );
-        assert_eq!(first_window.layout_state.center_area, StudioGuiWindowAreaId::Canvas);
-        assert_eq!(second_window.layout_state.center_area, StudioGuiWindowAreaId::Runtime);
+        assert_eq!(
+            first_window.layout_state.center_area,
+            StudioGuiWindowAreaId::Canvas
+        );
+        assert_eq!(
+            second_window.layout_state.center_area,
+            StudioGuiWindowAreaId::Runtime
+        );
         assert_eq!(
             second_window
                 .layout_state
                 .panels
                 .iter()
-                .map(|panel| (panel.area_id, panel.order))
+                .map(|panel| (panel.area_id, panel.dock_region, panel.order))
                 .collect::<Vec<_>>(),
             vec![
-                (StudioGuiWindowAreaId::Runtime, 5),
-                (StudioGuiWindowAreaId::Commands, 10),
-                (StudioGuiWindowAreaId::Canvas, 20),
+                (
+                    StudioGuiWindowAreaId::Commands,
+                    StudioGuiWindowDockRegion::RightSidebar,
+                    4,
+                ),
+                (
+                    StudioGuiWindowAreaId::Runtime,
+                    StudioGuiWindowDockRegion::RightSidebar,
+                    5,
+                ),
+                (
+                    StudioGuiWindowAreaId::Canvas,
+                    StudioGuiWindowDockRegion::CenterStage,
+                    20,
+                ),
             ]
         );
 

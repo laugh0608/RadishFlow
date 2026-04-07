@@ -153,12 +153,15 @@ fn parse_dock_region(value: &str) -> RfResult<StudioGuiWindowDockRegion> {
 
 #[cfg(test)]
 mod tests {
-    use std::{collections::BTreeMap, fs, time::{SystemTime, UNIX_EPOCH}};
+    use std::{
+        collections::BTreeMap,
+        fs,
+        time::{SystemTime, UNIX_EPOCH},
+    };
 
     use crate::{
-        StudioGuiWindowAreaId, StudioGuiWindowDockRegion,
-        StudioGuiWindowLayoutPersistenceState, StudioGuiWindowPanelLayoutState,
-        StudioGuiWindowRegionWeight,
+        StudioGuiWindowAreaId, StudioGuiWindowDockRegion, StudioGuiWindowLayoutPersistenceState,
+        StudioGuiWindowPanelLayoutState, StudioGuiWindowRegionWeight,
     };
 
     use super::{load_persisted_window_layouts, save_persisted_window_layouts};
@@ -178,14 +181,23 @@ mod tests {
             "studio.window.owner.slot-1".to_string(),
             StudioGuiWindowLayoutPersistenceState {
                 layout_key: "studio.window.owner.slot-1".to_string(),
-                center_area: StudioGuiWindowAreaId::Canvas,
-                panels: vec![StudioGuiWindowPanelLayoutState {
-                    area_id: StudioGuiWindowAreaId::Runtime,
-                    dock_region: StudioGuiWindowDockRegion::RightSidebar,
-                    order: 30,
-                    visible: false,
-                    collapsed: true,
-                }],
+                center_area: StudioGuiWindowAreaId::Runtime,
+                panels: vec![
+                    StudioGuiWindowPanelLayoutState {
+                        area_id: StudioGuiWindowAreaId::Commands,
+                        dock_region: StudioGuiWindowDockRegion::RightSidebar,
+                        order: 12,
+                        visible: true,
+                        collapsed: false,
+                    },
+                    StudioGuiWindowPanelLayoutState {
+                        area_id: StudioGuiWindowAreaId::Runtime,
+                        dock_region: StudioGuiWindowDockRegion::CenterStage,
+                        order: 5,
+                        visible: true,
+                        collapsed: true,
+                    },
+                ],
                 region_weights: vec![StudioGuiWindowRegionWeight {
                     dock_region: StudioGuiWindowDockRegion::RightSidebar,
                     weight: 31,
