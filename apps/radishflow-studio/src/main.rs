@@ -4,9 +4,9 @@ use radishflow_studio::{
     StudioGuiHostCloseWindowResult, StudioGuiHostCommandOutcome, StudioGuiHostDispatch,
     StudioGuiHostLifecycleDispatch, StudioGuiHostWindowOpened, StudioGuiNativeTimerEffects,
     StudioGuiNativeTimerOperation, StudioGuiWindowAreaId, StudioGuiWindowDockPlacement,
-    StudioGuiWindowDockRegion, StudioGuiWindowLayoutMutation, StudioGuiWindowModel,
-    StudioRuntimeConfig, StudioRuntimeDispatch, StudioRuntimeReport, StudioWindowHostRetirement,
-    StudioWindowTimerDriverAckResult,
+    StudioGuiWindowDockRegion, StudioGuiWindowDropTarget, StudioGuiWindowLayoutMutation,
+    StudioGuiWindowModel, StudioRuntimeConfig, StudioRuntimeDispatch, StudioRuntimeReport,
+    StudioWindowHostRetirement, StudioWindowTimerDriverAckResult,
 };
 
 fn print_text_view(title: &str, lines: &[String]) {
@@ -73,13 +73,7 @@ fn print_window_model(title: &str, window: &StudioGuiWindowModel) {
         let tabs = stack_group
             .tabs
             .iter()
-            .map(|tab| {
-                format!(
-                    "{:?}{}",
-                    tab.area_id,
-                    if tab.active { "*" } else { "" }
-                )
-            })
+            .map(|tab| format!("{:?}{}", tab.area_id, if tab.active { "*" } else { "" }))
             .collect::<Vec<_>>()
             .join(", ");
         println!(
@@ -164,6 +158,41 @@ fn print_window_model(title: &str, window: &StudioGuiWindowModel) {
     }
 }
 
+fn print_drop_target_preview(
+    title: &str,
+    window: &StudioGuiWindowModel,
+    mutation: &StudioGuiWindowLayoutMutation,
+) {
+    let layout = window.layout();
+    println!("{title}:");
+    match layout.drop_target_for_mutation(mutation) {
+        Some(target) => print_drop_target(&target),
+        None => println!("  none"),
+    }
+}
+
+fn print_drop_target(target: &StudioGuiWindowDropTarget) {
+    println!(
+        "  area={:?} kind={:?} region={:?} anchor={:?} placement={:?}",
+        target.area_id, target.kind, target.dock_region, target.anchor_area_id, target.placement
+    );
+    println!(
+        "  source=({:?}, group={}) -> target=(group={}, group_index={}, tab_index={})",
+        target.source_dock_region,
+        target.source_stack_group,
+        target.target_stack_group,
+        target.target_group_index,
+        target.target_tab_index
+    );
+    println!(
+        "  creates_new_stack={} merges_into_existing_stack={} active={:?} tabs={:?}",
+        target.creates_new_stack,
+        target.merges_into_existing_stack,
+        target.preview_active_area_id,
+        target.preview_area_ids
+    );
+}
+
 fn main() {
     let config = StudioRuntimeConfig::default();
     let mut app_host = match StudioGuiDriver::new(&config) {
@@ -191,6 +220,15 @@ fn main() {
     print_window_model(
         "Window model after opening window",
         &app_host.snapshot().window_model(),
+    );
+    print_drop_target_preview(
+        "Drop target preview for moving runtime to the start of the left sidebar",
+        &app_host.snapshot().window_model(),
+        &StudioGuiWindowLayoutMutation::PlacePanelInDockRegion {
+            area_id: StudioGuiWindowAreaId::Runtime,
+            dock_region: StudioGuiWindowDockRegion::LeftSidebar,
+            placement: StudioGuiWindowDockPlacement::Start,
+        },
     );
     let layout_update = app_host
         .dispatch_event(StudioGuiEvent::WindowLayoutMutationRequested {
@@ -246,6 +284,17 @@ fn main() {
         "Window model after inserting commands panel before runtime in the right sidebar",
         &moved_commands.window,
     );
+    print_drop_target_preview(
+        "Drop target preview for stacking commands with runtime in the right sidebar",
+        &moved_commands.window,
+        &StudioGuiWindowLayoutMutation::StackPanelWith {
+            area_id: StudioGuiWindowAreaId::Commands,
+            anchor_area_id: StudioGuiWindowAreaId::Runtime,
+            placement: StudioGuiWindowDockPlacement::Before {
+                anchor_area_id: StudioGuiWindowAreaId::Runtime,
+            },
+        },
+    );
     let stacked_commands = app_host
         .dispatch_event(StudioGuiEvent::WindowLayoutMutationRequested {
             window_id: Some(window.window_id),
@@ -261,6 +310,16 @@ fn main() {
     print_window_model(
         "Window model after stacking commands with runtime in the right sidebar",
         &stacked_commands.window,
+    );
+    print_drop_target_preview(
+        "Drop target preview for moving runtime before commands inside the shared stack",
+        &stacked_commands.window,
+        &StudioGuiWindowLayoutMutation::MovePanelWithinStack {
+            area_id: StudioGuiWindowAreaId::Runtime,
+            placement: StudioGuiWindowDockPlacement::Before {
+                anchor_area_id: StudioGuiWindowAreaId::Commands,
+            },
+        },
     );
     let switched_active_tab = app_host
         .dispatch_event(StudioGuiEvent::WindowLayoutMutationRequested {
@@ -300,6 +359,16 @@ fn main() {
     print_window_model(
         "Window model after reordering runtime before commands inside the shared stack",
         &reordered_tabs.window,
+    );
+    print_drop_target_preview(
+        "Drop target preview for unstacking commands back into a standalone right-sidebar group",
+        &reordered_tabs.window,
+        &StudioGuiWindowLayoutMutation::UnstackPanelFromGroup {
+            area_id: StudioGuiWindowAreaId::Commands,
+            placement: StudioGuiWindowDockPlacement::Before {
+                anchor_area_id: StudioGuiWindowAreaId::Runtime,
+            },
+        },
     );
     let unstacked_commands = app_host
         .dispatch_event(StudioGuiEvent::WindowLayoutMutationRequested {

@@ -1,6 +1,6 @@
 # RadishFlow MVP 开发路线图
 
-更新时间：2026-04-06
+更新时间：2026-04-07
 
 ## 文档目的
 
@@ -180,7 +180,7 @@ MVP 阶段明确不做：
 - Studio 当前把运行触发先区分为 `Manual` / `Automatic`，并把 `SimulationMode`、`pending_reason` 与默认 `snapshot_id` / `sequence` 生成收口到应用层
 - Studio 当前默认包选择采取保守策略：只有在唯一候选包明确时才自动选中，多包场景必须显式指定 package
 - Studio 当前又已形成 `StudioGuiHost / StudioGuiDriver / StudioGuiSnapshot / StudioGuiWindowModel / StudioGuiWindowLayoutState` 这一条 GUI-facing 宿主与窗口布局契约
-- Studio 当前窗口布局状态已覆盖 `panel dock_region/stack_group/visibility/collapsed/order`、stack active tab、region 内 stack placement、`center_area`、`region_weights` 与多窗口 `layout scope`
+- Studio 当前窗口布局状态已覆盖 `panel dock_region/stack_group/visibility/collapsed/order`、stack active tab、region 内 stack placement、`center_area`、`region_weights`、多窗口 `layout scope` 与 GUI-facing `drop target` 摘要推导
 - Studio 当前窗口布局已独立持久化到 `<project>.rfstudio-layout.json` sidecar，并从基于运行时 `window_id` 的 key 收口到基于 `window_role + layout_slot` 的稳定 key
 
 ### 退出标准
@@ -359,7 +359,7 @@ Studio 当前又已继续把这条 GUI 命令入口推进为稳定 host command 
 - 在已补出的 `StudioAppWindowHostManager + StudioAppWindowHostCommand` 基础上，继续决定真实桌面框架里的 app 生命周期、窗口创建销毁与后台任务事件如何统一接到这条宿主命令面
 - 在已补出的 `StudioAppHost + StudioAppHostSnapshot` 基础上，继续决定真实桌面框架里的 app state store、窗口 registry 与后台任务宿主是否直接复用这份快照作为单一真相源
 - 在已补出的 `StudioAppHost + StudioAppHostSnapshot + StudioAppHostChangeSet` 基础上，继续决定真实桌面框架里的 app state store、窗口 registry 与后台任务宿主如何直接消费正式 snapshot/change 输出，而不是在 GUI 层自行做二次 diff
-- 在已形成的 `StudioGuiWindowLayoutState` 基础上，继续补真实 dock 编排契约，例如 tabbed group 标题/可关闭策略、拖拽预览、跨窗口布局模板与更完整的标题栏/窗口 scope 语义
+- 在已形成的 `StudioGuiWindowLayoutState + drop target` 摘要基础上，继续补真实 dock 编排契约，例如 tabbed group 标题/可关闭策略、更细的拖拽预览/命中层、跨窗口布局模板与更完整的标题栏/窗口 scope 语义
 - 在已补出的 `StudioAppHostState + StudioAppHostStore + StudioAppHostProjection` 基础上，继续决定真实桌面框架里的 app 生命周期宿主、窗口创建销毁入口与后台任务桥接是否直接围绕这份正式 state/projection 接线
 - 在已补出的 `StudioAppHostController + StudioAppHostState + StudioAppHostStore + StudioAppHostProjection` 基础上，继续决定真实桌面框架里的原生窗口事件源、app 生命周期宿主与后台任务入口如何直接走这条正式 controller 边界
 - 在已补出的 app host effect summary 基础上，继续决定真实桌面框架里的 native timer handle、后台任务调度和 close retirement 提示如何直接接到这组正式 GUI 宿主副作用
