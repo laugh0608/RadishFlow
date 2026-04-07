@@ -1087,6 +1087,41 @@ mod tests {
             other => panic!("expected window layout update outcome, got {other:?}"),
         }
 
+        let reordered_stack = driver
+            .dispatch_event(StudioGuiEvent::WindowLayoutMutationRequested {
+                window_id: Some(second_window_id),
+                mutation: StudioGuiWindowLayoutMutation::MovePanelWithinStack {
+                    area_id: StudioGuiWindowAreaId::Runtime,
+                    placement: StudioGuiWindowDockPlacement::Before {
+                        anchor_area_id: StudioGuiWindowAreaId::Commands,
+                    },
+                },
+            })
+            .expect("expected stack reorder update");
+        match &reordered_stack.outcome {
+            StudioGuiDriverOutcome::WindowLayoutUpdated(result) => {
+                assert_eq!(
+                    result
+                        .layout_state
+                        .panels_in_stack_group(StudioGuiWindowDockRegion::RightSidebar, 10)
+                        .into_iter()
+                        .map(|panel| (panel.area_id, panel.order))
+                        .collect::<Vec<_>>(),
+                    vec![
+                        (StudioGuiWindowAreaId::Runtime, 10),
+                        (StudioGuiWindowAreaId::Commands, 20),
+                    ]
+                );
+                assert_eq!(
+                    result
+                        .layout_state
+                        .active_panel_in_stack(StudioGuiWindowDockRegion::RightSidebar, 10),
+                    Some(StudioGuiWindowAreaId::Runtime)
+                );
+            }
+            other => panic!("expected window layout update outcome, got {other:?}"),
+        }
+
         let unstacked = driver
             .dispatch_event(StudioGuiEvent::WindowLayoutMutationRequested {
                 window_id: Some(second_window_id),

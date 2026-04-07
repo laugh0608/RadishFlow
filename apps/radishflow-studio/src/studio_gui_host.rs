@@ -1021,6 +1021,30 @@ mod tests {
         let eighth_update = gui_host
             .update_window_layout(
                 Some(opened.registration.window_id),
+                StudioGuiWindowLayoutMutation::MovePanelWithinStack {
+                    area_id: StudioGuiWindowAreaId::Runtime,
+                    placement: StudioGuiWindowDockPlacement::Before {
+                        anchor_area_id: StudioGuiWindowAreaId::Commands,
+                    },
+                },
+            )
+            .expect("expected stack reorder update");
+        assert_eq!(
+            eighth_update
+                .layout_state
+                .panels_in_stack_group(StudioGuiWindowDockRegion::RightSidebar, 10)
+                .into_iter()
+                .map(|panel| (panel.area_id, panel.order))
+                .collect::<Vec<_>>(),
+            vec![
+                (StudioGuiWindowAreaId::Runtime, 10),
+                (StudioGuiWindowAreaId::Commands, 20),
+            ]
+        );
+
+        let ninth_update = gui_host
+            .update_window_layout(
+                Some(opened.registration.window_id),
                 StudioGuiWindowLayoutMutation::UnstackPanelFromGroup {
                     area_id: StudioGuiWindowAreaId::Commands,
                     placement: StudioGuiWindowDockPlacement::Before {
@@ -1030,7 +1054,7 @@ mod tests {
             )
             .expect("expected panel unstack update");
         assert_eq!(
-            eighth_update
+            ninth_update
                 .layout_state
                 .panels_in_dock_region(StudioGuiWindowDockRegion::RightSidebar)
                 .into_iter()

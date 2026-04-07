@@ -286,6 +286,21 @@ fn main() {
         "Window model after cycling back to the previous active tab",
         &cycled_previous_tab.window,
     );
+    let reordered_tabs = app_host
+        .dispatch_event(StudioGuiEvent::WindowLayoutMutationRequested {
+            window_id: Some(window.window_id),
+            mutation: StudioGuiWindowLayoutMutation::MovePanelWithinStack {
+                area_id: StudioGuiWindowAreaId::Runtime,
+                placement: StudioGuiWindowDockPlacement::Before {
+                    anchor_area_id: StudioGuiWindowAreaId::Commands,
+                },
+            },
+        })
+        .expect("expected stack reorder update");
+    print_window_model(
+        "Window model after reordering runtime before commands inside the shared stack",
+        &reordered_tabs.window,
+    );
     let unstacked_commands = app_host
         .dispatch_event(StudioGuiEvent::WindowLayoutMutationRequested {
             window_id: Some(window.window_id),
