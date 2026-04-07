@@ -979,6 +979,21 @@ mod tests {
                 .map(|panel| (panel.dock_region, panel.stack_group, panel.order)),
             Some((StudioGuiWindowDockRegion::LeftSidebar, 10, 10))
         );
+        assert_eq!(preview.overlay.drag_area_id, StudioGuiWindowAreaId::Runtime);
+        assert_eq!(
+            preview.overlay.target_dock_region,
+            StudioGuiWindowDockRegion::LeftSidebar
+        );
+        assert_eq!(preview.overlay.target_stack_group, 10);
+        assert_eq!(preview.overlay.target_tab_index, 0);
+        assert_eq!(
+            preview.overlay.target_stack_area_ids,
+            vec![StudioGuiWindowAreaId::Runtime]
+        );
+        assert_eq!(
+            preview.overlay.target_stack_active_area_id,
+            StudioGuiWindowAreaId::Runtime
+        );
         assert_eq!(
             preview.changed_area_ids,
             vec![StudioGuiWindowAreaId::Commands, StudioGuiWindowAreaId::Runtime]

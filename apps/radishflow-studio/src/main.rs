@@ -165,6 +165,16 @@ fn print_window_model(title: &str, window: &StudioGuiWindowModel) {
             preview.drop_target.dock_region,
             preview.changed_area_ids
         );
+        println!(
+            "  Drop overlay: stack={:?}/group={} group_index={} tab_index={} active={:?} tabs={:?} anchor={:?}",
+            preview.overlay.target_dock_region,
+            preview.overlay.target_stack_group,
+            preview.overlay.target_group_index,
+            preview.overlay.target_tab_index,
+            preview.overlay.target_stack_active_area_id,
+            preview.overlay.target_stack_area_ids,
+            preview.overlay.anchor_area_id
+        );
     }
 }
 

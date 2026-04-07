@@ -1480,6 +1480,21 @@ mod tests {
             .drop_preview
             .as_ref()
             .expect("expected drop preview in dispatch window");
+        assert_eq!(preview.overlay.drag_area_id, StudioGuiWindowAreaId::Commands);
+        assert_eq!(
+            preview.overlay.target_dock_region,
+            StudioGuiWindowDockRegion::RightSidebar
+        );
+        assert_eq!(preview.overlay.target_stack_group, 10);
+        assert_eq!(preview.overlay.target_tab_index, 0);
+        assert_eq!(
+            preview.overlay.target_stack_area_ids,
+            vec![StudioGuiWindowAreaId::Commands, StudioGuiWindowAreaId::Runtime]
+        );
+        assert_eq!(
+            preview.overlay.target_stack_active_area_id,
+            StudioGuiWindowAreaId::Commands
+        );
         assert_eq!(preview.drop_target.target_stack_group, 10);
         assert_eq!(
             preview

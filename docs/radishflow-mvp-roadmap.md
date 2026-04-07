@@ -186,6 +186,7 @@ MVP 阶段明确不做：
 - Studio 当前又已把 drop release 也前推到同一套 query 词汇，新增 `ApplyWindowDropTarget / WindowDropTargetApplyRequested`，让 hover/query 与 release/apply 共用同一份 GUI-facing 契约
 - Studio 当前又已补出轻量 drop preview 会话态，新增 `SetWindowDropTargetPreview / ClearWindowDropTargetPreview` 与对应 driver 事件；host 会非持久化缓存当前 hover 预览，并经由 `StudioGuiSnapshot / StudioGuiWindowModel.drop_preview` 对外暴露
 - Studio 当前又已把 `drop_preview` 继续推进为正式 presentation，直接携带 `preview_layout + changed_area_ids`，让真实 GUI 不必再自己比对当前/预览两份布局 state
+- Studio 当前又已把 `drop_preview` 继续推进为 overlay presentation，直接携带目标 region/stack group、tab 插入位、目标 stack tabs 与高亮 area 集，让真实 GUI 不必再从底层 `drop_target` 手工拆提示语义
 - Studio 当前窗口布局已独立持久化到 `<project>.rfstudio-layout.json` sidecar，并从基于运行时 `window_id` 的 key 收口到基于 `window_role + layout_slot` 的稳定 key
 
 ### 退出标准
@@ -342,6 +343,7 @@ MVP 阶段明确不做：
 - Studio 当前也已继续把 drop release 收口到 `StudioGuiHostCommand::ApplyWindowDropTarget` 与 `StudioGuiEvent::WindowDropTargetApplyRequested`，让真实 GUI 不必在 query 之外再单独维护一套 mutation 翻译层
 - Studio 当前也已继续把 hover 预览前推为正式会话态，新增 `StudioGuiHostCommand::SetWindowDropTargetPreview / ClearWindowDropTargetPreview` 与 `StudioGuiEvent::WindowDropTargetPreviewRequested / WindowDropTargetPreviewCleared`，让 GUI 可以直接从 `window_model` 读取当前 preview，而不必自己缓存 hover 阶段的影子布局
 - Studio 当前也已继续把 `window_model.drop_preview` 扩成 `preview_layout + changed_area_ids`，让 GUI 后续既能直接渲染预览态布局，也能只按变化 area 做最小重绘/高亮
+- Studio 当前也已继续把 `window_model.drop_preview` 扩成 `overlay`，让 GUI 后续可以直接读取目标 stack/tabs/插入位与高亮集，而不必再自行遍历 preview layout 和 drop target 摘要拼 overlay
 
 截至 2026-04-04，Studio entitlement 宿主边界已进一步形成一条可直接面向真实 GUI 的正式分层：
 

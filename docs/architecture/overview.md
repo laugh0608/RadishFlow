@@ -97,6 +97,7 @@ RadishFlow 的目标架构已经冻结为“桌面端三层 + 外部控制面”
 - 上述同一份 query 当前也已可直接通过 `StudioGuiHostCommand::ApplyWindowDropTarget` / `StudioGuiEvent::WindowDropTargetApplyRequested` 落地成正式布局更新，未来真实 GUI 的 hover/query 与 release/apply 不必再维护两套拖放词汇
 - `StudioGuiHost` / `StudioGuiDriver` 当前又已补出 `SetWindowDropTargetPreview / ClearWindowDropTargetPreview` 与对应事件，host 会持有非持久化 preview 会话态，并把它通过 `StudioGuiSnapshot / StudioGuiWindowModel.drop_preview` 暴露给 GUI；真实 GUI 不必自己缓存当前 hover 预览
 - `StudioGuiWindowModel.drop_preview` 当前又已进一步携带 `preview_layout + changed_area_ids`，让真实 GUI 可以直接消费预览态布局 DTO 与最小变化集，而不必自己再从两份 layout state 做二次重建或比对
+- `StudioGuiWindowModel.drop_preview` 当前又已补出 `overlay`，显式带出目标 region/stack group、tab 插入位、高亮 area 集与目标 active tab；真实 GUI 不必再从 `drop_target + preview_layout` 手工拆 overlay 提示语义
 - 窗口布局持久化继续与项目文档语义分离，当前保存到 `<project>.rfstudio-layout.json` sidecar，而不是混入 `*.rfproj.json`
 - 多窗口布局 key 当前已从运行时 `window_id` 收口为基于 `window_role + layout_slot` 的稳定 scope，避免跨 host 重建时直接依赖临时窗口号
 

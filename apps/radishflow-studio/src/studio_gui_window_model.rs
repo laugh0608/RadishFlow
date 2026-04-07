@@ -1,8 +1,9 @@
 use crate::{
     EntitlementSessionHostRuntimeOutput, StudioGuiCanvasWidgetModel, StudioGuiCommandRegistry,
     StudioGuiCommandSection, StudioGuiSnapshot, StudioGuiWindowAreaId,
-    StudioGuiWindowDropTarget, StudioGuiWindowDropTargetQuery, StudioGuiWindowLayoutModel,
-    StudioGuiWindowLayoutState, StudioWindowHostId, WorkspaceControlState,
+    StudioGuiWindowDockRegion, StudioGuiWindowDropTarget, StudioGuiWindowDropTargetKind,
+    StudioGuiWindowDropTargetQuery, StudioGuiWindowLayoutModel, StudioGuiWindowLayoutState,
+    StudioWindowHostId, WorkspaceControlState,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -50,9 +51,26 @@ pub struct StudioGuiWindowDropPreviewState {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioGuiWindowDropPreviewOverlayModel {
+    pub drag_area_id: StudioGuiWindowAreaId,
+    pub kind: StudioGuiWindowDropTargetKind,
+    pub target_dock_region: StudioGuiWindowDockRegion,
+    pub target_stack_group: u8,
+    pub target_group_index: usize,
+    pub target_tab_index: usize,
+    pub target_stack_area_ids: Vec<StudioGuiWindowAreaId>,
+    pub target_stack_active_area_id: StudioGuiWindowAreaId,
+    pub highlighted_area_ids: Vec<StudioGuiWindowAreaId>,
+    pub anchor_area_id: Option<StudioGuiWindowAreaId>,
+    pub creates_new_stack: bool,
+    pub merges_into_existing_stack: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StudioGuiWindowDropPreviewModel {
     pub query: StudioGuiWindowDropTargetQuery,
     pub drop_target: StudioGuiWindowDropTarget,
+    pub overlay: StudioGuiWindowDropPreviewOverlayModel,
     pub preview_layout_state: StudioGuiWindowLayoutState,
     pub preview_layout: StudioGuiWindowLayoutModel,
     pub changed_area_ids: Vec<StudioGuiWindowAreaId>,
@@ -105,6 +123,7 @@ impl StudioGuiWindowModel {
             );
             StudioGuiWindowDropPreviewModel {
                 query: preview.query,
+                overlay: build_drop_preview_overlay(&preview_layout, &preview.drop_target),
                 drop_target: preview.drop_target,
                 changed_area_ids: changed_area_ids_for_preview(
                     &window.layout_state,
@@ -122,6 +141,35 @@ impl StudioGuiWindowModel {
         window.layout_state = layout_state;
         window.drop_preview = None;
         window
+    }
+}
+
+fn build_drop_preview_overlay(
+    preview_layout: &StudioGuiWindowLayoutModel,
+    drop_target: &StudioGuiWindowDropTarget,
+) -> StudioGuiWindowDropPreviewOverlayModel {
+    let target_stack = preview_layout
+        .stack_group(drop_target.dock_region, drop_target.target_stack_group);
+    let target_stack_area_ids = target_stack
+        .map(|group| group.tabs.iter().map(|tab| tab.area_id).collect::<Vec<_>>())
+        .unwrap_or_else(|| drop_target.preview_area_ids.clone());
+    let target_stack_active_area_id = target_stack
+        .map(|group| group.active_area_id)
+        .unwrap_or(drop_target.preview_active_area_id);
+
+    StudioGuiWindowDropPreviewOverlayModel {
+        drag_area_id: drop_target.area_id,
+        kind: drop_target.kind,
+        target_dock_region: drop_target.dock_region,
+        target_stack_group: drop_target.target_stack_group,
+        target_group_index: drop_target.target_group_index,
+        target_tab_index: drop_target.target_tab_index,
+        target_stack_area_ids: target_stack_area_ids.clone(),
+        target_stack_active_area_id,
+        highlighted_area_ids: target_stack_area_ids,
+        anchor_area_id: drop_target.anchor_area_id,
+        creates_new_stack: drop_target.creates_new_stack,
+        merges_into_existing_stack: drop_target.merges_into_existing_stack,
     }
 }
 
@@ -431,6 +479,16 @@ mod tests {
 
         let window = driver.window_model_for_window(Some(window_id));
         let preview = window.drop_preview.expect("expected preview model");
+        assert_eq!(preview.overlay.drag_area_id, StudioGuiWindowAreaId::Runtime);
+        assert_eq!(
+            preview.overlay.target_dock_region,
+            StudioGuiWindowDockRegion::LeftSidebar
+        );
+        assert_eq!(preview.overlay.target_stack_group, 10);
+        assert_eq!(
+            preview.overlay.target_stack_area_ids,
+            vec![StudioGuiWindowAreaId::Runtime]
+        );
         assert_eq!(
             preview.changed_area_ids,
             vec![StudioGuiWindowAreaId::Commands, StudioGuiWindowAreaId::Runtime]
