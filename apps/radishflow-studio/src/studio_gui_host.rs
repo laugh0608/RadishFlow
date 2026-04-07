@@ -12,10 +12,10 @@ use crate::{
     StudioAppHostUiCommandDispatchResult, StudioAppHostUiCommandModel,
     StudioAppHostWindowDispatchResult, StudioAppWindowHostGlobalEvent, StudioGuiCommandRegistry,
     StudioGuiNativeTimerEffects, StudioGuiRuntimeSnapshot, StudioGuiSnapshot,
-    StudioGuiWindowDropTarget, StudioGuiWindowDropTargetQuery, StudioGuiWindowLayoutMutation,
+    StudioGuiWindowDropPreviewState, StudioGuiWindowDropTarget,
+    StudioGuiWindowDropTargetQuery, StudioGuiWindowLayoutMutation,
     StudioGuiWindowLayoutPersistenceState, StudioGuiWindowLayoutState, StudioGuiWindowModel,
-    StudioRuntimeConfig, StudioRuntimeTrigger, StudioWindowHostId,
-    StudioWindowHostRegistration,
+    StudioRuntimeConfig, StudioRuntimeTrigger, StudioWindowHostId, StudioWindowHostRegistration,
 };
 
 #[derive(Debug, Clone, PartialEq)]
@@ -132,6 +132,13 @@ pub struct StudioGuiHostWindowDropTargetApplyResult {
     pub layout_state: StudioGuiWindowLayoutState,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioGuiHostWindowDropPreviewClearResult {
+    pub target_window_id: Option<StudioWindowHostId>,
+    pub layout_state: StudioGuiWindowLayoutState,
+    pub had_preview: bool,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StudioGuiCanvasInteractionAction {
     AcceptFocusedByTab,
@@ -157,6 +164,13 @@ pub enum StudioGuiHostCommand {
         window_id: Option<StudioWindowHostId>,
         query: StudioGuiWindowDropTargetQuery,
     },
+    SetWindowDropTargetPreview {
+        window_id: Option<StudioWindowHostId>,
+        query: StudioGuiWindowDropTargetQuery,
+    },
+    ClearWindowDropTargetPreview {
+        window_id: Option<StudioWindowHostId>,
+    },
     ApplyWindowDropTarget {
         window_id: Option<StudioWindowHostId>,
         query: StudioGuiWindowDropTargetQuery,
@@ -173,6 +187,8 @@ pub enum StudioGuiHostCommandOutcome {
     LifecycleDispatched(StudioGuiHostLifecycleDispatch),
     UiCommandDispatched(StudioGuiHostUiCommandDispatchResult),
     WindowDropTargetQueried(StudioGuiHostWindowDropTargetQueryResult),
+    WindowDropTargetPreviewUpdated(StudioGuiHostWindowDropTargetQueryResult),
+    WindowDropTargetPreviewCleared(StudioGuiHostWindowDropPreviewClearResult),
     WindowDropTargetApplied(StudioGuiHostWindowDropTargetApplyResult),
     WindowClosed(StudioGuiHostCloseWindowResult),
 }
@@ -180,6 +196,7 @@ pub enum StudioGuiHostCommandOutcome {
 pub struct StudioGuiHost {
     controller: StudioAppHostController,
     layout_state_overrides: BTreeMap<String, StudioGuiWindowLayoutPersistenceState>,
+    window_drop_previews: BTreeMap<String, StudioGuiWindowDropPreviewState>,
 }
 
 impl StudioGuiHost {
@@ -193,6 +210,7 @@ impl StudioGuiHost {
         Ok(Self {
             controller,
             layout_state_overrides,
+            window_drop_previews: BTreeMap::new(),
         })
     }
 
@@ -228,6 +246,7 @@ impl StudioGuiHost {
                 entitlement_host: self.controller.entitlement_host_output(),
                 log_entries: self.controller.log_entries(),
             },
+            self.window_drop_previews.clone(),
         );
         snapshot.layout_state = self.layout_state_for_window_from_snapshot(&snapshot, None);
         snapshot
@@ -256,19 +275,15 @@ impl StudioGuiHost {
         window_id: Option<StudioWindowHostId>,
         mutation: StudioGuiWindowLayoutMutation,
     ) -> RfResult<StudioGuiHostWindowLayoutUpdateResult> {
-        if let Some(window_id) =
-            window_id.filter(|window_id| self.state().window(*window_id).is_none())
-        {
-            return Err(RfError::invalid_input(format!(
-                "window host `{window_id}` is not registered for layout updates"
-            )));
-        }
+        self.validate_registered_window_for_layout(window_id, "layout updates")?;
         let snapshot = self.snapshot();
         let layout_state = self
             .layout_state_for_window_from_snapshot(&snapshot, window_id)
             .applying_mutation(&mutation);
+        self.clear_window_drop_preview_for_scope(&layout_state.scope.layout_key);
         if let Some(legacy_layout_key) = layout_state.scope.legacy_layout_key() {
             self.layout_state_overrides.remove(&legacy_layout_key);
+            self.window_drop_previews.remove(&legacy_layout_key);
         }
         self.layout_state_overrides.insert(
             layout_state.scope.layout_key.clone(),
@@ -288,13 +303,7 @@ impl StudioGuiHost {
         window_id: Option<StudioWindowHostId>,
         query: StudioGuiWindowDropTargetQuery,
     ) -> RfResult<StudioGuiHostWindowDropTargetQueryResult> {
-        if let Some(window_id) =
-            window_id.filter(|window_id| self.state().window(*window_id).is_none())
-        {
-            return Err(RfError::invalid_input(format!(
-                "window host `{window_id}` is not registered for drop target queries"
-            )));
-        }
+        self.validate_registered_window_for_layout(window_id, "drop target queries")?;
         let snapshot = self.snapshot();
         let layout_state = self.layout_state_for_window_from_snapshot(&snapshot, window_id);
         let drop_target = layout_state.drop_target_for_query(&query);
@@ -312,6 +321,48 @@ impl StudioGuiHost {
             drop_target,
             preview_layout_state,
             preview_window,
+        })
+    }
+
+    pub fn set_window_drop_target_preview(
+        &mut self,
+        window_id: Option<StudioWindowHostId>,
+        query: StudioGuiWindowDropTargetQuery,
+    ) -> RfResult<StudioGuiHostWindowDropTargetQueryResult> {
+        let query_result = self.query_window_drop_target(window_id, query)?;
+        self.clear_window_drop_preview_for_scope(&query_result.layout_state.scope.layout_key);
+        if let (Some(drop_target), Some(preview_layout_state)) = (
+            query_result.drop_target.clone(),
+            query_result.preview_layout_state.clone(),
+        ) {
+            self.window_drop_previews.insert(
+                query_result.layout_state.scope.layout_key.clone(),
+                StudioGuiWindowDropPreviewState {
+                    query,
+                    drop_target,
+                    preview_layout_state,
+                },
+            );
+        }
+        Ok(query_result)
+    }
+
+    pub fn clear_window_drop_target_preview(
+        &mut self,
+        window_id: Option<StudioWindowHostId>,
+    ) -> RfResult<StudioGuiHostWindowDropPreviewClearResult> {
+        self.validate_registered_window_for_layout(window_id, "drop preview updates")?;
+        let snapshot = self.snapshot();
+        let layout_state = self.layout_state_for_window_from_snapshot(&snapshot, window_id);
+        let mut had_preview =
+            self.clear_window_drop_preview_for_scope(&layout_state.scope.layout_key);
+        if let Some(legacy_layout_key) = layout_state.scope.legacy_layout_key() {
+            had_preview |= self.clear_window_drop_preview_for_scope(&legacy_layout_key);
+        }
+        Ok(StudioGuiHostWindowDropPreviewClearResult {
+            target_window_id: layout_state.scope.window_id,
+            layout_state,
+            had_preview,
         })
     }
 
@@ -404,6 +455,12 @@ impl StudioGuiHost {
             StudioGuiHostCommand::QueryWindowDropTarget { window_id, query } => self
                 .query_window_drop_target(window_id, query)
                 .map(StudioGuiHostCommandOutcome::WindowDropTargetQueried),
+            StudioGuiHostCommand::SetWindowDropTargetPreview { window_id, query } => self
+                .set_window_drop_target_preview(window_id, query)
+                .map(StudioGuiHostCommandOutcome::WindowDropTargetPreviewUpdated),
+            StudioGuiHostCommand::ClearWindowDropTargetPreview { window_id } => self
+                .clear_window_drop_target_preview(window_id)
+                .map(StudioGuiHostCommandOutcome::WindowDropTargetPreviewCleared),
             StudioGuiHostCommand::ApplyWindowDropTarget { window_id, query } => self
                 .apply_window_drop_target(window_id, query)
                 .map(StudioGuiHostCommandOutcome::WindowDropTargetApplied),
@@ -515,6 +572,15 @@ impl StudioGuiHost {
         &mut self,
         window_id: StudioWindowHostId,
     ) -> RfResult<StudioGuiHostCloseWindowResult> {
+        if self.state().window(window_id).is_some() {
+            let snapshot = self.snapshot();
+            let layout_state =
+                self.layout_state_for_window_from_snapshot(&snapshot, Some(window_id));
+            self.clear_window_drop_preview_for_scope(&layout_state.scope.layout_key);
+            if let Some(legacy_layout_key) = layout_state.scope.legacy_layout_key() {
+                self.clear_window_drop_preview_for_scope(&legacy_layout_key);
+            }
+        }
         let closed = self.controller.close_window(window_id)?;
         Ok(StudioGuiHostCloseWindowResult {
             ui_commands: ui_commands_from_projection(&closed.projection),
@@ -564,6 +630,23 @@ impl StudioGuiHost {
             })
             .map(|persisted| derived.merged_with_persisted(persisted))
             .unwrap_or(derived)
+    }
+
+    fn validate_registered_window_for_layout(
+        &self,
+        window_id: Option<StudioWindowHostId>,
+        action: &str,
+    ) -> RfResult<()> {
+        if let Some(window_id) = window_id.filter(|window_id| self.state().window(*window_id).is_none()) {
+            return Err(RfError::invalid_input(format!(
+                "window host `{window_id}` is not registered for {action}"
+            )));
+        }
+        Ok(())
+    }
+
+    fn clear_window_drop_preview_for_scope(&mut self, layout_key: &str) -> bool {
+        self.window_drop_previews.remove(layout_key).is_some()
     }
 
     fn build_canvas_interaction_result(
@@ -838,6 +921,121 @@ mod tests {
             }
             other => panic!("expected drop target query outcome, got {other:?}"),
         }
+        assert_eq!(gui_host.window_model_for_window(Some(window_id)).drop_preview, None);
+
+        let _ = fs::remove_file(layout_path);
+        let _ = fs::remove_file(project_path);
+    }
+
+    #[test]
+    fn gui_host_sets_drop_preview_and_surfaces_it_through_window_model() {
+        let (config, project_path, layout_path) = layout_persistence_config();
+        let mut gui_host = StudioGuiHost::new(&config).expect("expected gui host");
+        let window_id = match gui_host
+            .execute_command(StudioGuiHostCommand::OpenWindow)
+            .expect("expected window open")
+        {
+            StudioGuiHostCommandOutcome::WindowOpened(opened) => opened.registration.window_id,
+            other => panic!("expected opened window outcome, got {other:?}"),
+        };
+
+        let previewed = gui_host
+            .execute_command(StudioGuiHostCommand::SetWindowDropTargetPreview {
+                window_id: Some(window_id),
+                query: StudioGuiWindowDropTargetQuery::DockRegion {
+                    area_id: StudioGuiWindowAreaId::Runtime,
+                    dock_region: StudioGuiWindowDockRegion::LeftSidebar,
+                    placement: StudioGuiWindowDockPlacement::Start,
+                },
+            })
+            .expect("expected drop preview update");
+
+        match previewed {
+            StudioGuiHostCommandOutcome::WindowDropTargetPreviewUpdated(result) => {
+                assert_eq!(result.target_window_id, Some(window_id));
+                assert!(result.drop_target.is_some());
+                assert!(result.preview_layout_state.is_some());
+            }
+            other => panic!("expected drop preview update outcome, got {other:?}"),
+        }
+
+        let window = gui_host.window_model_for_window(Some(window_id));
+        let preview = window.drop_preview.expect("expected drop preview in window model");
+        assert_eq!(
+            preview.drop_target.dock_region,
+            StudioGuiWindowDockRegion::LeftSidebar
+        );
+        assert_eq!(
+            preview
+                .preview_layout_state
+                .panel(StudioGuiWindowAreaId::Runtime)
+                .map(|panel| (panel.dock_region, panel.stack_group, panel.order)),
+            Some((StudioGuiWindowDockRegion::LeftSidebar, 10, 10))
+        );
+        assert_eq!(
+            preview
+                .preview_layout
+                .panel(StudioGuiWindowAreaId::Runtime)
+                .map(|panel| (panel.dock_region, panel.stack_group, panel.order)),
+            Some((StudioGuiWindowDockRegion::LeftSidebar, 10, 10))
+        );
+        assert_eq!(
+            preview.changed_area_ids,
+            vec![StudioGuiWindowAreaId::Commands, StudioGuiWindowAreaId::Runtime]
+        );
+        assert_eq!(
+            window
+                .layout_state
+                .panel(StudioGuiWindowAreaId::Runtime)
+                .map(|panel| (panel.dock_region, panel.stack_group, panel.order)),
+            Some((StudioGuiWindowDockRegion::RightSidebar, 10, 30))
+        );
+        assert!(gui_host
+            .snapshot()
+            .window_model_for_window(Some(window_id))
+            .drop_preview
+            .is_some());
+
+        let _ = fs::remove_file(layout_path);
+        let _ = fs::remove_file(project_path);
+    }
+
+    #[test]
+    fn gui_host_clears_drop_preview_through_explicit_command_surface() {
+        let (config, project_path, layout_path) = layout_persistence_config();
+        let mut gui_host = StudioGuiHost::new(&config).expect("expected gui host");
+        let window_id = match gui_host
+            .execute_command(StudioGuiHostCommand::OpenWindow)
+            .expect("expected window open")
+        {
+            StudioGuiHostCommandOutcome::WindowOpened(opened) => opened.registration.window_id,
+            other => panic!("expected opened window outcome, got {other:?}"),
+        };
+        let _ = gui_host
+            .execute_command(StudioGuiHostCommand::SetWindowDropTargetPreview {
+                window_id: Some(window_id),
+                query: StudioGuiWindowDropTargetQuery::DockRegion {
+                    area_id: StudioGuiWindowAreaId::Runtime,
+                    dock_region: StudioGuiWindowDockRegion::LeftSidebar,
+                    placement: StudioGuiWindowDockPlacement::Start,
+                },
+            })
+            .expect("expected drop preview update");
+
+        let cleared = gui_host
+            .execute_command(StudioGuiHostCommand::ClearWindowDropTargetPreview {
+                window_id: Some(window_id),
+            })
+            .expect("expected drop preview clear");
+
+        match cleared {
+            StudioGuiHostCommandOutcome::WindowDropTargetPreviewCleared(result) => {
+                assert_eq!(result.target_window_id, Some(window_id));
+                assert!(result.had_preview);
+            }
+            other => panic!("expected drop preview clear outcome, got {other:?}"),
+        }
+        assert_eq!(gui_host.window_model_for_window(Some(window_id)).drop_preview, None);
 
         let _ = fs::remove_file(layout_path);
         let _ = fs::remove_file(project_path);
@@ -854,6 +1052,16 @@ mod tests {
             StudioGuiHostCommandOutcome::WindowOpened(opened) => opened.registration.window_id,
             other => panic!("expected opened window outcome, got {other:?}"),
         };
+        let _ = gui_host
+            .execute_command(StudioGuiHostCommand::SetWindowDropTargetPreview {
+                window_id: Some(window_id),
+                query: StudioGuiWindowDropTargetQuery::DockRegion {
+                    area_id: StudioGuiWindowAreaId::Runtime,
+                    dock_region: StudioGuiWindowDockRegion::LeftSidebar,
+                    placement: StudioGuiWindowDockPlacement::Start,
+                },
+            })
+            .expect("expected drop preview update");
 
         let applied = gui_host
             .execute_command(StudioGuiHostCommand::ApplyWindowDropTarget {
@@ -883,6 +1091,7 @@ mod tests {
             }
             other => panic!("expected drop target apply outcome, got {other:?}"),
         }
+        assert_eq!(gui_host.window_model_for_window(Some(window_id)).drop_preview, None);
 
         let _ = fs::remove_file(layout_path);
         let _ = fs::remove_file(project_path);

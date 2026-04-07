@@ -1,7 +1,8 @@
 use crate::{
     EntitlementSessionHostRuntimeOutput, StudioGuiCanvasWidgetModel, StudioGuiCommandRegistry,
-    StudioGuiCommandSection, StudioGuiSnapshot, StudioGuiWindowLayoutState, StudioWindowHostId,
-    WorkspaceControlState,
+    StudioGuiCommandSection, StudioGuiSnapshot, StudioGuiWindowAreaId,
+    StudioGuiWindowDropTarget, StudioGuiWindowDropTargetQuery, StudioGuiWindowLayoutModel,
+    StudioGuiWindowLayoutState, StudioWindowHostId, WorkspaceControlState,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -41,6 +42,22 @@ pub struct StudioGuiWindowRuntimeAreaModel {
     pub latest_log_entry: Option<rf_ui::AppLogEntry>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioGuiWindowDropPreviewState {
+    pub query: StudioGuiWindowDropTargetQuery,
+    pub drop_target: StudioGuiWindowDropTarget,
+    pub preview_layout_state: StudioGuiWindowLayoutState,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioGuiWindowDropPreviewModel {
+    pub query: StudioGuiWindowDropTargetQuery,
+    pub drop_target: StudioGuiWindowDropTarget,
+    pub preview_layout_state: StudioGuiWindowLayoutState,
+    pub preview_layout: StudioGuiWindowLayoutModel,
+    pub changed_area_ids: Vec<StudioGuiWindowAreaId>,
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct StudioGuiWindowModel {
     pub header: StudioGuiWindowHeaderModel,
@@ -48,6 +65,7 @@ pub struct StudioGuiWindowModel {
     pub canvas: StudioGuiWindowCanvasAreaModel,
     pub runtime: StudioGuiWindowRuntimeAreaModel,
     pub layout_state: StudioGuiWindowLayoutState,
+    pub drop_preview: Option<StudioGuiWindowDropPreviewModel>,
 }
 
 impl StudioGuiWindowModel {
@@ -59,20 +77,88 @@ impl StudioGuiWindowModel {
         snapshot: &StudioGuiSnapshot,
         window_id: Option<StudioWindowHostId>,
     ) -> Self {
-        Self {
+        let layout_state = StudioGuiWindowLayoutState::from_snapshot_for_window(snapshot, window_id);
+        let drop_preview_state = snapshot
+            .window_drop_previews
+            .get(&layout_state.scope.layout_key)
+            .cloned()
+            .or_else(|| {
+                layout_state
+                    .scope
+                    .legacy_layout_key()
+                    .as_ref()
+                    .and_then(|layout_key| snapshot.window_drop_previews.get(layout_key))
+                    .cloned()
+            });
+        let mut window = Self {
             header: header_from_snapshot(snapshot),
             commands: commands_from_registry(&snapshot.command_registry),
             canvas: canvas_from_snapshot(snapshot),
             runtime: runtime_from_snapshot(snapshot),
-            layout_state: StudioGuiWindowLayoutState::from_snapshot_for_window(snapshot, window_id),
-        }
+            layout_state,
+            drop_preview: None,
+        };
+        window.drop_preview = drop_preview_state.map(|preview| {
+            let preview_layout = StudioGuiWindowLayoutModel::from_window_model_with_layout_state(
+                &window,
+                &preview.preview_layout_state,
+            );
+            StudioGuiWindowDropPreviewModel {
+                query: preview.query,
+                drop_target: preview.drop_target,
+                changed_area_ids: changed_area_ids_for_preview(
+                    &window.layout_state,
+                    &preview.preview_layout_state,
+                ),
+                preview_layout_state: preview.preview_layout_state,
+                preview_layout,
+            }
+        });
+        window
     }
 
     pub fn with_layout_state(&self, layout_state: StudioGuiWindowLayoutState) -> Self {
         let mut window = self.clone();
         window.layout_state = layout_state;
+        window.drop_preview = None;
         window
     }
+}
+
+fn changed_area_ids_for_preview(
+    current_layout_state: &StudioGuiWindowLayoutState,
+    preview_layout_state: &StudioGuiWindowLayoutState,
+) -> Vec<StudioGuiWindowAreaId> {
+    let mut changed = [
+        StudioGuiWindowAreaId::Commands,
+        StudioGuiWindowAreaId::Canvas,
+        StudioGuiWindowAreaId::Runtime,
+    ]
+    .into_iter()
+    .filter(|area_id| {
+        current_layout_state.panel(*area_id) != preview_layout_state.panel(*area_id)
+            || area_is_active_in_stack(current_layout_state, *area_id)
+                != area_is_active_in_stack(preview_layout_state, *area_id)
+    })
+    .collect::<Vec<_>>();
+    changed.sort_by_key(|area_id| match area_id {
+        StudioGuiWindowAreaId::Commands => 0,
+        StudioGuiWindowAreaId::Canvas => 1,
+        StudioGuiWindowAreaId::Runtime => 2,
+    });
+    changed
+}
+
+fn area_is_active_in_stack(
+    layout_state: &StudioGuiWindowLayoutState,
+    area_id: StudioGuiWindowAreaId,
+) -> bool {
+    layout_state
+        .panel(area_id)
+        .map(|panel| {
+            layout_state.active_panel_in_stack(panel.dock_region, panel.stack_group) == Some(area_id)
+        })
+        .unwrap_or(false)
 }
 
 impl StudioGuiSnapshot {
@@ -174,7 +260,8 @@ mod tests {
 
     use crate::{
         StudioGuiDriver, StudioGuiDriverOutcome, StudioGuiEvent, StudioGuiHostCommandOutcome,
-        StudioGuiWindowLayoutScopeKind, StudioRuntimeConfig,
+        StudioGuiWindowAreaId, StudioGuiWindowDockPlacement, StudioGuiWindowDockRegion,
+        StudioGuiWindowDropTargetQuery, StudioGuiWindowLayoutScopeKind, StudioRuntimeConfig,
         StudioRuntimeEntitlementPreflight, StudioRuntimeEntitlementSeed,
         StudioRuntimeEntitlementSessionEvent, StudioRuntimeTrigger,
     };
@@ -274,6 +361,7 @@ mod tests {
         assert_eq!(window.layout_state.scope.kind, StudioGuiWindowLayoutScopeKind::Window);
         assert_eq!(window.layout_state.scope.layout_slot, Some(1));
         assert_eq!(window.layout_state.scope.layout_key, "studio.window.owner.slot-1");
+        assert_eq!(window.drop_preview, None);
 
         let _ = fs::remove_file(project_path);
     }
@@ -314,5 +402,49 @@ mod tests {
             StudioGuiWindowLayoutScopeKind::EmptyWorkspace
         );
         assert_eq!(window.layout_state.scope.layout_key, "studio.window.empty");
+        assert_eq!(window.drop_preview, None);
+    }
+
+    #[test]
+    fn studio_gui_window_model_surfaces_preview_layout_presentation() {
+        let (config, project_path) = flash_drum_local_rules_config();
+        let mut driver = StudioGuiDriver::new(&config).expect("expected driver");
+        let opened = driver
+            .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+            .expect("expected open dispatch");
+        let window_id = match opened.outcome {
+            StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::WindowOpened(
+                opened,
+            )) => opened.registration.window_id,
+            other => panic!("expected window opened outcome, got {other:?}"),
+        };
+        let _ = driver
+            .dispatch_event(StudioGuiEvent::WindowDropTargetPreviewRequested {
+                window_id: Some(window_id),
+                query: StudioGuiWindowDropTargetQuery::DockRegion {
+                    area_id: StudioGuiWindowAreaId::Runtime,
+                    dock_region: StudioGuiWindowDockRegion::LeftSidebar,
+                    placement: StudioGuiWindowDockPlacement::Start,
+                },
+            })
+            .expect("expected preview dispatch");
+
+        let window = driver.window_model_for_window(Some(window_id));
+        let preview = window.drop_preview.expect("expected preview model");
+        assert_eq!(
+            preview.changed_area_ids,
+            vec![StudioGuiWindowAreaId::Commands, StudioGuiWindowAreaId::Runtime]
+        );
+        assert_eq!(
+            preview
+                .preview_layout
+                .panel(StudioGuiWindowAreaId::Runtime)
+                .map(|panel| (panel.dock_region, panel.stack_group, panel.order)),
+            Some((StudioGuiWindowDockRegion::LeftSidebar, 10, 10))
+        );
+
+        let layout_path = rf_store::studio_layout_path_for_project(&project_path);
+        let _ = fs::remove_file(layout_path);
+        let _ = fs::remove_file(project_path);
     }
 }

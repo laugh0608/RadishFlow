@@ -880,8 +880,15 @@ impl StudioGuiWindowLayoutScope {
 
 impl StudioGuiWindowLayoutModel {
     pub fn from_window_model(window: &StudioGuiWindowModel) -> Self {
+        Self::from_window_model_with_layout_state(window, &window.layout_state)
+    }
+
+    pub fn from_window_model_with_layout_state(
+        window: &StudioGuiWindowModel,
+        layout_state: &StudioGuiWindowLayoutState,
+    ) -> Self {
         Self::from_areas(
-            &window.layout_state,
+            layout_state,
             &window.header,
             &window.commands,
             &window.canvas,

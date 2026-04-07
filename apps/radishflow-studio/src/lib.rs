@@ -174,8 +174,9 @@ pub use studio_gui_host::{
     StudioGuiHostCloseWindowResult, StudioGuiHostCommand, StudioGuiHostCommandOutcome,
     StudioGuiHostDispatch, StudioGuiHostGlobalEventDispatch, StudioGuiHostLifecycleDispatch,
     StudioGuiHostLifecycleEvent, StudioGuiHostUiCommandDispatchResult,
-    StudioGuiHostWindowDropTargetApplyResult, StudioGuiHostWindowDropTargetQueryResult,
-    StudioGuiHostWindowLayoutUpdateResult, StudioGuiHostWindowOpened,
+    StudioGuiHostWindowDropPreviewClearResult, StudioGuiHostWindowDropTargetApplyResult,
+    StudioGuiHostWindowDropTargetQueryResult, StudioGuiHostWindowLayoutUpdateResult,
+    StudioGuiHostWindowOpened,
 };
 pub use studio_gui_shortcut_router::{
     StudioGuiFocusContext, StudioGuiShortcutIgnoreReason, StudioGuiShortcutRoute, route_shortcut,
@@ -195,7 +196,8 @@ pub use studio_gui_window_layout::{
 };
 pub use studio_gui_window_model::{
     StudioGuiWindowCanvasAreaModel, StudioGuiWindowCommandAreaModel, StudioGuiWindowHeaderModel,
-    StudioGuiWindowModel, StudioGuiWindowRuntimeAreaModel,
+    StudioGuiWindowDropPreviewModel, StudioGuiWindowDropPreviewState, StudioGuiWindowModel,
+    StudioGuiWindowRuntimeAreaModel,
 };
 pub use studio_runtime::{
     StudioRuntime, StudioRuntimeConfig, StudioRuntimeDispatch, StudioRuntimeEffect,

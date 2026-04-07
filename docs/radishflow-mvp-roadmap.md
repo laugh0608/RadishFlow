@@ -184,6 +184,8 @@ MVP 阶段明确不做：
 - Studio 当前又已把 drop preview 查询从 layout 层只读推导前推到 `StudioGuiWindowDropTargetQuery -> StudioGuiHost / StudioGuiDriver` 显式入口，未来真实 GUI 可直接按 `window_id + hover/anchor/placement` 请求预览
 - Studio 当前又已把 drop preview query 结果扩成 `preview_layout_state / preview_window`，让真实 GUI 可直接消费 hover 预览态，而不只拿到 target 摘要
 - Studio 当前又已把 drop release 也前推到同一套 query 词汇，新增 `ApplyWindowDropTarget / WindowDropTargetApplyRequested`，让 hover/query 与 release/apply 共用同一份 GUI-facing 契约
+- Studio 当前又已补出轻量 drop preview 会话态，新增 `SetWindowDropTargetPreview / ClearWindowDropTargetPreview` 与对应 driver 事件；host 会非持久化缓存当前 hover 预览，并经由 `StudioGuiSnapshot / StudioGuiWindowModel.drop_preview` 对外暴露
+- Studio 当前又已把 `drop_preview` 继续推进为正式 presentation，直接携带 `preview_layout + changed_area_ids`，让真实 GUI 不必再自己比对当前/预览两份布局 state
 - Studio 当前窗口布局已独立持久化到 `<project>.rfstudio-layout.json` sidecar，并从基于运行时 `window_id` 的 key 收口到基于 `window_role + layout_slot` 的稳定 key
 
 ### 退出标准
@@ -338,6 +340,8 @@ MVP 阶段明确不做：
 - Studio 当前也已继续把 drop preview 查询正式收口到 `StudioGuiHostCommand::QueryWindowDropTarget` 与 `StudioGuiEvent::WindowDropTargetQueryRequested`，GUI 不再需要先抓取 layout state 再自行拼 mutation 预览
 - Studio 当前也已继续把 drop preview 查询结果前推为 `WindowDropTargetQueried(...)` 上的 `preview_layout_state / preview_window`，让 GUI 不必再根据 target 摘要手工重建整份 preview 布局
 - Studio 当前也已继续把 drop release 收口到 `StudioGuiHostCommand::ApplyWindowDropTarget` 与 `StudioGuiEvent::WindowDropTargetApplyRequested`，让真实 GUI 不必在 query 之外再单独维护一套 mutation 翻译层
+- Studio 当前也已继续把 hover 预览前推为正式会话态，新增 `StudioGuiHostCommand::SetWindowDropTargetPreview / ClearWindowDropTargetPreview` 与 `StudioGuiEvent::WindowDropTargetPreviewRequested / WindowDropTargetPreviewCleared`，让 GUI 可以直接从 `window_model` 读取当前 preview，而不必自己缓存 hover 阶段的影子布局
+- Studio 当前也已继续把 `window_model.drop_preview` 扩成 `preview_layout + changed_area_ids`，让 GUI 后续既能直接渲染预览态布局，也能只按变化 area 做最小重绘/高亮
 
 截至 2026-04-04，Studio entitlement 宿主边界已进一步形成一条可直接面向真实 GUI 的正式分层：
 
@@ -365,7 +369,7 @@ Studio 当前又已继续把这条 GUI 命令入口推进为稳定 host command 
 - 在已补出的 `StudioAppWindowHostManager + StudioAppWindowHostCommand` 基础上，继续决定真实桌面框架里的 app 生命周期、窗口创建销毁与后台任务事件如何统一接到这条宿主命令面
 - 在已补出的 `StudioAppHost + StudioAppHostSnapshot` 基础上，继续决定真实桌面框架里的 app state store、窗口 registry 与后台任务宿主是否直接复用这份快照作为单一真相源
 - 在已补出的 `StudioAppHost + StudioAppHostSnapshot + StudioAppHostChangeSet` 基础上，继续决定真实桌面框架里的 app state store、窗口 registry 与后台任务宿主如何直接消费正式 snapshot/change 输出，而不是在 GUI 层自行做二次 diff
-- 在已形成的 `StudioGuiWindowLayoutState + drop target query` 摘要基础上，继续补真实 dock 编排契约，例如 tabbed group 标题/可关闭策略、更细的拖拽预览/命中层、跨窗口布局模板与更完整的标题栏/窗口 scope 语义
+- 在已形成的 `StudioGuiWindowLayoutState + drop target query/preview session` 摘要基础上，继续补真实 dock 编排契约，例如 tabbed group 标题/可关闭策略、更细的拖拽预览/命中层、跨窗口布局模板与更完整的标题栏/窗口 scope 语义
 - 在已补出的 `StudioAppHostState + StudioAppHostStore + StudioAppHostProjection` 基础上，继续决定真实桌面框架里的 app 生命周期宿主、窗口创建销毁入口与后台任务桥接是否直接围绕这份正式 state/projection 接线
 - 在已补出的 `StudioAppHostController + StudioAppHostState + StudioAppHostStore + StudioAppHostProjection` 基础上，继续决定真实桌面框架里的原生窗口事件源、app 生命周期宿主与后台任务入口如何直接走这条正式 controller 边界
 - 在已补出的 app host effect summary 基础上，继续决定真实桌面框架里的 native timer handle、后台任务调度和 close retirement 提示如何直接接到这组正式 GUI 宿主副作用

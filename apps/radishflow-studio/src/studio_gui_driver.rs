@@ -38,6 +38,13 @@ pub enum StudioGuiEvent {
         window_id: Option<StudioWindowHostId>,
         query: StudioGuiWindowDropTargetQuery,
     },
+    WindowDropTargetPreviewRequested {
+        window_id: Option<StudioWindowHostId>,
+        query: StudioGuiWindowDropTargetQuery,
+    },
+    WindowDropTargetPreviewCleared {
+        window_id: Option<StudioWindowHostId>,
+    },
     WindowDropTargetApplyRequested {
         window_id: Option<StudioWindowHostId>,
         query: StudioGuiWindowDropTargetQuery,
@@ -208,6 +215,22 @@ fn layout_scope_window_id(outcome: &StudioGuiDriverOutcome) -> Option<StudioWind
             ),
         )
         | StudioGuiDriverOutcome::HostCommand(
+            StudioGuiHostCommandOutcome::WindowDropTargetPreviewUpdated(
+                crate::StudioGuiHostWindowDropTargetQueryResult {
+                    target_window_id: None,
+                    ..
+                },
+            ),
+        )
+        | StudioGuiDriverOutcome::HostCommand(
+            StudioGuiHostCommandOutcome::WindowDropTargetPreviewCleared(
+                crate::StudioGuiHostWindowDropPreviewClearResult {
+                    target_window_id: None,
+                    ..
+                },
+            ),
+        )
+        | StudioGuiDriverOutcome::HostCommand(
             StudioGuiHostCommandOutcome::WindowDropTargetApplied(
                 crate::StudioGuiHostWindowDropTargetApplyResult {
                     target_window_id: None,
@@ -230,6 +253,22 @@ fn layout_scope_window_id(outcome: &StudioGuiDriverOutcome) -> Option<StudioWind
                 ..
             },
         )) => Some(*window_id),
+        StudioGuiDriverOutcome::HostCommand(
+            StudioGuiHostCommandOutcome::WindowDropTargetPreviewUpdated(
+                crate::StudioGuiHostWindowDropTargetQueryResult {
+                    target_window_id: Some(window_id),
+                    ..
+                },
+            ),
+        ) => Some(*window_id),
+        StudioGuiDriverOutcome::HostCommand(
+            StudioGuiHostCommandOutcome::WindowDropTargetPreviewCleared(
+                crate::StudioGuiHostWindowDropPreviewClearResult {
+                    target_window_id: Some(window_id),
+                    ..
+                },
+            ),
+        ) => Some(*window_id),
         StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::WindowDropTargetApplied(
             crate::StudioGuiHostWindowDropTargetApplyResult {
                 target_window_id: Some(window_id),
@@ -309,6 +348,17 @@ fn route_driver_event(event: &StudioGuiEvent, registry: &StudioGuiCommandRegistr
             DriverRoute::HostCommand(StudioGuiHostCommand::QueryWindowDropTarget {
                 window_id: *window_id,
                 query: *query,
+            })
+        }
+        StudioGuiEvent::WindowDropTargetPreviewRequested { window_id, query } => {
+            DriverRoute::HostCommand(StudioGuiHostCommand::SetWindowDropTargetPreview {
+                window_id: *window_id,
+                query: *query,
+            })
+        }
+        StudioGuiEvent::WindowDropTargetPreviewCleared { window_id } => {
+            DriverRoute::HostCommand(StudioGuiHostCommand::ClearWindowDropTargetPreview {
+                window_id: *window_id,
             })
         }
         StudioGuiEvent::WindowDropTargetApplyRequested { window_id, query } => {
@@ -1364,7 +1414,9 @@ mod tests {
                 .map(|panel| (panel.dock_region, panel.stack_group, panel.order)),
             Some((StudioGuiWindowDockRegion::LeftSidebar, 10, 10))
         );
+        assert_eq!(queried.window.drop_preview, None);
         let window = driver.window_model_for_window(Some(window_id));
+        assert_eq!(window.drop_preview, None);
         assert_eq!(
             window
                 .layout_state
@@ -1386,6 +1438,133 @@ mod tests {
     }
 
     #[test]
+    fn gui_driver_routes_drop_preview_updates_through_single_event_entry() {
+        let (config, project_path) = flash_drum_local_rules_config();
+        let mut driver = StudioGuiDriver::new(&config).expect("expected driver");
+        let opened = driver
+            .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+            .expect("expected open dispatch");
+        let window_id = match opened.outcome {
+            StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::WindowOpened(
+                opened,
+            )) => opened.registration.window_id,
+            other => panic!("expected opened window outcome, got {other:?}"),
+        };
+
+        let previewed = driver
+            .dispatch_event(StudioGuiEvent::WindowDropTargetPreviewRequested {
+                window_id: Some(window_id),
+                query: StudioGuiWindowDropTargetQuery::Stack {
+                    area_id: StudioGuiWindowAreaId::Commands,
+                    anchor_area_id: StudioGuiWindowAreaId::Runtime,
+                    placement: StudioGuiWindowDockPlacement::Before {
+                        anchor_area_id: StudioGuiWindowAreaId::Runtime,
+                    },
+                },
+            })
+            .expect("expected drop preview dispatch");
+
+        match previewed.outcome {
+            StudioGuiDriverOutcome::HostCommand(
+                StudioGuiHostCommandOutcome::WindowDropTargetPreviewUpdated(result),
+            ) => {
+                assert_eq!(result.target_window_id, Some(window_id));
+                assert!(result.drop_target.is_some());
+                assert!(result.preview_layout_state.is_some());
+            }
+            other => panic!("expected drop preview outcome, got {other:?}"),
+        }
+
+        let preview = previewed
+            .window
+            .drop_preview
+            .as_ref()
+            .expect("expected drop preview in dispatch window");
+        assert_eq!(preview.drop_target.target_stack_group, 10);
+        assert_eq!(
+            preview
+                .preview_layout
+                .panel(StudioGuiWindowAreaId::Commands)
+                .map(|panel| (panel.dock_region, panel.stack_group, panel.order)),
+            Some((StudioGuiWindowDockRegion::RightSidebar, 10, 10))
+        );
+        assert_eq!(
+            preview.changed_area_ids,
+            vec![StudioGuiWindowAreaId::Commands, StudioGuiWindowAreaId::Runtime]
+        );
+        assert_eq!(
+            preview
+                .preview_layout_state
+                .panel(StudioGuiWindowAreaId::Commands)
+                .map(|panel| (panel.dock_region, panel.stack_group, panel.order)),
+            Some((StudioGuiWindowDockRegion::RightSidebar, 10, 10))
+        );
+        assert_eq!(
+            previewed
+                .window
+                .layout_state
+                .panel(StudioGuiWindowAreaId::Commands)
+                .map(|panel| (panel.dock_region, panel.stack_group, panel.order)),
+            Some((StudioGuiWindowDockRegion::LeftSidebar, 10, 10))
+        );
+        assert!(driver
+            .window_model_for_window(Some(window_id))
+            .drop_preview
+            .is_some());
+
+        let layout_path = rf_store::studio_layout_path_for_project(&project_path);
+        let _ = fs::remove_file(layout_path);
+        let _ = fs::remove_file(project_path);
+    }
+
+    #[test]
+    fn gui_driver_clears_drop_preview_through_single_event_entry() {
+        let (config, project_path) = flash_drum_local_rules_config();
+        let mut driver = StudioGuiDriver::new(&config).expect("expected driver");
+        let opened = driver
+            .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+            .expect("expected open dispatch");
+        let window_id = match opened.outcome {
+            StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::WindowOpened(
+                opened,
+            )) => opened.registration.window_id,
+            other => panic!("expected opened window outcome, got {other:?}"),
+        };
+        let _ = driver
+            .dispatch_event(StudioGuiEvent::WindowDropTargetPreviewRequested {
+                window_id: Some(window_id),
+                query: StudioGuiWindowDropTargetQuery::DockRegion {
+                    area_id: StudioGuiWindowAreaId::Runtime,
+                    dock_region: StudioGuiWindowDockRegion::LeftSidebar,
+                    placement: StudioGuiWindowDockPlacement::Start,
+                },
+            })
+            .expect("expected drop preview dispatch");
+
+        let cleared = driver
+            .dispatch_event(StudioGuiEvent::WindowDropTargetPreviewCleared {
+                window_id: Some(window_id),
+            })
+            .expect("expected drop preview clear dispatch");
+
+        match cleared.outcome {
+            StudioGuiDriverOutcome::HostCommand(
+                StudioGuiHostCommandOutcome::WindowDropTargetPreviewCleared(result),
+            ) => {
+                assert_eq!(result.target_window_id, Some(window_id));
+                assert!(result.had_preview);
+            }
+            other => panic!("expected drop preview clear outcome, got {other:?}"),
+        }
+        assert_eq!(cleared.window.drop_preview, None);
+        assert_eq!(driver.window_model_for_window(Some(window_id)).drop_preview, None);
+
+        let layout_path = rf_store::studio_layout_path_for_project(&project_path);
+        let _ = fs::remove_file(layout_path);
+        let _ = fs::remove_file(project_path);
+    }
+
+    #[test]
     fn gui_driver_applies_drop_target_queries_through_single_event_entry() {
         let (config, project_path) = flash_drum_local_rules_config();
         let mut driver = StudioGuiDriver::new(&config).expect("expected driver");
@@ -1398,6 +1577,16 @@ mod tests {
             )) => opened.registration.window_id,
             other => panic!("expected opened window outcome, got {other:?}"),
         };
+        let _ = driver
+            .dispatch_event(StudioGuiEvent::WindowDropTargetPreviewRequested {
+                window_id: Some(window_id),
+                query: StudioGuiWindowDropTargetQuery::DockRegion {
+                    area_id: StudioGuiWindowAreaId::Runtime,
+                    dock_region: StudioGuiWindowDockRegion::LeftSidebar,
+                    placement: StudioGuiWindowDockPlacement::Start,
+                },
+            })
+            .expect("expected drop preview dispatch");
 
         let applied = driver
             .dispatch_event(StudioGuiEvent::WindowDropTargetApplyRequested {
@@ -1443,6 +1632,7 @@ mod tests {
                 .map(|panel| (panel.dock_region, panel.stack_group, panel.order)),
             Some((StudioGuiWindowDockRegion::LeftSidebar, 10, 10))
         );
+        assert_eq!(applied.window.drop_preview, None);
 
         let layout_path = rf_store::studio_layout_path_for_project(&project_path);
         let _ = fs::remove_file(layout_path);

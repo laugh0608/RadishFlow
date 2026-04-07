@@ -157,6 +157,15 @@ fn print_window_model(title: &str, window: &StudioGuiWindowModel) {
     if let Some(entry) = window.runtime.latest_log_entry.as_ref() {
         println!("Latest window log: {:?}: {}", entry.level, entry.message);
     }
+    if let Some(preview) = window.drop_preview.as_ref() {
+        println!(
+            "  Drop preview: query={:?} kind={:?} region={:?} changed={:?}",
+            preview.query,
+            preview.drop_target.kind,
+            preview.drop_target.dock_region,
+            preview.changed_area_ids
+        );
+    }
 }
 
 fn print_drop_target_preview(
@@ -166,23 +175,24 @@ fn print_drop_target_preview(
     query: StudioGuiWindowDropTargetQuery,
 ) {
     println!("{title}:");
-    match app_host.dispatch_event(StudioGuiEvent::WindowDropTargetQueryRequested {
+    match app_host.dispatch_event(StudioGuiEvent::WindowDropTargetPreviewRequested {
         window_id,
         query,
     }) {
         Ok(StudioGuiDriverDispatch {
             outcome:
                 StudioGuiDriverOutcome::HostCommand(
-                    StudioGuiHostCommandOutcome::WindowDropTargetQueried(result),
+                    StudioGuiHostCommandOutcome::WindowDropTargetPreviewUpdated(result),
                 ),
+            window,
             ..
         }) => {
             match result.drop_target {
                 Some(target) => print_drop_target(&target),
                 None => println!("  none"),
             }
-            if let Some(preview_window) = result.preview_window.as_ref() {
-                let preview_layout = preview_window.layout();
+            if let Some(preview) = window.drop_preview.as_ref() {
+                let preview_layout = &preview.preview_layout;
                 println!(
                     "  preview center={:?} commands={:?} runtime={:?}",
                     preview_layout.center_area,
@@ -202,6 +212,7 @@ fn print_drop_target_preview(
             error.message()
         ),
     }
+    let _ = app_host.dispatch_event(StudioGuiEvent::WindowDropTargetPreviewCleared { window_id });
 }
 
 fn print_drop_target(target: &StudioGuiWindowDropTarget) {

@@ -1,7 +1,9 @@
+use std::collections::BTreeMap;
+
 use crate::{
     EntitlementSessionHostRuntimeOutput, StudioAppHostState, StudioAppHostUiCommandModel,
-    StudioGuiCanvasWidgetModel, StudioGuiCommandRegistry, StudioGuiWindowLayoutState,
-    WorkspaceControlState,
+    StudioGuiCanvasWidgetModel, StudioGuiCommandRegistry, StudioGuiWindowDropPreviewState,
+    StudioGuiWindowLayoutState, WorkspaceControlState,
 };
 
 #[derive(Debug, Clone, PartialEq)]
@@ -20,6 +22,7 @@ pub struct StudioGuiSnapshot {
     pub canvas: StudioGuiCanvasWidgetModel,
     pub runtime: StudioGuiRuntimeSnapshot,
     pub layout_state: StudioGuiWindowLayoutState,
+    pub window_drop_previews: BTreeMap<String, StudioGuiWindowDropPreviewState>,
 }
 
 impl StudioGuiSnapshot {
@@ -29,6 +32,7 @@ impl StudioGuiSnapshot {
         command_registry: StudioGuiCommandRegistry,
         canvas: StudioGuiCanvasWidgetModel,
         runtime: StudioGuiRuntimeSnapshot,
+        window_drop_previews: BTreeMap<String, StudioGuiWindowDropPreviewState>,
     ) -> Self {
         let mut snapshot = Self {
             app_host_state,
@@ -37,6 +41,7 @@ impl StudioGuiSnapshot {
             canvas,
             runtime,
             layout_state: StudioGuiWindowLayoutState::default(),
+            window_drop_previews,
         };
         snapshot.layout_state = StudioGuiWindowLayoutState::from_snapshot(&snapshot);
         snapshot

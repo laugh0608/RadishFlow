@@ -65,6 +65,8 @@ App 与交互层当前进一步冻结以下口径：
 - Studio 当前又已把 drop preview 查询正式前推到 `StudioGuiWindowDropTargetQuery + StudioGuiHost / StudioGuiDriver` 入口；未来真实 GUI 应按 `window_id + hover/anchor/placement` 请求预览，而不是继续读取 layout 内部状态后手工拼 mutation
 - Studio 当前又已把 query 结果扩成 `drop_target + preview_layout_state + preview_window`，让真实 GUI 在 hover 时可以直接消费预览态窗口模型，而不必自己再从摘要重建 tabbed/dock 结果
 - Studio 当前又已把 drop release 正式前推到同一套 query 词汇，新增 `ApplyWindowDropTarget / WindowDropTargetApplyRequested`，让 GUI 侧不必继续维护“预览用 query / 落地用 mutation”两套接口
+- Studio 当前又已把 hover 预览前推为显式会话态，新增 `SetWindowDropTargetPreview / ClearWindowDropTargetPreview` 与 `WindowDropTargetPreviewRequested / WindowDropTargetPreviewCleared`；host 会非持久化保存当前 preview，并通过 `StudioGuiSnapshot / StudioGuiWindowModel.drop_preview` 直接暴露给 GUI
+- Studio 当前又已把 `drop_preview` 继续收口为 GUI-facing presentation，直接携带 `preview_layout + changed_area_ids`，让 GUI 不必自己从当前态/预览态做差分才能画出 hover 预览
 - Studio 当前多窗口布局 scope 已从运行时 `window_id` 收口到基于 `window_role + layout_slot` 的稳定 key，避免布局恢复直接依赖临时窗口号
 - Studio 当前应用层运行入口先冻结为 `StudioAppFacade + WorkspaceRunCommand + WorkspaceSolveService + solver_bridge` 四层，不让 UI 直接拼接底层 provider/solver 细节
 - `rf-ui` 当前运行栏状态先冻结为 `RunPanelState + RunPanelIntent + RunPanelCommandModel + RunPanelWidgetModel`，把按钮意图、主动作、按钮槽位、文本布局和最小渲染/触发所需状态都留在 UI 层，不让视图层或 Studio 侧重复发明一套按钮语义
