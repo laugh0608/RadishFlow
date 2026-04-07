@@ -97,9 +97,19 @@ pub enum StudioGuiWindowLayoutMutation {
     SetActivePanelInStack {
         area_id: StudioGuiWindowAreaId,
     },
+    ActivateNextPanelInStack {
+        area_id: StudioGuiWindowAreaId,
+    },
+    ActivatePreviousPanelInStack {
+        area_id: StudioGuiWindowAreaId,
+    },
     StackPanelWith {
         area_id: StudioGuiWindowAreaId,
         anchor_area_id: StudioGuiWindowAreaId,
+        placement: StudioGuiWindowDockPlacement,
+    },
+    UnstackPanelFromGroup {
+        area_id: StudioGuiWindowAreaId,
         placement: StudioGuiWindowDockPlacement,
     },
     PlacePanelInDockRegion {
@@ -365,6 +375,25 @@ impl StudioGuiWindowLayoutState {
                     stack_group,
                     *area_id,
                 );
+                reconcile_center_area_with_active_panel(&mut next, *area_id);
+            }
+            StudioGuiWindowLayoutMutation::ActivateNextPanelInStack { area_id } => {
+                if let Some(next_area_id) = adjacent_panel_in_stack(
+                    &next.panels,
+                    *area_id,
+                    StackCycleDirection::Next,
+                ) {
+                    set_active_panel_for_area(&mut next, next_area_id);
+                }
+            }
+            StudioGuiWindowLayoutMutation::ActivatePreviousPanelInStack { area_id } => {
+                if let Some(previous_area_id) = adjacent_panel_in_stack(
+                    &next.panels,
+                    *area_id,
+                    StackCycleDirection::Previous,
+                ) {
+                    set_active_panel_for_area(&mut next, previous_area_id);
+                }
             }
             StudioGuiWindowLayoutMutation::StackPanelWith {
                 area_id,
@@ -416,6 +445,35 @@ impl StudioGuiWindowLayoutState {
                     );
                 }
                 reconcile_center_stage_after_panel_move(&mut next, *area_id, anchor.dock_region);
+            }
+            StudioGuiWindowLayoutMutation::UnstackPanelFromGroup { area_id, placement } => {
+                let previous = next
+                    .panel(*area_id)
+                    .cloned()
+                    .unwrap_or_else(|| default_panel_state(*area_id));
+                let stack_members = next.panels_in_stack_group(
+                    previous.dock_region,
+                    previous.stack_group,
+                );
+                if stack_members.len() > 1 {
+                    place_panel_in_dock_region(
+                        &mut next.panels,
+                        *area_id,
+                        previous.dock_region,
+                        *placement,
+                    );
+                    if let Some((dock_region, stack_group)) =
+                        panel_stack_location(&next.panels, *area_id)
+                    {
+                        set_active_panel_in_stack(
+                            &mut next.stack_groups,
+                            dock_region,
+                            stack_group,
+                            *area_id,
+                        );
+                    }
+                    reconcile_center_area_with_active_panel(&mut next, *area_id);
+                }
             }
             StudioGuiWindowLayoutMutation::PlacePanelInDockRegion {
                 area_id,
@@ -977,8 +1035,37 @@ fn set_active_panel_in_stack(
     );
 }
 
+fn set_active_panel_for_area(
+    layout: &mut StudioGuiWindowLayoutState,
+    area_id: StudioGuiWindowAreaId,
+) {
+    let mut panel = layout
+        .panel(area_id)
+        .cloned()
+        .unwrap_or_else(|| default_panel_state(area_id));
+    panel.visible = true;
+    let dock_region = panel.dock_region;
+    let stack_group = panel.stack_group;
+    upsert_panel_state(&mut layout.panels, panel);
+    set_active_panel_in_stack(&mut layout.stack_groups, dock_region, stack_group, area_id);
+    reconcile_center_area_with_active_panel(layout, area_id);
+}
+
 fn reconcile_stack_group_states(layout: &mut StudioGuiWindowLayoutState) {
     layout.stack_groups = derive_stack_group_states(&layout.panels, &layout.stack_groups);
+}
+
+fn reconcile_center_area_with_active_panel(
+    layout: &mut StudioGuiWindowLayoutState,
+    area_id: StudioGuiWindowAreaId,
+) {
+    if layout
+        .panel(area_id)
+        .map(|panel| panel.dock_region == StudioGuiWindowDockRegion::CenterStage)
+        .unwrap_or(false)
+    {
+        layout.center_area = area_id;
+    }
 }
 
 fn derive_stack_group_states(
@@ -1237,6 +1324,36 @@ fn panel_stack_location(
         .iter()
         .find(|panel| panel.area_id == area_id)
         .map(|panel| (panel.dock_region, panel.stack_group))
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum StackCycleDirection {
+    Next,
+    Previous,
+}
+
+fn adjacent_panel_in_stack(
+    panels: &[StudioGuiWindowPanelLayoutState],
+    area_id: StudioGuiWindowAreaId,
+    direction: StackCycleDirection,
+) -> Option<StudioGuiWindowAreaId> {
+    let (dock_region, stack_group) = panel_stack_location(panels, area_id)?;
+    let ordered_area_ids = panels
+        .iter()
+        .filter(|panel| panel.dock_region == dock_region && panel.stack_group == stack_group)
+        .map(|panel| panel.area_id)
+        .collect::<Vec<_>>();
+    if ordered_area_ids.len() <= 1 {
+        return Some(area_id);
+    }
+    let current_index = ordered_area_ids.iter().position(|candidate| *candidate == area_id)?;
+    let next_index = match direction {
+        StackCycleDirection::Next => (current_index + 1) % ordered_area_ids.len(),
+        StackCycleDirection::Previous => {
+            (current_index + ordered_area_ids.len() - 1) % ordered_area_ids.len()
+        }
+    };
+    ordered_area_ids.get(next_index).copied()
 }
 
 fn next_available_stack_group(
@@ -1690,6 +1807,87 @@ mod tests {
 
         assert_eq!(
             state.active_panel_in_stack(StudioGuiWindowDockRegion::RightSidebar, 10),
+            Some(StudioGuiWindowAreaId::Runtime)
+        );
+    }
+
+    #[test]
+    fn studio_gui_window_layout_cycles_active_panel_within_stack_group() {
+        let state = StudioGuiWindowLayoutState::default()
+            .applying_mutation(
+                &crate::StudioGuiWindowLayoutMutation::PlacePanelInDockRegion {
+                    area_id: StudioGuiWindowAreaId::Commands,
+                    dock_region: StudioGuiWindowDockRegion::RightSidebar,
+                    placement: StudioGuiWindowDockPlacement::Before {
+                        anchor_area_id: StudioGuiWindowAreaId::Runtime,
+                    },
+                },
+            )
+            .applying_mutation(&crate::StudioGuiWindowLayoutMutation::StackPanelWith {
+                area_id: StudioGuiWindowAreaId::Commands,
+                anchor_area_id: StudioGuiWindowAreaId::Runtime,
+                placement: StudioGuiWindowDockPlacement::Before {
+                    anchor_area_id: StudioGuiWindowAreaId::Runtime,
+                },
+            })
+            .applying_mutation(&crate::StudioGuiWindowLayoutMutation::ActivateNextPanelInStack {
+                area_id: StudioGuiWindowAreaId::Commands,
+            })
+            .applying_mutation(
+                &crate::StudioGuiWindowLayoutMutation::ActivatePreviousPanelInStack {
+                    area_id: StudioGuiWindowAreaId::Runtime,
+                },
+            );
+
+        assert_eq!(
+            state.active_panel_in_stack(StudioGuiWindowDockRegion::RightSidebar, 10),
+            Some(StudioGuiWindowAreaId::Commands)
+        );
+    }
+
+    #[test]
+    fn studio_gui_window_layout_unstacks_panel_into_separate_group() {
+        let state = StudioGuiWindowLayoutState::default()
+            .applying_mutation(
+                &crate::StudioGuiWindowLayoutMutation::PlacePanelInDockRegion {
+                    area_id: StudioGuiWindowAreaId::Commands,
+                    dock_region: StudioGuiWindowDockRegion::RightSidebar,
+                    placement: StudioGuiWindowDockPlacement::Before {
+                        anchor_area_id: StudioGuiWindowAreaId::Runtime,
+                    },
+                },
+            )
+            .applying_mutation(&crate::StudioGuiWindowLayoutMutation::StackPanelWith {
+                area_id: StudioGuiWindowAreaId::Commands,
+                anchor_area_id: StudioGuiWindowAreaId::Runtime,
+                placement: StudioGuiWindowDockPlacement::Before {
+                    anchor_area_id: StudioGuiWindowAreaId::Runtime,
+                },
+            })
+            .applying_mutation(&crate::StudioGuiWindowLayoutMutation::UnstackPanelFromGroup {
+                area_id: StudioGuiWindowAreaId::Commands,
+                placement: StudioGuiWindowDockPlacement::Before {
+                    anchor_area_id: StudioGuiWindowAreaId::Runtime,
+                },
+            });
+
+        assert_eq!(
+            state
+                .panels_in_dock_region(StudioGuiWindowDockRegion::RightSidebar)
+                .into_iter()
+                .map(|panel| (panel.area_id, panel.stack_group, panel.order))
+                .collect::<Vec<_>>(),
+            vec![
+                (StudioGuiWindowAreaId::Commands, 10, 10),
+                (StudioGuiWindowAreaId::Runtime, 20, 10),
+            ]
+        );
+        assert_eq!(
+            state.active_panel_in_stack(StudioGuiWindowDockRegion::RightSidebar, 10),
+            Some(StudioGuiWindowAreaId::Commands)
+        );
+        assert_eq!(
+            state.active_panel_in_stack(StudioGuiWindowDockRegion::RightSidebar, 20),
             Some(StudioGuiWindowAreaId::Runtime)
         );
     }

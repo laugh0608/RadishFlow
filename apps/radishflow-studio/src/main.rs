@@ -274,6 +274,33 @@ fn main() {
         "Window model after switching the active tab in the right sidebar stack",
         &switched_active_tab.window,
     );
+    let cycled_previous_tab = app_host
+        .dispatch_event(StudioGuiEvent::WindowLayoutMutationRequested {
+            window_id: Some(window.window_id),
+            mutation: StudioGuiWindowLayoutMutation::ActivatePreviousPanelInStack {
+                area_id: StudioGuiWindowAreaId::Runtime,
+            },
+        })
+        .expect("expected stack previous-tab update");
+    print_window_model(
+        "Window model after cycling back to the previous active tab",
+        &cycled_previous_tab.window,
+    );
+    let unstacked_commands = app_host
+        .dispatch_event(StudioGuiEvent::WindowLayoutMutationRequested {
+            window_id: Some(window.window_id),
+            mutation: StudioGuiWindowLayoutMutation::UnstackPanelFromGroup {
+                area_id: StudioGuiWindowAreaId::Commands,
+                placement: StudioGuiWindowDockPlacement::Before {
+                    anchor_area_id: StudioGuiWindowAreaId::Runtime,
+                },
+            },
+        })
+        .expect("expected panel unstack update");
+    print_window_model(
+        "Window model after unstacking commands into its own right-sidebar group",
+        &unstacked_commands.window,
+    );
     if let Some(slot) = window.restored_entitlement_timer.as_ref() {
         println!("Restored parked timer slot into window host: {:?}", slot);
     }

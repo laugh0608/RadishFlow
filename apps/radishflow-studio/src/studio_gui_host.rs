@@ -1003,6 +1003,45 @@ mod tests {
             ]
         );
 
+        let seventh_update = gui_host
+            .update_window_layout(
+                Some(opened.registration.window_id),
+                StudioGuiWindowLayoutMutation::ActivateNextPanelInStack {
+                    area_id: StudioGuiWindowAreaId::Commands,
+                },
+            )
+            .expect("expected stack cycle update");
+        assert_eq!(
+            seventh_update
+                .layout_state
+                .active_panel_in_stack(StudioGuiWindowDockRegion::RightSidebar, 10),
+            Some(StudioGuiWindowAreaId::Runtime)
+        );
+
+        let eighth_update = gui_host
+            .update_window_layout(
+                Some(opened.registration.window_id),
+                StudioGuiWindowLayoutMutation::UnstackPanelFromGroup {
+                    area_id: StudioGuiWindowAreaId::Commands,
+                    placement: StudioGuiWindowDockPlacement::Before {
+                        anchor_area_id: StudioGuiWindowAreaId::Runtime,
+                    },
+                },
+            )
+            .expect("expected panel unstack update");
+        assert_eq!(
+            eighth_update
+                .layout_state
+                .panels_in_dock_region(StudioGuiWindowDockRegion::RightSidebar)
+                .into_iter()
+                .map(|panel| (panel.area_id, panel.stack_group, panel.order))
+                .collect::<Vec<_>>(),
+            vec![
+                (StudioGuiWindowAreaId::Commands, 10, 10),
+                (StudioGuiWindowAreaId::Runtime, 20, 10),
+            ]
+        );
+
         let stored = read_studio_layout_file(&layout_path).expect("expected stored layout sidecar");
         assert_eq!(stored.entries.len(), 1);
         assert_eq!(stored.entries[0].layout_key, "studio.window.owner.slot-1");
@@ -1025,10 +1064,10 @@ mod tests {
             vec![
                 ("canvas", "center-stage", 10, 20),
                 ("commands", "right-sidebar", 10, 10),
-                ("runtime", "right-sidebar", 10, 20),
+                ("runtime", "right-sidebar", 20, 10),
             ]
         );
-        assert_eq!(stored.entries[0].stack_groups.len(), 2);
+        assert_eq!(stored.entries[0].stack_groups.len(), 3);
         assert_eq!(
             stored.entries[0]
                 .stack_groups
@@ -1038,6 +1077,16 @@ mod tests {
                 })
                 .map(|group| group.active_area_id.as_str()),
             Some("commands")
+        );
+        assert_eq!(
+            stored.entries[0]
+                .stack_groups
+                .iter()
+                .find(|group| {
+                    group.dock_region == "right-sidebar" && group.stack_group == 20
+                })
+                .map(|group| group.active_area_id.as_str()),
+            Some("runtime")
         );
 
         drop(gui_host);
@@ -1081,8 +1130,8 @@ mod tests {
                 (
                     StudioGuiWindowAreaId::Runtime,
                     StudioGuiWindowDockRegion::RightSidebar,
-                    10,
                     20,
+                    10,
                 ),
             ]
         );
@@ -1091,6 +1140,12 @@ mod tests {
                 .layout_state
                 .active_panel_in_stack(StudioGuiWindowDockRegion::RightSidebar, 10),
             Some(StudioGuiWindowAreaId::Commands)
+        );
+        assert_eq!(
+            window
+                .layout_state
+                .active_panel_in_stack(StudioGuiWindowDockRegion::RightSidebar, 20),
+            Some(StudioGuiWindowAreaId::Runtime)
         );
 
         let _ = fs::remove_file(layout_path);

@@ -1067,6 +1067,55 @@ mod tests {
             other => panic!("expected window layout update outcome, got {other:?}"),
         }
 
+        let activated_next = driver
+            .dispatch_event(StudioGuiEvent::WindowLayoutMutationRequested {
+                window_id: Some(second_window_id),
+                mutation: StudioGuiWindowLayoutMutation::ActivateNextPanelInStack {
+                    area_id: StudioGuiWindowAreaId::Commands,
+                },
+            })
+            .expect("expected activate-next update");
+        match &activated_next.outcome {
+            StudioGuiDriverOutcome::WindowLayoutUpdated(result) => {
+                assert_eq!(
+                    result
+                        .layout_state
+                        .active_panel_in_stack(StudioGuiWindowDockRegion::RightSidebar, 10),
+                    Some(StudioGuiWindowAreaId::Runtime)
+                );
+            }
+            other => panic!("expected window layout update outcome, got {other:?}"),
+        }
+
+        let unstacked = driver
+            .dispatch_event(StudioGuiEvent::WindowLayoutMutationRequested {
+                window_id: Some(second_window_id),
+                mutation: StudioGuiWindowLayoutMutation::UnstackPanelFromGroup {
+                    area_id: StudioGuiWindowAreaId::Commands,
+                    placement: StudioGuiWindowDockPlacement::Before {
+                        anchor_area_id: StudioGuiWindowAreaId::Runtime,
+                    },
+                },
+            })
+            .expect("expected unstack update");
+        match &unstacked.outcome {
+            StudioGuiDriverOutcome::WindowLayoutUpdated(result) => {
+                assert_eq!(
+                    result
+                        .layout_state
+                        .panels_in_dock_region(StudioGuiWindowDockRegion::RightSidebar)
+                        .into_iter()
+                        .map(|panel| (panel.area_id, panel.stack_group, panel.order))
+                        .collect::<Vec<_>>(),
+                    vec![
+                        (StudioGuiWindowAreaId::Commands, 10, 10),
+                        (StudioGuiWindowAreaId::Runtime, 20, 10),
+                    ]
+                );
+            }
+            other => panic!("expected window layout update outcome, got {other:?}"),
+        }
+
         let first_window = driver.window_model_for_window(Some(first_window_id));
         let second_window = driver.window_model_for_window(Some(second_window_id));
 
@@ -1137,8 +1186,8 @@ mod tests {
                 (
                     StudioGuiWindowAreaId::Runtime,
                     StudioGuiWindowDockRegion::RightSidebar,
-                    10,
                     20,
+                    10,
                 ),
             ]
         );
@@ -1147,6 +1196,12 @@ mod tests {
                 .layout_state
                 .active_panel_in_stack(StudioGuiWindowDockRegion::RightSidebar, 10),
             Some(StudioGuiWindowAreaId::Commands)
+        );
+        assert_eq!(
+            second_window
+                .layout_state
+                .active_panel_in_stack(StudioGuiWindowDockRegion::RightSidebar, 20),
+            Some(StudioGuiWindowAreaId::Runtime)
         );
 
         let layout_path = rf_store::studio_layout_path_for_project(&project_path);
