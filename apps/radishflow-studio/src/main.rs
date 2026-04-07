@@ -4,9 +4,10 @@ use radishflow_studio::{
     StudioGuiHostCloseWindowResult, StudioGuiHostCommandOutcome, StudioGuiHostDispatch,
     StudioGuiHostLifecycleDispatch, StudioGuiHostWindowOpened, StudioGuiNativeTimerEffects,
     StudioGuiNativeTimerOperation, StudioGuiWindowAreaId, StudioGuiWindowDockPlacement,
-    StudioGuiWindowDockRegion, StudioGuiWindowDropTarget, StudioGuiWindowLayoutMutation,
-    StudioGuiWindowModel, StudioRuntimeConfig, StudioRuntimeDispatch, StudioRuntimeReport,
-    StudioWindowHostRetirement, StudioWindowTimerDriverAckResult,
+    StudioGuiWindowDockRegion, StudioGuiWindowDropTarget, StudioGuiWindowDropTargetQuery,
+    StudioGuiWindowLayoutMutation, StudioGuiWindowModel, StudioRuntimeConfig,
+    StudioRuntimeDispatch, StudioRuntimeReport, StudioWindowHostId, StudioWindowHostRetirement,
+    StudioWindowTimerDriverAckResult,
 };
 
 fn print_text_view(title: &str, lines: &[String]) {
@@ -160,14 +161,46 @@ fn print_window_model(title: &str, window: &StudioGuiWindowModel) {
 
 fn print_drop_target_preview(
     title: &str,
-    window: &StudioGuiWindowModel,
-    mutation: &StudioGuiWindowLayoutMutation,
+    app_host: &mut StudioGuiDriver,
+    window_id: Option<StudioWindowHostId>,
+    query: StudioGuiWindowDropTargetQuery,
 ) {
-    let layout = window.layout();
     println!("{title}:");
-    match layout.drop_target_for_mutation(mutation) {
-        Some(target) => print_drop_target(&target),
-        None => println!("  none"),
+    match app_host.dispatch_event(StudioGuiEvent::WindowDropTargetQueryRequested {
+        window_id,
+        query,
+    }) {
+        Ok(StudioGuiDriverDispatch {
+            outcome:
+                StudioGuiDriverOutcome::HostCommand(
+                    StudioGuiHostCommandOutcome::WindowDropTargetQueried(result),
+                ),
+            ..
+        }) => {
+            match result.drop_target {
+                Some(target) => print_drop_target(&target),
+                None => println!("  none"),
+            }
+            if let Some(preview_window) = result.preview_window.as_ref() {
+                let preview_layout = preview_window.layout();
+                println!(
+                    "  preview center={:?} commands={:?} runtime={:?}",
+                    preview_layout.center_area,
+                    preview_layout
+                        .panel(StudioGuiWindowAreaId::Commands)
+                        .map(|panel| (panel.dock_region, panel.stack_group, panel.order)),
+                    preview_layout
+                        .panel(StudioGuiWindowAreaId::Runtime)
+                        .map(|panel| (panel.dock_region, panel.stack_group, panel.order))
+                );
+            }
+        }
+        Ok(dispatch) => println!("  unexpected outcome: {:?}", dispatch.outcome),
+        Err(error) => println!(
+            "  query failed [{}]: {}",
+            error.code().as_str(),
+            error.message()
+        ),
     }
 }
 
@@ -223,8 +256,9 @@ fn main() {
     );
     print_drop_target_preview(
         "Drop target preview for moving runtime to the start of the left sidebar",
-        &app_host.snapshot().window_model(),
-        &StudioGuiWindowLayoutMutation::PlacePanelInDockRegion {
+        &mut app_host,
+        Some(window.window_id),
+        StudioGuiWindowDropTargetQuery::DockRegion {
             area_id: StudioGuiWindowAreaId::Runtime,
             dock_region: StudioGuiWindowDockRegion::LeftSidebar,
             placement: StudioGuiWindowDockPlacement::Start,
@@ -286,8 +320,9 @@ fn main() {
     );
     print_drop_target_preview(
         "Drop target preview for stacking commands with runtime in the right sidebar",
-        &moved_commands.window,
-        &StudioGuiWindowLayoutMutation::StackPanelWith {
+        &mut app_host,
+        Some(window.window_id),
+        StudioGuiWindowDropTargetQuery::Stack {
             area_id: StudioGuiWindowAreaId::Commands,
             anchor_area_id: StudioGuiWindowAreaId::Runtime,
             placement: StudioGuiWindowDockPlacement::Before {
@@ -296,9 +331,9 @@ fn main() {
         },
     );
     let stacked_commands = app_host
-        .dispatch_event(StudioGuiEvent::WindowLayoutMutationRequested {
+        .dispatch_event(StudioGuiEvent::WindowDropTargetApplyRequested {
             window_id: Some(window.window_id),
-            mutation: StudioGuiWindowLayoutMutation::StackPanelWith {
+            query: StudioGuiWindowDropTargetQuery::Stack {
                 area_id: StudioGuiWindowAreaId::Commands,
                 anchor_area_id: StudioGuiWindowAreaId::Runtime,
                 placement: StudioGuiWindowDockPlacement::Before {
@@ -313,8 +348,9 @@ fn main() {
     );
     print_drop_target_preview(
         "Drop target preview for moving runtime before commands inside the shared stack",
-        &stacked_commands.window,
-        &StudioGuiWindowLayoutMutation::MovePanelWithinStack {
+        &mut app_host,
+        Some(window.window_id),
+        StudioGuiWindowDropTargetQuery::CurrentStack {
             area_id: StudioGuiWindowAreaId::Runtime,
             placement: StudioGuiWindowDockPlacement::Before {
                 anchor_area_id: StudioGuiWindowAreaId::Commands,
@@ -346,9 +382,9 @@ fn main() {
         &cycled_previous_tab.window,
     );
     let reordered_tabs = app_host
-        .dispatch_event(StudioGuiEvent::WindowLayoutMutationRequested {
+        .dispatch_event(StudioGuiEvent::WindowDropTargetApplyRequested {
             window_id: Some(window.window_id),
-            mutation: StudioGuiWindowLayoutMutation::MovePanelWithinStack {
+            query: StudioGuiWindowDropTargetQuery::CurrentStack {
                 area_id: StudioGuiWindowAreaId::Runtime,
                 placement: StudioGuiWindowDockPlacement::Before {
                     anchor_area_id: StudioGuiWindowAreaId::Commands,
@@ -362,8 +398,9 @@ fn main() {
     );
     print_drop_target_preview(
         "Drop target preview for unstacking commands back into a standalone right-sidebar group",
-        &reordered_tabs.window,
-        &StudioGuiWindowLayoutMutation::UnstackPanelFromGroup {
+        &mut app_host,
+        Some(window.window_id),
+        StudioGuiWindowDropTargetQuery::Unstack {
             area_id: StudioGuiWindowAreaId::Commands,
             placement: StudioGuiWindowDockPlacement::Before {
                 anchor_area_id: StudioGuiWindowAreaId::Runtime,
@@ -371,9 +408,9 @@ fn main() {
         },
     );
     let unstacked_commands = app_host
-        .dispatch_event(StudioGuiEvent::WindowLayoutMutationRequested {
+        .dispatch_event(StudioGuiEvent::WindowDropTargetApplyRequested {
             window_id: Some(window.window_id),
-            mutation: StudioGuiWindowLayoutMutation::UnstackPanelFromGroup {
+            query: StudioGuiWindowDropTargetQuery::Unstack {
                 area_id: StudioGuiWindowAreaId::Commands,
                 placement: StudioGuiWindowDockPlacement::Before {
                     anchor_area_id: StudioGuiWindowAreaId::Runtime,

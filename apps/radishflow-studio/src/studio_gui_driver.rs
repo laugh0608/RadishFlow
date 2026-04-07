@@ -6,8 +6,8 @@ use crate::{
     StudioGuiHostCanvasInteractionResult, StudioGuiHostCommand, StudioGuiHostCommandOutcome,
     StudioGuiHostLifecycleEvent, StudioGuiHostWindowLayoutUpdateResult, StudioGuiShortcut,
     StudioGuiShortcutIgnoreReason, StudioGuiShortcutRoute, StudioGuiSnapshot,
-    StudioGuiWindowLayoutMutation, StudioGuiWindowModel, StudioRuntimeConfig, StudioRuntimeTrigger,
-    StudioWindowHostId,
+    StudioGuiWindowDropTargetQuery, StudioGuiWindowLayoutMutation, StudioGuiWindowModel,
+    StudioRuntimeConfig, StudioRuntimeTrigger, StudioWindowHostId,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -33,6 +33,14 @@ pub enum StudioGuiEvent {
     WindowLayoutMutationRequested {
         window_id: Option<StudioWindowHostId>,
         mutation: StudioGuiWindowLayoutMutation,
+    },
+    WindowDropTargetQueryRequested {
+        window_id: Option<StudioWindowHostId>,
+        query: StudioGuiWindowDropTargetQuery,
+    },
+    WindowDropTargetApplyRequested {
+        window_id: Option<StudioWindowHostId>,
+        query: StudioGuiWindowDropTargetQuery,
     },
     ShortcutPressed {
         shortcut: StudioGuiShortcut,
@@ -191,6 +199,22 @@ fn layout_scope_window_id(outcome: &StudioGuiDriverOutcome) -> Option<StudioWind
         StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::UiCommandDispatched(
             crate::StudioGuiHostUiCommandDispatchResult::IgnoredMissing { .. },
         ))
+        | StudioGuiDriverOutcome::HostCommand(
+            StudioGuiHostCommandOutcome::WindowDropTargetQueried(
+                crate::StudioGuiHostWindowDropTargetQueryResult {
+                    target_window_id: None,
+                    ..
+                },
+            ),
+        )
+        | StudioGuiDriverOutcome::HostCommand(
+            StudioGuiHostCommandOutcome::WindowDropTargetApplied(
+                crate::StudioGuiHostWindowDropTargetApplyResult {
+                    target_window_id: None,
+                    ..
+                },
+            ),
+        )
         | StudioGuiDriverOutcome::WindowLayoutUpdated(
             crate::StudioGuiHostWindowLayoutUpdateResult {
                 target_window_id: None,
@@ -200,6 +224,18 @@ fn layout_scope_window_id(outcome: &StudioGuiDriverOutcome) -> Option<StudioWind
         | StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::WindowClosed(_))
         | StudioGuiDriverOutcome::CanvasInteraction(_)
         | StudioGuiDriverOutcome::IgnoredShortcut { .. } => None,
+        StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::WindowDropTargetQueried(
+            crate::StudioGuiHostWindowDropTargetQueryResult {
+                target_window_id: Some(window_id),
+                ..
+            },
+        )) => Some(*window_id),
+        StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::WindowDropTargetApplied(
+            crate::StudioGuiHostWindowDropTargetApplyResult {
+                target_window_id: Some(window_id),
+                ..
+            },
+        )) => Some(*window_id),
         StudioGuiDriverOutcome::WindowLayoutUpdated(
             crate::StudioGuiHostWindowLayoutUpdateResult {
                 target_window_id: Some(window_id),
@@ -269,6 +305,18 @@ fn route_driver_event(event: &StudioGuiEvent, registry: &StudioGuiCommandRegistr
             window_id: *window_id,
             mutation: mutation.clone(),
         },
+        StudioGuiEvent::WindowDropTargetQueryRequested { window_id, query } => {
+            DriverRoute::HostCommand(StudioGuiHostCommand::QueryWindowDropTarget {
+                window_id: *window_id,
+                query: *query,
+            })
+        }
+        StudioGuiEvent::WindowDropTargetApplyRequested { window_id, query } => {
+            DriverRoute::HostCommand(StudioGuiHostCommand::ApplyWindowDropTarget {
+                window_id: *window_id,
+                query: *query,
+            })
+        }
         StudioGuiEvent::ShortcutPressed {
             shortcut,
             focus_context,
@@ -329,8 +377,9 @@ mod tests {
         StudioGuiFocusContext, StudioGuiHostCanvasInteractionResult, StudioGuiHostCommandOutcome,
         StudioGuiHostUiCommandDispatchResult, StudioGuiShortcut, StudioGuiShortcutIgnoreReason,
         StudioGuiShortcutKey, StudioGuiShortcutModifier, StudioGuiWindowAreaId,
-        StudioGuiWindowDockPlacement, StudioGuiWindowDockRegion, StudioGuiWindowLayoutMutation,
-        StudioRuntimeConfig, StudioRuntimeEntitlementPreflight, StudioRuntimeEntitlementSeed,
+        StudioGuiWindowDockPlacement, StudioGuiWindowDockRegion,
+        StudioGuiWindowDropTargetQuery, StudioGuiWindowLayoutMutation, StudioRuntimeConfig,
+        StudioRuntimeEntitlementPreflight, StudioRuntimeEntitlementSeed,
     };
     use rf_ui::{
         GhostElement, GhostElementKind, StreamVisualKind, StreamVisualState, SuggestionSource,
@@ -1245,6 +1294,162 @@ mod tests {
     }
 
     #[test]
+    fn gui_driver_routes_drop_target_queries_without_mutating_layout_state() {
+        let (config, project_path) = flash_drum_local_rules_config();
+        let mut driver = StudioGuiDriver::new(&config).expect("expected driver");
+        let opened = driver
+            .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+            .expect("expected open dispatch");
+        let window_id = match opened.outcome {
+            StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::WindowOpened(
+                opened,
+            )) => opened.registration.window_id,
+            other => panic!("expected opened window outcome, got {other:?}"),
+        };
+
+        let queried = driver
+            .dispatch_event(StudioGuiEvent::WindowDropTargetQueryRequested {
+                window_id: Some(window_id),
+                query: StudioGuiWindowDropTargetQuery::Stack {
+                    area_id: StudioGuiWindowAreaId::Commands,
+                    anchor_area_id: StudioGuiWindowAreaId::Runtime,
+                    placement: StudioGuiWindowDockPlacement::Before {
+                        anchor_area_id: StudioGuiWindowAreaId::Runtime,
+                    },
+                },
+            })
+            .expect("expected drop target query dispatch");
+
+        match queried.outcome {
+            StudioGuiDriverOutcome::HostCommand(
+                StudioGuiHostCommandOutcome::WindowDropTargetQueried(result),
+            ) => {
+                let target = result.drop_target.expect("expected stack preview target");
+                assert_eq!(result.target_window_id, Some(window_id));
+                assert_eq!(target.target_stack_group, 10);
+                assert_eq!(target.target_tab_index, 0);
+                assert_eq!(
+                    result.preview_layout_state.as_ref().and_then(|layout| {
+                        layout
+                            .panel(StudioGuiWindowAreaId::Commands)
+                            .map(|panel| (panel.dock_region, panel.stack_group, panel.order))
+                    }),
+                    Some((StudioGuiWindowDockRegion::RightSidebar, 10, 10))
+                );
+                assert_eq!(
+                    result.preview_window.as_ref().and_then(|window| {
+                        window
+                            .layout_state
+                            .panel(StudioGuiWindowAreaId::Runtime)
+                            .map(|panel| (panel.dock_region, panel.stack_group, panel.order))
+                    }),
+                    Some((StudioGuiWindowDockRegion::RightSidebar, 10, 20))
+                );
+                assert_eq!(
+                    result
+                        .layout_state
+                        .panel(StudioGuiWindowAreaId::Commands)
+                        .map(|panel| (panel.dock_region, panel.stack_group, panel.order)),
+                    Some((StudioGuiWindowDockRegion::LeftSidebar, 10, 10))
+                );
+            }
+            other => panic!("expected drop target query outcome, got {other:?}"),
+        }
+
+        assert_eq!(
+            queried
+                .window
+                .layout_state
+                .panel(StudioGuiWindowAreaId::Commands)
+                .map(|panel| (panel.dock_region, panel.stack_group, panel.order)),
+            Some((StudioGuiWindowDockRegion::LeftSidebar, 10, 10))
+        );
+        let window = driver.window_model_for_window(Some(window_id));
+        assert_eq!(
+            window
+                .layout_state
+                .panel(StudioGuiWindowAreaId::Commands)
+                .map(|panel| (panel.dock_region, panel.stack_group, panel.order)),
+            Some((StudioGuiWindowDockRegion::LeftSidebar, 10, 10))
+        );
+        assert_eq!(
+            window
+                .layout_state
+                .panel(StudioGuiWindowAreaId::Runtime)
+                .map(|panel| (panel.dock_region, panel.stack_group, panel.order)),
+            Some((StudioGuiWindowDockRegion::RightSidebar, 10, 30))
+        );
+
+        let layout_path = rf_store::studio_layout_path_for_project(&project_path);
+        let _ = fs::remove_file(layout_path);
+        let _ = fs::remove_file(project_path);
+    }
+
+    #[test]
+    fn gui_driver_applies_drop_target_queries_through_single_event_entry() {
+        let (config, project_path) = flash_drum_local_rules_config();
+        let mut driver = StudioGuiDriver::new(&config).expect("expected driver");
+        let opened = driver
+            .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+            .expect("expected open dispatch");
+        let window_id = match opened.outcome {
+            StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::WindowOpened(
+                opened,
+            )) => opened.registration.window_id,
+            other => panic!("expected opened window outcome, got {other:?}"),
+        };
+
+        let applied = driver
+            .dispatch_event(StudioGuiEvent::WindowDropTargetApplyRequested {
+                window_id: Some(window_id),
+                query: StudioGuiWindowDropTargetQuery::DockRegion {
+                    area_id: StudioGuiWindowAreaId::Runtime,
+                    dock_region: StudioGuiWindowDockRegion::LeftSidebar,
+                    placement: StudioGuiWindowDockPlacement::Start,
+                },
+            })
+            .expect("expected drop target apply dispatch");
+
+        match applied.outcome {
+            StudioGuiDriverOutcome::HostCommand(
+                StudioGuiHostCommandOutcome::WindowDropTargetApplied(result),
+            ) => {
+                assert_eq!(result.target_window_id, Some(window_id));
+                assert_eq!(
+                    result.mutation,
+                    StudioGuiWindowDropTargetQuery::DockRegion {
+                        area_id: StudioGuiWindowAreaId::Runtime,
+                        dock_region: StudioGuiWindowDockRegion::LeftSidebar,
+                        placement: StudioGuiWindowDockPlacement::Start,
+                    }
+                    .layout_mutation()
+                );
+                assert_eq!(
+                    result
+                        .layout_state
+                        .panel(StudioGuiWindowAreaId::Runtime)
+                        .map(|panel| (panel.dock_region, panel.stack_group, panel.order)),
+                    Some((StudioGuiWindowDockRegion::LeftSidebar, 10, 10))
+                );
+            }
+            other => panic!("expected drop target apply outcome, got {other:?}"),
+        }
+
+        assert_eq!(
+            applied
+                .window
+                .layout_state
+                .panel(StudioGuiWindowAreaId::Runtime)
+                .map(|panel| (panel.dock_region, panel.stack_group, panel.order)),
+            Some((StudioGuiWindowDockRegion::LeftSidebar, 10, 10))
+        );
+
+        let layout_path = rf_store::studio_layout_path_for_project(&project_path);
+        let _ = fs::remove_file(layout_path);
+        let _ = fs::remove_file(project_path);
+    }
+
+    #[test]
     fn gui_driver_rejects_layout_update_for_unknown_window() {
         let mut driver = StudioGuiDriver::new(&lease_expiring_config()).expect("expected driver");
 
@@ -1257,6 +1462,50 @@ mod tests {
                 },
             })
             .expect_err("expected invalid layout target");
+
+        assert_eq!(error.code().as_str(), "invalid_input");
+    }
+
+    #[test]
+    fn gui_driver_rejects_drop_target_query_for_unknown_window() {
+        let mut driver = StudioGuiDriver::new(&lease_expiring_config()).expect("expected driver");
+
+        let error = driver
+            .dispatch_event(StudioGuiEvent::WindowDropTargetQueryRequested {
+                window_id: Some(99),
+                query: StudioGuiWindowDropTargetQuery::DockRegion {
+                    area_id: StudioGuiWindowAreaId::Runtime,
+                    dock_region: StudioGuiWindowDockRegion::LeftSidebar,
+                    placement: StudioGuiWindowDockPlacement::Start,
+                },
+            })
+            .expect_err("expected invalid drop target query target");
+
+        assert_eq!(error.code().as_str(), "invalid_input");
+    }
+
+    #[test]
+    fn gui_driver_rejects_inapplicable_drop_target_apply() {
+        let mut driver = StudioGuiDriver::new(&lease_expiring_config()).expect("expected driver");
+        let opened = driver
+            .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+            .expect("expected open dispatch");
+        let window_id = match opened.outcome {
+            StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::WindowOpened(
+                opened,
+            )) => opened.registration.window_id,
+            other => panic!("expected opened window outcome, got {other:?}"),
+        };
+
+        let error = driver
+            .dispatch_event(StudioGuiEvent::WindowDropTargetApplyRequested {
+                window_id: Some(window_id),
+                query: StudioGuiWindowDropTargetQuery::Unstack {
+                    area_id: StudioGuiWindowAreaId::Commands,
+                    placement: StudioGuiWindowDockPlacement::End,
+                },
+            })
+            .expect_err("expected invalid drop target apply");
 
         assert_eq!(error.code().as_str(), "invalid_input");
     }

@@ -113,6 +113,28 @@ pub struct StudioGuiWindowDropTarget {
     pub preview_area_ids: Vec<StudioGuiWindowAreaId>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum StudioGuiWindowDropTargetQuery {
+    DockRegion {
+        area_id: StudioGuiWindowAreaId,
+        dock_region: StudioGuiWindowDockRegion,
+        placement: StudioGuiWindowDockPlacement,
+    },
+    Stack {
+        area_id: StudioGuiWindowAreaId,
+        anchor_area_id: StudioGuiWindowAreaId,
+        placement: StudioGuiWindowDockPlacement,
+    },
+    CurrentStack {
+        area_id: StudioGuiWindowAreaId,
+        placement: StudioGuiWindowDockPlacement,
+    },
+    Unstack {
+        area_id: StudioGuiWindowAreaId,
+        placement: StudioGuiWindowDockPlacement,
+    },
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum StudioGuiWindowLayoutMutation {
     SetCenterArea {
@@ -491,6 +513,21 @@ impl StudioGuiWindowLayoutState {
         })
     }
 
+    pub fn drop_target_for_query(
+        &self,
+        query: &StudioGuiWindowDropTargetQuery,
+    ) -> Option<StudioGuiWindowDropTarget> {
+        self.drop_target_for_mutation(&query.layout_mutation())
+    }
+
+    pub fn preview_layout_state_for_query(
+        &self,
+        query: &StudioGuiWindowDropTargetQuery,
+    ) -> Option<Self> {
+        self.drop_target_for_query(query)
+            .map(|_| self.applying_mutation(&query.layout_mutation()))
+    }
+
     pub fn applying_mutation(&self, mutation: &StudioGuiWindowLayoutMutation) -> Self {
         let mut next = self.clone();
         match mutation {
@@ -793,6 +830,43 @@ impl StudioGuiWindowLayoutState {
     }
 }
 
+impl StudioGuiWindowDropTargetQuery {
+    pub fn layout_mutation(&self) -> StudioGuiWindowLayoutMutation {
+        match self {
+            StudioGuiWindowDropTargetQuery::DockRegion {
+                area_id,
+                dock_region,
+                placement,
+            } => StudioGuiWindowLayoutMutation::PlacePanelInDockRegion {
+                area_id: *area_id,
+                dock_region: *dock_region,
+                placement: *placement,
+            },
+            StudioGuiWindowDropTargetQuery::Stack {
+                area_id,
+                anchor_area_id,
+                placement,
+            } => StudioGuiWindowLayoutMutation::StackPanelWith {
+                area_id: *area_id,
+                anchor_area_id: *anchor_area_id,
+                placement: *placement,
+            },
+            StudioGuiWindowDropTargetQuery::CurrentStack { area_id, placement } => {
+                StudioGuiWindowLayoutMutation::MovePanelWithinStack {
+                    area_id: *area_id,
+                    placement: *placement,
+                }
+            }
+            StudioGuiWindowDropTargetQuery::Unstack { area_id, placement } => {
+                StudioGuiWindowLayoutMutation::UnstackPanelFromGroup {
+                    area_id: *area_id,
+                    placement: *placement,
+                }
+            }
+        }
+    }
+}
+
 impl StudioGuiWindowLayoutScope {
     pub fn legacy_layout_key(&self) -> Option<String> {
         match (self.window_id, self.window_role) {
@@ -880,6 +954,20 @@ impl StudioGuiWindowLayoutModel {
         mutation: &StudioGuiWindowLayoutMutation,
     ) -> Option<StudioGuiWindowDropTarget> {
         self.state.drop_target_for_mutation(mutation)
+    }
+
+    pub fn drop_target_for_query(
+        &self,
+        query: &StudioGuiWindowDropTargetQuery,
+    ) -> Option<StudioGuiWindowDropTarget> {
+        self.state.drop_target_for_query(query)
+    }
+
+    pub fn preview_layout_state_for_query(
+        &self,
+        query: &StudioGuiWindowDropTargetQuery,
+    ) -> Option<StudioGuiWindowLayoutState> {
+        self.state.preview_layout_state_for_query(query)
     }
 
     fn from_areas(
@@ -1660,7 +1748,8 @@ mod tests {
 
     use crate::{
         StudioGuiDriver, StudioGuiEvent, StudioGuiWindowAreaId, StudioGuiWindowDockPlacement,
-        StudioGuiWindowDockRegion, StudioGuiWindowDropTargetKind, StudioGuiWindowLayoutScopeKind,
+        StudioGuiWindowDockRegion, StudioGuiWindowDropTargetKind,
+        StudioGuiWindowDropTargetQuery, StudioGuiWindowLayoutScopeKind,
         StudioGuiWindowLayoutState, StudioRuntimeConfig, StudioRuntimeEntitlementPreflight,
         StudioRuntimeEntitlementSeed, StudioRuntimeEntitlementSessionEvent, StudioRuntimeTrigger,
     };
@@ -1932,6 +2021,39 @@ mod tests {
         assert_eq!(
             target.preview_area_ids,
             vec![StudioGuiWindowAreaId::Runtime]
+        );
+    }
+
+    #[test]
+    fn studio_gui_window_layout_supports_gui_facing_drop_target_queries() {
+        let state = StudioGuiWindowLayoutState::default().applying_mutation(
+            &crate::StudioGuiWindowLayoutMutation::PlacePanelInDockRegion {
+                area_id: StudioGuiWindowAreaId::Commands,
+                dock_region: StudioGuiWindowDockRegion::RightSidebar,
+                placement: StudioGuiWindowDockPlacement::Before {
+                    anchor_area_id: StudioGuiWindowAreaId::Runtime,
+                },
+            },
+        );
+        let query = StudioGuiWindowDropTargetQuery::Stack {
+            area_id: StudioGuiWindowAreaId::Commands,
+            anchor_area_id: StudioGuiWindowAreaId::Runtime,
+            placement: StudioGuiWindowDockPlacement::After {
+                anchor_area_id: StudioGuiWindowAreaId::Runtime,
+            },
+        };
+
+        let target = state
+            .drop_target_for_query(&query)
+            .expect("expected stack drop target from query");
+
+        assert_eq!(target, state.drop_target_for_mutation(&query.layout_mutation()).unwrap());
+        assert_eq!(target.kind, StudioGuiWindowDropTargetKind::StackTab);
+        assert_eq!(target.anchor_area_id, Some(StudioGuiWindowAreaId::Runtime));
+        assert_eq!(target.target_tab_index, 1);
+        assert_eq!(
+            state.preview_layout_state_for_query(&query),
+            Some(state.applying_mutation(&query.layout_mutation()))
         );
     }
 

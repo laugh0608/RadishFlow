@@ -67,6 +67,12 @@ impl StudioGuiWindowModel {
             layout_state: StudioGuiWindowLayoutState::from_snapshot_for_window(snapshot, window_id),
         }
     }
+
+    pub fn with_layout_state(&self, layout_state: StudioGuiWindowLayoutState) -> Self {
+        let mut window = self.clone();
+        window.layout_state = layout_state;
+        window
+    }
 }
 
 impl StudioGuiSnapshot {

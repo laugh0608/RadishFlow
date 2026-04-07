@@ -12,9 +12,10 @@ use crate::{
     StudioAppHostUiCommandDispatchResult, StudioAppHostUiCommandModel,
     StudioAppHostWindowDispatchResult, StudioAppWindowHostGlobalEvent, StudioGuiCommandRegistry,
     StudioGuiNativeTimerEffects, StudioGuiRuntimeSnapshot, StudioGuiSnapshot,
-    StudioGuiWindowLayoutMutation, StudioGuiWindowLayoutPersistenceState,
-    StudioGuiWindowLayoutState, StudioGuiWindowModel, StudioRuntimeConfig, StudioRuntimeTrigger,
-    StudioWindowHostId, StudioWindowHostRegistration,
+    StudioGuiWindowDropTarget, StudioGuiWindowDropTargetQuery, StudioGuiWindowLayoutMutation,
+    StudioGuiWindowLayoutPersistenceState, StudioGuiWindowLayoutState, StudioGuiWindowModel,
+    StudioRuntimeConfig, StudioRuntimeTrigger, StudioWindowHostId,
+    StudioWindowHostRegistration,
 };
 
 #[derive(Debug, Clone, PartialEq)]
@@ -112,6 +113,25 @@ pub struct StudioGuiHostWindowLayoutUpdateResult {
     pub layout_state: StudioGuiWindowLayoutState,
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct StudioGuiHostWindowDropTargetQueryResult {
+    pub target_window_id: Option<StudioWindowHostId>,
+    pub query: StudioGuiWindowDropTargetQuery,
+    pub layout_state: StudioGuiWindowLayoutState,
+    pub drop_target: Option<StudioGuiWindowDropTarget>,
+    pub preview_layout_state: Option<StudioGuiWindowLayoutState>,
+    pub preview_window: Option<StudioGuiWindowModel>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioGuiHostWindowDropTargetApplyResult {
+    pub target_window_id: Option<StudioWindowHostId>,
+    pub query: StudioGuiWindowDropTargetQuery,
+    pub mutation: StudioGuiWindowLayoutMutation,
+    pub drop_target: StudioGuiWindowDropTarget,
+    pub layout_state: StudioGuiWindowLayoutState,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StudioGuiCanvasInteractionAction {
     AcceptFocusedByTab,
@@ -133,6 +153,14 @@ pub enum StudioGuiHostCommand {
     DispatchUiCommand {
         command_id: String,
     },
+    QueryWindowDropTarget {
+        window_id: Option<StudioWindowHostId>,
+        query: StudioGuiWindowDropTargetQuery,
+    },
+    ApplyWindowDropTarget {
+        window_id: Option<StudioWindowHostId>,
+        query: StudioGuiWindowDropTargetQuery,
+    },
     CloseWindow {
         window_id: StudioWindowHostId,
     },
@@ -144,6 +172,8 @@ pub enum StudioGuiHostCommandOutcome {
     WindowDispatched(StudioGuiHostDispatch),
     LifecycleDispatched(StudioGuiHostLifecycleDispatch),
     UiCommandDispatched(StudioGuiHostUiCommandDispatchResult),
+    WindowDropTargetQueried(StudioGuiHostWindowDropTargetQueryResult),
+    WindowDropTargetApplied(StudioGuiHostWindowDropTargetApplyResult),
     WindowClosed(StudioGuiHostCloseWindowResult),
 }
 
@@ -253,6 +283,61 @@ impl StudioGuiHost {
         })
     }
 
+    pub fn query_window_drop_target(
+        &self,
+        window_id: Option<StudioWindowHostId>,
+        query: StudioGuiWindowDropTargetQuery,
+    ) -> RfResult<StudioGuiHostWindowDropTargetQueryResult> {
+        if let Some(window_id) =
+            window_id.filter(|window_id| self.state().window(*window_id).is_none())
+        {
+            return Err(RfError::invalid_input(format!(
+                "window host `{window_id}` is not registered for drop target queries"
+            )));
+        }
+        let snapshot = self.snapshot();
+        let layout_state = self.layout_state_for_window_from_snapshot(&snapshot, window_id);
+        let drop_target = layout_state.drop_target_for_query(&query);
+        let preview_layout_state = layout_state.preview_layout_state_for_query(&query);
+        let preview_window = preview_layout_state.as_ref().map(|preview_layout_state| {
+            snapshot
+                .window_model_for_window(layout_state.scope.window_id)
+                .with_layout_state(preview_layout_state.clone())
+        });
+
+        Ok(StudioGuiHostWindowDropTargetQueryResult {
+            target_window_id: layout_state.scope.window_id,
+            query,
+            layout_state,
+            drop_target,
+            preview_layout_state,
+            preview_window,
+        })
+    }
+
+    pub fn apply_window_drop_target(
+        &mut self,
+        window_id: Option<StudioWindowHostId>,
+        query: StudioGuiWindowDropTargetQuery,
+    ) -> RfResult<StudioGuiHostWindowDropTargetApplyResult> {
+        let query_result = self.query_window_drop_target(window_id, query)?;
+        let drop_target = query_result.drop_target.ok_or_else(|| {
+            RfError::invalid_input(format!(
+                "drop target query `{query:?}` is not applicable for the current layout state"
+            ))
+        })?;
+        let mutation = query.layout_mutation();
+        let update = self.update_window_layout(window_id, mutation.clone())?;
+
+        Ok(StudioGuiHostWindowDropTargetApplyResult {
+            target_window_id: update.target_window_id,
+            query,
+            mutation,
+            drop_target,
+            layout_state: update.layout_state,
+        })
+    }
+
     pub fn accept_focused_canvas_suggestion_by_tab(
         &mut self,
     ) -> RfResult<StudioGuiHostCanvasInteractionResult> {
@@ -316,6 +401,12 @@ impl StudioGuiHost {
             StudioGuiHostCommand::DispatchUiCommand { command_id } => self
                 .dispatch_ui_command(&command_id)
                 .map(StudioGuiHostCommandOutcome::UiCommandDispatched),
+            StudioGuiHostCommand::QueryWindowDropTarget { window_id, query } => self
+                .query_window_drop_target(window_id, query)
+                .map(StudioGuiHostCommandOutcome::WindowDropTargetQueried),
+            StudioGuiHostCommand::ApplyWindowDropTarget { window_id, query } => self
+                .apply_window_drop_target(window_id, query)
+                .map(StudioGuiHostCommandOutcome::WindowDropTargetApplied),
             StudioGuiHostCommand::CloseWindow { window_id } => self
                 .close_window(window_id)
                 .map(StudioGuiHostCommandOutcome::WindowClosed),
@@ -590,7 +681,8 @@ mod tests {
         StudioGuiHost, StudioGuiHostCommand, StudioGuiHostCommandOutcome,
         StudioGuiHostLifecycleEvent, StudioGuiHostUiCommandDispatchResult,
         StudioGuiNativeTimerEffects, StudioGuiWindowAreaId, StudioGuiWindowDockPlacement,
-        StudioGuiWindowDockRegion, StudioGuiWindowLayoutMutation, StudioRuntimeConfig,
+        StudioGuiWindowDockRegion, StudioGuiWindowDropTargetQuery,
+        StudioGuiWindowLayoutMutation, StudioRuntimeConfig,
         StudioRuntimeEntitlementPreflight, StudioRuntimeEntitlementSeed,
         StudioRuntimeEntitlementSessionEvent, StudioRuntimeTrigger, StudioWindowHostRetirement,
     };
@@ -679,6 +771,176 @@ mod tests {
             }
             other => panic!("expected disabled ui command result, got {other:?}"),
         }
+    }
+
+    #[test]
+    fn gui_host_queries_drop_target_through_explicit_command_surface() {
+        let (config, project_path, layout_path) = layout_persistence_config();
+        let mut gui_host = StudioGuiHost::new(&config).expect("expected gui host");
+        let window_id = match gui_host
+            .execute_command(StudioGuiHostCommand::OpenWindow)
+            .expect("expected window open")
+        {
+            StudioGuiHostCommandOutcome::WindowOpened(opened) => opened.registration.window_id,
+            other => panic!("expected opened window outcome, got {other:?}"),
+        };
+
+        let queried = gui_host
+            .execute_command(StudioGuiHostCommand::QueryWindowDropTarget {
+                window_id: Some(window_id),
+                query: StudioGuiWindowDropTargetQuery::DockRegion {
+                    area_id: StudioGuiWindowAreaId::Runtime,
+                    dock_region: StudioGuiWindowDockRegion::LeftSidebar,
+                    placement: StudioGuiWindowDockPlacement::Start,
+                },
+            })
+            .expect("expected drop target query");
+
+        match queried {
+            StudioGuiHostCommandOutcome::WindowDropTargetQueried(result) => {
+                assert_eq!(result.target_window_id, Some(window_id));
+                assert_eq!(
+                    result.query,
+                    StudioGuiWindowDropTargetQuery::DockRegion {
+                        area_id: StudioGuiWindowAreaId::Runtime,
+                        dock_region: StudioGuiWindowDockRegion::LeftSidebar,
+                        placement: StudioGuiWindowDockPlacement::Start,
+                    }
+                );
+                assert_eq!(
+                    result.drop_target.as_ref().map(|target| target.dock_region),
+                    Some(StudioGuiWindowDockRegion::LeftSidebar)
+                );
+                assert_eq!(
+                    result.preview_layout_state.as_ref().map(|layout| {
+                        layout
+                            .panel(StudioGuiWindowAreaId::Runtime)
+                            .map(|panel| (panel.dock_region, panel.stack_group, panel.order))
+                    }),
+                    Some(Some((StudioGuiWindowDockRegion::LeftSidebar, 10, 10)))
+                );
+                assert_eq!(
+                    result.preview_window.as_ref().and_then(|window| {
+                        window
+                            .layout_state
+                            .panel(StudioGuiWindowAreaId::Runtime)
+                            .map(|panel| (panel.dock_region, panel.stack_group, panel.order))
+                    }),
+                    Some((StudioGuiWindowDockRegion::LeftSidebar, 10, 10))
+                );
+                assert_eq!(
+                    result
+                        .layout_state
+                        .panel(StudioGuiWindowAreaId::Runtime)
+                        .map(|panel| (panel.dock_region, panel.stack_group)),
+                    Some((StudioGuiWindowDockRegion::RightSidebar, 10))
+                );
+            }
+            other => panic!("expected drop target query outcome, got {other:?}"),
+        }
+
+        let _ = fs::remove_file(layout_path);
+        let _ = fs::remove_file(project_path);
+    }
+
+    #[test]
+    fn gui_host_applies_drop_target_through_explicit_command_surface() {
+        let (config, project_path, layout_path) = layout_persistence_config();
+        let mut gui_host = StudioGuiHost::new(&config).expect("expected gui host");
+        let window_id = match gui_host
+            .execute_command(StudioGuiHostCommand::OpenWindow)
+            .expect("expected window open")
+        {
+            StudioGuiHostCommandOutcome::WindowOpened(opened) => opened.registration.window_id,
+            other => panic!("expected opened window outcome, got {other:?}"),
+        };
+
+        let applied = gui_host
+            .execute_command(StudioGuiHostCommand::ApplyWindowDropTarget {
+                window_id: Some(window_id),
+                query: StudioGuiWindowDropTargetQuery::DockRegion {
+                    area_id: StudioGuiWindowAreaId::Runtime,
+                    dock_region: StudioGuiWindowDockRegion::LeftSidebar,
+                    placement: StudioGuiWindowDockPlacement::Start,
+                },
+            })
+            .expect("expected drop target apply");
+
+        match applied {
+            StudioGuiHostCommandOutcome::WindowDropTargetApplied(result) => {
+                assert_eq!(result.target_window_id, Some(window_id));
+                assert_eq!(
+                    result.drop_target.dock_region,
+                    StudioGuiWindowDockRegion::LeftSidebar
+                );
+                assert_eq!(
+                    result
+                        .layout_state
+                        .panel(StudioGuiWindowAreaId::Runtime)
+                        .map(|panel| (panel.dock_region, panel.stack_group, panel.order)),
+                    Some((StudioGuiWindowDockRegion::LeftSidebar, 10, 10))
+                );
+            }
+            other => panic!("expected drop target apply outcome, got {other:?}"),
+        }
+
+        let _ = fs::remove_file(layout_path);
+        let _ = fs::remove_file(project_path);
+    }
+
+    #[test]
+    fn gui_host_returns_no_preview_window_for_inapplicable_drop_query() {
+        let mut gui_host = StudioGuiHost::new(&lease_expiring_config()).expect("expected gui host");
+        let window_id = match gui_host
+            .execute_command(StudioGuiHostCommand::OpenWindow)
+            .expect("expected window open")
+        {
+            StudioGuiHostCommandOutcome::WindowOpened(opened) => opened.registration.window_id,
+            other => panic!("expected opened window outcome, got {other:?}"),
+        };
+
+        let queried = gui_host
+            .execute_command(StudioGuiHostCommand::QueryWindowDropTarget {
+                window_id: Some(window_id),
+                query: StudioGuiWindowDropTargetQuery::Unstack {
+                    area_id: StudioGuiWindowAreaId::Commands,
+                    placement: StudioGuiWindowDockPlacement::End,
+                },
+            })
+            .expect("expected drop target query");
+
+        match queried {
+            StudioGuiHostCommandOutcome::WindowDropTargetQueried(result) => {
+                assert_eq!(result.drop_target, None);
+                assert_eq!(result.preview_layout_state, None);
+                assert_eq!(result.preview_window, None);
+            }
+            other => panic!("expected drop target query outcome, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn gui_host_rejects_inapplicable_drop_target_apply() {
+        let mut gui_host = StudioGuiHost::new(&lease_expiring_config()).expect("expected gui host");
+        let window_id = match gui_host
+            .execute_command(StudioGuiHostCommand::OpenWindow)
+            .expect("expected window open")
+        {
+            StudioGuiHostCommandOutcome::WindowOpened(opened) => opened.registration.window_id,
+            other => panic!("expected opened window outcome, got {other:?}"),
+        };
+
+        let error = gui_host
+            .execute_command(StudioGuiHostCommand::ApplyWindowDropTarget {
+                window_id: Some(window_id),
+                query: StudioGuiWindowDropTargetQuery::Unstack {
+                    area_id: StudioGuiWindowAreaId::Commands,
+                    placement: StudioGuiWindowDockPlacement::End,
+                },
+            })
+            .expect_err("expected invalid drop apply");
+
+        assert_eq!(error.code().as_str(), "invalid_input");
     }
 
     #[test]

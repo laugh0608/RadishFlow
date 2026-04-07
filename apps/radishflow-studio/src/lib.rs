@@ -174,6 +174,7 @@ pub use studio_gui_host::{
     StudioGuiHostCloseWindowResult, StudioGuiHostCommand, StudioGuiHostCommandOutcome,
     StudioGuiHostDispatch, StudioGuiHostGlobalEventDispatch, StudioGuiHostLifecycleDispatch,
     StudioGuiHostLifecycleEvent, StudioGuiHostUiCommandDispatchResult,
+    StudioGuiHostWindowDropTargetApplyResult, StudioGuiHostWindowDropTargetQueryResult,
     StudioGuiHostWindowLayoutUpdateResult, StudioGuiHostWindowOpened,
 };
 pub use studio_gui_shortcut_router::{
@@ -183,11 +184,13 @@ pub use studio_gui_snapshot::{StudioGuiRuntimeSnapshot, StudioGuiSnapshot};
 pub use studio_gui_timer_host::{StudioGuiNativeTimerEffects, StudioGuiNativeTimerOperation};
 pub use studio_gui_window_layout::{
     StudioGuiWindowAreaId, StudioGuiWindowDockPlacement, StudioGuiWindowDockRegion,
-    StudioGuiWindowDropTarget, StudioGuiWindowDropTargetKind, StudioGuiWindowLayoutModel,
-    StudioGuiWindowLayoutMutation, StudioGuiWindowLayoutPersistenceState,
-    StudioGuiWindowLayoutScope, StudioGuiWindowLayoutScopeKind, StudioGuiWindowLayoutState,
-    StudioGuiWindowPanelDisplayMode, StudioGuiWindowPanelLayout, StudioGuiWindowPanelLayoutState,
-    StudioGuiWindowRegionWeight, StudioGuiWindowStackGroupLayout, StudioGuiWindowStackGroupState,
+    StudioGuiWindowDropTarget, StudioGuiWindowDropTargetKind, StudioGuiWindowDropTargetQuery,
+    StudioGuiWindowLayoutModel, StudioGuiWindowLayoutMutation,
+    StudioGuiWindowLayoutPersistenceState, StudioGuiWindowLayoutScope,
+    StudioGuiWindowLayoutScopeKind, StudioGuiWindowLayoutState,
+    StudioGuiWindowPanelDisplayMode, StudioGuiWindowPanelLayout,
+    StudioGuiWindowPanelLayoutState, StudioGuiWindowRegionWeight,
+    StudioGuiWindowStackGroupLayout, StudioGuiWindowStackGroupState,
     StudioGuiWindowStackTabLayout, StudioGuiWindowTitlebarModel,
 };
 pub use studio_gui_window_model::{
