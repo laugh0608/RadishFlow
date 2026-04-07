@@ -62,6 +62,8 @@ App 与交互层当前进一步冻结以下口径：
 - `SolveSessionState` 必须绑定当前观察的文档修订号，`SolveSnapshot` 由工作区持有有界历史窗口
 - Studio 当前 GUI-facing 宿主边界已形成 `StudioGuiHost + StudioGuiDriver + StudioGuiSnapshot + StudioGuiWindowModel + StudioGuiWindowLayoutState` 这一条正式契约，不再要求 `main.rs` 或未来真实 GUI 手工拼装窗口摘要
 - Studio 当前窗口布局状态已冻结为独立 UI 状态面，覆盖 `panel dock_region/stack_group/visibility/collapsed/order`、stack active tab、region 内 stack placement、`center_area`、`region_weights`、多窗口 `layout scope` 与 GUI-facing `drop target` 摘要推导
+- Studio 当前也已把 tab 展示角色冻结到 `StudioGuiWindowPanelLayout`，显式区分 `Standalone / ActiveTab / InactiveTab`，不让真实 GUI 再自行猜测 tab 化 panel 的展示模式
+- Studio 当前也已把 tab strip 交互纳入正式 mutation，至少覆盖 active tab 切换、前后循环、stack 内重排和 unstack，不再把这几类行为留给 GUI 框架私有状态
 - Studio 当前又已把 drop preview 查询正式前推到 `StudioGuiWindowDropTargetQuery + StudioGuiHost / StudioGuiDriver` 入口；未来真实 GUI 应按 `window_id + hover/anchor/placement` 请求预览，而不是继续读取 layout 内部状态后手工拼 mutation
 - Studio 当前又已把 query 结果扩成 `drop_target + preview_layout_state + preview_window`，让真实 GUI 在 hover 时可以直接消费预览态窗口模型，而不必自己再从摘要重建 tabbed/dock 结果
 - Studio 当前又已把 drop release 正式前推到同一套 query 词汇，新增 `ApplyWindowDropTarget / WindowDropTargetApplyRequested`，让 GUI 侧不必继续维护“预览用 query / 落地用 mutation”两套接口

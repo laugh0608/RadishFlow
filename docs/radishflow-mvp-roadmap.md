@@ -181,6 +181,8 @@ MVP 阶段明确不做：
 - Studio 当前默认包选择采取保守策略：只有在唯一候选包明确时才自动选中，多包场景必须显式指定 package
 - Studio 当前又已形成 `StudioGuiHost / StudioGuiDriver / StudioGuiSnapshot / StudioGuiWindowModel / StudioGuiWindowLayoutState` 这一条 GUI-facing 宿主与窗口布局契约
 - Studio 当前窗口布局状态已覆盖 `panel dock_region/stack_group/visibility/collapsed/order`、stack active tab、region 内 stack placement、`center_area`、`region_weights`、多窗口 `layout scope` 与 GUI-facing `drop target` 摘要推导
+- Studio 当前也已把 tab 展示角色冻结到 `StudioGuiWindowPanelLayout`，显式区分 `Standalone / ActiveTab / InactiveTab`，不再让真实 GUI 私自猜测 tab 化 panel 的主次呈现
+- Studio 当前也已把 tab strip 交互收口到正式 mutation，至少覆盖 active tab 切换、前后循环、stack 内重排与 unstack，避免真实 GUI 再另写一套 tab strip 私有状态机
 - Studio 当前又已把 drop preview 查询从 layout 层只读推导前推到 `StudioGuiWindowDropTargetQuery -> StudioGuiHost / StudioGuiDriver` 显式入口，未来真实 GUI 可直接按 `window_id + hover/anchor/placement` 请求预览
 - Studio 当前又已把 drop preview query 结果扩成 `preview_layout_state / preview_window`，让真实 GUI 可直接消费 hover 预览态，而不只拿到 target 摘要
 - Studio 当前又已把 drop release 也前推到同一套 query 词汇，新增 `ApplyWindowDropTarget / WindowDropTargetApplyRequested`，让 hover/query 与 release/apply 共用同一份 GUI-facing 契约

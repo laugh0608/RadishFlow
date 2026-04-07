@@ -92,6 +92,8 @@ RadishFlow 的目标架构已经冻结为“桌面端三层 + 外部控制面”
 - `StudioGuiSnapshot` 作为跨模块聚合快照真相源
 - `StudioGuiWindowModel` 作为窗口内容分区模型
 - `StudioGuiWindowLayoutState` 作为正式布局状态契约，覆盖 `panel dock_region/stack_group/visibility/collapsed/order`、stack active tab、region 内 stack placement、`center_area`、`region_weights`、多窗口 `layout scope` 与 GUI 可直接消费的 `drop target` 摘要推导
+- `StudioGuiWindowLayoutModel` / `StudioGuiWindowPanelLayout` 当前也已冻结 tab 展示语义，显式区分 `Standalone / ActiveTab / InactiveTab`，让真实 GUI 不必自己再猜非 active tab 的展示角色
+- tab strip 当前也已进入正式布局状态机，至少覆盖 `SetActivePanelInStack`、`ActivateNextPanelInStack`、`ActivatePreviousPanelInStack`、`MovePanelWithinStack` 与 `UnstackPanelFromGroup`，不再把 tab 切换、循环和重排留给 GUI 私有状态
 - `StudioGuiWindowDropTargetQuery` 当前也已冻结为 GUI-facing 预览查询口径，并由 `StudioGuiHostCommand::QueryWindowDropTarget` / `StudioGuiEvent::WindowDropTargetQueryRequested` 暴露显式查询入口，未来真实 GUI 可按 hover/anchor/placement 请求 drop preview，而不再自己拼内部布局状态
 - 上述 query 结果当前又已直接携带 `preview_layout_state / preview_window`，让 GUI 在 hover 时可以直接消费预览态，而不是只拿到 target 摘要后再自行反推整份布局
 - 上述同一份 query 当前也已可直接通过 `StudioGuiHostCommand::ApplyWindowDropTarget` / `StudioGuiEvent::WindowDropTargetApplyRequested` 落地成正式布局更新，未来真实 GUI 的 hover/query 与 release/apply 不必再维护两套拖放词汇
