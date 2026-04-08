@@ -52,6 +52,13 @@ pub enum StudioGuiPlatformNativeTimerCallbackOutcome {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub enum StudioGuiPlatformTimerFollowUpCommand {
+    ClearNativeTimer {
+        native_timer_id: StudioGuiPlatformNativeTimerId,
+    },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum StudioGuiPlatformTimerStartedOutcome {
     Applied(StudioGuiPlatformTimerStartAckResult),
     IgnoredMissingPendingSchedule {
@@ -73,6 +80,34 @@ pub enum StudioGuiPlatformTimerStartFailedOutcome {
     IgnoredStalePendingSchedule {
         failure: StudioGuiPlatformTimerStartFailureResult,
     },
+}
+
+impl StudioGuiPlatformTimerStartedOutcome {
+    pub fn follow_up_command(&self) -> Option<StudioGuiPlatformTimerFollowUpCommand> {
+        match self {
+            Self::Applied(_) => None,
+            Self::IgnoredMissingPendingSchedule {
+                clear_native_timer_id,
+                ..
+            }
+            | Self::IgnoredStalePendingSchedule {
+                clear_native_timer_id,
+                ..
+            } => Some(StudioGuiPlatformTimerFollowUpCommand::ClearNativeTimer {
+                native_timer_id: *clear_native_timer_id,
+            }),
+        }
+    }
+}
+
+impl StudioGuiPlatformTimerStartFailedOutcome {
+    pub fn follow_up_command(&self) -> Option<StudioGuiPlatformTimerFollowUpCommand> {
+        match self {
+            Self::Applied(_)
+            | Self::IgnoredMissingPendingSchedule { .. }
+            | Self::IgnoredStalePendingSchedule { .. } => None,
+        }
+    }
 }
 
 pub struct StudioGuiPlatformHost {
@@ -340,8 +375,9 @@ fn plan_platform_timer_request(
 mod tests {
     use crate::{
         StudioGuiEvent, StudioGuiPlatformHost, StudioGuiPlatformNativeTimerCallbackOutcome,
-        StudioGuiPlatformTimerRequest, StudioGuiPlatformTimerStartFailedOutcome,
-        StudioGuiPlatformTimerStartedOutcome, StudioRuntimeConfig,
+        StudioGuiPlatformTimerFollowUpCommand, StudioGuiPlatformTimerRequest,
+        StudioGuiPlatformTimerStartFailedOutcome, StudioGuiPlatformTimerStartedOutcome,
+        StudioRuntimeConfig,
         StudioRuntimeEntitlementPreflight, StudioRuntimeEntitlementSeed,
     };
 
@@ -684,6 +720,12 @@ mod tests {
                 clear_native_timer_id: 9001,
             }
         );
+        assert_eq!(
+            started.follow_up_command(),
+            Some(StudioGuiPlatformTimerFollowUpCommand::ClearNativeTimer {
+                native_timer_id: 9001,
+            })
+        );
     }
 
     #[test]
@@ -740,6 +782,12 @@ mod tests {
                 clear_native_timer_id: 9001,
             }
         );
+        assert_eq!(
+            started.follow_up_command(),
+            Some(StudioGuiPlatformTimerFollowUpCommand::ClearNativeTimer {
+                native_timer_id: 9001,
+            })
+        );
     }
 
     #[test]
@@ -786,6 +834,7 @@ mod tests {
                 },
             }
         );
+        assert_eq!(failure.follow_up_command(), None);
     }
 
     #[test]
@@ -838,7 +887,7 @@ mod tests {
         let _ = host.apply_platform_timer_request(next_dispatch.native_timer_request.as_ref());
         let started = host.acknowledge_platform_timer_started(&next_schedule, 9001);
         match started {
-            StudioGuiPlatformTimerStartedOutcome::Applied(started) => {
+            StudioGuiPlatformTimerStartedOutcome::Applied(ref started) => {
                 assert_eq!(
                     started.status,
                     crate::StudioGuiPlatformTimerStartAckStatus::Applied
@@ -846,6 +895,7 @@ mod tests {
             }
             other => panic!("expected applied platform timer started outcome, got {other:?}"),
         }
+        assert_eq!(started.follow_up_command(), None);
         assert!(host.platform_notice().is_none());
         assert!(host.snapshot().runtime.platform_notice.is_none());
     }
