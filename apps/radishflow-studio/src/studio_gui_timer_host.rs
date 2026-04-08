@@ -153,6 +153,34 @@ impl StudioGuiNativeTimerRuntime {
         due
     }
 
+    pub fn consume_elapsed_event(
+        &mut self,
+        window_id: Option<StudioWindowHostId>,
+        handle_id: StudioWindowNativeTimerHandleId,
+    ) -> Option<StudioGuiNativeTimerDueEvent> {
+        let binding = match window_id {
+            Some(window_id) => self.window_bindings.get(&window_id).and_then(|binding| {
+                (binding.handle_id == handle_id).then_some((Some(window_id), binding))
+            }),
+            None => self
+                .parked_binding
+                .as_ref()
+                .and_then(|binding| (binding.handle_id == handle_id).then_some((None, binding))),
+        }?;
+
+        let effect_id = binding.1.slot.effect_id;
+        if self.delivered_effect_ids.contains(&effect_id) {
+            return None;
+        }
+        self.delivered_effect_ids.insert(effect_id);
+
+        Some(StudioGuiNativeTimerDueEvent {
+            window_id: binding.0,
+            handle_id,
+            slot: binding.1.slot.clone(),
+        })
+    }
+
     fn apply_operation(
         &mut self,
         operation: &StudioGuiNativeTimerOperation,
@@ -510,5 +538,31 @@ mod tests {
                 slot: slot(2, 60),
             })
         );
+    }
+
+    #[test]
+    fn gui_native_timer_runtime_accepts_current_elapsed_callback_and_rejects_stale_repeats() {
+        let mut runtime = StudioGuiNativeTimerRuntime::default();
+        runtime.apply_effects(&StudioGuiNativeTimerEffects {
+            operations: vec![StudioGuiNativeTimerOperation::Keep {
+                window_id: 7,
+                binding: StudioWindowNativeTimerBinding {
+                    handle_id: 100,
+                    slot: slot(1, 30),
+                },
+            }],
+            acks: Vec::new(),
+        });
+
+        assert_eq!(
+            runtime.consume_elapsed_event(Some(7), 100),
+            Some(StudioGuiNativeTimerDueEvent {
+                window_id: Some(7),
+                handle_id: 100,
+                slot: slot(1, 30),
+            })
+        );
+        assert_eq!(runtime.consume_elapsed_event(Some(7), 100), None);
+        assert_eq!(runtime.consume_elapsed_event(Some(7), 999), None);
     }
 }

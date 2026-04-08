@@ -56,6 +56,10 @@ pub enum StudioGuiEvent {
         shortcut: StudioGuiShortcut,
         focus_context: StudioGuiFocusContext,
     },
+    NativeTimerElapsed {
+        window_id: Option<StudioWindowHostId>,
+        handle_id: crate::StudioWindowNativeTimerHandleId,
+    },
     LoginCompleted,
     NetworkRestored,
     EntitlementTimerElapsed,
@@ -79,6 +83,10 @@ pub enum StudioGuiDriverOutcome {
     HostCommand(StudioGuiHostCommandOutcome),
     CanvasInteraction(StudioGuiHostCanvasInteractionResult),
     WindowLayoutUpdated(StudioGuiHostWindowLayoutUpdateResult),
+    IgnoredNativeTimerElapsed {
+        window_id: Option<StudioWindowHostId>,
+        handle_id: crate::StudioWindowNativeTimerHandleId,
+    },
     IgnoredShortcut {
         shortcut: StudioGuiShortcut,
         reason: StudioGuiShortcutIgnoreReason,
@@ -188,6 +196,24 @@ impl StudioGuiDriver {
             } => StudioGuiDriverOutcome::WindowLayoutUpdated(
                 self.host.update_window_layout(window_id, mutation)?,
             ),
+            DriverRoute::NativeTimerElapsed { window_id, handle_id } => {
+                if self
+                    .native_timer_runtime
+                    .consume_elapsed_event(window_id, handle_id)
+                    .is_some()
+                {
+                    StudioGuiDriverOutcome::HostCommand(self.host.execute_command(
+                        StudioGuiHostCommand::DispatchLifecycleEvent {
+                            event: StudioGuiHostLifecycleEvent::TimerElapsed,
+                        },
+                    )?)
+                } else {
+                    StudioGuiDriverOutcome::IgnoredNativeTimerElapsed {
+                        window_id,
+                        handle_id,
+                    }
+                }
+            }
         };
         self.apply_native_timer_effects_from_outcome(&outcome);
         let snapshot = self.host.snapshot();
@@ -228,6 +254,7 @@ impl StudioGuiDriver {
             StudioGuiDriverOutcome::HostCommand(_)
             | StudioGuiDriverOutcome::CanvasInteraction(_)
             | StudioGuiDriverOutcome::WindowLayoutUpdated(_)
+            | StudioGuiDriverOutcome::IgnoredNativeTimerElapsed { .. }
             | StudioGuiDriverOutcome::IgnoredShortcut { .. } => None,
         };
 
@@ -302,6 +329,7 @@ fn layout_scope_window_id(outcome: &StudioGuiDriverOutcome) -> Option<StudioWind
         )
         | StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::WindowClosed(_))
         | StudioGuiDriverOutcome::CanvasInteraction(_)
+        | StudioGuiDriverOutcome::IgnoredNativeTimerElapsed { .. }
         | StudioGuiDriverOutcome::IgnoredShortcut { .. } => None,
         StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::WindowDropTargetQueried(
             crate::StudioGuiHostWindowDropTargetQueryResult {
@@ -346,6 +374,10 @@ enum DriverRoute {
     WindowLayoutMutation {
         window_id: Option<StudioWindowHostId>,
         mutation: StudioGuiWindowLayoutMutation,
+    },
+    NativeTimerElapsed {
+        window_id: Option<StudioWindowHostId>,
+        handle_id: crate::StudioWindowNativeTimerHandleId,
     },
     IgnoredShortcut {
         shortcut: StudioGuiShortcut,
@@ -446,6 +478,13 @@ fn route_driver_event(event: &StudioGuiEvent, registry: &StudioGuiCommandRegistr
                 shortcut: shortcut.clone(),
                 reason,
             },
+        },
+        StudioGuiEvent::NativeTimerElapsed {
+            window_id,
+            handle_id,
+        } => DriverRoute::NativeTimerElapsed {
+            window_id: *window_id,
+            handle_id: *handle_id,
         },
         StudioGuiEvent::LoginCompleted => {
             DriverRoute::HostCommand(StudioGuiHostCommand::DispatchLifecycleEvent {
@@ -1866,5 +1905,88 @@ mod tests {
             )
         ));
         assert!(driver.next_due_native_timer_at().is_some());
+    }
+
+    #[test]
+    fn gui_driver_routes_native_timer_callback_for_current_binding() {
+        let mut driver = StudioGuiDriver::new(&lease_expiring_config()).expect("expected driver");
+        let opened = driver
+            .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+            .expect("expected open dispatch");
+        let window_id = match opened.outcome {
+            StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::WindowOpened(
+                opened,
+            )) => opened.registration.window_id,
+            other => panic!("expected opened window outcome, got {other:?}"),
+        };
+        let _ = driver
+            .dispatch_event(StudioGuiEvent::WindowTriggerRequested {
+                window_id,
+                trigger: crate::StudioRuntimeTrigger::EntitlementSessionEvent(
+                    crate::StudioRuntimeEntitlementSessionEvent::TimerElapsed,
+                ),
+            })
+            .expect("expected timer trigger");
+        let binding = driver
+            .native_timer_runtime()
+            .window_binding(window_id)
+            .cloned()
+            .expect("expected native timer binding");
+
+        let dispatch = driver
+            .dispatch_event(StudioGuiEvent::NativeTimerElapsed {
+                window_id: Some(window_id),
+                handle_id: binding.handle_id,
+            })
+            .expect("expected native timer callback dispatch");
+
+        assert!(matches!(
+            dispatch.outcome,
+            StudioGuiDriverOutcome::HostCommand(
+                StudioGuiHostCommandOutcome::LifecycleDispatched(_)
+            )
+        ));
+    }
+
+    #[test]
+    fn gui_driver_ignores_unknown_native_timer_callback_handle() {
+        let mut driver = StudioGuiDriver::new(&lease_expiring_config()).expect("expected driver");
+        let opened = driver
+            .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+            .expect("expected open dispatch");
+        let window_id = match opened.outcome {
+            StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::WindowOpened(
+                opened,
+            )) => opened.registration.window_id,
+            other => panic!("expected opened window outcome, got {other:?}"),
+        };
+        let _ = driver
+            .dispatch_event(StudioGuiEvent::WindowTriggerRequested {
+                window_id,
+                trigger: crate::StudioRuntimeTrigger::EntitlementSessionEvent(
+                    crate::StudioRuntimeEntitlementSessionEvent::TimerElapsed,
+                ),
+            })
+            .expect("expected first timer trigger");
+        let current_handle_id = driver
+            .native_timer_runtime()
+            .window_binding(window_id)
+            .map(|binding| binding.handle_id)
+            .expect("expected initial binding");
+
+        let ignored = driver
+            .dispatch_event(StudioGuiEvent::NativeTimerElapsed {
+                window_id: Some(window_id),
+                handle_id: current_handle_id + 999,
+            })
+            .expect("expected unknown native timer callback");
+
+        assert!(matches!(
+            ignored.outcome,
+            StudioGuiDriverOutcome::IgnoredNativeTimerElapsed {
+                window_id: Some(_),
+                ..
+            }
+        ));
     }
 }
