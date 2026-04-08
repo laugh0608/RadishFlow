@@ -877,22 +877,27 @@ fn expect_close_window(
 
 fn print_platform_timer_request(request: Option<&StudioGuiPlatformTimerRequest>) {
     match request {
-        Some(StudioGuiPlatformTimerRequest::Arm { due_at }) => {
-            println!("Platform timer request: arm due at {:?}", due_at);
-        }
-        Some(StudioGuiPlatformTimerRequest::Rearm {
-            previous_due_at,
-            due_at,
-        }) => {
+        Some(StudioGuiPlatformTimerRequest::Arm { schedule }) => {
             println!(
-                "Platform timer request: rearm {:?} -> {:?}",
-                previous_due_at, due_at
+                "Platform timer request: arm window={:?} handle={} due_at={:?}",
+                schedule.window_id, schedule.handle_id, schedule.slot.timer.due_at
             );
         }
-        Some(StudioGuiPlatformTimerRequest::Clear { previous_due_at }) => {
+        Some(StudioGuiPlatformTimerRequest::Rearm { previous, schedule }) => {
             println!(
-                "Platform timer request: clear previous due at {:?}",
-                previous_due_at
+                "Platform timer request: rearm window={:?} handle={} due_at={:?} -> window={:?} handle={} due_at={:?}",
+                previous.window_id,
+                previous.handle_id,
+                previous.slot.timer.due_at,
+                schedule.window_id,
+                schedule.handle_id,
+                schedule.slot.timer.due_at
+            );
+        }
+        Some(StudioGuiPlatformTimerRequest::Clear { previous }) => {
+            println!(
+                "Platform timer request: clear window={:?} handle={} due_at={:?}",
+                previous.window_id, previous.handle_id, previous.slot.timer.due_at
             );
         }
         None => {}

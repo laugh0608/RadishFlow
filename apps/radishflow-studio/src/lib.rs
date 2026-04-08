@@ -188,7 +188,7 @@ pub use studio_gui_shortcut_router::{
 pub use studio_gui_snapshot::{StudioGuiRuntimeSnapshot, StudioGuiSnapshot};
 pub use studio_gui_timer_host::{
     StudioGuiNativeTimerDueEvent, StudioGuiNativeTimerEffects, StudioGuiNativeTimerOperation,
-    StudioGuiNativeTimerRuntime,
+    StudioGuiNativeTimerRuntime, StudioGuiNativeTimerSchedule,
 };
 pub use studio_gui_window_layout::{
     StudioGuiWindowAreaId, StudioGuiWindowDockPlacement, StudioGuiWindowDockRegion,

@@ -5,20 +5,21 @@ use rf_types::RfResult;
 use crate::{
     StudioAppHostState, StudioAppHostUiCommandModel, StudioGuiCanvasState,
     StudioGuiCommandRegistry, StudioGuiDriver, StudioGuiDriverDispatch, StudioGuiDriverOutcome,
-    StudioGuiEvent, StudioGuiSnapshot, StudioGuiWindowModel, StudioWindowHostId,
+    StudioGuiEvent, StudioGuiNativeTimerSchedule, StudioGuiSnapshot, StudioGuiWindowModel,
+    StudioWindowHostId,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum StudioGuiPlatformTimerRequest {
     Arm {
-        due_at: SystemTime,
+        schedule: StudioGuiNativeTimerSchedule,
     },
     Rearm {
-        previous_due_at: SystemTime,
-        due_at: SystemTime,
+        previous: StudioGuiNativeTimerSchedule,
+        schedule: StudioGuiNativeTimerSchedule,
     },
     Clear {
-        previous_due_at: SystemTime,
+        previous: StudioGuiNativeTimerSchedule,
     },
 }
 
@@ -37,14 +38,14 @@ pub struct StudioGuiPlatformDispatch {
 
 pub struct StudioGuiPlatformHost {
     driver: StudioGuiDriver,
-    current_due_at: Option<SystemTime>,
+    current_schedule: Option<StudioGuiNativeTimerSchedule>,
 }
 
 impl StudioGuiPlatformHost {
     pub fn new(config: &crate::StudioRuntimeConfig) -> RfResult<Self> {
         Ok(Self {
             driver: StudioGuiDriver::new(config)?,
-            current_due_at: None,
+            current_schedule: None,
         })
     }
 
@@ -57,17 +58,23 @@ impl StudioGuiPlatformHost {
     }
 
     pub fn next_native_timer_due_at(&self) -> Option<SystemTime> {
-        self.current_due_at
+        self.current_schedule
+            .as_ref()
+            .map(|schedule| schedule.slot.timer.due_at)
+    }
+
+    pub fn next_native_timer_schedule(&self) -> Option<&StudioGuiNativeTimerSchedule> {
+        self.current_schedule.as_ref()
     }
 
     pub fn dispatch_event(&mut self, event: StudioGuiEvent) -> RfResult<StudioGuiPlatformDispatch> {
-        let previous_due_at = self.current_due_at;
+        let previous_schedule = self.current_schedule.clone();
         let dispatch = self.driver.dispatch_event(event)?;
-        let next_due_at = self.driver.next_due_native_timer_at();
-        self.current_due_at = next_due_at;
+        let next_schedule = self.driver.native_timer_runtime().next_schedule();
+        self.current_schedule = next_schedule.clone();
         Ok(platform_dispatch_from_driver(
             dispatch,
-            plan_platform_timer_request(previous_due_at, next_due_at),
+            plan_platform_timer_request(previous_schedule, next_schedule),
         ))
     }
 
@@ -89,12 +96,12 @@ impl StudioGuiPlatformHost {
         let due_dispatches = self.driver.drain_due_native_timer_events(now)?;
         let mut platform_dispatches = Vec::with_capacity(due_dispatches.len());
         for dispatch in due_dispatches {
-            let previous_due_at = self.current_due_at;
-            let next_due_at = self.driver.next_due_native_timer_at();
-            self.current_due_at = next_due_at;
+            let previous_schedule = self.current_schedule.clone();
+            let next_schedule = self.driver.native_timer_runtime().next_schedule();
+            self.current_schedule = next_schedule.clone();
             platform_dispatches.push(platform_dispatch_from_driver(
                 dispatch,
-                plan_platform_timer_request(previous_due_at, next_due_at),
+                plan_platform_timer_request(previous_schedule, next_schedule),
             ));
         }
         Ok(platform_dispatches)
@@ -119,20 +126,15 @@ fn platform_dispatch_from_driver(
 }
 
 fn plan_platform_timer_request(
-    previous_due_at: Option<SystemTime>,
-    next_due_at: Option<SystemTime>,
+    previous_schedule: Option<StudioGuiNativeTimerSchedule>,
+    next_schedule: Option<StudioGuiNativeTimerSchedule>,
 ) -> Option<StudioGuiPlatformTimerRequest> {
-    match (previous_due_at, next_due_at) {
-        (None, Some(due_at)) => Some(StudioGuiPlatformTimerRequest::Arm { due_at }),
-        (Some(previous_due_at), Some(due_at)) if previous_due_at != due_at => {
-            Some(StudioGuiPlatformTimerRequest::Rearm {
-                previous_due_at,
-                due_at,
-            })
+    match (previous_schedule, next_schedule) {
+        (None, Some(schedule)) => Some(StudioGuiPlatformTimerRequest::Arm { schedule }),
+        (Some(previous), Some(schedule)) if previous != schedule => {
+            Some(StudioGuiPlatformTimerRequest::Rearm { previous, schedule })
         }
-        (Some(previous_due_at), None) => {
-            Some(StudioGuiPlatformTimerRequest::Clear { previous_due_at })
-        }
+        (Some(previous), None) => Some(StudioGuiPlatformTimerRequest::Clear { previous }),
         (Some(_), Some(_)) | (None, None) => None,
     }
 }
@@ -176,10 +178,14 @@ mod tests {
             .expect("expected timer trigger dispatch");
 
         assert!(matches!(
-            dispatched.native_timer_request,
-            Some(StudioGuiPlatformTimerRequest::Arm { .. })
+            dispatched.native_timer_request.as_ref(),
+            Some(StudioGuiPlatformTimerRequest::Arm { schedule })
+                if schedule.window_id == Some(window_id)
         ));
-        assert!(host.next_native_timer_due_at().is_some());
+        assert!(matches!(
+            host.next_native_timer_schedule(),
+            Some(schedule) if schedule.window_id == Some(window_id)
+        ));
     }
 
     #[test]
@@ -216,9 +222,15 @@ mod tests {
             .expect("expected due timer dispatches");
 
         assert!(!due_dispatches.is_empty());
-        assert!(due_dispatches.iter().all(|dispatch| matches!(
-            dispatch.native_timer_request,
-            Some(StudioGuiPlatformTimerRequest::Rearm { .. }) | None
-        )));
+        assert!(due_dispatches.iter().all(|dispatch| {
+            match dispatch.native_timer_request.as_ref() {
+                Some(StudioGuiPlatformTimerRequest::Rearm { previous, schedule }) => {
+                    previous.window_id == Some(window_id) && schedule.window_id == Some(window_id)
+                }
+                None => true,
+                Some(StudioGuiPlatformTimerRequest::Arm { .. })
+                | Some(StudioGuiPlatformTimerRequest::Clear { .. }) => false,
+            }
+        }));
     }
 }

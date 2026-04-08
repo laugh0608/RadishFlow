@@ -64,6 +64,13 @@ pub struct StudioGuiNativeTimerDueEvent {
     pub slot: StudioRuntimeTimerHandleSlot,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioGuiNativeTimerSchedule {
+    pub window_id: Option<StudioWindowHostId>,
+    pub handle_id: StudioWindowNativeTimerHandleId,
+    pub slot: StudioRuntimeTimerHandleSlot,
+}
+
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct StudioGuiNativeTimerRuntime {
     window_bindings: BTreeMap<StudioWindowHostId, StudioWindowNativeTimerBinding>,
@@ -100,10 +107,19 @@ impl StudioGuiNativeTimerRuntime {
     }
 
     pub fn next_due_at(&self) -> Option<SystemTime> {
+        self.next_schedule()
+            .map(|schedule| schedule.slot.timer.due_at)
+    }
+
+    pub fn next_schedule(&self) -> Option<StudioGuiNativeTimerSchedule> {
         self.pending_bindings()
             .into_iter()
-            .map(|binding| binding.slot.timer.due_at)
-            .min()
+            .min_by_key(|(_, binding)| binding.slot.timer.due_at)
+            .map(|(window_id, binding)| StudioGuiNativeTimerSchedule {
+                window_id,
+                handle_id: binding.handle_id,
+                slot: binding.slot.clone(),
+            })
     }
 
     pub fn apply_effects(&mut self, effects: &StudioGuiNativeTimerEffects) {
@@ -240,14 +256,20 @@ impl StudioGuiNativeTimerRuntime {
         }
     }
 
-    fn pending_bindings(&self) -> Vec<&StudioWindowNativeTimerBinding> {
-        let mut bindings = self.window_bindings.values().collect::<Vec<_>>();
+    fn pending_bindings(
+        &self,
+    ) -> Vec<(Option<StudioWindowHostId>, &StudioWindowNativeTimerBinding)> {
+        let mut bindings = self
+            .window_bindings
+            .iter()
+            .map(|(window_id, binding)| (Some(*window_id), binding))
+            .collect::<Vec<_>>();
         if let Some(binding) = self.parked_binding.as_ref() {
-            bindings.push(binding);
+            bindings.push((None, binding));
         }
         bindings
             .into_iter()
-            .filter(|binding| !self.delivered_effect_ids.contains(&binding.slot.effect_id))
+            .filter(|(_, binding)| !self.delivered_effect_ids.contains(&binding.slot.effect_id))
             .collect()
     }
 
