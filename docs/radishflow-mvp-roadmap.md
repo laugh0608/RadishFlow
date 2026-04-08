@@ -1,6 +1,6 @@
 # RadishFlow MVP 开发路线图
 
-更新时间：2026-04-07
+更新时间：2026-04-08
 
 ## 文档目的
 
@@ -199,6 +199,16 @@ MVP 阶段明确不做：
 - Studio 当前又已补出轻量 drop preview 会话态，新增 `SetWindowDropTargetPreview / ClearWindowDropTargetPreview` 与对应 driver 事件；host 会非持久化缓存当前 hover 预览，并经由 `StudioGuiSnapshot / StudioGuiWindowModel.drop_preview` 对外暴露
 - Studio 当前又已把 `drop_preview` 继续推进为正式 presentation，直接携带 `preview_layout + changed_area_ids`，让真实 GUI 不必再自己比对当前/预览两份布局 state
 - Studio 当前又已把 `drop_preview` 继续推进为 overlay presentation，直接携带目标 region/stack group、tab 插入位、目标 stack tabs 与高亮 area 集，让真实 GUI 不必再从底层 `drop_target` 手工拆提示语义
+- Studio 当前又已补出 `StudioGuiNativeTimerRuntime`、`StudioGuiPlatformHost` 与 `StudioGuiPlatformTimerDriverState` 这一条 GUI-facing 原生 timer 宿主 glue；真实桌面框架后续不必在入口层重写“逻辑 timer -> 平台 request -> native timer id -> callback 回灌”整套桥接
+- Studio 当前平台 timer glue 已继续冻结为三层正式消费面：
+- `StudioGuiPlatformTimerRequest` / `StudioGuiPlatformTimerCommand`：宿主比较前后 pending binding 后产出平台需要执行的 `Arm / Rearm / Clear`
+- `acknowledge_platform_timer_started(...)` / `acknowledge_platform_timer_start_failed(...)`：平台 start success/failure ack 的正式结果面与 cleanup follow-up
+- `dispatch_native_timer_elapsed_by_native_id(...)`：平台按 `native_timer_id` 回灌 callback 时的 `Dispatched / IgnoredUnknown / IgnoredStale` 正式 outcome
+- Studio 当前又已在其上继续冻结三类更接近真实宿主的组合结果：
+- callback / due drain batch：`dispatch_native_timer_elapsed_by_native_ids(...)`、`dispatch_due_native_timer_events_batch(...)` 与对应执行型 batch 结果
+- async round：`process_async_platform_round(...)`，统一消费一轮 `started_feedbacks -> start_failed_feedbacks -> native_timer_ids -> due_at`
+- executed async round：`process_async_platform_round_and_execute_actions(...)`，直接按 host 冻结的 `follow_up cleanup -> timer request` 顺序执行并返回最终 `snapshot/window`
+- `apps/radishflow-studio/src/main.rs` 当前也已切到消费上述 executed async round 结果面，最小宿主样例不再手工拆 callback batch、cleanup 顺序或 timer request 执行逻辑
 - Studio 当前窗口布局已独立持久化到 `<project>.rfstudio-layout.json` sidecar，并从基于运行时 `window_id` 的 key 收口到基于 `window_role + layout_slot` 的稳定 key
 
 ### 退出标准
@@ -387,6 +397,7 @@ Studio 当前又已继续把这条 GUI 命令入口推进为稳定 host command 
 - 在已补出的 `StudioAppHostState + StudioAppHostStore + StudioAppHostProjection` 基础上，继续决定真实桌面框架里的 app 生命周期宿主、窗口创建销毁入口与后台任务桥接是否直接围绕这份正式 state/projection 接线
 - 在已补出的 `StudioAppHostController + StudioAppHostState + StudioAppHostStore + StudioAppHostProjection` 基础上，继续决定真实桌面框架里的原生窗口事件源、app 生命周期宿主与后台任务入口如何直接走这条正式 controller 边界
 - 在已补出的 app host effect summary 基础上，继续决定真实桌面框架里的 native timer handle、后台任务调度和 close retirement 提示如何直接接到这组正式 GUI 宿主副作用
+- 在已补出的 `StudioGuiNativeTimerRuntime + StudioGuiPlatformHost + StudioGuiPlatformTimerDriverState` 基础上，继续把真实桌面框架 timer API、消息循环与批量回灌入口接到既有 batch/round glue；优先补宿主消费面，不提前进入真实 UI 布局和控件组织设计
 - 继续冻结运行结果派发、日志入口与后续异步执行边界
 - 在不打乱当前边界的前提下，再恢复更完整的 Studio 交互流、联网提示位置与内核主线推进
 

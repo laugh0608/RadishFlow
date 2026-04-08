@@ -1,6 +1,6 @@
 # MVP Scope
 
-更新时间：2026-04-07
+更新时间：2026-04-08
 
 ## MVP 目标
 
@@ -71,6 +71,14 @@ App 与交互层当前进一步冻结以下口径：
 - Studio 当前又已把 `drop_preview` 继续收口为 GUI-facing presentation，直接携带 `preview_layout + changed_area_ids`，让 GUI 不必自己从当前态/预览态做差分才能画出 hover 预览
 - Studio 当前又已把 `drop_preview` 继续补成 overlay DTO，直接携带目标 `dock_region/stack_group/tab_index`、目标 stack tabs、高亮 area 集与 active tab，减少真实 GUI 对底层摘要字段的二次拆解
 - Studio 当前多窗口布局 scope 已从运行时 `window_id` 收口到基于 `window_role + layout_slot` 的稳定 key，避免布局恢复直接依赖临时窗口号
+- Studio 当前又已把原生 timer 宿主 glue 冻结为 `StudioGuiNativeTimerRuntime + StudioGuiPlatformHost + StudioGuiPlatformTimerDriverState` 三层边界，真实桌面框架后续不应再在入口层自行维护逻辑 binding、平台 native timer id 映射和 stale callback 判定
+- Studio 当前平台 timer 回灌与执行口径又已进一步冻结为：
+- 平台 request / command：`StudioGuiPlatformTimerRequest` / `StudioGuiPlatformTimerCommand`
+- start ack / failure ack：`acknowledge_platform_timer_started(...)` / `acknowledge_platform_timer_start_failed(...)`
+- callback outcome：`dispatch_native_timer_elapsed_by_native_id(...)`
+- batch / round 宿主结果：`dispatch_native_timer_elapsed_by_native_ids(...)`、`dispatch_due_native_timer_events_batch(...)`、`process_async_platform_round(...)`
+- batch / round 执行型宿主结果：`dispatch_native_timer_elapsed_by_native_ids_and_execute_platform_timers(...)`、`drain_due_native_timer_events_and_execute_platform_timers(...)`、`process_async_platform_round_and_execute_actions(...)`
+- Studio 当前 async round 动作顺序也已冻结为 `follow_up cleanup -> timer request`；真实桌面框架应优先复用 `StudioGuiPlatformAsyncRound::actions()` 或 executed async round，而不是在框架层重复归并和排序
 - Studio 当前应用层运行入口先冻结为 `StudioAppFacade + WorkspaceRunCommand + WorkspaceSolveService + solver_bridge` 四层，不让 UI 直接拼接底层 provider/solver 细节
 - `rf-ui` 当前运行栏状态先冻结为 `RunPanelState + RunPanelIntent + RunPanelCommandModel + RunPanelWidgetModel`，把按钮意图、主动作、按钮槽位、文本布局和最小渲染/触发所需状态都留在 UI 层，不让视图层或 Studio 侧重复发明一套按钮语义
 - Studio 当前对运行栏的最小消费也已前推到 `RunPanelWidgetEvent`，不再只接受裸 `RunPanelIntent`
