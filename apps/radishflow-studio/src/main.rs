@@ -1,13 +1,12 @@
 use radishflow_studio::{
     EntitlementSessionEventOutcome, StudioAppHostEntitlementTimerEffect, StudioAppResultDispatch,
-    StudioGuiDriver, StudioGuiDriverDispatch, StudioGuiDriverOutcome, StudioGuiEvent,
-    StudioGuiHostCloseWindowResult, StudioGuiHostCommandOutcome, StudioGuiHostDispatch,
-    StudioGuiHostLifecycleDispatch, StudioGuiHostWindowOpened, StudioGuiNativeTimerEffects,
-    StudioGuiNativeTimerOperation, StudioGuiWindowAreaId, StudioGuiWindowDockPlacement,
-    StudioGuiWindowDockRegion, StudioGuiWindowDropTarget, StudioGuiWindowDropTargetQuery,
-    StudioGuiWindowLayoutMutation, StudioGuiWindowModel, StudioRuntimeConfig,
-    StudioRuntimeDispatch, StudioRuntimeReport, StudioWindowHostId, StudioWindowHostRetirement,
-    StudioWindowTimerDriverAckResult,
+    StudioGuiDriverOutcome, StudioGuiEvent, StudioGuiHostCommandOutcome,
+    StudioGuiNativeTimerEffects, StudioGuiNativeTimerOperation, StudioGuiPlatformDispatch,
+    StudioGuiPlatformHost, StudioGuiPlatformTimerRequest, StudioGuiWindowAreaId,
+    StudioGuiWindowDockPlacement, StudioGuiWindowDockRegion, StudioGuiWindowDropTarget,
+    StudioGuiWindowDropTargetQuery, StudioGuiWindowLayoutMutation, StudioGuiWindowModel,
+    StudioRuntimeConfig, StudioRuntimeDispatch, StudioRuntimeReport, StudioWindowHostId,
+    StudioWindowHostRetirement, StudioWindowTimerDriverAckResult,
 };
 
 fn print_text_view(title: &str, lines: &[String]) {
@@ -180,16 +179,15 @@ fn print_window_model(title: &str, window: &StudioGuiWindowModel) {
 
 fn print_drop_target_preview(
     title: &str,
-    app_host: &mut StudioGuiDriver,
+    app_host: &mut StudioGuiPlatformHost,
     window_id: Option<StudioWindowHostId>,
     query: StudioGuiWindowDropTargetQuery,
 ) {
     println!("{title}:");
-    match app_host.dispatch_event(StudioGuiEvent::WindowDropTargetPreviewRequested {
-        window_id,
-        query,
-    }) {
-        Ok(StudioGuiDriverDispatch {
+    match app_host
+        .dispatch_event(StudioGuiEvent::WindowDropTargetPreviewRequested { window_id, query })
+    {
+        Ok(StudioGuiPlatformDispatch {
             outcome:
                 StudioGuiDriverOutcome::HostCommand(
                     StudioGuiHostCommandOutcome::WindowDropTargetPreviewUpdated(result),
@@ -249,7 +247,7 @@ fn print_drop_target(target: &StudioGuiWindowDropTarget) {
 
 fn main() {
     let config = StudioRuntimeConfig::default();
-    let mut app_host = match StudioGuiDriver::new(&config) {
+    let mut app_host = match StudioGuiPlatformHost::new(&config) {
         Ok(runtime) => runtime,
         Err(error) => {
             eprintln!(
@@ -262,14 +260,20 @@ fn main() {
     };
 
     let opened = expect_window_opened(&mut app_host, "open initial window");
-    let window = opened.registration;
+    let opened_result = match &opened.outcome {
+        StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::WindowOpened(result)) => {
+            result
+        }
+        other => unreachable!("expected window opened outcome, got {other:?}"),
+    };
+    let window = &opened_result.registration;
     println!(
         "Opened window host #{} as {:?}",
         window.window_id, window.role
     );
     println!(
         "Foreground window: {:?}",
-        opened.projection.state.foreground_window_id
+        opened_result.projection.state.foreground_window_id
     );
     print_window_model(
         "Window model after opening window",
@@ -446,10 +450,11 @@ fn main() {
     if let Some(slot) = window.restored_entitlement_timer.as_ref() {
         println!("Restored parked timer slot into window host: {:?}", slot);
     }
-    if !opened.native_timers.operations.is_empty() {
+    if !opened_result.native_timers.operations.is_empty() {
         println!("Window host native timer effects:");
-        print_native_timer_effects(&opened.native_timers);
+        print_native_timer_effects(&opened_result.native_timers);
     }
+    print_platform_timer_request(opened.native_timer_request.as_ref());
 
     let dispatch = expect_window_dispatch(
         &mut app_host,
@@ -457,11 +462,17 @@ fn main() {
         config.trigger.clone(),
         "dispatch initial trigger",
     );
-    let dispatch_state = dispatch.projection.state.clone();
-    let effects = dispatch.effects;
-    let report = effects.runtime_report;
-    let entitlement_timer_effect = effects.entitlement_timer_effect;
-    let native_timers = dispatch.native_timers;
+    let dispatch_result = match &dispatch.outcome {
+        StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::WindowDispatched(
+            result,
+        )) => result,
+        other => unreachable!("expected window dispatched outcome, got {other:?}"),
+    };
+    let dispatch_state = &dispatch_result.projection.state;
+    let effects = &dispatch_result.effects;
+    let report = &effects.runtime_report;
+    let entitlement_timer_effect = effects.entitlement_timer_effect.as_ref();
+    let native_timers = &dispatch_result.native_timers;
     println!("RadishFlow Studio bootstrap");
     println!("Project: {}", config.project_path.display());
     println!("Requested trigger: {:?}", config.trigger);
@@ -487,7 +498,7 @@ fn main() {
         println!("Preflight reason: {}", preflight.decision.reason);
     }
 
-    if let Some(effect) = entitlement_timer_effect.as_ref() {
+    if let Some(effect) = entitlement_timer_effect {
         println!("Runtime timer command:");
         print_entitlement_timer_effect(effect);
     }
@@ -495,14 +506,16 @@ fn main() {
         println!("Timer driver commands:");
         print_native_timer_effects(&native_timers);
     }
-    if let Some(next_due_at) = app_host.next_due_native_timer_at() {
+    print_platform_timer_request(dispatch.native_timer_request.as_ref());
+    if let Some(next_due_at) = app_host.next_native_timer_due_at() {
         println!("Next native timer due at: {:?}", next_due_at);
         let due_dispatches = app_host
-            .drain_due_native_timer_events(next_due_at)
+            .dispatch_due_native_timer_events(next_due_at)
             .expect("expected due native timer dispatches");
         println!("Simulated native timer callbacks: {}", due_dispatches.len());
         for dispatch in &due_dispatches {
             println!("  - due callback outcome: {:?}", dispatch.outcome);
+            print_platform_timer_request(dispatch.native_timer_request.as_ref());
         }
         if !due_dispatches.is_empty() {
             print_window_model(
@@ -512,45 +525,45 @@ fn main() {
         }
     }
 
-    match report.dispatch {
-        StudioRuntimeDispatch::AppCommand(outcome) => match outcome.dispatch {
+    match &report.dispatch {
+        StudioRuntimeDispatch::AppCommand(outcome) => match &outcome.dispatch {
             StudioAppResultDispatch::WorkspaceRun(dispatch) => {
                 println!("Run status: {:?}", dispatch.run_status);
                 println!("Outcome: {:?}", dispatch.outcome);
-                if let Some(package_id) = dispatch.package_id {
+                if let Some(package_id) = &dispatch.package_id {
                     println!("Package: {package_id}");
                 }
-                if let Some(snapshot_id) = dispatch.latest_snapshot_id {
+                if let Some(snapshot_id) = &dispatch.latest_snapshot_id {
                     println!("Latest snapshot: {snapshot_id}");
                 }
-                if let Some(summary) = dispatch.latest_snapshot_summary {
+                if let Some(summary) = &dispatch.latest_snapshot_summary {
                     println!("Summary: {summary}");
                 }
                 println!("Log entries: {}", dispatch.log_entry_count);
-                if let Some(entry) = dispatch.latest_log_entry {
+                if let Some(entry) = &dispatch.latest_log_entry {
                     println!("Latest log: {:?}: {}", entry.level, entry.message);
                 }
             }
             StudioAppResultDispatch::WorkspaceMode(dispatch) => {
                 println!("Run status: {:?}", dispatch.run_status);
-                if let Some(snapshot_id) = dispatch.latest_snapshot_id {
+                if let Some(snapshot_id) = &dispatch.latest_snapshot_id {
                     println!("Latest snapshot: {snapshot_id}");
                 }
-                if let Some(summary) = dispatch.latest_snapshot_summary {
+                if let Some(summary) = &dispatch.latest_snapshot_summary {
                     println!("Summary: {summary}");
                 }
                 println!("Log entries: {}", dispatch.log_entry_count);
-                if let Some(entry) = dispatch.latest_log_entry {
+                if let Some(entry) = &dispatch.latest_log_entry {
                     println!("Latest log: {:?}: {}", entry.level, entry.message);
                 }
             }
             StudioAppResultDispatch::Entitlement(dispatch) => {
                 println!("Entitlement status: {:?}", dispatch.entitlement_status);
                 println!("Entitlement outcome: {:?}", dispatch.outcome);
-                if let Some(notice) = dispatch.notice {
+                if let Some(notice) = &dispatch.notice {
                     println!("Entitlement notice: {:?}: {}", notice.level, notice.message);
                 }
-                if let Some(entry) = dispatch.latest_log_entry {
+                if let Some(entry) = &dispatch.latest_log_entry {
                     println!("Latest log: {:?}: {}", entry.level, entry.message);
                 }
             }
@@ -562,9 +575,9 @@ fn main() {
         }
         StudioRuntimeDispatch::EntitlementSessionEvent(outcome) => {
             println!("Entitlement session event: {:?}", outcome.event);
-            match outcome.outcome {
+            match &outcome.outcome {
                 EntitlementSessionEventOutcome::Tick(tick) => {
-                    if let Some(preflight) = tick.preflight {
+                    if let Some(preflight) = tick.preflight.as_ref() {
                         println!("Session action: {:?}", preflight.decision.action);
                         println!("Session reason: {}", preflight.decision.reason);
                     } else {
@@ -580,7 +593,7 @@ fn main() {
 
     if !report.log_entries.is_empty() {
         println!("Logs:");
-        for entry in report.log_entries {
+        for entry in &report.log_entries {
             println!("  - {:?}: {}", entry.level, entry.message);
         }
     }
@@ -590,7 +603,13 @@ fn main() {
         StudioGuiEvent::NetworkRestored,
         "dispatch lifecycle network restored",
     );
-    match lifecycle.dispatch {
+    let lifecycle_result = match &lifecycle.outcome {
+        StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::LifecycleDispatched(
+            result,
+        )) => result,
+        other => unreachable!("expected lifecycle outcome, got {other:?}"),
+    };
+    match &lifecycle_result.dispatch {
         Some(global_dispatch) => {
             println!(
                 "Global network restored routed to window #{}",
@@ -608,19 +627,26 @@ fn main() {
         "Window model after network restored",
         &app_host.snapshot().window_model(),
     );
+    print_platform_timer_request(lifecycle.native_timer_request.as_ref());
 
     let close = expect_close_window(&mut app_host, window.window_id, "close initial window");
-    let close_state = close.projection.state.clone();
-    match close.close {
+    let close_result = match &close.outcome {
+        StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::WindowClosed(result)) => {
+            result
+        }
+        other => unreachable!("expected close outcome, got {other:?}"),
+    };
+    let close_state = &close_result.projection.state;
+    match &close_result.close {
         Some(shutdown) => {
-            if let Some(slot) = shutdown.cleared_entitlement_timer {
+            if let Some(slot) = &shutdown.cleared_entitlement_timer {
                 println!("Window host shutdown cleared timer slot: {:?}", slot);
             }
             if !shutdown.native_timer_transitions.is_empty() {
                 println!("Window host shutdown driver commands:");
-                print_native_timer_effects(&close.native_timers);
+                print_native_timer_effects(&close_result.native_timers);
             }
-            match shutdown.retirement {
+            match &shutdown.retirement {
                 StudioWindowHostRetirement::None => {}
                 StudioWindowHostRetirement::Transferred {
                     new_owner_window_id,
@@ -649,6 +675,7 @@ fn main() {
                 "Window model after closing window",
                 &app_host.snapshot().window_model(),
             );
+            print_platform_timer_request(close.native_timer_request.as_ref());
         }
         None => {
             println!("Window host close ignored for window #{}", window.window_id);
@@ -729,22 +756,22 @@ fn print_entitlement_timer_effect(effect: &StudioAppHostEntitlementTimerEffect) 
 }
 
 fn expect_window_opened(
-    app_host: &mut StudioGuiDriver,
+    app_host: &mut StudioGuiPlatformHost,
     context: &str,
-) -> StudioGuiHostWindowOpened {
+) -> StudioGuiPlatformDispatch {
     match app_host.dispatch_event(StudioGuiEvent::OpenWindowRequested) {
-        Ok(StudioGuiDriverDispatch {
-            outcome:
-                StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::WindowOpened(result)),
-            ..
-        }) => result,
-        Ok(other) => {
-            eprintln!(
-                "RadishFlow Studio host command failed during {}: expected window open outcome, got {:?}",
-                context, other
-            );
-            std::process::exit(1);
-        }
+        Ok(dispatch) => match &dispatch.outcome {
+            StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::WindowOpened(_)) => {
+                dispatch
+            }
+            _ => {
+                eprintln!(
+                    "RadishFlow Studio host command failed during {}: expected window open outcome, got {:?}",
+                    context, dispatch
+                );
+                std::process::exit(1);
+            }
+        },
         Err(error) => {
             eprintln!(
                 "RadishFlow Studio host command failed during {} [{}]: {}",
@@ -758,26 +785,24 @@ fn expect_window_opened(
 }
 
 fn expect_window_dispatch(
-    app_host: &mut StudioGuiDriver,
+    app_host: &mut StudioGuiPlatformHost,
     window_id: u64,
     trigger: radishflow_studio::StudioRuntimeTrigger,
     context: &str,
-) -> StudioGuiHostDispatch {
+) -> StudioGuiPlatformDispatch {
     match app_host.dispatch_event(StudioGuiEvent::WindowTriggerRequested { window_id, trigger }) {
-        Ok(StudioGuiDriverDispatch {
-            outcome:
-                StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::WindowDispatched(
-                    result,
-                )),
-            ..
-        }) => result,
-        Ok(other) => {
-            eprintln!(
-                "RadishFlow Studio host command failed during {}: expected window dispatch outcome, got {:?}",
-                context, other
-            );
-            std::process::exit(1);
-        }
+        Ok(dispatch) => match &dispatch.outcome {
+            StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::WindowDispatched(
+                _,
+            )) => dispatch,
+            _ => {
+                eprintln!(
+                    "RadishFlow Studio host command failed during {}: expected window dispatch outcome, got {:?}",
+                    context, dispatch
+                );
+                std::process::exit(1);
+            }
+        },
         Err(error) => {
             eprintln!(
                 "RadishFlow Studio host command failed during {} [{}]: {}",
@@ -791,25 +816,23 @@ fn expect_window_dispatch(
 }
 
 fn expect_lifecycle_event(
-    app_host: &mut StudioGuiDriver,
+    app_host: &mut StudioGuiPlatformHost,
     event: StudioGuiEvent,
     context: &str,
-) -> StudioGuiHostLifecycleDispatch {
+) -> StudioGuiPlatformDispatch {
     match app_host.dispatch_event(event) {
-        Ok(StudioGuiDriverDispatch {
-            outcome:
-                StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::LifecycleDispatched(
-                    result,
-                )),
-            ..
-        }) => result,
-        Ok(other) => {
-            eprintln!(
-                "RadishFlow Studio host command failed during {}: expected lifecycle outcome, got {:?}",
-                context, other
-            );
-            std::process::exit(1);
-        }
+        Ok(dispatch) => match &dispatch.outcome {
+            StudioGuiDriverOutcome::HostCommand(
+                StudioGuiHostCommandOutcome::LifecycleDispatched(_),
+            ) => dispatch,
+            _ => {
+                eprintln!(
+                    "RadishFlow Studio host command failed during {}: expected lifecycle outcome, got {:?}",
+                    context, dispatch
+                );
+                std::process::exit(1);
+            }
+        },
         Err(error) => {
             eprintln!(
                 "RadishFlow Studio host command failed during {} [{}]: {}",
@@ -823,23 +846,23 @@ fn expect_lifecycle_event(
 }
 
 fn expect_close_window(
-    app_host: &mut StudioGuiDriver,
+    app_host: &mut StudioGuiPlatformHost,
     window_id: u64,
     context: &str,
-) -> StudioGuiHostCloseWindowResult {
+) -> StudioGuiPlatformDispatch {
     match app_host.dispatch_event(StudioGuiEvent::CloseWindowRequested { window_id }) {
-        Ok(StudioGuiDriverDispatch {
-            outcome:
-                StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::WindowClosed(result)),
-            ..
-        }) => result,
-        Ok(other) => {
-            eprintln!(
-                "RadishFlow Studio host command failed during {}: expected close outcome, got {:?}",
-                context, other
-            );
-            std::process::exit(1);
-        }
+        Ok(dispatch) => match &dispatch.outcome {
+            StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::WindowClosed(_)) => {
+                dispatch
+            }
+            _ => {
+                eprintln!(
+                    "RadishFlow Studio host command failed during {}: expected close outcome, got {:?}",
+                    context, dispatch
+                );
+                std::process::exit(1);
+            }
+        },
         Err(error) => {
             eprintln!(
                 "RadishFlow Studio host command failed during {} [{}]: {}",
@@ -849,6 +872,30 @@ fn expect_close_window(
             );
             std::process::exit(1);
         }
+    }
+}
+
+fn print_platform_timer_request(request: Option<&StudioGuiPlatformTimerRequest>) {
+    match request {
+        Some(StudioGuiPlatformTimerRequest::Arm { due_at }) => {
+            println!("Platform timer request: arm due at {:?}", due_at);
+        }
+        Some(StudioGuiPlatformTimerRequest::Rearm {
+            previous_due_at,
+            due_at,
+        }) => {
+            println!(
+                "Platform timer request: rearm {:?} -> {:?}",
+                previous_due_at, due_at
+            );
+        }
+        Some(StudioGuiPlatformTimerRequest::Clear { previous_due_at }) => {
+            println!(
+                "Platform timer request: clear previous due at {:?}",
+                previous_due_at
+            );
+        }
+        None => {}
     }
 }
 

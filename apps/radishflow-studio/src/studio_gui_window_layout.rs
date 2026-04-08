@@ -1755,10 +1755,10 @@ mod tests {
 
     use crate::{
         StudioGuiDriver, StudioGuiEvent, StudioGuiWindowAreaId, StudioGuiWindowDockPlacement,
-        StudioGuiWindowDockRegion, StudioGuiWindowDropTargetKind,
-        StudioGuiWindowDropTargetQuery, StudioGuiWindowLayoutScopeKind,
-        StudioGuiWindowLayoutState, StudioRuntimeConfig, StudioRuntimeEntitlementPreflight,
-        StudioRuntimeEntitlementSeed, StudioRuntimeEntitlementSessionEvent, StudioRuntimeTrigger,
+        StudioGuiWindowDockRegion, StudioGuiWindowDropTargetKind, StudioGuiWindowDropTargetQuery,
+        StudioGuiWindowLayoutScopeKind, StudioGuiWindowLayoutState, StudioRuntimeConfig,
+        StudioRuntimeEntitlementPreflight, StudioRuntimeEntitlementSeed,
+        StudioRuntimeEntitlementSessionEvent, StudioRuntimeTrigger,
     };
 
     fn lease_expiring_config() -> StudioRuntimeConfig {
@@ -2054,7 +2054,12 @@ mod tests {
             .drop_target_for_query(&query)
             .expect("expected stack drop target from query");
 
-        assert_eq!(target, state.drop_target_for_mutation(&query.layout_mutation()).unwrap());
+        assert_eq!(
+            target,
+            state
+                .drop_target_for_mutation(&query.layout_mutation())
+                .unwrap()
+        );
         assert_eq!(target.kind, StudioGuiWindowDropTargetKind::StackTab);
         assert_eq!(target.anchor_area_id, Some(StudioGuiWindowAreaId::Runtime));
         assert_eq!(target.target_tab_index, 1);

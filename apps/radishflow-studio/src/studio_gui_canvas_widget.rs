@@ -44,7 +44,11 @@ impl StudioGuiCanvasWidgetModel {
     pub fn from_state(state: &StudioGuiCanvasState) -> Self {
         let presentation = state.presentation();
         let suggestion_count = presentation.view.suggestion_count;
-        let focused = presentation.view.suggestions.iter().find(|item| item.is_focused);
+        let focused = presentation
+            .view
+            .suggestions
+            .iter()
+            .find(|item| item.is_focused);
         let has_focus = focused.is_some();
         let can_accept = focused
             .as_ref()
@@ -110,10 +114,7 @@ impl StudioGuiCanvasWidgetModel {
         &self.presentation.text
     }
 
-    pub fn action(
-        &self,
-        id: StudioGuiCanvasActionId,
-    ) -> Option<&StudioGuiCanvasRenderableAction> {
+    pub fn action(&self, id: StudioGuiCanvasActionId) -> Option<&StudioGuiCanvasRenderableAction> {
         self.actions.iter().find(|action| action.id == id)
     }
 
@@ -128,7 +129,9 @@ impl StudioGuiCanvasWidgetModel {
 
     pub fn activate(&self, id: StudioGuiCanvasActionId) -> StudioGuiCanvasWidgetEvent {
         match self.action(id) {
-            Some(action) if !action.enabled => StudioGuiCanvasWidgetEvent::Disabled { action_id: id },
+            Some(action) if !action.enabled => {
+                StudioGuiCanvasWidgetEvent::Disabled { action_id: id }
+            }
             Some(_) => StudioGuiCanvasWidgetEvent::Requested {
                 action_id: id,
                 event: action_event(id),
@@ -352,7 +355,9 @@ mod tests {
             other => panic!("expected requested widget event, got {other:?}"),
         };
 
-        let dispatch = driver.dispatch_event(event).expect("expected driver dispatch");
+        let dispatch = driver
+            .dispatch_event(event)
+            .expect("expected driver dispatch");
 
         match dispatch.outcome {
             StudioGuiDriverOutcome::CanvasInteraction(result) => {

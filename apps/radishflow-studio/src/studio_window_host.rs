@@ -426,7 +426,10 @@ impl StudioRuntimeHostPort {
 
     fn allocate_observer_layout_slot(&mut self, window_id: StudioWindowHostId) -> u16 {
         let mut next_slot = 1_u16;
-        while self.allocated_observer_layout_slots.contains_key(&next_slot) {
+        while self
+            .allocated_observer_layout_slots
+            .contains_key(&next_slot)
+        {
             next_slot += 1;
         }
         self.allocated_observer_layout_slots

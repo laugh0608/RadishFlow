@@ -10,8 +10,7 @@ use rf_types::{RfError, RfResult};
 
 use crate::{
     StudioGuiWindowAreaId, StudioGuiWindowDockRegion, StudioGuiWindowLayoutPersistenceState,
-    StudioGuiWindowPanelLayoutState, StudioGuiWindowRegionWeight,
-    StudioGuiWindowStackGroupState,
+    StudioGuiWindowPanelLayoutState, StudioGuiWindowRegionWeight, StudioGuiWindowStackGroupState,
 };
 
 pub fn load_persisted_window_layouts(

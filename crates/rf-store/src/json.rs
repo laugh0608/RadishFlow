@@ -14,9 +14,7 @@ use crate::package_cache::{
     STORED_PROPERTY_PACKAGE_SCHEMA_VERSION,
 };
 use crate::project::{STORED_PROJECT_FILE_KIND, STORED_PROJECT_FILE_SCHEMA_VERSION};
-use crate::studio_layout::{
-    STORED_STUDIO_LAYOUT_FILE_KIND, STORED_STUDIO_LAYOUT_SCHEMA_VERSION,
-};
+use crate::studio_layout::{STORED_STUDIO_LAYOUT_FILE_KIND, STORED_STUDIO_LAYOUT_SCHEMA_VERSION};
 use crate::{
     StoredAuthCacheIndex, StoredProjectFile, StoredPropertyPackageManifest,
     StoredPropertyPackagePayload, StoredStudioLayoutFile,
@@ -63,7 +61,11 @@ pub fn write_studio_layout_file(
     layout_file: &StoredStudioLayoutFile,
 ) -> RfResult<()> {
     layout_file.validate()?;
-    write_json_file(path.as_ref(), layout_file, "write stored studio layout file")
+    write_json_file(
+        path.as_ref(),
+        layout_file,
+        "write stored studio layout file",
+    )
 }
 
 pub fn parse_studio_layout_file_json(contents: &str) -> RfResult<StoredStudioLayoutFile> {

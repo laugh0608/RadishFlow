@@ -44,8 +44,7 @@ pub use studio_layout::{
     STORED_STUDIO_LAYOUT_FILE_KIND, STORED_STUDIO_LAYOUT_FILE_SUFFIX,
     STORED_STUDIO_LAYOUT_SCHEMA_VERSION, StoredStudioLayoutFile, StoredStudioLayoutPanelState,
     StoredStudioLayoutRegionWeight, StoredStudioLayoutStackGroupState,
-    StoredStudioWindowLayoutEntry,
-    studio_layout_path_for_project,
+    StoredStudioWindowLayoutEntry, studio_layout_path_for_project,
 };
 
 #[cfg(test)]
@@ -64,8 +63,7 @@ mod tests {
         StoredProjectFile, StoredPropertyPackageManifest, StoredPropertyPackagePayload,
         StoredPropertyPackageRecord, StoredPropertyPackageSource, StoredStudioLayoutFile,
         StoredStudioLayoutPanelState, StoredStudioLayoutRegionWeight,
-        StoredStudioLayoutStackGroupState,
-        StoredStudioWindowLayoutEntry, StoredThermoComponent,
+        StoredStudioLayoutStackGroupState, StoredStudioWindowLayoutEntry, StoredThermoComponent,
         auth_cache_index_to_pretty_json, parse_auth_cache_index_json, parse_project_file_json,
         parse_property_package_manifest_json, parse_property_package_payload_json,
         parse_studio_layout_file_json, project_file_to_pretty_json,
@@ -73,8 +71,7 @@ mod tests {
         read_auth_cache_index, read_project_file, read_property_package_manifest,
         read_property_package_payload, read_studio_layout_file, studio_layout_file_to_pretty_json,
         studio_layout_path_for_project, write_auth_cache_index, write_project_file,
-        write_property_package_manifest, write_property_package_payload,
-        write_studio_layout_file,
+        write_property_package_manifest, write_property_package_payload, write_studio_layout_file,
     };
 
     fn timestamp(seconds: u64) -> std::time::SystemTime {

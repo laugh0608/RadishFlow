@@ -187,17 +187,22 @@ impl StudioGuiNativeTimerRuntime {
         applied_acks: &BTreeMap<StudioWindowHostId, StudioWindowNativeTimerHandleId>,
     ) {
         match operation {
-            StudioGuiNativeTimerOperation::Arm { window_id, slot, .. }
+            StudioGuiNativeTimerOperation::Arm {
+                window_id, slot, ..
+            }
             | StudioGuiNativeTimerOperation::Rearm {
                 window_id,
                 next_slot: slot,
                 ..
             } => {
                 self.parked_binding = None;
-                let binding = applied_acks.get(window_id).map(|handle_id| StudioWindowNativeTimerBinding {
-                    handle_id: *handle_id,
-                    slot: slot.clone(),
-                });
+                let binding =
+                    applied_acks
+                        .get(window_id)
+                        .map(|handle_id| StudioWindowNativeTimerBinding {
+                            handle_id: *handle_id,
+                            slot: slot.clone(),
+                        });
                 self.replace_window_binding(*window_id, binding);
             }
             StudioGuiNativeTimerOperation::Keep { window_id, binding } => {
@@ -227,9 +232,7 @@ impl StudioGuiNativeTimerRuntime {
                 self.replace_parked_binding(binding.clone());
             }
             StudioGuiNativeTimerOperation::RestoreParked {
-                window_id,
-                binding,
-                ..
+                window_id, binding, ..
             } => {
                 self.parked_binding = None;
                 self.replace_window_binding(*window_id, binding.clone());
@@ -479,9 +482,11 @@ mod tests {
                 slot: slot(1, 30),
             }]
         );
-        assert!(runtime
-            .drain_due_events(slot(1, 30).timer.due_at)
-            .is_empty());
+        assert!(
+            runtime
+                .drain_due_events(slot(1, 30).timer.due_at)
+                .is_empty()
+        );
     }
 
     #[test]

@@ -239,10 +239,7 @@ mod tests {
             StudioGuiFocusContext::CanvasSuggestionFocused,
         );
 
-        assert_eq!(
-            route,
-            StudioGuiShortcutRoute::RequestCanvasSuggestionAccept
-        );
+        assert_eq!(route, StudioGuiShortcutRoute::RequestCanvasSuggestionAccept);
     }
 
     #[test]
@@ -256,7 +253,10 @@ mod tests {
             StudioGuiFocusContext::CanvasSuggestionFocused,
         );
 
-        assert_eq!(route, StudioGuiShortcutRoute::RequestCanvasSuggestionFocusNext);
+        assert_eq!(
+            route,
+            StudioGuiShortcutRoute::RequestCanvasSuggestionFocusNext
+        );
     }
 
     #[test]

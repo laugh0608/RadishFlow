@@ -196,7 +196,10 @@ impl StudioGuiDriver {
             } => StudioGuiDriverOutcome::WindowLayoutUpdated(
                 self.host.update_window_layout(window_id, mutation)?,
             ),
-            DriverRoute::NativeTimerElapsed { window_id, handle_id } => {
+            DriverRoute::NativeTimerElapsed {
+                window_id,
+                handle_id,
+            } => {
                 if self
                     .native_timer_runtime
                     .consume_elapsed_event(window_id, handle_id)
@@ -242,7 +245,10 @@ impl StudioGuiDriver {
             )) => Some(&dispatch.native_timers),
             StudioGuiDriverOutcome::HostCommand(
                 StudioGuiHostCommandOutcome::LifecycleDispatched(lifecycle),
-            ) => lifecycle.dispatch.as_ref().map(|dispatch| &dispatch.native_timers),
+            ) => lifecycle
+                .dispatch
+                .as_ref()
+                .map(|dispatch| &dispatch.native_timers),
             StudioGuiDriverOutcome::HostCommand(
                 StudioGuiHostCommandOutcome::UiCommandDispatched(
                     StudioGuiHostUiCommandDispatchResult::Executed(dispatch),
@@ -331,12 +337,14 @@ fn layout_scope_window_id(outcome: &StudioGuiDriverOutcome) -> Option<StudioWind
         | StudioGuiDriverOutcome::CanvasInteraction(_)
         | StudioGuiDriverOutcome::IgnoredNativeTimerElapsed { .. }
         | StudioGuiDriverOutcome::IgnoredShortcut { .. } => None,
-        StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::WindowDropTargetQueried(
-            crate::StudioGuiHostWindowDropTargetQueryResult {
-                target_window_id: Some(window_id),
-                ..
-            },
-        )) => Some(*window_id),
+        StudioGuiDriverOutcome::HostCommand(
+            StudioGuiHostCommandOutcome::WindowDropTargetQueried(
+                crate::StudioGuiHostWindowDropTargetQueryResult {
+                    target_window_id: Some(window_id),
+                    ..
+                },
+            ),
+        ) => Some(*window_id),
         StudioGuiDriverOutcome::HostCommand(
             StudioGuiHostCommandOutcome::WindowDropTargetPreviewUpdated(
                 crate::StudioGuiHostWindowDropTargetQueryResult {
@@ -353,12 +361,14 @@ fn layout_scope_window_id(outcome: &StudioGuiDriverOutcome) -> Option<StudioWind
                 },
             ),
         ) => Some(*window_id),
-        StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::WindowDropTargetApplied(
-            crate::StudioGuiHostWindowDropTargetApplyResult {
-                target_window_id: Some(window_id),
-                ..
-            },
-        )) => Some(*window_id),
+        StudioGuiDriverOutcome::HostCommand(
+            StudioGuiHostCommandOutcome::WindowDropTargetApplied(
+                crate::StudioGuiHostWindowDropTargetApplyResult {
+                    target_window_id: Some(window_id),
+                    ..
+                },
+            ),
+        ) => Some(*window_id),
         StudioGuiDriverOutcome::WindowLayoutUpdated(
             crate::StudioGuiHostWindowLayoutUpdateResult {
                 target_window_id: Some(window_id),
@@ -522,9 +532,9 @@ mod tests {
         StudioGuiFocusContext, StudioGuiHostCanvasInteractionResult, StudioGuiHostCommandOutcome,
         StudioGuiHostUiCommandDispatchResult, StudioGuiShortcut, StudioGuiShortcutIgnoreReason,
         StudioGuiShortcutKey, StudioGuiShortcutModifier, StudioGuiWindowAreaId,
-        StudioGuiWindowDockPlacement, StudioGuiWindowDockRegion,
-        StudioGuiWindowDropTargetQuery, StudioGuiWindowLayoutMutation, StudioRuntimeConfig,
-        StudioRuntimeEntitlementPreflight, StudioRuntimeEntitlementSeed,
+        StudioGuiWindowDockPlacement, StudioGuiWindowDockRegion, StudioGuiWindowDropTargetQuery,
+        StudioGuiWindowLayoutMutation, StudioRuntimeConfig, StudioRuntimeEntitlementPreflight,
+        StudioRuntimeEntitlementSeed,
     };
     use rf_ui::{
         GhostElement, GhostElementKind, StreamVisualKind, StreamVisualState, SuggestionSource,
@@ -1403,7 +1413,12 @@ mod tests {
                 .layout_state
                 .panels_in_dock_region(StudioGuiWindowDockRegion::RightSidebar)
                 .into_iter()
-                .map(|panel| (panel.area_id, panel.dock_region, panel.stack_group, panel.order))
+                .map(|panel| (
+                    panel.area_id,
+                    panel.dock_region,
+                    panel.stack_group,
+                    panel.order
+                ))
                 .collect::<Vec<_>>(),
             vec![
                 (
@@ -1575,7 +1590,10 @@ mod tests {
             .drop_preview
             .as_ref()
             .expect("expected drop preview in dispatch window");
-        assert_eq!(preview.overlay.drag_area_id, StudioGuiWindowAreaId::Commands);
+        assert_eq!(
+            preview.overlay.drag_area_id,
+            StudioGuiWindowAreaId::Commands
+        );
         assert_eq!(
             preview.overlay.target_dock_region,
             StudioGuiWindowDockRegion::RightSidebar
@@ -1584,7 +1602,10 @@ mod tests {
         assert_eq!(preview.overlay.target_tab_index, 0);
         assert_eq!(
             preview.overlay.target_stack_area_ids,
-            vec![StudioGuiWindowAreaId::Commands, StudioGuiWindowAreaId::Runtime]
+            vec![
+                StudioGuiWindowAreaId::Commands,
+                StudioGuiWindowAreaId::Runtime
+            ]
         );
         assert_eq!(
             preview.overlay.target_stack_active_area_id,
@@ -1600,7 +1621,10 @@ mod tests {
         );
         assert_eq!(
             preview.changed_area_ids,
-            vec![StudioGuiWindowAreaId::Commands, StudioGuiWindowAreaId::Runtime]
+            vec![
+                StudioGuiWindowAreaId::Commands,
+                StudioGuiWindowAreaId::Runtime
+            ]
         );
         assert_eq!(
             preview
@@ -1617,10 +1641,12 @@ mod tests {
                 .map(|panel| (panel.dock_region, panel.stack_group, panel.order)),
             Some((StudioGuiWindowDockRegion::LeftSidebar, 10, 10))
         );
-        assert!(driver
-            .window_model_for_window(Some(window_id))
-            .drop_preview
-            .is_some());
+        assert!(
+            driver
+                .window_model_for_window(Some(window_id))
+                .drop_preview
+                .is_some()
+        );
 
         let layout_path = rf_store::studio_layout_path_for_project(&project_path);
         let _ = fs::remove_file(layout_path);
@@ -1667,7 +1693,10 @@ mod tests {
             other => panic!("expected drop preview clear outcome, got {other:?}"),
         }
         assert_eq!(cleared.window.drop_preview, None);
-        assert_eq!(driver.window_model_for_window(Some(window_id)).drop_preview, None);
+        assert_eq!(
+            driver.window_model_for_window(Some(window_id)).drop_preview,
+            None
+        );
 
         let layout_path = rf_store::studio_layout_path_for_project(&project_path);
         let _ = fs::remove_file(layout_path);
@@ -1835,11 +1864,16 @@ mod tests {
             StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::WindowClosed(
                 closed,
             )) => {
-                assert!(closed
-                    .native_timers
-                    .operations
-                    .iter()
-                    .any(|operation| matches!(operation, crate::StudioGuiNativeTimerOperation::Park { .. })));
+                assert!(
+                    closed
+                        .native_timers
+                        .operations
+                        .iter()
+                        .any(|operation| matches!(
+                            operation,
+                            crate::StudioGuiNativeTimerOperation::Park { .. }
+                        ))
+                );
             }
             other => panic!("expected window closed outcome, got {other:?}"),
         }
@@ -1852,21 +1886,28 @@ mod tests {
             StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::WindowOpened(
                 opened,
             )) => {
-                assert!(opened
-                    .native_timers
-                    .operations
-                    .iter()
-                    .any(|operation| matches!(operation, crate::StudioGuiNativeTimerOperation::RestoreParked { .. })));
+                assert!(
+                    opened
+                        .native_timers
+                        .operations
+                        .iter()
+                        .any(|operation| matches!(
+                            operation,
+                            crate::StudioGuiNativeTimerOperation::RestoreParked { .. }
+                        ))
+                );
                 opened.registration.window_id
             }
             other => panic!("expected reopened window outcome, got {other:?}"),
         };
 
         assert!(driver.native_timer_runtime().parked_binding().is_none());
-        assert!(driver
-            .native_timer_runtime()
-            .window_binding(second_window_id)
-            .is_some());
+        assert!(
+            driver
+                .native_timer_runtime()
+                .window_binding(second_window_id)
+                .is_some()
+        );
     }
 
     #[test]
@@ -1900,9 +1941,9 @@ mod tests {
         assert_eq!(due_dispatches.len(), 1);
         assert!(matches!(
             due_dispatches[0].outcome,
-            StudioGuiDriverOutcome::HostCommand(
-                StudioGuiHostCommandOutcome::LifecycleDispatched(_)
-            )
+            StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::LifecycleDispatched(
+                _
+            ))
         ));
         assert!(driver.next_due_native_timer_at().is_some());
     }
@@ -1942,9 +1983,9 @@ mod tests {
 
         assert!(matches!(
             dispatch.outcome,
-            StudioGuiDriverOutcome::HostCommand(
-                StudioGuiHostCommandOutcome::LifecycleDispatched(_)
-            )
+            StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::LifecycleDispatched(
+                _
+            ))
         ));
     }
 

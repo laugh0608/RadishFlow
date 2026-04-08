@@ -1,6 +1,6 @@
 # Architecture Overview
 
-更新时间：2026-04-07
+更新时间：2026-04-08
 
 ## 目标
 
@@ -57,7 +57,7 @@ RadishFlow 的目标架构已经冻结为“桌面端三层 + 外部控制面”
 | --- | --- | --- |
 | `rf-ui` | UI 状态与行为逻辑 | 已建立 `AppState`、授权态、求解态与控制面 DTO 骨架；已补 `RunPanelState`、`RunPanelIntent`、`RunPanelCommandModel`、`RunPanelViewModel`、`RunPanelPresentation` 与 `RunPanelWidgetModel`，并可把 `rf-solver::SolveSnapshot` 映射为 UI 层结果快照 |
 | `rf-canvas` | 流程图画布能力 | 占位 |
-| `apps/radishflow-studio` | 桌面入口程序 | 已建立 auth cache sync 桥接、控制面 HTTP client、entitlement / manifest / lease / offline refresh 编排、下载获取抽象、基于 `reqwest + rustls` 的真实 HTTP transport、HTTP 请求/响应适配层、可重试/不可重试失败分类、下载 JSON 到本地 payload DTO 的协议映射、摘要校验、失败回滚与测试；并已补上 `PropertyPackageProvider -> rf-solver -> rf-ui::AppState` 的最小工作区求解桥接，可直接基于已加载物性包或本地 auth cache 执行真实 solve 并回写 UI 快照/日志；当前又已形成 `StudioGuiHost / StudioGuiDriver / StudioGuiSnapshot / StudioGuiWindowModel / StudioGuiWindowLayoutState` 这一条 GUI-facing 宿主与窗口布局契约，并把窗口布局持久化为项目同目录 sidecar；当前又已把 drop preview 前推为 `StudioGuiWindowDropTargetQuery -> StudioGuiHost / StudioGuiDriver` 的显式查询入口，并在 host 内补出非持久化 preview 会话态；当前又已补出 `StudioGuiNativeTimerRuntime`，让 GUI 可在消费 `StudioGuiNativeTimerEffects` 后继续跟踪逻辑 timer handle、`next_due_at` 和一次性 due callback，而不必在真实框架里从零重写同一套 timer 生命周期；当前又已把原生 timer callback 正式收口为 `StudioGuiEvent::NativeTimerElapsed { window_id, handle_id }`，由 driver 先校验当前绑定再回灌 `TimerElapsed`，避免真实宿主把 stale callback 误灌进 runtime |
+| `apps/radishflow-studio` | 桌面入口程序 | 已建立 auth cache sync 桥接、控制面 HTTP client、entitlement / manifest / lease / offline refresh 编排、下载获取抽象、基于 `reqwest + rustls` 的真实 HTTP transport、HTTP 请求/响应适配层、可重试/不可重试失败分类、下载 JSON 到本地 payload DTO 的协议映射、摘要校验、失败回滚与测试；并已补上 `PropertyPackageProvider -> rf-solver -> rf-ui::AppState` 的最小工作区求解桥接，可直接基于已加载物性包或本地 auth cache 执行真实 solve 并回写 UI 快照/日志；当前又已形成 `StudioGuiHost / StudioGuiDriver / StudioGuiSnapshot / StudioGuiWindowModel / StudioGuiWindowLayoutState` 这一条 GUI-facing 宿主与窗口布局契约，并把窗口布局持久化为项目同目录 sidecar；当前又已把 drop preview 前推为 `StudioGuiWindowDropTargetQuery -> StudioGuiHost / StudioGuiDriver` 的显式查询入口，并在 host 内补出非持久化 preview 会话态；当前又已补出 `StudioGuiNativeTimerRuntime`，让 GUI 可在消费 `StudioGuiNativeTimerEffects` 后继续跟踪逻辑 timer handle、`next_due_at` 和一次性 due callback，而不必在真实框架里从零重写同一套 timer 生命周期；当前又已把原生 timer callback 正式收口为 `StudioGuiEvent::NativeTimerElapsed { window_id, handle_id }`，由 driver 先校验当前绑定再回灌 `TimerElapsed`，避免真实宿主把 stale callback 误灌进 runtime；当前又已补出 `StudioGuiPlatformHost`，把“driver 派发后比较下一次 due 时间并向平台发出 `Arm/Rearm/Clear` 请求”的逻辑固定在平台适配层，未来真实 GUI 不必再在框架入口手工维护 timer 差分 |
 
 原因很直接：在 `M2/M3` 之前过早推进 UI，会掩盖内核尚未定型的问题。
 
@@ -89,6 +89,7 @@ RadishFlow 的目标架构已经冻结为“桌面端三层 + 外部控制面”
 同时，Studio GUI-facing 状态边界当前也已进一步冻结为：
 
 - `StudioGuiHost` / `StudioGuiDriver` 作为 GUI 面向的平台事件与宿主命令入口
+- `StudioGuiPlatformHost` 作为平台 timer 调度适配层，负责把 `next_due_native_timer_at()` 的前后变化收口为平台侧 `Arm / Rearm / Clear` 请求
 - `StudioGuiSnapshot` 作为跨模块聚合快照真相源
 - `StudioGuiWindowModel` 作为窗口内容分区模型
 - `StudioGuiWindowLayoutState` 作为正式布局状态契约，覆盖 `panel dock_region/stack_group/visibility/collapsed/order`、stack active tab、region 内 stack placement、`center_area`、`region_weights`、多窗口 `layout scope` 与 GUI 可直接消费的 `drop target` 摘要推导
@@ -100,6 +101,7 @@ RadishFlow 的目标架构已经冻结为“桌面端三层 + 外部控制面”
 - `StudioGuiHost` / `StudioGuiDriver` 当前又已补出 `SetWindowDropTargetPreview / ClearWindowDropTargetPreview` 与对应事件，host 会持有非持久化 preview 会话态，并把它通过 `StudioGuiSnapshot / StudioGuiWindowModel.drop_preview` 暴露给 GUI；真实 GUI 不必自己缓存当前 hover 预览
 - `StudioGuiWindowModel.drop_preview` 当前又已进一步携带 `preview_layout + changed_area_ids`，让真实 GUI 可以直接消费预览态布局 DTO 与最小变化集，而不必自己再从两份 layout state 做二次重建或比对
 - `StudioGuiWindowModel.drop_preview` 当前又已补出 `overlay`，显式带出目标 region/stack group、tab 插入位、高亮 area 集与目标 active tab；真实 GUI 不必再从 `drop_target + preview_layout` 手工拆 overlay 提示语义
+- `StudioGuiPlatformHost` 当前会在每次事件派发和 due timer 排空后比较前后 `next_due_native_timer_at()`，把平台真正需要执行的 timer 调度差异收口为显式 `native_timer_request`
 - 窗口布局持久化继续与项目文档语义分离，当前保存到 `<project>.rfstudio-layout.json` sidecar，而不是混入 `*.rfproj.json`
 - 多窗口布局 key 当前已从运行时 `window_id` 收口为基于 `window_role + layout_slot` 的稳定 scope，避免跨 host 重建时直接依赖临时窗口号
 

@@ -222,7 +222,10 @@ impl StoredStudioLayoutRegionWeight {
 
 pub fn studio_layout_path_for_project(project_path: impl AsRef<Path>) -> PathBuf {
     let project_path = project_path.as_ref();
-    let parent = project_path.parent().map(Path::to_path_buf).unwrap_or_default();
+    let parent = project_path
+        .parent()
+        .map(Path::to_path_buf)
+        .unwrap_or_default();
     let file_name = project_path
         .file_name()
         .map(|name| name.to_string_lossy().into_owned())

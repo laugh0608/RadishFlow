@@ -21,6 +21,7 @@ mod studio_gui_command_registry;
 mod studio_gui_driver;
 mod studio_gui_host;
 mod studio_gui_layout_store;
+mod studio_gui_platform_host;
 mod studio_gui_shortcut_router;
 mod studio_gui_snapshot;
 mod studio_gui_timer_host;
@@ -178,6 +179,9 @@ pub use studio_gui_host::{
     StudioGuiHostWindowDropTargetQueryResult, StudioGuiHostWindowLayoutUpdateResult,
     StudioGuiHostWindowOpened,
 };
+pub use studio_gui_platform_host::{
+    StudioGuiPlatformDispatch, StudioGuiPlatformHost, StudioGuiPlatformTimerRequest,
+};
 pub use studio_gui_shortcut_router::{
     StudioGuiFocusContext, StudioGuiShortcutIgnoreReason, StudioGuiShortcutRoute, route_shortcut,
 };
@@ -191,16 +195,16 @@ pub use studio_gui_window_layout::{
     StudioGuiWindowDropTarget, StudioGuiWindowDropTargetKind, StudioGuiWindowDropTargetQuery,
     StudioGuiWindowLayoutModel, StudioGuiWindowLayoutMutation,
     StudioGuiWindowLayoutPersistenceState, StudioGuiWindowLayoutScope,
-    StudioGuiWindowLayoutScopeKind, StudioGuiWindowLayoutState,
-    StudioGuiWindowPanelDisplayMode, StudioGuiWindowPanelLayout,
-    StudioGuiWindowPanelLayoutState, StudioGuiWindowRegionWeight,
-    StudioGuiWindowStackGroupLayout, StudioGuiWindowStackGroupState,
-    StudioGuiWindowStackTabLayout, StudioGuiWindowTitlebarModel,
+    StudioGuiWindowLayoutScopeKind, StudioGuiWindowLayoutState, StudioGuiWindowPanelDisplayMode,
+    StudioGuiWindowPanelLayout, StudioGuiWindowPanelLayoutState, StudioGuiWindowRegionWeight,
+    StudioGuiWindowStackGroupLayout, StudioGuiWindowStackGroupState, StudioGuiWindowStackTabLayout,
+    StudioGuiWindowTitlebarModel,
 };
 pub use studio_gui_window_model::{
-    StudioGuiWindowCanvasAreaModel, StudioGuiWindowCommandAreaModel, StudioGuiWindowHeaderModel,
+    StudioGuiWindowCanvasAreaModel, StudioGuiWindowCommandAreaModel,
     StudioGuiWindowDropPreviewModel, StudioGuiWindowDropPreviewOverlayModel,
-    StudioGuiWindowDropPreviewState, StudioGuiWindowModel, StudioGuiWindowRuntimeAreaModel,
+    StudioGuiWindowDropPreviewState, StudioGuiWindowHeaderModel, StudioGuiWindowModel,
+    StudioGuiWindowRuntimeAreaModel,
 };
 pub use studio_runtime::{
     StudioRuntime, StudioRuntimeConfig, StudioRuntimeDispatch, StudioRuntimeEffect,

@@ -12,10 +12,10 @@ use crate::{
     StudioAppHostUiCommandDispatchResult, StudioAppHostUiCommandModel,
     StudioAppHostWindowDispatchResult, StudioAppWindowHostGlobalEvent, StudioGuiCommandRegistry,
     StudioGuiNativeTimerEffects, StudioGuiRuntimeSnapshot, StudioGuiSnapshot,
-    StudioGuiWindowDropPreviewState, StudioGuiWindowDropTarget,
-    StudioGuiWindowDropTargetQuery, StudioGuiWindowLayoutMutation,
-    StudioGuiWindowLayoutPersistenceState, StudioGuiWindowLayoutState, StudioGuiWindowModel,
-    StudioRuntimeConfig, StudioRuntimeTrigger, StudioWindowHostId, StudioWindowHostRegistration,
+    StudioGuiWindowDropPreviewState, StudioGuiWindowDropTarget, StudioGuiWindowDropTargetQuery,
+    StudioGuiWindowLayoutMutation, StudioGuiWindowLayoutPersistenceState,
+    StudioGuiWindowLayoutState, StudioGuiWindowModel, StudioRuntimeConfig, StudioRuntimeTrigger,
+    StudioWindowHostId, StudioWindowHostRegistration,
 };
 
 #[derive(Debug, Clone, PartialEq)]
@@ -642,7 +642,9 @@ impl StudioGuiHost {
         window_id: Option<StudioWindowHostId>,
         action: &str,
     ) -> RfResult<()> {
-        if let Some(window_id) = window_id.filter(|window_id| self.state().window(*window_id).is_none()) {
+        if let Some(window_id) =
+            window_id.filter(|window_id| self.state().window(*window_id).is_none())
+        {
             return Err(RfError::invalid_input(format!(
                 "window host `{window_id}` is not registered for {action}"
             )));
@@ -769,9 +771,8 @@ mod tests {
         StudioGuiHost, StudioGuiHostCommand, StudioGuiHostCommandOutcome,
         StudioGuiHostLifecycleEvent, StudioGuiHostUiCommandDispatchResult,
         StudioGuiNativeTimerEffects, StudioGuiWindowAreaId, StudioGuiWindowDockPlacement,
-        StudioGuiWindowDockRegion, StudioGuiWindowDropTargetQuery,
-        StudioGuiWindowLayoutMutation, StudioRuntimeConfig,
-        StudioRuntimeEntitlementPreflight, StudioRuntimeEntitlementSeed,
+        StudioGuiWindowDockRegion, StudioGuiWindowDropTargetQuery, StudioGuiWindowLayoutMutation,
+        StudioRuntimeConfig, StudioRuntimeEntitlementPreflight, StudioRuntimeEntitlementSeed,
         StudioRuntimeEntitlementSessionEvent, StudioRuntimeTrigger, StudioWindowHostRetirement,
     };
 
@@ -926,7 +927,12 @@ mod tests {
             }
             other => panic!("expected drop target query outcome, got {other:?}"),
         }
-        assert_eq!(gui_host.window_model_for_window(Some(window_id)).drop_preview, None);
+        assert_eq!(
+            gui_host
+                .window_model_for_window(Some(window_id))
+                .drop_preview,
+            None
+        );
 
         let _ = fs::remove_file(layout_path);
         let _ = fs::remove_file(project_path);
@@ -965,7 +971,9 @@ mod tests {
         }
 
         let window = gui_host.window_model_for_window(Some(window_id));
-        let preview = window.drop_preview.expect("expected drop preview in window model");
+        let preview = window
+            .drop_preview
+            .expect("expected drop preview in window model");
         assert_eq!(
             preview.drop_target.dock_region,
             StudioGuiWindowDockRegion::LeftSidebar
@@ -1001,7 +1009,10 @@ mod tests {
         );
         assert_eq!(
             preview.changed_area_ids,
-            vec![StudioGuiWindowAreaId::Commands, StudioGuiWindowAreaId::Runtime]
+            vec![
+                StudioGuiWindowAreaId::Commands,
+                StudioGuiWindowAreaId::Runtime
+            ]
         );
         assert_eq!(
             window
@@ -1010,11 +1021,13 @@ mod tests {
                 .map(|panel| (panel.dock_region, panel.stack_group, panel.order)),
             Some((StudioGuiWindowDockRegion::RightSidebar, 10, 30))
         );
-        assert!(gui_host
-            .snapshot()
-            .window_model_for_window(Some(window_id))
-            .drop_preview
-            .is_some());
+        assert!(
+            gui_host
+                .snapshot()
+                .window_model_for_window(Some(window_id))
+                .drop_preview
+                .is_some()
+        );
 
         let _ = fs::remove_file(layout_path);
         let _ = fs::remove_file(project_path);
@@ -1055,7 +1068,12 @@ mod tests {
             }
             other => panic!("expected drop preview clear outcome, got {other:?}"),
         }
-        assert_eq!(gui_host.window_model_for_window(Some(window_id)).drop_preview, None);
+        assert_eq!(
+            gui_host
+                .window_model_for_window(Some(window_id))
+                .drop_preview,
+            None
+        );
 
         let _ = fs::remove_file(layout_path);
         let _ = fs::remove_file(project_path);
@@ -1111,7 +1129,12 @@ mod tests {
             }
             other => panic!("expected drop target apply outcome, got {other:?}"),
         }
-        assert_eq!(gui_host.window_model_for_window(Some(window_id)).drop_preview, None);
+        assert_eq!(
+            gui_host
+                .window_model_for_window(Some(window_id))
+                .drop_preview,
+            None
+        );
 
         let _ = fs::remove_file(layout_path);
         let _ = fs::remove_file(project_path);
@@ -1587,9 +1610,7 @@ mod tests {
             stored.entries[0]
                 .stack_groups
                 .iter()
-                .find(|group| {
-                    group.dock_region == "right-sidebar" && group.stack_group == 10
-                })
+                .find(|group| { group.dock_region == "right-sidebar" && group.stack_group == 10 })
                 .map(|group| group.active_area_id.as_str()),
             Some("commands")
         );
@@ -1597,9 +1618,7 @@ mod tests {
             stored.entries[0]
                 .stack_groups
                 .iter()
-                .find(|group| {
-                    group.dock_region == "right-sidebar" && group.stack_group == 20
-                })
+                .find(|group| { group.dock_region == "right-sidebar" && group.stack_group == 20 })
                 .map(|group| group.active_area_id.as_str()),
             Some("runtime")
         );
@@ -1633,7 +1652,12 @@ mod tests {
                 .layout_state
                 .panels_in_dock_region(StudioGuiWindowDockRegion::RightSidebar)
                 .into_iter()
-                .map(|panel| (panel.area_id, panel.dock_region, panel.stack_group, panel.order))
+                .map(|panel| (
+                    panel.area_id,
+                    panel.dock_region,
+                    panel.stack_group,
+                    panel.order
+                ))
                 .collect::<Vec<_>>(),
             vec![
                 (

@@ -1,9 +1,9 @@
 use crate::{
     EntitlementSessionHostRuntimeOutput, StudioGuiCanvasWidgetModel, StudioGuiCommandRegistry,
-    StudioGuiCommandSection, StudioGuiSnapshot, StudioGuiWindowAreaId,
-    StudioGuiWindowDockRegion, StudioGuiWindowDropTarget, StudioGuiWindowDropTargetKind,
-    StudioGuiWindowDropTargetQuery, StudioGuiWindowLayoutModel, StudioGuiWindowLayoutState,
-    StudioWindowHostId, WorkspaceControlState,
+    StudioGuiCommandSection, StudioGuiSnapshot, StudioGuiWindowAreaId, StudioGuiWindowDockRegion,
+    StudioGuiWindowDropTarget, StudioGuiWindowDropTargetKind, StudioGuiWindowDropTargetQuery,
+    StudioGuiWindowLayoutModel, StudioGuiWindowLayoutState, StudioWindowHostId,
+    WorkspaceControlState,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -95,7 +95,8 @@ impl StudioGuiWindowModel {
         snapshot: &StudioGuiSnapshot,
         window_id: Option<StudioWindowHostId>,
     ) -> Self {
-        let layout_state = StudioGuiWindowLayoutState::from_snapshot_for_window(snapshot, window_id);
+        let layout_state =
+            StudioGuiWindowLayoutState::from_snapshot_for_window(snapshot, window_id);
         let drop_preview_state = snapshot
             .window_drop_previews
             .get(&layout_state.scope.layout_key)
@@ -148,8 +149,8 @@ fn build_drop_preview_overlay(
     preview_layout: &StudioGuiWindowLayoutModel,
     drop_target: &StudioGuiWindowDropTarget,
 ) -> StudioGuiWindowDropPreviewOverlayModel {
-    let target_stack = preview_layout
-        .stack_group(drop_target.dock_region, drop_target.target_stack_group);
+    let target_stack =
+        preview_layout.stack_group(drop_target.dock_region, drop_target.target_stack_group);
     let target_stack_area_ids = target_stack
         .map(|group| group.tabs.iter().map(|tab| tab.area_id).collect::<Vec<_>>())
         .unwrap_or_else(|| drop_target.preview_area_ids.clone());
@@ -204,7 +205,8 @@ fn area_is_active_in_stack(
     layout_state
         .panel(area_id)
         .map(|panel| {
-            layout_state.active_panel_in_stack(panel.dock_region, panel.stack_group) == Some(area_id)
+            layout_state.active_panel_in_stack(panel.dock_region, panel.stack_group)
+                == Some(area_id)
         })
         .unwrap_or(false)
 }
@@ -276,7 +278,11 @@ fn canvas_from_snapshot(snapshot: &StudioGuiSnapshot) -> StudioGuiWindowCanvasAr
     let widget = snapshot.canvas.clone();
     let focused_suggestion_id = widget.view().focused_suggestion_id.clone();
     let suggestion_count = widget.view().suggestion_count;
-    let enabled_action_count = widget.actions.iter().filter(|action| action.enabled).count();
+    let enabled_action_count = widget
+        .actions
+        .iter()
+        .filter(|action| action.enabled)
+        .count();
 
     StudioGuiWindowCanvasAreaModel {
         title: "Canvas",
@@ -385,7 +391,11 @@ mod tests {
             "expected at least one enabled command"
         );
         assert_eq!(
-            window.commands.sections.first().map(|section| section.title),
+            window
+                .commands
+                .sections
+                .first()
+                .map(|section| section.title),
             Some("Run Panel")
         );
 
@@ -396,19 +406,34 @@ mod tests {
             window.canvas.focused_suggestion_id.as_deref(),
             Some("local.flash_drum.connect_inlet.flash-1.stream-heated")
         );
-        assert_eq!(window.canvas.widget.primary_action().label, "Accept suggestion");
+        assert_eq!(
+            window.canvas.widget.primary_action().label,
+            "Accept suggestion"
+        );
 
         assert_eq!(window.runtime.title, "Runtime");
-        assert_eq!(window.runtime.control_state.run_status, rf_ui::RunStatus::Idle);
-        assert_eq!(window.runtime.run_panel.view().primary_action.label, "Resume");
+        assert_eq!(
+            window.runtime.control_state.run_status,
+            rf_ui::RunStatus::Idle
+        );
+        assert_eq!(
+            window.runtime.run_panel.view().primary_action.label,
+            "Resume"
+        );
         assert!(window.runtime.entitlement_host.is_some());
         assert_eq!(
             window.runtime.latest_log_entry,
             window.runtime.log_entries.last().cloned()
         );
-        assert_eq!(window.layout_state.scope.kind, StudioGuiWindowLayoutScopeKind::Window);
+        assert_eq!(
+            window.layout_state.scope.kind,
+            StudioGuiWindowLayoutScopeKind::Window
+        );
         assert_eq!(window.layout_state.scope.layout_slot, Some(1));
-        assert_eq!(window.layout_state.scope.layout_key, "studio.window.owner.slot-1");
+        assert_eq!(
+            window.layout_state.scope.layout_key,
+            "studio.window.owner.slot-1"
+        );
         assert_eq!(window.drop_preview, None);
 
         let _ = fs::remove_file(project_path);
@@ -491,7 +516,10 @@ mod tests {
         );
         assert_eq!(
             preview.changed_area_ids,
-            vec![StudioGuiWindowAreaId::Commands, StudioGuiWindowAreaId::Runtime]
+            vec![
+                StudioGuiWindowAreaId::Commands,
+                StudioGuiWindowAreaId::Runtime
+            ]
         );
         assert_eq!(
             preview
