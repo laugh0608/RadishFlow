@@ -2,8 +2,9 @@ use radishflow_studio::{
     EntitlementSessionEventOutcome, StudioAppHostEntitlementTimerEffect, StudioAppResultDispatch,
     StudioGuiDriverOutcome, StudioGuiEvent, StudioGuiHostCommandOutcome,
     StudioGuiNativeTimerEffects, StudioGuiNativeTimerOperation, StudioGuiPlatformDispatch,
-    StudioGuiPlatformExecutedDispatch, StudioGuiPlatformExecutedNativeTimerCallbackOutcome,
-    StudioGuiPlatformHost, StudioGuiPlatformNativeTimerId, StudioGuiPlatformTimerCommand,
+    StudioGuiPlatformExecutedDispatch, StudioGuiPlatformExecutedNativeTimerCallbackBatch,
+    StudioGuiPlatformExecutedNativeTimerCallbackOutcome, StudioGuiPlatformHost,
+    StudioGuiPlatformNativeTimerId, StudioGuiPlatformTimerCommand,
     StudioGuiPlatformTimerExecutionOutcome, StudioGuiPlatformTimerExecutor,
     StudioGuiPlatformTimerExecutorResponse, StudioGuiPlatformTimerFollowUpCommand,
     StudioGuiPlatformTimerRequest, StudioGuiPlatformTimerStartedOutcome,
@@ -571,20 +572,20 @@ fn main() {
             binding.schedule.window_id,
             binding.schedule.handle_id
         );
-        let callback = app_host
-            .dispatch_native_timer_elapsed_by_native_id_and_execute_platform_timer(
-                binding.native_timer_id,
+        let callback_batch = app_host
+            .dispatch_native_timer_elapsed_by_native_ids_and_execute_platform_timers(
+                &[binding.native_timer_id],
                 &mut platform_timer_executor,
             )
             .expect("expected native timer callback outcome");
         println!(
-            "Simulated platform native timer callback via native_id={}",
+            "Simulated platform native timer callback batch via native_id={}",
             binding.native_timer_id
         );
-        print_platform_native_timer_callback_outcome(&callback);
+        print_platform_native_timer_callback_batch(&callback_batch);
         print_window_model(
-            "Window model after simulated native timer callback",
-            &app_host.snapshot().window_model(),
+            "Window model after simulated native timer callback batch",
+            &callback_batch.window_model_for_window(Some(window.window_id)),
         );
     }
 
@@ -1141,6 +1142,20 @@ fn print_platform_native_timer_callback_outcome(
                 "  - due callback status: ignored stale native timer (native_id={native_timer_id})"
             );
         }
+    }
+}
+
+fn print_platform_native_timer_callback_batch(
+    batch: &StudioGuiPlatformExecutedNativeTimerCallbackBatch,
+) {
+    println!("Platform native timer callback batch: {} item(s)", batch.len());
+    for outcome in &batch.callbacks {
+        print_platform_native_timer_callback_outcome(outcome);
+    }
+    if let Some(next_due_at) = batch.next_native_timer_due_at() {
+        println!("  - next platform timer due at after batch: {:?}", next_due_at);
+    } else {
+        println!("  - next platform timer due at after batch: none");
     }
 }
 

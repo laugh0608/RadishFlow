@@ -98,6 +98,7 @@ RadishFlow 的目标架构已经冻结为“桌面端三层 + 外部控制面”
 - 对于同步型平台 timer API，`StudioGuiPlatformHost` 当前又已补出 `execute_platform_timer_request(...) + StudioGuiPlatformTimerExecutor`；平台若能在同一次调用里直接拿到 `native_timer_id` 或启动失败细节，就不必再在 `main.rs` 或未来 GUI 入口手工串接 `apply_request -> execute -> acknowledge -> follow-up`
 - 上述同步型 glue 当前又进一步支持 `dispatch_event_and_execute_platform_timer(...)`、`dispatch_native_timer_elapsed_by_native_id_and_execute_platform_timer(...)` 与 `dispatch_due_native_timer_events_and_execute_platform_timers(...)`；若平台入口本来就是“派发 GUI 事件后立刻调用同步 timer API”的风格，`main.rs` 或未来真实 GUI 宿主也不必再手工拆成 `dispatch -> 取 native_timer_request -> execute`
 - 这组组合入口当前还会把返回结果里的 `snapshot/window` 刷新为 timer 执行后的最终 GUI-facing 视图；若同步执行里触发了平台 notice / runtime log 变化，真实 GUI 不必再额外回查 host 才能拿到更新后的可显示状态
+- 对于更接近真实宿主的“批量平台 callback / due timer drain”场景，`StudioGuiPlatformHost` 当前又已补出 `dispatch_native_timer_elapsed_by_native_ids_and_execute_platform_timers(...)` 与 `drain_due_native_timer_events_and_execute_platform_timers(...)`；平台可在同一份正式结果里拿到逐条 outcome、最终 `snapshot` 与下一次 native timer schedule，而不必自己再写循环后回查 host
 - `StudioGuiSnapshot` 作为跨模块聚合快照真相源
 - `StudioGuiWindowModel` 作为窗口内容分区模型
 - `StudioGuiWindowLayoutState` 作为正式布局状态契约，覆盖 `panel dock_region/stack_group/visibility/collapsed/order`、stack active tab、region 内 stack placement、`center_area`、`region_weights`、多窗口 `layout scope` 与 GUI 可直接消费的 `drop target` 摘要推导

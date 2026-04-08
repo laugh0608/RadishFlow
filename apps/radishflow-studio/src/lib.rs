@@ -182,6 +182,7 @@ pub use studio_gui_host::{
 };
 pub use studio_gui_platform_host::{
     StudioGuiPlatformDispatch, StudioGuiPlatformExecutedDispatch,
+    StudioGuiPlatformExecutedDueTimerDrain, StudioGuiPlatformExecutedNativeTimerCallbackBatch,
     StudioGuiPlatformExecutedNativeTimerCallbackOutcome, StudioGuiPlatformHost,
     StudioGuiPlatformNativeTimerCallbackOutcome, StudioGuiPlatformTimerExecutionOutcome,
     StudioGuiPlatformTimerExecutor,
