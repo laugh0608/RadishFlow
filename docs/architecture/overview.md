@@ -94,6 +94,7 @@ RadishFlow 的目标架构已经冻结为“桌面端三层 + 外部控制面”
 - `StudioGuiSnapshot` 作为跨模块聚合快照真相源
 - `StudioGuiWindowModel` 作为窗口内容分区模型
 - `StudioGuiWindowLayoutState` 作为正式布局状态契约，覆盖 `panel dock_region/stack_group/visibility/collapsed/order`、stack active tab、region 内 stack placement、`center_area`、`region_weights`、多窗口 `layout scope` 与 GUI 可直接消费的 `drop target` 摘要推导
+- runtime 区域当前也会把 `platform_notice` 前推到窗口布局摘要与 badge，真实 GUI 在 panel 折叠或 tab strip 状态下不必退回日志列表才能感知平台 timer 异常
 - `StudioGuiWindowLayoutModel` / `StudioGuiWindowPanelLayout` 当前也已冻结 tab 展示语义，显式区分 `Standalone / ActiveTab / InactiveTab`，让真实 GUI 不必自己再猜非 active tab 的展示角色
 - tab strip 当前也已进入正式布局状态机，至少覆盖 `SetActivePanelInStack`、`ActivateNextPanelInStack`、`ActivatePreviousPanelInStack`、`MovePanelWithinStack` 与 `UnstackPanelFromGroup`，不再把 tab 切换、循环和重排留给 GUI 私有状态
 - `StudioGuiWindowDropTargetQuery` 当前也已冻结为 GUI-facing 预览查询口径，并由 `StudioGuiHostCommand::QueryWindowDropTarget` / `StudioGuiEvent::WindowDropTargetQueryRequested` 暴露显式查询入口，未来真实 GUI 可按 hover/anchor/placement 请求 drop preview，而不再自己拼内部布局状态

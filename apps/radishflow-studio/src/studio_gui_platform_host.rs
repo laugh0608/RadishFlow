@@ -424,6 +424,13 @@ mod tests {
             .as_ref()
             .expect("expected platform notice in window model");
         assert_eq!(window_notice.title, "Platform timer unavailable");
+        let layout = window.layout();
+        let runtime_panel = layout
+            .panel(crate::StudioGuiWindowAreaId::Runtime)
+            .expect("expected runtime panel");
+        assert_eq!(runtime_panel.badge.as_deref(), Some("!"));
+        assert!(runtime_panel.summary.contains("platform=Error"));
+        assert!(runtime_panel.summary.contains("Platform timer unavailable"));
         let latest_window_log = window
             .runtime
             .latest_log_entry

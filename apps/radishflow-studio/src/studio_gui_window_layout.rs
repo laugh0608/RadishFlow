@@ -1016,17 +1016,30 @@ impl StudioGuiWindowLayoutModel {
                 state,
                 StudioGuiWindowAreaId::Runtime,
                 runtime.title,
-                Some(runtime.log_entries.len().to_string()),
-                format!(
-                    "status={:?}, logs={}, entitlement={}",
-                    runtime.control_state.run_status,
-                    runtime.log_entries.len(),
-                    if runtime.entitlement_host.is_some() {
-                        "attached"
-                    } else {
-                        "none"
+                runtime
+                    .platform_notice
+                    .as_ref()
+                    .map(|_| "!".to_string())
+                    .or_else(|| Some(runtime.log_entries.len().to_string())),
+                {
+                    let mut summary = format!(
+                        "status={:?}, logs={}, entitlement={}",
+                        runtime.control_state.run_status,
+                        runtime.log_entries.len(),
+                        if runtime.entitlement_host.is_some() {
+                            "attached"
+                        } else {
+                            "none"
+                        }
+                    );
+                    if let Some(notice) = runtime.platform_notice.as_ref() {
+                        summary.push_str(&format!(
+                            ", platform={:?}: {}",
+                            notice.level, notice.title
+                        ));
                     }
-                ),
+                    summary
+                },
             ),
         ];
         let stack_groups = build_stack_group_layouts(state, &panels);
