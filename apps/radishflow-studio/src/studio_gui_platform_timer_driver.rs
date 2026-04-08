@@ -38,6 +38,19 @@ pub struct StudioGuiPlatformTimerStartAckResult {
     pub status: StudioGuiPlatformTimerStartAckStatus,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum StudioGuiPlatformTimerStartFailureStatus {
+    Applied,
+    MissingPendingSchedule,
+    StalePendingSchedule,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioGuiPlatformTimerStartFailureResult {
+    pub schedule: StudioGuiNativeTimerSchedule,
+    pub status: StudioGuiPlatformTimerStartFailureStatus,
+}
+
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct StudioGuiPlatformTimerDriverState {
     current_binding: Option<StudioGuiPlatformTimerBinding>,
@@ -117,6 +130,25 @@ impl StudioGuiPlatformTimerDriverState {
         StudioGuiPlatformTimerStartAckResult {
             schedule: schedule.clone(),
             native_timer_id,
+            status,
+        }
+    }
+
+    pub fn acknowledge_timer_start_failed(
+        &mut self,
+        schedule: &StudioGuiNativeTimerSchedule,
+    ) -> StudioGuiPlatformTimerStartFailureResult {
+        let status = match self.pending_schedule.as_ref() {
+            Some(pending) if pending == schedule => {
+                self.pending_schedule = None;
+                StudioGuiPlatformTimerStartFailureStatus::Applied
+            }
+            Some(_) => StudioGuiPlatformTimerStartFailureStatus::StalePendingSchedule,
+            None => StudioGuiPlatformTimerStartFailureStatus::MissingPendingSchedule,
+        };
+
+        StudioGuiPlatformTimerStartFailureResult {
+            schedule: schedule.clone(),
             status,
         }
     }
@@ -272,6 +304,43 @@ mod tests {
         assert_eq!(
             ack.status,
             crate::StudioGuiPlatformTimerStartAckStatus::StalePendingSchedule
+        );
+        assert_eq!(state.pending_schedule(), Some(&pending));
+        assert_eq!(state.current_binding(), None);
+    }
+
+    #[test]
+    fn platform_timer_driver_clears_pending_schedule_after_start_failure() {
+        let mut state = StudioGuiPlatformTimerDriverState::default();
+        let pending = schedule(Some(7), 42, 1002, 90);
+        let _ = state.apply_request(Some(&StudioGuiPlatformTimerRequest::Arm {
+            schedule: pending.clone(),
+        }));
+
+        let failure = state.acknowledge_timer_start_failed(&pending);
+
+        assert_eq!(
+            failure.status,
+            crate::StudioGuiPlatformTimerStartFailureStatus::Applied
+        );
+        assert_eq!(state.pending_schedule(), None);
+        assert_eq!(state.current_binding(), None);
+    }
+
+    #[test]
+    fn platform_timer_driver_rejects_stale_start_failure_ack() {
+        let mut state = StudioGuiPlatformTimerDriverState::default();
+        let pending = schedule(Some(7), 42, 1002, 90);
+        let stale = schedule(Some(7), 41, 1001, 60);
+        let _ = state.apply_request(Some(&StudioGuiPlatformTimerRequest::Arm {
+            schedule: pending.clone(),
+        }));
+
+        let failure = state.acknowledge_timer_start_failed(&stale);
+
+        assert_eq!(
+            failure.status,
+            crate::StudioGuiPlatformTimerStartFailureStatus::StalePendingSchedule
         );
         assert_eq!(state.pending_schedule(), Some(&pending));
         assert_eq!(state.current_binding(), None);

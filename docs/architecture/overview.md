@@ -103,7 +103,7 @@ RadishFlow 的目标架构已经冻结为“桌面端三层 + 外部控制面”
 - `StudioGuiWindowModel.drop_preview` 当前又已进一步携带 `preview_layout + changed_area_ids`，让真实 GUI 可以直接消费预览态布局 DTO 与最小变化集，而不必自己再从两份 layout state 做二次重建或比对
 - `StudioGuiWindowModel.drop_preview` 当前又已补出 `overlay`，显式带出目标 region/stack group、tab 插入位、高亮 area 集与目标 active tab；真实 GUI 不必再从 `drop_target + preview_layout` 手工拆 overlay 提示语义
 - `StudioGuiPlatformHost` 当前会在每次事件派发和 due timer 排空后比较前后 pending timer binding，把平台真正需要执行的 timer 调度差异收口为显式 `native_timer_request`，并继续携带 `window_id / handle_id / slot`
-- `StudioGuiPlatformTimerDriverState` 当前会把这份 request 继续收口为平台可执行的 `Arm / Rearm / Clear` 命令，并在 native timer 创建后记录 `native_timer_id -> logical binding` 映射
+- `StudioGuiPlatformTimerDriverState` 当前会把这份 request 继续收口为平台可执行的 `Arm / Rearm / Clear` 命令，并在 native timer 创建后记录 `native_timer_id -> logical binding` 映射；平台若创建失败，也已有显式 failure ack 用于清理 pending 状态
 - 窗口布局持久化继续与项目文档语义分离，当前保存到 `<project>.rfstudio-layout.json` sidecar，而不是混入 `*.rfproj.json`
 - 多窗口布局 key 当前已从运行时 `window_id` 收口为基于 `window_role + layout_slot` 的稳定 scope，避免跨 host 重建时直接依赖临时窗口号
 

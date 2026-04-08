@@ -186,7 +186,8 @@ pub use studio_gui_platform_host::{
 pub use studio_gui_platform_timer_driver::{
     StudioGuiPlatformNativeTimerId, StudioGuiPlatformTimerBinding, StudioGuiPlatformTimerCommand,
     StudioGuiPlatformTimerDriverState, StudioGuiPlatformTimerStartAckResult,
-    StudioGuiPlatformTimerStartAckStatus,
+    StudioGuiPlatformTimerStartAckStatus, StudioGuiPlatformTimerStartFailureResult,
+    StudioGuiPlatformTimerStartFailureStatus,
 };
 pub use studio_gui_shortcut_router::{
     StudioGuiFocusContext, StudioGuiShortcutIgnoreReason, StudioGuiShortcutRoute, route_shortcut,
