@@ -144,6 +144,12 @@ fn print_window_model(title: &str, window: &StudioGuiWindowModel) {
 
     let run_panel_text = window.runtime.run_panel.text();
     print_text_view(run_panel_text.title, &run_panel_text.lines);
+    if let Some(notice) = window.runtime.platform_notice.as_ref() {
+        println!(
+            "Platform notice: {:?}: {} :: {}",
+            notice.level, notice.title, notice.message
+        );
+    }
     if let Some(entitlement_host) = window.runtime.entitlement_host.as_ref() {
         print_text_view(
             entitlement_host.presentation.panel.text.title,

@@ -245,6 +245,7 @@ impl StudioGuiHost {
                 control_state: self.controller.workspace_control_state(),
                 run_panel: self.controller.run_panel_widget(),
                 entitlement_host: self.controller.entitlement_host_output(),
+                platform_notice: None,
                 log_entries: self.controller.log_entries(),
             },
             self.window_drop_previews.clone(),

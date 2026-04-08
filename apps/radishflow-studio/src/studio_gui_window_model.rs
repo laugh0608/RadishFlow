@@ -39,6 +39,7 @@ pub struct StudioGuiWindowRuntimeAreaModel {
     pub control_state: WorkspaceControlState,
     pub run_panel: rf_ui::RunPanelWidgetModel,
     pub entitlement_host: Option<EntitlementSessionHostRuntimeOutput>,
+    pub platform_notice: Option<rf_ui::RunPanelNotice>,
     pub log_entries: Vec<rf_ui::AppLogEntry>,
     pub latest_log_entry: Option<rf_ui::AppLogEntry>,
 }
@@ -299,6 +300,7 @@ fn runtime_from_snapshot(snapshot: &StudioGuiSnapshot) -> StudioGuiWindowRuntime
         control_state: snapshot.runtime.control_state.clone(),
         run_panel: snapshot.runtime.run_panel.clone(),
         entitlement_host: snapshot.runtime.entitlement_host.clone(),
+        platform_notice: snapshot.runtime.platform_notice.clone(),
         latest_log_entry: snapshot.runtime.log_entries.last().cloned(),
         log_entries: snapshot.runtime.log_entries.clone(),
     }
