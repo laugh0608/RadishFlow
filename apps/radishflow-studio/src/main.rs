@@ -1,17 +1,17 @@
 use radishflow_studio::{
     EntitlementSessionEventOutcome, StudioAppHostEntitlementTimerEffect, StudioAppResultDispatch,
     StudioGuiDriverOutcome, StudioGuiEvent, StudioGuiHostCommandOutcome,
-    StudioGuiNativeTimerEffects, StudioGuiNativeTimerOperation, StudioGuiPlatformDispatch,
-    StudioGuiPlatformExecutedDispatch, StudioGuiPlatformExecutedNativeTimerCallbackBatch,
-    StudioGuiPlatformExecutedNativeTimerCallbackOutcome, StudioGuiPlatformHost,
-    StudioGuiPlatformNativeTimerId, StudioGuiPlatformTimerCommand,
+    StudioGuiNativeTimerEffects, StudioGuiNativeTimerOperation, StudioGuiPlatformAsyncRoundInput,
+    StudioGuiPlatformDispatch, StudioGuiPlatformExecutedAsyncRound,
+    StudioGuiPlatformExecutedAsyncRoundAction, StudioGuiPlatformExecutedDispatch,
+    StudioGuiPlatformHost, StudioGuiPlatformNativeTimerId, StudioGuiPlatformTimerCommand,
     StudioGuiPlatformTimerExecutionOutcome, StudioGuiPlatformTimerExecutor,
     StudioGuiPlatformTimerExecutorResponse, StudioGuiPlatformTimerFollowUpCommand,
-    StudioGuiPlatformTimerRequest, StudioGuiPlatformTimerStartedOutcome,
-    StudioGuiWindowAreaId, StudioGuiWindowDockPlacement, StudioGuiWindowDockRegion,
-    StudioGuiWindowDropTarget, StudioGuiWindowDropTargetQuery, StudioGuiWindowLayoutMutation,
-    StudioGuiWindowModel, StudioRuntimeConfig, StudioRuntimeDispatch, StudioRuntimeReport,
-    StudioWindowHostId, StudioWindowHostRetirement, StudioWindowTimerDriverAckResult,
+    StudioGuiPlatformTimerRequest, StudioGuiPlatformTimerStartedOutcome, StudioGuiWindowAreaId,
+    StudioGuiWindowDockPlacement, StudioGuiWindowDockRegion, StudioGuiWindowDropTarget,
+    StudioGuiWindowDropTargetQuery, StudioGuiWindowLayoutMutation, StudioGuiWindowModel,
+    StudioRuntimeConfig, StudioRuntimeDispatch, StudioRuntimeReport, StudioWindowHostId,
+    StudioWindowHostRetirement, StudioWindowTimerDriverAckResult,
 };
 
 struct DemoPlatformTimerExecutor {
@@ -572,20 +572,23 @@ fn main() {
             binding.schedule.window_id,
             binding.schedule.handle_id
         );
-        let callback_batch = app_host
-            .dispatch_native_timer_elapsed_by_native_ids_and_execute_platform_timers(
-                &[binding.native_timer_id],
+        let async_round = app_host
+            .process_async_platform_round_and_execute_actions(
+                StudioGuiPlatformAsyncRoundInput {
+                    native_timer_ids: vec![binding.native_timer_id],
+                    ..StudioGuiPlatformAsyncRoundInput::default()
+                },
                 &mut platform_timer_executor,
             )
-            .expect("expected native timer callback outcome");
+            .expect("expected async platform round");
         println!(
-            "Simulated platform native timer callback batch via native_id={}",
+            "Simulated platform async round via native_id={}",
             binding.native_timer_id
         );
-        print_platform_native_timer_callback_batch(&callback_batch);
+        print_platform_async_round(&async_round);
         print_window_model(
-            "Window model after simulated native timer callback batch",
-            &callback_batch.window_model_for_window(Some(window.window_id)),
+            "Window model after simulated platform async round",
+            &async_round.window_model_for_window(Some(window.window_id)),
         );
     }
 
@@ -830,10 +833,9 @@ fn expect_window_opened_and_execute(
     context: &str,
     executor: &mut impl StudioGuiPlatformTimerExecutor,
 ) -> StudioGuiPlatformExecutedDispatch {
-    match app_host.dispatch_event_and_execute_platform_timer(
-        StudioGuiEvent::OpenWindowRequested,
-        executor,
-    ) {
+    match app_host
+        .dispatch_event_and_execute_platform_timer(StudioGuiEvent::OpenWindowRequested, executor)
+    {
         Ok(executed) => match &executed.dispatch.outcome {
             StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::WindowOpened(_)) => {
                 executed
@@ -987,9 +989,7 @@ fn print_platform_timer_request(request: Option<&StudioGuiPlatformTimerRequest>)
     }
 }
 
-fn consume_platform_timer_request(
-    executed: &StudioGuiPlatformExecutedDispatch,
-) {
+fn consume_platform_timer_request(executed: &StudioGuiPlatformExecutedDispatch) {
     print_platform_timer_request(executed.dispatch.native_timer_request.as_ref());
     match &executed.timer_execution {
         StudioGuiPlatformTimerExecutionOutcome::NoCommand => {}
@@ -1076,10 +1076,7 @@ fn print_platform_timer_started_outcome(outcome: &StudioGuiPlatformTimerStartedO
                 ack.schedule.slot.timer.due_at
             );
         }
-        StudioGuiPlatformTimerStartedOutcome::IgnoredMissingPendingSchedule {
-            ack,
-            ..
-        } => {
+        StudioGuiPlatformTimerStartedOutcome::IgnoredMissingPendingSchedule { ack, .. } => {
             println!(
                 "Platform timer ack: ignored missing pending schedule for native_id={} window={:?} handle={} due_at={:?}",
                 ack.native_timer_id,
@@ -1088,10 +1085,7 @@ fn print_platform_timer_started_outcome(outcome: &StudioGuiPlatformTimerStartedO
                 ack.schedule.slot.timer.due_at
             );
         }
-        StudioGuiPlatformTimerStartedOutcome::IgnoredStalePendingSchedule {
-            ack,
-            ..
-        } => {
+        StudioGuiPlatformTimerStartedOutcome::IgnoredStalePendingSchedule { ack, .. } => {
             println!(
                 "Platform timer ack: ignored stale pending schedule for native_id={} window={:?} handle={} due_at={:?}",
                 ack.native_timer_id,
@@ -1119,43 +1113,66 @@ fn consume_platform_timer_follow_up_command(
     }
 }
 
-fn print_platform_native_timer_callback_outcome(
-    outcome: &StudioGuiPlatformExecutedNativeTimerCallbackOutcome,
-) {
-    match outcome {
-        StudioGuiPlatformExecutedNativeTimerCallbackOutcome::Dispatched(dispatch) => {
-            println!("  - due callback status: dispatched");
-            println!("  - due callback outcome: {:?}", dispatch.dispatch.outcome);
-            print_platform_timer_execution(dispatch);
-        }
-        StudioGuiPlatformExecutedNativeTimerCallbackOutcome::IgnoredUnknownNativeTimer {
-            native_timer_id,
-        } => {
-            println!(
-                "  - due callback status: ignored unknown native timer (native_id={native_timer_id})"
-            );
-        }
-        StudioGuiPlatformExecutedNativeTimerCallbackOutcome::IgnoredStaleNativeTimer {
-            native_timer_id,
-        } => {
-            println!(
-                "  - due callback status: ignored stale native timer (native_id={native_timer_id})"
-            );
+fn print_platform_async_round(round: &StudioGuiPlatformExecutedAsyncRound) {
+    println!(
+        "Platform async round: started={} failed={} callbacks={} due_dispatches={} actions={}",
+        round.round.started_feedback_batch.len(),
+        round.round.start_failed_feedback_batch.len(),
+        round.round.native_timer_callback_batch.len(),
+        round
+            .round
+            .due_timer_drain
+            .as_ref()
+            .map(|drain| drain.len())
+            .unwrap_or(0),
+        round.actions.len()
+    );
+    for action in &round.actions {
+        match action {
+            StudioGuiPlatformExecutedAsyncRoundAction::FollowUpCommand(command) => {
+                println!("  - async round action: follow-up");
+                consume_platform_timer_follow_up_command(Some(command.clone()));
+            }
+            StudioGuiPlatformExecutedAsyncRoundAction::TimerRequest { request, execution } => {
+                println!("  - async round action: timer request");
+                print_platform_timer_request(Some(request));
+                match execution {
+                    StudioGuiPlatformTimerExecutionOutcome::NoCommand => {
+                        println!("    execution: no command");
+                    }
+                    StudioGuiPlatformTimerExecutionOutcome::Executed {
+                        host_outcome,
+                        follow_up_command,
+                        ..
+                    } => {
+                        match host_outcome {
+                            radishflow_studio::StudioGuiPlatformTimerHostOutcome::Started(
+                                started,
+                            ) => print_platform_timer_started_outcome(started),
+                            radishflow_studio::StudioGuiPlatformTimerHostOutcome::StartFailed(
+                                failure,
+                            ) => {
+                                println!("Platform timer start failure outcome: {:?}", failure);
+                            }
+                            radishflow_studio::StudioGuiPlatformTimerHostOutcome::Cleared => {
+                                println!("Platform timer clear outcome: cleared");
+                            }
+                        }
+                        if follow_up_command.is_some() {
+                            println!("    follow-up consumed by executor");
+                        }
+                    }
+                }
+            }
         }
     }
-}
-
-fn print_platform_native_timer_callback_batch(
-    batch: &StudioGuiPlatformExecutedNativeTimerCallbackBatch,
-) {
-    println!("Platform native timer callback batch: {} item(s)", batch.len());
-    for outcome in &batch.callbacks {
-        print_platform_native_timer_callback_outcome(outcome);
-    }
-    if let Some(next_due_at) = batch.next_native_timer_due_at() {
-        println!("  - next platform timer due at after batch: {:?}", next_due_at);
+    if let Some(next_due_at) = round.next_native_timer_due_at() {
+        println!(
+            "  - next platform timer due at after async round: {:?}",
+            next_due_at
+        );
     } else {
-        println!("  - next platform timer due at after batch: none");
+        println!("  - next platform timer due at after async round: none");
     }
 }
 

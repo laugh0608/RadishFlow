@@ -181,8 +181,9 @@ pub use studio_gui_host::{
     StudioGuiHostWindowOpened,
 };
 pub use studio_gui_platform_host::{
-    StudioGuiPlatformAsyncRound, StudioGuiPlatformAsyncRoundInput,
-    StudioGuiPlatformDispatch, StudioGuiPlatformDueTimerDrain,
+    StudioGuiPlatformAsyncRound, StudioGuiPlatformAsyncRoundAction,
+    StudioGuiPlatformAsyncRoundInput, StudioGuiPlatformDispatch, StudioGuiPlatformDueTimerDrain,
+    StudioGuiPlatformExecutedAsyncRound, StudioGuiPlatformExecutedAsyncRoundAction,
     StudioGuiPlatformExecutedDispatch, StudioGuiPlatformExecutedDueTimerDrain,
     StudioGuiPlatformExecutedNativeTimerCallbackBatch,
     StudioGuiPlatformExecutedNativeTimerCallbackOutcome, StudioGuiPlatformHost,
@@ -191,10 +192,9 @@ pub use studio_gui_platform_host::{
     StudioGuiPlatformTimerExecutorResponse, StudioGuiPlatformTimerFollowUpCommand,
     StudioGuiPlatformTimerHostOutcome, StudioGuiPlatformTimerRequest,
     StudioGuiPlatformTimerStartFailedFeedback, StudioGuiPlatformTimerStartFailedFeedbackBatch,
-    StudioGuiPlatformTimerStartFailedFeedbackEntry,
-    StudioGuiPlatformTimerStartFailedOutcome, StudioGuiPlatformTimerStartedOutcome,
+    StudioGuiPlatformTimerStartFailedFeedbackEntry, StudioGuiPlatformTimerStartFailedOutcome,
     StudioGuiPlatformTimerStartedFeedback, StudioGuiPlatformTimerStartedFeedbackBatch,
-    StudioGuiPlatformTimerStartedFeedbackEntry,
+    StudioGuiPlatformTimerStartedFeedbackEntry, StudioGuiPlatformTimerStartedOutcome,
 };
 pub use studio_gui_platform_timer_driver::{
     StudioGuiPlatformNativeTimerId, StudioGuiPlatformTimerBinding,

@@ -113,7 +113,9 @@ impl StudioGuiPlatformNativeTimerCallbackBatch {
                 StudioGuiPlatformNativeTimerCallbackOutcome::Dispatched(dispatch) => {
                     dispatch.native_timer_request.clone()
                 }
-                StudioGuiPlatformNativeTimerCallbackOutcome::IgnoredUnknownNativeTimer { .. }
+                StudioGuiPlatformNativeTimerCallbackOutcome::IgnoredUnknownNativeTimer {
+                    ..
+                }
                 | StudioGuiPlatformNativeTimerCallbackOutcome::IgnoredStaleNativeTimer { .. } => {
                     None
                 }
@@ -220,6 +222,21 @@ pub struct StudioGuiPlatformAsyncRoundInput {
     pub start_failed_feedbacks: Vec<StudioGuiPlatformTimerStartFailedFeedback>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum StudioGuiPlatformAsyncRoundAction {
+    FollowUpCommand(StudioGuiPlatformTimerFollowUpCommand),
+    TimerRequest(StudioGuiPlatformTimerRequest),
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum StudioGuiPlatformExecutedAsyncRoundAction {
+    FollowUpCommand(StudioGuiPlatformTimerFollowUpCommand),
+    TimerRequest {
+        request: StudioGuiPlatformTimerRequest,
+        execution: StudioGuiPlatformTimerExecutionOutcome,
+    },
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct StudioGuiPlatformAsyncRound {
     pub input: StudioGuiPlatformAsyncRoundInput,
@@ -255,6 +272,43 @@ impl StudioGuiPlatformAsyncRound {
 
     pub fn follow_up_commands(&self) -> Vec<StudioGuiPlatformTimerFollowUpCommand> {
         self.started_feedback_batch.follow_up_commands()
+    }
+
+    pub fn actions(&self) -> Vec<StudioGuiPlatformAsyncRoundAction> {
+        let mut actions = self
+            .follow_up_commands()
+            .into_iter()
+            .map(StudioGuiPlatformAsyncRoundAction::FollowUpCommand)
+            .collect::<Vec<_>>();
+        actions.extend(
+            self.native_timer_requests()
+                .into_iter()
+                .map(StudioGuiPlatformAsyncRoundAction::TimerRequest),
+        );
+        actions
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct StudioGuiPlatformExecutedAsyncRound {
+    pub round: StudioGuiPlatformAsyncRound,
+    pub actions: Vec<StudioGuiPlatformExecutedAsyncRoundAction>,
+    pub snapshot: StudioGuiSnapshot,
+    pub next_native_timer_schedule: Option<StudioGuiNativeTimerSchedule>,
+}
+
+impl StudioGuiPlatformExecutedAsyncRound {
+    pub fn next_native_timer_due_at(&self) -> Option<SystemTime> {
+        self.next_native_timer_schedule
+            .as_ref()
+            .map(|schedule| schedule.slot.timer.due_at)
+    }
+
+    pub fn window_model_for_window(
+        &self,
+        window_id: Option<StudioWindowHostId>,
+    ) -> StudioGuiWindowModel {
+        self.snapshot.window_model_for_window(window_id)
     }
 }
 
@@ -672,8 +726,8 @@ impl StudioGuiPlatformHost {
     ) -> StudioGuiPlatformTimerStartedFeedbackBatch {
         let mut entries = Vec::with_capacity(feedbacks.len());
         for feedback in feedbacks {
-            let outcome =
-                self.acknowledge_platform_timer_started(&feedback.schedule, feedback.native_timer_id);
+            let outcome = self
+                .acknowledge_platform_timer_started(&feedback.schedule, feedback.native_timer_id);
             let follow_up_command = outcome.follow_up_command();
             entries.push(StudioGuiPlatformTimerStartedFeedbackEntry {
                 feedback: feedback.clone(),
@@ -743,6 +797,40 @@ impl StudioGuiPlatformHost {
             start_failed_feedback_batch,
             native_timer_callback_batch,
             due_timer_drain,
+            snapshot: self.snapshot(),
+            next_native_timer_schedule: self.current_schedule.clone(),
+        })
+    }
+
+    pub fn process_async_platform_round_and_execute_actions(
+        &mut self,
+        input: StudioGuiPlatformAsyncRoundInput,
+        executor: &mut impl StudioGuiPlatformTimerExecutor,
+    ) -> RfResult<StudioGuiPlatformExecutedAsyncRound> {
+        let round = self.process_async_platform_round(input)?;
+        let mut actions = Vec::new();
+        for action in round.actions() {
+            match action {
+                StudioGuiPlatformAsyncRoundAction::FollowUpCommand(command) => {
+                    executor.execute_platform_timer_follow_up_command(&command)?;
+                    actions.push(StudioGuiPlatformExecutedAsyncRoundAction::FollowUpCommand(
+                        command,
+                    ));
+                }
+                StudioGuiPlatformAsyncRoundAction::TimerRequest(request) => {
+                    let execution =
+                        self.execute_platform_timer_request(Some(&request), executor)?;
+                    actions.push(StudioGuiPlatformExecutedAsyncRoundAction::TimerRequest {
+                        request,
+                        execution,
+                    });
+                }
+            }
+        }
+
+        Ok(StudioGuiPlatformExecutedAsyncRound {
+            round,
+            actions,
             snapshot: self.snapshot(),
             next_native_timer_schedule: self.current_schedule.clone(),
         })
@@ -995,16 +1083,16 @@ mod tests {
     use rf_types::RfResult;
 
     use crate::{
-        StudioGuiEvent, StudioGuiPlatformAsyncRoundInput,
-        StudioGuiPlatformExecutedNativeTimerCallbackOutcome,
-        StudioGuiPlatformHost, StudioGuiPlatformNativeTimerCallbackOutcome,
-        StudioGuiPlatformTimerExecutionOutcome, StudioGuiPlatformTimerExecutor,
-        StudioGuiPlatformTimerExecutorResponse, StudioGuiPlatformTimerFollowUpCommand,
-        StudioGuiPlatformTimerHostOutcome, StudioGuiPlatformTimerRequest,
-        StudioGuiPlatformTimerStartFailedFeedback, StudioGuiPlatformTimerStartFailedOutcome,
-        StudioGuiPlatformTimerStartedFeedback,
-        StudioGuiPlatformTimerStartedOutcome,
-        StudioRuntimeConfig, StudioRuntimeEntitlementPreflight, StudioRuntimeEntitlementSeed,
+        StudioGuiEvent, StudioGuiPlatformAsyncRoundAction, StudioGuiPlatformAsyncRoundInput,
+        StudioGuiPlatformExecutedAsyncRoundAction,
+        StudioGuiPlatformExecutedNativeTimerCallbackOutcome, StudioGuiPlatformHost,
+        StudioGuiPlatformNativeTimerCallbackOutcome, StudioGuiPlatformTimerExecutionOutcome,
+        StudioGuiPlatformTimerExecutor, StudioGuiPlatformTimerExecutorResponse,
+        StudioGuiPlatformTimerFollowUpCommand, StudioGuiPlatformTimerHostOutcome,
+        StudioGuiPlatformTimerRequest, StudioGuiPlatformTimerStartFailedFeedback,
+        StudioGuiPlatformTimerStartFailedOutcome, StudioGuiPlatformTimerStartedFeedback,
+        StudioGuiPlatformTimerStartedOutcome, StudioRuntimeConfig,
+        StudioRuntimeEntitlementPreflight, StudioRuntimeEntitlementSeed,
     };
 
     #[derive(Default)]
@@ -1764,7 +1852,10 @@ mod tests {
                 host_outcome,
                 follow_up_command,
             } => {
-                assert!(matches!(command, crate::StudioGuiPlatformTimerCommand::Arm { .. }));
+                assert!(matches!(
+                    command,
+                    crate::StudioGuiPlatformTimerCommand::Arm { .. }
+                ));
                 assert_eq!(
                     executor_response,
                     StudioGuiPlatformTimerExecutorResponse::Started {
@@ -1877,7 +1968,10 @@ mod tests {
             },
         ]);
         let _ = host
-            .execute_platform_timer_request(dispatched.native_timer_request.as_ref(), &mut start_executor)
+            .execute_platform_timer_request(
+                dispatched.native_timer_request.as_ref(),
+                &mut start_executor,
+            )
             .expect("expected start execution");
 
         let current_schedule = host
@@ -2231,10 +2325,12 @@ mod tests {
             dispatch.native_timer_request,
             Some(StudioGuiPlatformTimerRequest::Rearm { .. }) | None
         )));
-        assert!(batch.native_timer_requests().iter().all(|request| matches!(
-            request,
-            StudioGuiPlatformTimerRequest::Rearm { .. }
-        )));
+        assert!(
+            batch
+                .native_timer_requests()
+                .iter()
+                .all(|request| matches!(request, StudioGuiPlatformTimerRequest::Rearm { .. }))
+        );
         let window = batch.window_model_for_window(Some(window_id));
         assert_eq!(window.layout_state.scope.window_id, Some(window_id));
     }
@@ -2289,7 +2385,10 @@ mod tests {
             Some(StudioGuiPlatformTimerRequest::Rearm { .. })
         ));
         assert_eq!(round.snapshot, host.snapshot());
-        assert_eq!(round.next_native_timer_due_at(), host.next_native_timer_due_at());
+        assert_eq!(
+            round.next_native_timer_due_at(),
+            host.next_native_timer_due_at()
+        );
         let window = round.window_model_for_window(Some(window_id));
         assert_eq!(window.layout_state.scope.window_id, Some(window_id));
     }
@@ -2347,6 +2446,157 @@ mod tests {
         ));
         assert_eq!(round.native_timer_requests(), Vec::new());
         assert_eq!(round.snapshot, host.snapshot());
+    }
+
+    #[test]
+    fn platform_host_async_round_actions_order_follow_up_before_timer_requests() {
+        let mut host =
+            StudioGuiPlatformHost::new(&lease_expiring_config()).expect("expected platform host");
+        let opened = host
+            .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+            .expect("expected open dispatch");
+        let window_id = match opened.outcome {
+            crate::StudioGuiDriverOutcome::HostCommand(
+                crate::StudioGuiHostCommandOutcome::WindowOpened(opened),
+            ) => opened.registration.window_id,
+            other => panic!("expected opened window outcome, got {other:?}"),
+        };
+        let dispatched = host
+            .dispatch_event(StudioGuiEvent::WindowTriggerRequested {
+                window_id,
+                trigger: crate::StudioRuntimeTrigger::EntitlementSessionEvent(
+                    crate::StudioRuntimeEntitlementSessionEvent::TimerElapsed,
+                ),
+            })
+            .expect("expected timer trigger dispatch");
+        let schedule = match dispatched.native_timer_request.as_ref() {
+            Some(StudioGuiPlatformTimerRequest::Arm { schedule }) => schedule.clone(),
+            other => panic!("expected arm timer request, got {other:?}"),
+        };
+        let _ = host.apply_platform_timer_request(dispatched.native_timer_request.as_ref());
+        let _ = host.acknowledge_platform_timer_started(&schedule, 9001);
+
+        let round = host
+            .process_async_platform_round(StudioGuiPlatformAsyncRoundInput {
+                started_feedbacks: vec![StudioGuiPlatformTimerStartedFeedback {
+                    schedule: schedule.clone(),
+                    native_timer_id: 9002,
+                }],
+                native_timer_ids: vec![9001],
+                ..StudioGuiPlatformAsyncRoundInput::default()
+            })
+            .expect("expected async round");
+
+        let actions = round.actions();
+        assert_eq!(actions.len(), 2);
+        assert_eq!(
+            actions.first(),
+            Some(&StudioGuiPlatformAsyncRoundAction::FollowUpCommand(
+                StudioGuiPlatformTimerFollowUpCommand::ClearNativeTimer {
+                    native_timer_id: 9002,
+                }
+            ))
+        );
+        assert!(matches!(
+            actions.get(1),
+            Some(StudioGuiPlatformAsyncRoundAction::TimerRequest(
+                StudioGuiPlatformTimerRequest::Rearm { .. }
+            ))
+        ));
+    }
+
+    #[test]
+    fn platform_host_executes_async_round_actions_and_exposes_final_snapshot() {
+        let mut host =
+            StudioGuiPlatformHost::new(&lease_expiring_config()).expect("expected platform host");
+        let opened = host
+            .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+            .expect("expected open dispatch");
+        let window_id = match opened.outcome {
+            crate::StudioGuiDriverOutcome::HostCommand(
+                crate::StudioGuiHostCommandOutcome::WindowOpened(opened),
+            ) => opened.registration.window_id,
+            other => panic!("expected opened window outcome, got {other:?}"),
+        };
+        let dispatched = host
+            .dispatch_event(StudioGuiEvent::WindowTriggerRequested {
+                window_id,
+                trigger: crate::StudioRuntimeTrigger::EntitlementSessionEvent(
+                    crate::StudioRuntimeEntitlementSessionEvent::TimerElapsed,
+                ),
+            })
+            .expect("expected timer trigger dispatch");
+        let schedule = match dispatched.native_timer_request.as_ref() {
+            Some(StudioGuiPlatformTimerRequest::Arm { schedule }) => schedule.clone(),
+            other => panic!("expected arm timer request, got {other:?}"),
+        };
+        let _ = host.apply_platform_timer_request(dispatched.native_timer_request.as_ref());
+        let _ = host.acknowledge_platform_timer_started(&schedule, 9001);
+
+        let mut executor = TestPlatformTimerExecutor::with_responses(vec![
+            StudioGuiPlatformTimerExecutorResponse::Started {
+                native_timer_id: 9003,
+            },
+        ]);
+        let executed = host
+            .process_async_platform_round_and_execute_actions(
+                StudioGuiPlatformAsyncRoundInput {
+                    started_feedbacks: vec![StudioGuiPlatformTimerStartedFeedback {
+                        schedule: schedule.clone(),
+                        native_timer_id: 9002,
+                    }],
+                    native_timer_ids: vec![9001],
+                    ..StudioGuiPlatformAsyncRoundInput::default()
+                },
+                &mut executor,
+            )
+            .expect("expected executed async round");
+
+        assert_eq!(executed.actions.len(), 2);
+        assert_eq!(
+            executed.actions.first(),
+            Some(&StudioGuiPlatformExecutedAsyncRoundAction::FollowUpCommand(
+                StudioGuiPlatformTimerFollowUpCommand::ClearNativeTimer {
+                    native_timer_id: 9002,
+                }
+            ))
+        );
+        assert!(matches!(
+            executed.actions.get(1),
+            Some(StudioGuiPlatformExecutedAsyncRoundAction::TimerRequest {
+                request: StudioGuiPlatformTimerRequest::Rearm { .. },
+                execution: StudioGuiPlatformTimerExecutionOutcome::Executed {
+                    host_outcome: StudioGuiPlatformTimerHostOutcome::Started(
+                        StudioGuiPlatformTimerStartedOutcome::Applied(_)
+                    ),
+                    follow_up_command: None,
+                    ..
+                }
+            })
+        ));
+        assert_eq!(
+            executor.follow_up_commands,
+            vec![StudioGuiPlatformTimerFollowUpCommand::ClearNativeTimer {
+                native_timer_id: 9002,
+            }]
+        );
+        assert_eq!(executor.commands.len(), 1);
+        assert!(matches!(
+            executor.commands.first(),
+            Some(crate::StudioGuiPlatformTimerCommand::Rearm { .. })
+        ));
+        assert_eq!(executed.snapshot, host.snapshot());
+        assert_eq!(
+            executed.next_native_timer_due_at(),
+            host.next_native_timer_due_at()
+        );
+        let window = executed.window_model_for_window(Some(window_id));
+        assert_eq!(window.layout_state.scope.window_id, Some(window_id));
+        assert_eq!(
+            host.current_platform_timer_binding()
+                .map(|binding| binding.native_timer_id),
+            Some(9003)
+        );
     }
 
     #[test]
