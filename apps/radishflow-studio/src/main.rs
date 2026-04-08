@@ -4,13 +4,54 @@ use radishflow_studio::{
     StudioGuiNativeTimerEffects, StudioGuiNativeTimerOperation, StudioGuiPlatformDispatch,
     StudioGuiPlatformHost, StudioGuiPlatformNativeTimerCallbackOutcome,
     StudioGuiPlatformNativeTimerId, StudioGuiPlatformTimerCommand,
-    StudioGuiPlatformTimerFollowUpCommand, StudioGuiPlatformTimerRequest,
-    StudioGuiPlatformTimerStartedOutcome, StudioGuiWindowAreaId,
-    StudioGuiWindowDockPlacement, StudioGuiWindowDockRegion, StudioGuiWindowDropTarget,
-    StudioGuiWindowDropTargetQuery, StudioGuiWindowLayoutMutation, StudioGuiWindowModel,
-    StudioRuntimeConfig, StudioRuntimeDispatch, StudioRuntimeReport, StudioWindowHostId,
-    StudioWindowHostRetirement, StudioWindowTimerDriverAckResult,
+    StudioGuiPlatformTimerExecutionOutcome, StudioGuiPlatformTimerExecutor,
+    StudioGuiPlatformTimerExecutorResponse, StudioGuiPlatformTimerFollowUpCommand,
+    StudioGuiPlatformTimerRequest, StudioGuiPlatformTimerStartedOutcome,
+    StudioGuiWindowAreaId, StudioGuiWindowDockPlacement, StudioGuiWindowDockRegion,
+    StudioGuiWindowDropTarget, StudioGuiWindowDropTargetQuery, StudioGuiWindowLayoutMutation,
+    StudioGuiWindowModel, StudioRuntimeConfig, StudioRuntimeDispatch, StudioRuntimeReport,
+    StudioWindowHostId, StudioWindowHostRetirement, StudioWindowTimerDriverAckResult,
 };
+
+struct DemoPlatformTimerExecutor {
+    next_native_timer_id: StudioGuiPlatformNativeTimerId,
+}
+
+impl DemoPlatformTimerExecutor {
+    fn new(next_native_timer_id: StudioGuiPlatformNativeTimerId) -> Self {
+        Self {
+            next_native_timer_id,
+        }
+    }
+}
+
+impl StudioGuiPlatformTimerExecutor for DemoPlatformTimerExecutor {
+    fn execute_platform_timer_command(
+        &mut self,
+        command: &StudioGuiPlatformTimerCommand,
+    ) -> rf_types::RfResult<StudioGuiPlatformTimerExecutorResponse> {
+        print_platform_timer_command(command);
+        match command {
+            StudioGuiPlatformTimerCommand::Arm { .. }
+            | StudioGuiPlatformTimerCommand::Rearm { .. } => {
+                let native_timer_id = self.next_native_timer_id;
+                self.next_native_timer_id += 1;
+                Ok(StudioGuiPlatformTimerExecutorResponse::Started { native_timer_id })
+            }
+            StudioGuiPlatformTimerCommand::Clear { .. } => {
+                Ok(StudioGuiPlatformTimerExecutorResponse::Cleared)
+            }
+        }
+    }
+
+    fn execute_platform_timer_follow_up_command(
+        &mut self,
+        command: &StudioGuiPlatformTimerFollowUpCommand,
+    ) -> rf_types::RfResult<()> {
+        consume_platform_timer_follow_up_command(Some(command.clone()));
+        Ok(())
+    }
+}
 
 fn print_text_view(title: &str, lines: &[String]) {
     println!("{title}:");
@@ -267,7 +308,7 @@ fn main() {
             std::process::exit(1);
         }
     };
-    let mut next_platform_native_timer_id = 9001;
+    let mut platform_timer_executor = DemoPlatformTimerExecutor::new(9001);
 
     let opened = expect_window_opened(&mut app_host, "open initial window");
     let opened_result = match &opened.outcome {
@@ -467,7 +508,7 @@ fn main() {
     consume_platform_timer_request(
         &mut app_host,
         opened.native_timer_request.as_ref(),
-        &mut next_platform_native_timer_id,
+        &mut platform_timer_executor,
     );
 
     let dispatch = expect_window_dispatch(
@@ -523,7 +564,7 @@ fn main() {
     consume_platform_timer_request(
         &mut app_host,
         dispatch.native_timer_request.as_ref(),
-        &mut next_platform_native_timer_id,
+        &mut platform_timer_executor,
     );
     if let Some(binding) = app_host.current_platform_timer_binding().cloned() {
         println!(
@@ -546,7 +587,7 @@ fn main() {
             consume_platform_timer_request(
                 &mut app_host,
                 callback_dispatch.native_timer_request.as_ref(),
-                &mut next_platform_native_timer_id,
+                &mut platform_timer_executor,
             );
         }
         print_window_model(
@@ -660,7 +701,7 @@ fn main() {
     consume_platform_timer_request(
         &mut app_host,
         lifecycle.native_timer_request.as_ref(),
-        &mut next_platform_native_timer_id,
+        &mut platform_timer_executor,
     );
 
     let close = expect_close_window(&mut app_host, window.window_id, "close initial window");
@@ -712,7 +753,7 @@ fn main() {
             consume_platform_timer_request(
                 &mut app_host,
                 close.native_timer_request.as_ref(),
-                &mut next_platform_native_timer_id,
+                &mut platform_timer_executor,
             );
         }
         None => {
@@ -945,24 +986,34 @@ fn print_platform_timer_request(request: Option<&StudioGuiPlatformTimerRequest>)
 fn consume_platform_timer_request(
     host: &mut StudioGuiPlatformHost,
     request: Option<&StudioGuiPlatformTimerRequest>,
-    next_native_timer_id: &mut StudioGuiPlatformNativeTimerId,
+    executor: &mut impl StudioGuiPlatformTimerExecutor,
 ) {
     print_platform_timer_request(request);
-    let Some(command) = host.apply_platform_timer_request(request) else {
-        return;
-    };
-
-    print_platform_timer_command(&command);
-    match &command {
-        StudioGuiPlatformTimerCommand::Arm { schedule }
-        | StudioGuiPlatformTimerCommand::Rearm { schedule, .. } => {
-            let native_timer_id = *next_native_timer_id;
-            *next_native_timer_id += 1;
-            let started = host.acknowledge_platform_timer_started(schedule, native_timer_id);
-            print_platform_timer_started_outcome(&started);
-            consume_platform_timer_follow_up_command(started.follow_up_command());
+    let execution = host
+        .execute_platform_timer_request(request, executor)
+        .expect("expected platform timer execution");
+    match execution {
+        StudioGuiPlatformTimerExecutionOutcome::NoCommand => {}
+        StudioGuiPlatformTimerExecutionOutcome::Executed {
+            host_outcome,
+            follow_up_command,
+            ..
+        } => {
+            match host_outcome {
+                radishflow_studio::StudioGuiPlatformTimerHostOutcome::Started(started) => {
+                    print_platform_timer_started_outcome(&started);
+                }
+                radishflow_studio::StudioGuiPlatformTimerHostOutcome::StartFailed(failure) => {
+                    println!("Platform timer start failure outcome: {:?}", failure);
+                }
+                radishflow_studio::StudioGuiPlatformTimerHostOutcome::Cleared => {
+                    println!("Platform timer clear outcome: cleared");
+                }
+            }
+            if follow_up_command.is_some() {
+                println!("Platform timer follow-up consumed by executor");
+            }
         }
-        StudioGuiPlatformTimerCommand::Clear { .. } => {}
     }
 }
 

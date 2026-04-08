@@ -93,6 +93,7 @@ RadishFlow 的目标架构已经冻结为“桌面端三层 + 外部控制面”
 - `StudioGuiPlatformTimerDriverState` 作为平台 native timer 适配层，负责消费上述请求、保存当前 native timer id 与逻辑 binding 的映射，并在 callback 到来时反查回 `window_id + handle_id`
 - 平台若按 `native_timer_id` 回灌 callback，当前应优先消费 `StudioGuiPlatformHost::dispatch_native_timer_elapsed_by_native_id(...)` 的正式 outcome；命中有效映射时继续分发，命中不存在或过期 id 时返回显式 ignored outcome，而不是把平台层常见竞态继续上抛为 `RfError`
 - 平台在 native timer 启动成功或失败后回灌 ack 时，当前也应优先消费 `StudioGuiPlatformHost::acknowledge_platform_timer_started(...)` / `acknowledge_platform_timer_start_failed(...)` 的正式 outcome；尤其是启动成功但 pending schedule 已 missing/stale 时，outcome 当前又可继续派生正式 `follow_up_command`，把“立即清理刚创建的 native timer id”收口成稳定平台命令，而不是只留一句注释语义
+- 对于同步型平台 timer API，`StudioGuiPlatformHost` 当前又已补出 `execute_platform_timer_request(...) + StudioGuiPlatformTimerExecutor`；平台若能在同一次调用里直接拿到 `native_timer_id` 或启动失败细节，就不必再在 `main.rs` 或未来 GUI 入口手工串接 `apply_request -> execute -> acknowledge -> follow-up`
 - `StudioGuiSnapshot` 作为跨模块聚合快照真相源
 - `StudioGuiWindowModel` 作为窗口内容分区模型
 - `StudioGuiWindowLayoutState` 作为正式布局状态契约，覆盖 `panel dock_region/stack_group/visibility/collapsed/order`、stack active tab、region 内 stack placement、`center_area`、`region_weights`、多窗口 `layout scope` 与 GUI 可直接消费的 `drop target` 摘要推导
@@ -109,6 +110,7 @@ RadishFlow 的目标架构已经冻结为“桌面端三层 + 外部控制面”
 - `StudioGuiPlatformTimerDriverState` 当前会把这份 request 继续收口为平台可执行的 `Arm / Rearm / Clear` 命令，并在 native timer 创建后记录 `native_timer_id -> logical binding` 映射；平台若创建失败，也已有显式 failure ack 用于清理 pending 状态
 - 平台 native timer callback 当前也已继续收口为 `Dispatched / IgnoredUnknownNativeTimer / IgnoredStaleNativeTimer` 三类正式结果，真实 GUI 或框架 glue 可直接按 outcome 决定是否忽略，无需再把 stale/missing callback 包装成错误流
 - 平台 native timer start ack 当前也已继续收口为 `Applied / IgnoredMissingPendingSchedule / IgnoredStalePendingSchedule` 结果；若平台为过期调度创建了 native timer，这层 outcome 还可继续产出 `StudioGuiPlatformTimerFollowUpCommand::ClearNativeTimer`，避免真实平台 glue 再手工推断资源回收动作
+- 同步型平台 glue 当前也已具备一条更短的消费链：`native_timer_request -> execute_platform_timer_request(...) -> host_outcome/follow_up_command`，至少可覆盖立即返回平台 timer id 的 `set_timer` / `kill_timer` 风格 API
 - 窗口布局持久化继续与项目文档语义分离，当前保存到 `<project>.rfstudio-layout.json` sidecar，而不是混入 `*.rfproj.json`
 - 多窗口布局 key 当前已从运行时 `window_id` 收口为基于 `window_role + layout_slot` 的稳定 scope，避免跨 host 重建时直接依赖临时窗口号
 

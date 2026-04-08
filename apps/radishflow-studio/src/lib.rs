@@ -182,9 +182,10 @@ pub use studio_gui_host::{
 };
 pub use studio_gui_platform_host::{
     StudioGuiPlatformDispatch, StudioGuiPlatformHost, StudioGuiPlatformNativeTimerCallbackOutcome,
-    StudioGuiPlatformTimerFollowUpCommand, StudioGuiPlatformTimerRequest,
-    StudioGuiPlatformTimerStartFailedOutcome,
-    StudioGuiPlatformTimerStartedOutcome,
+    StudioGuiPlatformTimerExecutionOutcome, StudioGuiPlatformTimerExecutor,
+    StudioGuiPlatformTimerExecutorResponse, StudioGuiPlatformTimerFollowUpCommand,
+    StudioGuiPlatformTimerHostOutcome, StudioGuiPlatformTimerRequest,
+    StudioGuiPlatformTimerStartFailedOutcome, StudioGuiPlatformTimerStartedOutcome,
 };
 pub use studio_gui_platform_timer_driver::{
     StudioGuiPlatformNativeTimerId, StudioGuiPlatformTimerBinding,

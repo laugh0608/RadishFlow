@@ -59,6 +59,17 @@ pub enum StudioGuiPlatformTimerFollowUpCommand {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub enum StudioGuiPlatformTimerExecutorResponse {
+    Started {
+        native_timer_id: StudioGuiPlatformNativeTimerId,
+    },
+    StartFailed {
+        detail: String,
+    },
+    Cleared,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum StudioGuiPlatformTimerStartedOutcome {
     Applied(StudioGuiPlatformTimerStartAckResult),
     IgnoredMissingPendingSchedule {
@@ -108,6 +119,36 @@ impl StudioGuiPlatformTimerStartFailedOutcome {
             | Self::IgnoredStalePendingSchedule { .. } => None,
         }
     }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum StudioGuiPlatformTimerExecutionOutcome {
+    NoCommand,
+    Executed {
+        command: StudioGuiPlatformTimerCommand,
+        executor_response: StudioGuiPlatformTimerExecutorResponse,
+        host_outcome: StudioGuiPlatformTimerHostOutcome,
+        follow_up_command: Option<StudioGuiPlatformTimerFollowUpCommand>,
+    },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum StudioGuiPlatformTimerHostOutcome {
+    Started(StudioGuiPlatformTimerStartedOutcome),
+    StartFailed(StudioGuiPlatformTimerStartFailedOutcome),
+    Cleared,
+}
+
+pub trait StudioGuiPlatformTimerExecutor {
+    fn execute_platform_timer_command(
+        &mut self,
+        command: &StudioGuiPlatformTimerCommand,
+    ) -> RfResult<StudioGuiPlatformTimerExecutorResponse>;
+
+    fn execute_platform_timer_follow_up_command(
+        &mut self,
+        command: &StudioGuiPlatformTimerFollowUpCommand,
+    ) -> RfResult<()>;
 }
 
 pub struct StudioGuiPlatformHost {
@@ -164,6 +205,74 @@ impl StudioGuiPlatformHost {
         request: Option<&StudioGuiPlatformTimerRequest>,
     ) -> Option<StudioGuiPlatformTimerCommand> {
         self.platform_timer_driver.apply_request(request)
+    }
+
+    pub fn execute_platform_timer_request(
+        &mut self,
+        request: Option<&StudioGuiPlatformTimerRequest>,
+        executor: &mut impl StudioGuiPlatformTimerExecutor,
+    ) -> RfResult<StudioGuiPlatformTimerExecutionOutcome> {
+        let Some(command) = self.apply_platform_timer_request(request) else {
+            return Ok(StudioGuiPlatformTimerExecutionOutcome::NoCommand);
+        };
+
+        let executor_response = executor.execute_platform_timer_command(&command)?;
+        let host_outcome = match (&command, &executor_response) {
+            (
+                StudioGuiPlatformTimerCommand::Arm { schedule }
+                | StudioGuiPlatformTimerCommand::Rearm { schedule, .. },
+                StudioGuiPlatformTimerExecutorResponse::Started { native_timer_id },
+            ) => StudioGuiPlatformTimerHostOutcome::Started(
+                self.acknowledge_platform_timer_started(schedule, *native_timer_id),
+            ),
+            (
+                StudioGuiPlatformTimerCommand::Arm { schedule }
+                | StudioGuiPlatformTimerCommand::Rearm { schedule, .. },
+                StudioGuiPlatformTimerExecutorResponse::StartFailed { detail },
+            ) => StudioGuiPlatformTimerHostOutcome::StartFailed(
+                self.acknowledge_platform_timer_start_failed(schedule, detail),
+            ),
+            (
+                StudioGuiPlatformTimerCommand::Clear { .. },
+                StudioGuiPlatformTimerExecutorResponse::Cleared,
+            ) => StudioGuiPlatformTimerHostOutcome::Cleared,
+            (
+                StudioGuiPlatformTimerCommand::Arm { .. }
+                | StudioGuiPlatformTimerCommand::Rearm { .. },
+                StudioGuiPlatformTimerExecutorResponse::Cleared,
+            ) => {
+                return Err(rf_types::RfError::invalid_input(
+                    "platform timer executor returned `Cleared` for an arm/rearm command"
+                        .to_string(),
+                ));
+            }
+            (
+                StudioGuiPlatformTimerCommand::Clear { .. },
+                StudioGuiPlatformTimerExecutorResponse::Started { .. }
+                | StudioGuiPlatformTimerExecutorResponse::StartFailed { .. },
+            ) => {
+                return Err(rf_types::RfError::invalid_input(
+                    "platform timer executor returned a start response for a clear command"
+                        .to_string(),
+                ));
+            }
+        };
+
+        let follow_up_command = match &host_outcome {
+            StudioGuiPlatformTimerHostOutcome::Started(outcome) => outcome.follow_up_command(),
+            StudioGuiPlatformTimerHostOutcome::StartFailed(outcome) => outcome.follow_up_command(),
+            StudioGuiPlatformTimerHostOutcome::Cleared => None,
+        };
+        if let Some(command) = follow_up_command.as_ref() {
+            executor.execute_platform_timer_follow_up_command(command)?;
+        }
+
+        Ok(StudioGuiPlatformTimerExecutionOutcome::Executed {
+            command,
+            executor_response,
+            host_outcome,
+            follow_up_command,
+        })
     }
 
     pub fn acknowledge_platform_timer_started(
@@ -373,13 +482,51 @@ fn plan_platform_timer_request(
 
 #[cfg(test)]
 mod tests {
+    use rf_types::RfResult;
+
     use crate::{
         StudioGuiEvent, StudioGuiPlatformHost, StudioGuiPlatformNativeTimerCallbackOutcome,
-        StudioGuiPlatformTimerFollowUpCommand, StudioGuiPlatformTimerRequest,
+        StudioGuiPlatformTimerExecutionOutcome, StudioGuiPlatformTimerExecutor,
+        StudioGuiPlatformTimerExecutorResponse, StudioGuiPlatformTimerFollowUpCommand,
+        StudioGuiPlatformTimerHostOutcome, StudioGuiPlatformTimerRequest,
         StudioGuiPlatformTimerStartFailedOutcome, StudioGuiPlatformTimerStartedOutcome,
-        StudioRuntimeConfig,
-        StudioRuntimeEntitlementPreflight, StudioRuntimeEntitlementSeed,
+        StudioRuntimeConfig, StudioRuntimeEntitlementPreflight, StudioRuntimeEntitlementSeed,
     };
+
+    #[derive(Default)]
+    struct TestPlatformTimerExecutor {
+        responses: Vec<StudioGuiPlatformTimerExecutorResponse>,
+        commands: Vec<crate::StudioGuiPlatformTimerCommand>,
+        follow_up_commands: Vec<StudioGuiPlatformTimerFollowUpCommand>,
+    }
+
+    impl TestPlatformTimerExecutor {
+        fn with_responses(responses: Vec<StudioGuiPlatformTimerExecutorResponse>) -> Self {
+            Self {
+                responses,
+                commands: Vec::new(),
+                follow_up_commands: Vec::new(),
+            }
+        }
+    }
+
+    impl StudioGuiPlatformTimerExecutor for TestPlatformTimerExecutor {
+        fn execute_platform_timer_command(
+            &mut self,
+            command: &crate::StudioGuiPlatformTimerCommand,
+        ) -> RfResult<StudioGuiPlatformTimerExecutorResponse> {
+            self.commands.push(command.clone());
+            Ok(self.responses.remove(0))
+        }
+
+        fn execute_platform_timer_follow_up_command(
+            &mut self,
+            command: &StudioGuiPlatformTimerFollowUpCommand,
+        ) -> RfResult<()> {
+            self.follow_up_commands.push(command.clone());
+            Ok(())
+        }
+    }
 
     fn lease_expiring_config() -> StudioRuntimeConfig {
         StudioRuntimeConfig {
@@ -898,5 +1045,191 @@ mod tests {
         assert_eq!(started.follow_up_command(), None);
         assert!(host.platform_notice().is_none());
         assert!(host.snapshot().runtime.platform_notice.is_none());
+    }
+
+    #[test]
+    fn platform_host_executes_platform_timer_request_through_sync_executor() {
+        let mut host =
+            StudioGuiPlatformHost::new(&lease_expiring_config()).expect("expected platform host");
+        let opened = host
+            .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+            .expect("expected open dispatch");
+        let window_id = match opened.outcome {
+            crate::StudioGuiDriverOutcome::HostCommand(
+                crate::StudioGuiHostCommandOutcome::WindowOpened(opened),
+            ) => opened.registration.window_id,
+            other => panic!("expected opened window outcome, got {other:?}"),
+        };
+        let dispatched = host
+            .dispatch_event(StudioGuiEvent::WindowTriggerRequested {
+                window_id,
+                trigger: crate::StudioRuntimeTrigger::EntitlementSessionEvent(
+                    crate::StudioRuntimeEntitlementSessionEvent::TimerElapsed,
+                ),
+            })
+            .expect("expected timer trigger dispatch");
+        let mut executor = TestPlatformTimerExecutor::with_responses(vec![
+            StudioGuiPlatformTimerExecutorResponse::Started {
+                native_timer_id: 9001,
+            },
+        ]);
+
+        let execution = host
+            .execute_platform_timer_request(dispatched.native_timer_request.as_ref(), &mut executor)
+            .expect("expected platform timer execution");
+
+        match execution {
+            StudioGuiPlatformTimerExecutionOutcome::Executed {
+                command,
+                executor_response,
+                host_outcome,
+                follow_up_command,
+            } => {
+                assert!(matches!(command, crate::StudioGuiPlatformTimerCommand::Arm { .. }));
+                assert_eq!(
+                    executor_response,
+                    StudioGuiPlatformTimerExecutorResponse::Started {
+                        native_timer_id: 9001,
+                    }
+                );
+                match host_outcome {
+                    StudioGuiPlatformTimerHostOutcome::Started(
+                        StudioGuiPlatformTimerStartedOutcome::Applied(ack),
+                    ) => {
+                        assert_eq!(ack.native_timer_id, 9001);
+                        assert_eq!(
+                            ack.status,
+                            crate::StudioGuiPlatformTimerStartAckStatus::Applied
+                        );
+                    }
+                    other => panic!("expected started outcome, got {other:?}"),
+                }
+                assert_eq!(follow_up_command, None);
+            }
+            other => panic!("expected executed platform timer request, got {other:?}"),
+        }
+        assert_eq!(executor.follow_up_commands, Vec::new());
+        assert!(matches!(
+            host.current_platform_timer_binding(),
+            Some(binding) if binding.native_timer_id == 9001
+        ));
+    }
+
+    #[test]
+    fn platform_host_executes_platform_timer_request_failure_through_sync_executor() {
+        let mut host =
+            StudioGuiPlatformHost::new(&lease_expiring_config()).expect("expected platform host");
+        let opened = host
+            .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+            .expect("expected open dispatch");
+        let window_id = match opened.outcome {
+            crate::StudioGuiDriverOutcome::HostCommand(
+                crate::StudioGuiHostCommandOutcome::WindowOpened(opened),
+            ) => opened.registration.window_id,
+            other => panic!("expected opened window outcome, got {other:?}"),
+        };
+        let dispatched = host
+            .dispatch_event(StudioGuiEvent::WindowTriggerRequested {
+                window_id,
+                trigger: crate::StudioRuntimeTrigger::EntitlementSessionEvent(
+                    crate::StudioRuntimeEntitlementSessionEvent::TimerElapsed,
+                ),
+            })
+            .expect("expected timer trigger dispatch");
+        let mut executor = TestPlatformTimerExecutor::with_responses(vec![
+            StudioGuiPlatformTimerExecutorResponse::StartFailed {
+                detail: "simulated platform failure".to_string(),
+            },
+        ]);
+
+        let execution = host
+            .execute_platform_timer_request(dispatched.native_timer_request.as_ref(), &mut executor)
+            .expect("expected platform timer execution");
+
+        match execution {
+            StudioGuiPlatformTimerExecutionOutcome::Executed {
+                host_outcome,
+                follow_up_command,
+                ..
+            } => {
+                match host_outcome {
+                    StudioGuiPlatformTimerHostOutcome::StartFailed(
+                        StudioGuiPlatformTimerStartFailedOutcome::Applied(failure),
+                    ) => {
+                        assert_eq!(
+                            failure.status,
+                            crate::StudioGuiPlatformTimerStartFailureStatus::Applied
+                        );
+                    }
+                    other => panic!("expected start failed outcome, got {other:?}"),
+                }
+                assert_eq!(follow_up_command, None);
+            }
+            other => panic!("expected executed platform timer request, got {other:?}"),
+        }
+        assert!(host.platform_notice().is_some());
+        assert_eq!(executor.follow_up_commands, Vec::new());
+    }
+
+    #[test]
+    fn platform_host_executes_clear_request_through_sync_executor() {
+        let mut host =
+            StudioGuiPlatformHost::new(&lease_expiring_config()).expect("expected platform host");
+        let opened = host
+            .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+            .expect("expected open dispatch");
+        let window_id = match opened.outcome {
+            crate::StudioGuiDriverOutcome::HostCommand(
+                crate::StudioGuiHostCommandOutcome::WindowOpened(opened),
+            ) => opened.registration.window_id,
+            other => panic!("expected opened window outcome, got {other:?}"),
+        };
+        let dispatched = host
+            .dispatch_event(StudioGuiEvent::WindowTriggerRequested {
+                window_id,
+                trigger: crate::StudioRuntimeTrigger::EntitlementSessionEvent(
+                    crate::StudioRuntimeEntitlementSessionEvent::TimerElapsed,
+                ),
+            })
+            .expect("expected timer trigger dispatch");
+        let mut start_executor = TestPlatformTimerExecutor::with_responses(vec![
+            StudioGuiPlatformTimerExecutorResponse::Started {
+                native_timer_id: 9001,
+            },
+        ]);
+        let _ = host
+            .execute_platform_timer_request(dispatched.native_timer_request.as_ref(), &mut start_executor)
+            .expect("expected start execution");
+
+        let current_schedule = host
+            .next_native_timer_schedule()
+            .cloned()
+            .expect("expected current native timer schedule");
+        let clear_request = StudioGuiPlatformTimerRequest::Clear {
+            previous: current_schedule,
+        };
+        let mut clear_executor = TestPlatformTimerExecutor::with_responses(vec![
+            StudioGuiPlatformTimerExecutorResponse::Cleared,
+        ]);
+
+        let execution = host
+            .execute_platform_timer_request(Some(&clear_request), &mut clear_executor)
+            .expect("expected clear execution");
+
+        match execution {
+            StudioGuiPlatformTimerExecutionOutcome::Executed {
+                command,
+                host_outcome,
+                ..
+            } => {
+                assert!(matches!(
+                    command,
+                    crate::StudioGuiPlatformTimerCommand::Clear { previous: Some(_) }
+                ));
+                assert_eq!(host_outcome, StudioGuiPlatformTimerHostOutcome::Cleared);
+            }
+            other => panic!("expected executed clear request, got {other:?}"),
+        }
+        assert_eq!(clear_executor.follow_up_commands, Vec::new());
     }
 }
