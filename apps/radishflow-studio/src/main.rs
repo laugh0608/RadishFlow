@@ -4,7 +4,7 @@ use radishflow_studio::{
     StudioGuiNativeTimerEffects, StudioGuiNativeTimerOperation, StudioGuiPlatformDispatch,
     StudioGuiPlatformHost, StudioGuiPlatformNativeTimerCallbackOutcome,
     StudioGuiPlatformNativeTimerId, StudioGuiPlatformTimerCommand,
-    StudioGuiPlatformTimerRequest, StudioGuiPlatformTimerStartAckResult,
+    StudioGuiPlatformTimerRequest, StudioGuiPlatformTimerStartedOutcome,
     StudioGuiWindowAreaId, StudioGuiWindowDockPlacement, StudioGuiWindowDockRegion,
     StudioGuiWindowDropTarget, StudioGuiWindowDropTargetQuery, StudioGuiWindowLayoutMutation,
     StudioGuiWindowModel, StudioRuntimeConfig, StudioRuntimeDispatch, StudioRuntimeReport,
@@ -957,8 +957,8 @@ fn consume_platform_timer_request(
         | StudioGuiPlatformTimerCommand::Rearm { schedule, .. } => {
             let native_timer_id = *next_native_timer_id;
             *next_native_timer_id += 1;
-            let ack = host.acknowledge_platform_timer_started(schedule, native_timer_id);
-            print_platform_timer_start_ack(&ack);
+            let started = host.acknowledge_platform_timer_started(schedule, native_timer_id);
+            print_platform_timer_started_outcome(&started);
         }
         StudioGuiPlatformTimerCommand::Clear { .. } => {}
     }
@@ -1008,15 +1008,49 @@ fn print_platform_timer_command(command: &StudioGuiPlatformTimerCommand) {
     }
 }
 
-fn print_platform_timer_start_ack(ack: &StudioGuiPlatformTimerStartAckResult) {
-    println!(
-        "Platform timer ack: native_id={} status={:?} window={:?} handle={} due_at={:?}",
-        ack.native_timer_id,
-        ack.status,
-        ack.schedule.window_id,
-        ack.schedule.handle_id,
-        ack.schedule.slot.timer.due_at
-    );
+fn print_platform_timer_started_outcome(outcome: &StudioGuiPlatformTimerStartedOutcome) {
+    match outcome {
+        StudioGuiPlatformTimerStartedOutcome::Applied(ack) => {
+            println!(
+                "Platform timer ack: native_id={} status={:?} window={:?} handle={} due_at={:?}",
+                ack.native_timer_id,
+                ack.status,
+                ack.schedule.window_id,
+                ack.schedule.handle_id,
+                ack.schedule.slot.timer.due_at
+            );
+        }
+        StudioGuiPlatformTimerStartedOutcome::IgnoredMissingPendingSchedule {
+            ack,
+            clear_native_timer_id,
+        } => {
+            println!(
+                "Platform timer ack: ignored missing pending schedule for native_id={} window={:?} handle={} due_at={:?}",
+                ack.native_timer_id,
+                ack.schedule.window_id,
+                ack.schedule.handle_id,
+                ack.schedule.slot.timer.due_at
+            );
+            println!(
+                "  - platform should immediately clear native_id={clear_native_timer_id}"
+            );
+        }
+        StudioGuiPlatformTimerStartedOutcome::IgnoredStalePendingSchedule {
+            ack,
+            clear_native_timer_id,
+        } => {
+            println!(
+                "Platform timer ack: ignored stale pending schedule for native_id={} window={:?} handle={} due_at={:?}",
+                ack.native_timer_id,
+                ack.schedule.window_id,
+                ack.schedule.handle_id,
+                ack.schedule.slot.timer.due_at
+            );
+            println!(
+                "  - platform should immediately clear native_id={clear_native_timer_id}"
+            );
+        }
+    }
 }
 
 fn print_platform_native_timer_callback_outcome(

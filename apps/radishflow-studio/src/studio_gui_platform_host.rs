@@ -9,9 +9,8 @@ use crate::{
     StudioGuiEvent, StudioGuiNativeTimerSchedule, StudioGuiPlatformNativeTimerId,
     StudioGuiPlatformTimerBinding, StudioGuiPlatformTimerCallbackResolution,
     StudioGuiPlatformTimerCommand, StudioGuiPlatformTimerDriverState,
-    StudioGuiPlatformTimerStartAckResult,
-    StudioGuiPlatformTimerStartFailureResult, StudioGuiSnapshot, StudioGuiWindowModel,
-    StudioWindowHostId,
+    StudioGuiPlatformTimerStartAckResult, StudioGuiPlatformTimerStartFailureResult,
+    StudioGuiSnapshot, StudioGuiWindowModel, StudioWindowHostId,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -49,6 +48,30 @@ pub enum StudioGuiPlatformNativeTimerCallbackOutcome {
     },
     IgnoredStaleNativeTimer {
         native_timer_id: StudioGuiPlatformNativeTimerId,
+    },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum StudioGuiPlatformTimerStartedOutcome {
+    Applied(StudioGuiPlatformTimerStartAckResult),
+    IgnoredMissingPendingSchedule {
+        ack: StudioGuiPlatformTimerStartAckResult,
+        clear_native_timer_id: StudioGuiPlatformNativeTimerId,
+    },
+    IgnoredStalePendingSchedule {
+        ack: StudioGuiPlatformTimerStartAckResult,
+        clear_native_timer_id: StudioGuiPlatformNativeTimerId,
+    },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum StudioGuiPlatformTimerStartFailedOutcome {
+    Applied(StudioGuiPlatformTimerStartFailureResult),
+    IgnoredMissingPendingSchedule {
+        failure: StudioGuiPlatformTimerStartFailureResult,
+    },
+    IgnoredStalePendingSchedule {
+        failure: StudioGuiPlatformTimerStartFailureResult,
     },
 }
 
@@ -112,48 +135,74 @@ impl StudioGuiPlatformHost {
         &mut self,
         schedule: &StudioGuiNativeTimerSchedule,
         native_timer_id: StudioGuiPlatformNativeTimerId,
-    ) -> StudioGuiPlatformTimerStartAckResult {
+    ) -> StudioGuiPlatformTimerStartedOutcome {
         let result = self
             .platform_timer_driver
             .acknowledge_timer_started(schedule, native_timer_id);
-        if result.status == crate::StudioGuiPlatformTimerStartAckStatus::Applied {
-            self.platform_notice = None;
+        match result.status {
+            crate::StudioGuiPlatformTimerStartAckStatus::Applied => {
+                self.platform_notice = None;
+                StudioGuiPlatformTimerStartedOutcome::Applied(result)
+            }
+            crate::StudioGuiPlatformTimerStartAckStatus::MissingPendingSchedule => {
+                StudioGuiPlatformTimerStartedOutcome::IgnoredMissingPendingSchedule {
+                    clear_native_timer_id: native_timer_id,
+                    ack: result,
+                }
+            }
+            crate::StudioGuiPlatformTimerStartAckStatus::StalePendingSchedule => {
+                StudioGuiPlatformTimerStartedOutcome::IgnoredStalePendingSchedule {
+                    clear_native_timer_id: native_timer_id,
+                    ack: result,
+                }
+            }
         }
-        result
     }
 
     pub fn acknowledge_platform_timer_start_failed(
         &mut self,
         schedule: &StudioGuiNativeTimerSchedule,
         detail: impl AsRef<str>,
-    ) -> StudioGuiPlatformTimerStartFailureResult {
+    ) -> StudioGuiPlatformTimerStartFailedOutcome {
         let result = self
             .platform_timer_driver
             .acknowledge_timer_start_failed(schedule);
-        if result.status == crate::StudioGuiPlatformTimerStartFailureStatus::Applied {
-            self.platform_notice = Some(RunPanelNotice::new(
-                RunPanelNoticeLevel::Error,
-                "Platform timer unavailable",
-                format!(
-                    "Failed to start native timer for window={:?}, handle={}, due_at={:?}. {}",
-                    schedule.window_id,
-                    schedule.handle_id,
-                    schedule.slot.timer.due_at,
-                    detail.as_ref()
-                ),
-            ));
-            self.platform_log_entries.push(AppLogEntry {
-                level: AppLogLevel::Error,
-                message: format!(
-                    "Platform native timer start failed for window={:?} handle={} due_at={:?}: {}",
-                    schedule.window_id,
-                    schedule.handle_id,
-                    schedule.slot.timer.due_at,
-                    detail.as_ref()
-                ),
-            });
+        match result.status {
+            crate::StudioGuiPlatformTimerStartFailureStatus::Applied => {
+                self.platform_notice = Some(RunPanelNotice::new(
+                    RunPanelNoticeLevel::Error,
+                    "Platform timer unavailable",
+                    format!(
+                        "Failed to start native timer for window={:?}, handle={}, due_at={:?}. {}",
+                        schedule.window_id,
+                        schedule.handle_id,
+                        schedule.slot.timer.due_at,
+                        detail.as_ref()
+                    ),
+                ));
+                self.platform_log_entries.push(AppLogEntry {
+                    level: AppLogLevel::Error,
+                    message: format!(
+                        "Platform native timer start failed for window={:?} handle={} due_at={:?}: {}",
+                        schedule.window_id,
+                        schedule.handle_id,
+                        schedule.slot.timer.due_at,
+                        detail.as_ref()
+                    ),
+                });
+                StudioGuiPlatformTimerStartFailedOutcome::Applied(result)
+            }
+            crate::StudioGuiPlatformTimerStartFailureStatus::MissingPendingSchedule => {
+                StudioGuiPlatformTimerStartFailedOutcome::IgnoredMissingPendingSchedule {
+                    failure: result,
+                }
+            }
+            crate::StudioGuiPlatformTimerStartFailureStatus::StalePendingSchedule => {
+                StudioGuiPlatformTimerStartFailedOutcome::IgnoredStalePendingSchedule {
+                    failure: result,
+                }
+            }
         }
-        result
     }
 
     pub fn callback_schedule_for_native_timer(
@@ -291,8 +340,9 @@ fn plan_platform_timer_request(
 mod tests {
     use crate::{
         StudioGuiEvent, StudioGuiPlatformHost, StudioGuiPlatformNativeTimerCallbackOutcome,
-        StudioGuiPlatformTimerRequest, StudioRuntimeConfig, StudioRuntimeEntitlementPreflight,
-        StudioRuntimeEntitlementSeed,
+        StudioGuiPlatformTimerRequest, StudioGuiPlatformTimerStartFailedOutcome,
+        StudioGuiPlatformTimerStartedOutcome, StudioRuntimeConfig,
+        StudioRuntimeEntitlementPreflight, StudioRuntimeEntitlementSeed,
     };
 
     fn lease_expiring_config() -> StudioRuntimeConfig {
@@ -413,10 +463,15 @@ mod tests {
             &schedule,
             "simulated native timer creation failure",
         );
-        assert_eq!(
-            failure.status,
-            crate::StudioGuiPlatformTimerStartFailureStatus::Applied
-        );
+        match failure {
+            StudioGuiPlatformTimerStartFailedOutcome::Applied(failure) => {
+                assert_eq!(
+                    failure.status,
+                    crate::StudioGuiPlatformTimerStartFailureStatus::Applied
+                );
+            }
+            other => panic!("expected applied platform timer failure, got {other:?}"),
+        }
 
         let snapshot = host.snapshot();
         let platform_notice = snapshot
@@ -585,6 +640,155 @@ mod tests {
     }
 
     #[test]
+    fn platform_host_reports_cleanup_when_started_ack_arrives_without_pending_schedule() {
+        let mut host =
+            StudioGuiPlatformHost::new(&lease_expiring_config()).expect("expected platform host");
+        let opened = host
+            .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+            .expect("expected open dispatch");
+        let window_id = match opened.outcome {
+            crate::StudioGuiDriverOutcome::HostCommand(
+                crate::StudioGuiHostCommandOutcome::WindowOpened(opened),
+            ) => opened.registration.window_id,
+            other => panic!("expected opened window outcome, got {other:?}"),
+        };
+        let dispatched = host
+            .dispatch_event(StudioGuiEvent::WindowTriggerRequested {
+                window_id,
+                trigger: crate::StudioRuntimeTrigger::EntitlementSessionEvent(
+                    crate::StudioRuntimeEntitlementSessionEvent::TimerElapsed,
+                ),
+            })
+            .expect("expected timer trigger dispatch");
+        let schedule = match dispatched.native_timer_request.as_ref() {
+            Some(StudioGuiPlatformTimerRequest::Arm { schedule }) => schedule.clone(),
+            other => panic!("expected arm timer request, got {other:?}"),
+        };
+
+        let _ = host.apply_platform_timer_request(dispatched.native_timer_request.as_ref());
+        let _ = host.acknowledge_platform_timer_start_failed(
+            &schedule,
+            "simulated native timer creation failure",
+        );
+
+        let started = host.acknowledge_platform_timer_started(&schedule, 9001);
+
+        assert_eq!(
+            started,
+            StudioGuiPlatformTimerStartedOutcome::IgnoredMissingPendingSchedule {
+                ack: crate::StudioGuiPlatformTimerStartAckResult {
+                    schedule,
+                    native_timer_id: 9001,
+                    status: crate::StudioGuiPlatformTimerStartAckStatus::MissingPendingSchedule,
+                },
+                clear_native_timer_id: 9001,
+            }
+        );
+    }
+
+    #[test]
+    fn platform_host_reports_cleanup_when_started_ack_arrives_for_stale_schedule() {
+        let mut host =
+            StudioGuiPlatformHost::new(&lease_expiring_config()).expect("expected platform host");
+        let opened = host
+            .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+            .expect("expected open dispatch");
+        let window_id = match opened.outcome {
+            crate::StudioGuiDriverOutcome::HostCommand(
+                crate::StudioGuiHostCommandOutcome::WindowOpened(opened),
+            ) => opened.registration.window_id,
+            other => panic!("expected opened window outcome, got {other:?}"),
+        };
+        let first = host
+            .dispatch_event(StudioGuiEvent::WindowTriggerRequested {
+                window_id,
+                trigger: crate::StudioRuntimeTrigger::EntitlementSessionEvent(
+                    crate::StudioRuntimeEntitlementSessionEvent::TimerElapsed,
+                ),
+            })
+            .expect("expected first timer trigger");
+        let first_schedule = match first.native_timer_request.as_ref() {
+            Some(StudioGuiPlatformTimerRequest::Arm { schedule }) => schedule.clone(),
+            other => panic!("expected arm timer request, got {other:?}"),
+        };
+        let _ = host.apply_platform_timer_request(first.native_timer_request.as_ref());
+        let _ = host.acknowledge_platform_timer_start_failed(
+            &first_schedule,
+            "simulated native timer creation failure",
+        );
+
+        let second = host
+            .dispatch_event(StudioGuiEvent::WindowTriggerRequested {
+                window_id,
+                trigger: crate::StudioRuntimeTrigger::EntitlementSessionEvent(
+                    crate::StudioRuntimeEntitlementSessionEvent::TimerElapsed,
+                ),
+            })
+            .expect("expected second timer trigger");
+        let _ = host.apply_platform_timer_request(second.native_timer_request.as_ref());
+
+        let started = host.acknowledge_platform_timer_started(&first_schedule, 9001);
+
+        assert_eq!(
+            started,
+            StudioGuiPlatformTimerStartedOutcome::IgnoredStalePendingSchedule {
+                ack: crate::StudioGuiPlatformTimerStartAckResult {
+                    schedule: first_schedule,
+                    native_timer_id: 9001,
+                    status: crate::StudioGuiPlatformTimerStartAckStatus::StalePendingSchedule,
+                },
+                clear_native_timer_id: 9001,
+            }
+        );
+    }
+
+    #[test]
+    fn platform_host_ignores_missing_start_failure_ack_after_pending_schedule_is_cleared() {
+        let mut host =
+            StudioGuiPlatformHost::new(&lease_expiring_config()).expect("expected platform host");
+        let opened = host
+            .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+            .expect("expected open dispatch");
+        let window_id = match opened.outcome {
+            crate::StudioGuiDriverOutcome::HostCommand(
+                crate::StudioGuiHostCommandOutcome::WindowOpened(opened),
+            ) => opened.registration.window_id,
+            other => panic!("expected opened window outcome, got {other:?}"),
+        };
+        let dispatched = host
+            .dispatch_event(StudioGuiEvent::WindowTriggerRequested {
+                window_id,
+                trigger: crate::StudioRuntimeTrigger::EntitlementSessionEvent(
+                    crate::StudioRuntimeEntitlementSessionEvent::TimerElapsed,
+                ),
+            })
+            .expect("expected timer trigger dispatch");
+        let schedule = match dispatched.native_timer_request.as_ref() {
+            Some(StudioGuiPlatformTimerRequest::Arm { schedule }) => schedule.clone(),
+            other => panic!("expected arm timer request, got {other:?}"),
+        };
+
+        let _ = host.apply_platform_timer_request(dispatched.native_timer_request.as_ref());
+        let _ = host.acknowledge_platform_timer_start_failed(
+            &schedule,
+            "simulated native timer creation failure",
+        );
+
+        let failure =
+            host.acknowledge_platform_timer_start_failed(&schedule, "duplicate failure ack");
+
+        assert_eq!(
+            failure,
+            StudioGuiPlatformTimerStartFailedOutcome::IgnoredMissingPendingSchedule {
+                failure: crate::StudioGuiPlatformTimerStartFailureResult {
+                    schedule,
+                    status: crate::StudioGuiPlatformTimerStartFailureStatus::MissingPendingSchedule,
+                },
+            }
+        );
+    }
+
+    #[test]
     fn platform_host_clears_platform_notice_after_successful_timer_start() {
         let mut host =
             StudioGuiPlatformHost::new(&lease_expiring_config()).expect("expected platform host");
@@ -633,10 +837,15 @@ mod tests {
 
         let _ = host.apply_platform_timer_request(next_dispatch.native_timer_request.as_ref());
         let started = host.acknowledge_platform_timer_started(&next_schedule, 9001);
-        assert_eq!(
-            started.status,
-            crate::StudioGuiPlatformTimerStartAckStatus::Applied
-        );
+        match started {
+            StudioGuiPlatformTimerStartedOutcome::Applied(started) => {
+                assert_eq!(
+                    started.status,
+                    crate::StudioGuiPlatformTimerStartAckStatus::Applied
+                );
+            }
+            other => panic!("expected applied platform timer started outcome, got {other:?}"),
+        }
         assert!(host.platform_notice().is_none());
         assert!(host.snapshot().runtime.platform_notice.is_none());
     }
