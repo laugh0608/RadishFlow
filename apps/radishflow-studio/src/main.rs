@@ -2,12 +2,13 @@ use radishflow_studio::{
     EntitlementSessionEventOutcome, StudioAppHostEntitlementTimerEffect, StudioAppResultDispatch,
     StudioGuiDriverOutcome, StudioGuiEvent, StudioGuiHostCommandOutcome,
     StudioGuiNativeTimerEffects, StudioGuiNativeTimerOperation, StudioGuiPlatformDispatch,
-    StudioGuiPlatformHost, StudioGuiPlatformNativeTimerId, StudioGuiPlatformTimerCommand,
-    StudioGuiPlatformTimerRequest, StudioGuiPlatformTimerStartAckResult, StudioGuiWindowAreaId,
-    StudioGuiWindowDockPlacement, StudioGuiWindowDockRegion, StudioGuiWindowDropTarget,
-    StudioGuiWindowDropTargetQuery, StudioGuiWindowLayoutMutation, StudioGuiWindowModel,
-    StudioRuntimeConfig, StudioRuntimeDispatch, StudioRuntimeReport, StudioWindowHostId,
-    StudioWindowHostRetirement, StudioWindowTimerDriverAckResult,
+    StudioGuiPlatformHost, StudioGuiPlatformNativeTimerCallbackOutcome,
+    StudioGuiPlatformNativeTimerId, StudioGuiPlatformTimerCommand,
+    StudioGuiPlatformTimerRequest, StudioGuiPlatformTimerStartAckResult,
+    StudioGuiWindowAreaId, StudioGuiWindowDockPlacement, StudioGuiWindowDockRegion,
+    StudioGuiWindowDropTarget, StudioGuiWindowDropTargetQuery, StudioGuiWindowLayoutMutation,
+    StudioGuiWindowModel, StudioRuntimeConfig, StudioRuntimeDispatch, StudioRuntimeReport,
+    StudioWindowHostId, StudioWindowHostRetirement, StudioWindowTimerDriverAckResult,
 };
 
 fn print_text_view(title: &str, lines: &[String]) {
@@ -531,19 +532,22 @@ fn main() {
             binding.schedule.window_id,
             binding.schedule.handle_id
         );
-        let callback_dispatch = app_host
+        let callback = app_host
             .dispatch_native_timer_elapsed_by_native_id(binding.native_timer_id)
-            .expect("expected native timer callback dispatch");
+            .expect("expected native timer callback outcome");
         println!(
             "Simulated platform native timer callback via native_id={}",
             binding.native_timer_id
         );
-        println!("  - due callback outcome: {:?}", callback_dispatch.outcome);
-        consume_platform_timer_request(
-            &mut app_host,
-            callback_dispatch.native_timer_request.as_ref(),
-            &mut next_platform_native_timer_id,
-        );
+        print_platform_native_timer_callback_outcome(&callback);
+        if let StudioGuiPlatformNativeTimerCallbackOutcome::Dispatched(callback_dispatch) = &callback
+        {
+            consume_platform_timer_request(
+                &mut app_host,
+                callback_dispatch.native_timer_request.as_ref(),
+                &mut next_platform_native_timer_id,
+            );
+        }
         print_window_model(
             "Window model after simulated native timer callback",
             &app_host.snapshot().window_model(),
@@ -1013,6 +1017,31 @@ fn print_platform_timer_start_ack(ack: &StudioGuiPlatformTimerStartAckResult) {
         ack.schedule.handle_id,
         ack.schedule.slot.timer.due_at
     );
+}
+
+fn print_platform_native_timer_callback_outcome(
+    outcome: &StudioGuiPlatformNativeTimerCallbackOutcome,
+) {
+    match outcome {
+        StudioGuiPlatformNativeTimerCallbackOutcome::Dispatched(dispatch) => {
+            println!("  - due callback status: dispatched");
+            println!("  - due callback outcome: {:?}", dispatch.outcome);
+        }
+        StudioGuiPlatformNativeTimerCallbackOutcome::IgnoredUnknownNativeTimer {
+            native_timer_id,
+        } => {
+            println!(
+                "  - due callback status: ignored unknown native timer (native_id={native_timer_id})"
+            );
+        }
+        StudioGuiPlatformNativeTimerCallbackOutcome::IgnoredStaleNativeTimer {
+            native_timer_id,
+        } => {
+            println!(
+                "  - due callback status: ignored stale native timer (native_id={native_timer_id})"
+            );
+        }
+    }
 }
 
 fn print_native_timer_effects(effects: &StudioGuiNativeTimerEffects) {

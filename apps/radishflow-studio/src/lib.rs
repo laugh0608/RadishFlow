@@ -181,10 +181,12 @@ pub use studio_gui_host::{
     StudioGuiHostWindowOpened,
 };
 pub use studio_gui_platform_host::{
-    StudioGuiPlatformDispatch, StudioGuiPlatformHost, StudioGuiPlatformTimerRequest,
+    StudioGuiPlatformDispatch, StudioGuiPlatformHost, StudioGuiPlatformNativeTimerCallbackOutcome,
+    StudioGuiPlatformTimerRequest,
 };
 pub use studio_gui_platform_timer_driver::{
-    StudioGuiPlatformNativeTimerId, StudioGuiPlatformTimerBinding, StudioGuiPlatformTimerCommand,
+    StudioGuiPlatformNativeTimerId, StudioGuiPlatformTimerBinding,
+    StudioGuiPlatformTimerCallbackResolution, StudioGuiPlatformTimerCommand,
     StudioGuiPlatformTimerDriverState, StudioGuiPlatformTimerStartAckResult,
     StudioGuiPlatformTimerStartAckStatus, StudioGuiPlatformTimerStartFailureResult,
     StudioGuiPlatformTimerStartFailureStatus,

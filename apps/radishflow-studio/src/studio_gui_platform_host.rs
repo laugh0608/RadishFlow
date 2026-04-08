@@ -7,8 +7,9 @@ use crate::{
     StudioAppHostState, StudioAppHostUiCommandModel, StudioGuiCanvasState,
     StudioGuiCommandRegistry, StudioGuiDriver, StudioGuiDriverDispatch, StudioGuiDriverOutcome,
     StudioGuiEvent, StudioGuiNativeTimerSchedule, StudioGuiPlatformNativeTimerId,
-    StudioGuiPlatformTimerBinding, StudioGuiPlatformTimerCommand,
-    StudioGuiPlatformTimerDriverState, StudioGuiPlatformTimerStartAckResult,
+    StudioGuiPlatformTimerBinding, StudioGuiPlatformTimerCallbackResolution,
+    StudioGuiPlatformTimerCommand, StudioGuiPlatformTimerDriverState,
+    StudioGuiPlatformTimerStartAckResult,
     StudioGuiPlatformTimerStartFailureResult, StudioGuiSnapshot, StudioGuiWindowModel,
     StudioWindowHostId,
 };
@@ -38,6 +39,17 @@ pub struct StudioGuiPlatformDispatch {
     pub command_registry: StudioGuiCommandRegistry,
     pub canvas: StudioGuiCanvasState,
     pub native_timer_request: Option<StudioGuiPlatformTimerRequest>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum StudioGuiPlatformNativeTimerCallbackOutcome {
+    Dispatched(StudioGuiPlatformDispatch),
+    IgnoredUnknownNativeTimer {
+        native_timer_id: StudioGuiPlatformNativeTimerId,
+    },
+    IgnoredStaleNativeTimer {
+        native_timer_id: StudioGuiPlatformNativeTimerId,
+    },
 }
 
 pub struct StudioGuiPlatformHost {
@@ -155,17 +167,26 @@ impl StudioGuiPlatformHost {
     pub fn dispatch_native_timer_elapsed_by_native_id(
         &mut self,
         native_timer_id: StudioGuiPlatformNativeTimerId,
-    ) -> RfResult<StudioGuiPlatformDispatch> {
-        let schedule = self
-            .platform_timer_driver
-            .callback_schedule(native_timer_id)
-            .cloned()
-            .ok_or_else(|| {
-                rf_types::RfError::invalid_input(format!(
-                    "platform native timer `{native_timer_id}` is not bound to an active GUI timer"
-                ))
-            })?;
-        self.dispatch_native_timer_elapsed(schedule.window_id, schedule.handle_id)
+    ) -> RfResult<StudioGuiPlatformNativeTimerCallbackOutcome> {
+        match self.platform_timer_driver.resolve_callback(native_timer_id) {
+            StudioGuiPlatformTimerCallbackResolution::Dispatch { schedule } => self
+                .dispatch_native_timer_elapsed(schedule.window_id, schedule.handle_id)
+                .map(StudioGuiPlatformNativeTimerCallbackOutcome::Dispatched),
+            StudioGuiPlatformTimerCallbackResolution::IgnoredUnknownNativeTimer {
+                native_timer_id,
+            } => Ok(
+                StudioGuiPlatformNativeTimerCallbackOutcome::IgnoredUnknownNativeTimer {
+                    native_timer_id,
+                },
+            ),
+            StudioGuiPlatformTimerCallbackResolution::IgnoredStaleNativeTimer {
+                native_timer_id,
+            } => Ok(
+                StudioGuiPlatformNativeTimerCallbackOutcome::IgnoredStaleNativeTimer {
+                    native_timer_id,
+                },
+            ),
+        }
     }
 
     pub fn dispatch_event(&mut self, event: StudioGuiEvent) -> RfResult<StudioGuiPlatformDispatch> {
@@ -269,8 +290,9 @@ fn plan_platform_timer_request(
 #[cfg(test)]
 mod tests {
     use crate::{
-        StudioGuiEvent, StudioGuiPlatformHost, StudioGuiPlatformTimerRequest, StudioRuntimeConfig,
-        StudioRuntimeEntitlementPreflight, StudioRuntimeEntitlementSeed,
+        StudioGuiEvent, StudioGuiPlatformHost, StudioGuiPlatformNativeTimerCallbackOutcome,
+        StudioGuiPlatformTimerRequest, StudioRuntimeConfig, StudioRuntimeEntitlementPreflight,
+        StudioRuntimeEntitlementSeed,
     };
 
     fn lease_expiring_config() -> StudioRuntimeConfig {
@@ -478,12 +500,88 @@ mod tests {
             .dispatch_native_timer_elapsed_by_native_id(9001)
             .expect("expected native timer callback dispatch");
 
-        assert!(matches!(
-            callback.outcome,
+        match callback {
+            StudioGuiPlatformNativeTimerCallbackOutcome::Dispatched(callback) => {
+                assert!(matches!(
+                    callback.outcome,
+                    crate::StudioGuiDriverOutcome::HostCommand(
+                        crate::StudioGuiHostCommandOutcome::LifecycleDispatched(_)
+                    )
+                ));
+            }
+            other => panic!("expected dispatched native timer callback, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn platform_host_ignores_unknown_native_timer_callback_by_native_id() {
+        let mut host =
+            StudioGuiPlatformHost::new(&lease_expiring_config()).expect("expected platform host");
+
+        let callback = host
+            .dispatch_native_timer_elapsed_by_native_id(9001)
+            .expect("expected ignored callback outcome");
+
+        assert_eq!(
+            callback,
+            StudioGuiPlatformNativeTimerCallbackOutcome::IgnoredUnknownNativeTimer {
+                native_timer_id: 9001,
+            }
+        );
+    }
+
+    #[test]
+    fn platform_host_ignores_stale_native_timer_callback_while_rearm_is_pending() {
+        let mut host =
+            StudioGuiPlatformHost::new(&lease_expiring_config()).expect("expected platform host");
+        let opened = host
+            .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+            .expect("expected open dispatch");
+        let window_id = match opened.outcome {
             crate::StudioGuiDriverOutcome::HostCommand(
-                crate::StudioGuiHostCommandOutcome::LifecycleDispatched(_)
-            )
+                crate::StudioGuiHostCommandOutcome::WindowOpened(opened),
+            ) => opened.registration.window_id,
+            other => panic!("expected opened window outcome, got {other:?}"),
+        };
+        let first = host
+            .dispatch_event(StudioGuiEvent::WindowTriggerRequested {
+                window_id,
+                trigger: crate::StudioRuntimeTrigger::EntitlementSessionEvent(
+                    crate::StudioRuntimeEntitlementSessionEvent::TimerElapsed,
+                ),
+            })
+            .expect("expected first timer trigger");
+        let first_schedule = match first.native_timer_request.as_ref() {
+            Some(StudioGuiPlatformTimerRequest::Arm { schedule }) => schedule.clone(),
+            other => panic!("expected arm timer request, got {other:?}"),
+        };
+        let _ = host.apply_platform_timer_request(first.native_timer_request.as_ref());
+        let _ = host.acknowledge_platform_timer_started(&first_schedule, 9001);
+
+        let callback = host
+            .dispatch_native_timer_elapsed_by_native_id(9001)
+            .expect("expected callback dispatch");
+        let callback_dispatch = match callback {
+            StudioGuiPlatformNativeTimerCallbackOutcome::Dispatched(dispatch) => dispatch,
+            other => panic!("expected dispatched callback, got {other:?}"),
+        };
+        assert!(matches!(
+            callback_dispatch.native_timer_request,
+            Some(StudioGuiPlatformTimerRequest::Rearm { .. })
         ));
+
+        let _ = host.apply_platform_timer_request(callback_dispatch.native_timer_request.as_ref());
+
+        let stale = host
+            .dispatch_native_timer_elapsed_by_native_id(9001)
+            .expect("expected stale callback outcome");
+
+        assert_eq!(
+            stale,
+            StudioGuiPlatformNativeTimerCallbackOutcome::IgnoredStaleNativeTimer {
+                native_timer_id: 9001,
+            }
+        );
     }
 
     #[test]

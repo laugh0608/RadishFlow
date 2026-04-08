@@ -51,6 +51,19 @@ pub struct StudioGuiPlatformTimerStartFailureResult {
     pub status: StudioGuiPlatformTimerStartFailureStatus,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum StudioGuiPlatformTimerCallbackResolution {
+    Dispatch {
+        schedule: StudioGuiNativeTimerSchedule,
+    },
+    IgnoredUnknownNativeTimer {
+        native_timer_id: StudioGuiPlatformNativeTimerId,
+    },
+    IgnoredStaleNativeTimer {
+        native_timer_id: StudioGuiPlatformNativeTimerId,
+    },
+}
+
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct StudioGuiPlatformTimerDriverState {
     current_binding: Option<StudioGuiPlatformTimerBinding>,
@@ -161,6 +174,30 @@ impl StudioGuiPlatformTimerDriverState {
             (binding.native_timer_id == native_timer_id).then_some(&binding.schedule)
         })
     }
+
+    pub fn resolve_callback(
+        &self,
+        native_timer_id: StudioGuiPlatformNativeTimerId,
+    ) -> StudioGuiPlatformTimerCallbackResolution {
+        match self.current_binding.as_ref() {
+            Some(binding) if binding.native_timer_id == native_timer_id => {
+                StudioGuiPlatformTimerCallbackResolution::Dispatch {
+                    schedule: binding.schedule.clone(),
+                }
+            }
+            Some(_) => StudioGuiPlatformTimerCallbackResolution::IgnoredStaleNativeTimer {
+                native_timer_id,
+            },
+            None if self.pending_schedule.is_some() => {
+                StudioGuiPlatformTimerCallbackResolution::IgnoredStaleNativeTimer {
+                    native_timer_id,
+                }
+            }
+            None => StudioGuiPlatformTimerCallbackResolution::IgnoredUnknownNativeTimer {
+                native_timer_id,
+            },
+        }
+    }
 }
 
 #[cfg(test)]
@@ -170,7 +207,8 @@ mod tests {
     use crate::{
         StudioGuiNativeTimerSchedule, StudioGuiPlatformNativeTimerId,
         StudioGuiPlatformTimerBinding, StudioGuiPlatformTimerCommand,
-        StudioGuiPlatformTimerDriverState, StudioGuiPlatformTimerRequest,
+        StudioGuiPlatformTimerCallbackResolution, StudioGuiPlatformTimerDriverState,
+        StudioGuiPlatformTimerRequest,
         StudioRuntimeHostEffectId, StudioRuntimeTimerHandleSlot, StudioWindowHostId,
     };
 
@@ -344,6 +382,57 @@ mod tests {
         );
         assert_eq!(state.pending_schedule(), Some(&pending));
         assert_eq!(state.current_binding(), None);
+    }
+
+    #[test]
+    fn platform_timer_driver_resolves_current_native_timer_callback() {
+        let mut state = StudioGuiPlatformTimerDriverState::default();
+        let schedule = schedule(Some(7), 41, 1001, 60);
+        acknowledge_after_arm(&mut state, &schedule, 9001);
+
+        let resolution = state.resolve_callback(9001);
+
+        assert_eq!(
+            resolution,
+            StudioGuiPlatformTimerCallbackResolution::Dispatch {
+                schedule: schedule.clone(),
+            }
+        );
+    }
+
+    #[test]
+    fn platform_timer_driver_classifies_unknown_native_timer_callback_without_binding() {
+        let state = StudioGuiPlatformTimerDriverState::default();
+
+        let resolution = state.resolve_callback(9001);
+
+        assert_eq!(
+            resolution,
+            StudioGuiPlatformTimerCallbackResolution::IgnoredUnknownNativeTimer {
+                native_timer_id: 9001,
+            }
+        );
+    }
+
+    #[test]
+    fn platform_timer_driver_classifies_stale_native_timer_callback_when_rearm_is_pending() {
+        let mut state = StudioGuiPlatformTimerDriverState::default();
+        let previous = schedule(Some(7), 41, 1001, 60);
+        let next = schedule(Some(7), 42, 1002, 90);
+        acknowledge_after_arm(&mut state, &previous, 9001);
+        let _ = state.apply_request(Some(&StudioGuiPlatformTimerRequest::Rearm {
+            previous: previous.clone(),
+            schedule: next,
+        }));
+
+        let resolution = state.resolve_callback(9001);
+
+        assert_eq!(
+            resolution,
+            StudioGuiPlatformTimerCallbackResolution::IgnoredStaleNativeTimer {
+                native_timer_id: 9001,
+            }
+        );
     }
 
     fn acknowledge_after_arm(
