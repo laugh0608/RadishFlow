@@ -181,6 +181,7 @@ pub use studio_gui_host::{
     StudioGuiHostWindowOpened,
 };
 pub use studio_gui_platform_host::{
+    StudioGuiPlatformAsyncRound, StudioGuiPlatformAsyncRoundInput,
     StudioGuiPlatformDispatch, StudioGuiPlatformDueTimerDrain,
     StudioGuiPlatformExecutedDispatch, StudioGuiPlatformExecutedDueTimerDrain,
     StudioGuiPlatformExecutedNativeTimerCallbackBatch,
