@@ -1,5 +1,6 @@
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use crate::{
@@ -853,24 +854,40 @@ struct TemporaryCacheRoot {
     path: PathBuf,
 }
 
+static TEMPORARY_CACHE_ROOT_SEQUENCE: AtomicU64 = AtomicU64::new(1);
+
 impl TemporaryCacheRoot {
     fn new(prefix: &str) -> RfResult<Self> {
-        let unique = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .map_err(|error| {
-                RfError::invalid_input(format!(
-                    "create temporary cache root timestamp failed: {error}"
-                ))
-            })?
-            .as_nanos();
-        let path = std::env::temp_dir().join(format!("radishflow-{prefix}-{unique}"));
-        fs::create_dir_all(&path).map_err(|error| {
-            RfError::invalid_input(format!(
-                "create temporary cache root `{}`: {error}",
-                path.display()
-            ))
-        })?;
-        Ok(Self { path })
+        let temp_dir = std::env::temp_dir();
+        for _ in 0..32 {
+            let timestamp = SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .map_err(|error| {
+                    RfError::invalid_input(format!(
+                        "create temporary cache root timestamp failed: {error}"
+                    ))
+                })?
+                .as_nanos();
+            let sequence = TEMPORARY_CACHE_ROOT_SEQUENCE.fetch_add(1, Ordering::Relaxed);
+            let path = temp_dir.join(format!(
+                "radishflow-{prefix}-{}-{timestamp}-{sequence}",
+                std::process::id()
+            ));
+            match fs::create_dir(&path) {
+                Ok(()) => return Ok(Self { path }),
+                Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => continue,
+                Err(error) => {
+                    return Err(RfError::invalid_input(format!(
+                        "create temporary cache root `{}`: {error}",
+                        path.display()
+                    )));
+                }
+            }
+        }
+
+        Err(RfError::invalid_input(format!(
+            "create temporary cache root for prefix `{prefix}` exhausted retry attempts"
+        )))
     }
 
     fn path(&self) -> &Path {
