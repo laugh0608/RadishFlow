@@ -181,8 +181,10 @@ pub use studio_gui_host::{
     StudioGuiHostWindowOpened,
 };
 pub use studio_gui_platform_host::{
-    StudioGuiPlatformDispatch, StudioGuiPlatformHost, StudioGuiPlatformNativeTimerCallbackOutcome,
-    StudioGuiPlatformTimerExecutionOutcome, StudioGuiPlatformTimerExecutor,
+    StudioGuiPlatformDispatch, StudioGuiPlatformExecutedDispatch,
+    StudioGuiPlatformExecutedNativeTimerCallbackOutcome, StudioGuiPlatformHost,
+    StudioGuiPlatformNativeTimerCallbackOutcome, StudioGuiPlatformTimerExecutionOutcome,
+    StudioGuiPlatformTimerExecutor,
     StudioGuiPlatformTimerExecutorResponse, StudioGuiPlatformTimerFollowUpCommand,
     StudioGuiPlatformTimerHostOutcome, StudioGuiPlatformTimerRequest,
     StudioGuiPlatformTimerStartFailedOutcome, StudioGuiPlatformTimerStartedOutcome,

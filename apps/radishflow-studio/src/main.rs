@@ -2,8 +2,8 @@ use radishflow_studio::{
     EntitlementSessionEventOutcome, StudioAppHostEntitlementTimerEffect, StudioAppResultDispatch,
     StudioGuiDriverOutcome, StudioGuiEvent, StudioGuiHostCommandOutcome,
     StudioGuiNativeTimerEffects, StudioGuiNativeTimerOperation, StudioGuiPlatformDispatch,
-    StudioGuiPlatformHost, StudioGuiPlatformNativeTimerCallbackOutcome,
-    StudioGuiPlatformNativeTimerId, StudioGuiPlatformTimerCommand,
+    StudioGuiPlatformExecutedDispatch, StudioGuiPlatformExecutedNativeTimerCallbackOutcome,
+    StudioGuiPlatformHost, StudioGuiPlatformNativeTimerId, StudioGuiPlatformTimerCommand,
     StudioGuiPlatformTimerExecutionOutcome, StudioGuiPlatformTimerExecutor,
     StudioGuiPlatformTimerExecutorResponse, StudioGuiPlatformTimerFollowUpCommand,
     StudioGuiPlatformTimerRequest, StudioGuiPlatformTimerStartedOutcome,
@@ -310,8 +310,12 @@ fn main() {
     };
     let mut platform_timer_executor = DemoPlatformTimerExecutor::new(9001);
 
-    let opened = expect_window_opened(&mut app_host, "open initial window");
-    let opened_result = match &opened.outcome {
+    let opened = expect_window_opened_and_execute(
+        &mut app_host,
+        "open initial window",
+        &mut platform_timer_executor,
+    );
+    let opened_result = match &opened.dispatch.outcome {
         StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::WindowOpened(result)) => {
             result
         }
@@ -505,19 +509,16 @@ fn main() {
         println!("Window host native timer effects:");
         print_native_timer_effects(&opened_result.native_timers);
     }
-    consume_platform_timer_request(
-        &mut app_host,
-        opened.native_timer_request.as_ref(),
-        &mut platform_timer_executor,
-    );
+    print_platform_timer_execution(&opened);
 
-    let dispatch = expect_window_dispatch(
+    let dispatch = expect_window_dispatch_and_execute(
         &mut app_host,
         window.window_id,
         config.trigger.clone(),
         "dispatch initial trigger",
+        &mut platform_timer_executor,
     );
-    let dispatch_result = match &dispatch.outcome {
+    let dispatch_result = match &dispatch.dispatch.outcome {
         StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::WindowDispatched(
             result,
         )) => result,
@@ -561,11 +562,7 @@ fn main() {
         println!("Timer driver commands:");
         print_native_timer_effects(&native_timers);
     }
-    consume_platform_timer_request(
-        &mut app_host,
-        dispatch.native_timer_request.as_ref(),
-        &mut platform_timer_executor,
-    );
+    print_platform_timer_execution(&dispatch);
     if let Some(binding) = app_host.current_platform_timer_binding().cloned() {
         println!(
             "Next platform timer due at: {:?} (native_id={} window={:?} handle={})",
@@ -575,21 +572,16 @@ fn main() {
             binding.schedule.handle_id
         );
         let callback = app_host
-            .dispatch_native_timer_elapsed_by_native_id(binding.native_timer_id)
+            .dispatch_native_timer_elapsed_by_native_id_and_execute_platform_timer(
+                binding.native_timer_id,
+                &mut platform_timer_executor,
+            )
             .expect("expected native timer callback outcome");
         println!(
             "Simulated platform native timer callback via native_id={}",
             binding.native_timer_id
         );
         print_platform_native_timer_callback_outcome(&callback);
-        if let StudioGuiPlatformNativeTimerCallbackOutcome::Dispatched(callback_dispatch) = &callback
-        {
-            consume_platform_timer_request(
-                &mut app_host,
-                callback_dispatch.native_timer_request.as_ref(),
-                &mut platform_timer_executor,
-            );
-        }
         print_window_model(
             "Window model after simulated native timer callback",
             &app_host.snapshot().window_model(),
@@ -669,12 +661,13 @@ fn main() {
         }
     }
 
-    let lifecycle = expect_lifecycle_event(
+    let lifecycle = expect_lifecycle_event_and_execute(
         &mut app_host,
         StudioGuiEvent::NetworkRestored,
         "dispatch lifecycle network restored",
+        &mut platform_timer_executor,
     );
-    let lifecycle_result = match &lifecycle.outcome {
+    let lifecycle_result = match &lifecycle.dispatch.outcome {
         StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::LifecycleDispatched(
             result,
         )) => result,
@@ -698,14 +691,15 @@ fn main() {
         "Window model after network restored",
         &app_host.snapshot().window_model(),
     );
-    consume_platform_timer_request(
+    print_platform_timer_execution(&lifecycle);
+
+    let close = expect_close_window_and_execute(
         &mut app_host,
-        lifecycle.native_timer_request.as_ref(),
+        window.window_id,
+        "close initial window",
         &mut platform_timer_executor,
     );
-
-    let close = expect_close_window(&mut app_host, window.window_id, "close initial window");
-    let close_result = match &close.outcome {
+    let close_result = match &close.dispatch.outcome {
         StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::WindowClosed(result)) => {
             result
         }
@@ -750,11 +744,7 @@ fn main() {
                 "Window model after closing window",
                 &app_host.snapshot().window_model(),
             );
-            consume_platform_timer_request(
-                &mut app_host,
-                close.native_timer_request.as_ref(),
-                &mut platform_timer_executor,
-            );
+            print_platform_timer_execution(&close);
         }
         None => {
             println!("Window host close ignored for window #{}", window.window_id);
@@ -834,19 +824,23 @@ fn print_entitlement_timer_effect(effect: &StudioAppHostEntitlementTimerEffect) 
     }
 }
 
-fn expect_window_opened(
+fn expect_window_opened_and_execute(
     app_host: &mut StudioGuiPlatformHost,
     context: &str,
-) -> StudioGuiPlatformDispatch {
-    match app_host.dispatch_event(StudioGuiEvent::OpenWindowRequested) {
-        Ok(dispatch) => match &dispatch.outcome {
+    executor: &mut impl StudioGuiPlatformTimerExecutor,
+) -> StudioGuiPlatformExecutedDispatch {
+    match app_host.dispatch_event_and_execute_platform_timer(
+        StudioGuiEvent::OpenWindowRequested,
+        executor,
+    ) {
+        Ok(executed) => match &executed.dispatch.outcome {
             StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::WindowOpened(_)) => {
-                dispatch
+                executed
             }
             _ => {
                 eprintln!(
                     "RadishFlow Studio host command failed during {}: expected window open outcome, got {:?}",
-                    context, dispatch
+                    context, executed.dispatch
                 );
                 std::process::exit(1);
             }
@@ -863,21 +857,25 @@ fn expect_window_opened(
     }
 }
 
-fn expect_window_dispatch(
+fn expect_window_dispatch_and_execute(
     app_host: &mut StudioGuiPlatformHost,
     window_id: u64,
     trigger: radishflow_studio::StudioRuntimeTrigger,
     context: &str,
-) -> StudioGuiPlatformDispatch {
-    match app_host.dispatch_event(StudioGuiEvent::WindowTriggerRequested { window_id, trigger }) {
-        Ok(dispatch) => match &dispatch.outcome {
+    executor: &mut impl StudioGuiPlatformTimerExecutor,
+) -> StudioGuiPlatformExecutedDispatch {
+    match app_host.dispatch_event_and_execute_platform_timer(
+        StudioGuiEvent::WindowTriggerRequested { window_id, trigger },
+        executor,
+    ) {
+        Ok(executed) => match &executed.dispatch.outcome {
             StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::WindowDispatched(
                 _,
-            )) => dispatch,
+            )) => executed,
             _ => {
                 eprintln!(
                     "RadishFlow Studio host command failed during {}: expected window dispatch outcome, got {:?}",
-                    context, dispatch
+                    context, executed.dispatch
                 );
                 std::process::exit(1);
             }
@@ -894,20 +892,21 @@ fn expect_window_dispatch(
     }
 }
 
-fn expect_lifecycle_event(
+fn expect_lifecycle_event_and_execute(
     app_host: &mut StudioGuiPlatformHost,
     event: StudioGuiEvent,
     context: &str,
-) -> StudioGuiPlatformDispatch {
-    match app_host.dispatch_event(event) {
-        Ok(dispatch) => match &dispatch.outcome {
+    executor: &mut impl StudioGuiPlatformTimerExecutor,
+) -> StudioGuiPlatformExecutedDispatch {
+    match app_host.dispatch_event_and_execute_platform_timer(event, executor) {
+        Ok(executed) => match &executed.dispatch.outcome {
             StudioGuiDriverOutcome::HostCommand(
                 StudioGuiHostCommandOutcome::LifecycleDispatched(_),
-            ) => dispatch,
+            ) => executed,
             _ => {
                 eprintln!(
                     "RadishFlow Studio host command failed during {}: expected lifecycle outcome, got {:?}",
-                    context, dispatch
+                    context, executed.dispatch
                 );
                 std::process::exit(1);
             }
@@ -924,20 +923,24 @@ fn expect_lifecycle_event(
     }
 }
 
-fn expect_close_window(
+fn expect_close_window_and_execute(
     app_host: &mut StudioGuiPlatformHost,
     window_id: u64,
     context: &str,
-) -> StudioGuiPlatformDispatch {
-    match app_host.dispatch_event(StudioGuiEvent::CloseWindowRequested { window_id }) {
-        Ok(dispatch) => match &dispatch.outcome {
+    executor: &mut impl StudioGuiPlatformTimerExecutor,
+) -> StudioGuiPlatformExecutedDispatch {
+    match app_host.dispatch_event_and_execute_platform_timer(
+        StudioGuiEvent::CloseWindowRequested { window_id },
+        executor,
+    ) {
+        Ok(executed) => match &executed.dispatch.outcome {
             StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::WindowClosed(_)) => {
-                dispatch
+                executed
             }
             _ => {
                 eprintln!(
                     "RadishFlow Studio host command failed during {}: expected close outcome, got {:?}",
-                    context, dispatch
+                    context, executed.dispatch
                 );
                 std::process::exit(1);
             }
@@ -984,15 +987,10 @@ fn print_platform_timer_request(request: Option<&StudioGuiPlatformTimerRequest>)
 }
 
 fn consume_platform_timer_request(
-    host: &mut StudioGuiPlatformHost,
-    request: Option<&StudioGuiPlatformTimerRequest>,
-    executor: &mut impl StudioGuiPlatformTimerExecutor,
+    executed: &StudioGuiPlatformExecutedDispatch,
 ) {
-    print_platform_timer_request(request);
-    let execution = host
-        .execute_platform_timer_request(request, executor)
-        .expect("expected platform timer execution");
-    match execution {
+    print_platform_timer_request(executed.dispatch.native_timer_request.as_ref());
+    match &executed.timer_execution {
         StudioGuiPlatformTimerExecutionOutcome::NoCommand => {}
         StudioGuiPlatformTimerExecutionOutcome::Executed {
             host_outcome,
@@ -1015,6 +1013,10 @@ fn consume_platform_timer_request(
             }
         }
     }
+}
+
+fn print_platform_timer_execution(executed: &StudioGuiPlatformExecutedDispatch) {
+    consume_platform_timer_request(executed);
 }
 
 fn print_platform_timer_command(command: &StudioGuiPlatformTimerCommand) {
@@ -1117,21 +1119,22 @@ fn consume_platform_timer_follow_up_command(
 }
 
 fn print_platform_native_timer_callback_outcome(
-    outcome: &StudioGuiPlatformNativeTimerCallbackOutcome,
+    outcome: &StudioGuiPlatformExecutedNativeTimerCallbackOutcome,
 ) {
     match outcome {
-        StudioGuiPlatformNativeTimerCallbackOutcome::Dispatched(dispatch) => {
+        StudioGuiPlatformExecutedNativeTimerCallbackOutcome::Dispatched(dispatch) => {
             println!("  - due callback status: dispatched");
-            println!("  - due callback outcome: {:?}", dispatch.outcome);
+            println!("  - due callback outcome: {:?}", dispatch.dispatch.outcome);
+            print_platform_timer_execution(dispatch);
         }
-        StudioGuiPlatformNativeTimerCallbackOutcome::IgnoredUnknownNativeTimer {
+        StudioGuiPlatformExecutedNativeTimerCallbackOutcome::IgnoredUnknownNativeTimer {
             native_timer_id,
         } => {
             println!(
                 "  - due callback status: ignored unknown native timer (native_id={native_timer_id})"
             );
         }
-        StudioGuiPlatformNativeTimerCallbackOutcome::IgnoredStaleNativeTimer {
+        StudioGuiPlatformExecutedNativeTimerCallbackOutcome::IgnoredStaleNativeTimer {
             native_timer_id,
         } => {
             println!(
