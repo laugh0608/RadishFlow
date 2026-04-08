@@ -171,6 +171,99 @@ pub enum StudioGuiPlatformTimerStartFailedOutcome {
     },
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioGuiPlatformTimerStartedFeedback {
+    pub schedule: StudioGuiNativeTimerSchedule,
+    pub native_timer_id: StudioGuiPlatformNativeTimerId,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioGuiPlatformTimerStartedFeedbackEntry {
+    pub feedback: StudioGuiPlatformTimerStartedFeedback,
+    pub outcome: StudioGuiPlatformTimerStartedOutcome,
+    pub follow_up_command: Option<StudioGuiPlatformTimerFollowUpCommand>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct StudioGuiPlatformTimerStartedFeedbackBatch {
+    pub entries: Vec<StudioGuiPlatformTimerStartedFeedbackEntry>,
+    pub snapshot: StudioGuiSnapshot,
+    pub next_native_timer_schedule: Option<StudioGuiNativeTimerSchedule>,
+}
+
+impl StudioGuiPlatformTimerStartedFeedbackBatch {
+    pub fn is_empty(&self) -> bool {
+        self.entries.is_empty()
+    }
+
+    pub fn len(&self) -> usize {
+        self.entries.len()
+    }
+
+    pub fn next_native_timer_due_at(&self) -> Option<SystemTime> {
+        self.next_native_timer_schedule
+            .as_ref()
+            .map(|schedule| schedule.slot.timer.due_at)
+    }
+
+    pub fn window_model_for_window(
+        &self,
+        window_id: Option<StudioWindowHostId>,
+    ) -> StudioGuiWindowModel {
+        self.snapshot.window_model_for_window(window_id)
+    }
+
+    pub fn follow_up_commands(&self) -> Vec<StudioGuiPlatformTimerFollowUpCommand> {
+        self.entries
+            .iter()
+            .filter_map(|entry| entry.follow_up_command.clone())
+            .collect()
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioGuiPlatformTimerStartFailedFeedback {
+    pub schedule: StudioGuiNativeTimerSchedule,
+    pub detail: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioGuiPlatformTimerStartFailedFeedbackEntry {
+    pub feedback: StudioGuiPlatformTimerStartFailedFeedback,
+    pub outcome: StudioGuiPlatformTimerStartFailedOutcome,
+    pub follow_up_command: Option<StudioGuiPlatformTimerFollowUpCommand>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct StudioGuiPlatformTimerStartFailedFeedbackBatch {
+    pub entries: Vec<StudioGuiPlatformTimerStartFailedFeedbackEntry>,
+    pub snapshot: StudioGuiSnapshot,
+    pub next_native_timer_schedule: Option<StudioGuiNativeTimerSchedule>,
+}
+
+impl StudioGuiPlatformTimerStartFailedFeedbackBatch {
+    pub fn is_empty(&self) -> bool {
+        self.entries.is_empty()
+    }
+
+    pub fn len(&self) -> usize {
+        self.entries.len()
+    }
+
+    pub fn next_native_timer_due_at(&self) -> Option<SystemTime> {
+        self.next_native_timer_schedule
+            .as_ref()
+            .map(|schedule| schedule.slot.timer.due_at)
+    }
+
+    pub fn window_model_for_window(
+        &self,
+        window_id: Option<StudioWindowHostId>,
+    ) -> StudioGuiWindowModel {
+        self.snapshot.window_model_for_window(window_id)
+    }
+}
+
 impl StudioGuiPlatformTimerStartedOutcome {
     pub fn follow_up_command(&self) -> Option<StudioGuiPlatformTimerFollowUpCommand> {
         match self {
@@ -444,6 +537,62 @@ impl StudioGuiPlatformHost {
         }
     }
 
+    pub fn acknowledge_platform_timer_started_feedbacks(
+        &mut self,
+        feedbacks: &[StudioGuiPlatformTimerStartedFeedback],
+    ) -> StudioGuiPlatformTimerStartedFeedbackBatch {
+        let mut entries = Vec::with_capacity(feedbacks.len());
+        for feedback in feedbacks {
+            let outcome =
+                self.acknowledge_platform_timer_started(&feedback.schedule, feedback.native_timer_id);
+            let follow_up_command = outcome.follow_up_command();
+            entries.push(StudioGuiPlatformTimerStartedFeedbackEntry {
+                feedback: feedback.clone(),
+                outcome,
+                follow_up_command,
+            });
+        }
+        StudioGuiPlatformTimerStartedFeedbackBatch {
+            entries,
+            snapshot: self.snapshot(),
+            next_native_timer_schedule: self.current_schedule.clone(),
+        }
+    }
+
+    pub fn acknowledge_platform_timer_started_feedbacks_and_execute_follow_up_commands(
+        &mut self,
+        feedbacks: &[StudioGuiPlatformTimerStartedFeedback],
+        executor: &mut impl StudioGuiPlatformTimerExecutor,
+    ) -> RfResult<StudioGuiPlatformTimerStartedFeedbackBatch> {
+        let batch = self.acknowledge_platform_timer_started_feedbacks(feedbacks);
+        for command in batch.follow_up_commands() {
+            executor.execute_platform_timer_follow_up_command(&command)?;
+        }
+        Ok(batch)
+    }
+
+    pub fn acknowledge_platform_timer_start_failed_feedbacks(
+        &mut self,
+        feedbacks: &[StudioGuiPlatformTimerStartFailedFeedback],
+    ) -> StudioGuiPlatformTimerStartFailedFeedbackBatch {
+        let mut entries = Vec::with_capacity(feedbacks.len());
+        for feedback in feedbacks {
+            let outcome =
+                self.acknowledge_platform_timer_start_failed(&feedback.schedule, &feedback.detail);
+            let follow_up_command = outcome.follow_up_command();
+            entries.push(StudioGuiPlatformTimerStartFailedFeedbackEntry {
+                feedback: feedback.clone(),
+                outcome,
+                follow_up_command,
+            });
+        }
+        StudioGuiPlatformTimerStartFailedFeedbackBatch {
+            entries,
+            snapshot: self.snapshot(),
+            next_native_timer_schedule: self.current_schedule.clone(),
+        }
+    }
+
     pub fn callback_schedule_for_native_timer(
         &self,
         native_timer_id: StudioGuiPlatformNativeTimerId,
@@ -669,7 +818,9 @@ mod tests {
         StudioGuiPlatformTimerExecutionOutcome, StudioGuiPlatformTimerExecutor,
         StudioGuiPlatformTimerExecutorResponse, StudioGuiPlatformTimerFollowUpCommand,
         StudioGuiPlatformTimerHostOutcome, StudioGuiPlatformTimerRequest,
-        StudioGuiPlatformTimerStartFailedOutcome, StudioGuiPlatformTimerStartedOutcome,
+        StudioGuiPlatformTimerStartFailedFeedback, StudioGuiPlatformTimerStartFailedOutcome,
+        StudioGuiPlatformTimerStartedFeedback,
+        StudioGuiPlatformTimerStartedOutcome,
         StudioRuntimeConfig, StudioRuntimeEntitlementPreflight, StudioRuntimeEntitlementSeed,
     };
 
@@ -1162,6 +1313,171 @@ mod tests {
             }
         );
         assert_eq!(failure.follow_up_command(), None);
+    }
+
+    #[test]
+    fn platform_host_batches_started_feedbacks_and_executes_follow_up_commands() {
+        let mut host =
+            StudioGuiPlatformHost::new(&lease_expiring_config()).expect("expected platform host");
+        let opened = host
+            .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+            .expect("expected open dispatch");
+        let window_id = match opened.outcome {
+            crate::StudioGuiDriverOutcome::HostCommand(
+                crate::StudioGuiHostCommandOutcome::WindowOpened(opened),
+            ) => opened.registration.window_id,
+            other => panic!("expected opened window outcome, got {other:?}"),
+        };
+        let dispatched = host
+            .dispatch_event(StudioGuiEvent::WindowTriggerRequested {
+                window_id,
+                trigger: crate::StudioRuntimeTrigger::EntitlementSessionEvent(
+                    crate::StudioRuntimeEntitlementSessionEvent::TimerElapsed,
+                ),
+            })
+            .expect("expected timer trigger dispatch");
+        let schedule = match dispatched.native_timer_request.as_ref() {
+            Some(StudioGuiPlatformTimerRequest::Arm { schedule }) => schedule.clone(),
+            other => panic!("expected arm timer request, got {other:?}"),
+        };
+
+        let _ = host.apply_platform_timer_request(dispatched.native_timer_request.as_ref());
+        let feedbacks = vec![
+            StudioGuiPlatformTimerStartedFeedback {
+                schedule: schedule.clone(),
+                native_timer_id: 9001,
+            },
+            StudioGuiPlatformTimerStartedFeedback {
+                schedule: schedule.clone(),
+                native_timer_id: 9002,
+            },
+        ];
+        let mut executor = TestPlatformTimerExecutor::default();
+
+        let batch = host
+            .acknowledge_platform_timer_started_feedbacks_and_execute_follow_up_commands(
+                &feedbacks,
+                &mut executor,
+            )
+            .expect("expected started feedback batch");
+
+        assert_eq!(batch.len(), 2);
+        assert!(!batch.is_empty());
+        assert!(matches!(
+            &batch.entries[0].outcome,
+            StudioGuiPlatformTimerStartedOutcome::Applied(_)
+        ));
+        assert_eq!(batch.entries[0].follow_up_command.as_ref(), None);
+        assert!(matches!(
+            &batch.entries[1].outcome,
+            StudioGuiPlatformTimerStartedOutcome::IgnoredMissingPendingSchedule { .. }
+        ));
+        assert_eq!(
+            batch.entries[1].follow_up_command.as_ref(),
+            Some(&StudioGuiPlatformTimerFollowUpCommand::ClearNativeTimer {
+                native_timer_id: 9002,
+            })
+        );
+        assert_eq!(
+            batch.follow_up_commands(),
+            vec![StudioGuiPlatformTimerFollowUpCommand::ClearNativeTimer {
+                native_timer_id: 9002,
+            }]
+        );
+        assert_eq!(batch.snapshot, host.snapshot());
+        assert_eq!(
+            batch.next_native_timer_due_at(),
+            host.next_native_timer_due_at()
+        );
+        let window = batch.window_model_for_window(Some(window_id));
+        assert_eq!(window.layout_state.scope.window_id, Some(window_id));
+        assert_eq!(
+            executor.follow_up_commands,
+            vec![StudioGuiPlatformTimerFollowUpCommand::ClearNativeTimer {
+                native_timer_id: 9002,
+            }]
+        );
+        assert!(matches!(
+            host.current_platform_timer_binding(),
+            Some(binding) if binding.native_timer_id == 9001
+        ));
+    }
+
+    #[test]
+    fn platform_host_batches_start_failed_feedbacks_and_refreshes_snapshot() {
+        let mut host =
+            StudioGuiPlatformHost::new(&lease_expiring_config()).expect("expected platform host");
+        let opened = host
+            .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+            .expect("expected open dispatch");
+        let window_id = match opened.outcome {
+            crate::StudioGuiDriverOutcome::HostCommand(
+                crate::StudioGuiHostCommandOutcome::WindowOpened(opened),
+            ) => opened.registration.window_id,
+            other => panic!("expected opened window outcome, got {other:?}"),
+        };
+        let dispatched = host
+            .dispatch_event(StudioGuiEvent::WindowTriggerRequested {
+                window_id,
+                trigger: crate::StudioRuntimeTrigger::EntitlementSessionEvent(
+                    crate::StudioRuntimeEntitlementSessionEvent::TimerElapsed,
+                ),
+            })
+            .expect("expected timer trigger dispatch");
+        let schedule = match dispatched.native_timer_request.as_ref() {
+            Some(StudioGuiPlatformTimerRequest::Arm { schedule }) => schedule.clone(),
+            other => panic!("expected arm timer request, got {other:?}"),
+        };
+
+        let _ = host.apply_platform_timer_request(dispatched.native_timer_request.as_ref());
+        let feedbacks = vec![
+            StudioGuiPlatformTimerStartFailedFeedback {
+                schedule: schedule.clone(),
+                detail: "simulated batch start failure".to_string(),
+            },
+            StudioGuiPlatformTimerStartFailedFeedback {
+                schedule: schedule.clone(),
+                detail: "duplicate batch start failure".to_string(),
+            },
+        ];
+
+        let batch = host.acknowledge_platform_timer_start_failed_feedbacks(&feedbacks);
+
+        assert_eq!(batch.len(), 2);
+        assert!(!batch.is_empty());
+        assert!(matches!(
+            &batch.entries[0].outcome,
+            StudioGuiPlatformTimerStartFailedOutcome::Applied(_)
+        ));
+        assert!(matches!(
+            &batch.entries[1].outcome,
+            StudioGuiPlatformTimerStartFailedOutcome::IgnoredMissingPendingSchedule { .. }
+        ));
+        assert_eq!(batch.entries[0].follow_up_command.as_ref(), None);
+        assert_eq!(batch.entries[1].follow_up_command.as_ref(), None);
+        assert_eq!(batch.snapshot, host.snapshot());
+        assert_eq!(
+            batch.next_native_timer_due_at(),
+            host.next_native_timer_due_at()
+        );
+        let platform_notice = batch
+            .snapshot
+            .runtime
+            .platform_notice
+            .as_ref()
+            .expect("expected platform notice in batch snapshot");
+        assert!(
+            platform_notice
+                .message
+                .contains("simulated batch start failure")
+        );
+        let window = batch.window_model_for_window(Some(window_id));
+        let latest_log = window
+            .runtime
+            .latest_log_entry
+            .as_ref()
+            .expect("expected latest log entry in batch window");
+        assert!(latest_log.message.contains("simulated batch start failure"));
     }
 
     #[test]

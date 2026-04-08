@@ -188,7 +188,11 @@ pub use studio_gui_platform_host::{
     StudioGuiPlatformTimerExecutor,
     StudioGuiPlatformTimerExecutorResponse, StudioGuiPlatformTimerFollowUpCommand,
     StudioGuiPlatformTimerHostOutcome, StudioGuiPlatformTimerRequest,
+    StudioGuiPlatformTimerStartFailedFeedback, StudioGuiPlatformTimerStartFailedFeedbackBatch,
+    StudioGuiPlatformTimerStartFailedFeedbackEntry,
     StudioGuiPlatformTimerStartFailedOutcome, StudioGuiPlatformTimerStartedOutcome,
+    StudioGuiPlatformTimerStartedFeedback, StudioGuiPlatformTimerStartedFeedbackBatch,
+    StudioGuiPlatformTimerStartedFeedbackEntry,
 };
 pub use studio_gui_platform_timer_driver::{
     StudioGuiPlatformNativeTimerId, StudioGuiPlatformTimerBinding,
