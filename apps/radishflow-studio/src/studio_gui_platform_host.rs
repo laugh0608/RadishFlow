@@ -294,11 +294,15 @@ impl StudioGuiPlatformHost {
 
     pub fn execute_platform_dispatch(
         &mut self,
-        dispatch: StudioGuiPlatformDispatch,
+        mut dispatch: StudioGuiPlatformDispatch,
         executor: &mut impl StudioGuiPlatformTimerExecutor,
     ) -> RfResult<StudioGuiPlatformExecutedDispatch> {
         let timer_execution =
             self.execute_platform_timer_request(dispatch.native_timer_request.as_ref(), executor)?;
+        let snapshot = self.snapshot();
+        let window_id = dispatch.window.layout_state.scope.window_id;
+        dispatch.snapshot = snapshot.clone();
+        dispatch.window = snapshot.window_model_for_window(window_id);
         Ok(StudioGuiPlatformExecutedDispatch {
             dispatch,
             timer_execution,
@@ -1452,5 +1456,73 @@ mod tests {
         );
         assert!(executor.commands.is_empty());
         assert!(executor.follow_up_commands.is_empty());
+    }
+
+    #[test]
+    fn platform_host_combined_execution_refreshes_dispatch_snapshot_after_start_failure() {
+        let mut host =
+            StudioGuiPlatformHost::new(&lease_expiring_config()).expect("expected platform host");
+        let opened = host
+            .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+            .expect("expected open dispatch");
+        let window_id = match opened.outcome {
+            crate::StudioGuiDriverOutcome::HostCommand(
+                crate::StudioGuiHostCommandOutcome::WindowOpened(opened),
+            ) => opened.registration.window_id,
+            other => panic!("expected opened window outcome, got {other:?}"),
+        };
+        let mut executor = TestPlatformTimerExecutor::with_responses(vec![
+            StudioGuiPlatformTimerExecutorResponse::StartFailed {
+                detail: "simulated combined execution failure".to_string(),
+            },
+        ]);
+
+        let executed = host
+            .dispatch_event_and_execute_platform_timer(
+                StudioGuiEvent::WindowTriggerRequested {
+                    window_id,
+                    trigger: crate::StudioRuntimeTrigger::EntitlementSessionEvent(
+                        crate::StudioRuntimeEntitlementSessionEvent::TimerElapsed,
+                    ),
+                },
+                &mut executor,
+            )
+            .expect("expected platform dispatch execution");
+
+        match executed.timer_execution {
+            StudioGuiPlatformTimerExecutionOutcome::Executed {
+                host_outcome:
+                    StudioGuiPlatformTimerHostOutcome::StartFailed(
+                        StudioGuiPlatformTimerStartFailedOutcome::Applied(_),
+                    ),
+                ..
+            } => {}
+            other => panic!("expected start failed platform timer outcome, got {other:?}"),
+        }
+        let platform_notice = executed
+            .dispatch
+            .snapshot
+            .runtime
+            .platform_notice
+            .as_ref()
+            .expect("expected platform notice in refreshed dispatch snapshot");
+        assert_eq!(platform_notice.title, "Platform timer unavailable");
+        assert!(
+            platform_notice
+                .message
+                .contains("simulated combined execution failure")
+        );
+        let latest_log = executed
+            .dispatch
+            .window
+            .runtime
+            .latest_log_entry
+            .as_ref()
+            .expect("expected platform log entry in refreshed dispatch window");
+        assert!(
+            latest_log
+                .message
+                .contains("simulated combined execution failure")
+        );
     }
 }
