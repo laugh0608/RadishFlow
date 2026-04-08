@@ -1,3 +1,4 @@
+use std::borrow::Borrow;
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 
@@ -6,13 +7,13 @@ use rf_types::{RfError, RfResult};
 use crate::{
     StudioAppWindowHostClose, StudioAppWindowHostCommand, StudioAppWindowHostCommandOutcome,
     StudioAppWindowHostDispatch, StudioAppWindowHostGlobalEvent, StudioAppWindowHostManager,
-    StudioAppWindowHostUiAction, StudioAppWindowHostUiActionAvailability,
-    StudioAppWindowHostUiActionDisabledReason, StudioAppWindowHostUiActionState,
-    StudioRuntimeConfig, StudioRuntimeHostAckResult, StudioRuntimeReport,
-    StudioRuntimeTimerHandleSlot, StudioRuntimeTrigger, StudioWindowHostEvent, StudioWindowHostId,
-    StudioWindowHostRegistration, StudioWindowHostRetirement, StudioWindowHostRole,
-    StudioWindowSessionDispatch, StudioWindowTimerDriverAckResult,
-    StudioWindowTimerDriverTransition,
+    StudioAppWindowHostOpenWindow, StudioAppWindowHostUiAction,
+    StudioAppWindowHostUiActionAvailability, StudioAppWindowHostUiActionDisabledReason,
+    StudioAppWindowHostUiActionState, StudioRuntimeConfig, StudioRuntimeHostAckResult,
+    StudioRuntimeReport, StudioRuntimeTimerHandleSlot, StudioRuntimeTrigger,
+    StudioWindowHostEvent, StudioWindowHostId, StudioWindowHostRegistration,
+    StudioWindowHostRetirement, StudioWindowHostRole, StudioWindowSessionDispatch,
+    StudioWindowTimerDriverAckResult, StudioWindowTimerDriverTransition,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -135,7 +136,7 @@ pub enum StudioAppHostCommand {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum StudioAppHostCommandOutcome {
-    WindowOpened(StudioWindowHostRegistration),
+    WindowOpened(StudioAppWindowHostOpenWindow),
     WindowDispatched(StudioAppWindowHostDispatch),
     WindowClosed(StudioAppWindowHostClose),
     IgnoredUiAction,
@@ -360,6 +361,8 @@ impl StudioAppHostStore {
 pub struct StudioAppHostOpenWindowResult {
     pub projection: StudioAppHostProjection,
     pub registration: StudioWindowHostRegistration,
+    pub native_timer_transitions: Vec<StudioWindowTimerDriverTransition>,
+    pub native_timer_acks: Vec<StudioWindowTimerDriverAckResult>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -752,7 +755,7 @@ impl StudioAppHostController {
 
     pub fn open_window(&mut self) -> RfResult<StudioAppHostOpenWindowResult> {
         let (outcome, projection) = self.execute_command(StudioAppHostCommand::OpenWindow)?;
-        let StudioAppHostCommandOutcome::WindowOpened(registration) = outcome else {
+        let StudioAppHostCommandOutcome::WindowOpened(opened) = outcome else {
             return Err(RfError::invalid_input(
                 "app host controller expected window open outcome",
             ));
@@ -760,7 +763,9 @@ impl StudioAppHostController {
 
         Ok(StudioAppHostOpenWindowResult {
             projection,
-            registration,
+            registration: registration_from_opened_window(&opened),
+            native_timer_transitions: opened.timer_driver_transitions,
+            native_timer_acks: opened.timer_driver_acks,
         })
     }
 
@@ -985,6 +990,19 @@ fn close_effects_from_shutdown(close: StudioAppWindowHostClose) -> StudioAppHost
         next_foreground_window_id: close.next_foreground_window_id,
         native_timer_transitions: close.shutdown.timer_driver_transitions,
         native_timer_acks: close.shutdown.timer_driver_acks,
+    }
+}
+
+fn registration_from_opened_window(
+    opened: impl Borrow<StudioAppWindowHostOpenWindow>,
+) -> StudioWindowHostRegistration {
+    let opened = opened.borrow();
+    StudioWindowHostRegistration {
+        window_id: opened.window_id,
+        role: opened.role,
+        layout_slot: opened.layout_slot,
+        restored_entitlement_timer: opened.restored_entitlement_timer.clone(),
+        timer_driver_commands: opened.timer_driver_commands.clone(),
     }
 }
 
@@ -1427,8 +1445,8 @@ fn ui_command_group_sort_key(group: StudioAppHostUiCommandGroup) -> u16 {
 
 fn map_outcome(outcome: StudioAppWindowHostCommandOutcome) -> StudioAppHostCommandOutcome {
     match outcome {
-        StudioAppWindowHostCommandOutcome::WindowOpened(registration) => {
-            StudioAppHostCommandOutcome::WindowOpened(registration)
+        StudioAppWindowHostCommandOutcome::WindowOpened(opened) => {
+            StudioAppHostCommandOutcome::WindowOpened(opened)
         }
         StudioAppWindowHostCommandOutcome::WindowDispatched(dispatch) => {
             StudioAppHostCommandOutcome::WindowDispatched(dispatch)
@@ -1512,7 +1530,9 @@ mod tests {
             .execute_command(StudioAppHostCommand::OpenWindow)
             .expect("expected first window open");
         let first_window = match &first.outcome {
-            StudioAppHostCommandOutcome::WindowOpened(registration) => registration,
+            StudioAppHostCommandOutcome::WindowOpened(opened) => {
+                super::registration_from_opened_window(opened)
+            }
             other => panic!("expected window opened outcome, got {other:?}"),
         };
         assert_eq!(
@@ -1610,7 +1630,9 @@ mod tests {
             .execute_command(StudioAppHostCommand::OpenWindow)
             .expect("expected second window open");
         let second_window = match &second.outcome {
-            StudioAppHostCommandOutcome::WindowOpened(registration) => registration,
+            StudioAppHostCommandOutcome::WindowOpened(opened) => {
+                super::registration_from_opened_window(opened)
+            }
             other => panic!("expected window opened outcome, got {other:?}"),
         };
         assert_eq!(second_window.role, StudioWindowHostRole::Observer);
@@ -1727,7 +1749,9 @@ mod tests {
             .expect("expected first window open")
             .outcome
         {
-            StudioAppHostCommandOutcome::WindowOpened(registration) => registration,
+            StudioAppHostCommandOutcome::WindowOpened(opened) => {
+                super::registration_from_opened_window(opened)
+            }
             other => panic!("expected window opened outcome, got {other:?}"),
         };
 
@@ -1911,7 +1935,9 @@ mod tests {
             .expect("expected first window open")
             .outcome
         {
-            StudioAppHostCommandOutcome::WindowOpened(registration) => registration,
+            StudioAppHostCommandOutcome::WindowOpened(opened) => {
+                super::registration_from_opened_window(opened)
+            }
             other => panic!("expected window opened outcome, got {other:?}"),
         };
         let second = match app_host
@@ -1919,7 +1945,9 @@ mod tests {
             .expect("expected second window open")
             .outcome
         {
-            StudioAppHostCommandOutcome::WindowOpened(registration) => registration,
+            StudioAppHostCommandOutcome::WindowOpened(opened) => {
+                super::registration_from_opened_window(opened)
+            }
             other => panic!("expected window opened outcome, got {other:?}"),
         };
         let _ = app_host
@@ -2485,14 +2513,18 @@ mod tests {
             .execute_command(StudioAppHostCommand::OpenWindow)
             .expect("expected first window open");
         let first_window = match &first.outcome {
-            StudioAppHostCommandOutcome::WindowOpened(registration) => registration,
+            StudioAppHostCommandOutcome::WindowOpened(opened) => {
+                super::registration_from_opened_window(opened)
+            }
             other => panic!("expected window opened outcome, got {other:?}"),
         };
         let second = app_host
             .execute_command(StudioAppHostCommand::OpenWindow)
             .expect("expected second window open");
         let second_window = match &second.outcome {
-            StudioAppHostCommandOutcome::WindowOpened(registration) => registration,
+            StudioAppHostCommandOutcome::WindowOpened(opened) => {
+                super::registration_from_opened_window(opened)
+            }
             other => panic!("expected window opened outcome, got {other:?}"),
         };
         let focused = app_host

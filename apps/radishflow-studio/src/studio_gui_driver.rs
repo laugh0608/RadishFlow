@@ -1,10 +1,13 @@
+use std::time::SystemTime;
+
 use rf_types::RfResult;
 
 use crate::{
     StudioAppHostState, StudioAppHostUiCommandModel, StudioGuiCanvasInteractionAction,
     StudioGuiCanvasState, StudioGuiCommandRegistry, StudioGuiFocusContext, StudioGuiHost,
     StudioGuiHostCanvasInteractionResult, StudioGuiHostCommand, StudioGuiHostCommandOutcome,
-    StudioGuiHostLifecycleEvent, StudioGuiHostWindowLayoutUpdateResult, StudioGuiShortcut,
+    StudioGuiHostLifecycleEvent, StudioGuiHostUiCommandDispatchResult,
+    StudioGuiHostWindowLayoutUpdateResult, StudioGuiNativeTimerRuntime, StudioGuiShortcut,
     StudioGuiShortcutIgnoreReason, StudioGuiShortcutRoute, StudioGuiSnapshot,
     StudioGuiWindowDropTargetQuery, StudioGuiWindowLayoutMutation, StudioGuiWindowModel,
     StudioRuntimeConfig, StudioRuntimeTrigger, StudioWindowHostId,
@@ -84,12 +87,14 @@ pub enum StudioGuiDriverOutcome {
 
 pub struct StudioGuiDriver {
     host: StudioGuiHost,
+    native_timer_runtime: StudioGuiNativeTimerRuntime,
 }
 
 impl StudioGuiDriver {
     pub fn new(config: &StudioRuntimeConfig) -> RfResult<Self> {
         Ok(Self {
             host: StudioGuiHost::new(config)?,
+            native_timer_runtime: StudioGuiNativeTimerRuntime::default(),
         })
     }
 
@@ -113,6 +118,14 @@ impl StudioGuiDriver {
         &self.host
     }
 
+    pub fn native_timer_runtime(&self) -> &StudioGuiNativeTimerRuntime {
+        &self.native_timer_runtime
+    }
+
+    pub fn next_due_native_timer_at(&self) -> Option<SystemTime> {
+        self.native_timer_runtime.next_due_at()
+    }
+
     pub fn snapshot(&self) -> StudioGuiSnapshot {
         self.host.snapshot()
     }
@@ -130,6 +143,18 @@ impl StudioGuiDriver {
 
     pub fn replace_canvas_suggestions(&mut self, suggestions: Vec<rf_ui::CanvasSuggestion>) {
         self.host.replace_canvas_suggestions(suggestions);
+    }
+
+    pub fn drain_due_native_timer_events(
+        &mut self,
+        now: SystemTime,
+    ) -> RfResult<Vec<StudioGuiDriverDispatch>> {
+        let due_events = self.native_timer_runtime.drain_due_events(now);
+        let mut dispatches = Vec::with_capacity(due_events.len());
+        for _ in due_events {
+            dispatches.push(self.dispatch_event(StudioGuiEvent::EntitlementTimerElapsed)?);
+        }
+        Ok(dispatches)
     }
 
     pub fn dispatch_event(&mut self, event: StudioGuiEvent) -> RfResult<StudioGuiDriverDispatch> {
@@ -164,6 +189,7 @@ impl StudioGuiDriver {
                 self.host.update_window_layout(window_id, mutation)?,
             ),
         };
+        self.apply_native_timer_effects_from_outcome(&outcome);
         let snapshot = self.host.snapshot();
         let window = self
             .host
@@ -178,6 +204,36 @@ impl StudioGuiDriver {
             command_registry: self.host.command_registry(),
             canvas: self.host.canvas_state(),
         })
+    }
+
+    fn apply_native_timer_effects_from_outcome(&mut self, outcome: &StudioGuiDriverOutcome) {
+        let effects = match outcome {
+            StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::WindowOpened(
+                opened,
+            )) => Some(&opened.native_timers),
+            StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::WindowDispatched(
+                dispatch,
+            )) => Some(&dispatch.native_timers),
+            StudioGuiDriverOutcome::HostCommand(
+                StudioGuiHostCommandOutcome::LifecycleDispatched(lifecycle),
+            ) => lifecycle.dispatch.as_ref().map(|dispatch| &dispatch.native_timers),
+            StudioGuiDriverOutcome::HostCommand(
+                StudioGuiHostCommandOutcome::UiCommandDispatched(
+                    StudioGuiHostUiCommandDispatchResult::Executed(dispatch),
+                ),
+            ) => Some(&dispatch.native_timers),
+            StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::WindowClosed(
+                closed,
+            )) => Some(&closed.native_timers),
+            StudioGuiDriverOutcome::HostCommand(_)
+            | StudioGuiDriverOutcome::CanvasInteraction(_)
+            | StudioGuiDriverOutcome::WindowLayoutUpdated(_)
+            | StudioGuiDriverOutcome::IgnoredShortcut { .. } => None,
+        };
+
+        if let Some(effects) = effects {
+            self.native_timer_runtime.apply_effects(effects);
+        }
     }
 }
 
@@ -1713,5 +1769,102 @@ mod tests {
             .expect_err("expected invalid drop target apply");
 
         assert_eq!(error.code().as_str(), "invalid_input");
+    }
+
+    #[test]
+    fn gui_driver_tracks_parked_timer_restore_when_reopening_owner_window() {
+        let mut driver = StudioGuiDriver::new(&lease_expiring_config()).expect("expected driver");
+        let opened = driver
+            .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+            .expect("expected open dispatch");
+        let first_window_id = match opened.outcome {
+            StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::WindowOpened(
+                opened,
+            )) => opened.registration.window_id,
+            other => panic!("expected opened window outcome, got {other:?}"),
+        };
+
+        let _ = driver
+            .dispatch_event(StudioGuiEvent::EntitlementTimerElapsed)
+            .expect("expected timer elapsed dispatch");
+        let closed = driver
+            .dispatch_event(StudioGuiEvent::CloseWindowRequested {
+                window_id: first_window_id,
+            })
+            .expect("expected close dispatch");
+        match closed.outcome {
+            StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::WindowClosed(
+                closed,
+            )) => {
+                assert!(closed
+                    .native_timers
+                    .operations
+                    .iter()
+                    .any(|operation| matches!(operation, crate::StudioGuiNativeTimerOperation::Park { .. })));
+            }
+            other => panic!("expected window closed outcome, got {other:?}"),
+        }
+        assert!(driver.native_timer_runtime().parked_binding().is_some());
+
+        let reopened = driver
+            .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+            .expect("expected reopen dispatch");
+        let second_window_id = match reopened.outcome {
+            StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::WindowOpened(
+                opened,
+            )) => {
+                assert!(opened
+                    .native_timers
+                    .operations
+                    .iter()
+                    .any(|operation| matches!(operation, crate::StudioGuiNativeTimerOperation::RestoreParked { .. })));
+                opened.registration.window_id
+            }
+            other => panic!("expected reopened window outcome, got {other:?}"),
+        };
+
+        assert!(driver.native_timer_runtime().parked_binding().is_none());
+        assert!(driver
+            .native_timer_runtime()
+            .window_binding(second_window_id)
+            .is_some());
+    }
+
+    #[test]
+    fn gui_driver_drains_due_native_timer_events_through_lifecycle_entry() {
+        let mut driver = StudioGuiDriver::new(&lease_expiring_config()).expect("expected driver");
+        let opened = driver
+            .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+            .expect("expected open dispatch");
+        let window_id = match opened.outcome {
+            StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::WindowOpened(
+                opened,
+            )) => opened.registration.window_id,
+            other => panic!("expected opened window outcome, got {other:?}"),
+        };
+        let _ = driver
+            .dispatch_event(StudioGuiEvent::WindowTriggerRequested {
+                window_id,
+                trigger: crate::StudioRuntimeTrigger::EntitlementSessionEvent(
+                    crate::StudioRuntimeEntitlementSessionEvent::TimerElapsed,
+                ),
+            })
+            .expect("expected timer trigger");
+
+        let due_at = driver
+            .next_due_native_timer_at()
+            .expect("expected scheduled native timer");
+        let due_dispatches = driver
+            .drain_due_native_timer_events(due_at)
+            .expect("expected due timer dispatch");
+
+        assert_eq!(due_dispatches.len(), 1);
+        assert!(matches!(
+            due_dispatches[0].outcome,
+            StudioGuiDriverOutcome::HostCommand(
+                StudioGuiHostCommandOutcome::LifecycleDispatched(_)
+            )
+        ));
+        assert!(driver.next_due_native_timer_at().is_some());
     }
 }

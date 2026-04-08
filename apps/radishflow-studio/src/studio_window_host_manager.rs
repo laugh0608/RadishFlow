@@ -5,8 +5,8 @@ use rf_ui::{RunPanelActionId, RunPanelWidgetEvent, RunPanelWidgetModel};
 
 use crate::{
     StudioRuntimeConfig, StudioRuntimeTrigger, StudioWindowHostId, StudioWindowHostLifecycleEvent,
-    StudioWindowHostRegistration, StudioWindowHostRetirement, StudioWindowSession,
-    StudioWindowSessionDispatch, StudioWindowSessionShutdown,
+    StudioWindowHostRetirement, StudioWindowSession, StudioWindowSessionDispatch,
+    StudioWindowSessionShutdown,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -105,6 +105,17 @@ pub struct StudioAppWindowHostDispatch {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioAppWindowHostOpenWindow {
+    pub window_id: StudioWindowHostId,
+    pub role: crate::StudioWindowHostRole,
+    pub layout_slot: u16,
+    pub restored_entitlement_timer: Option<crate::StudioRuntimeTimerHandleSlot>,
+    pub timer_driver_commands: Vec<crate::StudioWindowHostTimerDriverCommand>,
+    pub timer_driver_transitions: Vec<crate::StudioWindowTimerDriverTransition>,
+    pub timer_driver_acks: Vec<crate::StudioWindowTimerDriverAckResult>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StudioAppWindowHostClose {
     pub window_id: StudioWindowHostId,
     pub shutdown: StudioWindowSessionShutdown,
@@ -113,7 +124,7 @@ pub struct StudioAppWindowHostClose {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum StudioAppWindowHostCommandOutcome {
-    WindowOpened(StudioWindowHostRegistration),
+    WindowOpened(StudioAppWindowHostOpenWindow),
     WindowDispatched(StudioAppWindowHostDispatch),
     WindowClosed(StudioAppWindowHostClose),
     IgnoredUiAction,
@@ -322,13 +333,22 @@ impl StudioAppWindowHostManager {
         }
     }
 
-    pub fn open_window(&mut self) -> StudioWindowHostRegistration {
-        let registration = self.session.open_window();
+    pub fn open_window(&mut self) -> StudioAppWindowHostOpenWindow {
+        let open = self.session.open_window();
+        let registration = open.registration;
         self.registered_windows.insert(registration.window_id);
         if self.foreground_window_id.is_none() {
             self.foreground_window_id = Some(registration.window_id);
         }
-        registration
+        StudioAppWindowHostOpenWindow {
+            window_id: registration.window_id,
+            role: registration.role,
+            layout_slot: registration.layout_slot,
+            restored_entitlement_timer: registration.restored_entitlement_timer,
+            timer_driver_commands: registration.timer_driver_commands,
+            timer_driver_transitions: open.timer_driver_transitions,
+            timer_driver_acks: open.timer_driver_acks,
+        }
     }
 
     pub fn dispatch_trigger(

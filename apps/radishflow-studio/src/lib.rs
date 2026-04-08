@@ -182,7 +182,10 @@ pub use studio_gui_shortcut_router::{
     StudioGuiFocusContext, StudioGuiShortcutIgnoreReason, StudioGuiShortcutRoute, route_shortcut,
 };
 pub use studio_gui_snapshot::{StudioGuiRuntimeSnapshot, StudioGuiSnapshot};
-pub use studio_gui_timer_host::{StudioGuiNativeTimerEffects, StudioGuiNativeTimerOperation};
+pub use studio_gui_timer_host::{
+    StudioGuiNativeTimerDueEvent, StudioGuiNativeTimerEffects, StudioGuiNativeTimerOperation,
+    StudioGuiNativeTimerRuntime,
+};
 pub use studio_gui_window_layout::{
     StudioGuiWindowAreaId, StudioGuiWindowDockPlacement, StudioGuiWindowDockRegion,
     StudioGuiWindowDropTarget, StudioGuiWindowDropTargetKind, StudioGuiWindowDropTargetQuery,
@@ -217,11 +220,13 @@ pub use studio_window_host::{
 pub use studio_window_host_manager::{
     StudioAppWindowHostClose, StudioAppWindowHostCommand, StudioAppWindowHostCommandOutcome,
     StudioAppWindowHostDispatch, StudioAppWindowHostGlobalEvent, StudioAppWindowHostManager,
-    StudioAppWindowHostUiAction, StudioAppWindowHostUiActionAvailability,
-    StudioAppWindowHostUiActionDisabledReason, StudioAppWindowHostUiActionState,
+    StudioAppWindowHostOpenWindow, StudioAppWindowHostUiAction,
+    StudioAppWindowHostUiActionAvailability, StudioAppWindowHostUiActionDisabledReason,
+    StudioAppWindowHostUiActionState,
 };
 pub use studio_window_session::{
-    StudioWindowSession, StudioWindowSessionDispatch, StudioWindowSessionShutdown,
+    StudioWindowSession, StudioWindowSessionDispatch, StudioWindowSessionOpenWindow,
+    StudioWindowSessionShutdown,
 };
 pub use studio_window_timer_driver::{
     StudioWindowNativeTimerBinding, StudioWindowNativeTimerHandleId,

@@ -24,6 +24,7 @@ pub struct StudioGuiHostWindowOpened {
     pub registration: StudioWindowHostRegistration,
     pub ui_commands: StudioAppHostUiCommandModel,
     pub canvas: StudioGuiCanvasState,
+    pub native_timers: StudioGuiNativeTimerEffects,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -477,6 +478,10 @@ impl StudioGuiHost {
             canvas: self.canvas_state(),
             projection: opened.projection,
             registration: opened.registration,
+            native_timers: StudioGuiNativeTimerEffects::from_driver(
+                &opened.native_timer_transitions,
+                &opened.native_timer_acks,
+            ),
         })
     }
 

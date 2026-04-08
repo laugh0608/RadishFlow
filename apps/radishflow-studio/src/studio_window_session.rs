@@ -16,6 +16,13 @@ pub struct StudioWindowSessionDispatch {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioWindowSessionOpenWindow {
+    pub registration: StudioWindowHostRegistration,
+    pub timer_driver_transitions: Vec<StudioWindowTimerDriverTransition>,
+    pub timer_driver_acks: Vec<StudioWindowTimerDriverAckResult>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StudioWindowSessionShutdown {
     pub host_shutdown: StudioWindowHostShutdown,
     pub timer_driver_transitions: Vec<StudioWindowTimerDriverTransition>,
@@ -71,10 +78,16 @@ impl StudioWindowSession {
         self.host_port.focus_previous_canvas_suggestion()
     }
 
-    pub fn open_window(&mut self) -> StudioWindowHostRegistration {
+    pub fn open_window(&mut self) -> StudioWindowSessionOpenWindow {
         let registration = self.host_port.open_window();
-        let _ = self.apply_timer_driver_commands(&registration.timer_driver_commands);
-        registration
+        let (timer_driver_transitions, timer_driver_acks) =
+            self.apply_timer_driver_commands(&registration.timer_driver_commands);
+
+        StudioWindowSessionOpenWindow {
+            registration,
+            timer_driver_transitions,
+            timer_driver_acks,
+        }
     }
 
     pub fn dispatch_trigger(
@@ -193,7 +206,7 @@ mod tests {
 
         let dispatch = session
             .dispatch_trigger(
-                window.window_id,
+                window.registration.window_id,
                 &StudioRuntimeTrigger::EntitlementSessionEvent(
                     StudioRuntimeEntitlementSessionEvent::TimerElapsed,
                 ),
@@ -203,7 +216,7 @@ mod tests {
         assert!(matches!(
             dispatch.timer_driver_transitions.as_slice(),
             [StudioWindowTimerDriverTransition::RearmNativeTimer { window_id, next_slot, .. }]
-            if *window_id == window.window_id && next_slot.effect_id == 1
+            if *window_id == window.registration.window_id && next_slot.effect_id == 1
         ));
         assert_eq!(dispatch.timer_driver_acks.len(), 1);
         assert_eq!(
@@ -213,7 +226,7 @@ mod tests {
         assert_eq!(
             session
                 .timer_driver_state()
-                .window_binding(window.window_id)
+                .window_binding(window.registration.window_id)
                 .map(|binding| binding.handle_id),
             Some(1)
         );
@@ -227,7 +240,7 @@ mod tests {
 
         let dispatch = session
             .dispatch_lifecycle_event(
-                window.window_id,
+                window.registration.window_id,
                 StudioWindowHostLifecycleEvent::TimerElapsed,
             )
             .expect("expected lifecycle dispatch");
@@ -247,25 +260,28 @@ mod tests {
             StudioWindowSession::new(&lease_expiring_config()).expect("expected window session");
         let first = session.open_window();
         let second = session.open_window();
-        assert_eq!(first.role, StudioWindowHostRole::EntitlementTimerOwner);
-        assert_eq!(second.role, StudioWindowHostRole::Observer);
+        assert_eq!(
+            first.registration.role,
+            StudioWindowHostRole::EntitlementTimerOwner
+        );
+        assert_eq!(second.registration.role, StudioWindowHostRole::Observer);
 
         let _ = session
             .dispatch_trigger(
-                first.window_id,
+                first.registration.window_id,
                 &StudioRuntimeTrigger::EntitlementSessionEvent(
                     StudioRuntimeEntitlementSessionEvent::TimerElapsed,
                 ),
             )
             .expect("expected timer elapsed dispatch");
         let shutdown = session
-            .close_window(first.window_id)
+            .close_window(first.registration.window_id)
             .expect("expected first window shutdown");
 
         assert_eq!(
             shutdown.host_shutdown.retirement,
             StudioWindowHostRetirement::Transferred {
-                new_owner_window_id: second.window_id,
+                new_owner_window_id: second.registration.window_id,
                 restored_entitlement_timer: shutdown
                     .host_shutdown
                     .cleared_entitlement_timer
@@ -275,13 +291,14 @@ mod tests {
         assert!(matches!(
             shutdown.timer_driver_transitions.as_slice(),
             [StudioWindowTimerDriverTransition::TransferNativeTimer { from_window_id, to_window_id, .. }]
-            if *from_window_id == first.window_id && *to_window_id == second.window_id
+            if *from_window_id == first.registration.window_id
+                && *to_window_id == second.registration.window_id
         ));
         assert!(shutdown.timer_driver_acks.is_empty());
         assert_eq!(
             session
                 .timer_driver_state()
-                .window_binding(second.window_id)
+                .window_binding(second.registration.window_id)
                 .map(|binding| binding.handle_id),
             Some(1)
         );
@@ -295,27 +312,30 @@ mod tests {
 
         let _ = session
             .dispatch_trigger(
-                first.window_id,
+                first.registration.window_id,
                 &StudioRuntimeTrigger::EntitlementSessionEvent(
                     StudioRuntimeEntitlementSessionEvent::TimerElapsed,
                 ),
             )
             .expect("expected timer elapsed dispatch");
         let shutdown = session
-            .close_window(first.window_id)
+            .close_window(first.registration.window_id)
             .expect("expected first window shutdown");
         assert!(matches!(
             shutdown.timer_driver_transitions.as_slice(),
             [StudioWindowTimerDriverTransition::ParkNativeTimer { from_window_id, .. }]
-            if *from_window_id == first.window_id
+            if *from_window_id == first.registration.window_id
         ));
 
         let reopened = session.open_window();
-        assert_eq!(reopened.role, StudioWindowHostRole::EntitlementTimerOwner);
+        assert_eq!(
+            reopened.registration.role,
+            StudioWindowHostRole::EntitlementTimerOwner
+        );
         assert_eq!(
             session
                 .timer_driver_state()
-                .window_binding(reopened.window_id)
+                .window_binding(reopened.registration.window_id)
                 .map(|binding| binding.handle_id),
             Some(1)
         );

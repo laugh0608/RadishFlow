@@ -446,9 +446,9 @@ fn main() {
     if let Some(slot) = window.restored_entitlement_timer.as_ref() {
         println!("Restored parked timer slot into window host: {:?}", slot);
     }
-    if !window.timer_driver_commands.is_empty() {
-        println!("Window host driver commands:");
-        println!("  registration commands are now auto-applied by session adapter");
+    if !opened.native_timers.operations.is_empty() {
+        println!("Window host native timer effects:");
+        print_native_timer_effects(&opened.native_timers);
     }
 
     let dispatch = expect_window_dispatch(
@@ -494,6 +494,22 @@ fn main() {
     if !native_timers.operations.is_empty() {
         println!("Timer driver commands:");
         print_native_timer_effects(&native_timers);
+    }
+    if let Some(next_due_at) = app_host.next_due_native_timer_at() {
+        println!("Next native timer due at: {:?}", next_due_at);
+        let due_dispatches = app_host
+            .drain_due_native_timer_events(next_due_at)
+            .expect("expected due native timer dispatches");
+        println!("Simulated native timer callbacks: {}", due_dispatches.len());
+        for dispatch in &due_dispatches {
+            println!("  - due callback outcome: {:?}", dispatch.outcome);
+        }
+        if !due_dispatches.is_empty() {
+            print_window_model(
+                "Window model after simulated native timer callback",
+                &app_host.snapshot().window_model(),
+            );
+        }
     }
 
     match report.dispatch {
