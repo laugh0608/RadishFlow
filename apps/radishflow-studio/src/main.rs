@@ -2,11 +2,13 @@ use radishflow_studio::{
     EntitlementSessionEventOutcome, StudioAppHostEntitlementTimerEffect, StudioAppResultDispatch,
     StudioGuiDriverOutcome, StudioGuiEvent, StudioGuiHostCommandOutcome,
     StudioGuiNativeTimerEffects, StudioGuiNativeTimerOperation, StudioGuiPlatformDispatch,
-    StudioGuiPlatformHost, StudioGuiPlatformTimerRequest, StudioGuiWindowAreaId,
-    StudioGuiWindowDockPlacement, StudioGuiWindowDockRegion, StudioGuiWindowDropTarget,
-    StudioGuiWindowDropTargetQuery, StudioGuiWindowLayoutMutation, StudioGuiWindowModel,
-    StudioRuntimeConfig, StudioRuntimeDispatch, StudioRuntimeReport, StudioWindowHostId,
-    StudioWindowHostRetirement, StudioWindowTimerDriverAckResult,
+    StudioGuiPlatformHost, StudioGuiPlatformNativeTimerId, StudioGuiPlatformTimerCommand,
+    StudioGuiPlatformTimerDriverState, StudioGuiPlatformTimerRequest,
+    StudioGuiPlatformTimerStartAckResult, StudioGuiWindowAreaId, StudioGuiWindowDockPlacement,
+    StudioGuiWindowDockRegion, StudioGuiWindowDropTarget, StudioGuiWindowDropTargetQuery,
+    StudioGuiWindowLayoutMutation, StudioGuiWindowModel, StudioRuntimeConfig,
+    StudioRuntimeDispatch, StudioRuntimeReport, StudioWindowHostId, StudioWindowHostRetirement,
+    StudioWindowTimerDriverAckResult,
 };
 
 fn print_text_view(title: &str, lines: &[String]) {
@@ -258,6 +260,8 @@ fn main() {
             std::process::exit(1);
         }
     };
+    let mut platform_timer_driver = StudioGuiPlatformTimerDriverState::default();
+    let mut next_platform_native_timer_id = 9001;
 
     let opened = expect_window_opened(&mut app_host, "open initial window");
     let opened_result = match &opened.outcome {
@@ -454,7 +458,11 @@ fn main() {
         println!("Window host native timer effects:");
         print_native_timer_effects(&opened_result.native_timers);
     }
-    print_platform_timer_request(opened.native_timer_request.as_ref());
+    consume_platform_timer_request(
+        &mut platform_timer_driver,
+        opened.native_timer_request.as_ref(),
+        &mut next_platform_native_timer_id,
+    );
 
     let dispatch = expect_window_dispatch(
         &mut app_host,
@@ -506,23 +514,40 @@ fn main() {
         println!("Timer driver commands:");
         print_native_timer_effects(&native_timers);
     }
-    print_platform_timer_request(dispatch.native_timer_request.as_ref());
-    if let Some(next_due_at) = app_host.next_native_timer_due_at() {
-        println!("Next native timer due at: {:?}", next_due_at);
-        let due_dispatches = app_host
-            .dispatch_due_native_timer_events(next_due_at)
-            .expect("expected due native timer dispatches");
-        println!("Simulated native timer callbacks: {}", due_dispatches.len());
-        for dispatch in &due_dispatches {
-            println!("  - due callback outcome: {:?}", dispatch.outcome);
-            print_platform_timer_request(dispatch.native_timer_request.as_ref());
-        }
-        if !due_dispatches.is_empty() {
-            print_window_model(
-                "Window model after simulated native timer callback",
-                &app_host.snapshot().window_model(),
-            );
-        }
+    consume_platform_timer_request(
+        &mut platform_timer_driver,
+        dispatch.native_timer_request.as_ref(),
+        &mut next_platform_native_timer_id,
+    );
+    if let Some(binding) = platform_timer_driver.current_binding().cloned() {
+        println!(
+            "Next platform timer due at: {:?} (native_id={} window={:?} handle={})",
+            binding.schedule.slot.timer.due_at,
+            binding.native_timer_id,
+            binding.schedule.window_id,
+            binding.schedule.handle_id
+        );
+        let callback_schedule = platform_timer_driver
+            .callback_schedule(binding.native_timer_id)
+            .cloned()
+            .expect("expected platform timer callback schedule");
+        let callback_dispatch = app_host
+            .dispatch_native_timer_elapsed(callback_schedule.window_id, callback_schedule.handle_id)
+            .expect("expected native timer callback dispatch");
+        println!(
+            "Simulated platform native timer callback via native_id={}",
+            binding.native_timer_id
+        );
+        println!("  - due callback outcome: {:?}", callback_dispatch.outcome);
+        consume_platform_timer_request(
+            &mut platform_timer_driver,
+            callback_dispatch.native_timer_request.as_ref(),
+            &mut next_platform_native_timer_id,
+        );
+        print_window_model(
+            "Window model after simulated native timer callback",
+            &app_host.snapshot().window_model(),
+        );
     }
 
     match &report.dispatch {
@@ -627,7 +652,11 @@ fn main() {
         "Window model after network restored",
         &app_host.snapshot().window_model(),
     );
-    print_platform_timer_request(lifecycle.native_timer_request.as_ref());
+    consume_platform_timer_request(
+        &mut platform_timer_driver,
+        lifecycle.native_timer_request.as_ref(),
+        &mut next_platform_native_timer_id,
+    );
 
     let close = expect_close_window(&mut app_host, window.window_id, "close initial window");
     let close_result = match &close.outcome {
@@ -675,7 +704,11 @@ fn main() {
                 "Window model after closing window",
                 &app_host.snapshot().window_model(),
             );
-            print_platform_timer_request(close.native_timer_request.as_ref());
+            consume_platform_timer_request(
+                &mut platform_timer_driver,
+                close.native_timer_request.as_ref(),
+                &mut next_platform_native_timer_id,
+            );
         }
         None => {
             println!("Window host close ignored for window #{}", window.window_id);
@@ -902,6 +935,84 @@ fn print_platform_timer_request(request: Option<&StudioGuiPlatformTimerRequest>)
         }
         None => {}
     }
+}
+
+fn consume_platform_timer_request(
+    driver: &mut StudioGuiPlatformTimerDriverState,
+    request: Option<&StudioGuiPlatformTimerRequest>,
+    next_native_timer_id: &mut StudioGuiPlatformNativeTimerId,
+) {
+    print_platform_timer_request(request);
+    let Some(command) = driver.apply_request(request) else {
+        return;
+    };
+
+    print_platform_timer_command(&command);
+    match &command {
+        StudioGuiPlatformTimerCommand::Arm { schedule }
+        | StudioGuiPlatformTimerCommand::Rearm { schedule, .. } => {
+            let native_timer_id = *next_native_timer_id;
+            *next_native_timer_id += 1;
+            let ack = driver.acknowledge_timer_started(schedule, native_timer_id);
+            print_platform_timer_start_ack(&ack);
+        }
+        StudioGuiPlatformTimerCommand::Clear { .. } => {}
+    }
+}
+
+fn print_platform_timer_command(command: &StudioGuiPlatformTimerCommand) {
+    match command {
+        StudioGuiPlatformTimerCommand::Arm { schedule } => {
+            println!(
+                "Platform timer command: arm native timer window={:?} handle={} due_at={:?}",
+                schedule.window_id, schedule.handle_id, schedule.slot.timer.due_at
+            );
+        }
+        StudioGuiPlatformTimerCommand::Rearm { previous, schedule } => {
+            println!(
+                "Platform timer command: rearm native timer window={:?} handle={} due_at={:?}",
+                schedule.window_id, schedule.handle_id, schedule.slot.timer.due_at
+            );
+            if let Some(previous) = previous {
+                println!(
+                    "  replacing native_id={} window={:?} handle={} due_at={:?}",
+                    previous.native_timer_id,
+                    previous.schedule.window_id,
+                    previous.schedule.handle_id,
+                    previous.schedule.slot.timer.due_at
+                );
+            } else {
+                println!("  previous native timer binding missing");
+            }
+        }
+        StudioGuiPlatformTimerCommand::Clear { previous } => match previous {
+            Some(previous) => {
+                println!(
+                    "Platform timer command: clear native_id={} window={:?} handle={} due_at={:?}",
+                    previous.native_timer_id,
+                    previous.schedule.window_id,
+                    previous.schedule.handle_id,
+                    previous.schedule.slot.timer.due_at
+                );
+            }
+            None => {
+                println!(
+                    "Platform timer command: clear requested but previous native timer binding missing"
+                );
+            }
+        },
+    }
+}
+
+fn print_platform_timer_start_ack(ack: &StudioGuiPlatformTimerStartAckResult) {
+    println!(
+        "Platform timer ack: native_id={} status={:?} window={:?} handle={} due_at={:?}",
+        ack.native_timer_id,
+        ack.status,
+        ack.schedule.window_id,
+        ack.schedule.handle_id,
+        ack.schedule.slot.timer.due_at
+    );
 }
 
 fn print_native_timer_effects(effects: &StudioGuiNativeTimerEffects) {

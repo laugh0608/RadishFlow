@@ -22,6 +22,7 @@ mod studio_gui_driver;
 mod studio_gui_host;
 mod studio_gui_layout_store;
 mod studio_gui_platform_host;
+mod studio_gui_platform_timer_driver;
 mod studio_gui_shortcut_router;
 mod studio_gui_snapshot;
 mod studio_gui_timer_host;
@@ -181,6 +182,11 @@ pub use studio_gui_host::{
 };
 pub use studio_gui_platform_host::{
     StudioGuiPlatformDispatch, StudioGuiPlatformHost, StudioGuiPlatformTimerRequest,
+};
+pub use studio_gui_platform_timer_driver::{
+    StudioGuiPlatformNativeTimerId, StudioGuiPlatformTimerBinding, StudioGuiPlatformTimerCommand,
+    StudioGuiPlatformTimerDriverState, StudioGuiPlatformTimerStartAckResult,
+    StudioGuiPlatformTimerStartAckStatus,
 };
 pub use studio_gui_shortcut_router::{
     StudioGuiFocusContext, StudioGuiShortcutIgnoreReason, StudioGuiShortcutRoute, route_shortcut,
