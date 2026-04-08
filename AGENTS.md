@@ -86,6 +86,7 @@
 - `master` 只通过 Pull Request 合并
 - 当前阶段不要求保护 `dev`
 - 管理员如需绕过规则，也应通过 PR 合并，而不是直接 push 到 `master`
+
 ## 当前推荐开发顺序
 
 按以下顺序推进，不要跳步扩张范围：
@@ -205,19 +206,19 @@
 示例：
 
 ```text
-feat: implement binary tp flash solver
-docs: refine mvp planning notes
-chore: initialize workspace skeleton
+docs: 更新了相关进度和协作文档
+
+- 更新了 AGENTS.md 文档
+- 为项目协作添加了相关约束规则
+- 主要是对齐了项目现状代码与文档的进度
 ```
 
-大修改示例：
+```text
+ci(ruleset): add repository governance checks
+```
 
 ```text
-docs(auth): refine control plane contracts
-
-- 更改了 EntitlementSnapshot JSON 契约
-- 完善了 PropertyPackageManifest 清单字段
-- 修复了客户端注册与 scope 命名口径不一致
+chore(PR): establish branch and pr conventions
 ```
 
 ## 文档与开发日志更新要求
