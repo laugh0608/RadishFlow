@@ -1770,7 +1770,14 @@ fn preferred_overlay_pos(anchor_rect: egui::Rect) -> egui::Pos2 {
 }
 
 fn clamp_overlay_pos(ctx: &egui::Context, pos: egui::Pos2, size: egui::Vec2) -> egui::Pos2 {
-    let screen = ctx.screen_rect();
+    clamp_overlay_pos_to_rect(ctx.screen_rect(), pos, size)
+}
+
+fn clamp_overlay_pos_to_rect(
+    screen: egui::Rect,
+    pos: egui::Pos2,
+    size: egui::Vec2,
+) -> egui::Pos2 {
     let max_x = (screen.right() - size.x - 8.0).max(screen.left() + 8.0);
     let max_y = (screen.bottom() - size.y - 8.0).max(screen.top() + 8.0);
     egui::pos2(
@@ -1847,11 +1854,20 @@ fn preview_insert_neighbors(
     Option<StudioGuiWindowAreaId>,
     Option<StudioGuiWindowAreaId>,
 ) {
-    let area_ids = &preview.overlay.target_stack_area_ids;
-    let drag_index = preview
-        .overlay
-        .target_tab_index
-        .min(area_ids.len().saturating_sub(1));
+    insert_neighbors_from_area_ids(
+        &preview.overlay.target_stack_area_ids,
+        preview.overlay.target_tab_index,
+    )
+}
+
+fn insert_neighbors_from_area_ids(
+    area_ids: &[StudioGuiWindowAreaId],
+    target_tab_index: usize,
+) -> (
+    Option<StudioGuiWindowAreaId>,
+    Option<StudioGuiWindowAreaId>,
+) {
+    let drag_index = target_tab_index.min(area_ids.len().saturating_sub(1));
     let previous = drag_index
         .checked_sub(1)
         .and_then(|index| area_ids.get(index))
@@ -1911,4 +1927,43 @@ fn format_shortcut(shortcut: &StudioGuiShortcut) -> String {
     };
     parts.push(key);
     parts.join("+")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn insert_neighbors_from_area_ids_returns_previous_and_next_for_middle_target() {
+        let area_ids = [
+            StudioGuiWindowAreaId::Commands,
+            StudioGuiWindowAreaId::Canvas,
+            StudioGuiWindowAreaId::Runtime,
+        ];
+
+        let (previous, next) = insert_neighbors_from_area_ids(&area_ids, 1);
+
+        assert_eq!(previous, Some(StudioGuiWindowAreaId::Commands));
+        assert_eq!(next, Some(StudioGuiWindowAreaId::Runtime));
+    }
+
+    #[test]
+    fn insert_neighbors_from_area_ids_clamps_to_stack_end() {
+        let area_ids = [StudioGuiWindowAreaId::Commands, StudioGuiWindowAreaId::Canvas];
+
+        let (previous, next) = insert_neighbors_from_area_ids(&area_ids, 8);
+
+        assert_eq!(previous, Some(StudioGuiWindowAreaId::Commands));
+        assert_eq!(next, None);
+    }
+
+    #[test]
+    fn clamp_overlay_pos_to_rect_keeps_overlay_inside_screen_padding() {
+        let screen = egui::Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(200.0, 120.0));
+        let size = egui::vec2(80.0, 40.0);
+
+        let clamped = clamp_overlay_pos_to_rect(screen, egui::pos2(180.0, 110.0), size);
+
+        assert_eq!(clamped, egui::pos2(112.0, 72.0));
+    }
 }
