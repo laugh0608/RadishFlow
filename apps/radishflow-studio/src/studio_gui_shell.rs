@@ -424,15 +424,6 @@ impl ReadyAppState {
                 .fill(stack_preview_fill(is_target_stack))
                 .stroke(stack_preview_stroke(is_target_stack))
                 .show(ui, |ui| {
-                    if let Some(insert_hint) =
-                        stack_insert_hint(window.drop_preview.as_ref(), region, group.stack_group)
-                    {
-                        ui.small(
-                            egui::RichText::new(insert_hint)
-                                .color(egui::Color32::from_rgb(56, 126, 214)),
-                        );
-                        ui.add_space(4.0);
-                    }
                     if group.tabbed {
                         if let Some(drag_session) = drag_session {
                             if let Some(query) =
@@ -1433,21 +1424,6 @@ fn preview_anchor_matches_area(
         .unwrap_or(false)
 }
 
-fn stack_insert_hint(
-    preview: Option<&radishflow_studio::StudioGuiWindowDropPreviewModel>,
-    dock_region: StudioGuiWindowDockRegion,
-    stack_group: u8,
-) -> Option<String> {
-    let preview = preview?;
-    if preview.overlay.target_dock_region != dock_region
-        || preview.overlay.target_stack_group != stack_group
-    {
-        return None;
-    }
-
-    Some(preview_insert_hint(preview))
-}
-
 fn render_new_stack_insert_overlay(
     ui: &mut egui::Ui,
     preview: &radishflow_studio::StudioGuiWindowDropPreviewModel,
@@ -1601,6 +1577,11 @@ fn paint_stack_tab_insert_marker(
     painter.line_segment(
         [egui::pos2(x - 5.0, bottom), egui::pos2(x + 5.0, bottom)],
         stroke,
+    );
+    paint_preview_hint_pill_centered(
+        painter,
+        egui::pos2(x, top - 10.0),
+        &preview_insert_hint(preview),
     );
 }
 
@@ -1776,6 +1757,11 @@ fn paint_area_preview_overlay(
             [egui::pos2(right, y - 4.0), egui::pos2(right, y + 4.0)],
             stroke,
         );
+        paint_preview_hint_pill_top_right(
+            painter,
+            egui::pos2(right, header_rect.top() + 14.0),
+            &preview_insert_hint(preview),
+        );
     }
 }
 
@@ -1791,6 +1777,37 @@ fn clamp_overlay_pos(ctx: &egui::Context, pos: egui::Pos2, size: egui::Vec2) -> 
         pos.x.clamp(screen.left() + 8.0, max_x),
         pos.y.clamp(screen.top() + 8.0, max_y),
     )
+}
+
+fn paint_preview_hint_pill_centered(
+    painter: &egui::Painter,
+    center: egui::Pos2,
+    text: &str,
+) {
+    let font_id = egui::FontId::proportional(11.0);
+    let text_color = egui::Color32::from_rgb(33, 82, 153);
+    let galley = painter.layout_no_wrap(text.to_owned(), font_id.clone(), text_color);
+    let size = galley.size() + egui::vec2(14.0, 8.0);
+    let rect = egui::Rect::from_center_size(center, size);
+    painter.rect_filled(rect, 8.0, egui::Color32::from_rgb(232, 242, 255));
+    painter.galley(rect.center() - galley.size() * 0.5, galley, text_color);
+}
+
+fn paint_preview_hint_pill_top_right(
+    painter: &egui::Painter,
+    right_top: egui::Pos2,
+    text: &str,
+) {
+    let font_id = egui::FontId::proportional(11.0);
+    let text_color = egui::Color32::from_rgb(33, 82, 153);
+    let galley = painter.layout_no_wrap(text.to_owned(), font_id.clone(), text_color);
+    let size = galley.size() + egui::vec2(14.0, 8.0);
+    let rect = egui::Rect::from_min_size(
+        egui::pos2(right_top.x - size.x, right_top.y),
+        size,
+    );
+    painter.rect_filled(rect, 8.0, egui::Color32::from_rgb(232, 242, 255));
+    painter.galley(rect.center() - galley.size() * 0.5, galley, text_color);
 }
 
 fn format_compact_drop_preview_status(
