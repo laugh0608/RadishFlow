@@ -1,6 +1,6 @@
 # MVP Scope
 
-更新时间：2026-04-08
+更新时间：2026-04-09
 
 ## MVP 目标
 
@@ -70,6 +70,8 @@ App 与交互层当前进一步冻结以下口径：
 - Studio 当前又已把 hover 预览前推为显式会话态，新增 `SetWindowDropTargetPreview / ClearWindowDropTargetPreview` 与 `WindowDropTargetPreviewRequested / WindowDropTargetPreviewCleared`；host 会非持久化保存当前 preview，并通过 `StudioGuiSnapshot / StudioGuiWindowModel.drop_preview` 直接暴露给 GUI
 - Studio 当前又已把 `drop_preview` 继续收口为 GUI-facing presentation，直接携带 `preview_layout + changed_area_ids`，让 GUI 不必自己从当前态/预览态做差分才能画出 hover 预览
 - Studio 当前又已把 `drop_preview` 继续补成 overlay DTO，直接携带目标 `dock_region/stack_group/tab_index`、目标 stack tabs、高亮 area 集与 active tab，减少真实 GUI 对底层摘要字段的二次拆解
+- 第一版 `eframe/egui` GUI 壳当前已直接消费这份 `drop_preview.overlay`，把局部插入条、anchor 顶线、新 stack 占位、target-anchored 浮动 overlay 与局部 hint pill 画在目标位置，不再主要依赖顶栏说明文本
+- 当前 GUI 壳仍冻结在“单原生窗口承载逻辑窗口切换”的边界，不在这一阶段展开多原生窗口宿主
 - Studio 当前多窗口布局 scope 已从运行时 `window_id` 收口到基于 `window_role + layout_slot` 的稳定 key，避免布局恢复直接依赖临时窗口号
 - Studio 当前又已把原生 timer 宿主 glue 冻结为 `StudioGuiNativeTimerRuntime + StudioGuiPlatformHost + StudioGuiPlatformTimerDriverState` 三层边界，真实桌面框架后续不应再在入口层自行维护逻辑 binding、平台 native timer id 映射和 stale callback 判定
 - Studio 当前平台 timer 回灌与执行口径又已进一步冻结为：

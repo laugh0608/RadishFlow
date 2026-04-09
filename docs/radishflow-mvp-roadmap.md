@@ -1,6 +1,6 @@
 # RadishFlow MVP 开发路线图
 
-更新时间：2026-04-08
+更新时间：2026-04-09
 
 ## 文档目的
 
@@ -199,6 +199,8 @@ MVP 阶段明确不做：
 - Studio 当前又已补出轻量 drop preview 会话态，新增 `SetWindowDropTargetPreview / ClearWindowDropTargetPreview` 与对应 driver 事件；host 会非持久化缓存当前 hover 预览，并经由 `StudioGuiSnapshot / StudioGuiWindowModel.drop_preview` 对外暴露
 - Studio 当前又已把 `drop_preview` 继续推进为正式 presentation，直接携带 `preview_layout + changed_area_ids`，让真实 GUI 不必再自己比对当前/预览两份布局 state
 - Studio 当前又已把 `drop_preview` 继续推进为 overlay presentation，直接携带目标 region/stack group、tab 插入位、目标 stack tabs 与高亮 area 集，让真实 GUI 不必再从底层 `drop_target` 手工拆提示语义
+- 第一版 `eframe/egui` GUI 壳当前也已直接消费这份 `drop_preview.overlay`，把局部插入条、anchor 顶线、新 stack 占位、target-anchored 浮动 overlay 与局部 hint pill 画在真实落点，而不是继续把预览提示留在标题栏摘要里
+- 当前 GUI 壳仍明确停留在“单原生窗口承载逻辑窗口切换”的阶段，不在这一轮 roadmap 内扩张到多原生窗口宿主
 - Studio 当前又已补出 `StudioGuiNativeTimerRuntime`、`StudioGuiPlatformHost` 与 `StudioGuiPlatformTimerDriverState` 这一条 GUI-facing 原生 timer 宿主 glue；真实桌面框架后续不必在入口层重写“逻辑 timer -> 平台 request -> native timer id -> callback 回灌”整套桥接
 - Studio 当前平台 timer glue 已继续冻结为三层正式消费面：
 - `StudioGuiPlatformTimerRequest` / `StudioGuiPlatformTimerCommand`：宿主比较前后 pending binding 后产出平台需要执行的 `Arm / Rearm / Clear`
