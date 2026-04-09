@@ -111,6 +111,7 @@ impl ReadyAppState {
         self.render_left_sidebar(ctx, &window, &mut hovered_drop_target);
         self.render_right_sidebar(ctx, &window, &mut hovered_drop_target);
         self.render_center_stage(ctx, &window, &mut hovered_drop_target);
+        self.render_floating_drop_preview_overlay(ctx, &window);
         self.finish_drop_preview_cycle(window.layout_state.scope.window_id, hovered_drop_target);
     }
 
@@ -224,20 +225,25 @@ impl ReadyAppState {
                     } else {
                         ui.small("return to source window to drop");
                     }
+                    if let Some(preview) = window.drop_preview.as_ref() {
+                        ui.small(
+                            egui::RichText::new(format_compact_drop_preview_status(preview))
+                                .color(egui::Color32::from_rgb(92, 104, 117)),
+                        );
+                    }
                     if ui.button("Cancel").clicked() {
                         self.cancel_drag_session(current_window_id);
                     }
                 });
             }
-            if let Some(preview) = window.drop_preview.as_ref() {
-                ui.separator();
-                ui.small(format!(
-                    "preview: {:?} -> {:?} stack={} tabs={:?}",
-                    preview.query,
-                    preview.overlay.target_dock_region,
-                    preview.overlay.target_stack_group,
-                    preview.overlay.target_stack_area_ids
-                ));
+            if self.drag_session.is_none() {
+                if let Some(preview) = window.drop_preview.as_ref() {
+                    ui.separator();
+                    ui.small(
+                        egui::RichText::new(format_compact_drop_preview_status(preview))
+                            .color(egui::Color32::from_rgb(92, 104, 117)),
+                    );
+                }
             }
             if let Some(error) = self.last_error.as_ref() {
                 ui.separator();
@@ -337,6 +343,22 @@ impl ReadyAppState {
         let groups = layout.stack_groups_in_dock_region(region);
         let window_id = window.layout_state.scope.window_id;
         let drag_session = self.active_drag_session_for_window(window_id);
+        let region_preview = drop_preview_for_region(window.drop_preview.as_ref(), region);
+        if let Some(preview) = region_preview {
+            ui.colored_label(
+                egui::Color32::from_rgb(56, 126, 214),
+                format!(
+                    "Preview target: {} stack {}",
+                    dock_region_label(preview.overlay.target_dock_region),
+                    preview.overlay.target_stack_group
+                ),
+            );
+            ui.small(format!(
+                "highlighted panels: {}",
+                format_area_id_list(&preview.overlay.highlighted_area_ids)
+            ));
+            ui.add_space(6.0);
+        }
         if let Some(drag_session) = drag_session {
             self.render_drop_target_lane(
                 ui,
@@ -360,7 +382,15 @@ impl ReadyAppState {
             return;
         }
 
-        for group in groups {
+        let new_stack_insert_group_index = new_stack_preview_group_index(region_preview);
+        for (group_index, group) in groups.iter().enumerate() {
+            if new_stack_insert_group_index == Some(group_index) {
+                if let Some(preview) = region_preview {
+                    render_new_stack_insert_overlay(ui, preview);
+                    ui.add_space(8.0);
+                }
+            }
+
             let visible_tabs = group
                 .tabs
                 .iter()
@@ -375,44 +405,92 @@ impl ReadyAppState {
                 continue;
             }
 
-            ui.group(|ui| {
-                if group.tabbed {
-                    if let Some(drag_session) = drag_session {
-                        if let Some(query) =
-                            stack_group_drop_target_query(&layout, drag_session, group)
-                        {
-                            self.render_drop_target_lane(
-                                ui,
-                                window_id,
-                                query,
-                                &format!(
-                                    "Append {} to current stack",
-                                    area_label(drag_session.area_id)
-                                ),
-                                hovered_drop_target,
-                            );
-                            ui.add_space(4.0);
-                        }
+            let is_target_stack =
+                drop_preview_targets_stack(window.drop_preview.as_ref(), region, group.stack_group);
+            egui::Frame::group(ui.style())
+                .fill(stack_preview_fill(is_target_stack))
+                .stroke(stack_preview_stroke(is_target_stack))
+                .show(ui, |ui| {
+                    if let Some(insert_hint) =
+                        stack_insert_hint(window.drop_preview.as_ref(), region, group.stack_group)
+                    {
+                        ui.small(
+                            egui::RichText::new(insert_hint)
+                                .color(egui::Color32::from_rgb(56, 126, 214)),
+                        );
+                        ui.add_space(4.0);
                     }
-                    ui.horizontal_wrapped(|ui| {
-                        for tab in &visible_tabs {
-                            if ui.selectable_label(tab.active, tab.title).clicked() {
-                                self.dispatch_layout_mutation(
-                                    window.layout_state.scope.window_id,
-                                    StudioGuiWindowLayoutMutation::SetActivePanelInStack {
-                                        area_id: tab.area_id,
-                                    },
+                    if group.tabbed {
+                        if let Some(drag_session) = drag_session {
+                            if let Some(query) =
+                                stack_group_drop_target_query(&layout, drag_session, group)
+                            {
+                                self.render_drop_target_lane(
+                                    ui,
+                                    window_id,
+                                    query,
+                                    &format!(
+                                        "Append {} to current stack",
+                                        area_label(drag_session.area_id)
+                                    ),
+                                    hovered_drop_target,
                                 );
+                                ui.add_space(4.0);
                             }
                         }
-                    });
-                    ui.separator();
-                }
+                        let mut tab_rects = Vec::new();
+                        let tab_strip = ui.horizontal_wrapped(|ui| {
+                            for tab in &visible_tabs {
+                                let tab_label = if preview_anchor_matches_area(
+                                    window.drop_preview.as_ref(),
+                                    tab.area_id,
+                                ) {
+                                    format!("{} <- anchor", tab.title)
+                                } else {
+                                    tab.title.to_string()
+                                };
+                                let tab_text =
+                                    if preview_anchor_matches_area(window.drop_preview.as_ref(), tab.area_id)
+                                    {
+                                        egui::RichText::new(tab_label)
+                                            .color(egui::Color32::from_rgb(56, 126, 214))
+                                    } else {
+                                        egui::RichText::new(tab_label)
+                                    };
+                                let response = ui.selectable_label(tab.active, tab_text);
+                                tab_rects.push((tab.area_id, response.rect));
+                                if response.clicked() {
+                                    self.dispatch_layout_mutation(
+                                        window.layout_state.scope.window_id,
+                                        StudioGuiWindowLayoutMutation::SetActivePanelInStack {
+                                            area_id: tab.area_id,
+                                        },
+                                    );
+                                }
+                            }
+                        });
+                        paint_stack_tab_insert_marker(
+                            ui,
+                            tab_strip.response.rect,
+                            &tab_rects,
+                            window.drop_preview.as_ref(),
+                            region,
+                            group.stack_group,
+                        );
+                        ui.separator();
+                    }
 
-                let active_area_id = group.active_area_id;
-                self.render_area(ui, window, active_area_id, hovered_drop_target);
-            });
+                    let active_area_id = group.active_area_id;
+                    self.render_area(ui, window, active_area_id, hovered_drop_target);
+                });
             ui.add_space(8.0);
+        }
+
+        if new_stack_insert_group_index == Some(groups.len()) {
+            if let Some(preview) = region_preview {
+                render_new_stack_insert_overlay(ui, preview);
+                ui.add_space(8.0);
+            }
         }
     }
 
@@ -432,9 +510,12 @@ impl ReadyAppState {
         }
         let window_id = window.layout_state.scope.window_id;
         let drag_session = self.active_drag_session_for_window(window_id);
+        let preview_badges = preview_area_badges(window, area_id);
+        let preview_transition = preview_area_transition(window, area_id);
         let header_drop_query = drag_session.and_then(|drag_session| {
             area_drop_target_query(&layout, drag_session, area_id)
         });
+        let header_rect;
 
         if let Some(query) = header_drop_query {
             let is_active_preview = self.active_drop_preview
@@ -448,25 +529,54 @@ impl ReadyAppState {
                         if let Some(badge) = panel.badge.as_ref() {
                             ui.label(format!("[{badge}]"));
                         }
+                        for badge in &preview_badges {
+                            ui.label(
+                                egui::RichText::new(format!("[{badge}]"))
+                                    .small()
+                                    .color(egui::Color32::from_rgb(56, 126, 214)),
+                            );
+                        }
                         ui.label(&panel.summary);
                         ui.small("hover to preview, click to drop before this panel");
                     });
+                    if let Some(preview_transition) = preview_transition.as_ref() {
+                        ui.small(
+                            egui::RichText::new(preview_transition)
+                                .color(egui::Color32::from_rgb(56, 126, 214)),
+                        );
+                    }
                 });
+            header_rect = header.response.rect;
             let response = ui.interact(
-                header.response.rect,
+                header_rect,
                 ui.make_persistent_id(format!("panel-drop-header:{window_id:?}:{query:?}")),
                 egui::Sense::click(),
             );
             self.process_drop_target_response(response, window_id, query, hovered_drop_target);
         } else {
-            ui.horizontal_wrapped(|ui| {
+            let header = ui.horizontal_wrapped(|ui| {
                 ui.label(egui::RichText::new(panel.title).strong());
                 if let Some(badge) = panel.badge.as_ref() {
                     ui.label(format!("[{badge}]"));
                 }
+                for badge in &preview_badges {
+                    ui.label(
+                        egui::RichText::new(format!("[{badge}]"))
+                            .small()
+                            .color(egui::Color32::from_rgb(56, 126, 214)),
+                    );
+                }
                 ui.label(&panel.summary);
             });
+            if let Some(preview_transition) = preview_transition.as_ref() {
+                ui.small(
+                    egui::RichText::new(preview_transition)
+                    .color(egui::Color32::from_rgb(56, 126, 214)),
+                );
+            }
+            header_rect = header.response.rect;
         }
+        paint_area_preview_overlay(ui, header_rect, window, area_id);
         ui.horizontal_wrapped(|ui| {
             let is_drag_source = drag_session
                 .map(|drag_session| drag_session.area_id == area_id)
@@ -1015,6 +1125,50 @@ impl ReadyAppState {
         }
     }
 
+    fn render_floating_drop_preview_overlay(
+        &self,
+        ctx: &egui::Context,
+        window: &StudioGuiWindowModel,
+    ) {
+        let Some(preview) = window.drop_preview.as_ref() else {
+            return;
+        };
+        let Some(pointer_pos) = ctx.pointer_latest_pos() else {
+            return;
+        };
+
+        egui::Area::new(egui::Id::new("studio.drop_preview.floating_overlay"))
+            .order(egui::Order::Foreground)
+            .interactable(false)
+            .fixed_pos(pointer_pos + egui::vec2(18.0, 18.0))
+            .show(ctx, |ui| {
+                egui::Frame::popup(ui.style())
+                    .fill(egui::Color32::from_rgb(246, 250, 255))
+                    .stroke(egui::Stroke::new(
+                        1.5,
+                        egui::Color32::from_rgb(56, 126, 214),
+                    ))
+                    .show(ui, |ui| {
+                        ui.set_max_width(260.0);
+                        ui.label(
+                            egui::RichText::new("Drop preview")
+                                .strong()
+                                .color(egui::Color32::from_rgb(56, 126, 214)),
+                        );
+                        ui.small(format!(
+                            "{} region / stack {}",
+                            dock_region_label(preview.overlay.target_dock_region),
+                            preview.overlay.target_stack_group
+                        ));
+                        ui.label(egui::RichText::new(preview_insert_hint(preview)).strong());
+                        ui.small(format!(
+                            "changed: {}",
+                            format_area_id_list(&preview.changed_area_ids)
+                        ));
+                    });
+            });
+    }
+
     fn dispatch_event(&mut self, event: StudioGuiEvent) {
         match self.driver.dispatch_event(event.clone()) {
             Ok(dispatch) => {
@@ -1192,6 +1346,80 @@ fn dock_region_label(dock_region: StudioGuiWindowDockRegion) -> &'static str {
     }
 }
 
+fn drop_preview_for_region<'a>(
+    preview: Option<&'a radishflow_studio::StudioGuiWindowDropPreviewModel>,
+    dock_region: StudioGuiWindowDockRegion,
+) -> Option<&'a radishflow_studio::StudioGuiWindowDropPreviewModel> {
+    preview.filter(|preview| preview.overlay.target_dock_region == dock_region)
+}
+
+fn drop_preview_targets_stack(
+    preview: Option<&radishflow_studio::StudioGuiWindowDropPreviewModel>,
+    dock_region: StudioGuiWindowDockRegion,
+    stack_group: u8,
+) -> bool {
+    preview
+        .map(|preview| {
+            preview.overlay.target_dock_region == dock_region
+                && preview.overlay.target_stack_group == stack_group
+        })
+        .unwrap_or(false)
+}
+
+fn new_stack_preview_group_index(
+    preview: Option<&radishflow_studio::StudioGuiWindowDropPreviewModel>,
+) -> Option<usize> {
+    preview
+        .filter(|preview| preview.overlay.creates_new_stack)
+        .map(|preview| preview.overlay.target_group_index)
+}
+
+fn preview_anchor_matches_area(
+    preview: Option<&radishflow_studio::StudioGuiWindowDropPreviewModel>,
+    area_id: StudioGuiWindowAreaId,
+) -> bool {
+    preview
+        .and_then(|preview| preview.overlay.anchor_area_id)
+        .map(|anchor_area_id| anchor_area_id == area_id)
+        .unwrap_or(false)
+}
+
+fn stack_insert_hint(
+    preview: Option<&radishflow_studio::StudioGuiWindowDropPreviewModel>,
+    dock_region: StudioGuiWindowDockRegion,
+    stack_group: u8,
+) -> Option<String> {
+    let preview = preview?;
+    if preview.overlay.target_dock_region != dock_region
+        || preview.overlay.target_stack_group != stack_group
+    {
+        return None;
+    }
+
+    Some(preview_insert_hint(preview))
+}
+
+fn render_new_stack_insert_overlay(
+    ui: &mut egui::Ui,
+    preview: &radishflow_studio::StudioGuiWindowDropPreviewModel,
+) {
+    egui::Frame::group(ui.style())
+        .fill(egui::Color32::from_rgb(235, 244, 255))
+        .stroke(egui::Stroke::new(
+            1.5,
+            egui::Color32::from_rgb(56, 126, 214),
+        ))
+        .show(ui, |ui| {
+            ui.horizontal_centered(|ui| {
+                ui.small(
+                    egui::RichText::new(preview_insert_hint(preview))
+                        .strong()
+                        .color(egui::Color32::from_rgb(56, 126, 214)),
+                );
+            });
+        });
+}
+
 fn area_drop_target_query(
     layout: &StudioGuiWindowLayoutModel,
     drag_session: PanelDragSession,
@@ -1259,6 +1487,254 @@ fn drop_lane_stroke(is_active_preview: bool) -> egui::Stroke {
     } else {
         egui::Stroke::new(1.0, egui::Color32::from_rgb(171, 181, 190))
     }
+}
+
+fn stack_preview_fill(is_target_stack: bool) -> egui::Color32 {
+    if is_target_stack {
+        egui::Color32::from_rgb(235, 244, 255)
+    } else {
+        egui::Color32::from_rgba_unmultiplied(0, 0, 0, 0)
+    }
+}
+
+fn stack_preview_stroke(is_target_stack: bool) -> egui::Stroke {
+    if is_target_stack {
+        egui::Stroke::new(1.5, egui::Color32::from_rgb(56, 126, 214))
+    } else {
+        egui::Stroke::new(1.0, egui::Color32::from_rgb(60, 60, 60))
+    }
+}
+
+fn paint_stack_tab_insert_marker(
+    ui: &mut egui::Ui,
+    tab_strip_rect: egui::Rect,
+    tab_rects: &[(StudioGuiWindowAreaId, egui::Rect)],
+    preview: Option<&radishflow_studio::StudioGuiWindowDropPreviewModel>,
+    dock_region: StudioGuiWindowDockRegion,
+    stack_group: u8,
+) {
+    let Some(preview) = preview.filter(|preview| {
+        preview.overlay.target_dock_region == dock_region
+            && preview.overlay.target_stack_group == stack_group
+            && preview.overlay.merges_into_existing_stack
+    }) else {
+        return;
+    };
+
+    let Some(x) = stack_insert_marker_x(tab_strip_rect, tab_rects, preview) else {
+        return;
+    };
+    let stroke = egui::Stroke::new(2.5, egui::Color32::from_rgb(56, 126, 214));
+    let top = tab_strip_rect.top() + 2.0;
+    let bottom = tab_strip_rect.bottom() - 2.0;
+    let painter = ui.painter();
+    painter.line_segment([egui::pos2(x, top), egui::pos2(x, bottom)], stroke);
+    painter.line_segment(
+        [egui::pos2(x - 5.0, top), egui::pos2(x + 5.0, top)],
+        stroke,
+    );
+    painter.line_segment(
+        [egui::pos2(x - 5.0, bottom), egui::pos2(x + 5.0, bottom)],
+        stroke,
+    );
+}
+
+fn stack_insert_marker_x(
+    tab_strip_rect: egui::Rect,
+    tab_rects: &[(StudioGuiWindowAreaId, egui::Rect)],
+    preview: &radishflow_studio::StudioGuiWindowDropPreviewModel,
+) -> Option<f32> {
+    let (previous, next) = preview_insert_neighbors(preview);
+
+    let x = if let Some(next_area_id) = next {
+        tab_rects
+            .iter()
+            .find(|(area_id, _)| *area_id == next_area_id)
+            .map(|(_, rect)| rect.left() - 6.0)
+    } else if let Some(previous_area_id) = previous {
+        tab_rects
+            .iter()
+            .find(|(area_id, _)| *area_id == previous_area_id)
+            .map(|(_, rect)| rect.right() + 6.0)
+    } else {
+        tab_rects
+            .first()
+            .map(|(_, rect)| rect.left() - 6.0)
+            .or(Some(tab_strip_rect.center().x))
+    }?;
+
+    Some(x.clamp(tab_strip_rect.left() + 6.0, tab_strip_rect.right() - 6.0))
+}
+
+fn preview_area_badges(
+    window: &StudioGuiWindowModel,
+    area_id: StudioGuiWindowAreaId,
+) -> Vec<&'static str> {
+    let Some(preview) = window.drop_preview.as_ref() else {
+        return Vec::new();
+    };
+
+    let mut badges = Vec::new();
+    if preview.overlay.drag_area_id == area_id {
+        badges.push("Drag Source");
+    }
+    if preview_anchor_matches_area(window.drop_preview.as_ref(), area_id) {
+        badges.push("Insertion Anchor");
+    }
+    if preview.overlay.highlighted_area_ids.contains(&area_id) {
+        badges.push("Preview Target");
+    }
+    if preview.changed_area_ids.contains(&area_id) {
+        badges.push("Layout Change");
+    }
+    badges
+}
+
+fn preview_area_transition(
+    window: &StudioGuiWindowModel,
+    area_id: StudioGuiWindowAreaId,
+) -> Option<String> {
+    let preview = window.drop_preview.as_ref()?;
+    if !preview.changed_area_ids.contains(&area_id) {
+        return None;
+    }
+
+    let layout = window.layout();
+    let current_panel = layout.panel(area_id)?;
+    let preview_panel = preview.preview_layout.panel(area_id)?;
+    let mut parts = Vec::new();
+
+    if current_panel.dock_region != preview_panel.dock_region {
+        parts.push(format!(
+            "region {} -> {}",
+            dock_region_label(current_panel.dock_region),
+            dock_region_label(preview_panel.dock_region)
+        ));
+    }
+    if current_panel.stack_group != preview_panel.stack_group {
+        parts.push(format!(
+            "stack {} -> {}",
+            current_panel.stack_group, preview_panel.stack_group
+        ));
+    }
+    if current_panel.order != preview_panel.order {
+        parts.push(format!("order {} -> {}", current_panel.order, preview_panel.order));
+    }
+    if parts.is_empty() {
+        parts.push("active stack focus will change".to_string());
+    }
+
+    Some(parts.join(" | "))
+}
+
+fn paint_area_preview_overlay(
+    ui: &mut egui::Ui,
+    header_rect: egui::Rect,
+    window: &StudioGuiWindowModel,
+    area_id: StudioGuiWindowAreaId,
+) {
+    let Some(preview) = window.drop_preview.as_ref() else {
+        return;
+    };
+
+    let painter = ui.painter();
+    if preview.changed_area_ids.contains(&area_id) {
+        let accent_x = header_rect.left() + 3.0;
+        painter.line_segment(
+            [
+                egui::pos2(accent_x, header_rect.top() + 3.0),
+                egui::pos2(accent_x, header_rect.bottom() - 3.0),
+            ],
+            egui::Stroke::new(3.0, egui::Color32::from_rgb(150, 196, 255)),
+        );
+    }
+
+    if preview.overlay.highlighted_area_ids.contains(&area_id) {
+        let stroke = egui::Stroke::new(1.5, egui::Color32::from_rgb(56, 126, 214));
+        let left = header_rect.left() + 6.0;
+        let right = header_rect.right() - 6.0;
+        let top = header_rect.top() + 3.0;
+        let bottom = header_rect.bottom() - 3.0;
+        painter.line_segment([egui::pos2(left, top), egui::pos2(right, top)], stroke);
+        painter.line_segment(
+            [egui::pos2(left, bottom), egui::pos2(right, bottom)],
+            stroke,
+        );
+    }
+
+    if preview_anchor_matches_area(Some(preview), area_id) {
+        let stroke = egui::Stroke::new(2.5, egui::Color32::from_rgb(56, 126, 214));
+        let y = header_rect.top() + 2.0;
+        let left = header_rect.left() + 10.0;
+        let right = header_rect.right() - 10.0;
+        painter.line_segment([egui::pos2(left, y), egui::pos2(right, y)], stroke);
+        painter.line_segment(
+            [egui::pos2(left, y - 4.0), egui::pos2(left, y + 4.0)],
+            stroke,
+        );
+        painter.line_segment(
+            [egui::pos2(right, y - 4.0), egui::pos2(right, y + 4.0)],
+            stroke,
+        );
+    }
+}
+
+fn format_compact_drop_preview_status(
+    preview: &radishflow_studio::StudioGuiWindowDropPreviewModel,
+) -> String {
+    format!(
+        "target {} stack {} | {}",
+        dock_region_label(preview.overlay.target_dock_region),
+        preview.overlay.target_stack_group,
+        preview_insert_hint(preview)
+    )
+}
+
+fn preview_insert_hint(
+    preview: &radishflow_studio::StudioGuiWindowDropPreviewModel,
+) -> String {
+    let (previous, next) = preview_insert_neighbors(preview);
+
+    match (previous, next) {
+        (_, Some(next_area_id)) => format!("insert before {}", area_label(next_area_id)),
+        (Some(previous_area_id), None) => format!("insert after {}", area_label(previous_area_id)),
+        (None, None) if preview.overlay.creates_new_stack => format!(
+            "insert as new stack {} in {}",
+            preview.overlay.target_group_index + 1,
+            dock_region_label(preview.overlay.target_dock_region)
+        ),
+        (None, None) => format!(
+            "insert at tab {}",
+            preview.overlay.target_tab_index + 1
+        ),
+    }
+}
+
+fn preview_insert_neighbors(
+    preview: &radishflow_studio::StudioGuiWindowDropPreviewModel,
+) -> (
+    Option<StudioGuiWindowAreaId>,
+    Option<StudioGuiWindowAreaId>,
+) {
+    let area_ids = &preview.overlay.target_stack_area_ids;
+    let drag_index = preview
+        .overlay
+        .target_tab_index
+        .min(area_ids.len().saturating_sub(1));
+    let previous = drag_index
+        .checked_sub(1)
+        .and_then(|index| area_ids.get(index))
+        .copied();
+    let next = area_ids.get(drag_index + 1).copied();
+    (previous, next)
+}
+
+fn format_area_id_list(area_ids: &[StudioGuiWindowAreaId]) -> String {
+    area_ids
+        .iter()
+        .map(|area_id| area_label(*area_id))
+        .collect::<Vec<_>>()
+        .join(", ")
 }
 
 fn area_label(area_id: StudioGuiWindowAreaId) -> &'static str {
