@@ -39,6 +39,7 @@ struct ReadyAppState {
     last_error: Option<String>,
     drag_session: Option<PanelDragSession>,
     active_drop_preview: Option<ActiveDropPreview>,
+    drop_preview_overlay_anchor: Option<DropPreviewOverlayAnchor>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -53,6 +54,12 @@ struct ActiveDropPreview {
     query: StudioGuiWindowDropTargetQuery,
 }
 
+#[derive(Debug, Clone, Copy)]
+struct DropPreviewOverlayAnchor {
+    rect: egui::Rect,
+    priority: u8,
+}
+
 impl RadishFlowStudioApp {
     fn new() -> Self {
         let config = StudioRuntimeConfig::default();
@@ -64,6 +71,7 @@ impl RadishFlowStudioApp {
                     last_error: None,
                     drag_session: None,
                     active_drop_preview: None,
+                    drop_preview_overlay_anchor: None,
                 };
                 ready.dispatch_event(StudioGuiEvent::OpenWindowRequested);
                 AppState::Ready(ready)
@@ -98,6 +106,7 @@ impl ReadyAppState {
     fn update(&mut self, ctx: &egui::Context) {
         self.dispatch_shortcuts(ctx);
         self.drain_due_timers(ctx);
+        self.drop_preview_overlay_anchor = None;
 
         let snapshot = self.driver.snapshot();
         let window = snapshot.window_model();
@@ -386,7 +395,11 @@ impl ReadyAppState {
         for (group_index, group) in groups.iter().enumerate() {
             if new_stack_insert_group_index == Some(group_index) {
                 if let Some(preview) = region_preview {
-                    render_new_stack_insert_overlay(ui, preview);
+                    let rect = render_new_stack_insert_overlay(ui, preview);
+                    self.record_drop_preview_overlay_anchor(
+                        rect,
+                        drop_preview_anchor_priority_new_stack(),
+                    );
                     ui.add_space(8.0);
                 }
             }
@@ -477,6 +490,16 @@ impl ReadyAppState {
                             region,
                             group.stack_group,
                         );
+                        if stack_accepts_overlay_anchor(
+                            window.drop_preview.as_ref(),
+                            region,
+                            group.stack_group,
+                        ) {
+                            self.record_drop_preview_overlay_anchor(
+                                tab_strip.response.rect,
+                                drop_preview_anchor_priority_stack_tabs(),
+                            );
+                        }
                         ui.separator();
                     }
 
@@ -488,7 +511,11 @@ impl ReadyAppState {
 
         if new_stack_insert_group_index == Some(groups.len()) {
             if let Some(preview) = region_preview {
-                render_new_stack_insert_overlay(ui, preview);
+                let rect = render_new_stack_insert_overlay(ui, preview);
+                self.record_drop_preview_overlay_anchor(
+                    rect,
+                    drop_preview_anchor_priority_new_stack(),
+                );
                 ui.add_space(8.0);
             }
         }
@@ -575,6 +602,12 @@ impl ReadyAppState {
                 );
             }
             header_rect = header.response.rect;
+        }
+        if area_accepts_overlay_anchor(window, area_id) {
+            self.record_drop_preview_overlay_anchor(
+                header_rect,
+                drop_preview_anchor_priority_area(window, area_id),
+            );
         }
         paint_area_preview_overlay(ui, header_rect, window, area_id);
         ui.horizontal_wrapped(|ui| {
@@ -1133,14 +1166,19 @@ impl ReadyAppState {
         let Some(preview) = window.drop_preview.as_ref() else {
             return;
         };
-        let Some(pointer_pos) = ctx.pointer_latest_pos() else {
+        let anchor_pos = self
+            .drop_preview_overlay_anchor
+            .map(|anchor| preferred_overlay_pos(anchor.rect))
+            .or_else(|| ctx.pointer_latest_pos().map(|pointer| pointer + egui::vec2(18.0, 18.0)));
+        let Some(anchor_pos) = anchor_pos else {
             return;
         };
+        let overlay_pos = clamp_overlay_pos(ctx, anchor_pos, egui::vec2(280.0, 110.0));
 
         egui::Area::new(egui::Id::new("studio.drop_preview.floating_overlay"))
             .order(egui::Order::Foreground)
             .interactable(false)
-            .fixed_pos(pointer_pos + egui::vec2(18.0, 18.0))
+            .fixed_pos(overlay_pos)
             .show(ctx, |ui| {
                 egui::Frame::popup(ui.style())
                     .fill(egui::Color32::from_rgb(246, 250, 255))
@@ -1167,6 +1205,17 @@ impl ReadyAppState {
                         ));
                     });
             });
+    }
+
+    fn record_drop_preview_overlay_anchor(&mut self, rect: egui::Rect, priority: u8) {
+        let candidate = DropPreviewOverlayAnchor { rect, priority };
+        let replace = self
+            .drop_preview_overlay_anchor
+            .map(|current| priority >= current.priority)
+            .unwrap_or(true);
+        if replace {
+            self.drop_preview_overlay_anchor = Some(candidate);
+        }
     }
 
     fn dispatch_event(&mut self, event: StudioGuiEvent) {
@@ -1402,7 +1451,7 @@ fn stack_insert_hint(
 fn render_new_stack_insert_overlay(
     ui: &mut egui::Ui,
     preview: &radishflow_studio::StudioGuiWindowDropPreviewModel,
-) {
+) -> egui::Rect {
     egui::Frame::group(ui.style())
         .fill(egui::Color32::from_rgb(235, 244, 255))
         .stroke(egui::Stroke::new(
@@ -1417,7 +1466,9 @@ fn render_new_stack_insert_overlay(
                         .color(egui::Color32::from_rgb(56, 126, 214)),
                 );
             });
-        });
+        })
+        .response
+        .rect
 }
 
 fn area_drop_target_query(
@@ -1503,6 +1554,20 @@ fn stack_preview_stroke(is_target_stack: bool) -> egui::Stroke {
     } else {
         egui::Stroke::new(1.0, egui::Color32::from_rgb(60, 60, 60))
     }
+}
+
+fn stack_accepts_overlay_anchor(
+    preview: Option<&radishflow_studio::StudioGuiWindowDropPreviewModel>,
+    dock_region: StudioGuiWindowDockRegion,
+    stack_group: u8,
+) -> bool {
+    preview
+        .map(|preview| {
+            preview.overlay.target_dock_region == dock_region
+                && preview.overlay.target_stack_group == stack_group
+                && preview.overlay.merges_into_existing_stack
+        })
+        .unwrap_or(false)
 }
 
 fn paint_stack_tab_insert_marker(
@@ -1627,6 +1692,41 @@ fn preview_area_transition(
     Some(parts.join(" | "))
 }
 
+fn area_accepts_overlay_anchor(
+    window: &StudioGuiWindowModel,
+    area_id: StudioGuiWindowAreaId,
+) -> bool {
+    let Some(preview) = window.drop_preview.as_ref() else {
+        return false;
+    };
+    preview_anchor_matches_area(Some(preview), area_id)
+        || preview.overlay.highlighted_area_ids.contains(&area_id)
+}
+
+fn drop_preview_anchor_priority_area(
+    window: &StudioGuiWindowModel,
+    area_id: StudioGuiWindowAreaId,
+) -> u8 {
+    let Some(preview) = window.drop_preview.as_ref() else {
+        return 0;
+    };
+    if preview_anchor_matches_area(Some(preview), area_id) {
+        3
+    } else if preview.overlay.highlighted_area_ids.contains(&area_id) {
+        2
+    } else {
+        0
+    }
+}
+
+fn drop_preview_anchor_priority_stack_tabs() -> u8 {
+    1
+}
+
+fn drop_preview_anchor_priority_new_stack() -> u8 {
+    1
+}
+
 fn paint_area_preview_overlay(
     ui: &mut egui::Ui,
     header_rect: egui::Rect,
@@ -1677,6 +1777,20 @@ fn paint_area_preview_overlay(
             stroke,
         );
     }
+}
+
+fn preferred_overlay_pos(anchor_rect: egui::Rect) -> egui::Pos2 {
+    egui::pos2(anchor_rect.right() + 12.0, anchor_rect.top() - 4.0)
+}
+
+fn clamp_overlay_pos(ctx: &egui::Context, pos: egui::Pos2, size: egui::Vec2) -> egui::Pos2 {
+    let screen = ctx.screen_rect();
+    let max_x = (screen.right() - size.x - 8.0).max(screen.left() + 8.0);
+    let max_y = (screen.bottom() - size.y - 8.0).max(screen.top() + 8.0);
+    egui::pos2(
+        pos.x.clamp(screen.left() + 8.0, max_x),
+        pos.y.clamp(screen.top() + 8.0, max_y),
+    )
 }
 
 fn format_compact_drop_preview_status(
