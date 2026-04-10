@@ -381,9 +381,19 @@ Studio 当前又已继续把这条 GUI 命令入口推进为稳定 host command 
 
 - `StudioAppHostController` 当前已提供 `dispatch_ui_command(command_id)`，让菜单、快捷键和命令面板后续可直接按稳定 command id 触发宿主动作
 - 首批已接成真实宿主命令的 run panel command id 为 `run_panel.run_manual`、`run_panel.resume_workspace`、`run_panel.set_hold`、`run_panel.set_active` 与 `run_panel.recover_failure`
+- `rf-ui` 当前也已把 run panel 动作展示继续冻结到 GUI-facing `label/detail/enabled` 口径，第一版 `eframe/egui` GUI 壳已直接消费这份动作详情，而不再在壳层重复拼按钮说明文本
+- `rf-ui` 当前也已把 entitlement panel 动作展示继续冻结到 GUI-facing `label/detail/enabled` 口径，第一版 `eframe/egui` GUI 壳已直接消费这份动作详情，并沿既有 foreground host routing 回灌 Studio runtime
 - 后续真实桌面框架在建立原生命令绑定时，应优先复用这组 `UiCommandModel` / command registry，而不是继续让各入口重复拼装运行栏 availability、disabled reason 或窗口前景派发逻辑
 
 当前最小入口 `apps/radishflow-studio/src/main.rs` 已开始直接消费上述正式边界，而不再继续翻读 bootstrap、session 或 raw command outcome 细节。
+
+Studio 当前又已继续把 runtime 区剩余卡片往更真实的 GUI-facing 宿主反馈面收口：
+
+- `StudioGuiRuntimeSnapshot / StudioGuiWindowRuntimeAreaModel` 当前又已正式携带 `platform_timer_lines` 与 `gui_activity_lines`，不再只让 `egui` 壳私有缓存平台 timer 状态和宿主活动字符串
+- `StudioGuiWindowRuntimeAreaModel` 当前又已补出 `host_actions`，把 `Foreground current / Login completed / Network restored / Trigger timer` 四类 scheduler/宿主动作收口为正式 GUI-facing 动作模型，并显式带出目标窗口路由说明和启用状态
+- `StudioGuiPlatformHost` 当前又已把平台 timer request、执行结果、ignored callback 与失败路径统一追加到 `gui_activity_lines`，并把当前 schedule/native binding 摘要前推到 runtime snapshot/window model
+- 第一版 `eframe/egui` GUI 壳当前已改为直接消费这套 runtime host feedback DTO；`Scheduler / Platform / GUI activity` 三块不再主要依赖 shell 私有状态，而是复用正式 snapshot/window model
+- `StudioGuiWindowLayoutModel` 当前也已把 runtime 面板摘要补进 `activity` 与 `platform-timer` 两个维度，使 runtime 区在折叠或 tab 化时仍能透出宿主调度活跃度与平台 timer 状态
 
 基于上述进展，当前下一阶段计划调整为：
 
@@ -401,6 +411,7 @@ Studio 当前又已继续把这条 GUI 命令入口推进为稳定 host command 
 - 在已补出的 `StudioAppHostController + StudioAppHostState + StudioAppHostStore + StudioAppHostProjection` 基础上，继续决定真实桌面框架里的原生窗口事件源、app 生命周期宿主与后台任务入口如何直接走这条正式 controller 边界
 - 在已补出的 app host effect summary 基础上，继续决定真实桌面框架里的 native timer handle、后台任务调度和 close retirement 提示如何直接接到这组正式 GUI 宿主副作用
 - 在已补出的 `StudioGuiNativeTimerRuntime + StudioGuiPlatformHost + StudioGuiPlatformTimerDriverState` 基础上，继续把真实桌面框架 timer API、消息循环与批量回灌入口接到既有 batch/round glue；优先补宿主消费面，不提前进入真实 UI 布局和控件组织设计
+- 在已补出的 runtime host feedback DTO 基础上，继续把 shell 内残余的宿主私有展示状态压回正式 snapshot/window model，避免后续真实桌面框架再复制一层“平台活动日志 / 调度状态说明”的影子状态
 - 继续冻结运行结果派发、日志入口与后续异步执行边界
 - 在不打乱当前边界的前提下，再恢复更完整的 Studio 交互流、联网提示位置与内核主线推进
 
