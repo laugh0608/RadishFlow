@@ -1,7 +1,7 @@
 use std::collections::BTreeSet;
 
 use rf_types::{RfError, RfResult};
-use rf_ui::{RunPanelActionId, RunPanelWidgetEvent, RunPanelWidgetModel};
+use rf_ui::{EntitlementActionId, RunPanelActionId, RunPanelWidgetEvent, RunPanelWidgetModel};
 
 use crate::{
     StudioRuntimeConfig, StudioRuntimeTrigger, StudioWindowHostId, StudioWindowHostLifecycleEvent,
@@ -87,6 +87,10 @@ pub enum StudioAppWindowHostCommand {
         window_id: StudioWindowHostId,
     },
     DispatchForegroundRunPanelRecoveryAction,
+    DispatchForegroundEntitlementPrimaryAction,
+    DispatchForegroundEntitlementAction {
+        action_id: EntitlementActionId,
+    },
     FocusWindow {
         window_id: StudioWindowHostId,
     },
@@ -310,6 +314,22 @@ impl StudioAppWindowHostManager {
                     None => Ok(StudioAppWindowHostCommandOutcome::IgnoredUiAction),
                 }
             }
+            StudioAppWindowHostCommand::DispatchForegroundEntitlementPrimaryAction => {
+                match self.dispatch_foreground_entitlement_primary_action()? {
+                    Some(dispatch) => Ok(StudioAppWindowHostCommandOutcome::WindowDispatched(
+                        dispatch,
+                    )),
+                    None => Ok(StudioAppWindowHostCommandOutcome::IgnoredUiAction),
+                }
+            }
+            StudioAppWindowHostCommand::DispatchForegroundEntitlementAction { action_id } => {
+                match self.dispatch_foreground_entitlement_action(action_id)? {
+                    Some(dispatch) => Ok(StudioAppWindowHostCommandOutcome::WindowDispatched(
+                        dispatch,
+                    )),
+                    None => Ok(StudioAppWindowHostCommandOutcome::IgnoredUiAction),
+                }
+            }
             StudioAppWindowHostCommand::FocusWindow { window_id } => {
                 let dispatch = self.focus_window(window_id)?;
                 Ok(StudioAppWindowHostCommandOutcome::WindowDispatched(
@@ -429,6 +449,41 @@ impl StudioAppWindowHostManager {
         };
 
         self.dispatch_run_panel_recovery_action(window_id).map(Some)
+    }
+
+    pub fn dispatch_foreground_entitlement_primary_action(
+        &mut self,
+    ) -> RfResult<Option<StudioAppWindowHostDispatch>> {
+        let Some(window_id) = self
+            .foreground_window_id
+            .or_else(|| self.registered_windows.iter().next().copied())
+        else {
+            return Ok(None);
+        };
+
+        self.dispatch_trigger(
+            window_id,
+            &StudioRuntimeTrigger::EntitlementWidgetPrimaryAction,
+        )
+        .map(Some)
+    }
+
+    pub fn dispatch_foreground_entitlement_action(
+        &mut self,
+        action_id: EntitlementActionId,
+    ) -> RfResult<Option<StudioAppWindowHostDispatch>> {
+        let Some(window_id) = self
+            .foreground_window_id
+            .or_else(|| self.registered_windows.iter().next().copied())
+        else {
+            return Ok(None);
+        };
+
+        self.dispatch_trigger(
+            window_id,
+            &StudioRuntimeTrigger::EntitlementWidgetAction(action_id),
+        )
+        .map(Some)
     }
 
     pub fn focus_window(
@@ -585,7 +640,7 @@ mod tests {
         StudioRuntimeEntitlementSeed, StudioRuntimeEntitlementSessionEvent, StudioRuntimeTrigger,
         StudioWindowHostRole, StudioWindowTimerDriverTransition,
     };
-    use rf_ui::RunPanelActionId;
+    use rf_ui::{EntitlementActionId, RunPanelActionId};
 
     fn lease_expiring_config() -> crate::StudioRuntimeConfig {
         crate::StudioRuntimeConfig {
@@ -900,6 +955,69 @@ mod tests {
         }
 
         let _ = fs::remove_file(project_path);
+    }
+
+    #[test]
+    fn app_window_host_manager_dispatches_foreground_entitlement_primary_action() {
+        let mut manager =
+            StudioAppWindowHostManager::new(&lease_expiring_config()).expect("expected manager");
+        let first = manager.open_window();
+        let second = manager.open_window();
+        let _ = manager
+            .focus_window(second.window_id)
+            .expect("expected second window focus");
+
+        let dispatch = manager
+            .dispatch_foreground_entitlement_primary_action()
+            .expect("expected foreground entitlement primary result")
+            .expect("expected foreground entitlement primary dispatch");
+
+        assert_eq!(dispatch.target_window_id, second.window_id);
+        assert_ne!(dispatch.target_window_id, first.window_id);
+        assert_eq!(manager.foreground_window_id(), Some(second.window_id));
+        match &dispatch.dispatch.host_output.runtime_output.report.dispatch {
+            crate::StudioBootstrapDispatch::AppCommand(outcome) => {
+                assert!(matches!(
+                    outcome.dispatch,
+                    crate::StudioAppResultDispatch::Entitlement(_)
+                ));
+            }
+            other => panic!("expected entitlement app command dispatch, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn app_window_host_manager_dispatches_foreground_entitlement_action() {
+        let mut manager =
+            StudioAppWindowHostManager::new(&lease_expiring_config()).expect("expected manager");
+        let first = manager.open_window();
+        let second = manager.open_window();
+        let _ = manager
+            .focus_window(second.window_id)
+            .expect("expected second window focus");
+
+        let dispatch = manager
+            .dispatch_foreground_entitlement_action(EntitlementActionId::SyncEntitlement)
+            .expect("expected foreground entitlement action result")
+            .expect("expected foreground entitlement action dispatch");
+
+        assert_eq!(dispatch.target_window_id, second.window_id);
+        assert_ne!(dispatch.target_window_id, first.window_id);
+        assert_eq!(manager.foreground_window_id(), Some(second.window_id));
+        match &dispatch.dispatch.host_output.runtime_output.report.dispatch {
+            crate::StudioBootstrapDispatch::AppCommand(outcome) => {
+                match &outcome.dispatch {
+                    crate::StudioAppResultDispatch::Entitlement(entitlement) => {
+                        assert_eq!(
+                            entitlement.action,
+                            crate::StudioEntitlementAction::SyncEntitlement
+                        );
+                    }
+                    other => panic!("expected entitlement dispatch, got {other:?}"),
+                }
+            }
+            other => panic!("expected entitlement app command dispatch, got {other:?}"),
+        }
     }
 
     #[test]
