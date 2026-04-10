@@ -236,6 +236,7 @@ pub enum RunPanelActionId {
 pub struct RunPanelActionModel {
     pub id: RunPanelActionId,
     pub label: &'static str,
+    pub detail: &'static str,
     pub intent: RunPanelIntent,
     pub enabled: bool,
     pub visible: bool,
@@ -245,6 +246,7 @@ impl RunPanelActionModel {
     fn new(
         id: RunPanelActionId,
         label: &'static str,
+        detail: &'static str,
         intent: RunPanelIntent,
         enabled: bool,
         visible: bool,
@@ -252,6 +254,7 @@ impl RunPanelActionModel {
         Self {
             id,
             label,
+            detail,
             intent,
             enabled,
             visible,
@@ -290,6 +293,7 @@ impl RunPanelCommandModel {
                 RunPanelActionModel::new(
                     RunPanelActionId::RunManual,
                     "Run",
+                    run_manual_detail(state),
                     RunPanelIntent::run_manual(preferred_selection.clone()),
                     state.can_run_manual,
                     true,
@@ -297,6 +301,7 @@ impl RunPanelCommandModel {
                 RunPanelActionModel::new(
                     RunPanelActionId::Resume,
                     "Resume",
+                    resume_detail(state),
                     RunPanelIntent::resume(preferred_selection),
                     resume_enabled,
                     state.can_resume,
@@ -304,6 +309,7 @@ impl RunPanelCommandModel {
                 RunPanelActionModel::new(
                     RunPanelActionId::SetHold,
                     "Hold",
+                    set_hold_detail(state),
                     RunPanelIntent::set_mode(SimulationMode::Hold),
                     state.can_set_hold,
                     true,
@@ -311,6 +317,7 @@ impl RunPanelCommandModel {
                 RunPanelActionModel::new(
                     RunPanelActionId::SetActive,
                     "Active",
+                    set_active_detail(state),
                     RunPanelIntent::set_mode(SimulationMode::Active),
                     state.can_set_active,
                     true,
@@ -358,5 +365,41 @@ impl RunPanelIntent {
 
     pub fn set_mode(mode: SimulationMode) -> Self {
         Self::SetMode(mode)
+    }
+}
+
+fn run_manual_detail(state: &RunPanelState) -> &'static str {
+    if state.can_run_manual {
+        "Run the current workspace once"
+    } else {
+        "Manual run is unavailable in the current workspace state"
+    }
+}
+
+fn resume_detail(state: &RunPanelState) -> &'static str {
+    if state.can_resume && state.pending_reason.is_some() {
+        "Resume pending work while the workspace stays in Hold mode"
+    } else if !state.can_resume {
+        "Switch the workspace to Hold mode before resuming"
+    } else if state.pending_reason.is_none() {
+        "No pending work is waiting to resume"
+    } else {
+        "Resume is unavailable in the current workspace state"
+    }
+}
+
+fn set_hold_detail(state: &RunPanelState) -> &'static str {
+    if state.can_set_hold {
+        "Pause automatic solving and keep the workspace in Hold mode"
+    } else {
+        "Workspace is already in Hold mode"
+    }
+}
+
+fn set_active_detail(state: &RunPanelState) -> &'static str {
+    if state.can_set_active {
+        "Enable automatic solving for future pending work"
+    } else {
+        "Workspace is already in Active mode"
     }
 }

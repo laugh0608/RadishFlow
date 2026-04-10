@@ -46,13 +46,17 @@ impl RunPanelTextView {
             view.primary_action.label,
             enabled_label(view.primary_action.enabled)
         ));
+        lines.push(format!("Primary detail: {}", view.primary_action.detail));
         if !view.secondary_actions.is_empty() {
             lines.push("Secondary actions:".to_string());
-            lines.extend(
-                view.secondary_actions.iter().map(|action| {
-                    format!("  - {} [{}]", action.label, enabled_label(action.enabled))
-                }),
-            );
+            lines.extend(view.secondary_actions.iter().map(|action| {
+                format!(
+                    "  - {} [{}] | {}",
+                    action.label,
+                    enabled_label(action.enabled),
+                    action.detail
+                )
+            }));
         }
 
         Self {

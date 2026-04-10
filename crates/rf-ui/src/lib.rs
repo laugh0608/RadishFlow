@@ -782,6 +782,10 @@ mod tests {
         assert_eq!(view.primary_action.id, RunPanelActionId::Resume);
         assert_eq!(view.primary_action.label, "Resume");
         assert_eq!(
+            view.primary_action.detail,
+            "Resume pending work while the workspace stays in Hold mode"
+        );
+        assert_eq!(
             view.primary_action.prominence,
             RunPanelActionProminence::Primary
         );
@@ -811,7 +815,14 @@ mod tests {
                 .iter()
                 .any(|line| line == "Primary action: Resume [enabled]")
         );
-        assert!(text.lines.iter().any(|line| line == "  - Run [enabled]"));
+        assert!(text.lines.iter().any(|line| {
+            line == "Primary detail: Resume pending work while the workspace stays in Hold mode"
+        }));
+        assert!(
+            text.lines
+                .iter()
+                .any(|line| { line == "  - Run [enabled] | Run the current workspace once" })
+        );
     }
 
     #[test]
@@ -914,6 +925,7 @@ mod tests {
             widget.activate(RunPanelActionId::SetHold),
             RunPanelWidgetEvent::Disabled {
                 action_id: RunPanelActionId::SetHold,
+                detail: "Workspace is already in Hold mode",
             }
         );
     }

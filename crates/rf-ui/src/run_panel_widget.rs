@@ -11,6 +11,7 @@ pub enum RunPanelWidgetEvent {
     },
     Disabled {
         action_id: RunPanelActionId,
+        detail: &'static str,
     },
     Missing {
         action_id: RunPanelActionId,
@@ -70,7 +71,10 @@ impl RunPanelWidgetModel {
                     action_id: id,
                     intent,
                 },
-                None => RunPanelWidgetEvent::Disabled { action_id: id },
+                None => RunPanelWidgetEvent::Disabled {
+                    action_id: id,
+                    detail: action.detail,
+                },
             },
             None => RunPanelWidgetEvent::Missing { action_id: id },
         }

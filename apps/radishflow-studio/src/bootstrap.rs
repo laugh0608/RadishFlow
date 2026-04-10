@@ -226,11 +226,11 @@ fn dispatch_bootstrap_trigger(
                     ..
                 } => command_outcome_from_workspace_control(*outcome),
                 RunPanelDriverOutcome {
-                    dispatch: RunPanelWidgetDispatchOutcome::IgnoredDisabled { action_id },
+                    dispatch: RunPanelWidgetDispatchOutcome::IgnoredDisabled { action_id, detail },
                     ..
                 } => Err(RfError::invalid_input(format!(
-                    "bootstrap primary widget action `{:?}` is currently disabled",
-                    action_id
+                    "bootstrap primary widget action `{:?}` is currently disabled: {}",
+                    action_id, detail
                 ))),
                 RunPanelDriverOutcome {
                     dispatch: RunPanelWidgetDispatchOutcome::IgnoredMissing { action_id },
@@ -255,11 +255,11 @@ fn dispatch_bootstrap_trigger(
                     ..
                 } => command_outcome_from_workspace_control(*outcome),
                 RunPanelDriverOutcome {
-                    dispatch: RunPanelWidgetDispatchOutcome::IgnoredDisabled { action_id },
+                    dispatch: RunPanelWidgetDispatchOutcome::IgnoredDisabled { action_id, detail },
                     ..
                 } => Err(RfError::invalid_input(format!(
-                    "bootstrap widget action `{:?}` is currently disabled",
-                    action_id
+                    "bootstrap widget action `{:?}` is currently disabled: {}",
+                    action_id, detail
                 ))),
                 RunPanelDriverOutcome {
                     dispatch: RunPanelWidgetDispatchOutcome::IgnoredMissing { action_id },

@@ -267,6 +267,7 @@ mod tests {
             RunPanelDriverOutcome {
                 dispatch: RunPanelWidgetDispatchOutcome::IgnoredDisabled {
                     action_id: RunPanelActionId::SetHold,
+                    detail: "Workspace is already in Hold mode",
                 },
                 state: RunPanelDriverState {
                     widget: RunPanelWidgetModel::from_state(&app_state.workspace.run_panel),

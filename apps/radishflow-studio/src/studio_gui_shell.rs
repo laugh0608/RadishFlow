@@ -852,23 +852,33 @@ impl ReadyAppState {
             });
             ui.add_space(4.0);
             ui.horizontal_wrapped(|ui| {
-                if ui
-                    .add_enabled(
-                        run_panel.primary_action().enabled,
-                        egui::Button::new(run_panel.primary_action().label),
-                    )
-                    .clicked()
-                {
-                    self.dispatch_run_panel_widget(run_panel.activate_primary());
-                }
+                let primary = run_panel.primary_action();
+                ui.vertical(|ui| {
+                    let response =
+                        ui.add_enabled(primary.enabled, egui::Button::new(primary.label));
+                    let response = response.on_hover_text(primary.detail);
+                    if response.clicked() {
+                        self.dispatch_run_panel_widget(run_panel.activate_primary());
+                    }
+                    ui.small(
+                        egui::RichText::new(primary.detail)
+                            .color(egui::Color32::from_rgb(92, 104, 117)),
+                    );
+                });
 
                 for action in &run_panel_view.secondary_actions {
-                    if ui
-                        .add_enabled(action.enabled, egui::Button::new(action.label))
-                        .clicked()
-                    {
-                        self.dispatch_run_panel_widget(run_panel.activate(action.id));
-                    }
+                    ui.vertical(|ui| {
+                        let response =
+                            ui.add_enabled(action.enabled, egui::Button::new(action.label));
+                        let response = response.on_hover_text(action.detail);
+                        if response.clicked() {
+                            self.dispatch_run_panel_widget(run_panel.activate(action.id));
+                        }
+                        ui.small(
+                            egui::RichText::new(action.detail)
+                                .color(egui::Color32::from_rgb(92, 104, 117)),
+                        );
+                    });
                 }
             });
             ui.add_space(6.0);

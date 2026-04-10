@@ -70,8 +70,13 @@ pub struct WorkspaceControlActionOutcome {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RunPanelWidgetDispatchOutcome {
     Executed(Box<WorkspaceControlActionOutcome>),
-    IgnoredDisabled { action_id: rf_ui::RunPanelActionId },
-    IgnoredMissing { action_id: rf_ui::RunPanelActionId },
+    IgnoredDisabled {
+        action_id: rf_ui::RunPanelActionId,
+        detail: &'static str,
+    },
+    IgnoredMissing {
+        action_id: rf_ui::RunPanelActionId,
+    },
 }
 
 pub fn snapshot_workspace_control_state(app_state: &AppState) -> WorkspaceControlState {
@@ -166,9 +171,10 @@ pub fn dispatch_run_panel_widget_event_with_auth_cache(
             dispatch_run_panel_intent_with_auth_cache(facade, app_state, context, intent)
                 .map(|outcome| RunPanelWidgetDispatchOutcome::Executed(Box::new(outcome)))
         }
-        RunPanelWidgetEvent::Disabled { action_id } => {
+        RunPanelWidgetEvent::Disabled { action_id, detail } => {
             Ok(RunPanelWidgetDispatchOutcome::IgnoredDisabled {
                 action_id: *action_id,
+                detail,
             })
         }
         RunPanelWidgetEvent::Missing { action_id } => {
@@ -742,7 +748,8 @@ mod tests {
         assert_eq!(
             outcome,
             RunPanelWidgetDispatchOutcome::IgnoredDisabled {
-                action_id: rf_ui::RunPanelActionId::SetHold
+                action_id: rf_ui::RunPanelActionId::SetHold,
+                detail: "Workspace is already in Hold mode",
             }
         );
         assert_eq!(app_state.workspace.run_panel.run_status, RunStatus::Idle);
