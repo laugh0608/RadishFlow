@@ -549,13 +549,12 @@ mod tests {
 
     use crate::{
         StudioGuiCanvasInteractionAction, StudioGuiDriver, StudioGuiDriverOutcome, StudioGuiEvent,
-        StudioGuiFocusContext, StudioGuiHostCanvasInteractionResult,
-        StudioGuiHostCommandOutcome, StudioGuiHostEntitlementDispatchResult,
-        StudioGuiHostUiCommandDispatchResult, StudioGuiShortcut,
-        StudioGuiShortcutIgnoreReason, StudioGuiShortcutKey, StudioGuiShortcutModifier,
-        StudioGuiWindowAreaId, StudioGuiWindowDockPlacement, StudioGuiWindowDockRegion,
-        StudioGuiWindowDropTargetQuery, StudioGuiWindowLayoutMutation, StudioRuntimeConfig,
-        StudioRuntimeEntitlementPreflight, StudioRuntimeEntitlementSeed,
+        StudioGuiFocusContext, StudioGuiHostCanvasInteractionResult, StudioGuiHostCommandOutcome,
+        StudioGuiHostEntitlementDispatchResult, StudioGuiHostUiCommandDispatchResult,
+        StudioGuiShortcut, StudioGuiShortcutIgnoreReason, StudioGuiShortcutKey,
+        StudioGuiShortcutModifier, StudioGuiWindowAreaId, StudioGuiWindowDockPlacement,
+        StudioGuiWindowDockRegion, StudioGuiWindowDropTargetQuery, StudioGuiWindowLayoutMutation,
+        StudioRuntimeConfig, StudioRuntimeEntitlementPreflight, StudioRuntimeEntitlementSeed,
     };
     use rf_ui::{
         EntitlementActionId, GhostElement, GhostElementKind, StreamVisualKind, StreamVisualState,
@@ -717,9 +716,7 @@ mod tests {
                 assert_eq!(action_id, EntitlementActionId::RefreshOfflineLease);
                 assert_eq!(dispatch.target_window_id, window_id);
             }
-            other => panic!(
-                "expected executed entitlement primary action outcome, got {other:?}"
-            ),
+            other => panic!("expected executed entitlement primary action outcome, got {other:?}"),
         }
     }
 
@@ -773,11 +770,16 @@ mod tests {
                 StudioGuiHostCommandOutcome::EntitlementActionDispatched(
                     StudioGuiHostEntitlementDispatchResult::IgnoredDisabled {
                         action_id,
+                        detail,
                         target_window_id,
                     },
                 ),
             ) => {
                 assert_eq!(action_id, EntitlementActionId::SyncEntitlement);
+                assert_eq!(
+                    detail,
+                    "Open a window before dispatching entitlement actions"
+                );
                 assert_eq!(target_window_id, None);
             }
             other => panic!("expected ignored entitlement action outcome, got {other:?}"),

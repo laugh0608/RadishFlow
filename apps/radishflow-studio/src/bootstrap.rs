@@ -347,11 +347,12 @@ fn dispatch_bootstrap_entitlement_host_trigger(
             ..
         }) => Ok(StudioBootstrapDispatch::AppCommand(outcome)),
         EntitlementSessionHostDispatch::Panel(EntitlementSessionPanelDriverOutcome {
-            dispatch: crate::EntitlementPanelWidgetDispatchOutcome::IgnoredDisabled { action_id },
+            dispatch:
+                crate::EntitlementPanelWidgetDispatchOutcome::IgnoredDisabled { action_id, detail },
             ..
         }) => Err(RfError::invalid_input(format!(
-            "bootstrap entitlement action `{:?}` is currently disabled",
-            action_id
+            "bootstrap entitlement action `{:?}` is currently disabled: {}",
+            action_id, detail
         ))),
         EntitlementSessionHostDispatch::Panel(EntitlementSessionPanelDriverOutcome {
             dispatch: crate::EntitlementPanelWidgetDispatchOutcome::IgnoredMissing { action_id },

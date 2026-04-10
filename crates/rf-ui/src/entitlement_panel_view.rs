@@ -13,6 +13,7 @@ pub enum EntitlementActionProminence {
 pub struct EntitlementRenderableAction {
     pub id: EntitlementActionId,
     pub label: &'static str,
+    pub detail: &'static str,
     pub intent: EntitlementIntent,
     pub enabled: bool,
     pub prominence: EntitlementActionProminence,
@@ -69,6 +70,7 @@ impl EntitlementPanelViewModel {
             primary_action: EntitlementRenderableAction {
                 id: primary_action.id,
                 label: primary_action.label,
+                detail: primary_action.detail,
                 intent: primary_action.intent.clone(),
                 enabled: primary_action.enabled,
                 prominence: EntitlementActionProminence::Primary,
@@ -79,6 +81,7 @@ impl EntitlementPanelViewModel {
                 .map(|action| EntitlementRenderableAction {
                     id: action.id,
                     label: action.label,
+                    detail: action.detail,
                     intent: action.intent.clone(),
                     enabled: action.enabled,
                     prominence: EntitlementActionProminence::Secondary,

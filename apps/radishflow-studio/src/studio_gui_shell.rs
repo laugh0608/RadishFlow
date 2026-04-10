@@ -6,14 +6,13 @@ use radishflow_studio::{
     StudioAppHostWindowState, StudioGuiCommandEntry, StudioGuiDriverOutcome, StudioGuiEvent,
     StudioGuiFocusContext, StudioGuiPlatformDispatch,
     StudioGuiPlatformExecutedNativeTimerCallbackOutcome, StudioGuiPlatformHost,
-    StudioGuiPlatformNativeTimerId, StudioGuiPlatformTimerCommand,
-    StudioGuiPlatformTimerExecutor, StudioGuiPlatformTimerExecutorResponse,
-    StudioGuiPlatformTimerFollowUpCommand, StudioGuiShortcut, StudioGuiShortcutKey,
-    StudioGuiShortcutModifier, StudioGuiWindowAreaId, StudioGuiWindowDockPlacement,
-    StudioGuiWindowDockRegion, StudioGuiWindowDropTargetQuery, StudioGuiWindowLayoutModel,
-    StudioGuiWindowLayoutMutation, StudioGuiWindowModel, StudioGuiWindowPanelDisplayMode,
-    StudioGuiWindowStackGroupLayout, StudioRuntimeConfig, StudioWindowHostId,
-    StudioWindowHostRole,
+    StudioGuiPlatformNativeTimerId, StudioGuiPlatformTimerCommand, StudioGuiPlatformTimerExecutor,
+    StudioGuiPlatformTimerExecutorResponse, StudioGuiPlatformTimerFollowUpCommand,
+    StudioGuiShortcut, StudioGuiShortcutKey, StudioGuiShortcutModifier, StudioGuiWindowAreaId,
+    StudioGuiWindowDockPlacement, StudioGuiWindowDockRegion, StudioGuiWindowDropTargetQuery,
+    StudioGuiWindowLayoutModel, StudioGuiWindowLayoutMutation, StudioGuiWindowModel,
+    StudioGuiWindowPanelDisplayMode, StudioGuiWindowStackGroupLayout, StudioRuntimeConfig,
+    StudioWindowHostId, StudioWindowHostRole,
 };
 use rf_types::RfResult;
 use rf_ui::{
@@ -281,8 +280,11 @@ impl ReadyAppState {
         window: &StudioGuiWindowModel,
         hovered_drop_target: &mut bool,
     ) {
-        let left_width =
-            region_panel_width(&window.layout_state, ctx, StudioGuiWindowDockRegion::LeftSidebar);
+        let left_width = region_panel_width(
+            &window.layout_state,
+            ctx,
+            StudioGuiWindowDockRegion::LeftSidebar,
+        );
         let visible = window
             .layout_state
             .panels_in_dock_region(StudioGuiWindowDockRegion::LeftSidebar)
@@ -313,8 +315,11 @@ impl ReadyAppState {
         window: &StudioGuiWindowModel,
         hovered_drop_target: &mut bool,
     ) {
-        let right_width =
-            region_panel_width(&window.layout_state, ctx, StudioGuiWindowDockRegion::RightSidebar);
+        let right_width = region_panel_width(
+            &window.layout_state,
+            ctx,
+            StudioGuiWindowDockRegion::RightSidebar,
+        );
         let visible = window
             .layout_state
             .panels_in_dock_region(StudioGuiWindowDockRegion::RightSidebar)
@@ -467,14 +472,15 @@ impl ReadyAppState {
                                 } else {
                                     tab.title.to_string()
                                 };
-                                let tab_text =
-                                    if preview_anchor_matches_area(window.drop_preview.as_ref(), tab.area_id)
-                                    {
-                                        egui::RichText::new(tab_label)
-                                            .color(egui::Color32::from_rgb(56, 126, 214))
-                                    } else {
-                                        egui::RichText::new(tab_label)
-                                    };
+                                let tab_text = if preview_anchor_matches_area(
+                                    window.drop_preview.as_ref(),
+                                    tab.area_id,
+                                ) {
+                                    egui::RichText::new(tab_label)
+                                        .color(egui::Color32::from_rgb(56, 126, 214))
+                                } else {
+                                    egui::RichText::new(tab_label)
+                                };
                                 let response = ui.selectable_label(tab.active, tab_text);
                                 tab_rects.push((tab.area_id, response.rect));
                                 if response.clicked() {
@@ -544,14 +550,13 @@ impl ReadyAppState {
         let drag_session = self.active_drag_session_for_window(window_id);
         let preview_badges = preview_area_badges(window, area_id);
         let preview_transition = preview_area_transition(window, area_id);
-        let header_drop_query = drag_session.and_then(|drag_session| {
-            area_drop_target_query(&layout, drag_session, area_id)
-        });
+        let header_drop_query = drag_session
+            .and_then(|drag_session| area_drop_target_query(&layout, drag_session, area_id));
         let header_rect;
 
         if let Some(query) = header_drop_query {
-            let is_active_preview = self.active_drop_preview
-                == Some(ActiveDropPreview { window_id, query });
+            let is_active_preview =
+                self.active_drop_preview == Some(ActiveDropPreview { window_id, query });
             let header = egui::Frame::group(ui.style())
                 .fill(drop_lane_fill(is_active_preview))
                 .stroke(drop_lane_stroke(is_active_preview))
@@ -603,7 +608,7 @@ impl ReadyAppState {
             if let Some(preview_transition) = preview_transition.as_ref() {
                 ui.small(
                     egui::RichText::new(preview_transition)
-                    .color(egui::Color32::from_rgb(56, 126, 214)),
+                        .color(egui::Color32::from_rgb(56, 126, 214)),
                 );
             }
             header_rect = header.response.rect;
@@ -629,7 +634,11 @@ impl ReadyAppState {
                     if ui
                         .add_enabled(
                             !is_drag_source,
-                            egui::Button::new(if is_drag_source { "Dragging" } else { "Pick up" }),
+                            egui::Button::new(if is_drag_source {
+                                "Dragging"
+                            } else {
+                                "Pick up"
+                            }),
                         )
                         .clicked()
                     {
@@ -671,7 +680,10 @@ impl ReadyAppState {
                     self.render_move_menu(ui, window, area_id, panel.dock_region);
                     self.render_stack_menu(ui, window, area_id, panel.display_mode);
 
-                    if !matches!(panel.display_mode, StudioGuiWindowPanelDisplayMode::Standalone) {
+                    if !matches!(
+                        panel.display_mode,
+                        StudioGuiWindowPanelDisplayMode::Standalone
+                    ) {
                         if ui.button("Prev tab").clicked() {
                             self.dispatch_layout_mutation(
                                 window_id,
@@ -683,9 +695,7 @@ impl ReadyAppState {
                         if ui.button("Next tab").clicked() {
                             self.dispatch_layout_mutation(
                                 window_id,
-                                StudioGuiWindowLayoutMutation::ActivateNextPanelInStack {
-                                    area_id,
-                                },
+                                StudioGuiWindowLayoutMutation::ActivateNextPanelInStack { area_id },
                             );
                         }
                     }
@@ -698,7 +708,9 @@ impl ReadyAppState {
                 }
 
                 match area_id {
-                    StudioGuiWindowAreaId::Commands => self.render_commands_area(ui, window, area_id),
+                    StudioGuiWindowAreaId::Commands => {
+                        self.render_commands_area(ui, window, area_id)
+                    }
                     StudioGuiWindowAreaId::Canvas => self.render_canvas_area(ui, window, area_id),
                     StudioGuiWindowAreaId::Runtime => self.render_runtime_area(ui, window, area_id),
                 }
@@ -719,14 +731,14 @@ impl ReadyAppState {
                 area_label(area_id)
             ))
             .show(ui, |ui| {
-            for section in &window.commands.sections {
-                ui.label(egui::RichText::new(section.title).strong());
-                for command in &section.commands {
-                    self.render_command_entry(ui, command);
+                for section in &window.commands.sections {
+                    ui.label(egui::RichText::new(section.title).strong());
+                    for command in &section.commands {
+                        self.render_command_entry(ui, command);
+                    }
+                    ui.add_space(6.0);
                 }
-                ui.add_space(6.0);
-            }
-        });
+            });
     }
 
     fn render_command_entry(&mut self, ui: &mut egui::Ui, command: &StudioGuiCommandEntry) {
@@ -789,27 +801,27 @@ impl ReadyAppState {
                 area_label(area_id)
             ))
             .show(ui, |ui| {
-            for suggestion in &widget.view().suggestions {
-                let frame = egui::Frame::group(ui.style());
-                frame.show(ui, |ui| {
-                    ui.horizontal_wrapped(|ui| {
-                        let focus = if suggestion.is_focused {
-                            "Focused"
-                        } else {
-                            "Suggestion"
-                        };
-                        ui.label(egui::RichText::new(focus).strong());
-                        ui.label(format!("{:.0}%", suggestion.confidence * 100.0));
-                        ui.label(format!("source={}", suggestion.source_label));
-                        ui.label(format!("status={}", suggestion.status_label));
+                for suggestion in &widget.view().suggestions {
+                    let frame = egui::Frame::group(ui.style());
+                    frame.show(ui, |ui| {
+                        ui.horizontal_wrapped(|ui| {
+                            let focus = if suggestion.is_focused {
+                                "Focused"
+                            } else {
+                                "Suggestion"
+                            };
+                            ui.label(egui::RichText::new(focus).strong());
+                            ui.label(format!("{:.0}%", suggestion.confidence * 100.0));
+                            ui.label(format!("source={}", suggestion.source_label));
+                            ui.label(format!("status={}", suggestion.status_label));
+                        });
+                        ui.label(format!("target={}", suggestion.target_unit_id));
+                        ui.label(&suggestion.reason);
+                        ui.small(format!("id={}", suggestion.id));
                     });
-                    ui.label(format!("target={}", suggestion.target_unit_id));
-                    ui.label(&suggestion.reason);
-                    ui.small(format!("id={}", suggestion.id));
-                });
-                ui.add_space(6.0);
-            }
-        });
+                    ui.add_space(6.0);
+                }
+            });
     }
 
     fn render_runtime_area(
@@ -835,11 +847,7 @@ impl ReadyAppState {
                     run_status_color(run_panel_view.status_label),
                 );
                 if let Some(pending) = run_panel_view.pending_label {
-                    render_status_chip(
-                        ui,
-                        pending,
-                        egui::Color32::from_rgb(160, 120, 40),
-                    );
+                    render_status_chip(ui, pending, egui::Color32::from_rgb(160, 120, 40));
                 }
             });
             ui.add_space(4.0);
@@ -921,8 +929,14 @@ impl ReadyAppState {
                 });
                 ui.add_space(4.0);
                 ui.horizontal_wrapped(|ui| {
-                    ui.small(format!("Allowed packages: {}", entitlement.allowed_package_count));
-                    ui.small(format!("Cached manifests: {}", entitlement.package_manifest_count));
+                    ui.small(format!(
+                        "Allowed packages: {}",
+                        entitlement.allowed_package_count
+                    ));
+                    ui.small(format!(
+                        "Cached manifests: {}",
+                        entitlement.package_manifest_count
+                    ));
                     if let Some(user) = entitlement.current_user_label.as_deref() {
                         ui.small(format!("User: {user}"));
                     }
@@ -931,7 +945,10 @@ impl ReadyAppState {
                     ui.small(format!("Authority: {authority_url}"));
                 }
                 if let Some(last_synced_at) = entitlement.last_synced_at {
-                    ui.small(format!("Last synced: {}", format_system_time(last_synced_at)));
+                    ui.small(format!(
+                        "Last synced: {}",
+                        format_system_time(last_synced_at)
+                    ));
                 }
                 if let Some(offline_lease_expires_at) = entitlement.offline_lease_expires_at {
                     ui.small(format!(
@@ -951,26 +968,36 @@ impl ReadyAppState {
                 ui.add_space(6.0);
                 ui.horizontal_wrapped(|ui| {
                     let primary = &entitlement.primary_action;
-                    if ui
-                        .add_enabled(
+                    ui.vertical(|ui| {
+                        let response = ui.add_enabled(
                             primary.enabled,
-                            egui::Button::new(primary.label).fill(
-                                egui::Color32::from_rgb(230, 239, 252),
-                            ),
-                        )
-                        .clicked()
-                    {
-                        self.dispatch_event(StudioGuiEvent::EntitlementPrimaryActionRequested);
-                    }
-                    for action in &entitlement.secondary_actions {
-                        if ui
-                            .add_enabled(action.enabled, egui::Button::new(action.label))
-                            .clicked()
-                        {
-                            self.dispatch_event(StudioGuiEvent::EntitlementActionRequested {
-                                action_id: action.id,
-                            });
+                            egui::Button::new(primary.label)
+                                .fill(egui::Color32::from_rgb(230, 239, 252)),
+                        );
+                        let response = response.on_hover_text(primary.detail);
+                        if response.clicked() {
+                            self.dispatch_event(StudioGuiEvent::EntitlementPrimaryActionRequested);
                         }
+                        ui.small(
+                            egui::RichText::new(primary.detail)
+                                .color(egui::Color32::from_rgb(92, 104, 117)),
+                        );
+                    });
+                    for action in &entitlement.secondary_actions {
+                        ui.vertical(|ui| {
+                            let response =
+                                ui.add_enabled(action.enabled, egui::Button::new(action.label));
+                            let response = response.on_hover_text(action.detail);
+                            if response.clicked() {
+                                self.dispatch_event(StudioGuiEvent::EntitlementActionRequested {
+                                    action_id: action.id,
+                                });
+                            }
+                            ui.small(
+                                egui::RichText::new(action.detail)
+                                    .color(egui::Color32::from_rgb(92, 104, 117)),
+                            );
+                        });
                     }
                 });
             });
@@ -1136,10 +1163,7 @@ impl ReadyAppState {
                     continue;
                 }
 
-                if ui
-                    .button(format!("With {}", target_panel.title))
-                    .clicked()
-                {
+                if ui.button(format!("With {}", target_panel.title)).clicked() {
                     self.dispatch_layout_mutation(
                         window.layout_state.scope.window_id,
                         StudioGuiWindowLayoutMutation::StackPanelWith {
@@ -1233,7 +1257,8 @@ impl ReadyAppState {
         label: &str,
         hovered_drop_target: &mut bool,
     ) {
-        let is_active_preview = self.active_drop_preview == Some(ActiveDropPreview { window_id, query });
+        let is_active_preview =
+            self.active_drop_preview == Some(ActiveDropPreview { window_id, query });
         let lane = egui::Frame::group(ui.style())
             .fill(drop_lane_fill(is_active_preview))
             .stroke(drop_lane_stroke(is_active_preview))
@@ -1327,7 +1352,10 @@ impl ReadyAppState {
         let anchor_pos = self
             .drop_preview_overlay_anchor
             .map(|anchor| preferred_overlay_pos(anchor.rect))
-            .or_else(|| ctx.pointer_latest_pos().map(|pointer| pointer + egui::vec2(18.0, 18.0)));
+            .or_else(|| {
+                ctx.pointer_latest_pos()
+                    .map(|pointer| pointer + egui::vec2(18.0, 18.0))
+            });
         let Some(anchor_pos) = anchor_pos else {
             return;
         };
@@ -1377,10 +1405,12 @@ impl ReadyAppState {
     }
 
     fn dispatch_event(&mut self, event: StudioGuiEvent) {
-        match self.platform_host.dispatch_event_and_execute_platform_timer(
-            event.clone(),
-            &mut self.platform_timer_executor,
-        ) {
+        match self
+            .platform_host
+            .dispatch_event_and_execute_platform_timer(
+                event.clone(),
+                &mut self.platform_timer_executor,
+            ) {
             Ok(executed) => {
                 self.record_dispatch(&executed.dispatch);
                 self.last_error = None;
@@ -1475,9 +1505,7 @@ impl ReadyAppState {
             | StudioGuiDriverOutcome::HostCommand(
                 radishflow_studio::StudioGuiHostCommandOutcome::WindowDropTargetPreviewCleared(_),
             ) => return,
-            StudioGuiDriverOutcome::HostCommand(outcome) => {
-                format_host_command_summary(outcome)
-            }
+            StudioGuiDriverOutcome::HostCommand(outcome) => format_host_command_summary(outcome),
             StudioGuiDriverOutcome::CanvasInteraction(result) => {
                 format!("canvas {}", format!("{:?}", result.action).to_lowercase())
             }
@@ -1728,7 +1756,9 @@ fn area_drop_target_query(
 
     let drag_panel = layout.panel(drag_session.area_id)?;
     let target_panel = layout.panel(area_id)?;
-    let placement = StudioGuiWindowDockPlacement::Before { anchor_area_id: area_id };
+    let placement = StudioGuiWindowDockPlacement::Before {
+        anchor_area_id: area_id,
+    };
 
     if drag_panel.dock_region == target_panel.dock_region
         && drag_panel.stack_group == target_panel.stack_group
@@ -1840,10 +1870,7 @@ fn paint_stack_tab_insert_marker(
     let bottom = tab_strip_rect.bottom() - 2.0;
     let painter = ui.painter();
     painter.line_segment([egui::pos2(x, top), egui::pos2(x, bottom)], stroke);
-    painter.line_segment(
-        [egui::pos2(x - 5.0, top), egui::pos2(x + 5.0, top)],
-        stroke,
-    );
+    painter.line_segment([egui::pos2(x - 5.0, top), egui::pos2(x + 5.0, top)], stroke);
     painter.line_segment(
         [egui::pos2(x - 5.0, bottom), egui::pos2(x + 5.0, bottom)],
         stroke,
@@ -1934,7 +1961,10 @@ fn preview_area_transition(
         ));
     }
     if current_panel.order != preview_panel.order {
-        parts.push(format!("order {} -> {}", current_panel.order, preview_panel.order));
+        parts.push(format!(
+            "order {} -> {}",
+            current_panel.order, preview_panel.order
+        ));
     }
     if parts.is_empty() {
         parts.push("active stack focus will change".to_string());
@@ -2043,11 +2073,7 @@ fn clamp_overlay_pos(ctx: &egui::Context, pos: egui::Pos2, size: egui::Vec2) -> 
     clamp_overlay_pos_to_rect(ctx.screen_rect(), pos, size)
 }
 
-fn clamp_overlay_pos_to_rect(
-    screen: egui::Rect,
-    pos: egui::Pos2,
-    size: egui::Vec2,
-) -> egui::Pos2 {
+fn clamp_overlay_pos_to_rect(screen: egui::Rect, pos: egui::Pos2, size: egui::Vec2) -> egui::Pos2 {
     let max_x = (screen.right() - size.x - 8.0).max(screen.left() + 8.0);
     let max_y = (screen.bottom() - size.y - 8.0).max(screen.top() + 8.0);
     egui::pos2(
@@ -2056,11 +2082,7 @@ fn clamp_overlay_pos_to_rect(
     )
 }
 
-fn paint_preview_hint_pill_centered(
-    painter: &egui::Painter,
-    center: egui::Pos2,
-    text: &str,
-) {
+fn paint_preview_hint_pill_centered(painter: &egui::Painter, center: egui::Pos2, text: &str) {
     let font_id = egui::FontId::proportional(11.0);
     let text_color = egui::Color32::from_rgb(33, 82, 153);
     let galley = painter.layout_no_wrap(text.to_owned(), font_id.clone(), text_color);
@@ -2070,19 +2092,12 @@ fn paint_preview_hint_pill_centered(
     painter.galley(rect.center() - galley.size() * 0.5, galley, text_color);
 }
 
-fn paint_preview_hint_pill_top_right(
-    painter: &egui::Painter,
-    right_top: egui::Pos2,
-    text: &str,
-) {
+fn paint_preview_hint_pill_top_right(painter: &egui::Painter, right_top: egui::Pos2, text: &str) {
     let font_id = egui::FontId::proportional(11.0);
     let text_color = egui::Color32::from_rgb(33, 82, 153);
     let galley = painter.layout_no_wrap(text.to_owned(), font_id.clone(), text_color);
     let size = galley.size() + egui::vec2(14.0, 8.0);
-    let rect = egui::Rect::from_min_size(
-        egui::pos2(right_top.x - size.x, right_top.y),
-        size,
-    );
+    let rect = egui::Rect::from_min_size(egui::pos2(right_top.x - size.x, right_top.y), size);
     painter.rect_filled(rect, 8.0, egui::Color32::from_rgb(232, 242, 255));
     painter.galley(rect.center() - galley.size() * 0.5, galley, text_color);
 }
@@ -2098,9 +2113,7 @@ fn format_compact_drop_preview_status(
     )
 }
 
-fn preview_insert_hint(
-    preview: &radishflow_studio::StudioGuiWindowDropPreviewModel,
-) -> String {
+fn preview_insert_hint(preview: &radishflow_studio::StudioGuiWindowDropPreviewModel) -> String {
     let (previous, next) = preview_insert_neighbors(preview);
 
     match (previous, next) {
@@ -2111,19 +2124,13 @@ fn preview_insert_hint(
             preview.overlay.target_group_index + 1,
             dock_region_label(preview.overlay.target_dock_region)
         ),
-        (None, None) => format!(
-            "insert at tab {}",
-            preview.overlay.target_tab_index + 1
-        ),
+        (None, None) => format!("insert at tab {}", preview.overlay.target_tab_index + 1),
     }
 }
 
 fn preview_insert_neighbors(
     preview: &radishflow_studio::StudioGuiWindowDropPreviewModel,
-) -> (
-    Option<StudioGuiWindowAreaId>,
-    Option<StudioGuiWindowAreaId>,
-) {
+) -> (Option<StudioGuiWindowAreaId>, Option<StudioGuiWindowAreaId>) {
     insert_neighbors_from_area_ids(
         &preview.overlay.target_stack_area_ids,
         preview.overlay.target_tab_index,
@@ -2133,10 +2140,7 @@ fn preview_insert_neighbors(
 fn insert_neighbors_from_area_ids(
     area_ids: &[StudioGuiWindowAreaId],
     target_tab_index: usize,
-) -> (
-    Option<StudioGuiWindowAreaId>,
-    Option<StudioGuiWindowAreaId>,
-) {
+) -> (Option<StudioGuiWindowAreaId>, Option<StudioGuiWindowAreaId>) {
     let drag_index = target_tab_index.min(area_ids.len().saturating_sub(1));
     let previous = drag_index
         .checked_sub(1)
@@ -2273,9 +2277,7 @@ fn format_shortcut(shortcut: &StudioGuiShortcut) -> String {
     parts.join("+")
 }
 
-fn format_host_command_summary(
-    outcome: &radishflow_studio::StudioGuiHostCommandOutcome,
-) -> String {
+fn format_host_command_summary(outcome: &radishflow_studio::StudioGuiHostCommandOutcome) -> String {
     match outcome {
         radishflow_studio::StudioGuiHostCommandOutcome::WindowOpened(opened) => format!(
             "window opened #{}/{}-{}",
@@ -2306,8 +2308,9 @@ fn format_host_command_summary(
                 ),
                 radishflow_studio::StudioGuiHostEntitlementDispatchResult::IgnoredDisabled {
                     action_id,
+                    detail,
                     ..
-                } => format!("entitlement disabled {:?}", action_id),
+                } => format!("entitlement disabled {:?}: {}", action_id, detail),
                 radishflow_studio::StudioGuiHostEntitlementDispatchResult::IgnoredMissing {
                     action_id,
                     ..
@@ -2383,7 +2386,10 @@ mod tests {
 
     #[test]
     fn insert_neighbors_from_area_ids_clamps_to_stack_end() {
-        let area_ids = [StudioGuiWindowAreaId::Commands, StudioGuiWindowAreaId::Canvas];
+        let area_ids = [
+            StudioGuiWindowAreaId::Commands,
+            StudioGuiWindowAreaId::Canvas,
+        ];
 
         let (previous, next) = insert_neighbors_from_area_ids(&area_ids, 8);
 
@@ -2525,17 +2531,19 @@ mod tests {
             .expect("expected timer trigger dispatch");
 
         let ignored = platform_host
-            .dispatch_native_timer_elapsed_by_native_id_and_execute_platform_timer(9999, &mut executor)
+            .dispatch_native_timer_elapsed_by_native_id_and_execute_platform_timer(
+                9999,
+                &mut executor,
+            )
             .expect("expected ignored callback");
 
         assert!(matches!(
             ignored,
             StudioGuiPlatformExecutedNativeTimerCallbackOutcome::IgnoredStaleNativeTimer {
                 native_timer_id: 9999
+            } | StudioGuiPlatformExecutedNativeTimerCallbackOutcome::IgnoredUnknownNativeTimer {
+                native_timer_id: 9999
             }
-                | StudioGuiPlatformExecutedNativeTimerCallbackOutcome::IgnoredUnknownNativeTimer {
-                    native_timer_id: 9999
-                }
         ));
     }
 }

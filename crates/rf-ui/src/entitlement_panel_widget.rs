@@ -11,6 +11,7 @@ pub enum EntitlementPanelWidgetEvent {
     },
     Disabled {
         action_id: EntitlementActionId,
+        detail: &'static str,
     },
     Missing {
         action_id: EntitlementActionId,
@@ -56,7 +57,10 @@ impl EntitlementPanelWidgetModel {
                     action_id: id,
                     intent,
                 },
-                None => EntitlementPanelWidgetEvent::Disabled { action_id: id },
+                None => EntitlementPanelWidgetEvent::Disabled {
+                    action_id: id,
+                    detail: action.detail,
+                },
             },
             None => EntitlementPanelWidgetEvent::Missing { action_id: id },
         }

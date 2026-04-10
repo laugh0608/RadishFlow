@@ -118,6 +118,7 @@ pub enum StudioGuiHostEntitlementDispatchResult {
     },
     IgnoredDisabled {
         action_id: EntitlementActionId,
+        detail: String,
         target_window_id: Option<StudioWindowHostId>,
     },
     IgnoredMissing {
@@ -131,9 +132,7 @@ impl StudioGuiHostEntitlementDispatchResult {
         match self {
             Self::Executed { action_id, .. }
             | Self::IgnoredDisabled { action_id, .. }
-            | Self::IgnoredMissing { action_id, .. } => {
-                *action_id
-            }
+            | Self::IgnoredMissing { action_id, .. } => *action_id,
         }
     }
 
@@ -633,20 +632,25 @@ impl StudioGuiHost {
 
         match widget.activate_primary() {
             EntitlementPanelWidgetEvent::Dispatched { action_id, .. } => {
-                match self.controller.dispatch_foreground_entitlement_primary_action()? {
+                match self
+                    .controller
+                    .dispatch_foreground_entitlement_primary_action()?
+                {
                     Some(dispatch) => Ok(StudioGuiHostEntitlementDispatchResult::Executed {
                         action_id,
                         dispatch: dispatch_from_controller(dispatch, self.canvas_state()),
                     }),
                     None => Ok(StudioGuiHostEntitlementDispatchResult::IgnoredDisabled {
                         action_id,
+                        detail: foreground_entitlement_dispatch_detail(target_window_id),
                         target_window_id,
                     }),
                 }
             }
-            EntitlementPanelWidgetEvent::Disabled { action_id } => {
+            EntitlementPanelWidgetEvent::Disabled { action_id, detail } => {
                 Ok(StudioGuiHostEntitlementDispatchResult::IgnoredDisabled {
                     action_id,
+                    detail: detail.to_string(),
                     target_window_id,
                 })
             }
@@ -683,13 +687,15 @@ impl StudioGuiHost {
                     }),
                     None => Ok(StudioGuiHostEntitlementDispatchResult::IgnoredDisabled {
                         action_id,
+                        detail: foreground_entitlement_dispatch_detail(target_window_id),
                         target_window_id,
                     }),
                 }
             }
-            EntitlementPanelWidgetEvent::Disabled { action_id } => {
+            EntitlementPanelWidgetEvent::Disabled { action_id, detail } => {
                 Ok(StudioGuiHostEntitlementDispatchResult::IgnoredDisabled {
                     action_id,
+                    detail: detail.to_string(),
                     target_window_id,
                 })
             }
@@ -861,6 +867,15 @@ fn dispatch_from_controller(
     }
 }
 
+fn foreground_entitlement_dispatch_detail(target_window_id: Option<StudioWindowHostId>) -> String {
+    match target_window_id {
+        Some(window_id) => {
+            format!("Foreground entitlement action was not accepted by window #{window_id}")
+        }
+        None => "Open a window before dispatching entitlement actions".to_string(),
+    }
+}
+
 fn global_event_from_controller(
     result: StudioAppHostGlobalEventResult,
     canvas: StudioGuiCanvasState,
@@ -919,11 +934,11 @@ mod tests {
     use crate::{
         StudioGuiHost, StudioGuiHostCommand, StudioGuiHostCommandOutcome,
         StudioGuiHostEntitlementDispatchResult, StudioGuiHostLifecycleEvent,
-        StudioGuiHostUiCommandDispatchResult,
-        StudioGuiNativeTimerEffects, StudioGuiWindowAreaId, StudioGuiWindowDockPlacement,
-        StudioGuiWindowDockRegion, StudioGuiWindowDropTargetQuery, StudioGuiWindowLayoutMutation,
-        StudioRuntimeConfig, StudioRuntimeEntitlementPreflight, StudioRuntimeEntitlementSeed,
-        StudioRuntimeEntitlementSessionEvent, StudioRuntimeTrigger, StudioWindowHostRetirement,
+        StudioGuiHostUiCommandDispatchResult, StudioGuiNativeTimerEffects, StudioGuiWindowAreaId,
+        StudioGuiWindowDockPlacement, StudioGuiWindowDockRegion, StudioGuiWindowDropTargetQuery,
+        StudioGuiWindowLayoutMutation, StudioRuntimeConfig, StudioRuntimeEntitlementPreflight,
+        StudioRuntimeEntitlementSeed, StudioRuntimeEntitlementSessionEvent, StudioRuntimeTrigger,
+        StudioWindowHostRetirement,
     };
 
     fn lease_expiring_config() -> StudioRuntimeConfig {
@@ -1411,9 +1426,7 @@ mod tests {
                 assert_eq!(action_id, EntitlementActionId::RefreshOfflineLease);
                 assert_eq!(dispatch.target_window_id, opened.registration.window_id);
             }
-            other => panic!(
-                "expected executed entitlement primary action outcome, got {other:?}"
-            ),
+            other => panic!("expected executed entitlement primary action outcome, got {other:?}"),
         }
     }
 
@@ -1456,10 +1469,15 @@ mod tests {
             StudioGuiHostCommandOutcome::EntitlementActionDispatched(
                 StudioGuiHostEntitlementDispatchResult::IgnoredDisabled {
                     action_id,
+                    detail,
                     target_window_id,
                 },
             ) => {
                 assert_eq!(action_id, EntitlementActionId::SyncEntitlement);
+                assert_eq!(
+                    detail,
+                    "Open a window before dispatching entitlement actions"
+                );
                 assert_eq!(target_window_id, None);
             }
             other => panic!("expected ignored entitlement action outcome, got {other:?}"),

@@ -24,7 +24,10 @@ impl EntitlementPanelTextView {
             lines.push(format!("Authority: {authority_url}"));
         }
         if let Some(last_synced_at) = view.last_synced_at {
-            lines.push(format!("Last synced: {}", format_system_time(last_synced_at)));
+            lines.push(format!(
+                "Last synced: {}",
+                format_system_time(last_synced_at)
+            ));
         }
         if let Some(offline_lease_expires_at) = view.offline_lease_expires_at {
             lines.push(format!(
@@ -49,13 +52,17 @@ impl EntitlementPanelTextView {
             view.primary_action.label,
             enabled_label(view.primary_action.enabled)
         ));
+        lines.push(format!("Primary detail: {}", view.primary_action.detail));
         if !view.secondary_actions.is_empty() {
             lines.push("Secondary actions:".to_string());
-            lines.extend(
-                view.secondary_actions.iter().map(|action| {
-                    format!("  - {} [{}]", action.label, enabled_label(action.enabled))
-                }),
-            );
+            lines.extend(view.secondary_actions.iter().map(|action| {
+                format!(
+                    "  - {} [{}] | {}",
+                    action.label,
+                    enabled_label(action.enabled),
+                    action.detail
+                )
+            }));
         }
 
         Self {

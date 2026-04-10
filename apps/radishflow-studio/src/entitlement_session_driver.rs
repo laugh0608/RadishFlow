@@ -636,6 +636,7 @@ mod tests {
             outcome.dispatch,
             EntitlementPanelWidgetDispatchOutcome::IgnoredDisabled {
                 action_id: EntitlementActionId::SyncEntitlement,
+                detail: "Sign in before syncing entitlement",
             }
         );
         assert_eq!(

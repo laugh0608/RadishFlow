@@ -1204,7 +1204,23 @@ mod tests {
             EntitlementActionId::RefreshOfflineLease
         );
         assert_eq!(widget.view().primary_action.label, "Refresh offline lease");
+        assert_eq!(
+            widget.view().primary_action.detail,
+            "Refresh the current offline lease from the control plane"
+        );
         assert!(widget.view().primary_action.enabled);
+        assert!(widget.text().lines.iter().any(|line| {
+            line == "Primary detail: Refresh the current offline lease from the control plane"
+        }));
+        assert!(
+            widget
+                .text()
+                .lines
+                .iter()
+                .any(|line| {
+                    line == "  - Sync entitlement [enabled] | Sync entitlement and package manifests from the control plane"
+                })
+        );
     }
 
     #[test]
@@ -1217,14 +1233,23 @@ mod tests {
         assert_eq!(
             widget.activate(EntitlementActionId::SyncEntitlement),
             EntitlementPanelWidgetEvent::Disabled {
-                action_id: EntitlementActionId::SyncEntitlement
+                action_id: EntitlementActionId::SyncEntitlement,
+                detail: "Sign in before syncing entitlement",
             }
         );
         assert_eq!(
             widget.activate_primary(),
             EntitlementPanelWidgetEvent::Disabled {
-                action_id: EntitlementActionId::SyncEntitlement
+                action_id: EntitlementActionId::SyncEntitlement,
+                detail: "Sign in before syncing entitlement",
             }
+        );
+        assert!(
+            widget
+                .text()
+                .lines
+                .iter()
+                .any(|line| line == "Primary detail: Sign in before syncing entitlement")
         );
     }
 
