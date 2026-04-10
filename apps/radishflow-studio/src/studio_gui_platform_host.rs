@@ -510,6 +510,7 @@ pub struct StudioGuiPlatformHost {
     platform_timer_driver: StudioGuiPlatformTimerDriverState,
     platform_notice: Option<RunPanelNotice>,
     platform_log_entries: Vec<AppLogEntry>,
+    gui_activity_lines: Vec<String>,
     current_schedule: Option<StudioGuiNativeTimerSchedule>,
 }
 
@@ -520,6 +521,7 @@ impl StudioGuiPlatformHost {
             platform_timer_driver: StudioGuiPlatformTimerDriverState::default(),
             platform_notice: None,
             platform_log_entries: Vec::new(),
+            gui_activity_lines: Vec::new(),
             current_schedule: None,
         })
     }
@@ -550,8 +552,16 @@ impl StudioGuiPlatformHost {
         &self.platform_log_entries
     }
 
+    pub fn gui_activity_lines(&self) -> &[String] {
+        &self.gui_activity_lines
+    }
+
     pub fn platform_notice(&self) -> Option<&RunPanelNotice> {
         self.platform_notice.as_ref()
+    }
+
+    pub fn record_activity_line(&mut self, line: impl Into<String>) {
+        self.push_activity_line(line.into());
     }
 
     pub fn apply_platform_timer_request(
@@ -636,6 +646,7 @@ impl StudioGuiPlatformHost {
     ) -> RfResult<StudioGuiPlatformExecutedDispatch> {
         let timer_execution =
             self.execute_platform_timer_request(dispatch.native_timer_request.as_ref(), executor)?;
+        self.record_timer_execution_activity(&timer_execution);
         let snapshot = self.snapshot();
         let window_id = dispatch.window.layout_state.scope.window_id;
         dispatch.snapshot = snapshot.clone();
@@ -848,25 +859,39 @@ impl StudioGuiPlatformHost {
         &mut self,
         native_timer_id: StudioGuiPlatformNativeTimerId,
     ) -> RfResult<StudioGuiPlatformNativeTimerCallbackOutcome> {
-        match self.platform_timer_driver.resolve_callback(native_timer_id) {
+        let outcome = match self.platform_timer_driver.resolve_callback(native_timer_id) {
             StudioGuiPlatformTimerCallbackResolution::Dispatch { schedule } => self
                 .dispatch_native_timer_elapsed(schedule.window_id, schedule.handle_id)
-                .map(StudioGuiPlatformNativeTimerCallbackOutcome::Dispatched),
+                .map(StudioGuiPlatformNativeTimerCallbackOutcome::Dispatched)?,
             StudioGuiPlatformTimerCallbackResolution::IgnoredUnknownNativeTimer {
                 native_timer_id,
-            } => Ok(
+            } => {
                 StudioGuiPlatformNativeTimerCallbackOutcome::IgnoredUnknownNativeTimer {
                     native_timer_id,
-                },
-            ),
+                }
+            }
             StudioGuiPlatformTimerCallbackResolution::IgnoredStaleNativeTimer {
                 native_timer_id,
-            } => Ok(
+            } => {
                 StudioGuiPlatformNativeTimerCallbackOutcome::IgnoredStaleNativeTimer {
                     native_timer_id,
-                },
-            ),
+                }
+            }
+        };
+        match &outcome {
+            StudioGuiPlatformNativeTimerCallbackOutcome::IgnoredUnknownNativeTimer {
+                native_timer_id,
+            } => self.push_activity_line(format!(
+                "timer::ignored unknown native_timer_id={native_timer_id}"
+            )),
+            StudioGuiPlatformNativeTimerCallbackOutcome::IgnoredStaleNativeTimer {
+                native_timer_id,
+            } => self.push_activity_line(format!(
+                "timer::ignored stale native_timer_id={native_timer_id}"
+            )),
+            StudioGuiPlatformNativeTimerCallbackOutcome::Dispatched(_) => {}
         }
+        Ok(outcome)
     }
 
     pub fn dispatch_native_timer_elapsed_by_native_id_and_execute_platform_timer(
@@ -936,11 +961,13 @@ impl StudioGuiPlatformHost {
         let dispatch = self.driver.dispatch_event(event)?;
         let next_schedule = self.driver.native_timer_runtime().next_schedule();
         self.current_schedule = next_schedule.clone();
-        Ok(platform_dispatch_from_driver(
+        let dispatch = platform_dispatch_from_driver(
             self,
             dispatch,
             plan_platform_timer_request(previous_schedule, next_schedule),
-        ))
+        );
+        self.record_dispatch_activity(&dispatch);
+        Ok(dispatch)
     }
 
     pub fn dispatch_event_and_execute_platform_timer(
@@ -1046,6 +1073,8 @@ fn platform_dispatch_from_driver(
 impl StudioGuiPlatformHost {
     fn enrich_snapshot(&self, mut snapshot: StudioGuiSnapshot) -> StudioGuiSnapshot {
         snapshot.runtime.platform_notice = self.platform_notice.clone();
+        snapshot.runtime.platform_timer_lines = self.platform_timer_lines();
+        snapshot.runtime.gui_activity_lines = self.gui_activity_lines.clone();
         snapshot
             .runtime
             .log_entries
@@ -1055,12 +1084,287 @@ impl StudioGuiPlatformHost {
 
     fn enrich_window(&self, mut window: StudioGuiWindowModel) -> StudioGuiWindowModel {
         window.runtime.platform_notice = self.platform_notice.clone();
+        window.runtime.platform_timer_lines = self.platform_timer_lines();
+        window.runtime.gui_activity_lines = self.gui_activity_lines.clone();
         window
             .runtime
             .log_entries
             .extend(self.platform_log_entries.iter().cloned());
         window.runtime.latest_log_entry = window.runtime.log_entries.last().cloned();
         window
+    }
+
+    fn platform_timer_lines(&self) -> Vec<String> {
+        vec![
+            format!(
+                "Current schedule: {}",
+                self.current_schedule
+                    .as_ref()
+                    .map(format_native_timer_schedule)
+                    .unwrap_or_else(|| "None".to_string())
+            ),
+            format!(
+                "Native binding: {}",
+                self.current_platform_timer_binding()
+                    .map(format_platform_timer_binding)
+                    .unwrap_or_else(|| "None".to_string())
+            ),
+        ]
+    }
+
+    fn push_activity_line(&mut self, line: String) {
+        const MAX_ENTRIES: usize = 64;
+        self.gui_activity_lines.push(line);
+        if self.gui_activity_lines.len() > MAX_ENTRIES {
+            let drain_count = self.gui_activity_lines.len() - MAX_ENTRIES;
+            self.gui_activity_lines.drain(0..drain_count);
+        }
+    }
+
+    fn record_dispatch_activity(&mut self, dispatch: &StudioGuiPlatformDispatch) {
+        self.push_activity_line(format_platform_dispatch_activity(dispatch));
+    }
+
+    fn record_timer_execution_activity(
+        &mut self,
+        execution: &StudioGuiPlatformTimerExecutionOutcome,
+    ) {
+        match execution {
+            StudioGuiPlatformTimerExecutionOutcome::NoCommand => {}
+            StudioGuiPlatformTimerExecutionOutcome::Executed {
+                command,
+                executor_response,
+                host_outcome,
+                follow_up_command,
+            } => {
+                let mut line = format!(
+                    "platform timer {} -> {} -> {}",
+                    format_platform_timer_command(command),
+                    format_platform_timer_executor_response(executor_response),
+                    format_platform_timer_host_outcome(host_outcome)
+                );
+                if let Some(follow_up_command) = follow_up_command.as_ref() {
+                    line.push_str(&format!(
+                        " | follow-up {}",
+                        format_platform_timer_follow_up_command(follow_up_command)
+                    ));
+                }
+                self.push_activity_line(line);
+            }
+        }
+    }
+}
+
+fn format_platform_dispatch_activity(dispatch: &StudioGuiPlatformDispatch) -> String {
+    let summary = match &dispatch.outcome {
+        StudioGuiDriverOutcome::HostCommand(crate::StudioGuiHostCommandOutcome::WindowOpened(
+            opened,
+        )) => format!(
+            "window opened #{}/{}-{}",
+            opened.registration.window_id,
+            match opened.registration.role {
+                crate::StudioWindowHostRole::EntitlementTimerOwner => "owner",
+                crate::StudioWindowHostRole::Observer => "observer",
+            },
+            opened.registration.layout_slot
+        ),
+        StudioGuiDriverOutcome::HostCommand(crate::StudioGuiHostCommandOutcome::WindowDispatched(
+            dispatch,
+        )) => format!("window dispatch #{}", dispatch.target_window_id),
+        StudioGuiDriverOutcome::HostCommand(
+            crate::StudioGuiHostCommandOutcome::LifecycleDispatched(lifecycle),
+        ) => format!("lifecycle {:?}", lifecycle.event),
+        StudioGuiDriverOutcome::HostCommand(
+            crate::StudioGuiHostCommandOutcome::UiCommandDispatched(result),
+        ) => match result {
+            crate::StudioGuiHostUiCommandDispatchResult::Executed(dispatch) => {
+                format!("command dispatch #{}", dispatch.target_window_id)
+            }
+            crate::StudioGuiHostUiCommandDispatchResult::IgnoredDisabled {
+                command_id,
+                detail,
+                ..
+            } => format!("command disabled {command_id}: {detail}"),
+            crate::StudioGuiHostUiCommandDispatchResult::IgnoredMissing { command_id, .. } => {
+                format!("command missing {command_id}")
+            }
+        },
+        StudioGuiDriverOutcome::HostCommand(
+            crate::StudioGuiHostCommandOutcome::EntitlementActionDispatched(result),
+        ) => match result {
+            crate::StudioGuiHostEntitlementDispatchResult::Executed {
+                action_id,
+                dispatch,
+            } => format!("entitlement action {:?} -> #{}", action_id, dispatch.target_window_id),
+            crate::StudioGuiHostEntitlementDispatchResult::IgnoredDisabled {
+                action_id,
+                detail,
+                ..
+            } => format!("entitlement disabled {:?}: {}", action_id, detail),
+            crate::StudioGuiHostEntitlementDispatchResult::IgnoredMissing { action_id, .. } => {
+                format!("entitlement missing {:?}", action_id)
+            }
+        },
+        StudioGuiDriverOutcome::HostCommand(
+            crate::StudioGuiHostCommandOutcome::WindowDropTargetQueried(result),
+        ) => format!("drop query {:?}", result.query),
+        StudioGuiDriverOutcome::HostCommand(
+            crate::StudioGuiHostCommandOutcome::WindowDropTargetApplied(result),
+        ) => format!("drop apply {:?}", result.query),
+        StudioGuiDriverOutcome::HostCommand(
+            crate::StudioGuiHostCommandOutcome::WindowClosed(result),
+        ) => match result.close.as_ref() {
+            Some(close) => format!("window closed #{}", close.window_id),
+            None => "window close ignored".to_string(),
+        },
+        StudioGuiDriverOutcome::HostCommand(
+            crate::StudioGuiHostCommandOutcome::WindowDropTargetPreviewUpdated(_),
+        )
+        | StudioGuiDriverOutcome::HostCommand(
+            crate::StudioGuiHostCommandOutcome::WindowDropTargetPreviewCleared(_),
+        ) => "drop preview".to_string(),
+        StudioGuiDriverOutcome::CanvasInteraction(result) => {
+            format!("canvas {}", format!("{:?}", result.action).to_lowercase())
+        }
+        StudioGuiDriverOutcome::WindowLayoutUpdated(result) => format!("layout {:?}", result.mutation),
+        StudioGuiDriverOutcome::IgnoredNativeTimerElapsed { handle_id, .. } => {
+            format!("timer ignored handle={handle_id}")
+        }
+        StudioGuiDriverOutcome::IgnoredShortcut { shortcut, reason } => format!(
+            "shortcut ignored {:?} {:?}",
+            shortcut, reason
+        ),
+    };
+
+    match dispatch.native_timer_request.as_ref() {
+        Some(request) => format!("{summary} | request {}", format_platform_timer_request(request)),
+        None => summary,
+    }
+}
+
+fn format_native_timer_schedule(schedule: &StudioGuiNativeTimerSchedule) -> String {
+    format!(
+        "window={:?} handle={} effect={} due_at={:?} reason={:?}",
+        schedule.window_id,
+        schedule.handle_id,
+        schedule.slot.effect_id,
+        schedule.slot.timer.due_at,
+        schedule.slot.timer.reason
+    )
+}
+
+fn format_platform_timer_binding(binding: &StudioGuiPlatformTimerBinding) -> String {
+    format!(
+        "native_timer_id={} {}",
+        binding.native_timer_id,
+        format_native_timer_schedule(&binding.schedule)
+    )
+}
+
+fn format_platform_timer_request(request: &StudioGuiPlatformTimerRequest) -> String {
+    match request {
+        StudioGuiPlatformTimerRequest::Arm { schedule } => {
+            format!("arm {}", format_native_timer_schedule(schedule))
+        }
+        StudioGuiPlatformTimerRequest::Rearm { previous, schedule } => format!(
+            "rearm {} -> {}",
+            format_native_timer_schedule(previous),
+            format_native_timer_schedule(schedule)
+        ),
+        StudioGuiPlatformTimerRequest::Clear { previous } => {
+            format!("clear {}", format_native_timer_schedule(previous))
+        }
+    }
+}
+
+fn format_platform_timer_command(command: &StudioGuiPlatformTimerCommand) -> String {
+    match command {
+        StudioGuiPlatformTimerCommand::Arm { schedule } => {
+            format!("arm {}", format_native_timer_schedule(schedule))
+        }
+        StudioGuiPlatformTimerCommand::Rearm { previous, schedule } => format!(
+            "rearm {} -> {}",
+            previous
+                .as_ref()
+                .map(format_platform_timer_binding)
+                .unwrap_or_else(|| "None".to_string()),
+            format_native_timer_schedule(schedule)
+        ),
+        StudioGuiPlatformTimerCommand::Clear { previous } => match previous {
+            Some(previous) => format!("clear {}", format_platform_timer_binding(previous)),
+            None => "clear none".to_string(),
+        },
+    }
+}
+
+fn format_platform_timer_executor_response(
+    response: &StudioGuiPlatformTimerExecutorResponse,
+) -> String {
+    match response {
+        StudioGuiPlatformTimerExecutorResponse::Started { native_timer_id } => {
+            format!("started native_timer_id={native_timer_id}")
+        }
+        StudioGuiPlatformTimerExecutorResponse::StartFailed { detail } => {
+            format!("start_failed {detail}")
+        }
+        StudioGuiPlatformTimerExecutorResponse::Cleared => "cleared".to_string(),
+    }
+}
+
+fn format_platform_timer_host_outcome(outcome: &StudioGuiPlatformTimerHostOutcome) -> String {
+    match outcome {
+        StudioGuiPlatformTimerHostOutcome::Started(outcome) => {
+            format!("host_started {}", format_platform_timer_started_outcome(outcome))
+        }
+        StudioGuiPlatformTimerHostOutcome::StartFailed(outcome) => {
+            format!(
+                "host_start_failed {}",
+                format_platform_timer_start_failed_outcome(outcome)
+            )
+        }
+        StudioGuiPlatformTimerHostOutcome::Cleared => "host_cleared".to_string(),
+    }
+}
+
+fn format_platform_timer_started_outcome(
+    outcome: &StudioGuiPlatformTimerStartedOutcome,
+) -> String {
+    match outcome {
+        StudioGuiPlatformTimerStartedOutcome::Applied(result) => {
+            format!("applied {:?}", result.status)
+        }
+        StudioGuiPlatformTimerStartedOutcome::IgnoredMissingPendingSchedule { ack, .. } => {
+            format!("ignored_missing {:?}", ack.status)
+        }
+        StudioGuiPlatformTimerStartedOutcome::IgnoredStalePendingSchedule { ack, .. } => {
+            format!("ignored_stale {:?}", ack.status)
+        }
+    }
+}
+
+fn format_platform_timer_start_failed_outcome(
+    outcome: &StudioGuiPlatformTimerStartFailedOutcome,
+) -> String {
+    match outcome {
+        StudioGuiPlatformTimerStartFailedOutcome::Applied(result) => {
+            format!("applied {:?}", result.status)
+        }
+        StudioGuiPlatformTimerStartFailedOutcome::IgnoredMissingPendingSchedule { failure } => {
+            format!("ignored_missing {:?}", failure.status)
+        }
+        StudioGuiPlatformTimerStartFailedOutcome::IgnoredStalePendingSchedule { failure } => {
+            format!("ignored_stale {:?}", failure.status)
+        }
+    }
+}
+
+fn format_platform_timer_follow_up_command(
+    command: &StudioGuiPlatformTimerFollowUpCommand,
+) -> String {
+    match command {
+        StudioGuiPlatformTimerFollowUpCommand::ClearNativeTimer { native_timer_id } => {
+            format!("clear native_timer_id={native_timer_id}")
+        }
     }
 }
 
@@ -1271,6 +1575,24 @@ mod tests {
                 .message
                 .contains("simulated native timer creation failure")
         );
+        assert_eq!(snapshot.runtime.platform_timer_lines.len(), 2);
+        assert!(
+            snapshot.runtime.platform_timer_lines[0].contains("Current schedule: window=Some")
+        );
+        assert!(
+            snapshot
+                .runtime
+                .gui_activity_lines
+                .iter()
+                .any(|line| line.contains("window opened"))
+        );
+        assert!(
+            snapshot
+                .runtime
+                .gui_activity_lines
+                .iter()
+                .any(|line| line.contains("request arm"))
+        );
         let latest = snapshot
             .runtime
             .log_entries
@@ -1286,12 +1608,21 @@ mod tests {
             .as_ref()
             .expect("expected platform notice in window model");
         assert_eq!(window_notice.title, "Platform timer unavailable");
+        assert_eq!(
+            window.runtime.platform_timer_lines,
+            snapshot.runtime.platform_timer_lines
+        );
+        assert_eq!(
+            window.runtime.gui_activity_lines,
+            snapshot.runtime.gui_activity_lines
+        );
         let layout = window.layout();
         let runtime_panel = layout
             .panel(crate::StudioGuiWindowAreaId::Runtime)
             .expect("expected runtime panel");
         assert_eq!(runtime_panel.badge.as_deref(), Some("!"));
         assert!(runtime_panel.summary.contains("platform=Error"));
+        assert!(runtime_panel.summary.contains("activity="));
         assert!(runtime_panel.summary.contains("Platform timer unavailable"));
         let latest_window_log = window
             .runtime

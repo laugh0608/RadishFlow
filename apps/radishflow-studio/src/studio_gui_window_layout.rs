@@ -1020,18 +1020,22 @@ impl StudioGuiWindowLayoutModel {
                     .platform_notice
                     .as_ref()
                     .map(|_| "!".to_string())
-                    .or_else(|| Some(runtime.log_entries.len().to_string())),
+                    .or_else(|| Some(runtime.gui_activity_lines.len().to_string())),
                 {
                     let mut summary = format!(
-                        "status={:?}, logs={}, entitlement={}",
+                        "status={:?}, logs={}, activity={}, entitlement={}",
                         runtime.control_state.run_status,
                         runtime.log_entries.len(),
+                        runtime.gui_activity_lines.len(),
                         if runtime.entitlement_host.is_some() {
                             "attached"
                         } else {
                             "none"
                         }
                     );
+                    if runtime.platform_timer_lines.iter().any(|line| !line.ends_with("None")) {
+                        summary.push_str(", platform-timer=active");
+                    }
                     if let Some(notice) = runtime.platform_notice.as_ref() {
                         summary.push_str(&format!(
                             ", platform={:?}: {}",

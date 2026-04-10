@@ -12,6 +12,8 @@ pub struct StudioGuiRuntimeSnapshot {
     pub run_panel: rf_ui::RunPanelWidgetModel,
     pub entitlement_host: Option<EntitlementSessionHostRuntimeOutput>,
     pub platform_notice: Option<rf_ui::RunPanelNotice>,
+    pub platform_timer_lines: Vec<String>,
+    pub gui_activity_lines: Vec<String>,
     pub log_entries: Vec<rf_ui::AppLogEntry>,
 }
 

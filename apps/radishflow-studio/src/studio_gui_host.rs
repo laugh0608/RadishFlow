@@ -293,6 +293,8 @@ impl StudioGuiHost {
                 run_panel: self.controller.run_panel_widget(),
                 entitlement_host: self.controller.entitlement_host_output(),
                 platform_notice: None,
+                platform_timer_lines: Vec::new(),
+                gui_activity_lines: Vec::new(),
                 log_entries: self.controller.log_entries(),
             },
             self.window_drop_previews.clone(),
