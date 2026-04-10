@@ -1,7 +1,10 @@
 use std::collections::BTreeMap;
 
 use rf_types::{RfError, RfResult};
-use rf_ui::{AppLogEntry, CanvasSuggestion, CanvasSuggestionId};
+use rf_ui::{
+    AppLogEntry, CanvasSuggestion, CanvasSuggestionId, EntitlementActionId,
+    EntitlementPanelWidgetEvent,
+};
 
 use crate::studio_gui_layout_store::{
     load_persisted_window_layouts, save_persisted_window_layouts,
@@ -107,6 +110,46 @@ pub struct StudioGuiHostCanvasInteractionResult {
 
 pub type StudioGuiHostCanvasSuggestionResult = StudioGuiHostCanvasInteractionResult;
 
+#[derive(Debug, Clone, PartialEq)]
+pub enum StudioGuiHostEntitlementDispatchResult {
+    Executed {
+        action_id: EntitlementActionId,
+        dispatch: StudioGuiHostDispatch,
+    },
+    IgnoredDisabled {
+        action_id: EntitlementActionId,
+        target_window_id: Option<StudioWindowHostId>,
+    },
+    IgnoredMissing {
+        action_id: EntitlementActionId,
+        target_window_id: Option<StudioWindowHostId>,
+    },
+}
+
+impl StudioGuiHostEntitlementDispatchResult {
+    pub fn action_id(&self) -> EntitlementActionId {
+        match self {
+            Self::Executed { action_id, .. }
+            | Self::IgnoredDisabled { action_id, .. }
+            | Self::IgnoredMissing { action_id, .. } => {
+                *action_id
+            }
+        }
+    }
+
+    pub fn target_window_id(&self) -> Option<StudioWindowHostId> {
+        match self {
+            Self::Executed { dispatch, .. } => Some(dispatch.target_window_id),
+            Self::IgnoredDisabled {
+                target_window_id, ..
+            }
+            | Self::IgnoredMissing {
+                target_window_id, ..
+            } => *target_window_id,
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StudioGuiHostWindowLayoutUpdateResult {
     pub target_window_id: Option<StudioWindowHostId>,
@@ -161,6 +204,10 @@ pub enum StudioGuiHostCommand {
     DispatchUiCommand {
         command_id: String,
     },
+    DispatchForegroundEntitlementPrimaryAction,
+    DispatchForegroundEntitlementAction {
+        action_id: EntitlementActionId,
+    },
     QueryWindowDropTarget {
         window_id: Option<StudioWindowHostId>,
         query: StudioGuiWindowDropTargetQuery,
@@ -187,6 +234,7 @@ pub enum StudioGuiHostCommandOutcome {
     WindowDispatched(StudioGuiHostDispatch),
     LifecycleDispatched(StudioGuiHostLifecycleDispatch),
     UiCommandDispatched(StudioGuiHostUiCommandDispatchResult),
+    EntitlementActionDispatched(StudioGuiHostEntitlementDispatchResult),
     WindowDropTargetQueried(StudioGuiHostWindowDropTargetQueryResult),
     WindowDropTargetPreviewUpdated(StudioGuiHostWindowDropTargetQueryResult),
     WindowDropTargetPreviewCleared(StudioGuiHostWindowDropPreviewClearResult),
@@ -454,6 +502,12 @@ impl StudioGuiHost {
             StudioGuiHostCommand::DispatchUiCommand { command_id } => self
                 .dispatch_ui_command(&command_id)
                 .map(StudioGuiHostCommandOutcome::UiCommandDispatched),
+            StudioGuiHostCommand::DispatchForegroundEntitlementPrimaryAction => self
+                .dispatch_foreground_entitlement_primary_action()
+                .map(StudioGuiHostCommandOutcome::EntitlementActionDispatched),
+            StudioGuiHostCommand::DispatchForegroundEntitlementAction { action_id } => self
+                .dispatch_foreground_entitlement_action(action_id)
+                .map(StudioGuiHostCommandOutcome::EntitlementActionDispatched),
             StudioGuiHostCommand::QueryWindowDropTarget { window_id, query } => self
                 .query_window_drop_target(window_id, query)
                 .map(StudioGuiHostCommandOutcome::WindowDropTargetQueried),
@@ -566,6 +620,88 @@ impl StudioGuiHost {
         }
     }
 
+    pub fn dispatch_foreground_entitlement_primary_action(
+        &mut self,
+    ) -> RfResult<StudioGuiHostEntitlementDispatchResult> {
+        let target_window_id = self.preferred_target_window_id();
+        let Some(widget) = self.current_entitlement_widget() else {
+            return Ok(StudioGuiHostEntitlementDispatchResult::IgnoredMissing {
+                action_id: EntitlementActionId::SyncEntitlement,
+                target_window_id,
+            });
+        };
+
+        match widget.activate_primary() {
+            EntitlementPanelWidgetEvent::Dispatched { action_id, .. } => {
+                match self.controller.dispatch_foreground_entitlement_primary_action()? {
+                    Some(dispatch) => Ok(StudioGuiHostEntitlementDispatchResult::Executed {
+                        action_id,
+                        dispatch: dispatch_from_controller(dispatch, self.canvas_state()),
+                    }),
+                    None => Ok(StudioGuiHostEntitlementDispatchResult::IgnoredDisabled {
+                        action_id,
+                        target_window_id,
+                    }),
+                }
+            }
+            EntitlementPanelWidgetEvent::Disabled { action_id } => {
+                Ok(StudioGuiHostEntitlementDispatchResult::IgnoredDisabled {
+                    action_id,
+                    target_window_id,
+                })
+            }
+            EntitlementPanelWidgetEvent::Missing { action_id } => {
+                Ok(StudioGuiHostEntitlementDispatchResult::IgnoredMissing {
+                    action_id,
+                    target_window_id,
+                })
+            }
+        }
+    }
+
+    pub fn dispatch_foreground_entitlement_action(
+        &mut self,
+        action_id: EntitlementActionId,
+    ) -> RfResult<StudioGuiHostEntitlementDispatchResult> {
+        let target_window_id = self.preferred_target_window_id();
+        let Some(widget) = self.current_entitlement_widget() else {
+            return Ok(StudioGuiHostEntitlementDispatchResult::IgnoredMissing {
+                action_id,
+                target_window_id,
+            });
+        };
+
+        match widget.activate(action_id) {
+            EntitlementPanelWidgetEvent::Dispatched { action_id, .. } => {
+                match self
+                    .controller
+                    .dispatch_foreground_entitlement_action(action_id)?
+                {
+                    Some(dispatch) => Ok(StudioGuiHostEntitlementDispatchResult::Executed {
+                        action_id,
+                        dispatch: dispatch_from_controller(dispatch, self.canvas_state()),
+                    }),
+                    None => Ok(StudioGuiHostEntitlementDispatchResult::IgnoredDisabled {
+                        action_id,
+                        target_window_id,
+                    }),
+                }
+            }
+            EntitlementPanelWidgetEvent::Disabled { action_id } => {
+                Ok(StudioGuiHostEntitlementDispatchResult::IgnoredDisabled {
+                    action_id,
+                    target_window_id,
+                })
+            }
+            EntitlementPanelWidgetEvent::Missing { action_id } => {
+                Ok(StudioGuiHostEntitlementDispatchResult::IgnoredMissing {
+                    action_id,
+                    target_window_id,
+                })
+            }
+        }
+    }
+
     pub fn dispatch_global_event(
         &mut self,
         event: StudioAppWindowHostGlobalEvent,
@@ -636,6 +772,18 @@ impl StudioGuiHost {
             })
             .map(|persisted| derived.merged_with_persisted(persisted))
             .unwrap_or(derived)
+    }
+
+    fn preferred_target_window_id(&self) -> Option<StudioWindowHostId> {
+        self.state()
+            .foreground_window_id
+            .or_else(|| self.state().registered_windows.first().copied())
+    }
+
+    fn current_entitlement_widget(&self) -> Option<rf_ui::EntitlementPanelWidgetModel> {
+        self.controller
+            .entitlement_host_output()
+            .map(|output| output.snapshot.panel.widget)
     }
 
     fn validate_registered_window_for_layout(
@@ -766,11 +914,12 @@ mod tests {
     use rf_store::{
         read_studio_layout_file, studio_layout_path_for_project, write_studio_layout_file,
     };
-    use rf_ui::RunPanelActionId;
+    use rf_ui::{EntitlementActionId, RunPanelActionId};
 
     use crate::{
         StudioGuiHost, StudioGuiHostCommand, StudioGuiHostCommandOutcome,
-        StudioGuiHostLifecycleEvent, StudioGuiHostUiCommandDispatchResult,
+        StudioGuiHostEntitlementDispatchResult, StudioGuiHostLifecycleEvent,
+        StudioGuiHostUiCommandDispatchResult,
         StudioGuiNativeTimerEffects, StudioGuiWindowAreaId, StudioGuiWindowDockPlacement,
         StudioGuiWindowDockRegion, StudioGuiWindowDropTargetQuery, StudioGuiWindowLayoutMutation,
         StudioRuntimeConfig, StudioRuntimeEntitlementPreflight, StudioRuntimeEntitlementSeed,
@@ -1241,6 +1390,80 @@ mod tests {
         }
 
         let _ = fs::remove_file(project_path);
+    }
+
+    #[test]
+    fn gui_host_dispatches_foreground_entitlement_primary_action() {
+        let mut gui_host = StudioGuiHost::new(&lease_expiring_config()).expect("expected gui host");
+        let opened = gui_host.open_window().expect("expected window open");
+
+        let dispatch = gui_host
+            .execute_command(StudioGuiHostCommand::DispatchForegroundEntitlementPrimaryAction)
+            .expect("expected entitlement primary action dispatch");
+
+        match dispatch {
+            StudioGuiHostCommandOutcome::EntitlementActionDispatched(
+                StudioGuiHostEntitlementDispatchResult::Executed {
+                    action_id,
+                    dispatch,
+                },
+            ) => {
+                assert_eq!(action_id, EntitlementActionId::RefreshOfflineLease);
+                assert_eq!(dispatch.target_window_id, opened.registration.window_id);
+            }
+            other => panic!(
+                "expected executed entitlement primary action outcome, got {other:?}"
+            ),
+        }
+    }
+
+    #[test]
+    fn gui_host_dispatches_foreground_entitlement_secondary_action() {
+        let mut gui_host = StudioGuiHost::new(&lease_expiring_config()).expect("expected gui host");
+        let opened = gui_host.open_window().expect("expected window open");
+
+        let dispatch = gui_host
+            .execute_command(StudioGuiHostCommand::DispatchForegroundEntitlementAction {
+                action_id: EntitlementActionId::SyncEntitlement,
+            })
+            .expect("expected entitlement action dispatch");
+
+        match dispatch {
+            StudioGuiHostCommandOutcome::EntitlementActionDispatched(
+                StudioGuiHostEntitlementDispatchResult::Executed {
+                    action_id,
+                    dispatch,
+                },
+            ) => {
+                assert_eq!(action_id, EntitlementActionId::SyncEntitlement);
+                assert_eq!(dispatch.target_window_id, opened.registration.window_id);
+            }
+            other => panic!("expected executed entitlement action outcome, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn gui_host_stably_ignores_entitlement_action_without_registered_window() {
+        let mut gui_host = StudioGuiHost::new(&lease_expiring_config()).expect("expected gui host");
+
+        let dispatch = gui_host
+            .execute_command(StudioGuiHostCommand::DispatchForegroundEntitlementAction {
+                action_id: EntitlementActionId::SyncEntitlement,
+            })
+            .expect("expected entitlement action result");
+
+        match dispatch {
+            StudioGuiHostCommandOutcome::EntitlementActionDispatched(
+                StudioGuiHostEntitlementDispatchResult::IgnoredDisabled {
+                    action_id,
+                    target_window_id,
+                },
+            ) => {
+                assert_eq!(action_id, EntitlementActionId::SyncEntitlement);
+                assert_eq!(target_window_id, None);
+            }
+            other => panic!("expected ignored entitlement action outcome, got {other:?}"),
+        }
     }
 
     #[test]

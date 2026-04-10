@@ -1,15 +1,21 @@
+use std::collections::BTreeSet;
 use std::time::{Duration, SystemTime};
 
 use eframe::egui;
 use radishflow_studio::{
-    StudioAppHostWindowState, StudioGuiCommandEntry, StudioGuiDriver, StudioGuiDriverDispatch,
-    StudioGuiDriverOutcome, StudioGuiEvent, StudioGuiFocusContext, StudioGuiShortcut,
-    StudioGuiShortcutKey, StudioGuiShortcutModifier, StudioGuiWindowAreaId,
-    StudioGuiWindowDockPlacement, StudioGuiWindowDockRegion, StudioGuiWindowDropTargetQuery,
-    StudioGuiWindowLayoutModel, StudioGuiWindowLayoutMutation, StudioGuiWindowModel,
-    StudioGuiWindowPanelDisplayMode, StudioGuiWindowStackGroupLayout, StudioRuntimeConfig,
-    StudioWindowHostId, StudioWindowHostRole,
+    StudioAppHostWindowState, StudioGuiCommandEntry, StudioGuiDriverOutcome, StudioGuiEvent,
+    StudioGuiFocusContext, StudioGuiPlatformDispatch,
+    StudioGuiPlatformExecutedNativeTimerCallbackOutcome, StudioGuiPlatformHost,
+    StudioGuiPlatformNativeTimerId, StudioGuiPlatformTimerCommand,
+    StudioGuiPlatformTimerExecutor, StudioGuiPlatformTimerExecutorResponse,
+    StudioGuiPlatformTimerFollowUpCommand, StudioGuiShortcut, StudioGuiShortcutKey,
+    StudioGuiShortcutModifier, StudioGuiWindowAreaId, StudioGuiWindowDockPlacement,
+    StudioGuiWindowDockRegion, StudioGuiWindowDropTargetQuery, StudioGuiWindowLayoutModel,
+    StudioGuiWindowLayoutMutation, StudioGuiWindowModel, StudioGuiWindowPanelDisplayMode,
+    StudioGuiWindowStackGroupLayout, StudioRuntimeConfig, StudioWindowHostId,
+    StudioWindowHostRole,
 };
+use rf_types::RfResult;
 use rf_ui::{
     RunPanelIntent, RunPanelNoticeLevel, RunPanelRecoveryWidgetEvent, RunPanelWidgetEvent,
     SimulationMode,
@@ -34,7 +40,8 @@ enum AppState {
 }
 
 struct ReadyAppState {
-    driver: StudioGuiDriver,
+    platform_host: StudioGuiPlatformHost,
+    platform_timer_executor: EguiPlatformTimerExecutor,
     activity_log: Vec<String>,
     last_error: Option<String>,
     drag_session: Option<PanelDragSession>,
@@ -60,13 +67,20 @@ struct DropPreviewOverlayAnchor {
     priority: u8,
 }
 
+#[derive(Debug, Default)]
+struct EguiPlatformTimerExecutor {
+    next_native_timer_id: StudioGuiPlatformNativeTimerId,
+    active_native_timer_ids: BTreeSet<StudioGuiPlatformNativeTimerId>,
+}
+
 impl RadishFlowStudioApp {
     fn new() -> Self {
         let config = StudioRuntimeConfig::default();
-        let state = match StudioGuiDriver::new(&config) {
-            Ok(driver) => {
+        let state = match StudioGuiPlatformHost::new(&config) {
+            Ok(platform_host) => {
                 let mut ready = ReadyAppState {
-                    driver,
+                    platform_host,
+                    platform_timer_executor: EguiPlatformTimerExecutor::default(),
                     activity_log: Vec::new(),
                     last_error: None,
                     drag_session: None,
@@ -108,7 +122,7 @@ impl ReadyAppState {
         self.drain_due_timers(ctx);
         self.drop_preview_overlay_anchor = None;
 
-        let snapshot = self.driver.snapshot();
+        let snapshot = self.platform_host.snapshot();
         let window = snapshot.window_model();
         let mut hovered_drop_target = false;
         self.render_top_bar(
@@ -601,86 +615,110 @@ impl ReadyAppState {
             );
         }
         paint_area_preview_overlay(ui, header_rect, window, area_id);
-        ui.horizontal_wrapped(|ui| {
-            let is_drag_source = drag_session
-                .map(|drag_session| drag_session.area_id == area_id)
-                .unwrap_or(false);
-            if ui
-                .add_enabled(
-                    !is_drag_source,
-                    egui::Button::new(if is_drag_source { "Dragging" } else { "Pick up" }),
-                )
-                .clicked()
-            {
-                self.begin_drag_session(window_id, area_id);
-            }
+        ui.push_id(
+            format!(
+                "panel:{}:{}",
+                window.layout_state.scope.layout_key,
+                area_label(area_id)
+            ),
+            |ui| {
+                ui.horizontal_wrapped(|ui| {
+                    let is_drag_source = drag_session
+                        .map(|drag_session| drag_session.area_id == area_id)
+                        .unwrap_or(false);
+                    if ui
+                        .add_enabled(
+                            !is_drag_source,
+                            egui::Button::new(if is_drag_source { "Dragging" } else { "Pick up" }),
+                        )
+                        .clicked()
+                    {
+                        self.begin_drag_session(window_id, area_id);
+                    }
 
-            if ui.button("Center").clicked() {
-                self.dispatch_layout_mutation(
-                    window_id,
-                    StudioGuiWindowLayoutMutation::SetCenterArea { area_id },
-                );
-            }
+                    if ui.button("Center").clicked() {
+                        self.dispatch_layout_mutation(
+                            window_id,
+                            StudioGuiWindowLayoutMutation::SetCenterArea { area_id },
+                        );
+                    }
 
-            let collapse_label = if panel.collapsed {
-                "Expand"
-            } else {
-                "Collapse"
-            };
-            if ui.button(collapse_label).clicked() {
-                self.dispatch_layout_mutation(
-                    window_id,
-                    StudioGuiWindowLayoutMutation::SetPanelCollapsed {
-                        area_id,
-                        collapsed: !panel.collapsed,
-                    },
-                );
-            }
+                    let collapse_label = if panel.collapsed {
+                        "Expand"
+                    } else {
+                        "Collapse"
+                    };
+                    if ui.button(collapse_label).clicked() {
+                        self.dispatch_layout_mutation(
+                            window_id,
+                            StudioGuiWindowLayoutMutation::SetPanelCollapsed {
+                                area_id,
+                                collapsed: !panel.collapsed,
+                            },
+                        );
+                    }
 
-            if ui.button("Hide").clicked() {
-                self.dispatch_layout_mutation(
-                    window_id,
-                    StudioGuiWindowLayoutMutation::SetPanelVisibility {
-                        area_id,
-                        visible: false,
-                    },
-                );
-            }
+                    if ui.button("Hide").clicked() {
+                        self.dispatch_layout_mutation(
+                            window_id,
+                            StudioGuiWindowLayoutMutation::SetPanelVisibility {
+                                area_id,
+                                visible: false,
+                            },
+                        );
+                    }
 
-            self.render_move_menu(ui, window, area_id, panel.dock_region);
-            self.render_stack_menu(ui, window, area_id, panel.display_mode);
+                    self.render_move_menu(ui, window, area_id, panel.dock_region);
+                    self.render_stack_menu(ui, window, area_id, panel.display_mode);
 
-            if !matches!(panel.display_mode, StudioGuiWindowPanelDisplayMode::Standalone) {
-                if ui.button("Prev tab").clicked() {
-                    self.dispatch_layout_mutation(
-                        window_id,
-                        StudioGuiWindowLayoutMutation::ActivatePreviousPanelInStack { area_id },
-                    );
+                    if !matches!(panel.display_mode, StudioGuiWindowPanelDisplayMode::Standalone) {
+                        if ui.button("Prev tab").clicked() {
+                            self.dispatch_layout_mutation(
+                                window_id,
+                                StudioGuiWindowLayoutMutation::ActivatePreviousPanelInStack {
+                                    area_id,
+                                },
+                            );
+                        }
+                        if ui.button("Next tab").clicked() {
+                            self.dispatch_layout_mutation(
+                                window_id,
+                                StudioGuiWindowLayoutMutation::ActivateNextPanelInStack {
+                                    area_id,
+                                },
+                            );
+                        }
+                    }
+                });
+                ui.separator();
+
+                if panel.collapsed {
+                    ui.label("Panel is collapsed.");
+                    return;
                 }
-                if ui.button("Next tab").clicked() {
-                    self.dispatch_layout_mutation(
-                        window_id,
-                        StudioGuiWindowLayoutMutation::ActivateNextPanelInStack { area_id },
-                    );
+
+                match area_id {
+                    StudioGuiWindowAreaId::Commands => self.render_commands_area(ui, window, area_id),
+                    StudioGuiWindowAreaId::Canvas => self.render_canvas_area(ui, window, area_id),
+                    StudioGuiWindowAreaId::Runtime => self.render_runtime_area(ui, window, area_id),
                 }
-            }
-        });
-        ui.separator();
-
-        if panel.collapsed {
-            ui.label("Panel is collapsed.");
-            return;
-        }
-
-        match area_id {
-            StudioGuiWindowAreaId::Commands => self.render_commands_area(ui, window),
-            StudioGuiWindowAreaId::Canvas => self.render_canvas_area(ui, window),
-            StudioGuiWindowAreaId::Runtime => self.render_runtime_area(ui, window),
-        }
+            },
+        );
     }
 
-    fn render_commands_area(&mut self, ui: &mut egui::Ui, window: &StudioGuiWindowModel) {
-        egui::ScrollArea::vertical().show(ui, |ui| {
+    fn render_commands_area(
+        &mut self,
+        ui: &mut egui::Ui,
+        window: &StudioGuiWindowModel,
+        area_id: StudioGuiWindowAreaId,
+    ) {
+        egui::ScrollArea::vertical()
+            .id_salt(format!(
+                "scroll:{}:{}",
+                window.layout_state.scope.layout_key,
+                area_label(area_id)
+            ))
+            .show(ui, |ui| {
             for section in &window.commands.sections {
                 ui.label(egui::RichText::new(section.title).strong());
                 for command in &section.commands {
@@ -716,7 +754,12 @@ impl ReadyAppState {
         ui.add_space(4.0);
     }
 
-    fn render_canvas_area(&mut self, ui: &mut egui::Ui, window: &StudioGuiWindowModel) {
+    fn render_canvas_area(
+        &mut self,
+        ui: &mut egui::Ui,
+        window: &StudioGuiWindowModel,
+        area_id: StudioGuiWindowAreaId,
+    ) {
         let widget = &window.canvas.widget;
         ui.horizontal_wrapped(|ui| {
             for action in &widget.actions {
@@ -739,7 +782,13 @@ impl ReadyAppState {
             }
         });
         ui.separator();
-        egui::ScrollArea::vertical().show(ui, |ui| {
+        egui::ScrollArea::vertical()
+            .id_salt(format!(
+                "scroll:{}:{}:suggestions",
+                window.layout_state.scope.layout_key,
+                area_label(area_id)
+            ))
+            .show(ui, |ui| {
             for suggestion in &widget.view().suggestions {
                 let frame = egui::Frame::group(ui.style());
                 frame.show(ui, |ui| {
@@ -763,105 +812,223 @@ impl ReadyAppState {
         });
     }
 
-    fn render_runtime_area(&mut self, ui: &mut egui::Ui, window: &StudioGuiWindowModel) {
+    fn render_runtime_area(
+        &mut self,
+        ui: &mut egui::Ui,
+        window: &StudioGuiWindowModel,
+        area_id: StudioGuiWindowAreaId,
+    ) {
         let run_panel = &window.runtime.run_panel;
         let run_panel_view = run_panel.view();
 
-        ui.horizontal_wrapped(|ui| {
-            if ui
-                .add_enabled(
-                    run_panel.primary_action().enabled,
-                    egui::Button::new(run_panel.primary_action().label),
-                )
-                .clicked()
-            {
-                self.dispatch_run_panel_widget(run_panel.activate_primary());
-            }
-
-            for action in &run_panel_view.secondary_actions {
+        egui::Frame::group(ui.style()).show(ui, |ui| {
+            ui.horizontal_wrapped(|ui| {
+                ui.label(egui::RichText::new("Run").strong());
+                render_status_chip(
+                    ui,
+                    run_panel_view.mode_label,
+                    egui::Color32::from_rgb(86, 118, 168),
+                );
+                render_status_chip(
+                    ui,
+                    run_panel_view.status_label,
+                    run_status_color(run_panel_view.status_label),
+                );
+                if let Some(pending) = run_panel_view.pending_label {
+                    render_status_chip(
+                        ui,
+                        pending,
+                        egui::Color32::from_rgb(160, 120, 40),
+                    );
+                }
+            });
+            ui.add_space(4.0);
+            ui.horizontal_wrapped(|ui| {
                 if ui
-                    .add_enabled(action.enabled, egui::Button::new(action.label))
+                    .add_enabled(
+                        run_panel.primary_action().enabled,
+                        egui::Button::new(run_panel.primary_action().label),
+                    )
                     .clicked()
                 {
-                    self.dispatch_run_panel_widget(run_panel.activate(action.id));
+                    self.dispatch_run_panel_widget(run_panel.activate_primary());
+                }
+
+                for action in &run_panel_view.secondary_actions {
+                    if ui
+                        .add_enabled(action.enabled, egui::Button::new(action.label))
+                        .clicked()
+                    {
+                        self.dispatch_run_panel_widget(run_panel.activate(action.id));
+                    }
+                }
+            });
+            ui.add_space(6.0);
+            if let Some(summary) = run_panel_view.latest_snapshot_summary.as_ref() {
+                ui.label(summary);
+            } else {
+                ui.small("还没有求解快照。");
+            }
+            if let Some(snapshot_id) = run_panel_view.latest_snapshot_id.as_ref() {
+                ui.small(format!("Snapshot: {snapshot_id}"));
+            }
+            if let Some(message) = run_panel_view.latest_log_message.as_ref() {
+                ui.small(format!("Latest log: {message}"));
+            }
+            if let Some(notice) = run_panel_view.notice.as_ref() {
+                ui.add_space(6.0);
+                ui.colored_label(notice_color(notice.level), &notice.title);
+                ui.label(&notice.message);
+                if let Some(recovery_action) = notice.recovery_action.as_ref() {
+                    ui.small(recovery_action.detail);
+                    if ui.button(recovery_action.title).clicked() {
+                        match run_panel.activate_recovery_action() {
+                            RunPanelRecoveryWidgetEvent::Requested { .. } => {
+                                self.dispatch_event(StudioGuiEvent::RunPanelRecoveryRequested);
+                            }
+                            RunPanelRecoveryWidgetEvent::Missing => {}
+                        }
+                    }
                 }
             }
         });
 
-        ui.label(format!(
-            "mode={} status={}",
-            run_panel_view.mode_label, run_panel_view.status_label
-        ));
-        if let Some(pending) = run_panel_view.pending_label {
-            ui.label(format!("pending={pending}"));
-        }
-        if let Some(snapshot_id) = run_panel_view.latest_snapshot_id.as_ref() {
-            ui.label(format!("snapshot={snapshot_id}"));
-        }
-        if let Some(summary) = run_panel_view.latest_snapshot_summary.as_ref() {
-            ui.label(summary);
-        }
-        if let Some(message) = run_panel_view.latest_log_message.as_ref() {
-            ui.small(format!("latest log: {message}"));
-        }
-
-        if let Some(notice) = run_panel_view.notice.as_ref() {
-            ui.separator();
-            ui.colored_label(notice_color(notice.level), &notice.title);
-            ui.label(&notice.message);
-            if notice.recovery_action.is_some() {
-                let recovery_label = notice
-                    .recovery_action
-                    .as_ref()
-                    .map(|action| action.title)
-                    .unwrap_or("Recover");
-                if ui.button(recovery_label).clicked() {
-                    match run_panel.activate_recovery_action() {
-                        RunPanelRecoveryWidgetEvent::Requested { .. } => {
-                            self.dispatch_event(StudioGuiEvent::RunPanelRecoveryRequested);
-                        }
-                        RunPanelRecoveryWidgetEvent::Missing => {}
-                    }
-                }
-            }
-        }
-
         if let Some(platform_notice) = window.runtime.platform_notice.as_ref() {
-            ui.separator();
-            ui.colored_label(notice_color(platform_notice.level), &platform_notice.title);
-            ui.label(&platform_notice.message);
+            ui.add_space(8.0);
+            egui::Frame::group(ui.style()).show(ui, |ui| {
+                ui.label(egui::RichText::new("Platform notice").strong());
+                ui.colored_label(notice_color(platform_notice.level), &platform_notice.title);
+                ui.label(&platform_notice.message);
+            });
         }
 
         if let Some(entitlement_host) = window.runtime.entitlement_host.as_ref() {
-            ui.separator();
-            ui.label(egui::RichText::new("Entitlement").strong());
-            for line in &entitlement_host.presentation.panel.text.lines {
-                ui.small(line);
-            }
-            for line in &entitlement_host.presentation.text.lines {
-                ui.small(line);
-            }
-        }
-
-        ui.separator();
-        ui.label(egui::RichText::new("Runtime log").strong());
-        egui::ScrollArea::vertical()
-            .max_height(220.0)
-            .show(ui, |ui| {
-                for entry in window.runtime.log_entries.iter().rev().take(20) {
-                    ui.label(format!("{:?}: {}", entry.level, entry.message));
+            let entitlement = &entitlement_host.presentation.panel.view;
+            ui.add_space(8.0);
+            egui::Frame::group(ui.style()).show(ui, |ui| {
+                ui.horizontal_wrapped(|ui| {
+                    ui.label(egui::RichText::new("Entitlement").strong());
+                    render_status_chip(
+                        ui,
+                        entitlement.auth_label,
+                        egui::Color32::from_rgb(66, 118, 92),
+                    );
+                    render_status_chip(
+                        ui,
+                        entitlement.entitlement_label,
+                        entitlement_status_color(entitlement.entitlement_label),
+                    );
+                });
+                ui.add_space(4.0);
+                ui.horizontal_wrapped(|ui| {
+                    ui.small(format!("Allowed packages: {}", entitlement.allowed_package_count));
+                    ui.small(format!("Cached manifests: {}", entitlement.package_manifest_count));
+                    if let Some(user) = entitlement.current_user_label.as_deref() {
+                        ui.small(format!("User: {user}"));
+                    }
+                });
+                if let Some(authority_url) = entitlement.authority_url.as_deref() {
+                    ui.small(format!("Authority: {authority_url}"));
                 }
+                if let Some(last_synced_at) = entitlement.last_synced_at {
+                    ui.small(format!("Last synced: {}", format_system_time(last_synced_at)));
+                }
+                if let Some(offline_lease_expires_at) = entitlement.offline_lease_expires_at {
+                    ui.small(format!(
+                        "Offline lease expires: {}",
+                        format_system_time(offline_lease_expires_at)
+                    ));
+                }
+                if let Some(notice) = entitlement.notice.as_ref() {
+                    ui.add_space(4.0);
+                    ui.colored_label(notice_color_from_entitlement(notice.level), &notice.title);
+                    ui.label(&notice.message);
+                }
+                if let Some(last_error) = entitlement.last_error.as_ref() {
+                    ui.add_space(4.0);
+                    ui.colored_label(egui::Color32::from_rgb(180, 40, 40), last_error);
+                }
+                ui.add_space(6.0);
+                ui.horizontal_wrapped(|ui| {
+                    let primary = &entitlement.primary_action;
+                    if ui
+                        .add_enabled(
+                            primary.enabled,
+                            egui::Button::new(primary.label).fill(
+                                egui::Color32::from_rgb(230, 239, 252),
+                            ),
+                        )
+                        .clicked()
+                    {
+                        self.dispatch_event(StudioGuiEvent::EntitlementPrimaryActionRequested);
+                    }
+                    for action in &entitlement.secondary_actions {
+                        if ui
+                            .add_enabled(action.enabled, egui::Button::new(action.label))
+                            .clicked()
+                        {
+                            self.dispatch_event(StudioGuiEvent::EntitlementActionRequested {
+                                action_id: action.id,
+                            });
+                        }
+                    }
+                });
             });
 
-        ui.separator();
-        ui.label(egui::RichText::new("GUI activity").strong());
-        egui::ScrollArea::vertical()
-            .max_height(160.0)
-            .show(ui, |ui| {
-                for line in self.activity_log.iter().rev().take(16) {
+            ui.add_space(8.0);
+            egui::Frame::group(ui.style()).show(ui, |ui| {
+                ui.label(egui::RichText::new("Scheduler").strong());
+                for line in &entitlement_host.presentation.text.lines {
                     ui.small(line);
                 }
             });
+        }
+
+        ui.add_space(8.0);
+        egui::Frame::group(ui.style()).show(ui, |ui| {
+            ui.label(egui::RichText::new("Runtime log").strong());
+            egui::ScrollArea::vertical()
+                .id_salt(format!(
+                    "scroll:{}:{}:runtime-log",
+                    window.layout_state.scope.layout_key,
+                    area_label(area_id)
+                ))
+                .max_height(220.0)
+                .show(ui, |ui| {
+                    if window.runtime.log_entries.is_empty() {
+                        ui.small("暂无运行日志。");
+                    } else {
+                        for entry in window.runtime.log_entries.iter().rev().take(20) {
+                            ui.small(format!(
+                                "[{}] {}",
+                                log_level_label(entry.level),
+                                entry.message
+                            ));
+                        }
+                    }
+                });
+        });
+
+        ui.add_space(8.0);
+        egui::Frame::group(ui.style()).show(ui, |ui| {
+            ui.label(egui::RichText::new("GUI activity").strong());
+            egui::ScrollArea::vertical()
+                .id_salt(format!(
+                    "scroll:{}:{}:gui-activity",
+                    window.layout_state.scope.layout_key,
+                    area_label(area_id)
+                ))
+                .max_height(160.0)
+                .show(ui, |ui| {
+                    if self.activity_log.is_empty() {
+                        ui.small("暂无 GUI 宿主事件。");
+                    } else {
+                        for line in self.activity_log.iter().rev().take(16) {
+                            ui.small(line);
+                        }
+                    }
+                });
+        });
     }
 
     fn render_panel_toggle(
@@ -1210,9 +1377,12 @@ impl ReadyAppState {
     }
 
     fn dispatch_event(&mut self, event: StudioGuiEvent) {
-        match self.driver.dispatch_event(event.clone()) {
-            Ok(dispatch) => {
-                self.record_dispatch(&dispatch);
+        match self.platform_host.dispatch_event_and_execute_platform_timer(
+            event.clone(),
+            &mut self.platform_timer_executor,
+        ) {
+            Ok(executed) => {
+                self.record_dispatch(&executed.dispatch);
                 self.last_error = None;
             }
             Err(error) => {
@@ -1226,10 +1396,36 @@ impl ReadyAppState {
 
     fn drain_due_timers(&mut self, ctx: &egui::Context) {
         let now = SystemTime::now();
-        match self.driver.drain_due_native_timer_events(now) {
-            Ok(dispatches) => {
-                for dispatch in &dispatches {
-                    self.record_dispatch(dispatch);
+        match drain_due_platform_timer_callbacks(
+            &mut self.platform_host,
+            &mut self.platform_timer_executor,
+            now,
+        ) {
+            Ok(callbacks) => {
+                for callback in callbacks {
+                    match callback {
+                        StudioGuiPlatformExecutedNativeTimerCallbackOutcome::Dispatched(
+                            executed,
+                        ) => {
+                            self.record_dispatch(&executed.dispatch);
+                        }
+                        StudioGuiPlatformExecutedNativeTimerCallbackOutcome::IgnoredUnknownNativeTimer {
+                            native_timer_id,
+                        } => {
+                            self.activity_log.push(format!(
+                                "timer::ignored unknown native_timer_id={native_timer_id}"
+                            ));
+                            self.trim_activity_log();
+                        }
+                        StudioGuiPlatformExecutedNativeTimerCallbackOutcome::IgnoredStaleNativeTimer {
+                            native_timer_id,
+                        } => {
+                            self.activity_log.push(format!(
+                                "timer::ignored stale native_timer_id={native_timer_id}"
+                            ));
+                            self.trim_activity_log();
+                        }
+                    }
                 }
             }
             Err(error) => {
@@ -1241,7 +1437,7 @@ impl ReadyAppState {
             }
         }
 
-        if let Some(next_due_at) = self.driver.next_due_native_timer_at() {
+        if let Some(next_due_at) = self.platform_host.next_native_timer_due_at() {
             let delay = next_due_at.duration_since(now).unwrap_or(Duration::ZERO);
             ctx.request_repaint_after(delay);
         }
@@ -1263,7 +1459,7 @@ impl ReadyAppState {
     }
 
     fn focus_context(&self) -> StudioGuiFocusContext {
-        let window = self.driver.window_model();
+        let window = self.platform_host.snapshot().window_model();
         if window.canvas.focused_suggestion_id.is_some() {
             StudioGuiFocusContext::CanvasSuggestionFocused
         } else {
@@ -1271,7 +1467,7 @@ impl ReadyAppState {
         }
     }
 
-    fn record_dispatch(&mut self, dispatch: &StudioGuiDriverDispatch) {
+    fn record_dispatch(&mut self, dispatch: &StudioGuiPlatformDispatch) {
         let summary = match &dispatch.outcome {
             StudioGuiDriverOutcome::HostCommand(
                 radishflow_studio::StudioGuiHostCommandOutcome::WindowDropTargetPreviewUpdated(_),
@@ -1279,18 +1475,20 @@ impl ReadyAppState {
             | StudioGuiDriverOutcome::HostCommand(
                 radishflow_studio::StudioGuiHostCommandOutcome::WindowDropTargetPreviewCleared(_),
             ) => return,
-            StudioGuiDriverOutcome::HostCommand(outcome) => format!("host::{outcome:?}"),
+            StudioGuiDriverOutcome::HostCommand(outcome) => {
+                format_host_command_summary(outcome)
+            }
             StudioGuiDriverOutcome::CanvasInteraction(result) => {
-                format!("canvas::{:?}", result.action)
+                format!("canvas {}", format!("{:?}", result.action).to_lowercase())
             }
             StudioGuiDriverOutcome::WindowLayoutUpdated(result) => {
-                format!("layout::{:?}", result.mutation)
+                format!("layout {:?}", result.mutation)
             }
             StudioGuiDriverOutcome::IgnoredNativeTimerElapsed { handle_id, .. } => {
-                format!("timer::ignored handle={handle_id}")
+                format!("timer ignored handle={handle_id}")
             }
             StudioGuiDriverOutcome::IgnoredShortcut { shortcut, reason } => format!(
-                "shortcut::ignored {} {:?}",
+                "shortcut ignored {} {:?}",
                 format_shortcut(shortcut),
                 reason
             ),
@@ -1306,6 +1504,78 @@ impl ReadyAppState {
             self.activity_log.drain(0..drain_count);
         }
     }
+}
+
+impl StudioGuiPlatformTimerExecutor for EguiPlatformTimerExecutor {
+    fn execute_platform_timer_command(
+        &mut self,
+        command: &StudioGuiPlatformTimerCommand,
+    ) -> RfResult<StudioGuiPlatformTimerExecutorResponse> {
+        match command {
+            StudioGuiPlatformTimerCommand::Arm { .. } => {
+                Ok(StudioGuiPlatformTimerExecutorResponse::Started {
+                    native_timer_id: self.allocate_native_timer_id(),
+                })
+            }
+            StudioGuiPlatformTimerCommand::Rearm { previous, .. } => {
+                if let Some(previous) = previous.as_ref() {
+                    self.active_native_timer_ids
+                        .remove(&previous.native_timer_id);
+                }
+                Ok(StudioGuiPlatformTimerExecutorResponse::Started {
+                    native_timer_id: self.allocate_native_timer_id(),
+                })
+            }
+            StudioGuiPlatformTimerCommand::Clear { previous } => {
+                if let Some(previous) = previous.as_ref() {
+                    self.active_native_timer_ids
+                        .remove(&previous.native_timer_id);
+                }
+                Ok(StudioGuiPlatformTimerExecutorResponse::Cleared)
+            }
+        }
+    }
+
+    fn execute_platform_timer_follow_up_command(
+        &mut self,
+        command: &StudioGuiPlatformTimerFollowUpCommand,
+    ) -> RfResult<()> {
+        match command {
+            StudioGuiPlatformTimerFollowUpCommand::ClearNativeTimer { native_timer_id } => {
+                self.active_native_timer_ids.remove(native_timer_id);
+            }
+        }
+        Ok(())
+    }
+}
+
+impl EguiPlatformTimerExecutor {
+    fn allocate_native_timer_id(&mut self) -> StudioGuiPlatformNativeTimerId {
+        self.next_native_timer_id = self.next_native_timer_id.saturating_add(1).max(1);
+        let native_timer_id = self.next_native_timer_id;
+        self.active_native_timer_ids.insert(native_timer_id);
+        native_timer_id
+    }
+}
+
+fn drain_due_platform_timer_callbacks(
+    platform_host: &mut StudioGuiPlatformHost,
+    executor: &mut impl StudioGuiPlatformTimerExecutor,
+    now: SystemTime,
+) -> RfResult<Vec<StudioGuiPlatformExecutedNativeTimerCallbackOutcome>> {
+    let Some(binding) = platform_host.current_platform_timer_binding().cloned() else {
+        return Ok(Vec::new());
+    };
+    if binding.schedule.slot.timer.due_at > now {
+        return Ok(Vec::new());
+    }
+
+    Ok(vec![
+        platform_host.dispatch_native_timer_elapsed_by_native_id_and_execute_platform_timer(
+            binding.native_timer_id,
+            executor,
+        )?,
+    ])
 }
 
 fn collect_shortcuts(input: &egui::InputState) -> Vec<StudioGuiShortcut> {
@@ -1908,6 +2178,80 @@ fn notice_color(level: RunPanelNoticeLevel) -> egui::Color32 {
     }
 }
 
+fn notice_color_from_entitlement(level: rf_ui::EntitlementNoticeLevel) -> egui::Color32 {
+    match level {
+        rf_ui::EntitlementNoticeLevel::Info => egui::Color32::from_rgb(40, 90, 160),
+        rf_ui::EntitlementNoticeLevel::Warning => egui::Color32::from_rgb(180, 120, 20),
+        rf_ui::EntitlementNoticeLevel::Error => egui::Color32::from_rgb(180, 40, 40),
+    }
+}
+
+fn render_status_chip(ui: &mut egui::Ui, label: &str, color: egui::Color32) {
+    egui::Frame::new()
+        .fill(color.gamma_multiply(0.12))
+        .stroke(egui::Stroke::new(1.0, color.gamma_multiply(0.8)))
+        .corner_radius(6.0)
+        .inner_margin(egui::Margin::symmetric(8, 3))
+        .show(ui, |ui| {
+            ui.label(egui::RichText::new(label).color(color).small());
+        });
+}
+
+fn run_status_color(status_label: &str) -> egui::Color32 {
+    match status_label {
+        "Converged" | "Runnable" => egui::Color32::from_rgb(54, 128, 84),
+        "Solving" | "Checking" => egui::Color32::from_rgb(40, 90, 160),
+        "Under-specified" | "Over-specified" | "Unconverged" => {
+            egui::Color32::from_rgb(180, 120, 20)
+        }
+        "Error" => egui::Color32::from_rgb(180, 40, 40),
+        _ => egui::Color32::from_rgb(110, 110, 110),
+    }
+}
+
+fn entitlement_status_color(status_label: &str) -> egui::Color32 {
+    match status_label {
+        "Active" => egui::Color32::from_rgb(54, 128, 84),
+        "Syncing" => egui::Color32::from_rgb(40, 90, 160),
+        "Lease expired" => egui::Color32::from_rgb(180, 120, 20),
+        "Error" => egui::Color32::from_rgb(180, 40, 40),
+        _ => egui::Color32::from_rgb(110, 110, 110),
+    }
+}
+
+fn log_level_label(level: rf_ui::AppLogLevel) -> &'static str {
+    match level {
+        rf_ui::AppLogLevel::Info => "info",
+        rf_ui::AppLogLevel::Warning => "warn",
+        rf_ui::AppLogLevel::Error => "error",
+    }
+}
+
+fn format_system_time(value: SystemTime) -> String {
+    let unix = value
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .map(|duration| duration.as_secs().to_string())
+        .unwrap_or_else(|_| "before-epoch".to_string());
+    let relative = match value.duration_since(SystemTime::now()) {
+        Ok(duration) => format!("in {}", format_duration(duration)),
+        Err(error) => format!("{} ago", format_duration(error.duration())),
+    };
+    format!("{relative} (unix={unix}s)")
+}
+
+fn format_duration(duration: Duration) -> String {
+    let seconds = duration.as_secs();
+    if seconds < 60 {
+        format!("{seconds}s")
+    } else if seconds < 3_600 {
+        format!("{}m", seconds / 60)
+    } else if seconds < 86_400 {
+        format!("{}h{}m", seconds / 3_600, (seconds % 3_600) / 60)
+    } else {
+        format!("{}d{}h", seconds / 86_400, (seconds % 86_400) / 3_600)
+    }
+}
+
 fn format_shortcut(shortcut: &StudioGuiShortcut) -> String {
     let mut parts = shortcut
         .modifiers
@@ -1929,9 +2273,99 @@ fn format_shortcut(shortcut: &StudioGuiShortcut) -> String {
     parts.join("+")
 }
 
+fn format_host_command_summary(
+    outcome: &radishflow_studio::StudioGuiHostCommandOutcome,
+) -> String {
+    match outcome {
+        radishflow_studio::StudioGuiHostCommandOutcome::WindowOpened(opened) => format!(
+            "window opened #{}/{}-{}",
+            opened.registration.window_id,
+            match opened.registration.role {
+                StudioWindowHostRole::EntitlementTimerOwner => "owner",
+                StudioWindowHostRole::Observer => "observer",
+            },
+            opened.registration.layout_slot
+        ),
+        radishflow_studio::StudioGuiHostCommandOutcome::WindowDispatched(dispatch) => {
+            format!("window dispatch #{}", dispatch.target_window_id)
+        }
+        radishflow_studio::StudioGuiHostCommandOutcome::LifecycleDispatched(lifecycle) => {
+            format!("lifecycle {:?}", lifecycle.event)
+        }
+        radishflow_studio::StudioGuiHostCommandOutcome::UiCommandDispatched(result) => {
+            format_ui_command_summary(result)
+        }
+        radishflow_studio::StudioGuiHostCommandOutcome::EntitlementActionDispatched(result) => {
+            match result {
+                radishflow_studio::StudioGuiHostEntitlementDispatchResult::Executed {
+                    action_id,
+                    dispatch,
+                } => format!(
+                    "entitlement action {:?} -> #{}",
+                    action_id, dispatch.target_window_id
+                ),
+                radishflow_studio::StudioGuiHostEntitlementDispatchResult::IgnoredDisabled {
+                    action_id,
+                    ..
+                } => format!("entitlement disabled {:?}", action_id),
+                radishflow_studio::StudioGuiHostEntitlementDispatchResult::IgnoredMissing {
+                    action_id,
+                    ..
+                } => format!("entitlement missing {:?}", action_id),
+            }
+        }
+        radishflow_studio::StudioGuiHostCommandOutcome::WindowDropTargetQueried(result) => {
+            format!("drop query {:?}", result.query)
+        }
+        radishflow_studio::StudioGuiHostCommandOutcome::WindowDropTargetApplied(result) => {
+            format!("drop apply {:?}", result.query)
+        }
+        radishflow_studio::StudioGuiHostCommandOutcome::WindowClosed(result) => {
+            match result.close.as_ref() {
+                Some(close) => format!("window closed #{}", close.window_id),
+                None => "window close ignored".to_string(),
+            }
+        }
+        radishflow_studio::StudioGuiHostCommandOutcome::WindowDropTargetPreviewUpdated(_)
+        | radishflow_studio::StudioGuiHostCommandOutcome::WindowDropTargetPreviewCleared(_) => {
+            "drop preview".to_string()
+        }
+    }
+}
+
+fn format_ui_command_summary(
+    result: &radishflow_studio::StudioGuiHostUiCommandDispatchResult,
+) -> String {
+    match result {
+        radishflow_studio::StudioGuiHostUiCommandDispatchResult::Executed(dispatch) => {
+            format!("command dispatch #{}", dispatch.target_window_id)
+        }
+        radishflow_studio::StudioGuiHostUiCommandDispatchResult::IgnoredDisabled {
+            command_id,
+            ..
+        } => format!("command disabled {command_id}"),
+        radishflow_studio::StudioGuiHostUiCommandDispatchResult::IgnoredMissing {
+            command_id,
+            ..
+        } => format!("command missing {command_id}"),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use radishflow_studio::{
+        StudioRuntimeEntitlementPreflight, StudioRuntimeEntitlementSeed,
+        StudioRuntimeEntitlementSessionEvent, StudioRuntimeTrigger,
+    };
+
+    fn lease_expiring_config() -> StudioRuntimeConfig {
+        StudioRuntimeConfig {
+            entitlement_preflight: StudioRuntimeEntitlementPreflight::Auto,
+            entitlement_seed: StudioRuntimeEntitlementSeed::LeaseExpiringSoon,
+            ..StudioRuntimeConfig::default()
+        }
+    }
 
     #[test]
     fn insert_neighbors_from_area_ids_returns_previous_and_next_for_middle_target() {
@@ -1965,5 +2399,143 @@ mod tests {
         let clamped = clamp_overlay_pos_to_rect(screen, egui::pos2(180.0, 110.0), size);
 
         assert_eq!(clamped, egui::pos2(112.0, 72.0));
+    }
+
+    #[test]
+    fn egui_platform_timer_executor_allocates_and_clears_native_ids() {
+        let mut executor = EguiPlatformTimerExecutor::default();
+        let arm_schedule = radishflow_studio::StudioGuiNativeTimerSchedule {
+            window_id: Some(7),
+            handle_id: 41,
+            slot: radishflow_studio::StudioRuntimeTimerHandleSlot {
+                effect_id: 1001,
+                timer: radishflow_studio::EntitlementSessionTimerArm {
+                    event: radishflow_studio::EntitlementSessionLifecycleEvent::TimerElapsed,
+                    due_at: SystemTime::UNIX_EPOCH + Duration::from_secs(60),
+                    delay: Duration::from_secs(60),
+                    reason: radishflow_studio::EntitlementSessionTimerReason::ScheduledCheck,
+                },
+            },
+        };
+
+        let started = executor
+            .execute_platform_timer_command(&StudioGuiPlatformTimerCommand::Arm {
+                schedule: arm_schedule.clone(),
+            })
+            .expect("expected arm response");
+        assert_eq!(
+            started,
+            StudioGuiPlatformTimerExecutorResponse::Started { native_timer_id: 1 }
+        );
+        assert!(executor.active_native_timer_ids.contains(&1));
+
+        let cleared = executor
+            .execute_platform_timer_command(&StudioGuiPlatformTimerCommand::Clear {
+                previous: Some(radishflow_studio::StudioGuiPlatformTimerBinding {
+                    schedule: arm_schedule,
+                    native_timer_id: 1,
+                }),
+            })
+            .expect("expected clear response");
+        assert_eq!(cleared, StudioGuiPlatformTimerExecutorResponse::Cleared);
+        assert!(!executor.active_native_timer_ids.contains(&1));
+    }
+
+    #[test]
+    fn drain_due_platform_timer_callbacks_dispatches_due_binding_and_rearms() {
+        let mut platform_host =
+            StudioGuiPlatformHost::new(&lease_expiring_config()).expect("expected platform host");
+        let mut executor = EguiPlatformTimerExecutor::default();
+        let opened = platform_host
+            .dispatch_event_and_execute_platform_timer(
+                StudioGuiEvent::OpenWindowRequested,
+                &mut executor,
+            )
+            .expect("expected opened window");
+        let window_id = match opened.dispatch.outcome {
+            StudioGuiDriverOutcome::HostCommand(
+                radishflow_studio::StudioGuiHostCommandOutcome::WindowOpened(opened),
+            ) => opened.registration.window_id,
+            other => panic!("expected opened window outcome, got {other:?}"),
+        };
+        let triggered = platform_host
+            .dispatch_event_and_execute_platform_timer(
+                StudioGuiEvent::WindowTriggerRequested {
+                    window_id,
+                    trigger: StudioRuntimeTrigger::EntitlementSessionEvent(
+                        StudioRuntimeEntitlementSessionEvent::TimerElapsed,
+                    ),
+                },
+                &mut executor,
+            )
+            .expect("expected timer trigger dispatch");
+        assert!(triggered.dispatch.native_timer_request.is_some());
+
+        let due_at = platform_host
+            .next_native_timer_due_at()
+            .expect("expected current native timer due time");
+        let callbacks =
+            drain_due_platform_timer_callbacks(&mut platform_host, &mut executor, due_at)
+                .expect("expected due timer callbacks");
+
+        assert_eq!(callbacks.len(), 1);
+        match &callbacks[0] {
+            StudioGuiPlatformExecutedNativeTimerCallbackOutcome::Dispatched(executed) => {
+                assert!(matches!(
+                    executed.dispatch.outcome,
+                    StudioGuiDriverOutcome::HostCommand(
+                        radishflow_studio::StudioGuiHostCommandOutcome::LifecycleDispatched(_)
+                    )
+                ));
+                assert!(executed.dispatch.native_timer_request.is_some());
+            }
+            other => panic!("expected dispatched callback outcome, got {other:?}"),
+        }
+        assert!(platform_host.current_platform_timer_binding().is_some());
+        assert!(platform_host.next_native_timer_due_at().is_some());
+    }
+
+    #[test]
+    fn drain_due_platform_timer_callbacks_ignores_unknown_native_timer_ids() {
+        let mut platform_host =
+            StudioGuiPlatformHost::new(&lease_expiring_config()).expect("expected platform host");
+        let mut executor = EguiPlatformTimerExecutor::default();
+        let opened = platform_host
+            .dispatch_event_and_execute_platform_timer(
+                StudioGuiEvent::OpenWindowRequested,
+                &mut executor,
+            )
+            .expect("expected opened window");
+        let window_id = match opened.dispatch.outcome {
+            StudioGuiDriverOutcome::HostCommand(
+                radishflow_studio::StudioGuiHostCommandOutcome::WindowOpened(opened),
+            ) => opened.registration.window_id,
+            other => panic!("expected opened window outcome, got {other:?}"),
+        };
+        let _ = platform_host
+            .dispatch_event_and_execute_platform_timer(
+                StudioGuiEvent::WindowTriggerRequested {
+                    window_id,
+                    trigger: StudioRuntimeTrigger::EntitlementSessionEvent(
+                        StudioRuntimeEntitlementSessionEvent::TimerElapsed,
+                    ),
+                },
+                &mut executor,
+            )
+            .expect("expected timer trigger dispatch");
+
+        let ignored = platform_host
+            .dispatch_native_timer_elapsed_by_native_id_and_execute_platform_timer(9999, &mut executor)
+            .expect("expected ignored callback");
+
+        assert!(matches!(
+            ignored,
+            StudioGuiPlatformExecutedNativeTimerCallbackOutcome::IgnoredStaleNativeTimer {
+                native_timer_id: 9999
+            }
+                | StudioGuiPlatformExecutedNativeTimerCallbackOutcome::IgnoredUnknownNativeTimer {
+                    native_timer_id: 9999
+                }
+        ));
     }
 }

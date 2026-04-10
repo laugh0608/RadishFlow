@@ -1,4 +1,5 @@
 use std::fmt::Debug;
+use std::time::{Duration, SystemTime};
 
 use rf_ui::{EntitlementNoticeLevel, EntitlementPanelPresentation};
 
@@ -18,15 +19,15 @@ impl EntitlementSessionHostTextView {
         let mut lines = vec![
             format!(
                 "Next check: {}",
-                format_optional_debug(schedule.next_check_at.as_ref())
+                format_optional_system_time(schedule.next_check_at)
             ),
             format!(
                 "Next sync window: {}",
-                format_optional_debug(schedule.next_sync_at.as_ref())
+                format_optional_system_time(schedule.next_sync_at)
             ),
             format!(
                 "Next offline refresh window: {}",
-                format_optional_debug(schedule.next_offline_refresh_at.as_ref())
+                format_optional_system_time(schedule.next_offline_refresh_at)
             ),
             format!(
                 "Recommended action: {}",
@@ -114,8 +115,11 @@ where
 
 fn format_timer_arm(timer: &EntitlementSessionTimerArm) -> String {
     format!(
-        "{:?} at {:?} after {:?} ({:?})",
-        timer.event, timer.due_at, timer.delay, timer.reason
+        "{:?} at {} after {} ({:?})",
+        timer.event,
+        format_system_time(timer.due_at),
+        format_duration(timer.delay),
+        timer.reason
     )
 }
 
@@ -149,5 +153,36 @@ fn notice_level_label(level: EntitlementNoticeLevel) -> &'static str {
         EntitlementNoticeLevel::Info => "info",
         EntitlementNoticeLevel::Warning => "warning",
         EntitlementNoticeLevel::Error => "error",
+    }
+}
+
+fn format_optional_system_time(value: Option<SystemTime>) -> String {
+    value
+        .map(format_system_time)
+        .unwrap_or_else(|| "None".to_string())
+}
+
+fn format_system_time(value: SystemTime) -> String {
+    let unix = value
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .map(|duration| duration.as_secs().to_string())
+        .unwrap_or_else(|_| "before-epoch".to_string());
+    let relative = match value.duration_since(SystemTime::now()) {
+        Ok(duration) => format!("in {}", format_duration(duration)),
+        Err(error) => format!("{} ago", format_duration(error.duration())),
+    };
+    format!("{relative} (unix={unix}s)")
+}
+
+fn format_duration(duration: Duration) -> String {
+    let seconds = duration.as_secs();
+    if seconds < 60 {
+        format!("{seconds}s")
+    } else if seconds < 3_600 {
+        format!("{}m", seconds / 60)
+    } else if seconds < 86_400 {
+        format!("{}h{}m", seconds / 3_600, (seconds % 3_600) / 60)
+    } else {
+        format!("{}d{}h", seconds / 86_400, (seconds % 86_400) / 3_600)
     }
 }

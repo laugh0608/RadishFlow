@@ -852,9 +852,9 @@ mod tests {
 
         assert_eq!(text.title, "Entitlement host");
         assert!(
-            text.lines
-                .iter()
-                .any(|line| line.starts_with("Next check: SystemTime")),
+            text.lines.iter().any(|line| {
+                line.starts_with("Next check: ") && line.contains("unix=")
+            }),
             "expected next check line, got {:?}",
             text.lines
         );

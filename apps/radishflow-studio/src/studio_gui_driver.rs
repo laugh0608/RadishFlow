@@ -29,6 +29,10 @@ pub enum StudioGuiEvent {
     UiCommandRequested {
         command_id: String,
     },
+    EntitlementPrimaryActionRequested,
+    EntitlementActionRequested {
+        action_id: rf_ui::EntitlementActionId,
+    },
     CanvasSuggestionAcceptRequested,
     CanvasSuggestionRejectRequested,
     CanvasSuggestionFocusNextRequested,
@@ -244,6 +248,11 @@ impl StudioGuiDriver {
                 dispatch,
             )) => Some(&dispatch.native_timers),
             StudioGuiDriverOutcome::HostCommand(
+                StudioGuiHostCommandOutcome::EntitlementActionDispatched(
+                    crate::StudioGuiHostEntitlementDispatchResult::Executed { dispatch, .. },
+                ),
+            ) => Some(&dispatch.native_timers),
+            StudioGuiDriverOutcome::HostCommand(
                 StudioGuiHostCommandOutcome::LifecycleDispatched(lifecycle),
             ) => lifecycle
                 .dispatch
@@ -287,6 +296,9 @@ fn layout_scope_window_id(outcome: &StudioGuiDriverOutcome) -> Option<StudioWind
         StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::UiCommandDispatched(
             crate::StudioGuiHostUiCommandDispatchResult::Executed(dispatch),
         )) => Some(dispatch.target_window_id),
+        StudioGuiDriverOutcome::HostCommand(
+            StudioGuiHostCommandOutcome::EntitlementActionDispatched(result),
+        ) => result.target_window_id(),
         StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::UiCommandDispatched(
             crate::StudioGuiHostUiCommandDispatchResult::IgnoredDisabled {
                 target_window_id, ..
@@ -423,6 +435,14 @@ fn route_driver_event(event: &StudioGuiEvent, registry: &StudioGuiCommandRegistr
                 command_id: command_id.clone(),
             })
         }
+        StudioGuiEvent::EntitlementPrimaryActionRequested => DriverRoute::HostCommand(
+            StudioGuiHostCommand::DispatchForegroundEntitlementPrimaryAction,
+        ),
+        StudioGuiEvent::EntitlementActionRequested { action_id } => {
+            DriverRoute::HostCommand(StudioGuiHostCommand::DispatchForegroundEntitlementAction {
+                action_id: *action_id,
+            })
+        }
         StudioGuiEvent::CanvasSuggestionAcceptRequested => {
             DriverRoute::CanvasInteraction(StudioGuiCanvasInteractionAction::AcceptFocusedByTab)
         }
@@ -529,15 +549,17 @@ mod tests {
 
     use crate::{
         StudioGuiCanvasInteractionAction, StudioGuiDriver, StudioGuiDriverOutcome, StudioGuiEvent,
-        StudioGuiFocusContext, StudioGuiHostCanvasInteractionResult, StudioGuiHostCommandOutcome,
-        StudioGuiHostUiCommandDispatchResult, StudioGuiShortcut, StudioGuiShortcutIgnoreReason,
-        StudioGuiShortcutKey, StudioGuiShortcutModifier, StudioGuiWindowAreaId,
-        StudioGuiWindowDockPlacement, StudioGuiWindowDockRegion, StudioGuiWindowDropTargetQuery,
-        StudioGuiWindowLayoutMutation, StudioRuntimeConfig, StudioRuntimeEntitlementPreflight,
-        StudioRuntimeEntitlementSeed,
+        StudioGuiFocusContext, StudioGuiHostCanvasInteractionResult,
+        StudioGuiHostCommandOutcome, StudioGuiHostEntitlementDispatchResult,
+        StudioGuiHostUiCommandDispatchResult, StudioGuiShortcut,
+        StudioGuiShortcutIgnoreReason, StudioGuiShortcutKey, StudioGuiShortcutModifier,
+        StudioGuiWindowAreaId, StudioGuiWindowDockPlacement, StudioGuiWindowDockRegion,
+        StudioGuiWindowDropTargetQuery, StudioGuiWindowLayoutMutation, StudioRuntimeConfig,
+        StudioRuntimeEntitlementPreflight, StudioRuntimeEntitlementSeed,
     };
     use rf_ui::{
-        GhostElement, GhostElementKind, StreamVisualKind, StreamVisualState, SuggestionSource,
+        EntitlementActionId, GhostElement, GhostElementKind, StreamVisualKind, StreamVisualState,
+        SuggestionSource,
     };
 
     fn lease_expiring_config() -> StudioRuntimeConfig {
@@ -663,6 +685,102 @@ mod tests {
                 assert_eq!(executed.target_window_id, window_id);
             }
             other => panic!("expected executed ui command outcome, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn gui_driver_routes_entitlement_primary_action_through_single_event_entry() {
+        let mut driver = StudioGuiDriver::new(&lease_expiring_config()).expect("expected driver");
+        let open = driver
+            .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+            .expect("expected open dispatch");
+        let window_id = match open.outcome {
+            StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::WindowOpened(
+                opened,
+            )) => opened.registration.window_id,
+            other => panic!("expected window opened outcome, got {other:?}"),
+        };
+
+        let dispatch = driver
+            .dispatch_event(StudioGuiEvent::EntitlementPrimaryActionRequested)
+            .expect("expected entitlement primary action dispatch");
+
+        match dispatch.outcome {
+            StudioGuiDriverOutcome::HostCommand(
+                StudioGuiHostCommandOutcome::EntitlementActionDispatched(
+                    StudioGuiHostEntitlementDispatchResult::Executed {
+                        action_id,
+                        dispatch,
+                    },
+                ),
+            ) => {
+                assert_eq!(action_id, EntitlementActionId::RefreshOfflineLease);
+                assert_eq!(dispatch.target_window_id, window_id);
+            }
+            other => panic!(
+                "expected executed entitlement primary action outcome, got {other:?}"
+            ),
+        }
+    }
+
+    #[test]
+    fn gui_driver_routes_entitlement_action_through_single_event_entry() {
+        let mut driver = StudioGuiDriver::new(&lease_expiring_config()).expect("expected driver");
+        let open = driver
+            .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+            .expect("expected open dispatch");
+        let window_id = match open.outcome {
+            StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::WindowOpened(
+                opened,
+            )) => opened.registration.window_id,
+            other => panic!("expected window opened outcome, got {other:?}"),
+        };
+
+        let dispatch = driver
+            .dispatch_event(StudioGuiEvent::EntitlementActionRequested {
+                action_id: EntitlementActionId::SyncEntitlement,
+            })
+            .expect("expected entitlement action dispatch");
+
+        match dispatch.outcome {
+            StudioGuiDriverOutcome::HostCommand(
+                StudioGuiHostCommandOutcome::EntitlementActionDispatched(
+                    StudioGuiHostEntitlementDispatchResult::Executed {
+                        action_id,
+                        dispatch,
+                    },
+                ),
+            ) => {
+                assert_eq!(action_id, EntitlementActionId::SyncEntitlement);
+                assert_eq!(dispatch.target_window_id, window_id);
+            }
+            other => panic!("expected executed entitlement action outcome, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn gui_driver_stably_ignores_entitlement_action_without_registered_window() {
+        let mut driver = StudioGuiDriver::new(&lease_expiring_config()).expect("expected driver");
+
+        let dispatch = driver
+            .dispatch_event(StudioGuiEvent::EntitlementActionRequested {
+                action_id: EntitlementActionId::SyncEntitlement,
+            })
+            .expect("expected entitlement action result");
+
+        match dispatch.outcome {
+            StudioGuiDriverOutcome::HostCommand(
+                StudioGuiHostCommandOutcome::EntitlementActionDispatched(
+                    StudioGuiHostEntitlementDispatchResult::IgnoredDisabled {
+                        action_id,
+                        target_window_id,
+                    },
+                ),
+            ) => {
+                assert_eq!(action_id, EntitlementActionId::SyncEntitlement);
+                assert_eq!(target_window_id, None);
+            }
+            other => panic!("expected ignored entitlement action outcome, got {other:?}"),
         }
     }
 

@@ -888,6 +888,43 @@ impl StudioAppHostController {
         }
     }
 
+    pub fn dispatch_foreground_entitlement_primary_action(
+        &mut self,
+    ) -> RfResult<Option<StudioAppHostWindowDispatchResult>> {
+        let Some(window_id) = self
+            .state()
+            .foreground_window_id
+            .or_else(|| self.state().registered_windows.first().copied())
+        else {
+            return Ok(None);
+        };
+
+        self.dispatch_window_trigger(
+            window_id,
+            StudioRuntimeTrigger::EntitlementWidgetPrimaryAction,
+        )
+        .map(Some)
+    }
+
+    pub fn dispatch_foreground_entitlement_action(
+        &mut self,
+        action_id: rf_ui::EntitlementActionId,
+    ) -> RfResult<Option<StudioAppHostWindowDispatchResult>> {
+        let Some(window_id) = self
+            .state()
+            .foreground_window_id
+            .or_else(|| self.state().registered_windows.first().copied())
+        else {
+            return Ok(None);
+        };
+
+        self.dispatch_window_trigger(
+            window_id,
+            StudioRuntimeTrigger::EntitlementWidgetAction(action_id),
+        )
+        .map(Some)
+    }
+
     pub fn focus_window(
         &mut self,
         window_id: StudioWindowHostId,
