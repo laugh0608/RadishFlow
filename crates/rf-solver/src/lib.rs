@@ -125,7 +125,21 @@ pub struct SolveFailureContext {
 
 impl SolveFailureContext {
     pub fn from_error(error: &RfError) -> Self {
-        Self::from_message(error.message())
+        let primary_code = error
+            .context()
+            .diagnostic_code()
+            .map(str::to_string)
+            .or_else(|| prefixed_solver_diagnostic_code(error.message()));
+        let related_unit_ids = if error.context().related_unit_ids().is_empty() {
+            related_unit_ids_from_failure_message(error.message())
+        } else {
+            error.context().related_unit_ids().to_vec()
+        };
+
+        Self {
+            primary_code,
+            related_unit_ids,
+        }
     }
 
     pub fn from_message(message: &str) -> Self {
@@ -322,11 +336,12 @@ fn topological_unit_order(flowsheet: &Flowsheet) -> RfResult<Vec<UnitId>> {
         if let Some(children) = downstream_units.get(&unit_id) {
             for child_id in children {
                 let count = incoming_counts.get_mut(child_id).ok_or_else(|| {
-                    solver_stage_invalid_input(
+                    solver_stage_invalid_input_with_related_units(
                         SolverDiagnosticCode::TopologicalOrdering,
                         format!(
                             "internal solver graph missing incoming count for unit `{child_id}`"
                         ),
+                        vec![child_id.clone()],
                     )
                 })?;
                 *count -= 1;
@@ -338,18 +353,23 @@ fn topological_unit_order(flowsheet: &Flowsheet) -> RfResult<Vec<UnitId>> {
     }
 
     if ordered.len() != incoming_counts.len() {
-        let unresolved_units = incoming_counts
+        let unresolved_unit_ids = incoming_counts
             .iter()
             .filter(|(_, count)| **count > 0)
-            .map(|(unit_id, _)| unit_id.as_str())
+            .map(|(unit_id, _)| unit_id.clone())
+            .collect::<Vec<_>>();
+        let unresolved_units = unresolved_unit_ids
+            .iter()
+            .map(|unit_id| unit_id.as_str())
             .collect::<Vec<_>>()
             .join(", ");
-        return Err(solver_stage_invalid_input(
+        return Err(solver_stage_invalid_input_with_related_units(
             SolverDiagnosticCode::TopologicalOrdering,
             format!(
                 "flowsheet contains a cycle or unresolved dependency involving [{}]; only acyclic sequential flowsheets are supported in the current solver",
                 unresolved_units
             ),
+            unresolved_unit_ids,
         ));
     }
 
@@ -366,15 +386,23 @@ fn solver_stage_error(code: SolverDiagnosticCode, error: RfError) -> RfError {
             error.message()
         ),
     )
+    .with_diagnostic_code(code.as_str())
+    .with_related_unit_ids(error.context().related_unit_ids().to_vec())
 }
 
-fn solver_stage_invalid_input(code: SolverDiagnosticCode, message: impl AsRef<str>) -> RfError {
+fn solver_stage_invalid_input_with_related_units(
+    code: SolverDiagnosticCode,
+    message: impl AsRef<str>,
+    related_unit_ids: Vec<UnitId>,
+) -> RfError {
     RfError::invalid_input(format!(
         "{}: solver {} failed: {}",
         code.as_str(),
         code.stage_label(),
         message.as_ref()
     ))
+    .with_diagnostic_code(code.as_str())
+    .with_related_unit_ids(related_unit_ids)
 }
 
 fn solver_step_lookup_error(step_number: usize, unit_id: &UnitId, error: RfError) -> RfError {
@@ -389,6 +417,8 @@ fn solver_step_lookup_error(step_number: usize, unit_id: &UnitId, error: RfError
             error.message()
         ),
     )
+    .with_diagnostic_code(SolverDiagnosticCode::StepLookup.as_str())
+    .with_related_unit_id(unit_id.clone())
 }
 
 fn solver_step_error(
@@ -408,6 +438,8 @@ fn solver_step_error(
             error.message()
         ),
     )
+    .with_diagnostic_code(code.as_str())
+    .with_related_unit_id(unit.id.clone())
 }
 
 fn solver_step_invalid_input(
@@ -424,6 +456,8 @@ fn solver_step_invalid_input(
         unit_context(unit),
         message.as_ref()
     ))
+    .with_diagnostic_code(code.as_str())
+    .with_related_unit_id(unit.id.clone())
 }
 
 fn solver_step_execution_error(
@@ -444,13 +478,20 @@ fn solver_step_execution_error(
             error.message()
         ),
     )
+    .with_diagnostic_code(SolverDiagnosticCode::StepExecution.as_str())
+    .with_related_unit_id(unit.id.clone())
 }
 
 fn solver_context_error(context: impl AsRef<str>, error: RfError) -> RfError {
-    RfError::new(
+    let mut wrapped = RfError::new(
         error.code(),
         format!("{}: {}", context.as_ref(), error.message()),
     )
+    .with_related_unit_ids(error.context().related_unit_ids().to_vec());
+    if let Some(code) = error.context().diagnostic_code() {
+        wrapped = wrapped.with_diagnostic_code(code.to_string());
+    }
+    wrapped
 }
 
 fn unit_context(unit: &UnitNode) -> String {
@@ -497,11 +538,14 @@ fn instantiate_operation(
             let vapor = stream_target_for_port(unit, FLASH_DRUM_VAPOR_PORT, flowsheet)?;
             Ok(Box::new(FlashDrum::new(liquid, vapor)))
         }
-        _ => Err(RfError::invalid_input(format!(
-            "{} uses unsupported solver kind `{}`",
-            unit_context(unit),
-            unit.kind
-        ))),
+        _ => Err(
+            RfError::invalid_input(format!(
+                "{} uses unsupported solver kind `{}`",
+                unit_context(unit),
+                unit.kind
+            ))
+            .with_related_unit_id(unit.id.clone()),
+        ),
     }
 }
 
@@ -1953,6 +1997,14 @@ mod tests {
             Some("solver.step.execution")
         );
         assert_eq!(context.related_unit_ids, vec![UnitId::new("valve-1")]);
+        assert_eq!(
+            error.context().diagnostic_code(),
+            Some("solver.step.execution")
+        );
+        assert_eq!(
+            error.context().related_unit_ids(),
+            [UnitId::new("valve-1")].as_slice()
+        );
     }
 
     #[test]
@@ -1967,6 +2019,11 @@ mod tests {
 
         assert_eq!(context.primary_code.as_deref(), Some("solver.step.lookup"));
         assert_eq!(context.related_unit_ids, vec![UnitId::new("flash-1")]);
+        assert_eq!(error.context().diagnostic_code(), Some("solver.step.lookup"));
+        assert_eq!(
+            error.context().related_unit_ids(),
+            [UnitId::new("flash-1")].as_slice()
+        );
     }
 
     #[test]
@@ -1982,6 +2039,66 @@ mod tests {
         assert_eq!(
             context.related_unit_ids,
             vec![UnitId::new("heater-1"), UnitId::new("valve-1")]
+        );
+    }
+
+    #[test]
+    fn cycle_detection_error_carries_related_units_in_error_context() {
+        let provider = build_provider();
+        let flash_solver = PlaceholderTpFlashSolver;
+        let services = SolverServices {
+            thermo: &provider,
+            flash_solver: &flash_solver,
+        };
+        let mut flowsheet = Flowsheet::new("heater-valve-cycle");
+        for component in [
+            Component::new("component-a", "Component A"),
+            Component::new("component-b", "Component B"),
+        ] {
+            flowsheet
+                .insert_component(component)
+                .expect("expected component insert");
+        }
+        for stream in [
+            build_stream(
+                "stream-a",
+                "Cycle Stream A",
+                320.0,
+                100_000.0,
+                5.0,
+                binary_composition(0.35, 0.65),
+            ),
+            build_stream(
+                "stream-b",
+                "Cycle Stream B",
+                300.0,
+                95_000.0,
+                5.0,
+                binary_composition(0.35, 0.65),
+            ),
+        ] {
+            flowsheet
+                .insert_stream(stream)
+                .expect("expected stream insert");
+        }
+        for unit in [
+            build_heater_node("heater-1", "Heater", "stream-b", "stream-a"),
+            build_valve_node("valve-1", "Valve", "stream-a", "stream-b"),
+        ] {
+            flowsheet.insert_unit(unit).expect("expected unit insert");
+        }
+
+        let error = SequentialModularSolver
+            .solve(&services, &flowsheet)
+            .expect_err("expected cycle detection failure");
+
+        assert_eq!(
+            error.context().diagnostic_code(),
+            Some("solver.topological_ordering")
+        );
+        assert_eq!(
+            error.context().related_unit_ids(),
+            [UnitId::new("heater-1"), UnitId::new("valve-1")].as_slice()
         );
     }
 }

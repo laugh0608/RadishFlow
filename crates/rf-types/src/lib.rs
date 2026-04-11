@@ -171,6 +171,23 @@ impl fmt::Display for ErrorCode {
 pub struct RfError {
     code: ErrorCode,
     message: String,
+    context: RfErrorContext,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct RfErrorContext {
+    diagnostic_code: Option<String>,
+    related_unit_ids: Vec<UnitId>,
+}
+
+impl RfErrorContext {
+    pub fn diagnostic_code(&self) -> Option<&str> {
+        self.diagnostic_code.as_deref()
+    }
+
+    pub fn related_unit_ids(&self) -> &[UnitId] {
+        &self.related_unit_ids
+    }
 }
 
 impl RfError {
@@ -178,6 +195,7 @@ impl RfError {
         Self {
             code,
             message: message.into(),
+            context: RfErrorContext::default(),
         }
     }
 
@@ -187,6 +205,43 @@ impl RfError {
 
     pub fn message(&self) -> &str {
         &self.message
+    }
+
+    pub fn context(&self) -> &RfErrorContext {
+        &self.context
+    }
+
+    pub fn with_diagnostic_code(mut self, diagnostic_code: impl Into<String>) -> Self {
+        self.context.diagnostic_code = Some(diagnostic_code.into());
+        self
+    }
+
+    pub fn with_related_unit_id(mut self, unit_id: impl Into<UnitId>) -> Self {
+        let unit_id = unit_id.into();
+        if !self
+            .context
+            .related_unit_ids
+            .iter()
+            .any(|existing| existing == &unit_id)
+        {
+            self.context.related_unit_ids.push(unit_id);
+        }
+        self
+    }
+
+    pub fn with_related_unit_ids(mut self, related_unit_ids: Vec<UnitId>) -> Self {
+        self.context.related_unit_ids.clear();
+        for unit_id in related_unit_ids {
+            if !self
+                .context
+                .related_unit_ids
+                .iter()
+                .any(|existing| existing == &unit_id)
+            {
+                self.context.related_unit_ids.push(unit_id);
+            }
+        }
+        self
     }
 
     pub fn invalid_input(message: impl Into<String>) -> Self {
@@ -230,3 +285,26 @@ impl fmt::Display for RfError {
 impl Error for RfError {}
 
 pub type RfResult<T> = Result<T, RfError>;
+
+#[cfg(test)]
+mod tests {
+    use super::{RfError, UnitId};
+
+    #[test]
+    fn rf_error_can_carry_stable_diagnostic_context() {
+        let error = RfError::invalid_input("solve failed")
+            .with_diagnostic_code("solver.step.execution")
+            .with_related_unit_id("heater-1")
+            .with_related_unit_id("heater-1")
+            .with_related_unit_id("flash-1");
+
+        assert_eq!(
+            error.context().diagnostic_code(),
+            Some("solver.step.execution")
+        );
+        assert_eq!(
+            error.context().related_unit_ids(),
+            [UnitId::new("heater-1"), UnitId::new("flash-1")].as_slice()
+        );
+    }
+}

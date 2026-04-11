@@ -87,6 +87,7 @@ where
                     "failed to load property package `{package_id}`: {}",
                     error.message()
                 ),
+                SolveFailureContext::from_error(&error),
             );
             return Err(error);
         }
@@ -109,6 +110,7 @@ where
                         "flowsheet solve failed with package `{package_id}`: {}",
                         error.message()
                     ),
+                    SolveFailureContext::from_error(&error),
                 );
                 return Err(error);
             }
@@ -139,8 +141,12 @@ pub fn solve_workspace_from_auth_cache(
     solve_workspace_with_property_package(app_state, &provider, request)
 }
 
-fn record_solve_failure(app_state: &mut AppState, revision: u64, message: String) {
-    let context = SolveFailureContext::from_message(&message);
+fn record_solve_failure(
+    app_state: &mut AppState,
+    revision: u64,
+    message: String,
+    context: SolveFailureContext,
+) {
     let mut summary = DiagnosticSummary::new(revision, DiagnosticSeverity::Error, message.clone());
     if let Some(primary_code) = context.primary_code {
         summary = summary.with_primary_code(primary_code);
