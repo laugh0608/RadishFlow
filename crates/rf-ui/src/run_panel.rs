@@ -223,6 +223,11 @@ pub fn run_panel_failure_title_for_diagnostic_code(primary_code: Option<&str>) -
         "solver.connection_validation.orphan_stream",
     ) {
         "Orphan stream"
+    } else if diagnostic_code_matches(
+        primary_code,
+        "solver.topological_ordering.self_loop_cycle",
+    ) {
+        "Self loop detected"
     } else if diagnostic_code_in_family(primary_code, "solver.connection_validation") {
         "Connection validation failed"
     } else if diagnostic_code_in_family(primary_code, "solver.topological_ordering") {
@@ -315,6 +320,12 @@ pub fn run_panel_failure_recovery_action_for_diagnostic_code(
             RunPanelRecoveryActionKind::FixConnections,
             "Delete orphan stream",
             "删除当前未连接到任何单元端口的孤立流股，避免它继续阻塞连接校验。",
+        ))
+    } else if diagnostic_code_matches(primary_code, "solver.topological_ordering.self_loop_cycle") {
+        Some(RunPanelRecoveryAction::new(
+            RunPanelRecoveryActionKind::BreakCycle,
+            "Disconnect self-loop inlet",
+            "断开当前单元引用自身 outlet stream 的 inlet 端口，先消除自环依赖，再继续检查剩余连接问题。",
         ))
     } else if diagnostic_code_in_family(primary_code, "solver.connection_validation") {
         Some(RunPanelRecoveryAction::new(
@@ -481,6 +492,9 @@ fn configure_recovery_action_for_port_target(
     ) || diagnostic_code_matches(
         primary_code,
         "solver.connection_validation.duplicate_downstream_sink",
+    ) || diagnostic_code_matches(
+        primary_code,
+        "solver.topological_ordering.self_loop_cycle",
     ) {
         recovery_action
             .with_disconnect_port(port_target.unit_id.clone(), port_target.port_name.clone())

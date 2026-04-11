@@ -238,6 +238,86 @@ fn studio_solver_bridge_records_cycle_failure_context_end_to_end() {
 }
 
 #[test]
+fn studio_solver_bridge_records_self_loop_disconnect_target_end_to_end() {
+    let provider = build_binary_demo_package_provider();
+    let mut app_state = app_state_from_project(
+        include_str!("../../../examples/flowsheets/failures/self-loop-cycle.rfproj.json"),
+        "doc-studio-self-loop-failure",
+        "Studio Self Loop Failure Demo",
+        45,
+    );
+
+    let error = solve_workspace_with_property_package(
+        &mut app_state,
+        &provider,
+        &StudioSolveRequest::new("binary-hydrocarbon-lite-v1", "snapshot-self-loop-1", 1),
+    )
+    .expect_err("expected self-loop failure");
+
+    assert!(error.message().contains("solver.topological_ordering.self_loop_cycle:"));
+    assert_eq!(app_state.workspace.solve_session.status, RunStatus::Error);
+
+    let summary = app_state
+        .workspace
+        .solve_session
+        .latest_diagnostic
+        .as_ref()
+        .expect("expected failure summary");
+    assert_eq!(
+        summary.primary_code.as_deref(),
+        Some("solver.topological_ordering.self_loop_cycle")
+    );
+    assert_eq!(summary.related_unit_ids, vec![UnitId::new("flash-1")]);
+    assert_eq!(summary.related_stream_ids, vec![StreamId::new("stream-loop")]);
+    assert_eq!(
+        summary.related_port_targets,
+        vec![
+            rf_types::DiagnosticPortTarget::new("flash-1", "inlet"),
+            rf_types::DiagnosticPortTarget::new("flash-1", "liquid"),
+        ]
+    );
+
+    let notice = app_state
+        .workspace
+        .run_panel
+        .notice
+        .as_ref()
+        .expect("expected run panel notice");
+    assert_eq!(notice.title, "Self loop detected");
+    assert_eq!(
+        notice
+            .recovery_action
+            .as_ref()
+            .map(|action| action.kind),
+        Some(RunPanelRecoveryActionKind::BreakCycle)
+    );
+    assert_eq!(
+        notice
+            .recovery_action
+            .as_ref()
+            .and_then(|action| action.target_unit_id.as_ref()),
+        Some(&UnitId::new("flash-1"))
+    );
+    assert_eq!(
+        notice
+            .recovery_action
+            .as_ref()
+            .and_then(|action| action.target_port_name.as_deref()),
+        Some("inlet")
+    );
+    assert_eq!(
+        notice
+            .recovery_action
+            .as_ref()
+            .and_then(|action| action.mutation.as_ref()),
+        Some(&RunPanelRecoveryMutation::DisconnectPort {
+            unit_id: UnitId::new("flash-1"),
+            port_name: "inlet".to_string(),
+        })
+    );
+}
+
+#[test]
 fn studio_solver_bridge_records_duplicate_source_disconnect_target_end_to_end() {
     let provider = build_binary_demo_package_provider();
     let mut app_state = app_state_from_project(

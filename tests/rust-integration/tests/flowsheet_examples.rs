@@ -216,13 +216,29 @@ fn self_loop_cycle_reports_topological_ordering_context_end_to_end() {
     .expect_err("expected self-loop cycle failure");
 
     assert_eq!(error.code().as_str(), "invalid_input");
+    assert_eq!(
+        error.context().diagnostic_code(),
+        Some("solver.topological_ordering.self_loop_cycle")
+    );
+    assert_eq!(error.context().related_unit_ids(), &[UnitId::new("flash-1")]);
+    assert_eq!(
+        error.context().related_stream_ids(),
+        &[rf_types::StreamId::new("stream-loop")]
+    );
+    assert_eq!(
+        error.context().related_port_targets(),
+        &[
+            rf_types::DiagnosticPortTarget::new("flash-1", "inlet"),
+            rf_types::DiagnosticPortTarget::new("flash-1", "liquid"),
+        ]
+    );
     assert!(
         error
             .message()
-            .contains("solver.topological_ordering: solver topological ordering failed")
+            .contains("solver.topological_ordering.self_loop_cycle: solver topological ordering failed")
     );
-    assert!(error.message().contains("contains a cycle"));
-    assert!(error.message().contains("[flash-1]"));
+    assert!(error.message().contains("forms a self loop"));
+    assert!(error.message().contains("stream `stream-loop`"));
 }
 
 #[test]

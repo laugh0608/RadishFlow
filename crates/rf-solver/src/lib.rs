@@ -38,6 +38,9 @@ enum SolverDiagnosticCode {
     StepExecution,
 }
 
+const SOLVER_DIAGNOSTIC_TOPOLOGICAL_SELF_LOOP_CYCLE: &str =
+    "solver.topological_ordering.self_loop_cycle";
+
 impl SolverDiagnosticCode {
     const fn as_str(self) -> &'static str {
         match self {
@@ -327,6 +330,14 @@ fn topological_unit_order(flowsheet: &Flowsheet) -> RfResult<Vec<UnitId>> {
 
     for connection in connections {
         if let Some(sink) = connection.sink {
+            if connection.source.unit_id == sink.unit_id {
+                return Err(solver_topological_self_loop_error(
+                    &connection.stream_id,
+                    &sink.unit_id,
+                    &sink.port_name,
+                    &connection.source.port_name,
+                ));
+            }
             downstream_units
                 .entry(connection.source.unit_id.clone())
                 .or_default()
@@ -439,14 +450,57 @@ fn solver_stage_invalid_input_with_related_units(
     message: impl AsRef<str>,
     related_unit_ids: Vec<UnitId>,
 ) -> RfError {
+    solver_stage_invalid_input_with_context(
+        code,
+        code.as_str(),
+        message,
+        related_unit_ids,
+        Vec::new(),
+        Vec::new(),
+    )
+}
+
+fn solver_stage_invalid_input_with_context(
+    code: SolverDiagnosticCode,
+    diagnostic_code: impl Into<String>,
+    message: impl AsRef<str>,
+    related_unit_ids: Vec<UnitId>,
+    related_stream_ids: Vec<StreamId>,
+    related_port_targets: Vec<DiagnosticPortTarget>,
+) -> RfError {
+    let diagnostic_code = diagnostic_code.into();
     RfError::invalid_input(format!(
         "{}: solver {} failed: {}",
-        code.as_str(),
+        diagnostic_code,
         code.stage_label(),
         message.as_ref()
     ))
-    .with_diagnostic_code(code.as_str())
+    .with_diagnostic_code(diagnostic_code)
     .with_related_unit_ids(related_unit_ids)
+    .with_related_stream_ids(related_stream_ids)
+    .with_related_port_targets(related_port_targets)
+}
+
+fn solver_topological_self_loop_error(
+    stream_id: &StreamId,
+    unit_id: &UnitId,
+    inlet_port_name: &str,
+    outlet_port_name: &str,
+) -> RfError {
+    solver_stage_invalid_input_with_context(
+        SolverDiagnosticCode::TopologicalOrdering,
+        SOLVER_DIAGNOSTIC_TOPOLOGICAL_SELF_LOOP_CYCLE,
+        format!(
+            "unit `{}` forms a self loop through stream `{}` between inlet `{}` and outlet `{}`; sequential solver requires acyclic unit dependencies",
+            unit_id, stream_id, inlet_port_name, outlet_port_name
+        ),
+        vec![unit_id.clone()],
+        vec![stream_id.clone()],
+        vec![
+            DiagnosticPortTarget::new(unit_id.clone(), inlet_port_name.to_string()),
+            DiagnosticPortTarget::new(unit_id.clone(), outlet_port_name.to_string()),
+        ],
+    )
 }
 
 fn solver_step_lookup_error(step_number: usize, unit_id: &UnitId, error: RfError) -> RfError {
@@ -1913,13 +1967,29 @@ mod tests {
             .expect_err("expected self-loop cycle failure");
 
         assert_eq!(error.code().as_str(), "invalid_input");
+        assert_eq!(
+            error.context().diagnostic_code(),
+            Some("solver.topological_ordering.self_loop_cycle")
+        );
+        assert_eq!(error.context().related_unit_ids(), &[UnitId::new("flash-1")]);
+        assert_eq!(
+            error.context().related_stream_ids(),
+            &[StreamId::new("stream-loop")]
+        );
+        assert_eq!(
+            error.context().related_port_targets(),
+            &[
+                DiagnosticPortTarget::new("flash-1", "inlet"),
+                DiagnosticPortTarget::new("flash-1", "liquid"),
+            ]
+        );
         assert!(
             error
                 .message()
                 .contains("solver topological ordering failed")
         );
-        assert!(error.message().contains("contains a cycle"));
-        assert!(error.message().contains("[flash-1]"));
+        assert!(error.message().contains("forms a self loop"));
+        assert!(error.message().contains("stream `stream-loop`"));
     }
 
     #[test]
