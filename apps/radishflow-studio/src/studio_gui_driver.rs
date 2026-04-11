@@ -569,6 +569,45 @@ mod tests {
         }
     }
 
+    fn synced_workspace_config() -> StudioRuntimeConfig {
+        StudioRuntimeConfig {
+            entitlement_preflight: StudioRuntimeEntitlementPreflight::Skip,
+            entitlement_seed: StudioRuntimeEntitlementSeed::Synced,
+            ..StudioRuntimeConfig::default()
+        }
+    }
+
+    fn flash_drum_local_rules_synced_config() -> (StudioRuntimeConfig, PathBuf) {
+        let timestamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("expected current timestamp")
+            .as_nanos();
+        let project_path = std::env::temp_dir().join(format!(
+            "radishflow-studio-local-rules-synced-{timestamp}.rfproj.json"
+        ));
+        let project =
+            include_str!("../../../examples/flowsheets/feed-heater-flash.rfproj.json")
+                .replacen(
+                    ",\n        \"stream-vapor\": {\n          \"id\": \"stream-vapor\",\n          \"name\": \"Vapor Outlet\",\n          \"temperature_k\": 345.0,\n          \"pressure_pa\": 95000.0,\n          \"total_molar_flow_mol_s\": 0.0,\n          \"overall_mole_fractions\": {\n            \"component-a\": 0.5,\n            \"component-b\": 0.5\n          },\n          \"phases\": []\n        }",
+                    "",
+                    1,
+                )
+                .replacen(
+                    "\"name\": \"vapor\",\n              \"direction\": \"outlet\",\n              \"kind\": \"material\",\n              \"stream_id\": \"stream-vapor\"",
+                    "\"name\": \"vapor\",\n              \"direction\": \"outlet\",\n              \"kind\": \"material\",\n              \"stream_id\": null",
+                    1,
+                );
+        fs::write(&project_path, project).expect("expected synced local rules project");
+
+        (
+            StudioRuntimeConfig {
+                project_path: project_path.clone(),
+                ..synced_workspace_config()
+            },
+            project_path,
+        )
+    }
+
     fn flash_drum_local_rules_config() -> (StudioRuntimeConfig, PathBuf) {
         let timestamp = SystemTime::now()
             .duration_since(UNIX_EPOCH)
@@ -946,6 +985,109 @@ mod tests {
             },
             other => panic!("expected executed shortcut outcome, got {other:?}"),
         }
+    }
+
+    #[test]
+    fn gui_driver_automatic_runs_after_canvas_write_when_workspace_is_active() {
+        let (config, project_path) = flash_drum_local_rules_synced_config();
+        let mut driver = StudioGuiDriver::new(&config).expect("expected driver");
+        assert_eq!(
+            driver
+                .canvas_state()
+                .focused_suggestion_id
+                .as_ref()
+                .map(|id| id.as_str()),
+            Some("local.flash_drum.create_outlet.flash-1.vapor")
+        );
+        let _ = driver
+            .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+            .expect("expected open dispatch");
+
+        let activate = driver
+            .dispatch_event(StudioGuiEvent::ShortcutPressed {
+                shortcut: StudioGuiShortcut {
+                    modifiers: vec![StudioGuiShortcutModifier::Shift],
+                    key: StudioGuiShortcutKey::F6,
+                },
+                focus_context: StudioGuiFocusContext::Global,
+            })
+            .expect("expected activate shortcut dispatch");
+
+        match &activate.outcome {
+            StudioGuiDriverOutcome::HostCommand(
+                StudioGuiHostCommandOutcome::UiCommandDispatched(
+                    StudioGuiHostUiCommandDispatchResult::Executed(executed),
+                ),
+            ) => match &executed.effects.runtime_report.dispatch {
+                crate::StudioRuntimeDispatch::AppCommand(outcome) => match &outcome.dispatch {
+                    crate::StudioAppResultDispatch::WorkspaceMode(mode) => {
+                        assert_eq!(mode.simulation_mode, rf_ui::SimulationMode::Active);
+                        assert_eq!(
+                            mode.pending_reason,
+                            Some(rf_ui::SolvePendingReason::ModeActivated)
+                        );
+                    }
+                    other => panic!("expected workspace mode dispatch, got {other:?}"),
+                },
+                other => panic!("expected app command dispatch, got {other:?}"),
+            },
+            other => panic!("expected executed activate shortcut outcome, got {other:?}"),
+        }
+        assert_eq!(
+            driver
+                .canvas_state()
+                .focused_suggestion_id
+                .as_ref()
+                .map(|id| id.as_str()),
+            Some("local.flash_drum.create_outlet.flash-1.vapor")
+        );
+
+        let dispatch = driver
+            .dispatch_event(StudioGuiEvent::ShortcutPressed {
+                shortcut: StudioGuiShortcut {
+                    modifiers: Vec::new(),
+                    key: StudioGuiShortcutKey::Tab,
+                },
+                focus_context: StudioGuiFocusContext::CanvasSuggestionFocused,
+            })
+            .expect("expected canvas acceptance dispatch");
+
+        match dispatch.outcome {
+            StudioGuiDriverOutcome::CanvasInteraction(result) => {
+                assert_eq!(
+                    result
+                        .accepted
+                        .as_ref()
+                        .map(|suggestion| suggestion.id.as_str()),
+                    Some("local.flash_drum.create_outlet.flash-1.vapor")
+                );
+                assert_eq!(
+                    result
+                        .latest_log_entry
+                        .as_ref()
+                        .map(|entry| entry.message.as_str()),
+                    Some(
+                        "Solved document revision 1 with property package `binary-hydrocarbon-lite-v1` into snapshot `example-feed-heater-flash-rev-1-seq-1`"
+                    )
+                );
+            }
+            other => panic!("expected canvas interaction outcome, got {other:?}"),
+        }
+        assert_eq!(
+            dispatch.snapshot.runtime.control_state.run_status,
+            rf_ui::RunStatus::Converged
+        );
+        assert_eq!(dispatch.snapshot.runtime.control_state.pending_reason, None);
+        assert_eq!(
+            dispatch.snapshot.runtime.control_state.latest_snapshot_id.as_deref(),
+            Some("example-feed-heater-flash-rev-1-seq-1")
+        );
+        assert_eq!(
+            dispatch.snapshot.runtime.run_panel.view().status_label,
+            "Converged"
+        );
+
+        let _ = fs::remove_file(project_path);
     }
 
     #[test]

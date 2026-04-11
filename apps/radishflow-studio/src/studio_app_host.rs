@@ -710,6 +710,7 @@ impl StudioAppHostController {
     ) -> RfResult<Option<rf_ui::CanvasSuggestion>> {
         let accepted = self.app_host.accept_focused_canvas_suggestion_by_tab()?;
         self.app_host.refresh_local_canvas_suggestions();
+        self.dispatch_automatic_run_after_canvas_write_if_needed()?;
         Ok(accepted)
     }
 
@@ -1014,6 +1015,33 @@ impl StudioAppHostController {
             self.app_host.refresh_local_canvas_suggestions();
             (output.outcome, projection)
         })
+    }
+
+    fn dispatch_automatic_run_after_canvas_write_if_needed(&mut self) -> RfResult<()> {
+        let control_state = self.app_host.workspace_control_state();
+        if !matches!(control_state.simulation_mode, rf_ui::SimulationMode::Active)
+            || control_state.pending_reason
+                != Some(rf_ui::SolvePendingReason::DocumentRevisionAdvanced)
+        {
+            return Ok(());
+        }
+
+        let Some(window_id) = self
+            .state()
+            .foreground_window_id
+            .or_else(|| self.state().registered_windows.first().copied())
+        else {
+            return Ok(());
+        };
+
+        let _ = self.execute_command(StudioAppHostCommand::DispatchWindowTrigger {
+            window_id,
+            trigger: StudioRuntimeTrigger::AppCommand(crate::StudioAppCommand::run_workspace(
+                crate::WorkspaceRunCommand::automatic_preferred(),
+            )),
+        })?;
+
+        Ok(())
     }
 }
 
