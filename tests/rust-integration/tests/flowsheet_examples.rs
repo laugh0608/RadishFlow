@@ -2,7 +2,7 @@ use rf_flash::PlaceholderTpFlashSolver;
 use rf_rust_integration::{assert_close, build_binary_demo_provider};
 use rf_solver::{FlowsheetSolver, SequentialModularSolver, SolveStatus, SolverServices};
 use rf_store::parse_project_file_json;
-use rf_types::{ComponentId, PhaseLabel};
+use rf_types::{ComponentId, PhaseLabel, UnitId};
 
 fn solve_example(project_json: &str) -> rf_solver::SolveSnapshot {
     solve_example_result(project_json).expect("expected solve snapshot")
@@ -193,6 +193,11 @@ fn unsupported_unit_kind_reports_connection_validation_context_end_to_end() {
     .expect_err("expected unsupported unit kind failure");
 
     assert_eq!(error.code().as_str(), "invalid_connection");
+    assert_eq!(
+        error.context().diagnostic_code(),
+        Some("solver.connection_validation")
+    );
+    assert_eq!(error.context().related_unit_ids(), &[UnitId::new("pump-1")]);
     assert!(
         error
             .message()
@@ -243,6 +248,11 @@ fn missing_upstream_source_reports_connection_validation_context_end_to_end() {
     .expect_err("expected missing upstream source failure");
 
     assert_eq!(error.code().as_str(), "invalid_connection");
+    assert_eq!(
+        error.context().diagnostic_code(),
+        Some("solver.connection_validation")
+    );
+    assert_eq!(error.context().related_unit_ids(), &[UnitId::new("mixer-1")]);
     assert!(
         error
             .message()
@@ -263,6 +273,11 @@ fn missing_stream_reference_reports_connection_validation_context_end_to_end() {
     .expect_err("expected missing stream reference failure");
 
     assert_eq!(error.code().as_str(), "invalid_connection");
+    assert_eq!(
+        error.context().diagnostic_code(),
+        Some("solver.connection_validation")
+    );
+    assert_eq!(error.context().related_unit_ids(), &[UnitId::new("heater-1")]);
     assert!(
         error
             .message()
@@ -283,6 +298,11 @@ fn invalid_port_signature_reports_connection_validation_context_end_to_end() {
     .expect_err("expected invalid port signature failure");
 
     assert_eq!(error.code().as_str(), "invalid_connection");
+    assert_eq!(
+        error.context().diagnostic_code(),
+        Some("solver.connection_validation")
+    );
+    assert_eq!(error.context().related_unit_ids(), &[UnitId::new("feed-1")]);
     assert!(
         error
             .message()

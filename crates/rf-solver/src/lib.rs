@@ -1630,6 +1630,14 @@ mod tests {
             .expect_err("expected connection validation failure");
 
         assert_eq!(error.code().as_str(), "invalid_connection");
+        assert_eq!(
+            error.context().diagnostic_code(),
+            Some("solver.connection_validation")
+        );
+        assert_eq!(
+            error.context().related_unit_ids(),
+            &[UnitId::new("flash-1"), UnitId::new("valve-1")]
+        );
         assert!(
             error
                 .message()
@@ -1684,6 +1692,11 @@ mod tests {
             .expect_err("expected unsupported unit kind failure");
 
         assert_eq!(error.code().as_str(), "invalid_connection");
+        assert_eq!(
+            error.context().diagnostic_code(),
+            Some("solver.connection_validation")
+        );
+        assert_eq!(error.context().related_unit_ids(), &[UnitId::new("mystery-1")]);
         assert!(
             error
                 .message()

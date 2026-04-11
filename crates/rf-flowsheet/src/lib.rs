@@ -44,6 +44,7 @@ pub fn validate_connections(flowsheet: &Flowsheet) -> RfResult<Vec<MaterialConne
                 unit.id,
                 error.message()
             ))
+            .with_related_unit_id(unit.id.clone())
         })?;
 
         for port in &unit.ports {
@@ -56,12 +57,16 @@ pub fn validate_connections(flowsheet: &Flowsheet) -> RfResult<Vec<MaterialConne
                     "unit `{}` material port `{}` is not connected to any stream",
                     unit.id, port.name
                 ))
+                .with_related_unit_id(unit.id.clone())
             })?;
             if !flowsheet.streams.contains_key(&stream_id) {
-                return Err(RfError::invalid_connection(format!(
-                    "unit `{}` material port `{}` references missing stream `{}`",
-                    unit.id, port.name, stream_id
-                )));
+                return Err(
+                    RfError::invalid_connection(format!(
+                        "unit `{}` material port `{}` references missing stream `{}`",
+                        unit.id, port.name, stream_id
+                    ))
+                    .with_related_unit_id(unit.id.clone()),
+                );
             }
 
             let endpoints = endpoints_by_stream.entry(stream_id.clone()).or_default();
@@ -71,28 +76,40 @@ pub fn validate_connections(flowsheet: &Flowsheet) -> RfResult<Vec<MaterialConne
             match port.direction {
                 PortDirection::Outlet => {
                     if let Some(existing) = &endpoints.source {
-                        return Err(RfError::invalid_connection(format!(
-                            "stream `{}` is produced by both `{}.{}` and `{}.{}`",
-                            stream_id,
-                            existing.unit_id,
-                            existing.port_name,
-                            port_ref.unit_id,
-                            port_ref.port_name
-                        )));
+                        return Err(
+                            RfError::invalid_connection(format!(
+                                "stream `{}` is produced by both `{}.{}` and `{}.{}`",
+                                stream_id,
+                                existing.unit_id,
+                                existing.port_name,
+                                port_ref.unit_id,
+                                port_ref.port_name
+                            ))
+                            .with_related_unit_ids(vec![
+                                existing.unit_id.clone(),
+                                port_ref.unit_id.clone(),
+                            ]),
+                        );
                     }
 
                     endpoints.source = Some(port_ref);
                 }
                 PortDirection::Inlet => {
                     if let Some(existing) = &endpoints.sink {
-                        return Err(RfError::invalid_connection(format!(
-                            "stream `{}` is consumed by both `{}.{}` and `{}.{}`",
-                            stream_id,
-                            existing.unit_id,
-                            existing.port_name,
-                            port_ref.unit_id,
-                            port_ref.port_name
-                        )));
+                        return Err(
+                            RfError::invalid_connection(format!(
+                                "stream `{}` is consumed by both `{}.{}` and `{}.{}`",
+                                stream_id,
+                                existing.unit_id,
+                                existing.port_name,
+                                port_ref.unit_id,
+                                port_ref.port_name
+                            ))
+                            .with_related_unit_ids(vec![
+                                existing.unit_id.clone(),
+                                port_ref.unit_id.clone(),
+                            ]),
+                        );
                     }
 
                     endpoints.sink = Some(port_ref);
@@ -113,11 +130,16 @@ pub fn validate_connections(flowsheet: &Flowsheet) -> RfResult<Vec<MaterialConne
     endpoints_by_stream
         .into_iter()
         .map(|(stream_id, endpoints)| {
-            let source = endpoints.source.ok_or_else(|| {
-                RfError::invalid_connection(format!(
+            let source = endpoints.source.ok_or_else(|| match &endpoints.sink {
+                Some(sink) => RfError::invalid_connection(format!(
                     "stream `{}` is missing an upstream outlet connection",
                     stream_id
                 ))
+                .with_related_unit_id(sink.unit_id.clone()),
+                None => RfError::invalid_connection(format!(
+                    "stream `{}` is missing an upstream outlet connection",
+                    stream_id
+                )),
             })?;
 
             Ok(MaterialConnection {
@@ -133,7 +155,7 @@ pub fn validate_connections(flowsheet: &Flowsheet) -> RfResult<Vec<MaterialConne
 mod tests {
     use super::validate_connections;
     use rf_model::{Composition, Flowsheet, MaterialStreamState, UnitNode, UnitPort};
-    use rf_types::{ComponentId, PortDirection, PortKind};
+    use rf_types::{ComponentId, PortDirection, PortKind, UnitId};
     use rf_unitops::{FEED_KIND, build_feed_node, build_flash_drum_node, build_mixer_node};
 
     fn binary_composition(first: f64, second: f64) -> Composition {
@@ -234,6 +256,10 @@ mod tests {
 
         assert_eq!(error.code().as_str(), "invalid_connection");
         assert!(error.message().contains("consumed by both"));
+        assert_eq!(
+            error.context().related_unit_ids(),
+            &[UnitId::new("flash-1"), UnitId::new("mixer-1")]
+        );
     }
 
     #[test]
@@ -262,6 +288,7 @@ mod tests {
                 .message()
                 .contains("missing an upstream outlet connection")
         );
+        assert_eq!(error.context().related_unit_ids(), &[UnitId::new("mixer-1")]);
     }
 
     #[test]
@@ -292,5 +319,6 @@ mod tests {
                 .message()
                 .contains("canonical built-in port signature")
         );
+        assert_eq!(error.context().related_unit_ids(), &[UnitId::new("feed-1")]);
     }
 }
