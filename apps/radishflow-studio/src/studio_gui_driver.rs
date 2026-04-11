@@ -1,6 +1,6 @@
 use std::time::SystemTime;
 
-use rf_types::RfResult;
+use rf_types::{RfError, RfResult};
 
 use crate::{
     StudioAppHostState, StudioAppHostUiCommandModel, StudioGuiCanvasInteractionAction,
@@ -176,20 +176,19 @@ impl StudioGuiDriver {
                 StudioGuiDriverOutcome::HostCommand(self.host.execute_command(command)?)
             }
             DriverRoute::CanvasInteraction(action) => {
-                StudioGuiDriverOutcome::CanvasInteraction(match action {
-                    StudioGuiCanvasInteractionAction::AcceptFocusedByTab => {
-                        self.host.accept_focused_canvas_suggestion_by_tab()?
+                match self
+                    .host
+                    .execute_command(StudioGuiHostCommand::DispatchCanvasInteraction { action })?
+                {
+                    StudioGuiHostCommandOutcome::CanvasInteracted(result) => {
+                        StudioGuiDriverOutcome::CanvasInteraction(result)
                     }
-                    StudioGuiCanvasInteractionAction::RejectFocused => {
-                        self.host.reject_focused_canvas_suggestion()?
+                    other => {
+                        return Err(RfError::invalid_input(format!(
+                            "driver expected canvas interaction outcome, got {other:?}"
+                        )));
                     }
-                    StudioGuiCanvasInteractionAction::FocusNext => {
-                        self.host.focus_next_canvas_suggestion()?
-                    }
-                    StudioGuiCanvasInteractionAction::FocusPrevious => {
-                        self.host.focus_previous_canvas_suggestion()?
-                    }
-                })
+                }
             }
             DriverRoute::IgnoredShortcut { shortcut, reason } => {
                 StudioGuiDriverOutcome::IgnoredShortcut { shortcut, reason }
@@ -339,6 +338,7 @@ fn layout_scope_window_id(outcome: &StudioGuiDriverOutcome) -> Option<StudioWind
                 },
             ),
         )
+        | StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::CanvasInteracted(_))
         | StudioGuiDriverOutcome::WindowLayoutUpdated(
             crate::StudioGuiHostWindowLayoutUpdateResult {
                 target_window_id: None,

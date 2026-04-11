@@ -1,7 +1,10 @@
 use std::collections::BTreeSet;
 
 use rf_types::{RfError, RfResult};
-use rf_ui::{EntitlementActionId, RunPanelActionId, RunPanelWidgetEvent, RunPanelWidgetModel};
+use rf_ui::{
+    CanvasSuggestion, EntitlementActionId, RunPanelActionId, RunPanelWidgetEvent,
+    RunPanelWidgetModel,
+};
 
 use crate::{
     StudioRuntimeConfig, StudioRuntimeTrigger, StudioWindowHostId, StudioWindowHostLifecycleEvent,
@@ -73,12 +76,31 @@ impl StudioAppWindowHostUiActionState {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum StudioCanvasInteractionAction {
+    AcceptFocusedByTab,
+    RejectFocused,
+    FocusNext,
+    FocusPrevious,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct StudioAppWindowHostCanvasInteractionResult {
+    pub action: StudioCanvasInteractionAction,
+    pub accepted: Option<CanvasSuggestion>,
+    pub rejected: Option<CanvasSuggestion>,
+    pub focused: Option<CanvasSuggestion>,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum StudioAppWindowHostCommand {
     OpenWindow,
     DispatchTrigger {
         window_id: StudioWindowHostId,
         trigger: StudioRuntimeTrigger,
+    },
+    DispatchCanvasInteraction {
+        action: StudioCanvasInteractionAction,
     },
     DispatchUiAction {
         action: StudioAppWindowHostUiAction,
@@ -126,10 +148,11 @@ pub struct StudioAppWindowHostClose {
     pub next_foreground_window_id: Option<StudioWindowHostId>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum StudioAppWindowHostCommandOutcome {
     WindowOpened(StudioAppWindowHostOpenWindow),
     WindowDispatched(StudioAppWindowHostDispatch),
+    CanvasInteracted(StudioAppWindowHostCanvasInteractionResult),
     WindowClosed(StudioAppWindowHostClose),
     IgnoredUiAction,
     IgnoredGlobalEvent {
@@ -183,6 +206,35 @@ impl StudioAppWindowHostManager {
 
     pub fn focus_previous_canvas_suggestion(&mut self) -> Option<rf_ui::CanvasSuggestion> {
         self.session.focus_previous_canvas_suggestion()
+    }
+
+    pub fn dispatch_canvas_interaction(
+        &mut self,
+        action: StudioCanvasInteractionAction,
+    ) -> RfResult<StudioAppWindowHostCanvasInteractionResult> {
+        let (accepted, rejected, focused) = match action {
+            StudioCanvasInteractionAction::AcceptFocusedByTab => (
+                self.accept_focused_canvas_suggestion_by_tab()?,
+                None,
+                None,
+            ),
+            StudioCanvasInteractionAction::RejectFocused => {
+                (None, self.reject_focused_canvas_suggestion(), None)
+            }
+            StudioCanvasInteractionAction::FocusNext => {
+                (None, None, self.focus_next_canvas_suggestion())
+            }
+            StudioCanvasInteractionAction::FocusPrevious => {
+                (None, None, self.focus_previous_canvas_suggestion())
+            }
+        };
+
+        Ok(StudioAppWindowHostCanvasInteractionResult {
+            action,
+            accepted,
+            rejected,
+            focused,
+        })
     }
 
     pub fn foreground_window_id(&self) -> Option<StudioWindowHostId> {
@@ -292,6 +344,9 @@ impl StudioAppWindowHostManager {
                     dispatch,
                 ))
             }
+            StudioAppWindowHostCommand::DispatchCanvasInteraction { action } => self
+                .dispatch_canvas_interaction(action)
+                .map(StudioAppWindowHostCommandOutcome::CanvasInteracted),
             StudioAppWindowHostCommand::DispatchUiAction { action } => {
                 match self.dispatch_ui_action(action)? {
                     Some(dispatch) => Ok(StudioAppWindowHostCommandOutcome::WindowDispatched(
@@ -633,8 +688,9 @@ mod tests {
     };
 
     use crate::{
-        StudioAppWindowHostCommand, StudioAppWindowHostCommandOutcome,
-        StudioAppWindowHostGlobalEvent, StudioAppWindowHostManager, StudioAppWindowHostUiAction,
+        StudioAppWindowHostCanvasInteractionResult, StudioAppWindowHostCommand,
+        StudioAppWindowHostCommandOutcome, StudioAppWindowHostGlobalEvent,
+        StudioAppWindowHostManager, StudioAppWindowHostUiAction, StudioCanvasInteractionAction,
         StudioAppWindowHostUiActionAvailability, StudioAppWindowHostUiActionDisabledReason,
         StudioAppWindowHostUiActionState, StudioRuntimeEntitlementPreflight,
         StudioRuntimeEntitlementSeed, StudioRuntimeEntitlementSessionEvent, StudioRuntimeTrigger,
@@ -672,6 +728,45 @@ mod tests {
                 entitlement_preflight: StudioRuntimeEntitlementPreflight::Skip,
                 entitlement_seed: StudioRuntimeEntitlementSeed::Synced,
                 trigger: crate::StudioRuntimeTrigger::WidgetAction(RunPanelActionId::RunManual),
+            },
+            project_path,
+        )
+    }
+
+    fn synced_workspace_config() -> crate::StudioRuntimeConfig {
+        crate::StudioRuntimeConfig {
+            entitlement_preflight: StudioRuntimeEntitlementPreflight::Skip,
+            entitlement_seed: StudioRuntimeEntitlementSeed::Synced,
+            ..crate::StudioRuntimeConfig::default()
+        }
+    }
+
+    fn flash_drum_local_rules_synced_config() -> (crate::StudioRuntimeConfig, PathBuf) {
+        let unique = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("expected time after epoch")
+            .as_nanos();
+        let project_path = std::env::temp_dir().join(format!(
+            "radishflow-window-host-local-rules-{unique}.rfproj.json"
+        ));
+        let project_json =
+            include_str!("../../../examples/flowsheets/feed-heater-flash.rfproj.json")
+                .replacen(
+                    ",\n        \"stream-vapor\": {\n          \"id\": \"stream-vapor\",\n          \"name\": \"Vapor Outlet\",\n          \"temperature_k\": 345.0,\n          \"pressure_pa\": 95000.0,\n          \"total_molar_flow_mol_s\": 0.0,\n          \"overall_mole_fractions\": {\n            \"component-a\": 0.5,\n            \"component-b\": 0.5\n          },\n          \"phases\": []\n        }",
+                    "",
+                    1,
+                )
+                .replacen(
+                    "\"name\": \"vapor\",\n              \"direction\": \"outlet\",\n              \"kind\": \"material\",\n              \"stream_id\": \"stream-vapor\"",
+                    "\"name\": \"vapor\",\n              \"direction\": \"outlet\",\n              \"kind\": \"material\",\n              \"stream_id\": null",
+                    1,
+                );
+        fs::write(&project_path, project_json).expect("expected local rules project");
+
+        (
+            crate::StudioRuntimeConfig {
+                project_path: project_path.clone(),
+                ..synced_workspace_config()
             },
             project_path,
         )
@@ -914,6 +1009,104 @@ mod tests {
             }
             other => panic!("expected run panel recovery dispatch, got {other:?}"),
         }
+
+        let _ = fs::remove_file(project_path);
+    }
+
+    #[test]
+    fn app_window_host_manager_accept_canvas_suggestion_rejoins_automatic_mainline() {
+        let (config, project_path) = flash_drum_local_rules_synced_config();
+        let mut manager = StudioAppWindowHostManager::new(&config).expect("expected manager");
+        manager.refresh_local_canvas_suggestions();
+        let window = manager.open_window();
+
+        let activate = manager
+            .dispatch_run_panel_action(window.window_id, RunPanelActionId::SetActive)
+            .expect("expected activate dispatch");
+        match &activate.dispatch.host_output.runtime_output.report.dispatch {
+            crate::StudioRuntimeDispatch::AppCommand(outcome) => match &outcome.dispatch {
+                crate::StudioAppResultDispatch::WorkspaceMode(mode) => {
+                    assert_eq!(mode.simulation_mode, rf_ui::SimulationMode::Active);
+                    assert_eq!(
+                        mode.pending_reason,
+                        Some(rf_ui::SolvePendingReason::ModeActivated)
+                    );
+                }
+                other => panic!("expected workspace mode dispatch, got {other:?}"),
+            },
+            other => panic!("expected app command dispatch, got {other:?}"),
+        }
+
+        let accepted = manager
+            .accept_focused_canvas_suggestion_by_tab()
+            .expect("expected canvas suggestion acceptance")
+            .expect("expected focused suggestion");
+        assert_eq!(
+            accepted.id.as_str(),
+            "local.flash_drum.create_outlet.flash-1.vapor"
+        );
+
+        let app_state = manager.session().host_port().runtime().app_state();
+        assert_eq!(app_state.workspace.run_panel.run_status, rf_ui::RunStatus::Converged);
+        assert_eq!(app_state.workspace.run_panel.pending_reason, None);
+        assert_eq!(
+            app_state.workspace.run_panel.latest_snapshot_id.as_deref(),
+            Some("example-feed-heater-flash-rev-1-seq-1")
+        );
+        assert!(
+            app_state
+                .workspace
+                .canvas_interaction
+                .suggestions
+                .iter()
+                .all(|suggestion| {
+                    suggestion.id.as_str() != "local.flash_drum.create_outlet.flash-1.vapor"
+                }),
+            "accepted suggestion should be removed after local rules refresh"
+        );
+
+        let _ = fs::remove_file(project_path);
+    }
+
+    #[test]
+    fn app_window_host_manager_executes_canvas_interaction_through_command_surface() {
+        let (config, project_path) = flash_drum_local_rules_synced_config();
+        let mut manager = StudioAppWindowHostManager::new(&config).expect("expected manager");
+        manager.refresh_local_canvas_suggestions();
+        let window = manager.open_window();
+
+        let _ = manager
+            .execute_command(StudioAppWindowHostCommand::DispatchTrigger {
+                window_id: window.window_id,
+                trigger: StudioRuntimeTrigger::WidgetAction(RunPanelActionId::SetActive),
+            })
+            .expect("expected activate command dispatch");
+
+        let interaction = manager
+            .execute_command(StudioAppWindowHostCommand::DispatchCanvasInteraction {
+                action: StudioCanvasInteractionAction::AcceptFocusedByTab,
+            })
+            .expect("expected canvas interaction command");
+        match interaction {
+            StudioAppWindowHostCommandOutcome::CanvasInteracted(
+                StudioAppWindowHostCanvasInteractionResult {
+                    action: StudioCanvasInteractionAction::AcceptFocusedByTab,
+                    accepted: Some(accepted),
+                    rejected: None,
+                    focused: None,
+                },
+            ) => {
+                assert_eq!(
+                    accepted.id.as_str(),
+                    "local.flash_drum.create_outlet.flash-1.vapor"
+                );
+            }
+            other => panic!("expected canvas interaction outcome, got {other:?}"),
+        }
+
+        let app_state = manager.session().host_port().runtime().app_state();
+        assert_eq!(app_state.workspace.run_panel.run_status, rf_ui::RunStatus::Converged);
+        assert_eq!(app_state.workspace.run_panel.pending_reason, None);
 
         let _ = fs::remove_file(project_path);
     }

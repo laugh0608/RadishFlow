@@ -512,7 +512,15 @@ impl BootstrapSession {
     pub(crate) fn accept_focused_canvas_suggestion_by_tab(
         &mut self,
     ) -> RfResult<Option<rf_ui::CanvasSuggestion>> {
-        self.app_state.accept_focused_canvas_suggestion_by_tab()
+        let accepted = self.app_state.accept_focused_canvas_suggestion_by_tab()?;
+        if accepted.is_none() {
+            return Ok(None);
+        }
+
+        self.refresh_local_canvas_suggestions();
+        self.dispatch_automatic_run_after_canvas_write_if_needed()?;
+
+        Ok(accepted)
     }
 
     pub(crate) fn reject_focused_canvas_suggestion(&mut self) -> Option<rf_ui::CanvasSuggestion> {
@@ -525,6 +533,23 @@ impl BootstrapSession {
 
     pub(crate) fn focus_previous_canvas_suggestion(&mut self) -> Option<rf_ui::CanvasSuggestion> {
         self.app_state.focus_previous_canvas_suggestion()
+    }
+
+    fn dispatch_automatic_run_after_canvas_write_if_needed(&mut self) -> RfResult<()> {
+        let run_panel = &self.app_state.workspace.run_panel;
+        if !matches!(run_panel.simulation_mode, rf_ui::SimulationMode::Active)
+            || run_panel.pending_reason != Some(rf_ui::SolvePendingReason::DocumentRevisionAdvanced)
+        {
+            return Ok(());
+        }
+
+        let _ = self.run_trigger(&StudioBootstrapTrigger::AppCommand(
+            crate::StudioAppCommand::run_workspace(
+                crate::WorkspaceRunCommand::automatic_preferred(),
+            ),
+        ))?;
+
+        Ok(())
     }
 }
 

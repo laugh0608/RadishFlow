@@ -244,9 +244,10 @@ pub use studio_window_host::{
     StudioWindowHostTimerDriverCommand,
 };
 pub use studio_window_host_manager::{
-    StudioAppWindowHostClose, StudioAppWindowHostCommand, StudioAppWindowHostCommandOutcome,
-    StudioAppWindowHostDispatch, StudioAppWindowHostGlobalEvent, StudioAppWindowHostManager,
-    StudioAppWindowHostOpenWindow, StudioAppWindowHostUiAction,
+    StudioAppWindowHostCanvasInteractionResult, StudioAppWindowHostClose,
+    StudioAppWindowHostCommand, StudioAppWindowHostCommandOutcome, StudioAppWindowHostDispatch,
+    StudioAppWindowHostGlobalEvent, StudioAppWindowHostManager, StudioAppWindowHostOpenWindow,
+    StudioAppWindowHostUiAction, StudioCanvasInteractionAction,
     StudioAppWindowHostUiActionAvailability, StudioAppWindowHostUiActionDisabledReason,
     StudioAppWindowHostUiActionState,
 };

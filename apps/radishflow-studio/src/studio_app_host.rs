@@ -5,9 +5,10 @@ use std::path::Path;
 use rf_types::{RfError, RfResult};
 
 use crate::{
-    StudioAppWindowHostClose, StudioAppWindowHostCommand, StudioAppWindowHostCommandOutcome,
-    StudioAppWindowHostDispatch, StudioAppWindowHostGlobalEvent, StudioAppWindowHostManager,
-    StudioAppWindowHostOpenWindow, StudioAppWindowHostUiAction,
+    StudioAppWindowHostCanvasInteractionResult, StudioAppWindowHostClose,
+    StudioAppWindowHostCommand, StudioAppWindowHostCommandOutcome, StudioAppWindowHostDispatch,
+    StudioAppWindowHostGlobalEvent, StudioAppWindowHostManager, StudioAppWindowHostOpenWindow,
+    StudioAppWindowHostUiAction, StudioCanvasInteractionAction,
     StudioAppWindowHostUiActionAvailability, StudioAppWindowHostUiActionDisabledReason,
     StudioAppWindowHostUiActionState, StudioRuntimeConfig, StudioRuntimeHostAckResult,
     StudioRuntimeReport, StudioRuntimeTimerHandleSlot, StudioRuntimeTrigger, StudioWindowHostEvent,
@@ -116,6 +117,9 @@ pub enum StudioAppHostCommand {
         window_id: StudioWindowHostId,
         trigger: StudioRuntimeTrigger,
     },
+    DispatchCanvasInteraction {
+        action: StudioCanvasInteractionAction,
+    },
     DispatchUiAction {
         action: StudioAppHostUiAction,
     },
@@ -138,10 +142,11 @@ pub enum StudioAppHostCommand {
     },
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum StudioAppHostCommandOutcome {
     WindowOpened(StudioAppWindowHostOpenWindow),
     WindowDispatched(StudioAppWindowHostDispatch),
+    CanvasInteracted(StudioAppWindowHostCanvasInteractionResult),
     WindowClosed(StudioAppWindowHostClose),
     IgnoredUiAction,
     IgnoredGlobalEvent {
@@ -292,7 +297,7 @@ pub struct StudioAppHostChangeSet {
     pub parked_entitlement_timer_change: Option<StudioAppHostTimerSlotChange>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct StudioAppHostOutput {
     pub outcome: StudioAppHostCommandOutcome,
     pub snapshot: StudioAppHostSnapshot,
@@ -485,20 +490,33 @@ impl StudioAppHost {
     pub fn accept_focused_canvas_suggestion_by_tab(
         &mut self,
     ) -> RfResult<Option<rf_ui::CanvasSuggestion>> {
-        self.window_host_manager
-            .accept_focused_canvas_suggestion_by_tab()
+        self.dispatch_canvas_interaction(StudioCanvasInteractionAction::AcceptFocusedByTab)
+            .map(|result| result.accepted)
     }
 
     pub fn reject_focused_canvas_suggestion(&mut self) -> Option<rf_ui::CanvasSuggestion> {
-        self.window_host_manager.reject_focused_canvas_suggestion()
+        self.dispatch_canvas_interaction(StudioCanvasInteractionAction::RejectFocused)
+            .expect("canvas rejection should not fail")
+            .rejected
     }
 
     pub fn focus_next_canvas_suggestion(&mut self) -> Option<rf_ui::CanvasSuggestion> {
-        self.window_host_manager.focus_next_canvas_suggestion()
+        self.dispatch_canvas_interaction(StudioCanvasInteractionAction::FocusNext)
+            .expect("canvas focus-next should not fail")
+            .focused
     }
 
     pub fn focus_previous_canvas_suggestion(&mut self) -> Option<rf_ui::CanvasSuggestion> {
-        self.window_host_manager.focus_previous_canvas_suggestion()
+        self.dispatch_canvas_interaction(StudioCanvasInteractionAction::FocusPrevious)
+            .expect("canvas focus-previous should not fail")
+            .focused
+    }
+
+    pub fn dispatch_canvas_interaction(
+        &mut self,
+        action: StudioCanvasInteractionAction,
+    ) -> RfResult<StudioAppWindowHostCanvasInteractionResult> {
+        self.window_host_manager.dispatch_canvas_interaction(action)
     }
 
     pub fn latest_log_entry(&self) -> Option<rf_ui::AppLogEntry> {
@@ -708,22 +726,41 @@ impl StudioAppHostController {
     pub fn accept_focused_canvas_suggestion_by_tab(
         &mut self,
     ) -> RfResult<Option<rf_ui::CanvasSuggestion>> {
-        let accepted = self.app_host.accept_focused_canvas_suggestion_by_tab()?;
-        self.app_host.refresh_local_canvas_suggestions();
-        self.dispatch_automatic_run_after_document_write_if_needed()?;
-        Ok(accepted)
+        self.dispatch_canvas_interaction(StudioCanvasInteractionAction::AcceptFocusedByTab)
+            .map(|result| result.accepted)
     }
 
     pub fn reject_focused_canvas_suggestion(&mut self) -> Option<rf_ui::CanvasSuggestion> {
-        self.app_host.reject_focused_canvas_suggestion()
+        self.dispatch_canvas_interaction(StudioCanvasInteractionAction::RejectFocused)
+            .expect("canvas rejection should not fail")
+            .rejected
     }
 
     pub fn focus_next_canvas_suggestion(&mut self) -> Option<rf_ui::CanvasSuggestion> {
-        self.app_host.focus_next_canvas_suggestion()
+        self.dispatch_canvas_interaction(StudioCanvasInteractionAction::FocusNext)
+            .expect("canvas focus-next should not fail")
+            .focused
     }
 
     pub fn focus_previous_canvas_suggestion(&mut self) -> Option<rf_ui::CanvasSuggestion> {
-        self.app_host.focus_previous_canvas_suggestion()
+        self.dispatch_canvas_interaction(StudioCanvasInteractionAction::FocusPrevious)
+            .expect("canvas focus-previous should not fail")
+            .focused
+    }
+
+    pub fn dispatch_canvas_interaction(
+        &mut self,
+        action: StudioCanvasInteractionAction,
+    ) -> RfResult<StudioAppWindowHostCanvasInteractionResult> {
+        let (outcome, _) = self.execute_command(StudioAppHostCommand::DispatchCanvasInteraction {
+            action,
+        })?;
+        let StudioAppHostCommandOutcome::CanvasInteracted(result) = outcome else {
+            return Err(RfError::invalid_input(format!(
+                "app host controller expected canvas interaction outcome for {action:?}"
+            )));
+        };
+        Ok(result)
     }
 
     pub fn latest_log_entry(&self) -> Option<rf_ui::AppLogEntry> {
@@ -1017,32 +1054,6 @@ impl StudioAppHostController {
         })
     }
 
-    fn dispatch_automatic_run_after_document_write_if_needed(&mut self) -> RfResult<()> {
-        let control_state = self.app_host.workspace_control_state();
-        if !matches!(control_state.simulation_mode, rf_ui::SimulationMode::Active)
-            || control_state.pending_reason
-                != Some(rf_ui::SolvePendingReason::DocumentRevisionAdvanced)
-        {
-            return Ok(());
-        }
-
-        let Some(window_id) = self
-            .state()
-            .foreground_window_id
-            .or_else(|| self.state().registered_windows.first().copied())
-        else {
-            return Ok(());
-        };
-
-        let _ = self.execute_command(StudioAppHostCommand::DispatchWindowTrigger {
-            window_id,
-            trigger: StudioRuntimeTrigger::AppCommand(crate::StudioAppCommand::run_workspace(
-                crate::WorkspaceRunCommand::automatic_preferred(),
-            )),
-        })?;
-
-        Ok(())
-    }
 }
 
 fn dispatch_effects_from_session(
@@ -1273,6 +1284,9 @@ fn map_command(command: StudioAppHostCommand) -> StudioAppWindowHostCommand {
         StudioAppHostCommand::OpenWindow => StudioAppWindowHostCommand::OpenWindow,
         StudioAppHostCommand::DispatchWindowTrigger { window_id, trigger } => {
             StudioAppWindowHostCommand::DispatchTrigger { window_id, trigger }
+        }
+        StudioAppHostCommand::DispatchCanvasInteraction { action } => {
+            StudioAppWindowHostCommand::DispatchCanvasInteraction { action }
         }
         StudioAppHostCommand::DispatchUiAction { action } => {
             StudioAppWindowHostCommand::DispatchUiAction {
@@ -1534,6 +1548,9 @@ fn map_outcome(outcome: StudioAppWindowHostCommandOutcome) -> StudioAppHostComma
         StudioAppWindowHostCommandOutcome::WindowDispatched(dispatch) => {
             StudioAppHostCommandOutcome::WindowDispatched(dispatch)
         }
+        StudioAppWindowHostCommandOutcome::CanvasInteracted(result) => {
+            StudioAppHostCommandOutcome::CanvasInteracted(result)
+        }
         StudioAppWindowHostCommandOutcome::WindowClosed(close) => {
             StudioAppHostCommandOutcome::WindowClosed(close)
         }
@@ -1565,6 +1582,7 @@ mod tests {
         StudioAppHostUiActionModel, StudioAppHostUiActionState,
         StudioAppHostUiCommandDispatchResult, StudioAppHostUiCommandGroup,
         StudioAppHostWindowChange, StudioAppHostWindowSelectionChange,
+        StudioCanvasInteractionAction,
         StudioAppWindowHostGlobalEvent, StudioRuntimeEntitlementPreflight,
         StudioRuntimeEntitlementSeed, StudioRuntimeEntitlementSessionEvent, StudioRuntimeTrigger,
         StudioWindowHostRetirement, StudioWindowHostRole,
@@ -1600,6 +1618,39 @@ mod tests {
                 entitlement_preflight: StudioRuntimeEntitlementPreflight::Skip,
                 entitlement_seed: StudioRuntimeEntitlementSeed::Synced,
                 trigger: crate::StudioRuntimeTrigger::WidgetAction(RunPanelActionId::RunManual),
+            },
+            project_path,
+        )
+    }
+
+    fn flash_drum_local_rules_synced_config() -> (crate::StudioRuntimeConfig, PathBuf) {
+        let unique = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("expected time after epoch")
+            .as_nanos();
+        let project_path = std::env::temp_dir().join(format!(
+            "radishflow-app-host-local-rules-{unique}.rfproj.json"
+        ));
+        let project_json =
+            include_str!("../../../examples/flowsheets/feed-heater-flash.rfproj.json")
+                .replacen(
+                    ",\n        \"stream-vapor\": {\n          \"id\": \"stream-vapor\",\n          \"name\": \"Vapor Outlet\",\n          \"temperature_k\": 345.0,\n          \"pressure_pa\": 95000.0,\n          \"total_molar_flow_mol_s\": 0.0,\n          \"overall_mole_fractions\": {\n            \"component-a\": 0.5,\n            \"component-b\": 0.5\n          },\n          \"phases\": []\n        }",
+                    "",
+                    1,
+                )
+                .replacen(
+                    "\"name\": \"vapor\",\n              \"direction\": \"outlet\",\n              \"kind\": \"material\",\n              \"stream_id\": \"stream-vapor\"",
+                    "\"name\": \"vapor\",\n              \"direction\": \"outlet\",\n              \"kind\": \"material\",\n              \"stream_id\": null",
+                    1,
+                );
+        fs::write(&project_path, project_json).expect("expected local rules project");
+
+        (
+            crate::StudioRuntimeConfig {
+                project_path: project_path.clone(),
+                entitlement_preflight: StudioRuntimeEntitlementPreflight::Skip,
+                entitlement_seed: StudioRuntimeEntitlementSeed::Synced,
+                ..crate::StudioRuntimeConfig::default()
             },
             project_path,
         )
@@ -3241,6 +3292,50 @@ mod tests {
             })
         );
         assert_eq!(model.actions.len(), 5);
+
+        let _ = fs::remove_file(project_path);
+    }
+
+    #[test]
+    fn app_host_executes_canvas_interaction_through_command_surface() {
+        let (config, project_path) = flash_drum_local_rules_synced_config();
+        let mut app_host = StudioAppHost::new(&config).expect("expected app host");
+        app_host.refresh_local_canvas_suggestions();
+        let opened = app_host
+            .execute_command(StudioAppHostCommand::OpenWindow)
+            .expect("expected window open");
+        let window_id = match opened.outcome {
+            StudioAppHostCommandOutcome::WindowOpened(opened) => opened.window_id,
+            other => panic!("expected window opened outcome, got {other:?}"),
+        };
+
+        let _ = app_host
+            .execute_command(StudioAppHostCommand::DispatchWindowTrigger {
+                window_id,
+                trigger: StudioRuntimeTrigger::WidgetAction(RunPanelActionId::SetActive),
+            })
+            .expect("expected activate command");
+
+        let interaction = app_host
+            .execute_command(StudioAppHostCommand::DispatchCanvasInteraction {
+                action: StudioCanvasInteractionAction::AcceptFocusedByTab,
+            })
+            .expect("expected canvas interaction command");
+        match interaction.outcome {
+            StudioAppHostCommandOutcome::CanvasInteracted(result) => {
+                assert_eq!(result.action, StudioCanvasInteractionAction::AcceptFocusedByTab);
+                assert_eq!(
+                    result.accepted.as_ref().map(|suggestion| suggestion.id.as_str()),
+                    Some("local.flash_drum.create_outlet.flash-1.vapor")
+                );
+            }
+            other => panic!("expected canvas interaction outcome, got {other:?}"),
+        }
+        assert_eq!(
+            app_host.workspace_control_state().run_status,
+            rf_ui::RunStatus::Converged
+        );
+        assert_eq!(app_host.workspace_control_state().pending_reason, None);
 
         let _ = fs::remove_file(project_path);
     }

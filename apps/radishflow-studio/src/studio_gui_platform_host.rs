@@ -1212,6 +1212,9 @@ fn format_platform_dispatch_activity(dispatch: &StudioGuiPlatformDispatch) -> St
             crate::StudioGuiHostCommandOutcome::WindowDropTargetApplied(result),
         ) => format!("drop apply {:?}", result.query),
         StudioGuiDriverOutcome::HostCommand(
+            crate::StudioGuiHostCommandOutcome::CanvasInteracted(result),
+        ) => format!("canvas {}", format!("{:?}", result.action).to_lowercase()),
+        StudioGuiDriverOutcome::HostCommand(
             crate::StudioGuiHostCommandOutcome::WindowClosed(result),
         ) => match result.close.as_ref() {
             Some(close) => format!("window closed #{}", close.window_id),
