@@ -1,4 +1,7 @@
-use crate::{StudioAppHostUiCommandGroup, StudioAppHostUiCommandModel, StudioWindowHostId};
+use crate::{
+    StudioAppHostUiCommandGroup, StudioAppHostUiCommandModel, StudioGuiCanvasActionId,
+    StudioGuiCanvasState, StudioWindowHostId,
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum StudioGuiShortcutModifier {
@@ -37,9 +40,16 @@ pub struct StudioGuiCommandEntry {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StudioGuiCommandSection {
-    pub group: StudioAppHostUiCommandGroup,
+    pub group: StudioGuiCommandGroup,
     pub title: &'static str,
     pub commands: Vec<StudioGuiCommandEntry>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum StudioGuiCommandGroup {
+    RunPanel,
+    Recovery,
+    Canvas,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -49,8 +59,17 @@ pub struct StudioGuiCommandRegistry {
 
 impl StudioGuiCommandRegistry {
     pub fn from_model(model: &StudioAppHostUiCommandModel) -> Self {
+        Self::from_surfaces(model, &StudioGuiCanvasState::default(), None)
+    }
+
+    pub fn from_surfaces(
+        model: &StudioAppHostUiCommandModel,
+        canvas: &StudioGuiCanvasState,
+        canvas_target_window_id: Option<StudioWindowHostId>,
+    ) -> Self {
         let mut run_panel = Vec::new();
         let mut recovery = Vec::new();
+        let mut canvas_commands = Vec::new();
 
         for action in &model.actions {
             let defaults = command_defaults(action.command_id);
@@ -79,11 +98,37 @@ impl StudioGuiCommandRegistry {
             }
         }
 
+        if !canvas.suggestions.is_empty() {
+            let widget = canvas.widget();
+            for action in widget.actions {
+                let defaults = command_defaults(action.command_id);
+                canvas_commands.push(StudioGuiCommandEntry {
+                    command_id: action.command_id.to_string(),
+                    label: action.label.to_string(),
+                    detail: action.detail.to_string(),
+                    enabled: action.enabled,
+                    sort_order: canvas_sort_order(action.id),
+                    target_window_id: canvas_target_window_id,
+                    menu_path: defaults
+                        .menu_path
+                        .iter()
+                        .map(|segment| (*segment).to_string())
+                        .collect(),
+                    search_terms: defaults
+                        .search_terms
+                        .iter()
+                        .map(|term| (*term).to_string())
+                        .collect(),
+                    shortcut: defaults.shortcut,
+                });
+            }
+        }
+
         let mut sections = Vec::new();
         if !run_panel.is_empty() {
             run_panel.sort_by_key(|entry| entry.sort_order);
             sections.push(StudioGuiCommandSection {
-                group: StudioAppHostUiCommandGroup::RunPanel,
+                group: StudioGuiCommandGroup::RunPanel,
                 title: "Run Panel",
                 commands: run_panel,
             });
@@ -91,9 +136,17 @@ impl StudioGuiCommandRegistry {
         if !recovery.is_empty() {
             recovery.sort_by_key(|entry| entry.sort_order);
             sections.push(StudioGuiCommandSection {
-                group: StudioAppHostUiCommandGroup::Recovery,
+                group: StudioGuiCommandGroup::Recovery,
                 title: "Recovery",
                 commands: recovery,
+            });
+        }
+        if !canvas_commands.is_empty() {
+            canvas_commands.sort_by_key(|entry| entry.sort_order);
+            sections.push(StudioGuiCommandSection {
+                group: StudioGuiCommandGroup::Canvas,
+                title: "Canvas",
+                commands: canvas_commands,
             });
         }
 
@@ -105,6 +158,13 @@ impl StudioGuiCommandRegistry {
             .iter()
             .flat_map(|section| section.commands.iter())
             .find(|entry| entry.shortcut.as_ref() == Some(shortcut))
+    }
+
+    pub fn command(&self, command_id: &str) -> Option<&StudioGuiCommandEntry> {
+        self.sections
+            .iter()
+            .flat_map(|section| section.commands.iter())
+            .find(|entry| entry.command_id == command_id)
     }
 }
 
@@ -157,6 +217,41 @@ fn command_defaults(command_id: &str) -> StudioGuiCommandDefaults {
                 key: StudioGuiShortcutKey::F8,
             }),
         },
+        "canvas.accept_focused" => StudioGuiCommandDefaults {
+            menu_path: &["Canvas", "Accept Suggestion"],
+            search_terms: &["canvas", "accept", "suggestion", "apply"],
+            shortcut: Some(StudioGuiShortcut {
+                modifiers: Vec::new(),
+                key: StudioGuiShortcutKey::Tab,
+            }),
+        },
+        "canvas.reject_focused" => StudioGuiCommandDefaults {
+            menu_path: &["Canvas", "Reject Suggestion"],
+            search_terms: &["canvas", "reject", "dismiss", "suggestion"],
+            shortcut: Some(StudioGuiShortcut {
+                modifiers: Vec::new(),
+                key: StudioGuiShortcutKey::Escape,
+            }),
+        },
+        "canvas.focus_next" => StudioGuiCommandDefaults {
+            menu_path: &["Canvas", "Next Suggestion"],
+            search_terms: &["canvas", "next", "focus", "suggestion"],
+            shortcut: Some(StudioGuiShortcut {
+                modifiers: vec![StudioGuiShortcutModifier::Ctrl],
+                key: StudioGuiShortcutKey::Tab,
+            }),
+        },
+        "canvas.focus_previous" => StudioGuiCommandDefaults {
+            menu_path: &["Canvas", "Previous Suggestion"],
+            search_terms: &["canvas", "previous", "focus", "suggestion"],
+            shortcut: Some(StudioGuiShortcut {
+                modifiers: vec![
+                    StudioGuiShortcutModifier::Ctrl,
+                    StudioGuiShortcutModifier::Shift,
+                ],
+                key: StudioGuiShortcutKey::Tab,
+            }),
+        },
         _ => StudioGuiCommandDefaults {
             menu_path: &["Commands"],
             search_terms: &[],
@@ -165,12 +260,22 @@ fn command_defaults(command_id: &str) -> StudioGuiCommandDefaults {
     }
 }
 
+fn canvas_sort_order(action_id: StudioGuiCanvasActionId) -> u16 {
+    match action_id {
+        StudioGuiCanvasActionId::AcceptFocused => 300,
+        StudioGuiCanvasActionId::RejectFocused => 310,
+        StudioGuiCanvasActionId::FocusNext => 320,
+        StudioGuiCanvasActionId::FocusPrevious => 330,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::{
+        studio_gui_canvas_widget::canvas_command_id,
         StudioAppHostUiActionModel, StudioAppHostUiCommandGroup, StudioAppHostUiCommandModel,
-        StudioGuiCommandRegistry, StudioGuiShortcut, StudioGuiShortcutKey,
-        StudioGuiShortcutModifier,
+        StudioGuiCanvasActionId, StudioGuiCommandGroup, StudioGuiCommandRegistry, StudioGuiShortcut,
+        StudioGuiShortcutKey, StudioGuiShortcutModifier,
     };
 
     #[test]
@@ -249,6 +354,7 @@ mod tests {
                 key: StudioGuiShortcutKey::F6,
             })
         );
+        assert_eq!(registry.sections[0].group, StudioGuiCommandGroup::RunPanel);
     }
 
     #[test]
@@ -277,5 +383,66 @@ mod tests {
             .expect("expected command from shortcut");
 
         assert_eq!(command.command_id, "run_panel.resume_workspace");
+    }
+
+    #[test]
+    fn gui_command_registry_includes_canvas_commands_when_suggestions_exist() {
+        let mut canvas = crate::StudioGuiCanvasState::default();
+        canvas.suggestions = vec![
+            rf_ui::CanvasSuggestion::new(
+                rf_ui::CanvasSuggestionId::new("sug-a"),
+                rf_ui::SuggestionSource::LocalRules,
+                0.9,
+                rf_ui::GhostElement {
+                    kind: rf_ui::GhostElementKind::Connection,
+                    target_unit_id: rf_types::UnitId::new("flash-1"),
+                    visual_kind: rf_ui::StreamVisualKind::Material,
+                    visual_state: rf_ui::StreamVisualState::Suggested,
+                },
+                "test",
+            ),
+            rf_ui::CanvasSuggestion::new(
+                rf_ui::CanvasSuggestionId::new("sug-b"),
+                rf_ui::SuggestionSource::LocalRules,
+                0.7,
+                rf_ui::GhostElement {
+                    kind: rf_ui::GhostElementKind::Connection,
+                    target_unit_id: rf_types::UnitId::new("flash-1"),
+                    visual_kind: rf_ui::StreamVisualKind::Material,
+                    visual_state: rf_ui::StreamVisualState::Suggested,
+                },
+                "test",
+            ),
+        ];
+        canvas.focused_suggestion_id = Some(rf_ui::CanvasSuggestionId::new("sug-a"));
+
+        let registry = StudioGuiCommandRegistry::from_surfaces(
+            &StudioAppHostUiCommandModel::default(),
+            &canvas,
+            Some(3),
+        );
+
+        assert_eq!(registry.sections.len(), 1);
+        assert_eq!(registry.sections[0].group, StudioGuiCommandGroup::Canvas);
+        assert_eq!(registry.sections[0].title, "Canvas");
+        assert_eq!(
+            registry.sections[0]
+                .commands
+                .iter()
+                .map(|entry| entry.command_id.as_str())
+                .collect::<Vec<_>>(),
+            vec![
+                canvas_command_id(StudioGuiCanvasActionId::AcceptFocused),
+                canvas_command_id(StudioGuiCanvasActionId::RejectFocused),
+                canvas_command_id(StudioGuiCanvasActionId::FocusNext),
+                canvas_command_id(StudioGuiCanvasActionId::FocusPrevious),
+            ]
+        );
+        assert_eq!(
+            registry
+                .command(canvas_command_id(StudioGuiCanvasActionId::AcceptFocused))
+                .and_then(|entry| entry.target_window_id),
+            Some(3)
+        );
     }
 }

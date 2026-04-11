@@ -164,7 +164,7 @@ pub use studio_gui_canvas_widget::{
     StudioGuiCanvasWidgetModel,
 };
 pub use studio_gui_command_registry::{
-    StudioGuiCommandEntry, StudioGuiCommandRegistry, StudioGuiCommandSection, StudioGuiShortcut,
+    StudioGuiCommandEntry, StudioGuiCommandGroup, StudioGuiCommandRegistry, StudioGuiCommandSection, StudioGuiShortcut,
     StudioGuiShortcutKey, StudioGuiShortcutModifier,
 };
 pub use studio_gui_driver::{

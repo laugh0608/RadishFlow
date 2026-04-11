@@ -1180,6 +1180,14 @@ fn format_platform_dispatch_activity(dispatch: &StudioGuiPlatformDispatch) -> St
             crate::StudioGuiHostUiCommandDispatchResult::Executed(dispatch) => {
                 format!("command dispatch #{}", dispatch.target_window_id)
             }
+            crate::StudioGuiHostUiCommandDispatchResult::ExecutedCanvasInteraction {
+                command_id,
+                target_window_id,
+                ..
+            } => match target_window_id {
+                Some(window_id) => format!("command {command_id} -> #{window_id}"),
+                None => format!("command {command_id}"),
+            },
             crate::StudioGuiHostUiCommandDispatchResult::IgnoredDisabled {
                 command_id,
                 detail,

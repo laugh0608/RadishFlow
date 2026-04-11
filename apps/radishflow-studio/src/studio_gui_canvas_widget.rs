@@ -14,6 +14,7 @@ pub enum StudioGuiCanvasActionId {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StudioGuiCanvasRenderableAction {
     pub id: StudioGuiCanvasActionId,
+    pub command_id: &'static str,
     pub label: &'static str,
     pub detail: &'static str,
     pub enabled: bool,
@@ -61,6 +62,7 @@ impl StudioGuiCanvasWidgetModel {
             actions: vec![
                 StudioGuiCanvasRenderableAction {
                     id: StudioGuiCanvasActionId::AcceptFocused,
+                    command_id: canvas_command_id(StudioGuiCanvasActionId::AcceptFocused),
                     label: "Accept suggestion",
                     detail: "Apply the currently focused canvas suggestion",
                     enabled: can_accept,
@@ -71,6 +73,7 @@ impl StudioGuiCanvasWidgetModel {
                 },
                 StudioGuiCanvasRenderableAction {
                     id: StudioGuiCanvasActionId::RejectFocused,
+                    command_id: canvas_command_id(StudioGuiCanvasActionId::RejectFocused),
                     label: "Reject suggestion",
                     detail: "Dismiss the currently focused canvas suggestion",
                     enabled: has_focus,
@@ -81,6 +84,7 @@ impl StudioGuiCanvasWidgetModel {
                 },
                 StudioGuiCanvasRenderableAction {
                     id: StudioGuiCanvasActionId::FocusNext,
+                    command_id: canvas_command_id(StudioGuiCanvasActionId::FocusNext),
                     label: "Next suggestion",
                     detail: "Move focus to the next available canvas suggestion",
                     enabled: can_cycle_focus,
@@ -91,6 +95,7 @@ impl StudioGuiCanvasWidgetModel {
                 },
                 StudioGuiCanvasRenderableAction {
                     id: StudioGuiCanvasActionId::FocusPrevious,
+                    command_id: canvas_command_id(StudioGuiCanvasActionId::FocusPrevious),
                     label: "Previous suggestion",
                     detail: "Move focus to the previous available canvas suggestion",
                     enabled: can_cycle_focus,
@@ -148,13 +153,29 @@ impl StudioGuiCanvasState {
 }
 
 fn action_event(action_id: StudioGuiCanvasActionId) -> StudioGuiEvent {
+    StudioGuiEvent::UiCommandRequested {
+        command_id: canvas_command_id(action_id).to_string(),
+    }
+}
+
+pub(crate) fn canvas_command_id(action_id: StudioGuiCanvasActionId) -> &'static str {
     match action_id {
-        StudioGuiCanvasActionId::AcceptFocused => StudioGuiEvent::CanvasSuggestionAcceptRequested,
-        StudioGuiCanvasActionId::RejectFocused => StudioGuiEvent::CanvasSuggestionRejectRequested,
-        StudioGuiCanvasActionId::FocusNext => StudioGuiEvent::CanvasSuggestionFocusNextRequested,
-        StudioGuiCanvasActionId::FocusPrevious => {
-            StudioGuiEvent::CanvasSuggestionFocusPreviousRequested
-        }
+        StudioGuiCanvasActionId::AcceptFocused => "canvas.accept_focused",
+        StudioGuiCanvasActionId::RejectFocused => "canvas.reject_focused",
+        StudioGuiCanvasActionId::FocusNext => "canvas.focus_next",
+        StudioGuiCanvasActionId::FocusPrevious => "canvas.focus_previous",
+    }
+}
+
+pub(crate) fn canvas_action_id_from_command_id(
+    command_id: &str,
+) -> Option<StudioGuiCanvasActionId> {
+    match command_id {
+        "canvas.accept_focused" => Some(StudioGuiCanvasActionId::AcceptFocused),
+        "canvas.reject_focused" => Some(StudioGuiCanvasActionId::RejectFocused),
+        "canvas.focus_next" => Some(StudioGuiCanvasActionId::FocusNext),
+        "canvas.focus_previous" => Some(StudioGuiCanvasActionId::FocusPrevious),
+        _ => None,
     }
 }
 
@@ -302,28 +323,36 @@ mod tests {
             widget.activate_primary(),
             StudioGuiCanvasWidgetEvent::Requested {
                 action_id: StudioGuiCanvasActionId::AcceptFocused,
-                event: StudioGuiEvent::CanvasSuggestionAcceptRequested,
+                event: StudioGuiEvent::UiCommandRequested {
+                    command_id: "canvas.accept_focused".to_string(),
+                },
             }
         );
         assert_eq!(
             widget.activate(StudioGuiCanvasActionId::FocusNext),
             StudioGuiCanvasWidgetEvent::Requested {
                 action_id: StudioGuiCanvasActionId::FocusNext,
-                event: StudioGuiEvent::CanvasSuggestionFocusNextRequested,
+                event: StudioGuiEvent::UiCommandRequested {
+                    command_id: "canvas.focus_next".to_string(),
+                },
             }
         );
         assert_eq!(
             widget.activate(StudioGuiCanvasActionId::FocusPrevious),
             StudioGuiCanvasWidgetEvent::Requested {
                 action_id: StudioGuiCanvasActionId::FocusPrevious,
-                event: StudioGuiEvent::CanvasSuggestionFocusPreviousRequested,
+                event: StudioGuiEvent::UiCommandRequested {
+                    command_id: "canvas.focus_previous".to_string(),
+                },
             }
         );
         assert_eq!(
             widget.activate(StudioGuiCanvasActionId::RejectFocused),
             StudioGuiCanvasWidgetEvent::Requested {
                 action_id: StudioGuiCanvasActionId::RejectFocused,
-                event: StudioGuiEvent::CanvasSuggestionRejectRequested,
+                event: StudioGuiEvent::UiCommandRequested {
+                    command_id: "canvas.reject_focused".to_string(),
+                },
             }
         );
 
@@ -360,8 +389,32 @@ mod tests {
             .expect("expected driver dispatch");
 
         match dispatch.outcome {
-            StudioGuiDriverOutcome::CanvasInteraction(result) => {
+            StudioGuiDriverOutcome::HostCommand(
+                crate::StudioGuiHostCommandOutcome::UiCommandDispatched(
+                    crate::StudioGuiHostUiCommandDispatchResult::ExecutedCanvasInteraction {
+                        command_id,
+                        result,
+                        ..
+                    },
+                ),
+            ) => {
+                assert_eq!(command_id, "canvas.focus_next");
                 assert_eq!(result.action, StudioGuiCanvasInteractionAction::FocusNext);
+                assert_eq!(
+                    result
+                        .focused
+                        .as_ref()
+                        .map(|suggestion| suggestion.id.as_str()),
+                    Some("local.flash_drum.create_outlet.flash-1.liquid")
+                );
+                assert_eq!(
+                    result
+                        .canvas
+                        .focused_suggestion_id
+                        .as_ref()
+                        .map(|id| id.as_str()),
+                    Some("local.flash_drum.create_outlet.flash-1.liquid")
+                );
                 assert_eq!(
                     dispatch
                         .canvas
@@ -371,7 +424,7 @@ mod tests {
                     Some("local.flash_drum.create_outlet.flash-1.liquid")
                 );
             }
-            other => panic!("expected canvas interaction outcome, got {other:?}"),
+            other => panic!("expected canvas ui command outcome, got {other:?}"),
         }
 
         let _ = fs::remove_file(project_path);

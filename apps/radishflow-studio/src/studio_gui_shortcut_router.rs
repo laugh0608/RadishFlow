@@ -1,4 +1,7 @@
-use crate::{StudioGuiCommandRegistry, StudioGuiShortcut};
+use crate::{
+    studio_gui_canvas_widget::canvas_command_id, StudioGuiCanvasActionId, StudioGuiCommandRegistry,
+    StudioGuiShortcut,
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StudioGuiFocusContext {
@@ -16,10 +19,6 @@ pub enum StudioGuiShortcutRoute {
     DispatchCommandId {
         command_id: String,
     },
-    RequestCanvasSuggestionAccept,
-    RequestCanvasSuggestionReject,
-    RequestCanvasSuggestionFocusNext,
-    RequestCanvasSuggestionFocusPrevious,
     Ignored {
         reason: StudioGuiShortcutIgnoreReason,
     },
@@ -41,9 +40,11 @@ pub fn route_shortcut(
 ) -> StudioGuiShortcutRoute {
     if is_canvas_accept_shortcut(shortcut) {
         return match focus_context {
-            StudioGuiFocusContext::CanvasSuggestionFocused => {
-                StudioGuiShortcutRoute::RequestCanvasSuggestionAccept
-            }
+            StudioGuiFocusContext::CanvasSuggestionFocused => dispatch_canvas_command_shortcut(
+                registry,
+                shortcut,
+                canvas_command_id(StudioGuiCanvasActionId::AcceptFocused),
+            ),
             StudioGuiFocusContext::TextInput => StudioGuiShortcutRoute::Ignored {
                 reason: StudioGuiShortcutIgnoreReason::TextInputOwnsShortcut,
             },
@@ -63,9 +64,11 @@ pub fn route_shortcut(
 
     if is_canvas_focus_next_shortcut(shortcut) {
         return match focus_context {
-            StudioGuiFocusContext::CanvasSuggestionFocused => {
-                StudioGuiShortcutRoute::RequestCanvasSuggestionFocusNext
-            }
+            StudioGuiFocusContext::CanvasSuggestionFocused => dispatch_canvas_command_shortcut(
+                registry,
+                shortcut,
+                canvas_command_id(StudioGuiCanvasActionId::FocusNext),
+            ),
             StudioGuiFocusContext::TextInput => StudioGuiShortcutRoute::Ignored {
                 reason: StudioGuiShortcutIgnoreReason::TextInputOwnsShortcut,
             },
@@ -85,9 +88,11 @@ pub fn route_shortcut(
 
     if is_canvas_focus_previous_shortcut(shortcut) {
         return match focus_context {
-            StudioGuiFocusContext::CanvasSuggestionFocused => {
-                StudioGuiShortcutRoute::RequestCanvasSuggestionFocusPrevious
-            }
+            StudioGuiFocusContext::CanvasSuggestionFocused => dispatch_canvas_command_shortcut(
+                registry,
+                shortcut,
+                canvas_command_id(StudioGuiCanvasActionId::FocusPrevious),
+            ),
             StudioGuiFocusContext::TextInput => StudioGuiShortcutRoute::Ignored {
                 reason: StudioGuiShortcutIgnoreReason::TextInputOwnsShortcut,
             },
@@ -107,9 +112,11 @@ pub fn route_shortcut(
 
     if is_canvas_reject_shortcut(shortcut) {
         return match focus_context {
-            StudioGuiFocusContext::CanvasSuggestionFocused => {
-                StudioGuiShortcutRoute::RequestCanvasSuggestionReject
-            }
+            StudioGuiFocusContext::CanvasSuggestionFocused => dispatch_canvas_command_shortcut(
+                registry,
+                shortcut,
+                canvas_command_id(StudioGuiCanvasActionId::RejectFocused),
+            ),
             StudioGuiFocusContext::TextInput => StudioGuiShortcutRoute::Ignored {
                 reason: StudioGuiShortcutIgnoreReason::TextInputOwnsShortcut,
             },
@@ -185,6 +192,21 @@ fn has_exact_modifiers(
     actual == expected
 }
 
+fn dispatch_canvas_command_shortcut(
+    registry: &StudioGuiCommandRegistry,
+    shortcut: &StudioGuiShortcut,
+    command_id: &str,
+) -> StudioGuiShortcutRoute {
+    match registry.find_by_shortcut(shortcut) {
+        Some(entry) if entry.command_id == command_id => StudioGuiShortcutRoute::DispatchCommandId {
+            command_id: command_id.to_string(),
+        },
+        _ => StudioGuiShortcutRoute::Ignored {
+            reason: StudioGuiShortcutIgnoreReason::NoBindingFound,
+        },
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::{
@@ -195,7 +217,22 @@ mod tests {
     };
 
     fn registry() -> StudioGuiCommandRegistry {
-        StudioGuiCommandRegistry::from_model(&StudioAppHostUiCommandModel {
+        let mut canvas = crate::StudioGuiCanvasState::default();
+        canvas.suggestions = vec![rf_ui::CanvasSuggestion::new(
+            rf_ui::CanvasSuggestionId::new("sug-a"),
+            rf_ui::SuggestionSource::LocalRules,
+            0.9,
+            rf_ui::GhostElement {
+                kind: rf_ui::GhostElementKind::Connection,
+                target_unit_id: rf_types::UnitId::new("flash-1"),
+                visual_kind: rf_ui::StreamVisualKind::Material,
+                visual_state: rf_ui::StreamVisualState::Suggested,
+            },
+            "test",
+        )];
+        canvas.focused_suggestion_id = Some(rf_ui::CanvasSuggestionId::new("sug-a"));
+
+        StudioGuiCommandRegistry::from_surfaces(&StudioAppHostUiCommandModel {
             actions: vec![StudioAppHostUiActionModel {
                 action: None,
                 command_id: "run_panel.run_manual",
@@ -206,7 +243,7 @@ mod tests {
                 detail: "Run",
                 target_window_id: Some(1),
             }],
-        })
+        }, &canvas, Some(1))
     }
 
     #[test]
@@ -239,7 +276,12 @@ mod tests {
             StudioGuiFocusContext::CanvasSuggestionFocused,
         );
 
-        assert_eq!(route, StudioGuiShortcutRoute::RequestCanvasSuggestionAccept);
+        assert_eq!(
+            route,
+            StudioGuiShortcutRoute::DispatchCommandId {
+                command_id: "canvas.accept_focused".to_string(),
+            }
+        );
     }
 
     #[test]
@@ -255,7 +297,9 @@ mod tests {
 
         assert_eq!(
             route,
-            StudioGuiShortcutRoute::RequestCanvasSuggestionFocusNext
+            StudioGuiShortcutRoute::DispatchCommandId {
+                command_id: "canvas.focus_next".to_string(),
+            }
         );
     }
 
@@ -275,7 +319,9 @@ mod tests {
 
         assert_eq!(
             route,
-            StudioGuiShortcutRoute::RequestCanvasSuggestionFocusPrevious
+            StudioGuiShortcutRoute::DispatchCommandId {
+                command_id: "canvas.focus_previous".to_string(),
+            }
         );
     }
 
@@ -290,7 +336,12 @@ mod tests {
             StudioGuiFocusContext::CanvasSuggestionFocused,
         );
 
-        assert_eq!(route, StudioGuiShortcutRoute::RequestCanvasSuggestionReject);
+        assert_eq!(
+            route,
+            StudioGuiShortcutRoute::DispatchCommandId {
+                command_id: "canvas.reject_focused".to_string(),
+            }
+        );
     }
 
     #[test]

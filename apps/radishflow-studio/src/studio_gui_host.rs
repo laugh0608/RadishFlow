@@ -10,6 +10,7 @@ use crate::studio_gui_layout_store::{
     load_persisted_window_layouts, save_persisted_window_layouts,
 };
 use crate::{
+    studio_gui_canvas_widget::canvas_action_id_from_command_id,
     StudioAppHostCloseEffects, StudioAppHostController, StudioAppHostDispatchEffects,
     StudioAppHostGlobalEventResult, StudioAppHostProjection, StudioAppHostState,
     StudioAppHostUiCommandDispatchResult, StudioAppHostUiCommandModel, StudioAppHostWindowDispatchResult,
@@ -43,6 +44,11 @@ pub struct StudioGuiHostDispatch {
 #[derive(Debug, Clone, PartialEq)]
 pub enum StudioGuiHostUiCommandDispatchResult {
     Executed(StudioGuiHostDispatch),
+    ExecutedCanvasInteraction {
+        command_id: String,
+        target_window_id: Option<StudioWindowHostId>,
+        result: StudioGuiHostCanvasInteractionResult,
+    },
     IgnoredDisabled {
         command_id: String,
         detail: String,
@@ -277,7 +283,11 @@ impl StudioGuiHost {
     }
 
     pub fn command_registry(&self) -> StudioGuiCommandRegistry {
-        StudioGuiCommandRegistry::from_model(&self.ui_commands())
+        StudioGuiCommandRegistry::from_surfaces(
+            &self.ui_commands(),
+            &self.canvas_state(),
+            self.preferred_target_window_id(),
+        )
     }
 
     pub fn snapshot(&self) -> StudioGuiSnapshot {
@@ -574,7 +584,72 @@ impl StudioGuiHost {
         &mut self,
         command_id: &str,
     ) -> RfResult<StudioGuiHostUiCommandDispatchResult> {
+        if let Some(action_id) = canvas_action_id_from_command_id(command_id) {
+            let target_window_id = self.preferred_target_window_id();
+            let canvas = self.canvas_state();
+            if canvas.suggestions.is_empty() {
+                return Ok(StudioGuiHostUiCommandDispatchResult::IgnoredMissing {
+                    command_id: command_id.to_string(),
+                    ui_commands: self.ui_commands(),
+                });
+            }
+            let action_entry = canvas
+                .widget()
+                .action(action_id)
+                .cloned()
+                .expect("canvas widget should expose command-backed actions");
+            if !action_entry.enabled {
+                return Ok(StudioGuiHostUiCommandDispatchResult::IgnoredDisabled {
+                    command_id: action_entry.command_id.to_string(),
+                    detail: action_entry.detail.to_string(),
+                    target_window_id,
+                    ui_commands: self.ui_commands(),
+                });
+            }
+            let action = match action_id {
+                crate::StudioGuiCanvasActionId::AcceptFocused => {
+                    StudioGuiCanvasInteractionAction::AcceptFocusedByTab
+                }
+                crate::StudioGuiCanvasActionId::RejectFocused => {
+                    StudioGuiCanvasInteractionAction::RejectFocused
+                }
+                crate::StudioGuiCanvasActionId::FocusNext => {
+                    StudioGuiCanvasInteractionAction::FocusNext
+                }
+                crate::StudioGuiCanvasActionId::FocusPrevious => {
+                    StudioGuiCanvasInteractionAction::FocusPrevious
+                }
+            };
+            let mut result = self.dispatch_canvas_interaction(action)?;
+            result.ui_commands = self.ui_commands();
+            result.canvas = self.canvas_state();
+            return Ok(
+                StudioGuiHostUiCommandDispatchResult::ExecutedCanvasInteraction {
+                    command_id: action_entry.command_id.to_string(),
+                    target_window_id,
+                    result,
+                },
+            );
+        }
+
+        let registry = self.command_registry();
         let ui_commands = self.ui_commands();
+        let Some(command) = registry.command(command_id).cloned() else {
+            return Ok(StudioGuiHostUiCommandDispatchResult::IgnoredMissing {
+                command_id: command_id.to_string(),
+                ui_commands,
+            });
+        };
+
+        if !command.enabled {
+            return Ok(StudioGuiHostUiCommandDispatchResult::IgnoredDisabled {
+                command_id: command.command_id,
+                detail: command.detail,
+                target_window_id: command.target_window_id,
+                ui_commands,
+            });
+        }
+
         match self.controller.dispatch_ui_command(command_id)? {
             StudioAppHostUiCommandDispatchResult::Executed(dispatch) => {
                 Ok(StudioGuiHostUiCommandDispatchResult::Executed(
@@ -982,6 +1057,42 @@ mod tests {
                 project_path: project_path.clone(),
                 entitlement_preflight: StudioRuntimeEntitlementPreflight::Skip,
                 entitlement_seed: StudioRuntimeEntitlementSeed::Synced,
+                ..lease_expiring_config()
+            },
+            project_path,
+        )
+    }
+
+    fn flash_drum_local_rules_config() -> (StudioRuntimeConfig, PathBuf) {
+        let timestamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("expected current timestamp")
+            .as_nanos();
+        let project_path = std::env::temp_dir().join(format!(
+            "radishflow-gui-host-local-rules-unsynced-{timestamp}.rfproj.json"
+        ));
+        let project =
+            include_str!("../../../examples/flowsheets/feed-heater-flash.rfproj.json")
+                .replacen(
+                    "\"name\": \"inlet\",\n              \"direction\": \"inlet\",\n              \"kind\": \"material\",\n              \"stream_id\": \"stream-heated\"",
+                    "\"name\": \"inlet\",\n              \"direction\": \"inlet\",\n              \"kind\": \"material\",\n              \"stream_id\": null",
+                    1,
+                )
+                .replacen(
+                    "\"name\": \"liquid\",\n              \"direction\": \"outlet\",\n              \"kind\": \"material\",\n              \"stream_id\": \"stream-liquid\"",
+                    "\"name\": \"liquid\",\n              \"direction\": \"outlet\",\n              \"kind\": \"material\",\n              \"stream_id\": null",
+                    1,
+                )
+                .replacen(
+                    "\"name\": \"vapor\",\n              \"direction\": \"outlet\",\n              \"kind\": \"material\",\n              \"stream_id\": \"stream-vapor\"",
+                    "\"name\": \"vapor\",\n              \"direction\": \"outlet\",\n              \"kind\": \"material\",\n              \"stream_id\": null",
+                    1,
+                );
+        fs::write(&project_path, project).expect("expected local rules project");
+
+        (
+            StudioRuntimeConfig {
+                project_path: project_path.clone(),
                 ..lease_expiring_config()
             },
             project_path,
@@ -1460,6 +1571,78 @@ mod tests {
             other => panic!("expected canvas interaction outcome, got {other:?}"),
         }
         assert_eq!(gui_host.state().foreground_window_id, Some(opened.registration.window_id));
+
+        let _ = fs::remove_file(project_path);
+    }
+
+    #[test]
+    fn gui_host_dispatches_canvas_ui_command_by_command_id() {
+        let (config, project_path) = flash_drum_local_rules_synced_config();
+        let mut gui_host = StudioGuiHost::new(&config).expect("expected gui host");
+        let opened = gui_host.open_window().expect("expected window open");
+
+        let _ = gui_host
+            .dispatch_ui_command("run_panel.set_active")
+            .expect("expected activate dispatch");
+
+        let dispatch = gui_host
+            .dispatch_ui_command("canvas.accept_focused")
+            .expect("expected canvas ui command");
+        match dispatch {
+            StudioGuiHostUiCommandDispatchResult::ExecutedCanvasInteraction {
+                command_id,
+                target_window_id,
+                result,
+            } => {
+                assert_eq!(command_id, "canvas.accept_focused");
+                assert_eq!(target_window_id, Some(opened.registration.window_id));
+                assert_eq!(
+                    result.accepted.as_ref().map(|suggestion| suggestion.id.as_str()),
+                    Some("local.flash_drum.create_outlet.flash-1.vapor")
+                );
+            }
+            other => panic!("expected canvas ui command outcome, got {other:?}"),
+        }
+
+        let _ = fs::remove_file(project_path);
+    }
+
+    #[test]
+    fn gui_host_canvas_ui_command_focus_persists_for_followup_reject() {
+        let (config, project_path) = flash_drum_local_rules_config();
+        let mut gui_host = StudioGuiHost::new(&config).expect("expected gui host");
+
+        let focus = gui_host
+            .dispatch_ui_command("canvas.focus_next")
+            .expect("expected focus-next dispatch");
+        match focus {
+            StudioGuiHostUiCommandDispatchResult::ExecutedCanvasInteraction { result, .. } => {
+                assert_eq!(
+                    result
+                        .focused
+                        .as_ref()
+                        .map(|suggestion| suggestion.id.as_str()),
+                    Some("local.flash_drum.create_outlet.flash-1.liquid")
+                );
+            }
+            other => panic!("expected focus-next canvas ui command outcome, got {other:?}"),
+        }
+
+        let reject = gui_host
+            .dispatch_ui_command("canvas.reject_focused")
+            .expect("expected reject dispatch");
+        match reject {
+            StudioGuiHostUiCommandDispatchResult::ExecutedCanvasInteraction { result, .. } => {
+                assert_eq!(
+                    result
+                        .rejected
+                        .as_ref()
+                        .map(|suggestion| suggestion.id.as_str()),
+                    Some("local.flash_drum.create_outlet.flash-1.liquid")
+                );
+            }
+            other => panic!("expected reject canvas ui command outcome, got {other:?}"),
+        }
 
         let _ = fs::remove_file(project_path);
     }

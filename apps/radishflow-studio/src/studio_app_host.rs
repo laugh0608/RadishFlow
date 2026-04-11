@@ -1047,9 +1047,13 @@ impl StudioAppHostController {
         &mut self,
         command: StudioAppHostCommand,
     ) -> RfResult<(StudioAppHostCommandOutcome, StudioAppHostProjection)> {
+        let should_refresh_local_canvas_suggestions =
+            !matches!(command, StudioAppHostCommand::DispatchCanvasInteraction { .. });
         self.app_host.execute_command(command).map(|output| {
             let projection = self.store.apply_output(&output);
-            self.app_host.refresh_local_canvas_suggestions();
+            if should_refresh_local_canvas_suggestions {
+                self.app_host.refresh_local_canvas_suggestions();
+            }
             (output.outcome, projection)
         })
     }

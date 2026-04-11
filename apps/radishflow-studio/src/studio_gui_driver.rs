@@ -222,6 +222,8 @@ impl StudioGuiDriver {
             }
         };
         self.apply_native_timer_effects_from_outcome(&outcome);
+        let ui_commands = surfaced_ui_commands(&outcome).unwrap_or_else(|| self.host.ui_commands());
+        let canvas = surfaced_canvas_state(&outcome).unwrap_or_else(|| self.host.canvas_state());
         let snapshot = self.host.snapshot();
         let window = self
             .host
@@ -232,9 +234,9 @@ impl StudioGuiDriver {
             snapshot,
             window,
             state: self.host.state().clone(),
-            ui_commands: self.host.ui_commands(),
+            ui_commands,
             command_registry: self.host.command_registry(),
-            canvas: self.host.canvas_state(),
+            canvas,
         })
     }
 
@@ -262,6 +264,11 @@ impl StudioGuiDriver {
                     StudioGuiHostUiCommandDispatchResult::Executed(dispatch),
                 ),
             ) => Some(&dispatch.native_timers),
+            StudioGuiDriverOutcome::HostCommand(
+                StudioGuiHostCommandOutcome::UiCommandDispatched(
+                    StudioGuiHostUiCommandDispatchResult::ExecutedCanvasInteraction { .. },
+                ),
+            ) => None,
             StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::WindowClosed(
                 closed,
             )) => Some(&closed.native_timers),
@@ -295,6 +302,12 @@ fn layout_scope_window_id(outcome: &StudioGuiDriverOutcome) -> Option<StudioWind
         StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::UiCommandDispatched(
             crate::StudioGuiHostUiCommandDispatchResult::Executed(dispatch),
         )) => Some(dispatch.target_window_id),
+        StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::UiCommandDispatched(
+            crate::StudioGuiHostUiCommandDispatchResult::ExecutedCanvasInteraction {
+                target_window_id,
+                ..
+            },
+        )) => *target_window_id,
         StudioGuiDriverOutcome::HostCommand(
             StudioGuiHostCommandOutcome::EntitlementActionDispatched(result),
         ) => result.target_window_id(),
@@ -387,6 +400,106 @@ fn layout_scope_window_id(outcome: &StudioGuiDriverOutcome) -> Option<StudioWind
                 ..
             },
         ) => Some(*window_id),
+    }
+}
+
+fn surfaced_ui_commands(outcome: &StudioGuiDriverOutcome) -> Option<crate::StudioAppHostUiCommandModel> {
+    match outcome {
+        StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::WindowOpened(opened)) => {
+            Some(opened.ui_commands.clone())
+        }
+        StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::WindowDispatched(
+            dispatch,
+        )) => Some(dispatch.ui_commands.clone()),
+        StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::CanvasInteracted(
+            result,
+        )) => Some(result.ui_commands.clone()),
+        StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::LifecycleDispatched(
+            lifecycle,
+        )) => Some(lifecycle.ui_commands.clone()),
+        StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::UiCommandDispatched(
+            StudioGuiHostUiCommandDispatchResult::Executed(dispatch),
+        )) => Some(dispatch.ui_commands.clone()),
+        StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::UiCommandDispatched(
+            StudioGuiHostUiCommandDispatchResult::ExecutedCanvasInteraction { result, .. },
+        )) => Some(result.ui_commands.clone()),
+        StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::UiCommandDispatched(
+            StudioGuiHostUiCommandDispatchResult::IgnoredDisabled { ui_commands, .. }
+            | StudioGuiHostUiCommandDispatchResult::IgnoredMissing { ui_commands, .. },
+        )) => Some(ui_commands.clone()),
+        StudioGuiDriverOutcome::HostCommand(
+            StudioGuiHostCommandOutcome::EntitlementActionDispatched(
+                crate::StudioGuiHostEntitlementDispatchResult::Executed { dispatch, .. },
+            ),
+        ) => Some(dispatch.ui_commands.clone()),
+        StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::WindowClosed(
+            closed,
+        )) => Some(closed.ui_commands.clone()),
+        StudioGuiDriverOutcome::HostCommand(
+            StudioGuiHostCommandOutcome::EntitlementActionDispatched(
+                crate::StudioGuiHostEntitlementDispatchResult::IgnoredDisabled { .. }
+                | crate::StudioGuiHostEntitlementDispatchResult::IgnoredMissing { .. },
+            ),
+        )
+        | StudioGuiDriverOutcome::HostCommand(
+            StudioGuiHostCommandOutcome::WindowDropTargetQueried(_)
+            | StudioGuiHostCommandOutcome::WindowDropTargetPreviewUpdated(_)
+            | StudioGuiHostCommandOutcome::WindowDropTargetPreviewCleared(_)
+            | StudioGuiHostCommandOutcome::WindowDropTargetApplied(_),
+        )
+        | StudioGuiDriverOutcome::CanvasInteraction(_)
+        | StudioGuiDriverOutcome::WindowLayoutUpdated(_)
+        | StudioGuiDriverOutcome::IgnoredNativeTimerElapsed { .. }
+        | StudioGuiDriverOutcome::IgnoredShortcut { .. } => None,
+    }
+}
+
+fn surfaced_canvas_state(outcome: &StudioGuiDriverOutcome) -> Option<StudioGuiCanvasState> {
+    match outcome {
+        StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::WindowOpened(opened)) => {
+            Some(opened.canvas.clone())
+        }
+        StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::WindowDispatched(
+            dispatch,
+        )) => Some(dispatch.canvas.clone()),
+        StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::CanvasInteracted(
+            result,
+        ))
+        | StudioGuiDriverOutcome::CanvasInteraction(result) => Some(result.canvas.clone()),
+        StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::LifecycleDispatched(
+            lifecycle,
+        )) => Some(lifecycle.canvas.clone()),
+        StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::UiCommandDispatched(
+            StudioGuiHostUiCommandDispatchResult::Executed(dispatch),
+        )) => Some(dispatch.canvas.clone()),
+        StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::UiCommandDispatched(
+            StudioGuiHostUiCommandDispatchResult::ExecutedCanvasInteraction { result, .. },
+        )) => Some(result.canvas.clone()),
+        StudioGuiDriverOutcome::HostCommand(
+            StudioGuiHostCommandOutcome::EntitlementActionDispatched(
+                crate::StudioGuiHostEntitlementDispatchResult::Executed { dispatch, .. },
+            ),
+        ) => Some(dispatch.canvas.clone()),
+        StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::WindowClosed(
+            closed,
+        )) => Some(closed.canvas.clone()),
+        StudioGuiDriverOutcome::HostCommand(
+            StudioGuiHostCommandOutcome::UiCommandDispatched(
+                StudioGuiHostUiCommandDispatchResult::IgnoredDisabled { .. }
+                | StudioGuiHostUiCommandDispatchResult::IgnoredMissing { .. },
+            )
+            | StudioGuiHostCommandOutcome::EntitlementActionDispatched(
+                crate::StudioGuiHostEntitlementDispatchResult::IgnoredDisabled { .. }
+                | crate::StudioGuiHostEntitlementDispatchResult::IgnoredMissing { .. },
+            )
+            | StudioGuiHostCommandOutcome::WindowDropTargetQueried(_)
+            | StudioGuiHostCommandOutcome::WindowDropTargetPreviewUpdated(_)
+            | StudioGuiHostCommandOutcome::WindowDropTargetPreviewCleared(_)
+            | StudioGuiHostCommandOutcome::WindowDropTargetApplied(_),
+        )
+        | StudioGuiDriverOutcome::WindowLayoutUpdated(_)
+        | StudioGuiDriverOutcome::IgnoredNativeTimerElapsed { .. }
+        | StudioGuiDriverOutcome::IgnoredShortcut { .. } => None,
     }
 }
 
@@ -492,18 +605,6 @@ fn route_driver_event(event: &StudioGuiEvent, registry: &StudioGuiCommandRegistr
             StudioGuiShortcutRoute::DispatchCommandId { command_id } => {
                 DriverRoute::HostCommand(StudioGuiHostCommand::DispatchUiCommand { command_id })
             }
-            StudioGuiShortcutRoute::RequestCanvasSuggestionAccept => {
-                DriverRoute::CanvasInteraction(StudioGuiCanvasInteractionAction::AcceptFocusedByTab)
-            }
-            StudioGuiShortcutRoute::RequestCanvasSuggestionReject => {
-                DriverRoute::CanvasInteraction(StudioGuiCanvasInteractionAction::RejectFocused)
-            }
-            StudioGuiShortcutRoute::RequestCanvasSuggestionFocusNext => {
-                DriverRoute::CanvasInteraction(StudioGuiCanvasInteractionAction::FocusNext)
-            }
-            StudioGuiShortcutRoute::RequestCanvasSuggestionFocusPrevious => {
-                DriverRoute::CanvasInteraction(StudioGuiCanvasInteractionAction::FocusPrevious)
-            }
             StudioGuiShortcutRoute::Ignored { reason } => DriverRoute::IgnoredShortcut {
                 shortcut: shortcut.clone(),
                 reason,
@@ -549,7 +650,7 @@ mod tests {
 
     use crate::{
         StudioGuiCanvasInteractionAction, StudioGuiDriver, StudioGuiDriverOutcome, StudioGuiEvent,
-        StudioGuiFocusContext, StudioGuiHostCanvasInteractionResult, StudioGuiHostCommandOutcome,
+        StudioGuiFocusContext, StudioGuiHostCommandOutcome,
         StudioGuiHostEntitlementDispatchResult, StudioGuiHostUiCommandDispatchResult,
         StudioGuiShortcut, StudioGuiShortcutIgnoreReason, StudioGuiShortcutKey,
         StudioGuiShortcutModifier, StudioGuiWindowAreaId, StudioGuiWindowDockPlacement,
@@ -1068,7 +1169,16 @@ mod tests {
             .expect("expected canvas acceptance dispatch");
 
         match dispatch.outcome {
-            StudioGuiDriverOutcome::CanvasInteraction(result) => {
+            StudioGuiDriverOutcome::HostCommand(
+                StudioGuiHostCommandOutcome::UiCommandDispatched(
+                    StudioGuiHostUiCommandDispatchResult::ExecutedCanvasInteraction {
+                        command_id,
+                        result,
+                        ..
+                    },
+                ),
+            ) => {
+                assert_eq!(command_id, "canvas.accept_focused");
                 assert_eq!(
                     result
                         .accepted
@@ -1086,7 +1196,7 @@ mod tests {
                     )
                 );
             }
-            other => panic!("expected canvas interaction outcome, got {other:?}"),
+            other => panic!("expected executed canvas ui command outcome, got {other:?}"),
         }
         assert_eq!(
             dispatch.snapshot.runtime.control_state.run_status,
@@ -1250,7 +1360,7 @@ mod tests {
     }
 
     #[test]
-    fn gui_driver_returns_canvas_tab_request_when_canvas_suggestion_is_focused() {
+    fn gui_driver_ignores_canvas_tab_shortcut_without_canvas_command_binding() {
         let mut driver = StudioGuiDriver::new(&lease_expiring_config()).expect("expected driver");
 
         let dispatch = driver
@@ -1265,16 +1375,13 @@ mod tests {
 
         assert_eq!(
             dispatch.outcome,
-            StudioGuiDriverOutcome::CanvasInteraction(StudioGuiHostCanvasInteractionResult {
-                action: StudioGuiCanvasInteractionAction::AcceptFocusedByTab,
-                accepted: None,
-                rejected: None,
-                focused: None,
-                applied_target: None,
-                latest_log_entry: None,
-                ui_commands: driver.ui_commands(),
-                canvas: driver.canvas_state(),
-            })
+            StudioGuiDriverOutcome::IgnoredShortcut {
+                shortcut: StudioGuiShortcut {
+                    modifiers: Vec::new(),
+                    key: StudioGuiShortcutKey::Tab,
+                },
+                reason: StudioGuiShortcutIgnoreReason::NoBindingFound,
+            }
         );
     }
 
@@ -1320,7 +1427,16 @@ mod tests {
             .expect("expected shortcut dispatch");
 
         match dispatch.outcome {
-            StudioGuiDriverOutcome::CanvasInteraction(result) => {
+            StudioGuiDriverOutcome::HostCommand(
+                StudioGuiHostCommandOutcome::UiCommandDispatched(
+                    StudioGuiHostUiCommandDispatchResult::ExecutedCanvasInteraction {
+                        command_id,
+                        result,
+                        ..
+                    },
+                ),
+            ) => {
+                assert_eq!(command_id, "canvas.accept_focused");
                 assert_eq!(
                     result.action,
                     StudioGuiCanvasInteractionAction::AcceptFocusedByTab
@@ -1346,7 +1462,7 @@ mod tests {
                     Some("Accepted canvas suggestion `sug-high` from local rules for unit flash-1")
                 );
             }
-            other => panic!("expected canvas interaction outcome, got {other:?}"),
+            other => panic!("expected executed canvas ui command outcome, got {other:?}"),
         }
     }
 
@@ -1400,7 +1516,16 @@ mod tests {
             .expect("expected reject dispatch");
 
         match dispatch.outcome {
-            StudioGuiDriverOutcome::CanvasInteraction(result) => {
+            StudioGuiDriverOutcome::HostCommand(
+                StudioGuiHostCommandOutcome::UiCommandDispatched(
+                    StudioGuiHostUiCommandDispatchResult::ExecutedCanvasInteraction {
+                        command_id,
+                        result,
+                        ..
+                    },
+                ),
+            ) => {
+                assert_eq!(command_id, "canvas.reject_focused");
                 assert_eq!(
                     result.action,
                     StudioGuiCanvasInteractionAction::RejectFocused
@@ -1414,13 +1539,22 @@ mod tests {
                 );
                 assert_eq!(
                     result
-                        .focused
+                        .canvas
+                        .focused_suggestion_id
                         .as_ref()
-                        .map(|suggestion| suggestion.id.as_str()),
+                        .map(|id| id.as_str()),
+                    Some("local.flash_drum.create_outlet.flash-1.liquid")
+                );
+                assert_eq!(
+                    dispatch
+                        .canvas
+                        .focused_suggestion_id
+                        .as_ref()
+                        .map(|id| id.as_str()),
                     Some("local.flash_drum.create_outlet.flash-1.liquid")
                 );
             }
-            other => panic!("expected canvas interaction outcome, got {other:?}"),
+            other => panic!("expected executed canvas ui command outcome, got {other:?}"),
         }
 
         let _ = fs::remove_file(project_path);
@@ -1442,7 +1576,16 @@ mod tests {
             .expect("expected shortcut dispatch");
 
         match dispatch.outcome {
-            StudioGuiDriverOutcome::CanvasInteraction(result) => {
+            StudioGuiDriverOutcome::HostCommand(
+                StudioGuiHostCommandOutcome::UiCommandDispatched(
+                    StudioGuiHostUiCommandDispatchResult::ExecutedCanvasInteraction {
+                        command_id,
+                        result,
+                        ..
+                    },
+                ),
+            ) => {
+                assert_eq!(command_id, "canvas.focus_next");
                 assert_eq!(result.action, StudioGuiCanvasInteractionAction::FocusNext);
                 assert_eq!(
                     result
@@ -1452,7 +1595,7 @@ mod tests {
                     Some("local.flash_drum.create_outlet.flash-1.liquid")
                 );
             }
-            other => panic!("expected canvas interaction outcome, got {other:?}"),
+            other => panic!("expected executed canvas ui command outcome, got {other:?}"),
         }
 
         let _ = fs::remove_file(project_path);
