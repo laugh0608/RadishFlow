@@ -1388,14 +1388,90 @@ mod tests {
                             .target_unit_id
                             .as_ref()
                             .map(|unit_id| unit_id.as_str()),
+                        action.mutation.clone(),
                     )
                 }),
             Some((
-                "Inspect unit specs",
-                "检查该单元的端口名称、方向、类型和数量是否与 canonical built-in spec 一致。",
+                "Restore canonical ports",
+                "按当前内建 unit kind 的 canonical spec 重建端口签名，并尽量保留可匹配的现有 stream 绑定。",
                 Some("feed-1"),
+                Some(crate::RunPanelRecoveryMutation::RestoreCanonicalPortSignature {
+                    unit_id: UnitId::new("feed-1"),
+                }),
             ))
         );
+    }
+
+    #[test]
+    fn applying_run_panel_recovery_action_restores_canonical_ports_and_preserves_stream_binding() {
+        let project = rf_store::parse_project_file_json(include_str!(
+            "../../../examples/flowsheets/failures/invalid-port-signature.rfproj.json"
+        ))
+        .expect("expected project parse");
+        let mut app_state = AppState::new(FlowsheetDocument::new(
+            project.document.flowsheet,
+            DocumentMetadata::new(
+                "doc-invalid-port-signature-recovery",
+                "Invalid Port Signature Recovery Demo",
+                timestamp(39),
+            ),
+        ));
+        let summary = DiagnosticSummary::new(
+            0,
+            DiagnosticSeverity::Error,
+            "solver.connection_validation.invalid_port_signature: solver connection validation failed",
+        )
+        .with_primary_code("solver.connection_validation.invalid_port_signature")
+        .with_related_unit_ids(vec![UnitId::new("feed-1")]);
+
+        app_state.record_failure(0, RunStatus::Error, summary);
+        let action = app_state
+            .workspace
+            .run_panel
+            .notice
+            .as_ref()
+            .and_then(|notice| notice.recovery_action.as_ref())
+            .cloned()
+            .expect("expected recovery action");
+
+        assert_eq!(
+            action.mutation,
+            Some(crate::RunPanelRecoveryMutation::RestoreCanonicalPortSignature {
+                unit_id: UnitId::new("feed-1"),
+            })
+        );
+
+        let applied_target = app_state.apply_run_panel_recovery_action(&action);
+
+        assert_eq!(
+            applied_target,
+            Some(crate::InspectorTarget::Unit(UnitId::new("feed-1")))
+        );
+        assert_eq!(app_state.workspace.document.revision, 1);
+        assert_eq!(
+            app_state.workspace.command_history.current_entry().map(|entry| &entry.command),
+            Some(&DocumentCommand::RestoreCanonicalUnitPorts {
+                unit_id: UnitId::new("feed-1"),
+            })
+        );
+        let feed = app_state
+            .workspace
+            .document
+            .flowsheet
+            .units
+            .get(&UnitId::new("feed-1"))
+            .expect("expected feed unit");
+        assert_eq!(feed.ports.len(), 1);
+        assert_eq!(feed.ports[0].name, "outlet");
+        assert_eq!(
+            feed.ports[0].stream_id.as_ref().map(|stream_id| stream_id.as_str()),
+            Some("stream-feed")
+        );
+        assert_eq!(
+            app_state.workspace.drafts.active_target,
+            Some(crate::InspectorTarget::Unit(UnitId::new("feed-1")))
+        );
+        assert!(app_state.workspace.panels.inspector_open);
     }
 
     #[test]

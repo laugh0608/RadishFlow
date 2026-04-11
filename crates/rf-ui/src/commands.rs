@@ -51,6 +51,9 @@ pub enum DocumentCommand {
         port: String,
         stream_id: StreamId,
     },
+    RestoreCanonicalUnitPorts {
+        unit_id: UnitId,
+    },
     RenameUnit {
         unit_id: UnitId,
         new_name: String,

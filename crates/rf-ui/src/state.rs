@@ -3,8 +3,9 @@ use std::path::PathBuf;
 use std::time::SystemTime;
 
 use rf_flowsheet::validate_connections;
-use rf_model::{Flowsheet, MaterialStreamState};
+use rf_model::{Flowsheet, MaterialStreamState, UnitPort};
 use rf_types::{RfError, RfResult, StreamId, UnitId};
+use rf_unitops::{UnitOperationSpec, builtin_unit_spec_by_name};
 
 use crate::auth::{
     AuthSessionState, AuthenticatedUser, EntitlementSnapshot, EntitlementState,
@@ -677,6 +678,9 @@ fn apply_run_panel_recovery_mutation(
             port_name,
             stream_id,
         } => apply_disconnect_port_and_delete_stream_mutation(flowsheet, unit_id, port_name, stream_id),
+        RunPanelRecoveryMutation::RestoreCanonicalPortSignature { unit_id } => {
+            apply_restore_canonical_port_signature_mutation(flowsheet, unit_id)
+        }
         RunPanelRecoveryMutation::DisconnectPort { unit_id, port_name } => {
             apply_disconnect_port_mutation(flowsheet, unit_id, port_name)
         }
@@ -758,6 +762,32 @@ fn apply_disconnect_port_and_delete_stream_mutation(
     ))
 }
 
+fn apply_restore_canonical_port_signature_mutation(
+    flowsheet: &Flowsheet,
+    unit_id: &UnitId,
+) -> RfResult<(DocumentCommand, Flowsheet)> {
+    let mut next_flowsheet = flowsheet.clone();
+    let unit = next_flowsheet
+        .units
+        .get_mut(unit_id)
+        .ok_or_else(|| RfError::missing_entity("unit", unit_id))?;
+    let spec = builtin_unit_spec_by_name(&unit.kind).ok_or_else(|| {
+        RfError::invalid_input(format!(
+            "unit `{}` kind `{}` does not expose a canonical built-in spec",
+            unit_id, unit.kind
+        ))
+    })?;
+    let restored_ports = rebuild_ports_from_canonical_spec(&unit.ports, spec);
+    unit.ports = restored_ports;
+
+    Ok((
+        DocumentCommand::RestoreCanonicalUnitPorts {
+            unit_id: unit_id.clone(),
+        },
+        next_flowsheet,
+    ))
+}
+
 fn bind_material_stream_port(
     flowsheet: &mut Flowsheet,
     unit_id: &UnitId,
@@ -830,6 +860,57 @@ fn next_available_placeholder_stream_id(
         suffix += 1;
     }
     StreamId::new(candidate)
+}
+
+fn rebuild_ports_from_canonical_spec(
+    existing_ports: &[UnitPort],
+    spec: &UnitOperationSpec,
+) -> Vec<UnitPort> {
+    let mut remaining_ports = existing_ports.to_vec();
+    let mut rebuilt = Vec::with_capacity(spec.ports.len());
+
+    for expected in spec.ports {
+        let stream_id = take_matching_stream_id(&mut remaining_ports, |port| port.name == expected.name)
+            .or_else(|| {
+                take_unique_matching_stream_id(&mut remaining_ports, |port| {
+                    port.direction == expected.direction && port.kind == expected.kind
+                })
+            });
+        rebuilt.push(UnitPort::new(
+            expected.name,
+            expected.direction,
+            expected.kind,
+            stream_id,
+        ));
+    }
+
+    rebuilt
+}
+
+fn take_matching_stream_id<F>(remaining_ports: &mut Vec<UnitPort>, predicate: F) -> Option<StreamId>
+where
+    F: Fn(&UnitPort) -> bool,
+{
+    let index = remaining_ports.iter().position(predicate)?;
+    Some(remaining_ports.remove(index).stream_id).flatten()
+}
+
+fn take_unique_matching_stream_id<F>(
+    remaining_ports: &mut Vec<UnitPort>,
+    predicate: F,
+) -> Option<StreamId>
+where
+    F: Fn(&UnitPort) -> bool,
+{
+    let mut matches = remaining_ports
+        .iter()
+        .enumerate()
+        .filter_map(|(index, port)| predicate(port).then_some(index));
+    let index = matches.next()?;
+    if matches.next().is_some() {
+        return None;
+    }
+    Some(remaining_ports.remove(index).stream_id).flatten()
 }
 
 fn format_canvas_suggestion_accept_message(suggestion: &CanvasSuggestion) -> String {

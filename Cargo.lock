@@ -2910,6 +2910,7 @@ dependencies = [
  "rf-store",
  "rf-thermo",
  "rf-types",
+ "rf-unitops",
 ]
 
 [[package]]

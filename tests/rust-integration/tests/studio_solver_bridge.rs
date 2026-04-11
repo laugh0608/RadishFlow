@@ -180,6 +180,82 @@ fn studio_solver_bridge_records_missing_package_without_solver_code_end_to_end()
 }
 
 #[test]
+fn studio_solver_bridge_records_invalid_port_signature_restore_target_end_to_end() {
+    let provider = build_binary_demo_package_provider();
+    let mut app_state = app_state_from_project(
+        include_str!("../../../examples/flowsheets/failures/invalid-port-signature.rfproj.json"),
+        "doc-studio-invalid-port-signature-failure",
+        "Studio Invalid Port Signature Failure Demo",
+        35,
+    );
+
+    let error = solve_workspace_with_property_package(
+        &mut app_state,
+        &provider,
+        &StudioSolveRequest::new("binary-hydrocarbon-lite-v1", "snapshot-invalid-port-1", 1),
+    )
+    .expect_err("expected invalid port signature failure");
+
+    assert!(error.message().contains("solver.connection_validation.invalid_port_signature:"));
+    assert_eq!(app_state.workspace.solve_session.status, RunStatus::Error);
+
+    let summary = app_state
+        .workspace
+        .solve_session
+        .latest_diagnostic
+        .as_ref()
+        .expect("expected failure summary");
+    assert_eq!(
+        summary.primary_code.as_deref(),
+        Some("solver.connection_validation.invalid_port_signature")
+    );
+    assert_eq!(summary.related_unit_ids, vec![UnitId::new("feed-1")]);
+    assert!(summary.related_stream_ids.is_empty());
+    assert!(summary.related_port_targets.is_empty());
+
+    let notice = app_state
+        .workspace
+        .run_panel
+        .notice
+        .as_ref()
+        .expect("expected run panel notice");
+    assert_eq!(notice.title, "Invalid port signature");
+    assert_eq!(
+        notice
+            .recovery_action
+            .as_ref()
+            .map(|action| action.kind),
+        Some(RunPanelRecoveryActionKind::InspectUnitSpec)
+    );
+    assert_eq!(
+        notice
+            .recovery_action
+            .as_ref()
+            .map(|action| (action.title, action.detail)),
+        Some((
+            "Restore canonical ports",
+            "按当前内建 unit kind 的 canonical spec 重建端口签名，并尽量保留可匹配的现有 stream 绑定。",
+        ))
+    );
+    assert_eq!(
+        notice
+            .recovery_action
+            .as_ref()
+            .and_then(|action| action.target_unit_id.as_ref()),
+        Some(&UnitId::new("feed-1"))
+    );
+    assert_eq!(
+        notice
+            .recovery_action
+            .as_ref()
+            .and_then(|action| action.mutation.as_ref()),
+        Some(&RunPanelRecoveryMutation::RestoreCanonicalPortSignature {
+            unit_id: UnitId::new("feed-1"),
+        })
+    );
+}
+
+#[test]
 fn studio_solver_bridge_records_cycle_failure_context_end_to_end() {
     let provider = build_binary_demo_package_provider();
     let mut app_state = app_state_from_project(

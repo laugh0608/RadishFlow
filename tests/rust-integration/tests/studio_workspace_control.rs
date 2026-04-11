@@ -330,7 +330,7 @@ fn run_panel_recovery_action_focuses_failed_unit_end_to_end() {
 }
 
 #[test]
-fn run_panel_recovery_action_focuses_connection_validation_unit_end_to_end() {
+fn run_panel_recovery_action_restores_invalid_port_signature_end_to_end() {
     let cache_root = unique_temp_path("integration-run-panel-connection-recovery");
     let mut auth_cache_index = sample_auth_cache_index(&[]);
     write_cached_package(
@@ -353,7 +353,7 @@ fn run_panel_recovery_action_focuses_connection_validation_unit_end_to_end() {
     let recovery =
         apply_run_panel_recovery_action(&mut app_state).expect("expected recovery action");
 
-    assert_eq!(recovery.action.title, "Inspect unit specs");
+    assert_eq!(recovery.action.title, "Restore canonical ports");
     assert_eq!(
         recovery.applied_target,
         Some(InspectorTarget::Unit("feed-1".into()))
@@ -368,6 +368,27 @@ fn run_panel_recovery_action_focuses_connection_validation_unit_end_to_end() {
             .selection
             .selected_units
             .contains(&"feed-1".into())
+    );
+    assert_eq!(app_state.workspace.document.revision, 1);
+    assert_eq!(
+        port_target_stream_id(&app_state, "feed-1", "outlet").as_deref(),
+        Some("stream-feed")
+    );
+    assert_eq!(
+        app_state.workspace.command_history.current_entry().map(|entry| &entry.command),
+        Some(&DocumentCommand::RestoreCanonicalUnitPorts {
+            unit_id: "feed-1".into(),
+        })
+    );
+    assert!(
+        app_state
+            .workspace
+            .document
+            .flowsheet
+            .units
+            .get(&"feed-1".into())
+            .and_then(|unit| unit.ports.iter().find(|port| port.name == "unexpected"))
+            .is_none()
     );
     assert!(app_state.workspace.panels.inspector_open);
 

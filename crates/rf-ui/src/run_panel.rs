@@ -10,6 +10,7 @@ pub enum RunPanelRecoveryMutation {
         port_name: String,
         stream_id: StreamId,
     },
+    RestoreCanonicalPortSignature { unit_id: UnitId },
 }
 
 use crate::run::{RunStatus, SimulationMode, SolvePendingReason, SolveSessionState, SolveSnapshot};
@@ -169,6 +170,15 @@ impl RunPanelRecoveryAction {
                 stream_id,
             })
     }
+
+    pub fn with_restore_canonical_port_signature(
+        self,
+        unit_id: impl Into<UnitId>,
+    ) -> Self {
+        let unit_id = unit_id.into();
+        self.with_target_unit(unit_id.clone())
+            .with_mutation(RunPanelRecoveryMutation::RestoreCanonicalPortSignature { unit_id })
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -314,8 +324,8 @@ pub fn run_panel_failure_recovery_action_for_diagnostic_code(
     ) {
         Some(RunPanelRecoveryAction::new(
             RunPanelRecoveryActionKind::InspectUnitSpec,
-            "Inspect unit specs",
-            "检查该单元的端口名称、方向、类型和数量是否与 canonical built-in spec 一致。",
+            "Restore canonical ports",
+            "按当前内建 unit kind 的 canonical spec 重建端口签名，并尽量保留可匹配的现有 stream 绑定。",
         ))
     } else if diagnostic_code_matches(
         primary_code,
@@ -471,10 +481,12 @@ pub fn run_panel_failure_notice(
                 recovery_action =
                     configure_recovery_action_for_stream_target(recovery_action, primary_code, stream_id);
             } else if let Some(unit_id) = target_unit_id {
-                recovery_action = recovery_action.with_target_unit(unit_id.clone());
+                recovery_action =
+                    configure_recovery_action_for_unit_target(recovery_action, primary_code, unit_id);
             }
         } else if let Some(unit_id) = target_unit_id {
-            recovery_action = recovery_action.with_target_unit(unit_id.clone());
+            recovery_action =
+                configure_recovery_action_for_unit_target(recovery_action, primary_code, unit_id);
         } else if let Some(stream_id) = target_stream_id {
             recovery_action = recovery_action.with_target_stream(stream_id.clone());
         }
@@ -608,6 +620,21 @@ fn configure_recovery_action_for_stream_target(
         recovery_action.with_delete_stream(stream_id.clone())
     } else {
         recovery_action.with_target_stream(stream_id.clone())
+    }
+}
+
+fn configure_recovery_action_for_unit_target(
+    recovery_action: RunPanelRecoveryAction,
+    primary_code: Option<&str>,
+    unit_id: &UnitId,
+) -> RunPanelRecoveryAction {
+    if diagnostic_code_matches(
+        primary_code,
+        "solver.connection_validation.invalid_port_signature",
+    ) {
+        recovery_action.with_restore_canonical_port_signature(unit_id.clone())
+    } else {
+        recovery_action.with_target_unit(unit_id.clone())
     }
 }
 
