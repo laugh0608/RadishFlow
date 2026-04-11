@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use rf_model::Flowsheet;
-use rf_types::{PortDirection, PortKind, RfError, RfResult, StreamId, UnitId};
+use rf_types::{DiagnosticPortTarget, PortDirection, PortKind, RfError, RfResult, StreamId, UnitId};
 use rf_unitops::{builtin_unit_spec_by_name, validate_unit_node};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -18,6 +18,10 @@ impl MaterialPortRef {
             unit_name,
             port_name,
         }
+    }
+
+    fn as_diagnostic_port_target(&self) -> DiagnosticPortTarget {
+        DiagnosticPortTarget::new(self.unit_id.clone(), self.port_name.clone())
     }
 }
 
@@ -111,6 +115,10 @@ pub fn validate_connections(flowsheet: &Flowsheet) -> RfResult<Vec<MaterialConne
                     ),
                 )
                 .with_related_unit_id(unit.id.clone())
+                .with_related_port_target(DiagnosticPortTarget::new(
+                    unit.id.clone(),
+                    port.name.clone(),
+                ))
             })?;
             if !flowsheet.streams.contains_key(&stream_id) {
                 return Err(
@@ -120,8 +128,12 @@ pub fn validate_connections(flowsheet: &Flowsheet) -> RfResult<Vec<MaterialConne
                         "unit `{}` material port `{}` references missing stream `{}`",
                         unit.id, port.name, stream_id
                     ),
-                )
+                    )
                     .with_related_unit_id(unit.id.clone())
+                    .with_related_port_target(DiagnosticPortTarget::new(
+                        unit.id.clone(),
+                        port.name.clone(),
+                    ))
                     .with_related_stream_id(stream_id),
                 );
             }
@@ -149,6 +161,10 @@ pub fn validate_connections(flowsheet: &Flowsheet) -> RfResult<Vec<MaterialConne
                                 existing.unit_id.clone(),
                                 port_ref.unit_id.clone(),
                             ])
+                            .with_related_port_targets(vec![
+                                existing.as_diagnostic_port_target(),
+                                port_ref.as_diagnostic_port_target(),
+                            ])
                             .with_related_stream_id(stream_id.clone()),
                         );
                     }
@@ -172,6 +188,10 @@ pub fn validate_connections(flowsheet: &Flowsheet) -> RfResult<Vec<MaterialConne
                             .with_related_unit_ids(vec![
                                 existing.unit_id.clone(),
                                 port_ref.unit_id.clone(),
+                            ])
+                            .with_related_port_targets(vec![
+                                existing.as_diagnostic_port_target(),
+                                port_ref.as_diagnostic_port_target(),
                             ])
                             .with_related_stream_id(stream_id.clone()),
                         );
@@ -202,6 +222,7 @@ pub fn validate_connections(flowsheet: &Flowsheet) -> RfResult<Vec<MaterialConne
                     format!("stream `{}` is missing an upstream outlet connection", stream_id),
                 )
                 .with_related_unit_id(sink.unit_id.clone())
+                .with_related_port_target(sink.as_diagnostic_port_target())
                 .with_related_stream_id(stream_id.clone()),
                 None => invalid_connection_error(
                     ConnectionValidationDiagnosticCode::MissingUpstreamSource,
@@ -223,7 +244,7 @@ pub fn validate_connections(flowsheet: &Flowsheet) -> RfResult<Vec<MaterialConne
 mod tests {
     use super::validate_connections;
     use rf_model::{Composition, Flowsheet, MaterialStreamState, UnitNode, UnitPort};
-    use rf_types::{ComponentId, PortDirection, PortKind, StreamId, UnitId};
+    use rf_types::{ComponentId, DiagnosticPortTarget, PortDirection, PortKind, StreamId, UnitId};
     use rf_unitops::{FEED_KIND, build_feed_node, build_flash_drum_node, build_mixer_node};
 
     fn binary_composition(first: f64, second: f64) -> Composition {
@@ -333,6 +354,13 @@ mod tests {
             &[UnitId::new("flash-1"), UnitId::new("mixer-1")]
         );
         assert_eq!(error.context().related_stream_ids(), &[StreamId::new("shared-stream")]);
+        assert_eq!(
+            error.context().related_port_targets(),
+            &[
+                DiagnosticPortTarget::new("flash-1", "inlet"),
+                DiagnosticPortTarget::new("mixer-1", "inlet_a"),
+            ]
+        );
     }
 
     #[test]
@@ -367,6 +395,10 @@ mod tests {
         );
         assert_eq!(error.context().related_unit_ids(), &[UnitId::new("mixer-1")]);
         assert_eq!(error.context().related_stream_ids(), &[StreamId::new("stream-feed-a")]);
+        assert_eq!(
+            error.context().related_port_targets(),
+            &[DiagnosticPortTarget::new("mixer-1", "inlet_a")]
+        );
     }
 
     #[test]

@@ -373,6 +373,7 @@ fn run_panel_recovery_action_focuses_missing_upstream_source_unit_end_to_end() {
         apply_run_panel_recovery_action(&mut app_state).expect("expected recovery action");
 
     assert_eq!(recovery.action.title, "Inspect inlet path");
+    assert_eq!(recovery.action.target_port_name.as_deref(), Some("inlet_a"));
     assert_eq!(
         recovery.applied_target,
         Some(InspectorTarget::Unit("mixer-1".into()))

@@ -59,6 +59,21 @@ define_string_id!(ComponentId);
 define_string_id!(StreamId);
 define_string_id!(UnitId);
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct DiagnosticPortTarget {
+    pub unit_id: UnitId,
+    pub port_name: String,
+}
+
+impl DiagnosticPortTarget {
+    pub fn new(unit_id: impl Into<UnitId>, port_name: impl Into<String>) -> Self {
+        Self {
+            unit_id: unit_id.into(),
+            port_name: port_name.into(),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum PhaseLabel {
@@ -179,6 +194,7 @@ pub struct RfErrorContext {
     diagnostic_code: Option<String>,
     related_unit_ids: Vec<UnitId>,
     related_stream_ids: Vec<StreamId>,
+    related_port_targets: Vec<DiagnosticPortTarget>,
 }
 
 impl RfErrorContext {
@@ -192,6 +208,10 @@ impl RfErrorContext {
 
     pub fn related_stream_ids(&self) -> &[StreamId] {
         &self.related_stream_ids
+    }
+
+    pub fn related_port_targets(&self) -> &[DiagnosticPortTarget] {
+        &self.related_port_targets
     }
 }
 
@@ -277,6 +297,37 @@ impl RfError {
         self
     }
 
+    pub fn with_related_port_target(
+        mut self,
+        target: impl Into<DiagnosticPortTarget>,
+    ) -> Self {
+        let target = target.into();
+        if !self
+            .context
+            .related_port_targets
+            .iter()
+            .any(|existing| existing == &target)
+        {
+            self.context.related_port_targets.push(target);
+        }
+        self
+    }
+
+    pub fn with_related_port_targets(mut self, targets: Vec<DiagnosticPortTarget>) -> Self {
+        self.context.related_port_targets.clear();
+        for target in targets {
+            if !self
+                .context
+                .related_port_targets
+                .iter()
+                .any(|existing| existing == &target)
+            {
+                self.context.related_port_targets.push(target);
+            }
+        }
+        self
+    }
+
     pub fn invalid_input(message: impl Into<String>) -> Self {
         Self::new(ErrorCode::InvalidInput, message)
     }
@@ -321,7 +372,7 @@ pub type RfResult<T> = Result<T, RfError>;
 
 #[cfg(test)]
 mod tests {
-    use super::{RfError, StreamId, UnitId};
+    use super::{DiagnosticPortTarget, RfError, StreamId, UnitId};
 
     #[test]
     fn rf_error_can_carry_stable_diagnostic_context() {
@@ -332,7 +383,10 @@ mod tests {
             .with_related_unit_id("flash-1")
             .with_related_stream_id("stream-feed")
             .with_related_stream_id("stream-feed")
-            .with_related_stream_id("stream-heated");
+            .with_related_stream_id("stream-heated")
+            .with_related_port_target(DiagnosticPortTarget::new("heater-1", "inlet"))
+            .with_related_port_target(DiagnosticPortTarget::new("heater-1", "inlet"))
+            .with_related_port_target(DiagnosticPortTarget::new("flash-1", "outlet"));
 
         assert_eq!(
             error.context().diagnostic_code(),
@@ -347,6 +401,14 @@ mod tests {
             [
                 StreamId::new("stream-feed"),
                 StreamId::new("stream-heated")
+            ]
+            .as_slice()
+        );
+        assert_eq!(
+            error.context().related_port_targets(),
+            [
+                DiagnosticPortTarget::new("heater-1", "inlet"),
+                DiagnosticPortTarget::new("flash-1", "outlet")
             ]
             .as_slice()
         );

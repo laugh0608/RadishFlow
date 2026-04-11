@@ -105,6 +105,7 @@ impl SolveSnapshot {
                 diagnostic_count: snapshot.summary.diagnostic_count,
                 related_unit_ids: snapshot.summary.related_unit_ids.clone(),
                 related_stream_ids: snapshot.summary.related_stream_ids.clone(),
+                related_port_targets: Vec::new(),
             },
             diagnostics: snapshot
                 .diagnostics
@@ -115,6 +116,7 @@ impl SolveSnapshot {
                     message: diagnostic.message.clone(),
                     related_unit_ids: diagnostic.related_unit_ids.clone(),
                     related_stream_ids: diagnostic.related_stream_ids.clone(),
+                    related_port_targets: Vec::new(),
                 })
                 .collect(),
             steps: snapshot

@@ -401,6 +401,9 @@ fn record_workspace_run_outcome(app_state: &mut AppState, outcome: &StudioWorksp
                 if !context.related_stream_ids.is_empty() {
                     summary = summary.with_related_stream_ids(context.related_stream_ids);
                 }
+                if !context.related_port_targets.is_empty() {
+                    summary = summary.with_related_port_targets(context.related_port_targets);
+                }
                 app_state.record_failure(revision, RunStatus::Error, summary);
             }
             push_log_if_needed(app_state, AppLogLevel::Error, &failed.message);

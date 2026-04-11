@@ -212,11 +212,19 @@ pub fn dispatch_workspace_control_action_with_auth_cache(
         .latest_diagnostic
         .as_ref()
         .and_then(|summary| summary.related_stream_ids.first());
+    let latest_diagnostic_target_port_name = app_state
+        .workspace
+        .solve_session
+        .latest_diagnostic
+        .as_ref()
+        .and_then(|summary| summary.related_port_targets.first())
+        .map(|target| target.port_name.as_str());
     control_state.notice = notice_from_dispatch(
         &outcome.dispatch,
         latest_diagnostic_primary_code,
         latest_diagnostic_target_unit_id,
         latest_diagnostic_target_stream_id,
+        latest_diagnostic_target_port_name,
     )
     .or(control_state.notice.clone());
     app_state.sync_run_panel_state(map_workspace_control_state_to_run_panel_state(
@@ -236,6 +244,7 @@ fn notice_from_dispatch(
     latest_diagnostic_primary_code: Option<&str>,
     latest_diagnostic_target_unit_id: Option<&UnitId>,
     latest_diagnostic_target_stream_id: Option<&StreamId>,
+    latest_diagnostic_target_port_name: Option<&str>,
 ) -> Option<RunPanelNotice> {
     match dispatch {
         StudioAppResultDispatch::WorkspaceRun(dispatch) => match &dispatch.outcome {
@@ -270,6 +279,7 @@ fn notice_from_dispatch(
                 latest_diagnostic_primary_code,
                 latest_diagnostic_target_unit_id,
                 latest_diagnostic_target_stream_id,
+                latest_diagnostic_target_port_name,
             )),
         },
         StudioAppResultDispatch::WorkspaceMode(dispatch) => {
@@ -316,6 +326,7 @@ fn notice_for_failed_outcome(
     latest_diagnostic_primary_code: Option<&str>,
     latest_diagnostic_target_unit_id: Option<&UnitId>,
     latest_diagnostic_target_stream_id: Option<&StreamId>,
+    latest_diagnostic_target_port_name: Option<&str>,
 ) -> RunPanelNotice {
     match reason {
         crate::StudioWorkspaceRunFailedReason::LocalCacheUnavailable => RunPanelNotice::new(
@@ -333,6 +344,7 @@ fn notice_for_failed_outcome(
             latest_diagnostic_primary_code,
             latest_diagnostic_target_unit_id,
             latest_diagnostic_target_stream_id,
+            latest_diagnostic_target_port_name,
         ),
     }
 }

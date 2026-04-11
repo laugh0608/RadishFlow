@@ -1000,6 +1000,45 @@ mod tests {
     }
 
     #[test]
+    fn run_panel_widget_exposes_recovery_action_when_connection_failure_targets_port() {
+        let mut app_state = AppState::new(sample_document());
+        let summary = DiagnosticSummary::new(
+            0,
+            DiagnosticSeverity::Error,
+            "solver.connection_validation.missing_upstream_source: solver connection validation failed",
+        )
+        .with_primary_code("solver.connection_validation.missing_upstream_source")
+        .with_related_unit_ids(vec![UnitId::new("mixer-1")])
+        .with_related_stream_ids(vec![rf_types::StreamId::new("stream-feed-a")])
+        .with_related_port_targets(vec![rf_types::DiagnosticPortTarget::new(
+            "mixer-1",
+            "inlet_a",
+        )]);
+
+        app_state.record_failure(0, RunStatus::Error, summary);
+        let widget = RunPanelWidgetModel::from_state(&app_state.workspace.run_panel);
+
+        assert_eq!(
+            widget.activate_recovery_action(),
+            RunPanelRecoveryWidgetEvent::Requested {
+                action: crate::RunPanelRecoveryAction::new(
+                    crate::RunPanelRecoveryActionKind::InspectInletPath,
+                    "Inspect inlet path",
+                    "检查入口流股是否缺少上游 outlet source，并确认上游单元是否已绑定到同一 stream。",
+                )
+                .with_target_port(UnitId::new("mixer-1"), "inlet_a"),
+            }
+        );
+        assert!(
+            widget
+                .text()
+                .lines
+                .iter()
+                .any(|line| line == "Suggested target: unit mixer-1 port inlet_a")
+        );
+    }
+
+    #[test]
     fn storing_snapshot_updates_run_panel_summary() {
         let mut app_state = AppState::new(sample_document());
         let snapshot = SolveSnapshot::new(

@@ -4,7 +4,7 @@ use rf_flash::TpFlashSolver;
 use rf_flowsheet::validate_connections;
 use rf_model::{Flowsheet, MaterialStreamState, UnitNode, UnitPort};
 use rf_thermo::ThermoProvider;
-use rf_types::{PortDirection, RfError, RfResult, StreamId, UnitId};
+use rf_types::{DiagnosticPortTarget, PortDirection, RfError, RfResult, StreamId, UnitId};
 use rf_unitops::{
     BuiltinUnitKind, COOLER_KIND, FEED_KIND, FEED_OUTLET_PORT, FLASH_DRUM_KIND,
     FLASH_DRUM_LIQUID_PORT, FLASH_DRUM_VAPOR_PORT, Feed, FlashDrum, HEATER_COOLER_OUTLET_PORT,
@@ -123,6 +123,7 @@ pub struct SolveFailureContext {
     pub primary_code: Option<String>,
     pub related_unit_ids: Vec<UnitId>,
     pub related_stream_ids: Vec<StreamId>,
+    pub related_port_targets: Vec<DiagnosticPortTarget>,
 }
 
 impl SolveFailureContext {
@@ -142,11 +143,13 @@ impl SolveFailureContext {
         } else {
             error.context().related_stream_ids().to_vec()
         };
+        let related_port_targets = error.context().related_port_targets().to_vec();
 
         Self {
             primary_code,
             related_unit_ids,
             related_stream_ids,
+            related_port_targets,
         }
     }
 
@@ -155,6 +158,7 @@ impl SolveFailureContext {
             primary_code: prefixed_solver_diagnostic_code(message),
             related_unit_ids: related_unit_ids_from_failure_message(message),
             related_stream_ids: related_stream_ids_from_failure_message(message),
+            related_port_targets: Vec::new(),
         }
     }
 }
@@ -400,6 +404,7 @@ fn solver_stage_error(code: SolverDiagnosticCode, error: RfError) -> RfError {
     .with_diagnostic_code(diagnostic_code)
     .with_related_unit_ids(error.context().related_unit_ids().to_vec())
     .with_related_stream_ids(error.context().related_stream_ids().to_vec())
+    .with_related_port_targets(error.context().related_port_targets().to_vec())
 }
 
 fn solver_stage_diagnostic_code(code: SolverDiagnosticCode, error: &RfError) -> String {
@@ -480,6 +485,7 @@ fn solver_step_error(
     .with_diagnostic_code(code.as_str())
     .with_related_unit_id(unit.id.clone())
     .with_related_stream_ids(error.context().related_stream_ids().to_vec())
+    .with_related_port_targets(error.context().related_port_targets().to_vec())
 }
 
 fn solver_step_invalid_input(
@@ -529,7 +535,8 @@ fn solver_context_error(context: impl AsRef<str>, error: RfError) -> RfError {
         format!("{}: {}", context.as_ref(), error.message()),
     )
     .with_related_unit_ids(error.context().related_unit_ids().to_vec())
-    .with_related_stream_ids(error.context().related_stream_ids().to_vec());
+    .with_related_stream_ids(error.context().related_stream_ids().to_vec())
+    .with_related_port_targets(error.context().related_port_targets().to_vec());
     if let Some(code) = error.context().diagnostic_code() {
         wrapped = wrapped.with_diagnostic_code(code.to_string());
     }
@@ -807,7 +814,10 @@ mod tests {
     use rf_thermo::{
         AntoineCoefficients, PlaceholderThermoProvider, ThermoComponent, ThermoSystem,
     };
-    use rf_types::{ComponentId, PhaseLabel, PortDirection, PortKind, RfError, StreamId, UnitId};
+    use rf_types::{
+        ComponentId, DiagnosticPortTarget, PhaseLabel, PortDirection, PortKind, RfError,
+        StreamId, UnitId,
+    };
     use rf_unitops::{
         UnitOperationOutputs, build_cooler_node, build_feed_node, build_flash_drum_node,
         build_heater_node, build_mixer_node, build_valve_node,
@@ -1710,6 +1720,13 @@ mod tests {
             error.context().related_stream_ids(),
             &[StreamId::new("stream-feed")]
         );
+        assert_eq!(
+            error.context().related_port_targets(),
+            &[
+                DiagnosticPortTarget::new("flash-1", "inlet"),
+                DiagnosticPortTarget::new("valve-1", "inlet"),
+            ]
+        );
         assert!(
             error
                 .message()
@@ -2084,6 +2101,7 @@ mod tests {
         );
         assert_eq!(context.related_unit_ids, vec![UnitId::new("valve-1")]);
         assert_eq!(context.related_stream_ids, vec![StreamId::new("stream-feed")]);
+        assert!(context.related_port_targets.is_empty());
         assert_eq!(
             error.context().diagnostic_code(),
             Some("solver.step.execution")
@@ -2111,6 +2129,7 @@ mod tests {
         assert_eq!(context.primary_code.as_deref(), Some("solver.step.lookup"));
         assert_eq!(context.related_unit_ids, vec![UnitId::new("flash-1")]);
         assert!(context.related_stream_ids.is_empty());
+        assert!(context.related_port_targets.is_empty());
         assert_eq!(error.context().diagnostic_code(), Some("solver.step.lookup"));
         assert_eq!(
             error.context().related_unit_ids(),
@@ -2134,6 +2153,7 @@ mod tests {
             vec![UnitId::new("heater-1"), UnitId::new("valve-1")]
         );
         assert!(context.related_stream_ids.is_empty());
+        assert!(context.related_port_targets.is_empty());
     }
 
     #[test]

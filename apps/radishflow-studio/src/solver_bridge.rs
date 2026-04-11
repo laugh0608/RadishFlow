@@ -165,6 +165,9 @@ fn record_solve_failure(
     if !context.related_stream_ids.is_empty() {
         summary = summary.with_related_stream_ids(context.related_stream_ids);
     }
+    if !context.related_port_targets.is_empty() {
+        summary = summary.with_related_port_targets(context.related_port_targets);
+    }
     app_state.record_failure(revision, RunStatus::Error, summary);
     app_state.push_log(AppLogLevel::Error, message);
 }

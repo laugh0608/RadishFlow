@@ -267,6 +267,13 @@ fn studio_solver_bridge_records_duplicate_sink_stream_target_end_to_end() {
         Some("solver.connection_validation.duplicate_downstream_sink")
     );
     assert_eq!(summary.related_stream_ids, vec![StreamId::new("shared-stream")]);
+    assert_eq!(
+        summary.related_port_targets,
+        vec![
+            rf_types::DiagnosticPortTarget::new("flash-1", "inlet"),
+            rf_types::DiagnosticPortTarget::new("mixer-1", "inlet_a"),
+        ]
+    );
 
     let notice = app_state
         .workspace

@@ -59,6 +59,7 @@ pub struct RunPanelRecoveryAction {
     pub detail: &'static str,
     pub target_unit_id: Option<UnitId>,
     pub target_stream_id: Option<StreamId>,
+    pub target_port_name: Option<String>,
 }
 
 impl RunPanelRecoveryAction {
@@ -73,18 +74,32 @@ impl RunPanelRecoveryAction {
             detail,
             target_unit_id: None,
             target_stream_id: None,
+            target_port_name: None,
         }
     }
 
     pub fn with_target_unit(mut self, target_unit_id: impl Into<UnitId>) -> Self {
         self.target_unit_id = Some(target_unit_id.into());
         self.target_stream_id = None;
+        self.target_port_name = None;
         self
     }
 
     pub fn with_target_stream(mut self, target_stream_id: impl Into<StreamId>) -> Self {
         self.target_stream_id = Some(target_stream_id.into());
         self.target_unit_id = None;
+        self.target_port_name = None;
+        self
+    }
+
+    pub fn with_target_port(
+        mut self,
+        target_unit_id: impl Into<UnitId>,
+        target_port_name: impl Into<String>,
+    ) -> Self {
+        self.target_unit_id = Some(target_unit_id.into());
+        self.target_port_name = Some(target_port_name.into());
+        self.target_stream_id = None;
         self
     }
 }
@@ -329,6 +344,7 @@ pub fn run_panel_failure_notice(
     primary_code: Option<&str>,
     target_unit_id: Option<&UnitId>,
     target_stream_id: Option<&StreamId>,
+    target_port_name: Option<&str>,
 ) -> RunPanelNotice {
     let mut notice = RunPanelNotice::new(
         RunPanelNoticeLevel::Error,
@@ -342,10 +358,20 @@ pub fn run_panel_failure_notice(
             if let Some(stream_id) = target_stream_id {
                 recovery_action = recovery_action.with_target_stream(stream_id.clone());
             } else if let Some(unit_id) = target_unit_id {
-                recovery_action = recovery_action.with_target_unit(unit_id.clone());
+                recovery_action = match target_port_name {
+                    Some(port_name) => {
+                        recovery_action.with_target_port(unit_id.clone(), port_name.to_string())
+                    }
+                    None => recovery_action.with_target_unit(unit_id.clone()),
+                };
             }
         } else if let Some(unit_id) = target_unit_id {
-            recovery_action = recovery_action.with_target_unit(unit_id.clone());
+            recovery_action = match target_port_name {
+                Some(port_name) => {
+                    recovery_action.with_target_port(unit_id.clone(), port_name.to_string())
+                }
+                None => recovery_action.with_target_unit(unit_id.clone()),
+            };
         } else if let Some(stream_id) = target_stream_id {
             recovery_action = recovery_action.with_target_stream(stream_id.clone());
         }
@@ -365,6 +391,10 @@ fn runtime_notice_from_solve_session(solve_session: &SolveSessionState) -> Optio
         summary.primary_code.as_deref(),
         summary.related_unit_ids.first(),
         summary.related_stream_ids.first(),
+        summary
+            .related_port_targets
+            .first()
+            .map(|target| target.port_name.as_str()),
     ))
 }
 

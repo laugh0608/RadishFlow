@@ -255,6 +255,10 @@ fn missing_upstream_source_reports_connection_validation_context_end_to_end() {
         Some("solver.connection_validation.missing_upstream_source")
     );
     assert_eq!(error.context().related_unit_ids(), &[UnitId::new("mixer-1")]);
+    assert_eq!(
+        error.context().related_port_targets(),
+        &[rf_types::DiagnosticPortTarget::new("mixer-1", "inlet_a")]
+    );
     assert!(
         error
             .message()
@@ -343,6 +347,13 @@ fn duplicate_downstream_sink_reports_connection_validation_stream_context_end_to
     assert_eq!(
         error.context().related_stream_ids(),
         &[rf_types::StreamId::new("shared-stream")]
+    );
+    assert_eq!(
+        error.context().related_port_targets(),
+        &[
+            rf_types::DiagnosticPortTarget::new("flash-1", "inlet"),
+            rf_types::DiagnosticPortTarget::new("mixer-1", "inlet_a"),
+        ]
     );
     assert!(
         error
