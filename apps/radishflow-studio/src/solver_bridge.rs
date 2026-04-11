@@ -9,6 +9,9 @@ use rf_thermo::{
 use rf_types::{RfError, RfResult};
 use rf_ui::{AppLogLevel, AppState, DiagnosticSeverity, DiagnosticSummary, RunStatus};
 
+pub(crate) const WORKSPACE_RUN_DIAGNOSTIC_LOCAL_CACHE_UNAVAILABLE: &str =
+    "workspace.run.local_cache_unavailable";
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StudioSolveRequest {
     pub package_id: String,
@@ -137,7 +140,12 @@ pub fn solve_workspace_from_auth_cache(
     auth_cache_index: &StoredAuthCacheIndex,
     request: &StudioSolveRequest,
 ) -> RfResult<()> {
-    let provider = CachedPropertyPackageProvider::new(cache_root, auth_cache_index)?;
+    let provider = CachedPropertyPackageProvider::new(cache_root, auth_cache_index).map_err(
+        |error| match error.context().diagnostic_code() {
+            Some(_) => error,
+            None => error.with_diagnostic_code(WORKSPACE_RUN_DIAGNOSTIC_LOCAL_CACHE_UNAVAILABLE),
+        },
+    )?;
     solve_workspace_with_property_package(app_state, &provider, request)
 }
 
@@ -180,7 +188,8 @@ mod tests {
     use rf_ui::{AppState, DocumentMetadata, FlowsheetDocument, RunStatus};
 
     use super::{
-        SolveFailureContext, StudioSolveRequest, next_solver_snapshot_sequence,
+        SolveFailureContext, StudioSolveRequest,
+        WORKSPACE_RUN_DIAGNOSTIC_LOCAL_CACHE_UNAVAILABLE, next_solver_snapshot_sequence,
         solve_workspace_from_auth_cache, solve_workspace_with_property_package,
     };
 
@@ -456,6 +465,51 @@ mod tests {
         );
 
         fs::remove_dir_all(cache_root).expect("expected temp dir cleanup");
+    }
+
+    #[test]
+    fn solve_workspace_from_auth_cache_marks_local_cache_unavailable_with_diagnostic_code() {
+        let cache_root = unique_temp_path("solver-cache-missing");
+        let mut auth_cache_index = StoredAuthCacheIndex::new(
+            "https://id.radish.local",
+            "user-123",
+            StoredCredentialReference::new("radishflow-studio", "user-123-primary"),
+        );
+        let mut record = StoredPropertyPackageRecord::new(
+            "binary-hydrocarbon-lite-v1",
+            "2026.03.1",
+            StoredPropertyPackageSource::RemoteDerivedPackage,
+            "sha256:missing".to_string(),
+            128,
+            timestamp(90),
+        );
+        record.expires_at = Some(SystemTime::now() + Duration::from_secs(3_600));
+        auth_cache_index.property_packages.push(record);
+
+        let project = parse_project_file_json(include_str!(
+            "../../../examples/flowsheets/feed-heater-flash.rfproj.json"
+        ))
+        .expect("expected project parse");
+        let mut app_state = AppState::new(FlowsheetDocument::new(
+            project.document.flowsheet,
+            DocumentMetadata::new("doc-7", "Missing Cache Demo", timestamp(95)),
+        ));
+
+        let error = solve_workspace_from_auth_cache(
+            &mut app_state,
+            &cache_root,
+            &auth_cache_index,
+            &StudioSolveRequest::new("binary-hydrocarbon-lite-v1", "snapshot-cache-missing", 1),
+        )
+        .expect_err("expected cache preparation failure");
+
+        assert_eq!(
+            error.context().diagnostic_code(),
+            Some(WORKSPACE_RUN_DIAGNOSTIC_LOCAL_CACHE_UNAVAILABLE)
+        );
+        assert_eq!(app_state.workspace.solve_session.status, RunStatus::Idle);
+
+        fs::remove_dir_all(cache_root).ok();
     }
 
     #[test]

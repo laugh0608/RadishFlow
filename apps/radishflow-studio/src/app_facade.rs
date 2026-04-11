@@ -12,6 +12,7 @@ use crate::{
     StudioSolveRequest, WorkspaceRunCommand, WorkspaceRunPackageSelection, WorkspaceSolveDispatch,
     WorkspaceSolveService, WorkspaceSolveSkipReason, WorkspaceSolveTrigger,
     resolve_workspace_run_package_id,
+    solver_bridge::WORKSPACE_RUN_DIAGNOSTIC_LOCAL_CACHE_UNAVAILABLE,
     workspace_run_command::{
         WORKSPACE_RUN_DIAGNOSTIC_CACHED_PACKAGE_MISSING,
         WORKSPACE_RUN_DIAGNOSTIC_ENTITLEMENT_MISMATCH,
@@ -461,25 +462,30 @@ fn map_workspace_run_failed(
         .filter(|entry| entry.level == AppLogLevel::Error)
         .map(|entry| entry.message.clone());
 
-    if matches!(app_state.workspace.solve_session.status, RunStatus::Error) {
-        return StudioWorkspaceRunFailed {
-            reason: StudioWorkspaceRunFailedReason::SolveFailed,
-            message: latest_solver_error.unwrap_or_else(|| {
-                format!(
-                    "workspace run with property package `{package_id}` failed: {}",
-                    error.message()
-                )
-            }),
-        };
-    }
+    let reason = match error.context().diagnostic_code() {
+        Some(WORKSPACE_RUN_DIAGNOSTIC_LOCAL_CACHE_UNAVAILABLE) => {
+            StudioWorkspaceRunFailedReason::LocalCacheUnavailable
+        }
+        _ if matches!(app_state.workspace.solve_session.status, RunStatus::Error) => {
+            StudioWorkspaceRunFailedReason::SolveFailed
+        }
+        _ => StudioWorkspaceRunFailedReason::LocalCacheUnavailable,
+    };
 
-    StudioWorkspaceRunFailed {
-        reason: StudioWorkspaceRunFailedReason::LocalCacheUnavailable,
-        message: format!(
+    let message = match reason {
+        StudioWorkspaceRunFailedReason::SolveFailed => latest_solver_error.unwrap_or_else(|| {
+            format!(
+                "workspace run with property package `{package_id}` failed: {}",
+                error.message()
+            )
+        }),
+        StudioWorkspaceRunFailedReason::LocalCacheUnavailable => format!(
             "failed to prepare local property package cache for `{package_id}`: {}",
             error.message()
         ),
-    }
+    };
+
+    StudioWorkspaceRunFailed { reason, message }
 }
 
 fn describe_workspace_skip_reason(reason: WorkspaceSolveSkipReason) -> &'static str {
