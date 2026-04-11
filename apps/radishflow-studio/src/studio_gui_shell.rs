@@ -163,22 +163,11 @@ impl ReadyAppState {
             });
             ui.separator();
             ui.horizontal_wrapped(|ui| {
-                if ui.button("Open window").clicked() {
+                if ui.button("New logical window").clicked() {
                     self.dispatch_event(StudioGuiEvent::OpenWindowRequested);
                 }
-                if let Some(window_id) = current_window_id {
-                    if ui.button("Close window").clicked() {
-                        self.dispatch_event(StudioGuiEvent::CloseWindowRequested { window_id });
-                    }
-                    if ui.button("Foreground current").clicked() {
-                        self.dispatch_event(StudioGuiEvent::WindowForegrounded { window_id });
-                    }
-                }
-                if ui.button("Login completed").clicked() {
-                    self.dispatch_event(StudioGuiEvent::LoginCompleted);
-                }
-                if ui.button("Network restored").clicked() {
-                    self.dispatch_event(StudioGuiEvent::NetworkRestored);
+                if current_window_id.is_none() {
+                    ui.small("no active logical window");
                 }
             });
             ui.separator();
@@ -187,17 +176,7 @@ impl ReadyAppState {
                 if windows.is_empty() {
                     ui.small("none");
                 } else {
-                    for window_state in windows {
-                        let label = format_window_chip(window_state);
-                        if ui
-                            .selectable_label(window_state.is_foreground, label)
-                            .clicked()
-                        {
-                            self.dispatch_event(StudioGuiEvent::WindowForegrounded {
-                                window_id: window_state.window_id,
-                            });
-                        }
-                    }
+                    self.render_logical_window_chips(ui, windows);
                 }
             });
             ui.separator();
@@ -283,6 +262,38 @@ impl ReadyAppState {
                 ui.colored_label(egui::Color32::from_rgb(180, 40, 40), error);
             }
         });
+    }
+
+    fn render_logical_window_chips(
+        &mut self,
+        ui: &mut egui::Ui,
+        windows: &[StudioAppHostWindowState],
+    ) {
+        for window_state in windows {
+            ui.horizontal(|ui| {
+                let label = format_window_chip(window_state);
+                let chip = ui.selectable_label(window_state.is_foreground, label);
+                if chip.clicked() {
+                    self.dispatch_event(StudioGuiEvent::WindowForegrounded {
+                        window_id: window_state.window_id,
+                    });
+                }
+
+                let close_button = egui::Button::new(
+                    egui::RichText::new("x").small().color(egui::Color32::from_rgb(120, 120, 120)),
+                )
+                .frame(false);
+                if ui
+                    .add(close_button)
+                    .on_hover_text("Close logical window")
+                    .clicked()
+                {
+                    self.dispatch_event(StudioGuiEvent::CloseWindowRequested {
+                        window_id: window_state.window_id,
+                    });
+                }
+            });
+        }
     }
 
     fn render_left_sidebar(
