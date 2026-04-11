@@ -10,7 +10,10 @@ use radishflow_studio::{
 };
 use rf_rust_integration::{sample_auth_cache_index, timestamp, unique_temp_path, write_cached_package};
 use rf_store::parse_project_file_json;
-use rf_ui::{AppState, DocumentMetadata, FlowsheetDocument, InspectorTarget, RunStatus};
+use rf_ui::{
+    AppState, DocumentMetadata, EntitlementSnapshot, FlowsheetDocument, InspectorTarget,
+    PropertyPackageManifest, PropertyPackageSource, RunPanelRecoveryActionKind, RunStatus,
+};
 
 fn app_state_from_project(
     project_json: &str,
@@ -23,6 +26,28 @@ fn app_state_from_project(
         project.document.flowsheet,
         DocumentMetadata::new(document_id, title, timestamp(created_at_seconds)),
     ))
+}
+
+fn sample_entitlement_snapshot(package_ids: &[&str]) -> EntitlementSnapshot {
+    EntitlementSnapshot {
+        schema_version: 1,
+        subject_id: "user-123".to_string(),
+        tenant_id: Some("tenant-radish".to_string()),
+        issued_at: timestamp(100),
+        expires_at: timestamp(200),
+        offline_lease_expires_at: Some(timestamp(300)),
+        features: std::collections::BTreeSet::from(["thermo.workspace.run".to_string()]),
+        allowed_package_ids: package_ids.iter().map(|item| item.to_string()).collect(),
+    }
+}
+
+fn sample_manifest(package_id: &str) -> PropertyPackageManifest {
+    let mut manifest =
+        PropertyPackageManifest::new(package_id, "2026.03.1", PropertyPackageSource::RemoteDerivedPackage);
+    manifest.hash = "sha256:test".to_string();
+    manifest.size_bytes = 128;
+    manifest.expires_at = Some(timestamp(300));
+    manifest
 }
 
 #[test]
@@ -118,6 +143,111 @@ fn workspace_control_reports_package_selection_required_end_to_end() {
             "multiple cached property packages are available; explicit package selection is required"
         ))
     );
+}
+
+#[test]
+fn workspace_control_reports_entitlement_update_required_end_to_end() {
+    let auth_cache_index = sample_auth_cache_index(&["pkg-1", "pkg-2"]);
+    let facade = StudioAppFacade::new();
+    let mut app_state = app_state_from_project(
+        include_str!("../../../examples/flowsheets/feed-heater-flash.rfproj.json"),
+        "doc-control-entitlement-blocked",
+        "Control Entitlement Blocked Demo",
+        25,
+    );
+    app_state.update_entitlement(
+        sample_entitlement_snapshot(&["pkg-1"]),
+        vec![sample_manifest("pkg-1")],
+        timestamp(120),
+    );
+    let context = StudioAppAuthCacheContext::new(Path::new("D:\\cache-root"), &auth_cache_index);
+
+    let outcome = dispatch_workspace_control_action_with_auth_cache(
+        &facade,
+        &mut app_state,
+        &context,
+        &WorkspaceControlAction::run_manual(WorkspaceRunPackageSelection::Explicit(
+            "pkg-2".to_string(),
+        )),
+    )
+    .expect("expected blocked dispatch");
+
+    match outcome.dispatch {
+        StudioAppResultDispatch::WorkspaceRun(dispatch) => {
+            assert!(matches!(
+                dispatch.outcome,
+                StudioWorkspaceRunOutcome::Blocked(_)
+            ));
+        }
+        _ => panic!("expected workspace run dispatch"),
+    }
+    assert_eq!(outcome.control_state.run_status, RunStatus::Idle);
+    assert_eq!(
+        outcome
+            .control_state
+            .notice
+            .as_ref()
+            .map(|notice| (notice.title.as_str(), notice.message.as_str())),
+        Some((
+            "Entitlement update required",
+            "workspace run package `pkg-2` is not present in entitlement manifests"
+        ))
+    );
+}
+
+#[test]
+fn workspace_control_reports_local_cache_repair_notice_end_to_end() {
+    let cache_root = unique_temp_path("integration-run-panel-local-cache");
+    let auth_cache_index = sample_auth_cache_index(&["pkg-1"]);
+    let facade = StudioAppFacade::new();
+    let mut app_state = app_state_from_project(
+        include_str!("../../../examples/flowsheets/feed-heater-flash.rfproj.json"),
+        "doc-control-local-cache-failed",
+        "Control Local Cache Failed Demo",
+        28,
+    );
+    let context = StudioAppAuthCacheContext::new(&cache_root, &auth_cache_index);
+
+    let outcome = dispatch_workspace_control_action_with_auth_cache(
+        &facade,
+        &mut app_state,
+        &context,
+        &WorkspaceControlAction::run_manual(WorkspaceRunPackageSelection::Explicit(
+            "pkg-1".to_string(),
+        )),
+    )
+    .expect("expected failed dispatch");
+
+    match outcome.dispatch {
+        StudioAppResultDispatch::WorkspaceRun(dispatch) => {
+            assert!(matches!(
+                dispatch.outcome,
+                StudioWorkspaceRunOutcome::Failed(_)
+            ));
+        }
+        _ => panic!("expected workspace run dispatch"),
+    }
+    assert_eq!(outcome.control_state.run_status, RunStatus::Error);
+    let notice = outcome
+        .control_state
+        .notice
+        .as_ref()
+        .expect("expected local cache notice");
+    assert_eq!(notice.title, "Local cache unavailable");
+    assert!(
+        notice
+            .message
+            .contains("failed to prepare local property package cache")
+    );
+    assert_eq!(
+        notice
+            .recovery_action
+            .as_ref()
+            .map(|action| (action.kind, action.title)),
+        Some((RunPanelRecoveryActionKind::RepairLocalCache, "Repair local cache"))
+    );
+
+    fs::remove_dir_all(cache_root).ok();
 }
 
 #[test]
