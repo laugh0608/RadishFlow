@@ -710,7 +710,7 @@ impl StudioAppHostController {
     ) -> RfResult<Option<rf_ui::CanvasSuggestion>> {
         let accepted = self.app_host.accept_focused_canvas_suggestion_by_tab()?;
         self.app_host.refresh_local_canvas_suggestions();
-        self.dispatch_automatic_run_after_canvas_write_if_needed()?;
+        self.dispatch_automatic_run_after_document_write_if_needed()?;
         Ok(accepted)
     }
 
@@ -896,8 +896,8 @@ impl StudioAppHostController {
     pub fn dispatch_foreground_entitlement_primary_action(
         &mut self,
     ) -> RfResult<Option<StudioAppHostWindowDispatchResult>> {
-        let (outcome, projection) = self
-            .execute_command(StudioAppHostCommand::DispatchForegroundEntitlementPrimaryAction)?;
+        let (outcome, projection) =
+            self.execute_command(StudioAppHostCommand::DispatchForegroundEntitlementPrimaryAction)?;
 
         match outcome {
             StudioAppHostCommandOutcome::WindowDispatched(dispatch) => {
@@ -1017,7 +1017,7 @@ impl StudioAppHostController {
         })
     }
 
-    fn dispatch_automatic_run_after_canvas_write_if_needed(&mut self) -> RfResult<()> {
+    fn dispatch_automatic_run_after_document_write_if_needed(&mut self) -> RfResult<()> {
         let control_state = self.app_host.workspace_control_state();
         if !matches!(control_state.simulation_mode, rf_ui::SimulationMode::Active)
             || control_state.pending_reason
@@ -2437,8 +2437,8 @@ mod tests {
 
     #[test]
     fn app_host_controller_dispatches_foreground_entitlement_primary_action() {
-        let mut controller = StudioAppHostController::new(&lease_expiring_config())
-            .expect("expected controller");
+        let mut controller =
+            StudioAppHostController::new(&lease_expiring_config()).expect("expected controller");
         let first = controller
             .open_window()
             .expect("expected first window open");
@@ -2473,8 +2473,8 @@ mod tests {
 
     #[test]
     fn app_host_controller_dispatches_foreground_entitlement_action() {
-        let mut controller = StudioAppHostController::new(&lease_expiring_config())
-            .expect("expected controller");
+        let mut controller =
+            StudioAppHostController::new(&lease_expiring_config()).expect("expected controller");
         let first = controller
             .open_window()
             .expect("expected first window open");
@@ -2497,17 +2497,15 @@ mod tests {
             Some(second.registration.window_id)
         );
         match &dispatch.effects.runtime_report.dispatch {
-            crate::StudioBootstrapDispatch::AppCommand(outcome) => {
-                match &outcome.dispatch {
-                    crate::StudioAppResultDispatch::Entitlement(entitlement) => {
-                        assert_eq!(
-                            entitlement.action,
-                            crate::StudioEntitlementAction::SyncEntitlement
-                        );
-                    }
-                    other => panic!("expected entitlement dispatch, got {other:?}"),
+            crate::StudioBootstrapDispatch::AppCommand(outcome) => match &outcome.dispatch {
+                crate::StudioAppResultDispatch::Entitlement(entitlement) => {
+                    assert_eq!(
+                        entitlement.action,
+                        crate::StudioEntitlementAction::SyncEntitlement
+                    );
                 }
-            }
+                other => panic!("expected entitlement dispatch, got {other:?}"),
+            },
             other => panic!("expected entitlement app command dispatch, got {other:?}"),
         }
     }

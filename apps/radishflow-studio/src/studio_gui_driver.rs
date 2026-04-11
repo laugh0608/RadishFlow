@@ -555,6 +555,7 @@ mod tests {
         StudioGuiShortcutModifier, StudioGuiWindowAreaId, StudioGuiWindowDockPlacement,
         StudioGuiWindowDockRegion, StudioGuiWindowDropTargetQuery, StudioGuiWindowLayoutMutation,
         StudioRuntimeConfig, StudioRuntimeEntitlementPreflight, StudioRuntimeEntitlementSeed,
+        StudioRuntimeTrigger,
     };
     use rf_ui::{
         EntitlementActionId, GhostElement, GhostElementKind, StreamVisualKind, StreamVisualState,
@@ -606,6 +607,20 @@ mod tests {
             },
             project_path,
         )
+    }
+
+    fn unbound_outlet_failure_synced_config() -> StudioRuntimeConfig {
+        StudioRuntimeConfig {
+            project_path: PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .join("../..")
+                .join("examples")
+                .join("flowsheets")
+                .join("failures")
+                .join("unbound-outlet-port.rfproj.json"),
+            entitlement_preflight: StudioRuntimeEntitlementPreflight::Skip,
+            entitlement_seed: StudioRuntimeEntitlementSeed::Synced,
+            trigger: StudioRuntimeTrigger::WidgetAction(rf_ui::RunPanelActionId::RunManual),
+        }
     }
 
     fn flash_drum_local_rules_config() -> (StudioRuntimeConfig, PathBuf) {
@@ -1079,7 +1094,12 @@ mod tests {
         );
         assert_eq!(dispatch.snapshot.runtime.control_state.pending_reason, None);
         assert_eq!(
-            dispatch.snapshot.runtime.control_state.latest_snapshot_id.as_deref(),
+            dispatch
+                .snapshot
+                .runtime
+                .control_state
+                .latest_snapshot_id
+                .as_deref(),
             Some("example-feed-heater-flash-rev-1-seq-1")
         );
         assert_eq!(
@@ -1088,6 +1108,145 @@ mod tests {
         );
 
         let _ = fs::remove_file(project_path);
+    }
+
+    #[test]
+    fn gui_driver_recovery_then_resume_rejoins_automatic_mainline() {
+        let mut driver =
+            StudioGuiDriver::new(&unbound_outlet_failure_synced_config()).expect("expected driver");
+        let _ = driver
+            .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+            .expect("expected open dispatch");
+
+        let failed = driver
+            .dispatch_event(StudioGuiEvent::UiCommandRequested {
+                command_id: "run_panel.run_manual".to_string(),
+            })
+            .expect("expected failed run dispatch");
+        match failed.outcome {
+            StudioGuiDriverOutcome::HostCommand(
+                StudioGuiHostCommandOutcome::UiCommandDispatched(
+                    StudioGuiHostUiCommandDispatchResult::Executed(executed),
+                ),
+            ) => match &executed.effects.runtime_report.dispatch {
+                crate::StudioRuntimeDispatch::AppCommand(outcome) => match &outcome.dispatch {
+                    crate::StudioAppResultDispatch::WorkspaceRun(run) => {
+                        assert!(matches!(
+                            run.outcome,
+                            crate::StudioWorkspaceRunOutcome::Failed(_)
+                        ));
+                        assert_eq!(run.simulation_mode, rf_ui::SimulationMode::Hold);
+                    }
+                    other => panic!("expected workspace run dispatch, got {other:?}"),
+                },
+                other => panic!("expected app command dispatch, got {other:?}"),
+            },
+            other => panic!("expected executed failed run outcome, got {other:?}"),
+        }
+
+        let recovery = driver
+            .dispatch_event(StudioGuiEvent::ShortcutPressed {
+                shortcut: StudioGuiShortcut {
+                    modifiers: Vec::new(),
+                    key: StudioGuiShortcutKey::F8,
+                },
+                focus_context: StudioGuiFocusContext::Global,
+            })
+            .expect("expected recovery shortcut dispatch");
+        match recovery.outcome {
+            StudioGuiDriverOutcome::HostCommand(
+                StudioGuiHostCommandOutcome::UiCommandDispatched(
+                    StudioGuiHostUiCommandDispatchResult::Executed(executed),
+                ),
+            ) => match &executed.effects.runtime_report.dispatch {
+                crate::StudioRuntimeDispatch::RunPanelRecovery(outcome) => {
+                    assert_eq!(outcome.action.title, "Create outlet stream");
+                    assert_eq!(
+                        outcome.applied_target,
+                        Some(rf_ui::InspectorTarget::Unit(rf_types::UnitId::new(
+                            "feed-1"
+                        )))
+                    );
+                }
+                other => panic!("expected recovery dispatch, got {other:?}"),
+            },
+            other => panic!("expected executed recovery outcome, got {other:?}"),
+        }
+        assert_eq!(
+            recovery.snapshot.runtime.control_state.run_status,
+            rf_ui::RunStatus::Dirty
+        );
+        assert_eq!(
+            recovery.snapshot.runtime.control_state.pending_reason,
+            Some(rf_ui::SolvePendingReason::DocumentRevisionAdvanced)
+        );
+        assert_eq!(
+            recovery.snapshot.runtime.control_state.simulation_mode,
+            rf_ui::SimulationMode::Hold
+        );
+        assert_eq!(
+            recovery
+                .snapshot
+                .runtime
+                .run_panel
+                .view()
+                .primary_action
+                .label,
+            "Resume"
+        );
+
+        let resumed = driver
+            .dispatch_event(StudioGuiEvent::ShortcutPressed {
+                shortcut: StudioGuiShortcut {
+                    modifiers: vec![StudioGuiShortcutModifier::Shift],
+                    key: StudioGuiShortcutKey::F5,
+                },
+                focus_context: StudioGuiFocusContext::Global,
+            })
+            .expect("expected resume shortcut dispatch");
+        match resumed.outcome {
+            StudioGuiDriverOutcome::HostCommand(
+                StudioGuiHostCommandOutcome::UiCommandDispatched(
+                    StudioGuiHostUiCommandDispatchResult::Executed(executed),
+                ),
+            ) => match &executed.effects.runtime_report.dispatch {
+                crate::StudioRuntimeDispatch::AppCommand(outcome) => match &outcome.dispatch {
+                    crate::StudioAppResultDispatch::WorkspaceRun(run) => {
+                        assert!(matches!(
+                            run.outcome,
+                            crate::StudioWorkspaceRunOutcome::Started(_)
+                        ));
+                        assert_eq!(run.simulation_mode, rf_ui::SimulationMode::Active);
+                        assert_eq!(run.pending_reason, None);
+                        assert_eq!(run.run_status, rf_ui::RunStatus::Converged);
+                        assert_eq!(
+                            run.latest_snapshot_id.as_deref(),
+                            Some("example-unbound-outlet-port-rev-1-seq-1")
+                        );
+                    }
+                    other => panic!("expected workspace run dispatch, got {other:?}"),
+                },
+                other => panic!("expected app command dispatch, got {other:?}"),
+            },
+            other => panic!("expected executed resume outcome, got {other:?}"),
+        }
+        assert_eq!(
+            resumed.snapshot.runtime.control_state.run_status,
+            rf_ui::RunStatus::Converged
+        );
+        assert_eq!(
+            resumed
+                .snapshot
+                .runtime
+                .control_state
+                .latest_snapshot_id
+                .as_deref(),
+            Some("example-unbound-outlet-port-rev-1-seq-1")
+        );
+        assert_eq!(
+            resumed.snapshot.runtime.run_panel.view().status_label,
+            "Converged"
+        );
     }
 
     #[test]
