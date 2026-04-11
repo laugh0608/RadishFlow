@@ -2849,11 +2849,13 @@ dependencies = [
 name = "rf-rust-integration"
 version = "0.1.0"
 dependencies = [
+ "radishflow-studio",
  "rf-flash",
  "rf-solver",
  "rf-store",
  "rf-thermo",
  "rf-types",
+ "rf-ui",
 ]
 
 [[package]]

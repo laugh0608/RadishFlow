@@ -7,3 +7,5 @@
 - 示例 `*.rfproj.json` 的加载
 - `rf-solver` 对示例流程的端到端求解
 - 求解输出中的关键流股状态断言
+- `rf-ui::AppState` 对 `rf-solver::SolveSnapshot` 的仓库级映射
+- `radishflow-studio::solver_bridge` 在成功、单元执行失败和缺包失败下的诊断写回与 `RunPanel` 通知基线
