@@ -816,3 +816,52 @@ fn run_panel_recovery_action_creates_stream_for_unbound_outlet_end_to_end() {
 
     fs::remove_dir_all(cache_root).expect("expected temp dir cleanup");
 }
+
+#[test]
+fn run_panel_recovery_action_focuses_unbound_inlet_port_end_to_end() {
+    let cache_root = unique_temp_path("integration-run-panel-unbound-inlet-recovery");
+    let mut auth_cache_index = sample_auth_cache_index(&[]);
+    write_cached_package(
+        &cache_root,
+        &mut auth_cache_index,
+        "binary-hydrocarbon-lite-v1",
+    );
+    let facade = StudioAppFacade::new();
+    let mut app_state = app_state_from_project(
+        include_str!("../../../examples/flowsheets/failures/unbound-inlet-port.rfproj.json"),
+        "doc-control-unbound-inlet-recovery",
+        "Control Unbound Inlet Recovery Demo",
+        41,
+    );
+    let context = StudioAppAuthCacheContext::new(&cache_root, &auth_cache_index);
+
+    dispatch_run_panel_primary_action_with_auth_cache(&facade, &mut app_state, &context)
+        .expect("expected connection validation failure");
+
+    let recovery =
+        apply_run_panel_recovery_action(&mut app_state).expect("expected recovery action");
+
+    assert_eq!(recovery.action.title, "Inspect inlet path");
+    assert_eq!(recovery.action.target_port_name.as_deref(), Some("inlet"));
+    assert_eq!(
+        recovery.applied_target,
+        Some(InspectorTarget::Unit("heater-1".into()))
+    );
+    assert_eq!(
+        app_state.workspace.drafts.active_target,
+        Some(InspectorTarget::Unit("heater-1".into()))
+    );
+    assert_eq!(app_state.workspace.document.revision, 0);
+    assert_eq!(material_port_stream_id(&app_state, "heater-1", "inlet"), None);
+    assert!(app_state.workspace.command_history.current_entry().is_none());
+    assert!(
+        app_state
+            .workspace
+            .selection
+            .selected_units
+            .contains(&"heater-1".into())
+    );
+    assert!(app_state.workspace.panels.inspector_open);
+
+    fs::remove_dir_all(cache_root).expect("expected temp dir cleanup");
+}

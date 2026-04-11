@@ -494,3 +494,31 @@ fn unbound_outlet_port_reports_connection_validation_context_end_to_end() {
     );
     assert!(error.message().contains("is not connected to any stream"));
 }
+
+#[test]
+fn unbound_inlet_port_reports_connection_validation_context_end_to_end() {
+    let error = solve_example_result(include_str!(
+        "../../../examples/flowsheets/failures/unbound-inlet-port.rfproj.json"
+    ))
+    .expect_err("expected unbound inlet port failure");
+
+    assert_eq!(error.code().as_str(), "invalid_connection");
+    assert_eq!(
+        error.context().diagnostic_code(),
+        Some("solver.connection_validation.unbound_inlet_port")
+    );
+    assert_eq!(error.context().related_unit_ids(), &[UnitId::new("heater-1")]);
+    assert_eq!(
+        error.context().related_port_targets(),
+        &[rf_types::DiagnosticPortTarget::new("heater-1", "inlet")]
+    );
+    assert!(error.context().related_stream_ids().is_empty());
+    assert!(
+        error
+            .message()
+            .contains(
+                "solver.connection_validation.unbound_inlet_port: solver connection validation failed"
+            )
+    );
+    assert!(error.message().contains("is not connected to any stream"));
+}

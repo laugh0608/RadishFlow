@@ -723,3 +723,77 @@ fn studio_solver_bridge_records_unbound_outlet_create_stream_target_end_to_end()
         })
     );
 }
+
+#[test]
+fn studio_solver_bridge_records_unbound_inlet_inspect_target_end_to_end() {
+    let provider = build_binary_demo_package_provider();
+    let mut app_state = app_state_from_project(
+        include_str!("../../../examples/flowsheets/failures/unbound-inlet-port.rfproj.json"),
+        "doc-studio-unbound-inlet-failure",
+        "Studio Unbound Inlet Failure Demo",
+        81,
+    );
+
+    let error = solve_workspace_with_property_package(
+        &mut app_state,
+        &provider,
+        &StudioSolveRequest::new("binary-hydrocarbon-lite-v1", "snapshot-unbound-inlet-1", 1),
+    )
+    .expect_err("expected unbound inlet failure");
+
+    assert!(error.message().contains("solver.connection_validation.unbound_inlet_port:"));
+    assert_eq!(app_state.workspace.solve_session.status, RunStatus::Error);
+
+    let summary = app_state
+        .workspace
+        .solve_session
+        .latest_diagnostic
+        .as_ref()
+        .expect("expected failure summary");
+    assert_eq!(
+        summary.primary_code.as_deref(),
+        Some("solver.connection_validation.unbound_inlet_port")
+    );
+    assert_eq!(summary.related_unit_ids, vec![UnitId::new("heater-1")]);
+    assert!(summary.related_stream_ids.is_empty());
+    assert_eq!(
+        summary.related_port_targets,
+        vec![rf_types::DiagnosticPortTarget::new("heater-1", "inlet")]
+    );
+
+    let notice = app_state
+        .workspace
+        .run_panel
+        .notice
+        .as_ref()
+        .expect("expected run panel notice");
+    assert_eq!(notice.title, "Unbound inlet port");
+    assert_eq!(
+        notice
+            .recovery_action
+            .as_ref()
+            .map(|action| action.kind),
+        Some(RunPanelRecoveryActionKind::InspectInletPath)
+    );
+    assert_eq!(
+        notice
+            .recovery_action
+            .as_ref()
+            .and_then(|action| action.target_unit_id.as_ref()),
+        Some(&UnitId::new("heater-1"))
+    );
+    assert_eq!(
+        notice
+            .recovery_action
+            .as_ref()
+            .and_then(|action| action.target_port_name.as_deref()),
+        Some("inlet")
+    );
+    assert_eq!(
+        notice
+            .recovery_action
+            .as_ref()
+            .and_then(|action| action.mutation.as_ref()),
+        None
+    );
+}
