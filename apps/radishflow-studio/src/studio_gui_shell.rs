@@ -1,4 +1,4 @@
-use std::collections::BTreeSet;
+use std::collections::BTreeMap;
 use std::time::{Duration, SystemTime};
 
 use eframe::egui;
@@ -45,6 +45,7 @@ struct ReadyAppState {
     drag_session: Option<PanelDragSession>,
     active_drop_preview: Option<ActiveDropPreview>,
     drop_preview_overlay_anchor: Option<DropPreviewOverlayAnchor>,
+    last_viewport_focused: Option<bool>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -68,7 +69,12 @@ struct DropPreviewOverlayAnchor {
 #[derive(Debug, Default)]
 struct EguiPlatformTimerExecutor {
     next_native_timer_id: StudioGuiPlatformNativeTimerId,
-    active_native_timer_ids: BTreeSet<StudioGuiPlatformNativeTimerId>,
+    active_native_timers: BTreeMap<StudioGuiPlatformNativeTimerId, EguiNativeTimerRegistration>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct EguiNativeTimerRegistration {
+    schedule: radishflow_studio::StudioGuiNativeTimerSchedule,
 }
 
 impl RadishFlowStudioApp {
@@ -83,6 +89,7 @@ impl RadishFlowStudioApp {
                     drag_session: None,
                     active_drop_preview: None,
                     drop_preview_overlay_anchor: None,
+                    last_viewport_focused: None,
                 };
                 ready.dispatch_event(StudioGuiEvent::OpenWindowRequested);
                 AppState::Ready(ready)
@@ -115,6 +122,7 @@ impl eframe::App for RadishFlowStudioApp {
 
 impl ReadyAppState {
     fn update(&mut self, ctx: &egui::Context) {
+        self.sync_viewport_lifecycle(ctx);
         self.dispatch_shortcuts(ctx);
         self.drain_due_timers(ctx);
         self.drop_preview_overlay_anchor = None;
@@ -132,7 +140,11 @@ impl ReadyAppState {
         self.render_right_sidebar(ctx, &window, &mut hovered_drop_target);
         self.render_center_stage(ctx, &window, &mut hovered_drop_target);
         self.render_floating_drop_preview_overlay(ctx, &window);
-        self.finish_drop_preview_cycle(window.layout_state.scope.window_id, hovered_drop_target);
+        self.finish_drop_preview_cycle(
+            ctx,
+            window.layout_state.scope.window_id,
+            hovered_drop_target,
+        );
     }
 
     fn render_top_bar(
@@ -551,6 +563,10 @@ impl ReadyAppState {
         let header_drop_query = drag_session
             .and_then(|drag_session| area_drop_target_query(&layout, drag_session, area_id));
         let header_rect;
+        let header_drag_id = ui.make_persistent_id(format!(
+            "panel-drag-header:{}:{area_id:?}",
+            window.layout_state.scope.layout_key
+        ));
 
         if let Some(query) = header_drop_query {
             let is_active_preview =
@@ -610,6 +626,11 @@ impl ReadyAppState {
                 );
             }
             header_rect = header.response.rect;
+            let header_drag_response =
+                ui.interact(header_rect, header_drag_id, egui::Sense::click_and_drag());
+            if drag_session.is_none() && header_drag_response.drag_started() {
+                self.begin_drag_session(window_id, area_id);
+            }
         }
         if area_accepts_overlay_anchor(window, area_id) {
             self.record_drop_preview_overlay_anchor(
@@ -1368,11 +1389,21 @@ impl ReadyAppState {
 
     fn finish_drop_preview_cycle(
         &mut self,
+        ctx: &egui::Context,
         window_id: Option<StudioWindowHostId>,
         hovered_drop_target: bool,
     ) {
         if self.drag_session.is_none() {
             self.clear_drop_preview(window_id);
+            return;
+        }
+        if ctx.input(|input| input.pointer.any_released()) {
+            if let Some(active_preview) = self.active_drop_preview {
+                self.apply_drop_target(active_preview.window_id, active_preview.query);
+                return;
+            }
+            self.clear_drop_preview(window_id);
+            self.drag_session = None;
             return;
         }
         if !hovered_drop_target {
@@ -1490,9 +1521,33 @@ impl ReadyAppState {
             }
         }
 
-        if let Some(next_due_at) = self.platform_host.next_native_timer_due_at() {
+        if let Some(next_due_at) = self.platform_timer_executor.next_due_at() {
             let delay = next_due_at.duration_since(now).unwrap_or(Duration::ZERO);
             ctx.request_repaint_after(delay);
+        }
+    }
+
+    fn sync_viewport_lifecycle(&mut self, ctx: &egui::Context) {
+        let focused = ctx.input(|input| input.viewport().focused.unwrap_or(input.focused));
+        let became_focused = self
+            .last_viewport_focused
+            .map(|previous| !previous && focused)
+            .unwrap_or(false);
+        self.last_viewport_focused = Some(focused);
+
+        if !became_focused {
+            return;
+        }
+
+        let window_id = self
+            .platform_host
+            .snapshot()
+            .window_model()
+            .layout_state
+            .scope
+            .window_id;
+        if let Some(window_id) = window_id {
+            self.dispatch_event(StudioGuiEvent::WindowForegrounded { window_id });
         }
     }
 
@@ -1550,24 +1605,36 @@ impl StudioGuiPlatformTimerExecutor for EguiPlatformTimerExecutor {
         command: &StudioGuiPlatformTimerCommand,
     ) -> RfResult<StudioGuiPlatformTimerExecutorResponse> {
         match command {
-            StudioGuiPlatformTimerCommand::Arm { .. } => {
+            StudioGuiPlatformTimerCommand::Arm { schedule } => {
+                let native_timer_id = self.allocate_native_timer_id();
+                self.active_native_timers.insert(
+                    native_timer_id,
+                    EguiNativeTimerRegistration {
+                        schedule: schedule.clone(),
+                    },
+                );
                 Ok(StudioGuiPlatformTimerExecutorResponse::Started {
-                    native_timer_id: self.allocate_native_timer_id(),
+                    native_timer_id,
                 })
             }
-            StudioGuiPlatformTimerCommand::Rearm { previous, .. } => {
+            StudioGuiPlatformTimerCommand::Rearm { previous, schedule } => {
                 if let Some(previous) = previous.as_ref() {
-                    self.active_native_timer_ids
-                        .remove(&previous.native_timer_id);
+                    self.active_native_timers.remove(&previous.native_timer_id);
                 }
+                let native_timer_id = self.allocate_native_timer_id();
+                self.active_native_timers.insert(
+                    native_timer_id,
+                    EguiNativeTimerRegistration {
+                        schedule: schedule.clone(),
+                    },
+                );
                 Ok(StudioGuiPlatformTimerExecutorResponse::Started {
-                    native_timer_id: self.allocate_native_timer_id(),
+                    native_timer_id,
                 })
             }
             StudioGuiPlatformTimerCommand::Clear { previous } => {
                 if let Some(previous) = previous.as_ref() {
-                    self.active_native_timer_ids
-                        .remove(&previous.native_timer_id);
+                    self.active_native_timers.remove(&previous.native_timer_id);
                 }
                 Ok(StudioGuiPlatformTimerExecutorResponse::Cleared)
             }
@@ -1580,7 +1647,7 @@ impl StudioGuiPlatformTimerExecutor for EguiPlatformTimerExecutor {
     ) -> RfResult<()> {
         match command {
             StudioGuiPlatformTimerFollowUpCommand::ClearNativeTimer { native_timer_id } => {
-                self.active_native_timer_ids.remove(native_timer_id);
+                self.active_native_timers.remove(native_timer_id);
             }
         }
         Ok(())
@@ -1590,30 +1657,49 @@ impl StudioGuiPlatformTimerExecutor for EguiPlatformTimerExecutor {
 impl EguiPlatformTimerExecutor {
     fn allocate_native_timer_id(&mut self) -> StudioGuiPlatformNativeTimerId {
         self.next_native_timer_id = self.next_native_timer_id.saturating_add(1).max(1);
-        let native_timer_id = self.next_native_timer_id;
-        self.active_native_timer_ids.insert(native_timer_id);
-        native_timer_id
+        self.next_native_timer_id
+    }
+
+    fn next_due_at(&self) -> Option<SystemTime> {
+        self.active_native_timers
+            .values()
+            .map(|registration| registration.schedule.slot.timer.due_at)
+            .min()
+    }
+
+    fn drain_due_native_timer_ids(
+        &mut self,
+        now: SystemTime,
+    ) -> Vec<StudioGuiPlatformNativeTimerId> {
+        let due_native_timer_ids = self
+            .active_native_timers
+            .iter()
+            .filter_map(|(native_timer_id, registration)| {
+                (registration.schedule.slot.timer.due_at <= now).then_some(*native_timer_id)
+            })
+            .collect::<Vec<_>>();
+        for native_timer_id in &due_native_timer_ids {
+            self.active_native_timers.remove(native_timer_id);
+        }
+        due_native_timer_ids
     }
 }
 
 fn drain_due_platform_timer_callbacks(
     platform_host: &mut StudioGuiPlatformHost,
-    executor: &mut impl StudioGuiPlatformTimerExecutor,
+    executor: &mut EguiPlatformTimerExecutor,
     now: SystemTime,
 ) -> RfResult<Vec<StudioGuiPlatformExecutedNativeTimerCallbackOutcome>> {
-    let Some(binding) = platform_host.current_platform_timer_binding().cloned() else {
-        return Ok(Vec::new());
-    };
-    if binding.schedule.slot.timer.due_at > now {
-        return Ok(Vec::new());
-    }
-
-    Ok(vec![
-        platform_host.dispatch_native_timer_elapsed_by_native_id_and_execute_platform_timer(
-            binding.native_timer_id,
-            executor,
-        )?,
-    ])
+    executor
+        .drain_due_native_timer_ids(now)
+        .into_iter()
+        .map(|native_timer_id| {
+            platform_host.dispatch_native_timer_elapsed_by_native_id_and_execute_platform_timer(
+                native_timer_id,
+                executor,
+            )
+        })
+        .collect()
 }
 
 fn collect_shortcuts(input: &egui::InputState) -> Vec<StudioGuiShortcut> {
@@ -2367,7 +2453,11 @@ mod tests {
             started,
             StudioGuiPlatformTimerExecutorResponse::Started { native_timer_id: 1 }
         );
-        assert!(executor.active_native_timer_ids.contains(&1));
+        assert_eq!(
+            executor.next_due_at(),
+            Some(SystemTime::UNIX_EPOCH + Duration::from_secs(60))
+        );
+        assert!(executor.active_native_timers.contains_key(&1));
 
         let cleared = executor
             .execute_platform_timer_command(&StudioGuiPlatformTimerCommand::Clear {
@@ -2378,7 +2468,37 @@ mod tests {
             })
             .expect("expected clear response");
         assert_eq!(cleared, StudioGuiPlatformTimerExecutorResponse::Cleared);
-        assert!(!executor.active_native_timer_ids.contains(&1));
+        assert!(!executor.active_native_timers.contains_key(&1));
+        assert_eq!(executor.next_due_at(), None);
+    }
+
+    #[test]
+    fn egui_platform_timer_executor_drains_due_native_timer_ids_from_native_schedule() {
+        let mut executor = EguiPlatformTimerExecutor::default();
+        let arm_schedule = radishflow_studio::StudioGuiNativeTimerSchedule {
+            window_id: Some(3),
+            handle_id: 9,
+            slot: radishflow_studio::StudioRuntimeTimerHandleSlot {
+                effect_id: 2002,
+                timer: radishflow_studio::EntitlementSessionTimerArm {
+                    event: radishflow_studio::EntitlementSessionLifecycleEvent::TimerElapsed,
+                    due_at: SystemTime::UNIX_EPOCH + Duration::from_secs(30),
+                    delay: Duration::from_secs(30),
+                    reason: radishflow_studio::EntitlementSessionTimerReason::ScheduledCheck,
+                },
+            },
+        };
+        executor
+            .execute_platform_timer_command(&StudioGuiPlatformTimerCommand::Arm {
+                schedule: arm_schedule,
+            })
+            .expect("expected arm response");
+
+        let due_native_timer_ids =
+            executor.drain_due_native_timer_ids(SystemTime::UNIX_EPOCH + Duration::from_secs(31));
+
+        assert_eq!(due_native_timer_ids, vec![1]);
+        assert_eq!(executor.next_due_at(), None);
     }
 
     #[test]
