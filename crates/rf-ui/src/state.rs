@@ -672,6 +672,11 @@ fn apply_run_panel_recovery_mutation(
         RunPanelRecoveryMutation::CreateAndBindOutletStream { unit_id, port_name } => {
             apply_create_and_bind_outlet_stream_mutation(flowsheet, unit_id, port_name)
         }
+        RunPanelRecoveryMutation::DisconnectPortAndDeleteStream {
+            unit_id,
+            port_name,
+            stream_id,
+        } => apply_disconnect_port_and_delete_stream_mutation(flowsheet, unit_id, port_name, stream_id),
         RunPanelRecoveryMutation::DisconnectPort { unit_id, port_name } => {
             apply_disconnect_port_mutation(flowsheet, unit_id, port_name)
         }
@@ -728,6 +733,26 @@ fn apply_create_and_bind_outlet_stream_mutation(
             from_port: port_name.to_string(),
             to_unit_id: None,
             to_port: None,
+        },
+        next_flowsheet,
+    ))
+}
+
+fn apply_disconnect_port_and_delete_stream_mutation(
+    flowsheet: &Flowsheet,
+    unit_id: &UnitId,
+    port_name: &str,
+    stream_id: &StreamId,
+) -> RfResult<(DocumentCommand, Flowsheet)> {
+    let mut next_flowsheet = flowsheet.clone();
+    disconnect_material_stream_port(&mut next_flowsheet, unit_id, port_name)?;
+    next_flowsheet.remove_stream(stream_id)?;
+
+    Ok((
+        DocumentCommand::DisconnectPortAndDeleteStream {
+            unit_id: unit_id.clone(),
+            port: port_name.to_string(),
+            stream_id: stream_id.clone(),
         },
         next_flowsheet,
     ))

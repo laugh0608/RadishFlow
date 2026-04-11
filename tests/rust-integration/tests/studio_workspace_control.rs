@@ -398,7 +398,7 @@ fn run_panel_recovery_action_focuses_missing_upstream_source_unit_end_to_end() {
     let recovery =
         apply_run_panel_recovery_action(&mut app_state).expect("expected recovery action");
 
-    assert_eq!(recovery.action.title, "Inspect inlet path");
+    assert_eq!(recovery.action.title, "Remove dangling inlet stream");
     assert_eq!(recovery.action.target_port_name.as_deref(), Some("inlet_a"));
     assert_eq!(
         recovery.applied_target,
@@ -414,6 +414,17 @@ fn run_panel_recovery_action_focuses_missing_upstream_source_unit_end_to_end() {
             .selection
             .selected_units
             .contains(&"mixer-1".into())
+    );
+    assert_eq!(app_state.workspace.document.revision, 1);
+    assert_eq!(material_port_stream_id(&app_state, "mixer-1", "inlet_a"), None);
+    assert!(!stream_exists(&app_state, "stream-feed-a"));
+    assert_eq!(
+        app_state.workspace.command_history.current_entry().map(|entry| &entry.command),
+        Some(&DocumentCommand::DisconnectPortAndDeleteStream {
+            unit_id: "mixer-1".into(),
+            port: "inlet_a".to_string(),
+            stream_id: "stream-feed-a".into(),
+        })
     );
     assert!(app_state.workspace.panels.inspector_open);
 

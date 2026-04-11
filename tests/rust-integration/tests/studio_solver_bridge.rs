@@ -346,6 +346,84 @@ fn studio_solver_bridge_records_self_loop_disconnect_target_end_to_end() {
 }
 
 #[test]
+fn studio_solver_bridge_records_missing_upstream_cleanup_target_end_to_end() {
+    let provider = build_binary_demo_package_provider();
+    let mut app_state = app_state_from_project(
+        include_str!("../../../examples/flowsheets/failures/missing-upstream-source.rfproj.json"),
+        "doc-studio-missing-upstream-failure",
+        "Studio Missing Upstream Failure Demo",
+        46,
+    );
+
+    let error = solve_workspace_with_property_package(
+        &mut app_state,
+        &provider,
+        &StudioSolveRequest::new("binary-hydrocarbon-lite-v1", "snapshot-missing-upstream-1", 1),
+    )
+    .expect_err("expected missing upstream source failure");
+
+    assert!(error.message().contains("solver.connection_validation.missing_upstream_source:"));
+    assert_eq!(app_state.workspace.solve_session.status, RunStatus::Error);
+
+    let summary = app_state
+        .workspace
+        .solve_session
+        .latest_diagnostic
+        .as_ref()
+        .expect("expected failure summary");
+    assert_eq!(
+        summary.primary_code.as_deref(),
+        Some("solver.connection_validation.missing_upstream_source")
+    );
+    assert_eq!(summary.related_unit_ids, vec![UnitId::new("mixer-1")]);
+    assert_eq!(summary.related_stream_ids, vec![StreamId::new("stream-feed-a")]);
+    assert_eq!(
+        summary.related_port_targets,
+        vec![rf_types::DiagnosticPortTarget::new("mixer-1", "inlet_a")]
+    );
+
+    let notice = app_state
+        .workspace
+        .run_panel
+        .notice
+        .as_ref()
+        .expect("expected run panel notice");
+    assert_eq!(notice.title, "Missing upstream source");
+    assert_eq!(
+        notice
+            .recovery_action
+            .as_ref()
+            .map(|action| action.kind),
+        Some(RunPanelRecoveryActionKind::FixConnections)
+    );
+    assert_eq!(
+        notice
+            .recovery_action
+            .as_ref()
+            .and_then(|action| action.target_unit_id.as_ref()),
+        Some(&UnitId::new("mixer-1"))
+    );
+    assert_eq!(
+        notice
+            .recovery_action
+            .as_ref()
+            .and_then(|action| action.target_port_name.as_deref()),
+        Some("inlet_a")
+    );
+    assert_eq!(
+        notice
+            .recovery_action
+            .as_ref()
+            .and_then(|action| action.mutation.as_ref()),
+        Some(&RunPanelRecoveryMutation::DisconnectPortAndDeleteStream {
+            unit_id: UnitId::new("mixer-1"),
+            port_name: "inlet_a".to_string(),
+            stream_id: StreamId::new("stream-feed-a"),
+        })
+    );
+}
+
+#[test]
 fn studio_solver_bridge_records_duplicate_source_disconnect_target_end_to_end() {
     let provider = build_binary_demo_package_provider();
     let mut app_state = app_state_from_project(

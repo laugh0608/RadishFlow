@@ -5,6 +5,11 @@ pub enum RunPanelRecoveryMutation {
     DisconnectPort { unit_id: UnitId, port_name: String },
     DeleteStream { stream_id: StreamId },
     CreateAndBindOutletStream { unit_id: UnitId, port_name: String },
+    DisconnectPortAndDeleteStream {
+        unit_id: UnitId,
+        port_name: String,
+        stream_id: StreamId,
+    },
 }
 
 use crate::run::{RunStatus, SimulationMode, SolvePendingReason, SolveSessionState, SolveSnapshot};
@@ -145,6 +150,23 @@ impl RunPanelRecoveryAction {
             .with_mutation(RunPanelRecoveryMutation::CreateAndBindOutletStream {
                 unit_id,
                 port_name,
+            })
+    }
+
+    pub fn with_disconnect_port_and_delete_stream(
+        self,
+        unit_id: impl Into<UnitId>,
+        port_name: impl Into<String>,
+        stream_id: impl Into<StreamId>,
+    ) -> Self {
+        let unit_id = unit_id.into();
+        let port_name = port_name.into();
+        let stream_id = stream_id.into();
+        self.with_target_port(unit_id.clone(), port_name.clone())
+            .with_mutation(RunPanelRecoveryMutation::DisconnectPortAndDeleteStream {
+                unit_id,
+                port_name,
+                stream_id,
             })
     }
 }
@@ -300,9 +322,9 @@ pub fn run_panel_failure_recovery_action_for_diagnostic_code(
         "solver.connection_validation.missing_upstream_source",
     ) {
         Some(RunPanelRecoveryAction::new(
-            RunPanelRecoveryActionKind::InspectInletPath,
-            "Inspect inlet path",
-            "检查入口流股是否缺少上游 outlet source，并确认上游单元是否已绑定到同一 stream。",
+            RunPanelRecoveryActionKind::FixConnections,
+            "Remove dangling inlet stream",
+            "断开当前缺少上游 source 的 inlet 绑定，并删除对应孤立流股，先消除悬空入口连接。",
         ))
     } else if diagnostic_code_matches(
         primary_code,
@@ -438,7 +460,12 @@ pub fn run_panel_failure_notice(
         if let Some(port_target) = preferred_recovery_port_target(primary_code, related_port_targets)
         {
             recovery_action =
-                configure_recovery_action_for_port_target(recovery_action, primary_code, port_target);
+                configure_recovery_action_for_port_target(
+                    recovery_action,
+                    primary_code,
+                    port_target,
+                    target_stream_id,
+                );
         } else if prefers_stream_recovery_target(primary_code) {
             if let Some(stream_id) = target_stream_id {
                 recovery_action =
@@ -526,8 +553,22 @@ fn configure_recovery_action_for_port_target(
     recovery_action: RunPanelRecoveryAction,
     primary_code: Option<&str>,
     port_target: &DiagnosticPortTarget,
+    target_stream_id: Option<&StreamId>,
 ) -> RunPanelRecoveryAction {
     if diagnostic_code_matches(
+        primary_code,
+        "solver.connection_validation.missing_upstream_source",
+    ) {
+        if let Some(stream_id) = target_stream_id {
+            recovery_action.with_disconnect_port_and_delete_stream(
+                port_target.unit_id.clone(),
+                port_target.port_name.clone(),
+                stream_id.clone(),
+            )
+        } else {
+            recovery_action.with_target_port(port_target.unit_id.clone(), port_target.port_name.clone())
+        }
+    } else if diagnostic_code_matches(
         primary_code,
         "solver.connection_validation.missing_stream_reference",
     ) || diagnostic_code_matches(

@@ -1216,11 +1216,15 @@ mod tests {
             widget.activate_recovery_action(),
             RunPanelRecoveryWidgetEvent::Requested {
                 action: crate::RunPanelRecoveryAction::new(
-                    crate::RunPanelRecoveryActionKind::InspectInletPath,
-                    "Inspect inlet path",
-                    "检查入口流股是否缺少上游 outlet source，并确认上游单元是否已绑定到同一 stream。",
+                    crate::RunPanelRecoveryActionKind::FixConnections,
+                    "Remove dangling inlet stream",
+                    "断开当前缺少上游 source 的 inlet 绑定，并删除对应孤立流股，先消除悬空入口连接。",
                 )
-                .with_target_port(UnitId::new("mixer-1"), "inlet_a"),
+                .with_disconnect_port_and_delete_stream(
+                    UnitId::new("mixer-1"),
+                    "inlet_a",
+                    rf_types::StreamId::new("stream-feed-a"),
+                ),
             }
         );
         assert!(
@@ -1667,6 +1671,89 @@ mod tests {
             Some(crate::InspectorTarget::Unit(UnitId::new("feed-1")))
         );
         assert!(app_state.workspace.panels.inspector_open);
+    }
+
+    #[test]
+    fn applying_run_panel_recovery_action_disconnects_missing_upstream_source_and_deletes_stream() {
+        let project = rf_store::parse_project_file_json(include_str!(
+            "../../../examples/flowsheets/failures/missing-upstream-source.rfproj.json"
+        ))
+        .expect("expected project parse");
+        let mut app_state = AppState::new(FlowsheetDocument::new(
+            project.document.flowsheet,
+            DocumentMetadata::new(
+                "doc-missing-upstream-recovery",
+                "Missing Upstream Recovery Demo",
+                timestamp(45),
+            ),
+        ));
+        let summary = DiagnosticSummary::new(
+            0,
+            DiagnosticSeverity::Error,
+            "solver.connection_validation.missing_upstream_source: solver connection validation failed",
+        )
+        .with_primary_code("solver.connection_validation.missing_upstream_source")
+        .with_related_unit_ids(vec![UnitId::new("mixer-1")])
+        .with_related_stream_ids(vec![rf_types::StreamId::new("stream-feed-a")])
+        .with_related_port_targets(vec![rf_types::DiagnosticPortTarget::new(
+            "mixer-1",
+            "inlet_a",
+        )]);
+
+        app_state.record_failure(0, RunStatus::Error, summary);
+        let action = app_state
+            .workspace
+            .run_panel
+            .notice
+            .as_ref()
+            .and_then(|notice| notice.recovery_action.as_ref())
+            .cloned()
+            .expect("expected recovery action");
+
+        assert_eq!(
+            action.mutation,
+            Some(crate::RunPanelRecoveryMutation::DisconnectPortAndDeleteStream {
+                unit_id: UnitId::new("mixer-1"),
+                port_name: "inlet_a".to_string(),
+                stream_id: rf_types::StreamId::new("stream-feed-a"),
+            })
+        );
+
+        let applied_target = app_state.apply_run_panel_recovery_action(&action);
+
+        assert_eq!(
+            applied_target,
+            Some(crate::InspectorTarget::Unit(UnitId::new("mixer-1")))
+        );
+        assert_eq!(app_state.workspace.document.revision, 1);
+        assert_eq!(
+            app_state.workspace.command_history.current_entry().map(|entry| &entry.command),
+            Some(&DocumentCommand::DisconnectPortAndDeleteStream {
+                unit_id: UnitId::new("mixer-1"),
+                port: "inlet_a".to_string(),
+                stream_id: rf_types::StreamId::new("stream-feed-a"),
+            })
+        );
+        assert_eq!(
+            app_state
+                .workspace
+                .document
+                .flowsheet
+                .units
+                .get(&UnitId::new("mixer-1"))
+                .and_then(|unit| unit.ports.iter().find(|port| port.name == "inlet_a"))
+                .and_then(|port| port.stream_id.as_ref())
+                .map(|stream_id| stream_id.as_str()),
+            None
+        );
+        assert!(
+            !app_state
+                .workspace
+                .document
+                .flowsheet
+                .streams
+                .contains_key(&rf_types::StreamId::new("stream-feed-a"))
+        );
     }
 
     #[test]

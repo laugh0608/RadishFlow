@@ -46,6 +46,11 @@ pub enum DocumentCommand {
         unit_id: UnitId,
         port: String,
     },
+    DisconnectPortAndDeleteStream {
+        unit_id: UnitId,
+        port: String,
+        stream_id: StreamId,
+    },
     RenameUnit {
         unit_id: UnitId,
         new_name: String,
