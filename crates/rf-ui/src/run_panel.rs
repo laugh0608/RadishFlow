@@ -4,6 +4,7 @@ use rf_types::{DiagnosticPortTarget, StreamId, UnitId};
 pub enum RunPanelRecoveryMutation {
     DisconnectPort { unit_id: UnitId, port_name: String },
     DeleteStream { stream_id: StreamId },
+    CreateAndBindOutletStream { unit_id: UnitId, port_name: String },
 }
 
 use crate::run::{RunStatus, SimulationMode, SolvePendingReason, SolveSessionState, SolveSnapshot};
@@ -132,6 +133,20 @@ impl RunPanelRecoveryAction {
         self.with_target_stream(stream_id.clone())
             .with_mutation(RunPanelRecoveryMutation::DeleteStream { stream_id })
     }
+
+    pub fn with_create_and_bind_outlet_stream(
+        self,
+        unit_id: impl Into<UnitId>,
+        port_name: impl Into<String>,
+    ) -> Self {
+        let unit_id = unit_id.into();
+        let port_name = port_name.into();
+        self.with_target_port(unit_id.clone(), port_name.clone())
+            .with_mutation(RunPanelRecoveryMutation::CreateAndBindOutletStream {
+                unit_id,
+                port_name,
+            })
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -215,9 +230,14 @@ pub fn run_panel_failure_title_for_diagnostic_code(primary_code: Option<&str>) -
         "Duplicate stream sink"
     } else if diagnostic_code_matches(
         primary_code,
-        "solver.connection_validation.unbound_material_port",
+        "solver.connection_validation.unbound_inlet_port",
     ) {
-        "Unbound material port"
+        "Unbound inlet port"
+    } else if diagnostic_code_matches(
+        primary_code,
+        "solver.connection_validation.unbound_outlet_port",
+    ) {
+        "Unbound outlet port"
     } else if diagnostic_code_matches(
         primary_code,
         "solver.connection_validation.orphan_stream",
@@ -313,12 +333,21 @@ pub fn run_panel_failure_recovery_action_for_diagnostic_code(
         ))
     } else if diagnostic_code_matches(
         primary_code,
-        "solver.connection_validation.unbound_material_port",
+        "solver.connection_validation.unbound_inlet_port",
+    ) {
+        Some(RunPanelRecoveryAction::new(
+            RunPanelRecoveryActionKind::InspectInletPath,
+            "Inspect inlet path",
+            "检查该 inlet 端口应接入哪条上游流股，并确认是否遗漏了 stream 绑定。",
+        ))
+    } else if diagnostic_code_matches(
+        primary_code,
+        "solver.connection_validation.unbound_outlet_port",
     ) {
         Some(RunPanelRecoveryAction::new(
             RunPanelRecoveryActionKind::FixConnections,
-            "Bind missing stream",
-            "检查该物料端口是否已经绑定到有效 stream，必要时补建流股并重新绑定。",
+            "Create outlet stream",
+            "为当前未绑定 stream 的 outlet 端口创建一条占位流股，并立即写回连接。",
         ))
     } else if diagnostic_code_matches(primary_code, "solver.connection_validation.orphan_stream") {
         Some(RunPanelRecoveryAction::new(
@@ -516,6 +545,14 @@ fn configure_recovery_action_for_port_target(
     ) {
         recovery_action
             .with_disconnect_port(port_target.unit_id.clone(), port_target.port_name.clone())
+    } else if diagnostic_code_matches(
+        primary_code,
+        "solver.connection_validation.unbound_outlet_port",
+    ) {
+        recovery_action.with_create_and_bind_outlet_stream(
+            port_target.unit_id.clone(),
+            port_target.port_name.clone(),
+        )
     } else {
         recovery_action.with_target_port(port_target.unit_id.clone(), port_target.port_name.clone())
     }

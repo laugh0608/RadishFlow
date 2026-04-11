@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use std::time::SystemTime;
 
 use rf_flowsheet::validate_connections;
-use rf_model::Flowsheet;
+use rf_model::{Flowsheet, MaterialStreamState};
 use rf_types::{RfError, RfResult, StreamId, UnitId};
 
 use crate::auth::{
@@ -669,6 +669,9 @@ fn apply_run_panel_recovery_mutation(
         RunPanelRecoveryMutation::DeleteStream { stream_id } => {
             apply_delete_stream_mutation(flowsheet, stream_id)
         }
+        RunPanelRecoveryMutation::CreateAndBindOutletStream { unit_id, port_name } => {
+            apply_create_and_bind_outlet_stream_mutation(flowsheet, unit_id, port_name)
+        }
         RunPanelRecoveryMutation::DisconnectPort { unit_id, port_name } => {
             apply_disconnect_port_mutation(flowsheet, unit_id, port_name)
         }
@@ -702,6 +705,29 @@ fn apply_delete_stream_mutation(
     Ok((
         DocumentCommand::DeleteStream {
             stream_id: stream_id.clone(),
+        },
+        next_flowsheet,
+    ))
+}
+
+fn apply_create_and_bind_outlet_stream_mutation(
+    flowsheet: &Flowsheet,
+    unit_id: &UnitId,
+    port_name: &str,
+) -> RfResult<(DocumentCommand, Flowsheet)> {
+    let mut next_flowsheet = flowsheet.clone();
+    let stream_id = next_available_placeholder_stream_id(&next_flowsheet, unit_id, port_name);
+    let stream_name = format!("{} {} Stream", unit_id.as_str(), port_name);
+    next_flowsheet.insert_stream(MaterialStreamState::new(stream_id.clone(), stream_name))?;
+    bind_material_stream_port(&mut next_flowsheet, unit_id, port_name, &stream_id)?;
+
+    Ok((
+        DocumentCommand::ConnectPorts {
+            stream_id,
+            from_unit_id: unit_id.clone(),
+            from_port: port_name.to_string(),
+            to_unit_id: None,
+            to_port: None,
         },
         next_flowsheet,
     ))
@@ -764,6 +790,21 @@ fn disconnect_material_stream_port(
     }
     port.stream_id = None;
     Ok(())
+}
+
+fn next_available_placeholder_stream_id(
+    flowsheet: &Flowsheet,
+    unit_id: &UnitId,
+    port_name: &str,
+) -> StreamId {
+    let base = format!("stream-{}-{}", unit_id.as_str(), port_name);
+    let mut candidate = base.clone();
+    let mut suffix = 1usize;
+    while flowsheet.streams.contains_key(&StreamId::new(candidate.as_str())) {
+        candidate = format!("{base}-{suffix}");
+        suffix += 1;
+    }
+    StreamId::new(candidate)
 }
 
 fn format_canvas_suggestion_accept_message(suggestion: &CanvasSuggestion) -> String {

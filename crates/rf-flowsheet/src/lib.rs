@@ -42,7 +42,8 @@ struct MaterialEndpoints {
 enum ConnectionValidationDiagnosticCode {
     UnsupportedUnitKind,
     InvalidPortSignature,
-    UnboundMaterialPort,
+    UnboundInletPort,
+    UnboundOutletPort,
     MissingStreamReference,
     DuplicateUpstreamSource,
     DuplicateDownstreamSink,
@@ -55,7 +56,8 @@ impl ConnectionValidationDiagnosticCode {
         match self {
             Self::UnsupportedUnitKind => "flowsheet.connection_validation.unsupported_unit_kind",
             Self::InvalidPortSignature => "flowsheet.connection_validation.invalid_port_signature",
-            Self::UnboundMaterialPort => "flowsheet.connection_validation.unbound_material_port",
+            Self::UnboundInletPort => "flowsheet.connection_validation.unbound_inlet_port",
+            Self::UnboundOutletPort => "flowsheet.connection_validation.unbound_outlet_port",
             Self::MissingStreamReference => {
                 "flowsheet.connection_validation.missing_stream_reference"
             }
@@ -107,8 +109,12 @@ pub fn validate_connections(flowsheet: &Flowsheet) -> RfResult<Vec<MaterialConne
             }
 
             let stream_id = port.stream_id.clone().ok_or_else(|| {
+                let diagnostic_code = match port.direction {
+                    PortDirection::Inlet => ConnectionValidationDiagnosticCode::UnboundInletPort,
+                    PortDirection::Outlet => ConnectionValidationDiagnosticCode::UnboundOutletPort,
+                };
                 invalid_connection_error(
-                    ConnectionValidationDiagnosticCode::UnboundMaterialPort,
+                    diagnostic_code,
                     format!(
                     "unit `{}` material port `{}` is not connected to any stream",
                     unit.id, port.name

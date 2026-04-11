@@ -50,6 +50,10 @@ fn stream_exists(app_state: &AppState, stream_id: &str) -> bool {
         .contains_key(&stream_id.into())
 }
 
+fn port_target_stream_id(app_state: &AppState, unit_id: &str, port_name: &str) -> Option<String> {
+    material_port_stream_id(app_state, unit_id, port_name)
+}
+
 fn sample_entitlement_snapshot(package_ids: &[&str]) -> EntitlementSnapshot {
     EntitlementSnapshot {
         schema_version: 1,
@@ -736,6 +740,68 @@ fn run_panel_recovery_action_deletes_orphan_stream_end_to_end() {
             stream_id: "stream-orphan".into(),
         })
     );
+
+    fs::remove_dir_all(cache_root).expect("expected temp dir cleanup");
+}
+
+#[test]
+fn run_panel_recovery_action_creates_stream_for_unbound_outlet_end_to_end() {
+    let cache_root = unique_temp_path("integration-run-panel-unbound-outlet-recovery");
+    let mut auth_cache_index = sample_auth_cache_index(&[]);
+    write_cached_package(
+        &cache_root,
+        &mut auth_cache_index,
+        "binary-hydrocarbon-lite-v1",
+    );
+    let facade = StudioAppFacade::new();
+    let mut app_state = app_state_from_project(
+        include_str!("../../../examples/flowsheets/failures/unbound-outlet-port.rfproj.json"),
+        "doc-control-unbound-outlet-recovery",
+        "Control Unbound Outlet Recovery Demo",
+        40,
+    );
+    let context = StudioAppAuthCacheContext::new(&cache_root, &auth_cache_index);
+
+    dispatch_run_panel_primary_action_with_auth_cache(&facade, &mut app_state, &context)
+        .expect("expected connection validation failure");
+
+    let recovery =
+        apply_run_panel_recovery_action(&mut app_state).expect("expected recovery action");
+
+    assert_eq!(recovery.action.title, "Create outlet stream");
+    assert_eq!(recovery.action.target_port_name.as_deref(), Some("outlet"));
+    assert_eq!(
+        recovery.applied_target,
+        Some(InspectorTarget::Unit("feed-1".into()))
+    );
+    assert_eq!(
+        app_state.workspace.drafts.active_target,
+        Some(InspectorTarget::Unit("feed-1".into()))
+    );
+    assert_eq!(app_state.workspace.document.revision, 1);
+    assert_eq!(
+        port_target_stream_id(&app_state, "feed-1", "outlet").as_deref(),
+        Some("stream-feed-1-outlet")
+    );
+    assert!(stream_exists(&app_state, "stream-feed-1-outlet"));
+    assert_eq!(
+        app_state.workspace.command_history.current_entry().map(|entry| &entry.command),
+        Some(&DocumentCommand::ConnectPorts {
+            stream_id: "stream-feed-1-outlet".into(),
+            from_unit_id: "feed-1".into(),
+            from_port: "outlet".to_string(),
+            to_unit_id: None,
+            to_port: None,
+        })
+    );
+    assert!(
+        app_state
+            .workspace
+            .selection
+            .selected_units
+            .contains(&"feed-1".into())
+    );
+    assert!(app_state.workspace.panels.inspector_open);
 
     fs::remove_dir_all(cache_root).expect("expected temp dir cleanup");
 }

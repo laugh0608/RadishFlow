@@ -466,3 +466,31 @@ fn orphan_stream_reports_connection_validation_stream_context_end_to_end() {
     );
     assert!(error.message().contains("is not connected to any material port"));
 }
+
+#[test]
+fn unbound_outlet_port_reports_connection_validation_context_end_to_end() {
+    let error = solve_example_result(include_str!(
+        "../../../examples/flowsheets/failures/unbound-outlet-port.rfproj.json"
+    ))
+    .expect_err("expected unbound outlet port failure");
+
+    assert_eq!(error.code().as_str(), "invalid_connection");
+    assert_eq!(
+        error.context().diagnostic_code(),
+        Some("solver.connection_validation.unbound_outlet_port")
+    );
+    assert_eq!(error.context().related_unit_ids(), &[UnitId::new("feed-1")]);
+    assert_eq!(
+        error.context().related_port_targets(),
+        &[rf_types::DiagnosticPortTarget::new("feed-1", "outlet")]
+    );
+    assert!(error.context().related_stream_ids().is_empty());
+    assert!(
+        error
+            .message()
+            .contains(
+                "solver.connection_validation.unbound_outlet_port: solver connection validation failed"
+            )
+    );
+    assert!(error.message().contains("is not connected to any stream"));
+}

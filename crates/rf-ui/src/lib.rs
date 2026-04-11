@@ -1076,6 +1076,43 @@ mod tests {
     }
 
     #[test]
+    fn run_panel_widget_exposes_recovery_action_when_unbound_outlet_targets_stream_creation() {
+        let mut app_state = AppState::new(sample_document());
+        let summary = DiagnosticSummary::new(
+            0,
+            DiagnosticSeverity::Error,
+            "solver.connection_validation.unbound_outlet_port: solver connection validation failed",
+        )
+        .with_primary_code("solver.connection_validation.unbound_outlet_port")
+        .with_related_unit_ids(vec![UnitId::new("feed-1")])
+        .with_related_port_targets(vec![rf_types::DiagnosticPortTarget::new(
+            "feed-1", "outlet",
+        )]);
+
+        app_state.record_failure(0, RunStatus::Error, summary);
+        let widget = RunPanelWidgetModel::from_state(&app_state.workspace.run_panel);
+
+        assert_eq!(
+            widget.activate_recovery_action(),
+            RunPanelRecoveryWidgetEvent::Requested {
+                action: crate::RunPanelRecoveryAction::new(
+                    crate::RunPanelRecoveryActionKind::FixConnections,
+                    "Create outlet stream",
+                    "为当前未绑定 stream 的 outlet 端口创建一条占位流股，并立即写回连接。",
+                )
+                .with_create_and_bind_outlet_stream(UnitId::new("feed-1"), "outlet"),
+            }
+        );
+        assert!(
+            widget
+                .text()
+                .lines
+                .iter()
+                .any(|line| line == "Suggested target: unit feed-1 port outlet")
+        );
+    }
+
+    #[test]
     fn run_panel_widget_exposes_recovery_action_when_self_loop_targets_disconnectable_port() {
         let mut app_state = AppState::new(sample_document());
         let summary = DiagnosticSummary::new(
@@ -1542,6 +1579,94 @@ mod tests {
                 .streams
                 .contains_key(&rf_types::StreamId::new("stream-orphan"))
         );
+    }
+
+    #[test]
+    fn applying_run_panel_recovery_action_creates_stream_for_unbound_outlet_and_opens_unit_inspector()
+    {
+        let project = rf_store::parse_project_file_json(include_str!(
+            "../../../examples/flowsheets/failures/unbound-outlet-port.rfproj.json"
+        ))
+        .expect("expected project parse");
+        let mut app_state = AppState::new(FlowsheetDocument::new(
+            project.document.flowsheet,
+            DocumentMetadata::new(
+                "doc-unbound-outlet-recovery",
+                "Unbound Outlet Recovery Demo",
+                timestamp(44),
+            ),
+        ));
+        let summary = DiagnosticSummary::new(
+            0,
+            DiagnosticSeverity::Error,
+            "solver.connection_validation.unbound_outlet_port: solver connection validation failed",
+        )
+        .with_primary_code("solver.connection_validation.unbound_outlet_port")
+        .with_related_unit_ids(vec![UnitId::new("feed-1")])
+        .with_related_port_targets(vec![rf_types::DiagnosticPortTarget::new(
+            "feed-1", "outlet",
+        )]);
+
+        app_state.record_failure(0, RunStatus::Error, summary);
+        let action = app_state
+            .workspace
+            .run_panel
+            .notice
+            .as_ref()
+            .and_then(|notice| notice.recovery_action.as_ref())
+            .cloned()
+            .expect("expected recovery action");
+
+        assert_eq!(
+            action.mutation,
+            Some(crate::RunPanelRecoveryMutation::CreateAndBindOutletStream {
+                unit_id: UnitId::new("feed-1"),
+                port_name: "outlet".to_string(),
+            })
+        );
+
+        let applied_target = app_state.apply_run_panel_recovery_action(&action);
+
+        assert_eq!(
+            applied_target,
+            Some(crate::InspectorTarget::Unit(UnitId::new("feed-1")))
+        );
+        assert_eq!(app_state.workspace.document.revision, 1);
+        assert_eq!(
+            app_state.workspace.command_history.current_entry().map(|entry| &entry.command),
+            Some(&DocumentCommand::ConnectPorts {
+                stream_id: rf_types::StreamId::new("stream-feed-1-outlet"),
+                from_unit_id: UnitId::new("feed-1"),
+                from_port: "outlet".to_string(),
+                to_unit_id: None,
+                to_port: None,
+            })
+        );
+        assert_eq!(
+            app_state
+                .workspace
+                .document
+                .flowsheet
+                .units
+                .get(&UnitId::new("feed-1"))
+                .and_then(|unit| unit.ports.iter().find(|port| port.name == "outlet"))
+                .and_then(|port| port.stream_id.as_ref())
+                .map(|stream_id| stream_id.as_str()),
+            Some("stream-feed-1-outlet")
+        );
+        assert!(
+            app_state
+                .workspace
+                .document
+                .flowsheet
+                .streams
+                .contains_key(&rf_types::StreamId::new("stream-feed-1-outlet"))
+        );
+        assert_eq!(
+            app_state.workspace.drafts.active_target,
+            Some(crate::InspectorTarget::Unit(UnitId::new("feed-1")))
+        );
+        assert!(app_state.workspace.panels.inspector_open);
     }
 
     #[test]

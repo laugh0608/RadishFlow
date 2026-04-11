@@ -19,3 +19,4 @@
 - `failures/invalid-port-signature.rfproj.json`: 覆盖 canonical port signature 不匹配的 `solver.connection_validation`
 - `failures/duplicate-downstream-sink.rfproj.json`: 覆盖重复下游 sink 的 `solver.connection_validation`
 - `failures/orphan-stream.rfproj.json`: 覆盖孤立 stream 的 `solver.connection_validation`
+- `failures/unbound-outlet-port.rfproj.json`: 覆盖未绑定 stream 的 outlet port `solver.connection_validation`

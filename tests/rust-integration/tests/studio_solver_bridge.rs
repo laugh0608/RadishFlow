@@ -568,3 +568,80 @@ fn studio_solver_bridge_records_orphan_stream_delete_target_end_to_end() {
         })
     );
 }
+
+#[test]
+fn studio_solver_bridge_records_unbound_outlet_create_stream_target_end_to_end() {
+    let provider = build_binary_demo_package_provider();
+    let mut app_state = app_state_from_project(
+        include_str!("../../../examples/flowsheets/failures/unbound-outlet-port.rfproj.json"),
+        "doc-studio-unbound-outlet-failure",
+        "Studio Unbound Outlet Failure Demo",
+        80,
+    );
+
+    let error = solve_workspace_with_property_package(
+        &mut app_state,
+        &provider,
+        &StudioSolveRequest::new("binary-hydrocarbon-lite-v1", "snapshot-unbound-outlet-1", 1),
+    )
+    .expect_err("expected unbound outlet failure");
+
+    assert!(error.message().contains("solver.connection_validation.unbound_outlet_port:"));
+    assert_eq!(app_state.workspace.solve_session.status, RunStatus::Error);
+
+    let summary = app_state
+        .workspace
+        .solve_session
+        .latest_diagnostic
+        .as_ref()
+        .expect("expected failure summary");
+    assert_eq!(
+        summary.primary_code.as_deref(),
+        Some("solver.connection_validation.unbound_outlet_port")
+    );
+    assert_eq!(summary.related_unit_ids, vec![UnitId::new("feed-1")]);
+    assert!(summary.related_stream_ids.is_empty());
+    assert_eq!(
+        summary.related_port_targets,
+        vec![rf_types::DiagnosticPortTarget::new("feed-1", "outlet")]
+    );
+
+    let notice = app_state
+        .workspace
+        .run_panel
+        .notice
+        .as_ref()
+        .expect("expected run panel notice");
+    assert_eq!(notice.title, "Unbound outlet port");
+    assert_eq!(
+        notice
+            .recovery_action
+            .as_ref()
+            .map(|action| action.kind),
+        Some(RunPanelRecoveryActionKind::FixConnections)
+    );
+    assert_eq!(
+        notice
+            .recovery_action
+            .as_ref()
+            .and_then(|action| action.target_unit_id.as_ref()),
+        Some(&UnitId::new("feed-1"))
+    );
+    assert_eq!(
+        notice
+            .recovery_action
+            .as_ref()
+            .and_then(|action| action.target_port_name.as_deref()),
+        Some("outlet")
+    );
+    assert_eq!(
+        notice
+            .recovery_action
+            .as_ref()
+            .and_then(|action| action.mutation.as_ref()),
+        Some(&RunPanelRecoveryMutation::CreateAndBindOutletStream {
+            unit_id: UnitId::new("feed-1"),
+            port_name: "outlet".to_string(),
+        })
+    );
+}
