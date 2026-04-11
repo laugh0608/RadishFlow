@@ -122,6 +122,7 @@ impl eframe::App for RadishFlowStudioApp {
 
 impl ReadyAppState {
     fn update(&mut self, ctx: &egui::Context) {
+        self.sync_viewport_close(ctx);
         self.sync_viewport_lifecycle(ctx);
         self.dispatch_shortcuts(ctx);
         self.drain_due_timers(ctx);
@@ -1527,6 +1528,24 @@ impl ReadyAppState {
         }
     }
 
+    fn sync_viewport_close(&mut self, ctx: &egui::Context) {
+        if !ctx.input(|input| input.viewport().close_requested()) {
+            return;
+        }
+
+        let Some(window_id) = self.current_window_id() else {
+            return;
+        };
+
+        ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
+        self.cancel_drag_session(Some(window_id));
+        self.dispatch_event(StudioGuiEvent::CloseWindowRequested { window_id });
+
+        if self.logical_window_count() == 0 {
+            ctx.send_viewport_cmd(egui::ViewportCommand::Close);
+        }
+    }
+
     fn sync_viewport_lifecycle(&mut self, ctx: &egui::Context) {
         let focused = ctx.input(|input| input.viewport().focused.unwrap_or(input.focused));
         let became_focused = self
@@ -1539,13 +1558,7 @@ impl ReadyAppState {
             return;
         }
 
-        let window_id = self
-            .platform_host
-            .snapshot()
-            .window_model()
-            .layout_state
-            .scope
-            .window_id;
+        let window_id = self.current_window_id();
         if let Some(window_id) = window_id {
             self.dispatch_event(StudioGuiEvent::WindowForegrounded { window_id });
         }
@@ -1553,6 +1566,11 @@ impl ReadyAppState {
 
     fn dispatch_shortcuts(&mut self, ctx: &egui::Context) {
         if ctx.wants_keyboard_input() {
+            return;
+        }
+
+        if self.drag_session.is_some() && ctx.input(|input| input.key_pressed(egui::Key::Escape)) {
+            self.cancel_drag_session(self.current_window_id());
             return;
         }
 
@@ -1573,6 +1591,19 @@ impl ReadyAppState {
         } else {
             StudioGuiFocusContext::Global
         }
+    }
+
+    fn current_window_id(&self) -> Option<StudioWindowHostId> {
+        self.platform_host
+            .snapshot()
+            .window_model()
+            .layout_state
+            .scope
+            .window_id
+    }
+
+    fn logical_window_count(&self) -> usize {
+        self.platform_host.snapshot().app_host_state.windows.len()
     }
 
     fn dispatch_runtime_host_action(
