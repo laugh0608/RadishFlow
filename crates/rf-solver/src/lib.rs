@@ -117,6 +117,25 @@ impl SolveSnapshot {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct SolveFailureContext {
+    pub primary_code: Option<String>,
+    pub related_unit_ids: Vec<UnitId>,
+}
+
+impl SolveFailureContext {
+    pub fn from_error(error: &RfError) -> Self {
+        Self::from_message(error.message())
+    }
+
+    pub fn from_message(message: &str) -> Self {
+        Self {
+            primary_code: prefixed_solver_diagnostic_code(message),
+            related_unit_ids: related_unit_ids_from_failure_message(message),
+        }
+    }
+}
+
 pub struct SolverServices<'a> {
     pub thermo: &'a dyn ThermoProvider,
     pub flash_solver: &'a dyn TpFlashSolver,
@@ -578,6 +597,94 @@ fn format_stream_ids(stream_ids: &[StreamId]) -> String {
         .join(", ")
 }
 
+fn prefixed_solver_diagnostic_code(message: &str) -> Option<String> {
+    message
+        .split(": ")
+        .find(|segment| is_solver_diagnostic_code(segment))
+        .map(str::to_string)
+}
+
+fn is_solver_diagnostic_code(candidate: &str) -> bool {
+    candidate.starts_with("solver.")
+        && candidate.bytes().all(|byte| {
+            byte.is_ascii_lowercase() || byte.is_ascii_digit() || byte == b'.' || byte == b'_'
+        })
+}
+
+fn related_unit_ids_from_failure_message(message: &str) -> Vec<UnitId> {
+    let mut unit_ids = Vec::new();
+    collect_unit_context_ids(message, &mut unit_ids);
+    collect_step_lookup_ids(message, &mut unit_ids);
+    collect_cycle_unit_ids(message, &mut unit_ids);
+    unit_ids
+}
+
+fn collect_unit_context_ids(message: &str, unit_ids: &mut Vec<UnitId>) {
+    let needle = "unit `";
+    let mut remaining = message;
+
+    while let Some(start) = remaining.find(needle) {
+        let after = &remaining[start + needle.len()..];
+        let Some(end) = after.find("` (`") else {
+            break;
+        };
+        push_related_unit_id(unit_ids, &after[..end]);
+        remaining = &after[end + 1..];
+    }
+}
+
+fn collect_step_lookup_ids(message: &str, unit_ids: &mut Vec<UnitId>) {
+    let Some(code) = prefixed_solver_diagnostic_code(message) else {
+        return;
+    };
+    if code != SolverDiagnosticCode::StepLookup.as_str() {
+        return;
+    }
+
+    let needle = "failed for `";
+    let mut remaining = message;
+    while let Some(start) = remaining.find(needle) {
+        let after = &remaining[start + needle.len()..];
+        let Some(end) = after.find("`:") else {
+            break;
+        };
+        let candidate = &after[..end];
+        if !candidate.contains(' ') {
+            push_related_unit_id(unit_ids, candidate);
+        }
+        remaining = &after[end + 2..];
+    }
+}
+
+fn collect_cycle_unit_ids(message: &str, unit_ids: &mut Vec<UnitId>) {
+    let Some(code) = prefixed_solver_diagnostic_code(message) else {
+        return;
+    };
+    if code != SolverDiagnosticCode::TopologicalOrdering.as_str() {
+        return;
+    }
+
+    let needle = "involving [";
+    let Some(start) = message.find(needle) else {
+        return;
+    };
+    let after = &message[start + needle.len()..];
+    let Some(end) = after.find(']') else {
+        return;
+    };
+
+    for candidate in after[..end].split(',') {
+        push_related_unit_id(unit_ids, candidate.trim());
+    }
+}
+
+fn push_related_unit_id(unit_ids: &mut Vec<UnitId>, candidate: &str) {
+    if candidate.is_empty() || unit_ids.iter().any(|unit_id| unit_id.as_str() == candidate) {
+        return;
+    }
+    unit_ids.push(UnitId::new(candidate));
+}
+
 #[cfg(test)]
 mod tests {
     use std::collections::BTreeMap;
@@ -595,8 +702,8 @@ mod tests {
     };
 
     use super::{
-        FlowsheetSolver, SequentialModularSolver, SolveDiagnosticSeverity, SolveStatus,
-        SolverDiagnosticCode, SolverServices, find_port, instantiate_operation,
+        FlowsheetSolver, SequentialModularSolver, SolveDiagnosticSeverity, SolveFailureContext,
+        SolveStatus, SolverDiagnosticCode, SolverServices, find_port, instantiate_operation,
         materialized_output_stream, port_stream_id, resolved_stream_for_port, solver_step_error,
         solver_step_execution_error, solver_step_lookup_error, stream_for_port,
     };
@@ -1827,6 +1934,54 @@ mod tests {
         assert_eq!(
             error.message(),
             "solver.step.materialization: solver step 4 output materialization failed for unit `flash-1` (`flash_drum`): missing produced outlet port `liquid`"
+        );
+    }
+
+    #[test]
+    fn solve_failure_context_extracts_step_execution_code_and_unit() {
+        let error = solver_step_execution_error(
+            2,
+            &build_valve_node("valve-1", "Valve", "stream-feed", "stream-throttled"),
+            &[StreamId::new("stream-feed")],
+            RfError::invalid_input("valve outlet pressure cannot exceed inlet pressure"),
+        );
+
+        let context = SolveFailureContext::from_error(&error);
+
+        assert_eq!(
+            context.primary_code.as_deref(),
+            Some("solver.step.execution")
+        );
+        assert_eq!(context.related_unit_ids, vec![UnitId::new("valve-1")]);
+    }
+
+    #[test]
+    fn solve_failure_context_extracts_step_lookup_unit_id() {
+        let error = solver_step_lookup_error(
+            3,
+            &UnitId::new("flash-1"),
+            RfError::missing_entity("unit", "flash-1"),
+        );
+
+        let context = SolveFailureContext::from_error(&error);
+
+        assert_eq!(context.primary_code.as_deref(), Some("solver.step.lookup"));
+        assert_eq!(context.related_unit_ids, vec![UnitId::new("flash-1")]);
+    }
+
+    #[test]
+    fn solve_failure_context_extracts_cycle_unit_ids_from_wrapped_message() {
+        let context = SolveFailureContext::from_message(
+            "flowsheet solve failed with package `binary-hydrocarbon-lite-v1`: solver.topological_ordering: solver topological ordering failed: flowsheet contains a cycle or unresolved dependency involving [heater-1, valve-1]; only acyclic sequential flowsheets are supported in the current solver",
+        );
+
+        assert_eq!(
+            context.primary_code.as_deref(),
+            Some("solver.topological_ordering")
+        );
+        assert_eq!(
+            context.related_unit_ids,
+            vec![UnitId::new("heater-1"), UnitId::new("valve-1")]
         );
     }
 }

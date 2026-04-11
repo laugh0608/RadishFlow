@@ -1,12 +1,12 @@
 use std::path::Path;
 
 use rf_flash::PlaceholderTpFlashSolver;
-use rf_solver::{FlowsheetSolver, SequentialModularSolver, SolverServices};
+use rf_solver::{FlowsheetSolver, SequentialModularSolver, SolveFailureContext, SolverServices};
 use rf_store::StoredAuthCacheIndex;
 use rf_thermo::{
     CachedPropertyPackageProvider, PlaceholderThermoProvider, PropertyPackageProvider,
 };
-use rf_types::{RfError, RfResult, UnitId};
+use rf_types::{RfError, RfResult};
 use rf_ui::{AppLogLevel, AppState, DiagnosticSeverity, DiagnosticSummary, RunStatus};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -140,23 +140,16 @@ pub fn solve_workspace_from_auth_cache(
 }
 
 fn record_solve_failure(app_state: &mut AppState, revision: u64, message: String) {
-    let summary = DiagnosticSummary::new(revision, DiagnosticSeverity::Error, message.clone())
-        .with_primary_code_from_message()
-        .with_related_unit_ids(related_unit_ids_for_message(app_state, &message));
+    let context = SolveFailureContext::from_message(&message);
+    let mut summary = DiagnosticSummary::new(revision, DiagnosticSeverity::Error, message.clone());
+    if let Some(primary_code) = context.primary_code {
+        summary = summary.with_primary_code(primary_code);
+    }
+    if !context.related_unit_ids.is_empty() {
+        summary = summary.with_related_unit_ids(context.related_unit_ids);
+    }
     app_state.record_failure(revision, RunStatus::Error, summary);
     app_state.push_log(AppLogLevel::Error, message);
-}
-
-fn related_unit_ids_for_message(app_state: &AppState, message: &str) -> Vec<UnitId> {
-    app_state
-        .workspace
-        .document
-        .flowsheet
-        .units
-        .keys()
-        .filter(|unit_id| message.contains(unit_id.as_str()))
-        .cloned()
-        .collect()
 }
 
 #[cfg(test)]
@@ -181,8 +174,8 @@ mod tests {
     use rf_ui::{AppState, DocumentMetadata, FlowsheetDocument, RunStatus};
 
     use super::{
-        StudioSolveRequest, next_solver_snapshot_sequence, solve_workspace_from_auth_cache,
-        solve_workspace_with_property_package,
+        SolveFailureContext, StudioSolveRequest, next_solver_snapshot_sequence,
+        solve_workspace_from_auth_cache, solve_workspace_with_property_package,
     };
 
     fn timestamp(seconds: u64) -> std::time::SystemTime {
@@ -457,5 +450,15 @@ mod tests {
         );
 
         fs::remove_dir_all(cache_root).expect("expected temp dir cleanup");
+    }
+
+    #[test]
+    fn solver_failure_context_extracts_lookup_unit_from_wrapped_message() {
+        let context = SolveFailureContext::from_message(
+            "flowsheet solve failed with package `binary-hydrocarbon-lite-v1`: solver.step.lookup: solver step 3 unit lookup failed for `flash-1`: missing unit `flash-1`",
+        );
+
+        assert_eq!(context.primary_code.as_deref(), Some("solver.step.lookup"));
+        assert_eq!(context.related_unit_ids, vec![rf_types::UnitId::new("flash-1")]);
     }
 }

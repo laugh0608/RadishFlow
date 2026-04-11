@@ -1,5 +1,6 @@
 use std::path::Path;
 
+use rf_solver::SolveFailureContext;
 use rf_store::StoredAuthCacheIndex;
 use rf_types::{ErrorCode, RfError, RfResult};
 use rf_ui::{
@@ -378,12 +379,18 @@ fn record_workspace_run_outcome(app_state: &mut AppState, outcome: &StudioWorksp
         StudioWorkspaceRunOutcome::Failed(failed) => {
             if !matches!(app_state.workspace.solve_session.status, RunStatus::Error) {
                 let revision = app_state.workspace.document.revision;
-                let summary = DiagnosticSummary::new(
+                let context = SolveFailureContext::from_message(&failed.message);
+                let mut summary = DiagnosticSummary::new(
                     revision,
                     DiagnosticSeverity::Error,
                     failed.message.clone(),
-                )
-                .with_primary_code_from_message();
+                );
+                if let Some(primary_code) = context.primary_code {
+                    summary = summary.with_primary_code(primary_code);
+                }
+                if !context.related_unit_ids.is_empty() {
+                    summary = summary.with_related_unit_ids(context.related_unit_ids);
+                }
                 app_state.record_failure(revision, RunStatus::Error, summary);
             }
             push_log_if_needed(app_state, AppLogLevel::Error, &failed.message);
