@@ -516,7 +516,11 @@ impl AppState {
         }
         self.workspace.selection.selected_units.clear();
         self.workspace.selection.selected_streams.clear();
+        self.workspace.drafts.active_target = None;
         if let Some(unit_id) = action.target_unit_id.as_ref() {
+            if !self.workspace.document.flowsheet.units.contains_key(unit_id) {
+                return None;
+            }
             let unit_id = unit_id.clone();
             self.workspace
                 .selection
@@ -527,6 +531,9 @@ impl AppState {
             return Some(InspectorTarget::Unit(unit_id));
         }
         if let Some(stream_id) = action.target_stream_id.as_ref() {
+            if !self.workspace.document.flowsheet.streams.contains_key(stream_id) {
+                return None;
+            }
             let stream_id = stream_id.clone();
             self.workspace
                 .selection
@@ -659,6 +666,9 @@ fn apply_run_panel_recovery_mutation(
     mutation: &RunPanelRecoveryMutation,
 ) -> RfResult<(DocumentCommand, Flowsheet)> {
     match mutation {
+        RunPanelRecoveryMutation::DeleteStream { stream_id } => {
+            apply_delete_stream_mutation(flowsheet, stream_id)
+        }
         RunPanelRecoveryMutation::DisconnectPort { unit_id, port_name } => {
             apply_disconnect_port_mutation(flowsheet, unit_id, port_name)
         }
@@ -677,6 +687,21 @@ fn apply_disconnect_port_mutation(
         DocumentCommand::DisconnectPorts {
             unit_id: unit_id.clone(),
             port: port_name.to_string(),
+        },
+        next_flowsheet,
+    ))
+}
+
+fn apply_delete_stream_mutation(
+    flowsheet: &Flowsheet,
+    stream_id: &StreamId,
+) -> RfResult<(DocumentCommand, Flowsheet)> {
+    let mut next_flowsheet = flowsheet.clone();
+    next_flowsheet.remove_stream(stream_id)?;
+
+    Ok((
+        DocumentCommand::DeleteStream {
+            stream_id: stream_id.clone(),
         },
         next_flowsheet,
     ))

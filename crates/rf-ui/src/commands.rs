@@ -39,6 +39,9 @@ pub enum DocumentCommand {
         to_unit_id: Option<UnitId>,
         to_port: Option<String>,
     },
+    DeleteStream {
+        stream_id: StreamId,
+    },
     DisconnectPorts {
         unit_id: UnitId,
         port: String,

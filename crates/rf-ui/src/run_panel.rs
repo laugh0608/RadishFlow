@@ -3,6 +3,7 @@ use rf_types::{DiagnosticPortTarget, StreamId, UnitId};
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RunPanelRecoveryMutation {
     DisconnectPort { unit_id: UnitId, port_name: String },
+    DeleteStream { stream_id: StreamId },
 }
 
 use crate::run::{RunStatus, SimulationMode, SolvePendingReason, SolveSessionState, SolveSnapshot};
@@ -124,6 +125,12 @@ impl RunPanelRecoveryAction {
         let port_name = port_name.into();
         self.with_target_port(unit_id.clone(), port_name.clone())
             .with_mutation(RunPanelRecoveryMutation::DisconnectPort { unit_id, port_name })
+    }
+
+    pub fn with_delete_stream(self, stream_id: impl Into<StreamId>) -> Self {
+        let stream_id = stream_id.into();
+        self.with_target_stream(stream_id.clone())
+            .with_mutation(RunPanelRecoveryMutation::DeleteStream { stream_id })
     }
 }
 
@@ -306,8 +313,8 @@ pub fn run_panel_failure_recovery_action_for_diagnostic_code(
     } else if diagnostic_code_matches(primary_code, "solver.connection_validation.orphan_stream") {
         Some(RunPanelRecoveryAction::new(
             RunPanelRecoveryActionKind::FixConnections,
-            "Reconnect orphan stream",
-            "检查未连接到任何单元端口的流股，删除或重新绑定后再重试。",
+            "Delete orphan stream",
+            "删除当前未连接到任何单元端口的孤立流股，避免它继续阻塞连接校验。",
         ))
     } else if diagnostic_code_in_family(primary_code, "solver.connection_validation") {
         Some(RunPanelRecoveryAction::new(
@@ -383,7 +390,8 @@ pub fn run_panel_failure_notice(
                 configure_recovery_action_for_port_target(recovery_action, primary_code, port_target);
         } else if prefers_stream_recovery_target(primary_code) {
             if let Some(stream_id) = target_stream_id {
-                recovery_action = recovery_action.with_target_stream(stream_id.clone());
+                recovery_action =
+                    configure_recovery_action_for_stream_target(recovery_action, primary_code, stream_id);
             } else if let Some(unit_id) = target_unit_id {
                 recovery_action = recovery_action.with_target_unit(unit_id.clone());
             }
@@ -478,6 +486,18 @@ fn configure_recovery_action_for_port_target(
             .with_disconnect_port(port_target.unit_id.clone(), port_target.port_name.clone())
     } else {
         recovery_action.with_target_port(port_target.unit_id.clone(), port_target.port_name.clone())
+    }
+}
+
+fn configure_recovery_action_for_stream_target(
+    recovery_action: RunPanelRecoveryAction,
+    primary_code: Option<&str>,
+    stream_id: &StreamId,
+) -> RunPanelRecoveryAction {
+    if diagnostic_code_matches(primary_code, "solver.connection_validation.orphan_stream") {
+        recovery_action.with_delete_stream(stream_id.clone())
+    } else {
+        recovery_action.with_target_stream(stream_id.clone())
     }
 }
 

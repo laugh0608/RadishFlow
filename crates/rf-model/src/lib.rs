@@ -170,6 +170,12 @@ impl Flowsheet {
         Ok(())
     }
 
+    pub fn remove_stream(&mut self, id: &StreamId) -> RfResult<MaterialStreamState> {
+        self.streams
+            .remove(id)
+            .ok_or_else(|| RfError::missing_entity("stream", id))
+    }
+
     pub fn insert_unit(&mut self, unit: UnitNode) -> RfResult<()> {
         let unit_id = unit.id.clone();
         if self.units.contains_key(&unit_id) {

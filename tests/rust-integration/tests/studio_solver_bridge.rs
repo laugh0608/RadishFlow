@@ -394,3 +394,69 @@ fn studio_solver_bridge_records_duplicate_sink_disconnect_target_end_to_end() {
         })
     );
 }
+
+#[test]
+fn studio_solver_bridge_records_orphan_stream_delete_target_end_to_end() {
+    let provider = build_binary_demo_package_provider();
+    let mut app_state = app_state_from_project(
+        include_str!("../../../examples/flowsheets/failures/orphan-stream.rfproj.json"),
+        "doc-studio-orphan-stream-failure",
+        "Studio Orphan Stream Failure Demo",
+        70,
+    );
+
+    let error = solve_workspace_with_property_package(
+        &mut app_state,
+        &provider,
+        &StudioSolveRequest::new("binary-hydrocarbon-lite-v1", "snapshot-orphan-stream-1", 1),
+    )
+    .expect_err("expected orphan stream failure");
+
+    assert!(error.message().contains("solver.connection_validation.orphan_stream:"));
+    assert_eq!(app_state.workspace.solve_session.status, RunStatus::Error);
+
+    let summary = app_state
+        .workspace
+        .solve_session
+        .latest_diagnostic
+        .as_ref()
+        .expect("expected failure summary");
+    assert_eq!(
+        summary.primary_code.as_deref(),
+        Some("solver.connection_validation.orphan_stream")
+    );
+    assert_eq!(summary.related_stream_ids, vec![StreamId::new("stream-orphan")]);
+    assert!(summary.related_unit_ids.is_empty());
+    assert!(summary.related_port_targets.is_empty());
+
+    let notice = app_state
+        .workspace
+        .run_panel
+        .notice
+        .as_ref()
+        .expect("expected run panel notice");
+    assert_eq!(notice.title, "Orphan stream");
+    assert_eq!(
+        notice
+            .recovery_action
+            .as_ref()
+            .map(|action| action.kind),
+        Some(RunPanelRecoveryActionKind::FixConnections)
+    );
+    assert_eq!(
+        notice
+            .recovery_action
+            .as_ref()
+            .and_then(|action| action.target_stream_id.as_ref()),
+        Some(&StreamId::new("stream-orphan"))
+    );
+    assert_eq!(
+        notice
+            .recovery_action
+            .as_ref()
+            .and_then(|action| action.mutation.as_ref()),
+        Some(&RunPanelRecoveryMutation::DeleteStream {
+            stream_id: StreamId::new("stream-orphan"),
+        })
+    );
+}

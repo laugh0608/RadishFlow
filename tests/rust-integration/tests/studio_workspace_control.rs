@@ -41,6 +41,15 @@ fn material_port_stream_id(app_state: &AppState, unit_id: &str, port_name: &str)
         .map(|stream_id| stream_id.as_str().to_string())
 }
 
+fn stream_exists(app_state: &AppState, stream_id: &str) -> bool {
+    app_state
+        .workspace
+        .document
+        .flowsheet
+        .streams
+        .contains_key(&stream_id.into())
+}
+
 fn sample_entitlement_snapshot(package_ids: &[&str]) -> EntitlementSnapshot {
     EntitlementSnapshot {
         schema_version: 1,
@@ -568,6 +577,55 @@ fn run_panel_recovery_action_disconnects_duplicate_downstream_sink_end_to_end() 
             .contains(&"mixer-1".into())
     );
     assert!(app_state.workspace.panels.inspector_open);
+
+    fs::remove_dir_all(cache_root).expect("expected temp dir cleanup");
+}
+
+#[test]
+fn run_panel_recovery_action_deletes_orphan_stream_end_to_end() {
+    let cache_root = unique_temp_path("integration-run-panel-orphan-stream-recovery");
+    let mut auth_cache_index = sample_auth_cache_index(&[]);
+    write_cached_package(
+        &cache_root,
+        &mut auth_cache_index,
+        "binary-hydrocarbon-lite-v1",
+    );
+    let facade = StudioAppFacade::new();
+    let mut app_state = app_state_from_project(
+        include_str!("../../../examples/flowsheets/failures/orphan-stream.rfproj.json"),
+        "doc-control-orphan-stream-recovery",
+        "Control Orphan Stream Recovery Demo",
+        39,
+    );
+    let context = StudioAppAuthCacheContext::new(&cache_root, &auth_cache_index);
+
+    dispatch_run_panel_primary_action_with_auth_cache(&facade, &mut app_state, &context)
+        .expect("expected connection validation failure");
+
+    let recovery =
+        apply_run_panel_recovery_action(&mut app_state).expect("expected recovery action");
+
+    assert_eq!(recovery.action.title, "Delete orphan stream");
+    assert_eq!(
+        recovery
+            .action
+            .target_stream_id
+            .as_ref()
+            .map(|stream_id| stream_id.as_str()),
+        Some("stream-orphan")
+    );
+    assert_eq!(recovery.applied_target, None);
+    assert_eq!(app_state.workspace.document.revision, 1);
+    assert!(!stream_exists(&app_state, "stream-orphan"));
+    assert!(app_state.workspace.selection.selected_units.is_empty());
+    assert!(app_state.workspace.selection.selected_streams.is_empty());
+    assert_eq!(app_state.workspace.drafts.active_target, None);
+    assert_eq!(
+        app_state.workspace.command_history.current_entry().map(|entry| &entry.command),
+        Some(&DocumentCommand::DeleteStream {
+            stream_id: "stream-orphan".into(),
+        })
+    );
 
     fs::remove_dir_all(cache_root).expect("expected temp dir cleanup");
 }

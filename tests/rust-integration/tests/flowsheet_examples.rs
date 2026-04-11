@@ -401,3 +401,30 @@ fn duplicate_downstream_sink_reports_connection_validation_stream_context_end_to
     );
     assert!(error.message().contains("consumed by both"));
 }
+
+#[test]
+fn orphan_stream_reports_connection_validation_stream_context_end_to_end() {
+    let error = solve_example_result(include_str!(
+        "../../../examples/flowsheets/failures/orphan-stream.rfproj.json"
+    ))
+    .expect_err("expected orphan stream failure");
+
+    assert_eq!(error.code().as_str(), "invalid_connection");
+    assert_eq!(
+        error.context().diagnostic_code(),
+        Some("solver.connection_validation.orphan_stream")
+    );
+    assert_eq!(
+        error.context().related_stream_ids(),
+        &[rf_types::StreamId::new("stream-orphan")]
+    );
+    assert!(error.context().related_unit_ids().is_empty());
+    assert!(
+        error
+            .message()
+            .contains(
+                "solver.connection_validation.orphan_stream: solver connection validation failed"
+            )
+    );
+    assert!(error.message().contains("is not connected to any material port"));
+}

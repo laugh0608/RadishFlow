@@ -1042,6 +1042,40 @@ mod tests {
     }
 
     #[test]
+    fn run_panel_widget_exposes_recovery_action_when_orphan_stream_targets_deletable_stream() {
+        let mut app_state = AppState::new(sample_document());
+        let summary = DiagnosticSummary::new(
+            0,
+            DiagnosticSeverity::Error,
+            "solver.connection_validation.orphan_stream: solver connection validation failed",
+        )
+        .with_primary_code("solver.connection_validation.orphan_stream")
+        .with_related_stream_ids(vec![rf_types::StreamId::new("stream-orphan")]);
+
+        app_state.record_failure(0, RunStatus::Error, summary);
+        let widget = RunPanelWidgetModel::from_state(&app_state.workspace.run_panel);
+
+        assert_eq!(
+            widget.activate_recovery_action(),
+            RunPanelRecoveryWidgetEvent::Requested {
+                action: crate::RunPanelRecoveryAction::new(
+                    crate::RunPanelRecoveryActionKind::FixConnections,
+                    "Delete orphan stream",
+                    "删除当前未连接到任何单元端口的孤立流股，避免它继续阻塞连接校验。",
+                )
+                .with_delete_stream(rf_types::StreamId::new("stream-orphan")),
+            }
+        );
+        assert!(
+            widget
+                .text()
+                .lines
+                .iter()
+                .any(|line| line == "Suggested target: stream stream-orphan")
+        );
+    }
+
+    #[test]
     fn run_panel_widget_exposes_recovery_action_when_connection_failure_targets_port() {
         let mut app_state = AppState::new(sample_document());
         let summary = DiagnosticSummary::new(
@@ -1364,6 +1398,68 @@ mod tests {
                 .and_then(|port| port.stream_id.as_ref())
                 .map(|stream_id| stream_id.as_str()),
             None
+        );
+    }
+
+    #[test]
+    fn applying_run_panel_recovery_action_deletes_orphan_stream_without_selecting_missing_target() {
+        let project = rf_store::parse_project_file_json(include_str!(
+            "../../../examples/flowsheets/failures/orphan-stream.rfproj.json"
+        ))
+        .expect("expected project parse");
+        let mut app_state = AppState::new(FlowsheetDocument::new(
+            project.document.flowsheet,
+            DocumentMetadata::new(
+                "doc-orphan-stream-recovery",
+                "Orphan Stream Recovery Demo",
+                timestamp(41),
+            ),
+        ));
+        let summary = DiagnosticSummary::new(
+            0,
+            DiagnosticSeverity::Error,
+            "solver.connection_validation.orphan_stream: solver connection validation failed",
+        )
+        .with_primary_code("solver.connection_validation.orphan_stream")
+        .with_related_stream_ids(vec![rf_types::StreamId::new("stream-orphan")]);
+
+        app_state.record_failure(0, RunStatus::Error, summary);
+        let action = app_state
+            .workspace
+            .run_panel
+            .notice
+            .as_ref()
+            .and_then(|notice| notice.recovery_action.as_ref())
+            .cloned()
+            .expect("expected recovery action");
+
+        assert_eq!(
+            action.mutation,
+            Some(crate::RunPanelRecoveryMutation::DeleteStream {
+                stream_id: rf_types::StreamId::new("stream-orphan"),
+            })
+        );
+
+        let applied_target = app_state.apply_run_panel_recovery_action(&action);
+
+        assert_eq!(applied_target, None);
+        assert!(app_state.workspace.selection.selected_units.is_empty());
+        assert!(app_state.workspace.selection.selected_streams.is_empty());
+        assert_eq!(app_state.workspace.drafts.active_target, None);
+        assert_eq!(app_state.workspace.document.revision, 1);
+        assert_eq!(
+            app_state.workspace.command_history.current_entry().map(|entry| &entry.command),
+            Some(&DocumentCommand::DeleteStream {
+                stream_id: rf_types::StreamId::new("stream-orphan"),
+            })
+        );
+        assert!(
+            !app_state
+                .workspace
+                .document
+                .flowsheet
+                .streams
+                .contains_key(&rf_types::StreamId::new("stream-orphan"))
         );
     }
 
