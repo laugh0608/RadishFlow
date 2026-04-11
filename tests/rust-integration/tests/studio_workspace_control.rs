@@ -472,6 +472,61 @@ fn run_panel_recovery_action_disconnects_self_loop_inlet_end_to_end() {
 }
 
 #[test]
+fn run_panel_recovery_action_disconnects_two_unit_cycle_inlet_end_to_end() {
+    let cache_root = unique_temp_path("integration-run-panel-two-unit-cycle-recovery");
+    let mut auth_cache_index = sample_auth_cache_index(&[]);
+    write_cached_package(
+        &cache_root,
+        &mut auth_cache_index,
+        "binary-hydrocarbon-lite-v1",
+    );
+    let facade = StudioAppFacade::new();
+    let mut app_state = app_state_from_project(
+        include_str!("../../../examples/flowsheets/failures/multi-unit-cycle.rfproj.json"),
+        "doc-control-two-unit-cycle-recovery",
+        "Control Two Unit Cycle Recovery Demo",
+        36,
+    );
+    let context = StudioAppAuthCacheContext::new(&cache_root, &auth_cache_index);
+
+    dispatch_run_panel_primary_action_with_auth_cache(&facade, &mut app_state, &context)
+        .expect("expected two-unit cycle failure");
+
+    let recovery =
+        apply_run_panel_recovery_action(&mut app_state).expect("expected recovery action");
+
+    assert_eq!(recovery.action.title, "Disconnect cycle inlet");
+    assert_eq!(recovery.action.target_port_name.as_deref(), Some("inlet"));
+    assert_eq!(
+        recovery.applied_target,
+        Some(InspectorTarget::Unit("heater-1".into()))
+    );
+    assert_eq!(
+        app_state.workspace.drafts.active_target,
+        Some(InspectorTarget::Unit("heater-1".into()))
+    );
+    assert_eq!(app_state.workspace.document.revision, 1);
+    assert_eq!(material_port_stream_id(&app_state, "heater-1", "inlet"), None);
+    assert_eq!(
+        app_state.workspace.command_history.current_entry().map(|entry| &entry.command),
+        Some(&DocumentCommand::DisconnectPorts {
+            unit_id: "heater-1".into(),
+            port: "inlet".to_string(),
+        })
+    );
+    assert!(
+        app_state
+            .workspace
+            .selection
+            .selected_units
+            .contains(&"heater-1".into())
+    );
+    assert!(app_state.workspace.panels.inspector_open);
+
+    fs::remove_dir_all(cache_root).expect("expected temp dir cleanup");
+}
+
+#[test]
 fn run_panel_recovery_action_disconnects_missing_stream_reference_end_to_end() {
     let cache_root = unique_temp_path("integration-run-panel-missing-stream-recovery");
     let mut auth_cache_index = sample_auth_cache_index(&[]);

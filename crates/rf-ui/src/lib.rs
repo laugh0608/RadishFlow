@@ -1115,6 +1115,48 @@ mod tests {
     }
 
     #[test]
+    fn run_panel_widget_exposes_recovery_action_when_two_unit_cycle_targets_disconnectable_port() {
+        let mut app_state = AppState::new(sample_document());
+        let summary = DiagnosticSummary::new(
+            0,
+            DiagnosticSeverity::Error,
+            "solver.topological_ordering.two_unit_cycle: solver topological ordering failed",
+        )
+        .with_primary_code("solver.topological_ordering.two_unit_cycle")
+        .with_related_unit_ids(vec![UnitId::new("heater-1"), UnitId::new("valve-1")])
+        .with_related_stream_ids(vec![
+            rf_types::StreamId::new("stream-a"),
+            rf_types::StreamId::new("stream-b"),
+        ])
+        .with_related_port_targets(vec![
+            rf_types::DiagnosticPortTarget::new("valve-1", "inlet"),
+            rf_types::DiagnosticPortTarget::new("heater-1", "inlet"),
+        ]);
+
+        app_state.record_failure(0, RunStatus::Error, summary);
+        let widget = RunPanelWidgetModel::from_state(&app_state.workspace.run_panel);
+
+        assert_eq!(
+            widget.activate_recovery_action(),
+            RunPanelRecoveryWidgetEvent::Requested {
+                action: crate::RunPanelRecoveryAction::new(
+                    crate::RunPanelRecoveryActionKind::BreakCycle,
+                    "Disconnect cycle inlet",
+                    "断开当前双单元回路中的一个 inlet 端口，先打破互相依赖，再继续检查剩余连接问题。",
+                )
+                .with_disconnect_port(UnitId::new("heater-1"), "inlet"),
+            }
+        );
+        assert!(
+            widget
+                .text()
+                .lines
+                .iter()
+                .any(|line| line == "Suggested target: unit heater-1 port inlet")
+        );
+    }
+
+    #[test]
     fn run_panel_widget_exposes_recovery_action_when_connection_failure_targets_port() {
         let mut app_state = AppState::new(sample_document());
         let summary = DiagnosticSummary::new(
@@ -1576,6 +1618,88 @@ mod tests {
         assert_eq!(
             app_state.workspace.drafts.active_target,
             Some(crate::InspectorTarget::Unit(UnitId::new("flash-1")))
+        );
+        assert!(app_state.workspace.panels.inspector_open);
+    }
+
+    #[test]
+    fn applying_run_panel_recovery_action_disconnects_two_unit_cycle_inlet_and_opens_unit_inspector()
+    {
+        let project = rf_store::parse_project_file_json(include_str!(
+            "../../../examples/flowsheets/failures/multi-unit-cycle.rfproj.json"
+        ))
+        .expect("expected project parse");
+        let mut app_state = AppState::new(FlowsheetDocument::new(
+            project.document.flowsheet,
+            DocumentMetadata::new(
+                "doc-two-unit-cycle-recovery",
+                "Two Unit Cycle Recovery Demo",
+                timestamp(43),
+            ),
+        ));
+        let summary = DiagnosticSummary::new(
+            0,
+            DiagnosticSeverity::Error,
+            "solver.topological_ordering.two_unit_cycle: solver topological ordering failed",
+        )
+        .with_primary_code("solver.topological_ordering.two_unit_cycle")
+        .with_related_unit_ids(vec![UnitId::new("heater-1"), UnitId::new("valve-1")])
+        .with_related_stream_ids(vec![
+            rf_types::StreamId::new("stream-a"),
+            rf_types::StreamId::new("stream-b"),
+        ])
+        .with_related_port_targets(vec![
+            rf_types::DiagnosticPortTarget::new("valve-1", "inlet"),
+            rf_types::DiagnosticPortTarget::new("heater-1", "inlet"),
+        ]);
+
+        app_state.record_failure(0, RunStatus::Error, summary);
+        let action = app_state
+            .workspace
+            .run_panel
+            .notice
+            .as_ref()
+            .and_then(|notice| notice.recovery_action.as_ref())
+            .cloned()
+            .expect("expected recovery action");
+
+        assert_eq!(
+            action.mutation,
+            Some(crate::RunPanelRecoveryMutation::DisconnectPort {
+                unit_id: UnitId::new("heater-1"),
+                port_name: "inlet".to_string(),
+            })
+        );
+
+        let applied_target = app_state.apply_run_panel_recovery_action(&action);
+
+        assert_eq!(
+            applied_target,
+            Some(crate::InspectorTarget::Unit(UnitId::new("heater-1")))
+        );
+        assert_eq!(app_state.workspace.document.revision, 1);
+        assert_eq!(
+            app_state.workspace.command_history.current_entry().map(|entry| &entry.command),
+            Some(&DocumentCommand::DisconnectPorts {
+                unit_id: UnitId::new("heater-1"),
+                port: "inlet".to_string(),
+            })
+        );
+        assert_eq!(
+            app_state
+                .workspace
+                .document
+                .flowsheet
+                .units
+                .get(&UnitId::new("heater-1"))
+                .and_then(|unit| unit.ports.iter().find(|port| port.name == "inlet"))
+                .and_then(|port| port.stream_id.as_ref())
+                .map(|stream_id| stream_id.as_str()),
+            None
+        );
+        assert_eq!(
+            app_state.workspace.drafts.active_target,
+            Some(crate::InspectorTarget::Unit(UnitId::new("heater-1")))
         );
         assert!(app_state.workspace.panels.inspector_open);
     }

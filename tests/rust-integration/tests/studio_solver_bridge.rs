@@ -196,7 +196,7 @@ fn studio_solver_bridge_records_cycle_failure_context_end_to_end() {
     )
     .expect_err("expected cycle failure");
 
-    assert!(error.message().contains("solver.topological_ordering:"));
+    assert!(error.message().contains("solver.topological_ordering.two_unit_cycle:"));
     assert_eq!(app_state.workspace.solve_session.status, RunStatus::Error);
 
     let summary = app_state
@@ -207,11 +207,22 @@ fn studio_solver_bridge_records_cycle_failure_context_end_to_end() {
         .expect("expected failure summary");
     assert_eq!(
         summary.primary_code.as_deref(),
-        Some("solver.topological_ordering")
+        Some("solver.topological_ordering.two_unit_cycle")
     );
     assert_eq!(
         summary.related_unit_ids,
         vec![UnitId::new("heater-1"), UnitId::new("valve-1")]
+    );
+    assert_eq!(
+        summary.related_stream_ids,
+        vec![StreamId::new("stream-a"), StreamId::new("stream-b")]
+    );
+    assert_eq!(
+        summary.related_port_targets,
+        vec![
+            rf_types::DiagnosticPortTarget::new("valve-1", "inlet"),
+            rf_types::DiagnosticPortTarget::new("heater-1", "inlet"),
+        ]
     );
 
     let notice = app_state
@@ -220,7 +231,7 @@ fn studio_solver_bridge_records_cycle_failure_context_end_to_end() {
         .notice
         .as_ref()
         .expect("expected run panel notice");
-    assert_eq!(notice.title, "Topological ordering failed");
+    assert_eq!(notice.title, "Two-unit cycle detected");
     assert_eq!(
         notice
             .recovery_action
@@ -234,6 +245,23 @@ fn studio_solver_bridge_records_cycle_failure_context_end_to_end() {
             .as_ref()
             .and_then(|action| action.target_unit_id.as_ref()),
         Some(&UnitId::new("heater-1"))
+    );
+    assert_eq!(
+        notice
+            .recovery_action
+            .as_ref()
+            .and_then(|action| action.target_port_name.as_deref()),
+        Some("inlet")
+    );
+    assert_eq!(
+        notice
+            .recovery_action
+            .as_ref()
+            .and_then(|action| action.mutation.as_ref()),
+        Some(&RunPanelRecoveryMutation::DisconnectPort {
+            unit_id: UnitId::new("heater-1"),
+            port_name: "inlet".to_string(),
+        })
     );
 }
 

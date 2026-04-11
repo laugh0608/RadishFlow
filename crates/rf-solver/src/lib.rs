@@ -40,6 +40,8 @@ enum SolverDiagnosticCode {
 
 const SOLVER_DIAGNOSTIC_TOPOLOGICAL_SELF_LOOP_CYCLE: &str =
     "solver.topological_ordering.self_loop_cycle";
+const SOLVER_DIAGNOSTIC_TOPOLOGICAL_TWO_UNIT_CYCLE: &str =
+    "solver.topological_ordering.two_unit_cycle";
 
 impl SolverDiagnosticCode {
     const fn as_str(self) -> &'static str {
@@ -327,9 +329,10 @@ fn topological_unit_order(flowsheet: &Flowsheet) -> RfResult<Vec<UnitId>> {
         .map(|unit_id| (unit_id, 0usize))
         .collect::<BTreeMap<_, _>>();
     let mut downstream_units = BTreeMap::<UnitId, BTreeSet<UnitId>>::new();
+    let mut processed_connections = Vec::<rf_flowsheet::MaterialConnection>::new();
 
     for connection in connections {
-        if let Some(sink) = connection.sink {
+        if let Some(ref sink) = connection.sink {
             if connection.source.unit_id == sink.unit_id {
                 return Err(solver_topological_self_loop_error(
                     &connection.stream_id,
@@ -338,12 +341,16 @@ fn topological_unit_order(flowsheet: &Flowsheet) -> RfResult<Vec<UnitId>> {
                     &connection.source.port_name,
                 ));
             }
+            if let Some(error) = detect_two_unit_cycle_error(&connection, &processed_connections) {
+                return Err(error);
+            }
             downstream_units
                 .entry(connection.source.unit_id.clone())
                 .or_default()
                 .insert(sink.unit_id.clone());
             *incoming_counts.entry(sink.unit_id.clone()).or_insert(0) += 1;
         }
+        processed_connections.push(connection);
     }
 
     let mut ready = VecDeque::from(
@@ -499,6 +506,65 @@ fn solver_topological_self_loop_error(
         vec![
             DiagnosticPortTarget::new(unit_id.clone(), inlet_port_name.to_string()),
             DiagnosticPortTarget::new(unit_id.clone(), outlet_port_name.to_string()),
+        ],
+    )
+}
+
+fn detect_two_unit_cycle_error(
+    connection: &rf_flowsheet::MaterialConnection,
+    processed_connections: &[rf_flowsheet::MaterialConnection],
+) -> Option<RfError> {
+    let sink = connection.sink.as_ref()?;
+    let reverse = processed_connections.iter().find(|previous| {
+        let Some(previous_sink) = previous.sink.as_ref() else {
+            return false;
+        };
+        previous.source.unit_id == sink.unit_id && previous_sink.unit_id == connection.source.unit_id
+    })?;
+    let reverse_sink = reverse
+        .sink
+        .as_ref()
+        .expect("reverse cycle connection should retain sink context");
+
+    Some(solver_topological_two_unit_cycle_error(
+        reverse,
+        reverse_sink,
+        connection,
+        sink,
+    ))
+}
+
+fn solver_topological_two_unit_cycle_error(
+    reverse_connection: &rf_flowsheet::MaterialConnection,
+    reverse_sink: &rf_flowsheet::MaterialPortRef,
+    current_connection: &rf_flowsheet::MaterialConnection,
+    current_sink: &rf_flowsheet::MaterialPortRef,
+) -> RfError {
+    solver_stage_invalid_input_with_context(
+        SolverDiagnosticCode::TopologicalOrdering,
+        SOLVER_DIAGNOSTIC_TOPOLOGICAL_TWO_UNIT_CYCLE,
+        format!(
+            "units `{}` and `{}` form a two-unit cycle through streams `{}` and `{}`; `{}.{}` and `{}.{}` currently depend on each other in opposite directions",
+            reverse_connection.source.unit_id,
+            current_connection.source.unit_id,
+            reverse_connection.stream_id,
+            current_connection.stream_id,
+            reverse_sink.unit_id,
+            reverse_sink.port_name,
+            current_sink.unit_id,
+            current_sink.port_name,
+        ),
+        vec![
+            reverse_connection.source.unit_id.clone(),
+            current_connection.source.unit_id.clone(),
+        ],
+        vec![
+            reverse_connection.stream_id.clone(),
+            current_connection.stream_id.clone(),
+        ],
+        vec![
+            DiagnosticPortTarget::new(reverse_sink.unit_id.clone(), reverse_sink.port_name.clone()),
+            DiagnosticPortTarget::new(current_sink.unit_id.clone(), current_sink.port_name.clone()),
         ],
     )
 }
@@ -769,6 +835,7 @@ fn related_unit_ids_from_failure_message(message: &str) -> Vec<UnitId> {
 fn related_stream_ids_from_failure_message(message: &str) -> Vec<StreamId> {
     let mut stream_ids = Vec::new();
     collect_stream_context_ids(message, &mut stream_ids);
+    collect_topological_stream_ids(message, &mut stream_ids);
     stream_ids
 }
 
@@ -813,21 +880,53 @@ fn collect_cycle_unit_ids(message: &str, unit_ids: &mut Vec<UnitId>) {
     let Some(code) = prefixed_solver_diagnostic_code(message) else {
         return;
     };
-    if code != SolverDiagnosticCode::TopologicalOrdering.as_str() {
+    if !code.starts_with(SolverDiagnosticCode::TopologicalOrdering.as_str()) {
         return;
     }
 
-    let needle = "involving [";
-    let Some(start) = message.find(needle) else {
-        return;
-    };
-    let after = &message[start + needle.len()..];
-    let Some(end) = after.find(']') else {
-        return;
-    };
+    if let Some(start) = message.find("involving [") {
+        let after = &message[start + "involving [".len()..];
+        if let Some(end) = after.find(']') {
+            for candidate in after[..end].split(',') {
+                push_related_unit_id(unit_ids, candidate.trim());
+            }
+        }
+    }
 
-    for candidate in after[..end].split(',') {
-        push_related_unit_id(unit_ids, candidate.trim());
+    collect_backticked_topological_units(message, unit_ids);
+}
+
+fn collect_backticked_topological_units(message: &str, unit_ids: &mut Vec<UnitId>) {
+    let needle = "unit";
+    let mut remaining = message;
+
+    while let Some(start) = remaining.find(needle) {
+        let after_keyword = &remaining[start + needle.len()..];
+        let after_keyword = after_keyword.trim_start();
+        if !after_keyword.starts_with('`') && !after_keyword.starts_with('s') {
+            remaining = after_keyword;
+            continue;
+        }
+
+        let mut cursor = after_keyword;
+        if cursor.starts_with('s') {
+            cursor = cursor[1..].trim_start();
+        }
+
+        while let Some(rest) = cursor.strip_prefix('`') {
+            let Some(end) = rest.find('`') else {
+                return;
+            };
+            push_related_unit_id(unit_ids, &rest[..end]);
+            cursor = rest[end + 1..].trim_start();
+            if let Some(next) = cursor.strip_prefix("and") {
+                cursor = next.trim_start();
+                continue;
+            }
+            break;
+        }
+
+        remaining = cursor;
     }
 }
 
@@ -851,11 +950,63 @@ fn collect_stream_context_ids(message: &str, stream_ids: &mut Vec<StreamId>) {
     }
 }
 
+fn collect_topological_stream_ids(message: &str, stream_ids: &mut Vec<StreamId>) {
+    let Some(code) = prefixed_solver_diagnostic_code(message) else {
+        return;
+    };
+    if !code.starts_with(SolverDiagnosticCode::TopologicalOrdering.as_str()) {
+        return;
+    }
+
+    let needle = "stream";
+    let mut remaining = message;
+
+    while let Some(start) = remaining.find(needle) {
+        let after_keyword = &remaining[start + needle.len()..];
+        let after_keyword = after_keyword.trim_start();
+        if !after_keyword.starts_with('`') && !after_keyword.starts_with('s') {
+            remaining = after_keyword;
+            continue;
+        }
+
+        let mut cursor = after_keyword;
+        if cursor.starts_with('s') {
+            cursor = cursor[1..].trim_start();
+        }
+
+        while let Some(rest) = cursor.strip_prefix('`') {
+            let Some(end) = rest.find('`') else {
+                return;
+            };
+            push_related_stream_id(stream_ids, &rest[..end]);
+            cursor = rest[end + 1..].trim_start();
+            if let Some(next) = cursor.strip_prefix("and") {
+                cursor = next.trim_start();
+                continue;
+            }
+            break;
+        }
+
+        remaining = cursor;
+    }
+}
+
 fn push_related_unit_id(unit_ids: &mut Vec<UnitId>, candidate: &str) {
     if candidate.is_empty() || unit_ids.iter().any(|unit_id| unit_id.as_str() == candidate) {
         return;
     }
     unit_ids.push(UnitId::new(candidate));
+}
+
+fn push_related_stream_id(stream_ids: &mut Vec<StreamId>, candidate: &str) {
+    if candidate.is_empty()
+        || stream_ids
+            .iter()
+            .any(|stream_id| stream_id.as_str() == candidate)
+    {
+        return;
+    }
+    stream_ids.push(StreamId::new(candidate));
 }
 
 #[cfg(test)]
@@ -1904,13 +2055,32 @@ mod tests {
             .expect_err("expected cycle detection failure");
 
         assert_eq!(error.code().as_str(), "invalid_input");
+        assert_eq!(
+            error.context().diagnostic_code(),
+            Some("solver.topological_ordering.two_unit_cycle")
+        );
+        assert_eq!(
+            error.context().related_unit_ids(),
+            &[UnitId::new("heater-1"), UnitId::new("valve-1")]
+        );
+        assert_eq!(
+            error.context().related_stream_ids(),
+            &[StreamId::new("stream-a"), StreamId::new("stream-b")]
+        );
+        assert_eq!(
+            error.context().related_port_targets(),
+            &[
+                DiagnosticPortTarget::new("valve-1", "inlet"),
+                DiagnosticPortTarget::new("heater-1", "inlet"),
+            ]
+        );
         assert!(
             error
                 .message()
                 .contains("solver topological ordering failed")
         );
-        assert!(error.message().contains("contains a cycle"));
-        assert!(error.message().contains("[heater-1, valve-1]"));
+        assert!(error.message().contains("form a two-unit cycle"));
+        assert!(error.message().contains("streams `stream-a` and `stream-b`"));
     }
 
     #[test]
@@ -2211,18 +2381,21 @@ mod tests {
     #[test]
     fn solve_failure_context_extracts_cycle_unit_ids_from_wrapped_message() {
         let context = SolveFailureContext::from_message(
-            "flowsheet solve failed with package `binary-hydrocarbon-lite-v1`: solver.topological_ordering: solver topological ordering failed: flowsheet contains a cycle or unresolved dependency involving [heater-1, valve-1]; only acyclic sequential flowsheets are supported in the current solver",
+            "flowsheet solve failed with package `binary-hydrocarbon-lite-v1`: solver.topological_ordering.two_unit_cycle: solver topological ordering failed: units `heater-1` and `valve-1` form a two-unit cycle through streams `stream-a` and `stream-b`; `valve-1.inlet` and `heater-1.inlet` currently depend on each other in opposite directions",
         );
 
         assert_eq!(
             context.primary_code.as_deref(),
-            Some("solver.topological_ordering")
+            Some("solver.topological_ordering.two_unit_cycle")
         );
         assert_eq!(
             context.related_unit_ids,
             vec![UnitId::new("heater-1"), UnitId::new("valve-1")]
         );
-        assert!(context.related_stream_ids.is_empty());
+        assert_eq!(
+            context.related_stream_ids,
+            vec![StreamId::new("stream-a"), StreamId::new("stream-b")]
+        );
         assert!(context.related_port_targets.is_empty());
     }
 
