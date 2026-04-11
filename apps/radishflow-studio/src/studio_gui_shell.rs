@@ -254,7 +254,7 @@ impl ReadyAppState {
                     ui.label(egui::RichText::new("Drop preview").strong());
                     ui.label(format!("dragging {}", area_label(drag_session.area_id)));
                     if drag_session.window_id == current_window_id {
-                        ui.small("hover region lane / stack lane / panel header, click to drop");
+                        ui.small("drag across region lane / stack lane / panel header, release to drop");
                     } else {
                         ui.small("return to source window to drop");
                     }
@@ -494,6 +494,9 @@ impl ReadyAppState {
                                 };
                                 let response = ui.selectable_label(tab.active, tab_text);
                                 tab_rects.push((tab.area_id, response.rect));
+                                if drag_session.is_none() && response.drag_started() {
+                                    self.begin_drag_session(window_id, tab.area_id);
+                                }
                                 if response.clicked() {
                                     self.dispatch_layout_mutation(
                                         window.layout_state.scope.window_id,
@@ -651,18 +654,13 @@ impl ReadyAppState {
                     let is_drag_source = drag_session
                         .map(|drag_session| drag_session.area_id == area_id)
                         .unwrap_or(false);
-                    if ui
-                        .add_enabled(
-                            !is_drag_source,
-                            egui::Button::new(if is_drag_source {
-                                "Dragging"
-                            } else {
-                                "Pick up"
-                            }),
-                        )
-                        .clicked()
-                    {
-                        self.begin_drag_session(window_id, area_id);
+                    if is_drag_source {
+                        ui.small(
+                            egui::RichText::new("Dragging from header/tab")
+                                .color(egui::Color32::from_rgb(56, 126, 214)),
+                        );
+                    } else {
+                        ui.small("Drag header or tab to move");
                     }
 
                     if ui.button("Center").clicked() {
