@@ -19,7 +19,7 @@ use crate::commands::{CommandHistory, CommandHistoryEntry, DocumentCommand};
 use crate::diagnostics::DiagnosticSummary;
 use crate::ids::{DocumentId, SolveSnapshotId};
 use crate::run::{RunStatus, SimulationMode, SolvePendingReason, SolveSessionState, SolveSnapshot};
-use crate::run_panel::{RunPanelRecoveryAction, RunPanelState};
+use crate::run_panel::{RunPanelRecoveryAction, RunPanelRecoveryMutation, RunPanelState};
 
 pub type DateTimeUtc = SystemTime;
 
@@ -507,6 +507,13 @@ impl AppState {
         &mut self,
         action: &RunPanelRecoveryAction,
     ) -> Option<InspectorTarget> {
+        if let Some(mutation) = action.mutation.as_ref() {
+            if let Ok((command, next_flowsheet)) =
+                apply_run_panel_recovery_mutation(&self.workspace.document.flowsheet, mutation)
+            {
+                self.commit_document_change(command, next_flowsheet, SystemTime::now());
+            }
+        }
         self.workspace.selection.selected_units.clear();
         self.workspace.selection.selected_streams.clear();
         if let Some(unit_id) = action.target_unit_id.as_ref() {
@@ -647,6 +654,34 @@ fn apply_material_connection_acceptance(
     Ok((command, next_flowsheet))
 }
 
+fn apply_run_panel_recovery_mutation(
+    flowsheet: &Flowsheet,
+    mutation: &RunPanelRecoveryMutation,
+) -> RfResult<(DocumentCommand, Flowsheet)> {
+    match mutation {
+        RunPanelRecoveryMutation::DisconnectPort { unit_id, port_name } => {
+            apply_disconnect_port_mutation(flowsheet, unit_id, port_name)
+        }
+    }
+}
+
+fn apply_disconnect_port_mutation(
+    flowsheet: &Flowsheet,
+    unit_id: &UnitId,
+    port_name: &str,
+) -> RfResult<(DocumentCommand, Flowsheet)> {
+    let mut next_flowsheet = flowsheet.clone();
+    disconnect_material_stream_port(&mut next_flowsheet, unit_id, port_name)?;
+
+    Ok((
+        DocumentCommand::DisconnectPorts {
+            unit_id: unit_id.clone(),
+            port: port_name.to_string(),
+        },
+        next_flowsheet,
+    ))
+}
+
 fn bind_material_stream_port(
     flowsheet: &mut Flowsheet,
     unit_id: &UnitId,
@@ -674,6 +709,35 @@ fn bind_material_stream_port(
         )));
     }
     port.stream_id = Some(stream_id.clone());
+    Ok(())
+}
+
+fn disconnect_material_stream_port(
+    flowsheet: &mut Flowsheet,
+    unit_id: &UnitId,
+    port_name: &str,
+) -> RfResult<()> {
+    let unit = flowsheet
+        .units
+        .get_mut(unit_id)
+        .ok_or_else(|| RfError::missing_entity("unit", unit_id))?;
+    let port = unit
+        .ports
+        .iter_mut()
+        .find(|port| port.name == port_name)
+        .ok_or_else(|| {
+            RfError::invalid_input(format!(
+                "unit `{}` does not expose material port `{}`",
+                unit_id, port_name
+            ))
+        })?;
+    if port.kind != rf_types::PortKind::Material {
+        return Err(RfError::invalid_input(format!(
+            "unit `{}` port `{}` is not a material port",
+            unit_id, port_name
+        )));
+    }
+    port.stream_id = None;
     Ok(())
 }
 

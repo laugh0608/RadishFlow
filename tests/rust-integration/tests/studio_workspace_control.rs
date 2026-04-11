@@ -11,8 +11,9 @@ use radishflow_studio::{
 use rf_rust_integration::{sample_auth_cache_index, timestamp, unique_temp_path, write_cached_package};
 use rf_store::parse_project_file_json;
 use rf_ui::{
-    AppState, DocumentMetadata, EntitlementSnapshot, FlowsheetDocument, InspectorTarget,
-    PropertyPackageManifest, PropertyPackageSource, RunPanelRecoveryActionKind, RunStatus,
+    AppState, DocumentCommand, DocumentMetadata, EntitlementSnapshot, FlowsheetDocument,
+    InspectorTarget, PropertyPackageManifest, PropertyPackageSource,
+    RunPanelRecoveryActionKind, RunStatus,
 };
 
 fn app_state_from_project(
@@ -26,6 +27,18 @@ fn app_state_from_project(
         project.document.flowsheet,
         DocumentMetadata::new(document_id, title, timestamp(created_at_seconds)),
     ))
+}
+
+fn material_port_stream_id(app_state: &AppState, unit_id: &str, port_name: &str) -> Option<String> {
+    app_state
+        .workspace
+        .document
+        .flowsheet
+        .units
+        .get(&unit_id.into())
+        .and_then(|unit| unit.ports.iter().find(|port| port.name == port_name))
+        .and_then(|port| port.stream_id.as_ref())
+        .map(|stream_id| stream_id.as_str().to_string())
 }
 
 fn sample_entitlement_snapshot(package_ids: &[&str]) -> EntitlementSnapshot {
@@ -395,7 +408,62 @@ fn run_panel_recovery_action_focuses_missing_upstream_source_unit_end_to_end() {
 }
 
 #[test]
-fn run_panel_recovery_action_focuses_duplicate_downstream_sink_stream_end_to_end() {
+fn run_panel_recovery_action_disconnects_missing_stream_reference_end_to_end() {
+    let cache_root = unique_temp_path("integration-run-panel-missing-stream-recovery");
+    let mut auth_cache_index = sample_auth_cache_index(&[]);
+    write_cached_package(
+        &cache_root,
+        &mut auth_cache_index,
+        "binary-hydrocarbon-lite-v1",
+    );
+    let facade = StudioAppFacade::new();
+    let mut app_state = app_state_from_project(
+        include_str!("../../../examples/flowsheets/failures/missing-stream-reference.rfproj.json"),
+        "doc-control-missing-stream-recovery",
+        "Control Missing Stream Recovery Demo",
+        37,
+    );
+    let context = StudioAppAuthCacheContext::new(&cache_root, &auth_cache_index);
+
+    dispatch_run_panel_primary_action_with_auth_cache(&facade, &mut app_state, &context)
+        .expect("expected connection validation failure");
+
+    let recovery =
+        apply_run_panel_recovery_action(&mut app_state).expect("expected recovery action");
+
+    assert_eq!(recovery.action.title, "Disconnect invalid stream reference");
+    assert_eq!(recovery.action.target_port_name.as_deref(), Some("outlet"));
+    assert_eq!(
+        recovery.applied_target,
+        Some(InspectorTarget::Unit("heater-1".into()))
+    );
+    assert_eq!(
+        app_state.workspace.drafts.active_target,
+        Some(InspectorTarget::Unit("heater-1".into()))
+    );
+    assert_eq!(app_state.workspace.document.revision, 1);
+    assert_eq!(material_port_stream_id(&app_state, "heater-1", "outlet"), None);
+    assert_eq!(
+        app_state.workspace.command_history.current_entry().map(|entry| &entry.command),
+        Some(&DocumentCommand::DisconnectPorts {
+            unit_id: "heater-1".into(),
+            port: "outlet".to_string(),
+        })
+    );
+    assert!(
+        app_state
+            .workspace
+            .selection
+            .selected_units
+            .contains(&"heater-1".into())
+    );
+    assert!(app_state.workspace.panels.inspector_open);
+
+    fs::remove_dir_all(cache_root).expect("expected temp dir cleanup");
+}
+
+#[test]
+fn run_panel_recovery_action_disconnects_duplicate_downstream_sink_end_to_end() {
     let cache_root = unique_temp_path("integration-run-panel-duplicate-sink-recovery");
     let mut auth_cache_index = sample_auth_cache_index(&[]);
     write_cached_package(
@@ -418,21 +486,31 @@ fn run_panel_recovery_action_focuses_duplicate_downstream_sink_stream_end_to_end
     let recovery =
         apply_run_panel_recovery_action(&mut app_state).expect("expected recovery action");
 
-    assert_eq!(recovery.action.title, "Resolve duplicate sinks");
+    assert_eq!(recovery.action.title, "Disconnect conflicting sink");
+    assert_eq!(recovery.action.target_port_name.as_deref(), Some("inlet_a"));
     assert_eq!(
         recovery.applied_target,
-        Some(InspectorTarget::Stream("shared-stream".into()))
+        Some(InspectorTarget::Unit("mixer-1".into()))
     );
     assert_eq!(
         app_state.workspace.drafts.active_target,
-        Some(InspectorTarget::Stream("shared-stream".into()))
+        Some(InspectorTarget::Unit("mixer-1".into()))
+    );
+    assert_eq!(app_state.workspace.document.revision, 1);
+    assert_eq!(material_port_stream_id(&app_state, "mixer-1", "inlet_a"), None);
+    assert_eq!(
+        app_state.workspace.command_history.current_entry().map(|entry| &entry.command),
+        Some(&DocumentCommand::DisconnectPorts {
+            unit_id: "mixer-1".into(),
+            port: "inlet_a".to_string(),
+        })
     );
     assert!(
         app_state
             .workspace
             .selection
-            .selected_streams
-            .contains(&"shared-stream".into())
+            .selected_units
+            .contains(&"mixer-1".into())
     );
     assert!(app_state.workspace.panels.inspector_open);
 

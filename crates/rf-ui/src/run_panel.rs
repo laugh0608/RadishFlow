@@ -1,4 +1,9 @@
-use rf_types::{StreamId, UnitId};
+use rf_types::{DiagnosticPortTarget, StreamId, UnitId};
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum RunPanelRecoveryMutation {
+    DisconnectPort { unit_id: UnitId, port_name: String },
+}
 
 use crate::run::{RunStatus, SimulationMode, SolvePendingReason, SolveSessionState, SolveSnapshot};
 use crate::state::AppLogEntry;
@@ -60,6 +65,7 @@ pub struct RunPanelRecoveryAction {
     pub target_unit_id: Option<UnitId>,
     pub target_stream_id: Option<StreamId>,
     pub target_port_name: Option<String>,
+    pub mutation: Option<RunPanelRecoveryMutation>,
 }
 
 impl RunPanelRecoveryAction {
@@ -75,6 +81,7 @@ impl RunPanelRecoveryAction {
             target_unit_id: None,
             target_stream_id: None,
             target_port_name: None,
+            mutation: None,
         }
     }
 
@@ -101,6 +108,22 @@ impl RunPanelRecoveryAction {
         self.target_port_name = Some(target_port_name.into());
         self.target_stream_id = None;
         self
+    }
+
+    pub fn with_mutation(mut self, mutation: RunPanelRecoveryMutation) -> Self {
+        self.mutation = Some(mutation);
+        self
+    }
+
+    pub fn with_disconnect_port(
+        self,
+        unit_id: impl Into<UnitId>,
+        port_name: impl Into<String>,
+    ) -> Self {
+        let unit_id = unit_id.into();
+        let port_name = port_name.into();
+        self.with_target_port(unit_id.clone(), port_name.clone())
+            .with_mutation(RunPanelRecoveryMutation::DisconnectPort { unit_id, port_name })
     }
 }
 
@@ -250,8 +273,8 @@ pub fn run_panel_failure_recovery_action_for_diagnostic_code(
     ) {
         Some(RunPanelRecoveryAction::new(
             RunPanelRecoveryActionKind::FixConnections,
-            "Repair stream references",
-            "检查端口引用的 stream 是否存在，必要时重新绑定或补建流股后再重试。",
+            "Disconnect invalid stream reference",
+            "断开当前端口上指向缺失 stream 的引用，避免无效 stream id 继续阻塞连接校验。",
         ))
     } else if diagnostic_code_matches(
         primary_code,
@@ -259,8 +282,8 @@ pub fn run_panel_failure_recovery_action_for_diagnostic_code(
     ) {
         Some(RunPanelRecoveryAction::new(
             RunPanelRecoveryActionKind::FixConnections,
-            "Resolve duplicate sources",
-            "确保每条物料流股只有一个上游 outlet source，再重新执行连接校验。",
+            "Disconnect conflicting source",
+            "断开冲突的 outlet source 端口，让该流股只保留一个上游来源后再继续修复。",
         ))
     } else if diagnostic_code_matches(
         primary_code,
@@ -268,8 +291,8 @@ pub fn run_panel_failure_recovery_action_for_diagnostic_code(
     ) {
         Some(RunPanelRecoveryAction::new(
             RunPanelRecoveryActionKind::FixConnections,
-            "Resolve duplicate sinks",
-            "确保每条物料流股在当前阶段只连接一个下游 inlet sink，再重新执行连接校验。",
+            "Disconnect conflicting sink",
+            "断开冲突的 inlet sink 端口，让该流股只保留一个下游去向后再继续修复。",
         ))
     } else if diagnostic_code_matches(
         primary_code,
@@ -344,7 +367,7 @@ pub fn run_panel_failure_notice(
     primary_code: Option<&str>,
     target_unit_id: Option<&UnitId>,
     target_stream_id: Option<&StreamId>,
-    target_port_name: Option<&str>,
+    related_port_targets: &[DiagnosticPortTarget],
 ) -> RunPanelNotice {
     let mut notice = RunPanelNotice::new(
         RunPanelNoticeLevel::Error,
@@ -354,24 +377,18 @@ pub fn run_panel_failure_notice(
     if let Some(mut recovery_action) =
         run_panel_failure_recovery_action_for_diagnostic_code(primary_code)
     {
-        if prefers_stream_recovery_target(primary_code) {
+        if let Some(port_target) = preferred_recovery_port_target(primary_code, related_port_targets)
+        {
+            recovery_action =
+                configure_recovery_action_for_port_target(recovery_action, primary_code, port_target);
+        } else if prefers_stream_recovery_target(primary_code) {
             if let Some(stream_id) = target_stream_id {
                 recovery_action = recovery_action.with_target_stream(stream_id.clone());
             } else if let Some(unit_id) = target_unit_id {
-                recovery_action = match target_port_name {
-                    Some(port_name) => {
-                        recovery_action.with_target_port(unit_id.clone(), port_name.to_string())
-                    }
-                    None => recovery_action.with_target_unit(unit_id.clone()),
-                };
+                recovery_action = recovery_action.with_target_unit(unit_id.clone());
             }
         } else if let Some(unit_id) = target_unit_id {
-            recovery_action = match target_port_name {
-                Some(port_name) => {
-                    recovery_action.with_target_port(unit_id.clone(), port_name.to_string())
-                }
-                None => recovery_action.with_target_unit(unit_id.clone()),
-            };
+            recovery_action = recovery_action.with_target_unit(unit_id.clone());
         } else if let Some(stream_id) = target_stream_id {
             recovery_action = recovery_action.with_target_stream(stream_id.clone());
         }
@@ -391,10 +408,7 @@ fn runtime_notice_from_solve_session(solve_session: &SolveSessionState) -> Optio
         summary.primary_code.as_deref(),
         summary.related_unit_ids.first(),
         summary.related_stream_ids.first(),
-        summary
-            .related_port_targets
-            .first()
-            .map(|target| target.port_name.as_str()),
+        &summary.related_port_targets,
     ))
 }
 
@@ -422,6 +436,49 @@ fn prefers_stream_recovery_target(primary_code: Option<&str>) -> bool {
         primary_code,
         "solver.connection_validation.duplicate_downstream_sink",
     ) || diagnostic_code_matches(primary_code, "solver.connection_validation.orphan_stream")
+}
+
+fn preferred_recovery_port_target<'a>(
+    primary_code: Option<&str>,
+    related_port_targets: &'a [DiagnosticPortTarget],
+) -> Option<&'a DiagnosticPortTarget> {
+    if related_port_targets.is_empty() {
+        return None;
+    }
+
+    if diagnostic_code_matches(
+        primary_code,
+        "solver.connection_validation.duplicate_upstream_source",
+    ) || diagnostic_code_matches(
+        primary_code,
+        "solver.connection_validation.duplicate_downstream_sink",
+    ) {
+        return related_port_targets.last();
+    }
+
+    related_port_targets.first()
+}
+
+fn configure_recovery_action_for_port_target(
+    recovery_action: RunPanelRecoveryAction,
+    primary_code: Option<&str>,
+    port_target: &DiagnosticPortTarget,
+) -> RunPanelRecoveryAction {
+    if diagnostic_code_matches(
+        primary_code,
+        "solver.connection_validation.missing_stream_reference",
+    ) || diagnostic_code_matches(
+        primary_code,
+        "solver.connection_validation.duplicate_upstream_source",
+    ) || diagnostic_code_matches(
+        primary_code,
+        "solver.connection_validation.duplicate_downstream_sink",
+    ) {
+        recovery_action
+            .with_disconnect_port(port_target.unit_id.clone(), port_target.port_name.clone())
+    } else {
+        recovery_action.with_target_port(port_target.unit_id.clone(), port_target.port_name.clone())
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

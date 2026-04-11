@@ -51,6 +51,7 @@ pub use run::{
 pub use run_panel::{
     RunPanelActionId, RunPanelActionModel, RunPanelCommandModel, RunPanelIntent, RunPanelNotice,
     RunPanelNoticeLevel, RunPanelPackageSelection, RunPanelRecoveryAction,
+    RunPanelRecoveryMutation,
     RunPanelRecoveryActionKind, RunPanelState, run_panel_failure_notice,
     run_panel_failure_recovery_action_for_diagnostic_code,
     run_panel_failure_title_for_diagnostic_code,
@@ -965,7 +966,8 @@ mod tests {
     }
 
     #[test]
-    fn run_panel_widget_exposes_recovery_action_when_connection_failure_targets_stream() {
+    fn run_panel_widget_exposes_recovery_action_when_connection_failure_targets_disconnectable_port()
+    {
         let mut app_state = AppState::new(sample_document());
         let summary = DiagnosticSummary::new(
             0,
@@ -974,7 +976,11 @@ mod tests {
         )
         .with_primary_code("solver.connection_validation.duplicate_downstream_sink")
         .with_related_unit_ids(vec![UnitId::new("flash-1"), UnitId::new("mixer-1")])
-        .with_related_stream_ids(vec![rf_types::StreamId::new("shared-stream")]);
+        .with_related_stream_ids(vec![rf_types::StreamId::new("shared-stream")])
+        .with_related_port_targets(vec![
+            rf_types::DiagnosticPortTarget::new("flash-1", "inlet"),
+            rf_types::DiagnosticPortTarget::new("mixer-1", "inlet_a"),
+        ]);
 
         app_state.record_failure(0, RunStatus::Error, summary);
         let widget = RunPanelWidgetModel::from_state(&app_state.workspace.run_panel);
@@ -984,10 +990,10 @@ mod tests {
             RunPanelRecoveryWidgetEvent::Requested {
                 action: crate::RunPanelRecoveryAction::new(
                     crate::RunPanelRecoveryActionKind::FixConnections,
-                    "Resolve duplicate sinks",
-                    "确保每条物料流股在当前阶段只连接一个下游 inlet sink，再重新执行连接校验。",
+                    "Disconnect conflicting sink",
+                    "断开冲突的 inlet sink 端口，让该流股只保留一个下游去向后再继续修复。",
                 )
-                .with_target_stream(rf_types::StreamId::new("shared-stream")),
+                .with_disconnect_port(UnitId::new("mixer-1"), "inlet_a"),
             }
         );
         assert!(
@@ -995,7 +1001,43 @@ mod tests {
                 .text()
                 .lines
                 .iter()
-                .any(|line| line == "Suggested target: stream shared-stream")
+                .any(|line| line == "Suggested target: unit mixer-1 port inlet_a")
+        );
+    }
+
+    #[test]
+    fn recording_duplicate_upstream_source_prefers_last_conflicting_port_for_disconnect() {
+        let mut app_state = AppState::new(sample_document());
+        let summary = DiagnosticSummary::new(
+            0,
+            DiagnosticSeverity::Error,
+            "solver.connection_validation.duplicate_upstream_source: solver connection validation failed",
+        )
+        .with_primary_code("solver.connection_validation.duplicate_upstream_source")
+        .with_related_unit_ids(vec![UnitId::new("feed-1"), UnitId::new("heater-1")])
+        .with_related_stream_ids(vec![rf_types::StreamId::new("shared-stream")])
+        .with_related_port_targets(vec![
+            rf_types::DiagnosticPortTarget::new("feed-1", "outlet"),
+            rf_types::DiagnosticPortTarget::new("heater-1", "outlet"),
+        ]);
+
+        app_state.record_failure(0, RunStatus::Error, summary);
+
+        assert_eq!(
+            app_state
+                .workspace
+                .run_panel
+                .notice
+                .as_ref()
+                .and_then(|notice| notice.recovery_action.as_ref()),
+            Some(
+                &crate::RunPanelRecoveryAction::new(
+                    crate::RunPanelRecoveryActionKind::FixConnections,
+                    "Disconnect conflicting source",
+                    "断开冲突的 outlet source 端口，让该流股只保留一个上游来源后再继续修复。",
+                )
+                .with_disconnect_port(UnitId::new("heater-1"), "outlet")
+            )
         );
     }
 
@@ -1242,16 +1284,30 @@ mod tests {
     }
 
     #[test]
-    fn applying_run_panel_recovery_action_selects_stream_and_opens_inspector() {
-        let mut app_state = AppState::new(sample_document());
+    fn applying_run_panel_recovery_action_disconnects_port_and_opens_unit_inspector() {
+        let project = rf_store::parse_project_file_json(include_str!(
+            "../../../examples/flowsheets/failures/missing-stream-reference.rfproj.json"
+        ))
+        .expect("expected project parse");
+        let mut app_state = AppState::new(FlowsheetDocument::new(
+            project.document.flowsheet,
+            DocumentMetadata::new(
+                "doc-missing-stream-recovery",
+                "Missing Stream Recovery Demo",
+                timestamp(40),
+            ),
+        ));
         let summary = DiagnosticSummary::new(
             0,
             DiagnosticSeverity::Error,
-            "solver.connection_validation.duplicate_downstream_sink: solver connection validation failed",
+            "solver.connection_validation.missing_stream_reference: solver connection validation failed",
         )
-        .with_primary_code("solver.connection_validation.duplicate_downstream_sink")
-        .with_related_unit_ids(vec![UnitId::new("flash-1"), UnitId::new("mixer-1")])
-        .with_related_stream_ids(vec![rf_types::StreamId::new("shared-stream")]);
+        .with_primary_code("solver.connection_validation.missing_stream_reference")
+        .with_related_unit_ids(vec![UnitId::new("heater-1")])
+        .with_related_port_targets(vec![rf_types::DiagnosticPortTarget::new(
+            "heater-1",
+            "outlet",
+        )]);
 
         app_state.record_failure(0, RunStatus::Error, summary);
         let action = app_state
@@ -1263,28 +1319,52 @@ mod tests {
             .cloned()
             .expect("expected recovery action");
 
+        assert_eq!(
+            action.mutation,
+            Some(crate::RunPanelRecoveryMutation::DisconnectPort {
+                unit_id: UnitId::new("heater-1"),
+                port_name: "outlet".to_string(),
+            })
+        );
+
         let applied_target = app_state.apply_run_panel_recovery_action(&action);
 
         assert_eq!(
             applied_target,
-            Some(crate::InspectorTarget::Stream(rf_types::StreamId::new(
-                "shared-stream"
-            )))
+            Some(crate::InspectorTarget::Unit(UnitId::new("heater-1")))
         );
         assert!(
             app_state
                 .workspace
                 .selection
-                .selected_streams
-                .contains(&rf_types::StreamId::new("shared-stream"))
+                .selected_units
+                .contains(&UnitId::new("heater-1"))
         );
         assert_eq!(
             app_state.workspace.drafts.active_target,
-            Some(crate::InspectorTarget::Stream(rf_types::StreamId::new(
-                "shared-stream"
-            )))
+            Some(crate::InspectorTarget::Unit(UnitId::new("heater-1")))
         );
         assert!(app_state.workspace.panels.inspector_open);
+        assert_eq!(app_state.workspace.document.revision, 1);
+        assert_eq!(
+            app_state.workspace.command_history.current_entry().map(|entry| &entry.command),
+            Some(&DocumentCommand::DisconnectPorts {
+                unit_id: UnitId::new("heater-1"),
+                port: "outlet".to_string(),
+            })
+        );
+        assert_eq!(
+            app_state
+                .workspace
+                .document
+                .flowsheet
+                .units
+                .get(&UnitId::new("heater-1"))
+                .and_then(|unit| unit.ports.iter().find(|port| port.name == "outlet"))
+                .and_then(|port| port.stream_id.as_ref())
+                .map(|stream_id| stream_id.as_str()),
+            None
+        );
     }
 
     #[test]
