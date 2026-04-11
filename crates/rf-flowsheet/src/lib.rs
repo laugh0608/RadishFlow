@@ -114,14 +114,15 @@ pub fn validate_connections(flowsheet: &Flowsheet) -> RfResult<Vec<MaterialConne
             })?;
             if !flowsheet.streams.contains_key(&stream_id) {
                 return Err(
-                    invalid_connection_error(
-                        ConnectionValidationDiagnosticCode::MissingStreamReference,
-                        format!(
+                invalid_connection_error(
+                    ConnectionValidationDiagnosticCode::MissingStreamReference,
+                    format!(
                         "unit `{}` material port `{}` references missing stream `{}`",
                         unit.id, port.name, stream_id
-                        ),
-                    )
-                    .with_related_unit_id(unit.id.clone()),
+                    ),
+                )
+                    .with_related_unit_id(unit.id.clone())
+                    .with_related_stream_id(stream_id),
                 );
             }
 
@@ -147,7 +148,8 @@ pub fn validate_connections(flowsheet: &Flowsheet) -> RfResult<Vec<MaterialConne
                             .with_related_unit_ids(vec![
                                 existing.unit_id.clone(),
                                 port_ref.unit_id.clone(),
-                            ]),
+                            ])
+                            .with_related_stream_id(stream_id.clone()),
                         );
                     }
 
@@ -170,7 +172,8 @@ pub fn validate_connections(flowsheet: &Flowsheet) -> RfResult<Vec<MaterialConne
                             .with_related_unit_ids(vec![
                                 existing.unit_id.clone(),
                                 port_ref.unit_id.clone(),
-                            ]),
+                            ])
+                            .with_related_stream_id(stream_id.clone()),
                         );
                     }
 
@@ -185,7 +188,8 @@ pub fn validate_connections(flowsheet: &Flowsheet) -> RfResult<Vec<MaterialConne
             return Err(invalid_connection_error(
                 ConnectionValidationDiagnosticCode::OrphanStream,
                 format!("stream `{}` is not connected to any material port", stream_id),
-            ));
+            )
+            .with_related_stream_id(stream_id.clone()));
         }
     }
 
@@ -197,11 +201,13 @@ pub fn validate_connections(flowsheet: &Flowsheet) -> RfResult<Vec<MaterialConne
                     ConnectionValidationDiagnosticCode::MissingUpstreamSource,
                     format!("stream `{}` is missing an upstream outlet connection", stream_id),
                 )
-                .with_related_unit_id(sink.unit_id.clone()),
+                .with_related_unit_id(sink.unit_id.clone())
+                .with_related_stream_id(stream_id.clone()),
                 None => invalid_connection_error(
                     ConnectionValidationDiagnosticCode::MissingUpstreamSource,
                     format!("stream `{}` is missing an upstream outlet connection", stream_id),
-                ),
+                )
+                .with_related_stream_id(stream_id.clone()),
             })?;
 
             Ok(MaterialConnection {
@@ -217,7 +223,7 @@ pub fn validate_connections(flowsheet: &Flowsheet) -> RfResult<Vec<MaterialConne
 mod tests {
     use super::validate_connections;
     use rf_model::{Composition, Flowsheet, MaterialStreamState, UnitNode, UnitPort};
-    use rf_types::{ComponentId, PortDirection, PortKind, UnitId};
+    use rf_types::{ComponentId, PortDirection, PortKind, StreamId, UnitId};
     use rf_unitops::{FEED_KIND, build_feed_node, build_flash_drum_node, build_mixer_node};
 
     fn binary_composition(first: f64, second: f64) -> Composition {
@@ -326,6 +332,7 @@ mod tests {
             error.context().related_unit_ids(),
             &[UnitId::new("flash-1"), UnitId::new("mixer-1")]
         );
+        assert_eq!(error.context().related_stream_ids(), &[StreamId::new("shared-stream")]);
     }
 
     #[test]
@@ -359,6 +366,7 @@ mod tests {
                 .contains("missing an upstream outlet connection")
         );
         assert_eq!(error.context().related_unit_ids(), &[UnitId::new("mixer-1")]);
+        assert_eq!(error.context().related_stream_ids(), &[StreamId::new("stream-feed-a")]);
     }
 
     #[test]
@@ -394,5 +402,6 @@ mod tests {
                 .contains("canonical built-in port signature")
         );
         assert_eq!(error.context().related_unit_ids(), &[UnitId::new("feed-1")]);
+        assert!(error.context().related_stream_ids().is_empty());
     }
 }

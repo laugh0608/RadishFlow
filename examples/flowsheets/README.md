@@ -17,3 +17,4 @@
 - `failures/missing-upstream-source.rfproj.json`: 覆盖缺失上游 source 的 `solver.connection_validation`
 - `failures/missing-stream-reference.rfproj.json`: 覆盖缺失 stream 引用的 `solver.connection_validation`
 - `failures/invalid-port-signature.rfproj.json`: 覆盖 canonical port signature 不匹配的 `solver.connection_validation`
+- `failures/duplicate-downstream-sink.rfproj.json`: 覆盖重复下游 sink 的 `solver.connection_validation`

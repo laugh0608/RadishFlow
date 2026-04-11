@@ -1,4 +1,4 @@
-use rf_types::UnitId;
+use rf_types::{StreamId, UnitId};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum DiagnosticSeverity {
@@ -15,6 +15,7 @@ pub struct DiagnosticSummary {
     pub primary_message: String,
     pub diagnostic_count: usize,
     pub related_unit_ids: Vec<UnitId>,
+    pub related_stream_ids: Vec<StreamId>,
 }
 
 impl DiagnosticSummary {
@@ -30,6 +31,7 @@ impl DiagnosticSummary {
             primary_message: primary_message.into(),
             diagnostic_count: 1,
             related_unit_ids: Vec::new(),
+            related_stream_ids: Vec::new(),
         }
     }
 
@@ -47,6 +49,11 @@ impl DiagnosticSummary {
         self.related_unit_ids = related_unit_ids;
         self
     }
+
+    pub fn with_related_stream_ids(mut self, related_stream_ids: Vec<StreamId>) -> Self {
+        self.related_stream_ids = related_stream_ids;
+        self
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -55,6 +62,7 @@ pub struct DiagnosticSnapshot {
     pub code: String,
     pub message: String,
     pub related_unit_ids: Vec<UnitId>,
+    pub related_stream_ids: Vec<StreamId>,
 }
 
 impl DiagnosticSnapshot {
@@ -68,6 +76,7 @@ impl DiagnosticSnapshot {
             code: code.into(),
             message: message.into(),
             related_unit_ids: Vec::new(),
+            related_stream_ids: Vec::new(),
         }
     }
 }

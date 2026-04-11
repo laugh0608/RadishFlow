@@ -104,6 +104,7 @@ impl SolveSnapshot {
                 primary_message: snapshot.summary.primary_message.clone(),
                 diagnostic_count: snapshot.summary.diagnostic_count,
                 related_unit_ids: snapshot.summary.related_unit_ids.clone(),
+                related_stream_ids: snapshot.summary.related_stream_ids.clone(),
             },
             diagnostics: snapshot
                 .diagnostics
@@ -113,6 +114,7 @@ impl SolveSnapshot {
                     code: diagnostic.code.clone(),
                     message: diagnostic.message.clone(),
                     related_unit_ids: diagnostic.related_unit_ids.clone(),
+                    related_stream_ids: diagnostic.related_stream_ids.clone(),
                 })
                 .collect(),
             steps: snapshot

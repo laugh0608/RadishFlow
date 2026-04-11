@@ -1,4 +1,4 @@
-use rf_types::UnitId;
+use rf_types::{StreamId, UnitId};
 
 use crate::run::{RunStatus, SimulationMode, SolvePendingReason, SolveSessionState, SolveSnapshot};
 use crate::state::AppLogEntry;
@@ -58,6 +58,7 @@ pub struct RunPanelRecoveryAction {
     pub title: &'static str,
     pub detail: &'static str,
     pub target_unit_id: Option<UnitId>,
+    pub target_stream_id: Option<StreamId>,
 }
 
 impl RunPanelRecoveryAction {
@@ -71,11 +72,19 @@ impl RunPanelRecoveryAction {
             title,
             detail,
             target_unit_id: None,
+            target_stream_id: None,
         }
     }
 
     pub fn with_target_unit(mut self, target_unit_id: impl Into<UnitId>) -> Self {
         self.target_unit_id = Some(target_unit_id.into());
+        self.target_stream_id = None;
+        self
+    }
+
+    pub fn with_target_stream(mut self, target_stream_id: impl Into<StreamId>) -> Self {
+        self.target_stream_id = Some(target_stream_id.into());
+        self.target_unit_id = None;
         self
     }
 }
@@ -319,6 +328,7 @@ pub fn run_panel_failure_notice(
     message: impl Into<String>,
     primary_code: Option<&str>,
     target_unit_id: Option<&UnitId>,
+    target_stream_id: Option<&StreamId>,
 ) -> RunPanelNotice {
     let mut notice = RunPanelNotice::new(
         RunPanelNoticeLevel::Error,
@@ -328,8 +338,16 @@ pub fn run_panel_failure_notice(
     if let Some(mut recovery_action) =
         run_panel_failure_recovery_action_for_diagnostic_code(primary_code)
     {
-        if let Some(unit_id) = target_unit_id {
+        if prefers_stream_recovery_target(primary_code) {
+            if let Some(stream_id) = target_stream_id {
+                recovery_action = recovery_action.with_target_stream(stream_id.clone());
+            } else if let Some(unit_id) = target_unit_id {
+                recovery_action = recovery_action.with_target_unit(unit_id.clone());
+            }
+        } else if let Some(unit_id) = target_unit_id {
             recovery_action = recovery_action.with_target_unit(unit_id.clone());
+        } else if let Some(stream_id) = target_stream_id {
+            recovery_action = recovery_action.with_target_stream(stream_id.clone());
         }
         notice = notice.with_recovery_action(recovery_action);
     }
@@ -346,6 +364,7 @@ fn runtime_notice_from_solve_session(solve_session: &SolveSessionState) -> Optio
         summary.primary_message.clone(),
         summary.primary_code.as_deref(),
         summary.related_unit_ids.first(),
+        summary.related_stream_ids.first(),
     ))
 }
 
@@ -363,6 +382,16 @@ fn diagnostic_code_in_family(primary_code: Option<&str>, family: &str) -> bool {
                     .map(|suffix| suffix.starts_with('.'))
                     .unwrap_or(false)
         )
+}
+
+fn prefers_stream_recovery_target(primary_code: Option<&str>) -> bool {
+    diagnostic_code_matches(
+        primary_code,
+        "solver.connection_validation.duplicate_upstream_source",
+    ) || diagnostic_code_matches(
+        primary_code,
+        "solver.connection_validation.duplicate_downstream_sink",
+    ) || diagnostic_code_matches(primary_code, "solver.connection_validation.orphan_stream")
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

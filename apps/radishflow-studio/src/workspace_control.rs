@@ -1,4 +1,4 @@
-use rf_types::{RfResult, UnitId};
+use rf_types::{RfResult, StreamId, UnitId};
 use rf_ui::{
     AppLogEntry, AppState, RunPanelCommandModel, RunPanelIntent, RunPanelNotice,
     RunPanelNoticeLevel, RunPanelPackageSelection, RunPanelRecoveryAction,
@@ -206,10 +206,17 @@ pub fn dispatch_workspace_control_action_with_auth_cache(
         .latest_diagnostic
         .as_ref()
         .and_then(|summary| summary.related_unit_ids.first());
+    let latest_diagnostic_target_stream_id = app_state
+        .workspace
+        .solve_session
+        .latest_diagnostic
+        .as_ref()
+        .and_then(|summary| summary.related_stream_ids.first());
     control_state.notice = notice_from_dispatch(
         &outcome.dispatch,
         latest_diagnostic_primary_code,
         latest_diagnostic_target_unit_id,
+        latest_diagnostic_target_stream_id,
     )
     .or(control_state.notice.clone());
     app_state.sync_run_panel_state(map_workspace_control_state_to_run_panel_state(
@@ -228,6 +235,7 @@ fn notice_from_dispatch(
     dispatch: &StudioAppResultDispatch,
     latest_diagnostic_primary_code: Option<&str>,
     latest_diagnostic_target_unit_id: Option<&UnitId>,
+    latest_diagnostic_target_stream_id: Option<&StreamId>,
 ) -> Option<RunPanelNotice> {
     match dispatch {
         StudioAppResultDispatch::WorkspaceRun(dispatch) => match &dispatch.outcome {
@@ -261,6 +269,7 @@ fn notice_from_dispatch(
                 failed.message.clone(),
                 latest_diagnostic_primary_code,
                 latest_diagnostic_target_unit_id,
+                latest_diagnostic_target_stream_id,
             )),
         },
         StudioAppResultDispatch::WorkspaceMode(dispatch) => {
@@ -306,6 +315,7 @@ fn notice_for_failed_outcome(
     message: String,
     latest_diagnostic_primary_code: Option<&str>,
     latest_diagnostic_target_unit_id: Option<&UnitId>,
+    latest_diagnostic_target_stream_id: Option<&StreamId>,
 ) -> RunPanelNotice {
     match reason {
         crate::StudioWorkspaceRunFailedReason::LocalCacheUnavailable => RunPanelNotice::new(
@@ -322,6 +332,7 @@ fn notice_for_failed_outcome(
             message,
             latest_diagnostic_primary_code,
             latest_diagnostic_target_unit_id,
+            latest_diagnostic_target_stream_id,
         ),
     }
 }

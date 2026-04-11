@@ -965,6 +965,41 @@ mod tests {
     }
 
     #[test]
+    fn run_panel_widget_exposes_recovery_action_when_connection_failure_targets_stream() {
+        let mut app_state = AppState::new(sample_document());
+        let summary = DiagnosticSummary::new(
+            0,
+            DiagnosticSeverity::Error,
+            "solver.connection_validation.duplicate_downstream_sink: solver connection validation failed",
+        )
+        .with_primary_code("solver.connection_validation.duplicate_downstream_sink")
+        .with_related_unit_ids(vec![UnitId::new("flash-1"), UnitId::new("mixer-1")])
+        .with_related_stream_ids(vec![rf_types::StreamId::new("shared-stream")]);
+
+        app_state.record_failure(0, RunStatus::Error, summary);
+        let widget = RunPanelWidgetModel::from_state(&app_state.workspace.run_panel);
+
+        assert_eq!(
+            widget.activate_recovery_action(),
+            RunPanelRecoveryWidgetEvent::Requested {
+                action: crate::RunPanelRecoveryAction::new(
+                    crate::RunPanelRecoveryActionKind::FixConnections,
+                    "Resolve duplicate sinks",
+                    "确保每条物料流股在当前阶段只连接一个下游 inlet sink，再重新执行连接校验。",
+                )
+                .with_target_stream(rf_types::StreamId::new("shared-stream")),
+            }
+        );
+        assert!(
+            widget
+                .text()
+                .lines
+                .iter()
+                .any(|line| line == "Suggested target: stream shared-stream")
+        );
+    }
+
+    #[test]
     fn storing_snapshot_updates_run_panel_summary() {
         let mut app_state = AppState::new(sample_document());
         let snapshot = SolveSnapshot::new(
@@ -1163,6 +1198,52 @@ mod tests {
         assert_eq!(
             app_state.workspace.drafts.active_target,
             Some(crate::InspectorTarget::Unit(UnitId::new("heater-1")))
+        );
+        assert!(app_state.workspace.panels.inspector_open);
+    }
+
+    #[test]
+    fn applying_run_panel_recovery_action_selects_stream_and_opens_inspector() {
+        let mut app_state = AppState::new(sample_document());
+        let summary = DiagnosticSummary::new(
+            0,
+            DiagnosticSeverity::Error,
+            "solver.connection_validation.duplicate_downstream_sink: solver connection validation failed",
+        )
+        .with_primary_code("solver.connection_validation.duplicate_downstream_sink")
+        .with_related_unit_ids(vec![UnitId::new("flash-1"), UnitId::new("mixer-1")])
+        .with_related_stream_ids(vec![rf_types::StreamId::new("shared-stream")]);
+
+        app_state.record_failure(0, RunStatus::Error, summary);
+        let action = app_state
+            .workspace
+            .run_panel
+            .notice
+            .as_ref()
+            .and_then(|notice| notice.recovery_action.as_ref())
+            .cloned()
+            .expect("expected recovery action");
+
+        let applied_target = app_state.apply_run_panel_recovery_action(&action);
+
+        assert_eq!(
+            applied_target,
+            Some(crate::InspectorTarget::Stream(rf_types::StreamId::new(
+                "shared-stream"
+            )))
+        );
+        assert!(
+            app_state
+                .workspace
+                .selection
+                .selected_streams
+                .contains(&rf_types::StreamId::new("shared-stream"))
+        );
+        assert_eq!(
+            app_state.workspace.drafts.active_target,
+            Some(crate::InspectorTarget::Stream(rf_types::StreamId::new(
+                "shared-stream"
+            )))
         );
         assert!(app_state.workspace.panels.inspector_open);
     }

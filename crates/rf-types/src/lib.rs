@@ -178,6 +178,7 @@ pub struct RfError {
 pub struct RfErrorContext {
     diagnostic_code: Option<String>,
     related_unit_ids: Vec<UnitId>,
+    related_stream_ids: Vec<StreamId>,
 }
 
 impl RfErrorContext {
@@ -187,6 +188,10 @@ impl RfErrorContext {
 
     pub fn related_unit_ids(&self) -> &[UnitId] {
         &self.related_unit_ids
+    }
+
+    pub fn related_stream_ids(&self) -> &[StreamId] {
+        &self.related_stream_ids
     }
 }
 
@@ -244,6 +249,34 @@ impl RfError {
         self
     }
 
+    pub fn with_related_stream_id(mut self, stream_id: impl Into<StreamId>) -> Self {
+        let stream_id = stream_id.into();
+        if !self
+            .context
+            .related_stream_ids
+            .iter()
+            .any(|existing| existing == &stream_id)
+        {
+            self.context.related_stream_ids.push(stream_id);
+        }
+        self
+    }
+
+    pub fn with_related_stream_ids(mut self, related_stream_ids: Vec<StreamId>) -> Self {
+        self.context.related_stream_ids.clear();
+        for stream_id in related_stream_ids {
+            if !self
+                .context
+                .related_stream_ids
+                .iter()
+                .any(|existing| existing == &stream_id)
+            {
+                self.context.related_stream_ids.push(stream_id);
+            }
+        }
+        self
+    }
+
     pub fn invalid_input(message: impl Into<String>) -> Self {
         Self::new(ErrorCode::InvalidInput, message)
     }
@@ -288,7 +321,7 @@ pub type RfResult<T> = Result<T, RfError>;
 
 #[cfg(test)]
 mod tests {
-    use super::{RfError, UnitId};
+    use super::{RfError, StreamId, UnitId};
 
     #[test]
     fn rf_error_can_carry_stable_diagnostic_context() {
@@ -296,7 +329,10 @@ mod tests {
             .with_diagnostic_code("solver.step.execution")
             .with_related_unit_id("heater-1")
             .with_related_unit_id("heater-1")
-            .with_related_unit_id("flash-1");
+            .with_related_unit_id("flash-1")
+            .with_related_stream_id("stream-feed")
+            .with_related_stream_id("stream-feed")
+            .with_related_stream_id("stream-heated");
 
         assert_eq!(
             error.context().diagnostic_code(),
@@ -305,6 +341,14 @@ mod tests {
         assert_eq!(
             error.context().related_unit_ids(),
             [UnitId::new("heater-1"), UnitId::new("flash-1")].as_slice()
+        );
+        assert_eq!(
+            error.context().related_stream_ids(),
+            [
+                StreamId::new("stream-feed"),
+                StreamId::new("stream-heated")
+            ]
+            .as_slice()
         );
     }
 }

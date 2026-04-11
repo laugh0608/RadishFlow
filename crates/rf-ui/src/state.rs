@@ -507,16 +507,29 @@ impl AppState {
         &mut self,
         action: &RunPanelRecoveryAction,
     ) -> Option<InspectorTarget> {
-        let unit_id = action.target_unit_id.as_ref()?.clone();
         self.workspace.selection.selected_units.clear();
         self.workspace.selection.selected_streams.clear();
-        self.workspace
-            .selection
-            .selected_units
-            .insert(unit_id.clone());
-        self.workspace.drafts.active_target = Some(InspectorTarget::Unit(unit_id.clone()));
-        self.workspace.panels.inspector_open = true;
-        Some(InspectorTarget::Unit(unit_id))
+        if let Some(unit_id) = action.target_unit_id.as_ref() {
+            let unit_id = unit_id.clone();
+            self.workspace
+                .selection
+                .selected_units
+                .insert(unit_id.clone());
+            self.workspace.drafts.active_target = Some(InspectorTarget::Unit(unit_id.clone()));
+            self.workspace.panels.inspector_open = true;
+            return Some(InspectorTarget::Unit(unit_id));
+        }
+        if let Some(stream_id) = action.target_stream_id.as_ref() {
+            let stream_id = stream_id.clone();
+            self.workspace
+                .selection
+                .selected_streams
+                .insert(stream_id.clone());
+            self.workspace.drafts.active_target = Some(InspectorTarget::Stream(stream_id.clone()));
+            self.workspace.panels.inspector_open = true;
+            return Some(InspectorTarget::Stream(stream_id));
+        }
+        None
     }
 
     pub fn begin_browser_login(&mut self, authority_url: impl Into<String>) {

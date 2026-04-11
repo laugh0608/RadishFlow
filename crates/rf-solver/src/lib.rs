@@ -76,6 +76,7 @@ pub struct SolveDiagnosticSummary {
     pub primary_message: String,
     pub diagnostic_count: usize,
     pub related_unit_ids: Vec<UnitId>,
+    pub related_stream_ids: Vec<StreamId>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -121,6 +122,7 @@ impl SolveSnapshot {
 pub struct SolveFailureContext {
     pub primary_code: Option<String>,
     pub related_unit_ids: Vec<UnitId>,
+    pub related_stream_ids: Vec<StreamId>,
 }
 
 impl SolveFailureContext {
@@ -135,10 +137,16 @@ impl SolveFailureContext {
         } else {
             error.context().related_unit_ids().to_vec()
         };
+        let related_stream_ids = if error.context().related_stream_ids().is_empty() {
+            related_stream_ids_from_failure_message(error.message())
+        } else {
+            error.context().related_stream_ids().to_vec()
+        };
 
         Self {
             primary_code,
             related_unit_ids,
+            related_stream_ids,
         }
     }
 
@@ -146,6 +154,7 @@ impl SolveFailureContext {
         Self {
             primary_code: prefixed_solver_diagnostic_code(message),
             related_unit_ids: related_unit_ids_from_failure_message(message),
+            related_stream_ids: related_stream_ids_from_failure_message(message),
         }
     }
 }
@@ -288,6 +297,7 @@ impl FlowsheetSolver for SequentialModularSolver {
             ),
             diagnostic_count: diagnostics.len(),
             related_unit_ids,
+            related_stream_ids: solved_streams.keys().cloned().collect(),
         };
 
         Ok(SolveSnapshot {
@@ -389,6 +399,7 @@ fn solver_stage_error(code: SolverDiagnosticCode, error: RfError) -> RfError {
     )
     .with_diagnostic_code(diagnostic_code)
     .with_related_unit_ids(error.context().related_unit_ids().to_vec())
+    .with_related_stream_ids(error.context().related_stream_ids().to_vec())
 }
 
 fn solver_stage_diagnostic_code(code: SolverDiagnosticCode, error: &RfError) -> String {
@@ -468,6 +479,7 @@ fn solver_step_error(
     )
     .with_diagnostic_code(code.as_str())
     .with_related_unit_id(unit.id.clone())
+    .with_related_stream_ids(error.context().related_stream_ids().to_vec())
 }
 
 fn solver_step_invalid_input(
@@ -508,6 +520,7 @@ fn solver_step_execution_error(
     )
     .with_diagnostic_code(SolverDiagnosticCode::StepExecution.as_str())
     .with_related_unit_id(unit.id.clone())
+    .with_related_stream_ids(consumed_stream_ids.to_vec())
 }
 
 fn solver_context_error(context: impl AsRef<str>, error: RfError) -> RfError {
@@ -515,7 +528,8 @@ fn solver_context_error(context: impl AsRef<str>, error: RfError) -> RfError {
         error.code(),
         format!("{}: {}", context.as_ref(), error.message()),
     )
-    .with_related_unit_ids(error.context().related_unit_ids().to_vec());
+    .with_related_unit_ids(error.context().related_unit_ids().to_vec())
+    .with_related_stream_ids(error.context().related_stream_ids().to_vec());
     if let Some(code) = error.context().diagnostic_code() {
         wrapped = wrapped.with_diagnostic_code(code.to_string());
     }
@@ -691,6 +705,12 @@ fn related_unit_ids_from_failure_message(message: &str) -> Vec<UnitId> {
     unit_ids
 }
 
+fn related_stream_ids_from_failure_message(message: &str) -> Vec<StreamId> {
+    let mut stream_ids = Vec::new();
+    collect_stream_context_ids(message, &mut stream_ids);
+    stream_ids
+}
+
 fn collect_unit_context_ids(message: &str, unit_ids: &mut Vec<UnitId>) {
     let needle = "unit `";
     let mut remaining = message;
@@ -747,6 +767,26 @@ fn collect_cycle_unit_ids(message: &str, unit_ids: &mut Vec<UnitId>) {
 
     for candidate in after[..end].split(',') {
         push_related_unit_id(unit_ids, candidate.trim());
+    }
+}
+
+fn collect_stream_context_ids(message: &str, stream_ids: &mut Vec<StreamId>) {
+    let needle = "stream `";
+    let mut remaining = message;
+
+    while let Some(start) = remaining.find(needle) {
+        let after = &remaining[start + needle.len()..];
+        let Some(end) = after.find('`') else {
+            break;
+        };
+        let candidate = &after[..end];
+        if !candidate.is_empty() {
+            let stream_id = StreamId::new(candidate);
+            if !stream_ids.iter().any(|existing| existing == &stream_id) {
+                stream_ids.push(stream_id);
+            }
+        }
+        remaining = &after[end + 1..];
     }
 }
 
@@ -1666,6 +1706,10 @@ mod tests {
             error.context().related_unit_ids(),
             &[UnitId::new("flash-1"), UnitId::new("valve-1")]
         );
+        assert_eq!(
+            error.context().related_stream_ids(),
+            &[StreamId::new("stream-feed")]
+        );
         assert!(
             error
                 .message()
@@ -1999,6 +2043,7 @@ mod tests {
             error.message(),
             "solver.step.execution: solver step 2 unit execution failed for unit `valve-1` (`valve`) after consuming [stream-feed]: valve outlet pressure cannot exceed inlet pressure"
         );
+        assert_eq!(error.context().related_stream_ids(), &[StreamId::new("stream-feed")]);
     }
 
     #[test]
@@ -2038,6 +2083,7 @@ mod tests {
             Some("solver.step.execution")
         );
         assert_eq!(context.related_unit_ids, vec![UnitId::new("valve-1")]);
+        assert_eq!(context.related_stream_ids, vec![StreamId::new("stream-feed")]);
         assert_eq!(
             error.context().diagnostic_code(),
             Some("solver.step.execution")
@@ -2045,6 +2091,10 @@ mod tests {
         assert_eq!(
             error.context().related_unit_ids(),
             [UnitId::new("valve-1")].as_slice()
+        );
+        assert_eq!(
+            error.context().related_stream_ids(),
+            [StreamId::new("stream-feed")].as_slice()
         );
     }
 
@@ -2060,11 +2110,13 @@ mod tests {
 
         assert_eq!(context.primary_code.as_deref(), Some("solver.step.lookup"));
         assert_eq!(context.related_unit_ids, vec![UnitId::new("flash-1")]);
+        assert!(context.related_stream_ids.is_empty());
         assert_eq!(error.context().diagnostic_code(), Some("solver.step.lookup"));
         assert_eq!(
             error.context().related_unit_ids(),
             [UnitId::new("flash-1")].as_slice()
         );
+        assert!(error.context().related_stream_ids().is_empty());
     }
 
     #[test]
@@ -2080,6 +2132,23 @@ mod tests {
         assert_eq!(
             context.related_unit_ids,
             vec![UnitId::new("heater-1"), UnitId::new("valve-1")]
+        );
+        assert!(context.related_stream_ids.is_empty());
+    }
+
+    #[test]
+    fn solve_failure_context_extracts_stream_ids_from_wrapped_message() {
+        let context = SolveFailureContext::from_message(
+            "flowsheet solve failed with package `binary-hydrocarbon-lite-v1`: solver.connection_validation.duplicate_downstream_sink: solver connection validation failed: stream `shared-stream` is consumed by both `mixer-1.inlet_a` and `flash-1.inlet`",
+        );
+
+        assert_eq!(
+            context.primary_code.as_deref(),
+            Some("solver.connection_validation.duplicate_downstream_sink")
+        );
+        assert_eq!(
+            context.related_stream_ids,
+            vec![StreamId::new("shared-stream")]
         );
     }
 

@@ -162,6 +162,9 @@ fn record_solve_failure(
     if !context.related_unit_ids.is_empty() {
         summary = summary.with_related_unit_ids(context.related_unit_ids);
     }
+    if !context.related_stream_ids.is_empty() {
+        summary = summary.with_related_stream_ids(context.related_stream_ids);
+    }
     app_state.record_failure(revision, RunStatus::Error, summary);
     app_state.push_log(AppLogLevel::Error, message);
 }

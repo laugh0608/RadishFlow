@@ -25,6 +25,8 @@ impl RunPanelTextView {
                 lines.push(format!("Suggested detail: {}", recovery_action.detail));
                 if let Some(unit_id) = recovery_action.target_unit_id.as_ref() {
                     lines.push(format!("Suggested target: unit {}", unit_id.as_str()));
+                } else if let Some(stream_id) = recovery_action.target_stream_id.as_ref() {
+                    lines.push(format!("Suggested target: stream {}", stream_id.as_str()));
                 }
             }
         }

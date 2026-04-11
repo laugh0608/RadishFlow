@@ -4,7 +4,7 @@ use radishflow_studio::{StudioSolveRequest, solve_workspace_with_property_packag
 use rf_rust_integration::build_binary_demo_package_provider;
 use rf_store::parse_project_file_json;
 use rf_thermo::InMemoryPropertyPackageProvider;
-use rf_types::UnitId;
+use rf_types::{StreamId, UnitId};
 use rf_ui::{
     AppState, DocumentMetadata, FlowsheetDocument, RunPanelRecoveryActionKind, RunStatus,
 };
@@ -233,5 +233,60 @@ fn studio_solver_bridge_records_cycle_failure_context_end_to_end() {
             .as_ref()
             .and_then(|action| action.target_unit_id.as_ref()),
         Some(&UnitId::new("heater-1"))
+    );
+}
+
+#[test]
+fn studio_solver_bridge_records_duplicate_sink_stream_target_end_to_end() {
+    let provider = build_binary_demo_package_provider();
+    let mut app_state = app_state_from_project(
+        include_str!("../../../examples/flowsheets/failures/duplicate-downstream-sink.rfproj.json"),
+        "doc-studio-duplicate-sink-failure",
+        "Studio Duplicate Sink Failure Demo",
+        50,
+    );
+
+    let error = solve_workspace_with_property_package(
+        &mut app_state,
+        &provider,
+        &StudioSolveRequest::new("binary-hydrocarbon-lite-v1", "snapshot-duplicate-sink-1", 1),
+    )
+    .expect_err("expected duplicate sink failure");
+
+    assert!(error.message().contains("solver.connection_validation.duplicate_downstream_sink:"));
+    assert_eq!(app_state.workspace.solve_session.status, RunStatus::Error);
+
+    let summary = app_state
+        .workspace
+        .solve_session
+        .latest_diagnostic
+        .as_ref()
+        .expect("expected failure summary");
+    assert_eq!(
+        summary.primary_code.as_deref(),
+        Some("solver.connection_validation.duplicate_downstream_sink")
+    );
+    assert_eq!(summary.related_stream_ids, vec![StreamId::new("shared-stream")]);
+
+    let notice = app_state
+        .workspace
+        .run_panel
+        .notice
+        .as_ref()
+        .expect("expected run panel notice");
+    assert_eq!(notice.title, "Duplicate stream sink");
+    assert_eq!(
+        notice
+            .recovery_action
+            .as_ref()
+            .map(|action| action.kind),
+        Some(RunPanelRecoveryActionKind::FixConnections)
+    );
+    assert_eq!(
+        notice
+            .recovery_action
+            .as_ref()
+            .and_then(|action| action.target_stream_id.as_ref()),
+        Some(&StreamId::new("shared-stream"))
     );
 }

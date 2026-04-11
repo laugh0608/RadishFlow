@@ -323,3 +323,33 @@ fn invalid_port_signature_reports_connection_validation_context_end_to_end() {
     );
     assert!(error.message().contains("missing required port `outlet`"));
 }
+
+#[test]
+fn duplicate_downstream_sink_reports_connection_validation_stream_context_end_to_end() {
+    let error = solve_example_result(include_str!(
+        "../../../examples/flowsheets/failures/duplicate-downstream-sink.rfproj.json"
+    ))
+    .expect_err("expected duplicate downstream sink failure");
+
+    assert_eq!(error.code().as_str(), "invalid_connection");
+    assert_eq!(
+        error.context().diagnostic_code(),
+        Some("solver.connection_validation.duplicate_downstream_sink")
+    );
+    assert_eq!(
+        error.context().related_unit_ids(),
+        &[UnitId::new("flash-1"), UnitId::new("mixer-1")]
+    );
+    assert_eq!(
+        error.context().related_stream_ids(),
+        &[rf_types::StreamId::new("shared-stream")]
+    );
+    assert!(
+        error
+            .message()
+            .contains(
+                "solver.connection_validation.duplicate_downstream_sink: solver connection validation failed"
+            )
+    );
+    assert!(error.message().contains("consumed by both"));
+}

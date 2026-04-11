@@ -392,3 +392,48 @@ fn run_panel_recovery_action_focuses_missing_upstream_source_unit_end_to_end() {
 
     fs::remove_dir_all(cache_root).expect("expected temp dir cleanup");
 }
+
+#[test]
+fn run_panel_recovery_action_focuses_duplicate_downstream_sink_stream_end_to_end() {
+    let cache_root = unique_temp_path("integration-run-panel-duplicate-sink-recovery");
+    let mut auth_cache_index = sample_auth_cache_index(&[]);
+    write_cached_package(
+        &cache_root,
+        &mut auth_cache_index,
+        "binary-hydrocarbon-lite-v1",
+    );
+    let facade = StudioAppFacade::new();
+    let mut app_state = app_state_from_project(
+        include_str!("../../../examples/flowsheets/failures/duplicate-downstream-sink.rfproj.json"),
+        "doc-control-duplicate-sink-recovery",
+        "Control Duplicate Sink Recovery Demo",
+        37,
+    );
+    let context = StudioAppAuthCacheContext::new(&cache_root, &auth_cache_index);
+
+    dispatch_run_panel_primary_action_with_auth_cache(&facade, &mut app_state, &context)
+        .expect("expected connection validation failure");
+
+    let recovery =
+        apply_run_panel_recovery_action(&mut app_state).expect("expected recovery action");
+
+    assert_eq!(recovery.action.title, "Resolve duplicate sinks");
+    assert_eq!(
+        recovery.applied_target,
+        Some(InspectorTarget::Stream("shared-stream".into()))
+    );
+    assert_eq!(
+        app_state.workspace.drafts.active_target,
+        Some(InspectorTarget::Stream("shared-stream".into()))
+    );
+    assert!(
+        app_state
+            .workspace
+            .selection
+            .selected_streams
+            .contains(&"shared-stream".into())
+    );
+    assert!(app_state.workspace.panels.inspector_open);
+
+    fs::remove_dir_all(cache_root).expect("expected temp dir cleanup");
+}
