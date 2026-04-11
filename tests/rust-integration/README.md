@@ -9,3 +9,4 @@
 - 求解输出中的关键流股状态断言
 - `rf-ui::AppState` 对 `rf-solver::SolveSnapshot` 的仓库级映射
 - `radishflow-studio::solver_bridge` 在成功、单元执行失败和缺包失败下的诊断写回与 `RunPanel` 通知基线
+- `radishflow-studio::workspace_control` / `run_panel_driver` 对成功运行、包选择阻塞和失败恢复动作的仓库级闭环
