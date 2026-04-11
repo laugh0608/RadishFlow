@@ -177,3 +177,61 @@ fn studio_solver_bridge_records_missing_package_without_solver_code_end_to_end()
     assert_eq!(notice.title, "Run failed");
     assert!(notice.recovery_action.is_none());
 }
+
+#[test]
+fn studio_solver_bridge_records_cycle_failure_context_end_to_end() {
+    let provider = build_binary_demo_package_provider();
+    let mut app_state = app_state_from_project(
+        include_str!("../../../examples/flowsheets/failures/multi-unit-cycle.rfproj.json"),
+        "doc-studio-cycle-failure",
+        "Studio Cycle Failure Demo",
+        40,
+    );
+
+    let error = solve_workspace_with_property_package(
+        &mut app_state,
+        &provider,
+        &StudioSolveRequest::new("binary-hydrocarbon-lite-v1", "snapshot-cycle-failure-1", 1),
+    )
+    .expect_err("expected cycle failure");
+
+    assert!(error.message().contains("solver.topological_ordering:"));
+    assert_eq!(app_state.workspace.solve_session.status, RunStatus::Error);
+
+    let summary = app_state
+        .workspace
+        .solve_session
+        .latest_diagnostic
+        .as_ref()
+        .expect("expected failure summary");
+    assert_eq!(
+        summary.primary_code.as_deref(),
+        Some("solver.topological_ordering")
+    );
+    assert_eq!(
+        summary.related_unit_ids,
+        vec![UnitId::new("heater-1"), UnitId::new("valve-1")]
+    );
+
+    let notice = app_state
+        .workspace
+        .run_panel
+        .notice
+        .as_ref()
+        .expect("expected run panel notice");
+    assert_eq!(notice.title, "Topological ordering failed");
+    assert_eq!(
+        notice
+            .recovery_action
+            .as_ref()
+            .map(|action| action.kind),
+        Some(RunPanelRecoveryActionKind::BreakCycle)
+    );
+    assert_eq!(
+        notice
+            .recovery_action
+            .as_ref()
+            .and_then(|action| action.target_unit_id.as_ref()),
+        Some(&UnitId::new("heater-1"))
+    );
+}
