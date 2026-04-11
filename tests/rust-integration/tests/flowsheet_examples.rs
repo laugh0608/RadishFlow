@@ -301,6 +301,43 @@ fn missing_stream_reference_reports_connection_validation_context_end_to_end() {
 }
 
 #[test]
+fn duplicate_upstream_source_reports_connection_validation_stream_context_end_to_end() {
+    let error = solve_example_result(include_str!(
+        "../../../examples/flowsheets/failures/duplicate-upstream-source.rfproj.json"
+    ))
+    .expect_err("expected duplicate upstream source failure");
+
+    assert_eq!(error.code().as_str(), "invalid_connection");
+    assert_eq!(
+        error.context().diagnostic_code(),
+        Some("solver.connection_validation.duplicate_upstream_source")
+    );
+    assert_eq!(
+        error.context().related_unit_ids(),
+        &[UnitId::new("feed-1"), UnitId::new("feed-2")]
+    );
+    assert_eq!(
+        error.context().related_stream_ids(),
+        &[rf_types::StreamId::new("shared-stream")]
+    );
+    assert_eq!(
+        error.context().related_port_targets(),
+        &[
+            rf_types::DiagnosticPortTarget::new("feed-1", "outlet"),
+            rf_types::DiagnosticPortTarget::new("feed-2", "outlet"),
+        ]
+    );
+    assert!(
+        error
+            .message()
+            .contains(
+                "solver.connection_validation.duplicate_upstream_source: solver connection validation failed"
+            )
+    );
+    assert!(error.message().contains("produced by both"));
+}
+
+#[test]
 fn invalid_port_signature_reports_connection_validation_context_end_to_end() {
     let error = solve_example_result(include_str!(
         "../../../examples/flowsheets/failures/invalid-port-signature.rfproj.json"
