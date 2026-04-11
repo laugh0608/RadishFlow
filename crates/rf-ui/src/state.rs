@@ -431,7 +431,7 @@ impl AppState {
     pub fn refresh_run_panel_state(&mut self) {
         let state = RunPanelState::from_runtime(
             &self.workspace.solve_session,
-            self.workspace.snapshot_history.back(),
+            latest_snapshot(&self.workspace),
             self.log_feed.entries.back(),
         );
         self.sync_run_panel_state(state);
@@ -578,7 +578,17 @@ impl AppState {
 }
 
 pub fn latest_snapshot_id(workspace: &WorkspaceState) -> Option<&SolveSnapshotId> {
-    workspace.solve_session.latest_snapshot.as_ref()
+    latest_snapshot(workspace).map(|snapshot| &snapshot.id)
+}
+
+pub fn latest_snapshot(workspace: &WorkspaceState) -> Option<&SolveSnapshot> {
+    let latest_snapshot_id = workspace.solve_session.latest_snapshot.as_ref()?;
+    let snapshot = workspace
+        .snapshot_history
+        .iter()
+        .rev()
+        .find(|snapshot| &snapshot.id == latest_snapshot_id)?;
+    (snapshot.document_revision == workspace.solve_session.observed_revision).then_some(snapshot)
 }
 
 fn apply_canvas_suggestion_acceptance(

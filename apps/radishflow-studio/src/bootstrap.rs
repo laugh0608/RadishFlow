@@ -46,6 +46,7 @@ pub struct StudioBootstrapConfig {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum StudioBootstrapTrigger {
+    AppCommand(crate::StudioAppCommand),
     Intent(RunPanelIntent),
     WidgetPrimaryAction,
     WidgetAction(RunPanelActionId),
@@ -203,6 +204,15 @@ fn dispatch_bootstrap_trigger(
     session: &mut BootstrapSessionResources<'_>,
 ) -> RfResult<StudioBootstrapDispatch> {
     match trigger {
+        StudioBootstrapTrigger::AppCommand(command) => {
+            let context =
+                StudioAppAuthCacheContext::new(session.cache_root, &*session.auth_cache_index);
+            Ok(StudioBootstrapDispatch::AppCommand(
+                session
+                    .facade
+                    .execute_with_auth_cache(session.app_state, &context, command)?,
+            ))
+        }
         StudioBootstrapTrigger::Intent(intent) => {
             let context =
                 StudioAppAuthCacheContext::new(session.cache_root, &*session.auth_cache_index);
@@ -919,8 +929,9 @@ mod tests {
     use crate::{
         EntitlementPreflightAction, EntitlementSessionEvent, EntitlementSessionEventOutcome,
         EntitlementSessionHostTimerEffect, StudioAppExecutionBoundary, StudioAppExecutionLane,
-        StudioAppResultDispatch, StudioEntitlementAction, StudioEntitlementOutcome, StudioRuntime,
-        StudioWorkspaceRunOutcome,
+        StudioAppCommand, StudioAppResultDispatch, StudioEntitlementAction,
+        StudioEntitlementOutcome, StudioRuntime, StudioWorkspaceRunOutcome,
+        WorkspaceRunCommand, WorkspaceRunPackageSelection, WorkspaceSolveSkipReason,
     };
 
     #[test]
@@ -1089,6 +1100,97 @@ mod tests {
             "Set workspace simulation mode to Active"
         );
         assert_eq!(report.entitlement_preflight, None);
+    }
+
+    #[test]
+    fn bootstrap_runtime_can_dispatch_automatic_run_after_mode_activation() {
+        let config = StudioBootstrapConfig::default();
+        let mut runtime = StudioRuntime::new(&config).expect("expected studio runtime");
+
+        let mode = runtime
+            .dispatch_trigger(&StudioBootstrapTrigger::AppCommand(
+                StudioAppCommand::set_workspace_simulation_mode(SimulationMode::Active),
+            ))
+            .expect("expected mode activation");
+        match &app_command(&mode).dispatch {
+            StudioAppResultDispatch::WorkspaceMode(dispatch) => {
+                assert_eq!(dispatch.simulation_mode, SimulationMode::Active);
+                assert_eq!(
+                    dispatch.pending_reason,
+                    Some(rf_ui::SolvePendingReason::ModeActivated)
+                );
+            }
+            other => panic!("expected workspace mode dispatch, got {other:?}"),
+        }
+
+        let automatic = runtime
+            .dispatch_trigger(&StudioBootstrapTrigger::AppCommand(
+                StudioAppCommand::run_workspace(WorkspaceRunCommand::automatic_preferred()),
+            ))
+            .expect("expected automatic run");
+        let dispatch = match &app_command(&automatic).dispatch {
+            StudioAppResultDispatch::WorkspaceRun(dispatch) => dispatch,
+            other => panic!("expected workspace run dispatch, got {other:?}"),
+        };
+        assert_eq!(dispatch.package_id.as_deref(), Some("binary-hydrocarbon-lite-v1"));
+        assert!(matches!(
+            dispatch.outcome,
+            StudioWorkspaceRunOutcome::Started(_)
+        ));
+        assert_eq!(dispatch.simulation_mode, SimulationMode::Active);
+        assert_eq!(dispatch.pending_reason, None);
+        assert_eq!(dispatch.run_status, RunStatus::Converged);
+        assert_eq!(
+            automatic.control_state.run_status,
+            RunStatus::Converged
+        );
+        assert_eq!(
+            automatic.run_panel.view().status_label,
+            "Converged"
+        );
+    }
+
+    #[test]
+    fn bootstrap_runtime_skips_automatic_run_when_no_pending_request_after_success() {
+        let config = StudioBootstrapConfig::default();
+        let mut runtime = StudioRuntime::new(&config).expect("expected studio runtime");
+
+        let first = runtime
+            .dispatch_trigger(&StudioBootstrapTrigger::AppCommand(
+                StudioAppCommand::resume_workspace(WorkspaceRunPackageSelection::Preferred),
+            ))
+            .expect("expected successful resume");
+        let first_dispatch = match &app_command(&first).dispatch {
+            StudioAppResultDispatch::WorkspaceRun(dispatch) => dispatch,
+            other => panic!("expected workspace run dispatch, got {other:?}"),
+        };
+        assert!(matches!(
+            first_dispatch.outcome,
+            StudioWorkspaceRunOutcome::Started(_)
+        ));
+
+        let automatic = runtime
+            .dispatch_trigger(&StudioBootstrapTrigger::AppCommand(
+                StudioAppCommand::run_workspace(WorkspaceRunCommand::automatic_preferred()),
+            ))
+            .expect("expected automatic skip");
+        let dispatch = match &app_command(&automatic).dispatch {
+            StudioAppResultDispatch::WorkspaceRun(dispatch) => dispatch,
+            other => panic!("expected workspace run dispatch, got {other:?}"),
+        };
+        assert_eq!(dispatch.package_id, None);
+        assert!(matches!(
+            dispatch.outcome,
+            StudioWorkspaceRunOutcome::Skipped(WorkspaceSolveSkipReason::NoPendingRequest)
+        ));
+        assert_eq!(dispatch.simulation_mode, SimulationMode::Active);
+        assert_eq!(dispatch.pending_reason, None);
+        assert_eq!(dispatch.run_status, RunStatus::Converged);
+        assert_eq!(
+            dispatch.latest_snapshot_id.as_deref(),
+            Some("example-feed-heater-flash-rev-0-seq-1")
+        );
+        assert_eq!(automatic.control_state.run_status, RunStatus::Converged);
     }
 
     #[test]

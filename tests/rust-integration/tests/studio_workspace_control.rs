@@ -2,9 +2,9 @@ use std::fs;
 use std::path::Path;
 
 use radishflow_studio::{
-    RunPanelWidgetDispatchOutcome, StudioAppAuthCacheContext, StudioAppFacade,
+    RunPanelWidgetDispatchOutcome, StudioAppAuthCacheContext, StudioAppCommand, StudioAppFacade,
     StudioAppResultDispatch, StudioWorkspaceRunOutcome, WorkspaceControlAction,
-    WorkspaceRunPackageSelection, apply_run_panel_recovery_action,
+    WorkspaceRunCommand, WorkspaceRunPackageSelection, apply_run_panel_recovery_action,
     dispatch_run_panel_primary_action_with_auth_cache,
     dispatch_workspace_control_action_with_auth_cache,
 };
@@ -13,7 +13,7 @@ use rf_store::parse_project_file_json;
 use rf_ui::{
     AppState, DocumentCommand, DocumentMetadata, EntitlementSnapshot, FlowsheetDocument,
     InspectorTarget, PropertyPackageManifest, PropertyPackageSource,
-    RunPanelRecoveryActionKind, RunStatus,
+    RunPanelRecoveryActionKind, RunStatus, SimulationMode,
 };
 
 fn app_state_from_project(
@@ -277,6 +277,230 @@ fn workspace_control_reports_local_cache_repair_notice_end_to_end() {
 }
 
 #[test]
+fn automatic_workspace_run_executes_after_document_revision_advances_end_to_end() {
+    let cache_root = unique_temp_path("integration-automatic-workspace-run");
+    let mut auth_cache_index = sample_auth_cache_index(&[]);
+    write_cached_package(
+        &cache_root,
+        &mut auth_cache_index,
+        "binary-hydrocarbon-lite-v1",
+    );
+    let facade = StudioAppFacade::new();
+    let mut app_state = app_state_from_project(
+        include_str!("../../../examples/flowsheets/feed-heater-flash.rfproj.json"),
+        "doc-control-auto-run",
+        "Control Automatic Run Demo",
+        29,
+    );
+    let context = StudioAppAuthCacheContext::new(&cache_root, &auth_cache_index);
+
+    let mode = facade
+        .execute_with_auth_cache(
+            &mut app_state,
+            &context,
+            &StudioAppCommand::set_workspace_simulation_mode(SimulationMode::Active),
+        )
+        .expect("expected mode activation");
+    match mode.dispatch {
+        StudioAppResultDispatch::WorkspaceMode(dispatch) => {
+            assert_eq!(dispatch.simulation_mode, SimulationMode::Active);
+            assert_eq!(
+                dispatch.pending_reason,
+                Some(rf_ui::SolvePendingReason::ModeActivated)
+            );
+        }
+        _ => panic!("expected workspace mode dispatch"),
+    }
+
+    let mut next_flowsheet = app_state.workspace.document.flowsheet.clone();
+    next_flowsheet
+        .units
+        .get_mut(&"heater-1".into())
+        .expect("expected heater unit")
+        .name = "Heater Updated".to_string();
+    app_state.commit_document_change(
+        DocumentCommand::RenameUnit {
+            unit_id: "heater-1".into(),
+            new_name: "Heater Updated".to_string(),
+        },
+        next_flowsheet,
+        timestamp(30),
+    );
+    assert_eq!(app_state.workspace.document.revision, 1);
+    assert_eq!(app_state.workspace.run_panel.run_status, RunStatus::Dirty);
+    assert_eq!(
+        app_state.workspace.run_panel.pending_reason,
+        Some(rf_ui::SolvePendingReason::DocumentRevisionAdvanced)
+    );
+
+    let automatic = facade
+        .execute_with_auth_cache(
+            &mut app_state,
+            &context,
+            &StudioAppCommand::run_workspace(WorkspaceRunCommand::automatic_preferred()),
+        )
+        .expect("expected automatic run dispatch");
+
+    match automatic.dispatch {
+        StudioAppResultDispatch::WorkspaceRun(dispatch) => {
+            assert_eq!(dispatch.package_id.as_deref(), Some("binary-hydrocarbon-lite-v1"));
+            assert!(matches!(
+                dispatch.outcome,
+                StudioWorkspaceRunOutcome::Started(_)
+            ));
+            assert_eq!(dispatch.simulation_mode, SimulationMode::Active);
+            assert_eq!(dispatch.pending_reason, None);
+            assert_eq!(
+                dispatch.latest_snapshot_id.as_deref(),
+                Some("doc-control-auto-run-rev-1-seq-1")
+            );
+        }
+        _ => panic!("expected workspace run dispatch"),
+    }
+    assert_eq!(app_state.workspace.run_panel.run_status, RunStatus::Converged);
+    assert_eq!(
+        app_state.workspace.run_panel.latest_snapshot_id.as_deref(),
+        Some("doc-control-auto-run-rev-1-seq-1")
+    );
+
+    fs::remove_dir_all(cache_root).expect("expected temp dir cleanup");
+}
+
+#[test]
+fn automatic_workspace_run_skips_before_package_resolution_when_no_pending_request_end_to_end() {
+    let cache_root = unique_temp_path("integration-automatic-workspace-skip");
+    let mut auth_cache_index = sample_auth_cache_index(&[]);
+    write_cached_package(&cache_root, &mut auth_cache_index, "binary-hydrocarbon-lite-v1");
+    write_cached_package(&cache_root, &mut auth_cache_index, "binary-hydrocarbon-lite-v2");
+    let facade = StudioAppFacade::new();
+    let mut app_state = app_state_from_project(
+        include_str!("../../../examples/flowsheets/feed-heater-flash.rfproj.json"),
+        "doc-control-auto-skip",
+        "Control Automatic Skip Demo",
+        31,
+    );
+    let context = StudioAppAuthCacheContext::new(&cache_root, &auth_cache_index);
+
+    dispatch_workspace_control_action_with_auth_cache(
+        &facade,
+        &mut app_state,
+        &context,
+        &WorkspaceControlAction::set_mode(SimulationMode::Active),
+    )
+    .expect("expected active mode dispatch");
+    let first = dispatch_workspace_control_action_with_auth_cache(
+        &facade,
+        &mut app_state,
+        &context,
+        &WorkspaceControlAction::run_manual(WorkspaceRunPackageSelection::Explicit(
+            "binary-hydrocarbon-lite-v1".to_string(),
+        )),
+    )
+    .expect("expected successful explicit run");
+    assert_eq!(first.control_state.run_status, RunStatus::Converged);
+    assert_eq!(app_state.workspace.run_panel.pending_reason, None);
+    assert_eq!(app_state.workspace.run_panel.simulation_mode, SimulationMode::Active);
+
+    let automatic = facade
+        .execute_with_auth_cache(
+            &mut app_state,
+            &context,
+            &StudioAppCommand::run_workspace(WorkspaceRunCommand::automatic_preferred()),
+        )
+        .expect("expected automatic skip dispatch");
+
+    match automatic.dispatch {
+        StudioAppResultDispatch::WorkspaceRun(dispatch) => {
+            assert_eq!(dispatch.package_id, None);
+            assert!(matches!(
+                dispatch.outcome,
+                StudioWorkspaceRunOutcome::Skipped(radishflow_studio::WorkspaceSolveSkipReason::NoPendingRequest)
+            ));
+            assert_eq!(dispatch.simulation_mode, SimulationMode::Active);
+            assert_eq!(dispatch.pending_reason, None);
+            assert_eq!(
+                dispatch.latest_snapshot_id.as_deref(),
+                Some("doc-control-auto-skip-rev-0-seq-1")
+            );
+        }
+        _ => panic!("expected workspace run dispatch"),
+    }
+    assert_eq!(app_state.workspace.run_panel.run_status, RunStatus::Converged);
+    assert_eq!(
+        app_state.workspace.run_panel.latest_snapshot_id.as_deref(),
+        Some("doc-control-auto-skip-rev-0-seq-1")
+    );
+
+    fs::remove_dir_all(cache_root).expect("expected temp dir cleanup");
+}
+
+#[test]
+fn workspace_control_failed_rerun_clears_previous_snapshot_summary_end_to_end() {
+    let cache_root = unique_temp_path("integration-run-panel-local-cache-rerun-failure");
+    let mut auth_cache_index = sample_auth_cache_index(&[]);
+    write_cached_package(
+        &cache_root,
+        &mut auth_cache_index,
+        "binary-hydrocarbon-lite-v1",
+    );
+    let facade = StudioAppFacade::new();
+    let mut app_state = app_state_from_project(
+        include_str!("../../../examples/flowsheets/feed-heater-flash.rfproj.json"),
+        "doc-control-local-cache-rerun-failure",
+        "Control Local Cache Rerun Failure Demo",
+        28,
+    );
+    let context = StudioAppAuthCacheContext::new(&cache_root, &auth_cache_index);
+
+    let first =
+        dispatch_run_panel_primary_action_with_auth_cache(&facade, &mut app_state, &context)
+            .expect("expected first successful run");
+    assert_eq!(first.state.control_state.run_status, RunStatus::Converged);
+    assert_eq!(
+        app_state.workspace.run_panel.latest_snapshot_id.as_deref(),
+        Some("doc-control-local-cache-rerun-failure-rev-0-seq-1")
+    );
+
+    fs::remove_dir_all(&cache_root).expect("expected temp dir cleanup before rerun");
+
+    let rerun = dispatch_workspace_control_action_with_auth_cache(
+        &facade,
+        &mut app_state,
+        &context,
+        &WorkspaceControlAction::run_manual(WorkspaceRunPackageSelection::Explicit(
+            "binary-hydrocarbon-lite-v1".to_string(),
+        )),
+    )
+    .expect("expected failed rerun dispatch");
+
+    match rerun.dispatch {
+        StudioAppResultDispatch::WorkspaceRun(dispatch) => {
+            assert!(matches!(
+                dispatch.outcome,
+                StudioWorkspaceRunOutcome::Failed(_)
+            ));
+            assert_eq!(dispatch.latest_snapshot_id, None);
+            assert_eq!(dispatch.latest_snapshot_summary, None);
+        }
+        _ => panic!("expected workspace run dispatch"),
+    }
+    assert_eq!(rerun.control_state.run_status, RunStatus::Error);
+    assert_eq!(rerun.control_state.latest_snapshot_id, None);
+    assert_eq!(rerun.control_state.latest_snapshot_summary, None);
+    assert_eq!(app_state.workspace.run_panel.latest_snapshot_id, None);
+    assert_eq!(app_state.workspace.run_panel.latest_snapshot_summary, None);
+    assert_eq!(
+        app_state
+            .workspace
+            .run_panel
+            .notice
+            .as_ref()
+            .map(|notice| notice.title.as_str()),
+        Some("Local cache unavailable")
+    );
+}
+
+#[test]
 fn run_panel_recovery_action_focuses_failed_unit_end_to_end() {
     let cache_root = unique_temp_path("integration-run-panel-recovery");
     let mut auth_cache_index = sample_auth_cache_index(&[]);
@@ -391,6 +615,72 @@ fn run_panel_recovery_action_restores_invalid_port_signature_end_to_end() {
             .is_none()
     );
     assert!(app_state.workspace.panels.inspector_open);
+
+    fs::remove_dir_all(cache_root).expect("expected temp dir cleanup");
+}
+
+#[test]
+fn run_panel_recovery_action_restores_invalid_port_signature_and_reruns_successfully() {
+    let cache_root = unique_temp_path("integration-run-panel-connection-recovery-rerun");
+    let mut auth_cache_index = sample_auth_cache_index(&[]);
+    write_cached_package(
+        &cache_root,
+        &mut auth_cache_index,
+        "binary-hydrocarbon-lite-v1",
+    );
+    let facade = StudioAppFacade::new();
+    let mut app_state = app_state_from_project(
+        include_str!("../../../examples/flowsheets/failures/invalid-port-signature.rfproj.json"),
+        "doc-control-connection-recovery-rerun",
+        "Control Connection Recovery Rerun Demo",
+        35,
+    );
+    let context = StudioAppAuthCacheContext::new(&cache_root, &auth_cache_index);
+
+    dispatch_run_panel_primary_action_with_auth_cache(&facade, &mut app_state, &context)
+        .expect("expected connection validation failure");
+
+    let recovery =
+        apply_run_panel_recovery_action(&mut app_state).expect("expected recovery action");
+
+    assert_eq!(recovery.action.title, "Restore canonical ports");
+    assert_eq!(app_state.workspace.document.revision, 1);
+    assert_eq!(app_state.workspace.run_panel.run_status, RunStatus::Dirty);
+    assert_eq!(
+        app_state.workspace.run_panel.pending_reason,
+        Some(rf_ui::SolvePendingReason::DocumentRevisionAdvanced)
+    );
+    assert_eq!(app_state.workspace.run_panel.latest_snapshot_id, None);
+
+    let rerun =
+        dispatch_run_panel_primary_action_with_auth_cache(&facade, &mut app_state, &context)
+            .expect("expected successful rerun after recovery");
+
+    match rerun.dispatch {
+        RunPanelWidgetDispatchOutcome::Executed(outcome) => match outcome.dispatch {
+            StudioAppResultDispatch::WorkspaceRun(dispatch) => {
+                assert!(matches!(
+                    dispatch.outcome,
+                    StudioWorkspaceRunOutcome::Started(_)
+                ));
+                assert_eq!(
+                    dispatch.latest_snapshot_id.as_deref(),
+                    Some("doc-control-connection-recovery-rerun-rev-1-seq-1")
+                );
+            }
+            _ => panic!("expected workspace run dispatch"),
+        },
+        _ => panic!("expected executed rerun outcome"),
+    }
+    assert_eq!(rerun.state.control_state.run_status, RunStatus::Converged);
+    assert_eq!(
+        rerun.state.control_state.latest_snapshot_id.as_deref(),
+        Some("doc-control-connection-recovery-rerun-rev-1-seq-1")
+    );
+    assert_eq!(
+        app_state.workspace.run_panel.latest_snapshot_id.as_deref(),
+        Some("doc-control-connection-recovery-rerun-rev-1-seq-1")
+    );
 
     fs::remove_dir_all(cache_root).expect("expected temp dir cleanup");
 }
@@ -834,6 +1124,72 @@ fn run_panel_recovery_action_creates_stream_for_unbound_outlet_end_to_end() {
             .contains(&"feed-1".into())
     );
     assert!(app_state.workspace.panels.inspector_open);
+
+    fs::remove_dir_all(cache_root).expect("expected temp dir cleanup");
+}
+
+#[test]
+fn run_panel_recovery_action_creates_stream_for_unbound_outlet_and_reruns_successfully() {
+    let cache_root = unique_temp_path("integration-run-panel-unbound-outlet-recovery-rerun");
+    let mut auth_cache_index = sample_auth_cache_index(&[]);
+    write_cached_package(
+        &cache_root,
+        &mut auth_cache_index,
+        "binary-hydrocarbon-lite-v1",
+    );
+    let facade = StudioAppFacade::new();
+    let mut app_state = app_state_from_project(
+        include_str!("../../../examples/flowsheets/failures/unbound-outlet-port.rfproj.json"),
+        "doc-control-unbound-outlet-recovery-rerun",
+        "Control Unbound Outlet Recovery Rerun Demo",
+        40,
+    );
+    let context = StudioAppAuthCacheContext::new(&cache_root, &auth_cache_index);
+
+    dispatch_run_panel_primary_action_with_auth_cache(&facade, &mut app_state, &context)
+        .expect("expected connection validation failure");
+
+    let recovery =
+        apply_run_panel_recovery_action(&mut app_state).expect("expected recovery action");
+
+    assert_eq!(recovery.action.title, "Create outlet stream");
+    assert_eq!(app_state.workspace.document.revision, 1);
+    assert_eq!(app_state.workspace.run_panel.run_status, RunStatus::Dirty);
+    assert_eq!(
+        app_state.workspace.run_panel.pending_reason,
+        Some(rf_ui::SolvePendingReason::DocumentRevisionAdvanced)
+    );
+    assert_eq!(app_state.workspace.run_panel.latest_snapshot_id, None);
+
+    let rerun =
+        dispatch_run_panel_primary_action_with_auth_cache(&facade, &mut app_state, &context)
+            .expect("expected successful rerun after recovery");
+
+    match rerun.dispatch {
+        RunPanelWidgetDispatchOutcome::Executed(outcome) => match outcome.dispatch {
+            StudioAppResultDispatch::WorkspaceRun(dispatch) => {
+                assert!(matches!(
+                    dispatch.outcome,
+                    StudioWorkspaceRunOutcome::Started(_)
+                ));
+                assert_eq!(
+                    dispatch.latest_snapshot_id.as_deref(),
+                    Some("doc-control-unbound-outlet-recovery-rerun-rev-1-seq-1")
+                );
+            }
+            _ => panic!("expected workspace run dispatch"),
+        },
+        _ => panic!("expected executed rerun outcome"),
+    }
+    assert_eq!(rerun.state.control_state.run_status, RunStatus::Converged);
+    assert_eq!(
+        rerun.state.control_state.latest_snapshot_id.as_deref(),
+        Some("doc-control-unbound-outlet-recovery-rerun-rev-1-seq-1")
+    );
+    assert_eq!(
+        app_state.workspace.run_panel.latest_snapshot_id.as_deref(),
+        Some("doc-control-unbound-outlet-recovery-rerun-rev-1-seq-1")
+    );
 
     fs::remove_dir_all(cache_root).expect("expected temp dir cleanup");
 }

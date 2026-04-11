@@ -185,6 +185,8 @@ impl SolveSessionState {
         self.observed_revision = revision;
         self.status = RunStatus::Dirty;
         self.pending_reason = Some(SolvePendingReason::DocumentRevisionAdvanced);
+        self.latest_snapshot = None;
+        self.latest_diagnostic = None;
     }
 
     pub fn activate(&mut self) {
@@ -228,6 +230,7 @@ impl SolveSessionState {
     ) {
         self.observed_revision = revision;
         self.status = status;
+        self.latest_snapshot = None;
         self.latest_diagnostic = Some(summary);
         self.pending_reason = None;
         self.mode = SimulationMode::Hold;

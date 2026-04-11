@@ -64,7 +64,7 @@ pub use state::{
     AppLogEntry, AppLogFeed, AppLogLevel, AppState, AppTheme, DateTimeUtc, DocumentMetadata,
     DraftValidationState, DraftValue, FieldDraft, FlowsheetDocument, InspectorDraftState,
     InspectorTarget, LocaleCode, PanelLayoutPreferences, SelectionState, UiPanelsState,
-    UserPreferences, WorkspaceState, latest_snapshot_id,
+    UserPreferences, WorkspaceState, latest_snapshot, latest_snapshot_id,
 };
 
 #[cfg(test)]
@@ -92,6 +92,7 @@ mod tests {
         RunPanelTextView, RunPanelViewModel, RunPanelWidgetEvent, RunPanelWidgetModel, RunStatus,
         SecureCredentialHandle, SimulationMode, SolvePendingReason, SolveSnapshot,
         StreamVisualKind, StreamVisualState, SuggestionSource, SuggestionStatus, TokenLease,
+        latest_snapshot,
     };
 
     fn timestamp(seconds: u64) -> std::time::SystemTime {
@@ -212,6 +213,40 @@ mod tests {
         assert_eq!(
             app_state.workspace.document.metadata.updated_at,
             timestamp(20)
+        );
+    }
+
+    #[test]
+    fn commit_document_change_clears_stale_current_snapshot_summary() {
+        let mut app_state = AppState::new(sample_document());
+        let snapshot = SolveSnapshot::new(
+            "snapshot-ui-stale",
+            0,
+            1,
+            RunStatus::Converged,
+            DiagnosticSummary::new(0, DiagnosticSeverity::Info, "snapshot ok"),
+        );
+        app_state.store_snapshot(snapshot);
+
+        app_state.commit_document_change(
+            DocumentCommand::MoveUnit {
+                unit_id: UnitId::new("heater-1"),
+                position: CanvasPoint::new(120.0, 80.0),
+            },
+            Flowsheet::new("demo-updated"),
+            timestamp(21),
+        );
+
+        assert_eq!(app_state.workspace.snapshot_history.len(), 1);
+        assert_eq!(app_state.workspace.solve_session.latest_snapshot, None);
+        assert_eq!(app_state.workspace.solve_session.latest_diagnostic, None);
+        assert!(latest_snapshot(&app_state.workspace).is_none());
+        assert_eq!(app_state.workspace.run_panel.latest_snapshot_id, None);
+        assert_eq!(app_state.workspace.run_panel.latest_snapshot_summary, None);
+        assert_eq!(app_state.workspace.run_panel.run_status, RunStatus::Dirty);
+        assert_eq!(
+            app_state.workspace.run_panel.pending_reason,
+            Some(SolvePendingReason::DocumentRevisionAdvanced)
         );
     }
 
@@ -1301,6 +1336,39 @@ mod tests {
                 .action(RunPanelActionId::Resume)
                 .expect("expected resume action")
                 .enabled
+        );
+    }
+
+    #[test]
+    fn recording_failure_clears_current_snapshot_for_same_revision() {
+        let mut app_state = AppState::new(sample_document());
+        app_state.store_snapshot(SolveSnapshot::new(
+            "snapshot-success-1",
+            0,
+            1,
+            RunStatus::Converged,
+            DiagnosticSummary::new(0, DiagnosticSeverity::Info, "snapshot ok"),
+        ));
+
+        app_state.record_failure(
+            0,
+            RunStatus::Error,
+            DiagnosticSummary::new(0, DiagnosticSeverity::Error, "solve failed again"),
+        );
+
+        assert_eq!(app_state.workspace.solve_session.latest_snapshot, None);
+        assert!(latest_snapshot(&app_state.workspace).is_none());
+        assert_eq!(app_state.workspace.run_panel.latest_snapshot_id, None);
+        assert_eq!(app_state.workspace.run_panel.latest_snapshot_summary, None);
+        assert_eq!(app_state.workspace.run_panel.run_status, RunStatus::Error);
+        assert_eq!(
+            app_state
+                .workspace
+                .run_panel
+                .notice
+                .as_ref()
+                .map(|notice| notice.title.as_str()),
+            Some("Run failed")
         );
     }
 

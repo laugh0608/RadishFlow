@@ -5,7 +5,7 @@ use rf_store::StoredAuthCacheIndex;
 use rf_types::{ErrorCode, RfError, RfResult};
 use rf_ui::{
     AppLogEntry, AppLogLevel, AppState, DiagnosticSeverity, DiagnosticSummary, RunStatus,
-    SimulationMode, SolvePendingReason, latest_snapshot_id,
+    SimulationMode, SolvePendingReason, latest_snapshot, latest_snapshot_id,
 };
 
 use crate::{
@@ -513,10 +513,7 @@ fn map_workspace_run_dispatch(
         pending_reason: app_state.workspace.solve_session.pending_reason,
         latest_snapshot_id: latest_snapshot_id(&app_state.workspace)
             .map(|snapshot_id| snapshot_id.as_str().to_string()),
-        latest_snapshot_summary: app_state
-            .workspace
-            .snapshot_history
-            .back()
+        latest_snapshot_summary: latest_snapshot(&app_state.workspace)
             .map(|snapshot| snapshot.summary.primary_message.clone()),
         run_status: app_state.workspace.solve_session.status,
         log_entry_count: app_state.log_feed.entries.len(),
@@ -530,10 +527,7 @@ fn map_workspace_mode_dispatch(app_state: &AppState) -> StudioWorkspaceModeDispa
         pending_reason: app_state.workspace.solve_session.pending_reason,
         latest_snapshot_id: latest_snapshot_id(&app_state.workspace)
             .map(|snapshot_id| snapshot_id.as_str().to_string()),
-        latest_snapshot_summary: app_state
-            .workspace
-            .snapshot_history
-            .back()
+        latest_snapshot_summary: latest_snapshot(&app_state.workspace)
             .map(|snapshot| snapshot.summary.primary_message.clone()),
         run_status: app_state.workspace.solve_session.status,
         log_entry_count: app_state.log_feed.entries.len(),
@@ -563,11 +557,11 @@ mod tests {
     };
     use rf_types::ComponentId;
     use rf_ui::{
-        AppState, AuthenticatedUser, DocumentMetadata, EntitlementSnapshot, FlowsheetDocument,
-        OfflineLeaseRefreshRequest, OfflineLeaseRefreshResponse, PropertyPackageLeaseGrant,
-        PropertyPackageLeaseRequest, PropertyPackageManifest, PropertyPackageManifestList,
-        PropertyPackageSource, RunStatus, SecureCredentialHandle, SimulationMode,
-        SolvePendingReason, TokenLease,
+        AppState, AuthenticatedUser, DiagnosticSeverity, DiagnosticSummary, DocumentMetadata,
+        EntitlementSnapshot, FlowsheetDocument, OfflineLeaseRefreshRequest,
+        OfflineLeaseRefreshResponse, PropertyPackageLeaseGrant, PropertyPackageLeaseRequest,
+        PropertyPackageManifest, PropertyPackageManifestList, PropertyPackageSource, RunStatus,
+        SecureCredentialHandle, SimulationMode, SolvePendingReason, TokenLease,
     };
 
     use super::{
@@ -912,6 +906,49 @@ mod tests {
                 .as_ref()
                 .map(|entry| entry.message.as_str()),
             Some("Set workspace simulation mode to Active")
+        );
+    }
+
+    #[test]
+    fn facade_mode_dispatch_hides_stale_snapshot_after_document_revision_advances() {
+        let auth_cache_index = sample_auth_cache_index(&["pkg-1"]);
+        let facade = StudioAppFacade::new();
+        let mut app_state = AppState::new(sample_document());
+        app_state.store_snapshot(rf_ui::SolveSnapshot::new(
+            "snapshot-stale",
+            0,
+            1,
+            RunStatus::Converged,
+            DiagnosticSummary::new(0, DiagnosticSeverity::Info, "snapshot ok"),
+        ));
+        app_state.commit_document_change(
+            rf_ui::DocumentCommand::MoveUnit {
+                unit_id: "heater-1".into(),
+                position: rf_ui::CanvasPoint::new(80.0, 40.0),
+            },
+            Flowsheet::new("demo-updated"),
+            timestamp(31),
+        );
+        let cache_root = PathBuf::from("D:\\cache-root");
+        let context = StudioAppAuthCacheContext::new(&cache_root, &auth_cache_index);
+        let command = StudioAppCommand::set_workspace_simulation_mode(SimulationMode::Active);
+
+        let outcome = facade
+            .execute_with_auth_cache(&mut app_state, &context, &command)
+            .expect("expected mode dispatch");
+
+        let dispatch = match outcome.dispatch {
+            StudioAppResultDispatch::WorkspaceMode(dispatch) => dispatch,
+            StudioAppResultDispatch::WorkspaceRun(_) => panic!("expected workspace mode dispatch"),
+            StudioAppResultDispatch::Entitlement(_) => panic!("expected workspace mode dispatch"),
+        };
+
+        assert_eq!(dispatch.latest_snapshot_id, None);
+        assert_eq!(dispatch.latest_snapshot_summary, None);
+        assert_eq!(dispatch.run_status, RunStatus::Dirty);
+        assert_eq!(
+            dispatch.pending_reason,
+            Some(SolvePendingReason::ModeActivated)
         );
     }
 
