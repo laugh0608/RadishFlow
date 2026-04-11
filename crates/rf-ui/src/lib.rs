@@ -1080,6 +1080,53 @@ mod tests {
     }
 
     #[test]
+    fn recording_connection_validation_subcode_refines_run_panel_notice_and_recovery() {
+        let mut app_state = AppState::new(sample_document());
+        let summary = DiagnosticSummary::new(
+            0,
+            DiagnosticSeverity::Error,
+            "solver.connection_validation.invalid_port_signature: solver connection validation failed",
+        )
+        .with_primary_code("solver.connection_validation.invalid_port_signature")
+        .with_related_unit_ids(vec![UnitId::new("feed-1")]);
+
+        app_state.record_failure(0, RunStatus::Error, summary);
+
+        assert_eq!(
+            app_state
+                .workspace
+                .run_panel
+                .notice
+                .as_ref()
+                .map(|notice| notice.title.as_str()),
+            Some("Invalid port signature")
+        );
+        assert_eq!(
+            app_state
+                .workspace
+                .run_panel
+                .notice
+                .as_ref()
+                .and_then(|notice| notice.recovery_action.as_ref())
+                .map(|action| {
+                    (
+                        action.title,
+                        action.detail,
+                        action
+                            .target_unit_id
+                            .as_ref()
+                            .map(|unit_id| unit_id.as_str()),
+                    )
+                }),
+            Some((
+                "Inspect unit specs",
+                "检查该单元的端口名称、方向、类型和数量是否与 canonical built-in spec 一致。",
+                Some("feed-1"),
+            ))
+        );
+    }
+
+    #[test]
     fn applying_run_panel_recovery_action_selects_unit_and_opens_inspector() {
         let mut app_state = AppState::new(sample_document());
         let summary = DiagnosticSummary::new(

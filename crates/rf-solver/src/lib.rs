@@ -377,17 +377,45 @@ fn topological_unit_order(flowsheet: &Flowsheet) -> RfResult<Vec<UnitId>> {
 }
 
 fn solver_stage_error(code: SolverDiagnosticCode, error: RfError) -> RfError {
+    let diagnostic_code = solver_stage_diagnostic_code(code, &error);
     RfError::new(
         error.code(),
         format!(
             "{}: solver {} failed: {}",
-            code.as_str(),
+            diagnostic_code,
             code.stage_label(),
             error.message()
         ),
     )
-    .with_diagnostic_code(code.as_str())
+    .with_diagnostic_code(diagnostic_code)
     .with_related_unit_ids(error.context().related_unit_ids().to_vec())
+}
+
+fn solver_stage_diagnostic_code(code: SolverDiagnosticCode, error: &RfError) -> String {
+    match code {
+        SolverDiagnosticCode::ConnectionValidation => {
+            map_connection_validation_diagnostic_code(error.context().diagnostic_code())
+                .unwrap_or_else(|| code.as_str().to_string())
+        }
+        _ => code.as_str().to_string(),
+    }
+}
+
+fn map_connection_validation_diagnostic_code(diagnostic_code: Option<&str>) -> Option<String> {
+    let diagnostic_code = diagnostic_code?;
+    if diagnostic_code == "flowsheet.connection_validation" {
+        return Some(SolverDiagnosticCode::ConnectionValidation.as_str().to_string());
+    }
+
+    diagnostic_code
+        .strip_prefix("flowsheet.connection_validation.")
+        .map(|suffix| {
+            format!(
+                "{}.{}",
+                SolverDiagnosticCode::ConnectionValidation.as_str(),
+                suffix
+            )
+        })
 }
 
 fn solver_stage_invalid_input_with_related_units(
@@ -1632,7 +1660,7 @@ mod tests {
         assert_eq!(error.code().as_str(), "invalid_connection");
         assert_eq!(
             error.context().diagnostic_code(),
-            Some("solver.connection_validation")
+            Some("solver.connection_validation.duplicate_downstream_sink")
         );
         assert_eq!(
             error.context().related_unit_ids(),
@@ -1694,13 +1722,13 @@ mod tests {
         assert_eq!(error.code().as_str(), "invalid_connection");
         assert_eq!(
             error.context().diagnostic_code(),
-            Some("solver.connection_validation")
+            Some("solver.connection_validation.unsupported_unit_kind")
         );
         assert_eq!(error.context().related_unit_ids(), &[UnitId::new("mystery-1")]);
         assert!(
             error
                 .message()
-                .contains("solver connection validation failed")
+                .contains("solver.connection_validation.unsupported_unit_kind: solver connection validation failed")
         );
         assert!(
             error

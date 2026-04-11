@@ -195,13 +195,15 @@ fn unsupported_unit_kind_reports_connection_validation_context_end_to_end() {
     assert_eq!(error.code().as_str(), "invalid_connection");
     assert_eq!(
         error.context().diagnostic_code(),
-        Some("solver.connection_validation")
+        Some("solver.connection_validation.unsupported_unit_kind")
     );
     assert_eq!(error.context().related_unit_ids(), &[UnitId::new("pump-1")]);
     assert!(
         error
             .message()
-            .contains("solver.connection_validation: solver connection validation failed")
+            .contains(
+                "solver.connection_validation.unsupported_unit_kind: solver connection validation failed"
+            )
     );
     assert!(error.message().contains("unsupported kind `pump`"));
 }
@@ -250,13 +252,15 @@ fn missing_upstream_source_reports_connection_validation_context_end_to_end() {
     assert_eq!(error.code().as_str(), "invalid_connection");
     assert_eq!(
         error.context().diagnostic_code(),
-        Some("solver.connection_validation")
+        Some("solver.connection_validation.missing_upstream_source")
     );
     assert_eq!(error.context().related_unit_ids(), &[UnitId::new("mixer-1")]);
     assert!(
         error
             .message()
-            .contains("solver.connection_validation: solver connection validation failed")
+            .contains(
+                "solver.connection_validation.missing_upstream_source: solver connection validation failed"
+            )
     );
     assert!(
         error
@@ -275,13 +279,15 @@ fn missing_stream_reference_reports_connection_validation_context_end_to_end() {
     assert_eq!(error.code().as_str(), "invalid_connection");
     assert_eq!(
         error.context().diagnostic_code(),
-        Some("solver.connection_validation")
+        Some("solver.connection_validation.missing_stream_reference")
     );
     assert_eq!(error.context().related_unit_ids(), &[UnitId::new("heater-1")]);
     assert!(
         error
             .message()
-            .contains("solver.connection_validation: solver connection validation failed")
+            .contains(
+                "solver.connection_validation.missing_stream_reference: solver connection validation failed"
+            )
     );
     assert!(
         error
@@ -300,13 +306,15 @@ fn invalid_port_signature_reports_connection_validation_context_end_to_end() {
     assert_eq!(error.code().as_str(), "invalid_connection");
     assert_eq!(
         error.context().diagnostic_code(),
-        Some("solver.connection_validation")
+        Some("solver.connection_validation.invalid_port_signature")
     );
     assert_eq!(error.context().related_unit_ids(), &[UnitId::new("feed-1")]);
     assert!(
         error
             .message()
-            .contains("solver.connection_validation: solver connection validation failed")
+            .contains(
+                "solver.connection_validation.invalid_port_signature: solver connection validation failed"
+            )
     );
     assert!(
         error

@@ -129,64 +129,189 @@ impl RunPanelState {
 }
 
 pub fn run_panel_failure_title_for_diagnostic_code(primary_code: Option<&str>) -> &'static str {
-    match primary_code {
-        Some("solver.connection_validation") => "Connection validation failed",
-        Some("solver.topological_ordering") => "Topological ordering failed",
-        Some("solver.step.lookup") => "Unit lookup failed",
-        Some("solver.step.spec") => "Unit specification failed",
-        Some("solver.step.instantiation") => "Operation instantiation failed",
-        Some("solver.step.inlet") => "Inlet resolution failed",
-        Some("solver.step.materialization") => "Output materialization failed",
-        Some("solver.step.execution") => "Unit execution failed",
-        _ => "Run failed",
+    if diagnostic_code_matches(
+        primary_code,
+        "solver.connection_validation.unsupported_unit_kind",
+    ) {
+        "Unsupported unit kind"
+    } else if diagnostic_code_matches(
+        primary_code,
+        "solver.connection_validation.invalid_port_signature",
+    ) {
+        "Invalid port signature"
+    } else if diagnostic_code_matches(
+        primary_code,
+        "solver.connection_validation.missing_upstream_source",
+    ) {
+        "Missing upstream source"
+    } else if diagnostic_code_matches(
+        primary_code,
+        "solver.connection_validation.missing_stream_reference",
+    ) {
+        "Missing stream reference"
+    } else if diagnostic_code_matches(
+        primary_code,
+        "solver.connection_validation.duplicate_upstream_source",
+    ) {
+        "Duplicate stream source"
+    } else if diagnostic_code_matches(
+        primary_code,
+        "solver.connection_validation.duplicate_downstream_sink",
+    ) {
+        "Duplicate stream sink"
+    } else if diagnostic_code_matches(
+        primary_code,
+        "solver.connection_validation.unbound_material_port",
+    ) {
+        "Unbound material port"
+    } else if diagnostic_code_matches(
+        primary_code,
+        "solver.connection_validation.orphan_stream",
+    ) {
+        "Orphan stream"
+    } else if diagnostic_code_in_family(primary_code, "solver.connection_validation") {
+        "Connection validation failed"
+    } else if diagnostic_code_in_family(primary_code, "solver.topological_ordering") {
+        "Topological ordering failed"
+    } else if diagnostic_code_in_family(primary_code, "solver.step.lookup") {
+        "Unit lookup failed"
+    } else if diagnostic_code_in_family(primary_code, "solver.step.spec") {
+        "Unit specification failed"
+    } else if diagnostic_code_in_family(primary_code, "solver.step.instantiation") {
+        "Operation instantiation failed"
+    } else if diagnostic_code_in_family(primary_code, "solver.step.inlet") {
+        "Inlet resolution failed"
+    } else if diagnostic_code_in_family(primary_code, "solver.step.materialization") {
+        "Output materialization failed"
+    } else if diagnostic_code_in_family(primary_code, "solver.step.execution") {
+        "Unit execution failed"
+    } else {
+        "Run failed"
     }
 }
 
 pub fn run_panel_failure_recovery_action_for_diagnostic_code(
     primary_code: Option<&str>,
 ) -> Option<RunPanelRecoveryAction> {
-    match primary_code {
-        Some("solver.connection_validation") => Some(RunPanelRecoveryAction::new(
+    if diagnostic_code_matches(
+        primary_code,
+        "solver.connection_validation.unsupported_unit_kind",
+    ) {
+        Some(RunPanelRecoveryAction::new(
+            RunPanelRecoveryActionKind::CheckSupportedUnitKind,
+            "Check supported unit kind",
+            "检查单元 kind 是否属于当前内建 solver 支持范围，并确认是否误用了本阶段尚未支持的单元类型。",
+        ))
+    } else if diagnostic_code_matches(
+        primary_code,
+        "solver.connection_validation.invalid_port_signature",
+    ) {
+        Some(RunPanelRecoveryAction::new(
+            RunPanelRecoveryActionKind::InspectUnitSpec,
+            "Inspect unit specs",
+            "检查该单元的端口名称、方向、类型和数量是否与 canonical built-in spec 一致。",
+        ))
+    } else if diagnostic_code_matches(
+        primary_code,
+        "solver.connection_validation.missing_upstream_source",
+    ) {
+        Some(RunPanelRecoveryAction::new(
+            RunPanelRecoveryActionKind::InspectInletPath,
+            "Inspect inlet path",
+            "检查入口流股是否缺少上游 outlet source，并确认上游单元是否已绑定到同一 stream。",
+        ))
+    } else if diagnostic_code_matches(
+        primary_code,
+        "solver.connection_validation.missing_stream_reference",
+    ) {
+        Some(RunPanelRecoveryAction::new(
+            RunPanelRecoveryActionKind::FixConnections,
+            "Repair stream references",
+            "检查端口引用的 stream 是否存在，必要时重新绑定或补建流股后再重试。",
+        ))
+    } else if diagnostic_code_matches(
+        primary_code,
+        "solver.connection_validation.duplicate_upstream_source",
+    ) {
+        Some(RunPanelRecoveryAction::new(
+            RunPanelRecoveryActionKind::FixConnections,
+            "Resolve duplicate sources",
+            "确保每条物料流股只有一个上游 outlet source，再重新执行连接校验。",
+        ))
+    } else if diagnostic_code_matches(
+        primary_code,
+        "solver.connection_validation.duplicate_downstream_sink",
+    ) {
+        Some(RunPanelRecoveryAction::new(
+            RunPanelRecoveryActionKind::FixConnections,
+            "Resolve duplicate sinks",
+            "确保每条物料流股在当前阶段只连接一个下游 inlet sink，再重新执行连接校验。",
+        ))
+    } else if diagnostic_code_matches(
+        primary_code,
+        "solver.connection_validation.unbound_material_port",
+    ) {
+        Some(RunPanelRecoveryAction::new(
+            RunPanelRecoveryActionKind::FixConnections,
+            "Bind missing stream",
+            "检查该物料端口是否已经绑定到有效 stream，必要时补建流股并重新绑定。",
+        ))
+    } else if diagnostic_code_matches(primary_code, "solver.connection_validation.orphan_stream") {
+        Some(RunPanelRecoveryAction::new(
+            RunPanelRecoveryActionKind::FixConnections,
+            "Reconnect orphan stream",
+            "检查未连接到任何单元端口的流股，删除或重新绑定后再重试。",
+        ))
+    } else if diagnostic_code_in_family(primary_code, "solver.connection_validation") {
+        Some(RunPanelRecoveryAction::new(
             RunPanelRecoveryActionKind::FixConnections,
             "Fix connections",
             "检查流股连接、端口签名和缺失 stream 引用后再重试。",
-        )),
-        Some("solver.topological_ordering") => Some(RunPanelRecoveryAction::new(
+        ))
+    } else if diagnostic_code_in_family(primary_code, "solver.topological_ordering") {
+        Some(RunPanelRecoveryAction::new(
             RunPanelRecoveryActionKind::BreakCycle,
             "Break cycle",
             "消除自环或多单元回路后再重试，当前顺序模块法只支持无回路 flowsheet。",
-        )),
-        Some("solver.step.lookup") => Some(RunPanelRecoveryAction::new(
+        ))
+    } else if diagnostic_code_in_family(primary_code, "solver.step.lookup") {
+        Some(RunPanelRecoveryAction::new(
             RunPanelRecoveryActionKind::VerifyUnitExists,
             "Verify unit exists",
             "确认当前 step 引用的 unit 仍存在于 flowsheet 中。",
-        )),
-        Some("solver.step.spec") => Some(RunPanelRecoveryAction::new(
+        ))
+    } else if diagnostic_code_in_family(primary_code, "solver.step.spec") {
+        Some(RunPanelRecoveryAction::new(
             RunPanelRecoveryActionKind::InspectUnitSpec,
             "Inspect unit specs",
             "检查该单元的端口配置和必填规格是否完整。",
-        )),
-        Some("solver.step.instantiation") => Some(RunPanelRecoveryAction::new(
+        ))
+    } else if diagnostic_code_in_family(primary_code, "solver.step.instantiation") {
+        Some(RunPanelRecoveryAction::new(
             RunPanelRecoveryActionKind::CheckSupportedUnitKind,
             "Check supported unit kind",
             "检查单元 kind 与内建 solver 支持范围是否匹配。",
-        )),
-        Some("solver.step.inlet") => Some(RunPanelRecoveryAction::new(
+        ))
+    } else if diagnostic_code_in_family(primary_code, "solver.step.inlet") {
+        Some(RunPanelRecoveryAction::new(
             RunPanelRecoveryActionKind::InspectInletPath,
             "Inspect inlet path",
             "检查入口连接是否完整，以及上游流股是否应先于该单元求解。",
-        )),
-        Some("solver.step.materialization") => Some(RunPanelRecoveryAction::new(
+        ))
+    } else if diagnostic_code_in_family(primary_code, "solver.step.materialization") {
+        Some(RunPanelRecoveryAction::new(
             RunPanelRecoveryActionKind::InspectOutputMaterialization,
             "Inspect outlet materialization",
             "检查单元是否为每个预期 outlet 产出了对应流股。",
-        )),
-        Some("solver.step.execution") => Some(RunPanelRecoveryAction::new(
+        ))
+    } else if diagnostic_code_in_family(primary_code, "solver.step.execution") {
+        Some(RunPanelRecoveryAction::new(
             RunPanelRecoveryActionKind::InspectExecutionInputs,
             "Inspect unit inputs",
             "检查单元规格、物性条件和入口状态是否满足执行前提。",
-        )),
-        _ => None,
+        ))
+    } else {
+        None
     }
 }
 
@@ -222,6 +347,22 @@ fn runtime_notice_from_solve_session(solve_session: &SolveSessionState) -> Optio
         summary.primary_code.as_deref(),
         summary.related_unit_ids.first(),
     ))
+}
+
+fn diagnostic_code_matches(primary_code: Option<&str>, expected: &str) -> bool {
+    matches!(primary_code, Some(code) if code == expected)
+}
+
+fn diagnostic_code_in_family(primary_code: Option<&str>, family: &str) -> bool {
+    matches!(primary_code, Some(code) if code == family)
+        || matches!(
+            primary_code,
+            Some(code)
+                if code
+                    .strip_prefix(family)
+                    .map(|suffix| suffix.starts_with('.'))
+                    .unwrap_or(false)
+        )
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use rf_model::Flowsheet;
 use rf_types::{PortDirection, PortKind, RfError, RfResult, StreamId, UnitId};
-use rf_unitops::validate_unit_node;
+use rf_unitops::{builtin_unit_spec_by_name, validate_unit_node};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MaterialPortRef {
@@ -34,16 +34,66 @@ struct MaterialEndpoints {
     sink: Option<MaterialPortRef>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ConnectionValidationDiagnosticCode {
+    UnsupportedUnitKind,
+    InvalidPortSignature,
+    UnboundMaterialPort,
+    MissingStreamReference,
+    DuplicateUpstreamSource,
+    DuplicateDownstreamSink,
+    OrphanStream,
+    MissingUpstreamSource,
+}
+
+impl ConnectionValidationDiagnosticCode {
+    const fn as_str(self) -> &'static str {
+        match self {
+            Self::UnsupportedUnitKind => "flowsheet.connection_validation.unsupported_unit_kind",
+            Self::InvalidPortSignature => "flowsheet.connection_validation.invalid_port_signature",
+            Self::UnboundMaterialPort => "flowsheet.connection_validation.unbound_material_port",
+            Self::MissingStreamReference => {
+                "flowsheet.connection_validation.missing_stream_reference"
+            }
+            Self::DuplicateUpstreamSource => {
+                "flowsheet.connection_validation.duplicate_upstream_source"
+            }
+            Self::DuplicateDownstreamSink => {
+                "flowsheet.connection_validation.duplicate_downstream_sink"
+            }
+            Self::OrphanStream => "flowsheet.connection_validation.orphan_stream",
+            Self::MissingUpstreamSource => {
+                "flowsheet.connection_validation.missing_upstream_source"
+            }
+        }
+    }
+}
+
+fn invalid_connection_error(
+    code: ConnectionValidationDiagnosticCode,
+    message: impl Into<String>,
+) -> RfError {
+    RfError::invalid_connection(message).with_diagnostic_code(code.as_str())
+}
+
 pub fn validate_connections(flowsheet: &Flowsheet) -> RfResult<Vec<MaterialConnection>> {
     let mut endpoints_by_stream = BTreeMap::<StreamId, MaterialEndpoints>::new();
 
     for unit in flowsheet.units.values() {
+        let validation_code = if builtin_unit_spec_by_name(&unit.kind).is_none() {
+            ConnectionValidationDiagnosticCode::UnsupportedUnitKind
+        } else {
+            ConnectionValidationDiagnosticCode::InvalidPortSignature
+        };
         validate_unit_node(unit).map_err(|error| {
-            RfError::invalid_connection(format!(
+            invalid_connection_error(
+                validation_code,
+                format!(
                 "unit `{}` does not match its canonical built-in port signature: {}",
                 unit.id,
                 error.message()
-            ))
+                ),
+            )
             .with_related_unit_id(unit.id.clone())
         })?;
 
@@ -53,18 +103,24 @@ pub fn validate_connections(flowsheet: &Flowsheet) -> RfResult<Vec<MaterialConne
             }
 
             let stream_id = port.stream_id.clone().ok_or_else(|| {
-                RfError::invalid_connection(format!(
+                invalid_connection_error(
+                    ConnectionValidationDiagnosticCode::UnboundMaterialPort,
+                    format!(
                     "unit `{}` material port `{}` is not connected to any stream",
                     unit.id, port.name
-                ))
+                    ),
+                )
                 .with_related_unit_id(unit.id.clone())
             })?;
             if !flowsheet.streams.contains_key(&stream_id) {
                 return Err(
-                    RfError::invalid_connection(format!(
+                    invalid_connection_error(
+                        ConnectionValidationDiagnosticCode::MissingStreamReference,
+                        format!(
                         "unit `{}` material port `{}` references missing stream `{}`",
                         unit.id, port.name, stream_id
-                    ))
+                        ),
+                    )
                     .with_related_unit_id(unit.id.clone()),
                 );
             }
@@ -77,14 +133,17 @@ pub fn validate_connections(flowsheet: &Flowsheet) -> RfResult<Vec<MaterialConne
                 PortDirection::Outlet => {
                     if let Some(existing) = &endpoints.source {
                         return Err(
-                            RfError::invalid_connection(format!(
+                            invalid_connection_error(
+                                ConnectionValidationDiagnosticCode::DuplicateUpstreamSource,
+                                format!(
                                 "stream `{}` is produced by both `{}.{}` and `{}.{}`",
                                 stream_id,
                                 existing.unit_id,
                                 existing.port_name,
                                 port_ref.unit_id,
                                 port_ref.port_name
-                            ))
+                                ),
+                            )
                             .with_related_unit_ids(vec![
                                 existing.unit_id.clone(),
                                 port_ref.unit_id.clone(),
@@ -97,14 +156,17 @@ pub fn validate_connections(flowsheet: &Flowsheet) -> RfResult<Vec<MaterialConne
                 PortDirection::Inlet => {
                     if let Some(existing) = &endpoints.sink {
                         return Err(
-                            RfError::invalid_connection(format!(
+                            invalid_connection_error(
+                                ConnectionValidationDiagnosticCode::DuplicateDownstreamSink,
+                                format!(
                                 "stream `{}` is consumed by both `{}.{}` and `{}.{}`",
                                 stream_id,
                                 existing.unit_id,
                                 existing.port_name,
                                 port_ref.unit_id,
                                 port_ref.port_name
-                            ))
+                                ),
+                            )
                             .with_related_unit_ids(vec![
                                 existing.unit_id.clone(),
                                 port_ref.unit_id.clone(),
@@ -120,10 +182,10 @@ pub fn validate_connections(flowsheet: &Flowsheet) -> RfResult<Vec<MaterialConne
 
     for stream_id in flowsheet.streams.keys() {
         if !endpoints_by_stream.contains_key(stream_id) {
-            return Err(RfError::invalid_connection(format!(
-                "stream `{}` is not connected to any material port",
-                stream_id
-            )));
+            return Err(invalid_connection_error(
+                ConnectionValidationDiagnosticCode::OrphanStream,
+                format!("stream `{}` is not connected to any material port", stream_id),
+            ));
         }
     }
 
@@ -131,15 +193,15 @@ pub fn validate_connections(flowsheet: &Flowsheet) -> RfResult<Vec<MaterialConne
         .into_iter()
         .map(|(stream_id, endpoints)| {
             let source = endpoints.source.ok_or_else(|| match &endpoints.sink {
-                Some(sink) => RfError::invalid_connection(format!(
-                    "stream `{}` is missing an upstream outlet connection",
-                    stream_id
-                ))
+                Some(sink) => invalid_connection_error(
+                    ConnectionValidationDiagnosticCode::MissingUpstreamSource,
+                    format!("stream `{}` is missing an upstream outlet connection", stream_id),
+                )
                 .with_related_unit_id(sink.unit_id.clone()),
-                None => RfError::invalid_connection(format!(
-                    "stream `{}` is missing an upstream outlet connection",
-                    stream_id
-                )),
+                None => invalid_connection_error(
+                    ConnectionValidationDiagnosticCode::MissingUpstreamSource,
+                    format!("stream `{}` is missing an upstream outlet connection", stream_id),
+                ),
             })?;
 
             Ok(MaterialConnection {
@@ -255,6 +317,10 @@ mod tests {
         let error = validate_connections(&flowsheet).expect_err("expected duplicate sink error");
 
         assert_eq!(error.code().as_str(), "invalid_connection");
+        assert_eq!(
+            error.context().diagnostic_code(),
+            Some("flowsheet.connection_validation.duplicate_downstream_sink")
+        );
         assert!(error.message().contains("consumed by both"));
         assert_eq!(
             error.context().related_unit_ids(),
@@ -283,6 +349,10 @@ mod tests {
         let error = validate_connections(&flowsheet).expect_err("expected missing source error");
 
         assert_eq!(error.code().as_str(), "invalid_connection");
+        assert_eq!(
+            error.context().diagnostic_code(),
+            Some("flowsheet.connection_validation.missing_upstream_source")
+        );
         assert!(
             error
                 .message()
@@ -314,6 +384,10 @@ mod tests {
         let error = validate_connections(&flowsheet).expect_err("expected invalid unit error");
 
         assert_eq!(error.code().as_str(), "invalid_connection");
+        assert_eq!(
+            error.context().diagnostic_code(),
+            Some("flowsheet.connection_validation.invalid_port_signature")
+        );
         assert!(
             error
                 .message()
