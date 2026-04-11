@@ -1,0 +1,81 @@
+{
+  "kind": "radishflow.project-file",
+  "schemaVersion": 1,
+  "document": {
+    "revision": 0,
+    "flowsheet": {
+      "name": "valve-execution-failure",
+      "components": {
+        "component-a": { "id": "component-a", "name": "Component A", "formula": null },
+        "component-b": { "id": "component-b", "name": "Component B", "formula": null }
+      },
+      "streams": {
+        "stream-feed": {
+          "id": "stream-feed",
+          "name": "Feed",
+          "temperature_k": 320.0,
+          "pressure_pa": 100000.0,
+          "total_molar_flow_mol_s": 5.0,
+          "overall_mole_fractions": {
+            "component-a": 0.35,
+            "component-b": 0.65
+          },
+          "phases": []
+        },
+        "stream-throttled": {
+          "id": "stream-throttled",
+          "name": "Throttled Outlet",
+          "temperature_k": 315.0,
+          "pressure_pa": 130000.0,
+          "total_molar_flow_mol_s": 0.0,
+          "overall_mole_fractions": {
+            "component-a": 0.35,
+            "component-b": 0.65
+          },
+          "phases": []
+        }
+      },
+      "units": {
+        "feed-1": {
+          "id": "feed-1",
+          "name": "Feed",
+          "kind": "feed",
+          "ports": [
+            {
+              "name": "outlet",
+              "direction": "outlet",
+              "kind": "material",
+              "stream_id": "stream-feed"
+            }
+          ]
+        },
+        "valve-1": {
+          "id": "valve-1",
+          "name": "Valve",
+          "kind": "valve",
+          "ports": [
+            {
+              "name": "inlet",
+              "direction": "inlet",
+              "kind": "material",
+              "stream_id": "stream-feed"
+            },
+            {
+              "name": "outlet",
+              "direction": "outlet",
+              "kind": "material",
+              "stream_id": "stream-throttled"
+            }
+          ]
+        }
+      }
+    },
+    "metadata": {
+      "documentId": "example-valve-execution-failure",
+      "title": "Valve Execution Failure Example",
+      "schemaVersion": 1,
+      "createdAt": "2026-04-05T00:00:00Z",
+      "updatedAt": "2026-04-05T00:00:00Z"
+    }
+  }
+}
