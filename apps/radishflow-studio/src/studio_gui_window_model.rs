@@ -39,28 +39,11 @@ pub struct StudioGuiWindowRuntimeAreaModel {
     pub control_state: WorkspaceControlState,
     pub run_panel: rf_ui::RunPanelWidgetModel,
     pub entitlement_host: Option<EntitlementSessionHostRuntimeOutput>,
-    pub host_actions: Vec<StudioGuiRuntimeHostActionModel>,
     pub platform_notice: Option<rf_ui::RunPanelNotice>,
     pub platform_timer_lines: Vec<String>,
     pub gui_activity_lines: Vec<String>,
     pub log_entries: Vec<rf_ui::AppLogEntry>,
     pub latest_log_entry: Option<rf_ui::AppLogEntry>,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum StudioGuiRuntimeHostActionId {
-    ForegroundCurrentWindow,
-    LoginCompleted,
-    NetworkRestored,
-    TimerElapsed,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct StudioGuiRuntimeHostActionModel {
-    pub id: StudioGuiRuntimeHostActionId,
-    pub label: &'static str,
-    pub detail: String,
-    pub enabled: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -133,7 +116,7 @@ impl StudioGuiWindowModel {
             header: header_from_snapshot(snapshot),
             commands: commands_from_registry(&snapshot.command_registry),
             canvas: canvas_from_snapshot(snapshot),
-            runtime: runtime_from_snapshot(snapshot, layout_state.scope.window_id),
+            runtime: runtime_from_snapshot(snapshot),
             layout_state,
             drop_preview: None,
         };
@@ -313,139 +296,17 @@ fn canvas_from_snapshot(snapshot: &StudioGuiSnapshot) -> StudioGuiWindowCanvasAr
     }
 }
 
-fn runtime_from_snapshot(
-    snapshot: &StudioGuiSnapshot,
-    window_id: Option<StudioWindowHostId>,
-) -> StudioGuiWindowRuntimeAreaModel {
+fn runtime_from_snapshot(snapshot: &StudioGuiSnapshot) -> StudioGuiWindowRuntimeAreaModel {
     StudioGuiWindowRuntimeAreaModel {
         title: "Runtime",
         control_state: snapshot.runtime.control_state.clone(),
         run_panel: snapshot.runtime.run_panel.clone(),
         entitlement_host: snapshot.runtime.entitlement_host.clone(),
-        host_actions: runtime_host_actions_from_snapshot(snapshot, window_id),
         platform_notice: snapshot.runtime.platform_notice.clone(),
         platform_timer_lines: snapshot.runtime.platform_timer_lines.clone(),
         gui_activity_lines: snapshot.runtime.gui_activity_lines.clone(),
         latest_log_entry: snapshot.runtime.log_entries.last().cloned(),
         log_entries: snapshot.runtime.log_entries.clone(),
-    }
-}
-
-fn runtime_host_actions_from_snapshot(
-    snapshot: &StudioGuiSnapshot,
-    window_id: Option<StudioWindowHostId>,
-) -> Vec<StudioGuiRuntimeHostActionModel> {
-    let (login_target, login_target_kind) = resolve_login_like_target(snapshot);
-    let (timer_target, timer_target_kind) = resolve_timer_target(snapshot);
-
-    vec![
-        StudioGuiRuntimeHostActionModel {
-            id: StudioGuiRuntimeHostActionId::ForegroundCurrentWindow,
-            label: "Foreground current",
-            detail: match window_id {
-                Some(window_id) => {
-                    format!("Route `WindowForegrounded` for logical window #{window_id}")
-                }
-                None => "No logical window is selected in the current layout scope".to_string(),
-            },
-            enabled: window_id.is_some(),
-        },
-        StudioGuiRuntimeHostActionModel {
-            id: StudioGuiRuntimeHostActionId::LoginCompleted,
-            label: "Login completed",
-            detail: describe_global_event_target(
-                login_target,
-                login_target_kind,
-                "Route `LoginCompleted`",
-                "Open a studio window before simulating login completion",
-            ),
-            enabled: login_target.is_some(),
-        },
-        StudioGuiRuntimeHostActionModel {
-            id: StudioGuiRuntimeHostActionId::NetworkRestored,
-            label: "Network restored",
-            detail: describe_global_event_target(
-                login_target,
-                login_target_kind,
-                "Route `NetworkRestored`",
-                "Open a studio window before simulating network recovery",
-            ),
-            enabled: login_target.is_some(),
-        },
-        StudioGuiRuntimeHostActionModel {
-            id: StudioGuiRuntimeHostActionId::TimerElapsed,
-            label: "Trigger timer",
-            detail: describe_global_event_target(
-                timer_target,
-                timer_target_kind,
-                "Route `TimerElapsed`",
-                "Open a studio window before simulating timer elapsed",
-            ),
-            enabled: timer_target.is_some(),
-        },
-    ]
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum ResolvedGlobalEventTargetKind {
-    ForegroundWindow,
-    TimerOwnerWindow,
-    FirstRegisteredWindow,
-}
-
-fn resolve_login_like_target(
-    snapshot: &StudioGuiSnapshot,
-) -> (Option<StudioWindowHostId>, Option<ResolvedGlobalEventTargetKind>) {
-    if let Some(window_id) = snapshot.app_host_state.foreground_window_id {
-        return (
-            Some(window_id),
-            Some(ResolvedGlobalEventTargetKind::ForegroundWindow),
-        );
-    }
-
-    first_registered_window(snapshot).map_or((None, None), |window_id| {
-        (
-            Some(window_id),
-            Some(ResolvedGlobalEventTargetKind::FirstRegisteredWindow),
-        )
-    })
-}
-
-fn resolve_timer_target(
-    snapshot: &StudioGuiSnapshot,
-) -> (Option<StudioWindowHostId>, Option<ResolvedGlobalEventTargetKind>) {
-    if let Some(window_id) = snapshot.app_host_state.entitlement_timer_owner_window_id() {
-        return (
-            Some(window_id),
-            Some(ResolvedGlobalEventTargetKind::TimerOwnerWindow),
-        );
-    }
-
-    let (target, kind) = resolve_login_like_target(snapshot);
-    (target, kind)
-}
-
-fn first_registered_window(snapshot: &StudioGuiSnapshot) -> Option<StudioWindowHostId> {
-    snapshot.app_host_state.registered_windows.first().copied()
-}
-
-fn describe_global_event_target(
-    target_window_id: Option<StudioWindowHostId>,
-    target_kind: Option<ResolvedGlobalEventTargetKind>,
-    verb: &str,
-    missing_detail: &str,
-) -> String {
-    match (target_window_id, target_kind) {
-        (Some(window_id), Some(ResolvedGlobalEventTargetKind::ForegroundWindow)) => {
-            format!("{verb} to foreground window #{window_id}")
-        }
-        (Some(window_id), Some(ResolvedGlobalEventTargetKind::TimerOwnerWindow)) => {
-            format!("{verb} to timer owner window #{window_id}")
-        }
-        (Some(window_id), Some(ResolvedGlobalEventTargetKind::FirstRegisteredWindow)) => {
-            format!("{verb} to first registered window #{window_id}")
-        }
-        _ => missing_detail.to_string(),
     }
 }
 
@@ -459,10 +320,8 @@ mod tests {
 
     use crate::{
         StudioGuiDriver, StudioGuiDriverOutcome, StudioGuiEvent, StudioGuiHostCommandOutcome,
-        StudioGuiRuntimeHostActionId, StudioGuiRuntimeHostActionModel,
         StudioGuiWindowAreaId, StudioGuiWindowDockPlacement, StudioGuiWindowDockRegion,
-        StudioGuiWindowDropTargetQuery,
-        StudioGuiWindowLayoutScopeKind, StudioRuntimeConfig,
+        StudioGuiWindowDropTargetQuery, StudioGuiWindowLayoutScopeKind, StudioRuntimeConfig,
         StudioRuntimeEntitlementPreflight, StudioRuntimeEntitlementSeed,
         StudioRuntimeEntitlementSessionEvent, StudioRuntimeTrigger,
     };
@@ -568,17 +427,6 @@ mod tests {
             "Resume"
         );
         assert!(window.runtime.entitlement_host.is_some());
-        assert_eq!(window.runtime.host_actions.len(), 4);
-        assert_eq!(
-            window.runtime.host_actions[0].id,
-            StudioGuiRuntimeHostActionId::ForegroundCurrentWindow
-        );
-        assert!(window.runtime.host_actions[0].enabled);
-        assert!(
-            window.runtime.host_actions[0]
-                .detail
-                .contains("logical window #1")
-        );
         assert!(window.runtime.platform_timer_lines.is_empty());
         assert!(window.runtime.gui_activity_lines.is_empty());
         assert_eq!(
@@ -636,72 +484,6 @@ mod tests {
         );
         assert_eq!(window.layout_state.scope.layout_key, "studio.window.empty");
         assert_eq!(window.drop_preview, None);
-    }
-
-    #[test]
-    fn runtime_host_actions_resolve_foreground_and_timer_owner_targets() {
-        let mut driver = StudioGuiDriver::new(&lease_expiring_config()).expect("expected driver");
-        let first = driver
-            .dispatch_event(StudioGuiEvent::OpenWindowRequested)
-            .expect("expected first open dispatch");
-        let first_window_id = match first.outcome {
-            StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::WindowOpened(
-                opened,
-            )) => opened.registration.window_id,
-            other => panic!("expected first window outcome, got {other:?}"),
-        };
-        let second = driver
-            .dispatch_event(StudioGuiEvent::OpenWindowRequested)
-            .expect("expected second open dispatch");
-        let second_window_id = match second.outcome {
-            StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::WindowOpened(
-                opened,
-            )) => opened.registration.window_id,
-            other => panic!("expected second window outcome, got {other:?}"),
-        };
-        let _ = driver
-            .dispatch_event(StudioGuiEvent::WindowTriggerRequested {
-                window_id: first_window_id,
-                trigger: StudioRuntimeTrigger::EntitlementSessionEvent(
-                    StudioRuntimeEntitlementSessionEvent::TimerElapsed,
-                ),
-            })
-            .expect("expected timer trigger");
-        let _ = driver
-            .dispatch_event(StudioGuiEvent::WindowForegrounded {
-                window_id: second_window_id,
-            })
-            .expect("expected foreground dispatch");
-
-        let window = driver.window_model_for_window(Some(second_window_id));
-
-        assert_eq!(window.layout_state.scope.window_id, Some(second_window_id));
-        assert_eq!(
-            window.runtime.host_actions[0],
-            StudioGuiRuntimeHostActionModel {
-                id: StudioGuiRuntimeHostActionId::ForegroundCurrentWindow,
-                label: "Foreground current",
-                detail: format!(
-                    "Route `WindowForegrounded` for logical window #{second_window_id}"
-                ),
-                enabled: true,
-            }
-        );
-        assert!(
-            window.runtime.host_actions[1]
-                .detail
-                .contains(&format!("foreground window #{second_window_id}"))
-        );
-        assert!(
-            window.runtime.host_actions[2]
-                .detail
-                .contains(&format!("foreground window #{second_window_id}"))
-        );
-        assert!(
-            window.runtime.host_actions[3]
-                .detail
-                .contains(&format!("timer owner window #{first_window_id}"))
-        );
     }
 
     #[test]

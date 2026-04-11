@@ -7,12 +7,11 @@ use radishflow_studio::{
     StudioGuiPlatformExecutedNativeTimerCallbackOutcome, StudioGuiPlatformHost,
     StudioGuiPlatformNativeTimerId, StudioGuiPlatformTimerCommand, StudioGuiPlatformTimerExecutor,
     StudioGuiPlatformTimerExecutorResponse, StudioGuiPlatformTimerFollowUpCommand,
-    StudioGuiRuntimeHostActionId, StudioGuiShortcut, StudioGuiShortcutKey,
-    StudioGuiShortcutModifier, StudioGuiWindowAreaId, StudioGuiWindowDockPlacement,
-    StudioGuiWindowDockRegion, StudioGuiWindowDropTargetQuery, StudioGuiWindowLayoutModel,
-    StudioGuiWindowLayoutMutation, StudioGuiWindowModel, StudioGuiWindowPanelDisplayMode,
-    StudioGuiWindowStackGroupLayout, StudioRuntimeConfig, StudioWindowHostId,
-    StudioWindowHostRole,
+    StudioGuiShortcut, StudioGuiShortcutKey, StudioGuiShortcutModifier,
+    StudioGuiWindowAreaId, StudioGuiWindowDockPlacement, StudioGuiWindowDockRegion,
+    StudioGuiWindowDropTargetQuery, StudioGuiWindowLayoutModel, StudioGuiWindowLayoutMutation,
+    StudioGuiWindowModel, StudioGuiWindowPanelDisplayMode, StudioGuiWindowStackGroupLayout,
+    StudioRuntimeConfig, StudioWindowHostId, StudioWindowHostRole,
 };
 use rf_types::RfResult;
 use rf_ui::{
@@ -1055,26 +1054,13 @@ impl ReadyAppState {
             ui.add_space(8.0);
             egui::Frame::group(ui.style()).show(ui, |ui| {
                 ui.label(egui::RichText::new("Scheduler").strong());
-                ui.horizontal_wrapped(|ui| {
-                    for action in &window.runtime.host_actions {
-                        ui.vertical(|ui| {
-                            let response =
-                                ui.add_enabled(action.enabled, egui::Button::new(action.label));
-                            let response = response.on_hover_text(&action.detail);
-                            if response.clicked() {
-                                self.dispatch_runtime_host_action(
-                                    action.id,
-                                    window.layout_state.scope.window_id,
-                                );
-                            }
-                            ui.small(
-                                egui::RichText::new(&action.detail)
-                                    .color(egui::Color32::from_rgb(92, 104, 117)),
-                            );
-                        });
-                    }
-                });
-                ui.add_space(6.0);
+                ui.small(
+                    egui::RichText::new(
+                        "Host lifecycle actions are routed through dedicated UI surfaces or native events.",
+                    )
+                    .color(egui::Color32::from_rgb(92, 104, 117)),
+                );
+                ui.add_space(4.0);
                 for line in &entitlement_host.presentation.text.lines {
                     ui.small(line);
                 }
@@ -1615,28 +1601,6 @@ impl ReadyAppState {
         self.platform_host.snapshot().app_host_state.windows.len()
     }
 
-    fn dispatch_runtime_host_action(
-        &mut self,
-        action_id: StudioGuiRuntimeHostActionId,
-        current_window_id: Option<StudioWindowHostId>,
-    ) {
-        match action_id {
-            StudioGuiRuntimeHostActionId::ForegroundCurrentWindow => {
-                if let Some(window_id) = current_window_id {
-                    self.dispatch_event(StudioGuiEvent::WindowForegrounded { window_id });
-                }
-            }
-            StudioGuiRuntimeHostActionId::LoginCompleted => {
-                self.dispatch_event(StudioGuiEvent::LoginCompleted);
-            }
-            StudioGuiRuntimeHostActionId::NetworkRestored => {
-                self.dispatch_event(StudioGuiEvent::NetworkRestored);
-            }
-            StudioGuiRuntimeHostActionId::TimerElapsed => {
-                self.dispatch_event(StudioGuiEvent::EntitlementTimerElapsed);
-            }
-        }
-    }
 }
 
 impl StudioGuiPlatformTimerExecutor for EguiPlatformTimerExecutor {
