@@ -12,6 +12,12 @@ use crate::{
     StudioSolveRequest, WorkspaceRunCommand, WorkspaceRunPackageSelection, WorkspaceSolveDispatch,
     WorkspaceSolveService, WorkspaceSolveSkipReason, WorkspaceSolveTrigger,
     resolve_workspace_run_package_id,
+    workspace_run_command::{
+        WORKSPACE_RUN_DIAGNOSTIC_CACHED_PACKAGE_MISSING,
+        WORKSPACE_RUN_DIAGNOSTIC_ENTITLEMENT_MISMATCH,
+        WORKSPACE_RUN_DIAGNOSTIC_EXPLICIT_PACKAGE_SELECTION_REQUIRED,
+        WORKSPACE_RUN_DIAGNOSTIC_INVALID_SELECTION,
+    },
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -418,22 +424,23 @@ fn map_workspace_solve_dispatch(dispatch: WorkspaceSolveDispatch) -> StudioWorks
 }
 
 fn map_workspace_run_blocked(error: &RfError) -> StudioWorkspaceRunBlocked {
-    let reason = match error.code() {
-        ErrorCode::MissingEntity => StudioWorkspaceRunBlockedReason::CachedPackageMissing,
-        ErrorCode::InvalidInput => {
-            if error.message().contains("explicit package selection") {
-                StudioWorkspaceRunBlockedReason::ExplicitPackageSelectionRequired
-            } else if error.message().contains("entitlement manifests")
-                || error
-                    .message()
-                    .contains("matches current entitlement manifests")
-            {
-                StudioWorkspaceRunBlockedReason::EntitlementMismatch
-            } else {
-                StudioWorkspaceRunBlockedReason::InvalidSelection
-            }
+    let reason = match error.context().diagnostic_code() {
+        Some(WORKSPACE_RUN_DIAGNOSTIC_CACHED_PACKAGE_MISSING) => {
+            StudioWorkspaceRunBlockedReason::CachedPackageMissing
         }
-        _ => StudioWorkspaceRunBlockedReason::InvalidSelection,
+        Some(WORKSPACE_RUN_DIAGNOSTIC_EXPLICIT_PACKAGE_SELECTION_REQUIRED) => {
+            StudioWorkspaceRunBlockedReason::ExplicitPackageSelectionRequired
+        }
+        Some(WORKSPACE_RUN_DIAGNOSTIC_ENTITLEMENT_MISMATCH) => {
+            StudioWorkspaceRunBlockedReason::EntitlementMismatch
+        }
+        Some(WORKSPACE_RUN_DIAGNOSTIC_INVALID_SELECTION) => {
+            StudioWorkspaceRunBlockedReason::InvalidSelection
+        }
+        _ => match error.code() {
+            ErrorCode::MissingEntity => StudioWorkspaceRunBlockedReason::CachedPackageMissing,
+            _ => StudioWorkspaceRunBlockedReason::InvalidSelection,
+        },
     };
 
     StudioWorkspaceRunBlocked {
@@ -998,6 +1005,48 @@ mod tests {
             Some((
                 rf_ui::AppLogLevel::Warning,
                 "Blocked workspace run because multiple cached property packages are available; explicit package selection is required",
+            ))
+        );
+    }
+
+    #[test]
+    fn facade_returns_blocked_dispatch_when_entitlement_mismatch_is_structured() {
+        let auth_cache_index = sample_auth_cache_index(&["pkg-1", "pkg-2"]);
+        let facade = StudioAppFacade::new();
+        let mut app_state = AppState::new(sample_document());
+        app_state.update_entitlement(
+            sample_snapshot(),
+            vec![sample_manifest()],
+            timestamp(140),
+        );
+        let cache_root = PathBuf::from("D:\\cache-root");
+        let context = StudioAppAuthCacheContext::new(&cache_root, &auth_cache_index);
+
+        let dispatch = facade
+            .run_workspace_from_auth_cache(
+                &mut app_state,
+                &context,
+                &WorkspaceRunCommand::manual("pkg-2"),
+            )
+            .expect("expected blocked dispatch");
+
+        assert_eq!(dispatch.package_id, None);
+        assert_eq!(
+            dispatch.outcome,
+            StudioWorkspaceRunOutcome::Blocked(StudioWorkspaceRunBlocked {
+                reason: StudioWorkspaceRunBlockedReason::EntitlementMismatch,
+                message: "workspace run package `pkg-2` is not present in entitlement manifests"
+                    .to_string(),
+            })
+        );
+        assert_eq!(
+            dispatch
+                .latest_log_entry
+                .as_ref()
+                .map(|entry| (entry.level, entry.message.as_str())),
+            Some((
+                rf_ui::AppLogLevel::Warning,
+                "Blocked workspace run because workspace run package `pkg-2` is not present in entitlement manifests",
             ))
         );
     }
