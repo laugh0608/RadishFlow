@@ -302,3 +302,48 @@ fn run_panel_recovery_action_focuses_failed_unit_end_to_end() {
 
     fs::remove_dir_all(cache_root).expect("expected temp dir cleanup");
 }
+
+#[test]
+fn run_panel_recovery_action_focuses_connection_validation_unit_end_to_end() {
+    let cache_root = unique_temp_path("integration-run-panel-connection-recovery");
+    let mut auth_cache_index = sample_auth_cache_index(&[]);
+    write_cached_package(
+        &cache_root,
+        &mut auth_cache_index,
+        "binary-hydrocarbon-lite-v1",
+    );
+    let facade = StudioAppFacade::new();
+    let mut app_state = app_state_from_project(
+        include_str!("../../../examples/flowsheets/failures/invalid-port-signature.rfproj.json"),
+        "doc-control-connection-recovery",
+        "Control Connection Recovery Demo",
+        35,
+    );
+    let context = StudioAppAuthCacheContext::new(&cache_root, &auth_cache_index);
+
+    dispatch_run_panel_primary_action_with_auth_cache(&facade, &mut app_state, &context)
+        .expect("expected connection validation failure");
+
+    let recovery =
+        apply_run_panel_recovery_action(&mut app_state).expect("expected recovery action");
+
+    assert_eq!(recovery.action.title, "Fix connections");
+    assert_eq!(
+        recovery.applied_target,
+        Some(InspectorTarget::Unit("feed-1".into()))
+    );
+    assert_eq!(
+        app_state.workspace.drafts.active_target,
+        Some(InspectorTarget::Unit("feed-1".into()))
+    );
+    assert!(
+        app_state
+            .workspace
+            .selection
+            .selected_units
+            .contains(&"feed-1".into())
+    );
+    assert!(app_state.workspace.panels.inspector_open);
+
+    fs::remove_dir_all(cache_root).expect("expected temp dir cleanup");
+}
