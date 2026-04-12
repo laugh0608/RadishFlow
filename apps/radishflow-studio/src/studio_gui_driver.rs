@@ -665,6 +665,23 @@ mod tests {
         SuggestionSource,
     };
 
+    fn find_menu_command<'a>(
+        nodes: &'a [crate::StudioGuiCommandMenuNode],
+        command_id: &str,
+    ) -> Option<&'a crate::StudioGuiCommandMenuCommandModel> {
+        for node in nodes {
+            if let Some(command) = node.command.as_ref() {
+                if command.command_id == command_id {
+                    return Some(command);
+                }
+            }
+            if let Some(command) = find_menu_command(&node.children, command_id) {
+                return Some(command);
+            }
+        }
+        None
+    }
+
     fn lease_expiring_config() -> StudioRuntimeConfig {
         StudioRuntimeConfig {
             entitlement_preflight: StudioRuntimeEntitlementPreflight::Skip,
@@ -1359,6 +1376,92 @@ mod tests {
             resumed.snapshot.runtime.run_panel.view().status_label,
             "Converged"
         );
+    }
+
+    #[test]
+    fn gui_driver_keeps_recovery_command_presentation_aligned_across_surfaces_after_failure() {
+        let mut driver =
+            StudioGuiDriver::new(&unbound_outlet_failure_synced_config()).expect("expected driver");
+        let _ = driver
+            .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+            .expect("expected open dispatch");
+
+        let failed = driver
+            .dispatch_event(StudioGuiEvent::UiCommandRequested {
+                command_id: "run_panel.run_manual".to_string(),
+            })
+            .expect("expected failed run dispatch");
+
+        let recovery_palette_item = failed
+            .window
+            .commands
+            .palette_items("diagnostic")
+            .into_iter()
+            .find(|item| item.command_id == "run_panel.recover_failure")
+            .expect("expected recovery palette item");
+        let recovery_toolbar_item = failed
+            .window
+            .commands
+            .toolbar_sections
+            .iter()
+            .find(|section| section.title == "Recovery")
+            .and_then(|section| {
+                section
+                    .items
+                    .iter()
+                    .find(|item| item.command_id == "run_panel.recover_failure")
+            })
+            .expect("expected recovery toolbar item");
+        let recovery_list_item = failed
+            .window
+            .commands
+            .command_list_sections
+            .iter()
+            .find(|section| section.title == "Recovery")
+            .and_then(|section| {
+                section
+                    .items
+                    .iter()
+                    .find(|item| item.command_id == "run_panel.recover_failure")
+            })
+            .expect("expected recovery command list item");
+        let recovery_menu_item = find_menu_command(
+            &failed.window.commands.menu_tree,
+            "run_panel.recover_failure",
+        )
+        .expect("expected recovery menu item");
+
+        assert!(recovery_palette_item.enabled);
+        assert!(recovery_toolbar_item.enabled);
+        assert!(recovery_list_item.enabled);
+        assert!(recovery_menu_item.enabled);
+        assert_eq!(
+            recovery_palette_item.label,
+            "Recover run panel failure (F8)"
+        );
+        assert_eq!(
+            recovery_list_item.label,
+            "Recover run panel failure (F8)"
+        );
+        assert_eq!(recovery_toolbar_item.label, "Recover run panel failure");
+        assert_eq!(
+            recovery_menu_item.label,
+            "Recover run panel failure (F8)"
+        );
+        assert_eq!(
+            recovery_palette_item.menu_path_text,
+            "Run > Recovery > Recover Run Panel Failure"
+        );
+        assert_eq!(
+            recovery_list_item.menu_path_text,
+            recovery_palette_item.menu_path_text
+        );
+        assert_eq!(
+            recovery_palette_item.hover_text,
+            "Apply the current run panel recovery action in the target window\nMenu: Run > Recovery > Recover Run Panel Failure"
+        );
+        assert_eq!(recovery_toolbar_item.hover_text, recovery_palette_item.hover_text);
+        assert_eq!(recovery_menu_item.hover_text, recovery_palette_item.hover_text);
     }
 
     #[test]
