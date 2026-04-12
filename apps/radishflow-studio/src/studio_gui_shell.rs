@@ -44,6 +44,7 @@ struct ReadyAppState {
     platform_timer_executor: EguiPlatformTimerExecutor,
     last_error: Option<String>,
     command_palette: CommandPaletteState,
+    last_area_focus: Option<StudioGuiWindowAreaId>,
     drag_session: Option<PanelDragSession>,
     active_drop_preview: Option<ActiveDropPreview>,
     drop_preview_overlay_anchor: Option<DropPreviewOverlayAnchor>,
@@ -97,6 +98,7 @@ impl RadishFlowStudioApp {
                     platform_timer_executor: EguiPlatformTimerExecutor::default(),
                     last_error: None,
                     command_palette: CommandPaletteState::default(),
+                    last_area_focus: None,
                     drag_session: None,
                     active_drop_preview: None,
                     drop_preview_overlay_anchor: None,
@@ -139,23 +141,12 @@ impl CommandPaletteState {
         self.focus_query_input = false;
     }
 
-    fn clamp_selection(&mut self, command_count: usize) {
-        if command_count == 0 {
-            self.selected_index = 0;
-        } else {
-            self.selected_index = self.selected_index.min(command_count - 1);
-        }
+    fn sync_selection<T: PaletteSelectable>(&mut self, commands: &[T]) {
+        self.selected_index = normalized_palette_selection(commands, self.selected_index);
     }
 
-    fn move_selection(&mut self, delta: isize, command_count: usize) {
-        if command_count == 0 {
-            self.selected_index = 0;
-            return;
-        }
-
-        let current = self.selected_index.min(command_count - 1) as isize;
-        let last = (command_count - 1) as isize;
-        self.selected_index = (current + delta).clamp(0, last) as usize;
+    fn move_selection<T: PaletteSelectable>(&mut self, delta: isize, commands: &[T]) {
+        self.selected_index = moved_palette_selection(commands, self.selected_index, delta);
     }
 }
 
@@ -184,8 +175,7 @@ impl ReadyAppState {
 
         let snapshot = self.platform_host.snapshot();
         let window = snapshot.window_model();
-        let palette_keyboard_consumed =
-            self.handle_command_palette_keyboard(ctx, &window.commands.sections);
+        let palette_keyboard_consumed = self.handle_command_palette_keyboard(ctx, &window.commands);
         if !toggle_shortcut_consumed && !palette_keyboard_consumed {
             self.dispatch_shortcuts(ctx);
         }
@@ -733,97 +723,111 @@ impl ReadyAppState {
             );
         }
         paint_area_preview_overlay(ui, header_rect, window, area_id);
-        ui.push_id(
-            format!(
-                "panel:{}:{}",
-                window.layout_state.scope.layout_key,
-                area_label(area_id)
-            ),
-            |ui| {
-                ui.horizontal_wrapped(|ui| {
-                    let is_drag_source = drag_session
-                        .map(|drag_session| drag_session.area_id == area_id)
-                        .unwrap_or(false);
-                    if is_drag_source {
-                        ui.small(
-                            egui::RichText::new("Dragging from header/tab")
-                                .color(egui::Color32::from_rgb(56, 126, 214)),
-                        );
-                    } else {
-                        ui.small("Drag header or tab to move");
-                    }
+        let body_rect = ui
+            .push_id(
+                format!(
+                    "panel:{}:{}",
+                    window.layout_state.scope.layout_key,
+                    area_label(area_id)
+                ),
+                |ui| {
+                    ui.vertical(|ui| {
+                        ui.horizontal_wrapped(|ui| {
+                            let is_drag_source = drag_session
+                                .map(|drag_session| drag_session.area_id == area_id)
+                                .unwrap_or(false);
+                            if is_drag_source {
+                                ui.small(
+                                    egui::RichText::new("Dragging from header/tab")
+                                        .color(egui::Color32::from_rgb(56, 126, 214)),
+                                );
+                            } else {
+                                ui.small("Drag header or tab to move");
+                            }
 
-                    if ui.button("Center").clicked() {
-                        self.dispatch_layout_mutation(
-                            window_id,
-                            StudioGuiWindowLayoutMutation::SetCenterArea { area_id },
-                        );
-                    }
+                            if ui.button("Center").clicked() {
+                                self.dispatch_layout_mutation(
+                                    window_id,
+                                    StudioGuiWindowLayoutMutation::SetCenterArea { area_id },
+                                );
+                            }
 
-                    let collapse_label = if panel.collapsed {
-                        "Expand"
-                    } else {
-                        "Collapse"
-                    };
-                    if ui.button(collapse_label).clicked() {
-                        self.dispatch_layout_mutation(
-                            window_id,
-                            StudioGuiWindowLayoutMutation::SetPanelCollapsed {
-                                area_id,
-                                collapsed: !panel.collapsed,
-                            },
-                        );
-                    }
+                            let collapse_label = if panel.collapsed {
+                                "Expand"
+                            } else {
+                                "Collapse"
+                            };
+                            if ui.button(collapse_label).clicked() {
+                                self.dispatch_layout_mutation(
+                                    window_id,
+                                    StudioGuiWindowLayoutMutation::SetPanelCollapsed {
+                                        area_id,
+                                        collapsed: !panel.collapsed,
+                                    },
+                                );
+                            }
 
-                    if ui.button("Hide").clicked() {
-                        self.dispatch_layout_mutation(
-                            window_id,
-                            StudioGuiWindowLayoutMutation::SetPanelVisibility {
-                                area_id,
-                                visible: false,
-                            },
-                        );
-                    }
+                            if ui.button("Hide").clicked() {
+                                self.dispatch_layout_mutation(
+                                    window_id,
+                                    StudioGuiWindowLayoutMutation::SetPanelVisibility {
+                                        area_id,
+                                        visible: false,
+                                    },
+                                );
+                            }
 
-                    self.render_move_menu(ui, window, area_id, panel.dock_region);
-                    self.render_stack_menu(ui, window, area_id, panel.display_mode);
+                            self.render_move_menu(ui, window, area_id, panel.dock_region);
+                            self.render_stack_menu(ui, window, area_id, panel.display_mode);
 
-                    if !matches!(
-                        panel.display_mode,
-                        StudioGuiWindowPanelDisplayMode::Standalone
-                    ) {
-                        if ui.button("Prev tab").clicked() {
-                            self.dispatch_layout_mutation(
-                                window_id,
-                                StudioGuiWindowLayoutMutation::ActivatePreviousPanelInStack {
-                                    area_id,
-                                },
-                            );
+                            if !matches!(
+                                panel.display_mode,
+                                StudioGuiWindowPanelDisplayMode::Standalone
+                            ) {
+                                if ui.button("Prev tab").clicked() {
+                                    self.dispatch_layout_mutation(
+                                    window_id,
+                                    StudioGuiWindowLayoutMutation::ActivatePreviousPanelInStack {
+                                        area_id,
+                                    },
+                                );
+                                }
+                                if ui.button("Next tab").clicked() {
+                                    self.dispatch_layout_mutation(
+                                        window_id,
+                                        StudioGuiWindowLayoutMutation::ActivateNextPanelInStack {
+                                            area_id,
+                                        },
+                                    );
+                                }
+                            }
+                        });
+                        ui.separator();
+
+                        if panel.collapsed {
+                            ui.label("Panel is collapsed.");
+                            return;
                         }
-                        if ui.button("Next tab").clicked() {
-                            self.dispatch_layout_mutation(
-                                window_id,
-                                StudioGuiWindowLayoutMutation::ActivateNextPanelInStack { area_id },
-                            );
+
+                        match area_id {
+                            StudioGuiWindowAreaId::Commands => {
+                                self.render_commands_area(ui, window, area_id)
+                            }
+                            StudioGuiWindowAreaId::Canvas => {
+                                self.render_canvas_area(ui, window, area_id)
+                            }
+                            StudioGuiWindowAreaId::Runtime => {
+                                self.render_runtime_area(ui, window, area_id)
+                            }
                         }
-                    }
-                });
-                ui.separator();
-
-                if panel.collapsed {
-                    ui.label("Panel is collapsed.");
-                    return;
-                }
-
-                match area_id {
-                    StudioGuiWindowAreaId::Commands => {
-                        self.render_commands_area(ui, window, area_id)
-                    }
-                    StudioGuiWindowAreaId::Canvas => self.render_canvas_area(ui, window, area_id),
-                    StudioGuiWindowAreaId::Runtime => self.render_runtime_area(ui, window, area_id),
-                }
-            },
-        );
+                    })
+                    .response
+                    .rect
+                },
+            )
+            .inner;
+        self.update_area_focus_from_rect(ui.ctx(), area_id, header_rect);
+        self.update_area_focus_from_rect(ui.ctx(), area_id, body_rect);
     }
 
     fn render_commands_area(
@@ -850,22 +854,18 @@ impl ReadyAppState {
     }
 
     fn render_command_entry(&mut self, ui: &mut egui::Ui, command: &StudioGuiCommandEntry) {
-        let label = command_button_label(command);
+        let presentation = command.presentation();
         if ui
-            .add_enabled(command.enabled, egui::Button::new(label))
+            .add_enabled(
+                command.enabled,
+                egui::Button::new(&presentation.label_with_shortcut),
+            )
             .clicked()
         {
             self.dispatch_command(command);
         }
         ui.label(&command.detail);
-        ui.small(
-            command
-                .menu_path
-                .iter()
-                .map(String::as_str)
-                .collect::<Vec<_>>()
-                .join(" > "),
-        );
+        ui.small(presentation.menu_path_text);
         ui.add_space(4.0);
     }
 
@@ -1204,9 +1204,12 @@ impl ReadyAppState {
 
     fn render_command_menu_node(&mut self, ui: &mut egui::Ui, node: &StudioGuiCommandMenuNode) {
         if let Some(command) = node.command.as_ref() {
-            let label = command_button_label(command);
+            let presentation = command.presentation();
             if ui
-                .add_enabled(command.enabled, egui::Button::new(label))
+                .add_enabled(
+                    command.enabled,
+                    egui::Button::new(&presentation.label_with_shortcut),
+                )
                 .clicked()
             {
                 self.dispatch_command(command);
@@ -1239,9 +1242,10 @@ impl ReadyAppState {
                     .color(egui::Color32::from_rgb(92, 104, 117)),
             );
             for command in &section.commands {
+                let presentation = command.presentation();
                 let response = ui
-                    .add_enabled(command.enabled, egui::Button::new(command.label.as_str()))
-                    .on_hover_text(command_hover_text(command));
+                    .add_enabled(command.enabled, egui::Button::new(&presentation.label))
+                    .on_hover_text(presentation.hover_text);
                 if response.clicked() {
                     self.dispatch_command(command);
                 }
@@ -1267,12 +1271,10 @@ impl ReadyAppState {
             .open(&mut open)
             .show(ctx, |ui| {
                 ui.set_min_width(560.0);
+                let palette_items = commands.palette_items(&self.command_palette.query);
                 ui.small(format!(
                     "{} / {} commands",
-                    commands.total_command_count.min(
-                        command_palette_commands(&commands.sections, &self.command_palette.query)
-                            .len()
-                    ),
+                    commands.total_command_count.min(palette_items.len()),
                     commands.total_command_count
                 ));
                 let response = ui.add(
@@ -1288,34 +1290,39 @@ impl ReadyAppState {
                 }
 
                 ui.add_space(8.0);
-                let filtered_commands =
-                    command_palette_commands(&commands.sections, &self.command_palette.query);
-                self.command_palette
-                    .clamp_selection(filtered_commands.len());
+                self.command_palette.sync_selection(&palette_items);
 
                 egui::ScrollArea::vertical()
                     .max_height(320.0)
                     .show(ui, |ui| {
-                        if filtered_commands.is_empty() {
+                        if palette_items.is_empty() {
                             ui.small("没有匹配的命令。");
                             return;
                         }
 
-                        for (index, command) in filtered_commands.iter().enumerate() {
+                        for (index, item) in palette_items.iter().enumerate() {
                             let selected = index == self.command_palette.selected_index;
-                            let label = command_palette_entry_label(command);
                             let response = ui
-                                .selectable_label(selected, label)
-                                .on_hover_text(command_hover_text(command));
-                            ui.small(command.menu_path.join(" > "));
+                                .add_enabled(
+                                    item.enabled,
+                                    egui::Button::new(&item.label).selected(selected),
+                                )
+                                .on_hover_text(&item.hover_text);
+                            if selected {
+                                response.scroll_to_me(Some(egui::Align::Center));
+                            }
+                            if response.hovered() && item.enabled {
+                                self.command_palette.selected_index = index;
+                            }
+                            ui.small(&item.menu_path_text);
                             ui.small(
-                                egui::RichText::new(&command.detail)
+                                egui::RichText::new(&item.detail)
                                     .color(egui::Color32::from_rgb(92, 104, 117)),
                             );
                             ui.add_space(6.0);
 
                             if response.clicked() {
-                                let command_id = command.command_id.clone();
+                                let command_id = item.command_id.clone();
                                 self.dispatch_ui_command(command_id);
                                 self.command_palette.close();
                             }
@@ -1783,34 +1790,32 @@ impl ReadyAppState {
     fn handle_command_palette_keyboard(
         &mut self,
         ctx: &egui::Context,
-        sections: &[StudioGuiCommandSection],
+        commands: &radishflow_studio::StudioGuiWindowCommandAreaModel,
     ) -> bool {
         if !self.command_palette.open {
             return false;
         }
 
-        let filtered_commands = command_palette_commands(sections, &self.command_palette.query);
-        self.command_palette
-            .clamp_selection(filtered_commands.len());
+        let palette_items = commands.palette_items(&self.command_palette.query);
+        self.command_palette.sync_selection(&palette_items);
 
         if ctx.input(|input| input.key_pressed(egui::Key::Escape)) {
             self.command_palette.close();
             return true;
         }
         if ctx.input(|input| input.key_pressed(egui::Key::ArrowDown)) {
-            self.command_palette
-                .move_selection(1, filtered_commands.len());
+            self.command_palette.move_selection(1, &palette_items);
             return true;
         }
         if ctx.input(|input| input.key_pressed(egui::Key::ArrowUp)) {
-            self.command_palette
-                .move_selection(-1, filtered_commands.len());
+            self.command_palette.move_selection(-1, &palette_items);
             return true;
         }
         if ctx.input(|input| input.key_pressed(egui::Key::Enter)) {
-            let selected_command_id = filtered_commands
-                .get(self.command_palette.selected_index)
-                .map(|command| command.command_id.clone());
+            let selected_command_id = selected_palette_item_command_id(
+                &palette_items,
+                self.command_palette.selected_index,
+            );
             if let Some(command_id) = selected_command_id {
                 self.dispatch_ui_command(command_id);
                 self.command_palette.close();
@@ -1822,11 +1827,8 @@ impl ReadyAppState {
     }
 
     fn dispatch_shortcuts(&mut self, ctx: &egui::Context) {
-        if self.command_palette.open {
-            return;
-        }
-
-        if ctx.wants_keyboard_input() {
+        let focus_context = self.focus_context(ctx);
+        if matches!(focus_context, StudioGuiFocusContext::CommandPalette) {
             return;
         }
 
@@ -1836,7 +1838,6 @@ impl ReadyAppState {
         }
 
         let shortcuts = ctx.input(|input| collect_shortcuts(input));
-        let focus_context = self.focus_context();
         for shortcut in shortcuts {
             self.dispatch_event(StudioGuiEvent::ShortcutPressed {
                 shortcut,
@@ -1845,10 +1846,22 @@ impl ReadyAppState {
         }
     }
 
-    fn focus_context(&self) -> StudioGuiFocusContext {
-        let window = self.platform_host.snapshot().window_model();
-        if window.canvas.focused_suggestion_id.is_some() {
+    fn focus_context(&self, ctx: &egui::Context) -> StudioGuiFocusContext {
+        if self.command_palette.open {
+            StudioGuiFocusContext::CommandPalette
+        } else if ctx.wants_keyboard_input() {
+            StudioGuiFocusContext::TextInput
+        } else if self
+            .platform_host
+            .snapshot()
+            .window_model()
+            .canvas
+            .focused_suggestion_id
+            .is_some()
+        {
             StudioGuiFocusContext::CanvasSuggestionFocused
+        } else if self.last_area_focus == Some(StudioGuiWindowAreaId::Canvas) {
+            StudioGuiFocusContext::Canvas
         } else {
             StudioGuiFocusContext::Global
         }
@@ -1865,6 +1878,20 @@ impl ReadyAppState {
 
     fn logical_window_count(&self) -> usize {
         self.platform_host.snapshot().app_host_state.windows.len()
+    }
+
+    fn update_area_focus_from_rect(
+        &mut self,
+        ctx: &egui::Context,
+        area_id: StudioGuiWindowAreaId,
+        rect: egui::Rect,
+    ) {
+        let pointer_pos = ctx.pointer_latest_pos();
+        let pressed = ctx.input(|input| input.pointer.any_pressed());
+        let released = ctx.input(|input| input.pointer.any_released());
+        if pointer_pos.is_some_and(|pos| rect.contains(pos)) && (pressed || released) {
+            self.last_area_focus = Some(area_id);
+        }
     }
 }
 
@@ -2634,39 +2661,103 @@ fn format_shortcut(shortcut: &StudioGuiShortcut) -> String {
     parts.join("+")
 }
 
-fn command_palette_commands<'a>(
-    sections: &'a [StudioGuiCommandSection],
-    query: &str,
-) -> Vec<&'a StudioGuiCommandEntry> {
-    sections
-        .iter()
-        .flat_map(|section| section.commands.iter())
-        .filter(|command| command.matches_palette_query(query))
-        .collect()
+trait PaletteSelectable {
+    fn enabled(&self) -> bool;
 }
 
-fn command_palette_entry_label(command: &StudioGuiCommandEntry) -> String {
-    if command.enabled {
-        command_button_label(command)
-    } else {
-        format!("{} [disabled]", command_button_label(command))
+impl PaletteSelectable for &StudioGuiCommandEntry {
+    fn enabled(&self) -> bool {
+        self.enabled
     }
 }
 
-fn command_button_label(command: &StudioGuiCommandEntry) -> String {
-    match command.shortcut.as_ref() {
-        Some(shortcut) => format!("{} ({})", command.label, format_shortcut(shortcut)),
-        None => command.label.clone(),
+impl PaletteSelectable for radishflow_studio::StudioGuiWindowCommandPaletteItemModel {
+    fn enabled(&self) -> bool {
+        self.enabled
     }
 }
 
-fn command_hover_text(command: &StudioGuiCommandEntry) -> String {
-    let mut text = command.detail.clone();
-    if !command.menu_path.is_empty() {
-        text.push_str("\nMenu: ");
-        text.push_str(&command.menu_path.join(" > "));
+fn normalized_palette_selection<T: PaletteSelectable>(
+    commands: &[T],
+    current_index: usize,
+) -> usize {
+    if commands.is_empty() {
+        return 0;
     }
-    text
+
+    let clamped = current_index.min(commands.len() - 1);
+    if commands[clamped].enabled() || !commands.iter().any(PaletteSelectable::enabled) {
+        return clamped;
+    }
+
+    (clamped..commands.len())
+        .find(|index| commands[*index].enabled())
+        .or_else(|| (0..clamped).rev().find(|index| commands[*index].enabled()))
+        .unwrap_or(0)
+}
+
+fn moved_palette_selection<T: PaletteSelectable>(
+    commands: &[T],
+    current_index: usize,
+    delta: isize,
+) -> usize {
+    if commands.is_empty() {
+        return 0;
+    }
+
+    let last = (commands.len() - 1) as isize;
+    if !commands.iter().any(PaletteSelectable::enabled) {
+        let current = current_index.min(commands.len() - 1) as isize;
+        return (current + delta).clamp(0, last) as usize;
+    }
+
+    let mut selected = normalized_palette_selection(commands, current_index);
+    for _ in 0..delta.unsigned_abs() {
+        let step = delta.signum();
+        if step == 0 {
+            break;
+        }
+
+        let mut candidate = selected as isize;
+        let mut advanced = false;
+        loop {
+            candidate += step;
+            if candidate < 0 || candidate > last {
+                break;
+            }
+            if commands[candidate as usize].enabled() {
+                selected = candidate as usize;
+                advanced = true;
+                break;
+            }
+        }
+        if !advanced {
+            break;
+        }
+    }
+
+    selected
+}
+
+#[cfg(test)]
+fn selected_palette_command_id(
+    commands: &[&StudioGuiCommandEntry],
+    selected_index: usize,
+) -> Option<String> {
+    commands
+        .get(normalized_palette_selection(commands, selected_index))
+        .filter(|command| command.enabled)
+        .map(|command| command.command_id.clone())
+}
+
+fn selected_palette_item_command_id(
+    items: &[radishflow_studio::StudioGuiWindowCommandPaletteItemModel],
+    selected_index: usize,
+) -> Option<String> {
+    items
+        .get(normalized_palette_selection(items, selected_index))
+        .filter(|item| item.enabled)
+        .map(|item| item.command_id.clone())
 }
 
 #[cfg(test)]
@@ -2676,6 +2767,7 @@ mod tests {
         StudioGuiDriverOutcome, StudioRuntimeEntitlementPreflight, StudioRuntimeEntitlementSeed,
         StudioRuntimeEntitlementSessionEvent, StudioRuntimeTrigger,
     };
+    use std::{fs, path::PathBuf, time::UNIX_EPOCH};
 
     fn lease_expiring_config() -> StudioRuntimeConfig {
         StudioRuntimeConfig {
@@ -2683,6 +2775,42 @@ mod tests {
             entitlement_seed: StudioRuntimeEntitlementSeed::LeaseExpiringSoon,
             ..StudioRuntimeConfig::default()
         }
+    }
+
+    fn flash_drum_local_rules_config() -> (StudioRuntimeConfig, PathBuf) {
+        let timestamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("expected current timestamp")
+            .as_nanos();
+        let project_path = std::env::temp_dir().join(format!(
+            "radishflow-studio-shell-local-rules-{timestamp}.rfproj.json"
+        ));
+        let project =
+            include_str!("../../../examples/flowsheets/feed-heater-flash.rfproj.json")
+                .replacen(
+                    "\"name\": \"inlet\",\n              \"direction\": \"inlet\",\n              \"kind\": \"material\",\n              \"stream_id\": \"stream-heated\"",
+                    "\"name\": \"inlet\",\n              \"direction\": \"inlet\",\n              \"kind\": \"material\",\n              \"stream_id\": null",
+                    1,
+                )
+                .replacen(
+                    "\"name\": \"liquid\",\n              \"direction\": \"outlet\",\n              \"kind\": \"material\",\n              \"stream_id\": \"stream-liquid\"",
+                    "\"name\": \"liquid\",\n              \"direction\": \"outlet\",\n              \"kind\": \"material\",\n              \"stream_id\": null",
+                    1,
+                )
+                .replacen(
+                    "\"name\": \"vapor\",\n              \"direction\": \"outlet\",\n              \"kind\": \"material\",\n              \"stream_id\": \"stream-vapor\"",
+                    "\"name\": \"vapor\",\n              \"direction\": \"outlet\",\n              \"kind\": \"material\",\n              \"stream_id\": null",
+                    1,
+                );
+        fs::write(&project_path, project).expect("expected local rules project");
+
+        (
+            StudioRuntimeConfig {
+                project_path: project_path.clone(),
+                ..lease_expiring_config()
+            },
+            project_path,
+        )
     }
 
     #[test]
@@ -2748,6 +2876,40 @@ mod tests {
 
     #[test]
     fn command_palette_state_moves_selection_within_bounds() {
+        let commands = palette_commands_for_test(&[
+            ("run_panel.run_manual", true),
+            ("run_panel.recover_failure", false),
+            ("run_panel.resume_workspace", true),
+        ]);
+        let mut state = CommandPaletteState {
+            open: true,
+            query: String::new(),
+            selected_index: 0,
+            focus_query_input: false,
+        };
+
+        state.move_selection(1, &commands);
+        assert_eq!(state.selected_index, 2);
+
+        state.move_selection(1, &commands);
+        assert_eq!(state.selected_index, 2);
+
+        state.move_selection(-5, &commands);
+        assert_eq!(state.selected_index, 0);
+
+        let empty_commands: [&StudioGuiCommandEntry; 0] = [];
+        state.move_selection(1, &empty_commands);
+        assert_eq!(state.selected_index, 0);
+    }
+
+    #[test]
+    fn command_palette_state_syncs_disabled_selection_to_nearest_enabled_command() {
+        let commands = palette_commands_for_test(&[
+            ("run_panel.run_manual", false),
+            ("run_panel.resume_workspace", false),
+            ("run_panel.set_active", true),
+            ("run_panel.recover_failure", false),
+        ]);
         let mut state = CommandPaletteState {
             open: true,
             query: String::new(),
@@ -2755,17 +2917,199 @@ mod tests {
             focus_query_input: false,
         };
 
-        state.move_selection(1, 3);
+        state.sync_selection(&commands);
+
         assert_eq!(state.selected_index, 2);
+    }
 
-        state.move_selection(1, 3);
-        assert_eq!(state.selected_index, 2);
+    #[test]
+    fn selected_palette_command_id_ignores_disabled_entries() {
+        let commands = palette_commands_for_test(&[
+            ("run_panel.run_manual", false),
+            ("run_panel.resume_workspace", true),
+        ]);
 
-        state.move_selection(-5, 3);
-        assert_eq!(state.selected_index, 0);
+        assert_eq!(
+            selected_palette_command_id(&commands, 0),
+            Some("run_panel.resume_workspace".to_string())
+        );
+    }
 
-        state.move_selection(1, 0);
-        assert_eq!(state.selected_index, 0);
+    #[test]
+    fn focus_context_prioritizes_command_palette_over_canvas_focus() {
+        let (config, project_path) = flash_drum_local_rules_config();
+        let mut app = ready_app_state(&config);
+        assert!(
+            app.platform_host
+                .snapshot()
+                .window_model()
+                .canvas
+                .focused_suggestion_id
+                .is_some()
+        );
+
+        app.command_palette.open();
+
+        run_with_key_press(egui::Key::F5, egui::Modifiers::NONE, |ctx| {
+            assert_eq!(
+                app.focus_context(ctx),
+                StudioGuiFocusContext::CommandPalette
+            );
+        });
+
+        let _ = std::fs::remove_file(project_path);
+    }
+
+    #[test]
+    fn focus_context_prioritizes_text_input_over_canvas_focus() {
+        let (config, project_path) = flash_drum_local_rules_config();
+        let app = ready_app_state(&config);
+        assert!(
+            app.platform_host
+                .snapshot()
+                .window_model()
+                .canvas
+                .focused_suggestion_id
+                .is_some()
+        );
+
+        run_with_key_press_and_focus(
+            egui::Key::F5,
+            egui::Modifiers::NONE,
+            egui::Id::new("studio.test_input"),
+            |ctx| {
+                assert_eq!(app.focus_context(ctx), StudioGuiFocusContext::TextInput);
+            },
+        );
+
+        let _ = std::fs::remove_file(project_path);
+    }
+
+    #[test]
+    fn focus_context_reports_canvas_when_canvas_was_last_interacted_area() {
+        let mut app = ready_app_state(&lease_expiring_config());
+        app.last_area_focus = Some(StudioGuiWindowAreaId::Canvas);
+
+        run_with_key_press(egui::Key::F5, egui::Modifiers::NONE, |ctx| {
+            assert_eq!(app.focus_context(ctx), StudioGuiFocusContext::Canvas);
+        });
+    }
+
+    #[test]
+    fn focus_context_keeps_global_when_non_canvas_area_was_last_interacted() {
+        let mut app = ready_app_state(&lease_expiring_config());
+        app.last_area_focus = Some(StudioGuiWindowAreaId::Runtime);
+
+        run_with_key_press(egui::Key::F5, egui::Modifiers::NONE, |ctx| {
+            assert_eq!(app.focus_context(ctx), StudioGuiFocusContext::Global);
+        });
+    }
+
+    #[test]
+    fn command_palette_toggle_shortcut_opens_and_closes_palette() {
+        let mut app = ready_app_state(&lease_expiring_config());
+        assert!(!app.command_palette.open);
+
+        run_with_key_press(
+            egui::Key::K,
+            egui::Modifiers {
+                ctrl: true,
+                command: true,
+                ..egui::Modifiers::NONE
+            },
+            |ctx| {
+                assert!(app.handle_command_palette_toggle_shortcut(ctx));
+            },
+        );
+        assert!(app.command_palette.open);
+        assert!(app.command_palette.focus_query_input);
+
+        run_with_key_press(
+            egui::Key::K,
+            egui::Modifiers {
+                ctrl: true,
+                command: true,
+                ..egui::Modifiers::NONE
+            },
+            |ctx| {
+                assert!(app.handle_command_palette_toggle_shortcut(ctx));
+            },
+        );
+        assert!(!app.command_palette.open);
+    }
+
+    #[test]
+    fn command_palette_enter_executes_selected_command_and_closes_palette() {
+        let mut app = ready_app_state(&lease_expiring_config());
+        app.command_palette.open();
+        app.command_palette.query = "activate".to_string();
+
+        let commands = app.platform_host.snapshot().window_model().commands;
+        run_with_key_press(egui::Key::Enter, egui::Modifiers::NONE, |ctx| {
+            assert!(app.handle_command_palette_keyboard(ctx, &commands));
+        });
+
+        assert!(!app.command_palette.open);
+        assert_eq!(
+            app.platform_host
+                .snapshot()
+                .window_model()
+                .runtime
+                .control_state
+                .simulation_mode,
+            SimulationMode::Active
+        );
+    }
+
+    #[test]
+    fn dispatch_shortcuts_does_not_leak_host_shortcuts_while_palette_is_open() {
+        let mut app = ready_app_state(&lease_expiring_config());
+        app.command_palette.open();
+
+        run_with_key_press(
+            egui::Key::F6,
+            egui::Modifiers {
+                shift: true,
+                ..egui::Modifiers::NONE
+            },
+            |ctx| app.dispatch_shortcuts(ctx),
+        );
+
+        assert!(app.command_palette.open);
+        assert_eq!(
+            app.platform_host
+                .snapshot()
+                .window_model()
+                .runtime
+                .control_state
+                .simulation_mode,
+            SimulationMode::Hold
+        );
+    }
+
+    #[test]
+    fn dispatch_shortcuts_allows_function_keys_from_text_input_context() {
+        let mut app = ready_app_state(&lease_expiring_config());
+
+        run_with_key_press_and_focus(
+            egui::Key::F6,
+            egui::Modifiers {
+                shift: true,
+                ..egui::Modifiers::NONE
+            },
+            egui::Id::new("studio.test_input"),
+            |ctx| app.dispatch_shortcuts(ctx),
+        );
+
+        assert_eq!(
+            app.platform_host
+                .snapshot()
+                .window_model()
+                .runtime
+                .control_state
+                .simulation_mode,
+            SimulationMode::Active
+        );
     }
 
     #[test]
@@ -2807,10 +3151,106 @@ mod tests {
             ],
         }];
 
-        let filtered = command_palette_commands(&sections, "diagnostic");
+        let filtered = sections
+            .iter()
+            .flat_map(|section| section.commands.iter())
+            .filter(|command| command.matches_palette_query("diagnostic"))
+            .collect::<Vec<_>>();
 
         assert_eq!(filtered.len(), 1);
         assert_eq!(filtered[0].command_id, "run_panel.recover_failure");
+    }
+
+    fn palette_commands_for_test(commands: &[(&str, bool)]) -> Vec<&'static StudioGuiCommandEntry> {
+        commands
+            .iter()
+            .map(|(command_id, enabled)| {
+                let entry = Box::leak(Box::new(StudioGuiCommandEntry {
+                    command_id: (*command_id).to_string(),
+                    label: (*command_id).to_string(),
+                    detail: "test".to_string(),
+                    enabled: *enabled,
+                    sort_order: 100,
+                    target_window_id: None,
+                    menu_path: vec!["Commands".to_string()],
+                    search_terms: Vec::new(),
+                    shortcut: None,
+                }));
+                &*entry
+            })
+            .collect()
+    }
+
+    fn ready_app_state(config: &StudioRuntimeConfig) -> ReadyAppState {
+        let mut app = ReadyAppState {
+            platform_host: StudioGuiPlatformHost::new(config).expect("expected platform host"),
+            platform_timer_executor: EguiPlatformTimerExecutor::default(),
+            last_error: None,
+            command_palette: CommandPaletteState::default(),
+            last_area_focus: None,
+            drag_session: None,
+            active_drop_preview: None,
+            drop_preview_overlay_anchor: None,
+            last_viewport_focused: None,
+        };
+        app.dispatch_event(StudioGuiEvent::OpenWindowRequested);
+        app
+    }
+
+    fn run_with_key_press<R>(
+        key: egui::Key,
+        modifiers: egui::Modifiers,
+        run: impl FnOnce(&egui::Context) -> R,
+    ) -> R {
+        let ctx = egui::Context::default();
+        ctx.begin_pass(egui::RawInput {
+            screen_rect: Some(egui::Rect::from_min_size(
+                egui::Pos2::ZERO,
+                egui::vec2(1280.0, 720.0),
+            )),
+            focused: true,
+            modifiers,
+            events: vec![egui::Event::Key {
+                key,
+                physical_key: Some(key),
+                pressed: true,
+                repeat: false,
+                modifiers,
+            }],
+            ..Default::default()
+        });
+        let output = run(&ctx);
+        let _ = ctx.end_pass();
+        output
+    }
+
+    fn run_with_key_press_and_focus<R>(
+        key: egui::Key,
+        modifiers: egui::Modifiers,
+        focused_id: egui::Id,
+        run: impl FnOnce(&egui::Context) -> R,
+    ) -> R {
+        let ctx = egui::Context::default();
+        ctx.begin_pass(egui::RawInput {
+            screen_rect: Some(egui::Rect::from_min_size(
+                egui::Pos2::ZERO,
+                egui::vec2(1280.0, 720.0),
+            )),
+            focused: true,
+            modifiers,
+            events: vec![egui::Event::Key {
+                key,
+                physical_key: Some(key),
+                pressed: true,
+                repeat: false,
+                modifiers,
+            }],
+            ..Default::default()
+        });
+        ctx.memory_mut(|mem| mem.request_focus(focused_id));
+        let output = run(&ctx);
+        let _ = ctx.end_pass();
+        output
     }
 
     #[test]

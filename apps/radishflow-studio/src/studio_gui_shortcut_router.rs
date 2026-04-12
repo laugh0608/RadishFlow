@@ -272,6 +272,44 @@ mod tests {
     }
 
     #[test]
+    fn shortcut_router_reports_palette_owned_shortcut_for_bound_function_key() {
+        let route = route_shortcut(
+            &registry(),
+            &StudioGuiShortcut {
+                modifiers: Vec::new(),
+                key: StudioGuiShortcutKey::F5,
+            },
+            StudioGuiFocusContext::CommandPalette,
+        );
+
+        assert_eq!(
+            route,
+            StudioGuiShortcutRoute::Ignored {
+                reason: StudioGuiShortcutIgnoreReason::CommandPaletteOwnsShortcut,
+            }
+        );
+    }
+
+    #[test]
+    fn shortcut_router_reports_modal_owned_shortcut_for_canvas_accept_key() {
+        let route = route_shortcut(
+            &registry(),
+            &StudioGuiShortcut {
+                modifiers: Vec::new(),
+                key: StudioGuiShortcutKey::Tab,
+            },
+            StudioGuiFocusContext::ModalDialog,
+        );
+
+        assert_eq!(
+            route,
+            StudioGuiShortcutRoute::Ignored {
+                reason: StudioGuiShortcutIgnoreReason::ModalDialogOwnsShortcut,
+            }
+        );
+    }
+
+    #[test]
     fn shortcut_router_routes_tab_to_canvas_accept_when_suggestion_is_focused() {
         let route = route_shortcut(
             &registry(),

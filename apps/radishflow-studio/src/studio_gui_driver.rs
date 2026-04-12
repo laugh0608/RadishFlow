@@ -651,13 +651,14 @@ mod tests {
     };
 
     use crate::{
-        StudioGuiCanvasInteractionAction, StudioGuiDriver, StudioGuiDriverOutcome, StudioGuiEvent,
-        StudioGuiFocusContext, StudioGuiHostCommandOutcome, StudioGuiHostEntitlementDispatchResult,
-        StudioGuiHostUiCommandDispatchResult, StudioGuiShortcut, StudioGuiShortcutIgnoreReason,
-        StudioGuiShortcutKey, StudioGuiShortcutModifier, StudioGuiWindowAreaId,
-        StudioGuiWindowDockPlacement, StudioGuiWindowDockRegion, StudioGuiWindowDropTargetQuery,
-        StudioGuiWindowLayoutMutation, StudioRuntimeConfig, StudioRuntimeEntitlementPreflight,
-        StudioRuntimeEntitlementSeed, StudioRuntimeTrigger,
+        StudioGuiCanvasInteractionAction, StudioGuiDriver, StudioGuiDriverDispatch,
+        StudioGuiDriverOutcome, StudioGuiEvent, StudioGuiFocusContext, StudioGuiHostCommandOutcome,
+        StudioGuiHostEntitlementDispatchResult, StudioGuiHostUiCommandDispatchResult,
+        StudioGuiShortcut, StudioGuiShortcutIgnoreReason, StudioGuiShortcutKey,
+        StudioGuiShortcutModifier, StudioGuiWindowAreaId, StudioGuiWindowDockPlacement,
+        StudioGuiWindowDockRegion, StudioGuiWindowDropTargetQuery, StudioGuiWindowLayoutMutation,
+        StudioRuntimeConfig, StudioRuntimeEntitlementPreflight, StudioRuntimeEntitlementSeed,
+        StudioRuntimeTrigger,
     };
     use rf_ui::{
         EntitlementActionId, GhostElement, GhostElementKind, StreamVisualKind, StreamVisualState,
@@ -1409,6 +1410,70 @@ mod tests {
                 },
                 reason: StudioGuiShortcutIgnoreReason::TextInputOwnsShortcut,
             }
+        );
+    }
+
+    #[test]
+    fn gui_driver_reports_ignored_shortcut_when_command_palette_owns_function_key() {
+        let mut driver = StudioGuiDriver::new(&lease_expiring_config()).expect("expected driver");
+        let _ = driver
+            .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+            .expect("expected open dispatch");
+
+        let dispatch = driver
+            .dispatch_event(StudioGuiEvent::ShortcutPressed {
+                shortcut: StudioGuiShortcut {
+                    modifiers: vec![StudioGuiShortcutModifier::Shift],
+                    key: StudioGuiShortcutKey::F6,
+                },
+                focus_context: StudioGuiFocusContext::CommandPalette,
+            })
+            .expect("expected shortcut dispatch");
+
+        assert_ignored_shortcut(
+            &dispatch,
+            StudioGuiShortcut {
+                modifiers: vec![StudioGuiShortcutModifier::Shift],
+                key: StudioGuiShortcutKey::F6,
+            },
+            StudioGuiShortcutIgnoreReason::CommandPaletteOwnsShortcut,
+        );
+        assert_eq!(
+            dispatch.snapshot.runtime.control_state.simulation_mode,
+            rf_ui::SimulationMode::Hold
+        );
+    }
+
+    #[test]
+    fn gui_driver_reports_ignored_shortcut_when_modal_dialog_owns_canvas_shortcut() {
+        let mut driver = StudioGuiDriver::new(&lease_expiring_config()).expect("expected driver");
+        driver.replace_canvas_suggestions(vec![sample_canvas_suggestion("sug-high", 0.95)]);
+
+        let dispatch = driver
+            .dispatch_event(StudioGuiEvent::ShortcutPressed {
+                shortcut: StudioGuiShortcut {
+                    modifiers: Vec::new(),
+                    key: StudioGuiShortcutKey::Tab,
+                },
+                focus_context: StudioGuiFocusContext::ModalDialog,
+            })
+            .expect("expected shortcut dispatch");
+
+        assert_ignored_shortcut(
+            &dispatch,
+            StudioGuiShortcut {
+                modifiers: Vec::new(),
+                key: StudioGuiShortcutKey::Tab,
+            },
+            StudioGuiShortcutIgnoreReason::ModalDialogOwnsShortcut,
+        );
+        assert_eq!(
+            dispatch
+                .canvas
+                .focused_suggestion_id
+                .as_ref()
+                .map(|id| id.as_str()),
+            Some("sug-high")
         );
     }
 
@@ -2594,5 +2659,16 @@ mod tests {
                 ..
             }
         ));
+    }
+
+    fn assert_ignored_shortcut(
+        dispatch: &StudioGuiDriverDispatch,
+        shortcut: StudioGuiShortcut,
+        reason: StudioGuiShortcutIgnoreReason,
+    ) {
+        assert_eq!(
+            dispatch.outcome,
+            StudioGuiDriverOutcome::IgnoredShortcut { shortcut, reason }
+        );
     }
 }

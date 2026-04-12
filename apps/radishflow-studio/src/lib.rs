@@ -224,9 +224,9 @@ pub use studio_gui_window_layout::{
 };
 pub use studio_gui_window_model::{
     StudioGuiWindowCanvasAreaModel, StudioGuiWindowCommandAreaModel,
-    StudioGuiWindowDropPreviewModel, StudioGuiWindowDropPreviewOverlayModel,
-    StudioGuiWindowDropPreviewState, StudioGuiWindowHeaderModel, StudioGuiWindowModel,
-    StudioGuiWindowRuntimeAreaModel,
+    StudioGuiWindowCommandPaletteItemModel, StudioGuiWindowDropPreviewModel,
+    StudioGuiWindowDropPreviewOverlayModel, StudioGuiWindowDropPreviewState,
+    StudioGuiWindowHeaderModel, StudioGuiWindowModel, StudioGuiWindowRuntimeAreaModel,
 };
 pub use studio_runtime::{
     StudioRuntime, StudioRuntimeConfig, StudioRuntimeDispatch, StudioRuntimeEffect,

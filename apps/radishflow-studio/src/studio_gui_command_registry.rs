@@ -38,6 +38,16 @@ pub struct StudioGuiCommandEntry {
     pub shortcut: Option<StudioGuiShortcut>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioGuiCommandPresentation {
+    pub label: String,
+    pub label_with_shortcut: String,
+    pub palette_label: String,
+    pub shortcut_label: Option<String>,
+    pub menu_path_text: String,
+    pub hover_text: String,
+}
+
 impl StudioGuiCommandEntry {
     pub fn matches_palette_query(&self, query: &str) -> bool {
         let terms = normalize_palette_query_terms(query);
@@ -57,6 +67,34 @@ impl StudioGuiCommandEntry {
         terms
             .iter()
             .all(|term| fields.iter().any(|field| field.contains(term)))
+    }
+
+    pub fn presentation(&self) -> StudioGuiCommandPresentation {
+        let shortcut_label = self.shortcut.as_ref().map(format_shortcut);
+        let label_with_shortcut = match shortcut_label.as_ref() {
+            Some(shortcut) => format!("{} ({shortcut})", self.label),
+            None => self.label.clone(),
+        };
+        let palette_label = if self.enabled {
+            label_with_shortcut.clone()
+        } else {
+            format!("{label_with_shortcut} [disabled]")
+        };
+        let menu_path_text = self.menu_path.join(" > ");
+        let hover_text = if menu_path_text.is_empty() {
+            self.detail.clone()
+        } else {
+            format!("{}\nMenu: {menu_path_text}", self.detail)
+        };
+
+        StudioGuiCommandPresentation {
+            label: self.label.clone(),
+            label_with_shortcut,
+            palette_label,
+            shortcut_label,
+            menu_path_text,
+            hover_text,
+        }
     }
 }
 
@@ -384,13 +422,35 @@ fn normalize_palette_query_field(value: &str) -> String {
     value.trim().to_lowercase()
 }
 
+fn format_shortcut(shortcut: &StudioGuiShortcut) -> String {
+    let mut parts = Vec::new();
+    for modifier in &shortcut.modifiers {
+        let label = match modifier {
+            StudioGuiShortcutModifier::Ctrl => "Ctrl",
+            StudioGuiShortcutModifier::Shift => "Shift",
+            StudioGuiShortcutModifier::Alt => "Alt",
+        };
+        parts.push(label);
+    }
+    let key = match shortcut.key {
+        StudioGuiShortcutKey::F5 => "F5",
+        StudioGuiShortcutKey::F6 => "F6",
+        StudioGuiShortcutKey::F8 => "F8",
+        StudioGuiShortcutKey::Tab => "Tab",
+        StudioGuiShortcutKey::Escape => "Escape",
+    };
+    parts.push(key);
+    parts.join("+")
+}
+
 #[cfg(test)]
 mod tests {
     use crate::{
         StudioAppHostUiActionModel, StudioAppHostUiCommandGroup, StudioAppHostUiCommandModel,
-        StudioGuiCanvasActionId, StudioGuiCommandGroup, StudioGuiCommandMenuNode,
-        StudioGuiCommandRegistry, StudioGuiShortcut, StudioGuiShortcutKey,
-        StudioGuiShortcutModifier, studio_gui_canvas_widget::canvas_command_id,
+        StudioGuiCanvasActionId, StudioGuiCommandEntry, StudioGuiCommandGroup,
+        StudioGuiCommandMenuNode, StudioGuiCommandRegistry, StudioGuiShortcut,
+        StudioGuiShortcutKey, StudioGuiShortcutModifier,
+        studio_gui_canvas_widget::canvas_command_id,
     };
 
     #[test]
@@ -719,6 +779,49 @@ mod tests {
                 "run_panel.set_active",
                 "run_panel.recover_failure",
             ]
+        );
+    }
+
+    #[test]
+    fn gui_command_entry_presentation_builds_shared_surface_labels_and_hover_text() {
+        let entry = StudioGuiCommandEntry {
+            command_id: "run_panel.recover_failure".to_string(),
+            label: "Recover run panel failure".to_string(),
+            detail: "Apply the current run panel recovery action in the target window".to_string(),
+            enabled: false,
+            sort_order: 200,
+            target_window_id: Some(2),
+            menu_path: vec![
+                "Run".to_string(),
+                "Recovery".to_string(),
+                "Recover Run Panel Failure".to_string(),
+            ],
+            search_terms: vec!["recover".to_string()],
+            shortcut: Some(StudioGuiShortcut {
+                modifiers: Vec::new(),
+                key: StudioGuiShortcutKey::F8,
+            }),
+        };
+
+        let presentation = entry.presentation();
+
+        assert_eq!(presentation.label, "Recover run panel failure");
+        assert_eq!(
+            presentation.label_with_shortcut,
+            "Recover run panel failure (F8)"
+        );
+        assert_eq!(
+            presentation.palette_label,
+            "Recover run panel failure (F8) [disabled]"
+        );
+        assert_eq!(presentation.shortcut_label.as_deref(), Some("F8"));
+        assert_eq!(
+            presentation.menu_path_text,
+            "Run > Recovery > Recover Run Panel Failure"
+        );
+        assert_eq!(
+            presentation.hover_text,
+            "Apply the current run panel recovery action in the target window\nMenu: Run > Recovery > Recover Run Panel Failure"
         );
     }
 

@@ -1,9 +1,9 @@
 use crate::{
-    EntitlementSessionHostRuntimeOutput, StudioGuiCanvasWidgetModel, StudioGuiCommandMenuNode,
-    StudioGuiCommandRegistry, StudioGuiCommandSection, StudioGuiSnapshot, StudioGuiWindowAreaId,
-    StudioGuiWindowDockRegion, StudioGuiWindowDropTarget, StudioGuiWindowDropTargetKind,
-    StudioGuiWindowDropTargetQuery, StudioGuiWindowLayoutModel, StudioGuiWindowLayoutState,
-    StudioWindowHostId, WorkspaceControlState,
+    EntitlementSessionHostRuntimeOutput, StudioGuiCanvasWidgetModel, StudioGuiCommandEntry,
+    StudioGuiCommandMenuNode, StudioGuiCommandRegistry, StudioGuiCommandSection, StudioGuiSnapshot,
+    StudioGuiWindowAreaId, StudioGuiWindowDockRegion, StudioGuiWindowDropTarget,
+    StudioGuiWindowDropTargetKind, StudioGuiWindowDropTargetQuery, StudioGuiWindowLayoutModel,
+    StudioGuiWindowLayoutState, StudioWindowHostId, WorkspaceControlState,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -23,6 +23,43 @@ pub struct StudioGuiWindowCommandAreaModel {
     pub menu_tree: Vec<StudioGuiCommandMenuNode>,
     pub total_command_count: usize,
     pub enabled_command_count: usize,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioGuiWindowCommandPaletteItemModel {
+    pub command_id: String,
+    pub enabled: bool,
+    pub label: String,
+    pub detail: String,
+    pub menu_path_text: String,
+    pub hover_text: String,
+}
+
+impl StudioGuiWindowCommandAreaModel {
+    pub fn filtered_commands(&self, query: &str) -> Vec<&StudioGuiCommandEntry> {
+        self.sections
+            .iter()
+            .flat_map(|section| section.commands.iter())
+            .filter(|command| command.matches_palette_query(query))
+            .collect()
+    }
+
+    pub fn palette_items(&self, query: &str) -> Vec<StudioGuiWindowCommandPaletteItemModel> {
+        self.filtered_commands(query)
+            .into_iter()
+            .map(|command| {
+                let presentation = command.presentation();
+                StudioGuiWindowCommandPaletteItemModel {
+                    command_id: command.command_id.clone(),
+                    enabled: command.enabled,
+                    label: presentation.palette_label,
+                    detail: command.detail.clone(),
+                    menu_path_text: presentation.menu_path_text,
+                    hover_text: presentation.hover_text,
+                }
+            })
+            .collect()
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -459,6 +496,29 @@ mod tests {
             "studio.window.owner.slot-1"
         );
         assert_eq!(window.drop_preview, None);
+
+        let _ = fs::remove_file(project_path);
+    }
+
+    #[test]
+    fn studio_gui_window_command_area_filters_palette_commands_through_shared_model() {
+        let (config, project_path) = flash_drum_local_rules_config();
+        let mut driver = StudioGuiDriver::new(&config).expect("expected driver");
+
+        let dispatch = driver
+            .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+            .expect("expected open dispatch");
+        let window = dispatch.snapshot.window_model();
+
+        assert_eq!(
+            window
+                .commands
+                .filtered_commands("activate")
+                .into_iter()
+                .map(|command| command.command_id.as_str())
+                .collect::<Vec<_>>(),
+            vec!["run_panel.set_active"]
+        );
 
         let _ = fs::remove_file(project_path);
     }
