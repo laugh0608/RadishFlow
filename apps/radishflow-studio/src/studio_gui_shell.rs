@@ -3145,6 +3145,51 @@ mod tests {
     }
 
     #[test]
+    fn command_surface_interactions_converge_to_same_window_state_for_hold_workspace() {
+        let mut apps = ready_command_surface_apps(&lease_expiring_config());
+        let initial_window = shared_command_surface_initial_window(&apps);
+
+        dispatch_enabled_command_surface_interactions(
+            &mut apps,
+            &initial_window,
+            "run_panel.set_active",
+            "activate",
+            egui::Key::F6,
+            egui::Modifiers {
+                shift: true,
+                ..egui::Modifiers::NONE
+            },
+        );
+        let active_window = command_surface_window(&apps.menu_app);
+        assert_command_surface_windows_equal(&apps, &active_window);
+
+        dispatch_enabled_command_surface_interactions(
+            &mut apps,
+            &active_window,
+            "run_panel.set_hold",
+            "hold",
+            egui::Key::F6,
+            egui::Modifiers::NONE,
+        );
+
+        let menu_window = command_surface_window(&apps.menu_app);
+
+        assert!(!apps.palette_app.command_palette.open);
+        assert_eq!(
+            menu_window.runtime.control_state.simulation_mode,
+            SimulationMode::Hold
+        );
+        assert_eq!(
+            menu_window.runtime.control_state.pending_reason,
+            Some(rf_ui::SolvePendingReason::ModeActivated)
+        );
+        assert!(!menu_window.runtime.control_state.can_set_hold);
+        assert!(menu_window.runtime.control_state.can_set_active);
+        assert_eq!(menu_window.runtime.run_panel.view().mode_label, "Hold");
+        assert_command_surface_windows_equal(&apps, &menu_window);
+    }
+
+    #[test]
     fn command_surface_interactions_converge_to_same_window_state_for_run_panel_recovery() {
         let mut apps = ready_failed_command_surface_apps();
         let failed_window = shared_command_surface_initial_window(&apps);
