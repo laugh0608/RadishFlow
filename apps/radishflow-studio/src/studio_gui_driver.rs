@@ -682,6 +682,23 @@ mod tests {
         None
     }
 
+    fn find_menu_command_by_label<'a>(
+        nodes: &'a [crate::StudioGuiCommandMenuNode],
+        label: &str,
+    ) -> Option<&'a crate::StudioGuiCommandMenuCommandModel> {
+        for node in nodes {
+            if let Some(command) = node.command.as_ref() {
+                if command.label == label {
+                    return Some(command);
+                }
+            }
+            if let Some(command) = find_menu_command_by_label(&node.children, label) {
+                return Some(command);
+            }
+        }
+        None
+    }
+
     fn lease_expiring_config() -> StudioRuntimeConfig {
         StudioRuntimeConfig {
             entitlement_preflight: StudioRuntimeEntitlementPreflight::Skip,
@@ -1462,6 +1479,119 @@ mod tests {
         );
         assert_eq!(recovery_toolbar_item.hover_text, recovery_palette_item.hover_text);
         assert_eq!(recovery_menu_item.hover_text, recovery_palette_item.hover_text);
+    }
+
+    #[test]
+    fn gui_driver_command_surface_dispatch_matches_shortcut_route_for_activate_workspace() {
+        let mut surface_driver =
+            StudioGuiDriver::new(&lease_expiring_config()).expect("expected surface driver");
+        let opened = surface_driver
+            .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+            .expect("expected open dispatch");
+
+        let palette_command_id = opened
+            .window
+            .commands
+            .palette_items("activate")
+            .into_iter()
+            .map(|item| item.command_id)
+            .collect::<Vec<_>>();
+        let toolbar_command_id = opened
+            .window
+            .commands
+            .toolbar_sections
+            .iter()
+            .flat_map(|section| section.items.iter())
+            .find(|item| item.label == "Activate workspace")
+            .map(|item| item.command_id.clone())
+            .expect("expected activate toolbar command");
+        let command_list_command_id = opened
+            .window
+            .commands
+            .command_list_sections
+            .iter()
+            .flat_map(|section| section.items.iter())
+            .find(|item| item.label == "Activate workspace (Shift+F6)")
+            .map(|item| item.command_id.clone())
+            .expect("expected activate command list item");
+        let menu_command_id = find_menu_command_by_label(
+            &opened.window.commands.menu_tree,
+            "Activate workspace (Shift+F6)",
+        )
+        .map(|item| item.command_id.clone())
+        .expect("expected activate menu item");
+
+        assert_eq!(palette_command_id, vec!["run_panel.set_active".to_string()]);
+        assert_eq!(toolbar_command_id, "run_panel.set_active");
+        assert_eq!(command_list_command_id, "run_panel.set_active");
+        assert_eq!(menu_command_id, "run_panel.set_active");
+
+        let surface_dispatch = surface_driver
+            .dispatch_event(StudioGuiEvent::UiCommandRequested {
+                command_id: palette_command_id[0].clone(),
+            })
+            .expect("expected surface ui command dispatch");
+
+        let mut shortcut_driver =
+            StudioGuiDriver::new(&lease_expiring_config()).expect("expected shortcut driver");
+        let _ = shortcut_driver
+            .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+            .expect("expected open dispatch");
+        let shortcut_dispatch = shortcut_driver
+            .dispatch_event(StudioGuiEvent::ShortcutPressed {
+                shortcut: StudioGuiShortcut {
+                    modifiers: vec![StudioGuiShortcutModifier::Shift],
+                    key: StudioGuiShortcutKey::F6,
+                },
+                focus_context: StudioGuiFocusContext::Global,
+            })
+            .expect("expected shortcut dispatch");
+
+        match &surface_dispatch.outcome {
+            StudioGuiDriverOutcome::HostCommand(
+                StudioGuiHostCommandOutcome::UiCommandDispatched(
+                    StudioGuiHostUiCommandDispatchResult::Executed(executed),
+                ),
+            ) => match &executed.effects.runtime_report.dispatch {
+                crate::StudioRuntimeDispatch::AppCommand(outcome) => match &outcome.dispatch {
+                    crate::StudioAppResultDispatch::WorkspaceMode(mode) => {
+                        assert_eq!(mode.simulation_mode, rf_ui::SimulationMode::Active);
+                    }
+                    other => panic!("expected workspace mode dispatch, got {other:?}"),
+                },
+                other => panic!("expected app command dispatch, got {other:?}"),
+            },
+            other => panic!("expected executed surface command outcome, got {other:?}"),
+        }
+        match &shortcut_dispatch.outcome {
+            StudioGuiDriverOutcome::HostCommand(
+                StudioGuiHostCommandOutcome::UiCommandDispatched(
+                    StudioGuiHostUiCommandDispatchResult::Executed(executed),
+                ),
+            ) => match &executed.effects.runtime_report.dispatch {
+                crate::StudioRuntimeDispatch::AppCommand(outcome) => match &outcome.dispatch {
+                    crate::StudioAppResultDispatch::WorkspaceMode(mode) => {
+                        assert_eq!(mode.simulation_mode, rf_ui::SimulationMode::Active);
+                    }
+                    other => panic!("expected workspace mode dispatch, got {other:?}"),
+                },
+                other => panic!("expected app command dispatch, got {other:?}"),
+            },
+            other => panic!("expected executed shortcut outcome, got {other:?}"),
+        }
+
+        assert_eq!(
+            surface_dispatch.window.commands,
+            shortcut_dispatch.window.commands
+        );
+        assert_eq!(
+            surface_dispatch.window.runtime.control_state,
+            shortcut_dispatch.window.runtime.control_state
+        );
+        assert_eq!(
+            surface_dispatch.window.runtime.run_panel.view(),
+            shortcut_dispatch.window.runtime.run_panel.view()
+        );
     }
 
     #[test]
