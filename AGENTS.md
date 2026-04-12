@@ -181,6 +181,7 @@
 - `rf-thermo` 与 `rf-flash` 先稳定接口，再补 Antoine、Raoult 和 Rachford-Rice
 - MVP 保持单文档工作区，但源码仍按职责拆分，不以单文件承载全部状态
 - 单个源码文件原则上不超过 1000 行；若文件已接近或超过该阈值，后续新增实现应优先拆分职责、提取子模块或测试 helper，而不是继续膨胀原文件
+- `src/` 下源码应按职责做浅层目录分组，优先使用 1 层子目录收纳同域模块，避免长期把所有模块平铺在 `src/` 根下，也避免为了“整齐”堆出过深目录树
 - 属性编辑采用字段级草稿态，语义提交后才写回文档并形成命令
 - 求解控制采用 `SimulationMode(Active/Hold)` 与 `RunStatus` 分离模型
 - 求解结果采用独立 `SolveSnapshot`，不直接覆盖 `FlowsheetDocument`
