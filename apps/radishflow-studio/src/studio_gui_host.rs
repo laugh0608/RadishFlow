@@ -996,6 +996,23 @@ mod tests {
         StudioRuntimeEntitlementSessionEvent, StudioRuntimeTrigger, StudioWindowHostRetirement,
     };
 
+    fn find_menu_command_by_label<'a>(
+        nodes: &'a [crate::StudioGuiCommandMenuNode],
+        label: &str,
+    ) -> Option<&'a crate::StudioGuiCommandMenuCommandModel> {
+        for node in nodes {
+            if let Some(command) = node.command.as_ref() {
+                if command.label == label {
+                    return Some(command);
+                }
+            }
+            if let Some(command) = find_menu_command_by_label(&node.children, label) {
+                return Some(command);
+            }
+        }
+        None
+    }
+
     fn lease_expiring_config() -> StudioRuntimeConfig {
         StudioRuntimeConfig {
             entitlement_preflight: StudioRuntimeEntitlementPreflight::Skip,
@@ -1529,6 +1546,107 @@ mod tests {
         }
 
         let _ = fs::remove_file(project_path);
+    }
+
+    #[test]
+    fn gui_host_command_surface_ids_converge_into_equivalent_host_dispatch_paths() {
+        let mut surface_host = StudioGuiHost::new(&lease_expiring_config()).expect("expected gui host");
+        let opened = surface_host.open_window().expect("expected window open");
+        let window = surface_host.window_model_for_window(Some(opened.registration.window_id));
+
+        let palette_command_id = window
+            .commands
+            .palette_items("activate")
+            .into_iter()
+            .map(|item| item.command_id)
+            .collect::<Vec<_>>();
+        let toolbar_command_id = window
+            .commands
+            .toolbar_sections
+            .iter()
+            .flat_map(|section| section.items.iter())
+            .find(|item| item.label == "Activate workspace")
+            .map(|item| item.command_id.clone())
+            .expect("expected activate toolbar command");
+        let command_list_command_id = window
+            .commands
+            .command_list_sections
+            .iter()
+            .flat_map(|section| section.items.iter())
+            .find(|item| item.label == "Activate workspace (Shift+F6)")
+            .map(|item| item.command_id.clone())
+            .expect("expected activate command list item");
+        let menu_command_id =
+            find_menu_command_by_label(&window.commands.menu_tree, "Activate workspace (Shift+F6)")
+                .map(|item| item.command_id.clone())
+                .expect("expected activate menu command");
+
+        assert_eq!(palette_command_id, vec!["run_panel.set_active".to_string()]);
+        assert_eq!(toolbar_command_id, "run_panel.set_active");
+        assert_eq!(command_list_command_id, "run_panel.set_active");
+        assert_eq!(menu_command_id, "run_panel.set_active");
+
+        let dispatched = surface_host
+            .dispatch_ui_command(&palette_command_id[0])
+            .expect("expected dispatch ui command");
+        match &dispatched {
+            StudioGuiHostUiCommandDispatchResult::Executed(dispatch) => {
+                assert_eq!(dispatch.target_window_id, opened.registration.window_id);
+                match &dispatch.effects.runtime_report.dispatch {
+                    crate::StudioRuntimeDispatch::AppCommand(outcome) => match &outcome.dispatch {
+                        crate::StudioAppResultDispatch::WorkspaceMode(mode) => {
+                            assert_eq!(mode.simulation_mode, rf_ui::SimulationMode::Active);
+                        }
+                        other => panic!("expected workspace mode dispatch, got {other:?}"),
+                    },
+                    other => panic!("expected app command dispatch, got {other:?}"),
+                }
+            }
+            other => panic!("expected executed ui command dispatch, got {other:?}"),
+        }
+
+        let mut command_host = StudioGuiHost::new(&lease_expiring_config()).expect("expected gui host");
+        let opened = match command_host
+            .execute_command(StudioGuiHostCommand::OpenWindow)
+            .expect("expected open command")
+        {
+            StudioGuiHostCommandOutcome::WindowOpened(opened) => opened.registration.window_id,
+            other => panic!("expected window opened outcome, got {other:?}"),
+        };
+        let executed = command_host
+            .execute_command(StudioGuiHostCommand::DispatchUiCommand {
+                command_id: menu_command_id,
+            })
+            .expect("expected command dispatch");
+        match &executed {
+            StudioGuiHostCommandOutcome::UiCommandDispatched(
+                StudioGuiHostUiCommandDispatchResult::Executed(dispatch),
+            ) => {
+                assert_eq!(dispatch.target_window_id, opened);
+                match &dispatch.effects.runtime_report.dispatch {
+                    crate::StudioRuntimeDispatch::AppCommand(outcome) => match &outcome.dispatch {
+                        crate::StudioAppResultDispatch::WorkspaceMode(mode) => {
+                            assert_eq!(mode.simulation_mode, rf_ui::SimulationMode::Active);
+                        }
+                        other => panic!("expected workspace mode dispatch, got {other:?}"),
+                    },
+                    other => panic!("expected app command dispatch, got {other:?}"),
+                }
+            }
+            other => panic!("expected executed command outcome, got {other:?}"),
+        }
+
+        let dispatched_window = surface_host.window_model_for_window(Some(1));
+        let executed_window = command_host.window_model_for_window(Some(1));
+        assert_eq!(dispatched_window.commands, executed_window.commands);
+        assert_eq!(
+            dispatched_window.runtime.control_state,
+            executed_window.runtime.control_state
+        );
+        assert_eq!(
+            dispatched_window.runtime.run_panel.view(),
+            executed_window.runtime.run_panel.view()
+        );
     }
 
     #[test]
