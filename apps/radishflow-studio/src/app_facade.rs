@@ -1063,11 +1063,7 @@ mod tests {
         let auth_cache_index = sample_auth_cache_index(&["pkg-1", "pkg-2"]);
         let facade = StudioAppFacade::new();
         let mut app_state = AppState::new(sample_document());
-        app_state.update_entitlement(
-            sample_snapshot(),
-            vec![sample_manifest()],
-            timestamp(140),
-        );
+        app_state.update_entitlement(sample_snapshot(), vec![sample_manifest()], timestamp(140));
         let cache_root = PathBuf::from("D:\\cache-root");
         let context = StudioAppAuthCacheContext::new(&cache_root, &auth_cache_index);
 

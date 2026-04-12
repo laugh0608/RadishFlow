@@ -213,11 +213,9 @@ impl StudioAppWindowHostManager {
         action: StudioCanvasInteractionAction,
     ) -> RfResult<StudioAppWindowHostCanvasInteractionResult> {
         let (accepted, rejected, focused) = match action {
-            StudioCanvasInteractionAction::AcceptFocusedByTab => (
-                self.accept_focused_canvas_suggestion_by_tab()?,
-                None,
-                None,
-            ),
+            StudioCanvasInteractionAction::AcceptFocusedByTab => {
+                (self.accept_focused_canvas_suggestion_by_tab()?, None, None)
+            }
             StudioCanvasInteractionAction::RejectFocused => {
                 (None, self.reject_focused_canvas_suggestion(), None)
             }
@@ -690,11 +688,12 @@ mod tests {
     use crate::{
         StudioAppWindowHostCanvasInteractionResult, StudioAppWindowHostCommand,
         StudioAppWindowHostCommandOutcome, StudioAppWindowHostGlobalEvent,
-        StudioAppWindowHostManager, StudioAppWindowHostUiAction, StudioCanvasInteractionAction,
+        StudioAppWindowHostManager, StudioAppWindowHostUiAction,
         StudioAppWindowHostUiActionAvailability, StudioAppWindowHostUiActionDisabledReason,
-        StudioAppWindowHostUiActionState, StudioRuntimeEntitlementPreflight,
-        StudioRuntimeEntitlementSeed, StudioRuntimeEntitlementSessionEvent, StudioRuntimeTrigger,
-        StudioWindowHostRole, StudioWindowTimerDriverTransition,
+        StudioAppWindowHostUiActionState, StudioCanvasInteractionAction,
+        StudioRuntimeEntitlementPreflight, StudioRuntimeEntitlementSeed,
+        StudioRuntimeEntitlementSessionEvent, StudioRuntimeTrigger, StudioWindowHostRole,
+        StudioWindowTimerDriverTransition,
     };
     use rf_ui::{EntitlementActionId, RunPanelActionId};
 
@@ -1047,7 +1046,10 @@ mod tests {
         );
 
         let app_state = manager.session().host_port().runtime().app_state();
-        assert_eq!(app_state.workspace.run_panel.run_status, rf_ui::RunStatus::Converged);
+        assert_eq!(
+            app_state.workspace.run_panel.run_status,
+            rf_ui::RunStatus::Converged
+        );
         assert_eq!(app_state.workspace.run_panel.pending_reason, None);
         assert_eq!(
             app_state.workspace.run_panel.latest_snapshot_id.as_deref(),
@@ -1105,7 +1107,10 @@ mod tests {
         }
 
         let app_state = manager.session().host_port().runtime().app_state();
-        assert_eq!(app_state.workspace.run_panel.run_status, rf_ui::RunStatus::Converged);
+        assert_eq!(
+            app_state.workspace.run_panel.run_status,
+            rf_ui::RunStatus::Converged
+        );
         assert_eq!(app_state.workspace.run_panel.pending_reason, None);
 
         let _ = fs::remove_file(project_path);
@@ -1198,17 +1203,15 @@ mod tests {
         assert_ne!(dispatch.target_window_id, first.window_id);
         assert_eq!(manager.foreground_window_id(), Some(second.window_id));
         match &dispatch.dispatch.host_output.runtime_output.report.dispatch {
-            crate::StudioBootstrapDispatch::AppCommand(outcome) => {
-                match &outcome.dispatch {
-                    crate::StudioAppResultDispatch::Entitlement(entitlement) => {
-                        assert_eq!(
-                            entitlement.action,
-                            crate::StudioEntitlementAction::SyncEntitlement
-                        );
-                    }
-                    other => panic!("expected entitlement dispatch, got {other:?}"),
+            crate::StudioBootstrapDispatch::AppCommand(outcome) => match &outcome.dispatch {
+                crate::StudioAppResultDispatch::Entitlement(entitlement) => {
+                    assert_eq!(
+                        entitlement.action,
+                        crate::StudioEntitlementAction::SyncEntitlement
+                    );
                 }
-            }
+                other => panic!("expected entitlement dispatch, got {other:?}"),
+            },
             other => panic!("expected entitlement app command dispatch, got {other:?}"),
         }
     }

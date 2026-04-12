@@ -140,12 +140,15 @@ pub fn solve_workspace_from_auth_cache(
     auth_cache_index: &StoredAuthCacheIndex,
     request: &StudioSolveRequest,
 ) -> RfResult<()> {
-    let provider = CachedPropertyPackageProvider::new(cache_root, auth_cache_index).map_err(
-        |error| match error.context().diagnostic_code() {
-            Some(_) => error,
-            None => error.with_diagnostic_code(WORKSPACE_RUN_DIAGNOSTIC_LOCAL_CACHE_UNAVAILABLE),
-        },
-    )?;
+    let provider =
+        CachedPropertyPackageProvider::new(cache_root, auth_cache_index).map_err(|error| {
+            match error.context().diagnostic_code() {
+                Some(_) => error,
+                None => {
+                    error.with_diagnostic_code(WORKSPACE_RUN_DIAGNOSTIC_LOCAL_CACHE_UNAVAILABLE)
+                }
+            }
+        })?;
     solve_workspace_with_property_package(app_state, &provider, request)
 }
 
@@ -194,9 +197,9 @@ mod tests {
     use rf_ui::{AppState, DocumentMetadata, FlowsheetDocument, RunStatus};
 
     use super::{
-        SolveFailureContext, StudioSolveRequest,
-        WORKSPACE_RUN_DIAGNOSTIC_LOCAL_CACHE_UNAVAILABLE, next_solver_snapshot_sequence,
-        solve_workspace_from_auth_cache, solve_workspace_with_property_package,
+        SolveFailureContext, StudioSolveRequest, WORKSPACE_RUN_DIAGNOSTIC_LOCAL_CACHE_UNAVAILABLE,
+        next_solver_snapshot_sequence, solve_workspace_from_auth_cache,
+        solve_workspace_with_property_package,
     };
 
     fn timestamp(seconds: u64) -> std::time::SystemTime {
@@ -525,6 +528,9 @@ mod tests {
         );
 
         assert_eq!(context.primary_code.as_deref(), Some("solver.step.lookup"));
-        assert_eq!(context.related_unit_ids, vec![rf_types::UnitId::new("flash-1")]);
+        assert_eq!(
+            context.related_unit_ids,
+            vec![rf_types::UnitId::new("flash-1")]
+        );
     }
 }

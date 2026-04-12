@@ -206,10 +206,10 @@ mod tests {
 
     use crate::{
         StudioGuiNativeTimerSchedule, StudioGuiPlatformNativeTimerId,
-        StudioGuiPlatformTimerBinding, StudioGuiPlatformTimerCommand,
-        StudioGuiPlatformTimerCallbackResolution, StudioGuiPlatformTimerDriverState,
-        StudioGuiPlatformTimerRequest,
-        StudioRuntimeHostEffectId, StudioRuntimeTimerHandleSlot, StudioWindowHostId,
+        StudioGuiPlatformTimerBinding, StudioGuiPlatformTimerCallbackResolution,
+        StudioGuiPlatformTimerCommand, StudioGuiPlatformTimerDriverState,
+        StudioGuiPlatformTimerRequest, StudioRuntimeHostEffectId, StudioRuntimeTimerHandleSlot,
+        StudioWindowHostId,
     };
 
     fn schedule(

@@ -164,8 +164,8 @@ pub use studio_gui_canvas_widget::{
     StudioGuiCanvasWidgetModel,
 };
 pub use studio_gui_command_registry::{
-    StudioGuiCommandEntry, StudioGuiCommandGroup, StudioGuiCommandRegistry, StudioGuiCommandSection, StudioGuiShortcut,
-    StudioGuiShortcutKey, StudioGuiShortcutModifier,
+    StudioGuiCommandEntry, StudioGuiCommandGroup, StudioGuiCommandRegistry,
+    StudioGuiCommandSection, StudioGuiShortcut, StudioGuiShortcutKey, StudioGuiShortcutModifier,
 };
 pub use studio_gui_driver::{
     StudioGuiDriver, StudioGuiDriverDispatch, StudioGuiDriverOutcome, StudioGuiEvent,
@@ -175,11 +175,10 @@ pub use studio_gui_host::{
     StudioGuiHostCanvasInteractionResult, StudioGuiHostCanvasSuggestionResult,
     StudioGuiHostCloseWindowResult, StudioGuiHostCommand, StudioGuiHostCommandOutcome,
     StudioGuiHostDispatch, StudioGuiHostEntitlementDispatchResult,
-    StudioGuiHostGlobalEventDispatch, StudioGuiHostLifecycleDispatch,
-    StudioGuiHostLifecycleEvent, StudioGuiHostUiCommandDispatchResult,
-    StudioGuiHostWindowDropPreviewClearResult, StudioGuiHostWindowDropTargetApplyResult,
-    StudioGuiHostWindowDropTargetQueryResult, StudioGuiHostWindowLayoutUpdateResult,
-    StudioGuiHostWindowOpened,
+    StudioGuiHostGlobalEventDispatch, StudioGuiHostLifecycleDispatch, StudioGuiHostLifecycleEvent,
+    StudioGuiHostUiCommandDispatchResult, StudioGuiHostWindowDropPreviewClearResult,
+    StudioGuiHostWindowDropTargetApplyResult, StudioGuiHostWindowDropTargetQueryResult,
+    StudioGuiHostWindowLayoutUpdateResult, StudioGuiHostWindowOpened,
 };
 pub use studio_gui_platform_host::{
     StudioGuiPlatformAsyncRound, StudioGuiPlatformAsyncRoundAction,
@@ -247,9 +246,9 @@ pub use studio_window_host_manager::{
     StudioAppWindowHostCanvasInteractionResult, StudioAppWindowHostClose,
     StudioAppWindowHostCommand, StudioAppWindowHostCommandOutcome, StudioAppWindowHostDispatch,
     StudioAppWindowHostGlobalEvent, StudioAppWindowHostManager, StudioAppWindowHostOpenWindow,
-    StudioAppWindowHostUiAction, StudioCanvasInteractionAction,
-    StudioAppWindowHostUiActionAvailability, StudioAppWindowHostUiActionDisabledReason,
-    StudioAppWindowHostUiActionState,
+    StudioAppWindowHostUiAction, StudioAppWindowHostUiActionAvailability,
+    StudioAppWindowHostUiActionDisabledReason, StudioAppWindowHostUiActionState,
+    StudioCanvasInteractionAction,
 };
 pub use studio_window_session::{
     StudioWindowSession, StudioWindowSessionDispatch, StudioWindowSessionOpenWindow,

@@ -272,10 +272,10 @@ fn canvas_sort_order(action_id: StudioGuiCanvasActionId) -> u16 {
 #[cfg(test)]
 mod tests {
     use crate::{
-        studio_gui_canvas_widget::canvas_command_id,
         StudioAppHostUiActionModel, StudioAppHostUiCommandGroup, StudioAppHostUiCommandModel,
-        StudioGuiCanvasActionId, StudioGuiCommandGroup, StudioGuiCommandRegistry, StudioGuiShortcut,
-        StudioGuiShortcutKey, StudioGuiShortcutModifier,
+        StudioGuiCanvasActionId, StudioGuiCommandGroup, StudioGuiCommandRegistry,
+        StudioGuiShortcut, StudioGuiShortcutKey, StudioGuiShortcutModifier,
+        studio_gui_canvas_widget::canvas_command_id,
     };
 
     #[test]

@@ -10,16 +10,16 @@ use crate::studio_gui_layout_store::{
     load_persisted_window_layouts, save_persisted_window_layouts,
 };
 use crate::{
-    studio_gui_canvas_widget::canvas_action_id_from_command_id,
     StudioAppHostCloseEffects, StudioAppHostController, StudioAppHostDispatchEffects,
     StudioAppHostGlobalEventResult, StudioAppHostProjection, StudioAppHostState,
-    StudioAppHostUiCommandDispatchResult, StudioAppHostUiCommandModel, StudioAppHostWindowDispatchResult,
-    StudioAppWindowHostGlobalEvent, StudioCanvasInteractionAction, StudioGuiCommandRegistry,
-    StudioGuiNativeTimerEffects, StudioGuiRuntimeSnapshot, StudioGuiSnapshot,
-    StudioGuiWindowDropPreviewState, StudioGuiWindowDropTarget, StudioGuiWindowDropTargetQuery,
-    StudioGuiWindowLayoutMutation, StudioGuiWindowLayoutPersistenceState,
-    StudioGuiWindowLayoutState, StudioGuiWindowModel, StudioRuntimeConfig, StudioRuntimeTrigger,
-    StudioWindowHostId, StudioWindowHostRegistration,
+    StudioAppHostUiCommandDispatchResult, StudioAppHostUiCommandModel,
+    StudioAppHostWindowDispatchResult, StudioAppWindowHostGlobalEvent,
+    StudioCanvasInteractionAction, StudioGuiCommandRegistry, StudioGuiNativeTimerEffects,
+    StudioGuiRuntimeSnapshot, StudioGuiSnapshot, StudioGuiWindowDropPreviewState,
+    StudioGuiWindowDropTarget, StudioGuiWindowDropTargetQuery, StudioGuiWindowLayoutMutation,
+    StudioGuiWindowLayoutPersistenceState, StudioGuiWindowLayoutState, StudioGuiWindowModel,
+    StudioRuntimeConfig, StudioRuntimeTrigger, StudioWindowHostId, StudioWindowHostRegistration,
+    studio_gui_canvas_widget::canvas_action_id_from_command_id,
 };
 
 #[derive(Debug, Clone, PartialEq)]
@@ -988,13 +988,12 @@ mod tests {
 
     use crate::{
         StudioGuiCanvasInteractionAction, StudioGuiHost, StudioGuiHostCommand,
-        StudioGuiHostCommandOutcome,
-        StudioGuiHostEntitlementDispatchResult, StudioGuiHostLifecycleEvent,
-        StudioGuiHostUiCommandDispatchResult, StudioGuiNativeTimerEffects, StudioGuiWindowAreaId,
-        StudioGuiWindowDockPlacement, StudioGuiWindowDockRegion, StudioGuiWindowDropTargetQuery,
-        StudioGuiWindowLayoutMutation, StudioRuntimeConfig, StudioRuntimeEntitlementPreflight,
-        StudioRuntimeEntitlementSeed, StudioRuntimeEntitlementSessionEvent, StudioRuntimeTrigger,
-        StudioWindowHostRetirement,
+        StudioGuiHostCommandOutcome, StudioGuiHostEntitlementDispatchResult,
+        StudioGuiHostLifecycleEvent, StudioGuiHostUiCommandDispatchResult,
+        StudioGuiNativeTimerEffects, StudioGuiWindowAreaId, StudioGuiWindowDockPlacement,
+        StudioGuiWindowDockRegion, StudioGuiWindowDropTargetQuery, StudioGuiWindowLayoutMutation,
+        StudioRuntimeConfig, StudioRuntimeEntitlementPreflight, StudioRuntimeEntitlementSeed,
+        StudioRuntimeEntitlementSessionEvent, StudioRuntimeTrigger, StudioWindowHostRetirement,
     };
 
     fn lease_expiring_config() -> StudioRuntimeConfig {
@@ -1036,8 +1035,9 @@ mod tests {
             .duration_since(UNIX_EPOCH)
             .expect("expected current timestamp")
             .as_nanos();
-        let project_path =
-            std::env::temp_dir().join(format!("radishflow-gui-host-local-rules-{timestamp}.rfproj.json"));
+        let project_path = std::env::temp_dir().join(format!(
+            "radishflow-gui-host-local-rules-{timestamp}.rfproj.json"
+        ));
         let project =
             include_str!("../../../examples/flowsheets/feed-heater-flash.rfproj.json")
                 .replacen(
@@ -1548,13 +1548,22 @@ mod tests {
             .expect("expected canvas interaction command");
         match dispatch {
             StudioGuiHostCommandOutcome::CanvasInteracted(result) => {
-                assert_eq!(result.action, StudioGuiCanvasInteractionAction::AcceptFocusedByTab);
                 assert_eq!(
-                    result.accepted.as_ref().map(|suggestion| suggestion.id.as_str()),
+                    result.action,
+                    StudioGuiCanvasInteractionAction::AcceptFocusedByTab
+                );
+                assert_eq!(
+                    result
+                        .accepted
+                        .as_ref()
+                        .map(|suggestion| suggestion.id.as_str()),
                     Some("local.flash_drum.create_outlet.flash-1.vapor")
                 );
                 assert_eq!(
-                    result.latest_log_entry.as_ref().map(|entry| entry.message.as_str()),
+                    result
+                        .latest_log_entry
+                        .as_ref()
+                        .map(|entry| entry.message.as_str()),
                     Some(
                         "Solved document revision 1 with property package `binary-hydrocarbon-lite-v1` into snapshot `example-feed-heater-flash-rev-1-seq-1`"
                     )
@@ -1570,7 +1579,10 @@ mod tests {
             }
             other => panic!("expected canvas interaction outcome, got {other:?}"),
         }
-        assert_eq!(gui_host.state().foreground_window_id, Some(opened.registration.window_id));
+        assert_eq!(
+            gui_host.state().foreground_window_id,
+            Some(opened.registration.window_id)
+        );
 
         let _ = fs::remove_file(project_path);
     }
@@ -1597,7 +1609,10 @@ mod tests {
                 assert_eq!(command_id, "canvas.accept_focused");
                 assert_eq!(target_window_id, Some(opened.registration.window_id));
                 assert_eq!(
-                    result.accepted.as_ref().map(|suggestion| suggestion.id.as_str()),
+                    result
+                        .accepted
+                        .as_ref()
+                        .map(|suggestion| suggestion.id.as_str()),
                     Some("local.flash_drum.create_outlet.flash-1.vapor")
                 );
             }

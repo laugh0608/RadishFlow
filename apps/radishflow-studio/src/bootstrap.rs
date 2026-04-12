@@ -953,10 +953,10 @@ mod tests {
     };
     use crate::{
         EntitlementPreflightAction, EntitlementSessionEvent, EntitlementSessionEventOutcome,
-        EntitlementSessionHostTimerEffect, StudioAppExecutionBoundary, StudioAppExecutionLane,
-        StudioAppCommand, StudioAppResultDispatch, StudioEntitlementAction,
-        StudioEntitlementOutcome, StudioRuntime, StudioWorkspaceRunOutcome,
-        WorkspaceRunCommand, WorkspaceRunPackageSelection, WorkspaceSolveSkipReason,
+        EntitlementSessionHostTimerEffect, StudioAppCommand, StudioAppExecutionBoundary,
+        StudioAppExecutionLane, StudioAppResultDispatch, StudioEntitlementAction,
+        StudioEntitlementOutcome, StudioRuntime, StudioWorkspaceRunOutcome, WorkspaceRunCommand,
+        WorkspaceRunPackageSelection, WorkspaceSolveSkipReason,
     };
 
     #[test]
@@ -1157,7 +1157,10 @@ mod tests {
             StudioAppResultDispatch::WorkspaceRun(dispatch) => dispatch,
             other => panic!("expected workspace run dispatch, got {other:?}"),
         };
-        assert_eq!(dispatch.package_id.as_deref(), Some("binary-hydrocarbon-lite-v1"));
+        assert_eq!(
+            dispatch.package_id.as_deref(),
+            Some("binary-hydrocarbon-lite-v1")
+        );
         assert!(matches!(
             dispatch.outcome,
             StudioWorkspaceRunOutcome::Started(_)
@@ -1165,14 +1168,8 @@ mod tests {
         assert_eq!(dispatch.simulation_mode, SimulationMode::Active);
         assert_eq!(dispatch.pending_reason, None);
         assert_eq!(dispatch.run_status, RunStatus::Converged);
-        assert_eq!(
-            automatic.control_state.run_status,
-            RunStatus::Converged
-        );
-        assert_eq!(
-            automatic.run_panel.view().status_label,
-            "Converged"
-        );
+        assert_eq!(automatic.control_state.run_status, RunStatus::Converged);
+        assert_eq!(automatic.run_panel.view().status_label, "Converged");
     }
 
     #[test]

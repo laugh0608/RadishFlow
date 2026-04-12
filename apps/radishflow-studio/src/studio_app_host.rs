@@ -8,9 +8,9 @@ use crate::{
     StudioAppWindowHostCanvasInteractionResult, StudioAppWindowHostClose,
     StudioAppWindowHostCommand, StudioAppWindowHostCommandOutcome, StudioAppWindowHostDispatch,
     StudioAppWindowHostGlobalEvent, StudioAppWindowHostManager, StudioAppWindowHostOpenWindow,
-    StudioAppWindowHostUiAction, StudioCanvasInteractionAction,
-    StudioAppWindowHostUiActionAvailability, StudioAppWindowHostUiActionDisabledReason,
-    StudioAppWindowHostUiActionState, StudioRuntimeConfig, StudioRuntimeHostAckResult,
+    StudioAppWindowHostUiAction, StudioAppWindowHostUiActionAvailability,
+    StudioAppWindowHostUiActionDisabledReason, StudioAppWindowHostUiActionState,
+    StudioCanvasInteractionAction, StudioRuntimeConfig, StudioRuntimeHostAckResult,
     StudioRuntimeReport, StudioRuntimeTimerHandleSlot, StudioRuntimeTrigger, StudioWindowHostEvent,
     StudioWindowHostId, StudioWindowHostRegistration, StudioWindowHostRetirement,
     StudioWindowHostRole, StudioWindowSessionDispatch, StudioWindowTimerDriverAckResult,
@@ -752,9 +752,8 @@ impl StudioAppHostController {
         &mut self,
         action: StudioCanvasInteractionAction,
     ) -> RfResult<StudioAppWindowHostCanvasInteractionResult> {
-        let (outcome, _) = self.execute_command(StudioAppHostCommand::DispatchCanvasInteraction {
-            action,
-        })?;
+        let (outcome, _) =
+            self.execute_command(StudioAppHostCommand::DispatchCanvasInteraction { action })?;
         let StudioAppHostCommandOutcome::CanvasInteracted(result) = outcome else {
             return Err(RfError::invalid_input(format!(
                 "app host controller expected canvas interaction outcome for {action:?}"
@@ -1047,8 +1046,10 @@ impl StudioAppHostController {
         &mut self,
         command: StudioAppHostCommand,
     ) -> RfResult<(StudioAppHostCommandOutcome, StudioAppHostProjection)> {
-        let should_refresh_local_canvas_suggestions =
-            !matches!(command, StudioAppHostCommand::DispatchCanvasInteraction { .. });
+        let should_refresh_local_canvas_suggestions = !matches!(
+            command,
+            StudioAppHostCommand::DispatchCanvasInteraction { .. }
+        );
         self.app_host.execute_command(command).map(|output| {
             let projection = self.store.apply_output(&output);
             if should_refresh_local_canvas_suggestions {
@@ -1057,7 +1058,6 @@ impl StudioAppHostController {
             (output.outcome, projection)
         })
     }
-
 }
 
 fn dispatch_effects_from_session(
@@ -1586,10 +1586,10 @@ mod tests {
         StudioAppHostUiActionModel, StudioAppHostUiActionState,
         StudioAppHostUiCommandDispatchResult, StudioAppHostUiCommandGroup,
         StudioAppHostWindowChange, StudioAppHostWindowSelectionChange,
-        StudioCanvasInteractionAction,
-        StudioAppWindowHostGlobalEvent, StudioRuntimeEntitlementPreflight,
-        StudioRuntimeEntitlementSeed, StudioRuntimeEntitlementSessionEvent, StudioRuntimeTrigger,
-        StudioWindowHostRetirement, StudioWindowHostRole,
+        StudioAppWindowHostGlobalEvent, StudioCanvasInteractionAction,
+        StudioRuntimeEntitlementPreflight, StudioRuntimeEntitlementSeed,
+        StudioRuntimeEntitlementSessionEvent, StudioRuntimeTrigger, StudioWindowHostRetirement,
+        StudioWindowHostRole,
     };
     use rf_ui::{EntitlementActionId, RunPanelActionId};
 
@@ -3327,9 +3327,15 @@ mod tests {
             .expect("expected canvas interaction command");
         match interaction.outcome {
             StudioAppHostCommandOutcome::CanvasInteracted(result) => {
-                assert_eq!(result.action, StudioCanvasInteractionAction::AcceptFocusedByTab);
                 assert_eq!(
-                    result.accepted.as_ref().map(|suggestion| suggestion.id.as_str()),
+                    result.action,
+                    StudioCanvasInteractionAction::AcceptFocusedByTab
+                );
+                assert_eq!(
+                    result
+                        .accepted
+                        .as_ref()
+                        .map(|suggestion| suggestion.id.as_str()),
                     Some("local.flash_drum.create_outlet.flash-1.vapor")
                 );
             }

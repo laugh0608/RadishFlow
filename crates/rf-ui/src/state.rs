@@ -519,7 +519,13 @@ impl AppState {
         self.workspace.selection.selected_streams.clear();
         self.workspace.drafts.active_target = None;
         if let Some(unit_id) = action.target_unit_id.as_ref() {
-            if !self.workspace.document.flowsheet.units.contains_key(unit_id) {
+            if !self
+                .workspace
+                .document
+                .flowsheet
+                .units
+                .contains_key(unit_id)
+            {
                 return None;
             }
             let unit_id = unit_id.clone();
@@ -532,7 +538,13 @@ impl AppState {
             return Some(InspectorTarget::Unit(unit_id));
         }
         if let Some(stream_id) = action.target_stream_id.as_ref() {
-            if !self.workspace.document.flowsheet.streams.contains_key(stream_id) {
+            if !self
+                .workspace
+                .document
+                .flowsheet
+                .streams
+                .contains_key(stream_id)
+            {
                 return None;
             }
             let stream_id = stream_id.clone();
@@ -687,7 +699,9 @@ fn apply_run_panel_recovery_mutation(
             unit_id,
             port_name,
             stream_id,
-        } => apply_disconnect_port_and_delete_stream_mutation(flowsheet, unit_id, port_name, stream_id),
+        } => apply_disconnect_port_and_delete_stream_mutation(
+            flowsheet, unit_id, port_name, stream_id,
+        ),
         RunPanelRecoveryMutation::RestoreCanonicalPortSignature { unit_id } => {
             apply_restore_canonical_port_signature_mutation(flowsheet, unit_id)
         }
@@ -865,7 +879,10 @@ fn next_available_placeholder_stream_id(
     let base = format!("stream-{}-{}", unit_id.as_str(), port_name);
     let mut candidate = base.clone();
     let mut suffix = 1usize;
-    while flowsheet.streams.contains_key(&StreamId::new(candidate.as_str())) {
+    while flowsheet
+        .streams
+        .contains_key(&StreamId::new(candidate.as_str()))
+    {
         candidate = format!("{base}-{suffix}");
         suffix += 1;
     }
@@ -880,12 +897,13 @@ fn rebuild_ports_from_canonical_spec(
     let mut rebuilt = Vec::with_capacity(spec.ports.len());
 
     for expected in spec.ports {
-        let stream_id = take_matching_stream_id(&mut remaining_ports, |port| port.name == expected.name)
-            .or_else(|| {
-                take_unique_matching_stream_id(&mut remaining_ports, |port| {
-                    port.direction == expected.direction && port.kind == expected.kind
-                })
-            });
+        let stream_id =
+            take_matching_stream_id(&mut remaining_ports, |port| port.name == expected.name)
+                .or_else(|| {
+                    take_unique_matching_stream_id(&mut remaining_ports, |port| {
+                        port.direction == expected.direction && port.kind == expected.kind
+                    })
+                });
         rebuilt.push(UnitPort::new(
             expected.name,
             expected.direction,

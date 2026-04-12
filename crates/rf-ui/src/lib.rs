@@ -51,8 +51,7 @@ pub use run::{
 pub use run_panel::{
     RunPanelActionId, RunPanelActionModel, RunPanelCommandModel, RunPanelIntent, RunPanelNotice,
     RunPanelNoticeLevel, RunPanelPackageSelection, RunPanelRecoveryAction,
-    RunPanelRecoveryMutation,
-    RunPanelRecoveryActionKind, RunPanelState, run_panel_failure_notice,
+    RunPanelRecoveryActionKind, RunPanelRecoveryMutation, RunPanelState, run_panel_failure_notice,
     run_panel_failure_recovery_action_for_diagnostic_code,
     run_panel_failure_title_for_diagnostic_code,
 };
@@ -1002,7 +1001,7 @@ mod tests {
 
     #[test]
     fn run_panel_widget_exposes_recovery_action_when_connection_failure_targets_disconnectable_port()
-    {
+     {
         let mut app_state = AppState::new(sample_document());
         let summary = DiagnosticSummary::new(
             0,
@@ -1463,9 +1462,11 @@ mod tests {
                 "Restore canonical ports",
                 "按当前内建 unit kind 的 canonical spec 重建端口签名，并尽量保留可匹配的现有 stream 绑定。",
                 Some("feed-1"),
-                Some(crate::RunPanelRecoveryMutation::RestoreCanonicalPortSignature {
-                    unit_id: UnitId::new("feed-1"),
-                }),
+                Some(
+                    crate::RunPanelRecoveryMutation::RestoreCanonicalPortSignature {
+                        unit_id: UnitId::new("feed-1"),
+                    }
+                ),
             ))
         );
     }
@@ -1504,9 +1505,11 @@ mod tests {
 
         assert_eq!(
             action.mutation,
-            Some(crate::RunPanelRecoveryMutation::RestoreCanonicalPortSignature {
-                unit_id: UnitId::new("feed-1"),
-            })
+            Some(
+                crate::RunPanelRecoveryMutation::RestoreCanonicalPortSignature {
+                    unit_id: UnitId::new("feed-1"),
+                }
+            )
         );
 
         let applied_target = app_state.apply_run_panel_recovery_action(&action);
@@ -1517,7 +1520,11 @@ mod tests {
         );
         assert_eq!(app_state.workspace.document.revision, 1);
         assert_eq!(
-            app_state.workspace.command_history.current_entry().map(|entry| &entry.command),
+            app_state
+                .workspace
+                .command_history
+                .current_entry()
+                .map(|entry| &entry.command),
             Some(&DocumentCommand::RestoreCanonicalUnitPorts {
                 unit_id: UnitId::new("feed-1"),
             })
@@ -1532,7 +1539,10 @@ mod tests {
         assert_eq!(feed.ports.len(), 1);
         assert_eq!(feed.ports[0].name, "outlet");
         assert_eq!(
-            feed.ports[0].stream_id.as_ref().map(|stream_id| stream_id.as_str()),
+            feed.ports[0]
+                .stream_id
+                .as_ref()
+                .map(|stream_id| stream_id.as_str()),
             Some("stream-feed")
         );
         assert_eq!(
@@ -1647,7 +1657,11 @@ mod tests {
         assert!(app_state.workspace.panels.inspector_open);
         assert_eq!(app_state.workspace.document.revision, 1);
         assert_eq!(
-            app_state.workspace.command_history.current_entry().map(|entry| &entry.command),
+            app_state
+                .workspace
+                .command_history
+                .current_entry()
+                .map(|entry| &entry.command),
             Some(&DocumentCommand::DisconnectPorts {
                 unit_id: UnitId::new("heater-1"),
                 port: "outlet".to_string(),
@@ -1714,7 +1728,11 @@ mod tests {
         assert_eq!(app_state.workspace.drafts.active_target, None);
         assert_eq!(app_state.workspace.document.revision, 1);
         assert_eq!(
-            app_state.workspace.command_history.current_entry().map(|entry| &entry.command),
+            app_state
+                .workspace
+                .command_history
+                .current_entry()
+                .map(|entry| &entry.command),
             Some(&DocumentCommand::DeleteStream {
                 stream_id: rf_types::StreamId::new("stream-orphan"),
             })
@@ -1731,7 +1749,7 @@ mod tests {
 
     #[test]
     fn applying_run_panel_recovery_action_creates_stream_for_unbound_outlet_and_opens_unit_inspector()
-    {
+     {
         let project = rf_store::parse_project_file_json(include_str!(
             "../../../examples/flowsheets/failures/unbound-outlet-port.rfproj.json"
         ))
@@ -1781,7 +1799,11 @@ mod tests {
         );
         assert_eq!(app_state.workspace.document.revision, 1);
         assert_eq!(
-            app_state.workspace.command_history.current_entry().map(|entry| &entry.command),
+            app_state
+                .workspace
+                .command_history
+                .current_entry()
+                .map(|entry| &entry.command),
             Some(&DocumentCommand::ConnectPorts {
                 stream_id: rf_types::StreamId::new("stream-feed-1-outlet"),
                 from_unit_id: UnitId::new("feed-1"),
@@ -1856,11 +1878,13 @@ mod tests {
 
         assert_eq!(
             action.mutation,
-            Some(crate::RunPanelRecoveryMutation::DisconnectPortAndDeleteStream {
-                unit_id: UnitId::new("mixer-1"),
-                port_name: "inlet_a".to_string(),
-                stream_id: rf_types::StreamId::new("stream-feed-a"),
-            })
+            Some(
+                crate::RunPanelRecoveryMutation::DisconnectPortAndDeleteStream {
+                    unit_id: UnitId::new("mixer-1"),
+                    port_name: "inlet_a".to_string(),
+                    stream_id: rf_types::StreamId::new("stream-feed-a"),
+                }
+            )
         );
 
         let applied_target = app_state.apply_run_panel_recovery_action(&action);
@@ -1871,7 +1895,11 @@ mod tests {
         );
         assert_eq!(app_state.workspace.document.revision, 1);
         assert_eq!(
-            app_state.workspace.command_history.current_entry().map(|entry| &entry.command),
+            app_state
+                .workspace
+                .command_history
+                .current_entry()
+                .map(|entry| &entry.command),
             Some(&DocumentCommand::DisconnectPortAndDeleteStream {
                 unit_id: UnitId::new("mixer-1"),
                 port: "inlet_a".to_string(),
@@ -1953,7 +1981,11 @@ mod tests {
         );
         assert_eq!(app_state.workspace.document.revision, 1);
         assert_eq!(
-            app_state.workspace.command_history.current_entry().map(|entry| &entry.command),
+            app_state
+                .workspace
+                .command_history
+                .current_entry()
+                .map(|entry| &entry.command),
             Some(&DocumentCommand::DisconnectPorts {
                 unit_id: UnitId::new("flash-1"),
                 port: "inlet".to_string(),
@@ -1980,7 +2012,7 @@ mod tests {
 
     #[test]
     fn applying_run_panel_recovery_action_disconnects_two_unit_cycle_inlet_and_opens_unit_inspector()
-    {
+     {
         let project = rf_store::parse_project_file_json(include_str!(
             "../../../examples/flowsheets/failures/multi-unit-cycle.rfproj.json"
         ))
@@ -2035,7 +2067,11 @@ mod tests {
         );
         assert_eq!(app_state.workspace.document.revision, 1);
         assert_eq!(
-            app_state.workspace.command_history.current_entry().map(|entry| &entry.command),
+            app_state
+                .workspace
+                .command_history
+                .current_entry()
+                .map(|entry| &entry.command),
             Some(&DocumentCommand::DisconnectPorts {
                 unit_id: UnitId::new("heater-1"),
                 port: "inlet".to_string(),

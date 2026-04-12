@@ -1033,14 +1033,16 @@ impl StudioGuiWindowLayoutModel {
                             "none"
                         }
                     );
-                    if runtime.platform_timer_lines.iter().any(|line| !line.ends_with("None")) {
+                    if runtime
+                        .platform_timer_lines
+                        .iter()
+                        .any(|line| !line.ends_with("None"))
+                    {
                         summary.push_str(", platform-timer=active");
                     }
                     if let Some(notice) = runtime.platform_notice.as_ref() {
-                        summary.push_str(&format!(
-                            ", platform={:?}: {}",
-                            notice.level, notice.title
-                        ));
+                        summary
+                            .push_str(&format!(", platform={:?}: {}", notice.level, notice.title));
                     }
                     summary
                 },

@@ -105,10 +105,10 @@ fn resolve_explicit_package_id(
     package_id: &str,
 ) -> RfResult<String> {
     if package_id.trim().is_empty() {
-        return Err(
-            RfError::invalid_input("workspace run command must contain a non-empty package_id")
-                .with_diagnostic_code(WORKSPACE_RUN_DIAGNOSTIC_INVALID_SELECTION),
-        );
+        return Err(RfError::invalid_input(
+            "workspace run command must contain a non-empty package_id",
+        )
+        .with_diagnostic_code(WORKSPACE_RUN_DIAGNOSTIC_INVALID_SELECTION));
     }
 
     if !auth_cache_index
@@ -128,12 +128,10 @@ fn resolve_explicit_package_id(
             .package_manifests
             .contains_key(package_id)
     {
-        return Err(
-            RfError::invalid_input(format!(
-                "workspace run package `{package_id}` is not present in entitlement manifests"
-            ))
-            .with_diagnostic_code(WORKSPACE_RUN_DIAGNOSTIC_ENTITLEMENT_MISMATCH),
-        );
+        return Err(RfError::invalid_input(format!(
+            "workspace run package `{package_id}` is not present in entitlement manifests"
+        ))
+        .with_diagnostic_code(WORKSPACE_RUN_DIAGNOSTIC_ENTITLEMENT_MISMATCH));
     }
 
     Ok(package_id.to_string())

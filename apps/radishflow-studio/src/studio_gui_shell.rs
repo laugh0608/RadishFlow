@@ -4,14 +4,15 @@ use std::time::{Duration, SystemTime};
 use eframe::egui;
 use radishflow_studio::{
     StudioAppHostWindowState, StudioGuiCommandEntry, StudioGuiEvent, StudioGuiFocusContext,
+    StudioGuiPlatformExecutedNativeTimerCallbackBatch,
     StudioGuiPlatformExecutedNativeTimerCallbackOutcome, StudioGuiPlatformHost,
     StudioGuiPlatformNativeTimerId, StudioGuiPlatformTimerCommand, StudioGuiPlatformTimerExecutor,
     StudioGuiPlatformTimerExecutorResponse, StudioGuiPlatformTimerFollowUpCommand,
-    StudioGuiShortcut, StudioGuiShortcutKey, StudioGuiShortcutModifier,
-    StudioGuiWindowAreaId, StudioGuiWindowDockPlacement, StudioGuiWindowDockRegion,
-    StudioGuiWindowDropTargetQuery, StudioGuiWindowLayoutModel, StudioGuiWindowLayoutMutation,
-    StudioGuiWindowModel, StudioGuiWindowPanelDisplayMode, StudioGuiWindowStackGroupLayout,
-    StudioRuntimeConfig, StudioWindowHostId, StudioWindowHostRole,
+    StudioGuiShortcut, StudioGuiShortcutKey, StudioGuiShortcutModifier, StudioGuiWindowAreaId,
+    StudioGuiWindowDockPlacement, StudioGuiWindowDockRegion, StudioGuiWindowDropTargetQuery,
+    StudioGuiWindowLayoutModel, StudioGuiWindowLayoutMutation, StudioGuiWindowModel,
+    StudioGuiWindowPanelDisplayMode, StudioGuiWindowStackGroupLayout, StudioRuntimeConfig,
+    StudioWindowHostId, StudioWindowHostRole,
 };
 use rf_types::RfResult;
 use rf_ui::{
@@ -232,7 +233,9 @@ impl ReadyAppState {
                     ui.label(egui::RichText::new("Drop preview").strong());
                     ui.label(format!("dragging {}", area_label(drag_session.area_id)));
                     if drag_session.window_id == current_window_id {
-                        ui.small("drag across region lane / stack lane / panel header, release to drop");
+                        ui.small(
+                            "drag across region lane / stack lane / panel header, release to drop",
+                        );
                     } else {
                         ui.small("return to source window to drop");
                     }
@@ -279,7 +282,9 @@ impl ReadyAppState {
                 }
 
                 let close_button = egui::Button::new(
-                    egui::RichText::new("x").small().color(egui::Color32::from_rgb(120, 120, 120)),
+                    egui::RichText::new("x")
+                        .small()
+                        .color(egui::Color32::from_rgb(120, 120, 120)),
                 )
                 .frame(false);
                 if ui
@@ -1494,8 +1499,8 @@ impl ReadyAppState {
             &mut self.platform_timer_executor,
             now,
         ) {
-            Ok(callbacks) => {
-                for callback in callbacks {
+            Ok(callback_batch) => {
+                for callback in callback_batch.callbacks {
                     match callback {
                         StudioGuiPlatformExecutedNativeTimerCallbackOutcome::Dispatched(_) => {}
                         StudioGuiPlatformExecutedNativeTimerCallbackOutcome::IgnoredUnknownNativeTimer { .. } => {}
@@ -1517,7 +1522,7 @@ impl ReadyAppState {
             }
         }
 
-        if let Some(next_due_at) = self.platform_timer_executor.next_due_at() {
+        if let Some(next_due_at) = self.platform_host.next_native_timer_due_at() {
             let delay = next_due_at.duration_since(now).unwrap_or(Duration::ZERO);
             ctx.request_repaint_after(delay);
         }
@@ -1600,7 +1605,6 @@ impl ReadyAppState {
     fn logical_window_count(&self) -> usize {
         self.platform_host.snapshot().app_host_state.windows.len()
     }
-
 }
 
 impl StudioGuiPlatformTimerExecutor for EguiPlatformTimerExecutor {
@@ -1617,9 +1621,7 @@ impl StudioGuiPlatformTimerExecutor for EguiPlatformTimerExecutor {
                         schedule: schedule.clone(),
                     },
                 );
-                Ok(StudioGuiPlatformTimerExecutorResponse::Started {
-                    native_timer_id,
-                })
+                Ok(StudioGuiPlatformTimerExecutorResponse::Started { native_timer_id })
             }
             StudioGuiPlatformTimerCommand::Rearm { previous, schedule } => {
                 if let Some(previous) = previous.as_ref() {
@@ -1632,9 +1634,7 @@ impl StudioGuiPlatformTimerExecutor for EguiPlatformTimerExecutor {
                         schedule: schedule.clone(),
                     },
                 );
-                Ok(StudioGuiPlatformTimerExecutorResponse::Started {
-                    native_timer_id,
-                })
+                Ok(StudioGuiPlatformTimerExecutorResponse::Started { native_timer_id })
             }
             StudioGuiPlatformTimerCommand::Clear { previous } => {
                 if let Some(previous) = previous.as_ref() {
@@ -1664,6 +1664,7 @@ impl EguiPlatformTimerExecutor {
         self.next_native_timer_id
     }
 
+    #[cfg(test)]
     fn next_due_at(&self) -> Option<SystemTime> {
         self.active_native_timers
             .values()
@@ -1693,17 +1694,12 @@ fn drain_due_platform_timer_callbacks(
     platform_host: &mut StudioGuiPlatformHost,
     executor: &mut EguiPlatformTimerExecutor,
     now: SystemTime,
-) -> RfResult<Vec<StudioGuiPlatformExecutedNativeTimerCallbackOutcome>> {
-    executor
-        .drain_due_native_timer_ids(now)
-        .into_iter()
-        .map(|native_timer_id| {
-            platform_host.dispatch_native_timer_elapsed_by_native_id_and_execute_platform_timer(
-                native_timer_id,
-                executor,
-            )
-        })
-        .collect()
+) -> RfResult<StudioGuiPlatformExecutedNativeTimerCallbackBatch> {
+    let due_native_timer_ids = executor.drain_due_native_timer_ids(now);
+    platform_host.dispatch_native_timer_elapsed_by_native_ids_and_execute_platform_timers(
+        &due_native_timer_ids,
+        executor,
+    )
 }
 
 fn collect_shortcuts(input: &egui::InputState) -> Vec<StudioGuiShortcut> {
@@ -2381,9 +2377,8 @@ fn format_shortcut(shortcut: &StudioGuiShortcut) -> String {
 mod tests {
     use super::*;
     use radishflow_studio::{
-        StudioGuiDriverOutcome, StudioRuntimeEntitlementPreflight,
-        StudioRuntimeEntitlementSeed, StudioRuntimeEntitlementSessionEvent,
-        StudioRuntimeTrigger,
+        StudioGuiDriverOutcome, StudioRuntimeEntitlementPreflight, StudioRuntimeEntitlementSeed,
+        StudioRuntimeEntitlementSessionEvent, StudioRuntimeTrigger,
     };
 
     fn lease_expiring_config() -> StudioRuntimeConfig {
@@ -2542,8 +2537,12 @@ mod tests {
             drain_due_platform_timer_callbacks(&mut platform_host, &mut executor, due_at)
                 .expect("expected due timer callbacks");
 
-        assert_eq!(callbacks.len(), 1);
-        match &callbacks[0] {
+        assert_eq!(callbacks.callbacks.len(), 1);
+        assert_eq!(
+            callbacks.next_native_timer_due_at(),
+            platform_host.next_native_timer_due_at()
+        );
+        match &callbacks.callbacks[0] {
             StudioGuiPlatformExecutedNativeTimerCallbackOutcome::Dispatched(executed) => {
                 assert!(matches!(
                     executed.dispatch.outcome,

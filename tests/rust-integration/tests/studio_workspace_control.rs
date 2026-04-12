@@ -8,12 +8,14 @@ use radishflow_studio::{
     dispatch_run_panel_primary_action_with_auth_cache,
     dispatch_workspace_control_action_with_auth_cache,
 };
-use rf_rust_integration::{sample_auth_cache_index, timestamp, unique_temp_path, write_cached_package};
+use rf_rust_integration::{
+    sample_auth_cache_index, timestamp, unique_temp_path, write_cached_package,
+};
 use rf_store::parse_project_file_json;
 use rf_ui::{
     AppState, DocumentCommand, DocumentMetadata, EntitlementSnapshot, FlowsheetDocument,
-    InspectorTarget, PropertyPackageManifest, PropertyPackageSource,
-    RunPanelRecoveryActionKind, RunStatus, SimulationMode,
+    InspectorTarget, PropertyPackageManifest, PropertyPackageSource, RunPanelRecoveryActionKind,
+    RunStatus, SimulationMode,
 };
 
 fn app_state_from_project(
@@ -68,8 +70,11 @@ fn sample_entitlement_snapshot(package_ids: &[&str]) -> EntitlementSnapshot {
 }
 
 fn sample_manifest(package_id: &str) -> PropertyPackageManifest {
-    let mut manifest =
-        PropertyPackageManifest::new(package_id, "2026.03.1", PropertyPackageSource::RemoteDerivedPackage);
+    let mut manifest = PropertyPackageManifest::new(
+        package_id,
+        "2026.03.1",
+        PropertyPackageSource::RemoteDerivedPackage,
+    );
     manifest.hash = "sha256:test".to_string();
     manifest.size_bytes = 128;
     manifest.expires_at = Some(timestamp(300));
@@ -270,7 +275,10 @@ fn workspace_control_reports_local_cache_repair_notice_end_to_end() {
             .recovery_action
             .as_ref()
             .map(|action| (action.kind, action.title)),
-        Some((RunPanelRecoveryActionKind::RepairLocalCache, "Repair local cache"))
+        Some((
+            RunPanelRecoveryActionKind::RepairLocalCache,
+            "Repair local cache"
+        ))
     );
 
     fs::remove_dir_all(cache_root).ok();
@@ -343,7 +351,10 @@ fn automatic_workspace_run_executes_after_document_revision_advances_end_to_end(
 
     match automatic.dispatch {
         StudioAppResultDispatch::WorkspaceRun(dispatch) => {
-            assert_eq!(dispatch.package_id.as_deref(), Some("binary-hydrocarbon-lite-v1"));
+            assert_eq!(
+                dispatch.package_id.as_deref(),
+                Some("binary-hydrocarbon-lite-v1")
+            );
             assert!(matches!(
                 dispatch.outcome,
                 StudioWorkspaceRunOutcome::Started(_)
@@ -357,7 +368,10 @@ fn automatic_workspace_run_executes_after_document_revision_advances_end_to_end(
         }
         _ => panic!("expected workspace run dispatch"),
     }
-    assert_eq!(app_state.workspace.run_panel.run_status, RunStatus::Converged);
+    assert_eq!(
+        app_state.workspace.run_panel.run_status,
+        RunStatus::Converged
+    );
     assert_eq!(
         app_state.workspace.run_panel.latest_snapshot_id.as_deref(),
         Some("doc-control-auto-run-rev-1-seq-1")
@@ -370,8 +384,16 @@ fn automatic_workspace_run_executes_after_document_revision_advances_end_to_end(
 fn automatic_workspace_run_skips_before_package_resolution_when_no_pending_request_end_to_end() {
     let cache_root = unique_temp_path("integration-automatic-workspace-skip");
     let mut auth_cache_index = sample_auth_cache_index(&[]);
-    write_cached_package(&cache_root, &mut auth_cache_index, "binary-hydrocarbon-lite-v1");
-    write_cached_package(&cache_root, &mut auth_cache_index, "binary-hydrocarbon-lite-v2");
+    write_cached_package(
+        &cache_root,
+        &mut auth_cache_index,
+        "binary-hydrocarbon-lite-v1",
+    );
+    write_cached_package(
+        &cache_root,
+        &mut auth_cache_index,
+        "binary-hydrocarbon-lite-v2",
+    );
     let facade = StudioAppFacade::new();
     let mut app_state = app_state_from_project(
         include_str!("../../../examples/flowsheets/feed-heater-flash.rfproj.json"),
@@ -399,7 +421,10 @@ fn automatic_workspace_run_skips_before_package_resolution_when_no_pending_reque
     .expect("expected successful explicit run");
     assert_eq!(first.control_state.run_status, RunStatus::Converged);
     assert_eq!(app_state.workspace.run_panel.pending_reason, None);
-    assert_eq!(app_state.workspace.run_panel.simulation_mode, SimulationMode::Active);
+    assert_eq!(
+        app_state.workspace.run_panel.simulation_mode,
+        SimulationMode::Active
+    );
 
     let automatic = facade
         .execute_with_auth_cache(
@@ -414,7 +439,9 @@ fn automatic_workspace_run_skips_before_package_resolution_when_no_pending_reque
             assert_eq!(dispatch.package_id, None);
             assert!(matches!(
                 dispatch.outcome,
-                StudioWorkspaceRunOutcome::Skipped(radishflow_studio::WorkspaceSolveSkipReason::NoPendingRequest)
+                StudioWorkspaceRunOutcome::Skipped(
+                    radishflow_studio::WorkspaceSolveSkipReason::NoPendingRequest
+                )
             ));
             assert_eq!(dispatch.simulation_mode, SimulationMode::Active);
             assert_eq!(dispatch.pending_reason, None);
@@ -425,7 +452,10 @@ fn automatic_workspace_run_skips_before_package_resolution_when_no_pending_reque
         }
         _ => panic!("expected workspace run dispatch"),
     }
-    assert_eq!(app_state.workspace.run_panel.run_status, RunStatus::Converged);
+    assert_eq!(
+        app_state.workspace.run_panel.run_status,
+        RunStatus::Converged
+    );
     assert_eq!(
         app_state.workspace.run_panel.latest_snapshot_id.as_deref(),
         Some("doc-control-auto-skip-rev-0-seq-1")
@@ -522,7 +552,11 @@ fn run_panel_recovery_action_focuses_failed_unit_end_to_end() {
         .pressure_pa = 130_000.0;
     let mut app_state = AppState::new(FlowsheetDocument::new(
         flowsheet,
-        DocumentMetadata::new("doc-control-recovery", "Control Recovery Demo", timestamp(30)),
+        DocumentMetadata::new(
+            "doc-control-recovery",
+            "Control Recovery Demo",
+            timestamp(30),
+        ),
     ));
     let context = StudioAppAuthCacheContext::new(&cache_root, &auth_cache_index);
 
@@ -599,7 +633,11 @@ fn run_panel_recovery_action_restores_invalid_port_signature_end_to_end() {
         Some("stream-feed")
     );
     assert_eq!(
-        app_state.workspace.command_history.current_entry().map(|entry| &entry.command),
+        app_state
+            .workspace
+            .command_history
+            .current_entry()
+            .map(|entry| &entry.command),
         Some(&DocumentCommand::RestoreCanonicalUnitPorts {
             unit_id: "feed-1".into(),
         })
@@ -727,10 +765,17 @@ fn run_panel_recovery_action_focuses_missing_upstream_source_unit_end_to_end() {
             .contains(&"mixer-1".into())
     );
     assert_eq!(app_state.workspace.document.revision, 1);
-    assert_eq!(material_port_stream_id(&app_state, "mixer-1", "inlet_a"), None);
+    assert_eq!(
+        material_port_stream_id(&app_state, "mixer-1", "inlet_a"),
+        None
+    );
     assert!(!stream_exists(&app_state, "stream-feed-a"));
     assert_eq!(
-        app_state.workspace.command_history.current_entry().map(|entry| &entry.command),
+        app_state
+            .workspace
+            .command_history
+            .current_entry()
+            .map(|entry| &entry.command),
         Some(&DocumentCommand::DisconnectPortAndDeleteStream {
             unit_id: "mixer-1".into(),
             port: "inlet_a".to_string(),
@@ -777,9 +822,16 @@ fn run_panel_recovery_action_disconnects_self_loop_inlet_end_to_end() {
         Some(InspectorTarget::Unit("flash-1".into()))
     );
     assert_eq!(app_state.workspace.document.revision, 1);
-    assert_eq!(material_port_stream_id(&app_state, "flash-1", "inlet"), None);
     assert_eq!(
-        app_state.workspace.command_history.current_entry().map(|entry| &entry.command),
+        material_port_stream_id(&app_state, "flash-1", "inlet"),
+        None
+    );
+    assert_eq!(
+        app_state
+            .workspace
+            .command_history
+            .current_entry()
+            .map(|entry| &entry.command),
         Some(&DocumentCommand::DisconnectPorts {
             unit_id: "flash-1".into(),
             port: "inlet".to_string(),
@@ -832,9 +884,16 @@ fn run_panel_recovery_action_disconnects_two_unit_cycle_inlet_end_to_end() {
         Some(InspectorTarget::Unit("heater-1".into()))
     );
     assert_eq!(app_state.workspace.document.revision, 1);
-    assert_eq!(material_port_stream_id(&app_state, "heater-1", "inlet"), None);
     assert_eq!(
-        app_state.workspace.command_history.current_entry().map(|entry| &entry.command),
+        material_port_stream_id(&app_state, "heater-1", "inlet"),
+        None
+    );
+    assert_eq!(
+        app_state
+            .workspace
+            .command_history
+            .current_entry()
+            .map(|entry| &entry.command),
         Some(&DocumentCommand::DisconnectPorts {
             unit_id: "heater-1".into(),
             port: "inlet".to_string(),
@@ -887,9 +946,16 @@ fn run_panel_recovery_action_disconnects_missing_stream_reference_end_to_end() {
         Some(InspectorTarget::Unit("heater-1".into()))
     );
     assert_eq!(app_state.workspace.document.revision, 1);
-    assert_eq!(material_port_stream_id(&app_state, "heater-1", "outlet"), None);
     assert_eq!(
-        app_state.workspace.command_history.current_entry().map(|entry| &entry.command),
+        material_port_stream_id(&app_state, "heater-1", "outlet"),
+        None
+    );
+    assert_eq!(
+        app_state
+            .workspace
+            .command_history
+            .current_entry()
+            .map(|entry| &entry.command),
         Some(&DocumentCommand::DisconnectPorts {
             unit_id: "heater-1".into(),
             port: "outlet".to_string(),
@@ -942,9 +1008,16 @@ fn run_panel_recovery_action_disconnects_duplicate_upstream_source_end_to_end() 
         Some(InspectorTarget::Unit("feed-2".into()))
     );
     assert_eq!(app_state.workspace.document.revision, 1);
-    assert_eq!(material_port_stream_id(&app_state, "feed-2", "outlet"), None);
     assert_eq!(
-        app_state.workspace.command_history.current_entry().map(|entry| &entry.command),
+        material_port_stream_id(&app_state, "feed-2", "outlet"),
+        None
+    );
+    assert_eq!(
+        app_state
+            .workspace
+            .command_history
+            .current_entry()
+            .map(|entry| &entry.command),
         Some(&DocumentCommand::DisconnectPorts {
             unit_id: "feed-2".into(),
             port: "outlet".to_string(),
@@ -997,9 +1070,16 @@ fn run_panel_recovery_action_disconnects_duplicate_downstream_sink_end_to_end() 
         Some(InspectorTarget::Unit("mixer-1".into()))
     );
     assert_eq!(app_state.workspace.document.revision, 1);
-    assert_eq!(material_port_stream_id(&app_state, "mixer-1", "inlet_a"), None);
     assert_eq!(
-        app_state.workspace.command_history.current_entry().map(|entry| &entry.command),
+        material_port_stream_id(&app_state, "mixer-1", "inlet_a"),
+        None
+    );
+    assert_eq!(
+        app_state
+            .workspace
+            .command_history
+            .current_entry()
+            .map(|entry| &entry.command),
         Some(&DocumentCommand::DisconnectPorts {
             unit_id: "mixer-1".into(),
             port: "inlet_a".to_string(),
@@ -1057,7 +1137,11 @@ fn run_panel_recovery_action_deletes_orphan_stream_end_to_end() {
     assert!(app_state.workspace.selection.selected_streams.is_empty());
     assert_eq!(app_state.workspace.drafts.active_target, None);
     assert_eq!(
-        app_state.workspace.command_history.current_entry().map(|entry| &entry.command),
+        app_state
+            .workspace
+            .command_history
+            .current_entry()
+            .map(|entry| &entry.command),
         Some(&DocumentCommand::DeleteStream {
             stream_id: "stream-orphan".into(),
         })
@@ -1107,7 +1191,11 @@ fn run_panel_recovery_action_creates_stream_for_unbound_outlet_end_to_end() {
     );
     assert!(stream_exists(&app_state, "stream-feed-1-outlet"));
     assert_eq!(
-        app_state.workspace.command_history.current_entry().map(|entry| &entry.command),
+        app_state
+            .workspace
+            .command_history
+            .current_entry()
+            .map(|entry| &entry.command),
         Some(&DocumentCommand::ConnectPorts {
             stream_id: "stream-feed-1-outlet".into(),
             from_unit_id: "feed-1".into(),
@@ -1229,8 +1317,17 @@ fn run_panel_recovery_action_focuses_unbound_inlet_port_end_to_end() {
         Some(InspectorTarget::Unit("heater-1".into()))
     );
     assert_eq!(app_state.workspace.document.revision, 0);
-    assert_eq!(material_port_stream_id(&app_state, "heater-1", "inlet"), None);
-    assert!(app_state.workspace.command_history.current_entry().is_none());
+    assert_eq!(
+        material_port_stream_id(&app_state, "heater-1", "inlet"),
+        None
+    );
+    assert!(
+        app_state
+            .workspace
+            .command_history
+            .current_entry()
+            .is_none()
+    );
     assert!(
         app_state
             .workspace

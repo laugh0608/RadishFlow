@@ -44,13 +44,20 @@ fn studio_solver_bridge_maps_project_snapshot_into_app_state_end_to_end() {
     )
     .expect("expected solve");
 
-    assert_eq!(app_state.workspace.solve_session.status, RunStatus::Converged);
+    assert_eq!(
+        app_state.workspace.solve_session.status,
+        RunStatus::Converged
+    );
     assert_eq!(
         app_state.workspace.run_panel.latest_snapshot_id.as_deref(),
         Some("snapshot-success-1")
     );
     assert_eq!(
-        app_state.workspace.run_panel.latest_snapshot_summary.as_deref(),
+        app_state
+            .workspace
+            .run_panel
+            .latest_snapshot_summary
+            .as_deref(),
         Some("solved flowsheet with 3 unit(s), 4 diagnostic entry(ies), and 4 resulting stream(s)")
     );
     assert!(app_state.workspace.run_panel.notice.is_none());
@@ -113,7 +120,10 @@ fn studio_solver_bridge_records_solver_failure_notice_and_target_unit_end_to_end
         .latest_diagnostic
         .as_ref()
         .expect("expected failure summary");
-    assert_eq!(summary.primary_code.as_deref(), Some("solver.step.execution"));
+    assert_eq!(
+        summary.primary_code.as_deref(),
+        Some("solver.step.execution")
+    );
     assert_eq!(summary.related_unit_ids, vec![UnitId::new("valve-1")]);
 
     let notice = app_state
@@ -124,10 +134,7 @@ fn studio_solver_bridge_records_solver_failure_notice_and_target_unit_end_to_end
         .expect("expected run panel notice");
     assert_eq!(notice.title, "Unit execution failed");
     assert_eq!(
-        notice
-            .recovery_action
-            .as_ref()
-            .map(|action| action.kind),
+        notice.recovery_action.as_ref().map(|action| action.kind),
         Some(RunPanelRecoveryActionKind::InspectExecutionInputs)
     );
     assert_eq!(
@@ -196,7 +203,11 @@ fn studio_solver_bridge_records_invalid_port_signature_restore_target_end_to_end
     )
     .expect_err("expected invalid port signature failure");
 
-    assert!(error.message().contains("solver.connection_validation.invalid_port_signature:"));
+    assert!(
+        error
+            .message()
+            .contains("solver.connection_validation.invalid_port_signature:")
+    );
     assert_eq!(app_state.workspace.solve_session.status, RunStatus::Error);
 
     let summary = app_state
@@ -221,10 +232,7 @@ fn studio_solver_bridge_records_invalid_port_signature_restore_target_end_to_end
         .expect("expected run panel notice");
     assert_eq!(notice.title, "Invalid port signature");
     assert_eq!(
-        notice
-            .recovery_action
-            .as_ref()
-            .map(|action| action.kind),
+        notice.recovery_action.as_ref().map(|action| action.kind),
         Some(RunPanelRecoveryActionKind::InspectUnitSpec)
     );
     assert_eq!(
@@ -272,7 +280,11 @@ fn studio_solver_bridge_records_cycle_failure_context_end_to_end() {
     )
     .expect_err("expected cycle failure");
 
-    assert!(error.message().contains("solver.topological_ordering.two_unit_cycle:"));
+    assert!(
+        error
+            .message()
+            .contains("solver.topological_ordering.two_unit_cycle:")
+    );
     assert_eq!(app_state.workspace.solve_session.status, RunStatus::Error);
 
     let summary = app_state
@@ -309,10 +321,7 @@ fn studio_solver_bridge_records_cycle_failure_context_end_to_end() {
         .expect("expected run panel notice");
     assert_eq!(notice.title, "Two-unit cycle detected");
     assert_eq!(
-        notice
-            .recovery_action
-            .as_ref()
-            .map(|action| action.kind),
+        notice.recovery_action.as_ref().map(|action| action.kind),
         Some(RunPanelRecoveryActionKind::BreakCycle)
     );
     assert_eq!(
@@ -358,7 +367,11 @@ fn studio_solver_bridge_records_self_loop_disconnect_target_end_to_end() {
     )
     .expect_err("expected self-loop failure");
 
-    assert!(error.message().contains("solver.topological_ordering.self_loop_cycle:"));
+    assert!(
+        error
+            .message()
+            .contains("solver.topological_ordering.self_loop_cycle:")
+    );
     assert_eq!(app_state.workspace.solve_session.status, RunStatus::Error);
 
     let summary = app_state
@@ -372,7 +385,10 @@ fn studio_solver_bridge_records_self_loop_disconnect_target_end_to_end() {
         Some("solver.topological_ordering.self_loop_cycle")
     );
     assert_eq!(summary.related_unit_ids, vec![UnitId::new("flash-1")]);
-    assert_eq!(summary.related_stream_ids, vec![StreamId::new("stream-loop")]);
+    assert_eq!(
+        summary.related_stream_ids,
+        vec![StreamId::new("stream-loop")]
+    );
     assert_eq!(
         summary.related_port_targets,
         vec![
@@ -389,10 +405,7 @@ fn studio_solver_bridge_records_self_loop_disconnect_target_end_to_end() {
         .expect("expected run panel notice");
     assert_eq!(notice.title, "Self loop detected");
     assert_eq!(
-        notice
-            .recovery_action
-            .as_ref()
-            .map(|action| action.kind),
+        notice.recovery_action.as_ref().map(|action| action.kind),
         Some(RunPanelRecoveryActionKind::BreakCycle)
     );
     assert_eq!(
@@ -434,11 +447,19 @@ fn studio_solver_bridge_records_missing_upstream_cleanup_target_end_to_end() {
     let error = solve_workspace_with_property_package(
         &mut app_state,
         &provider,
-        &StudioSolveRequest::new("binary-hydrocarbon-lite-v1", "snapshot-missing-upstream-1", 1),
+        &StudioSolveRequest::new(
+            "binary-hydrocarbon-lite-v1",
+            "snapshot-missing-upstream-1",
+            1,
+        ),
     )
     .expect_err("expected missing upstream source failure");
 
-    assert!(error.message().contains("solver.connection_validation.missing_upstream_source:"));
+    assert!(
+        error
+            .message()
+            .contains("solver.connection_validation.missing_upstream_source:")
+    );
     assert_eq!(app_state.workspace.solve_session.status, RunStatus::Error);
 
     let summary = app_state
@@ -452,7 +473,10 @@ fn studio_solver_bridge_records_missing_upstream_cleanup_target_end_to_end() {
         Some("solver.connection_validation.missing_upstream_source")
     );
     assert_eq!(summary.related_unit_ids, vec![UnitId::new("mixer-1")]);
-    assert_eq!(summary.related_stream_ids, vec![StreamId::new("stream-feed-a")]);
+    assert_eq!(
+        summary.related_stream_ids,
+        vec![StreamId::new("stream-feed-a")]
+    );
     assert_eq!(
         summary.related_port_targets,
         vec![rf_types::DiagnosticPortTarget::new("mixer-1", "inlet_a")]
@@ -466,10 +490,7 @@ fn studio_solver_bridge_records_missing_upstream_cleanup_target_end_to_end() {
         .expect("expected run panel notice");
     assert_eq!(notice.title, "Missing upstream source");
     assert_eq!(
-        notice
-            .recovery_action
-            .as_ref()
-            .map(|action| action.kind),
+        notice.recovery_action.as_ref().map(|action| action.kind),
         Some(RunPanelRecoveryActionKind::FixConnections)
     );
     assert_eq!(
@@ -512,11 +533,19 @@ fn studio_solver_bridge_records_duplicate_source_disconnect_target_end_to_end() 
     let error = solve_workspace_with_property_package(
         &mut app_state,
         &provider,
-        &StudioSolveRequest::new("binary-hydrocarbon-lite-v1", "snapshot-duplicate-source-1", 1),
+        &StudioSolveRequest::new(
+            "binary-hydrocarbon-lite-v1",
+            "snapshot-duplicate-source-1",
+            1,
+        ),
     )
     .expect_err("expected duplicate source failure");
 
-    assert!(error.message().contains("solver.connection_validation.duplicate_upstream_source:"));
+    assert!(
+        error
+            .message()
+            .contains("solver.connection_validation.duplicate_upstream_source:")
+    );
     assert_eq!(app_state.workspace.solve_session.status, RunStatus::Error);
 
     let summary = app_state
@@ -529,7 +558,10 @@ fn studio_solver_bridge_records_duplicate_source_disconnect_target_end_to_end() 
         summary.primary_code.as_deref(),
         Some("solver.connection_validation.duplicate_upstream_source")
     );
-    assert_eq!(summary.related_stream_ids, vec![StreamId::new("shared-stream")]);
+    assert_eq!(
+        summary.related_stream_ids,
+        vec![StreamId::new("shared-stream")]
+    );
     assert_eq!(
         summary.related_port_targets,
         vec![
@@ -546,10 +578,7 @@ fn studio_solver_bridge_records_duplicate_source_disconnect_target_end_to_end() 
         .expect("expected run panel notice");
     assert_eq!(notice.title, "Duplicate stream source");
     assert_eq!(
-        notice
-            .recovery_action
-            .as_ref()
-            .map(|action| action.kind),
+        notice.recovery_action.as_ref().map(|action| action.kind),
         Some(RunPanelRecoveryActionKind::FixConnections)
     );
     assert_eq!(
@@ -595,7 +624,11 @@ fn studio_solver_bridge_records_duplicate_sink_disconnect_target_end_to_end() {
     )
     .expect_err("expected duplicate sink failure");
 
-    assert!(error.message().contains("solver.connection_validation.duplicate_downstream_sink:"));
+    assert!(
+        error
+            .message()
+            .contains("solver.connection_validation.duplicate_downstream_sink:")
+    );
     assert_eq!(app_state.workspace.solve_session.status, RunStatus::Error);
 
     let summary = app_state
@@ -608,7 +641,10 @@ fn studio_solver_bridge_records_duplicate_sink_disconnect_target_end_to_end() {
         summary.primary_code.as_deref(),
         Some("solver.connection_validation.duplicate_downstream_sink")
     );
-    assert_eq!(summary.related_stream_ids, vec![StreamId::new("shared-stream")]);
+    assert_eq!(
+        summary.related_stream_ids,
+        vec![StreamId::new("shared-stream")]
+    );
     assert_eq!(
         summary.related_port_targets,
         vec![
@@ -625,10 +661,7 @@ fn studio_solver_bridge_records_duplicate_sink_disconnect_target_end_to_end() {
         .expect("expected run panel notice");
     assert_eq!(notice.title, "Duplicate stream sink");
     assert_eq!(
-        notice
-            .recovery_action
-            .as_ref()
-            .map(|action| action.kind),
+        notice.recovery_action.as_ref().map(|action| action.kind),
         Some(RunPanelRecoveryActionKind::FixConnections)
     );
     assert_eq!(
@@ -674,7 +707,11 @@ fn studio_solver_bridge_records_orphan_stream_delete_target_end_to_end() {
     )
     .expect_err("expected orphan stream failure");
 
-    assert!(error.message().contains("solver.connection_validation.orphan_stream:"));
+    assert!(
+        error
+            .message()
+            .contains("solver.connection_validation.orphan_stream:")
+    );
     assert_eq!(app_state.workspace.solve_session.status, RunStatus::Error);
 
     let summary = app_state
@@ -687,7 +724,10 @@ fn studio_solver_bridge_records_orphan_stream_delete_target_end_to_end() {
         summary.primary_code.as_deref(),
         Some("solver.connection_validation.orphan_stream")
     );
-    assert_eq!(summary.related_stream_ids, vec![StreamId::new("stream-orphan")]);
+    assert_eq!(
+        summary.related_stream_ids,
+        vec![StreamId::new("stream-orphan")]
+    );
     assert!(summary.related_unit_ids.is_empty());
     assert!(summary.related_port_targets.is_empty());
 
@@ -699,10 +739,7 @@ fn studio_solver_bridge_records_orphan_stream_delete_target_end_to_end() {
         .expect("expected run panel notice");
     assert_eq!(notice.title, "Orphan stream");
     assert_eq!(
-        notice
-            .recovery_action
-            .as_ref()
-            .map(|action| action.kind),
+        notice.recovery_action.as_ref().map(|action| action.kind),
         Some(RunPanelRecoveryActionKind::FixConnections)
     );
     assert_eq!(
@@ -740,7 +777,11 @@ fn studio_solver_bridge_records_unbound_outlet_create_stream_target_end_to_end()
     )
     .expect_err("expected unbound outlet failure");
 
-    assert!(error.message().contains("solver.connection_validation.unbound_outlet_port:"));
+    assert!(
+        error
+            .message()
+            .contains("solver.connection_validation.unbound_outlet_port:")
+    );
     assert_eq!(app_state.workspace.solve_session.status, RunStatus::Error);
 
     let summary = app_state
@@ -768,10 +809,7 @@ fn studio_solver_bridge_records_unbound_outlet_create_stream_target_end_to_end()
         .expect("expected run panel notice");
     assert_eq!(notice.title, "Unbound outlet port");
     assert_eq!(
-        notice
-            .recovery_action
-            .as_ref()
-            .map(|action| action.kind),
+        notice.recovery_action.as_ref().map(|action| action.kind),
         Some(RunPanelRecoveryActionKind::FixConnections)
     );
     assert_eq!(
@@ -817,7 +855,11 @@ fn studio_solver_bridge_records_unbound_inlet_inspect_target_end_to_end() {
     )
     .expect_err("expected unbound inlet failure");
 
-    assert!(error.message().contains("solver.connection_validation.unbound_inlet_port:"));
+    assert!(
+        error
+            .message()
+            .contains("solver.connection_validation.unbound_inlet_port:")
+    );
     assert_eq!(app_state.workspace.solve_session.status, RunStatus::Error);
 
     let summary = app_state
@@ -845,10 +887,7 @@ fn studio_solver_bridge_records_unbound_inlet_inspect_target_end_to_end() {
         .expect("expected run panel notice");
     assert_eq!(notice.title, "Unbound inlet port");
     assert_eq!(
-        notice
-            .recovery_action
-            .as_ref()
-            .map(|action| action.kind),
+        notice.recovery_action.as_ref().map(|action| action.kind),
         Some(RunPanelRecoveryActionKind::InspectInletPath)
     );
     assert_eq!(

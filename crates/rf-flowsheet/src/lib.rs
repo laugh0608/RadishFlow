@@ -1,7 +1,9 @@
 use std::collections::BTreeMap;
 
 use rf_model::Flowsheet;
-use rf_types::{DiagnosticPortTarget, PortDirection, PortKind, RfError, RfResult, StreamId, UnitId};
+use rf_types::{
+    DiagnosticPortTarget, PortDirection, PortKind, RfError, RfResult, StreamId, UnitId,
+};
 use rf_unitops::{builtin_unit_spec_by_name, validate_unit_node};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -95,9 +97,9 @@ pub fn validate_connections(flowsheet: &Flowsheet) -> RfResult<Vec<MaterialConne
             invalid_connection_error(
                 validation_code,
                 format!(
-                "unit `{}` does not match its canonical built-in port signature: {}",
-                unit.id,
-                error.message()
+                    "unit `{}` does not match its canonical built-in port signature: {}",
+                    unit.id,
+                    error.message()
                 ),
             )
             .with_related_unit_id(unit.id.clone())
@@ -116,8 +118,8 @@ pub fn validate_connections(flowsheet: &Flowsheet) -> RfResult<Vec<MaterialConne
                 invalid_connection_error(
                     diagnostic_code,
                     format!(
-                    "unit `{}` material port `{}` is not connected to any stream",
-                    unit.id, port.name
+                        "unit `{}` material port `{}` is not connected to any stream",
+                        unit.id, port.name
                     ),
                 )
                 .with_related_unit_id(unit.id.clone())
@@ -127,21 +129,19 @@ pub fn validate_connections(flowsheet: &Flowsheet) -> RfResult<Vec<MaterialConne
                 ))
             })?;
             if !flowsheet.streams.contains_key(&stream_id) {
-                return Err(
-                invalid_connection_error(
+                return Err(invalid_connection_error(
                     ConnectionValidationDiagnosticCode::MissingStreamReference,
                     format!(
                         "unit `{}` material port `{}` references missing stream `{}`",
                         unit.id, port.name, stream_id
                     ),
-                    )
-                    .with_related_unit_id(unit.id.clone())
-                    .with_related_port_target(DiagnosticPortTarget::new(
-                        unit.id.clone(),
-                        port.name.clone(),
-                    ))
-                    .with_related_stream_id(stream_id),
-                );
+                )
+                .with_related_unit_id(unit.id.clone())
+                .with_related_port_target(DiagnosticPortTarget::new(
+                    unit.id.clone(),
+                    port.name.clone(),
+                ))
+                .with_related_stream_id(stream_id));
             }
 
             let endpoints = endpoints_by_stream.entry(stream_id.clone()).or_default();
@@ -151,56 +151,52 @@ pub fn validate_connections(flowsheet: &Flowsheet) -> RfResult<Vec<MaterialConne
             match port.direction {
                 PortDirection::Outlet => {
                     if let Some(existing) = &endpoints.source {
-                        return Err(
-                            invalid_connection_error(
-                                ConnectionValidationDiagnosticCode::DuplicateUpstreamSource,
-                                format!(
+                        return Err(invalid_connection_error(
+                            ConnectionValidationDiagnosticCode::DuplicateUpstreamSource,
+                            format!(
                                 "stream `{}` is produced by both `{}.{}` and `{}.{}`",
                                 stream_id,
                                 existing.unit_id,
                                 existing.port_name,
                                 port_ref.unit_id,
                                 port_ref.port_name
-                                ),
-                            )
-                            .with_related_unit_ids(vec![
-                                existing.unit_id.clone(),
-                                port_ref.unit_id.clone(),
-                            ])
-                            .with_related_port_targets(vec![
-                                existing.as_diagnostic_port_target(),
-                                port_ref.as_diagnostic_port_target(),
-                            ])
-                            .with_related_stream_id(stream_id.clone()),
-                        );
+                            ),
+                        )
+                        .with_related_unit_ids(vec![
+                            existing.unit_id.clone(),
+                            port_ref.unit_id.clone(),
+                        ])
+                        .with_related_port_targets(vec![
+                            existing.as_diagnostic_port_target(),
+                            port_ref.as_diagnostic_port_target(),
+                        ])
+                        .with_related_stream_id(stream_id.clone()));
                     }
 
                     endpoints.source = Some(port_ref);
                 }
                 PortDirection::Inlet => {
                     if let Some(existing) = &endpoints.sink {
-                        return Err(
-                            invalid_connection_error(
-                                ConnectionValidationDiagnosticCode::DuplicateDownstreamSink,
-                                format!(
+                        return Err(invalid_connection_error(
+                            ConnectionValidationDiagnosticCode::DuplicateDownstreamSink,
+                            format!(
                                 "stream `{}` is consumed by both `{}.{}` and `{}.{}`",
                                 stream_id,
                                 existing.unit_id,
                                 existing.port_name,
                                 port_ref.unit_id,
                                 port_ref.port_name
-                                ),
-                            )
-                            .with_related_unit_ids(vec![
-                                existing.unit_id.clone(),
-                                port_ref.unit_id.clone(),
-                            ])
-                            .with_related_port_targets(vec![
-                                existing.as_diagnostic_port_target(),
-                                port_ref.as_diagnostic_port_target(),
-                            ])
-                            .with_related_stream_id(stream_id.clone()),
-                        );
+                            ),
+                        )
+                        .with_related_unit_ids(vec![
+                            existing.unit_id.clone(),
+                            port_ref.unit_id.clone(),
+                        ])
+                        .with_related_port_targets(vec![
+                            existing.as_diagnostic_port_target(),
+                            port_ref.as_diagnostic_port_target(),
+                        ])
+                        .with_related_stream_id(stream_id.clone()));
                     }
 
                     endpoints.sink = Some(port_ref);
@@ -213,7 +209,10 @@ pub fn validate_connections(flowsheet: &Flowsheet) -> RfResult<Vec<MaterialConne
         if !endpoints_by_stream.contains_key(stream_id) {
             return Err(invalid_connection_error(
                 ConnectionValidationDiagnosticCode::OrphanStream,
-                format!("stream `{}` is not connected to any material port", stream_id),
+                format!(
+                    "stream `{}` is not connected to any material port",
+                    stream_id
+                ),
             )
             .with_related_stream_id(stream_id.clone()));
         }
@@ -225,14 +224,20 @@ pub fn validate_connections(flowsheet: &Flowsheet) -> RfResult<Vec<MaterialConne
             let source = endpoints.source.ok_or_else(|| match &endpoints.sink {
                 Some(sink) => invalid_connection_error(
                     ConnectionValidationDiagnosticCode::MissingUpstreamSource,
-                    format!("stream `{}` is missing an upstream outlet connection", stream_id),
+                    format!(
+                        "stream `{}` is missing an upstream outlet connection",
+                        stream_id
+                    ),
                 )
                 .with_related_unit_id(sink.unit_id.clone())
                 .with_related_port_target(sink.as_diagnostic_port_target())
                 .with_related_stream_id(stream_id.clone()),
                 None => invalid_connection_error(
                     ConnectionValidationDiagnosticCode::MissingUpstreamSource,
-                    format!("stream `{}` is missing an upstream outlet connection", stream_id),
+                    format!(
+                        "stream `{}` is missing an upstream outlet connection",
+                        stream_id
+                    ),
                 )
                 .with_related_stream_id(stream_id.clone()),
             })?;
@@ -359,7 +364,10 @@ mod tests {
             error.context().related_unit_ids(),
             &[UnitId::new("flash-1"), UnitId::new("mixer-1")]
         );
-        assert_eq!(error.context().related_stream_ids(), &[StreamId::new("shared-stream")]);
+        assert_eq!(
+            error.context().related_stream_ids(),
+            &[StreamId::new("shared-stream")]
+        );
         assert_eq!(
             error.context().related_port_targets(),
             &[
@@ -399,8 +407,14 @@ mod tests {
                 .message()
                 .contains("missing an upstream outlet connection")
         );
-        assert_eq!(error.context().related_unit_ids(), &[UnitId::new("mixer-1")]);
-        assert_eq!(error.context().related_stream_ids(), &[StreamId::new("stream-feed-a")]);
+        assert_eq!(
+            error.context().related_unit_ids(),
+            &[UnitId::new("mixer-1")]
+        );
+        assert_eq!(
+            error.context().related_stream_ids(),
+            &[StreamId::new("stream-feed-a")]
+        );
         assert_eq!(
             error.context().related_port_targets(),
             &[DiagnosticPortTarget::new("mixer-1", "inlet_a")]

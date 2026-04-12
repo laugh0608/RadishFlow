@@ -1,6 +1,6 @@
 use crate::{
-    studio_gui_canvas_widget::canvas_command_id, StudioGuiCanvasActionId, StudioGuiCommandRegistry,
-    StudioGuiShortcut,
+    StudioGuiCanvasActionId, StudioGuiCommandRegistry, StudioGuiShortcut,
+    studio_gui_canvas_widget::canvas_command_id,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -198,9 +198,11 @@ fn dispatch_canvas_command_shortcut(
     command_id: &str,
 ) -> StudioGuiShortcutRoute {
     match registry.find_by_shortcut(shortcut) {
-        Some(entry) if entry.command_id == command_id => StudioGuiShortcutRoute::DispatchCommandId {
-            command_id: command_id.to_string(),
-        },
+        Some(entry) if entry.command_id == command_id => {
+            StudioGuiShortcutRoute::DispatchCommandId {
+                command_id: command_id.to_string(),
+            }
+        }
         _ => StudioGuiShortcutRoute::Ignored {
             reason: StudioGuiShortcutIgnoreReason::NoBindingFound,
         },
@@ -232,18 +234,22 @@ mod tests {
         )];
         canvas.focused_suggestion_id = Some(rf_ui::CanvasSuggestionId::new("sug-a"));
 
-        StudioGuiCommandRegistry::from_surfaces(&StudioAppHostUiCommandModel {
-            actions: vec![StudioAppHostUiActionModel {
-                action: None,
-                command_id: "run_panel.run_manual",
-                group: StudioAppHostUiCommandGroup::RunPanel,
-                sort_order: 100,
-                label: "Run workspace",
-                enabled: true,
-                detail: "Run",
-                target_window_id: Some(1),
-            }],
-        }, &canvas, Some(1))
+        StudioGuiCommandRegistry::from_surfaces(
+            &StudioAppHostUiCommandModel {
+                actions: vec![StudioAppHostUiActionModel {
+                    action: None,
+                    command_id: "run_panel.run_manual",
+                    group: StudioAppHostUiCommandGroup::RunPanel,
+                    sort_order: 100,
+                    label: "Run workspace",
+                    enabled: true,
+                    detail: "Run",
+                    target_window_id: Some(1),
+                }],
+            },
+            &canvas,
+            Some(1),
+        )
     }
 
     #[test]

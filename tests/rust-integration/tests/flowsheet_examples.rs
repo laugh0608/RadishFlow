@@ -198,13 +198,9 @@ fn unsupported_unit_kind_reports_connection_validation_context_end_to_end() {
         Some("solver.connection_validation.unsupported_unit_kind")
     );
     assert_eq!(error.context().related_unit_ids(), &[UnitId::new("pump-1")]);
-    assert!(
-        error
-            .message()
-            .contains(
-                "solver.connection_validation.unsupported_unit_kind: solver connection validation failed"
-            )
-    );
+    assert!(error.message().contains(
+        "solver.connection_validation.unsupported_unit_kind: solver connection validation failed"
+    ));
     assert!(error.message().contains("unsupported kind `pump`"));
 }
 
@@ -220,7 +216,10 @@ fn self_loop_cycle_reports_topological_ordering_context_end_to_end() {
         error.context().diagnostic_code(),
         Some("solver.topological_ordering.self_loop_cycle")
     );
-    assert_eq!(error.context().related_unit_ids(), &[UnitId::new("flash-1")]);
+    assert_eq!(
+        error.context().related_unit_ids(),
+        &[UnitId::new("flash-1")]
+    );
     assert_eq!(
         error.context().related_stream_ids(),
         &[rf_types::StreamId::new("stream-loop")]
@@ -232,11 +231,9 @@ fn self_loop_cycle_reports_topological_ordering_context_end_to_end() {
             rf_types::DiagnosticPortTarget::new("flash-1", "liquid"),
         ]
     );
-    assert!(
-        error
-            .message()
-            .contains("solver.topological_ordering.self_loop_cycle: solver topological ordering failed")
-    );
+    assert!(error.message().contains(
+        "solver.topological_ordering.self_loop_cycle: solver topological ordering failed"
+    ));
     assert!(error.message().contains("forms a self loop"));
     assert!(error.message().contains("stream `stream-loop`"));
 }
@@ -271,13 +268,15 @@ fn multi_unit_cycle_reports_involved_units_end_to_end() {
             rf_types::DiagnosticPortTarget::new("heater-1", "inlet"),
         ]
     );
+    assert!(error.message().contains(
+        "solver.topological_ordering.two_unit_cycle: solver topological ordering failed"
+    ));
+    assert!(error.message().contains("form a two-unit cycle"));
     assert!(
         error
             .message()
-            .contains("solver.topological_ordering.two_unit_cycle: solver topological ordering failed")
+            .contains("streams `stream-a` and `stream-b`")
     );
-    assert!(error.message().contains("form a two-unit cycle"));
-    assert!(error.message().contains("streams `stream-a` and `stream-b`"));
 }
 
 #[test]
@@ -292,18 +291,17 @@ fn missing_upstream_source_reports_connection_validation_context_end_to_end() {
         error.context().diagnostic_code(),
         Some("solver.connection_validation.missing_upstream_source")
     );
-    assert_eq!(error.context().related_unit_ids(), &[UnitId::new("mixer-1")]);
+    assert_eq!(
+        error.context().related_unit_ids(),
+        &[UnitId::new("mixer-1")]
+    );
     assert_eq!(
         error.context().related_port_targets(),
         &[rf_types::DiagnosticPortTarget::new("mixer-1", "inlet_a")]
     );
-    assert!(
-        error
-            .message()
-            .contains(
-                "solver.connection_validation.missing_upstream_source: solver connection validation failed"
-            )
-    );
+    assert!(error.message().contains(
+        "solver.connection_validation.missing_upstream_source: solver connection validation failed"
+    ));
     assert!(
         error
             .message()
@@ -323,14 +321,13 @@ fn missing_stream_reference_reports_connection_validation_context_end_to_end() {
         error.context().diagnostic_code(),
         Some("solver.connection_validation.missing_stream_reference")
     );
-    assert_eq!(error.context().related_unit_ids(), &[UnitId::new("heater-1")]);
-    assert!(
-        error
-            .message()
-            .contains(
-                "solver.connection_validation.missing_stream_reference: solver connection validation failed"
-            )
+    assert_eq!(
+        error.context().related_unit_ids(),
+        &[UnitId::new("heater-1")]
     );
+    assert!(error.message().contains(
+        "solver.connection_validation.missing_stream_reference: solver connection validation failed"
+    ));
     assert!(
         error
             .message()
@@ -388,13 +385,9 @@ fn invalid_port_signature_reports_connection_validation_context_end_to_end() {
         Some("solver.connection_validation.invalid_port_signature")
     );
     assert_eq!(error.context().related_unit_ids(), &[UnitId::new("feed-1")]);
-    assert!(
-        error
-            .message()
-            .contains(
-                "solver.connection_validation.invalid_port_signature: solver connection validation failed"
-            )
-    );
+    assert!(error.message().contains(
+        "solver.connection_validation.invalid_port_signature: solver connection validation failed"
+    ));
     assert!(
         error
             .message()
@@ -457,14 +450,14 @@ fn orphan_stream_reports_connection_validation_stream_context_end_to_end() {
         &[rf_types::StreamId::new("stream-orphan")]
     );
     assert!(error.context().related_unit_ids().is_empty());
+    assert!(error.message().contains(
+        "solver.connection_validation.orphan_stream: solver connection validation failed"
+    ));
     assert!(
         error
             .message()
-            .contains(
-                "solver.connection_validation.orphan_stream: solver connection validation failed"
-            )
+            .contains("is not connected to any material port")
     );
-    assert!(error.message().contains("is not connected to any material port"));
 }
 
 #[test]
@@ -485,13 +478,9 @@ fn unbound_outlet_port_reports_connection_validation_context_end_to_end() {
         &[rf_types::DiagnosticPortTarget::new("feed-1", "outlet")]
     );
     assert!(error.context().related_stream_ids().is_empty());
-    assert!(
-        error
-            .message()
-            .contains(
-                "solver.connection_validation.unbound_outlet_port: solver connection validation failed"
-            )
-    );
+    assert!(error.message().contains(
+        "solver.connection_validation.unbound_outlet_port: solver connection validation failed"
+    ));
     assert!(error.message().contains("is not connected to any stream"));
 }
 
@@ -507,18 +496,17 @@ fn unbound_inlet_port_reports_connection_validation_context_end_to_end() {
         error.context().diagnostic_code(),
         Some("solver.connection_validation.unbound_inlet_port")
     );
-    assert_eq!(error.context().related_unit_ids(), &[UnitId::new("heater-1")]);
+    assert_eq!(
+        error.context().related_unit_ids(),
+        &[UnitId::new("heater-1")]
+    );
     assert_eq!(
         error.context().related_port_targets(),
         &[rf_types::DiagnosticPortTarget::new("heater-1", "inlet")]
     );
     assert!(error.context().related_stream_ids().is_empty());
-    assert!(
-        error
-            .message()
-            .contains(
-                "solver.connection_validation.unbound_inlet_port: solver connection validation failed"
-            )
-    );
+    assert!(error.message().contains(
+        "solver.connection_validation.unbound_inlet_port: solver connection validation failed"
+    ));
     assert!(error.message().contains("is not connected to any stream"));
 }

@@ -297,10 +297,7 @@ impl RfError {
         self
     }
 
-    pub fn with_related_port_target(
-        mut self,
-        target: impl Into<DiagnosticPortTarget>,
-    ) -> Self {
+    pub fn with_related_port_target(mut self, target: impl Into<DiagnosticPortTarget>) -> Self {
         let target = target.into();
         if !self
             .context
@@ -398,11 +395,7 @@ mod tests {
         );
         assert_eq!(
             error.context().related_stream_ids(),
-            [
-                StreamId::new("stream-feed"),
-                StreamId::new("stream-heated")
-            ]
-            .as_slice()
+            [StreamId::new("stream-feed"), StreamId::new("stream-heated")].as_slice()
         );
         assert_eq!(
             error.context().related_port_targets(),

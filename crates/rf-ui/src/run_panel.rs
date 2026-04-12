@@ -2,15 +2,25 @@ use rf_types::{DiagnosticPortTarget, StreamId, UnitId};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RunPanelRecoveryMutation {
-    DisconnectPort { unit_id: UnitId, port_name: String },
-    DeleteStream { stream_id: StreamId },
-    CreateAndBindOutletStream { unit_id: UnitId, port_name: String },
+    DisconnectPort {
+        unit_id: UnitId,
+        port_name: String,
+    },
+    DeleteStream {
+        stream_id: StreamId,
+    },
+    CreateAndBindOutletStream {
+        unit_id: UnitId,
+        port_name: String,
+    },
     DisconnectPortAndDeleteStream {
         unit_id: UnitId,
         port_name: String,
         stream_id: StreamId,
     },
-    RestoreCanonicalPortSignature { unit_id: UnitId },
+    RestoreCanonicalPortSignature {
+        unit_id: UnitId,
+    },
 }
 
 use crate::run::{RunStatus, SimulationMode, SolvePendingReason, SolveSessionState, SolveSnapshot};
@@ -171,10 +181,7 @@ impl RunPanelRecoveryAction {
             })
     }
 
-    pub fn with_restore_canonical_port_signature(
-        self,
-        unit_id: impl Into<UnitId>,
-    ) -> Self {
+    pub fn with_restore_canonical_port_signature(self, unit_id: impl Into<UnitId>) -> Self {
         let unit_id = unit_id.into();
         self.with_target_unit(unit_id.clone())
             .with_mutation(RunPanelRecoveryMutation::RestoreCanonicalPortSignature { unit_id })
@@ -270,20 +277,11 @@ pub fn run_panel_failure_title_for_diagnostic_code(primary_code: Option<&str>) -
         "solver.connection_validation.unbound_outlet_port",
     ) {
         "Unbound outlet port"
-    } else if diagnostic_code_matches(
-        primary_code,
-        "solver.connection_validation.orphan_stream",
-    ) {
+    } else if diagnostic_code_matches(primary_code, "solver.connection_validation.orphan_stream") {
         "Orphan stream"
-    } else if diagnostic_code_matches(
-        primary_code,
-        "solver.topological_ordering.self_loop_cycle",
-    ) {
+    } else if diagnostic_code_matches(primary_code, "solver.topological_ordering.self_loop_cycle") {
         "Self loop detected"
-    } else if diagnostic_code_matches(
-        primary_code,
-        "solver.topological_ordering.two_unit_cycle",
-    ) {
+    } else if diagnostic_code_matches(primary_code, "solver.topological_ordering.two_unit_cycle") {
         "Two-unit cycle detected"
     } else if diagnostic_code_in_family(primary_code, "solver.connection_validation") {
         "Connection validation failed"
@@ -467,22 +465,28 @@ pub fn run_panel_failure_notice(
     if let Some(mut recovery_action) =
         run_panel_failure_recovery_action_for_diagnostic_code(primary_code)
     {
-        if let Some(port_target) = preferred_recovery_port_target(primary_code, related_port_targets)
+        if let Some(port_target) =
+            preferred_recovery_port_target(primary_code, related_port_targets)
         {
-            recovery_action =
-                configure_recovery_action_for_port_target(
-                    recovery_action,
-                    primary_code,
-                    port_target,
-                    target_stream_id,
-                );
+            recovery_action = configure_recovery_action_for_port_target(
+                recovery_action,
+                primary_code,
+                port_target,
+                target_stream_id,
+            );
         } else if prefers_stream_recovery_target(primary_code) {
             if let Some(stream_id) = target_stream_id {
-                recovery_action =
-                    configure_recovery_action_for_stream_target(recovery_action, primary_code, stream_id);
+                recovery_action = configure_recovery_action_for_stream_target(
+                    recovery_action,
+                    primary_code,
+                    stream_id,
+                );
             } else if let Some(unit_id) = target_unit_id {
-                recovery_action =
-                    configure_recovery_action_for_unit_target(recovery_action, primary_code, unit_id);
+                recovery_action = configure_recovery_action_for_unit_target(
+                    recovery_action,
+                    primary_code,
+                    unit_id,
+                );
             }
         } else if let Some(unit_id) = target_unit_id {
             recovery_action =
@@ -578,7 +582,8 @@ fn configure_recovery_action_for_port_target(
                 stream_id.clone(),
             )
         } else {
-            recovery_action.with_target_port(port_target.unit_id.clone(), port_target.port_name.clone())
+            recovery_action
+                .with_target_port(port_target.unit_id.clone(), port_target.port_name.clone())
         }
     } else if diagnostic_code_matches(
         primary_code,

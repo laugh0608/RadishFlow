@@ -403,7 +403,9 @@ fn layout_scope_window_id(outcome: &StudioGuiDriverOutcome) -> Option<StudioWind
     }
 }
 
-fn surfaced_ui_commands(outcome: &StudioGuiDriverOutcome) -> Option<crate::StudioAppHostUiCommandModel> {
+fn surfaced_ui_commands(
+    outcome: &StudioGuiDriverOutcome,
+) -> Option<crate::StudioAppHostUiCommandModel> {
     match outcome {
         StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::WindowOpened(opened)) => {
             Some(opened.ui_commands.clone())
@@ -432,9 +434,9 @@ fn surfaced_ui_commands(outcome: &StudioGuiDriverOutcome) -> Option<crate::Studi
                 crate::StudioGuiHostEntitlementDispatchResult::Executed { dispatch, .. },
             ),
         ) => Some(dispatch.ui_commands.clone()),
-        StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::WindowClosed(
-            closed,
-        )) => Some(closed.ui_commands.clone()),
+        StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::WindowClosed(closed)) => {
+            Some(closed.ui_commands.clone())
+        }
         StudioGuiDriverOutcome::HostCommand(
             StudioGuiHostCommandOutcome::EntitlementActionDispatched(
                 crate::StudioGuiHostEntitlementDispatchResult::IgnoredDisabled { .. }
@@ -480,9 +482,9 @@ fn surfaced_canvas_state(outcome: &StudioGuiDriverOutcome) -> Option<StudioGuiCa
                 crate::StudioGuiHostEntitlementDispatchResult::Executed { dispatch, .. },
             ),
         ) => Some(dispatch.canvas.clone()),
-        StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::WindowClosed(
-            closed,
-        )) => Some(closed.canvas.clone()),
+        StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::WindowClosed(closed)) => {
+            Some(closed.canvas.clone())
+        }
         StudioGuiDriverOutcome::HostCommand(
             StudioGuiHostCommandOutcome::UiCommandDispatched(
                 StudioGuiHostUiCommandDispatchResult::IgnoredDisabled { .. }
@@ -650,13 +652,12 @@ mod tests {
 
     use crate::{
         StudioGuiCanvasInteractionAction, StudioGuiDriver, StudioGuiDriverOutcome, StudioGuiEvent,
-        StudioGuiFocusContext, StudioGuiHostCommandOutcome,
-        StudioGuiHostEntitlementDispatchResult, StudioGuiHostUiCommandDispatchResult,
-        StudioGuiShortcut, StudioGuiShortcutIgnoreReason, StudioGuiShortcutKey,
-        StudioGuiShortcutModifier, StudioGuiWindowAreaId, StudioGuiWindowDockPlacement,
-        StudioGuiWindowDockRegion, StudioGuiWindowDropTargetQuery, StudioGuiWindowLayoutMutation,
-        StudioRuntimeConfig, StudioRuntimeEntitlementPreflight, StudioRuntimeEntitlementSeed,
-        StudioRuntimeTrigger,
+        StudioGuiFocusContext, StudioGuiHostCommandOutcome, StudioGuiHostEntitlementDispatchResult,
+        StudioGuiHostUiCommandDispatchResult, StudioGuiShortcut, StudioGuiShortcutIgnoreReason,
+        StudioGuiShortcutKey, StudioGuiShortcutModifier, StudioGuiWindowAreaId,
+        StudioGuiWindowDockPlacement, StudioGuiWindowDockRegion, StudioGuiWindowDropTargetQuery,
+        StudioGuiWindowLayoutMutation, StudioRuntimeConfig, StudioRuntimeEntitlementPreflight,
+        StudioRuntimeEntitlementSeed, StudioRuntimeTrigger,
     };
     use rf_ui::{
         EntitlementActionId, GhostElement, GhostElementKind, StreamVisualKind, StreamVisualState,

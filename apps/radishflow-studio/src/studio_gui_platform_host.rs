@@ -865,18 +865,14 @@ impl StudioGuiPlatformHost {
                 .map(StudioGuiPlatformNativeTimerCallbackOutcome::Dispatched)?,
             StudioGuiPlatformTimerCallbackResolution::IgnoredUnknownNativeTimer {
                 native_timer_id,
-            } => {
-                StudioGuiPlatformNativeTimerCallbackOutcome::IgnoredUnknownNativeTimer {
-                    native_timer_id,
-                }
-            }
+            } => StudioGuiPlatformNativeTimerCallbackOutcome::IgnoredUnknownNativeTimer {
+                native_timer_id,
+            },
             StudioGuiPlatformTimerCallbackResolution::IgnoredStaleNativeTimer {
                 native_timer_id,
-            } => {
-                StudioGuiPlatformNativeTimerCallbackOutcome::IgnoredStaleNativeTimer {
-                    native_timer_id,
-                }
-            }
+            } => StudioGuiPlatformNativeTimerCallbackOutcome::IgnoredStaleNativeTimer {
+                native_timer_id,
+            },
         };
         match &outcome {
             StudioGuiPlatformNativeTimerCallbackOutcome::IgnoredUnknownNativeTimer {
@@ -1168,9 +1164,9 @@ fn format_platform_dispatch_activity(dispatch: &StudioGuiPlatformDispatch) -> St
             },
             opened.registration.layout_slot
         ),
-        StudioGuiDriverOutcome::HostCommand(crate::StudioGuiHostCommandOutcome::WindowDispatched(
-            dispatch,
-        )) => format!("window dispatch #{}", dispatch.target_window_id),
+        StudioGuiDriverOutcome::HostCommand(
+            crate::StudioGuiHostCommandOutcome::WindowDispatched(dispatch),
+        ) => format!("window dispatch #{}", dispatch.target_window_id),
         StudioGuiDriverOutcome::HostCommand(
             crate::StudioGuiHostCommandOutcome::LifecycleDispatched(lifecycle),
         ) => format!("lifecycle {:?}", lifecycle.event),
@@ -1203,7 +1199,10 @@ fn format_platform_dispatch_activity(dispatch: &StudioGuiPlatformDispatch) -> St
             crate::StudioGuiHostEntitlementDispatchResult::Executed {
                 action_id,
                 dispatch,
-            } => format!("entitlement action {:?} -> #{}", action_id, dispatch.target_window_id),
+            } => format!(
+                "entitlement action {:?} -> #{}",
+                action_id, dispatch.target_window_id
+            ),
             crate::StudioGuiHostEntitlementDispatchResult::IgnoredDisabled {
                 action_id,
                 detail,
@@ -1222,9 +1221,9 @@ fn format_platform_dispatch_activity(dispatch: &StudioGuiPlatformDispatch) -> St
         StudioGuiDriverOutcome::HostCommand(
             crate::StudioGuiHostCommandOutcome::CanvasInteracted(result),
         ) => format!("canvas {}", format!("{:?}", result.action).to_lowercase()),
-        StudioGuiDriverOutcome::HostCommand(
-            crate::StudioGuiHostCommandOutcome::WindowClosed(result),
-        ) => match result.close.as_ref() {
+        StudioGuiDriverOutcome::HostCommand(crate::StudioGuiHostCommandOutcome::WindowClosed(
+            result,
+        )) => match result.close.as_ref() {
             Some(close) => format!("window closed #{}", close.window_id),
             None => "window close ignored".to_string(),
         },
@@ -1237,18 +1236,22 @@ fn format_platform_dispatch_activity(dispatch: &StudioGuiPlatformDispatch) -> St
         StudioGuiDriverOutcome::CanvasInteraction(result) => {
             format!("canvas {}", format!("{:?}", result.action).to_lowercase())
         }
-        StudioGuiDriverOutcome::WindowLayoutUpdated(result) => format!("layout {:?}", result.mutation),
+        StudioGuiDriverOutcome::WindowLayoutUpdated(result) => {
+            format!("layout {:?}", result.mutation)
+        }
         StudioGuiDriverOutcome::IgnoredNativeTimerElapsed { handle_id, .. } => {
             format!("timer ignored handle={handle_id}")
         }
-        StudioGuiDriverOutcome::IgnoredShortcut { shortcut, reason } => format!(
-            "shortcut ignored {:?} {:?}",
-            shortcut, reason
-        ),
+        StudioGuiDriverOutcome::IgnoredShortcut { shortcut, reason } => {
+            format!("shortcut ignored {:?} {:?}", shortcut, reason)
+        }
     };
 
     match dispatch.native_timer_request.as_ref() {
-        Some(request) => format!("{summary} | request {}", format_platform_timer_request(request)),
+        Some(request) => format!(
+            "{summary} | request {}",
+            format_platform_timer_request(request)
+        ),
         None => summary,
     }
 }
@@ -1325,7 +1328,10 @@ fn format_platform_timer_executor_response(
 fn format_platform_timer_host_outcome(outcome: &StudioGuiPlatformTimerHostOutcome) -> String {
     match outcome {
         StudioGuiPlatformTimerHostOutcome::Started(outcome) => {
-            format!("host_started {}", format_platform_timer_started_outcome(outcome))
+            format!(
+                "host_started {}",
+                format_platform_timer_started_outcome(outcome)
+            )
         }
         StudioGuiPlatformTimerHostOutcome::StartFailed(outcome) => {
             format!(
@@ -1337,9 +1343,7 @@ fn format_platform_timer_host_outcome(outcome: &StudioGuiPlatformTimerHostOutcom
     }
 }
 
-fn format_platform_timer_started_outcome(
-    outcome: &StudioGuiPlatformTimerStartedOutcome,
-) -> String {
+fn format_platform_timer_started_outcome(outcome: &StudioGuiPlatformTimerStartedOutcome) -> String {
     match outcome {
         StudioGuiPlatformTimerStartedOutcome::Applied(result) => {
             format!("applied {:?}", result.status)
@@ -1587,9 +1591,7 @@ mod tests {
                 .contains("simulated native timer creation failure")
         );
         assert_eq!(snapshot.runtime.platform_timer_lines.len(), 2);
-        assert!(
-            snapshot.runtime.platform_timer_lines[0].contains("Current schedule: window=Some")
-        );
+        assert!(snapshot.runtime.platform_timer_lines[0].contains("Current schedule: window=Some"));
         assert!(
             snapshot
                 .runtime

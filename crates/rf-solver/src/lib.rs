@@ -438,7 +438,11 @@ fn solver_stage_diagnostic_code(code: SolverDiagnosticCode, error: &RfError) -> 
 fn map_connection_validation_diagnostic_code(diagnostic_code: Option<&str>) -> Option<String> {
     let diagnostic_code = diagnostic_code?;
     if diagnostic_code == "flowsheet.connection_validation" {
-        return Some(SolverDiagnosticCode::ConnectionValidation.as_str().to_string());
+        return Some(
+            SolverDiagnosticCode::ConnectionValidation
+                .as_str()
+                .to_string(),
+        );
     }
 
     diagnostic_code
@@ -519,7 +523,8 @@ fn detect_two_unit_cycle_error(
         let Some(previous_sink) = previous.sink.as_ref() else {
             return false;
         };
-        previous.source.unit_id == sink.unit_id && previous_sink.unit_id == connection.source.unit_id
+        previous.source.unit_id == sink.unit_id
+            && previous_sink.unit_id == connection.source.unit_id
     })?;
     let reverse_sink = reverse
         .sink
@@ -707,14 +712,12 @@ fn instantiate_operation(
             let vapor = stream_target_for_port(unit, FLASH_DRUM_VAPOR_PORT, flowsheet)?;
             Ok(Box::new(FlashDrum::new(liquid, vapor)))
         }
-        _ => Err(
-            RfError::invalid_input(format!(
-                "{} uses unsupported solver kind `{}`",
-                unit_context(unit),
-                unit.kind
-            ))
-            .with_related_unit_id(unit.id.clone()),
-        ),
+        _ => Err(RfError::invalid_input(format!(
+            "{} uses unsupported solver kind `{}`",
+            unit_context(unit),
+            unit.kind
+        ))
+        .with_related_unit_id(unit.id.clone())),
     }
 }
 
@@ -1020,8 +1023,8 @@ mod tests {
         AntoineCoefficients, PlaceholderThermoProvider, ThermoComponent, ThermoSystem,
     };
     use rf_types::{
-        ComponentId, DiagnosticPortTarget, PhaseLabel, PortDirection, PortKind, RfError,
-        StreamId, UnitId,
+        ComponentId, DiagnosticPortTarget, PhaseLabel, PortDirection, PortKind, RfError, StreamId,
+        UnitId,
     };
     use rf_unitops::{
         UnitOperationOutputs, build_cooler_node, build_feed_node, build_flash_drum_node,
@@ -1990,7 +1993,10 @@ mod tests {
             error.context().diagnostic_code(),
             Some("solver.connection_validation.unsupported_unit_kind")
         );
-        assert_eq!(error.context().related_unit_ids(), &[UnitId::new("mystery-1")]);
+        assert_eq!(
+            error.context().related_unit_ids(),
+            &[UnitId::new("mystery-1")]
+        );
         assert!(
             error
                 .message()
@@ -2080,7 +2086,11 @@ mod tests {
                 .contains("solver topological ordering failed")
         );
         assert!(error.message().contains("form a two-unit cycle"));
-        assert!(error.message().contains("streams `stream-a` and `stream-b`"));
+        assert!(
+            error
+                .message()
+                .contains("streams `stream-a` and `stream-b`")
+        );
     }
 
     #[test]
@@ -2141,7 +2151,10 @@ mod tests {
             error.context().diagnostic_code(),
             Some("solver.topological_ordering.self_loop_cycle")
         );
-        assert_eq!(error.context().related_unit_ids(), &[UnitId::new("flash-1")]);
+        assert_eq!(
+            error.context().related_unit_ids(),
+            &[UnitId::new("flash-1")]
+        );
         assert_eq!(
             error.context().related_stream_ids(),
             &[StreamId::new("stream-loop")]
@@ -2300,7 +2313,10 @@ mod tests {
             error.message(),
             "solver.step.execution: solver step 2 unit execution failed for unit `valve-1` (`valve`) after consuming [stream-feed]: valve outlet pressure cannot exceed inlet pressure"
         );
-        assert_eq!(error.context().related_stream_ids(), &[StreamId::new("stream-feed")]);
+        assert_eq!(
+            error.context().related_stream_ids(),
+            &[StreamId::new("stream-feed")]
+        );
     }
 
     #[test]
@@ -2340,7 +2356,10 @@ mod tests {
             Some("solver.step.execution")
         );
         assert_eq!(context.related_unit_ids, vec![UnitId::new("valve-1")]);
-        assert_eq!(context.related_stream_ids, vec![StreamId::new("stream-feed")]);
+        assert_eq!(
+            context.related_stream_ids,
+            vec![StreamId::new("stream-feed")]
+        );
         assert!(context.related_port_targets.is_empty());
         assert_eq!(
             error.context().diagnostic_code(),
@@ -2370,7 +2389,10 @@ mod tests {
         assert_eq!(context.related_unit_ids, vec![UnitId::new("flash-1")]);
         assert!(context.related_stream_ids.is_empty());
         assert!(context.related_port_targets.is_empty());
-        assert_eq!(error.context().diagnostic_code(), Some("solver.step.lookup"));
+        assert_eq!(
+            error.context().diagnostic_code(),
+            Some("solver.step.lookup")
+        );
         assert_eq!(
             error.context().related_unit_ids(),
             [UnitId::new("flash-1")].as_slice()
