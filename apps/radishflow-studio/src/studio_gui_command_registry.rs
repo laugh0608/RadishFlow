@@ -45,6 +45,14 @@ pub struct StudioGuiCommandSection {
     pub commands: Vec<StudioGuiCommandEntry>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioGuiCommandMenuNode {
+    pub label: String,
+    pub command: Option<StudioGuiCommandEntry>,
+    pub children: Vec<StudioGuiCommandMenuNode>,
+    sort_order: u16,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StudioGuiCommandGroup {
     RunPanel,
@@ -166,6 +174,24 @@ impl StudioGuiCommandRegistry {
             .flat_map(|section| section.commands.iter())
             .find(|entry| entry.command_id == command_id)
     }
+
+    pub fn menu_tree(&self) -> Vec<StudioGuiCommandMenuNode> {
+        let mut roots = Vec::new();
+        for command in self
+            .sections
+            .iter()
+            .flat_map(|section| section.commands.iter())
+        {
+            let path = if command.menu_path.is_empty() {
+                vec![command.label.clone()]
+            } else {
+                command.menu_path.clone()
+            };
+            insert_menu_command(&mut roots, &path, command);
+        }
+        sort_menu_nodes(&mut roots);
+        roots
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -269,13 +295,60 @@ fn canvas_sort_order(action_id: StudioGuiCanvasActionId) -> u16 {
     }
 }
 
+fn insert_menu_command(
+    nodes: &mut Vec<StudioGuiCommandMenuNode>,
+    path: &[String],
+    command: &StudioGuiCommandEntry,
+) {
+    if path.is_empty() {
+        return;
+    }
+
+    if path.len() == 1 {
+        nodes.push(StudioGuiCommandMenuNode {
+            label: path[0].clone(),
+            command: Some(command.clone()),
+            children: Vec::new(),
+            sort_order: command.sort_order,
+        });
+        return;
+    }
+
+    let label = &path[0];
+    let index = nodes
+        .iter()
+        .position(|node| node.command.is_none() && node.label == *label)
+        .unwrap_or_else(|| {
+            nodes.push(StudioGuiCommandMenuNode {
+                label: label.clone(),
+                command: None,
+                children: Vec::new(),
+                sort_order: command.sort_order,
+            });
+            nodes.len() - 1
+        });
+    nodes[index].sort_order = nodes[index].sort_order.min(command.sort_order);
+    insert_menu_command(&mut nodes[index].children, &path[1..], command);
+}
+
+fn sort_menu_nodes(nodes: &mut Vec<StudioGuiCommandMenuNode>) {
+    for node in nodes.iter_mut() {
+        sort_menu_nodes(&mut node.children);
+    }
+    nodes.sort_by(|left, right| {
+        left.sort_order
+            .cmp(&right.sort_order)
+            .then_with(|| left.label.cmp(&right.label))
+    });
+}
+
 #[cfg(test)]
 mod tests {
     use crate::{
         StudioAppHostUiActionModel, StudioAppHostUiCommandGroup, StudioAppHostUiCommandModel,
-        StudioGuiCanvasActionId, StudioGuiCommandGroup, StudioGuiCommandRegistry,
-        StudioGuiShortcut, StudioGuiShortcutKey, StudioGuiShortcutModifier,
-        studio_gui_canvas_widget::canvas_command_id,
+        StudioGuiCanvasActionId, StudioGuiCommandGroup, StudioGuiCommandMenuNode,
+        StudioGuiCommandRegistry, StudioGuiShortcut, StudioGuiShortcutKey,
+        StudioGuiShortcutModifier, studio_gui_canvas_widget::canvas_command_id,
     };
 
     #[test]
@@ -444,5 +517,71 @@ mod tests {
                 .and_then(|entry| entry.target_window_id),
             Some(3)
         );
+    }
+
+    #[test]
+    fn gui_command_registry_builds_nested_menu_tree_from_menu_paths() {
+        let model = StudioAppHostUiCommandModel {
+            actions: vec![
+                StudioAppHostUiActionModel {
+                    action: None,
+                    command_id: "run_panel.run_manual",
+                    group: StudioAppHostUiCommandGroup::RunPanel,
+                    sort_order: 100,
+                    label: "Run workspace",
+                    enabled: true,
+                    detail: "Run",
+                    target_window_id: Some(2),
+                },
+                StudioAppHostUiActionModel {
+                    action: None,
+                    command_id: "run_panel.recover_failure",
+                    group: StudioAppHostUiCommandGroup::Recovery,
+                    sort_order: 200,
+                    label: "Recover run panel failure",
+                    enabled: false,
+                    detail: "Recover",
+                    target_window_id: Some(2),
+                },
+            ],
+        };
+
+        let registry = StudioGuiCommandRegistry::from_model(&model);
+        let menu_tree = registry.menu_tree();
+
+        assert_eq!(menu_tree.len(), 1);
+        assert_eq!(menu_tree[0].label, "Run");
+        assert!(menu_tree[0].command.is_none());
+        assert_eq!(
+            menu_tree[0]
+                .children
+                .iter()
+                .map(|node| node.label.as_str())
+                .collect::<Vec<_>>(),
+            vec!["Run Workspace", "Recovery"]
+        );
+        assert_eq!(
+            menu_tree[0].children[0]
+                .command
+                .as_ref()
+                .map(|entry| entry.command_id.as_str()),
+            Some("run_panel.run_manual")
+        );
+        assert_eq!(menu_tree[0].children[1].command, None);
+        assert_eq!(
+            menu_tree[0].children[1]
+                .children
+                .iter()
+                .map(command_id_from_leaf)
+                .collect::<Vec<_>>(),
+            vec!["run_panel.recover_failure"]
+        );
+    }
+
+    fn command_id_from_leaf(node: &StudioGuiCommandMenuNode) -> &str {
+        node.command
+            .as_ref()
+            .map(|entry| entry.command_id.as_str())
+            .expect("expected leaf command")
     }
 }

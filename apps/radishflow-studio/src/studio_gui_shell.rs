@@ -3,7 +3,8 @@ use std::time::{Duration, SystemTime};
 
 use eframe::egui;
 use radishflow_studio::{
-    StudioAppHostWindowState, StudioGuiCommandEntry, StudioGuiEvent, StudioGuiFocusContext,
+    StudioAppHostWindowState, StudioGuiCommandEntry, StudioGuiCommandMenuNode,
+    StudioGuiCommandSection, StudioGuiEvent, StudioGuiFocusContext,
     StudioGuiPlatformExecutedNativeTimerCallbackBatch,
     StudioGuiPlatformExecutedNativeTimerCallbackOutcome, StudioGuiPlatformHost,
     StudioGuiPlatformNativeTimerId, StudioGuiPlatformTimerCommand, StudioGuiPlatformTimerExecutor,
@@ -179,6 +180,13 @@ impl ReadyAppState {
                     self.render_logical_window_chips(ui, windows);
                 }
             });
+            if !window.commands.menu_tree.is_empty() {
+                ui.separator();
+                self.render_command_menu_bar(ui, &window.commands.menu_tree);
+                ui.horizontal_wrapped(|ui| {
+                    self.render_command_toolbar(ui, &window.commands.sections);
+                });
+            }
             ui.separator();
             ui.horizontal_wrapped(|ui| {
                 self.render_panel_toggle(
@@ -775,17 +783,12 @@ impl ReadyAppState {
     }
 
     fn render_command_entry(&mut self, ui: &mut egui::Ui, command: &StudioGuiCommandEntry) {
-        let label = match command.shortcut.as_ref() {
-            Some(shortcut) => format!("{} ({})", command.label, format_shortcut(shortcut)),
-            None => command.label.clone(),
-        };
+        let label = command_button_label(command);
         if ui
             .add_enabled(command.enabled, egui::Button::new(label))
             .clicked()
         {
-            self.dispatch_event(StudioGuiEvent::UiCommandRequested {
-                command_id: command.command_id.clone(),
-            });
+            self.dispatch_command(command);
         }
         ui.label(&command.detail);
         ui.small(
@@ -1119,6 +1122,66 @@ impl ReadyAppState {
         });
     }
 
+    fn render_command_menu_bar(
+        &mut self,
+        ui: &mut egui::Ui,
+        menu_tree: &[StudioGuiCommandMenuNode],
+    ) {
+        ui.horizontal_wrapped(|ui| {
+            ui.label(egui::RichText::new("Menu").strong());
+            for node in menu_tree {
+                self.render_command_menu_node(ui, node);
+            }
+        });
+    }
+
+    fn render_command_menu_node(&mut self, ui: &mut egui::Ui, node: &StudioGuiCommandMenuNode) {
+        if let Some(command) = node.command.as_ref() {
+            let label = command_button_label(command);
+            if ui
+                .add_enabled(command.enabled, egui::Button::new(label))
+                .clicked()
+            {
+                self.dispatch_command(command);
+                ui.close_menu();
+            }
+            return;
+        }
+
+        ui.menu_button(&node.label, |ui| {
+            for child in &node.children {
+                self.render_command_menu_node(ui, child);
+            }
+        });
+    }
+
+    fn render_command_toolbar(&mut self, ui: &mut egui::Ui, sections: &[StudioGuiCommandSection]) {
+        ui.label(egui::RichText::new("Toolbar").strong());
+        let mut first_section = true;
+        for section in sections {
+            if section.commands.is_empty() {
+                continue;
+            }
+            if !first_section {
+                ui.separator();
+            }
+            first_section = false;
+            ui.label(
+                egui::RichText::new(section.title)
+                    .small()
+                    .color(egui::Color32::from_rgb(92, 104, 117)),
+            );
+            for command in &section.commands {
+                let response = ui
+                    .add_enabled(command.enabled, egui::Button::new(command.label.as_str()))
+                    .on_hover_text(command_hover_text(command));
+                if response.clicked() {
+                    self.dispatch_command(command);
+                }
+            }
+        }
+    }
+
     fn render_panel_toggle(
         &mut self,
         ui: &mut egui::Ui,
@@ -1257,29 +1320,27 @@ impl ReadyAppState {
     fn dispatch_run_panel_widget(&mut self, event: RunPanelWidgetEvent) {
         match event {
             RunPanelWidgetEvent::Dispatched { intent, .. } => match intent {
-                RunPanelIntent::RunManual(_) => {
-                    self.dispatch_event(StudioGuiEvent::UiCommandRequested {
-                        command_id: "run_panel.run_manual".to_string(),
-                    });
-                }
-                RunPanelIntent::Resume(_) => {
-                    self.dispatch_event(StudioGuiEvent::UiCommandRequested {
-                        command_id: "run_panel.resume_workspace".to_string(),
-                    });
-                }
+                RunPanelIntent::RunManual(_) => self.dispatch_ui_command("run_panel.run_manual"),
+                RunPanelIntent::Resume(_) => self.dispatch_ui_command("run_panel.resume_workspace"),
                 RunPanelIntent::SetMode(SimulationMode::Hold) => {
-                    self.dispatch_event(StudioGuiEvent::UiCommandRequested {
-                        command_id: "run_panel.set_hold".to_string(),
-                    });
+                    self.dispatch_ui_command("run_panel.set_hold")
                 }
                 RunPanelIntent::SetMode(SimulationMode::Active) => {
-                    self.dispatch_event(StudioGuiEvent::UiCommandRequested {
-                        command_id: "run_panel.set_active".to_string(),
-                    });
+                    self.dispatch_ui_command("run_panel.set_active")
                 }
             },
             RunPanelWidgetEvent::Disabled { .. } | RunPanelWidgetEvent::Missing { .. } => {}
         }
+    }
+
+    fn dispatch_command(&mut self, command: &StudioGuiCommandEntry) {
+        self.dispatch_ui_command(&command.command_id);
+    }
+
+    fn dispatch_ui_command(&mut self, command_id: impl Into<String>) {
+        self.dispatch_event(StudioGuiEvent::UiCommandRequested {
+            command_id: command_id.into(),
+        });
     }
 
     fn dispatch_layout_mutation(
@@ -2371,6 +2432,22 @@ fn format_shortcut(shortcut: &StudioGuiShortcut) -> String {
     };
     parts.push(key);
     parts.join("+")
+}
+
+fn command_button_label(command: &StudioGuiCommandEntry) -> String {
+    match command.shortcut.as_ref() {
+        Some(shortcut) => format!("{} ({})", command.label, format_shortcut(shortcut)),
+        None => command.label.clone(),
+    }
+}
+
+fn command_hover_text(command: &StudioGuiCommandEntry) -> String {
+    let mut text = command.detail.clone();
+    if !command.menu_path.is_empty() {
+        text.push_str("\nMenu: ");
+        text.push_str(&command.menu_path.join(" > "));
+    }
+    text
 }
 
 #[cfg(test)]

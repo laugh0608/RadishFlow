@@ -1,9 +1,9 @@
 use crate::{
-    EntitlementSessionHostRuntimeOutput, StudioGuiCanvasWidgetModel, StudioGuiCommandRegistry,
-    StudioGuiCommandSection, StudioGuiSnapshot, StudioGuiWindowAreaId, StudioGuiWindowDockRegion,
-    StudioGuiWindowDropTarget, StudioGuiWindowDropTargetKind, StudioGuiWindowDropTargetQuery,
-    StudioGuiWindowLayoutModel, StudioGuiWindowLayoutState, StudioWindowHostId,
-    WorkspaceControlState,
+    EntitlementSessionHostRuntimeOutput, StudioGuiCanvasWidgetModel, StudioGuiCommandMenuNode,
+    StudioGuiCommandRegistry, StudioGuiCommandSection, StudioGuiSnapshot, StudioGuiWindowAreaId,
+    StudioGuiWindowDockRegion, StudioGuiWindowDropTarget, StudioGuiWindowDropTargetKind,
+    StudioGuiWindowDropTargetQuery, StudioGuiWindowLayoutModel, StudioGuiWindowLayoutState,
+    StudioWindowHostId, WorkspaceControlState,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -20,6 +20,7 @@ pub struct StudioGuiWindowHeaderModel {
 pub struct StudioGuiWindowCommandAreaModel {
     pub title: &'static str,
     pub sections: Vec<StudioGuiCommandSection>,
+    pub menu_tree: Vec<StudioGuiCommandMenuNode>,
     pub total_command_count: usize,
     pub enabled_command_count: usize,
 }
@@ -272,6 +273,7 @@ fn commands_from_registry(registry: &StudioGuiCommandRegistry) -> StudioGuiWindo
     StudioGuiWindowCommandAreaModel {
         title: "Commands",
         sections: registry.sections.clone(),
+        menu_tree: registry.menu_tree(),
         total_command_count,
         enabled_command_count,
     }
