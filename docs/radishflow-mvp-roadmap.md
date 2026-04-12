@@ -387,6 +387,8 @@ Studio 当前又已继续把这条 GUI 命令入口推进为稳定 host command 
 - `rf-ui` 当前也已把 run panel 动作展示继续冻结到 GUI-facing `label/detail/enabled` 口径，第一版 `eframe/egui` GUI 壳已直接消费这份动作详情，而不再在壳层重复拼按钮说明文本
 - `rf-ui` 当前也已把 entitlement panel 动作展示继续冻结到 GUI-facing `label/detail/enabled` 口径，第一版 `eframe/egui` GUI 壳已直接消费这份动作详情，并沿既有 foreground host routing 回灌 Studio runtime
 - 后续真实桌面框架在建立原生命令绑定时，应优先复用这组 `UiCommandModel` / command registry，而不是继续让各入口重复拼装运行栏 availability、disabled reason 或窗口前景派发逻辑
+- 当前已把第一批 GUI command surface 的 shell 等价基线补齐：`run_panel.set_active`、`run_panel.recover_failure` 与 `canvas.accept/reject/focus` 在 menu / toolbar / palette / shortcut 间共享同一派发链；disabled 状态下 menu / toolbar / palette 也已锁定为 no-op，不再允许某个 GUI 入口绕过 registry / host gate 私改状态
+- Studio 当前也已开始按“单文件不超过 1000 行 + `src/` 浅层职责分组”的工程治理收口，把 `bootstrap`、`studio_gui_shell`、`studio_gui_host`、`studio_gui_driver`、`studio_gui_window_layout`、`studio_window_host_manager`、`entitlement_session_host`、`property_package_download_client`、`auth_cache_sync`、`app_facade` 与 `control_plane_client` 分批拆成目录模块；后续推进真实 GUI 宿主时应继续沿这条模块边界深化，而不是回退到单文件堆叠
 
 当前最小入口 `apps/radishflow-studio/src/main.rs` 已开始直接消费上述正式边界，而不再继续翻读 bootstrap、session 或 raw command outcome 细节。
 

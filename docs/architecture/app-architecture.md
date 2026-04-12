@@ -780,6 +780,9 @@ pub struct StepSnapshot {
 - 当前首批已接成真实宿主命令的 run panel command registry 为 `run_panel.run_manual`、`run_panel.resume_workspace`、`run_panel.set_hold`、`run_panel.set_active` 与 `run_panel.recover_failure`；后续桌面命令绑定应优先复用这组 registry，而不是在各入口重复解释 availability、disabled reason 或底层 widget 事件
 - Studio 当前又已把 canvas suggestion 交互正式纳入同一条 command surface：`canvas.accept_focused`、`canvas.reject_focused`、`canvas.focus_next`、`canvas.focus_previous` 当前也应通过 `dispatch_ui_command(command_id)`、`StudioGuiCommandRegistry` 与 `StudioGuiShortcutRouter` 统一派发，而不再保留一条长期并行的 widget/shortcut 私有 typed 事件主线
 - `StudioAppHostController` 当前对 `DispatchCanvasInteraction` 不应再无条件 `refresh_local_canvas_suggestions()`；local-rules refresh 只应发生在真正改写文档或显式要求重算 suggestion 的路径上，否则会把 `FocusNext/Reject` 刚生成的正式焦点状态冲回首条 suggestion，破坏 GUI 命令面的连续交互语义
+- `studio_gui_shell` 当前也已通过 shell 级等价回归锁定 `run_panel.set_active`、`run_panel.recover_failure`、`canvas.accept_focused`、`canvas.reject_focused`、`canvas.focus_next` 与 `canvas.focus_previous` 在菜单、工具栏、命令面板与快捷键之间的共享派发语义；真实 GUI 后续不应再为某个入口保留“看起来一样、实际另走一条逻辑”的私有状态改写分支
+- 同时已锁定 disabled 状态下 menu / toolbar / palette 不会偷偷改变工作区或 suggestion 焦点；后续若某个入口需要提示用户，也应停留在 presentation 层，而不是越过 disabled gate 直接改状态
+- `apps/radishflow-studio/src` 当前也已开始按职责做浅层目录治理；`bootstrap`、`studio_gui_shell`、`studio_gui_host`、`studio_gui_driver`、`studio_gui_window_layout`、`studio_window_host_manager`、`entitlement_session_host`、`property_package_download_client`、`auth_cache_sync`、`app_facade` 与 `control_plane_client` 已转为目录模块。后续新增实现应优先并入同域子目录，而不是把大型模块重新铺回 `src/` 根
 - 当前虽然已有 `StudioAppFacade`，但结果派发对象仍是最小摘要形态，真正的后台任务调度、取消和更细的事件总线还没有冻结
 
 ## 结果快照模型
