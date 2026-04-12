@@ -177,6 +177,8 @@ cargo test -p rf-thermo
 - 相标签当前只保留 `overall`、`liquid`、`vapor`
 - `rf-model` 只承载对象模型，不提前承载求解策略或 COM 语义
 - `rf-thermo` 与 `rf-flash` 先稳定接口，再补 Antoine、Raoult 和 Rachford-Rice
+- MVP 保持单文档工作区，但源码仍按职责拆分，不以单文件承载全部状态
+- 单个源码文件原则上不超过 1000 行；若文件已接近或超过该阈值，后续新增实现应优先拆分职责、提取子模块或测试 helper，而不是继续膨胀原文件
 
 ### Git 提交规范
 
