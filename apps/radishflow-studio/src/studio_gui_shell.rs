@@ -4,7 +4,7 @@ use std::time::{Duration, SystemTime};
 use eframe::egui;
 use radishflow_studio::{
     StudioAppHostWindowState, StudioGuiCommandEntry, StudioGuiCommandMenuCommandModel,
-    StudioGuiCommandMenuNode, StudioGuiCommandSection, StudioGuiEvent, StudioGuiFocusContext,
+    StudioGuiCommandMenuNode, StudioGuiEvent, StudioGuiFocusContext,
     StudioGuiPlatformExecutedNativeTimerCallbackBatch,
     StudioGuiPlatformExecutedNativeTimerCallbackOutcome, StudioGuiPlatformHost,
     StudioGuiPlatformNativeTimerId, StudioGuiPlatformTimerCommand, StudioGuiPlatformTimerExecutor,
@@ -12,8 +12,9 @@ use radishflow_studio::{
     StudioGuiShortcut, StudioGuiShortcutKey, StudioGuiShortcutModifier, StudioGuiWindowAreaId,
     StudioGuiWindowDockPlacement, StudioGuiWindowDockRegion, StudioGuiWindowDropTargetQuery,
     StudioGuiWindowLayoutModel, StudioGuiWindowLayoutMutation, StudioGuiWindowModel,
-    StudioGuiWindowPanelDisplayMode, StudioGuiWindowStackGroupLayout, StudioRuntimeConfig,
-    StudioWindowHostId, StudioWindowHostRole,
+    StudioGuiWindowPanelDisplayMode, StudioGuiWindowStackGroupLayout,
+    StudioGuiWindowToolbarSectionModel, StudioRuntimeConfig, StudioWindowHostId,
+    StudioWindowHostRole,
 };
 use rf_types::RfResult;
 use rf_ui::{
@@ -233,7 +234,7 @@ impl ReadyAppState {
                 ui.separator();
                 self.render_command_menu_bar(ui, &window.commands.menu_tree);
                 ui.horizontal_wrapped(|ui| {
-                    self.render_command_toolbar(ui, &window.commands.sections);
+                    self.render_command_toolbar(ui, &window.commands.toolbar_sections);
                     let palette_label = if self.command_palette.open {
                         "Hide command palette"
                     } else {
@@ -843,29 +844,29 @@ impl ReadyAppState {
                 area_label(area_id)
             ))
             .show(ui, |ui| {
-                for section in &window.commands.sections {
+                for section in &window.commands.command_list_sections {
                     ui.label(egui::RichText::new(section.title).strong());
-                    for command in &section.commands {
-                        self.render_command_entry(ui, command);
+                    for command in &section.items {
+                        self.render_command_list_entry(ui, command);
                     }
                     ui.add_space(6.0);
                 }
             });
     }
 
-    fn render_command_entry(&mut self, ui: &mut egui::Ui, command: &StudioGuiCommandEntry) {
-        let presentation = command.presentation();
+    fn render_command_list_entry(
+        &mut self,
+        ui: &mut egui::Ui,
+        command: &radishflow_studio::StudioGuiWindowCommandListItemModel,
+    ) {
         if ui
-            .add_enabled(
-                command.enabled,
-                egui::Button::new(&presentation.label_with_shortcut),
-            )
+            .add_enabled(command.enabled, egui::Button::new(&command.label))
             .clicked()
         {
-            self.dispatch_command(command);
+            self.dispatch_ui_command(&command.command_id);
         }
         ui.label(&command.detail);
-        ui.small(presentation.menu_path_text);
+        ui.small(&command.menu_path_text);
         ui.add_space(4.0);
     }
 
@@ -1222,11 +1223,15 @@ impl ReadyAppState {
         });
     }
 
-    fn render_command_toolbar(&mut self, ui: &mut egui::Ui, sections: &[StudioGuiCommandSection]) {
+    fn render_command_toolbar(
+        &mut self,
+        ui: &mut egui::Ui,
+        sections: &[StudioGuiWindowToolbarSectionModel],
+    ) {
         ui.label(egui::RichText::new("Toolbar").strong());
         let mut first_section = true;
         for section in sections {
-            if section.commands.is_empty() {
+            if section.items.is_empty() {
                 continue;
             }
             if !first_section {
@@ -1238,13 +1243,12 @@ impl ReadyAppState {
                     .small()
                     .color(egui::Color32::from_rgb(92, 104, 117)),
             );
-            for command in &section.commands {
-                let presentation = command.presentation();
+            for command in &section.items {
                 let response = ui
-                    .add_enabled(command.enabled, egui::Button::new(&presentation.label))
-                    .on_hover_text(presentation.hover_text);
+                    .add_enabled(command.enabled, egui::Button::new(&command.label))
+                    .on_hover_text(&command.hover_text);
                 if response.clicked() {
-                    self.dispatch_command(command);
+                    self.dispatch_ui_command(&command.command_id);
                 }
             }
         }
@@ -1481,10 +1485,6 @@ impl ReadyAppState {
             },
             RunPanelWidgetEvent::Disabled { .. } | RunPanelWidgetEvent::Missing { .. } => {}
         }
-    }
-
-    fn dispatch_command(&mut self, command: &StudioGuiCommandEntry) {
-        self.dispatch_ui_command(&command.command_id);
     }
 
     fn dispatch_menu_command(&mut self, command: &StudioGuiCommandMenuCommandModel) {
@@ -2764,6 +2764,7 @@ fn selected_palette_item_command_id(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use radishflow_studio::StudioGuiCommandSection;
     use radishflow_studio::{
         StudioGuiDriverOutcome, StudioRuntimeEntitlementPreflight, StudioRuntimeEntitlementSeed,
         StudioRuntimeEntitlementSessionEvent, StudioRuntimeTrigger,

@@ -20,9 +20,40 @@ pub struct StudioGuiWindowHeaderModel {
 pub struct StudioGuiWindowCommandAreaModel {
     pub title: &'static str,
     pub sections: Vec<StudioGuiCommandSection>,
+    pub command_list_sections: Vec<StudioGuiWindowCommandListSectionModel>,
+    pub toolbar_sections: Vec<StudioGuiWindowToolbarSectionModel>,
     pub menu_tree: Vec<StudioGuiCommandMenuNode>,
     pub total_command_count: usize,
     pub enabled_command_count: usize,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioGuiWindowCommandListSectionModel {
+    pub title: &'static str,
+    pub items: Vec<StudioGuiWindowCommandListItemModel>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioGuiWindowCommandListItemModel {
+    pub command_id: String,
+    pub enabled: bool,
+    pub label: String,
+    pub detail: String,
+    pub menu_path_text: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioGuiWindowToolbarSectionModel {
+    pub title: &'static str,
+    pub items: Vec<StudioGuiWindowToolbarItemModel>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioGuiWindowToolbarItemModel {
+    pub command_id: String,
+    pub enabled: bool,
+    pub label: String,
+    pub hover_text: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -310,10 +341,75 @@ fn commands_from_registry(registry: &StudioGuiCommandRegistry) -> StudioGuiWindo
     StudioGuiWindowCommandAreaModel {
         title: "Commands",
         sections: registry.sections.clone(),
+        command_list_sections: command_list_sections_from_sections(&registry.sections),
+        toolbar_sections: toolbar_sections_from_sections(&registry.sections),
         menu_tree: registry.menu_tree(),
         total_command_count,
         enabled_command_count,
     }
+}
+
+fn command_list_sections_from_sections(
+    sections: &[StudioGuiCommandSection],
+) -> Vec<StudioGuiWindowCommandListSectionModel> {
+    sections
+        .iter()
+        .filter_map(|section| {
+            let items = section
+                .commands
+                .iter()
+                .map(|command| {
+                    let presentation = command.presentation();
+                    StudioGuiWindowCommandListItemModel {
+                        command_id: command.command_id.clone(),
+                        enabled: command.enabled,
+                        label: presentation.label_with_shortcut,
+                        detail: command.detail.clone(),
+                        menu_path_text: presentation.menu_path_text,
+                    }
+                })
+                .collect::<Vec<_>>();
+            if items.is_empty() {
+                None
+            } else {
+                Some(StudioGuiWindowCommandListSectionModel {
+                    title: section.title,
+                    items,
+                })
+            }
+        })
+        .collect()
+}
+
+fn toolbar_sections_from_sections(
+    sections: &[StudioGuiCommandSection],
+) -> Vec<StudioGuiWindowToolbarSectionModel> {
+    sections
+        .iter()
+        .filter_map(|section| {
+            let items = section
+                .commands
+                .iter()
+                .map(|command| {
+                    let presentation = command.presentation();
+                    StudioGuiWindowToolbarItemModel {
+                        command_id: command.command_id.clone(),
+                        enabled: command.enabled,
+                        label: presentation.label,
+                        hover_text: presentation.hover_text,
+                    }
+                })
+                .collect::<Vec<_>>();
+            if items.is_empty() {
+                None
+            } else {
+                Some(StudioGuiWindowToolbarSectionModel {
+                    title: section.title,
+                    items,
+                })
+            }
+        })
+        .collect()
 }
 
 fn canvas_from_snapshot(snapshot: &StudioGuiSnapshot) -> StudioGuiWindowCanvasAreaModel {
@@ -518,6 +614,83 @@ mod tests {
                 .map(|command| command.command_id.as_str())
                 .collect::<Vec<_>>(),
             vec!["run_panel.set_active"]
+        );
+
+        let _ = fs::remove_file(project_path);
+    }
+
+    #[test]
+    fn studio_gui_window_command_area_surfaces_toolbar_sections_through_shared_model() {
+        let (config, project_path) = flash_drum_local_rules_config();
+        let mut driver = StudioGuiDriver::new(&config).expect("expected driver");
+
+        let dispatch = driver
+            .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+            .expect("expected open dispatch");
+        let window = dispatch.snapshot.window_model();
+
+        assert_eq!(
+            window
+                .commands
+                .toolbar_sections
+                .iter()
+                .map(|section| section.title)
+                .collect::<Vec<_>>(),
+            vec!["Run Panel", "Recovery", "Canvas"]
+        );
+        assert_eq!(
+            window.commands.toolbar_sections[0]
+                .items
+                .iter()
+                .map(|item| item.command_id.as_str())
+                .collect::<Vec<_>>(),
+            vec![
+                "run_panel.run_manual",
+                "run_panel.resume_workspace",
+                "run_panel.set_hold",
+                "run_panel.set_active",
+            ]
+        );
+
+        let _ = fs::remove_file(project_path);
+    }
+
+    #[test]
+    fn studio_gui_window_command_area_surfaces_command_list_sections_through_shared_model() {
+        let (config, project_path) = flash_drum_local_rules_config();
+        let mut driver = StudioGuiDriver::new(&config).expect("expected driver");
+
+        let dispatch = driver
+            .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+            .expect("expected open dispatch");
+        let window = dispatch.snapshot.window_model();
+
+        assert_eq!(
+            window
+                .commands
+                .command_list_sections
+                .iter()
+                .map(|section| section.title)
+                .collect::<Vec<_>>(),
+            vec!["Run Panel", "Recovery", "Canvas"]
+        );
+        assert_eq!(
+            window.commands.command_list_sections[0]
+                .items
+                .iter()
+                .map(|item| item.command_id.as_str())
+                .collect::<Vec<_>>(),
+            vec![
+                "run_panel.run_manual",
+                "run_panel.resume_workspace",
+                "run_panel.set_hold",
+                "run_panel.set_active",
+            ]
+        );
+        assert!(
+            window.commands.command_list_sections[0].items[0]
+                .label
+                .contains("F5")
         );
 
         let _ = fs::remove_file(project_path);
