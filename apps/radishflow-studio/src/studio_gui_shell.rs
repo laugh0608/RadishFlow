@@ -2764,7 +2764,6 @@ fn selected_palette_item_command_id(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use radishflow_studio::StudioGuiCommandSection;
     use radishflow_studio::{
         StudioGuiDriverOutcome, StudioRuntimeEntitlementPreflight, StudioRuntimeEntitlementSeed,
         StudioRuntimeEntitlementSessionEvent, StudioRuntimeTrigger,
@@ -3115,52 +3114,23 @@ mod tests {
     }
 
     #[test]
-    fn command_palette_commands_filter_sections_by_registry_terms() {
-        let sections = vec![StudioGuiCommandSection {
-            group: radishflow_studio::StudioGuiCommandGroup::RunPanel,
-            title: "Run Panel",
-            commands: vec![
-                StudioGuiCommandEntry {
-                    command_id: "run_panel.run_manual".to_string(),
-                    label: "Run workspace".to_string(),
-                    detail: "Run".to_string(),
-                    enabled: true,
-                    sort_order: 100,
-                    target_window_id: Some(2),
-                    menu_path: vec!["Run".to_string(), "Run Workspace".to_string()],
-                    search_terms: vec![
-                        "run".to_string(),
-                        "workspace".to_string(),
-                        "manual".to_string(),
-                    ],
-                    shortcut: None,
-                },
-                StudioGuiCommandEntry {
-                    command_id: "run_panel.recover_failure".to_string(),
-                    label: "Recover run panel failure".to_string(),
-                    detail: "Recover".to_string(),
-                    enabled: false,
-                    sort_order: 200,
-                    target_window_id: Some(2),
-                    menu_path: vec![
-                        "Run".to_string(),
-                        "Recovery".to_string(),
-                        "Recover Run Panel Failure".to_string(),
-                    ],
-                    search_terms: vec!["diagnostic".to_string(), "inspector".to_string()],
-                    shortcut: None,
-                },
-            ],
-        }];
+    fn command_palette_items_surface_window_model_results() {
+        let app = ready_app_state(&lease_expiring_config());
 
-        let filtered = sections
-            .iter()
-            .flat_map(|section| section.commands.iter())
-            .filter(|command| command.matches_palette_query("diagnostic"))
-            .collect::<Vec<_>>();
+        let filtered = app
+            .platform_host
+            .snapshot()
+            .window_model()
+            .commands
+            .palette_items("activate");
 
-        assert_eq!(filtered.len(), 1);
-        assert_eq!(filtered[0].command_id, "run_panel.recover_failure");
+        assert_eq!(
+            filtered
+                .into_iter()
+                .map(|item| item.command_id)
+                .collect::<Vec<_>>(),
+            vec!["run_panel.set_active".to_string()]
+        );
     }
 
     fn palette_commands_for_test(commands: &[(&str, bool)]) -> Vec<&'static StudioGuiCommandEntry> {

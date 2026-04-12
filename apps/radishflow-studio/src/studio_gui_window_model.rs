@@ -19,12 +19,12 @@ pub struct StudioGuiWindowHeaderModel {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StudioGuiWindowCommandAreaModel {
     pub title: &'static str,
-    pub sections: Vec<StudioGuiCommandSection>,
     pub command_list_sections: Vec<StudioGuiWindowCommandListSectionModel>,
     pub toolbar_sections: Vec<StudioGuiWindowToolbarSectionModel>,
     pub menu_tree: Vec<StudioGuiCommandMenuNode>,
     pub total_command_count: usize,
     pub enabled_command_count: usize,
+    sections: Vec<StudioGuiCommandSection>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -67,7 +67,7 @@ pub struct StudioGuiWindowCommandPaletteItemModel {
 }
 
 impl StudioGuiWindowCommandAreaModel {
-    pub fn filtered_commands(&self, query: &str) -> Vec<&StudioGuiCommandEntry> {
+    fn filtered_commands(&self, query: &str) -> Vec<&StudioGuiCommandEntry> {
         self.sections
             .iter()
             .flat_map(|section| section.commands.iter())
@@ -540,7 +540,7 @@ mod tests {
         assert_eq!(
             window
                 .commands
-                .sections
+                .command_list_sections
                 .first()
                 .map(|section| section.title),
             Some("Run Panel")
@@ -548,7 +548,7 @@ mod tests {
         assert!(
             window
                 .commands
-                .sections
+                .command_list_sections
                 .iter()
                 .any(|section| section.title == "Canvas"),
             "expected canvas command section when suggestions exist"
@@ -597,7 +597,7 @@ mod tests {
     }
 
     #[test]
-    fn studio_gui_window_command_area_filters_palette_commands_through_shared_model() {
+    fn studio_gui_window_command_area_surfaces_palette_items_through_shared_model() {
         let (config, project_path) = flash_drum_local_rules_config();
         let mut driver = StudioGuiDriver::new(&config).expect("expected driver");
 
@@ -605,15 +605,18 @@ mod tests {
             .dispatch_event(StudioGuiEvent::OpenWindowRequested)
             .expect("expected open dispatch");
         let window = dispatch.snapshot.window_model();
+        let palette_items = window.commands.palette_items("diagnostic");
 
         assert_eq!(
-            window
-                .commands
-                .filtered_commands("activate")
+            palette_items
                 .into_iter()
-                .map(|command| command.command_id.as_str())
+                .map(|item| (item.command_id, item.label, item.menu_path_text))
                 .collect::<Vec<_>>(),
-            vec!["run_panel.set_active"]
+            vec![(
+                "run_panel.recover_failure".to_string(),
+                "Recover run panel failure (F8) [disabled]".to_string(),
+                "Run > Recovery > Recover Run Panel Failure".to_string(),
+            )]
         );
 
         let _ = fs::remove_file(project_path);
