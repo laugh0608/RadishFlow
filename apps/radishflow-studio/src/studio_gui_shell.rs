@@ -3080,6 +3080,7 @@ mod tests {
     fn command_surface_interactions_converge_to_same_window_state_for_activate_workspace() {
         let mut menu_app = ready_app_state(&lease_expiring_config());
         let mut toolbar_app = ready_app_state(&lease_expiring_config());
+        let mut list_app = ready_app_state(&lease_expiring_config());
         let mut palette_app = ready_app_state(&lease_expiring_config());
         let mut shortcut_app = ready_app_state(&lease_expiring_config());
 
@@ -3093,9 +3094,15 @@ mod tests {
             "run_panel.set_active",
         )
         .expect("expected activate toolbar command");
+        let list_command_id = find_command_list_command_id(
+            &initial_window.commands.command_list_sections,
+            "run_panel.set_active",
+        )
+        .expect("expected activate command list command");
 
         menu_app.dispatch_menu_command(&menu_command);
         toolbar_app.dispatch_ui_command(toolbar_command_id);
+        list_app.dispatch_ui_command(list_command_id);
 
         palette_app.command_palette.open();
         palette_app.command_palette.query = "activate".to_string();
@@ -3118,6 +3125,7 @@ mod tests {
 
         let menu_window = menu_app.platform_host.snapshot().window_model();
         let toolbar_window = toolbar_app.platform_host.snapshot().window_model();
+        let list_window = list_app.platform_host.snapshot().window_model();
         let palette_window = palette_app.platform_host.snapshot().window_model();
         let shortcut_window = shortcut_app.platform_host.snapshot().window_model();
 
@@ -3127,6 +3135,7 @@ mod tests {
             SimulationMode::Active
         );
         assert_eq!(menu_window, toolbar_window);
+        assert_eq!(menu_window, list_window);
         assert_eq!(menu_window, palette_window);
         assert_eq!(menu_window, shortcut_window);
     }
@@ -3135,6 +3144,7 @@ mod tests {
     fn command_surface_interactions_converge_to_same_window_state_for_run_panel_recovery() {
         let mut menu_app = ready_failed_app_state();
         let mut toolbar_app = ready_failed_app_state();
+        let mut list_app = ready_failed_app_state();
         let mut palette_app = ready_failed_app_state();
         let mut shortcut_app = ready_failed_app_state();
 
@@ -3150,9 +3160,15 @@ mod tests {
             "run_panel.recover_failure",
         )
         .expect("expected recovery toolbar command");
+        let list_command_id = find_command_list_command_id(
+            &failed_window.commands.command_list_sections,
+            "run_panel.recover_failure",
+        )
+        .expect("expected recovery command list command");
 
         menu_app.dispatch_menu_command(&menu_command);
         toolbar_app.dispatch_ui_command(toolbar_command_id);
+        list_app.dispatch_ui_command(list_command_id);
 
         palette_app.command_palette.open();
         palette_app.command_palette.query = "diagnostic".to_string();
@@ -3168,6 +3184,7 @@ mod tests {
 
         let menu_window = menu_app.platform_host.snapshot().window_model();
         let toolbar_window = toolbar_app.platform_host.snapshot().window_model();
+        let list_window = list_app.platform_host.snapshot().window_model();
         let palette_window = palette_app.platform_host.snapshot().window_model();
         let shortcut_window = shortcut_app.platform_host.snapshot().window_model();
 
@@ -3182,6 +3199,7 @@ mod tests {
             "Resume"
         );
         assert_eq!(menu_window, toolbar_window);
+        assert_eq!(menu_window, list_window);
         assert_eq!(menu_window, palette_window);
         assert_eq!(menu_window, shortcut_window);
     }
@@ -3190,11 +3208,13 @@ mod tests {
     fn disabled_command_surface_interactions_do_not_change_window_state_for_run_panel_recovery() {
         let mut menu_app = ready_app_state(&lease_expiring_config());
         let mut toolbar_app = ready_app_state(&lease_expiring_config());
+        let mut list_app = ready_app_state(&lease_expiring_config());
         let mut palette_app = ready_app_state(&lease_expiring_config());
         let mut shortcut_app = ready_app_state(&lease_expiring_config());
 
         let initial_window = menu_app.platform_host.snapshot().window_model();
         assert_eq!(toolbar_app.platform_host.snapshot().window_model(), initial_window);
+        assert_eq!(list_app.platform_host.snapshot().window_model(), initial_window);
         assert_eq!(palette_app.platform_host.snapshot().window_model(), initial_window);
         assert_eq!(shortcut_app.platform_host.snapshot().window_model(), initial_window);
 
@@ -3221,9 +3241,22 @@ mod tests {
             !toolbar_command.enabled,
             "expected recovery toolbar command to stay disabled before failure"
         );
+        let list_command = initial_window
+            .commands
+            .command_list_sections
+            .iter()
+            .flat_map(|section| section.items.iter())
+            .find(|command| command.command_id == "run_panel.recover_failure")
+            .cloned()
+            .expect("expected recovery command list command");
+        assert!(
+            !list_command.enabled,
+            "expected recovery command list command to stay disabled before failure"
+        );
 
         menu_app.dispatch_menu_command(&menu_command);
         toolbar_app.dispatch_ui_command(&toolbar_command.command_id);
+        list_app.dispatch_ui_command(&list_command.command_id);
 
         palette_app.command_palette.open();
         palette_app.command_palette.query = "diagnostic".to_string();
@@ -3246,11 +3279,13 @@ mod tests {
 
         let menu_window = menu_app.platform_host.snapshot().window_model();
         let toolbar_window = toolbar_app.platform_host.snapshot().window_model();
+        let list_window = list_app.platform_host.snapshot().window_model();
         let palette_window = palette_app.platform_host.snapshot().window_model();
         let shortcut_window = shortcut_app.platform_host.snapshot().window_model();
 
         assert_eq!(menu_window, initial_window);
         assert_eq!(menu_window, toolbar_window);
+        assert_eq!(menu_window, list_window);
         assert_eq!(menu_window, palette_window);
         assert_eq!(menu_window, shortcut_window);
         assert!(palette_app.command_palette.open);
@@ -3367,6 +3402,17 @@ mod tests {
 
     fn find_toolbar_command_id<'a>(
         sections: &'a [StudioGuiWindowToolbarSectionModel],
+        command_id: &str,
+    ) -> Option<&'a str> {
+        sections
+            .iter()
+            .flat_map(|section| section.items.iter())
+            .find(|command| command.command_id == command_id)
+            .map(|command| command.command_id.as_str())
+    }
+
+    fn find_command_list_command_id<'a>(
+        sections: &'a [radishflow_studio::StudioGuiWindowCommandListSectionModel],
         command_id: &str,
     ) -> Option<&'a str> {
         sections
