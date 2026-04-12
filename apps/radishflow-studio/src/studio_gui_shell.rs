@@ -2814,6 +2814,45 @@ mod tests {
         )
     }
 
+    fn synced_workspace_config() -> StudioRuntimeConfig {
+        StudioRuntimeConfig {
+            entitlement_preflight: StudioRuntimeEntitlementPreflight::Skip,
+            entitlement_seed: StudioRuntimeEntitlementSeed::Synced,
+            ..StudioRuntimeConfig::default()
+        }
+    }
+
+    fn flash_drum_local_rules_synced_config() -> (StudioRuntimeConfig, PathBuf) {
+        let timestamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("expected current timestamp")
+            .as_nanos();
+        let project_path = std::env::temp_dir().join(format!(
+            "radishflow-studio-shell-local-rules-synced-{timestamp}.rfproj.json"
+        ));
+        let project =
+            include_str!("../../../examples/flowsheets/feed-heater-flash.rfproj.json")
+                .replacen(
+                    ",\n        \"stream-vapor\": {\n          \"id\": \"stream-vapor\",\n          \"name\": \"Vapor Outlet\",\n          \"temperature_k\": 345.0,\n          \"pressure_pa\": 95000.0,\n          \"total_molar_flow_mol_s\": 0.0,\n          \"overall_mole_fractions\": {\n            \"component-a\": 0.5,\n            \"component-b\": 0.5\n          },\n          \"phases\": []\n        }",
+                    "",
+                    1,
+                )
+                .replacen(
+                    "\"name\": \"vapor\",\n              \"direction\": \"outlet\",\n              \"kind\": \"material\",\n              \"stream_id\": \"stream-vapor\"",
+                    "\"name\": \"vapor\",\n              \"direction\": \"outlet\",\n              \"kind\": \"material\",\n              \"stream_id\": null",
+                    1,
+                );
+        fs::write(&project_path, project).expect("expected synced local rules project");
+
+        (
+            StudioRuntimeConfig {
+                project_path: project_path.clone(),
+                ..synced_workspace_config()
+            },
+            project_path,
+        )
+    }
+
     fn unbound_outlet_failure_synced_config() -> StudioRuntimeConfig {
         StudioRuntimeConfig {
             project_path: PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -3260,6 +3299,50 @@ mod tests {
                 .as_deref(),
             Some("local.flash_drum.create_outlet.flash-1.liquid")
         );
+        assert_command_surface_windows_equal(&apps, &menu_window);
+
+        let _ = std::fs::remove_file(project_path);
+    }
+
+    #[test]
+    fn command_surface_interactions_converge_to_same_window_state_for_canvas_accept_focused() {
+        let (config, project_path) = flash_drum_local_rules_synced_config();
+        let mut apps = ready_command_surface_apps(&config);
+        let initial_window = shared_command_surface_initial_window(&apps);
+
+        dispatch_enabled_command_surface_interactions(
+            &mut apps,
+            &initial_window,
+            "run_panel.set_active",
+            "activate",
+            egui::Key::F6,
+            egui::Modifiers {
+                shift: true,
+                ..egui::Modifiers::NONE
+            },
+        );
+        let active_window = command_surface_window(&apps.menu_app);
+        assert_command_surface_windows_equal(&apps, &active_window);
+
+        dispatch_enabled_command_surface_interactions(
+            &mut apps,
+            &active_window,
+            "canvas.accept_focused",
+            "accept",
+            egui::Key::Tab,
+            egui::Modifiers::NONE,
+        );
+
+        let menu_window = command_surface_window(&apps.menu_app);
+
+        assert!(!apps.palette_app.command_palette.open);
+        assert_eq!(menu_window.runtime.control_state.run_status, rf_ui::RunStatus::Converged);
+        assert_eq!(menu_window.runtime.control_state.pending_reason, None);
+        assert_eq!(
+            menu_window.runtime.control_state.latest_snapshot_id.as_deref(),
+            Some("example-feed-heater-flash-rev-1-seq-1")
+        );
+        assert_eq!(menu_window.runtime.run_panel.view().status_label, "Converged");
         assert_command_surface_windows_equal(&apps, &menu_window);
 
         let _ = std::fs::remove_file(project_path);
