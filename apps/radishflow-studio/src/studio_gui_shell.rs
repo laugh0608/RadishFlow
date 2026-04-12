@@ -3081,6 +3081,7 @@ mod tests {
         let mut menu_app = ready_app_state(&lease_expiring_config());
         let mut toolbar_app = ready_app_state(&lease_expiring_config());
         let mut palette_app = ready_app_state(&lease_expiring_config());
+        let mut shortcut_app = ready_app_state(&lease_expiring_config());
 
         let initial_window = menu_app.platform_host.snapshot().window_model();
         let menu_command =
@@ -3106,10 +3107,19 @@ mod tests {
         run_with_key_press(egui::Key::Enter, egui::Modifiers::NONE, |ctx| {
             assert!(palette_app.handle_command_palette_keyboard(ctx, &commands));
         });
+        dispatch_shortcut_for_test(
+            &mut shortcut_app,
+            egui::Key::F6,
+            egui::Modifiers {
+                shift: true,
+                ..egui::Modifiers::NONE
+            },
+        );
 
         let menu_window = menu_app.platform_host.snapshot().window_model();
         let toolbar_window = toolbar_app.platform_host.snapshot().window_model();
         let palette_window = palette_app.platform_host.snapshot().window_model();
+        let shortcut_window = shortcut_app.platform_host.snapshot().window_model();
 
         assert!(!palette_app.command_palette.open);
         assert_eq!(
@@ -3118,6 +3128,7 @@ mod tests {
         );
         assert_eq!(menu_window, toolbar_window);
         assert_eq!(menu_window, palette_window);
+        assert_eq!(menu_window, shortcut_window);
     }
 
     #[test]
@@ -3125,6 +3136,7 @@ mod tests {
         let mut menu_app = ready_failed_app_state();
         let mut toolbar_app = ready_failed_app_state();
         let mut palette_app = ready_failed_app_state();
+        let mut shortcut_app = ready_failed_app_state();
 
         let failed_window = menu_app.platform_host.snapshot().window_model();
         let menu_command = find_menu_command(
@@ -3152,10 +3164,12 @@ mod tests {
         run_with_key_press(egui::Key::Enter, egui::Modifiers::NONE, |ctx| {
             assert!(palette_app.handle_command_palette_keyboard(ctx, &commands));
         });
+        dispatch_shortcut_for_test(&mut shortcut_app, egui::Key::F8, egui::Modifiers::NONE);
 
         let menu_window = menu_app.platform_host.snapshot().window_model();
         let toolbar_window = toolbar_app.platform_host.snapshot().window_model();
         let palette_window = palette_app.platform_host.snapshot().window_model();
+        let shortcut_window = shortcut_app.platform_host.snapshot().window_model();
 
         assert!(!palette_app.command_palette.open);
         assert_eq!(menu_window.runtime.control_state.run_status, rf_ui::RunStatus::Dirty);
@@ -3169,6 +3183,7 @@ mod tests {
         );
         assert_eq!(menu_window, toolbar_window);
         assert_eq!(menu_window, palette_window);
+        assert_eq!(menu_window, shortcut_window);
     }
 
     #[test]
@@ -3176,10 +3191,12 @@ mod tests {
         let mut menu_app = ready_app_state(&lease_expiring_config());
         let mut toolbar_app = ready_app_state(&lease_expiring_config());
         let mut palette_app = ready_app_state(&lease_expiring_config());
+        let mut shortcut_app = ready_app_state(&lease_expiring_config());
 
         let initial_window = menu_app.platform_host.snapshot().window_model();
         assert_eq!(toolbar_app.platform_host.snapshot().window_model(), initial_window);
         assert_eq!(palette_app.platform_host.snapshot().window_model(), initial_window);
+        assert_eq!(shortcut_app.platform_host.snapshot().window_model(), initial_window);
 
         let menu_command = find_menu_command(
             &initial_window.commands.menu_tree,
@@ -3225,14 +3242,17 @@ mod tests {
         run_with_key_press(egui::Key::Enter, egui::Modifiers::NONE, |ctx| {
             assert!(palette_app.handle_command_palette_keyboard(ctx, &commands));
         });
+        dispatch_shortcut_for_test(&mut shortcut_app, egui::Key::F8, egui::Modifiers::NONE);
 
         let menu_window = menu_app.platform_host.snapshot().window_model();
         let toolbar_window = toolbar_app.platform_host.snapshot().window_model();
         let palette_window = palette_app.platform_host.snapshot().window_model();
+        let shortcut_window = shortcut_app.platform_host.snapshot().window_model();
 
         assert_eq!(menu_window, initial_window);
         assert_eq!(menu_window, toolbar_window);
         assert_eq!(menu_window, palette_window);
+        assert_eq!(menu_window, shortcut_window);
         assert!(palette_app.command_palette.open);
         assert_eq!(palette_app.command_palette.query, "diagnostic");
     }
@@ -3386,6 +3406,14 @@ mod tests {
         };
         app.dispatch_event(StudioGuiEvent::OpenWindowRequested);
         app
+    }
+
+    fn dispatch_shortcut_for_test(
+        app: &mut ReadyAppState,
+        key: egui::Key,
+        modifiers: egui::Modifiers,
+    ) {
+        run_with_key_press(key, modifiers, |ctx| app.dispatch_shortcuts(ctx));
     }
 
     fn run_with_key_press<R>(
