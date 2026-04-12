@@ -3104,6 +3104,47 @@ mod tests {
     }
 
     #[test]
+    fn command_surface_interactions_converge_to_same_window_state_for_resume_workspace() {
+        let mut apps = ready_failed_command_surface_apps();
+        let failed_window = shared_command_surface_initial_window(&apps);
+
+        dispatch_enabled_command_surface_interactions(
+            &mut apps,
+            &failed_window,
+            "run_panel.recover_failure",
+            "diagnostic",
+            egui::Key::F8,
+            egui::Modifiers::NONE,
+        );
+        let recovered_window = command_surface_window(&apps.menu_app);
+        assert_command_surface_windows_equal(&apps, &recovered_window);
+
+        dispatch_enabled_command_surface_interactions(
+            &mut apps,
+            &recovered_window,
+            "run_panel.resume_workspace",
+            "resume",
+            egui::Key::F5,
+            egui::Modifiers {
+                shift: true,
+                ..egui::Modifiers::NONE
+            },
+        );
+
+        let menu_window = command_surface_window(&apps.menu_app);
+
+        assert!(!apps.palette_app.command_palette.open);
+        assert_eq!(menu_window.runtime.control_state.run_status, rf_ui::RunStatus::Converged);
+        assert_eq!(menu_window.runtime.control_state.pending_reason, None);
+        assert_eq!(
+            menu_window.runtime.control_state.latest_snapshot_id.as_deref(),
+            Some("example-unbound-outlet-port-rev-1-seq-1")
+        );
+        assert_eq!(menu_window.runtime.run_panel.view().status_label, "Converged");
+        assert_command_surface_windows_equal(&apps, &menu_window);
+    }
+
+    #[test]
     fn command_surface_interactions_converge_to_same_window_state_for_run_panel_recovery() {
         let mut apps = ready_failed_command_surface_apps();
         let failed_window = shared_command_surface_initial_window(&apps);
