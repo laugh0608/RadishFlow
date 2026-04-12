@@ -108,9 +108,18 @@ pub struct StudioGuiCommandSection {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StudioGuiCommandMenuNode {
     pub label: String,
-    pub command: Option<StudioGuiCommandEntry>,
+    pub command: Option<StudioGuiCommandMenuCommandModel>,
     pub children: Vec<StudioGuiCommandMenuNode>,
     sort_order: u16,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioGuiCommandMenuCommandModel {
+    pub command_id: String,
+    pub enabled: bool,
+    pub label: String,
+    pub hover_text: String,
+    pub target_window_id: Option<StudioWindowHostId>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -373,9 +382,16 @@ fn insert_menu_command(
     }
 
     if path.len() == 1 {
+        let presentation = command.presentation();
         nodes.push(StudioGuiCommandMenuNode {
             label: path[0].clone(),
-            command: Some(command.clone()),
+            command: Some(StudioGuiCommandMenuCommandModel {
+                command_id: command.command_id.clone(),
+                enabled: command.enabled,
+                label: presentation.label_with_shortcut,
+                hover_text: presentation.hover_text,
+                target_window_id: command.target_window_id,
+            }),
             children: Vec::new(),
             sort_order: command.sort_order,
         });
@@ -448,8 +464,8 @@ mod tests {
     use crate::{
         StudioAppHostUiActionModel, StudioAppHostUiCommandGroup, StudioAppHostUiCommandModel,
         StudioGuiCanvasActionId, StudioGuiCommandEntry, StudioGuiCommandGroup,
-        StudioGuiCommandMenuNode, StudioGuiCommandRegistry, StudioGuiShortcut,
-        StudioGuiShortcutKey, StudioGuiShortcutModifier,
+        StudioGuiCommandMenuCommandModel, StudioGuiCommandMenuNode, StudioGuiCommandRegistry,
+        StudioGuiShortcut, StudioGuiShortcutKey, StudioGuiShortcutModifier,
         studio_gui_canvas_widget::canvas_command_id,
     };
 
@@ -830,6 +846,41 @@ mod tests {
             .as_ref()
             .map(|entry| entry.command_id.as_str())
             .expect("expected leaf command")
+    }
+
+    #[test]
+    fn gui_command_registry_menu_tree_surfaces_menu_facing_command_model() {
+        let model = StudioAppHostUiCommandModel {
+            actions: vec![StudioAppHostUiActionModel {
+                action: None,
+                command_id: "run_panel.run_manual",
+                group: StudioAppHostUiCommandGroup::RunPanel,
+                sort_order: 100,
+                label: "Run workspace",
+                enabled: true,
+                detail: "Dispatch the current manual run action in the target window",
+                target_window_id: Some(2),
+            }],
+        };
+
+        let menu_tree = StudioGuiCommandRegistry::from_model(&model).menu_tree();
+        let leaf = menu_tree[0].children[0]
+            .command
+            .as_ref()
+            .expect("expected menu command leaf");
+
+        assert_eq!(
+            leaf,
+            &StudioGuiCommandMenuCommandModel {
+                command_id: "run_panel.run_manual".to_string(),
+                enabled: true,
+                label: "Run workspace (F5)".to_string(),
+                hover_text:
+                    "Dispatch the current manual run action in the target window\nMenu: Run > Run Workspace"
+                        .to_string(),
+                target_window_id: Some(2),
+            }
+        );
     }
 
     fn filtered_command_ids<'a>(

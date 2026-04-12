@@ -3,8 +3,8 @@ use std::time::{Duration, SystemTime};
 
 use eframe::egui;
 use radishflow_studio::{
-    StudioAppHostWindowState, StudioGuiCommandEntry, StudioGuiCommandMenuNode,
-    StudioGuiCommandSection, StudioGuiEvent, StudioGuiFocusContext,
+    StudioAppHostWindowState, StudioGuiCommandEntry, StudioGuiCommandMenuCommandModel,
+    StudioGuiCommandMenuNode, StudioGuiCommandSection, StudioGuiEvent, StudioGuiFocusContext,
     StudioGuiPlatformExecutedNativeTimerCallbackBatch,
     StudioGuiPlatformExecutedNativeTimerCallbackOutcome, StudioGuiPlatformHost,
     StudioGuiPlatformNativeTimerId, StudioGuiPlatformTimerCommand, StudioGuiPlatformTimerExecutor,
@@ -1204,15 +1204,12 @@ impl ReadyAppState {
 
     fn render_command_menu_node(&mut self, ui: &mut egui::Ui, node: &StudioGuiCommandMenuNode) {
         if let Some(command) = node.command.as_ref() {
-            let presentation = command.presentation();
             if ui
-                .add_enabled(
-                    command.enabled,
-                    egui::Button::new(&presentation.label_with_shortcut),
-                )
+                .add_enabled(command.enabled, egui::Button::new(&command.label))
+                .on_hover_text(&command.hover_text)
                 .clicked()
             {
-                self.dispatch_command(command);
+                self.dispatch_menu_command(command);
                 ui.close_menu();
             }
             return;
@@ -1487,6 +1484,10 @@ impl ReadyAppState {
     }
 
     fn dispatch_command(&mut self, command: &StudioGuiCommandEntry) {
+        self.dispatch_ui_command(&command.command_id);
+    }
+
+    fn dispatch_menu_command(&mut self, command: &StudioGuiCommandMenuCommandModel) {
         self.dispatch_ui_command(&command.command_id);
     }
 
