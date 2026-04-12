@@ -1866,7 +1866,7 @@ mod tests {
         assert!(commands.active_in_stack);
         assert!(commands.visible);
         assert!(!commands.collapsed);
-        assert_eq!(commands.badge.as_deref(), Some("5"));
+        assert_eq!(commands.badge.as_deref(), Some("9"));
 
         let canvas = layout
             .panel(StudioGuiWindowAreaId::Canvas)

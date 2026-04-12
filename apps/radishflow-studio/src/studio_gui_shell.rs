@@ -43,6 +43,7 @@ struct ReadyAppState {
     platform_host: StudioGuiPlatformHost,
     platform_timer_executor: EguiPlatformTimerExecutor,
     last_error: Option<String>,
+    command_palette: CommandPaletteState,
     drag_session: Option<PanelDragSession>,
     active_drop_preview: Option<ActiveDropPreview>,
     drop_preview_overlay_anchor: Option<DropPreviewOverlayAnchor>,
@@ -67,6 +68,14 @@ struct DropPreviewOverlayAnchor {
     priority: u8,
 }
 
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+struct CommandPaletteState {
+    open: bool,
+    query: String,
+    selected_index: usize,
+    focus_query_input: bool,
+}
+
 #[derive(Debug, Default)]
 struct EguiPlatformTimerExecutor {
     next_native_timer_id: StudioGuiPlatformNativeTimerId,
@@ -87,6 +96,7 @@ impl RadishFlowStudioApp {
                     platform_host,
                     platform_timer_executor: EguiPlatformTimerExecutor::default(),
                     last_error: None,
+                    command_palette: CommandPaletteState::default(),
                     drag_session: None,
                     active_drop_preview: None,
                     drop_preview_overlay_anchor: None,
@@ -103,6 +113,49 @@ impl RadishFlowStudioApp {
         };
 
         Self { state }
+    }
+}
+
+impl CommandPaletteState {
+    fn toggle(&mut self) {
+        if self.open {
+            self.close();
+        } else {
+            self.open();
+        }
+    }
+
+    fn open(&mut self) {
+        self.open = true;
+        self.query.clear();
+        self.selected_index = 0;
+        self.focus_query_input = true;
+    }
+
+    fn close(&mut self) {
+        self.open = false;
+        self.query.clear();
+        self.selected_index = 0;
+        self.focus_query_input = false;
+    }
+
+    fn clamp_selection(&mut self, command_count: usize) {
+        if command_count == 0 {
+            self.selected_index = 0;
+        } else {
+            self.selected_index = self.selected_index.min(command_count - 1);
+        }
+    }
+
+    fn move_selection(&mut self, delta: isize, command_count: usize) {
+        if command_count == 0 {
+            self.selected_index = 0;
+            return;
+        }
+
+        let current = self.selected_index.min(command_count - 1) as isize;
+        let last = (command_count - 1) as isize;
+        self.selected_index = (current + delta).clamp(0, last) as usize;
     }
 }
 
@@ -125,12 +178,17 @@ impl ReadyAppState {
     fn update(&mut self, ctx: &egui::Context) {
         self.sync_viewport_close(ctx);
         self.sync_viewport_lifecycle(ctx);
-        self.dispatch_shortcuts(ctx);
+        let toggle_shortcut_consumed = self.handle_command_palette_toggle_shortcut(ctx);
         self.drain_due_timers(ctx);
         self.drop_preview_overlay_anchor = None;
 
         let snapshot = self.platform_host.snapshot();
         let window = snapshot.window_model();
+        let palette_keyboard_consumed =
+            self.handle_command_palette_keyboard(ctx, &window.commands.sections);
+        if !toggle_shortcut_consumed && !palette_keyboard_consumed {
+            self.dispatch_shortcuts(ctx);
+        }
         let mut hovered_drop_target = false;
         self.render_top_bar(
             ctx,
@@ -141,6 +199,7 @@ impl ReadyAppState {
         self.render_left_sidebar(ctx, &window, &mut hovered_drop_target);
         self.render_right_sidebar(ctx, &window, &mut hovered_drop_target);
         self.render_center_stage(ctx, &window, &mut hovered_drop_target);
+        self.render_command_palette(ctx, &window.commands);
         self.render_floating_drop_preview_overlay(ctx, &window);
         self.finish_drop_preview_cycle(
             ctx,
@@ -185,6 +244,14 @@ impl ReadyAppState {
                 self.render_command_menu_bar(ui, &window.commands.menu_tree);
                 ui.horizontal_wrapped(|ui| {
                     self.render_command_toolbar(ui, &window.commands.sections);
+                    let palette_label = if self.command_palette.open {
+                        "Hide command palette"
+                    } else {
+                        "Command palette (Ctrl+K)"
+                    };
+                    if ui.button(palette_label).clicked() {
+                        self.command_palette.toggle();
+                    }
                 });
             }
             ui.separator();
@@ -1182,6 +1249,85 @@ impl ReadyAppState {
         }
     }
 
+    fn render_command_palette(
+        &mut self,
+        ctx: &egui::Context,
+        commands: &radishflow_studio::StudioGuiWindowCommandAreaModel,
+    ) {
+        if !self.command_palette.open {
+            return;
+        }
+
+        let mut open = self.command_palette.open;
+        egui::Window::new("Command Palette")
+            .id(egui::Id::new("studio.command_palette"))
+            .anchor(egui::Align2::CENTER_TOP, egui::vec2(0.0, 72.0))
+            .collapsible(false)
+            .resizable(false)
+            .open(&mut open)
+            .show(ctx, |ui| {
+                ui.set_min_width(560.0);
+                ui.small(format!(
+                    "{} / {} commands",
+                    commands.total_command_count.min(
+                        command_palette_commands(&commands.sections, &self.command_palette.query)
+                            .len()
+                    ),
+                    commands.total_command_count
+                ));
+                let response = ui.add(
+                    egui::TextEdit::singleline(&mut self.command_palette.query)
+                        .hint_text("按 label / menu path / search terms 过滤"),
+                );
+                if self.command_palette.focus_query_input {
+                    response.request_focus();
+                    self.command_palette.focus_query_input = false;
+                }
+                if response.changed() {
+                    self.command_palette.selected_index = 0;
+                }
+
+                ui.add_space(8.0);
+                let filtered_commands =
+                    command_palette_commands(&commands.sections, &self.command_palette.query);
+                self.command_palette
+                    .clamp_selection(filtered_commands.len());
+
+                egui::ScrollArea::vertical()
+                    .max_height(320.0)
+                    .show(ui, |ui| {
+                        if filtered_commands.is_empty() {
+                            ui.small("没有匹配的命令。");
+                            return;
+                        }
+
+                        for (index, command) in filtered_commands.iter().enumerate() {
+                            let selected = index == self.command_palette.selected_index;
+                            let label = command_palette_entry_label(command);
+                            let response = ui
+                                .selectable_label(selected, label)
+                                .on_hover_text(command_hover_text(command));
+                            ui.small(command.menu_path.join(" > "));
+                            ui.small(
+                                egui::RichText::new(&command.detail)
+                                    .color(egui::Color32::from_rgb(92, 104, 117)),
+                            );
+                            ui.add_space(6.0);
+
+                            if response.clicked() {
+                                let command_id = command.command_id.clone();
+                                self.dispatch_ui_command(command_id);
+                                self.command_palette.close();
+                            }
+                        }
+                    });
+            });
+
+        if !open {
+            self.command_palette.close();
+        }
+    }
+
     fn render_panel_toggle(
         &mut self,
         ui: &mut egui::Ui,
@@ -1625,7 +1771,61 @@ impl ReadyAppState {
         }
     }
 
+    fn handle_command_palette_toggle_shortcut(&mut self, ctx: &egui::Context) -> bool {
+        let toggle_requested =
+            ctx.input(|input| input.modifiers.command && input.key_pressed(egui::Key::K));
+        if toggle_requested {
+            self.command_palette.toggle();
+        }
+        toggle_requested
+    }
+
+    fn handle_command_palette_keyboard(
+        &mut self,
+        ctx: &egui::Context,
+        sections: &[StudioGuiCommandSection],
+    ) -> bool {
+        if !self.command_palette.open {
+            return false;
+        }
+
+        let filtered_commands = command_palette_commands(sections, &self.command_palette.query);
+        self.command_palette
+            .clamp_selection(filtered_commands.len());
+
+        if ctx.input(|input| input.key_pressed(egui::Key::Escape)) {
+            self.command_palette.close();
+            return true;
+        }
+        if ctx.input(|input| input.key_pressed(egui::Key::ArrowDown)) {
+            self.command_palette
+                .move_selection(1, filtered_commands.len());
+            return true;
+        }
+        if ctx.input(|input| input.key_pressed(egui::Key::ArrowUp)) {
+            self.command_palette
+                .move_selection(-1, filtered_commands.len());
+            return true;
+        }
+        if ctx.input(|input| input.key_pressed(egui::Key::Enter)) {
+            let selected_command_id = filtered_commands
+                .get(self.command_palette.selected_index)
+                .map(|command| command.command_id.clone());
+            if let Some(command_id) = selected_command_id {
+                self.dispatch_ui_command(command_id);
+                self.command_palette.close();
+            }
+            return true;
+        }
+
+        false
+    }
+
     fn dispatch_shortcuts(&mut self, ctx: &egui::Context) {
+        if self.command_palette.open {
+            return;
+        }
+
         if ctx.wants_keyboard_input() {
             return;
         }
@@ -2434,6 +2634,25 @@ fn format_shortcut(shortcut: &StudioGuiShortcut) -> String {
     parts.join("+")
 }
 
+fn command_palette_commands<'a>(
+    sections: &'a [StudioGuiCommandSection],
+    query: &str,
+) -> Vec<&'a StudioGuiCommandEntry> {
+    sections
+        .iter()
+        .flat_map(|section| section.commands.iter())
+        .filter(|command| command.matches_palette_query(query))
+        .collect()
+}
+
+fn command_palette_entry_label(command: &StudioGuiCommandEntry) -> String {
+    if command.enabled {
+        command_button_label(command)
+    } else {
+        format!("{} [disabled]", command_button_label(command))
+    }
+}
+
 fn command_button_label(command: &StudioGuiCommandEntry) -> String {
     match command.shortcut.as_ref() {
         Some(shortcut) => format!("{} ({})", command.label, format_shortcut(shortcut)),
@@ -2501,6 +2720,97 @@ mod tests {
         let clamped = clamp_overlay_pos_to_rect(screen, egui::pos2(180.0, 110.0), size);
 
         assert_eq!(clamped, egui::pos2(112.0, 72.0));
+    }
+
+    #[test]
+    fn command_palette_state_open_close_and_selection_reset_cleanly() {
+        let mut state = CommandPaletteState {
+            open: false,
+            query: "recover".to_string(),
+            selected_index: 3,
+            focus_query_input: false,
+        };
+
+        state.open();
+
+        assert!(state.open);
+        assert!(state.query.is_empty());
+        assert_eq!(state.selected_index, 0);
+        assert!(state.focus_query_input);
+
+        state.close();
+
+        assert!(!state.open);
+        assert!(state.query.is_empty());
+        assert_eq!(state.selected_index, 0);
+        assert!(!state.focus_query_input);
+    }
+
+    #[test]
+    fn command_palette_state_moves_selection_within_bounds() {
+        let mut state = CommandPaletteState {
+            open: true,
+            query: String::new(),
+            selected_index: 1,
+            focus_query_input: false,
+        };
+
+        state.move_selection(1, 3);
+        assert_eq!(state.selected_index, 2);
+
+        state.move_selection(1, 3);
+        assert_eq!(state.selected_index, 2);
+
+        state.move_selection(-5, 3);
+        assert_eq!(state.selected_index, 0);
+
+        state.move_selection(1, 0);
+        assert_eq!(state.selected_index, 0);
+    }
+
+    #[test]
+    fn command_palette_commands_filter_sections_by_registry_terms() {
+        let sections = vec![StudioGuiCommandSection {
+            group: radishflow_studio::StudioGuiCommandGroup::RunPanel,
+            title: "Run Panel",
+            commands: vec![
+                StudioGuiCommandEntry {
+                    command_id: "run_panel.run_manual".to_string(),
+                    label: "Run workspace".to_string(),
+                    detail: "Run".to_string(),
+                    enabled: true,
+                    sort_order: 100,
+                    target_window_id: Some(2),
+                    menu_path: vec!["Run".to_string(), "Run Workspace".to_string()],
+                    search_terms: vec![
+                        "run".to_string(),
+                        "workspace".to_string(),
+                        "manual".to_string(),
+                    ],
+                    shortcut: None,
+                },
+                StudioGuiCommandEntry {
+                    command_id: "run_panel.recover_failure".to_string(),
+                    label: "Recover run panel failure".to_string(),
+                    detail: "Recover".to_string(),
+                    enabled: false,
+                    sort_order: 200,
+                    target_window_id: Some(2),
+                    menu_path: vec![
+                        "Run".to_string(),
+                        "Recovery".to_string(),
+                        "Recover Run Panel Failure".to_string(),
+                    ],
+                    search_terms: vec!["diagnostic".to_string(), "inspector".to_string()],
+                    shortcut: None,
+                },
+            ],
+        }];
+
+        let filtered = command_palette_commands(&sections, "diagnostic");
+
+        assert_eq!(filtered.len(), 1);
+        assert_eq!(filtered[0].command_id, "run_panel.recover_failure");
     }
 
     #[test]

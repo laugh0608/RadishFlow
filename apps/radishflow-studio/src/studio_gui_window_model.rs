@@ -392,7 +392,13 @@ mod tests {
 
         assert_eq!(
             window.commands.total_command_count,
-            dispatch.snapshot.ui_commands.actions.len()
+            dispatch
+                .snapshot
+                .command_registry
+                .sections
+                .iter()
+                .map(|section| section.commands.len())
+                .sum::<usize>()
         );
         assert!(
             window.commands.enabled_command_count >= 1,
@@ -405,6 +411,14 @@ mod tests {
                 .first()
                 .map(|section| section.title),
             Some("Run Panel")
+        );
+        assert!(
+            window
+                .commands
+                .sections
+                .iter()
+                .any(|section| section.title == "Canvas"),
+            "expected canvas command section when suggestions exist"
         );
 
         assert_eq!(window.canvas.title, "Canvas");

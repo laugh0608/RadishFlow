@@ -38,6 +38,28 @@ pub struct StudioGuiCommandEntry {
     pub shortcut: Option<StudioGuiShortcut>,
 }
 
+impl StudioGuiCommandEntry {
+    pub fn matches_palette_query(&self, query: &str) -> bool {
+        let terms = normalize_palette_query_terms(query);
+        if terms.is_empty() {
+            return true;
+        }
+
+        let mut fields = Vec::with_capacity(2 + self.search_terms.len());
+        fields.push(normalize_palette_query_field(&self.label));
+        fields.push(normalize_palette_query_field(&self.menu_path.join(" ")));
+        fields.extend(
+            self.search_terms
+                .iter()
+                .map(|term| normalize_palette_query_field(term)),
+        );
+
+        terms
+            .iter()
+            .all(|term| fields.iter().any(|field| field.contains(term)))
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StudioGuiCommandSection {
     pub group: StudioGuiCommandGroup,
@@ -173,6 +195,14 @@ impl StudioGuiCommandRegistry {
             .iter()
             .flat_map(|section| section.commands.iter())
             .find(|entry| entry.command_id == command_id)
+    }
+
+    pub fn filtered_commands(&self, query: &str) -> Vec<&StudioGuiCommandEntry> {
+        self.sections
+            .iter()
+            .flat_map(|section| section.commands.iter())
+            .filter(|entry| entry.matches_palette_query(query))
+            .collect()
     }
 
     pub fn menu_tree(&self) -> Vec<StudioGuiCommandMenuNode> {
@@ -340,6 +370,18 @@ fn sort_menu_nodes(nodes: &mut Vec<StudioGuiCommandMenuNode>) {
             .cmp(&right.sort_order)
             .then_with(|| left.label.cmp(&right.label))
     });
+}
+
+fn normalize_palette_query_terms(query: &str) -> Vec<String> {
+    query
+        .split_whitespace()
+        .map(normalize_palette_query_field)
+        .filter(|term| !term.is_empty())
+        .collect()
+}
+
+fn normalize_palette_query_field(value: &str) -> String {
+    value.trim().to_lowercase()
 }
 
 #[cfg(test)]
@@ -578,10 +620,123 @@ mod tests {
         );
     }
 
+    #[test]
+    fn gui_command_registry_filters_commands_for_palette_by_label_menu_path_and_search_terms() {
+        let model = StudioAppHostUiCommandModel {
+            actions: vec![
+                StudioAppHostUiActionModel {
+                    action: None,
+                    command_id: "run_panel.run_manual",
+                    group: StudioAppHostUiCommandGroup::RunPanel,
+                    sort_order: 100,
+                    label: "Run workspace",
+                    enabled: true,
+                    detail: "Run",
+                    target_window_id: Some(2),
+                },
+                StudioAppHostUiActionModel {
+                    action: None,
+                    command_id: "run_panel.set_active",
+                    group: StudioAppHostUiCommandGroup::RunPanel,
+                    sort_order: 130,
+                    label: "Activate workspace",
+                    enabled: true,
+                    detail: "Activate",
+                    target_window_id: Some(2),
+                },
+                StudioAppHostUiActionModel {
+                    action: None,
+                    command_id: "run_panel.recover_failure",
+                    group: StudioAppHostUiCommandGroup::Recovery,
+                    sort_order: 200,
+                    label: "Recover run panel failure",
+                    enabled: false,
+                    detail: "Recover",
+                    target_window_id: Some(2),
+                },
+            ],
+        };
+
+        let registry = StudioGuiCommandRegistry::from_model(&model);
+
+        assert_eq!(
+            filtered_command_ids(&registry, "activate"),
+            vec!["run_panel.set_active"]
+        );
+        assert_eq!(
+            filtered_command_ids(&registry, "run recovery"),
+            vec!["run_panel.recover_failure"]
+        );
+        assert_eq!(
+            filtered_command_ids(&registry, "diagnostic"),
+            vec!["run_panel.recover_failure"]
+        );
+    }
+
+    #[test]
+    fn gui_command_registry_filtered_commands_preserve_section_order_when_query_is_empty() {
+        let model = StudioAppHostUiCommandModel {
+            actions: vec![
+                StudioAppHostUiActionModel {
+                    action: None,
+                    command_id: "run_panel.set_active",
+                    group: StudioAppHostUiCommandGroup::RunPanel,
+                    sort_order: 130,
+                    label: "Activate workspace",
+                    enabled: true,
+                    detail: "Activate",
+                    target_window_id: Some(2),
+                },
+                StudioAppHostUiActionModel {
+                    action: None,
+                    command_id: "run_panel.run_manual",
+                    group: StudioAppHostUiCommandGroup::RunPanel,
+                    sort_order: 100,
+                    label: "Run workspace",
+                    enabled: true,
+                    detail: "Run",
+                    target_window_id: Some(2),
+                },
+                StudioAppHostUiActionModel {
+                    action: None,
+                    command_id: "run_panel.recover_failure",
+                    group: StudioAppHostUiCommandGroup::Recovery,
+                    sort_order: 200,
+                    label: "Recover run panel failure",
+                    enabled: false,
+                    detail: "Recover",
+                    target_window_id: Some(2),
+                },
+            ],
+        };
+
+        let registry = StudioGuiCommandRegistry::from_model(&model);
+
+        assert_eq!(
+            filtered_command_ids(&registry, ""),
+            vec![
+                "run_panel.run_manual",
+                "run_panel.set_active",
+                "run_panel.recover_failure",
+            ]
+        );
+    }
+
     fn command_id_from_leaf(node: &StudioGuiCommandMenuNode) -> &str {
         node.command
             .as_ref()
             .map(|entry| entry.command_id.as_str())
             .expect("expected leaf command")
+    }
+
+    fn filtered_command_ids<'a>(
+        registry: &'a StudioGuiCommandRegistry,
+        query: &str,
+    ) -> Vec<&'a str> {
+        registry
+            .filtered_commands(query)
+            .into_iter()
+            .map(|entry| entry.command_id.as_str())
+            .collect()
     }
 }
