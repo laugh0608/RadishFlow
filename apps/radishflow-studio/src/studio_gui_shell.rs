@@ -3190,6 +3190,45 @@ mod tests {
     }
 
     #[test]
+    fn command_surface_interactions_converge_to_same_window_state_for_canvas_focus_next() {
+        let (config, project_path) = flash_drum_local_rules_config();
+        let mut apps = ready_command_surface_apps(&config);
+        let initial_window = shared_command_surface_initial_window(&apps);
+
+        dispatch_enabled_command_surface_interactions(
+            &mut apps,
+            &initial_window,
+            "canvas.focus_next",
+            "next suggestion",
+            egui::Key::Tab,
+            egui::Modifiers {
+                ctrl: true,
+                ..egui::Modifiers::NONE
+            },
+        );
+
+        let menu_window = command_surface_window(&apps.menu_app);
+
+        assert!(!apps.palette_app.command_palette.open);
+        assert_eq!(
+            menu_window.canvas.focused_suggestion_id.as_deref(),
+            Some("local.flash_drum.create_outlet.flash-1.liquid")
+        );
+        assert_eq!(
+            menu_window
+                .canvas
+                .widget
+                .view()
+                .focused_suggestion_id
+                .as_deref(),
+            Some("local.flash_drum.create_outlet.flash-1.liquid")
+        );
+        assert_command_surface_windows_equal(&apps, &menu_window);
+
+        let _ = std::fs::remove_file(project_path);
+    }
+
+    #[test]
     fn command_surface_interactions_converge_to_same_window_state_for_run_panel_recovery() {
         let mut apps = ready_failed_command_surface_apps();
         let failed_window = shared_command_surface_initial_window(&apps);
