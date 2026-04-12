@@ -962,7 +962,9 @@ impl StudioGuiPlatformHost {
             dispatch,
             plan_platform_timer_request(previous_schedule, next_schedule),
         );
-        self.record_dispatch_activity(&dispatch);
+        if should_record_dispatch_activity(&dispatch) {
+            self.record_dispatch_activity(&dispatch);
+        }
         Ok(dispatch)
     }
 
@@ -1254,6 +1256,15 @@ fn format_platform_dispatch_activity(dispatch: &StudioGuiPlatformDispatch) -> St
         ),
         None => summary,
     }
+}
+
+fn should_record_dispatch_activity(dispatch: &StudioGuiPlatformDispatch) -> bool {
+    !matches!(
+        &dispatch.outcome,
+        StudioGuiDriverOutcome::HostCommand(crate::StudioGuiHostCommandOutcome::UiCommandDispatched(
+            crate::StudioGuiHostUiCommandDispatchResult::IgnoredDisabled { .. }
+        ))
+    )
 }
 
 fn format_native_timer_schedule(schedule: &StudioGuiNativeTimerSchedule) -> String {

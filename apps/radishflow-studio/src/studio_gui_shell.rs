@@ -3172,6 +3172,72 @@ mod tests {
     }
 
     #[test]
+    fn disabled_command_surface_interactions_do_not_change_window_state_for_run_panel_recovery() {
+        let mut menu_app = ready_app_state(&lease_expiring_config());
+        let mut toolbar_app = ready_app_state(&lease_expiring_config());
+        let mut palette_app = ready_app_state(&lease_expiring_config());
+
+        let initial_window = menu_app.platform_host.snapshot().window_model();
+        assert_eq!(toolbar_app.platform_host.snapshot().window_model(), initial_window);
+        assert_eq!(palette_app.platform_host.snapshot().window_model(), initial_window);
+
+        let menu_command = find_menu_command(
+            &initial_window.commands.menu_tree,
+            "run_panel.recover_failure",
+        )
+        .cloned()
+        .expect("expected recovery menu command");
+        assert!(
+            !menu_command.enabled,
+            "expected recovery menu command to stay disabled before failure"
+        );
+
+        let toolbar_command = initial_window
+            .commands
+            .toolbar_sections
+            .iter()
+            .flat_map(|section| section.items.iter())
+            .find(|command| command.command_id == "run_panel.recover_failure")
+            .cloned()
+            .expect("expected recovery toolbar command");
+        assert!(
+            !toolbar_command.enabled,
+            "expected recovery toolbar command to stay disabled before failure"
+        );
+
+        menu_app.dispatch_menu_command(&menu_command);
+        toolbar_app.dispatch_ui_command(&toolbar_command.command_id);
+
+        palette_app.command_palette.open();
+        palette_app.command_palette.query = "diagnostic".to_string();
+        let commands = palette_app.platform_host.snapshot().window_model().commands;
+        let palette_items = commands.palette_items("diagnostic");
+        assert_eq!(palette_items.len(), 1);
+        assert_eq!(
+            palette_items[0].command_id,
+            "run_panel.recover_failure".to_string()
+        );
+        assert!(
+            !palette_items[0].enabled,
+            "expected recovery palette item to stay disabled before failure"
+        );
+        assert_eq!(selected_palette_item_command_id(&palette_items, 0), None);
+        run_with_key_press(egui::Key::Enter, egui::Modifiers::NONE, |ctx| {
+            assert!(palette_app.handle_command_palette_keyboard(ctx, &commands));
+        });
+
+        let menu_window = menu_app.platform_host.snapshot().window_model();
+        let toolbar_window = toolbar_app.platform_host.snapshot().window_model();
+        let palette_window = palette_app.platform_host.snapshot().window_model();
+
+        assert_eq!(menu_window, initial_window);
+        assert_eq!(menu_window, toolbar_window);
+        assert_eq!(menu_window, palette_window);
+        assert!(palette_app.command_palette.open);
+        assert_eq!(palette_app.command_palette.query, "diagnostic");
+    }
+
+    #[test]
     fn dispatch_shortcuts_does_not_leak_host_shortcuts_while_palette_is_open() {
         let mut app = ready_app_state(&lease_expiring_config());
         app.command_palette.open();
