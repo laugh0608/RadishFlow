@@ -3063,6 +3063,50 @@ mod tests {
     }
 
     #[test]
+    fn command_surface_interactions_converge_to_same_window_state_for_activate_workspace() {
+        let mut menu_app = ready_app_state(&lease_expiring_config());
+        let mut toolbar_app = ready_app_state(&lease_expiring_config());
+        let mut palette_app = ready_app_state(&lease_expiring_config());
+
+        let initial_window = menu_app.platform_host.snapshot().window_model();
+        let menu_command =
+            find_menu_command(&initial_window.commands.menu_tree, "run_panel.set_active")
+                .cloned()
+                .expect("expected activate menu command");
+        let toolbar_command_id = find_toolbar_command_id(
+            &initial_window.commands.toolbar_sections,
+            "run_panel.set_active",
+        )
+        .expect("expected activate toolbar command");
+
+        menu_app.dispatch_menu_command(&menu_command);
+        toolbar_app.dispatch_ui_command(toolbar_command_id);
+
+        palette_app.command_palette.open();
+        palette_app.command_palette.query = "activate".to_string();
+        let commands = palette_app.platform_host.snapshot().window_model().commands;
+        assert_eq!(
+            selected_palette_item_command_id(&commands.palette_items("activate"), 0),
+            Some("run_panel.set_active".to_string())
+        );
+        run_with_key_press(egui::Key::Enter, egui::Modifiers::NONE, |ctx| {
+            assert!(palette_app.handle_command_palette_keyboard(ctx, &commands));
+        });
+
+        let menu_window = menu_app.platform_host.snapshot().window_model();
+        let toolbar_window = toolbar_app.platform_host.snapshot().window_model();
+        let palette_window = palette_app.platform_host.snapshot().window_model();
+
+        assert!(!palette_app.command_palette.open);
+        assert_eq!(
+            menu_window.runtime.control_state.simulation_mode,
+            SimulationMode::Active
+        );
+        assert_eq!(menu_window, toolbar_window);
+        assert_eq!(menu_window, palette_window);
+    }
+
+    #[test]
     fn dispatch_shortcuts_does_not_leak_host_shortcuts_while_palette_is_open() {
         let mut app = ready_app_state(&lease_expiring_config());
         app.command_palette.open();
@@ -3151,6 +3195,34 @@ mod tests {
                 &*entry
             })
             .collect()
+    }
+
+    fn find_menu_command<'a>(
+        nodes: &'a [StudioGuiCommandMenuNode],
+        command_id: &str,
+    ) -> Option<&'a StudioGuiCommandMenuCommandModel> {
+        for node in nodes {
+            if let Some(command) = node.command.as_ref() {
+                if command.command_id == command_id {
+                    return Some(command);
+                }
+            }
+            if let Some(command) = find_menu_command(&node.children, command_id) {
+                return Some(command);
+            }
+        }
+        None
+    }
+
+    fn find_toolbar_command_id<'a>(
+        sections: &'a [StudioGuiWindowToolbarSectionModel],
+        command_id: &str,
+    ) -> Option<&'a str> {
+        sections
+            .iter()
+            .flat_map(|section| section.items.iter())
+            .find(|command| command.command_id == command_id)
+            .map(|command| command.command_id.as_str())
     }
 
     fn ready_app_state(config: &StudioRuntimeConfig) -> ReadyAppState {
