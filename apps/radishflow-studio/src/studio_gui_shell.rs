@@ -2814,6 +2814,20 @@ mod tests {
         )
     }
 
+    fn unbound_outlet_failure_synced_config() -> StudioRuntimeConfig {
+        StudioRuntimeConfig {
+            project_path: PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .join("../..")
+                .join("examples")
+                .join("flowsheets")
+                .join("failures")
+                .join("unbound-outlet-port.rfproj.json"),
+            entitlement_preflight: StudioRuntimeEntitlementPreflight::Skip,
+            entitlement_seed: StudioRuntimeEntitlementSeed::Synced,
+            trigger: StudioRuntimeTrigger::WidgetAction(rf_ui::RunPanelActionId::RunManual),
+        }
+    }
+
     #[test]
     fn insert_neighbors_from_area_ids_returns_previous_and_next_for_middle_target() {
         let area_ids = [
@@ -3107,6 +3121,57 @@ mod tests {
     }
 
     #[test]
+    fn command_surface_interactions_converge_to_same_window_state_for_run_panel_recovery() {
+        let mut menu_app = ready_failed_app_state();
+        let mut toolbar_app = ready_failed_app_state();
+        let mut palette_app = ready_failed_app_state();
+
+        let failed_window = menu_app.platform_host.snapshot().window_model();
+        let menu_command = find_menu_command(
+            &failed_window.commands.menu_tree,
+            "run_panel.recover_failure",
+        )
+        .cloned()
+        .expect("expected recovery menu command");
+        let toolbar_command_id = find_toolbar_command_id(
+            &failed_window.commands.toolbar_sections,
+            "run_panel.recover_failure",
+        )
+        .expect("expected recovery toolbar command");
+
+        menu_app.dispatch_menu_command(&menu_command);
+        toolbar_app.dispatch_ui_command(toolbar_command_id);
+
+        palette_app.command_palette.open();
+        palette_app.command_palette.query = "diagnostic".to_string();
+        let commands = palette_app.platform_host.snapshot().window_model().commands;
+        assert_eq!(
+            selected_palette_item_command_id(&commands.palette_items("diagnostic"), 0),
+            Some("run_panel.recover_failure".to_string())
+        );
+        run_with_key_press(egui::Key::Enter, egui::Modifiers::NONE, |ctx| {
+            assert!(palette_app.handle_command_palette_keyboard(ctx, &commands));
+        });
+
+        let menu_window = menu_app.platform_host.snapshot().window_model();
+        let toolbar_window = toolbar_app.platform_host.snapshot().window_model();
+        let palette_window = palette_app.platform_host.snapshot().window_model();
+
+        assert!(!palette_app.command_palette.open);
+        assert_eq!(menu_window.runtime.control_state.run_status, rf_ui::RunStatus::Dirty);
+        assert_eq!(
+            menu_window.runtime.control_state.pending_reason,
+            Some(rf_ui::SolvePendingReason::DocumentRevisionAdvanced)
+        );
+        assert_eq!(
+            menu_window.runtime.run_panel.view().primary_action.label,
+            "Resume"
+        );
+        assert_eq!(menu_window, toolbar_window);
+        assert_eq!(menu_window, palette_window);
+    }
+
+    #[test]
     fn dispatch_shortcuts_does_not_leak_host_shortcuts_while_palette_is_open() {
         let mut app = ready_app_state(&lease_expiring_config());
         app.command_palette.open();
@@ -3223,6 +3288,22 @@ mod tests {
             .flat_map(|section| section.items.iter())
             .find(|command| command.command_id == command_id)
             .map(|command| command.command_id.as_str())
+    }
+
+    fn ready_failed_app_state() -> ReadyAppState {
+        let mut app = ready_app_state(&unbound_outlet_failure_synced_config());
+        app.dispatch_ui_command("run_panel.run_manual");
+
+        let window = app.platform_host.snapshot().window_model();
+        assert_eq!(window.runtime.control_state.run_status, rf_ui::RunStatus::Error);
+        assert!(
+            find_menu_command(&window.commands.menu_tree, "run_panel.recover_failure")
+                .map(|command| command.enabled)
+                .unwrap_or(false),
+            "expected recovery command to be enabled after failed run"
+        );
+
+        app
     }
 
     fn ready_app_state(config: &StudioRuntimeConfig) -> ReadyAppState {
