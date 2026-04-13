@@ -131,11 +131,6 @@ pub enum StudioAppHostCommand {
     DispatchWindowRunPanelRecoveryAction {
         window_id: StudioWindowHostId,
     },
-    DispatchForegroundRunPanelRecoveryAction,
-    DispatchForegroundEntitlementPrimaryAction,
-    DispatchForegroundEntitlementAction {
-        action_id: rf_ui::EntitlementActionId,
-    },
     FocusWindow {
         window_id: StudioWindowHostId,
     },
@@ -915,72 +910,6 @@ impl StudioAppHostController {
         }
     }
 
-    pub fn dispatch_foreground_run_panel_recovery_action(
-        &mut self,
-    ) -> RfResult<Option<StudioAppHostWindowDispatchResult>> {
-        let (outcome, projection) =
-            self.execute_command(StudioAppHostCommand::DispatchForegroundRunPanelRecoveryAction)?;
-
-        match outcome {
-            StudioAppHostCommandOutcome::WindowDispatched(dispatch) => {
-                Ok(Some(StudioAppHostWindowDispatchResult {
-                    projection,
-                    target_window_id: dispatch.target_window_id,
-                    effects: dispatch_effects_from_session(dispatch.dispatch),
-                }))
-            }
-            StudioAppHostCommandOutcome::IgnoredUiAction => Ok(None),
-            other => Err(RfError::invalid_input(format!(
-                "app host controller expected foreground run panel recovery outcome, got {other:?}"
-            ))),
-        }
-    }
-
-    pub fn dispatch_foreground_entitlement_primary_action(
-        &mut self,
-    ) -> RfResult<Option<StudioAppHostWindowDispatchResult>> {
-        let (outcome, projection) =
-            self.execute_command(StudioAppHostCommand::DispatchForegroundEntitlementPrimaryAction)?;
-
-        match outcome {
-            StudioAppHostCommandOutcome::WindowDispatched(dispatch) => {
-                Ok(Some(StudioAppHostWindowDispatchResult {
-                    projection,
-                    target_window_id: dispatch.target_window_id,
-                    effects: dispatch_effects_from_session(dispatch.dispatch),
-                }))
-            }
-            StudioAppHostCommandOutcome::IgnoredUiAction => Ok(None),
-            other => Err(RfError::invalid_input(format!(
-                "app host controller expected foreground entitlement primary outcome, got {other:?}"
-            ))),
-        }
-    }
-
-    pub fn dispatch_foreground_entitlement_action(
-        &mut self,
-        action_id: rf_ui::EntitlementActionId,
-    ) -> RfResult<Option<StudioAppHostWindowDispatchResult>> {
-        let (outcome, projection) =
-            self.execute_command(StudioAppHostCommand::DispatchForegroundEntitlementAction {
-                action_id,
-            })?;
-
-        match outcome {
-            StudioAppHostCommandOutcome::WindowDispatched(dispatch) => {
-                Ok(Some(StudioAppHostWindowDispatchResult {
-                    projection,
-                    target_window_id: dispatch.target_window_id,
-                    effects: dispatch_effects_from_session(dispatch.dispatch),
-                }))
-            }
-            StudioAppHostCommandOutcome::IgnoredUiAction => Ok(None),
-            other => Err(RfError::invalid_input(format!(
-                "app host controller expected foreground entitlement action outcome, got {other:?}"
-            ))),
-        }
-    }
-
     pub fn focus_window(
         &mut self,
         window_id: StudioWindowHostId,
@@ -1306,15 +1235,6 @@ fn map_command(command: StudioAppHostCommand) -> StudioAppWindowHostCommand {
         }
         StudioAppHostCommand::DispatchWindowRunPanelRecoveryAction { window_id } => {
             StudioAppWindowHostCommand::DispatchRunPanelRecoveryAction { window_id }
-        }
-        StudioAppHostCommand::DispatchForegroundRunPanelRecoveryAction => {
-            StudioAppWindowHostCommand::DispatchForegroundRunPanelRecoveryAction
-        }
-        StudioAppHostCommand::DispatchForegroundEntitlementPrimaryAction => {
-            StudioAppWindowHostCommand::DispatchForegroundEntitlementPrimaryAction
-        }
-        StudioAppHostCommand::DispatchForegroundEntitlementAction { action_id } => {
-            StudioAppWindowHostCommand::DispatchForegroundEntitlementAction { action_id }
         }
         StudioAppHostCommand::FocusWindow { window_id } => {
             StudioAppWindowHostCommand::FocusWindow { window_id }
@@ -1653,7 +1573,7 @@ mod tests {
         StudioRuntimeEntitlementSessionEvent, StudioRuntimeTrigger, StudioWindowHostRetirement,
         StudioWindowHostRole,
     };
-    use rf_ui::{EntitlementActionId, RunPanelActionId};
+    use rf_ui::RunPanelActionId;
 
     fn lease_expiring_config() -> crate::StudioRuntimeConfig {
         crate::StudioRuntimeConfig {
@@ -2518,7 +2438,7 @@ mod tests {
     }
 
     #[test]
-    fn app_host_controller_dispatches_foreground_run_panel_recovery_action() {
+    fn app_host_controller_dispatches_run_panel_recovery_via_ui_action_to_foreground_window() {
         let (config, project_path) = solver_failure_config();
         let mut controller = StudioAppHostController::new(&config).expect("expected controller");
         let first = controller
@@ -2539,9 +2459,9 @@ mod tests {
             .expect("expected failed run dispatch");
 
         let recovery = controller
-            .dispatch_foreground_run_panel_recovery_action()
-            .expect("expected foreground recovery call")
-            .expect("expected foreground recovery dispatch");
+            .dispatch_ui_action(StudioAppHostUiAction::RecoverRunPanelFailure)
+            .expect("expected recovery ui action call")
+            .expect("expected recovery ui action dispatch");
 
         assert_eq!(recovery.target_window_id, second.registration.window_id);
         assert_ne!(recovery.target_window_id, first.registration.window_id);
@@ -2565,7 +2485,7 @@ mod tests {
     }
 
     #[test]
-    fn app_host_controller_dispatches_foreground_entitlement_primary_action() {
+    fn app_host_controller_dispatches_refresh_offline_lease_via_ui_action() {
         let mut controller =
             StudioAppHostController::new(&lease_expiring_config()).expect("expected controller");
         let first = controller
@@ -2579,9 +2499,9 @@ mod tests {
             .expect("expected second window focus");
 
         let dispatch = controller
-            .dispatch_foreground_entitlement_primary_action()
-            .expect("expected foreground entitlement primary call")
-            .expect("expected foreground entitlement primary dispatch");
+            .dispatch_ui_action(StudioAppHostUiAction::RefreshOfflineLease)
+            .expect("expected refresh offline lease action call")
+            .expect("expected refresh offline lease dispatch");
 
         assert_eq!(dispatch.target_window_id, second.registration.window_id);
         assert_ne!(dispatch.target_window_id, first.registration.window_id);
@@ -2601,7 +2521,7 @@ mod tests {
     }
 
     #[test]
-    fn app_host_controller_dispatches_foreground_entitlement_action() {
+    fn app_host_controller_dispatches_sync_entitlement_via_ui_action() {
         let mut controller =
             StudioAppHostController::new(&lease_expiring_config()).expect("expected controller");
         let first = controller
@@ -2615,9 +2535,9 @@ mod tests {
             .expect("expected second window focus");
 
         let dispatch = controller
-            .dispatch_foreground_entitlement_action(EntitlementActionId::SyncEntitlement)
-            .expect("expected foreground entitlement action call")
-            .expect("expected foreground entitlement action dispatch");
+            .dispatch_ui_action(StudioAppHostUiAction::SyncEntitlement)
+            .expect("expected sync entitlement action call")
+            .expect("expected sync entitlement dispatch");
 
         assert_eq!(dispatch.target_window_id, second.registration.window_id);
         assert_ne!(dispatch.target_window_id, first.registration.window_id);
@@ -3177,13 +3097,13 @@ mod tests {
     }
 
     #[test]
-    fn app_host_controller_ignores_foreground_run_panel_recovery_without_windows() {
+    fn app_host_controller_ignores_recovery_ui_action_without_windows() {
         let mut controller =
             StudioAppHostController::new(&lease_expiring_config()).expect("expected controller");
 
         let recovery = controller
-            .dispatch_foreground_run_panel_recovery_action()
-            .expect("expected optional foreground recovery");
+            .dispatch_ui_action(StudioAppHostUiAction::RecoverRunPanelFailure)
+            .expect("expected optional recovery ui action");
 
         assert!(recovery.is_none());
     }
@@ -3281,12 +3201,12 @@ mod tests {
         assert!(recovery.is_none());
 
         let entitlement_primary = controller
-            .dispatch_foreground_entitlement_primary_action()
+            .dispatch_ui_action(StudioAppHostUiAction::RefreshOfflineLease)
             .expect("expected optional entitlement primary result");
         assert!(entitlement_primary.is_none());
 
         let entitlement_action = controller
-            .dispatch_foreground_entitlement_action(EntitlementActionId::SyncEntitlement)
+            .dispatch_ui_action(StudioAppHostUiAction::SyncEntitlement)
             .expect("expected optional entitlement action result");
         assert!(entitlement_action.is_none());
     }

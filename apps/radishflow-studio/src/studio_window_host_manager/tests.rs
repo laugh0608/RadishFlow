@@ -13,7 +13,7 @@ use crate::{
     StudioRuntimeEntitlementSessionEvent, StudioRuntimeTrigger, StudioWindowHostRole,
     StudioWindowTimerDriverTransition,
 };
-use rf_ui::{EntitlementActionId, RunPanelActionId};
+use rf_ui::RunPanelActionId;
 
 fn lease_expiring_config() -> crate::StudioRuntimeConfig {
     crate::StudioRuntimeConfig {
@@ -451,8 +451,8 @@ fn app_window_host_manager_dispatches_foreground_run_panel_recovery() {
         .expect("expected failed run dispatch");
 
     let recovery = manager
-        .dispatch_foreground_run_panel_recovery_action()
-        .expect("expected recovery dispatch")
+        .dispatch_ui_action(StudioAppWindowHostUiAction::RecoverRunPanelFailure)
+        .expect("expected recovery action dispatch")
         .expect("expected foreground recovery dispatch");
 
     assert_eq!(recovery.target_window_id, second.window_id);
@@ -473,7 +473,7 @@ fn app_window_host_manager_dispatches_foreground_run_panel_recovery() {
 }
 
 #[test]
-fn app_window_host_manager_dispatches_foreground_entitlement_primary_action() {
+fn app_window_host_manager_dispatches_refresh_offline_lease_via_ui_action() {
     let mut manager =
         StudioAppWindowHostManager::new(&lease_expiring_config()).expect("expected manager");
     let first = manager.open_window();
@@ -483,9 +483,9 @@ fn app_window_host_manager_dispatches_foreground_entitlement_primary_action() {
         .expect("expected second window focus");
 
     let dispatch = manager
-        .dispatch_foreground_entitlement_primary_action()
-        .expect("expected foreground entitlement primary result")
-        .expect("expected foreground entitlement primary dispatch");
+        .dispatch_ui_action(StudioAppWindowHostUiAction::RefreshOfflineLease)
+        .expect("expected refresh offline lease action result")
+        .expect("expected refresh offline lease dispatch");
 
     assert_eq!(dispatch.target_window_id, second.window_id);
     assert_ne!(dispatch.target_window_id, first.window_id);
@@ -502,7 +502,7 @@ fn app_window_host_manager_dispatches_foreground_entitlement_primary_action() {
 }
 
 #[test]
-fn app_window_host_manager_dispatches_foreground_entitlement_action() {
+fn app_window_host_manager_dispatches_sync_entitlement_via_ui_action() {
     let mut manager =
         StudioAppWindowHostManager::new(&lease_expiring_config()).expect("expected manager");
     let first = manager.open_window();
@@ -512,9 +512,9 @@ fn app_window_host_manager_dispatches_foreground_entitlement_action() {
         .expect("expected second window focus");
 
     let dispatch = manager
-        .dispatch_foreground_entitlement_action(EntitlementActionId::SyncEntitlement)
-        .expect("expected foreground entitlement action result")
-        .expect("expected foreground entitlement action dispatch");
+        .dispatch_ui_action(StudioAppWindowHostUiAction::SyncEntitlement)
+        .expect("expected sync entitlement action result")
+        .expect("expected sync entitlement dispatch");
 
     assert_eq!(dispatch.target_window_id, second.window_id);
     assert_ne!(dispatch.target_window_id, first.window_id);
