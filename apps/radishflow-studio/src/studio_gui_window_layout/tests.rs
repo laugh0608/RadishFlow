@@ -70,7 +70,10 @@ fn studio_gui_window_layout_maps_panels_into_dock_regions() {
     assert_eq!(layout.titlebar.foreground_window_id, Some(1));
     assert_eq!(layout.center_area, StudioGuiWindowAreaId::Canvas);
     assert_eq!(layout.default_focus_area, StudioGuiWindowAreaId::Canvas);
-    assert_eq!(layout.state.scope.kind, StudioGuiWindowLayoutScopeKind::Window);
+    assert_eq!(
+        layout.state.scope.kind,
+        StudioGuiWindowLayoutScopeKind::Window
+    );
     assert_eq!(layout.state.scope.window_id, Some(1));
     assert_eq!(layout.state.scope.layout_slot, Some(1));
     assert_eq!(layout.state.scope.layout_key, "studio.window.owner.slot-1");
@@ -86,7 +89,10 @@ fn studio_gui_window_layout_maps_panels_into_dock_regions() {
         .panel(StudioGuiWindowAreaId::Commands)
         .expect("expected commands panel");
     assert_eq!(commands.dock_region, StudioGuiWindowDockRegion::LeftSidebar);
-    assert_eq!(commands.display_mode, StudioGuiWindowPanelDisplayMode::Standalone);
+    assert_eq!(
+        commands.display_mode,
+        StudioGuiWindowPanelDisplayMode::Standalone
+    );
     assert!(commands.active_in_stack);
     assert!(commands.visible);
     assert!(!commands.collapsed);
@@ -104,7 +110,10 @@ fn studio_gui_window_layout_maps_panels_into_dock_regions() {
         .panel(StudioGuiWindowAreaId::Runtime)
         .expect("expected runtime panel");
     assert_eq!(runtime.dock_region, StudioGuiWindowDockRegion::RightSidebar);
-    assert_eq!(runtime.display_mode, StudioGuiWindowPanelDisplayMode::Standalone);
+    assert_eq!(
+        runtime.display_mode,
+        StudioGuiWindowPanelDisplayMode::Standalone
+    );
     assert!(runtime.active_in_stack);
     assert!(runtime.summary.contains("status=Idle"));
     assert!(runtime.summary.contains("entitlement=attached"));
@@ -259,7 +268,10 @@ fn studio_gui_window_layout_previews_region_drop_targets() {
     assert!(!target.merges_into_existing_stack);
     assert_eq!(target.target_group_index, 0);
     assert_eq!(target.target_tab_index, 0);
-    assert_eq!(target.preview_area_ids, vec![StudioGuiWindowAreaId::Runtime]);
+    assert_eq!(
+        target.preview_area_ids,
+        vec![StudioGuiWindowAreaId::Runtime]
+    );
 }
 
 #[test]
@@ -285,7 +297,12 @@ fn studio_gui_window_layout_supports_gui_facing_drop_target_queries() {
         .drop_target_for_query(&query)
         .expect("expected stack drop target from query");
 
-    assert_eq!(target, state.drop_target_for_mutation(&query.layout_mutation()).unwrap());
+    assert_eq!(
+        target,
+        state
+            .drop_target_for_mutation(&query.layout_mutation())
+            .unwrap()
+    );
     assert_eq!(target.kind, StudioGuiWindowDropTargetKind::StackTab);
     assert_eq!(target.anchor_area_id, Some(StudioGuiWindowAreaId::Runtime));
     assert_eq!(target.target_tab_index, 1);
@@ -330,7 +347,10 @@ fn studio_gui_window_layout_stacks_panel_with_anchor_group() {
             .into_iter()
             .map(|panel| panel.area_id)
             .collect::<Vec<_>>(),
-        vec![StudioGuiWindowAreaId::Commands, StudioGuiWindowAreaId::Runtime]
+        vec![
+            StudioGuiWindowAreaId::Commands,
+            StudioGuiWindowAreaId::Runtime
+        ]
     );
     assert_eq!(
         state.active_panel_in_stack(StudioGuiWindowDockRegion::RightSidebar, 10),
@@ -366,10 +386,16 @@ fn studio_gui_window_layout_previews_stack_drop_targets() {
     assert!(target.merges_into_existing_stack);
     assert_eq!(target.target_group_index, 0);
     assert_eq!(target.target_tab_index, 1);
-    assert_eq!(target.preview_active_area_id, StudioGuiWindowAreaId::Commands);
+    assert_eq!(
+        target.preview_active_area_id,
+        StudioGuiWindowAreaId::Commands
+    );
     assert_eq!(
         target.preview_area_ids,
-        vec![StudioGuiWindowAreaId::Runtime, StudioGuiWindowAreaId::Commands]
+        vec![
+            StudioGuiWindowAreaId::Runtime,
+            StudioGuiWindowAreaId::Commands
+        ]
     );
 }
 
@@ -420,9 +446,11 @@ fn studio_gui_window_layout_cycles_active_panel_within_stack_group() {
         .applying_mutation(&StudioGuiWindowLayoutMutation::ActivateNextPanelInStack {
             area_id: StudioGuiWindowAreaId::Commands,
         })
-        .applying_mutation(&StudioGuiWindowLayoutMutation::ActivatePreviousPanelInStack {
-            area_id: StudioGuiWindowAreaId::Runtime,
-        });
+        .applying_mutation(
+            &StudioGuiWindowLayoutMutation::ActivatePreviousPanelInStack {
+                area_id: StudioGuiWindowAreaId::Runtime,
+            },
+        );
 
     assert_eq!(
         state.active_panel_in_stack(StudioGuiWindowDockRegion::RightSidebar, 10),
@@ -515,8 +543,14 @@ fn studio_gui_window_layout_previews_unstack_target_only_for_shared_stack() {
     assert_eq!(target.dock_region, StudioGuiWindowDockRegion::RightSidebar);
     assert_eq!(target.target_group_index, 0);
     assert_eq!(target.target_stack_group, 10);
-    assert_eq!(target.preview_area_ids, vec![StudioGuiWindowAreaId::Commands]);
-    assert_eq!(target.preview_active_area_id, StudioGuiWindowAreaId::Commands);
+    assert_eq!(
+        target.preview_area_ids,
+        vec![StudioGuiWindowAreaId::Commands]
+    );
+    assert_eq!(
+        target.preview_active_area_id,
+        StudioGuiWindowAreaId::Commands
+    );
 }
 
 #[test]
@@ -577,12 +611,13 @@ fn studio_gui_window_layout_keeps_drop_target_prediction_stable_after_unstack() 
                 anchor_area_id: StudioGuiWindowAreaId::Runtime,
             },
         });
-    let unstacked = stacked.applying_mutation(&StudioGuiWindowLayoutMutation::UnstackPanelFromGroup {
-        area_id: StudioGuiWindowAreaId::Commands,
-        placement: StudioGuiWindowDockPlacement::Before {
-            anchor_area_id: StudioGuiWindowAreaId::Runtime,
-        },
-    });
+    let unstacked =
+        stacked.applying_mutation(&StudioGuiWindowLayoutMutation::UnstackPanelFromGroup {
+            area_id: StudioGuiWindowAreaId::Commands,
+            placement: StudioGuiWindowDockPlacement::Before {
+                anchor_area_id: StudioGuiWindowAreaId::Runtime,
+            },
+        });
     let target = unstacked
         .drop_target_for_mutation(&StudioGuiWindowLayoutMutation::StackPanelWith {
             area_id: StudioGuiWindowAreaId::Commands,
@@ -599,7 +634,10 @@ fn studio_gui_window_layout_keeps_drop_target_prediction_stable_after_unstack() 
     assert_eq!(target.target_stack_group, 10);
     assert_eq!(
         target.preview_area_ids,
-        vec![StudioGuiWindowAreaId::Runtime, StudioGuiWindowAreaId::Commands]
+        vec![
+            StudioGuiWindowAreaId::Runtime,
+            StudioGuiWindowAreaId::Commands
+        ]
     );
 }
 
@@ -635,27 +673,27 @@ fn studio_gui_window_layout_keeps_observer_slots_stable_when_peer_closes() {
         .dispatch_event(StudioGuiEvent::OpenWindowRequested)
         .expect("expected first open dispatch");
     let first_window_id = match first.outcome {
-        crate::StudioGuiDriverOutcome::HostCommand(crate::StudioGuiHostCommandOutcome::WindowOpened(
-            opened,
-        )) => opened.registration.window_id,
+        crate::StudioGuiDriverOutcome::HostCommand(
+            crate::StudioGuiHostCommandOutcome::WindowOpened(opened),
+        ) => opened.registration.window_id,
         other => panic!("expected first window opened outcome, got {other:?}"),
     };
     let second = driver
         .dispatch_event(StudioGuiEvent::OpenWindowRequested)
         .expect("expected second open dispatch");
     let second_window_id = match second.outcome {
-        crate::StudioGuiDriverOutcome::HostCommand(crate::StudioGuiHostCommandOutcome::WindowOpened(
-            opened,
-        )) => opened.registration.window_id,
+        crate::StudioGuiDriverOutcome::HostCommand(
+            crate::StudioGuiHostCommandOutcome::WindowOpened(opened),
+        ) => opened.registration.window_id,
         other => panic!("expected second window opened outcome, got {other:?}"),
     };
     let third = driver
         .dispatch_event(StudioGuiEvent::OpenWindowRequested)
         .expect("expected third open dispatch");
     let third_window_id = match third.outcome {
-        crate::StudioGuiDriverOutcome::HostCommand(crate::StudioGuiHostCommandOutcome::WindowOpened(
-            opened,
-        )) => opened.registration.window_id,
+        crate::StudioGuiDriverOutcome::HostCommand(
+            crate::StudioGuiHostCommandOutcome::WindowOpened(opened),
+        ) => opened.registration.window_id,
         other => panic!("expected third window opened outcome, got {other:?}"),
     };
 
@@ -702,9 +740,9 @@ fn studio_gui_window_layout_disables_close_when_all_windows_are_closed() {
         .dispatch_event(StudioGuiEvent::OpenWindowRequested)
         .expect("expected open dispatch");
     let window_id = match opened.outcome {
-        crate::StudioGuiDriverOutcome::HostCommand(crate::StudioGuiHostCommandOutcome::WindowOpened(
-            opened,
-        )) => opened.registration.window_id,
+        crate::StudioGuiDriverOutcome::HostCommand(
+            crate::StudioGuiHostCommandOutcome::WindowOpened(opened),
+        ) => opened.registration.window_id,
         other => panic!("expected window opened outcome, got {other:?}"),
     };
     let _ = driver
@@ -724,7 +762,10 @@ fn studio_gui_window_layout_disables_close_when_all_windows_are_closed() {
     assert_eq!(layout.titlebar.registered_window_count, 0);
     assert!(!layout.titlebar.close_enabled);
     assert_eq!(layout.default_focus_area, StudioGuiWindowAreaId::Runtime);
-    assert_eq!(layout.state.scope.kind, StudioGuiWindowLayoutScopeKind::EmptyWorkspace);
+    assert_eq!(
+        layout.state.scope.kind,
+        StudioGuiWindowLayoutScopeKind::EmptyWorkspace
+    );
     assert_eq!(layout.state.scope.layout_key, "studio.window.empty");
     assert_eq!(
         layout

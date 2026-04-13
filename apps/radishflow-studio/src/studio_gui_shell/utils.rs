@@ -172,10 +172,10 @@ pub(super) fn dock_region_label(dock_region: StudioGuiWindowDockRegion) -> &'sta
     }
 }
 
-pub(super) fn drop_preview_for_region<'a>(
-    preview: Option<&'a radishflow_studio::StudioGuiWindowDropPreviewModel>,
+pub(super) fn drop_preview_for_region(
+    preview: Option<&radishflow_studio::StudioGuiWindowDropPreviewModel>,
     dock_region: StudioGuiWindowDockRegion,
-) -> Option<&'a radishflow_studio::StudioGuiWindowDropPreviewModel> {
+) -> Option<&radishflow_studio::StudioGuiWindowDropPreviewModel> {
     preview.filter(|preview| preview.overlay.target_dock_region == dock_region)
 }
 
@@ -557,11 +557,19 @@ pub(super) fn preferred_overlay_pos(anchor_rect: egui::Rect) -> egui::Pos2 {
     egui::pos2(anchor_rect.right() + 12.0, anchor_rect.top() - 4.0)
 }
 
-pub(super) fn clamp_overlay_pos(ctx: &egui::Context, pos: egui::Pos2, size: egui::Vec2) -> egui::Pos2 {
+pub(super) fn clamp_overlay_pos(
+    ctx: &egui::Context,
+    pos: egui::Pos2,
+    size: egui::Vec2,
+) -> egui::Pos2 {
     clamp_overlay_pos_to_rect(ctx.screen_rect(), pos, size)
 }
 
-pub(super) fn clamp_overlay_pos_to_rect(screen: egui::Rect, pos: egui::Pos2, size: egui::Vec2) -> egui::Pos2 {
+pub(super) fn clamp_overlay_pos_to_rect(
+    screen: egui::Rect,
+    pos: egui::Pos2,
+    size: egui::Vec2,
+) -> egui::Pos2 {
     let max_x = (screen.right() - size.x - 8.0).max(screen.left() + 8.0);
     let max_y = (screen.bottom() - size.y - 8.0).max(screen.top() + 8.0);
     egui::pos2(
@@ -570,7 +578,11 @@ pub(super) fn clamp_overlay_pos_to_rect(screen: egui::Rect, pos: egui::Pos2, siz
     )
 }
 
-pub(super) fn paint_preview_hint_pill_centered(painter: &egui::Painter, center: egui::Pos2, text: &str) {
+pub(super) fn paint_preview_hint_pill_centered(
+    painter: &egui::Painter,
+    center: egui::Pos2,
+    text: &str,
+) {
     let font_id = egui::FontId::proportional(11.0);
     let text_color = egui::Color32::from_rgb(33, 82, 153);
     let galley = painter.layout_no_wrap(text.to_owned(), font_id.clone(), text_color);
@@ -580,7 +592,11 @@ pub(super) fn paint_preview_hint_pill_centered(painter: &egui::Painter, center: 
     painter.galley(rect.center() - galley.size() * 0.5, galley, text_color);
 }
 
-pub(super) fn paint_preview_hint_pill_top_right(painter: &egui::Painter, right_top: egui::Pos2, text: &str) {
+pub(super) fn paint_preview_hint_pill_top_right(
+    painter: &egui::Painter,
+    right_top: egui::Pos2,
+    text: &str,
+) {
     let font_id = egui::FontId::proportional(11.0);
     let text_color = egui::Color32::from_rgb(33, 82, 153);
     let galley = painter.layout_no_wrap(text.to_owned(), font_id.clone(), text_color);
@@ -601,7 +617,9 @@ pub(super) fn format_compact_drop_preview_status(
     )
 }
 
-pub(super) fn preview_insert_hint(preview: &radishflow_studio::StudioGuiWindowDropPreviewModel) -> String {
+pub(super) fn preview_insert_hint(
+    preview: &radishflow_studio::StudioGuiWindowDropPreviewModel,
+) -> String {
     let (previous, next) = preview_insert_neighbors(preview);
 
     match (previous, next) {
@@ -863,4 +881,3 @@ pub(super) fn selected_palette_item_command_id(
         .filter(|item| item.enabled)
         .map(|item| item.command_id.clone())
 }
-

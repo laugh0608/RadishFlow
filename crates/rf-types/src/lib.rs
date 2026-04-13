@@ -186,7 +186,7 @@ impl fmt::Display for ErrorCode {
 pub struct RfError {
     code: ErrorCode,
     message: String,
-    context: RfErrorContext,
+    context: Box<RfErrorContext>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -220,7 +220,7 @@ impl RfError {
         Self {
             code,
             message: message.into(),
-            context: RfErrorContext::default(),
+            context: Box::default(),
         }
     }
 
@@ -233,7 +233,7 @@ impl RfError {
     }
 
     pub fn context(&self) -> &RfErrorContext {
-        &self.context
+        self.context.as_ref()
     }
 
     pub fn with_diagnostic_code(mut self, diagnostic_code: impl Into<String>) -> Self {

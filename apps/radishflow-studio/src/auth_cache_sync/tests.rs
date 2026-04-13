@@ -112,14 +112,16 @@ fn sync_auth_cache_index_prunes_disallowed_packages_and_refreshes_expiration() {
     );
     kept.expires_at = Some(timestamp(300));
     index.property_packages.push(kept);
-    index.property_packages.push(StoredPropertyPackageRecord::new(
-        "pkg-2",
-        "2026.03.1",
-        StoredPropertyPackageSource::RemoteDerivedPackage,
-        "sha256:pkg-2",
-        2048,
-        timestamp(121),
-    ));
+    index
+        .property_packages
+        .push(StoredPropertyPackageRecord::new(
+            "pkg-2",
+            "2026.03.1",
+            StoredPropertyPackageSource::RemoteDerivedPackage,
+            "sha256:pkg-2",
+            2048,
+            timestamp(121),
+        ));
 
     sync_auth_cache_index(&mut index, &auth_session, &entitlement).expect("expected sync");
 
@@ -145,22 +147,26 @@ fn build_offline_refresh_request_uses_cached_package_ids() {
         feature_keys: BTreeSet::from(["desktop-login".to_string()]),
         allowed_package_ids: BTreeSet::from(["pkg-1".to_string(), "pkg-2".to_string()]),
     });
-    index.property_packages.push(StoredPropertyPackageRecord::new(
-        "pkg-1",
-        "2026.03.1",
-        StoredPropertyPackageSource::RemoteDerivedPackage,
-        "sha256:pkg-1",
-        1024,
-        timestamp(110),
-    ));
-    index.property_packages.push(StoredPropertyPackageRecord::new(
-        "pkg-2",
-        "2026.03.1",
-        StoredPropertyPackageSource::RemoteDerivedPackage,
-        "sha256:pkg-2",
-        2048,
-        timestamp(111),
-    ));
+    index
+        .property_packages
+        .push(StoredPropertyPackageRecord::new(
+            "pkg-1",
+            "2026.03.1",
+            StoredPropertyPackageSource::RemoteDerivedPackage,
+            "sha256:pkg-1",
+            1024,
+            timestamp(110),
+        ));
+    index
+        .property_packages
+        .push(StoredPropertyPackageRecord::new(
+            "pkg-2",
+            "2026.03.1",
+            StoredPropertyPackageSource::RemoteDerivedPackage,
+            "sha256:pkg-2",
+            2048,
+            timestamp(111),
+        ));
 
     let request = build_offline_refresh_request(&index).expect("expected offline refresh request");
 
@@ -168,7 +174,10 @@ fn build_offline_refresh_request_uses_cached_package_ids() {
         request.package_ids,
         BTreeSet::from(["pkg-1".to_string(), "pkg-2".to_string()])
     );
-    assert_eq!(request.current_offline_lease_expires_at, Some(timestamp(700)));
+    assert_eq!(
+        request.current_offline_lease_expires_at,
+        Some(timestamp(700))
+    );
 }
 
 #[test]
@@ -188,14 +197,16 @@ fn record_downloaded_package_uses_entitlement_expiration_not_download_url_expira
         feature_keys: BTreeSet::from(["desktop-login".to_string()]),
         allowed_package_ids: BTreeSet::from(["pkg-1".to_string()]),
     });
-    index.property_packages.push(StoredPropertyPackageRecord::new(
-        "pkg-1",
-        "2026.03.0",
-        StoredPropertyPackageSource::RemoteDerivedPackage,
-        "sha256:old",
-        512,
-        timestamp(80),
-    ));
+    index
+        .property_packages
+        .push(StoredPropertyPackageRecord::new(
+            "pkg-1",
+            "2026.03.0",
+            StoredPropertyPackageSource::RemoteDerivedPackage,
+            "sha256:old",
+            512,
+            timestamp(80),
+        ));
 
     let mut manifest = PropertyPackageManifest::new(
         "pkg-1",
@@ -239,22 +250,26 @@ fn apply_offline_refresh_prunes_stale_cached_packages() {
         feature_keys: BTreeSet::from(["desktop-login".to_string()]),
         allowed_package_ids: BTreeSet::from(["pkg-1".to_string(), "pkg-2".to_string()]),
     });
-    index.property_packages.push(StoredPropertyPackageRecord::new(
-        "pkg-1",
-        "2026.03.1",
-        StoredPropertyPackageSource::RemoteDerivedPackage,
-        "sha256:pkg-1",
-        1024,
-        timestamp(110),
-    ));
-    index.property_packages.push(StoredPropertyPackageRecord::new(
-        "pkg-2",
-        "2026.03.1",
-        StoredPropertyPackageSource::RemoteDerivedPackage,
-        "sha256:stale",
-        2048,
-        timestamp(111),
-    ));
+    index
+        .property_packages
+        .push(StoredPropertyPackageRecord::new(
+            "pkg-1",
+            "2026.03.1",
+            StoredPropertyPackageSource::RemoteDerivedPackage,
+            "sha256:pkg-1",
+            1024,
+            timestamp(110),
+        ));
+    index
+        .property_packages
+        .push(StoredPropertyPackageRecord::new(
+            "pkg-2",
+            "2026.03.1",
+            StoredPropertyPackageSource::RemoteDerivedPackage,
+            "sha256:stale",
+            2048,
+            timestamp(111),
+        ));
 
     let snapshot = EntitlementSnapshot {
         schema_version: 1,
@@ -321,7 +336,8 @@ fn persist_downloaded_package_to_cache_writes_assets_and_index_under_cache_root(
             "Methane",
         )],
     );
-    let integrity = property_package_payload_integrity(&payload).expect("expected payload integrity");
+    let integrity =
+        property_package_payload_integrity(&payload).expect("expected payload integrity");
     manifest.hash = integrity.hash.clone();
     manifest.size_bytes = integrity.size_bytes;
     manifest.component_ids = vec![rf_types::ComponentId::new("methane")];
@@ -354,15 +370,18 @@ fn persist_downloaded_package_to_cache_writes_assets_and_index_under_cache_root(
             .expect("expected payload path"),
     )
     .expect("expected stored payload read");
-    let stored_index =
-        read_auth_cache_index(index.index_path_under(&root)).expect("expected stored auth cache index");
+    let stored_index = read_auth_cache_index(index.index_path_under(&root))
+        .expect("expected stored auth cache index");
 
     assert_eq!(stored_manifest.package_id, "pkg-1");
     assert_eq!(stored_manifest.hash, integrity.hash);
     assert_eq!(stored_manifest.expires_at, Some(timestamp(900)));
     assert_eq!(stored_payload.package_id, "pkg-1");
     assert_eq!(stored_index.property_packages.len(), 1);
-    assert_eq!(stored_index.property_packages[0].downloaded_at, timestamp(200));
+    assert_eq!(
+        stored_index.property_packages[0].downloaded_at,
+        timestamp(200)
+    );
 
     fs::remove_dir_all(&root).expect("expected temp dir cleanup");
 }
@@ -394,8 +413,8 @@ fn persist_downloaded_package_to_cache_restores_previous_files_when_manifest_wri
             "Methane Legacy",
         )],
     );
-    let existing_integrity =
-        property_package_payload_integrity(&existing_payload).expect("expected existing payload integrity");
+    let existing_integrity = property_package_payload_integrity(&existing_payload)
+        .expect("expected existing payload integrity");
     let existing_record = sample_cached_record(
         "pkg-1",
         "2026.03.1",
@@ -419,8 +438,11 @@ fn persist_downloaded_package_to_cache_restores_previous_files_when_manifest_wri
         &existing_payload,
     )
     .expect("expected existing payload write");
-    write_property_package_manifest(existing_record.manifest_path_under(&root), &existing_manifest)
-        .expect("expected existing manifest write");
+    write_property_package_manifest(
+        existing_record.manifest_path_under(&root),
+        &existing_manifest,
+    )
+    .expect("expected existing manifest write");
     write_auth_cache_index(index.index_path_under(&root), &index)
         .expect("expected existing auth cache write");
 
@@ -432,8 +454,8 @@ fn persist_downloaded_package_to_cache_restores_previous_files_when_manifest_wri
             "Methane Updated",
         )],
     );
-    let updated_integrity =
-        property_package_payload_integrity(&updated_payload).expect("expected updated payload integrity");
+    let updated_integrity = property_package_payload_integrity(&updated_payload)
+        .expect("expected updated payload integrity");
     let mut manifest = PropertyPackageManifest::new(
         "pkg-1",
         "2026.03.1",
@@ -481,7 +503,10 @@ fn persist_downloaded_package_to_cache_restores_previous_files_when_manifest_wri
 
     assert_eq!(restored_payload, existing_payload);
     assert_eq!(restored_manifest, existing_manifest);
-    assert_eq!(restored_index.property_packages[0].hash, existing_integrity.hash);
+    assert_eq!(
+        restored_index.property_packages[0].hash,
+        existing_integrity.hash
+    );
     assert_eq!(index.property_packages[0].hash, existing_integrity.hash);
 
     fs::remove_dir_all(&root).expect("expected temp dir cleanup");

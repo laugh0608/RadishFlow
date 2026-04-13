@@ -142,7 +142,9 @@ impl StudioGuiHost {
                     .scope
                     .legacy_layout_key()
                     .as_ref()
-                    .and_then(|legacy_layout_key| self.layout_state_overrides.get(legacy_layout_key))
+                    .and_then(|legacy_layout_key| {
+                        self.layout_state_overrides.get(legacy_layout_key)
+                    })
             })
             .map(|persisted| derived.merged_with_persisted(persisted))
             .unwrap_or(derived)

@@ -311,7 +311,7 @@ pub(super) fn choose_active_area_id_for_stack(
 }
 
 pub(super) fn place_panel_in_dock_region(
-    panels: &mut Vec<StudioGuiWindowPanelLayoutState>,
+    panels: &mut [StudioGuiWindowPanelLayoutState],
     area_id: StudioGuiWindowAreaId,
     dock_region: StudioGuiWindowDockRegion,
     placement: StudioGuiWindowDockPlacement,
@@ -336,7 +336,7 @@ pub(super) fn place_panel_in_dock_region(
 }
 
 pub(super) fn place_panel_in_stack_group(
-    panels: &mut Vec<StudioGuiWindowPanelLayoutState>,
+    panels: &mut [StudioGuiWindowPanelLayoutState],
     area_id: StudioGuiWindowAreaId,
     dock_region: StudioGuiWindowDockRegion,
     stack_group: u8,
@@ -369,7 +369,7 @@ pub(super) fn place_panel_in_stack_group(
 }
 
 pub(super) fn normalize_stack_group(
-    panels: &mut Vec<StudioGuiWindowPanelLayoutState>,
+    panels: &mut [StudioGuiWindowPanelLayoutState],
     dock_region: StudioGuiWindowDockRegion,
     stack_group: u8,
 ) {
@@ -382,7 +382,7 @@ pub(super) fn normalize_stack_group(
 }
 
 pub(super) fn normalize_region_stack_groups(
-    panels: &mut Vec<StudioGuiWindowPanelLayoutState>,
+    panels: &mut [StudioGuiWindowPanelLayoutState],
     dock_region: StudioGuiWindowDockRegion,
 ) {
     let grouped_area_ids = grouped_area_ids_for_region_excluding_area(panels, dock_region, None);
@@ -390,7 +390,7 @@ pub(super) fn normalize_region_stack_groups(
 }
 
 pub(super) fn assign_region_stack_groups(
-    panels: &mut Vec<StudioGuiWindowPanelLayoutState>,
+    panels: &mut [StudioGuiWindowPanelLayoutState],
     dock_region: StudioGuiWindowDockRegion,
     grouped_area_ids: &[Vec<StudioGuiWindowAreaId>],
 ) {
@@ -410,7 +410,7 @@ pub(super) fn assign_region_stack_groups(
 }
 
 pub(super) fn assign_stack_group_orders(
-    panels: &mut Vec<StudioGuiWindowPanelLayoutState>,
+    panels: &mut [StudioGuiWindowPanelLayoutState],
     dock_region: StudioGuiWindowDockRegion,
     stack_group: u8,
     ordered_area_ids: &[StudioGuiWindowAreaId],
@@ -436,7 +436,13 @@ pub(super) fn grouped_area_ids_for_region_excluding_area(
         .iter()
         .filter(|panel| panel.dock_region == dock_region && Some(panel.area_id) != excluded_area_id)
         .collect::<Vec<_>>();
-    ordered_panels.sort_by_key(|panel| (panel.stack_group, panel.order, area_sort_rank(panel.area_id)));
+    ordered_panels.sort_by_key(|panel| {
+        (
+            panel.stack_group,
+            panel.order,
+            area_sort_rank(panel.area_id),
+        )
+    });
 
     let mut groups = Vec::<Vec<StudioGuiWindowAreaId>>::new();
     let mut current_group = None;

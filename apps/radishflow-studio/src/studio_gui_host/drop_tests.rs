@@ -68,7 +68,12 @@ fn gui_host_queries_drop_target_through_explicit_command_surface() {
         }
         other => panic!("expected drop target query outcome, got {other:?}"),
     }
-    assert_eq!(gui_host.window_model_for_window(Some(window_id)).drop_preview, None);
+    assert_eq!(
+        gui_host
+            .window_model_for_window(Some(window_id))
+            .drop_preview,
+        None
+    );
 
     let _ = fs::remove_file(layout_path);
     let _ = fs::remove_file(project_path);
@@ -204,7 +209,12 @@ fn gui_host_clears_drop_preview_through_explicit_command_surface() {
         }
         other => panic!("expected drop preview clear outcome, got {other:?}"),
     }
-    assert_eq!(gui_host.window_model_for_window(Some(window_id)).drop_preview, None);
+    assert_eq!(
+        gui_host
+            .window_model_for_window(Some(window_id))
+            .drop_preview,
+        None
+    );
 
     let _ = fs::remove_file(layout_path);
     let _ = fs::remove_file(project_path);
@@ -260,7 +270,12 @@ fn gui_host_applies_drop_target_through_explicit_command_surface() {
         }
         other => panic!("expected drop target apply outcome, got {other:?}"),
     }
-    assert_eq!(gui_host.window_model_for_window(Some(window_id)).drop_preview, None);
+    assert_eq!(
+        gui_host
+            .window_model_for_window(Some(window_id))
+            .drop_preview,
+        None
+    );
 
     let _ = fs::remove_file(layout_path);
     let _ = fs::remove_file(project_path);

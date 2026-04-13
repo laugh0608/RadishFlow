@@ -54,7 +54,9 @@ pub(super) fn global_event_from_lifecycle(
 ) -> StudioAppWindowHostGlobalEvent {
     match event {
         StudioGuiHostLifecycleEvent::WindowForegrounded { .. } => {
-            unreachable!("window foregrounding is routed through focus_window before global mapping")
+            unreachable!(
+                "window foregrounding is routed through focus_window before global mapping"
+            )
         }
         StudioGuiHostLifecycleEvent::LoginCompleted => {
             StudioAppWindowHostGlobalEvent::LoginCompleted

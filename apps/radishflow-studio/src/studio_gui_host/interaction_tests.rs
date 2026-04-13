@@ -23,12 +23,11 @@ fn gui_host_surfaces_ui_commands_for_disabled_command_dispatch() {
             assert_eq!(command_id, "run_panel.run_manual");
             assert_eq!(target_window_id, None);
             assert_eq!(detail, "Open a studio window before running the workspace");
-            assert_eq!(
-                ui_commands
+            assert!(
+                !ui_commands
                     .command("run_panel.run_manual")
                     .expect("expected run command model")
-                    .enabled,
-                false
+                    .enabled
             );
         }
         other => panic!("expected disabled ui command result, got {other:?}"),
@@ -48,13 +47,12 @@ fn gui_host_dispatches_ui_command_and_refreshes_command_registry() {
     match dispatch {
         StudioGuiHostUiCommandDispatchResult::Executed(dispatch) => {
             assert_eq!(dispatch.target_window_id, opened.registration.window_id);
-            assert_eq!(
+            assert!(
                 dispatch
                     .ui_commands
                     .command("run_panel.recover_failure")
                     .expect("expected recovery command model")
-                    .enabled,
-                true
+                    .enabled
             );
             assert_eq!(
                 dispatch.native_timers,
@@ -205,7 +203,10 @@ fn gui_host_executes_canvas_interaction_through_command_surface() {
                 StudioGuiCanvasInteractionAction::AcceptFocusedByTab
             );
             assert_eq!(
-                result.accepted.as_ref().map(|suggestion| suggestion.id.as_str()),
+                result
+                    .accepted
+                    .as_ref()
+                    .map(|suggestion| suggestion.id.as_str()),
                 Some("local.flash_drum.create_outlet.flash-1.vapor")
             );
             assert_eq!(
@@ -217,13 +218,12 @@ fn gui_host_executes_canvas_interaction_through_command_surface() {
                     "Solved document revision 1 with property package `binary-hydrocarbon-lite-v1` into snapshot `example-feed-heater-flash-rev-1-seq-1`"
                 )
             );
-            assert_eq!(
-                result
+            assert!(
+                !result
                     .ui_commands
                     .command("run_panel.resume_workspace")
                     .expect("expected resume command")
-                    .enabled,
-                false
+                    .enabled
             );
         }
         other => panic!("expected canvas interaction outcome, got {other:?}"),
@@ -258,7 +258,10 @@ fn gui_host_dispatches_canvas_ui_command_by_command_id() {
             assert_eq!(command_id, "canvas.accept_focused");
             assert_eq!(target_window_id, Some(opened.registration.window_id));
             assert_eq!(
-                result.accepted.as_ref().map(|suggestion| suggestion.id.as_str()),
+                result
+                    .accepted
+                    .as_ref()
+                    .map(|suggestion| suggestion.id.as_str()),
                 Some("local.flash_drum.create_outlet.flash-1.vapor")
             );
         }
@@ -279,7 +282,10 @@ fn gui_host_canvas_ui_command_focus_persists_for_followup_reject() {
     match focus {
         StudioGuiHostUiCommandDispatchResult::ExecutedCanvasInteraction { result, .. } => {
             assert_eq!(
-                result.focused.as_ref().map(|suggestion| suggestion.id.as_str()),
+                result
+                    .focused
+                    .as_ref()
+                    .map(|suggestion| suggestion.id.as_str()),
                 Some("local.flash_drum.create_outlet.flash-1.liquid")
             );
         }
@@ -292,7 +298,10 @@ fn gui_host_canvas_ui_command_focus_persists_for_followup_reject() {
     match reject {
         StudioGuiHostUiCommandDispatchResult::ExecutedCanvasInteraction { result, .. } => {
             assert_eq!(
-                result.rejected.as_ref().map(|suggestion| suggestion.id.as_str()),
+                result
+                    .rejected
+                    .as_ref()
+                    .map(|suggestion| suggestion.id.as_str()),
                 Some("local.flash_drum.create_outlet.flash-1.liquid")
             );
         }
@@ -409,13 +418,12 @@ fn gui_host_preserves_timer_retirement_summary_on_close() {
         if *from_window_id == opened.registration.window_id
     ));
     assert_eq!(closed.projection.state.windows.len(), 0);
-    assert_eq!(
-        closed
+    assert!(
+        !closed
             .ui_commands
             .command("run_panel.run_manual")
             .expect("expected run command")
-            .enabled,
-        false
+            .enabled
     );
 }
 

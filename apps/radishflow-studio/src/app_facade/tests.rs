@@ -26,9 +26,9 @@ use super::{
 };
 use crate::{
     RadishFlowControlPlaneClient, RadishFlowControlPlaneClientError,
-    RadishFlowControlPlaneClientErrorKind, RadishFlowControlPlaneResponse,
-    StudioEntitlementAction, StudioEntitlementFailureReason, StudioEntitlementOutcome,
-    WorkspaceRunCommand, WorkspaceRunPackageSelection,
+    RadishFlowControlPlaneClientErrorKind, RadishFlowControlPlaneResponse, StudioEntitlementAction,
+    StudioEntitlementFailureReason, StudioEntitlementOutcome, WorkspaceRunCommand,
+    WorkspaceRunPackageSelection,
 };
 
 fn timestamp(seconds: u64) -> std::time::SystemTime {
@@ -154,7 +154,7 @@ fn sample_snapshot() -> EntitlementSnapshot {
         offline_lease_expires_at: Some(timestamp(900)),
         features: std::collections::BTreeSet::from(["desktop-login".to_string()]),
         allowed_package_ids: std::collections::BTreeSet::from([
-            "binary-hydrocarbon-lite-v1".to_string(),
+            "binary-hydrocarbon-lite-v1".to_string()
         ]),
     }
 }
@@ -218,9 +218,8 @@ fn facade_runs_workspace_command_from_auth_cache() {
         DocumentMetadata::new("doc-app-facade", "App Facade Demo", timestamp(70)),
     ));
     let context = StudioAppAuthCacheContext::new(&cache_root, &auth_cache_index);
-    let command = StudioAppCommand::run_workspace(WorkspaceRunCommand::manual(
-        "binary-hydrocarbon-lite-v1",
-    ));
+    let command =
+        StudioAppCommand::run_workspace(WorkspaceRunCommand::manual("binary-hydrocarbon-lite-v1"));
 
     let outcome = facade
         .execute_with_auth_cache(&mut app_state, &context, &command)
@@ -255,9 +254,7 @@ fn facade_runs_workspace_command_from_auth_cache() {
     assert_eq!(dispatch.pending_reason, None);
     assert_eq!(
         dispatch.latest_snapshot_summary.as_deref(),
-        Some(
-            "solved flowsheet with 3 unit(s), 4 diagnostic entry(ies), and 4 resulting stream(s)"
-        )
+        Some("solved flowsheet with 3 unit(s), 4 diagnostic entry(ies), and 4 resulting stream(s)")
     );
     assert_eq!(dispatch.run_status, RunStatus::Converged);
     assert_eq!(dispatch.log_entry_count, 1);

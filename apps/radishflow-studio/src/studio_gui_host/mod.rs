@@ -35,13 +35,13 @@ mod helpers;
 mod layout;
 
 #[cfg(test)]
-mod test_support;
-#[cfg(test)]
 mod drop_tests;
 #[cfg(test)]
 mod interaction_tests;
 #[cfg(test)]
 mod layout_tests;
+#[cfg(test)]
+mod test_support;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct StudioGuiHostWindowOpened {
@@ -63,6 +63,7 @@ pub struct StudioGuiHostDispatch {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+#[allow(clippy::large_enum_variant)]
 pub enum StudioGuiHostUiCommandDispatchResult {
     Executed(StudioGuiHostDispatch),
     ExecutedCanvasInteraction {
@@ -138,6 +139,7 @@ pub struct StudioGuiHostCanvasInteractionResult {
 pub type StudioGuiHostCanvasSuggestionResult = StudioGuiHostCanvasInteractionResult;
 
 #[derive(Debug, Clone, PartialEq)]
+#[allow(clippy::large_enum_variant)]
 pub enum StudioGuiHostEntitlementDispatchResult {
     Executed {
         action_id: EntitlementActionId,
@@ -252,6 +254,7 @@ pub enum StudioGuiHostCommand {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+#[allow(clippy::large_enum_variant)]
 pub enum StudioGuiHostCommandOutcome {
     WindowOpened(StudioGuiHostWindowOpened),
     WindowDispatched(StudioGuiHostDispatch),

@@ -71,7 +71,13 @@ impl StudioGuiWindowLayoutState {
             .iter()
             .filter(|panel| panel.dock_region == dock_region)
             .collect::<Vec<_>>();
-        panels.sort_by_key(|panel| (panel.stack_group, panel.order, area_sort_rank(panel.area_id)));
+        panels.sort_by_key(|panel| {
+            (
+                panel.stack_group,
+                panel.order,
+                area_sort_rank(panel.area_id),
+            )
+        });
         panels
     }
 
@@ -285,7 +291,12 @@ impl StudioGuiWindowLayoutState {
                 let dock_region = panel.dock_region;
                 let stack_group = panel.stack_group;
                 upsert_panel_state(&mut next.panels, panel);
-                set_active_panel_in_stack(&mut next.stack_groups, dock_region, stack_group, *area_id);
+                set_active_panel_in_stack(
+                    &mut next.stack_groups,
+                    dock_region,
+                    stack_group,
+                    *area_id,
+                );
                 next.center_area = *area_id;
             }
             StudioGuiWindowLayoutMutation::SetActivePanelInStack { area_id } => {
@@ -297,7 +308,12 @@ impl StudioGuiWindowLayoutState {
                 let dock_region = panel.dock_region;
                 let stack_group = panel.stack_group;
                 upsert_panel_state(&mut next.panels, panel);
-                set_active_panel_in_stack(&mut next.stack_groups, dock_region, stack_group, *area_id);
+                set_active_panel_in_stack(
+                    &mut next.stack_groups,
+                    dock_region,
+                    stack_group,
+                    *area_id,
+                );
                 reconcile_center_area_with_active_panel(&mut next, *area_id);
             }
             StudioGuiWindowLayoutMutation::ActivateNextPanelInStack { area_id } => {
@@ -315,7 +331,8 @@ impl StudioGuiWindowLayoutState {
                 }
             }
             StudioGuiWindowLayoutMutation::MovePanelWithinStack { area_id, placement } => {
-                if let Some((dock_region, stack_group)) = panel_stack_location(&next.panels, *area_id)
+                if let Some((dock_region, stack_group)) =
+                    panel_stack_location(&next.panels, *area_id)
                 {
                     place_panel_in_stack_group(
                         &mut next.panels,
@@ -356,13 +373,18 @@ impl StudioGuiWindowLayoutState {
                 if previous.dock_region != anchor.dock_region
                     || previous.stack_group != anchor.stack_group
                 {
-                    normalize_stack_group(&mut next.panels, previous.dock_region, previous.stack_group);
+                    normalize_stack_group(
+                        &mut next.panels,
+                        previous.dock_region,
+                        previous.stack_group,
+                    );
                 }
                 normalize_region_stack_groups(&mut next.panels, anchor.dock_region);
                 if previous.dock_region != anchor.dock_region {
                     normalize_region_stack_groups(&mut next.panels, previous.dock_region);
                 }
-                if let Some((dock_region, stack_group)) = panel_stack_location(&next.panels, *area_id)
+                if let Some((dock_region, stack_group)) =
+                    panel_stack_location(&next.panels, *area_id)
                 {
                     set_active_panel_in_stack(
                         &mut next.stack_groups,
@@ -381,8 +403,14 @@ impl StudioGuiWindowLayoutState {
                 let stack_members =
                     next.panels_in_stack_group(previous.dock_region, previous.stack_group);
                 if stack_members.len() > 1 {
-                    place_panel_in_dock_region(&mut next.panels, *area_id, previous.dock_region, *placement);
-                    if let Some((dock_region, stack_group)) = panel_stack_location(&next.panels, *area_id)
+                    place_panel_in_dock_region(
+                        &mut next.panels,
+                        *area_id,
+                        previous.dock_region,
+                        *placement,
+                    );
+                    if let Some((dock_region, stack_group)) =
+                        panel_stack_location(&next.panels, *area_id)
                     {
                         set_active_panel_in_stack(
                             &mut next.stack_groups,
@@ -417,13 +445,18 @@ impl StudioGuiWindowLayoutState {
                     || previous.stack_group
                         != panel_stack_group(&next.panels, *area_id).unwrap_or(previous.stack_group)
                 {
-                    normalize_stack_group(&mut next.panels, previous.dock_region, previous.stack_group);
+                    normalize_stack_group(
+                        &mut next.panels,
+                        previous.dock_region,
+                        previous.stack_group,
+                    );
                 }
                 normalize_region_stack_groups(&mut next.panels, *dock_region);
                 if previous.dock_region != *dock_region {
                     normalize_region_stack_groups(&mut next.panels, previous.dock_region);
                 }
-                if let Some((dock_region, stack_group)) = panel_stack_location(&next.panels, *area_id)
+                if let Some((dock_region, stack_group)) =
+                    panel_stack_location(&next.panels, *area_id)
                 {
                     set_active_panel_in_stack(
                         &mut next.stack_groups,
@@ -461,8 +494,13 @@ impl StudioGuiWindowLayoutState {
                 upsert_panel_state(&mut next.panels, panel);
                 if previous_region != *dock_region {
                     if order.is_some() {
-                        let new_stack_group = next_available_stack_group(&next.panels, *dock_region);
-                        if let Some(target) = next.panels.iter_mut().find(|panel| panel.area_id == *area_id) {
+                        let new_stack_group =
+                            next_available_stack_group(&next.panels, *dock_region);
+                        if let Some(target) = next
+                            .panels
+                            .iter_mut()
+                            .find(|panel| panel.area_id == *area_id)
+                        {
                             target.stack_group = new_stack_group;
                         }
                         normalize_stack_group(&mut next.panels, previous_region, previous_group);
@@ -479,7 +517,8 @@ impl StudioGuiWindowLayoutState {
                         normalize_region_stack_groups(&mut next.panels, previous_region);
                     }
                 }
-                if let Some((dock_region, stack_group)) = panel_stack_location(&next.panels, *area_id)
+                if let Some((dock_region, stack_group)) =
+                    panel_stack_location(&next.panels, *area_id)
                 {
                     set_active_panel_in_stack(
                         &mut next.stack_groups,
@@ -514,7 +553,10 @@ impl StudioGuiWindowLayoutState {
                 panel.order = *order;
                 upsert_panel_state(&mut next.panels, panel);
             }
-            StudioGuiWindowLayoutMutation::SetRegionWeight { dock_region, weight } => {
+            StudioGuiWindowLayoutMutation::SetRegionWeight {
+                dock_region,
+                weight,
+            } => {
                 upsert_region_weight(
                     &mut next.region_weights,
                     StudioGuiWindowRegionWeight {

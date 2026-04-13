@@ -7,8 +7,8 @@ use rf_ui::{
 
 use super::{
     BootstrapSession, StudioBootstrapConfig, StudioBootstrapDispatch,
-    StudioBootstrapEntitlementSeed, StudioBootstrapEntitlementSessionEvent,
-    StudioBootstrapTrigger, run_studio_bootstrap,
+    StudioBootstrapEntitlementSeed, StudioBootstrapEntitlementSessionEvent, StudioBootstrapTrigger,
+    run_studio_bootstrap,
 };
 use crate::{
     EntitlementPreflightAction, EntitlementSessionEvent, EntitlementSessionEventOutcome,
@@ -20,8 +20,8 @@ use crate::{
 
 #[test]
 fn bootstrap_runs_sample_workspace_from_main_entry_boundary() {
-    let report = run_studio_bootstrap(&StudioBootstrapConfig::default())
-        .expect("expected bootstrap run");
+    let report =
+        run_studio_bootstrap(&StudioBootstrapConfig::default()).expect("expected bootstrap run");
 
     assert_eq!(
         app_command(&report).boundary,
@@ -32,14 +32,20 @@ fn bootstrap_runs_sample_workspace_from_main_entry_boundary() {
         StudioAppResultDispatch::WorkspaceMode(_) => panic!("expected workspace run dispatch"),
         StudioAppResultDispatch::Entitlement(_) => panic!("expected workspace run dispatch"),
     };
-    assert_eq!(report.control_state.simulation_mode, dispatch.simulation_mode);
+    assert_eq!(
+        report.control_state.simulation_mode,
+        dispatch.simulation_mode
+    );
     assert_eq!(report.control_state.run_status, dispatch.run_status);
     assert_eq!(dispatch.run_status, RunStatus::Converged);
     assert_eq!(
         dispatch.package_id.as_deref(),
         Some("binary-hydrocarbon-lite-v1")
     );
-    assert!(matches!(dispatch.outcome, StudioWorkspaceRunOutcome::Started(_)));
+    assert!(matches!(
+        dispatch.outcome,
+        StudioWorkspaceRunOutcome::Started(_)
+    ));
     assert_eq!(
         dispatch.latest_snapshot_summary.as_deref(),
         Some("solved flowsheet with 3 unit(s), 4 diagnostic entry(ies), and 4 resulting stream(s)")
@@ -103,10 +109,16 @@ fn bootstrap_resumes_workspace_from_hold_via_run_panel_intent() {
         StudioAppResultDispatch::WorkspaceMode(_) => panic!("expected workspace run dispatch"),
         StudioAppResultDispatch::Entitlement(_) => panic!("expected workspace run dispatch"),
     };
-    assert_eq!(report.control_state.simulation_mode, dispatch.simulation_mode);
+    assert_eq!(
+        report.control_state.simulation_mode,
+        dispatch.simulation_mode
+    );
     assert_eq!(report.control_state.run_status, dispatch.run_status);
     assert_eq!(dispatch.run_status, RunStatus::Converged);
-    assert!(matches!(dispatch.outcome, StudioWorkspaceRunOutcome::Started(_)));
+    assert!(matches!(
+        dispatch.outcome,
+        StudioWorkspaceRunOutcome::Started(_)
+    ));
     assert_eq!(dispatch.log_entry_count, 2);
     assert_eq!(report.log_entries.len(), 2);
     assert_eq!(
@@ -131,7 +143,10 @@ fn bootstrap_accepts_preferred_package_selection_when_single_cached_package_exis
         StudioAppResultDispatch::WorkspaceMode(_) => panic!("expected workspace run dispatch"),
         StudioAppResultDispatch::Entitlement(_) => panic!("expected workspace run dispatch"),
     };
-    assert_eq!(report.control_state.simulation_mode, dispatch.simulation_mode);
+    assert_eq!(
+        report.control_state.simulation_mode,
+        dispatch.simulation_mode
+    );
     assert_eq!(
         dispatch.package_id.as_deref(),
         Some("binary-hydrocarbon-lite-v1")
@@ -143,9 +158,7 @@ fn bootstrap_accepts_preferred_package_selection_when_single_cached_package_exis
 #[test]
 fn bootstrap_can_switch_workspace_mode_from_run_panel_intent() {
     let report = run_studio_bootstrap(&StudioBootstrapConfig {
-        trigger: StudioBootstrapTrigger::Intent(RunPanelIntent::set_mode(
-            SimulationMode::Active,
-        )),
+        trigger: StudioBootstrapTrigger::Intent(RunPanelIntent::set_mode(SimulationMode::Active)),
         ..StudioBootstrapConfig::default()
     })
     .expect("expected mode intent bootstrap run");
@@ -203,7 +216,10 @@ fn bootstrap_runtime_can_dispatch_automatic_run_after_mode_activation() {
         dispatch.package_id.as_deref(),
         Some("binary-hydrocarbon-lite-v1")
     );
-    assert!(matches!(dispatch.outcome, StudioWorkspaceRunOutcome::Started(_)));
+    assert!(matches!(
+        dispatch.outcome,
+        StudioWorkspaceRunOutcome::Started(_)
+    ));
     assert_eq!(dispatch.simulation_mode, SimulationMode::Active);
     assert_eq!(dispatch.pending_reason, None);
     assert_eq!(dispatch.run_status, RunStatus::Converged);
@@ -319,7 +335,10 @@ fn bootstrap_can_dispatch_run_panel_recovery_action() {
     match &report.dispatch {
         StudioBootstrapDispatch::AppCommand(outcome) => match &outcome.dispatch {
             StudioAppResultDispatch::WorkspaceRun(dispatch) => {
-                assert!(matches!(dispatch.outcome, StudioWorkspaceRunOutcome::Failed(_)));
+                assert!(matches!(
+                    dispatch.outcome,
+                    StudioWorkspaceRunOutcome::Failed(_)
+                ));
             }
             other => panic!("expected workspace run dispatch, got {other:?}"),
         },
@@ -335,7 +354,9 @@ fn bootstrap_can_dispatch_run_panel_recovery_action() {
             assert_eq!(outcome.action.title, "Inspect unit inputs");
             assert_eq!(
                 outcome.applied_target,
-                Some(rf_ui::InspectorTarget::Unit(rf_types::UnitId::new("valve-1")))
+                Some(rf_ui::InspectorTarget::Unit(rf_types::UnitId::new(
+                    "valve-1"
+                )))
             );
         }
         other => panic!("expected run panel recovery dispatch, got {other:?}"),
@@ -426,7 +447,10 @@ fn bootstrap_can_refresh_offline_lease_via_control_plane_trigger() {
     );
     match &app_command(&report).dispatch {
         StudioAppResultDispatch::Entitlement(dispatch) => {
-            assert_eq!(dispatch.action, StudioEntitlementAction::RefreshOfflineLease);
+            assert_eq!(
+                dispatch.action,
+                StudioEntitlementAction::RefreshOfflineLease
+            );
             assert_eq!(
                 dispatch.outcome,
                 StudioEntitlementOutcome::OfflineLeaseRefreshed
@@ -508,7 +532,10 @@ fn bootstrap_auto_preflight_refreshes_when_lease_is_expiring() {
     );
     match &preflight.outcome.dispatch {
         StudioAppResultDispatch::Entitlement(dispatch) => {
-            assert_eq!(dispatch.action, StudioEntitlementAction::RefreshOfflineLease);
+            assert_eq!(
+                dispatch.action,
+                StudioEntitlementAction::RefreshOfflineLease
+            );
             assert_eq!(
                 dispatch.outcome,
                 StudioEntitlementOutcome::OfflineLeaseRefreshed
@@ -721,7 +748,11 @@ fn bootstrap_session_replays_entitlement_host_event_sequence_with_stable_timer_e
     ));
     assert_eq!(
         network_restored.entitlement_host.snapshot.state.next_timer,
-        window_foregrounded.entitlement_host.snapshot.state.next_timer
+        window_foregrounded
+            .entitlement_host
+            .snapshot
+            .state
+            .next_timer
     );
 }
 

@@ -146,7 +146,10 @@ fn gui_driver_accepts_focused_canvas_suggestion_by_tab() {
             },
         )) => {
             assert_eq!(command_id, "canvas.accept_focused");
-            assert_eq!(result.action, StudioGuiCanvasInteractionAction::AcceptFocusedByTab);
+            assert_eq!(
+                result.action,
+                StudioGuiCanvasInteractionAction::AcceptFocusedByTab
+            );
             assert_eq!(
                 result
                     .accepted
@@ -156,7 +159,9 @@ fn gui_driver_accepts_focused_canvas_suggestion_by_tab() {
             );
             assert_eq!(
                 result.applied_target,
-                Some(rf_ui::InspectorTarget::Unit(rf_types::UnitId::new("flash-1")))
+                Some(rf_ui::InspectorTarget::Unit(rf_types::UnitId::new(
+                    "flash-1"
+                )))
             );
             assert_eq!(
                 result
@@ -183,7 +188,10 @@ fn gui_driver_focuses_next_canvas_suggestion_from_explicit_event() {
         StudioGuiDriverOutcome::CanvasInteraction(result) => {
             assert_eq!(result.action, StudioGuiCanvasInteractionAction::FocusNext);
             assert_eq!(
-                result.focused.as_ref().map(|suggestion| suggestion.id.as_str()),
+                result
+                    .focused
+                    .as_ref()
+                    .map(|suggestion| suggestion.id.as_str()),
                 Some("local.flash_drum.create_outlet.flash-1.liquid")
             );
             assert_eq!(
@@ -225,7 +233,10 @@ fn gui_driver_rejects_focused_canvas_suggestion_from_shortcut() {
             },
         )) => {
             assert_eq!(command_id, "canvas.reject_focused");
-            assert_eq!(result.action, StudioGuiCanvasInteractionAction::RejectFocused);
+            assert_eq!(
+                result.action,
+                StudioGuiCanvasInteractionAction::RejectFocused
+            );
             assert_eq!(
                 result
                     .rejected
@@ -234,7 +245,11 @@ fn gui_driver_rejects_focused_canvas_suggestion_from_shortcut() {
                 Some("local.flash_drum.connect_inlet.flash-1.stream-heated")
             );
             assert_eq!(
-                result.canvas.focused_suggestion_id.as_ref().map(|id| id.as_str()),
+                result
+                    .canvas
+                    .focused_suggestion_id
+                    .as_ref()
+                    .map(|id| id.as_str()),
                 Some("local.flash_drum.create_outlet.flash-1.liquid")
             );
             assert_eq!(
@@ -278,7 +293,10 @@ fn gui_driver_routes_ctrl_tab_to_canvas_focus_next() {
             assert_eq!(command_id, "canvas.focus_next");
             assert_eq!(result.action, StudioGuiCanvasInteractionAction::FocusNext);
             assert_eq!(
-                result.focused.as_ref().map(|suggestion| suggestion.id.as_str()),
+                result
+                    .focused
+                    .as_ref()
+                    .map(|suggestion| suggestion.id.as_str()),
                 Some("local.flash_drum.create_outlet.flash-1.liquid")
             );
         }

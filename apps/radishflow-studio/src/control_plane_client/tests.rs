@@ -122,14 +122,19 @@ fn client_maps_http_statuses_into_existing_error_kinds() {
         (404, RadishFlowControlPlaneClientErrorKind::NotFound),
         (408, RadishFlowControlPlaneClientErrorKind::Timeout),
         (429, RadishFlowControlPlaneClientErrorKind::RateLimited),
-        (503, RadishFlowControlPlaneClientErrorKind::ServiceUnavailable),
+        (
+            503,
+            RadishFlowControlPlaneClientErrorKind::ServiceUnavailable,
+        ),
         (302, RadishFlowControlPlaneClientErrorKind::InvalidResponse),
     ];
 
     for (status_code, expected_kind) in cases {
-        let transport = ScriptedTransport::new(vec![Ok(
-            RadishFlowControlPlaneHttpResponse::new(status_code, "{}", timestamp(200)),
-        )]);
+        let transport = ScriptedTransport::new(vec![Ok(RadishFlowControlPlaneHttpResponse::new(
+            status_code,
+            "{}",
+            timestamp(200),
+        ))]);
         let client = HttpRadishFlowControlPlaneClient::new(sample_endpoints(), &transport);
 
         let error = client
@@ -241,15 +246,18 @@ fn timestamp(seconds: u64) -> SystemTime {
 }
 
 struct ScriptedTransport {
-    responses:
-        RefCell<Vec<Result<RadishFlowControlPlaneHttpResponse, RadishFlowControlPlaneHttpTransportError>>>,
+    responses: RefCell<
+        Vec<Result<RadishFlowControlPlaneHttpResponse, RadishFlowControlPlaneHttpTransportError>>,
+    >,
     call_count: Cell<u32>,
     requests: RefCell<Vec<RadishFlowControlPlaneHttpRequest>>,
 }
 
 impl ScriptedTransport {
     fn new(
-        responses: Vec<Result<RadishFlowControlPlaneHttpResponse, RadishFlowControlPlaneHttpTransportError>>,
+        responses: Vec<
+            Result<RadishFlowControlPlaneHttpResponse, RadishFlowControlPlaneHttpTransportError>,
+        >,
     ) -> Self {
         Self {
             responses: RefCell::new(responses),

@@ -591,9 +591,7 @@ fn property_package_download_response_from_http(
     }
 }
 
-fn map_reqwest_transport_error(
-    error: reqwest::Error,
-) -> PropertyPackageDownloadHttpTransportError {
+fn map_reqwest_transport_error(error: reqwest::Error) -> PropertyPackageDownloadHttpTransportError {
     if error.is_connect() {
         PropertyPackageDownloadHttpTransportError::connection_unavailable(error.to_string())
     } else if error.is_timeout() {

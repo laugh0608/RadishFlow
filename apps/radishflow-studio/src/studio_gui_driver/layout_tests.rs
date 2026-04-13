@@ -106,7 +106,10 @@ fn gui_driver_updates_window_layout_and_preserves_per_window_overrides() {
     match centered.outcome {
         StudioGuiDriverOutcome::WindowLayoutUpdated(result) => {
             assert_eq!(result.target_window_id, Some(second_window_id));
-            assert_eq!(result.layout_state.center_area, crate::StudioGuiWindowAreaId::Runtime);
+            assert_eq!(
+                result.layout_state.center_area,
+                crate::StudioGuiWindowAreaId::Runtime
+            );
             assert_eq!(
                 result
                     .layout_state
@@ -376,7 +379,12 @@ fn gui_driver_updates_window_layout_and_preserves_per_window_overrides() {
             .layout_state
             .panels_in_dock_region(crate::StudioGuiWindowDockRegion::RightSidebar)
             .into_iter()
-            .map(|panel| (panel.area_id, panel.dock_region, panel.stack_group, panel.order))
+            .map(|panel| (
+                panel.area_id,
+                panel.dock_region,
+                panel.stack_group,
+                panel.order
+            ))
             .collect::<Vec<_>>(),
         vec![
             (
@@ -548,7 +556,10 @@ fn gui_driver_routes_drop_preview_updates_through_single_event_entry() {
         .drop_preview
         .as_ref()
         .expect("expected drop preview in dispatch window");
-    assert_eq!(preview.overlay.drag_area_id, crate::StudioGuiWindowAreaId::Commands);
+    assert_eq!(
+        preview.overlay.drag_area_id,
+        crate::StudioGuiWindowAreaId::Commands
+    );
     assert_eq!(
         preview.overlay.target_dock_region,
         crate::StudioGuiWindowDockRegion::RightSidebar
@@ -596,7 +607,12 @@ fn gui_driver_routes_drop_preview_updates_through_single_event_entry() {
             .map(|panel| (panel.dock_region, panel.stack_group, panel.order)),
         Some((crate::StudioGuiWindowDockRegion::LeftSidebar, 10, 10))
     );
-    assert!(driver.window_model_for_window(Some(window_id)).drop_preview.is_some());
+    assert!(
+        driver
+            .window_model_for_window(Some(window_id))
+            .drop_preview
+            .is_some()
+    );
 
     let layout_path = rf_store::studio_layout_path_for_project(&project_path);
     let _ = fs::remove_file(layout_path);
@@ -643,7 +659,10 @@ fn gui_driver_clears_drop_preview_through_single_event_entry() {
         other => panic!("expected drop preview clear outcome, got {other:?}"),
     }
     assert_eq!(cleared.window.drop_preview, None);
-    assert_eq!(driver.window_model_for_window(Some(window_id)).drop_preview, None);
+    assert_eq!(
+        driver.window_model_for_window(Some(window_id)).drop_preview,
+        None
+    );
 
     let layout_path = rf_store::studio_layout_path_for_project(&project_path);
     let _ = fs::remove_file(layout_path);

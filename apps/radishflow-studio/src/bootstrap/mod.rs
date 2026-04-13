@@ -9,10 +9,9 @@ use std::path::PathBuf;
 
 use crate::{
     EntitlementPreflightOutcome, EntitlementSessionEventDriverOutcome,
-    EntitlementSessionHostRuntime, EntitlementSessionHostRuntimeOutput,
-    EntitlementSessionPolicy, EntitlementSessionState, RunPanelRecoveryOutcome,
-    StudioAppCommandOutcome, StudioAppFacade, WorkspaceControlState,
-    studio_runtime::StudioRuntime,
+    EntitlementSessionHostRuntime, EntitlementSessionHostRuntimeOutput, EntitlementSessionPolicy,
+    EntitlementSessionState, RunPanelRecoveryOutcome, StudioAppCommandOutcome, StudioAppFacade,
+    WorkspaceControlState, studio_runtime::StudioRuntime,
 };
 use rf_store::StoredAuthCacheIndex;
 use rf_types::RfResult;
@@ -101,6 +100,7 @@ pub struct StudioBootstrapReport {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[allow(clippy::large_enum_variant)]
 pub enum StudioBootstrapDispatch {
     AppCommand(StudioAppCommandOutcome),
     RunPanelRecovery(RunPanelRecoveryOutcome),

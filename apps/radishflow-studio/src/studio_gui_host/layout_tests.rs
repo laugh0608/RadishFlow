@@ -53,7 +53,10 @@ fn gui_host_persists_window_layout_overrides_into_project_sidecar() {
             },
         )
         .expect("expected center area update");
-    assert_eq!(third_update.layout_state.center_area, StudioGuiWindowAreaId::Runtime);
+    assert_eq!(
+        third_update.layout_state.center_area,
+        StudioGuiWindowAreaId::Runtime
+    );
 
     let fourth_update = gui_host
         .update_window_layout(
@@ -254,13 +257,21 @@ fn gui_host_persists_window_layout_overrides_into_project_sidecar() {
             .map(|region| region.weight),
         Some(33)
     );
-    assert_eq!(window.layout_state.center_area, StudioGuiWindowAreaId::Runtime);
+    assert_eq!(
+        window.layout_state.center_area,
+        StudioGuiWindowAreaId::Runtime
+    );
     assert_eq!(
         window
             .layout_state
             .panels_in_dock_region(StudioGuiWindowDockRegion::RightSidebar)
             .into_iter()
-            .map(|panel| (panel.area_id, panel.dock_region, panel.stack_group, panel.order))
+            .map(|panel| (
+                panel.area_id,
+                panel.dock_region,
+                panel.stack_group,
+                panel.order
+            ))
             .collect::<Vec<_>>(),
         vec![
             (
@@ -324,7 +335,10 @@ fn gui_host_loads_legacy_window_layout_key_for_current_owner_scope() {
     let window = gui_host.window_model_for_window(Some(opened.registration.window_id));
 
     assert_eq!(window.layout_state.scope.layout_slot, Some(1));
-    assert_eq!(window.layout_state.scope.layout_key, "studio.window.owner.slot-1");
+    assert_eq!(
+        window.layout_state.scope.layout_key,
+        "studio.window.owner.slot-1"
+    );
     assert_eq!(
         window
             .layout_state

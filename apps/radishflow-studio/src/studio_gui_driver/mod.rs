@@ -20,9 +20,9 @@ mod interaction_tests;
 #[cfg(test)]
 mod layout_tests;
 #[cfg(test)]
-mod timer_tests;
-#[cfg(test)]
 mod test_support;
+#[cfg(test)]
+mod timer_tests;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum StudioGuiEvent {
@@ -94,6 +94,7 @@ pub struct StudioGuiDriverDispatch {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+#[allow(clippy::large_enum_variant)]
 pub enum StudioGuiDriverOutcome {
     HostCommand(StudioGuiHostCommandOutcome),
     CanvasInteraction(StudioGuiHostCanvasInteractionResult),
@@ -533,10 +534,7 @@ enum DriverRoute {
     },
 }
 
-fn route_driver_event(
-    event: &StudioGuiEvent,
-    registry: &StudioGuiCommandRegistry,
-) -> DriverRoute {
+fn route_driver_event(event: &StudioGuiEvent, registry: &StudioGuiCommandRegistry) -> DriverRoute {
     match event {
         StudioGuiEvent::OpenWindowRequested => {
             DriverRoute::HostCommand(StudioGuiHostCommand::OpenWindow)

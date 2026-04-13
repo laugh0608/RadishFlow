@@ -324,7 +324,7 @@ impl ReadyAppState {
             return;
         }
 
-        let shortcuts = ctx.input(|input| collect_shortcuts(input));
+        let shortcuts = ctx.input(collect_shortcuts);
         for shortcut in shortcuts {
             self.dispatch_event(StudioGuiEvent::ShortcutPressed {
                 shortcut,

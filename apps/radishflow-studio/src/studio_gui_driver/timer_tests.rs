@@ -60,7 +60,12 @@ fn gui_driver_tracks_parked_timer_restore_when_reopening_owner_window() {
     };
 
     assert!(driver.native_timer_runtime().parked_binding().is_none());
-    assert!(driver.native_timer_runtime().window_binding(second_window_id).is_some());
+    assert!(
+        driver
+            .native_timer_runtime()
+            .window_binding(second_window_id)
+            .is_some()
+    );
 }
 
 #[test]

@@ -6,11 +6,10 @@ use std::{
 
 use crate::{
     StudioAppWindowHostCanvasInteractionResult, StudioAppWindowHostCommand,
-    StudioAppWindowHostCommandOutcome, StudioAppWindowHostGlobalEvent,
-    StudioAppWindowHostManager, StudioAppWindowHostUiAction,
-    StudioAppWindowHostUiActionAvailability, StudioAppWindowHostUiActionDisabledReason,
-    StudioAppWindowHostUiActionState, StudioCanvasInteractionAction,
-    StudioRuntimeEntitlementPreflight, StudioRuntimeEntitlementSeed,
+    StudioAppWindowHostCommandOutcome, StudioAppWindowHostGlobalEvent, StudioAppWindowHostManager,
+    StudioAppWindowHostUiAction, StudioAppWindowHostUiActionAvailability,
+    StudioAppWindowHostUiActionDisabledReason, StudioAppWindowHostUiActionState,
+    StudioCanvasInteractionAction, StudioRuntimeEntitlementPreflight, StudioRuntimeEntitlementSeed,
     StudioRuntimeEntitlementSessionEvent, StudioRuntimeTrigger, StudioWindowHostRole,
     StudioWindowTimerDriverTransition,
 };
@@ -319,7 +318,9 @@ fn app_window_host_manager_dispatches_run_panel_recovery_through_typed_entry() {
             assert_eq!(outcome.action.title, "Inspect unit inputs");
             assert_eq!(
                 outcome.applied_target,
-                Some(rf_ui::InspectorTarget::Unit(rf_types::UnitId::new("valve-1")))
+                Some(rf_ui::InspectorTarget::Unit(rf_types::UnitId::new(
+                    "valve-1"
+                )))
             );
         }
         other => panic!("expected run panel recovery dispatch, got {other:?}"),
@@ -460,7 +461,9 @@ fn app_window_host_manager_dispatches_foreground_run_panel_recovery() {
         crate::StudioRuntimeDispatch::RunPanelRecovery(outcome) => {
             assert_eq!(
                 outcome.applied_target,
-                Some(rf_ui::InspectorTarget::Unit(rf_types::UnitId::new("valve-1")))
+                Some(rf_ui::InspectorTarget::Unit(rf_types::UnitId::new(
+                    "valve-1"
+                )))
             );
         }
         other => panic!("expected run panel recovery dispatch, got {other:?}"),
@@ -557,7 +560,9 @@ fn app_window_host_manager_dispatches_run_panel_recovery_via_ui_action() {
         crate::StudioRuntimeDispatch::RunPanelRecovery(outcome) => {
             assert_eq!(
                 outcome.applied_target,
-                Some(rf_ui::InspectorTarget::Unit(rf_types::UnitId::new("valve-1")))
+                Some(rf_ui::InspectorTarget::Unit(rf_types::UnitId::new(
+                    "valve-1"
+                )))
             );
         }
         other => panic!("expected run panel recovery dispatch, got {other:?}"),
@@ -922,7 +927,9 @@ fn app_window_host_manager_routes_global_recovery_request_to_foreground_window()
         crate::StudioRuntimeDispatch::RunPanelRecovery(outcome) => {
             assert_eq!(
                 outcome.applied_target,
-                Some(rf_ui::InspectorTarget::Unit(rf_types::UnitId::new("valve-1")))
+                Some(rf_ui::InspectorTarget::Unit(rf_types::UnitId::new(
+                    "valve-1"
+                )))
             );
         }
         other => panic!("expected run panel recovery dispatch, got {other:?}"),

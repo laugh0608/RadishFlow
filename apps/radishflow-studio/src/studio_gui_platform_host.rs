@@ -125,6 +125,7 @@ impl StudioGuiPlatformNativeTimerCallbackBatch {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+#[allow(clippy::large_enum_variant)]
 pub enum StudioGuiPlatformNativeTimerCallbackOutcome {
     Dispatched(StudioGuiPlatformDispatch),
     IgnoredUnknownNativeTimer {
@@ -136,6 +137,7 @@ pub enum StudioGuiPlatformNativeTimerCallbackOutcome {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+#[allow(clippy::large_enum_variant)]
 pub enum StudioGuiPlatformExecutedNativeTimerCallbackOutcome {
     Dispatched(StudioGuiPlatformExecutedDispatch),
     IgnoredUnknownNativeTimer {
@@ -229,6 +231,7 @@ pub enum StudioGuiPlatformAsyncRoundAction {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+#[allow(clippy::large_enum_variant)]
 pub enum StudioGuiPlatformExecutedAsyncRoundAction {
     FollowUpCommand(StudioGuiPlatformTimerFollowUpCommand),
     TimerRequest {
@@ -476,6 +479,7 @@ impl StudioGuiPlatformTimerStartFailedOutcome {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[allow(clippy::large_enum_variant)]
 pub enum StudioGuiPlatformTimerExecutionOutcome {
     NoCommand,
     Executed {
@@ -1261,9 +1265,11 @@ fn format_platform_dispatch_activity(dispatch: &StudioGuiPlatformDispatch) -> St
 fn should_record_dispatch_activity(dispatch: &StudioGuiPlatformDispatch) -> bool {
     !matches!(
         &dispatch.outcome,
-        StudioGuiDriverOutcome::HostCommand(crate::StudioGuiHostCommandOutcome::UiCommandDispatched(
-            crate::StudioGuiHostUiCommandDispatchResult::IgnoredDisabled { .. }
-        ))
+        StudioGuiDriverOutcome::HostCommand(
+            crate::StudioGuiHostCommandOutcome::UiCommandDispatched(
+                crate::StudioGuiHostUiCommandDispatchResult::IgnoredDisabled { .. }
+            )
+        )
     )
 }
 

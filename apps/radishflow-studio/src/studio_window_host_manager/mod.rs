@@ -149,6 +149,7 @@ pub struct StudioAppWindowHostClose {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+#[allow(clippy::large_enum_variant)]
 pub enum StudioAppWindowHostCommandOutcome {
     WindowOpened(StudioAppWindowHostOpenWindow),
     WindowDispatched(StudioAppWindowHostDispatch),
@@ -338,56 +339,62 @@ impl StudioAppWindowHostManager {
             ),
             StudioAppWindowHostCommand::DispatchTrigger { window_id, trigger } => {
                 let dispatch = self.dispatch_trigger(window_id, &trigger)?;
-                Ok(StudioAppWindowHostCommandOutcome::WindowDispatched(dispatch))
+                Ok(StudioAppWindowHostCommandOutcome::WindowDispatched(
+                    dispatch,
+                ))
             }
             StudioAppWindowHostCommand::DispatchCanvasInteraction { action } => self
                 .dispatch_canvas_interaction(action)
                 .map(StudioAppWindowHostCommandOutcome::CanvasInteracted),
             StudioAppWindowHostCommand::DispatchUiAction { action } => {
                 match self.dispatch_ui_action(action)? {
-                    Some(dispatch) => {
-                        Ok(StudioAppWindowHostCommandOutcome::WindowDispatched(dispatch))
-                    }
+                    Some(dispatch) => Ok(StudioAppWindowHostCommandOutcome::WindowDispatched(
+                        dispatch,
+                    )),
                     None => Ok(StudioAppWindowHostCommandOutcome::IgnoredUiAction),
                 }
             }
             StudioAppWindowHostCommand::DispatchRunPanelRecoveryAction { window_id } => {
                 let dispatch = self.dispatch_run_panel_recovery_action(window_id)?;
-                Ok(StudioAppWindowHostCommandOutcome::WindowDispatched(dispatch))
+                Ok(StudioAppWindowHostCommandOutcome::WindowDispatched(
+                    dispatch,
+                ))
             }
             StudioAppWindowHostCommand::DispatchForegroundRunPanelRecoveryAction => {
                 match self.dispatch_foreground_run_panel_recovery_action()? {
-                    Some(dispatch) => {
-                        Ok(StudioAppWindowHostCommandOutcome::WindowDispatched(dispatch))
-                    }
+                    Some(dispatch) => Ok(StudioAppWindowHostCommandOutcome::WindowDispatched(
+                        dispatch,
+                    )),
                     None => Ok(StudioAppWindowHostCommandOutcome::IgnoredUiAction),
                 }
             }
             StudioAppWindowHostCommand::DispatchForegroundEntitlementPrimaryAction => {
                 match self.dispatch_foreground_entitlement_primary_action()? {
-                    Some(dispatch) => {
-                        Ok(StudioAppWindowHostCommandOutcome::WindowDispatched(dispatch))
-                    }
+                    Some(dispatch) => Ok(StudioAppWindowHostCommandOutcome::WindowDispatched(
+                        dispatch,
+                    )),
                     None => Ok(StudioAppWindowHostCommandOutcome::IgnoredUiAction),
                 }
             }
             StudioAppWindowHostCommand::DispatchForegroundEntitlementAction { action_id } => {
                 match self.dispatch_foreground_entitlement_action(action_id)? {
-                    Some(dispatch) => {
-                        Ok(StudioAppWindowHostCommandOutcome::WindowDispatched(dispatch))
-                    }
+                    Some(dispatch) => Ok(StudioAppWindowHostCommandOutcome::WindowDispatched(
+                        dispatch,
+                    )),
                     None => Ok(StudioAppWindowHostCommandOutcome::IgnoredUiAction),
                 }
             }
             StudioAppWindowHostCommand::FocusWindow { window_id } => {
                 let dispatch = self.focus_window(window_id)?;
-                Ok(StudioAppWindowHostCommandOutcome::WindowDispatched(dispatch))
+                Ok(StudioAppWindowHostCommandOutcome::WindowDispatched(
+                    dispatch,
+                ))
             }
             StudioAppWindowHostCommand::DispatchGlobalEvent { event } => {
                 match self.dispatch_global_event(event)? {
-                    Some(dispatch) => {
-                        Ok(StudioAppWindowHostCommandOutcome::WindowDispatched(dispatch))
-                    }
+                    Some(dispatch) => Ok(StudioAppWindowHostCommandOutcome::WindowDispatched(
+                        dispatch,
+                    )),
                     None => Ok(StudioAppWindowHostCommandOutcome::IgnoredGlobalEvent { event }),
                 }
             }
@@ -481,7 +488,8 @@ impl StudioAppWindowHostManager {
             return Ok(None);
         };
 
-        self.dispatch_run_panel_action(window_id, action_id).map(Some)
+        self.dispatch_run_panel_action(window_id, action_id)
+            .map(Some)
     }
 
     pub fn dispatch_foreground_run_panel_recovery_action(
@@ -507,8 +515,11 @@ impl StudioAppWindowHostManager {
             return Ok(None);
         };
 
-        self.dispatch_trigger(window_id, &StudioRuntimeTrigger::EntitlementWidgetPrimaryAction)
-            .map(Some)
+        self.dispatch_trigger(
+            window_id,
+            &StudioRuntimeTrigger::EntitlementWidgetPrimaryAction,
+        )
+        .map(Some)
     }
 
     pub fn dispatch_foreground_entitlement_action(
@@ -522,8 +533,11 @@ impl StudioAppWindowHostManager {
             return Ok(None);
         };
 
-        self.dispatch_trigger(window_id, &StudioRuntimeTrigger::EntitlementWidgetAction(action_id))
-            .map(Some)
+        self.dispatch_trigger(
+            window_id,
+            &StudioRuntimeTrigger::EntitlementWidgetAction(action_id),
+        )
+        .map(Some)
     }
 
     pub fn focus_window(

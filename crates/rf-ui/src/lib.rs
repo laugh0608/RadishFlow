@@ -71,12 +71,12 @@ mod tests {
     use std::time::{Duration, UNIX_EPOCH};
 
     use rf_flash::PlaceholderTpFlashSolver;
-    use rf_model::{Flowsheet, MaterialStreamState};
+    use rf_model::{Flowsheet, MaterialStreamState, UnitNode, UnitPort};
     use rf_solver::{FlowsheetSolver, SequentialModularSolver, SolverServices};
     use rf_thermo::{
         AntoineCoefficients, PlaceholderThermoProvider, ThermoComponent, ThermoSystem,
     };
-    use rf_types::UnitId;
+    use rf_types::{PortDirection, PortKind, UnitId};
 
     use crate::{
         AppLogLevel, AppState, AuthSessionStatus, AuthenticatedUser, CanvasPoint,
@@ -1554,7 +1554,20 @@ mod tests {
 
     #[test]
     fn applying_run_panel_recovery_action_selects_unit_and_opens_inspector() {
-        let mut app_state = AppState::new(sample_document());
+        let mut document = sample_document();
+        document
+            .flowsheet
+            .insert_unit(UnitNode::new(
+                "heater-1",
+                "Heater",
+                "heater",
+                vec![
+                    UnitPort::new("inlet", PortDirection::Inlet, PortKind::Material, None),
+                    UnitPort::new("outlet", PortDirection::Outlet, PortKind::Material, None),
+                ],
+            ))
+            .expect("expected heater insert");
+        let mut app_state = AppState::new(document);
         let summary = DiagnosticSummary::new(
             0,
             DiagnosticSeverity::Error,

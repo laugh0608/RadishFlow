@@ -1,6 +1,4 @@
-use super::helpers::{
-    area_sort_rank, build_stack_group_layouts, default_panel_state,
-};
+use super::helpers::{area_sort_rank, build_stack_group_layouts, default_panel_state};
 use super::*;
 
 impl StudioGuiWindowLayoutModel {
@@ -34,7 +32,13 @@ impl StudioGuiWindowLayoutModel {
             .iter()
             .filter(|panel| panel.dock_region == dock_region)
             .collect::<Vec<_>>();
-        panels.sort_by_key(|panel| (panel.stack_group, panel.order, area_sort_rank(panel.area_id)));
+        panels.sort_by_key(|panel| {
+            (
+                panel.stack_group,
+                panel.order,
+                area_sort_rank(panel.area_id),
+            )
+        });
         panels
     }
 
@@ -160,7 +164,8 @@ impl StudioGuiWindowLayoutModel {
                         summary.push_str(", platform-timer=active");
                     }
                     if let Some(notice) = runtime.platform_notice.as_ref() {
-                        summary.push_str(&format!(", platform={:?}: {}", notice.level, notice.title));
+                        summary
+                            .push_str(&format!(", platform={:?}: {}", notice.level, notice.title));
                     }
                     summary
                 },

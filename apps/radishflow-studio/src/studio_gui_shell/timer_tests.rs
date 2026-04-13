@@ -92,7 +92,10 @@ fn drain_due_platform_timer_callbacks_dispatches_due_binding_and_rearms() {
         StudioGuiPlatformHost::new(&lease_expiring_config()).expect("expected platform host");
     let mut executor = EguiPlatformTimerExecutor::default();
     let opened = platform_host
-        .dispatch_event_and_execute_platform_timer(StudioGuiEvent::OpenWindowRequested, &mut executor)
+        .dispatch_event_and_execute_platform_timer(
+            StudioGuiEvent::OpenWindowRequested,
+            &mut executor,
+        )
         .expect("expected opened window");
     let window_id = match opened.dispatch.outcome {
         StudioGuiDriverOutcome::HostCommand(
@@ -146,7 +149,10 @@ fn drain_due_platform_timer_callbacks_ignores_unknown_native_timer_ids() {
         StudioGuiPlatformHost::new(&lease_expiring_config()).expect("expected platform host");
     let mut executor = EguiPlatformTimerExecutor::default();
     let opened = platform_host
-        .dispatch_event_and_execute_platform_timer(StudioGuiEvent::OpenWindowRequested, &mut executor)
+        .dispatch_event_and_execute_platform_timer(
+            StudioGuiEvent::OpenWindowRequested,
+            &mut executor,
+        )
         .expect("expected opened window");
     let window_id = match opened.dispatch.outcome {
         StudioGuiDriverOutcome::HostCommand(

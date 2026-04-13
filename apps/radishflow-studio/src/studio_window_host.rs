@@ -438,6 +438,52 @@ impl StudioRuntimeHostPort {
     }
 }
 
+fn timer_driver_commands_from_event(
+    event: &StudioWindowHostEvent,
+) -> Vec<StudioWindowHostTimerDriverCommand> {
+    match event {
+        StudioWindowHostEvent::EntitlementTimerApplied {
+            window_id,
+            transition,
+            ..
+        } => match transition {
+            StudioRuntimeTimerHostTransition::KeepTimer { slot, .. } => {
+                vec![StudioWindowHostTimerDriverCommand::Keep {
+                    window_id: *window_id,
+                    slot: slot.clone(),
+                }]
+            }
+            StudioRuntimeTimerHostTransition::ArmTimer { slot, .. } => {
+                vec![StudioWindowHostTimerDriverCommand::Arm {
+                    window_id: *window_id,
+                    slot: slot.clone(),
+                }]
+            }
+            StudioRuntimeTimerHostTransition::RearmTimer { previous, next, .. } => {
+                vec![StudioWindowHostTimerDriverCommand::Rearm {
+                    window_id: *window_id,
+                    previous_slot: previous.clone(),
+                    next_slot: next.clone(),
+                }]
+            }
+            StudioRuntimeTimerHostTransition::ClearTimer { previous, .. } => {
+                vec![StudioWindowHostTimerDriverCommand::Clear {
+                    window_id: *window_id,
+                    previous_slot: previous.clone(),
+                }]
+            }
+            StudioRuntimeTimerHostTransition::IgnoreStale {
+                current,
+                stale_effect_id,
+            } => vec![StudioWindowHostTimerDriverCommand::IgnoreStale {
+                window_id: *window_id,
+                current_slot: current.clone(),
+                stale_effect_id: *stale_effect_id,
+            }],
+        },
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::{
@@ -735,51 +781,5 @@ mod tests {
             .window_event
             .as_ref()
             .expect("expected window host event")
-    }
-}
-
-fn timer_driver_commands_from_event(
-    event: &StudioWindowHostEvent,
-) -> Vec<StudioWindowHostTimerDriverCommand> {
-    match event {
-        StudioWindowHostEvent::EntitlementTimerApplied {
-            window_id,
-            transition,
-            ..
-        } => match transition {
-            StudioRuntimeTimerHostTransition::KeepTimer { slot, .. } => {
-                vec![StudioWindowHostTimerDriverCommand::Keep {
-                    window_id: *window_id,
-                    slot: slot.clone(),
-                }]
-            }
-            StudioRuntimeTimerHostTransition::ArmTimer { slot, .. } => {
-                vec![StudioWindowHostTimerDriverCommand::Arm {
-                    window_id: *window_id,
-                    slot: slot.clone(),
-                }]
-            }
-            StudioRuntimeTimerHostTransition::RearmTimer { previous, next, .. } => {
-                vec![StudioWindowHostTimerDriverCommand::Rearm {
-                    window_id: *window_id,
-                    previous_slot: previous.clone(),
-                    next_slot: next.clone(),
-                }]
-            }
-            StudioRuntimeTimerHostTransition::ClearTimer { previous, .. } => {
-                vec![StudioWindowHostTimerDriverCommand::Clear {
-                    window_id: *window_id,
-                    previous_slot: previous.clone(),
-                }]
-            }
-            StudioRuntimeTimerHostTransition::IgnoreStale {
-                current,
-                stale_effect_id,
-            } => vec![StudioWindowHostTimerDriverCommand::IgnoreStale {
-                window_id: *window_id,
-                current_slot: current.clone(),
-                stale_effect_id: *stale_effect_id,
-            }],
-        },
     }
 }

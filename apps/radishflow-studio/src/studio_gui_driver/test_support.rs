@@ -65,8 +65,9 @@ pub(super) fn flash_drum_local_rules_synced_config() -> (StudioRuntimeConfig, Pa
         .duration_since(UNIX_EPOCH)
         .expect("expected current timestamp")
         .as_nanos();
-    let project_path =
-        std::env::temp_dir().join(format!("radishflow-studio-local-rules-synced-{timestamp}.rfproj.json"));
+    let project_path = std::env::temp_dir().join(format!(
+        "radishflow-studio-local-rules-synced-{timestamp}.rfproj.json"
+    ));
     let project = include_str!("../../../../examples/flowsheets/feed-heater-flash.rfproj.json")
         .replacen(
             ",\n        \"stream-vapor\": {\n          \"id\": \"stream-vapor\",\n          \"name\": \"Vapor Outlet\",\n          \"temperature_k\": 345.0,\n          \"pressure_pa\": 95000.0,\n          \"total_molar_flow_mol_s\": 0.0,\n          \"overall_mole_fractions\": {\n            \"component-a\": 0.5,\n            \"component-b\": 0.5\n          },\n          \"phases\": []\n        }",
@@ -108,8 +109,9 @@ pub(super) fn flash_drum_local_rules_config() -> (StudioRuntimeConfig, PathBuf) 
         .duration_since(UNIX_EPOCH)
         .expect("expected current timestamp")
         .as_nanos();
-    let project_path =
-        std::env::temp_dir().join(format!("radishflow-studio-local-rules-{timestamp}.rfproj.json"));
+    let project_path = std::env::temp_dir().join(format!(
+        "radishflow-studio-local-rules-{timestamp}.rfproj.json"
+    ));
     let project = include_str!("../../../../examples/flowsheets/feed-heater-flash.rfproj.json")
         .replacen(
             "\"name\": \"inlet\",\n              \"direction\": \"inlet\",\n              \"kind\": \"material\",\n              \"stream_id\": \"stream-heated\"",

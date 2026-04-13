@@ -2,11 +2,10 @@ use std::path::Path;
 
 use crate::{
     EntitlementSessionEvent, EntitlementSessionEventDriverOutcome, EntitlementSessionHostDispatch,
-    EntitlementSessionHostRuntime, EntitlementSessionHostTrigger,
-    EntitlementSessionLifecycleEvent, EntitlementSessionPanelDriverOutcome,
-    EntitlementSessionPolicy, EntitlementSessionRuntime, EntitlementSessionState,
-    RunPanelDriverOutcome, StudioAppAuthCacheContext, StudioAppCommandOutcome,
-    StudioAppMutableAuthCacheContext, WorkspaceControlActionOutcome,
+    EntitlementSessionHostRuntime, EntitlementSessionHostTrigger, EntitlementSessionLifecycleEvent,
+    EntitlementSessionPanelDriverOutcome, EntitlementSessionPolicy, EntitlementSessionRuntime,
+    EntitlementSessionState, RunPanelDriverOutcome, StudioAppAuthCacheContext,
+    StudioAppCommandOutcome, StudioAppMutableAuthCacheContext, WorkspaceControlActionOutcome,
     apply_run_panel_recovery_action, dispatch_entitlement_session_event_with_control_plane,
     dispatch_run_panel_intent_with_auth_cache, dispatch_run_panel_primary_action_with_auth_cache,
     dispatch_run_panel_widget_action_with_auth_cache, snapshot_entitlement_session_driver_state,
@@ -16,16 +15,16 @@ use rf_store::{StoredAuthCacheIndex, read_project_file};
 use rf_types::{RfError, RfResult};
 use rf_ui::AppState;
 
-use super::{
-    BootstrapSession, StudioBootstrapConfig, StudioBootstrapDispatch,
-    StudioBootstrapEntitlementPreflight, StudioBootstrapEntitlementSessionEvent,
-    StudioBootstrapReport, StudioBootstrapTrigger,
-};
 use super::seed::{
     BootstrapControlPlaneClient, app_state_from_project_file, normalized_system_time_now,
     seed_bootstrap_runtime_state, seed_sample_auth_cache,
 };
 use super::temp_cache::TemporaryCacheRoot;
+use super::{
+    BootstrapSession, StudioBootstrapConfig, StudioBootstrapDispatch,
+    StudioBootstrapEntitlementPreflight, StudioBootstrapEntitlementSessionEvent,
+    StudioBootstrapReport, StudioBootstrapTrigger,
+};
 
 struct BootstrapSessionResources<'a> {
     facade: &'a crate::StudioAppFacade,
@@ -279,10 +278,12 @@ fn dispatch_bootstrap_entitlement_host_trigger(
 fn command_outcome_from_workspace_control(
     outcome: WorkspaceControlActionOutcome,
 ) -> RfResult<StudioBootstrapDispatch> {
-    Ok(StudioBootstrapDispatch::AppCommand(StudioAppCommandOutcome {
-        boundary: outcome.boundary,
-        dispatch: outcome.dispatch,
-    }))
+    Ok(StudioBootstrapDispatch::AppCommand(
+        StudioAppCommandOutcome {
+            boundary: outcome.boundary,
+            dispatch: outcome.dispatch,
+        },
+    ))
 }
 
 impl BootstrapSession {
@@ -400,16 +401,12 @@ impl BootstrapSession {
             .filter(|suggestion| suggestion.source != rf_ui::SuggestionSource::LocalRules)
             .cloned()
             .collect();
-        suggestions.extend(crate::studio_local_rules::generate_local_canvas_suggestions(
-            &self.app_state,
-        ));
+        suggestions
+            .extend(crate::studio_local_rules::generate_local_canvas_suggestions(&self.app_state));
         self.app_state.replace_canvas_suggestions(suggestions);
     }
 
-    pub(crate) fn replace_canvas_suggestions(
-        &mut self,
-        suggestions: Vec<rf_ui::CanvasSuggestion>,
-    ) {
+    pub(crate) fn replace_canvas_suggestions(&mut self, suggestions: Vec<rf_ui::CanvasSuggestion>) {
         self.app_state.replace_canvas_suggestions(suggestions);
     }
 
@@ -448,7 +445,9 @@ impl BootstrapSession {
         }
 
         let _ = self.run_trigger(&StudioBootstrapTrigger::AppCommand(
-            crate::StudioAppCommand::run_workspace(crate::WorkspaceRunCommand::automatic_preferred()),
+            crate::StudioAppCommand::run_workspace(
+                crate::WorkspaceRunCommand::automatic_preferred(),
+            ),
         ))?;
 
         Ok(())

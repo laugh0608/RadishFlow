@@ -2489,7 +2489,7 @@ mod tests {
 
         assert_eq!(
             error.context().diagnostic_code(),
-            Some("solver.topological_ordering")
+            Some("solver.topological_ordering.two_unit_cycle")
         );
         assert_eq!(
             error.context().related_unit_ids(),

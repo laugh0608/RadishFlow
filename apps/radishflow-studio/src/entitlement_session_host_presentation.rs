@@ -35,7 +35,7 @@ impl EntitlementSessionHostTextView {
             ),
             format!(
                 "Recommended reason: {}",
-                schedule.recommended_reason.as_deref().unwrap_or("None")
+                schedule.recommended_reason.as_ref().unwrap_or(&"None")
             ),
             format!(
                 "Scheduler backoff active: {}",

@@ -1,6 +1,5 @@
 use super::helpers::{
-    dispatch_from_controller, foreground_entitlement_dispatch_detail,
-    global_event_from_lifecycle,
+    dispatch_from_controller, foreground_entitlement_dispatch_detail, global_event_from_lifecycle,
 };
 use super::*;
 
@@ -131,12 +130,11 @@ impl StudioGuiHost {
         }
 
         match self.controller.dispatch_ui_command(command_id)? {
-            StudioAppHostUiCommandDispatchResult::Executed(dispatch) => Ok(
-                StudioGuiHostUiCommandDispatchResult::Executed(dispatch_from_controller(
-                    dispatch,
-                    self.canvas_state(),
-                )),
-            ),
+            StudioAppHostUiCommandDispatchResult::Executed(dispatch) => {
+                Ok(StudioGuiHostUiCommandDispatchResult::Executed(
+                    dispatch_from_controller(dispatch, self.canvas_state()),
+                ))
+            }
             StudioAppHostUiCommandDispatchResult::IgnoredDisabled {
                 command_id,
                 detail,

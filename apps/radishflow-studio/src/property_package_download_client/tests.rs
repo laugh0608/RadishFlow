@@ -39,7 +39,8 @@ impl PropertyPackageDownloadFetcher for StaticDownloadFetcher {
 }
 
 struct ScriptedDownloadFetcher {
-    responses: RefCell<Vec<Result<PropertyPackageDownloadResponse, PropertyPackageDownloadFetchError>>>,
+    responses:
+        RefCell<Vec<Result<PropertyPackageDownloadResponse, PropertyPackageDownloadFetchError>>>,
     call_count: Cell<u32>,
 }
 
@@ -70,12 +71,7 @@ impl PropertyPackageDownloadFetcher for ScriptedDownloadFetcher {
 
 struct ScriptedHttpTransport {
     responses: RefCell<
-        Vec<
-            Result<
-                PropertyPackageDownloadHttpResponse,
-                PropertyPackageDownloadHttpTransportError,
-            >,
-        >,
+        Vec<Result<PropertyPackageDownloadHttpResponse, PropertyPackageDownloadHttpTransportError>>,
     >,
     call_count: Cell<u32>,
     requests: RefCell<Vec<PropertyPackageDownloadHttpRequest>>,
@@ -84,10 +80,7 @@ struct ScriptedHttpTransport {
 impl ScriptedHttpTransport {
     fn new(
         responses: Vec<
-            Result<
-                PropertyPackageDownloadHttpResponse,
-                PropertyPackageDownloadHttpTransportError,
-            >,
+            Result<PropertyPackageDownloadHttpResponse, PropertyPackageDownloadHttpTransportError>,
         >,
     ) -> Self {
         Self {
@@ -127,7 +120,8 @@ fn download_property_package_to_cache_fetches_response_and_persists_assets() {
     let payload = download
         .to_stored_payload()
         .expect("expected sample payload");
-    let integrity = property_package_payload_integrity(&payload).expect("expected payload integrity");
+    let integrity =
+        property_package_payload_integrity(&payload).expect("expected payload integrity");
     let manifest = sample_manifest(&integrity.hash, integrity.size_bytes);
     let lease_grant = sample_lease_grant(&integrity.hash, integrity.size_bytes);
     let fetcher = StaticDownloadFetcher {
@@ -160,7 +154,8 @@ fn download_property_package_to_cache_rejects_hash_mismatch_before_updating_inde
     let payload = download
         .to_stored_payload()
         .expect("expected sample payload");
-    let integrity = property_package_payload_integrity(&payload).expect("expected payload integrity");
+    let integrity =
+        property_package_payload_integrity(&payload).expect("expected payload integrity");
     let manifest = sample_manifest(&integrity.hash, integrity.size_bytes);
     let lease_grant = sample_lease_grant(&integrity.hash, integrity.size_bytes);
     let fetcher = StaticDownloadFetcher {
@@ -170,14 +165,9 @@ fn download_property_package_to_cache_rejects_hash_mismatch_before_updating_inde
         ),
     };
 
-    let error = download_property_package_to_cache(
-        &root,
-        &mut index,
-        &manifest,
-        &lease_grant,
-        &fetcher,
-    )
-    .expect_err("expected hash mismatch");
+    let error =
+        download_property_package_to_cache(&root, &mut index, &manifest, &lease_grant, &fetcher)
+            .expect_err("expected hash mismatch");
 
     assert_eq!(error.code().as_str(), "invalid_input");
     assert!(error.message().contains("payload hash"));
@@ -194,11 +184,14 @@ fn download_property_package_to_cache_retries_retryable_errors_before_success() 
     let payload = download
         .to_stored_payload()
         .expect("expected sample payload");
-    let integrity = property_package_payload_integrity(&payload).expect("expected payload integrity");
+    let integrity =
+        property_package_payload_integrity(&payload).expect("expected payload integrity");
     let manifest = sample_manifest(&integrity.hash, integrity.size_bytes);
     let lease_grant = sample_lease_grant(&integrity.hash, integrity.size_bytes);
     let fetcher = ScriptedDownloadFetcher::new(vec![
-        Err(PropertyPackageDownloadFetchError::timeout("adapter timed out")),
+        Err(PropertyPackageDownloadFetchError::timeout(
+            "adapter timed out",
+        )),
         Err(PropertyPackageDownloadFetchError::service_unavailable(
             "asset delivery is warming up",
         )),
@@ -225,7 +218,8 @@ fn download_property_package_to_cache_does_not_retry_non_retryable_errors() {
     let payload = download
         .to_stored_payload()
         .expect("expected sample payload");
-    let integrity = property_package_payload_integrity(&payload).expect("expected payload integrity");
+    let integrity =
+        property_package_payload_integrity(&payload).expect("expected payload integrity");
     let manifest = sample_manifest(&integrity.hash, integrity.size_bytes);
     let lease_grant = sample_lease_grant(&integrity.hash, integrity.size_bytes);
     let fetcher = ScriptedDownloadFetcher::new(vec![
@@ -238,14 +232,9 @@ fn download_property_package_to_cache_does_not_retry_non_retryable_errors() {
         )),
     ]);
 
-    let error = download_property_package_to_cache(
-        &root,
-        &mut index,
-        &manifest,
-        &lease_grant,
-        &fetcher,
-    )
-    .expect_err("expected non-retryable fetch failure");
+    let error =
+        download_property_package_to_cache(&root, &mut index, &manifest, &lease_grant, &fetcher)
+            .expect_err("expected non-retryable fetch failure");
 
     assert_eq!(fetcher.call_count(), 1);
     assert_eq!(error.code().as_str(), "invalid_input");
@@ -263,17 +252,19 @@ fn download_property_package_to_cache_reports_retry_exhaustion() {
     let payload = download
         .to_stored_payload()
         .expect("expected sample payload");
-    let integrity = property_package_payload_integrity(&payload).expect("expected payload integrity");
+    let integrity =
+        property_package_payload_integrity(&payload).expect("expected payload integrity");
     let manifest = sample_manifest(&integrity.hash, integrity.size_bytes);
     let lease_grant = sample_lease_grant(&integrity.hash, integrity.size_bytes);
     let fetcher = ScriptedDownloadFetcher::new(vec![
-        Err(PropertyPackageDownloadFetchError::rate_limited("retry later")),
+        Err(PropertyPackageDownloadFetchError::rate_limited(
+            "retry later",
+        )),
         Err(PropertyPackageDownloadFetchError::rate_limited(
             "retry later again",
         )),
     ]);
-    let retry_policy =
-        PropertyPackageDownloadRetryPolicy::new(2).expect("expected retry policy");
+    let retry_policy = PropertyPackageDownloadRetryPolicy::new(2).expect("expected retry policy");
 
     let error = download_property_package_to_cache_with_retry_policy(
         &root,
@@ -325,7 +316,10 @@ fn http_fetcher_maps_http_statuses_into_existing_failure_categories() {
         (404, PropertyPackageDownloadFetchErrorKind::NotFound),
         (408, PropertyPackageDownloadFetchErrorKind::Timeout),
         (429, PropertyPackageDownloadFetchErrorKind::RateLimited),
-        (503, PropertyPackageDownloadFetchErrorKind::ServiceUnavailable),
+        (
+            503,
+            PropertyPackageDownloadFetchErrorKind::ServiceUnavailable,
+        ),
         (504, PropertyPackageDownloadFetchErrorKind::Timeout),
         (302, PropertyPackageDownloadFetchErrorKind::InvalidResponse),
     ];
@@ -425,7 +419,9 @@ fn reqwest_transport_fetches_local_http_response() {
 #[test]
 fn reqwest_transport_maps_connection_errors() {
     let closed_listener = TcpListener::bind("127.0.0.1:0").expect("expected free port");
-    let address = closed_listener.local_addr().expect("expected local address");
+    let address = closed_listener
+        .local_addr()
+        .expect("expected local address");
     drop(closed_listener);
 
     let transport = ReqwestPropertyPackageDownloadHttpTransport::with_options(

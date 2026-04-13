@@ -143,6 +143,7 @@ pub enum StudioAppHostCommand {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+#[allow(clippy::large_enum_variant)]
 pub enum StudioAppHostCommandOutcome {
     WindowOpened(StudioAppWindowHostOpenWindow),
     WindowDispatched(StudioAppWindowHostDispatch),
@@ -382,6 +383,7 @@ pub struct StudioAppHostWindowDispatchResult {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[allow(clippy::large_enum_variant)]
 pub enum StudioAppHostUiCommandDispatchResult {
     Executed(StudioAppHostWindowDispatchResult),
     IgnoredDisabled {

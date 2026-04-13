@@ -415,7 +415,7 @@ fn insert_menu_command(
     insert_menu_command(&mut nodes[index].children, &path[1..], command);
 }
 
-fn sort_menu_nodes(nodes: &mut Vec<StudioGuiCommandMenuNode>) {
+fn sort_menu_nodes(nodes: &mut [StudioGuiCommandMenuNode]) {
     for node in nodes.iter_mut() {
         sort_menu_nodes(&mut node.children);
     }
@@ -578,34 +578,35 @@ mod tests {
 
     #[test]
     fn gui_command_registry_includes_canvas_commands_when_suggestions_exist() {
-        let mut canvas = crate::StudioGuiCanvasState::default();
-        canvas.suggestions = vec![
-            rf_ui::CanvasSuggestion::new(
-                rf_ui::CanvasSuggestionId::new("sug-a"),
-                rf_ui::SuggestionSource::LocalRules,
-                0.9,
-                rf_ui::GhostElement {
-                    kind: rf_ui::GhostElementKind::Connection,
-                    target_unit_id: rf_types::UnitId::new("flash-1"),
-                    visual_kind: rf_ui::StreamVisualKind::Material,
-                    visual_state: rf_ui::StreamVisualState::Suggested,
-                },
-                "test",
-            ),
-            rf_ui::CanvasSuggestion::new(
-                rf_ui::CanvasSuggestionId::new("sug-b"),
-                rf_ui::SuggestionSource::LocalRules,
-                0.7,
-                rf_ui::GhostElement {
-                    kind: rf_ui::GhostElementKind::Connection,
-                    target_unit_id: rf_types::UnitId::new("flash-1"),
-                    visual_kind: rf_ui::StreamVisualKind::Material,
-                    visual_state: rf_ui::StreamVisualState::Suggested,
-                },
-                "test",
-            ),
-        ];
-        canvas.focused_suggestion_id = Some(rf_ui::CanvasSuggestionId::new("sug-a"));
+        let canvas = crate::StudioGuiCanvasState {
+            suggestions: vec![
+                rf_ui::CanvasSuggestion::new(
+                    rf_ui::CanvasSuggestionId::new("sug-a"),
+                    rf_ui::SuggestionSource::LocalRules,
+                    0.9,
+                    rf_ui::GhostElement {
+                        kind: rf_ui::GhostElementKind::Connection,
+                        target_unit_id: rf_types::UnitId::new("flash-1"),
+                        visual_kind: rf_ui::StreamVisualKind::Material,
+                        visual_state: rf_ui::StreamVisualState::Suggested,
+                    },
+                    "test",
+                ),
+                rf_ui::CanvasSuggestion::new(
+                    rf_ui::CanvasSuggestionId::new("sug-b"),
+                    rf_ui::SuggestionSource::LocalRules,
+                    0.7,
+                    rf_ui::GhostElement {
+                        kind: rf_ui::GhostElementKind::Connection,
+                        target_unit_id: rf_types::UnitId::new("flash-1"),
+                        visual_kind: rf_ui::StreamVisualKind::Material,
+                        visual_state: rf_ui::StreamVisualState::Suggested,
+                    },
+                    "test",
+                ),
+            ],
+            focused_suggestion_id: Some(rf_ui::CanvasSuggestionId::new("sug-a")),
+        };
 
         let registry = StudioGuiCommandRegistry::from_surfaces(
             &StudioAppHostUiCommandModel::default(),

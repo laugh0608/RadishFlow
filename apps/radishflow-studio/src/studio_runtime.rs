@@ -108,10 +108,10 @@ impl StudioRuntimeTimerHostCommand {
     }
 
     fn from_host_effect(effect: &StudioRuntimeHostEffect) -> Option<Self> {
-        let follow_up_trigger = match &effect.follow_up {
-            Some(StudioRuntimeHostFollowUp::DispatchTrigger(trigger)) => Some(trigger.clone()),
-            None => None,
-        };
+        let follow_up_trigger = effect
+            .follow_up
+            .as_ref()
+            .map(|StudioRuntimeHostFollowUp::DispatchTrigger(trigger)| trigger.clone());
 
         match &effect.effect {
             StudioRuntimeEffect::EntitlementTimer(timer_effect) => match timer_effect {

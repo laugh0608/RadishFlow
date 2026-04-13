@@ -195,7 +195,13 @@ fn gui_driver_surfaces_local_rules_canvas_state_from_project() {
     assert_eq!(dispatch.canvas.suggestions.len(), 3);
     assert_eq!(dispatch.snapshot.canvas.view().suggestion_count, 3);
     assert_eq!(
-        dispatch.snapshot.runtime.run_panel.view().primary_action.label,
+        dispatch
+            .snapshot
+            .runtime
+            .run_panel
+            .view()
+            .primary_action
+            .label,
         "Resume"
     );
     assert_eq!(
@@ -225,10 +231,13 @@ fn gui_driver_dispatch_snapshot_aggregates_gui_facing_state() {
         .expect("expected open dispatch");
 
     assert!(
-        dispatch.snapshot.command_registry.sections.len() >= 1,
+        !dispatch.snapshot.command_registry.sections.is_empty(),
         "expected at least one command section in gui snapshot"
     );
-    assert_eq!(dispatch.snapshot.canvas.primary_action().label, "Accept suggestion");
+    assert_eq!(
+        dispatch.snapshot.canvas.primary_action().label,
+        "Accept suggestion"
+    );
     assert_eq!(dispatch.window.canvas.suggestion_count, 3);
     assert_eq!(
         dispatch.window.layout().default_focus_area,
@@ -248,7 +257,13 @@ fn gui_driver_dispatch_snapshot_aggregates_gui_facing_state() {
         rf_ui::RunStatus::Idle
     );
     assert_eq!(
-        dispatch.window.runtime.run_panel.view().primary_action.label,
+        dispatch
+            .window
+            .runtime
+            .run_panel
+            .view()
+            .primary_action
+            .label,
         "Resume"
     );
     assert!(dispatch.snapshot.runtime.entitlement_host.is_some());
@@ -275,9 +290,9 @@ fn gui_driver_routes_network_restored_without_open_windows() {
         .expect("expected lifecycle dispatch");
 
     match dispatch.outcome {
-        StudioGuiDriverOutcome::HostCommand(
-            StudioGuiHostCommandOutcome::LifecycleDispatched(lifecycle),
-        ) => {
+        StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::LifecycleDispatched(
+            lifecycle,
+        )) => {
             assert!(lifecycle.dispatch.is_none());
         }
         other => panic!("expected lifecycle outcome, got {other:?}"),
@@ -423,7 +438,10 @@ fn gui_driver_automatic_runs_after_canvas_write_when_workspace_is_active() {
             .as_deref(),
         Some("example-feed-heater-flash-rev-1-seq-1")
     );
-    assert_eq!(dispatch.snapshot.runtime.run_panel.view().status_label, "Converged");
+    assert_eq!(
+        dispatch.snapshot.runtime.run_panel.view().status_label,
+        "Converged"
+    );
 
     let _ = fs::remove_file(project_path);
 }
@@ -477,7 +495,9 @@ fn gui_driver_recovery_then_resume_rejoins_automatic_mainline() {
                 assert_eq!(outcome.action.title, "Create outlet stream");
                 assert_eq!(
                     outcome.applied_target,
-                    Some(rf_ui::InspectorTarget::Unit(rf_types::UnitId::new("feed-1")))
+                    Some(rf_ui::InspectorTarget::Unit(rf_types::UnitId::new(
+                        "feed-1"
+                    )))
                 );
             }
             other => panic!("expected recovery dispatch, got {other:?}"),
@@ -497,7 +517,13 @@ fn gui_driver_recovery_then_resume_rejoins_automatic_mainline() {
         rf_ui::SimulationMode::Hold
     );
     assert_eq!(
-        recovery.snapshot.runtime.run_panel.view().primary_action.label,
+        recovery
+            .snapshot
+            .runtime
+            .run_panel
+            .view()
+            .primary_action
+            .label,
         "Resume"
     );
 
@@ -547,7 +573,10 @@ fn gui_driver_recovery_then_resume_rejoins_automatic_mainline() {
             .as_deref(),
         Some("example-unbound-outlet-port-rev-1-seq-1")
     );
-    assert_eq!(resumed.snapshot.runtime.run_panel.view().status_label, "Converged");
+    assert_eq!(
+        resumed.snapshot.runtime.run_panel.view().status_label,
+        "Converged"
+    );
 }
 
 #[test]
@@ -607,7 +636,10 @@ fn gui_driver_keeps_recovery_command_presentation_aligned_across_surfaces_after_
     assert!(recovery_toolbar_item.enabled);
     assert!(recovery_list_item.enabled);
     assert!(recovery_menu_item.enabled);
-    assert_eq!(recovery_palette_item.label, "Recover run panel failure (F8)");
+    assert_eq!(
+        recovery_palette_item.label,
+        "Recover run panel failure (F8)"
+    );
     assert_eq!(recovery_list_item.label, "Recover run panel failure (F8)");
     assert_eq!(recovery_toolbar_item.label, "Recover run panel failure");
     assert_eq!(recovery_menu_item.label, "Recover run panel failure (F8)");
@@ -623,8 +655,14 @@ fn gui_driver_keeps_recovery_command_presentation_aligned_across_surfaces_after_
         recovery_palette_item.hover_text,
         "Apply the current run panel recovery action in the target window\nMenu: Run > Recovery > Recover Run Panel Failure"
     );
-    assert_eq!(recovery_toolbar_item.hover_text, recovery_palette_item.hover_text);
-    assert_eq!(recovery_menu_item.hover_text, recovery_palette_item.hover_text);
+    assert_eq!(
+        recovery_toolbar_item.hover_text,
+        recovery_palette_item.hover_text
+    );
+    assert_eq!(
+        recovery_menu_item.hover_text,
+        recovery_palette_item.hover_text
+    );
 }
 
 #[test]
@@ -722,7 +760,10 @@ fn gui_driver_command_surface_dispatch_matches_shortcut_route_for_activate_works
         other => panic!("expected executed shortcut outcome, got {other:?}"),
     }
 
-    assert_eq!(surface_dispatch.window.commands, shortcut_dispatch.window.commands);
+    assert_eq!(
+        surface_dispatch.window.commands,
+        shortcut_dispatch.window.commands
+    );
     assert_eq!(
         surface_dispatch.window.runtime.control_state,
         shortcut_dispatch.window.runtime.control_state

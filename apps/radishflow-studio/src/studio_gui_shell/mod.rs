@@ -47,6 +47,7 @@ struct RadishFlowStudioApp {
     state: AppState,
 }
 
+#[allow(clippy::large_enum_variant)]
 enum AppState {
     Ready(ReadyAppState),
     Failed(String),
