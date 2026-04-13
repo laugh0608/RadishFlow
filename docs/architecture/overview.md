@@ -91,6 +91,7 @@ RadishFlow 的目标架构已经冻结为“桌面端三层 + 外部控制面”
 同时，Studio GUI-facing 状态边界当前也已进一步冻结为：
 
 - `StudioGuiHost` / `StudioGuiDriver` 作为 GUI 面向的平台事件与宿主命令入口
+- 当前 GUI 正式命令面已进一步冻结为 `StudioGuiEvent::UiCommandRequested { command_id } -> StudioGuiHostCommand::DispatchUiCommand { command_id }`，至少覆盖 `run_panel.recover_failure`、`entitlement.sync` 与 `entitlement.refresh_offline_lease`；GUI 壳不再继续保留 entitlement 专用事件/命令旁路
 - `StudioGuiPlatformHost` 作为平台 timer 调度适配层，负责把下一条 pending timer binding 的前后变化收口为平台侧 `Arm / Rearm / Clear` 请求，并持有平台 timer adapter、平台失败日志与 GUI 可直接消费的 `platform_notice`
 - `StudioGuiPlatformTimerDriverState` 作为平台 native timer 适配层，负责消费上述请求、保存当前 native timer id 与逻辑 binding 的映射，并在 callback 到来时反查回 `window_id + handle_id`
 - 平台若按 `native_timer_id` 回灌 callback，当前应优先消费 `StudioGuiPlatformHost::dispatch_native_timer_elapsed_by_native_id(...)` 的正式 outcome；命中有效映射时继续分发，命中不存在或过期 id 时返回显式 ignored outcome，而不是把平台层常见竞态继续上抛为 `RfError`
@@ -118,6 +119,7 @@ RadishFlow 的目标架构已经冻结为“桌面端三层 + 外部控制面”
 - `StudioGuiWindowModel.drop_preview` 当前又已补出 `overlay`，显式带出目标 region/stack group、tab 插入位、高亮 area 集与目标 active tab；真实 GUI 不必再从 `drop_target + preview_layout` 手工拆 overlay 提示语义
 - 第一版 `eframe/egui` GUI 壳当前也已直接消费这份 `drop_preview.overlay`，把局部插入竖条、anchor 顶线、新 stack 占位、target-anchored 浮动 preview 与局部 hint pill 直接画在目标位置，而不是继续依赖顶栏摘要或壳层私有推导
 - 当前 GUI 壳仍明确停留在“单原生窗口承载逻辑窗口切换”的阶段，不在这一轮把范围扩张到多原生窗口宿主
+- `StudioAppHostController` / `StudioAppWindowHostManager` 当前也已把前台 entitlement、前台 recovery 与按窗口 recovery 的历史包装器压回既有 `dispatch_ui_action(...)`、`dispatch_window_trigger(...)` 与 `StudioRuntimeTrigger` 主通路；后续若新增 GUI-facing 动作，应优先复用稳定 `command_id`、`UiAction` 或 trigger，而不是再新增一层“foreground wrapper”命令
 - `StudioGuiPlatformHost` 当前会在每次事件派发和 due timer 排空后比较前后 pending timer binding，把平台真正需要执行的 timer 调度差异收口为显式 `native_timer_request`，并继续携带 `window_id / handle_id / slot`
 - `StudioGuiPlatformTimerDriverState` 当前会把这份 request 继续收口为平台可执行的 `Arm / Rearm / Clear` 命令，并在 native timer 创建后记录 `native_timer_id -> logical binding` 映射；平台若创建失败，也已有显式 failure ack 用于清理 pending 状态
 - 平台 native timer callback 当前也已继续收口为 `Dispatched / IgnoredUnknownNativeTimer / IgnoredStaleNativeTimer` 三类正式结果，真实 GUI 或框架 glue 可直接按 outcome 决定是否忽略，无需再把 stale/missing callback 包装成错误流

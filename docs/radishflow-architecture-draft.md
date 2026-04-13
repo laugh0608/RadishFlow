@@ -269,6 +269,7 @@ RadishFlow/
 - 已建立 `entitlement_control`、`entitlement_panel_driver`、`entitlement_preflight` 与 `entitlement_session_driver`，把 entitlement panel 动作、启动预检、会话内调度和显式 session event 宿主收口为 Studio 应用层入口
 - 当前最小桌面入口 `run_studio_bootstrap` / `main.rs` 已改为默认通过 `StudioBootstrapTrigger::WidgetPrimaryAction -> RunPanelWidgetEvent -> run_panel_driver -> WorkspaceControlAction -> StudioAppFacade` 触发运行链路，同时仍保留显式 `RunPanelIntent` 兼容入口
 - 当前 entitlement 会话调度也已通过 `EntitlementSessionEvent::{SessionStarted, LoginCompleted, TimerElapsed, EntitlementCommandCompleted}` 形成统一事件语义，并由 Studio 侧维护失败退避与下一次建议检查时机
+- 当前 GUI / app host 命令面也已继续收口：`run_panel.recover_failure`、`entitlement.sync` 与 `entitlement.refresh_offline_lease` 等正式动作已统一走稳定 `command_id -> UiAction/trigger` 主通路，不再继续保留 entitlement 或 foreground recovery 的历史包装旁路
 - 当前默认包选择策略保持保守，只在唯一候选时自动选中，多包场景要求显式指定 package
 - Automatic 运行当前先根据 `SimulationMode` / `pending_reason` 决定是否 skip，再决定是否需要 preferred package 解析
 
