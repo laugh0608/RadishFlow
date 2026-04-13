@@ -128,9 +128,6 @@ pub enum StudioAppHostCommand {
     DispatchUiAction {
         action: StudioAppHostUiAction,
     },
-    DispatchWindowRunPanelRecoveryAction {
-        window_id: StudioWindowHostId,
-    },
     FocusWindow {
         window_id: StudioWindowHostId,
     },
@@ -832,27 +829,6 @@ impl StudioAppHostController {
         })
     }
 
-    pub fn dispatch_window_run_panel_recovery_action(
-        &mut self,
-        window_id: StudioWindowHostId,
-    ) -> RfResult<StudioAppHostWindowDispatchResult> {
-        let (outcome, projection) =
-            self.execute_command(StudioAppHostCommand::DispatchWindowRunPanelRecoveryAction {
-                window_id,
-            })?;
-        let StudioAppHostCommandOutcome::WindowDispatched(dispatch) = outcome else {
-            return Err(RfError::invalid_input(
-                "app host controller expected run panel recovery dispatch outcome",
-            ));
-        };
-
-        Ok(StudioAppHostWindowDispatchResult {
-            projection,
-            target_window_id: dispatch.target_window_id,
-            effects: dispatch_effects_from_session(dispatch.dispatch),
-        })
-    }
-
     pub fn dispatch_ui_action(
         &mut self,
         action: StudioAppHostUiAction,
@@ -1232,9 +1208,6 @@ fn map_command(command: StudioAppHostCommand) -> StudioAppWindowHostCommand {
             StudioAppWindowHostCommand::DispatchUiAction {
                 action: map_ui_action(action),
             }
-        }
-        StudioAppHostCommand::DispatchWindowRunPanelRecoveryAction { window_id } => {
-            StudioAppWindowHostCommand::DispatchRunPanelRecoveryAction { window_id }
         }
         StudioAppHostCommand::FocusWindow { window_id } => {
             StudioAppWindowHostCommand::FocusWindow { window_id }
@@ -2413,7 +2386,10 @@ mod tests {
         }
 
         let recovery = controller
-            .dispatch_window_run_panel_recovery_action(opened.registration.window_id)
+            .dispatch_window_trigger(
+                opened.registration.window_id,
+                StudioRuntimeTrigger::WidgetRecoveryAction,
+            )
             .expect("expected recovery dispatch");
 
         assert_eq!(recovery.target_window_id, opened.registration.window_id);
