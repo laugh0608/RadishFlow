@@ -1,6 +1,6 @@
 # Auth And Entitlement Architecture
 
-更新时间：2026-04-03
+更新时间：2026-04-04
 
 ## 目标
 
@@ -618,6 +618,31 @@ RadishFlow Studio
 - `apps/radishflow-studio` 当前也已补出 entitlement panel driver，把 `rf-ui` 的 entitlement widget event 正式桥接回 `StudioAppFacade` 的 control plane command
 - `apps/radishflow-studio` 当前也已补出 entitlement startup preflight 与 session scheduler，最小规则收口为“缺失快照先 sync、离线租约临近过期先 refresh、entitlement snapshot 临近过期补 sync”
 - `apps/radishflow-studio` 当前也已补出 `entitlement_session_driver`，把 `SessionStarted`、`LoginCompleted`、`TimerElapsed` 与 `EntitlementCommandCompleted` 这类会话事件收口为统一应用层入口，并把失败退避、下一次建议检查时机和 session state 回写固定在 Studio 侧
+- `apps/radishflow-studio` 当前也已补出 `entitlement_session_host`，把 session event、entitlement panel 主动作和指定动作进一步收口为统一宿主触发入口，并显式补出 `NetworkRestored` / `WindowForegrounded` 这类 GUI 生命周期事件到现有 session tick 语义的映射；同时 host 当前已可把 `next_check_at` 收口为可直接 arm 的 timer 请求对象，并进一步产出 `Schedule / Reschedule / Keep / Clear` 这类宿主侧定时器决策；当 runtime 自身没有 entitlement notice 时，宿主可把这类提示覆盖到 panel 视图层，但不回写 `EntitlementState`；当前又进一步补出 `EntitlementSessionHostSnapshot`，把 schedule、timer arm、timer command、host notice 与 panel driver state 聚合成单一宿主消费对象，并补出 `EntitlementSessionHostContext` 负责保留当前已挂 timer 与上一份 snapshot，让 bootstrap 或后续 GUI 宿主不必再各自重复实现这套上下文推进逻辑
+- `apps/radishflow-studio` 当前又已补出 `EntitlementSessionHostPresentation / TextView`，把 host snapshot 的 schedule/timer/timer command/host notice 文本消费正式收口回宿主模块，`main.rs` 这类最小入口不再继续手写 entitlement host 输出拼装
+- `apps/radishflow-studio` 当前又已在其上补出 `EntitlementSessionHostRuntimeOutput / TimerEffect / Runtime`，把 `Schedule / Reschedule / Keep / Clear` 进一步翻译成更接近真实桌面宿主的 timer effect，并由 bootstrap 直接消费这一层，而不是继续自己持有和解释低层 host context
+- `apps/radishflow-studio` 当前又已把 bootstrap 初始化与单次 trigger 执行收为可复用 session，并补出 `TimerElapsed -> NetworkRestored -> WindowForegrounded` 这类连续宿主事件序列验证，确认共享 host runtime 下会持续复用同一份 timer effect / snapshot 推进
+- `apps/radishflow-studio` 当前又已补出 `StudioRuntime`，把上述可复用 session 再上提成共享顶层 app-runtime 入口；`run_studio_bootstrap(...)` 与 `apps/radishflow-studio/src/main.rs` 现已统一通过这层分发 `StudioBootstrapTrigger`，不再各自保留一套 entitlement host runtime 驱动和展示收口逻辑
+- `apps/radishflow-studio` 当前又已在 `StudioRuntime` 顶层补出 `StudioRuntimeOutput / StudioRuntimeEffect`，把 entitlement timer 这类宿主侧 effect 从 `StudioBootstrapReport` 内部字段再上提一层，帮助后续真实 GUI 宿主直接消费 runtime 输出，而不必反向依赖 bootstrap 报告细节
+- `apps/radishflow-studio` 当前又已给顶层 runtime 补出正式 `StudioRuntimeConfig / Trigger / Report / Dispatch` 命名，`main.rs` 已开始只消费这组顶层契约；`StudioBootstrap*` 继续保留为兼容最小 bootstrap 入口，而不是再作为真实宿主的首选接口
+- `apps/radishflow-studio` 当前又已在 `StudioRuntime` 顶层补出带稳定 `id`、`follow_up trigger` 与 `ack` 状态的宿主 effect 协议，当前至少覆盖 entitlement timer 这一类 effect，使真实 GUI 宿主可以显式区分“待应用 / 已应用 / 已过时”的宿主动作，并直接复用 runtime 提供的 `TimerElapsed` 回灌 trigger
+- `apps/radishflow-studio` 当前又已在其上补出 `StudioRuntimeTimerHostCommand` 薄层，把 entitlement timer 的 `Arm / Rearm / Keep / Clear`、effect id 与 follow-up trigger 收成专门 timer 宿主消费面，避免真实 GUI 继续从 generic host effect 列表手工二次映射
+- `apps/radishflow-studio` 当前又已在其上补出 `StudioRuntimeTimerHostState / Transition`，把 timer 槽位当前持有状态、stale command 忽略逻辑与 `apply command -> ack` 闭环都收成纯数据状态机，使真实 GUI 可直接接线到单窗口或多窗口宿主的 timer 句柄管理
+- `apps/radishflow-studio` 当前又已补出 `StudioWindowHostState` 与 `StudioRuntimeHostPort`，把单个窗口宿主实例对 entitlement timer 槽位的持有、替换、ack 与销毁清理收口成正式容器；`main.rs` 这类入口当前只消费 host port，不再自行拼装 `StudioRuntime + StudioRuntimeTimerHostState + ack`
+- `apps/radishflow-studio` 当前又已继续把 `StudioRuntimeHostPort` 提升为应用级多窗口宿主容器，补出 `StudioWindowHostId`、稳定 `entitlement timer owner`、owner 窗口销毁后的同进程转移与最后一个窗口关闭后的 parked timer 恢复口径；当前正式规则是“全局 entitlement timer 只归一个窗口宿主持有，其余窗口只观察 runtime，不各自复制 timer state”
+- `apps/radishflow-studio` 当前又已在 `StudioRuntimeHostPort` 之上补出 `StudioWindowHostTimerDriverCommand` 与 `StudioWindowHostLifecycleEvent`，把“原生 timer handle 该 arm/rearm/keep/clear/transfer/park/restore 什么”和“GUI 生命周期事件如何映射到 runtime”都正式收口到宿主端口，未来 GUI 不再自己解释 `transition/retirement` 或手写 `StudioRuntimeTrigger` 映射
+- `apps/radishflow-studio` 当前又已在其上补出 `StudioWindowTimerDriverState / Transition / Ack`，把“host port command -> native timer handle 绑定/迁移/park/restore -> 新 handle 回写”继续收成独立 adapter 层；未来 GUI 只需要提供真实 handle id/对象，不再自行维护 pending arm/rearm 状态
+- `apps/radishflow-studio` 当前又已在其上补出 `StudioWindowSession`，把窗口打开/关闭、生命周期事件分发、host port 输出消费以及 timer driver ack 全部收进单一会话 adapter；`main.rs` 这类入口当前不再直接同时持有 `StudioRuntimeHostPort` 和 `StudioWindowTimerDriverState`
+- `apps/radishflow-studio` 当前又已在其上补出 `StudioAppWindowHostManager`，把多窗口注册表、foreground window、全局 `TimerElapsed / NetworkRestored / LoginCompleted` 事件路由与 owner 关闭后的前台窗口切换继续收成 app 级宿主容器
+- `apps/radishflow-studio` 当前又已在 `StudioAppWindowHostManager` 之上补出 `StudioAppWindowHostCommand / StudioAppWindowHostCommandOutcome`，把窗口打开、关闭、聚焦、runtime trigger 分发和全局宿主事件统一成单一 app host 命令入口；后续真实 GUI 应优先消费这一层，而不是分别手写 manager 方法调用序列
+- `apps/radishflow-studio` 当前又已在其上补出 `StudioAppHost`，把 app host 命令执行与 `StudioAppHostSnapshot` 聚合成单一顶层容器；snapshot 当前至少冻结 `registered windows`、每个窗口的 `role/foreground/timer slot`、`entitlement timer owner` 与 `parked entitlement timer`，让 GUI 不必在命令执行后再分别反查 manager 与 host port
+- `apps/radishflow-studio` 当前又已继续把 `StudioAppHost` 输出推进到 GUI 可直接消费的变更边界，新增 `StudioAppHostChangeSet`，显式表达窗口新增/移除/更新、foreground 迁移、timer owner 迁移与 parked timer 变化；后续 GUI 不应再自己 diff 前后 snapshot
+- `apps/radishflow-studio` 当前又已在其上补出 `StudioAppHostState + StudioAppHostStore + StudioAppHostProjection`，把 GUI 真正持有的 app-level 宿主状态正式冻结为单一 `state` 对象，并把 `StudioAppHostOutput -> state/projection` 的推进收口到 store；当前 `entitlement timer owner + parked timer + foreground` 的组合语义也已进一步收成 `StudioAppHostEntitlementTimerState`，后续 GUI 不应再同时理解 `outcome + snapshot + changes` 才能判断宿主状态
+- `apps/radishflow-studio` 当前又已在其上补出 `StudioAppHostController` 与一组 typed command result，把窗口打开、关闭、聚焦、runtime trigger 与全局事件进一步收口为 GUI 可直接调用的宿主入口；后续 GUI 应优先消费 `controller + state/store`，而不是直接 match `WindowOpened / WindowClosed / WindowDispatched / Ignored*` 这类 raw app host command outcome
+- `apps/radishflow-studio` 当前又已继续把 GUI 侧宿主副作用收口到 controller 返回值，新增 dispatch/close effect summary，把 `runtime report`、`entitlement timer effect`、native timer transition/ack 与 close retirement 从低层 session/raw 结构中提取为正式 GUI 宿主消费面；后续 GUI 不应再直接翻读 `StudioWindowSessionDispatch`、`StudioRuntimeHostPortOutput` 或 `StudioAppWindowHostClose`
+- `apps/radishflow-studio` 当前又已在 `StudioAppHostController` 上补出 `dispatch_ui_command(command_id)`，把 GUI 侧命令消费面进一步冻结到稳定 command id；`UiCommandModel` 当前已可作为菜单、快捷键、命令面板共享的宿主 action registry，而不必让各入口继续各自翻译 `UiAction` 或 availability 枚举
+- 截至 2026-04-05，首批已冻结为真实宿主命令的 run panel command id 为 `run_panel.run_manual`、`run_panel.resume_workspace`、`run_panel.set_hold`、`run_panel.set_active` 与 `run_panel.recover_failure`；后续 GUI 应优先围绕这组统一 registry 建立原生命令绑定，而不是再分散直连 widget action 或窗口前景分发细节
+- 截至 2026-04-04，Studio entitlement 宿主在应用层已形成一条连续正式边界：`StudioRuntime -> StudioRuntimeHostPort -> StudioWindowSession -> StudioAppWindowHostManager -> StudioAppHost -> StudioAppHostState/Store/Projection -> StudioAppHostController + effect summary`；当前最小入口已经开始消费这条边界，后续真实 GUI 应优先直接接到这组正式层次，而不是回退到 bootstrap、session 或 raw command outcome 细节
 
 ### `rf-store`
 
@@ -873,7 +898,7 @@ scope 当前建议按“产品.资源.动作”命名，而不是继续使用过
 
 在继续深化后端与桌面接入代码之前，当前更值得优先收口以下事项：
 
-1. 在已补出的 `entitlement_session_driver + EntitlementSessionEvent` 基础上，把 `LoginCompleted`、定时器到达 `next_check_at` 和网络恢复等真实 GUI 生命周期事件接到统一会话宿主
+1. 在已补出的 `entitlement_session_driver + entitlement_session_host + EntitlementSessionEvent` 基础上，把网络恢复、窗口恢复前台和真实 GUI 定时器宿主接到统一会话入口
 2. 在已接通的控制面 HTTP client、下载通道和 session scheduler 之上，细化联网失败后的用户提示、刷新节奏和重试触发口径
 3. 在已接通的 `PropertyPackageProvider` 本地缓存实现之上，补更多实际包样例和加载/替换场景测试
 4. 继续保持其余控制面 JSON 契约到运行时 DTO 的协议映射层统一收口到应用层

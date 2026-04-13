@@ -177,25 +177,28 @@ cargo test -p rf-thermo
 - 相标签当前只保留 `overall`、`liquid`、`vapor`
 - `rf-model` 只承载对象模型，不提前承载求解策略或 COM 语义
 - `rf-thermo` 与 `rf-flash` 先稳定接口，再补 Antoine、Raoult 和 Rachford-Rice
+- MVP 保持单文档工作区，但源码仍按职责拆分，不以单文件承载全部状态
+- 单个源码文件原则上不超过 1000 行；若文件已接近或超过该阈值，后续新增实现应优先拆分职责、提取子模块或测试 helper，而不是继续膨胀原文件
+- `src/` 下源码应按职责做浅层目录分组，优先使用 1 层子目录收纳同域模块，避免长期把所有模块平铺在 `src/` 根下，也避免为了“整齐”堆出过深目录树
 
 ### Git 提交规范
 
-使用简洁明确的 Conventional Commits 风格：
+使用简洁明确的 Conventional Commits 风格，示例：
 
 ```text
-feat: implement binary tp flash solver
-docs: refine mvp planning notes
-chore: initialize workspace skeleton
+docs: 更新了相关进度和协作文档
+
+- 更新了 AGENTS.md 文档
+- 为项目协作添加了相关约束规则
+- 主要是对齐了项目现状代码与文档的进度
 ```
 
-大修改示例：
+```text
+ci(ruleset): add repository governance checks
+```
 
 ```text
-docs(auth): refine control plane contracts
-
-- 更改了 EntitlementSnapshot JSON 契约
-- 完善了 PropertyPackageManifest 清单字段
-- 修复了客户端注册与 scope 命名口径不一致
+chore(PR): establish branch and pr conventions
 ```
 
 规则：

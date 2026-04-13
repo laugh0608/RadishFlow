@@ -1,4 +1,4 @@
-use rf_types::UnitId;
+use rf_types::{DiagnosticPortTarget, StreamId, UnitId};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum DiagnosticSeverity {
@@ -11,9 +11,12 @@ pub enum DiagnosticSeverity {
 pub struct DiagnosticSummary {
     pub document_revision: u64,
     pub highest_severity: DiagnosticSeverity,
+    pub primary_code: Option<String>,
     pub primary_message: String,
     pub diagnostic_count: usize,
     pub related_unit_ids: Vec<UnitId>,
+    pub related_stream_ids: Vec<StreamId>,
+    pub related_port_targets: Vec<DiagnosticPortTarget>,
 }
 
 impl DiagnosticSummary {
@@ -25,10 +28,41 @@ impl DiagnosticSummary {
         Self {
             document_revision,
             highest_severity,
+            primary_code: None,
             primary_message: primary_message.into(),
             diagnostic_count: 1,
             related_unit_ids: Vec::new(),
+            related_stream_ids: Vec::new(),
+            related_port_targets: Vec::new(),
         }
+    }
+
+    pub fn with_primary_code(mut self, primary_code: impl Into<String>) -> Self {
+        self.primary_code = Some(primary_code.into());
+        self
+    }
+
+    pub fn with_primary_code_from_message(mut self) -> Self {
+        self.primary_code = prefixed_diagnostic_code(&self.primary_message);
+        self
+    }
+
+    pub fn with_related_unit_ids(mut self, related_unit_ids: Vec<UnitId>) -> Self {
+        self.related_unit_ids = related_unit_ids;
+        self
+    }
+
+    pub fn with_related_stream_ids(mut self, related_stream_ids: Vec<StreamId>) -> Self {
+        self.related_stream_ids = related_stream_ids;
+        self
+    }
+
+    pub fn with_related_port_targets(
+        mut self,
+        related_port_targets: Vec<DiagnosticPortTarget>,
+    ) -> Self {
+        self.related_port_targets = related_port_targets;
+        self
     }
 }
 
@@ -38,6 +72,8 @@ pub struct DiagnosticSnapshot {
     pub code: String,
     pub message: String,
     pub related_unit_ids: Vec<UnitId>,
+    pub related_stream_ids: Vec<StreamId>,
+    pub related_port_targets: Vec<DiagnosticPortTarget>,
 }
 
 impl DiagnosticSnapshot {
@@ -51,6 +87,22 @@ impl DiagnosticSnapshot {
             code: code.into(),
             message: message.into(),
             related_unit_ids: Vec::new(),
+            related_stream_ids: Vec::new(),
+            related_port_targets: Vec::new(),
         }
     }
+}
+
+fn prefixed_diagnostic_code(message: &str) -> Option<String> {
+    message
+        .split(": ")
+        .find(|segment| is_stable_diagnostic_code(segment))
+        .map(str::to_string)
+}
+
+fn is_stable_diagnostic_code(candidate: &str) -> bool {
+    candidate.starts_with("solver.")
+        && candidate.bytes().all(|byte| {
+            byte.is_ascii_lowercase() || byte.is_ascii_digit() || byte == b'.' || byte == b'_'
+        })
 }

@@ -11,6 +11,7 @@ pub enum RunPanelActionProminence {
 pub struct RunPanelRenderableAction {
     pub id: RunPanelActionId,
     pub label: &'static str,
+    pub detail: &'static str,
     pub intent: RunPanelIntent,
     pub enabled: bool,
     pub prominence: RunPanelActionProminence,
@@ -61,6 +62,7 @@ impl RunPanelViewModel {
             primary_action: RunPanelRenderableAction {
                 id: primary_action.id,
                 label: primary_action.label,
+                detail: primary_action.detail,
                 intent: primary_action.intent.clone(),
                 enabled: primary_action.enabled,
                 prominence: RunPanelActionProminence::Primary,
@@ -71,6 +73,7 @@ impl RunPanelViewModel {
                 .map(|action| RunPanelRenderableAction {
                     id: action.id,
                     label: action.label,
+                    detail: action.detail,
                     intent: action.intent.clone(),
                     enabled: action.enabled,
                     prominence: RunPanelActionProminence::Secondary,

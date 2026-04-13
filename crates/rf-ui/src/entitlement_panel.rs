@@ -69,6 +69,7 @@ pub enum EntitlementActionId {
 pub struct EntitlementActionModel {
     pub id: EntitlementActionId,
     pub label: &'static str,
+    pub detail: &'static str,
     pub intent: EntitlementIntent,
     pub enabled: bool,
     pub visible: bool,
@@ -78,6 +79,7 @@ impl EntitlementActionModel {
     fn new(
         id: EntitlementActionId,
         label: &'static str,
+        detail: &'static str,
         intent: EntitlementIntent,
         enabled: bool,
         visible: bool,
@@ -85,6 +87,7 @@ impl EntitlementActionModel {
         Self {
             id,
             label,
+            detail,
             intent,
             enabled,
             visible,
@@ -115,6 +118,7 @@ impl EntitlementCommandModel {
                 EntitlementActionModel::new(
                     EntitlementActionId::SyncEntitlement,
                     "Sync entitlement",
+                    sync_entitlement_detail(state),
                     EntitlementIntent::sync_entitlement(),
                     state.can_sync,
                     true,
@@ -122,6 +126,7 @@ impl EntitlementCommandModel {
                 EntitlementActionModel::new(
                     EntitlementActionId::RefreshOfflineLease,
                     "Refresh offline lease",
+                    refresh_offline_lease_detail(state),
                     EntitlementIntent::refresh_offline_lease(),
                     state.can_refresh_offline_lease,
                     true,
@@ -176,5 +181,31 @@ fn primary_action_id(state: &EntitlementPanelState) -> EntitlementActionId {
         EntitlementActionId::RefreshOfflineLease
     } else {
         EntitlementActionId::SyncEntitlement
+    }
+}
+
+fn sync_entitlement_detail(state: &EntitlementPanelState) -> &'static str {
+    if state.can_sync {
+        "Sync entitlement and package manifests from the control plane"
+    } else if !matches!(state.auth_status, AuthSessionStatus::Authenticated) {
+        "Sign in before syncing entitlement"
+    } else if matches!(state.entitlement_status, EntitlementStatus::Syncing) {
+        "Entitlement sync is already in progress"
+    } else {
+        "Sync entitlement is unavailable in the current session"
+    }
+}
+
+fn refresh_offline_lease_detail(state: &EntitlementPanelState) -> &'static str {
+    if state.can_refresh_offline_lease {
+        "Refresh the current offline lease from the control plane"
+    } else if !matches!(state.auth_status, AuthSessionStatus::Authenticated) {
+        "Sign in before refreshing the offline lease"
+    } else if matches!(state.entitlement_status, EntitlementStatus::Syncing) {
+        "Wait for the current entitlement sync to finish"
+    } else if state.offline_lease_expires_at.is_none() {
+        "Sync entitlement before refreshing the offline lease"
+    } else {
+        "Offline lease refresh is unavailable in the current session"
     }
 }

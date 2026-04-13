@@ -1,3 +1,5 @@
+use std::time::{Duration, SystemTime};
+
 use crate::entitlement_panel_view::EntitlementPanelViewModel;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -22,11 +24,15 @@ impl EntitlementPanelTextView {
             lines.push(format!("Authority: {authority_url}"));
         }
         if let Some(last_synced_at) = view.last_synced_at {
-            lines.push(format!("Last synced: {last_synced_at:?}"));
+            lines.push(format!(
+                "Last synced: {}",
+                format_system_time(last_synced_at)
+            ));
         }
         if let Some(offline_lease_expires_at) = view.offline_lease_expires_at {
             lines.push(format!(
-                "Offline lease expires: {offline_lease_expires_at:?}"
+                "Offline lease expires: {}",
+                format_system_time(offline_lease_expires_at)
             ));
         }
         if let Some(notice) = view.notice.as_ref() {
@@ -46,13 +52,17 @@ impl EntitlementPanelTextView {
             view.primary_action.label,
             enabled_label(view.primary_action.enabled)
         ));
+        lines.push(format!("Primary detail: {}", view.primary_action.detail));
         if !view.secondary_actions.is_empty() {
             lines.push("Secondary actions:".to_string());
-            lines.extend(
-                view.secondary_actions.iter().map(|action| {
-                    format!("  - {} [{}]", action.label, enabled_label(action.enabled))
-                }),
-            );
+            lines.extend(view.secondary_actions.iter().map(|action| {
+                format!(
+                    "  - {} [{}] | {}",
+                    action.label,
+                    enabled_label(action.enabled),
+                    action.detail
+                )
+            }));
         }
 
         Self {
@@ -71,5 +81,30 @@ fn notice_level_label(level: crate::EntitlementNoticeLevel) -> &'static str {
         crate::EntitlementNoticeLevel::Info => "info",
         crate::EntitlementNoticeLevel::Warning => "warning",
         crate::EntitlementNoticeLevel::Error => "error",
+    }
+}
+
+fn format_system_time(value: SystemTime) -> String {
+    let unix = value
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .map(|duration| duration.as_secs().to_string())
+        .unwrap_or_else(|_| "before-epoch".to_string());
+    let relative = match value.duration_since(SystemTime::now()) {
+        Ok(duration) => format!("in {}", format_duration(duration)),
+        Err(error) => format!("{} ago", format_duration(error.duration())),
+    };
+    format!("{relative} (unix={unix}s)")
+}
+
+fn format_duration(duration: Duration) -> String {
+    let seconds = duration.as_secs();
+    if seconds < 60 {
+        format!("{seconds}s")
+    } else if seconds < 3_600 {
+        format!("{}m", seconds / 60)
+    } else if seconds < 86_400 {
+        format!("{}h{}m", seconds / 3_600, (seconds % 3_600) / 60)
+    } else {
+        format!("{}d{}h", seconds / 86_400, (seconds % 86_400) / 3_600)
     }
 }

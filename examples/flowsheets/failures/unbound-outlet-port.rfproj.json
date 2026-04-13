@@ -1,0 +1,37 @@
+{
+  "kind": "radishflow.project-file",
+  "schemaVersion": 1,
+  "document": {
+    "revision": 0,
+    "flowsheet": {
+      "name": "unbound-outlet-port",
+      "components": {
+        "component-a": { "id": "component-a", "name": "Component A", "formula": null },
+        "component-b": { "id": "component-b", "name": "Component B", "formula": null }
+      },
+      "streams": {},
+      "units": {
+        "feed-1": {
+          "id": "feed-1",
+          "name": "Feed",
+          "kind": "feed",
+          "ports": [
+            {
+              "name": "outlet",
+              "direction": "outlet",
+              "kind": "material",
+              "stream_id": null
+            }
+          ]
+        }
+      }
+    },
+    "metadata": {
+      "documentId": "example-unbound-outlet-port",
+      "title": "Unbound Outlet Port Example",
+      "schemaVersion": 1,
+      "createdAt": "2026-04-11T00:00:00Z",
+      "updatedAt": "2026-04-11T00:00:00Z"
+    }
+  }
+}

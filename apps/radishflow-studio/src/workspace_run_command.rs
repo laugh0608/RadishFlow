@@ -7,6 +7,15 @@ use rf_ui::AppState;
 
 use crate::{WorkspaceSolveDispatch, WorkspaceSolveService, WorkspaceSolveTrigger};
 
+pub(crate) const WORKSPACE_RUN_DIAGNOSTIC_CACHED_PACKAGE_MISSING: &str =
+    "workspace.run.cached_package_missing";
+pub(crate) const WORKSPACE_RUN_DIAGNOSTIC_EXPLICIT_PACKAGE_SELECTION_REQUIRED: &str =
+    "workspace.run.explicit_package_selection_required";
+pub(crate) const WORKSPACE_RUN_DIAGNOSTIC_ENTITLEMENT_MISMATCH: &str =
+    "workspace.run.entitlement_mismatch";
+pub(crate) const WORKSPACE_RUN_DIAGNOSTIC_INVALID_SELECTION: &str =
+    "workspace.run.invalid_selection";
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum WorkspaceRunPackageSelection {
     Explicit(String),
@@ -98,7 +107,8 @@ fn resolve_explicit_package_id(
     if package_id.trim().is_empty() {
         return Err(RfError::invalid_input(
             "workspace run command must contain a non-empty package_id",
-        ));
+        )
+        .with_diagnostic_code(WORKSPACE_RUN_DIAGNOSTIC_INVALID_SELECTION));
     }
 
     if !auth_cache_index
@@ -106,10 +116,10 @@ fn resolve_explicit_package_id(
         .iter()
         .any(|record| record.package_id == package_id)
     {
-        return Err(RfError::missing_entity(
-            "cached property package",
-            package_id,
-        ));
+        return Err(
+            RfError::missing_entity("cached property package", package_id)
+                .with_diagnostic_code(WORKSPACE_RUN_DIAGNOSTIC_CACHED_PACKAGE_MISSING),
+        );
     }
 
     if !app_state.entitlement.package_manifests.is_empty()
@@ -120,7 +130,8 @@ fn resolve_explicit_package_id(
     {
         return Err(RfError::invalid_input(format!(
             "workspace run package `{package_id}` is not present in entitlement manifests"
-        )));
+        ))
+        .with_diagnostic_code(WORKSPACE_RUN_DIAGNOSTIC_ENTITLEMENT_MISMATCH));
     }
 
     Ok(package_id.to_string())
@@ -137,10 +148,10 @@ fn resolve_preferred_package_id(
         .collect::<BTreeSet<_>>();
 
     if cached_package_ids.is_empty() {
-        return Err(RfError::missing_entity(
-            "cached property package",
-            "preferred-package",
-        ));
+        return Err(
+            RfError::missing_entity("cached property package", "preferred-package")
+                .with_diagnostic_code(WORKSPACE_RUN_DIAGNOSTIC_CACHED_PACKAGE_MISSING),
+        );
     }
 
     let preferred_candidates = if app_state.entitlement.package_manifests.is_empty() {
@@ -158,13 +169,17 @@ fn resolve_preferred_package_id(
     };
 
     match preferred_candidates.as_slice() {
-        [] => Err(RfError::invalid_input(
-            "no cached property package matches current entitlement manifests",
-        )),
+        [] => Err(
+            RfError::invalid_input("no cached property package matches current entitlement manifests")
+                .with_diagnostic_code(WORKSPACE_RUN_DIAGNOSTIC_ENTITLEMENT_MISMATCH),
+        ),
         [package_id] => Ok(package_id.clone()),
-        _ => Err(RfError::invalid_input(
-            "multiple cached property packages are available; explicit package selection is required",
-        )),
+        _ => Err(
+            RfError::invalid_input(
+                "multiple cached property packages are available; explicit package selection is required",
+            )
+            .with_diagnostic_code(WORKSPACE_RUN_DIAGNOSTIC_EXPLICIT_PACKAGE_SELECTION_REQUIRED),
+        ),
     }
 }
 
@@ -184,7 +199,10 @@ mod tests {
     };
 
     use super::{
-        WorkspaceRunCommand, WorkspaceRunPackageSelection, dispatch_workspace_run_from_auth_cache,
+        WORKSPACE_RUN_DIAGNOSTIC_CACHED_PACKAGE_MISSING,
+        WORKSPACE_RUN_DIAGNOSTIC_ENTITLEMENT_MISMATCH,
+        WORKSPACE_RUN_DIAGNOSTIC_EXPLICIT_PACKAGE_SELECTION_REQUIRED, WorkspaceRunCommand,
+        WorkspaceRunPackageSelection, dispatch_workspace_run_from_auth_cache,
         resolve_workspace_run_package_id,
     };
     use crate::{
@@ -277,6 +295,10 @@ mod tests {
         .expect_err("expected ambiguous package error");
 
         assert_eq!(error.code().as_str(), "invalid_input");
+        assert_eq!(
+            error.context().diagnostic_code(),
+            Some(WORKSPACE_RUN_DIAGNOSTIC_EXPLICIT_PACKAGE_SELECTION_REQUIRED)
+        );
         assert!(error.message().contains("explicit package selection"));
     }
 
@@ -309,6 +331,10 @@ mod tests {
         .expect_err("expected missing cache error");
 
         assert_eq!(error.code().as_str(), "missing_entity");
+        assert_eq!(
+            error.context().diagnostic_code(),
+            Some(WORKSPACE_RUN_DIAGNOSTIC_CACHED_PACKAGE_MISSING)
+        );
     }
 
     #[test]
@@ -325,6 +351,10 @@ mod tests {
         .expect_err("expected entitlement mismatch");
 
         assert_eq!(error.code().as_str(), "invalid_input");
+        assert_eq!(
+            error.context().diagnostic_code(),
+            Some(WORKSPACE_RUN_DIAGNOSTIC_ENTITLEMENT_MISMATCH)
+        );
         assert!(error.message().contains("entitlement manifests"));
     }
 

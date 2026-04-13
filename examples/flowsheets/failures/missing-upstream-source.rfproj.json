@@ -1,0 +1,86 @@
+{
+  "kind": "radishflow.project-file",
+  "schemaVersion": 1,
+  "document": {
+    "revision": 0,
+    "flowsheet": {
+      "name": "missing-upstream-source",
+      "components": {
+        "component-a": { "id": "component-a", "name": "Component A", "formula": null },
+        "component-b": { "id": "component-b", "name": "Component B", "formula": null }
+      },
+      "streams": {
+        "stream-feed-a": {
+          "id": "stream-feed-a",
+          "name": "Feed A",
+          "temperature_k": 320.0,
+          "pressure_pa": 100000.0,
+          "total_molar_flow_mol_s": 5.0,
+          "overall_mole_fractions": {
+            "component-a": 0.35,
+            "component-b": 0.65
+          },
+          "phases": []
+        },
+        "stream-feed-b": {
+          "id": "stream-feed-b",
+          "name": "Feed B",
+          "temperature_k": 320.0,
+          "pressure_pa": 100000.0,
+          "total_molar_flow_mol_s": 5.0,
+          "overall_mole_fractions": {
+            "component-a": 0.35,
+            "component-b": 0.65
+          },
+          "phases": []
+        },
+        "stream-out": {
+          "id": "stream-out",
+          "name": "Outlet",
+          "temperature_k": 320.0,
+          "pressure_pa": 100000.0,
+          "total_molar_flow_mol_s": 0.0,
+          "overall_mole_fractions": {
+            "component-a": 0.5,
+            "component-b": 0.5
+          },
+          "phases": []
+        }
+      },
+      "units": {
+        "mixer-1": {
+          "id": "mixer-1",
+          "name": "Mixer",
+          "kind": "mixer",
+          "ports": [
+            {
+              "name": "inlet_a",
+              "direction": "inlet",
+              "kind": "material",
+              "stream_id": "stream-feed-a"
+            },
+            {
+              "name": "inlet_b",
+              "direction": "inlet",
+              "kind": "material",
+              "stream_id": "stream-feed-b"
+            },
+            {
+              "name": "outlet",
+              "direction": "outlet",
+              "kind": "material",
+              "stream_id": "stream-out"
+            }
+          ]
+        }
+      }
+    },
+    "metadata": {
+      "documentId": "example-missing-upstream-source",
+      "title": "Missing Upstream Source Example",
+      "schemaVersion": 1,
+      "createdAt": "2026-04-05T00:00:00Z",
+      "updatedAt": "2026-04-05T00:00:00Z"
+    }
+  }
+}

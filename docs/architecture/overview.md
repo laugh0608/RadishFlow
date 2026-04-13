@@ -1,6 +1,6 @@
 # Architecture Overview
 
-更新时间：2026-04-02
+更新时间：2026-04-09
 
 ## 目标
 
@@ -43,11 +43,11 @@ RadishFlow 的目标架构已经冻结为“桌面端三层 + 外部控制面”
 | `rf-flash` | `TP Flash` 输入输出契约与求解器接口 | 已建立最小 API，并已实现最小二元 `TP Flash`、Rachford-Rice 与黄金样例 |
 | `rf-unitops` | 单元模块行为抽象 | 已建立内建单元规范、统一流股输入输出接口，并实现 `Feed`、`Mixer`、`Heater/Cooler`、`Valve`、`Flash Drum` 的最小行为边界 |
 | `rf-flowsheet` | 连接关系与图结构校验 | 已建立首轮材料端口连接校验，覆盖 canonical port signature、流股存在性与“一股一源一汇”约束 |
-| `rf-solver` | 顺序模块法求解器 | 已建立首轮无回路顺序模块法，可执行 `Feed + Mixer + Flash Drum`、`Feed -> Heater -> Flash Drum` 与 `Feed -> Valve -> Flash Drum` 闭环，并产出带 summary / diagnostics / step 明细的最小 `SolveSnapshot` |
+| `rf-solver` | 顺序模块法求解器 | 已建立首轮无回路顺序模块法，可执行 `Feed + Mixer + Flash Drum`、`Feed -> Heater -> Flash Drum` 与 `Feed -> Valve -> Flash Drum` 闭环，并产出带 summary / diagnostics / step 明细的最小 `SolveSnapshot`；当前失败路径已继续收口到 solver-stage + 稳定 diagnostic code + unit/port helper 上下文 |
 | `rf-store` | JSON 存储与授权缓存索引 | 已建立项目文件 / 授权缓存 / 本地包 `manifest.json` / `payload.rfpkg` 的 JSON 读写、迁移分发、版本校验与相对路径布局 |
 | `rf-ffi` | Rust 与 .NET 的 C ABI 边界 | 仍为占位 |
 
-当前仓库级集成测试也已正式落到 `tests/rust-integration` workspace crate，并由 `cargo test --workspace`、`scripts/check-repo.ps1` 与 `scripts/check-repo.sh` 自动覆盖三条示例 flowsheet 回归。
+当前仓库级集成测试也已正式落到 `tests/rust-integration` workspace crate，并由 `cargo test --workspace`、`scripts/check-repo.ps1` 与 `scripts/check-repo.sh` 自动覆盖五条示例 flowsheet 回归。
 
 ### Rust Studio UI
 
@@ -57,9 +57,17 @@ RadishFlow 的目标架构已经冻结为“桌面端三层 + 外部控制面”
 | --- | --- | --- |
 | `rf-ui` | UI 状态与行为逻辑 | 已建立 `AppState`、授权态、求解态与控制面 DTO 骨架；已补 `RunPanelState`、`RunPanelIntent`、`RunPanelCommandModel`、`RunPanelViewModel`、`RunPanelPresentation` 与 `RunPanelWidgetModel`，并可把 `rf-solver::SolveSnapshot` 映射为 UI 层结果快照 |
 | `rf-canvas` | 流程图画布能力 | 占位 |
-| `apps/radishflow-studio` | 桌面入口程序 | 已建立 auth cache sync 桥接、控制面 HTTP client、entitlement / manifest / lease / offline refresh 编排、下载获取抽象、基于 `reqwest + rustls` 的真实 HTTP transport、HTTP 请求/响应适配层、可重试/不可重试失败分类、下载 JSON 到本地 payload DTO 的协议映射、摘要校验、失败回滚与测试；并已补上 `PropertyPackageProvider -> rf-solver -> rf-ui::AppState` 的最小工作区求解桥接，可直接基于已加载物性包或本地 auth cache 执行真实 solve 并回写 UI 快照/日志 |
+| `apps/radishflow-studio` | 桌面入口程序 | 已建立 auth cache sync 桥接、控制面 HTTP client、entitlement / manifest / lease / offline refresh 编排、下载获取抽象、基于 `reqwest + rustls` 的真实 HTTP transport、HTTP 请求/响应适配层、可重试/不可重试失败分类、下载 JSON 到本地 payload DTO 的协议映射、摘要校验、失败回滚与测试；并已补上 `PropertyPackageProvider -> rf-solver -> rf-ui::AppState` 的最小工作区求解桥接，可直接基于已加载物性包或本地 auth cache 执行真实 solve 并回写 UI 快照/日志；当前又已形成 `StudioGuiHost / StudioGuiDriver / StudioGuiSnapshot / StudioGuiWindowModel / StudioGuiWindowLayoutState` 这一条 GUI-facing 宿主与窗口布局契约，并把窗口布局持久化为项目同目录 sidecar；当前又已把 drop preview 前推为 `StudioGuiWindowDropTargetQuery -> StudioGuiHost / StudioGuiDriver` 的显式查询入口，并在 host 内补出非持久化 preview 会话态；当前又已补出 `StudioGuiNativeTimerRuntime`，让 GUI 可在消费 `StudioGuiNativeTimerEffects` 后继续跟踪逻辑 timer handle、`next_due_at` 和一次性 due callback，而不必在真实框架里从零重写同一套 timer 生命周期；当前又已把原生 timer callback 正式收口为 `StudioGuiEvent::NativeTimerElapsed { window_id, handle_id }`，由 driver 先校验当前绑定再回灌 `TimerElapsed`，避免真实宿主把 stale callback 误灌进 runtime；当前又已补出 `StudioGuiPlatformHost`，把“driver 派发后比较下一次 pending binding，并向平台发出携带 `window_id + handle_id + slot/due_at` 的 `Arm/Rearm/Clear` 请求”的逻辑固定在平台适配层，未来真实 GUI 不必再在框架入口手工维护 timer 差分或丢失 callback 身份；当前又已补出 `StudioGuiPlatformTimerDriverState`，把平台 native timer id 与逻辑 binding 的映射、rearm/clear 所需的旧平台句柄，以及“native timer callback -> `window_id + handle_id` 回灌目标”的桥接固定为显式状态机；当前这层状态机也已被 `StudioGuiPlatformHost` 正式持有，平台 timer 创建失败除了并入 `snapshot/window_model.runtime.log_entries`，还会直接进入 `runtime.platform_notice`；native callback 若命中不存在或过期的 `native_timer_id`，当前也已收口为 `StudioGuiPlatformNativeTimerCallbackOutcome::{IgnoredUnknownNativeTimer, IgnoredStaleNativeTimer}`，不再把这类真实平台边界当成上抛错误；当前又已引入第一版 `eframe/egui` GUI 壳，在单原生窗口内承载逻辑窗口切换，并直接消费 `window_model.drop_preview.overlay / changed_area_ids` 画出局部插入条、anchor 顶线、target-anchored 浮动 overlay 与局部 hint pill，而不是在壳层重算拖放语义 |
 
 原因很直接：在 `M2/M3` 之前过早推进 UI，会掩盖内核尚未定型的问题。
+
+同时补充一条当前协作闸口：在 `apps/radishflow-studio` 还处于 GUI-facing 边界、宿主桥接和布局状态契约冻结阶段时，可以继续直接推进；但一旦工作重心切到真实界面布局、控件组织、视觉表达、交互流和较重的 UI 逻辑设计，后续实现前必须先向用户同步方向与关键取舍，并保留用户干预窗口，不把产品交互方案静默固化。
+
+不过，中后期 Studio 交互方向已经可以先在架构上明确三条原则：
+
+- 流程图画布后续允许在平面视图和立体投影视图之间切换，但两者共享同一套 flowsheet 语义与项目文件，不分裂出第二套编辑模型
+- 物流线、能量流线与信号流线后续应支持静态/动态两种可视化模式，并把“流线类型”和“收敛/待求解/异常状态”拆成正交表达，而不是只靠单一颜色承担所有语义
+- 与 `RadishMind` 的结合后续优先落在“灰态候选补全 + 显式接受”的辅助建模上，例如放置标准单元后显示待补全端口/连线，并由 `Tab` 接受；模型建议不应绕过本地连接校验和文档命令边界
 
 不过 App 架构层面的关键口径已经开始冻结，当前包括：
 
@@ -79,6 +87,45 @@ RadishFlow 的目标架构已经冻结为“桌面端三层 + 外部控制面”
 - `rf-ui` 当前也已补出 `RunPanelViewModel`、`RunPanelTextView`、`RunPanelPresentation` 与 `RunPanelWidgetModel`，让最小入口可以直接消费主按钮/次按钮槽位、文本布局和最小交互语义，而不是继续读取摘要布尔值自行拼装动作
 - `run_studio_bootstrap` / `main.rs` 当前已开始直接消费这套运行栏组件 DTO，而 `run_panel_driver` 已负责回收新的 widget/control state，形成第一处最小真实组件驱动入口
 - 在求解成功/失败时同步更新 `SolveSessionState` 与 `AppLogFeed`
+
+同时，Studio GUI-facing 状态边界当前也已进一步冻结为：
+
+- `StudioGuiHost` / `StudioGuiDriver` 作为 GUI 面向的平台事件与宿主命令入口
+- `StudioGuiPlatformHost` 作为平台 timer 调度适配层，负责把下一条 pending timer binding 的前后变化收口为平台侧 `Arm / Rearm / Clear` 请求，并持有平台 timer adapter、平台失败日志与 GUI 可直接消费的 `platform_notice`
+- `StudioGuiPlatformTimerDriverState` 作为平台 native timer 适配层，负责消费上述请求、保存当前 native timer id 与逻辑 binding 的映射，并在 callback 到来时反查回 `window_id + handle_id`
+- 平台若按 `native_timer_id` 回灌 callback，当前应优先消费 `StudioGuiPlatformHost::dispatch_native_timer_elapsed_by_native_id(...)` 的正式 outcome；命中有效映射时继续分发，命中不存在或过期 id 时返回显式 ignored outcome，而不是把平台层常见竞态继续上抛为 `RfError`
+- 平台在 native timer 启动成功或失败后回灌 ack 时，当前也应优先消费 `StudioGuiPlatformHost::acknowledge_platform_timer_started(...)` / `acknowledge_platform_timer_start_failed(...)` 的正式 outcome；尤其是启动成功但 pending schedule 已 missing/stale 时，outcome 当前又可继续派生正式 `follow_up_command`，把“立即清理刚创建的 native timer id”收口成稳定平台命令，而不是只留一句注释语义
+- 若平台一次性回灌多条 start success/failure ack，`StudioGuiPlatformHost` 当前又已补出 `acknowledge_platform_timer_started_feedbacks(...)` / `acknowledge_platform_timer_start_failed_feedbacks(...)`，并继续支持对 success ack 批量执行 follow-up cleanup；真实宿主不必再自己循环累计结果、收集清理命令后回查最终 `snapshot`
+- 若平台是异步型 timer API，当前也可直接批量消费不执行型结果：`dispatch_native_timer_elapsed_by_native_ids(...)` 与 `dispatch_due_native_timer_events_batch(...)` 会在同一份正式结果里带出逐条 callback/dispatch outcome、最终 `snapshot`、下一次 schedule，以及已整理好的 `native_timer_requests()`；真实宿主不必再自己一边循环结果、一边手工提取 request
+- 若真实宿主希望把一轮消息循环里的 start ack / fail ack / native callback / due drain 一次性提交，`StudioGuiPlatformHost` 当前又已补出 `process_async_platform_round(...)`；这层会按固定顺序完成状态推进，并把最终 `snapshot`、聚合后的 `native_timer_requests()` 与 `follow_up_commands()` 固定在单一正式结果里
+- 上述 async round 当前又已进一步补出 `actions()`，把 `follow_up cleanup -> native_timer_requests` 的宿主执行顺序固定为正式动作清单；真实宿主不必自己再归并或排序这两类平台动作
+- 若宿主收到的是异步型 callback / ack 批处理，但平台 timer API 仍可同步执行，`StudioGuiPlatformHost` 当前又已补出 `process_async_platform_round_and_execute_actions(...)`；宿主可直接复用 host 内冻结的动作顺序，并拿到执行后的最终 `snapshot/window`
+- 对于同步型平台 timer API，`StudioGuiPlatformHost` 当前又已补出 `execute_platform_timer_request(...) + StudioGuiPlatformTimerExecutor`；平台若能在同一次调用里直接拿到 `native_timer_id` 或启动失败细节，就不必再在 `main.rs` 或未来 GUI 入口手工串接 `apply_request -> execute -> acknowledge -> follow-up`
+- 上述同步型 glue 当前又进一步支持 `dispatch_event_and_execute_platform_timer(...)`、`dispatch_native_timer_elapsed_by_native_id_and_execute_platform_timer(...)` 与 `dispatch_due_native_timer_events_and_execute_platform_timers(...)`；若平台入口本来就是“派发 GUI 事件后立刻调用同步 timer API”的风格，`main.rs` 或未来真实 GUI 宿主也不必再手工拆成 `dispatch -> 取 native_timer_request -> execute`
+- 这组组合入口当前还会把返回结果里的 `snapshot/window` 刷新为 timer 执行后的最终 GUI-facing 视图；若同步执行里触发了平台 notice / runtime log 变化，真实 GUI 不必再额外回查 host 才能拿到更新后的可显示状态
+- 对于更接近真实宿主的“批量平台 callback / due timer drain”场景，`StudioGuiPlatformHost` 当前又已补出 `dispatch_native_timer_elapsed_by_native_ids_and_execute_platform_timers(...)` 与 `drain_due_native_timer_events_and_execute_platform_timers(...)`；平台可在同一份正式结果里拿到逐条 outcome、最终 `snapshot` 与下一次 native timer schedule，而不必自己再写循环后回查 host
+- `StudioGuiSnapshot` 作为跨模块聚合快照真相源
+- `StudioGuiWindowModel` 作为窗口内容分区模型
+- `StudioGuiWindowLayoutState` 作为正式布局状态契约，覆盖 `panel dock_region/stack_group/visibility/collapsed/order`、stack active tab、region 内 stack placement、`center_area`、`region_weights`、多窗口 `layout scope` 与 GUI 可直接消费的 `drop target` 摘要推导
+- runtime 区域当前也会把 `platform_notice` 前推到窗口布局摘要与 badge，真实 GUI 在 panel 折叠或 tab strip 状态下不必退回日志列表才能感知平台 timer 异常
+- `StudioGuiWindowLayoutModel` / `StudioGuiWindowPanelLayout` 当前也已冻结 tab 展示语义，显式区分 `Standalone / ActiveTab / InactiveTab`，让真实 GUI 不必自己再猜非 active tab 的展示角色
+- tab strip 当前也已进入正式布局状态机，至少覆盖 `SetActivePanelInStack`、`ActivateNextPanelInStack`、`ActivatePreviousPanelInStack`、`MovePanelWithinStack` 与 `UnstackPanelFromGroup`，不再把 tab 切换、循环和重排留给 GUI 私有状态
+- `StudioGuiWindowDropTargetQuery` 当前也已冻结为 GUI-facing 预览查询口径，并由 `StudioGuiHostCommand::QueryWindowDropTarget` / `StudioGuiEvent::WindowDropTargetQueryRequested` 暴露显式查询入口，未来真实 GUI 可按 hover/anchor/placement 请求 drop preview，而不再自己拼内部布局状态
+- 上述 query 结果当前又已直接携带 `preview_layout_state / preview_window`，让 GUI 在 hover 时可以直接消费预览态，而不是只拿到 target 摘要后再自行反推整份布局
+- 上述同一份 query 当前也已可直接通过 `StudioGuiHostCommand::ApplyWindowDropTarget` / `StudioGuiEvent::WindowDropTargetApplyRequested` 落地成正式布局更新，未来真实 GUI 的 hover/query 与 release/apply 不必再维护两套拖放词汇
+- `StudioGuiHost` / `StudioGuiDriver` 当前又已补出 `SetWindowDropTargetPreview / ClearWindowDropTargetPreview` 与对应事件，host 会持有非持久化 preview 会话态，并把它通过 `StudioGuiSnapshot / StudioGuiWindowModel.drop_preview` 暴露给 GUI；真实 GUI 不必自己缓存当前 hover 预览
+- `StudioGuiWindowModel.drop_preview` 当前又已进一步携带 `preview_layout + changed_area_ids`，让真实 GUI 可以直接消费预览态布局 DTO 与最小变化集，而不必自己再从两份 layout state 做二次重建或比对
+- `StudioGuiWindowModel.drop_preview` 当前又已补出 `overlay`，显式带出目标 region/stack group、tab 插入位、高亮 area 集与目标 active tab；真实 GUI 不必再从 `drop_target + preview_layout` 手工拆 overlay 提示语义
+- 第一版 `eframe/egui` GUI 壳当前也已直接消费这份 `drop_preview.overlay`，把局部插入竖条、anchor 顶线、新 stack 占位、target-anchored 浮动 preview 与局部 hint pill 直接画在目标位置，而不是继续依赖顶栏摘要或壳层私有推导
+- 当前 GUI 壳仍明确停留在“单原生窗口承载逻辑窗口切换”的阶段，不在这一轮把范围扩张到多原生窗口宿主
+- `StudioGuiPlatformHost` 当前会在每次事件派发和 due timer 排空后比较前后 pending timer binding，把平台真正需要执行的 timer 调度差异收口为显式 `native_timer_request`，并继续携带 `window_id / handle_id / slot`
+- `StudioGuiPlatformTimerDriverState` 当前会把这份 request 继续收口为平台可执行的 `Arm / Rearm / Clear` 命令，并在 native timer 创建后记录 `native_timer_id -> logical binding` 映射；平台若创建失败，也已有显式 failure ack 用于清理 pending 状态
+- 平台 native timer callback 当前也已继续收口为 `Dispatched / IgnoredUnknownNativeTimer / IgnoredStaleNativeTimer` 三类正式结果，真实 GUI 或框架 glue 可直接按 outcome 决定是否忽略，无需再把 stale/missing callback 包装成错误流
+- 平台 native timer start ack 当前也已继续收口为 `Applied / IgnoredMissingPendingSchedule / IgnoredStalePendingSchedule` 结果；若平台为过期调度创建了 native timer，这层 outcome 还可继续产出 `StudioGuiPlatformTimerFollowUpCommand::ClearNativeTimer`，避免真实平台 glue 再手工推断资源回收动作
+- 同步型平台 glue 当前也已具备一条更短的消费链：`native_timer_request -> execute_platform_timer_request(...) -> host_outcome/follow_up_command`，至少可覆盖立即返回平台 timer id 的 `set_timer` / `kill_timer` 风格 API
+- 对于直接从宿主事件入口接同步 timer API 的平台，这条最短消费链当前又可继续收口为 `event/native callback -> dispatch_*_and_execute_platform_timer(...) -> dispatch + timer_execution`，让事件派发结果和平台 timer 执行结果继续留在同一层正式结果面
+- 窗口布局持久化继续与项目文档语义分离，当前保存到 `<project>.rfstudio-layout.json` sidecar，而不是混入 `*.rfproj.json`
+- 多窗口布局 key 当前已从运行时 `window_id` 收口为基于 `window_role + layout_slot` 的稳定 scope，避免跨 host 重建时直接依赖临时窗口号
 
 这意味着当前仓库已从“只有 UI 层快照映射桥”推进到“应用组合层已有 facade / command 入口可驱动真实求解”，但仍未把这条入口接成最终桌面命令或交互动作。
 
@@ -153,6 +200,8 @@ RadishFlow 的目标架构已经冻结为“桌面端三层 + 外部控制面”
 - App 主界面、内核、适配层都还没有稳定的工程协作口径，先定规则更划算
 
 这并不意味着放弃主线，而是先把主线开发赖以生存的仓库地基补完整。
+
+对 Studio 来说，这也意味着短期内仍优先补强宿主边界、平台 glue、状态模型和可测试组件 DTO；等真正进入界面设计和交互方案收口阶段，再显式拉用户一起确认，而不是在无感知状态下直接把产品 UI 方案推到深水区。
 
 ## 初始化阶段结论
 

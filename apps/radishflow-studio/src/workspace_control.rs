@@ -1,8 +1,9 @@
-use rf_types::RfResult;
+use rf_types::{DiagnosticPortTarget, RfResult, StreamId, UnitId};
 use rf_ui::{
     AppLogEntry, AppState, RunPanelCommandModel, RunPanelIntent, RunPanelNotice,
-    RunPanelNoticeLevel, RunPanelPackageSelection, RunPanelState, RunPanelWidgetEvent, RunStatus,
-    SimulationMode, SolvePendingReason,
+    RunPanelNoticeLevel, RunPanelPackageSelection, RunPanelRecoveryAction,
+    RunPanelRecoveryActionKind, RunPanelState, RunPanelWidgetEvent, RunStatus, SimulationMode,
+    SolvePendingReason, run_panel_failure_notice,
 };
 
 use crate::{
@@ -69,8 +70,13 @@ pub struct WorkspaceControlActionOutcome {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RunPanelWidgetDispatchOutcome {
     Executed(Box<WorkspaceControlActionOutcome>),
-    IgnoredDisabled { action_id: rf_ui::RunPanelActionId },
-    IgnoredMissing { action_id: rf_ui::RunPanelActionId },
+    IgnoredDisabled {
+        action_id: rf_ui::RunPanelActionId,
+        detail: &'static str,
+    },
+    IgnoredMissing {
+        action_id: rf_ui::RunPanelActionId,
+    },
 }
 
 pub fn snapshot_workspace_control_state(app_state: &AppState) -> WorkspaceControlState {
@@ -165,9 +171,10 @@ pub fn dispatch_run_panel_widget_event_with_auth_cache(
             dispatch_run_panel_intent_with_auth_cache(facade, app_state, context, intent)
                 .map(|outcome| RunPanelWidgetDispatchOutcome::Executed(Box::new(outcome)))
         }
-        RunPanelWidgetEvent::Disabled { action_id } => {
+        RunPanelWidgetEvent::Disabled { action_id, detail } => {
             Ok(RunPanelWidgetDispatchOutcome::IgnoredDisabled {
                 action_id: *action_id,
+                detail,
             })
         }
         RunPanelWidgetEvent::Missing { action_id } => {
@@ -187,7 +194,39 @@ pub fn dispatch_workspace_control_action_with_auth_cache(
     let command = action.to_app_command();
     let outcome = facade.execute_with_auth_cache(app_state, context, &command)?;
     let mut control_state = snapshot_workspace_control_state(app_state);
-    control_state.notice = notice_from_dispatch(&outcome.dispatch);
+    let latest_diagnostic_primary_code = app_state
+        .workspace
+        .solve_session
+        .latest_diagnostic
+        .as_ref()
+        .and_then(|summary| summary.primary_code.as_deref());
+    let latest_diagnostic_target_unit_id = app_state
+        .workspace
+        .solve_session
+        .latest_diagnostic
+        .as_ref()
+        .and_then(|summary| summary.related_unit_ids.first());
+    let latest_diagnostic_target_stream_id = app_state
+        .workspace
+        .solve_session
+        .latest_diagnostic
+        .as_ref()
+        .and_then(|summary| summary.related_stream_ids.first());
+    let latest_diagnostic_related_port_targets = app_state
+        .workspace
+        .solve_session
+        .latest_diagnostic
+        .as_ref()
+        .map(|summary| summary.related_port_targets.as_slice())
+        .unwrap_or(&[]);
+    control_state.notice = notice_from_dispatch(
+        &outcome.dispatch,
+        latest_diagnostic_primary_code,
+        latest_diagnostic_target_unit_id,
+        latest_diagnostic_target_stream_id,
+        latest_diagnostic_related_port_targets,
+    )
+    .or(control_state.notice.clone());
     app_state.sync_run_panel_state(map_workspace_control_state_to_run_panel_state(
         &control_state,
     ));
@@ -200,7 +239,13 @@ pub fn dispatch_workspace_control_action_with_auth_cache(
     })
 }
 
-fn notice_from_dispatch(dispatch: &StudioAppResultDispatch) -> Option<RunPanelNotice> {
+fn notice_from_dispatch(
+    dispatch: &StudioAppResultDispatch,
+    latest_diagnostic_primary_code: Option<&str>,
+    latest_diagnostic_target_unit_id: Option<&UnitId>,
+    latest_diagnostic_target_stream_id: Option<&StreamId>,
+    latest_diagnostic_related_port_targets: &[DiagnosticPortTarget],
+) -> Option<RunPanelNotice> {
     match dispatch {
         StudioAppResultDispatch::WorkspaceRun(dispatch) => match &dispatch.outcome {
             StudioWorkspaceRunOutcome::Started(request) => Some(RunPanelNotice::new(
@@ -228,10 +273,13 @@ fn notice_from_dispatch(dispatch: &StudioAppResultDispatch) -> Option<RunPanelNo
                 notice_title_for_blocked_outcome(blocked.reason),
                 blocked.message.clone(),
             )),
-            StudioWorkspaceRunOutcome::Failed(failed) => Some(RunPanelNotice::new(
-                RunPanelNoticeLevel::Error,
-                notice_title_for_failed_outcome(failed.reason),
+            StudioWorkspaceRunOutcome::Failed(failed) => Some(notice_for_failed_outcome(
+                failed.reason,
                 failed.message.clone(),
+                latest_diagnostic_primary_code,
+                latest_diagnostic_target_unit_id,
+                latest_diagnostic_target_stream_id,
+                latest_diagnostic_related_port_targets,
             )),
         },
         StudioAppResultDispatch::WorkspaceMode(dispatch) => {
@@ -262,10 +310,42 @@ fn notice_title_for_blocked_outcome(
     }
 }
 
-fn notice_title_for_failed_outcome(reason: crate::StudioWorkspaceRunFailedReason) -> &'static str {
+fn notice_title_for_failed_outcome(
+    reason: crate::StudioWorkspaceRunFailedReason,
+    _latest_diagnostic_primary_code: Option<&str>,
+) -> &'static str {
     match reason {
         crate::StudioWorkspaceRunFailedReason::LocalCacheUnavailable => "Local cache unavailable",
         crate::StudioWorkspaceRunFailedReason::SolveFailed => "Run failed",
+    }
+}
+
+fn notice_for_failed_outcome(
+    reason: crate::StudioWorkspaceRunFailedReason,
+    message: String,
+    latest_diagnostic_primary_code: Option<&str>,
+    latest_diagnostic_target_unit_id: Option<&UnitId>,
+    latest_diagnostic_target_stream_id: Option<&StreamId>,
+    latest_diagnostic_related_port_targets: &[DiagnosticPortTarget],
+) -> RunPanelNotice {
+    match reason {
+        crate::StudioWorkspaceRunFailedReason::LocalCacheUnavailable => RunPanelNotice::new(
+            RunPanelNoticeLevel::Error,
+            notice_title_for_failed_outcome(reason, latest_diagnostic_primary_code),
+            message,
+        )
+        .with_recovery_action(RunPanelRecoveryAction::new(
+            RunPanelRecoveryActionKind::RepairLocalCache,
+            "Repair local cache",
+            "确认本地缓存目录和 property package 文件可访问后再重试。",
+        )),
+        crate::StudioWorkspaceRunFailedReason::SolveFailed => run_panel_failure_notice(
+            message,
+            latest_diagnostic_primary_code,
+            latest_diagnostic_target_unit_id,
+            latest_diagnostic_target_stream_id,
+            latest_diagnostic_related_port_targets,
+        ),
     }
 }
 
@@ -691,7 +771,8 @@ mod tests {
         assert_eq!(
             outcome,
             RunPanelWidgetDispatchOutcome::IgnoredDisabled {
-                action_id: rf_ui::RunPanelActionId::SetHold
+                action_id: rf_ui::RunPanelActionId::SetHold,
+                detail: "Workspace is already in Hold mode",
             }
         );
         assert_eq!(app_state.workspace.run_panel.run_status, RunStatus::Idle);
@@ -772,5 +853,91 @@ mod tests {
                 "multiple cached property packages are available; explicit package selection is required"
             )
         );
+    }
+
+    #[test]
+    fn solver_failure_uses_diagnostic_code_for_run_panel_notice_title() {
+        let cache_root = unique_temp_path("workspace-control-solver-failure");
+        let mut auth_cache_index = StoredAuthCacheIndex::new(
+            "https://id.radish.local",
+            "user-123",
+            StoredCredentialReference::new("radishflow-studio", "user-123-primary"),
+        );
+        write_cached_package(
+            &cache_root,
+            &mut auth_cache_index,
+            "binary-hydrocarbon-lite-v1",
+        );
+        let facade = StudioAppFacade::new();
+        let project = parse_project_file_json(include_str!(
+            "../../../examples/flowsheets/feed-valve-flash.rfproj.json"
+        ))
+        .expect("expected project parse");
+        let mut flowsheet = project.document.flowsheet;
+        flowsheet
+            .streams
+            .get_mut(&"stream-throttled".into())
+            .expect("expected throttled stream")
+            .pressure_pa = 130_000.0;
+        let mut app_state = AppState::new(FlowsheetDocument::new(
+            flowsheet,
+            DocumentMetadata::new(
+                "doc-run-panel-solver-failure",
+                "Run Panel Solver Failure Demo",
+                timestamp(100),
+            ),
+        ));
+        let context = StudioAppAuthCacheContext::new(&cache_root, &auth_cache_index);
+
+        let outcome = dispatch_workspace_control_action_with_auth_cache(
+            &facade,
+            &mut app_state,
+            &context,
+            &WorkspaceControlAction::run_manual(WorkspaceRunPackageSelection::Preferred),
+        )
+        .expect("expected failed control action");
+
+        match outcome.dispatch {
+            StudioAppResultDispatch::WorkspaceRun(dispatch) => {
+                assert!(matches!(
+                    dispatch.outcome,
+                    StudioWorkspaceRunOutcome::Failed(_)
+                ));
+            }
+            _ => panic!("expected workspace run dispatch"),
+        }
+        assert_eq!(outcome.control_state.run_status, RunStatus::Error);
+        assert_eq!(
+            outcome
+                .control_state
+                .notice
+                .as_ref()
+                .map(|notice| (notice.level, notice.title.as_str())),
+            Some((rf_ui::RunPanelNoticeLevel::Error, "Unit execution failed"))
+        );
+        assert_eq!(
+            app_state
+                .workspace
+                .run_panel
+                .notice
+                .as_ref()
+                .map(|notice| notice.title.as_str()),
+            Some("Unit execution failed")
+        );
+        assert_eq!(
+            app_state
+                .workspace
+                .run_panel
+                .notice
+                .as_ref()
+                .and_then(|notice| notice.recovery_action.as_ref())
+                .map(|action| (action.title, action.detail)),
+            Some((
+                "Inspect unit inputs",
+                "检查单元规格、物性条件和入口状态是否满足执行前提。"
+            ))
+        );
+
+        std::fs::remove_dir_all(cache_root).expect("expected temp dir cleanup");
     }
 }

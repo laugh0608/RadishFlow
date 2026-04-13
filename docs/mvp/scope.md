@@ -1,6 +1,6 @@
 # MVP Scope
 
-更新时间：2026-04-02
+更新时间：2026-04-09
 
 ## MVP 目标
 
@@ -60,6 +60,28 @@ App 与交互层当前进一步冻结以下口径：
 - `UserPreferences` 只保存应用级偏好与快照窗口策略，不污染文档语义
 - `CommandHistory` 只记录语义化文档命令，运行控制和文档生命周期动作不进入撤回栈
 - `SolveSessionState` 必须绑定当前观察的文档修订号，`SolveSnapshot` 由工作区持有有界历史窗口
+- Studio 当前 GUI-facing 宿主边界已形成 `StudioGuiHost + StudioGuiDriver + StudioGuiSnapshot + StudioGuiWindowModel + StudioGuiWindowLayoutState` 这一条正式契约，不再要求 `main.rs` 或未来真实 GUI 手工拼装窗口摘要
+- Studio 当前 GUI 命令面也已进一步收口为 `StudioGuiCommandRegistry + StudioGuiShortcutRouter + dispatch_ui_command(command_id)` 这一条统一入口，至少覆盖 run panel 与 canvas suggestion 两类命令；未来真实 GUI 不应再长期保留 widget 私有 typed action 与正式 command id 并行的双轨接线
+- Studio 当前窗口布局状态已冻结为独立 UI 状态面，覆盖 `panel dock_region/stack_group/visibility/collapsed/order`、stack active tab、region 内 stack placement、`center_area`、`region_weights`、多窗口 `layout scope` 与 GUI-facing `drop target` 摘要推导
+- Studio 当前也已把 tab 展示角色冻结到 `StudioGuiWindowPanelLayout`，显式区分 `Standalone / ActiveTab / InactiveTab`，不让真实 GUI 再自行猜测 tab 化 panel 的展示模式
+- Studio 当前也已把 tab strip 交互纳入正式 mutation，至少覆盖 active tab 切换、前后循环、stack 内重排和 unstack，不再把这几类行为留给 GUI 框架私有状态
+- Studio 当前又已把 drop preview 查询正式前推到 `StudioGuiWindowDropTargetQuery + StudioGuiHost / StudioGuiDriver` 入口；未来真实 GUI 应按 `window_id + hover/anchor/placement` 请求预览，而不是继续读取 layout 内部状态后手工拼 mutation
+- Studio 当前又已把 query 结果扩成 `drop_target + preview_layout_state + preview_window`，让真实 GUI 在 hover 时可以直接消费预览态窗口模型，而不必自己再从摘要重建 tabbed/dock 结果
+- Studio 当前又已把 drop release 正式前推到同一套 query 词汇，新增 `ApplyWindowDropTarget / WindowDropTargetApplyRequested`，让 GUI 侧不必继续维护“预览用 query / 落地用 mutation”两套接口
+- Studio 当前又已把 hover 预览前推为显式会话态，新增 `SetWindowDropTargetPreview / ClearWindowDropTargetPreview` 与 `WindowDropTargetPreviewRequested / WindowDropTargetPreviewCleared`；host 会非持久化保存当前 preview，并通过 `StudioGuiSnapshot / StudioGuiWindowModel.drop_preview` 直接暴露给 GUI
+- Studio 当前又已把 `drop_preview` 继续收口为 GUI-facing presentation，直接携带 `preview_layout + changed_area_ids`，让 GUI 不必自己从当前态/预览态做差分才能画出 hover 预览
+- Studio 当前又已把 `drop_preview` 继续补成 overlay DTO，直接携带目标 `dock_region/stack_group/tab_index`、目标 stack tabs、高亮 area 集与 active tab，减少真实 GUI 对底层摘要字段的二次拆解
+- 第一版 `eframe/egui` GUI 壳当前已直接消费这份 `drop_preview.overlay`，把局部插入条、anchor 顶线、新 stack 占位、target-anchored 浮动 overlay 与局部 hint pill 画在目标位置，不再主要依赖顶栏说明文本
+- 当前 GUI 壳仍冻结在“单原生窗口承载逻辑窗口切换”的边界，不在这一阶段展开多原生窗口宿主
+- Studio 当前多窗口布局 scope 已从运行时 `window_id` 收口到基于 `window_role + layout_slot` 的稳定 key，避免布局恢复直接依赖临时窗口号
+- Studio 当前又已把原生 timer 宿主 glue 冻结为 `StudioGuiNativeTimerRuntime + StudioGuiPlatformHost + StudioGuiPlatformTimerDriverState` 三层边界，真实桌面框架后续不应再在入口层自行维护逻辑 binding、平台 native timer id 映射和 stale callback 判定
+- Studio 当前平台 timer 回灌与执行口径又已进一步冻结为：
+- 平台 request / command：`StudioGuiPlatformTimerRequest` / `StudioGuiPlatformTimerCommand`
+- start ack / failure ack：`acknowledge_platform_timer_started(...)` / `acknowledge_platform_timer_start_failed(...)`
+- callback outcome：`dispatch_native_timer_elapsed_by_native_id(...)`
+- batch / round 宿主结果：`dispatch_native_timer_elapsed_by_native_ids(...)`、`dispatch_due_native_timer_events_batch(...)`、`process_async_platform_round(...)`
+- batch / round 执行型宿主结果：`dispatch_native_timer_elapsed_by_native_ids_and_execute_platform_timers(...)`、`drain_due_native_timer_events_and_execute_platform_timers(...)`、`process_async_platform_round_and_execute_actions(...)`
+- Studio 当前 async round 动作顺序也已冻结为 `follow_up cleanup -> timer request`；真实桌面框架应优先复用 `StudioGuiPlatformAsyncRound::actions()` 或 executed async round，而不是在框架层重复归并和排序
 - Studio 当前应用层运行入口先冻结为 `StudioAppFacade + WorkspaceRunCommand + WorkspaceSolveService + solver_bridge` 四层，不让 UI 直接拼接底层 provider/solver 细节
 - `rf-ui` 当前运行栏状态先冻结为 `RunPanelState + RunPanelIntent + RunPanelCommandModel + RunPanelWidgetModel`，把按钮意图、主动作、按钮槽位、文本布局和最小渲染/触发所需状态都留在 UI 层，不让视图层或 Studio 侧重复发明一套按钮语义
 - Studio 当前对运行栏的最小消费也已前推到 `RunPanelWidgetEvent`，不再只接受裸 `RunPanelIntent`
@@ -69,6 +91,14 @@ App 与交互层当前进一步冻结以下口径：
 - Studio 当前默认包选择采取保守策略：只有唯一候选包明确时才自动选中；多包场景必须显式指定 package，不在当前阶段隐式猜包
 - Studio 当前 Automatic 触发在命中 `HoldMode` / `NoPendingRequest` 时应先返回 skip，再决定是否需要 package 解析，避免多包缓存场景下的无意义失败
 - 当前最小桌面入口 `run_studio_bootstrap` 也已改为默认走 `StudioBootstrapTrigger::WidgetPrimaryAction`，并向入口层输出 `RunPanelWidgetModel`，确保“桌面触发点 -> UI 组件动作 -> Studio driver / 控制动作 -> UI 组件 DTO”边界在样例入口里就成立
+
+流程图交互增强方向当前补充冻结以下边界：
+
+- 后续允许流程图画布在平面视图与立体投影视图之间切换，但底层继续共享同一份 flowsheet 语义、项目文件与命令历史，不为 3D 单独引入第二套文档模型
+- 物流线、能量流线、信号流线的可视化后续允许支持静态/动态双模式，但当前阶段不为了表现层效果提前扩张 `rf-model` / `rf-flowsheet` 的核心语义
+- 流线类型与运行状态后续应采用正交表达：类型优先靠主色区分，状态优先靠线型、透明度、饱和度、方向箭头动效或状态徽标区分，不先把单一配色方案写死到产品语义
+- 对标准单元放置后的“待补全入口/出口/连线”后续允许以灰态 ghost 形态显示，并通过 `Tab` 或明确接受动作补全；未接受前不直接写回正式文档
+- `RadishMind` 后续只作为建议与预测的辅助来源，不替代本地 canonical port 规则、连接校验、求解器诊断与文档命令边界
 
 认证、授权与受控物性资产当前进一步冻结以下口径：
 
@@ -82,7 +112,8 @@ App 与交互层当前进一步冻结以下口径：
 - 派生物性包分发优先采用对象存储 / CDN / 下载网关 + 短时票据，不把控制面 API 设计成长时大文件出口
 - 允许引入离线租约与本地派生物性包缓存，但不承诺客户端绝对防提取
 - 项目文件继续固定为单文件 `*.rfproj.json` 真相源，授权缓存索引与派生包缓存继续留在应用私有缓存根目录
-- MVP 默认不把 `snapshot_history`、token 明文或授权缓存索引混进项目文件
+- MVP 默认不把 `snapshot_history`、token 明文、授权缓存索引或 Studio 窗口布局状态混进项目文件
+- Studio 当前窗口布局偏好已冻结为项目同目录 sidecar：`<project>.rfstudio-layout.json`
 - 桌面交付默认采用“压缩包 + 主入口 + 附带资源目录”的原生客户端形态，不以单文件可执行为当前阶段目标
 
 ## 当前阶段优先目标

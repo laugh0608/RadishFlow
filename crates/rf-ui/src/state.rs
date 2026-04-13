@@ -2,18 +2,25 @@ use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::path::PathBuf;
 use std::time::SystemTime;
 
-use rf_model::Flowsheet;
-use rf_types::{StreamId, UnitId};
+use rf_flowsheet::validate_connections;
+use rf_model::{Flowsheet, MaterialStreamState, UnitPort};
+use rf_types::{RfError, RfResult, StreamId, UnitId};
+use rf_unitops::{UnitOperationSpec, builtin_unit_spec_by_name};
 
 use crate::auth::{
     AuthSessionState, AuthenticatedUser, EntitlementSnapshot, EntitlementState,
     PropertyPackageManifest, TokenLease,
 };
+use crate::canvas_interaction::{
+    CanvasInteractionState, CanvasSuggestedMaterialConnection, CanvasSuggestedStreamBinding,
+    CanvasSuggestion, CanvasSuggestionAcceptance, CanvasViewMode, SuggestionSource,
+    SuggestionStatus,
+};
 use crate::commands::{CommandHistory, CommandHistoryEntry, DocumentCommand};
 use crate::diagnostics::DiagnosticSummary;
 use crate::ids::{DocumentId, SolveSnapshotId};
 use crate::run::{RunStatus, SimulationMode, SolvePendingReason, SolveSessionState, SolveSnapshot};
-use crate::run_panel::RunPanelState;
+use crate::run_panel::{RunPanelRecoveryAction, RunPanelRecoveryMutation, RunPanelState};
 
 pub type DateTimeUtc = SystemTime;
 
@@ -254,6 +261,7 @@ pub struct WorkspaceState {
     pub document: FlowsheetDocument,
     pub document_path: Option<PathBuf>,
     pub last_saved_revision: Option<u64>,
+    pub canvas_interaction: CanvasInteractionState,
     pub selection: SelectionState,
     pub panels: UiPanelsState,
     pub drafts: InspectorDraftState,
@@ -273,6 +281,7 @@ impl WorkspaceState {
             document,
             document_path: None,
             last_saved_revision: None,
+            canvas_interaction: CanvasInteractionState::default(),
             selection: SelectionState::default(),
             panels: UiPanelsState::from_preferences(panel_defaults),
             drafts: InspectorDraftState::default(),
@@ -292,6 +301,7 @@ impl WorkspaceState {
         let revision = self.document.replace_flowsheet(next_flowsheet, changed_at);
         self.command_history
             .record(CommandHistoryEntry::new(revision, command));
+        self.canvas_interaction.invalidate_all();
         self.solve_session.mark_document_revision_advanced(revision);
         self.drafts.clear();
         revision
@@ -421,7 +431,7 @@ impl AppState {
     pub fn refresh_run_panel_state(&mut self) {
         let state = RunPanelState::from_runtime(
             &self.workspace.solve_session,
-            self.workspace.snapshot_history.back(),
+            latest_snapshot(&self.workspace),
             self.log_feed.entries.back(),
         );
         self.sync_run_panel_state(state);
@@ -430,6 +440,123 @@ impl AppState {
     pub fn push_log(&mut self, level: AppLogLevel, message: impl Into<String>) {
         self.log_feed.push(level, message);
         self.refresh_run_panel_state();
+    }
+
+    pub fn set_canvas_view_mode(&mut self, view_mode: CanvasViewMode) {
+        self.workspace.canvas_interaction.set_view_mode(view_mode);
+    }
+
+    pub fn replace_canvas_suggestions(&mut self, suggestions: Vec<CanvasSuggestion>) {
+        self.workspace
+            .canvas_interaction
+            .replace_suggestions(suggestions);
+    }
+
+    pub fn accept_focused_canvas_suggestion_by_tab(
+        &mut self,
+    ) -> RfResult<Option<CanvasSuggestion>> {
+        let focused = self
+            .workspace
+            .canvas_interaction
+            .focused_suggestion()
+            .cloned();
+        let Some(focused) = focused else {
+            return Ok(None);
+        };
+        if !focused.can_accept_with_tab() {
+            return Ok(None);
+        }
+
+        if focused.acceptance.is_some() {
+            apply_canvas_suggestion_acceptance(self, &focused)?;
+            let mut accepted = focused;
+            accepted.status = SuggestionStatus::Accepted;
+            apply_canvas_suggestion_target(self, &accepted);
+            self.push_log(
+                AppLogLevel::Info,
+                format_canvas_suggestion_accept_message(&accepted),
+            );
+            return Ok(Some(accepted));
+        }
+
+        let accepted = self
+            .workspace
+            .canvas_interaction
+            .accept_suggestion(&focused.id)
+            .expect("focused suggestion should remain addressable until it is accepted");
+        apply_canvas_suggestion_target(self, &accepted);
+        self.push_log(
+            AppLogLevel::Info,
+            format_canvas_suggestion_accept_message(&accepted),
+        );
+        Ok(Some(accepted))
+    }
+
+    pub fn reject_focused_canvas_suggestion(&mut self) -> Option<CanvasSuggestion> {
+        self.workspace.canvas_interaction.reject_focused()
+    }
+
+    pub fn focus_next_canvas_suggestion(&mut self) -> Option<CanvasSuggestion> {
+        self.workspace.canvas_interaction.focus_next()
+    }
+
+    pub fn focus_previous_canvas_suggestion(&mut self) -> Option<CanvasSuggestion> {
+        self.workspace.canvas_interaction.focus_previous()
+    }
+
+    pub fn apply_run_panel_recovery_action(
+        &mut self,
+        action: &RunPanelRecoveryAction,
+    ) -> Option<InspectorTarget> {
+        if let Some(mutation) = action.mutation.as_ref() {
+            if let Ok((command, next_flowsheet)) =
+                apply_run_panel_recovery_mutation(&self.workspace.document.flowsheet, mutation)
+            {
+                self.commit_document_change(command, next_flowsheet, SystemTime::now());
+            }
+        }
+        self.workspace.selection.selected_units.clear();
+        self.workspace.selection.selected_streams.clear();
+        self.workspace.drafts.active_target = None;
+        if let Some(unit_id) = action.target_unit_id.as_ref() {
+            if !self
+                .workspace
+                .document
+                .flowsheet
+                .units
+                .contains_key(unit_id)
+            {
+                return None;
+            }
+            let unit_id = unit_id.clone();
+            self.workspace
+                .selection
+                .selected_units
+                .insert(unit_id.clone());
+            self.workspace.drafts.active_target = Some(InspectorTarget::Unit(unit_id.clone()));
+            self.workspace.panels.inspector_open = true;
+            return Some(InspectorTarget::Unit(unit_id));
+        }
+        if let Some(stream_id) = action.target_stream_id.as_ref() {
+            if !self
+                .workspace
+                .document
+                .flowsheet
+                .streams
+                .contains_key(stream_id)
+            {
+                return None;
+            }
+            let stream_id = stream_id.clone();
+            self.workspace
+                .selection
+                .selected_streams
+                .insert(stream_id.clone());
+            self.workspace.drafts.active_target = Some(InspectorTarget::Stream(stream_id.clone()));
+            self.workspace.panels.inspector_open = true;
+            return Some(InspectorTarget::Stream(stream_id));
+        }
+        None
     }
 
     pub fn begin_browser_login(&mut self, authority_url: impl Into<String>) {
@@ -463,5 +590,369 @@ impl AppState {
 }
 
 pub fn latest_snapshot_id(workspace: &WorkspaceState) -> Option<&SolveSnapshotId> {
-    workspace.solve_session.latest_snapshot.as_ref()
+    latest_snapshot(workspace).map(|snapshot| &snapshot.id)
+}
+
+pub fn latest_snapshot(workspace: &WorkspaceState) -> Option<&SolveSnapshot> {
+    let latest_snapshot_id = workspace.solve_session.latest_snapshot.as_ref()?;
+    let snapshot = workspace
+        .snapshot_history
+        .iter()
+        .rev()
+        .find(|snapshot| &snapshot.id == latest_snapshot_id)?;
+    (snapshot.document_revision == workspace.solve_session.observed_revision).then_some(snapshot)
+}
+
+fn apply_canvas_suggestion_acceptance(
+    app_state: &mut AppState,
+    suggestion: &CanvasSuggestion,
+) -> RfResult<()> {
+    let acceptance = suggestion.acceptance.as_ref().ok_or_else(|| {
+        RfError::invalid_input(format!(
+            "canvas suggestion `{}` is missing an acceptance payload",
+            suggestion.id
+        ))
+    })?;
+
+    let (command, next_flowsheet) = match acceptance {
+        CanvasSuggestionAcceptance::MaterialConnection(connection) => {
+            apply_material_connection_acceptance(
+                &app_state.workspace.document.flowsheet,
+                connection,
+            )?
+        }
+    };
+
+    app_state.commit_document_change(command, next_flowsheet, SystemTime::now());
+    Ok(())
+}
+
+fn apply_canvas_suggestion_target(app_state: &mut AppState, suggestion: &CanvasSuggestion) {
+    let unit_id = suggestion.ghost.target_unit_id.clone();
+    app_state.workspace.selection.selected_units.clear();
+    app_state.workspace.selection.selected_streams.clear();
+    app_state
+        .workspace
+        .selection
+        .selected_units
+        .insert(unit_id.clone());
+    app_state.workspace.drafts.active_target = Some(InspectorTarget::Unit(unit_id));
+    app_state.workspace.panels.inspector_open = true;
+}
+
+fn apply_material_connection_acceptance(
+    flowsheet: &Flowsheet,
+    connection: &CanvasSuggestedMaterialConnection,
+) -> RfResult<(DocumentCommand, Flowsheet)> {
+    let mut next_flowsheet = flowsheet.clone();
+    let stream_id = match &connection.stream {
+        CanvasSuggestedStreamBinding::Existing { stream_id } => {
+            next_flowsheet.stream(stream_id)?;
+            stream_id.clone()
+        }
+        CanvasSuggestedStreamBinding::Create { stream } => {
+            next_flowsheet.insert_stream(stream.clone())?;
+            stream.id.clone()
+        }
+    };
+
+    bind_material_stream_port(
+        &mut next_flowsheet,
+        &connection.source_unit_id,
+        &connection.source_port,
+        &stream_id,
+    )?;
+    if let (Some(sink_unit_id), Some(sink_port)) = (&connection.sink_unit_id, &connection.sink_port)
+    {
+        bind_material_stream_port(&mut next_flowsheet, sink_unit_id, sink_port, &stream_id)?;
+    } else if connection.sink_unit_id.is_some() || connection.sink_port.is_some() {
+        return Err(RfError::invalid_input(
+            "canvas suggestion material connection must provide both sink unit and sink port or neither",
+        ));
+    }
+
+    validate_connections(&next_flowsheet)?;
+
+    let command = DocumentCommand::ConnectPorts {
+        stream_id,
+        from_unit_id: connection.source_unit_id.clone(),
+        from_port: connection.source_port.clone(),
+        to_unit_id: connection.sink_unit_id.clone(),
+        to_port: connection.sink_port.clone(),
+    };
+
+    Ok((command, next_flowsheet))
+}
+
+fn apply_run_panel_recovery_mutation(
+    flowsheet: &Flowsheet,
+    mutation: &RunPanelRecoveryMutation,
+) -> RfResult<(DocumentCommand, Flowsheet)> {
+    match mutation {
+        RunPanelRecoveryMutation::DeleteStream { stream_id } => {
+            apply_delete_stream_mutation(flowsheet, stream_id)
+        }
+        RunPanelRecoveryMutation::CreateAndBindOutletStream { unit_id, port_name } => {
+            apply_create_and_bind_outlet_stream_mutation(flowsheet, unit_id, port_name)
+        }
+        RunPanelRecoveryMutation::DisconnectPortAndDeleteStream {
+            unit_id,
+            port_name,
+            stream_id,
+        } => apply_disconnect_port_and_delete_stream_mutation(
+            flowsheet, unit_id, port_name, stream_id,
+        ),
+        RunPanelRecoveryMutation::RestoreCanonicalPortSignature { unit_id } => {
+            apply_restore_canonical_port_signature_mutation(flowsheet, unit_id)
+        }
+        RunPanelRecoveryMutation::DisconnectPort { unit_id, port_name } => {
+            apply_disconnect_port_mutation(flowsheet, unit_id, port_name)
+        }
+    }
+}
+
+fn apply_disconnect_port_mutation(
+    flowsheet: &Flowsheet,
+    unit_id: &UnitId,
+    port_name: &str,
+) -> RfResult<(DocumentCommand, Flowsheet)> {
+    let mut next_flowsheet = flowsheet.clone();
+    disconnect_material_stream_port(&mut next_flowsheet, unit_id, port_name)?;
+
+    Ok((
+        DocumentCommand::DisconnectPorts {
+            unit_id: unit_id.clone(),
+            port: port_name.to_string(),
+        },
+        next_flowsheet,
+    ))
+}
+
+fn apply_delete_stream_mutation(
+    flowsheet: &Flowsheet,
+    stream_id: &StreamId,
+) -> RfResult<(DocumentCommand, Flowsheet)> {
+    let mut next_flowsheet = flowsheet.clone();
+    next_flowsheet.remove_stream(stream_id)?;
+
+    Ok((
+        DocumentCommand::DeleteStream {
+            stream_id: stream_id.clone(),
+        },
+        next_flowsheet,
+    ))
+}
+
+fn apply_create_and_bind_outlet_stream_mutation(
+    flowsheet: &Flowsheet,
+    unit_id: &UnitId,
+    port_name: &str,
+) -> RfResult<(DocumentCommand, Flowsheet)> {
+    let mut next_flowsheet = flowsheet.clone();
+    let stream_id = next_available_placeholder_stream_id(&next_flowsheet, unit_id, port_name);
+    let stream_name = format!("{} {} Stream", unit_id.as_str(), port_name);
+    next_flowsheet.insert_stream(MaterialStreamState::new(stream_id.clone(), stream_name))?;
+    bind_material_stream_port(&mut next_flowsheet, unit_id, port_name, &stream_id)?;
+
+    Ok((
+        DocumentCommand::ConnectPorts {
+            stream_id,
+            from_unit_id: unit_id.clone(),
+            from_port: port_name.to_string(),
+            to_unit_id: None,
+            to_port: None,
+        },
+        next_flowsheet,
+    ))
+}
+
+fn apply_disconnect_port_and_delete_stream_mutation(
+    flowsheet: &Flowsheet,
+    unit_id: &UnitId,
+    port_name: &str,
+    stream_id: &StreamId,
+) -> RfResult<(DocumentCommand, Flowsheet)> {
+    let mut next_flowsheet = flowsheet.clone();
+    disconnect_material_stream_port(&mut next_flowsheet, unit_id, port_name)?;
+    next_flowsheet.remove_stream(stream_id)?;
+
+    Ok((
+        DocumentCommand::DisconnectPortAndDeleteStream {
+            unit_id: unit_id.clone(),
+            port: port_name.to_string(),
+            stream_id: stream_id.clone(),
+        },
+        next_flowsheet,
+    ))
+}
+
+fn apply_restore_canonical_port_signature_mutation(
+    flowsheet: &Flowsheet,
+    unit_id: &UnitId,
+) -> RfResult<(DocumentCommand, Flowsheet)> {
+    let mut next_flowsheet = flowsheet.clone();
+    let unit = next_flowsheet
+        .units
+        .get_mut(unit_id)
+        .ok_or_else(|| RfError::missing_entity("unit", unit_id))?;
+    let spec = builtin_unit_spec_by_name(&unit.kind).ok_or_else(|| {
+        RfError::invalid_input(format!(
+            "unit `{}` kind `{}` does not expose a canonical built-in spec",
+            unit_id, unit.kind
+        ))
+    })?;
+    let restored_ports = rebuild_ports_from_canonical_spec(&unit.ports, spec);
+    unit.ports = restored_ports;
+
+    Ok((
+        DocumentCommand::RestoreCanonicalUnitPorts {
+            unit_id: unit_id.clone(),
+        },
+        next_flowsheet,
+    ))
+}
+
+fn bind_material_stream_port(
+    flowsheet: &mut Flowsheet,
+    unit_id: &UnitId,
+    port_name: &str,
+    stream_id: &StreamId,
+) -> RfResult<()> {
+    let unit = flowsheet
+        .units
+        .get_mut(unit_id)
+        .ok_or_else(|| RfError::missing_entity("unit", unit_id))?;
+    let port = unit
+        .ports
+        .iter_mut()
+        .find(|port| port.name == port_name)
+        .ok_or_else(|| {
+            RfError::invalid_input(format!(
+                "unit `{}` does not expose material port `{}`",
+                unit_id, port_name
+            ))
+        })?;
+    if port.kind != rf_types::PortKind::Material {
+        return Err(RfError::invalid_input(format!(
+            "unit `{}` port `{}` is not a material port",
+            unit_id, port_name
+        )));
+    }
+    port.stream_id = Some(stream_id.clone());
+    Ok(())
+}
+
+fn disconnect_material_stream_port(
+    flowsheet: &mut Flowsheet,
+    unit_id: &UnitId,
+    port_name: &str,
+) -> RfResult<()> {
+    let unit = flowsheet
+        .units
+        .get_mut(unit_id)
+        .ok_or_else(|| RfError::missing_entity("unit", unit_id))?;
+    let port = unit
+        .ports
+        .iter_mut()
+        .find(|port| port.name == port_name)
+        .ok_or_else(|| {
+            RfError::invalid_input(format!(
+                "unit `{}` does not expose material port `{}`",
+                unit_id, port_name
+            ))
+        })?;
+    if port.kind != rf_types::PortKind::Material {
+        return Err(RfError::invalid_input(format!(
+            "unit `{}` port `{}` is not a material port",
+            unit_id, port_name
+        )));
+    }
+    port.stream_id = None;
+    Ok(())
+}
+
+fn next_available_placeholder_stream_id(
+    flowsheet: &Flowsheet,
+    unit_id: &UnitId,
+    port_name: &str,
+) -> StreamId {
+    let base = format!("stream-{}-{}", unit_id.as_str(), port_name);
+    let mut candidate = base.clone();
+    let mut suffix = 1usize;
+    while flowsheet
+        .streams
+        .contains_key(&StreamId::new(candidate.as_str()))
+    {
+        candidate = format!("{base}-{suffix}");
+        suffix += 1;
+    }
+    StreamId::new(candidate)
+}
+
+fn rebuild_ports_from_canonical_spec(
+    existing_ports: &[UnitPort],
+    spec: &UnitOperationSpec,
+) -> Vec<UnitPort> {
+    let mut remaining_ports = existing_ports.to_vec();
+    let mut rebuilt = Vec::with_capacity(spec.ports.len());
+
+    for expected in spec.ports {
+        let stream_id =
+            take_matching_stream_id(&mut remaining_ports, |port| port.name == expected.name)
+                .or_else(|| {
+                    take_unique_matching_stream_id(&mut remaining_ports, |port| {
+                        port.direction == expected.direction && port.kind == expected.kind
+                    })
+                });
+        rebuilt.push(UnitPort::new(
+            expected.name,
+            expected.direction,
+            expected.kind,
+            stream_id,
+        ));
+    }
+
+    rebuilt
+}
+
+fn take_matching_stream_id<F>(remaining_ports: &mut Vec<UnitPort>, predicate: F) -> Option<StreamId>
+where
+    F: Fn(&UnitPort) -> bool,
+{
+    let index = remaining_ports.iter().position(predicate)?;
+    Some(remaining_ports.remove(index).stream_id).flatten()
+}
+
+fn take_unique_matching_stream_id<F>(
+    remaining_ports: &mut Vec<UnitPort>,
+    predicate: F,
+) -> Option<StreamId>
+where
+    F: Fn(&UnitPort) -> bool,
+{
+    let mut matches = remaining_ports
+        .iter()
+        .enumerate()
+        .filter_map(|(index, port)| predicate(port).then_some(index));
+    let index = matches.next()?;
+    if matches.next().is_some() {
+        return None;
+    }
+    Some(remaining_ports.remove(index).stream_id).flatten()
+}
+
+fn format_canvas_suggestion_accept_message(suggestion: &CanvasSuggestion) -> String {
+    format!(
+        "Accepted canvas suggestion `{}` from {} for unit {}",
+        suggestion.id.as_str(),
+        canvas_suggestion_source_label(suggestion.source),
+        suggestion.ghost.target_unit_id.as_str()
+    )
+}
+
+fn canvas_suggestion_source_label(source: SuggestionSource) -> &'static str {
+    match source {
+        SuggestionSource::LocalRules => "local rules",
+        SuggestionSource::RadishMind => "RadishMind",
+    }
 }

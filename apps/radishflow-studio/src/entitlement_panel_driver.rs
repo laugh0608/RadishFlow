@@ -24,8 +24,13 @@ pub struct EntitlementPanelDriverOutcome {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum EntitlementPanelWidgetDispatchOutcome {
     Executed(StudioAppCommandOutcome),
-    IgnoredDisabled { action_id: EntitlementActionId },
-    IgnoredMissing { action_id: EntitlementActionId },
+    IgnoredDisabled {
+        action_id: EntitlementActionId,
+        detail: &'static str,
+    },
+    IgnoredMissing {
+        action_id: EntitlementActionId,
+    },
 }
 
 pub fn snapshot_entitlement_panel_driver_state(
@@ -92,9 +97,10 @@ where
             )
             .map(EntitlementPanelWidgetDispatchOutcome::Executed)
         }
-        EntitlementPanelWidgetEvent::Disabled { action_id } => {
+        EntitlementPanelWidgetEvent::Disabled { action_id, detail } => {
             Ok(EntitlementPanelWidgetDispatchOutcome::IgnoredDisabled {
                 action_id: *action_id,
+                detail,
             })
         }
         EntitlementPanelWidgetEvent::Missing { action_id } => {
@@ -419,6 +425,7 @@ mod tests {
                 dispatch:
                     EntitlementPanelWidgetDispatchOutcome::IgnoredDisabled {
                         action_id: EntitlementActionId::SyncEntitlement,
+                        detail: "Sign in before syncing entitlement",
                     },
                 ..
             } => {}

@@ -97,9 +97,15 @@ impl SolveSnapshot {
             summary: DiagnosticSummary {
                 document_revision,
                 highest_severity: map_solver_severity(snapshot.summary.highest_severity),
+                primary_code: snapshot
+                    .diagnostics
+                    .first()
+                    .map(|diagnostic| diagnostic.code.clone()),
                 primary_message: snapshot.summary.primary_message.clone(),
                 diagnostic_count: snapshot.summary.diagnostic_count,
                 related_unit_ids: snapshot.summary.related_unit_ids.clone(),
+                related_stream_ids: snapshot.summary.related_stream_ids.clone(),
+                related_port_targets: Vec::new(),
             },
             diagnostics: snapshot
                 .diagnostics
@@ -109,6 +115,8 @@ impl SolveSnapshot {
                     code: diagnostic.code.clone(),
                     message: diagnostic.message.clone(),
                     related_unit_ids: diagnostic.related_unit_ids.clone(),
+                    related_stream_ids: diagnostic.related_stream_ids.clone(),
+                    related_port_targets: Vec::new(),
                 })
                 .collect(),
             steps: snapshot
@@ -177,6 +185,8 @@ impl SolveSessionState {
         self.observed_revision = revision;
         self.status = RunStatus::Dirty;
         self.pending_reason = Some(SolvePendingReason::DocumentRevisionAdvanced);
+        self.latest_snapshot = None;
+        self.latest_diagnostic = None;
     }
 
     pub fn activate(&mut self) {
@@ -220,6 +230,7 @@ impl SolveSessionState {
     ) {
         self.observed_revision = revision;
         self.status = status;
+        self.latest_snapshot = None;
         self.latest_diagnostic = Some(summary);
         self.pending_reason = None;
         self.mode = SimulationMode::Hold;

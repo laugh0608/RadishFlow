@@ -7,10 +7,33 @@ mod entitlement_control;
 mod entitlement_panel_driver;
 mod entitlement_preflight;
 mod entitlement_session_driver;
+mod entitlement_session_host;
+mod entitlement_session_host_presentation;
+mod entitlement_session_host_runtime;
 mod property_package_download;
 mod property_package_download_client;
 mod run_panel_driver;
 mod solver_bridge;
+mod studio_app_host;
+mod studio_gui_canvas_presentation;
+mod studio_gui_canvas_widget;
+mod studio_gui_command_registry;
+mod studio_gui_driver;
+mod studio_gui_host;
+mod studio_gui_layout_store;
+mod studio_gui_platform_host;
+mod studio_gui_platform_timer_driver;
+mod studio_gui_shortcut_router;
+mod studio_gui_snapshot;
+mod studio_gui_timer_host;
+mod studio_gui_window_layout;
+mod studio_gui_window_model;
+mod studio_local_rules;
+mod studio_runtime;
+mod studio_window_host;
+mod studio_window_host_manager;
+mod studio_window_session;
+mod studio_window_timer_driver;
 mod workspace_control;
 mod workspace_run_command;
 mod workspace_solve_service;
@@ -28,7 +51,8 @@ pub use auth_cache_sync::{
     record_downloaded_package, sync_auth_cache_index,
 };
 pub use bootstrap::{
-    StudioBootstrapConfig, StudioBootstrapReport, StudioBootstrapTrigger, run_studio_bootstrap,
+    StudioBootstrapConfig, StudioBootstrapDispatch, StudioBootstrapEntitlementSessionEvent,
+    StudioBootstrapReport, StudioBootstrapTrigger, run_studio_bootstrap,
 };
 pub use control_plane_client::{
     HttpRadishFlowControlPlaneClient, RadishFlowControlPlaneClient,
@@ -72,6 +96,26 @@ pub use entitlement_session_driver::{
     dispatch_entitlement_session_tick_driver_with_control_plane,
     snapshot_entitlement_session_driver_state,
 };
+pub use entitlement_session_host::{
+    EntitlementSessionHostContext, EntitlementSessionHostDispatch, EntitlementSessionHostOutcome,
+    EntitlementSessionHostSnapshot, EntitlementSessionHostState, EntitlementSessionHostTrigger,
+    EntitlementSessionLifecycleEvent, EntitlementSessionTimerArm, EntitlementSessionTimerCommand,
+    EntitlementSessionTimerReason,
+    dispatch_entitlement_session_host_trigger_with_context_and_control_plane,
+    dispatch_entitlement_session_host_trigger_with_control_plane,
+    dispatch_entitlement_session_lifecycle_event_with_context_and_control_plane,
+    dispatch_entitlement_session_lifecycle_event_with_control_plane,
+    plan_entitlement_session_timer_command, snapshot_entitlement_session_host,
+    snapshot_entitlement_session_host_state, snapshot_entitlement_session_host_with_context,
+    snapshot_entitlement_session_panel_driver_state_with_host_notice,
+};
+pub use entitlement_session_host_presentation::{
+    EntitlementSessionHostPresentation, EntitlementSessionHostTextView,
+};
+pub use entitlement_session_host_runtime::{
+    EntitlementSessionHostRuntime, EntitlementSessionHostRuntimeDispatchOutcome,
+    EntitlementSessionHostRuntimeOutput, EntitlementSessionHostTimerEffect,
+};
 pub use property_package_download::{
     PROPERTY_PACKAGE_DOWNLOAD_KIND, PROPERTY_PACKAGE_DOWNLOAD_SCHEMA_VERSION,
     PropertyPackageDownload, PropertyPackageDownloadAntoineCoefficients,
@@ -90,12 +134,134 @@ pub use property_package_download_client::{
     download_property_package_to_cache_with_retry_policy,
 };
 pub use run_panel_driver::{
-    RunPanelDriverOutcome, RunPanelDriverState, dispatch_run_panel_primary_action_with_auth_cache,
+    RunPanelDriverOutcome, RunPanelDriverState, RunPanelRecoveryOutcome,
+    apply_run_panel_recovery_action, dispatch_run_panel_primary_action_with_auth_cache,
     dispatch_run_panel_widget_action_with_auth_cache, snapshot_run_panel_driver_state,
 };
 pub use solver_bridge::{
     StudioSolveRequest, next_solver_snapshot_sequence, solve_workspace_from_auth_cache,
     solve_workspace_with_property_package,
+};
+pub use studio_app_host::{
+    StudioAppHost, StudioAppHostChangeSet, StudioAppHostCloseEffects,
+    StudioAppHostCloseWindowResult, StudioAppHostCommand, StudioAppHostCommandOutcome,
+    StudioAppHostController, StudioAppHostDispatchEffects, StudioAppHostEntitlementTimerEffect,
+    StudioAppHostEntitlementTimerState, StudioAppHostEntitlementTimerStateChange,
+    StudioAppHostGlobalEventResult, StudioAppHostOpenWindowResult, StudioAppHostOutput,
+    StudioAppHostProjection, StudioAppHostSnapshot, StudioAppHostState, StudioAppHostStore,
+    StudioAppHostTimerSlotChange, StudioAppHostUiAction, StudioAppHostUiActionAvailability,
+    StudioAppHostUiActionDisabledReason, StudioAppHostUiActionModel, StudioAppHostUiActionState,
+    StudioAppHostUiCommandDispatchResult, StudioAppHostUiCommandGroup, StudioAppHostUiCommandModel,
+    StudioAppHostWindowChange, StudioAppHostWindowDispatchResult,
+    StudioAppHostWindowSelectionChange, StudioAppHostWindowSnapshot, StudioAppHostWindowState,
+};
+pub use studio_gui_canvas_presentation::{
+    StudioGuiCanvasPresentation, StudioGuiCanvasSuggestionViewModel, StudioGuiCanvasTextView,
+    StudioGuiCanvasViewModel,
+};
+pub use studio_gui_canvas_widget::{
+    StudioGuiCanvasActionId, StudioGuiCanvasRenderableAction, StudioGuiCanvasWidgetEvent,
+    StudioGuiCanvasWidgetModel,
+};
+pub use studio_gui_command_registry::{
+    StudioGuiCommandEntry, StudioGuiCommandGroup, StudioGuiCommandMenuCommandModel,
+    StudioGuiCommandMenuNode, StudioGuiCommandPresentation, StudioGuiCommandRegistry,
+    StudioGuiCommandSection, StudioGuiShortcut, StudioGuiShortcutKey, StudioGuiShortcutModifier,
+};
+pub use studio_gui_driver::{
+    StudioGuiDriver, StudioGuiDriverDispatch, StudioGuiDriverOutcome, StudioGuiEvent,
+};
+pub use studio_gui_host::{
+    StudioGuiCanvasInteractionAction, StudioGuiCanvasState, StudioGuiHost,
+    StudioGuiHostCanvasInteractionResult, StudioGuiHostCanvasSuggestionResult,
+    StudioGuiHostCloseWindowResult, StudioGuiHostCommand, StudioGuiHostCommandOutcome,
+    StudioGuiHostDispatch, StudioGuiHostEntitlementDispatchResult,
+    StudioGuiHostGlobalEventDispatch, StudioGuiHostLifecycleDispatch, StudioGuiHostLifecycleEvent,
+    StudioGuiHostUiCommandDispatchResult, StudioGuiHostWindowDropPreviewClearResult,
+    StudioGuiHostWindowDropTargetApplyResult, StudioGuiHostWindowDropTargetQueryResult,
+    StudioGuiHostWindowLayoutUpdateResult, StudioGuiHostWindowOpened,
+};
+pub use studio_gui_platform_host::{
+    StudioGuiPlatformAsyncRound, StudioGuiPlatformAsyncRoundAction,
+    StudioGuiPlatformAsyncRoundInput, StudioGuiPlatformDispatch, StudioGuiPlatformDueTimerDrain,
+    StudioGuiPlatformExecutedAsyncRound, StudioGuiPlatformExecutedAsyncRoundAction,
+    StudioGuiPlatformExecutedDispatch, StudioGuiPlatformExecutedDueTimerDrain,
+    StudioGuiPlatformExecutedNativeTimerCallbackBatch,
+    StudioGuiPlatformExecutedNativeTimerCallbackOutcome, StudioGuiPlatformHost,
+    StudioGuiPlatformNativeTimerCallbackBatch, StudioGuiPlatformNativeTimerCallbackOutcome,
+    StudioGuiPlatformTimerExecutionOutcome, StudioGuiPlatformTimerExecutor,
+    StudioGuiPlatformTimerExecutorResponse, StudioGuiPlatformTimerFollowUpCommand,
+    StudioGuiPlatformTimerHostOutcome, StudioGuiPlatformTimerRequest,
+    StudioGuiPlatformTimerStartFailedFeedback, StudioGuiPlatformTimerStartFailedFeedbackBatch,
+    StudioGuiPlatformTimerStartFailedFeedbackEntry, StudioGuiPlatformTimerStartFailedOutcome,
+    StudioGuiPlatformTimerStartedFeedback, StudioGuiPlatformTimerStartedFeedbackBatch,
+    StudioGuiPlatformTimerStartedFeedbackEntry, StudioGuiPlatformTimerStartedOutcome,
+};
+pub use studio_gui_platform_timer_driver::{
+    StudioGuiPlatformNativeTimerId, StudioGuiPlatformTimerBinding,
+    StudioGuiPlatformTimerCallbackResolution, StudioGuiPlatformTimerCommand,
+    StudioGuiPlatformTimerDriverState, StudioGuiPlatformTimerStartAckResult,
+    StudioGuiPlatformTimerStartAckStatus, StudioGuiPlatformTimerStartFailureResult,
+    StudioGuiPlatformTimerStartFailureStatus,
+};
+pub use studio_gui_shortcut_router::{
+    StudioGuiFocusContext, StudioGuiShortcutIgnoreReason, StudioGuiShortcutRoute, route_shortcut,
+};
+pub use studio_gui_snapshot::{StudioGuiRuntimeSnapshot, StudioGuiSnapshot};
+pub use studio_gui_timer_host::{
+    StudioGuiNativeTimerDueEvent, StudioGuiNativeTimerEffects, StudioGuiNativeTimerOperation,
+    StudioGuiNativeTimerRuntime, StudioGuiNativeTimerSchedule,
+};
+pub use studio_gui_window_layout::{
+    StudioGuiWindowAreaId, StudioGuiWindowDockPlacement, StudioGuiWindowDockRegion,
+    StudioGuiWindowDropTarget, StudioGuiWindowDropTargetKind, StudioGuiWindowDropTargetQuery,
+    StudioGuiWindowLayoutModel, StudioGuiWindowLayoutMutation,
+    StudioGuiWindowLayoutPersistenceState, StudioGuiWindowLayoutScope,
+    StudioGuiWindowLayoutScopeKind, StudioGuiWindowLayoutState, StudioGuiWindowPanelDisplayMode,
+    StudioGuiWindowPanelLayout, StudioGuiWindowPanelLayoutState, StudioGuiWindowRegionWeight,
+    StudioGuiWindowStackGroupLayout, StudioGuiWindowStackGroupState, StudioGuiWindowStackTabLayout,
+    StudioGuiWindowTitlebarModel,
+};
+pub use studio_gui_window_model::{
+    StudioGuiWindowCanvasAreaModel, StudioGuiWindowCommandAreaModel,
+    StudioGuiWindowCommandListItemModel, StudioGuiWindowCommandListSectionModel,
+    StudioGuiWindowCommandPaletteItemModel, StudioGuiWindowDropPreviewModel,
+    StudioGuiWindowDropPreviewOverlayModel, StudioGuiWindowDropPreviewState,
+    StudioGuiWindowHeaderModel, StudioGuiWindowModel, StudioGuiWindowRuntimeAreaModel,
+    StudioGuiWindowToolbarItemModel, StudioGuiWindowToolbarSectionModel,
+};
+pub use studio_runtime::{
+    StudioRuntime, StudioRuntimeConfig, StudioRuntimeDispatch, StudioRuntimeEffect,
+    StudioRuntimeEntitlementPreflight, StudioRuntimeEntitlementSeed,
+    StudioRuntimeEntitlementSessionEvent, StudioRuntimeHostAckResult, StudioRuntimeHostAckStatus,
+    StudioRuntimeHostEffect, StudioRuntimeHostEffectId, StudioRuntimeHostFollowUp,
+    StudioRuntimeOutput, StudioRuntimeReport, StudioRuntimeTimerHandleSlot,
+    StudioRuntimeTimerHostCommand, StudioRuntimeTimerHostState, StudioRuntimeTimerHostTransition,
+    StudioRuntimeTrigger,
+};
+pub use studio_window_host::{
+    StudioRuntimeHostPort, StudioRuntimeHostPortOutput, StudioWindowHostEvent, StudioWindowHostId,
+    StudioWindowHostLifecycleEvent, StudioWindowHostRegistration, StudioWindowHostRetirement,
+    StudioWindowHostRole, StudioWindowHostShutdown, StudioWindowHostState,
+    StudioWindowHostTimerDriverCommand,
+};
+pub use studio_window_host_manager::{
+    StudioAppWindowHostCanvasInteractionResult, StudioAppWindowHostClose,
+    StudioAppWindowHostCommand, StudioAppWindowHostCommandOutcome, StudioAppWindowHostDispatch,
+    StudioAppWindowHostGlobalEvent, StudioAppWindowHostManager, StudioAppWindowHostOpenWindow,
+    StudioAppWindowHostUiAction, StudioAppWindowHostUiActionAvailability,
+    StudioAppWindowHostUiActionDisabledReason, StudioAppWindowHostUiActionState,
+    StudioCanvasInteractionAction,
+};
+pub use studio_window_session::{
+    StudioWindowSession, StudioWindowSessionDispatch, StudioWindowSessionOpenWindow,
+    StudioWindowSessionShutdown,
+};
+pub use studio_window_timer_driver::{
+    StudioWindowNativeTimerBinding, StudioWindowNativeTimerHandleId,
+    StudioWindowPendingTimerBinding, StudioWindowTimerDriverAckResult,
+    StudioWindowTimerDriverAckStatus, StudioWindowTimerDriverState,
+    StudioWindowTimerDriverTransition,
 };
 pub use workspace_control::{
     RunPanelWidgetDispatchOutcome, WorkspaceControlAction, WorkspaceControlActionOutcome,

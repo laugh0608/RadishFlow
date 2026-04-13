@@ -33,14 +33,26 @@ pub enum DocumentCommand {
         position: CanvasPoint,
     },
     ConnectPorts {
+        stream_id: StreamId,
         from_unit_id: UnitId,
         from_port: String,
-        to_unit_id: UnitId,
-        to_port: String,
+        to_unit_id: Option<UnitId>,
+        to_port: Option<String>,
+    },
+    DeleteStream {
+        stream_id: StreamId,
     },
     DisconnectPorts {
         unit_id: UnitId,
         port: String,
+    },
+    DisconnectPortAndDeleteStream {
+        unit_id: UnitId,
+        port: String,
+        stream_id: StreamId,
+    },
+    RestoreCanonicalUnitPorts {
+        unit_id: UnitId,
     },
     RenameUnit {
         unit_id: UnitId,

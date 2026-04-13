@@ -59,6 +59,21 @@ define_string_id!(ComponentId);
 define_string_id!(StreamId);
 define_string_id!(UnitId);
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct DiagnosticPortTarget {
+    pub unit_id: UnitId,
+    pub port_name: String,
+}
+
+impl DiagnosticPortTarget {
+    pub fn new(unit_id: impl Into<UnitId>, port_name: impl Into<String>) -> Self {
+        Self {
+            unit_id: unit_id.into(),
+            port_name: port_name.into(),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum PhaseLabel {
@@ -171,6 +186,33 @@ impl fmt::Display for ErrorCode {
 pub struct RfError {
     code: ErrorCode,
     message: String,
+    context: Box<RfErrorContext>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct RfErrorContext {
+    diagnostic_code: Option<String>,
+    related_unit_ids: Vec<UnitId>,
+    related_stream_ids: Vec<StreamId>,
+    related_port_targets: Vec<DiagnosticPortTarget>,
+}
+
+impl RfErrorContext {
+    pub fn diagnostic_code(&self) -> Option<&str> {
+        self.diagnostic_code.as_deref()
+    }
+
+    pub fn related_unit_ids(&self) -> &[UnitId] {
+        &self.related_unit_ids
+    }
+
+    pub fn related_stream_ids(&self) -> &[StreamId] {
+        &self.related_stream_ids
+    }
+
+    pub fn related_port_targets(&self) -> &[DiagnosticPortTarget] {
+        &self.related_port_targets
+    }
 }
 
 impl RfError {
@@ -178,6 +220,7 @@ impl RfError {
         Self {
             code,
             message: message.into(),
+            context: Box::default(),
         }
     }
 
@@ -187,6 +230,99 @@ impl RfError {
 
     pub fn message(&self) -> &str {
         &self.message
+    }
+
+    pub fn context(&self) -> &RfErrorContext {
+        self.context.as_ref()
+    }
+
+    pub fn with_diagnostic_code(mut self, diagnostic_code: impl Into<String>) -> Self {
+        self.context.diagnostic_code = Some(diagnostic_code.into());
+        self
+    }
+
+    pub fn with_related_unit_id(mut self, unit_id: impl Into<UnitId>) -> Self {
+        let unit_id = unit_id.into();
+        if !self
+            .context
+            .related_unit_ids
+            .iter()
+            .any(|existing| existing == &unit_id)
+        {
+            self.context.related_unit_ids.push(unit_id);
+        }
+        self
+    }
+
+    pub fn with_related_unit_ids(mut self, related_unit_ids: Vec<UnitId>) -> Self {
+        self.context.related_unit_ids.clear();
+        for unit_id in related_unit_ids {
+            if !self
+                .context
+                .related_unit_ids
+                .iter()
+                .any(|existing| existing == &unit_id)
+            {
+                self.context.related_unit_ids.push(unit_id);
+            }
+        }
+        self
+    }
+
+    pub fn with_related_stream_id(mut self, stream_id: impl Into<StreamId>) -> Self {
+        let stream_id = stream_id.into();
+        if !self
+            .context
+            .related_stream_ids
+            .iter()
+            .any(|existing| existing == &stream_id)
+        {
+            self.context.related_stream_ids.push(stream_id);
+        }
+        self
+    }
+
+    pub fn with_related_stream_ids(mut self, related_stream_ids: Vec<StreamId>) -> Self {
+        self.context.related_stream_ids.clear();
+        for stream_id in related_stream_ids {
+            if !self
+                .context
+                .related_stream_ids
+                .iter()
+                .any(|existing| existing == &stream_id)
+            {
+                self.context.related_stream_ids.push(stream_id);
+            }
+        }
+        self
+    }
+
+    pub fn with_related_port_target(mut self, target: impl Into<DiagnosticPortTarget>) -> Self {
+        let target = target.into();
+        if !self
+            .context
+            .related_port_targets
+            .iter()
+            .any(|existing| existing == &target)
+        {
+            self.context.related_port_targets.push(target);
+        }
+        self
+    }
+
+    pub fn with_related_port_targets(mut self, targets: Vec<DiagnosticPortTarget>) -> Self {
+        self.context.related_port_targets.clear();
+        for target in targets {
+            if !self
+                .context
+                .related_port_targets
+                .iter()
+                .any(|existing| existing == &target)
+            {
+                self.context.related_port_targets.push(target);
+            }
+        }
+        self
     }
 
     pub fn invalid_input(message: impl Into<String>) -> Self {
@@ -230,3 +366,44 @@ impl fmt::Display for RfError {
 impl Error for RfError {}
 
 pub type RfResult<T> = Result<T, RfError>;
+
+#[cfg(test)]
+mod tests {
+    use super::{DiagnosticPortTarget, RfError, StreamId, UnitId};
+
+    #[test]
+    fn rf_error_can_carry_stable_diagnostic_context() {
+        let error = RfError::invalid_input("solve failed")
+            .with_diagnostic_code("solver.step.execution")
+            .with_related_unit_id("heater-1")
+            .with_related_unit_id("heater-1")
+            .with_related_unit_id("flash-1")
+            .with_related_stream_id("stream-feed")
+            .with_related_stream_id("stream-feed")
+            .with_related_stream_id("stream-heated")
+            .with_related_port_target(DiagnosticPortTarget::new("heater-1", "inlet"))
+            .with_related_port_target(DiagnosticPortTarget::new("heater-1", "inlet"))
+            .with_related_port_target(DiagnosticPortTarget::new("flash-1", "outlet"));
+
+        assert_eq!(
+            error.context().diagnostic_code(),
+            Some("solver.step.execution")
+        );
+        assert_eq!(
+            error.context().related_unit_ids(),
+            [UnitId::new("heater-1"), UnitId::new("flash-1")].as_slice()
+        );
+        assert_eq!(
+            error.context().related_stream_ids(),
+            [StreamId::new("stream-feed"), StreamId::new("stream-heated")].as_slice()
+        );
+        assert_eq!(
+            error.context().related_port_targets(),
+            [
+                DiagnosticPortTarget::new("heater-1", "inlet"),
+                DiagnosticPortTarget::new("flash-1", "outlet")
+            ]
+            .as_slice()
+        );
+    }
+}

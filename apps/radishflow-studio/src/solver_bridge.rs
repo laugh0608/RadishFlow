@@ -1,13 +1,16 @@
 use std::path::Path;
 
 use rf_flash::PlaceholderTpFlashSolver;
-use rf_solver::{FlowsheetSolver, SequentialModularSolver, SolverServices};
+use rf_solver::{FlowsheetSolver, SequentialModularSolver, SolveFailureContext, SolverServices};
 use rf_store::StoredAuthCacheIndex;
 use rf_thermo::{
     CachedPropertyPackageProvider, PlaceholderThermoProvider, PropertyPackageProvider,
 };
 use rf_types::{RfError, RfResult};
 use rf_ui::{AppLogLevel, AppState, DiagnosticSeverity, DiagnosticSummary, RunStatus};
+
+pub(crate) const WORKSPACE_RUN_DIAGNOSTIC_LOCAL_CACHE_UNAVAILABLE: &str =
+    "workspace.run.local_cache_unavailable";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StudioSolveRequest {
@@ -87,6 +90,7 @@ where
                     "failed to load property package `{package_id}`: {}",
                     error.message()
                 ),
+                SolveFailureContext::from_error(&error),
             );
             return Err(error);
         }
@@ -109,6 +113,7 @@ where
                         "flowsheet solve failed with package `{package_id}`: {}",
                         error.message()
                     ),
+                    SolveFailureContext::from_error(&error),
                 );
                 return Err(error);
             }
@@ -135,18 +140,37 @@ pub fn solve_workspace_from_auth_cache(
     auth_cache_index: &StoredAuthCacheIndex,
     request: &StudioSolveRequest,
 ) -> RfResult<()> {
-    let provider = CachedPropertyPackageProvider::new(cache_root, auth_cache_index)?;
+    let provider =
+        CachedPropertyPackageProvider::new(cache_root, auth_cache_index).map_err(|error| {
+            match error.context().diagnostic_code() {
+                Some(_) => error,
+                None => {
+                    error.with_diagnostic_code(WORKSPACE_RUN_DIAGNOSTIC_LOCAL_CACHE_UNAVAILABLE)
+                }
+            }
+        })?;
     solve_workspace_with_property_package(app_state, &provider, request)
 }
 
-fn record_solve_failure(app_state: &mut AppState, revision: u64, message: String) {
-    let summary = DiagnosticSummary {
-        document_revision: revision,
-        highest_severity: DiagnosticSeverity::Error,
-        primary_message: message.clone(),
-        diagnostic_count: 1,
-        related_unit_ids: Vec::new(),
-    };
+fn record_solve_failure(
+    app_state: &mut AppState,
+    revision: u64,
+    message: String,
+    context: SolveFailureContext,
+) {
+    let mut summary = DiagnosticSummary::new(revision, DiagnosticSeverity::Error, message.clone());
+    if let Some(primary_code) = context.primary_code {
+        summary = summary.with_primary_code(primary_code);
+    }
+    if !context.related_unit_ids.is_empty() {
+        summary = summary.with_related_unit_ids(context.related_unit_ids);
+    }
+    if !context.related_stream_ids.is_empty() {
+        summary = summary.with_related_stream_ids(context.related_stream_ids);
+    }
+    if !context.related_port_targets.is_empty() {
+        summary = summary.with_related_port_targets(context.related_port_targets);
+    }
     app_state.record_failure(revision, RunStatus::Error, summary);
     app_state.push_log(AppLogLevel::Error, message);
 }
@@ -173,7 +197,8 @@ mod tests {
     use rf_ui::{AppState, DocumentMetadata, FlowsheetDocument, RunStatus};
 
     use super::{
-        StudioSolveRequest, next_solver_snapshot_sequence, solve_workspace_from_auth_cache,
+        SolveFailureContext, StudioSolveRequest, WORKSPACE_RUN_DIAGNOSTIC_LOCAL_CACHE_UNAVAILABLE,
+        next_solver_snapshot_sequence, solve_workspace_from_auth_cache,
         solve_workspace_with_property_package,
     };
 
@@ -299,7 +324,63 @@ mod tests {
 
         assert!(error.message().contains("missing property package"));
         assert_eq!(app_state.workspace.solve_session.status, RunStatus::Error);
+        assert_eq!(
+            app_state
+                .workspace
+                .solve_session
+                .latest_diagnostic
+                .as_ref()
+                .and_then(|summary| summary.primary_code.as_deref()),
+            None
+        );
         assert_eq!(app_state.log_feed.entries.len(), 1);
+    }
+
+    #[test]
+    fn solve_workspace_records_solver_failure_primary_code_in_summary() {
+        let provider = sample_provider();
+        let project = parse_project_file_json(include_str!(
+            "../../../examples/flowsheets/feed-valve-flash.rfproj.json"
+        ))
+        .expect("expected project parse");
+        let mut flowsheet = project.document.flowsheet;
+        flowsheet
+            .streams
+            .get_mut(&"stream-throttled".into())
+            .expect("expected throttled stream")
+            .pressure_pa = 130_000.0;
+        let mut app_state = AppState::new(FlowsheetDocument::new(
+            flowsheet,
+            DocumentMetadata::new("doc-6", "Valve Failure Demo", timestamp(80)),
+        ));
+
+        let error = solve_workspace_with_property_package(
+            &mut app_state,
+            &provider,
+            &StudioSolveRequest::new("binary-hydrocarbon-lite-v1", "snapshot-failure-1", 1),
+        )
+        .expect_err("expected solve failure");
+
+        assert!(error.message().contains("solver.step.execution:"));
+        assert_eq!(app_state.workspace.solve_session.status, RunStatus::Error);
+        assert_eq!(
+            app_state
+                .workspace
+                .solve_session
+                .latest_diagnostic
+                .as_ref()
+                .and_then(|summary| summary.primary_code.as_deref()),
+            Some("solver.step.execution")
+        );
+        assert_eq!(
+            app_state
+                .workspace
+                .solve_session
+                .latest_diagnostic
+                .as_ref()
+                .map(|summary| summary.related_unit_ids.as_slice()),
+            Some([rf_types::UnitId::new("valve-1")].as_slice())
+        );
     }
 
     #[test]
@@ -393,5 +474,63 @@ mod tests {
         );
 
         fs::remove_dir_all(cache_root).expect("expected temp dir cleanup");
+    }
+
+    #[test]
+    fn solve_workspace_from_auth_cache_marks_local_cache_unavailable_with_diagnostic_code() {
+        let cache_root = unique_temp_path("solver-cache-missing");
+        let mut auth_cache_index = StoredAuthCacheIndex::new(
+            "https://id.radish.local",
+            "user-123",
+            StoredCredentialReference::new("radishflow-studio", "user-123-primary"),
+        );
+        let mut record = StoredPropertyPackageRecord::new(
+            "binary-hydrocarbon-lite-v1",
+            "2026.03.1",
+            StoredPropertyPackageSource::RemoteDerivedPackage,
+            "sha256:missing".to_string(),
+            128,
+            timestamp(90),
+        );
+        record.expires_at = Some(SystemTime::now() + Duration::from_secs(3_600));
+        auth_cache_index.property_packages.push(record);
+
+        let project = parse_project_file_json(include_str!(
+            "../../../examples/flowsheets/feed-heater-flash.rfproj.json"
+        ))
+        .expect("expected project parse");
+        let mut app_state = AppState::new(FlowsheetDocument::new(
+            project.document.flowsheet,
+            DocumentMetadata::new("doc-7", "Missing Cache Demo", timestamp(95)),
+        ));
+
+        let error = solve_workspace_from_auth_cache(
+            &mut app_state,
+            &cache_root,
+            &auth_cache_index,
+            &StudioSolveRequest::new("binary-hydrocarbon-lite-v1", "snapshot-cache-missing", 1),
+        )
+        .expect_err("expected cache preparation failure");
+
+        assert_eq!(
+            error.context().diagnostic_code(),
+            Some(WORKSPACE_RUN_DIAGNOSTIC_LOCAL_CACHE_UNAVAILABLE)
+        );
+        assert_eq!(app_state.workspace.solve_session.status, RunStatus::Idle);
+
+        fs::remove_dir_all(cache_root).ok();
+    }
+
+    #[test]
+    fn solver_failure_context_extracts_lookup_unit_from_wrapped_message() {
+        let context = SolveFailureContext::from_message(
+            "flowsheet solve failed with package `binary-hydrocarbon-lite-v1`: solver.step.lookup: solver step 3 unit lookup failed for `flash-1`: missing unit `flash-1`",
+        );
+
+        assert_eq!(context.primary_code.as_deref(), Some("solver.step.lookup"));
+        assert_eq!(
+            context.related_unit_ids,
+            vec![rf_types::UnitId::new("flash-1")]
+        );
     }
 }

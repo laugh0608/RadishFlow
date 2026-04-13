@@ -20,6 +20,23 @@ impl RunPanelTextView {
                 notice_level_label(notice.level)
             ));
             lines.push(format!("Notice detail: {}", notice.message));
+            if let Some(recovery_action) = notice.recovery_action.as_ref() {
+                lines.push(format!("Suggested action: {}", recovery_action.title));
+                lines.push(format!("Suggested detail: {}", recovery_action.detail));
+                if let Some(unit_id) = recovery_action.target_unit_id.as_ref() {
+                    if let Some(port_name) = recovery_action.target_port_name.as_deref() {
+                        lines.push(format!(
+                            "Suggested target: unit {} port {}",
+                            unit_id.as_str(),
+                            port_name
+                        ));
+                    } else {
+                        lines.push(format!("Suggested target: unit {}", unit_id.as_str()));
+                    }
+                } else if let Some(stream_id) = recovery_action.target_stream_id.as_ref() {
+                    lines.push(format!("Suggested target: stream {}", stream_id.as_str()));
+                }
+            }
         }
         if let Some(pending) = view.pending_label {
             lines.push(format!("Pending: {pending}"));
@@ -39,13 +56,17 @@ impl RunPanelTextView {
             view.primary_action.label,
             enabled_label(view.primary_action.enabled)
         ));
+        lines.push(format!("Primary detail: {}", view.primary_action.detail));
         if !view.secondary_actions.is_empty() {
             lines.push("Secondary actions:".to_string());
-            lines.extend(
-                view.secondary_actions.iter().map(|action| {
-                    format!("  - {} [{}]", action.label, enabled_label(action.enabled))
-                }),
-            );
+            lines.extend(view.secondary_actions.iter().map(|action| {
+                format!(
+                    "  - {} [{}] | {}",
+                    action.label,
+                    enabled_label(action.enabled),
+                    action.detail
+                )
+            }));
         }
 
         Self {

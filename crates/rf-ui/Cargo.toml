@@ -10,9 +10,11 @@ homepage.workspace = true
 publish.workspace = true
 
 [dependencies]
+rf-flowsheet = { path = "../rf-flowsheet" }
 rf-model = { path = "../rf-model" }
 rf-solver = { path = "../rf-solver" }
 rf-types = { path = "../rf-types" }
+rf-unitops = { path = "../rf-unitops" }
 
 [dev-dependencies]
 rf-flash = { path = "../rf-flash" }

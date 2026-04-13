@@ -1,4 +1,5 @@
 mod auth;
+mod canvas_interaction;
 mod commands;
 mod diagnostics;
 mod entitlement_panel;
@@ -23,6 +24,11 @@ pub use auth::{
     PropertyPackageManifest, PropertyPackageManifestList, PropertyPackageSource,
     PropertyPackageUsageEvent, PropertyPackageUsageEventKind, SecureCredentialHandle, TokenLease,
 };
+pub use canvas_interaction::{
+    CanvasInteractionState, CanvasSuggestedMaterialConnection, CanvasSuggestedStreamBinding,
+    CanvasSuggestion, CanvasSuggestionAcceptance, CanvasViewMode, GhostElement, GhostElementKind,
+    StreamAnimationMode, StreamVisualKind, StreamVisualState, SuggestionSource, SuggestionStatus,
+};
 pub use commands::{
     CanvasPoint, CommandHistory, CommandHistoryEntry, CommandValue, DocumentCommand,
 };
@@ -37,24 +43,27 @@ pub use entitlement_panel_view::{
     EntitlementActionProminence, EntitlementPanelViewModel, EntitlementRenderableAction,
 };
 pub use entitlement_panel_widget::{EntitlementPanelWidgetEvent, EntitlementPanelWidgetModel};
-pub use ids::{DocumentId, SolveSnapshotId};
+pub use ids::{CanvasSuggestionId, DocumentId, SolveSnapshotId};
 pub use run::{
     RunStatus, SimulationMode, SolvePendingReason, SolveSessionState, SolveSnapshot, StepSnapshot,
     StreamStateSnapshot, UnitExecutionSnapshot,
 };
 pub use run_panel::{
     RunPanelActionId, RunPanelActionModel, RunPanelCommandModel, RunPanelIntent, RunPanelNotice,
-    RunPanelNoticeLevel, RunPanelPackageSelection, RunPanelState,
+    RunPanelNoticeLevel, RunPanelPackageSelection, RunPanelRecoveryAction,
+    RunPanelRecoveryActionKind, RunPanelRecoveryMutation, RunPanelState, run_panel_failure_notice,
+    run_panel_failure_recovery_action_for_diagnostic_code,
+    run_panel_failure_title_for_diagnostic_code,
 };
 pub use run_panel_presenter::RunPanelPresentation;
 pub use run_panel_text::RunPanelTextView;
 pub use run_panel_view::{RunPanelActionProminence, RunPanelRenderableAction, RunPanelViewModel};
-pub use run_panel_widget::{RunPanelWidgetEvent, RunPanelWidgetModel};
+pub use run_panel_widget::{RunPanelRecoveryWidgetEvent, RunPanelWidgetEvent, RunPanelWidgetModel};
 pub use state::{
     AppLogEntry, AppLogFeed, AppLogLevel, AppState, AppTheme, DateTimeUtc, DocumentMetadata,
     DraftValidationState, DraftValue, FieldDraft, FlowsheetDocument, InspectorDraftState,
     InspectorTarget, LocaleCode, PanelLayoutPreferences, SelectionState, UiPanelsState,
-    UserPreferences, WorkspaceState, latest_snapshot_id,
+    UserPreferences, WorkspaceState, latest_snapshot, latest_snapshot_id,
 };
 
 #[cfg(test)]
@@ -62,23 +71,27 @@ mod tests {
     use std::time::{Duration, UNIX_EPOCH};
 
     use rf_flash::PlaceholderTpFlashSolver;
-    use rf_model::Flowsheet;
+    use rf_model::{Flowsheet, MaterialStreamState, UnitNode, UnitPort};
     use rf_solver::{FlowsheetSolver, SequentialModularSolver, SolverServices};
     use rf_thermo::{
         AntoineCoefficients, PlaceholderThermoProvider, ThermoComponent, ThermoSystem,
     };
-    use rf_types::UnitId;
+    use rf_types::{PortDirection, PortKind, UnitId};
 
     use crate::{
-        AppState, AuthSessionStatus, AuthenticatedUser, CanvasPoint, CommandHistory,
+        AppLogLevel, AppState, AuthSessionStatus, AuthenticatedUser, CanvasPoint,
+        CanvasSuggestedMaterialConnection, CanvasSuggestedStreamBinding, CanvasSuggestion,
+        CanvasSuggestionAcceptance, CanvasSuggestionId, CanvasViewMode, CommandHistory,
         CommandHistoryEntry, DiagnosticSeverity, DiagnosticSummary, DocumentCommand,
         DocumentMetadata, EntitlementActionId, EntitlementPanelState, EntitlementPanelWidgetEvent,
-        EntitlementPanelWidgetModel, EntitlementSnapshot, FlowsheetDocument,
-        OfflineLeaseRefreshResponse, PropertyPackageManifest, PropertyPackageManifestList,
-        PropertyPackageSource, RunPanelActionId, RunPanelActionProminence, RunPanelPresentation,
-        RunPanelState, RunPanelTextView, RunPanelViewModel, RunPanelWidgetEvent,
-        RunPanelWidgetModel, RunStatus, SecureCredentialHandle, SimulationMode, SolvePendingReason,
-        SolveSnapshot, TokenLease,
+        EntitlementPanelWidgetModel, EntitlementSnapshot, FlowsheetDocument, GhostElement,
+        GhostElementKind, OfflineLeaseRefreshResponse, PropertyPackageManifest,
+        PropertyPackageManifestList, PropertyPackageSource, RunPanelActionId,
+        RunPanelActionProminence, RunPanelPresentation, RunPanelRecoveryWidgetEvent, RunPanelState,
+        RunPanelTextView, RunPanelViewModel, RunPanelWidgetEvent, RunPanelWidgetModel, RunStatus,
+        SecureCredentialHandle, SimulationMode, SolvePendingReason, SolveSnapshot,
+        StreamVisualKind, StreamVisualState, SuggestionSource, SuggestionStatus, TokenLease,
+        latest_snapshot,
     };
 
     fn timestamp(seconds: u64) -> std::time::SystemTime {
@@ -89,6 +102,37 @@ mod tests {
         let flowsheet = Flowsheet::new("demo");
         let metadata = DocumentMetadata::new("doc-1", "Demo", timestamp(10));
         FlowsheetDocument::new(flowsheet, metadata)
+    }
+
+    fn sample_canvas_suggestion(
+        id: &str,
+        confidence: f32,
+        source: SuggestionSource,
+    ) -> CanvasSuggestion {
+        CanvasSuggestion::new(
+            CanvasSuggestionId::new(id),
+            source,
+            confidence,
+            GhostElement {
+                kind: GhostElementKind::Connection,
+                target_unit_id: UnitId::new("flash-1"),
+                visual_kind: StreamVisualKind::Material,
+                visual_state: StreamVisualState::Suggested,
+            },
+            format!("reason for {id}"),
+        )
+    }
+
+    fn sample_existing_connection_acceptance() -> CanvasSuggestionAcceptance {
+        CanvasSuggestionAcceptance::MaterialConnection(CanvasSuggestedMaterialConnection {
+            stream: CanvasSuggestedStreamBinding::Existing {
+                stream_id: rf_types::StreamId::new("stream-feed"),
+            },
+            source_unit_id: UnitId::new("feed-1"),
+            source_port: "outlet".to_string(),
+            sink_unit_id: Some(UnitId::new("flash-1")),
+            sink_port: Some("inlet".to_string()),
+        })
     }
 
     fn sample_solver_provider() -> PlaceholderThermoProvider {
@@ -168,6 +212,40 @@ mod tests {
         assert_eq!(
             app_state.workspace.document.metadata.updated_at,
             timestamp(20)
+        );
+    }
+
+    #[test]
+    fn commit_document_change_clears_stale_current_snapshot_summary() {
+        let mut app_state = AppState::new(sample_document());
+        let snapshot = SolveSnapshot::new(
+            "snapshot-ui-stale",
+            0,
+            1,
+            RunStatus::Converged,
+            DiagnosticSummary::new(0, DiagnosticSeverity::Info, "snapshot ok"),
+        );
+        app_state.store_snapshot(snapshot);
+
+        app_state.commit_document_change(
+            DocumentCommand::MoveUnit {
+                unit_id: UnitId::new("heater-1"),
+                position: CanvasPoint::new(120.0, 80.0),
+            },
+            Flowsheet::new("demo-updated"),
+            timestamp(21),
+        );
+
+        assert_eq!(app_state.workspace.snapshot_history.len(), 1);
+        assert_eq!(app_state.workspace.solve_session.latest_snapshot, None);
+        assert_eq!(app_state.workspace.solve_session.latest_diagnostic, None);
+        assert!(latest_snapshot(&app_state.workspace).is_none());
+        assert_eq!(app_state.workspace.run_panel.latest_snapshot_id, None);
+        assert_eq!(app_state.workspace.run_panel.latest_snapshot_summary, None);
+        assert_eq!(app_state.workspace.run_panel.run_status, RunStatus::Dirty);
+        assert_eq!(
+            app_state.workspace.run_panel.pending_reason,
+            Some(SolvePendingReason::DocumentRevisionAdvanced)
         );
     }
 
@@ -269,6 +347,465 @@ mod tests {
     }
 
     #[test]
+    fn workspace_initializes_canvas_interaction_in_planar_mode() {
+        let app_state = AppState::new(sample_document());
+
+        assert_eq!(
+            app_state.workspace.canvas_interaction.view_mode,
+            CanvasViewMode::Planar
+        );
+        assert!(
+            app_state
+                .workspace
+                .canvas_interaction
+                .suggestions
+                .is_empty()
+        );
+        assert_eq!(
+            app_state.workspace.canvas_interaction.focused_suggestion_id,
+            None
+        );
+    }
+
+    #[test]
+    fn replacing_canvas_suggestions_orders_by_confidence_and_focuses_first() {
+        let mut app_state = AppState::new(sample_document());
+        app_state.replace_canvas_suggestions(vec![
+            sample_canvas_suggestion("sug-low", 0.40, SuggestionSource::LocalRules),
+            sample_canvas_suggestion("sug-high", 0.95, SuggestionSource::RadishMind),
+            sample_canvas_suggestion("sug-mid", 0.70, SuggestionSource::LocalRules),
+        ]);
+
+        let suggestions = &app_state.workspace.canvas_interaction.suggestions;
+        assert_eq!(suggestions[0].id.as_str(), "sug-high");
+        assert_eq!(suggestions[1].id.as_str(), "sug-mid");
+        assert_eq!(suggestions[2].id.as_str(), "sug-low");
+        assert_eq!(
+            app_state
+                .workspace
+                .canvas_interaction
+                .focused_suggestion_id
+                .as_ref()
+                .map(|id| id.as_str()),
+            Some("sug-high")
+        );
+        assert_eq!(suggestions[0].status, SuggestionStatus::Focused);
+        assert_eq!(suggestions[1].status, SuggestionStatus::Proposed);
+        assert_eq!(suggestions[2].status, SuggestionStatus::Proposed);
+    }
+
+    #[test]
+    fn focus_next_canvas_suggestion_rotates_between_available_entries() {
+        let mut app_state = AppState::new(sample_document());
+        app_state.replace_canvas_suggestions(vec![
+            sample_canvas_suggestion("sug-low", 0.40, SuggestionSource::LocalRules),
+            sample_canvas_suggestion("sug-high", 0.95, SuggestionSource::RadishMind),
+            sample_canvas_suggestion("sug-mid", 0.70, SuggestionSource::LocalRules),
+        ]);
+
+        let next = app_state
+            .focus_next_canvas_suggestion()
+            .expect("expected next focused suggestion");
+        assert_eq!(next.id.as_str(), "sug-mid");
+        assert_eq!(
+            app_state
+                .workspace
+                .canvas_interaction
+                .focused_suggestion_id
+                .as_ref()
+                .map(|id| id.as_str()),
+            Some("sug-mid")
+        );
+
+        let wrapped = app_state
+            .focus_next_canvas_suggestion()
+            .expect("expected wrapped focus");
+        assert_eq!(wrapped.id.as_str(), "sug-low");
+        assert_eq!(
+            app_state
+                .workspace
+                .canvas_interaction
+                .focused_suggestion_id
+                .as_ref()
+                .map(|id| id.as_str()),
+            Some("sug-low")
+        );
+    }
+
+    #[test]
+    fn focus_previous_canvas_suggestion_wraps_to_last_available_entry() {
+        let mut app_state = AppState::new(sample_document());
+        app_state.replace_canvas_suggestions(vec![
+            sample_canvas_suggestion("sug-low", 0.40, SuggestionSource::LocalRules),
+            sample_canvas_suggestion("sug-high", 0.95, SuggestionSource::RadishMind),
+            sample_canvas_suggestion("sug-mid", 0.70, SuggestionSource::LocalRules),
+        ]);
+
+        let previous = app_state
+            .focus_previous_canvas_suggestion()
+            .expect("expected previous focused suggestion");
+        assert_eq!(previous.id.as_str(), "sug-low");
+        assert_eq!(
+            app_state
+                .workspace
+                .canvas_interaction
+                .focused_suggestion_id
+                .as_ref()
+                .map(|id| id.as_str()),
+            Some("sug-low")
+        );
+    }
+
+    #[test]
+    fn rejecting_focused_canvas_suggestion_advances_focus_to_next_available_entry() {
+        let mut app_state = AppState::new(sample_document());
+        app_state.replace_canvas_suggestions(vec![
+            sample_canvas_suggestion("sug-low", 0.40, SuggestionSource::LocalRules),
+            sample_canvas_suggestion("sug-high", 0.95, SuggestionSource::RadishMind),
+            sample_canvas_suggestion("sug-mid", 0.70, SuggestionSource::LocalRules),
+        ]);
+
+        let rejected = app_state
+            .reject_focused_canvas_suggestion()
+            .expect("expected rejected suggestion");
+        assert_eq!(rejected.id.as_str(), "sug-high");
+        assert_eq!(rejected.status, SuggestionStatus::Rejected);
+        assert_eq!(
+            app_state
+                .workspace
+                .canvas_interaction
+                .focused_suggestion_id
+                .as_ref()
+                .map(|id| id.as_str()),
+            Some("sug-mid")
+        );
+        assert_eq!(
+            app_state.workspace.canvas_interaction.suggestions[0].status,
+            SuggestionStatus::Rejected
+        );
+        assert_eq!(
+            app_state.workspace.canvas_interaction.suggestions[1].status,
+            SuggestionStatus::Focused
+        );
+    }
+
+    #[test]
+    fn tab_accepts_only_high_confidence_suggestions_without_recording_history() {
+        let mut flowsheet = Flowsheet::new("demo");
+        flowsheet
+            .insert_component(rf_model::Component::new("component-a", "Component A"))
+            .expect("expected component-a");
+        flowsheet
+            .insert_component(rf_model::Component::new("component-b", "Component B"))
+            .expect("expected component-b");
+        flowsheet
+            .insert_unit(rf_model::UnitNode::new(
+                "feed-1",
+                "Feed",
+                "feed",
+                vec![rf_model::UnitPort::new(
+                    "outlet",
+                    rf_types::PortDirection::Outlet,
+                    rf_types::PortKind::Material,
+                    Some("stream-feed".into()),
+                )],
+            ))
+            .expect("expected feed insert");
+        flowsheet
+            .insert_unit(rf_model::UnitNode::new(
+                "flash-1",
+                "Flash Drum",
+                "flash_drum",
+                vec![
+                    rf_model::UnitPort::new(
+                        "inlet",
+                        rf_types::PortDirection::Inlet,
+                        rf_types::PortKind::Material,
+                        None,
+                    ),
+                    rf_model::UnitPort::new(
+                        "liquid",
+                        rf_types::PortDirection::Outlet,
+                        rf_types::PortKind::Material,
+                        Some("stream-liquid".into()),
+                    ),
+                    rf_model::UnitPort::new(
+                        "vapor",
+                        rf_types::PortDirection::Outlet,
+                        rf_types::PortKind::Material,
+                        Some("stream-vapor".into()),
+                    ),
+                ],
+            ))
+            .expect("expected flash insert");
+        for stream_id in ["stream-feed", "stream-liquid", "stream-vapor"] {
+            flowsheet
+                .insert_stream(MaterialStreamState::new(stream_id, stream_id))
+                .expect("expected stream insert");
+        }
+        let mut app_state = AppState::new(FlowsheetDocument::new(
+            flowsheet,
+            DocumentMetadata::new("doc-accept", "Accept", timestamp(10)),
+        ));
+        app_state.replace_canvas_suggestions(vec![
+            sample_canvas_suggestion("sug-high", 0.90, SuggestionSource::LocalRules)
+                .with_acceptance(sample_existing_connection_acceptance()),
+        ]);
+
+        let accepted = app_state
+            .accept_focused_canvas_suggestion_by_tab()
+            .expect("expected suggestion acceptance");
+
+        assert_eq!(
+            accepted.as_ref().map(|item| item.id.as_str()),
+            Some("sug-high")
+        );
+        assert_eq!(app_state.workspace.command_history.len(), 1);
+        assert!(matches!(
+            app_state.workspace.command_history.current_entry(),
+            Some(crate::CommandHistoryEntry {
+                command: crate::DocumentCommand::ConnectPorts {
+                    stream_id,
+                    from_unit_id,
+                    from_port,
+                    to_unit_id: Some(to_unit_id),
+                    to_port: Some(to_port),
+                },
+                ..
+            }) if stream_id.as_str() == "stream-feed"
+                && from_unit_id.as_str() == "feed-1"
+                && from_port == "outlet"
+                && to_unit_id.as_str() == "flash-1"
+                && to_port == "inlet"
+        ));
+        assert_eq!(app_state.workspace.document.revision, 1);
+        assert_eq!(
+            app_state
+                .workspace
+                .document
+                .flowsheet
+                .units
+                .get(&UnitId::new("flash-1"))
+                .and_then(|unit| unit.ports.iter().find(|port| port.name == "inlet"))
+                .and_then(|port| port.stream_id.as_ref())
+                .map(|stream_id| stream_id.as_str()),
+            Some("stream-feed")
+        );
+        assert_eq!(
+            app_state.workspace.canvas_interaction.focused_suggestion_id,
+            None
+        );
+        assert_eq!(
+            app_state.workspace.drafts.active_target,
+            Some(crate::InspectorTarget::Unit(UnitId::new("flash-1")))
+        );
+        assert!(
+            app_state
+                .workspace
+                .selection
+                .selected_units
+                .contains(&UnitId::new("flash-1"))
+        );
+        assert!(app_state.workspace.panels.inspector_open);
+        assert_eq!(
+            app_state.log_feed.entries.back(),
+            Some(&crate::AppLogEntry {
+                level: AppLogLevel::Info,
+                message: "Accepted canvas suggestion `sug-high` from local rules for unit flash-1"
+                    .to_string(),
+            })
+        );
+        assert_eq!(
+            app_state.workspace.run_panel.latest_log_message.as_deref(),
+            Some("Accepted canvas suggestion `sug-high` from local rules for unit flash-1")
+        );
+    }
+
+    #[test]
+    fn tab_accepts_suggestion_that_creates_terminal_outlet_stream() {
+        let mut flowsheet = Flowsheet::new("demo");
+        flowsheet
+            .insert_component(rf_model::Component::new("component-a", "Component A"))
+            .expect("expected component-a");
+        flowsheet
+            .insert_component(rf_model::Component::new("component-b", "Component B"))
+            .expect("expected component-b");
+        flowsheet
+            .insert_unit(rf_model::UnitNode::new(
+                "feed-1",
+                "Feed",
+                "feed",
+                vec![rf_model::UnitPort::new(
+                    "outlet",
+                    rf_types::PortDirection::Outlet,
+                    rf_types::PortKind::Material,
+                    Some("stream-feed".into()),
+                )],
+            ))
+            .expect("expected feed insert");
+        flowsheet
+            .insert_unit(rf_model::UnitNode::new(
+                "flash-1",
+                "Flash Drum",
+                "flash_drum",
+                vec![
+                    rf_model::UnitPort::new(
+                        "inlet",
+                        rf_types::PortDirection::Inlet,
+                        rf_types::PortKind::Material,
+                        Some("stream-feed".into()),
+                    ),
+                    rf_model::UnitPort::new(
+                        "liquid",
+                        rf_types::PortDirection::Outlet,
+                        rf_types::PortKind::Material,
+                        None,
+                    ),
+                    rf_model::UnitPort::new(
+                        "vapor",
+                        rf_types::PortDirection::Outlet,
+                        rf_types::PortKind::Material,
+                        Some("stream-vapor".into()),
+                    ),
+                ],
+            ))
+            .expect("expected flash insert");
+        for stream_id in ["stream-feed", "stream-vapor"] {
+            flowsheet
+                .insert_stream(MaterialStreamState::new(stream_id, stream_id))
+                .expect("expected stream insert");
+        }
+        let mut app_state = AppState::new(FlowsheetDocument::new(
+            flowsheet,
+            DocumentMetadata::new("doc-create", "Create", timestamp(10)),
+        ));
+        app_state.replace_canvas_suggestions(vec![
+            sample_canvas_suggestion("sug-liquid", 0.92, SuggestionSource::LocalRules)
+                .with_acceptance(CanvasSuggestionAcceptance::MaterialConnection(
+                    CanvasSuggestedMaterialConnection {
+                        stream: CanvasSuggestedStreamBinding::Create {
+                            stream: MaterialStreamState::new("stream-liquid", "Liquid Outlet"),
+                        },
+                        source_unit_id: UnitId::new("flash-1"),
+                        source_port: "liquid".to_string(),
+                        sink_unit_id: None,
+                        sink_port: None,
+                    },
+                )),
+        ]);
+
+        let accepted = app_state
+            .accept_focused_canvas_suggestion_by_tab()
+            .expect("expected terminal outlet suggestion acceptance");
+
+        assert_eq!(
+            accepted.as_ref().map(|item| item.id.as_str()),
+            Some("sug-liquid")
+        );
+        assert!(matches!(
+            app_state.workspace.command_history.current_entry(),
+            Some(crate::CommandHistoryEntry {
+                command: crate::DocumentCommand::ConnectPorts {
+                    stream_id,
+                    from_unit_id,
+                    from_port,
+                    to_unit_id: None,
+                    to_port: None,
+                },
+                ..
+            }) if stream_id.as_str() == "stream-liquid"
+                && from_unit_id.as_str() == "flash-1"
+                && from_port == "liquid"
+        ));
+        assert_eq!(
+            app_state
+                .workspace
+                .document
+                .flowsheet
+                .streams
+                .get(&rf_types::StreamId::new("stream-liquid"))
+                .map(|stream| stream.name.as_str()),
+            Some("Liquid Outlet")
+        );
+        assert_eq!(
+            app_state
+                .workspace
+                .document
+                .flowsheet
+                .units
+                .get(&UnitId::new("flash-1"))
+                .and_then(|unit| unit.ports.iter().find(|port| port.name == "liquid"))
+                .and_then(|port| port.stream_id.as_ref())
+                .map(|stream_id| stream_id.as_str()),
+            Some("stream-liquid")
+        );
+    }
+
+    #[test]
+    fn tab_does_not_accept_low_confidence_suggestion() {
+        let mut app_state = AppState::new(sample_document());
+        app_state.replace_canvas_suggestions(vec![sample_canvas_suggestion(
+            "sug-low",
+            0.60,
+            SuggestionSource::RadishMind,
+        )]);
+
+        let accepted = app_state
+            .accept_focused_canvas_suggestion_by_tab()
+            .expect("expected low-confidence acceptance check");
+
+        assert!(accepted.is_none());
+        assert_eq!(app_state.workspace.command_history.len(), 0);
+        assert_eq!(
+            app_state.workspace.canvas_interaction.suggestions[0].status,
+            SuggestionStatus::Focused
+        );
+        assert_eq!(
+            app_state
+                .workspace
+                .canvas_interaction
+                .focused_suggestion_id
+                .as_ref()
+                .map(|id| id.as_str()),
+            Some("sug-low")
+        );
+        assert!(app_state.workspace.selection.selected_units.is_empty());
+        assert_eq!(app_state.workspace.drafts.active_target, None);
+        assert!(app_state.log_feed.entries.is_empty());
+        assert_eq!(app_state.workspace.run_panel.latest_log_message, None);
+    }
+
+    #[test]
+    fn document_change_invalidates_canvas_suggestions_but_only_records_document_command() {
+        let mut app_state = AppState::new(sample_document());
+        app_state.replace_canvas_suggestions(vec![sample_canvas_suggestion(
+            "sug-high",
+            0.95,
+            SuggestionSource::LocalRules,
+        )]);
+
+        let next_flowsheet = Flowsheet::new("demo-updated");
+        app_state.commit_document_change(
+            DocumentCommand::MoveUnit {
+                unit_id: UnitId::new("flash-1"),
+                position: CanvasPoint::new(40.0, 20.0),
+            },
+            next_flowsheet,
+            timestamp(20),
+        );
+
+        assert_eq!(app_state.workspace.command_history.len(), 1);
+        assert_eq!(
+            app_state.workspace.canvas_interaction.suggestions[0].status,
+            SuggestionStatus::Invalidated
+        );
+        assert_eq!(
+            app_state.workspace.canvas_interaction.focused_suggestion_id,
+            None
+        );
+    }
+
+    #[test]
     fn run_panel_view_model_consumes_primary_and_secondary_actions() {
         let app_state = AppState::new(sample_document());
 
@@ -279,6 +816,10 @@ mod tests {
         assert_eq!(view.pending_label, Some("Snapshot missing"));
         assert_eq!(view.primary_action.id, RunPanelActionId::Resume);
         assert_eq!(view.primary_action.label, "Resume");
+        assert_eq!(
+            view.primary_action.detail,
+            "Resume pending work while the workspace stays in Hold mode"
+        );
         assert_eq!(
             view.primary_action.prominence,
             RunPanelActionProminence::Primary
@@ -309,17 +850,31 @@ mod tests {
                 .iter()
                 .any(|line| line == "Primary action: Resume [enabled]")
         );
-        assert!(text.lines.iter().any(|line| line == "  - Run [enabled]"));
+        assert!(text.lines.iter().any(|line| {
+            line == "Primary detail: Resume pending work while the workspace stays in Hold mode"
+        }));
+        assert!(
+            text.lines
+                .iter()
+                .any(|line| { line == "  - Run [enabled] | Run the current workspace once" })
+        );
     }
 
     #[test]
     fn run_panel_text_view_renders_notice_when_present() {
         let mut state = AppState::new(sample_document()).workspace.run_panel;
-        state.notice = Some(crate::RunPanelNotice::new(
-            crate::RunPanelNoticeLevel::Warning,
-            "Run blocked",
-            "explicit package selection is required",
-        ));
+        state.notice = Some(
+            crate::RunPanelNotice::new(
+                crate::RunPanelNoticeLevel::Warning,
+                "Run blocked",
+                "explicit package selection is required",
+            )
+            .with_recovery_action(crate::RunPanelRecoveryAction::new(
+                crate::RunPanelRecoveryActionKind::InspectFailureDetails,
+                "Choose package",
+                "选择明确的 property package 后再运行。",
+            )),
+        );
 
         let view = RunPanelViewModel::from_state(&state);
         let text = RunPanelTextView::from_view_model(&view);
@@ -333,6 +888,22 @@ mod tests {
             text.lines
                 .iter()
                 .any(|line| line == "Notice detail: explicit package selection is required")
+        );
+        assert!(
+            text.lines
+                .iter()
+                .any(|line| line == "Suggested action: Choose package")
+        );
+        assert!(
+            text.lines
+                .iter()
+                .any(|line| line == "Suggested detail: 选择明确的 property package 后再运行。")
+        );
+        assert!(
+            !text
+                .lines
+                .iter()
+                .any(|line| line.starts_with("Suggested target: unit "))
         );
     }
 
@@ -389,7 +960,313 @@ mod tests {
             widget.activate(RunPanelActionId::SetHold),
             RunPanelWidgetEvent::Disabled {
                 action_id: RunPanelActionId::SetHold,
+                detail: "Workspace is already in Hold mode",
             }
+        );
+    }
+
+    #[test]
+    fn run_panel_widget_exposes_recovery_action_when_solver_failure_targets_unit() {
+        let mut app_state = AppState::new(sample_document());
+        let summary = DiagnosticSummary::new(
+            0,
+            DiagnosticSeverity::Error,
+            "solver.step.inlet: solver step 1 inlet resolution failed for unit `heater-1`",
+        )
+        .with_primary_code("solver.step.inlet")
+        .with_related_unit_ids(vec![UnitId::new("heater-1")]);
+
+        app_state.record_failure(0, RunStatus::Error, summary);
+        let widget = RunPanelWidgetModel::from_state(&app_state.workspace.run_panel);
+
+        assert_eq!(
+            widget.activate_recovery_action(),
+            RunPanelRecoveryWidgetEvent::Requested {
+                action: crate::RunPanelRecoveryAction::new(
+                    crate::RunPanelRecoveryActionKind::InspectInletPath,
+                    "Inspect inlet path",
+                    "检查入口连接是否完整，以及上游流股是否应先于该单元求解。",
+                )
+                .with_target_unit(UnitId::new("heater-1")),
+            }
+        );
+        assert!(
+            widget
+                .text()
+                .lines
+                .iter()
+                .any(|line| line == "Suggested target: unit heater-1")
+        );
+    }
+
+    #[test]
+    fn run_panel_widget_exposes_recovery_action_when_connection_failure_targets_disconnectable_port()
+     {
+        let mut app_state = AppState::new(sample_document());
+        let summary = DiagnosticSummary::new(
+            0,
+            DiagnosticSeverity::Error,
+            "solver.connection_validation.duplicate_downstream_sink: solver connection validation failed",
+        )
+        .with_primary_code("solver.connection_validation.duplicate_downstream_sink")
+        .with_related_unit_ids(vec![UnitId::new("flash-1"), UnitId::new("mixer-1")])
+        .with_related_stream_ids(vec![rf_types::StreamId::new("shared-stream")])
+        .with_related_port_targets(vec![
+            rf_types::DiagnosticPortTarget::new("flash-1", "inlet"),
+            rf_types::DiagnosticPortTarget::new("mixer-1", "inlet_a"),
+        ]);
+
+        app_state.record_failure(0, RunStatus::Error, summary);
+        let widget = RunPanelWidgetModel::from_state(&app_state.workspace.run_panel);
+
+        assert_eq!(
+            widget.activate_recovery_action(),
+            RunPanelRecoveryWidgetEvent::Requested {
+                action: crate::RunPanelRecoveryAction::new(
+                    crate::RunPanelRecoveryActionKind::FixConnections,
+                    "Disconnect conflicting sink",
+                    "断开冲突的 inlet sink 端口，让该流股只保留一个下游去向后再继续修复。",
+                )
+                .with_disconnect_port(UnitId::new("mixer-1"), "inlet_a"),
+            }
+        );
+        assert!(
+            widget
+                .text()
+                .lines
+                .iter()
+                .any(|line| line == "Suggested target: unit mixer-1 port inlet_a")
+        );
+    }
+
+    #[test]
+    fn recording_duplicate_upstream_source_prefers_last_conflicting_port_for_disconnect() {
+        let mut app_state = AppState::new(sample_document());
+        let summary = DiagnosticSummary::new(
+            0,
+            DiagnosticSeverity::Error,
+            "solver.connection_validation.duplicate_upstream_source: solver connection validation failed",
+        )
+        .with_primary_code("solver.connection_validation.duplicate_upstream_source")
+        .with_related_unit_ids(vec![UnitId::new("feed-1"), UnitId::new("heater-1")])
+        .with_related_stream_ids(vec![rf_types::StreamId::new("shared-stream")])
+        .with_related_port_targets(vec![
+            rf_types::DiagnosticPortTarget::new("feed-1", "outlet"),
+            rf_types::DiagnosticPortTarget::new("heater-1", "outlet"),
+        ]);
+
+        app_state.record_failure(0, RunStatus::Error, summary);
+
+        assert_eq!(
+            app_state
+                .workspace
+                .run_panel
+                .notice
+                .as_ref()
+                .and_then(|notice| notice.recovery_action.as_ref()),
+            Some(
+                &crate::RunPanelRecoveryAction::new(
+                    crate::RunPanelRecoveryActionKind::FixConnections,
+                    "Disconnect conflicting source",
+                    "断开冲突的 outlet source 端口，让该流股只保留一个上游来源后再继续修复。",
+                )
+                .with_disconnect_port(UnitId::new("heater-1"), "outlet")
+            )
+        );
+    }
+
+    #[test]
+    fn run_panel_widget_exposes_recovery_action_when_orphan_stream_targets_deletable_stream() {
+        let mut app_state = AppState::new(sample_document());
+        let summary = DiagnosticSummary::new(
+            0,
+            DiagnosticSeverity::Error,
+            "solver.connection_validation.orphan_stream: solver connection validation failed",
+        )
+        .with_primary_code("solver.connection_validation.orphan_stream")
+        .with_related_stream_ids(vec![rf_types::StreamId::new("stream-orphan")]);
+
+        app_state.record_failure(0, RunStatus::Error, summary);
+        let widget = RunPanelWidgetModel::from_state(&app_state.workspace.run_panel);
+
+        assert_eq!(
+            widget.activate_recovery_action(),
+            RunPanelRecoveryWidgetEvent::Requested {
+                action: crate::RunPanelRecoveryAction::new(
+                    crate::RunPanelRecoveryActionKind::FixConnections,
+                    "Delete orphan stream",
+                    "删除当前未连接到任何单元端口的孤立流股，避免它继续阻塞连接校验。",
+                )
+                .with_delete_stream(rf_types::StreamId::new("stream-orphan")),
+            }
+        );
+        assert!(
+            widget
+                .text()
+                .lines
+                .iter()
+                .any(|line| line == "Suggested target: stream stream-orphan")
+        );
+    }
+
+    #[test]
+    fn run_panel_widget_exposes_recovery_action_when_unbound_outlet_targets_stream_creation() {
+        let mut app_state = AppState::new(sample_document());
+        let summary = DiagnosticSummary::new(
+            0,
+            DiagnosticSeverity::Error,
+            "solver.connection_validation.unbound_outlet_port: solver connection validation failed",
+        )
+        .with_primary_code("solver.connection_validation.unbound_outlet_port")
+        .with_related_unit_ids(vec![UnitId::new("feed-1")])
+        .with_related_port_targets(vec![rf_types::DiagnosticPortTarget::new(
+            "feed-1", "outlet",
+        )]);
+
+        app_state.record_failure(0, RunStatus::Error, summary);
+        let widget = RunPanelWidgetModel::from_state(&app_state.workspace.run_panel);
+
+        assert_eq!(
+            widget.activate_recovery_action(),
+            RunPanelRecoveryWidgetEvent::Requested {
+                action: crate::RunPanelRecoveryAction::new(
+                    crate::RunPanelRecoveryActionKind::FixConnections,
+                    "Create outlet stream",
+                    "为当前未绑定 stream 的 outlet 端口创建一条占位流股，并立即写回连接。",
+                )
+                .with_create_and_bind_outlet_stream(UnitId::new("feed-1"), "outlet"),
+            }
+        );
+        assert!(
+            widget
+                .text()
+                .lines
+                .iter()
+                .any(|line| line == "Suggested target: unit feed-1 port outlet")
+        );
+    }
+
+    #[test]
+    fn run_panel_widget_exposes_recovery_action_when_self_loop_targets_disconnectable_port() {
+        let mut app_state = AppState::new(sample_document());
+        let summary = DiagnosticSummary::new(
+            0,
+            DiagnosticSeverity::Error,
+            "solver.topological_ordering.self_loop_cycle: solver topological ordering failed",
+        )
+        .with_primary_code("solver.topological_ordering.self_loop_cycle")
+        .with_related_unit_ids(vec![UnitId::new("flash-1")])
+        .with_related_stream_ids(vec![rf_types::StreamId::new("stream-loop")])
+        .with_related_port_targets(vec![
+            rf_types::DiagnosticPortTarget::new("flash-1", "inlet"),
+            rf_types::DiagnosticPortTarget::new("flash-1", "liquid"),
+        ]);
+
+        app_state.record_failure(0, RunStatus::Error, summary);
+        let widget = RunPanelWidgetModel::from_state(&app_state.workspace.run_panel);
+
+        assert_eq!(
+            widget.activate_recovery_action(),
+            RunPanelRecoveryWidgetEvent::Requested {
+                action: crate::RunPanelRecoveryAction::new(
+                    crate::RunPanelRecoveryActionKind::BreakCycle,
+                    "Disconnect self-loop inlet",
+                    "断开当前单元引用自身 outlet stream 的 inlet 端口，先消除自环依赖，再继续检查剩余连接问题。",
+                )
+                .with_disconnect_port(UnitId::new("flash-1"), "inlet"),
+            }
+        );
+        assert!(
+            widget
+                .text()
+                .lines
+                .iter()
+                .any(|line| line == "Suggested target: unit flash-1 port inlet")
+        );
+    }
+
+    #[test]
+    fn run_panel_widget_exposes_recovery_action_when_two_unit_cycle_targets_disconnectable_port() {
+        let mut app_state = AppState::new(sample_document());
+        let summary = DiagnosticSummary::new(
+            0,
+            DiagnosticSeverity::Error,
+            "solver.topological_ordering.two_unit_cycle: solver topological ordering failed",
+        )
+        .with_primary_code("solver.topological_ordering.two_unit_cycle")
+        .with_related_unit_ids(vec![UnitId::new("heater-1"), UnitId::new("valve-1")])
+        .with_related_stream_ids(vec![
+            rf_types::StreamId::new("stream-a"),
+            rf_types::StreamId::new("stream-b"),
+        ])
+        .with_related_port_targets(vec![
+            rf_types::DiagnosticPortTarget::new("valve-1", "inlet"),
+            rf_types::DiagnosticPortTarget::new("heater-1", "inlet"),
+        ]);
+
+        app_state.record_failure(0, RunStatus::Error, summary);
+        let widget = RunPanelWidgetModel::from_state(&app_state.workspace.run_panel);
+
+        assert_eq!(
+            widget.activate_recovery_action(),
+            RunPanelRecoveryWidgetEvent::Requested {
+                action: crate::RunPanelRecoveryAction::new(
+                    crate::RunPanelRecoveryActionKind::BreakCycle,
+                    "Disconnect cycle inlet",
+                    "断开当前双单元回路中的一个 inlet 端口，先打破互相依赖，再继续检查剩余连接问题。",
+                )
+                .with_disconnect_port(UnitId::new("heater-1"), "inlet"),
+            }
+        );
+        assert!(
+            widget
+                .text()
+                .lines
+                .iter()
+                .any(|line| line == "Suggested target: unit heater-1 port inlet")
+        );
+    }
+
+    #[test]
+    fn run_panel_widget_exposes_recovery_action_when_connection_failure_targets_port() {
+        let mut app_state = AppState::new(sample_document());
+        let summary = DiagnosticSummary::new(
+            0,
+            DiagnosticSeverity::Error,
+            "solver.connection_validation.missing_upstream_source: solver connection validation failed",
+        )
+        .with_primary_code("solver.connection_validation.missing_upstream_source")
+        .with_related_unit_ids(vec![UnitId::new("mixer-1")])
+        .with_related_stream_ids(vec![rf_types::StreamId::new("stream-feed-a")])
+        .with_related_port_targets(vec![rf_types::DiagnosticPortTarget::new(
+            "mixer-1",
+            "inlet_a",
+        )]);
+
+        app_state.record_failure(0, RunStatus::Error, summary);
+        let widget = RunPanelWidgetModel::from_state(&app_state.workspace.run_panel);
+
+        assert_eq!(
+            widget.activate_recovery_action(),
+            RunPanelRecoveryWidgetEvent::Requested {
+                action: crate::RunPanelRecoveryAction::new(
+                    crate::RunPanelRecoveryActionKind::FixConnections,
+                    "Remove dangling inlet stream",
+                    "断开当前缺少上游 source 的 inlet 绑定，并删除对应孤立流股，先消除悬空入口连接。",
+                )
+                .with_disconnect_port_and_delete_stream(
+                    UnitId::new("mixer-1"),
+                    "inlet_a",
+                    rf_types::StreamId::new("stream-feed-a"),
+                ),
+            }
+        );
+        assert!(
+            widget
+                .text()
+                .lines
+                .iter()
+                .any(|line| line == "Suggested target: unit mixer-1 port inlet_a")
         );
     }
 
@@ -441,6 +1318,15 @@ mod tests {
             app_state.workspace.run_panel.commands.primary_action,
             RunPanelActionId::RunManual
         );
+        assert_eq!(
+            app_state
+                .workspace
+                .run_panel
+                .notice
+                .as_ref()
+                .map(|notice| notice.title.as_str()),
+            Some("Run failed")
+        );
         assert!(
             !app_state
                 .workspace
@@ -450,6 +1336,777 @@ mod tests {
                 .expect("expected resume action")
                 .enabled
         );
+    }
+
+    #[test]
+    fn recording_failure_clears_current_snapshot_for_same_revision() {
+        let mut app_state = AppState::new(sample_document());
+        app_state.store_snapshot(SolveSnapshot::new(
+            "snapshot-success-1",
+            0,
+            1,
+            RunStatus::Converged,
+            DiagnosticSummary::new(0, DiagnosticSeverity::Info, "snapshot ok"),
+        ));
+
+        app_state.record_failure(
+            0,
+            RunStatus::Error,
+            DiagnosticSummary::new(0, DiagnosticSeverity::Error, "solve failed again"),
+        );
+
+        assert_eq!(app_state.workspace.solve_session.latest_snapshot, None);
+        assert!(latest_snapshot(&app_state.workspace).is_none());
+        assert_eq!(app_state.workspace.run_panel.latest_snapshot_id, None);
+        assert_eq!(app_state.workspace.run_panel.latest_snapshot_summary, None);
+        assert_eq!(app_state.workspace.run_panel.run_status, RunStatus::Error);
+        assert_eq!(
+            app_state
+                .workspace
+                .run_panel
+                .notice
+                .as_ref()
+                .map(|notice| notice.title.as_str()),
+            Some("Run failed")
+        );
+    }
+
+    #[test]
+    fn recording_solver_failure_uses_primary_code_for_run_panel_notice_title() {
+        let mut app_state = AppState::new(sample_document());
+        let summary = DiagnosticSummary::new(
+            0,
+            DiagnosticSeverity::Error,
+            "solver.step.execution: solver step 2 unit execution failed",
+        )
+        .with_primary_code("solver.step.execution")
+        .with_related_unit_ids(vec![UnitId::new("heater-1")]);
+
+        app_state.record_failure(0, RunStatus::Error, summary);
+
+        assert_eq!(
+            app_state
+                .workspace
+                .run_panel
+                .notice
+                .as_ref()
+                .map(|notice| notice.title.as_str()),
+            Some("Unit execution failed")
+        );
+        assert_eq!(
+            app_state
+                .workspace
+                .run_panel
+                .notice
+                .as_ref()
+                .and_then(|notice| notice.recovery_action.as_ref())
+                .map(|action| {
+                    (
+                        action.title,
+                        action.detail,
+                        action
+                            .target_unit_id
+                            .as_ref()
+                            .map(|unit_id| unit_id.as_str()),
+                    )
+                }),
+            Some((
+                "Inspect unit inputs",
+                "检查单元规格、物性条件和入口状态是否满足执行前提。",
+                Some("heater-1"),
+            ))
+        );
+    }
+
+    #[test]
+    fn recording_connection_validation_subcode_refines_run_panel_notice_and_recovery() {
+        let mut app_state = AppState::new(sample_document());
+        let summary = DiagnosticSummary::new(
+            0,
+            DiagnosticSeverity::Error,
+            "solver.connection_validation.invalid_port_signature: solver connection validation failed",
+        )
+        .with_primary_code("solver.connection_validation.invalid_port_signature")
+        .with_related_unit_ids(vec![UnitId::new("feed-1")]);
+
+        app_state.record_failure(0, RunStatus::Error, summary);
+
+        assert_eq!(
+            app_state
+                .workspace
+                .run_panel
+                .notice
+                .as_ref()
+                .map(|notice| notice.title.as_str()),
+            Some("Invalid port signature")
+        );
+        assert_eq!(
+            app_state
+                .workspace
+                .run_panel
+                .notice
+                .as_ref()
+                .and_then(|notice| notice.recovery_action.as_ref())
+                .map(|action| {
+                    (
+                        action.title,
+                        action.detail,
+                        action
+                            .target_unit_id
+                            .as_ref()
+                            .map(|unit_id| unit_id.as_str()),
+                        action.mutation.clone(),
+                    )
+                }),
+            Some((
+                "Restore canonical ports",
+                "按当前内建 unit kind 的 canonical spec 重建端口签名，并尽量保留可匹配的现有 stream 绑定。",
+                Some("feed-1"),
+                Some(
+                    crate::RunPanelRecoveryMutation::RestoreCanonicalPortSignature {
+                        unit_id: UnitId::new("feed-1"),
+                    }
+                ),
+            ))
+        );
+    }
+
+    #[test]
+    fn applying_run_panel_recovery_action_restores_canonical_ports_and_preserves_stream_binding() {
+        let project = rf_store::parse_project_file_json(include_str!(
+            "../../../examples/flowsheets/failures/invalid-port-signature.rfproj.json"
+        ))
+        .expect("expected project parse");
+        let mut app_state = AppState::new(FlowsheetDocument::new(
+            project.document.flowsheet,
+            DocumentMetadata::new(
+                "doc-invalid-port-signature-recovery",
+                "Invalid Port Signature Recovery Demo",
+                timestamp(39),
+            ),
+        ));
+        let summary = DiagnosticSummary::new(
+            0,
+            DiagnosticSeverity::Error,
+            "solver.connection_validation.invalid_port_signature: solver connection validation failed",
+        )
+        .with_primary_code("solver.connection_validation.invalid_port_signature")
+        .with_related_unit_ids(vec![UnitId::new("feed-1")]);
+
+        app_state.record_failure(0, RunStatus::Error, summary);
+        let action = app_state
+            .workspace
+            .run_panel
+            .notice
+            .as_ref()
+            .and_then(|notice| notice.recovery_action.as_ref())
+            .cloned()
+            .expect("expected recovery action");
+
+        assert_eq!(
+            action.mutation,
+            Some(
+                crate::RunPanelRecoveryMutation::RestoreCanonicalPortSignature {
+                    unit_id: UnitId::new("feed-1"),
+                }
+            )
+        );
+
+        let applied_target = app_state.apply_run_panel_recovery_action(&action);
+
+        assert_eq!(
+            applied_target,
+            Some(crate::InspectorTarget::Unit(UnitId::new("feed-1")))
+        );
+        assert_eq!(app_state.workspace.document.revision, 1);
+        assert_eq!(
+            app_state
+                .workspace
+                .command_history
+                .current_entry()
+                .map(|entry| &entry.command),
+            Some(&DocumentCommand::RestoreCanonicalUnitPorts {
+                unit_id: UnitId::new("feed-1"),
+            })
+        );
+        let feed = app_state
+            .workspace
+            .document
+            .flowsheet
+            .units
+            .get(&UnitId::new("feed-1"))
+            .expect("expected feed unit");
+        assert_eq!(feed.ports.len(), 1);
+        assert_eq!(feed.ports[0].name, "outlet");
+        assert_eq!(
+            feed.ports[0]
+                .stream_id
+                .as_ref()
+                .map(|stream_id| stream_id.as_str()),
+            Some("stream-feed")
+        );
+        assert_eq!(
+            app_state.workspace.drafts.active_target,
+            Some(crate::InspectorTarget::Unit(UnitId::new("feed-1")))
+        );
+        assert!(app_state.workspace.panels.inspector_open);
+    }
+
+    #[test]
+    fn applying_run_panel_recovery_action_selects_unit_and_opens_inspector() {
+        let mut document = sample_document();
+        document
+            .flowsheet
+            .insert_unit(UnitNode::new(
+                "heater-1",
+                "Heater",
+                "heater",
+                vec![
+                    UnitPort::new("inlet", PortDirection::Inlet, PortKind::Material, None),
+                    UnitPort::new("outlet", PortDirection::Outlet, PortKind::Material, None),
+                ],
+            ))
+            .expect("expected heater insert");
+        let mut app_state = AppState::new(document);
+        let summary = DiagnosticSummary::new(
+            0,
+            DiagnosticSeverity::Error,
+            "solver.step.spec: solver step 1 unit spec validation failed",
+        )
+        .with_primary_code("solver.step.spec")
+        .with_related_unit_ids(vec![UnitId::new("heater-1")]);
+
+        app_state.record_failure(0, RunStatus::Error, summary);
+        let action = app_state
+            .workspace
+            .run_panel
+            .notice
+            .as_ref()
+            .and_then(|notice| notice.recovery_action.as_ref())
+            .cloned()
+            .expect("expected recovery action");
+
+        let applied_target = app_state.apply_run_panel_recovery_action(&action);
+
+        assert_eq!(
+            applied_target,
+            Some(crate::InspectorTarget::Unit(UnitId::new("heater-1")))
+        );
+        assert!(
+            app_state
+                .workspace
+                .selection
+                .selected_units
+                .contains(&UnitId::new("heater-1"))
+        );
+        assert_eq!(
+            app_state.workspace.drafts.active_target,
+            Some(crate::InspectorTarget::Unit(UnitId::new("heater-1")))
+        );
+        assert!(app_state.workspace.panels.inspector_open);
+    }
+
+    #[test]
+    fn applying_run_panel_recovery_action_disconnects_port_and_opens_unit_inspector() {
+        let project = rf_store::parse_project_file_json(include_str!(
+            "../../../examples/flowsheets/failures/missing-stream-reference.rfproj.json"
+        ))
+        .expect("expected project parse");
+        let mut app_state = AppState::new(FlowsheetDocument::new(
+            project.document.flowsheet,
+            DocumentMetadata::new(
+                "doc-missing-stream-recovery",
+                "Missing Stream Recovery Demo",
+                timestamp(40),
+            ),
+        ));
+        let summary = DiagnosticSummary::new(
+            0,
+            DiagnosticSeverity::Error,
+            "solver.connection_validation.missing_stream_reference: solver connection validation failed",
+        )
+        .with_primary_code("solver.connection_validation.missing_stream_reference")
+        .with_related_unit_ids(vec![UnitId::new("heater-1")])
+        .with_related_port_targets(vec![rf_types::DiagnosticPortTarget::new(
+            "heater-1",
+            "outlet",
+        )]);
+
+        app_state.record_failure(0, RunStatus::Error, summary);
+        let action = app_state
+            .workspace
+            .run_panel
+            .notice
+            .as_ref()
+            .and_then(|notice| notice.recovery_action.as_ref())
+            .cloned()
+            .expect("expected recovery action");
+
+        assert_eq!(
+            action.mutation,
+            Some(crate::RunPanelRecoveryMutation::DisconnectPort {
+                unit_id: UnitId::new("heater-1"),
+                port_name: "outlet".to_string(),
+            })
+        );
+
+        let applied_target = app_state.apply_run_panel_recovery_action(&action);
+
+        assert_eq!(
+            applied_target,
+            Some(crate::InspectorTarget::Unit(UnitId::new("heater-1")))
+        );
+        assert!(
+            app_state
+                .workspace
+                .selection
+                .selected_units
+                .contains(&UnitId::new("heater-1"))
+        );
+        assert_eq!(
+            app_state.workspace.drafts.active_target,
+            Some(crate::InspectorTarget::Unit(UnitId::new("heater-1")))
+        );
+        assert!(app_state.workspace.panels.inspector_open);
+        assert_eq!(app_state.workspace.document.revision, 1);
+        assert_eq!(
+            app_state
+                .workspace
+                .command_history
+                .current_entry()
+                .map(|entry| &entry.command),
+            Some(&DocumentCommand::DisconnectPorts {
+                unit_id: UnitId::new("heater-1"),
+                port: "outlet".to_string(),
+            })
+        );
+        assert_eq!(
+            app_state
+                .workspace
+                .document
+                .flowsheet
+                .units
+                .get(&UnitId::new("heater-1"))
+                .and_then(|unit| unit.ports.iter().find(|port| port.name == "outlet"))
+                .and_then(|port| port.stream_id.as_ref())
+                .map(|stream_id| stream_id.as_str()),
+            None
+        );
+    }
+
+    #[test]
+    fn applying_run_panel_recovery_action_deletes_orphan_stream_without_selecting_missing_target() {
+        let project = rf_store::parse_project_file_json(include_str!(
+            "../../../examples/flowsheets/failures/orphan-stream.rfproj.json"
+        ))
+        .expect("expected project parse");
+        let mut app_state = AppState::new(FlowsheetDocument::new(
+            project.document.flowsheet,
+            DocumentMetadata::new(
+                "doc-orphan-stream-recovery",
+                "Orphan Stream Recovery Demo",
+                timestamp(41),
+            ),
+        ));
+        let summary = DiagnosticSummary::new(
+            0,
+            DiagnosticSeverity::Error,
+            "solver.connection_validation.orphan_stream: solver connection validation failed",
+        )
+        .with_primary_code("solver.connection_validation.orphan_stream")
+        .with_related_stream_ids(vec![rf_types::StreamId::new("stream-orphan")]);
+
+        app_state.record_failure(0, RunStatus::Error, summary);
+        let action = app_state
+            .workspace
+            .run_panel
+            .notice
+            .as_ref()
+            .and_then(|notice| notice.recovery_action.as_ref())
+            .cloned()
+            .expect("expected recovery action");
+
+        assert_eq!(
+            action.mutation,
+            Some(crate::RunPanelRecoveryMutation::DeleteStream {
+                stream_id: rf_types::StreamId::new("stream-orphan"),
+            })
+        );
+
+        let applied_target = app_state.apply_run_panel_recovery_action(&action);
+
+        assert_eq!(applied_target, None);
+        assert!(app_state.workspace.selection.selected_units.is_empty());
+        assert!(app_state.workspace.selection.selected_streams.is_empty());
+        assert_eq!(app_state.workspace.drafts.active_target, None);
+        assert_eq!(app_state.workspace.document.revision, 1);
+        assert_eq!(
+            app_state
+                .workspace
+                .command_history
+                .current_entry()
+                .map(|entry| &entry.command),
+            Some(&DocumentCommand::DeleteStream {
+                stream_id: rf_types::StreamId::new("stream-orphan"),
+            })
+        );
+        assert!(
+            !app_state
+                .workspace
+                .document
+                .flowsheet
+                .streams
+                .contains_key(&rf_types::StreamId::new("stream-orphan"))
+        );
+    }
+
+    #[test]
+    fn applying_run_panel_recovery_action_creates_stream_for_unbound_outlet_and_opens_unit_inspector()
+     {
+        let project = rf_store::parse_project_file_json(include_str!(
+            "../../../examples/flowsheets/failures/unbound-outlet-port.rfproj.json"
+        ))
+        .expect("expected project parse");
+        let mut app_state = AppState::new(FlowsheetDocument::new(
+            project.document.flowsheet,
+            DocumentMetadata::new(
+                "doc-unbound-outlet-recovery",
+                "Unbound Outlet Recovery Demo",
+                timestamp(44),
+            ),
+        ));
+        let summary = DiagnosticSummary::new(
+            0,
+            DiagnosticSeverity::Error,
+            "solver.connection_validation.unbound_outlet_port: solver connection validation failed",
+        )
+        .with_primary_code("solver.connection_validation.unbound_outlet_port")
+        .with_related_unit_ids(vec![UnitId::new("feed-1")])
+        .with_related_port_targets(vec![rf_types::DiagnosticPortTarget::new(
+            "feed-1", "outlet",
+        )]);
+
+        app_state.record_failure(0, RunStatus::Error, summary);
+        let action = app_state
+            .workspace
+            .run_panel
+            .notice
+            .as_ref()
+            .and_then(|notice| notice.recovery_action.as_ref())
+            .cloned()
+            .expect("expected recovery action");
+
+        assert_eq!(
+            action.mutation,
+            Some(crate::RunPanelRecoveryMutation::CreateAndBindOutletStream {
+                unit_id: UnitId::new("feed-1"),
+                port_name: "outlet".to_string(),
+            })
+        );
+
+        let applied_target = app_state.apply_run_panel_recovery_action(&action);
+
+        assert_eq!(
+            applied_target,
+            Some(crate::InspectorTarget::Unit(UnitId::new("feed-1")))
+        );
+        assert_eq!(app_state.workspace.document.revision, 1);
+        assert_eq!(
+            app_state
+                .workspace
+                .command_history
+                .current_entry()
+                .map(|entry| &entry.command),
+            Some(&DocumentCommand::ConnectPorts {
+                stream_id: rf_types::StreamId::new("stream-feed-1-outlet"),
+                from_unit_id: UnitId::new("feed-1"),
+                from_port: "outlet".to_string(),
+                to_unit_id: None,
+                to_port: None,
+            })
+        );
+        assert_eq!(
+            app_state
+                .workspace
+                .document
+                .flowsheet
+                .units
+                .get(&UnitId::new("feed-1"))
+                .and_then(|unit| unit.ports.iter().find(|port| port.name == "outlet"))
+                .and_then(|port| port.stream_id.as_ref())
+                .map(|stream_id| stream_id.as_str()),
+            Some("stream-feed-1-outlet")
+        );
+        assert!(
+            app_state
+                .workspace
+                .document
+                .flowsheet
+                .streams
+                .contains_key(&rf_types::StreamId::new("stream-feed-1-outlet"))
+        );
+        assert_eq!(
+            app_state.workspace.drafts.active_target,
+            Some(crate::InspectorTarget::Unit(UnitId::new("feed-1")))
+        );
+        assert!(app_state.workspace.panels.inspector_open);
+    }
+
+    #[test]
+    fn applying_run_panel_recovery_action_disconnects_missing_upstream_source_and_deletes_stream() {
+        let project = rf_store::parse_project_file_json(include_str!(
+            "../../../examples/flowsheets/failures/missing-upstream-source.rfproj.json"
+        ))
+        .expect("expected project parse");
+        let mut app_state = AppState::new(FlowsheetDocument::new(
+            project.document.flowsheet,
+            DocumentMetadata::new(
+                "doc-missing-upstream-recovery",
+                "Missing Upstream Recovery Demo",
+                timestamp(45),
+            ),
+        ));
+        let summary = DiagnosticSummary::new(
+            0,
+            DiagnosticSeverity::Error,
+            "solver.connection_validation.missing_upstream_source: solver connection validation failed",
+        )
+        .with_primary_code("solver.connection_validation.missing_upstream_source")
+        .with_related_unit_ids(vec![UnitId::new("mixer-1")])
+        .with_related_stream_ids(vec![rf_types::StreamId::new("stream-feed-a")])
+        .with_related_port_targets(vec![rf_types::DiagnosticPortTarget::new(
+            "mixer-1",
+            "inlet_a",
+        )]);
+
+        app_state.record_failure(0, RunStatus::Error, summary);
+        let action = app_state
+            .workspace
+            .run_panel
+            .notice
+            .as_ref()
+            .and_then(|notice| notice.recovery_action.as_ref())
+            .cloned()
+            .expect("expected recovery action");
+
+        assert_eq!(
+            action.mutation,
+            Some(
+                crate::RunPanelRecoveryMutation::DisconnectPortAndDeleteStream {
+                    unit_id: UnitId::new("mixer-1"),
+                    port_name: "inlet_a".to_string(),
+                    stream_id: rf_types::StreamId::new("stream-feed-a"),
+                }
+            )
+        );
+
+        let applied_target = app_state.apply_run_panel_recovery_action(&action);
+
+        assert_eq!(
+            applied_target,
+            Some(crate::InspectorTarget::Unit(UnitId::new("mixer-1")))
+        );
+        assert_eq!(app_state.workspace.document.revision, 1);
+        assert_eq!(
+            app_state
+                .workspace
+                .command_history
+                .current_entry()
+                .map(|entry| &entry.command),
+            Some(&DocumentCommand::DisconnectPortAndDeleteStream {
+                unit_id: UnitId::new("mixer-1"),
+                port: "inlet_a".to_string(),
+                stream_id: rf_types::StreamId::new("stream-feed-a"),
+            })
+        );
+        assert_eq!(
+            app_state
+                .workspace
+                .document
+                .flowsheet
+                .units
+                .get(&UnitId::new("mixer-1"))
+                .and_then(|unit| unit.ports.iter().find(|port| port.name == "inlet_a"))
+                .and_then(|port| port.stream_id.as_ref())
+                .map(|stream_id| stream_id.as_str()),
+            None
+        );
+        assert!(
+            !app_state
+                .workspace
+                .document
+                .flowsheet
+                .streams
+                .contains_key(&rf_types::StreamId::new("stream-feed-a"))
+        );
+    }
+
+    #[test]
+    fn applying_run_panel_recovery_action_disconnects_self_loop_inlet_and_opens_unit_inspector() {
+        let project = rf_store::parse_project_file_json(include_str!(
+            "../../../examples/flowsheets/failures/self-loop-cycle.rfproj.json"
+        ))
+        .expect("expected project parse");
+        let mut app_state = AppState::new(FlowsheetDocument::new(
+            project.document.flowsheet,
+            DocumentMetadata::new(
+                "doc-self-loop-recovery",
+                "Self Loop Recovery Demo",
+                timestamp(42),
+            ),
+        ));
+        let summary = DiagnosticSummary::new(
+            0,
+            DiagnosticSeverity::Error,
+            "solver.topological_ordering.self_loop_cycle: solver topological ordering failed",
+        )
+        .with_primary_code("solver.topological_ordering.self_loop_cycle")
+        .with_related_unit_ids(vec![UnitId::new("flash-1")])
+        .with_related_stream_ids(vec![rf_types::StreamId::new("stream-loop")])
+        .with_related_port_targets(vec![
+            rf_types::DiagnosticPortTarget::new("flash-1", "inlet"),
+            rf_types::DiagnosticPortTarget::new("flash-1", "liquid"),
+        ]);
+
+        app_state.record_failure(0, RunStatus::Error, summary);
+        let action = app_state
+            .workspace
+            .run_panel
+            .notice
+            .as_ref()
+            .and_then(|notice| notice.recovery_action.as_ref())
+            .cloned()
+            .expect("expected recovery action");
+
+        assert_eq!(
+            action.mutation,
+            Some(crate::RunPanelRecoveryMutation::DisconnectPort {
+                unit_id: UnitId::new("flash-1"),
+                port_name: "inlet".to_string(),
+            })
+        );
+
+        let applied_target = app_state.apply_run_panel_recovery_action(&action);
+
+        assert_eq!(
+            applied_target,
+            Some(crate::InspectorTarget::Unit(UnitId::new("flash-1")))
+        );
+        assert_eq!(app_state.workspace.document.revision, 1);
+        assert_eq!(
+            app_state
+                .workspace
+                .command_history
+                .current_entry()
+                .map(|entry| &entry.command),
+            Some(&DocumentCommand::DisconnectPorts {
+                unit_id: UnitId::new("flash-1"),
+                port: "inlet".to_string(),
+            })
+        );
+        assert_eq!(
+            app_state
+                .workspace
+                .document
+                .flowsheet
+                .units
+                .get(&UnitId::new("flash-1"))
+                .and_then(|unit| unit.ports.iter().find(|port| port.name == "inlet"))
+                .and_then(|port| port.stream_id.as_ref())
+                .map(|stream_id| stream_id.as_str()),
+            None
+        );
+        assert_eq!(
+            app_state.workspace.drafts.active_target,
+            Some(crate::InspectorTarget::Unit(UnitId::new("flash-1")))
+        );
+        assert!(app_state.workspace.panels.inspector_open);
+    }
+
+    #[test]
+    fn applying_run_panel_recovery_action_disconnects_two_unit_cycle_inlet_and_opens_unit_inspector()
+     {
+        let project = rf_store::parse_project_file_json(include_str!(
+            "../../../examples/flowsheets/failures/multi-unit-cycle.rfproj.json"
+        ))
+        .expect("expected project parse");
+        let mut app_state = AppState::new(FlowsheetDocument::new(
+            project.document.flowsheet,
+            DocumentMetadata::new(
+                "doc-two-unit-cycle-recovery",
+                "Two Unit Cycle Recovery Demo",
+                timestamp(43),
+            ),
+        ));
+        let summary = DiagnosticSummary::new(
+            0,
+            DiagnosticSeverity::Error,
+            "solver.topological_ordering.two_unit_cycle: solver topological ordering failed",
+        )
+        .with_primary_code("solver.topological_ordering.two_unit_cycle")
+        .with_related_unit_ids(vec![UnitId::new("heater-1"), UnitId::new("valve-1")])
+        .with_related_stream_ids(vec![
+            rf_types::StreamId::new("stream-a"),
+            rf_types::StreamId::new("stream-b"),
+        ])
+        .with_related_port_targets(vec![
+            rf_types::DiagnosticPortTarget::new("valve-1", "inlet"),
+            rf_types::DiagnosticPortTarget::new("heater-1", "inlet"),
+        ]);
+
+        app_state.record_failure(0, RunStatus::Error, summary);
+        let action = app_state
+            .workspace
+            .run_panel
+            .notice
+            .as_ref()
+            .and_then(|notice| notice.recovery_action.as_ref())
+            .cloned()
+            .expect("expected recovery action");
+
+        assert_eq!(
+            action.mutation,
+            Some(crate::RunPanelRecoveryMutation::DisconnectPort {
+                unit_id: UnitId::new("heater-1"),
+                port_name: "inlet".to_string(),
+            })
+        );
+
+        let applied_target = app_state.apply_run_panel_recovery_action(&action);
+
+        assert_eq!(
+            applied_target,
+            Some(crate::InspectorTarget::Unit(UnitId::new("heater-1")))
+        );
+        assert_eq!(app_state.workspace.document.revision, 1);
+        assert_eq!(
+            app_state
+                .workspace
+                .command_history
+                .current_entry()
+                .map(|entry| &entry.command),
+            Some(&DocumentCommand::DisconnectPorts {
+                unit_id: UnitId::new("heater-1"),
+                port: "inlet".to_string(),
+            })
+        );
+        assert_eq!(
+            app_state
+                .workspace
+                .document
+                .flowsheet
+                .units
+                .get(&UnitId::new("heater-1"))
+                .and_then(|unit| unit.ports.iter().find(|port| port.name == "inlet"))
+                .and_then(|port| port.stream_id.as_ref())
+                .map(|stream_id| stream_id.as_str()),
+            None
+        );
+        assert_eq!(
+            app_state.workspace.drafts.active_target,
+            Some(crate::InspectorTarget::Unit(UnitId::new("heater-1")))
+        );
+        assert!(app_state.workspace.panels.inspector_open);
     }
 
     #[test]
@@ -548,7 +2205,23 @@ mod tests {
             EntitlementActionId::RefreshOfflineLease
         );
         assert_eq!(widget.view().primary_action.label, "Refresh offline lease");
+        assert_eq!(
+            widget.view().primary_action.detail,
+            "Refresh the current offline lease from the control plane"
+        );
         assert!(widget.view().primary_action.enabled);
+        assert!(widget.text().lines.iter().any(|line| {
+            line == "Primary detail: Refresh the current offline lease from the control plane"
+        }));
+        assert!(
+            widget
+                .text()
+                .lines
+                .iter()
+                .any(|line| {
+                    line == "  - Sync entitlement [enabled] | Sync entitlement and package manifests from the control plane"
+                })
+        );
     }
 
     #[test]
@@ -561,14 +2234,23 @@ mod tests {
         assert_eq!(
             widget.activate(EntitlementActionId::SyncEntitlement),
             EntitlementPanelWidgetEvent::Disabled {
-                action_id: EntitlementActionId::SyncEntitlement
+                action_id: EntitlementActionId::SyncEntitlement,
+                detail: "Sign in before syncing entitlement",
             }
         );
         assert_eq!(
             widget.activate_primary(),
             EntitlementPanelWidgetEvent::Disabled {
-                action_id: EntitlementActionId::SyncEntitlement
+                action_id: EntitlementActionId::SyncEntitlement,
+                detail: "Sign in before syncing entitlement",
             }
+        );
+        assert!(
+            widget
+                .text()
+                .lines
+                .iter()
+                .any(|line| line == "Primary detail: Sign in before syncing entitlement")
         );
     }
 
@@ -740,6 +2422,10 @@ mod tests {
             .back()
             .expect("expected stored snapshot");
         assert_eq!(stored.status, RunStatus::Converged);
+        assert_eq!(
+            stored.summary.primary_code.as_deref(),
+            Some("solver.execution_order")
+        );
         assert_eq!(stored.summary.diagnostic_count, 4);
         assert_eq!(stored.diagnostics[0].code, "solver.execution_order");
         assert_eq!(stored.steps.len(), 3);

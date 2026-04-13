@@ -1,0 +1,775 @@
+use std::fs;
+
+use rf_ui::EntitlementActionId;
+
+use crate::StudioGuiHostEntitlementDispatchResult;
+
+use super::test_support::{
+    find_menu_command, find_menu_command_by_label, flash_drum_local_rules_config,
+    flash_drum_local_rules_synced_config, lease_expiring_config,
+    unbound_outlet_failure_synced_config,
+};
+use super::*;
+
+#[test]
+fn gui_driver_opens_window_and_refreshes_command_state() {
+    let mut driver = StudioGuiDriver::new(&lease_expiring_config()).expect("expected driver");
+
+    let dispatch = driver
+        .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+        .expect("expected open dispatch");
+
+    match dispatch.outcome {
+        StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::WindowOpened(opened)) => {
+            assert_eq!(opened.registration.window_id, 1);
+        }
+        other => panic!("expected window opened outcome, got {other:?}"),
+    }
+    assert_eq!(dispatch.state.windows.len(), 1);
+    assert_eq!(dispatch.snapshot.app_host_state.windows.len(), 1);
+    assert_eq!(dispatch.window.header.registered_window_count, 1);
+    assert_eq!(
+        dispatch.window.layout().default_focus_area,
+        crate::StudioGuiWindowAreaId::Commands
+    );
+    assert_eq!(
+        dispatch
+            .command_registry
+            .sections
+            .first()
+            .and_then(|section| section.commands.first())
+            .and_then(|command| command.target_window_id),
+        Some(1)
+    );
+    assert!(dispatch.canvas.suggestions.is_empty());
+    assert_eq!(dispatch.snapshot.canvas.view().suggestion_count, 0);
+}
+
+#[test]
+fn gui_driver_routes_ui_command_request_through_single_event_entry() {
+    let mut driver = StudioGuiDriver::new(&lease_expiring_config()).expect("expected driver");
+    let open = driver
+        .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+        .expect("expected open dispatch");
+    let window_id = match open.outcome {
+        StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::WindowOpened(opened)) => {
+            opened.registration.window_id
+        }
+        other => panic!("expected window opened outcome, got {other:?}"),
+    };
+
+    let dispatch = driver
+        .dispatch_event(StudioGuiEvent::UiCommandRequested {
+            command_id: "run_panel.set_active".to_string(),
+        })
+        .expect("expected ui command dispatch");
+
+    match dispatch.outcome {
+        StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::UiCommandDispatched(
+            StudioGuiHostUiCommandDispatchResult::Executed(executed),
+        )) => {
+            assert_eq!(executed.target_window_id, window_id);
+        }
+        other => panic!("expected executed ui command outcome, got {other:?}"),
+    }
+}
+
+#[test]
+fn gui_driver_routes_entitlement_primary_action_through_single_event_entry() {
+    let mut driver = StudioGuiDriver::new(&lease_expiring_config()).expect("expected driver");
+    let open = driver
+        .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+        .expect("expected open dispatch");
+    let window_id = match open.outcome {
+        StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::WindowOpened(opened)) => {
+            opened.registration.window_id
+        }
+        other => panic!("expected window opened outcome, got {other:?}"),
+    };
+
+    let dispatch = driver
+        .dispatch_event(StudioGuiEvent::EntitlementPrimaryActionRequested)
+        .expect("expected entitlement primary action dispatch");
+
+    match dispatch.outcome {
+        StudioGuiDriverOutcome::HostCommand(
+            StudioGuiHostCommandOutcome::EntitlementActionDispatched(
+                StudioGuiHostEntitlementDispatchResult::Executed {
+                    action_id,
+                    dispatch,
+                },
+            ),
+        ) => {
+            assert_eq!(action_id, EntitlementActionId::RefreshOfflineLease);
+            assert_eq!(dispatch.target_window_id, window_id);
+        }
+        other => panic!("expected executed entitlement primary action outcome, got {other:?}"),
+    }
+}
+
+#[test]
+fn gui_driver_routes_entitlement_action_through_single_event_entry() {
+    let mut driver = StudioGuiDriver::new(&lease_expiring_config()).expect("expected driver");
+    let open = driver
+        .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+        .expect("expected open dispatch");
+    let window_id = match open.outcome {
+        StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::WindowOpened(opened)) => {
+            opened.registration.window_id
+        }
+        other => panic!("expected window opened outcome, got {other:?}"),
+    };
+
+    let dispatch = driver
+        .dispatch_event(StudioGuiEvent::EntitlementActionRequested {
+            action_id: EntitlementActionId::SyncEntitlement,
+        })
+        .expect("expected entitlement action dispatch");
+
+    match dispatch.outcome {
+        StudioGuiDriverOutcome::HostCommand(
+            StudioGuiHostCommandOutcome::EntitlementActionDispatched(
+                StudioGuiHostEntitlementDispatchResult::Executed {
+                    action_id,
+                    dispatch,
+                },
+            ),
+        ) => {
+            assert_eq!(action_id, EntitlementActionId::SyncEntitlement);
+            assert_eq!(dispatch.target_window_id, window_id);
+        }
+        other => panic!("expected executed entitlement action outcome, got {other:?}"),
+    }
+}
+
+#[test]
+fn gui_driver_stably_ignores_entitlement_action_without_registered_window() {
+    let mut driver = StudioGuiDriver::new(&lease_expiring_config()).expect("expected driver");
+
+    let dispatch = driver
+        .dispatch_event(StudioGuiEvent::EntitlementActionRequested {
+            action_id: EntitlementActionId::SyncEntitlement,
+        })
+        .expect("expected entitlement action result");
+
+    match dispatch.outcome {
+        StudioGuiDriverOutcome::HostCommand(
+            StudioGuiHostCommandOutcome::EntitlementActionDispatched(
+                StudioGuiHostEntitlementDispatchResult::IgnoredDisabled {
+                    action_id,
+                    detail,
+                    target_window_id,
+                },
+            ),
+        ) => {
+            assert_eq!(action_id, EntitlementActionId::SyncEntitlement);
+            assert_eq!(
+                detail,
+                "Open a window before dispatching entitlement actions"
+            );
+            assert_eq!(target_window_id, None);
+        }
+        other => panic!("expected ignored entitlement action outcome, got {other:?}"),
+    }
+}
+
+#[test]
+fn gui_driver_surfaces_local_rules_canvas_state_from_project() {
+    let (config, project_path) = flash_drum_local_rules_config();
+    let mut driver = StudioGuiDriver::new(&config).expect("expected driver");
+
+    let initial_canvas = driver.canvas_state();
+    assert_eq!(initial_canvas.suggestions.len(), 3);
+    assert_eq!(
+        initial_canvas
+            .focused_suggestion_id
+            .as_ref()
+            .map(|id| id.as_str()),
+        Some("local.flash_drum.connect_inlet.flash-1.stream-heated")
+    );
+
+    let dispatch = driver
+        .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+        .expect("expected open dispatch");
+
+    assert_eq!(dispatch.canvas.suggestions.len(), 3);
+    assert_eq!(dispatch.snapshot.canvas.view().suggestion_count, 3);
+    assert_eq!(
+        dispatch
+            .snapshot
+            .runtime
+            .run_panel
+            .view()
+            .primary_action
+            .label,
+        "Resume"
+    );
+    assert_eq!(
+        dispatch
+            .canvas
+            .suggestions
+            .iter()
+            .map(|suggestion| suggestion.id.as_str())
+            .collect::<Vec<_>>(),
+        vec![
+            "local.flash_drum.connect_inlet.flash-1.stream-heated",
+            "local.flash_drum.create_outlet.flash-1.liquid",
+            "local.flash_drum.create_outlet.flash-1.vapor",
+        ]
+    );
+
+    let _ = fs::remove_file(project_path);
+}
+
+#[test]
+fn gui_driver_dispatch_snapshot_aggregates_gui_facing_state() {
+    let (config, project_path) = flash_drum_local_rules_config();
+    let mut driver = StudioGuiDriver::new(&config).expect("expected driver");
+
+    let dispatch = driver
+        .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+        .expect("expected open dispatch");
+
+    assert!(
+        !dispatch.snapshot.command_registry.sections.is_empty(),
+        "expected at least one command section in gui snapshot"
+    );
+    assert_eq!(
+        dispatch.snapshot.canvas.primary_action().label,
+        "Accept suggestion"
+    );
+    assert_eq!(dispatch.window.canvas.suggestion_count, 3);
+    assert_eq!(
+        dispatch.window.layout().default_focus_area,
+        crate::StudioGuiWindowAreaId::Canvas
+    );
+    assert_eq!(
+        dispatch
+            .snapshot
+            .command_registry
+            .sections
+            .first()
+            .map(|section| section.title),
+        Some("Run Panel")
+    );
+    assert_eq!(
+        dispatch.snapshot.runtime.control_state.run_status,
+        rf_ui::RunStatus::Idle
+    );
+    assert_eq!(
+        dispatch
+            .window
+            .runtime
+            .run_panel
+            .view()
+            .primary_action
+            .label,
+        "Resume"
+    );
+    assert!(dispatch.snapshot.runtime.entitlement_host.is_some());
+    assert!(
+        !dispatch
+            .snapshot
+            .runtime
+            .run_panel
+            .view()
+            .primary_action
+            .label
+            .is_empty()
+    );
+
+    let _ = fs::remove_file(project_path);
+}
+
+#[test]
+fn gui_driver_routes_network_restored_without_open_windows() {
+    let mut driver = StudioGuiDriver::new(&lease_expiring_config()).expect("expected driver");
+
+    let dispatch = driver
+        .dispatch_event(StudioGuiEvent::NetworkRestored)
+        .expect("expected lifecycle dispatch");
+
+    match dispatch.outcome {
+        StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::LifecycleDispatched(
+            lifecycle,
+        )) => {
+            assert!(lifecycle.dispatch.is_none());
+        }
+        other => panic!("expected lifecycle outcome, got {other:?}"),
+    }
+    assert!(dispatch.state.windows.is_empty());
+}
+
+#[test]
+fn gui_driver_routes_shortcut_into_ui_command_dispatch() {
+    let mut driver = StudioGuiDriver::new(&lease_expiring_config()).expect("expected driver");
+    let _ = driver
+        .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+        .expect("expected open dispatch");
+
+    let dispatch = driver
+        .dispatch_event(StudioGuiEvent::ShortcutPressed {
+            shortcut: StudioGuiShortcut {
+                modifiers: vec![crate::StudioGuiShortcutModifier::Shift],
+                key: crate::StudioGuiShortcutKey::F6,
+            },
+            focus_context: StudioGuiFocusContext::Global,
+        })
+        .expect("expected shortcut dispatch");
+
+    match dispatch.outcome {
+        StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::UiCommandDispatched(
+            StudioGuiHostUiCommandDispatchResult::Executed(executed),
+        )) => match &executed.effects.runtime_report.dispatch {
+            crate::StudioRuntimeDispatch::AppCommand(outcome) => match &outcome.dispatch {
+                crate::StudioAppResultDispatch::WorkspaceMode(mode) => {
+                    assert_eq!(mode.simulation_mode, rf_ui::SimulationMode::Active);
+                }
+                other => panic!("expected workspace mode dispatch, got {other:?}"),
+            },
+            other => panic!("expected app command dispatch, got {other:?}"),
+        },
+        other => panic!("expected executed shortcut outcome, got {other:?}"),
+    }
+}
+
+#[test]
+fn gui_driver_automatic_runs_after_canvas_write_when_workspace_is_active() {
+    let (config, project_path) = flash_drum_local_rules_synced_config();
+    let mut driver = StudioGuiDriver::new(&config).expect("expected driver");
+    assert_eq!(
+        driver
+            .canvas_state()
+            .focused_suggestion_id
+            .as_ref()
+            .map(|id| id.as_str()),
+        Some("local.flash_drum.create_outlet.flash-1.vapor")
+    );
+    let _ = driver
+        .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+        .expect("expected open dispatch");
+
+    let activate = driver
+        .dispatch_event(StudioGuiEvent::ShortcutPressed {
+            shortcut: StudioGuiShortcut {
+                modifiers: vec![crate::StudioGuiShortcutModifier::Shift],
+                key: crate::StudioGuiShortcutKey::F6,
+            },
+            focus_context: StudioGuiFocusContext::Global,
+        })
+        .expect("expected activate shortcut dispatch");
+
+    match &activate.outcome {
+        StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::UiCommandDispatched(
+            StudioGuiHostUiCommandDispatchResult::Executed(executed),
+        )) => match &executed.effects.runtime_report.dispatch {
+            crate::StudioRuntimeDispatch::AppCommand(outcome) => match &outcome.dispatch {
+                crate::StudioAppResultDispatch::WorkspaceMode(mode) => {
+                    assert_eq!(mode.simulation_mode, rf_ui::SimulationMode::Active);
+                    assert_eq!(
+                        mode.pending_reason,
+                        Some(rf_ui::SolvePendingReason::ModeActivated)
+                    );
+                }
+                other => panic!("expected workspace mode dispatch, got {other:?}"),
+            },
+            other => panic!("expected app command dispatch, got {other:?}"),
+        },
+        other => panic!("expected executed activate shortcut outcome, got {other:?}"),
+    }
+    assert_eq!(
+        driver
+            .canvas_state()
+            .focused_suggestion_id
+            .as_ref()
+            .map(|id| id.as_str()),
+        Some("local.flash_drum.create_outlet.flash-1.vapor")
+    );
+
+    let dispatch = driver
+        .dispatch_event(StudioGuiEvent::ShortcutPressed {
+            shortcut: StudioGuiShortcut {
+                modifiers: Vec::new(),
+                key: crate::StudioGuiShortcutKey::Tab,
+            },
+            focus_context: StudioGuiFocusContext::CanvasSuggestionFocused,
+        })
+        .expect("expected canvas acceptance dispatch");
+
+    match dispatch.outcome {
+        StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::UiCommandDispatched(
+            StudioGuiHostUiCommandDispatchResult::ExecutedCanvasInteraction {
+                command_id,
+                result,
+                ..
+            },
+        )) => {
+            assert_eq!(command_id, "canvas.accept_focused");
+            assert_eq!(
+                result
+                    .accepted
+                    .as_ref()
+                    .map(|suggestion| suggestion.id.as_str()),
+                Some("local.flash_drum.create_outlet.flash-1.vapor")
+            );
+            assert_eq!(
+                result
+                    .latest_log_entry
+                    .as_ref()
+                    .map(|entry| entry.message.as_str()),
+                Some(
+                    "Solved document revision 1 with property package `binary-hydrocarbon-lite-v1` into snapshot `example-feed-heater-flash-rev-1-seq-1`"
+                )
+            );
+        }
+        other => panic!("expected executed canvas ui command outcome, got {other:?}"),
+    }
+    assert_eq!(
+        dispatch.snapshot.runtime.control_state.run_status,
+        rf_ui::RunStatus::Converged
+    );
+    assert_eq!(dispatch.snapshot.runtime.control_state.pending_reason, None);
+    assert_eq!(
+        dispatch
+            .snapshot
+            .runtime
+            .control_state
+            .latest_snapshot_id
+            .as_deref(),
+        Some("example-feed-heater-flash-rev-1-seq-1")
+    );
+    assert_eq!(
+        dispatch.snapshot.runtime.run_panel.view().status_label,
+        "Converged"
+    );
+
+    let _ = fs::remove_file(project_path);
+}
+
+#[test]
+fn gui_driver_recovery_then_resume_rejoins_automatic_mainline() {
+    let mut driver =
+        StudioGuiDriver::new(&unbound_outlet_failure_synced_config()).expect("expected driver");
+    let _ = driver
+        .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+        .expect("expected open dispatch");
+
+    let failed = driver
+        .dispatch_event(StudioGuiEvent::UiCommandRequested {
+            command_id: "run_panel.run_manual".to_string(),
+        })
+        .expect("expected failed run dispatch");
+    match failed.outcome {
+        StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::UiCommandDispatched(
+            StudioGuiHostUiCommandDispatchResult::Executed(executed),
+        )) => match &executed.effects.runtime_report.dispatch {
+            crate::StudioRuntimeDispatch::AppCommand(outcome) => match &outcome.dispatch {
+                crate::StudioAppResultDispatch::WorkspaceRun(run) => {
+                    assert!(matches!(
+                        run.outcome,
+                        crate::StudioWorkspaceRunOutcome::Failed(_)
+                    ));
+                    assert_eq!(run.simulation_mode, rf_ui::SimulationMode::Hold);
+                }
+                other => panic!("expected workspace run dispatch, got {other:?}"),
+            },
+            other => panic!("expected app command dispatch, got {other:?}"),
+        },
+        other => panic!("expected executed failed run outcome, got {other:?}"),
+    }
+
+    let recovery = driver
+        .dispatch_event(StudioGuiEvent::ShortcutPressed {
+            shortcut: StudioGuiShortcut {
+                modifiers: Vec::new(),
+                key: crate::StudioGuiShortcutKey::F8,
+            },
+            focus_context: StudioGuiFocusContext::Global,
+        })
+        .expect("expected recovery shortcut dispatch");
+    match recovery.outcome {
+        StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::UiCommandDispatched(
+            StudioGuiHostUiCommandDispatchResult::Executed(executed),
+        )) => match &executed.effects.runtime_report.dispatch {
+            crate::StudioRuntimeDispatch::RunPanelRecovery(outcome) => {
+                assert_eq!(outcome.action.title, "Create outlet stream");
+                assert_eq!(
+                    outcome.applied_target,
+                    Some(rf_ui::InspectorTarget::Unit(rf_types::UnitId::new(
+                        "feed-1"
+                    )))
+                );
+            }
+            other => panic!("expected recovery dispatch, got {other:?}"),
+        },
+        other => panic!("expected executed recovery outcome, got {other:?}"),
+    }
+    assert_eq!(
+        recovery.snapshot.runtime.control_state.run_status,
+        rf_ui::RunStatus::Dirty
+    );
+    assert_eq!(
+        recovery.snapshot.runtime.control_state.pending_reason,
+        Some(rf_ui::SolvePendingReason::DocumentRevisionAdvanced)
+    );
+    assert_eq!(
+        recovery.snapshot.runtime.control_state.simulation_mode,
+        rf_ui::SimulationMode::Hold
+    );
+    assert_eq!(
+        recovery
+            .snapshot
+            .runtime
+            .run_panel
+            .view()
+            .primary_action
+            .label,
+        "Resume"
+    );
+
+    let resumed = driver
+        .dispatch_event(StudioGuiEvent::ShortcutPressed {
+            shortcut: StudioGuiShortcut {
+                modifiers: vec![crate::StudioGuiShortcutModifier::Shift],
+                key: crate::StudioGuiShortcutKey::F5,
+            },
+            focus_context: StudioGuiFocusContext::Global,
+        })
+        .expect("expected resume shortcut dispatch");
+    match resumed.outcome {
+        StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::UiCommandDispatched(
+            StudioGuiHostUiCommandDispatchResult::Executed(executed),
+        )) => match &executed.effects.runtime_report.dispatch {
+            crate::StudioRuntimeDispatch::AppCommand(outcome) => match &outcome.dispatch {
+                crate::StudioAppResultDispatch::WorkspaceRun(run) => {
+                    assert!(matches!(
+                        run.outcome,
+                        crate::StudioWorkspaceRunOutcome::Started(_)
+                    ));
+                    assert_eq!(run.simulation_mode, rf_ui::SimulationMode::Active);
+                    assert_eq!(run.pending_reason, None);
+                    assert_eq!(run.run_status, rf_ui::RunStatus::Converged);
+                    assert_eq!(
+                        run.latest_snapshot_id.as_deref(),
+                        Some("example-unbound-outlet-port-rev-1-seq-1")
+                    );
+                }
+                other => panic!("expected workspace run dispatch, got {other:?}"),
+            },
+            other => panic!("expected app command dispatch, got {other:?}"),
+        },
+        other => panic!("expected executed resume outcome, got {other:?}"),
+    }
+    assert_eq!(
+        resumed.snapshot.runtime.control_state.run_status,
+        rf_ui::RunStatus::Converged
+    );
+    assert_eq!(
+        resumed
+            .snapshot
+            .runtime
+            .control_state
+            .latest_snapshot_id
+            .as_deref(),
+        Some("example-unbound-outlet-port-rev-1-seq-1")
+    );
+    assert_eq!(
+        resumed.snapshot.runtime.run_panel.view().status_label,
+        "Converged"
+    );
+}
+
+#[test]
+fn gui_driver_keeps_recovery_command_presentation_aligned_across_surfaces_after_failure() {
+    let mut driver =
+        StudioGuiDriver::new(&unbound_outlet_failure_synced_config()).expect("expected driver");
+    let _ = driver
+        .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+        .expect("expected open dispatch");
+
+    let failed = driver
+        .dispatch_event(StudioGuiEvent::UiCommandRequested {
+            command_id: "run_panel.run_manual".to_string(),
+        })
+        .expect("expected failed run dispatch");
+
+    let recovery_palette_item = failed
+        .window
+        .commands
+        .palette_items("diagnostic")
+        .into_iter()
+        .find(|item| item.command_id == "run_panel.recover_failure")
+        .expect("expected recovery palette item");
+    let recovery_toolbar_item = failed
+        .window
+        .commands
+        .toolbar_sections
+        .iter()
+        .find(|section| section.title == "Recovery")
+        .and_then(|section| {
+            section
+                .items
+                .iter()
+                .find(|item| item.command_id == "run_panel.recover_failure")
+        })
+        .expect("expected recovery toolbar item");
+    let recovery_list_item = failed
+        .window
+        .commands
+        .command_list_sections
+        .iter()
+        .find(|section| section.title == "Recovery")
+        .and_then(|section| {
+            section
+                .items
+                .iter()
+                .find(|item| item.command_id == "run_panel.recover_failure")
+        })
+        .expect("expected recovery command list item");
+    let recovery_menu_item = find_menu_command(
+        &failed.window.commands.menu_tree,
+        "run_panel.recover_failure",
+    )
+    .expect("expected recovery menu item");
+
+    assert!(recovery_palette_item.enabled);
+    assert!(recovery_toolbar_item.enabled);
+    assert!(recovery_list_item.enabled);
+    assert!(recovery_menu_item.enabled);
+    assert_eq!(
+        recovery_palette_item.label,
+        "Recover run panel failure (F8)"
+    );
+    assert_eq!(recovery_list_item.label, "Recover run panel failure (F8)");
+    assert_eq!(recovery_toolbar_item.label, "Recover run panel failure");
+    assert_eq!(recovery_menu_item.label, "Recover run panel failure (F8)");
+    assert_eq!(
+        recovery_palette_item.menu_path_text,
+        "Run > Recovery > Recover Run Panel Failure"
+    );
+    assert_eq!(
+        recovery_list_item.menu_path_text,
+        recovery_palette_item.menu_path_text
+    );
+    assert_eq!(
+        recovery_palette_item.hover_text,
+        "Apply the current run panel recovery action in the target window\nMenu: Run > Recovery > Recover Run Panel Failure"
+    );
+    assert_eq!(
+        recovery_toolbar_item.hover_text,
+        recovery_palette_item.hover_text
+    );
+    assert_eq!(
+        recovery_menu_item.hover_text,
+        recovery_palette_item.hover_text
+    );
+}
+
+#[test]
+fn gui_driver_command_surface_dispatch_matches_shortcut_route_for_activate_workspace() {
+    let mut surface_driver =
+        StudioGuiDriver::new(&lease_expiring_config()).expect("expected surface driver");
+    let opened = surface_driver
+        .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+        .expect("expected open dispatch");
+
+    let palette_command_id = opened
+        .window
+        .commands
+        .palette_items("activate")
+        .into_iter()
+        .map(|item| item.command_id)
+        .collect::<Vec<_>>();
+    let toolbar_command_id = opened
+        .window
+        .commands
+        .toolbar_sections
+        .iter()
+        .flat_map(|section| section.items.iter())
+        .find(|item| item.label == "Activate workspace")
+        .map(|item| item.command_id.clone())
+        .expect("expected activate toolbar command");
+    let command_list_command_id = opened
+        .window
+        .commands
+        .command_list_sections
+        .iter()
+        .flat_map(|section| section.items.iter())
+        .find(|item| item.label == "Activate workspace (Shift+F6)")
+        .map(|item| item.command_id.clone())
+        .expect("expected activate command list item");
+    let menu_command_id = find_menu_command_by_label(
+        &opened.window.commands.menu_tree,
+        "Activate workspace (Shift+F6)",
+    )
+    .map(|item| item.command_id.clone())
+    .expect("expected activate menu item");
+
+    assert_eq!(palette_command_id, vec!["run_panel.set_active".to_string()]);
+    assert_eq!(toolbar_command_id, "run_panel.set_active");
+    assert_eq!(command_list_command_id, "run_panel.set_active");
+    assert_eq!(menu_command_id, "run_panel.set_active");
+
+    let surface_dispatch = surface_driver
+        .dispatch_event(StudioGuiEvent::UiCommandRequested {
+            command_id: palette_command_id[0].clone(),
+        })
+        .expect("expected surface ui command dispatch");
+
+    let mut shortcut_driver =
+        StudioGuiDriver::new(&lease_expiring_config()).expect("expected shortcut driver");
+    let _ = shortcut_driver
+        .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+        .expect("expected open dispatch");
+    let shortcut_dispatch = shortcut_driver
+        .dispatch_event(StudioGuiEvent::ShortcutPressed {
+            shortcut: StudioGuiShortcut {
+                modifiers: vec![crate::StudioGuiShortcutModifier::Shift],
+                key: crate::StudioGuiShortcutKey::F6,
+            },
+            focus_context: StudioGuiFocusContext::Global,
+        })
+        .expect("expected shortcut dispatch");
+
+    match &surface_dispatch.outcome {
+        StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::UiCommandDispatched(
+            StudioGuiHostUiCommandDispatchResult::Executed(executed),
+        )) => match &executed.effects.runtime_report.dispatch {
+            crate::StudioRuntimeDispatch::AppCommand(outcome) => match &outcome.dispatch {
+                crate::StudioAppResultDispatch::WorkspaceMode(mode) => {
+                    assert_eq!(mode.simulation_mode, rf_ui::SimulationMode::Active);
+                }
+                other => panic!("expected workspace mode dispatch, got {other:?}"),
+            },
+            other => panic!("expected app command dispatch, got {other:?}"),
+        },
+        other => panic!("expected executed surface command outcome, got {other:?}"),
+    }
+    match &shortcut_dispatch.outcome {
+        StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::UiCommandDispatched(
+            StudioGuiHostUiCommandDispatchResult::Executed(executed),
+        )) => match &executed.effects.runtime_report.dispatch {
+            crate::StudioRuntimeDispatch::AppCommand(outcome) => match &outcome.dispatch {
+                crate::StudioAppResultDispatch::WorkspaceMode(mode) => {
+                    assert_eq!(mode.simulation_mode, rf_ui::SimulationMode::Active);
+                }
+                other => panic!("expected workspace mode dispatch, got {other:?}"),
+            },
+            other => panic!("expected app command dispatch, got {other:?}"),
+        },
+        other => panic!("expected executed shortcut outcome, got {other:?}"),
+    }
+
+    assert_eq!(
+        surface_dispatch.window.commands,
+        shortcut_dispatch.window.commands
+    );
+    assert_eq!(
+        surface_dispatch.window.runtime.control_state,
+        shortcut_dispatch.window.runtime.control_state
+    );
+    assert_eq!(
+        surface_dispatch.window.runtime.run_panel.view(),
+        shortcut_dispatch.window.runtime.run_panel.view()
+    );
+}
