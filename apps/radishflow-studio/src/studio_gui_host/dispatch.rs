@@ -1,6 +1,4 @@
-use super::helpers::{
-    dispatch_from_controller, foreground_entitlement_dispatch_detail, global_event_from_lifecycle,
-};
+use super::helpers::{dispatch_from_controller, global_event_from_lifecycle};
 use super::*;
 
 impl StudioGuiHost {
@@ -154,105 +152,10 @@ impl StudioGuiHost {
         }
     }
 
-    pub fn dispatch_foreground_entitlement_primary_action(
-        &mut self,
-    ) -> RfResult<StudioGuiHostEntitlementDispatchResult> {
-        let target_window_id = self.preferred_target_window_id();
-        let Some(widget) = self.current_entitlement_widget() else {
-            return Ok(StudioGuiHostEntitlementDispatchResult::IgnoredMissing {
-                action_id: EntitlementActionId::SyncEntitlement,
-                target_window_id,
-            });
-        };
-
-        match widget.activate_primary() {
-            EntitlementPanelWidgetEvent::Dispatched { action_id, .. } => {
-                match self
-                    .controller
-                    .dispatch_foreground_entitlement_primary_action()?
-                {
-                    Some(dispatch) => Ok(StudioGuiHostEntitlementDispatchResult::Executed {
-                        action_id,
-                        dispatch: dispatch_from_controller(dispatch, self.canvas_state()),
-                    }),
-                    None => Ok(StudioGuiHostEntitlementDispatchResult::IgnoredDisabled {
-                        action_id,
-                        detail: foreground_entitlement_dispatch_detail(target_window_id),
-                        target_window_id,
-                    }),
-                }
-            }
-            EntitlementPanelWidgetEvent::Disabled { action_id, detail } => {
-                Ok(StudioGuiHostEntitlementDispatchResult::IgnoredDisabled {
-                    action_id,
-                    detail: detail.to_string(),
-                    target_window_id,
-                })
-            }
-            EntitlementPanelWidgetEvent::Missing { action_id } => {
-                Ok(StudioGuiHostEntitlementDispatchResult::IgnoredMissing {
-                    action_id,
-                    target_window_id,
-                })
-            }
-        }
-    }
-
-    pub fn dispatch_foreground_entitlement_action(
-        &mut self,
-        action_id: EntitlementActionId,
-    ) -> RfResult<StudioGuiHostEntitlementDispatchResult> {
-        let target_window_id = self.preferred_target_window_id();
-        let Some(widget) = self.current_entitlement_widget() else {
-            return Ok(StudioGuiHostEntitlementDispatchResult::IgnoredMissing {
-                action_id,
-                target_window_id,
-            });
-        };
-
-        match widget.activate(action_id) {
-            EntitlementPanelWidgetEvent::Dispatched { action_id, .. } => {
-                match self
-                    .controller
-                    .dispatch_foreground_entitlement_action(action_id)?
-                {
-                    Some(dispatch) => Ok(StudioGuiHostEntitlementDispatchResult::Executed {
-                        action_id,
-                        dispatch: dispatch_from_controller(dispatch, self.canvas_state()),
-                    }),
-                    None => Ok(StudioGuiHostEntitlementDispatchResult::IgnoredDisabled {
-                        action_id,
-                        detail: foreground_entitlement_dispatch_detail(target_window_id),
-                        target_window_id,
-                    }),
-                }
-            }
-            EntitlementPanelWidgetEvent::Disabled { action_id, detail } => {
-                Ok(StudioGuiHostEntitlementDispatchResult::IgnoredDisabled {
-                    action_id,
-                    detail: detail.to_string(),
-                    target_window_id,
-                })
-            }
-            EntitlementPanelWidgetEvent::Missing { action_id } => {
-                Ok(StudioGuiHostEntitlementDispatchResult::IgnoredMissing {
-                    action_id,
-                    target_window_id,
-                })
-            }
-        }
-    }
-
     pub(super) fn preferred_target_window_id(&self) -> Option<StudioWindowHostId> {
         self.state()
             .foreground_window_id
             .or_else(|| self.state().registered_windows.first().copied())
-    }
-
-    pub(super) fn current_entitlement_widget(&self) -> Option<rf_ui::EntitlementPanelWidgetModel> {
-        self.controller
-            .entitlement_host_output()
-            .map(|output| output.snapshot.panel.widget)
     }
 
     pub(super) fn build_canvas_interaction_result_with_focus(

@@ -1,10 +1,7 @@
 use std::collections::BTreeMap;
 
 use rf_types::{RfError, RfResult};
-use rf_ui::{
-    AppLogEntry, CanvasSuggestion, CanvasSuggestionId, EntitlementActionId,
-    EntitlementPanelWidgetEvent,
-};
+use rf_ui::{AppLogEntry, CanvasSuggestion, CanvasSuggestionId};
 
 use crate::studio_gui_layout_store::{
     load_persisted_window_layouts, save_persisted_window_layouts,
@@ -138,46 +135,6 @@ pub struct StudioGuiHostCanvasInteractionResult {
 
 pub type StudioGuiHostCanvasSuggestionResult = StudioGuiHostCanvasInteractionResult;
 
-#[derive(Debug, Clone, PartialEq)]
-#[allow(clippy::large_enum_variant)]
-pub enum StudioGuiHostEntitlementDispatchResult {
-    Executed {
-        action_id: EntitlementActionId,
-        dispatch: StudioGuiHostDispatch,
-    },
-    IgnoredDisabled {
-        action_id: EntitlementActionId,
-        detail: String,
-        target_window_id: Option<StudioWindowHostId>,
-    },
-    IgnoredMissing {
-        action_id: EntitlementActionId,
-        target_window_id: Option<StudioWindowHostId>,
-    },
-}
-
-impl StudioGuiHostEntitlementDispatchResult {
-    pub fn action_id(&self) -> EntitlementActionId {
-        match self {
-            Self::Executed { action_id, .. }
-            | Self::IgnoredDisabled { action_id, .. }
-            | Self::IgnoredMissing { action_id, .. } => *action_id,
-        }
-    }
-
-    pub fn target_window_id(&self) -> Option<StudioWindowHostId> {
-        match self {
-            Self::Executed { dispatch, .. } => Some(dispatch.target_window_id),
-            Self::IgnoredDisabled {
-                target_window_id, ..
-            }
-            | Self::IgnoredMissing {
-                target_window_id, ..
-            } => *target_window_id,
-        }
-    }
-}
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StudioGuiHostWindowLayoutUpdateResult {
     pub target_window_id: Option<StudioWindowHostId>,
@@ -229,10 +186,6 @@ pub enum StudioGuiHostCommand {
     DispatchUiCommand {
         command_id: String,
     },
-    DispatchForegroundEntitlementPrimaryAction,
-    DispatchForegroundEntitlementAction {
-        action_id: EntitlementActionId,
-    },
     QueryWindowDropTarget {
         window_id: Option<StudioWindowHostId>,
         query: StudioGuiWindowDropTargetQuery,
@@ -261,7 +214,6 @@ pub enum StudioGuiHostCommandOutcome {
     CanvasInteracted(StudioGuiHostCanvasInteractionResult),
     LifecycleDispatched(StudioGuiHostLifecycleDispatch),
     UiCommandDispatched(StudioGuiHostUiCommandDispatchResult),
-    EntitlementActionDispatched(StudioGuiHostEntitlementDispatchResult),
     WindowDropTargetQueried(StudioGuiHostWindowDropTargetQueryResult),
     WindowDropTargetPreviewUpdated(StudioGuiHostWindowDropTargetQueryResult),
     WindowDropTargetPreviewCleared(StudioGuiHostWindowDropPreviewClearResult),

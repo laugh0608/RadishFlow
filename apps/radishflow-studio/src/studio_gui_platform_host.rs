@@ -1210,25 +1210,6 @@ fn format_platform_dispatch_activity(dispatch: &StudioGuiPlatformDispatch) -> St
             }
         },
         StudioGuiDriverOutcome::HostCommand(
-            crate::StudioGuiHostCommandOutcome::EntitlementActionDispatched(result),
-        ) => match result {
-            crate::StudioGuiHostEntitlementDispatchResult::Executed {
-                action_id,
-                dispatch,
-            } => format!(
-                "entitlement action {:?} -> #{}",
-                action_id, dispatch.target_window_id
-            ),
-            crate::StudioGuiHostEntitlementDispatchResult::IgnoredDisabled {
-                action_id,
-                detail,
-                ..
-            } => format!("entitlement disabled {:?}: {}", action_id, detail),
-            crate::StudioGuiHostEntitlementDispatchResult::IgnoredMissing { action_id, .. } => {
-                format!("entitlement missing {:?}", action_id)
-            }
-        },
-        StudioGuiDriverOutcome::HostCommand(
             crate::StudioGuiHostCommandOutcome::WindowDropTargetQueried(result),
         ) => format!("drop query {:?}", result.query),
         StudioGuiDriverOutcome::HostCommand(
