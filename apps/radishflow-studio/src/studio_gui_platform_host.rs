@@ -560,6 +560,16 @@ impl StudioGuiPlatformHost {
         &self.gui_activity_lines
     }
 
+    pub fn latest_gui_error_line(&self) -> Option<&str> {
+        self.gui_activity_lines
+            .iter()
+            .rev()
+            .find(|line| {
+                line.starts_with("event failed:") || line.starts_with("timer dispatch failed")
+            })
+            .map(String::as_str)
+    }
+
     pub fn platform_notice(&self) -> Option<&RunPanelNotice> {
         self.platform_notice.as_ref()
     }
@@ -3091,6 +3101,21 @@ mod tests {
             latest_log
                 .message
                 .contains("simulated combined execution failure")
+        );
+    }
+
+    #[test]
+    fn platform_host_reports_latest_gui_error_line_from_activity_log() {
+        let mut host =
+            StudioGuiPlatformHost::new(&lease_expiring_config()).expect("expected platform host");
+
+        host.record_activity_line("regular gui activity");
+        host.record_activity_line("event failed: [invalid_input] simulated dispatch failure");
+        host.record_activity_line("timer dispatch failed [invalid_input]: simulated timer failure");
+
+        assert_eq!(
+            host.latest_gui_error_line(),
+            Some("timer dispatch failed [invalid_input]: simulated timer failure")
         );
     }
 }

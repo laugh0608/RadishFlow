@@ -127,7 +127,7 @@ impl ReadyAppState {
                     );
                 }
             }
-            if let Some(error) = self.last_error.as_ref() {
+            if let Some(error) = self.platform_host.latest_gui_error_line() {
                 ui.separator();
                 ui.colored_label(egui::Color32::from_rgb(180, 40, 40), error);
             }

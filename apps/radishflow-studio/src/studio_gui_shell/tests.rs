@@ -985,7 +985,6 @@ fn ready_app_state(config: &StudioRuntimeConfig) -> ReadyAppState {
     let mut app = ReadyAppState {
         platform_host: StudioGuiPlatformHost::new(config).expect("expected platform host"),
         platform_timer_executor: EguiPlatformTimerExecutor::default(),
-        last_error: None,
         command_palette: CommandPaletteState::default(),
         last_area_focus: None,
         drag_session: None,

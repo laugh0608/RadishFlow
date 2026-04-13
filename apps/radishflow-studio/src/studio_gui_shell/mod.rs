@@ -56,7 +56,6 @@ enum AppState {
 struct ReadyAppState {
     platform_host: StudioGuiPlatformHost,
     platform_timer_executor: EguiPlatformTimerExecutor,
-    last_error: Option<String>,
     command_palette: CommandPaletteState,
     last_area_focus: Option<StudioGuiWindowAreaId>,
     drag_session: Option<PanelDragSession>,
@@ -110,7 +109,6 @@ impl RadishFlowStudioApp {
                 let mut ready = ReadyAppState {
                     platform_host,
                     platform_timer_executor: EguiPlatformTimerExecutor::default(),
-                    last_error: None,
                     command_palette: CommandPaletteState::default(),
                     last_area_focus: None,
                     drag_session: None,

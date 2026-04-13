@@ -183,12 +183,11 @@ impl ReadyAppState {
                 event.clone(),
                 &mut self.platform_timer_executor,
             ) {
-            Ok(_) => self.last_error = None,
+            Ok(_) => {}
             Err(error) => {
                 let message = format!("[{}] {}", error.code().as_str(), error.message());
                 self.platform_host
                     .record_activity_line(format!("event failed: {message}"));
-                self.last_error = Some(message);
             }
         }
     }
@@ -211,11 +210,6 @@ impl ReadyAppState {
             }
             Err(error) => {
                 self.platform_host.record_activity_line(format!(
-                    "timer dispatch failed [{}]: {}",
-                    error.code().as_str(),
-                    error.message()
-                ));
-                self.last_error = Some(format!(
                     "timer dispatch failed [{}]: {}",
                     error.code().as_str(),
                     error.message()

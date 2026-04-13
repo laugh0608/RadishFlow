@@ -176,7 +176,7 @@ impl ReadyAppState {
                     if ui.button(recovery_action.title).clicked() {
                         match run_panel.activate_recovery_action() {
                             RunPanelRecoveryWidgetEvent::Requested { .. } => {
-                                self.dispatch_event(StudioGuiEvent::RunPanelRecoveryRequested);
+                                self.dispatch_ui_command("run_panel.recover_failure");
                             }
                             RunPanelRecoveryWidgetEvent::Missing => {}
                         }
