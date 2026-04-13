@@ -761,6 +761,43 @@ impl StudioAppHostController {
         Ok(result)
     }
 
+    fn window_dispatch_result(
+        projection: StudioAppHostProjection,
+        dispatch: StudioAppWindowHostDispatch,
+    ) -> StudioAppHostWindowDispatchResult {
+        StudioAppHostWindowDispatchResult {
+            projection,
+            target_window_id: dispatch.target_window_id,
+            effects: dispatch_effects_from_session(dispatch.dispatch),
+        }
+    }
+
+    fn expect_window_dispatch(
+        outcome: StudioAppHostCommandOutcome,
+        projection: StudioAppHostProjection,
+        expected: &'static str,
+    ) -> RfResult<StudioAppHostWindowDispatchResult> {
+        let StudioAppHostCommandOutcome::WindowDispatched(dispatch) = outcome else {
+            return Err(RfError::invalid_input(expected));
+        };
+
+        Ok(Self::window_dispatch_result(projection, dispatch))
+    }
+
+    fn expect_optional_window_dispatch(
+        outcome: StudioAppHostCommandOutcome,
+        projection: StudioAppHostProjection,
+        expected: &str,
+    ) -> RfResult<Option<StudioAppHostWindowDispatchResult>> {
+        match outcome {
+            StudioAppHostCommandOutcome::WindowDispatched(dispatch) => {
+                Ok(Some(Self::window_dispatch_result(projection, dispatch)))
+            }
+            StudioAppHostCommandOutcome::IgnoredUiAction => Ok(None),
+            other => Err(RfError::invalid_input(format!("{expected}, got {other:?}"))),
+        }
+    }
+
     pub fn latest_log_entry(&self) -> Option<rf_ui::AppLogEntry> {
         self.app_host.latest_log_entry()
     }
@@ -816,17 +853,11 @@ impl StudioAppHostController {
     ) -> RfResult<StudioAppHostWindowDispatchResult> {
         let (outcome, projection) = self
             .execute_command(StudioAppHostCommand::DispatchWindowTrigger { window_id, trigger })?;
-        let StudioAppHostCommandOutcome::WindowDispatched(dispatch) = outcome else {
-            return Err(RfError::invalid_input(
-                "app host controller expected window dispatch outcome",
-            ));
-        };
-
-        Ok(StudioAppHostWindowDispatchResult {
+        Self::expect_window_dispatch(
+            outcome,
             projection,
-            target_window_id: dispatch.target_window_id,
-            effects: dispatch_effects_from_session(dispatch.dispatch),
-        })
+            "app host controller expected window dispatch outcome",
+        )
     }
 
     pub fn dispatch_ui_action(
@@ -835,20 +866,11 @@ impl StudioAppHostController {
     ) -> RfResult<Option<StudioAppHostWindowDispatchResult>> {
         let (outcome, projection) =
             self.execute_command(StudioAppHostCommand::DispatchUiAction { action })?;
-
-        match outcome {
-            StudioAppHostCommandOutcome::WindowDispatched(dispatch) => {
-                Ok(Some(StudioAppHostWindowDispatchResult {
-                    projection,
-                    target_window_id: dispatch.target_window_id,
-                    effects: dispatch_effects_from_session(dispatch.dispatch),
-                }))
-            }
-            StudioAppHostCommandOutcome::IgnoredUiAction => Ok(None),
-            other => Err(RfError::invalid_input(format!(
-                "app host controller expected ui action outcome, got {other:?}"
-            ))),
-        }
+        Self::expect_optional_window_dispatch(
+            outcome,
+            projection,
+            "app host controller expected ui action outcome",
+        )
     }
 
     pub fn dispatch_ui_command(
@@ -892,17 +914,11 @@ impl StudioAppHostController {
     ) -> RfResult<StudioAppHostWindowDispatchResult> {
         let (outcome, projection) =
             self.execute_command(StudioAppHostCommand::FocusWindow { window_id })?;
-        let StudioAppHostCommandOutcome::WindowDispatched(dispatch) = outcome else {
-            return Err(RfError::invalid_input(
-                "app host controller expected focus dispatch outcome",
-            ));
-        };
-
-        Ok(StudioAppHostWindowDispatchResult {
+        Self::expect_window_dispatch(
+            outcome,
             projection,
-            target_window_id: dispatch.target_window_id,
-            effects: dispatch_effects_from_session(dispatch.dispatch),
-        })
+            "app host controller expected focus dispatch outcome",
+        )
     }
 
     pub fn dispatch_global_event(
@@ -913,11 +929,7 @@ impl StudioAppHostController {
             self.execute_command(StudioAppHostCommand::DispatchGlobalEvent { event })?;
         let dispatch = match outcome {
             StudioAppHostCommandOutcome::WindowDispatched(dispatch) => {
-                Some(StudioAppHostWindowDispatchResult {
-                    projection: projection.clone(),
-                    target_window_id: dispatch.target_window_id,
-                    effects: dispatch_effects_from_session(dispatch.dispatch),
-                })
+                Some(Self::window_dispatch_result(projection.clone(), dispatch))
             }
             StudioAppHostCommandOutcome::IgnoredGlobalEvent { .. } => None,
             other => {
@@ -1206,7 +1218,7 @@ fn map_command(command: StudioAppHostCommand) -> StudioAppWindowHostCommand {
         }
         StudioAppHostCommand::DispatchUiAction { action } => {
             StudioAppWindowHostCommand::DispatchUiAction {
-                action: map_ui_action(action),
+                action: action.into(),
             }
         }
         StudioAppHostCommand::FocusWindow { window_id } => {
@@ -1221,20 +1233,57 @@ fn map_command(command: StudioAppHostCommand) -> StudioAppWindowHostCommand {
     }
 }
 
-fn map_ui_action(action: StudioAppHostUiAction) -> StudioAppWindowHostUiAction {
-    match action {
-        StudioAppHostUiAction::RunManualWorkspace => {
-            StudioAppWindowHostUiAction::RunManualWorkspace
+impl From<StudioAppHostUiAction> for StudioAppWindowHostUiAction {
+    fn from(value: StudioAppHostUiAction) -> Self {
+        match value {
+            StudioAppHostUiAction::RunManualWorkspace => Self::RunManualWorkspace,
+            StudioAppHostUiAction::ResumeWorkspace => Self::ResumeWorkspace,
+            StudioAppHostUiAction::HoldWorkspace => Self::HoldWorkspace,
+            StudioAppHostUiAction::ActivateWorkspace => Self::ActivateWorkspace,
+            StudioAppHostUiAction::RecoverRunPanelFailure => Self::RecoverRunPanelFailure,
+            StudioAppHostUiAction::SyncEntitlement => Self::SyncEntitlement,
+            StudioAppHostUiAction::RefreshOfflineLease => Self::RefreshOfflineLease,
         }
-        StudioAppHostUiAction::ResumeWorkspace => StudioAppWindowHostUiAction::ResumeWorkspace,
-        StudioAppHostUiAction::HoldWorkspace => StudioAppWindowHostUiAction::HoldWorkspace,
-        StudioAppHostUiAction::ActivateWorkspace => StudioAppWindowHostUiAction::ActivateWorkspace,
-        StudioAppHostUiAction::RecoverRunPanelFailure => {
-            StudioAppWindowHostUiAction::RecoverRunPanelFailure
+    }
+}
+
+impl From<StudioAppWindowHostUiAction> for StudioAppHostUiAction {
+    fn from(value: StudioAppWindowHostUiAction) -> Self {
+        match value {
+            StudioAppWindowHostUiAction::RunManualWorkspace => Self::RunManualWorkspace,
+            StudioAppWindowHostUiAction::ResumeWorkspace => Self::ResumeWorkspace,
+            StudioAppWindowHostUiAction::HoldWorkspace => Self::HoldWorkspace,
+            StudioAppWindowHostUiAction::ActivateWorkspace => Self::ActivateWorkspace,
+            StudioAppWindowHostUiAction::RecoverRunPanelFailure => Self::RecoverRunPanelFailure,
+            StudioAppWindowHostUiAction::SyncEntitlement => Self::SyncEntitlement,
+            StudioAppWindowHostUiAction::RefreshOfflineLease => Self::RefreshOfflineLease,
         }
-        StudioAppHostUiAction::SyncEntitlement => StudioAppWindowHostUiAction::SyncEntitlement,
-        StudioAppHostUiAction::RefreshOfflineLease => {
-            StudioAppWindowHostUiAction::RefreshOfflineLease
+    }
+}
+
+impl From<StudioAppWindowHostUiActionDisabledReason> for StudioAppHostUiActionDisabledReason {
+    fn from(value: StudioAppWindowHostUiActionDisabledReason) -> Self {
+        match value {
+            StudioAppWindowHostUiActionDisabledReason::NoRegisteredWindow => {
+                Self::NoRegisteredWindow
+            }
+            StudioAppWindowHostUiActionDisabledReason::RunManualUnavailable => {
+                Self::RunManualUnavailable
+            }
+            StudioAppWindowHostUiActionDisabledReason::ResumeUnavailable => Self::ResumeUnavailable,
+            StudioAppWindowHostUiActionDisabledReason::HoldUnavailable => Self::HoldUnavailable,
+            StudioAppWindowHostUiActionDisabledReason::ActivateUnavailable => {
+                Self::ActivateUnavailable
+            }
+            StudioAppWindowHostUiActionDisabledReason::NoRunPanelRecovery => {
+                Self::NoRunPanelRecovery
+            }
+            StudioAppWindowHostUiActionDisabledReason::SyncEntitlementUnavailable => {
+                Self::SyncEntitlementUnavailable
+            }
+            StudioAppWindowHostUiActionDisabledReason::RefreshOfflineLeaseUnavailable => {
+                Self::RefreshOfflineLeaseUnavailable
+            }
         }
     }
 }
@@ -1243,23 +1292,7 @@ fn ui_action_state_from_window_host(
     state: StudioAppWindowHostUiActionState,
 ) -> StudioAppHostUiActionState {
     StudioAppHostUiActionState {
-        action: match state.action {
-            StudioAppWindowHostUiAction::RunManualWorkspace => {
-                StudioAppHostUiAction::RunManualWorkspace
-            }
-            StudioAppWindowHostUiAction::ResumeWorkspace => StudioAppHostUiAction::ResumeWorkspace,
-            StudioAppWindowHostUiAction::HoldWorkspace => StudioAppHostUiAction::HoldWorkspace,
-            StudioAppWindowHostUiAction::ActivateWorkspace => {
-                StudioAppHostUiAction::ActivateWorkspace
-            }
-            StudioAppWindowHostUiAction::RecoverRunPanelFailure => {
-                StudioAppHostUiAction::RecoverRunPanelFailure
-            }
-            StudioAppWindowHostUiAction::SyncEntitlement => StudioAppHostUiAction::SyncEntitlement,
-            StudioAppWindowHostUiAction::RefreshOfflineLease => {
-                StudioAppHostUiAction::RefreshOfflineLease
-            }
-        },
+        action: state.action.into(),
         availability: match state.availability {
             StudioAppWindowHostUiActionAvailability::Enabled { target_window_id } => {
                 StudioAppHostUiActionAvailability::Enabled { target_window_id }
@@ -1268,32 +1301,7 @@ fn ui_action_state_from_window_host(
                 reason,
                 target_window_id,
             } => StudioAppHostUiActionAvailability::Disabled {
-                reason: match reason {
-                    StudioAppWindowHostUiActionDisabledReason::NoRegisteredWindow => {
-                        StudioAppHostUiActionDisabledReason::NoRegisteredWindow
-                    }
-                    StudioAppWindowHostUiActionDisabledReason::RunManualUnavailable => {
-                        StudioAppHostUiActionDisabledReason::RunManualUnavailable
-                    }
-                    StudioAppWindowHostUiActionDisabledReason::ResumeUnavailable => {
-                        StudioAppHostUiActionDisabledReason::ResumeUnavailable
-                    }
-                    StudioAppWindowHostUiActionDisabledReason::HoldUnavailable => {
-                        StudioAppHostUiActionDisabledReason::HoldUnavailable
-                    }
-                    StudioAppWindowHostUiActionDisabledReason::ActivateUnavailable => {
-                        StudioAppHostUiActionDisabledReason::ActivateUnavailable
-                    }
-                    StudioAppWindowHostUiActionDisabledReason::NoRunPanelRecovery => {
-                        StudioAppHostUiActionDisabledReason::NoRunPanelRecovery
-                    }
-                    StudioAppWindowHostUiActionDisabledReason::SyncEntitlementUnavailable => {
-                        StudioAppHostUiActionDisabledReason::SyncEntitlementUnavailable
-                    }
-                    StudioAppWindowHostUiActionDisabledReason::RefreshOfflineLeaseUnavailable => {
-                        StudioAppHostUiActionDisabledReason::RefreshOfflineLeaseUnavailable
-                    }
-                },
+                reason: reason.into(),
                 target_window_id,
             },
         },
