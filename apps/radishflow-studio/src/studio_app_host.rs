@@ -24,6 +24,8 @@ pub enum StudioAppHostUiAction {
     HoldWorkspace,
     ActivateWorkspace,
     RecoverRunPanelFailure,
+    SyncEntitlement,
+    RefreshOfflineLease,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -34,6 +36,8 @@ pub enum StudioAppHostUiActionDisabledReason {
     HoldUnavailable,
     ActivateUnavailable,
     NoRunPanelRecovery,
+    SyncEntitlementUnavailable,
+    RefreshOfflineLeaseUnavailable,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -89,6 +93,7 @@ pub struct StudioAppHostUiActionModel {
 pub enum StudioAppHostUiCommandGroup {
     RunPanel,
     Recovery,
+    Entitlement,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -1334,6 +1339,10 @@ fn map_ui_action(action: StudioAppHostUiAction) -> StudioAppWindowHostUiAction {
         StudioAppHostUiAction::RecoverRunPanelFailure => {
             StudioAppWindowHostUiAction::RecoverRunPanelFailure
         }
+        StudioAppHostUiAction::SyncEntitlement => StudioAppWindowHostUiAction::SyncEntitlement,
+        StudioAppHostUiAction::RefreshOfflineLease => {
+            StudioAppWindowHostUiAction::RefreshOfflineLease
+        }
     }
 }
 
@@ -1352,6 +1361,10 @@ fn ui_action_state_from_window_host(
             }
             StudioAppWindowHostUiAction::RecoverRunPanelFailure => {
                 StudioAppHostUiAction::RecoverRunPanelFailure
+            }
+            StudioAppWindowHostUiAction::SyncEntitlement => StudioAppHostUiAction::SyncEntitlement,
+            StudioAppWindowHostUiAction::RefreshOfflineLease => {
+                StudioAppHostUiAction::RefreshOfflineLease
             }
         },
         availability: match state.availability {
@@ -1380,6 +1393,12 @@ fn ui_action_state_from_window_host(
                     }
                     StudioAppWindowHostUiActionDisabledReason::NoRunPanelRecovery => {
                         StudioAppHostUiActionDisabledReason::NoRunPanelRecovery
+                    }
+                    StudioAppWindowHostUiActionDisabledReason::SyncEntitlementUnavailable => {
+                        StudioAppHostUiActionDisabledReason::SyncEntitlementUnavailable
+                    }
+                    StudioAppWindowHostUiActionDisabledReason::RefreshOfflineLeaseUnavailable => {
+                        StudioAppHostUiActionDisabledReason::RefreshOfflineLeaseUnavailable
                     }
                 },
                 target_window_id,
@@ -1434,6 +1453,18 @@ fn ui_action_model_from_state(state: StudioAppHostUiActionState) -> StudioAppHos
             200,
             "Recover run panel failure",
         ),
+        StudioAppHostUiAction::SyncEntitlement => (
+            "entitlement.sync",
+            StudioAppHostUiCommandGroup::Entitlement,
+            300,
+            "Sync entitlement",
+        ),
+        StudioAppHostUiAction::RefreshOfflineLease => (
+            "entitlement.refresh_offline_lease",
+            StudioAppHostUiCommandGroup::Entitlement,
+            310,
+            "Refresh offline lease",
+        ),
     };
     let (enabled, detail, target_window_id) = match state.availability {
         StudioAppHostUiActionAvailability::Enabled { target_window_id } => {
@@ -1452,6 +1483,12 @@ fn ui_action_model_from_state(state: StudioAppHostUiActionState) -> StudioAppHos
                 }
                 StudioAppHostUiAction::RecoverRunPanelFailure => {
                     "Apply the current run panel recovery action in the target window"
+                }
+                StudioAppHostUiAction::SyncEntitlement => {
+                    "Dispatch the current entitlement sync action in the target window"
+                }
+                StudioAppHostUiAction::RefreshOfflineLease => {
+                    "Dispatch the current offline lease refresh action in the target window"
                 }
             };
 
@@ -1476,6 +1513,12 @@ fn ui_action_model_from_state(state: StudioAppHostUiActionState) -> StudioAppHos
                 }
                 StudioAppHostUiAction::RecoverRunPanelFailure => {
                     "Open a studio window before requesting run panel recovery"
+                }
+                StudioAppHostUiAction::SyncEntitlement => {
+                    "Open a studio window before syncing entitlement"
+                }
+                StudioAppHostUiAction::RefreshOfflineLease => {
+                    "Open a studio window before refreshing the offline lease"
                 }
             };
 
@@ -1521,6 +1564,22 @@ fn ui_action_model_from_state(state: StudioAppHostUiActionState) -> StudioAppHos
             "No run panel recovery action is currently available in the target window",
             target_window_id,
         ),
+        StudioAppHostUiActionAvailability::Disabled {
+            reason: StudioAppHostUiActionDisabledReason::SyncEntitlementUnavailable,
+            target_window_id,
+        } => (
+            false,
+            "Sync entitlement is currently unavailable in the target window",
+            target_window_id,
+        ),
+        StudioAppHostUiActionAvailability::Disabled {
+            reason: StudioAppHostUiActionDisabledReason::RefreshOfflineLeaseUnavailable,
+            target_window_id,
+        } => (
+            false,
+            "Offline lease refresh is currently unavailable in the target window",
+            target_window_id,
+        ),
     };
 
     StudioAppHostUiActionModel {
@@ -1543,6 +1602,7 @@ fn ui_command_group_sort_key(group: StudioAppHostUiCommandGroup) -> u16 {
     match group {
         StudioAppHostUiCommandGroup::RunPanel => 100,
         StudioAppHostUiCommandGroup::Recovery => 200,
+        StudioAppHostUiCommandGroup::Entitlement => 300,
     }
 }
 
@@ -1734,6 +1794,18 @@ mod tests {
                     availability: StudioAppHostUiActionAvailability::Disabled {
                         reason: StudioAppHostUiActionDisabledReason::NoRunPanelRecovery,
                         target_window_id: Some(first_window.window_id),
+                    },
+                },
+                StudioAppHostUiActionState {
+                    action: StudioAppHostUiAction::SyncEntitlement,
+                    availability: StudioAppHostUiActionAvailability::Enabled {
+                        target_window_id: first_window.window_id,
+                    },
+                },
+                StudioAppHostUiActionState {
+                    action: StudioAppHostUiAction::RefreshOfflineLease,
+                    availability: StudioAppHostUiActionAvailability::Enabled {
+                        target_window_id: first_window.window_id,
                     },
                 },
             ]
@@ -3297,7 +3369,33 @@ mod tests {
                 target_window_id: Some(opened.registration.window_id),
             })
         );
-        assert_eq!(model.actions.len(), 5);
+        assert_eq!(
+            model.action(StudioAppHostUiAction::SyncEntitlement),
+            Some(&StudioAppHostUiActionModel {
+                action: Some(StudioAppHostUiAction::SyncEntitlement),
+                command_id: "entitlement.sync",
+                group: StudioAppHostUiCommandGroup::Entitlement,
+                sort_order: 300,
+                label: "Sync entitlement",
+                enabled: true,
+                detail: "Dispatch the current entitlement sync action in the target window",
+                target_window_id: Some(opened.registration.window_id),
+            })
+        );
+        assert_eq!(
+            model.action(StudioAppHostUiAction::RefreshOfflineLease),
+            Some(&StudioAppHostUiActionModel {
+                action: Some(StudioAppHostUiAction::RefreshOfflineLease),
+                command_id: "entitlement.refresh_offline_lease",
+                group: StudioAppHostUiCommandGroup::Entitlement,
+                sort_order: 310,
+                label: "Refresh offline lease",
+                enabled: true,
+                detail: "Dispatch the current offline lease refresh action in the target window",
+                target_window_id: Some(opened.registration.window_id),
+            })
+        );
+        assert_eq!(model.actions.len(), 7);
 
         let _ = fs::remove_file(project_path);
     }
@@ -3429,6 +3527,25 @@ mod tests {
     }
 
     #[test]
+    fn app_host_controller_reports_disabled_entitlement_sync_command_without_windows() {
+        let mut controller =
+            StudioAppHostController::new(&lease_expiring_config()).expect("expected controller");
+
+        let dispatch = controller
+            .dispatch_ui_command("entitlement.sync")
+            .expect("expected ui command result");
+
+        assert_eq!(
+            dispatch,
+            StudioAppHostUiCommandDispatchResult::IgnoredDisabled {
+                command_id: "entitlement.sync".to_string(),
+                detail: "Open a studio window before syncing entitlement".to_string(),
+                target_window_id: None,
+            }
+        );
+    }
+
+    #[test]
     fn app_host_controller_dispatches_ui_command_by_command_id() {
         let (config, project_path) = solver_failure_config();
         let mut controller = StudioAppHostController::new(&config).expect("expected controller");
@@ -3458,6 +3575,36 @@ mod tests {
         }
 
         let _ = fs::remove_file(project_path);
+    }
+
+    #[test]
+    fn app_host_controller_dispatches_entitlement_refresh_ui_command_by_command_id() {
+        let mut controller =
+            StudioAppHostController::new(&lease_expiring_config()).expect("expected controller");
+        let opened = controller.open_window().expect("expected window open");
+
+        let dispatch = controller
+            .dispatch_ui_command("entitlement.refresh_offline_lease")
+            .expect("expected ui command dispatch");
+
+        match dispatch {
+            StudioAppHostUiCommandDispatchResult::Executed(refresh) => {
+                assert_eq!(refresh.target_window_id, opened.registration.window_id);
+                match &refresh.effects.runtime_report.dispatch {
+                    crate::StudioRuntimeDispatch::AppCommand(outcome) => match &outcome.dispatch {
+                        crate::StudioAppResultDispatch::Entitlement(dispatch) => {
+                            assert_eq!(
+                                dispatch.action,
+                                crate::StudioEntitlementAction::RefreshOfflineLease
+                            );
+                        }
+                        other => panic!("expected entitlement dispatch, got {other:?}"),
+                    },
+                    other => panic!("expected app command dispatch, got {other:?}"),
+                }
+            }
+            other => panic!("expected executed ui command dispatch, got {other:?}"),
+        }
     }
 
     #[test]

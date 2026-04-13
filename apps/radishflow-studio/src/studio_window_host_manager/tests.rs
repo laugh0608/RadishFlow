@@ -799,6 +799,31 @@ fn app_window_host_manager_reports_ui_action_states_for_run_panel_commands() {
     );
     assert!(!resume_disabled.enabled());
 
+    let sync_entitlement = manager.ui_action_state(StudioAppWindowHostUiAction::SyncEntitlement);
+    assert_eq!(
+        sync_entitlement,
+        StudioAppWindowHostUiActionState {
+            action: StudioAppWindowHostUiAction::SyncEntitlement,
+            availability: StudioAppWindowHostUiActionAvailability::Enabled {
+                target_window_id: second.window_id,
+            },
+        }
+    );
+    assert!(sync_entitlement.enabled());
+
+    let refresh_offline_lease =
+        manager.ui_action_state(StudioAppWindowHostUiAction::RefreshOfflineLease);
+    assert_eq!(
+        refresh_offline_lease,
+        StudioAppWindowHostUiActionState {
+            action: StudioAppWindowHostUiAction::RefreshOfflineLease,
+            availability: StudioAppWindowHostUiActionAvailability::Enabled {
+                target_window_id: second.window_id,
+            },
+        }
+    );
+    assert!(refresh_offline_lease.enabled());
+
     let states = manager.ui_action_states();
     assert_eq!(
         states,
@@ -807,7 +832,9 @@ fn app_window_host_manager_reports_ui_action_states_for_run_panel_commands() {
             resume_disabled.clone(),
             hold.clone(),
             activate.clone(),
-            recovery.clone()
+            recovery.clone(),
+            sync_entitlement.clone(),
+            refresh_offline_lease.clone(),
         ]
     );
     assert_ne!(run_manual.target_window_id(), Some(first.window_id));
@@ -815,6 +842,11 @@ fn app_window_host_manager_reports_ui_action_states_for_run_panel_commands() {
     assert_ne!(hold.target_window_id(), Some(first.window_id));
     assert_ne!(activate.target_window_id(), Some(first.window_id));
     assert_ne!(recovery.target_window_id(), Some(first.window_id));
+    assert_ne!(sync_entitlement.target_window_id(), Some(first.window_id));
+    assert_ne!(
+        refresh_offline_lease.target_window_id(),
+        Some(first.window_id)
+    );
 
     let _ = fs::remove_file(project_path);
 }
@@ -893,6 +925,18 @@ fn app_window_host_manager_reports_ui_action_state_for_foreground_recovery() {
                 },
             },
             available.clone(),
+            StudioAppWindowHostUiActionState {
+                action: StudioAppWindowHostUiAction::SyncEntitlement,
+                availability: StudioAppWindowHostUiActionAvailability::Enabled {
+                    target_window_id: second.window_id,
+                },
+            },
+            StudioAppWindowHostUiActionState {
+                action: StudioAppWindowHostUiAction::RefreshOfflineLease,
+                availability: StudioAppWindowHostUiActionAvailability::Enabled {
+                    target_window_id: second.window_id,
+                },
+            },
         ]
     );
     assert_ne!(available.target_window_id(), Some(first.window_id));

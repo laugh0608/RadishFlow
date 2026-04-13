@@ -2,8 +2,8 @@ use std::collections::BTreeSet;
 
 use rf_types::{RfError, RfResult};
 use rf_ui::{
-    CanvasSuggestion, EntitlementActionId, RunPanelActionId, RunPanelWidgetEvent,
-    RunPanelWidgetModel,
+    CanvasSuggestion, EntitlementActionId, EntitlementPanelState, EntitlementPanelWidgetModel,
+    RunPanelActionId, RunPanelWidgetEvent, RunPanelWidgetModel,
 };
 
 use crate::{
@@ -27,6 +27,8 @@ pub enum StudioAppWindowHostUiAction {
     HoldWorkspace,
     ActivateWorkspace,
     RecoverRunPanelFailure,
+    SyncEntitlement,
+    RefreshOfflineLease,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -37,6 +39,8 @@ pub enum StudioAppWindowHostUiActionDisabledReason {
     HoldUnavailable,
     ActivateUnavailable,
     NoRunPanelRecovery,
+    SyncEntitlementUnavailable,
+    RefreshOfflineLeaseUnavailable,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -307,6 +311,29 @@ impl StudioAppWindowHostManager {
                     target_window_id: Some(target_window_id),
                 }
             }
+            (StudioAppWindowHostUiAction::SyncEntitlement, Some(target_window_id))
+                if self.entitlement_action_available(EntitlementActionId::SyncEntitlement) =>
+            {
+                StudioAppWindowHostUiActionAvailability::Enabled { target_window_id }
+            }
+            (StudioAppWindowHostUiAction::SyncEntitlement, Some(target_window_id)) => {
+                StudioAppWindowHostUiActionAvailability::Disabled {
+                    reason: StudioAppWindowHostUiActionDisabledReason::SyncEntitlementUnavailable,
+                    target_window_id: Some(target_window_id),
+                }
+            }
+            (StudioAppWindowHostUiAction::RefreshOfflineLease, Some(target_window_id))
+                if self.entitlement_action_available(EntitlementActionId::RefreshOfflineLease) =>
+            {
+                StudioAppWindowHostUiActionAvailability::Enabled { target_window_id }
+            }
+            (StudioAppWindowHostUiAction::RefreshOfflineLease, Some(target_window_id)) => {
+                StudioAppWindowHostUiActionAvailability::Disabled {
+                    reason:
+                        StudioAppWindowHostUiActionDisabledReason::RefreshOfflineLeaseUnavailable,
+                    target_window_id: Some(target_window_id),
+                }
+            }
             (_, None) => StudioAppWindowHostUiActionAvailability::Disabled {
                 reason: StudioAppWindowHostUiActionDisabledReason::NoRegisteredWindow,
                 target_window_id: None,
@@ -326,6 +353,8 @@ impl StudioAppWindowHostManager {
             self.ui_action_state(StudioAppWindowHostUiAction::HoldWorkspace),
             self.ui_action_state(StudioAppWindowHostUiAction::ActivateWorkspace),
             self.ui_action_state(StudioAppWindowHostUiAction::RecoverRunPanelFailure),
+            self.ui_action_state(StudioAppWindowHostUiAction::SyncEntitlement),
+            self.ui_action_state(StudioAppWindowHostUiAction::RefreshOfflineLease),
         ]
     }
 
@@ -459,6 +488,11 @@ impl StudioAppWindowHostManager {
             StudioAppWindowHostUiAction::RecoverRunPanelFailure => {
                 self.dispatch_foreground_run_panel_recovery_action()
             }
+            StudioAppWindowHostUiAction::SyncEntitlement => {
+                self.dispatch_foreground_entitlement_action(EntitlementActionId::SyncEntitlement)
+            }
+            StudioAppWindowHostUiAction::RefreshOfflineLease => self
+                .dispatch_foreground_entitlement_action(EntitlementActionId::RefreshOfflineLease),
         }
     }
 
@@ -675,6 +709,20 @@ impl StudioAppWindowHostManager {
             .workspace
             .run_panel;
         RunPanelWidgetModel::from_state(run_panel)
+    }
+
+    fn entitlement_action_available(&self, action_id: EntitlementActionId) -> bool {
+        self.entitlement_panel_widget()
+            .action(action_id)
+            .map(|action| action.enabled)
+            .unwrap_or(false)
+    }
+
+    fn entitlement_panel_widget(&self) -> EntitlementPanelWidgetModel {
+        let app_state = self.session.host_port().runtime().app_state();
+        let panel_state =
+            EntitlementPanelState::from_runtime(&app_state.auth_session, &app_state.entitlement);
+        EntitlementPanelWidgetModel::from_state(&panel_state)
     }
 }
 
