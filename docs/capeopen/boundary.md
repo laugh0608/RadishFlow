@@ -1,6 +1,6 @@
 # CAPE-OPEN Boundary
 
-更新时间：2026-03-31
+更新时间：2026-04-14
 
 ## 边界目标
 
@@ -88,8 +88,10 @@ Rust 与 `.NET 10` 之间的正式边界应保持简单稳定：
 - 最小 `.NET 10` `LibraryImport` / PInvoke 薄封装
 - 最小 `.NET 10` smoke console，用于验证 `rf-ffi` 调用闭环
 - `RadishFlow.CapeOpen.Interop` 中最小 `ICapeIdentification`、`ICapeUtilities`、`ICapeUnit` 接口骨架
+- `ICapeUtilities` / `ICapeUnit` 的最小 `IDispatch` marshalling 形状校准
 - 已确认 CAPE-OPEN interface/category GUID 常量唯一来源
 - 第一版 ECape 异常基类、HRESULT 常量与语义化异常类型
+- `ECapeRoot` / `ECapeUser` / `ECapeBadInvOrder` / `ECapeBadCOParameter` 等最小异常契约、IID 与 DispId 校准
 
 当前暂不推进的内容：
 

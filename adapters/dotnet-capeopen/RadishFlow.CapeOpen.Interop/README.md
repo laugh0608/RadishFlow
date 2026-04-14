@@ -15,6 +15,7 @@
 - `CapeOpenInterfaceIds`
 - `CapeOpenCategoryIds`
 - `CapeOpenErrorHResults`
+- `ECapeRoot` / `ECapeUser` / `ECapeBadInvOrder` / `ECapeBadCOParameter` 等最小异常契约
 - `CapeOpenException` 与若干语义化派生异常
 
 当前明确不包含：
@@ -27,4 +28,6 @@
 说明：
 
 - `ICapeIdentification`、`ICapeUtilities`、`ICapeUnit` 的 IID 当前依据 `adapters/reference/CapeOpenMixerExample_CSharp/CapeOpen/COGuids1.cs` 校准
+- `ECapeRoot`、`ECapeUser`、`ECapeBadInvOrder`、`ECapeBadCOParameter` 等异常接口的 IID / DispId / 属性名当前依据 `adapters/reference/CapeOpenMixerExample_CSharp/CapeOpen/errorIDL.cs` 与 `COGuids1.cs` 校准
+- `ICapeUtilities` 与 `ICapeUnit` 当前已补齐最小 `IDispatch` marshalling 形状，用于后续 PMC/COM 边界继续复用
 - 已确认的 GUID 与 HRESULT 统一放在本项目内，避免后续 `Adapter`、`UnitOp.Mvp`、`Registration` 重复定义

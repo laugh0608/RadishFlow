@@ -6,4 +6,7 @@ public sealed record CapeOpenExceptionContext(
     string Operation,
     string? MoreInfo = null,
     string? DiagnosticJson = null,
-    string? NativeStatus = null);
+    string? NativeStatus = null,
+    string? RequestedOperation = null,
+    string? ParameterName = null,
+    object? Parameter = null);

@@ -3,79 +3,72 @@ using RadishFlow.CapeOpen.Interop.Errors;
 
 namespace RadishFlow.CapeOpen.Adapter;
 
-public sealed class RadishFlowNativeException : CapeOpenException
+public static class RadishFlowNativeException
 {
-    public RadishFlowNativeException(
-        string operation,
-        RfFfiStatus status,
-        string? nativeMessage,
-        string? nativeErrorJson)
-        : base(
-            MapSemantic(operation, status, nativeErrorJson).errorName,
-            BuildMessage(operation, status, nativeMessage),
-            MapSemantic(operation, status, nativeErrorJson).hresult,
-            BuildContext(operation, status, nativeMessage, nativeErrorJson))
-    {
-        Status = status;
-        NativeMessage = nativeMessage;
-        NativeErrorJson = nativeErrorJson;
-    }
+    private const string NativeScope = "RadishFlow.CapeOpen.Adapter.Native";
 
-    public RfFfiStatus Status { get; }
-
-    public string? NativeMessage { get; }
-
-    public string? NativeErrorJson { get; }
-
-    private static CapeOpenExceptionContext BuildContext(
+    public static CapeOpenException Create(
         string operation,
         RfFfiStatus status,
         string? nativeMessage,
         string? nativeErrorJson)
     {
-        var scope = TryReadJsonString(nativeErrorJson, "code") ?? "rf_ffi";
-        var moreInfo = TryReadJsonString(nativeErrorJson, "diagnosticCode") ?? nativeMessage;
-        return new CapeOpenExceptionContext(
-            InterfaceName: "rf-ffi",
-            Scope: scope,
-            Operation: operation,
-            MoreInfo: moreInfo,
-            DiagnosticJson: nativeErrorJson,
-            NativeStatus: status.ToString());
-    }
-
-    private static (string errorName, int hresult) MapSemantic(
-        string operation,
-        RfFfiStatus status,
-        string? nativeErrorJson)
-    {
-        var code = TryReadJsonString(nativeErrorJson, "code");
         var diagnosticCode = TryReadJsonString(nativeErrorJson, "diagnosticCode");
+        var description = BuildMessage(operation, status, nativeMessage);
+        var context = BuildContext(operation, status, nativeMessage, nativeErrorJson, diagnosticCode);
 
         if (string.Equals(operation, "engine_create", StringComparison.Ordinal))
         {
-            return ("ECapeFailedInitialisation", CapeOpenErrorHResults.ECapeFailedInitialisation);
+            return new CapeFailedInitialisationException(description, context);
         }
 
         return status switch
         {
             RfFfiStatus.NullPointer or RfFfiStatus.InvalidUtf8 or RfFfiStatus.InvalidInput or RfFfiStatus.DuplicateId =>
-                ("ECapeInvalidArgument", CapeOpenErrorHResults.ECapeInvalidArgument),
+                new CapeInvalidArgumentException(description, context),
             RfFfiStatus.InvalidEngineState =>
-                ("ECapeBadInvOrder", CapeOpenErrorHResults.ECapeBadInvOrder),
-            RfFfiStatus.MissingEntity when string.Equals(code, "missing_entity", StringComparison.Ordinal) =>
-                ("ECapeInvalidArgument", CapeOpenErrorHResults.ECapeInvalidArgument),
+                new CapeBadInvocationOrderException(description, context),
+            RfFfiStatus.MissingEntity =>
+                new CapeInvalidArgumentException(description, context),
             RfFfiStatus.InvalidConnection =>
-                ("ECapeSolvingError", CapeOpenErrorHResults.ECapeSolvingError),
+                new CapeSolvingException(description, context),
             RfFfiStatus.Thermo or RfFfiStatus.Flash =>
-                ("ECapeSolvingError", CapeOpenErrorHResults.ECapeSolvingError),
+                new CapeSolvingException(description, context),
             RfFfiStatus.NotImplemented =>
-                ("ECapeNoImpl", CapeOpenErrorHResults.ECapeNoImpl),
+                new CapeNoImplementationException(description, context),
             RfFfiStatus.Panic =>
-                ("ECapeUnknown", CapeOpenErrorHResults.ECapeUnknown),
+                new CapeUnknownException(description, context),
             _ when string.Equals(diagnosticCode, "ffi.engine_state.snapshot_not_available", StringComparison.Ordinal) =>
-                ("ECapeBadInvOrder", CapeOpenErrorHResults.ECapeBadInvOrder),
-            _ => ("ECapeUnknown", CapeOpenErrorHResults.ECapeUnknown),
+                new CapeBadInvocationOrderException(description, context),
+            _ => new CapeUnknownException(description, context),
+        };
+    }
+
+    private static CapeOpenExceptionContext BuildContext(
+        string operation,
+        RfFfiStatus status,
+        string? nativeMessage,
+        string? nativeErrorJson,
+        string? diagnosticCode)
+    {
+        return new CapeOpenExceptionContext(
+            InterfaceName: "rf-ffi",
+            Scope: NativeScope,
+            Operation: operation,
+            MoreInfo: diagnosticCode ?? nativeMessage,
+            DiagnosticJson: nativeErrorJson,
+            NativeStatus: status.ToString(),
+            RequestedOperation: TryGetRequestedOperation(operation, diagnosticCode));
+    }
+
+    private static string? TryGetRequestedOperation(string operation, string? diagnosticCode)
+    {
+        return diagnosticCode switch
+        {
+            "ffi.engine_state.flowsheet_not_loaded" => "flowsheet_load_json",
+            "ffi.engine_state.snapshot_not_available" => "flowsheet_solve",
+            _ when string.Equals(operation, "engine_create", StringComparison.Ordinal) => null,
+            _ => null,
         };
     }
 

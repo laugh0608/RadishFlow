@@ -9,7 +9,11 @@ namespace RadishFlow.CapeOpen.Interop.Unit;
 public interface ICapeUnit
 {
     [DispId(1)]
-    object? Ports { get; }
+    object? Ports
+    {
+        [return: MarshalAs(UnmanagedType.IDispatch)]
+        get;
+    }
 
     [DispId(2)]
     CapeValidationStatus ValStatus { get; }

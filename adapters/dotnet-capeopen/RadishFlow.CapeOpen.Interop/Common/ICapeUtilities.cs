@@ -9,17 +9,29 @@ namespace RadishFlow.CapeOpen.Interop.Common;
 public interface ICapeUtilities
 {
     [DispId(1)]
-    object? Parameters { get; }
+    object? Parameters
+    {
+        [return: MarshalAs(UnmanagedType.IDispatch)]
+        get;
+    }
 
     [DispId(2)]
-    object? SimulationContext { set; }
+    object? SimulationContext
+    {
+        [return: MarshalAs(UnmanagedType.IDispatch)]
+        get;
+
+        [param: MarshalAs(UnmanagedType.IDispatch)]
+        set;
+    }
 
     [DispId(3)]
     void Initialize();
 
     [DispId(4)]
-    void Edit();
+    void Terminate();
 
     [DispId(5)]
-    void Terminate();
+    [PreserveSig]
+    int Edit();
 }

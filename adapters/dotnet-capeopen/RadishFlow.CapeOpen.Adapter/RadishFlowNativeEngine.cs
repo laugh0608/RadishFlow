@@ -17,7 +17,7 @@ public sealed class RadishFlowNativeEngine : IDisposable
                 $"Failed to create native engine with status `{status}`.",
                 new CapeOpenExceptionContext(
                     InterfaceName: "rf-ffi",
-                    Scope: "engine_create",
+                    Scope: "RadishFlow.CapeOpen.Adapter.Native",
                     Operation: "engine_create",
                     MoreInfo: $"native engine create returned `{status}`",
                     NativeStatus: status.ToString()));
@@ -172,7 +172,7 @@ public sealed class RadishFlowNativeEngine : IDisposable
             return;
         }
 
-        throw new RadishFlowNativeException(
+        throw RadishFlowNativeException.Create(
             operation,
             status,
             TryGetLastErrorMessage(),
