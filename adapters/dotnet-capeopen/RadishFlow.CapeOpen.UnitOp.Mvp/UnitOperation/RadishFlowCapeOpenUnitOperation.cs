@@ -1,6 +1,7 @@
 using RadishFlow.CapeOpen.Interop.Common;
 using RadishFlow.CapeOpen.Interop.Errors;
 using RadishFlow.CapeOpen.Interop.Unit;
+using RadishFlow.CapeOpen.UnitOp.Mvp.Placeholders;
 
 namespace RadishFlow.CapeOpen.UnitOp.Mvp.UnitOperation;
 
@@ -9,12 +10,16 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
     private const string UtilitiesInterfaceName = nameof(ICapeUtilities);
     private const string UnitInterfaceName = nameof(ICapeUnit);
     private const string UnitScope = "RadishFlow.CapeOpen.UnitOp.Mvp";
+    private const string ConnectPortOperation = nameof(SetPortConnected);
+
+    private readonly UnitOperationParameterPlaceholder _flowsheetParameter;
+    private readonly UnitOperationParameterPlaceholder _packageIdParameter;
+    private readonly UnitOperationParameterPlaceholder _manifestPathParameter;
+    private readonly UnitOperationParameterPlaceholder _payloadPathParameter;
+    private readonly UnitOperationPortPlaceholder _feedPort;
+    private readonly UnitOperationPortPlaceholder _productPort;
 
     private object? _simulationContext;
-    private string? _flowsheetJson;
-    private string? _selectedPackageId;
-    private string? _manifestPath;
-    private string? _payloadPath;
     private bool _initialized;
     private bool _terminated;
     private bool _disposed;
@@ -23,6 +28,50 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
     {
         ComponentName = "RadishFlow Unit Operation";
         ComponentDescription = "Minimal CAPE-OPEN unit operation skeleton.";
+
+        _flowsheetParameter = new UnitOperationParameterPlaceholder(
+            "Flowsheet Json",
+            "StoredProjectFile JSON used by the MVP unit operation skeleton.",
+            isRequired: true);
+        _packageIdParameter = new UnitOperationParameterPlaceholder(
+            "Property Package Id",
+            "Identifier of the property package selected for the MVP unit operation skeleton.",
+            isRequired: true);
+        _manifestPathParameter = new UnitOperationParameterPlaceholder(
+            "Property Package Manifest Path",
+            "Optional manifest path for a local property package payload.",
+            isRequired: false);
+        _payloadPathParameter = new UnitOperationParameterPlaceholder(
+            "Property Package Payload Path",
+            "Optional payload path for a local property package payload.",
+            isRequired: false);
+
+        _feedPort = new UnitOperationPortPlaceholder(
+            "Feed",
+            "Required inlet material placeholder port.",
+            direction: "inlet",
+            kind: "material",
+            isRequired: true);
+        _productPort = new UnitOperationPortPlaceholder(
+            "Product",
+            "Required outlet material placeholder port.",
+            direction: "outlet",
+            kind: "material",
+            isRequired: true);
+
+        Parameters = new UnitOperationPlaceholderCollection<UnitOperationParameterPlaceholder>(
+        [
+            _flowsheetParameter,
+            _packageIdParameter,
+            _manifestPathParameter,
+            _payloadPathParameter,
+        ]);
+        Ports = new UnitOperationPlaceholderCollection<UnitOperationPortPlaceholder>(
+        [
+            _feedPort,
+            _productPort,
+        ]);
+
         ValStatus = CapeValidationStatus.NotValidated;
     }
 
@@ -30,9 +79,13 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
 
     public string ComponentDescription { get; set; }
 
-    public object? Parameters => null;
+    public UnitOperationPlaceholderCollection<UnitOperationParameterPlaceholder> Parameters { get; }
 
-    public object? Ports => null;
+    object? ICapeUtilities.Parameters => Parameters;
+
+    public UnitOperationPlaceholderCollection<UnitOperationPortPlaceholder> Ports { get; }
+
+    object? ICapeUnit.Ports => Ports;
 
     public object? SimulationContext
     {
@@ -54,7 +107,7 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
         ThrowIfDisposed();
         ThrowIfTerminated(nameof(LoadFlowsheetJson), UtilitiesInterfaceName);
 
-        _flowsheetJson = flowsheetJson;
+        _flowsheetParameter.SetValue(flowsheetJson);
         InvalidateValidation();
     }
 
@@ -65,8 +118,8 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
         ThrowIfDisposed();
         ThrowIfTerminated(nameof(LoadPropertyPackageFiles), UtilitiesInterfaceName);
 
-        _manifestPath = manifestPath;
-        _payloadPath = payloadPath;
+        _manifestPathParameter.SetValue(manifestPath);
+        _payloadPathParameter.SetValue(payloadPath);
         InvalidateValidation();
     }
 
@@ -76,7 +129,20 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
         ThrowIfDisposed();
         ThrowIfTerminated(nameof(SelectPropertyPackage), UtilitiesInterfaceName);
 
-        _selectedPackageId = packageId;
+        _packageIdParameter.SetValue(packageId);
+        InvalidateValidation();
+    }
+
+    public void SetPortConnected(string portName, bool isConnected)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(portName);
+        ThrowIfDisposed();
+        ThrowIfTerminated(ConnectPortOperation, UnitInterfaceName);
+
+        var port = FindPort(portName) ?? throw new CapeInvalidArgumentException(
+            $"Unknown placeholder port `{portName}`.",
+            CreateContext(UnitInterfaceName, ConnectPortOperation, moreInfo: portName));
+        port.SetConnected(isConnected);
         InvalidateValidation();
     }
 
@@ -126,44 +192,10 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
     {
         ThrowIfDisposed();
 
-        if (_terminated)
-        {
-            message = "Terminate has already been called for this unit instance.";
-            ValStatus = CapeValidationStatus.Invalid;
-            return false;
-        }
-
-        if (!_initialized)
-        {
-            message = "Initialize must be called before Validate.";
-            ValStatus = CapeValidationStatus.Invalid;
-            return false;
-        }
-
-        if (string.IsNullOrWhiteSpace(_flowsheetJson))
-        {
-            message = "Flowsheet JSON has not been loaded.";
-            ValStatus = CapeValidationStatus.Invalid;
-            return false;
-        }
-
-        if (string.IsNullOrWhiteSpace(_selectedPackageId))
-        {
-            message = "Property package id has not been selected.";
-            ValStatus = CapeValidationStatus.Invalid;
-            return false;
-        }
-
-        if ((_manifestPath is null) != (_payloadPath is null))
-        {
-            message = "Property package manifest and payload paths must be provided together.";
-            ValStatus = CapeValidationStatus.Invalid;
-            return false;
-        }
-
-        message = "The MVP CAPE-OPEN unit operation skeleton is configured.";
-        ValStatus = CapeValidationStatus.Valid;
-        return true;
+        var result = EvaluateValidation();
+        message = result.Message;
+        ValStatus = result.IsValid ? CapeValidationStatus.Valid : CapeValidationStatus.Invalid;
+        return result.IsValid;
     }
 
     public void Calculate()
@@ -180,32 +212,13 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
                 nameof(Initialize));
         }
 
-        string validationMessage = string.Empty;
-        if (!Validate(ref validationMessage))
+        var result = EvaluateValidation();
+        if (!result.IsValid)
         {
-            if (string.Equals(validationMessage, "Flowsheet JSON has not been loaded.", StringComparison.Ordinal))
-            {
-                throw CreateBadInvocation(
-                    UnitInterfaceName,
-                    nameof(Calculate),
-                    validationMessage,
-                    nameof(LoadFlowsheetJson));
-            }
-
-            if (string.Equals(validationMessage, "Property package id has not been selected.", StringComparison.Ordinal))
-            {
-                throw CreateBadInvocation(
-                    UnitInterfaceName,
-                    nameof(Calculate),
-                    validationMessage,
-                    nameof(SelectPropertyPackage));
-            }
-
-            throw new CapeFailedInitialisationException(
-                validationMessage,
-                CreateContext(UnitInterfaceName, nameof(Calculate), moreInfo: validationMessage));
+            throw CreateExceptionForValidationFailure(nameof(Calculate), result);
         }
 
+        ValStatus = CapeValidationStatus.Valid;
         throw new CapeNoImplementationException(
             "Native calculate wiring is not implemented in UnitOp.Mvp yet.",
             CreateContext(UnitInterfaceName, nameof(Calculate)));
@@ -220,6 +233,77 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
 
         Terminate();
         _disposed = true;
+    }
+
+    private ValidationResult EvaluateValidation()
+    {
+        if (_terminated)
+        {
+            return ValidationResult.Invalid(
+                "Terminate has already been called for this unit instance.");
+        }
+
+        if (!_initialized)
+        {
+            return ValidationResult.Invalid(
+                "Initialize must be called before Validate.",
+                nameof(Initialize));
+        }
+
+        if (!_flowsheetParameter.IsConfigured)
+        {
+            return ValidationResult.Invalid(
+                $"Required parameter `{_flowsheetParameter.ComponentName}` is not configured.",
+                nameof(LoadFlowsheetJson));
+        }
+
+        if (!_packageIdParameter.IsConfigured)
+        {
+            return ValidationResult.Invalid(
+                $"Required parameter `{_packageIdParameter.ComponentName}` is not configured.",
+                nameof(SelectPropertyPackage));
+        }
+
+        if (_manifestPathParameter.IsConfigured != _payloadPathParameter.IsConfigured)
+        {
+            return ValidationResult.Invalid(
+                $"Optional parameters `{_manifestPathParameter.ComponentName}` and `{_payloadPathParameter.ComponentName}` must be configured together.",
+                nameof(LoadPropertyPackageFiles));
+        }
+
+        foreach (var port in Ports.Where(static port => port.IsRequired))
+        {
+            if (!port.IsConnected)
+            {
+                return ValidationResult.Invalid(
+                    $"Required port `{port.ComponentName}` is not connected.",
+                    ConnectPortOperation);
+            }
+        }
+
+        return ValidationResult.Valid("The MVP CAPE-OPEN unit operation skeleton is configured.");
+    }
+
+    private CapeOpenException CreateExceptionForValidationFailure(string operation, ValidationResult result)
+    {
+        if (result.RequestedOperation is not null)
+        {
+            return CreateBadInvocation(
+                UnitInterfaceName,
+                operation,
+                result.Message,
+                result.RequestedOperation);
+        }
+
+        return new CapeFailedInitialisationException(
+            result.Message,
+            CreateContext(UnitInterfaceName, operation, moreInfo: result.Message));
+    }
+
+    private UnitOperationPortPlaceholder? FindPort(string portName)
+    {
+        return Ports.FirstOrDefault(port =>
+            string.Equals(port.ComponentName, portName, StringComparison.OrdinalIgnoreCase));
     }
 
     private void InvalidateValidation()
@@ -269,5 +353,18 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
             Operation: operation,
             MoreInfo: moreInfo,
             RequestedOperation: requestedOperation);
+    }
+
+    private sealed record ValidationResult(bool IsValid, string Message, string? RequestedOperation)
+    {
+        public static ValidationResult Valid(string message)
+        {
+            return new ValidationResult(true, message, null);
+        }
+
+        public static ValidationResult Invalid(string message, string? requestedOperation = null)
+        {
+            return new ValidationResult(false, message, requestedOperation);
+        }
     }
 }

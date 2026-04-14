@@ -9,8 +9,11 @@
 当前已包含的最小公共面：
 
 - `RadishFlowCapeOpenUnitOperation`
+- `UnitOperationPortPlaceholder` / `UnitOperationParameterPlaceholder`
+- `UnitOperationPlaceholderCollection<T>`
 - `Initialize / Validate / Calculate / Terminate / Edit` 的第一版状态骨架
 - 内部 `LoadFlowsheetJson(...)`、`LoadPropertyPackageFiles(...)`、`SelectPropertyPackage(...)` 配置入口
+- `SetPortConnected(...)` 这一类最小端口状态入口
 - `Calculate()` 对未满足前置条件的最小 ECape 语义抛错骨架
 
 当前明确不包含：
@@ -23,6 +26,7 @@
 
 说明：
 
-- 当前 `Ports` 和 `Parameters` 仍返回空占位，目的是先把 `UnitOp.Mvp` 的接口实现与状态边界固定下来
+- 当前 `Ports` 和 `Parameters` 已返回最小对象集合，而不是 `null`，用于固定第一版对象级状态边界
+- 当前对象集合还不是完整 CAPE-OPEN `Collection/Parameter/UnitPort` 实现，只是后续 PMC 深化前的稳定占位对象
 - `Calculate()` 当前只负责前置校验和最小 ECape 语义抛错，不代表最终 PMC 的真实求解入口已经完成
 - Rust/.NET 边界仍保持为句柄 + UTF-8 + JSON + 状态码，没有在这里提前引入 COM 注册或更宽的跨边界对象传递
