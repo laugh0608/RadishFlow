@@ -2818,10 +2818,12 @@ name = "rf-ffi"
 version = "0.1.0"
 dependencies = [
  "rf-flash",
+ "rf-model",
  "rf-solver",
  "rf-store",
  "rf-thermo",
  "rf-types",
+ "serde",
  "serde_json",
 ]
 

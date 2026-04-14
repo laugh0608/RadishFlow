@@ -45,7 +45,7 @@ RadishFlow 的目标架构已经冻结为“桌面端三层 + 外部控制面”
 | `rf-flowsheet` | 连接关系与图结构校验 | 已建立首轮材料端口连接校验，覆盖 canonical port signature、流股存在性与“一股一源一汇”约束 |
 | `rf-solver` | 顺序模块法求解器 | 已建立首轮无回路顺序模块法，可执行 `Feed + Mixer + Flash Drum`、`Feed -> Heater -> Flash Drum` 与 `Feed -> Valve -> Flash Drum` 闭环，并产出带 summary / diagnostics / step 明细的最小 `SolveSnapshot`；当前失败路径已继续收口到 solver-stage + 稳定 diagnostic code + unit/port helper 上下文 |
 | `rf-store` | JSON 存储与授权缓存索引 | 已建立项目文件 / 授权缓存 / 本地包 `manifest.json` / `payload.rfpkg` 的 JSON 读写、迁移分发、版本校验与相对路径布局 |
-| `rf-ffi` | Rust 与 .NET 的 C ABI 边界 | 已建立第一版最小句柄式 C ABI，当前覆盖 `engine_create/destroy`、`flowsheet_load_json`、`flowsheet_solve`、`stream_get_snapshot_json`、`engine_last_error_message` 与 `rf_string_free`；当前运行时先内置一份 demo property package 打通 Rust Core 调用链 |
+| `rf-ffi` | Rust 与 .NET 的 C ABI 边界 | 已建立第一版最小句柄式 C ABI，当前覆盖 `engine_create/destroy`、`flowsheet_load_json`、`property_package_load_from_files`、`flowsheet_solve`、`flowsheet_get_snapshot_json`、`stream_get_snapshot_json`、`engine_last_error_message`、`engine_last_error_json` 与 `rf_string_free`；当前运行时已同时支持内置 demo package 与本地 `manifest/payload` 注册 |
 
 当前仓库级集成测试也已正式落到 `tests/rust-integration` workspace crate，并由 `cargo test --workspace`、`scripts/check-repo.ps1` 与 `scripts/check-repo.sh` 自动覆盖五条示例 flowsheet 回归。
 

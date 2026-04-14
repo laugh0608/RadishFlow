@@ -39,23 +39,30 @@ Rust 与 `.NET 10` 之间的正式边界应保持简单稳定：
 - `engine_create`
 - `engine_destroy`
 - `engine_last_error_message`
+- `engine_last_error_json`
 - `rf_string_free`
 - `flowsheet_load_json`
+- `property_package_load_from_files`
 - `flowsheet_solve`
+- `flowsheet_get_snapshot_json`
 - `stream_get_snapshot_json`
 
 当前这版 ABI 的额外口径为：
 
 - 输入字符串使用 `pointer + length` 传入，解释为 UTF-8
 - 输出字符串由 Rust 侧分配为 UTF-8 C string，并统一通过 `rf_string_free` 释放
+- 最近一次错误当前同时支持文本导出和结构化 JSON 导出，后续 `.NET` 适配层不必只靠错误文本分支
 - `flowsheet_load_json` 当前加载 `StoredProjectFile` JSON
+- `property_package_load_from_files` 当前允许把本地 `manifest.json + payload.rfpkg` 注册到 engine 内的 package registry
 - `flowsheet_solve` 当前按 `package_id` 选择物性包，并把最新 `SolveSnapshot` 留在 engine 内
+- `flowsheet_get_snapshot_json` 当前导出最近一次成功求解的整份 `SolveSnapshot` JSON
 - `stream_get_snapshot_json` 当前从最近一次成功求解的 `SolveSnapshot` 导出单股流体 JSON
-- 返回状态码当前分为两层：FFI 前置错误（如空指针、非法 UTF-8、未加载 flowsheet / 未生成 snapshot）与 `rf_types::ErrorCode` 映射的内核错误
+- 返回状态码当前分为两层：FFI 前置错误（如空指针、非法 UTF-8、未加载 flowsheet / 未生成 snapshot）与 `rf_types::ErrorCode` 映射的内核错误；结构化错误 JSON 当前会额外带出 `ffiStatus`、`code`、`diagnosticCode`、`relatedUnitIds`、`relatedStreamIds` 与 `relatedPortTargets`
 
 当前这版运行时仍是最小实现，额外明确以下暂时约束：
 
 - engine 当前内置一份与仓库示例 flowsheet 对齐的 demo property package，用于打通 Rust Core 调用链
+- engine 当前同时允许从本地 `manifest/payload` 文件注册真实 package；相同 `package_id` 会覆盖当前 registry 中已有条目
 - 当前还未引入 auth cache、本地缓存目录或真实 `.NET` PInvoke 编排
 - 当前先不导出完整 `SolveSnapshot` JSON，也不提前暴露 COM / CAPE-OPEN 语义
 

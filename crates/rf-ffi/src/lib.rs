@@ -5,6 +5,7 @@ use std::panic::{AssertUnwindSafe, catch_unwind};
 
 use engine::Engine;
 use rf_types::{ErrorCode, RfError};
+use serde::Serialize;
 
 pub use engine::DEMO_PACKAGE_ID;
 
@@ -77,7 +78,34 @@ pub extern "C" fn engine_last_error_message(
         }
 
         let engine = unsafe { &*engine };
-        match allocate_c_string(engine.last_error(), out_message) {
+        match allocate_c_string(engine.last_error_message(), out_message) {
+            Ok(()) => RfFfiStatus::Ok,
+            Err(_) => RfFfiStatus::InvalidInput,
+        }
+    }))
+    .unwrap_or(RfFfiStatus::Panic)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn engine_last_error_json(
+    engine: *const Engine,
+    out_message: *mut *mut c_char,
+) -> RfFfiStatus {
+    catch_unwind(AssertUnwindSafe(|| {
+        if engine.is_null() || out_message.is_null() {
+            return RfFfiStatus::NullPointer;
+        }
+
+        let engine = unsafe { &*engine };
+        let json = match engine.last_error() {
+            Some(error) => match serde_json::to_string_pretty(&FfiErrorJson::from_error(error)) {
+                Ok(json) => json,
+                Err(_) => return RfFfiStatus::InvalidInput,
+            },
+            None => "null".to_string(),
+        };
+
+        match allocate_c_string(&json, out_message) {
             Ok(()) => RfFfiStatus::Ok,
             Err(_) => RfFfiStatus::InvalidInput,
         }
@@ -121,6 +149,35 @@ pub extern "C" fn flowsheet_solve(
 }
 
 #[unsafe(no_mangle)]
+pub extern "C" fn property_package_load_from_files(
+    engine: *mut Engine,
+    manifest_path_ptr: *const u8,
+    manifest_path_len: usize,
+    payload_path_ptr: *const u8,
+    payload_path_len: usize,
+) -> RfFfiStatus {
+    with_engine_mut(engine, |engine| {
+        let manifest_path = read_utf8_bytes(manifest_path_ptr, manifest_path_len)?;
+        let payload_path = read_utf8_bytes(payload_path_ptr, payload_path_len)?;
+
+        if manifest_path.trim().is_empty() {
+            return Err(RfError::invalid_input(
+                "ffi property package load requires a non-empty manifest path",
+            ));
+        }
+
+        if payload_path.trim().is_empty() {
+            return Err(RfError::invalid_input(
+                "ffi property package load requires a non-empty payload path",
+            ));
+        }
+
+        engine.load_property_package_files(&manifest_path, &payload_path)?;
+        Ok(())
+    })
+}
+
+#[unsafe(no_mangle)]
 pub extern "C" fn stream_get_snapshot_json(
     engine: *mut Engine,
     stream_id_ptr: *const u8,
@@ -144,6 +201,27 @@ pub extern "C" fn stream_get_snapshot_json(
     })
 }
 
+#[unsafe(no_mangle)]
+pub extern "C" fn flowsheet_get_snapshot_json(
+    engine: *mut Engine,
+    out_json: *mut *mut c_char,
+) -> RfFfiStatus {
+    with_engine_mut(engine, |engine| {
+        if out_json.is_null() {
+            return Err(ffi_error(
+                RfFfiStatus::NullPointer,
+                "ffi solve snapshot export requires a non-null output pointer",
+            ));
+        }
+
+        let json = engine.flowsheet_snapshot_json()?;
+        allocate_c_string(&json, out_json).map_err(|error| {
+            RfError::invalid_input(format!("failed to allocate ffi output string: {error}"))
+        })?;
+        Ok(())
+    })
+}
+
 fn with_engine_mut(
     engine: *mut Engine,
     action: impl FnOnce(&mut Engine) -> Result<(), RfError>,
@@ -160,7 +238,7 @@ fn with_engine_mut(
                 RfFfiStatus::Ok
             }
             Err(error) => {
-                engine.replace_last_error(error.message());
+                engine.replace_last_error(error.clone());
                 map_error_to_status(&error)
             }
         }
@@ -168,7 +246,10 @@ fn with_engine_mut(
     .unwrap_or_else(|_| {
         if !engine.is_null() {
             unsafe {
-                (*engine).replace_last_error("ffi call panicked unexpectedly");
+                (*engine).replace_last_error(ffi_error(
+                    RfFfiStatus::Panic,
+                    "ffi call panicked unexpectedly",
+                ));
             }
         }
         RfFfiStatus::Panic
@@ -236,18 +317,289 @@ fn map_error_to_status(error: &RfError) -> RfFfiStatus {
     }
 }
 
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct FfiErrorJson {
+    ffi_status: &'static str,
+    code: &'static str,
+    message: String,
+    diagnostic_code: Option<String>,
+    related_unit_ids: Vec<String>,
+    related_stream_ids: Vec<String>,
+    related_port_targets: Vec<FfiPortTargetJson>,
+}
+
+impl FfiErrorJson {
+    fn from_error(error: &RfError) -> Self {
+        let ffi_status = map_error_to_status(error);
+        Self {
+            ffi_status: ffi_status.as_str(),
+            code: error.code().as_str(),
+            message: error.message().to_string(),
+            diagnostic_code: error.context().diagnostic_code().map(str::to_string),
+            related_unit_ids: error
+                .context()
+                .related_unit_ids()
+                .iter()
+                .map(|unit_id| unit_id.as_str().to_string())
+                .collect(),
+            related_stream_ids: error
+                .context()
+                .related_stream_ids()
+                .iter()
+                .map(|stream_id| stream_id.as_str().to_string())
+                .collect(),
+            related_port_targets: error
+                .context()
+                .related_port_targets()
+                .iter()
+                .map(FfiPortTargetJson::from_target)
+                .collect(),
+        }
+    }
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct FfiPortTargetJson {
+    unit_id: String,
+    port_name: String,
+}
+
+impl FfiPortTargetJson {
+    fn from_target(target: &rf_types::DiagnosticPortTarget) -> Self {
+        Self {
+            unit_id: target.unit_id.as_str().to_string(),
+            port_name: target.port_name.clone(),
+        }
+    }
+}
+
+impl RfFfiStatus {
+    const fn as_str(self) -> &'static str {
+        match self {
+            Self::Ok => "ok",
+            Self::NullPointer => "null_pointer",
+            Self::InvalidUtf8 => "invalid_utf8",
+            Self::InvalidEngineState => "invalid_engine_state",
+            Self::Panic => "panic",
+            Self::InvalidInput => "invalid_input",
+            Self::DuplicateId => "duplicate_id",
+            Self::MissingEntity => "missing_entity",
+            Self::InvalidConnection => "invalid_connection",
+            Self::Thermo => "thermo",
+            Self::Flash => "flash",
+            Self::NotImplemented => "not_implemented",
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::{
         DEMO_PACKAGE_ID, Engine, RfFfiStatus, engine_create, engine_destroy,
-        engine_last_error_message, flowsheet_load_json, flowsheet_solve, rf_string_free,
-        stream_get_snapshot_json,
+        engine_last_error_json, engine_last_error_message, flowsheet_get_snapshot_json,
+        flowsheet_load_json, flowsheet_solve, rf_string_free, stream_get_snapshot_json,
+        property_package_load_from_files,
     };
     use std::ffi::{CStr, c_char};
+    use std::path::PathBuf;
     use std::ptr;
+    use std::time::{Duration, SystemTime, UNIX_EPOCH};
+
+    use rf_store::{
+        StoredAntoineCoefficients, StoredProjectFile, StoredPropertyPackageManifest,
+        StoredPropertyPackagePayload, StoredPropertyPackageSource, StoredThermoComponent,
+        StoredDocumentMetadata, write_property_package_manifest, write_property_package_payload,
+    };
+    use rf_model::{
+        Component, Flowsheet, MaterialStreamState, UnitNode, UnitPort,
+    };
+    use rf_types::{ComponentId, PortDirection, PortKind};
 
     fn example_project_json() -> &'static str {
         include_str!("../../../examples/flowsheets/feed-heater-flash.rfproj.json")
+    }
+
+    fn unique_temp_path(name: &str) -> PathBuf {
+        let unique = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("expected time after epoch")
+            .as_nanos();
+        std::env::temp_dir().join(format!("radishflow-rf-ffi-{name}-{unique}"))
+    }
+
+    fn timestamp(seconds: u64) -> SystemTime {
+        UNIX_EPOCH + Duration::from_secs(seconds)
+    }
+
+    fn sample_runtime_project_json() -> String {
+        let mut flowsheet = Flowsheet::new("ffi-package-load");
+        flowsheet
+            .insert_component(Component::new("component-a", "Component A"))
+            .expect("expected component");
+        flowsheet
+            .insert_component(Component::new("component-b", "Component B"))
+            .expect("expected component");
+        flowsheet
+            .insert_stream(MaterialStreamState::from_tpzf(
+                "stream-feed",
+                "Feed",
+                300.0,
+                120_000.0,
+                5.0,
+                vec![
+                    (ComponentId::new("component-a"), 0.35),
+                    (ComponentId::new("component-b"), 0.65),
+                ]
+                .into_iter()
+                .collect(),
+            ))
+            .expect("expected stream");
+        flowsheet
+            .insert_stream(MaterialStreamState::from_tpzf(
+                "stream-heated",
+                "Heated Outlet",
+                345.0,
+                95_000.0,
+                0.0,
+                vec![
+                    (ComponentId::new("component-a"), 0.5),
+                    (ComponentId::new("component-b"), 0.5),
+                ]
+                .into_iter()
+                .collect(),
+            ))
+            .expect("expected stream");
+        flowsheet
+            .insert_stream(MaterialStreamState::from_tpzf(
+                "stream-liquid",
+                "Liquid Outlet",
+                345.0,
+                95_000.0,
+                0.0,
+                vec![
+                    (ComponentId::new("component-a"), 0.5),
+                    (ComponentId::new("component-b"), 0.5),
+                ]
+                .into_iter()
+                .collect(),
+            ))
+            .expect("expected stream");
+        flowsheet
+            .insert_stream(MaterialStreamState::from_tpzf(
+                "stream-vapor",
+                "Vapor Outlet",
+                345.0,
+                95_000.0,
+                0.0,
+                vec![
+                    (ComponentId::new("component-a"), 0.5),
+                    (ComponentId::new("component-b"), 0.5),
+                ]
+                .into_iter()
+                .collect(),
+            ))
+            .expect("expected stream");
+        flowsheet
+            .insert_unit(UnitNode::new(
+                "feed-1",
+                "Feed",
+                "feed",
+                vec![UnitPort::new(
+                    "outlet",
+                    PortDirection::Outlet,
+                    PortKind::Material,
+                    Some("stream-feed".into()),
+                )],
+            ))
+            .expect("expected unit");
+        flowsheet
+            .insert_unit(UnitNode::new(
+                "heater-1",
+                "Heater",
+                "heater",
+                vec![
+                    UnitPort::new(
+                        "inlet",
+                        PortDirection::Inlet,
+                        PortKind::Material,
+                        Some("stream-feed".into()),
+                    ),
+                    UnitPort::new(
+                        "outlet",
+                        PortDirection::Outlet,
+                        PortKind::Material,
+                        Some("stream-heated".into()),
+                    ),
+                ],
+            ))
+            .expect("expected unit");
+        flowsheet
+            .insert_unit(UnitNode::new(
+                "flash-1",
+                "Flash Drum",
+                "flash_drum",
+                vec![
+                    UnitPort::new(
+                        "inlet",
+                        PortDirection::Inlet,
+                        PortKind::Material,
+                        Some("stream-heated".into()),
+                    ),
+                    UnitPort::new(
+                        "liquid",
+                        PortDirection::Outlet,
+                        PortKind::Material,
+                        Some("stream-liquid".into()),
+                    ),
+                    UnitPort::new(
+                        "vapor",
+                        PortDirection::Outlet,
+                        PortKind::Material,
+                        Some("stream-vapor".into()),
+                    ),
+                ],
+            ))
+            .expect("expected unit");
+
+        let project = StoredProjectFile::new(
+            flowsheet,
+            StoredDocumentMetadata::new("ffi-project", "FFI Package Load Demo", timestamp(10)),
+        );
+        serde_json::to_string_pretty(&project).expect("expected project json")
+    }
+
+    fn write_runtime_package_files(root: &PathBuf, package_id: &str) -> (PathBuf, PathBuf) {
+        let manifest_path = root.join("manifest.json");
+        let payload_path = root.join("payload.rfpkg");
+        let mut first = StoredThermoComponent::new(ComponentId::new("component-a"), "Component A");
+        first.antoine = Some(StoredAntoineCoefficients::new(
+            ((2.0_f64 * 100_000.0_f64) / 1_000.0_f64).ln(),
+            0.0,
+            0.0,
+        ));
+        let mut second = StoredThermoComponent::new(ComponentId::new("component-b"), "Component B");
+        second.antoine = Some(StoredAntoineCoefficients::new(
+            ((0.5_f64 * 100_000.0_f64) / 1_000.0_f64).ln(),
+            0.0,
+            0.0,
+        ));
+
+        let manifest = StoredPropertyPackageManifest::new(
+            package_id,
+            "2026.04.14",
+            StoredPropertyPackageSource::LocalBundled,
+            vec![ComponentId::new("component-a"), ComponentId::new("component-b")],
+        );
+        let payload =
+            StoredPropertyPackagePayload::new(package_id, "2026.04.14", vec![first, second]);
+
+        write_property_package_manifest(&manifest_path, &manifest)
+            .expect("expected manifest write");
+        write_property_package_payload(&payload_path, &payload).expect("expected payload write");
+
+        (manifest_path, payload_path)
     }
 
     fn call_last_error(engine: *mut Engine) -> String {
@@ -260,6 +612,18 @@ mod tests {
             .to_string();
         rf_string_free(output);
         text
+    }
+
+    fn call_last_error_json(engine: *mut Engine) -> serde_json::Value {
+        let mut output = ptr::null_mut::<c_char>();
+        let status = engine_last_error_json(engine.cast_const(), &mut output);
+        assert_eq!(status, RfFfiStatus::Ok);
+        let text = unsafe { CStr::from_ptr(output) }
+            .to_str()
+            .expect("expected utf-8")
+            .to_string();
+        rf_string_free(output);
+        serde_json::from_str(&text).expect("expected json")
     }
 
     #[test]
@@ -299,6 +663,119 @@ mod tests {
     }
 
     #[test]
+    fn ffi_engine_exports_full_solve_snapshot_json() {
+        let mut engine = ptr::null_mut::<Engine>();
+        assert_eq!(engine_create(&mut engine), RfFfiStatus::Ok);
+
+        let project_json = example_project_json().as_bytes();
+        assert_eq!(
+            flowsheet_load_json(engine, project_json.as_ptr(), project_json.len()),
+            RfFfiStatus::Ok
+        );
+
+        let package_id = DEMO_PACKAGE_ID.as_bytes();
+        assert_eq!(
+            flowsheet_solve(engine, package_id.as_ptr(), package_id.len()),
+            RfFfiStatus::Ok
+        );
+
+        let mut output = ptr::null_mut::<c_char>();
+        let status = flowsheet_get_snapshot_json(engine, &mut output);
+        assert_eq!(status, RfFfiStatus::Ok);
+
+        let text = unsafe { CStr::from_ptr(output) }
+            .to_str()
+            .expect("expected utf-8")
+            .to_string();
+        rf_string_free(output);
+        let value: serde_json::Value = serde_json::from_str(&text).expect("expected json");
+
+        assert_eq!(value["status"], "converged");
+        assert_eq!(value["summary"]["diagnosticCount"], 4);
+        assert_eq!(value["steps"].as_array().map(Vec::len), Some(3));
+        assert_eq!(value["streams"].as_array().map(Vec::len), Some(4));
+        assert_eq!(value["diagnostics"][0]["code"], "solver.execution_order");
+
+        engine_destroy(engine);
+    }
+
+    #[test]
+    fn ffi_engine_loads_runtime_property_package_files_and_solves() {
+        let mut engine = ptr::null_mut::<Engine>();
+        assert_eq!(engine_create(&mut engine), RfFfiStatus::Ok);
+
+        let root = unique_temp_path("package-files");
+        std::fs::create_dir_all(&root).expect("expected temp dir");
+        let (manifest_path, payload_path) =
+            write_runtime_package_files(&root, "runtime-binary-package");
+
+        let manifest = manifest_path.to_string_lossy().to_string();
+        let payload = payload_path.to_string_lossy().to_string();
+        assert_eq!(
+            property_package_load_from_files(
+                engine,
+                manifest.as_bytes().as_ptr(),
+                manifest.len(),
+                payload.as_bytes().as_ptr(),
+                payload.len(),
+            ),
+            RfFfiStatus::Ok
+        );
+
+        let project_json = sample_runtime_project_json();
+        assert_eq!(
+            flowsheet_load_json(engine, project_json.as_bytes().as_ptr(), project_json.len()),
+            RfFfiStatus::Ok
+        );
+
+        let package_id = b"runtime-binary-package";
+        assert_eq!(
+            flowsheet_solve(engine, package_id.as_ptr(), package_id.len()),
+            RfFfiStatus::Ok
+        );
+
+        let mut output = ptr::null_mut::<c_char>();
+        assert_eq!(
+            flowsheet_get_snapshot_json(engine, &mut output),
+            RfFfiStatus::Ok
+        );
+        let text = unsafe { CStr::from_ptr(output) }
+            .to_str()
+            .expect("expected utf-8")
+            .to_string();
+        rf_string_free(output);
+        let value: serde_json::Value = serde_json::from_str(&text).expect("expected json");
+        assert_eq!(value["status"], "converged");
+        assert_eq!(value["streams"].as_array().map(Vec::len), Some(4));
+
+        std::fs::remove_dir_all(&root).ok();
+        engine_destroy(engine);
+    }
+
+    #[test]
+    fn ffi_engine_reports_missing_manifest_during_property_package_load() {
+        let mut engine = ptr::null_mut::<Engine>();
+        assert_eq!(engine_create(&mut engine), RfFfiStatus::Ok);
+
+        let missing_manifest = "D:/Code/RadishFlow/does-not-exist-manifest.json".to_string();
+        let missing_payload = "D:/Code/RadishFlow/does-not-exist-payload.rfpkg".to_string();
+
+        let status = property_package_load_from_files(
+            engine,
+            missing_manifest.as_bytes().as_ptr(),
+            missing_manifest.len(),
+            missing_payload.as_bytes().as_ptr(),
+            missing_payload.len(),
+        );
+        assert_eq!(status, RfFfiStatus::MissingEntity);
+        let json = call_last_error_json(engine);
+        assert_eq!(json["ffiStatus"], "missing_entity");
+        assert_eq!(json["code"], "missing_entity");
+
+        engine_destroy(engine);
+    }
+
+    #[test]
     fn ffi_engine_reports_missing_package_through_last_error() {
         let mut engine = ptr::null_mut::<Engine>();
         assert_eq!(engine_create(&mut engine), RfFfiStatus::Ok);
@@ -313,6 +790,11 @@ mod tests {
         let status = flowsheet_solve(engine, package_id.as_ptr(), package_id.len());
         assert_eq!(status, RfFfiStatus::MissingEntity);
         assert!(call_last_error(engine).contains("missing property package `missing-package`"));
+        let json = call_last_error_json(engine);
+        assert_eq!(json["ffiStatus"], "missing_entity");
+        assert_eq!(json["code"], "missing_entity");
+        assert_eq!(json["message"], "missing property package `missing-package`");
+        assert!(json["diagnosticCode"].is_null());
 
         engine_destroy(engine);
     }
@@ -335,6 +817,38 @@ mod tests {
         assert_eq!(status, RfFfiStatus::InvalidEngineState);
         assert!(output.is_null());
         assert!(call_last_error(engine).contains("must solve a flowsheet before exporting streams"));
+        let json = call_last_error_json(engine);
+        assert_eq!(json["ffiStatus"], "invalid_engine_state");
+        assert_eq!(json["code"], "invalid_input");
+        assert_eq!(
+            json["diagnosticCode"],
+            "ffi.engine_state.snapshot_not_available"
+        );
+
+        engine_destroy(engine);
+    }
+
+    #[test]
+    fn ffi_engine_requires_solve_before_exporting_full_snapshot_json() {
+        let mut engine = ptr::null_mut::<Engine>();
+        assert_eq!(engine_create(&mut engine), RfFfiStatus::Ok);
+
+        let project_json = example_project_json().as_bytes();
+        assert_eq!(
+            flowsheet_load_json(engine, project_json.as_ptr(), project_json.len()),
+            RfFfiStatus::Ok
+        );
+
+        let mut output = ptr::null_mut::<c_char>();
+        let status = flowsheet_get_snapshot_json(engine, &mut output);
+        assert_eq!(status, RfFfiStatus::InvalidEngineState);
+        assert!(output.is_null());
+        let json = call_last_error_json(engine);
+        assert_eq!(json["ffiStatus"], "invalid_engine_state");
+        assert_eq!(
+            json["diagnosticCode"],
+            "ffi.engine_state.snapshot_not_available"
+        );
 
         engine_destroy(engine);
     }
