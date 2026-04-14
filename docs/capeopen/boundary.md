@@ -65,7 +65,7 @@ Rust 与 `.NET 10` 之间的正式边界应保持简单稳定：
 
 - engine 当前内置一份与仓库示例 flowsheet 对齐的 demo property package，用于打通 Rust Core 调用链
 - engine 当前同时允许从本地 `manifest/payload` 文件注册真实 package；相同 `package_id` 会覆盖当前 registry 中已有条目
-- 当前还未引入 auth cache、本地缓存目录或真实 `.NET` PInvoke 编排
+- 当前还未引入 auth cache、本地缓存目录、COM 注册流程或 CAPE-OPEN 接口编排
 - 当前先不导出完整 `SolveSnapshot` JSON，也不提前暴露 COM / CAPE-OPEN 语义
 
 当前不允许在边界上直接传递以下内容：
@@ -86,6 +86,7 @@ Rust 与 `.NET 10` 之间的正式边界应保持简单稳定：
 - 目录结构
 - README 说明
 - 最小 `.NET 10` `LibraryImport` / PInvoke 薄封装
+- 最小 `.NET 10` smoke console，用于验证 `rf-ffi` 调用闭环
 - 未来 `Interop`/`Adapter` 的接口落点规划
 
 当前暂不推进的内容：

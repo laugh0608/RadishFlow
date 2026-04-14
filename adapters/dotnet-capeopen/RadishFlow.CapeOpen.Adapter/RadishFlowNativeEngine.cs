@@ -8,6 +8,7 @@ public sealed class RadishFlowNativeEngine : IDisposable
 
     public RadishFlowNativeEngine()
     {
+        RfNativeLibraryLoader.EnsureResolverInstalled();
         var status = RfNativeMethods.EngineCreate(out var handle);
         if (status != RfFfiStatus.Ok)
         {
