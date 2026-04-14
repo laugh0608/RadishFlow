@@ -2816,6 +2816,14 @@ version = "0.1.0"
 [[package]]
 name = "rf-ffi"
 version = "0.1.0"
+dependencies = [
+ "rf-flash",
+ "rf-solver",
+ "rf-store",
+ "rf-thermo",
+ "rf-types",
+ "serde_json",
+]
 
 [[package]]
 name = "rf-flash"

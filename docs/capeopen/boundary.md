@@ -34,6 +34,31 @@ Rust 与 `.NET 10` 之间的正式边界应保持简单稳定：
 - 复杂配置、求解输入输出快照和可扩展元数据优先通过 JSON 传递
 - 错误先在 Rust 内部表达为稳定错误类型，再映射为错误码与可选诊断文本
 
+截至 2026-04-14，`rf-ffi` 已开始落地第一版最小运行时边界，当前已实现并冻结以下最小 ABI：
+
+- `engine_create`
+- `engine_destroy`
+- `engine_last_error_message`
+- `rf_string_free`
+- `flowsheet_load_json`
+- `flowsheet_solve`
+- `stream_get_snapshot_json`
+
+当前这版 ABI 的额外口径为：
+
+- 输入字符串使用 `pointer + length` 传入，解释为 UTF-8
+- 输出字符串由 Rust 侧分配为 UTF-8 C string，并统一通过 `rf_string_free` 释放
+- `flowsheet_load_json` 当前加载 `StoredProjectFile` JSON
+- `flowsheet_solve` 当前按 `package_id` 选择物性包，并把最新 `SolveSnapshot` 留在 engine 内
+- `stream_get_snapshot_json` 当前从最近一次成功求解的 `SolveSnapshot` 导出单股流体 JSON
+- 返回状态码当前分为两层：FFI 前置错误（如空指针、非法 UTF-8、未加载 flowsheet / 未生成 snapshot）与 `rf_types::ErrorCode` 映射的内核错误
+
+当前这版运行时仍是最小实现，额外明确以下暂时约束：
+
+- engine 当前内置一份与仓库示例 flowsheet 对齐的 demo property package，用于打通 Rust Core 调用链
+- 当前还未引入 auth cache、本地缓存目录或真实 `.NET` PInvoke 编排
+- 当前先不导出完整 `SolveSnapshot` JSON，也不提前暴露 COM / CAPE-OPEN 语义
+
 当前不允许在边界上直接传递以下内容：
 
 - COM 接口对象
@@ -55,7 +80,7 @@ Rust 与 `.NET 10` 之间的正式边界应保持简单稳定：
 
 当前暂不推进的内容：
 
-- 真实 PInvoke 封装
+- 真实 `.NET 10` PInvoke 封装
 - COM host 注册细节
 - 完整 ECape 异常实现
 - PME 互调测试代码
