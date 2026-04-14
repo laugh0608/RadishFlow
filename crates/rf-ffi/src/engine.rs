@@ -144,6 +144,20 @@ impl Engine {
         )
     }
 
+    pub fn property_package_list_json(&self) -> RfResult<String> {
+        let manifests = self.package_provider.list_manifests();
+        let json = manifests
+            .iter()
+            .map(FfiPropertyPackageManifestJson::from_manifest)
+            .collect::<Vec<_>>();
+
+        serde_json::to_string_pretty(&json).map_err(|error| {
+            RfError::invalid_input(format!(
+                "failed to serialize property package manifest list json: {error}"
+            ))
+        })
+    }
+
     pub fn last_error(&self) -> Option<&RfError> {
         self.last_error.as_ref()
     }
@@ -451,4 +465,62 @@ fn severity_label(severity: rf_solver::SolveDiagnosticSeverity) -> &'static str 
         rf_solver::SolveDiagnosticSeverity::Warning => "warning",
         rf_solver::SolveDiagnosticSeverity::Error => "error",
     }
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct FfiPropertyPackageManifestJson {
+    package_id: String,
+    version: String,
+    classification: &'static str,
+    source: &'static str,
+    hash: String,
+    size_bytes: u64,
+    component_ids: Vec<String>,
+    expires_at: Option<String>,
+}
+
+impl FfiPropertyPackageManifestJson {
+    fn from_manifest(manifest: &PropertyPackageManifest) -> Self {
+        Self {
+            package_id: manifest.package_id.clone(),
+            version: manifest.version.clone(),
+            classification: package_classification_label(manifest.classification),
+            source: package_source_label(manifest.source),
+            hash: manifest.hash.clone(),
+            size_bytes: manifest.size_bytes,
+            component_ids: manifest
+                .component_ids
+                .iter()
+                .map(|component_id| component_id.as_str().to_string())
+                .collect(),
+            expires_at: manifest
+                .expires_at
+                .map(time_format_rfc3339)
+                .transpose()
+                .unwrap_or(None),
+        }
+    }
+}
+
+fn package_source_label(source: PropertyPackageSource) -> &'static str {
+    match source {
+        PropertyPackageSource::LocalBundled => "local-bundled",
+        PropertyPackageSource::RemoteDerivedPackage => "remote-derived-package",
+        PropertyPackageSource::RemoteEvaluationService => "remote-evaluation-service",
+    }
+}
+
+fn package_classification_label(
+    classification: rf_thermo::PropertyPackageClassification,
+) -> &'static str {
+    match classification {
+        rf_thermo::PropertyPackageClassification::Derived => "derived",
+        rf_thermo::PropertyPackageClassification::RemoteOnly => "remote-only",
+    }
+}
+
+fn time_format_rfc3339(time: std::time::SystemTime) -> Result<String, time::error::Format> {
+    let offset = time::OffsetDateTime::from(time);
+    offset.format(&time::format_description::well_known::Rfc3339)
 }

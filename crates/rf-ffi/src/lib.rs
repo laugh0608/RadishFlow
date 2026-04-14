@@ -178,6 +178,27 @@ pub extern "C" fn property_package_load_from_files(
 }
 
 #[unsafe(no_mangle)]
+pub extern "C" fn property_package_list_json(
+    engine: *mut Engine,
+    out_json: *mut *mut c_char,
+) -> RfFfiStatus {
+    with_engine_mut(engine, |engine| {
+        if out_json.is_null() {
+            return Err(ffi_error(
+                RfFfiStatus::NullPointer,
+                "ffi property package list export requires a non-null output pointer",
+            ));
+        }
+
+        let json = engine.property_package_list_json()?;
+        allocate_c_string(&json, out_json).map_err(|error| {
+            RfError::invalid_input(format!("failed to allocate ffi output string: {error}"))
+        })?;
+        Ok(())
+    })
+}
+
+#[unsafe(no_mangle)]
 pub extern "C" fn stream_get_snapshot_json(
     engine: *mut Engine,
     stream_id_ptr: *const u8,
@@ -400,7 +421,7 @@ mod tests {
         DEMO_PACKAGE_ID, Engine, RfFfiStatus, engine_create, engine_destroy,
         engine_last_error_json, engine_last_error_message, flowsheet_get_snapshot_json,
         flowsheet_load_json, flowsheet_solve, rf_string_free, stream_get_snapshot_json,
-        property_package_load_from_files,
+        property_package_list_json, property_package_load_from_files,
     };
     use std::ffi::{CStr, c_char};
     use std::path::PathBuf;
@@ -659,6 +680,49 @@ mod tests {
         assert!(value["phases"].as_array().is_some_and(|phases| !phases.is_empty()));
         assert_eq!(call_last_error(engine), "");
 
+        engine_destroy(engine);
+    }
+
+    #[test]
+    fn ffi_engine_lists_registered_property_packages_as_json() {
+        let mut engine = ptr::null_mut::<Engine>();
+        assert_eq!(engine_create(&mut engine), RfFfiStatus::Ok);
+
+        let root = unique_temp_path("package-list");
+        std::fs::create_dir_all(&root).expect("expected temp dir");
+        let (manifest_path, payload_path) =
+            write_runtime_package_files(&root, "runtime-binary-package");
+        let manifest = manifest_path.to_string_lossy().to_string();
+        let payload = payload_path.to_string_lossy().to_string();
+        assert_eq!(
+            property_package_load_from_files(
+                engine,
+                manifest.as_bytes().as_ptr(),
+                manifest.len(),
+                payload.as_bytes().as_ptr(),
+                payload.len(),
+            ),
+            RfFfiStatus::Ok
+        );
+
+        let mut output = ptr::null_mut::<c_char>();
+        let status = property_package_list_json(engine, &mut output);
+        assert_eq!(status, RfFfiStatus::Ok);
+        let text = unsafe { CStr::from_ptr(output) }
+            .to_str()
+            .expect("expected utf-8")
+            .to_string();
+        rf_string_free(output);
+        let value: serde_json::Value = serde_json::from_str(&text).expect("expected json");
+
+        let packages = value.as_array().expect("expected manifest array");
+        assert_eq!(packages.len(), 2);
+        assert_eq!(packages[0]["packageId"], "binary-hydrocarbon-lite-v1");
+        assert_eq!(packages[0]["source"], "local-bundled");
+        assert_eq!(packages[1]["packageId"], "runtime-binary-package");
+        assert_eq!(packages[1]["version"], "2026.04.14");
+
+        std::fs::remove_dir_all(&root).ok();
         engine_destroy(engine);
     }
 

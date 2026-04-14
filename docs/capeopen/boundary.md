@@ -43,6 +43,7 @@ Rust 与 `.NET 10` 之间的正式边界应保持简单稳定：
 - `rf_string_free`
 - `flowsheet_load_json`
 - `property_package_load_from_files`
+- `property_package_list_json`
 - `flowsheet_solve`
 - `flowsheet_get_snapshot_json`
 - `stream_get_snapshot_json`
@@ -54,6 +55,7 @@ Rust 与 `.NET 10` 之间的正式边界应保持简单稳定：
 - 最近一次错误当前同时支持文本导出和结构化 JSON 导出，后续 `.NET` 适配层不必只靠错误文本分支
 - `flowsheet_load_json` 当前加载 `StoredProjectFile` JSON
 - `property_package_load_from_files` 当前允许把本地 `manifest.json + payload.rfpkg` 注册到 engine 内的 package registry
+- `property_package_list_json` 当前导出 engine 内可用 package manifest 列表，供上层列包与选包
 - `flowsheet_solve` 当前按 `package_id` 选择物性包，并把最新 `SolveSnapshot` 留在 engine 内
 - `flowsheet_get_snapshot_json` 当前导出最近一次成功求解的整份 `SolveSnapshot` JSON
 - `stream_get_snapshot_json` 当前从最近一次成功求解的 `SolveSnapshot` 导出单股流体 JSON
