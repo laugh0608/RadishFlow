@@ -21,6 +21,7 @@ Thumbs.db
 
 # Local automation / temp
 .dotnetcli/
+.dotnet/
 
 # Codex
 .codex/
