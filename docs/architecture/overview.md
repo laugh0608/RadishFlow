@@ -141,7 +141,7 @@ RadishFlow 的目标架构已经冻结为“桌面端三层 + 外部控制面”
 | --- | --- | --- |
 | `RadishFlow.CapeOpen.Interop` | 接口、GUID、异常语义 | 已建立第一版 `net10.0` 公共语义项目，当前覆盖 `ICapeIdentification`、`ICapeUtilities`、`ICapeUnit` 的最小接口骨架、最小 `IDispatch` marshalling 形状、已确认 CAPE-OPEN interface/category GUID 常量源，以及 `ECapeRoot` / `ECapeUser` / `ECapeBadInvOrder` / `ECapeBadCOParameter` 等最小异常契约、HRESULT 与语义化派生异常 |
 | `RadishFlow.CapeOpen.Adapter` | PInvoke 与句柄封装 | 已建立第一版 `net10.0` 薄适配项目，当前覆盖 native engine 句柄生命周期、UTF-8 字符串分配释放、`LibraryImport` 对 `rf-ffi` 的最小调用面，以及 `RfFfiStatus + last_error_message/json` 到更细粒度 ECape 语义异常的收口 |
-| `RadishFlow.CapeOpen.UnitOp.Mvp` | 第一版自有 PMC | 目录占位 |
+| `RadishFlow.CapeOpen.UnitOp.Mvp` | 第一版自有 PMC | 已建立第一版 `net10.0` 最小 PMC 骨架项目，当前提供单个 `ICapeIdentification` + `ICapeUtilities` + `ICapeUnit` 实现类、最小状态机与内部配置入口，但尚未进入端口/参数集合、native 求解接线、注册或完整 PME 生命周期 |
 | `RadishFlow.CapeOpen.Registration` | 注册与反注册工具 | 目录占位 |
 | `RadishFlow.CapeOpen.SmokeTests` | 冒烟测试 | 已建立第一版最小 `net10.0` console，当前可配置 native library 目录、加载示例 flowsheet 与本地 package 文件、列出 package registry，并导出 solve 后的 flowsheet / stream snapshot JSON |
 

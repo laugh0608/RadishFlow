@@ -92,11 +92,15 @@ Rust 与 `.NET 10` 之间的正式边界应保持简单稳定：
 - 已确认 CAPE-OPEN interface/category GUID 常量唯一来源
 - 第一版 ECape 异常基类、HRESULT 常量与语义化异常类型
 - `ECapeRoot` / `ECapeUser` / `ECapeBadInvOrder` / `ECapeBadCOParameter` 等最小异常契约、IID 与 DispId 校准
+- `RadishFlow.CapeOpen.UnitOp.Mvp` 中不含注册的最小 PMC 类骨架、状态机与内部配置入口
 
 当前暂不推进的内容：
 
 - COM host 注册细节
 - 完整 ECape 接口/异常面与所有标准 IID 校准
+- 稳定 CLSID / ProgID 策略
+- 端口集合、参数集合与报告接口的完整 CAPE-OPEN 实现
+- `UnitOp.Mvp` 内部对 `rf-ffi` 的真实求解接线
 - PME 互调测试代码
 
 ## 对 Rust Core 的约束
