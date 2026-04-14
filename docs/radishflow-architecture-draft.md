@@ -1,6 +1,6 @@
 # RadishFlow 架构草案
 
-更新时间：2026-04-05
+更新时间：2026-04-14
 
 ## 文档目的
 
@@ -478,13 +478,15 @@ Rust 与 .NET 的桥接层。
 
 - `engine_create`
 - `engine_destroy`
-- `stream_create`
-- `stream_set_tpzf`
-- `flash_tp`
-- `unit_create_*`
-- `unit_solve`
+- `engine_last_error_message`
+- `engine_last_error_json`
+- `rf_string_free`
+- `flowsheet_load_json`
+- `property_package_load_from_files`
+- `property_package_list_json`
 - `flowsheet_solve`
-- `snapshot_to_json`
+- `flowsheet_get_snapshot_json`
+- `stream_get_snapshot_json`
 
 ## `adapters/dotnet-capeopen`
 
@@ -499,9 +501,14 @@ Rust 与 .NET 的桥接层。
 - CAPE-OPEN 接口定义
 - GUID、属性、辅助类型
 - ECape 异常基础设施
-- 注册辅助逻辑
+- 最小 `IDispatch` marshalling 形状
 
 它可以吸收当前 `CapeOpenCore` 仓库中的接口定义与注册经验。
+
+当前对齐：
+
+- 已形成 `ICapeIdentification`、`ICapeUtilities`、`ICapeUnit` 的最小接口骨架
+- 已收口第一版 CAPE-OPEN interface/category GUID、HRESULT 与 `ECapeRoot` / `ECapeUser` / `ECapeBadInvOrder` / `ECapeBadCOParameter` 等最小异常语义
 
 ### `RadishFlow.CapeOpen.Adapter`
 
@@ -513,15 +520,26 @@ Rust 与 .NET 的桥接层。
 
 这是 .NET 与 Rust 的唯一正式运行时边界。
 
+当前对齐：
+
+- 当前已形成 `LibraryImport` 薄适配与 native engine 句柄生命周期封装
+- 当前已把 `RfFfiStatus + last_error_message/json` 收口到更细粒度 ECape 语义异常
+
 ### `RadishFlow.CapeOpen.UnitOp.Mvp`
 
 职责：
 
-- MVP 阶段的 CAPE-OPEN Unit Operation PMC
-- 通过适配层调用 Rust 核心
-- 作为外部 PME 验证对象
+- MVP 阶段的 CAPE-OPEN Unit Operation PMC 骨架
+- 先冻结最小 `ICapeIdentification` / `ICapeUtilities` / `ICapeUnit` 状态机与对象边界
+- 后续再通过适配层调用 Rust 核心并作为外部 PME 验证对象
 
 建议先以 Unit Operation 为导出重点，不在第一阶段同时做完整 Thermo PMC。
+
+当前对齐：
+
+- 当前已建立最小 PMC 类、`Initialize/Validate/Calculate/Terminate/Edit` 状态机与内部配置入口
+- 当前已把 `Ports` / `Parameters` 推进为最小占位对象集合，并让 `Validate()` 先基于对象状态做必填参数与必连端口检查
+- 当前仍未进入 COM 注册、真实 native 求解接线或完整 PME 生命周期
 
 ### `RadishFlow.CapeOpen.Registration`
 
@@ -536,7 +554,13 @@ Rust 与 .NET 的桥接层。
 职责：
 
 - 最小冒烟测试
-- PMC 创建、参数读写、计算流程验证
+- `rf-ffi` 调用闭环与 .NET 项目可编译性验证
+
+当前对齐：
+
+- 当前可配置 native library 目录、加载示例 flowsheet 与本地 `manifest/payload` package
+- 当前可列出 package registry，并导出 solve 后的 flowsheet / stream snapshot JSON
+- 当前暂不承担 PME/COM 注册路径的冒烟验证
 
 ## `bindings/c`
 

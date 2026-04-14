@@ -66,7 +66,7 @@ Rust 与 `.NET 10` 之间的正式边界应保持简单稳定：
 - engine 当前内置一份与仓库示例 flowsheet 对齐的 demo property package，用于打通 Rust Core 调用链
 - engine 当前同时允许从本地 `manifest/payload` 文件注册真实 package；相同 `package_id` 会覆盖当前 registry 中已有条目
 - 当前还未引入 auth cache、本地缓存目录、COM 注册流程或 CAPE-OPEN 接口编排
-- 当前先不导出完整 `SolveSnapshot` JSON，也不提前暴露 COM / CAPE-OPEN 语义
+- 当前已导出整份 `SolveSnapshot` JSON 与单股 stream snapshot JSON，但仍不提前暴露更细对象级 ABI 或 COM / CAPE-OPEN 语义
 
 当前不允许在边界上直接传递以下内容：
 
@@ -93,13 +93,14 @@ Rust 与 `.NET 10` 之间的正式边界应保持简单稳定：
 - 第一版 ECape 异常基类、HRESULT 常量与语义化异常类型
 - `ECapeRoot` / `ECapeUser` / `ECapeBadInvOrder` / `ECapeBadCOParameter` 等最小异常契约、IID 与 DispId 校准
 - `RadishFlow.CapeOpen.UnitOp.Mvp` 中不含注册的最小 PMC 类骨架、状态机与内部配置入口
+- `UnitOp.Mvp` 中用于 `Ports` / `Parameters` 的最小占位对象集合，以及基于对象状态的 `Validate()` 前置检查
 
 当前暂不推进的内容：
 
 - COM host 注册细节
 - 完整 ECape 接口/异常面与所有标准 IID 校准
 - 稳定 CLSID / ProgID 策略
-- 端口集合、参数集合与报告接口的完整 CAPE-OPEN 实现
+- 端口集合、参数集合、报告接口与 `Collection/Parameter/UnitPort` 语义的完整 CAPE-OPEN 实现
 - `UnitOp.Mvp` 内部对 `rf-ffi` 的真实求解接线
 - PME 互调测试代码
 
