@@ -1,0 +1,201 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<title>IdealThermoSystem Introduction</title>
+</head>
+
+<body>
+<h2>Introduction</h2>
+<p>This document describes an example thermodynamic server. The  intent is to demonstrate how CAPE-OPEN thermodynamics function, rather than to  describe how to write a high-end thermodynamics server. As such, the  thermodynamics calculations are minimal. The following sections describe the  thermodynamic calculations.</p>
+<h2>Compound data</h2>
+<p>The following data are requires for each compound:</p>
+<ul>
+  <li>Name</li>
+  <li>Chemical formula</li>
+  <li>CAS number</li>
+  <li>Molecular weight</li>
+  <li>Critical properties (for exposing as compound  constants)</li>
+  <li>Ideal gas heat capacity correlation, <em>C</em><sub>p</sub></li>
+  <li>Heat of vaporisation correlation, &#916;<em>h</em><sub>vap</sub></li>
+  <li>Liquid density correlation, <em>&#961;</em><sub>L</sub></li>
+  <li>Vapor pressure correlation, <em>P</em><sub>sat</sub></li>
+</ul>
+<p>Exposed temperature dependent properties correspond to the  above correlations. No pressure dependent properties are exposed. The  calculations are only allowed for sub-critical temperatures (see liquid phase  description) so only compounds that are sub-critical at reference conditions are  available.<br />
+  For simplicity, all correlations have the same format: a 4<sup>th</sup> order polynomial. An exception is the vapor pressure correlation, which takes  the form of the Antoine equation. Temperature limits will not be included;  correlations are assumed valid over the entire temperature range. For all  correlations, the temperature derivative, the temperature integral and the  integral of the property divided by temperature can be evaluated explicitly.</p>
+<h2>Mixture properties</h2>
+<p>The following mixture properties are provided:</p>
+<ul>
+  <li>Density</li>
+  <li>Volume</li>
+  <li>Enthalpy</li>
+  <li>Entropy</li>
+  <li>Fugacity</li>
+  <li>Fugacity Coefficient</li>
+  <li>Log Fugacity Coefficient</li>
+  <li>Activity (liquid only)</li>
+  <li>K-values</li>
+  <li>Log K-values</li>
+</ul>
+<p>Of these properties, all derivatives are provided (with  respect to temperature, pressure, mol fractions and mole numbers).</p>
+<h2>Vapor phase properties</h2>
+<p>The vapor phase is governed by the ideal gas law (<em>PV</em> = <em>RT</em>).  The enthalpy reference state is in the (ideal) vapor phase at <em>T</em><sub>ref</sub> = 298.15 K. Reference  pressure is required for entropy, and is <em>P</em><sub>ref</sub>  = 101325 Pa. Volume and density of the vapor phase follow from the ideal gas  law. Enthalpy of the vapor phase follows from <br />
+  <img src="img1.png" /><br />
+  Entropy  of the vapor phase follows from <br />
+  <img src="img2.png" /><br />
+  Fugacity coefficient of all components is unity,  corresponding to an ideal gas. Fugacity for the vapor phase therefore is:<br />
+  <img src="img3.png" /></p>
+<h2>Liquid phase properties</h2>
+<p>The liquid phase is ideal, with activity coefficients of  unity. The system is intended to be used for <em>T</em> &lt; <em>T</em><sub>crit,i</sub>  for all compounds, so that all vapor pressures are finite and positive.  Calculations that violate this constraint result an error.<br />
+  Poynting correction and saturated fugacity coefficients are ignored, so that  the liquid phase fugacity is given by <br />
+  <img src="img4.png" /><br />
+  where  the saturated vapor pressure only depends on temperature. The liquid phase  enthalpy follows from:<br />
+  <img src="img5.png" /> <br />
+  The  liquid phase entropy follows from:<br />
+  <img src="img6.png" /><br />
+  The  liquid phase volume is ideal:<br />
+  <img src="img7.png" /><br />
+  and  the liquid phase density follows from <em>&#961;</em><sub>L</sub> =  1/<em>v</em><sub>L</sub>.</p>
+<h2>Equilibrium calculations</h2>
+<p>Only the vapor and liquid phases are provided. Only a single  liquid phase is supported. The following flash specifications are supported:</p>
+<ul>
+  <li>Temperature and pressure</li>
+  <li>Temperature and vapor phase fraction</li>
+  <li>Pressure and vapor phase fraction</li>
+  <li>Pressure and enthalpy</li>
+  <li>Pressure and entropy</li>
+</ul>
+<p>As the vapor phase enthalpy does not depend on pressure, and  none of the liquid phase properties depend on pressure, the <em>T</em>-<em>h</em> and <em>T</em>-<em>s</em> are not provided.<br />
+  Vapor-liquid equilibria are calculated at given <em>T</em> and <em>P</em> from:</p>
+<ul>
+  <li>The dew point pressure at given temperature  follows from:<br />
+    <em>F</em><sub>V</sub> = 1, <em>F</em><sub>L</sub> = 0, <em>y</em> = <em>z</em><br />
+    solve:<br />
+    <img src="img8.png" /><br />
+    solution:<br />
+    <img src="img9.png" /><br />
+  <li>Similarly, the bubble point follows from <em>F</em><sub>V</sub> = 0, <em>F</em><sub>L</sub> = 1, <em>x</em> = <em>z </em>and<br />
+    <img src="img10.png" /><br />
+  <li>For <em>P</em> &gt; <em>P</em><sub>bub</sub>, the solution is  a single phase liquid, with <em>F</em><sub>L</sub>  = 1, <em>x</em> = <em>z</em>.</li>
+  <li>For <em>P</em> &lt; <em>P</em><sub>dew</sub>, the solution is  a single phase vapor, with <em>F</em><sub>V</sub>  = 1, <em>y</em> = <em>z</em>.</li>
+  <li>For <em>P</em><sub>dew</sub>  &#8804; <em>P</em> &#8804; <em>P</em><sub>bub</sub>  the solution is two-phase. The solution follows from<br />
+    <img src="img11.png" /><br />
+    for <em>x</em>, <em>y</em>, <em>F</em><sub>L</sub> and <em>F</em><sub>V</sub>. The system is solved  using a one dimensional solver to solve the Rachford Rice equation:<br />
+    <img src="img12.png" /><br />
+    where the <em>K</em> values are given by <em>K</em>i = <em>&#966;</em>L/ <em>&#966;</em>V&nbsp; = <em>P</em><sub>sat,i</sub>/<em>P</em> and the vapor fraction <em>F</em><sub>V</sub> is solved for. </li>
+</ul>
+<p>The <em>T</em>-<em>F</em><sub>V</sub> flash for <em>F</em><sub>V</sub>&shy; = 0 or <em>F</em><sub>V</sub>&shy; = 1 is solved as a dew-  or bubble-point problem. For 0 &lt; <em>F</em><sub>V</sub>&shy;  &lt; 1, a one dimensional problem is solved for which the pressure is adjusted  so that the TP flash returns the desired vapor fraction.<br />
+  Similarly, the <em>P</em>-<em>F</em><sub>V</sub> flash for <em>F</em><sub>V</sub>&shy;  = 0 or <em>F</em><sub>V</sub>&shy; = 1 is solved  as a dew- or bubble-point problem. For 0 &lt; <em>F</em><sub>V</sub>&shy; &lt; 1, a one dimensional problem is solved for  which the temperature is adjusted so that the TP flash returns the desired  vapor fraction.<br />
+  The <em>P</em>-<em>h</em> and <em>P</em>-<em>s</em>, a one dimensional problem is solved  for which the temperature is adjusted so that the TP flash returns a mixture  with proper overall enthalpy or entropy.</p>
+<h2>Single-compound equilibruim calculations</h2>
+<p>The above flash descriptions will cause trouble for single  compounds, due to the discontinuity at the boiling point. Therefore,  single-compound flashes are detected and handled with separate algorithms:</p>
+<ul>
+  <li>The <em>T</em>-<em>P</em> flash will result a liquid for <em>P</em> &gt; <em>P</em><sub>sat,i</sub>; otherwise a vapor.</li>
+  <li>Flashes involving a <em>F</em><sub>V</sub> specification are explicit: the amount of vapor is  given.</li>
+  <li>The <em>P-h</em> and <em>P-s</em> flashes are handled the same  as for multi-compound systems.</li>
+</ul>
+<h2>Configuration files</h2>
+<p>Configuration files are present for Hexane, Octane, Decane  and Dodecane. Each of the compounds is described in a compound data file. This  is a fixed-format text file with each line containing a property, or  coefficients to a correlation, in a fixed order. The compound file name  corresponds to the compound ID. The compound input files are located in a  sub-folder &ldquo;Data&rdquo; of the CAPE-OPEN component installation folder.<br />
+  The CAPE-OPEN component implements a Property Package  Manager (CAPE-OPEN version 1.1) and a Thermo System (CAPE-OPEN version 1.0).  This requires configuration of Property Packages. A Property Package  configuration consists only of a selection of compounds. Property Package  configurations are stored in text files consisting of one compound ID per line.  The Property Package configuration files are located in a sub-folder &ldquo;CO-LaN_IdealThermoExample&rdquo;  of the user&rsquo;s roaming data folder. If this folder does not exist, it is  automatically created and populated with a few sample property package files.  These sample files are located in a sub-folder &ldquo;Data&rdquo; of the CAPE-OPEN  component installation folder.</p>
+<h2>Binary software components</h2>
+<h5>Thermodynamic module: IdealThermoModule.dll</h5>
+<p>At the root of all calculations is the thermodynamic module.  This is implemented in a separate DLL which is shared between the version 1.0  and 1.1 CAPE-OPEN software components. This DLL implements a routine to load a  Property Package configuration and perform calculations using this  configuration. This DLL is written in C++.</p>
+<h5>Property package configurations module: PackageEditor.exe</h5>
+<p>A separate utility executable is present to edit the  property package configuration files. The functionality of this executable  includes: adding property package configurations, deleting existing property  package configurations and editing property package configurations. Editing  property package configurations is as simple as selecting compound definitions  from the compound files in the installation. This utility is written in C++.</p>
+<h5>C++ Thermo System: IdealThermo_CPP_TS10.dll</h5>
+<p>A CAPE-OPEN version 1.0 Thermo System is available. This is  implemented as a Microsoft Visual C++ based COM DLL, using ATL and STL as  support libraries (requires Microsoft Visual Studio 2005 Professional or higher).  This CAPE-OPEN component contains a Thermo System and a Property Package  implementation. The Thermo System implements:</p>
+<ul>
+  <li>ICapeThermoSystem</li>
+  <li>ICapeIdentification</li>
+  <li>ICapeUtilities</li>
+  <li>Error Common Interfaces</li>
+</ul>
+<p>In addition to standard Thermo System functionality, the ICapeUtilities  interface implements a means to edit the collection of Property Packages.<br />
+  The Property Package component will use the thermodynamic  module for its calculations, and implements:</p>
+<ul>
+  <li>ICapeThermoPropertyPackage</li>
+  <li>ICapeIdentification</li>
+  <li>ICapeUtilities</li>
+  <li>Error Common Interfaces</li>
+  <li>IPersistStream</li>
+</ul>
+<p>In addition to standard Property Package functionality, the  ICapeUtilities interface implements a means to edit the Property Package and  add or remove compounds. The Property Package configuration can be saved via  the Persistence interfaces. The CAPE-OPEN component is self-registering.  Registration is performed on a per-user basis.</p>
+<h5>C++ Property Package Manager: IdealThermo_CPP_PPM11.dll</h5>
+<p>A CAPE-OPEN version 1.1 Property Package Manager is  available. This is implemented as a Microsoft Visual C++ based COM DLL, using  ATL and STL as support libraries (requires Microsoft Visual Studio 2005  Professional or higher). This CAPE-OPEN component contains a Property Package  Manager and a Property Package implementation. The Property Package Manager  implements:</p>
+<ul>
+  <li>ICapeThermoProperyPackageManager</li>
+  <li>ICapeIdentification</li>
+  <li>ICapeUtilities</li>
+  <li>Error Common Interfaces</li>
+</ul>
+<p>In addition to standard Property Package Manager functionality, the  ICapeUtilities interface implements a means to edit the collection of Property  Packages.<br />
+  The Property Package component uses the thermodynamic module  for its calculations, and implements:</p>
+<ul>
+  <li>ICapeThermoCompounds</li>
+  <li>ICapeThermoPhases</li>
+  <li>ICapeThermoCalculationRoutine</li>
+  <li>ICapeThermoEquilibriumRoutine</li>
+  <li>ICapeUniversalConstants</li>
+  <li>ICapeIdentification</li>
+  <li>ICapeUtilities</li>
+  <li>Error Common Interfaces</li>
+  <li>IPersistStream</li>
+</ul>
+<p>In addition to standard Property Package functionality, the  IcapeUtilities interface implements a means to edit the Property Package and  add or remove compounds. The Property Package configuration can be saved via  the Persistence interfaces. The CAPE-OPEN component is self-registering.  Registration is performed on a per-user basis.</p>
+<h5>Visual Basic 6.0 Thermo System: IdealThermo_VB6_TS10.dll</h5>
+<p>A CAPE-OPEN version 1.0 Thermo System is available. This is implemented  as a Microsoft Visual Basic 6.0 based COM DLL. This CAPE-OPEN component contains  a Thermo System and a Property Package implementation. The Thermo System  implements:</p>
+<ul>
+  <li>ICapeThermoSystem</li>
+  <li>ICapeIdentification</li>
+  <li>ICapeUtilities</li>
+  <li>Error Common Interfaces</li>
+</ul>
+<p>In addition to standard Thermo System functionality, the ICapeUtilities  interface implements a means to edit the collection of Property Packages.<br />
+  The Property Package component uses the thermodynamic module  for its calculations, and implements:</p>
+<ul>
+  <li>ICapeThermoPropertyPackage</li>
+  <li>ICapeIdentification</li>
+  <li>ICapeUtilities</li>
+  <li>Error Common Interfaces</li>
+</ul>
+<p>Persistence is implemented via standard VB6 functionality and  IPersistStreamInit is implemented implicitly.<br />
+  In addition to standard Property Package functionality, the  ICapeUtilities interface implements a means to edit the Property Package and  add or remove compounds. The Property Package configuration can be saved via  the Persistence interfaces. In addition to self-registration, CAPE-OPEN  registration will be performed by means of a separate .reg file. Registration  is performed for all users.</p>
+<h5>Visual Basic Property Package Manager: IdealThermo_VB6_PPM11.dll</h5>
+<p>A CAPE-OPEN version 1.1 Property Package Manager is  available. This is implemented as a Microsoft Visual Basic 6.0 based COM DLL.  This CAPE-OPEN component contains a Property Package Manager and a Property  Package implementation. The Property Package Manager implements:</p>
+<ul>
+  <li>ICapeThermoProperyPackageManager</li>
+  <li>ICapeIdentification</li>
+  <li>ICapeUtilities</li>
+  <li>Error Common Interfaces</li>
+</ul>
+<p>In addition to standard Property Package Manager functionality,  the ICapeUtilities interface implements a means to edit the collection of  Property Packages.<br />
+  The Property Package component use the thermodynamic module  for its calculations, and implements:</p>
+<ul>
+  <li>ICapeThermoCompounds</li>
+  <li>ICapeThermoPhases</li>
+  <li>ICapeThermoCalculationRoutine</li>
+  <li>ICapeThermoEquilibriumRoutine</li>
+  <li>ICapeUniversalConstants</li>
+  <li>ICapeIdentification</li>
+  <li>ICapeUtilities</li>
+  <li>Error Common Interfaces</li>
+</ul>
+<p>Persistence is implemented via standard VB6 functionality  and IPersistStreamInit is implemented implicitly.<br />
+  In addition to standard Property Package functionality, the  IcapeUtilities interface implements a means to edit the Property Package and  add or remove compounds. The Property Package configuration can be saved via  the Persistence interfaces. In addition to self-registration, CAPE-OPEN  registration will be performed by means of a separate .reg file. Registration  is performed for all users.</p>
+<h2>Documentation</h2>
+<p>In addition to this documentation, documentation of the C++  components (thermodynamic module, property package configuration editor, C++  Thermo System, C++ Property Package Manager) are provided using the Doxygen  documentation system. <br />
+  The Visual Basic code is documented only by means of in-line  comments.</p>
+<h2>Installer</h2>
+<p>An installer is provided that installs one or more of the  following components:</p>
+<ul>
+  <li>Basic binaries (thermodynamic module, compound  data, initial set of Property Package configurations, Property Package  configuration editor)</li>
+  <li>C++ Thermo System binaries</li>
+  <li>C++ Property Package Manager binaries</li>
+  <li>Visual Basic 6.0 Thermo System binaries</li>
+  <li>Visual Basic 6.0 Property Package Manager  binaries</li>
+  <li>Source code</li>
+  <li>Documentation</li>
+</ul>
+<p>&nbsp;</p>
+</body>
+</html>

@@ -1,0 +1,6 @@
+Dans le dossier doc idl: 3 fichiers IDL provenant du proto v5 + ajouts qques commentaires + idldoc tags
+
+Dans le dossier idl: les 3 fichers IDL provenant du proto v5
+ICapeUtility.idl conservé mais codes supprimés car non normalisés CO (implentation pour proto v5 propre à JPB) - Le lecteur doit se référer aux CO Common Services.
+
+Dans le dossier doc : fichiers pour idldoc (non diffusé ds la doc)

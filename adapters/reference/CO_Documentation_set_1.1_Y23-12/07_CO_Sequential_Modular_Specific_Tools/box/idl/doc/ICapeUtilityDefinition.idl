@@ -1,0 +1,312 @@
+// ***********************************************************
+//
+// Types and Exceptions Definition
+//
+// ***********************************************************
+
+
+#ifndef ICapeUtilityDefinition_idl
+#define ICapeUtilityDefinition_idl
+
+
+
+// Elementary Type Definitions **************************************************************
+
+/**
+  * <p><tt>Primitive Data Type Definition for long</tt></p>
+  * <ul>
+  * <li><i>File</i> = ICapeUtilityDefinition.idl
+  * <li><i>Date</i> = June 99
+  * <li><i>Project</i> = CAPE-OPEN BE 3512
+  * </ul>        
+  * @author CAPE-OPEN Partners
+  * @see <a href="http://www.cape-open.org"> CAPE-OPEN Web Site </a>
+  */
+typedef long CapeLong;
+
+/**
+  * <p><tt>Primitive Data Type Definition for double</tt></p>
+  * <ul>
+  * <li><i>File</i> = ICapeUtilityDefinition.idl
+  * <li><i>Date</i> = June 99
+  * <li><i>Project</i> = CAPE-OPEN BE 3512
+  * </ul>        
+  * @author CAPE-OPEN Partners
+  * @see <a href="http://www.cape-open.org"> CAPE-OPEN Web Site </a>
+  */
+typedef double CapeDouble;
+
+/**
+  * <p><tt>Primitive Data Type Definition for string</tt></p>
+  * <ul>
+  * <li><i>File</i> = ICapeUtilityDefinition.idl
+  * <li><i>Date</i> = June 99
+  * <li><i>Project</i> = CAPE-OPEN BE 3512
+  * </ul>        
+  * @author CAPE-OPEN Partners
+  * @see <a href="http://www.cape-open.org"> CAPE-OPEN Web Site </a>
+  */
+typedef string CapeString;
+
+/**
+  * <p><tt>Primitive Data Type Definition for boolean</tt></p>
+  * <ul>
+  * <li><i>File</i> = ICapeUtilityDefinition.idl
+  * <li><i>Date</i> = June 99
+  * <li><i>Project</i> = CAPE-OPEN BE 3512
+  * </ul>        
+  * @author CAPE-OPEN Partners
+  * @see <a href="http://www.cape-open.org"> CAPE-OPEN Web Site </a>
+  */
+typedef boolean CapeBoolean;
+
+/**
+  * <p><tt>Primitive Data Type Definition for a date</tt></p>
+  * <ul>
+  * <li><i>File</i> = ICapeUtilityDefinition.idl
+  * <li><i>Date</i> = June 99
+  * <li><i>Project</i> = CAPE-OPEN BE 3512
+  * </ul>        
+  * @author CAPE-OPEN Partners
+  * @see <a href="http://www.cape-open.org"> CAPE-OPEN Web Site </a>
+  */
+typedef string CapeDate;
+
+/**
+  * <p><tt>Primitive Data Type Definition for any</tt></p>
+  * <ul>
+  * <li><i>File</i> = ICapeUtilityDefinition.idl
+  * <li><i>Date</i> = June 99
+  * <li><i>Project</i> = CAPE-OPEN BE 3512
+  * </ul>        
+  * @author CAPE-OPEN Partners
+  * @see <a href="http://www.cape-open.org"> CAPE-OPEN Web Site </a>
+  */
+typedef any CapeVariant;
+
+
+
+// Sequence Definitions *********************************************************************
+
+/**
+  *<p>Sequence Definition for the CapeLong type.</p>
+  */
+typedef sequence<CapeLong> CapeLongSequence;
+
+/**
+  *<p>Sequence Definition for the CapeDouble type.</p>
+  */
+typedef sequence<CapeDouble> CapeDoubleSequence;
+
+/**
+  *<p>Sequence Definition for the CapeString type.</p>
+  */
+typedef sequence<CapeString> CapeStringSequence;
+
+/**
+  *<p>Sequence Definition for the CapeBoolean type.</p>
+  */
+typedef sequence<CapeBoolean> CapeBooleanSequence;
+
+/**
+  *<p>Sequence Definition for the CapeDate type.</p>
+  */
+typedef sequence<CapeDate> CapeDateSequence;
+
+/**
+  *<p>Sequence Definition for the CapeVariant type.</p>
+  */
+typedef sequence<CapeVariant> CapeVariantSequence;
+
+
+
+// Handling Exceptions **********************************************************************
+
+
+//   --> definition of CapeExceptionCompleted
+
+/**
+  *<p><tt>The definition of a completion status:<br>
+  *CapeCOMPLETED_YES the object implementation has completed processing prior to the exception being raised ,<br>
+  *CapeCOMPLETED_NO the object implementation was never initiated prior to the exception being raised,<br>
+  *CONSISTENCY_MAYBE the status of implementation completion is indeterminate.</tt></p>
+  */
+enum CapeExceptionCompleted {
+	CapeCOMPLETED_YES,
+	CapeCOMPLETED_NO,
+	CapeCOMPLETED_MAYBE
+};
+
+/**
+  *<p>Sequence Definition for the CapeExceptionCompleted type.</p>
+  */
+typedef sequence<CapeExceptionCompleted> CapeExceptionCompletedSequence;
+
+
+//   --> exception definition
+
+/**
+  *<p><tt>Definition of CapeBAD_INV_ORDER exception:<br>
+  * Routine invocation out of order.<br>
+  * The necessary pre requisite operation has not been called prior to the offending operation request.</tt></p>
+  *<p>minus: Code to designate the subcategory of the exception. The assignment of values to this code is left to each component implementation.<br>
+  * completed: Completion status.<br>
+  * interfaceName: Name of the interface which raised the exception.<br>
+  * methodName: Name of the idl method which raised the exception.<br>
+  * description: Some description of the raised exception.<br>
+  * helpFile: A URL link to an help file.</p>
+  * <ul>
+  * <li><i>File</i> = ICapeUtilityDefinition.idl
+  * <li><i>Date</i> = June 99
+  * <li><i>Project</i> = CAPE-OPEN BE 3512
+  * </ul>        
+  * @author CAPE-OPEN Partners
+  * @see <a href="http://www.cape-open.org"> CAPE-OPEN Web Site </a>
+  *
+  */
+exception CapeBAD_INV_ORDER {
+	CapeLong minus; 
+	CapeExceptionCompleted completed; 
+	CapeString interfaceName; 
+	CapeString methodName;
+	CapeString description;
+	CapeString helpFile;
+};
+
+/**
+  *<p><tt>Definition of CapeBAD_PARAM exception:<br>
+  * An invalid parameter was passed.</tt></p>
+  *<p>minus: Code to designate the subcategory of the exception. The assignment of values to this code is left to each component implementation.<br>
+  * completed: Completion status.<br>
+  * interfaceName: Name of the interface which raised the exception.<br>
+  * methodName: Name of the idl method which raised the exception.<br>
+  * description: Some description of the raised exception.<br>
+  * helpFile: A URL link to an help file.</p>
+  * <ul>
+  * <li><i>File</i> = ICapeUtilityDefinition.idl
+  * <li><i>Date</i> = June 99
+  * <li><i>Project</i> = CAPE-OPEN BE 3512
+  * </ul>        
+  * @author CAPE-OPEN Partners
+  * @see <a href="http://www.cape-open.org"> CAPE-OPEN Web Site </a>
+  *
+  */
+exception CapeBAD_PARAM {
+	CapeLong minus; 
+	CapeExceptionCompleted completed; 
+	CapeString interfaceName; 
+	CapeString methodName; 
+	CapeString description; 
+	CapeString helpFile;
+};
+
+/**
+  *<p><tt>Definition of CapeIMP_LIMIT exception:<br>
+  * Violation of an implementation limit.</tt></p>
+  *<p>minus: Code to designate the subcategory of the exception. The assignment of values to this code is left to each component implementation.<br>
+  * completed: Completion status.<br>
+  * interfaceName: Name of the interface which raised the exception.<br>
+  * methodName: Name of the idl method which raised the exception.<br>
+  * description: Some description of the raised exception.<br>
+  * helpFile: A URL link to an help file.</p>
+  * <ul>
+  * <li><i>File</i> = ICapeUtilityDefinition.idl
+  * <li><i>Date</i> = June 99
+  * <li><i>Project</i> = CAPE-OPEN BE 3512
+  * </ul>        
+  * @author CAPE-OPEN Partners
+  * @see <a href="http://www.cape-open.org"> CAPE-OPEN Web Site </a>
+  *
+  */
+exception CapeIMP_LIMIT {
+	CapeLong minus; 
+	CapeExceptionCompleted completed; 
+	CapeString interfaceName; 
+	CapeString methodName; 
+	CapeString description; 
+	CapeString helpFile;
+};
+
+/**
+  *<p><tt>Definition of CapeNO_IMPLEMENT exception:<br>
+  * The implementation of the operation is unavailable.</tt></p>
+  *<p>minus: Code to designate the subcategory of the exception. The assignment of values to this code is left to each component implementation.<br>
+  * completed: Completion status.<br>
+  * interfaceName: Name of the interface which raised the exception.<br>
+  * methodName: Name of the idl method which raised the exception.<br>
+  * description: Some description of the raised exception.<br>
+  * helpFile: A URL link to an help file.</p>
+  * <ul>
+  * <li><i>File</i> = ICapeUtilityDefinition.idl
+  * <li><i>Date</i> = June 99
+  * <li><i>Project</i> = CAPE-OPEN BE 3512
+  * </ul>        
+  * @author CAPE-OPEN Partners
+  * @see <a href="http://www.cape-open.org"> CAPE-OPEN Web Site </a>
+  *
+  */
+exception CapeNO_IMPLEMENT {
+	CapeLong minus; 
+	CapeExceptionCompleted completed; 
+	CapeString interfaceName; 
+	CapeString methodName; 
+	CapeString description; 
+	CapeString helpFile;
+};
+
+/**
+  *<p><tt>Definition of CapeNO_CONVERGE exception:<br>
+  * No convergence. Raised by operations performing numerical tasks.</tt></p>
+  *<p>minus: Code to designate the subcategory of the exception. The assignment of values to this code is left to each component implementation.<br>
+  * completed: Completion status.<br>
+  * interfaceName: Name of the interface which raised the exception.<br>
+  * methodName: Name of the idl method which raised the exception.<br>
+  * description: Some description of the raised exception.<br>
+  * helpFile: A URL link to an help file.</p>
+  * <ul>
+  * <li><i>File</i> = ICapeUtilityDefinition.idl
+  * <li><i>Date</i> = June 99
+  * <li><i>Project</i> = CAPE-OPEN BE 3512
+  * </ul>        
+  * @author CAPE-OPEN Partners
+  * @see <a href="http://www.cape-open.org"> CAPE-OPEN Web Site </a>
+  *
+  */
+exception CapeNO_CONVERGE {
+	CapeLong minus; 
+	CapeExceptionCompleted completed; 
+	CapeString interfaceName; 
+	CapeString methodName; 
+	CapeString description; 
+	CapeString helpFile;
+};
+
+/**
+  *<p><tt>Definition of CapeUNKNOWN exception:<br>
+  * Raised when the other exception types could not be used.</tt></p>
+  *<p>minus: Code to designate the subcategory of the exception. The assignment of values to this code is left to each component implementation.<br>
+  * completed: Completion status.<br>
+  * interfaceName: Name of the interface which raised the exception.<br>
+  * methodName: Name of the idl method which raised the exception.<br>
+  * description: Some description of the raised exception.<br>
+  * helpFile: A URL link to an help file.</p>
+  * <ul>
+  * <li><i>File</i> = ICapeUtilityDefinition.idl
+  * <li><i>Date</i> = June 99
+  * <li><i>Project</i> = CAPE-OPEN BE 3512
+  * </ul>        
+  * @author CAPE-OPEN Partners
+  * @see <a href="http://www.cape-open.org"> CAPE-OPEN Web Site </a>
+  *
+  */
+exception CapeUNKNOWN {
+	CapeLong minus; 
+	CapeExceptionCompleted completed; 
+	CapeString interfaceName; 
+	CapeString methodName; 
+	CapeString description; 
+	CapeString helpFile;
+};
+
+
+#endif

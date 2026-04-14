@@ -78,7 +78,7 @@ Rust 与 `.NET 10` 之间的正式边界应保持简单稳定：
 
 ## 当前仓库阶段约束
 
-截至 2026-03-29，`.NET 10` 适配层在仓库中的职责仍然是“冻结边界与目录结构”，而不是提前完成复杂实现。
+截至 2026-04-14，`.NET 10` 适配层已从“纯目录占位”推进到“薄适配 + 冒烟闭环 + 最小互操作语义骨架”，但仍未进入完整 COM/PMC 运行时。
 
 当前允许推进的内容：
 
@@ -87,12 +87,14 @@ Rust 与 `.NET 10` 之间的正式边界应保持简单稳定：
 - README 说明
 - 最小 `.NET 10` `LibraryImport` / PInvoke 薄封装
 - 最小 `.NET 10` smoke console，用于验证 `rf-ffi` 调用闭环
-- 未来 `Interop`/`Adapter` 的接口落点规划
+- `RadishFlow.CapeOpen.Interop` 中最小 `ICapeIdentification`、`ICapeUtilities`、`ICapeUnit` 接口骨架
+- 已确认 CAPE-OPEN interface/category GUID 常量唯一来源
+- 第一版 ECape 异常基类、HRESULT 常量与语义化异常类型
 
 当前暂不推进的内容：
 
 - COM host 注册细节
-- 完整 ECape 异常实现
+- 完整 ECape 接口/异常面与所有标准 IID 校准
 - PME 互调测试代码
 
 ## 对 Rust Core 的约束

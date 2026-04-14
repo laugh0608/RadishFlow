@@ -1,0 +1,176 @@
+<html>
+ 
+<head>
+<title>UML_Model - ICapeNumericAnalysis</title>
+<base target="main">
+</head>
+ 
+<body bgcolor="#FFFFFF" text="#000000" >
+<h2>Class: &lt;&lt;Interface&gt;&gt; ICapeNumericAnalysis</h2>
+<p><strong>Description:</strong></p>
+<blockquote><p>
+The ICapeNumericAnalysis Interface.<br><br>This is the basic Interface of numerical Analysis model: the minimum requirements for an analysis.<br><br>It is an "abstract" Interface. It is not distributed. So, no client can get its object reference.
+</p></blockquote>
+<p><strong>Superclasses:</strong></p>
+<blockquote>
+  <table border="0" width="90%" cellspacing="1">
+<tr>
+<td valign=top Width="26%">&lt;&lt;CO Common Service&gt;&gt;<strong>Parameter</strong></td>
+<td Width="74%">Set of Interfaces including the Parameter Concept.<br><br>It specifies the CAPE-OPEN common services on the Parameter concept.<br><br>No information on its content is given here, please refer to the CAPE-OPEN Concepts Document.</td>
+</tr>
+</table></blockquote>
+<p><strong>Subclasses:</strong></p>
+<blockquote>
+  <table border="0" width="90%" cellspacing="1">
+<tr>
+<td valign=top Width="26%">&lt;&lt;Interface&gt;&gt;<strong>ICapeNumericTearing</strong></td>
+<td Width="74%">The ICapeNumericTearing Interface.<br><br>Use this to perform a Tearing Analysis on a Flowsheet.</td>
+</tr>
+<tr>
+<td valign=top Width="26%">&lt;&lt;Interface&gt;&gt;<strong>ICapeNumericSMAnalysis</strong></td>
+<td Width="74%">The ICapeNumericSMAnalysis Interface.<br><br>Use this to perform a Full Sequential Modular Analysis on a Flowsheet.</td>
+</tr>
+<tr>
+<td valign=top Width="26%">&lt;&lt;Interface&gt;&gt;<strong>ICapeNumericPartitioning</strong></td>
+<td Width="74%">The ICapeNumericPartitioning Interface.<br><br>Use this to perform a Partitioning Analysis on a Flowsheet.</td>
+</tr>
+<tr>
+<td valign=top Width="26%">&lt;&lt;Interface&gt;&gt;<strong>ICapeNumericSequencing</strong></td>
+<td Width="74%">The ICapeNumericSequencing Interface.<br><br>Use this to perform a Sequencing Analysis on a Flowsheet.<br>The flowsheet do not have any recycle.</td>
+</tr>
+</table></blockquote>
+<p><strong>Operations:</strong></p>
+<blockquote>
+  <table border="0" width="90%" cellpadding="2">
+<tr><td valign="top" colspan="3" bgcolor="#C0C0C0"></td></tr>
+<tr>
+<td valign="top" colspan="3" bgcolor="#F1C9D3">
+<strong>GetName</strong>( ) : <strong>CapeString</strong>
+</td>
+</tr>
+<tr>
+<td valign="top" colspan="3">
+<blockquote></blockquote>
+</td>
+</tr>
+<tr></tr>
+<tr><td valign="top" colspan="3" bgcolor="#C0C0C0"></td></tr>
+<tr>
+<td valign="top" colspan="3" bgcolor="#F1C9D3">
+<strong>GetMaximumUnitCount</strong>( ) : <strong>CapeLong</strong>
+</td>
+</tr>
+<tr>
+<td valign="top" colspan="3">
+<blockquote></blockquote>
+</td>
+</tr>
+<tr></tr>
+<tr><td valign="top" colspan="3" bgcolor="#C0C0C0"></td></tr>
+<tr>
+<td valign="top" colspan="3" bgcolor="#F1C9D3">
+<strong>GetMaximumStreamCount</strong>( ) : <strong>CapeLong</strong>
+</td>
+</tr>
+<tr>
+<td valign="top" colspan="3">
+<blockquote></blockquote>
+</td>
+</tr>
+<tr></tr>
+<tr><td valign="top" colspan="3" bgcolor="#C0C0C0"></td></tr>
+<tr>
+<td valign="top" colspan="3" bgcolor="#F1C9D3">
+<strong>CheckFlowsheetConsistency</strong>(<strong>flowsheet</strong> : in ICapeNumericFlowsheet ) : <strong>CapeConsistencyCode</strong>
+</td>
+</tr>
+<tr>
+<td valign="top" colspan="3">
+<blockquote></blockquote>
+</td>
+</tr>
+<tr>
+<td valign="top" colspan="3">
+Parameters:
+</td>
+</tr>
+<tr>
+<td valign="top" Width="30"></td>
+<td valign="top" Width="*">
+<strong>flowsheet</strong>
+</td>
+<td valign="top" Width="80%">
+in ICapeNumericFlowsheet
+</td>
+</tr>
+<tr></tr>
+<tr><td valign="top" colspan="3" bgcolor="#C0C0C0"></td></tr>
+<tr>
+<td valign="top" colspan="3" bgcolor="#F1C9D3">
+<strong>Perform</strong>(<strong>flowsheet</strong> : in ICapeNumericFlowsheet ) : <strong>void</strong>
+</td>
+</tr>
+<tr>
+<td valign="top" colspan="3">
+<blockquote></blockquote>
+</td>
+</tr>
+<tr>
+<td valign="top" colspan="3">
+Parameters:
+</td>
+</tr>
+<tr>
+<td valign="top" Width="30"></td>
+<td valign="top" Width="*">
+<strong>flowsheet</strong>
+</td>
+<td valign="top" Width="80%">
+in ICapeNumericFlowsheet
+</td>
+</tr>
+<tr></tr>
+<tr><td valign="top" colspan="3" bgcolor="#C0C0C0"></td></tr>
+<tr>
+<td valign="top" colspan="3" bgcolor="#F1C9D3">
+<strong>Destroy</strong>( ) : <strong>CapeBoolean</strong>
+</td>
+</tr>
+<tr>
+<td valign="top" colspan="3">
+<blockquote></blockquote>
+</td>
+</tr>
+<tr></tr>
+</table></blockquote>
+<p><strong>Associations:</strong></p>
+<blockquote>
+<table border="0" width="90%" cellpadding-"2">
+<tr>
+<td valign="top" bgcolor="#B3CEB9" colspan="2">
+<em>Manages</em><br>
+</td>
+</tr>
+<tr>
+<td valign="top" width="50%" bgcolor="#C0C0C0">Role A: <strong>Managed Analysis</strong><br>
+Class: <strong>ICapeNumericAnalysis</strong><br>
+Navigatable: no<br>
+Aggregate: no<br>
+Static: no<br>
+Friend: no<br>
+Cardinality: 0..n<br>
+</td>
+<td valign="top" width="50%" bgcolor="#C0C0C0">Role B: <strong>Manager</strong><br>
+Class: <strong>ICapeNumericAnalysisFactory</strong><br>
+Navigatable: no<br>
+Aggregate: no<br>
+Static: no<br>
+Friend: no<br>
+Cardinality: 1<br>
+</td>
+</tr>
+</table>
+<p>&nbsp;</p>
+</blockquote>
+</body>
+</html>

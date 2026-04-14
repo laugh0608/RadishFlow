@@ -1,0 +1,26 @@
+
+  -->  Bind to a CO Compliant SMST Component
+  ----------------------------------------------------------------------------------
+    Name        : Flowsheet Server
+    Version     : 5.0
+    Description : Numerical Work-Package of CAPE-OPEN Project - January 1999 - INPT 
+    Location    : Remote Object
+  ----------------------------------------------------------------------------------
+
+
+  -->  Connection to the FlowsheetFactory
+
+  -->  Flowsheet Creation
+
+  -->  Flowsheet Completion
+
+  -->  Connection to the Numeric Server
+         Is the Sequencing Analysis available ? : Yes
+
+  -->  Sequencing Analysis Creation
+         Does the Sequencing Analysis have specific Parameters ? : No
+
+  -->  Sequencing Analysis Computation 
+
+  -->  Sequencing Analysis Results
+          * List of Units 1 2 3 4 5 6 

@@ -1,0 +1,80 @@
+// ********************************************************************************
+//
+// Interface Definition for CAPE-OPEN Common services used by the CO SMST Component
+//
+// ********************************************************************************
+
+
+#ifndef ICapeUtility_idl
+#define ICapeUtility_idl
+
+
+
+// Include Files *****************************************************************
+
+#include "ICapeUtilityDefinition.idl"
+
+
+
+
+// Forward declarations *****************************************************************
+
+interface ICapeUtilityReport;
+interface ICapeUtilityIdentification;
+interface ICapeUtilityParameter;
+
+
+
+
+// Interface Definitions ****************************************************************
+
+
+/**
+  * <p><tt> Set of Interfaces including the Report Concept. <br>
+  *This concept is a CAPE-OPEN common service. Its specification is not provided, please refer to the CAPE-OPEN Concepts Document.</tt></p>
+  * <ul>
+  * <li><i>File</i> = ICapeUtility.idl
+  * <li><i>Date</i> = June 99
+  * <li><i>Project</i> = CAPE-OPEN BE 3512
+  * </ul>        
+  * @author CAPE-OPEN Partners
+  * @see <a href="http://www.cape-open.org"> CAPE-OPEN Web Site </a>
+  */
+interface ICapeUtilityReport {
+
+};
+
+
+/**
+  * <p><tt> Set of Interfaces including the Identification Concept. <br>
+  *This concept is a CAPE-OPEN common service. Its specification is not provided, please refer to the CAPE-OPEN Concepts Document.</tt></p>
+  * <ul>
+  * <li><i>File</i> = ICapeUtility.idl
+  * <li><i>Date</i> = June 99
+  * <li><i>Project</i> = CAPE-OPEN BE 3512
+  * </ul>        
+  * @author CAPE-OPEN Partners
+  * @see <a href="http://www.cape-open.org"> CAPE-OPEN Web Site </a>
+  */
+interface ICapeUtilityIdentification {
+
+};
+
+
+/**
+  * <p><tt> Set of Interfaces including the Parameter Concept. <br>
+  *This concept is a CAPE-OPEN common service. Its specification is not provided, please refer to the CAPE-OPEN Concepts Document.</tt></p>
+  * <ul>
+  * <li><i>File</i> = ICapeUtility.idl
+  * <li><i>Date</i> = June 99
+  * <li><i>Project</i> = CAPE-OPEN BE 3512
+  * </ul>        
+  * @author CAPE-OPEN Partners
+  * @see <a href="http://www.cape-open.org"> CAPE-OPEN Web Site </a>
+  */
+interface ICapeUtilityParameter {
+
+};
+
+
+#endif

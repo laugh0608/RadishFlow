@@ -5,4 +5,8 @@
     <AssemblyName>RadishFlow.CapeOpen.Adapter</AssemblyName>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\RadishFlow.CapeOpen.Interop\RadishFlow.CapeOpen.Interop.csproj" />
+  </ItemGroup>
 </Project>

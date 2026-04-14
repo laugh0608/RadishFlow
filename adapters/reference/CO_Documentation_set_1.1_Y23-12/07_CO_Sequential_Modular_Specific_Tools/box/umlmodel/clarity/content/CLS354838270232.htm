@@ -1,0 +1,189 @@
+<html>
+ 
+<head>
+<title>UML_Model - ICapeNumericFlowsheetFactory</title>
+<base target="main">
+</head>
+ 
+<body bgcolor="#FFFFFF" text="#000000" >
+<h2>Class: &lt;&lt;Interface&gt;&gt; ICapeNumericFlowsheetFactory</h2>
+<p><strong>Description:</strong></p>
+<blockquote><p>
+The ICapeNumericFlowsheetFactory Interface.<br><br>This is the factory of a Flowsheet model.
+</p></blockquote>
+<p><strong>Superclasses:</strong></p>
+<blockquote>
+  <table border="0" width="90%" cellspacing="1">
+<tr>
+<td valign=top Width="26%">&lt;&lt;CO Common Service&gt;&gt;<strong>Parameter</strong></td>
+<td Width="74%">Set of Interfaces including the Parameter Concept.<br><br>It specifies the CAPE-OPEN common services on the Parameter concept.<br><br>No information on its content is given here, please refer to the CAPE-OPEN Concepts Document.</td>
+</tr>
+</table></blockquote>
+<p><strong>Operations:</strong></p>
+<blockquote>
+  <table border="0" width="90%" cellpadding="2">
+<tr><td valign="top" colspan="3" bgcolor="#C0C0C0"></td></tr>
+<tr>
+<td valign="top" colspan="3" bgcolor="#F1C9D3">
+<strong>CreateFlowsheet</strong>(<strong>type</strong> : in CapeFlowsheetType, <strong>name</strong> : in CapeString ) : <strong>ICapeNumericProcessGraph</strong>
+</td>
+</tr>
+<tr>
+<td valign="top" colspan="3">
+<blockquote></blockquote>
+</td>
+</tr>
+<tr>
+<td valign="top" colspan="3">
+Parameters:
+</td>
+</tr>
+<tr>
+<td valign="top" Width="30"></td>
+<td valign="top" Width="*">
+<strong>type</strong>
+</td>
+<td valign="top" Width="80%">
+in CapeFlowsheetType
+</td>
+</tr>
+<tr>
+<td valign="top" Width="30"></td>
+<td valign="top" Width="*">
+<strong>name</strong>
+</td>
+<td valign="top" Width="80%">
+in CapeString
+</td>
+</tr>
+<tr></tr>
+<tr><td valign="top" colspan="3" bgcolor="#C0C0C0"></td></tr>
+<tr>
+<td valign="top" colspan="3" bgcolor="#F1C9D3">
+<strong>GetName</strong>( ) : <strong>CapeString</strong>
+</td>
+</tr>
+<tr>
+<td valign="top" colspan="3">
+<blockquote></blockquote>
+</td>
+</tr>
+<tr></tr>
+<tr><td valign="top" colspan="3" bgcolor="#C0C0C0"></td></tr>
+<tr>
+<td valign="top" colspan="3" bgcolor="#F1C9D3">
+<strong>Destroy</strong>( ) : <strong>CapeBoolean</strong>
+</td>
+</tr>
+<tr>
+<td valign="top" colspan="3">
+<blockquote></blockquote>
+</td>
+</tr>
+<tr></tr>
+</table></blockquote>
+<p><strong>Associations:</strong></p>
+<blockquote>
+<table border="0" width="90%" cellpadding-"2">
+<tr>
+<td valign="top" bgcolor="#B3CEB9" colspan="2">
+<em>Manages</em><br>
+</td>
+</tr>
+<tr>
+<td valign="top" width="50%" bgcolor="#C0C0C0">Role A: <strong>Managed Flowsheet</strong><br>
+Class: <strong>ICapeNumericFlowsheet</strong><br>
+Navigatable: no<br>
+Aggregate: no<br>
+Static: no<br>
+Friend: no<br>
+Cardinality: 0..n<br>
+</td>
+<td valign="top" width="50%" bgcolor="#C0C0C0">Role B: <strong>Manager</strong><br>
+Class: <strong>ICapeNumericFlowsheetFactory</strong><br>
+Navigatable: no<br>
+Aggregate: no<br>
+Static: no<br>
+Friend: no<br>
+Cardinality: 1<br>
+</td>
+</tr>
+</table>
+<p>&nbsp;</p>
+<table border="0" width="90%" cellpadding-"2">
+<tr>
+<td valign="top" bgcolor="#B3CEB9" colspan="2">
+<em>Creates</em><br>
+</td>
+</tr>
+<tr>
+<td valign="top" width="50%" bgcolor="#C0C0C0">Role A: <strong></strong><br>
+Class: <strong>ICapeNumericFlowsheetFactory</strong><br>
+Navigatable: no<br>
+Aggregate: no<br>
+Static: no<br>
+Friend: no<br>
+Cardinality: 0..n<br>
+</td>
+<td valign="top" width="50%" bgcolor="#C0C0C0">Role B: <strong></strong><br>
+Class: <strong>ICapeNumericGATComponent</strong><br>
+Navigatable: no<br>
+Aggregate: no<br>
+Static: no<br>
+Friend: no<br>
+Cardinality: 1<br>
+</td>
+</tr>
+</table>
+<p>&nbsp;</p>
+<table border="0" width="90%" cellpadding-"2">
+<tr>
+<td valign="top" bgcolor="#B3CEB9" colspan="2">
+<em></em><br>
+</td>
+</tr>
+<tr>
+<td valign="top" width="50%" bgcolor="#C0C0C0">Role A: <strong></strong><br>
+Class: <strong>ICapeNumericFlowsheetFactory</strong><br>
+Navigatable: no<br>
+Aggregate: no<br>
+Static: no<br>
+Friend: no<br>
+</td>
+<td valign="top" width="50%" bgcolor="#C0C0C0">Role B: <strong></strong><br>
+Class: <strong>Initializing</strong><br>
+Navigatable: no<br>
+Aggregate: no<br>
+Static: no<br>
+Friend: no<br>
+</td>
+</tr>
+</table>
+<p>&nbsp;</p>
+<table border="0" width="90%" cellpadding-"2">
+<tr>
+<td valign="top" bgcolor="#B3CEB9" colspan="2">
+<em></em><br>
+</td>
+</tr>
+<tr>
+<td valign="top" width="50%" bgcolor="#C0C0C0">Role A: <strong></strong><br>
+Class: <strong>ICapeNumericFlowsheetFactory</strong><br>
+Navigatable: no<br>
+Aggregate: no<br>
+Static: no<br>
+Friend: no<br>
+</td>
+<td valign="top" width="50%" bgcolor="#C0C0C0">Role B: <strong></strong><br>
+Class: <strong>Performing Administration Tasks</strong><br>
+Navigatable: no<br>
+Aggregate: no<br>
+Static: no<br>
+Friend: no<br>
+</td>
+</tr>
+</table>
+<p>&nbsp;</p>
+</blockquote>
+</body>
+</html>

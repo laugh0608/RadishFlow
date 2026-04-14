@@ -1,0 +1,27 @@
+
+  -->  Bind to a CO Compliant SMST Component
+  ----------------------------------------------------------------------------------
+    Name        : Flowsheet Server
+    Version     : 5.0
+    Description : Numerical Work-Package of CAPE-OPEN Project - January 1999 - INPT 
+    Location    : Remote Object
+  ----------------------------------------------------------------------------------
+
+
+  -->  Connection to the FlowsheetFactory
+
+  -->  Flowsheet Creation
+
+  -->  Flowsheet Completion
+
+  -->  Connection to the Numeric Server
+         Is the Partitioning Analysis available ? : Yes
+
+  -->  Partitioning Analysis Creation
+         Does the Partitioning Analysis have specific Parameters ? : No
+
+  -->  Partitioning Analysis Computation 
+
+  -->  Partitioning Analysis Results
+          * Partition number 1
+              which contains the units 1 2 3 4 5 6 

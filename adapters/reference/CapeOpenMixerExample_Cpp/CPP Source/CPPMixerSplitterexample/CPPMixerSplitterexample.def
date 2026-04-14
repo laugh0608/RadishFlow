@@ -1,0 +1,9 @@
+; CPPMixerSplitterexample.def : Declares the module parameters.
+
+LIBRARY      "CPPMixerSplitterexample.DLL"
+
+EXPORTS
+	DllCanUnloadNow		PRIVATE
+	DllGetClassObject	PRIVATE
+	DllRegisterServer	PRIVATE
+	DllUnregisterServer	PRIVATE

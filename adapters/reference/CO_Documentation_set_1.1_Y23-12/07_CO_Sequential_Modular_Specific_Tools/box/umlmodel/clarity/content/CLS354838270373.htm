@@ -1,0 +1,470 @@
+<html>
+ 
+<head>
+<title>UML_Model - ICapeNumericProcessGraph</title>
+<base target="main">
+</head>
+ 
+<body bgcolor="#FFFFFF" text="#000000" >
+<h2>Class: &lt;&lt;Interface&gt;&gt; ICapeNumericProcessGraph</h2>
+<p><strong>Description:</strong></p>
+<blockquote><p>
+The ICapeNumericProcessGraph Interface.<br><br>Use this to describe a Process Graph which is any Flowsheet.
+</p></blockquote>
+<p><strong>Superclasses:</strong></p>
+<blockquote>
+  <table border="0" width="90%" cellspacing="1">
+<tr>
+<td valign=top Width="26%">&lt;&lt;Interface&gt;&gt;<strong>ICapeNumericFlowsheet</strong></td>
+<td Width="74%">The ICapeNumericFlowsheet Interface.<br><br>This is the basic Interface of Flowsheet description model. Would allow to develop a more complex Flowsheet description model.<br><br>It is an "abstract" Interface. It is not distributed. So, no client can get its object reference.</td>
+</tr>
+</table></blockquote>
+<p><strong>Subclasses:</strong></p>
+<blockquote>
+  <table border="0" width="90%" cellspacing="1">
+<tr>
+<td valign=top Width="26%">&lt;&lt;Interface&gt;&gt;<strong>ICapeNumericPartitionGraph</strong></td>
+<td Width="74%">The ICapeNumericPartitionGraph interface.<br><br>Use this to describe a Partition Graph which is a Flowsheet having only one partition.</td>
+</tr>
+</table></blockquote>
+<p><strong>Operations:</strong></p>
+<blockquote>
+  <table border="0" width="90%" cellpadding="2">
+<tr><td valign="top" colspan="3" bgcolor="#C0C0C0"></td></tr>
+<tr>
+<td valign="top" colspan="3" bgcolor="#F1C9D3">
+<strong>AddStream</strong>(<strong>streamId</strong> : in CapeLong, <strong>iunitId</strong> : in CapeLong, <strong>funitId</strong> : in CapeLong ) : <strong>void</strong>
+</td>
+</tr>
+<tr>
+<td valign="top" colspan="3">
+<blockquote></blockquote>
+</td>
+</tr>
+<tr>
+<td valign="top" colspan="3">
+Parameters:
+</td>
+</tr>
+<tr>
+<td valign="top" Width="30"></td>
+<td valign="top" Width="*">
+<strong>streamId</strong>
+</td>
+<td valign="top" Width="80%">
+in CapeLong
+</td>
+</tr>
+<tr>
+<td valign="top" Width="30"></td>
+<td valign="top" Width="*">
+<strong>iunitId</strong>
+</td>
+<td valign="top" Width="80%">
+in CapeLong
+</td>
+</tr>
+<tr>
+<td valign="top" Width="30"></td>
+<td valign="top" Width="*">
+<strong>funitId</strong>
+</td>
+<td valign="top" Width="80%">
+in CapeLong
+</td>
+</tr>
+<tr></tr>
+<tr><td valign="top" colspan="3" bgcolor="#C0C0C0"></td></tr>
+<tr>
+<td valign="top" colspan="3" bgcolor="#F1C9D3">
+<strong>AddStreamWeight</strong>(<strong>streamId</strong> : in CapeLong, <strong>weight</strong> : in CapeDouble ) : <strong>void</strong>
+</td>
+</tr>
+<tr>
+<td valign="top" colspan="3">
+<blockquote></blockquote>
+</td>
+</tr>
+<tr>
+<td valign="top" colspan="3">
+Parameters:
+</td>
+</tr>
+<tr>
+<td valign="top" Width="30"></td>
+<td valign="top" Width="*">
+<strong>streamId</strong>
+</td>
+<td valign="top" Width="80%">
+in CapeLong
+</td>
+</tr>
+<tr>
+<td valign="top" Width="30"></td>
+<td valign="top" Width="*">
+<strong>weight</strong>
+</td>
+<td valign="top" Width="80%">
+in CapeDouble
+</td>
+</tr>
+<tr></tr>
+<tr><td valign="top" colspan="3" bgcolor="#C0C0C0"></td></tr>
+<tr>
+<td valign="top" colspan="3" bgcolor="#F1C9D3">
+<strong>AddStreamType</strong>(<strong>streamId</strong> : in CapeLong, <strong>type</strong> : in CapeNumericStream ) : <strong>void</strong>
+</td>
+</tr>
+<tr>
+<td valign="top" colspan="3">
+<blockquote></blockquote>
+</td>
+</tr>
+<tr>
+<td valign="top" colspan="3">
+Parameters:
+</td>
+</tr>
+<tr>
+<td valign="top" Width="30"></td>
+<td valign="top" Width="*">
+<strong>streamId</strong>
+</td>
+<td valign="top" Width="80%">
+in CapeLong
+</td>
+</tr>
+<tr>
+<td valign="top" Width="30"></td>
+<td valign="top" Width="*">
+<strong>type</strong>
+</td>
+<td valign="top" Width="80%">
+in CapeNumericStream
+</td>
+</tr>
+<tr></tr>
+<tr><td valign="top" colspan="3" bgcolor="#C0C0C0"></td></tr>
+<tr>
+<td valign="top" colspan="3" bgcolor="#F1C9D3">
+<strong>AddTornProperty</strong>(<strong>streamId</strong> : in CapeLong, <strong>toBeTorn</strong> : in CapeBoolean ) : <strong>void</strong>
+</td>
+</tr>
+<tr>
+<td valign="top" colspan="3">
+<blockquote></blockquote>
+</td>
+</tr>
+<tr>
+<td valign="top" colspan="3">
+Parameters:
+</td>
+</tr>
+<tr>
+<td valign="top" Width="30"></td>
+<td valign="top" Width="*">
+<strong>streamId</strong>
+</td>
+<td valign="top" Width="80%">
+in CapeLong
+</td>
+</tr>
+<tr>
+<td valign="top" Width="30"></td>
+<td valign="top" Width="*">
+<strong>toBeTorn</strong>
+</td>
+<td valign="top" Width="80%">
+in CapeBoolean
+</td>
+</tr>
+<tr></tr>
+<tr><td valign="top" colspan="3" bgcolor="#C0C0C0"></td></tr>
+<tr>
+<td valign="top" colspan="3" bgcolor="#F1C9D3">
+<strong>AddNotTornProperty</strong>(<strong>streamId</strong> : in CapeLong, <strong>notToBeTorn</strong> : in CapeBoolean ) : <strong>void</strong>
+</td>
+</tr>
+<tr>
+<td valign="top" colspan="3">
+<blockquote></blockquote>
+</td>
+</tr>
+<tr>
+<td valign="top" colspan="3">
+Parameters:
+</td>
+</tr>
+<tr>
+<td valign="top" Width="30"></td>
+<td valign="top" Width="*">
+<strong>streamId</strong>
+</td>
+<td valign="top" Width="80%">
+in CapeLong
+</td>
+</tr>
+<tr>
+<td valign="top" Width="30"></td>
+<td valign="top" Width="*">
+<strong>notToBeTorn</strong>
+</td>
+<td valign="top" Width="80%">
+in CapeBoolean
+</td>
+</tr>
+<tr></tr>
+<tr><td valign="top" colspan="3" bgcolor="#C0C0C0"></td></tr>
+<tr>
+<td valign="top" colspan="3" bgcolor="#F1C9D3">
+<strong>RemoveStream</strong>(<strong>streamId</strong> : in CapeLong ) : <strong>void</strong>
+</td>
+</tr>
+<tr>
+<td valign="top" colspan="3">
+<blockquote></blockquote>
+</td>
+</tr>
+<tr>
+<td valign="top" colspan="3">
+Parameters:
+</td>
+</tr>
+<tr>
+<td valign="top" Width="30"></td>
+<td valign="top" Width="*">
+<strong>streamId</strong>
+</td>
+<td valign="top" Width="80%">
+in CapeLong
+</td>
+</tr>
+<tr></tr>
+<tr><td valign="top" colspan="3" bgcolor="#C0C0C0"></td></tr>
+<tr>
+<td valign="top" colspan="3" bgcolor="#F1C9D3">
+<strong>GetSetOfStream</strong>( ) : <strong>CapeLongSequence</strong>
+</td>
+</tr>
+<tr>
+<td valign="top" colspan="3">
+<blockquote></blockquote>
+</td>
+</tr>
+<tr></tr>
+<tr><td valign="top" colspan="3" bgcolor="#C0C0C0"></td></tr>
+<tr>
+<td valign="top" colspan="3" bgcolor="#F1C9D3">
+<strong>GetSetOfUnit</strong>( ) : <strong>CapeLongSequence</strong>
+</td>
+</tr>
+<tr>
+<td valign="top" colspan="3">
+<blockquote></blockquote>
+</td>
+</tr>
+<tr></tr>
+<tr><td valign="top" colspan="3" bgcolor="#C0C0C0"></td></tr>
+<tr>
+<td valign="top" colspan="3" bgcolor="#F1C9D3">
+<strong>GetStreamConnection</strong>(<strong>streamId</strong> : in CapeLong, <strong>iunitId</strong> : out CapeLong, <strong>funitId</strong> : out CapeLong )
+</td>
+</tr>
+<tr>
+<td valign="top" colspan="3">
+<blockquote></blockquote>
+</td>
+</tr>
+<tr>
+<td valign="top" colspan="3">
+Parameters:
+</td>
+</tr>
+<tr>
+<td valign="top" Width="30"></td>
+<td valign="top" Width="*">
+<strong>streamId</strong>
+</td>
+<td valign="top" Width="80%">
+in CapeLong
+</td>
+</tr>
+<tr>
+<td valign="top" Width="30"></td>
+<td valign="top" Width="*">
+<strong>iunitId</strong>
+</td>
+<td valign="top" Width="80%">
+out CapeLong
+</td>
+</tr>
+<tr>
+<td valign="top" Width="30"></td>
+<td valign="top" Width="*">
+<strong>funitId</strong>
+</td>
+<td valign="top" Width="80%">
+out CapeLong
+</td>
+</tr>
+<tr></tr>
+<tr><td valign="top" colspan="3" bgcolor="#C0C0C0"></td></tr>
+<tr>
+<td valign="top" colspan="3" bgcolor="#F1C9D3">
+<strong>GetStreamWeight</strong>(<strong>streamId</strong> : in CapeLong ) : <strong>CapeDouble</strong>
+</td>
+</tr>
+<tr>
+<td valign="top" colspan="3">
+<blockquote></blockquote>
+</td>
+</tr>
+<tr>
+<td valign="top" colspan="3">
+Parameters:
+</td>
+</tr>
+<tr>
+<td valign="top" Width="30"></td>
+<td valign="top" Width="*">
+<strong>streamId</strong>
+</td>
+<td valign="top" Width="80%">
+in CapeLong
+</td>
+</tr>
+<tr></tr>
+<tr><td valign="top" colspan="3" bgcolor="#C0C0C0"></td></tr>
+<tr>
+<td valign="top" colspan="3" bgcolor="#F1C9D3">
+<strong>GetStreamType</strong>(<strong>streamId</strong> : in CapeLong ) : <strong>CapeNumericStream</strong>
+</td>
+</tr>
+<tr>
+<td valign="top" colspan="3">
+<blockquote></blockquote>
+</td>
+</tr>
+<tr>
+<td valign="top" colspan="3">
+Parameters:
+</td>
+</tr>
+<tr>
+<td valign="top" Width="30"></td>
+<td valign="top" Width="*">
+<strong>streamId</strong>
+</td>
+<td valign="top" Width="80%">
+in CapeLong
+</td>
+</tr>
+<tr></tr>
+<tr><td valign="top" colspan="3" bgcolor="#C0C0C0"></td></tr>
+<tr>
+<td valign="top" colspan="3" bgcolor="#F1C9D3">
+<strong>GetTornProperty</strong>(<strong>streamId</strong> : in CapeLong ) : <strong>CapeBoolean</strong>
+</td>
+</tr>
+<tr>
+<td valign="top" colspan="3">
+<blockquote></blockquote>
+</td>
+</tr>
+<tr>
+<td valign="top" colspan="3">
+Parameters:
+</td>
+</tr>
+<tr>
+<td valign="top" Width="30"></td>
+<td valign="top" Width="*">
+<strong>streamId</strong>
+</td>
+<td valign="top" Width="80%">
+in CapeLong
+</td>
+</tr>
+<tr></tr>
+<tr><td valign="top" colspan="3" bgcolor="#C0C0C0"></td></tr>
+<tr>
+<td valign="top" colspan="3" bgcolor="#F1C9D3">
+<strong>GetNotTornProperty</strong>(<strong>streamId</strong> : in CapeLong ) : <strong>CapeBoolean</strong>
+</td>
+</tr>
+<tr>
+<td valign="top" colspan="3">
+<blockquote></blockquote>
+</td>
+</tr>
+<tr>
+<td valign="top" colspan="3">
+Parameters:
+</td>
+</tr>
+<tr>
+<td valign="top" Width="30"></td>
+<td valign="top" Width="*">
+<strong>streamId</strong>
+</td>
+<td valign="top" Width="80%">
+in CapeLong
+</td>
+</tr>
+<tr></tr>
+</table></blockquote>
+<p><strong>Associations:</strong></p>
+<blockquote>
+<table border="0" width="90%" cellpadding-"2">
+<tr>
+<td valign="top" bgcolor="#B3CEB9" colspan="2">
+<em>reminds</em><br>
+</td>
+</tr>
+<tr>
+<td valign="top" width="50%" bgcolor="#C0C0C0">Role A: <strong></strong><br>
+Class: <strong>ICapeNumericPartitionGraph</strong><br>
+Navigatable: no<br>
+Aggregate: no<br>
+Static: no<br>
+Friend: no<br>
+Cardinality: 0..1<br>
+</td>
+<td valign="top" width="50%" bgcolor="#C0C0C0">Role B: <strong>Initial Graph</strong><br>
+Class: <strong>ICapeNumericProcessGraph</strong><br>
+Navigatable: no<br>
+Aggregate: no<br>
+Static: no<br>
+Friend: no<br>
+Cardinality: 0..1<br>
+</td>
+</tr>
+</table>
+<p>&nbsp;</p>
+<table border="0" width="90%" cellpadding-"2">
+<tr>
+<td valign="top" bgcolor="#B3CEB9" colspan="2">
+<em></em><br>
+</td>
+</tr>
+<tr>
+<td valign="top" width="50%" bgcolor="#C0C0C0">Role A: <strong></strong><br>
+Class: <strong>Initializing</strong><br>
+Navigatable: no<br>
+Aggregate: no<br>
+Static: no<br>
+Friend: no<br>
+</td>
+<td valign="top" width="50%" bgcolor="#C0C0C0">Role B: <strong></strong><br>
+Class: <strong>ICapeNumericProcessGraph</strong><br>
+Navigatable: no<br>
+Aggregate: no<br>
+Static: no<br>
+Friend: no<br>
+</td>
+</tr>
+</table>
+<p>&nbsp;</p>
+</blockquote>
+</body>
+</html>

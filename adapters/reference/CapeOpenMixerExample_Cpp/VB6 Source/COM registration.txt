@@ -1,0 +1,18 @@
+To register the CAPE-OPEN unit operation:
+
+1) register the VBMixerSplitterExample.dll as COM object
+
+    regsvr32.exe VBMixerSplitterExample.dll
+
+2) add the additional registry entries in VbMixSplitUnitOp.reg
+
+In Win-64 environments, step 2 must be done from a 32-bit 
+context; either explicitly using RegEdt32.exe or from a 32-bit
+command prompt.
+
+Please note that administration rights are required for object
+registration. 
+
+Please note that step 1 is performed by the Visual Basic
+compiler during compilation, and that compilation must 
+therefore be followed by step 2.

@@ -1,0 +1,15 @@
+ICapeNumericAnalysis
+ICapeNumericAnalysisFactory
+ICapeNumericFlowsheet
+ICapeNumericFlowsheetFactory
+ICapeNumericGATComponent
+ICapeNumericOpenPartitionGraph
+ICapeNumericPartitionGraph
+ICapeNumericPartitioning
+ICapeNumericProcessGraph
+ICapeNumericSequencing
+ICapeNumericSMAnalysis
+ICapeNumericTearing
+ICapeUtilityIdentification
+ICapeUtilityParameter
+ICapeUtilityReport

@@ -1,4 +1,5 @@
 using System.Text;
+using RadishFlow.CapeOpen.Interop.Errors;
 
 namespace RadishFlow.CapeOpen.Adapter;
 
@@ -12,8 +13,14 @@ public sealed class RadishFlowNativeEngine : IDisposable
         var status = RfNativeMethods.EngineCreate(out var handle);
         if (status != RfFfiStatus.Ok)
         {
-            throw new InvalidOperationException(
-                $"Failed to create native engine with status `{status}`.");
+            throw new CapeFailedInitialisationException(
+                $"Failed to create native engine with status `{status}`.",
+                new CapeOpenExceptionContext(
+                    InterfaceName: "rf-ffi",
+                    Scope: "engine_create",
+                    Operation: "engine_create",
+                    MoreInfo: $"native engine create returned `{status}`",
+                    NativeStatus: status.ToString()));
         }
 
         _handle = RfNativeEngineHandle.FromNative(handle);

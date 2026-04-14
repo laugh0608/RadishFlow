@@ -1,0 +1,17 @@
+HKCU
+ {
+  NoRemove Software
+  {
+   NoRemove Classes
+   {
+	NoRemove AppID
+	{
+		'%APPID%' = s 'CPPMixerSplitterexample'
+		'CPPMixerSplitterexample.DLL'
+		{
+			val AppID = s '%APPID%'
+		}
+	}
+   }
+  }
+ }

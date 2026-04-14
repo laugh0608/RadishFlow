@@ -1,0 +1,93 @@
+
+#ifndef ICapeUtilityDefinition_idl
+#define ICapeUtilityDefinition_idl
+
+
+
+// Elementary Type Definitions **************************************************************
+
+typedef long CapeLong;
+typedef double CapeDouble;
+typedef string CapeString;
+typedef boolean CapeBoolean;
+typedef string CapeDate;
+typedef any CapeVariant;
+
+
+
+// Sequence Definitions *********************************************************************
+
+typedef sequence<CapeLong> CapeLongSequence;
+typedef sequence<CapeDouble> CapeDoubleSequence;
+typedef sequence<CapeString> CapeStringSequence;
+typedef sequence<CapeBoolean> CapeBooleanSequence;
+typedef sequence<CapeDate> CapeDateSequence;
+typedef sequence<CapeVariant> CapeVariantSequence;
+
+
+
+// Handling Exceptions **********************************************************************
+
+//   --> definition of CapeExceptionCompleted
+
+enum CapeExceptionCompleted {
+	CapeCOMPLETED_YES,
+	CapeCOMPLETED_NO,
+	CapeCOMPLETED_MAYBE
+};
+
+typedef sequence<CapeExceptionCompleted> CapeExceptionCompletedSequence;
+
+//   --> exception definition
+
+exception CapeBAD_INV_ORDER {
+	CapeLong minus; 
+	CapeExceptionCompleted completed; 
+	CapeString interfaceName; 
+	CapeString methodName; 
+	CapeString description; 
+	CapeString helpFile;
+};
+exception CapeBAD_PARAM {
+	CapeLong minus; 
+	CapeExceptionCompleted completed; 
+	CapeString interfaceName; 
+	CapeString methodName; 
+	CapeString description; 
+	CapeString helpFile;
+};
+exception CapeIMP_LIMIT {
+	CapeLong minus; 
+	CapeExceptionCompleted completed; 
+	CapeString interfaceName; 
+	CapeString methodName; 
+	CapeString description; 
+	CapeString helpFile;
+};
+exception CapeNO_IMPLEMENT {
+	CapeLong minus; 
+	CapeExceptionCompleted completed; 
+	CapeString interfaceName; 
+	CapeString methodName; 
+	CapeString description; 
+	CapeString helpFile;
+};
+exception CapeNO_CONVERGE {
+	CapeLong minus; 
+	CapeExceptionCompleted completed; 
+	CapeString interfaceName; 
+	CapeString methodName; 
+	CapeString description; 
+	CapeString helpFile;
+};
+exception CapeUNKNOWN {
+	CapeLong minus; 
+	CapeExceptionCompleted completed; 
+	CapeString interfaceName; 
+	CapeString methodName; 
+	CapeString description; 
+	CapeString helpFile;
+};
+
+
+#endif

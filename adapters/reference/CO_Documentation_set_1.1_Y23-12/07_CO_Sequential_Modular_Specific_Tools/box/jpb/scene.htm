@@ -1,0 +1,91 @@
+<html>
+
+<head>
+<meta http-equiv="Content-Type"
+content="text/html; charset=iso-8859-1">
+<meta name="GENERATOR" content="Microsoft FrontPage Express 2.0">
+<title></title>
+</head>
+
+<body bgcolor="#FFFFFF" leftmargin="50">
+
+<p align="center"><font color="#FF0080" size="6"><strong>Setting
+the Scene</strong></font></p>
+
+<p>&nbsp;</p>
+
+<blockquote>
+    <p><font size="4">Flowsheet simulators are designed to
+    calculate the behaviour of processes. They take a description
+    of the flowsheet topology and process requirements and
+    assemble a model of the flowsheet from a library of unit
+    operations contained in the simulator. For example, the
+    flowsheet below represents a single stage from an oil and gas
+    separation system:</font></p>
+    <p align="center"><img src="stage.gif" align="left"
+    hspace="0" width="613" height="374"></p>
+    <p align="center">&nbsp;</p>
+    <p align="center">&nbsp;</p>
+    <p align="center">&nbsp;</p>
+    <p align="center">&nbsp;</p>
+    <p align="center">&nbsp;</p>
+    <p align="center">&nbsp;</p>
+    <p align="center">&nbsp;</p>
+    <p align="center">&nbsp;</p>
+    <p align="center">&nbsp;</p>
+    <p align="center">&nbsp;</p>
+    <p>&nbsp;</p>
+    <p><font size="4">This would be simulated in a typical
+    commercial simulator from a description of the topology,
+    probably entered through a GUI and looking much like the
+    above picture, plus a description of the process
+    requirements. It is a simple flowsheet that would use the
+    flash, compressor, cooler and junction unit operations.<br>
+    <br>
+    Although the simulator mimics the plant behaviour, it is
+    organised differently. For example, in the plant the unit
+    operations are connected together directly, e.g. the cooler
+    connects directly to the separator. In the simulator, the
+    unit operations are not connected to each other, but only to
+    the executive. Also, in this plant there are 3 distinct flash
+    separators, whereas in the simulator there is only one flash
+    algorithm, which is reused by the executive as required by
+    the topology.I<br>
+    <br>
+    This is a straightforward flowsheet that could be adequately
+    simulated by most simulators. However, if, for instance, the
+    separations were to be done with a membrane unit, it might be
+    necessary to use an external representation of the membrane
+    unit to capture the specific performance of a proprietary
+    membrane. Most simulators allow external unit operations to
+    be added, but, because of the proprietary nature of the
+    interface between the unit operations library and the
+    executive and the monolithic structure of the simulator, this
+    is a bespoke activity for each simulator. The result is a
+    non-standard version of the simulator, which can be difficult
+    and expensive to maintain. <br>
+    </font></p>
+    <p align="center"><font size="4"><img src="simulator.gif"
+    width="534" height="309"></font></p>
+    <p align="center"><font size="4">Flowsheet simulator schema<br>
+    </font></p>
+    <p align="left"><font size="4">The CAPE-OPEN (CO) project
+    envisages a new situation whereby a SMST (and other simulator
+    software sub-systems, such as unit operations, thermodynamic
+    or numerical packages) can be bought off-the-shelf and
+    plugged directly into any compliant simulator without
+    modification, compiling or linking and will continue to work
+    with subsequent versions of the simulator. All that is
+    required is that the SMST and the simulators conform to the
+    CAPE-OPEN Interface System. This System will be defined by
+    the CO project, which is organised into work packages. Three
+    of these work packages deal with the main sub-systems of a
+    simulator that are likely to be exchanged: unit operations
+    (UNIT), thermodynamics (THRM) and numerical tools (NUMR).
+    This document is produced by the NUMR work package and
+    describes the requirements of the part of the CAPE-OPEN
+    Interface System dealing with Sequential Modular Specific
+    Tools.</font></p>
+</blockquote>
+</body>
+</html>

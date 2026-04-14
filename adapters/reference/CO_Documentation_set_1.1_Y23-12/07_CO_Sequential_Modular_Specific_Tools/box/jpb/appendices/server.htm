@@ -1,0 +1,139 @@
+<html>
+
+<head>
+<meta http-equiv="Content-Type"
+content="text/html; charset=iso-8859-1">
+<meta name="GENERATOR" content="Microsoft FrontPage Express 2.0">
+<title></title>
+</head>
+
+<body bgcolor="#FFFFFF">
+
+<p align="center"><font color="#FF0080" size="6"><strong>Download
+the Flowsheet Server and the First Programs</strong></font></p>
+
+<p align="center">&nbsp;</p>
+
+<blockquote>
+    <p align="center">&nbsp;</p>
+    <blockquote>
+        <p align="left"><font color="#000000" size="4">You can
+        install on your desktop the </font><a
+        href="../tutorial/server.htm"><font size="4">Flowsheet
+        Server</font></a><font color="#000000" size="4"> 5.0
+        application and the </font><a
+        href="../tutorial/programs.htm"><font size="4">first C++
+        programs</font></a><font color="#000000" size="4"> which
+        correspond to the 5 </font><a
+        href="../tutorial/programs.htm#tutorials"><font size="4">tutorials</font></a><font
+        color="#000000" size="4">.</font></p>
+        <p align="left"><font color="#000000" size="4">Operating
+        system: Windows 9x, NT.</font></p>
+        <p align="left"><font color="#000000" size="4">Disk space
+        requirement: 10.3 MB of free disk space.</font></p>
+        <p align="left">&nbsp;</p>
+        <p align="left"><font color="#008040" size="4"><strong>Installation
+        :</strong></font></p>
+        <p align="left"><font color="#000000" size="4">Dowload
+        the 3.2 Mo </font><a href="appli.zip"><font size="4">zipped
+        file</font></a><font color="#000000" size="4"> (and
+        extract all the files using &quot;folder name&quot;
+        option).<br>
+        You should have 7 bat files and one folder bin.<br>
+        The folder bin contains the deployed application files
+        and the </font><a href="../corbaidl.htm"><font size="4">idl
+        files</font></a><font color="#000000" size="4"> while the
+        bat files are the command files which start the
+        application.<br>
+        Here is the corresponding </font><a href="ddiagram.gif"><font
+        size="4">deployment diagram</font></a><font
+        color="#000000" size="4">.</font></p>
+        <p align="left">&nbsp;</p>
+        <p align="left"><font color="#008040" size="4"><strong>Running
+        the application :</strong></font></p>
+        <blockquote>
+            <ul>
+                <li><p align="left"><font color="#000000"
+                    size="4">Starting the Smart Agent : agent.bat<br>
+                    (Before you attempt to run tutorial programs
+                    or Flowsheet Server, you must first start the
+                    Smart Agent on at least one host in your
+                    local network).</font></p>
+                </li>
+                <li><p align="left"><font color="#000000"
+                    size="4">Executing Flowsheet Server :
+                    FlowSer.bat<br>
+                    (it displays incomprehensible information
+                    according to requests, forget that. It was
+                    for debugging)</font></p>
+                </li>
+                <li><p align="left"><font color="#000000"
+                    size="4">Executing Tutorials : Tutorial1.bat,
+                    Tutorial2.bat, Tutorial3.bat, Tutorial4.bat
+                    and Tutorial5.bat.</font></p>
+                </li>
+                <li><p align="left"><font color="#000000"
+                    size="4">Reporting Objects and Services :
+                    reporting.bat<br>
+                    You can run or not this tool at any time. It
+                    determines the number of Smart Agent on the
+                    network and the exact host on which they are
+                    executing. It also reports on all objects
+                    that are registered by the Smart Agent (only
+                    the global scope objects) and are active on
+                    the network. It monitors the status of the
+                    network.</font></p>
+                </li>
+            </ul>
+        </blockquote>
+        <p align="left">&nbsp;</p>
+        <p align="left"><font color="#008040" size="4"><strong>Closing
+        the application</strong></font></p>
+        <p align="left"><font color="#000000" size="4">Close
+        simply the windows but it'd be better if you close the
+        Flowsheet Server window before the Smart Agent window.</font></p>
+        <p align="left">&nbsp;</p>
+        <p align="left"><font color="#008040" size="4"><strong>Uninstallation
+        :</strong></font></p>
+        <p align="left"><font color="#000000" size="4">Just
+        delete the 7 bat files and the bin folder.</font></p>
+        <p align="left">&nbsp;</p>
+        <p align="left"><font color="#008040" size="4"><strong>Other
+        Deployment :</strong></font></p>
+        <p align="left"><font size="4">The above deployment means
+        that the Flowsheet Server application and the tutorials
+        reside on the same local Windows host.</font></p>
+        <p align="left"><font size="4">You could try to locate
+        them on different Windows hosts (within the same local
+        network) : the Flowsheet Server on Windows host A and
+        tutorials on Windows host B.<br>
+        Don't forget the Trader.txt file (1 Ko - it has the
+        Inter-operable Object Reference) which is generated by
+        the Flowsheet Server. Copy and paste it from host A to
+        host B in your tutorial folder.</font></p>
+        <p align="left">&nbsp;</p>
+        <p align="left"><font color="#008040" size="4"><strong>Notes
+        :</strong></font></p>
+        <p align="left"><font size="4">Now you could write your
+        own program and call the Flowsheet Server. Here are its
+        limits (because of some legacy code and the prototype
+        implementation).</font></p>
+        <blockquote>
+            <ul>
+                <li><p align="left"><font size="4">The
+                    identifiers of units need to belong to this
+                    interval [1..Number of Units].</font></p>
+                </li>
+                <li><p align="left"><font size="4">Streams can't
+                    have the same initial unit (iunit) and the
+                    same final unit (funit).</font></p>
+                </li>
+                <li><p align="left"><font size="4">A stream can't
+                    have a funit identical to the iunit.</font></p>
+                </li>
+            </ul>
+        </blockquote>
+    </blockquote>
+</blockquote>
+</body>
+</html>

@@ -1,0 +1,26 @@
+
+  -->  Bind to a CO Compliant SMST Component
+  ----------------------------------------------------------------------------------
+    Name        : Flowsheet Server
+    Version     : 5.0
+    Description : Numerical Work-Package of CAPE-OPEN Project - January 1999 - INPT 
+    Location    : Remote Object
+  ----------------------------------------------------------------------------------
+
+
+  -->  Connection to the FlowsheetFactory
+
+  -->  Flowsheet Creation
+
+  -->  Flowsheet Completion
+
+  -->  Connection to the Numeric Server
+         Is the Tearing Analysis available ? : Yes
+
+  -->  Tearing Analysis Creation
+         Does the Tearing Analysis have specific Parameters ? : Yes
+
+  -->  Tearing Analysis Computation 
+
+  -->  Tearing Analysis Results
+          * List of Torn Streams 6 

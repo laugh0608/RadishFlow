@@ -139,7 +139,7 @@ RadishFlow 的目标架构已经冻结为“桌面端三层 + 外部控制面”
 
 | 目录 | 当前职责 | 当前状态 |
 | --- | --- | --- |
-| `RadishFlow.CapeOpen.Interop` | 接口、GUID、异常语义 | 目录占位 |
+| `RadishFlow.CapeOpen.Interop` | 接口、GUID、异常语义 | 已建立第一版 `net10.0` 公共语义项目，当前覆盖 `ICapeIdentification`、`ICapeUtilities`、`ICapeUnit` 的最小接口骨架、已确认 CAPE-OPEN interface/category GUID 常量源，以及 `CapeOpenException`/HRESULT/语义化派生异常的最小收口 |
 | `RadishFlow.CapeOpen.Adapter` | PInvoke 与句柄封装 | 已建立第一版 `net10.0` 薄适配项目，当前覆盖 native engine 句柄生命周期、UTF-8 字符串分配释放、`LibraryImport` 对 `rf-ffi` 的最小调用面，以及 `RfFfiStatus + last_error_message/json` 到 .NET 异常的收口 |
 | `RadishFlow.CapeOpen.UnitOp.Mvp` | 第一版自有 PMC | 目录占位 |
 | `RadishFlow.CapeOpen.Registration` | 注册与反注册工具 | 目录占位 |

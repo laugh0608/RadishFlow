@@ -1,0 +1,17 @@
+HKCU
+{
+	NoRemove Software
+	{
+		NoRemove Classes
+		{
+			NoRemove AppID
+			{
+				'%APPID%' = s 'IdealThermo_CPP_PPM11'
+				'IdealThermo_CPP_PPM11.DLL'
+				{
+					val AppID = s '%APPID%'
+				}
+			}
+		}
+	}
+}

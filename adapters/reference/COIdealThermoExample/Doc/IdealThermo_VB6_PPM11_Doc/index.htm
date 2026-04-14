@@ -1,0 +1,42 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<title>Untitled Document</title>
+</head>
+
+<body>
+<h2>VB6 Ideal Thermo Property Package Manager version 1.1</h2>
+<p>This project implements a CAPE-OPEN version 1.0 Thermo  System that exposes property package. It refers IdealThermoModule.dll for the  actual calculations.</p>
+<h1>File descriptions</h1>
+<h2>Project file</h2>
+<p>The project file has a name that determines the COM  application name: IdealThermo_VB6_PPM11.<br />
+  A reference is set to the CAPE-OPEN version 1.1 type  library. This has to be present at the computer at which the project is  compiled. In addition, to circumvent a VB6 specific issue with objects that  require initialization, a reference is set to a custom type library that  defines IPersistStream. The type library Persist.tlb is built from Persist.idl  using the MIDL compiler in the TypeLib folder.<br />
+  To preserve the project&rsquo;s GUIDs between builds, the produced  DLL is marked binary compatible with IdealThermo_VB6_PPM11_ref.dll in the  project folder.<br />
+  VB6 COM objects are self registering, for all users.  However, the additional registration requirements for CAPE-OPEN functionality  are in separate reg files. Two reg files are available for this: IdealThermo_VB6_PPM11.reg  which works well on 32-bit systems, and IdealThermo_VB6_PPM11_64.reg which  works well on 64-bit systems. A full registration of the COM object can be  performed in two steps:</p>
+<ol start="1" type="1">
+  <li>Registration of IdealThermo_VB6_PPM11.dll       (this is done automatically upon building the DLL or compilation, or can       be done using regsvr32.dll).</li>
+  <li>Adding either IdealThermo_VB6_PPM11.reg       or IdealThermo_VB6_PPM11_64.reg to the registry.</li>
+</ol>
+<p>Unregistration can be performed by the command<br />
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Regsvr32  /u IdealThermo_ VB6_PPM11.dll<br />
+  Both registration and unregistration require administrative  rights.</p>
+<h2>ExternalFunctions module</h2>
+<p>This module declares all requires functions from  IdealThermoModule.dll. In addition, some standard Windows API routines are  declared. Furthermore, to allow working with a copy of IdealThermoModule.dll  that is located in the same folder as IdealThermo_ VB6_PPM11.dll, the  IdealThermoModule.dll is explicitly loaded and unloaded using routines in this  module.</p>
+<h2>PropertyConstants module</h2>
+<p>This module defines all property constants for communication  with IdealThermoModule.dll. In addition, it defines some constants for  CAPE-OPEN operation (the names of the CAPE-OPEN properties, and whether mole  basis applies to some property categories). As visual basic has no array  initializers, the exposed arrays are initialized in the function InitializeProperties().</p>
+<h2>PackageManager class</h2>
+<p>This is the class that is created externally by a PME (hence  this is the class for which the additional CAPE-OPEN registry information is  required). The class implements the standard CAPE-OPEN functionality  (ICapeIdentification, Error common interfaces, ICapeUtilities) as well as ICapeThermoPropertyPackageManager. <br />
+  Upon creation of a PropertyPackage object, New or  CreateObject cannot be used, as this implicitly calls InitNew, and would cause  subsequent calls to InitNew or Load on the PropertyPackage class to fail.  Instead, CoCreateInstance is used. The required API functions are declared in  ExternalFunctions.bas.<br />
+  This class can be externally created using the following  progID: &ldquo;IdealThermo_VB6_PPM11.PackageManager&rdquo;.</p>
+<h3>PropertyPackage class</h3>
+<p>This is the Property Package class that exposes all  compounds and phases, does property and flash calculations. The class  implements the standard CAPE-OPEN functionality (ICapeIdentification, Error  common interfaces, ICapeUtilities) as well as ICapeThermoCompounds,  ICapeThermoPhases, ICapeThermoMaterialContext, ICapeThermoPropertyRoutine,  ICapeThermoEquilibriumRoutine and ICapeThermoUniversalConstants. <br />
+  The class is marked persistable, which means that  InitializeProperties, ReadProperties and WriteProperties should be implemented.  Implicitly this cases IPersistStreamInit to be implemented on the class.  IPersistStreamInit::Save requires IPersistStreamInit::InitNew or  IPersistStreamInit::Load to be called. As to not depend on the PME doing so,  IPersistStreamInit::InitNew is explicitly called upon initialization of the  property packge, with an error handler to deal with the case that the PME did  call InitNew. As IPersistStreamInit is not natively defined in VB6, it is  imported from an external type library.</p>
+<h1>This is example code</h1>
+<p>CO-LaN nor AmsterCHEM claim that this example is fit for  purpose. CO-LaN nor AmsterCHEM claim that this example implements the thermo  system in an efficient way; in the contrary, in order to keep the example  readible, no attempt is made to cache allocated variables (such as strings,  arrays, ...) or to provide efficient lookup methods (e.g. for items in  collections, ...). VB6 implicitly causes a lot of string copying, etc, which is  not desired from a performance point of view. This, in combination with the  ended life cycle of VB6, makes that this example is best used for reference  purposes, and that actual production implementations are implemented in a more  efficient manner, in a language more suitable for that purpose, such as C++.</p>
+<p>This implementation is intended for illustrative purposes  only. Use this example as you please. Under no circumstance can CO-LaN or  AmsterCHEM be held liable for consequential or any other damages resulting from  this code.</p>
+<h2>A word about debugging</h2>
+<p>To be able to run this CAPE-OPEN module, it has to be able  to load the functionality from IdealThermoModule.dll. This will be automatically  located if the VB6 dll is located in the same folder as the  IdealThermoModule.dll. However, when running from the VB6 GUI this is not the  case, and it helps to have the folder that contains IdealThermoModule.dll in  the path. A possible option to go about this is to make a batch file that adds  the proper folder to the path and starts the VB6 GUI with the command line  option to load the project.<br />
+  In addition, each time the VB6 dll is built or the GUI  debugger is started, the registration for the VB6 dll is overwritten. The  additional registry information at this point needs to be added manually from  the .reg files.</p>
+</body>
+</html>

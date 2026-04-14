@@ -1,0 +1,98 @@
+
+#ifndef ICapeUtility_idl
+#define ICapeUtility_idl
+
+
+
+// Include Files *****************************************************************
+
+#include "ICapeUtilityDefinition.idl"
+
+
+
+
+// Forward declarations *****************************************************************
+
+interface ICapeUtilityReport;
+interface ICapeUtilityIdentification;
+interface ICapeUtilityParameter;
+
+
+
+
+// Interface Definitions ****************************************************************
+
+
+enum CapeLineType {
+	TITLE,
+	SUBTITLE,
+	TEXT
+};
+
+typedef sequence<CapeLineType> CapeLineTypeSequence;
+
+struct CapeReportLine {
+	CapeLong characterCount;
+	CapeLineType type;
+	CapeString value;
+};
+
+typedef sequence<CapeReportLine> CapeReportLineSequence;
+
+typedef sequence<ICapeUtilityReport> ICapeUtilityReportSequence;
+
+interface ICapeUtilityReport {
+
+	CapeBoolean ReportAvailable();
+
+	CapeLong GetLineCount();
+
+	CapeReportLine GetLine(in CapeLong lineNb);
+
+};
+
+
+
+typedef sequence<ICapeUtilityIdentification> ICapeUtilityIdentificationSequence;
+
+interface ICapeUtilityIdentification {
+
+	CapeString GetVersionNumber();
+
+	CapeString GetComponentName();
+
+	CapeString GetComponentDescription();
+
+};
+
+
+
+
+
+struct CapeParameter {
+	CapeString name;
+	CapeString description;
+	CapeDouble value;
+	CapeDouble lowerbound;
+	CapeDouble upperbound;
+	CapeDouble defaultvalue;
+	CapeDouble defaultlowerbound;
+	CapeDouble defaultupperbound;
+};
+
+typedef sequence<CapeParameter> CapeParameterSequence;
+
+typedef sequence<ICapeUtilityParameter> ICapeUtilityParameterSequence;
+
+interface ICapeUtilityParameter {
+
+	CapeBoolean ParameterAvailable();
+
+	CapeParameterSequence GetParameterList();
+
+	void SetParameter (in CapeString name, in CapeLong value, in CapeLong lowerbound, in CapeLong upperbound);
+
+};
+
+
+#endif
