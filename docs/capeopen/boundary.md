@@ -84,12 +84,12 @@ Rust 与 `.NET 10` 之间的正式边界应保持简单稳定：
 
 - 文档
 - 目录结构
-- README 占位说明
+- README 说明
+- 最小 `.NET 10` `LibraryImport` / PInvoke 薄封装
 - 未来 `Interop`/`Adapter` 的接口落点规划
 
 当前暂不推进的内容：
 
-- 真实 `.NET 10` PInvoke 封装
 - COM host 注册细节
 - 完整 ECape 异常实现
 - PME 互调测试代码
