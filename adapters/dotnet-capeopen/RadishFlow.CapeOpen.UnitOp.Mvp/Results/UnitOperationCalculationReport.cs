@@ -12,6 +12,43 @@ public sealed record UnitOperationCalculationReport(
     string Headline,
     IReadOnlyList<string> DetailLines)
 {
+    public int GetDetailKeyCount()
+    {
+        var count = 0;
+        foreach (var detailLine in DetailLines)
+        {
+            if (TrySplitDetailLine(detailLine, out _, out _))
+            {
+                count++;
+            }
+        }
+
+        return count;
+    }
+
+    public string GetDetailKey(int detailKeyIndex)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(detailKeyIndex);
+
+        var currentIndex = 0;
+        foreach (var detailLine in DetailLines)
+        {
+            if (!TrySplitDetailLine(detailLine, out var key, out _))
+            {
+                continue;
+            }
+
+            if (currentIndex == detailKeyIndex)
+            {
+                return key;
+            }
+
+            currentIndex++;
+        }
+
+        throw new ArgumentOutOfRangeException(nameof(detailKeyIndex));
+    }
+
     public string? GetDetailValue(string detailKey)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(detailKey);

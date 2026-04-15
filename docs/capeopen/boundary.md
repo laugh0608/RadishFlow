@@ -100,7 +100,7 @@ Rust 与 `.NET 10` 之间的正式边界应保持简单稳定：
 - 当前 `rf-ffi` 仍已导出整份 `SolveSnapshot` JSON 与单股 stream snapshot JSON，但 `UnitOp.Mvp` 对外结果面已先收口为两条最小契约：成功时是 `status / summary / diagnostics`，失败时是 `error / requestedOperation / nativeStatus / summary`；不再直接把整份 snapshot JSON 或 native error JSON 作为 PMC 公开结果面
 - 当前 `UnitOp.Mvp` 之上又已补出统一只读查询面 `GetCalculationReport()`，把“尚无结果 / 最近成功 / 最近失败”收口到单一 report DTO，供后续最小 host / PME 只读消费面复用
 - 在该统一查询面之上，当前又补出 `GetCalculationReportState()` 与 `GetCalculationReportHeadline()` 两条最小标量元数据入口，让后续最小 host / PME 可直接读取报告状态与标题，不必先消费自定义 DTO
-- 在该元数据面之上，当前又补出 `GetCalculationReportDetailValue(string)` 这一条最小 detail 键值读取入口，让后续最小 host / PME 可以直接读取稳定单值 detail key，而不必再从展示文本里反解析 `status`、`highestSeverity`、`diagnosticCount`、`requestedOperation` 或 `nativeStatus`
+- 在该元数据面之上，当前又补出 `GetCalculationReportDetailKeyCount()`、`GetCalculationReportDetailKey(int)` 与 `GetCalculationReportDetailValue(string)` 这一组最小 detail 键值读取入口，让后续最小 host / PME 既可枚举稳定 detail key，又可按 key 读取值，而不必再从展示文本里反解析 `status`、`highestSeverity`、`diagnosticCount`、`requestedOperation` 或 `nativeStatus`
 - 在该 report DTO 之上，当前又补出 `GetCalculationReportLines()` 与 `GetCalculationReportText()` 两条最小宿主可显示文本面，优先把 headline/detail lines 的拼接责任留在 PMC 内部，而不是继续让最小 host / PME 自己重复组织显示字符串
 - 在该文本面之上，当前又补出 `GetCalculationReportLineCount()` 与 `GetCalculationReportLine(int)` 两条标量读取入口，让后续最小 host / PME 可以按“line count + line(index)”逐步读取报告文本，而不提前要求消费自定义 DTO 或整段拼接文本
 
@@ -132,7 +132,7 @@ Rust 与 `.NET 10` 之间的正式边界应保持简单稳定：
 - `RadishFlow.CapeOpen.UnitOp.Mvp` 中不含注册的最小 PMC 类骨架、状态机与内部配置入口
 - `UnitOp.Mvp` 中用于 `Ports` / `Parameters` 的最小占位对象集合，以及基于对象状态的 `Validate()` 前置检查
 - `UnitOp.Mvp` 中经由 `RadishFlow.CapeOpen.Adapter` 调用 `rf-ffi` 的最小 `Calculate()` 求解接线，以及基于 native snapshot JSON / error JSON 材料化出的最小成功结果契约与失败摘要契约
-- `UnitOp.Mvp` 中基于上述结果对象继续收口出的最小只读 result/report access，以及建立在其上的标量元数据入口、detail 键值读取入口、最小文本导出面与标量逐行读取入口，不要求外部宿主自己拼装成功结果、失败摘要或 headline/detail 文本
+- `UnitOp.Mvp` 中基于上述结果对象继续收口出的最小只读 result/report access，以及建立在其上的标量元数据入口、可枚举 detail 键值读取入口、最小文本导出面与标量逐行读取入口，不要求外部宿主自己拼装成功结果、失败摘要或 headline/detail 文本
 
 当前暂不推进的内容：
 

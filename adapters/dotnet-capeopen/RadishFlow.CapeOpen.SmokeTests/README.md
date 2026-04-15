@@ -7,7 +7,7 @@
 - 可列出 property package registry
 - 可触发 solve
 - direct adapter 模式可读取 flowsheet / stream snapshot json
-- `UnitOp.Mvp` 模式可校验最小成功结果契约 `status / summary / diagnostics`、失败路径的最小诊断摘要契约、统一只读查询面 `GetCalculationReport()`，以及建立在其上的最小标量/文本消费面 `GetCalculationReportState()` / `GetCalculationReportHeadline()` / `GetCalculationReportDetailValue(string)` / `GetCalculationReportLineCount()` / `GetCalculationReportLine(int)` / `GetCalculationReportLines()` / `GetCalculationReportText()`
+- `UnitOp.Mvp` 模式可校验最小成功结果契约 `status / summary / diagnostics`、失败路径的最小诊断摘要契约、统一只读查询面 `GetCalculationReport()`，以及建立在其上的最小标量/文本消费面 `GetCalculationReportState()` / `GetCalculationReportHeadline()` / `GetCalculationReportDetailKeyCount()` / `GetCalculationReportDetailKey(int)` / `GetCalculationReportDetailValue(string)` / `GetCalculationReportLineCount()` / `GetCalculationReportLine(int)` / `GetCalculationReportLines()` / `GetCalculationReportText()`
 
 默认行为：
 
