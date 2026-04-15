@@ -14,7 +14,7 @@
 - `Initialize / Validate / Calculate / Terminate / Edit` 的第一版状态骨架
 - 内部 `LoadFlowsheetJson(...)`、`LoadPropertyPackageFiles(...)`、`SelectPropertyPackage(...)` 配置入口
 - `SetPortConnected(...)` 这一类最小端口状态入口
-- `ConfigureNativeLibraryDirectory(...)`、`LastCalculationResult`、`LastCalculationFailure`、`GetCalculationReport()`、`GetCalculationReportLines()` 与 `GetCalculationReportText()`
+- `ConfigureNativeLibraryDirectory(...)`、`LastCalculationResult`、`LastCalculationFailure`、`GetCalculationReport()`、`GetCalculationReportLineCount()`、`GetCalculationReportLine(int)`、`GetCalculationReportLines()` 与 `GetCalculationReportText()`
 - `Calculate()` 对未满足前置条件的最小 ECape 语义抛错，以及经由 `rf-ffi` 的最小真实求解接线
 - `ICapeCollection` / `ICapeParameter` / `ICapeUnitPort` 的第一版最小对象运行时
 - placeholder 对象对 unit owner 生命周期的最小访问守卫，以及 `Terminate()` 时的端口连接释放
@@ -37,4 +37,5 @@
 - `Calculate()` 当前已能在最小前置条件满足后调用 `rf-ffi` 完成求解，并把对外结果面拆成“成功结果”和“失败摘要”两条最小契约：成功时导出 `LastCalculationResult(status / summary / diagnostics)`，失败时导出 `LastCalculationFailure(error / requestedOperation / nativeStatus / summary)`；完整 flowsheet snapshot JSON 与 native error JSON 仍只作为内部桥接输入，不再直接作为 PMC 公开结果面
 - 当前又已补出 `GetCalculationReport()` 这一条统一只读查询面，把“尚无结果 / 最近成功 / 最近失败”收口到单一 report DTO；外部宿主若只需要稳定结果状态与结构化 detail，不必自己分支拼装 `LastCalculationResult` 和 `LastCalculationFailure`
 - 在这条 report DTO 之上，当前又继续补出 `GetCalculationReportLines()` 与 `GetCalculationReportText()` 两条最小宿主可显示文本面，统一把 headline/detail lines 收口为可直接展示的行集合或多行文本，避免最小 host / PME 再自己手工拼接显示字符串
+- 在上述文本面之上，当前又继续补出 `GetCalculationReportLineCount()` 与 `GetCalculationReportLine(int)` 两条标量读取入口，让最小 host / PME 可以按“行数 + 按索引读取”逐步消费报告文本，而不必依赖自定义 DTO 或一次性整段文本
 - Rust/.NET 边界仍保持为句柄 + UTF-8 + JSON + 状态码，没有在这里提前引入 COM 注册或更宽的跨边界对象传递

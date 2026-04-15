@@ -12,6 +12,28 @@ public sealed record UnitOperationCalculationReport(
     string Headline,
     IReadOnlyList<string> DetailLines)
 {
+    public int GetDisplayLineCount()
+    {
+        return DetailLines.Count + 1;
+    }
+
+    public string GetDisplayLine(int lineIndex)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(lineIndex);
+
+        if (lineIndex == 0)
+        {
+            return Headline;
+        }
+
+        if (lineIndex > DetailLines.Count)
+        {
+            throw new ArgumentOutOfRangeException(nameof(lineIndex));
+        }
+
+        return DetailLines[lineIndex - 1];
+    }
+
     public IReadOnlyList<string> GetDisplayLines()
     {
         if (DetailLines.Count == 0)
@@ -19,11 +41,10 @@ public sealed record UnitOperationCalculationReport(
             return [Headline];
         }
 
-        var lines = new string[DetailLines.Count + 1];
-        lines[0] = Headline;
-        for (var index = 0; index < DetailLines.Count; index++)
+        var lines = new string[GetDisplayLineCount()];
+        for (var index = 0; index < lines.Length; index++)
         {
-            lines[index + 1] = DetailLines[index];
+            lines[index] = GetDisplayLine(index);
         }
 
         return lines;

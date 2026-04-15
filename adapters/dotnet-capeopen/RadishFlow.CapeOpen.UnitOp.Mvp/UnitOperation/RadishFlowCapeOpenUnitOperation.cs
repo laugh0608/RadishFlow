@@ -158,6 +158,18 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
         return GetCalculationReport().GetDisplayLines();
     }
 
+    public int GetCalculationReportLineCount()
+    {
+        ThrowIfDisposed();
+        return GetCalculationReport().GetDisplayLineCount();
+    }
+
+    public string GetCalculationReportLine(int lineIndex)
+    {
+        ThrowIfDisposed();
+        return GetCalculationReport().GetDisplayLine(lineIndex);
+    }
+
     public string GetCalculationReportText()
     {
         ThrowIfDisposed();

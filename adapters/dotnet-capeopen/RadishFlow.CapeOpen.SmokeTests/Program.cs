@@ -92,14 +92,21 @@ static void RunUnitOperationSmoke(SmokeOptions options)
     var projectJson = File.ReadAllText(options.ProjectPath);
     unitOperation.Initialize();
     var initialReport = unitOperation.GetCalculationReport();
+    var initialReportLineCount = unitOperation.GetCalculationReportLineCount();
     var initialReportLines = unitOperation.GetCalculationReportLines();
     var initialReportText = unitOperation.GetCalculationReportText();
     EnsureCondition(
         initialReport.State == UnitOperationCalculationReportState.None,
         "unit operation should expose an empty calculation report before Calculate().");
     EnsureCondition(
+        initialReportLineCount == 1,
+        "empty calculation report should expose exactly one display line.");
+    EnsureCondition(
         initialReportLines.Count == 1 && string.Equals(initialReportLines[0], initialReport.Headline, StringComparison.Ordinal),
         "empty calculation report lines should collapse to the headline only.");
+    EnsureCondition(
+        string.Equals(unitOperation.GetCalculationReportLine(0), initialReport.Headline, StringComparison.Ordinal),
+        "empty calculation report line(0) should return the headline.");
     EnsureCondition(
         string.Equals(initialReportText, initialReport.Headline, StringComparison.Ordinal),
         "empty calculation report text should match the headline.");
@@ -169,6 +176,7 @@ static void RunUnitOperationSmoke(SmokeOptions options)
     var validationFailure = unitOperation.LastCalculationFailure
         ?? throw new InvalidOperationException("unit operation should preserve the last validation failure after Calculate().");
     var validationFailureReport = unitOperation.GetCalculationReport();
+    var validationFailureLineCount = unitOperation.GetCalculationReportLineCount();
     var validationFailureText = unitOperation.GetCalculationReportText();
     EnsureCondition(unitOperation.LastCalculationResult is null, "failed Calculate() should not expose a successful calculation result.");
     EnsureCondition(
@@ -187,6 +195,10 @@ static void RunUnitOperationSmoke(SmokeOptions options)
         validationFailureReport.DetailLines.Any(line => line.Contains("requestedOperation=SelectPropertyPackage", StringComparison.Ordinal)),
         "validation failure report should expose the requested follow-up operation.");
     EnsureCondition(
+        validationFailureLineCount == validationFailureReport.DetailLines.Count + 1 &&
+        string.Equals(unitOperation.GetCalculationReportLine(0), validationFailureReport.Headline, StringComparison.Ordinal),
+        "validation failure report scalar line access should expose headline plus detail count.");
+    EnsureCondition(
         validationFailureText.Contains(validationFailureReport.Headline, StringComparison.Ordinal) &&
         validationFailureText.Contains("requestedOperation=SelectPropertyPackage", StringComparison.Ordinal),
         "validation failure report text should include both the headline and requested operation.");
@@ -198,6 +210,7 @@ static void RunUnitOperationSmoke(SmokeOptions options)
     var nativeFailure = unitOperation.LastCalculationFailure
         ?? throw new InvalidOperationException("unit operation should preserve the last native failure after Calculate().");
     var nativeFailureReport = unitOperation.GetCalculationReport();
+    var nativeFailureLineCount = unitOperation.GetCalculationReportLineCount();
     var nativeFailureLines = unitOperation.GetCalculationReportLines();
     EnsureCondition(
         string.Equals(nativeFailure.ErrorName, nativeFailureError.ErrorName, StringComparison.Ordinal),
@@ -218,9 +231,15 @@ static void RunUnitOperationSmoke(SmokeOptions options)
         nativeFailureReport.DetailLines.Any(line => line.Contains("nativeStatus=MissingEntity", StringComparison.Ordinal)),
         "native failure report should expose the mapped native status.");
     EnsureCondition(
+        nativeFailureLineCount == nativeFailureLines.Count &&
         nativeFailureLines.Count >= 2 &&
         string.Equals(nativeFailureLines[0], nativeFailureReport.Headline, StringComparison.Ordinal),
         "native failure report lines should start with the headline before detail lines.");
+    EnsureCondition(
+        nativeFailureLines
+            .Select((line, index) => string.Equals(line, unitOperation.GetCalculationReportLine(index), StringComparison.Ordinal))
+            .All(static matches => matches),
+        "native failure scalar line access should match the vector line export.");
 
     packageIdParameter.value = options.PackageId;
 
@@ -247,6 +266,7 @@ static void RunUnitOperationSmoke(SmokeOptions options)
     var calculationResult = unitOperation.LastCalculationResult
         ?? throw new InvalidOperationException("Unit operation should expose the last calculation result after Calculate().");
     var successReport = unitOperation.GetCalculationReport();
+    var successReportLineCount = unitOperation.GetCalculationReportLineCount();
     var successReportLines = unitOperation.GetCalculationReportLines();
     var successReportText = unitOperation.GetCalculationReportText();
     EnsureCondition(unitOperation.LastCalculationFailure is null, "successful Calculate() should clear the last calculation failure.");
@@ -269,9 +289,13 @@ static void RunUnitOperationSmoke(SmokeOptions options)
         string.Equals(successReport.Headline, calculationResult.Summary.PrimaryMessage, StringComparison.Ordinal),
         "success report headline should mirror the calculation primary message.");
     EnsureCondition(
-        successReportLines.Count == successReport.DetailLines.Count + 1 &&
+        successReportLineCount == successReport.DetailLines.Count + 1 &&
+        successReportLines.Count == successReportLineCount &&
         string.Equals(successReportLines[0], successReport.Headline, StringComparison.Ordinal),
         "success report lines should expose headline plus all detail lines.");
+    EnsureCondition(
+        string.Equals(unitOperation.GetCalculationReportLine(successReportLineCount - 1), successReportLines[^1], StringComparison.Ordinal),
+        "success report scalar line access should expose the final detail line.");
     EnsureCondition(
         successReportText.Contains(successReport.Headline, StringComparison.Ordinal) &&
         successReportText.Contains("diagnosticCount=", StringComparison.Ordinal),
@@ -306,6 +330,10 @@ static void RunUnitOperationSmoke(SmokeOptions options)
     EnsureCondition(
         unitOperation.GetCalculationReport().State == UnitOperationCalculationReportState.None,
         "terminate should reset the unified calculation report to empty state.");
+    EnsureCondition(
+        unitOperation.GetCalculationReportLineCount() == 1 &&
+        string.Equals(unitOperation.GetCalculationReportLine(0), "No calculation result is available.", StringComparison.Ordinal),
+        "terminate should reset the scalar report line access to the empty headline.");
     EnsureCondition(
         string.Equals(unitOperation.GetCalculationReportText(), "No calculation result is available.", StringComparison.Ordinal),
         "terminate should reset the calculation report text to the empty headline.");
