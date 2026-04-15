@@ -170,6 +170,37 @@
 - 让 Rust 直接处理 `IDispatch`、`VARIANT`、`SAFEARRAY`
 - 在边界上传递复杂对象图
 
+## CAPE-OPEN 规范实现策略
+
+RadishFlow 对 CAPE-OPEN 的实现原则不是“复制某个官方示例工程”，而是“把 CAPE-OPEN 视为外部契约并独立实现自己的桥接层”。
+
+规范真相源按以下优先级冻结：
+
+- 官方 PDF 规格书与 errata / clarifications 负责定义行为语义
+- 官方 IDL、Type Libraries、Primary Interop Assemblies 负责定义二进制接口形状
+- 官方安装包和接口分发版本用于本地校准与互操作验证
+- 官方示例代码与历史参考仓库只作参考，不直接充当实现蓝本
+
+落到工程分层上，应坚持：
+
+- CAPE-OPEN / COM 只存在于 `.NET 10 CapeBridge`
+- Rust Core 保持领域模型和求解模型自主，不按 COM 对象形状建模
+- `.NET 10 CapeBridge` 对外严格贴标准接口、GUID、HRESULT、ECape 语义和注册约定
+- `.NET 10 CapeBridge` 对内只调用 RadishFlow 自己的稳定 ABI，而不是把 CAPE-OPEN 语义压回 Rust
+
+因此，RadishFlow 的路线应是：
+
+- 外部兼容 CAPE-OPEN
+- 内部保持 RadishFlow 自主接口
+- 示例代码只帮助理解标准，不直接决定内部架构
+- 当前阶段先完成 COM-compatible Unit Operation PMC 主线，不把完整 Thermo PMC、第三方模型加载或 COBIA 主线化一起提前带入
+
+关于 COBIA：
+
+- COBIA 可作为后续互操作技术选项持续跟踪
+- 但在当前阶段，它不应替代既定的 COM-compatible CAPE-OPEN 主线
+- 除非目标 PME 与验证路径明确要求，否则不为引入 COBIA 而改写当前边界
+
 ## 推荐仓库结构
 
 建议目标仓库采用 Monorepo：

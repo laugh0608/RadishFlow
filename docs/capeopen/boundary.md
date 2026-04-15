@@ -16,6 +16,37 @@
 - 第一阶段不支持加载第三方 CAPE-OPEN 模型
 - `.NET 10` 负责把 Rust 错误映射为 CAPE-OPEN/ECape 语义
 
+## 规范真相源
+
+RadishFlow 的 CAPE-OPEN 适配层不以任何单个示例项目为蓝本，而以官方规范为唯一真相源，并按“行为语义”和“二进制接口形状”分层校准：
+
+- 官方 CAPE-OPEN PDF 规格书与对应 errata / clarifications 是行为语义真相源
+- 官方 IDL、Type Libraries 与 Primary Interop Assemblies 是 COM 接口形状、GUID、签名与 marshalling 真相源
+- 官方安装包与已发布接口分发版本可作为本地校准和互操作验证输入，但不改变本仓库当前阶段边界
+- 官方示例代码、历史参考实现与外部开源项目只作参考，不作为 RadishFlow 的设计真相源
+
+这意味着：
+
+- 对外暴露给 PME 的 COM / CAPE-OPEN 面，必须尽量严格对齐标准接口、生命周期、调用顺序、异常语义和注册类别
+- 对内的领域模型、求解接口、FFI 输入输出和状态机，仍保持 RadishFlow 自主设计，只要不破坏标准兼容面
+- 不能因为某个示例项目里“顺手带了某种写法”，就把非标准行为、额外属性或历史包袱直接带入正式接口
+
+## 实现策略
+
+当前阶段 CAPE-OPEN 相关实现遵守以下分层策略：
+
+- Rust Core 只负责对象模型、物性、闪蒸、求解和稳定 ABI，不承载 COM 语义
+- `rf-ffi` 只暴露句柄、基础数值、UTF-8 字符串、JSON 快照和稳定错误码
+- `RadishFlow.CapeOpen.Interop` 负责沉淀标准接口骨架、GUID、HRESULT 与 ECape 语义契约
+- `RadishFlow.CapeOpen.Adapter` 负责把 Rust ABI 收口为 .NET 可消费能力，并映射到 CAPE-OPEN 语义
+- `RadishFlow.CapeOpen.UnitOp.Mvp` 负责最小自有 Unit Operation PMC 骨架，不提前扩张到完整 Thermo PMC 或第三方模型加载
+
+对外与对内的自由度边界应明确为：
+
+- 对外接口不乱加非标准语义
+- 对内可以保留 RadishFlow 自己的状态机、配置模型、诊断结构和调用编排
+- 一切内部抽象都必须隐藏在标准 CAPE-OPEN 兼容面之后，而不是反向污染 Rust 核心
+
 ## Rust 与 .NET 的运行时边界
 
 Rust 与 `.NET 10` 之间的正式边界应保持简单稳定：
@@ -85,6 +116,7 @@ Rust 与 `.NET 10` 之间的正式边界应保持简单稳定：
 - 文档
 - 目录结构
 - README 说明
+- 依据官方规格书、errata、IDL、TLB、PIA 对最小接口骨架和异常语义做持续校准
 - 最小 `.NET 10` `LibraryImport` / PInvoke 薄封装
 - 最小 `.NET 10` smoke console，用于验证 `rf-ffi` 调用闭环
 - `RadishFlow.CapeOpen.Interop` 中最小 `ICapeIdentification`、`ICapeUtilities`、`ICapeUnit` 接口骨架
@@ -103,6 +135,7 @@ Rust 与 `.NET 10` 之间的正式边界应保持简单稳定：
 - 端口集合、参数集合、报告接口与 `Collection/Parameter/UnitPort` 语义的完整 CAPE-OPEN 实现
 - `UnitOp.Mvp` 内部对 `rf-ffi` 的真实求解接线
 - PME 互调测试代码
+- 把 COBIA 作为当前主线运行时或因此提前改写既定 COM 兼容路径
 
 ## 对 Rust Core 的约束
 
@@ -116,5 +149,5 @@ Rust 与 `.NET 10` 之间的正式边界应保持简单稳定：
 
 ## 结论
 
-第一阶段真正要做的是“让 `.NET 10` 适配层能调用 Rust Core”，不是“让 Rust 看起来像 COM 组件”。  
+第一阶段真正要做的是“让 `.NET 10` 适配层按官方规范对外兼容 CAPE-OPEN，并稳定调用 Rust Core”，不是“复制示例代码”或“让 Rust 看起来像 COM 组件”。  
 这条边界如果现在守不住，后面 FFI、PMC 和 UI 都会被一起拖复杂。
