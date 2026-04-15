@@ -9,15 +9,18 @@ public sealed class UnitOperationPlaceholderCollection<T> : ICapeIdentification,
 {
     private const string InterfaceName = nameof(ICapeCollection);
     private const string ItemOperation = "Item";
+    private readonly Action<string, string, string?, object?>? _ensureOwnerAccess;
     private readonly IReadOnlyList<T> _items;
 
     public UnitOperationPlaceholderCollection(
         string componentName,
         string componentDescription,
-        IEnumerable<T> items)
+        IEnumerable<T> items,
+        Action<string, string, string?, object?>? ensureOwnerAccess = null)
     {
         ComponentName = componentName;
         ComponentDescription = componentDescription;
+        _ensureOwnerAccess = ensureOwnerAccess;
         _items = items.ToArray();
     }
 
@@ -25,12 +28,28 @@ public sealed class UnitOperationPlaceholderCollection<T> : ICapeIdentification,
 
     public string ComponentDescription { get; set; }
 
-    public int Count => _items.Count;
+    public int Count
+    {
+        get
+        {
+            EnsureOwnerAccess("Count");
+            return _items.Count;
+        }
+    }
 
-    public T this[int index] => _items[index];
+    public T this[int index]
+    {
+        get
+        {
+            EnsureOwnerAccess(ItemOperation, index + 1);
+            return _items[index];
+        }
+    }
 
     object ICapeCollection.Item(object index)
     {
+        EnsureOwnerAccess(ItemOperation, index);
+
         if (index is string name)
         {
             return FindByName(name);
@@ -48,11 +67,13 @@ public sealed class UnitOperationPlaceholderCollection<T> : ICapeIdentification,
 
     int ICapeCollection.Count()
     {
-        return Count;
+        EnsureOwnerAccess("Count");
+        return _items.Count;
     }
 
     public IEnumerator<T> GetEnumerator()
     {
+        EnsureOwnerAccess("GetEnumerator");
         return _items.GetEnumerator();
     }
 
@@ -133,5 +154,10 @@ public sealed class UnitOperationPlaceholderCollection<T> : ICapeIdentification,
             Operation: operation,
             ParameterName: "index",
             Parameter: parameter);
+    }
+
+    private void EnsureOwnerAccess(string operation, object? parameter = null)
+    {
+        _ensureOwnerAccess?.Invoke(InterfaceName, operation, "index", parameter);
     }
 }

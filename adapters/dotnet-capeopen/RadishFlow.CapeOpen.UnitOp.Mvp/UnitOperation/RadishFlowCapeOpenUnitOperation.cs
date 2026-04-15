@@ -36,21 +36,25 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
             "Flowsheet Json",
             "StoredProjectFile JSON used by the MVP unit operation skeleton.",
             isRequired: true,
+            ensureOwnerAccess: EnsurePlaceholderAccess,
             onStateChanged: InvalidateValidation);
         _packageIdParameter = new UnitOperationParameterPlaceholder(
             "Property Package Id",
             "Identifier of the property package selected for the MVP unit operation skeleton.",
             isRequired: true,
+            ensureOwnerAccess: EnsurePlaceholderAccess,
             onStateChanged: InvalidateValidation);
         _manifestPathParameter = new UnitOperationParameterPlaceholder(
             "Property Package Manifest Path",
             "Optional manifest path for a local property package payload.",
             isRequired: false,
+            ensureOwnerAccess: EnsurePlaceholderAccess,
             onStateChanged: InvalidateValidation);
         _payloadPathParameter = new UnitOperationParameterPlaceholder(
             "Property Package Payload Path",
             "Optional payload path for a local property package payload.",
             isRequired: false,
+            ensureOwnerAccess: EnsurePlaceholderAccess,
             onStateChanged: InvalidateValidation);
 
         _feedPort = new UnitOperationPortPlaceholder(
@@ -59,6 +63,7 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
             direction: CapePortDirection.CAPE_INLET,
             portType: CapePortType.CAPE_MATERIAL,
             isRequired: true,
+            ensureOwnerAccess: EnsurePlaceholderAccess,
             onStateChanged: InvalidateValidation);
         _productPort = new UnitOperationPortPlaceholder(
             "Product",
@@ -66,6 +71,7 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
             direction: CapePortDirection.CAPE_OUTLET,
             portType: CapePortType.CAPE_MATERIAL,
             isRequired: true,
+            ensureOwnerAccess: EnsurePlaceholderAccess,
             onStateChanged: InvalidateValidation);
 
         Parameters = new UnitOperationPlaceholderCollection<UnitOperationParameterPlaceholder>(
@@ -76,14 +82,16 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
             _packageIdParameter,
             _manifestPathParameter,
             _payloadPathParameter,
-        ]);
+        ],
+            ensureOwnerAccess: EnsurePlaceholderAccess);
         Ports = new UnitOperationPlaceholderCollection<UnitOperationPortPlaceholder>(
             "Ports",
             "Public CAPE-OPEN port collection for the MVP unit operation.",
         [
             _feedPort,
             _productPort,
-        ]);
+        ],
+            ensureOwnerAccess: EnsurePlaceholderAccess);
 
         ValStatus = CapeValidationStatus.NotValidated;
     }
@@ -199,8 +207,13 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
         }
 
         _initialized = false;
-        _terminated = true;
         _simulationContext = null;
+        foreach (var port in Ports)
+        {
+            port.ReleaseConnectedObject();
+        }
+
+        _terminated = true;
         ClearCalculationArtifacts();
         ValStatus = CapeValidationStatus.NotValidated;
     }
@@ -383,6 +396,35 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
         }
     }
 
+    private void EnsurePlaceholderAccess(
+        string interfaceName,
+        string operation,
+        string? parameterName,
+        object? parameter)
+    {
+        if (_disposed)
+        {
+            throw new CapeBadInvocationOrderException(
+                "This unit instance has already been disposed.",
+                CreateContext(
+                    interfaceName,
+                    operation,
+                    parameterName: parameterName,
+                    parameter: parameter));
+        }
+
+        if (_terminated)
+        {
+            throw new CapeBadInvocationOrderException(
+                "Terminate has already been called for this unit instance.",
+                CreateContext(
+                    interfaceName,
+                    operation,
+                    parameterName: parameterName,
+                    parameter: parameter));
+        }
+    }
+
     private static CapeBadInvocationOrderException CreateBadInvocation(
         string interfaceName,
         string operation,
@@ -398,14 +440,18 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
         string interfaceName,
         string operation,
         string? moreInfo = null,
-        string? requestedOperation = null)
+        string? requestedOperation = null,
+        string? parameterName = null,
+        object? parameter = null)
     {
         return new CapeOpenExceptionContext(
             InterfaceName: interfaceName,
             Scope: UnitScope,
             Operation: operation,
             MoreInfo: moreInfo,
-            RequestedOperation: requestedOperation);
+            RequestedOperation: requestedOperation,
+            ParameterName: parameterName,
+            Parameter: parameter);
     }
 
     private sealed record ValidationResult(bool IsValid, string Message, string? RequestedOperation)

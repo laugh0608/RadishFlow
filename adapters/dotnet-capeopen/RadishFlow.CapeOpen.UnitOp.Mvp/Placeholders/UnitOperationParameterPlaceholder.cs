@@ -7,6 +7,8 @@ namespace RadishFlow.CapeOpen.UnitOp.Mvp.Placeholders;
 
 public sealed class UnitOperationParameterPlaceholder : ICapeIdentification, ICapeParameter, ICapeParameterSpec
 {
+    private const string InterfaceName = nameof(ICapeParameter);
+    private readonly Action<string, string, string?, object?>? _ensureOwnerAccess;
     private readonly Action? _onStateChanged;
     private readonly string? _defaultValue;
     private CapeParamMode _mode;
@@ -18,6 +20,7 @@ public sealed class UnitOperationParameterPlaceholder : ICapeIdentification, ICa
         bool isRequired,
         CapeParamMode mode = CapeParamMode.CAPE_INPUT,
         string? defaultValue = null,
+        Action<string, string, string?, object?>? ensureOwnerAccess = null,
         Action? onStateChanged = null)
     {
         ComponentName = componentName;
@@ -26,6 +29,7 @@ public sealed class UnitOperationParameterPlaceholder : ICapeIdentification, ICa
         _mode = mode;
         _defaultValue = Normalize(defaultValue);
         _value = _defaultValue;
+        _ensureOwnerAccess = ensureOwnerAccess;
         _onStateChanged = onStateChanged;
         ValStatus = CapeValidationStatus.NotValidated;
     }
@@ -40,31 +44,58 @@ public sealed class UnitOperationParameterPlaceholder : ICapeIdentification, ICa
 
     public bool IsConfigured => !string.IsNullOrWhiteSpace(_value);
 
-    public object Specification => this;
+    public object Specification
+    {
+        get
+        {
+            EnsureOwnerAccess(nameof(Specification));
+            return this;
+        }
+    }
 
     public object? value
     {
-        get => _value;
+        get
+        {
+            EnsureOwnerAccess(nameof(value));
+            return _value;
+        }
         set
         {
+            EnsureOwnerAccess(nameof(value), value);
+
             if (value is not null and not string)
             {
                 throw new CapeInvalidArgumentException(
                     $"Parameter `{ComponentName}` only accepts string or null values in the MVP runtime.",
-                    CreateContext("value", value));
+                    CreateContext(nameof(value), value));
             }
 
             SetValueCore((string?)value);
         }
     }
 
-    public CapeValidationStatus ValStatus { get; private set; }
+    public CapeValidationStatus ValStatus
+    {
+        get
+        {
+            EnsureOwnerAccess(nameof(ValStatus));
+            return _valStatus;
+        }
+        private set => _valStatus = value;
+    }
 
     public CapeParamMode Mode
     {
-        get => _mode;
+        get
+        {
+            EnsureOwnerAccess(nameof(Mode));
+            return _mode;
+        }
         set
         {
+            EnsureOwnerAccess(nameof(Mode), value);
+
             if (_mode == value)
             {
                 return;
@@ -75,17 +106,34 @@ public sealed class UnitOperationParameterPlaceholder : ICapeIdentification, ICa
         }
     }
 
-    public CapeParamType Type => CapeParamType.CAPE_OPTION;
+    public CapeParamType Type
+    {
+        get
+        {
+            EnsureOwnerAccess(nameof(Type));
+            return CapeParamType.CAPE_OPTION;
+        }
+    }
 
-    public double[] Dimensionality => Array.Empty<double>();
+    public double[] Dimensionality
+    {
+        get
+        {
+            EnsureOwnerAccess(nameof(Dimensionality));
+            return Array.Empty<double>();
+        }
+    }
 
     public void SetValue(string? value)
     {
+        EnsureOwnerAccess(nameof(SetValue), value);
         SetValueCore(value);
     }
 
     public bool Validate(ref string message)
     {
+        EnsureOwnerAccess(nameof(Validate));
+
         if (IsRequired && !IsConfigured)
         {
             message = $"Required parameter `{ComponentName}` is not configured.";
@@ -102,6 +150,7 @@ public sealed class UnitOperationParameterPlaceholder : ICapeIdentification, ICa
 
     public void Reset()
     {
+        EnsureOwnerAccess(nameof(Reset));
         SetValueCore(_defaultValue);
     }
 
@@ -131,10 +180,17 @@ public sealed class UnitOperationParameterPlaceholder : ICapeIdentification, ICa
     private CapeOpenExceptionContext CreateContext(string operation, object? parameter)
     {
         return new CapeOpenExceptionContext(
-            InterfaceName: nameof(ICapeParameter),
+            InterfaceName: InterfaceName,
             Scope: "RadishFlow.CapeOpen.UnitOp.Mvp.Placeholders",
             Operation: operation,
             ParameterName: ComponentName,
             Parameter: parameter);
     }
+
+    private void EnsureOwnerAccess(string operation, object? parameter = null)
+    {
+        _ensureOwnerAccess?.Invoke(InterfaceName, operation, ComponentName, parameter);
+    }
+
+    private CapeValidationStatus _valStatus;
 }

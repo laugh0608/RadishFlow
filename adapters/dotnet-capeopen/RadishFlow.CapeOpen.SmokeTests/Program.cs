@@ -139,6 +139,14 @@ static void RunUnitOperationSmoke(SmokeOptions options)
     Console.WriteLine("== Unit Flowsheet Snapshot ==");
     Console.WriteLine(unitOperation.LastFlowsheetSnapshotJson);
     Console.WriteLine();
+
+    unitOperation.Terminate();
+    EnsureCondition(!feedPort.IsConnected, "feed port should release its connected object during Terminate().");
+    EnsureCondition(!productPort.IsConnected, "product port should release its connected object during Terminate().");
+    ExpectCapeBadInvOrder(() => _ = parameterCollection.Count(), "parameter collection count after terminate");
+    ExpectCapeBadInvOrder(() => _ = flowsheetParameter.value, "parameter value get after terminate");
+    ExpectCapeBadInvOrder(() => feedPort.Connect(new SmokeConnectedObject("Late Feed")), "port connect after terminate");
+    ExpectCapeBadInvOrder(() => _ = feedPort.connectedObject, "port connectedObject after terminate");
 }
 
 static void EnsureSameReference<T>(T expected, T actual, string scenario)
@@ -148,6 +156,28 @@ static void EnsureSameReference<T>(T expected, T actual, string scenario)
     {
         throw new InvalidOperationException($"Unexpected object instance returned for {scenario}.");
     }
+}
+
+static void EnsureCondition(bool condition, string message)
+{
+    if (!condition)
+    {
+        throw new InvalidOperationException(message);
+    }
+}
+
+static void ExpectCapeBadInvOrder(Action action, string scenario)
+{
+    try
+    {
+        action();
+    }
+    catch (CapeBadInvocationOrderException)
+    {
+        return;
+    }
+
+    throw new InvalidOperationException($"Expected CapeBadInvocationOrderException for {scenario}.");
 }
 
 file sealed class SmokeOptions
