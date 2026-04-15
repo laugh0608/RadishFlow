@@ -12,6 +12,28 @@ public sealed record UnitOperationCalculationReport(
     string Headline,
     IReadOnlyList<string> DetailLines)
 {
+    public IReadOnlyList<string> GetDisplayLines()
+    {
+        if (DetailLines.Count == 0)
+        {
+            return [Headline];
+        }
+
+        var lines = new string[DetailLines.Count + 1];
+        lines[0] = Headline;
+        for (var index = 0; index < DetailLines.Count; index++)
+        {
+            lines[index + 1] = DetailLines[index];
+        }
+
+        return lines;
+    }
+
+    public string GetDisplayText()
+    {
+        return string.Join(Environment.NewLine, GetDisplayLines());
+    }
+
     internal static UnitOperationCalculationReport Empty()
     {
         return new UnitOperationCalculationReport(

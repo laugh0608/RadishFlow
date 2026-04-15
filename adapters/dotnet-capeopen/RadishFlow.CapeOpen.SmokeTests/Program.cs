@@ -92,9 +92,17 @@ static void RunUnitOperationSmoke(SmokeOptions options)
     var projectJson = File.ReadAllText(options.ProjectPath);
     unitOperation.Initialize();
     var initialReport = unitOperation.GetCalculationReport();
+    var initialReportLines = unitOperation.GetCalculationReportLines();
+    var initialReportText = unitOperation.GetCalculationReportText();
     EnsureCondition(
         initialReport.State == UnitOperationCalculationReportState.None,
         "unit operation should expose an empty calculation report before Calculate().");
+    EnsureCondition(
+        initialReportLines.Count == 1 && string.Equals(initialReportLines[0], initialReport.Headline, StringComparison.Ordinal),
+        "empty calculation report lines should collapse to the headline only.");
+    EnsureCondition(
+        string.Equals(initialReportText, initialReport.Headline, StringComparison.Ordinal),
+        "empty calculation report text should match the headline.");
 
     var parameters = unitOperation.Parameters;
     var ports = unitOperation.Ports;
@@ -161,6 +169,7 @@ static void RunUnitOperationSmoke(SmokeOptions options)
     var validationFailure = unitOperation.LastCalculationFailure
         ?? throw new InvalidOperationException("unit operation should preserve the last validation failure after Calculate().");
     var validationFailureReport = unitOperation.GetCalculationReport();
+    var validationFailureText = unitOperation.GetCalculationReportText();
     EnsureCondition(unitOperation.LastCalculationResult is null, "failed Calculate() should not expose a successful calculation result.");
     EnsureCondition(
         string.Equals(validationFailure.ErrorName, validationFailureError.ErrorName, StringComparison.Ordinal),
@@ -177,6 +186,10 @@ static void RunUnitOperationSmoke(SmokeOptions options)
     EnsureCondition(
         validationFailureReport.DetailLines.Any(line => line.Contains("requestedOperation=SelectPropertyPackage", StringComparison.Ordinal)),
         "validation failure report should expose the requested follow-up operation.");
+    EnsureCondition(
+        validationFailureText.Contains(validationFailureReport.Headline, StringComparison.Ordinal) &&
+        validationFailureText.Contains("requestedOperation=SelectPropertyPackage", StringComparison.Ordinal),
+        "validation failure report text should include both the headline and requested operation.");
 
     packageIdParameter.value = "missing-package-for-smoke";
     var nativeFailureError = ExpectCapeInvalidArgument(
@@ -185,6 +198,7 @@ static void RunUnitOperationSmoke(SmokeOptions options)
     var nativeFailure = unitOperation.LastCalculationFailure
         ?? throw new InvalidOperationException("unit operation should preserve the last native failure after Calculate().");
     var nativeFailureReport = unitOperation.GetCalculationReport();
+    var nativeFailureLines = unitOperation.GetCalculationReportLines();
     EnsureCondition(
         string.Equals(nativeFailure.ErrorName, nativeFailureError.ErrorName, StringComparison.Ordinal),
         "native failure contract should preserve the CAPE-OPEN semantic error name.");
@@ -203,6 +217,10 @@ static void RunUnitOperationSmoke(SmokeOptions options)
     EnsureCondition(
         nativeFailureReport.DetailLines.Any(line => line.Contains("nativeStatus=MissingEntity", StringComparison.Ordinal)),
         "native failure report should expose the mapped native status.");
+    EnsureCondition(
+        nativeFailureLines.Count >= 2 &&
+        string.Equals(nativeFailureLines[0], nativeFailureReport.Headline, StringComparison.Ordinal),
+        "native failure report lines should start with the headline before detail lines.");
 
     packageIdParameter.value = options.PackageId;
 
@@ -229,6 +247,8 @@ static void RunUnitOperationSmoke(SmokeOptions options)
     var calculationResult = unitOperation.LastCalculationResult
         ?? throw new InvalidOperationException("Unit operation should expose the last calculation result after Calculate().");
     var successReport = unitOperation.GetCalculationReport();
+    var successReportLines = unitOperation.GetCalculationReportLines();
+    var successReportText = unitOperation.GetCalculationReportText();
     EnsureCondition(unitOperation.LastCalculationFailure is null, "successful Calculate() should clear the last calculation failure.");
     EnsureCondition(
         string.Equals(calculationResult.Status, "converged", StringComparison.Ordinal),
@@ -248,6 +268,14 @@ static void RunUnitOperationSmoke(SmokeOptions options)
     EnsureCondition(
         string.Equals(successReport.Headline, calculationResult.Summary.PrimaryMessage, StringComparison.Ordinal),
         "success report headline should mirror the calculation primary message.");
+    EnsureCondition(
+        successReportLines.Count == successReport.DetailLines.Count + 1 &&
+        string.Equals(successReportLines[0], successReport.Headline, StringComparison.Ordinal),
+        "success report lines should expose headline plus all detail lines.");
+    EnsureCondition(
+        successReportText.Contains(successReport.Headline, StringComparison.Ordinal) &&
+        successReportText.Contains("diagnosticCount=", StringComparison.Ordinal),
+        "success report text should include both the headline and detail lines.");
 
     Console.WriteLine("== Unit Calculation Result ==");
     Console.WriteLine($"Status: {calculationResult.Status}");
@@ -278,6 +306,9 @@ static void RunUnitOperationSmoke(SmokeOptions options)
     EnsureCondition(
         unitOperation.GetCalculationReport().State == UnitOperationCalculationReportState.None,
         "terminate should reset the unified calculation report to empty state.");
+    EnsureCondition(
+        string.Equals(unitOperation.GetCalculationReportText(), "No calculation result is available.", StringComparison.Ordinal),
+        "terminate should reset the calculation report text to the empty headline.");
     EnsureCondition(!feedPort.IsConnected, "feed port should release its connected object during Terminate().");
     EnsureCondition(!productPort.IsConnected, "product port should release its connected object during Terminate().");
     ExpectCapeBadInvOrder(() => _ = parameterCollection.Count(), "parameter collection count after terminate");

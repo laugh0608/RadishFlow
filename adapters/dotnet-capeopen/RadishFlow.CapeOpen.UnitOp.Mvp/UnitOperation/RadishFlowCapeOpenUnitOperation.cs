@@ -152,6 +152,18 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
         return UnitOperationCalculationReport.Empty();
     }
 
+    public IReadOnlyList<string> GetCalculationReportLines()
+    {
+        ThrowIfDisposed();
+        return GetCalculationReport().GetDisplayLines();
+    }
+
+    public string GetCalculationReportText()
+    {
+        ThrowIfDisposed();
+        return GetCalculationReport().GetDisplayText();
+    }
+
     public void ConfigureNativeLibraryDirectory(string directoryPath)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(directoryPath);
