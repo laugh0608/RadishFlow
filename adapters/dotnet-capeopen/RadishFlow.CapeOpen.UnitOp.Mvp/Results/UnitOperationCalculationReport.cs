@@ -12,6 +12,26 @@ public sealed record UnitOperationCalculationReport(
     string Headline,
     IReadOnlyList<string> DetailLines)
 {
+    public string? GetDetailValue(string detailKey)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(detailKey);
+
+        foreach (var detailLine in DetailLines)
+        {
+            if (!TrySplitDetailLine(detailLine, out var key, out var value))
+            {
+                continue;
+            }
+
+            if (string.Equals(key, detailKey, StringComparison.OrdinalIgnoreCase))
+            {
+                return value;
+            }
+        }
+
+        return null;
+    }
+
     public UnitOperationCalculationReportState GetDisplayState()
     {
         return State;
@@ -63,6 +83,24 @@ public sealed record UnitOperationCalculationReport(
     public string GetDisplayText()
     {
         return string.Join(Environment.NewLine, GetDisplayLines());
+    }
+
+    private static bool TrySplitDetailLine(
+        string detailLine,
+        out string key,
+        out string value)
+    {
+        var separatorIndex = detailLine.IndexOf('=');
+        if (separatorIndex <= 0 || separatorIndex >= detailLine.Length - 1)
+        {
+            key = string.Empty;
+            value = string.Empty;
+            return false;
+        }
+
+        key = detailLine[..separatorIndex];
+        value = detailLine[(separatorIndex + 1)..];
+        return true;
     }
 
     internal static UnitOperationCalculationReport Empty()
