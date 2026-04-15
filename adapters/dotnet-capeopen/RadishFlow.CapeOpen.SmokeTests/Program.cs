@@ -1,5 +1,7 @@
 using RadishFlow.CapeOpen.Adapter;
 using RadishFlow.CapeOpen.Interop.Errors;
+using RadishFlow.CapeOpen.Interop.Common;
+using RadishFlow.CapeOpen.UnitOp.Mvp.Placeholders;
 using RadishFlow.CapeOpen.UnitOp.Mvp.UnitOperation;
 
 var options = SmokeOptions.Parse(args);
@@ -88,16 +90,37 @@ static void RunUnitOperationSmoke(SmokeOptions options)
 
     var projectJson = File.ReadAllText(options.ProjectPath);
     unitOperation.Initialize();
-    unitOperation.LoadFlowsheetJson(projectJson);
+
+    var parameters = unitOperation.Parameters;
+    var ports = unitOperation.Ports;
+    var parameterCollection = (ICapeCollection)parameters;
+    var portCollection = (ICapeCollection)ports;
+    Console.WriteLine("== Unit Collections ==");
+    Console.WriteLine($"Parameters.Count(): {parameterCollection.Count()}");
+    Console.WriteLine($"Ports.Count(): {portCollection.Count()}");
+    Console.WriteLine();
+
+    var flowsheetParameter = (UnitOperationParameterPlaceholder)parameterCollection.Item("Flowsheet Json");
+    var packageIdParameter = (UnitOperationParameterPlaceholder)parameterCollection.Item("Property Package Id");
+    var manifestPathParameter = (UnitOperationParameterPlaceholder)parameterCollection.Item("Property Package Manifest Path");
+    var payloadPathParameter = (UnitOperationParameterPlaceholder)parameterCollection.Item(4);
+    var feedPort = (UnitOperationPortPlaceholder)portCollection.Item("Feed");
+    var productPort = (UnitOperationPortPlaceholder)portCollection.Item(2);
+
+    EnsureSameReference(parameters[0], flowsheetParameter, "parameter collection name lookup");
+    EnsureSameReference(ports[0], feedPort, "port collection name lookup");
+
+    flowsheetParameter.value = projectJson;
 
     if (options.LoadPackageFiles)
     {
-        unitOperation.LoadPropertyPackageFiles(options.ManifestPath!, options.PayloadPath!);
+        manifestPathParameter.value = options.ManifestPath;
+        payloadPathParameter.value = options.PayloadPath;
     }
 
-    unitOperation.SelectPropertyPackage(options.PackageId);
-    unitOperation.SetPortConnected("Feed", isConnected: true);
-    unitOperation.SetPortConnected("Product", isConnected: true);
+    packageIdParameter.value = options.PackageId;
+    feedPort.Connect(new SmokeConnectedObject("Smoke Feed"));
+    productPort.Connect(new SmokeConnectedObject("Smoke Product"));
 
     var validationMessage = string.Empty;
     var isValid = unitOperation.Validate(ref validationMessage);
@@ -116,6 +139,15 @@ static void RunUnitOperationSmoke(SmokeOptions options)
     Console.WriteLine("== Unit Flowsheet Snapshot ==");
     Console.WriteLine(unitOperation.LastFlowsheetSnapshotJson);
     Console.WriteLine();
+}
+
+static void EnsureSameReference<T>(T expected, T actual, string scenario)
+    where T : class
+{
+    if (!ReferenceEquals(expected, actual))
+    {
+        throw new InvalidOperationException($"Unexpected object instance returned for {scenario}.");
+    }
 }
 
 file sealed class SmokeOptions
@@ -276,4 +308,17 @@ file enum SmokeMode
 {
     Adapter,
     UnitOperation,
+}
+
+file sealed class SmokeConnectedObject : ICapeIdentification
+{
+    public SmokeConnectedObject(string componentName)
+    {
+        ComponentName = componentName;
+        ComponentDescription = "Smoke test placeholder connected object.";
+    }
+
+    public string ComponentName { get; set; }
+
+    public string ComponentDescription { get; set; }
 }

@@ -1,6 +1,7 @@
 using RadishFlow.CapeOpen.Adapter;
 using RadishFlow.CapeOpen.Interop.Common;
 using RadishFlow.CapeOpen.Interop.Errors;
+using RadishFlow.CapeOpen.Interop.Parameters;
 using RadishFlow.CapeOpen.Interop.Unit;
 using RadishFlow.CapeOpen.UnitOp.Mvp.Placeholders;
 
@@ -34,34 +35,42 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
         _flowsheetParameter = new UnitOperationParameterPlaceholder(
             "Flowsheet Json",
             "StoredProjectFile JSON used by the MVP unit operation skeleton.",
-            isRequired: true);
+            isRequired: true,
+            onStateChanged: InvalidateValidation);
         _packageIdParameter = new UnitOperationParameterPlaceholder(
             "Property Package Id",
             "Identifier of the property package selected for the MVP unit operation skeleton.",
-            isRequired: true);
+            isRequired: true,
+            onStateChanged: InvalidateValidation);
         _manifestPathParameter = new UnitOperationParameterPlaceholder(
             "Property Package Manifest Path",
             "Optional manifest path for a local property package payload.",
-            isRequired: false);
+            isRequired: false,
+            onStateChanged: InvalidateValidation);
         _payloadPathParameter = new UnitOperationParameterPlaceholder(
             "Property Package Payload Path",
             "Optional payload path for a local property package payload.",
-            isRequired: false);
+            isRequired: false,
+            onStateChanged: InvalidateValidation);
 
         _feedPort = new UnitOperationPortPlaceholder(
             "Feed",
             "Required inlet material placeholder port.",
-            direction: "inlet",
-            kind: "material",
-            isRequired: true);
+            direction: CapePortDirection.CAPE_INLET,
+            portType: CapePortType.CAPE_MATERIAL,
+            isRequired: true,
+            onStateChanged: InvalidateValidation);
         _productPort = new UnitOperationPortPlaceholder(
             "Product",
             "Required outlet material placeholder port.",
-            direction: "outlet",
-            kind: "material",
-            isRequired: true);
+            direction: CapePortDirection.CAPE_OUTLET,
+            portType: CapePortType.CAPE_MATERIAL,
+            isRequired: true,
+            onStateChanged: InvalidateValidation);
 
         Parameters = new UnitOperationPlaceholderCollection<UnitOperationParameterPlaceholder>(
+            "Parameters",
+            "Public CAPE-OPEN parameter collection for the MVP unit operation.",
         [
             _flowsheetParameter,
             _packageIdParameter,
@@ -69,6 +78,8 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
             _payloadPathParameter,
         ]);
         Ports = new UnitOperationPlaceholderCollection<UnitOperationPortPlaceholder>(
+            "Ports",
+            "Public CAPE-OPEN port collection for the MVP unit operation.",
         [
             _feedPort,
             _productPort,
@@ -120,7 +131,6 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
         ThrowIfTerminated(nameof(LoadFlowsheetJson), UtilitiesInterfaceName);
 
         _flowsheetParameter.SetValue(flowsheetJson);
-        InvalidateValidation();
     }
 
     public void LoadPropertyPackageFiles(string manifestPath, string payloadPath)
@@ -132,7 +142,6 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
 
         _manifestPathParameter.SetValue(manifestPath);
         _payloadPathParameter.SetValue(payloadPath);
-        InvalidateValidation();
     }
 
     public void SelectPropertyPackage(string packageId)
@@ -142,7 +151,6 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
         ThrowIfTerminated(nameof(SelectPropertyPackage), UtilitiesInterfaceName);
 
         _packageIdParameter.SetValue(packageId);
-        InvalidateValidation();
     }
 
     public void SetPortConnected(string portName, bool isConnected)
@@ -154,8 +162,13 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
         var port = FindPort(portName) ?? throw new CapeInvalidArgumentException(
             $"Unknown placeholder port `{portName}`.",
             CreateContext(UnitInterfaceName, ConnectPortOperation, moreInfo: portName));
-        port.SetConnected(isConnected);
-        InvalidateValidation();
+        if (isConnected)
+        {
+            port.ConnectPlaceholder();
+            return;
+        }
+
+        port.Disconnect();
     }
 
     public void Initialize()
@@ -293,6 +306,15 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
             return ValidationResult.Invalid(
                 $"Optional parameters `{_manifestPathParameter.ComponentName}` and `{_payloadPathParameter.ComponentName}` must be configured together.",
                 nameof(LoadPropertyPackageFiles));
+        }
+
+        foreach (var parameter in Parameters)
+        {
+            var parameterMessage = string.Empty;
+            if (!parameter.Validate(ref parameterMessage))
+            {
+                return ValidationResult.Invalid(parameterMessage);
+            }
         }
 
         foreach (var port in Ports.Where(static port => port.IsRequired))

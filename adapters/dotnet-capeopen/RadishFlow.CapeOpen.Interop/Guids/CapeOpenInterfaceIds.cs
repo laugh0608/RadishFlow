@@ -6,10 +6,37 @@ public static class CapeOpenInterfaceIds
     public const string ICapeIdentification = "678C0990-7D66-11D2-A67D-00105A42887F";
 
     // Source: adapters/reference/CapeOpenMixerExample_CSharp/CapeOpen/COGuids1.cs
+    public const string ICapeCollection = "678C099A-0093-11D2-A67D-00105A42887F";
+
+    // Source: adapters/reference/CapeOpenMixerExample_CSharp/CapeOpen/COGuids1.cs
     public const string ICapeUnit = "678C0998-0100-11D2-A67D-00105A42887F";
 
     // Source: adapters/reference/CapeOpenMixerExample_CSharp/CapeOpen/COGuids1.cs
+    public const string ICapeUnitPort = "678C0999-0093-11D2-A67D-00105A42887F";
+
+    // Source: adapters/reference/CapeOpenMixerExample_CSharp/CapeOpen/COGuids1.cs
     public const string ICapeUtilities = "678C0A9B-0100-11D2-A67D-00105A42887F";
+
+    // Source: adapters/reference/CapeOpenMixerExample_CSharp/CapeOpen/COGuids1.cs
+    public const string ICapeParameterSpec = "678C099C-0093-11D2-A67D-00105A42887F";
+
+    // Source: adapters/reference/CapeOpenMixerExample_CSharp/CapeOpen/COGuids1.cs
+    public const string ICapeRealParameterSpec = "678C099D-0093-11D2-A67D-00105A42887F";
+
+    // Source: adapters/reference/CapeOpenMixerExample_CSharp/CapeOpen/COGuids1.cs
+    public const string ICapeParameter = "678C09A0-0093-11D2-A67D-00105A42887F";
+
+    // Source: adapters/reference/CapeOpenMixerExample_CSharp/CapeOpen/COGuids1.cs
+    public const string CapeParamType = "678C0B02-7D66-11D2-A67D-00105A42887F";
+
+    // Source: adapters/reference/CapeOpenMixerExample_CSharp/CapeOpen/COGuids1.cs
+    public const string CapeParamMode = "678C0B03-7D66-11D2-A67D-00105A42887F";
+
+    // Source: adapters/reference/CapeOpenMixerExample_CSharp/CapeOpen/COGuids1.cs
+    public const string CapePortDirection = "678C0B05-7D66-11D2-A67D-00105A42887F";
+
+    // Source: adapters/reference/CapeOpenMixerExample_CSharp/CapeOpen/COGuids1.cs
+    public const string CapePortType = "678C0B06-7D66-11D2-A67D-00105A42887F";
 
     // Source: adapters/reference/CapeOpenMixerExample_CSharp/CapeOpen/COGuids1.cs
     public const string ECapeRoot = "678C0B10-7D66-11D2-A67D-00105A42887F";
