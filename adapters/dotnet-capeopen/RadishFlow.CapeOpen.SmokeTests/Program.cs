@@ -92,12 +92,20 @@ static void RunUnitOperationSmoke(SmokeOptions options)
     var projectJson = File.ReadAllText(options.ProjectPath);
     unitOperation.Initialize();
     var initialReport = unitOperation.GetCalculationReport();
+    var initialReportState = unitOperation.GetCalculationReportState();
+    var initialReportHeadline = unitOperation.GetCalculationReportHeadline();
     var initialReportLineCount = unitOperation.GetCalculationReportLineCount();
     var initialReportLines = unitOperation.GetCalculationReportLines();
     var initialReportText = unitOperation.GetCalculationReportText();
     EnsureCondition(
         initialReport.State == UnitOperationCalculationReportState.None,
         "unit operation should expose an empty calculation report before Calculate().");
+    EnsureCondition(
+        initialReportState == initialReport.State,
+        "empty calculation report scalar state should match the DTO state.");
+    EnsureCondition(
+        string.Equals(initialReportHeadline, initialReport.Headline, StringComparison.Ordinal),
+        "empty calculation report scalar headline should match the DTO headline.");
     EnsureCondition(
         initialReportLineCount == 1,
         "empty calculation report should expose exactly one display line.");
@@ -176,6 +184,8 @@ static void RunUnitOperationSmoke(SmokeOptions options)
     var validationFailure = unitOperation.LastCalculationFailure
         ?? throw new InvalidOperationException("unit operation should preserve the last validation failure after Calculate().");
     var validationFailureReport = unitOperation.GetCalculationReport();
+    var validationFailureState = unitOperation.GetCalculationReportState();
+    var validationFailureHeadline = unitOperation.GetCalculationReportHeadline();
     var validationFailureLineCount = unitOperation.GetCalculationReportLineCount();
     var validationFailureText = unitOperation.GetCalculationReportText();
     EnsureCondition(unitOperation.LastCalculationResult is null, "failed Calculate() should not expose a successful calculation result.");
@@ -191,6 +201,10 @@ static void RunUnitOperationSmoke(SmokeOptions options)
     EnsureCondition(
         validationFailureReport.State == UnitOperationCalculationReportState.Failure,
         "validation failure should switch the unified calculation report into failure state.");
+    EnsureCondition(
+        validationFailureState == validationFailureReport.State &&
+        string.Equals(validationFailureHeadline, validationFailureReport.Headline, StringComparison.Ordinal),
+        "validation failure scalar metadata should match the DTO report metadata.");
     EnsureCondition(
         validationFailureReport.DetailLines.Any(line => line.Contains("requestedOperation=SelectPropertyPackage", StringComparison.Ordinal)),
         "validation failure report should expose the requested follow-up operation.");
@@ -210,6 +224,8 @@ static void RunUnitOperationSmoke(SmokeOptions options)
     var nativeFailure = unitOperation.LastCalculationFailure
         ?? throw new InvalidOperationException("unit operation should preserve the last native failure after Calculate().");
     var nativeFailureReport = unitOperation.GetCalculationReport();
+    var nativeFailureState = unitOperation.GetCalculationReportState();
+    var nativeFailureHeadline = unitOperation.GetCalculationReportHeadline();
     var nativeFailureLineCount = unitOperation.GetCalculationReportLineCount();
     var nativeFailureLines = unitOperation.GetCalculationReportLines();
     EnsureCondition(
@@ -227,6 +243,10 @@ static void RunUnitOperationSmoke(SmokeOptions options)
     EnsureCondition(
         nativeFailureReport.State == UnitOperationCalculationReportState.Failure,
         "native failure should keep the unified calculation report in failure state.");
+    EnsureCondition(
+        nativeFailureState == nativeFailureReport.State &&
+        string.Equals(nativeFailureHeadline, nativeFailureReport.Headline, StringComparison.Ordinal),
+        "native failure scalar metadata should match the DTO report metadata.");
     EnsureCondition(
         nativeFailureReport.DetailLines.Any(line => line.Contains("nativeStatus=MissingEntity", StringComparison.Ordinal)),
         "native failure report should expose the mapped native status.");
@@ -266,6 +286,8 @@ static void RunUnitOperationSmoke(SmokeOptions options)
     var calculationResult = unitOperation.LastCalculationResult
         ?? throw new InvalidOperationException("Unit operation should expose the last calculation result after Calculate().");
     var successReport = unitOperation.GetCalculationReport();
+    var successReportState = unitOperation.GetCalculationReportState();
+    var successReportHeadline = unitOperation.GetCalculationReportHeadline();
     var successReportLineCount = unitOperation.GetCalculationReportLineCount();
     var successReportLines = unitOperation.GetCalculationReportLines();
     var successReportText = unitOperation.GetCalculationReportText();
@@ -285,6 +307,10 @@ static void RunUnitOperationSmoke(SmokeOptions options)
     EnsureCondition(
         successReport.State == UnitOperationCalculationReportState.Success,
         "successful Calculate() should switch the unified calculation report into success state.");
+    EnsureCondition(
+        successReportState == successReport.State &&
+        string.Equals(successReportHeadline, successReport.Headline, StringComparison.Ordinal),
+        "success scalar metadata should match the DTO report metadata.");
     EnsureCondition(
         string.Equals(successReport.Headline, calculationResult.Summary.PrimaryMessage, StringComparison.Ordinal),
         "success report headline should mirror the calculation primary message.");
@@ -330,6 +356,10 @@ static void RunUnitOperationSmoke(SmokeOptions options)
     EnsureCondition(
         unitOperation.GetCalculationReport().State == UnitOperationCalculationReportState.None,
         "terminate should reset the unified calculation report to empty state.");
+    EnsureCondition(
+        unitOperation.GetCalculationReportState() == UnitOperationCalculationReportState.None &&
+        string.Equals(unitOperation.GetCalculationReportHeadline(), "No calculation result is available.", StringComparison.Ordinal),
+        "terminate should reset the scalar report metadata to the empty state and headline.");
     EnsureCondition(
         unitOperation.GetCalculationReportLineCount() == 1 &&
         string.Equals(unitOperation.GetCalculationReportLine(0), "No calculation result is available.", StringComparison.Ordinal),

@@ -12,6 +12,16 @@ public sealed record UnitOperationCalculationReport(
     string Headline,
     IReadOnlyList<string> DetailLines)
 {
+    public UnitOperationCalculationReportState GetDisplayState()
+    {
+        return State;
+    }
+
+    public string GetDisplayHeadline()
+    {
+        return Headline;
+    }
+
     public int GetDisplayLineCount()
     {
         return DetailLines.Count + 1;
