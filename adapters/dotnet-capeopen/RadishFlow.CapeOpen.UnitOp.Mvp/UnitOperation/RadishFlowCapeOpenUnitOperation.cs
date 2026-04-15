@@ -25,6 +25,7 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
 
     private object? _simulationContext;
     private UnitOperationCalculationResult? _lastCalculationResult;
+    private UnitOperationCalculationFailure? _lastCalculationFailure;
     private bool _initialized;
     private bool _terminated;
     private bool _disposed;
@@ -131,6 +132,25 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
     public CapeValidationStatus ValStatus { get; private set; }
 
     public UnitOperationCalculationResult? LastCalculationResult => _lastCalculationResult;
+
+    public UnitOperationCalculationFailure? LastCalculationFailure => _lastCalculationFailure;
+
+    public UnitOperationCalculationReport GetCalculationReport()
+    {
+        ThrowIfDisposed();
+
+        if (_lastCalculationResult is not null)
+        {
+            return UnitOperationCalculationReport.FromSuccess(_lastCalculationResult);
+        }
+
+        if (_lastCalculationFailure is not null)
+        {
+            return UnitOperationCalculationReport.FromFailure(_lastCalculationFailure);
+        }
+
+        return UnitOperationCalculationReport.Empty();
+    }
 
     public void ConfigureNativeLibraryDirectory(string directoryPath)
     {
@@ -259,27 +279,36 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
                 nameof(Initialize));
         }
 
-        var result = EvaluateValidation();
-        if (!result.IsValid)
-        {
-            throw CreateExceptionForValidationFailure(nameof(Calculate), result);
-        }
-
-        ValStatus = CapeValidationStatus.Valid;
         ClearCalculationArtifacts();
 
-        using var engine = new RadishFlowNativeEngine();
-        engine.LoadFlowsheetJson(_flowsheetParameter.Value!);
-
-        if (_manifestPathParameter.IsConfigured)
+        try
         {
-            engine.LoadPropertyPackageFiles(
-                _manifestPathParameter.Value!,
-                _payloadPathParameter.Value!);
-        }
+            var result = EvaluateValidation();
+            if (!result.IsValid)
+            {
+                throw CreateExceptionForValidationFailure(nameof(Calculate), result);
+            }
 
-        engine.SolveFlowsheet(_packageIdParameter.Value!);
-        _lastCalculationResult = ParseCalculationResult(engine.GetFlowsheetSnapshotJson());
+            ValStatus = CapeValidationStatus.Valid;
+
+            using var engine = new RadishFlowNativeEngine();
+            engine.LoadFlowsheetJson(_flowsheetParameter.Value!);
+
+            if (_manifestPathParameter.IsConfigured)
+            {
+                engine.LoadPropertyPackageFiles(
+                    _manifestPathParameter.Value!,
+                    _payloadPathParameter.Value!);
+            }
+
+            engine.SolveFlowsheet(_packageIdParameter.Value!);
+            _lastCalculationResult = ParseCalculationResult(engine.GetFlowsheetSnapshotJson());
+        }
+        catch (CapeOpenException error)
+        {
+            _lastCalculationFailure = UnitOperationCalculationFailure.FromException(error);
+            throw;
+        }
     }
 
     public void Dispose()
@@ -442,6 +471,7 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
     private void ClearCalculationArtifacts()
     {
         _lastCalculationResult = null;
+        _lastCalculationFailure = null;
     }
 
     private void ThrowIfDisposed()

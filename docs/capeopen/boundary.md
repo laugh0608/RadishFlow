@@ -97,7 +97,8 @@ Rust 与 `.NET 10` 之间的正式边界应保持简单稳定：
 - engine 当前内置一份与仓库示例 flowsheet 对齐的 demo property package，用于打通 Rust Core 调用链
 - engine 当前同时允许从本地 `manifest/payload` 文件注册真实 package；相同 `package_id` 会覆盖当前 registry 中已有条目
 - 当前还未引入 auth cache、本地缓存目录、COM 注册流程或 CAPE-OPEN 接口编排
-- 当前 `rf-ffi` 仍已导出整份 `SolveSnapshot` JSON 与单股 stream snapshot JSON，但 `UnitOp.Mvp` 对外结果面已先收口为最小 `status / summary / diagnostics` 契约，不再直接把整份 snapshot JSON 作为 PMC 公开结果面
+- 当前 `rf-ffi` 仍已导出整份 `SolveSnapshot` JSON 与单股 stream snapshot JSON，但 `UnitOp.Mvp` 对外结果面已先收口为两条最小契约：成功时是 `status / summary / diagnostics`，失败时是 `error / requestedOperation / nativeStatus / summary`；不再直接把整份 snapshot JSON 或 native error JSON 作为 PMC 公开结果面
+- 当前 `UnitOp.Mvp` 之上又已补出统一只读查询面 `GetCalculationReport()`，把“尚无结果 / 最近成功 / 最近失败”收口到单一 report DTO，供后续最小 host / PME 只读消费面复用
 
 当前不允许在边界上直接传递以下内容：
 
@@ -126,7 +127,8 @@ Rust 与 `.NET 10` 之间的正式边界应保持简单稳定：
 - `ECapeRoot` / `ECapeUser` / `ECapeBadInvOrder` / `ECapeBadCOParameter` 等最小异常契约、IID 与 DispId 校准
 - `RadishFlow.CapeOpen.UnitOp.Mvp` 中不含注册的最小 PMC 类骨架、状态机与内部配置入口
 - `UnitOp.Mvp` 中用于 `Ports` / `Parameters` 的最小占位对象集合，以及基于对象状态的 `Validate()` 前置检查
-- `UnitOp.Mvp` 中经由 `RadishFlow.CapeOpen.Adapter` 调用 `rf-ffi` 的最小 `Calculate()` 求解接线，以及基于 native snapshot JSON 材料化出的最小 `status / summary / diagnostics` 结果契约
+- `UnitOp.Mvp` 中经由 `RadishFlow.CapeOpen.Adapter` 调用 `rf-ffi` 的最小 `Calculate()` 求解接线，以及基于 native snapshot JSON / error JSON 材料化出的最小成功结果契约与失败摘要契约
+- `UnitOp.Mvp` 中基于上述结果对象继续收口出的最小只读 result/report access，不要求外部宿主自己拼装成功结果与失败摘要
 
 当前暂不推进的内容：
 

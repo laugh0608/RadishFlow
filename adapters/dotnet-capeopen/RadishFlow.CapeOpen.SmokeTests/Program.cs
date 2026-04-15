@@ -2,6 +2,7 @@ using RadishFlow.CapeOpen.Adapter;
 using RadishFlow.CapeOpen.Interop.Errors;
 using RadishFlow.CapeOpen.Interop.Common;
 using RadishFlow.CapeOpen.UnitOp.Mvp.Placeholders;
+using RadishFlow.CapeOpen.UnitOp.Mvp.Results;
 using RadishFlow.CapeOpen.UnitOp.Mvp.UnitOperation;
 
 var options = SmokeOptions.Parse(args);
@@ -90,6 +91,10 @@ static void RunUnitOperationSmoke(SmokeOptions options)
 
     var projectJson = File.ReadAllText(options.ProjectPath);
     unitOperation.Initialize();
+    var initialReport = unitOperation.GetCalculationReport();
+    EnsureCondition(
+        initialReport.State == UnitOperationCalculationReportState.None,
+        "unit operation should expose an empty calculation report before Calculate().");
 
     var parameters = unitOperation.Parameters;
     var ports = unitOperation.Ports;
@@ -147,9 +152,59 @@ static void RunUnitOperationSmoke(SmokeOptions options)
         payloadPathParameter.value = options.PayloadPath;
     }
 
-    packageIdParameter.value = options.PackageId;
     feedPort.Connect(new SmokeConnectedObject("Smoke Feed"));
     productPort.Connect(new SmokeConnectedObject("Smoke Product"));
+
+    var validationFailureError = ExpectCapeBadInvOrder(
+        () => unitOperation.Calculate(),
+        "calculate without property package id");
+    var validationFailure = unitOperation.LastCalculationFailure
+        ?? throw new InvalidOperationException("unit operation should preserve the last validation failure after Calculate().");
+    var validationFailureReport = unitOperation.GetCalculationReport();
+    EnsureCondition(unitOperation.LastCalculationResult is null, "failed Calculate() should not expose a successful calculation result.");
+    EnsureCondition(
+        string.Equals(validationFailure.ErrorName, validationFailureError.ErrorName, StringComparison.Ordinal),
+        "validation failure contract should preserve the CAPE-OPEN semantic error name.");
+    EnsureCondition(
+        string.Equals(validationFailure.RequestedOperation, nameof(RadishFlowCapeOpenUnitOperation.SelectPropertyPackage), StringComparison.Ordinal),
+        "validation failure contract should preserve the requested follow-up operation.");
+    EnsureCondition(
+        string.IsNullOrWhiteSpace(validationFailure.NativeStatus),
+        "validation failure should not expose a native status.");
+    EnsureCondition(
+        validationFailureReport.State == UnitOperationCalculationReportState.Failure,
+        "validation failure should switch the unified calculation report into failure state.");
+    EnsureCondition(
+        validationFailureReport.DetailLines.Any(line => line.Contains("requestedOperation=SelectPropertyPackage", StringComparison.Ordinal)),
+        "validation failure report should expose the requested follow-up operation.");
+
+    packageIdParameter.value = "missing-package-for-smoke";
+    var nativeFailureError = ExpectCapeInvalidArgument(
+        () => unitOperation.Calculate(),
+        "calculate with missing property package id");
+    var nativeFailure = unitOperation.LastCalculationFailure
+        ?? throw new InvalidOperationException("unit operation should preserve the last native failure after Calculate().");
+    var nativeFailureReport = unitOperation.GetCalculationReport();
+    EnsureCondition(
+        string.Equals(nativeFailure.ErrorName, nativeFailureError.ErrorName, StringComparison.Ordinal),
+        "native failure contract should preserve the CAPE-OPEN semantic error name.");
+    EnsureCondition(
+        string.Equals(nativeFailure.NativeStatus, "MissingEntity", StringComparison.Ordinal),
+        "native failure contract should preserve the mapped native status.");
+    EnsureCondition(
+        nativeFailure.Summary.DiagnosticCode is null,
+        "missing package smoke failure should not invent a diagnostic code.");
+    EnsureCondition(
+        nativeFailure.Summary.RelatedUnitIds.Count == 0,
+        "missing package smoke failure should not invent related unit ids.");
+    EnsureCondition(
+        nativeFailureReport.State == UnitOperationCalculationReportState.Failure,
+        "native failure should keep the unified calculation report in failure state.");
+    EnsureCondition(
+        nativeFailureReport.DetailLines.Any(line => line.Contains("nativeStatus=MissingEntity", StringComparison.Ordinal)),
+        "native failure report should expose the mapped native status.");
+
+    packageIdParameter.value = options.PackageId;
 
     var validationMessage = string.Empty;
     var isValid = unitOperation.Validate(ref validationMessage);
@@ -173,6 +228,8 @@ static void RunUnitOperationSmoke(SmokeOptions options)
 
     var calculationResult = unitOperation.LastCalculationResult
         ?? throw new InvalidOperationException("Unit operation should expose the last calculation result after Calculate().");
+    var successReport = unitOperation.GetCalculationReport();
+    EnsureCondition(unitOperation.LastCalculationFailure is null, "successful Calculate() should clear the last calculation failure.");
     EnsureCondition(
         string.Equals(calculationResult.Status, "converged", StringComparison.Ordinal),
         "unit operation calculation result should expose converged status for the smoke sample.");
@@ -185,6 +242,12 @@ static void RunUnitOperationSmoke(SmokeOptions options)
     EnsureCondition(
         calculationResult.Diagnostics.Count > 0,
         "calculation result should expose at least one diagnostic.");
+    EnsureCondition(
+        successReport.State == UnitOperationCalculationReportState.Success,
+        "successful Calculate() should switch the unified calculation report into success state.");
+    EnsureCondition(
+        string.Equals(successReport.Headline, calculationResult.Summary.PrimaryMessage, StringComparison.Ordinal),
+        "success report headline should mirror the calculation primary message.");
 
     Console.WriteLine("== Unit Calculation Result ==");
     Console.WriteLine($"Status: {calculationResult.Status}");
@@ -200,9 +263,21 @@ static void RunUnitOperationSmoke(SmokeOptions options)
             $"- [{diagnostic.Severity}] {diagnostic.Code}: {diagnostic.Message}");
     }
     Console.WriteLine();
+    Console.WriteLine("== Unit Calculation Report ==");
+    Console.WriteLine($"State: {successReport.State}");
+    Console.WriteLine($"Headline: {successReport.Headline}");
+    foreach (var detail in successReport.DetailLines)
+    {
+        Console.WriteLine($"- {detail}");
+    }
+    Console.WriteLine();
 
     unitOperation.Terminate();
     EnsureCondition(unitOperation.LastCalculationResult is null, "terminate should clear the last calculation result.");
+    EnsureCondition(unitOperation.LastCalculationFailure is null, "terminate should clear the last calculation failure.");
+    EnsureCondition(
+        unitOperation.GetCalculationReport().State == UnitOperationCalculationReportState.None,
+        "terminate should reset the unified calculation report to empty state.");
     EnsureCondition(!feedPort.IsConnected, "feed port should release its connected object during Terminate().");
     EnsureCondition(!productPort.IsConnected, "product port should release its connected object during Terminate().");
     ExpectCapeBadInvOrder(() => _ = parameterCollection.Count(), "parameter collection count after terminate");
@@ -228,29 +303,29 @@ static void EnsureCondition(bool condition, string message)
     }
 }
 
-static void ExpectCapeBadInvOrder(Action action, string scenario)
+static CapeBadInvocationOrderException ExpectCapeBadInvOrder(Action action, string scenario)
 {
     try
     {
         action();
     }
-    catch (CapeBadInvocationOrderException)
+    catch (CapeBadInvocationOrderException error)
     {
-        return;
+        return error;
     }
 
     throw new InvalidOperationException($"Expected CapeBadInvocationOrderException for {scenario}.");
 }
 
-static void ExpectCapeInvalidArgument(Action action, string scenario)
+static CapeInvalidArgumentException ExpectCapeInvalidArgument(Action action, string scenario)
 {
     try
     {
         action();
     }
-    catch (CapeInvalidArgumentException)
+    catch (CapeInvalidArgumentException error)
     {
-        return;
+        return error;
     }
 
     throw new InvalidOperationException($"Expected CapeInvalidArgumentException for {scenario}.");

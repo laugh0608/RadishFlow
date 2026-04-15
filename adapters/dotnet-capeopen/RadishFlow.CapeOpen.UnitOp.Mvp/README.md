@@ -14,7 +14,7 @@
 - `Initialize / Validate / Calculate / Terminate / Edit` 的第一版状态骨架
 - 内部 `LoadFlowsheetJson(...)`、`LoadPropertyPackageFiles(...)`、`SelectPropertyPackage(...)` 配置入口
 - `SetPortConnected(...)` 这一类最小端口状态入口
-- `ConfigureNativeLibraryDirectory(...)` 与 `LastCalculationResult`
+- `ConfigureNativeLibraryDirectory(...)`、`LastCalculationResult`、`LastCalculationFailure` 与 `GetCalculationReport()`
 - `Calculate()` 对未满足前置条件的最小 ECape 语义抛错，以及经由 `rf-ffi` 的最小真实求解接线
 - `ICapeCollection` / `ICapeParameter` / `ICapeUnitPort` 的第一版最小对象运行时
 - placeholder 对象对 unit owner 生命周期的最小访问守卫，以及 `Terminate()` 时的端口连接释放
@@ -34,5 +34,6 @@
 - 当前参数对象内部已补上最小元数据收口：区分 `StructuredJsonText` / `Identifier` / `FilePath` 三类值语义，保留对外 `ICapeParameterSpec.Type = CAPE_OPTION`，并显式记录默认值、是否允许空值与 manifest/payload 这类成对出现约束
 - 当前端口对象已把连接契约收口到最小 `ICapeIdentification` 级别，并要求连接对象提供非空 `ComponentName`；当前仍不提前把运行时扩大到真正 `ICapeThermoMaterialObject`
 - 当前 placeholder 对象已开始收口到宿主生命周期边界：`Terminate()` 后不再允许继续通过集合/参数/端口对象做 CAPE-OPEN 风格访问，并会释放端口上的已连接对象引用
-- `Calculate()` 当前已能在最小前置条件满足后调用 `rf-ffi` 完成求解，并把对外结果面收口为最小 `status / summary / diagnostics` 计算结果契约；完整 flowsheet snapshot JSON 仍只作为内部桥接输入，不再直接作为 PMC 公开结果面
+- `Calculate()` 当前已能在最小前置条件满足后调用 `rf-ffi` 完成求解，并把对外结果面拆成“成功结果”和“失败摘要”两条最小契约：成功时导出 `LastCalculationResult(status / summary / diagnostics)`，失败时导出 `LastCalculationFailure(error / requestedOperation / nativeStatus / summary)`；完整 flowsheet snapshot JSON 与 native error JSON 仍只作为内部桥接输入，不再直接作为 PMC 公开结果面
+- 当前又已补出 `GetCalculationReport()` 这一条统一只读查询面，把“尚无结果 / 最近成功 / 最近失败”收口到单一 report DTO；外部宿主若只需要最小可显示结果，不必自己分支拼装 `LastCalculationResult` 和 `LastCalculationFailure`
 - Rust/.NET 边界仍保持为句柄 + UTF-8 + JSON + 状态码，没有在这里提前引入 COM 注册或更宽的跨边界对象传递
