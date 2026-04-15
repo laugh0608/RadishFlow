@@ -4,6 +4,8 @@ using RadishFlow.CapeOpen.Interop.Errors;
 using RadishFlow.CapeOpen.Interop.Parameters;
 using RadishFlow.CapeOpen.Interop.Unit;
 using RadishFlow.CapeOpen.UnitOp.Mvp.Placeholders;
+using RadishFlow.CapeOpen.UnitOp.Mvp.Results;
+using System.Text.Json;
 
 namespace RadishFlow.CapeOpen.UnitOp.Mvp.UnitOperation;
 
@@ -22,7 +24,7 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
     private readonly UnitOperationPortPlaceholder _productPort;
 
     private object? _simulationContext;
-    private string? _lastFlowsheetSnapshotJson;
+    private UnitOperationCalculationResult? _lastCalculationResult;
     private bool _initialized;
     private bool _terminated;
     private bool _disposed;
@@ -36,24 +38,30 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
             "Flowsheet Json",
             "StoredProjectFile JSON used by the MVP unit operation skeleton.",
             isRequired: true,
+            valueKind: UnitOperationParameterValueKind.StructuredJsonText,
             ensureOwnerAccess: EnsurePlaceholderAccess,
             onStateChanged: InvalidateValidation);
         _packageIdParameter = new UnitOperationParameterPlaceholder(
             "Property Package Id",
             "Identifier of the property package selected for the MVP unit operation skeleton.",
             isRequired: true,
+            valueKind: UnitOperationParameterValueKind.Identifier,
             ensureOwnerAccess: EnsurePlaceholderAccess,
             onStateChanged: InvalidateValidation);
         _manifestPathParameter = new UnitOperationParameterPlaceholder(
             "Property Package Manifest Path",
             "Optional manifest path for a local property package payload.",
             isRequired: false,
+            valueKind: UnitOperationParameterValueKind.FilePath,
+            requiredCompanionParameterName: "Property Package Payload Path",
             ensureOwnerAccess: EnsurePlaceholderAccess,
             onStateChanged: InvalidateValidation);
         _payloadPathParameter = new UnitOperationParameterPlaceholder(
             "Property Package Payload Path",
             "Optional payload path for a local property package payload.",
             isRequired: false,
+            valueKind: UnitOperationParameterValueKind.FilePath,
+            requiredCompanionParameterName: "Property Package Manifest Path",
             ensureOwnerAccess: EnsurePlaceholderAccess,
             onStateChanged: InvalidateValidation);
 
@@ -122,7 +130,7 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
 
     public CapeValidationStatus ValStatus { get; private set; }
 
-    public string? LastFlowsheetSnapshotJson => _lastFlowsheetSnapshotJson;
+    public UnitOperationCalculationResult? LastCalculationResult => _lastCalculationResult;
 
     public void ConfigureNativeLibraryDirectory(string directoryPath)
     {
@@ -271,7 +279,7 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
         }
 
         engine.SolveFlowsheet(_packageIdParameter.Value!);
-        _lastFlowsheetSnapshotJson = engine.GetFlowsheetSnapshotJson();
+        _lastCalculationResult = ParseCalculationResult(engine.GetFlowsheetSnapshotJson());
     }
 
     public void Dispose()
@@ -314,11 +322,10 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
                 nameof(SelectPropertyPackage));
         }
 
-        if (_manifestPathParameter.IsConfigured != _payloadPathParameter.IsConfigured)
+        var pairValidation = EvaluateParameterCompanionValidation();
+        if (pairValidation is not null)
         {
-            return ValidationResult.Invalid(
-                $"Optional parameters `{_manifestPathParameter.ComponentName}` and `{_payloadPathParameter.ComponentName}` must be configured together.",
-                nameof(LoadPropertyPackageFiles));
+            return pairValidation;
         }
 
         foreach (var parameter in Parameters)
@@ -365,6 +372,63 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
             string.Equals(port.ComponentName, portName, StringComparison.OrdinalIgnoreCase));
     }
 
+    private ValidationResult? EvaluateParameterCompanionValidation()
+    {
+        var evaluatedPairs = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var parameter in Parameters)
+        {
+            if (parameter.RequiredCompanionParameterName is not { Length: > 0 } companionName)
+            {
+                continue;
+            }
+
+            var companion = Parameters.FirstOrDefault(candidate =>
+                string.Equals(candidate.ComponentName, companionName, StringComparison.OrdinalIgnoreCase));
+            if (companion is null)
+            {
+                return ValidationResult.Invalid(
+                    $"Parameter `{parameter.ComponentName}` requires companion parameter `{companionName}`, but the companion is not registered.");
+            }
+
+            var pairKey = string.Compare(
+                parameter.ComponentName,
+                companion.ComponentName,
+                StringComparison.OrdinalIgnoreCase) <= 0
+                ? $"{parameter.ComponentName}|{companion.ComponentName}"
+                : $"{companion.ComponentName}|{parameter.ComponentName}";
+            if (!evaluatedPairs.Add(pairKey))
+            {
+                continue;
+            }
+
+            if (parameter.IsConfigured != companion.IsConfigured)
+            {
+                return ValidationResult.Invalid(
+                    $"Optional parameters `{parameter.ComponentName}` and `{companion.ComponentName}` must be configured together.",
+                    nameof(LoadPropertyPackageFiles));
+            }
+        }
+
+        return null;
+    }
+
+    private UnitOperationCalculationResult ParseCalculationResult(string snapshotJson)
+    {
+        try
+        {
+            return UnitOperationCalculationResult.Parse(snapshotJson);
+        }
+        catch (JsonException error)
+        {
+            throw CreateCalculationResultContractException(error);
+        }
+        catch (InvalidDataException error)
+        {
+            throw CreateCalculationResultContractException(error);
+        }
+    }
+
     private void InvalidateValidation()
     {
         ClearCalculationArtifacts();
@@ -377,7 +441,7 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
 
     private void ClearCalculationArtifacts()
     {
-        _lastFlowsheetSnapshotJson = null;
+        _lastCalculationResult = null;
     }
 
     private void ThrowIfDisposed()
@@ -452,6 +516,16 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
             RequestedOperation: requestedOperation,
             ParameterName: parameterName,
             Parameter: parameter);
+    }
+
+    private static CapeUnknownException CreateCalculationResultContractException(Exception error)
+    {
+        return new CapeUnknownException(
+            $"Native solve snapshot could not be materialized into the MVP unit operation calculation result contract: {error.Message}",
+            CreateContext(
+                UnitInterfaceName,
+                nameof(Calculate),
+                moreInfo: "Failed to parse status/summary/diagnostics from native solve snapshot JSON."));
     }
 
     private sealed record ValidationResult(bool IsValid, string Message, string? RequestedOperation)

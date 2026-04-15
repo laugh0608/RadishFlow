@@ -2,6 +2,7 @@ using RadishFlow.CapeOpen.Interop.Common;
 using RadishFlow.CapeOpen.Interop.Errors;
 using RadishFlow.CapeOpen.Interop.Parameters;
 using RadishFlow.CapeOpen.Interop.Unit;
+using System.Text.Json;
 
 namespace RadishFlow.CapeOpen.UnitOp.Mvp.Placeholders;
 
@@ -11,6 +12,8 @@ public sealed class UnitOperationParameterPlaceholder : ICapeIdentification, ICa
     private readonly Action<string, string, string?, object?>? _ensureOwnerAccess;
     private readonly Action? _onStateChanged;
     private readonly string? _defaultValue;
+    private readonly UnitOperationParameterValueKind _valueKind;
+    private readonly string? _requiredCompanionParameterName;
     private CapeParamMode _mode;
     private string? _value;
 
@@ -18,6 +21,9 @@ public sealed class UnitOperationParameterPlaceholder : ICapeIdentification, ICa
         string componentName,
         string componentDescription,
         bool isRequired,
+        UnitOperationParameterValueKind valueKind,
+        bool allowsEmptyValue = false,
+        string? requiredCompanionParameterName = null,
         CapeParamMode mode = CapeParamMode.CAPE_INPUT,
         string? defaultValue = null,
         Action<string, string, string?, object?>? ensureOwnerAccess = null,
@@ -26,8 +32,11 @@ public sealed class UnitOperationParameterPlaceholder : ICapeIdentification, ICa
         ComponentName = componentName;
         ComponentDescription = componentDescription;
         IsRequired = isRequired;
+        AllowsEmptyValue = allowsEmptyValue;
+        _valueKind = valueKind;
+        _requiredCompanionParameterName = Normalize(requiredCompanionParameterName, allowsEmptyValue: false);
         _mode = mode;
-        _defaultValue = Normalize(defaultValue);
+        _defaultValue = Normalize(defaultValue, allowsEmptyValue);
         _value = _defaultValue;
         _ensureOwnerAccess = ensureOwnerAccess;
         _onStateChanged = onStateChanged;
@@ -40,9 +49,46 @@ public sealed class UnitOperationParameterPlaceholder : ICapeIdentification, ICa
 
     public bool IsRequired { get; }
 
+    public UnitOperationParameterValueKind ValueKind
+    {
+        get
+        {
+            EnsureOwnerAccess(nameof(ValueKind));
+            return _valueKind;
+        }
+    }
+
+    public bool AllowsEmptyValue
+    {
+        get
+        {
+            EnsureOwnerAccess(nameof(AllowsEmptyValue));
+            return _allowsEmptyValue;
+        }
+        private init => _allowsEmptyValue = value;
+    }
+
+    public string? RequiredCompanionParameterName
+    {
+        get
+        {
+            EnsureOwnerAccess(nameof(RequiredCompanionParameterName));
+            return _requiredCompanionParameterName;
+        }
+    }
+
+    public string? DefaultValue
+    {
+        get
+        {
+            EnsureOwnerAccess(nameof(DefaultValue));
+            return _defaultValue;
+        }
+    }
+
     public string? Value => _value;
 
-    public bool IsConfigured => !string.IsNullOrWhiteSpace(_value);
+    public bool IsConfigured => AllowsEmptyValue ? _value is not null : !string.IsNullOrWhiteSpace(_value);
 
     public object Specification
     {
@@ -141,8 +187,15 @@ public sealed class UnitOperationParameterPlaceholder : ICapeIdentification, ICa
             return false;
         }
 
+        if (IsConfigured && !TryValidateConfiguredValue(out var validationError))
+        {
+            message = validationError;
+            ValStatus = CapeValidationStatus.Invalid;
+            return false;
+        }
+
         message = IsConfigured
-            ? $"Parameter `{ComponentName}` is configured."
+            ? $"Parameter `{ComponentName}` is configured as {DescribeValueKind(ValueKind)}."
             : $"Optional parameter `{ComponentName}` is not configured.";
         ValStatus = CapeValidationStatus.Valid;
         return true;
@@ -156,7 +209,7 @@ public sealed class UnitOperationParameterPlaceholder : ICapeIdentification, ICa
 
     private void SetValueCore(string? value)
     {
-        var normalized = Normalize(value);
+        var normalized = Normalize(value, AllowsEmptyValue);
         if (string.Equals(_value, normalized, StringComparison.Ordinal))
         {
             return;
@@ -172,9 +225,93 @@ public sealed class UnitOperationParameterPlaceholder : ICapeIdentification, ICa
         _onStateChanged?.Invoke();
     }
 
-    private static string? Normalize(string? value)
+    private bool TryValidateConfiguredValue(out string message)
     {
-        return string.IsNullOrWhiteSpace(value) ? null : value;
+        if (_value is null)
+        {
+            message = $"Parameter `{ComponentName}` is not configured.";
+            return false;
+        }
+
+        switch (ValueKind)
+        {
+            case UnitOperationParameterValueKind.StructuredJsonText:
+                try
+                {
+                    using var _ = JsonDocument.Parse(_value);
+                }
+                catch (JsonException)
+                {
+                    message = $"Parameter `{ComponentName}` must contain valid JSON text.";
+                    return false;
+                }
+
+                break;
+            case UnitOperationParameterValueKind.Identifier:
+                if (!IsTrimmed(_value))
+                {
+                    message = $"Identifier parameter `{ComponentName}` must not contain leading or trailing whitespace.";
+                    return false;
+                }
+
+                if (ContainsControlCharacters(_value))
+                {
+                    message = $"Identifier parameter `{ComponentName}` must not contain control characters.";
+                    return false;
+                }
+
+                break;
+            case UnitOperationParameterValueKind.FilePath:
+                if (!IsTrimmed(_value))
+                {
+                    message = $"File path parameter `{ComponentName}` must not contain leading or trailing whitespace.";
+                    return false;
+                }
+
+                if (ContainsControlCharacters(_value))
+                {
+                    message = $"File path parameter `{ComponentName}` must not contain control characters.";
+                    return false;
+                }
+
+                break;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(ValueKind), ValueKind, "Unsupported parameter value kind.");
+        }
+
+        message = $"Parameter `{ComponentName}` is configured.";
+        return true;
+    }
+
+    private static string DescribeValueKind(UnitOperationParameterValueKind valueKind)
+    {
+        return valueKind switch
+        {
+            UnitOperationParameterValueKind.StructuredJsonText => "structured JSON text",
+            UnitOperationParameterValueKind.Identifier => "identifier text",
+            UnitOperationParameterValueKind.FilePath => "file path text",
+            _ => throw new ArgumentOutOfRangeException(nameof(valueKind), valueKind, "Unsupported parameter value kind."),
+        };
+    }
+
+    private static string? Normalize(string? value, bool allowsEmptyValue)
+    {
+        if (value is null)
+        {
+            return null;
+        }
+
+        return !allowsEmptyValue && string.IsNullOrWhiteSpace(value) ? null : value;
+    }
+
+    private static bool IsTrimmed(string value)
+    {
+        return string.Equals(value, value.Trim(), StringComparison.Ordinal);
+    }
+
+    private static bool ContainsControlCharacters(string value)
+    {
+        return value.Any(char.IsControl);
     }
 
     private CapeOpenExceptionContext CreateContext(string operation, object? parameter)
@@ -193,4 +330,5 @@ public sealed class UnitOperationParameterPlaceholder : ICapeIdentification, ICa
     }
 
     private CapeValidationStatus _valStatus;
+    private bool _allowsEmptyValue;
 }

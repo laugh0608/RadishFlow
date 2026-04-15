@@ -6,7 +6,8 @@
 - 可加载 flowsheet json
 - 可列出 property package registry
 - 可触发 solve
-- 可读取 flowsheet / stream snapshot json
+- direct adapter 模式可读取 flowsheet / stream snapshot json
+- `UnitOp.Mvp` 模式可校验最小 `status / summary / diagnostics` 计算结果契约
 
 默认行为：
 

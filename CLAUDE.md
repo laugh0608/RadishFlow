@@ -168,6 +168,8 @@ cargo test -p rf-thermo
 - 每做完一个可分割子步骤，进行最小验证；默认基线是 `cargo check`
 - 仓库治理或 CI 改动优先执行 `pwsh ./scripts/check-repo.ps1`
 - 优先修正根因，而不是无止境地包裹 fallback 逻辑
+- 如果重要构建、测试或 smoke 在沙盒环境中失败，且失败现象明显带有环境隔离特征，应申请提权到真实环境复验，不要把沙盒异常直接当作代码失败
+- 对当前仓库的 `.NET 10` CAPE-OPEN 解决方案、`dotnet build`、`dotnet run --project ... --no-build` smoke 与 `rf-ffi` native 装载路径，若沙盒结果可疑，应在获得授权后用真实环境完成最终验证
 
 ### 实现约定
 
@@ -250,6 +252,7 @@ chore(PR): establish branch and pr conventions
 - 可能修改本机环境的命令（COM 注册、证书安装、写注册表）
 - 依赖网络或可能引入依赖变更的命令（`cargo add`、`cargo update`、`dotnet add package`）
 - 打包、发布、安装类命令
+- 如果关键构建、测试或 smoke 在沙盒里出现疑似环境性失败，可先告知用户并申请提权到真实环境执行同一验证命令
 
 ### 当前默认不做
 

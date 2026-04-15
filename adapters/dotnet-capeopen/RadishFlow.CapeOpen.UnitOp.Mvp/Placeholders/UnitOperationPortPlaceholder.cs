@@ -74,10 +74,11 @@ public sealed class UnitOperationPortPlaceholder : ICapeIdentification, ICapeUni
         {
             throw new CapeInvalidArgumentException(
                 $"Port `{ComponentName}` cannot connect to a null object.",
-                CreateContext(nameof(Connect)));
+                CreateContext(nameof(Connect), objectToConnect));
         }
 
-        _connectedObject = objectToConnect;
+        var connectedIdentification = ValidateConnectedObject(objectToConnect);
+        _connectedObject = connectedIdentification;
         _onStateChanged?.Invoke();
     }
 
@@ -106,13 +107,33 @@ public sealed class UnitOperationPortPlaceholder : ICapeIdentification, ICapeUni
         _connectedObject = null;
     }
 
-    private CapeOpenExceptionContext CreateContext(string operation)
+    private ICapeIdentification ValidateConnectedObject(object objectToConnect)
+    {
+        if (objectToConnect is not ICapeIdentification identifiedObject)
+        {
+            throw new CapeInvalidArgumentException(
+                $"Port `{ComponentName}` only accepts connected objects that implement ICapeIdentification in the MVP runtime.",
+                CreateContext(nameof(Connect), objectToConnect));
+        }
+
+        if (string.IsNullOrWhiteSpace(identifiedObject.ComponentName))
+        {
+            throw new CapeInvalidArgumentException(
+                $"Port `{ComponentName}` requires connected objects to expose a non-empty ComponentName.",
+                CreateContext(nameof(Connect), objectToConnect));
+        }
+
+        return identifiedObject;
+    }
+
+    private CapeOpenExceptionContext CreateContext(string operation, object? parameter = null)
     {
         return new CapeOpenExceptionContext(
             InterfaceName: InterfaceName,
             Scope: "RadishFlow.CapeOpen.UnitOp.Mvp.Placeholders",
             Operation: operation,
-            ParameterName: ComponentName);
+            ParameterName: ComponentName,
+            Parameter: parameter);
     }
 
     private void EnsureOwnerAccess(string operation, object? parameter = null)

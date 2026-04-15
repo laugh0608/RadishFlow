@@ -1,6 +1,6 @@
 # RadishFlow 架构草案
 
-更新时间：2026-04-14
+更新时间：2026-04-15
 
 ## 文档目的
 
@@ -570,7 +570,7 @@ Rust 与 .NET 的桥接层。
 
 - 当前已建立最小 PMC 类、`Initialize/Validate/Calculate/Terminate/Edit` 状态机与内部配置入口
 - 当前已把 `Ports` / `Parameters` 推进为最小占位对象集合，并让 `Validate()` 先基于对象状态做必填参数与必连端口检查
-- 当前仍未进入 COM 注册、真实 native 求解接线或完整 PME 生命周期
+- 当前仍未进入 COM 注册或完整 PME 生命周期；不过最小 native 求解接线已打通，且 `Calculate()` 对外结果面当前已收口为稳定的 `status / summary / diagnostics` 最小计算结果契约，而不是继续直接暴露完整 snapshot JSON
 
 ### `RadishFlow.CapeOpen.Registration`
 
@@ -590,7 +590,7 @@ Rust 与 .NET 的桥接层。
 当前对齐：
 
 - 当前可配置 native library 目录、加载示例 flowsheet 与本地 `manifest/payload` package
-- 当前可列出 package registry，并导出 solve 后的 flowsheet / stream snapshot JSON
+- 当前可列出 package registry，并覆盖 direct adapter 的 flowsheet / stream snapshot JSON 导出，以及 `UnitOp.Mvp` 的最小 `status / summary / diagnostics` 结果契约验证
 - 当前暂不承担 PME/COM 注册路径的冒烟验证
 
 ## `bindings/c`

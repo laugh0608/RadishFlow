@@ -109,6 +109,35 @@ static void RunUnitOperationSmoke(SmokeOptions options)
 
     EnsureSameReference(parameters[0], flowsheetParameter, "parameter collection name lookup");
     EnsureSameReference(ports[0], feedPort, "port collection name lookup");
+    EnsureCondition(flowsheetParameter.ValueKind == UnitOperationParameterValueKind.StructuredJsonText, "flowsheet parameter should expose structured JSON metadata.");
+    EnsureCondition(packageIdParameter.ValueKind == UnitOperationParameterValueKind.Identifier, "package parameter should expose identifier metadata.");
+    EnsureCondition(manifestPathParameter.ValueKind == UnitOperationParameterValueKind.FilePath, "manifest parameter should expose file path metadata.");
+    EnsureCondition(!flowsheetParameter.AllowsEmptyValue, "flowsheet parameter should not allow empty text.");
+    EnsureCondition(
+        string.Equals(
+            manifestPathParameter.RequiredCompanionParameterName,
+            payloadPathParameter.ComponentName,
+            StringComparison.Ordinal),
+        "manifest parameter should declare payload companion metadata.");
+    EnsureCondition(
+        string.Equals(
+            payloadPathParameter.RequiredCompanionParameterName,
+            manifestPathParameter.ComponentName,
+            StringComparison.Ordinal),
+        "payload parameter should declare manifest companion metadata.");
+
+    var invalidJsonMessage = string.Empty;
+    flowsheetParameter.value = "{ invalid json";
+    EnsureCondition(
+        !flowsheetParameter.Validate(ref invalidJsonMessage),
+        "flowsheet parameter should reject invalid JSON text.");
+    EnsureCondition(
+        invalidJsonMessage.Contains("valid JSON text", StringComparison.Ordinal),
+        "invalid JSON validation should mention JSON text.");
+    ExpectCapeInvalidArgument(() => feedPort.Connect(new object()), "port connect with plain object");
+    ExpectCapeInvalidArgument(
+        () => feedPort.Connect(new InvalidSmokeConnectedObject("   ")),
+        "port connect with blank ComponentName");
 
     flowsheetParameter.value = projectJson;
 
@@ -128,6 +157,12 @@ static void RunUnitOperationSmoke(SmokeOptions options)
     Console.WriteLine($"Valid: {isValid}");
     Console.WriteLine($"Message: {validationMessage}");
     Console.WriteLine();
+    Console.WriteLine("== Parameter Metadata ==");
+    Console.WriteLine($"{flowsheetParameter.ComponentName}: kind={flowsheetParameter.ValueKind}, default={(flowsheetParameter.DefaultValue ?? "<null>")}, allowEmpty={flowsheetParameter.AllowsEmptyValue}, companion={(flowsheetParameter.RequiredCompanionParameterName ?? "<none>")}");
+    Console.WriteLine($"{packageIdParameter.ComponentName}: kind={packageIdParameter.ValueKind}, default={(packageIdParameter.DefaultValue ?? "<null>")}, allowEmpty={packageIdParameter.AllowsEmptyValue}, companion={(packageIdParameter.RequiredCompanionParameterName ?? "<none>")}");
+    Console.WriteLine($"{manifestPathParameter.ComponentName}: kind={manifestPathParameter.ValueKind}, default={(manifestPathParameter.DefaultValue ?? "<null>")}, allowEmpty={manifestPathParameter.AllowsEmptyValue}, companion={(manifestPathParameter.RequiredCompanionParameterName ?? "<none>")}");
+    Console.WriteLine($"{payloadPathParameter.ComponentName}: kind={payloadPathParameter.ValueKind}, default={(payloadPathParameter.DefaultValue ?? "<null>")}, allowEmpty={payloadPathParameter.AllowsEmptyValue}, companion={(payloadPathParameter.RequiredCompanionParameterName ?? "<none>")}");
+    Console.WriteLine();
 
     if (!isValid)
     {
@@ -136,11 +171,38 @@ static void RunUnitOperationSmoke(SmokeOptions options)
 
     unitOperation.Calculate();
 
-    Console.WriteLine("== Unit Flowsheet Snapshot ==");
-    Console.WriteLine(unitOperation.LastFlowsheetSnapshotJson);
+    var calculationResult = unitOperation.LastCalculationResult
+        ?? throw new InvalidOperationException("Unit operation should expose the last calculation result after Calculate().");
+    EnsureCondition(
+        string.Equals(calculationResult.Status, "converged", StringComparison.Ordinal),
+        "unit operation calculation result should expose converged status for the smoke sample.");
+    EnsureCondition(
+        calculationResult.Summary.DiagnosticCount == calculationResult.Diagnostics.Count,
+        "calculation summary diagnostic count should match the exported diagnostics.");
+    EnsureCondition(
+        !string.IsNullOrWhiteSpace(calculationResult.Summary.PrimaryMessage),
+        "calculation summary should expose a primary message.");
+    EnsureCondition(
+        calculationResult.Diagnostics.Count > 0,
+        "calculation result should expose at least one diagnostic.");
+
+    Console.WriteLine("== Unit Calculation Result ==");
+    Console.WriteLine($"Status: {calculationResult.Status}");
+    Console.WriteLine($"Summary.HighestSeverity: {calculationResult.Summary.HighestSeverity}");
+    Console.WriteLine($"Summary.PrimaryMessage: {calculationResult.Summary.PrimaryMessage}");
+    Console.WriteLine($"Summary.DiagnosticCount: {calculationResult.Summary.DiagnosticCount}");
+    Console.WriteLine($"Summary.RelatedUnitIds: {string.Join(", ", calculationResult.Summary.RelatedUnitIds)}");
+    Console.WriteLine($"Summary.RelatedStreamIds: {string.Join(", ", calculationResult.Summary.RelatedStreamIds)}");
+    Console.WriteLine("Diagnostics:");
+    foreach (var diagnostic in calculationResult.Diagnostics)
+    {
+        Console.WriteLine(
+            $"- [{diagnostic.Severity}] {diagnostic.Code}: {diagnostic.Message}");
+    }
     Console.WriteLine();
 
     unitOperation.Terminate();
+    EnsureCondition(unitOperation.LastCalculationResult is null, "terminate should clear the last calculation result.");
     EnsureCondition(!feedPort.IsConnected, "feed port should release its connected object during Terminate().");
     EnsureCondition(!productPort.IsConnected, "product port should release its connected object during Terminate().");
     ExpectCapeBadInvOrder(() => _ = parameterCollection.Count(), "parameter collection count after terminate");
@@ -178,6 +240,20 @@ static void ExpectCapeBadInvOrder(Action action, string scenario)
     }
 
     throw new InvalidOperationException($"Expected CapeBadInvocationOrderException for {scenario}.");
+}
+
+static void ExpectCapeInvalidArgument(Action action, string scenario)
+{
+    try
+    {
+        action();
+    }
+    catch (CapeInvalidArgumentException)
+    {
+        return;
+    }
+
+    throw new InvalidOperationException($"Expected CapeInvalidArgumentException for {scenario}.");
 }
 
 file sealed class SmokeOptions
@@ -346,6 +422,19 @@ file sealed class SmokeConnectedObject : ICapeIdentification
     {
         ComponentName = componentName;
         ComponentDescription = "Smoke test placeholder connected object.";
+    }
+
+    public string ComponentName { get; set; }
+
+    public string ComponentDescription { get; set; }
+}
+
+file sealed class InvalidSmokeConnectedObject : ICapeIdentification
+{
+    public InvalidSmokeConnectedObject(string componentName)
+    {
+        ComponentName = componentName;
+        ComponentDescription = "Smoke test invalid placeholder connected object.";
     }
 
     public string ComponentName { get; set; }
