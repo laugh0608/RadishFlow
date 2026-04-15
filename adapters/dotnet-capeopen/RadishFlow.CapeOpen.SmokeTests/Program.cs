@@ -95,7 +95,8 @@ static void RunUnitOperationSmoke(SmokeOptions options)
     var initialReportState = unitOperation.GetCalculationReportState();
     var initialReportHeadline = unitOperation.GetCalculationReportHeadline();
     var initialReportDetailKeyCount = unitOperation.GetCalculationReportDetailKeyCount();
-    var initialReportStatusDetail = unitOperation.GetCalculationReportDetailValue("status");
+    var initialReportDetailKeys = ReadDetailKeys(unitOperation);
+    var initialReportStatusDetail = unitOperation.GetCalculationReportDetailValue(UnitOperationCalculationReportDetailCatalog.Status);
     var initialReportLineCount = unitOperation.GetCalculationReportLineCount();
     var initialReportLines = unitOperation.GetCalculationReportLines();
     var initialReportText = unitOperation.GetCalculationReportText();
@@ -111,6 +112,9 @@ static void RunUnitOperationSmoke(SmokeOptions options)
     EnsureCondition(
         initialReportDetailKeyCount == 0,
         "empty calculation report should not expose detail keys.");
+    EnsureCondition(
+        initialReportDetailKeys.Count == 0,
+        "empty calculation report should enumerate zero detail keys.");
     EnsureCondition(
         initialReportStatusDetail is null,
         "empty calculation report should not expose status detail values.");
@@ -195,8 +199,9 @@ static void RunUnitOperationSmoke(SmokeOptions options)
     var validationFailureState = unitOperation.GetCalculationReportState();
     var validationFailureHeadline = unitOperation.GetCalculationReportHeadline();
     var validationFailureDetailKeyCount = unitOperation.GetCalculationReportDetailKeyCount();
-    var validationFailureRequestedOperation = unitOperation.GetCalculationReportDetailValue("requestedOperation");
-    var validationFailureNativeStatus = unitOperation.GetCalculationReportDetailValue("nativeStatus");
+    var validationFailureDetailKeys = ReadDetailKeys(unitOperation);
+    var validationFailureRequestedOperation = unitOperation.GetCalculationReportDetailValue(UnitOperationCalculationReportDetailCatalog.RequestedOperation);
+    var validationFailureNativeStatus = unitOperation.GetCalculationReportDetailValue(UnitOperationCalculationReportDetailCatalog.NativeStatus);
     var validationFailureLineCount = unitOperation.GetCalculationReportLineCount();
     var validationFailureText = unitOperation.GetCalculationReportText();
     EnsureCondition(unitOperation.LastCalculationResult is null, "failed Calculate() should not expose a successful calculation result.");
@@ -218,9 +223,14 @@ static void RunUnitOperationSmoke(SmokeOptions options)
         "validation failure scalar metadata should match the DTO report metadata.");
     EnsureCondition(
         validationFailureDetailKeyCount == validationFailureReport.DetailLines.Count &&
-        string.Equals(unitOperation.GetCalculationReportDetailKey(0), "error", StringComparison.Ordinal) &&
-        string.Equals(unitOperation.GetCalculationReportDetailKey(validationFailureDetailKeyCount - 1), "requestedOperation", StringComparison.Ordinal),
-        "validation failure detail key enumeration should expose stable key order.");
+        validationFailureDetailKeys.SequenceEqual(
+            UnitOperationCalculationReportDetailCatalog
+                .GetStableKeyOrder(UnitOperationCalculationReportState.Failure)
+                .Where(key => string.Equals(key, UnitOperationCalculationReportDetailCatalog.Error, StringComparison.Ordinal) ||
+                              string.Equals(key, UnitOperationCalculationReportDetailCatalog.Operation, StringComparison.Ordinal) ||
+                              string.Equals(key, UnitOperationCalculationReportDetailCatalog.RequestedOperation, StringComparison.Ordinal)),
+            StringComparer.Ordinal),
+        "validation failure detail key enumeration should follow the frozen failure key order.");
     EnsureCondition(
         string.Equals(validationFailureRequestedOperation, "SelectPropertyPackage", StringComparison.Ordinal) &&
         validationFailureNativeStatus is null,
@@ -247,8 +257,9 @@ static void RunUnitOperationSmoke(SmokeOptions options)
     var nativeFailureState = unitOperation.GetCalculationReportState();
     var nativeFailureHeadline = unitOperation.GetCalculationReportHeadline();
     var nativeFailureDetailKeyCount = unitOperation.GetCalculationReportDetailKeyCount();
-    var nativeFailureRequestedOperation = unitOperation.GetCalculationReportDetailValue("requestedOperation");
-    var nativeFailureNativeStatus = unitOperation.GetCalculationReportDetailValue("nativeStatus");
+    var nativeFailureDetailKeys = ReadDetailKeys(unitOperation);
+    var nativeFailureRequestedOperation = unitOperation.GetCalculationReportDetailValue(UnitOperationCalculationReportDetailCatalog.RequestedOperation);
+    var nativeFailureNativeStatus = unitOperation.GetCalculationReportDetailValue(UnitOperationCalculationReportDetailCatalog.NativeStatus);
     var nativeFailureLineCount = unitOperation.GetCalculationReportLineCount();
     var nativeFailureLines = unitOperation.GetCalculationReportLines();
     EnsureCondition(
@@ -272,9 +283,14 @@ static void RunUnitOperationSmoke(SmokeOptions options)
         "native failure scalar metadata should match the DTO report metadata.");
     EnsureCondition(
         nativeFailureDetailKeyCount == nativeFailureReport.DetailLines.Count &&
-        string.Equals(unitOperation.GetCalculationReportDetailKey(0), "error", StringComparison.Ordinal) &&
-        string.Equals(unitOperation.GetCalculationReportDetailKey(nativeFailureDetailKeyCount - 1), "nativeStatus", StringComparison.Ordinal),
-        "native failure detail key enumeration should expose only stable key-value lines.");
+        nativeFailureDetailKeys.SequenceEqual(
+            UnitOperationCalculationReportDetailCatalog
+                .GetStableKeyOrder(UnitOperationCalculationReportState.Failure)
+                .Where(key => string.Equals(key, UnitOperationCalculationReportDetailCatalog.Error, StringComparison.Ordinal) ||
+                              string.Equals(key, UnitOperationCalculationReportDetailCatalog.Operation, StringComparison.Ordinal) ||
+                              string.Equals(key, UnitOperationCalculationReportDetailCatalog.NativeStatus, StringComparison.Ordinal)),
+            StringComparer.Ordinal),
+        "native failure detail key enumeration should follow the frozen failure key order.");
     EnsureCondition(
         nativeFailureRequestedOperation is null &&
         string.Equals(nativeFailureNativeStatus, "MissingEntity", StringComparison.Ordinal),
@@ -321,9 +337,10 @@ static void RunUnitOperationSmoke(SmokeOptions options)
     var successReportState = unitOperation.GetCalculationReportState();
     var successReportHeadline = unitOperation.GetCalculationReportHeadline();
     var successReportDetailKeyCount = unitOperation.GetCalculationReportDetailKeyCount();
-    var successReportStatus = unitOperation.GetCalculationReportDetailValue("status");
-    var successReportHighestSeverity = unitOperation.GetCalculationReportDetailValue("highestSeverity");
-    var successReportDiagnosticCount = unitOperation.GetCalculationReportDetailValue("diagnosticCount");
+    var successReportDetailKeys = ReadDetailKeys(unitOperation);
+    var successReportStatus = unitOperation.GetCalculationReportDetailValue(UnitOperationCalculationReportDetailCatalog.Status);
+    var successReportHighestSeverity = unitOperation.GetCalculationReportDetailValue(UnitOperationCalculationReportDetailCatalog.HighestSeverity);
+    var successReportDiagnosticCount = unitOperation.GetCalculationReportDetailValue(UnitOperationCalculationReportDetailCatalog.DiagnosticCount);
     var successReportLineCount = unitOperation.GetCalculationReportLineCount();
     var successReportLines = unitOperation.GetCalculationReportLines();
     var successReportText = unitOperation.GetCalculationReportText();
@@ -348,13 +365,11 @@ static void RunUnitOperationSmoke(SmokeOptions options)
         string.Equals(successReportHeadline, successReport.Headline, StringComparison.Ordinal),
         "success scalar metadata should match the DTO report metadata.");
     EnsureCondition(
-        successReportDetailKeyCount == 5 &&
-        string.Equals(unitOperation.GetCalculationReportDetailKey(0), "status", StringComparison.Ordinal) &&
-        string.Equals(unitOperation.GetCalculationReportDetailKey(1), "highestSeverity", StringComparison.Ordinal) &&
-        string.Equals(unitOperation.GetCalculationReportDetailKey(2), "diagnosticCount", StringComparison.Ordinal) &&
-        string.Equals(unitOperation.GetCalculationReportDetailKey(3), "relatedUnitIds", StringComparison.Ordinal) &&
-        string.Equals(unitOperation.GetCalculationReportDetailKey(4), "relatedStreamIds", StringComparison.Ordinal),
-        "success detail key enumeration should expose summary keys but skip diagnostic text lines.");
+        successReportDetailKeyCount == UnitOperationCalculationReportDetailCatalog.SuccessStableKeyOrder.Count &&
+        successReportDetailKeys.SequenceEqual(
+            UnitOperationCalculationReportDetailCatalog.SuccessStableKeyOrder,
+            StringComparer.Ordinal),
+        "success detail key enumeration should expose the frozen success key order and skip diagnostic text lines.");
     EnsureCondition(
         string.Equals(successReportStatus, "converged", StringComparison.Ordinal) &&
         string.Equals(successReportHighestSeverity, "info", StringComparison.Ordinal) &&
@@ -413,7 +428,10 @@ static void RunUnitOperationSmoke(SmokeOptions options)
         unitOperation.GetCalculationReportDetailKeyCount() == 0,
         "terminate should clear stable report detail keys.");
     EnsureCondition(
-        unitOperation.GetCalculationReportDetailValue("status") is null,
+        ReadDetailKeys(unitOperation).Count == 0,
+        "terminate should enumerate zero detail keys.");
+    EnsureCondition(
+        unitOperation.GetCalculationReportDetailValue(UnitOperationCalculationReportDetailCatalog.Status) is null,
         "terminate should clear stable report detail values.");
     EnsureCondition(
         unitOperation.GetCalculationReportLineCount() == 1 &&
@@ -445,6 +463,17 @@ static void EnsureCondition(bool condition, string message)
     {
         throw new InvalidOperationException(message);
     }
+}
+
+static IReadOnlyList<string> ReadDetailKeys(RadishFlowCapeOpenUnitOperation unitOperation)
+{
+    var keys = new string[unitOperation.GetCalculationReportDetailKeyCount()];
+    for (var index = 0; index < keys.Length; index++)
+    {
+        keys[index] = unitOperation.GetCalculationReportDetailKey(index);
+    }
+
+    return keys;
 }
 
 static CapeBadInvocationOrderException ExpectCapeBadInvOrder(Action action, string scenario)

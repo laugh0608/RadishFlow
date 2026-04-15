@@ -122,6 +122,11 @@ public sealed record UnitOperationCalculationReport(
         return string.Join(Environment.NewLine, GetDisplayLines());
     }
 
+    private static string CreateDetailLine(string key, string value)
+    {
+        return $"{key}={value}";
+    }
+
     private static bool TrySplitDetailLine(
         string detailLine,
         out string key,
@@ -154,18 +159,22 @@ public sealed record UnitOperationCalculationReport(
 
         var details = new List<string>(4 + result.Diagnostics.Count)
         {
-            $"status={result.Status}",
-            $"highestSeverity={result.Summary.HighestSeverity}",
-            $"diagnosticCount={result.Summary.DiagnosticCount}",
+            CreateDetailLine(UnitOperationCalculationReportDetailCatalog.Status, result.Status),
+            CreateDetailLine(UnitOperationCalculationReportDetailCatalog.HighestSeverity, result.Summary.HighestSeverity),
+            CreateDetailLine(UnitOperationCalculationReportDetailCatalog.DiagnosticCount, result.Summary.DiagnosticCount.ToString()),
         };
         if (result.Summary.RelatedUnitIds.Count > 0)
         {
-            details.Add($"relatedUnitIds={string.Join(", ", result.Summary.RelatedUnitIds)}");
+            details.Add(CreateDetailLine(
+                UnitOperationCalculationReportDetailCatalog.RelatedUnitIds,
+                string.Join(", ", result.Summary.RelatedUnitIds)));
         }
 
         if (result.Summary.RelatedStreamIds.Count > 0)
         {
-            details.Add($"relatedStreamIds={string.Join(", ", result.Summary.RelatedStreamIds)}");
+            details.Add(CreateDetailLine(
+                UnitOperationCalculationReportDetailCatalog.RelatedStreamIds,
+                string.Join(", ", result.Summary.RelatedStreamIds)));
         }
 
         details.AddRange(result.Diagnostics.Select(
@@ -183,37 +192,49 @@ public sealed record UnitOperationCalculationReport(
 
         var details = new List<string>
         {
-            $"error={failure.ErrorName}",
-            $"operation={failure.Operation}",
+            CreateDetailLine(UnitOperationCalculationReportDetailCatalog.Error, failure.ErrorName),
+            CreateDetailLine(UnitOperationCalculationReportDetailCatalog.Operation, failure.Operation),
         };
 
         if (!string.IsNullOrWhiteSpace(failure.RequestedOperation))
         {
-            details.Add($"requestedOperation={failure.RequestedOperation}");
+            details.Add(CreateDetailLine(
+                UnitOperationCalculationReportDetailCatalog.RequestedOperation,
+                failure.RequestedOperation));
         }
 
         if (!string.IsNullOrWhiteSpace(failure.NativeStatus))
         {
-            details.Add($"nativeStatus={failure.NativeStatus}");
+            details.Add(CreateDetailLine(
+                UnitOperationCalculationReportDetailCatalog.NativeStatus,
+                failure.NativeStatus));
         }
 
         if (!string.IsNullOrWhiteSpace(failure.Summary.DiagnosticCode))
         {
-            details.Add($"diagnosticCode={failure.Summary.DiagnosticCode}");
+            details.Add(CreateDetailLine(
+                UnitOperationCalculationReportDetailCatalog.DiagnosticCode,
+                failure.Summary.DiagnosticCode));
         }
 
         if (failure.Summary.RelatedUnitIds.Count > 0)
         {
-            details.Add($"relatedUnitIds={string.Join(", ", failure.Summary.RelatedUnitIds)}");
+            details.Add(CreateDetailLine(
+                UnitOperationCalculationReportDetailCatalog.RelatedUnitIds,
+                string.Join(", ", failure.Summary.RelatedUnitIds)));
         }
 
         if (failure.Summary.RelatedStreamIds.Count > 0)
         {
-            details.Add($"relatedStreamIds={string.Join(", ", failure.Summary.RelatedStreamIds)}");
+            details.Add(CreateDetailLine(
+                UnitOperationCalculationReportDetailCatalog.RelatedStreamIds,
+                string.Join(", ", failure.Summary.RelatedStreamIds)));
         }
 
         details.AddRange(failure.Summary.RelatedPortTargets.Select(
-            target => $"relatedPortTarget={target.UnitId}.{target.PortName}"));
+            target => CreateDetailLine(
+                UnitOperationCalculationReportDetailCatalog.RelatedPortTarget,
+                $"{target.UnitId}.{target.PortName}")));
 
         return new UnitOperationCalculationReport(
             State: UnitOperationCalculationReportState.Failure,

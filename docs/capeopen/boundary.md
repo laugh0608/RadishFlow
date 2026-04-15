@@ -101,6 +101,7 @@ Rust 与 `.NET 10` 之间的正式边界应保持简单稳定：
 - 当前 `UnitOp.Mvp` 之上又已补出统一只读查询面 `GetCalculationReport()`，把“尚无结果 / 最近成功 / 最近失败”收口到单一 report DTO，供后续最小 host / PME 只读消费面复用
 - 在该统一查询面之上，当前又补出 `GetCalculationReportState()` 与 `GetCalculationReportHeadline()` 两条最小标量元数据入口，让后续最小 host / PME 可直接读取报告状态与标题，不必先消费自定义 DTO
 - 在该元数据面之上，当前又补出 `GetCalculationReportDetailKeyCount()`、`GetCalculationReportDetailKey(int)` 与 `GetCalculationReportDetailValue(string)` 这一组最小 detail 键值读取入口，让后续最小 host / PME 既可枚举稳定 detail key，又可按 key 读取值，而不必再从展示文本里反解析 `status`、`highestSeverity`、`diagnosticCount`、`requestedOperation` 或 `nativeStatus`
+- 当前又已把 stable detail key 清单正式冻结到公开 catalog `UnitOperationCalculationReportDetailCatalog`，用来声明 success / failure 两条路径的 canonical key 顺序，避免宿主只能靠 README 或周志文本猜测 key 名字
 - 在该 report DTO 之上，当前又补出 `GetCalculationReportLines()` 与 `GetCalculationReportText()` 两条最小宿主可显示文本面，优先把 headline/detail lines 的拼接责任留在 PMC 内部，而不是继续让最小 host / PME 自己重复组织显示字符串
 - 在该文本面之上，当前又补出 `GetCalculationReportLineCount()` 与 `GetCalculationReportLine(int)` 两条标量读取入口，让后续最小 host / PME 可以按“line count + line(index)”逐步读取报告文本，而不提前要求消费自定义 DTO 或整段拼接文本
 
