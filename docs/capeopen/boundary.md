@@ -126,6 +126,7 @@ Rust 与 `.NET 10` 之间的正式边界应保持简单稳定：
 - `ECapeRoot` / `ECapeUser` / `ECapeBadInvOrder` / `ECapeBadCOParameter` 等最小异常契约、IID 与 DispId 校准
 - `RadishFlow.CapeOpen.UnitOp.Mvp` 中不含注册的最小 PMC 类骨架、状态机与内部配置入口
 - `UnitOp.Mvp` 中用于 `Ports` / `Parameters` 的最小占位对象集合，以及基于对象状态的 `Validate()` 前置检查
+- `UnitOp.Mvp` 中经由 `RadishFlow.CapeOpen.Adapter` 调用 `rf-ffi` 的最小 `Calculate()` 求解接线，以及 flowsheet snapshot 结果缓存
 
 当前暂不推进的内容：
 
@@ -133,7 +134,6 @@ Rust 与 `.NET 10` 之间的正式边界应保持简单稳定：
 - 完整 ECape 接口/异常面与所有标准 IID 校准
 - 稳定 CLSID / ProgID 策略
 - 端口集合、参数集合、报告接口与 `Collection/Parameter/UnitPort` 语义的完整 CAPE-OPEN 实现
-- `UnitOp.Mvp` 内部对 `rf-ffi` 的真实求解接线
 - PME 互调测试代码
 - 把 COBIA 作为当前主线运行时或因此提前改写既定 COM 兼容路径
 

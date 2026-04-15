@@ -1,4 +1,6 @@
 using RadishFlow.CapeOpen.Adapter;
+using RadishFlow.CapeOpen.Interop.Errors;
+using RadishFlow.CapeOpen.UnitOp.Mvp.UnitOperation;
 
 var options = SmokeOptions.Parse(args);
 if (options.ShowHelp)
@@ -8,6 +10,41 @@ if (options.ShowHelp)
 }
 
 try
+{
+    if (options.Mode == SmokeMode.UnitOperation)
+    {
+        RunUnitOperationSmoke(options);
+    }
+    else
+    {
+        RunAdapterSmoke(options);
+    }
+}
+catch (CapeOpenException error)
+{
+    Console.Error.WriteLine($"CAPE-OPEN operation failed: {error.Operation}");
+    if (!string.IsNullOrWhiteSpace(error.NativeStatus))
+    {
+        Console.Error.WriteLine($"Native Status: {error.NativeStatus}");
+    }
+
+    Console.Error.WriteLine($"Message: {error.Message}");
+
+    if (!string.IsNullOrWhiteSpace(error.DiagnosticJson))
+    {
+        Console.Error.WriteLine("Error Json:");
+        Console.Error.WriteLine(error.DiagnosticJson);
+    }
+
+    Environment.ExitCode = 1;
+}
+catch (Exception error)
+{
+    Console.Error.WriteLine(error);
+    Environment.ExitCode = 2;
+}
+
+static void RunAdapterSmoke(SmokeOptions options)
 {
     if (!string.IsNullOrWhiteSpace(options.NativeLibraryDirectory))
     {
@@ -40,33 +77,52 @@ try
         Console.WriteLine();
     }
 }
-catch (RadishFlowNativeException error)
+
+static void RunUnitOperationSmoke(SmokeOptions options)
 {
-    Console.Error.WriteLine($"Native operation failed: {error.Operation}");
-    Console.Error.WriteLine($"Status: {error.Status}");
-    if (!string.IsNullOrWhiteSpace(error.NativeMessage))
+    using var unitOperation = new RadishFlowCapeOpenUnitOperation();
+    if (!string.IsNullOrWhiteSpace(options.NativeLibraryDirectory))
     {
-        Console.Error.WriteLine($"Message: {error.NativeMessage}");
+        unitOperation.ConfigureNativeLibraryDirectory(options.NativeLibraryDirectory);
     }
 
-    if (!string.IsNullOrWhiteSpace(error.NativeErrorJson))
+    var projectJson = File.ReadAllText(options.ProjectPath);
+    unitOperation.Initialize();
+    unitOperation.LoadFlowsheetJson(projectJson);
+
+    if (options.LoadPackageFiles)
     {
-        Console.Error.WriteLine("Error Json:");
-        Console.Error.WriteLine(error.NativeErrorJson);
+        unitOperation.LoadPropertyPackageFiles(options.ManifestPath!, options.PayloadPath!);
     }
 
-    Environment.ExitCode = 1;
-}
-catch (Exception error)
-{
-    Console.Error.WriteLine(error);
-    Environment.ExitCode = 2;
+    unitOperation.SelectPropertyPackage(options.PackageId);
+    unitOperation.SetPortConnected("Feed", isConnected: true);
+    unitOperation.SetPortConnected("Product", isConnected: true);
+
+    var validationMessage = string.Empty;
+    var isValid = unitOperation.Validate(ref validationMessage);
+    Console.WriteLine("== Unit Validation ==");
+    Console.WriteLine($"Valid: {isValid}");
+    Console.WriteLine($"Message: {validationMessage}");
+    Console.WriteLine();
+
+    if (!isValid)
+    {
+        throw new InvalidOperationException("Unit operation validation failed before Calculate().");
+    }
+
+    unitOperation.Calculate();
+
+    Console.WriteLine("== Unit Flowsheet Snapshot ==");
+    Console.WriteLine(unitOperation.LastFlowsheetSnapshotJson);
+    Console.WriteLine();
 }
 
 file sealed class SmokeOptions
 {
     private SmokeOptions(
         bool showHelp,
+        SmokeMode mode,
         string projectPath,
         string packageId,
         string? manifestPath,
@@ -75,6 +131,7 @@ file sealed class SmokeOptions
         string? nativeLibraryDirectory)
     {
         ShowHelp = showHelp;
+        Mode = mode;
         ProjectPath = projectPath;
         PackageId = packageId;
         ManifestPath = manifestPath;
@@ -84,6 +141,8 @@ file sealed class SmokeOptions
     }
 
     public bool ShowHelp { get; }
+
+    public SmokeMode Mode { get; }
 
     public string ProjectPath { get; }
 
@@ -106,6 +165,7 @@ file sealed class SmokeOptions
         RadishFlow.CapeOpen.SmokeTests
 
         Options:
+          --mode <adapter|unitop> Run direct Adapter smoke or UnitOp.Mvp smoke. Default: adapter
           --project <path>        Project json path. Default: examples/flowsheets/feed-heater-flash-binary-hydrocarbon.rfproj.json
           --package <id>          Package id to solve with. Default: binary-hydrocarbon-lite-v1
           --manifest <path>       Optional property package manifest path
@@ -145,6 +205,9 @@ file sealed class SmokeOptions
 
         return new SmokeOptions(
             showHelp: flags.Contains("--help"),
+            mode: values.TryGetValue("--mode", out var modeText)
+                ? ParseMode(modeText)
+                : SmokeMode.Adapter,
             projectPath: values.TryGetValue("--project", out var projectPath)
                 ? Path.GetFullPath(projectPath)
                 : Path.Combine(
@@ -197,4 +260,20 @@ file sealed class SmokeOptions
 
         throw new InvalidOperationException("Could not locate repository root from AppContext.BaseDirectory.");
     }
+
+    private static SmokeMode ParseMode(string value)
+    {
+        return value.Trim().ToLowerInvariant() switch
+        {
+            "adapter" => SmokeMode.Adapter,
+            "unitop" => SmokeMode.UnitOperation,
+            _ => throw new ArgumentException($"Unsupported smoke mode `{value}`."),
+        };
+    }
+}
+
+file enum SmokeMode
+{
+    Adapter,
+    UnitOperation,
 }

@@ -1,3 +1,4 @@
+using RadishFlow.CapeOpen.Adapter;
 using RadishFlow.CapeOpen.Interop.Common;
 using RadishFlow.CapeOpen.Interop.Errors;
 using RadishFlow.CapeOpen.Interop.Unit;
@@ -20,6 +21,7 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
     private readonly UnitOperationPortPlaceholder _productPort;
 
     private object? _simulationContext;
+    private string? _lastFlowsheetSnapshotJson;
     private bool _initialized;
     private bool _terminated;
     private bool _disposed;
@@ -101,6 +103,16 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
 
     public CapeValidationStatus ValStatus { get; private set; }
 
+    public string? LastFlowsheetSnapshotJson => _lastFlowsheetSnapshotJson;
+
+    public void ConfigureNativeLibraryDirectory(string directoryPath)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(directoryPath);
+        ThrowIfDisposed();
+
+        RfNativeLibraryLoader.ConfigureSearchDirectory(directoryPath);
+    }
+
     public void LoadFlowsheetJson(string flowsheetJson)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(flowsheetJson);
@@ -176,6 +188,7 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
         _initialized = false;
         _terminated = true;
         _simulationContext = null;
+        ClearCalculationArtifacts();
         ValStatus = CapeValidationStatus.NotValidated;
     }
 
@@ -219,9 +232,20 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
         }
 
         ValStatus = CapeValidationStatus.Valid;
-        throw new CapeNoImplementationException(
-            "Native calculate wiring is not implemented in UnitOp.Mvp yet.",
-            CreateContext(UnitInterfaceName, nameof(Calculate)));
+        ClearCalculationArtifacts();
+
+        using var engine = new RadishFlowNativeEngine();
+        engine.LoadFlowsheetJson(_flowsheetParameter.Value!);
+
+        if (_manifestPathParameter.IsConfigured)
+        {
+            engine.LoadPropertyPackageFiles(
+                _manifestPathParameter.Value!,
+                _payloadPathParameter.Value!);
+        }
+
+        engine.SolveFlowsheet(_packageIdParameter.Value!);
+        _lastFlowsheetSnapshotJson = engine.GetFlowsheetSnapshotJson();
     }
 
     public void Dispose()
@@ -308,10 +332,17 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
 
     private void InvalidateValidation()
     {
+        ClearCalculationArtifacts();
+
         if (!_terminated)
         {
             ValStatus = CapeValidationStatus.NotValidated;
         }
+    }
+
+    private void ClearCalculationArtifacts()
+    {
+        _lastFlowsheetSnapshotJson = null;
     }
 
     private void ThrowIfDisposed()
