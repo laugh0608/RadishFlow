@@ -1,6 +1,6 @@
 # RadishFlow 架构草案
 
-更新时间：2026-04-15
+更新时间：2026-04-16
 
 ## 文档目的
 
@@ -241,6 +241,7 @@ RadishFlow/
 │     ├─ RadishFlow.CapeOpen.Interop/
 │     ├─ RadishFlow.CapeOpen.Adapter/
 │     ├─ RadishFlow.CapeOpen.UnitOp.Mvp/
+│     ├─ RadishFlow.CapeOpen.UnitOp.Mvp.ContractTests/
 │     ├─ RadishFlow.CapeOpen.Registration/
 │     └─ RadishFlow.CapeOpen.SmokeTests/
 ├─ bindings/
@@ -572,6 +573,22 @@ Rust 与 .NET 的桥接层。
 - 当前已把 `Ports` / `Parameters` 推进为最小占位对象集合，并让 `Validate()` 先基于对象状态做必填参数与必连端口检查
 - 当前仍未进入 COM 注册或完整 PME 生命周期；不过最小 native 求解接线已打通，且 `Calculate()` 对外结果面当前已收口为稳定的“成功结果 + 失败摘要”双契约，并进一步提供统一只读查询面 `GetCalculationReport()`、其上的标量元数据入口 `GetCalculationReportState()/GetCalculationReportHeadline()`、可枚举 detail 键值入口 `GetCalculationReportDetailKeyCount()/GetCalculationReportDetailKey(int)/GetCalculationReportDetailValue(string)`、最小文本导出面 `GetCalculationReportLines()/GetCalculationReportText()`，以及更接近宿主逐行消费习惯的 `GetCalculationReportLineCount()/GetCalculationReportLine(int)`，而不是继续直接暴露完整 snapshot JSON 或 native error JSON
 - 当前又已把上述 stable detail key 清单冻结为公开 catalog `UnitOperationCalculationReportDetailCatalog`，明确 success / failure 两条路径的 canonical key 顺序，避免宿主侧再依赖散落字符串常量或文档口径
+- 在最小结果面阶段性冻结后，当前又已把内部状态推进显式收口为 `UnitOperationLifecycleState`、分段 `EvaluateValidation()` guard 链、分段 `Calculate()` 执行链，以及统一的 validation/calculation/report transition helper，避免后续宿主主线继续推进时在同一个 PMC 类里堆叠隐式状态分支
+- 在公开 report API 之上，当前又已补出 `UnitOperationHostReportReader -> UnitOperationHostReportPresenter -> UnitOperationHostReportFormatter` 三级宿主消费 helper；这条链路的定位是冻结最小宿主读取/展示口径，而不是继续给 PMC 主类追加更多 convenience accessor
+
+### `RadishFlow.CapeOpen.UnitOp.Mvp.ContractTests`
+
+职责：
+
+- 锁定 `UnitOp.Mvp` 的库侧行为契约
+- 在不依赖外部 NuGet 测试框架的前提下验证最小 PMC 状态机
+- 为 `SmokeTests` 之外提供更贴近库内语义的回归入口
+
+当前对齐：
+
+- 当前已建立自举式 `Exe` runner，并已加入 `RadishFlow.CapeOpen.sln`
+- 当前已覆盖 `Validate before Initialize`、validation failure report、native failure report、success report、配置变更 invalidation 与 `Terminate()` 后阻断共 6 条核心 contract case
+- 当前已显式锁住 validation/native 两类 failure report 在 detail 字段上的缺省规则，避免这部分行为只停留在 smoke 输出或 README 约定里
 
 ### `RadishFlow.CapeOpen.Registration`
 
@@ -592,6 +609,8 @@ Rust 与 .NET 的桥接层。
 
 - 当前可配置 native library 目录、加载示例 flowsheet 与本地 `manifest/payload` package
 - 当前可列出 package registry，并覆盖 direct adapter 的 flowsheet / stream snapshot JSON 导出，以及 `UnitOp.Mvp` 的最小成功结果契约、失败摘要契约、统一只读 report access、标量元数据入口、可枚举 detail 键值入口、最小文本导出面与标量逐行读取面验证
+- 当前 `unitop` 模式又已从“单条 console 冒烟脚本”收口为最小宿主验证骨架：`UnitOperationSmokeHostDriver` 固定真实宿主调用顺序，`UnitOperationSmokeBoundarySuite` 锁边界矩阵，`UnitOperationSmokeSession` 与 `UnitOperationSmokeScenarioCatalog` 负责时序变体编排
+- 当前已支持 `--unitop-scenario <all|session|recovery|shutdown>` 按宿主时序场景过滤运行，用于单独验证会话、恢复和收尾阶段，而不是每次都跑整套 timeline
 - 当前暂不承担 PME/COM 注册路径的冒烟验证
 
 ## `bindings/c`
