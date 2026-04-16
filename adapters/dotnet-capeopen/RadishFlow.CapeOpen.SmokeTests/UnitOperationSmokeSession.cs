@@ -48,6 +48,24 @@ internal sealed class UnitOperationSmokeSession : IDisposable
         _timeline.Add($"{roundLabel} configured: validation=valid");
     }
 
+    public UnitOperationHostReportBundle ExpectCurrentReportToBeEmpty(string roundLabel)
+    {
+        var report = _driver.ReadReport();
+        UnitOperationSmokeReportAssertions.AssertEmpty(report, roundLabel);
+        _timeline.Add($"{roundLabel} report-read: state={report.Snapshot.State}");
+        return report;
+    }
+
+    public UnitOperationHostReportBundle ExpectCurrentReportToBeSuccessful(
+        string roundLabel,
+        Func<UnitOperationHostReportBundle, string> timelineDetail)
+    {
+        var report = _driver.ReadReport();
+        UnitOperationSmokeReportAssertions.AssertSuccess(report, roundLabel);
+        _timeline.Add($"{roundLabel} report-read: {timelineDetail(report)}");
+        return report;
+    }
+
     public UnitOperationHostReportBundle ExpectSuccessRound(
         string roundLabel,
         Func<UnitOperationHostReportBundle, string> timelineDetail)
@@ -140,6 +158,20 @@ internal sealed class UnitOperationSmokeSession : IDisposable
             validation.Message.Contains("Terminate has already been called", StringComparison.Ordinal),
             $"{roundLabel} should keep Validate() invalid after Terminate().");
         _timeline.Add($"{roundLabel} terminated: reportState={report.State}, validation=invalid");
+    }
+
+    public void ExpectPostTerminateCalculationFailure(string roundLabel)
+    {
+        var attempt = _driver.Calculate();
+        var error = attempt.ExpectFailure<CapeBadInvocationOrderException>(
+            UnitOperationHostDriverFailureKind.Validation,
+            $"{roundLabel} calculate after terminate");
+        UnitOperationSmokeReportAssertions.EnsureCondition(
+            string.Equals(error.Operation, nameof(RadishFlowCapeOpenUnitOperation.Calculate), StringComparison.Ordinal),
+            $"{roundLabel} should fail at the Calculate() boundary after Terminate().");
+        UnitOperationSmokeReportAssertions.AssertEmpty(attempt.Report, roundLabel);
+        _timeline.Add(
+            $"{roundLabel} calculate-blocked: kind={UnitOperationHostDriverFailureKind.Validation}, operation={error.Operation}");
     }
 
     public void Dispose()

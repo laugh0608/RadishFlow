@@ -85,6 +85,7 @@ static void RunUnitOperationSmoke(SmokeOptions options)
     UnitOperationSmokeBoundarySuite.Run(options, projectJson);
     RunUnitOperationSessionSmoke(options, projectJson);
     RunUnitOperationRecoverySessionSmoke(options, projectJson);
+    RunUnitOperationShutdownSessionSmoke(options, projectJson);
 }
 
 static void RunUnitOperationSessionSmoke(SmokeOptions options, string projectJson)
@@ -144,6 +145,30 @@ static void RunUnitOperationRecoverySessionSmoke(SmokeOptions options, string pr
     session.TerminateAndExpectClosed("recovery-11");
 
     Console.WriteLine("== Host Recovery Timeline ==");
+    foreach (var line in session.Timeline)
+    {
+        Console.WriteLine($"- {line}");
+    }
+    Console.WriteLine();
+}
+
+static void RunUnitOperationShutdownSessionSmoke(SmokeOptions options, string projectJson)
+{
+    using var session = new UnitOperationSmokeSession(options, projectJson);
+    session.ExpectCurrentReportToBeEmpty("shutdown-0");
+    session.InitializeAndExpectIdle("shutdown-1");
+    session.ConfigureMinimumInputsAndConnect("shutdown-2");
+    session.ExpectSuccessRound(
+        "shutdown-3",
+        report => $"headline={report.Snapshot.Headline}");
+    session.ExpectCurrentReportToBeSuccessful(
+        "shutdown-4",
+        report => $"detailKeys={report.Snapshot.DetailKeyCount}, supplementalLines={report.Presentation.SupplementalLines.Count}");
+    session.TerminateAndExpectClosed("shutdown-5");
+    session.ExpectCurrentReportToBeEmpty("shutdown-6");
+    session.ExpectPostTerminateCalculationFailure("shutdown-7");
+
+    Console.WriteLine("== Host Shutdown Timeline ==");
     foreach (var line in session.Timeline)
     {
         Console.WriteLine($"- {line}");
