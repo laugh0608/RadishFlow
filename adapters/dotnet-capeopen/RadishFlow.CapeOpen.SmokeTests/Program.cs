@@ -84,6 +84,7 @@ static void RunUnitOperationSmoke(SmokeOptions options)
     var projectJson = File.ReadAllText(options.ProjectPath);
     UnitOperationSmokeBoundarySuite.Run(options, projectJson);
     RunUnitOperationSessionSmoke(options, projectJson);
+    RunUnitOperationRecoverySessionSmoke(options, projectJson);
 }
 
 static void RunUnitOperationSessionSmoke(SmokeOptions options, string projectJson)
@@ -113,6 +114,36 @@ static void RunUnitOperationSessionSmoke(SmokeOptions options, string projectJso
     session.TerminateAndExpectClosed("round-9");
 
     Console.WriteLine("== Host Session Timeline ==");
+    foreach (var line in session.Timeline)
+    {
+        Console.WriteLine($"- {line}");
+    }
+    Console.WriteLine();
+}
+
+static void RunUnitOperationRecoverySessionSmoke(SmokeOptions options, string projectJson)
+{
+    using var session = new UnitOperationSmokeSession(options, projectJson);
+    session.InitializeAndExpectIdle("recovery-0");
+    session.ConfigureMinimumInputsAndConnect("recovery-1");
+    session.BreakCompanionInputsAndExpectValidationFailure("recovery-2");
+    session.RestoreMinimumInputsAndExpectValid("recovery-3");
+    session.ExpectSuccessRound(
+        "recovery-4",
+        report => $"headline={report.Snapshot.Headline}");
+    session.DisconnectFeedPortAndExpectRecoveryWindow("recovery-5");
+    session.ReconnectFeedPort("recovery-6", "Recovery Feed");
+    session.ExpectSuccessRound(
+        "recovery-7",
+        report => $"diagnosticCount={report.Snapshot.GetDetailValue(UnitOperationCalculationReportDetailCatalog.DiagnosticCount)}");
+    session.ExpectNativeFailureForMissingPackage("recovery-8", "missing-package-for-recovery");
+    session.RestorePackageAndExpectValid("recovery-9", options.PackageId);
+    session.ExpectSuccessRound(
+        "recovery-10",
+        report => $"relatedUnits={report.Snapshot.GetDetailValue(UnitOperationCalculationReportDetailCatalog.RelatedUnitIds)}");
+    session.TerminateAndExpectClosed("recovery-11");
+
+    Console.WriteLine("== Host Recovery Timeline ==");
     foreach (var line in session.Timeline)
     {
         Console.WriteLine($"- {line}");

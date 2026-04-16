@@ -1,4 +1,5 @@
 using RadishFlow.CapeOpen.Interop.Errors;
+using RadishFlow.CapeOpen.UnitOp.Mvp.Placeholders;
 using RadishFlow.CapeOpen.UnitOp.Mvp.Results;
 using RadishFlow.CapeOpen.UnitOp.Mvp.UnitOperation;
 
@@ -30,7 +31,7 @@ internal sealed class UnitOperationSmokeSession : IDisposable
     {
         _driver.Initialize();
         var report = _driver.ReadReport().Snapshot;
-        EnsureCondition(
+        UnitOperationSmokeReportAssertions.EnsureCondition(
             report.State == UnitOperationCalculationReportState.None,
             $"{roundLabel} should enter idle report state immediately after Initialize().");
         _timeline.Add($"{roundLabel} initialized: reportState={report.State}");
@@ -41,7 +42,7 @@ internal sealed class UnitOperationSmokeSession : IDisposable
         _driver.ConfigureMinimumInputs(includePackageId: true);
         _driver.ConnectRequiredPorts();
         var validation = _driver.Validate();
-        EnsureCondition(
+        UnitOperationSmokeReportAssertions.EnsureCondition(
             validation.IsValid,
             $"{roundLabel} should validate once minimum inputs and required ports are configured.");
         _timeline.Add($"{roundLabel} configured: validation=valid");
@@ -65,7 +66,7 @@ internal sealed class UnitOperationSmokeSession : IDisposable
         var error = attempt.ExpectFailure<CapeInvalidArgumentException>(
             UnitOperationHostDriverFailureKind.Native,
             $"{roundLabel} missing property package");
-        EnsureCondition(
+        UnitOperationSmokeReportAssertions.EnsureCondition(
             string.Equals(error.NativeStatus, "MissingEntity", StringComparison.Ordinal) &&
             attempt.Report.Snapshot.State == UnitOperationCalculationReportState.Failure,
             $"{roundLabel} should preserve MissingEntity classification and failure report state.");
@@ -76,7 +77,7 @@ internal sealed class UnitOperationSmokeSession : IDisposable
     {
         _driver.PackageIdParameter.value = packageId;
         var validation = _driver.Validate();
-        EnsureCondition(validation.IsValid, $"{roundLabel} should restore a valid package configuration.");
+        UnitOperationSmokeReportAssertions.EnsureCondition(validation.IsValid, $"{roundLabel} should restore a valid package configuration.");
         _timeline.Add($"{roundLabel} package-restored: validation=valid");
     }
 
@@ -84,7 +85,7 @@ internal sealed class UnitOperationSmokeSession : IDisposable
     {
         _driver.ManifestPathParameter.value = null;
         var validation = _driver.Validate();
-        EnsureCondition(
+        UnitOperationSmokeReportAssertions.EnsureCondition(
             !validation.IsValid &&
             validation.Message.Contains("must be configured together", StringComparison.Ordinal),
             $"{roundLabel} should fail validation when companion inputs diverge.");
@@ -92,7 +93,7 @@ internal sealed class UnitOperationSmokeSession : IDisposable
         var error = attempt.ExpectFailure<CapeBadInvocationOrderException>(
             UnitOperationHostDriverFailureKind.Validation,
             $"{roundLabel} broken companion inputs");
-        EnsureCondition(
+        UnitOperationSmokeReportAssertions.EnsureCondition(
             string.Equals(error.RequestedOperation, nameof(RadishFlowCapeOpenUnitOperation.LoadPropertyPackageFiles), StringComparison.Ordinal),
             $"{roundLabel} should request LoadPropertyPackageFiles().");
         _timeline.Add($"{roundLabel} validation-failure: requested={error.RequestedOperation}");
@@ -102,41 +103,39 @@ internal sealed class UnitOperationSmokeSession : IDisposable
     {
         _driver.ConfigureMinimumInputs(includePackageId: true);
         var validation = _driver.Validate();
-        EnsureCondition(validation.IsValid, $"{roundLabel} should restore a valid minimum input set.");
+        UnitOperationSmokeReportAssertions.EnsureCondition(validation.IsValid, $"{roundLabel} should restore a valid minimum input set.");
         _timeline.Add($"{roundLabel} inputs-restored: validation=valid");
     }
 
     public void DisconnectProductPortAndExpectRecoveryWindow(string roundLabel)
     {
-        _driver.ProductPort.Disconnect();
-        var validation = _driver.Validate();
-        EnsureCondition(
-            !validation.IsValid &&
-            validation.Message.Contains("Required port `Product` is not connected.", StringComparison.Ordinal),
-            $"{roundLabel} should fail validation when product port is disconnected.");
-        EnsureCondition(
-            _driver.ReadReport().Snapshot.State == UnitOperationCalculationReportState.None,
-            $"{roundLabel} should clear the cached host report while disconnected.");
-        _timeline.Add($"{roundLabel} disconnected: validation=invalid");
+        DisconnectRequiredPortAndExpectRecoveryWindow(roundLabel, _driver.ProductPort, "Product");
     }
 
     public void ReconnectProductPort(string roundLabel, string componentName)
     {
-        _driver.ProductPort.Connect(new SmokeConnectedObject(componentName));
-        var validation = _driver.Validate();
-        EnsureCondition(validation.IsValid, $"{roundLabel} should restore a valid state after reconnecting product port.");
-        _timeline.Add($"{roundLabel} reconnected: validation=valid");
+        ReconnectRequiredPort(roundLabel, _driver.ProductPort, componentName, "Product");
+    }
+
+    public void DisconnectFeedPortAndExpectRecoveryWindow(string roundLabel)
+    {
+        DisconnectRequiredPortAndExpectRecoveryWindow(roundLabel, _driver.FeedPort, "Feed");
+    }
+
+    public void ReconnectFeedPort(string roundLabel, string componentName)
+    {
+        ReconnectRequiredPort(roundLabel, _driver.FeedPort, componentName, "Feed");
     }
 
     public void TerminateAndExpectClosed(string roundLabel)
     {
         _driver.Terminate();
         var report = _driver.ReadReport().Snapshot;
-        EnsureCondition(
+        UnitOperationSmokeReportAssertions.EnsureCondition(
             report.State == UnitOperationCalculationReportState.None,
             $"{roundLabel} should end in the empty report state after Terminate().");
         var validation = _driver.Validate();
-        EnsureCondition(
+        UnitOperationSmokeReportAssertions.EnsureCondition(
             !validation.IsValid &&
             validation.Message.Contains("Terminate has already been called", StringComparison.Ordinal),
             $"{roundLabel} should keep Validate() invalid after Terminate().");
@@ -153,7 +152,7 @@ internal sealed class UnitOperationSmokeSession : IDisposable
         string scenario)
     {
         var validation = driver.Validate();
-        EnsureCondition(validation.IsValid, $"{scenario} should validate before Calculate().");
+        UnitOperationSmokeReportAssertions.EnsureCondition(validation.IsValid, $"{scenario} should validate before Calculate().");
 
         var attempt = driver.Calculate();
         if (!attempt.Succeeded)
@@ -162,24 +161,39 @@ internal sealed class UnitOperationSmokeSession : IDisposable
                 $"{scenario} expected success, but received {attempt.Failure?.GetType().Name ?? "<unknown>"}.");
         }
 
-        EnsureCondition(
-            attempt.Report.Snapshot.State == UnitOperationCalculationReportState.Success,
-            $"{scenario} should expose success report state.");
-        EnsureCondition(
-            string.Equals(
-                attempt.Report.Snapshot.GetDetailValue(UnitOperationCalculationReportDetailCatalog.Status),
-                "converged",
-                StringComparison.Ordinal),
-            $"{scenario} should expose converged status detail.");
+        UnitOperationSmokeReportAssertions.AssertSuccess(attempt.Report, scenario);
 
         return attempt.Report;
     }
 
-    private static void EnsureCondition(bool condition, string message)
+    private void DisconnectRequiredPortAndExpectRecoveryWindow(
+        string roundLabel,
+        UnitOperationPortPlaceholder port,
+        string portName)
     {
-        if (!condition)
-        {
-            throw new InvalidOperationException(message);
-        }
+        port.Disconnect();
+        var validation = _driver.Validate();
+        UnitOperationSmokeReportAssertions.EnsureCondition(
+            !validation.IsValid &&
+            validation.Message.Contains($"Required port `{portName}` is not connected.", StringComparison.Ordinal),
+            $"{roundLabel} should fail validation when {portName} port is disconnected.");
+        UnitOperationSmokeReportAssertions.EnsureCondition(
+            _driver.ReadReport().Snapshot.State == UnitOperationCalculationReportState.None,
+            $"{roundLabel} should clear the cached host report while disconnected.");
+        _timeline.Add($"{roundLabel} disconnected-{portName.ToLowerInvariant()}: validation=invalid");
+    }
+
+    private void ReconnectRequiredPort(
+        string roundLabel,
+        UnitOperationPortPlaceholder port,
+        string componentName,
+        string portName)
+    {
+        port.Connect(new SmokeConnectedObject(componentName));
+        var validation = _driver.Validate();
+        UnitOperationSmokeReportAssertions.EnsureCondition(
+            validation.IsValid,
+            $"{roundLabel} should restore a valid state after reconnecting {portName} port.");
+        _timeline.Add($"{roundLabel} reconnected-{portName.ToLowerInvariant()}: validation=valid");
     }
 }

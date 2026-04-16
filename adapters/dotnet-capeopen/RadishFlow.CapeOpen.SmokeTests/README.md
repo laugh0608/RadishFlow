@@ -7,7 +7,7 @@
 - 可列出 property package registry
 - 可触发 solve
 - direct adapter 模式可读取 flowsheet / stream snapshot json
-- `UnitOp.Mvp` 模式当前已切到“最小外部 host 驱动 + 结果消费样例”口径：样例侧通过 `UnitOperationSmokeHostDriver` 明确收口 `Initialize -> 配参数 -> 连端口 -> Validate -> Calculate -> 读结果 -> Terminate` 这一条最小宿主调用顺序，并在 `Calculate` 失败时先分类为 `InvocationOrder / Validation / Native`，再通过 `UnitOperationHostReportReader.Read(...)`、`UnitOperationHostReportPresenter.Present(...)` 和 `UnitOperationHostReportFormatter.Format(...)` 完成 `none / failure / success / none` 三态判断、稳定 detail 展示和 supplemental diagnostic lines 分区展示；当前 `unitop` smoke 已进一步分成四层：`driver` 负责最小宿主编排，`UnitOperationSmokeBoundarySuite` 锁定细粒度边界矩阵，`UnitOperationSmokeSession` 负责多轮宿主会话 DSL，`Program.cs` 只保留场景调度；不再把 `LastCalculationResult` / `LastCalculationFailure` 视为外部宿主主消费面
+- `UnitOp.Mvp` 模式当前已切到“最小外部 host 驱动 + 结果消费样例”口径：样例侧通过 `UnitOperationSmokeHostDriver` 明确收口 `Initialize -> 配参数 -> 连端口 -> Validate -> Calculate -> 读结果 -> Terminate` 这一条最小宿主调用顺序，并在 `Calculate` 失败时先分类为 `InvocationOrder / Validation / Native`，再通过 `UnitOperationHostReportReader.Read(...)`、`UnitOperationHostReportPresenter.Present(...)` 和 `UnitOperationHostReportFormatter.Format(...)` 完成 `none / failure / success / none` 三态判断、稳定 detail 展示和 supplemental diagnostic lines 分区展示；当前 `unitop` smoke 已进一步分成五层：`driver` 负责最小宿主编排，`UnitOperationSmokeReportAssertions` 负责共享报告断言，`UnitOperationSmokeBoundarySuite` 锁定细粒度边界矩阵，`UnitOperationSmokeSession` 负责多轮宿主会话 DSL，`Program.cs` 只保留场景调度；在此之上，当前已至少覆盖两条不同会话变体：`Host Session Timeline` 侧重 invocation/native/validation 混合回合，`Host Recovery Timeline` 侧重 validation 恢复、feed 端口恢复与 native 恢复顺序；不再把 `LastCalculationResult` / `LastCalculationFailure` 视为外部宿主主消费面
 
 默认行为：
 
