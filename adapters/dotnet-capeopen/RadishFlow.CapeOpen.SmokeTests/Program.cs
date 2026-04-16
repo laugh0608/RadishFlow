@@ -83,97 +83,10 @@ static void RunUnitOperationSmoke(SmokeOptions options)
 {
     var projectJson = File.ReadAllText(options.ProjectPath);
     UnitOperationSmokeBoundarySuite.Run(options, projectJson);
-    RunUnitOperationSessionSmoke(options, projectJson);
-    RunUnitOperationRecoverySessionSmoke(options, projectJson);
-    RunUnitOperationShutdownSessionSmoke(options, projectJson);
-}
-
-static void RunUnitOperationSessionSmoke(SmokeOptions options, string projectJson)
-{
-    using var session = new UnitOperationSmokeSession(options, projectJson);
-    session.ExpectInvocationOrderBeforeInitialize("round-0");
-    session.InitializeAndExpectIdle("round-1");
-    session.ConfigureMinimumInputsAndConnect("round-2");
-    session.ExpectSuccessRound(
-        "round-3",
-        report => $"status={report.Snapshot.GetDetailValue(UnitOperationCalculationReportDetailCatalog.Status)}, diagnostics={report.Snapshot.GetDetailValue(UnitOperationCalculationReportDetailCatalog.DiagnosticCount)}");
-    session.ExpectNativeFailureForMissingPackage("round-4", "missing-package-for-session");
-    session.RestorePackageAndExpectValid("round-5a", options.PackageId);
-    session.ExpectSuccessRound(
-        "round-5b",
-        report => $"state={report.Snapshot.State}, highestSeverity={report.Snapshot.GetDetailValue(UnitOperationCalculationReportDetailCatalog.HighestSeverity)}");
-    session.BreakCompanionInputsAndExpectValidationFailure("round-6");
-    session.RestoreMinimumInputsAndExpectValid("round-7a");
-    session.ExpectSuccessRound(
-        "round-7b",
-        report => $"relatedStreams={report.Snapshot.GetDetailValue(UnitOperationCalculationReportDetailCatalog.RelatedStreamIds)}");
-    session.DisconnectProductPortAndExpectRecoveryWindow("round-8a");
-    session.ReconnectProductPort("round-8b", "Session Product");
-    session.ExpectSuccessRound(
-        "round-8c",
-        report => $"headline={report.Snapshot.Headline}");
-    session.TerminateAndExpectClosed("round-9");
-
-    Console.WriteLine("== Host Session Timeline ==");
-    foreach (var line in session.Timeline)
-    {
-        Console.WriteLine($"- {line}");
-    }
-    Console.WriteLine();
-}
-
-static void RunUnitOperationRecoverySessionSmoke(SmokeOptions options, string projectJson)
-{
-    using var session = new UnitOperationSmokeSession(options, projectJson);
-    session.InitializeAndExpectIdle("recovery-0");
-    session.ConfigureMinimumInputsAndConnect("recovery-1");
-    session.BreakCompanionInputsAndExpectValidationFailure("recovery-2");
-    session.RestoreMinimumInputsAndExpectValid("recovery-3");
-    session.ExpectSuccessRound(
-        "recovery-4",
-        report => $"headline={report.Snapshot.Headline}");
-    session.DisconnectFeedPortAndExpectRecoveryWindow("recovery-5");
-    session.ReconnectFeedPort("recovery-6", "Recovery Feed");
-    session.ExpectSuccessRound(
-        "recovery-7",
-        report => $"diagnosticCount={report.Snapshot.GetDetailValue(UnitOperationCalculationReportDetailCatalog.DiagnosticCount)}");
-    session.ExpectNativeFailureForMissingPackage("recovery-8", "missing-package-for-recovery");
-    session.RestorePackageAndExpectValid("recovery-9", options.PackageId);
-    session.ExpectSuccessRound(
-        "recovery-10",
-        report => $"relatedUnits={report.Snapshot.GetDetailValue(UnitOperationCalculationReportDetailCatalog.RelatedUnitIds)}");
-    session.TerminateAndExpectClosed("recovery-11");
-
-    Console.WriteLine("== Host Recovery Timeline ==");
-    foreach (var line in session.Timeline)
-    {
-        Console.WriteLine($"- {line}");
-    }
-    Console.WriteLine();
-}
-
-static void RunUnitOperationShutdownSessionSmoke(SmokeOptions options, string projectJson)
-{
-    using var session = new UnitOperationSmokeSession(options, projectJson);
-    session.ExpectCurrentReportToBeEmpty("shutdown-0");
-    session.InitializeAndExpectIdle("shutdown-1");
-    session.ConfigureMinimumInputsAndConnect("shutdown-2");
-    session.ExpectSuccessRound(
-        "shutdown-3",
-        report => $"headline={report.Snapshot.Headline}");
-    session.ExpectCurrentReportToBeSuccessful(
-        "shutdown-4",
-        report => $"detailKeys={report.Snapshot.DetailKeyCount}, supplementalLines={report.Presentation.SupplementalLines.Count}");
-    session.TerminateAndExpectClosed("shutdown-5");
-    session.ExpectCurrentReportToBeEmpty("shutdown-6");
-    session.ExpectPostTerminateCalculationFailure("shutdown-7");
-
-    Console.WriteLine("== Host Shutdown Timeline ==");
-    foreach (var line in session.Timeline)
-    {
-        Console.WriteLine($"- {line}");
-    }
-    Console.WriteLine();
+    UnitOperationSmokeScenarioRunner.RunAll(
+        options,
+        projectJson,
+        UnitOperationSmokeScenarioCatalog.CreateDefaultScenarios());
 }
 
 
