@@ -86,7 +86,7 @@ static void RunUnitOperationSmoke(SmokeOptions options)
     UnitOperationSmokeScenarioRunner.RunAll(
         options,
         projectJson,
-        UnitOperationSmokeScenarioCatalog.CreateDefaultScenarios());
+        UnitOperationSmokeScenarioCatalog.CreateScenarios(options.UnitOperationScenario));
 }
 
 
@@ -95,6 +95,7 @@ internal sealed class SmokeOptions
     private SmokeOptions(
         bool showHelp,
         SmokeMode mode,
+        string unitOperationScenario,
         string projectPath,
         string packageId,
         string? manifestPath,
@@ -104,6 +105,7 @@ internal sealed class SmokeOptions
     {
         ShowHelp = showHelp;
         Mode = mode;
+        UnitOperationScenario = unitOperationScenario;
         ProjectPath = projectPath;
         PackageId = packageId;
         ManifestPath = manifestPath;
@@ -115,6 +117,8 @@ internal sealed class SmokeOptions
     public bool ShowHelp { get; }
 
     public SmokeMode Mode { get; }
+
+    public string UnitOperationScenario { get; }
 
     public string ProjectPath { get; }
 
@@ -138,6 +142,8 @@ internal sealed class SmokeOptions
 
         Options:
           --mode <adapter|unitop> Run direct Adapter smoke or UnitOp.Mvp smoke. Default: adapter
+          --unitop-scenario <all|session|recovery|shutdown>
+                               Filter unitop smoke to a single host scenario. Default: all
           --project <path>        Project json path. Default: examples/flowsheets/feed-heater-flash-binary-hydrocarbon.rfproj.json
           --package <id>          Package id to solve with. Default: binary-hydrocarbon-lite-v1
           --manifest <path>       Optional property package manifest path
@@ -180,6 +186,9 @@ internal sealed class SmokeOptions
             mode: values.TryGetValue("--mode", out var modeText)
                 ? ParseMode(modeText)
                 : SmokeMode.Adapter,
+            unitOperationScenario: values.TryGetValue("--unitop-scenario", out var unitOperationScenario)
+                ? unitOperationScenario
+                : "all",
             projectPath: values.TryGetValue("--project", out var projectPath)
                 ? Path.GetFullPath(projectPath)
                 : Path.Combine(

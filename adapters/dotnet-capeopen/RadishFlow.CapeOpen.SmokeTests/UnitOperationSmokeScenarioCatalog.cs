@@ -1,24 +1,44 @@
 using RadishFlow.CapeOpen.UnitOp.Mvp.Results;
 
 internal sealed record UnitOperationSmokeScenario(
+    string Id,
     string Title,
     Action<UnitOperationSmokeSession, SmokeOptions> Execute);
 
 internal static class UnitOperationSmokeScenarioCatalog
 {
-    public static IReadOnlyList<UnitOperationSmokeScenario> CreateDefaultScenarios()
+    public static string ScenarioOptionHelpText => "all|session|recovery|shutdown";
+
+    public static IReadOnlyList<UnitOperationSmokeScenario> CreateScenarios(string scenarioId)
     {
-        return
+        UnitOperationSmokeScenario[] scenarios =
         [
             CreateHostSessionScenario(),
             CreateHostRecoveryScenario(),
             CreateHostShutdownScenario(),
         ];
+
+        if (string.IsNullOrWhiteSpace(scenarioId) ||
+            string.Equals(scenarioId, "all", StringComparison.OrdinalIgnoreCase))
+        {
+            return scenarios;
+        }
+
+        var matchedScenario = scenarios.FirstOrDefault(
+            scenario => string.Equals(scenario.Id, scenarioId, StringComparison.OrdinalIgnoreCase));
+        if (matchedScenario is null)
+        {
+            throw new ArgumentException(
+                $"Unsupported unitop scenario `{scenarioId}`. Supported values: {ScenarioOptionHelpText}.");
+        }
+
+        return new[] { matchedScenario };
     }
 
     private static UnitOperationSmokeScenario CreateHostSessionScenario()
     {
         return new UnitOperationSmokeScenario(
+            "session",
             "Host Session Timeline",
             static (session, options) =>
             {
@@ -50,6 +70,7 @@ internal static class UnitOperationSmokeScenarioCatalog
     private static UnitOperationSmokeScenario CreateHostRecoveryScenario()
     {
         return new UnitOperationSmokeScenario(
+            "recovery",
             "Host Recovery Timeline",
             static (session, options) =>
             {
@@ -77,6 +98,7 @@ internal static class UnitOperationSmokeScenarioCatalog
     private static UnitOperationSmokeScenario CreateHostShutdownScenario()
     {
         return new UnitOperationSmokeScenario(
+            "shutdown",
             "Host Shutdown Timeline",
             static (session, _) =>
             {
