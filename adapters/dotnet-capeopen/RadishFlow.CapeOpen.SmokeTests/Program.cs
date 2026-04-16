@@ -84,6 +84,12 @@ static void RunAdapterSmoke(SmokeOptions options)
 static void RunUnitOperationSmoke(SmokeOptions options)
 {
     var projectJson = File.ReadAllText(options.ProjectPath);
+    RunUnitOperationBoundarySmoke(options, projectJson);
+    RunUnitOperationSessionSmoke(options, projectJson);
+}
+
+static void RunUnitOperationBoundarySmoke(SmokeOptions options, string projectJson)
+{
     using var driver = new UnitOperationSmokeHostDriver(options, projectJson);
 
     var preInitializeAttempt = driver.Calculate();
@@ -407,6 +413,67 @@ static void RunUnitOperationSmoke(SmokeOptions options)
         successDocument.FormattedText.Contains("[Supplemental]", StringComparison.Ordinal),
         "success host formatter text should include all section headers.");
 
+    var repeatedSuccessAttempt = driver.Calculate();
+    EnsureCondition(
+        repeatedSuccessAttempt.Succeeded &&
+        repeatedSuccessAttempt.Failure is null &&
+        repeatedSuccessAttempt.FailureKind is null,
+        "repeated Calculate() on a stable unit should continue to succeed.");
+    var repeatedSuccessReport = repeatedSuccessAttempt.Report.Snapshot;
+    EnsureCondition(
+        repeatedSuccessReport.State == UnitOperationCalculationReportState.Success &&
+        repeatedSuccessReport.DetailKeys.SequenceEqual(
+            UnitOperationCalculationReportDetailCatalog.SuccessStableKeyOrder,
+            StringComparer.Ordinal),
+        "repeated Calculate() should preserve the frozen success report shape.");
+
+    feedPort.Disconnect();
+    var disconnectedPortValidation = driver.Validate();
+    EnsureCondition(
+        !disconnectedPortValidation.IsValid &&
+        disconnectedPortValidation.Message.Contains("Required port `Feed` is not connected.", StringComparison.Ordinal),
+        "disconnecting a required port should make Validate() fail with the required-port message.");
+    var disconnectedPortReport = driver.ReadReport().Snapshot;
+    EnsureCondition(
+        disconnectedPortReport.State == UnitOperationCalculationReportState.None,
+        "disconnecting a required port should clear the last calculation report until the unit is driven again.");
+    feedPort.Connect(new SmokeConnectedObject("Reconnected Feed"));
+    var reconnectedPortValidation = driver.Validate();
+    EnsureCondition(
+        reconnectedPortValidation.IsValid,
+        "reconnecting the required port should restore a valid minimal host configuration.");
+
+    payloadPathParameter.value = null;
+    var companionValidation = driver.Validate();
+    EnsureCondition(
+        !companionValidation.IsValid &&
+        companionValidation.Message.Contains("must be configured together", StringComparison.Ordinal),
+        "breaking the manifest/payload pair should fail validation with the companion-parameter message.");
+    var companionFailureAttempt = driver.Calculate();
+    var companionFailureError = companionFailureAttempt.ExpectFailure<CapeBadInvocationOrderException>(
+        UnitOperationHostDriverFailureKind.Validation,
+        "calculate with incomplete manifest/payload pair");
+    var companionFailureReport = companionFailureAttempt.Report.Snapshot;
+    EnsureCondition(
+        string.Equals(
+            companionFailureError.RequestedOperation,
+            nameof(RadishFlowCapeOpenUnitOperation.LoadPropertyPackageFiles),
+            StringComparison.Ordinal) &&
+        string.Equals(
+            companionFailureReport.GetDetailValue(UnitOperationCalculationReportDetailCatalog.RequestedOperation),
+            nameof(RadishFlowCapeOpenUnitOperation.LoadPropertyPackageFiles),
+            StringComparison.Ordinal),
+        "companion-parameter validation failure should point the host back to LoadPropertyPackageFiles().");
+    driver.ConfigureMinimumInputs(includePackageId: true);
+    var recoveredValidation = driver.Validate();
+    EnsureCondition(
+        recoveredValidation.IsValid,
+        "restoring manifest/payload inputs should recover the unit to a valid host configuration.");
+    var recoveredSuccessAttempt = driver.Calculate();
+    EnsureCondition(
+        recoveredSuccessAttempt.Succeeded,
+        "after restoring companion inputs, Calculate() should succeed again.");
+
     Console.WriteLine("== Sectioned Host Report ==");
     foreach (var section in successDocument.Sections)
     {
@@ -455,10 +522,155 @@ static void RunUnitOperationSmoke(SmokeOptions options)
         "terminated host formatter should return to overview-only section output.");
     EnsureCondition(!feedPort.IsConnected, "feed port should release its connected object during Terminate().");
     EnsureCondition(!productPort.IsConnected, "product port should release its connected object during Terminate().");
+    var postTerminateValidation = driver.Validate();
+    EnsureCondition(
+        !postTerminateValidation.IsValid &&
+        postTerminateValidation.Message.Contains("Terminate has already been called", StringComparison.Ordinal),
+        "Validate() after Terminate() should return an invalid termination message instead of reactivating the unit.");
+    ExpectCapeBadInvOrder(() => driver.Initialize(), "initialize after terminate");
+    var postTerminateCalculateAttempt = driver.Calculate();
+    var postTerminateCalculateError = postTerminateCalculateAttempt.ExpectFailure<CapeBadInvocationOrderException>(
+        UnitOperationHostDriverFailureKind.Validation,
+        "calculate after terminate");
+    EnsureCondition(
+        string.Equals(postTerminateCalculateError.Operation, nameof(RadishFlowCapeOpenUnitOperation.Calculate), StringComparison.Ordinal),
+        "calculate after terminate should fail at the Calculate() boundary.");
     ExpectCapeBadInvOrder(() => _ = parameterCollection.Count(), "parameter collection count after terminate");
     ExpectCapeBadInvOrder(() => _ = flowsheetParameter.value, "parameter value get after terminate");
     ExpectCapeBadInvOrder(() => feedPort.Connect(new SmokeConnectedObject("Late Feed")), "port connect after terminate");
     ExpectCapeBadInvOrder(() => _ = feedPort.connectedObject, "port connectedObject after terminate");
+}
+
+static void RunUnitOperationSessionSmoke(SmokeOptions options, string projectJson)
+{
+    using var driver = new UnitOperationSmokeHostDriver(options, projectJson);
+    var timeline = new List<string>();
+
+    var round0Attempt = driver.Calculate();
+    var round0Error = round0Attempt.ExpectFailure<CapeBadInvocationOrderException>(
+        UnitOperationHostDriverFailureKind.InvocationOrder,
+        "session round 0 calculate before initialize");
+    timeline.Add(
+        $"round-0 invocation-order: operation={round0Error.Operation}, requested={round0Error.RequestedOperation}");
+
+    driver.Initialize();
+    var idleReport = driver.ReadReport().Snapshot;
+    EnsureCondition(
+        idleReport.State == UnitOperationCalculationReportState.None,
+        "session scenario should enter idle report state immediately after Initialize().");
+    timeline.Add($"round-1 initialized: reportState={idleReport.State}");
+
+    driver.ConfigureMinimumInputs(includePackageId: true);
+    driver.ConnectRequiredPorts();
+    var initialValidation = driver.Validate();
+    EnsureCondition(
+        initialValidation.IsValid,
+        "session scenario should validate once minimum inputs and required ports are configured.");
+    timeline.Add("round-2 configured: validation=valid");
+
+    var firstSuccess = EnsureSuccessfulHostRound(driver, "session round 3 initial success");
+    timeline.Add(
+        $"round-3 success: status={firstSuccess.Snapshot.GetDetailValue(UnitOperationCalculationReportDetailCatalog.Status)}, diagnostics={firstSuccess.Snapshot.GetDetailValue(UnitOperationCalculationReportDetailCatalog.DiagnosticCount)}");
+
+    driver.PackageIdParameter.value = "missing-package-for-session";
+    var nativeFailureAttempt = driver.Calculate();
+    var nativeFailure = nativeFailureAttempt.ExpectFailure<CapeInvalidArgumentException>(
+        UnitOperationHostDriverFailureKind.Native,
+        "session round 4 missing property package");
+    EnsureCondition(
+        string.Equals(nativeFailure.NativeStatus, "MissingEntity", StringComparison.Ordinal) &&
+        nativeFailureAttempt.Report.Snapshot.State == UnitOperationCalculationReportState.Failure,
+        "session native failure should preserve MissingEntity classification and failure report state.");
+    timeline.Add($"round-4 native-failure: nativeStatus={nativeFailure.NativeStatus}");
+
+    driver.PackageIdParameter.value = options.PackageId;
+    var postNativeRecoveryValidation = driver.Validate();
+    EnsureCondition(
+        postNativeRecoveryValidation.IsValid,
+        "restoring package id after native failure should recover the session to a valid state.");
+    var secondSuccess = EnsureSuccessfulHostRound(driver, "session round 5 recover from native failure");
+    timeline.Add(
+        $"round-5 recovered-success: state={secondSuccess.Snapshot.State}, highestSeverity={secondSuccess.Snapshot.GetDetailValue(UnitOperationCalculationReportDetailCatalog.HighestSeverity)}");
+
+    driver.ManifestPathParameter.value = null;
+    var companionValidation = driver.Validate();
+    EnsureCondition(
+        !companionValidation.IsValid &&
+        companionValidation.Message.Contains("must be configured together", StringComparison.Ordinal),
+        "session companion break should make validation fail.");
+    var companionFailureAttempt = driver.Calculate();
+    var companionFailure = companionFailureAttempt.ExpectFailure<CapeBadInvocationOrderException>(
+        UnitOperationHostDriverFailureKind.Validation,
+        "session round 6 broken companion inputs");
+    EnsureCondition(
+        string.Equals(companionFailure.RequestedOperation, nameof(RadishFlowCapeOpenUnitOperation.LoadPropertyPackageFiles), StringComparison.Ordinal),
+        "session companion failure should request LoadPropertyPackageFiles().");
+    timeline.Add($"round-6 validation-failure: requested={companionFailure.RequestedOperation}");
+
+    driver.ConfigureMinimumInputs(includePackageId: true);
+    var postCompanionRecovery = EnsureSuccessfulHostRound(driver, "session round 7 recover from companion failure");
+    timeline.Add(
+        $"round-7 recovered-success: relatedStreams={postCompanionRecovery.Snapshot.GetDetailValue(UnitOperationCalculationReportDetailCatalog.RelatedStreamIds)}");
+
+    driver.ProductPort.Disconnect();
+    var disconnectedPortValidation = driver.Validate();
+    EnsureCondition(
+        !disconnectedPortValidation.IsValid &&
+        disconnectedPortValidation.Message.Contains("Required port `Product` is not connected.", StringComparison.Ordinal),
+        "disconnecting product port in session scenario should fail validation.");
+    EnsureCondition(
+        driver.ReadReport().Snapshot.State == UnitOperationCalculationReportState.None,
+        "disconnecting product port in session scenario should clear the previously cached host report.");
+    driver.ProductPort.Connect(new SmokeConnectedObject("Session Product"));
+    var finalSuccess = EnsureSuccessfulHostRound(driver, "session round 8 recover from port reconnect");
+    timeline.Add(
+        $"round-8 reconnected-success: headline={finalSuccess.Snapshot.Headline}");
+
+    driver.Terminate();
+    var terminatedReport = driver.ReadReport().Snapshot;
+    EnsureCondition(
+        terminatedReport.State == UnitOperationCalculationReportState.None,
+        "session scenario should end in the empty report state after Terminate().");
+    var postTerminateValidation = driver.Validate();
+    EnsureCondition(
+        !postTerminateValidation.IsValid &&
+        postTerminateValidation.Message.Contains("Terminate has already been called", StringComparison.Ordinal),
+        "session scenario should keep Validate() invalid after Terminate().");
+    timeline.Add($"round-9 terminated: reportState={terminatedReport.State}, validation=invalid");
+
+    Console.WriteLine("== Host Session Timeline ==");
+    foreach (var line in timeline)
+    {
+        Console.WriteLine($"- {line}");
+    }
+    Console.WriteLine();
+}
+
+static UnitOperationHostReportBundle EnsureSuccessfulHostRound(
+    UnitOperationSmokeHostDriver driver,
+    string scenario)
+{
+    var validation = driver.Validate();
+    EnsureCondition(validation.IsValid, $"{scenario} should validate before Calculate().");
+
+    var attempt = driver.Calculate();
+    if (!attempt.Succeeded)
+    {
+        throw new InvalidOperationException(
+            $"{scenario} expected success, but received {attempt.Failure?.GetType().Name ?? "<unknown>"}.");
+    }
+
+    EnsureCondition(
+        attempt.Report.Snapshot.State == UnitOperationCalculationReportState.Success,
+        $"{scenario} should expose success report state.");
+    EnsureCondition(
+        string.Equals(
+            attempt.Report.Snapshot.GetDetailValue(UnitOperationCalculationReportDetailCatalog.Status),
+            "converged",
+            StringComparison.Ordinal),
+        $"{scenario} should expose converged status detail.");
+
+    return attempt.Report;
 }
 
 static void EnsureSameReference<T>(T expected, T actual, string scenario)
