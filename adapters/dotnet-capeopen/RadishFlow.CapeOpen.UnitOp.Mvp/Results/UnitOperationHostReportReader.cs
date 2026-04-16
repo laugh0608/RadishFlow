@@ -1,49 +1,43 @@
-using RadishFlow.CapeOpen.UnitOp.Mvp.Results;
 using RadishFlow.CapeOpen.UnitOp.Mvp.UnitOperation;
 
-namespace RadishFlow.CapeOpen.SmokeTests;
+namespace RadishFlow.CapeOpen.UnitOp.Mvp.Results;
 
-internal sealed class UnitOperationHostReportConsumer
+public static class UnitOperationHostReportReader
 {
-    private readonly RadishFlowCapeOpenUnitOperation _unitOperation;
-
-    public UnitOperationHostReportConsumer(RadishFlowCapeOpenUnitOperation unitOperation)
+    public static UnitOperationHostReportSnapshot Read(
+        RadishFlowCapeOpenUnitOperation unitOperation)
     {
         ArgumentNullException.ThrowIfNull(unitOperation);
-        _unitOperation = unitOperation;
-    }
 
-    public UnitOperationHostReportSnapshot ReadCurrentReport()
-    {
-        var detailKeys = new string[_unitOperation.GetCalculationReportDetailKeyCount()];
+        var detailKeys = new string[unitOperation.GetCalculationReportDetailKeyCount()];
         for (var index = 0; index < detailKeys.Length; index++)
         {
-            detailKeys[index] = _unitOperation.GetCalculationReportDetailKey(index);
+            detailKeys[index] = unitOperation.GetCalculationReportDetailKey(index);
         }
 
         var detailEntries = detailKeys
             .Select(key => new UnitOperationHostReportDetailEntry(
                 key,
-                _unitOperation.GetCalculationReportDetailValue(key)))
+                unitOperation.GetCalculationReportDetailValue(key)))
             .ToArray();
 
-        var scalarLines = new string[_unitOperation.GetCalculationReportLineCount()];
+        var scalarLines = new string[unitOperation.GetCalculationReportLineCount()];
         for (var index = 0; index < scalarLines.Length; index++)
         {
-            scalarLines[index] = _unitOperation.GetCalculationReportLine(index);
+            scalarLines[index] = unitOperation.GetCalculationReportLine(index);
         }
 
         return new UnitOperationHostReportSnapshot(
-            State: _unitOperation.GetCalculationReportState(),
-            Headline: _unitOperation.GetCalculationReportHeadline(),
+            State: unitOperation.GetCalculationReportState(),
+            Headline: unitOperation.GetCalculationReportHeadline(),
             DetailEntries: detailEntries,
             ScalarLines: scalarLines,
-            VectorLines: _unitOperation.GetCalculationReportLines().ToArray(),
-            Text: _unitOperation.GetCalculationReportText());
+            VectorLines: unitOperation.GetCalculationReportLines().ToArray(),
+            Text: unitOperation.GetCalculationReportText());
     }
 }
 
-internal sealed record UnitOperationHostReportSnapshot(
+public sealed record UnitOperationHostReportSnapshot(
     UnitOperationCalculationReportState State,
     string Headline,
     IReadOnlyList<UnitOperationHostReportDetailEntry> DetailEntries,
@@ -71,6 +65,6 @@ internal sealed record UnitOperationHostReportSnapshot(
     }
 }
 
-internal sealed record UnitOperationHostReportDetailEntry(
+public sealed record UnitOperationHostReportDetailEntry(
     string Key,
     string? Value);

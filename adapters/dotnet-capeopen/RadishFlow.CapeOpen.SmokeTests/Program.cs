@@ -1,7 +1,6 @@
 using RadishFlow.CapeOpen.Adapter;
 using RadishFlow.CapeOpen.Interop.Errors;
 using RadishFlow.CapeOpen.Interop.Common;
-using RadishFlow.CapeOpen.SmokeTests;
 using RadishFlow.CapeOpen.UnitOp.Mvp.Placeholders;
 using RadishFlow.CapeOpen.UnitOp.Mvp.Results;
 using RadishFlow.CapeOpen.UnitOp.Mvp.UnitOperation;
@@ -85,7 +84,6 @@ static void RunAdapterSmoke(SmokeOptions options)
 static void RunUnitOperationSmoke(SmokeOptions options)
 {
     using var unitOperation = new RadishFlowCapeOpenUnitOperation();
-    var hostReportConsumer = new UnitOperationHostReportConsumer(unitOperation);
     if (!string.IsNullOrWhiteSpace(options.NativeLibraryDirectory))
     {
         unitOperation.ConfigureNativeLibraryDirectory(options.NativeLibraryDirectory);
@@ -93,7 +91,7 @@ static void RunUnitOperationSmoke(SmokeOptions options)
 
     var projectJson = File.ReadAllText(options.ProjectPath);
     unitOperation.Initialize();
-    var initialReport = hostReportConsumer.ReadCurrentReport();
+    var initialReport = UnitOperationHostReportReader.Read(unitOperation);
     EnsureCondition(
         initialReport.State == UnitOperationCalculationReportState.None,
         "unit operation should expose an empty calculation report before Calculate().");
@@ -179,7 +177,7 @@ static void RunUnitOperationSmoke(SmokeOptions options)
     var validationFailureError = ExpectCapeBadInvOrder(
         () => unitOperation.Calculate(),
         "calculate without property package id");
-    var validationFailureReport = hostReportConsumer.ReadCurrentReport();
+    var validationFailureReport = UnitOperationHostReportReader.Read(unitOperation);
     EnsureCondition(
         string.Equals(
             validationFailureReport.GetDetailValue(UnitOperationCalculationReportDetailCatalog.Error),
@@ -230,7 +228,7 @@ static void RunUnitOperationSmoke(SmokeOptions options)
     var nativeFailureError = ExpectCapeInvalidArgument(
         () => unitOperation.Calculate(),
         "calculate with missing property package id");
-    var nativeFailureReport = hostReportConsumer.ReadCurrentReport();
+    var nativeFailureReport = UnitOperationHostReportReader.Read(unitOperation);
     EnsureCondition(
         string.Equals(
             nativeFailureReport.GetDetailValue(UnitOperationCalculationReportDetailCatalog.Error),
@@ -297,7 +295,7 @@ static void RunUnitOperationSmoke(SmokeOptions options)
 
     unitOperation.Calculate();
 
-    var successReport = hostReportConsumer.ReadCurrentReport();
+    var successReport = UnitOperationHostReportReader.Read(unitOperation);
     EnsureCondition(
         successReport.State == UnitOperationCalculationReportState.Success,
         "successful Calculate() should switch the host-visible report into success state.");
@@ -351,7 +349,7 @@ static void RunUnitOperationSmoke(SmokeOptions options)
     Console.WriteLine();
 
     unitOperation.Terminate();
-    var terminatedReport = hostReportConsumer.ReadCurrentReport();
+    var terminatedReport = UnitOperationHostReportReader.Read(unitOperation);
     EnsureCondition(
         terminatedReport.State == UnitOperationCalculationReportState.None,
         "terminate should reset the host-visible report to empty state.");
