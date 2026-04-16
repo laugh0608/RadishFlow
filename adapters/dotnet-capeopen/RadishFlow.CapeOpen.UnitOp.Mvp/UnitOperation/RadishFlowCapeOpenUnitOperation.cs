@@ -287,7 +287,6 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
             return;
         }
 
-        _lifecycleState = UnitOperationLifecycleState.Terminated;
         _simulationContext = null;
         foreach (var port in Ports)
         {
@@ -296,6 +295,7 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
 
         ClearCalculationArtifacts();
         ValStatus = CapeValidationStatus.NotValidated;
+        _lifecycleState = UnitOperationLifecycleState.Terminated;
     }
 
     public int Edit()
@@ -376,52 +376,13 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
 
     private ValidationResult EvaluateValidation()
     {
-        var lifecycleValidation = EvaluateLifecycleValidation();
-        if (lifecycleValidation is not null)
-        {
-            return lifecycleValidation;
-        }
-
-        if (!_flowsheetParameter.IsConfigured)
-        {
-            return ValidationResult.Invalid(
-                $"Required parameter `{_flowsheetParameter.ComponentName}` is not configured.",
-                nameof(LoadFlowsheetJson));
-        }
-
-        if (!_packageIdParameter.IsConfigured)
-        {
-            return ValidationResult.Invalid(
-                $"Required parameter `{_packageIdParameter.ComponentName}` is not configured.",
-                nameof(SelectPropertyPackage));
-        }
-
-        var pairValidation = EvaluateParameterCompanionValidation();
-        if (pairValidation is not null)
-        {
-            return pairValidation;
-        }
-
-        foreach (var parameter in Parameters)
-        {
-            var parameterMessage = string.Empty;
-            if (!parameter.Validate(ref parameterMessage))
-            {
-                return ValidationResult.Invalid(parameterMessage);
-            }
-        }
-
-        foreach (var port in Ports.Where(static port => port.IsRequired))
-        {
-            if (!port.IsConnected)
-            {
-                return ValidationResult.Invalid(
-                    $"Required port `{port.ComponentName}` is not connected.",
-                    ConnectPortOperation);
-            }
-        }
-
-        return ValidationResult.Valid("The MVP CAPE-OPEN unit operation skeleton is configured.");
+        return
+            EvaluateLifecycleValidation() ??
+            EvaluateRequiredParameterConfigurationValidation() ??
+            EvaluateParameterCompanionValidation() ??
+            EvaluateParameterValueValidation() ??
+            EvaluateRequiredPortValidation() ??
+            ValidationResult.Valid("The MVP CAPE-OPEN unit operation skeleton is configured.");
     }
 
     private CapeOpenException CreateExceptionForValidationFailure(string operation, ValidationResult result)
@@ -481,6 +442,54 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
                 return ValidationResult.Invalid(
                     $"Optional parameters `{parameter.ComponentName}` and `{companion.ComponentName}` must be configured together.",
                     nameof(LoadPropertyPackageFiles));
+            }
+        }
+
+        return null;
+    }
+
+    private ValidationResult? EvaluateRequiredParameterConfigurationValidation()
+    {
+        if (!_flowsheetParameter.IsConfigured)
+        {
+            return ValidationResult.Invalid(
+                $"Required parameter `{_flowsheetParameter.ComponentName}` is not configured.",
+                nameof(LoadFlowsheetJson));
+        }
+
+        if (!_packageIdParameter.IsConfigured)
+        {
+            return ValidationResult.Invalid(
+                $"Required parameter `{_packageIdParameter.ComponentName}` is not configured.",
+                nameof(SelectPropertyPackage));
+        }
+
+        return null;
+    }
+
+    private ValidationResult? EvaluateParameterValueValidation()
+    {
+        foreach (var parameter in Parameters)
+        {
+            var parameterMessage = string.Empty;
+            if (!parameter.Validate(ref parameterMessage))
+            {
+                return ValidationResult.Invalid(parameterMessage);
+            }
+        }
+
+        return null;
+    }
+
+    private ValidationResult? EvaluateRequiredPortValidation()
+    {
+        foreach (var port in Ports.Where(static port => port.IsRequired))
+        {
+            if (!port.IsConnected)
+            {
+                return ValidationResult.Invalid(
+                    $"Required port `{port.ComponentName}` is not connected.",
+                    ConnectPortOperation);
             }
         }
 
