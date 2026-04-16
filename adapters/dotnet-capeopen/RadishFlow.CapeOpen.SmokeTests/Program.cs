@@ -93,6 +93,7 @@ static void RunUnitOperationSmoke(SmokeOptions options)
     unitOperation.Initialize();
     var initialReport = UnitOperationHostReportReader.Read(unitOperation);
     var initialPresentation = UnitOperationHostReportPresenter.Present(initialReport);
+    var initialDocument = UnitOperationHostReportFormatter.Format(initialPresentation);
     EnsureCondition(
         initialReport.State == UnitOperationCalculationReportState.None,
         "unit operation should expose an empty calculation report before Calculate().");
@@ -121,6 +122,12 @@ static void RunUnitOperationSmoke(SmokeOptions options)
         !initialPresentation.HasStableDetails &&
         !initialPresentation.HasSupplementalLines,
         "empty host presentation should expose idle label without stable details or supplemental lines.");
+    EnsureCondition(
+        initialDocument.HasSections &&
+        initialDocument.Sections.Count == 1 &&
+        string.Equals(initialDocument.Sections[0].Title, "Overview", StringComparison.Ordinal) &&
+        initialDocument.Sections[0].Lines.Count == 3,
+        "empty host formatter should expose overview section only.");
 
     var parameters = unitOperation.Parameters;
     var ports = unitOperation.Ports;
@@ -186,6 +193,7 @@ static void RunUnitOperationSmoke(SmokeOptions options)
         "calculate without property package id");
     var validationFailureReport = UnitOperationHostReportReader.Read(unitOperation);
     var validationFailurePresentation = UnitOperationHostReportPresenter.Present(validationFailureReport);
+    var validationFailureDocument = UnitOperationHostReportFormatter.Format(validationFailurePresentation);
     EnsureCondition(
         string.Equals(
             validationFailureReport.GetDetailValue(UnitOperationCalculationReportDetailCatalog.Error),
@@ -237,6 +245,11 @@ static void RunUnitOperationSmoke(SmokeOptions options)
         validationFailurePresentation.HasStableDetails &&
         !validationFailurePresentation.HasSupplementalLines,
         "validation failure host presentation should expose failure label, attention hint and only stable detail rows.");
+    EnsureCondition(
+        validationFailureDocument.Sections.Count == 2 &&
+        string.Equals(validationFailureDocument.Sections[0].Title, "Overview", StringComparison.Ordinal) &&
+        string.Equals(validationFailureDocument.Sections[1].Title, "Stable Details", StringComparison.Ordinal),
+        "validation failure host formatter should expose overview and stable detail sections.");
 
     packageIdParameter.value = "missing-package-for-smoke";
     var nativeFailureError = ExpectCapeInvalidArgument(
@@ -244,6 +257,7 @@ static void RunUnitOperationSmoke(SmokeOptions options)
         "calculate with missing property package id");
     var nativeFailureReport = UnitOperationHostReportReader.Read(unitOperation);
     var nativeFailurePresentation = UnitOperationHostReportPresenter.Present(nativeFailureReport);
+    var nativeFailureDocument = UnitOperationHostReportFormatter.Format(nativeFailurePresentation);
     EnsureCondition(
         string.Equals(
             nativeFailureReport.GetDetailValue(UnitOperationCalculationReportDetailCatalog.Error),
@@ -293,6 +307,11 @@ static void RunUnitOperationSmoke(SmokeOptions options)
         nativeFailurePresentation.HasStableDetails &&
         !nativeFailurePresentation.HasSupplementalLines,
         "native failure host presentation should expose failure label, attention hint and only stable detail rows.");
+    EnsureCondition(
+        nativeFailureDocument.Sections.Count == 2 &&
+        string.Equals(nativeFailureDocument.Sections[0].Title, "Overview", StringComparison.Ordinal) &&
+        string.Equals(nativeFailureDocument.Sections[1].Title, "Stable Details", StringComparison.Ordinal),
+        "native failure host formatter should expose overview and stable detail sections.");
 
     packageIdParameter.value = options.PackageId;
 
@@ -318,6 +337,7 @@ static void RunUnitOperationSmoke(SmokeOptions options)
 
     var successReport = UnitOperationHostReportReader.Read(unitOperation);
     var successPresentation = UnitOperationHostReportPresenter.Present(successReport);
+    var successDocument = UnitOperationHostReportFormatter.Format(successPresentation);
     EnsureCondition(
         successReport.State == UnitOperationCalculationReportState.Success,
         "successful Calculate() should switch the host-visible report into success state.");
@@ -361,30 +381,33 @@ static void RunUnitOperationSmoke(SmokeOptions options)
         successPresentation.HasSupplementalLines &&
         successPresentation.SupplementalLines.All(line => line.StartsWith("[", StringComparison.Ordinal)),
         "success host presentation should expose success label, stable details and diagnostic supplemental lines.");
+    EnsureCondition(
+        successDocument.Sections.Count == 3 &&
+        string.Equals(successDocument.Sections[0].Title, "Overview", StringComparison.Ordinal) &&
+        string.Equals(successDocument.Sections[1].Title, "Stable Details", StringComparison.Ordinal) &&
+        string.Equals(successDocument.Sections[2].Title, "Supplemental", StringComparison.Ordinal),
+        "success host formatter should expose overview, stable detail and supplemental sections.");
+    EnsureCondition(
+        successDocument.FormattedText.Contains("[Overview]", StringComparison.Ordinal) &&
+        successDocument.FormattedText.Contains("[Stable Details]", StringComparison.Ordinal) &&
+        successDocument.FormattedText.Contains("[Supplemental]", StringComparison.Ordinal),
+        "success host formatter text should include all section headers.");
 
-    Console.WriteLine("== Minimal Host Report ==");
-    Console.WriteLine($"State: {successPresentation.StateLabel}");
-    Console.WriteLine($"Headline: {successPresentation.Headline}");
-    Console.WriteLine("Stable Details:");
-    foreach (var detail in successPresentation.StableDetails)
+    Console.WriteLine("== Sectioned Host Report ==");
+    foreach (var section in successDocument.Sections)
     {
-        Console.WriteLine($"- {detail.Key}={detail.Value}");
-    }
-    Console.WriteLine("Supplemental Lines:");
-    foreach (var line in successPresentation.SupplementalLines)
-    {
-        Console.WriteLine($"- {line}");
-    }
-    Console.WriteLine("Display Lines:");
-    foreach (var line in successPresentation.DisplayLines)
-    {
-        Console.WriteLine($"- {line}");
+        Console.WriteLine($"[{section.Title}]");
+        foreach (var line in section.Lines)
+        {
+            Console.WriteLine($"- {line}");
+        }
     }
     Console.WriteLine();
 
     unitOperation.Terminate();
     var terminatedReport = UnitOperationHostReportReader.Read(unitOperation);
     var terminatedPresentation = UnitOperationHostReportPresenter.Present(terminatedReport);
+    var terminatedDocument = UnitOperationHostReportFormatter.Format(terminatedPresentation);
     EnsureCondition(
         terminatedReport.State == UnitOperationCalculationReportState.None,
         "terminate should reset the host-visible report to empty state.");
@@ -411,6 +434,10 @@ static void RunUnitOperationSmoke(SmokeOptions options)
         !terminatedPresentation.HasStableDetails &&
         !terminatedPresentation.HasSupplementalLines,
         "terminated host presentation should return to idle label without stable details or supplemental lines.");
+    EnsureCondition(
+        terminatedDocument.Sections.Count == 1 &&
+        string.Equals(terminatedDocument.Sections[0].Title, "Overview", StringComparison.Ordinal),
+        "terminated host formatter should return to overview-only section output.");
     EnsureCondition(!feedPort.IsConnected, "feed port should release its connected object during Terminate().");
     EnsureCondition(!productPort.IsConnected, "product port should release its connected object during Terminate().");
     ExpectCapeBadInvOrder(() => _ = parameterCollection.Count(), "parameter collection count after terminate");
