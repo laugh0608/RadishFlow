@@ -331,34 +331,18 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
                 nameof(Initialize));
         }
 
-        ClearCalculationArtifacts();
+        PrepareForCalculation();
 
         try
         {
-            var result = EvaluateValidation();
-            if (!result.IsValid)
-            {
-                throw CreateExceptionForValidationFailure(nameof(Calculate), result);
-            }
-
+            var inputs = BuildCalculationInputs();
+            var snapshotJson = ExecuteNativeSolve(inputs);
+            _lastCalculationResult = MaterializeCalculationResult(snapshotJson);
             ValStatus = CapeValidationStatus.Valid;
-
-            using var engine = new RadishFlowNativeEngine();
-            engine.LoadFlowsheetJson(_flowsheetParameter.Value!);
-
-            if (_manifestPathParameter.IsConfigured)
-            {
-                engine.LoadPropertyPackageFiles(
-                    _manifestPathParameter.Value!,
-                    _payloadPathParameter.Value!);
-            }
-
-            engine.SolveFlowsheet(_packageIdParameter.Value!);
-            _lastCalculationResult = ParseCalculationResult(engine.GetFlowsheetSnapshotJson());
         }
         catch (CapeOpenException error)
         {
-            _lastCalculationFailure = UnitOperationCalculationFailure.FromException(error);
+            RecordCalculationFailure(error);
             throw;
         }
     }
@@ -383,6 +367,17 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
             EvaluateParameterValueValidation() ??
             EvaluateRequiredPortValidation() ??
             ValidationResult.Valid("The MVP CAPE-OPEN unit operation skeleton is configured.");
+    }
+
+    private void PrepareForCalculation()
+    {
+        ClearCalculationArtifacts();
+
+        var validation = EvaluateValidation();
+        if (!validation.IsValid)
+        {
+            throw CreateExceptionForValidationFailure(nameof(Calculate), validation);
+        }
     }
 
     private CapeOpenException CreateExceptionForValidationFailure(string operation, ValidationResult result)
@@ -496,6 +491,29 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
         return null;
     }
 
+    private CalculationInputs BuildCalculationInputs()
+    {
+        return new CalculationInputs(
+            _flowsheetParameter.Value!,
+            _packageIdParameter.Value!,
+            _manifestPathParameter.IsConfigured ? _manifestPathParameter.Value : null,
+            _payloadPathParameter.IsConfigured ? _payloadPathParameter.Value : null);
+    }
+
+    private static string ExecuteNativeSolve(CalculationInputs inputs)
+    {
+        using var engine = new RadishFlowNativeEngine();
+        engine.LoadFlowsheetJson(inputs.FlowsheetJson);
+
+        if (inputs.ManifestPath is not null && inputs.PayloadPath is not null)
+        {
+            engine.LoadPropertyPackageFiles(inputs.ManifestPath, inputs.PayloadPath);
+        }
+
+        engine.SolveFlowsheet(inputs.PackageId);
+        return engine.GetFlowsheetSnapshotJson();
+    }
+
     private UnitOperationCalculationResult ParseCalculationResult(string snapshotJson)
     {
         try
@@ -510,6 +528,11 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
         {
             throw CreateCalculationResultContractException(error);
         }
+    }
+
+    private UnitOperationCalculationResult MaterializeCalculationResult(string snapshotJson)
+    {
+        return ParseCalculationResult(snapshotJson);
     }
 
     private void InvalidateValidation()
@@ -612,6 +635,12 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
                 moreInfo: "Failed to parse status/summary/diagnostics from native solve snapshot JSON."));
     }
 
+    private void RecordCalculationFailure(CapeOpenException error)
+    {
+        _lastCalculationFailure = UnitOperationCalculationFailure.FromException(error);
+        ValStatus = CapeValidationStatus.Invalid;
+    }
+
     private ValidationResult? EvaluateLifecycleValidation()
     {
         return _lifecycleState switch
@@ -632,6 +661,12 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
     private bool IsTerminated => _lifecycleState == UnitOperationLifecycleState.Terminated;
 
     private bool IsDisposed => _lifecycleState == UnitOperationLifecycleState.Disposed;
+
+    private sealed record CalculationInputs(
+        string FlowsheetJson,
+        string PackageId,
+        string? ManifestPath,
+        string? PayloadPath);
 
     private sealed record ValidationResult(bool IsValid, string Message, string? RequestedOperation)
     {
