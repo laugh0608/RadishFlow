@@ -26,9 +26,7 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
     private object? _simulationContext;
     private UnitOperationCalculationResult? _lastCalculationResult;
     private UnitOperationCalculationFailure? _lastCalculationFailure;
-    private bool _initialized;
-    private bool _terminated;
-    private bool _disposed;
+    private UnitOperationLifecycleState _lifecycleState;
 
     public RadishFlowCapeOpenUnitOperation()
     {
@@ -103,6 +101,7 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
             ensureOwnerAccess: EnsurePlaceholderAccess);
 
         ValStatus = CapeValidationStatus.NotValidated;
+        _lifecycleState = UnitOperationLifecycleState.Constructed;
     }
 
     public string ComponentName { get; set; }
@@ -264,7 +263,7 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
     public void Initialize()
     {
         ThrowIfDisposed();
-        if (_terminated)
+        if (IsTerminated)
         {
             throw CreateBadInvocation(
                 UtilitiesInterfaceName,
@@ -272,30 +271,29 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
                 "This unit instance has already been terminated and cannot be reinitialized.");
         }
 
-        if (_initialized)
+        if (IsInitialized)
         {
             return;
         }
 
-        _initialized = true;
+        _lifecycleState = UnitOperationLifecycleState.Initialized;
         InvalidateValidation();
     }
 
     public void Terminate()
     {
-        if (_disposed || _terminated)
+        if (IsDisposed || IsTerminated)
         {
             return;
         }
 
-        _initialized = false;
+        _lifecycleState = UnitOperationLifecycleState.Terminated;
         _simulationContext = null;
         foreach (var port in Ports)
         {
             port.ReleaseConnectedObject();
         }
 
-        _terminated = true;
         ClearCalculationArtifacts();
         ValStatus = CapeValidationStatus.NotValidated;
     }
@@ -324,7 +322,7 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
         ThrowIfDisposed();
         ThrowIfTerminated(nameof(Calculate), UnitInterfaceName);
 
-        if (!_initialized)
+        if (!IsInitialized)
         {
             throw CreateBadInvocation(
                 UnitInterfaceName,
@@ -367,28 +365,21 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
 
     public void Dispose()
     {
-        if (_disposed)
+        if (IsDisposed)
         {
             return;
         }
 
         Terminate();
-        _disposed = true;
+        _lifecycleState = UnitOperationLifecycleState.Disposed;
     }
 
     private ValidationResult EvaluateValidation()
     {
-        if (_terminated)
+        var lifecycleValidation = EvaluateLifecycleValidation();
+        if (lifecycleValidation is not null)
         {
-            return ValidationResult.Invalid(
-                "Terminate has already been called for this unit instance.");
-        }
-
-        if (!_initialized)
-        {
-            return ValidationResult.Invalid(
-                "Initialize must be called before Validate.",
-                nameof(Initialize));
+            return lifecycleValidation;
         }
 
         if (!_flowsheetParameter.IsConfigured)
@@ -516,7 +507,7 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
     {
         ClearCalculationArtifacts();
 
-        if (!_terminated)
+        if (!IsTerminated)
         {
             ValStatus = CapeValidationStatus.NotValidated;
         }
@@ -530,12 +521,12 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
 
     private void ThrowIfDisposed()
     {
-        ObjectDisposedException.ThrowIf(_disposed, this);
+        ObjectDisposedException.ThrowIf(IsDisposed, this);
     }
 
     private void ThrowIfTerminated(string operation, string interfaceName)
     {
-        if (_terminated)
+        if (IsTerminated)
         {
             throw CreateBadInvocation(
                 interfaceName,
@@ -550,7 +541,7 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
         string? parameterName,
         object? parameter)
     {
-        if (_disposed)
+        if (IsDisposed)
         {
             throw new CapeBadInvocationOrderException(
                 "This unit instance has already been disposed.",
@@ -561,7 +552,7 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
                     parameter: parameter));
         }
 
-        if (_terminated)
+        if (IsTerminated)
         {
             throw new CapeBadInvocationOrderException(
                 "Terminate has already been called for this unit instance.",
@@ -611,6 +602,27 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
                 nameof(Calculate),
                 moreInfo: "Failed to parse status/summary/diagnostics from native solve snapshot JSON."));
     }
+
+    private ValidationResult? EvaluateLifecycleValidation()
+    {
+        return _lifecycleState switch
+        {
+            UnitOperationLifecycleState.Terminated => ValidationResult.Invalid(
+                "Terminate has already been called for this unit instance."),
+            UnitOperationLifecycleState.Constructed => ValidationResult.Invalid(
+                "Initialize must be called before Validate.",
+                nameof(Initialize)),
+            UnitOperationLifecycleState.Initialized => null,
+            UnitOperationLifecycleState.Disposed => throw new ObjectDisposedException(GetType().FullName),
+            _ => throw new ArgumentOutOfRangeException(nameof(_lifecycleState), _lifecycleState, "Unsupported unit operation lifecycle state."),
+        };
+    }
+
+    private bool IsInitialized => _lifecycleState == UnitOperationLifecycleState.Initialized;
+
+    private bool IsTerminated => _lifecycleState == UnitOperationLifecycleState.Terminated;
+
+    private bool IsDisposed => _lifecycleState == UnitOperationLifecycleState.Disposed;
 
     private sealed record ValidationResult(bool IsValid, string Message, string? RequestedOperation)
     {
