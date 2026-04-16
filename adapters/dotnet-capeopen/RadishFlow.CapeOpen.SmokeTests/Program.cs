@@ -543,134 +543,36 @@ static void RunUnitOperationBoundarySmoke(SmokeOptions options, string projectJs
 
 static void RunUnitOperationSessionSmoke(SmokeOptions options, string projectJson)
 {
-    using var driver = new UnitOperationSmokeHostDriver(options, projectJson);
-    var timeline = new List<string>();
-
-    var round0Attempt = driver.Calculate();
-    var round0Error = round0Attempt.ExpectFailure<CapeBadInvocationOrderException>(
-        UnitOperationHostDriverFailureKind.InvocationOrder,
-        "session round 0 calculate before initialize");
-    timeline.Add(
-        $"round-0 invocation-order: operation={round0Error.Operation}, requested={round0Error.RequestedOperation}");
-
-    driver.Initialize();
-    var idleReport = driver.ReadReport().Snapshot;
-    EnsureCondition(
-        idleReport.State == UnitOperationCalculationReportState.None,
-        "session scenario should enter idle report state immediately after Initialize().");
-    timeline.Add($"round-1 initialized: reportState={idleReport.State}");
-
-    driver.ConfigureMinimumInputs(includePackageId: true);
-    driver.ConnectRequiredPorts();
-    var initialValidation = driver.Validate();
-    EnsureCondition(
-        initialValidation.IsValid,
-        "session scenario should validate once minimum inputs and required ports are configured.");
-    timeline.Add("round-2 configured: validation=valid");
-
-    var firstSuccess = EnsureSuccessfulHostRound(driver, "session round 3 initial success");
-    timeline.Add(
-        $"round-3 success: status={firstSuccess.Snapshot.GetDetailValue(UnitOperationCalculationReportDetailCatalog.Status)}, diagnostics={firstSuccess.Snapshot.GetDetailValue(UnitOperationCalculationReportDetailCatalog.DiagnosticCount)}");
-
-    driver.PackageIdParameter.value = "missing-package-for-session";
-    var nativeFailureAttempt = driver.Calculate();
-    var nativeFailure = nativeFailureAttempt.ExpectFailure<CapeInvalidArgumentException>(
-        UnitOperationHostDriverFailureKind.Native,
-        "session round 4 missing property package");
-    EnsureCondition(
-        string.Equals(nativeFailure.NativeStatus, "MissingEntity", StringComparison.Ordinal) &&
-        nativeFailureAttempt.Report.Snapshot.State == UnitOperationCalculationReportState.Failure,
-        "session native failure should preserve MissingEntity classification and failure report state.");
-    timeline.Add($"round-4 native-failure: nativeStatus={nativeFailure.NativeStatus}");
-
-    driver.PackageIdParameter.value = options.PackageId;
-    var postNativeRecoveryValidation = driver.Validate();
-    EnsureCondition(
-        postNativeRecoveryValidation.IsValid,
-        "restoring package id after native failure should recover the session to a valid state.");
-    var secondSuccess = EnsureSuccessfulHostRound(driver, "session round 5 recover from native failure");
-    timeline.Add(
-        $"round-5 recovered-success: state={secondSuccess.Snapshot.State}, highestSeverity={secondSuccess.Snapshot.GetDetailValue(UnitOperationCalculationReportDetailCatalog.HighestSeverity)}");
-
-    driver.ManifestPathParameter.value = null;
-    var companionValidation = driver.Validate();
-    EnsureCondition(
-        !companionValidation.IsValid &&
-        companionValidation.Message.Contains("must be configured together", StringComparison.Ordinal),
-        "session companion break should make validation fail.");
-    var companionFailureAttempt = driver.Calculate();
-    var companionFailure = companionFailureAttempt.ExpectFailure<CapeBadInvocationOrderException>(
-        UnitOperationHostDriverFailureKind.Validation,
-        "session round 6 broken companion inputs");
-    EnsureCondition(
-        string.Equals(companionFailure.RequestedOperation, nameof(RadishFlowCapeOpenUnitOperation.LoadPropertyPackageFiles), StringComparison.Ordinal),
-        "session companion failure should request LoadPropertyPackageFiles().");
-    timeline.Add($"round-6 validation-failure: requested={companionFailure.RequestedOperation}");
-
-    driver.ConfigureMinimumInputs(includePackageId: true);
-    var postCompanionRecovery = EnsureSuccessfulHostRound(driver, "session round 7 recover from companion failure");
-    timeline.Add(
-        $"round-7 recovered-success: relatedStreams={postCompanionRecovery.Snapshot.GetDetailValue(UnitOperationCalculationReportDetailCatalog.RelatedStreamIds)}");
-
-    driver.ProductPort.Disconnect();
-    var disconnectedPortValidation = driver.Validate();
-    EnsureCondition(
-        !disconnectedPortValidation.IsValid &&
-        disconnectedPortValidation.Message.Contains("Required port `Product` is not connected.", StringComparison.Ordinal),
-        "disconnecting product port in session scenario should fail validation.");
-    EnsureCondition(
-        driver.ReadReport().Snapshot.State == UnitOperationCalculationReportState.None,
-        "disconnecting product port in session scenario should clear the previously cached host report.");
-    driver.ProductPort.Connect(new SmokeConnectedObject("Session Product"));
-    var finalSuccess = EnsureSuccessfulHostRound(driver, "session round 8 recover from port reconnect");
-    timeline.Add(
-        $"round-8 reconnected-success: headline={finalSuccess.Snapshot.Headline}");
-
-    driver.Terminate();
-    var terminatedReport = driver.ReadReport().Snapshot;
-    EnsureCondition(
-        terminatedReport.State == UnitOperationCalculationReportState.None,
-        "session scenario should end in the empty report state after Terminate().");
-    var postTerminateValidation = driver.Validate();
-    EnsureCondition(
-        !postTerminateValidation.IsValid &&
-        postTerminateValidation.Message.Contains("Terminate has already been called", StringComparison.Ordinal),
-        "session scenario should keep Validate() invalid after Terminate().");
-    timeline.Add($"round-9 terminated: reportState={terminatedReport.State}, validation=invalid");
+    using var session = new UnitOperationSmokeSession(options, projectJson);
+    session.ExpectInvocationOrderBeforeInitialize("round-0");
+    session.InitializeAndExpectIdle("round-1");
+    session.ConfigureMinimumInputsAndConnect("round-2");
+    session.ExpectSuccessRound(
+        "round-3",
+        report => $"status={report.Snapshot.GetDetailValue(UnitOperationCalculationReportDetailCatalog.Status)}, diagnostics={report.Snapshot.GetDetailValue(UnitOperationCalculationReportDetailCatalog.DiagnosticCount)}");
+    session.ExpectNativeFailureForMissingPackage("round-4", "missing-package-for-session");
+    session.RestorePackageAndExpectValid("round-5a", options.PackageId);
+    session.ExpectSuccessRound(
+        "round-5b",
+        report => $"state={report.Snapshot.State}, highestSeverity={report.Snapshot.GetDetailValue(UnitOperationCalculationReportDetailCatalog.HighestSeverity)}");
+    session.BreakCompanionInputsAndExpectValidationFailure("round-6");
+    session.RestoreMinimumInputsAndExpectValid("round-7a");
+    session.ExpectSuccessRound(
+        "round-7b",
+        report => $"relatedStreams={report.Snapshot.GetDetailValue(UnitOperationCalculationReportDetailCatalog.RelatedStreamIds)}");
+    session.DisconnectProductPortAndExpectRecoveryWindow("round-8a");
+    session.ReconnectProductPort("round-8b", "Session Product");
+    session.ExpectSuccessRound(
+        "round-8c",
+        report => $"headline={report.Snapshot.Headline}");
+    session.TerminateAndExpectClosed("round-9");
 
     Console.WriteLine("== Host Session Timeline ==");
-    foreach (var line in timeline)
+    foreach (var line in session.Timeline)
     {
         Console.WriteLine($"- {line}");
     }
     Console.WriteLine();
-}
-
-static UnitOperationHostReportBundle EnsureSuccessfulHostRound(
-    UnitOperationSmokeHostDriver driver,
-    string scenario)
-{
-    var validation = driver.Validate();
-    EnsureCondition(validation.IsValid, $"{scenario} should validate before Calculate().");
-
-    var attempt = driver.Calculate();
-    if (!attempt.Succeeded)
-    {
-        throw new InvalidOperationException(
-            $"{scenario} expected success, but received {attempt.Failure?.GetType().Name ?? "<unknown>"}.");
-    }
-
-    EnsureCondition(
-        attempt.Report.Snapshot.State == UnitOperationCalculationReportState.Success,
-        $"{scenario} should expose success report state.");
-    EnsureCondition(
-        string.Equals(
-            attempt.Report.Snapshot.GetDetailValue(UnitOperationCalculationReportDetailCatalog.Status),
-            "converged",
-            StringComparison.Ordinal),
-        $"{scenario} should expose converged status detail.");
-
-    return attempt.Report;
 }
 
 static void EnsureSameReference<T>(T expected, T actual, string scenario)
