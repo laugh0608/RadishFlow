@@ -293,8 +293,7 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
             port.ReleaseConnectedObject();
         }
 
-        ClearCalculationArtifacts();
-        ValStatus = CapeValidationStatus.NotValidated;
+        ResetCalculationState(CapeValidationStatus.NotValidated);
         _lifecycleState = UnitOperationLifecycleState.Terminated;
     }
 
@@ -312,9 +311,7 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
         ThrowIfDisposed();
 
         var result = EvaluateValidation();
-        message = result.Message;
-        ValStatus = result.IsValid ? CapeValidationStatus.Valid : CapeValidationStatus.Invalid;
-        return result.IsValid;
+        return ApplyValidationOutcome(result, ref message);
     }
 
     public void Calculate()
@@ -331,14 +328,12 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
                 nameof(Initialize));
         }
 
-        PrepareForCalculation();
-
         try
         {
+            PrepareForCalculation();
             var inputs = BuildCalculationInputs();
             var snapshotJson = ExecuteNativeSolve(inputs);
-            _lastCalculationResult = MaterializeCalculationResult(snapshotJson);
-            ValStatus = CapeValidationStatus.Valid;
+            RecordCalculationSuccess(MaterializeCalculationResult(snapshotJson));
         }
         catch (CapeOpenException error)
         {
@@ -371,7 +366,7 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
 
     private void PrepareForCalculation()
     {
-        ClearCalculationArtifacts();
+        ResetCalculationState(CapeValidationStatus.NotValidated);
 
         var validation = EvaluateValidation();
         if (!validation.IsValid)
@@ -535,20 +530,26 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
         return ParseCalculationResult(snapshotJson);
     }
 
+    private bool ApplyValidationOutcome(ValidationResult result, ref string message)
+    {
+        message = result.Message;
+        ValStatus = result.IsValid ? CapeValidationStatus.Valid : CapeValidationStatus.Invalid;
+        return result.IsValid;
+    }
+
     private void InvalidateValidation()
     {
-        ClearCalculationArtifacts();
-
         if (!IsTerminated)
         {
-            ValStatus = CapeValidationStatus.NotValidated;
+            ResetCalculationState(CapeValidationStatus.NotValidated);
         }
     }
 
-    private void ClearCalculationArtifacts()
+    private void ResetCalculationState(CapeValidationStatus validationStatus)
     {
         _lastCalculationResult = null;
         _lastCalculationFailure = null;
+        ValStatus = validationStatus;
     }
 
     private void ThrowIfDisposed()
@@ -637,8 +638,16 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
 
     private void RecordCalculationFailure(CapeOpenException error)
     {
+        _lastCalculationResult = null;
         _lastCalculationFailure = UnitOperationCalculationFailure.FromException(error);
         ValStatus = CapeValidationStatus.Invalid;
+    }
+
+    private void RecordCalculationSuccess(UnitOperationCalculationResult result)
+    {
+        _lastCalculationResult = result;
+        _lastCalculationFailure = null;
+        ValStatus = CapeValidationStatus.Valid;
     }
 
     private ValidationResult? EvaluateLifecycleValidation()
