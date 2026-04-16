@@ -22,6 +22,11 @@ Thumbs.db
 # Local automation / temp
 .dotnetcli/
 .dotnet/
+.dotnet-home/
+.dotnet-user/
+.dotnet-appdata/
+.nuget/
+artifacts/*.log
 
 # Codex
 .codex/

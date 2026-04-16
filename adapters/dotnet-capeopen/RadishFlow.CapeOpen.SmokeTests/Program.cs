@@ -1,6 +1,7 @@
 using RadishFlow.CapeOpen.Adapter;
 using RadishFlow.CapeOpen.Interop.Errors;
 using RadishFlow.CapeOpen.Interop.Common;
+using RadishFlow.CapeOpen.SmokeTests;
 using RadishFlow.CapeOpen.UnitOp.Mvp.Placeholders;
 using RadishFlow.CapeOpen.UnitOp.Mvp.Results;
 using RadishFlow.CapeOpen.UnitOp.Mvp.UnitOperation;
@@ -84,6 +85,7 @@ static void RunAdapterSmoke(SmokeOptions options)
 static void RunUnitOperationSmoke(SmokeOptions options)
 {
     using var unitOperation = new RadishFlowCapeOpenUnitOperation();
+    var hostReportConsumer = new UnitOperationHostReportConsumer(unitOperation);
     if (!string.IsNullOrWhiteSpace(options.NativeLibraryDirectory))
     {
         unitOperation.ConfigureNativeLibraryDirectory(options.NativeLibraryDirectory);
@@ -91,44 +93,28 @@ static void RunUnitOperationSmoke(SmokeOptions options)
 
     var projectJson = File.ReadAllText(options.ProjectPath);
     unitOperation.Initialize();
-    var initialReport = unitOperation.GetCalculationReport();
-    var initialReportState = unitOperation.GetCalculationReportState();
-    var initialReportHeadline = unitOperation.GetCalculationReportHeadline();
-    var initialReportDetailKeyCount = unitOperation.GetCalculationReportDetailKeyCount();
-    var initialReportDetailKeys = ReadDetailKeys(unitOperation);
-    var initialReportStatusDetail = unitOperation.GetCalculationReportDetailValue(UnitOperationCalculationReportDetailCatalog.Status);
-    var initialReportLineCount = unitOperation.GetCalculationReportLineCount();
-    var initialReportLines = unitOperation.GetCalculationReportLines();
-    var initialReportText = unitOperation.GetCalculationReportText();
+    var initialReport = hostReportConsumer.ReadCurrentReport();
     EnsureCondition(
         initialReport.State == UnitOperationCalculationReportState.None,
         "unit operation should expose an empty calculation report before Calculate().");
     EnsureCondition(
-        initialReportState == initialReport.State,
-        "empty calculation report scalar state should match the DTO state.");
+        string.Equals(initialReport.Headline, "No calculation result is available.", StringComparison.Ordinal),
+        "empty calculation report should expose the frozen empty headline.");
     EnsureCondition(
-        string.Equals(initialReportHeadline, initialReport.Headline, StringComparison.Ordinal),
-        "empty calculation report scalar headline should match the DTO headline.");
-    EnsureCondition(
-        initialReportDetailKeyCount == 0,
+        initialReport.DetailKeyCount == 0,
         "empty calculation report should not expose detail keys.");
     EnsureCondition(
-        initialReportDetailKeys.Count == 0,
-        "empty calculation report should enumerate zero detail keys.");
-    EnsureCondition(
-        initialReportStatusDetail is null,
+        initialReport.GetDetailValue(UnitOperationCalculationReportDetailCatalog.Status) is null,
         "empty calculation report should not expose status detail values.");
     EnsureCondition(
-        initialReportLineCount == 1,
+        initialReport.ScalarLines.Count == 1,
         "empty calculation report should expose exactly one display line.");
     EnsureCondition(
-        initialReportLines.Count == 1 && string.Equals(initialReportLines[0], initialReport.Headline, StringComparison.Ordinal),
-        "empty calculation report lines should collapse to the headline only.");
+        string.Equals(initialReport.ScalarLines[0], initialReport.Headline, StringComparison.Ordinal),
+        "empty calculation report scalar line export should collapse to the headline only.");
+    EnsureHostReportLineApisAgree(initialReport, "empty calculation report");
     EnsureCondition(
-        string.Equals(unitOperation.GetCalculationReportLine(0), initialReport.Headline, StringComparison.Ordinal),
-        "empty calculation report line(0) should return the headline.");
-    EnsureCondition(
-        string.Equals(initialReportText, initialReport.Headline, StringComparison.Ordinal),
+        string.Equals(initialReport.Text, initialReport.Headline, StringComparison.Ordinal),
         "empty calculation report text should match the headline.");
 
     var parameters = unitOperation.Parameters;
@@ -193,121 +179,101 @@ static void RunUnitOperationSmoke(SmokeOptions options)
     var validationFailureError = ExpectCapeBadInvOrder(
         () => unitOperation.Calculate(),
         "calculate without property package id");
-    var validationFailure = unitOperation.LastCalculationFailure
-        ?? throw new InvalidOperationException("unit operation should preserve the last validation failure after Calculate().");
-    var validationFailureReport = unitOperation.GetCalculationReport();
-    var validationFailureState = unitOperation.GetCalculationReportState();
-    var validationFailureHeadline = unitOperation.GetCalculationReportHeadline();
-    var validationFailureDetailKeyCount = unitOperation.GetCalculationReportDetailKeyCount();
-    var validationFailureDetailKeys = ReadDetailKeys(unitOperation);
-    var validationFailureRequestedOperation = unitOperation.GetCalculationReportDetailValue(UnitOperationCalculationReportDetailCatalog.RequestedOperation);
-    var validationFailureNativeStatus = unitOperation.GetCalculationReportDetailValue(UnitOperationCalculationReportDetailCatalog.NativeStatus);
-    var validationFailureLineCount = unitOperation.GetCalculationReportLineCount();
-    var validationFailureText = unitOperation.GetCalculationReportText();
-    EnsureCondition(unitOperation.LastCalculationResult is null, "failed Calculate() should not expose a successful calculation result.");
+    var validationFailureReport = hostReportConsumer.ReadCurrentReport();
     EnsureCondition(
-        string.Equals(validationFailure.ErrorName, validationFailureError.ErrorName, StringComparison.Ordinal),
-        "validation failure contract should preserve the CAPE-OPEN semantic error name.");
+        string.Equals(
+            validationFailureReport.GetDetailValue(UnitOperationCalculationReportDetailCatalog.Error),
+            validationFailureError.ErrorName,
+            StringComparison.Ordinal),
+        "validation failure host report should preserve the CAPE-OPEN semantic error name.");
     EnsureCondition(
-        string.Equals(validationFailure.RequestedOperation, nameof(RadishFlowCapeOpenUnitOperation.SelectPropertyPackage), StringComparison.Ordinal),
-        "validation failure contract should preserve the requested follow-up operation.");
-    EnsureCondition(
-        string.IsNullOrWhiteSpace(validationFailure.NativeStatus),
-        "validation failure should not expose a native status.");
+        string.Equals(
+            validationFailureReport.GetDetailValue(UnitOperationCalculationReportDetailCatalog.Operation),
+            validationFailureError.Operation,
+            StringComparison.Ordinal),
+        "validation failure host report should preserve the failing operation name.");
     EnsureCondition(
         validationFailureReport.State == UnitOperationCalculationReportState.Failure,
-        "validation failure should switch the unified calculation report into failure state.");
+        "validation failure should switch the host-visible report into failure state.");
     EnsureCondition(
-        validationFailureState == validationFailureReport.State &&
-        string.Equals(validationFailureHeadline, validationFailureReport.Headline, StringComparison.Ordinal),
-        "validation failure scalar metadata should match the DTO report metadata.");
+        !string.IsNullOrWhiteSpace(validationFailureReport.Headline),
+        "validation failure host report should expose a non-empty headline.");
     EnsureCondition(
-        validationFailureDetailKeyCount == validationFailureReport.DetailLines.Count &&
-        validationFailureDetailKeys.SequenceEqual(
+        validationFailureReport.DetailKeys.SequenceEqual(
             UnitOperationCalculationReportDetailCatalog
                 .GetStableKeyOrder(UnitOperationCalculationReportState.Failure)
                 .Where(key => string.Equals(key, UnitOperationCalculationReportDetailCatalog.Error, StringComparison.Ordinal) ||
                               string.Equals(key, UnitOperationCalculationReportDetailCatalog.Operation, StringComparison.Ordinal) ||
                               string.Equals(key, UnitOperationCalculationReportDetailCatalog.RequestedOperation, StringComparison.Ordinal)),
             StringComparer.Ordinal),
-        "validation failure detail key enumeration should follow the frozen failure key order.");
+        "validation failure host report detail key enumeration should follow the frozen failure key order.");
     EnsureCondition(
-        string.Equals(validationFailureRequestedOperation, "SelectPropertyPackage", StringComparison.Ordinal) &&
-        validationFailureNativeStatus is null,
-        "validation failure detail value access should expose requested operation without inventing native status.");
+        string.Equals(
+            validationFailureReport.GetDetailValue(UnitOperationCalculationReportDetailCatalog.RequestedOperation),
+            nameof(RadishFlowCapeOpenUnitOperation.SelectPropertyPackage),
+            StringComparison.Ordinal) &&
+        validationFailureReport.GetDetailValue(UnitOperationCalculationReportDetailCatalog.NativeStatus) is null,
+        "validation failure host report should expose requested operation without inventing native status.");
     EnsureCondition(
-        validationFailureReport.DetailLines.Any(line => line.Contains("requestedOperation=SelectPropertyPackage", StringComparison.Ordinal)),
-        "validation failure report should expose the requested follow-up operation.");
+        validationFailureReport.VectorLines.Any(line => line.Contains("requestedOperation=SelectPropertyPackage", StringComparison.Ordinal)),
+        "validation failure host report should expose the requested follow-up operation.");
     EnsureCondition(
-        validationFailureLineCount == validationFailureReport.DetailLines.Count + 1 &&
-        string.Equals(unitOperation.GetCalculationReportLine(0), validationFailureReport.Headline, StringComparison.Ordinal),
-        "validation failure report scalar line access should expose headline plus detail count.");
+        validationFailureReport.ScalarLines.Count == validationFailureReport.DetailKeyCount + 1,
+        "validation failure host report should expose headline plus stable detail entries.");
+    EnsureHostReportLineApisAgree(validationFailureReport, "validation failure host report");
     EnsureCondition(
-        validationFailureText.Contains(validationFailureReport.Headline, StringComparison.Ordinal) &&
-        validationFailureText.Contains("requestedOperation=SelectPropertyPackage", StringComparison.Ordinal),
-        "validation failure report text should include both the headline and requested operation.");
+        validationFailureReport.Text.Contains(validationFailureReport.Headline, StringComparison.Ordinal) &&
+        validationFailureReport.Text.Contains("requestedOperation=SelectPropertyPackage", StringComparison.Ordinal),
+        "validation failure host report text should include both the headline and requested operation.");
 
     packageIdParameter.value = "missing-package-for-smoke";
     var nativeFailureError = ExpectCapeInvalidArgument(
         () => unitOperation.Calculate(),
         "calculate with missing property package id");
-    var nativeFailure = unitOperation.LastCalculationFailure
-        ?? throw new InvalidOperationException("unit operation should preserve the last native failure after Calculate().");
-    var nativeFailureReport = unitOperation.GetCalculationReport();
-    var nativeFailureState = unitOperation.GetCalculationReportState();
-    var nativeFailureHeadline = unitOperation.GetCalculationReportHeadline();
-    var nativeFailureDetailKeyCount = unitOperation.GetCalculationReportDetailKeyCount();
-    var nativeFailureDetailKeys = ReadDetailKeys(unitOperation);
-    var nativeFailureRequestedOperation = unitOperation.GetCalculationReportDetailValue(UnitOperationCalculationReportDetailCatalog.RequestedOperation);
-    var nativeFailureNativeStatus = unitOperation.GetCalculationReportDetailValue(UnitOperationCalculationReportDetailCatalog.NativeStatus);
-    var nativeFailureLineCount = unitOperation.GetCalculationReportLineCount();
-    var nativeFailureLines = unitOperation.GetCalculationReportLines();
+    var nativeFailureReport = hostReportConsumer.ReadCurrentReport();
     EnsureCondition(
-        string.Equals(nativeFailure.ErrorName, nativeFailureError.ErrorName, StringComparison.Ordinal),
-        "native failure contract should preserve the CAPE-OPEN semantic error name.");
+        string.Equals(
+            nativeFailureReport.GetDetailValue(UnitOperationCalculationReportDetailCatalog.Error),
+            nativeFailureError.ErrorName,
+            StringComparison.Ordinal),
+        "native failure host report should preserve the CAPE-OPEN semantic error name.");
     EnsureCondition(
-        string.Equals(nativeFailure.NativeStatus, "MissingEntity", StringComparison.Ordinal),
-        "native failure contract should preserve the mapped native status.");
-    EnsureCondition(
-        nativeFailure.Summary.DiagnosticCode is null,
-        "missing package smoke failure should not invent a diagnostic code.");
-    EnsureCondition(
-        nativeFailure.Summary.RelatedUnitIds.Count == 0,
-        "missing package smoke failure should not invent related unit ids.");
+        string.Equals(
+            nativeFailureReport.GetDetailValue(UnitOperationCalculationReportDetailCatalog.Operation),
+            nativeFailureError.Operation,
+            StringComparison.Ordinal),
+        "native failure host report should preserve the failing operation name.");
     EnsureCondition(
         nativeFailureReport.State == UnitOperationCalculationReportState.Failure,
-        "native failure should keep the unified calculation report in failure state.");
+        "native failure should keep the host-visible report in failure state.");
     EnsureCondition(
-        nativeFailureState == nativeFailureReport.State &&
-        string.Equals(nativeFailureHeadline, nativeFailureReport.Headline, StringComparison.Ordinal),
-        "native failure scalar metadata should match the DTO report metadata.");
+        !string.IsNullOrWhiteSpace(nativeFailureReport.Headline),
+        "native failure host report should expose a non-empty headline.");
     EnsureCondition(
-        nativeFailureDetailKeyCount == nativeFailureReport.DetailLines.Count &&
-        nativeFailureDetailKeys.SequenceEqual(
+        nativeFailureReport.DetailKeys.SequenceEqual(
             UnitOperationCalculationReportDetailCatalog
                 .GetStableKeyOrder(UnitOperationCalculationReportState.Failure)
                 .Where(key => string.Equals(key, UnitOperationCalculationReportDetailCatalog.Error, StringComparison.Ordinal) ||
                               string.Equals(key, UnitOperationCalculationReportDetailCatalog.Operation, StringComparison.Ordinal) ||
                               string.Equals(key, UnitOperationCalculationReportDetailCatalog.NativeStatus, StringComparison.Ordinal)),
             StringComparer.Ordinal),
-        "native failure detail key enumeration should follow the frozen failure key order.");
+        "native failure host report detail key enumeration should follow the frozen failure key order.");
     EnsureCondition(
-        nativeFailureRequestedOperation is null &&
-        string.Equals(nativeFailureNativeStatus, "MissingEntity", StringComparison.Ordinal),
-        "native failure detail value access should expose native status without inventing requested operation.");
+        nativeFailureReport.GetDetailValue(UnitOperationCalculationReportDetailCatalog.RequestedOperation) is null &&
+        nativeFailureReport.GetDetailValue(UnitOperationCalculationReportDetailCatalog.DiagnosticCode) is null &&
+        string.Equals(
+            nativeFailureReport.GetDetailValue(UnitOperationCalculationReportDetailCatalog.NativeStatus),
+            "MissingEntity",
+            StringComparison.Ordinal),
+        "native failure host report should expose native status without inventing optional failure details.");
     EnsureCondition(
-        nativeFailureReport.DetailLines.Any(line => line.Contains("nativeStatus=MissingEntity", StringComparison.Ordinal)),
-        "native failure report should expose the mapped native status.");
+        nativeFailureReport.VectorLines.Any(line => line.Contains("nativeStatus=MissingEntity", StringComparison.Ordinal)),
+        "native failure host report should expose the mapped native status.");
     EnsureCondition(
-        nativeFailureLineCount == nativeFailureLines.Count &&
-        nativeFailureLines.Count >= 2 &&
-        string.Equals(nativeFailureLines[0], nativeFailureReport.Headline, StringComparison.Ordinal),
-        "native failure report lines should start with the headline before detail lines.");
-    EnsureCondition(
-        nativeFailureLines
-            .Select((line, index) => string.Equals(line, unitOperation.GetCalculationReportLine(index), StringComparison.Ordinal))
-            .All(static matches => matches),
-        "native failure scalar line access should match the vector line export.");
+        nativeFailureReport.ScalarLines.Count >= 3 &&
+        string.Equals(nativeFailureReport.ScalarLines[0], nativeFailureReport.Headline, StringComparison.Ordinal),
+        "native failure host report lines should start with the headline before detail lines.");
+    EnsureHostReportLineApisAgree(nativeFailureReport, "native failure host report");
 
     packageIdParameter.value = options.PackageId;
 
@@ -331,115 +297,81 @@ static void RunUnitOperationSmoke(SmokeOptions options)
 
     unitOperation.Calculate();
 
-    var calculationResult = unitOperation.LastCalculationResult
-        ?? throw new InvalidOperationException("Unit operation should expose the last calculation result after Calculate().");
-    var successReport = unitOperation.GetCalculationReport();
-    var successReportState = unitOperation.GetCalculationReportState();
-    var successReportHeadline = unitOperation.GetCalculationReportHeadline();
-    var successReportDetailKeyCount = unitOperation.GetCalculationReportDetailKeyCount();
-    var successReportDetailKeys = ReadDetailKeys(unitOperation);
-    var successReportStatus = unitOperation.GetCalculationReportDetailValue(UnitOperationCalculationReportDetailCatalog.Status);
-    var successReportHighestSeverity = unitOperation.GetCalculationReportDetailValue(UnitOperationCalculationReportDetailCatalog.HighestSeverity);
-    var successReportDiagnosticCount = unitOperation.GetCalculationReportDetailValue(UnitOperationCalculationReportDetailCatalog.DiagnosticCount);
-    var successReportLineCount = unitOperation.GetCalculationReportLineCount();
-    var successReportLines = unitOperation.GetCalculationReportLines();
-    var successReportText = unitOperation.GetCalculationReportText();
-    EnsureCondition(unitOperation.LastCalculationFailure is null, "successful Calculate() should clear the last calculation failure.");
-    EnsureCondition(
-        string.Equals(calculationResult.Status, "converged", StringComparison.Ordinal),
-        "unit operation calculation result should expose converged status for the smoke sample.");
-    EnsureCondition(
-        calculationResult.Summary.DiagnosticCount == calculationResult.Diagnostics.Count,
-        "calculation summary diagnostic count should match the exported diagnostics.");
-    EnsureCondition(
-        !string.IsNullOrWhiteSpace(calculationResult.Summary.PrimaryMessage),
-        "calculation summary should expose a primary message.");
-    EnsureCondition(
-        calculationResult.Diagnostics.Count > 0,
-        "calculation result should expose at least one diagnostic.");
+    var successReport = hostReportConsumer.ReadCurrentReport();
     EnsureCondition(
         successReport.State == UnitOperationCalculationReportState.Success,
-        "successful Calculate() should switch the unified calculation report into success state.");
+        "successful Calculate() should switch the host-visible report into success state.");
     EnsureCondition(
-        successReportState == successReport.State &&
-        string.Equals(successReportHeadline, successReport.Headline, StringComparison.Ordinal),
-        "success scalar metadata should match the DTO report metadata.");
+        !string.IsNullOrWhiteSpace(successReport.Headline),
+        "success host report should expose a non-empty headline.");
     EnsureCondition(
-        successReportDetailKeyCount == UnitOperationCalculationReportDetailCatalog.SuccessStableKeyOrder.Count &&
-        successReportDetailKeys.SequenceEqual(
+        successReport.DetailKeys.SequenceEqual(
             UnitOperationCalculationReportDetailCatalog.SuccessStableKeyOrder,
             StringComparer.Ordinal),
-        "success detail key enumeration should expose the frozen success key order and skip diagnostic text lines.");
+        "success host report detail key enumeration should expose the frozen success key order.");
     EnsureCondition(
-        string.Equals(successReportStatus, "converged", StringComparison.Ordinal) &&
-        string.Equals(successReportHighestSeverity, "info", StringComparison.Ordinal) &&
-        string.Equals(successReportDiagnosticCount, calculationResult.Summary.DiagnosticCount.ToString(), StringComparison.Ordinal),
-        "success detail value access should expose stable summary keys without parsing report text.");
+        string.Equals(
+            successReport.GetDetailValue(UnitOperationCalculationReportDetailCatalog.Status),
+            "converged",
+            StringComparison.Ordinal) &&
+        string.Equals(
+            successReport.GetDetailValue(UnitOperationCalculationReportDetailCatalog.HighestSeverity),
+            "info",
+            StringComparison.Ordinal),
+        "success host report should expose stable status and highest severity detail values.");
     EnsureCondition(
-        string.Equals(successReport.Headline, calculationResult.Summary.PrimaryMessage, StringComparison.Ordinal),
-        "success report headline should mirror the calculation primary message.");
+        int.TryParse(
+            successReport.GetDetailValue(UnitOperationCalculationReportDetailCatalog.DiagnosticCount),
+            out var successDiagnosticCount) &&
+        successDiagnosticCount > 0,
+        "success host report should expose a positive diagnostic count.");
     EnsureCondition(
-        successReportLineCount == successReport.DetailLines.Count + 1 &&
-        successReportLines.Count == successReportLineCount &&
-        string.Equals(successReportLines[0], successReport.Headline, StringComparison.Ordinal),
-        "success report lines should expose headline plus all detail lines.");
+        successReport.ScalarLines.Count > successReport.DetailKeyCount + 1,
+        "success host report should expose non-key diagnostic display lines in addition to stable detail entries.");
     EnsureCondition(
-        string.Equals(unitOperation.GetCalculationReportLine(successReportLineCount - 1), successReportLines[^1], StringComparison.Ordinal),
-        "success report scalar line access should expose the final detail line.");
-    EnsureCondition(
-        successReportText.Contains(successReport.Headline, StringComparison.Ordinal) &&
-        successReportText.Contains("diagnosticCount=", StringComparison.Ordinal),
-        "success report text should include both the headline and detail lines.");
+        successReport.Text.Contains(successReport.Headline, StringComparison.Ordinal) &&
+        successReport.Text.Contains("diagnosticCount=", StringComparison.Ordinal) &&
+        successReport.Text.Contains("[info]", StringComparison.Ordinal),
+        "success host report text should include the headline, stable detail lines and diagnostic display lines.");
+    EnsureHostReportLineApisAgree(successReport, "success host report");
 
-    Console.WriteLine("== Unit Calculation Result ==");
-    Console.WriteLine($"Status: {calculationResult.Status}");
-    Console.WriteLine($"Summary.HighestSeverity: {calculationResult.Summary.HighestSeverity}");
-    Console.WriteLine($"Summary.PrimaryMessage: {calculationResult.Summary.PrimaryMessage}");
-    Console.WriteLine($"Summary.DiagnosticCount: {calculationResult.Summary.DiagnosticCount}");
-    Console.WriteLine($"Summary.RelatedUnitIds: {string.Join(", ", calculationResult.Summary.RelatedUnitIds)}");
-    Console.WriteLine($"Summary.RelatedStreamIds: {string.Join(", ", calculationResult.Summary.RelatedStreamIds)}");
-    Console.WriteLine("Diagnostics:");
-    foreach (var diagnostic in calculationResult.Diagnostics)
-    {
-        Console.WriteLine(
-            $"- [{diagnostic.Severity}] {diagnostic.Code}: {diagnostic.Message}");
-    }
-    Console.WriteLine();
-    Console.WriteLine("== Unit Calculation Report ==");
+    Console.WriteLine("== Minimal Host Report ==");
     Console.WriteLine($"State: {successReport.State}");
     Console.WriteLine($"Headline: {successReport.Headline}");
-    foreach (var detail in successReport.DetailLines)
+    Console.WriteLine("Stable Details:");
+    foreach (var detail in successReport.DetailEntries)
     {
-        Console.WriteLine($"- {detail}");
+        Console.WriteLine($"- {detail.Key}={detail.Value}");
+    }
+    Console.WriteLine("Display Lines:");
+    foreach (var line in successReport.ScalarLines)
+    {
+        Console.WriteLine($"- {line}");
     }
     Console.WriteLine();
 
     unitOperation.Terminate();
-    EnsureCondition(unitOperation.LastCalculationResult is null, "terminate should clear the last calculation result.");
-    EnsureCondition(unitOperation.LastCalculationFailure is null, "terminate should clear the last calculation failure.");
+    var terminatedReport = hostReportConsumer.ReadCurrentReport();
     EnsureCondition(
-        unitOperation.GetCalculationReport().State == UnitOperationCalculationReportState.None,
-        "terminate should reset the unified calculation report to empty state.");
+        terminatedReport.State == UnitOperationCalculationReportState.None,
+        "terminate should reset the host-visible report to empty state.");
     EnsureCondition(
-        unitOperation.GetCalculationReportState() == UnitOperationCalculationReportState.None &&
-        string.Equals(unitOperation.GetCalculationReportHeadline(), "No calculation result is available.", StringComparison.Ordinal),
-        "terminate should reset the scalar report metadata to the empty state and headline.");
+        string.Equals(terminatedReport.Headline, "No calculation result is available.", StringComparison.Ordinal),
+        "terminate should reset the host-visible report headline to the empty state headline.");
     EnsureCondition(
-        unitOperation.GetCalculationReportDetailKeyCount() == 0,
-        "terminate should clear stable report detail keys.");
+        terminatedReport.DetailKeyCount == 0,
+        "terminate should clear host-visible stable report detail keys.");
     EnsureCondition(
-        ReadDetailKeys(unitOperation).Count == 0,
-        "terminate should enumerate zero detail keys.");
+        terminatedReport.GetDetailValue(UnitOperationCalculationReportDetailCatalog.Status) is null,
+        "terminate should clear host-visible stable report detail values.");
     EnsureCondition(
-        unitOperation.GetCalculationReportDetailValue(UnitOperationCalculationReportDetailCatalog.Status) is null,
-        "terminate should clear stable report detail values.");
+        terminatedReport.ScalarLines.Count == 1 &&
+        string.Equals(terminatedReport.ScalarLines[0], "No calculation result is available.", StringComparison.Ordinal),
+        "terminate should reset the host-visible scalar report line access to the empty headline.");
+    EnsureHostReportLineApisAgree(terminatedReport, "terminated host report");
     EnsureCondition(
-        unitOperation.GetCalculationReportLineCount() == 1 &&
-        string.Equals(unitOperation.GetCalculationReportLine(0), "No calculation result is available.", StringComparison.Ordinal),
-        "terminate should reset the scalar report line access to the empty headline.");
-    EnsureCondition(
-        string.Equals(unitOperation.GetCalculationReportText(), "No calculation result is available.", StringComparison.Ordinal),
-        "terminate should reset the calculation report text to the empty headline.");
+        string.Equals(terminatedReport.Text, "No calculation result is available.", StringComparison.Ordinal),
+        "terminate should reset the host-visible report text to the empty headline.");
     EnsureCondition(!feedPort.IsConnected, "feed port should release its connected object during Terminate().");
     EnsureCondition(!productPort.IsConnected, "product port should release its connected object during Terminate().");
     ExpectCapeBadInvOrder(() => _ = parameterCollection.Count(), "parameter collection count after terminate");
@@ -465,15 +397,14 @@ static void EnsureCondition(bool condition, string message)
     }
 }
 
-static IReadOnlyList<string> ReadDetailKeys(RadishFlowCapeOpenUnitOperation unitOperation)
+static void EnsureHostReportLineApisAgree(UnitOperationHostReportSnapshot report, string scenario)
 {
-    var keys = new string[unitOperation.GetCalculationReportDetailKeyCount()];
-    for (var index = 0; index < keys.Length; index++)
-    {
-        keys[index] = unitOperation.GetCalculationReportDetailKey(index);
-    }
-
-    return keys;
+    EnsureCondition(
+        report.ScalarLines.SequenceEqual(report.VectorLines, StringComparer.Ordinal),
+        $"{scenario} scalar and vector line exports should match.");
+    EnsureCondition(
+        string.Equals(report.Text, string.Join(Environment.NewLine, report.ScalarLines), StringComparison.Ordinal),
+        $"{scenario} text export should match the scalar line export.");
 }
 
 static CapeBadInvocationOrderException ExpectCapeBadInvOrder(Action action, string scenario)
