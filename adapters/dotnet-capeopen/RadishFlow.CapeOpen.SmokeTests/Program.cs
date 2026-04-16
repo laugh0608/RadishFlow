@@ -1,6 +1,6 @@
 using RadishFlow.CapeOpen.Adapter;
-using RadishFlow.CapeOpen.Interop.Errors;
 using RadishFlow.CapeOpen.Interop.Common;
+using RadishFlow.CapeOpen.Interop.Errors;
 using RadishFlow.CapeOpen.UnitOp.Mvp.Placeholders;
 using RadishFlow.CapeOpen.UnitOp.Mvp.Results;
 using RadishFlow.CapeOpen.UnitOp.Mvp.UnitOperation;
@@ -83,20 +83,28 @@ static void RunAdapterSmoke(SmokeOptions options)
 
 static void RunUnitOperationSmoke(SmokeOptions options)
 {
-    using var unitOperation = new RadishFlowCapeOpenUnitOperation();
-    if (!string.IsNullOrWhiteSpace(options.NativeLibraryDirectory))
-    {
-        unitOperation.ConfigureNativeLibraryDirectory(options.NativeLibraryDirectory);
-    }
-
     var projectJson = File.ReadAllText(options.ProjectPath);
-    unitOperation.Initialize();
-    var initialReport = UnitOperationHostReportReader.Read(unitOperation);
-    var initialPresentation = UnitOperationHostReportPresenter.Present(initialReport);
-    var initialDocument = UnitOperationHostReportFormatter.Format(initialPresentation);
+    using var driver = new UnitOperationSmokeHostDriver(options, projectJson);
+
+    var preInitializeAttempt = driver.Calculate();
+    var preInitializeError = preInitializeAttempt.ExpectFailure<CapeBadInvocationOrderException>(
+        UnitOperationHostDriverFailureKind.InvocationOrder,
+        "calculate before initialize");
+    EnsureCondition(
+        string.Equals(
+            preInitializeError.RequestedOperation,
+            nameof(RadishFlowCapeOpenUnitOperation.Initialize),
+            StringComparison.Ordinal),
+        "pre-initialize calculate should be classified as invocation-order failure and request Initialize().");
+
+    driver.Initialize();
+    var initialBundle = driver.ReadReport();
+    var initialReport = initialBundle.Snapshot;
+    var initialPresentation = initialBundle.Presentation;
+    var initialDocument = initialBundle.Document;
     EnsureCondition(
         initialReport.State == UnitOperationCalculationReportState.None,
-        "unit operation should expose an empty calculation report before Calculate().");
+        "unit operation should expose an empty calculation report after Initialize().");
     EnsureCondition(
         string.Equals(initialReport.Headline, "No calculation result is available.", StringComparison.Ordinal),
         "empty calculation report should expose the frozen empty headline.");
@@ -129,28 +137,36 @@ static void RunUnitOperationSmoke(SmokeOptions options)
         initialDocument.Sections[0].Lines.Count == 3,
         "empty host formatter should expose overview section only.");
 
-    var parameters = unitOperation.Parameters;
-    var ports = unitOperation.Ports;
-    var parameterCollection = (ICapeCollection)parameters;
-    var portCollection = (ICapeCollection)ports;
+    var parameters = driver.Parameters;
+    var ports = driver.Ports;
+    var parameterCollection = driver.ParameterCollection;
+    var portCollection = driver.PortCollection;
     Console.WriteLine("== Unit Collections ==");
     Console.WriteLine($"Parameters.Count(): {parameterCollection.Count()}");
     Console.WriteLine($"Ports.Count(): {portCollection.Count()}");
     Console.WriteLine();
 
-    var flowsheetParameter = (UnitOperationParameterPlaceholder)parameterCollection.Item("Flowsheet Json");
-    var packageIdParameter = (UnitOperationParameterPlaceholder)parameterCollection.Item("Property Package Id");
-    var manifestPathParameter = (UnitOperationParameterPlaceholder)parameterCollection.Item("Property Package Manifest Path");
-    var payloadPathParameter = (UnitOperationParameterPlaceholder)parameterCollection.Item(4);
-    var feedPort = (UnitOperationPortPlaceholder)portCollection.Item("Feed");
-    var productPort = (UnitOperationPortPlaceholder)portCollection.Item(2);
+    var flowsheetParameter = driver.FlowsheetParameter;
+    var packageIdParameter = driver.PackageIdParameter;
+    var manifestPathParameter = driver.ManifestPathParameter;
+    var payloadPathParameter = driver.PayloadPathParameter;
+    var feedPort = driver.FeedPort;
+    var productPort = driver.ProductPort;
 
     EnsureSameReference(parameters[0], flowsheetParameter, "parameter collection name lookup");
     EnsureSameReference(ports[0], feedPort, "port collection name lookup");
-    EnsureCondition(flowsheetParameter.ValueKind == UnitOperationParameterValueKind.StructuredJsonText, "flowsheet parameter should expose structured JSON metadata.");
-    EnsureCondition(packageIdParameter.ValueKind == UnitOperationParameterValueKind.Identifier, "package parameter should expose identifier metadata.");
-    EnsureCondition(manifestPathParameter.ValueKind == UnitOperationParameterValueKind.FilePath, "manifest parameter should expose file path metadata.");
-    EnsureCondition(!flowsheetParameter.AllowsEmptyValue, "flowsheet parameter should not allow empty text.");
+    EnsureCondition(
+        flowsheetParameter.ValueKind == UnitOperationParameterValueKind.StructuredJsonText,
+        "flowsheet parameter should expose structured JSON metadata.");
+    EnsureCondition(
+        packageIdParameter.ValueKind == UnitOperationParameterValueKind.Identifier,
+        "package parameter should expose identifier metadata.");
+    EnsureCondition(
+        manifestPathParameter.ValueKind == UnitOperationParameterValueKind.FilePath,
+        "manifest parameter should expose file path metadata.");
+    EnsureCondition(
+        !flowsheetParameter.AllowsEmptyValue,
+        "flowsheet parameter should not allow empty text.");
     EnsureCondition(
         string.Equals(
             manifestPathParameter.RequiredCompanionParameterName,
@@ -177,23 +193,16 @@ static void RunUnitOperationSmoke(SmokeOptions options)
         () => feedPort.Connect(new InvalidSmokeConnectedObject("   ")),
         "port connect with blank ComponentName");
 
-    flowsheetParameter.value = projectJson;
+    driver.ConfigureMinimumInputs(includePackageId: false);
+    driver.ConnectRequiredPorts();
 
-    if (options.LoadPackageFiles)
-    {
-        manifestPathParameter.value = options.ManifestPath;
-        payloadPathParameter.value = options.PayloadPath;
-    }
-
-    feedPort.Connect(new SmokeConnectedObject("Smoke Feed"));
-    productPort.Connect(new SmokeConnectedObject("Smoke Product"));
-
-    var validationFailureError = ExpectCapeBadInvOrder(
-        () => unitOperation.Calculate(),
+    var validationFailureAttempt = driver.Calculate();
+    var validationFailureError = validationFailureAttempt.ExpectFailure<CapeBadInvocationOrderException>(
+        UnitOperationHostDriverFailureKind.Validation,
         "calculate without property package id");
-    var validationFailureReport = UnitOperationHostReportReader.Read(unitOperation);
-    var validationFailurePresentation = UnitOperationHostReportPresenter.Present(validationFailureReport);
-    var validationFailureDocument = UnitOperationHostReportFormatter.Format(validationFailurePresentation);
+    var validationFailureReport = validationFailureAttempt.Report.Snapshot;
+    var validationFailurePresentation = validationFailureAttempt.Report.Presentation;
+    var validationFailureDocument = validationFailureAttempt.Report.Document;
     EnsureCondition(
         string.Equals(
             validationFailureReport.GetDetailValue(UnitOperationCalculationReportDetailCatalog.Error),
@@ -252,12 +261,13 @@ static void RunUnitOperationSmoke(SmokeOptions options)
         "validation failure host formatter should expose overview and stable detail sections.");
 
     packageIdParameter.value = "missing-package-for-smoke";
-    var nativeFailureError = ExpectCapeInvalidArgument(
-        () => unitOperation.Calculate(),
+    var nativeFailureAttempt = driver.Calculate();
+    var nativeFailureError = nativeFailureAttempt.ExpectFailure<CapeInvalidArgumentException>(
+        UnitOperationHostDriverFailureKind.Native,
         "calculate with missing property package id");
-    var nativeFailureReport = UnitOperationHostReportReader.Read(unitOperation);
-    var nativeFailurePresentation = UnitOperationHostReportPresenter.Present(nativeFailureReport);
-    var nativeFailureDocument = UnitOperationHostReportFormatter.Format(nativeFailurePresentation);
+    var nativeFailureReport = nativeFailureAttempt.Report.Snapshot;
+    var nativeFailurePresentation = nativeFailureAttempt.Report.Presentation;
+    var nativeFailureDocument = nativeFailureAttempt.Report.Document;
     EnsureCondition(
         string.Equals(
             nativeFailureReport.GetDetailValue(UnitOperationCalculationReportDetailCatalog.Error),
@@ -315,11 +325,10 @@ static void RunUnitOperationSmoke(SmokeOptions options)
 
     packageIdParameter.value = options.PackageId;
 
-    var validationMessage = string.Empty;
-    var isValid = unitOperation.Validate(ref validationMessage);
+    var validationResult = driver.Validate();
     Console.WriteLine("== Unit Validation ==");
-    Console.WriteLine($"Valid: {isValid}");
-    Console.WriteLine($"Message: {validationMessage}");
+    Console.WriteLine($"Valid: {validationResult.IsValid}");
+    Console.WriteLine($"Message: {validationResult.Message}");
     Console.WriteLine();
     Console.WriteLine("== Parameter Metadata ==");
     Console.WriteLine($"{flowsheetParameter.ComponentName}: kind={flowsheetParameter.ValueKind}, default={(flowsheetParameter.DefaultValue ?? "<null>")}, allowEmpty={flowsheetParameter.AllowsEmptyValue}, companion={(flowsheetParameter.RequiredCompanionParameterName ?? "<none>")}");
@@ -328,16 +337,21 @@ static void RunUnitOperationSmoke(SmokeOptions options)
     Console.WriteLine($"{payloadPathParameter.ComponentName}: kind={payloadPathParameter.ValueKind}, default={(payloadPathParameter.DefaultValue ?? "<null>")}, allowEmpty={payloadPathParameter.AllowsEmptyValue}, companion={(payloadPathParameter.RequiredCompanionParameterName ?? "<none>")}");
     Console.WriteLine();
 
-    if (!isValid)
+    if (!validationResult.IsValid)
     {
         throw new InvalidOperationException("Unit operation validation failed before Calculate().");
     }
 
-    unitOperation.Calculate();
+    var successAttempt = driver.Calculate();
+    if (!successAttempt.Succeeded)
+    {
+        throw new InvalidOperationException(
+            $"Expected successful unit operation calculation, but received {successAttempt.Failure?.GetType().Name ?? "<unknown>"}.");
+    }
 
-    var successReport = UnitOperationHostReportReader.Read(unitOperation);
-    var successPresentation = UnitOperationHostReportPresenter.Present(successReport);
-    var successDocument = UnitOperationHostReportFormatter.Format(successPresentation);
+    var successReport = successAttempt.Report.Snapshot;
+    var successPresentation = successAttempt.Report.Presentation;
+    var successDocument = successAttempt.Report.Document;
     EnsureCondition(
         successReport.State == UnitOperationCalculationReportState.Success,
         "successful Calculate() should switch the host-visible report into success state.");
@@ -404,10 +418,11 @@ static void RunUnitOperationSmoke(SmokeOptions options)
     }
     Console.WriteLine();
 
-    unitOperation.Terminate();
-    var terminatedReport = UnitOperationHostReportReader.Read(unitOperation);
-    var terminatedPresentation = UnitOperationHostReportPresenter.Present(terminatedReport);
-    var terminatedDocument = UnitOperationHostReportFormatter.Format(terminatedPresentation);
+    driver.Terminate();
+    var terminatedBundle = driver.ReadReport();
+    var terminatedReport = terminatedBundle.Snapshot;
+    var terminatedPresentation = terminatedBundle.Presentation;
+    var terminatedDocument = terminatedBundle.Document;
     EnsureCondition(
         terminatedReport.State == UnitOperationCalculationReportState.None,
         "terminate should reset the host-visible report to empty state.");
@@ -501,7 +516,7 @@ static CapeInvalidArgumentException ExpectCapeInvalidArgument(Action action, str
     throw new InvalidOperationException($"Expected CapeInvalidArgumentException for {scenario}.");
 }
 
-file sealed class SmokeOptions
+internal sealed class SmokeOptions
 {
     private SmokeOptions(
         bool showHelp,
@@ -655,13 +670,13 @@ file sealed class SmokeOptions
     }
 }
 
-file enum SmokeMode
+internal enum SmokeMode
 {
     Adapter,
     UnitOperation,
 }
 
-file sealed class SmokeConnectedObject : ICapeIdentification
+internal sealed class SmokeConnectedObject : ICapeIdentification
 {
     public SmokeConnectedObject(string componentName)
     {
@@ -674,7 +689,7 @@ file sealed class SmokeConnectedObject : ICapeIdentification
     public string ComponentDescription { get; set; }
 }
 
-file sealed class InvalidSmokeConnectedObject : ICapeIdentification
+internal sealed class InvalidSmokeConnectedObject : ICapeIdentification
 {
     public InvalidSmokeConnectedObject(string componentName)
     {

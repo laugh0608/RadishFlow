@@ -48,4 +48,5 @@
 - 基于上述公开 report API，当前又补出 `UnitOperationHostReportReader.Read(...)` 这一层最小宿主 helper，把 stable detail entries、scalar/vector lines 与 text 的读取样板前推到库内；这样后续外部 host / PME 若只需要消费稳定结果展示面，可以直接复用 helper，而不必在每个入口重复写 detail key 枚举和 line/text 收集逻辑
 - 基于 host snapshot，当前又补出 `UnitOperationHostReportPresenter.Present(...)`，把“稳定 detail 行”和“补充展示行”拆开，并显式前推 `StateLabel / RequiresAttention / HasStableDetails / HasSupplementalLines` 这类更接近宿主 UI 和日志组件的展示语义，避免每个宿主再各自推断 failure 高亮、success 附加诊断区或 idle 空态标签
 - 基于 presentation，当前又补出 `UnitOperationHostReportFormatter.Format(...)`，把宿主展示继续收口为固定 section 文档；这样最小 host 不只拿到字段化语义，还能直接按 section 渲染 overview、stable details 与 supplemental diagnostics，而不必每个宿主再自己决定分区标题和文本拼接顺序
+- 当前“宿主如何驱动 PMC”这条最小 orchestration helper 仍故意留在 `RadishFlow.CapeOpen.SmokeTests`：先用 `UnitOperationSmokeHostDriver` 验证正式调用顺序、最小必需输入和失败分类是否稳定，再决定是否有必要把 driver 上移到库内；`UnitOp.Mvp` 本身当前继续只负责 PMC 对象面与结果读取/展示 helper，不在这一轮提前承诺宿主驱动 convenience API
 - Rust/.NET 边界仍保持为句柄 + UTF-8 + JSON + 状态码，没有在这里提前引入 COM 注册或更宽的跨边界对象传递

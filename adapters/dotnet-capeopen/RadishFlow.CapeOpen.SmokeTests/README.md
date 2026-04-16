@@ -7,7 +7,7 @@
 - 可列出 property package registry
 - 可触发 solve
 - direct adapter 模式可读取 flowsheet / stream snapshot json
-- `UnitOp.Mvp` 模式当前已切到“最小外部 host 消费样例”口径：样例侧先通过 `UnitOperationHostReportReader.Read(...)` 材料化 host snapshot，再通过 `UnitOperationHostReportPresenter.Present(...)` 和 `UnitOperationHostReportFormatter.Format(...)` 生成更接近真实宿主 UI / 日志组件的 sectioned 展示文档，并据此完成 `none / failure / success / none` 三态判断、稳定 detail 展示和 supplemental diagnostic lines 分区展示；不再把 `LastCalculationResult` / `LastCalculationFailure` 视为外部宿主主消费面
+- `UnitOp.Mvp` 模式当前已切到“最小外部 host 驱动 + 结果消费样例”口径：样例侧通过 `UnitOperationSmokeHostDriver` 明确收口 `Initialize -> 配参数 -> 连端口 -> Validate -> Calculate -> 读结果 -> Terminate` 这一条最小宿主调用顺序，并在 `Calculate` 失败时先分类为 `InvocationOrder / Validation / Native`，再通过 `UnitOperationHostReportReader.Read(...)`、`UnitOperationHostReportPresenter.Present(...)` 和 `UnitOperationHostReportFormatter.Format(...)` 完成 `none / failure / success / none` 三态判断、稳定 detail 展示和 supplemental diagnostic lines 分区展示；不再把 `LastCalculationResult` / `LastCalculationFailure` 视为外部宿主主消费面
 
 默认行为：
 
