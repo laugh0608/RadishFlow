@@ -9,6 +9,7 @@ var tests = new (string Name, Action<ContractTestContext> Execute)[]
 {
     ("validate-before-initialize", static context => ContractTests.ValidateBeforeInitialize_ReturnsInvalidAndEmptyReport(context)),
     ("validation-failure-report", static context => ContractTests.CalculateValidationFailure_PopulatesFailureReport(context)),
+    ("native-failure-report", static context => ContractTests.CalculateNativeFailure_PopulatesFailureReport(context)),
     ("success-report", static context => ContractTests.SuccessfulCalculate_PopulatesSuccessReport(context)),
     ("configuration-invalidation", static context => ContractTests.ConfigurationChange_ClearsReportAndMarksNotValidated(context)),
     ("terminate-report", static context => ContractTests.Terminate_ResetsReportAndBlocksCalculate(context)),
@@ -80,6 +81,28 @@ internal static class ContractTests
         ContractAssert.Equal(UnitOperationCalculationReportState.Failure, context.UnitOperation.GetCalculationReportState(), "Validation failure should publish failure report state.");
         ContractAssert.Equal(error.ErrorName, context.UnitOperation.GetCalculationReportDetailValue(UnitOperationCalculationReportDetailCatalog.Error), "Failure report should preserve semantic error name.");
         ContractAssert.Equal(nameof(RadishFlowCapeOpenUnitOperation.SelectPropertyPackage), context.UnitOperation.GetCalculationReportDetailValue(UnitOperationCalculationReportDetailCatalog.RequestedOperation), "Validation failure should point back to SelectPropertyPackage().");
+        ContractAssert.Null(context.UnitOperation.GetCalculationReportDetailValue(UnitOperationCalculationReportDetailCatalog.NativeStatus), "Validation failure should not invent native status.");
+        ContractAssert.Null(context.UnitOperation.LastCalculationResult, "Validation failure should not preserve a stale success result.");
+        ContractAssert.NotNull(context.UnitOperation.LastCalculationFailure, "Validation failure should preserve failure summary.");
+    }
+
+    public static void CalculateNativeFailure_PopulatesFailureReport(ContractTestContext context)
+    {
+        context.ConfigureMinimumValidInputs();
+        context.UnitOperation.SelectPropertyPackage("missing-package-for-contract");
+
+        var error = ContractAssert.Throws<CapeInvalidArgumentException>(
+            static unitOperation => unitOperation.Calculate(),
+            context.UnitOperation,
+            "Calculate() with missing package should fail at the native boundary.");
+
+        ContractAssert.Equal(CapeValidationStatus.Invalid, context.UnitOperation.ValStatus, "Native failure should set ValStatus to Invalid.");
+        ContractAssert.Equal(UnitOperationCalculationReportState.Failure, context.UnitOperation.GetCalculationReportState(), "Native failure should publish failure report state.");
+        ContractAssert.Equal(error.ErrorName, context.UnitOperation.GetCalculationReportDetailValue(UnitOperationCalculationReportDetailCatalog.Error), "Native failure report should preserve semantic error name.");
+        ContractAssert.Equal("MissingEntity", context.UnitOperation.GetCalculationReportDetailValue(UnitOperationCalculationReportDetailCatalog.NativeStatus), "Native failure should expose native status.");
+        ContractAssert.Null(context.UnitOperation.GetCalculationReportDetailValue(UnitOperationCalculationReportDetailCatalog.RequestedOperation), "Native failure should not invent requested operation.");
+        ContractAssert.Null(context.UnitOperation.LastCalculationResult, "Native failure should clear the last success result.");
+        ContractAssert.NotNull(context.UnitOperation.LastCalculationFailure, "Native failure should preserve failure summary.");
     }
 
     public static void SuccessfulCalculate_PopulatesSuccessReport(ContractTestContext context)
@@ -235,6 +258,14 @@ internal static class ContractAssert
     public static void Null(object? value, string message)
     {
         if (value is not null)
+        {
+            throw new InvalidOperationException(message);
+        }
+    }
+
+    public static void NotNull(object? value, string message)
+    {
+        if (value is null)
         {
             throw new InvalidOperationException(message);
         }
