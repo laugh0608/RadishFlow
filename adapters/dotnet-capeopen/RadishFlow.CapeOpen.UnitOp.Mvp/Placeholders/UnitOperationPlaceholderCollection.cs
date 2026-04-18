@@ -11,6 +11,9 @@ public sealed class UnitOperationPlaceholderCollection<T> : ICapeIdentification,
     private const string ItemOperation = "Item";
     private readonly Action<string, string, string?, object?>? _ensureOwnerAccess;
     private readonly IReadOnlyList<T> _items;
+    private readonly IReadOnlyDictionary<string, T> _itemsByName;
+    private string _componentName;
+    private string _componentDescription;
 
     public UnitOperationPlaceholderCollection(
         string componentName,
@@ -18,15 +21,36 @@ public sealed class UnitOperationPlaceholderCollection<T> : ICapeIdentification,
         IEnumerable<T> items,
         Action<string, string, string?, object?>? ensureOwnerAccess = null)
     {
-        ComponentName = componentName;
-        ComponentDescription = componentDescription;
+        ArgumentException.ThrowIfNullOrWhiteSpace(componentName);
+        ArgumentNullException.ThrowIfNull(componentDescription);
+        ArgumentNullException.ThrowIfNull(items);
+
+        _componentName = componentName;
+        _componentDescription = componentDescription;
         _ensureOwnerAccess = ensureOwnerAccess;
-        _items = items.ToArray();
+        _items = CreateFrozenItems(items);
+        _itemsByName = CreateItemsByName(_items, componentName);
     }
 
-    public string ComponentName { get; set; }
+    public string ComponentName
+    {
+        get
+        {
+            EnsureOwnerAccess(nameof(ComponentName));
+            return _componentName;
+        }
+        set => _componentName = SetImmutableComponentName(_componentName, value, nameof(ComponentName));
+    }
 
-    public string ComponentDescription { get; set; }
+    public string ComponentDescription
+    {
+        get
+        {
+            EnsureOwnerAccess(nameof(ComponentDescription));
+            return _componentDescription;
+        }
+        set => _componentDescription = SetImmutableComponentDescription(_componentDescription, value, nameof(ComponentDescription));
+    }
 
     public int Count
     {
@@ -91,9 +115,7 @@ public sealed class UnitOperationPlaceholderCollection<T> : ICapeIdentification,
                 CreateContext(ItemOperation, name));
         }
 
-        var item = _items.FirstOrDefault(candidate =>
-            string.Equals(candidate.ComponentName, name, StringComparison.OrdinalIgnoreCase));
-        if (item is not null)
+        if (_itemsByName.TryGetValue(name, out var item))
         {
             return item;
         }
@@ -140,10 +162,100 @@ public sealed class UnitOperationPlaceholderCollection<T> : ICapeIdentification,
             case long value when value is >= int.MinValue and <= int.MaxValue:
                 oneBasedIndex = (int)value;
                 return true;
+            case nuint value when value <= int.MaxValue:
+                oneBasedIndex = (int)value;
+                return true;
+            case nint value when value is >= int.MinValue and <= int.MaxValue:
+                oneBasedIndex = (int)value;
+                return true;
+            case float value when IsWholeNumber(value) && value is >= int.MinValue and <= int.MaxValue:
+                oneBasedIndex = (int)value;
+                return true;
+            case double value when IsWholeNumber(value) && value is >= int.MinValue and <= int.MaxValue:
+                oneBasedIndex = (int)value;
+                return true;
+            case decimal value when decimal.Truncate(value) == value &&
+                                    value is >= int.MinValue and <= int.MaxValue:
+                oneBasedIndex = (int)value;
+                return true;
             default:
                 oneBasedIndex = default;
                 return false;
         }
+    }
+
+    private static bool IsWholeNumber(float value)
+    {
+        return !float.IsNaN(value) && !float.IsInfinity(value) && float.Truncate(value) == value;
+    }
+
+    private static bool IsWholeNumber(double value)
+    {
+        return !double.IsNaN(value) && !double.IsInfinity(value) && double.Truncate(value) == value;
+    }
+
+    private static IReadOnlyList<T> CreateFrozenItems(IEnumerable<T> items)
+    {
+        var materialized = items.ToArray();
+        if (materialized.Any(static item => item is null))
+        {
+            throw new ArgumentException("Placeholder collections cannot contain null items.", nameof(items));
+        }
+
+        return materialized;
+    }
+
+    private static IReadOnlyDictionary<string, T> CreateItemsByName(IReadOnlyList<T> items, string collectionName)
+    {
+        var itemsByName = new Dictionary<string, T>(StringComparer.OrdinalIgnoreCase);
+        foreach (var item in items)
+        {
+            if (string.IsNullOrWhiteSpace(item.ComponentName))
+            {
+                throw new ArgumentException(
+                    $"Collection `{collectionName}` cannot contain items with blank ComponentName.",
+                    nameof(items));
+            }
+
+            if (!itemsByName.TryAdd(item.ComponentName, item))
+            {
+                throw new ArgumentException(
+                    $"Collection `{collectionName}` cannot contain duplicate item name `{item.ComponentName}`.",
+                    nameof(items));
+            }
+        }
+
+        return itemsByName;
+    }
+
+    private string SetImmutableComponentName(string currentValue, string value, string operation)
+    {
+        EnsureOwnerAccess(operation, value);
+        ArgumentException.ThrowIfNullOrWhiteSpace(value);
+
+        if (string.Equals(currentValue, value, StringComparison.Ordinal))
+        {
+            return currentValue;
+        }
+
+        throw new CapeInvalidArgumentException(
+            $"Collection `{currentValue}` does not allow ComponentName mutation in the MVP runtime.",
+            CreateContext(operation, value));
+    }
+
+    private string SetImmutableComponentDescription(string currentValue, string value, string operation)
+    {
+        EnsureOwnerAccess(operation, value);
+        ArgumentNullException.ThrowIfNull(value);
+
+        if (string.Equals(currentValue, value, StringComparison.Ordinal))
+        {
+            return currentValue;
+        }
+
+        throw new CapeInvalidArgumentException(
+            $"Collection `{ComponentName}` does not allow ComponentDescription mutation in the MVP runtime.",
+            CreateContext(operation, value));
     }
 
     private CapeOpenExceptionContext CreateContext(string operation, object? parameter)

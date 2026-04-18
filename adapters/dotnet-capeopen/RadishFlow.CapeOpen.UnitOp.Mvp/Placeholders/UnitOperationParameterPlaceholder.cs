@@ -6,7 +6,7 @@ using System.Text.Json;
 
 namespace RadishFlow.CapeOpen.UnitOp.Mvp.Placeholders;
 
-public sealed class UnitOperationParameterPlaceholder : ICapeIdentification, ICapeParameter, ICapeParameterSpec
+public sealed class UnitOperationParameterPlaceholder : ICapeIdentification, ICapeParameter
 {
     private const string InterfaceName = nameof(ICapeParameter);
     private readonly Action<string, string, string?, object?>? _ensureOwnerAccess;
@@ -14,8 +14,13 @@ public sealed class UnitOperationParameterPlaceholder : ICapeIdentification, ICa
     private readonly string? _defaultValue;
     private readonly UnitOperationParameterValueKind _valueKind;
     private readonly string? _requiredCompanionParameterName;
+    private readonly string _initialComponentName;
+    private readonly string _initialComponentDescription;
+    private readonly UnitOperationParameterSpecificationPlaceholder _specification;
     private CapeParamMode _mode;
     private string? _value;
+    private string _componentName;
+    private string _componentDescription;
 
     public UnitOperationParameterPlaceholder(
         string componentName,
@@ -29,8 +34,13 @@ public sealed class UnitOperationParameterPlaceholder : ICapeIdentification, ICa
         Action<string, string, string?, object?>? ensureOwnerAccess = null,
         Action? onStateChanged = null)
     {
-        ComponentName = componentName;
-        ComponentDescription = componentDescription;
+        ArgumentException.ThrowIfNullOrWhiteSpace(componentName);
+        ArgumentNullException.ThrowIfNull(componentDescription);
+
+        _componentName = componentName;
+        _componentDescription = componentDescription;
+        _initialComponentName = componentName;
+        _initialComponentDescription = componentDescription;
         IsRequired = isRequired;
         AllowsEmptyValue = allowsEmptyValue;
         _valueKind = valueKind;
@@ -40,12 +50,33 @@ public sealed class UnitOperationParameterPlaceholder : ICapeIdentification, ICa
         _value = _defaultValue;
         _ensureOwnerAccess = ensureOwnerAccess;
         _onStateChanged = onStateChanged;
+        _specification = new UnitOperationParameterSpecificationPlaceholder(
+            parameterName: componentName,
+            type: CapeParamType.CAPE_OPTION,
+            dimensionality: [],
+            ensureOwnerAccess: ensureOwnerAccess);
         ValStatus = CapeValidationStatus.NotValidated;
     }
 
-    public string ComponentName { get; set; }
+    public string ComponentName
+    {
+        get
+        {
+            EnsureOwnerAccess(nameof(ComponentName));
+            return _componentName;
+        }
+        set => _componentName = SetImmutableComponentName(value, nameof(ComponentName));
+    }
 
-    public string ComponentDescription { get; set; }
+    public string ComponentDescription
+    {
+        get
+        {
+            EnsureOwnerAccess(nameof(ComponentDescription));
+            return _componentDescription;
+        }
+        set => _componentDescription = SetImmutableComponentDescription(value, nameof(ComponentDescription));
+    }
 
     public bool IsRequired { get; }
 
@@ -86,16 +117,30 @@ public sealed class UnitOperationParameterPlaceholder : ICapeIdentification, ICa
         }
     }
 
-    public string? Value => _value;
+    public string? Value
+    {
+        get
+        {
+            EnsureOwnerAccess(nameof(Value));
+            return _value;
+        }
+    }
 
-    public bool IsConfigured => AllowsEmptyValue ? _value is not null : !string.IsNullOrWhiteSpace(_value);
+    public bool IsConfigured
+    {
+        get
+        {
+            EnsureOwnerAccess(nameof(IsConfigured));
+            return AllowsEmptyValue ? _value is not null : !string.IsNullOrWhiteSpace(_value);
+        }
+    }
 
     public object Specification
     {
         get
         {
             EnsureOwnerAccess(nameof(Specification));
-            return this;
+            return _specification;
         }
     }
 
@@ -147,8 +192,9 @@ public sealed class UnitOperationParameterPlaceholder : ICapeIdentification, ICa
                 return;
             }
 
-            _mode = value;
-            MarkChanged();
+            throw new CapeInvalidArgumentException(
+                $"Parameter `{ComponentName}` does not allow Mode mutation in the MVP runtime.",
+                CreateContext(nameof(Mode), value));
         }
     }
 
@@ -157,7 +203,7 @@ public sealed class UnitOperationParameterPlaceholder : ICapeIdentification, ICa
         get
         {
             EnsureOwnerAccess(nameof(Type));
-            return CapeParamType.CAPE_OPTION;
+            return _specification.Type;
         }
     }
 
@@ -166,7 +212,7 @@ public sealed class UnitOperationParameterPlaceholder : ICapeIdentification, ICa
         get
         {
             EnsureOwnerAccess(nameof(Dimensionality));
-            return Array.Empty<double>();
+            return _specification.Dimensionality;
         }
     }
 
@@ -204,14 +250,19 @@ public sealed class UnitOperationParameterPlaceholder : ICapeIdentification, ICa
     public void Reset()
     {
         EnsureOwnerAccess(nameof(Reset));
-        SetValueCore(_defaultValue);
+        SetValueCore(_defaultValue, forceValidationReset: true);
     }
 
-    private void SetValueCore(string? value)
+    private void SetValueCore(string? value, bool forceValidationReset = false)
     {
         var normalized = Normalize(value, AllowsEmptyValue);
         if (string.Equals(_value, normalized, StringComparison.Ordinal))
         {
+            if (forceValidationReset && ValStatus != CapeValidationStatus.NotValidated)
+            {
+                MarkChanged();
+            }
+
             return;
         }
 
@@ -314,19 +365,49 @@ public sealed class UnitOperationParameterPlaceholder : ICapeIdentification, ICa
         return value.Any(char.IsControl);
     }
 
+    private string SetImmutableComponentName(string value, string operation)
+    {
+        EnsureOwnerAccess(operation, value);
+        ArgumentException.ThrowIfNullOrWhiteSpace(value);
+
+        if (string.Equals(_initialComponentName, value, StringComparison.Ordinal))
+        {
+            return _initialComponentName;
+        }
+
+        throw new CapeInvalidArgumentException(
+            $"Parameter `{_initialComponentName}` does not allow ComponentName mutation in the MVP runtime.",
+            CreateContext(operation, value));
+    }
+
+    private string SetImmutableComponentDescription(string value, string operation)
+    {
+        EnsureOwnerAccess(operation, value);
+        ArgumentNullException.ThrowIfNull(value);
+
+        if (string.Equals(_initialComponentDescription, value, StringComparison.Ordinal))
+        {
+            return _initialComponentDescription;
+        }
+
+        throw new CapeInvalidArgumentException(
+            $"Parameter `{_initialComponentName}` does not allow ComponentDescription mutation in the MVP runtime.",
+            CreateContext(operation, value));
+    }
+
     private CapeOpenExceptionContext CreateContext(string operation, object? parameter)
     {
         return new CapeOpenExceptionContext(
             InterfaceName: InterfaceName,
             Scope: "RadishFlow.CapeOpen.UnitOp.Mvp.Placeholders",
             Operation: operation,
-            ParameterName: ComponentName,
+            ParameterName: _componentName,
             Parameter: parameter);
     }
 
     private void EnsureOwnerAccess(string operation, object? parameter = null)
     {
-        _ensureOwnerAccess?.Invoke(InterfaceName, operation, ComponentName, parameter);
+        _ensureOwnerAccess?.Invoke(InterfaceName, operation, _componentName, parameter);
     }
 
     private CapeValidationStatus _valStatus;

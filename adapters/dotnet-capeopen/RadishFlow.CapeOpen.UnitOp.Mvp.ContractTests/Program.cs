@@ -1,12 +1,17 @@
 using RadishFlow.CapeOpen.Interop.Common;
 using RadishFlow.CapeOpen.Interop.Errors;
+using RadishFlow.CapeOpen.Interop.Parameters;
 using RadishFlow.CapeOpen.Interop.Unit;
 using RadishFlow.CapeOpen.UnitOp.Mvp.Results;
+using RadishFlow.CapeOpen.UnitOp.Mvp.Placeholders;
 using RadishFlow.CapeOpen.UnitOp.Mvp.UnitOperation;
 
 var options = ContractTestOptions.Parse(args);
 var tests = new (string Name, Action<ContractTestContext> Execute)[]
 {
+    ("collection-contract", static context => ContractTests.Collections_ExposeStableLookupAndRejectInvalidSelectors(context)),
+    ("parameter-contract", static context => ContractTests.Parameters_ResetValidationStateAndFreezeMetadata(context)),
+    ("port-contract", static context => ContractTests.Ports_RequireDisconnectBeforeReplacingConnections(context)),
     ("validate-before-initialize", static context => ContractTests.ValidateBeforeInitialize_ReturnsInvalidAndEmptyReport(context)),
     ("validation-failure-report", static context => ContractTests.CalculateValidationFailure_PopulatesFailureReport(context)),
     ("native-failure-report", static context => ContractTests.CalculateNativeFailure_PopulatesFailureReport(context)),
@@ -52,6 +57,134 @@ Console.WriteLine($"Executed {selectedTests.Length} contract test(s).");
 
 internal static class ContractTests
 {
+    public static void Collections_ExposeStableLookupAndRejectInvalidSelectors(ContractTestContext context)
+    {
+        context.Initialize();
+
+        ContractAssert.Equal(4, context.ParameterCollection.Count(), "Parameter collection Count() should remain stable.");
+        ContractAssert.Equal(2, context.PortCollection.Count(), "Port collection Count() should remain stable.");
+        ContractAssert.Equal(4, context.UnitOperation.Parameters.Count, "Parameter collection IReadOnlyList.Count should stay aligned with ICapeCollection.Count().");
+        ContractAssert.Equal(2, context.UnitOperation.Ports.Count, "Port collection IReadOnlyList.Count should stay aligned with ICapeCollection.Count().");
+
+        ContractAssert.SameReference(
+            context.FlowsheetParameter,
+            context.ParameterCollection.Item(1),
+            "Parameter collection should support 1-based numeric lookup.");
+        ContractAssert.SameReference(
+            context.PayloadPathParameter,
+            context.ParameterCollection.Item(4.0d),
+            "Parameter collection should accept whole-number floating selectors from COM callers.");
+        ContractAssert.SameReference(
+            context.ProductPort,
+            context.PortCollection.Item("Product"),
+            "Port collection should support case-insensitive name lookup.");
+
+        var blankNameError = ContractAssert.Throws<CapeInvalidArgumentException>(
+            () => context.ParameterCollection.Item("   "),
+            "Blank collection names should be rejected.");
+        ContractAssert.Contains(blankNameError.Description, "requires a non-empty component name", "Blank collection names should produce a clear validation message.");
+
+        var outOfRangeError = ContractAssert.Throws<CapeInvalidArgumentException>(
+            () => context.PortCollection.Item(0),
+            "Out-of-range collection selectors should be rejected.");
+        ContractAssert.Contains(outOfRangeError.Description, "out of range", "Out-of-range collection selectors should mention the stable 1-based bounds.");
+
+        var fractionalError = ContractAssert.Throws<CapeInvalidArgumentException>(
+            () => context.ParameterCollection.Item(1.5d),
+            "Fractional collection selectors should be rejected.");
+        ContractAssert.Contains(fractionalError.Description, "1-based integer index", "Fractional selectors should keep the collection contract explicit.");
+
+        var collectionMutationError = ContractAssert.Throws<CapeInvalidArgumentException>(
+            () => ((ICapeIdentification)context.UnitOperation.Parameters).ComponentName = "Mutable Parameters",
+            "Collection identification should remain immutable in the MVP runtime.");
+        ContractAssert.Contains(collectionMutationError.Description, "does not allow ComponentName mutation", "Collection immutability failures should stay explicit.");
+    }
+
+    public static void Parameters_ResetValidationStateAndFreezeMetadata(ContractTestContext context)
+    {
+        context.Initialize();
+
+        var specification = (ICapeParameterSpec)context.ManifestPathParameter.Specification;
+        ContractAssert.NotSameReference(context.ManifestPathParameter, specification, "Specification should no longer alias the parameter instance.");
+        ContractAssert.SameReference(specification, context.ManifestPathParameter.Specification, "Specification should remain a stable object across repeated reads.");
+        ContractAssert.Equal(CapeParamType.CAPE_OPTION, specification.Type, "Manifest parameter spec should expose CAPE_OPTION.");
+        ContractAssert.Equal(0, specification.Dimensionality.Length, "Manifest parameter spec should expose empty dimensionality for option values.");
+        ContractAssert.Equal(CapeParamMode.CAPE_INPUT, context.ManifestPathParameter.Mode, "Manifest parameter should keep its frozen input mode.");
+        context.ManifestPathParameter.Mode = CapeParamMode.CAPE_INPUT;
+
+        var modeMutationError = ContractAssert.Throws<CapeInvalidArgumentException>(
+            () => context.ManifestPathParameter.Mode = CapeParamMode.CAPE_OUTPUT,
+            "Parameter mode mutation should be rejected in the MVP runtime.");
+        ContractAssert.Contains(modeMutationError.Description, "does not allow Mode mutation", "Parameter mode mutation failures should stay explicit.");
+
+        context.ManifestPathParameter.value = context.ManifestPath;
+        var message = string.Empty;
+        var valid = context.ManifestPathParameter.Validate(ref message);
+
+        ContractAssert.True(valid, "Configured manifest path parameter should validate.");
+        ContractAssert.Equal(CapeValidationStatus.Valid, context.ManifestPathParameter.ValStatus, "Successful parameter validation should set ValStatus to Valid.");
+        ContractAssert.True(context.ManifestPathParameter.IsConfigured, "Configured manifest path should report IsConfigured.");
+        ContractAssert.Equal(context.ManifestPath, context.ManifestPathParameter.Value, "Configured manifest path should round-trip through Value.");
+
+        context.ManifestPathParameter.Reset();
+
+        ContractAssert.Equal(CapeValidationStatus.NotValidated, context.ManifestPathParameter.ValStatus, "Reset() should always return parameter validation state to NotValidated.");
+        ContractAssert.False(context.ManifestPathParameter.IsConfigured, "Reset() should restore the default unconfigured state for optional parameters.");
+        ContractAssert.Null(context.ManifestPathParameter.Value, "Reset() should restore the default null value for optional parameters.");
+
+        var parameterMutationError = ContractAssert.Throws<CapeInvalidArgumentException>(
+            () => ((ICapeIdentification)context.ManifestPathParameter).ComponentDescription = "Mutated manifest parameter",
+            "Parameter identification should remain immutable.");
+        ContractAssert.Contains(parameterMutationError.Description, "does not allow ComponentDescription mutation", "Parameter immutability failures should stay explicit.");
+
+        context.UnitOperation.Terminate();
+
+        var postTerminateValueError = ContractAssert.Throws<CapeBadInvocationOrderException>(
+            () => _ = context.ManifestPathParameter.Value,
+            "Value access after Terminate() should be blocked.");
+        ContractAssert.Contains(postTerminateValueError.Description, "Terminate has already been called", "Post-terminate Value access should preserve lifecycle guidance.");
+
+        var postTerminateConfiguredError = ContractAssert.Throws<CapeBadInvocationOrderException>(
+            () => _ = context.ManifestPathParameter.IsConfigured,
+            "IsConfigured access after Terminate() should be blocked.");
+        ContractAssert.Contains(postTerminateConfiguredError.Description, "Terminate has already been called", "Post-terminate IsConfigured access should preserve lifecycle guidance.");
+
+        var postTerminateSpecError = ContractAssert.Throws<CapeBadInvocationOrderException>(
+            () => _ = specification.Type,
+            "Specification access after Terminate() should remain lifecycle-guarded.");
+        ContractAssert.Contains(postTerminateSpecError.Description, "Terminate has already been called", "Post-terminate spec access should preserve lifecycle guidance.");
+    }
+
+    public static void Ports_RequireDisconnectBeforeReplacingConnections(ContractTestContext context)
+    {
+        context.Initialize();
+
+        var firstConnection = new ContractConnectedObject("Contract Feed A");
+        var replacementConnection = new ContractConnectedObject("Contract Feed B");
+
+        context.FeedPort.Connect(firstConnection);
+        ContractAssert.SameReference(firstConnection, context.FeedPort.connectedObject, "Port should expose the connected object that was just attached.");
+
+        context.FeedPort.Connect(firstConnection);
+        ContractAssert.SameReference(firstConnection, context.FeedPort.connectedObject, "Reconnecting the same object should be a no-op.");
+
+        var replacementError = ContractAssert.Throws<CapeBadInvocationOrderException>(
+            () => context.FeedPort.Connect(replacementConnection),
+            "Replacing a connected object without Disconnect() should be rejected.");
+        ContractAssert.Equal(nameof(ICapeUnitPort.Disconnect), replacementError.RequestedOperation, "Port replacement failure should direct the host to Disconnect() first.");
+
+        context.FeedPort.Disconnect();
+        ContractAssert.Null(context.FeedPort.connectedObject, "Disconnect() should clear the connected object.");
+
+        context.FeedPort.Connect(replacementConnection);
+        ContractAssert.SameReference(replacementConnection, context.FeedPort.connectedObject, "Port should accept a new connection after Disconnect().");
+
+        var portMutationError = ContractAssert.Throws<CapeInvalidArgumentException>(
+            () => ((ICapeIdentification)context.FeedPort).ComponentName = "Mutated Feed",
+            "Port identification should remain immutable.");
+        ContractAssert.Contains(portMutationError.Description, "does not allow ComponentName mutation", "Port immutability failures should stay explicit.");
+    }
+
     public static void ValidateBeforeInitialize_ReturnsInvalidAndEmptyReport(ContractTestContext context)
     {
         var message = string.Empty;
@@ -163,9 +296,35 @@ internal sealed class ContractTestContext : IDisposable
         _options = options;
         UnitOperation = new RadishFlowCapeOpenUnitOperation();
         UnitOperation.ConfigureNativeLibraryDirectory(options.NativeLibraryDirectory);
+        ParameterCollection = (ICapeCollection)UnitOperation.Parameters;
+        PortCollection = (ICapeCollection)UnitOperation.Ports;
+        FlowsheetParameter = (UnitOperationParameterPlaceholder)ParameterCollection.Item("Flowsheet Json");
+        PackageIdParameter = (UnitOperationParameterPlaceholder)ParameterCollection.Item("Property Package Id");
+        ManifestPathParameter = (UnitOperationParameterPlaceholder)ParameterCollection.Item("Property Package Manifest Path");
+        PayloadPathParameter = (UnitOperationParameterPlaceholder)ParameterCollection.Item(4);
+        FeedPort = (UnitOperationPortPlaceholder)PortCollection.Item("Feed");
+        ProductPort = (UnitOperationPortPlaceholder)PortCollection.Item("Product");
     }
 
     public RadishFlowCapeOpenUnitOperation UnitOperation { get; }
+
+    public string ManifestPath => _options.ManifestPath;
+
+    public ICapeCollection ParameterCollection { get; }
+
+    public ICapeCollection PortCollection { get; }
+
+    public UnitOperationParameterPlaceholder FlowsheetParameter { get; }
+
+    public UnitOperationParameterPlaceholder PackageIdParameter { get; }
+
+    public UnitOperationParameterPlaceholder ManifestPathParameter { get; }
+
+    public UnitOperationParameterPlaceholder PayloadPathParameter { get; }
+
+    public UnitOperationPortPlaceholder FeedPort { get; }
+
+    public UnitOperationPortPlaceholder ProductPort { get; }
 
     public void Initialize()
     {
@@ -247,6 +406,22 @@ internal static class ContractAssert
         }
     }
 
+    public static void SameReference(object? expected, object? actual, string message)
+    {
+        if (!ReferenceEquals(expected, actual))
+        {
+            throw new InvalidOperationException(message);
+        }
+    }
+
+    public static void NotSameReference(object? unexpected, object? actual, string message)
+    {
+        if (ReferenceEquals(unexpected, actual))
+        {
+            throw new InvalidOperationException(message);
+        }
+    }
+
     public static void Contains(string actual, string expectedFragment, string message)
     {
         if (!actual.Contains(expectedFragment, StringComparison.Ordinal))
@@ -280,6 +455,21 @@ internal static class ContractAssert
         try
         {
             action(unitOperation);
+        }
+        catch (TException error)
+        {
+            return error;
+        }
+
+        throw new InvalidOperationException(message);
+    }
+
+    public static TException Throws<TException>(Action action, string message)
+        where TException : Exception
+    {
+        try
+        {
+            action();
         }
         catch (TException error)
         {

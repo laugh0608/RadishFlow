@@ -11,7 +11,11 @@ public sealed class UnitOperationPortPlaceholder : ICapeIdentification, ICapeUni
     private readonly Action? _onStateChanged;
     private readonly CapePortDirection _direction;
     private readonly CapePortType _portType;
+    private readonly string _initialComponentName;
+    private readonly string _initialComponentDescription;
     private object? _connectedObject;
+    private string _componentName;
+    private string _componentDescription;
 
     public UnitOperationPortPlaceholder(
         string componentName,
@@ -22,8 +26,13 @@ public sealed class UnitOperationPortPlaceholder : ICapeIdentification, ICapeUni
         Action<string, string, string?, object?>? ensureOwnerAccess = null,
         Action? onStateChanged = null)
     {
-        ComponentName = componentName;
-        ComponentDescription = componentDescription;
+        ArgumentException.ThrowIfNullOrWhiteSpace(componentName);
+        ArgumentNullException.ThrowIfNull(componentDescription);
+
+        _componentName = componentName;
+        _componentDescription = componentDescription;
+        _initialComponentName = componentName;
+        _initialComponentDescription = componentDescription;
         _direction = direction;
         _portType = portType;
         IsRequired = isRequired;
@@ -31,9 +40,25 @@ public sealed class UnitOperationPortPlaceholder : ICapeIdentification, ICapeUni
         _onStateChanged = onStateChanged;
     }
 
-    public string ComponentName { get; set; }
+    public string ComponentName
+    {
+        get
+        {
+            EnsureOwnerAccess(nameof(ComponentName));
+            return _componentName;
+        }
+        set => _componentName = SetImmutableComponentName(value, nameof(ComponentName));
+    }
 
-    public string ComponentDescription { get; set; }
+    public string ComponentDescription
+    {
+        get
+        {
+            EnsureOwnerAccess(nameof(ComponentDescription));
+            return _componentDescription;
+        }
+        set => _componentDescription = SetImmutableComponentDescription(value, nameof(ComponentDescription));
+    }
 
     public CapePortDirection direction
     {
@@ -78,6 +103,18 @@ public sealed class UnitOperationPortPlaceholder : ICapeIdentification, ICapeUni
         }
 
         var connectedIdentification = ValidateConnectedObject(objectToConnect);
+        if (_connectedObject is not null)
+        {
+            if (ReferenceEquals(_connectedObject, connectedIdentification))
+            {
+                return;
+            }
+
+            throw new CapeBadInvocationOrderException(
+                $"Port `{ComponentName}` is already connected. Disconnect it before replacing the connected object.",
+                CreateContext(nameof(Connect), objectToConnect, requestedOperation: nameof(Disconnect)));
+        }
+
         _connectedObject = connectedIdentification;
         _onStateChanged?.Invoke();
     }
@@ -97,6 +134,11 @@ public sealed class UnitOperationPortPlaceholder : ICapeIdentification, ICapeUni
 
     internal void ConnectPlaceholder()
     {
+        if (_connectedObject is not null)
+        {
+            return;
+        }
+
         Connect(new UnitOperationConnectedObjectPlaceholder(
             $"{ComponentName} Connection",
             $"Placeholder connection object for port `{ComponentName}`."));
@@ -126,19 +168,53 @@ public sealed class UnitOperationPortPlaceholder : ICapeIdentification, ICapeUni
         return identifiedObject;
     }
 
-    private CapeOpenExceptionContext CreateContext(string operation, object? parameter = null)
+    private string SetImmutableComponentName(string value, string operation)
+    {
+        EnsureOwnerAccess(operation, value);
+        ArgumentException.ThrowIfNullOrWhiteSpace(value);
+
+        if (string.Equals(_initialComponentName, value, StringComparison.Ordinal))
+        {
+            return _initialComponentName;
+        }
+
+        throw new CapeInvalidArgumentException(
+            $"Port `{_initialComponentName}` does not allow ComponentName mutation in the MVP runtime.",
+            CreateContext(operation, value));
+    }
+
+    private string SetImmutableComponentDescription(string value, string operation)
+    {
+        EnsureOwnerAccess(operation, value);
+        ArgumentNullException.ThrowIfNull(value);
+
+        if (string.Equals(_initialComponentDescription, value, StringComparison.Ordinal))
+        {
+            return _initialComponentDescription;
+        }
+
+        throw new CapeInvalidArgumentException(
+            $"Port `{_initialComponentName}` does not allow ComponentDescription mutation in the MVP runtime.",
+            CreateContext(operation, value));
+    }
+
+    private CapeOpenExceptionContext CreateContext(
+        string operation,
+        object? parameter = null,
+        string? requestedOperation = null)
     {
         return new CapeOpenExceptionContext(
             InterfaceName: InterfaceName,
             Scope: "RadishFlow.CapeOpen.UnitOp.Mvp.Placeholders",
             Operation: operation,
-            ParameterName: ComponentName,
-            Parameter: parameter);
+            ParameterName: _componentName,
+            Parameter: parameter,
+            RequestedOperation: requestedOperation);
     }
 
     private void EnsureOwnerAccess(string operation, object? parameter = null)
     {
-        _ensureOwnerAccess?.Invoke(InterfaceName, operation, ComponentName, parameter);
+        _ensureOwnerAccess?.Invoke(InterfaceName, operation, _componentName, parameter);
     }
 }
 

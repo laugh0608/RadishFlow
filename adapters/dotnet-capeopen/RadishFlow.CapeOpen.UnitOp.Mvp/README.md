@@ -35,8 +35,15 @@
 
 - 当前 `Ports` / `Parameters` 已返回带 `Item(object)` 和 `Count()` 的最小 `ICapeCollection` 风格对象，并支持按 `ComponentName` 或 1-based 索引取项
 - 当前参数对象已提供最小 `ICapeParameter` + `ICapeParameterSpec` 语义，端口对象已提供最小 `ICapeUnitPort` 语义，但仍只覆盖 MVP 所需的字符串参数和占位连接对象
+- 当前 `ICapeCollection.Item(object)` 已冻结为“1-based 整数索引或 component name”双入口；除 `int/long` 外，也接受能无损落到整数的 `double/float/decimal` 选择子，以贴近 COM 宿主可能传入的数值 Variant 形状；空白名称、越界索引和非整数数值仍按 `CapeInvalidArgumentException` 拒绝
+- 当前 `ICapeCollection`、`ICapeParameter` 与 `ICapeUnitPort` 的 `ComponentName/ComponentDescription` 已冻结为运行时不可变元数据；宿主可以重复读取，但不能在 MVP runtime 中修改这些标识字段，从而保持 collection lookup、required port 规则与 stable detail key 不漂移
 - 当前参数对象内部已补上最小元数据收口：区分 `StructuredJsonText` / `Identifier` / `FilePath` 三类值语义，保留对外 `ICapeParameterSpec.Type = CAPE_OPTION`，并显式记录默认值、是否允许空值与 manifest/payload 这类成对出现约束
+- 当前参数对象又已把 `Specification` 从参数实例本身分离为独立只读 spec 对象；宿主重复读取时拿到稳定 spec 引用，而不再让 `ICapeParameter` 与 `ICapeParameterSpec` 混成同一个运行时对象
+- 当前参数对象的 `Mode` 也已冻结为运行时不可变元数据；MVP runtime 当前只接受初始化时定义好的 mode，宿主不能在运行过程中把 input 参数改写成 output/input-output
+- 当前参数对象的 `Value` / `IsConfigured` 读取也已纳入 owner lifecycle guard；`Terminate()` 后不再允许继续通过这些 helper 旁路访问对象状态
+- 当前参数对象的 `Reset()` 语义也已收紧为“无论默认值是否与当前值相同，都把 `ValStatus` 复位到 `NotValidated`”，避免宿主在默认值场景下保留过期 validation 状态
 - 当前端口对象已把连接契约收口到最小 `ICapeIdentification` 级别，并要求连接对象提供非空 `ComponentName`；当前仍不提前把运行时扩大到真正 `ICapeThermoMaterialObject`
+- 当前端口对象的连接替换语义也已冻结：重复连接同一对象视为 no-op，但若端口已连接到另一对象，则必须先显式 `Disconnect()`，不能静默替换既有连接
 - 当前 placeholder 对象已开始收口到宿主生命周期边界：`Terminate()` 后不再允许继续通过集合/参数/端口对象做 CAPE-OPEN 风格访问，并会释放端口上的已连接对象引用
 - 当前 `RadishFlowCapeOpenUnitOperation` 内部生命周期又已从分散的 `_initialized / _terminated / _disposed` 布尔位收口为单一 `UnitOperationLifecycleState`，让 `Initialize / Validate / Calculate / Terminate / Dispose`、placeholder access guard 与终止后只读 report 查询共享同一套阶段判断，避免宿主边界继续靠多处布尔分支隐式维持
 - 当前 `Calculate()` 内部执行链也已从单方法内联流程收口为显式分段：先做 `PrepareForCalculation()` 前置校验，再构造 `CalculationInputs`，随后执行 native solve、材料化结果并记录失败摘要；这样后续继续扩展宿主/PME 调用路径时，不必再从一段混合逻辑里追踪“校验失败、native 失败、contract parse 失败”分别落在哪个阶段
@@ -53,6 +60,8 @@
 - 基于 presentation，当前又补出 `UnitOperationHostReportFormatter.Format(...)`，把宿主展示继续收口为固定 section 文档；这样最小 host 不只拿到字段化语义，还能直接按 section 渲染 overview、stable details 与 supplemental diagnostics，而不必每个宿主再自己决定分区标题和文本拼接顺序
 - 当前“宿主如何驱动 PMC”这条最小 orchestration helper 仍故意留在 `RadishFlow.CapeOpen.SmokeTests`：先用 `UnitOperationSmokeHostDriver` 验证正式调用顺序、最小必需输入和失败分类是否稳定，再决定是否有必要把 driver 上移到库内；`UnitOp.Mvp` 本身当前继续只负责 PMC 对象面与结果读取/展示 helper，不在这一轮提前承诺宿主驱动 convenience API
 - 当前又已补出同目录层级的自举 contract test 入口 `RadishFlow.CapeOpen.UnitOp.Mvp.ContractTests`，用于在不依赖外部 NuGet 测试框架的前提下，直接锁定 `Validate/Calculate/Terminate/report transition` 这类库侧行为契约；当前已覆盖 `Validate before Initialize`、validation failure report、native failure report、success report、配置变更 invalidation 与 `Terminate()` 后阻断 6 条核心 case；后续若继续冻结 `UnitOp.Mvp` 对外行为，应优先在这里补细粒度 contract case，而不是只依赖 smoke console 间接覆盖
+- 当前 contract tests 又已继续前推到对象面本身，新增 collection selector、parameter reset/lifecycle access 与 port reconnect 约束这三组契约，确保“最小宿主对象运行时”不再只靠 smoke 路径间接覆盖
+- 在上述对象面 contract tests 基础上，当前又已补上 spec 对象稳定性、post-terminate spec access guard 与 parameter mode immutability 三条参数语义约束，避免后续再次把参数对象回退成“值对象和 spec 对象合一”的松散实现
 - Rust/.NET 边界仍保持为句柄 + UTF-8 + JSON + 状态码，没有在这里提前引入 COM 注册或更宽的跨边界对象传递
 
 最小 contract tests 运行示例：
