@@ -66,6 +66,29 @@ internal static class UnitOperationSmokeBoundarySuite
                 UnitOperationHostConfigurationIssueKind.RequiredPortDisconnected,
                 "Required port",
                 UnitOperationPortCatalog.Product.Name));
+        var initializedPortMaterial = driver.ReadPortMaterial();
+        UnitOperationSmokePortMaterialAssertions.AssertSnapshotState(
+            initializedPortMaterial,
+            UnitOperationHostPortMaterialState.None,
+            "initialized port/material snapshot");
+        UnitOperationSmokePortMaterialAssertions.AssertPort(
+            initializedPortMaterial,
+            UnitOperationPortCatalog.Feed,
+            UnitOperationHostPortMaterialState.None,
+            expectedConnected: false,
+            expectedConnectedTargetName: null,
+            expectedBoundStreamIds: [],
+            expectedMaterialStreamIds: [],
+            "initialized port/material snapshot");
+        UnitOperationSmokePortMaterialAssertions.AssertPort(
+            initializedPortMaterial,
+            UnitOperationPortCatalog.Product,
+            UnitOperationHostPortMaterialState.None,
+            expectedConnected: false,
+            expectedConnectedTargetName: null,
+            expectedBoundStreamIds: [],
+            expectedMaterialStreamIds: [],
+            "initialized port/material snapshot");
         var initialBundle = driver.ReadReport();
         UnitOperationSmokeReportAssertions.AssertEmpty(initialBundle, "empty calculation report");
 
@@ -147,6 +170,29 @@ internal static class UnitOperationSmokeBoundarySuite
                 UnitOperationHostConfigurationIssueKind.RequiredParameterMissing,
                 "Required parameter",
                 UnitOperationParameterCatalog.PropertyPackageId.Name));
+        var missingPackagePortMaterial = driver.ReadPortMaterial();
+        UnitOperationSmokePortMaterialAssertions.AssertSnapshotState(
+            missingPackagePortMaterial,
+            UnitOperationHostPortMaterialState.None,
+            "missing package port/material snapshot");
+        UnitOperationSmokePortMaterialAssertions.AssertPort(
+            missingPackagePortMaterial,
+            UnitOperationPortCatalog.Feed,
+            UnitOperationHostPortMaterialState.None,
+            expectedConnected: true,
+            expectedConnectedTargetName: "Smoke Feed",
+            expectedBoundStreamIds: ["stream-feed"],
+            expectedMaterialStreamIds: [],
+            "missing package port/material snapshot");
+        UnitOperationSmokePortMaterialAssertions.AssertPort(
+            missingPackagePortMaterial,
+            UnitOperationPortCatalog.Product,
+            UnitOperationHostPortMaterialState.None,
+            expectedConnected: true,
+            expectedConnectedTargetName: "Smoke Product",
+            expectedBoundStreamIds: ["stream-liquid", "stream-vapor"],
+            expectedMaterialStreamIds: [],
+            "missing package port/material snapshot");
 
         var validationFailureAttempt = driver.Calculate();
         var validationFailureError = validationFailureAttempt.ExpectFailure<CapeBadInvocationOrderException>(
@@ -211,6 +257,29 @@ internal static class UnitOperationSmokeBoundarySuite
         UnitOperationSmokeConfigurationAssertions.AssertActionPlan(
             driver.ReadActionPlan(),
             "ready configuration");
+        var readyPortMaterial = driver.ReadPortMaterial();
+        UnitOperationSmokePortMaterialAssertions.AssertSnapshotState(
+            readyPortMaterial,
+            UnitOperationHostPortMaterialState.None,
+            "ready port/material snapshot");
+        UnitOperationSmokePortMaterialAssertions.AssertPort(
+            readyPortMaterial,
+            UnitOperationPortCatalog.Feed,
+            UnitOperationHostPortMaterialState.None,
+            expectedConnected: true,
+            expectedConnectedTargetName: "Smoke Feed",
+            expectedBoundStreamIds: ["stream-feed"],
+            expectedMaterialStreamIds: [],
+            "ready port/material snapshot");
+        UnitOperationSmokePortMaterialAssertions.AssertPort(
+            readyPortMaterial,
+            UnitOperationPortCatalog.Product,
+            UnitOperationHostPortMaterialState.None,
+            expectedConnected: true,
+            expectedConnectedTargetName: "Smoke Product",
+            expectedBoundStreamIds: ["stream-liquid", "stream-vapor"],
+            expectedMaterialStreamIds: [],
+            "ready port/material snapshot");
 
         var validationResult = driver.Validate();
         Console.WriteLine("== Unit Validation ==");
@@ -249,6 +318,29 @@ internal static class UnitOperationSmokeBoundarySuite
         UnitOperationSmokeReportAssertions.AssertRepeatedSuccessShape(
             repeatedSuccessAttempt.Report,
             "repeated Calculate()");
+        var availablePortMaterial = driver.ReadPortMaterial();
+        UnitOperationSmokePortMaterialAssertions.AssertSnapshotState(
+            availablePortMaterial,
+            UnitOperationHostPortMaterialState.Available,
+            "available port/material snapshot");
+        UnitOperationSmokePortMaterialAssertions.AssertPort(
+            availablePortMaterial,
+            UnitOperationPortCatalog.Feed,
+            UnitOperationHostPortMaterialState.Available,
+            expectedConnected: true,
+            expectedConnectedTargetName: "Smoke Feed",
+            expectedBoundStreamIds: ["stream-feed"],
+            expectedMaterialStreamIds: ["stream-feed"],
+            "available port/material snapshot");
+        UnitOperationSmokePortMaterialAssertions.AssertPort(
+            availablePortMaterial,
+            UnitOperationPortCatalog.Product,
+            UnitOperationHostPortMaterialState.Available,
+            expectedConnected: true,
+            expectedConnectedTargetName: "Smoke Product",
+            expectedBoundStreamIds: ["stream-liquid", "stream-vapor"],
+            expectedMaterialStreamIds: ["stream-liquid", "stream-vapor"],
+            "available port/material snapshot");
 
         feedPort.Disconnect();
         var disconnectedFeedConfiguration = driver.ReadConfiguration();
@@ -271,6 +363,29 @@ internal static class UnitOperationSmokeBoundarySuite
                 UnitOperationHostConfigurationIssueKind.RequiredPortDisconnected,
                 "Required port",
                 UnitOperationPortCatalog.Feed.Name));
+        var disconnectedFeedPortMaterial = driver.ReadPortMaterial();
+        UnitOperationSmokePortMaterialAssertions.AssertSnapshotState(
+            disconnectedFeedPortMaterial,
+            UnitOperationHostPortMaterialState.Stale,
+            "disconnected feed port/material snapshot");
+        UnitOperationSmokePortMaterialAssertions.AssertPort(
+            disconnectedFeedPortMaterial,
+            UnitOperationPortCatalog.Feed,
+            UnitOperationHostPortMaterialState.Stale,
+            expectedConnected: false,
+            expectedConnectedTargetName: null,
+            expectedBoundStreamIds: ["stream-feed"],
+            expectedMaterialStreamIds: [],
+            "disconnected feed port/material snapshot");
+        UnitOperationSmokePortMaterialAssertions.AssertPort(
+            disconnectedFeedPortMaterial,
+            UnitOperationPortCatalog.Product,
+            UnitOperationHostPortMaterialState.Stale,
+            expectedConnected: true,
+            expectedConnectedTargetName: "Smoke Product",
+            expectedBoundStreamIds: ["stream-liquid", "stream-vapor"],
+            expectedMaterialStreamIds: [],
+            "disconnected feed port/material snapshot");
         var disconnectedPortValidation = driver.Validate();
         UnitOperationSmokeReportAssertions.EnsureCondition(
             !disconnectedPortValidation.IsValid &&
@@ -308,6 +423,29 @@ internal static class UnitOperationSmokeBoundarySuite
                 "must be configured together",
                 UnitOperationParameterCatalog.PropertyPackageManifestPath.Name,
                 UnitOperationParameterCatalog.PropertyPackagePayloadPath.Name));
+        var companionMismatchPortMaterial = driver.ReadPortMaterial();
+        UnitOperationSmokePortMaterialAssertions.AssertSnapshotState(
+            companionMismatchPortMaterial,
+            UnitOperationHostPortMaterialState.Stale,
+            "companion mismatch port/material snapshot");
+        UnitOperationSmokePortMaterialAssertions.AssertPort(
+            companionMismatchPortMaterial,
+            UnitOperationPortCatalog.Feed,
+            UnitOperationHostPortMaterialState.Stale,
+            expectedConnected: true,
+            expectedConnectedTargetName: "Reconnected Feed",
+            expectedBoundStreamIds: ["stream-feed"],
+            expectedMaterialStreamIds: [],
+            "companion mismatch port/material snapshot");
+        UnitOperationSmokePortMaterialAssertions.AssertPort(
+            companionMismatchPortMaterial,
+            UnitOperationPortCatalog.Product,
+            UnitOperationHostPortMaterialState.Stale,
+            expectedConnected: true,
+            expectedConnectedTargetName: "Smoke Product",
+            expectedBoundStreamIds: ["stream-liquid", "stream-vapor"],
+            expectedMaterialStreamIds: [],
+            "companion mismatch port/material snapshot");
         var companionValidation = driver.Validate();
         UnitOperationSmokeReportAssertions.EnsureCondition(
             !companionValidation.IsValid &&
@@ -342,6 +480,11 @@ internal static class UnitOperationSmokeBoundarySuite
         UnitOperationSmokeConfigurationAssertions.AssertActionPlan(
             driver.ReadActionPlan(),
             "recovered configuration");
+        var recoveredPortMaterial = driver.ReadPortMaterial();
+        UnitOperationSmokePortMaterialAssertions.AssertSnapshotState(
+            recoveredPortMaterial,
+            UnitOperationHostPortMaterialState.Stale,
+            "recovered port/material snapshot");
         var recoveredSuccessAttempt = driver.Calculate();
         UnitOperationSmokeReportAssertions.EnsureCondition(
             recoveredSuccessAttempt.Succeeded,
@@ -379,6 +522,14 @@ internal static class UnitOperationSmokeBoundarySuite
                 UnitOperationHostConfigurationIssueKind.Terminated,
                 "Terminate has already been called",
                 driver.UnitOperation.ComponentName));
+        var terminatedPortMaterial = driver.ReadPortMaterial();
+        UnitOperationSmokePortMaterialAssertions.AssertSnapshotState(
+            terminatedPortMaterial,
+            UnitOperationHostPortMaterialState.Terminated,
+            "terminated port/material snapshot");
+        UnitOperationSmokeReportAssertions.EnsureCondition(
+            terminatedPortMaterial.PortCount == 0,
+            "terminated port/material snapshot should not bypass lifecycle guards to expose ports.");
         var terminatedBundle = driver.ReadReport();
         UnitOperationSmokeReportAssertions.AssertEmpty(terminatedBundle, "terminated host report");
         UnitOperationSmokeReportAssertions.EnsureCondition(!feedPort.IsConnected, "feed port should release its connected object during Terminate().");

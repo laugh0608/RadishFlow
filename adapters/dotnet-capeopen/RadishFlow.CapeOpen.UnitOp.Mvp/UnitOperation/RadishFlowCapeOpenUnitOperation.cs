@@ -17,6 +17,7 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
     private object? _simulationContext;
     private UnitOperationCalculationResult? _lastCalculationResult;
     private UnitOperationCalculationFailure? _lastCalculationFailure;
+    private bool _materialResultsStale;
     private UnitOperationLifecycleState _lifecycleState;
 
     public RadishFlowCapeOpenUnitOperation()
@@ -242,6 +243,7 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
         }
 
         ResetCalculationState(CapeValidationStatus.NotValidated);
+        _materialResultsStale = false;
         _lifecycleState = UnitOperationLifecycleState.Terminated;
     }
 
@@ -477,6 +479,7 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
     {
         if (!IsTerminated)
         {
+            _materialResultsStale = _materialResultsStale || _lastCalculationResult is not null;
             ResetCalculationState(CapeValidationStatus.NotValidated);
         }
     }
@@ -583,6 +586,7 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
     {
         _lastCalculationResult = result;
         _lastCalculationFailure = null;
+        _materialResultsStale = false;
         ValStatus = CapeValidationStatus.Valid;
     }
 
@@ -608,6 +612,8 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
     private bool IsDisposed => _lifecycleState == UnitOperationLifecycleState.Disposed;
 
     internal UnitOperationLifecycleState HostLifecycleState => _lifecycleState;
+
+    internal bool HostMaterialResultsStale => _materialResultsStale;
 
     private UnitOperationParameterPlaceholder FlowsheetParameter => GetParameterPlaceholder(UnitOperationParameterCatalog.FlowsheetJson);
 

@@ -21,6 +21,7 @@
 - `UnitOperationHostReportFormatter.Format(...)`、`UnitOperationHostReportDocument` 与 `UnitOperationHostReportSection`，用于把 presentation 收口成固定 section 输出，便于宿主直接渲染 `Overview / Stable Details / Supplemental` 这类展示分区
 - `UnitOperationHostConfigurationReader.Read(...)`、`UnitOperationHostConfigurationSnapshot`、`UnitOperationHostConfigurationParameterEntry`、`UnitOperationHostConfigurationPortEntry` 与 `UnitOperationHostConfigurationIssue`，用于让外部最小 host 直接读取当前配置就绪度、blocking issues、next operations，以及 parameter/port 的只读配置摘要，而不必再自己把 catalog、placeholder 状态和 validation 失败分支重新拼成一套宿主私有判断
 - `UnitOperationHostActionPlanReader.Read(...)`、`UnitOperationHostActionPlan`、`UnitOperationHostActionGroup`、`UnitOperationHostActionItem` 与 `UnitOperationHostActionTarget`，用于在 configuration snapshot 之上继续收口“宿主下一步该做什么”：按 `Lifecycle / Parameters / Ports / Terminal` 分组，直接给出 target kind/name(s)、reason、blocking 标记、canonical operation name 与推荐顺序，而不必再让宿主把 blocking issues 和 next operations 重新折叠成自己的 checklist
+- `UnitOperationHostPortMaterialReader.Read(...)`、`UnitOperationHostPortMaterialSnapshot`、`UnitOperationHostPortMaterialEntry` 与 `UnitOperationHostMaterialStreamEntry`，用于在 calculate 结果面之上继续收口“每个 host port 当前绑定了哪些 boundary streams、这些 streams 是否已有当前 material result、若有则给出最小温压流量/相分率摘要”；宿主不必再自己解析 flowsheet JSON、推断 boundary stream 集或把 native solve snapshot 的 `streams` 数组重新映射回 `Feed/Product`
 - `Calculate()` 对未满足前置条件的最小 ECape 语义抛错，以及经由 `rf-ffi` 的最小真实求解接线
 - `ICapeCollection` / `ICapeParameter` / `ICapeUnitPort` 的第一版最小对象运行时
 - placeholder 对象对 unit owner 生命周期的最小访问守卫，以及 `Terminate()` 时的端口连接释放
@@ -41,11 +42,13 @@
 - 在 COM 兼容的 `Item(object)` 之外，当前 `UnitOperationPlaceholderCollection<T>` 又已补出 typed runtime collection 主通路：`ContainsName(...)`、`TryGetByName(...)`、`GetByName(...)` 与 `GetByOneBasedIndex(...)`；后续 `UnitOp.Mvp` 自身、contract tests 和 smoke host 应优先走这条强类型入口，而不是继续在内部到处手写 `ICapeCollection.Item(object)` 选择子
 - 当前 `ICapeCollection`、`ICapeParameter` 与 `ICapeUnitPort` 的 `ComponentName/ComponentDescription` 已冻结为运行时不可变元数据；宿主可以重复读取，但不能在 MVP runtime 中修改这些标识字段，从而保持 collection lookup、required port 规则与 stable detail key 不漂移
 - 当前 `UnitOperationParameterCatalog` / `UnitOperationPortCatalog` 已进一步从“名字常量表”推进到“完整定义真相源”，把 canonical name、collection order、description、required/value-kind/mode 与 direction/port-type 一并收口，避免这些宿主契约继续散落在构造函数和测试字面量里
+- 当前 `UnitOperationPortCatalog` 又已继续吸收 host-facing material 语义：port definition 现显式声明 `BoundaryMaterialRole`，冻结 `Feed -> boundary inputs` 与 `Product -> boundary outputs` 这层映射，不再让 smoke/contract tests 各自猜测 placeholder port 该代表哪一组 flowsheet streams
 - 当前 parameter/port placeholder 又已进一步从“复制 catalog 元数据到运行时实例”收口为“直接绑定 catalog definition 对象”；运行时只保留 value / connection 这类可变状态，避免 definition 与 placeholder 元数据再次出现漂移
 - 当前 `RadishFlowCapeOpenUnitOperation` 自身也已改成按 `OrderedDefinitions` 构造 parameter/port collection，并通过 catalog 名称回取 canonical placeholder；这样 unit 内部不再额外维护一套私有参数/端口清单，catalog + typed collection 才是唯一真相源
 - 当前 parameter/port catalog 又已继续吸收“宿主应调用哪个公开操作来配置该对象”这层语义：parameter definition 现显式声明 `ConfigurationOperationName`，port definition 现显式声明 `ConnectionOperationName`；`Validate()` / `Calculate()` 失败时返回的 `requestedOperation` 已改为从这份 definition 元数据派生，而不是在 unit / smoke / contract tests 中各自硬编码
 - 基于这层 catalog 元数据，当前又已补出正式 `UnitOperationHostConfigurationReader`：宿主现在可以在 `Constructed / Incomplete / Ready / Terminated` 四种 configuration state 上读取 headline、blocking issues、next operations、以及按 catalog 顺序冻结的 parameter/port configuration entries，而不必先调用 `Validate()` 再反解析错误消息
 - 基于这份 configuration snapshot，当前又继续补出 `UnitOperationHostActionPlanReader`：宿主现在可以直接读取分组后的 action checklist，而不必只拿到 `next operations` 名字数组后，再自己决定 action 分组、target、blocking reason 和推荐顺序
+- 基于 flowsheet 配置与 calculate 结果，当前又继续补出 `UnitOperationHostPortMaterialReader`：宿主现在可以直接读取 `None / Stale / Available / Terminated` 四态的 port/material snapshot，以及每个 host port 对应的 boundary stream ids 和当前 material entries，而不必自己重做“flowsheet boundary -> host placeholder port -> solved stream”映射
 - 当前参数对象内部已补上最小元数据收口：区分 `StructuredJsonText` / `Identifier` / `FilePath` 三类值语义，保留对外 `ICapeParameterSpec.Type = CAPE_OPTION`，并显式记录默认值、是否允许空值与 manifest/payload 这类成对出现约束
 - 当前参数对象又已把 `Specification` 从参数实例本身分离为独立只读 spec 对象；宿主重复读取时拿到稳定 spec 引用，而不再让 `ICapeParameter` 与 `ICapeParameterSpec` 混成同一个运行时对象
 - 当前参数对象的 `Mode` 也已冻结为运行时不可变元数据；MVP runtime 当前只接受初始化时定义好的 mode，宿主不能在运行过程中把 input 参数改写成 output/input-output
@@ -77,6 +80,7 @@
 - 当前 contract tests 又已补上 companion validation failure 这条 case，并锁住 requested operation 会从 parameter catalog 的共享 `ConfigurationOperationName` 回读；`SmokeTests` 的 validation/native failure 断言也已同步改成依赖这份 catalog 元数据，而不是私有 `nameof(...)` 字面量
 - 当前 contract tests 又已补上 configuration snapshot contract，锁住 constructed/ready/companion-mismatch/terminated 四种 configuration state、blocking issue kinds、next operations 与只读 entry 形状；`SmokeTests` 的 boundary/session 路径当前也已开始优先消费这套 configuration snapshot，而不是只靠散落的 parameter/port 判断
 - 在 configuration snapshot contract 之上，当前又新增 action plan contract，进一步锁住 constructed / missing required parameter / companion mismatch / disconnected required port / ready / terminated 六类宿主 checklist 形状；`SmokeTests` 当前也已切到优先断言 action group、target、reason、blocking 与 canonical operation，而不再只盯 `NextOperations`
+- 在 action plan contract 之后，当前又新增 port/material snapshot contract，进一步锁住 boundary stream 映射、`None / Stale / Available / Terminated` 四态，以及 success/invalidation/terminate 下的 host port material 形状；`SmokeTests` 当前也已开始直接消费这套 snapshot，而不是继续把 material 语义埋在 report 或样例私有判断里
 - Rust/.NET 边界仍保持为句柄 + UTF-8 + JSON + 状态码，没有在这里提前引入 COM 注册或更宽的跨边界对象传递
 
 最小 contract tests 运行示例：

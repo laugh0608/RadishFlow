@@ -44,6 +44,7 @@ internal static class ContractTestExecutable
             ("collection-contract", static context => ContractTests.Collections_ExposeStableLookupAndRejectInvalidSelectors(context)),
             ("configuration-contract", static context => ContractTests.ConfigurationSnapshot_ExposesReadinessAndNextOperations(context)),
             ("action-plan-contract", static context => ContractTests.ActionPlan_ExposesCanonicalChecklistShape(context)),
+            ("port-material-contract", static context => ContractTests.PortMaterialSnapshot_ExposesBoundaryStreamsAndLifecycleState(context)),
             ("parameter-contract", static context => ContractTests.Parameters_ResetValidationStateAndFreezeMetadata(context)),
             ("port-contract", static context => ContractTests.Ports_RequireDisconnectBeforeReplacingConnections(context)),
             ("validate-before-initialize", static context => ContractTests.ValidateBeforeInitialize_ReturnsInvalidAndEmptyReport(context)),
@@ -227,6 +228,14 @@ internal static class ContractTests
             UnitOperationPortCatalog.Feed.ConnectionOperationName,
             UnitOperationPortCatalog.Product.ConnectionOperationName,
             "Required ports should share the same connection operation in the current MVP runtime.");
+        ContractAssert.Equal(
+            UnitOperationPortBoundaryMaterialRole.BoundaryInputs,
+            UnitOperationPortCatalog.Feed.BoundaryMaterialRole,
+            "Feed port should freeze the boundary-input material role.");
+        ContractAssert.Equal(
+            UnitOperationPortBoundaryMaterialRole.BoundaryOutputs,
+            UnitOperationPortCatalog.Product.BoundaryMaterialRole,
+            "Product port should freeze the boundary-output material role.");
         var missingParameterDefinitionError = ContractAssert.Throws<ArgumentException>(
             () => UnitOperationParameterCatalog.GetByName("missing-parameter"),
             "Unknown parameter definitions should be rejected by the catalog.");
@@ -449,6 +458,105 @@ internal static class ContractTests
         ContractAssert.False(terminatedPlan.ContainsCanonicalOperation(nameof(RadishFlowCapeOpenUnitOperation.Initialize)), "Terminated action plan should not suggest Initialize().");
     }
 
+    public static void PortMaterialSnapshot_ExposesBoundaryStreamsAndLifecycleState(ContractTestContext context)
+    {
+        var constructedSnapshot = context.ReadPortMaterial();
+        ContractAssert.Equal(UnitOperationHostPortMaterialState.None, constructedSnapshot.State, "Constructed port/material snapshot should start in the empty state.");
+        ContractAssert.Equal(2, constructedSnapshot.PortCount, "Constructed port/material snapshot should expose host ports in frozen catalog order.");
+        AssertPortMaterialEntry(
+            constructedSnapshot.GetPort(UnitOperationPortCatalog.Feed.Name),
+            UnitOperationPortCatalog.Feed,
+            UnitOperationHostPortMaterialState.None,
+            isConnected: false,
+            connectedTargetName: null,
+            expectedBoundStreamIds: [],
+            expectedMaterialStreamIds: []);
+        AssertPortMaterialEntry(
+            constructedSnapshot.GetPort(UnitOperationPortCatalog.Product.Name),
+            UnitOperationPortCatalog.Product,
+            UnitOperationHostPortMaterialState.None,
+            isConnected: false,
+            connectedTargetName: null,
+            expectedBoundStreamIds: [],
+            expectedMaterialStreamIds: []);
+
+        context.ConfigureMinimumValidInputs();
+
+        var readySnapshot = context.ReadPortMaterial();
+        ContractAssert.Equal(UnitOperationHostPortMaterialState.None, readySnapshot.State, "Configured but not yet calculated port/material snapshot should remain empty.");
+        AssertPortMaterialEntry(
+            readySnapshot.GetPort(UnitOperationPortCatalog.Feed.Name),
+            UnitOperationPortCatalog.Feed,
+            UnitOperationHostPortMaterialState.None,
+            isConnected: true,
+            connectedTargetName: "Contract Feed",
+            expectedBoundStreamIds: ["stream-feed"],
+            expectedMaterialStreamIds: []);
+        AssertPortMaterialEntry(
+            readySnapshot.GetPort(UnitOperationPortCatalog.Product.Name),
+            UnitOperationPortCatalog.Product,
+            UnitOperationHostPortMaterialState.None,
+            isConnected: true,
+            connectedTargetName: "Contract Product",
+            expectedBoundStreamIds: ["stream-liquid", "stream-vapor"],
+            expectedMaterialStreamIds: []);
+
+        context.UnitOperation.Calculate();
+
+        var availableSnapshot = context.ReadPortMaterial();
+        ContractAssert.Equal(UnitOperationHostPortMaterialState.Available, availableSnapshot.State, "Successful calculate should publish available port/material snapshot state.");
+        var availableFeed = availableSnapshot.GetPort(UnitOperationPortCatalog.Feed.Name);
+        AssertPortMaterialEntry(
+            availableFeed,
+            UnitOperationPortCatalog.Feed,
+            UnitOperationHostPortMaterialState.Available,
+            isConnected: true,
+            connectedTargetName: "Contract Feed",
+            expectedBoundStreamIds: ["stream-feed"],
+            expectedMaterialStreamIds: ["stream-feed"]);
+        ContractAssert.True(availableFeed.MaterialEntries[0].TemperatureK > 0.0d, "Available feed material entry should expose positive temperature.");
+        ContractAssert.True(availableFeed.MaterialEntries[0].PressurePa > 0.0d, "Available feed material entry should expose positive pressure.");
+        var availableProduct = availableSnapshot.GetPort(UnitOperationPortCatalog.Product.Name);
+        AssertPortMaterialEntry(
+            availableProduct,
+            UnitOperationPortCatalog.Product,
+            UnitOperationHostPortMaterialState.Available,
+            isConnected: true,
+            connectedTargetName: "Contract Product",
+            expectedBoundStreamIds: ["stream-liquid", "stream-vapor"],
+            expectedMaterialStreamIds: ["stream-liquid", "stream-vapor"]);
+        ContractAssert.True(
+            availableProduct.MaterialEntries.All(static entry => entry.TotalMolarFlowMolS >= 0.0d && entry.PressurePa > 0.0d),
+            "Available product material entries should expose non-negative flow and positive pressure.");
+
+        context.DisconnectProductPort();
+
+        var staleSnapshot = context.ReadPortMaterial();
+        ContractAssert.Equal(UnitOperationHostPortMaterialState.Stale, staleSnapshot.State, "Configuration invalidation after success should mark port/material snapshot stale.");
+        AssertPortMaterialEntry(
+            staleSnapshot.GetPort(UnitOperationPortCatalog.Feed.Name),
+            UnitOperationPortCatalog.Feed,
+            UnitOperationHostPortMaterialState.Stale,
+            isConnected: true,
+            connectedTargetName: "Contract Feed",
+            expectedBoundStreamIds: ["stream-feed"],
+            expectedMaterialStreamIds: []);
+        AssertPortMaterialEntry(
+            staleSnapshot.GetPort(UnitOperationPortCatalog.Product.Name),
+            UnitOperationPortCatalog.Product,
+            UnitOperationHostPortMaterialState.Stale,
+            isConnected: false,
+            connectedTargetName: null,
+            expectedBoundStreamIds: ["stream-liquid", "stream-vapor"],
+            expectedMaterialStreamIds: []);
+
+        context.UnitOperation.Terminate();
+
+        var terminatedSnapshot = context.ReadPortMaterial();
+        ContractAssert.Equal(UnitOperationHostPortMaterialState.Terminated, terminatedSnapshot.State, "Terminated unit should expose terminal port/material snapshot state.");
+        ContractAssert.Equal(0, terminatedSnapshot.PortCount, "Terminated port/material snapshot should not bypass lifecycle guards to expose ports.");
+    }
+
     private static void AssertActionPlan(
         UnitOperationHostActionPlan actionPlan,
         string scenario,
@@ -490,6 +598,28 @@ internal static class ContractTests
             IssueKind: issueKind,
             ReasonFragment: reasonFragment,
             IsBlocking: true);
+    }
+
+    private static void AssertPortMaterialEntry(
+        UnitOperationHostPortMaterialEntry entry,
+        UnitOperationPortDefinition definition,
+        UnitOperationHostPortMaterialState expectedState,
+        bool isConnected,
+        string? connectedTargetName,
+        IReadOnlyList<string> expectedBoundStreamIds,
+        IReadOnlyList<string> expectedMaterialStreamIds)
+    {
+        ContractAssert.Equal(definition.Name, entry.Name, "Port/material entry should preserve canonical port name.");
+        ContractAssert.Equal(definition.Description, entry.Description, "Port/material entry should preserve canonical port description.");
+        ContractAssert.Equal(definition.Direction, entry.Direction, "Port/material entry should preserve port direction.");
+        ContractAssert.Equal(definition.PortType, entry.PortType, "Port/material entry should preserve port type.");
+        ContractAssert.Equal(definition.IsRequired, entry.IsRequired, "Port/material entry should preserve required flag.");
+        ContractAssert.Equal(definition.BoundaryMaterialRole, entry.BoundaryMaterialRole, "Port/material entry should preserve boundary material role.");
+        ContractAssert.Equal(expectedState, entry.MaterialState, "Port/material entry should expose the expected material state.");
+        ContractAssert.Equal(isConnected, entry.IsConnected, "Port/material entry should expose the expected connection state.");
+        ContractAssert.Equal(connectedTargetName, entry.ConnectedTargetName, "Port/material entry should expose the expected connected target name.");
+        ContractAssert.SequenceEqual(expectedBoundStreamIds, entry.BoundStreamIds, "Port/material entry should expose the expected bound stream ids.");
+        ContractAssert.SequenceEqual(expectedMaterialStreamIds, entry.MaterialEntries.Select(static entry => entry.StreamId), "Port/material entry should expose the expected current material stream ids.");
     }
 
     public static void Ports_RequireDisconnectBeforeReplacingConnections(ContractTestContext context)
@@ -731,6 +861,11 @@ internal sealed class ContractTestContext : IDisposable
     public UnitOperationHostActionPlan ReadActionPlan()
     {
         return UnitOperationHostActionPlanReader.Read(ReadConfiguration());
+    }
+
+    public UnitOperationHostPortMaterialSnapshot ReadPortMaterial()
+    {
+        return UnitOperationHostPortMaterialReader.Read(UnitOperation);
     }
 
     public void ConfigureMinimumValidInputs()

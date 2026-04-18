@@ -5,7 +5,8 @@ namespace RadishFlow.CapeOpen.UnitOp.Mvp.Results;
 public sealed record UnitOperationCalculationResult(
     string Status,
     UnitOperationCalculationSummary Summary,
-    IReadOnlyList<UnitOperationCalculationDiagnostic> Diagnostics)
+    IReadOnlyList<UnitOperationCalculationDiagnostic> Diagnostics,
+    IReadOnlyList<UnitOperationCalculationStream> Streams)
 {
     internal static UnitOperationCalculationResult Parse(string snapshotJson)
     {
@@ -19,7 +20,10 @@ public sealed record UnitOperationCalculationResult(
             Summary: ParseSummary(GetRequiredProperty(root, "summary", "$"), "$.summary"),
             Diagnostics: ParseDiagnostics(
                 GetRequiredProperty(root, "diagnostics", "$"),
-                "$.diagnostics"));
+                "$.diagnostics"),
+            Streams: ParseStreams(
+                GetRequiredProperty(root, "streams", "$"),
+                "$.streams"));
     }
 
     private static UnitOperationCalculationSummary ParseSummary(JsonElement element, string path)
@@ -59,6 +63,62 @@ public sealed record UnitOperationCalculationResult(
         }
 
         return diagnostics;
+    }
+
+    private static IReadOnlyList<UnitOperationCalculationStream> ParseStreams(
+        JsonElement element,
+        string path)
+    {
+        if (element.ValueKind != JsonValueKind.Array)
+        {
+            throw new InvalidDataException(
+                $"Expected `{path}` to be a JSON array but found `{element.ValueKind}`.");
+        }
+
+        var streams = new List<UnitOperationCalculationStream>(element.GetArrayLength());
+        var index = 0;
+        foreach (var item in element.EnumerateArray())
+        {
+            var streamPath = $"{path}[{index}]";
+            var stream = RequireObject(item, streamPath);
+            streams.Add(new UnitOperationCalculationStream(
+                Id: GetRequiredString(stream, "id", streamPath),
+                Name: GetRequiredString(stream, "name", streamPath),
+                TemperatureK: GetRequiredDouble(stream, "temperature_k", streamPath),
+                PressurePa: GetRequiredDouble(stream, "pressure_pa", streamPath),
+                TotalMolarFlowMolS: GetRequiredDouble(stream, "total_molar_flow_mol_s", streamPath),
+                Phases: ParsePhases(
+                    GetRequiredProperty(stream, "phases", streamPath),
+                    $"{streamPath}.phases")));
+            index++;
+        }
+
+        return streams;
+    }
+
+    private static IReadOnlyList<UnitOperationCalculationPhase> ParsePhases(
+        JsonElement element,
+        string path)
+    {
+        if (element.ValueKind != JsonValueKind.Array)
+        {
+            throw new InvalidDataException(
+                $"Expected `{path}` to be a JSON array but found `{element.ValueKind}`.");
+        }
+
+        var phases = new List<UnitOperationCalculationPhase>(element.GetArrayLength());
+        var index = 0;
+        foreach (var item in element.EnumerateArray())
+        {
+            var phasePath = $"{path}[{index}]";
+            var phase = RequireObject(item, phasePath);
+            phases.Add(new UnitOperationCalculationPhase(
+                Label: GetRequiredString(phase, "label", phasePath),
+                PhaseFraction: GetRequiredDouble(phase, "phase_fraction", phasePath)));
+            index++;
+        }
+
+        return phases;
     }
 
     private static JsonElement RequireObject(JsonElement element, string path)
@@ -114,6 +174,18 @@ public sealed record UnitOperationCalculationResult(
         return value;
     }
 
+    private static double GetRequiredDouble(JsonElement element, string propertyName, string path)
+    {
+        var property = GetRequiredProperty(element, propertyName, path);
+        if (!property.TryGetDouble(out var value))
+        {
+            throw new InvalidDataException(
+                $"Expected `{path}.{propertyName}` to be a floating-point number but found `{property.ValueKind}`.");
+        }
+
+        return value;
+    }
+
     private static IReadOnlyList<string> ReadRequiredStringArray(
         JsonElement element,
         string propertyName,
@@ -164,3 +236,15 @@ public sealed record UnitOperationCalculationDiagnostic(
     string Message,
     IReadOnlyList<string> RelatedUnitIds,
     IReadOnlyList<string> RelatedStreamIds);
+
+public sealed record UnitOperationCalculationStream(
+    string Id,
+    string Name,
+    double TemperatureK,
+    double PressurePa,
+    double TotalMolarFlowMolS,
+    IReadOnlyList<UnitOperationCalculationPhase> Phases);
+
+public sealed record UnitOperationCalculationPhase(
+    string Label,
+    double PhaseFraction);

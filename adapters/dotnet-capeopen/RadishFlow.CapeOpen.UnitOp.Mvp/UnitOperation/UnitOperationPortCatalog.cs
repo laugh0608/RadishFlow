@@ -10,7 +10,8 @@ public static class UnitOperationPortCatalog
         Direction: CapePortDirection.CAPE_INLET,
         PortType: CapePortType.CAPE_MATERIAL,
         IsRequired: true,
-        ConnectionOperationName: nameof(RadishFlowCapeOpenUnitOperation.SetPortConnected));
+        ConnectionOperationName: nameof(RadishFlowCapeOpenUnitOperation.SetPortConnected),
+        BoundaryMaterialRole: UnitOperationPortBoundaryMaterialRole.BoundaryInputs);
 
     public static UnitOperationPortDefinition Product { get; } = new(
         Name: "Product",
@@ -18,7 +19,8 @@ public static class UnitOperationPortCatalog
         Direction: CapePortDirection.CAPE_OUTLET,
         PortType: CapePortType.CAPE_MATERIAL,
         IsRequired: true,
-        ConnectionOperationName: nameof(RadishFlowCapeOpenUnitOperation.SetPortConnected));
+        ConnectionOperationName: nameof(RadishFlowCapeOpenUnitOperation.SetPortConnected),
+        BoundaryMaterialRole: UnitOperationPortBoundaryMaterialRole.BoundaryOutputs);
 
     private static readonly IReadOnlyList<UnitOperationPortDefinition> OrderedDefinitionsValue =
         ValidateDefinitions(
@@ -71,4 +73,11 @@ public sealed record UnitOperationPortDefinition(
     CapePortDirection Direction,
     CapePortType PortType,
     bool IsRequired,
-    string ConnectionOperationName);
+    string ConnectionOperationName,
+    UnitOperationPortBoundaryMaterialRole BoundaryMaterialRole);
+
+public enum UnitOperationPortBoundaryMaterialRole
+{
+    BoundaryInputs,
+    BoundaryOutputs,
+}
