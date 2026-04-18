@@ -52,10 +52,28 @@ public static class UnitOperationParameterCatalog
         PropertyPackageManifestPath,
         PropertyPackagePayloadPath,
     ];
+    private static readonly IReadOnlyDictionary<string, UnitOperationParameterDefinition> DefinitionsByNameValue =
+        OrderedDefinitionsValue.ToDictionary(static definition => definition.Name, StringComparer.OrdinalIgnoreCase);
 
     public static IReadOnlyList<UnitOperationParameterDefinition> OrderedDefinitions => OrderedDefinitionsValue;
 
     public static IReadOnlyList<string> OrderedNames { get; } = OrderedDefinitionsValue.Select(static definition => definition.Name).ToArray();
+
+    public static bool TryGetByName(string name, out UnitOperationParameterDefinition definition)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+        return DefinitionsByNameValue.TryGetValue(name, out definition!);
+    }
+
+    public static UnitOperationParameterDefinition GetByName(string name)
+    {
+        if (TryGetByName(name, out var definition))
+        {
+            return definition;
+        }
+
+        throw new ArgumentException($"Unknown unit operation parameter definition `{name}`.", nameof(name));
+    }
 }
 
 public sealed record UnitOperationParameterDefinition(

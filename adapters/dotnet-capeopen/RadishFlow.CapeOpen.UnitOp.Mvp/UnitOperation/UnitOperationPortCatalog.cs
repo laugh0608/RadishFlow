@@ -23,10 +23,28 @@ public static class UnitOperationPortCatalog
         Feed,
         Product,
     ];
+    private static readonly IReadOnlyDictionary<string, UnitOperationPortDefinition> DefinitionsByNameValue =
+        OrderedDefinitionsValue.ToDictionary(static definition => definition.Name, StringComparer.OrdinalIgnoreCase);
 
     public static IReadOnlyList<UnitOperationPortDefinition> OrderedDefinitions => OrderedDefinitionsValue;
 
     public static IReadOnlyList<string> OrderedNames { get; } = OrderedDefinitionsValue.Select(static definition => definition.Name).ToArray();
+
+    public static bool TryGetByName(string name, out UnitOperationPortDefinition definition)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+        return DefinitionsByNameValue.TryGetValue(name, out definition!);
+    }
+
+    public static UnitOperationPortDefinition GetByName(string name)
+    {
+        if (TryGetByName(name, out var definition))
+        {
+            return definition;
+        }
+
+        throw new ArgumentException($"Unknown unit operation port definition `{name}`.", nameof(name));
+    }
 }
 
 public sealed record UnitOperationPortDefinition(

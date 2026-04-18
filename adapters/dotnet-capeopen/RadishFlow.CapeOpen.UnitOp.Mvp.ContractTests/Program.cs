@@ -107,6 +107,26 @@ internal static class ContractTests
             UnitOperationPortCatalog.OrderedNames,
             context.UnitOperation.Ports.Select(static port => port.ComponentName),
             "Port collection order should match the frozen public catalog.");
+        foreach (var parameter in context.UnitOperation.Parameters)
+        {
+            var definition = UnitOperationParameterCatalog.GetByName(parameter.ComponentName);
+            ContractAssert.Equal(definition.Description, parameter.ComponentDescription, "Runtime parameter description should match the frozen catalog definition.");
+            ContractAssert.Equal(definition.IsRequired, parameter.IsRequired, "Runtime parameter required flag should match the frozen catalog definition.");
+            ContractAssert.Equal(definition.ValueKind, parameter.ValueKind, "Runtime parameter value kind should match the frozen catalog definition.");
+            ContractAssert.Equal(definition.AllowsEmptyValue, parameter.AllowsEmptyValue, "Runtime parameter allow-empty flag should match the frozen catalog definition.");
+            ContractAssert.Equal(definition.RequiredCompanionParameterName, parameter.RequiredCompanionParameterName, "Runtime parameter companion contract should match the frozen catalog definition.");
+            ContractAssert.Equal(definition.Mode, parameter.Mode, "Runtime parameter mode should match the frozen catalog definition.");
+            ContractAssert.Equal(definition.DefaultValue, parameter.DefaultValue, "Runtime parameter default value should match the frozen catalog definition.");
+        }
+
+        foreach (var port in context.UnitOperation.Ports)
+        {
+            var definition = UnitOperationPortCatalog.GetByName(port.ComponentName);
+            ContractAssert.Equal(definition.Description, port.ComponentDescription, "Runtime port description should match the frozen catalog definition.");
+            ContractAssert.Equal(definition.Direction, port.direction, "Runtime port direction should match the frozen catalog definition.");
+            ContractAssert.Equal(definition.PortType, port.portType, "Runtime port type should match the frozen catalog definition.");
+            ContractAssert.Equal(definition.IsRequired, port.IsRequired, "Runtime port required flag should match the frozen catalog definition.");
+        }
 
         ContractAssert.SameReference(
             context.FlowsheetParameter,
@@ -140,6 +160,23 @@ internal static class ContractTests
             () => ((ICapeIdentification)context.UnitOperation.Parameters).ComponentName = "Mutable Parameters",
             "Collection identification should remain immutable in the MVP runtime.");
         ContractAssert.Contains(collectionMutationError.Description, "does not allow ComponentName mutation", "Collection immutability failures should stay explicit.");
+
+        ContractAssert.True(
+            UnitOperationParameterCatalog.TryGetByName("flowsheet json", out var flowsheetDefinition) &&
+            ReferenceEquals(UnitOperationParameterCatalog.FlowsheetJson, flowsheetDefinition),
+            "Parameter catalog should support case-insensitive lookup.");
+        ContractAssert.True(
+            UnitOperationPortCatalog.TryGetByName("product", out var productDefinition) &&
+            ReferenceEquals(UnitOperationPortCatalog.Product, productDefinition),
+            "Port catalog should support case-insensitive lookup.");
+        var missingParameterDefinitionError = ContractAssert.Throws<ArgumentException>(
+            () => UnitOperationParameterCatalog.GetByName("missing-parameter"),
+            "Unknown parameter definitions should be rejected by the catalog.");
+        ContractAssert.Contains(missingParameterDefinitionError.Message, "Unknown unit operation parameter definition", "Missing parameter definition failures should stay explicit.");
+        var missingPortDefinitionError = ContractAssert.Throws<ArgumentException>(
+            () => UnitOperationPortCatalog.GetByName("missing-port"),
+            "Unknown port definitions should be rejected by the catalog.");
+        ContractAssert.Contains(missingPortDefinitionError.Message, "Unknown unit operation port definition", "Missing port definition failures should stay explicit.");
     }
 
     public static void Parameters_ResetValidationStateAndFreezeMetadata(ContractTestContext context)
