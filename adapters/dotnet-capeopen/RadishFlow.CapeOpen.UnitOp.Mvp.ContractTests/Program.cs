@@ -45,6 +45,7 @@ internal static class ContractTestExecutable
             ("configuration-contract", static context => ContractTests.ConfigurationSnapshot_ExposesReadinessAndNextOperations(context)),
             ("action-plan-contract", static context => ContractTests.ActionPlan_ExposesCanonicalChecklistShape(context)),
             ("port-material-contract", static context => ContractTests.PortMaterialSnapshot_ExposesBoundaryStreamsAndLifecycleState(context)),
+            ("execution-snapshot-contract", static context => ContractTests.ExecutionSnapshot_ExposesStepAndDiagnosticShape(context)),
             ("parameter-contract", static context => ContractTests.Parameters_ResetValidationStateAndFreezeMetadata(context)),
             ("port-contract", static context => ContractTests.Ports_RequireDisconnectBeforeReplacingConnections(context)),
             ("validate-before-initialize", static context => ContractTests.ValidateBeforeInitialize_ReturnsInvalidAndEmptyReport(context)),
@@ -557,6 +558,63 @@ internal static class ContractTests
         ContractAssert.Equal(0, terminatedSnapshot.PortCount, "Terminated port/material snapshot should not bypass lifecycle guards to expose ports.");
     }
 
+    public static void ExecutionSnapshot_ExposesStepAndDiagnosticShape(ContractTestContext context)
+    {
+        var constructedSnapshot = context.ReadExecution();
+        ContractAssert.Equal(UnitOperationHostExecutionState.None, constructedSnapshot.State, "Constructed execution snapshot should start empty.");
+        ContractAssert.False(constructedSnapshot.IsCurrentConfigurationExecution, "Constructed execution snapshot should not be current.");
+        ContractAssert.Equal(0, constructedSnapshot.StepCount, "Constructed execution snapshot should not expose steps.");
+        ContractAssert.Equal(0, constructedSnapshot.DiagnosticCount, "Constructed execution snapshot should not expose diagnostics.");
+
+        context.ConfigureMinimumValidInputs();
+
+        var readySnapshot = context.ReadExecution();
+        ContractAssert.Equal(UnitOperationHostExecutionState.None, readySnapshot.State, "Ready-but-not-calculated execution snapshot should remain empty.");
+        ContractAssert.False(readySnapshot.IsCurrentConfigurationExecution, "Ready-but-not-calculated execution snapshot should not be current.");
+        ContractAssert.Equal(0, readySnapshot.StepCount, "Ready-but-not-calculated execution snapshot should not expose steps.");
+
+        context.UnitOperation.Calculate();
+
+        var availableSnapshot = context.ReadExecution();
+        ContractAssert.Equal(UnitOperationHostExecutionState.Available, availableSnapshot.State, "Successful calculate should expose available execution snapshot state.");
+        ContractAssert.True(availableSnapshot.IsCurrentConfigurationExecution, "Successful calculate should expose a current execution snapshot.");
+        ContractAssert.Equal("converged", availableSnapshot.CalculationStatus, "Execution snapshot should preserve calculation status.");
+        ContractAssert.NotNull(availableSnapshot.Summary, "Available execution snapshot should expose summary.");
+        ContractAssert.Equal(4, availableSnapshot.DiagnosticCount, "Execution snapshot should preserve diagnostic count.");
+        ContractAssert.Equal(3, availableSnapshot.StepCount, "Execution snapshot should preserve three solve steps for the sample flowsheet.");
+        ContractAssert.SequenceEqual(
+            ["feed-1", "heater-1", "flash-1"],
+            availableSnapshot.StepEntries.Select(static step => step.UnitId),
+            "Execution snapshot should preserve stable step unit order.");
+        ContractAssert.SequenceEqual(
+            ["stream-feed", "stream-heated", "stream-liquid", "stream-vapor"],
+            availableSnapshot.Summary!.RelatedStreamIds,
+            "Execution snapshot summary should preserve related stream ids.");
+        var flashStep = availableSnapshot.GetStep(2);
+        ContractAssert.Equal(2, flashStep.Index, "Execution snapshot should preserve zero-based native step index.");
+        ContractAssert.Equal("flash-1", flashStep.UnitId, "Execution snapshot should preserve flash step unit id.");
+        ContractAssert.Equal("flash_drum", flashStep.UnitKind, "Execution snapshot should preserve flash step unit kind.");
+        ContractAssert.SequenceEqual(["stream-heated"], flashStep.ConsumedStreamIds, "Execution snapshot should preserve flash-step consumed streams.");
+        ContractAssert.SequenceEqual(["stream-liquid", "stream-vapor"], flashStep.ProducedStreamIds, "Execution snapshot should preserve flash-step produced streams.");
+        ContractAssert.Contains(flashStep.Summary, "flash-1", "Execution snapshot should preserve step summary text.");
+
+        context.DisconnectProductPort();
+
+        var staleSnapshot = context.ReadExecution();
+        ContractAssert.Equal(UnitOperationHostExecutionState.Stale, staleSnapshot.State, "Configuration invalidation after success should mark execution snapshot stale.");
+        ContractAssert.False(staleSnapshot.IsCurrentConfigurationExecution, "Stale execution snapshot should not be current.");
+        ContractAssert.Equal(0, staleSnapshot.StepCount, "Stale execution snapshot should not expose old steps as current data.");
+        ContractAssert.Equal(0, staleSnapshot.DiagnosticCount, "Stale execution snapshot should not expose old diagnostics as current data.");
+
+        context.UnitOperation.Terminate();
+
+        var terminatedSnapshot = context.ReadExecution();
+        ContractAssert.Equal(UnitOperationHostExecutionState.Terminated, terminatedSnapshot.State, "Terminated execution snapshot should expose terminal state.");
+        ContractAssert.False(terminatedSnapshot.IsCurrentConfigurationExecution, "Terminated execution snapshot should not be current.");
+        ContractAssert.Equal(0, terminatedSnapshot.StepCount, "Terminated execution snapshot should not expose steps.");
+        ContractAssert.Equal(0, terminatedSnapshot.DiagnosticCount, "Terminated execution snapshot should not expose diagnostics.");
+    }
+
     private static void AssertActionPlan(
         UnitOperationHostActionPlan actionPlan,
         string scenario,
@@ -736,6 +794,8 @@ internal static class ContractTests
         ContractAssert.Equal(UnitOperationCalculationReportState.Success, context.UnitOperation.GetCalculationReportState(), "Success should publish success report state.");
         ContractAssert.Equal("converged", context.UnitOperation.GetCalculationReportDetailValue(UnitOperationCalculationReportDetailCatalog.Status), "Success report should expose converged status.");
         ContractAssert.True(context.UnitOperation.GetCalculationReportLineCount() > context.UnitOperation.GetCalculationReportDetailKeyCount(), "Success report should expose supplemental lines beyond stable details.");
+        ContractAssert.NotNull(context.UnitOperation.LastCalculationResult, "Successful Calculate() should preserve the last success result.");
+        ContractAssert.Equal(3, context.UnitOperation.LastCalculationResult!.Steps.Count, "Successful Calculate() should materialize native solve steps into the calculation result contract.");
     }
 
     public static void ConfigurationChange_ClearsReportAndMarksNotValidated(ContractTestContext context)
@@ -866,6 +926,11 @@ internal sealed class ContractTestContext : IDisposable
     public UnitOperationHostPortMaterialSnapshot ReadPortMaterial()
     {
         return UnitOperationHostPortMaterialReader.Read(UnitOperation);
+    }
+
+    public UnitOperationHostExecutionSnapshot ReadExecution()
+    {
+        return UnitOperationHostExecutionReader.Read(UnitOperation);
     }
 
     public void ConfigureMinimumValidInputs()

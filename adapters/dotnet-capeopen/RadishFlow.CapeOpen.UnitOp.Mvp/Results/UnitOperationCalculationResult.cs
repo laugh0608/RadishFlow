@@ -6,7 +6,8 @@ public sealed record UnitOperationCalculationResult(
     string Status,
     UnitOperationCalculationSummary Summary,
     IReadOnlyList<UnitOperationCalculationDiagnostic> Diagnostics,
-    IReadOnlyList<UnitOperationCalculationStream> Streams)
+    IReadOnlyList<UnitOperationCalculationStream> Streams,
+    IReadOnlyList<UnitOperationCalculationStep> Steps)
 {
     internal static UnitOperationCalculationResult Parse(string snapshotJson)
     {
@@ -23,7 +24,10 @@ public sealed record UnitOperationCalculationResult(
                 "$.diagnostics"),
             Streams: ParseStreams(
                 GetRequiredProperty(root, "streams", "$"),
-                "$.streams"));
+                "$.streams"),
+            Steps: ParseSteps(
+                GetRequiredProperty(root, "steps", "$"),
+                "$.steps"));
     }
 
     private static UnitOperationCalculationSummary ParseSummary(JsonElement element, string path)
@@ -119,6 +123,36 @@ public sealed record UnitOperationCalculationResult(
         }
 
         return phases;
+    }
+
+    private static IReadOnlyList<UnitOperationCalculationStep> ParseSteps(
+        JsonElement element,
+        string path)
+    {
+        if (element.ValueKind != JsonValueKind.Array)
+        {
+            throw new InvalidDataException(
+                $"Expected `{path}` to be a JSON array but found `{element.ValueKind}`.");
+        }
+
+        var steps = new List<UnitOperationCalculationStep>(element.GetArrayLength());
+        var index = 0;
+        foreach (var item in element.EnumerateArray())
+        {
+            var stepPath = $"{path}[{index}]";
+            var step = RequireObject(item, stepPath);
+            steps.Add(new UnitOperationCalculationStep(
+                Index: GetRequiredInt32(step, "index", stepPath),
+                UnitId: GetRequiredString(step, "unitId", stepPath),
+                UnitName: GetRequiredString(step, "unitName", stepPath),
+                UnitKind: GetRequiredString(step, "unitKind", stepPath),
+                ConsumedStreamIds: ReadRequiredStringArray(step, "consumedStreamIds", stepPath),
+                ProducedStreamIds: ReadRequiredStringArray(step, "producedStreamIds", stepPath),
+                Summary: GetRequiredString(step, "summary", stepPath)));
+            index++;
+        }
+
+        return steps;
     }
 
     private static JsonElement RequireObject(JsonElement element, string path)
@@ -248,3 +282,12 @@ public sealed record UnitOperationCalculationStream(
 public sealed record UnitOperationCalculationPhase(
     string Label,
     double PhaseFraction);
+
+public sealed record UnitOperationCalculationStep(
+    int Index,
+    string UnitId,
+    string UnitName,
+    string UnitKind,
+    IReadOnlyList<string> ConsumedStreamIds,
+    IReadOnlyList<string> ProducedStreamIds,
+    string Summary);

@@ -615,6 +615,8 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
 
     internal bool HostMaterialResultsStale => _materialResultsStale;
 
+    internal bool HostExecutionResultsStale => _materialResultsStale;
+
     private UnitOperationParameterPlaceholder FlowsheetParameter => GetParameterPlaceholder(UnitOperationParameterCatalog.FlowsheetJson);
 
     private UnitOperationParameterPlaceholder PackageIdParameter => GetParameterPlaceholder(UnitOperationParameterCatalog.PropertyPackageId);

@@ -14,7 +14,6 @@
 - `Initialize / Validate / Calculate / Terminate / Edit` 的第一版状态骨架
 - 内部 `LoadFlowsheetJson(...)`、`LoadPropertyPackageFiles(...)`、`SelectPropertyPackage(...)` 配置入口
 - `SetPortConnected(...)` 这一类最小端口状态入口
-- `ConfigureNativeLibraryDirectory(...)`、`LastCalculationResult`、`LastCalculationFailure`、`GetCalculationReport()`、`GetCalculationReportState()`、`GetCalculationReportHeadline()`、`GetCalculationReportDetailKeyCount()`、`GetCalculationReportDetailKey(int)`、`GetCalculationReportDetailValue(string)`、`GetCalculationReportLineCount()`、`GetCalculationReportLine(int)`、`GetCalculationReportLines()` 与 `GetCalculationReportText()`
 - `ConfigureNativeLibraryDirectory(...)`、`LastCalculationResult`、`LastCalculationFailure`、`GetCalculationReport()`、`GetCalculationReportState()`、`GetCalculationReportHeadline()`、`GetCalculationReportDetailKeyCount()`、`GetCalculationReportDetailKey(int)`、`GetCalculationReportDetailValue(string)`、`GetCalculationReportLineCount()`、`GetCalculationReportLine(int)`、`GetCalculationReportLines()`、`GetCalculationReportText()`，以及公开 stable key catalog `UnitOperationCalculationReportDetailCatalog`
 - `UnitOperationHostReportReader.Read(...)`、`UnitOperationHostReportSnapshot` 与 `UnitOperationHostReportDetailEntry`，用于让外部最小 host 基于既有公开 report API 一次性材料化状态、stable detail entries、scalar lines、vector lines 与 text，而不必在每个宿主里重复写同样的读取样板
 - `UnitOperationHostReportPresenter.Present(...)` 与 `UnitOperationHostReportPresentation`，用于把 host snapshot 继续整理成更接近 UI / 日志组件的展示模型，明确 `StateLabel`、`RequiresAttention`、`StableDetails` 与 `SupplementalLines`
@@ -22,6 +21,7 @@
 - `UnitOperationHostConfigurationReader.Read(...)`、`UnitOperationHostConfigurationSnapshot`、`UnitOperationHostConfigurationParameterEntry`、`UnitOperationHostConfigurationPortEntry` 与 `UnitOperationHostConfigurationIssue`，用于让外部最小 host 直接读取当前配置就绪度、blocking issues、next operations，以及 parameter/port 的只读配置摘要，而不必再自己把 catalog、placeholder 状态和 validation 失败分支重新拼成一套宿主私有判断
 - `UnitOperationHostActionPlanReader.Read(...)`、`UnitOperationHostActionPlan`、`UnitOperationHostActionGroup`、`UnitOperationHostActionItem` 与 `UnitOperationHostActionTarget`，用于在 configuration snapshot 之上继续收口“宿主下一步该做什么”：按 `Lifecycle / Parameters / Ports / Terminal` 分组，直接给出 target kind/name(s)、reason、blocking 标记、canonical operation name 与推荐顺序，而不必再让宿主把 blocking issues 和 next operations 重新折叠成自己的 checklist
 - `UnitOperationHostPortMaterialReader.Read(...)`、`UnitOperationHostPortMaterialSnapshot`、`UnitOperationHostPortMaterialEntry` 与 `UnitOperationHostMaterialStreamEntry`，用于在 calculate 结果面之上继续收口“每个 host port 当前绑定了哪些 boundary streams、这些 streams 是否已有当前 material result、若有则给出最小温压流量/相分率摘要”；宿主不必再自己解析 flowsheet JSON、推断 boundary stream 集或把 native solve snapshot 的 `streams` 数组重新映射回 `Feed/Product`
+- `UnitOperationHostExecutionReader.Read(...)`、`UnitOperationHostExecutionSnapshot`、`UnitOperationHostExecutionSummary`、`UnitOperationHostExecutionDiagnosticEntry` 与 `UnitOperationHostExecutionStepEntry`，用于在 calculate 结果面之上继续收口“这次执行做了什么”：宿主可直接读取 `None / Stale / Available / Terminated` 四态、calculation status、summary、diagnostics 与 step-by-step 执行序列，而不必继续从 report supplemental lines 间接反推
 - `Calculate()` 对未满足前置条件的最小 ECape 语义抛错，以及经由 `rf-ffi` 的最小真实求解接线
 - `ICapeCollection` / `ICapeParameter` / `ICapeUnitPort` 的第一版最小对象运行时
 - placeholder 对象对 unit owner 生命周期的最小访问守卫，以及 `Terminate()` 时的端口连接释放
@@ -49,6 +49,7 @@
 - 基于这层 catalog 元数据，当前又已补出正式 `UnitOperationHostConfigurationReader`：宿主现在可以在 `Constructed / Incomplete / Ready / Terminated` 四种 configuration state 上读取 headline、blocking issues、next operations、以及按 catalog 顺序冻结的 parameter/port configuration entries，而不必先调用 `Validate()` 再反解析错误消息
 - 基于这份 configuration snapshot，当前又继续补出 `UnitOperationHostActionPlanReader`：宿主现在可以直接读取分组后的 action checklist，而不必只拿到 `next operations` 名字数组后，再自己决定 action 分组、target、blocking reason 和推荐顺序
 - 基于 flowsheet 配置与 calculate 结果，当前又继续补出 `UnitOperationHostPortMaterialReader`：宿主现在可以直接读取 `None / Stale / Available / Terminated` 四态的 port/material snapshot，以及每个 host port 对应的 boundary stream ids 和当前 material entries，而不必自己重做“flowsheet boundary -> host placeholder port -> solved stream”映射
+- 在这层结果对象之上，当前又继续补出 `UnitOperationHostExecutionReader`：宿主现在可以直接读取 execution snapshot，而不必继续依赖 `GetCalculationReportLines()` 或 sectioned report 的 supplemental 文本去推断本次执行包含哪些 unit steps、消费了哪些 streams、生成了哪些 streams
 - 当前参数对象内部已补上最小元数据收口：区分 `StructuredJsonText` / `Identifier` / `FilePath` 三类值语义，保留对外 `ICapeParameterSpec.Type = CAPE_OPTION`，并显式记录默认值、是否允许空值与 manifest/payload 这类成对出现约束
 - 当前参数对象又已把 `Specification` 从参数实例本身分离为独立只读 spec 对象；宿主重复读取时拿到稳定 spec 引用，而不再让 `ICapeParameter` 与 `ICapeParameterSpec` 混成同一个运行时对象
 - 当前参数对象的 `Mode` 也已冻结为运行时不可变元数据；MVP runtime 当前只接受初始化时定义好的 mode，宿主不能在运行过程中把 input 参数改写成 output/input-output
@@ -60,7 +61,7 @@
 - 当前 `RadishFlowCapeOpenUnitOperation` 内部生命周期又已从分散的 `_initialized / _terminated / _disposed` 布尔位收口为单一 `UnitOperationLifecycleState`，让 `Initialize / Validate / Calculate / Terminate / Dispose`、placeholder access guard 与终止后只读 report 查询共享同一套阶段判断，避免宿主边界继续靠多处布尔分支隐式维持
 - 当前 `Calculate()` 内部执行链也已从单方法内联流程收口为显式分段：先做 `PrepareForCalculation()` 前置校验，再构造 `CalculationInputs`，随后执行 native solve、材料化结果并记录失败摘要；这样后续继续扩展宿主/PME 调用路径时，不必再从一段混合逻辑里追踪“校验失败、native 失败、contract parse 失败”分别落在哪个阶段
 - 当前 `ValStatus` 与 calculation report 相关内部状态也已继续收口到正式变更入口：`ApplyValidationOutcome()`、`ResetCalculationState()`、`RecordCalculationSuccess()` 与 `RecordCalculationFailure()` 负责统一推进 `ValStatus`、`LastCalculationResult`、`LastCalculationFailure` 与 report 空态，避免 `Initialize / Validate / Calculate / Terminate` 继续各自零散写字段
-- `Calculate()` 当前已能在最小前置条件满足后调用 `rf-ffi` 完成求解，并把对外结果面拆成“成功结果”和“失败摘要”两条最小契约：成功时导出 `LastCalculationResult(status / summary / diagnostics)`，失败时导出 `LastCalculationFailure(error / requestedOperation / nativeStatus / summary)`；完整 flowsheet snapshot JSON 与 native error JSON 仍只作为内部桥接输入，不再直接作为 PMC 公开结果面
+- `Calculate()` 当前已能在最小前置条件满足后调用 `rf-ffi` 完成求解，并把对外结果面拆成“成功结果”和“失败摘要”两条最小契约：成功时导出 `LastCalculationResult(status / summary / diagnostics / streams / steps)`，失败时导出 `LastCalculationFailure(error / requestedOperation / nativeStatus / summary)`；完整 flowsheet snapshot JSON 与 native error JSON 仍只作为内部桥接输入，不再直接作为 PMC 公开结果面
 - 当前又已补出 `GetCalculationReport()` 这一条统一只读查询面，把“尚无结果 / 最近成功 / 最近失败”收口到单一 report DTO；外部宿主若只需要稳定结果状态与结构化 detail，不必自己分支拼装 `LastCalculationResult` 和 `LastCalculationFailure`
 - 在这条统一查询面之上，当前又补出 `GetCalculationReportState()` 与 `GetCalculationReportHeadline()` 两条最小标量元数据入口，让最小 host / PME 可以直接读取状态与标题，而不必先取出自定义 report DTO
 - 在该元数据面之上，当前又补出 `GetCalculationReportDetailKeyCount()`、`GetCalculationReportDetailKey(int)` 与 `GetCalculationReportDetailValue(string)` 这一组最小 detail 键值读取入口，让宿主既可枚举当前稳定 detail key，又可按 key 直接读取值，而不必硬编码 key 列表或从展示文本里反解析
@@ -81,6 +82,7 @@
 - 当前 contract tests 又已补上 configuration snapshot contract，锁住 constructed/ready/companion-mismatch/terminated 四种 configuration state、blocking issue kinds、next operations 与只读 entry 形状；`SmokeTests` 的 boundary/session 路径当前也已开始优先消费这套 configuration snapshot，而不是只靠散落的 parameter/port 判断
 - 在 configuration snapshot contract 之上，当前又新增 action plan contract，进一步锁住 constructed / missing required parameter / companion mismatch / disconnected required port / ready / terminated 六类宿主 checklist 形状；`SmokeTests` 当前也已切到优先断言 action group、target、reason、blocking 与 canonical operation，而不再只盯 `NextOperations`
 - 在 action plan contract 之后，当前又新增 port/material snapshot contract，进一步锁住 boundary stream 映射、`None / Stale / Available / Terminated` 四态，以及 success/invalidation/terminate 下的 host port material 形状；`SmokeTests` 当前也已开始直接消费这套 snapshot，而不是继续把 material 语义埋在 report 或样例私有判断里
+- 在 port/material snapshot contract 之后，当前又新增 execution snapshot contract，进一步锁住 `steps` 解析、`None / Stale / Available / Terminated` 四态，以及 success/invalidation/terminate 下的 host execution 形状；`SmokeTests` 的 boundary suite 当前也已开始优先消费这套 snapshot，而不是继续从 report supplemental lines 间接判断执行过程
 - Rust/.NET 边界仍保持为句柄 + UTF-8 + JSON + 状态码，没有在这里提前引入 COM 注册或更宽的跨边界对象传递
 
 最小 contract tests 运行示例：
