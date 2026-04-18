@@ -52,7 +52,7 @@ internal static class UnitOperationSmokeScenarioCatalog
                 session.RestorePackageAndExpectValid("round-5a", options.PackageId);
                 session.ExpectSuccessRound(
                     "round-5b",
-                    static report => $"state={report.Snapshot.State}, highestSeverity={report.Snapshot.GetDetailValue(UnitOperationCalculationReportDetailCatalog.HighestSeverity)}");
+                    static report => $"reportState={report.Snapshot.State}, highestSeverity={report.Snapshot.GetDetailValue(UnitOperationCalculationReportDetailCatalog.HighestSeverity)}");
                 session.BreakCompanionInputsAndExpectValidationFailure("round-6");
                 session.RestoreMinimumInputsAndExpectValid("round-7a");
                 session.ExpectSuccessRound(

@@ -71,7 +71,22 @@ internal sealed class UnitOperationSmokeSession : IDisposable
         UnitOperationSmokeReportAssertions.EnsureCondition(
             report.State == UnitOperationCalculationReportState.None,
             $"{roundLabel} should enter idle report state immediately after Initialize().");
-        _timeline.Add($"{roundLabel} initialized: reportState={report.State}");
+        var session = _driver.ReadSession();
+        UnitOperationSmokeHostSessionAssertions.AssertSummary(
+            session,
+            expectedState: UnitOperationHostSessionState.Incomplete,
+            expectedReady: false,
+            expectedBlockingActions: true,
+            expectedCurrentMaterialResults: false,
+            expectedCurrentExecution: false,
+            expectedCurrentResults: false,
+            expectedRefresh: false,
+            expectedFailureReport: false,
+            scenario: $"{roundLabel} host session",
+            UnitOperationParameterCatalog.FlowsheetJson.ConfigurationOperationName,
+            UnitOperationParameterCatalog.PropertyPackageId.ConfigurationOperationName,
+            UnitOperationPortCatalog.Feed.ConnectionOperationName);
+        _timeline.Add($"{roundLabel} initialized: sessionState={session.State}, reportState={report.State}");
     }
 
     public void ConfigureMinimumInputsAndConnect(string roundLabel)
@@ -91,14 +106,27 @@ internal sealed class UnitOperationSmokeSession : IDisposable
         UnitOperationSmokeReportAssertions.EnsureCondition(
             validation.IsValid,
             $"{roundLabel} should validate once minimum inputs and required ports are configured.");
-        _timeline.Add($"{roundLabel} configured: validation=valid");
+        var session = _driver.ReadSession();
+        UnitOperationSmokeHostSessionAssertions.AssertSummary(
+            session,
+            expectedState: UnitOperationHostSessionState.Ready,
+            expectedReady: true,
+            expectedBlockingActions: false,
+            expectedCurrentMaterialResults: false,
+            expectedCurrentExecution: false,
+            expectedCurrentResults: false,
+            expectedRefresh: false,
+            expectedFailureReport: false,
+            scenario: $"{roundLabel} host session");
+        _timeline.Add($"{roundLabel} configured: sessionState={session.State}, validation=valid");
     }
 
     public UnitOperationHostReportBundle ExpectCurrentReportToBeEmpty(string roundLabel)
     {
         var report = _driver.ReadReport();
         UnitOperationSmokeReportAssertions.AssertEmpty(report, roundLabel);
-        _timeline.Add($"{roundLabel} report-read: state={report.Snapshot.State}");
+        var session = _driver.ReadSession();
+        _timeline.Add($"{roundLabel} report-read: sessionState={session.State}, reportState={report.Snapshot.State}");
         return report;
     }
 
@@ -108,7 +136,19 @@ internal sealed class UnitOperationSmokeSession : IDisposable
     {
         var report = _driver.ReadReport();
         UnitOperationSmokeReportAssertions.AssertSuccess(report, roundLabel);
-        _timeline.Add($"{roundLabel} report-read: {timelineDetail(report)}");
+        var session = _driver.ReadSession();
+        UnitOperationSmokeHostSessionAssertions.AssertSummary(
+            session,
+            expectedState: UnitOperationHostSessionState.Available,
+            expectedReady: true,
+            expectedBlockingActions: false,
+            expectedCurrentMaterialResults: true,
+            expectedCurrentExecution: true,
+            expectedCurrentResults: true,
+            expectedRefresh: false,
+            expectedFailureReport: false,
+            scenario: $"{roundLabel} host session");
+        _timeline.Add($"{roundLabel} report-read: sessionState={session.State}, {timelineDetail(report)}");
         return report;
     }
 
@@ -117,7 +157,19 @@ internal sealed class UnitOperationSmokeSession : IDisposable
         Func<UnitOperationHostReportBundle, string> timelineDetail)
     {
         var report = EnsureSuccessfulHostRound(_driver, roundLabel);
-        _timeline.Add($"{roundLabel} success: {timelineDetail(report)}");
+        var session = _driver.ReadSession();
+        UnitOperationSmokeHostSessionAssertions.AssertSummary(
+            session,
+            expectedState: UnitOperationHostSessionState.Available,
+            expectedReady: true,
+            expectedBlockingActions: false,
+            expectedCurrentMaterialResults: true,
+            expectedCurrentExecution: true,
+            expectedCurrentResults: true,
+            expectedRefresh: false,
+            expectedFailureReport: false,
+            scenario: $"{roundLabel} host session");
+        _timeline.Add($"{roundLabel} success: sessionState={session.State}, {timelineDetail(report)}");
         return report;
     }
 
@@ -134,7 +186,13 @@ internal sealed class UnitOperationSmokeSession : IDisposable
             string.Equals(error.NativeStatus, "MissingEntity", StringComparison.Ordinal) &&
             attempt.Report.Snapshot.State == UnitOperationCalculationReportState.Failure,
             $"{roundLabel} should preserve MissingEntity classification and failure report state.");
-        _timeline.Add($"{roundLabel} native-failure: nativeStatus={error.NativeStatus}");
+        var session = _driver.ReadSession();
+        UnitOperationSmokeReportAssertions.EnsureCondition(
+            session.State == UnitOperationHostSessionState.Failure &&
+            session.Summary.HasFailureReport &&
+            !session.Summary.HasCurrentResults,
+            $"{roundLabel} host session should expose failure state without current results after native failure.");
+        _timeline.Add($"{roundLabel} native-failure: sessionState={session.State}, nativeStatus={error.NativeStatus}");
     }
 
     public void RestorePackageAndExpectValid(string roundLabel, string packageId)
@@ -148,7 +206,13 @@ internal sealed class UnitOperationSmokeSession : IDisposable
             $"{roundLabel} configuration");
         var validation = _driver.Validate();
         UnitOperationSmokeReportAssertions.EnsureCondition(validation.IsValid, $"{roundLabel} should restore a valid package configuration.");
-        _timeline.Add($"{roundLabel} package-restored: validation=valid");
+        var session = _driver.ReadSession();
+        UnitOperationSmokeReportAssertions.EnsureCondition(
+            (session.State == UnitOperationHostSessionState.Ready || session.State == UnitOperationHostSessionState.Stale) &&
+            session.Summary.IsReadyForCalculate &&
+            !session.Summary.HasFailureReport,
+            $"{roundLabel} host session should restore a ready-or-stale non-failure configuration after package recovery.");
+        _timeline.Add($"{roundLabel} package-restored: sessionState={session.State}, validation=valid");
     }
 
     public void BreakCompanionInputsAndExpectValidationFailure(string roundLabel)
@@ -190,7 +254,14 @@ internal sealed class UnitOperationSmokeSession : IDisposable
                 UnitOperationParameterCatalog.PropertyPackageManifestPath.ConfigurationOperationName,
                 StringComparison.Ordinal),
             $"{roundLabel} should request LoadPropertyPackageFiles().");
-        _timeline.Add($"{roundLabel} validation-failure: requested={error.RequestedOperation}");
+        var session = _driver.ReadSession();
+        UnitOperationSmokeReportAssertions.EnsureCondition(
+            session.State == UnitOperationHostSessionState.Failure &&
+            session.Summary.HasFailureReport &&
+            session.Summary.HasBlockingActions &&
+            session.ContainsRecommendedOperation(UnitOperationParameterCatalog.PropertyPackageManifestPath.ConfigurationOperationName),
+            $"{roundLabel} host session should expose failure state and keep the companion recovery action.");
+        _timeline.Add($"{roundLabel} validation-failure: sessionState={session.State}, requested={error.RequestedOperation}");
     }
 
     public void RestoreMinimumInputsAndExpectValid(string roundLabel)
@@ -204,7 +275,13 @@ internal sealed class UnitOperationSmokeSession : IDisposable
             $"{roundLabel} configuration");
         var validation = _driver.Validate();
         UnitOperationSmokeReportAssertions.EnsureCondition(validation.IsValid, $"{roundLabel} should restore a valid minimum input set.");
-        _timeline.Add($"{roundLabel} inputs-restored: validation=valid");
+        var session = _driver.ReadSession();
+        UnitOperationSmokeReportAssertions.EnsureCondition(
+            (session.State == UnitOperationHostSessionState.Ready || session.State == UnitOperationHostSessionState.Stale) &&
+            session.Summary.IsReadyForCalculate &&
+            !session.Summary.HasFailureReport,
+            $"{roundLabel} host session should restore a ready-or-stale non-failure configuration after input recovery.");
+        _timeline.Add($"{roundLabel} inputs-restored: sessionState={session.State}, validation=valid");
     }
 
     public void DisconnectProductPortAndExpectRecoveryWindow(string roundLabel)
@@ -249,7 +326,19 @@ internal sealed class UnitOperationSmokeSession : IDisposable
             !validation.IsValid &&
             validation.Message.Contains("Terminate has already been called", StringComparison.Ordinal),
             $"{roundLabel} should keep Validate() invalid after Terminate().");
-        _timeline.Add($"{roundLabel} terminated: reportState={report.State}, validation=invalid");
+        var session = _driver.ReadSession();
+        UnitOperationSmokeHostSessionAssertions.AssertSummary(
+            session,
+            expectedState: UnitOperationHostSessionState.Terminated,
+            expectedReady: false,
+            expectedBlockingActions: true,
+            expectedCurrentMaterialResults: false,
+            expectedCurrentExecution: false,
+            expectedCurrentResults: false,
+            expectedRefresh: false,
+            expectedFailureReport: false,
+            scenario: $"{roundLabel} host session");
+        _timeline.Add($"{roundLabel} terminated: sessionState={session.State}, reportState={report.State}, validation=invalid");
     }
 
     public void ExpectPostTerminateCalculationFailure(string roundLabel)
@@ -262,8 +351,9 @@ internal sealed class UnitOperationSmokeSession : IDisposable
             string.Equals(error.Operation, nameof(RadishFlowCapeOpenUnitOperation.Calculate), StringComparison.Ordinal),
             $"{roundLabel} should fail at the Calculate() boundary after Terminate().");
         UnitOperationSmokeReportAssertions.AssertEmpty(attempt.Report, roundLabel);
+        var session = _driver.ReadSession();
         _timeline.Add(
-            $"{roundLabel} calculate-blocked: kind={UnitOperationHostDriverFailureKind.Validation}, operation={error.Operation}");
+            $"{roundLabel} calculate-blocked: sessionState={session.State}, kind={UnitOperationHostDriverFailureKind.Validation}, operation={error.Operation}");
     }
 
     public void Dispose()
@@ -324,7 +414,20 @@ internal sealed class UnitOperationSmokeSession : IDisposable
         UnitOperationSmokeReportAssertions.EnsureCondition(
             _driver.ReadReport().Snapshot.State == UnitOperationCalculationReportState.None,
             $"{roundLabel} should clear the cached host report while disconnected.");
-        _timeline.Add($"{roundLabel} disconnected-{portName.ToLowerInvariant()}: validation=invalid");
+        var session = _driver.ReadSession();
+        UnitOperationSmokeHostSessionAssertions.AssertSummary(
+            session,
+            expectedState: UnitOperationHostSessionState.Stale,
+            expectedReady: false,
+            expectedBlockingActions: true,
+            expectedCurrentMaterialResults: false,
+            expectedCurrentExecution: false,
+            expectedCurrentResults: false,
+            expectedRefresh: true,
+            expectedFailureReport: false,
+            scenario: $"{roundLabel} host session",
+            UnitOperationPortCatalog.GetByName(portName).ConnectionOperationName);
+        _timeline.Add($"{roundLabel} disconnected-{portName.ToLowerInvariant()}: sessionState={session.State}, validation=invalid");
     }
 
     private void ReconnectRequiredPort(
@@ -344,6 +447,18 @@ internal sealed class UnitOperationSmokeSession : IDisposable
         UnitOperationSmokeReportAssertions.EnsureCondition(
             validation.IsValid,
             $"{roundLabel} should restore a valid state after reconnecting {portName} port.");
-        _timeline.Add($"{roundLabel} reconnected-{portName.ToLowerInvariant()}: validation=valid");
+        var session = _driver.ReadSession();
+        UnitOperationSmokeHostSessionAssertions.AssertSummary(
+            session,
+            expectedState: UnitOperationHostSessionState.Stale,
+            expectedReady: true,
+            expectedBlockingActions: false,
+            expectedCurrentMaterialResults: false,
+            expectedCurrentExecution: false,
+            expectedCurrentResults: false,
+            expectedRefresh: true,
+            expectedFailureReport: false,
+            scenario: $"{roundLabel} host session");
+        _timeline.Add($"{roundLabel} reconnected-{portName.ToLowerInvariant()}: sessionState={session.State}, validation=valid");
     }
 }
