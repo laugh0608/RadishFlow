@@ -16,13 +16,6 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
     private const string UnitScope = "RadishFlow.CapeOpen.UnitOp.Mvp";
     private const string ConnectPortOperation = nameof(SetPortConnected);
 
-    private readonly UnitOperationParameterPlaceholder _flowsheetParameter;
-    private readonly UnitOperationParameterPlaceholder _packageIdParameter;
-    private readonly UnitOperationParameterPlaceholder _manifestPathParameter;
-    private readonly UnitOperationParameterPlaceholder _payloadPathParameter;
-    private readonly UnitOperationPortPlaceholder _feedPort;
-    private readonly UnitOperationPortPlaceholder _productPort;
-
     private object? _simulationContext;
     private UnitOperationCalculationResult? _lastCalculationResult;
     private UnitOperationCalculationFailure? _lastCalculationFailure;
@@ -33,56 +26,23 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
         ComponentName = "RadishFlow Unit Operation";
         ComponentDescription = "Minimal CAPE-OPEN unit operation skeleton.";
 
-        var flowsheetParameterDefinition = UnitOperationParameterCatalog.FlowsheetJson;
-        var packageIdParameterDefinition = UnitOperationParameterCatalog.PropertyPackageId;
-        var manifestPathParameterDefinition = UnitOperationParameterCatalog.PropertyPackageManifestPath;
-        var payloadPathParameterDefinition = UnitOperationParameterCatalog.PropertyPackagePayloadPath;
-        var feedPortDefinition = UnitOperationPortCatalog.Feed;
-        var productPortDefinition = UnitOperationPortCatalog.Product;
-
-        _flowsheetParameter = new UnitOperationParameterPlaceholder(
-            flowsheetParameterDefinition,
-            ensureOwnerAccess: EnsurePlaceholderAccess,
-            onStateChanged: InvalidateValidation);
-        _packageIdParameter = new UnitOperationParameterPlaceholder(
-            packageIdParameterDefinition,
-            ensureOwnerAccess: EnsurePlaceholderAccess,
-            onStateChanged: InvalidateValidation);
-        _manifestPathParameter = new UnitOperationParameterPlaceholder(
-            manifestPathParameterDefinition,
-            ensureOwnerAccess: EnsurePlaceholderAccess,
-            onStateChanged: InvalidateValidation);
-        _payloadPathParameter = new UnitOperationParameterPlaceholder(
-            payloadPathParameterDefinition,
-            ensureOwnerAccess: EnsurePlaceholderAccess,
-            onStateChanged: InvalidateValidation);
-
-        _feedPort = new UnitOperationPortPlaceholder(
-            feedPortDefinition,
-            ensureOwnerAccess: EnsurePlaceholderAccess,
-            onStateChanged: InvalidateValidation);
-        _productPort = new UnitOperationPortPlaceholder(
-            productPortDefinition,
-            ensureOwnerAccess: EnsurePlaceholderAccess,
-            onStateChanged: InvalidateValidation);
-
         Parameters = new UnitOperationPlaceholderCollection<UnitOperationParameterPlaceholder>(
             "Parameters",
             "Public CAPE-OPEN parameter collection for the MVP unit operation.",
-        [
-            _flowsheetParameter,
-            _packageIdParameter,
-            _manifestPathParameter,
-            _payloadPathParameter,
-        ],
+            UnitOperationParameterCatalog.OrderedDefinitions.Select(
+                definition => new UnitOperationParameterPlaceholder(
+                    definition,
+                    ensureOwnerAccess: EnsurePlaceholderAccess,
+                    onStateChanged: InvalidateValidation)),
             ensureOwnerAccess: EnsurePlaceholderAccess);
         Ports = new UnitOperationPlaceholderCollection<UnitOperationPortPlaceholder>(
             "Ports",
             "Public CAPE-OPEN port collection for the MVP unit operation.",
-        [
-            _feedPort,
-            _productPort,
-        ],
+            UnitOperationPortCatalog.OrderedDefinitions.Select(
+                definition => new UnitOperationPortPlaceholder(
+                    definition,
+                    ensureOwnerAccess: EnsurePlaceholderAccess,
+                    onStateChanged: InvalidateValidation)),
             ensureOwnerAccess: EnsurePlaceholderAccess);
 
         ValStatus = CapeValidationStatus.NotValidated;
@@ -204,7 +164,7 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
         ThrowIfDisposed();
         ThrowIfTerminated(nameof(LoadFlowsheetJson), UtilitiesInterfaceName);
 
-        _flowsheetParameter.SetValue(flowsheetJson);
+        FlowsheetParameter.SetValue(flowsheetJson);
     }
 
     public void LoadPropertyPackageFiles(string manifestPath, string payloadPath)
@@ -214,8 +174,8 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
         ThrowIfDisposed();
         ThrowIfTerminated(nameof(LoadPropertyPackageFiles), UtilitiesInterfaceName);
 
-        _manifestPathParameter.SetValue(manifestPath);
-        _payloadPathParameter.SetValue(payloadPath);
+        ManifestPathParameter.SetValue(manifestPath);
+        PayloadPathParameter.SetValue(payloadPath);
     }
 
     public void SelectPropertyPackage(string packageId)
@@ -224,7 +184,7 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
         ThrowIfDisposed();
         ThrowIfTerminated(nameof(SelectPropertyPackage), UtilitiesInterfaceName);
 
-        _packageIdParameter.SetValue(packageId);
+        PackageIdParameter.SetValue(packageId);
     }
 
     public void SetPortConnected(string portName, bool isConnected)
@@ -425,17 +385,17 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
 
     private ValidationResult? EvaluateRequiredParameterConfigurationValidation()
     {
-        if (!_flowsheetParameter.IsConfigured)
+        if (!FlowsheetParameter.IsConfigured)
         {
             return ValidationResult.Invalid(
-                $"Required parameter `{_flowsheetParameter.ComponentName}` is not configured.",
+                $"Required parameter `{FlowsheetParameter.ComponentName}` is not configured.",
                 nameof(LoadFlowsheetJson));
         }
 
-        if (!_packageIdParameter.IsConfigured)
+        if (!PackageIdParameter.IsConfigured)
         {
             return ValidationResult.Invalid(
-                $"Required parameter `{_packageIdParameter.ComponentName}` is not configured.",
+                $"Required parameter `{PackageIdParameter.ComponentName}` is not configured.",
                 nameof(SelectPropertyPackage));
         }
 
@@ -474,10 +434,10 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
     private CalculationInputs BuildCalculationInputs()
     {
         return new CalculationInputs(
-            _flowsheetParameter.Value!,
-            _packageIdParameter.Value!,
-            _manifestPathParameter.IsConfigured ? _manifestPathParameter.Value : null,
-            _payloadPathParameter.IsConfigured ? _payloadPathParameter.Value : null);
+            FlowsheetParameter.Value!,
+            PackageIdParameter.Value!,
+            ManifestPathParameter.IsConfigured ? ManifestPathParameter.Value : null,
+            PayloadPathParameter.IsConfigured ? PayloadPathParameter.Value : null);
     }
 
     private static string ExecuteNativeSolve(CalculationInputs inputs)
@@ -655,6 +615,19 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
     private bool IsTerminated => _lifecycleState == UnitOperationLifecycleState.Terminated;
 
     private bool IsDisposed => _lifecycleState == UnitOperationLifecycleState.Disposed;
+
+    private UnitOperationParameterPlaceholder FlowsheetParameter => GetParameterPlaceholder(UnitOperationParameterCatalog.FlowsheetJson);
+
+    private UnitOperationParameterPlaceholder PackageIdParameter => GetParameterPlaceholder(UnitOperationParameterCatalog.PropertyPackageId);
+
+    private UnitOperationParameterPlaceholder ManifestPathParameter => GetParameterPlaceholder(UnitOperationParameterCatalog.PropertyPackageManifestPath);
+
+    private UnitOperationParameterPlaceholder PayloadPathParameter => GetParameterPlaceholder(UnitOperationParameterCatalog.PropertyPackagePayloadPath);
+
+    private UnitOperationParameterPlaceholder GetParameterPlaceholder(UnitOperationParameterDefinition definition)
+    {
+        return Parameters.GetByName(definition.Name);
+    }
 
     private sealed record CalculationInputs(
         string FlowsheetJson,
