@@ -12,7 +12,8 @@
   "conditions": {
     "ref_name": {
       "include": [
-        "refs/heads/master"
+        "refs/heads/master",
+        "refs/heads/main"
       ],
       "exclude": []
     }
@@ -31,7 +32,6 @@
       "type": "pull_request",
       "parameters": {
         "allowed_merge_methods": [
-          "squash",
           "rebase"
         ],
         "dismiss_stale_reviews_on_push": true,
