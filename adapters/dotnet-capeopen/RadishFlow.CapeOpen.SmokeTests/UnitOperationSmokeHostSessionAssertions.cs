@@ -4,6 +4,7 @@ internal static class UnitOperationSmokeHostSessionAssertions
 {
     public static void AssertSummary(
         UnitOperationHostSessionSnapshot snapshot,
+        UnitOperationHostSessionState expectedState,
         bool expectedReady,
         bool expectedBlockingActions,
         bool expectedCurrentMaterialResults,
@@ -17,6 +18,9 @@ internal static class UnitOperationSmokeHostSessionAssertions
         UnitOperationSmokeReportAssertions.EnsureCondition(
             !string.IsNullOrWhiteSpace(snapshot.Headline),
             $"{scenario} should expose a non-empty host session headline.");
+        UnitOperationSmokeReportAssertions.EnsureCondition(
+            snapshot.State == expectedState,
+            $"{scenario} should expose host session state `{expectedState}`.");
         UnitOperationSmokeReportAssertions.EnsureCondition(
             snapshot.Summary.IsReadyForCalculate == expectedReady,
             $"{scenario} should expose ready-for-calculate `{expectedReady}`.");

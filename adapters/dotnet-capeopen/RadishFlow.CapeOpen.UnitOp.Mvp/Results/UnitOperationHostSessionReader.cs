@@ -15,8 +15,10 @@ public static class UnitOperationHostSessionReader
         var execution = UnitOperationHostExecutionReader.Read(unitOperation);
         var report = UnitOperationHostReportReader.Read(unitOperation);
         var summary = CreateSummary(configuration, actionPlan, portMaterial, execution, report);
+        var state = DetermineState(configuration, portMaterial, execution, report, summary);
 
         return new UnitOperationHostSessionSnapshot(
+            State: state,
             Headline: CreateHeadline(configuration, portMaterial, execution, report, summary),
             Summary: summary,
             Configuration: configuration,
@@ -56,6 +58,44 @@ public static class UnitOperationHostSessionReader
             RecommendedOperations: recommendedOperations);
     }
 
+    private static UnitOperationHostSessionState DetermineState(
+        UnitOperationHostConfigurationSnapshot configuration,
+        UnitOperationHostPortMaterialSnapshot portMaterial,
+        UnitOperationHostExecutionSnapshot execution,
+        UnitOperationHostReportSnapshot report,
+        UnitOperationHostSessionSummary summary)
+    {
+        if (configuration.State == UnitOperationHostConfigurationState.Terminated)
+        {
+            return UnitOperationHostSessionState.Terminated;
+        }
+
+        if (summary.HasFailureReport)
+        {
+            return UnitOperationHostSessionState.Failure;
+        }
+
+        if (summary.HasCurrentResults)
+        {
+            return UnitOperationHostSessionState.Available;
+        }
+
+        if (portMaterial.State == UnitOperationHostPortMaterialState.Stale ||
+            execution.State == UnitOperationHostExecutionState.Stale)
+        {
+            return UnitOperationHostSessionState.Stale;
+        }
+
+        return configuration.State switch
+        {
+            UnitOperationHostConfigurationState.Constructed => UnitOperationHostSessionState.Constructed,
+            UnitOperationHostConfigurationState.Incomplete => UnitOperationHostSessionState.Incomplete,
+            UnitOperationHostConfigurationState.Ready => UnitOperationHostSessionState.Ready,
+            UnitOperationHostConfigurationState.Terminated => UnitOperationHostSessionState.Terminated,
+            _ => throw new ArgumentOutOfRangeException(nameof(configuration), configuration.State, "Unknown host configuration state."),
+        };
+    }
+
     private static string CreateHeadline(
         UnitOperationHostConfigurationSnapshot configuration,
         UnitOperationHostPortMaterialSnapshot portMaterial,
@@ -90,6 +130,7 @@ public static class UnitOperationHostSessionReader
 }
 
 public sealed record UnitOperationHostSessionSnapshot(
+    UnitOperationHostSessionState State,
     string Headline,
     UnitOperationHostSessionSummary Summary,
     UnitOperationHostConfigurationSnapshot Configuration,
@@ -115,3 +156,14 @@ public sealed record UnitOperationHostSessionSummary(
     bool RequiresCalculateRefresh,
     bool HasFailureReport,
     IReadOnlyList<string> RecommendedOperations);
+
+public enum UnitOperationHostSessionState
+{
+    Constructed,
+    Incomplete,
+    Ready,
+    Failure,
+    Available,
+    Stale,
+    Terminated,
+}

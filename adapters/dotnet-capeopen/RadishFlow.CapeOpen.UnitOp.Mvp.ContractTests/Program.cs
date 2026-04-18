@@ -619,6 +619,7 @@ internal static class ContractTests
     public static void SessionSnapshot_ExposesUnifiedHostView(ContractTestContext context)
     {
         var constructedSnapshot = context.ReadSession();
+        ContractAssert.Equal(UnitOperationHostSessionState.Constructed, constructedSnapshot.State, "Constructed host session should expose constructed session state.");
         ContractAssert.Equal(UnitOperationHostConfigurationState.Constructed, constructedSnapshot.Configuration.State, "Constructed host session should preserve constructed configuration state.");
         ContractAssert.True(constructedSnapshot.Summary.HasBlockingActions, "Constructed host session should report blocking actions.");
         ContractAssert.False(constructedSnapshot.Summary.IsReadyForCalculate, "Constructed host session should not be ready for Calculate().");
@@ -641,6 +642,7 @@ internal static class ContractTests
         context.ConfigureMinimumValidInputs();
 
         var readySnapshot = context.ReadSession();
+        ContractAssert.Equal(UnitOperationHostSessionState.Ready, readySnapshot.State, "Ready host session should expose ready session state.");
         ContractAssert.True(readySnapshot.Summary.IsReadyForCalculate, "Ready host session should report ready-for-calculate.");
         ContractAssert.False(readySnapshot.Summary.HasBlockingActions, "Ready host session should not expose blocking actions.");
         ContractAssert.False(readySnapshot.Summary.HasFailureReport, "Ready host session should not expose failure report state.");
@@ -657,6 +659,7 @@ internal static class ContractTests
         ContractAssert.Equal("MissingEntity", nativeFailure.NativeStatus, "Session contract native failure should preserve MissingEntity.");
 
         var failureSnapshot = context.ReadSession();
+        ContractAssert.Equal(UnitOperationHostSessionState.Failure, failureSnapshot.State, "Failure host session should expose failure session state.");
         ContractAssert.True(failureSnapshot.Summary.IsReadyForCalculate, "Failure host session should preserve ready configuration state.");
         ContractAssert.False(failureSnapshot.Summary.HasBlockingActions, "Failure host session should not invent blocking actions.");
         ContractAssert.True(failureSnapshot.Summary.HasFailureReport, "Failure host session should expose failure report state.");
@@ -669,6 +672,7 @@ internal static class ContractTests
         context.UnitOperation.Calculate();
 
         var availableSnapshot = context.ReadSession();
+        ContractAssert.Equal(UnitOperationHostSessionState.Available, availableSnapshot.State, "Successful host session should expose available session state.");
         ContractAssert.True(availableSnapshot.Summary.IsReadyForCalculate, "Successful host session should preserve ready configuration state.");
         ContractAssert.False(availableSnapshot.Summary.HasBlockingActions, "Successful host session should not expose blocking actions.");
         ContractAssert.True(availableSnapshot.Summary.HasCurrentMaterialResults, "Successful host session should expose current material results.");
@@ -682,6 +686,7 @@ internal static class ContractTests
         context.DisconnectProductPort();
 
         var staleSnapshot = context.ReadSession();
+        ContractAssert.Equal(UnitOperationHostSessionState.Stale, staleSnapshot.State, "Stale host session should expose stale session state.");
         ContractAssert.False(staleSnapshot.Summary.IsReadyForCalculate, "Stale host session should not remain ready when configuration is broken.");
         ContractAssert.True(staleSnapshot.Summary.HasBlockingActions, "Stale host session should expose blocking actions.");
         ContractAssert.False(staleSnapshot.Summary.HasCurrentResults, "Stale host session should not expose current combined results.");
@@ -694,6 +699,7 @@ internal static class ContractTests
         context.UnitOperation.Terminate();
 
         var terminatedSnapshot = context.ReadSession();
+        ContractAssert.Equal(UnitOperationHostSessionState.Terminated, terminatedSnapshot.State, "Terminated host session should expose terminated session state.");
         ContractAssert.Equal(UnitOperationHostConfigurationState.Terminated, terminatedSnapshot.Configuration.State, "Terminated host session should preserve terminated configuration state.");
         ContractAssert.True(terminatedSnapshot.Summary.HasBlockingActions, "Terminated host session should still expose terminal blocking action.");
         ContractAssert.False(terminatedSnapshot.Summary.HasCurrentResults, "Terminated host session should not expose current results.");

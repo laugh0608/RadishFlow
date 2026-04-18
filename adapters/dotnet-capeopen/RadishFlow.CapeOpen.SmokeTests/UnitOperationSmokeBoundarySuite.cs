@@ -97,6 +97,7 @@ internal static class UnitOperationSmokeBoundarySuite
             "initialized execution snapshot");
         UnitOperationSmokeHostSessionAssertions.AssertSummary(
             driver.ReadSession(),
+            expectedState: UnitOperationHostSessionState.Incomplete,
             expectedReady: false,
             expectedBlockingActions: true,
             expectedCurrentMaterialResults: false,
@@ -270,6 +271,7 @@ internal static class UnitOperationSmokeBoundarySuite
         var nativeFailureSession = driver.ReadSession();
         UnitOperationSmokeHostSessionAssertions.AssertSummary(
             nativeFailureSession,
+            expectedState: UnitOperationHostSessionState.Failure,
             expectedReady: true,
             expectedBlockingActions: false,
             expectedCurrentMaterialResults: false,
@@ -325,6 +327,7 @@ internal static class UnitOperationSmokeBoundarySuite
             "ready execution snapshot");
         UnitOperationSmokeHostSessionAssertions.AssertSummary(
             driver.ReadSession(),
+            expectedState: UnitOperationHostSessionState.Ready,
             expectedReady: true,
             expectedBlockingActions: false,
             expectedCurrentMaterialResults: false,
@@ -420,6 +423,7 @@ internal static class UnitOperationSmokeBoundarySuite
         var availableSession = driver.ReadSession();
         UnitOperationSmokeHostSessionAssertions.AssertSummary(
             availableSession,
+            expectedState: UnitOperationHostSessionState.Available,
             expectedReady: true,
             expectedBlockingActions: false,
             expectedCurrentMaterialResults: true,
@@ -483,6 +487,7 @@ internal static class UnitOperationSmokeBoundarySuite
             "disconnected feed execution snapshot");
         UnitOperationSmokeHostSessionAssertions.AssertSummary(
             driver.ReadSession(),
+            expectedState: UnitOperationHostSessionState.Stale,
             expectedReady: false,
             expectedBlockingActions: true,
             expectedCurrentMaterialResults: false,
@@ -657,6 +662,7 @@ internal static class UnitOperationSmokeBoundarySuite
             "terminated execution snapshot should not expose steps or diagnostics.");
         UnitOperationSmokeHostSessionAssertions.AssertSummary(
             driver.ReadSession(),
+            expectedState: UnitOperationHostSessionState.Terminated,
             expectedReady: false,
             expectedBlockingActions: true,
             expectedCurrentMaterialResults: false,
