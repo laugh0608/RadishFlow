@@ -1,6 +1,7 @@
 using RadishFlow.CapeOpen.Interop.Common;
 using RadishFlow.CapeOpen.Interop.Errors;
 using RadishFlow.CapeOpen.Interop.Unit;
+using RadishFlow.CapeOpen.UnitOp.Mvp.UnitOperation;
 
 namespace RadishFlow.CapeOpen.UnitOp.Mvp.Placeholders;
 
@@ -9,33 +10,17 @@ public sealed class UnitOperationPortPlaceholder : ICapeIdentification, ICapeUni
     private const string InterfaceName = nameof(ICapeUnitPort);
     private readonly Action<string, string, string?, object?>? _ensureOwnerAccess;
     private readonly Action? _onStateChanged;
-    private readonly CapePortDirection _direction;
-    private readonly CapePortType _portType;
-    private readonly string _initialComponentName;
-    private readonly string _initialComponentDescription;
+    private readonly UnitOperationPortDefinition _definition;
     private object? _connectedObject;
-    private string _componentName;
-    private string _componentDescription;
 
     public UnitOperationPortPlaceholder(
-        string componentName,
-        string componentDescription,
-        CapePortDirection direction,
-        CapePortType portType,
-        bool isRequired,
+        UnitOperationPortDefinition definition,
         Action<string, string, string?, object?>? ensureOwnerAccess = null,
         Action? onStateChanged = null)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(componentName);
-        ArgumentNullException.ThrowIfNull(componentDescription);
+        ArgumentNullException.ThrowIfNull(definition);
 
-        _componentName = componentName;
-        _componentDescription = componentDescription;
-        _initialComponentName = componentName;
-        _initialComponentDescription = componentDescription;
-        _direction = direction;
-        _portType = portType;
-        IsRequired = isRequired;
+        _definition = definition;
         _ensureOwnerAccess = ensureOwnerAccess;
         _onStateChanged = onStateChanged;
     }
@@ -45,9 +30,9 @@ public sealed class UnitOperationPortPlaceholder : ICapeIdentification, ICapeUni
         get
         {
             EnsureOwnerAccess(nameof(ComponentName));
-            return _componentName;
+            return _definition.Name;
         }
-        set => _componentName = SetImmutableComponentName(value, nameof(ComponentName));
+        set => SetImmutableComponentName(value, nameof(ComponentName));
     }
 
     public string ComponentDescription
@@ -55,9 +40,9 @@ public sealed class UnitOperationPortPlaceholder : ICapeIdentification, ICapeUni
         get
         {
             EnsureOwnerAccess(nameof(ComponentDescription));
-            return _componentDescription;
+            return _definition.Description;
         }
-        set => _componentDescription = SetImmutableComponentDescription(value, nameof(ComponentDescription));
+        set => SetImmutableComponentDescription(value, nameof(ComponentDescription));
     }
 
     public CapePortDirection direction
@@ -65,7 +50,7 @@ public sealed class UnitOperationPortPlaceholder : ICapeIdentification, ICapeUni
         get
         {
             EnsureOwnerAccess(nameof(direction));
-            return _direction;
+            return _definition.Direction;
         }
     }
 
@@ -74,11 +59,11 @@ public sealed class UnitOperationPortPlaceholder : ICapeIdentification, ICapeUni
         get
         {
             EnsureOwnerAccess(nameof(portType));
-            return _portType;
+            return _definition.PortType;
         }
     }
 
-    public bool IsRequired { get; }
+    public bool IsRequired => _definition.IsRequired;
 
     public object? connectedObject
     {
@@ -168,33 +153,33 @@ public sealed class UnitOperationPortPlaceholder : ICapeIdentification, ICapeUni
         return identifiedObject;
     }
 
-    private string SetImmutableComponentName(string value, string operation)
+    private void SetImmutableComponentName(string value, string operation)
     {
         EnsureOwnerAccess(operation, value);
         ArgumentException.ThrowIfNullOrWhiteSpace(value);
 
-        if (string.Equals(_initialComponentName, value, StringComparison.Ordinal))
+        if (string.Equals(_definition.Name, value, StringComparison.Ordinal))
         {
-            return _initialComponentName;
+            return;
         }
 
         throw new CapeInvalidArgumentException(
-            $"Port `{_initialComponentName}` does not allow ComponentName mutation in the MVP runtime.",
+            $"Port `{_definition.Name}` does not allow ComponentName mutation in the MVP runtime.",
             CreateContext(operation, value));
     }
 
-    private string SetImmutableComponentDescription(string value, string operation)
+    private void SetImmutableComponentDescription(string value, string operation)
     {
         EnsureOwnerAccess(operation, value);
         ArgumentNullException.ThrowIfNull(value);
 
-        if (string.Equals(_initialComponentDescription, value, StringComparison.Ordinal))
+        if (string.Equals(_definition.Description, value, StringComparison.Ordinal))
         {
-            return _initialComponentDescription;
+            return;
         }
 
         throw new CapeInvalidArgumentException(
-            $"Port `{_initialComponentName}` does not allow ComponentDescription mutation in the MVP runtime.",
+            $"Port `{_definition.Name}` does not allow ComponentDescription mutation in the MVP runtime.",
             CreateContext(operation, value));
     }
 
@@ -207,14 +192,14 @@ public sealed class UnitOperationPortPlaceholder : ICapeIdentification, ICapeUni
             InterfaceName: InterfaceName,
             Scope: "RadishFlow.CapeOpen.UnitOp.Mvp.Placeholders",
             Operation: operation,
-            ParameterName: _componentName,
+            ParameterName: _definition.Name,
             Parameter: parameter,
             RequestedOperation: requestedOperation);
     }
 
     private void EnsureOwnerAccess(string operation, object? parameter = null)
     {
-        _ensureOwnerAccess?.Invoke(InterfaceName, operation, _componentName, parameter);
+        _ensureOwnerAccess?.Invoke(InterfaceName, operation, _definition.Name, parameter);
     }
 }
 

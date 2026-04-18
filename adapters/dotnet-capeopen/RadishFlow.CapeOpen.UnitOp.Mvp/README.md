@@ -36,8 +36,10 @@
 - 当前 `Ports` / `Parameters` 已返回带 `Item(object)` 和 `Count()` 的最小 `ICapeCollection` 风格对象，并支持按 `ComponentName` 或 1-based 索引取项
 - 当前参数对象已提供最小 `ICapeParameter` + `ICapeParameterSpec` 语义，端口对象已提供最小 `ICapeUnitPort` 语义，但仍只覆盖 MVP 所需的字符串参数和占位连接对象
 - 当前 `ICapeCollection.Item(object)` 已冻结为“1-based 整数索引或 component name”双入口；除 `int/long` 外，也接受能无损落到整数的 `double/float/decimal` 选择子，以贴近 COM 宿主可能传入的数值 Variant 形状；空白名称、越界索引和非整数数值仍按 `CapeInvalidArgumentException` 拒绝
+- 在 COM 兼容的 `Item(object)` 之外，当前 `UnitOperationPlaceholderCollection<T>` 又已补出 typed runtime collection 主通路：`ContainsName(...)`、`TryGetByName(...)`、`GetByName(...)` 与 `GetByOneBasedIndex(...)`；后续 `UnitOp.Mvp` 自身、contract tests 和 smoke host 应优先走这条强类型入口，而不是继续在内部到处手写 `ICapeCollection.Item(object)` 选择子
 - 当前 `ICapeCollection`、`ICapeParameter` 与 `ICapeUnitPort` 的 `ComponentName/ComponentDescription` 已冻结为运行时不可变元数据；宿主可以重复读取，但不能在 MVP runtime 中修改这些标识字段，从而保持 collection lookup、required port 规则与 stable detail key 不漂移
 - 当前 `UnitOperationParameterCatalog` / `UnitOperationPortCatalog` 已进一步从“名字常量表”推进到“完整定义真相源”，把 canonical name、collection order、description、required/value-kind/mode 与 direction/port-type 一并收口，避免这些宿主契约继续散落在构造函数和测试字面量里
+- 当前 parameter/port placeholder 又已进一步从“复制 catalog 元数据到运行时实例”收口为“直接绑定 catalog definition 对象”；运行时只保留 value / connection 这类可变状态，避免 definition 与 placeholder 元数据再次出现漂移
 - 当前参数对象内部已补上最小元数据收口：区分 `StructuredJsonText` / `Identifier` / `FilePath` 三类值语义，保留对外 `ICapeParameterSpec.Type = CAPE_OPTION`，并显式记录默认值、是否允许空值与 manifest/payload 这类成对出现约束
 - 当前参数对象又已把 `Specification` 从参数实例本身分离为独立只读 spec 对象；宿主重复读取时拿到稳定 spec 引用，而不再让 `ICapeParameter` 与 `ICapeParameterSpec` 混成同一个运行时对象
 - 当前参数对象的 `Mode` 也已冻结为运行时不可变元数据；MVP runtime 当前只接受初始化时定义好的 mode，宿主不能在运行过程中把 input 参数改写成 output/input-output
@@ -64,6 +66,7 @@
 - 当前 contract tests 又已继续前推到对象面本身，新增 collection selector、parameter reset/lifecycle access 与 port reconnect 约束这三组契约，确保“最小宿主对象运行时”不再只靠 smoke 路径间接覆盖
 - 在上述对象面 contract tests 基础上，当前又已补上 spec 对象稳定性、post-terminate spec access guard 与 parameter mode immutability 三条参数语义约束，避免后续再次把参数对象回退成“值对象和 spec 对象合一”的松散实现
 - 当前 `SmokeTests` 与 `ContractTests` 也已切到消费同一份 parameter/port catalog；后续若 canonical order 或对象定义继续演进，应优先改 catalog，而不是在多个 host/test 入口各自追字面量
+- 当前 contract tests 又已把 typed runtime collection 本身纳入行为契约：除 `ICapeCollection.Item(object)` 兼容面外，还锁住了 `ContainsName/TryGetByName/GetByName/GetByOneBasedIndex` 的成功/失败语义，并要求 typed lookup 返回的对象与集合中的 placeholder 实例保持同一引用
 - Rust/.NET 边界仍保持为句柄 + UTF-8 + JSON + 状态码，没有在这里提前引入 COM 注册或更宽的跨边界对象传递
 
 最小 contract tests 运行示例：

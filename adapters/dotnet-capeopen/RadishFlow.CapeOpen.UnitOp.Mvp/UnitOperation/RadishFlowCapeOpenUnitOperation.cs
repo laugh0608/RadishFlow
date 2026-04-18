@@ -41,64 +41,28 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
         var productPortDefinition = UnitOperationPortCatalog.Product;
 
         _flowsheetParameter = new UnitOperationParameterPlaceholder(
-            flowsheetParameterDefinition.Name,
-            flowsheetParameterDefinition.Description,
-            isRequired: flowsheetParameterDefinition.IsRequired,
-            valueKind: flowsheetParameterDefinition.ValueKind,
-            allowsEmptyValue: flowsheetParameterDefinition.AllowsEmptyValue,
-            requiredCompanionParameterName: flowsheetParameterDefinition.RequiredCompanionParameterName,
-            mode: flowsheetParameterDefinition.Mode,
-            defaultValue: flowsheetParameterDefinition.DefaultValue,
+            flowsheetParameterDefinition,
             ensureOwnerAccess: EnsurePlaceholderAccess,
             onStateChanged: InvalidateValidation);
         _packageIdParameter = new UnitOperationParameterPlaceholder(
-            packageIdParameterDefinition.Name,
-            packageIdParameterDefinition.Description,
-            isRequired: packageIdParameterDefinition.IsRequired,
-            valueKind: packageIdParameterDefinition.ValueKind,
-            allowsEmptyValue: packageIdParameterDefinition.AllowsEmptyValue,
-            requiredCompanionParameterName: packageIdParameterDefinition.RequiredCompanionParameterName,
-            mode: packageIdParameterDefinition.Mode,
-            defaultValue: packageIdParameterDefinition.DefaultValue,
+            packageIdParameterDefinition,
             ensureOwnerAccess: EnsurePlaceholderAccess,
             onStateChanged: InvalidateValidation);
         _manifestPathParameter = new UnitOperationParameterPlaceholder(
-            manifestPathParameterDefinition.Name,
-            manifestPathParameterDefinition.Description,
-            isRequired: manifestPathParameterDefinition.IsRequired,
-            valueKind: manifestPathParameterDefinition.ValueKind,
-            allowsEmptyValue: manifestPathParameterDefinition.AllowsEmptyValue,
-            requiredCompanionParameterName: manifestPathParameterDefinition.RequiredCompanionParameterName,
-            mode: manifestPathParameterDefinition.Mode,
-            defaultValue: manifestPathParameterDefinition.DefaultValue,
+            manifestPathParameterDefinition,
             ensureOwnerAccess: EnsurePlaceholderAccess,
             onStateChanged: InvalidateValidation);
         _payloadPathParameter = new UnitOperationParameterPlaceholder(
-            payloadPathParameterDefinition.Name,
-            payloadPathParameterDefinition.Description,
-            isRequired: payloadPathParameterDefinition.IsRequired,
-            valueKind: payloadPathParameterDefinition.ValueKind,
-            allowsEmptyValue: payloadPathParameterDefinition.AllowsEmptyValue,
-            requiredCompanionParameterName: payloadPathParameterDefinition.RequiredCompanionParameterName,
-            mode: payloadPathParameterDefinition.Mode,
-            defaultValue: payloadPathParameterDefinition.DefaultValue,
+            payloadPathParameterDefinition,
             ensureOwnerAccess: EnsurePlaceholderAccess,
             onStateChanged: InvalidateValidation);
 
         _feedPort = new UnitOperationPortPlaceholder(
-            feedPortDefinition.Name,
-            feedPortDefinition.Description,
-            direction: feedPortDefinition.Direction,
-            portType: feedPortDefinition.PortType,
-            isRequired: feedPortDefinition.IsRequired,
+            feedPortDefinition,
             ensureOwnerAccess: EnsurePlaceholderAccess,
             onStateChanged: InvalidateValidation);
         _productPort = new UnitOperationPortPlaceholder(
-            productPortDefinition.Name,
-            productPortDefinition.Description,
-            direction: productPortDefinition.Direction,
-            portType: productPortDefinition.PortType,
-            isRequired: productPortDefinition.IsRequired,
+            productPortDefinition,
             ensureOwnerAccess: EnsurePlaceholderAccess,
             onStateChanged: InvalidateValidation);
 
@@ -414,8 +378,7 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
 
     private UnitOperationPortPlaceholder? FindPort(string portName)
     {
-        return Ports.FirstOrDefault(port =>
-            string.Equals(port.ComponentName, portName, StringComparison.OrdinalIgnoreCase));
+        return Ports.TryGetByName(portName, out var port) ? port : null;
     }
 
     private ValidationResult? EvaluateParameterCompanionValidation()
@@ -429,8 +392,9 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
                 continue;
             }
 
-            var companion = Parameters.FirstOrDefault(candidate =>
-                string.Equals(candidate.ComponentName, companionName, StringComparison.OrdinalIgnoreCase));
+            var companion = Parameters.TryGetByName(companionName, out var companionParameter)
+                ? companionParameter
+                : null;
             if (companion is null)
             {
                 return ValidationResult.Invalid(

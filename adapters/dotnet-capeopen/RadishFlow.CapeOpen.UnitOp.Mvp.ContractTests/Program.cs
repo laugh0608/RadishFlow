@@ -107,6 +107,29 @@ internal static class ContractTests
             UnitOperationPortCatalog.OrderedNames,
             context.UnitOperation.Ports.Select(static port => port.ComponentName),
             "Port collection order should match the frozen public catalog.");
+        ContractAssert.True(context.UnitOperation.Parameters.ContainsName(UnitOperationParameterCatalog.FlowsheetJson.Name), "Typed parameter collection should report known canonical names.");
+        ContractAssert.True(context.UnitOperation.Ports.ContainsName(UnitOperationPortCatalog.Product.Name), "Typed port collection should report known canonical names.");
+        ContractAssert.False(context.UnitOperation.Parameters.ContainsName("missing-parameter"), "Typed parameter collection should reject unknown names.");
+        ContractAssert.True(
+            context.UnitOperation.Parameters.TryGetByName("flowsheet json", out var typedFlowsheetParameter) &&
+            ReferenceEquals(context.FlowsheetParameter, typedFlowsheetParameter),
+            "Typed parameter collection should support case-insensitive lookup.");
+        ContractAssert.True(
+            context.UnitOperation.Ports.TryGetByName("product", out var typedProductPort) &&
+            ReferenceEquals(context.ProductPort, typedProductPort),
+            "Typed port collection should support case-insensitive lookup.");
+        ContractAssert.False(
+            context.UnitOperation.Parameters.TryGetByName("   ", out var blankParameterLookup) &&
+            blankParameterLookup is not null,
+            "Typed parameter collection should reject blank lookup names.");
+        ContractAssert.SameReference(
+            context.PayloadPathParameter,
+            context.UnitOperation.Parameters.GetByOneBasedIndex(4),
+            "Typed parameter collection should support 1-based numeric lookup.");
+        ContractAssert.SameReference(
+            context.ProductPort,
+            context.UnitOperation.Ports.GetByName(UnitOperationPortCatalog.Product.Name),
+            "Typed port collection should support canonical name lookup.");
         foreach (var parameter in context.UnitOperation.Parameters)
         {
             var definition = UnitOperationParameterCatalog.GetByName(parameter.ComponentName);
@@ -160,6 +183,14 @@ internal static class ContractTests
             () => ((ICapeIdentification)context.UnitOperation.Parameters).ComponentName = "Mutable Parameters",
             "Collection identification should remain immutable in the MVP runtime.");
         ContractAssert.Contains(collectionMutationError.Description, "does not allow ComponentName mutation", "Collection immutability failures should stay explicit.");
+        var typedMissingParameterError = ContractAssert.Throws<CapeInvalidArgumentException>(
+            () => context.UnitOperation.Parameters.GetByName("missing-parameter"),
+            "Typed parameter collection should reject unknown names.");
+        ContractAssert.Contains(typedMissingParameterError.Description, "does not contain an item named", "Typed parameter collection missing-name failures should stay explicit.");
+        var typedOutOfRangePortError = ContractAssert.Throws<CapeInvalidArgumentException>(
+            () => context.UnitOperation.Ports.GetByOneBasedIndex(0),
+            "Typed port collection should reject out-of-range indices.");
+        ContractAssert.Contains(typedOutOfRangePortError.Description, "out of range", "Typed port collection out-of-range failures should stay explicit.");
 
         ContractAssert.True(
             UnitOperationParameterCatalog.TryGetByName("flowsheet json", out var flowsheetDefinition) &&
@@ -377,12 +408,12 @@ internal sealed class ContractTestContext : IDisposable
         UnitOperation.ConfigureNativeLibraryDirectory(options.NativeLibraryDirectory);
         ParameterCollection = (ICapeCollection)UnitOperation.Parameters;
         PortCollection = (ICapeCollection)UnitOperation.Ports;
-        FlowsheetParameter = (UnitOperationParameterPlaceholder)ParameterCollection.Item(UnitOperationParameterCatalog.FlowsheetJson.Name);
-        PackageIdParameter = (UnitOperationParameterPlaceholder)ParameterCollection.Item(UnitOperationParameterCatalog.PropertyPackageId.Name);
-        ManifestPathParameter = (UnitOperationParameterPlaceholder)ParameterCollection.Item(UnitOperationParameterCatalog.PropertyPackageManifestPath.Name);
-        PayloadPathParameter = (UnitOperationParameterPlaceholder)ParameterCollection.Item(4);
-        FeedPort = (UnitOperationPortPlaceholder)PortCollection.Item(UnitOperationPortCatalog.Feed.Name);
-        ProductPort = (UnitOperationPortPlaceholder)PortCollection.Item(UnitOperationPortCatalog.Product.Name);
+        FlowsheetParameter = UnitOperation.Parameters.GetByName(UnitOperationParameterCatalog.FlowsheetJson.Name);
+        PackageIdParameter = UnitOperation.Parameters.GetByName(UnitOperationParameterCatalog.PropertyPackageId.Name);
+        ManifestPathParameter = UnitOperation.Parameters.GetByName(UnitOperationParameterCatalog.PropertyPackageManifestPath.Name);
+        PayloadPathParameter = UnitOperation.Parameters.GetByOneBasedIndex(4);
+        FeedPort = UnitOperation.Ports.GetByName(UnitOperationPortCatalog.Feed.Name);
+        ProductPort = UnitOperation.Ports.GetByName(UnitOperationPortCatalog.Product.Name);
     }
 
     public RadishFlowCapeOpenUnitOperation UnitOperation { get; }
@@ -427,21 +458,18 @@ internal sealed class ContractTestContext : IDisposable
 
     public void ConnectRequiredPorts()
     {
-        var ports = (ICapeCollection)UnitOperation.Ports;
-        ((ICapeUnitPort)ports.Item("Feed")).Connect(new ContractConnectedObject("Contract Feed"));
-        ((ICapeUnitPort)ports.Item("Product")).Connect(new ContractConnectedObject("Contract Product"));
+        UnitOperation.Ports.GetByName(UnitOperationPortCatalog.Feed.Name).Connect(new ContractConnectedObject("Contract Feed"));
+        UnitOperation.Ports.GetByName(UnitOperationPortCatalog.Product.Name).Connect(new ContractConnectedObject("Contract Product"));
     }
 
     public void DisconnectProductPort()
     {
-        var ports = (ICapeCollection)UnitOperation.Ports;
-        ((ICapeUnitPort)ports.Item("Product")).Disconnect();
+        UnitOperation.Ports.GetByName(UnitOperationPortCatalog.Product.Name).Disconnect();
     }
 
     public bool IsProductPortConnected()
     {
-        var ports = (ICapeCollection)UnitOperation.Ports;
-        return ((ICapeUnitPort)ports.Item("Product")).connectedObject is not null;
+        return UnitOperation.Ports.GetByName(UnitOperationPortCatalog.Product.Name).connectedObject is not null;
     }
 
     public void ConfigureMinimumValidInputs()

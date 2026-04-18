@@ -70,18 +70,53 @@ public sealed class UnitOperationPlaceholderCollection<T> : ICapeIdentification,
         }
     }
 
+    public bool ContainsName(string name)
+    {
+        EnsureOwnerAccess(nameof(ContainsName), name);
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return false;
+        }
+
+        return _itemsByName.ContainsKey(name);
+    }
+
+    public bool TryGetByName(string name, out T? item)
+    {
+        EnsureOwnerAccess(nameof(TryGetByName), name);
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            item = null;
+            return false;
+        }
+
+        return _itemsByName.TryGetValue(name, out item);
+    }
+
+    public T GetByName(string name)
+    {
+        EnsureOwnerAccess(nameof(GetByName), name);
+        return FindByName(name, nameof(GetByName));
+    }
+
+    public T GetByOneBasedIndex(int oneBasedIndex)
+    {
+        EnsureOwnerAccess(nameof(GetByOneBasedIndex), oneBasedIndex);
+        return ResolveByOneBasedIndex(oneBasedIndex, nameof(GetByOneBasedIndex));
+    }
+
     object ICapeCollection.Item(object index)
     {
         EnsureOwnerAccess(ItemOperation, index);
 
         if (index is string name)
         {
-            return FindByName(name);
+            return FindByName(name, ItemOperation);
         }
 
         if (TryGetOneBasedIndex(index, out var oneBasedIndex))
         {
-            return GetByOneBasedIndex(oneBasedIndex);
+            return ResolveByOneBasedIndex(oneBasedIndex, ItemOperation);
         }
 
         throw new CapeInvalidArgumentException(
@@ -106,13 +141,13 @@ public sealed class UnitOperationPlaceholderCollection<T> : ICapeIdentification,
         return GetEnumerator();
     }
 
-    private T FindByName(string name)
+    private T FindByName(string name, string operation)
     {
         if (string.IsNullOrWhiteSpace(name))
         {
             throw new CapeInvalidArgumentException(
                 $"Collection `{ComponentName}` requires a non-empty component name.",
-                CreateContext(ItemOperation, name));
+                CreateContext(operation, name));
         }
 
         if (_itemsByName.TryGetValue(name, out var item))
@@ -122,10 +157,10 @@ public sealed class UnitOperationPlaceholderCollection<T> : ICapeIdentification,
 
         throw new CapeInvalidArgumentException(
             $"Collection `{ComponentName}` does not contain an item named `{name}`.",
-            CreateContext(ItemOperation, name));
+            CreateContext(operation, name));
     }
 
-    private T GetByOneBasedIndex(int oneBasedIndex)
+    private T ResolveByOneBasedIndex(int oneBasedIndex, string operation)
     {
         if (oneBasedIndex >= 1 && oneBasedIndex <= _items.Count)
         {
@@ -134,7 +169,7 @@ public sealed class UnitOperationPlaceholderCollection<T> : ICapeIdentification,
 
         throw new CapeInvalidArgumentException(
             $"Collection `{ComponentName}` index `{oneBasedIndex}` is out of range. Expected 1..{_items.Count}.",
-            CreateContext(ItemOperation, oneBasedIndex));
+            CreateContext(operation, oneBasedIndex));
     }
 
     private static bool TryGetOneBasedIndex(object index, out int oneBasedIndex)

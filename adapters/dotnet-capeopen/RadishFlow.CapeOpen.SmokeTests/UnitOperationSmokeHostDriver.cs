@@ -31,12 +31,12 @@ internal sealed class UnitOperationSmokeHostDriver : IDisposable
         ParameterCollection = (ICapeCollection)Parameters;
         PortCollection = (ICapeCollection)Ports;
 
-        FlowsheetParameter = (UnitOperationParameterPlaceholder)ParameterCollection.Item(UnitOperationParameterCatalog.FlowsheetJson.Name);
-        PackageIdParameter = (UnitOperationParameterPlaceholder)ParameterCollection.Item(UnitOperationParameterCatalog.PropertyPackageId.Name);
-        ManifestPathParameter = (UnitOperationParameterPlaceholder)ParameterCollection.Item(UnitOperationParameterCatalog.PropertyPackageManifestPath.Name);
-        PayloadPathParameter = (UnitOperationParameterPlaceholder)ParameterCollection.Item(4);
-        FeedPort = (UnitOperationPortPlaceholder)PortCollection.Item(UnitOperationPortCatalog.Feed.Name);
-        ProductPort = (UnitOperationPortPlaceholder)PortCollection.Item(2);
+        FlowsheetParameter = Parameters.GetByName(UnitOperationParameterCatalog.FlowsheetJson.Name);
+        PackageIdParameter = Parameters.GetByName(UnitOperationParameterCatalog.PropertyPackageId.Name);
+        ManifestPathParameter = Parameters.GetByName(UnitOperationParameterCatalog.PropertyPackageManifestPath.Name);
+        PayloadPathParameter = Parameters.GetByOneBasedIndex(4);
+        FeedPort = Ports.GetByName(UnitOperationPortCatalog.Feed.Name);
+        ProductPort = Ports.GetByOneBasedIndex(2);
     }
 
     public RadishFlowCapeOpenUnitOperation UnitOperation => _unitOperation;
