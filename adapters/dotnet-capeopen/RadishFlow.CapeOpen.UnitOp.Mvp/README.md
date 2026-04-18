@@ -22,6 +22,7 @@
 - `UnitOperationHostActionPlanReader.Read(...)`、`UnitOperationHostActionPlan`、`UnitOperationHostActionGroup`、`UnitOperationHostActionItem` 与 `UnitOperationHostActionTarget`，用于在 configuration snapshot 之上继续收口“宿主下一步该做什么”：按 `Lifecycle / Parameters / Ports / Terminal` 分组，直接给出 target kind/name(s)、reason、blocking 标记、canonical operation name 与推荐顺序，而不必再让宿主把 blocking issues 和 next operations 重新折叠成自己的 checklist
 - `UnitOperationHostPortMaterialReader.Read(...)`、`UnitOperationHostPortMaterialSnapshot`、`UnitOperationHostPortMaterialEntry` 与 `UnitOperationHostMaterialStreamEntry`，用于在 calculate 结果面之上继续收口“每个 host port 当前绑定了哪些 boundary streams、这些 streams 是否已有当前 material result、若有则给出最小温压流量/相分率摘要”；宿主不必再自己解析 flowsheet JSON、推断 boundary stream 集或把 native solve snapshot 的 `streams` 数组重新映射回 `Feed/Product`
 - `UnitOperationHostExecutionReader.Read(...)`、`UnitOperationHostExecutionSnapshot`、`UnitOperationHostExecutionSummary`、`UnitOperationHostExecutionDiagnosticEntry` 与 `UnitOperationHostExecutionStepEntry`，用于在 calculate 结果面之上继续收口“这次执行做了什么”：宿主可直接读取 `None / Stale / Available / Terminated` 四态、calculation status、summary、diagnostics 与 step-by-step 执行序列，而不必继续从 report supplemental lines 间接反推
+- `UnitOperationHostSessionReader.Read(...)`、`UnitOperationHostSessionSnapshot` 与 `UnitOperationHostSessionSummary`，用于在上述 readers 之上继续收口“一次读取当前完整宿主视图”：直接聚合 configuration、action plan、port/material、execution 与 report，并额外给出 `IsReadyForCalculate / HasBlockingActions / HasCurrentResults / RequiresCalculateRefresh / HasFailureReport / RecommendedOperations` 这类宿主摘要
 - `Calculate()` 对未满足前置条件的最小 ECape 语义抛错，以及经由 `rf-ffi` 的最小真实求解接线
 - `ICapeCollection` / `ICapeParameter` / `ICapeUnitPort` 的第一版最小对象运行时
 - placeholder 对象对 unit owner 生命周期的最小访问守卫，以及 `Terminate()` 时的端口连接释放
@@ -50,6 +51,7 @@
 - 基于这份 configuration snapshot，当前又继续补出 `UnitOperationHostActionPlanReader`：宿主现在可以直接读取分组后的 action checklist，而不必只拿到 `next operations` 名字数组后，再自己决定 action 分组、target、blocking reason 和推荐顺序
 - 基于 flowsheet 配置与 calculate 结果，当前又继续补出 `UnitOperationHostPortMaterialReader`：宿主现在可以直接读取 `None / Stale / Available / Terminated` 四态的 port/material snapshot，以及每个 host port 对应的 boundary stream ids 和当前 material entries，而不必自己重做“flowsheet boundary -> host placeholder port -> solved stream”映射
 - 在这层结果对象之上，当前又继续补出 `UnitOperationHostExecutionReader`：宿主现在可以直接读取 execution snapshot，而不必继续依赖 `GetCalculationReportLines()` 或 sectioned report 的 supplemental 文本去推断本次执行包含哪些 unit steps、消费了哪些 streams、生成了哪些 streams
+- 在上述宿主只读面之上，当前又继续补出 `UnitOperationHostSessionReader`：宿主现在可以一次读取 configuration/action plan/port-material/execution/report 五块正式快照，并复用统一 summary，而不必在外部自己协调多次 reader 调用、汇总 headline 或再拼一层私有 status view
 - 当前参数对象内部已补上最小元数据收口：区分 `StructuredJsonText` / `Identifier` / `FilePath` 三类值语义，保留对外 `ICapeParameterSpec.Type = CAPE_OPTION`，并显式记录默认值、是否允许空值与 manifest/payload 这类成对出现约束
 - 当前参数对象又已把 `Specification` 从参数实例本身分离为独立只读 spec 对象；宿主重复读取时拿到稳定 spec 引用，而不再让 `ICapeParameter` 与 `ICapeParameterSpec` 混成同一个运行时对象
 - 当前参数对象的 `Mode` 也已冻结为运行时不可变元数据；MVP runtime 当前只接受初始化时定义好的 mode，宿主不能在运行过程中把 input 参数改写成 output/input-output
@@ -83,6 +85,7 @@
 - 在 configuration snapshot contract 之上，当前又新增 action plan contract，进一步锁住 constructed / missing required parameter / companion mismatch / disconnected required port / ready / terminated 六类宿主 checklist 形状；`SmokeTests` 当前也已切到优先断言 action group、target、reason、blocking 与 canonical operation，而不再只盯 `NextOperations`
 - 在 action plan contract 之后，当前又新增 port/material snapshot contract，进一步锁住 boundary stream 映射、`None / Stale / Available / Terminated` 四态，以及 success/invalidation/terminate 下的 host port material 形状；`SmokeTests` 当前也已开始直接消费这套 snapshot，而不是继续把 material 语义埋在 report 或样例私有判断里
 - 在 port/material snapshot contract 之后，当前又新增 execution snapshot contract，进一步锁住 `steps` 解析、`None / Stale / Available / Terminated` 四态，以及 success/invalidation/terminate 下的 host execution 形状；`SmokeTests` 的 boundary suite 当前也已开始优先消费这套 snapshot，而不是继续从 report supplemental lines 间接判断执行过程
+- 在 execution snapshot contract 之后，当前又新增 session snapshot contract，进一步锁住 constructed/native-failure/success/stale/terminated 下的统一宿主视图形状；`SmokeTests` 的 boundary suite 当前也已开始消费这套 session snapshot，而不是继续在外部重复汇总“是否 ready、是否 blocking、是否有当前结果、是否需要 refresh”
 - Rust/.NET 边界仍保持为句柄 + UTF-8 + JSON + 状态码，没有在这里提前引入 COM 注册或更宽的跨边界对象传递
 
 最小 contract tests 运行示例：

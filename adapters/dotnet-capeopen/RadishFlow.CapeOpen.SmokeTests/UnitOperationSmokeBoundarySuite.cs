@@ -95,6 +95,19 @@ internal static class UnitOperationSmokeBoundarySuite
             UnitOperationHostExecutionState.None,
             expectedCurrent: false,
             "initialized execution snapshot");
+        UnitOperationSmokeHostSessionAssertions.AssertSummary(
+            driver.ReadSession(),
+            expectedReady: false,
+            expectedBlockingActions: true,
+            expectedCurrentMaterialResults: false,
+            expectedCurrentExecution: false,
+            expectedCurrentResults: false,
+            expectedRefresh: false,
+            expectedFailureReport: false,
+            scenario: "initialized host session",
+            UnitOperationParameterCatalog.FlowsheetJson.ConfigurationOperationName,
+            UnitOperationParameterCatalog.PropertyPackageId.ConfigurationOperationName,
+            UnitOperationPortCatalog.Feed.ConnectionOperationName);
         var initialBundle = driver.ReadReport();
         UnitOperationSmokeReportAssertions.AssertEmpty(initialBundle, "empty calculation report");
 
@@ -254,6 +267,20 @@ internal static class UnitOperationSmokeBoundarySuite
             nativeFailureReport.ScalarLines.Count >= 3 &&
             string.Equals(nativeFailureReport.ScalarLines[0], nativeFailureReport.Headline, StringComparison.Ordinal),
             "native failure host report lines should start with the headline before detail lines.");
+        var nativeFailureSession = driver.ReadSession();
+        UnitOperationSmokeHostSessionAssertions.AssertSummary(
+            nativeFailureSession,
+            expectedReady: true,
+            expectedBlockingActions: false,
+            expectedCurrentMaterialResults: false,
+            expectedCurrentExecution: false,
+            expectedCurrentResults: false,
+            expectedRefresh: false,
+            expectedFailureReport: true,
+            scenario: "native failure host session");
+        UnitOperationSmokeReportAssertions.EnsureCondition(
+            string.Equals(nativeFailureSession.Headline, nativeFailureReport.Headline, StringComparison.Ordinal),
+            "native failure host session should prefer failure report headline.");
 
         packageIdParameter.value = options.PackageId;
         var readyConfiguration = driver.ReadConfiguration();
@@ -296,6 +323,16 @@ internal static class UnitOperationSmokeBoundarySuite
             UnitOperationHostExecutionState.None,
             expectedCurrent: false,
             "ready execution snapshot");
+        UnitOperationSmokeHostSessionAssertions.AssertSummary(
+            driver.ReadSession(),
+            expectedReady: true,
+            expectedBlockingActions: false,
+            expectedCurrentMaterialResults: false,
+            expectedCurrentExecution: false,
+            expectedCurrentResults: false,
+            expectedRefresh: false,
+            expectedFailureReport: false,
+            scenario: "ready host session");
 
         var validationResult = driver.Validate();
         Console.WriteLine("== Unit Validation ==");
@@ -380,6 +417,20 @@ internal static class UnitOperationSmokeBoundarySuite
             availableExecution.GetStep(2).ProducedStreamIds.SequenceEqual(["stream-liquid", "stream-vapor"]) &&
             availableExecution.GetStep(2).Summary.Contains("flash-1", StringComparison.Ordinal),
             "available execution snapshot should expose produced stream ids and summary for the flash step.");
+        var availableSession = driver.ReadSession();
+        UnitOperationSmokeHostSessionAssertions.AssertSummary(
+            availableSession,
+            expectedReady: true,
+            expectedBlockingActions: false,
+            expectedCurrentMaterialResults: true,
+            expectedCurrentExecution: true,
+            expectedCurrentResults: true,
+            expectedRefresh: false,
+            expectedFailureReport: false,
+            scenario: "available host session");
+        UnitOperationSmokeReportAssertions.EnsureCondition(
+            string.Equals(availableSession.Headline, availableExecution.Headline, StringComparison.Ordinal),
+            "available host session should prefer execution headline.");
 
         feedPort.Disconnect();
         var disconnectedFeedConfiguration = driver.ReadConfiguration();
@@ -430,6 +481,17 @@ internal static class UnitOperationSmokeBoundarySuite
             UnitOperationHostExecutionState.Stale,
             expectedCurrent: false,
             "disconnected feed execution snapshot");
+        UnitOperationSmokeHostSessionAssertions.AssertSummary(
+            driver.ReadSession(),
+            expectedReady: false,
+            expectedBlockingActions: true,
+            expectedCurrentMaterialResults: false,
+            expectedCurrentExecution: false,
+            expectedCurrentResults: false,
+            expectedRefresh: true,
+            expectedFailureReport: false,
+            scenario: "disconnected feed host session",
+            UnitOperationPortCatalog.Feed.ConnectionOperationName);
         var disconnectedPortValidation = driver.Validate();
         UnitOperationSmokeReportAssertions.EnsureCondition(
             !disconnectedPortValidation.IsValid &&
@@ -593,6 +655,16 @@ internal static class UnitOperationSmokeBoundarySuite
         UnitOperationSmokeReportAssertions.EnsureCondition(
             terminatedExecution.StepCount == 0 && terminatedExecution.DiagnosticCount == 0,
             "terminated execution snapshot should not expose steps or diagnostics.");
+        UnitOperationSmokeHostSessionAssertions.AssertSummary(
+            driver.ReadSession(),
+            expectedReady: false,
+            expectedBlockingActions: true,
+            expectedCurrentMaterialResults: false,
+            expectedCurrentExecution: false,
+            expectedCurrentResults: false,
+            expectedRefresh: false,
+            expectedFailureReport: false,
+            scenario: "terminated host session");
         var terminatedBundle = driver.ReadReport();
         UnitOperationSmokeReportAssertions.AssertEmpty(terminatedBundle, "terminated host report");
         UnitOperationSmokeReportAssertions.EnsureCondition(!feedPort.IsConnected, "feed port should release its connected object during Terminate().");

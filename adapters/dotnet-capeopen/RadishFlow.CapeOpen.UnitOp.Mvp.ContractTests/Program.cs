@@ -46,6 +46,7 @@ internal static class ContractTestExecutable
             ("action-plan-contract", static context => ContractTests.ActionPlan_ExposesCanonicalChecklistShape(context)),
             ("port-material-contract", static context => ContractTests.PortMaterialSnapshot_ExposesBoundaryStreamsAndLifecycleState(context)),
             ("execution-snapshot-contract", static context => ContractTests.ExecutionSnapshot_ExposesStepAndDiagnosticShape(context)),
+            ("session-snapshot-contract", static context => ContractTests.SessionSnapshot_ExposesUnifiedHostView(context)),
             ("parameter-contract", static context => ContractTests.Parameters_ResetValidationStateAndFreezeMetadata(context)),
             ("port-contract", static context => ContractTests.Ports_RequireDisconnectBeforeReplacingConnections(context)),
             ("validate-before-initialize", static context => ContractTests.ValidateBeforeInitialize_ReturnsInvalidAndEmptyReport(context)),
@@ -615,6 +616,93 @@ internal static class ContractTests
         ContractAssert.Equal(0, terminatedSnapshot.DiagnosticCount, "Terminated execution snapshot should not expose diagnostics.");
     }
 
+    public static void SessionSnapshot_ExposesUnifiedHostView(ContractTestContext context)
+    {
+        var constructedSnapshot = context.ReadSession();
+        ContractAssert.Equal(UnitOperationHostConfigurationState.Constructed, constructedSnapshot.Configuration.State, "Constructed host session should preserve constructed configuration state.");
+        ContractAssert.True(constructedSnapshot.Summary.HasBlockingActions, "Constructed host session should report blocking actions.");
+        ContractAssert.False(constructedSnapshot.Summary.IsReadyForCalculate, "Constructed host session should not be ready for Calculate().");
+        ContractAssert.False(constructedSnapshot.Summary.HasFailureReport, "Constructed host session should not expose failure report state.");
+        ContractAssert.False(constructedSnapshot.Summary.HasCurrentResults, "Constructed host session should not expose current results.");
+        ContractAssert.False(constructedSnapshot.Summary.RequiresCalculateRefresh, "Constructed host session should not be stale.");
+        ContractAssert.SequenceEqual(
+            [
+                nameof(RadishFlowCapeOpenUnitOperation.Initialize),
+                UnitOperationParameterCatalog.FlowsheetJson.ConfigurationOperationName,
+                UnitOperationParameterCatalog.PropertyPackageId.ConfigurationOperationName,
+                UnitOperationPortCatalog.Feed.ConnectionOperationName,
+            ],
+            constructedSnapshot.Summary.RecommendedOperations,
+            "Constructed host session should expose distinct recommended operations in action order.");
+        ContractAssert.True(
+            constructedSnapshot.ContainsRecommendedOperation(nameof(RadishFlowCapeOpenUnitOperation.Initialize)),
+            "Constructed host session should recommend Initialize().");
+
+        context.ConfigureMinimumValidInputs();
+
+        var readySnapshot = context.ReadSession();
+        ContractAssert.True(readySnapshot.Summary.IsReadyForCalculate, "Ready host session should report ready-for-calculate.");
+        ContractAssert.False(readySnapshot.Summary.HasBlockingActions, "Ready host session should not expose blocking actions.");
+        ContractAssert.False(readySnapshot.Summary.HasFailureReport, "Ready host session should not expose failure report state.");
+        ContractAssert.False(readySnapshot.Summary.HasCurrentResults, "Ready host session should not expose current results before Calculate().");
+        ContractAssert.False(readySnapshot.Summary.RequiresCalculateRefresh, "Ready host session should not be stale before Calculate().");
+        ContractAssert.Equal(0, readySnapshot.Summary.RecommendedOperations.Count, "Ready host session should not recommend follow-up operations.");
+        ContractAssert.Equal(readySnapshot.Configuration.Headline, readySnapshot.Headline, "Ready host session should default to configuration headline.");
+
+        context.UnitOperation.SelectPropertyPackage("missing-package-for-session-contract");
+        var nativeFailure = ContractAssert.Throws<CapeInvalidArgumentException>(
+            static unitOperation => unitOperation.Calculate(),
+            context.UnitOperation,
+            "Calculate() with missing package should fail for host-session contract.");
+        ContractAssert.Equal("MissingEntity", nativeFailure.NativeStatus, "Session contract native failure should preserve MissingEntity.");
+
+        var failureSnapshot = context.ReadSession();
+        ContractAssert.True(failureSnapshot.Summary.IsReadyForCalculate, "Failure host session should preserve ready configuration state.");
+        ContractAssert.False(failureSnapshot.Summary.HasBlockingActions, "Failure host session should not invent blocking actions.");
+        ContractAssert.True(failureSnapshot.Summary.HasFailureReport, "Failure host session should expose failure report state.");
+        ContractAssert.False(failureSnapshot.Summary.HasCurrentResults, "Failure host session should not expose current results.");
+        ContractAssert.False(failureSnapshot.Summary.RequiresCalculateRefresh, "Failure host session should not be stale.");
+        ContractAssert.Equal(UnitOperationCalculationReportState.Failure, failureSnapshot.Report.State, "Failure host session should preserve failure report snapshot.");
+        ContractAssert.Equal(failureSnapshot.Report.Headline, failureSnapshot.Headline, "Failure host session should prefer report headline.");
+
+        context.SelectPackage();
+        context.UnitOperation.Calculate();
+
+        var availableSnapshot = context.ReadSession();
+        ContractAssert.True(availableSnapshot.Summary.IsReadyForCalculate, "Successful host session should preserve ready configuration state.");
+        ContractAssert.False(availableSnapshot.Summary.HasBlockingActions, "Successful host session should not expose blocking actions.");
+        ContractAssert.True(availableSnapshot.Summary.HasCurrentMaterialResults, "Successful host session should expose current material results.");
+        ContractAssert.True(availableSnapshot.Summary.HasCurrentExecution, "Successful host session should expose current execution.");
+        ContractAssert.True(availableSnapshot.Summary.HasCurrentResults, "Successful host session should expose current combined results.");
+        ContractAssert.False(availableSnapshot.Summary.HasFailureReport, "Successful host session should clear failure report state.");
+        ContractAssert.False(availableSnapshot.Summary.RequiresCalculateRefresh, "Successful host session should not be stale.");
+        ContractAssert.Equal(UnitOperationCalculationReportState.Success, availableSnapshot.Report.State, "Successful host session should preserve success report state.");
+        ContractAssert.Equal(availableSnapshot.Execution.Headline, availableSnapshot.Headline, "Successful host session should prefer execution headline.");
+
+        context.DisconnectProductPort();
+
+        var staleSnapshot = context.ReadSession();
+        ContractAssert.False(staleSnapshot.Summary.IsReadyForCalculate, "Stale host session should not remain ready when configuration is broken.");
+        ContractAssert.True(staleSnapshot.Summary.HasBlockingActions, "Stale host session should expose blocking actions.");
+        ContractAssert.False(staleSnapshot.Summary.HasCurrentResults, "Stale host session should not expose current combined results.");
+        ContractAssert.True(staleSnapshot.Summary.RequiresCalculateRefresh, "Stale host session should request Calculate() refresh after recovery.");
+        ContractAssert.True(
+            staleSnapshot.ContainsRecommendedOperation(UnitOperationPortCatalog.Product.ConnectionOperationName),
+            "Stale host session should recommend reconnecting the required product port.");
+        ContractAssert.Equal(staleSnapshot.Execution.Headline, staleSnapshot.Headline, "Stale host session should prefer stale execution headline.");
+
+        context.UnitOperation.Terminate();
+
+        var terminatedSnapshot = context.ReadSession();
+        ContractAssert.Equal(UnitOperationHostConfigurationState.Terminated, terminatedSnapshot.Configuration.State, "Terminated host session should preserve terminated configuration state.");
+        ContractAssert.True(terminatedSnapshot.Summary.HasBlockingActions, "Terminated host session should still expose terminal blocking action.");
+        ContractAssert.False(terminatedSnapshot.Summary.HasCurrentResults, "Terminated host session should not expose current results.");
+        ContractAssert.False(terminatedSnapshot.Summary.HasFailureReport, "Terminated host session should not expose failure report state.");
+        ContractAssert.False(terminatedSnapshot.Summary.RequiresCalculateRefresh, "Terminated host session should not report refreshable stale results.");
+        ContractAssert.Equal(0, terminatedSnapshot.Summary.RecommendedOperations.Count, "Terminated host session should not recommend executable follow-up operations.");
+        ContractAssert.Equal(terminatedSnapshot.Configuration.Headline, terminatedSnapshot.Headline, "Terminated host session should use configuration headline.");
+    }
+
     private static void AssertActionPlan(
         UnitOperationHostActionPlan actionPlan,
         string scenario,
@@ -931,6 +1019,11 @@ internal sealed class ContractTestContext : IDisposable
     public UnitOperationHostExecutionSnapshot ReadExecution()
     {
         return UnitOperationHostExecutionReader.Read(UnitOperation);
+    }
+
+    public UnitOperationHostSessionSnapshot ReadSession()
+    {
+        return UnitOperationHostSessionReader.Read(UnitOperation);
     }
 
     public void ConfigureMinimumValidInputs()
