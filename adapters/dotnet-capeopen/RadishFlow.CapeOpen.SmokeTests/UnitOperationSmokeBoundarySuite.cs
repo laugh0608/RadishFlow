@@ -34,12 +34,38 @@ internal static class UnitOperationSmokeBoundarySuite
             UnitOperationHostConfigurationIssueKind.RequiredParameterMissing,
             UnitOperationHostConfigurationIssueKind.RequiredPortDisconnected,
             UnitOperationHostConfigurationIssueKind.RequiredPortDisconnected);
-        UnitOperationSmokeConfigurationAssertions.AssertNextOperations(
-            initializedConfiguration,
+        var initializedActionPlan = driver.ReadActionPlan();
+        UnitOperationSmokeConfigurationAssertions.AssertActionPlan(
+            initializedActionPlan,
             "initialized configuration",
-            UnitOperationParameterCatalog.FlowsheetJson.ConfigurationOperationName,
-            UnitOperationParameterCatalog.PropertyPackageId.ConfigurationOperationName,
-            UnitOperationPortCatalog.Feed.ConnectionOperationName);
+            UnitOperationSmokeConfigurationAssertions.Action(
+                UnitOperationHostActionGroupKind.Parameters,
+                UnitOperationHostActionTargetKind.Parameter,
+                UnitOperationParameterCatalog.FlowsheetJson.ConfigurationOperationName,
+                UnitOperationHostConfigurationIssueKind.RequiredParameterMissing,
+                "Required parameter",
+                UnitOperationParameterCatalog.FlowsheetJson.Name),
+            UnitOperationSmokeConfigurationAssertions.Action(
+                UnitOperationHostActionGroupKind.Parameters,
+                UnitOperationHostActionTargetKind.Parameter,
+                UnitOperationParameterCatalog.PropertyPackageId.ConfigurationOperationName,
+                UnitOperationHostConfigurationIssueKind.RequiredParameterMissing,
+                "Required parameter",
+                UnitOperationParameterCatalog.PropertyPackageId.Name),
+            UnitOperationSmokeConfigurationAssertions.Action(
+                UnitOperationHostActionGroupKind.Ports,
+                UnitOperationHostActionTargetKind.Port,
+                UnitOperationPortCatalog.Feed.ConnectionOperationName,
+                UnitOperationHostConfigurationIssueKind.RequiredPortDisconnected,
+                "Required port",
+                UnitOperationPortCatalog.Feed.Name),
+            UnitOperationSmokeConfigurationAssertions.Action(
+                UnitOperationHostActionGroupKind.Ports,
+                UnitOperationHostActionTargetKind.Port,
+                UnitOperationPortCatalog.Product.ConnectionOperationName,
+                UnitOperationHostConfigurationIssueKind.RequiredPortDisconnected,
+                "Required port",
+                UnitOperationPortCatalog.Product.Name));
         var initialBundle = driver.ReadReport();
         UnitOperationSmokeReportAssertions.AssertEmpty(initialBundle, "empty calculation report");
 
@@ -111,10 +137,16 @@ internal static class UnitOperationSmokeBoundarySuite
             missingPackageConfiguration,
             "missing package configuration",
             UnitOperationHostConfigurationIssueKind.RequiredParameterMissing);
-        UnitOperationSmokeConfigurationAssertions.AssertNextOperations(
-            missingPackageConfiguration,
+        UnitOperationSmokeConfigurationAssertions.AssertActionPlan(
+            driver.ReadActionPlan(),
             "missing package configuration",
-            UnitOperationParameterCatalog.PropertyPackageId.ConfigurationOperationName);
+            UnitOperationSmokeConfigurationAssertions.Action(
+                UnitOperationHostActionGroupKind.Parameters,
+                UnitOperationHostActionTargetKind.Parameter,
+                UnitOperationParameterCatalog.PropertyPackageId.ConfigurationOperationName,
+                UnitOperationHostConfigurationIssueKind.RequiredParameterMissing,
+                "Required parameter",
+                UnitOperationParameterCatalog.PropertyPackageId.Name));
 
         var validationFailureAttempt = driver.Calculate();
         var validationFailureError = validationFailureAttempt.ExpectFailure<CapeBadInvocationOrderException>(
@@ -176,8 +208,8 @@ internal static class UnitOperationSmokeBoundarySuite
         UnitOperationSmokeConfigurationAssertions.AssertBlockingIssueKinds(
             readyConfiguration,
             "ready configuration");
-        UnitOperationSmokeConfigurationAssertions.AssertNextOperations(
-            readyConfiguration,
+        UnitOperationSmokeConfigurationAssertions.AssertActionPlan(
+            driver.ReadActionPlan(),
             "ready configuration");
 
         var validationResult = driver.Validate();
@@ -229,10 +261,16 @@ internal static class UnitOperationSmokeBoundarySuite
             disconnectedFeedConfiguration,
             "disconnected feed configuration",
             UnitOperationHostConfigurationIssueKind.RequiredPortDisconnected);
-        UnitOperationSmokeConfigurationAssertions.AssertNextOperations(
-            disconnectedFeedConfiguration,
+        UnitOperationSmokeConfigurationAssertions.AssertActionPlan(
+            driver.ReadActionPlan(),
             "disconnected feed configuration",
-            UnitOperationPortCatalog.Feed.ConnectionOperationName);
+            UnitOperationSmokeConfigurationAssertions.Action(
+                UnitOperationHostActionGroupKind.Ports,
+                UnitOperationHostActionTargetKind.Port,
+                UnitOperationPortCatalog.Feed.ConnectionOperationName,
+                UnitOperationHostConfigurationIssueKind.RequiredPortDisconnected,
+                "Required port",
+                UnitOperationPortCatalog.Feed.Name));
         var disconnectedPortValidation = driver.Validate();
         UnitOperationSmokeReportAssertions.EnsureCondition(
             !disconnectedPortValidation.IsValid &&
@@ -259,10 +297,17 @@ internal static class UnitOperationSmokeBoundarySuite
             companionMismatchConfiguration,
             "companion mismatch configuration",
             UnitOperationHostConfigurationIssueKind.CompanionParameterMismatch);
-        UnitOperationSmokeConfigurationAssertions.AssertNextOperations(
-            companionMismatchConfiguration,
+        UnitOperationSmokeConfigurationAssertions.AssertActionPlan(
+            driver.ReadActionPlan(),
             "companion mismatch configuration",
-            UnitOperationParameterCatalog.PropertyPackageManifestPath.ConfigurationOperationName);
+            UnitOperationSmokeConfigurationAssertions.Action(
+                UnitOperationHostActionGroupKind.Parameters,
+                UnitOperationHostActionTargetKind.Parameter,
+                UnitOperationParameterCatalog.PropertyPackageManifestPath.ConfigurationOperationName,
+                UnitOperationHostConfigurationIssueKind.CompanionParameterMismatch,
+                "must be configured together",
+                UnitOperationParameterCatalog.PropertyPackageManifestPath.Name,
+                UnitOperationParameterCatalog.PropertyPackagePayloadPath.Name));
         var companionValidation = driver.Validate();
         UnitOperationSmokeReportAssertions.EnsureCondition(
             !companionValidation.IsValid &&
@@ -294,6 +339,9 @@ internal static class UnitOperationSmokeBoundarySuite
             UnitOperationHostConfigurationState.Ready,
             expectedReady: true,
             "recovered configuration");
+        UnitOperationSmokeConfigurationAssertions.AssertActionPlan(
+            driver.ReadActionPlan(),
+            "recovered configuration");
         var recoveredSuccessAttempt = driver.Calculate();
         UnitOperationSmokeReportAssertions.EnsureCondition(
             recoveredSuccessAttempt.Succeeded,
@@ -321,9 +369,16 @@ internal static class UnitOperationSmokeBoundarySuite
             terminatedConfiguration,
             "terminated configuration",
             UnitOperationHostConfigurationIssueKind.Terminated);
-        UnitOperationSmokeConfigurationAssertions.AssertNextOperations(
-            terminatedConfiguration,
-            "terminated configuration");
+        UnitOperationSmokeConfigurationAssertions.AssertActionPlan(
+            driver.ReadActionPlan(),
+            "terminated configuration",
+            UnitOperationSmokeConfigurationAssertions.Action(
+                UnitOperationHostActionGroupKind.Terminal,
+                UnitOperationHostActionTargetKind.Unit,
+                null,
+                UnitOperationHostConfigurationIssueKind.Terminated,
+                "Terminate has already been called",
+                driver.UnitOperation.ComponentName));
         var terminatedBundle = driver.ReadReport();
         UnitOperationSmokeReportAssertions.AssertEmpty(terminatedBundle, "terminated host report");
         UnitOperationSmokeReportAssertions.EnsureCondition(!feedPort.IsConnected, "feed port should release its connected object during Terminate().");

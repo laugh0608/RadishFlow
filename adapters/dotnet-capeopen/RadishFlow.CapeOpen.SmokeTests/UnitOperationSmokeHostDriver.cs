@@ -124,6 +124,12 @@ internal sealed class UnitOperationSmokeHostDriver : IDisposable
         return UnitOperationHostConfigurationReader.Read(_unitOperation);
     }
 
+    public UnitOperationHostActionPlan ReadActionPlan()
+    {
+        ThrowIfDisposed();
+        return UnitOperationHostActionPlanReader.Read(_unitOperation);
+    }
+
     public UnitOperationHostReportBundle ReadReport()
     {
         ThrowIfDisposed();

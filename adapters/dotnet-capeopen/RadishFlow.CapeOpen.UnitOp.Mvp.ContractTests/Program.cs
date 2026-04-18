@@ -43,6 +43,7 @@ internal static class ContractTestExecutable
         {
             ("collection-contract", static context => ContractTests.Collections_ExposeStableLookupAndRejectInvalidSelectors(context)),
             ("configuration-contract", static context => ContractTests.ConfigurationSnapshot_ExposesReadinessAndNextOperations(context)),
+            ("action-plan-contract", static context => ContractTests.ActionPlan_ExposesCanonicalChecklistShape(context)),
             ("parameter-contract", static context => ContractTests.Parameters_ResetValidationStateAndFreezeMetadata(context)),
             ("port-contract", static context => ContractTests.Ports_RequireDisconnectBeforeReplacingConnections(context)),
             ("validate-before-initialize", static context => ContractTests.ValidateBeforeInitialize_ReturnsInvalidAndEmptyReport(context)),
@@ -341,6 +342,156 @@ internal static class ContractTests
         ContractAssert.Equal(0, terminatedSnapshot.PortEntries.Count, "Terminated configuration snapshot should not bypass lifecycle guards to expose port entries.");
     }
 
+    public static void ActionPlan_ExposesCanonicalChecklistShape(ContractTestContext context)
+    {
+        var constructedPlan = context.ReadActionPlan();
+        AssertActionPlan(
+            constructedPlan,
+            "constructed action plan",
+            Action(
+                UnitOperationHostActionGroupKind.Lifecycle,
+                UnitOperationHostActionTargetKind.Unit,
+                nameof(RadishFlowCapeOpenUnitOperation.Initialize),
+                UnitOperationHostConfigurationIssueKind.InitializeRequired,
+                "Initialize must be called",
+                context.UnitOperation.ComponentName),
+            Action(
+                UnitOperationHostActionGroupKind.Parameters,
+                UnitOperationHostActionTargetKind.Parameter,
+                UnitOperationParameterCatalog.FlowsheetJson.ConfigurationOperationName,
+                UnitOperationHostConfigurationIssueKind.RequiredParameterMissing,
+                "Required parameter",
+                UnitOperationParameterCatalog.FlowsheetJson.Name),
+            Action(
+                UnitOperationHostActionGroupKind.Parameters,
+                UnitOperationHostActionTargetKind.Parameter,
+                UnitOperationParameterCatalog.PropertyPackageId.ConfigurationOperationName,
+                UnitOperationHostConfigurationIssueKind.RequiredParameterMissing,
+                "Required parameter",
+                UnitOperationParameterCatalog.PropertyPackageId.Name),
+            Action(
+                UnitOperationHostActionGroupKind.Ports,
+                UnitOperationHostActionTargetKind.Port,
+                UnitOperationPortCatalog.Feed.ConnectionOperationName,
+                UnitOperationHostConfigurationIssueKind.RequiredPortDisconnected,
+                "Required port",
+                UnitOperationPortCatalog.Feed.Name),
+            Action(
+                UnitOperationHostActionGroupKind.Ports,
+                UnitOperationHostActionTargetKind.Port,
+                UnitOperationPortCatalog.Product.ConnectionOperationName,
+                UnitOperationHostConfigurationIssueKind.RequiredPortDisconnected,
+                "Required port",
+                UnitOperationPortCatalog.Product.Name));
+
+        context.Initialize();
+        context.LoadFlowsheet();
+        context.LoadPackageFiles();
+        context.ConnectRequiredPorts();
+
+        var missingRequiredParameterPlan = context.ReadActionPlan();
+        AssertActionPlan(
+            missingRequiredParameterPlan,
+            "missing required parameter action plan",
+            Action(
+                UnitOperationHostActionGroupKind.Parameters,
+                UnitOperationHostActionTargetKind.Parameter,
+                UnitOperationParameterCatalog.PropertyPackageId.ConfigurationOperationName,
+                UnitOperationHostConfigurationIssueKind.RequiredParameterMissing,
+                "Required parameter",
+                UnitOperationParameterCatalog.PropertyPackageId.Name));
+
+        context.SelectPackage();
+        var readyPlan = context.ReadActionPlan();
+        AssertActionPlan(readyPlan, "ready action plan");
+        ContractAssert.False(readyPlan.HasBlockingActions, "Ready action plan should not expose blocking actions.");
+
+        context.PayloadPathParameter.value = null;
+        var companionMismatchPlan = context.ReadActionPlan();
+        AssertActionPlan(
+            companionMismatchPlan,
+            "companion mismatch action plan",
+            Action(
+                UnitOperationHostActionGroupKind.Parameters,
+                UnitOperationHostActionTargetKind.Parameter,
+                UnitOperationParameterCatalog.PropertyPackageManifestPath.ConfigurationOperationName,
+                UnitOperationHostConfigurationIssueKind.CompanionParameterMismatch,
+                "must be configured together",
+                UnitOperationParameterCatalog.PropertyPackageManifestPath.Name,
+                UnitOperationParameterCatalog.PropertyPackagePayloadPath.Name));
+
+        context.PayloadPathParameter.value = context.PayloadPath;
+        context.DisconnectProductPort();
+        var disconnectedRequiredPortPlan = context.ReadActionPlan();
+        AssertActionPlan(
+            disconnectedRequiredPortPlan,
+            "disconnected required port action plan",
+            Action(
+                UnitOperationHostActionGroupKind.Ports,
+                UnitOperationHostActionTargetKind.Port,
+                UnitOperationPortCatalog.Product.ConnectionOperationName,
+                UnitOperationHostConfigurationIssueKind.RequiredPortDisconnected,
+                "Required port",
+                UnitOperationPortCatalog.Product.Name));
+
+        context.UnitOperation.Terminate();
+        var terminatedPlan = context.ReadActionPlan();
+        AssertActionPlan(
+            terminatedPlan,
+            "terminated action plan",
+            Action(
+                UnitOperationHostActionGroupKind.Terminal,
+                UnitOperationHostActionTargetKind.Unit,
+                null,
+                UnitOperationHostConfigurationIssueKind.Terminated,
+                "Terminate has already been called",
+                context.UnitOperation.ComponentName));
+        ContractAssert.False(terminatedPlan.ContainsCanonicalOperation(nameof(RadishFlowCapeOpenUnitOperation.Initialize)), "Terminated action plan should not suggest Initialize().");
+    }
+
+    private static void AssertActionPlan(
+        UnitOperationHostActionPlan actionPlan,
+        string scenario,
+        params ContractExpectedAction[] expectedActions)
+    {
+        ContractAssert.Equal(expectedActions.Length, actionPlan.ActionCount, $"{scenario} should expose the expected number of actions.");
+        ContractAssert.True(
+            actionPlan.Groups.All(static group => !string.IsNullOrWhiteSpace(group.Title) && group.Actions.Count > 0),
+            $"{scenario} should expose non-empty action-plan groups.");
+
+        var expectedGroupKinds = expectedActions
+            .Select(static action => action.GroupKind)
+            .Distinct()
+            .ToArray();
+        ContractAssert.SequenceEqual(
+            expectedGroupKinds,
+            actionPlan.Groups.Select(static group => group.Kind),
+            $"{scenario} should expose the expected action-plan group order.");
+
+        for (var index = 0; index < expectedActions.Length; index++)
+        {
+            expectedActions[index].AssertMatches(actionPlan.Actions[index], scenario, index + 1);
+        }
+    }
+
+    private static ContractExpectedAction Action(
+        UnitOperationHostActionGroupKind groupKind,
+        UnitOperationHostActionTargetKind targetKind,
+        string? canonicalOperationName,
+        UnitOperationHostConfigurationIssueKind issueKind,
+        string reasonFragment,
+        params string[] targetNames)
+    {
+        return new ContractExpectedAction(
+            GroupKind: groupKind,
+            TargetKind: targetKind,
+            TargetNames: targetNames,
+            CanonicalOperationName: canonicalOperationName,
+            IssueKind: issueKind,
+            ReasonFragment: reasonFragment,
+            IsBlocking: true);
+    }
+
     public static void Ports_RequireDisconnectBeforeReplacingConnections(ContractTestContext context)
     {
         context.Initialize();
@@ -518,6 +669,8 @@ internal sealed class ContractTestContext : IDisposable
 
     public string ManifestPath => _options.ManifestPath;
 
+    public string PayloadPath => _options.PayloadPath;
+
     public ICapeCollection ParameterCollection { get; }
 
     public ICapeCollection PortCollection { get; }
@@ -575,6 +728,11 @@ internal sealed class ContractTestContext : IDisposable
         return UnitOperationHostConfigurationReader.Read(UnitOperation);
     }
 
+    public UnitOperationHostActionPlan ReadActionPlan()
+    {
+        return UnitOperationHostActionPlanReader.Read(ReadConfiguration());
+    }
+
     public void ConfigureMinimumValidInputs()
     {
         Initialize();
@@ -587,6 +745,31 @@ internal sealed class ContractTestContext : IDisposable
     public void Dispose()
     {
         UnitOperation.Dispose();
+    }
+}
+
+internal sealed record ContractExpectedAction(
+    UnitOperationHostActionGroupKind GroupKind,
+    UnitOperationHostActionTargetKind TargetKind,
+    IReadOnlyList<string> TargetNames,
+    string? CanonicalOperationName,
+    UnitOperationHostConfigurationIssueKind IssueKind,
+    string ReasonFragment,
+    bool IsBlocking)
+{
+    public void AssertMatches(
+        UnitOperationHostActionItem actual,
+        string scenario,
+        int expectedOrder)
+    {
+        ContractAssert.Equal(expectedOrder, actual.RecommendedOrder, $"{scenario} should preserve recommended order.");
+        ContractAssert.Equal(GroupKind, actual.GroupKind, $"{scenario} should preserve action group.");
+        ContractAssert.Equal(TargetKind, actual.Target.Kind, $"{scenario} should preserve target kind.");
+        ContractAssert.SequenceEqual(TargetNames, actual.Target.Names, $"{scenario} should preserve target names.");
+        ContractAssert.Equal(IsBlocking, actual.IsBlocking, $"{scenario} should preserve blocking classification.");
+        ContractAssert.Equal(IssueKind, actual.IssueKind, $"{scenario} should preserve issue kind.");
+        ContractAssert.Equal(CanonicalOperationName, actual.CanonicalOperationName, $"{scenario} should preserve canonical operation.");
+        ContractAssert.Contains(actual.Reason, ReasonFragment, $"{scenario} should preserve action reason.");
     }
 }
 

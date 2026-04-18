@@ -36,12 +36,37 @@ internal sealed class UnitOperationSmokeSession : IDisposable
             UnitOperationHostConfigurationState.Incomplete,
             expectedReady: false,
             $"{roundLabel} configuration");
-        UnitOperationSmokeConfigurationAssertions.AssertNextOperations(
-            configuration,
+        UnitOperationSmokeConfigurationAssertions.AssertActionPlan(
+            _driver.ReadActionPlan(),
             $"{roundLabel} configuration",
-            UnitOperationParameterCatalog.FlowsheetJson.ConfigurationOperationName,
-            UnitOperationParameterCatalog.PropertyPackageId.ConfigurationOperationName,
-            UnitOperationPortCatalog.Feed.ConnectionOperationName);
+            UnitOperationSmokeConfigurationAssertions.Action(
+                UnitOperationHostActionGroupKind.Parameters,
+                UnitOperationHostActionTargetKind.Parameter,
+                UnitOperationParameterCatalog.FlowsheetJson.ConfigurationOperationName,
+                UnitOperationHostConfigurationIssueKind.RequiredParameterMissing,
+                "Required parameter",
+                UnitOperationParameterCatalog.FlowsheetJson.Name),
+            UnitOperationSmokeConfigurationAssertions.Action(
+                UnitOperationHostActionGroupKind.Parameters,
+                UnitOperationHostActionTargetKind.Parameter,
+                UnitOperationParameterCatalog.PropertyPackageId.ConfigurationOperationName,
+                UnitOperationHostConfigurationIssueKind.RequiredParameterMissing,
+                "Required parameter",
+                UnitOperationParameterCatalog.PropertyPackageId.Name),
+            UnitOperationSmokeConfigurationAssertions.Action(
+                UnitOperationHostActionGroupKind.Ports,
+                UnitOperationHostActionTargetKind.Port,
+                UnitOperationPortCatalog.Feed.ConnectionOperationName,
+                UnitOperationHostConfigurationIssueKind.RequiredPortDisconnected,
+                "Required port",
+                UnitOperationPortCatalog.Feed.Name),
+            UnitOperationSmokeConfigurationAssertions.Action(
+                UnitOperationHostActionGroupKind.Ports,
+                UnitOperationHostActionTargetKind.Port,
+                UnitOperationPortCatalog.Product.ConnectionOperationName,
+                UnitOperationHostConfigurationIssueKind.RequiredPortDisconnected,
+                "Required port",
+                UnitOperationPortCatalog.Product.Name));
         var report = _driver.ReadReport().Snapshot;
         UnitOperationSmokeReportAssertions.EnsureCondition(
             report.State == UnitOperationCalculationReportState.None,
@@ -59,8 +84,8 @@ internal sealed class UnitOperationSmokeSession : IDisposable
             UnitOperationHostConfigurationState.Ready,
             expectedReady: true,
             $"{roundLabel} configuration");
-        UnitOperationSmokeConfigurationAssertions.AssertNextOperations(
-            configuration,
+        UnitOperationSmokeConfigurationAssertions.AssertActionPlan(
+            _driver.ReadActionPlan(),
             $"{roundLabel} configuration");
         var validation = _driver.Validate();
         UnitOperationSmokeReportAssertions.EnsureCondition(
@@ -139,10 +164,17 @@ internal sealed class UnitOperationSmokeSession : IDisposable
             configuration,
             $"{roundLabel} configuration",
             UnitOperationHostConfigurationIssueKind.CompanionParameterMismatch);
-        UnitOperationSmokeConfigurationAssertions.AssertNextOperations(
-            configuration,
+        UnitOperationSmokeConfigurationAssertions.AssertActionPlan(
+            _driver.ReadActionPlan(),
             $"{roundLabel} configuration",
-            UnitOperationParameterCatalog.PropertyPackageManifestPath.ConfigurationOperationName);
+            UnitOperationSmokeConfigurationAssertions.Action(
+                UnitOperationHostActionGroupKind.Parameters,
+                UnitOperationHostActionTargetKind.Parameter,
+                UnitOperationParameterCatalog.PropertyPackageManifestPath.ConfigurationOperationName,
+                UnitOperationHostConfigurationIssueKind.CompanionParameterMismatch,
+                "must be configured together",
+                UnitOperationParameterCatalog.PropertyPackageManifestPath.Name,
+                UnitOperationParameterCatalog.PropertyPackagePayloadPath.Name));
         var validation = _driver.Validate();
         UnitOperationSmokeReportAssertions.EnsureCondition(
             !validation.IsValid &&
@@ -274,10 +306,16 @@ internal sealed class UnitOperationSmokeSession : IDisposable
             configuration,
             $"{roundLabel} configuration",
             UnitOperationHostConfigurationIssueKind.RequiredPortDisconnected);
-        UnitOperationSmokeConfigurationAssertions.AssertNextOperations(
-            configuration,
+        UnitOperationSmokeConfigurationAssertions.AssertActionPlan(
+            _driver.ReadActionPlan(),
             $"{roundLabel} configuration",
-            UnitOperationPortCatalog.GetByName(portName).ConnectionOperationName);
+            UnitOperationSmokeConfigurationAssertions.Action(
+                UnitOperationHostActionGroupKind.Ports,
+                UnitOperationHostActionTargetKind.Port,
+                UnitOperationPortCatalog.GetByName(portName).ConnectionOperationName,
+                UnitOperationHostConfigurationIssueKind.RequiredPortDisconnected,
+                "Required port",
+                portName));
         var validation = _driver.Validate();
         UnitOperationSmokeReportAssertions.EnsureCondition(
             !validation.IsValid &&
