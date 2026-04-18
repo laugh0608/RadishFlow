@@ -21,8 +21,26 @@ internal static class UnitOperationSmokeBoundarySuite
             "pre-initialize calculate should be classified as invocation-order failure and request Initialize().");
 
         driver.Initialize();
+        var initializedConfiguration = driver.ReadConfiguration();
+        UnitOperationSmokeConfigurationAssertions.AssertState(
+            initializedConfiguration,
+            UnitOperationHostConfigurationState.Incomplete,
+            expectedReady: false,
+            "initialized configuration");
+        UnitOperationSmokeConfigurationAssertions.AssertBlockingIssueKinds(
+            initializedConfiguration,
+            "initialized configuration",
+            UnitOperationHostConfigurationIssueKind.RequiredParameterMissing,
+            UnitOperationHostConfigurationIssueKind.RequiredParameterMissing,
+            UnitOperationHostConfigurationIssueKind.RequiredPortDisconnected,
+            UnitOperationHostConfigurationIssueKind.RequiredPortDisconnected);
+        UnitOperationSmokeConfigurationAssertions.AssertNextOperations(
+            initializedConfiguration,
+            "initialized configuration",
+            UnitOperationParameterCatalog.FlowsheetJson.ConfigurationOperationName,
+            UnitOperationParameterCatalog.PropertyPackageId.ConfigurationOperationName,
+            UnitOperationPortCatalog.Feed.ConnectionOperationName);
         var initialBundle = driver.ReadReport();
-        var initialReport = initialBundle.Snapshot;
         UnitOperationSmokeReportAssertions.AssertEmpty(initialBundle, "empty calculation report");
 
         var parameters = driver.Parameters;
@@ -83,6 +101,20 @@ internal static class UnitOperationSmokeBoundarySuite
 
         driver.ConfigureMinimumInputs(includePackageId: false);
         driver.ConnectRequiredPorts();
+        var missingPackageConfiguration = driver.ReadConfiguration();
+        UnitOperationSmokeConfigurationAssertions.AssertState(
+            missingPackageConfiguration,
+            UnitOperationHostConfigurationState.Incomplete,
+            expectedReady: false,
+            "missing package configuration");
+        UnitOperationSmokeConfigurationAssertions.AssertBlockingIssueKinds(
+            missingPackageConfiguration,
+            "missing package configuration",
+            UnitOperationHostConfigurationIssueKind.RequiredParameterMissing);
+        UnitOperationSmokeConfigurationAssertions.AssertNextOperations(
+            missingPackageConfiguration,
+            "missing package configuration",
+            UnitOperationParameterCatalog.PropertyPackageId.ConfigurationOperationName);
 
         var validationFailureAttempt = driver.Calculate();
         var validationFailureError = validationFailureAttempt.ExpectFailure<CapeBadInvocationOrderException>(
@@ -135,6 +167,18 @@ internal static class UnitOperationSmokeBoundarySuite
             "native failure host report lines should start with the headline before detail lines.");
 
         packageIdParameter.value = options.PackageId;
+        var readyConfiguration = driver.ReadConfiguration();
+        UnitOperationSmokeConfigurationAssertions.AssertState(
+            readyConfiguration,
+            UnitOperationHostConfigurationState.Ready,
+            expectedReady: true,
+            "ready configuration");
+        UnitOperationSmokeConfigurationAssertions.AssertBlockingIssueKinds(
+            readyConfiguration,
+            "ready configuration");
+        UnitOperationSmokeConfigurationAssertions.AssertNextOperations(
+            readyConfiguration,
+            "ready configuration");
 
         var validationResult = driver.Validate();
         Console.WriteLine("== Unit Validation ==");
@@ -175,6 +219,20 @@ internal static class UnitOperationSmokeBoundarySuite
             "repeated Calculate()");
 
         feedPort.Disconnect();
+        var disconnectedFeedConfiguration = driver.ReadConfiguration();
+        UnitOperationSmokeConfigurationAssertions.AssertState(
+            disconnectedFeedConfiguration,
+            UnitOperationHostConfigurationState.Incomplete,
+            expectedReady: false,
+            "disconnected feed configuration");
+        UnitOperationSmokeConfigurationAssertions.AssertBlockingIssueKinds(
+            disconnectedFeedConfiguration,
+            "disconnected feed configuration",
+            UnitOperationHostConfigurationIssueKind.RequiredPortDisconnected);
+        UnitOperationSmokeConfigurationAssertions.AssertNextOperations(
+            disconnectedFeedConfiguration,
+            "disconnected feed configuration",
+            UnitOperationPortCatalog.Feed.ConnectionOperationName);
         var disconnectedPortValidation = driver.Validate();
         UnitOperationSmokeReportAssertions.EnsureCondition(
             !disconnectedPortValidation.IsValid &&
@@ -191,6 +249,20 @@ internal static class UnitOperationSmokeBoundarySuite
             "reconnecting the required port should restore a valid minimal host configuration.");
 
         payloadPathParameter.value = null;
+        var companionMismatchConfiguration = driver.ReadConfiguration();
+        UnitOperationSmokeConfigurationAssertions.AssertState(
+            companionMismatchConfiguration,
+            UnitOperationHostConfigurationState.Incomplete,
+            expectedReady: false,
+            "companion mismatch configuration");
+        UnitOperationSmokeConfigurationAssertions.AssertBlockingIssueKinds(
+            companionMismatchConfiguration,
+            "companion mismatch configuration",
+            UnitOperationHostConfigurationIssueKind.CompanionParameterMismatch);
+        UnitOperationSmokeConfigurationAssertions.AssertNextOperations(
+            companionMismatchConfiguration,
+            "companion mismatch configuration",
+            UnitOperationParameterCatalog.PropertyPackageManifestPath.ConfigurationOperationName);
         var companionValidation = driver.Validate();
         UnitOperationSmokeReportAssertions.EnsureCondition(
             !companionValidation.IsValid &&
@@ -216,6 +288,12 @@ internal static class UnitOperationSmokeBoundarySuite
         UnitOperationSmokeReportAssertions.EnsureCondition(
             recoveredValidation.IsValid,
             "restoring manifest/payload inputs should recover the unit to a valid host configuration.");
+        var recoveredConfiguration = driver.ReadConfiguration();
+        UnitOperationSmokeConfigurationAssertions.AssertState(
+            recoveredConfiguration,
+            UnitOperationHostConfigurationState.Ready,
+            expectedReady: true,
+            "recovered configuration");
         var recoveredSuccessAttempt = driver.Calculate();
         UnitOperationSmokeReportAssertions.EnsureCondition(
             recoveredSuccessAttempt.Succeeded,
@@ -233,6 +311,19 @@ internal static class UnitOperationSmokeBoundarySuite
         Console.WriteLine();
 
         driver.Terminate();
+        var terminatedConfiguration = driver.ReadConfiguration();
+        UnitOperationSmokeConfigurationAssertions.AssertState(
+            terminatedConfiguration,
+            UnitOperationHostConfigurationState.Terminated,
+            expectedReady: false,
+            "terminated configuration");
+        UnitOperationSmokeConfigurationAssertions.AssertBlockingIssueKinds(
+            terminatedConfiguration,
+            "terminated configuration",
+            UnitOperationHostConfigurationIssueKind.Terminated);
+        UnitOperationSmokeConfigurationAssertions.AssertNextOperations(
+            terminatedConfiguration,
+            "terminated configuration");
         var terminatedBundle = driver.ReadReport();
         UnitOperationSmokeReportAssertions.AssertEmpty(terminatedBundle, "terminated host report");
         UnitOperationSmokeReportAssertions.EnsureCondition(!feedPort.IsConnected, "feed port should release its connected object during Terminate().");

@@ -607,6 +607,8 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
 
     private bool IsDisposed => _lifecycleState == UnitOperationLifecycleState.Disposed;
 
+    internal UnitOperationLifecycleState HostLifecycleState => _lifecycleState;
+
     private UnitOperationParameterPlaceholder FlowsheetParameter => GetParameterPlaceholder(UnitOperationParameterCatalog.FlowsheetJson);
 
     private UnitOperationParameterPlaceholder PackageIdParameter => GetParameterPlaceholder(UnitOperationParameterCatalog.PropertyPackageId);

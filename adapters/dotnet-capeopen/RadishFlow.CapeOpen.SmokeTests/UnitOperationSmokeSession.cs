@@ -30,6 +30,18 @@ internal sealed class UnitOperationSmokeSession : IDisposable
     public void InitializeAndExpectIdle(string roundLabel)
     {
         _driver.Initialize();
+        var configuration = _driver.ReadConfiguration();
+        UnitOperationSmokeConfigurationAssertions.AssertState(
+            configuration,
+            UnitOperationHostConfigurationState.Incomplete,
+            expectedReady: false,
+            $"{roundLabel} configuration");
+        UnitOperationSmokeConfigurationAssertions.AssertNextOperations(
+            configuration,
+            $"{roundLabel} configuration",
+            UnitOperationParameterCatalog.FlowsheetJson.ConfigurationOperationName,
+            UnitOperationParameterCatalog.PropertyPackageId.ConfigurationOperationName,
+            UnitOperationPortCatalog.Feed.ConnectionOperationName);
         var report = _driver.ReadReport().Snapshot;
         UnitOperationSmokeReportAssertions.EnsureCondition(
             report.State == UnitOperationCalculationReportState.None,
@@ -41,6 +53,15 @@ internal sealed class UnitOperationSmokeSession : IDisposable
     {
         _driver.ConfigureMinimumInputs(includePackageId: true);
         _driver.ConnectRequiredPorts();
+        var configuration = _driver.ReadConfiguration();
+        UnitOperationSmokeConfigurationAssertions.AssertState(
+            configuration,
+            UnitOperationHostConfigurationState.Ready,
+            expectedReady: true,
+            $"{roundLabel} configuration");
+        UnitOperationSmokeConfigurationAssertions.AssertNextOperations(
+            configuration,
+            $"{roundLabel} configuration");
         var validation = _driver.Validate();
         UnitOperationSmokeReportAssertions.EnsureCondition(
             validation.IsValid,
@@ -94,6 +115,12 @@ internal sealed class UnitOperationSmokeSession : IDisposable
     public void RestorePackageAndExpectValid(string roundLabel, string packageId)
     {
         _driver.PackageIdParameter.value = packageId;
+        var configuration = _driver.ReadConfiguration();
+        UnitOperationSmokeConfigurationAssertions.AssertState(
+            configuration,
+            UnitOperationHostConfigurationState.Ready,
+            expectedReady: true,
+            $"{roundLabel} configuration");
         var validation = _driver.Validate();
         UnitOperationSmokeReportAssertions.EnsureCondition(validation.IsValid, $"{roundLabel} should restore a valid package configuration.");
         _timeline.Add($"{roundLabel} package-restored: validation=valid");
@@ -102,6 +129,20 @@ internal sealed class UnitOperationSmokeSession : IDisposable
     public void BreakCompanionInputsAndExpectValidationFailure(string roundLabel)
     {
         _driver.ManifestPathParameter.value = null;
+        var configuration = _driver.ReadConfiguration();
+        UnitOperationSmokeConfigurationAssertions.AssertState(
+            configuration,
+            UnitOperationHostConfigurationState.Incomplete,
+            expectedReady: false,
+            $"{roundLabel} configuration");
+        UnitOperationSmokeConfigurationAssertions.AssertBlockingIssueKinds(
+            configuration,
+            $"{roundLabel} configuration",
+            UnitOperationHostConfigurationIssueKind.CompanionParameterMismatch);
+        UnitOperationSmokeConfigurationAssertions.AssertNextOperations(
+            configuration,
+            $"{roundLabel} configuration",
+            UnitOperationParameterCatalog.PropertyPackageManifestPath.ConfigurationOperationName);
         var validation = _driver.Validate();
         UnitOperationSmokeReportAssertions.EnsureCondition(
             !validation.IsValid &&
@@ -123,6 +164,12 @@ internal sealed class UnitOperationSmokeSession : IDisposable
     public void RestoreMinimumInputsAndExpectValid(string roundLabel)
     {
         _driver.ConfigureMinimumInputs(includePackageId: true);
+        var configuration = _driver.ReadConfiguration();
+        UnitOperationSmokeConfigurationAssertions.AssertState(
+            configuration,
+            UnitOperationHostConfigurationState.Ready,
+            expectedReady: true,
+            $"{roundLabel} configuration");
         var validation = _driver.Validate();
         UnitOperationSmokeReportAssertions.EnsureCondition(validation.IsValid, $"{roundLabel} should restore a valid minimum input set.");
         _timeline.Add($"{roundLabel} inputs-restored: validation=valid");
@@ -151,6 +198,16 @@ internal sealed class UnitOperationSmokeSession : IDisposable
     public void TerminateAndExpectClosed(string roundLabel)
     {
         _driver.Terminate();
+        var configuration = _driver.ReadConfiguration();
+        UnitOperationSmokeConfigurationAssertions.AssertState(
+            configuration,
+            UnitOperationHostConfigurationState.Terminated,
+            expectedReady: false,
+            $"{roundLabel} configuration");
+        UnitOperationSmokeConfigurationAssertions.AssertBlockingIssueKinds(
+            configuration,
+            $"{roundLabel} configuration",
+            UnitOperationHostConfigurationIssueKind.Terminated);
         var report = _driver.ReadReport().Snapshot;
         UnitOperationSmokeReportAssertions.EnsureCondition(
             report.State == UnitOperationCalculationReportState.None,
@@ -207,6 +264,20 @@ internal sealed class UnitOperationSmokeSession : IDisposable
         string portName)
     {
         port.Disconnect();
+        var configuration = _driver.ReadConfiguration();
+        UnitOperationSmokeConfigurationAssertions.AssertState(
+            configuration,
+            UnitOperationHostConfigurationState.Incomplete,
+            expectedReady: false,
+            $"{roundLabel} configuration");
+        UnitOperationSmokeConfigurationAssertions.AssertBlockingIssueKinds(
+            configuration,
+            $"{roundLabel} configuration",
+            UnitOperationHostConfigurationIssueKind.RequiredPortDisconnected);
+        UnitOperationSmokeConfigurationAssertions.AssertNextOperations(
+            configuration,
+            $"{roundLabel} configuration",
+            UnitOperationPortCatalog.GetByName(portName).ConnectionOperationName);
         var validation = _driver.Validate();
         UnitOperationSmokeReportAssertions.EnsureCondition(
             !validation.IsValid &&
@@ -225,6 +296,12 @@ internal sealed class UnitOperationSmokeSession : IDisposable
         string portName)
     {
         port.Connect(new SmokeConnectedObject(componentName));
+        var configuration = _driver.ReadConfiguration();
+        UnitOperationSmokeConfigurationAssertions.AssertState(
+            configuration,
+            UnitOperationHostConfigurationState.Ready,
+            expectedReady: true,
+            $"{roundLabel} configuration");
         var validation = _driver.Validate();
         UnitOperationSmokeReportAssertions.EnsureCondition(
             validation.IsValid,

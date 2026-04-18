@@ -42,6 +42,7 @@ internal static class ContractTestExecutable
         var tests = new (string Name, Action<ContractTestContext> Execute)[]
         {
             ("collection-contract", static context => ContractTests.Collections_ExposeStableLookupAndRejectInvalidSelectors(context)),
+            ("configuration-contract", static context => ContractTests.ConfigurationSnapshot_ExposesReadinessAndNextOperations(context)),
             ("parameter-contract", static context => ContractTests.Parameters_ResetValidationStateAndFreezeMetadata(context)),
             ("port-contract", static context => ContractTests.Ports_RequireDisconnectBeforeReplacingConnections(context)),
             ("validate-before-initialize", static context => ContractTests.ValidateBeforeInitialize_ReturnsInvalidAndEmptyReport(context)),
@@ -290,6 +291,56 @@ internal static class ContractTests
         ContractAssert.Contains(postTerminateSpecError.Description, "Terminate has already been called", "Post-terminate spec access should preserve lifecycle guidance.");
     }
 
+    public static void ConfigurationSnapshot_ExposesReadinessAndNextOperations(ContractTestContext context)
+    {
+        var constructedSnapshot = context.ReadConfiguration();
+        ContractAssert.Equal(UnitOperationHostConfigurationState.Constructed, constructedSnapshot.State, "Configuration snapshot should expose constructed state before Initialize().");
+        ContractAssert.False(constructedSnapshot.IsReadyForCalculate, "Configuration snapshot should not report ready before Initialize().");
+        ContractAssert.Equal(4, constructedSnapshot.ParameterEntries.Count, "Configuration snapshot should expose parameter entries in frozen catalog order.");
+        ContractAssert.Equal(2, constructedSnapshot.PortEntries.Count, "Configuration snapshot should expose port entries in frozen catalog order.");
+        ContractAssert.Equal(UnitOperationHostConfigurationIssueKind.InitializeRequired, constructedSnapshot.BlockingIssues[0].Kind, "Constructed configuration snapshot should lead with InitializeRequired.");
+        ContractAssert.True(constructedSnapshot.ContainsNextOperation(nameof(RadishFlowCapeOpenUnitOperation.Initialize)), "Constructed configuration snapshot should direct the host to Initialize().");
+        ContractAssert.True(constructedSnapshot.ContainsNextOperation(UnitOperationParameterCatalog.FlowsheetJson.ConfigurationOperationName), "Constructed configuration snapshot should already expose the flowsheet configuration operation.");
+        ContractAssert.True(constructedSnapshot.ContainsNextOperation(UnitOperationParameterCatalog.PropertyPackageId.ConfigurationOperationName), "Constructed configuration snapshot should already expose the package selection operation.");
+        ContractAssert.True(constructedSnapshot.ContainsNextOperation(UnitOperationPortCatalog.Feed.ConnectionOperationName), "Constructed configuration snapshot should already expose the port connection operation.");
+        ContractAssert.False(constructedSnapshot.GetParameter(UnitOperationParameterCatalog.FlowsheetJson.Name).IsConfigured, "Flowsheet parameter should start unconfigured in configuration snapshot.");
+        ContractAssert.False(constructedSnapshot.GetPort(UnitOperationPortCatalog.Product.Name).IsConnected, "Product port should start disconnected in configuration snapshot.");
+
+        context.Initialize();
+        context.LoadFlowsheet();
+        context.SelectPackage();
+        context.ConnectRequiredPorts();
+
+        var readySnapshot = context.ReadConfiguration();
+        ContractAssert.Equal(UnitOperationHostConfigurationState.Ready, readySnapshot.State, "Configuration snapshot should expose ready state once minimum calculate inputs are present.");
+        ContractAssert.True(readySnapshot.IsReadyForCalculate, "Configuration snapshot should report ready once minimum calculate inputs are present.");
+        ContractAssert.Equal(0, readySnapshot.BlockingIssueCount, "Ready configuration snapshot should not expose blocking issues.");
+        ContractAssert.Equal(0, readySnapshot.NextOperations.Count, "Ready configuration snapshot should not expose follow-up operations.");
+        ContractAssert.True(readySnapshot.GetParameter(UnitOperationParameterCatalog.FlowsheetJson.Name).IsConfigured, "Flowsheet parameter should report configured in ready configuration snapshot.");
+        ContractAssert.True(readySnapshot.GetParameter(UnitOperationParameterCatalog.PropertyPackageId.Name).IsConfigured, "Package id parameter should report configured in ready configuration snapshot.");
+        ContractAssert.False(readySnapshot.GetParameter(UnitOperationParameterCatalog.PropertyPackageManifestPath.Name).IsConfigured, "Optional manifest parameter should remain unconfigured until explicitly loaded.");
+        ContractAssert.True(readySnapshot.GetPort(UnitOperationPortCatalog.Feed.Name).IsConnected, "Feed port should report connected in ready configuration snapshot.");
+        ContractAssert.True(readySnapshot.GetPort(UnitOperationPortCatalog.Product.Name).IsConnected, "Product port should report connected in ready configuration snapshot.");
+
+        context.ManifestPathParameter.value = context.ManifestPath;
+        var companionMismatchSnapshot = context.ReadConfiguration();
+        ContractAssert.Equal(UnitOperationHostConfigurationState.Incomplete, companionMismatchSnapshot.State, "Configuration snapshot should downgrade to incomplete when companion parameters diverge.");
+        ContractAssert.False(companionMismatchSnapshot.IsReadyForCalculate, "Companion mismatch should clear configuration readiness.");
+        ContractAssert.Equal(UnitOperationHostConfigurationIssueKind.CompanionParameterMismatch, companionMismatchSnapshot.BlockingIssues[0].Kind, "Companion mismatch should expose the matching issue kind.");
+        ContractAssert.True(companionMismatchSnapshot.ContainsNextOperation(UnitOperationParameterCatalog.PropertyPackageManifestPath.ConfigurationOperationName), "Companion mismatch should direct the host to the shared property package file operation.");
+
+        context.UnitOperation.Terminate();
+
+        var terminatedSnapshot = context.ReadConfiguration();
+        ContractAssert.Equal(UnitOperationHostConfigurationState.Terminated, terminatedSnapshot.State, "Configuration snapshot should expose terminated state after Terminate().");
+        ContractAssert.False(terminatedSnapshot.IsReadyForCalculate, "Terminated configuration snapshot should not report ready.");
+        ContractAssert.Equal(1, terminatedSnapshot.BlockingIssueCount, "Terminated configuration snapshot should collapse to a single terminal issue.");
+        ContractAssert.Equal(UnitOperationHostConfigurationIssueKind.Terminated, terminatedSnapshot.BlockingIssues[0].Kind, "Terminated configuration snapshot should expose the terminal issue kind.");
+        ContractAssert.Equal(0, terminatedSnapshot.NextOperations.Count, "Terminated configuration snapshot should not suggest recovery operations.");
+        ContractAssert.Equal(0, terminatedSnapshot.ParameterEntries.Count, "Terminated configuration snapshot should not bypass lifecycle guards to expose parameter entries.");
+        ContractAssert.Equal(0, terminatedSnapshot.PortEntries.Count, "Terminated configuration snapshot should not bypass lifecycle guards to expose port entries.");
+    }
+
     public static void Ports_RequireDisconnectBeforeReplacingConnections(ContractTestContext context)
     {
         context.Initialize();
@@ -517,6 +568,11 @@ internal sealed class ContractTestContext : IDisposable
     public bool IsProductPortConnected()
     {
         return UnitOperation.Ports.GetByName(UnitOperationPortCatalog.Product.Name).connectedObject is not null;
+    }
+
+    public UnitOperationHostConfigurationSnapshot ReadConfiguration()
+    {
+        return UnitOperationHostConfigurationReader.Read(UnitOperation);
     }
 
     public void ConfigureMinimumValidInputs()
