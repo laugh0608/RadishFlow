@@ -41,6 +41,7 @@
 - 当前 `UnitOperationParameterCatalog` / `UnitOperationPortCatalog` 已进一步从“名字常量表”推进到“完整定义真相源”，把 canonical name、collection order、description、required/value-kind/mode 与 direction/port-type 一并收口，避免这些宿主契约继续散落在构造函数和测试字面量里
 - 当前 parameter/port placeholder 又已进一步从“复制 catalog 元数据到运行时实例”收口为“直接绑定 catalog definition 对象”；运行时只保留 value / connection 这类可变状态，避免 definition 与 placeholder 元数据再次出现漂移
 - 当前 `RadishFlowCapeOpenUnitOperation` 自身也已改成按 `OrderedDefinitions` 构造 parameter/port collection，并通过 catalog 名称回取 canonical placeholder；这样 unit 内部不再额外维护一套私有参数/端口清单，catalog + typed collection 才是唯一真相源
+- 当前 parameter/port catalog 又已继续吸收“宿主应调用哪个公开操作来配置该对象”这层语义：parameter definition 现显式声明 `ConfigurationOperationName`，port definition 现显式声明 `ConnectionOperationName`；`Validate()` / `Calculate()` 失败时返回的 `requestedOperation` 已改为从这份 definition 元数据派生，而不是在 unit / smoke / contract tests 中各自硬编码
 - 当前参数对象内部已补上最小元数据收口：区分 `StructuredJsonText` / `Identifier` / `FilePath` 三类值语义，保留对外 `ICapeParameterSpec.Type = CAPE_OPTION`，并显式记录默认值、是否允许空值与 manifest/payload 这类成对出现约束
 - 当前参数对象又已把 `Specification` 从参数实例本身分离为独立只读 spec 对象；宿主重复读取时拿到稳定 spec 引用，而不再让 `ICapeParameter` 与 `ICapeParameterSpec` 混成同一个运行时对象
 - 当前参数对象的 `Mode` 也已冻结为运行时不可变元数据；MVP runtime 当前只接受初始化时定义好的 mode，宿主不能在运行过程中把 input 参数改写成 output/input-output
@@ -68,6 +69,7 @@
 - 在上述对象面 contract tests 基础上，当前又已补上 spec 对象稳定性、post-terminate spec access guard 与 parameter mode immutability 三条参数语义约束，避免后续再次把参数对象回退成“值对象和 spec 对象合一”的松散实现
 - 当前 `SmokeTests` 与 `ContractTests` 也已切到消费同一份 parameter/port catalog；后续若 canonical order 或对象定义继续演进，应优先改 catalog，而不是在多个 host/test 入口各自追字面量
 - 当前 contract tests 又已把 typed runtime collection 本身纳入行为契约：除 `ICapeCollection.Item(object)` 兼容面外，还锁住了 `ContainsName/TryGetByName/GetByName/GetByOneBasedIndex` 的成功/失败语义，并要求 typed lookup 返回的对象与集合中的 placeholder 实例保持同一引用
+- 当前 contract tests 又已补上 companion validation failure 这条 case，并锁住 requested operation 会从 parameter catalog 的共享 `ConfigurationOperationName` 回读；`SmokeTests` 的 validation/native failure 断言也已同步改成依赖这份 catalog 元数据，而不是私有 `nameof(...)` 字面量
 - Rust/.NET 边界仍保持为句柄 + UTF-8 + JSON + 状态码，没有在这里提前引入 COM 注册或更宽的跨边界对象传递
 
 最小 contract tests 运行示例：

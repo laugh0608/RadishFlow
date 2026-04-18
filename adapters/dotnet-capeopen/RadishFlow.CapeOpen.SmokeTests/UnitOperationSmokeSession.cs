@@ -112,7 +112,10 @@ internal sealed class UnitOperationSmokeSession : IDisposable
             UnitOperationHostDriverFailureKind.Validation,
             $"{roundLabel} broken companion inputs");
         UnitOperationSmokeReportAssertions.EnsureCondition(
-            string.Equals(error.RequestedOperation, nameof(RadishFlowCapeOpenUnitOperation.LoadPropertyPackageFiles), StringComparison.Ordinal),
+            string.Equals(
+                error.RequestedOperation,
+                UnitOperationParameterCatalog.PropertyPackageManifestPath.ConfigurationOperationName,
+                StringComparison.Ordinal),
             $"{roundLabel} should request LoadPropertyPackageFiles().");
         _timeline.Add($"{roundLabel} validation-failure: requested={error.RequestedOperation}");
     }

@@ -46,6 +46,7 @@ internal static class ContractTestExecutable
             ("port-contract", static context => ContractTests.Ports_RequireDisconnectBeforeReplacingConnections(context)),
             ("validate-before-initialize", static context => ContractTests.ValidateBeforeInitialize_ReturnsInvalidAndEmptyReport(context)),
             ("validation-failure-report", static context => ContractTests.CalculateValidationFailure_PopulatesFailureReport(context)),
+            ("companion-validation-report", static context => ContractTests.CalculateCompanionValidationFailure_PopulatesFailureReport(context)),
             ("native-failure-report", static context => ContractTests.CalculateNativeFailure_PopulatesFailureReport(context)),
             ("success-report", static context => ContractTests.SuccessfulCalculate_PopulatesSuccessReport(context)),
             ("configuration-invalidation", static context => ContractTests.ConfigurationChange_ClearsReportAndMarksNotValidated(context)),
@@ -196,10 +197,34 @@ internal static class ContractTests
             UnitOperationParameterCatalog.TryGetByName("flowsheet json", out var flowsheetDefinition) &&
             ReferenceEquals(UnitOperationParameterCatalog.FlowsheetJson, flowsheetDefinition),
             "Parameter catalog should support case-insensitive lookup.");
+        ContractAssert.Equal(
+            nameof(RadishFlowCapeOpenUnitOperation.LoadFlowsheetJson),
+            UnitOperationParameterCatalog.FlowsheetJson.ConfigurationOperationName,
+            "Flowsheet parameter should point hosts back to LoadFlowsheetJson().");
+        ContractAssert.Equal(
+            nameof(RadishFlowCapeOpenUnitOperation.SelectPropertyPackage),
+            UnitOperationParameterCatalog.PropertyPackageId.ConfigurationOperationName,
+            "Package id parameter should point hosts back to SelectPropertyPackage().");
+        ContractAssert.Equal(
+            nameof(RadishFlowCapeOpenUnitOperation.LoadPropertyPackageFiles),
+            UnitOperationParameterCatalog.PropertyPackageManifestPath.ConfigurationOperationName,
+            "Manifest parameter should point hosts back to LoadPropertyPackageFiles().");
+        ContractAssert.Equal(
+            UnitOperationParameterCatalog.PropertyPackageManifestPath.ConfigurationOperationName,
+            UnitOperationParameterCatalog.PropertyPackagePayloadPath.ConfigurationOperationName,
+            "Companion parameters should share the same configuration operation.");
         ContractAssert.True(
             UnitOperationPortCatalog.TryGetByName("product", out var productDefinition) &&
             ReferenceEquals(UnitOperationPortCatalog.Product, productDefinition),
             "Port catalog should support case-insensitive lookup.");
+        ContractAssert.Equal(
+            nameof(RadishFlowCapeOpenUnitOperation.SetPortConnected),
+            UnitOperationPortCatalog.Feed.ConnectionOperationName,
+            "Feed port should point hosts back to SetPortConnected().");
+        ContractAssert.Equal(
+            UnitOperationPortCatalog.Feed.ConnectionOperationName,
+            UnitOperationPortCatalog.Product.ConnectionOperationName,
+            "Required ports should share the same connection operation in the current MVP runtime.");
         var missingParameterDefinitionError = ContractAssert.Throws<ArgumentException>(
             () => UnitOperationParameterCatalog.GetByName("missing-parameter"),
             "Unknown parameter definitions should be rejected by the catalog.");
@@ -323,10 +348,32 @@ internal static class ContractTests
         ContractAssert.Equal(CapeValidationStatus.Invalid, context.UnitOperation.ValStatus, "Validation failure should set ValStatus to Invalid.");
         ContractAssert.Equal(UnitOperationCalculationReportState.Failure, context.UnitOperation.GetCalculationReportState(), "Validation failure should publish failure report state.");
         ContractAssert.Equal(error.ErrorName, context.UnitOperation.GetCalculationReportDetailValue(UnitOperationCalculationReportDetailCatalog.Error), "Failure report should preserve semantic error name.");
-        ContractAssert.Equal(nameof(RadishFlowCapeOpenUnitOperation.SelectPropertyPackage), context.UnitOperation.GetCalculationReportDetailValue(UnitOperationCalculationReportDetailCatalog.RequestedOperation), "Validation failure should point back to SelectPropertyPackage().");
+        ContractAssert.Equal(UnitOperationParameterCatalog.PropertyPackageId.ConfigurationOperationName, context.UnitOperation.GetCalculationReportDetailValue(UnitOperationCalculationReportDetailCatalog.RequestedOperation), "Validation failure should point back to the package-id configuration operation frozen in the catalog.");
         ContractAssert.Null(context.UnitOperation.GetCalculationReportDetailValue(UnitOperationCalculationReportDetailCatalog.NativeStatus), "Validation failure should not invent native status.");
         ContractAssert.Null(context.UnitOperation.LastCalculationResult, "Validation failure should not preserve a stale success result.");
         ContractAssert.NotNull(context.UnitOperation.LastCalculationFailure, "Validation failure should preserve failure summary.");
+    }
+
+    public static void CalculateCompanionValidationFailure_PopulatesFailureReport(ContractTestContext context)
+    {
+        context.Initialize();
+        context.LoadFlowsheet();
+        context.SelectPackage();
+        context.ManifestPathParameter.value = context.ManifestPath;
+        context.ConnectRequiredPorts();
+
+        var error = ContractAssert.Throws<CapeBadInvocationOrderException>(
+            static unitOperation => unitOperation.Calculate(),
+            context.UnitOperation,
+            "Calculate() with only one companion file path should fail at the validation boundary.");
+
+        ContractAssert.Equal(CapeValidationStatus.Invalid, context.UnitOperation.ValStatus, "Companion validation failure should set ValStatus to Invalid.");
+        ContractAssert.Equal(UnitOperationCalculationReportState.Failure, context.UnitOperation.GetCalculationReportState(), "Companion validation failure should publish failure report state.");
+        ContractAssert.Equal(error.ErrorName, context.UnitOperation.GetCalculationReportDetailValue(UnitOperationCalculationReportDetailCatalog.Error), "Companion validation failure report should preserve semantic error name.");
+        ContractAssert.Equal(UnitOperationParameterCatalog.PropertyPackageManifestPath.ConfigurationOperationName, context.UnitOperation.GetCalculationReportDetailValue(UnitOperationCalculationReportDetailCatalog.RequestedOperation), "Companion validation failure should point back to the shared configuration operation frozen in the catalog.");
+        ContractAssert.Null(context.UnitOperation.GetCalculationReportDetailValue(UnitOperationCalculationReportDetailCatalog.NativeStatus), "Companion validation failure should not invent native status.");
+        ContractAssert.Null(context.UnitOperation.LastCalculationResult, "Companion validation failure should not preserve a stale success result.");
+        ContractAssert.NotNull(context.UnitOperation.LastCalculationFailure, "Companion validation failure should preserve failure summary.");
     }
 
     public static void CalculateNativeFailure_PopulatesFailureReport(ContractTestContext context)

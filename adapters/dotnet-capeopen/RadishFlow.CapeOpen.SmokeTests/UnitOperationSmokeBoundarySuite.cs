@@ -99,13 +99,13 @@ internal static class UnitOperationSmokeBoundarySuite
                               string.Equals(key, UnitOperationCalculationReportDetailCatalog.Operation, StringComparison.Ordinal) ||
                               string.Equals(key, UnitOperationCalculationReportDetailCatalog.RequestedOperation, StringComparison.Ordinal))
                 .ToArray(),
-            expectedRequestedOperation: nameof(RadishFlowCapeOpenUnitOperation.SelectPropertyPackage));
+            expectedRequestedOperation: UnitOperationParameterCatalog.PropertyPackageId.ConfigurationOperationName);
         UnitOperationSmokeReportAssertions.EnsureCondition(
             validationFailureReport.ScalarLines.Count == validationFailureReport.DetailKeyCount + 1,
             "validation failure host report should expose headline plus stable detail entries.");
         UnitOperationSmokeReportAssertions.EnsureCondition(
             validationFailureReport.Text.Contains(validationFailureReport.Headline, StringComparison.Ordinal) &&
-            validationFailureReport.Text.Contains("requestedOperation=SelectPropertyPackage", StringComparison.Ordinal),
+            validationFailureReport.Text.Contains($"requestedOperation={UnitOperationParameterCatalog.PropertyPackageId.ConfigurationOperationName}", StringComparison.Ordinal),
             "validation failure host report text should include both the headline and requested operation.");
 
         packageIdParameter.value = "missing-package-for-smoke";
@@ -204,11 +204,11 @@ internal static class UnitOperationSmokeBoundarySuite
         UnitOperationSmokeReportAssertions.EnsureCondition(
             string.Equals(
                 companionFailureError.RequestedOperation,
-                nameof(RadishFlowCapeOpenUnitOperation.LoadPropertyPackageFiles),
+                UnitOperationParameterCatalog.PropertyPackageManifestPath.ConfigurationOperationName,
                 StringComparison.Ordinal) &&
             string.Equals(
                 companionFailureReport.GetDetailValue(UnitOperationCalculationReportDetailCatalog.RequestedOperation),
-                nameof(RadishFlowCapeOpenUnitOperation.LoadPropertyPackageFiles),
+                UnitOperationParameterCatalog.PropertyPackageManifestPath.ConfigurationOperationName,
                 StringComparison.Ordinal),
             "companion-parameter validation failure should point the host back to LoadPropertyPackageFiles().");
         driver.ConfigureMinimumInputs(includePackageId: true);

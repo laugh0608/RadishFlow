@@ -14,8 +14,6 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
     private const string UtilitiesInterfaceName = nameof(ICapeUtilities);
     private const string UnitInterfaceName = nameof(ICapeUnit);
     private const string UnitScope = "RadishFlow.CapeOpen.UnitOp.Mvp";
-    private const string ConnectPortOperation = nameof(SetPortConnected);
-
     private object? _simulationContext;
     private UnitOperationCalculationResult? _lastCalculationResult;
     private UnitOperationCalculationFailure? _lastCalculationFailure;
@@ -191,11 +189,16 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(portName);
         ThrowIfDisposed();
-        ThrowIfTerminated(ConnectPortOperation, UnitInterfaceName);
+        ThrowIfTerminated(nameof(SetPortConnected), UnitInterfaceName);
 
-        var port = FindPort(portName) ?? throw new CapeInvalidArgumentException(
+        if (!UnitOperationPortCatalog.TryGetByName(portName, out var portDefinition))
+        {
+            throw new CapeInvalidArgumentException(
             $"Unknown placeholder port `{portName}`.",
-            CreateContext(UnitInterfaceName, ConnectPortOperation, moreInfo: portName));
+            CreateContext(UnitInterfaceName, nameof(SetPortConnected), moreInfo: portName));
+        }
+
+        var port = GetPortPlaceholder(portDefinition);
         if (isConnected)
         {
             port.ConnectPlaceholder();
@@ -336,30 +339,20 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
             CreateContext(UnitInterfaceName, operation, moreInfo: result.Message));
     }
 
-    private UnitOperationPortPlaceholder? FindPort(string portName)
-    {
-        return Ports.TryGetByName(portName, out var port) ? port : null;
-    }
-
     private ValidationResult? EvaluateParameterCompanionValidation()
     {
         var evaluatedPairs = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-        foreach (var parameter in Parameters)
+        foreach (var definition in UnitOperationParameterCatalog.OrderedDefinitions)
         {
-            if (parameter.RequiredCompanionParameterName is not { Length: > 0 } companionName)
+            if (definition.RequiredCompanionParameterName is not { Length: > 0 } companionName)
             {
                 continue;
             }
 
-            var companion = Parameters.TryGetByName(companionName, out var companionParameter)
-                ? companionParameter
-                : null;
-            if (companion is null)
-            {
-                return ValidationResult.Invalid(
-                    $"Parameter `{parameter.ComponentName}` requires companion parameter `{companionName}`, but the companion is not registered.");
-            }
+            var parameter = GetParameterPlaceholder(definition);
+            var companionDefinition = UnitOperationParameterCatalog.GetByName(companionName);
+            var companion = GetParameterPlaceholder(companionDefinition);
 
             var pairKey = string.Compare(
                 parameter.ComponentName,
@@ -376,7 +369,7 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
             {
                 return ValidationResult.Invalid(
                     $"Optional parameters `{parameter.ComponentName}` and `{companion.ComponentName}` must be configured together.",
-                    nameof(LoadPropertyPackageFiles));
+                    definition.ConfigurationOperationName);
             }
         }
 
@@ -385,18 +378,15 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
 
     private ValidationResult? EvaluateRequiredParameterConfigurationValidation()
     {
-        if (!FlowsheetParameter.IsConfigured)
+        foreach (var definition in UnitOperationParameterCatalog.OrderedDefinitions.Where(static definition => definition.IsRequired))
         {
-            return ValidationResult.Invalid(
-                $"Required parameter `{FlowsheetParameter.ComponentName}` is not configured.",
-                nameof(LoadFlowsheetJson));
-        }
-
-        if (!PackageIdParameter.IsConfigured)
-        {
-            return ValidationResult.Invalid(
-                $"Required parameter `{PackageIdParameter.ComponentName}` is not configured.",
-                nameof(SelectPropertyPackage));
+            var parameter = GetParameterPlaceholder(definition);
+            if (!parameter.IsConfigured)
+            {
+                return ValidationResult.Invalid(
+                    $"Required parameter `{parameter.ComponentName}` is not configured.",
+                    definition.ConfigurationOperationName);
+            }
         }
 
         return null;
@@ -418,13 +408,14 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
 
     private ValidationResult? EvaluateRequiredPortValidation()
     {
-        foreach (var port in Ports.Where(static port => port.IsRequired))
+        foreach (var definition in UnitOperationPortCatalog.OrderedDefinitions.Where(static definition => definition.IsRequired))
         {
+            var port = GetPortPlaceholder(definition);
             if (!port.IsConnected)
             {
                 return ValidationResult.Invalid(
                     $"Required port `{port.ComponentName}` is not connected.",
-                    ConnectPortOperation);
+                    definition.ConnectionOperationName);
             }
         }
 
@@ -434,10 +425,10 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
     private CalculationInputs BuildCalculationInputs()
     {
         return new CalculationInputs(
-            FlowsheetParameter.Value!,
-            PackageIdParameter.Value!,
-            ManifestPathParameter.IsConfigured ? ManifestPathParameter.Value : null,
-            PayloadPathParameter.IsConfigured ? PayloadPathParameter.Value : null);
+            GetRequiredParameterValue(UnitOperationParameterCatalog.FlowsheetJson),
+            GetRequiredParameterValue(UnitOperationParameterCatalog.PropertyPackageId),
+            GetOptionalParameterValue(UnitOperationParameterCatalog.PropertyPackageManifestPath),
+            GetOptionalParameterValue(UnitOperationParameterCatalog.PropertyPackagePayloadPath));
     }
 
     private static string ExecuteNativeSolve(CalculationInputs inputs)
@@ -627,6 +618,22 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
     private UnitOperationParameterPlaceholder GetParameterPlaceholder(UnitOperationParameterDefinition definition)
     {
         return Parameters.GetByName(definition.Name);
+    }
+
+    private UnitOperationPortPlaceholder GetPortPlaceholder(UnitOperationPortDefinition definition)
+    {
+        return Ports.GetByName(definition.Name);
+    }
+
+    private string GetRequiredParameterValue(UnitOperationParameterDefinition definition)
+    {
+        return GetParameterPlaceholder(definition).Value!;
+    }
+
+    private string? GetOptionalParameterValue(UnitOperationParameterDefinition definition)
+    {
+        var parameter = GetParameterPlaceholder(definition);
+        return parameter.IsConfigured ? parameter.Value : null;
     }
 
     private sealed record CalculationInputs(
