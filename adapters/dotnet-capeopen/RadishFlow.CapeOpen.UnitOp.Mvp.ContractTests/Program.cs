@@ -2,58 +2,92 @@ using RadishFlow.CapeOpen.Interop.Common;
 using RadishFlow.CapeOpen.Interop.Errors;
 using RadishFlow.CapeOpen.Interop.Parameters;
 using RadishFlow.CapeOpen.Interop.Unit;
-using RadishFlow.CapeOpen.UnitOp.Mvp.Results;
 using RadishFlow.CapeOpen.UnitOp.Mvp.Placeholders;
+using RadishFlow.CapeOpen.UnitOp.Mvp.Results;
 using RadishFlow.CapeOpen.UnitOp.Mvp.UnitOperation;
 
-var options = ContractTestOptions.Parse(args);
-var tests = new (string Name, Action<ContractTestContext> Execute)[]
-{
-    ("collection-contract", static context => ContractTests.Collections_ExposeStableLookupAndRejectInvalidSelectors(context)),
-    ("parameter-contract", static context => ContractTests.Parameters_ResetValidationStateAndFreezeMetadata(context)),
-    ("port-contract", static context => ContractTests.Ports_RequireDisconnectBeforeReplacingConnections(context)),
-    ("validate-before-initialize", static context => ContractTests.ValidateBeforeInitialize_ReturnsInvalidAndEmptyReport(context)),
-    ("validation-failure-report", static context => ContractTests.CalculateValidationFailure_PopulatesFailureReport(context)),
-    ("native-failure-report", static context => ContractTests.CalculateNativeFailure_PopulatesFailureReport(context)),
-    ("success-report", static context => ContractTests.SuccessfulCalculate_PopulatesSuccessReport(context)),
-    ("configuration-invalidation", static context => ContractTests.ConfigurationChange_ClearsReportAndMarksNotValidated(context)),
-    ("terminate-report", static context => ContractTests.Terminate_ResetsReportAndBlocksCalculate(context)),
-};
+Environment.ExitCode = ContractTestExecutable.Run(args);
 
-var selectedTests = tests
-    .Where(test => string.Equals(options.TestFilter, "all", StringComparison.OrdinalIgnoreCase) ||
-                   string.Equals(test.Name, options.TestFilter, StringComparison.OrdinalIgnoreCase))
-    .ToArray();
-if (selectedTests.Length == 0)
+internal static class ContractTestExecutable
 {
-    throw new ArgumentException(
-        $"Unsupported contract test `{options.TestFilter}`. Supported values: all|{string.Join("|", tests.Select(test => test.Name))}.");
-}
-
-var failures = new List<string>();
-foreach (var (name, execute) in selectedTests)
-{
-    using var context = new ContractTestContext(options);
-    try
+    public static int Run(string[] args)
     {
-        execute(context);
-        Console.WriteLine($"[PASS] {name}");
+        try
+        {
+            return Execute(args);
+        }
+        catch (CapeOpenException error)
+        {
+            Console.Error.WriteLine($"Contract test bootstrap failed at CAPE-OPEN operation: {error.Operation}");
+            if (!string.IsNullOrWhiteSpace(error.NativeStatus))
+            {
+                Console.Error.WriteLine($"Native Status: {error.NativeStatus}");
+            }
+
+            Console.Error.WriteLine($"Message: {error.Message}");
+            Console.Error.WriteLine(error);
+            return 2;
+        }
+        catch (Exception error)
+        {
+            Console.Error.WriteLine("Contract test bootstrap failed with an unhandled exception.");
+            Console.Error.WriteLine(error);
+            return 2;
+        }
     }
-    catch (Exception error)
+
+    private static int Execute(string[] args)
     {
-        failures.Add($"{name}: {error.Message}");
-        Console.WriteLine($"[FAIL] {name}");
-        Console.WriteLine(error);
+        var options = ContractTestOptions.Parse(args);
+        var tests = new (string Name, Action<ContractTestContext> Execute)[]
+        {
+            ("collection-contract", static context => ContractTests.Collections_ExposeStableLookupAndRejectInvalidSelectors(context)),
+            ("parameter-contract", static context => ContractTests.Parameters_ResetValidationStateAndFreezeMetadata(context)),
+            ("port-contract", static context => ContractTests.Ports_RequireDisconnectBeforeReplacingConnections(context)),
+            ("validate-before-initialize", static context => ContractTests.ValidateBeforeInitialize_ReturnsInvalidAndEmptyReport(context)),
+            ("validation-failure-report", static context => ContractTests.CalculateValidationFailure_PopulatesFailureReport(context)),
+            ("native-failure-report", static context => ContractTests.CalculateNativeFailure_PopulatesFailureReport(context)),
+            ("success-report", static context => ContractTests.SuccessfulCalculate_PopulatesSuccessReport(context)),
+            ("configuration-invalidation", static context => ContractTests.ConfigurationChange_ClearsReportAndMarksNotValidated(context)),
+            ("terminate-report", static context => ContractTests.Terminate_ResetsReportAndBlocksCalculate(context)),
+        };
+
+        var selectedTests = tests
+            .Where(test => string.Equals(options.TestFilter, "all", StringComparison.OrdinalIgnoreCase) ||
+                           string.Equals(test.Name, options.TestFilter, StringComparison.OrdinalIgnoreCase))
+            .ToArray();
+        if (selectedTests.Length == 0)
+        {
+            throw new ArgumentException(
+                $"Unsupported contract test `{options.TestFilter}`. Supported values: all|{string.Join("|", tests.Select(test => test.Name))}.");
+        }
+
+        var failures = new List<string>();
+        foreach (var (name, execute) in selectedTests)
+        {
+            using var context = new ContractTestContext(options);
+            try
+            {
+                execute(context);
+                Console.WriteLine($"[PASS] {name}");
+            }
+            catch (Exception error)
+            {
+                failures.Add($"{name}: {error.Message}");
+                Console.WriteLine($"[FAIL] {name}");
+                Console.WriteLine(error);
+            }
+        }
+
+        if (failures.Count > 0)
+        {
+            return 1;
+        }
+
+        Console.WriteLine($"Executed {selectedTests.Length} contract test(s).");
+        return 0;
     }
 }
-
-if (failures.Count > 0)
-{
-    Environment.ExitCode = 1;
-    return;
-}
-
-Console.WriteLine($"Executed {selectedTests.Length} contract test(s).");
 
 internal static class ContractTests
 {
@@ -65,6 +99,14 @@ internal static class ContractTests
         ContractAssert.Equal(2, context.PortCollection.Count(), "Port collection Count() should remain stable.");
         ContractAssert.Equal(4, context.UnitOperation.Parameters.Count, "Parameter collection IReadOnlyList.Count should stay aligned with ICapeCollection.Count().");
         ContractAssert.Equal(2, context.UnitOperation.Ports.Count, "Port collection IReadOnlyList.Count should stay aligned with ICapeCollection.Count().");
+        ContractAssert.SequenceEqual(
+            UnitOperationParameterCatalog.OrderedNames,
+            context.UnitOperation.Parameters.Select(static parameter => parameter.ComponentName),
+            "Parameter collection order should match the frozen public catalog.");
+        ContractAssert.SequenceEqual(
+            UnitOperationPortCatalog.OrderedNames,
+            context.UnitOperation.Ports.Select(static port => port.ComponentName),
+            "Port collection order should match the frozen public catalog.");
 
         ContractAssert.SameReference(
             context.FlowsheetParameter,
@@ -298,12 +340,12 @@ internal sealed class ContractTestContext : IDisposable
         UnitOperation.ConfigureNativeLibraryDirectory(options.NativeLibraryDirectory);
         ParameterCollection = (ICapeCollection)UnitOperation.Parameters;
         PortCollection = (ICapeCollection)UnitOperation.Ports;
-        FlowsheetParameter = (UnitOperationParameterPlaceholder)ParameterCollection.Item("Flowsheet Json");
-        PackageIdParameter = (UnitOperationParameterPlaceholder)ParameterCollection.Item("Property Package Id");
-        ManifestPathParameter = (UnitOperationParameterPlaceholder)ParameterCollection.Item("Property Package Manifest Path");
+        FlowsheetParameter = (UnitOperationParameterPlaceholder)ParameterCollection.Item(UnitOperationParameterCatalog.FlowsheetJson.Name);
+        PackageIdParameter = (UnitOperationParameterPlaceholder)ParameterCollection.Item(UnitOperationParameterCatalog.PropertyPackageId.Name);
+        ManifestPathParameter = (UnitOperationParameterPlaceholder)ParameterCollection.Item(UnitOperationParameterCatalog.PropertyPackageManifestPath.Name);
         PayloadPathParameter = (UnitOperationParameterPlaceholder)ParameterCollection.Item(4);
-        FeedPort = (UnitOperationPortPlaceholder)PortCollection.Item("Feed");
-        ProductPort = (UnitOperationPortPlaceholder)PortCollection.Item("Product");
+        FeedPort = (UnitOperationPortPlaceholder)PortCollection.Item(UnitOperationPortCatalog.Feed.Name);
+        ProductPort = (UnitOperationPortPlaceholder)PortCollection.Item(UnitOperationPortCatalog.Product.Name);
     }
 
     public RadishFlowCapeOpenUnitOperation UnitOperation { get; }
@@ -409,6 +451,17 @@ internal static class ContractAssert
     public static void SameReference(object? expected, object? actual, string message)
     {
         if (!ReferenceEquals(expected, actual))
+        {
+            throw new InvalidOperationException(message);
+        }
+    }
+
+    public static void SequenceEqual<T>(
+        IEnumerable<T> expected,
+        IEnumerable<T> actual,
+        string message)
+    {
+        if (!expected.SequenceEqual(actual))
         {
             throw new InvalidOperationException(message);
         }

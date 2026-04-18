@@ -31,11 +31,11 @@ internal sealed class UnitOperationSmokeHostDriver : IDisposable
         ParameterCollection = (ICapeCollection)Parameters;
         PortCollection = (ICapeCollection)Ports;
 
-        FlowsheetParameter = (UnitOperationParameterPlaceholder)ParameterCollection.Item("Flowsheet Json");
-        PackageIdParameter = (UnitOperationParameterPlaceholder)ParameterCollection.Item("Property Package Id");
-        ManifestPathParameter = (UnitOperationParameterPlaceholder)ParameterCollection.Item("Property Package Manifest Path");
+        FlowsheetParameter = (UnitOperationParameterPlaceholder)ParameterCollection.Item(UnitOperationParameterCatalog.FlowsheetJson.Name);
+        PackageIdParameter = (UnitOperationParameterPlaceholder)ParameterCollection.Item(UnitOperationParameterCatalog.PropertyPackageId.Name);
+        ManifestPathParameter = (UnitOperationParameterPlaceholder)ParameterCollection.Item(UnitOperationParameterCatalog.PropertyPackageManifestPath.Name);
         PayloadPathParameter = (UnitOperationParameterPlaceholder)ParameterCollection.Item(4);
-        FeedPort = (UnitOperationPortPlaceholder)PortCollection.Item("Feed");
+        FeedPort = (UnitOperationPortPlaceholder)PortCollection.Item(UnitOperationPortCatalog.Feed.Name);
         ProductPort = (UnitOperationPortPlaceholder)PortCollection.Item(2);
     }
 

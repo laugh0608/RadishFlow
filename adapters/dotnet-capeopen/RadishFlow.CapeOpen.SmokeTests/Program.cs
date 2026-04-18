@@ -3,90 +3,107 @@ using RadishFlow.CapeOpen.Interop.Common;
 using RadishFlow.CapeOpen.Interop.Errors;
 using RadishFlow.CapeOpen.UnitOp.Mvp.Results;
 
-var options = SmokeOptions.Parse(args);
-if (options.ShowHelp)
+Environment.ExitCode = SmokeExecutable.Run(args);
+
+internal static class SmokeExecutable
 {
-    Console.WriteLine(SmokeOptions.HelpText);
-    return;
-}
-
-try
-{
-    if (options.Mode == SmokeMode.UnitOperation)
+    public static int Run(string[] args)
     {
-        RunUnitOperationSmoke(options);
-    }
-    else
-    {
-        RunAdapterSmoke(options);
-    }
-}
-catch (CapeOpenException error)
-{
-    Console.Error.WriteLine($"CAPE-OPEN operation failed: {error.Operation}");
-    if (!string.IsNullOrWhiteSpace(error.NativeStatus))
-    {
-        Console.Error.WriteLine($"Native Status: {error.NativeStatus}");
-    }
+        try
+        {
+            return Execute(args);
+        }
+        catch (CapeOpenException error)
+        {
+            Console.Error.WriteLine($"CAPE-OPEN operation failed: {error.Operation}");
+            if (!string.IsNullOrWhiteSpace(error.NativeStatus))
+            {
+                Console.Error.WriteLine($"Native Status: {error.NativeStatus}");
+            }
 
-    Console.Error.WriteLine($"Message: {error.Message}");
+            Console.Error.WriteLine($"Message: {error.Message}");
 
-    if (!string.IsNullOrWhiteSpace(error.DiagnosticJson))
-    {
-        Console.Error.WriteLine("Error Json:");
-        Console.Error.WriteLine(error.DiagnosticJson);
-    }
+            if (!string.IsNullOrWhiteSpace(error.DiagnosticJson))
+            {
+                Console.Error.WriteLine("Error Json:");
+                Console.Error.WriteLine(error.DiagnosticJson);
+            }
 
-    Environment.ExitCode = 1;
-}
-catch (Exception error)
-{
-    Console.Error.WriteLine(error);
-    Environment.ExitCode = 2;
-}
-
-static void RunAdapterSmoke(SmokeOptions options)
-{
-    if (!string.IsNullOrWhiteSpace(options.NativeLibraryDirectory))
-    {
-        RfNativeLibraryLoader.ConfigureSearchDirectory(options.NativeLibraryDirectory);
+            Console.Error.WriteLine(error);
+            return 1;
+        }
+        catch (Exception error)
+        {
+            Console.Error.WriteLine("Smoke test bootstrap failed with an unhandled exception.");
+            Console.Error.WriteLine(error);
+            return 2;
+        }
     }
 
-    using var engine = new RadishFlowNativeEngine();
-    var projectJson = File.ReadAllText(options.ProjectPath);
-    engine.LoadFlowsheetJson(projectJson);
-
-    if (options.LoadPackageFiles)
+    private static int Execute(string[] args)
     {
-        engine.LoadPropertyPackageFiles(options.ManifestPath!, options.PayloadPath!);
+        var options = SmokeOptions.Parse(args);
+        if (options.ShowHelp)
+        {
+            Console.WriteLine(SmokeOptions.HelpText);
+            return 0;
+        }
+
+        if (options.Mode == SmokeMode.UnitOperation)
+        {
+            RunUnitOperationSmoke(options);
+        }
+        else
+        {
+            RunAdapterSmoke(options);
+        }
+
+        return 0;
     }
 
-    Console.WriteLine("== Package List ==");
-    Console.WriteLine(engine.GetPropertyPackageListJson());
-    Console.WriteLine();
-
-    engine.SolveFlowsheet(options.PackageId);
-
-    Console.WriteLine("== Flowsheet Snapshot ==");
-    Console.WriteLine(engine.GetFlowsheetSnapshotJson());
-    Console.WriteLine();
-
-    if (!string.IsNullOrWhiteSpace(options.StreamId))
+    private static void RunAdapterSmoke(SmokeOptions options)
     {
-        Console.WriteLine($"== Stream Snapshot: {options.StreamId} ==");
-        Console.WriteLine(engine.GetStreamSnapshotJson(options.StreamId));
+        if (!string.IsNullOrWhiteSpace(options.NativeLibraryDirectory))
+        {
+            RfNativeLibraryLoader.ConfigureSearchDirectory(options.NativeLibraryDirectory);
+        }
+
+        using var engine = new RadishFlowNativeEngine();
+        var projectJson = File.ReadAllText(options.ProjectPath);
+        engine.LoadFlowsheetJson(projectJson);
+
+        if (options.LoadPackageFiles)
+        {
+            engine.LoadPropertyPackageFiles(options.ManifestPath!, options.PayloadPath!);
+        }
+
+        Console.WriteLine("== Package List ==");
+        Console.WriteLine(engine.GetPropertyPackageListJson());
         Console.WriteLine();
-    }
-}
 
-static void RunUnitOperationSmoke(SmokeOptions options)
-{
-    var projectJson = File.ReadAllText(options.ProjectPath);
-    UnitOperationSmokeBoundarySuite.Run(options, projectJson);
-    UnitOperationSmokeScenarioRunner.RunAll(
-        options,
-        projectJson,
-        UnitOperationSmokeScenarioCatalog.CreateScenarios(options.UnitOperationScenario));
+        engine.SolveFlowsheet(options.PackageId);
+
+        Console.WriteLine("== Flowsheet Snapshot ==");
+        Console.WriteLine(engine.GetFlowsheetSnapshotJson());
+        Console.WriteLine();
+
+        if (!string.IsNullOrWhiteSpace(options.StreamId))
+        {
+            Console.WriteLine($"== Stream Snapshot: {options.StreamId} ==");
+            Console.WriteLine(engine.GetStreamSnapshotJson(options.StreamId));
+            Console.WriteLine();
+        }
+    }
+
+    private static void RunUnitOperationSmoke(SmokeOptions options)
+    {
+        var projectJson = File.ReadAllText(options.ProjectPath);
+        UnitOperationSmokeBoundarySuite.Run(options, projectJson);
+        UnitOperationSmokeScenarioRunner.RunAll(
+            options,
+            projectJson,
+            UnitOperationSmokeScenarioCatalog.CreateScenarios(options.UnitOperationScenario));
+    }
 }
 
 

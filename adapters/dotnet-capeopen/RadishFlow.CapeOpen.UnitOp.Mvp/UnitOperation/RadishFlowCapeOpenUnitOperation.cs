@@ -33,51 +33,72 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
         ComponentName = "RadishFlow Unit Operation";
         ComponentDescription = "Minimal CAPE-OPEN unit operation skeleton.";
 
+        var flowsheetParameterDefinition = UnitOperationParameterCatalog.FlowsheetJson;
+        var packageIdParameterDefinition = UnitOperationParameterCatalog.PropertyPackageId;
+        var manifestPathParameterDefinition = UnitOperationParameterCatalog.PropertyPackageManifestPath;
+        var payloadPathParameterDefinition = UnitOperationParameterCatalog.PropertyPackagePayloadPath;
+        var feedPortDefinition = UnitOperationPortCatalog.Feed;
+        var productPortDefinition = UnitOperationPortCatalog.Product;
+
         _flowsheetParameter = new UnitOperationParameterPlaceholder(
-            "Flowsheet Json",
-            "StoredProjectFile JSON used by the MVP unit operation skeleton.",
-            isRequired: true,
-            valueKind: UnitOperationParameterValueKind.StructuredJsonText,
+            flowsheetParameterDefinition.Name,
+            flowsheetParameterDefinition.Description,
+            isRequired: flowsheetParameterDefinition.IsRequired,
+            valueKind: flowsheetParameterDefinition.ValueKind,
+            allowsEmptyValue: flowsheetParameterDefinition.AllowsEmptyValue,
+            requiredCompanionParameterName: flowsheetParameterDefinition.RequiredCompanionParameterName,
+            mode: flowsheetParameterDefinition.Mode,
+            defaultValue: flowsheetParameterDefinition.DefaultValue,
             ensureOwnerAccess: EnsurePlaceholderAccess,
             onStateChanged: InvalidateValidation);
         _packageIdParameter = new UnitOperationParameterPlaceholder(
-            "Property Package Id",
-            "Identifier of the property package selected for the MVP unit operation skeleton.",
-            isRequired: true,
-            valueKind: UnitOperationParameterValueKind.Identifier,
+            packageIdParameterDefinition.Name,
+            packageIdParameterDefinition.Description,
+            isRequired: packageIdParameterDefinition.IsRequired,
+            valueKind: packageIdParameterDefinition.ValueKind,
+            allowsEmptyValue: packageIdParameterDefinition.AllowsEmptyValue,
+            requiredCompanionParameterName: packageIdParameterDefinition.RequiredCompanionParameterName,
+            mode: packageIdParameterDefinition.Mode,
+            defaultValue: packageIdParameterDefinition.DefaultValue,
             ensureOwnerAccess: EnsurePlaceholderAccess,
             onStateChanged: InvalidateValidation);
         _manifestPathParameter = new UnitOperationParameterPlaceholder(
-            "Property Package Manifest Path",
-            "Optional manifest path for a local property package payload.",
-            isRequired: false,
-            valueKind: UnitOperationParameterValueKind.FilePath,
-            requiredCompanionParameterName: "Property Package Payload Path",
+            manifestPathParameterDefinition.Name,
+            manifestPathParameterDefinition.Description,
+            isRequired: manifestPathParameterDefinition.IsRequired,
+            valueKind: manifestPathParameterDefinition.ValueKind,
+            allowsEmptyValue: manifestPathParameterDefinition.AllowsEmptyValue,
+            requiredCompanionParameterName: manifestPathParameterDefinition.RequiredCompanionParameterName,
+            mode: manifestPathParameterDefinition.Mode,
+            defaultValue: manifestPathParameterDefinition.DefaultValue,
             ensureOwnerAccess: EnsurePlaceholderAccess,
             onStateChanged: InvalidateValidation);
         _payloadPathParameter = new UnitOperationParameterPlaceholder(
-            "Property Package Payload Path",
-            "Optional payload path for a local property package payload.",
-            isRequired: false,
-            valueKind: UnitOperationParameterValueKind.FilePath,
-            requiredCompanionParameterName: "Property Package Manifest Path",
+            payloadPathParameterDefinition.Name,
+            payloadPathParameterDefinition.Description,
+            isRequired: payloadPathParameterDefinition.IsRequired,
+            valueKind: payloadPathParameterDefinition.ValueKind,
+            allowsEmptyValue: payloadPathParameterDefinition.AllowsEmptyValue,
+            requiredCompanionParameterName: payloadPathParameterDefinition.RequiredCompanionParameterName,
+            mode: payloadPathParameterDefinition.Mode,
+            defaultValue: payloadPathParameterDefinition.DefaultValue,
             ensureOwnerAccess: EnsurePlaceholderAccess,
             onStateChanged: InvalidateValidation);
 
         _feedPort = new UnitOperationPortPlaceholder(
-            "Feed",
-            "Required inlet material placeholder port.",
-            direction: CapePortDirection.CAPE_INLET,
-            portType: CapePortType.CAPE_MATERIAL,
-            isRequired: true,
+            feedPortDefinition.Name,
+            feedPortDefinition.Description,
+            direction: feedPortDefinition.Direction,
+            portType: feedPortDefinition.PortType,
+            isRequired: feedPortDefinition.IsRequired,
             ensureOwnerAccess: EnsurePlaceholderAccess,
             onStateChanged: InvalidateValidation);
         _productPort = new UnitOperationPortPlaceholder(
-            "Product",
-            "Required outlet material placeholder port.",
-            direction: CapePortDirection.CAPE_OUTLET,
-            portType: CapePortType.CAPE_MATERIAL,
-            isRequired: true,
+            productPortDefinition.Name,
+            productPortDefinition.Description,
+            direction: productPortDefinition.Direction,
+            portType: productPortDefinition.PortType,
+            isRequired: productPortDefinition.IsRequired,
             ensureOwnerAccess: EnsurePlaceholderAccess,
             onStateChanged: InvalidateValidation);
 
