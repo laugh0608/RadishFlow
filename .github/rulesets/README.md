@@ -21,7 +21,7 @@
 - `PR Checks` 当前拆分为 `Repo Hygiene` 与 `Rust Baseline` 两个 job，保留拆分式门禁，但不引入当前仓库并不存在的 `Frontend Lint`
 - GitHub 对 Actions required status checks 当前按 job 名匹配，不看 workflow 前缀或事件后缀，因此 ruleset 中固定写 job 名
 - `PR Checks` 只响应 `pull_request -> master`，避免与 tag / 手动检查共用同一个 workflow 名称后产生状态名漂移
-- 限制合并方式为 `rebase`
+- 允许 `merge` 与 `rebase` 两种合并方式，禁用 `squash`
 - 管理员仅可通过 Pull Request 方式绕过规则，不开放直接 push
 
 ## dev 策略说明
@@ -51,7 +51,7 @@ gh api repos/<owner>/<repo>/rulesets --method POST --input .github/rulesets/mast
 
 ## 配套仓库设置
 
-- 仓库 Merge options 中仅启用 `Rebase merging`
+- 仓库 Merge options 中启用 `Rebase merging`
+- 仓库 Merge options 中启用 `Merge commits`
 - 关闭 `Squash merging`
-- 关闭 `Merge commits`
 - 如后续增加 `CODEOWNERS`，再决定是否开启 code owner review

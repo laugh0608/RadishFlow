@@ -233,6 +233,7 @@ chore(PR): establish branch and pr conventions
 
 - 当前常态开发分支为 `dev`
 - `master` 仅作为稳定主线，只通过 Pull Request 合并
+- `master` 当前允许 `merge commit` 与 `rebase merge`，禁用 `squash merge`
 - PR 检查执行 `Repo Hygiene`（文本文件）和 `Rust Baseline`（fmt、check、test、clippy）
 - 非特殊情况不直接在 `master` 上开发
 

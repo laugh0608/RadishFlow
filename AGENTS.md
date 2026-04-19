@@ -84,6 +84,7 @@
 - `master` 仅作为稳定主线
 - 非特殊情况不直接在 `master` 上开发
 - `master` 只通过 Pull Request 合并
+- `master` 当前允许 `merge commit` 与 `rebase merge`，禁用 `squash merge`
 - 当前阶段不要求保护 `dev`
 - 管理员如需绕过规则，也应通过 PR 合并，而不是直接 push 到 `master`
 

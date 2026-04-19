@@ -34,6 +34,7 @@ Accepted
 - 禁止直接 push
 - 必须通过 PR 合并
 - 必须通过仓库检查
+- 当前允许 `merge commit` 与 `rebase merge`，禁用 `squash merge`
 - 管理员仅可通过 PR 方式绕过规则
 - 允许在单人开发阶段保留管理员 PR 直过能力
 
@@ -52,8 +53,9 @@ Accepted
 3. 对 `master` 启用 branch protection
 4. 要求 `master` 通过 `Repo Hygiene` 与 `Rust Baseline` 状态检查
 5. 对 `master` 开启 “Require a pull request before merging”
-6. 配置管理员仅通过 PR 绕过，不开放直接 push
-7. `dev` 当前不配置 branch protection
+6. 仓库 Merge options 中启用 `Merge commits` 与 `Rebase merging`，关闭 `Squash merging`
+7. 配置管理员仅通过 PR 绕过，不开放直接 push
+8. `dev` 当前不配置 branch protection
 
 ## 仓库内已落地的支撑项
 
@@ -83,4 +85,3 @@ Accepted
 
 - 需要维护远端 `master` 保护设置
 - 开发节奏从“直接提交”切换为“分支 + PR”
-
