@@ -1,0 +1,301 @@
+
+#ifndef ICapeNumericSMST_idl
+#define ICapeNumericSMST_idl
+
+
+
+// Include Files *****************************************************************************
+
+
+#include "ICapeUtilityDefinition.idl"
+
+#include "ICapeUtility.idl"
+
+
+
+
+
+// Forward declarations *****************************************************************************
+
+
+interface ICapeNumericGATComponent;
+
+interface ICapeNumericFlowsheetFactory;
+interface ICapeNumericFlowsheet;
+interface ICapeNumericProcessGraph;
+interface ICapeNumericPartitionGraph;
+interface ICapeNumericOpenPartitionGraph;
+
+interface ICapeNumericAnalysisFactory;
+interface ICapeNumericAnalysis;
+interface ICapeNumericSequencing;
+interface ICapeNumericTearing;
+interface ICapeNumericPartitioning;
+interface ICapeNumericSMAnalysis;
+
+
+
+
+
+// Interface Definitions *****************************************************************************
+
+
+typedef sequence<ICapeNumericGATComponent> ICapeNumericGATComponentSequence;
+
+interface ICapeNumericGATComponent: ICapeUtilityIdentification, ICapeUtilityParameter, ICapeUtilityReport {
+
+  ICapeNumericFlowsheetFactory CreateFlowsheetFactory(in CapeString name) raises (CapeBAD_PARAM, CapeUNKNOWN);
+
+  ICapeNumericAnalysisFactory CreateAnalysisFactory(in CapeString name) raises (CapeBAD_PARAM, CapeUNKNOWN);
+  
+  void Shutdown() raises (CapeNO_IMPLEMENT, CapeUNKNOWN);
+
+};
+
+
+
+
+
+enum CapeFlowsheetType{
+	PROCESS_GRAPH,
+	PARTITION_GRAPH,
+	OPEN_PARTITION_GRAPH
+};
+
+typedef sequence<ICapeNumericFlowsheetFactory> ICapeNumericFlowsheetFactorySequence;
+
+typedef sequence<CapeFlowsheetType> CapeFlowsheetTypeSequence;
+
+interface ICapeNumericFlowsheetFactory: ICapeUtilityParameter {
+
+  ICapeNumericFlowsheet CreateFlowsheet(in CapeFlowsheetType type, in CapeString name) raises (CapeBAD_PARAM, CapeUNKNOWN);
+
+  CapeString GetName() raises (CapeUNKNOWN);
+  
+  CapeBoolean Destroy () raises (CapeNO_IMPLEMENT, CapeUNKNOWN);
+
+};
+
+
+
+
+typedef sequence<ICapeNumericFlowsheet> ICapeNumericFlowsheetSequence;
+
+interface ICapeNumericFlowsheet: ICapeUtilityParameter {
+
+  CapeString GetName() raises (CapeUNKNOWN);
+
+  CapeLong GetStreamCount() raises (CapeUNKNOWN);
+
+  CapeLong GetUnitCount() raises (CapeUNKNOWN);
+
+  CapeLong GetMaximumUnitCount() raises (CapeUNKNOWN);
+
+  CapeLong GetMaximumStreamCount() raises (CapeUNKNOWN);
+
+  CapeBoolean Destroy() raises (CapeNO_IMPLEMENT, CapeUNKNOWN);
+
+};
+
+
+
+
+enum CapeNumericStream {
+	FEED,
+	PRODUCT,
+	PROCESS
+};
+
+typedef sequence<ICapeNumericProcessGraph> ICapeNumericProcessGraphSequence;
+
+typedef sequence<CapeNumericStream> CapeNumericStreamSequence;
+
+interface ICapeNumericProcessGraph: ICapeNumericFlowsheet {
+
+  void AddStream(in CapeLong streamId, in CapeLong iunitId, in CapeLong funitId) raises (CapeBAD_PARAM, CapeIMP_LIMIT, CapeUNKNOWN);
+
+  void AddStreamWeight(in CapeLong streamId, in CapeDouble weight) raises (CapeBAD_INV_ORDER, CapeBAD_PARAM, CapeUNKNOWN);
+
+  void AddStreamType(in CapeLong streamId, in CapeNumericStream type) raises (CapeBAD_INV_ORDER, CapeBAD_PARAM, CapeUNKNOWN);
+
+  void AddTornProperty(in CapeLong streamId, in CapeBoolean toBeTorn) raises (CapeBAD_INV_ORDER, CapeBAD_PARAM, CapeUNKNOWN);
+
+  void AddNotTornProperty(in CapeLong streamId, in CapeBoolean notToBeTorn) raises (CapeBAD_INV_ORDER, CapeBAD_PARAM, CapeUNKNOWN);
+
+  void RemoveStream(in CapeLong streamId) raises (CapeBAD_INV_ORDER, CapeBAD_PARAM, CapeUNKNOWN);
+
+  CapeLongSequence GetSetOfStream() raises (CapeUNKNOWN);
+
+  CapeLongSequence GetSetOfUnit() raises (CapeUNKNOWN);
+  
+  void GetStreamConnection(in CapeLong streamId, out CapeLong iunitId, out CapeLong funitId) raises (CapeBAD_INV_ORDER, CapeBAD_PARAM, CapeUNKNOWN);
+
+  CapeDouble GetStreamWeight(in CapeLong streamId) raises (CapeBAD_INV_ORDER, CapeBAD_PARAM, CapeUNKNOWN);
+
+  CapeNumericStream GetStreamType(in CapeLong streamId) raises (CapeBAD_INV_ORDER, CapeBAD_PARAM, CapeUNKNOWN);
+
+  CapeBoolean GetTornProperty(in CapeLong streamId) raises (CapeBAD_INV_ORDER, CapeBAD_PARAM, CapeUNKNOWN);
+
+  CapeBoolean GetNotTornProperty(in CapeLong streamId) raises (CapeBAD_INV_ORDER, CapeBAD_PARAM, CapeUNKNOWN);
+
+};
+
+
+
+
+
+typedef sequence<ICapeNumericPartitionGraph> ICapeNumericPartitionGraphSequence;
+
+interface ICapeNumericPartitionGraph: ICapeNumericProcessGraph {
+
+  void SetInitialProcessGraph(in ICapeNumericProcessGraph parent) raises (CapeBAD_PARAM, CapeUNKNOWN);
+
+  ICapeNumericProcessGraph GetInitialProcessGraph() raises (CapeUNKNOWN);
+
+};
+
+
+
+
+
+typedef sequence<ICapeNumericOpenPartitionGraph> ICapeNumericOpenPartitionGraphSequence;
+
+interface ICapeNumericOpenPartitionGraph: ICapeNumericPartitionGraph {
+
+};
+
+
+
+
+
+enum CapeAnalysisType {
+	SM_ANALYSIS,
+	PARTITIONING,
+	TEARING,
+	SEQUENCING
+};
+
+typedef sequence<ICapeNumericAnalysisFactory> ICapeNumericAnalysisFactorySequence;
+
+typedef sequence<CapeAnalysisType> CapeNumericTypeSequence;
+
+interface ICapeNumericAnalysisFactory: ICapeUtilityParameter {
+
+  ICapeNumericAnalysis CreateNumericAnalysis(in CapeAnalysisType type, in CapeString name) raises (CapeBAD_PARAM, CapeUNKNOWN);
+
+  CapeBoolean Destroy() raises (CapeNO_IMPLEMENT, CapeUNKNOWN);
+  
+  CapeString GetName() raises (CapeUNKNOWN);
+
+  CapeBoolean SMAnalysisImplementation() raises (CapeUNKNOWN);
+
+  CapeBoolean PartitioningImplementation() raises (CapeUNKNOWN);
+
+  CapeBoolean TearingImplementation() raises (CapeUNKNOWN);
+
+  CapeBoolean SequencingImplementation() raises (CapeUNKNOWN);
+
+
+};
+
+
+
+
+enum CapeConsistencyCode{
+	CONSISTENCY_YES,
+	CONSISTENCY_NO,
+	CONSISTENCY_MAYBE
+};
+
+enum CapeConvergenceCode{
+	CONVERGENCE_YES,
+	CONVERGENCE_NO,
+	CONVERGENCE_MAYBE
+};
+
+typedef sequence<ICapeNumericAnalysis> ICapeNumericAnalysisSequence;
+
+typedef sequence<CapeConsistencyCode> CapeConsistencyCodeSequence;
+
+typedef sequence<CapeConvergenceCode> CapeConvergenceCodeSequence;
+
+interface ICapeNumericAnalysis: ICapeUtilityParameter{
+
+  CapeLong GetMaximumUnitCount() raises (CapeUNKNOWN);
+
+  CapeLong GetMaximumStreamCount() raises (CapeUNKNOWN);
+
+  CapeConvergenceCode Perform(in ICapeNumericFlowsheet flowsheet) raises (CapeBAD_PARAM, CapeIMP_LIMIT, CapeNO_IMPLEMENT, CapeNO_CONVERGE, CapeUNKNOWN);
+
+  CapeString GetName() raises (CapeUNKNOWN);
+
+  CapeConsistencyCode CheckFlowsheetConsistency(in ICapeNumericFlowsheet flowsheet) raises (CapeBAD_PARAM, CapeIMP_LIMIT, CapeNO_IMPLEMENT, CapeNO_CONVERGE, CapeUNKNOWN);
+
+  CapeBoolean Destroy() raises (CapeNO_IMPLEMENT, CapeUNKNOWN);
+
+};
+
+
+
+
+
+typedef sequence<ICapeNumericSequencing> ICapeNumericSequencingSequence;
+
+interface ICapeNumericSequencing: ICapeNumericAnalysis {
+
+  CapeLongSequence GetUnits() raises (CapeBAD_INV_ORDER, CapeUNKNOWN);
+
+};
+
+
+
+
+typedef sequence<ICapeNumericTearing> ICapeNumericTearingSequence;
+
+interface ICapeNumericTearing: ICapeNumericAnalysis {
+
+  CapeLongSequence GetTornStreams() raises (CapeBAD_INV_ORDER, CapeUNKNOWN);
+
+  ICapeNumericOpenPartitionGraph CreateAndCompleteOpenPartitionGraph (in CapeString name, in ICapeNumericFlowsheetFactory factory) raises (CapeBAD_INV_ORDER, CapeBAD_PARAM, CapeIMP_LIMIT, CapeNO_IMPLEMENT, CapeNO_CONVERGE, CapeUNKNOWN);
+
+};
+
+
+
+
+
+typedef sequence<ICapeNumericPartitioning> ICapeNumericPartitioningSequence;
+
+interface ICapeNumericPartitioning: ICapeNumericAnalysis {
+
+  CapeLong GetPartitionCount() raises (CapeBAD_INV_ORDER, CapeUNKNOWN);
+  
+  CapeLongSequence GetUnitsInPartition(in CapeLong partitionNb) raises (CapeBAD_INV_ORDER, CapeBAD_PARAM, CapeUNKNOWN);
+  
+  ICapeNumericPartitionGraph CreateAndCompletePartitionGraph(in CapeLong partitionNb, in CapeString name, in ICapeNumericFlowsheetFactory factory) raises (CapeBAD_INV_ORDER, CapeBAD_PARAM, CapeIMP_LIMIT, CapeNO_IMPLEMENT, CapeNO_CONVERGE, CapeUNKNOWN);
+  
+  void SetExternalSystemId(in CapeLong unitId) raises (CapeBAD_PARAM, CapeUNKNOWN);
+  
+  CapeLong GetExternalSystemId() raises (CapeUNKNOWN);
+
+};
+
+
+
+
+typedef sequence<ICapeNumericSMAnalysis> ICapeNumericSMAnalysisSequence;
+
+interface ICapeNumericSMAnalysis: ICapeNumericAnalysis {
+
+  CapeLong GetPartitionCount() raises (CapeBAD_INV_ORDER, CapeUNKNOWN);
+
+  CapeLongSequence GetUnitsInPartition(in CapeLong partitionNb) raises (CapeBAD_INV_ORDER, CapeBAD_PARAM, CapeUNKNOWN);
+
+  CapeLongSequence GetTornStreamsInPartition(in CapeLong partitionNb) raises (CapeBAD_INV_ORDER, CapeBAD_PARAM, CapeUNKNOWN);
+
+};
+
+
+
+
+#endif

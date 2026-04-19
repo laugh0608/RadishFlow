@@ -1,0 +1,46 @@
+HKCU
+{
+	NoRemove Software
+	{
+		NoRemove Classes
+		{
+			IdealThermo_CPP_TS10.ThermoSystem.1 = s 'ThermoSystem Class'
+			{
+				CLSID = s '{A52095F0-2205-4AC8-BDE3-33FA329C35AE}'
+			}
+			IdealThermo_CPP_TS10.ThermoSystem = s 'ThermoSystem Class'
+			{
+				CLSID = s '{A52095F0-2205-4AC8-BDE3-33FA329C35AE}'
+				CurVer = s 'IdealThermo_CPP_TS10.ThermoSystem.1'
+			}
+			NoRemove CLSID
+			{
+				ForceRemove {A52095F0-2205-4AC8-BDE3-33FA329C35AE} = s 'ThermoSystem Class'
+				{
+					ProgID = s 'IdealThermo_CPP_TS10.ThermoSystem.1'
+					VersionIndependentProgID = s 'IdealThermo_CPP_TS10.ThermoSystem'
+					ForceRemove 'Programmable'
+					InprocServer32 = s '%MODULE%'
+					{
+						val ThreadingModel = s 'Apartment'
+					}
+					val AppID = s '%APPID%'
+					'TypeLib' = s '{08927B52-83FB-4E32-B445-EC96DA769E41}'
+					'Implemented Categories'
+					{
+					 {678C09A3-7D66-11D2-A67D-00105A42887F} 
+					 {678C09A1-7D66-11D2-A67D-00105A42887F}
+					}
+					CapeDescription 
+					{ val Name =  s 'CPP Ideal Thermo System'
+					  val Description = s 'CO-LaN Example Ideal Thermo System CPP implementation'
+					  val CapeVersion = s '1.0'
+					  val ComponentVersion = s '1.0.0.0'
+					  val VendorURL = s 'http://www.colan.org/'
+					  val About = s 'CPP Ideal Thermo System - Copyright 2011 CO-LaN'
+					}
+				}
+			}
+		}
+	}
+}

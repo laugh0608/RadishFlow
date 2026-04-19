@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>RadishFlow.CapeOpen.SmokeTests</RootNamespace>
+    <AssemblyName>RadishFlow.CapeOpen.SmokeTests</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\RadishFlow.CapeOpen.Adapter\RadishFlow.CapeOpen.Adapter.csproj" />
+    <ProjectReference Include="..\RadishFlow.CapeOpen.UnitOp.Mvp\RadishFlow.CapeOpen.UnitOp.Mvp.csproj" />
+  </ItemGroup>
+</Project>

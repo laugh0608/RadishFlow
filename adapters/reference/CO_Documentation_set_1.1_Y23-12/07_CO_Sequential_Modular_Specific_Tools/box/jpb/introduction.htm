@@ -1,0 +1,248 @@
+<html>
+
+<head>
+<meta http-equiv="Content-Type"
+content="text/html; charset=iso-8859-1">
+<meta name="GENERATOR" content="Microsoft FrontPage Express 2.0">
+<title></title>
+</head>
+
+<body bgcolor="#FFFFFF" leftmargin="50">
+
+<p align="center"><font color="#FF0080" size="6"><strong>Introduction</strong></font></p>
+
+<p align="center">&nbsp;</p>
+
+<p align="center"><font size="4"><br>
+</font><a href="#Presentation &amp; Purpose of this Manual"><font
+size="4"><strong>Presentation &amp; Purpose of this Manual</strong></font></a><font
+size="4"><strong> - </strong></font><a href="#Intended Audience"><font
+size="4"><strong>Intended Audience</strong></font></a><font
+size="4"><strong> - </strong></font><a
+href="#Organisation of this Manual"><font size="4"><strong>Organisation
+of this Manual</strong></font></a><font size="4"><strong> - </strong></font><a
+href="#Where to find additional Information"><font size="4"><strong>Where
+to find additional Information</strong></font></a><font size="4"><strong><br>
+</strong><br>
+<br>
+</font></p>
+
+<hr>
+
+<p align="center"><br>
+</p>
+
+<blockquote>
+    <p><a name="Presentation &amp; Purpose of this Manual"><font
+    color="#008080" size="4"><em><strong>Presentation &amp;
+    Purpose of this Manual</strong></em></font></a></p>
+    <blockquote>
+        <p>This manual written in full HTML presents the
+        CAPE-OPEN Sequential Modular Specific Tools (SMST)
+        Component which has been developed during the CAPE-OPEN
+        Project in the Work-Package Numerical 4.3 Flowsheet
+        Solvers. It is focused on the Interface Specification,
+        except in the TUTORIAL part where some codes examples are
+        displayed.</p>
+        <p>The main objective of this manual is to be the
+        reference to :</p>
+        <ul>
+            <li>the software suppliers of CAPE-OPEN compliant
+                SMST component (&quot;server&quot; side or
+                &quot;soft with a plug&quot; or &quot;Process
+                Modelling Components&quot;),</li>
+            <li>the software suppliers using a CAPE-OPEN
+                compliant SMST component (&quot;client&quot; side
+                or &quot;soft with a socket&quot; or
+                &quot;Process Modelling Environments&quot;).</li>
+        </ul>
+        <p>The content is currently only dedicated to the CORBA
+        architecture. Nevertheless, a lot of thinks would be true
+        for the COM architecture. Also, the global architecture
+        and administration of the SMST Component aren't
+        discussed. Therefore, there will be no details on the
+        &quot;Bind&quot; process and &quot;Exit&quot; process.</p>
+        <p>Only the specifications proper to the SMST Component
+        are explained. You will find some <a
+        href="bibliography.htm">bliographic references</a> and
+        URL links which refer to :</p>
+        <ul>
+            <li>CAPE-OPEN Common Specifications (such as Naming,
+                Error Handling, ...),</li>
+            <li>CAPE-OPEN Common Services (such as Parameter,
+                Reporting, Identification, ...),</li>
+            <li>other CAPE-OPEN Component,</li>
+            <li>or other documents.</li>
+        </ul>
+    </blockquote>
+    <blockquote>
+        <p>The object-oriented technologies which are used in
+        this documentation are based on:</p>
+        <ul>
+            <li>the UML 1.1 Documentation,</li>
+            <li>the CORBA/IIOP 2.2 Specifications with the CORBA
+                (C++ and idl to Java) Language Mapping,</li>
+            <li>the CORBAservices (especially
+                LifeCycleServiceSpecification-November 1996),</li>
+            <li>the C++ language,</li>
+            <li>the Java 2 platform.</li>
+        </ul>
+        <p>&nbsp;</p>
+    </blockquote>
+    <p><a name="Intended Audience"><font color="#008080" size="4"><em><strong>Intended
+    Audience</strong></em></font></a></p>
+    <blockquote>
+        <p>There is a broad range of activities for people who
+        are interested in CAPE-OPEN, e.g. software experts,
+        process modellers, university researcher workers,
+        engineering managers and IT systems managers. <br>
+        <br>
+        The identified audience for CAPE-OPEN Documents is as
+        follows:</p>
+        <ul>
+            <li>European Commission,</li>
+            <li>Process software developers,</li>
+            <li>Process Modellers who represent the ultimate
+                end-users. They will use CAPE-OPEN based
+                components and simulators for applications,</li>
+            <li>Supply chain and production organizations (e.g.
+                consider their desires to bring together the
+                process models of individual manufacturing units
+                with the overall supply chain considerations,
+                accounting systems, and SAP systems).</li>
+            <li>Simulator system architects and simulation
+                systems designers (particularly those within
+                simulation software suppliers) (e.g. consider
+                their concerns on integrity of applications with
+                options for components mixed from different
+                sources, robustness, reliability, and safety).</li>
+            <li>Managers and administrators of information
+                systems (in all types of organisations, including
+                operating companies, software companies and
+                universities).</li>
+            <li>Organizations responsible for process systems in
+                the process industries. These organizations are
+                concerned with assuring system integrity in a
+                CAPE-OPEN mixed component environment).</li>
+            <li>Concurrent and future standards and technology
+                developers. These include Global CAPE-OPEN (that
+                will follow on from CAPE-OPEN), pdXi, OPC, OPERA
+                and others.</li>
+            <li>Standards organisations (e.g. ISO and AIChE,
+                IChemE, etc).</li>
+        </ul>
+        <p>&nbsp;</p>
+        <p>Basicaly, we suggest that everyone reads the
+        preliminary informations and the Part1 - INTRODUCTION.</p>
+        <p>Among the above list, if you consider you are an
+        &quot;Evaluator&quot;, you could only read :</p>
+        <ul>
+            <li>Part 1 - Introduction</li>
+            <li>Part 2 - Analysis &amp; Design - Textual
+                Requirements</li>
+        </ul>
+        <p>If you are a &quot;developer&quot;, sorry you should
+        read the entire manual. Happy surfing !</p>
+        <p>&nbsp;</p>
+    </blockquote>
+    <p><a name="Organisation of this Manual"><font
+    color="#008080" size="4"><em><strong>Organisation of this
+    Manual</strong></em></font></a></p>
+    <blockquote>
+        <p>The manual includes the following sections:</p>
+        <ul>
+            <li>Part 1 Introduction</li>
+            <li>Part 2 Textual Requirements</li>
+            <li>Part 3 Analysis &amp; Design</li>
+            <li>Part 4 Interface Specifications</li>
+            <li>Part 5 Tutorials</li>
+        </ul>
+        <p>In fact, the organisation follows approximately the
+        outcome of CAPE-OPEN Work Process using UML notation such
+        as:</p>
+        <p>&nbsp;</p>
+        <table border="1" bgcolor="#D4D4D4" bordercolor="#008000"
+        bordercolordark="#008000" bordercolorlight="#008000">
+            <tr>
+                <td><p align="center"><font color="#FF0000"
+                size="3"><strong>Phase</strong></font></p>
+                </td>
+                <td><p align="center"><font color="#FF0000"
+                size="3"><strong>Step</strong></font></p>
+                </td>
+                <td><p align="center"><font color="#FF0000"
+                size="3"><strong>Goal</strong></font></p>
+                </td>
+                <td><p align="center"><font color="#FF0000"
+                size="3"><strong>Involved Section in the Manual</strong></font></p>
+                </td>
+            </tr>
+            <tr>
+                <td><strong>Analysis</strong></td>
+                <td>users requirements<br>
+                text</td>
+                <td>textual requirements</td>
+                <td>Part 2 Textual Requirements</td>
+            </tr>
+            <tr>
+                <td><strong>Analysis</strong></td>
+                <td>users requirements<br>
+                use-cases</td>
+                <td>use-cases model,<br>
+                sequence and collaboration diagrams</td>
+                <td>Part 3 Analysis &amp; Design -UML Model
+                (Use-Case View)</td>
+            </tr>
+            <tr>
+                <td><strong>Design</strong></td>
+                <td>design models</td>
+                <td>interface and state diagrams</td>
+                <td>Part 3 Analysis &amp; Design -UML Model
+                (Logical View)</td>
+            </tr>
+            <tr>
+                <td><strong>Specification</strong></td>
+                <td>interface specification</td>
+                <td>CORBA's IDL</td>
+                <td>Part 4 Interface Specifications</td>
+            </tr>
+            <tr>
+                <td><strong>Implementation</strong> </td>
+                <td>interface implementation</td>
+                <td>Prototype</td>
+                <td>Part 5 Tutorials</td>
+            </tr>
+            <tr>
+                <td><strong>Test<br>
+                </strong></td>
+                <td>standalone testing<br>
+                </td>
+                <td>tested component<br>
+                </td>
+                <td>no validation items here,<br>
+                refer to CAPE-OPEN Validation Report.</td>
+            </tr>
+        </table>
+    </blockquote>
+    <p>&nbsp;</p>
+    <blockquote>
+        <p>The CAPE-OPEN Work Process is detailled in the
+        CAPE-OPEN Concepts Document.</p>
+        <p>&nbsp;</p>
+    </blockquote>
+    <p><a name="Where to find additional Information"><font
+    color="#008080" size="4"><em><strong>Where to find additional
+    Information</strong></em></font></a></p>
+    <blockquote>
+        <p>For more information about <a
+        href="http://www.cape-open.org">CAPE-OPEN Project.</a><br>
+        For more information about <a
+        href="http://www.omg.org/corba/">CORBA.</a><br>
+        For more information about <a
+        href="http://www.omg.org/news/pr97/umlprimer.html">UML.</a><br>
+        For mora information about <a
+        href="http://www.javasoft.com/">Java.</a></p>
+    </blockquote>
+</blockquote>
+</body>
+</html>

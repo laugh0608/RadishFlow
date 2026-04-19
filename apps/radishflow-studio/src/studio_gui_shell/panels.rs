@@ -176,7 +176,7 @@ impl ReadyAppState {
                     if ui.button(recovery_action.title).clicked() {
                         match run_panel.activate_recovery_action() {
                             RunPanelRecoveryWidgetEvent::Requested { .. } => {
-                                self.dispatch_event(StudioGuiEvent::RunPanelRecoveryRequested);
+                                self.dispatch_ui_command("run_panel.recover_failure");
                             }
                             RunPanelRecoveryWidgetEvent::Missing => {}
                         }
@@ -271,7 +271,7 @@ impl ReadyAppState {
                         );
                         let response = response.on_hover_text(primary.detail);
                         if response.clicked() {
-                            self.dispatch_event(StudioGuiEvent::EntitlementPrimaryActionRequested);
+                            self.dispatch_ui_command(entitlement_command_id(primary.id));
                         }
                         ui.small(
                             egui::RichText::new(primary.detail)
@@ -284,9 +284,7 @@ impl ReadyAppState {
                                 ui.add_enabled(action.enabled, egui::Button::new(action.label));
                             let response = response.on_hover_text(action.detail);
                             if response.clicked() {
-                                self.dispatch_event(StudioGuiEvent::EntitlementActionRequested {
-                                    action_id: action.id,
-                                });
+                                self.dispatch_ui_command(entitlement_command_id(action.id));
                             }
                             ui.small(
                                 egui::RichText::new(action.detail)
@@ -719,5 +717,12 @@ impl ReadyAppState {
                         ));
                     });
             });
+    }
+}
+
+fn entitlement_command_id(action_id: rf_ui::EntitlementActionId) -> &'static str {
+    match action_id {
+        rf_ui::EntitlementActionId::SyncEntitlement => "entitlement.sync",
+        rf_ui::EntitlementActionId::RefreshOfflineLease => "entitlement.refresh_offline_lease",
     }
 }

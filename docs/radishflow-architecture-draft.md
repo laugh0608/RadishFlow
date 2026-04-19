@@ -1,6 +1,6 @@
 # RadishFlow 架构草案
 
-更新时间：2026-04-05
+更新时间：2026-04-16
 
 ## 文档目的
 
@@ -170,6 +170,37 @@
 - 让 Rust 直接处理 `IDispatch`、`VARIANT`、`SAFEARRAY`
 - 在边界上传递复杂对象图
 
+## CAPE-OPEN 规范实现策略
+
+RadishFlow 对 CAPE-OPEN 的实现原则不是“复制某个官方示例工程”，而是“把 CAPE-OPEN 视为外部契约并独立实现自己的桥接层”。
+
+规范真相源按以下优先级冻结：
+
+- 官方 PDF 规格书与 errata / clarifications 负责定义行为语义
+- 官方 IDL、Type Libraries、Primary Interop Assemblies 负责定义二进制接口形状
+- 官方安装包和接口分发版本用于本地校准与互操作验证
+- 官方示例代码与历史参考仓库只作参考，不直接充当实现蓝本
+
+落到工程分层上，应坚持：
+
+- CAPE-OPEN / COM 只存在于 `.NET 10 CapeBridge`
+- Rust Core 保持领域模型和求解模型自主，不按 COM 对象形状建模
+- `.NET 10 CapeBridge` 对外严格贴标准接口、GUID、HRESULT、ECape 语义和注册约定
+- `.NET 10 CapeBridge` 对内只调用 RadishFlow 自己的稳定 ABI，而不是把 CAPE-OPEN 语义压回 Rust
+
+因此，RadishFlow 的路线应是：
+
+- 外部兼容 CAPE-OPEN
+- 内部保持 RadishFlow 自主接口
+- 示例代码只帮助理解标准，不直接决定内部架构
+- 当前阶段先完成 COM-compatible Unit Operation PMC 主线，不把完整 Thermo PMC、第三方模型加载或 COBIA 主线化一起提前带入
+
+关于 COBIA：
+
+- COBIA 可作为后续互操作技术选项持续跟踪
+- 但在当前阶段，它不应替代既定的 COM-compatible CAPE-OPEN 主线
+- 除非目标 PME 与验证路径明确要求，否则不为引入 COBIA 而改写当前边界
+
 ## 推荐仓库结构
 
 建议目标仓库采用 Monorepo：
@@ -210,6 +241,7 @@ RadishFlow/
 │     ├─ RadishFlow.CapeOpen.Interop/
 │     ├─ RadishFlow.CapeOpen.Adapter/
 │     ├─ RadishFlow.CapeOpen.UnitOp.Mvp/
+│     ├─ RadishFlow.CapeOpen.UnitOp.Mvp.ContractTests/
 │     ├─ RadishFlow.CapeOpen.Registration/
 │     └─ RadishFlow.CapeOpen.SmokeTests/
 ├─ bindings/
@@ -269,6 +301,7 @@ RadishFlow/
 - 已建立 `entitlement_control`、`entitlement_panel_driver`、`entitlement_preflight` 与 `entitlement_session_driver`，把 entitlement panel 动作、启动预检、会话内调度和显式 session event 宿主收口为 Studio 应用层入口
 - 当前最小桌面入口 `run_studio_bootstrap` / `main.rs` 已改为默认通过 `StudioBootstrapTrigger::WidgetPrimaryAction -> RunPanelWidgetEvent -> run_panel_driver -> WorkspaceControlAction -> StudioAppFacade` 触发运行链路，同时仍保留显式 `RunPanelIntent` 兼容入口
 - 当前 entitlement 会话调度也已通过 `EntitlementSessionEvent::{SessionStarted, LoginCompleted, TimerElapsed, EntitlementCommandCompleted}` 形成统一事件语义，并由 Studio 侧维护失败退避与下一次建议检查时机
+- 当前 GUI / app host 命令面也已继续收口：`run_panel.recover_failure`、`entitlement.sync` 与 `entitlement.refresh_offline_lease` 等正式动作已统一走稳定 `command_id -> UiAction/trigger` 主通路，不再继续保留 entitlement 或 foreground recovery 的历史包装旁路
 - 当前默认包选择策略保持保守，只在唯一候选时自动选中，多包场景要求显式指定 package
 - Automatic 运行当前先根据 `SimulationMode` / `pending_reason` 决定是否 skip，再决定是否需要 preferred package 解析
 
@@ -477,13 +510,15 @@ Rust 与 .NET 的桥接层。
 
 - `engine_create`
 - `engine_destroy`
-- `stream_create`
-- `stream_set_tpzf`
-- `flash_tp`
-- `unit_create_*`
-- `unit_solve`
+- `engine_last_error_message`
+- `engine_last_error_json`
+- `rf_string_free`
+- `flowsheet_load_json`
+- `property_package_load_from_files`
+- `property_package_list_json`
 - `flowsheet_solve`
-- `snapshot_to_json`
+- `flowsheet_get_snapshot_json`
+- `stream_get_snapshot_json`
 
 ## `adapters/dotnet-capeopen`
 
@@ -498,9 +533,14 @@ Rust 与 .NET 的桥接层。
 - CAPE-OPEN 接口定义
 - GUID、属性、辅助类型
 - ECape 异常基础设施
-- 注册辅助逻辑
+- 最小 `IDispatch` marshalling 形状
 
 它可以吸收当前 `CapeOpenCore` 仓库中的接口定义与注册经验。
+
+当前对齐：
+
+- 已形成 `ICapeIdentification`、`ICapeUtilities`、`ICapeUnit` 的最小接口骨架
+- 已收口第一版 CAPE-OPEN interface/category GUID、HRESULT 与 `ECapeRoot` / `ECapeUser` / `ECapeBadInvOrder` / `ECapeBadCOParameter` 等最小异常语义
 
 ### `RadishFlow.CapeOpen.Adapter`
 
@@ -512,15 +552,43 @@ Rust 与 .NET 的桥接层。
 
 这是 .NET 与 Rust 的唯一正式运行时边界。
 
+当前对齐：
+
+- 当前已形成 `LibraryImport` 薄适配与 native engine 句柄生命周期封装
+- 当前已把 `RfFfiStatus + last_error_message/json` 收口到更细粒度 ECape 语义异常
+
 ### `RadishFlow.CapeOpen.UnitOp.Mvp`
 
 职责：
 
-- MVP 阶段的 CAPE-OPEN Unit Operation PMC
-- 通过适配层调用 Rust 核心
-- 作为外部 PME 验证对象
+- MVP 阶段的 CAPE-OPEN Unit Operation PMC 骨架
+- 先冻结最小 `ICapeIdentification` / `ICapeUtilities` / `ICapeUnit` 状态机与对象边界
+- 后续再通过适配层调用 Rust 核心并作为外部 PME 验证对象
 
 建议先以 Unit Operation 为导出重点，不在第一阶段同时做完整 Thermo PMC。
+
+当前对齐：
+
+- 当前已建立最小 PMC 类、`Initialize/Validate/Calculate/Terminate/Edit` 状态机与内部配置入口
+- 当前已把 `Ports` / `Parameters` 推进为最小占位对象集合，并让 `Validate()` 先基于对象状态做必填参数与必连端口检查
+- 当前仍未进入 COM 注册或完整 PME 生命周期；不过最小 native 求解接线已打通，且 `Calculate()` 对外结果面当前已收口为稳定的“成功结果 + 失败摘要”双契约，并进一步提供统一只读查询面 `GetCalculationReport()`、其上的标量元数据入口 `GetCalculationReportState()/GetCalculationReportHeadline()`、可枚举 detail 键值入口 `GetCalculationReportDetailKeyCount()/GetCalculationReportDetailKey(int)/GetCalculationReportDetailValue(string)`、最小文本导出面 `GetCalculationReportLines()/GetCalculationReportText()`，以及更接近宿主逐行消费习惯的 `GetCalculationReportLineCount()/GetCalculationReportLine(int)`，而不是继续直接暴露完整 snapshot JSON 或 native error JSON
+- 当前又已把上述 stable detail key 清单冻结为公开 catalog `UnitOperationCalculationReportDetailCatalog`，明确 success / failure 两条路径的 canonical key 顺序，避免宿主侧再依赖散落字符串常量或文档口径
+- 在最小结果面阶段性冻结后，当前又已把内部状态推进显式收口为 `UnitOperationLifecycleState`、分段 `EvaluateValidation()` guard 链、分段 `Calculate()` 执行链，以及统一的 validation/calculation/report transition helper，避免后续宿主主线继续推进时在同一个 PMC 类里堆叠隐式状态分支
+- 在公开 report API 之上，当前又已补出 `UnitOperationHostReportReader -> UnitOperationHostReportPresenter -> UnitOperationHostReportFormatter` 三级宿主消费 helper；这条链路的定位是冻结最小宿主读取/展示口径，而不是继续给 PMC 主类追加更多 convenience accessor
+
+### `RadishFlow.CapeOpen.UnitOp.Mvp.ContractTests`
+
+职责：
+
+- 锁定 `UnitOp.Mvp` 的库侧行为契约
+- 在不依赖外部 NuGet 测试框架的前提下验证最小 PMC 状态机
+- 为 `SmokeTests` 之外提供更贴近库内语义的回归入口
+
+当前对齐：
+
+- 当前已建立自举式 `Exe` runner，并已加入 `RadishFlow.CapeOpen.sln`
+- 当前已覆盖 `Validate before Initialize`、validation failure report、native failure report、success report、配置变更 invalidation 与 `Terminate()` 后阻断共 6 条核心 contract case
+- 当前已显式锁住 validation/native 两类 failure report 在 detail 字段上的缺省规则，避免这部分行为只停留在 smoke 输出或 README 约定里
 
 ### `RadishFlow.CapeOpen.Registration`
 
@@ -535,7 +603,15 @@ Rust 与 .NET 的桥接层。
 职责：
 
 - 最小冒烟测试
-- PMC 创建、参数读写、计算流程验证
+- `rf-ffi` 调用闭环与 .NET 项目可编译性验证
+
+当前对齐：
+
+- 当前可配置 native library 目录、加载示例 flowsheet 与本地 `manifest/payload` package
+- 当前可列出 package registry，并覆盖 direct adapter 的 flowsheet / stream snapshot JSON 导出，以及 `UnitOp.Mvp` 的最小成功结果契约、失败摘要契约、统一只读 report access、标量元数据入口、可枚举 detail 键值入口、最小文本导出面与标量逐行读取面验证
+- 当前 `unitop` 模式又已从“单条 console 冒烟脚本”收口为最小宿主验证骨架：`UnitOperationSmokeHostDriver` 固定真实宿主调用顺序，`UnitOperationSmokeBoundarySuite` 锁边界矩阵，`UnitOperationSmokeSession` 与 `UnitOperationSmokeScenarioCatalog` 负责时序变体编排
+- 当前已支持 `--unitop-scenario <all|session|recovery|shutdown>` 按宿主时序场景过滤运行，用于单独验证会话、恢复和收尾阶段，而不是每次都跑整套 timeline
+- 当前暂不承担 PME/COM 注册路径的冒烟验证
 
 ## `bindings/c`
 

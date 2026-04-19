@@ -1,0 +1,4 @@
+html: contient la doc issue d idldoc (idl files -> HTML doc)
+idl : fichiers idl simples et documentés idldoc
+jpb : pages ecrites par JPB
+umlmodel : le modele UML + génération Clarity (HTML) et ATA (HTML + Word97)

@@ -1,0 +1,1027 @@
+// ***********************************************************
+//
+// Interface Definition for SMST
+//
+// ***********************************************************
+
+
+#ifndef ICapeNumericSMST_idl
+#define ICapeNumericSMST_idl
+
+
+
+// Include Files *****************************************************************************
+
+
+#include "ICapeUtilityDefinition.idl"
+
+#include "ICapeUtility.idl"
+
+
+
+
+
+// Forward declarations *****************************************************************************
+
+interface ICapeNumericGATComponent;
+
+interface ICapeNumericFlowsheetFactory;
+interface ICapeNumericFlowsheet;
+interface ICapeNumericProcessGraph;
+interface ICapeNumericPartitionGraph;
+interface ICapeNumericOpenPartitionGraph;
+
+interface ICapeNumericAnalysisFactory;
+interface ICapeNumericAnalysis;
+interface ICapeNumericSequencing;
+interface ICapeNumericTearing;
+interface ICapeNumericPartitioning;
+interface ICapeNumericSMAnalysis;
+
+
+
+
+
+// Interface Definitions *****************************************************************************
+
+/**
+  *<p>Sequence Definition for the ICapeNumericGATComponent interface.</p>
+  */
+typedef sequence<ICapeNumericGATComponent> ICapeNumericGATComponentSequence;
+
+/**
+  * <p><tt> This is the entrance object to the CO SMST Component <br>
+  *First of all, the client must bind to this interface or must get its reference by another way. Then, the client can access to the SMST services.<br>
+  *This interface manages the ICapeNumericAnalysisFactory and the ICapeNumericFlowsheetFactory.</tt></p>
+  * <ul>
+  * <li><i>File</i> = ICapeNumericSMST.idl
+  * <li><i>Date</i> = June 99
+  * <li><i>Project</i> = CAPE-OPEN BE 3512
+  * </ul>        
+  * @author CAPE-OPEN Partners
+  * @see <a href="http://www.cape-open.org"> CAPE-OPEN Web Site </a>
+  * @see <a href="mailto:jeanpierre.belaud@ensigct.fr">Jean-Pierre Belaud</a>
+  * @see Inherited operations from ICapeUtilityIdentification, ICapeUtilityParameter, ICapeUtilityReport.
+  */
+interface ICapeNumericGATComponent: ICapeUtilityIdentification, ICapeUtilityParameter, ICapeUtilityReport {
+
+	/**
+	  * <p>Creates the ICapeNumericFlowsheetFactory interface.</p>
+	  * <p><i>Pre Conditions</i>: A ICapeNumericFlowsheetFactory with the same name does not exist.</p>
+	  * <p><i>Post Conditions</i>: None.</p>
+	  * @parm name: Name of the created ICapeNumericFlowsheetFactory
+	  * @returns the ICapeNumericFlowsheetFactory object reference
+	  * @raises CapeBAD_PARAM, CapeUNKNOWN
+	  */
+	ICapeNumericFlowsheetFactory CreateFlowsheetFactory(in CapeString name) raises (CapeBAD_PARAM, CapeUNKNOWN);
+
+	/**
+	  * <p>Creates the ICapeNumericAnalysisFactory interface.</p>
+	  * <p><i>Pre Conditions</i>: A ICapeNumericAnalysisFactory with the same name does not exist.</p>
+	  * <p><i>Post Conditions</i>: None.</p>
+	  * @parm name: Name of the created ICapeNumericAnalysisFactory.
+	  * @returns the ICapeNumericAnalysisFactory object reference.
+	  * @raises CapeBAD_PARAM, CapeUNKNOWN
+	  */
+	ICapeNumericAnalysisFactory CreateAnalysisFactory(in CapeString name) raises (CapeBAD_PARAM, CapeUNKNOWN);
+ 
+ 	/**
+	  * <p>Shutdowns the CO SMST Component process.<br>
+	  * The behaviour of this method is implementation dependent.</p>
+	  * <p><i>Pre Conditions</i>: None.</p>
+	  * <p><i>Post Conditions</i>: None.</p>
+	  * @raises CapeNO_IMPLEMENT, CapeUNKNOWN
+	  */
+	void Shutdown() raises (CapeNO_IMPLEMENT, CapeUNKNOWN);
+
+};
+
+
+
+
+/**
+  *<p><tt>The different types of flowsheet.<br>
+  *PROCESS_GRAPH for any flowsheet,<br>
+  *PARTITION_GRAPH for flowsheet with one partition,<br>
+  *OPEN_PARTITION_GRAPH for flowsheet with no cycles.</tt></p>
+  */
+enum CapeFlowsheetType{
+	PROCESS_GRAPH,
+	PARTITION_GRAPH,
+	OPEN_PARTITION_GRAPH
+};
+
+/**
+  *<p>Sequence Definition for the ICapeNumericFlowsheetFactory interface.</p>
+  */
+typedef sequence<ICapeNumericFlowsheetFactory> ICapeNumericFlowsheetFactorySequence;
+
+/**
+  *<p>Sequence Definition for the CapeFlowsheetType type.</p>
+  */
+typedef sequence<CapeFlowsheetType> CapeFlowsheetTypeSequence;
+
+/**
+  * <p><tt>This is the factory of Flowsheet model.</tt></p>
+  * <ul>
+  * <li><i>File</i> = ICapeNumericSMST.idl
+  * <li><i>Date</i> = June 99
+  * <li><i>Project</i> = CAPE-OPEN BE 3512
+  * </ul>        
+  * @author CAPE-OPEN Partners
+  * @see <a href="http://www.cape-open.org"> CAPE-OPEN Web Site </a>
+  * @see <a href="mailto:jeanpierre.belaud@ensigct.fr">Jean-Pierre Belaud</a>
+  * @see Inherited operations from ICapeUtilityParameter
+  */
+interface ICapeNumericFlowsheetFactory: ICapeUtilityParameter {
+
+	/**
+	  * <p>Creates a flowsheet which will be:<br>
+	  *an ICapeNumericProcessGraph interface if CapeFlowsheetType = PROCESS_GRAPH.<br>
+	  *an ICapeNumericPartitionGraph interface if CapeFlowsheetType = PARTITION_GRAPH.<br>
+	  *an ICapeNumericOpenPartitionGraph interface if CapeFlowsheetType = OPEN_PARTITION_GRAPH.</p>
+	  * <p><i>Pre Conditions</i>: An interface of the ICapeNumericFlowsheet hierarchy with the same name does not exist.</p>
+	  * <p><i>Post Conditions</i>: None.</p>
+	  * @parm type: Type of the created interface.
+	  * @parm name: Name of the created interface.
+	  * @returns the  object reference of the created Interface.
+	  * @raises CapeBAD_PARAM, CapeUNKNOWN
+	  * @see ICapeNumericProcessGraph
+	  * @see ICapeNumericPartitionGraph
+	  * @see ICapeNumericOpenPartitionGraph
+	  */
+	ICapeNumericFlowsheet CreateFlowsheet(in CapeFlowsheetType type, in CapeString name) raises (CapeBAD_PARAM, CapeUNKNOWN);
+
+	/**
+	  * <p>Gets the name of the interface</p>
+	  * <p><i>Pre Conditions</i>: None.</p>
+	  * <p><i>Post Conditions</i>: None.</p>
+	  * @returns the name of the interface.
+	  * @raises CapeUNKNOWN
+	  */
+	CapeString GetName() raises (CapeUNKNOWN);
+  
+	/**
+	  * <p> Destroys the interface.<br>
+	  * The behaviour of this method is implementation dependent.</p>
+	  * <p><i>Pre Conditions</i>: None.</p>
+	  * <p><i>Post Conditions</i>: None.</p>
+	  * @returns TRUE if the interface is destroyed, otherwise FALSE.
+	  * @raises CapeNO_IMPLEMENT, CapeUNKNOWN
+	  */
+	CapeBoolean Destroy () raises (CapeNO_IMPLEMENT, CapeUNKNOWN);
+
+};
+
+
+
+/**
+  *<p>Sequence Definition for the ICapeNumericFlowsheet interface.</p>
+  */
+typedef sequence<ICapeNumericFlowsheet> ICapeNumericFlowsheetSequence;
+
+/**
+  * <p><tt>This is the basic Interface of the Flowsheet model. Would allow to develop a more complex Flowsheet model.<br>
+  *It is an "abstract" Interface. It is not distributed. Consequently, no client can obtain its object reference.</tt></p>
+  * <ul>
+  * <li><i>File</i> = ICapeNumericSMST.idl
+  * <li><i>Date</i> = June 99
+  * <li><i>Project</i> = CAPE-OPEN BE 3512
+  * </ul>        
+  * @author CAPE-OPEN Partners
+  * @see <a href="http://www.cape-open.org"> CAPE-OPEN Web Site </a>
+  * @see <a href="mailto:jeanpierre.belaud@ensigct.fr">Jean-Pierre Belaud</a>
+  * @see Inherited operations from ICapeUtilityParameter
+  */
+interface ICapeNumericFlowsheet: ICapeUtilityParameter {
+
+	/**
+	  * <p>Gets the name of the interface.</p>
+	  * <p><i>Pre Conditions</i>: None.</p>
+	  * <p><i>Post Conditions</i>: None.</p>
+	  * @returns The name of the interface.
+	  * @raises CapeUNKNOWN
+	  */
+	CapeString GetName() raises (CapeUNKNOWN);
+
+	/**
+	  * <p>Gets the number of streams defining the flowsheet.</p>
+	  * <p><i>Pre Conditions</i>: None.</p>
+	  * <p><i>Post Conditions</i>: None.</p>
+	  * @returns The number of streams.
+	  * @raises CapeUNKNOWN
+	  */	
+	CapeLong GetStreamCount() raises (CapeUNKNOWN);
+
+	/**
+	  * <p>Gets the number of units defining the flowsheet.</p>
+	  * <p><i>Pre Conditions</i>: None.</p>
+	  * <p><i>Post Conditions</i>: None.</p>
+	  * @returns The number of units.
+	  * @raises CapeUNKNOWN
+	  */	
+	CapeLong GetUnitCount() raises (CapeUNKNOWN);
+
+	/**
+	  * <p>Gets the maximum number of units that the flowsheet can have.</p>
+	  * <p><i>Pre Conditions</i>: None.</p>
+	  * <p><i>Post Conditions</i>: None.</p>
+	  * @returns The maximum number of units.
+	  * @raises CapeUNKNOWN
+	  */	
+	CapeLong GetMaximumUnitCount() raises (CapeUNKNOWN);
+
+	/**
+	  * <p>Gets the maximum number of streams that the flowsheet can have.</p>
+	  * <p><i>Pre Conditions</i>: None.</p>
+	  * <p><i>Post Conditions</i>: None.</p>
+	  * @returns The maximum number of streams.
+	  * @raises CapeUNKNOWN
+	  */		
+	CapeLong GetMaximumStreamCount() raises (CapeUNKNOWN);
+
+ 	/**
+	  * <p>Destroys the interface.<br>
+	  * The behaviour of this method is implementation dependent.</p>
+	  * <p><i>Pre Conditions</i>: None.</p>
+	  * <p><i>Post Conditions</i>: None.</p>
+	  * @returns TRUE if the interface is destroyed, otherwise FALSE.
+	  * @raises CapeNO_IMPLEMENT, CapeUNKNOWN
+	  */
+	CapeBoolean Destroy() raises (CapeNO_IMPLEMENT, CapeUNKNOWN);
+
+};
+
+
+
+/**
+  *<p><tt>The different types of streams.<br>
+  *FEED for feed (stream entering the flowsheet from the outside),<br>
+  *PRODUCT for product (from the flowsheet to outside),<br>
+  *PROCESS for process stream (stream within  the flowsheet).</tt></p>
+  */
+enum CapeNumericStream {
+	FEED,
+	PRODUCT,
+	PROCESS
+};
+
+/**
+  *<p>Sequence Definition for the ICapeNumericProcessGraph interface.</p>
+  */
+typedef sequence<ICapeNumericProcessGraph> ICapeNumericProcessGraphSequence;
+
+/**
+  *<p>Sequence Definition for the CapeNumericStream type.</p>
+  */
+typedef sequence<CapeNumericStream> CapeNumericStreamSequence;
+
+/**
+  * <p><tt>Use this interface to describe a Process Graph.<br>
+  * The Process Graph is any Flowsheet. It can have one or several partitions.</tt></p>
+  * <ul>
+  * <li><i>File</i> = ICapeNumericSMST.idl
+  * <li><i>Date</i> = June 99
+  * <li><i>Project</i> = CAPE-OPEN BE 3512
+  * </ul>        
+  * @author CAPE-OPEN Partners
+  * @see <a href="http://www.cape-open.org"> CAPE-OPEN Web Site </a>
+  * @see <a href="mailto:jeanpierre.belaud@ensigct.fr">Jean-Pierre Belaud</a>
+  * @see Inherited operations from ICapeNumericFlowsheet
+  */
+interface ICapeNumericProcessGraph: ICapeNumericFlowsheet {
+
+	/**
+	  * <p>Adds a stream to a flowsheet. The stream comes from a unit and goes to a unit.</p>
+	  * <p><i>Pre Conditions</i>: A stream with the same identifier does not exist.</p>
+	  * <p><i>Post Conditions</i>: The default properties of the stream are :<br>
+	  * <blockquote>stream weight = implementation dependent, </blockquote>
+	  * <blockquote>stream type = PROCESS, </blockquote>
+	  * <blockquote>toBeTorn property = false, </blockquote>
+	  * <blockquote>notToBeTorn property = false. </blockquote>
+	  * <blockquote>In order to modify these properties, use AddStreamWeight(), AddStreamType(), AddTornProperty(), AddNotTornProperty() method.</blockquote></p>
+	  * @parm streamId: The stream identifier.
+	  * @parm iunitId: The identifier of the unit the stream comes from.
+	  * @parm funitId: The identifier of the unit the stream goes to.
+	  * @raises CapeNumericException
+	  * @see AddStreamWeight
+	  * @see AddStreamType
+	  * @see AddTornProperty
+	  * @see AddNotTornProperty
+	  */	
+	void AddStream(in CapeLong streamId, in CapeLong iunitId, in CapeLong funitId) raises (CapeBAD_PARAM, CapeIMP_LIMIT, CapeUNKNOWN);
+
+	/**
+	  * <p>Adds a weight to a stream.<br>
+	  *The weights are used during the Tearing analysis.</p>
+	  * <p><i>Pre Conditions</i>: The stream was added by the AddStream() method.</p>
+	  * <p><i>Post Conditions</i>: None.</p>
+	  * @parm streamId: The stream identifier.
+	  * @parm weight: The weight of the stream.
+	  * @raises CapeBAD_INV_ORDER, CapeBAD_PARAM, CapeUNKNOWN
+	  * @see AddStream
+	  * @see ICapeNumericTearing
+	  */		
+	void AddStreamWeight(in CapeLong streamId, in CapeDouble weight) raises (CapeBAD_INV_ORDER, CapeBAD_PARAM, CapeUNKNOWN);
+
+	/**
+	  * <p>Adds a type to a stream.</p>
+	  * <p><i>Pre Conditions</i>: The stream was added by the AddStream() method.</p>
+	  * <p><i>Post Conditions</i>: If the stream is a FEED stream, the iunitId (from the AddStream() method) corresponds to the external system identifier.<br>
+	  * If the stream is a PRODUCT stream, the funitId (from the AddStream() method) corresponds to the external system identifier.</p>
+	  * @parm streamId: The stream identifier.
+	  * @parm type: The type of the stream.
+	  * @raises CapeBAD_INV_ORDER, CapeBAD_PARAM, CapeUNKNOWN
+	  * @see AddStream
+	  */		
+	void AddStreamType(in CapeLong streamId, in CapeNumericStream type) raises (CapeBAD_INV_ORDER, CapeBAD_PARAM, CapeUNKNOWN);
+
+	/**
+	  * <p>Adds the "toBeTorn" property to a stream.</p>
+	  * <p><i>Pre Conditions</i>: The stream was added by the AddStream() method.</p>
+	  * <p><i>Post Conditions</i>: None.</p>
+	  * @parm streamId: The stream identifier.
+	  * @parm toBeTorn: True if the stream has to be torn during a Tearing analysis. Otherwise, false.
+	  * @raises CapeBAD_INV_ORDER, CapeBAD_PARAM, CapeUNKNOWN
+	  * @see AddStream
+	  * @see ICapeNumericTearing
+	  */		
+	void AddTornProperty(in CapeLong streamId, in CapeBoolean toBeTorn) raises (CapeBAD_INV_ORDER, CapeBAD_PARAM, CapeUNKNOWN);
+
+	/**
+	  * <p>Adds the "notToBeTorn" property to a stream.</p>
+	  * <p><i>Pre Conditions</i>: The stream was added by the AddStream() method.</p>
+	  * <p><i>Post Conditions</i>: None.</p>
+	  * @parm streamId: The stream identifier.
+	  * @parm notToBeTorn: True if the stream does not have to be torn during a Tearing analysis. Otherwise, false.
+	  * @raises CapeBAD_INV_ORDER, CapeBAD_PARAM, CapeUNKNOWN
+	  * @see AddStream
+	  * @see ICapeNumericTearing
+	  */	
+	void AddNotTornProperty(in CapeLong streamId, in CapeBoolean notToBeTorn) raises (CapeBAD_INV_ORDER, CapeBAD_PARAM, CapeUNKNOWN);
+
+	/**
+	  * <p>Removes a stream from a flowsheet.<br>
+	  * The unit (iunitId) the stream comes from, is not removed if it is the origin and/or destination of another stream.<br>
+	  * The unit (funitId) the stream goes to is not removed if it is the origin and/or destination of another stream.</p>
+	  * <p><i>Pre Conditions</i>: The stream is added by the AddStream() method.</p>
+	  * <p><i>Post Conditions</i>: The characteristics of the stream such as weight, type, toBeTorn, notToBeTorn are lost.</p>
+	  * @parm streamId: The stream identifier.
+	  * @raises CapeBAD_INV_ORDER, CapeBAD_PARAM, CapeUNKNOWN
+	  * @see AddStream
+	  */	
+	void RemoveStream(in CapeLong streamId) raises (CapeBAD_INV_ORDER, CapeBAD_PARAM, CapeUNKNOWN);
+
+	/**
+	  * <p>Gets the list of streams describing the flowsheet.</p>
+	  * <p><i>Pre Conditions</i>: None.</p>
+	  * <p><i>Post Conditions</i>: None.</p>
+	  * @returns The list of stream identifiers.
+	  * @raises CapeUNKNOWN
+	  */		
+	CapeLongSequence GetSetOfStream() raises (CapeUNKNOWN);
+
+	/**
+	  * <p>Gets the list of units describing the flowsheet.</p>
+	  * <p><i>Pre Conditions</i>: None.</p>
+	  * <p><i>Post Conditions</i>: None.</p>
+	  * @returns The list of unit identifiers.
+	  * @raises CapeUNKNOWN
+	  */	
+	CapeLongSequence GetSetOfUnit() raises (CapeUNKNOWN);
+  
+	/**
+	  * <p>Gets the identifier (iunitId)of the unit the stream comes from and the identifier (funitId) of the unit the stream goes to.</p>
+	  * <p><i>Pre Conditions</i>: The stream was added by the AddStream() method</p>
+	  * <p><i>Post Conditions</i>: None.</p>
+	  * @parm streamId: The stream identifier.
+	  * @parm iunitId: The identifier of the unit the stream comes from.
+	  * @parm funitId: The identifier of the unit the stream goes to.
+	  * @raises CapeBAD_INV_ORDER, CapeBAD_PARAM, CapeUNKNOWN
+	  * @see AddStream
+	  */		
+	void GetStreamConnection(in CapeLong streamId, out CapeLong iunitId, out CapeLong funitId) raises (CapeBAD_INV_ORDER, CapeBAD_PARAM, CapeUNKNOWN);
+
+	/**
+	  * <p>Gets the weight of the stream.</p>
+	  * <p><i>Pre Conditions</i>: The stream was added by the AddStream() method.</p>
+	  * <p><i>Post Conditions</i>: None.</p>
+	  * @parm streamId: The stream identifier.
+	  * @returns The weight.
+	  * @raises CapeBAD_INV_ORDER, CapeBAD_PARAM, CapeUNKNOWN
+	  * @see AddStream
+	  */		
+	CapeDouble GetStreamWeight(in CapeLong streamId) raises (CapeBAD_INV_ORDER, CapeBAD_PARAM, CapeUNKNOWN);
+
+	/**
+	  * <p>Gets the stream type of the stream.</p>
+	  * <p><i>Pre Conditions</i>: The stream was added by the AddStream() method.</p>
+	  * <p><i>Post Conditions</i>: None.</p>
+	  * @parm streamId: The stream identifier.
+	  * @returns The type.
+	  * @raises CapeBAD_INV_ORDER, CapeBAD_PARAM, CapeUNKNOWN
+	  * @see AddStream
+	  */
+	CapeNumericStream GetStreamType(in CapeLong streamId) raises (CapeBAD_INV_ORDER, CapeBAD_PARAM, CapeUNKNOWN);
+
+	/**
+	  * <p>Gets the "toBeTorn" property of the stream.</p>
+	  * <p><i>Pre Conditions</i>: The stream was added by the AddStream() method.</p>
+	  * <p><i>Post Conditions</i>: None.</p>
+	  * @parm streamId: The stream identifier.
+	  * @returns The toBeTorn Property: True if the stream has to be torn during a Tearing analysis. Otherwise, false.
+	  * @raises CapeBAD_INV_ORDER, CapeBAD_PARAM, CapeUNKNOWN
+	  * @see AddStream
+	  * @see ICapeNumericTearing
+	  */		
+	CapeBoolean GetTornProperty(in CapeLong streamId) raises (CapeBAD_INV_ORDER, CapeBAD_PARAM, CapeUNKNOWN);
+
+	/**
+	  * <p>Gets the "notToBeTorn" property of the stream.</p>
+	  * <p><i>Pre Conditions</i>: The stream was added by the AddStream() method.</p>
+	  * <p><i>Post Conditions</i>: None.</p>
+	  * @parm streamId: The stream identifier.
+	  * @returns The notToBeTorn Property: True if the stream does not have to be torn during a Tearing analysis. Otherwise, false.
+	  * @raises CapeBAD_INV_ORDER, CapeBAD_PARAM, CapeUNKNOWN
+	  * @see AddStream
+	  * @see ICapeNumericTearing
+	  */
+	CapeBoolean GetNotTornProperty(in CapeLong streamId) raises (CapeBAD_INV_ORDER, CapeBAD_PARAM, CapeUNKNOWN);
+
+};
+
+
+
+
+/**
+  *<p>Sequence Definition for the ICapeNumericPartitionGraph interface.</p>
+  */
+typedef sequence<ICapeNumericPartitionGraph> ICapeNumericPartitionGraphSequence;
+
+/**
+  * <p><tt>Use this interface to describe a Partition Graph.<br>
+  * The Partition Graph is a Flowsheet. It contains only one partition.</tt></p>
+  * <ul>
+  * <li><i>File</i> = ICapeNumericSMST.idl
+  * <li><i>Date</i> = June 99
+  * <li><i>Project</i> = CAPE-OPEN BE 3512
+  * </ul>        
+  * @author CAPE-OPEN Partners
+  * @see <a href="http://www.cape-open.org"> CAPE-OPEN Web Site </a>
+  * @see <a href="mailto:jeanpierre.belaud@ensigct.fr">Jean-Pierre Belaud</a>
+  * @see Inherited operations from ICapeNumericProcessGraph
+  */
+interface ICapeNumericPartitionGraph: ICapeNumericProcessGraph {
+
+	/**
+	  * <p>Sets the initial ICapeNumericProcessGraph interface.<br>
+	  * You should not use this method.
+	  * This method is used by the ICapeNumericPartitioning::CreateAndCompletePartitionGraph() method in order to store
+	  * the ICapeNumericProcessGraph from which the ICapeNumericPartitionGraph was created.</p>
+	  * <p><i>Pre Conditions</i>: None.</p>
+	  * <p><i>Post Conditions</i>: None.</p>
+	  * @parm parent: The object reference of the initial ICapeNumericProcessGraph.
+	  * @raises CapeBAD_PARAM, CapeUNKNOWN
+	  * @see ICapeNumericPartitioning
+	  * @see ICapeNumericPartitioning::CreateAndCompletePartitionGraph
+	  */	
+	void SetInitialProcessGraph(in ICapeNumericProcessGraph parent) raises (CapeBAD_PARAM, CapeUNKNOWN);
+
+	/**
+	  * <p>Gets the initial ICapeNumericProcessGraph interface.</p>
+	  * <p><i>Pre Conditions</i>: None.</p>
+	  * <p><i>Post Conditions</i>: None.</p>
+	  * @returns The object reference of ICapeNumericProcessGraph from which the ICapeNumericPartitionGraph 
+	  * was created and completed  thanks to the ICapeNumericPartitioning::CreateAndCompletePartitionGraph() method.
+	  * @raises CapeUNKNOWN
+	  * @see ICapeNumericPartitioning
+	  * @see ICapeNumericPartitioning::CreateAndCompletePartitionGraph
+	  */	
+	ICapeNumericProcessGraph GetInitialProcessGraph() raises (CapeUNKNOWN);
+
+};
+
+
+
+
+/**
+  *<p>Sequence Definition for the ICapeNumericOpenPartitionGraph interface.</p>
+  */
+typedef sequence<ICapeNumericOpenPartitionGraph> ICapeNumericOpenPartitionGraphSequence;
+
+/**
+  * <p><tt>Use this interface to describe an Open Partition Graph.<br>
+  * The Open Partition Graph is a Flowsheet. It has one open partition (e.g. no cycle).</tt></p>
+  * <p><tt>This interface has no operation and no attribute.</tt></p>
+  * <ul>
+  * <li><i>File</i> = ICapeNumericSMST.idl
+  * <li><i>Date</i> = June 99
+  * <li><i>Project</i> = CAPE-OPEN BE 3512
+  * </ul>        
+  * @author CAPE-OPEN Partners
+  * @see <a href="http://www.cape-open.org"> CAPE-OPEN Web Site </a>
+  * @see <a href="mailto:jeanpierre.belaud@ensigct.fr">Jean-Pierre Belaud</a>
+  * @see Inherited operations from ICapeNumericPartitionGraph
+  */
+interface ICapeNumericOpenPartitionGraph: ICapeNumericPartitionGraph {
+
+};
+
+
+
+
+/**
+  *<p><tt>The different types of numerical analysis.<br>
+  *SM_ANALYSIS for a full sequential modular analysis,<br>
+  *PARTITIONING for a partitioning analysis,<br>
+  *TEARING for a tearing analysis,<br>
+  *SEQUENCING for a sequencing analysis.</tt></p>
+  */
+enum CapeAnalysisType {
+	SM_ANALYSIS,
+	PARTITIONING,
+	TEARING,
+	SEQUENCING
+};
+
+/**
+  *<p>Sequence Definition for the ICapeNumericAnalysisFactory interface.</p>
+  */
+typedef sequence<ICapeNumericAnalysisFactory> ICapeNumericAnalysisFactorySequence;
+
+/**
+  *<p>Sequence Definition for the CapeAnalysisType type.</p>
+  */
+typedef sequence<CapeAnalysisType> CapeNumericTypeSequence;
+
+/**
+  * <p><tt>This is the factory of numerical analysis design.</tt></p>
+  * <ul>
+  * <li><i>File</i> = ICapeNumericSMST.idl
+  * <li><i>Date</i> = June 99
+  * <li><i>Project</i> = CAPE-OPEN BE 3512
+  * </ul>        
+  * @author CAPE-OPEN Partners
+  * @see <a href="http://www.cape-open.org"> CAPE-OPEN Web Site </a>
+  * @see <a href="mailto:jeanpierre.belaud@ensigct.fr">Jean-Pierre Belaud</a>
+  * @see Inherited operations from ICapeUtilityParameter
+  */
+interface ICapeNumericAnalysisFactory: ICapeUtilityParameter {
+
+	/**
+	  * <p>Creates a numerical analysis interface which will be (how a numerical analysis can be an interface ? You should perhaps drop the interface words in the following lines or add interface in the preceding line):
+	  * an ICapeNumericSMAnalysis interface if type = SM_ANALYSIS.<br>
+	  * an ICapeNumericPartitioning interface if type = PARTITIONING.<br>
+	  * an ICapeNumericTearing interface if type = TEARING.<br>
+	  * an ICapeNumericSequencing interface if type = SEQUENCING.</p>
+	  * <p><i>Pre Conditions</i>: An interface of the ICapeNumericAnalysis hierarchy with the same name does not exist.<br>
+	  * The implementation of the corresponding analysis is available.</p>
+	  * <p><i>Post Conditions</i>: None.</p>
+	  * @parm type: Type of the numerical analysis.
+	  * @parm name: Name of the created interface.
+	  * @returns The  object reference of the created interface.
+	  * @raises CapeBAD_PARAM, CapeUNKNOWN
+	  * @see ICapeNumericSMAnalysis
+	  * @see ICapeNumericPartitioning
+	  * @see ICapeNumericTearing
+	  * @see ICapeNumericSequencing
+	  */	
+	ICapeNumericAnalysis CreateNumericAnalysis(in CapeAnalysisType type, in CapeString name) raises (CapeBAD_PARAM, CapeUNKNOWN);
+
+	/**
+	  * <p> Destroys the interface.<br>
+	  * The behaviour of this method is implementation dependent.</p>
+	  * <p><i>Pre Conditions</i>: None.</p>
+	  * <p><i>Post Conditions</i>: None.</p>
+	  * @returns TRUE if the interface is destroyed, otherwise FALSE.
+	  * @raises CapeNO_IMPLEMENT, CapeUNKNOWN
+	  */
+	CapeBoolean Destroy() raises (CapeNO_IMPLEMENT, CapeUNKNOWN);
+  
+	/**
+	  * <p>Gets the name of the interface</p>
+	  * <p><i>Pre Conditions</i>: None.</p>
+	  * <p><i>Post Conditions</i>: None.</p>
+	  * @returns The name of the interface.
+	  * @raises CapeUNKNOWN
+	  */
+	CapeString GetName() raises (CapeUNKNOWN);
+
+	/**
+	  * <p>Checks if the full sequential modular analysis is available.<br>
+	  * If TRUE, the full sequential modular analysis of a flowsheet is possible.<br></p>
+	  * <p><i>Pre Conditions</i>: None.</p>
+	  * <p><i>Post Conditions</i>: None.</p>
+	  * @returns TRUE if the implementation is available, otherwise FALSE.
+	  * @raises CapeUNKNOWN
+	  * @see ICapeNumericSMAnalysis
+	  */	
+	CapeBoolean SMAnalysisImplementation() raises (CapeUNKNOWN);
+
+	/**
+	  * <p>Checks if the partitioning analysis is available.<br>
+	  * If TRUE, the partitioning analysis of a flowsheet is possible.<br></p>
+	  * <p><i>Pre Conditions</i>: None.</p>
+	  * <p><i>Post Conditions</i>: None.</p>
+	  * @returns TRUE if the implementation is available, otherwise FALSE.
+	  * @raises CapeUNKNOWN
+	  * @see ICapeNumericPartitioning
+	  */	
+	CapeBoolean PartitioningImplementation() raises (CapeUNKNOWN);
+
+	/**
+	  * <p>Checks if the tearing analysis is available.<br>
+	  * If TRUE, the tearing analysis of a flowsheet is possible.<br></p>
+	  * <p><i>Pre Conditions</i>: None.</p>
+	  * <p><i>Post Conditions</i>: None.</p>
+	  * @returns TRUE if the implementation is available, otherwise FALSE.
+	  * @raises CapeUNKNOWN
+	  * @see ICapeNumericTearing
+	  */	
+	CapeBoolean TearingImplementation() raises (CapeUNKNOWN);
+
+	/**
+	  * <p>Checks if the sequencing analysis is available.<br>
+	  * If TRUE, the sequencing analysis of a flowsheet is possible.<br></p>
+	  * <p><i>Pre Conditions</i>: None.</p>
+	  * <p><i>Post Conditions</i>: None.</p>
+	  * @returns TRUE if the implementation is available, otherwise FALSE.
+	  * @raises CapeUNKNOWN
+	  * @see ICapeNumericSequencing
+	  */
+	CapeBoolean SequencingImplementation() raises (CapeUNKNOWN);
+
+
+};
+
+
+
+/**
+  *<p><tt>The definition of a consistency code.<br>
+  *CONSISTENCY_YES for a consistent flowsheet ,<br>
+  *CONSISTENCY_NO for a non-consistent flowsheet,<br>
+  *CONSISTENCY_MAYBE unsure about consistency.</tt></p>
+  */
+enum CapeConsistencyCode{
+	CONSISTENCY_YES,
+	CONSISTENCY_NO,
+	CONSISTENCY_MAYBE
+};
+
+/**
+  *<p><tt>The definition of a convergence code.<br>
+  *CONVERGENCE_YES for a successful convergence ,<br>
+  *CONVERGENCE_NO for a non successful convergence,<br>
+  *CONVERGENCE_MAYBE unsure about convergence.</tt></p>
+  */
+enum CapeConvergenceCode{
+	CONVERGENCE_YES,
+	CONVERGENCE_NO,
+	CONVERGENCE_MAYBE
+};
+
+/**
+  *<p>Sequence Definition for the ICapeNumericAnalysis interface.</p>
+  */
+typedef sequence<ICapeNumericAnalysis> ICapeNumericAnalysisSequence;
+
+/**
+  *<p>Sequence Definition for the CapeConsistencyCodeSequence type.</p>
+  */
+typedef sequence<CapeConsistencyCode> CapeConsistencyCodeSequence;
+
+/**
+  *<p>Sequence Definition for the CapeConvergenceCodeSequence type.</p>
+  */
+typedef sequence<CapeConvergenceCode> CapeConvergenceCodeSequence;
+
+/**
+  * <p><tt>This is the basic Interface of the Numerical Analysis design: it cosntitutes the minimum requirements for an analysis.<br>
+  * It is an "abstract" Interface. It is not distributed. Consequently, no client can obtain its object reference.</tt></p>
+  * <ul>
+  * <li><i>File</i> = ICapeNumericSMST.idl
+  * <li><i>Date</i> = June 99
+  * <li><i>Project</i> = CAPE-OPEN BE 3512
+  * </ul>        
+  * @author CAPE-OPEN Partners
+  * @see <a href="http://www.cape-open.org"> CAPE-OPEN Web Site </a>
+  * @see <a href="mailto:jeanpierre.belaud@ensigct.fr">Jean-Pierre Belaud</a>
+  * @see Inherited operations from ICapeUtilityParameter
+  */
+interface ICapeNumericAnalysis: ICapeUtilityParameter{
+
+	/**
+	  * <p>Gets the maximum number of units which can be handled by the numerical analysis.</p>
+	  * <p><i>Pre Conditions</i>: None.</p>
+	  * <p><i>Post Conditions</i>: None.</p>
+	  * @returns The maximum number of units.
+	  * @raises CapeUNKNOWN
+	  */
+	CapeLong GetMaximumUnitCount() raises (CapeUNKNOWN);
+
+	/**
+	  * <p>Gets the maximum number of streams which can be handled by the numerical analysis.</p>
+	  * <p><i>Pre Conditions</i>: None.</p>
+	  * <p><i>Post Conditions</i>: None.</p>
+	  * @returns The maximum number of streams.
+	  * @raises CapeUNKNOWN
+	  */
+	CapeLong GetMaximumStreamCount() raises (CapeUNKNOWN);
+
+	/**
+	  * <p>Performs the numerical analysis on a flowsheet.</p>
+	  * <p><i>Pre Conditions</i>: None.</p>
+	  * <p><i>Post Conditions</i>: None.</p>
+	  * @parm flowsheet: The flowsheet to be analysed.
+	  * @raises CapeBAD_PARAM, CapeIMP_LIMIT, CapeNO_IMPLEMENT, CapeNO_CONVERGE, CapeUNKNOWN
+	  */
+	CapeConvergenceCode Perform(in ICapeNumericFlowsheet flowsheet) raises (CapeBAD_PARAM, CapeIMP_LIMIT, CapeNO_IMPLEMENT, CapeNO_CONVERGE, CapeUNKNOWN);
+
+	/**
+	  * <p>Gets the name of the interface.</p>
+	  * <p><i>Pre Conditions</i>: None.</p>
+	  * <p><i>Post Conditions</i>: None.</p>
+	  * @returns The name of the interface.
+	  * @raises CapeUNKNOWN
+	  */
+	CapeString GetName() raises (CapeUNKNOWN);
+
+	/**
+	  * <p>Checks the consistency of flowsheet with respect to the numerical analysis. Could be used before any computation.<br>
+ 	  * For instance, for a tearing analysis the method checks that the flowsheet contains only one partition.<br>
+	  * The behaviour of this method is implementation dependent.</p>
+	  * <p><i>Pre Conditions</i>: None.</p>
+	  * <p><i>Post Conditions</i>: None.</p>
+	  * @parm flowsheet: The flowsheet to be checked.
+	  * @returns The consistency code.
+	  * @raises CapeBAD_PARAM, CapeIMP_LIMIT, CapeNO_IMPLEMENT, CapeNO_CONVERGE, CapeUNKNOWN
+	  */		
+	CapeConsistencyCode CheckFlowsheetConsistency(in ICapeNumericFlowsheet flowsheet) raises (CapeBAD_PARAM, CapeIMP_LIMIT, CapeNO_IMPLEMENT, CapeNO_CONVERGE, CapeUNKNOWN);
+
+	/**
+	  * <p> Destroys the interface.<br>
+	  * The behaviour of this method is implementation dependent.</p>
+	  * <p><i>Pre Conditions</i>: None.</p>
+	  * <p><i>Post Conditions</i>: None.</p>
+	  * @returns TRUE if the interface is destroyed, otherwise FALSE.
+	  * @raises CapeNO_IMPLEMENT, CapeUNKNOWN
+	  */
+	CapeBoolean Destroy() raises (CapeNO_IMPLEMENT, CapeUNKNOWN);
+
+};
+
+
+
+
+/**
+  *<p>Sequence Definition for the ICapeNumericSequencing interface.</p>
+  */
+typedef sequence<ICapeNumericSequencing> ICapeNumericSequencingSequence;
+
+/**
+  * <p><tt>Performs a Sequencing Analysis on a Flowsheet.</tt></p>
+  * <ul>
+  * <li><i>File</i> = ICapeNumericSMST.idl
+  * <li><i>Date</i> = June 99
+  * <li><i>Project</i> = CAPE-OPEN BE 3512
+  * </ul>        
+  * @author CAPE-OPEN Partners
+  * @see <a href="http://www.cape-open.org"> CAPE-OPEN Web Site </a>
+  * @see <a href="mailto:jeanpierre.belaud@ensigct.fr">Jean-Pierre Belaud</a>
+  * @see Inherited operations from ICapeNumericAnalysis
+  */
+interface ICapeNumericSequencing: ICapeNumericAnalysis {
+
+	/**
+	  * <p>Gets the list of ordered units resulting from the last successful computation (with the ICapeNumericAnalysis::Perform() method).<br>
+	  * The order of units corresponds to the unit computation list e.g. the first unit of the CapeLongSequence points to the first 
+	  * unit to compute, the second unit of the CapeLongSequence is equivalent to the second unit to compute, ...</p>
+	  * <p><i>Pre Conditions</i>: None.</p>
+	  * <p><i>Post Conditions</i>: None.</p>
+	  * @returns The list of units
+	  * @raises CapeBAD_INV_ORDER, CapeUNKNOWN
+	  * @see ICapeNumericAnalysis::Perform
+	  */
+	CapeLongSequence GetUnits() raises (CapeBAD_INV_ORDER, CapeUNKNOWN);
+
+};
+
+
+
+/**
+  *<p>Sequence Definition for the ICapeNumericTearing interface.</p>
+  */
+typedef sequence<ICapeNumericTearing> ICapeNumericTearingSequence;
+
+/**
+  * <p><tt>Performs a Tearing Analysis on a Flowsheet.</tt></p>
+  * <ul>
+  * <li><i>File</i> = ICapeNumericSMST.idl
+  * <li><i>Date</i> = June 99
+  * <li><i>Project</i> = CAPE-OPEN BE 3512
+  * </ul>        
+  * @author CAPE-OPEN Partners
+  * @see <a href="http://www.cape-open.org"> CAPE-OPEN Web Site </a>
+  * @see <a href="mailto:jeanpierre.belaud@ensigct.fr">Jean-Pierre Belaud</a>
+  * @see Inherited operations from ICapeNumericAnalysis
+  */
+interface ICapeNumericTearing: ICapeNumericAnalysis {
+
+	/**
+	  * <p>Gets the list of torn streams resulting from the last successful computation (with the ICapeNumericAnalysis::Perform() method).<br>
+	  * The order of torn streams is implementation dependent.</p>
+	  * <p><i>Pre Conditions</i>: None.</p>
+	  * <p><i>Post Conditions</i>: None.</p>
+	  * @returns The list of torn streams.
+	  * @raises CapeBAD_INV_ORDER, CapeUNKNOWN
+	  * @see ICapeNumericAnalysis::Perform
+	  */
+	CapeLongSequence GetTornStreams() raises (CapeBAD_INV_ORDER, CapeUNKNOWN);
+
+	/**
+	  * <p>Creates and completes an ICapeNumericOpenPartitionGraph interface. The generated interface is in 
+	  * accordance with the last result obtained from a tearing analysis.<br>
+	  * The torn streams are removed from the partition in order to build this Open Partition Graph.<br>
+	  * This generated ICapeNumericOpenPartitionGraph is created using the flowsheet factory and is called name.</p>
+	  * <p><i>Pre Conditions</i>: An ICapeNumericFlowsheetFactory exists.<br>
+	  * The Perform method is terminated successfully.</p>
+	  * <p><i>Post Conditions</i>: The generated ICapeNumericOpenPartitionGraph can be used directly as a flowsheet 
+	  * for a sequencing analysis.<br>
+	  * Assures to generate a consistent flowsheet for the computation of the sequencing analysis.</p>
+	  * @returns The object reference of ICapeNumericOpenPartitionGraph interface.
+	  * @parm name: The name of the interface to be generated.
+	  * @parm factory: The factory which manages the interface to be generated.
+	  * @raises CapeBAD_INV_ORDER, CapeBAD_PARAM, CapeIMP_LIMIT, CapeNO_IMPLEMENT, CapeNO_CONVERGE, CapeUNKNOWN
+	  * @see ICapeNumericAnalysis::Perform
+	  * @see ICapeNumericSequencing
+	  * @see ICapeNumericFlowsheetFactory
+	  */
+	ICapeNumericOpenPartitionGraph CreateAndCompleteOpenPartitionGraph (in CapeString name, in ICapeNumericFlowsheetFactory factory) raises (CapeBAD_INV_ORDER, CapeBAD_PARAM, CapeIMP_LIMIT, CapeNO_IMPLEMENT, CapeNO_CONVERGE, CapeUNKNOWN);
+
+};
+
+
+
+
+/**
+  *<p>Sequence Definition for the ICapeNumericTearing interface.</p>
+  */
+typedef sequence<ICapeNumericPartitioning> ICapeNumericPartitioningSequence;
+
+/**
+  * <p><tt>Performs a Partitioning and Ordering Analysis on a Flowsheet.</tt></p>
+  * <ul>
+  * <li><i>File</i> = ICapeNumericSMST.idl
+  * <li><i>Date</i> = June 99
+  * <li><i>Project</i> = CAPE-OPEN BE 3512
+  * </ul>        
+  * @author CAPE-OPEN Partners
+  * @see <a href="http://www.cape-open.org"> CAPE-OPEN Web Site </a>
+  * @see <a href="mailto:jeanpierre.belaud@ensigct.fr">Jean-Pierre Belaud</a>
+  * @see Inherited operations from ICapeNumericAnalysis
+  */
+interface ICapeNumericPartitioning: ICapeNumericAnalysis {
+
+	/**
+	  * <p>Gets the number of partitions resulting from the last successful computation (with the ICapeNumericAnalysis::Perform() method).</p>
+	  * <p><i>Pre Conditions</i>: None.</p>
+	  * <p><i>Post Conditions</i>: None.</p>
+	  * @returns The number of partitions.
+	  * @raises CapeBAD_INV_ORDER, CapeUNKNOWN
+	  * @see ICapeNumericAnalysis::Perform
+	  */
+	CapeLong GetPartitionCount() raises (CapeBAD_INV_ORDER, CapeUNKNOWN);
+  
+	/**
+	  * <p>Gets the list of units for a specified partition resulting from the last successful computation (with the ICapeNumericAnalysis::Perform() method).<br>
+	  * partitionNb belongs to the interval [1..partition count].<br>
+	  * The order of partitions corresponds to the partition computation list (ordering) e.g. 
+	  * where partitionNb=1, it indicates the first partition to be computed, where partitionNb=2, it designates the second partition to be computed, and so on ...<br>
+	  * The order of units is implementation dependent.</p>
+	  * <p><i>Pre Conditions</i>: Uses ICapeNumericPartitioning::GetPartitionCount method in order to have the number  of partitions.</p>
+	  * <p><i>Post Conditions</i>: None.</p>
+	  * @returns A list of units.
+	  * @parm partitionNb: The rank of the partition.
+	  * @raises CapeBAD_INV_ORDER, CapeBAD_PARAM, CapeUNKNOWN
+	  * @see ICapeNumericAnalysis::Perform
+	  * @see GetPartitionCount
+	  */	
+	CapeLongSequence GetUnitsInPartition(in CapeLong partitionNb) raises (CapeBAD_INV_ORDER, CapeBAD_PARAM, CapeUNKNOWN);
+  
+	/**
+	  * <p>Creates and complete an ICapeNumericPartitionGraph interface from a specified partition. The return value is 
+	  * in accordance with the last calculation of partitioning analysis.<br>
+	  * The intermediate streams between partitions become either FEED or PRODUCT streams of the built Partition Graph.<br>
+	  * This generated ICapeNumericPartitionGraph is created from the flowsheet factory and is called name.<br>
+	  * partitionNb belongs to the interval [1..partition count].</p>
+	  * <p><i>Pre Conditions</i>: A ICapeNumericFlowsheetFactory exists.<br>
+	  * Use ICapeNumericPartitioning::GetPartitionCount() method in order to have the number of partitions.<br>
+	  * The Perform() method is terminated successfully.</p>
+	  * <p><i>Post Conditions</i>: The generated ICapeNumericPartitionGraph can be used directly as a flowsheet into
+	  * the tearing analysis.<br>
+	  * Assures to generate a consistent flowsheet for the computation of a tearing analysis.</p>
+	  * @returns The object reference of ICapeNumericPartitionGraph interface.
+	  * @parm partitionNb: The rank of the partition.
+	  * @parm name: The name of the partition to be generated.
+	  * @parm factory: The factory which manages the partition to be generated.
+	  * @raises CapeBAD_INV_ORDER, CapeBAD_PARAM, CapeIMP_LIMIT, CapeNO_IMPLEMENT, CapeNO_CONVERGE, CapeUNKNOWN
+	  * @see ICapeNumericAnalysis::Perform
+	  * @see GetPartitionCount
+	  * @see ICapeNumericTearing
+	  */
+	ICapeNumericPartitionGraph CreateAndCompletePartitionGraph(in CapeLong partitionNb, in CapeString name, in ICapeNumericFlowsheetFactory factory) raises (CapeBAD_INV_ORDER, CapeBAD_PARAM, CapeIMP_LIMIT, CapeNO_IMPLEMENT, CapeNO_CONVERGE, CapeUNKNOWN);
+  
+	/**
+	  * <p>Sets the external system.</p>
+	  * <p><i>Pre Conditions</i>: None.</p>
+	  * <p><i>Post Conditions</i>: The unitId value will be used by CreateAndCompletePartitionGraph() method in 
+	  * order to characterise the FEED and PRODUCT streams.</p>
+	  * @parm unitId: The unit identifier for the external system.
+	  * @raises CapeBAD_PARAM, CapeUNKNOWN
+	  * @see CreateAndCompletePartitionGraph
+	  */
+	void SetExternalSystemId(in CapeLong unitId) raises (CapeBAD_PARAM, CapeUNKNOWN);
+  
+	/**
+	  * <p>Sets the external system.</p>
+	  * <p><i>Pre Conditions</i>: Returns the value set by the SetExternalSystemId() method, otherwise the returned 
+	  * value is an implementation dependent default value.</p>
+	  * <p><i>Post Conditions</i>: None.</p>
+	  * @returns The unit identifier for the external system.
+	  * @raises CapeUNKNOWN
+	  * @see SetExternalSystemId
+	  */
+	CapeLong GetExternalSystemId() raises (CapeUNKNOWN);
+
+};
+
+
+
+/**
+  *<p>Sequence Definition for the ICapeNumericSMAnalysis interface.</p>
+  */
+typedef sequence<ICapeNumericSMAnalysis> ICapeNumericSMAnalysisSequence;
+
+/**
+  * <p><tt>Performs a Sequential Modular Analysis on a Flowsheet.</tt></p>
+  * <ul>
+  * <li><i>File</i> = ICapeNumericSMST.idl
+  * <li><i>Date</i> = June 99
+  * <li><i>Project</i> = CAPE-OPEN BE 3512
+  * </ul>        
+  * @author CAPE-OPEN Partners
+  * @see <a href="http://www.cape-open.org"> CAPE-OPEN Web Site </a>
+  * @see <a href="mailto:jeanpierre.belaud@ensigct.fr">Jean-Pierre Belaud</a>
+  * @see Inherited operations from ICapeNumericAnalysis
+  */
+interface ICapeNumericSMAnalysis: ICapeNumericAnalysis {
+
+	/**
+	  * <p>Returns the number of partitions resulting from the last successful computation (with the ICapeNumericAnalysis::Perform() method).</p>
+	  * <p><i>Pre Conditions</i>: None.</p>
+	  * <p><i>Post Conditions</i>: None.</p>
+	  * @returns The number of partitions.
+	  * @raises CapeBAD_INV_ORDER, CapeUNKNOWN
+	  * @see ICapeNumericAnalysis::Perform
+	  */
+	CapeLong GetPartitionCount() raises (CapeBAD_INV_ORDER, CapeUNKNOWN);
+
+	/**
+	  * <p>Gets the list of units for a specified partition, resulting from the last successful computation (with the ICapeNumericAnalysis::Perform() method).<br>
+	  * partitionNb belongs to the interval [1..partition count].<br>
+	  * The order of partitions corresponds to the partition computation list e.g. 
+	  * where partitionNb=1 designates the first partition to be computed, partitionNb=2 designates the second partition to be computed, ...<br>
+	  * The order of units corresponds to the unit computation list e.g. the first unit in CapeLongSequence is equivalent to the first 
+	  * unit to compute, the second unit in CapeLongSequence is equivalent to the second unit to compute, ...</p>
+	  * <p><i>Pre Conditions</i>: Use GetPartitionCount() method in order to have the partition count.</p>
+	  * <p><i>Post Conditions</i>: None.</p>
+	  * @returns The list of units.
+	  * @parm partitionNb: The rank of the partition.
+	  * @raises CapeBAD_INV_ORDER, CapeBAD_PARAM, CapeUNKNOWN
+	  * @see ICapeNumericAnalysis::Perform
+	  * @see GetPartitionCount
+	  */		
+	CapeLongSequence GetUnitsInPartition(in CapeLong partitionNb) raises (CapeBAD_INV_ORDER, CapeBAD_PARAM, CapeUNKNOWN);
+
+	/**
+	  * <p>Gets the list of torn streams for the specified partition, resulting from the last successful computation (with the ICapeNumericAnalysis::Perform() method).<br>
+	  * partitionNb belongs to the interval [1..partition count]. <br>
+	  * The order of partitions corresponds to the partition computation list e.g. where the partitionNb=1 designates  
+	  * the first partition to be computed, the partitionNb=2 designates the second partition to be computed, ...<br>
+	  * The order of torn streams is implementation dependent.</p>
+	  * <p><i>Pre Conditions</i>: Use GetPartitionCount() method in order to have the number of partitions.</p>
+	  * <p><i>Post Conditions</i>: None.</p>
+	  * @returns The list of torn streams.
+	  * @parm partitionNb: The rank of the partition.
+	  * @raises CapeBAD_INV_ORDER, CapeBAD_PARAM, CapeUNKNOWN
+	  * @see ICapeNumericAnalysis::Perform
+	  * @see GetPartitionCount
+	  */	
+	CapeLongSequence GetTornStreamsInPartition(in CapeLong partitionNb) raises (CapeBAD_INV_ORDER, CapeBAD_PARAM, CapeUNKNOWN);
+
+};
+
+
+
+
+#endif

@@ -1,0 +1,46 @@
+// This file is given in order to allow a successful idl compilation of the 3 idl files.
+// You should refer to the CAPE-OPEN Common Services for the services implementation.
+
+
+#ifndef ICapeUtility_idl
+#define ICapeUtility_idl
+
+
+
+// Include Files *****************************************************************
+
+#include "ICapeUtilityDefinition.idl"
+
+
+
+
+// Forward declarations *****************************************************************
+
+interface ICapeUtilityReport;
+interface ICapeUtilityIdentification;
+interface ICapeUtilityParameter;
+
+
+
+
+// Interface Definitions ****************************************************************
+
+
+
+
+interface ICapeUtilityReport {
+
+};
+
+
+interface ICapeUtilityIdentification {
+
+};
+
+
+interface ICapeUtilityParameter {
+
+};
+
+
+#endif

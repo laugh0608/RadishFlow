@@ -1,9 +1,5 @@
 use std::fs;
 
-use rf_ui::EntitlementActionId;
-
-use crate::StudioGuiHostEntitlementDispatchResult;
-
 use super::test_support::{
     find_menu_command, find_menu_command_by_label, flash_drum_local_rules_config,
     flash_drum_local_rules_synced_config, lease_expiring_config,
@@ -88,20 +84,28 @@ fn gui_driver_routes_entitlement_primary_action_through_single_event_entry() {
     };
 
     let dispatch = driver
-        .dispatch_event(StudioGuiEvent::EntitlementPrimaryActionRequested)
+        .dispatch_event(StudioGuiEvent::UiCommandRequested {
+            command_id: "entitlement.refresh_offline_lease".to_string(),
+        })
         .expect("expected entitlement primary action dispatch");
 
     match dispatch.outcome {
-        StudioGuiDriverOutcome::HostCommand(
-            StudioGuiHostCommandOutcome::EntitlementActionDispatched(
-                StudioGuiHostEntitlementDispatchResult::Executed {
-                    action_id,
-                    dispatch,
-                },
-            ),
-        ) => {
-            assert_eq!(action_id, EntitlementActionId::RefreshOfflineLease);
+        StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::UiCommandDispatched(
+            StudioGuiHostUiCommandDispatchResult::Executed(dispatch),
+        )) => {
             assert_eq!(dispatch.target_window_id, window_id);
+            match &dispatch.effects.runtime_report.dispatch {
+                crate::StudioRuntimeDispatch::AppCommand(outcome) => match &outcome.dispatch {
+                    crate::StudioAppResultDispatch::Entitlement(entitlement) => {
+                        assert_eq!(
+                            entitlement.action,
+                            crate::StudioEntitlementAction::RefreshOfflineLease
+                        );
+                    }
+                    other => panic!("expected entitlement dispatch, got {other:?}"),
+                },
+                other => panic!("expected app command dispatch, got {other:?}"),
+            }
         }
         other => panic!("expected executed entitlement primary action outcome, got {other:?}"),
     }
@@ -121,22 +125,28 @@ fn gui_driver_routes_entitlement_action_through_single_event_entry() {
     };
 
     let dispatch = driver
-        .dispatch_event(StudioGuiEvent::EntitlementActionRequested {
-            action_id: EntitlementActionId::SyncEntitlement,
+        .dispatch_event(StudioGuiEvent::UiCommandRequested {
+            command_id: "entitlement.sync".to_string(),
         })
         .expect("expected entitlement action dispatch");
 
     match dispatch.outcome {
-        StudioGuiDriverOutcome::HostCommand(
-            StudioGuiHostCommandOutcome::EntitlementActionDispatched(
-                StudioGuiHostEntitlementDispatchResult::Executed {
-                    action_id,
-                    dispatch,
-                },
-            ),
-        ) => {
-            assert_eq!(action_id, EntitlementActionId::SyncEntitlement);
+        StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::UiCommandDispatched(
+            StudioGuiHostUiCommandDispatchResult::Executed(dispatch),
+        )) => {
             assert_eq!(dispatch.target_window_id, window_id);
+            match &dispatch.effects.runtime_report.dispatch {
+                crate::StudioRuntimeDispatch::AppCommand(outcome) => match &outcome.dispatch {
+                    crate::StudioAppResultDispatch::Entitlement(entitlement) => {
+                        assert_eq!(
+                            entitlement.action,
+                            crate::StudioEntitlementAction::SyncEntitlement
+                        );
+                    }
+                    other => panic!("expected entitlement dispatch, got {other:?}"),
+                },
+                other => panic!("expected app command dispatch, got {other:?}"),
+            }
         }
         other => panic!("expected executed entitlement action outcome, got {other:?}"),
     }
@@ -147,26 +157,22 @@ fn gui_driver_stably_ignores_entitlement_action_without_registered_window() {
     let mut driver = StudioGuiDriver::new(&lease_expiring_config()).expect("expected driver");
 
     let dispatch = driver
-        .dispatch_event(StudioGuiEvent::EntitlementActionRequested {
-            action_id: EntitlementActionId::SyncEntitlement,
+        .dispatch_event(StudioGuiEvent::UiCommandRequested {
+            command_id: "entitlement.sync".to_string(),
         })
         .expect("expected entitlement action result");
 
     match dispatch.outcome {
-        StudioGuiDriverOutcome::HostCommand(
-            StudioGuiHostCommandOutcome::EntitlementActionDispatched(
-                StudioGuiHostEntitlementDispatchResult::IgnoredDisabled {
-                    action_id,
-                    detail,
-                    target_window_id,
-                },
-            ),
-        ) => {
-            assert_eq!(action_id, EntitlementActionId::SyncEntitlement);
-            assert_eq!(
+        StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::UiCommandDispatched(
+            StudioGuiHostUiCommandDispatchResult::IgnoredDisabled {
+                command_id,
                 detail,
-                "Open a window before dispatching entitlement actions"
-            );
+                target_window_id,
+                ..
+            },
+        )) => {
+            assert_eq!(command_id, "entitlement.sync");
+            assert_eq!(detail, "Open a studio window before syncing entitlement");
             assert_eq!(target_window_id, None);
         }
         other => panic!("expected ignored entitlement action outcome, got {other:?}"),

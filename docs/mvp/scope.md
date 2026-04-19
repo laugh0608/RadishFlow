@@ -1,6 +1,6 @@
 # MVP Scope
 
-更新时间：2026-04-09
+更新时间：2026-04-18
 
 ## MVP 目标
 
@@ -46,7 +46,10 @@
 - `rf-unitops` 第一轮统一围绕标准 `MaterialStreamState` 输入输出，不提前把 flowsheet 调度或 FFI 细节塞进单元接口
 - `Feed`、`Mixer`、`Flash Drum` 当前先冻结为 canonical material ports：`Feed(outlet)`、`Mixer(inlet_a/inlet_b/outlet)`、`Flash Drum(inlet/liquid/vapor)`
 - `rf-flowsheet` 第一轮连接校验只覆盖 canonical material ports、流股存在性与“一股一源一汇”；终端产品流允许只有 source、没有 sink
-- `.NET 10` 适配层在 `M4` 前只允许文档和最小占位，不提前展开复杂运行时实现
+- `.NET 10` 适配层当前允许推进到 `M4/M5` 交界的最小互调与 `UnitOp.Mvp` 宿主语义收口，但范围只限于 `rf-ffi` 薄适配、`UnitOp.Mvp` 对象面、contract/smoke 基线与库内只读宿主模型
+- `UnitOp.Mvp` 当前应优先把宿主语义收口为正式只读模型，例如 configuration snapshot、action plan、port/material snapshot、execution snapshot、session snapshot 与 canonical session state，不把组合逻辑散落到 smoke host、测试字面量或未来 PME 入口
+- 当前明确不继续线性堆叠 calculation report accessor；若宿主需要更高层语义，应优先在库内增加 reader / snapshot / presentation，而不是继续在 PMC 主类追加 convenience API
+- 当前仍不提前展开 COM 注册、PME 互调壳、第三方 CAPE-OPEN 模型加载或完整外部 Thermo/Property Package 宿主兼容
 
 App 与交互层当前进一步冻结以下口径：
 
@@ -218,3 +221,9 @@ App 与交互层当前进一步冻结以下口径：
 - 工作区始终可 `cargo check`
 - 文档、代码和阶段目标互相一致
 - 不把 `M4/M5` 的复杂度提前压进 `M2/M3`
+
+补充对 `.NET 10` `UnitOp.Mvp` 当前子线的判断口径：
+
+- 若新增的是库内正式只读宿主语义，且能被 contract tests 与 smoke host 共同消费，方向通常正确
+- 若新增的是只为某个 smoke 场景或临时宿主脚本服务的 helper / accessor / 字面量折叠，应优先回收到正式 reader / snapshot / catalog 再继续推进
+- 若开始需要依赖 COM 注册、PME 自动化互调、第三方模型加载或额外系统环境副作用才能证明价值，则大概率已经越过当前阶段边界

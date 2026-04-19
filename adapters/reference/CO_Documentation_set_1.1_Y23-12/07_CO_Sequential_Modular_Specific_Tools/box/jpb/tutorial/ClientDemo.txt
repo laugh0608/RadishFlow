@@ -1,0 +1,28 @@
+
+  -->  Bind to a CO Compliant SMST Component
+  ----------------------------------------------------------------------------------
+    Name        : Flowsheet Server
+    Version     : 5.0
+    Description : Numerical Work-Package of CAPE-OPEN Project - January 1999 - INPT 
+    Location    : Remote Object
+  ----------------------------------------------------------------------------------
+
+
+  -->  Connection to the FlowsheetFactory
+
+  -->  Flowsheet Creation
+
+  -->  Flowsheet Completion
+
+  -->  Connection to the Numeric Server
+         Is the Sequential Modular Analysis available ? : Yes
+
+  -->  Sequential Modular Analysis Creation
+         Does the Sequential Modular Analysis have specific Parameters ? : No
+
+  -->  Sequential Modular Analysis Computation 
+
+  -->  Sequential Modular Analysis Results
+          * Partition number 1
+              which contains the units 1 3 2 
+              with the torn streams 50 

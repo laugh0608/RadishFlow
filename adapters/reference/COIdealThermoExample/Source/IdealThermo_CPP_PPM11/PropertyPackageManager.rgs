@@ -1,0 +1,46 @@
+HKCU
+{
+	NoRemove Software
+	{
+		NoRemove Classes
+		{
+			IdealThermo_CPP_PPM11.PropertyPackage.1 = s 'PropertyPackageManager Class'
+			{
+				CLSID = s '{39231282-CE4D-416D-8C85-A769BE927020}'
+			}
+			IdealThermo_CPP_PPM11.PropertyPackageMa = s 'PropertyPackageManager Class'
+			{
+				CLSID = s '{39231282-CE4D-416D-8C85-A769BE927020}'
+				CurVer = s 'IdealThermo_CPP_PPM11.PropertyPackage.1'
+			}
+			NoRemove CLSID
+			{
+				ForceRemove {39231282-CE4D-416D-8C85-A769BE927020} = s 'PropertyPackageManager Class'
+				{
+					ProgID = s 'IdealThermo_CPP_PPM11.PropertyPackage.1'
+					VersionIndependentProgID = s 'IdealThermo_CPP_PPM11.PropertyPackageMa'
+					ForceRemove 'Programmable'
+					InprocServer32 = s '%MODULE%'
+					{
+						val ThreadingModel = s 'Apartment'
+					}
+					val AppID = s '%APPID%'
+					'TypeLib' = s '{3C6283E2-C6B0-479E-91C5-3C227C6CF0C3}'
+					'Implemented Categories'
+					{
+					 {678C09A1-7D66-11D2-A67D-00105A42887F}
+					 {CF51E383-0110-4ed8-ACB7-B50CFDE6908E}
+					}
+					CapeDescription 
+					{ val Name =  s 'CPP Ideal Property Package Manager'
+					  val Description = s 'CO-LaN Example Ideal Thermo Property Package Manager CPP implementation'
+					  val CapeVersion = s '1.1'
+					  val ComponentVersion = s '1.0.0.0'
+					  val VendorURL = s 'http://www.colan.org/'
+					  val About = s 'CPP Ideal Property Package Manager - Copyright 2011 CO-LaN'
+					}
+				}
+			}
+		}
+	}
+}

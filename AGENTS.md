@@ -84,6 +84,7 @@
 - `master` 仅作为稳定主线
 - 非特殊情况不直接在 `master` 上开发
 - `master` 只通过 Pull Request 合并
+- `master` 当前允许 `merge commit` 与 `rebase merge`，禁用 `squash merge`
 - 当前阶段不要求保护 `dev`
 - 管理员如需绕过规则，也应通过 PR 合并，而不是直接 push 到 `master`
 
@@ -144,6 +145,7 @@
 - 可能修改本机环境的命令，例如 COM 注册、反注册、安装证书、写系统注册表
 - 依赖网络或可能引入依赖变更的命令，例如 `cargo add`、`cargo update`、`dotnet add package`、需要联网的 restore
 - 打包、发布、安装类命令
+- 如果关键构建、测试或 smoke 在沙盒环境里出现疑似环境性失败，可先告知用户并申请提权到真实环境执行同一验证命令，以确认问题是否真来自代码
 
 ### 当前默认不做
 
@@ -168,6 +170,9 @@
 - `.NET 10` 解决方案当前仍是骨架，不应作为现阶段主验证基线
 - 如果某一步改动只涉及文档，仍应至少确认工作区未引入额外脏改动
 - 仓库治理或 CI 改动优先执行 `pwsh ./scripts/check-repo.ps1`；在 Linux/macOS/CI 中执行 `./scripts/check-repo.sh`
+- 仓库文本格式门禁只约束仓库自有文本资产；`adapters/reference/` 下的外部参考资料允许保留上游编码、BOM 与换行格式，不应为通过门禁而批量改写
+- 如果重要构建、测试或 smoke 验证在沙盒环境中失败，且失败现象明显带有沙盒限制、受限 restore / project reference 解析、native 加载路径差异或其他环境隔离特征，应允许申请提权到真实环境复验，而不是把这类失败直接归因到代码
+- 对当前仓库的 `.NET 10` CAPE-OPEN 解决方案、`dotnet build`、`dotnet run --project ... --no-build` smoke 与 `rf-ffi` native 装载路径，若沙盒结果与代码现状明显不符，应优先在获得授权后用真实环境完成最终验证
 
 ## 当前实现约定
 

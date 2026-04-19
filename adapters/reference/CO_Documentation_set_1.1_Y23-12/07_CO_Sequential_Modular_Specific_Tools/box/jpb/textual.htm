@@ -1,0 +1,91 @@
+<html>
+
+<head>
+<meta http-equiv="Content-Type"
+content="text/html; charset=iso-8859-1">
+<meta name="GENERATOR" content="Microsoft FrontPage Express 2.0">
+<title></title>
+</head>
+
+<body bgcolor="#FFFFFF" leftmargin="50">
+
+<p align="center"><font color="#FF0080" size="6"><strong>SMST
+Specific Requirements</strong></font></p>
+
+<p>&nbsp;</p>
+
+<p align="left">&nbsp;</p>
+
+<p align="left"><font size="4">Coming from the analysis phase of
+the CAPE-OPEN Process, you can find below a synthesis from the
+main User Textual Requirements.</font></p>
+
+<p align="left">&nbsp;</p>
+
+<ul>
+    <li><p align="left"><font size="4">Within an unique CAPE-OPEN
+        Sequential Modular Specific Tools (CO SMST) Component,
+        the </font><a href="general.htm#Partitioning"><font
+        size="4">Partitioning</font></a><font size="4">
+        functionality, the </font><a href="general.htm#Ordering"><font
+        size="4">Ordering</font></a><font size="4">
+        functionality, the </font><a href="general.htm#Tearing"><font
+        size="4">Tearing</font></a><font size="4"> functionality
+        and the </font><a href="general.htm#Sequencing"><font
+        size="4">Sequencing</font></a><font size="4">
+        functionality are integrated.<br>
+        They can be accessed separately and from different parts
+        of the client.<br>
+        The Partitioning functionality and the Ordering
+        functionality are merged into the Partitioning of the CO
+        SMST Component.<br>
+        Therefore, this component will provide the services for
+        Partitioning solver, Tearing solver and Sequencing
+        solver.</font></p>
+    </li>
+    <li><p align="left"><font size="4">In order to make easier
+        the access to the all functionalities, the CO SMST
+        Component can provide also a Full Sequential Modular
+        Analysis solver.<br>
+        It makes the full Sequential Modular analysis : search of
+        the calculation sequence of the partitions and units.<br>
+        So, that means it calculates the Partitioning of a
+        flowsheet, next the Ordering of the partitions, next the
+        Tearing of the partitions and next the Sequencing of
+        units of each partitions.<br>
+        To propose the Full Sequential Modular Analysis solver,
+        the CO SMST Component suppliers can reuse some/all
+        already implemented solvers or can implement an
+        independant solver. It is invisible to the client.</font></p>
+    </li>
+    <li><p align="left"><font size="4">Through the CO SMST
+        Component, the client can call services from each solver
+        individually.<br>
+        The client can use one solver or several ones.</font></p>
+    </li>
+    <li><p align="left"><font size="4">The CO SMST Component
+        suppliers can provide one, several or all the four
+        flowsheet solvers.<br>
+        The four flowsheet solvers are : Partitioning, Tearing,
+        Sequencing and Full Sequential Modular Analysis.</font></p>
+    </li>
+</ul>
+
+<ul>
+    <li><p align="left"><font size="4">The interface will be
+        designed with the aim of transferring the graph
+        connectivity and weightings.<br>
+        Therefore, the CO SMST Component doesn't need to have
+        access to the complete unit and stream information. The
+        units and streams of the flowsheet will be referenced by
+        basic identifiers. So, no direct link between the CO SMST
+        Component and a CO Unit (or Thermodynamic) Component is
+        necessary.<br>
+        The graph connectivity represents the process flowsheet.<br>
+        The weightings calculated by the client contains the
+        &quot;process knowledge&quot;.<br>
+        </font></p>
+    </li>
+</ul>
+</body>
+</html>

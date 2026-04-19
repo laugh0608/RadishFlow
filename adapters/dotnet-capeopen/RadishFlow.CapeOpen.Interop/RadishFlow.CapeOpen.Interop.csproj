@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>RadishFlow.CapeOpen.Interop</RootNamespace>
+    <AssemblyName>RadishFlow.CapeOpen.Interop</AssemblyName>
+  </PropertyGroup>
+</Project>

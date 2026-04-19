@@ -1,0 +1,22 @@
+(C) CO-LaN 2010: http://www.colan.org/
+Implemented by AmsterCHEM 2010: http://www.amsterchem.com/
+
+This project (VBMixerSplitterExample) implements an example CAPE-OPEN 
+Unit Operation; this example is meant to illustrate the CAPE-OPEN
+Unit Operation Specification document. 
+
+CO-LaN nor AmsterCHEM claim that this example is fit for purpose. 
+Particularly, VB6 has been used because of its easy readibility. 
+Commercial implementations should consider using an implementation
+platform that is more suitable in terms of maintainability and 
+performance. CO-LaN nor AmsterCHEM claim that this example implements
+this Unit Operation in an efficient way; in the contrary, in order
+to keep the example readible, no attempt is made to cache allocated
+variables (such as strings, arrays, ...) or to provide efficient
+lookup methods (e.g. for items in collections, ...)
+
+This implementation is intended for illustrative purposes only. Use
+this example as you please. Under no circumstance can CO-LaN or 
+AmsterCHEM be held liable for consequential or any other damages
+resulting from this code.
+

@@ -1,0 +1,159 @@
+<html>
+
+<head>
+<meta http-equiv="Content-Type"
+content="text/html; charset=iso-8859-1">
+<meta name="GENERATOR" content="Microsoft FrontPage Express 2.0">
+<title></title>
+</head>
+
+<body bgcolor="#FFFFFF" leftmargin="50">
+
+<p align="center"><font color="#FF0080" size="6"><strong>Background
+on SMST</strong></font></p>
+
+<p><br>
+<br>
+</p>
+
+<blockquote>
+    <p><font size="4">Hereafter, you have a quick and basic
+    presentation of solvers at flowsheet level which are
+    integrated in the CO Sequential Modular Specific Tools
+    Component.<br>
+    <br>
+    Find a good introduction about these functionalities in <em>Process
+    Flowsheeting - A. Westerberg, H. Hutchison, R. Motard, P.
+    Winter - Cambridge University Press - 1979.</em> especially
+    in the chapter 6 The Sequential Modular Approach to
+    flowsheeting.<br>
+    <br>
+    </font></p>
+    <hr>
+    <p><br>
+    This manual concerns only Sequential Modular simulators which
+    are the most commonly used for process simulation.<br>
+    <br>
+    In this approach, there are, at least, two levels of
+    calculations :<br>
+    · the unit level : calculation of all the output stream
+    values given values for all input streams and for all
+    operating and equipment parameters<br>
+    · the flowsheet level : calculation of all the tear stream
+    values given values for all residuals on recycle streams and
+    specification equations.<br>
+    Note that, at least, streams include material, information
+    and energy streams.<br>
+    <br>
+    The CO SMST Component is only concerned by the flowsheet
+    level : partitioning of the flowsheet, search of the
+    calculation sequence of the units.The different tools are the
+    following : <a href="#Partitioning">Partitioning</a> <a
+    href="#Ordering">Ordering</a> <a href="#Tearing">Tearing</a> <a
+    href="#Sequencing">Sequencing</a> <a href="#Full">Full
+    Sequential Modular Analysis</a><br>
+    <br>
+    These functionalities are called by the « Pre-Processor »
+    part of a CAPE Simulator. They are integrated into the CO
+    SMST Component.<br>
+    </p>
+    <p><a name="Partitioning"><font color="#008080" size="4"><em><strong>Partitioning</strong></em></font></a></p>
+    <blockquote>
+        <p>Partitioning a flowsheet is to locate the groups of
+        units (single unit and Maximum Cyclic Networks MCN) which
+        must be solved together. Each of these groups should
+        contain the smallest possible number of units. There is
+        one unique result for the partitioning of a given
+        flowsheet.<br>
+        <br>
+        MCN = a cycle which is not contained into another cycle
+        (usually called Partition)<br>
+        A Partition can be a group of units or a single unit.<br>
+        <br>
+        Hereafter some <a href="bibliography.htm">bibliographic
+        references</a>:<br>
+        · Sargent and Westerberg (1964)<br>
+        · Johns (1970)<br>
+        · Pibouleau (1980)<br>
+        · Mah (1983)<br>
+        · Chen and Stadherr (1985)<br>
+        </p>
+    </blockquote>
+    <p><a name="Ordering"><font color="#008080" size="4"><em><strong>Ordering</strong></em></font></a></p>
+    <blockquote>
+        <p>Ordering a flowsheet is to place the Partitions in a
+        proper sequence for computation.<br>
+        There can be several solutions for ordering a flowsheet.<br>
+        </p>
+    </blockquote>
+    <p><a name="Tearing"><font color="#008080" size="4"><em><strong>Tearing</strong></em></font></a></p>
+    <blockquote>
+        <p>Tearing is the analysis of each Partition to determine
+        tear streams. For each Partition, a set of independent
+        variables defining the tear streams will be used as
+        iterative variables at the flowsheet level.<br>
+        <br>
+        There are many competing algorithms which give
+        significant differences in performance. <br>
+        Hereafter some <a href="bibliography.htm">bibliographic
+        references</a>:<br>
+        · Barkley and Motard (1972)<br>
+        · Pho and Lapidus (1973)<br>
+        · Upadhye and Grens (1975)<br>
+        · Pibouleau (1980)<br>
+        · Motard and Westerberg (1981)<br>
+        <br>
+        <br>
+        The result and the efficiency of the tearing depend on
+        the criteria chosen by developers of tearing algorithms.
+        The final choice of tear streams is essential for the
+        convergence capabilities.<br>
+        <br>
+        The criteria are the following :<br>
+        · the minimum number of tear streams<br>
+        · assign a weight to each stream. This weight can
+        reflect the expected difficulty associated with tearing
+        the stream and may, for example, be equal to the number
+        of significant torn variable values in each stream.
+        Search the tear streams which minimise the sum of the
+        weights<br>
+        · tear to give the best convergence characteristics. For
+        example, Upadhye and Grens define the decomposition of a
+        flowsheet, that is the choice of tear streams, as
+        belonging to two classes : redundant and non redundant.
+        Non redundant decomposition have better convergence
+        properties than redundant ones for the method of
+        successive substitution<br>
+        · others<br>
+        <br>
+        These above criteria are just mentioned in order to
+        illustrate the strategy that can be used. CAPE-OPEN
+        project makes no judgement about their relative merits,
+        it must only provide all the useful information to
+        tearing developers through the interface definition. <br>
+        </p>
+    </blockquote>
+    <p><a name="Sequencing"><font color="#008080" size="4"><em><strong>Sequencing</strong></em></font></a></p>
+    <blockquote>
+        <p>For each Partition where tear streams are determined,
+        search for the computational order of units.<br>
+        </p>
+    </blockquote>
+    <p><a name="Full"><font color="#008080" size="4"><em><strong>Full
+    Sequential Modular Analysis</strong></em></font></a></p>
+    <blockquote>
+        <p><font color="#000000" size="3">This analysis
+        corresponds to a series of the previous analysis. It
+        allows to do directly the full sequential modular
+        analysis of a flowsheet e.g. </font>search of the
+        calculation sequence of the partitions and units.<br>
+        So, that means it calculates the <a href="#Partitioning">Partitioning</a>
+        of the flowsheet, next the <a href="#Ordering">Ordering</a>
+        of each partitions, next the <a href="#Tearing">Tearing</a>
+        of each partitions and next the <a href="#Sequencing">Sequencing</a>
+        of units of each partitions.<br>
+        </p>
+    </blockquote>
+</blockquote>
+</body>
+</html>

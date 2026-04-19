@@ -1,0 +1,44 @@
+<html>
+
+<head>
+<meta http-equiv="Content-Type"
+content="text/html; charset=iso-8859-1">
+<meta name="GENERATOR" content="Microsoft FrontPage Express 2.0">
+<title></title>
+</head>
+
+<body bgcolor="#FFFFFF" leftmargin="50">
+
+<p align="center"><font color="#FF0080" size="6"><strong>CO
+Objects Present in a Compliant Simulator</strong></font></p>
+
+<p>&nbsp;</p>
+
+<blockquote>
+    <p><font size="4">In software terms, this architecture
+    requires the following types of objects in a CO system:</font></p>
+    <ul>
+        <li><font size="4">Unit: this represents the CO unit and
+            provides methods for initialisation, calculation and
+            reporting. A CO compliant simulator uses these
+            methods to operate the plug-in unit.</font></li>
+        <li><font size="4">Simulator: this provides services that
+            a unit is likely to need from the simulator, such as
+            stream information.</font></li>
+        <li><font size="4">Thermo: this provides physical
+            property services</font></li>
+        <li><font size="4">Numerics: this provides numerical
+            services<br>
+            </font></li>
+    </ul>
+    <p><font size="4">The actual location of the services
+    provided by the last two objects may be in separate plug-in
+    software components or may be provided by the simulator
+    itself. <br>
+    <br>
+    The CO interface system will support the creation and use of
+    these objects. In this way a compliant simulator can use an
+    external SMST directly.</font></p>
+</blockquote>
+</body>
+</html>

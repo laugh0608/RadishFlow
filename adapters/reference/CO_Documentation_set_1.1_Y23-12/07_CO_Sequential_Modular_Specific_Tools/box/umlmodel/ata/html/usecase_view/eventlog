@@ -1,0 +1,508 @@
+
+ATA, Incorporated        
+DocEXPRESS/Reporter LITE 1.4.1     
+Copyright (c) 1999 by ATA, Incorporated        
+
+C:\TEMP\ata\docit.ini does not exist!
+DocEXPRESS/Reporter LITE copying the initialization file.
+DocEXPRESS/Reporter LITE continues loading, Please wait.
+Warning: Microsoft Word was not found.
+         MS Word Report Format is not avaiable.
+
+Warning: DocEXPRESS/Reporter LITE could not find a viewer associated with 'mif' files.
+               FrameMaker Report Format can be built but will not open automatically upon completion.
+
+
+DocEXPRESS/Reporter LITE has been successfully started.
+
+ 
+----------------------------------------------------------------------
+Starting C:\Program Files\ata\docit\ctools\rose\bin\parse_dcs on  at 15:42:13
+     -output C:\TEMP\ata\tmp\UML_Model_034043.html
+     -dps html
+     -model C:\TEMP\UML_Model.mdl
+     -dcs C:\Program Files\ata\docit\ctools\rose\specs\uml\defaults\UseCaseViewRpt.dcs
+     -defaults C:\TEMP\ata\tmp\defaults.txt
+     -verbose 
+Using the default header file: C:\Program Files\ata\docit\ctools\rose\html\header.html
+Using the default tag file: C:\Program Files\ata\docit\ctools\rose\html\tag_file.txt
+  
+Extracting information from the C:\TEMP\UML_Model.mdl model ...
+Note: Unlabelled objects will not be included in document.
+Outputting Model Information
+Outputting information for the Use Case View Use Case Package
+
+     Outputting information for the Top-Level View Use Case Diagram
+=============================================================
+Starting C:\Program Files\ata\docit\bin\mf2gif.exe
+         -i c:\temp\ata\tmp\tmp_09211542191.emf
+         -o c:\temp\ata\tmp\tmp_09211542191.gif
+ on 09/21/99 at 15:42:23
+
+Finished C:\Program Files\ata\docit\bin\mf2gif.exe
+ on 09/21/99 at 15:42:23
+=============================================================
+
+     The Top-Level View Use Case Diagram has been exported.
+     Outputting information for the Actors Use Case Package
+
+          Outputting information for the Human Actor Relatioship Use Case Diagram
+=============================================================
+Starting C:\Program Files\ata\docit\bin\mf2gif.exe
+         -i c:\temp\ata\tmp\tmp_09211542242.emf
+         -o c:\temp\ata\tmp\tmp_09211542242.gif
+ on 09/21/99 at 15:42:25
+
+Finished C:\Program Files\ata\docit\bin\mf2gif.exe
+ on 09/21/99 at 15:42:25
+=============================================================
+
+          The Human Actor Relatioship Use Case Diagram has been exported.
+          Outputting information for the Flowsheet Builder Actor
+          Outputting information for the Flowsheet User Actor
+     Outputting information for the Description Use Case Package
+          Outputting information for the Administration Use Case Package
+               Outputting information for the Bind to SMST Component Use Case
+               Outputting information for the Create Analysis Factory Use Case
+               Outputting information for the Create Flowsheet Factory Use Case
+               Outputting information for the Exit SMST Component Use Case
+               Outputting information for the Give Factory Name Use Case
+          Outputting information for the Initializing Use Case Package
+               Outputting information for the Building Analysis Use Case Package
+                    Outputting information for the Check Available Analysis Use Case
+                    Outputting information for the Create a 
+Sequential Modular Analysis Use Case
+                    Outputting information for the Create Analysis Use Case
+                    Outputting information for the Create
+a Partioning Analysis Use Case
+                    Outputting information for the Create
+a Sequencing Analysis Use Case
+                    Outputting information for the Create
+a Tearing Analysis Use Case
+                    Outputting information for the Get   
+Numeric Analysis Information Use Case
+                    Outputting information for the Get 
+Analysis Name Use Case
+                    Outputting information for the Get Analysis 
+Maximal Stream Count Use Case
+                    Outputting information for the Get Analysis 
+Maximal Unit Count Use Case
+                    Outputting information for the Get Analysis
+ Maximal Dimensions Use Case
+                    Outputting information for the Give Analysis Name Use Case
+                    Outputting information for the Give Analysis Type Use Case
+               Outputting information for the Building Graph Use Case Package
+                    Outputting information for the Add notToBeTorn Property Use Case
+                    Outputting information for the Add Stream Use Case
+                    Outputting information for the Add Stream Property Use Case
+                    Outputting information for the Add Stream Type Use Case
+                    Outputting information for the Add toBeTorn Property Use Case
+                    Outputting information for the Add Unit Use Case
+                    Outputting information for the Add Weigth Use Case
+                    Outputting information for the Create Process Graph Use Case
+                    Outputting information for the Get Flowsheet Maximal Dimension Use Case
+                    Outputting information for the Get Flowsheet Maximal Stream Count Use Case
+                    Outputting information for the Get Flowsheet Maximal Unit Count Use Case
+                    Outputting information for the Give Process Graph Name Use Case
+                    Outputting information for the Remove Stream Use Case
+                    Outputting information for the Remove Stream Property Use Case
+                    Outputting information for the Remove Unit Use Case
+                    Outputting information for the Remove Weigth Use Case
+               Outputting information for the Displaying Graph Use Case Package
+                    Outputting information for the Get Final Unit Use Case
+                    Outputting information for the Get Initial Unit Use Case
+                    Outputting information for the Get notToBeTorn Property Use Case
+                    Outputting information for the Get Process Graph Name Use Case
+                    Outputting information for the Get Set of Streams Use Case
+                    Outputting information for the Get Set of Units Use Case
+                    Outputting information for the Get Stream Connection Use Case
+                    Outputting information for the Get Stream Count Use Case
+                    Outputting information for the Get Stream Information Use Case
+                    Outputting information for the Get Stream Property Use Case
+                    Outputting information for the Get Stream Type Use Case
+                    Outputting information for the Get Stream Weigth Use Case
+                    Outputting information for the Get toBeTorn Property Use Case
+                    Outputting information for the Get Unit Count Use Case
+                    Outputting information for the Get Unit Information Use Case
+               Outputting information for the Building 
+a Partition Graph Use Case
+               Outputting information for the Building 
+an Open Partition Graph Use Case
+               Outputting information for the Building a  Process Graph Use Case
+               Outputting information for the Building a Numeric Analysis Use Case
+               Outputting information for the Displaying 
+a Partition Graph Use Case
+               Outputting information for the Displaying 
+an Open Partition Graph Use Case
+               Outputting information for the Displaying Process Graph Use Case
+               Outputting information for the Get Initial Graph Use Case
+          Outputting information for the Performing Use Case Package
+               Outputting information for the Check Consistency Use Case
+               Outputting information for the Choose Numeric Analysis Use Case
+               Outputting information for the Give Open Partition Graph Use Case
+               Outputting information for the Give Partition Graph Use Case
+               Outputting information for the Give Process Graph Use Case
+               Outputting information for the Perfom Sequential Modular Analysis Use Case
+               Outputting information for the Perform Partitioning Analysis Use Case
+               Outputting information for the Perform Sequencing Analysis Use Case
+               Outputting information for the Perform Tearing Analysis Use Case
+          Outputting information for the Results Use Case Package
+               Outputting information for the Create a Partition Graph
+ from Partitioning  Analysis Result Use Case
+               Outputting information for the Creating an Open Partition Graph
+from Tearing Analysis Result Use Case
+               Outputting information for the Get External
+System Representation Use Case
+               Outputting information for the Get Result 
+Partition Count Use Case
+               Outputting information for the Get Result 
+Unit Count in a  Partition Use Case
+               Outputting information for the Get Result for a 
+Partition in Partitioning Analysis Use Case
+               Outputting information for the Get Result for a Partition
+ in Sequential Modular Analysis Use Case
+               Outputting information for the Get Result for the Opened
+ Partition in Sequencing Analysis Use Case
+               Outputting information for the Get Result for the Partition
+ in Tearing Analysis Use Case
+               Outputting information for the Get Result Set 
+of Unit in a Partition Use Case
+               Outputting information for the Get Result Set of Torn 
+Stream in a Partition Use Case
+               Outputting information for the Get Result Set of
+Unit in a Partition Use Case
+               Outputting information for the Get Result Torn Stream
+ Count in a Partition Use Case
+               Outputting information for the Get Result Torn Stream
+ in a Partition Use Case
+               Outputting information for the Get Result Unit Use Case
+               Outputting information for the Getting Result from 
+Sequential Modular Analysis Use Case
+
+                    Outputting information for the Collaboration Diagram:Getting Result from Sequential Modular Analysis Sequence Diagram
+=============================================================
+Starting C:\Program Files\ata\docit\bin\mf2gif.exe
+         -i c:\temp\ata\tmp\tmp_09211543243.emf
+         -o c:\temp\ata\tmp\tmp_09211543243.gif
+ on 09/21/99 at 15:43:24
+
+Finished C:\Program Files\ata\docit\bin\mf2gif.exe
+ on 09/21/99 at 15:43:25
+=============================================================
+
+                    The Collaboration Diagram:Getting Result from Sequential Modular Analysis Sequence Diagram has been exported.
+
+                    Outputting information for the Sequence Diagram:Getting Result from Sequential Modular Analysis Sequence Diagram
+=============================================================
+Starting C:\Program Files\ata\docit\bin\mf2gif.exe
+         -i c:\temp\ata\tmp\tmp_09211543254.emf
+         -o c:\temp\ata\tmp\tmp_09211543254.gif
+ on 09/21/99 at 15:43:26
+
+Finished C:\Program Files\ata\docit\bin\mf2gif.exe
+ on 09/21/99 at 15:43:26
+=============================================================
+
+                    The Sequence Diagram:Getting Result from Sequential Modular Analysis Sequence Diagram has been exported.
+               Outputting information for the Getting Result from Tearing Analysis Use Case
+
+                    Outputting information for the Collaboration Diagram:Collaboration Diagram:Getting Result from Tearing Analysis Sequence Diagram
+=============================================================
+Starting C:\Program Files\ata\docit\bin\mf2gif.exe
+         -i c:\temp\ata\tmp\tmp_09211543275.emf
+         -o c:\temp\ata\tmp\tmp_09211543275.gif
+ on 09/21/99 at 15:43:28
+
+Finished C:\Program Files\ata\docit\bin\mf2gif.exe
+ on 09/21/99 at 15:43:28
+=============================================================
+
+                    The Collaboration Diagram:Collaboration Diagram:Getting Result from Tearing Analysis Sequence Diagram has been exported.
+
+                    Outputting information for the Sequence Diagram:Getting Result from Tearing Analysis Sequence Diagram
+=============================================================
+Starting C:\Program Files\ata\docit\bin\mf2gif.exe
+         -i c:\temp\ata\tmp\tmp_09211543296.emf
+         -o c:\temp\ata\tmp\tmp_09211543296.gif
+ on 09/21/99 at 15:43:30
+
+Finished C:\Program Files\ata\docit\bin\mf2gif.exe
+ on 09/21/99 at 15:43:30
+=============================================================
+
+                    The Sequence Diagram:Getting Result from Tearing Analysis Sequence Diagram has been exported.
+               Outputting information for the Getting Result from
+ Partitioning Analysis Use Case
+
+                    Outputting information for the Collaboration Diagram:Getting Result from Partitioning Analysis Sequence Diagram
+=============================================================
+Starting C:\Program Files\ata\docit\bin\mf2gif.exe
+         -i c:\temp\ata\tmp\tmp_09211543327.emf
+         -o c:\temp\ata\tmp\tmp_09211543327.gif
+ on 09/21/99 at 15:43:32
+
+Finished C:\Program Files\ata\docit\bin\mf2gif.exe
+ on 09/21/99 at 15:43:33
+=============================================================
+
+                    The Collaboration Diagram:Getting Result from Partitioning Analysis Sequence Diagram has been exported.
+
+                    Outputting information for the Sequence Diagram:Getting Result from Partitioning Analysis Sequence Diagram
+=============================================================
+Starting C:\Program Files\ata\docit\bin\mf2gif.exe
+         -i c:\temp\ata\tmp\tmp_09211543348.emf
+         -o c:\temp\ata\tmp\tmp_09211543348.gif
+ on 09/21/99 at 15:43:34
+
+Finished C:\Program Files\ata\docit\bin\mf2gif.exe
+ on 09/21/99 at 15:43:36
+=============================================================
+
+                    The Sequence Diagram:Getting Result from Partitioning Analysis Sequence Diagram has been exported.
+               Outputting information for the Getting Result from
+ Sequencing Analysis Use Case
+
+                    Outputting information for the Collaboration Diagram:Getting Result from Sequencing Analysis Sequence Diagram
+=============================================================
+Starting C:\Program Files\ata\docit\bin\mf2gif.exe
+         -i c:\temp\ata\tmp\tmp_09211543379.emf
+         -o c:\temp\ata\tmp\tmp_09211543379.gif
+ on 09/21/99 at 15:43:37
+
+Finished C:\Program Files\ata\docit\bin\mf2gif.exe
+ on 09/21/99 at 15:43:38
+=============================================================
+
+                    The Collaboration Diagram:Getting Result from Sequencing Analysis Sequence Diagram has been exported.
+
+                    Outputting information for the Sequence Diagram:Getting Result from Sequencing Analysis Sequence Diagram
+=============================================================
+Starting C:\Program Files\ata\docit\bin\mf2gif.exe
+         -i c:\temp\ata\tmp\tmp_092115433810.emf
+         -o c:\temp\ata\tmp\tmp_092115433810.gif
+ on 09/21/99 at 15:43:39
+
+Finished C:\Program Files\ata\docit\bin\mf2gif.exe
+ on 09/21/99 at 15:43:39
+=============================================================
+
+                    The Sequence Diagram:Getting Result from Sequencing Analysis Sequence Diagram has been exported.
+               Outputting information for the Give Open
+ Partition Graph Name Use Case
+               Outputting information for the Give Partition
+ Graph Name Use Case
+               Outputting information for the Manage 
+External System Use Case
+               Outputting information for the Set External 
+System Representation Use Case
+          Outputting information for the Getting and Handling
+ Results Use Case
+          Outputting information for the Initializing Use Case
+
+               Outputting information for the Collaboration Diagram:Initializing Sequence Diagram
+=============================================================
+Starting C:\Program Files\ata\docit\bin\mf2gif.exe
+         -i c:\temp\ata\tmp\tmp_092115434311.emf
+         -o c:\temp\ata\tmp\tmp_092115434311.gif
+ on 09/21/99 at 15:43:45
+
+Finished C:\Program Files\ata\docit\bin\mf2gif.exe
+ on 09/21/99 at 15:43:45
+=============================================================
+
+               The Collaboration Diagram:Initializing Sequence Diagram has been exported.
+
+               Outputting information for the Sequence Diagram:Initializing Sequence Diagram
+=============================================================
+Starting C:\Program Files\ata\docit\bin\mf2gif.exe
+         -i c:\temp\ata\tmp\tmp_092115434612.emf
+         -o c:\temp\ata\tmp\tmp_092115434612.gif
+ on 09/21/99 at 15:43:46
+
+Finished C:\Program Files\ata\docit\bin\mf2gif.exe
+ on 09/21/99 at 15:43:49
+=============================================================
+
+               The Sequence Diagram:Initializing Sequence Diagram has been exported.
+          Outputting information for the Performing Use Case
+
+               Outputting information for the Collaboration Diagram:Performing (SMAnalysis) Sequence Diagram
+=============================================================
+Starting C:\Program Files\ata\docit\bin\mf2gif.exe
+         -i c:\temp\ata\tmp\tmp_092115435413.emf
+         -o c:\temp\ata\tmp\tmp_092115435413.gif
+ on 09/21/99 at 15:43:56
+
+Finished C:\Program Files\ata\docit\bin\mf2gif.exe
+ on 09/21/99 at 15:43:56
+=============================================================
+
+               The Collaboration Diagram:Performing (SMAnalysis) Sequence Diagram has been exported.
+
+               Outputting information for the Collaboration Diagram:Performing (Tearing)  Sequence Diagram
+=============================================================
+Starting C:\Program Files\ata\docit\bin\mf2gif.exe
+         -i c:\temp\ata\tmp\tmp_092115435714.emf
+         -o c:\temp\ata\tmp\tmp_092115435714.gif
+ on 09/21/99 at 15:43:57
+
+Finished C:\Program Files\ata\docit\bin\mf2gif.exe
+ on 09/21/99 at 15:43:58
+=============================================================
+
+               The Collaboration Diagram:Performing (Tearing)  Sequence Diagram has been exported.
+
+               Outputting information for the Sequence Diagram: Performing (Tearing)  Sequence Diagram
+=============================================================
+Starting C:\Program Files\ata\docit\bin\mf2gif.exe
+         -i c:\temp\ata\tmp\tmp_092115435815.emf
+         -o c:\temp\ata\tmp\tmp_092115435815.gif
+ on 09/21/99 at 15:43:59
+
+Finished C:\Program Files\ata\docit\bin\mf2gif.exe
+ on 09/21/99 at 15:43:59
+=============================================================
+
+               The Sequence Diagram: Performing (Tearing)  Sequence Diagram has been exported.
+
+               Outputting information for the Sequence Diagram:Performing (SMAnalysis) Sequence Diagram
+=============================================================
+Starting C:\Program Files\ata\docit\bin\mf2gif.exe
+         -i c:\temp\ata\tmp\tmp_092115435916.emf
+         -o c:\temp\ata\tmp\tmp_092115435916.gif
+ on 09/21/99 at 15:44:00
+
+Finished C:\Program Files\ata\docit\bin\mf2gif.exe
+ on 09/21/99 at 15:44:01
+=============================================================
+
+               The Sequence Diagram:Performing (SMAnalysis) Sequence Diagram has been exported.
+          Outputting information for the Performing Administration Tasks Use Case
+          Outputting information for the Using SMST Use Case
+     Outputting information for the Diagrams Use Case Package
+
+          Outputting information for the 0 Interface and Packages Interactions Use Case Diagram
+=============================================================
+Starting C:\Program Files\ata\docit\bin\mf2gif.exe
+         -i c:\temp\ata\tmp\tmp_092115440417.emf
+         -o c:\temp\ata\tmp\tmp_092115440417.gif
+ on 09/21/99 at 15:44:05
+
+Finished C:\Program Files\ata\docit\bin\mf2gif.exe
+ on 09/21/99 at 15:44:06
+=============================================================
+
+          The 0 Interface and Packages Interactions Use Case Diagram has been exported.
+
+          Outputting information for the 1 Using SMST Use Case Diagram
+=============================================================
+Starting C:\Program Files\ata\docit\bin\mf2gif.exe
+         -i c:\temp\ata\tmp\tmp_092115440718.emf
+         -o c:\temp\ata\tmp\tmp_092115440718.gif
+ on 09/21/99 at 15:44:07
+
+Finished C:\Program Files\ata\docit\bin\mf2gif.exe
+ on 09/21/99 at 15:44:08
+=============================================================
+
+          The 1 Using SMST Use Case Diagram has been exported.
+
+          Outputting information for the 2 Performing Administration Tasks Use Case Diagram
+=============================================================
+Starting C:\Program Files\ata\docit\bin\mf2gif.exe
+         -i c:\temp\ata\tmp\tmp_092115440919.emf
+         -o c:\temp\ata\tmp\tmp_092115440919.gif
+ on 09/21/99 at 15:44:09
+
+Finished C:\Program Files\ata\docit\bin\mf2gif.exe
+ on 09/21/99 at 15:44:09
+=============================================================
+
+          The 2 Performing Administration Tasks Use Case Diagram has been exported.
+
+          Outputting information for the 3 Initializing Use Case Diagram
+=============================================================
+Starting C:\Program Files\ata\docit\bin\mf2gif.exe
+         -i c:\temp\ata\tmp\tmp_092115441020.emf
+         -o c:\temp\ata\tmp\tmp_092115441020.gif
+ on 09/21/99 at 15:44:10
+
+Finished C:\Program Files\ata\docit\bin\mf2gif.exe
+ on 09/21/99 at 15:44:11
+=============================================================
+
+          The 3 Initializing Use Case Diagram has been exported.
+
+          Outputting information for the 3.1 Building a Process Graph Use Case Diagram
+=============================================================
+Starting C:\Program Files\ata\docit\bin\mf2gif.exe
+         -i c:\temp\ata\tmp\tmp_092115441121.emf
+         -o c:\temp\ata\tmp\tmp_092115441121.gif
+ on 09/21/99 at 15:44:12
+
+Finished C:\Program Files\ata\docit\bin\mf2gif.exe
+ on 09/21/99 at 15:44:13
+=============================================================
+
+          The 3.1 Building a Process Graph Use Case Diagram has been exported.
+
+          Outputting information for the 3.2 Building a Numeric Analysis Use Case Diagram
+=============================================================
+Starting C:\Program Files\ata\docit\bin\mf2gif.exe
+         -i c:\temp\ata\tmp\tmp_092115441322.emf
+         -o c:\temp\ata\tmp\tmp_092115441322.gif
+ on 09/21/99 at 15:44:15
+
+Finished C:\Program Files\ata\docit\bin\mf2gif.exe
+ on 09/21/99 at 15:44:15
+=============================================================
+
+          The 3.2 Building a Numeric Analysis Use Case Diagram has been exported.
+
+          Outputting information for the 3.3 Displaying Process Graph Use Case Diagram
+=============================================================
+Starting C:\Program Files\ata\docit\bin\mf2gif.exe
+         -i c:\temp\ata\tmp\tmp_092115441623.emf
+         -o c:\temp\ata\tmp\tmp_092115441623.gif
+ on 09/21/99 at 15:44:16
+
+Finished C:\Program Files\ata\docit\bin\mf2gif.exe
+ on 09/21/99 at 15:44:17
+=============================================================
+
+          The 3.3 Displaying Process Graph Use Case Diagram has been exported.
+
+          Outputting information for the 4 Performing Use Case Diagram
+=============================================================
+Starting C:\Program Files\ata\docit\bin\mf2gif.exe
+         -i c:\temp\ata\tmp\tmp_092115441724.emf
+         -o c:\temp\ata\tmp\tmp_092115441724.gif
+ on 09/21/99 at 15:44:18
+
+Finished C:\Program Files\ata\docit\bin\mf2gif.exe
+ on 09/21/99 at 15:44:19
+=============================================================
+
+          The 4 Performing Use Case Diagram has been exported.
+
+          Outputting information for the 5 Getting and Handling Results Use Case Diagram
+=============================================================
+Starting C:\Program Files\ata\docit\bin\mf2gif.exe
+         -i c:\temp\ata\tmp\tmp_092115441925.emf
+         -o c:\temp\ata\tmp\tmp_092115441925.gif
+ on 09/21/99 at 15:44:21
+
+Finished C:\Program Files\ata\docit\bin\mf2gif.exe
+ on 09/21/99 at 15:44:22
+=============================================================
+
+          The 5 Getting and Handling Results Use Case Diagram has been exported.
+
+Total diagrams: 25
+Total Tables: 0
+Total warnings: 0
+Total errors  : 0
+Finished C:\Program Files\ata\docit\ctools\rose\bin\parse_dcs on mardi 21 septembre 1999 at 15:44:31
+Opening Report in a WWW Browser, Please wait.
+     Opening file: C:\TEMP\ata\tmp\UML_Model_034043_FV.html
+Pre-Defined Reports finished, sept 21 1999 15:44:35

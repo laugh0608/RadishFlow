@@ -1,0 +1,17 @@
+HKCU
+{
+	NoRemove Software
+	{
+		NoRemove Classes
+		{
+			NoRemove AppID
+			{
+				'%APPID%' = s 'IdealThermo_CPP_TS10'
+				'IdealThermo_CPP_TS10.DLL'
+				{
+					val AppID = s '%APPID%'
+				}
+			}
+		}
+	}
+}

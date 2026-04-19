@@ -1,0 +1,55 @@
+
+ATA, Incorporated        
+DocEXPRESS/Reporter LITE 1.4.1     
+Copyright (c) 1999 by ATA, Incorporated        
+
+DocEXPRESS/Reporter LITE continues loading, Please wait.
+Warning: Microsoft Word was not found.
+         MS Word Report Format is not avaiable.
+
+Warning: DocEXPRESS/Reporter LITE could not find a viewer associated with 'mif' files.
+               FrameMaker Report Format can be built but will not open automatically upon completion.
+
+
+DocEXPRESS/Reporter LITE has been successfully started.
+
+ 
+----------------------------------------------------------------------
+Starting C:\Program Files\ata\docit\ctools\rose\bin\parse_dcs on  at 16:00:19
+     -output C:\TEMP\ata\tmp\UML_Model_040009.html
+     -dps html
+     -model C:\TEMP\UML_Model.mdl
+     -dcs C:\Program Files\ata\docit\ctools\rose\specs\uml\defaults\DeploymentViewRpt.dcs
+     -defaults C:\TEMP\ata\tmp\defaults.txt
+     -verbose 
+Using the default header file: C:\Program Files\ata\docit\ctools\rose\html\header.html
+Using the default tag file: C:\Program Files\ata\docit\ctools\rose\html\tag_file.txt
+  
+Extracting information from the C:\TEMP\UML_Model.mdl model ...
+Note: Unlabelled objects will not be included in document.
+Outputting Model Information
+
+Outputting information for the Deployment View Deployment Diagram
+=============================================================
+Starting C:\Program Files\ata\docit\bin\mf2gif.exe
+         -i c:\temp\ata\tmp\tmp_09211600221.emf
+         -o c:\temp\ata\tmp\tmp_09211600221.gif
+ on 09/21/99 at 16:00:22
+
+Finished C:\Program Files\ata\docit\bin\mf2gif.exe
+ on 09/21/99 at 16:00:23
+=============================================================
+
+The Deployment View Deployment Diagram has been exported.
+     Outputting information for the Application Processor
+     Outputting information for the Application Processor
+     Outputting information for the SMST Application Processor
+
+Total diagrams: 1
+Total Tables: 0
+Total warnings: 0
+Total errors  : 0
+Finished C:\Program Files\ata\docit\ctools\rose\bin\parse_dcs on mardi 21 septembre 1999 at 16:00:27
+Opening Report in a WWW Browser, Please wait.
+     Opening file: C:\TEMP\ata\tmp\UML_Model_040009_FV.html
+Pre-Defined Reports finished, sept 21 1999 16:00:28

@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>RadishFlow.CapeOpen.Adapter</RootNamespace>
+    <AssemblyName>RadishFlow.CapeOpen.Adapter</AssemblyName>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\RadishFlow.CapeOpen.Interop\RadishFlow.CapeOpen.Interop.csproj" />
+  </ItemGroup>
+</Project>

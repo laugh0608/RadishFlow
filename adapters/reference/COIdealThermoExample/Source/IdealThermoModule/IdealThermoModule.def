@@ -1,0 +1,20 @@
+EXPORTS
+ GetPackages
+ EditPackages
+ PPCreatePropertyPackage
+ PPDeletePropertyPackage
+ PPGetLastError
+ PPLoad
+ PPSave
+ PPLoadFromPPFile
+ PPEdit
+ PPGetCompoundCount
+ PPGetCompoundStringConstant
+ PPGetCompoundRealConstant
+ PPGetTemperatureDependentProperty
+ PPGetPropertyResult
+ PPCalcSinglePhaseProps
+ PPCalcTwoPhaseProps
+ PPFlashPhaseResult
+ PPFlashPhase
+ PPFlash

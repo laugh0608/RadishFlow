@@ -1,0 +1,164 @@
+// Microsoft Visual C++ generated resource script.
+//
+#include "resource.h"
+
+#define APSTUDIO_READONLY_SYMBOLS
+/////////////////////////////////////////////////////////////////////////////
+//
+// Generated from the TEXTINCLUDE 2 resource.
+//
+#include "winres.h"
+
+/////////////////////////////////////////////////////////////////////////////
+#undef APSTUDIO_READONLY_SYMBOLS
+
+/////////////////////////////////////////////////////////////////////////////
+// English (U.S.) resources
+
+#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_ENU)
+#ifdef _WIN32
+LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
+#pragma code_page(1252)
+#endif //_WIN32
+
+#ifdef APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+//
+// TEXTINCLUDE
+//
+
+1 TEXTINCLUDE 
+BEGIN
+    "resource.h\0"
+END
+
+2 TEXTINCLUDE 
+BEGIN
+    "#include ""winres.h""\r\n"
+    "\0"
+END
+
+3 TEXTINCLUDE 
+BEGIN
+    "1 TYPELIB ""CPPMixerSplitterexample.tlb""\r\n"
+    "\0"
+END
+
+#endif    // APSTUDIO_INVOKED
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Version
+//
+
+VS_VERSION_INFO VERSIONINFO
+ FILEVERSION 1,0,4,0
+ PRODUCTVERSION 1,0,4,0
+ FILEFLAGSMASK 0x3fL
+#ifdef _DEBUG
+ FILEFLAGS 0x1L
+#else
+ FILEFLAGS 0x0L
+#endif
+ FILEOS 0x4L
+ FILETYPE 0x2L
+ FILESUBTYPE 0x0L
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904e4"
+        BEGIN
+            VALUE "Comments", "See http://www.colan.org/ for details"
+            VALUE "CompanyName", "CO-LaN"
+            VALUE "FileDescription", "CPP CAPE-OPEN Mixer Splitter Unit Operation Example"
+            VALUE "FileVersion", "1.0.4.0"
+            VALUE "InternalName", "CPPMixerSplitterexample.dll"
+            VALUE "LegalCopyright", "(c) CO-LaN 2013"
+            VALUE "OriginalFilename", "CPPMixerSplitterexample.dll"
+            VALUE "ProductName", "CPP CAPE-OPEN Mixer Splitter Unit Operation Example"
+            VALUE "ProductVersion", "1.0.4.0"
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x409, 1252
+    END
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// REGISTRY
+//
+
+IDR_CPPMIXERSPLITTEREXAMPLE REGISTRY                "CPPMixerSplitterexample.rgs"
+IDR_CPPMIXERSPLITTERUNITOPERATION REGISTRY                "CPPMixerSplitterUnitOperation.rgs"
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Dialog
+//
+
+IDD_EDITDIALOG DIALOGEX 0, 0, 166, 101
+STYLE DS_SETFONT | DS_MODALFRAME | DS_CENTER | WS_POPUP | WS_VISIBLE | WS_CAPTION | WS_SYSMENU
+EXSTYLE WS_EX_TOPMOST
+CAPTION "CPP Example Mixer Splitter"
+FONT 8, "MS Sans Serif", 0, 0, 0x0
+BEGIN
+    LTEXT           "Split factor: ",IDC_STATIC,6,6,38,8
+    EDITTEXT        IDC_SPLITFACTOR,72,3,72,14,ES_AUTOHSCROLL
+    LTEXT           "Heat input:",IDC_STATIC,6,22,36,8
+    EDITTEXT        IDC_HEATINPUT,72,19,72,14,ES_AUTOHSCROLL
+    LTEXT           "W",IDC_STATIC,150,22,8,8
+    LTEXT           "CPP Mixer Splitter Unit Operation Example",IDC_STATIC,6,42,133,8
+    LTEXT           "(C) CO-LaN 2010",IDC_STATIC,6,52,55,8
+    LTEXT           "Implemented by AmsterCHEM",IDC_STATIC,6,63,94,8
+    DEFPUSHBUTTON   "&Close",IDOK,108,78,50,16
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// DESIGNINFO
+//
+
+#ifdef APSTUDIO_INVOKED
+GUIDELINES DESIGNINFO 
+BEGIN
+    IDD_EDITDIALOG, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 159
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 94
+    END
+END
+#endif    // APSTUDIO_INVOKED
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// String Table
+//
+
+STRINGTABLE 
+BEGIN
+    IDS_PROJNAME            "CPPMixerSplitterexample"
+END
+
+#endif    // English (U.S.) resources
+/////////////////////////////////////////////////////////////////////////////
+
+
+
+#ifndef APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+//
+// Generated from the TEXTINCLUDE 3 resource.
+//
+1 TYPELIB "CPPMixerSplitterexample.tlb"
+
+/////////////////////////////////////////////////////////////////////////////
+#endif    // not APSTUDIO_INVOKED
+

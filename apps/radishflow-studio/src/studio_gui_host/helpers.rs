@@ -18,17 +18,6 @@ pub(super) fn dispatch_from_controller(
     }
 }
 
-pub(super) fn foreground_entitlement_dispatch_detail(
-    target_window_id: Option<StudioWindowHostId>,
-) -> String {
-    match target_window_id {
-        Some(window_id) => {
-            format!("Foreground entitlement action was not accepted by window #{window_id}")
-        }
-        None => "Open a window before dispatching entitlement actions".to_string(),
-    }
-}
-
 pub(super) fn global_event_from_controller(
     result: StudioAppHostGlobalEventResult,
     canvas: StudioGuiCanvasState,

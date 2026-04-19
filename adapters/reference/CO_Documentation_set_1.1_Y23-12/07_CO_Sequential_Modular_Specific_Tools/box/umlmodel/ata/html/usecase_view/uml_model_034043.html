@@ -1,0 +1,1845 @@
+<HTML>
+<! -- Comment -->
+<HEAD>
+	<LINK REL=stylesheet HREF="atastyles.css" TYPE="text/css">
+</HEAD>
+<A NAME="0921150918_88Use Case View Use Case Package"></A>
+<H1>Use Case View Use Case Package</H1>
+
+<A NAME="0921150919_88Top-Level View Use Case Diagram"></A>
+<H2>Top-Level View Use Case Diagram</H2>
+
+<A NAME="0921150923_88Top-Level View (Use Case Diagram)"></A>
+
+<P><A HREF="tmp_09211542191.EMF"><IMG SRC="tmp_09211542191.gif" BORDER=1></A></P>
+
+<P><B><A HREF="tmp_09211542191.EMF">Top-Level View (Use Case Diagram)</A></B></P>
+
+<BR>
+<BR>
+
+<p>
+The first diagram to view for the Use Case View.
+<p>
+From this, go to the Diagrams Package and open the diagrams following this order:<BR>
+1, 2, 3, 3.1, 3.2, 3.3, 4, 5
+<A NAME="0921150924_88Actors Use Case Package"></A>
+<H2>Actors Use Case Package</H2>
+
+<A NAME="0921150924_88Human Actor Relatioship Use Case Diagram"></A>
+<H3>Human Actor Relatioship Use Case Diagram</H3>
+
+<A NAME="0921150925_88Human Actor Relatioship (Use Case Diagram)"></A>
+
+<P><A HREF="tmp_09211542242.EMF"><IMG SRC="tmp_09211542242.gif" BORDER=1></A></P>
+
+<P><B><A HREF="tmp_09211542242.EMF">Human Actor Relatioship (Use Case Diagram)</A></B></P>
+
+<BR>
+<BR>
+
+<A NAME="0921150926_88Flowsheet Builder Actor"></A>
+<H3>Flowsheet Builder Actor</H3>
+
+<p>
+A human actor.
+<p>
+The person who sets up the flowsheet, the structure of the flowsheet, chooses thermodynamic models, the unit operation models and solver packages.<BR>
+This person hands over a working flowsheet to the [Flowsheet User]. The Flowsheet Builder can act as a [Flowsheet User].
+<A NAME="0921150926_88Flowsheet User Actor"></A>
+<H3>Flowsheet User Actor</H3>
+
+<p>
+A human actor.
+<p>
+The person who uses an existing flowsheet. This person will put new data into the flowsheet rather than change the structure of the flowsheet.
+<A NAME="0921150926_88Description Use Case Package"></A>
+<H2>Description Use Case Package</H2>
+
+<A NAME="0921150927_88Administration Use Case Package"></A>
+<H3>Administration Use Case Package</H3>
+
+<A NAME="0921150928_88Bind to SMST Component Use Case"></A>
+<H4>Bind to SMST Component Use Case</H4>
+
+<p>
+Bind to SMST Component Use-Case.
+<p>
+Description:<BR>
+The &quot;bind&quot; process.<BR>
+Its content strongly depends on the software architecture.
+<p>
+Assumptions:<BR>
+None.
+<p>
+Exceptions:<BR>
+None.
+<A NAME="0921150930_88Create Analysis Factory Use Case"></A>
+<H4>Create Analysis Factory Use Case</H4>
+
+<p>
+Create Analysis Factory Use-Case.
+<p>
+Description:<BR>
+Creates the Analysis factory. It allows to manage the flowsheet solvers.
+<p>
+Assumptions:<BR>
+None.
+<p>
+Exceptions:<BR>
+None.
+<A NAME="0921150930_88Create Flowsheet Factory Use Case"></A>
+<H4>Create Flowsheet Factory Use Case</H4>
+
+<p>
+Create Flowsheet Factory Use-Case.
+<p>
+Description:<BR>
+Creates the flowsheet factory. It allows to manage the flowsheet.
+<p>
+Assumptions:<BR>
+None.
+<p>
+Exceptions<BR>
+None.:
+<A NAME="0921150931_88Exit SMST Component Use Case"></A>
+<H4>Exit SMST Component Use Case</H4>
+
+<p>
+Exit SMST Component Use-Case.
+<p>
+Description:<BR>
+The &quot;exit&quot; process.<BR>
+Its content strongly depends on the software architecture.
+<p>
+Assumptions:<BR>
+None.
+<p>
+Exceptions:<BR>
+None.
+<A NAME="0921150931_88Give Factory Name Use Case"></A>
+<H4>Give Factory Name Use Case</H4>
+
+<p>
+Give Factory Name Use-Case.
+<p>
+Description:<BR>
+Gives the name to the factory.
+<p>
+Assumptions:<BR>
+None.
+<p>
+Exceptions:<BR>
+None.
+<A NAME="0921150932_88Initializing Use Case Package"></A>
+<H3>Initializing Use Case Package</H3>
+
+<A NAME="0921150932_88Building Analysis Use Case Package"></A>
+<H4>Building Analysis Use Case Package</H4>
+
+<A NAME="0921150934_88Check Available Analysis Use Case"></A>
+<H5>Check Available Analysis Use Case</H5>
+
+<p>
+Check Available Analysis Use-Case.
+<p>
+Description:<BR>
+Checks if a numerical analysis is available. The result is TRUE if a numerical analysis available, otherwise the result is FALSE.<BR>
+The numerical analysis are PARTITIONING, TEARING, SEQUENCING and (FULL) SEQUENTIAL MODULAR ANALYSIS.<BR>
+If it is not available (for instance, it is not implemented), the corresponding computation is not possible.
+<p>
+Assumptions:<BR>
+None.
+<p>
+Exceptions:<BR>
+None.
+<A NAME="0921150935_88Create a 
+Sequential Modular Analysis Use Case"></A>
+<H5>Create a 
+Sequential Modular Analysis Use Case</H5>
+
+<p>
+Create a Sequential Modular Analysis Use-Case.
+<p>
+Description:<BR>
+Creation of the full Sequential Modular Analysis solver.
+<p>
+Assumptions:<BR>
+[Check Available Analysis] returns true.
+<p>
+Exceptions:<BR>
+None.
+<A NAME="0921150936_88Create Analysis Use Case"></A>
+<H5>Create Analysis Use Case</H5>
+
+<p>
+Create Analysis Use-Case.
+<p>
+Description:<BR>
+Creates a numerical analysis.
+<p>
+Assumptions:<BR>
+None.
+<p>
+Exceptions:<BR>
+None.
+<A NAME="0921150936_88Create
+a Partioning Analysis Use Case"></A>
+<H5>Create
+a Partioning Analysis Use Case</H5>
+
+<p>
+Create a Partitioning Analysis Use-Case.
+<p>
+Description:<BR>
+Creation of the Partitioning solver.
+<p>
+Assumptions:<BR>
+[Check Available Analysis] returns true.
+<p>
+Exceptions:<BR>
+None.
+<A NAME="0921150937_88Create
+a Sequencing Analysis Use Case"></A>
+<H5>Create
+a Sequencing Analysis Use Case</H5>
+
+<p>
+Create a Sequencing Analysis Use-Case.
+<p>
+Description:<BR>
+Creation of the Sequencing solver.
+<p>
+Assumptions:<BR>
+[Check Available Analysis] returns true.
+<p>
+Exceptions:<BR>
+None.
+<A NAME="0921150937_88Create
+a Tearing Analysis Use Case"></A>
+<H5>Create
+a Tearing Analysis Use Case</H5>
+
+<p>
+Create a Tearing Analysis Use-Case.
+<p>
+Description:<BR>
+Creation of the Tearing solver.
+<p>
+Assumptions:<BR>
+[Check Available Analysis] returns true.
+<p>
+Exceptions:<BR>
+None.
+<A NAME="0921150938_88Get   
+Numeric Analysis Information Use Case"></A>
+<H5>Get   
+Numeric Analysis Information Use Case</H5>
+
+<p>
+Get Numeric Analysis Information Use-Case.
+<p>
+Description:<BR>
+Gets information about the created numerical analysis.
+<p>
+Assumptions:<BR>
+Success of [Create Analysis].
+<p>
+Exceptions:<BR>
+None.
+<A NAME="0921150939_88Get 
+Analysis Name Use Case"></A>
+<H5>Get 
+Analysis Name Use Case</H5>
+
+<p>
+Get Analysis Name Use-Case.
+<p>
+Description:<BR>
+Gets the analysis name.
+<p>
+Assumptions:<BR>
+None.
+<p>
+Exceptions:<BR>
+None.
+<A NAME="0921150939_88Get Analysis 
+Maximal Stream Count Use Case"></A>
+<H5>Get Analysis 
+Maximal Stream Count Use Case</H5>
+
+<p>
+Get Analysis Maximal Stream Count Use-Case.
+<p>
+Description:<BR>
+Gets the maximal number of streams which can be treated by the analysis.
+<p>
+Assumptions:<BR>
+None.
+<p>
+Exceptions:<BR>
+None.
+<A NAME="0921150940_88Get Analysis 
+Maximal Unit Count Use Case"></A>
+<H5>Get Analysis 
+Maximal Unit Count Use Case</H5>
+
+<p>
+Get Analysis Maximal Unit Count Use-Case.
+<p>
+Description:<BR>
+Gets the maximal number of units which can be treated by the analysis.
+<p>
+Assumptions:<BR>
+None.
+<p>
+Exceptions:<BR>
+None.
+<A NAME="0921150940_88Get Analysis
+ Maximal Dimensions Use Case"></A>
+<H5>Get Analysis
+ Maximal Dimensions Use Case</H5>
+
+<p>
+Get Analysis Maximal Dimensions Use-Case.
+<p>
+Description:<BR>
+Gets the maximal dimension for the analysis.<BR>
+This value could allow to indicate the limitations imposed by some legacy codes.
+<p>
+Assumptions:<BR>
+None.
+<p>
+Exceptions:<BR>
+None.
+<A NAME="0921150941_88Give Analysis Name Use Case"></A>
+<H5>Give Analysis Name Use Case</H5>
+
+<p>
+Give Analysis Name Use-Case.
+<p>
+Description:<BR>
+Gives the name of the analysis.
+<p>
+Assumptions:<BR>
+None.
+<p>
+Exceptions:<BR>
+None.
+<A NAME="0921150941_88Give Analysis Type Use Case"></A>
+<H5>Give Analysis Type Use Case</H5>
+
+<p>
+Give Analysis Type Use-Case.
+<p>
+Description:<BR>
+Gives the type of the analysis which will be created.<BR>
+The 4 types are :  PARTITIONING, TEARING, SEQUENCING and SEQUENTIAL MODULAR ANALYSIS.
+<p>
+Assumptions:<BR>
+None.
+<p>
+Exceptions:<BR>
+None.
+<A NAME="0921150942_88Building Graph Use Case Package"></A>
+<H4>Building Graph Use Case Package</H4>
+
+<A NAME="0921150944_88Add notToBeTorn Property Use Case"></A>
+<H5>Add notToBeTorn Property Use Case</H5>
+
+<p>
+Add notToBeTorn Property Use-Case.
+<p>
+Description:<BR>
+Indicates that the stream should not to be torn during a Tearing Analysis.<BR>
+This property is used or not by the Tearing analysis, that is implementation dependent.
+<p>
+Assumptions:<BR>
+None.
+<p>
+Exceptions:<BR>
+None.
+<A NAME="0921150944_88Add Stream Use Case"></A>
+<H5>Add Stream Use Case</H5>
+
+<p>
+Add Stream Use-Case.
+<p>
+Description:<BR>
+In order to build a Process Graph, all streams of the flowsheet must be described by giving the initial Unit each stream comes from, as well as the final Unit each stream goes to.<BR>
+If these units do not exist, they are created. If the unit(s) already exist(s), that is implementation dependent.<BR>
+The stream has by default a weight (implementation dependent) and properties (To Be Torn = False and Not To Be Torn = False). Use [Add Weight] and [Add Stream Property] to overwrite them.
+<p>
+Assumptions:
+<p>
+Exceptions:<BR>
+
+<A NAME="0921150945_88Add Stream Property Use Case"></A>
+<H5>Add Stream Property Use Case</H5>
+
+<p>
+Add Stream Property Use-Case.
+<p>
+Description:<BR>
+Adds some properties to a given stream.
+<p>
+Assumptions:<BR>
+None.
+<p>
+Exceptions:<BR>
+None.
+<A NAME="0921150945_88Add Stream Type Use Case"></A>
+<H5>Add Stream Type Use Case</H5>
+
+<p>
+Add Stream Type Use-Case.
+<p>
+Description:<BR>
+Adds the type of stream e.g. PROCESS, FEED or PRODUCT. PROCESS means that the stream connects two Units which belong to the Process Graph.
+<p>
+Assumptions:<BR>
+None.
+<p>
+Exceptions:<BR>
+None.
+<A NAME="0921150946_88Add toBeTorn Property Use Case"></A>
+<H5>Add toBeTorn Property Use Case</H5>
+
+<p>
+Add toBeTorn Property Use-Case.
+<p>
+Description:<BR>
+Indicates that the stream has to be torn during a Tearing Analysis.<BR>
+This property is used or not by the Tearing analysis, that is implementation dependent.
+<p>
+Assumptions:<BR>
+None.
+<p>
+Exceptions:<BR>
+None.
+<A NAME="0921150946_88Add Unit Use Case"></A>
+<H5>Add Unit Use Case</H5>
+
+<p>
+Add Unit Use-Case.
+<p>
+Description:<BR>
+Adds the unit which is the origin of the stream or the unit which is the destination of the stream.
+<p>
+Assumptions:<BR>
+None.
+<p>
+Exceptions:<BR>
+None.
+<A NAME="0921150947_88Add Weigth Use Case"></A>
+<H5>Add Weigth Use Case</H5>
+
+<p>
+Add Weigth Use-Case.
+<p>
+Description:<BR>
+The weight for a specified stream is added. <BR>
+Weight is a parameter for a Tearing analysis. Its value may be used or not by the Tearing analysis, that is implementation dependent.
+<p>
+Assumptions:<BR>
+None.
+<p>
+Exceptions:<BR>
+None.
+<A NAME="0921150947_88Create Process Graph Use Case"></A>
+<H5>Create Process Graph Use Case</H5>
+
+<p>
+Create Process Graph Use-Case.
+<p>
+Description:<BR>
+Creates a Process Graph.
+<p>
+Assumptions:<BR>
+None.
+<p>
+Exceptions:<BR>
+None.
+<A NAME="0921150948_88Get Flowsheet Maximal Dimension Use Case"></A>
+<H5>Get Flowsheet Maximal Dimension Use Case</H5>
+
+<p>
+Get Flowsheet Maximal Dimension Use-Case.
+<p>
+Description:<BR>
+Gets the maximum dimension for the Process Graph.<BR>
+This value could be high (the sizeis  of integer type) if the memory management is dynamic.<BR>
+There could be some limitations due to some legacy codes.
+<p>
+Assumptions:<BR>
+None.
+<p>
+Exceptions:<BR>
+None.
+<A NAME="0921150948_88Get Flowsheet Maximal Stream Count Use Case"></A>
+<H5>Get Flowsheet Maximal Stream Count Use Case</H5>
+
+<p>
+Get Flowsheet Maximal Stream Count Use-Case.
+<p>
+Description:<BR>
+Gets the maximum number of streams which can be obtained with [Add Stream].
+<p>
+Assumptions:<BR>
+None.
+<p>
+Exceptions:<BR>
+None.
+<A NAME="0921150949_88Get Flowsheet Maximal Unit Count Use Case"></A>
+<H5>Get Flowsheet Maximal Unit Count Use Case</H5>
+
+<p>
+Get Flowsheet Maximal Unit Count Use-Case.
+<p>
+Description:<BR>
+Getting the maximum number of units which can be completed with [Add Unit].
+<p>
+Assumptions:<BR>
+None.
+<p>
+Exceptions:<BR>
+None.
+<A NAME="0921150949_88Give Process Graph Name Use Case"></A>
+<H5>Give Process Graph Name Use Case</H5>
+
+<p>
+Give Process Graph Name Use-Case.
+<p>
+Description:<BR>
+Gives a name to the created Process Graph.
+<p>
+Assumptions:<BR>
+None.
+<p>
+Exceptions:<BR>
+None.
+<A NAME="0921150950_88Remove Stream Use Case"></A>
+<H5>Remove Stream Use Case</H5>
+
+<p>
+Remove Stream Use-Case.
+<p>
+Description:<BR>
+Removes a stream from the Process Graph.<BR>
+If the initial unit of the removed stream is not used by another stream, the unit is removed.<BR>
+If the final unit of the removed stream is not used by another stream, the unit is removed.
+<p>
+Assumptions:<BR>
+The stream was added by the [Add Stream].
+<p>
+Exceptions:<BR>
+None.
+<A NAME="0921150950_88Remove Stream Property Use Case"></A>
+<H5>Remove Stream Property Use Case</H5>
+
+<p>
+Remove Stream Property Use-Case.
+<p>
+Description:<BR>
+Removes a Stream property such as the stream type, the to Be Torn Property and the Not To Be Torn Property.
+<p>
+Assumptions:<BR>
+None.
+<p>
+Exceptions:<BR>
+None.
+<A NAME="0921150951_88Remove Unit Use Case"></A>
+<H5>Remove Unit Use Case</H5>
+
+<p>
+Remove Unit Use-Case.
+<p>
+Description:<BR>
+Removes a Unit.
+<p>
+Assumptions:<BR>
+None.
+<p>
+Exceptions:<BR>
+None.
+<A NAME="0921150951_88Remove Weigth Use Case"></A>
+<H5>Remove Weigth Use Case</H5>
+
+<p>
+Remove Weigth Use-Case.
+<p>
+Description:<BR>
+Removes the weigth given to a stream.
+<p>
+Assumptions:<BR>
+None.
+<p>
+Exceptions:<BR>
+None.
+<A NAME="0921150952_88Displaying Graph Use Case Package"></A>
+<H4>Displaying Graph Use Case Package</H4>
+
+<A NAME="0921150954_88Get Final Unit Use Case"></A>
+<H5>Get Final Unit Use Case</H5>
+
+<p>
+Get Final Unit Use-Case.
+<p>
+Description:<BR>
+The destination of the directed stream.
+<p>
+Assumptions:
+<p>
+Exceptions:
+<A NAME="0921150954_88Get Initial Unit Use Case"></A>
+<H5>Get Initial Unit Use Case</H5>
+
+<p>
+Get Initial Unit Use-Case.
+<p>
+Description:<BR>
+The origine of the directed stream.
+<p>
+Assumptions:
+<p>
+Exceptions:
+<A NAME="0921150955_88Get notToBeTorn Property Use Case"></A>
+<H5>Get notToBeTorn Property Use Case</H5>
+
+<p>
+Get notToBeTorn Property Use-Case.
+<p>
+Description:
+<p>
+Assumptions:
+<p>
+Exceptions:
+<A NAME="0921150955_88Get Process Graph Name Use Case"></A>
+<H5>Get Process Graph Name Use Case</H5>
+
+<p>
+Get Process Graph Name Use-Case.
+<p>
+Description:<BR>
+Gets the name of a Process Graph.
+<p>
+Assumptions:<BR>
+None.
+<p>
+Exceptions:<BR>
+None.
+<A NAME="0921150956_88Get Set of Streams Use Case"></A>
+<H5>Get Set of Streams Use Case</H5>
+
+<p>
+Get Set of Streams Use-Case.
+<p>
+Description:<BR>
+Gets the set of streams.
+<p>
+Assumptions:<BR>
+None.
+<p>
+Exceptions:<BR>
+None.
+<A NAME="0921150956_88Get Set of Units Use Case"></A>
+<H5>Get Set of Units Use Case</H5>
+
+<p>
+Get Set of Units Use-Case.
+<p>
+Description:
+<p>
+Assumptions:
+<p>
+Exceptions:
+<A NAME="0921150957_88Get Stream Connection Use Case"></A>
+<H5>Get Stream Connection Use Case</H5>
+
+<p>
+Get Stream Connection Use-Case.
+<p>
+Description:<BR>
+Gets the origin of the directed stream and <BR>
+the destination of the directed stream.
+<p>
+Assumptions:<BR>
+None.
+<p>
+Exceptions:<BR>
+None.
+<A NAME="0921150957_88Get Stream Count Use Case"></A>
+<H5>Get Stream Count Use Case</H5>
+
+<p>
+Get Stream Count Use-Case.
+<p>
+Description:<BR>
+Gets the number of streams.
+<p>
+Assumptions:<BR>
+None.
+<p>
+Exceptions:<BR>
+None.
+<A NAME="0921150958_88Get Stream Information Use Case"></A>
+<H5>Get Stream Information Use Case</H5>
+
+<p>
+Get Stream Information Use-Case.
+<p>
+Description:<BR>
+Gets information on Streams included in the Process Graph.
+<p>
+Assumptions:<BR>
+None.
+<p>
+Exceptions:<BR>
+None.
+<A NAME="0921150958_88Get Stream Property Use Case"></A>
+<H5>Get Stream Property Use Case</H5>
+
+<p>
+Get Stream Property  Use-Case.
+<p>
+Description:<BR>
+Gets properties of a stream.<BR>
+The properties are: the type of the stream (PROCESS, FEEF or PRODUCT), the To Be Torn property (False or True) and the  Not To Be Torn property (False or True).
+<p>
+Assumptions:<BR>
+None.
+<p>
+Exceptions:<BR>
+None.
+<A NAME="0921150959_88Get Stream Type Use Case"></A>
+<H5>Get Stream Type Use Case</H5>
+
+<p>
+Get Stream Type Use-Case.
+<p>
+Description:
+<p>
+Assumptions:
+<p>
+Exceptions:
+<A NAME="0921150959_88Get Stream Weigth Use Case"></A>
+<H5>Get Stream Weigth Use Case</H5>
+
+<p>
+Get Stream Weigth Use-Case.
+<p>
+Description:<BR>
+Gets the weigth of a stream.
+<p>
+Assumptions:<BR>
+None.
+<p>
+Exceptions:<BR>
+None.
+<A NAME="0921150900_88Get toBeTorn Property Use Case"></A>
+<H5>Get toBeTorn Property Use Case</H5>
+
+<p>
+Get toBeTorn Property Use-Case.
+<p>
+Description:
+<p>
+Assumptions:
+<p>
+Exceptions:
+<A NAME="0921150900_88Get Unit Count Use Case"></A>
+<H5>Get Unit Count Use Case</H5>
+
+<p>
+Get Unit Count Use-Case.
+<p>
+Description:
+<p>
+Assumptions:
+<p>
+Exceptions:
+<A NAME="0921150901_88Get Unit Information Use Case"></A>
+<H5>Get Unit Information Use Case</H5>
+
+<p>
+Get Unit Information Use-Case.
+<p>
+Description:<BR>
+Gets information on the Units included in the Process Graph.<BR>
+Information pertains to the number of units and to the set of units.
+<p>
+Assumptions:<BR>
+None.
+<p>
+Exceptions:<BR>
+None.
+<A NAME="0921150902_88Building 
+a Partition Graph Use Case"></A>
+<H4>Building 
+a Partition Graph Use Case</H4>
+
+<p>
+Building a Partition Graph Use-Case.
+<p>
+Description:<BR>
+Builds a Process Graph which is a flowsheet with one partition.<BR>
+A partition is a Maximum Cycle Network.
+<p>
+Assumptions:<BR>
+None.
+<p>
+Exceptions:<BR>
+None.
+<A NAME="0921150902_88Building 
+an Open Partition Graph Use Case"></A>
+<H4>Building 
+an Open Partition Graph Use Case</H4>
+
+<p>
+Building an Open Partition Graph Use-Case.
+<p>
+Description:<BR>
+Builds an Open Partition Graph which is a flowsheet with one opened partition.<BR>
+A partition is a Maximum Cycle Network.
+<p>
+Assumptions:<BR>
+None.
+<p>
+Exceptions:<BR>
+None.
+<A NAME="0921150903_88Building a  Process Graph Use Case"></A>
+<H4>Building a  Process Graph Use Case</H4>
+
+<p>
+Building a Process Graph Use-Case.
+<p>
+Description:<BR>
+Builds a Process Graph. The Process Graph may be any flowsheet.
+<p>
+Assumptions:<BR>
+The flowsheet contains at least one stream.
+<p>
+Exceptions:<BR>
+None.
+<A NAME="0921150903_88Building a Numeric Analysis Use Case"></A>
+<H4>Building a Numeric Analysis Use Case</H4>
+
+<p>
+Building a Numeric Analysis Use-Case.
+<p>
+Description:<BR>
+Builds a numerical analysis such as the Full Sequential Modular Analysis, the Partitioning Analysis, the Tearing Analysis or the Sequencing Analysis.
+<p>
+Assumptions:<BR>
+None.
+<p>
+Exceptions:<BR>
+None.
+<A NAME="0921150904_88Displaying 
+a Partition Graph Use Case"></A>
+<H4>Displaying 
+a Partition Graph Use Case</H4>
+
+<p>
+Displaying a Partition Graph Use-Case.
+<p>
+Description:<BR>
+Displays the characteristics of a Partition Graph.
+<p>
+Assumptions:<BR>
+None.
+<p>
+Exceptions:<BR>
+None.
+<A NAME="0921150905_88Displaying 
+an Open Partition Graph Use Case"></A>
+<H4>Displaying 
+an Open Partition Graph Use Case</H4>
+
+<p>
+Displaying an Open Partition Graph Use-Case.
+<p>
+Description:<BR>
+Displays the characteristics of an Open Process Graph.
+<p>
+Assumptions:<BR>
+None.
+<p>
+Exceptions:<BR>
+None.
+<A NAME="0921150905_88Displaying Process Graph Use Case"></A>
+<H4>Displaying Process Graph Use Case</H4>
+
+<p>
+Displaying Process Graph Use-Case.
+<p>
+Description:<BR>
+Displays the characteristics of a Process Graph.
+<p>
+Assumptions:<BR>
+Success of [Building a Process Graph]
+<p>
+Exceptions:<BR>
+None.<BR>
+
+<A NAME="0921150906_88Get Initial Graph Use Case"></A>
+<H4>Get Initial Graph Use Case</H4>
+
+<p>
+Get Initial Process Graph Use-Case.
+<p>
+Description:<BR>
+Gets the &quot;parent&quot; graph from which the graph has been created.<BR>
+A Graph B can be generated from the analysis results of a Graph A. The Graph B keeps in mind the &quot;parent&quot; Graph A which has created it. This Use-Case gives this &quot;parent&quot; Graph. If this &quot;parent&quot; Graph does not exist, a null value is returned.
+<p>
+Assumptions:<BR>
+None.
+<p>
+Exceptions:<BR>
+None.
+<A NAME="0921150906_88Performing Use Case Package"></A>
+<H3>Performing Use Case Package</H3>
+
+<A NAME="0921150907_88Check Consistency Use Case"></A>
+<H4>Check Consistency Use Case</H4>
+
+<p>
+Check Consistency Use-Case.
+<p>
+Description:<BR>
+Checks the data consistency before an analysis computation.<BR>
+For a Tearing Analysis, checks that the flowsheet has one Partition.<BR>
+For a Seqencing Analysis, checks that the flowsheet has no cycle.<BR>
+Other checks would be implementation dependent.
+<p>
+Assumptions:<BR>
+None.
+<p>
+Exceptions:<BR>
+None.
+<A NAME="0921150908_88Choose Numeric Analysis Use Case"></A>
+<H4>Choose Numeric Analysis Use Case</H4>
+
+<p>
+Choose Numeric Analysis Use-Case.
+<p>
+Description:<BR>
+Chooses a created numerical analysis.
+<p>
+Assumptions:<BR>
+None.
+<p>
+Exceptions:<BR>
+None.<BR>
+
+<A NAME="0921150909_88Give Open Partition Graph Use Case"></A>
+<H4>Give Open Partition Graph Use Case</H4>
+
+<p>
+Give Open Partition Graph Use-Case.
+<p>
+Description:<BR>
+Gives the Open Partition Graph to be analysed.
+<p>
+Assumptions:<BR>
+None.
+<p>
+Exceptions:<BR>
+None.
+<A NAME="0921150909_88Give Partition Graph Use Case"></A>
+<H4>Give Partition Graph Use Case</H4>
+
+<p>
+Give Partition Graph Use-Case.
+<p>
+Description:<BR>
+Gives the Partition Graph to be analysed.
+<p>
+Assumptions:<BR>
+None.
+<p>
+Exceptions:<BR>
+None.
+<A NAME="0921150909_88Give Process Graph Use Case"></A>
+<H4>Give Process Graph Use Case</H4>
+
+<p>
+Give Process Graph Use-Case.
+<p>
+Description:<BR>
+Gives the Process Graph to be analysed.
+<p>
+Assumptions:<BR>
+None.
+<p>
+Exceptions:<BR>
+None.
+<A NAME="0921150910_88Perfom Sequential Modular Analysis Use Case"></A>
+<H4>Perfom Sequential Modular Analysis Use Case</H4>
+
+<p>
+Perform Sequential Modular Analysis Use-Case.
+<p>
+Description:<BR>
+Performs a (Full) Sequential Modular Analysis on a flowsheet.
+<p>
+Assumptions:<BR>
+None.
+<p>
+Exceptions:<BR>
+None.
+<A NAME="0921150911_88Perform Partitioning Analysis Use Case"></A>
+<H4>Perform Partitioning Analysis Use Case</H4>
+
+<p>
+Perform Partitioning Analysis Use-Case.
+<p>
+Description:<BR>
+Performs the Partitioning and Ordering Analysis on a flowsheet.
+<p>
+Assumptions:<BR>
+None.
+<p>
+Exceptions:<BR>
+None.
+<A NAME="0921150911_88Perform Sequencing Analysis Use Case"></A>
+<H4>Perform Sequencing Analysis Use Case</H4>
+
+<p>
+Perform Sequencing Analysis Use-Case.
+<p>
+Description:<BR>
+Performs a Sequencing Analysis on a flowsheet.
+<p>
+Assumptions:<BR>
+None.
+<p>
+Exceptions:<BR>
+None.
+<A NAME="0921150912_88Perform Tearing Analysis Use Case"></A>
+<H4>Perform Tearing Analysis Use Case</H4>
+
+<p>
+Perform Tearing Analysis Use-Case.
+<p>
+Description:<BR>
+Performs a Tearing Analysis on a flowsheet.
+<p>
+Assumptions:<BR>
+None.
+<p>
+Exceptions:<BR>
+None.
+<A NAME="0921150912_88Results Use Case Package"></A>
+<H3>Results Use Case Package</H3>
+
+<A NAME="0921150915_88Create a Partition Graph
+ from Partitioning  Analysis Result Use Case"></A>
+<H4>Create a Partition Graph
+ from Partitioning  Analysis Result Use Case</H4>
+
+<p>
+Create a Partition Graph from Partitioning Analysis Result Use-Case.
+<p>
+Description:<BR>
+According to the computation result, from the flowsheet creates and generates a Partition Graph for a specified partition.<BR>
+The intermediate streams between partitions become FEED or PRODUCT streams of the built Partition Graph. These streams use the External System Representation through [Get External System Representation].
+<p>
+Assumptions:<BR>
+None.
+<p>
+Exceptions:<BR>
+None.
+<A NAME="0921150916_88Creating an Open Partition Graph
+from Tearing Analysis Result Use Case"></A>
+<H4>Creating an Open Partition Graph
+from Tearing Analysis Result Use Case</H4>
+
+<p>
+Create an Open Partition Graph from Tearing Analysis Result Use-Case.
+<p>
+Description:<BR>
+According to the computation result, from the  partition creating and generating an Open Partition Graph.<BR>
+The torn streams are removed from the partition in order to create and build the Open Partition Graph.
+<p>
+Assumptions:
+<p>
+Exceptions:
+<A NAME="0921150916_88Get External
+System Representation Use Case"></A>
+<H4>Get External
+System Representation Use Case</H4>
+
+<p>
+Get External System Representation Use-Case.
+<p>
+Description:<BR>
+Gets the external system.
+<p>
+Assumptions:<BR>
+None.
+<p>
+Exceptions:<BR>
+None.
+<A NAME="0921150917_88Get Result 
+Partition Count Use Case"></A>
+<H4>Get Result 
+Partition Count Use Case</H4>
+
+<p>
+Get Result Partition Count Use-Case.
+<p>
+Description:<BR>
+Getting the number of partitions.
+<p>
+Assumptions:<BR>
+None.
+<p>
+Exceptions:<BR>
+None.
+<A NAME="0921150917_88Get Result 
+Unit Count in a  Partition Use Case"></A>
+<H4>Get Result 
+Unit Count in a  Partition Use Case</H4>
+
+<p>
+Get Result Unit Count in a Partition Use-Case.
+<p>
+Description:<BR>
+Gets the number of units in a partition.
+<p>
+Assumptions:<BR>
+None.
+<p>
+Exceptions:<BR>
+None.
+<A NAME="0921150918_88Get Result for a 
+Partition in Partitioning Analysis Use Case"></A>
+<H4>Get Result for a 
+Partition in Partitioning Analysis Use Case</H4>
+
+<p>
+Getting Result for a Partition in Partitioning Analysis Use-Case.
+<p>
+Description:<BR>
+Gets results for a specified partition after a Partitioning computation.
+<p>
+Assumptions:<BR>
+None.
+<p>
+Exceptions:<BR>
+None.
+<A NAME="0921150918_88Get Result for a Partition
+ in Sequential Modular Analysis Use Case"></A>
+<H4>Get Result for a Partition
+ in Sequential Modular Analysis Use Case</H4>
+
+<p>
+Get Result for a Partition in Sequential Modular Analysis Use-Case.
+<p>
+Description:<BR>
+Gets results for a specified partition after a Full Sequential Modular Analysis computation.
+<p>
+Assumptions:<BR>
+None.
+<p>
+Exceptions:<BR>
+None.
+<A NAME="0921150919_88Get Result for the Opened
+ Partition in Sequencing Analysis Use Case"></A>
+<H4>Get Result for the Opened
+ Partition in Sequencing Analysis Use Case</H4>
+
+<p>
+Getting Result for the Opened Partition in Sequencing Analysis Use-Case.
+<p>
+Description:<BR>
+Gets results for the opened partition after a Sequencing computation.
+<p>
+Assumptions:<BR>
+None.
+<p>
+Exceptions:<BR>
+None.
+<A NAME="0921150919_88Get Result for the Partition
+ in Tearing Analysis Use Case"></A>
+<H4>Get Result for the Partition
+ in Tearing Analysis Use Case</H4>
+
+<p>
+Getting Result for the Partition in Tearing Analysis Use-Case.
+<p>
+Description:<BR>
+Gets result for the partition after a Tearing computation.
+<p>
+Assumptions:<BR>
+None.
+<p>
+Exceptions:<BR>
+None.
+<A NAME="0921150920_88Get Result Set 
+of Unit in a Partition Use Case"></A>
+<H4>Get Result Set 
+of Unit in a Partition Use Case</H4>
+
+<p>
+Get Resulting Set of Units in a Partition Use-Case.
+<p>
+Description:
+<p>
+Assumptions:<BR>
+None.
+<p>
+Exceptions:<BR>
+None.
+<A NAME="0921150920_88Get Result Set of Torn 
+Stream in a Partition Use Case"></A>
+<H4>Get Result Set of Torn 
+Stream in a Partition Use Case</H4>
+
+<p>
+Get Result Set of Torn Stream in a Partition Use-Case.
+<p>
+Description:<BR>
+Gets the resulting set of torn streams for the partition.<BR>
+That contains the number of torn streams and the set of torn streams.
+<p>
+Assumptions:<BR>
+None.
+<p>
+Exceptions:<BR>
+None.
+<A NAME="0921150921_88Get Result Set of
+Unit in a Partition Use Case"></A>
+<H4>Get Result Set of
+Unit in a Partition Use Case</H4>
+
+<p>
+Get Result Set of Unit in a Partition Use-Case.
+<p>
+Description:<BR>
+Gets the resulting set of units for the partition.<BR>
+That contains the number of units and the set of units. 
+<p>
+Assumptions:<BR>
+None.
+<p>
+Exceptions:<BR>
+None.
+<A NAME="0921150921_88Get Result Torn Stream
+ Count in a Partition Use Case"></A>
+<H4>Get Result Torn Stream
+ Count in a Partition Use Case</H4>
+
+<p>
+Get Result Torn Stream Count in a Partition Use-Case.
+<p>
+Description:
+<p>
+Assumptions:
+<p>
+Exceptions:
+<A NAME="0921150922_88Get Result Torn Stream
+ in a Partition Use Case"></A>
+<H4>Get Result Torn Stream
+ in a Partition Use Case</H4>
+
+<p>
+Get Result Torn Stream in a Partition Use-Case.
+<p>
+Description:
+<p>
+Assumptions:<BR>
+None.
+<p>
+Exceptions:<BR>
+None.
+<A NAME="0921150922_88Get Result Unit Use Case"></A>
+<H4>Get Result Unit Use Case</H4>
+
+<p>
+Get Result Unit Use-Case.
+<p>
+Description:
+<p>
+Assumptions:
+<p>
+Exceptions:
+<A NAME="0921150923_88Getting Result from 
+Sequential Modular Analysis Use Case"></A>
+<H4>Getting Result from 
+Sequential Modular Analysis Use Case</H4>
+
+<p>
+Getting Result from Sequential Modular Analysis Use-Case.
+<p>
+Description:<BR>
+Gets results from the Full Sequential Modular Analysis.
+<p>
+Assumptions:<BR>
+None.
+<p>
+Exceptions:<BR>
+None.
+<A NAME="0921150924_88Collaboration Diagram:Getting Result from Sequential Modular Analysis Sequence Diagram"></A>
+<H5>Collaboration Diagram:Getting Result from Sequential Modular Analysis Sequence Diagram</H5>
+
+<A NAME="0921150925_88Collaboration Diagram:Getting Result from Sequential Modular Analysis (Sequence Diagram)"></A>
+
+<P><A HREF="tmp_09211543243.EMF"><IMG SRC="tmp_09211543243.gif" BORDER=1></A></P>
+
+<P><B><A HREF="tmp_09211543243.EMF">Collaboration Diagram:Getting Result from Sequential Modular Analysis (Sequence Diagram)</A></B></P>
+
+<BR>
+<BR>
+
+<p>
+A Collaboration Diagram corresponding to the sequence diagram on Getting Result from Sequential Modular Analysis.
+<p>
+The [Flowsheet User] has started the Pre-Processor Simulation. 
+<p>
+The [Pre-Processor Subsystem] gets the results from the Sequential Modular Analysis.
+<A NAME="0921150925_88Sequence Diagram:Getting Result from Sequential Modular Analysis Sequence Diagram"></A>
+<H5>Sequence Diagram:Getting Result from Sequential Modular Analysis Sequence Diagram</H5>
+
+<A NAME="0921150926_88Sequence Diagram:Getting Result from Sequential Modular Analysis (Sequence Diagram)"></A>
+
+<P><A HREF="tmp_09211543254.EMF"><IMG SRC="tmp_09211543254.gif" BORDER=1></A></P>
+
+<P><B><A HREF="tmp_09211543254.EMF">Sequence Diagram:Getting Result from Sequential Modular Analysis (Sequence Diagram)</A></B></P>
+
+<BR>
+<BR>
+
+<p>
+A Sequence Diagram.<BR>
+This is a possible scenario of [Getting Result from Sequential Modular Analysis] Use-Case.
+<p>
+The [Flowsheet User] has started the Pre-Processor Simulation. 
+<p>
+The [Pre-Processor Subsystem] gets the results from the Sequential Modular Analysis.
+<A NAME="0921150927_88Getting Result from Tearing Analysis Use Case"></A>
+<H4>Getting Result from Tearing Analysis Use Case</H4>
+
+<p>
+Getting Result fromTearing Analysis Use-Case.
+<p>
+Description:<BR>
+Gets results from the Tearing Analysis.
+<p>
+Assumptions:<BR>
+None.
+<p>
+Exceptions:<BR>
+None.
+<A NAME="0921150927_88Collaboration Diagram:Collaboration Diagram:Getting Result from Tearing Analysis Sequence Diagram"></A>
+<H5>Collaboration Diagram:Collaboration Diagram:Getting Result from Tearing Analysis Sequence Diagram</H5>
+
+<A NAME="0921150928_88Collaboration Diagram:Collaboration Diagram:Getting Result from Tearing Analysis (Sequence Diagram)"></A>
+
+<P><A HREF="tmp_09211543275.EMF"><IMG SRC="tmp_09211543275.gif" BORDER=1></A></P>
+
+<P><B><A HREF="tmp_09211543275.EMF">Collaboration Diagram:Collaboration Diagram:Getting Result from Tearing Analysis (Sequence Diagram)</A></B></P>
+
+<BR>
+<BR>
+
+<p>
+A Collaboration Diagram corresponding to the sequence diagram on Getting Result from Tearing Analysis.
+<p>
+The [Flowsheet User] has started the Pre-Processor Simulation. 
+<p>
+The [Pre-Processor Subsystem] gets the results from the Tearing Analysis and creates an Open Partition Graph from these results.
+<A NAME="0921150929_88Sequence Diagram:Getting Result from Tearing Analysis Sequence Diagram"></A>
+<H5>Sequence Diagram:Getting Result from Tearing Analysis Sequence Diagram</H5>
+
+<A NAME="0921150930_88Sequence Diagram:Getting Result from Tearing Analysis (Sequence Diagram)"></A>
+
+<P><A HREF="tmp_09211543296.EMF"><IMG SRC="tmp_09211543296.gif" BORDER=1></A></P>
+
+<P><B><A HREF="tmp_09211543296.EMF">Sequence Diagram:Getting Result from Tearing Analysis (Sequence Diagram)</A></B></P>
+
+<BR>
+<BR>
+
+<p>
+A Sequence Diagram.<BR>
+This is a possible scenario of [Getting Result from Tearing Analysis] Use-Case.
+<p>
+The [Flowsheet User] has started the Pre-Processor Simulation. 
+<p>
+The [Pre-Processor Subsystem] gets the results from the Tearing Analysis and creates an Open Partition Graph from these results.
+<A NAME="0921150931_88Getting Result from
+ Partitioning Analysis Use Case"></A>
+<H4>Getting Result from
+ Partitioning Analysis Use Case</H4>
+
+<p>
+Getting Result from Partitioning Analysis Use-Case.
+<p>
+Description:<BR>
+Gets results from Partitioning Analysis.
+<p>
+Assumptions:<BR>
+None.
+<p>
+Exceptions:<BR>
+None.
+<A NAME="0921150932_88Collaboration Diagram:Getting Result from Partitioning Analysis Sequence Diagram"></A>
+<H5>Collaboration Diagram:Getting Result from Partitioning Analysis Sequence Diagram</H5>
+
+<A NAME="0921150933_88Collaboration Diagram:Getting Result from Partitioning Analysis (Sequence Diagram)"></A>
+
+<P><A HREF="tmp_09211543327.EMF"><IMG SRC="tmp_09211543327.gif" BORDER=1></A></P>
+
+<P><B><A HREF="tmp_09211543327.EMF">Collaboration Diagram:Getting Result from Partitioning Analysis (Sequence Diagram)</A></B></P>
+
+<BR>
+<BR>
+
+<p>
+A Collaboration Diagram corresponding to the sequence diagram on Getting Result from Partitioning Analysis.
+<p>
+The [Flowsheet User] has started the Pre-Processor Simulation. 
+<p>
+The [Pre-Processor Subsystem] gets the results from the Partitioning Analysis and creates Partition Graphs from these results.
+<A NAME="0921150933_88Sequence Diagram:Getting Result from Partitioning Analysis Sequence Diagram"></A>
+<H5>Sequence Diagram:Getting Result from Partitioning Analysis Sequence Diagram</H5>
+
+<A NAME="0921150936_88Sequence Diagram:Getting Result from Partitioning Analysis (Sequence Diagram)"></A>
+
+<P><A HREF="tmp_09211543348.EMF"><IMG SRC="tmp_09211543348.gif" BORDER=1></A></P>
+
+<P><B><A HREF="tmp_09211543348.EMF">Sequence Diagram:Getting Result from Partitioning Analysis (Sequence Diagram)</A></B></P>
+
+<BR>
+<BR>
+
+<p>
+A Sequence Diagram.<BR>
+This is a possible scenario of [Getting Result from Partitioning Analysis] Use-Case.
+<p>
+The [Flowsheet User] has started the Pre-Processor Simulation. 
+<p>
+The [Pre-Processor Subsystem] gets the results from the Partitioning Analysis and creates Partition Graphs from these results.
+<A NAME="0921150936_88Getting Result from
+ Sequencing Analysis Use Case"></A>
+<H4>Getting Result from
+ Sequencing Analysis Use Case</H4>
+
+<p>
+Getting Result from Sequencing Analysis Use-Case.
+<p>
+Description:<BR>
+Gets results from the Sequencing Analysis.
+<p>
+Assumptions:<BR>
+None.
+<p>
+Exceptions:<BR>
+None.
+<A NAME="0921150937_88Collaboration Diagram:Getting Result from Sequencing Analysis Sequence Diagram"></A>
+<H5>Collaboration Diagram:Getting Result from Sequencing Analysis Sequence Diagram</H5>
+
+<A NAME="0921150938_88Collaboration Diagram:Getting Result from Sequencing Analysis (Sequence Diagram)"></A>
+
+<P><A HREF="tmp_09211543379.EMF"><IMG SRC="tmp_09211543379.gif" BORDER=1></A></P>
+
+<P><B><A HREF="tmp_09211543379.EMF">Collaboration Diagram:Getting Result from Sequencing Analysis (Sequence Diagram)</A></B></P>
+
+<BR>
+<BR>
+
+<p>
+A Collaboration Diagram corresponding to the sequence diagram on Getting Result from Sequencing Analysis.
+<p>
+The [Flowsheet User] has started the Pre-Processor Simulation. 
+<p>
+The [Pre-Processor Subsystem] gets the results from the Sequencing Analysis.
+<A NAME="0921150938_88Sequence Diagram:Getting Result from Sequencing Analysis Sequence Diagram"></A>
+<H5>Sequence Diagram:Getting Result from Sequencing Analysis Sequence Diagram</H5>
+
+<A NAME="0921150939_88Sequence Diagram:Getting Result from Sequencing Analysis (Sequence Diagram)"></A>
+
+<P><A HREF="tmp_092115433810.EMF"><IMG SRC="tmp_092115433810.gif" BORDER=1></A></P>
+
+<P><B><A HREF="tmp_092115433810.EMF">Sequence Diagram:Getting Result from Sequencing Analysis (Sequence Diagram)</A></B></P>
+
+<BR>
+<BR>
+
+<p>
+A Sequence Diagram.<BR>
+This is a possible scenario of [Getting Result from Sequencing Analysis] Use-Case.
+<p>
+The [Flowsheet User] has started the Pre-Processor Simulation. 
+<p>
+The [Pre-Processor Subsystem] gets the results from the Sequencing Analysis.
+<A NAME="0921150940_88Give Open
+ Partition Graph Name Use Case"></A>
+<H4>Give Open
+ Partition Graph Name Use Case</H4>
+
+<p>
+Give Open Partition Graph Name Use-Case.
+<p>
+Description:
+<p>
+Assumptions:<BR>
+None.
+<p>
+Exceptions:<BR>
+None.
+<A NAME="0921150940_88Give Partition
+ Graph Name Use Case"></A>
+<H4>Give Partition
+ Graph Name Use Case</H4>
+
+<p>
+Give Partition Graph Name Use-Case.
+<p>
+Description:
+<p>
+Assumptions:
+<p>
+Exceptions:
+<A NAME="0921150941_88Manage 
+External System Use Case"></A>
+<H4>Manage 
+External System Use Case</H4>
+
+<p>
+Manage External System Use-Case.
+<p>
+Description:<BR>
+Manages the external system. The external system is used for FEED and PRODUCT streams.<BR>
+The external system is the original unit for FEED stream.<BR>
+The external system is the final unit for PRODUCT stream.
+<p>
+<BR>
+Assumptions:<BR>
+None.
+<p>
+Exceptions:<BR>
+None.
+<A NAME="0921150941_88Set External 
+System Representation Use Case"></A>
+<H4>Set External 
+System Representation Use Case</H4>
+
+<p>
+Set External System Representation Use-Case.
+<p>
+Description:<BR>
+Sets the external system.
+<p>
+Assumptions:<BR>
+None.
+<p>
+Exceptions:<BR>
+None.
+<A NAME="0921150942_88Getting and Handling
+ Results Use Case"></A>
+<H3>Getting and Handling
+ Results Use Case</H3>
+
+<p>
+Getting and Handling Results Use-Case.
+<p>
+Description:<BR>
+The Flowsheet User gets and handles results from the computation.
+<p>
+Assumptions:<BR>
+Success of [Performing]
+<p>
+Exceptions:<BR>
+None.
+<A NAME="0921150943_88Initializing Use Case"></A>
+<H3>Initializing Use Case</H3>
+
+<p>
+Initializing Use-Case.
+<p>
+Description:<BR>
+The [Flowsheet Builder] builds a Graph, may display this Graph and builds a numerical Analysis.
+<p>
+Assumptions:<BR>
+Success of [Performing Administration Tasks]
+<p>
+Exceptions:<BR>
+None.
+<A NAME="0921150943_88Collaboration Diagram:Initializing Sequence Diagram"></A>
+<H4>Collaboration Diagram:Initializing Sequence Diagram</H4>
+
+<A NAME="0921150945_88Collaboration Diagram:Initializing (Sequence Diagram)"></A>
+
+<P><A HREF="tmp_092115434311.EMF"><IMG SRC="tmp_092115434311.gif" BORDER=1></A></P>
+
+<P><B><A HREF="tmp_092115434311.EMF">Collaboration Diagram:Initializing (Sequence Diagram)</A></B></P>
+
+<BR>
+<BR>
+
+<p>
+The Collaboration Diagram corresponding to the Sequence Diagram on Initializing GAT.
+<p>
+The [Flowsheet Builder] interacts with the CAPE Simulator through its GUI. The Simulator uses a CO SMST Component in order to perform some Pre-Processor functions.
+<p>
+The [Flowsheet Builder] builds the flowsheet, modifies the flowsheet, displays the modified flowsheet and the [Flowsheet User] launches the Pre-Processor Simulation.
+<p>
+The [Pre-Processor Subsystem] translates these interactions to the CO SMST Component.<BR>
+It creates a Process Graph from the Flowsheet Factory and it completes it. It creates a Sequential Modular Analysis from the Analysis Factory.
+<A NAME="0921150946_88Sequence Diagram:Initializing Sequence Diagram"></A>
+<H4>Sequence Diagram:Initializing Sequence Diagram</H4>
+
+<A NAME="0921150951_88Sequence Diagram:Initializing (Sequence Diagram)"></A>
+
+<P><A HREF="tmp_092115434612.EMF"><IMG SRC="tmp_092115434612.gif" BORDER=1></A></P>
+
+<P><B><A HREF="tmp_092115434612.EMF">Sequence Diagram:Initializing (Sequence Diagram)</A></B></P>
+
+<BR>
+<BR>
+
+<p>
+A Sequence Diagram.<BR>
+This is a possible scenario of [Initializing] Use-Case.
+<p>
+The [Flowsheet Builder] interacts with the CAPE Simulator through its GUI. The Simulator uses a CO SMST Component in order to perform some Pre-Processor functions.
+<p>
+The [Flowsheet Builder] builds the flowsheet, modifies the flowsheet, displays the modified flowsheet and the [Flowsheet User] launches the Pre-Processor Simulation.
+<p>
+The [Pre-Processor Subsystem] translates these interactions to the CO SMST Component.<BR>
+It creates a Process Graph from the Flowsheet Factory and it completes it. It creates a Sequential Modular Analysis from the Analysis Factory.
+<A NAME="0921150953_88Performing Use Case"></A>
+<H3>Performing Use Case</H3>
+
+<p>
+Performing Use-Case.
+<p>
+Description:<BR>
+The Flowsheet User performs a numerical analysis among one of the following: Sequential Modular Analysis, Partitioning Analysis, Tearing Analysis, Sequencing Analysis.
+<p>
+Assumptions:<BR>
+Success of [Initializing]
+<p>
+Exceptions:<BR>
+None.
+<A NAME="0921150954_88Collaboration Diagram:Performing (SMAnalysis) Sequence Diagram"></A>
+<H4>Collaboration Diagram:Performing (SMAnalysis) Sequence Diagram</H4>
+
+<A NAME="0921150957_88Collaboration Diagram:Performing (SMAnalysis) (Sequence Diagram)"></A>
+
+<P><A HREF="tmp_092115435413.EMF"><IMG SRC="tmp_092115435413.gif" BORDER=1></A></P>
+
+<P><B><A HREF="tmp_092115435413.EMF">Collaboration Diagram:Performing (SMAnalysis) (Sequence Diagram)</A></B></P>
+
+<BR>
+<BR>
+
+<p>
+The Collaboration Diagram corresponding to the Sequence Diagram on Performing.
+<p>
+The [Flowsheet User] have started the Pre-Processor Simulation.
+<p>
+The [Pre-Processor Subsystem] checks the data consistency and performs the Sequential Modular Analysis on a Process Graph.
+<A NAME="0921150957_88Collaboration Diagram:Performing (Tearing)  Sequence Diagram"></A>
+<H4>Collaboration Diagram:Performing (Tearing)  Sequence Diagram</H4>
+
+<A NAME="0921150958_88Collaboration Diagram:Performing (Tearing)  (Sequence Diagram)"></A>
+
+<P><A HREF="tmp_092115435714.EMF"><IMG SRC="tmp_092115435714.gif" BORDER=1></A></P>
+
+<P><B><A HREF="tmp_092115435714.EMF">Collaboration Diagram:Performing (Tearing)  (Sequence Diagram)</A></B></P>
+
+<BR>
+<BR>
+
+<p>
+The Collaboration Diagram corresponding to the Sequence Diagram on Performing.
+<p>
+The [Flowsheet User] have started the Pre-Processor Simulation.
+<p>
+The [Pre-Processor Subsystem] checks the data consistency and performs the Tearing Analysis on a Partition Graph.
+<A NAME="0921150958_88Sequence Diagram: Performing (Tearing)  Sequence Diagram"></A>
+<H4>Sequence Diagram: Performing (Tearing)  Sequence Diagram</H4>
+
+<A NAME="0921150959_88Sequence Diagram: Performing (Tearing)  (Sequence Diagram)"></A>
+
+<P><A HREF="tmp_092115435815.EMF"><IMG SRC="tmp_092115435815.gif" BORDER=1></A></P>
+
+<P><B><A HREF="tmp_092115435815.EMF">Sequence Diagram: Performing (Tearing)  (Sequence Diagram)</A></B></P>
+
+<BR>
+<BR>
+
+<p>
+A Sequence Diagram.<BR>
+This is a possible scenario of [Performing] Use-Case.
+<p>
+The [Flowsheet User] have started the Pre-Processor Simulation.
+<p>
+The [Pre-Processor Subsystem] checks the data consistency and performs the Tearing Analysis on a Partition Graph.
+<A NAME="0921150959_88Sequence Diagram:Performing (SMAnalysis) Sequence Diagram"></A>
+<H4>Sequence Diagram:Performing (SMAnalysis) Sequence Diagram</H4>
+
+<A NAME="0921150901_88Sequence Diagram:Performing (SMAnalysis) (Sequence Diagram)"></A>
+
+<P><A HREF="tmp_092115435916.EMF"><IMG SRC="tmp_092115435916.gif" BORDER=1></A></P>
+
+<P><B><A HREF="tmp_092115435916.EMF">Sequence Diagram:Performing (SMAnalysis) (Sequence Diagram)</A></B></P>
+
+<BR>
+<BR>
+
+<p>
+A Sequence Diagram.<BR>
+This is a possible scenario of [Performing] Use-Case.
+<p>
+The [Flowsheet User] have started the Pre-Processor Simulation.
+<p>
+The [Pre-Processor Subsystem] checks the data consistency and performs the Sequential Modular Analysis on a Process Graph.
+<A NAME="0921150901_88Performing Administration Tasks Use Case"></A>
+<H3>Performing Administration Tasks Use Case</H3>
+
+<p>
+Performing Administration Tasks Use-Case.
+<p>
+Description:<BR>
+Performs administration tasks on a CAPE-OPEN SMST Component such as binding process, creating factories, exiting process.<BR>
+This description is not exhaustive. Other administration activities could occurred.
+<p>
+Assumptions:<BR>
+None.
+<p>
+Exceptions:<BR>
+None.
+<A NAME="0921150902_88Using SMST Use Case"></A>
+<H3>Using SMST Use Case</H3>
+
+<p>
+Using SMST Use-Case.
+<p>
+Description:<BR>
+The top-level Use-Case: using a CO SMST Component means that you perform administration tasks, initialise, perform and get computation results.
+<p>
+Assumptions:<BR>
+None.
+<p>
+Exceptions:<BR>
+None.
+<A NAME="0921150903_88Diagrams Use Case Package"></A>
+<H2>Diagrams Use Case Package</H2>
+
+<A NAME="0921150904_880 Interface and Packages Interactions Use Case Diagram"></A>
+<H3>0 Interface and Packages Interactions Use Case Diagram</H3>
+
+<A NAME="0921150906_880 Interface and Packages Interactions (Use Case Diagram)"></A>
+
+<P><A HREF="tmp_092115440417.EMF"><IMG SRC="tmp_092115440417.gif" BORDER=1></A></P>
+
+<P><B><A HREF="tmp_092115440417.EMF">0 Interface and Packages Interactions (Use Case Diagram)</A></B></P>
+
+<BR>
+<BR>
+
+<p>
+This diagram shows the link between the Use Case View and the logical view.
+<p>
+Here are the interactions on packages and interface classes for the diagram &quot;1 Using SMST&quot;
+<A NAME="0921150907_881 Using SMST Use Case Diagram"></A>
+<H3>1 Using SMST Use Case Diagram</H3>
+
+<A NAME="0921150908_881 Using SMST (Use Case Diagram)"></A>
+
+<P><A HREF="tmp_092115440718.EMF"><IMG SRC="tmp_092115440718.gif" BORDER=1></A></P>
+
+<P><B><A HREF="tmp_092115440718.EMF">1 Using SMST (Use Case Diagram)</A></B></P>
+
+<BR>
+<BR>
+
+<A NAME="0921150909_882 Performing Administration Tasks Use Case Diagram"></A>
+<H3>2 Performing Administration Tasks Use Case Diagram</H3>
+
+<A NAME="0921150909_882 Performing Administration Tasks (Use Case Diagram)"></A>
+
+<P><A HREF="tmp_092115440919.EMF"><IMG SRC="tmp_092115440919.gif" BORDER=1></A></P>
+
+<P><B><A HREF="tmp_092115440919.EMF">2 Performing Administration Tasks (Use Case Diagram)</A></B></P>
+
+<BR>
+<BR>
+
+<A NAME="0921150910_883 Initializing Use Case Diagram"></A>
+<H3>3 Initializing Use Case Diagram</H3>
+
+<A NAME="0921150911_883 Initializing (Use Case Diagram)"></A>
+
+<P><A HREF="tmp_092115441020.EMF"><IMG SRC="tmp_092115441020.gif" BORDER=1></A></P>
+
+<P><B><A HREF="tmp_092115441020.EMF">3 Initializing (Use Case Diagram)</A></B></P>
+
+<BR>
+<BR>
+
+<A NAME="0921150911_883.1 Building a Process Graph Use Case Diagram"></A>
+<H3>3.1 Building a Process Graph Use Case Diagram</H3>
+
+<A NAME="0921150913_883.1 Building a Process Graph (Use Case Diagram)"></A>
+
+<P><A HREF="tmp_092115441121.EMF"><IMG SRC="tmp_092115441121.gif" BORDER=1></A></P>
+
+<P><B><A HREF="tmp_092115441121.EMF">3.1 Building a Process Graph (Use Case Diagram)</A></B></P>
+
+<BR>
+<BR>
+
+<A NAME="0921150913_883.2 Building a Numeric Analysis Use Case Diagram"></A>
+<H3>3.2 Building a Numeric Analysis Use Case Diagram</H3>
+
+<A NAME="0921150915_883.2 Building a Numeric Analysis (Use Case Diagram)"></A>
+
+<P><A HREF="tmp_092115441322.EMF"><IMG SRC="tmp_092115441322.gif" BORDER=1></A></P>
+
+<P><B><A HREF="tmp_092115441322.EMF">3.2 Building a Numeric Analysis (Use Case Diagram)</A></B></P>
+
+<BR>
+<BR>
+
+<A NAME="0921150916_883.3 Displaying Process Graph Use Case Diagram"></A>
+<H3>3.3 Displaying Process Graph Use Case Diagram</H3>
+
+<A NAME="0921150917_883.3 Displaying Process Graph (Use Case Diagram)"></A>
+
+<P><A HREF="tmp_092115441623.EMF"><IMG SRC="tmp_092115441623.gif" BORDER=1></A></P>
+
+<P><B><A HREF="tmp_092115441623.EMF">3.3 Displaying Process Graph (Use Case Diagram)</A></B></P>
+
+<BR>
+<BR>
+
+<A NAME="0921150917_884 Performing Use Case Diagram"></A>
+<H3>4 Performing Use Case Diagram</H3>
+
+<A NAME="0921150919_884 Performing (Use Case Diagram)"></A>
+
+<P><A HREF="tmp_092115441724.EMF"><IMG SRC="tmp_092115441724.gif" BORDER=1></A></P>
+
+<P><B><A HREF="tmp_092115441724.EMF">4 Performing (Use Case Diagram)</A></B></P>
+
+<BR>
+<BR>
+
+<A NAME="0921150919_885 Getting and Handling Results Use Case Diagram"></A>
+<H3>5 Getting and Handling Results Use Case Diagram</H3>
+
+<A NAME="0921150922_885 Getting and Handling Results (Use Case Diagram)"></A>
+
+<P><A HREF="tmp_092115441925.EMF"><IMG SRC="tmp_092115441925.gif" BORDER=1></A></P>
+
+<P><B><A HREF="tmp_092115441925.EMF">5 Getting and Handling Results (Use Case Diagram)</A></B></P>
+
+<BR>
+<BR>
+</HTML>

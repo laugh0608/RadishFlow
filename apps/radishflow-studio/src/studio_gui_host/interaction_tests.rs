@@ -1,7 +1,5 @@
 use std::fs;
 
-use rf_ui::EntitlementActionId;
-
 use super::test_support::*;
 use super::*;
 
@@ -317,18 +315,28 @@ fn gui_host_dispatches_foreground_entitlement_primary_action() {
     let opened = gui_host.open_window().expect("expected window open");
 
     let dispatch = gui_host
-        .execute_command(StudioGuiHostCommand::DispatchForegroundEntitlementPrimaryAction)
+        .execute_command(StudioGuiHostCommand::DispatchUiCommand {
+            command_id: "entitlement.refresh_offline_lease".to_string(),
+        })
         .expect("expected entitlement primary action dispatch");
 
     match dispatch {
-        StudioGuiHostCommandOutcome::EntitlementActionDispatched(
-            StudioGuiHostEntitlementDispatchResult::Executed {
-                action_id,
-                dispatch,
-            },
+        StudioGuiHostCommandOutcome::UiCommandDispatched(
+            StudioGuiHostUiCommandDispatchResult::Executed(dispatch),
         ) => {
-            assert_eq!(action_id, EntitlementActionId::RefreshOfflineLease);
             assert_eq!(dispatch.target_window_id, opened.registration.window_id);
+            match &dispatch.effects.runtime_report.dispatch {
+                crate::StudioRuntimeDispatch::AppCommand(outcome) => match &outcome.dispatch {
+                    crate::StudioAppResultDispatch::Entitlement(entitlement) => {
+                        assert_eq!(
+                            entitlement.action,
+                            crate::StudioEntitlementAction::RefreshOfflineLease
+                        );
+                    }
+                    other => panic!("expected entitlement dispatch, got {other:?}"),
+                },
+                other => panic!("expected app command dispatch, got {other:?}"),
+            }
         }
         other => panic!("expected executed entitlement primary action outcome, got {other:?}"),
     }
@@ -340,20 +348,28 @@ fn gui_host_dispatches_foreground_entitlement_secondary_action() {
     let opened = gui_host.open_window().expect("expected window open");
 
     let dispatch = gui_host
-        .execute_command(StudioGuiHostCommand::DispatchForegroundEntitlementAction {
-            action_id: EntitlementActionId::SyncEntitlement,
+        .execute_command(StudioGuiHostCommand::DispatchUiCommand {
+            command_id: "entitlement.sync".to_string(),
         })
         .expect("expected entitlement action dispatch");
 
     match dispatch {
-        StudioGuiHostCommandOutcome::EntitlementActionDispatched(
-            StudioGuiHostEntitlementDispatchResult::Executed {
-                action_id,
-                dispatch,
-            },
+        StudioGuiHostCommandOutcome::UiCommandDispatched(
+            StudioGuiHostUiCommandDispatchResult::Executed(dispatch),
         ) => {
-            assert_eq!(action_id, EntitlementActionId::SyncEntitlement);
             assert_eq!(dispatch.target_window_id, opened.registration.window_id);
+            match &dispatch.effects.runtime_report.dispatch {
+                crate::StudioRuntimeDispatch::AppCommand(outcome) => match &outcome.dispatch {
+                    crate::StudioAppResultDispatch::Entitlement(entitlement) => {
+                        assert_eq!(
+                            entitlement.action,
+                            crate::StudioEntitlementAction::SyncEntitlement
+                        );
+                    }
+                    other => panic!("expected entitlement dispatch, got {other:?}"),
+                },
+                other => panic!("expected app command dispatch, got {other:?}"),
+            }
         }
         other => panic!("expected executed entitlement action outcome, got {other:?}"),
     }
@@ -364,24 +380,22 @@ fn gui_host_stably_ignores_entitlement_action_without_registered_window() {
     let mut gui_host = StudioGuiHost::new(&lease_expiring_config()).expect("expected gui host");
 
     let dispatch = gui_host
-        .execute_command(StudioGuiHostCommand::DispatchForegroundEntitlementAction {
-            action_id: EntitlementActionId::SyncEntitlement,
+        .execute_command(StudioGuiHostCommand::DispatchUiCommand {
+            command_id: "entitlement.sync".to_string(),
         })
         .expect("expected entitlement action result");
 
     match dispatch {
-        StudioGuiHostCommandOutcome::EntitlementActionDispatched(
-            StudioGuiHostEntitlementDispatchResult::IgnoredDisabled {
-                action_id,
+        StudioGuiHostCommandOutcome::UiCommandDispatched(
+            StudioGuiHostUiCommandDispatchResult::IgnoredDisabled {
+                command_id,
                 detail,
                 target_window_id,
+                ..
             },
         ) => {
-            assert_eq!(action_id, EntitlementActionId::SyncEntitlement);
-            assert_eq!(
-                detail,
-                "Open a window before dispatching entitlement actions"
-            );
+            assert_eq!(command_id, "entitlement.sync");
+            assert_eq!(detail, "Open a studio window before syncing entitlement");
             assert_eq!(target_window_id, None);
         }
         other => panic!("expected ignored entitlement action outcome, got {other:?}"),

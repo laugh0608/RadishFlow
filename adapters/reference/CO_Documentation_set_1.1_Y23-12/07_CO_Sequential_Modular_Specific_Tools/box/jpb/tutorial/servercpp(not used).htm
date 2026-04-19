@@ -1,0 +1,42 @@
+<html>
+
+<head>
+<meta http-equiv="Content-Type"
+content="text/html; charset=iso-8859-1">
+<meta name="GENERATOR" content="Microsoft FrontPage Express 2.0">
+<title></title>
+</head>
+
+<body bgcolor="#FFFFFF" leftmargin="50">
+
+<p align="center"><font color="#FF0080" size="6"><strong>Server</strong></font></p>
+
+<p>&nbsp;</p>
+
+<p>...<br>
+<br>
+int main(int argc, char* const* argv)<br>
+{<br>
+try {<br>
+<font color="#008000">// Initialize the ORB and BOA<br>
+</font>...<br>
+<br>
+<font color="#008000">//Create a Implementation Object of
+ICapeNumericGATComponent.<br>
+</font>gat=...<br>
+<br>
+<font color="#008000">//Export the newly created object<br>
+</font>boa-&gt;obj_is_ready(&amp;gat);<br>
+<br>
+<font color="#008000">// Wait for incoming requests<br>
+</font>boa-&gt;impl_is_ready();<br>
+<br>
+} catch(const CORBA::Exception&amp; e) {<br>
+cerr &lt;&lt; e &lt;&lt; endl;<br>
+return(1);<br>
+}<br>
+return(0);<br>
+}<br>
+</p>
+</body>
+</html>

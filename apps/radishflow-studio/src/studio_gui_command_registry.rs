@@ -126,6 +126,7 @@ pub struct StudioGuiCommandMenuCommandModel {
 pub enum StudioGuiCommandGroup {
     RunPanel,
     Recovery,
+    Entitlement,
     Canvas,
 }
 
@@ -146,6 +147,7 @@ impl StudioGuiCommandRegistry {
     ) -> Self {
         let mut run_panel = Vec::new();
         let mut recovery = Vec::new();
+        let mut entitlement = Vec::new();
         let mut canvas_commands = Vec::new();
 
         for action in &model.actions {
@@ -172,6 +174,7 @@ impl StudioGuiCommandRegistry {
             match action.group {
                 StudioAppHostUiCommandGroup::RunPanel => run_panel.push(entry),
                 StudioAppHostUiCommandGroup::Recovery => recovery.push(entry),
+                StudioAppHostUiCommandGroup::Entitlement => entitlement.push(entry),
             }
         }
 
@@ -216,6 +219,14 @@ impl StudioGuiCommandRegistry {
                 group: StudioGuiCommandGroup::Recovery,
                 title: "Recovery",
                 commands: recovery,
+            });
+        }
+        if !entitlement.is_empty() {
+            entitlement.sort_by_key(|entry| entry.sort_order);
+            sections.push(StudioGuiCommandSection {
+                group: StudioGuiCommandGroup::Entitlement,
+                title: "Entitlement",
+                commands: entitlement,
             });
         }
         if !canvas_commands.is_empty() {
@@ -319,6 +330,16 @@ fn command_defaults(command_id: &str) -> StudioGuiCommandDefaults {
                 modifiers: Vec::new(),
                 key: StudioGuiShortcutKey::F8,
             }),
+        },
+        "entitlement.sync" => StudioGuiCommandDefaults {
+            menu_path: &["Entitlement", "Sync Entitlement"],
+            search_terms: &["entitlement", "sync", "license", "package manifests"],
+            shortcut: None,
+        },
+        "entitlement.refresh_offline_lease" => StudioGuiCommandDefaults {
+            menu_path: &["Entitlement", "Refresh Offline Lease"],
+            search_terms: &["entitlement", "offline", "lease", "refresh"],
+            shortcut: None,
         },
         "canvas.accept_focused" => StudioGuiCommandDefaults {
             menu_path: &["Canvas", "Accept Suggestion"],
@@ -503,12 +524,22 @@ mod tests {
                     detail: "Recover",
                     target_window_id: Some(2),
                 },
+                StudioAppHostUiActionModel {
+                    action: None,
+                    command_id: "entitlement.sync",
+                    group: StudioAppHostUiCommandGroup::Entitlement,
+                    sort_order: 300,
+                    label: "Sync entitlement",
+                    enabled: true,
+                    detail: "Sync",
+                    target_window_id: Some(2),
+                },
             ],
         };
 
         let registry = StudioGuiCommandRegistry::from_model(&model);
 
-        assert_eq!(registry.sections.len(), 2);
+        assert_eq!(registry.sections.len(), 3);
         assert_eq!(registry.sections[0].title, "Run Panel");
         assert_eq!(
             registry.sections[0]
@@ -526,6 +557,15 @@ mod tests {
                 .map(|entry| entry.command_id.as_str())
                 .collect::<Vec<_>>(),
             vec!["run_panel.recover_failure"]
+        );
+        assert_eq!(registry.sections[2].title, "Entitlement");
+        assert_eq!(
+            registry.sections[2]
+                .commands
+                .iter()
+                .map(|entry| entry.command_id.as_str())
+                .collect::<Vec<_>>(),
+            vec!["entitlement.sync"]
         );
         assert_eq!(
             registry.sections[0].commands[0].menu_path,

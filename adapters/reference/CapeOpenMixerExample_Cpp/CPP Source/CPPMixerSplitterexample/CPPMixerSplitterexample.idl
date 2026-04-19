@@ -1,0 +1,93 @@
+// CPPMixerSplitterexample.idl : IDL source for CPPMixerSplitterexample
+//
+
+// This file will be processed by the MIDL tool to
+// produce the type library (CPPMixerSplitterexample.tlb) and marshalling code.
+
+import "oaidl.idl";
+import "ocidl.idl";
+
+//! Mixer-Splitter type library
+/*!
+  Used by the compiler to generate stub code. Converted into TLB file
+*/
+
+[
+	uuid(D2588024-AC34-4F37-BC66-3B020A481366),
+	version(1.0),
+	helpstring("CPPMixerSplitterexample 1.0 Type Library")
+]
+library CPPMixerSplitterexampleLib
+{
+	//! import standard COM type library
+
+	importlib("stdole2.tlb");
+
+	//! Unit operation class
+	/*!
+	  The default interface is IDispatch; this prevents the need for custom 
+	  interfaces of importing CAPE-OPEN interface definitions. The GUID
+	  defined here is how the unit operation will be available.
+	*/
+
+	[
+		uuid(3B7FDF53-EC5A-4BF8-99F2-819A8BF90579),
+		helpstring("CPPMixerSplitterUnitOperation Class")
+	]
+	coclass CPPMixerSplitterUnitOperation
+	{
+		[default] interface IDispatch;
+	};
+
+	//! Collection class
+	/*!
+	  The default interface is IDispatch; this prevents the need for custom 
+	  interfaces of importing CAPE-OPEN interface definitions. This class
+	  cannot be instanciated using CoCreateInstance, and is marked hidden.
+	*/
+
+	[
+		uuid(7D9B4745-1510-4BCD-B7CF-87DE6796AD23),
+		helpstring("Collection Class"),
+		hidden
+	]
+	coclass Collection
+	{
+		[default] interface IDispatch;
+	};
+
+	//! RealParameter class
+	/*!
+	  The default interface is IDispatch; this prevents the need for custom 
+	  interfaces of importing CAPE-OPEN interface definitions. This class
+	  cannot be instanciated using CoCreateInstance, and is marked hidden.
+	*/
+
+	[
+		uuid(A4F42270-9605-4EB2-BAB7-AF8B66188607),
+		helpstring("RealParameter Class"),
+		hidden
+	]
+	coclass RealParameter
+	{
+		[default] interface IDispatch;
+	};
+
+	//! MaterialPort class
+	/*!
+	  The default interface is IDispatch; this prevents the need for custom 
+	  interfaces of importing CAPE-OPEN interface definitions. This class
+	  cannot be instanciated using CoCreateInstance, and is marked hidden.
+	*/
+
+	[
+		uuid(C53E7E5D-CE57-4656-990A-7321D28BD396),
+		helpstring("MaterialPort Class"),
+		hidden
+	]
+	coclass MaterialPort
+	{
+		[default] interface IDispatch;
+	};
+	
+};

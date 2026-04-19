@@ -1,0 +1,170 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProductVersion>8.0.30703</ProductVersion>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>{8BFBC341-B27D-43B4-BE89-F171BB15C44F}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>CapeOpen</RootNamespace>
+    <AssemblyName>CapeOpen</AssemblyName>
+    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+    <TargetFrameworkProfile>
+    </TargetFrameworkProfile>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <RegisterForComInterop>true</RegisterForComInterop>
+    <DocumentationFile>bin\Debug\CapeOpen.XML</DocumentationFile>
+    <Prefer32Bit>false</Prefer32Bit>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <Prefer32Bit>false</Prefer32Bit>
+  </PropertyGroup>
+  <PropertyGroup>
+    <SignAssembly>true</SignAssembly>
+  </PropertyGroup>
+  <PropertyGroup>
+    <AssemblyOriginatorKeyFile>CapeOpenKey.snk</AssemblyOriginatorKeyFile>
+  </PropertyGroup>
+  <PropertyGroup>
+    <ApplicationIcon>epa_seal_medium.ico</ApplicationIcon>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="Accessibility">
+      <EmbedInteropTypes>False</EmbedInteropTypes>
+    </Reference>
+    <Reference Include="EnvDTE, Version=8.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
+      <EmbedInteropTypes>True</EmbedInteropTypes>
+    </Reference>
+    <Reference Include="System" />
+    <Reference Include="System.Configuration.Install" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Drawing" />
+    <Reference Include="System.Management" />
+    <Reference Include="System.Windows.Forms">
+      <EmbedInteropTypes>False</EmbedInteropTypes>
+    </Reference>
+    <Reference Include="System.Xml.Linq" />
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="ArrayParameter.cs" />
+    <Compile Include="BaseUnitEditor.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="BaseUnitEditor.Designer.cs">
+      <DependentUpon>BaseUnitEditor.cs</DependentUpon>
+    </Compile>
+    <Compile Include="BooleanParameter.cs" />
+    <Compile Include="CapeMaterialObjectBase.cs" />
+    <Compile Include="CapeObjectBase.cs" />
+    <Compile Include="CapeOpen.cs" />
+    <Compile Include="CapeThermoSystem.cs" />
+    <Compile Include="CapeUnitBase.cs" />
+    <Compile Include="COFEidl.cs" />
+    <Compile Include="COGuids1.cs" />
+    <Compile Include="COMMaterialObjectWrapper.cs" />
+    <Compile Include="commonIDL.cs" />
+    <Compile Include="CoseIDL.cs" />
+    <Compile Include="Dimensions.cs" />
+    <Compile Include="errorIDL.cs" />
+    <Compile Include="Exceptions.cs" />
+    <Compile Include="IntegerParameter.cs" />
+    <Compile Include="MaterialObjectWrapper.cs" />
+    <Compile Include="MaterialObjectWrapper1.cs" />
+    <Compile Include="MaterialObjectWrapper11.cs" />
+    <Compile Include="MixerExample.cs" />
+    <Compile Include="MixerExample110.cs" />
+    <Compile Include="MonitoringInterfaces.cs" />
+    <Compile Include="OptionParameter.cs" />
+    <Compile Include="ParameterCollection.cs" />
+    <Compile Include="ParameterIDL.cs" />
+    <Compile Include="PersistenceInterfacesIDL.cs" />
+    <Compile Include="PetroFractionsIDL.cs" />
+    <Compile Include="PortCollection.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Properties\Resources.Designer.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>Resources.resx</DependentUpon>
+    </Compile>
+    <Compile Include="ReactionsIDL.cs" />
+    <Compile Include="RealParameter.cs" />
+    <Compile Include="ThrmIDL.cs" />
+    <Compile Include="UnitIDL.cs" />
+    <Compile Include="UnitOperationManager.cs" />
+    <Compile Include="UnitOperationSystem.cs" />
+    <Compile Include="UnitPort.cs" />
+    <Compile Include="UnitSelector.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="UnitSelector.Designer.cs">
+      <DependentUpon>UnitSelector.cs</DependentUpon>
+    </Compile>
+    <Compile Include="War.cs" />
+    <Compile Include="WARalgorithm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="WARalgorithm.Designer.cs">
+      <DependentUpon>WARalgorithm.cs</DependentUpon>
+    </Compile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="CapeOpenKey.snk" />
+    <None Include="unitCategories.xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="BaseUnitEditor.resx">
+      <DependentUpon>BaseUnitEditor.cs</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Properties\Resources.resx">
+      <Generator>ResXFileCodeGenerator</Generator>
+      <LastGenOutput>Resources.Designer.cs</LastGenOutput>
+    </EmbeddedResource>
+    <EmbeddedResource Include="UnitSelector.resx">
+      <DependentUpon>UnitSelector.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="WARalgorithm.resx">
+      <DependentUpon>WARalgorithm.cs</DependentUpon>
+    </EmbeddedResource>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="units.xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="WARdata.xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="epa_seal_medium.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Resources\" />
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+</Project>

@@ -101,12 +101,6 @@ impl StudioGuiHost {
             StudioGuiHostCommand::DispatchUiCommand { command_id } => self
                 .dispatch_ui_command(&command_id)
                 .map(StudioGuiHostCommandOutcome::UiCommandDispatched),
-            StudioGuiHostCommand::DispatchForegroundEntitlementPrimaryAction => self
-                .dispatch_foreground_entitlement_primary_action()
-                .map(StudioGuiHostCommandOutcome::EntitlementActionDispatched),
-            StudioGuiHostCommand::DispatchForegroundEntitlementAction { action_id } => self
-                .dispatch_foreground_entitlement_action(action_id)
-                .map(StudioGuiHostCommandOutcome::EntitlementActionDispatched),
             StudioGuiHostCommand::QueryWindowDropTarget { window_id, query } => self
                 .query_window_drop_target(window_id, query)
                 .map(StudioGuiHostCommandOutcome::WindowDropTargetQueried),

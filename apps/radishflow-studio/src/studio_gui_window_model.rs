@@ -639,7 +639,7 @@ mod tests {
                 .iter()
                 .map(|section| section.title)
                 .collect::<Vec<_>>(),
-            vec!["Run Panel", "Recovery", "Canvas"]
+            vec!["Run Panel", "Recovery", "Entitlement", "Canvas"]
         );
         assert_eq!(
             window.commands.toolbar_sections[0]
@@ -675,7 +675,7 @@ mod tests {
                 .iter()
                 .map(|section| section.title)
                 .collect::<Vec<_>>(),
-            vec!["Run Panel", "Recovery", "Canvas"]
+            vec!["Run Panel", "Recovery", "Entitlement", "Canvas"]
         );
         assert_eq!(
             window.commands.command_list_sections[0]

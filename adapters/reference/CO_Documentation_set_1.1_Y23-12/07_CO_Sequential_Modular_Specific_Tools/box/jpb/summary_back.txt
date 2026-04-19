@@ -1,0 +1,15 @@
+Summary
+
+ 
+
+This software Component Documentation of the CAPE-OPEN project is focus on the Sequential Modular Specific Tools (SMST) component.
+
+This software component belongs to the Numerical package and especially to the solvers at flowsheet level.
+
+This documentation is a detailed description of the SMST component, note that an introduction is present in the CAPE-OPEN Concepts Document. 
+Further to an introduction part, it includes a section on requirements with textual description and the complete interface design using the UML notation. The UML description is given in terms of actors, use cases, sequence diagrams, collaboration diagrams, state diagrams, interface diagrams, component diagrams and deployment diagram.
+Then, the interface specification (a detailed textual description of the whole interface: classes, attributs, methods, ...) and the IDL codes are displayed.
+And finally, there is a tutorial part.
+
+The design of this component (and therfore its documentation) is based on object-oriented technologies and distributed software component architecture. 
+So the reader should be familiar with the Unified Modelling Language (UML), a middleware, an Interface Definition Language (IDL) and a oo language. Otherwise you can go on, it isn't so difficult to understand !

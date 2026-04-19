@@ -1,0 +1,340 @@
+
+ATA, Incorporated        
+DocEXPRESS/Reporter LITE 1.4.1     
+Copyright (c) 1999 by ATA, Incorporated        
+
+DocEXPRESS/Reporter LITE continues loading, Please wait.
+Warning: Microsoft Word was not found.
+         MS Word Report Format is not avaiable.
+
+Warning: DocEXPRESS/Reporter LITE could not find a viewer associated with 'mif' files.
+               FrameMaker Report Format can be built but will not open automatically upon completion.
+
+
+DocEXPRESS/Reporter LITE has been successfully started.
+
+ 
+----------------------------------------------------------------------
+Starting C:\Program Files\ata\docit\ctools\rose\bin\parse_dcs on  at 15:48:50
+     -output C:\TEMP\ata\tmp\UML_Model_034837.html
+     -dps html
+     -model C:\TEMP\UML_Model.mdl
+     -dcs C:\Program Files\ata\docit\ctools\rose\specs\uml\defaults\LogicalViewRpt.dcs
+     -defaults C:\TEMP\ata\tmp\defaults.txt
+     -verbose 
+Using the default header file: C:\Program Files\ata\docit\ctools\rose\html\header.html
+Using the default tag file: C:\Program Files\ata\docit\ctools\rose\html\tag_file.txt
+  
+Extracting information from the C:\TEMP\UML_Model.mdl model ...
+Note: Unlabelled objects will not be included in document.
+Outputting Model Information
+Outputting information for the Logical View Logical Package
+
+     Outputting information for the Packages Dependencies Class Diagram
+=============================================================
+Starting C:\Program Files\ata\docit\bin\mf2gif.exe
+         -i c:\temp\ata\tmp\tmp_09211548561.emf
+         -o c:\temp\ata\tmp\tmp_09211548561.gif
+ on 09/21/99 at 15:48:58
+
+Finished C:\Program Files\ata\docit\bin\mf2gif.exe
+ on 09/21/99 at 15:48:59
+=============================================================
+
+     The Packages Dependencies Class Diagram has been exported.
+     Outputting information for the CO SMST Component Logical Package
+
+          Outputting information for the Diagram of CO SMST Component Package Class Diagram
+=============================================================
+Starting C:\Program Files\ata\docit\bin\mf2gif.exe
+         -i c:\temp\ata\tmp\tmp_09211549002.emf
+         -o c:\temp\ata\tmp\tmp_09211549002.gif
+ on 09/21/99 at 15:49:00
+
+Finished C:\Program Files\ata\docit\bin\mf2gif.exe
+ on 09/21/99 at 15:49:00
+=============================================================
+
+          The Diagram of CO SMST Component Package Class Diagram has been exported.
+          Outputting information for the Common Services Logical Package
+
+               Outputting information for the Diagram of Common Services Package Class Diagram
+=============================================================
+Starting C:\Program Files\ata\docit\bin\mf2gif.exe
+         -i c:\temp\ata\tmp\tmp_09211549013.emf
+         -o c:\temp\ata\tmp\tmp_09211549013.gif
+ on 09/21/99 at 15:49:01
+
+Finished C:\Program Files\ata\docit\bin\mf2gif.exe
+ on 09/21/99 at 15:49:02
+=============================================================
+
+               The Diagram of Common Services Package Class Diagram has been exported.
+               Outputting information for the Identification Service Logical Package
+
+                    Outputting information for the Diagram of Identification Service Package Class Diagram
+=============================================================
+Starting C:\Program Files\ata\docit\bin\mf2gif.exe
+         -i c:\temp\ata\tmp\tmp_09211549024.emf
+         -o c:\temp\ata\tmp\tmp_09211549024.gif
+ on 09/21/99 at 15:49:03
+
+Finished C:\Program Files\ata\docit\bin\mf2gif.exe
+ on 09/21/99 at 15:49:03
+=============================================================
+
+                    The Diagram of Identification Service Package Class Diagram has been exported.
+                    Outputting information for the Identification Class
+               Outputting information for the Parameter Service Logical Package
+
+                    Outputting information for the Diagram of Parameter Service Package Class Diagram
+=============================================================
+Starting C:\Program Files\ata\docit\bin\mf2gif.exe
+         -i c:\temp\ata\tmp\tmp_09211549055.emf
+         -o c:\temp\ata\tmp\tmp_09211549055.gif
+ on 09/21/99 at 15:49:05
+
+Finished C:\Program Files\ata\docit\bin\mf2gif.exe
+ on 09/21/99 at 15:49:06
+=============================================================
+
+                    The Diagram of Parameter Service Package Class Diagram has been exported.
+                    Outputting information for the Parameter Class
+               Outputting information for the Report Service Logical Package
+
+                    Outputting information for the Diagram of Report Service Package Class Diagram
+=============================================================
+Starting C:\Program Files\ata\docit\bin\mf2gif.exe
+         -i c:\temp\ata\tmp\tmp_09211549076.emf
+         -o c:\temp\ata\tmp\tmp_09211549076.gif
+ on 09/21/99 at 15:49:08
+
+Finished C:\Program Files\ata\docit\bin\mf2gif.exe
+ on 09/21/99 at 15:49:08
+=============================================================
+
+                    The Diagram of Report Service Package Class Diagram has been exported.
+                    Outputting information for the Report Class
+          Outputting information for the SMST Logical Package
+
+               Outputting information for the Analysis Interface Diagram Class Diagram
+=============================================================
+Starting C:\Program Files\ata\docit\bin\mf2gif.exe
+         -i c:\temp\ata\tmp\tmp_09211549097.emf
+         -o c:\temp\ata\tmp\tmp_09211549097.gif
+ on 09/21/99 at 15:49:10
+
+Finished C:\Program Files\ata\docit\bin\mf2gif.exe
+ on 09/21/99 at 15:49:12
+=============================================================
+
+               The Analysis Interface Diagram Class Diagram has been exported.
+
+               Outputting information for the Flowsheet Interface Diagram Class Diagram
+=============================================================
+Starting C:\Program Files\ata\docit\bin\mf2gif.exe
+         -i c:\temp\ata\tmp\tmp_09211549138.emf
+         -o c:\temp\ata\tmp\tmp_09211549138.gif
+ on 09/21/99 at 15:49:15
+
+Finished C:\Program Files\ata\docit\bin\mf2gif.exe
+ on 09/21/99 at 15:49:16
+=============================================================
+
+               The Flowsheet Interface Diagram Class Diagram has been exported.
+
+               Outputting information for the Full Interface Diagram Class Diagram
+=============================================================
+Starting C:\Program Files\ata\docit\bin\mf2gif.exe
+         -i c:\temp\ata\tmp\tmp_09211549179.emf
+         -o c:\temp\ata\tmp\tmp_09211549179.gif
+ on 09/21/99 at 15:49:17
+
+Finished C:\Program Files\ata\docit\bin\mf2gif.exe
+ on 09/21/99 at 15:49:19
+=============================================================
+
+               The Full Interface Diagram Class Diagram has been exported.
+
+               Outputting information for the Manager Interface Diagram Class Diagram
+=============================================================
+Starting C:\Program Files\ata\docit\bin\mf2gif.exe
+         -i c:\temp\ata\tmp\tmp_092115491910.emf
+         -o c:\temp\ata\tmp\tmp_092115491910.gif
+ on 09/21/99 at 15:49:20
+
+Finished C:\Program Files\ata\docit\bin\mf2gif.exe
+ on 09/21/99 at 15:49:21
+=============================================================
+
+               The Manager Interface Diagram Class Diagram has been exported.
+               Outputting information for the ICapeNumericAnalysis Class
+                    Outputting information for the CheckFlowsheetConsistency Operation
+                    Outputting information for the Destroy Operation
+                    Outputting information for the GetMaximumStreamCount Operation
+                    Outputting information for the GetMaximumUnitCount Operation
+                    Outputting information for the GetName Operation
+                    Outputting information for the Perform Operation
+               Outputting information for the ICapeNumericAnalysisFactory Class
+                    Outputting information for the CreateNumericAnalysis Operation
+                    Outputting information for the Destroy Operation
+                    Outputting information for the GetName Operation
+                    Outputting information for the PartitioningImplementation Operation
+                    Outputting information for the SequencingImplementation Operation
+                    Outputting information for the SMAnalysisImplementation Operation
+                    Outputting information for the TearingImplementation Operation
+               Outputting information for the ICapeNumericFlowsheet Class
+                    Outputting information for the Destroy Operation
+                    Outputting information for the GetMaximumStreamCount Operation
+                    Outputting information for the GetMaximumUnitCount Operation
+                    Outputting information for the GetName Operation
+                    Outputting information for the GetStreamCount Operation
+                    Outputting information for the GetUnitCount Operation
+               Outputting information for the ICapeNumericFlowsheetFactory Class
+                    Outputting information for the CreateFlowsheet Operation
+                    Outputting information for the Destroy Operation
+                    Outputting information for the GetName Operation
+               Outputting information for the ICapeNumericGATComponent Class
+                    Outputting information for the CreateAnalysisFactory Operation
+                    Outputting information for the CreateFlowsheetFactory Operation
+                    Outputting information for the Shutdown Operation
+
+                    Outputting information for the State Diagram:ICapeNumericGATComponent State Diagram
+=============================================================
+Starting C:\Program Files\ata\docit\bin\mf2gif.exe
+         -i c:\temp\ata\tmp\tmp_092115492911.emf
+         -o c:\temp\ata\tmp\tmp_092115492911.gif
+ on 09/21/99 at 15:49:29
+
+Finished C:\Program Files\ata\docit\bin\mf2gif.exe
+ on 09/21/99 at 15:49:30
+=============================================================
+
+                    The State Diagram:ICapeNumericGATComponent State Diagram has been exported.
+               Outputting information for the ICapeNumericOpenPartitionGraph Class
+               Outputting information for the ICapeNumericPartitionGraph Class
+                    Outputting information for the GetInitialProcessGraph Operation
+                    Outputting information for the SetInitialProcessGraph Operation
+               Outputting information for the ICapeNumericPartitioning Class
+                    Outputting information for the CreateAndCompletePartitionGraph Operation
+                    Outputting information for the GetExternalSystemId Operation
+                    Outputting information for the GetPartitionCount Operation
+                    Outputting information for the GetUnitsInPartition Operation
+                    Outputting information for the SetExternalSystemId Operation
+
+                    Outputting information for the State Diagram:ICapeNumericPartitioning State Diagram
+=============================================================
+Starting C:\Program Files\ata\docit\bin\mf2gif.exe
+         -i c:\temp\ata\tmp\tmp_092115493212.emf
+         -o c:\temp\ata\tmp\tmp_092115493212.gif
+ on 09/21/99 at 15:49:32
+
+Finished C:\Program Files\ata\docit\bin\mf2gif.exe
+ on 09/21/99 at 15:49:33
+=============================================================
+
+                    The State Diagram:ICapeNumericPartitioning State Diagram has been exported.
+               Outputting information for the ICapeNumericProcessGraph Class
+                    Outputting information for the AddNotTornProperty Operation
+                    Outputting information for the AddStream Operation
+                    Outputting information for the AddStreamType Operation
+                    Outputting information for the AddStreamWeight Operation
+                    Outputting information for the AddTornProperty Operation
+                    Outputting information for the GetNotTornProperty Operation
+                    Outputting information for the GetSetOfStream Operation
+                    Outputting information for the GetSetOfUnit Operation
+                    Outputting information for the GetStreamConnection Operation
+                    Outputting information for the GetStreamType Operation
+                    Outputting information for the GetStreamWeight Operation
+                    Outputting information for the GetTornProperty Operation
+                    Outputting information for the RemoveStream Operation
+
+                    Outputting information for the State Diagram:ICapeNumericProcessGraph State Diagram
+=============================================================
+Starting C:\Program Files\ata\docit\bin\mf2gif.exe
+         -i c:\temp\ata\tmp\tmp_092115493713.emf
+         -o c:\temp\ata\tmp\tmp_092115493713.gif
+ on 09/21/99 at 15:49:37
+
+Finished C:\Program Files\ata\docit\bin\mf2gif.exe
+ on 09/21/99 at 15:49:38
+=============================================================
+
+                    The State Diagram:ICapeNumericProcessGraph State Diagram has been exported.
+               Outputting information for the ICapeNumericSequencing Class
+                    Outputting information for the GetUnits Operation
+
+                    Outputting information for the State Diagram:ICapeNumericSequencing State Diagram
+=============================================================
+Starting C:\Program Files\ata\docit\bin\mf2gif.exe
+         -i c:\temp\ata\tmp\tmp_092115493914.emf
+         -o c:\temp\ata\tmp\tmp_092115493914.gif
+ on 09/21/99 at 15:49:39
+
+Finished C:\Program Files\ata\docit\bin\mf2gif.exe
+ on 09/21/99 at 15:49:40
+=============================================================
+
+                    The State Diagram:ICapeNumericSequencing State Diagram has been exported.
+               Outputting information for the ICapeNumericSMAnalysis Class
+                    Outputting information for the GetPartitionCount Operation
+                    Outputting information for the GetTornStreamsInPartition Operation
+                    Outputting information for the GetUnitsInPartition Operation
+
+                    Outputting information for the State Diagram:ICapeNumericSMAnalysis State Diagram
+=============================================================
+Starting C:\Program Files\ata\docit\bin\mf2gif.exe
+         -i c:\temp\ata\tmp\tmp_092115494115.emf
+         -o c:\temp\ata\tmp\tmp_092115494115.gif
+ on 09/21/99 at 15:49:41
+
+Finished C:\Program Files\ata\docit\bin\mf2gif.exe
+ on 09/21/99 at 15:49:42
+=============================================================
+
+                    The State Diagram:ICapeNumericSMAnalysis State Diagram has been exported.
+               Outputting information for the ICapeNumericTearing Class
+                    Outputting information for the CreateAndCompleteOpenPartitionGraph Operation
+                    Outputting information for the GetTornStreams Operation
+
+                    Outputting information for the State Diagram:ICapeNumericTearing State Diagram
+=============================================================
+Starting C:\Program Files\ata\docit\bin\mf2gif.exe
+         -i c:\temp\ata\tmp\tmp_092115494316.emf
+         -o c:\temp\ata\tmp\tmp_092115494316.gif
+ on 09/21/99 at 15:49:43
+
+Finished C:\Program Files\ata\docit\bin\mf2gif.exe
+ on 09/21/99 at 15:49:44
+=============================================================
+
+                    The State Diagram:ICapeNumericTearing State Diagram has been exported.
+     Outputting information for the CO Solver Component Logical Package
+     Outputting information for the CO UO Component Logical Package
+     Outputting information for the Simulator Executive Logical Package
+
+          Outputting information for the Diagram of Simulator Executive Package Class Diagram
+=============================================================
+Starting C:\Program Files\ata\docit\bin\mf2gif.exe
+         -i c:\temp\ata\tmp\tmp_092115494517.emf
+         -o c:\temp\ata\tmp\tmp_092115494517.gif
+ on 09/21/99 at 15:49:46
+
+Finished C:\Program Files\ata\docit\bin\mf2gif.exe
+ on 09/21/99 at 15:49:46
+=============================================================
+
+          The Diagram of Simulator Executive Package Class Diagram has been exported.
+          Outputting information for the Equation Oriented Executive Class
+          Outputting information for the Pre-Processor Subsystem Class
+          Outputting information for the Sequential Modular Executive Class
+          Outputting information for the Simulator Executive Class
+
+Total diagrams: 17
+Total Tables: 0
+Total warnings: 0
+Total errors  : 0
+Finished C:\Program Files\ata\docit\ctools\rose\bin\parse_dcs on mardi 21 septembre 1999 at 15:49:52
+Opening Report in a WWW Browser, Please wait.
+     Opening file: C:\TEMP\ata\tmp\UML_Model_034837_FV.html
+Pre-Defined Reports finished, sept 21 1999 15:49:55

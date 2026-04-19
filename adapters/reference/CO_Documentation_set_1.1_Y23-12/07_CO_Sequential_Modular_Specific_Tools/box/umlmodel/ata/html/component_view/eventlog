@@ -1,0 +1,128 @@
+
+ATA, Incorporated        
+DocEXPRESS/Reporter LITE 1.4.1     
+Copyright (c) 1999 by ATA, Incorporated        
+
+DocEXPRESS/Reporter LITE continues loading, Please wait.
+Warning: DocEXPRESS/Reporter LITE could not find a viewer associated with 'mif' files.
+               FrameMaker Report Format can be built but will not open automatically upon completion.
+
+
+DocEXPRESS/Reporter LITE has been successfully started.
+
+ 
+----------------------------------------------------------------------
+Starting C:\Program Files\ata\docit\ctools\rose\bin\parse_dcs on  at 16:25:47
+     -output C:\TEMP\ata\tmp\UML_Model_042539.html
+     -dps html
+     -model C:\TEMP\UML_Model.mdl
+     -dcs C:\Program Files\ata\docit\ctools\rose\specs\uml\defaults\ComponentViewRpt.dcs
+     -defaults C:\TEMP\ata\tmp\defaults.txt
+     -verbose 
+Using the default header file: C:\Program Files\ata\docit\ctools\rose\html\header.html
+Using the default tag file: C:\Program Files\ata\docit\ctools\rose\html\tag_file.txt
+  
+Extracting information from the C:\TEMP\UML_Model.mdl model ...
+Note: Unlabelled objects will not be included in document.
+Outputting Model Information
+Outputting information for the Component View Component Package
+
+     Outputting information for the Main Component Diagram Component Diagram
+=============================================================
+Starting C:\Program Files\ata\docit\bin\mf2gif.exe
+         -i c:\temp\ata\tmp\tmp_09211625561.emf
+         -o c:\temp\ata\tmp\tmp_09211625561.gif
+ on 09/21/99 at 16:25:58
+
+Finished C:\Program Files\ata\docit\bin\mf2gif.exe
+ on 09/21/99 at 16:25:59
+=============================================================
+
+     The Main Component Diagram Component Diagram has been exported.
+     Outputting information for the Client Side Component Package
+
+          Outputting information for the Component Diagram of Client Side Package Component Diagram
+=============================================================
+Starting C:\Program Files\ata\docit\bin\mf2gif.exe
+         -i c:\temp\ata\tmp\tmp_09211626002.emf
+         -o c:\temp\ata\tmp\tmp_09211626002.gif
+ on 09/21/99 at 16:26:00
+
+Finished C:\Program Files\ata\docit\bin\mf2gif.exe
+ on 09/21/99 at 16:26:01
+=============================================================
+
+          The Component Diagram of Client Side Package Component Diagram has been exported.
+          Outputting information for the Flowsheet_Analyser.class Component
+          Outputting information for the IHM.obj Component
+          Outputting information for the Pre-Processor.obj Component
+          Outputting information for the SM_Executive.exe Component
+     Outputting information for the Server Side Component Package
+
+          Outputting information for the Component Diagram of Server Side Package Component Diagram
+=============================================================
+Starting C:\Program Files\ata\docit\bin\mf2gif.exe
+         -i c:\temp\ata\tmp\tmp_09211626043.emf
+         -o c:\temp\ata\tmp\tmp_09211626043.gif
+ on 09/21/99 at 16:26:05
+
+Finished C:\Program Files\ata\docit\bin\mf2gif.exe
+ on 09/21/99 at 16:26:05
+=============================================================
+
+          The Component Diagram of Server Side Package Component Diagram has been exported.
+          Outputting information for the Common Services Component Package
+
+               Outputting information for the Component Diagram of Common Services Package Component Diagram
+=============================================================
+Starting C:\Program Files\ata\docit\bin\mf2gif.exe
+         -i c:\temp\ata\tmp\tmp_09211626064.emf
+         -o c:\temp\ata\tmp\tmp_09211626064.gif
+ on 09/21/99 at 16:26:07
+
+Finished C:\Program Files\ata\docit\bin\mf2gif.exe
+ on 09/21/99 at 16:26:08
+=============================================================
+
+               The Component Diagram of Common Services Package Component Diagram has been exported.
+               Outputting information for the ICapeUtility.idl Component
+          Outputting information for the Definition Component Package
+
+               Outputting information for the Component Diagram of Definition Package Component Diagram
+=============================================================
+Starting C:\Program Files\ata\docit\bin\mf2gif.exe
+         -i c:\temp\ata\tmp\tmp_09211626095.emf
+         -o c:\temp\ata\tmp\tmp_09211626095.gif
+ on 09/21/99 at 16:26:09
+
+Finished C:\Program Files\ata\docit\bin\mf2gif.exe
+ on 09/21/99 at 16:26:10
+=============================================================
+
+               The Component Diagram of Definition Package Component Diagram has been exported.
+               Outputting information for the ICapeUtilityDefinition.idl Component
+          Outputting information for the SMST Component Package
+
+               Outputting information for the Component Diagram of SMST Package Component Diagram
+=============================================================
+Starting C:\Program Files\ata\docit\bin\mf2gif.exe
+         -i c:\temp\ata\tmp\tmp_09211626116.emf
+         -o c:\temp\ata\tmp\tmp_09211626116.gif
+ on 09/21/99 at 16:26:12
+
+Finished C:\Program Files\ata\docit\bin\mf2gif.exe
+ on 09/21/99 at 16:26:14
+=============================================================
+
+               The Component Diagram of SMST Package Component Diagram has been exported.
+               Outputting information for the ICapeNumericSMST.idl Component
+          Outputting information for the SMST_Application.exe Component
+
+Total diagrams: 6
+Total Tables: 0
+Total warnings: 0
+Total errors  : 0
+Finished C:\Program Files\ata\docit\ctools\rose\bin\parse_dcs on mardi 21 septembre 1999 at 16:26:26
+Opening Report in a WWW Browser, Please wait.
+     Opening file: C:\TEMP\ata\tmp\UML_Model_042539_FV.html
+Pre-Defined Reports finished, sept 21 1999 16:26:30

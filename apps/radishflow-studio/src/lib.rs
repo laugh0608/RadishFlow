@@ -175,11 +175,11 @@ pub use studio_gui_host::{
     StudioGuiCanvasInteractionAction, StudioGuiCanvasState, StudioGuiHost,
     StudioGuiHostCanvasInteractionResult, StudioGuiHostCanvasSuggestionResult,
     StudioGuiHostCloseWindowResult, StudioGuiHostCommand, StudioGuiHostCommandOutcome,
-    StudioGuiHostDispatch, StudioGuiHostEntitlementDispatchResult,
-    StudioGuiHostGlobalEventDispatch, StudioGuiHostLifecycleDispatch, StudioGuiHostLifecycleEvent,
-    StudioGuiHostUiCommandDispatchResult, StudioGuiHostWindowDropPreviewClearResult,
-    StudioGuiHostWindowDropTargetApplyResult, StudioGuiHostWindowDropTargetQueryResult,
-    StudioGuiHostWindowLayoutUpdateResult, StudioGuiHostWindowOpened,
+    StudioGuiHostDispatch, StudioGuiHostGlobalEventDispatch, StudioGuiHostLifecycleDispatch,
+    StudioGuiHostLifecycleEvent, StudioGuiHostUiCommandDispatchResult,
+    StudioGuiHostWindowDropPreviewClearResult, StudioGuiHostWindowDropTargetApplyResult,
+    StudioGuiHostWindowDropTargetQueryResult, StudioGuiHostWindowLayoutUpdateResult,
+    StudioGuiHostWindowOpened,
 };
 pub use studio_gui_platform_host::{
     StudioGuiPlatformAsyncRound, StudioGuiPlatformAsyncRoundAction,

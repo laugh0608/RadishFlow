@@ -1,0 +1,5013 @@
+
+(object Petal
+    version    	42
+    _written   	"Rose 4.5.8163.3"
+    charSet    	0)
+
+(object Design "Logical View"
+    is_unit    	TRUE
+    is_loaded  	TRUE
+    defaults   	(object defaults
+	rightMargin 	0.250000
+	leftMargin 	0.250000
+	topMargin  	0.250000
+	bottomMargin 	0.500000
+	pageOverlap 	0.250000
+	clipIconLabels 	TRUE
+	autoResize 	TRUE
+	snapToGrid 	FALSE
+	gridX      	3
+	gridY      	3
+	defaultFont 	(object Font
+	    size       	9
+	    face       	"Arial"
+	    bold       	FALSE
+	    italics    	FALSE
+	    underline  	FALSE
+	    strike     	FALSE
+	    color      	0
+	    default_color 	TRUE)
+	showMessageNum 	1
+	showClassOfObject 	TRUE
+	notation   	"Unified")
+    root_usecase_package 	(object Class_Category "Use Case View"
+	quid       	"35483824035A"
+	documentation 	
+|The Use-Case View.
+|
+|All the Use-Cases are specific to the CAPE domain.
+|
+|Only the Use-Cases specific to the CO SMST component are displayed.
+|So, for example no Use-Cases describing the CO common services are proposed.
+|
+|The relation cardinality between the Use Cases are given for a common use.
+|
+|The Use-Cases in red are specified with more details in another diagram. The name of this diagram is similar to the Use-Case name.
+|
+|The unidirectional associations between Actors and Use-Cases are "interaction" relations.
+|The unidirectional associations between a Use-Case and Use-Cases are "use" relations.
+|
+|The Use-Casel View has been designed through the CAPE-OPEN Project BE 3512 in the Work-Package Numerical.
+	
+	exportControl 	"Public"
+	global     	TRUE
+	logical_models 	(list unit_reference_list
+	    (object Association "$UNNAMED$0"
+		quid       	"362B430802E9"
+		roles      	(list role_list
+		    (object Role "$UNNAMED$1"
+			quid       	"362B43090286"
+			supplier   	"Initializing"
+			quidu      	"362B42B001E8"
+			client_cardinality 	(value cardinality "1")
+			is_navigable 	TRUE)
+		    (object Role "$UNNAMED$2"
+			quid       	"362B43090287"
+			supplier   	"Using SMST"
+			quidu      	"362B400703A2")))
+	    (object Association "$UNNAMED$3"
+		quid       	"362B436100E8"
+		roles      	(list role_list
+		    (object Role "$UNNAMED$4"
+			quid       	"362B436103AF"
+			supplier   	
+|Getting and Handling
+| Results
+			
+			quidu      	"362B431502FC"
+			client_cardinality 	(value cardinality "1..n")
+			is_navigable 	TRUE)
+		    (object Role "$UNNAMED$5"
+			quid       	"362B436103B0"
+			supplier   	"Using SMST"
+			quidu      	"362B400703A2")))
+	    (object Association "$UNNAMED$6"
+		quid       	"362B48A202B9"
+		roles      	(list role_list
+		    (object Role "$UNNAMED$7"
+			quid       	"362B48A30148"
+			supplier   	"Initializing"
+			quidu      	"362B42B001E8"
+			is_navigable 	TRUE)
+		    (object Role "$UNNAMED$8"
+			quid       	"362B48A30149"
+			supplier   	"::Actors::Flowsheet Builder"
+			quidu      	"362B400E026B")))
+	    (object Association "$UNNAMED$9"
+		quid       	"362B4D9C00D0"
+		roles      	(list role_list
+		    (object Role "$UNNAMED$10"
+			quid       	"362B4D9C035B"
+			supplier   	"Performing"
+			quidu      	"362B42EE022D"
+			client_cardinality 	(value cardinality "1..n")
+			is_navigable 	TRUE)
+		    (object Role "$UNNAMED$11"
+			quid       	"362B4D9C035C"
+			supplier   	"Using SMST"
+			quidu      	"362B400703A2")))
+	    (object Association "$UNNAMED$12"
+		quid       	"362B4DD200F6"
+		roles      	(list role_list
+		    (object Role "$UNNAMED$13"
+			quid       	"362B4DD30007"
+			supplier   	"Performing"
+			quidu      	"362B42EE022D"
+			is_navigable 	TRUE)
+		    (object Role "$UNNAMED$14"
+			quid       	"362B4DD30008"
+			supplier   	"::Actors::Flowsheet User"
+			quidu      	"362B403E02A6")))
+	    (object Association "$UNNAMED$15"
+		quid       	"362B4DD400A9"
+		roles      	(list role_list
+		    (object Role "$UNNAMED$16"
+			quid       	"362B4DD5012C"
+			supplier   	
+|Getting and Handling
+| Results
+			
+			quidu      	"362B431502FC"
+			is_navigable 	TRUE)
+		    (object Role "$UNNAMED$17"
+			quid       	"362B4DD5012D"
+			supplier   	"::Actors::Flowsheet User"
+			quidu      	"362B403E02A6")))
+	    (object Association "$UNNAMED$18"
+		quid       	"362B4F9403C4"
+		roles      	(list role_list
+		    (object Role "$UNNAMED$19"
+			quid       	"362B4F9502E9"
+			supplier   	"Building a Numeric Analysis"
+			quidu      	"362B4F44031F"
+			client_cardinality 	(value cardinality "1")
+			is_navigable 	TRUE)
+		    (object Role "$UNNAMED$20"
+			quid       	"362B4F9502F3"
+			supplier   	"Initializing"
+			quidu      	"362B42B001E8")))
+	    (object Association "$UNNAMED$21"
+		quid       	"362B50A7012A"
+		roles      	(list role_list
+		    (object Role "$UNNAMED$22"
+			quid       	"362B50A7033D"
+			supplier   	"Add Stream"
+			quidu      	"362B4FA200DF"
+			client_cardinality 	(value cardinality "1..n")
+			is_navigable 	TRUE)
+		    (object Role "$UNNAMED$23"
+			quid       	"362B50A7033E"
+			supplier   	"Building a  Process Graph"
+			quidu      	"362B4EF501DB")))
+	    (object Association "0,2"
+		quid       	"362B516B033F"
+		roles      	(list role_list
+		    (object Role "$UNNAMED$24"
+			quid       	"362B516C01BA"
+			supplier   	"Add Unit"
+			quidu      	"362B505E008F"
+			is_navigable 	TRUE)
+		    (object Role "$UNNAMED$25"
+			quid       	"362B516C01BB"
+			supplier   	"Add Stream"
+			quidu      	"362B4FA200DF")))
+	    (object Association "$UNNAMED$26"
+		quid       	"362B52720058"
+		roles      	(list role_list
+		    (object Role "$UNNAMED$27"
+			quid       	"362B5272029D"
+			supplier   	"Remove Stream"
+			quidu      	"362B5267019D"
+			client_cardinality 	(value cardinality "0..n")
+			is_navigable 	TRUE)
+		    (object Role "$UNNAMED$28"
+			quid       	"362B5272029E"
+			supplier   	"Building a  Process Graph"
+			quidu      	"362B4EF501DB")))
+	    (object Association "0..2"
+		quid       	"362B52CF0020"
+		roles      	(list role_list
+		    (object Role "$UNNAMED$29"
+			quid       	"362B52CF02E7"
+			supplier   	"Remove Unit"
+			quidu      	"362B52A500DE"
+			is_navigable 	TRUE)
+		    (object Role "$UNNAMED$30"
+			quid       	"362B52CF02E8"
+			supplier   	"Remove Stream"
+			quidu      	"362B5267019D")))
+	    (object Association "$UNNAMED$31"
+		quid       	"362B52D2024B"
+		roles      	(list role_list
+		    (object Role "$UNNAMED$32"
+			quid       	"362B52D300EE"
+			supplier   	"Remove Weigth"
+			quidu      	"362B52B10370"
+			client_cardinality 	(value cardinality "1")
+			is_navigable 	TRUE)
+		    (object Role "$UNNAMED$33"
+			quid       	"362B52D300EF"
+			supplier   	"Remove Stream"
+			quidu      	"362B5267019D")))
+	    (object Association "$UNNAMED$34"
+		quid       	"362B53C802BD"
+		roles      	(list role_list
+		    (object Role "$UNNAMED$35"
+			quid       	"362B53C90160"
+			supplier   	"Add Stream Type"
+			quidu      	"362B53650365"
+			client_cardinality 	(value cardinality "1")
+			is_navigable 	TRUE)
+		    (object Role "$UNNAMED$36"
+			quid       	"362B53C90161"
+			supplier   	"Add Stream Property"
+			quidu      	"362B53130371")))
+	    (object Association "$UNNAMED$37"
+		quid       	"362B53CC02F5"
+		roles      	(list role_list
+		    (object Role "$UNNAMED$38"
+			quid       	"362B53CD0147"
+			supplier   	"Add toBeTorn Property"
+			quidu      	"362B5370039D"
+			client_cardinality 	(value cardinality "1")
+			is_navigable 	TRUE)
+		    (object Role "$UNNAMED$39"
+			quid       	"362B53CD0148"
+			supplier   	"Add Stream Property"
+			quidu      	"362B53130371")))
+	    (object Association "$UNNAMED$40"
+		quid       	"362B53D000C0"
+		roles      	(list role_list
+		    (object Role "$UNNAMED$41"
+			quid       	"362B53D002E6"
+			supplier   	"Add notToBeTorn Property"
+			quidu      	"362B53AB038D"
+			client_cardinality 	(value cardinality "1")
+			is_navigable 	TRUE)
+		    (object Role "$UNNAMED$42"
+			quid       	"362B53D002F0"
+			supplier   	"Add Stream Property"
+			quidu      	"362B53130371")))
+	    (object Association "$UNNAMED$43"
+		quid       	"362B55B60321"
+		roles      	(list role_list
+		    (object Role "$UNNAMED$44"
+			quid       	"362B55B7023C"
+			supplier   	"Get Flowsheet Maximal Dimension"
+			quidu      	"362B5591001B"
+			client_cardinality 	(value cardinality "0..n")
+			is_navigable 	TRUE)
+		    (object Role "$UNNAMED$45"
+			quid       	"362B55B7023D"
+			supplier   	"Building a  Process Graph"
+			quidu      	"362B4EF501DB")))
+	    (object Association "$UNNAMED$46"
+		quid       	"362B55FE0068"
+		roles      	(list role_list
+		    (object Role "$UNNAMED$47"
+			quid       	"362B55FE028F"
+			supplier   	"Get Flowsheet Maximal Unit Count"
+			quidu      	"362B55C6002B"
+			client_cardinality 	(value cardinality "1")
+			is_navigable 	TRUE)
+		    (object Role "$UNNAMED$48"
+			quid       	"362B55FE0290"
+			supplier   	"Get Flowsheet Maximal Dimension"
+			quidu      	"362B5591001B")))
+	    (object Association "$UNNAMED$49"
+		quid       	"362B56020009"
+		roles      	(list role_list
+		    (object Role "$UNNAMED$50"
+			quid       	"362B560202EF"
+			supplier   	"Get Flowsheet Maximal Stream Count"
+			quidu      	"362B55E3011D"
+			client_cardinality 	(value cardinality "1")
+			is_navigable 	TRUE)
+		    (object Role "$UNNAMED$51"
+			quid       	"362B560202F0"
+			supplier   	"Get Flowsheet Maximal Dimension"
+			quidu      	"362B5591001B")))
+	    (object Association "$UNNAMED$52"
+		quid       	"362B59010297"
+		roles      	(list role_list
+		    (object Role "$UNNAMED$53"
+			quid       	"362B590202F3"
+			supplier   	
+|Building 
+|a Partition Graph
+			
+			quidu      	"362B589101C4"
+			client_cardinality 	(value cardinality "1")
+			is_navigable 	TRUE)
+		    (object Role "$UNNAMED$54"
+			quid       	"362B590202FD"
+			supplier   	"Initializing"
+			quidu      	"362B42B001E8")))
+	    (object Association "$UNNAMED$55"
+		quid       	"362B590401C9"
+		roles      	(list role_list
+		    (object Role "$UNNAMED$56"
+			quid       	"362B590500BC"
+			supplier   	
+|Building 
+|an Open Partition Graph
+			
+			quidu      	"362B58CC02D7"
+			client_cardinality 	(value cardinality "1")
+			is_navigable 	TRUE)
+		    (object Role "$UNNAMED$57"
+			quid       	"362B590500BD"
+			supplier   	"Initializing"
+			quidu      	"362B42B001E8")))
+	    (object Association "$UNNAMED$58"
+		quid       	"362B5AF4024F"
+		roles      	(list role_list
+		    (object Role "$UNNAMED$59"
+			quid       	"362B5AF501F6"
+			supplier   	
+|Displaying 
+|a Partition Graph
+			
+			quidu      	"362B59BD02A2"
+			client_cardinality 	(value cardinality "1")
+			is_navigable 	TRUE)
+		    (object Role "$UNNAMED$60"
+			quid       	"362B5AF501F7"
+			supplier   	"Initializing"
+			quidu      	"362B42B001E8")))
+	    (object Association "$UNNAMED$61"
+		quid       	"362B5AF800A6"
+		roles      	(list role_list
+		    (object Role "$UNNAMED$62"
+			quid       	"362B5AF9009D"
+			supplier   	
+|Displaying 
+|an Open Partition Graph
+			
+			quidu      	"362B59CE0242"
+			client_cardinality 	(value cardinality "1")
+			is_navigable 	TRUE)
+		    (object Role "$UNNAMED$63"
+			quid       	"362B5AF9009E"
+			supplier   	"Initializing"
+			quidu      	"362B42B001E8")))
+	    (object Association "$UNNAMED$64"
+		quid       	"362B5BAC0380"
+		roles      	(list role_list
+		    (object Role "$UNNAMED$65"
+			quid       	"362B5BAD0205"
+			supplier   	"Building a  Process Graph"
+			quidu      	"362B4EF501DB"
+			client_cardinality 	(value cardinality "1")
+			is_navigable 	TRUE)
+		    (object Role "$UNNAMED$66"
+			quid       	"362B5BAD0206"
+			supplier   	"Initializing"
+			quidu      	"362B42B001E8")))
+	    (object Association "$UNNAMED$67"
+		quid       	"362B5BAF01C1"
+		roles      	(list role_list
+		    (object Role "$UNNAMED$68"
+			quid       	"362B5BB00064"
+			supplier   	"Displaying Process Graph"
+			quidu      	"362B548500CA"
+			client_cardinality 	(value cardinality "1")
+			is_navigable 	TRUE)
+		    (object Role "$UNNAMED$69"
+			quid       	"362B5BB00065"
+			supplier   	"Initializing"
+			quidu      	"362B42B001E8")))
+	    (object Association "$UNNAMED$70"
+		quid       	"362B5C620381"
+		roles      	(list role_list
+		    (object Role "$UNNAMED$71"
+			quid       	"362B5C63022E"
+			supplier   	"Get Initial Graph"
+			quidu      	"362B5C3F0287"
+			is_navigable 	TRUE)
+		    (object Role "$UNNAMED$72"
+			quid       	"362B5C63022F"
+			supplier   	
+|Displaying 
+|a Partition Graph
+			
+			quidu      	"362B59BD02A2")))
+	    (object Association "$UNNAMED$73"
+		quid       	"362B5CCC0081"
+		roles      	(list role_list
+		    (object Role "$UNNAMED$74"
+			quid       	"362B5CCC02A8"
+			supplier   	"Get Process Graph Name"
+			quidu      	"362B57F900F3"
+			client_cardinality 	(value cardinality "0..1")
+			is_navigable 	TRUE)
+		    (object Role "$UNNAMED$75"
+			quid       	"362B5CCC02A9"
+			supplier   	"Displaying Process Graph"
+			quidu      	"362B548500CA")))
+	    (object Association "$UNNAMED$76"
+		quid       	"362B5CFE0372"
+		roles      	(list role_list
+		    (object Role "$UNNAMED$77"
+			quid       	"362B5CFF0192"
+			supplier   	"Get Unit Information"
+			quidu      	"362B5CD600D5"
+			client_cardinality 	(value cardinality "0..1")
+			is_navigable 	TRUE)
+		    (object Role "$UNNAMED$78"
+			quid       	"362B5CFF0193"
+			supplier   	"Displaying Process Graph"
+			quidu      	"362B548500CA")))
+	    (object Association "$UNNAMED$79"
+		quid       	"362B5D0002F2"
+		roles      	(list role_list
+		    (object Role "$UNNAMED$80"
+			quid       	"362B5D010113"
+			supplier   	"Get Stream Information"
+			quidu      	"362B5CF3034E"
+			client_cardinality 	(value cardinality "0..1")
+			is_navigable 	TRUE)
+		    (object Role "$UNNAMED$81"
+			quid       	"362B5D010114"
+			supplier   	"Displaying Process Graph"
+			quidu      	"362B548500CA")))
+	    (object Association "$UNNAMED$82"
+		quid       	"362B5D61005D"
+		roles      	(list role_list
+		    (object Role "$UNNAMED$83"
+			quid       	"362B5D6102CA"
+			supplier   	"Get Stream Count"
+			quidu      	"362B5D2A0217"
+			client_cardinality 	(value cardinality "0..1")
+			is_navigable 	TRUE)
+		    (object Role "$UNNAMED$84"
+			quid       	"362B5D6102CB"
+			supplier   	"Get Stream Information"
+			quidu      	"362B5CF3034E")))
+	    (object Association "$UNNAMED$85"
+		quid       	"362B5D6201E5"
+		roles      	(list role_list
+		    (object Role "$UNNAMED$86"
+			quid       	"362B5D63016E"
+			supplier   	"Get Set of Streams"
+			quidu      	"362B5D38013A"
+			client_cardinality 	(value cardinality "0..1")
+			is_navigable 	TRUE)
+		    (object Role "$UNNAMED$87"
+			quid       	"362B5D63016F"
+			supplier   	"Get Stream Information"
+			quidu      	"362B5CF3034E")))
+	    (object Association "$UNNAMED$88"
+		quid       	"362B5D8C0019"
+		roles      	(list role_list
+		    (object Role "$UNNAMED$89"
+			quid       	"362B5D8C0268"
+			supplier   	"Get Stream Connection"
+			quidu      	"362B5D6C008B"
+			client_cardinality 	(value cardinality "0..1")
+			is_navigable 	TRUE)
+		    (object Role "$UNNAMED$90"
+			quid       	"362B5D8C0269"
+			supplier   	"Get Stream Information"
+			quidu      	"362B5CF3034E")))
+	    (object Association "$UNNAMED$91"
+		quid       	"362B5DFB0249"
+		roles      	(list role_list
+		    (object Role "$UNNAMED$92"
+			quid       	"362B5DFC009C"
+			supplier   	"Get Stream Weigth"
+			quidu      	"362B5DEA01C2"
+			client_cardinality 	(value cardinality "0..1")
+			is_navigable 	TRUE)
+		    (object Role "$UNNAMED$93"
+			quid       	"362B5DFC00A6"
+			supplier   	"Get Stream Information"
+			quidu      	"362B5CF3034E")))
+	    (object Association "$UNNAMED$94"
+		quid       	"362B5E2B0252"
+		roles      	(list role_list
+		    (object Role "$UNNAMED$95"
+			quid       	"362B5E2C01BD"
+			supplier   	"Get Stream Property"
+			quidu      	"362B5E01025C"
+			client_cardinality 	(value cardinality "0..1")
+			is_navigable 	TRUE)
+		    (object Role "$UNNAMED$96"
+			quid       	"362B5E2C01BE"
+			supplier   	"Get Stream Information"
+			quidu      	"362B5CF3034E")))
+	    (object Association "$UNNAMED$97"
+		quid       	"362B62420081"
+		roles      	(list role_list
+		    (object Role "$UNNAMED$98"
+			quid       	"362B624202D0"
+			supplier   	"Check Available Analysis"
+			quidu      	"362B62130336"
+			client_cardinality 	(value cardinality "0..1")
+			is_navigable 	TRUE)
+		    (object Role "$UNNAMED$99"
+			quid       	"362B624202D1"
+			supplier   	"Building a Numeric Analysis"
+			quidu      	"362B4F44031F")))
+	    (object Association "$UNNAMED$100"
+		quid       	"362B6350031E"
+		roles      	(list role_list
+		    (object Role "$UNNAMED$101"
+			quid       	"362B635101D5"
+			supplier   	
+|Get Analysis 
+|Maximal Unit Count
+			
+			quidu      	"362B63260025"
+			client_cardinality 	(value cardinality "0..1")
+			is_navigable 	TRUE)
+		    (object Role "$UNNAMED$102"
+			quid       	"362B635101D6"
+			supplier   	
+|Get Analysis
+| Maximal Dimensions
+			
+			quidu      	"362B61DE0023")))
+	    (object Association "$UNNAMED$103"
+		quid       	"362B6352008C"
+		roles      	(list role_list
+		    (object Role "$UNNAMED$104"
+			quid       	"362B6352024F"
+			supplier   	
+|Get Analysis 
+|Maximal Stream Count
+			
+			quidu      	"362B633503AC"
+			client_cardinality 	(value cardinality "0..1")
+			is_navigable 	TRUE)
+		    (object Role "$UNNAMED$105"
+			quid       	"362B63520250"
+			supplier   	
+|Get Analysis
+| Maximal Dimensions
+			
+			quidu      	"362B61DE0023")))
+	    (object Association "$UNNAMED$106"
+		quid       	"362B66D10260"
+		roles      	(list role_list
+		    (object Role "$UNNAMED$107"
+			quid       	"362B66D2006C"
+			supplier   	
+|Get Analysis
+| Maximal Dimensions
+			
+			quidu      	"362B61DE0023"
+			client_cardinality 	(value cardinality "0..1")
+			is_navigable 	TRUE)
+		    (object Role "$UNNAMED$108"
+			quid       	"362B66D2006D"
+			supplier   	
+|Get   
+|Numeric Analysis Information
+			
+			quidu      	"362B65B0028C")))
+	    (object Association "$UNNAMED$109"
+		quid       	"362B66D20333"
+		roles      	(list role_list
+		    (object Role "$UNNAMED$110"
+			quid       	"362B66D30140"
+			supplier   	
+|Get 
+|Analysis Name
+			
+			quidu      	"362B63B6018A"
+			client_cardinality 	(value cardinality "0..1")
+			is_navigable 	TRUE)
+		    (object Role "$UNNAMED$111"
+			quid       	"362B66D30141"
+			supplier   	
+|Get   
+|Numeric Analysis Information
+			
+			quidu      	"362B65B0028C")))
+	    (object Association "$UNNAMED$112"
+		quid       	"362B68AF022B"
+		roles      	(list role_list
+		    (object Role "$UNNAMED$113"
+			quid       	"362B68B0007E"
+			supplier   	"Give Analysis Type"
+			quidu      	"362B687003A7"
+			client_cardinality 	(value cardinality "1")
+			is_navigable 	TRUE)
+		    (object Role "$UNNAMED$114"
+			quid       	"362B68B0007F"
+			supplier   	"Building a Numeric Analysis"
+			quidu      	"362B4F44031F")))
+	    (object Association "$UNNAMED$115"
+		quid       	"362B68B10224"
+		roles      	(list role_list
+		    (object Role "$UNNAMED$116"
+			quid       	"362B68B2012B"
+			supplier   	"Give Analysis Name"
+			quidu      	"362B689700FA"
+			client_cardinality 	(value cardinality "1")
+			is_navigable 	TRUE)
+		    (object Role "$UNNAMED$117"
+			quid       	"362B68B2012C"
+			supplier   	"Building a Numeric Analysis"
+			quidu      	"362B4F44031F")))
+	    (object Association "$UNNAMED$118"
+		quid       	"362B69A8020B"
+		roles      	(list role_list
+		    (object Role "$UNNAMED$119"
+			quid       	"362B69A90054"
+			supplier   	"Create Analysis"
+			quidu      	"362B695F0274"
+			client_cardinality 	(value cardinality "1")
+			is_navigable 	TRUE)
+		    (object Role "$UNNAMED$120"
+			quid       	"362B69A90055"
+			supplier   	"Building a Numeric Analysis"
+			quidu      	"362B4F44031F")))
+	    (object Association "$UNNAMED$121"
+		quid       	"362B69E00021"
+		roles      	(list role_list
+		    (object Role "$UNNAMED$122"
+			quid       	"362B69E002CA"
+			supplier   	
+|Get   
+|Numeric Analysis Information
+			
+			quidu      	"362B65B0028C"
+			client_cardinality 	(value cardinality "0..n")
+			is_navigable 	TRUE)
+		    (object Role "$UNNAMED$123"
+			quid       	"362B69E002CB"
+			supplier   	"Create Analysis"
+			quidu      	"362B695F0274")))
+	    (object Association "$UNNAMED$124"
+		quid       	"362B6A1A015B"
+		roles      	(list role_list
+		    (object Role "$UNNAMED$125"
+			quid       	"362B6A1B0076"
+			supplier   	
+|Create
+|a Partioning Analysis
+			
+			quidu      	"362B602A027F"
+			client_cardinality 	(value cardinality "1")
+			is_navigable 	TRUE)
+		    (object Role "$UNNAMED$126"
+			quid       	"362B6A1B0077"
+			supplier   	"Create Analysis"
+			quidu      	"362B695F0274")))
+	    (object Association "$UNNAMED$127"
+		quid       	"362B6A1B033D"
+		roles      	(list role_list
+		    (object Role "$UNNAMED$128"
+			quid       	"362B6A1C01CC"
+			supplier   	
+|Create
+|a Tearing Analysis
+			
+			quidu      	"362B6041037C"
+			client_cardinality 	(value cardinality "1")
+			is_navigable 	TRUE)
+		    (object Role "$UNNAMED$129"
+			quid       	"362B6A1C01CD"
+			supplier   	"Create Analysis"
+			quidu      	"362B695F0274")))
+	    (object Association "$UNNAMED$130"
+		quid       	"362B6A1D006F"
+		roles      	(list role_list
+		    (object Role "$UNNAMED$131"
+			quid       	"362B6A1D0372"
+			supplier   	
+|Create
+|a Sequencing Analysis
+			
+			quidu      	"362B604F0250"
+			client_cardinality 	(value cardinality "1")
+			is_navigable 	TRUE)
+		    (object Role "$UNNAMED$132"
+			quid       	"362B6A1D0373"
+			supplier   	"Create Analysis"
+			quidu      	"362B695F0274")))
+	    (object Association "$UNNAMED$133"
+		quid       	"362B6A1E0233"
+		roles      	(list role_list
+		    (object Role "$UNNAMED$134"
+			quid       	"362B6A1F0180"
+			supplier   	
+|Create a 
+|Sequential Modular Analysis
+			
+			quidu      	"362B600F004F"
+			client_cardinality 	(value cardinality "1")
+			is_navigable 	TRUE)
+		    (object Role "$UNNAMED$135"
+			quid       	"362B6A1F0181"
+			supplier   	"Create Analysis"
+			quidu      	"362B695F0274")))
+	    (object Association "$UNNAMED$136"
+		quid       	"362B6B2F01E5"
+		roles      	(list role_list
+		    (object Role "$UNNAMED$137"
+			quid       	"362B6B30010A"
+			supplier   	
+|Get   
+|Numeric Analysis Information
+			
+			quidu      	"362B65B0028C"
+			client_cardinality 	(value cardinality "0..1")
+			is_navigable 	TRUE)
+		    (object Role "$UNNAMED$138"
+			quid       	"362B6B30010B"
+			supplier   	"Building a Numeric Analysis"
+			quidu      	"362B4F44031F")))
+	    (object Association "$UNNAMED$139"
+		quid       	"362B6E2F0316"
+		roles      	(list role_list
+		    (object Role "$UNNAMED$140"
+			quid       	"362B6E30028B"
+			supplier   	"Give Process Graph Name"
+			quidu      	"362B6E0C00C7"
+			client_cardinality 	(value cardinality "1")
+			is_navigable 	TRUE)
+		    (object Role "$UNNAMED$141"
+			quid       	"362B6E30028C"
+			supplier   	"Building a  Process Graph"
+			quidu      	"362B4EF501DB")))
+	    (object Association "$UNNAMED$142"
+		quid       	"362B70A90191"
+		documentation 	"[Perform Sequential Modular Analysis] could use [Perform Partitioning Analysis]."
+		roles      	(list role_list
+		    (object Role "$UNNAMED$143"
+			quid       	"362B70AA0098"
+			supplier   	"Perform Partitioning Analysis"
+			quidu      	"362B7047001E"
+			client_cardinality 	(value cardinality "0..1")
+			is_navigable 	TRUE)
+		    (object Role "$UNNAMED$144"
+			quid       	"362B70AA0099"
+			supplier   	"Perfom Sequential Modular Analysis"
+			quidu      	"362B6F1F00E0")))
+	    (object Association "$UNNAMED$145"
+		quid       	"362B70AA03D7"
+		documentation 	"[Perform Sequential Modular Analysis] could use [Perform Sequencing Analysis]."
+		roles      	(list role_list
+		    (object Role "$UNNAMED$146"
+			quid       	"362B70AB02CA"
+			supplier   	"Perform Sequencing Analysis"
+			quidu      	"362B70620348"
+			client_cardinality 	(value cardinality "0..n")
+			is_navigable 	TRUE)
+		    (object Role "$UNNAMED$147"
+			quid       	"362B70AB02CB"
+			supplier   	"Perfom Sequential Modular Analysis"
+			quidu      	"362B6F1F00E0")))
+	    (object Association "$UNNAMED$148"
+		quid       	"362B70AC014F"
+		documentation 	"[Perform Sequential Modular Analysis] could use [Perform Tearing Analysis]."
+		roles      	(list role_list
+		    (object Role "$UNNAMED$149"
+			quid       	"362B70AD0042"
+			supplier   	"Perform Tearing Analysis"
+			quidu      	"362B7070026B"
+			client_cardinality 	(value cardinality "0..n")
+			is_navigable 	TRUE)
+		    (object Role "$UNNAMED$150"
+			quid       	"362B70AD0043"
+			supplier   	"Perfom Sequential Modular Analysis"
+			quidu      	"362B6F1F00E0")))
+	    (object Association "$UNNAMED$151"
+		quid       	"362B70B00231"
+		roles      	(list role_list
+		    (object Role "$UNNAMED$152"
+			quid       	"362B70B102DD"
+			supplier   	"Perform Partitioning Analysis"
+			quidu      	"362B7047001E"
+			client_cardinality 	(value cardinality "1")
+			is_navigable 	TRUE)
+		    (object Role "$UNNAMED$153"
+			quid       	"362B70B102DE"
+			supplier   	"Performing"
+			quidu      	"362B42EE022D")))
+	    (object Association "$UNNAMED$154"
+		quid       	"362B70B2019E"
+		roles      	(list role_list
+		    (object Role "$UNNAMED$155"
+			quid       	"362B70B30109"
+			supplier   	"Perform Sequencing Analysis"
+			quidu      	"362B70620348"
+			client_cardinality 	(value cardinality "1")
+			is_navigable 	TRUE)
+		    (object Role "$UNNAMED$156"
+			quid       	"362B70B3010A"
+			supplier   	"Performing"
+			quidu      	"362B42EE022D")))
+	    (object Association "$UNNAMED$157"
+		quid       	"362B70B303B2"
+		roles      	(list role_list
+		    (object Role "$UNNAMED$158"
+			quid       	"362B70B40331"
+			supplier   	"Perform Tearing Analysis"
+			quidu      	"362B7070026B"
+			client_cardinality 	(value cardinality "1")
+			is_navigable 	TRUE)
+		    (object Role "$UNNAMED$159"
+			quid       	"362B70B40332"
+			supplier   	"Performing"
+			quidu      	"362B42EE022D")))
+	    (object Association "$UNNAMED$160"
+		quid       	"362B70B50224"
+		roles      	(list role_list
+		    (object Role "$UNNAMED$161"
+			quid       	"362B70B60190"
+			supplier   	"Perfom Sequential Modular Analysis"
+			quidu      	"362B6F1F00E0"
+			client_cardinality 	(value cardinality "1")
+			is_navigable 	TRUE)
+		    (object Role "$UNNAMED$162"
+			quid       	"362B70B60191"
+			supplier   	"Performing"
+			quidu      	"362B42EE022D")))
+	    (object Association "$UNNAMED$163"
+		quid       	"362B77050355"
+		roles      	(list role_list
+		    (object Role "$UNNAMED$164"
+			quid       	"362B770602F2"
+			supplier   	
+|Get Result 
+|Partition Count
+			
+			quidu      	"362B767203AD"
+			client_cardinality 	(value cardinality "1")
+			is_navigable 	TRUE)
+		    (object Role "$UNNAMED$165"
+			quid       	"362B770602F3"
+			supplier   	
+|Getting and Handling
+| Results
+			
+			quidu      	"362B431502FC")))
+	    (object Association "$UNNAMED$166"
+		quid       	"362B780B0030"
+		roles      	(list role_list
+		    (object Role "$UNNAMED$167"
+			quid       	"362B780B027F"
+			supplier   	
+|Get Result Set of Torn 
+|Stream in a Partition
+			
+			quidu      	"362B77EA0372"
+			client_cardinality 	(value cardinality "1..n")
+			is_navigable 	TRUE)
+		    (object Role "$UNNAMED$168"
+			quid       	"362B780B0280"
+			supplier   	
+|Getting and Handling
+| Results
+			
+			quidu      	"362B431502FC")))
+	    (object Association "$UNNAMED$169"
+		quid       	"362B787E03E3"
+		roles      	(list role_list
+		    (object Role "$UNNAMED$170"
+			quid       	"362B787F024A"
+			supplier   	
+|Get Result 
+|Partition Count
+			
+			quidu      	"362B767203AD"
+			client_cardinality 	(value cardinality "1")
+			is_navigable 	TRUE)
+		    (object Role "$UNNAMED$171"
+			quid       	"362B787F024B"
+			supplier   	
+|Getting and Handling
+| Results
+			
+			quidu      	"362B431502FC")))
+	    (object Association "$UNNAMED$172"
+		quid       	"362B788000CF"
+		roles      	(list role_list
+		    (object Role "$UNNAMED$173"
+			quid       	"362B7880036E"
+			supplier   	
+|Get Result for a Partition
+| in Sequential Modular Analysis
+			
+			quidu      	"362B7863009B"
+			client_cardinality 	(value cardinality "1..n")
+			is_navigable 	TRUE)
+		    (object Role "$UNNAMED$174"
+			quid       	"362B7880036F"
+			supplier   	
+|Getting and Handling
+| Results
+			
+			quidu      	"362B431502FC")))
+	    (object Association "$UNNAMED$175"
+		quid       	"362B789700F0"
+		roles      	(list role_list
+		    (object Role "$UNNAMED$176"
+			quid       	"362B78980051"
+			supplier   	
+|Get Result Set of Torn 
+|Stream in a Partition
+			
+			quidu      	"362B77EA0372"
+			client_cardinality 	(value cardinality "1")
+			is_navigable 	TRUE)
+		    (object Role "$UNNAMED$177"
+			quid       	"362B78980052"
+			supplier   	
+|Get Result for a Partition
+| in Sequential Modular Analysis
+			
+			quidu      	"362B7863009B")))
+	    (object Association "$UNNAMED$178"
+		quid       	"362B7A0C009C"
+		roles      	(list role_list
+		    (object Role "$UNNAMED$179"
+			quid       	"362B7A0C0219"
+			supplier   	
+|Get Result 
+|Partition Count
+			
+			quidu      	"362B767203AD"
+			client_cardinality 	(value cardinality "1")
+			is_navigable 	TRUE)
+		    (object Role "$UNNAMED$180"
+			quid       	"362B7A0C021A"
+			supplier   	
+|Getting Result from 
+|Sequential Modular Analysis
+			
+			quidu      	"362B79E00071")))
+	    (object Association "$UNNAMED$181"
+		quid       	"362B7A0D00E4"
+		documentation 	"The partitions are ordered corresponding to the computation list."
+		roles      	(list role_list
+		    (object Role "$UNNAMED$182"
+			quid       	"362B7A0D02C4"
+			supplier   	
+|Get Result for a Partition
+| in Sequential Modular Analysis
+			
+			quidu      	"362B7863009B"
+			client_cardinality 	(value cardinality "1..n")
+			is_navigable 	TRUE)
+		    (object Role "Ordered"
+			quid       	"362B7A0D02C5"
+			label      	"Ordered"
+			supplier   	
+|Getting Result from 
+|Sequential Modular Analysis
+			
+			quidu      	"362B79E00071")))
+	    (object Association "$UNNAMED$183"
+		quid       	"362B7A210150"
+		roles      	(list role_list
+		    (object Role "$UNNAMED$184"
+			quid       	"362B7A2102F5"
+			supplier   	
+|Getting Result from 
+|Sequential Modular Analysis
+			
+			quidu      	"362B79E00071"
+			client_cardinality 	(value cardinality "1")
+			is_navigable 	TRUE)
+		    (object Role "$UNNAMED$185"
+			quid       	"362B7A2102F6"
+			supplier   	
+|Getting and Handling
+| Results
+			
+			quidu      	"362B431502FC")))
+	    (object Association "$UNNAMED$186"
+		quid       	"362B7ACD01D0"
+		roles      	(list role_list
+		    (object Role "$UNNAMED$187"
+			quid       	"362B7ACE0109"
+			supplier   	
+|Get Result 
+|Partition Count
+			
+			quidu      	"362B767203AD"
+			client_cardinality 	(value cardinality "1")
+			is_navigable 	TRUE)
+		    (object Role "$UNNAMED$188"
+			quid       	"362B7ACE010A"
+			supplier   	
+|Getting Result from
+| Partitioning Analysis
+			
+			quidu      	"362B7A44018D")))
+	    (object Association "$UNNAMED$189"
+		quid       	"362B7AE20040"
+		roles      	(list role_list
+		    (object Role "$UNNAMED$190"
+			quid       	"362B7AE2027A"
+			supplier   	
+|Getting Result from
+| Partitioning Analysis
+			
+			quidu      	"362B7A44018D"
+			client_cardinality 	(value cardinality "1")
+			is_navigable 	TRUE)
+		    (object Role "$UNNAMED$191"
+			quid       	"362B7AE2027B"
+			supplier   	
+|Getting and Handling
+| Results
+			
+			quidu      	"362B431502FC")))
+	    (object Association "$UNNAMED$192"
+		quid       	"362C57730281"
+		documentation 	"The partitions are ordered corresponding to the computation list."
+		roles      	(list role_list
+		    (object Role "$UNNAMED$193"
+			quid       	"362C57740084"
+			supplier   	
+|Get Result for a 
+|Partition in Partitioning Analysis
+			
+			quidu      	"362C5740026A"
+			client_cardinality 	(value cardinality "1..n")
+			is_navigable 	TRUE)
+		    (object Role "Ordered"
+			quid       	"362C57740085"
+			label      	"Ordered"
+			supplier   	
+|Getting Result from
+| Partitioning Analysis
+			
+			quidu      	"362B7A44018D")))
+	    (object Association "$UNNAMED$194"
+		quid       	"362C58970123"
+		roles      	(list role_list
+		    (object Role "$UNNAMED$195"
+			quid       	"362C58970386"
+			supplier   	
+|Get External
+|System Representation
+			
+			quidu      	"362C583F0144"
+			client_cardinality 	(value cardinality "0..1")
+			is_navigable 	TRUE)
+		    (object Role "$UNNAMED$196"
+			quid       	"362C58970387"
+			supplier   	
+|Manage 
+|External System
+			
+			quidu      	"362C585D01D4")))
+	    (object Association "$UNNAMED$197"
+		quid       	"362C58980265"
+		roles      	(list role_list
+		    (object Role "$UNNAMED$198"
+			quid       	"362C58990126"
+			supplier   	
+|Set External 
+|System Representation
+			
+			quidu      	"362C57CC006D"
+			client_cardinality 	(value cardinality "0..1")
+			is_navigable 	TRUE)
+		    (object Role "$UNNAMED$199"
+			quid       	"362C58990127"
+			supplier   	
+|Manage 
+|External System
+			
+			quidu      	"362C585D01D4")))
+	    (object Association "$UNNAMED$200"
+		quid       	"362C5A9D02B8"
+		roles      	(list role_list
+		    (object Role "$UNNAMED$201"
+			quid       	"362C5A9E013D"
+			supplier   	
+|Create a Partition Graph
+| from Partitioning  Analysis Result
+			
+			quidu      	"362C58DA038C"
+			client_cardinality 	(value cardinality "0..1")
+			is_navigable 	TRUE)
+		    (object Role "$UNNAMED$202"
+			quid       	"362C5A9E013E"
+			supplier   	
+|Get Result for a 
+|Partition in Partitioning Analysis
+			
+			quidu      	"362C5740026A")))
+	    (object Association "$UNNAMED$203"
+		quid       	"362C5B400028"
+		roles      	(list role_list
+		    (object Role "$UNNAMED$204"
+			quid       	"362C5B400280"
+			supplier   	
+|Manage 
+|External System
+			
+			quidu      	"362C585D01D4"
+			client_cardinality 	(value cardinality "0..1")
+			is_navigable 	TRUE)
+		    (object Role "$UNNAMED$205"
+			quid       	"362C5B400281"
+			supplier   	
+|Get Result for a 
+|Partition in Partitioning Analysis
+			
+			quidu      	"362C5740026A")))
+	    (object Association "$UNNAMED$206"
+		quid       	"362C5C50006F"
+		roles      	(list role_list
+		    (object Role "$UNNAMED$207"
+			quid       	"362C5C500245"
+			supplier   	"Getting Result from Tearing Analysis"
+			quidu      	"362C5C39012A"
+			client_cardinality 	(value cardinality "1")
+			is_navigable 	TRUE)
+		    (object Role "$UNNAMED$208"
+			quid       	"362C5C500246"
+			supplier   	
+|Getting and Handling
+| Results
+			
+			quidu      	"362B431502FC")))
+	    (object Association "$UNNAMED$209"
+		quid       	"362C5CA602AD"
+		roles      	(list role_list
+		    (object Role "$UNNAMED$210"
+			quid       	"362C5CA7011E"
+			supplier   	
+|Get Result for the Partition
+| in Tearing Analysis
+			
+			quidu      	"362C5C770039"
+			client_cardinality 	(value cardinality "1")
+			is_navigable 	TRUE)
+		    (object Role "$UNNAMED$211"
+			quid       	"362C5CA7011F"
+			supplier   	"Getting Result from Tearing Analysis"
+			quidu      	"362C5C39012A")))
+	    (object Association "$UNNAMED$212"
+		quid       	"362C5CED009D"
+		roles      	(list role_list
+		    (object Role "$UNNAMED$213"
+			quid       	"362C5CEE010C"
+			supplier   	
+|Get Result Set of Torn 
+|Stream in a Partition
+			
+			quidu      	"362B77EA0372"
+			client_cardinality 	(value cardinality "1")
+			is_navigable 	TRUE)
+		    (object Role "$UNNAMED$214"
+			quid       	"362C5CEE010D"
+			supplier   	
+|Get Result for the Partition
+| in Tearing Analysis
+			
+			quidu      	"362C5C770039")))
+	    (object Association "$UNNAMED$215"
+		quid       	"362C5E7D00DE"
+		documentation 	"The units are ordered corresponding to the computation list."
+		roles      	(list role_list
+		    (object Role "$UNNAMED$216"
+			quid       	"362C5E7D02DD"
+			supplier   	
+|Get Result Set of
+|Unit in a Partition
+			
+			quidu      	"362C5E4E00EA"
+			client_cardinality 	(value cardinality "1")
+			is_navigable 	TRUE)
+		    (object Role "Ordered"
+			quid       	"362C5E7D02DE"
+			label      	"Ordered"
+			supplier   	
+|Get Result for a Partition
+| in Sequential Modular Analysis
+			
+			quidu      	"362B7863009B")))
+	    (object Association "$UNNAMED$217"
+		quid       	"362C60670313"
+		roles      	(list role_list
+		    (object Role "$UNNAMED$218"
+			quid       	"362C60680224"
+			supplier   	
+|Creating an Open Partition Graph
+|from Tearing Analysis Result
+			
+			quidu      	"362C602600F3"
+			client_cardinality 	(value cardinality "0..1")
+			is_navigable 	TRUE)
+		    (object Role "$UNNAMED$219"
+			quid       	"362C6068022E"
+			supplier   	
+|Get Result for the Partition
+| in Tearing Analysis
+			
+			quidu      	"362C5C770039")))
+	    (object Association "$UNNAMED$220"
+		quid       	"362C60D00314"
+		roles      	(list role_list
+		    (object Role "$UNNAMED$221"
+			quid       	"362C60D101AD"
+			supplier   	
+|Getting Result from
+| Sequencing Analysis
+			
+			quidu      	"362C60A403E3"
+			client_cardinality 	(value cardinality "1")
+			is_navigable 	TRUE)
+		    (object Role "$UNNAMED$222"
+			quid       	"362C60D101AE"
+			supplier   	
+|Getting and Handling
+| Results
+			
+			quidu      	"362B431502FC")))
+	    (object Association "$UNNAMED$223"
+		quid       	"362C612F0357"
+		roles      	(list role_list
+		    (object Role "$UNNAMED$224"
+			quid       	"362C613001F0"
+			supplier   	
+|Get Result for the Opened
+| Partition in Sequencing Analysis
+			
+			quidu      	"362C60F900C4"
+			client_cardinality 	(value cardinality "1")
+			is_navigable 	TRUE)
+		    (object Role "$UNNAMED$225"
+			quid       	"362C613001F1"
+			supplier   	
+|Getting Result from
+| Sequencing Analysis
+			
+			quidu      	"362C60A403E3")))
+	    (object Association "$UNNAMED$226"
+		quid       	"362C613F0223"
+		documentation 	"The units are ordered corresponding to the computation list."
+		roles      	(list role_list
+		    (object Role "$UNNAMED$227"
+			quid       	"362C61420174"
+			supplier   	
+|Get Result Set of
+|Unit in a Partition
+			
+			quidu      	"362C5E4E00EA"
+			client_cardinality 	(value cardinality "1")
+			is_navigable 	TRUE)
+		    (object Role "Ordered"
+			quid       	"362C61420175"
+			label      	"Ordered"
+			supplier   	
+|Get Result for the Opened
+| Partition in Sequencing Analysis
+			
+			quidu      	"362C60F900C4")))
+	    (object Association "$UNNAMED$228"
+		quid       	"362C659303A3"
+		roles      	(list role_list
+		    (object Role "$UNNAMED$229"
+			quid       	"362C659402BE"
+			supplier   	"Give Open Partition Graph"
+			quidu      	"362C65810036"
+			client_cardinality 	(value cardinality "1")
+			is_navigable 	TRUE)
+		    (object Role "$UNNAMED$230"
+			quid       	"362C659402BF"
+			supplier   	"Perform Sequencing Analysis"
+			quidu      	"362B70620348")))
+	    (object Association "$UNNAMED$231"
+		quid       	"362C659501E4"
+		roles      	(list role_list
+		    (object Role "$UNNAMED$232"
+			quid       	"362C659600A4"
+			supplier   	"Give Partition Graph"
+			quidu      	"362C654B0378"
+			client_cardinality 	(value cardinality "1")
+			is_navigable 	TRUE)
+		    (object Role "$UNNAMED$233"
+			quid       	"362C659600A5"
+			supplier   	"Perform Tearing Analysis"
+			quidu      	"362B7070026B")))
+	    (object Association "$UNNAMED$234"
+		quid       	"362C65BF0202"
+		roles      	(list role_list
+		    (object Role "$UNNAMED$235"
+			quid       	"362C65C00019"
+			supplier   	"Give Process Graph"
+			quidu      	"362B6EA900CD"
+			client_cardinality 	(value cardinality "1")
+			is_navigable 	TRUE)
+		    (object Role "$UNNAMED$236"
+			quid       	"362C65C0001A"
+			supplier   	"Perform Partitioning Analysis"
+			quidu      	"362B7047001E")))
+	    (object Association "$UNNAMED$237"
+		quid       	"362C65C400C9"
+		roles      	(list role_list
+		    (object Role "$UNNAMED$238"
+			quid       	"362C65C5008E"
+			supplier   	"Give Process Graph"
+			quidu      	"362B6EA900CD"
+			client_cardinality 	(value cardinality "1")
+			is_navigable 	TRUE)
+		    (object Role "$UNNAMED$239"
+			quid       	"362C65C5008F"
+			supplier   	"Perfom Sequential Modular Analysis"
+			quidu      	"362B6F1F00E0")))
+	    (object Association "$UNNAMED$240"
+		quid       	"362C66B803AF"
+		roles      	(list role_list
+		    (object Role "$UNNAMED$241"
+			quid       	"362C66B90298"
+			supplier   	"Create Process Graph"
+			quidu      	"362C66AA026E"
+			client_cardinality 	(value cardinality "1")
+			is_navigable 	TRUE)
+		    (object Role "$UNNAMED$242"
+			quid       	"362C66B90299"
+			supplier   	"Building a  Process Graph"
+			quidu      	"362B4EF501DB")))
+	    (object Association "$UNNAMED$243"
+		quid       	"362C67560121"
+		roles      	(list role_list
+		    (object Role "$UNNAMED$244"
+			quid       	"362C675602BB"
+			supplier   	"Get Initial Graph"
+			quidu      	"362B5C3F0287"
+			client_cardinality 	(value cardinality "0..1")
+			is_navigable 	TRUE)
+		    (object Role "$UNNAMED$245"
+			quid       	"362C675602BC"
+			supplier   	
+|Displaying 
+|a Partition Graph
+			
+			quidu      	"362B59BD02A2")))
+	    (object Association "$UNNAMED$246"
+		quid       	"362C6A500004"
+		roles      	(list role_list
+		    (object Role "$UNNAMED$247"
+			quid       	"362C6A5201DE"
+			supplier   	"::CO SMST Component::SMST::ICapeNumericFlowsheetFactory"
+			quidu      	"354838270232"
+			is_navigable 	TRUE)
+		    (object Role "$UNNAMED$248"
+			quid       	"362C6A52022E"
+			supplier   	"Initializing"
+			quidu      	"362B42B001E8")))
+	    (object Association "$UNNAMED$249"
+		quid       	"362C6A5300D1"
+		roles      	(list role_list
+		    (object Role "$UNNAMED$250"
+			quid       	"362C6A540096"
+			supplier   	"::CO SMST Component::SMST::ICapeNumericAnalysisFactory"
+			quidu      	"35483827028D"
+			is_navigable 	TRUE)
+		    (object Role "$UNNAMED$251"
+			quid       	"362C6A5400DC"
+			supplier   	"Initializing"
+			quidu      	"362B42B001E8")))
+	    (object Association "$UNNAMED$252"
+		quid       	"362C6A6A021E"
+		roles      	(list role_list
+		    (object Role "$UNNAMED$253"
+			quid       	"362C6A6B0176"
+			supplier   	"::CO SMST Component::SMST::ICapeNumericSMAnalysis"
+			quidu      	"356C337D0036"
+			is_navigable 	TRUE)
+		    (object Role "$UNNAMED$254"
+			quid       	"362C6A6B01B2"
+			supplier   	
+|Getting and Handling
+| Results
+			
+			quidu      	"362B431502FC")))
+	    (object Association "$UNNAMED$255"
+		quid       	"362C6A6C0087"
+		roles      	(list role_list
+		    (object Role "$UNNAMED$256"
+			quid       	"362C6A6C033A"
+			supplier   	"::CO SMST Component::SMST::ICapeNumericSequencing"
+			quidu      	"35E6B0F20126"
+			is_navigable 	TRUE)
+		    (object Role "$UNNAMED$257"
+			quid       	"362C6A6C0344"
+			supplier   	
+|Getting and Handling
+| Results
+			
+			quidu      	"362B431502FC")))
+	    (object Association "$UNNAMED$258"
+		quid       	"362C6A6D01FB"
+		roles      	(list role_list
+		    (object Role "$UNNAMED$259"
+			quid       	"362C6A6E0166"
+			supplier   	"::CO SMST Component::SMST::ICapeNumericPartitioning"
+			quidu      	"3548382800AD"
+			is_navigable 	TRUE)
+		    (object Role "$UNNAMED$260"
+			quid       	"362C6A6E0184"
+			supplier   	
+|Getting and Handling
+| Results
+			
+			quidu      	"362B431502FC")))
+	    (object Association "$UNNAMED$261"
+		quid       	"362C6A6F0031"
+		roles      	(list role_list
+		    (object Role "$UNNAMED$262"
+			quid       	"362C6A6F0384"
+			supplier   	"::CO SMST Component::SMST::ICapeNumericTearing"
+			quidu      	"35E6B183005C"
+			is_navigable 	TRUE)
+		    (object Role "$UNNAMED$263"
+			quid       	"362C6A6F0398"
+			supplier   	
+|Getting and Handling
+| Results
+			
+			quidu      	"362B431502FC")))
+	    (object Association "$UNNAMED$264"
+		quid       	"362C6B7B014F"
+		roles      	(list role_list
+		    (object Role "$UNNAMED$265"
+			quid       	"362C6B7C00D8"
+			supplier   	"::CO SMST Component::SMST::ICapeNumericSMAnalysis"
+			quidu      	"356C337D0036"
+			is_navigable 	TRUE)
+		    (object Role "$UNNAMED$266"
+			quid       	"362C6B7C011E"
+			supplier   	"Initializing"
+			quidu      	"362B42B001E8")))
+	    (object Association "$UNNAMED$267"
+		quid       	"362C6B7D00B1"
+		roles      	(list role_list
+		    (object Role "$UNNAMED$268"
+			quid       	"362C6B7E006D"
+			supplier   	"::CO SMST Component::SMST::ICapeNumericTearing"
+			quidu      	"35E6B183005C"
+			is_navigable 	TRUE)
+		    (object Role "$UNNAMED$269"
+			quid       	"362C6B7E008B"
+			supplier   	"Initializing"
+			quidu      	"362B42B001E8")))
+	    (object Association "$UNNAMED$270"
+		quid       	"362C6B7E0366"
+		roles      	(list role_list
+		    (object Role "$UNNAMED$271"
+			quid       	"362C6B7F021D"
+			supplier   	"::CO SMST Component::SMST::ICapeNumericPartitioning"
+			quidu      	"3548382800AD"
+			is_navigable 	TRUE)
+		    (object Role "$UNNAMED$272"
+			quid       	"362C6B7F0245"
+			supplier   	"Initializing"
+			quidu      	"362B42B001E8")))
+	    (object Association "$UNNAMED$273"
+		quid       	"362C6B8000E8"
+		roles      	(list role_list
+		    (object Role "$UNNAMED$274"
+			quid       	"362C6B8003C3"
+			supplier   	"::CO SMST Component::SMST::ICapeNumericSequencing"
+			quidu      	"35E6B0F20126"
+			is_navigable 	TRUE)
+		    (object Role "$UNNAMED$275"
+			quid       	"362C6B8003CD"
+			supplier   	"Initializing"
+			quidu      	"362B42B001E8")))
+	    (object Association "$UNNAMED$276"
+		quid       	"362C6B8203C6"
+		roles      	(list role_list
+		    (object Role "$UNNAMED$277"
+			quid       	"362C6B83025E"
+			supplier   	"Performing"
+			quidu      	"362B42EE022D")
+		    (object Role "$UNNAMED$278"
+			quid       	"362C6B83025F"
+			supplier   	"::CO SMST Component::SMST::ICapeNumericSMAnalysis"
+			quidu      	"356C337D0036"
+			is_navigable 	TRUE)))
+	    (object Association "$UNNAMED$279"
+		quid       	"362C6B840350"
+		roles      	(list role_list
+		    (object Role "$UNNAMED$280"
+			quid       	"362C6B8502D0"
+			supplier   	"Performing"
+			quidu      	"362B42EE022D")
+		    (object Role "$UNNAMED$281"
+			quid       	"362C6B8502D1"
+			supplier   	"::CO SMST Component::SMST::ICapeNumericTearing"
+			quidu      	"35E6B183005C"
+			is_navigable 	TRUE)))
+	    (object Association "$UNNAMED$282"
+		quid       	"362C6B860154"
+		roles      	(list role_list
+		    (object Role "$UNNAMED$283"
+			quid       	"362C6B87000B"
+			supplier   	"Performing"
+			quidu      	"362B42EE022D")
+		    (object Role "$UNNAMED$284"
+			quid       	"362C6B87000C"
+			supplier   	"::CO SMST Component::SMST::ICapeNumericPartitioning"
+			quidu      	"3548382800AD"
+			is_navigable 	TRUE)))
+	    (object Association "$UNNAMED$285"
+		quid       	"362C6B8702BE"
+		roles      	(list role_list
+		    (object Role "$UNNAMED$286"
+			quid       	"362C6B880107"
+			supplier   	"Performing"
+			quidu      	"362B42EE022D")
+		    (object Role "$UNNAMED$287"
+			quid       	"362C6B880108"
+			supplier   	"::CO SMST Component::SMST::ICapeNumericSequencing"
+			quidu      	"35E6B0F20126"
+			is_navigable 	TRUE)))
+	    (object Association "$UNNAMED$288"
+		quid       	"362C6BDD0113"
+		roles      	(list role_list
+		    (object Role "$UNNAMED$289"
+			quid       	"362C6BE20111"
+			supplier   	"::CO SMST Component::SMST::ICapeNumericPartitionGraph"
+			quidu      	"35E6AF9503D7"
+			is_navigable 	TRUE)
+		    (object Role "$UNNAMED$290"
+			quid       	"362C6BE20125"
+			supplier   	
+|Getting and Handling
+| Results
+			
+			quidu      	"362B431502FC")))
+	    (object Association "$UNNAMED$291"
+		quid       	"362C6BE30126"
+		roles      	(list role_list
+		    (object Role "$UNNAMED$292"
+			quid       	"362C6BE50025"
+			supplier   	"::CO SMST Component::SMST::ICapeNumericOpenPartitionGraph"
+			quidu      	"3626166D00A1"
+			is_navigable 	TRUE)
+		    (object Role "$UNNAMED$293"
+			quid       	"362C6BE50039"
+			supplier   	
+|Getting and Handling
+| Results
+			
+			quidu      	"362B431502FC")))
+	    (object Association "$UNNAMED$294"
+		quid       	"362C6C2E01CE"
+		roles      	(list role_list
+		    (object Role "$UNNAMED$295"
+			quid       	"362C6C2F0193"
+			supplier   	"Initializing"
+			quidu      	"362B42B001E8")
+		    (object Role "$UNNAMED$296"
+			quid       	"362C6C2F0194"
+			supplier   	"::CO SMST Component::SMST::ICapeNumericProcessGraph"
+			quidu      	"354838270373"
+			is_navigable 	TRUE)))
+	    (object Association "$UNNAMED$297"
+		quid       	"362C6C350369"
+		roles      	(list role_list
+		    (object Role "$UNNAMED$298"
+			quid       	"362C6C36037E"
+			supplier   	"Initializing"
+			quidu      	"362B42B001E8")
+		    (object Role "$UNNAMED$299"
+			quid       	"362C6C36037F"
+			supplier   	"::CO SMST Component::SMST::ICapeNumericPartitionGraph"
+			quidu      	"35E6AF9503D7"
+			is_navigable 	TRUE)))
+	    (object Association "$UNNAMED$300"
+		quid       	"362C6C380100"
+		roles      	(list role_list
+		    (object Role "$UNNAMED$301"
+			quid       	"362C6C3900E4"
+			supplier   	"Initializing"
+			quidu      	"362B42B001E8")
+		    (object Role "$UNNAMED$302"
+			quid       	"362C6C3900E5"
+			supplier   	"::CO SMST Component::SMST::ICapeNumericOpenPartitionGraph"
+			quidu      	"3626166D00A1"
+			is_navigable 	TRUE)))
+	    (object Association "$UNNAMED$303"
+		quid       	"36480F0401E6"
+		roles      	(list role_list
+		    (object Role "$UNNAMED$304"
+			quid       	"36480F0502D8"
+			supplier   	"Check Consistency"
+			quidu      	"36480EA402E3"
+			client_cardinality 	(value cardinality "0..1")
+			is_navigable 	TRUE)
+		    (object Role "$UNNAMED$305"
+			quid       	"36480F0502D9"
+			supplier   	"Performing"
+			quidu      	"362B42EE022D")))
+	    (object Association "$UNNAMED$306"
+		quid       	"36480F130300"
+		roles      	(list role_list
+		    (object Role "$UNNAMED$307"
+			quid       	"36480F15003C"
+			supplier   	"Give Process Graph"
+			quidu      	"362B6EA900CD"
+			client_cardinality 	(value cardinality "1")
+			is_navigable 	TRUE)
+		    (object Role "$UNNAMED$308"
+			quid       	"36480F15003D"
+			supplier   	"Check Consistency"
+			quidu      	"36480EA402E3")))
+	    (object Association "$UNNAMED$309"
+		quid       	"36480F1700FD"
+		roles      	(list role_list
+		    (object Role "$UNNAMED$310"
+			quid       	"36480F180109"
+			supplier   	"Give Partition Graph"
+			quidu      	"362C654B0378"
+			client_cardinality 	(value cardinality "1")
+			is_navigable 	TRUE)
+		    (object Role "$UNNAMED$311"
+			quid       	"36480F18010A"
+			supplier   	"Check Consistency"
+			quidu      	"36480EA402E3")))
+	    (object Association "$UNNAMED$312"
+		quid       	"36480F1A01D4"
+		roles      	(list role_list
+		    (object Role "$UNNAMED$313"
+			quid       	"36480F1B01D5"
+			supplier   	"Give Open Partition Graph"
+			quidu      	"362C65810036"
+			client_cardinality 	(value cardinality "1")
+			is_navigable 	TRUE)
+		    (object Role "$UNNAMED$314"
+			quid       	"36480F1B01D6"
+			supplier   	"Check Consistency"
+			quidu      	"36480EA402E3")))
+	    (object Association "$UNNAMED$315"
+		quid       	"364816B30158"
+		roles      	(list role_list
+		    (object Role "$UNNAMED$316"
+			quid       	"364816B40037"
+			supplier   	"Using SMST"
+			quidu      	"362B400703A2"
+			is_navigable 	TRUE)
+		    (object Role "$UNNAMED$317"
+			quid       	"364816B40038"
+			supplier   	"::Actors::Flowsheet User"
+			quidu      	"362B403E02A6")))
+	    (object Association "$UNNAMED$318"
+		quid       	"364816F0023C"
+		roles      	(list role_list
+		    (object Role "$UNNAMED$319"
+			quid       	"364816F10284"
+			supplier   	"Using SMST"
+			quidu      	"362B400703A2"
+			is_navigable 	TRUE)
+		    (object Role "$UNNAMED$320"
+			quid       	"364816F10285"
+			supplier   	"::Actors::Flowsheet Builder"
+			quidu      	"362B400E026B")))
+	    (object Association "$UNNAMED$321"
+		quid       	"3650337802AE"
+		roles      	(list role_list
+		    (object Role "$UNNAMED$322"
+			quid       	"3650337900F6"
+			supplier   	"Give Factory Name"
+			quidu      	"3650325C018D"
+			client_cardinality 	(value cardinality "1")
+			is_navigable 	TRUE)
+		    (object Role "$UNNAMED$323"
+			quid       	"3650337900F7"
+			supplier   	"Create Flowsheet Factory"
+			quidu      	"3650329501E9")))
+	    (object Association "$UNNAMED$324"
+		quid       	"3650337B01FE"
+		roles      	(list role_list
+		    (object Role "$UNNAMED$325"
+			quid       	"3650337C0155"
+			supplier   	"Give Factory Name"
+			quidu      	"3650325C018D"
+			client_cardinality 	(value cardinality "1")
+			is_navigable 	TRUE)
+		    (object Role "$UNNAMED$326"
+			quid       	"3650337C015F"
+			supplier   	"Create Analysis Factory"
+			quidu      	"365032AF01E6")))
+	    (object Association "$UNNAMED$327"
+		quid       	"36503C140036"
+		roles      	(list role_list
+		    (object Role "$UNNAMED$328"
+			quid       	"36503C1402FD"
+			supplier   	"Give Process Graph Name"
+			quidu      	"362B6E0C00C7"
+			client_cardinality 	(value cardinality "1")
+			is_navigable 	TRUE)
+		    (object Role "$UNNAMED$329"
+			quid       	"36503C1402FE"
+			supplier   	"Create Process Graph"
+			quidu      	"362C66AA026E")))
+	    (object Association "$UNNAMED$330"
+		quid       	"3650428C0109"
+		roles      	(list role_list
+		    (object Role "$UNNAMED$331"
+			quid       	"3650428C0394"
+			supplier   	"Give Analysis Type"
+			quidu      	"362B687003A7"
+			client_cardinality 	(value cardinality "1")
+			is_navigable 	TRUE)
+		    (object Role "$UNNAMED$332"
+			quid       	"3650428C0395"
+			supplier   	"Create Analysis"
+			quidu      	"362B695F0274")))
+	    (object Association "$UNNAMED$333"
+		quid       	"3650428E0166"
+		roles      	(list role_list
+		    (object Role "$UNNAMED$334"
+			quid       	"3650428F00B4"
+			supplier   	"Give Analysis Name"
+			quidu      	"362B689700FA"
+			client_cardinality 	(value cardinality "1")
+			is_navigable 	TRUE)
+		    (object Role "$UNNAMED$335"
+			quid       	"3650428F00B5"
+			supplier   	"Create Analysis"
+			quidu      	"362B695F0274")))
+	    (object Association "$UNNAMED$336"
+		quid       	"3650517902A8"
+		roles      	(list role_list
+		    (object Role "$UNNAMED$337"
+			quid       	"3650517A020A"
+			supplier   	"Remove Stream Property"
+			quidu      	"3650516A0152"
+			client_cardinality 	(value cardinality "1")
+			is_navigable 	TRUE)
+		    (object Role "$UNNAMED$338"
+			quid       	"3650517A020B"
+			supplier   	"Remove Stream"
+			quidu      	"362B5267019D")))
+	    (object Association "$UNNAMED$339"
+		quid       	"36503376002A"
+		roles      	(list role_list
+		    (object Role "$UNNAMED$340"
+			quid       	"365033760337"
+			supplier   	"Create Analysis Factory"
+			quidu      	"365032AF01E6"
+			client_cardinality 	(value cardinality "1")
+			is_navigable 	TRUE)
+		    (object Role "$UNNAMED$341"
+			quid       	"365033760341"
+			supplier   	"Performing Administration Tasks"
+			quidu      	"362B439703DF")))
+	    (object Association "$UNNAMED$342"
+		quid       	"36503373033D"
+		roles      	(list role_list
+		    (object Role "$UNNAMED$343"
+			quid       	"365033740121"
+			supplier   	"Create Flowsheet Factory"
+			quidu      	"3650329501E9"
+			client_cardinality 	(value cardinality "1")
+			is_navigable 	TRUE)
+		    (object Role "$UNNAMED$344"
+			quid       	"365033740122"
+			supplier   	"Performing Administration Tasks"
+			quidu      	"362B439703DF")))
+	    (object Association "$UNNAMED$345"
+		quid       	"3650365F0067"
+		roles      	(list role_list
+		    (object Role "$UNNAMED$346"
+			quid       	"365036600163"
+			supplier   	"Exit SMST Component"
+			quidu      	"3650356B00FC"
+			client_cardinality 	(value cardinality "1")
+			is_navigable 	TRUE)
+		    (object Role "$UNNAMED$347"
+			quid       	"365036600164"
+			supplier   	"Performing Administration Tasks"
+			quidu      	"362B439703DF")))
+	    (object Association "$UNNAMED$348"
+		quid       	"362C6A470232"
+		roles      	(list role_list
+		    (object Role "$UNNAMED$349"
+			quid       	"362C6A4800A3"
+			supplier   	"::CO SMST Component::SMST::ICapeNumericAnalysisFactory"
+			quidu      	"35483827028D"
+			is_navigable 	TRUE)
+		    (object Role "$UNNAMED$350"
+			quid       	"362C6A4800E9"
+			supplier   	"Performing Administration Tasks"
+			quidu      	"362B439703DF")))
+	    (object Association "$UNNAMED$351"
+		quid       	"362B43E00195"
+		roles      	(list role_list
+		    (object Role "$UNNAMED$352"
+			quid       	"362B43E10100"
+			supplier   	"Performing Administration Tasks"
+			quidu      	"362B439703DF"
+			client_cardinality 	(value cardinality "1")
+			is_navigable 	TRUE)
+		    (object Role "$UNNAMED$353"
+			quid       	"362B43E10101"
+			supplier   	"Using SMST"
+			quidu      	"362B400703A2")))
+	    (object Association "$UNNAMED$354"
+		quid       	"362B48A000E9"
+		roles      	(list role_list
+		    (object Role "$UNNAMED$355"
+			quid       	"362B48A10041"
+			supplier   	"Performing Administration Tasks"
+			quidu      	"362B439703DF"
+			is_navigable 	TRUE)
+		    (object Role "$UNNAMED$356"
+			quid       	"362B48A10042"
+			supplier   	"::Actors::Flowsheet Builder"
+			quidu      	"362B400E026B")))
+	    (object Association "$UNNAMED$357"
+		quid       	"3650337101C7"
+		roles      	(list role_list
+		    (object Role "$UNNAMED$358"
+			quid       	"36503372010A"
+			supplier   	"Bind to SMST Component"
+			quidu      	"365031EA032D"
+			client_cardinality 	(value cardinality "1")
+			is_navigable 	TRUE)
+		    (object Role "$UNNAMED$359"
+			quid       	"36503372010B"
+			supplier   	"Performing Administration Tasks"
+			quidu      	"362B439703DF")))
+	    (object Association "$UNNAMED$360"
+		quid       	"362C6A430327"
+		roles      	(list role_list
+		    (object Role "$UNNAMED$361"
+			quid       	"362C6A440133"
+			supplier   	"::CO SMST Component::SMST::ICapeNumericFlowsheetFactory"
+			quidu      	"354838270232"
+			is_navigable 	TRUE)
+		    (object Role "$UNNAMED$362"
+			quid       	"362C6A4401AC"
+			supplier   	"Performing Administration Tasks"
+			quidu      	"362B439703DF")))
+	    (object Association "$UNNAMED$363"
+		quid       	"362C6A400214"
+		roles      	(list role_list
+		    (object Role "$UNNAMED$364"
+			quid       	"362C6A4003C3"
+			supplier   	"::CO SMST Component::SMST::ICapeNumericGATComponent"
+			quidu      	"3548382701F6"
+			is_navigable 	TRUE)
+		    (object Role "$UNNAMED$365"
+			quid       	"362C6A410021"
+			supplier   	"Performing Administration Tasks"
+			quidu      	"362B439703DF"))))
+	logical_presentations 	(list unit_reference_list
+	    (object UseCaseDiagram "Main"
+		quid       	"366272D503D3"
+		title      	"Main"
+		documentation 	
+|The first diagram to view for the Use Case View.
+|
+|From this, go to the Diagrams Package and open the diagrams following this order:
+|1
+|2
+|3
+|3.1
+|3.2
+|3.3
+|4
+|5
+		
+		zoom       	100
+		max_height 	28350
+		max_width  	21600
+		origin_x   	220
+		origin_y   	0
+		items      	(list diagram_item_list
+		    (object NoteView @1
+			location   	(872, 206)
+			font       	(object Font
+			    size       	12
+			    bold       	TRUE)
+			label      	(object ItemLabel
+			    Parent_View 	@1
+			    location   	(187, 78)
+			    fill_color 	13434879
+			    nlines     	4
+			    max_width  	1334
+			    label      	
+|MAIN : Using a CAPE-OPEN Sequential Modular Specific Tools Component in  CAPE domain
+|
+|Top-Level View
+			    )
+			line_color 	3342489
+			fill_color 	16777088
+			width      	1394
+			height     	268)
+		    (object NoteView @2
+			location   	(878, 1843)
+			font       	(object Font
+			    size       	12)
+			label      	(object ItemLabel
+			    Parent_View 	@2
+			    location   	(153, 1743)
+			    fill_color 	13434879
+			    nlines     	4
+			    max_width  	1414
+			    label      	
+|Note: You should read Use-Case Diagram from left hand side to right hand side.
+|You can get more details for the Use-Cases with red font.
+			    )
+			line_color 	3342489
+			fill_color 	16777088
+			width      	1474
+			height     	212)))))
+    root_category 	(object Class_Category "Logical View"
+	attributes 	(list Attribute_Set
+	    (object Attribute
+		tool       	"analyzer"
+		name       	"ConstructionData"
+		value      	"Constructed by Rose/C++ Analyzer,  Version 4.0.14a, 04/30/98 10:36:53")
+	    (object Attribute
+		tool       	"cg"
+		name       	"PrecompiledHeader"
+		value      	"stdafx.h")
+	    (object Attribute
+		tool       	"analyzer"
+		name       	"ExportOptions"
+		value      	(value Text 
+|* 	Option Set	: DetailedAnalysis* (Elected Options Only)
+|  	Design Title	: %c
+|* 	Model File	: %e/%f.mdl
+|* 	Notation	: Unified
+|  	Export Scope	: Selected Only
+|  	Search Effort	: Project and Bases
+|  	--- Category Options...
+|  	Categories	: from Annotations; Model; Draw; 
+|  	Category Units	: All in Design File; 
+|  	Category File Extension	: cat
+|  	--- Subsystem Options...
+|  	Subsystems	: from Annotations; Model; Draw; 
+|  	Subsystem Units	: All in Design File; 
+|  	Subsystem File Extension	: sub
+|  	--- Create Class Items for...
+|  	Create Class Model	: Yes
+|  	Classes	: Model; Draw; Comments Before; 
+|  	Templates	: Model; Draw; Comments Before; 
+|  	Instantiations	: Model; Draw; 
+|  	Typedefs	: Model; Draw; Comments After; 
+|  	Enumerations	: Model; Draw; Comments After; 
+|  	--- Create Specifications for...
+|  	Object Methods	: Model; Comments After; 
+|  	Static Methods	: Model; Comments After; 
+|  	Method Body Comments	: Comments Before; 
+|  	Class Object Data	: Comments After; 
+|  	Class Static Data	: Comments After; 
+|  	Non-Class Object Data	: Model; Comments After; 
+|  	Non-Class Static Data	: Model; Comments After; 
+|  	Unmodeled Object Data	: Model; Comments After; 
+|  	Unmodeled Static Data	: Model; Comments After; 
+|  	--- Create Relationships for...
+|  	Class Object Has	: Model; Draw; Name; As Associations; 
+|  	Class Static Has	: Model; Draw; Name; As Associations; 
+|  	Object Method Uses	: Model; 
+|  	Static Method Uses	: Model; 
+|  	Instance Arg Uses	: Model; 
+|  	Inherits	: Model; Draw; 
+|  	Instantiates	: Model; Draw; 
+|  	Friendship Required	: Model; Draw; 
+|  	--- Type Options...
+|  	Default Cardinality From	: 1
+|  	Default Cardinality To	: 0..1
+|  	Default Protocol	: C++
+|  	Class Diagram Name	: Reverse Engineered
+|  	--- Module Diagram Options...
+|  	Modules	: from Annotations; 
+|  	Module Diagram Name	: Reverse Engineered
+|  	Model Direct #includes	: 
+|  	Model Contextual #includes	: implicit
+|  	Model Type 3 #includes	: type 3
+|  	Module-Subsystem Rels	: Module -> Subsystem; Subsystem -> Module; 
+|  	--- CodeCycle Options...
+|  	Model Module Annotations	: Documentation; 
+|  	Model Class Annotations	: Association; Documentation; Persistence; Concurrency; Cardinality; Space Complexity; Uses;
+|  	Model Operator Annotations	: Documentation; Concurrency; Space Complexity; Time Complexity; Exceptions; Protocol; Qualification; Preconditions; Postconditions; Semantics; 
+|  	Model Member Annotations	: Documentation; 
+|  	Version	: 4.0
+|
+		)))
+	quid       	"354838240314"
+	documentation 	
+|The logical View.
+|
+|This view presents the interface of CAPE-OPEN SMST Component.
+|
+|The Logical View has been designed through the CAPE-OPEN Project BE 3512 in the Work-Package Numerical.
+	
+	exportControl 	"Public"
+	global     	TRUE
+	subsystem  	"Component View"
+	quidu      	"354838240365"
+	logical_models 	(list unit_reference_list)
+	logical_presentations 	(list unit_reference_list
+	    (object ClassDiagram "Main"
+		quid       	"354838250262"
+		title      	"Main"
+		zoom       	100
+		max_height 	28350
+		max_width  	21600
+		origin_x   	0
+		origin_y   	0
+		items      	(list diagram_item_list))))
+    root_subsystem 	(object SubSystem "Component View"
+	attributes 	(list Attribute_Set
+	    (object Attribute
+		tool       	"cg"
+		name       	"PrecompiledHeader"
+		value      	"stdafx.h"))
+	quid       	"354838240365"
+	documentation 	
+|The Component View.
+|
+|It contains the packages and components diagrams.
+|
+|The Componentl View has been designed through the CAPE-OPEN Project BE 3512 in the Work-Package Numerical.
+	
+	physical_models 	(list unit_reference_list)
+	physical_presentations 	(list unit_reference_list
+	    (object Module_Diagram "Component Diagram"
+		quid       	"354838250398"
+		title      	"Component Diagram"
+		zoom       	100
+		max_height 	28350
+		max_width  	21600
+		origin_x   	0
+		origin_y   	0
+		items      	(list diagram_item_list))))
+    process_structure 	(object Processes
+	quid       	"3548382403A1"
+	ProcsNDevs 	(list
+	    (object Processor "Tutorialx"
+		quid       	"362B3D11017B"
+		documentation 	"Any client application which uses services from CAPE-OPEN Compliant SMST Application."
+		connections 	(list connection_list
+		    (object Connection_Relationship
+			quid       	"362B3D78002E"
+			supplier   	"Flowsheet Server"
+			quidu      	"362B3D5F02B3"
+			supplier_is_device 	FALSE)
+		    (object Connection_Relationship
+			quid       	"362B3DBB036A"
+			supplier   	"Flowsheet Server"
+			quidu      	"362B3D5F02B3"
+			supplier_is_device 	FALSE))
+		characteristics 	""
+		scheduling 	"Preemptive"
+		processes  	(list processes))
+	    (object Processor "Flowsheet Server"
+		quid       	"362B3D5F02B3"
+		documentation 	"CAPE-OPEN Compliant SMST Application."
+		characteristics 	""
+		scheduling 	"Preemptive"
+		processes  	(list processes))
+	    (object Process_Diagram "Deployment View"
+		quid       	"3548382503B6"
+		title      	"Deployment View"
+		documentation 	
+|A basic Deployment view.
+|
+|The Deployment View has been designed through the CAPE-OPEN Project BE 3512 in the Work-Package Numerical.
+		
+		zoom       	95
+		max_height 	28350
+		max_width  	21600
+		origin_x   	0
+		origin_y   	0
+		items      	(list diagram_item_list
+		    (object ProcessorView "Tutorialx" @3
+			location   	(918, 879)
+			font       	(object Font
+			    size       	12)
+			label      	(object ItemLabel
+			    Parent_View 	@3
+			    location   	(607, 664)
+			    nlines     	2
+			    max_width  	550
+			    justify    	0
+			    label      	"Tutorialx")
+			icon_style 	"Label"
+			line_color 	3342489
+			fill_color 	13434879
+			quidu      	"362B3D11017B"
+			width      	625
+			height     	500
+			annotation 	0)
+		    (object ProcessorView "Flowsheet Server" @4
+			location   	(1397, 2313)
+			font       	(object Font
+			    size       	12)
+			label      	(object ItemLabel
+			    Parent_View 	@4
+			    location   	(980, 2013)
+			    nlines     	2
+			    max_width  	762
+			    justify    	0
+			    label      	"Flowsheet Server")
+			icon_style 	"Label"
+			line_color 	3342489
+			fill_color 	13434879
+			quidu      	"362B3D5F02B3"
+			width      	837
+			height     	669
+			annotation 	0)
+		    (object ConnectionView "" @5
+			stereotype 	TRUE
+			line_color 	3342489
+			quidu      	"362B3D78002E"
+			client     	@3
+			supplier   	@4
+			line_style 	0)
+		    (object ProcessorView "Tutorialx" @6
+			location   	(1839, 879)
+			font       	(object Font
+			    size       	12)
+			label      	(object ItemLabel
+			    Parent_View 	@6
+			    location   	(1528, 664)
+			    nlines     	2
+			    max_width  	550
+			    justify    	0
+			    label      	"Tutorialx")
+			icon_style 	"Label"
+			line_color 	3342489
+			fill_color 	13434879
+			quidu      	"362B3D11017B"
+			width      	625
+			height     	500
+			annotation 	0)
+		    (object ConnectionView "" @7
+			stereotype 	TRUE
+			line_color 	3342489
+			quidu      	"362B3DBB036A"
+			client     	@6
+			supplier   	@4
+			line_style 	0)
+		    (object NoteView @8
+			location   	(490, 1649)
+			font       	(object Font
+			    size       	12)
+			label      	(object ItemLabel
+			    Parent_View 	@8
+			    location   	(272, 1566)
+			    fill_color 	13434879
+			    nlines     	3
+			    max_width  	401
+			    label      	"On the same local Windows host (bin folder)")
+			line_color 	3342489
+			fill_color 	13434879
+			width      	461
+			height     	179)
+		    (object AttachView "" @9
+			stereotype 	TRUE
+			line_color 	3342489
+			client     	@8
+			supplier   	@4
+			line_style 	0)
+		    (object NoteView @10
+			location   	(1430, 1601)
+			font       	(object Font
+			    size       	12)
+			label      	(object ItemLabel
+			    Parent_View 	@10
+			    location   	(1108, 1542)
+			    fill_color 	13434879
+			    nlines     	2
+			    max_width  	609
+			    label      	"Request via Shared Memory")
+			line_color 	3342489
+			fill_color 	12254636
+			width      	669
+			height     	131)
+		    (object NoteView @11
+			location   	(549, 128)
+			font       	(object Font
+			    size       	14
+			    bold       	TRUE)
+			label      	(object ItemLabel
+			    Parent_View 	@11
+			    location   	(147, 59)
+			    fill_color 	13434879
+			    nlines     	2
+			    max_width  	768
+			    label      	"Deployment Diagram")
+			line_color 	3342489
+			fill_color 	16765606
+			width      	828
+			height     	151)
+		    (object NoteView @12
+			location   	(841, 1011)
+			font       	(object Font
+			    size       	12)
+			label      	(object ItemLabel
+			    Parent_View 	@12
+			    location   	(666, 952)
+			    fill_color 	13434879
+			    nlines     	2
+			    max_width  	315
+			    label      	"VisiBroker ORB")
+			line_color 	3342489
+			fill_color 	12254636
+			width      	375
+			height     	131)
+		    (object NoteView @13
+			location   	(1238, 2524)
+			font       	(object Font
+			    size       	12)
+			label      	(object ItemLabel
+			    Parent_View 	@13
+			    location   	(1060, 2458)
+			    fill_color 	13434879
+			    nlines     	2
+			    max_width  	321
+			    label      	"VisiBrokerORB")
+			line_color 	3342489
+			fill_color 	12254636
+			width      	381
+			height     	144)
+		    (object NoteView @14
+			location   	(1734, 1031)
+			font       	(object Font
+			    size       	12)
+			label      	(object ItemLabel
+			    Parent_View 	@14
+			    location   	(1565, 972)
+			    fill_color 	13434879
+			    nlines     	2
+			    max_width  	303
+			    label      	"VisiBrokerORB")
+			line_color 	3342489
+			fill_color 	12254636
+			width      	363
+			height     	131)
+		    (object NoteView @15
+			location   	(2383, 2117)
+			font       	(object Font
+			    size       	12)
+			label      	(object ItemLabel
+			    Parent_View 	@15
+			    location   	(2027, 2012)
+			    fill_color 	13434879
+			    nlines     	4
+			    max_width  	677
+			    label      	"The distributed objects have a local scope except the ICapeNumericGATComponent object")
+			line_color 	3342489
+			fill_color 	13434879
+			width      	737
+			height     	223)
+		    (object NoteView @16
+			location   	(2397, 2410)
+			font       	(object Font
+			    size       	12)
+			label      	(object ItemLabel
+			    Parent_View 	@16
+			    location   	(2047, 2338)
+			    fill_color 	13434879
+			    nlines     	2
+			    max_width  	665
+			    label      	"The Object Activation Policy is a Shared Server Policy")
+			line_color 	3342489
+			fill_color 	13434879
+			width      	725
+			height     	156)
+		    (object AttachView "" @17
+			stereotype 	TRUE
+			line_color 	3342489
+			client     	@4
+			supplier   	@15
+			line_style 	0)
+		    (object AttachView "" @18
+			stereotype 	TRUE
+			line_color 	3342489
+			client     	@4
+			supplier   	@16
+			line_style 	0)
+		    (object NoteView @19
+			location   	(1875, 324)
+			font       	(object Font
+			    size       	12)
+			label      	(object ItemLabel
+			    Parent_View 	@19
+			    location   	(1365, 252)
+			    fill_color 	13434879
+			    nlines     	2
+			    max_width  	984
+			    label      	"Bind to the ICapeNumericGAT object reading the Trader.txt file.")
+			line_color 	3342489
+			fill_color 	13434879
+			width      	1044
+			height     	156)
+		    (object AttachView "" @20
+			stereotype 	TRUE
+			line_color 	3342489
+			client     	@6
+			supplier   	@19
+			line_style 	0)
+		    (object AttachView "" @21
+			stereotype 	TRUE
+			line_color 	3342489
+			client     	@3
+			supplier   	@19
+			line_style 	0)
+		    (object AttachView "" @22
+			stereotype 	TRUE
+			line_color 	3342489
+			client     	@12
+			supplier   	@8
+			line_style 	0)
+		    (object NoteView @23
+			location   	(566, 2447)
+			font       	(object Font
+			    size       	12)
+			label      	(object ItemLabel
+			    Parent_View 	@23
+			    location   	(278, 2381)
+			    fill_color 	13434879
+			    nlines     	2
+			    max_width  	540
+			    label      	"Generation of the Trader.txt file.")
+			line_color 	3342489
+			fill_color 	13434879
+			width      	600
+			height     	144)
+		    (object AttachView "" @24
+			stereotype 	TRUE
+			line_color 	3342489
+			client     	@23
+			supplier   	@4
+			line_style 	0)))))
+    properties 	(object Properties
+	attributes 	(list Attribute_Set
+	    (object Attribute
+		tool       	"DDL"
+		name       	"propertyId"
+		value      	"809135966")
+	    (object Attribute
+		tool       	"DDL"
+		name       	"default__Project"
+		value      	(list Attribute_Set
+		    (object Attribute
+			tool       	"DDL"
+			name       	"DataBase"
+			value      	("DataBaseSet" 800))
+		    (object Attribute
+			tool       	"DDL"
+			name       	"DataBaseSet"
+			value      	(list Attribute_Set
+			    (object Attribute
+				tool       	"DDL"
+				name       	"ANSI"
+				value      	800)
+			    (object Attribute
+				tool       	"DDL"
+				name       	"Oracle"
+				value      	801)
+			    (object Attribute
+				tool       	"DDL"
+				name       	"SQLServer"
+				value      	802)
+			    (object Attribute
+				tool       	"DDL"
+				name       	"Sybase"
+				value      	803)
+			    (object Attribute
+				tool       	"DDL"
+				name       	"Watcom"
+				value      	804)))
+		    (object Attribute
+			tool       	"DDL"
+			name       	"PrimaryKeyColumnName"
+			value      	"Id")
+		    (object Attribute
+			tool       	"DDL"
+			name       	"PrimaryKeyColumnType"
+			value      	"NUMBER(5)")
+		    (object Attribute
+			tool       	"DDL"
+			name       	"ViewName"
+			value      	"V_")
+		    (object Attribute
+			tool       	"DDL"
+			name       	"TableName"
+			value      	"T_")
+		    (object Attribute
+			tool       	"DDL"
+			name       	"InheritSuffix"
+			value      	"_V")
+		    (object Attribute
+			tool       	"DDL"
+			name       	"DropClause"
+			value      	FALSE)
+		    (object Attribute
+			tool       	"DDL"
+			name       	"BaseViews"
+			value      	FALSE)
+		    (object Attribute
+			tool       	"DDL"
+			name       	"DDLScriptFilename"
+			value      	"DDL1.SQL")
+		    (object Attribute
+			tool       	"DDL"
+			name       	"Directory"
+			value      	"AUTO GENERATE")))
+	    (object Attribute
+		tool       	"DDL"
+		name       	"default__Attribute"
+		value      	(list Attribute_Set
+		    (object Attribute
+			tool       	"DDL"
+			name       	"ColumnType"
+			value      	"VARCHAR")
+		    (object Attribute
+			tool       	"DDL"
+			name       	"Length"
+			value      	"")
+		    (object Attribute
+			tool       	"DDL"
+			name       	"NullsOK"
+			value      	TRUE)
+		    (object Attribute
+			tool       	"DDL"
+			name       	"PrimaryKey"
+			value      	FALSE)
+		    (object Attribute
+			tool       	"DDL"
+			name       	"Unique"
+			value      	FALSE)
+		    (object Attribute
+			tool       	"DDL"
+			name       	"CompositeUnique"
+			value      	FALSE)
+		    (object Attribute
+			tool       	"DDL"
+			name       	"CheckConstraint"
+			value      	"")))
+	    (object Attribute
+		tool       	"DDL"
+		name       	"HiddenTool"
+		value      	FALSE)
+	    (object Attribute
+		tool       	"IDL"
+		name       	"propertyId"
+		value      	"809135966")
+	    (object Attribute
+		tool       	"IDL"
+		name       	"default__Project"
+		value      	(list Attribute_Set
+		    (object Attribute
+			tool       	"IDL"
+			name       	"CreateMissingDirectories"
+			value      	TRUE)
+		    (object Attribute
+			tool       	"IDL"
+			name       	"StopOnError"
+			value      	TRUE)
+		    (object Attribute
+			tool       	"IDL"
+			name       	"Directory"
+			value      	"AUTO GENERATE")
+		    (object Attribute
+			tool       	"IDL"
+			name       	"GeneratePreserveRegions"
+			value      	TRUE)))
+	    (object Attribute
+		tool       	"IDL"
+		name       	"default__Class"
+		value      	(list Attribute_Set
+		    (object Attribute
+			tool       	"IDL"
+			name       	"ImplementationType"
+			value      	"")
+		    (object Attribute
+			tool       	"IDL"
+			name       	"ConstValue"
+			value      	"")
+		    (object Attribute
+			tool       	"IDL"
+			name       	"GenerateDefaultSpecifier"
+			value      	FALSE)
+		    (object Attribute
+			tool       	"IDL"
+			name       	"DefaultSpecifier"
+			value      	"")
+		    (object Attribute
+			tool       	"IDL"
+			name       	"IDLElement"
+			value      	TRUE)
+		    (object Attribute
+			tool       	"IDL"
+			name       	"IDLSpecificationType"
+			value      	("IDLSpecSet" 22))
+		    (object Attribute
+			tool       	"IDL"
+			name       	"IDLSpecSet"
+			value      	(list Attribute_Set
+			    (object Attribute
+				tool       	"IDL"
+				name       	"Interface"
+				value      	22)
+			    (object Attribute
+				tool       	"IDL"
+				name       	"Typedef"
+				value      	54)
+			    (object Attribute
+				tool       	"IDL"
+				name       	"Enumeration"
+				value      	8)
+			    (object Attribute
+				tool       	"IDL"
+				name       	"Const"
+				value      	71)
+			    (object Attribute
+				tool       	"IDL"
+				name       	"Exception"
+				value      	61)
+			    (object Attribute
+				tool       	"IDL"
+				name       	"Struct"
+				value      	51)
+			    (object Attribute
+				tool       	"IDL"
+				name       	"Union"
+				value      	81)))))
+	    (object Attribute
+		tool       	"IDL"
+		name       	"default__Module-Spec"
+		value      	(list Attribute_Set
+		    (object Attribute
+			tool       	"IDL"
+			name       	"Generate"
+			value      	TRUE)
+		    (object Attribute
+			tool       	"IDL"
+			name       	"CmIdentification"
+			value      	(value Text "  %X% %Q% %Z% %W%"))
+		    (object Attribute
+			tool       	"IDL"
+			name       	"CopyrightNotice"
+			value      	(value Text ""))
+		    (object Attribute
+			tool       	"IDL"
+			name       	"FileName"
+			value      	"AUTO GENERATE")
+		    (object Attribute
+			tool       	"IDL"
+			name       	"GenerateIDLModule"
+			value      	FALSE)
+		    (object Attribute
+			tool       	"IDL"
+			name       	"InclusionProtectionSymbol"
+			value      	"AUTO GENERATE")
+		    (object Attribute
+			tool       	"IDL"
+			name       	"AdditionalIncludes"
+			value      	(value Text ""))
+		    (object Attribute
+			tool       	"IDL"
+			name       	"IncludeBySimpleName"
+			value      	FALSE)))
+	    (object Attribute
+		tool       	"IDL"
+		name       	"default__Module-Body"
+		value      	(list Attribute_Set
+		    (object Attribute
+			tool       	"IDL"
+			name       	"CmIdentification"
+			value      	(value Text "  %X% %Q% %Z% %W%"))
+		    (object Attribute
+			tool       	"IDL"
+			name       	"CopyrightNotice"
+			value      	(value Text ""))
+		    (object Attribute
+			tool       	"IDL"
+			name       	"FileName"
+			value      	"AUTO GENERATE")
+		    (object Attribute
+			tool       	"IDL"
+			name       	"AdditionalIncludes"
+			value      	(value Text ""))
+		    (object Attribute
+			tool       	"IDL"
+			name       	"IncludeBySimpleName"
+			value      	FALSE)))
+	    (object Attribute
+		tool       	"IDL"
+		name       	"default__Operation"
+		value      	(list Attribute_Set
+		    (object Attribute
+			tool       	"IDL"
+			name       	"OperationIsOneWay"
+			value      	FALSE)
+		    (object Attribute
+			tool       	"IDL"
+			name       	"Context"
+			value      	"")
+		    (object Attribute
+			tool       	"IDL"
+			name       	"Raises"
+			value      	"")))
+	    (object Attribute
+		tool       	"IDL"
+		name       	"default__Attribute"
+		value      	(list Attribute_Set
+		    (object Attribute
+			tool       	"IDL"
+			name       	"CaseSpecifier"
+			value      	"")
+		    (object Attribute
+			tool       	"IDL"
+			name       	"GenerateDataMember"
+			value      	TRUE)
+		    (object Attribute
+			tool       	"IDL"
+			name       	"DataMemberName"
+			value      	"$relationship")
+		    (object Attribute
+			tool       	"IDL"
+			name       	"IsReadOnly"
+			value      	FALSE)
+		    (object Attribute
+			tool       	"IDL"
+			name       	"IsConst"
+			value      	FALSE)
+		    (object Attribute
+			tool       	"IDL"
+			name       	"ConstValue"
+			value      	"")))
+	    (object Attribute
+		tool       	"IDL"
+		name       	"default__Has"
+		value      	(list Attribute_Set
+		    (object Attribute
+			tool       	"IDL"
+			name       	"NameIfUnlabeled"
+			value      	"the_$supplier")
+		    (object Attribute
+			tool       	"IDL"
+			name       	"GenerateDataMember"
+			value      	TRUE)
+		    (object Attribute
+			tool       	"IDL"
+			name       	"DataMemberName"
+			value      	"$relationship")
+		    (object Attribute
+			tool       	"IDL"
+			name       	"GenerateForwardReference"
+			value      	FALSE)
+		    (object Attribute
+			tool       	"IDL"
+			name       	"IsReadOnly"
+			value      	FALSE)
+		    (object Attribute
+			tool       	"IDL"
+			name       	"BoundedHasRelType"
+			value      	("HasRelTypeSet" 47))
+		    (object Attribute
+			tool       	"IDL"
+			name       	"HasRelTypeSet"
+			value      	(list Attribute_Set
+			    (object Attribute
+				tool       	"IDL"
+				name       	"Array"
+				value      	24)
+			    (object Attribute
+				tool       	"IDL"
+				name       	"Sequence"
+				value      	47)))))
+	    (object Attribute
+		tool       	"IDL"
+		name       	"default__Role"
+		value      	(list Attribute_Set
+		    (object Attribute
+			tool       	"IDL"
+			name       	"NameIfUnlabeled"
+			value      	"the_$supplier")
+		    (object Attribute
+			tool       	"IDL"
+			name       	"GenerateDataMember"
+			value      	TRUE)
+		    (object Attribute
+			tool       	"IDL"
+			name       	"DataMemberName"
+			value      	"$relationship")
+		    (object Attribute
+			tool       	"IDL"
+			name       	"GenerateForwardReference"
+			value      	FALSE)
+		    (object Attribute
+			tool       	"IDL"
+			name       	"IsReadOnly"
+			value      	FALSE)
+		    (object Attribute
+			tool       	"IDL"
+			name       	"BoundedRoleType"
+			value      	("AssocTypeSet" 47))
+		    (object Attribute
+			tool       	"IDL"
+			name       	"AssocTypeSet"
+			value      	(list Attribute_Set
+			    (object Attribute
+				tool       	"IDL"
+				name       	"Array"
+				value      	24)
+			    (object Attribute
+				tool       	"IDL"
+				name       	"Sequence"
+				value      	47)))))
+	    (object Attribute
+		tool       	"IDL"
+		name       	"default__Uses"
+		value      	(list Attribute_Set
+		    (object Attribute
+			tool       	"IDL"
+			name       	"GenerateForwardReference"
+			value      	FALSE)))
+	    (object Attribute
+		tool       	"IDL"
+		name       	"default__Subsystem"
+		value      	(list Attribute_Set
+		    (object Attribute
+			tool       	"IDL"
+			name       	"Directory"
+			value      	"AUTO GENERATE")))
+	    (object Attribute
+		tool       	"IDL"
+		name       	"HiddenTool"
+		value      	FALSE)
+	    (object Attribute
+		tool       	"cg"
+		name       	"propertyId"
+		value      	"809135966")
+	    (object Attribute
+		tool       	"cg"
+		name       	"default__Project"
+		value      	(list Attribute_Set
+		    (object Attribute
+			tool       	"cg"
+			name       	"UseMSVC"
+			value      	FALSE)
+		    (object Attribute
+			tool       	"cg"
+			name       	"HeaderFileExtension"
+			value      	"h")
+		    (object Attribute
+			tool       	"cg"
+			name       	"HeaderFileBackupExtension"
+			value      	"h~")
+		    (object Attribute
+			tool       	"cg"
+			name       	"HeaderFileTemporaryExtension"
+			value      	"h#")
+		    (object Attribute
+			tool       	"cg"
+			name       	"CodeFileExtension"
+			value      	"cpp")
+		    (object Attribute
+			tool       	"cg"
+			name       	"CodeFileBackupExtension"
+			value      	"cp~")
+		    (object Attribute
+			tool       	"cg"
+			name       	"CodeFileTemporaryExtension"
+			value      	"cp#")
+		    (object Attribute
+			tool       	"cg"
+			name       	"CreateMissingDirectories"
+			value      	TRUE)
+		    (object Attribute
+			tool       	"cg"
+			name       	"StopOnError"
+			value      	FALSE)
+		    (object Attribute
+			tool       	"cg"
+			name       	"ErrorLimit"
+			value      	30)
+		    (object Attribute
+			tool       	"cg"
+			name       	"Directory"
+			value      	"$ROSECPP_SOURCE")
+		    (object Attribute
+			tool       	"cg"
+			name       	"PathSeparator"
+			value      	"")
+		    (object Attribute
+			tool       	"cg"
+			name       	"FileNameFormat"
+			value      	"128vx_b")
+		    (object Attribute
+			tool       	"cg"
+			name       	"BooleanType"
+			value      	"int")
+		    (object Attribute
+			tool       	"cg"
+			name       	"AllowTemplates"
+			value      	TRUE)
+		    (object Attribute
+			tool       	"cg"
+			name       	"AllowProtectedInheritance"
+			value      	TRUE)
+		    (object Attribute
+			tool       	"cg"
+			name       	"CommentWidth"
+			value      	60)
+		    (object Attribute
+			tool       	"cg"
+			name       	"OneByValueContainer"
+			value      	"$targetClass")
+		    (object Attribute
+			tool       	"cg"
+			name       	"OneByReferenceContainer"
+			value      	"$targetClass *")
+		    (object Attribute
+			tool       	"cg"
+			name       	"OptionalByValueContainer"
+			value      	"OptionalByValue<$targetClass>")
+		    (object Attribute
+			tool       	"cg"
+			name       	"OptionalByReferenceContainer"
+			value      	"$targetClass *")
+		    (object Attribute
+			tool       	"cg"
+			name       	"FixedByValueContainer"
+			value      	"$targetClass[$limit]")
+		    (object Attribute
+			tool       	"cg"
+			name       	"UnorderedFixedByValueContainer"
+			value      	"$targetClass[$limit]")
+		    (object Attribute
+			tool       	"cg"
+			name       	"FixedByReferenceContainer"
+			value      	"$targetClass *[$limit]")
+		    (object Attribute
+			tool       	"cg"
+			name       	"UnorderedFixedByReferenceContainer"
+			value      	"$targetClass *[$limit]")
+		    (object Attribute
+			tool       	"cg"
+			name       	"BoundedByValueContainer"
+			value      	"BoundedListByValue<$targetClass,$limit>")
+		    (object Attribute
+			tool       	"cg"
+			name       	"UnorderedBoundedByValueContainer"
+			value      	"BoundedSetByValue<$targetClass,$limit>")
+		    (object Attribute
+			tool       	"cg"
+			name       	"BoundedByReferenceContainer"
+			value      	"BoundedListByReference<$targetClass,$limit>")
+		    (object Attribute
+			tool       	"cg"
+			name       	"UnorderedBoundedByReferenceContainer"
+			value      	"BoundedSetByReference<$targetClass,$limit>")
+		    (object Attribute
+			tool       	"cg"
+			name       	"UnboundedByValueContainer"
+			value      	"UnboundedListByValue<$targetClass>")
+		    (object Attribute
+			tool       	"cg"
+			name       	"UnorderedUnboundedByValueContainer"
+			value      	"UnboundedSetByValue<$targetClass>")
+		    (object Attribute
+			tool       	"cg"
+			name       	"UnboundedByReferenceContainer"
+			value      	"UnboundedListByReference<$targetClass>")
+		    (object Attribute
+			tool       	"cg"
+			name       	"UnorderedUnboundedByReferenceContainer"
+			value      	"UnboundedSetByReference<$targetClass>")
+		    (object Attribute
+			tool       	"cg"
+			name       	"QualifiedByValueContainer"
+			value      	"AssociationByValue<$qualtype, $qualcont>")
+		    (object Attribute
+			tool       	"cg"
+			name       	"UnorderedQualifiedByValueContainer"
+			value      	"DictionaryByValue<$qualtype, $qualcont>")
+		    (object Attribute
+			tool       	"cg"
+			name       	"QualifiedByReferenceContainer"
+			value      	"AssociationByReference<$qualtype, $qualcont>")
+		    (object Attribute
+			tool       	"cg"
+			name       	"UnorderedQualifiedByReferenceContainer"
+			value      	"DictionaryByReference<$qualtype, $qualcont>")
+		    (object Attribute
+			tool       	"cg"
+			name       	"GeneratePreserveRegions"
+			value      	TRUE)
+		    (object Attribute
+			tool       	"cg"
+			name       	"AllowExplicitInstantiations"
+			value      	TRUE)))
+	    (object Attribute
+		tool       	"cg"
+		name       	"default__Class"
+		value      	(list Attribute_Set
+		    (object Attribute
+			tool       	"cg"
+			name       	"CodeName"
+			value      	"")
+		    (object Attribute
+			tool       	"cg"
+			name       	"ImplementationType"
+			value      	"")
+		    (object Attribute
+			tool       	"cg"
+			name       	"ClassKey"
+			value      	"class")
+		    (object Attribute
+			tool       	"cg"
+			name       	"GenerateEmptyRegions"
+			value      	("GenerateEmptyRegionSet" 3))
+		    (object Attribute
+			tool       	"cg"
+			name       	"GenerateEmptyRegionSet"
+			value      	(list Attribute_Set
+			    (object Attribute
+				tool       	"cg"
+				name       	"None"
+				value      	0)
+			    (object Attribute
+				tool       	"cg"
+				name       	"Preserved"
+				value      	1)
+			    (object Attribute
+				tool       	"cg"
+				name       	"Unpreserved"
+				value      	2)
+			    (object Attribute
+				tool       	"cg"
+				name       	"All"
+				value      	3)))
+		    (object Attribute
+			tool       	"cg"
+			name       	"PutBodiesInSpec"
+			value      	FALSE)
+		    (object Attribute
+			tool       	"cg"
+			name       	"GenerateDefaultConstructor"
+			value      	("GenerateSet" 199))
+		    (object Attribute
+			tool       	"cg"
+			name       	"DefaultConstructorVisibility"
+			value      	("VisibilitySet" 45))
+		    (object Attribute
+			tool       	"cg"
+			name       	"InlineDefaultConstructor"
+			value      	FALSE)
+		    (object Attribute
+			tool       	"cg"
+			name       	"ExplicitDefaultConstructor"
+			value      	FALSE)
+		    (object Attribute
+			tool       	"cg"
+			name       	"GenerateCopyConstructor"
+			value      	("GenerateSet" 199))
+		    (object Attribute
+			tool       	"cg"
+			name       	"CopyConstructorVisibility"
+			value      	("VisibilitySet" 45))
+		    (object Attribute
+			tool       	"cg"
+			name       	"InlineCopyConstructor"
+			value      	FALSE)
+		    (object Attribute
+			tool       	"cg"
+			name       	"ExplicitCopyConstructor"
+			value      	FALSE)
+		    (object Attribute
+			tool       	"cg"
+			name       	"GenerateDestructor"
+			value      	TRUE)
+		    (object Attribute
+			tool       	"cg"
+			name       	"DestructorVisibility"
+			value      	("VisibilitySet" 45))
+		    (object Attribute
+			tool       	"cg"
+			name       	"DestructorKind"
+			value      	("ThreeKindSet" 200))
+		    (object Attribute
+			tool       	"cg"
+			name       	"InlineDestructor"
+			value      	FALSE)
+		    (object Attribute
+			tool       	"cg"
+			name       	"GenerateAssignmentOperation"
+			value      	("GenerateSet" 199))
+		    (object Attribute
+			tool       	"cg"
+			name       	"AssignmentVisibility"
+			value      	("VisibilitySet" 45))
+		    (object Attribute
+			tool       	"cg"
+			name       	"AssignmentKind"
+			value      	("ThreeKindSet" 200))
+		    (object Attribute
+			tool       	"cg"
+			name       	"InlineAssignmentOperation"
+			value      	FALSE)
+		    (object Attribute
+			tool       	"cg"
+			name       	"GenerateEqualityOperations"
+			value      	("GenerateSet" 199))
+		    (object Attribute
+			tool       	"cg"
+			name       	"EqualityVisibility"
+			value      	("VisibilitySet" 45))
+		    (object Attribute
+			tool       	"cg"
+			name       	"EqualityKind"
+			value      	("FriendKindSet" 200))
+		    (object Attribute
+			tool       	"cg"
+			name       	"InlineEqualityOperations"
+			value      	FALSE)
+		    (object Attribute
+			tool       	"cg"
+			name       	"GenerateRelationalOperations"
+			value      	FALSE)
+		    (object Attribute
+			tool       	"cg"
+			name       	"RelationalVisibility"
+			value      	("VisibilitySet" 45))
+		    (object Attribute
+			tool       	"cg"
+			name       	"RelationalKind"
+			value      	("FriendKindSet" 200))
+		    (object Attribute
+			tool       	"cg"
+			name       	"InlineRelationalOperations"
+			value      	FALSE)
+		    (object Attribute
+			tool       	"cg"
+			name       	"GenerateStorageMgmtOperations"
+			value      	FALSE)
+		    (object Attribute
+			tool       	"cg"
+			name       	"StorageMgmtVisibility"
+			value      	("VisibilitySet" 45))
+		    (object Attribute
+			tool       	"cg"
+			name       	"InlineStorageMgmtOperations"
+			value      	FALSE)
+		    (object Attribute
+			tool       	"cg"
+			name       	"GenerateSubscriptOperation"
+			value      	FALSE)
+		    (object Attribute
+			tool       	"cg"
+			name       	"SubscriptVisibility"
+			value      	("VisibilitySet" 45))
+		    (object Attribute
+			tool       	"cg"
+			name       	"SubscriptKind"
+			value      	("ThreeKindSet" 200))
+		    (object Attribute
+			tool       	"cg"
+			name       	"SubscriptResultType"
+			value      	"")
+		    (object Attribute
+			tool       	"cg"
+			name       	"InlineSubscriptOperation"
+			value      	FALSE)
+		    (object Attribute
+			tool       	"cg"
+			name       	"GenerateDereferenceOperation"
+			value      	FALSE)
+		    (object Attribute
+			tool       	"cg"
+			name       	"DereferenceVisibility"
+			value      	("VisibilitySet" 45))
+		    (object Attribute
+			tool       	"cg"
+			name       	"DereferenceKind"
+			value      	("ThreeKindSet" 200))
+		    (object Attribute
+			tool       	"cg"
+			name       	"DereferenceResultType"
+			value      	"")
+		    (object Attribute
+			tool       	"cg"
+			name       	"InlineDereferenceOperation"
+			value      	FALSE)
+		    (object Attribute
+			tool       	"cg"
+			name       	"GenerateIndirectionOperation"
+			value      	FALSE)
+		    (object Attribute
+			tool       	"cg"
+			name       	"IndirectionVisibility"
+			value      	("VisibilitySet" 45))
+		    (object Attribute
+			tool       	"cg"
+			name       	"IndirectionKind"
+			value      	("ThreeKindSet" 200))
+		    (object Attribute
+			tool       	"cg"
+			name       	"IndirectionResultType"
+			value      	"")
+		    (object Attribute
+			tool       	"cg"
+			name       	"InlineIndirectionOperation"
+			value      	FALSE)
+		    (object Attribute
+			tool       	"cg"
+			name       	"GenerateStreamOperations"
+			value      	FALSE)
+		    (object Attribute
+			tool       	"cg"
+			name       	"StreamVisibility"
+			value      	("VisibilitySet" 45))
+		    (object Attribute
+			tool       	"cg"
+			name       	"InlineStreamOperations"
+			value      	FALSE)
+		    (object Attribute
+			tool       	"cg"
+			name       	"ThreeKindSet"
+			value      	(list Attribute_Set
+			    (object Attribute
+				tool       	"cg"
+				name       	"Common"
+				value      	200)
+			    (object Attribute
+				tool       	"cg"
+				name       	"Virtual"
+				value      	201)
+			    (object Attribute
+				tool       	"cg"
+				name       	"Abstract"
+				value      	202)))
+		    (object Attribute
+			tool       	"cg"
+			name       	"KindSet"
+			value      	(list Attribute_Set
+			    (object Attribute
+				tool       	"cg"
+				name       	"Common"
+				value      	200)
+			    (object Attribute
+				tool       	"cg"
+				name       	"Virtual"
+				value      	201)
+			    (object Attribute
+				tool       	"cg"
+				name       	"Abstract"
+				value      	202)
+			    (object Attribute
+				tool       	"cg"
+				name       	"Static"
+				value      	203)))
+		    (object Attribute
+			tool       	"cg"
+			name       	"FriendKindSet"
+			value      	(list Attribute_Set
+			    (object Attribute
+				tool       	"cg"
+				name       	"Common"
+				value      	200)
+			    (object Attribute
+				tool       	"cg"
+				name       	"Virtual"
+				value      	201)
+			    (object Attribute
+				tool       	"cg"
+				name       	"Abstract"
+				value      	202)
+			    (object Attribute
+				tool       	"cg"
+				name       	"Friend"
+				value      	204)))
+		    (object Attribute
+			tool       	"cg"
+			name       	"GenerateSet"
+			value      	(list Attribute_Set
+			    (object Attribute
+				tool       	"cg"
+				name       	"DeclareAndDefine"
+				value      	199)
+			    (object Attribute
+				tool       	"cg"
+				name       	"DeclareOnly"
+				value      	205)
+			    (object Attribute
+				tool       	"cg"
+				name       	"DoNotDeclare"
+				value      	206)))
+		    (object Attribute
+			tool       	"cg"
+			name       	"VisibilitySet"
+			value      	(list Attribute_Set
+			    (object Attribute
+				tool       	"cg"
+				name       	"Public"
+				value      	45)
+			    (object Attribute
+				tool       	"cg"
+				name       	"Protected"
+				value      	44)
+			    (object Attribute
+				tool       	"cg"
+				name       	"Private"
+				value      	43)
+			    (object Attribute
+				tool       	"cg"
+				name       	"Implementation"
+				value      	14)))
+		    (object Attribute
+			tool       	"cg"
+			name       	"ConstValue"
+			value      	"")
+		    (object Attribute
+			tool       	"cg"
+			name       	"GenerateDefaultSpecifier"
+			value      	FALSE)
+		    (object Attribute
+			tool       	"cg"
+			name       	"DefaultSpecifier"
+			value      	"")))
+	    (object Attribute
+		tool       	"cg"
+		name       	"default__Module-Spec"
+		value      	(list Attribute_Set
+		    (object Attribute
+			tool       	"cg"
+			name       	"Generate"
+			value      	TRUE)
+		    (object Attribute
+			tool       	"cg"
+			name       	"GenerateEmptyRegions"
+			value      	("GenerateEmptyRegionSet" 3))
+		    (object Attribute
+			tool       	"cg"
+			name       	"GenerateEmptyRegionSet"
+			value      	(list Attribute_Set
+			    (object Attribute
+				tool       	"cg"
+				name       	"None"
+				value      	0)
+			    (object Attribute
+				tool       	"cg"
+				name       	"Preserved"
+				value      	1)
+			    (object Attribute
+				tool       	"cg"
+				name       	"Unpreserved"
+				value      	2)
+			    (object Attribute
+				tool       	"cg"
+				name       	"All"
+				value      	3)))
+		    (object Attribute
+			tool       	"cg"
+			name       	"CmIdentification"
+			value      	(value Text "  %X% %Q% %Z% %W%"))
+		    (object Attribute
+			tool       	"cg"
+			name       	"CopyrightNotice"
+			value      	(value Text ""))
+		    (object Attribute
+			tool       	"cg"
+			name       	"FileName"
+			value      	"AUTO GENERATE")
+		    (object Attribute
+			tool       	"cg"
+			name       	"AllowExtensionlessFileName"
+			value      	FALSE)
+		    (object Attribute
+			tool       	"cg"
+			name       	"InclusionProtectionSymbol"
+			value      	"AUTO GENERATE")
+		    (object Attribute
+			tool       	"cg"
+			name       	"IncludeFormat"
+			value      	(value Text 
+|// $package
+|#include "$file"
+|
+			))
+		    (object Attribute
+			tool       	"cg"
+			name       	"IncludeBySimpleName"
+			value      	FALSE)
+		    (object Attribute
+			tool       	"cg"
+			name       	"IncludePrecompiledHeader"
+			value      	FALSE)
+		    (object Attribute
+			tool       	"cg"
+			name       	"IncludeOrder"
+			value      	"AMIR")
+		    (object Attribute
+			tool       	"cg"
+			name       	"AdditionalIncludes"
+			value      	(value Text ""))
+		    (object Attribute
+			tool       	"cg"
+			name       	"InliningStyle"
+			value      	("InliningStyleSet" 207))
+		    (object Attribute
+			tool       	"cg"
+			name       	"InliningStyleSet"
+			value      	(list Attribute_Set
+			    (object Attribute
+				tool       	"cg"
+				name       	"InClassDeclaration"
+				value      	208)
+			    (object Attribute
+				tool       	"cg"
+				name       	"FollowingClassDeclaration"
+				value      	207)))
+		    (object Attribute
+			tool       	"cg"
+			name       	"TypesDefined"
+			value      	(value Text ""))
+		    (object Attribute
+			tool       	"cg"
+			name       	"IncludeClosure"
+			value      	(value Text ""))))
+	    (object Attribute
+		tool       	"cg"
+		name       	"default__Module-Body"
+		value      	(list Attribute_Set
+		    (object Attribute
+			tool       	"cg"
+			name       	"Generate"
+			value      	TRUE)
+		    (object Attribute
+			tool       	"cg"
+			name       	"GenerateEmptyRegions"
+			value      	("GenerateEmptyRegionSet" 3))
+		    (object Attribute
+			tool       	"cg"
+			name       	"GenerateEmptyRegionSet"
+			value      	(list Attribute_Set
+			    (object Attribute
+				tool       	"cg"
+				name       	"None"
+				value      	0)
+			    (object Attribute
+				tool       	"cg"
+				name       	"Preserved"
+				value      	1)
+			    (object Attribute
+				tool       	"cg"
+				name       	"Unpreserved"
+				value      	2)
+			    (object Attribute
+				tool       	"cg"
+				name       	"All"
+				value      	3)))
+		    (object Attribute
+			tool       	"cg"
+			name       	"CmIdentification"
+			value      	(value Text "  %X% %Q% %Z% %W%"))
+		    (object Attribute
+			tool       	"cg"
+			name       	"CopyrightNotice"
+			value      	(value Text ""))
+		    (object Attribute
+			tool       	"cg"
+			name       	"FileName"
+			value      	"AUTO GENERATE")
+		    (object Attribute
+			tool       	"cg"
+			name       	"AllowExtensionlessFileName"
+			value      	FALSE)
+		    (object Attribute
+			tool       	"cg"
+			name       	"IncludeFormat"
+			value      	(value Text 
+|// $package
+|#include "$file"
+|
+			))
+		    (object Attribute
+			tool       	"cg"
+			name       	"IncludeBySimpleName"
+			value      	FALSE)
+		    (object Attribute
+			tool       	"cg"
+			name       	"IncludePrecompiledHeader"
+			value      	TRUE)
+		    (object Attribute
+			tool       	"cg"
+			name       	"IncludeOrder"
+			value      	"AMIR")
+		    (object Attribute
+			tool       	"cg"
+			name       	"AdditionalIncludes"
+			value      	(value Text ""))
+		    (object Attribute
+			tool       	"cg"
+			name       	"InliningStyle"
+			value      	("InliningStyleSet" 207))
+		    (object Attribute
+			tool       	"cg"
+			name       	"InliningStyleSet"
+			value      	(list Attribute_Set
+			    (object Attribute
+				tool       	"cg"
+				name       	"InClassDeclaration"
+				value      	208)
+			    (object Attribute
+				tool       	"cg"
+				name       	"FollowingClassDeclaration"
+				value      	207)))
+		    (object Attribute
+			tool       	"cg"
+			name       	"TypesDefined"
+			value      	(value Text ""))
+		    (object Attribute
+			tool       	"cg"
+			name       	"IncludeClosure"
+			value      	(value Text ""))))
+	    (object Attribute
+		tool       	"cg"
+		name       	"default__Operation"
+		value      	(list Attribute_Set
+		    (object Attribute
+			tool       	"cg"
+			name       	"CodeName"
+			value      	"")
+		    (object Attribute
+			tool       	"cg"
+			name       	"OperationKind"
+			value      	("OperationKindSet" 200))
+		    (object Attribute
+			tool       	"cg"
+			name       	"OperationKindSet"
+			value      	(list Attribute_Set
+			    (object Attribute
+				tool       	"cg"
+				name       	"Common"
+				value      	200)
+			    (object Attribute
+				tool       	"cg"
+				name       	"Virtual"
+				value      	201)
+			    (object Attribute
+				tool       	"cg"
+				name       	"Abstract"
+				value      	202)
+			    (object Attribute
+				tool       	"cg"
+				name       	"Static"
+				value      	203)
+			    (object Attribute
+				tool       	"cg"
+				name       	"Friend"
+				value      	204)))
+		    (object Attribute
+			tool       	"cg"
+			name       	"OperationIsConst"
+			value      	FALSE)
+		    (object Attribute
+			tool       	"cg"
+			name       	"OperationIsExplicit"
+			value      	FALSE)
+		    (object Attribute
+			tool       	"cg"
+			name       	"Inline"
+			value      	FALSE)
+		    (object Attribute
+			tool       	"cg"
+			name       	"EntryCode"
+			value      	(value Text ""))
+		    (object Attribute
+			tool       	"cg"
+			name       	"ExitCode"
+			value      	(value Text ""))
+		    (object Attribute
+			tool       	"cg"
+			name       	"GenerateEmptyRegions"
+			value      	("GenerateEmptyRegionSet" 3))
+		    (object Attribute
+			tool       	"cg"
+			name       	"GenerateEmptyRegionSet"
+			value      	(list Attribute_Set
+			    (object Attribute
+				tool       	"cg"
+				name       	"None"
+				value      	0)
+			    (object Attribute
+				tool       	"cg"
+				name       	"Preserved"
+				value      	1)
+			    (object Attribute
+				tool       	"cg"
+				name       	"Unpreserved"
+				value      	2)
+			    (object Attribute
+				tool       	"cg"
+				name       	"All"
+				value      	3)))
+		    (object Attribute
+			tool       	"cg"
+			name       	"BodyAnnotations"
+			value      	"")
+		    (object Attribute
+			tool       	"cg"
+			name       	"OperationIsOneWay"
+			value      	FALSE)
+		    (object Attribute
+			tool       	"cg"
+			name       	"Context"
+			value      	"")
+		    (object Attribute
+			tool       	"cg"
+			name       	"Raises"
+			value      	"")))
+	    (object Attribute
+		tool       	"cg"
+		name       	"default__Has"
+		value      	(list Attribute_Set
+		    (object Attribute
+			tool       	"cg"
+			name       	"CodeName"
+			value      	"")
+		    (object Attribute
+			tool       	"cg"
+			name       	"Ordered"
+			value      	TRUE)
+		    (object Attribute
+			tool       	"cg"
+			name       	"NameIfUnlabeled"
+			value      	"the_$supplier")
+		    (object Attribute
+			tool       	"cg"
+			name       	"GenerateDataMember"
+			value      	TRUE)
+		    (object Attribute
+			tool       	"cg"
+			name       	"DataMemberName"
+			value      	"$relationship")
+		    (object Attribute
+			tool       	"cg"
+			name       	"DataMemberVisibility"
+			value      	("DataMemberVisibilitySet" 14))
+		    (object Attribute
+			tool       	"cg"
+			name       	"DataMemberVisibilitySet"
+			value      	(list Attribute_Set
+			    (object Attribute
+				tool       	"cg"
+				name       	"Public"
+				value      	45)
+			    (object Attribute
+				tool       	"cg"
+				name       	"Protected"
+				value      	44)
+			    (object Attribute
+				tool       	"cg"
+				name       	"Private"
+				value      	43)
+			    (object Attribute
+				tool       	"cg"
+				name       	"Implementation"
+				value      	14)
+			    (object Attribute
+				tool       	"cg"
+				name       	"AtRelationshipVisibility"
+				value      	210)))
+		    (object Attribute
+			tool       	"cg"
+			name       	"DataMemberMutability"
+			value      	("DataMemberMutabilitySet" 0))
+		    (object Attribute
+			tool       	"cg"
+			name       	"DataMemberMutabilitySet"
+			value      	(list Attribute_Set
+			    (object Attribute
+				tool       	"cg"
+				name       	"Unrestricted"
+				value      	0)
+			    (object Attribute
+				tool       	"cg"
+				name       	"Mutable"
+				value      	1)
+			    (object Attribute
+				tool       	"cg"
+				name       	"Const"
+				value      	2)))
+		    (object Attribute
+			tool       	"cg"
+			name       	"DataMemberIsVolatile"
+			value      	FALSE)
+		    (object Attribute
+			tool       	"cg"
+			name       	"DataMemberFieldSize"
+			value      	"")
+		    (object Attribute
+			tool       	"cg"
+			name       	"InitialValue"
+			value      	(value Text ""))
+		    (object Attribute
+			tool       	"cg"
+			name       	"GenerateGetOperation"
+			value      	TRUE)
+		    (object Attribute
+			tool       	"cg"
+			name       	"GenerateSetOperation"
+			value      	TRUE)
+		    (object Attribute
+			tool       	"cg"
+			name       	"GetName"
+			value      	"get_$relationship")
+		    (object Attribute
+			tool       	"cg"
+			name       	"SetName"
+			value      	"set_$relationship")
+		    (object Attribute
+			tool       	"cg"
+			name       	"GetSetKinds"
+			value      	("GetSetKindsSet" 200))
+		    (object Attribute
+			tool       	"cg"
+			name       	"GetSetKindsSet"
+			value      	(list Attribute_Set
+			    (object Attribute
+				tool       	"cg"
+				name       	"Common"
+				value      	200)
+			    (object Attribute
+				tool       	"cg"
+				name       	"Virtual"
+				value      	201)
+			    (object Attribute
+				tool       	"cg"
+				name       	"Abstract"
+				value      	202)
+			    (object Attribute
+				tool       	"cg"
+				name       	"Static"
+				value      	203)
+			    (object Attribute
+				tool       	"cg"
+				name       	"Friend"
+				value      	204)))
+		    (object Attribute
+			tool       	"cg"
+			name       	"ContainerClass"
+			value      	"")
+		    (object Attribute
+			tool       	"cg"
+			name       	"SelectorName"
+			value      	"")
+		    (object Attribute
+			tool       	"cg"
+			name       	"SelectorType"
+			value      	"")
+		    (object Attribute
+			tool       	"cg"
+			name       	"GetIsConst"
+			value      	TRUE)
+		    (object Attribute
+			tool       	"cg"
+			name       	"GetResultIsConst"
+			value      	("GetResultIsConstSet" 2))
+		    (object Attribute
+			tool       	"cg"
+			name       	"GetResultIsConstSet"
+			value      	(list Attribute_Set
+			    (object Attribute
+				tool       	"cg"
+				name       	"False"
+				value      	0)
+			    (object Attribute
+				tool       	"cg"
+				name       	"True"
+				value      	1)
+			    (object Attribute
+				tool       	"cg"
+				name       	"Same_As_Function"
+				value      	2)))
+		    (object Attribute
+			tool       	"cg"
+			name       	"GetSetByReference"
+			value      	FALSE)
+		    (object Attribute
+			tool       	"cg"
+			name       	"InlineGet"
+			value      	TRUE)
+		    (object Attribute
+			tool       	"cg"
+			name       	"SetReturnsValue"
+			value      	FALSE)
+		    (object Attribute
+			tool       	"cg"
+			name       	"InlineSet"
+			value      	TRUE)
+		    (object Attribute
+			tool       	"cg"
+			name       	"ForwardReferenceOnly"
+			value      	FALSE)
+		    (object Attribute
+			tool       	"cg"
+			name       	"GenerateForwardReference"
+			value      	FALSE)
+		    (object Attribute
+			tool       	"cg"
+			name       	"IsReadOnly"
+			value      	FALSE)
+		    (object Attribute
+			tool       	"cg"
+			name       	"BoundedHasRelType"
+			value      	("HasRelTypeSet" 47))
+		    (object Attribute
+			tool       	"cg"
+			name       	"HasRelTypeSet"
+			value      	(list Attribute_Set
+			    (object Attribute
+				tool       	"cg"
+				name       	"Array"
+				value      	24)
+			    (object Attribute
+				tool       	"cg"
+				name       	"Sequence"
+				value      	47)))))
+	    (object Attribute
+		tool       	"cg"
+		name       	"default__Association"
+		value      	(list Attribute_Set
+		    (object Attribute
+			tool       	"cg"
+			name       	"NameIfUnlabeled"
+			value      	"the_$targetClass")))
+	    (object Attribute
+		tool       	"cg"
+		name       	"default__Inherit"
+		value      	(list Attribute_Set
+		    (object Attribute
+			tool       	"cg"
+			name       	"InstanceArguments"
+			value      	"")))
+	    (object Attribute
+		tool       	"cg"
+		name       	"default__Role"
+		value      	(list Attribute_Set
+		    (object Attribute
+			tool       	"cg"
+			name       	"CodeName"
+			value      	"")
+		    (object Attribute
+			tool       	"cg"
+			name       	"ForwardReferenceOnly"
+			value      	FALSE)
+		    (object Attribute
+			tool       	"cg"
+			name       	"NameIfUnlabeled"
+			value      	"the_$targetClass")
+		    (object Attribute
+			tool       	"cg"
+			name       	"GenerateDataMember"
+			value      	TRUE)
+		    (object Attribute
+			tool       	"cg"
+			name       	"DataMemberName"
+			value      	"$target")
+		    (object Attribute
+			tool       	"cg"
+			name       	"DataMemberVisibility"
+			value      	("DataMemberVisibilitySet" 14))
+		    (object Attribute
+			tool       	"cg"
+			name       	"DataMemberVisibilitySet"
+			value      	(list Attribute_Set
+			    (object Attribute
+				tool       	"cg"
+				name       	"Public"
+				value      	45)
+			    (object Attribute
+				tool       	"cg"
+				name       	"Protected"
+				value      	44)
+			    (object Attribute
+				tool       	"cg"
+				name       	"Private"
+				value      	43)
+			    (object Attribute
+				tool       	"cg"
+				name       	"Implementation"
+				value      	14)
+			    (object Attribute
+				tool       	"cg"
+				name       	"AtRelationshipVisibility"
+				value      	210)))
+		    (object Attribute
+			tool       	"cg"
+			name       	"DataMemberMutability"
+			value      	("DataMemberMutabilitySet" 0))
+		    (object Attribute
+			tool       	"cg"
+			name       	"DataMemberMutabilitySet"
+			value      	(list Attribute_Set
+			    (object Attribute
+				tool       	"cg"
+				name       	"Unrestricted"
+				value      	0)
+			    (object Attribute
+				tool       	"cg"
+				name       	"Mutable"
+				value      	1)
+			    (object Attribute
+				tool       	"cg"
+				name       	"Const"
+				value      	2)))
+		    (object Attribute
+			tool       	"cg"
+			name       	"DataMemberIsVolatile"
+			value      	FALSE)
+		    (object Attribute
+			tool       	"cg"
+			name       	"DataMemberFieldSize"
+			value      	"")
+		    (object Attribute
+			tool       	"cg"
+			name       	"InitialValue"
+			value      	(value Text ""))
+		    (object Attribute
+			tool       	"cg"
+			name       	"ContainerClass"
+			value      	"")
+		    (object Attribute
+			tool       	"cg"
+			name       	"ContainerGet"
+			value      	"$data.get($keys)")
+		    (object Attribute
+			tool       	"cg"
+			name       	"ContainerSet"
+			value      	"$data.set($keys,$value)")
+		    (object Attribute
+			tool       	"cg"
+			name       	"QualifiedContainer"
+			value      	"")
+		    (object Attribute
+			tool       	"cg"
+			name       	"AssocClassContainer"
+			value      	"$supplier *")
+		    (object Attribute
+			tool       	"cg"
+			name       	"AssocClassInitialValue"
+			value      	(value Text ""))
+		    (object Attribute
+			tool       	"cg"
+			name       	"GetSetKinds"
+			value      	("GetSetKindsSet" 200))
+		    (object Attribute
+			tool       	"cg"
+			name       	"GetSetKindsSet"
+			value      	(list Attribute_Set
+			    (object Attribute
+				tool       	"cg"
+				name       	"Common"
+				value      	200)
+			    (object Attribute
+				tool       	"cg"
+				name       	"Virtual"
+				value      	201)
+			    (object Attribute
+				tool       	"cg"
+				name       	"Abstract"
+				value      	202)
+			    (object Attribute
+				tool       	"cg"
+				name       	"Static"
+				value      	203)
+			    (object Attribute
+				tool       	"cg"
+				name       	"Friend"
+				value      	204)))
+		    (object Attribute
+			tool       	"cg"
+			name       	"GetSetByReference"
+			value      	FALSE)
+		    (object Attribute
+			tool       	"cg"
+			name       	"GenerateGetOperation"
+			value      	TRUE)
+		    (object Attribute
+			tool       	"cg"
+			name       	"GetName"
+			value      	"get_$target")
+		    (object Attribute
+			tool       	"cg"
+			name       	"GetIsConst"
+			value      	TRUE)
+		    (object Attribute
+			tool       	"cg"
+			name       	"GetResultIsConst"
+			value      	("GetResultIsConstSet" 2))
+		    (object Attribute
+			tool       	"cg"
+			name       	"GetResultIsConstSet"
+			value      	(list Attribute_Set
+			    (object Attribute
+				tool       	"cg"
+				name       	"False"
+				value      	0)
+			    (object Attribute
+				tool       	"cg"
+				name       	"True"
+				value      	1)
+			    (object Attribute
+				tool       	"cg"
+				name       	"Same_As_Function"
+				value      	2)))
+		    (object Attribute
+			tool       	"cg"
+			name       	"InlineGet"
+			value      	TRUE)
+		    (object Attribute
+			tool       	"cg"
+			name       	"GenerateSetOperation"
+			value      	TRUE)
+		    (object Attribute
+			tool       	"cg"
+			name       	"SetName"
+			value      	"set_$target")
+		    (object Attribute
+			tool       	"cg"
+			name       	"SetReturnsValue"
+			value      	FALSE)
+		    (object Attribute
+			tool       	"cg"
+			name       	"InlineSet"
+			value      	TRUE)
+		    (object Attribute
+			tool       	"cg"
+			name       	"QualifiedGetSetByReference"
+			value      	("QualifiedGetSetByReferenceSet" 2))
+		    (object Attribute
+			tool       	"cg"
+			name       	"QualifiedGetSetByReferenceSet"
+			value      	(list Attribute_Set
+			    (object Attribute
+				tool       	"cg"
+				name       	"False"
+				value      	0)
+			    (object Attribute
+				tool       	"cg"
+				name       	"True"
+				value      	1)
+			    (object Attribute
+				tool       	"cg"
+				name       	"Same_As_GetSetByReference"
+				value      	2)))
+		    (object Attribute
+			tool       	"cg"
+			name       	"GenerateQualifiedGetOperation"
+			value      	TRUE)
+		    (object Attribute
+			tool       	"cg"
+			name       	"QualifiedGetName"
+			value      	"get_$target")
+		    (object Attribute
+			tool       	"cg"
+			name       	"QualifiedGetIsConst"
+			value      	TRUE)
+		    (object Attribute
+			tool       	"cg"
+			name       	"QualifiedGetResultIsConst"
+			value      	("GetResultIsConstSet" 2))
+		    (object Attribute
+			tool       	"cg"
+			name       	"InlineQualifiedGet"
+			value      	TRUE)
+		    (object Attribute
+			tool       	"cg"
+			name       	"GenerateQualifiedSetOperation"
+			value      	TRUE)
+		    (object Attribute
+			tool       	"cg"
+			name       	"QualifiedSetName"
+			value      	"set_$target")
+		    (object Attribute
+			tool       	"cg"
+			name       	"QualifiedSetReturnsValue"
+			value      	FALSE)
+		    (object Attribute
+			tool       	"cg"
+			name       	"InlineQualifiedSet"
+			value      	TRUE)
+		    (object Attribute
+			tool       	"cg"
+			name       	"GenerateAssocClassDataMember"
+			value      	TRUE)
+		    (object Attribute
+			tool       	"cg"
+			name       	"AssocClassDataMemberName"
+			value      	"$target")
+		    (object Attribute
+			tool       	"cg"
+			name       	"AssocClassDataMemberVisibility"
+			value      	("DataMemberVisibilitySet" 14))
+		    (object Attribute
+			tool       	"cg"
+			name       	"DataMemberVisibilitySet"
+			value      	(list Attribute_Set
+			    (object Attribute
+				tool       	"cg"
+				name       	"Public"
+				value      	45)
+			    (object Attribute
+				tool       	"cg"
+				name       	"Protected"
+				value      	44)
+			    (object Attribute
+				tool       	"cg"
+				name       	"Private"
+				value      	43)
+			    (object Attribute
+				tool       	"cg"
+				name       	"Implementation"
+				value      	14)
+			    (object Attribute
+				tool       	"cg"
+				name       	"AtRelationshipVisibility"
+				value      	210)))
+		    (object Attribute
+			tool       	"cg"
+			name       	"AssocClassDataMemberMutability"
+			value      	("DataMemberMutabilitySet" 0))
+		    (object Attribute
+			tool       	"cg"
+			name       	"DataMemberMutabilitySet"
+			value      	(list Attribute_Set
+			    (object Attribute
+				tool       	"cg"
+				name       	"Unrestricted"
+				value      	0)
+			    (object Attribute
+				tool       	"cg"
+				name       	"Mutable"
+				value      	1)
+			    (object Attribute
+				tool       	"cg"
+				name       	"Const"
+				value      	2)))
+		    (object Attribute
+			tool       	"cg"
+			name       	"AssocClassDataMemberIsVolatile"
+			value      	FALSE)
+		    (object Attribute
+			tool       	"cg"
+			name       	"AssocClassGetSetKinds"
+			value      	("GetSetKindsSet" 200))
+		    (object Attribute
+			tool       	"cg"
+			name       	"GenerateAssocClassGetOperation"
+			value      	TRUE)
+		    (object Attribute
+			tool       	"cg"
+			name       	"AssocClassGetName"
+			value      	"get_$target")
+		    (object Attribute
+			tool       	"cg"
+			name       	"AssocClassGetIsConst"
+			value      	TRUE)
+		    (object Attribute
+			tool       	"cg"
+			name       	"AssocClassGetResultIsConst"
+			value      	("GetResultIsConstSet" 2))
+		    (object Attribute
+			tool       	"cg"
+			name       	"InlineAssocClassGet"
+			value      	TRUE)
+		    (object Attribute
+			tool       	"cg"
+			name       	"GenerateAssocClassSetOperation"
+			value      	TRUE)
+		    (object Attribute
+			tool       	"cg"
+			name       	"AssocClassSetName"
+			value      	"set_$target")
+		    (object Attribute
+			tool       	"cg"
+			name       	"AssocClassSetReturnsValue"
+			value      	FALSE)
+		    (object Attribute
+			tool       	"cg"
+			name       	"InlineAssocClassSet"
+			value      	TRUE)
+		    (object Attribute
+			tool       	"cg"
+			name       	"AssocClassForwardReferenceOnly"
+			value      	TRUE)
+		    (object Attribute
+			tool       	"cg"
+			name       	"GenerateForwardReference"
+			value      	FALSE)
+		    (object Attribute
+			tool       	"cg"
+			name       	"IsReadOnly"
+			value      	FALSE)
+		    (object Attribute
+			tool       	"cg"
+			name       	"BoundedRoleType"
+			value      	("AssocTypeSet" 47))
+		    (object Attribute
+			tool       	"cg"
+			name       	"AssocTypeSet"
+			value      	(list Attribute_Set
+			    (object Attribute
+				tool       	"cg"
+				name       	"Array"
+				value      	24)
+			    (object Attribute
+				tool       	"cg"
+				name       	"Sequence"
+				value      	47)))))
+	    (object Attribute
+		tool       	"cg"
+		name       	"default__Attribute"
+		value      	(list Attribute_Set
+		    (object Attribute
+			tool       	"cg"
+			name       	"CodeName"
+			value      	"")
+		    (object Attribute
+			tool       	"cg"
+			name       	"GenerateDataMember"
+			value      	TRUE)
+		    (object Attribute
+			tool       	"cg"
+			name       	"DataMemberName"
+			value      	"$attribute")
+		    (object Attribute
+			tool       	"cg"
+			name       	"DataMemberVisibility"
+			value      	("DataMemberVisibilitySet" 14))
+		    (object Attribute
+			tool       	"cg"
+			name       	"DataMemberVisibilitySet"
+			value      	(list Attribute_Set
+			    (object Attribute
+				tool       	"cg"
+				name       	"Public"
+				value      	45)
+			    (object Attribute
+				tool       	"cg"
+				name       	"Protected"
+				value      	44)
+			    (object Attribute
+				tool       	"cg"
+				name       	"Private"
+				value      	43)
+			    (object Attribute
+				tool       	"cg"
+				name       	"Implementation"
+				value      	14)
+			    (object Attribute
+				tool       	"cg"
+				name       	"AtAttributeVisibility"
+				value      	211)))
+		    (object Attribute
+			tool       	"cg"
+			name       	"DataMemberMutability"
+			value      	("DataMemberMutabilitySet" 0))
+		    (object Attribute
+			tool       	"cg"
+			name       	"DataMemberMutabilitySet"
+			value      	(list Attribute_Set
+			    (object Attribute
+				tool       	"cg"
+				name       	"Unrestricted"
+				value      	0)
+			    (object Attribute
+				tool       	"cg"
+				name       	"Mutable"
+				value      	1)
+			    (object Attribute
+				tool       	"cg"
+				name       	"Const"
+				value      	2)))
+		    (object Attribute
+			tool       	"cg"
+			name       	"DataMemberIsVolatile"
+			value      	FALSE)
+		    (object Attribute
+			tool       	"cg"
+			name       	"DataMemberFieldSize"
+			value      	"")
+		    (object Attribute
+			tool       	"cg"
+			name       	"GenerateGetOperation"
+			value      	TRUE)
+		    (object Attribute
+			tool       	"cg"
+			name       	"GenerateSetOperation"
+			value      	TRUE)
+		    (object Attribute
+			tool       	"cg"
+			name       	"GetName"
+			value      	"get_$attribute")
+		    (object Attribute
+			tool       	"cg"
+			name       	"SetName"
+			value      	"set_$attribute")
+		    (object Attribute
+			tool       	"cg"
+			name       	"GetSetKinds"
+			value      	("GetSetKindsSet" 200))
+		    (object Attribute
+			tool       	"cg"
+			name       	"GetSetKindsSet"
+			value      	(list Attribute_Set
+			    (object Attribute
+				tool       	"cg"
+				name       	"Common"
+				value      	200)
+			    (object Attribute
+				tool       	"cg"
+				name       	"Virtual"
+				value      	201)
+			    (object Attribute
+				tool       	"cg"
+				name       	"Abstract"
+				value      	202)
+			    (object Attribute
+				tool       	"cg"
+				name       	"Static"
+				value      	203)
+			    (object Attribute
+				tool       	"cg"
+				name       	"Friend"
+				value      	204)))
+		    (object Attribute
+			tool       	"cg"
+			name       	"GetIsConst"
+			value      	TRUE)
+		    (object Attribute
+			tool       	"cg"
+			name       	"GetResultIsConst"
+			value      	("GetResultIsConstSet" 2))
+		    (object Attribute
+			tool       	"cg"
+			name       	"GetResultIsConstSet"
+			value      	(list Attribute_Set
+			    (object Attribute
+				tool       	"cg"
+				name       	"False"
+				value      	0)
+			    (object Attribute
+				tool       	"cg"
+				name       	"True"
+				value      	1)
+			    (object Attribute
+				tool       	"cg"
+				name       	"Same_As_Function"
+				value      	2)))
+		    (object Attribute
+			tool       	"cg"
+			name       	"GetSetByReference"
+			value      	FALSE)
+		    (object Attribute
+			tool       	"cg"
+			name       	"InlineGet"
+			value      	TRUE)
+		    (object Attribute
+			tool       	"cg"
+			name       	"SetReturnsValue"
+			value      	FALSE)
+		    (object Attribute
+			tool       	"cg"
+			name       	"InlineSet"
+			value      	TRUE)
+		    (object Attribute
+			tool       	"cg"
+			name       	"CaseSpecifier"
+			value      	"")
+		    (object Attribute
+			tool       	"cg"
+			name       	"IsReadOnly"
+			value      	FALSE)))
+	    (object Attribute
+		tool       	"cg"
+		name       	"default__Uses"
+		value      	(list Attribute_Set
+		    (object Attribute
+			tool       	"cg"
+			name       	"ForwardReferenceOnly"
+			value      	FALSE)
+		    (object Attribute
+			tool       	"cg"
+			name       	"BodyReferenceOnly"
+			value      	FALSE)
+		    (object Attribute
+			tool       	"cg"
+			name       	"GenerateForwardReference"
+			value      	FALSE)))
+	    (object Attribute
+		tool       	"cg"
+		name       	"default__Subsystem"
+		value      	(list Attribute_Set
+		    (object Attribute
+			tool       	"cg"
+			name       	"Directory"
+			value      	"AUTO GENERATE")
+		    (object Attribute
+			tool       	"cg"
+			name       	"DirectoryIsOnSearchList"
+			value      	FALSE)
+		    (object Attribute
+			tool       	"cg"
+			name       	"PrecompiledHeader"
+			value      	"")))
+	    (object Attribute
+		tool       	"cg"
+		name       	"default__Category"
+		value      	(list Attribute_Set
+		    (object Attribute
+			tool       	"cg"
+			name       	"IsNamespace"
+			value      	FALSE)
+		    (object Attribute
+			tool       	"cg"
+			name       	"Indent"
+			value      	2)
+		    (object Attribute
+			tool       	"cg"
+			name       	"CodeName"
+			value      	"")
+		    (object Attribute
+			tool       	"cg"
+			name       	"GenerateEmptyRegions"
+			value      	("GenerateEmptyRegionSet" 3))
+		    (object Attribute
+			tool       	"cg"
+			name       	"GenerateEmptyRegionSet"
+			value      	(list Attribute_Set
+			    (object Attribute
+				tool       	"cg"
+				name       	"None"
+				value      	0)
+			    (object Attribute
+				tool       	"cg"
+				name       	"Preserved"
+				value      	1)
+			    (object Attribute
+				tool       	"cg"
+				name       	"Unpreserved"
+				value      	2)
+			    (object Attribute
+				tool       	"cg"
+				name       	"All"
+				value      	3)))))
+	    (object Attribute
+		tool       	"MSVC"
+		name       	"propertyId"
+		value      	"809135966")
+	    (object Attribute
+		tool       	"MSVC"
+		name       	"default__Project"
+		value      	(list Attribute_Set
+		    (object Attribute
+			tool       	"MSVC"
+			name       	"Version"
+			value      	"5.0")))
+	    (object Attribute
+		tool       	"MSVC"
+		name       	"default__Class"
+		value      	(list Attribute_Set
+		    (object Attribute
+			tool       	"MSVC"
+			name       	"Type"
+			value      	("MSVCClassTypeSet" 0))
+		    (object Attribute
+			tool       	"MSVC"
+			name       	"MSVCClassTypeSet"
+			value      	(list Attribute_Set
+			    (object Attribute
+				tool       	"MSVC"
+				name       	"Normal"
+				value      	0)
+			    (object Attribute
+				tool       	"MSVC"
+				name       	"Interface_Part"
+				value      	1)
+			    (object Attribute
+				tool       	"MSVC"
+				name       	"Connection_Part"
+				value      	2)
+			    (object Attribute
+				tool       	"MSVC"
+				name       	"Class_Factory"
+				value      	3)))
+		    (object Attribute
+			tool       	"MSVC"
+			name       	"CObjectFunctionality"
+			value      	("CObjectFunctionalitySet" 0))
+		    (object Attribute
+			tool       	"MSVC"
+			name       	"CObjectFunctionalitySet"
+			value      	(list Attribute_Set
+			    (object Attribute
+				tool       	"MSVC"
+				name       	"None"
+				value      	0)
+			    (object Attribute
+				tool       	"MSVC"
+				name       	"Dynamic"
+				value      	1)
+			    (object Attribute
+				tool       	"MSVC"
+				name       	"Dyncreate"
+				value      	2)
+			    (object Attribute
+				tool       	"MSVC"
+				name       	"Serial"
+				value      	3)))
+		    (object Attribute
+			tool       	"MSVC"
+			name       	"GenerateOverrideGroup"
+			value      	FALSE)
+		    (object Attribute
+			tool       	"MSVC"
+			name       	"GenerateDataGroup"
+			value      	FALSE)
+		    (object Attribute
+			tool       	"MSVC"
+			name       	"AFX_DATA_Entries"
+			value      	(value Text ""))
+		    (object Attribute
+			tool       	"MSVC"
+			name       	"GenerateFieldGroup"
+			value      	FALSE)
+		    (object Attribute
+			tool       	"MSVC"
+			name       	"AFX_FIELD_Entries"
+			value      	(value Text ""))
+		    (object Attribute
+			tool       	"MSVC"
+			name       	"GenerateMessageGroup"
+			value      	FALSE)
+		    (object Attribute
+			tool       	"MSVC"
+			name       	"GenerateMessageMap"
+			value      	FALSE)
+		    (object Attribute
+			tool       	"MSVC"
+			name       	"AFX_MSG_MAP_Entries"
+			value      	(value Text ""))
+		    (object Attribute
+			tool       	"MSVC"
+			name       	"MESSAGE_MAP_Entries"
+			value      	(value Text ""))
+		    (object Attribute
+			tool       	"MSVC"
+			name       	"OLEFactory"
+			value      	("OLEFactorySet" 0))
+		    (object Attribute
+			tool       	"MSVC"
+			name       	"OLEFactorySet"
+			value      	(list Attribute_Set
+			    (object Attribute
+				tool       	"MSVC"
+				name       	"None"
+				value      	0)
+			    (object Attribute
+				tool       	"MSVC"
+				name       	"Built_in"
+				value      	1)
+			    (object Attribute
+				tool       	"MSVC"
+				name       	"Simple"
+				value      	2)
+			    (object Attribute
+				tool       	"MSVC"
+				name       	"Licensed"
+				value      	3)))
+		    (object Attribute
+			tool       	"MSVC"
+			name       	"OLEName"
+			value      	"")
+		    (object Attribute
+			tool       	"MSVC"
+			name       	"OLEClassID"
+			value      	"")
+		    (object Attribute
+			tool       	"MSVC"
+			name       	"GenerateOLECtlType"
+			value      	FALSE)
+		    (object Attribute
+			tool       	"MSVC"
+			name       	"OLECtlType"
+			value      	"")
+		    (object Attribute
+			tool       	"MSVC"
+			name       	"GenerateOLETypeLib"
+			value      	FALSE)
+		    (object Attribute
+			tool       	"MSVC"
+			name       	"OLETypeLibID"
+			value      	"")
+		    (object Attribute
+			tool       	"MSVC"
+			name       	"OLETypeLibMajor"
+			value      	"")
+		    (object Attribute
+			tool       	"MSVC"
+			name       	"OLETypeLibMinor"
+			value      	"")
+		    (object Attribute
+			tool       	"MSVC"
+			name       	"GeneratePropPageIDs"
+			value      	FALSE)
+		    (object Attribute
+			tool       	"MSVC"
+			name       	"OLEPropPageIDs"
+			value      	(value Text ""))
+		    (object Attribute
+			tool       	"MSVC"
+			name       	"GenerateDispatchMap"
+			value      	FALSE)
+		    (object Attribute
+			tool       	"MSVC"
+			name       	"AFX_DISPATCH_Entries"
+			value      	(value Text ""))
+		    (object Attribute
+			tool       	"MSVC"
+			name       	"AFX_DISPATCH_MAP_Entries"
+			value      	(value Text ""))
+		    (object Attribute
+			tool       	"MSVC"
+			name       	"DISPATCH_MAP_Entries"
+			value      	(value Text ""))
+		    (object Attribute
+			tool       	"MSVC"
+			name       	"StockProperties"
+			value      	(value Text ""))
+		    (object Attribute
+			tool       	"MSVC"
+			name       	"StockFunctions"
+			value      	(value Text ""))
+		    (object Attribute
+			tool       	"MSVC"
+			name       	"DispatchDefValue"
+			value      	"")
+		    (object Attribute
+			tool       	"MSVC"
+			name       	"GenerateDispIdEnum"
+			value      	FALSE)
+		    (object Attribute
+			tool       	"MSVC"
+			name       	"AFX_DISP_ID_Entries"
+			value      	(value Text ""))
+		    (object Attribute
+			tool       	"MSVC"
+			name       	"GenerateInterfaceMap"
+			value      	FALSE)
+		    (object Attribute
+			tool       	"MSVC"
+			name       	"INTERFACE_MAP_Entries"
+			value      	(value Text ""))
+		    (object Attribute
+			tool       	"MSVC"
+			name       	"InitInterface"
+			value      	"")
+		    (object Attribute
+			tool       	"MSVC"
+			name       	"GenerateEventMap"
+			value      	FALSE)
+		    (object Attribute
+			tool       	"MSVC"
+			name       	"AFX_EVENT_Entries"
+			value      	(value Text ""))
+		    (object Attribute
+			tool       	"MSVC"
+			name       	"AFX_EVENT_MAP_Entries"
+			value      	(value Text ""))
+		    (object Attribute
+			tool       	"MSVC"
+			name       	"EVENT_MAP_Entries"
+			value      	(value Text ""))
+		    (object Attribute
+			tool       	"MSVC"
+			name       	"StockEvents"
+			value      	(value Text ""))
+		    (object Attribute
+			tool       	"MSVC"
+			name       	"GenerateEventSinkMap"
+			value      	FALSE)
+		    (object Attribute
+			tool       	"MSVC"
+			name       	"AFX_EVENTSINK_Entries"
+			value      	(value Text ""))
+		    (object Attribute
+			tool       	"MSVC"
+			name       	"AFX_EVENTSINK_MAP_Entries"
+			value      	(value Text ""))
+		    (object Attribute
+			tool       	"MSVC"
+			name       	"EVENTSINK_MAP_Entries"
+			value      	(value Text ""))
+		    (object Attribute
+			tool       	"MSVC"
+			name       	"PropNotifySinks"
+			value      	(value Text ""))
+		    (object Attribute
+			tool       	"MSVC"
+			name       	"GenerateConnectionMap"
+			value      	FALSE)
+		    (object Attribute
+			tool       	"MSVC"
+			name       	"CONNECTION_MAP_Entries"
+			value      	(value Text ""))
+		    (object Attribute
+			tool       	"MSVC"
+			name       	"ConnectionPointIID"
+			value      	"")
+		    (object Attribute
+			tool       	"MSVC"
+			name       	"InheritanceType"
+			value      	"")
+		    (object Attribute
+			tool       	"MSVC"
+			name       	"DeclSpec"
+			value      	"")
+		    (object Attribute
+			tool       	"MSVC"
+			name       	"OLECommands"
+			value      	(value Text ""))
+		    (object Attribute
+			tool       	"MSVC"
+			name       	"MFCDeclares"
+			value      	(value Text ""))
+		    (object Attribute
+			tool       	"MSVC"
+			name       	"MFCImplements"
+			value      	(value Text ""))
+		    (object Attribute
+			tool       	"MSVC"
+			name       	"ATL_Declares"
+			value      	(value Text ""))
+		    (object Attribute
+			tool       	"MSVC"
+			name       	"GenerateCOMMap"
+			value      	FALSE)
+		    (object Attribute
+			tool       	"MSVC"
+			name       	"COM_MAP_Entries"
+			value      	(value Text ""))
+		    (object Attribute
+			tool       	"MSVC"
+			name       	"GenerateConnectionPointMap"
+			value      	FALSE)
+		    (object Attribute
+			tool       	"MSVC"
+			name       	"CONNECTION_POINT_MAP_Entries"
+			value      	(value Text ""))
+		    (object Attribute
+			tool       	"MSVC"
+			name       	"GenerateMsgMap"
+			value      	FALSE)
+		    (object Attribute
+			tool       	"MSVC"
+			name       	"MSG_MAP_Entries"
+			value      	(value Text ""))
+		    (object Attribute
+			tool       	"MSVC"
+			name       	"GeneratePropertyMap"
+			value      	FALSE)
+		    (object Attribute
+			tool       	"MSVC"
+			name       	"PROPERTY_MAP_Entries"
+			value      	(value Text ""))))
+	    (object Attribute
+		tool       	"MSVC"
+		name       	"default__Operation"
+		value      	(list Attribute_Set
+		    (object Attribute
+			tool       	"MSVC"
+			name       	"Type"
+			value      	("MSVCOperationTypeSet" 0))
+		    (object Attribute
+			tool       	"MSVC"
+			name       	"MSVCOperationTypeSet"
+			value      	(list Attribute_Set
+			    (object Attribute
+				tool       	"MSVC"
+				name       	"Normal"
+				value      	0)
+			    (object Attribute
+				tool       	"MSVC"
+				name       	"Virtual_Override"
+				value      	1)
+			    (object Attribute
+				tool       	"MSVC"
+				name       	"Message_Handler"
+				value      	2)
+			    (object Attribute
+				tool       	"MSVC"
+				name       	"Dispatch_Handler"
+				value      	3)
+			    (object Attribute
+				tool       	"MSVC"
+				name       	"Event_Firing_Function"
+				value      	4)
+			    (object Attribute
+				tool       	"MSVC"
+				name       	"Event_Sink_Handler"
+				value      	5)
+			    (object Attribute
+				tool       	"MSVC"
+				name       	"Std_OLE_Method"
+				value      	6)
+			    (object Attribute
+				tool       	"MSVC"
+				name       	"Command_Parser"
+				value      	7)
+			    (object Attribute
+				tool       	"MSVC"
+				name       	"Property_Get_Function"
+				value      	8)
+			    (object Attribute
+				tool       	"MSVC"
+				name       	"Property_Set_Function"
+				value      	9)
+			    (object Attribute
+				tool       	"MSVC"
+				name       	"Property_Notify_Function"
+				value      	10)
+			    (object Attribute
+				tool       	"MSVC"
+				name       	"Macro_Generated_Function"
+				value      	11)))
+		    (object Attribute
+			tool       	"MSVC"
+			name       	"AFX_MSG_MAP_Entries"
+			value      	(value Text ""))
+		    (object Attribute
+			tool       	"MSVC"
+			name       	"MESSAGE_MAP_Entries"
+			value      	(value Text ""))
+		    (object Attribute
+			tool       	"MSVC"
+			name       	"AFX_DISPATCH_MAP_Entries"
+			value      	(value Text ""))
+		    (object Attribute
+			tool       	"MSVC"
+			name       	"DISPATCH_MAP_Entries"
+			value      	(value Text ""))
+		    (object Attribute
+			tool       	"MSVC"
+			name       	"AFX_EVENT_MAP_Entries"
+			value      	(value Text ""))
+		    (object Attribute
+			tool       	"MSVC"
+			name       	"EVENT_MAP_Entries"
+			value      	(value Text ""))
+		    (object Attribute
+			tool       	"MSVC"
+			name       	"AFX_EVENTSINK_MAP_Entries"
+			value      	(value Text ""))
+		    (object Attribute
+			tool       	"MSVC"
+			name       	"EVENTSINK_MAP_Entries"
+			value      	(value Text ""))
+		    (object Attribute
+			tool       	"MSVC"
+			name       	"CallType"
+			value      	"")
+		    (object Attribute
+			tool       	"MSVC"
+			name       	"DeclSpec"
+			value      	"")
+		    (object Attribute
+			tool       	"MSVC"
+			name       	"BodyImage"
+			value      	(value Text ""))))
+	    (object Attribute
+		tool       	"MSVC"
+		name       	"default__Role"
+		value      	(list Attribute_Set
+		    (object Attribute
+			tool       	"MSVC"
+			name       	"Type"
+			value      	("MSVCAttributeTypeSet" 0))
+		    (object Attribute
+			tool       	"MSVC"
+			name       	"MSVCAttributeTypeSet"
+			value      	(list Attribute_Set
+			    (object Attribute
+				tool       	"MSVC"
+				name       	"Normal"
+				value      	0)
+			    (object Attribute
+				tool       	"MSVC"
+				name       	"Member_Property"
+				value      	1)
+			    (object Attribute
+				tool       	"MSVC"
+				name       	"Get_Set_Property"
+				value      	2)
+			    (object Attribute
+				tool       	"MSVC"
+				name       	"Dialog_Data"
+				value      	3)
+			    (object Attribute
+				tool       	"MSVC"
+				name       	"Field_Data"
+				value      	4)
+			    (object Attribute
+				tool       	"MSVC"
+				name       	"Stock_Property"
+				value      	5)))
+		    (object Attribute
+			tool       	"MSVC"
+			name       	"AFX_DISPATCH_MAP_Entries"
+			value      	(value Text ""))
+		    (object Attribute
+			tool       	"MSVC"
+			name       	"DISPATCH_MAP_Entries"
+			value      	(value Text ""))
+		    (object Attribute
+			tool       	"MSVC"
+			name       	"DeclSpec"
+			value      	"")
+		    (object Attribute
+			tool       	"MSVC"
+			name       	"PointerBase"
+			value      	"")
+		    (object Attribute
+			tool       	"MSVC"
+			name       	"CallType"
+			value      	"")
+		    (object Attribute
+			tool       	"MSVC"
+			name       	"StockPropertyImplementation"
+			value      	"")))
+	    (object Attribute
+		tool       	"MSVC"
+		name       	"default__Has"
+		value      	(list Attribute_Set
+		    (object Attribute
+			tool       	"MSVC"
+			name       	"Type"
+			value      	("MSVCAttributeTypeSet" 0))
+		    (object Attribute
+			tool       	"MSVC"
+			name       	"MSVCAttributeTypeSet"
+			value      	(list Attribute_Set
+			    (object Attribute
+				tool       	"MSVC"
+				name       	"Normal"
+				value      	0)
+			    (object Attribute
+				tool       	"MSVC"
+				name       	"Member_Property"
+				value      	1)
+			    (object Attribute
+				tool       	"MSVC"
+				name       	"Get_Set_Property"
+				value      	2)
+			    (object Attribute
+				tool       	"MSVC"
+				name       	"Dialog_Data"
+				value      	3)
+			    (object Attribute
+				tool       	"MSVC"
+				name       	"Field_Data"
+				value      	4)
+			    (object Attribute
+				tool       	"MSVC"
+				name       	"Stock_Property"
+				value      	5)))
+		    (object Attribute
+			tool       	"MSVC"
+			name       	"AFX_DISPATCH_MAP_Entries"
+			value      	(value Text ""))
+		    (object Attribute
+			tool       	"MSVC"
+			name       	"DISPATCH_MAP_Entries"
+			value      	(value Text ""))
+		    (object Attribute
+			tool       	"MSVC"
+			name       	"DeclSpec"
+			value      	"")
+		    (object Attribute
+			tool       	"MSVC"
+			name       	"PointerBase"
+			value      	"")
+		    (object Attribute
+			tool       	"MSVC"
+			name       	"CallType"
+			value      	"")
+		    (object Attribute
+			tool       	"MSVC"
+			name       	"StockPropertyImplementation"
+			value      	"")))
+	    (object Attribute
+		tool       	"MSVC"
+		name       	"default__Attribute"
+		value      	(list Attribute_Set
+		    (object Attribute
+			tool       	"MSVC"
+			name       	"Type"
+			value      	("MSVCAttributeTypeSet" 0))
+		    (object Attribute
+			tool       	"MSVC"
+			name       	"MSVCAttributeTypeSet"
+			value      	(list Attribute_Set
+			    (object Attribute
+				tool       	"MSVC"
+				name       	"Normal"
+				value      	0)
+			    (object Attribute
+				tool       	"MSVC"
+				name       	"Member_Property"
+				value      	1)
+			    (object Attribute
+				tool       	"MSVC"
+				name       	"Get_Set_Property"
+				value      	2)
+			    (object Attribute
+				tool       	"MSVC"
+				name       	"Dialog_Data"
+				value      	3)
+			    (object Attribute
+				tool       	"MSVC"
+				name       	"Field_Data"
+				value      	4)
+			    (object Attribute
+				tool       	"MSVC"
+				name       	"Stock_Property"
+				value      	5)))
+		    (object Attribute
+			tool       	"MSVC"
+			name       	"AFX_DISPATCH_MAP_Entries"
+			value      	(value Text ""))
+		    (object Attribute
+			tool       	"MSVC"
+			name       	"DISPATCH_MAP_Entries"
+			value      	(value Text ""))
+		    (object Attribute
+			tool       	"MSVC"
+			name       	"DeclSpec"
+			value      	"")
+		    (object Attribute
+			tool       	"MSVC"
+			name       	"PointerBase"
+			value      	"")
+		    (object Attribute
+			tool       	"MSVC"
+			name       	"CallType"
+			value      	"")
+		    (object Attribute
+			tool       	"MSVC"
+			name       	"StockPropertyImplementation"
+			value      	"")))
+	    (object Attribute
+		tool       	"MSVC"
+		name       	"default__Module-Spec"
+		value      	(list Attribute_Set
+		    (object Attribute
+			tool       	"MSVC"
+			name       	"GenerateIncludesGroup"
+			value      	FALSE)
+		    (object Attribute
+			tool       	"MSVC"
+			name       	"AFX_INCLUDES_Entries"
+			value      	(value Text ""))
+		    (object Attribute
+			tool       	"MSVC"
+			name       	"GenerateInsertLocation"
+			value      	FALSE)))
+	    (object Attribute
+		tool       	"MSVC"
+		name       	"default__Module-Body"
+		value      	(list Attribute_Set
+		    (object Attribute
+			tool       	"MSVC"
+			name       	"GenerateIncludesGroup"
+			value      	FALSE)
+		    (object Attribute
+			tool       	"MSVC"
+			name       	"AFX_INCLUDES_Entries"
+			value      	(value Text ""))
+		    (object Attribute
+			tool       	"MSVC"
+			name       	"GenerateInsertLocation"
+			value      	FALSE)))
+	    (object Attribute
+		tool       	"cg"
+		name       	"HiddenTool"
+		value      	FALSE)
+	    (object Attribute
+		tool       	"SCC"
+		name       	"HiddenTool"
+		value      	FALSE)
+	    (object Attribute
+		tool       	"RoseHTML"
+		name       	"HiddenTool"
+		value      	FALSE))
+	quid       	"354838250009"))

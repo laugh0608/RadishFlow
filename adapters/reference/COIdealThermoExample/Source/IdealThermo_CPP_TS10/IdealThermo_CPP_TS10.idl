@@ -1,0 +1,34 @@
+// IdealThermo_CPP_TS10.idl : IDL source for IdealThermo_CPP_TS10
+//
+
+// This file will be processed by the MIDL tool to
+// produce the type library (IdealThermo_CPP_TS10.tlb) and marshalling code.
+
+import "oaidl.idl";
+import "ocidl.idl";
+
+[
+	uuid(08927B52-83FB-4E32-B445-EC96DA769E41),
+	version(1.0),
+	helpstring("IdealThermo_CPP_TS10 1.0 Type Library")
+]
+library IdealThermo_CPP_TS10Lib
+{
+	importlib("stdole2.tlb");
+	[
+		uuid(A52095F0-2205-4AC8-BDE3-33FA329C35AE),
+		helpstring("ThermoSystem Class")
+	]
+	coclass ThermoSystem
+	{
+		[default] interface IDispatch;
+	};
+	[
+		uuid(A23A5E69-DA16-4168-84CF-0BA4A84C83F6),
+		helpstring("PropertyPackage Class")
+	]
+	coclass PropertyPackage
+	{
+		[default] interface IDispatch;
+	};
+};

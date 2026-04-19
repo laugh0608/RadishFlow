@@ -1,0 +1,442 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+	<Product Id="*" Name="USEPA CAPE-OPEN Library with WAR Plug-in" Language="1033" Version="1.0.0.0" Manufacturer="US Enviornmental Protection Agency" UpgradeCode="443A3713-DCA3-4B3D-9C43-4D5CA9CEE1B6">
+		<Package InstallerVersion="200" Compressed="yes" InstallScope="perMachine" />
+
+		<MajorUpgrade DowngradeErrorMessage="A newer version of [ProductName] is already installed." />
+    <Media Id='1' Cabinet='product.cab' EmbedCab='yes'/>
+
+		<Feature Id="ProductFeature" Title="USEPACapeOpenSetup" Level="1">
+			<ComponentGroupRef Id="ProductComponents" />
+		</Feature>
+    <Icon 
+      Id="usepaIcons" 
+      SourceFile="$(var.CapeOpen.TargetPath)"
+      />
+    <Property Id="ARPPRODUCTICON" Value="usepaIcons" />
+	</Product>
+
+	<Fragment>
+		<Directory Id="TARGETDIR" Name="SourceDir">
+			<Directory Id="ProgramFilesFolder">
+				<Directory Id="INSTALLFOLDER" Name="USEPA" />
+			</Directory>
+		</Directory>
+	</Fragment>
+
+	<Fragment>
+		<ComponentGroup Id="ProductComponents" Directory="INSTALLFOLDER">
+			<!-- TODO: Remove the comments around this Component element and the ComponentRef below in order to add resources to this installer. -->
+      <Component Id="ProductComponent" Guid = "01F2A900-E40E-47E7-A1FD-33654AE42782">
+        <!-- TODO: Insert files, registry keys, and other resources here. -->
+        <RemoveFolder Id="ProgramFilesFolder" On="uninstall"/>
+        <Class Id="{0BE9CCFD-29B4-4A42-B34E-76F5FE9B6BB4}" Context="InprocServer32" Description="CapeOpen.WARAddIn" ThreadingModel="both" ForeignServer="mscoree.dll">
+          <ProgId Id="CapeOpen.WARAddIn" Description="CapeOpen.WARAddIn" />
+        </Class>
+        <Class Id="{0D5CA7D8-6574-4C7B-9B5F-320AA8375A3C}" Context="InprocServer32" Description="CapeOpen.CapeTimeOutException" ThreadingModel="both" ForeignServer="mscoree.dll">
+          <ProgId Id="CapeOpen.CapeTimeOutException" Description="CapeOpen.CapeTimeOutException" />
+        </Class>
+        <Class Id="{1056A260-A996-4A1E-8BAE-9476D643282B}" Context="InprocServer32" Description="CapeOpen.CapeNoMemoryException" ThreadingModel="both" ForeignServer="mscoree.dll">
+          <ProgId Id="CapeOpen.CapeNoMemoryException" Description="CapeOpen.CapeNoMemoryException" />
+        </Class>
+        <Class Id="{16049506-E086-4BAF-9905-9ED13D50D0E3}" Context="InprocServer32" Description="CapeOpen.CapeUnexpectedException" ThreadingModel="both" ForeignServer="mscoree.dll">
+          <ProgId Id="CapeOpen.CapeUnexpectedException" Description="CapeOpen.CapeUnexpectedException" />
+        </Class>
+        <Class Id="{1C5F7CC3-31B4-4D81-829F-3EB5D692F7BD}" Context="InprocServer32" Description="CapeOpen.PortCollection" ThreadingModel="both" ForeignServer="mscoree.dll">
+          <ProgId Id="CapeOpen.PortCollection" Description="CapeOpen.PortCollection" />
+        </Class>
+        <Class Id="{1D2488A6-C428-4E38-AFA6-04F2107172DA}" Context="InprocServer32" Description="CapeOpen.CapeNoImplException" ThreadingModel="both" ForeignServer="mscoree.dll">
+          <ProgId Id="CapeOpen.CapeNoImplException" Description="CapeOpen.CapeNoImplException" />
+        </Class>
+        <Class Id="{3044EA08-F054-4315-B67B-4E3CD2CF0B1E}" Context="InprocServer32" Description="CapeOpen.CapeHessianInfoNotAvailableException" ThreadingModel="both" ForeignServer="mscoree.dll">
+          <ProgId Id="CapeOpen.CapeHessianInfoNotAvailableException" Description="CapeOpen.CapeHessianInfoNotAvailableException" />
+        </Class>
+        <Class Id="{3237C6F8-3D46-47EE-B25F-52485A5253D8}" Context="InprocServer32" Description="CapeOpen.CapePersistenceException" ThreadingModel="both" ForeignServer="mscoree.dll">
+          <ProgId Id="CapeOpen.CapePersistenceException" Description="CapeOpen.CapePersistenceException" />
+        </Class>
+        <Class Id="{3A223DEE-8414-4802-8391-D1B11B276A0F}" Context="InprocServer32" Description="CapeOpen.UnitOperationSystem" ThreadingModel="both" ForeignServer="mscoree.dll">
+          <ProgId Id="CapeOpen.UnitOperationSystem" Description="CapeOpen.UnitOperationSystem" />
+        </Class>
+        <Class Id="{42B785A7-2EDD-4808-AC43-9E6E96373616}" Context="InprocServer32" Description="CapeOpen.CapeOutOfResourcesException" ThreadingModel="both" ForeignServer="mscoree.dll">
+          <ProgId Id="CapeOpen.CapeOutOfResourcesException" Description="CapeOpen.CapeOutOfResourcesException" />
+        </Class>
+        <Class Id="{45843244-ECC9-495D-ADC3-BF9980A083EB}" Context="InprocServer32" Description="CapeOpen.CapeIllegalAccessException" ThreadingModel="both" ForeignServer="mscoree.dll">
+          <ProgId Id="CapeOpen.CapeIllegalAccessException" Description="CapeOpen.CapeIllegalAccessException" />
+        </Class>
+        <Class Id="{53551E7C-ECB2-4894-B71A-CCD1E7D40995}" Context="InprocServer32" Description="CapeOpen.CapeDataException" ThreadingModel="both" ForeignServer="mscoree.dll">
+          <ProgId Id="CapeOpen.CapeDataException" Description="CapeOpen.CapeDataException" />
+        </Class>
+        <Class Id="{56E8FDFD-2000-4264-9B47-745B26BE0EC9}" Context="InprocServer32" Description="CapeOpen.MixerExample110" ThreadingModel="both" ForeignServer="mscoree.dll">
+          <ProgId Id="CapeOpen.MixerExample110" Description="CapeOpen.MixerExample110" />
+        </Class>
+        <Class Id="{5BA36B8F-6187-4E5E-B263-0924365C9A81}" Context="InprocServer32" Description="CapeOpen.CapeThrmPropertyNotAvailableException" ThreadingModel="both" ForeignServer="mscoree.dll">
+          <ProgId Id="CapeOpen.CapeThrmPropertyNotAvailableException" Description="CapeOpen.CapeThrmPropertyNotAvailableException" />
+        </Class>
+        <Class Id="{5E6B74A2-D603-4E90-A92F-608E3F1CD39D}" Context="InprocServer32" Description="CapeOpen.CapeLimitedImplException" ThreadingModel="both" ForeignServer="mscoree.dll">
+          <ProgId Id="CapeOpen.CapeLimitedImplException" Description="CapeOpen.CapeLimitedImplException" />
+        </Class>
+        <Class Id="{64A1B36C-106B-4D05-B585-D176CD4DD1DB}" Context="InprocServer32" Description="CapeOpen.ParameterCollection" ThreadingModel="both" ForeignServer="mscoree.dll">
+          <ProgId Id="CapeOpen.ParameterCollection" Description="CapeOpen.ParameterCollection" />
+        </Class>
+        <Class Id="{7828A87E-582D-4947-9E8F-4F56725B6D75}" Context="InprocServer32" Description="CapeOpen.CapeImplementationException" ThreadingModel="both" ForeignServer="mscoree.dll">
+          <ProgId Id="CapeOpen.CapeImplementationException" Description="CapeOpen.CapeImplementationException" />
+        </Class>
+        <Class Id="{85CB2D40-48F6-4C33-BF0C-79CB00684440}" Context="InprocServer32" Description="CapeOpen.CapePersistenceSystemErrorException" ThreadingModel="both" ForeignServer="mscoree.dll">
+          <ProgId Id="CapeOpen.CapePersistenceSystemErrorException" Description="CapeOpen.CapePersistenceSystemErrorException" />
+        </Class>
+        <Class Id="{883D46FE-5713-424C-BF10-7ED34263CD6D}" Context="InprocServer32" Description="CapeOpen.MixerExample" ThreadingModel="both" ForeignServer="mscoree.dll">
+          <ProgId Id="CapeOpen.MixerExample" Description="CapeOpen.MixerExample" />
+        </Class>
+        <Class Id="{9D416BF5-B9E3-429A-B13A-222EE85A92A7}" Context="InprocServer32" Description="CapeOpen.CapeComputationException" ThreadingModel="both" ForeignServer="mscoree.dll">
+          <ProgId Id="CapeOpen.CapeComputationException" Description="CapeOpen.CapeComputationException" />
+        </Class>
+        <Class Id="{A119DE0B-C11E-4A14-BA5E-9A2D20B15578}" Context="InprocServer32" Description="CapeOpen.CapePersistenceOverflowException" ThreadingModel="both" ForeignServer="mscoree.dll">
+          <ProgId Id="CapeOpen.CapePersistenceOverflowException" Description="CapeOpen.CapePersistenceOverflowException" />
+        </Class>
+        <Class Id="{B550B2CA-6714-4E7F-813E-C93248142410}" Context="InprocServer32" Description="CapeOpen.CapeUnknownException" ThreadingModel="both" ForeignServer="mscoree.dll">
+          <ProgId Id="CapeOpen.CapeUnknownException" Description="CapeOpen.CapeUnknownException" />
+        </Class>
+        <Class Id="{C0B943FE-FB8F-46B6-A622-54D30027D18B}" Context="InprocServer32" Description="CapeOpen.CapeInvalidOperationException" ThreadingModel="both" ForeignServer="mscoree.dll">
+          <ProgId Id="CapeOpen.CapeInvalidOperationException" Description="CapeOpen.CapeInvalidOperationException" />
+        </Class>
+        <Class Id="{C6E08496-4269-321A-986D-3B68FF2FFD81}" Context="InprocServer32" Description="CapeOpen.UnitSelector" ThreadingModel="both" ForeignServer="mscoree.dll">
+          <ProgId Id="CapeOpen.UnitSelector" Description="CapeOpen.UnitSelector" />
+        </Class>
+        <Class Id="{CF4C55E9-6B0A-4248-9A33-B8134EA393F6}" Context="InprocServer32" Description="CapeOpen.CapeLicenceErrorException" ThreadingModel="both" ForeignServer="mscoree.dll">
+          <ProgId Id="CapeOpen.CapeLicenceErrorException" Description="CapeOpen.CapeLicenceErrorException" />
+        </Class>
+        <Class Id="{E407595C-6D1C-4B8C-A29D-DB0BE73EFDDA}" Context="InprocServer32" Description="CapeOpen.CapeFailedInitialisationException" ThreadingModel="both" ForeignServer="mscoree.dll">
+          <ProgId Id="CapeOpen.CapeFailedInitialisationException" Description="CapeOpen.CapeFailedInitialisationException" />
+        </Class>
+        <Class Id="{F617AFEA-0EEE-4395-8C82-288BF8F2A136}" Context="InprocServer32" Description="CapeOpen.CapeSolvingErrorException" ThreadingModel="both" ForeignServer="mscoree.dll">
+          <ProgId Id="CapeOpen.CapeSolvingErrorException" Description="CapeOpen.CapeSolvingErrorException" />
+        </Class>
+        <File Id="fil575A92CD508F2D24ED041A168D401FE4" KeyPath="yes" Source="$(var.CapeOpen.TargetPath)">
+        <!--
+        <TypeLib Id="{D80FC39B-897E-4038-A89E-D89CEC9A5FA1}" Description="CapeOpen" HelpDirectory="dir39B22699688E51DCD8DCBB99A47E835B" Language="0" MajorVersion="2" MinorVersion="1">
+        -->
+        <TypeLib Id="{D80FC39B-897E-4038-A89E-D89CEC9A5FA1}" Description="CapeOpen" Language="0" MajorVersion="2" MinorVersion="1">
+          <Interface Id="{267CC71B-C33A-3EB2-B6E8-7306500C22BF}" Name="_ComponentDescriptionChangedHandler" ProxyStubClassId32="{00020424-0000-0000-C000-000000000046}" />
+          <Interface Id="{90A4C93F-DA47-3B19-A908-1C38A0F2EAA2}" Name="_ComponentNameChangedHandler" ProxyStubClassId32="{00020424-0000-0000-C000-000000000046}" />
+        </TypeLib>
+        </File>
+        <ProgId Id="Record" />
+        <RegistryValue Root="HKCR" Key="CLSID\{0BE9CCFD-29B4-4A42-B34E-76F5FE9B6BB4}\CapeDescription" Name="Name" Value="WAR Add-In" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{0BE9CCFD-29B4-4A42-B34E-76F5FE9B6BB4}\CapeDescription" Name="Description" Value="Waste Reduction Algorithm Add-in" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{0BE9CCFD-29B4-4A42-B34E-76F5FE9B6BB4}\CapeDescription" Name="CapeVersion" Value="1.0" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{0BE9CCFD-29B4-4A42-B34E-76F5FE9B6BB4}\CapeDescription" Name="ComponentVersion" Value="2.1.0.0" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{0BE9CCFD-29B4-4A42-B34E-76F5FE9B6BB4}\CapeDescription" Name="VendorURL" Value="http://www.epa.gov/nrmrl/std/sab/war/sim_war.htm" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{0BE9CCFD-29B4-4A42-B34E-76F5FE9B6BB4}\CapeDescription" Name="HelpURL" Value="" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{0BE9CCFD-29B4-4A42-B34E-76F5FE9B6BB4}\CapeDescription" Name="About" Value="Waste Reduction Algorithm Add-in" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{0BE9CCFD-29B4-4A42-B34E-76F5FE9B6BB4}\Implemented Categories\{62C8FE65-4EBB-45e7-B440-6E39B2CDBF29}" Value="" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{0BE9CCFD-29B4-4A42-B34E-76F5FE9B6BB4}\Implemented Categories\{678c09a1-7d66-11d2-a67d-00105a42887f}" Value="" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{0BE9CCFD-29B4-4A42-B34E-76F5FE9B6BB4}\Implemented Categories\{7BA1AF89-B2E4-493d-BD80-2970BF4CBE99}" Value="" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{0BE9CCFD-29B4-4A42-B34E-76F5FE9B6BB4}\InprocServer32" Name="Class" Value="CapeOpen.WARAddIn" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{0BE9CCFD-29B4-4A42-B34E-76F5FE9B6BB4}\InprocServer32" Name="Assembly" Value="CapeOpen, Version=2.1.0.0, Culture=neutral, PublicKeyToken=90d5303f0e924b64" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{0BE9CCFD-29B4-4A42-B34E-76F5FE9B6BB4}\InprocServer32" Name="RuntimeVersion" Value="v4.0.30319" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{0BE9CCFD-29B4-4A42-B34E-76F5FE9B6BB4}\InprocServer32" Name="CodeBase" Value="file:///[#fil575A92CD508F2D24ED041A168D401FE4]" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{0D5CA7D8-6574-4C7B-9B5F-320AA8375A3C}\Implemented Categories\{62C8FE65-4EBB-45e7-B440-6E39B2CDBF29}" Value="" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{0D5CA7D8-6574-4C7B-9B5F-320AA8375A3C}\InprocServer32\2.1.0.0" Name="Class" Value="CapeOpen.CapeTimeOutException" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{0D5CA7D8-6574-4C7B-9B5F-320AA8375A3C}\InprocServer32\2.1.0.0" Name="Assembly" Value="CapeOpen, Version=2.1.0.0, Culture=neutral, PublicKeyToken=90d5303f0e924b64" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{0D5CA7D8-6574-4C7B-9B5F-320AA8375A3C}\InprocServer32\2.1.0.0" Name="RuntimeVersion" Value="v4.0.30319" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{0D5CA7D8-6574-4C7B-9B5F-320AA8375A3C}\InprocServer32\2.1.0.0" Name="CodeBase" Value="file:///[#fil575A92CD508F2D24ED041A168D401FE4]" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{0D5CA7D8-6574-4C7B-9B5F-320AA8375A3C}\InprocServer32" Name="Class" Value="CapeOpen.CapeTimeOutException" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{0D5CA7D8-6574-4C7B-9B5F-320AA8375A3C}\InprocServer32" Name="Assembly" Value="CapeOpen, Version=2.1.0.0, Culture=neutral, PublicKeyToken=90d5303f0e924b64" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{0D5CA7D8-6574-4C7B-9B5F-320AA8375A3C}\InprocServer32" Name="RuntimeVersion" Value="v4.0.30319" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{0D5CA7D8-6574-4C7B-9B5F-320AA8375A3C}\InprocServer32" Name="CodeBase" Value="file:///[#fil575A92CD508F2D24ED041A168D401FE4]" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{1056A260-A996-4A1E-8BAE-9476D643282B}\Implemented Categories\{62C8FE65-4EBB-45e7-B440-6E39B2CDBF29}" Value="" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{1056A260-A996-4A1E-8BAE-9476D643282B}\InprocServer32\2.1.0.0" Name="Class" Value="CapeOpen.CapeNoMemoryException" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{1056A260-A996-4A1E-8BAE-9476D643282B}\InprocServer32\2.1.0.0" Name="Assembly" Value="CapeOpen, Version=2.1.0.0, Culture=neutral, PublicKeyToken=90d5303f0e924b64" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{1056A260-A996-4A1E-8BAE-9476D643282B}\InprocServer32\2.1.0.0" Name="RuntimeVersion" Value="v4.0.30319" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{1056A260-A996-4A1E-8BAE-9476D643282B}\InprocServer32\2.1.0.0" Name="CodeBase" Value="file:///[#fil575A92CD508F2D24ED041A168D401FE4]" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{1056A260-A996-4A1E-8BAE-9476D643282B}\InprocServer32" Name="Class" Value="CapeOpen.CapeNoMemoryException" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{1056A260-A996-4A1E-8BAE-9476D643282B}\InprocServer32" Name="Assembly" Value="CapeOpen, Version=2.1.0.0, Culture=neutral, PublicKeyToken=90d5303f0e924b64" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{1056A260-A996-4A1E-8BAE-9476D643282B}\InprocServer32" Name="RuntimeVersion" Value="v4.0.30319" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{1056A260-A996-4A1E-8BAE-9476D643282B}\InprocServer32" Name="CodeBase" Value="file:///[#fil575A92CD508F2D24ED041A168D401FE4]" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{16049506-E086-4BAF-9905-9ED13D50D0E3}\Implemented Categories\{62C8FE65-4EBB-45e7-B440-6E39B2CDBF29}" Value="" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{16049506-E086-4BAF-9905-9ED13D50D0E3}\InprocServer32\2.1.0.0" Name="Class" Value="CapeOpen.CapeUnexpectedException" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{16049506-E086-4BAF-9905-9ED13D50D0E3}\InprocServer32\2.1.0.0" Name="Assembly" Value="CapeOpen, Version=2.1.0.0, Culture=neutral, PublicKeyToken=90d5303f0e924b64" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{16049506-E086-4BAF-9905-9ED13D50D0E3}\InprocServer32\2.1.0.0" Name="RuntimeVersion" Value="v4.0.30319" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{16049506-E086-4BAF-9905-9ED13D50D0E3}\InprocServer32\2.1.0.0" Name="CodeBase" Value="file:///[#fil575A92CD508F2D24ED041A168D401FE4]" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{16049506-E086-4BAF-9905-9ED13D50D0E3}\InprocServer32" Name="Class" Value="CapeOpen.CapeUnexpectedException" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{16049506-E086-4BAF-9905-9ED13D50D0E3}\InprocServer32" Name="Assembly" Value="CapeOpen, Version=2.1.0.0, Culture=neutral, PublicKeyToken=90d5303f0e924b64" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{16049506-E086-4BAF-9905-9ED13D50D0E3}\InprocServer32" Name="RuntimeVersion" Value="v4.0.30319" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{16049506-E086-4BAF-9905-9ED13D50D0E3}\InprocServer32" Name="CodeBase" Value="file:///[#fil575A92CD508F2D24ED041A168D401FE4]" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{1C5F7CC3-31B4-4D81-829F-3EB5D692F7BD}\Implemented Categories\{62C8FE65-4EBB-45e7-B440-6E39B2CDBF29}" Value="" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{1C5F7CC3-31B4-4D81-829F-3EB5D692F7BD}\InprocServer32\2.1.0.0" Name="Class" Value="CapeOpen.PortCollection" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{1C5F7CC3-31B4-4D81-829F-3EB5D692F7BD}\InprocServer32\2.1.0.0" Name="Assembly" Value="CapeOpen, Version=2.1.0.0, Culture=neutral, PublicKeyToken=90d5303f0e924b64" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{1C5F7CC3-31B4-4D81-829F-3EB5D692F7BD}\InprocServer32\2.1.0.0" Name="RuntimeVersion" Value="v4.0.30319" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{1C5F7CC3-31B4-4D81-829F-3EB5D692F7BD}\InprocServer32\2.1.0.0" Name="CodeBase" Value="file:///[#fil575A92CD508F2D24ED041A168D401FE4]" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{1C5F7CC3-31B4-4D81-829F-3EB5D692F7BD}\InprocServer32" Name="Class" Value="CapeOpen.PortCollection" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{1C5F7CC3-31B4-4D81-829F-3EB5D692F7BD}\InprocServer32" Name="Assembly" Value="CapeOpen, Version=2.1.0.0, Culture=neutral, PublicKeyToken=90d5303f0e924b64" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{1C5F7CC3-31B4-4D81-829F-3EB5D692F7BD}\InprocServer32" Name="RuntimeVersion" Value="v4.0.30319" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{1C5F7CC3-31B4-4D81-829F-3EB5D692F7BD}\InprocServer32" Name="CodeBase" Value="file:///[#fil575A92CD508F2D24ED041A168D401FE4]" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{1D2488A6-C428-4E38-AFA6-04F2107172DA}\Implemented Categories\{62C8FE65-4EBB-45e7-B440-6E39B2CDBF29}" Value="" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{1D2488A6-C428-4E38-AFA6-04F2107172DA}\InprocServer32\2.1.0.0" Name="Class" Value="CapeOpen.CapeNoImplException" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{1D2488A6-C428-4E38-AFA6-04F2107172DA}\InprocServer32\2.1.0.0" Name="Assembly" Value="CapeOpen, Version=2.1.0.0, Culture=neutral, PublicKeyToken=90d5303f0e924b64" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{1D2488A6-C428-4E38-AFA6-04F2107172DA}\InprocServer32\2.1.0.0" Name="RuntimeVersion" Value="v4.0.30319" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{1D2488A6-C428-4E38-AFA6-04F2107172DA}\InprocServer32\2.1.0.0" Name="CodeBase" Value="file:///[#fil575A92CD508F2D24ED041A168D401FE4]" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{1D2488A6-C428-4E38-AFA6-04F2107172DA}\InprocServer32" Name="Class" Value="CapeOpen.CapeNoImplException" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{1D2488A6-C428-4E38-AFA6-04F2107172DA}\InprocServer32" Name="Assembly" Value="CapeOpen, Version=2.1.0.0, Culture=neutral, PublicKeyToken=90d5303f0e924b64" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{1D2488A6-C428-4E38-AFA6-04F2107172DA}\InprocServer32" Name="RuntimeVersion" Value="v4.0.30319" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{1D2488A6-C428-4E38-AFA6-04F2107172DA}\InprocServer32" Name="CodeBase" Value="file:///[#fil575A92CD508F2D24ED041A168D401FE4]" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{3044EA08-F054-4315-B67B-4E3CD2CF0B1E}\Implemented Categories\{62C8FE65-4EBB-45e7-B440-6E39B2CDBF29}" Value="" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{3044EA08-F054-4315-B67B-4E3CD2CF0B1E}\InprocServer32\2.1.0.0" Name="Class" Value="CapeOpen.CapeHessianInfoNotAvailableException" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{3044EA08-F054-4315-B67B-4E3CD2CF0B1E}\InprocServer32\2.1.0.0" Name="Assembly" Value="CapeOpen, Version=2.1.0.0, Culture=neutral, PublicKeyToken=90d5303f0e924b64" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{3044EA08-F054-4315-B67B-4E3CD2CF0B1E}\InprocServer32\2.1.0.0" Name="RuntimeVersion" Value="v4.0.30319" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{3044EA08-F054-4315-B67B-4E3CD2CF0B1E}\InprocServer32\2.1.0.0" Name="CodeBase" Value="file:///[#fil575A92CD508F2D24ED041A168D401FE4]" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{3044EA08-F054-4315-B67B-4E3CD2CF0B1E}\InprocServer32" Name="Class" Value="CapeOpen.CapeHessianInfoNotAvailableException" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{3044EA08-F054-4315-B67B-4E3CD2CF0B1E}\InprocServer32" Name="Assembly" Value="CapeOpen, Version=2.1.0.0, Culture=neutral, PublicKeyToken=90d5303f0e924b64" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{3044EA08-F054-4315-B67B-4E3CD2CF0B1E}\InprocServer32" Name="RuntimeVersion" Value="v4.0.30319" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{3044EA08-F054-4315-B67B-4E3CD2CF0B1E}\InprocServer32" Name="CodeBase" Value="file:///[#fil575A92CD508F2D24ED041A168D401FE4]" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{3237C6F8-3D46-47EE-B25F-52485A5253D8}\Implemented Categories\{62C8FE65-4EBB-45e7-B440-6E39B2CDBF29}" Value="" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{3237C6F8-3D46-47EE-B25F-52485A5253D8}\InprocServer32\2.1.0.0" Name="Class" Value="CapeOpen.CapePersistenceException" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{3237C6F8-3D46-47EE-B25F-52485A5253D8}\InprocServer32\2.1.0.0" Name="Assembly" Value="CapeOpen, Version=2.1.0.0, Culture=neutral, PublicKeyToken=90d5303f0e924b64" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{3237C6F8-3D46-47EE-B25F-52485A5253D8}\InprocServer32\2.1.0.0" Name="RuntimeVersion" Value="v4.0.30319" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{3237C6F8-3D46-47EE-B25F-52485A5253D8}\InprocServer32\2.1.0.0" Name="CodeBase" Value="file:///[#fil575A92CD508F2D24ED041A168D401FE4]" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{3237C6F8-3D46-47EE-B25F-52485A5253D8}\InprocServer32" Name="Class" Value="CapeOpen.CapePersistenceException" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{3237C6F8-3D46-47EE-B25F-52485A5253D8}\InprocServer32" Name="Assembly" Value="CapeOpen, Version=2.1.0.0, Culture=neutral, PublicKeyToken=90d5303f0e924b64" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{3237C6F8-3D46-47EE-B25F-52485A5253D8}\InprocServer32" Name="RuntimeVersion" Value="v4.0.30319" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{3237C6F8-3D46-47EE-B25F-52485A5253D8}\InprocServer32" Name="CodeBase" Value="file:///[#fil575A92CD508F2D24ED041A168D401FE4]" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{3A223DEE-8414-4802-8391-D1B11B276A0F}\Implemented Categories\{62C8FE65-4EBB-45e7-B440-6E39B2CDBF29}" Value="" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{3A223DEE-8414-4802-8391-D1B11B276A0F}\InprocServer32\2.1.0.0" Name="Class" Value="CapeOpen.UnitOperationSystem" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{3A223DEE-8414-4802-8391-D1B11B276A0F}\InprocServer32\2.1.0.0" Name="Assembly" Value="CapeOpen, Version=2.1.0.0, Culture=neutral, PublicKeyToken=90d5303f0e924b64" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{3A223DEE-8414-4802-8391-D1B11B276A0F}\InprocServer32\2.1.0.0" Name="RuntimeVersion" Value="v4.0.30319" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{3A223DEE-8414-4802-8391-D1B11B276A0F}\InprocServer32\2.1.0.0" Name="CodeBase" Value="file:///[#fil575A92CD508F2D24ED041A168D401FE4]" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{3A223DEE-8414-4802-8391-D1B11B276A0F}\InprocServer32" Name="Class" Value="CapeOpen.UnitOperationSystem" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{3A223DEE-8414-4802-8391-D1B11B276A0F}\InprocServer32" Name="Assembly" Value="CapeOpen, Version=2.1.0.0, Culture=neutral, PublicKeyToken=90d5303f0e924b64" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{3A223DEE-8414-4802-8391-D1B11B276A0F}\InprocServer32" Name="RuntimeVersion" Value="v4.0.30319" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{3A223DEE-8414-4802-8391-D1B11B276A0F}\InprocServer32" Name="CodeBase" Value="file:///[#fil575A92CD508F2D24ED041A168D401FE4]" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{42B785A7-2EDD-4808-AC43-9E6E96373616}\Implemented Categories\{62C8FE65-4EBB-45e7-B440-6E39B2CDBF29}" Value="" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{42B785A7-2EDD-4808-AC43-9E6E96373616}\InprocServer32\2.1.0.0" Name="Class" Value="CapeOpen.CapeOutOfResourcesException" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{42B785A7-2EDD-4808-AC43-9E6E96373616}\InprocServer32\2.1.0.0" Name="Assembly" Value="CapeOpen, Version=2.1.0.0, Culture=neutral, PublicKeyToken=90d5303f0e924b64" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{42B785A7-2EDD-4808-AC43-9E6E96373616}\InprocServer32\2.1.0.0" Name="RuntimeVersion" Value="v4.0.30319" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{42B785A7-2EDD-4808-AC43-9E6E96373616}\InprocServer32\2.1.0.0" Name="CodeBase" Value="file:///[#fil575A92CD508F2D24ED041A168D401FE4]" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{42B785A7-2EDD-4808-AC43-9E6E96373616}\InprocServer32" Name="Class" Value="CapeOpen.CapeOutOfResourcesException" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{42B785A7-2EDD-4808-AC43-9E6E96373616}\InprocServer32" Name="Assembly" Value="CapeOpen, Version=2.1.0.0, Culture=neutral, PublicKeyToken=90d5303f0e924b64" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{42B785A7-2EDD-4808-AC43-9E6E96373616}\InprocServer32" Name="RuntimeVersion" Value="v4.0.30319" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{42B785A7-2EDD-4808-AC43-9E6E96373616}\InprocServer32" Name="CodeBase" Value="file:///[#fil575A92CD508F2D24ED041A168D401FE4]" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{45843244-ECC9-495D-ADC3-BF9980A083EB}\Implemented Categories\{62C8FE65-4EBB-45e7-B440-6E39B2CDBF29}" Value="" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{45843244-ECC9-495D-ADC3-BF9980A083EB}\InprocServer32\2.1.0.0" Name="Class" Value="CapeOpen.CapeIllegalAccessException" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{45843244-ECC9-495D-ADC3-BF9980A083EB}\InprocServer32\2.1.0.0" Name="Assembly" Value="CapeOpen, Version=2.1.0.0, Culture=neutral, PublicKeyToken=90d5303f0e924b64" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{45843244-ECC9-495D-ADC3-BF9980A083EB}\InprocServer32\2.1.0.0" Name="RuntimeVersion" Value="v4.0.30319" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{45843244-ECC9-495D-ADC3-BF9980A083EB}\InprocServer32\2.1.0.0" Name="CodeBase" Value="file:///[#fil575A92CD508F2D24ED041A168D401FE4]" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{45843244-ECC9-495D-ADC3-BF9980A083EB}\InprocServer32" Name="Class" Value="CapeOpen.CapeIllegalAccessException" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{45843244-ECC9-495D-ADC3-BF9980A083EB}\InprocServer32" Name="Assembly" Value="CapeOpen, Version=2.1.0.0, Culture=neutral, PublicKeyToken=90d5303f0e924b64" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{45843244-ECC9-495D-ADC3-BF9980A083EB}\InprocServer32" Name="RuntimeVersion" Value="v4.0.30319" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{45843244-ECC9-495D-ADC3-BF9980A083EB}\InprocServer32" Name="CodeBase" Value="file:///[#fil575A92CD508F2D24ED041A168D401FE4]" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{53551E7C-ECB2-4894-B71A-CCD1E7D40995}\Implemented Categories\{62C8FE65-4EBB-45e7-B440-6E39B2CDBF29}" Value="" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{53551E7C-ECB2-4894-B71A-CCD1E7D40995}\InprocServer32\2.1.0.0" Name="Class" Value="CapeOpen.CapeDataException" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{53551E7C-ECB2-4894-B71A-CCD1E7D40995}\InprocServer32\2.1.0.0" Name="Assembly" Value="CapeOpen, Version=2.1.0.0, Culture=neutral, PublicKeyToken=90d5303f0e924b64" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{53551E7C-ECB2-4894-B71A-CCD1E7D40995}\InprocServer32\2.1.0.0" Name="RuntimeVersion" Value="v4.0.30319" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{53551E7C-ECB2-4894-B71A-CCD1E7D40995}\InprocServer32\2.1.0.0" Name="CodeBase" Value="file:///[#fil575A92CD508F2D24ED041A168D401FE4]" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{53551E7C-ECB2-4894-B71A-CCD1E7D40995}\InprocServer32" Name="Class" Value="CapeOpen.CapeDataException" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{53551E7C-ECB2-4894-B71A-CCD1E7D40995}\InprocServer32" Name="Assembly" Value="CapeOpen, Version=2.1.0.0, Culture=neutral, PublicKeyToken=90d5303f0e924b64" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{53551E7C-ECB2-4894-B71A-CCD1E7D40995}\InprocServer32" Name="RuntimeVersion" Value="v4.0.30319" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{53551E7C-ECB2-4894-B71A-CCD1E7D40995}\InprocServer32" Name="CodeBase" Value="file:///[#fil575A92CD508F2D24ED041A168D401FE4]" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{56E8FDFD-2000-4264-9B47-745B26BE0EC9}\CapeDescription" Name="Name" Value="MixerExample110" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{56E8FDFD-2000-4264-9B47-745B26BE0EC9}\CapeDescription" Name="Description" Value="An example mixer unit operation using CAPE-OPEN Thermo Version 1.1." Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{56E8FDFD-2000-4264-9B47-745B26BE0EC9}\CapeDescription" Name="CapeVersion" Value="http:\www.epa.gov" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{56E8FDFD-2000-4264-9B47-745B26BE0EC9}\CapeDescription" Name="ComponentVersion" Value="2.1.0.0" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{56E8FDFD-2000-4264-9B47-745B26BE0EC9}\CapeDescription" Name="VendorURL" Value="" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{56E8FDFD-2000-4264-9B47-745B26BE0EC9}\CapeDescription" Name="HelpURL" Value="http:\www.epa.gov" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{56E8FDFD-2000-4264-9B47-745B26BE0EC9}\CapeDescription" Name="About" Value="US Environmental Protection Agency&#xA;Cincinnati, Ohio" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{56E8FDFD-2000-4264-9B47-745B26BE0EC9}\Implemented Categories\{4150C28A-EE06-403f-A871-87AFEC38A249}" Value="" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{56E8FDFD-2000-4264-9B47-745B26BE0EC9}\Implemented Categories\{4667023A-5A8E-4cca-AB6D-9D78C5112FED}" Value="" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{56E8FDFD-2000-4264-9B47-745B26BE0EC9}\Implemented Categories\{62C8FE65-4EBB-45e7-B440-6E39B2CDBF29}" Value="" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{56E8FDFD-2000-4264-9B47-745B26BE0EC9}\Implemented Categories\{678c09a1-7d66-11d2-a67d-00105a42887f}" Value="" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{56E8FDFD-2000-4264-9B47-745B26BE0EC9}\Implemented Categories\{678c09a5-7d66-11d2-a67d-00105a42887f}" Value="" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{56E8FDFD-2000-4264-9B47-745B26BE0EC9}\InprocServer32" Name="Class" Value="CapeOpen.MixerExample110" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{56E8FDFD-2000-4264-9B47-745B26BE0EC9}\InprocServer32" Name="Assembly" Value="CapeOpen, Version=2.1.0.0, Culture=neutral, PublicKeyToken=90d5303f0e924b64" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{56E8FDFD-2000-4264-9B47-745B26BE0EC9}\InprocServer32" Name="RuntimeVersion" Value="v4.0.30319" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{56E8FDFD-2000-4264-9B47-745B26BE0EC9}\InprocServer32" Name="CodeBase" Value="file:///[#fil575A92CD508F2D24ED041A168D401FE4]" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{5BA36B8F-6187-4E5E-B263-0924365C9A81}\Implemented Categories\{62C8FE65-4EBB-45e7-B440-6E39B2CDBF29}" Value="" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{5BA36B8F-6187-4E5E-B263-0924365C9A81}\InprocServer32\2.1.0.0" Name="Class" Value="CapeOpen.CapeThrmPropertyNotAvailableException" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{5BA36B8F-6187-4E5E-B263-0924365C9A81}\InprocServer32\2.1.0.0" Name="Assembly" Value="CapeOpen, Version=2.1.0.0, Culture=neutral, PublicKeyToken=90d5303f0e924b64" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{5BA36B8F-6187-4E5E-B263-0924365C9A81}\InprocServer32\2.1.0.0" Name="RuntimeVersion" Value="v4.0.30319" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{5BA36B8F-6187-4E5E-B263-0924365C9A81}\InprocServer32\2.1.0.0" Name="CodeBase" Value="file:///[#fil575A92CD508F2D24ED041A168D401FE4]" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{5BA36B8F-6187-4E5E-B263-0924365C9A81}\InprocServer32" Name="Class" Value="CapeOpen.CapeThrmPropertyNotAvailableException" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{5BA36B8F-6187-4E5E-B263-0924365C9A81}\InprocServer32" Name="Assembly" Value="CapeOpen, Version=2.1.0.0, Culture=neutral, PublicKeyToken=90d5303f0e924b64" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{5BA36B8F-6187-4E5E-B263-0924365C9A81}\InprocServer32" Name="RuntimeVersion" Value="v4.0.30319" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{5BA36B8F-6187-4E5E-B263-0924365C9A81}\InprocServer32" Name="CodeBase" Value="file:///[#fil575A92CD508F2D24ED041A168D401FE4]" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{5E6B74A2-D603-4E90-A92F-608E3F1CD39D}\Implemented Categories\{62C8FE65-4EBB-45e7-B440-6E39B2CDBF29}" Value="" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{5E6B74A2-D603-4E90-A92F-608E3F1CD39D}\InprocServer32\2.1.0.0" Name="Class" Value="CapeOpen.CapeLimitedImplException" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{5E6B74A2-D603-4E90-A92F-608E3F1CD39D}\InprocServer32\2.1.0.0" Name="Assembly" Value="CapeOpen, Version=2.1.0.0, Culture=neutral, PublicKeyToken=90d5303f0e924b64" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{5E6B74A2-D603-4E90-A92F-608E3F1CD39D}\InprocServer32\2.1.0.0" Name="RuntimeVersion" Value="v4.0.30319" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{5E6B74A2-D603-4E90-A92F-608E3F1CD39D}\InprocServer32\2.1.0.0" Name="CodeBase" Value="file:///[#fil575A92CD508F2D24ED041A168D401FE4]" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{5E6B74A2-D603-4E90-A92F-608E3F1CD39D}\InprocServer32" Name="Class" Value="CapeOpen.CapeLimitedImplException" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{5E6B74A2-D603-4E90-A92F-608E3F1CD39D}\InprocServer32" Name="Assembly" Value="CapeOpen, Version=2.1.0.0, Culture=neutral, PublicKeyToken=90d5303f0e924b64" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{5E6B74A2-D603-4E90-A92F-608E3F1CD39D}\InprocServer32" Name="RuntimeVersion" Value="v4.0.30319" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{5E6B74A2-D603-4E90-A92F-608E3F1CD39D}\InprocServer32" Name="CodeBase" Value="file:///[#fil575A92CD508F2D24ED041A168D401FE4]" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{64A1B36C-106B-4D05-B585-D176CD4DD1DB}\Implemented Categories\{62C8FE65-4EBB-45e7-B440-6E39B2CDBF29}" Value="" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{64A1B36C-106B-4D05-B585-D176CD4DD1DB}\InprocServer32\2.1.0.0" Name="Class" Value="CapeOpen.ParameterCollection" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{64A1B36C-106B-4D05-B585-D176CD4DD1DB}\InprocServer32\2.1.0.0" Name="Assembly" Value="CapeOpen, Version=2.1.0.0, Culture=neutral, PublicKeyToken=90d5303f0e924b64" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{64A1B36C-106B-4D05-B585-D176CD4DD1DB}\InprocServer32\2.1.0.0" Name="RuntimeVersion" Value="v4.0.30319" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{64A1B36C-106B-4D05-B585-D176CD4DD1DB}\InprocServer32\2.1.0.0" Name="CodeBase" Value="file:///[#fil575A92CD508F2D24ED041A168D401FE4]" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{64A1B36C-106B-4D05-B585-D176CD4DD1DB}\InprocServer32" Name="Class" Value="CapeOpen.ParameterCollection" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{64A1B36C-106B-4D05-B585-D176CD4DD1DB}\InprocServer32" Name="Assembly" Value="CapeOpen, Version=2.1.0.0, Culture=neutral, PublicKeyToken=90d5303f0e924b64" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{64A1B36C-106B-4D05-B585-D176CD4DD1DB}\InprocServer32" Name="RuntimeVersion" Value="v4.0.30319" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{64A1B36C-106B-4D05-B585-D176CD4DD1DB}\InprocServer32" Name="CodeBase" Value="file:///[#fil575A92CD508F2D24ED041A168D401FE4]" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{7828A87E-582D-4947-9E8F-4F56725B6D75}\Implemented Categories\{62C8FE65-4EBB-45e7-B440-6E39B2CDBF29}" Value="" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{7828A87E-582D-4947-9E8F-4F56725B6D75}\InprocServer32\2.1.0.0" Name="Class" Value="CapeOpen.CapeImplementationException" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{7828A87E-582D-4947-9E8F-4F56725B6D75}\InprocServer32\2.1.0.0" Name="Assembly" Value="CapeOpen, Version=2.1.0.0, Culture=neutral, PublicKeyToken=90d5303f0e924b64" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{7828A87E-582D-4947-9E8F-4F56725B6D75}\InprocServer32\2.1.0.0" Name="RuntimeVersion" Value="v4.0.30319" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{7828A87E-582D-4947-9E8F-4F56725B6D75}\InprocServer32\2.1.0.0" Name="CodeBase" Value="file:///[#fil575A92CD508F2D24ED041A168D401FE4]" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{7828A87E-582D-4947-9E8F-4F56725B6D75}\InprocServer32" Name="Class" Value="CapeOpen.CapeImplementationException" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{7828A87E-582D-4947-9E8F-4F56725B6D75}\InprocServer32" Name="Assembly" Value="CapeOpen, Version=2.1.0.0, Culture=neutral, PublicKeyToken=90d5303f0e924b64" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{7828A87E-582D-4947-9E8F-4F56725B6D75}\InprocServer32" Name="RuntimeVersion" Value="v4.0.30319" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{7828A87E-582D-4947-9E8F-4F56725B6D75}\InprocServer32" Name="CodeBase" Value="file:///[#fil575A92CD508F2D24ED041A168D401FE4]" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{85CB2D40-48F6-4C33-BF0C-79CB00684440}\Implemented Categories\{62C8FE65-4EBB-45e7-B440-6E39B2CDBF29}" Value="" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{85CB2D40-48F6-4C33-BF0C-79CB00684440}\InprocServer32\2.1.0.0" Name="Class" Value="CapeOpen.CapePersistenceSystemErrorException" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{85CB2D40-48F6-4C33-BF0C-79CB00684440}\InprocServer32\2.1.0.0" Name="Assembly" Value="CapeOpen, Version=2.1.0.0, Culture=neutral, PublicKeyToken=90d5303f0e924b64" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{85CB2D40-48F6-4C33-BF0C-79CB00684440}\InprocServer32\2.1.0.0" Name="RuntimeVersion" Value="v4.0.30319" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{85CB2D40-48F6-4C33-BF0C-79CB00684440}\InprocServer32\2.1.0.0" Name="CodeBase" Value="file:///[#fil575A92CD508F2D24ED041A168D401FE4]" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{85CB2D40-48F6-4C33-BF0C-79CB00684440}\InprocServer32" Name="Class" Value="CapeOpen.CapePersistenceSystemErrorException" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{85CB2D40-48F6-4C33-BF0C-79CB00684440}\InprocServer32" Name="Assembly" Value="CapeOpen, Version=2.1.0.0, Culture=neutral, PublicKeyToken=90d5303f0e924b64" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{85CB2D40-48F6-4C33-BF0C-79CB00684440}\InprocServer32" Name="RuntimeVersion" Value="v4.0.30319" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{85CB2D40-48F6-4C33-BF0C-79CB00684440}\InprocServer32" Name="CodeBase" Value="file:///[#fil575A92CD508F2D24ED041A168D401FE4]" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{883D46FE-5713-424C-BF10-7ED34263CD6D}\CapeDescription" Name="Name" Value="MixerExample" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{883D46FE-5713-424C-BF10-7ED34263CD6D}\CapeDescription" Name="Description" Value="An example mixer unit operation written in C#." Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{883D46FE-5713-424C-BF10-7ED34263CD6D}\CapeDescription" Name="CapeVersion" Value="http:\www.epa.gov" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{883D46FE-5713-424C-BF10-7ED34263CD6D}\CapeDescription" Name="ComponentVersion" Value="2.1.0.0" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{883D46FE-5713-424C-BF10-7ED34263CD6D}\CapeDescription" Name="VendorURL" Value="" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{883D46FE-5713-424C-BF10-7ED34263CD6D}\CapeDescription" Name="HelpURL" Value="http:\www.epa.gov" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{883D46FE-5713-424C-BF10-7ED34263CD6D}\CapeDescription" Name="About" Value="US Environmental Protection Agency&#xA;Cincinnati, Ohio" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{883D46FE-5713-424C-BF10-7ED34263CD6D}\Implemented Categories\{0D562DC8-EA8E-4210-AB39-B66513C0CD09}" Value="" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{883D46FE-5713-424C-BF10-7ED34263CD6D}\Implemented Categories\{4150C28A-EE06-403f-A871-87AFEC38A249}" Value="" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{883D46FE-5713-424C-BF10-7ED34263CD6D}\Implemented Categories\{62C8FE65-4EBB-45e7-B440-6E39B2CDBF29}" Value="" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{883D46FE-5713-424C-BF10-7ED34263CD6D}\Implemented Categories\{678c09a1-7d66-11d2-a67d-00105a42887f}" Value="" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{883D46FE-5713-424C-BF10-7ED34263CD6D}\Implemented Categories\{678c09a5-7d66-11d2-a67d-00105a42887f}" Value="" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{883D46FE-5713-424C-BF10-7ED34263CD6D}\InprocServer32" Name="Class" Value="CapeOpen.MixerExample" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{883D46FE-5713-424C-BF10-7ED34263CD6D}\InprocServer32" Name="Assembly" Value="CapeOpen, Version=2.1.0.0, Culture=neutral, PublicKeyToken=90d5303f0e924b64" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{883D46FE-5713-424C-BF10-7ED34263CD6D}\InprocServer32" Name="RuntimeVersion" Value="v4.0.30319" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{883D46FE-5713-424C-BF10-7ED34263CD6D}\InprocServer32" Name="CodeBase" Value="file:///[#fil575A92CD508F2D24ED041A168D401FE4]" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{9D416BF5-B9E3-429A-B13A-222EE85A92A7}\Implemented Categories\{62C8FE65-4EBB-45e7-B440-6E39B2CDBF29}" Value="" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{9D416BF5-B9E3-429A-B13A-222EE85A92A7}\InprocServer32\2.1.0.0" Name="Class" Value="CapeOpen.CapeComputationException" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{9D416BF5-B9E3-429A-B13A-222EE85A92A7}\InprocServer32\2.1.0.0" Name="Assembly" Value="CapeOpen, Version=2.1.0.0, Culture=neutral, PublicKeyToken=90d5303f0e924b64" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{9D416BF5-B9E3-429A-B13A-222EE85A92A7}\InprocServer32\2.1.0.0" Name="RuntimeVersion" Value="v4.0.30319" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{9D416BF5-B9E3-429A-B13A-222EE85A92A7}\InprocServer32\2.1.0.0" Name="CodeBase" Value="file:///[#fil575A92CD508F2D24ED041A168D401FE4]" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{9D416BF5-B9E3-429A-B13A-222EE85A92A7}\InprocServer32" Name="Class" Value="CapeOpen.CapeComputationException" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{9D416BF5-B9E3-429A-B13A-222EE85A92A7}\InprocServer32" Name="Assembly" Value="CapeOpen, Version=2.1.0.0, Culture=neutral, PublicKeyToken=90d5303f0e924b64" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{9D416BF5-B9E3-429A-B13A-222EE85A92A7}\InprocServer32" Name="RuntimeVersion" Value="v4.0.30319" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{9D416BF5-B9E3-429A-B13A-222EE85A92A7}\InprocServer32" Name="CodeBase" Value="file:///[#fil575A92CD508F2D24ED041A168D401FE4]" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{A119DE0B-C11E-4A14-BA5E-9A2D20B15578}\Implemented Categories\{62C8FE65-4EBB-45e7-B440-6E39B2CDBF29}" Value="" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{A119DE0B-C11E-4A14-BA5E-9A2D20B15578}\InprocServer32\2.1.0.0" Name="Class" Value="CapeOpen.CapePersistenceOverflowException" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{A119DE0B-C11E-4A14-BA5E-9A2D20B15578}\InprocServer32\2.1.0.0" Name="Assembly" Value="CapeOpen, Version=2.1.0.0, Culture=neutral, PublicKeyToken=90d5303f0e924b64" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{A119DE0B-C11E-4A14-BA5E-9A2D20B15578}\InprocServer32\2.1.0.0" Name="RuntimeVersion" Value="v4.0.30319" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{A119DE0B-C11E-4A14-BA5E-9A2D20B15578}\InprocServer32\2.1.0.0" Name="CodeBase" Value="file:///[#fil575A92CD508F2D24ED041A168D401FE4]" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{A119DE0B-C11E-4A14-BA5E-9A2D20B15578}\InprocServer32" Name="Class" Value="CapeOpen.CapePersistenceOverflowException" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{A119DE0B-C11E-4A14-BA5E-9A2D20B15578}\InprocServer32" Name="Assembly" Value="CapeOpen, Version=2.1.0.0, Culture=neutral, PublicKeyToken=90d5303f0e924b64" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{A119DE0B-C11E-4A14-BA5E-9A2D20B15578}\InprocServer32" Name="RuntimeVersion" Value="v4.0.30319" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{A119DE0B-C11E-4A14-BA5E-9A2D20B15578}\InprocServer32" Name="CodeBase" Value="file:///[#fil575A92CD508F2D24ED041A168D401FE4]" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{B550B2CA-6714-4E7F-813E-C93248142410}\Implemented Categories\{62C8FE65-4EBB-45e7-B440-6E39B2CDBF29}" Value="" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{B550B2CA-6714-4E7F-813E-C93248142410}\InprocServer32\2.1.0.0" Name="Class" Value="CapeOpen.CapeUnknownException" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{B550B2CA-6714-4E7F-813E-C93248142410}\InprocServer32\2.1.0.0" Name="Assembly" Value="CapeOpen, Version=2.1.0.0, Culture=neutral, PublicKeyToken=90d5303f0e924b64" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{B550B2CA-6714-4E7F-813E-C93248142410}\InprocServer32\2.1.0.0" Name="RuntimeVersion" Value="v4.0.30319" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{B550B2CA-6714-4E7F-813E-C93248142410}\InprocServer32\2.1.0.0" Name="CodeBase" Value="file:///[#fil575A92CD508F2D24ED041A168D401FE4]" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{B550B2CA-6714-4E7F-813E-C93248142410}\InprocServer32" Name="Class" Value="CapeOpen.CapeUnknownException" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{B550B2CA-6714-4E7F-813E-C93248142410}\InprocServer32" Name="Assembly" Value="CapeOpen, Version=2.1.0.0, Culture=neutral, PublicKeyToken=90d5303f0e924b64" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{B550B2CA-6714-4E7F-813E-C93248142410}\InprocServer32" Name="RuntimeVersion" Value="v4.0.30319" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{B550B2CA-6714-4E7F-813E-C93248142410}\InprocServer32" Name="CodeBase" Value="file:///[#fil575A92CD508F2D24ED041A168D401FE4]" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{C0B943FE-FB8F-46B6-A622-54D30027D18B}\Implemented Categories\{62C8FE65-4EBB-45e7-B440-6E39B2CDBF29}" Value="" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{C0B943FE-FB8F-46B6-A622-54D30027D18B}\InprocServer32\2.1.0.0" Name="Class" Value="CapeOpen.CapeInvalidOperationException" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{C0B943FE-FB8F-46B6-A622-54D30027D18B}\InprocServer32\2.1.0.0" Name="Assembly" Value="CapeOpen, Version=2.1.0.0, Culture=neutral, PublicKeyToken=90d5303f0e924b64" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{C0B943FE-FB8F-46B6-A622-54D30027D18B}\InprocServer32\2.1.0.0" Name="RuntimeVersion" Value="v4.0.30319" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{C0B943FE-FB8F-46B6-A622-54D30027D18B}\InprocServer32\2.1.0.0" Name="CodeBase" Value="file:///[#fil575A92CD508F2D24ED041A168D401FE4]" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{C0B943FE-FB8F-46B6-A622-54D30027D18B}\InprocServer32" Name="Class" Value="CapeOpen.CapeInvalidOperationException" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{C0B943FE-FB8F-46B6-A622-54D30027D18B}\InprocServer32" Name="Assembly" Value="CapeOpen, Version=2.1.0.0, Culture=neutral, PublicKeyToken=90d5303f0e924b64" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{C0B943FE-FB8F-46B6-A622-54D30027D18B}\InprocServer32" Name="RuntimeVersion" Value="v4.0.30319" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{C0B943FE-FB8F-46B6-A622-54D30027D18B}\InprocServer32" Name="CodeBase" Value="file:///[#fil575A92CD508F2D24ED041A168D401FE4]" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{C6E08496-4269-321A-986D-3B68FF2FFD81}\Implemented Categories\{62C8FE65-4EBB-45e7-B440-6E39B2CDBF29}" Value="" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{C6E08496-4269-321A-986D-3B68FF2FFD81}\InprocServer32\2.1.0.0" Name="Class" Value="CapeOpen.UnitSelector" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{C6E08496-4269-321A-986D-3B68FF2FFD81}\InprocServer32\2.1.0.0" Name="Assembly" Value="CapeOpen, Version=2.1.0.0, Culture=neutral, PublicKeyToken=90d5303f0e924b64" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{C6E08496-4269-321A-986D-3B68FF2FFD81}\InprocServer32\2.1.0.0" Name="RuntimeVersion" Value="v4.0.30319" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{C6E08496-4269-321A-986D-3B68FF2FFD81}\InprocServer32\2.1.0.0" Name="CodeBase" Value="file:///[#fil575A92CD508F2D24ED041A168D401FE4]" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{C6E08496-4269-321A-986D-3B68FF2FFD81}\InprocServer32" Name="Class" Value="CapeOpen.UnitSelector" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{C6E08496-4269-321A-986D-3B68FF2FFD81}\InprocServer32" Name="Assembly" Value="CapeOpen, Version=2.1.0.0, Culture=neutral, PublicKeyToken=90d5303f0e924b64" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{C6E08496-4269-321A-986D-3B68FF2FFD81}\InprocServer32" Name="RuntimeVersion" Value="v4.0.30319" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{C6E08496-4269-321A-986D-3B68FF2FFD81}\InprocServer32" Name="CodeBase" Value="file:///[#fil575A92CD508F2D24ED041A168D401FE4]" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{CF4C55E9-6B0A-4248-9A33-B8134EA393F6}\Implemented Categories\{62C8FE65-4EBB-45e7-B440-6E39B2CDBF29}" Value="" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{CF4C55E9-6B0A-4248-9A33-B8134EA393F6}\InprocServer32\2.1.0.0" Name="Class" Value="CapeOpen.CapeLicenceErrorException" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{CF4C55E9-6B0A-4248-9A33-B8134EA393F6}\InprocServer32\2.1.0.0" Name="Assembly" Value="CapeOpen, Version=2.1.0.0, Culture=neutral, PublicKeyToken=90d5303f0e924b64" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{CF4C55E9-6B0A-4248-9A33-B8134EA393F6}\InprocServer32\2.1.0.0" Name="RuntimeVersion" Value="v4.0.30319" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{CF4C55E9-6B0A-4248-9A33-B8134EA393F6}\InprocServer32\2.1.0.0" Name="CodeBase" Value="file:///[#fil575A92CD508F2D24ED041A168D401FE4]" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{CF4C55E9-6B0A-4248-9A33-B8134EA393F6}\InprocServer32" Name="Class" Value="CapeOpen.CapeLicenceErrorException" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{CF4C55E9-6B0A-4248-9A33-B8134EA393F6}\InprocServer32" Name="Assembly" Value="CapeOpen, Version=2.1.0.0, Culture=neutral, PublicKeyToken=90d5303f0e924b64" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{CF4C55E9-6B0A-4248-9A33-B8134EA393F6}\InprocServer32" Name="RuntimeVersion" Value="v4.0.30319" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{CF4C55E9-6B0A-4248-9A33-B8134EA393F6}\InprocServer32" Name="CodeBase" Value="file:///[#fil575A92CD508F2D24ED041A168D401FE4]" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{E407595C-6D1C-4B8C-A29D-DB0BE73EFDDA}\Implemented Categories\{62C8FE65-4EBB-45e7-B440-6E39B2CDBF29}" Value="" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{E407595C-6D1C-4B8C-A29D-DB0BE73EFDDA}\InprocServer32\2.1.0.0" Name="Class" Value="CapeOpen.CapeFailedInitialisationException" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{E407595C-6D1C-4B8C-A29D-DB0BE73EFDDA}\InprocServer32\2.1.0.0" Name="Assembly" Value="CapeOpen, Version=2.1.0.0, Culture=neutral, PublicKeyToken=90d5303f0e924b64" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{E407595C-6D1C-4B8C-A29D-DB0BE73EFDDA}\InprocServer32\2.1.0.0" Name="RuntimeVersion" Value="v4.0.30319" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{E407595C-6D1C-4B8C-A29D-DB0BE73EFDDA}\InprocServer32\2.1.0.0" Name="CodeBase" Value="file:///[#fil575A92CD508F2D24ED041A168D401FE4]" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{E407595C-6D1C-4B8C-A29D-DB0BE73EFDDA}\InprocServer32" Name="Class" Value="CapeOpen.CapeFailedInitialisationException" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{E407595C-6D1C-4B8C-A29D-DB0BE73EFDDA}\InprocServer32" Name="Assembly" Value="CapeOpen, Version=2.1.0.0, Culture=neutral, PublicKeyToken=90d5303f0e924b64" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{E407595C-6D1C-4B8C-A29D-DB0BE73EFDDA}\InprocServer32" Name="RuntimeVersion" Value="v4.0.30319" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{E407595C-6D1C-4B8C-A29D-DB0BE73EFDDA}\InprocServer32" Name="CodeBase" Value="file:///[#fil575A92CD508F2D24ED041A168D401FE4]" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{F617AFEA-0EEE-4395-8C82-288BF8F2A136}\Implemented Categories\{62C8FE65-4EBB-45e7-B440-6E39B2CDBF29}" Value="" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{F617AFEA-0EEE-4395-8C82-288BF8F2A136}\InprocServer32\2.1.0.0" Name="Class" Value="CapeOpen.CapeSolvingErrorException" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{F617AFEA-0EEE-4395-8C82-288BF8F2A136}\InprocServer32\2.1.0.0" Name="Assembly" Value="CapeOpen, Version=2.1.0.0, Culture=neutral, PublicKeyToken=90d5303f0e924b64" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{F617AFEA-0EEE-4395-8C82-288BF8F2A136}\InprocServer32\2.1.0.0" Name="RuntimeVersion" Value="v4.0.30319" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{F617AFEA-0EEE-4395-8C82-288BF8F2A136}\InprocServer32\2.1.0.0" Name="CodeBase" Value="file:///[#fil575A92CD508F2D24ED041A168D401FE4]" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{F617AFEA-0EEE-4395-8C82-288BF8F2A136}\InprocServer32" Name="Class" Value="CapeOpen.CapeSolvingErrorException" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{F617AFEA-0EEE-4395-8C82-288BF8F2A136}\InprocServer32" Name="Assembly" Value="CapeOpen, Version=2.1.0.0, Culture=neutral, PublicKeyToken=90d5303f0e924b64" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{F617AFEA-0EEE-4395-8C82-288BF8F2A136}\InprocServer32" Name="RuntimeVersion" Value="v4.0.30319" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="CLSID\{F617AFEA-0EEE-4395-8C82-288BF8F2A136}\InprocServer32" Name="CodeBase" Value="file:///[#fil575A92CD508F2D24ED041A168D401FE4]" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="Record\{2374B643-51EF-3B91-894A-9EF21EC38E89}\2.1.0.0" Name="Class" Value="CapeOpen.CapePortType" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="Record\{2374B643-51EF-3B91-894A-9EF21EC38E89}\2.1.0.0" Name="Assembly" Value="CapeOpen, Version=2.1.0.0, Culture=neutral, PublicKeyToken=90d5303f0e924b64" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="Record\{2374B643-51EF-3B91-894A-9EF21EC38E89}\2.1.0.0" Name="RuntimeVersion" Value="v4.0.30319" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="Record\{2374B643-51EF-3B91-894A-9EF21EC38E89}\2.1.0.0" Name="CodeBase" Value="file:///[#fil575A92CD508F2D24ED041A168D401FE4]" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="Record\{3876D807-7D4D-30D6-B6F5-984A3773C600}\2.1.0.0" Name="Class" Value="CapeOpen.CapePortDirection" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="Record\{3876D807-7D4D-30D6-B6F5-984A3773C600}\2.1.0.0" Name="Assembly" Value="CapeOpen, Version=2.1.0.0, Culture=neutral, PublicKeyToken=90d5303f0e924b64" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="Record\{3876D807-7D4D-30D6-B6F5-984A3773C600}\2.1.0.0" Name="RuntimeVersion" Value="v4.0.30319" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="Record\{3876D807-7D4D-30D6-B6F5-984A3773C600}\2.1.0.0" Name="CodeBase" Value="file:///[#fil575A92CD508F2D24ED041A168D401FE4]" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="Record\{470B364D-8BE4-3F1D-BA55-3738DDA8B88D}\2.1.0.0" Name="Class" Value="CapeOpen.CapeCalculationCode" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="Record\{470B364D-8BE4-3F1D-BA55-3738DDA8B88D}\2.1.0.0" Name="Assembly" Value="CapeOpen, Version=2.1.0.0, Culture=neutral, PublicKeyToken=90d5303f0e924b64" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="Record\{470B364D-8BE4-3F1D-BA55-3738DDA8B88D}\2.1.0.0" Name="RuntimeVersion" Value="v4.0.30319" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="Record\{470B364D-8BE4-3F1D-BA55-3738DDA8B88D}\2.1.0.0" Name="CodeBase" Value="file:///[#fil575A92CD508F2D24ED041A168D401FE4]" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="Record\{678C0AFF-0100-11D2-A67D-00105A42887F}\2.1.0.0" Name="Class" Value="CapeOpen.CapeReactionRateBasis" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="Record\{678C0AFF-0100-11D2-A67D-00105A42887F}\2.1.0.0" Name="Assembly" Value="CapeOpen, Version=2.1.0.0, Culture=neutral, PublicKeyToken=90d5303f0e924b64" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="Record\{678C0AFF-0100-11D2-A67D-00105A42887F}\2.1.0.0" Name="RuntimeVersion" Value="v4.0.30319" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="Record\{678C0AFF-0100-11D2-A67D-00105A42887F}\2.1.0.0" Name="CodeBase" Value="file:///[#fil575A92CD508F2D24ED041A168D401FE4]" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="Record\{678C0B00-0100-11D2-A67D-00105A42887F}\2.1.0.0" Name="Class" Value="CapeOpen.CapeReactionType" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="Record\{678C0B00-0100-11D2-A67D-00105A42887F}\2.1.0.0" Name="Assembly" Value="CapeOpen, Version=2.1.0.0, Culture=neutral, PublicKeyToken=90d5303f0e924b64" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="Record\{678C0B00-0100-11D2-A67D-00105A42887F}\2.1.0.0" Name="RuntimeVersion" Value="v4.0.30319" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="Record\{678C0B00-0100-11D2-A67D-00105A42887F}\2.1.0.0" Name="CodeBase" Value="file:///[#fil575A92CD508F2D24ED041A168D401FE4]" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="Record\{678C0B04-7D66-11D2-A67D-00105A42887F}\2.1.0.0" Name="Class" Value="CapeOpen.CapeValidationStatus" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="Record\{678C0B04-7D66-11D2-A67D-00105A42887F}\2.1.0.0" Name="Assembly" Value="CapeOpen, Version=2.1.0.0, Culture=neutral, PublicKeyToken=90d5303f0e924b64" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="Record\{678C0B04-7D66-11D2-A67D-00105A42887F}\2.1.0.0" Name="RuntimeVersion" Value="v4.0.30319" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="Record\{678C0B04-7D66-11D2-A67D-00105A42887F}\2.1.0.0" Name="CodeBase" Value="file:///[#fil575A92CD508F2D24ED041A168D401FE4]" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="Record\{8091E285-3CFA-4A41-A5C4-141D0D709D87}\2.1.0.0" Name="Class" Value="CapeOpen.CapeCompoundType" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="Record\{8091E285-3CFA-4A41-A5C4-141D0D709D87}\2.1.0.0" Name="Assembly" Value="CapeOpen, Version=2.1.0.0, Culture=neutral, PublicKeyToken=90d5303f0e924b64" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="Record\{8091E285-3CFA-4A41-A5C4-141D0D709D87}\2.1.0.0" Name="RuntimeVersion" Value="v4.0.30319" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="Record\{8091E285-3CFA-4A41-A5C4-141D0D709D87}\2.1.0.0" Name="CodeBase" Value="file:///[#fil575A92CD508F2D24ED041A168D401FE4]" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="Record\{891C8C84-87A9-3EF2-8E7C-CE7F76D51311}\2.1.0.0" Name="Class" Value="CapeOpen.CapeErrorInterfaceHR" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="Record\{891C8C84-87A9-3EF2-8E7C-CE7F76D51311}\2.1.0.0" Name="Assembly" Value="CapeOpen, Version=2.1.0.0, Culture=neutral, PublicKeyToken=90d5303f0e924b64" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="Record\{891C8C84-87A9-3EF2-8E7C-CE7F76D51311}\2.1.0.0" Name="RuntimeVersion" Value="v4.0.30319" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="Record\{891C8C84-87A9-3EF2-8E7C-CE7F76D51311}\2.1.0.0" Name="CodeBase" Value="file:///[#fil575A92CD508F2D24ED041A168D401FE4]" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="Record\{9A5965FC-2BD4-3EC5-B2B3-E80E82B840E7}\2.1.0.0" Name="Class" Value="CapeOpen.CapeParamMode" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="Record\{9A5965FC-2BD4-3EC5-B2B3-E80E82B840E7}\2.1.0.0" Name="Assembly" Value="CapeOpen, Version=2.1.0.0, Culture=neutral, PublicKeyToken=90d5303f0e924b64" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="Record\{9A5965FC-2BD4-3EC5-B2B3-E80E82B840E7}\2.1.0.0" Name="RuntimeVersion" Value="v4.0.30319" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="Record\{9A5965FC-2BD4-3EC5-B2B3-E80E82B840E7}\2.1.0.0" Name="CodeBase" Value="file:///[#fil575A92CD508F2D24ED041A168D401FE4]" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="Record\{D1B15843-C0F5-4CB7-B462-E1B80456808E}\2.1.0.0" Name="Class" Value="CapeOpen.COFEStreamType" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="Record\{D1B15843-C0F5-4CB7-B462-E1B80456808E}\2.1.0.0" Name="Assembly" Value="CapeOpen, Version=2.1.0.0, Culture=neutral, PublicKeyToken=90d5303f0e924b64" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="Record\{D1B15843-C0F5-4CB7-B462-E1B80456808E}\2.1.0.0" Name="RuntimeVersion" Value="v4.0.30319" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="Record\{D1B15843-C0F5-4CB7-B462-E1B80456808E}\2.1.0.0" Name="CodeBase" Value="file:///[#fil575A92CD508F2D24ED041A168D401FE4]" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="Record\{D1FCAFB6-D339-37C5-8A77-3ECB0B8839FE}\2.1.0.0" Name="Class" Value="CapeOpen.CapeParamType" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="Record\{D1FCAFB6-D339-37C5-8A77-3ECB0B8839FE}\2.1.0.0" Name="Assembly" Value="CapeOpen, Version=2.1.0.0, Culture=neutral, PublicKeyToken=90d5303f0e924b64" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="Record\{D1FCAFB6-D339-37C5-8A77-3ECB0B8839FE}\2.1.0.0" Name="RuntimeVersion" Value="v4.0.30319" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="Record\{D1FCAFB6-D339-37C5-8A77-3ECB0B8839FE}\2.1.0.0" Name="CodeBase" Value="file:///[#fil575A92CD508F2D24ED041A168D401FE4]" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="Record\{E1CF61BE-49AD-3DD4-9891-774DCCFB3F0E}\2.1.0.0" Name="Class" Value="CapeOpen.CapeFugacityFlag" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="Record\{E1CF61BE-49AD-3DD4-9891-774DCCFB3F0E}\2.1.0.0" Name="Assembly" Value="CapeOpen, Version=2.1.0.0, Culture=neutral, PublicKeyToken=90d5303f0e924b64" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="Record\{E1CF61BE-49AD-3DD4-9891-774DCCFB3F0E}\2.1.0.0" Name="RuntimeVersion" Value="v4.0.30319" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="Record\{E1CF61BE-49AD-3DD4-9891-774DCCFB3F0E}\2.1.0.0" Name="CodeBase" Value="file:///[#fil575A92CD508F2D24ED041A168D401FE4]" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="Record\{EF9544DB-562B-343D-B34D-B17F7E2385CB}\2.1.0.0" Name="Class" Value="CapeOpen.CapePhaseStatus" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="Record\{EF9544DB-562B-343D-B34D-B17F7E2385CB}\2.1.0.0" Name="Assembly" Value="CapeOpen, Version=2.1.0.0, Culture=neutral, PublicKeyToken=90d5303f0e924b64" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="Record\{EF9544DB-562B-343D-B34D-B17F7E2385CB}\2.1.0.0" Name="RuntimeVersion" Value="v4.0.30319" Type="string" Action="write" />
+        <RegistryValue Root="HKCR" Key="Record\{EF9544DB-562B-343D-B34D-B17F7E2385CB}\2.1.0.0" Name="CodeBase" Value="file:///[#fil575A92CD508F2D24ED041A168D401FE4]" Type="string" Action="write" />
+      </Component>
+		</ComponentGroup>
+	</Fragment>
+
+</Wix>

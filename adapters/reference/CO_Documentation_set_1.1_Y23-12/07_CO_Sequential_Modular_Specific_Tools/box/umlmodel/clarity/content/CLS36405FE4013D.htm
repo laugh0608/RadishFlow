@@ -1,0 +1,136 @@
+<html>
+ 
+<head>
+<title>UML_Model - ICapeNumericFlowsheet</title>
+<base target="main">
+</head>
+ 
+<body bgcolor="#FFFFFF" text="#000000" >
+<h2>Class: &lt;&lt;Interface&gt;&gt; ICapeNumericFlowsheet</h2>
+<p><strong>Description:</strong></p>
+<blockquote><p>
+The ICapeNumericFlowsheet Interface.<br><br>This is the basic Interface of Flowsheet description model. Would allow to develop a more complex Flowsheet description model.<br><br>It is an "abstract" Interface. It is not distributed. So, no client can get its object reference.
+</p></blockquote>
+<p><strong>Superclasses:</strong></p>
+<blockquote>
+  <table border="0" width="90%" cellspacing="1">
+<tr>
+<td valign=top Width="26%">&lt;&lt;CO Common Service&gt;&gt;<strong>Parameter</strong></td>
+<td Width="74%">Set of Interfaces including the Parameter Concept.<br><br>It specifies the CAPE-OPEN common services on the Parameter concept.<br><br>No information on its content is given here, please refer to the CAPE-OPEN Concepts Document.</td>
+</tr>
+</table></blockquote>
+<p><strong>Subclasses:</strong></p>
+<blockquote>
+  <table border="0" width="90%" cellspacing="1">
+<tr>
+<td valign=top Width="26%">&lt;&lt;Interface&gt;&gt;<strong>ICapeNumericProcessGraph</strong></td>
+<td Width="74%">The ICapeNumericProcessGraph Interface.<br><br>Use this to describe a Process Graph which is any Flowsheet.</td>
+</tr>
+</table></blockquote>
+<p><strong>Operations:</strong></p>
+<blockquote>
+  <table border="0" width="90%" cellpadding="2">
+<tr><td valign="top" colspan="3" bgcolor="#C0C0C0"></td></tr>
+<tr>
+<td valign="top" colspan="3" bgcolor="#F1C9D3">
+<strong>GetName</strong>( ) : <strong>CapeString</strong>
+</td>
+</tr>
+<tr>
+<td valign="top" colspan="3">
+<blockquote></blockquote>
+</td>
+</tr>
+<tr></tr>
+<tr><td valign="top" colspan="3" bgcolor="#C0C0C0"></td></tr>
+<tr>
+<td valign="top" colspan="3" bgcolor="#F1C9D3">
+<strong>GetStreamCount</strong>( ) : <strong>CapeLong</strong>
+</td>
+</tr>
+<tr>
+<td valign="top" colspan="3">
+<blockquote></blockquote>
+</td>
+</tr>
+<tr></tr>
+<tr><td valign="top" colspan="3" bgcolor="#C0C0C0"></td></tr>
+<tr>
+<td valign="top" colspan="3" bgcolor="#F1C9D3">
+<strong>GetUnitCount</strong>( ) : <strong>CapeLong</strong>
+</td>
+</tr>
+<tr>
+<td valign="top" colspan="3">
+<blockquote></blockquote>
+</td>
+</tr>
+<tr></tr>
+<tr><td valign="top" colspan="3" bgcolor="#C0C0C0"></td></tr>
+<tr>
+<td valign="top" colspan="3" bgcolor="#F1C9D3">
+<strong>GetMaximumUnitCount</strong>( ) : <strong>CapeLong</strong>
+</td>
+</tr>
+<tr>
+<td valign="top" colspan="3">
+<blockquote></blockquote>
+</td>
+</tr>
+<tr></tr>
+<tr><td valign="top" colspan="3" bgcolor="#C0C0C0"></td></tr>
+<tr>
+<td valign="top" colspan="3" bgcolor="#F1C9D3">
+<strong>GetMaximumStreamCount</strong>( ) : <strong>CapeLong</strong>
+</td>
+</tr>
+<tr>
+<td valign="top" colspan="3">
+<blockquote></blockquote>
+</td>
+</tr>
+<tr></tr>
+<tr><td valign="top" colspan="3" bgcolor="#C0C0C0"></td></tr>
+<tr>
+<td valign="top" colspan="3" bgcolor="#F1C9D3">
+<strong>Destroy</strong>( ) : <strong>CapeBoolean</strong>
+</td>
+</tr>
+<tr>
+<td valign="top" colspan="3">
+<blockquote></blockquote>
+</td>
+</tr>
+<tr></tr>
+</table></blockquote>
+<p><strong>Associations:</strong></p>
+<blockquote>
+<table border="0" width="90%" cellpadding-"2">
+<tr>
+<td valign="top" bgcolor="#B3CEB9" colspan="2">
+<em>Manages</em><br>
+</td>
+</tr>
+<tr>
+<td valign="top" width="50%" bgcolor="#C0C0C0">Role A: <strong>Managed Flowsheet</strong><br>
+Class: <strong>ICapeNumericFlowsheet</strong><br>
+Navigatable: no<br>
+Aggregate: no<br>
+Static: no<br>
+Friend: no<br>
+Cardinality: 0..n<br>
+</td>
+<td valign="top" width="50%" bgcolor="#C0C0C0">Role B: <strong>Manager</strong><br>
+Class: <strong>ICapeNumericFlowsheetFactory</strong><br>
+Navigatable: no<br>
+Aggregate: no<br>
+Static: no<br>
+Friend: no<br>
+Cardinality: 1<br>
+</td>
+</tr>
+</table>
+<p>&nbsp;</p>
+</blockquote>
+</body>
+</html>
