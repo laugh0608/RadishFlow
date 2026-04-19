@@ -170,6 +170,7 @@
 - `.NET 10` 解决方案当前仍是骨架，不应作为现阶段主验证基线
 - 如果某一步改动只涉及文档，仍应至少确认工作区未引入额外脏改动
 - 仓库治理或 CI 改动优先执行 `pwsh ./scripts/check-repo.ps1`；在 Linux/macOS/CI 中执行 `./scripts/check-repo.sh`
+- 仓库文本格式门禁只约束仓库自有文本资产；`adapters/reference/` 下的外部参考资料允许保留上游编码、BOM 与换行格式，不应为通过门禁而批量改写
 - 如果重要构建、测试或 smoke 验证在沙盒环境中失败，且失败现象明显带有沙盒限制、受限 restore / project reference 解析、native 加载路径差异或其他环境隔离特征，应允许申请提权到真实环境复验，而不是把这类失败直接归因到代码
 - 对当前仓库的 `.NET 10` CAPE-OPEN 解决方案、`dotnet build`、`dotnet run --project ... --no-build` smoke 与 `rf-ffi` native 装载路径，若沙盒结果与代码现状明显不符，应优先在获得授权后用真实环境完成最终验证
 

@@ -40,8 +40,11 @@ impl RfFfiStatus {
     }
 }
 
+/// # Safety
+///
+/// `out_engine` must be a valid writable pointer to receive the newly allocated engine handle.
 #[unsafe(no_mangle)]
-pub extern "C" fn engine_create(out_engine: *mut *mut Engine) -> RfFfiStatus {
+pub unsafe extern "C" fn engine_create(out_engine: *mut *mut Engine) -> RfFfiStatus {
     catch_unwind(AssertUnwindSafe(|| {
         if out_engine.is_null() {
             return RfFfiStatus::NullPointer;
@@ -56,8 +59,12 @@ pub extern "C" fn engine_create(out_engine: *mut *mut Engine) -> RfFfiStatus {
     .unwrap_or(RfFfiStatus::Panic)
 }
 
+/// # Safety
+///
+/// `engine` must either be null or a handle previously returned by `engine_create` that has not
+/// already been destroyed.
 #[unsafe(no_mangle)]
-pub extern "C" fn engine_destroy(engine: *mut Engine) {
+pub unsafe extern "C" fn engine_destroy(engine: *mut Engine) {
     if engine.is_null() {
         return;
     }
@@ -67,8 +74,12 @@ pub extern "C" fn engine_destroy(engine: *mut Engine) {
     }
 }
 
+/// # Safety
+///
+/// `engine` must be a valid engine handle and `out_message` must be a valid writable pointer.
+/// The returned string must be released with `rf_string_free`.
 #[unsafe(no_mangle)]
-pub extern "C" fn engine_last_error_message(
+pub unsafe extern "C" fn engine_last_error_message(
     engine: *const Engine,
     out_message: *mut *mut c_char,
 ) -> RfFfiStatus {
@@ -86,8 +97,12 @@ pub extern "C" fn engine_last_error_message(
     .unwrap_or(RfFfiStatus::Panic)
 }
 
+/// # Safety
+///
+/// `engine` must be a valid engine handle and `out_message` must be a valid writable pointer.
+/// The returned string must be released with `rf_string_free`.
 #[unsafe(no_mangle)]
-pub extern "C" fn engine_last_error_json(
+pub unsafe extern "C" fn engine_last_error_json(
     engine: *const Engine,
     out_message: *mut *mut c_char,
 ) -> RfFfiStatus {
@@ -113,8 +128,12 @@ pub extern "C" fn engine_last_error_json(
     .unwrap_or(RfFfiStatus::Panic)
 }
 
+/// # Safety
+///
+/// `value` must either be null or a string pointer returned by this library that has not already
+/// been freed.
 #[unsafe(no_mangle)]
-pub extern "C" fn rf_string_free(value: *mut c_char) {
+pub unsafe extern "C" fn rf_string_free(value: *mut c_char) {
     if value.is_null() {
         return;
     }
@@ -124,8 +143,12 @@ pub extern "C" fn rf_string_free(value: *mut c_char) {
     }
 }
 
+/// # Safety
+///
+/// `engine` must be a valid engine handle. When `json_len` is non-zero, `json_ptr` must point to
+/// `json_len` bytes of valid readable memory.
 #[unsafe(no_mangle)]
-pub extern "C" fn flowsheet_load_json(
+pub unsafe extern "C" fn flowsheet_load_json(
     engine: *mut Engine,
     json_ptr: *const u8,
     json_len: usize,
@@ -136,8 +159,12 @@ pub extern "C" fn flowsheet_load_json(
     })
 }
 
+/// # Safety
+///
+/// `engine` must be a valid engine handle. When `package_id_len` is non-zero, `package_id_ptr`
+/// must point to `package_id_len` bytes of valid readable memory.
 #[unsafe(no_mangle)]
-pub extern "C" fn flowsheet_solve(
+pub unsafe extern "C" fn flowsheet_solve(
     engine: *mut Engine,
     package_id_ptr: *const u8,
     package_id_len: usize,
@@ -148,8 +175,12 @@ pub extern "C" fn flowsheet_solve(
     })
 }
 
+/// # Safety
+///
+/// `engine` must be a valid engine handle. Non-empty manifest and payload path inputs must point
+/// to readable byte ranges with the supplied lengths.
 #[unsafe(no_mangle)]
-pub extern "C" fn property_package_load_from_files(
+pub unsafe extern "C" fn property_package_load_from_files(
     engine: *mut Engine,
     manifest_path_ptr: *const u8,
     manifest_path_len: usize,
@@ -177,8 +208,12 @@ pub extern "C" fn property_package_load_from_files(
     })
 }
 
+/// # Safety
+///
+/// `engine` must be a valid engine handle and `out_json` must be a valid writable pointer. The
+/// returned string must be released with `rf_string_free`.
 #[unsafe(no_mangle)]
-pub extern "C" fn property_package_list_json(
+pub unsafe extern "C" fn property_package_list_json(
     engine: *mut Engine,
     out_json: *mut *mut c_char,
 ) -> RfFfiStatus {
@@ -198,8 +233,13 @@ pub extern "C" fn property_package_list_json(
     })
 }
 
+/// # Safety
+///
+/// `engine` must be a valid engine handle. When `stream_id_len` is non-zero, `stream_id_ptr` must
+/// point to `stream_id_len` readable bytes. `out_json` must be a valid writable pointer, and the
+/// returned string must be released with `rf_string_free`.
 #[unsafe(no_mangle)]
-pub extern "C" fn stream_get_snapshot_json(
+pub unsafe extern "C" fn stream_get_snapshot_json(
     engine: *mut Engine,
     stream_id_ptr: *const u8,
     stream_id_len: usize,
@@ -222,8 +262,12 @@ pub extern "C" fn stream_get_snapshot_json(
     })
 }
 
+/// # Safety
+///
+/// `engine` must be a valid engine handle and `out_json` must be a valid writable pointer. The
+/// returned string must be released with `rf_string_free`.
 #[unsafe(no_mangle)]
-pub extern "C" fn flowsheet_get_snapshot_json(
+pub unsafe extern "C" fn flowsheet_get_snapshot_json(
     engine: *mut Engine,
     out_json: *mut *mut c_char,
 ) -> RfFfiStatus {
@@ -290,13 +334,14 @@ fn read_utf8_bytes(ptr: *const u8, len: usize) -> Result<String, RfError> {
     }
 
     let bytes = unsafe { std::slice::from_raw_parts(ptr, len) };
-    std::str::from_utf8(bytes).map_err(|error| {
-        ffi_error(
-            RfFfiStatus::InvalidUtf8,
-            format!("ffi string input must be valid UTF-8: {error}"),
-        )
-    })
-    .map(str::to_owned)
+    std::str::from_utf8(bytes)
+        .map_err(|error| {
+            ffi_error(
+                RfFfiStatus::InvalidUtf8,
+                format!("ffi string input must be valid UTF-8: {error}"),
+            )
+        })
+        .map(str::to_owned)
 }
 
 fn ffi_error(status: RfFfiStatus, message: impl Into<String>) -> RfError {
@@ -418,23 +463,26 @@ impl RfFfiStatus {
 #[cfg(test)]
 mod tests {
     use super::{
-        DEMO_PACKAGE_ID, Engine, RfFfiStatus, engine_create, engine_destroy,
-        engine_last_error_json, engine_last_error_message, flowsheet_get_snapshot_json,
-        flowsheet_load_json, flowsheet_solve, rf_string_free, stream_get_snapshot_json,
-        property_package_list_json, property_package_load_from_files,
+        DEMO_PACKAGE_ID, Engine, RfFfiStatus, engine_create as raw_engine_create,
+        engine_destroy as raw_engine_destroy, engine_last_error_json as raw_engine_last_error_json,
+        engine_last_error_message as raw_engine_last_error_message,
+        flowsheet_get_snapshot_json as raw_flowsheet_get_snapshot_json,
+        flowsheet_load_json as raw_flowsheet_load_json, flowsheet_solve as raw_flowsheet_solve,
+        property_package_list_json as raw_property_package_list_json,
+        property_package_load_from_files as raw_property_package_load_from_files,
+        rf_string_free as raw_rf_string_free,
+        stream_get_snapshot_json as raw_stream_get_snapshot_json,
     };
     use std::ffi::{CStr, c_char};
-    use std::path::PathBuf;
+    use std::path::{Path, PathBuf};
     use std::ptr;
     use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
+    use rf_model::{Component, Flowsheet, MaterialStreamState, UnitNode, UnitPort};
     use rf_store::{
-        StoredAntoineCoefficients, StoredProjectFile, StoredPropertyPackageManifest,
-        StoredPropertyPackagePayload, StoredPropertyPackageSource, StoredThermoComponent,
-        StoredDocumentMetadata, write_property_package_manifest, write_property_package_payload,
-    };
-    use rf_model::{
-        Component, Flowsheet, MaterialStreamState, UnitNode, UnitPort,
+        StoredAntoineCoefficients, StoredDocumentMetadata, StoredProjectFile,
+        StoredPropertyPackageManifest, StoredPropertyPackagePayload, StoredPropertyPackageSource,
+        StoredThermoComponent, write_property_package_manifest, write_property_package_payload,
     };
     use rf_types::{ComponentId, PortDirection, PortKind};
 
@@ -452,6 +500,80 @@ mod tests {
 
     fn timestamp(seconds: u64) -> SystemTime {
         UNIX_EPOCH + Duration::from_secs(seconds)
+    }
+
+    fn engine_create(out_engine: *mut *mut Engine) -> RfFfiStatus {
+        unsafe { raw_engine_create(out_engine) }
+    }
+
+    fn engine_destroy(engine: *mut Engine) {
+        unsafe { raw_engine_destroy(engine) }
+    }
+
+    fn engine_last_error_message(
+        engine: *const Engine,
+        out_message: *mut *mut c_char,
+    ) -> RfFfiStatus {
+        unsafe { raw_engine_last_error_message(engine, out_message) }
+    }
+
+    fn engine_last_error_json(engine: *const Engine, out_message: *mut *mut c_char) -> RfFfiStatus {
+        unsafe { raw_engine_last_error_json(engine, out_message) }
+    }
+
+    fn rf_string_free(value: *mut c_char) {
+        unsafe { raw_rf_string_free(value) }
+    }
+
+    fn flowsheet_load_json(
+        engine: *mut Engine,
+        json_ptr: *const u8,
+        json_len: usize,
+    ) -> RfFfiStatus {
+        unsafe { raw_flowsheet_load_json(engine, json_ptr, json_len) }
+    }
+
+    fn flowsheet_solve(
+        engine: *mut Engine,
+        package_id_ptr: *const u8,
+        package_id_len: usize,
+    ) -> RfFfiStatus {
+        unsafe { raw_flowsheet_solve(engine, package_id_ptr, package_id_len) }
+    }
+
+    fn property_package_load_from_files(
+        engine: *mut Engine,
+        manifest_path_ptr: *const u8,
+        manifest_path_len: usize,
+        payload_path_ptr: *const u8,
+        payload_path_len: usize,
+    ) -> RfFfiStatus {
+        unsafe {
+            raw_property_package_load_from_files(
+                engine,
+                manifest_path_ptr,
+                manifest_path_len,
+                payload_path_ptr,
+                payload_path_len,
+            )
+        }
+    }
+
+    fn property_package_list_json(engine: *mut Engine, out_json: *mut *mut c_char) -> RfFfiStatus {
+        unsafe { raw_property_package_list_json(engine, out_json) }
+    }
+
+    fn stream_get_snapshot_json(
+        engine: *mut Engine,
+        stream_id_ptr: *const u8,
+        stream_id_len: usize,
+        out_json: *mut *mut c_char,
+    ) -> RfFfiStatus {
+        unsafe { raw_stream_get_snapshot_json(engine, stream_id_ptr, stream_id_len, out_json) }
+    }
+
+    fn flowsheet_get_snapshot_json(engine: *mut Engine, out_json: *mut *mut c_char) -> RfFfiStatus {
+        unsafe { raw_flowsheet_get_snapshot_json(engine, out_json) }
     }
 
     fn sample_runtime_project_json() -> String {
@@ -591,7 +713,7 @@ mod tests {
         serde_json::to_string_pretty(&project).expect("expected project json")
     }
 
-    fn write_runtime_package_files(root: &PathBuf, package_id: &str) -> (PathBuf, PathBuf) {
+    fn write_runtime_package_files(root: &Path, package_id: &str) -> (PathBuf, PathBuf) {
         let manifest_path = root.join("manifest.json");
         let payload_path = root.join("payload.rfpkg");
         let mut first = StoredThermoComponent::new(ComponentId::new("component-a"), "Component A");
@@ -611,7 +733,10 @@ mod tests {
             package_id,
             "2026.04.14",
             StoredPropertyPackageSource::LocalBundled,
-            vec![ComponentId::new("component-a"), ComponentId::new("component-b")],
+            vec![
+                ComponentId::new("component-a"),
+                ComponentId::new("component-b"),
+            ],
         );
         let payload =
             StoredPropertyPackagePayload::new(package_id, "2026.04.14", vec![first, second]);
@@ -677,7 +802,11 @@ mod tests {
         let value: serde_json::Value = serde_json::from_str(&json).expect("expected json");
         assert_eq!(value["id"], "stream-vapor");
         assert_eq!(value["name"], "Vapor Outlet");
-        assert!(value["phases"].as_array().is_some_and(|phases| !phases.is_empty()));
+        assert!(
+            value["phases"]
+                .as_array()
+                .is_some_and(|phases| !phases.is_empty())
+        );
         assert_eq!(call_last_error(engine), "");
 
         engine_destroy(engine);
@@ -857,7 +986,10 @@ mod tests {
         let json = call_last_error_json(engine);
         assert_eq!(json["ffiStatus"], "missing_entity");
         assert_eq!(json["code"], "missing_entity");
-        assert_eq!(json["message"], "missing property package `missing-package`");
+        assert_eq!(
+            json["message"],
+            "missing property package `missing-package`"
+        );
         assert!(json["diagnosticCode"].is_null());
 
         engine_destroy(engine);
@@ -880,7 +1012,9 @@ mod tests {
             stream_get_snapshot_json(engine, stream_id.as_ptr(), stream_id.len(), &mut output);
         assert_eq!(status, RfFfiStatus::InvalidEngineState);
         assert!(output.is_null());
-        assert!(call_last_error(engine).contains("must solve a flowsheet before exporting streams"));
+        assert!(
+            call_last_error(engine).contains("must solve a flowsheet before exporting streams")
+        );
         let json = call_last_error_json(engine);
         assert_eq!(json["ffiStatus"], "invalid_engine_state");
         assert_eq!(json["code"], "invalid_input");

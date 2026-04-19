@@ -10,6 +10,7 @@ $textExtensions = @(
     ".toml",
     ".rs",
     ".ps1",
+    ".sh",
     ".yml",
     ".yaml",
     ".json",
@@ -32,6 +33,10 @@ $textFileNames = @(
     "README.md"
 )
 
+$excludedPrefixes = @(
+    "adapters/reference/"
+)
+
 $utf8Strict = [System.Text.UTF8Encoding]::new($false, $true)
 $utf8NoBom = [System.Text.UTF8Encoding]::new($false)
 
@@ -42,6 +47,19 @@ if ($LASTEXITCODE -ne 0) {
 
 foreach ($relativePath in $files) {
     if ($relativePath.StartsWith("target/")) {
+        continue
+    }
+
+    $normalizedRelativePath = $relativePath.Replace("\", "/")
+    $isExcluded = $false
+    foreach ($prefix in $excludedPrefixes) {
+        if ($normalizedRelativePath.StartsWith($prefix)) {
+            $isExcluded = $true
+            break
+        }
+    }
+
+    if ($isExcluded) {
         continue
     }
 
@@ -74,6 +92,10 @@ foreach ($relativePath in $files) {
         $content = [System.Text.Encoding]::Default.GetString($bytes)
     }
 
+    if ($content.Length -gt 0 -and $content[0] -eq [char]0xFEFF) {
+        $content = $content.Substring(1)
+    }
+
     $normalized = $content.Replace("`r`n", "`n").Replace("`r", "`n")
     if (-not $normalized.EndsWith("`n")) {
         $normalized += "`n"
@@ -83,4 +105,3 @@ foreach ($relativePath in $files) {
 }
 
 Write-Host "Text files normalized to UTF-8 without BOM and LF line endings."
-

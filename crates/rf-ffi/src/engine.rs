@@ -88,8 +88,9 @@ impl Engine {
             .stream(&stream_id.into())
             .ok_or_else(|| RfError::missing_entity("solved stream", stream_id))?;
 
-        serde_json::to_string_pretty(stream)
-            .map_err(|error| RfError::invalid_input(format!("failed to serialize stream json: {error}")))
+        serde_json::to_string_pretty(stream).map_err(|error| {
+            RfError::invalid_input(format!("failed to serialize stream json: {error}"))
+        })
     }
 
     pub fn load_property_package_files(
@@ -101,23 +102,19 @@ impl Engine {
         let payload_path = payload_path.as_ref();
 
         if !manifest_path.exists() {
-            return Err(
-                RfError::missing_entity(
-                    "property package manifest file",
-                    manifest_path.display(),
-                )
-                .with_diagnostic_code("ffi.property_package.manifest_not_found"),
-            );
+            return Err(RfError::missing_entity(
+                "property package manifest file",
+                manifest_path.display(),
+            )
+            .with_diagnostic_code("ffi.property_package.manifest_not_found"));
         }
 
         if !payload_path.exists() {
-            return Err(
-                RfError::missing_entity(
-                    "property package payload file",
-                    payload_path.display(),
-                )
-                .with_diagnostic_code("ffi.property_package.payload_not_found"),
-            );
+            return Err(RfError::missing_entity(
+                "property package payload file",
+                payload_path.display(),
+            )
+            .with_diagnostic_code("ffi.property_package.payload_not_found"));
         }
 
         let stored_manifest = read_property_package_manifest(manifest_path)?;
@@ -140,7 +137,9 @@ impl Engine {
         })?;
 
         serde_json::to_string_pretty(&FfiSolveSnapshotJson::from_snapshot(snapshot)).map_err(
-            |error| RfError::invalid_input(format!("failed to serialize solve snapshot json: {error}")),
+            |error| {
+                RfError::invalid_input(format!("failed to serialize solve snapshot json: {error}"))
+            },
         )
     }
 
@@ -172,6 +171,12 @@ impl Engine {
 
     pub fn clear_last_error(&mut self) {
         self.last_error = None;
+    }
+}
+
+impl Default for Engine {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -234,7 +239,10 @@ fn build_demo_package() -> (PropertyPackageManifest, ThermoSystem) {
             DEMO_PACKAGE_ID,
             DEMO_PACKAGE_VERSION,
             PropertyPackageSource::LocalBundled,
-            vec![ComponentId::new("component-a"), ComponentId::new("component-b")],
+            vec![
+                ComponentId::new("component-a"),
+                ComponentId::new("component-b"),
+            ],
         ),
         ThermoSystem::binary([first, second]),
     )
@@ -283,7 +291,9 @@ fn thermo_component_from_stored(component: StoredThermoComponent) -> ThermoCompo
     }
 }
 
-fn antoine_coefficients_from_stored(coefficients: StoredAntoineCoefficients) -> AntoineCoefficients {
+fn antoine_coefficients_from_stored(
+    coefficients: StoredAntoineCoefficients,
+) -> AntoineCoefficients {
     AntoineCoefficients::new(coefficients.a, coefficients.b, coefficients.c)
 }
 

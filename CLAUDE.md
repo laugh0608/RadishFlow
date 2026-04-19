@@ -221,13 +221,13 @@ chore(PR): establish branch and pr conventions
 
 ### 文本文件约束
 
-所有文本文件必须：
+仓库自有文本文件必须：
 
 - UTF-8 编码（无 BOM）
 - LF 换行（无 CRLF）
 - 末尾带换行符
 
-由仓库检查脚本强制执行。
+由仓库检查脚本强制执行。`adapters/reference/` 下的外部参考资料允许保留上游编码、BOM 与换行格式，不应为通过门禁而批量改写。
 
 ## 分支与 PR
 

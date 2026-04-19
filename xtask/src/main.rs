@@ -22,6 +22,12 @@ const TEXT_FILE_NAMES: &[&str] = &[
     "README.md",
 ];
 
+const TEXT_CHECK_EXCLUDED_PREFIXES: &[&str] = &[
+    // External reference assets are kept for interoperability research and may
+    // intentionally preserve upstream encodings, BOMs, and line endings.
+    "adapters/reference/",
+];
+
 fn main() {
     if let Err(error) = run() {
         eprintln!("error: {error}");
@@ -124,7 +130,10 @@ fn check_text_files(repo_root: &Path) -> Result<(), io::Error> {
         let relative_path = String::from_utf8(relative_path_bytes.to_vec())
             .map_err(|_| io::Error::other("git returned a non-UTF-8 file path"))?;
 
-        if relative_path.starts_with("target/") || !should_check_text_path(&relative_path) {
+        if relative_path.starts_with("target/")
+            || is_text_check_excluded_path(&relative_path)
+            || !should_check_text_path(&relative_path)
+        {
             continue;
         }
 
@@ -154,6 +163,10 @@ fn check_text_files(repo_root: &Path) -> Result<(), io::Error> {
 }
 
 fn should_check_text_path(relative_path: &str) -> bool {
+    if is_text_check_excluded_path(relative_path) {
+        return false;
+    }
+
     let path = Path::new(relative_path);
 
     let Some(file_name) = path.file_name().and_then(OsStr::to_str) else {
@@ -171,6 +184,12 @@ fn should_check_text_path(relative_path: &str) -> bool {
     TEXT_EXTENSIONS
         .iter()
         .any(|candidate| extension.eq_ignore_ascii_case(candidate))
+}
+
+fn is_text_check_excluded_path(relative_path: &str) -> bool {
+    TEXT_CHECK_EXCLUDED_PREFIXES
+        .iter()
+        .any(|prefix| relative_path.starts_with(prefix))
 }
 
 fn inspect_text_bytes(relative_path: &str, bytes: &[u8]) -> Vec<String> {
@@ -300,6 +319,13 @@ mod tests {
         assert!(should_check_text_path("README.md"));
         assert!(should_check_text_path("xtask/Cargo.toml"));
         assert!(!should_check_text_path("assets/logo.png"));
+    }
+
+    #[test]
+    fn text_path_detection_skips_external_reference_assets() {
+        assert!(!should_check_text_path(
+            "adapters/reference/CapeOpenMixerExample_CSharp/CapeOpen/CapeOpen.cs"
+        ));
     }
 
     #[test]
