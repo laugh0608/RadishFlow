@@ -42,6 +42,8 @@ internal static class ContractTestExecutable
         var tests = new (string Name, Action<ContractTestContext> Execute)[]
         {
             ("collection-contract", static context => ContractTests.Collections_ExposeStableLookupAndRejectInvalidSelectors(context)),
+            ("object-runtime-contract", static context => ContractTests.ObjectRuntimeSnapshot_ExposesFrozenObjectMetadata(context)),
+            ("action-definition-contract", static context => ContractTests.ActionDefinitionCatalog_StaysAlignedWithIssueKinds(context)),
             ("configuration-contract", static context => ContractTests.ConfigurationSnapshot_ExposesReadinessAndNextOperations(context)),
             ("action-plan-contract", static context => ContractTests.ActionPlan_ExposesCanonicalChecklistShape(context)),
             ("port-material-contract", static context => ContractTests.PortMaterialSnapshot_ExposesBoundaryStreamsAndLifecycleState(context)),
@@ -105,6 +107,10 @@ internal static class ContractTests
         ContractAssert.Equal(2, context.PortCollection.Count(), "Port collection Count() should remain stable.");
         ContractAssert.Equal(4, context.UnitOperation.Parameters.Count, "Parameter collection IReadOnlyList.Count should stay aligned with ICapeCollection.Count().");
         ContractAssert.Equal(2, context.UnitOperation.Ports.Count, "Port collection IReadOnlyList.Count should stay aligned with ICapeCollection.Count().");
+        ContractAssert.Equal(UnitOperationParameterCatalog.CollectionDefinition.Name, context.UnitOperation.Parameters.ComponentName, "Parameter collection name should come from the frozen collection definition.");
+        ContractAssert.Equal(UnitOperationParameterCatalog.CollectionDefinition.Description, context.UnitOperation.Parameters.ComponentDescription, "Parameter collection description should come from the frozen collection definition.");
+        ContractAssert.Equal(UnitOperationPortCatalog.CollectionDefinition.Name, context.UnitOperation.Ports.ComponentName, "Port collection name should come from the frozen collection definition.");
+        ContractAssert.Equal(UnitOperationPortCatalog.CollectionDefinition.Description, context.UnitOperation.Ports.ComponentDescription, "Port collection description should come from the frozen collection definition.");
         ContractAssert.SequenceEqual(
             UnitOperationParameterCatalog.OrderedNames,
             context.UnitOperation.Parameters.Select(static parameter => parameter.ComponentName),
@@ -146,6 +152,9 @@ internal static class ContractTests
             ContractAssert.Equal(definition.RequiredCompanionParameterName, parameter.RequiredCompanionParameterName, "Runtime parameter companion contract should match the frozen catalog definition.");
             ContractAssert.Equal(definition.Mode, parameter.Mode, "Runtime parameter mode should match the frozen catalog definition.");
             ContractAssert.Equal(definition.DefaultValue, parameter.DefaultValue, "Runtime parameter default value should match the frozen catalog definition.");
+            var specification = (ICapeParameterSpec)parameter.Specification;
+            ContractAssert.Equal(definition.SpecificationType, specification.Type, "Runtime parameter spec type should match the frozen catalog definition.");
+            ContractAssert.SequenceEqual(definition.SpecificationDimensionality, specification.Dimensionality, "Runtime parameter dimensionality should match the frozen catalog definition.");
         }
 
         foreach (var port in context.UnitOperation.Ports)
@@ -301,6 +310,78 @@ internal static class ContractTests
             () => _ = specification.Type,
             "Specification access after Terminate() should remain lifecycle-guarded.");
         ContractAssert.Contains(postTerminateSpecError.Description, "Terminate has already been called", "Post-terminate spec access should preserve lifecycle guidance.");
+    }
+
+    public static void ObjectRuntimeSnapshot_ExposesFrozenObjectMetadata(ContractTestContext context)
+    {
+        var constructedSnapshot = context.ReadObjectRuntime();
+        ContractAssert.Equal(UnitOperationHostObjectRuntimeState.Constructed, constructedSnapshot.LifecycleState, "Object runtime snapshot should preserve constructed lifecycle state.");
+        ContractAssert.Equal(4, constructedSnapshot.ParameterEntries.Count, "Object runtime snapshot should expose parameter entries in frozen catalog order.");
+        ContractAssert.Equal(2, constructedSnapshot.PortEntries.Count, "Object runtime snapshot should expose port entries in frozen catalog order.");
+
+        var constructedFlowsheet = constructedSnapshot.GetParameter(UnitOperationParameterCatalog.FlowsheetJson.Name);
+        ContractAssert.False(constructedFlowsheet.IsConfigured, "Constructed flowsheet parameter should start unconfigured in runtime snapshot.");
+        ContractAssert.Equal(UnitOperationParameterCatalog.FlowsheetJson.Mode, constructedFlowsheet.Mode, "Runtime snapshot should preserve parameter mode.");
+        ContractAssert.Equal(UnitOperationParameterCatalog.FlowsheetJson.SpecificationType, constructedFlowsheet.SpecificationType, "Runtime snapshot should preserve parameter spec type.");
+        ContractAssert.SequenceEqual(UnitOperationParameterCatalog.FlowsheetJson.SpecificationDimensionality, constructedFlowsheet.SpecificationDimensionality, "Runtime snapshot should preserve parameter spec dimensionality.");
+
+        var constructedProduct = constructedSnapshot.GetPort(UnitOperationPortCatalog.Product.Name);
+        ContractAssert.False(constructedProduct.IsConnected, "Constructed product port should start disconnected in runtime snapshot.");
+        ContractAssert.Equal(UnitOperationPortCatalog.Product.BoundaryMaterialRole, constructedProduct.BoundaryMaterialRole, "Runtime snapshot should preserve port boundary-material role.");
+
+        context.ConfigureMinimumValidInputs();
+
+        var readySnapshot = context.ReadObjectRuntime();
+        ContractAssert.Equal(UnitOperationHostObjectRuntimeState.Initialized, readySnapshot.LifecycleState, "Object runtime snapshot should preserve initialized lifecycle state.");
+        ContractAssert.True(readySnapshot.GetParameter(UnitOperationParameterCatalog.FlowsheetJson.Name).IsConfigured, "Configured flowsheet parameter should appear configured in runtime snapshot.");
+        ContractAssert.True(readySnapshot.GetParameter(UnitOperationParameterCatalog.PropertyPackageId.Name).IsConfigured, "Configured package parameter should appear configured in runtime snapshot.");
+        ContractAssert.True(readySnapshot.GetPort(UnitOperationPortCatalog.Feed.Name).IsConnected, "Connected feed port should appear connected in runtime snapshot.");
+        ContractAssert.True(readySnapshot.GetPort(UnitOperationPortCatalog.Product.Name).IsConnected, "Connected product port should appear connected in runtime snapshot.");
+
+        context.UnitOperation.Terminate();
+
+        var terminatedSnapshot = context.ReadObjectRuntime();
+        ContractAssert.Equal(UnitOperationHostObjectRuntimeState.Terminated, terminatedSnapshot.LifecycleState, "Object runtime snapshot should preserve terminated lifecycle state.");
+        ContractAssert.Equal(0, terminatedSnapshot.ParameterEntries.Count, "Terminated runtime snapshot should not bypass lifecycle guards to expose parameters.");
+        ContractAssert.Equal(0, terminatedSnapshot.PortEntries.Count, "Terminated runtime snapshot should not bypass lifecycle guards to expose ports.");
+    }
+
+    public static void ActionDefinitionCatalog_StaysAlignedWithIssueKinds(ContractTestContext context)
+    {
+        var expectedIssueKinds = Enum.GetValues<UnitOperationHostConfigurationIssueKind>();
+        ContractAssert.SequenceEqual(
+            expectedIssueKinds,
+            UnitOperationHostActionDefinitionCatalog.OrderedDefinitions.Select(static definition => definition.IssueKind),
+            "Action definition catalog should cover every host configuration issue kind in stable order.");
+
+        foreach (var issueKind in expectedIssueKinds)
+        {
+            var definition = UnitOperationHostActionDefinitionCatalog.GetByIssueKind(issueKind);
+            ContractAssert.Equal(issueKind, definition.IssueKind, "Action definition lookup should preserve issue kind.");
+            ContractAssert.True(definition.GroupOrder >= 0, "Action definition should expose a non-negative group order.");
+            ContractAssert.False(string.IsNullOrWhiteSpace(definition.GroupTitle), "Action definition should expose a non-empty group title.");
+        }
+
+        ContractAssert.Equal(UnitOperationHostActionGroupKind.Lifecycle, UnitOperationHostActionDefinitionCatalog.InitializeRequired.GroupKind, "InitializeRequired action should stay in Lifecycle group.");
+        ContractAssert.Equal(UnitOperationHostActionTargetKind.Unit, UnitOperationHostActionDefinitionCatalog.InitializeRequired.TargetKind, "InitializeRequired action should target the unit.");
+        ContractAssert.Equal("Lifecycle", UnitOperationHostActionDefinitionCatalog.InitializeRequired.GroupTitle, "InitializeRequired action should preserve Lifecycle title.");
+
+        ContractAssert.Equal(UnitOperationHostActionGroupKind.Parameters, UnitOperationHostActionDefinitionCatalog.RequiredParameterMissing.GroupKind, "RequiredParameterMissing action should stay in Parameters group.");
+        ContractAssert.Equal(UnitOperationHostActionTargetKind.Parameter, UnitOperationHostActionDefinitionCatalog.RequiredParameterMissing.TargetKind, "RequiredParameterMissing action should target parameters.");
+
+        ContractAssert.Equal(UnitOperationHostActionGroupKind.Parameters, UnitOperationHostActionDefinitionCatalog.CompanionParameterMismatch.GroupKind, "CompanionParameterMismatch action should stay in Parameters group.");
+        ContractAssert.Equal(UnitOperationHostActionTargetKind.Parameter, UnitOperationHostActionDefinitionCatalog.CompanionParameterMismatch.TargetKind, "CompanionParameterMismatch action should target parameters.");
+
+        ContractAssert.Equal(UnitOperationHostActionGroupKind.Ports, UnitOperationHostActionDefinitionCatalog.RequiredPortDisconnected.GroupKind, "RequiredPortDisconnected action should stay in Ports group.");
+        ContractAssert.Equal(UnitOperationHostActionTargetKind.Port, UnitOperationHostActionDefinitionCatalog.RequiredPortDisconnected.TargetKind, "RequiredPortDisconnected action should target ports.");
+
+        ContractAssert.Equal(UnitOperationHostActionGroupKind.Terminal, UnitOperationHostActionDefinitionCatalog.Terminated.GroupKind, "Terminated action should stay in Terminal group.");
+        ContractAssert.Equal(UnitOperationHostActionTargetKind.Unit, UnitOperationHostActionDefinitionCatalog.Terminated.TargetKind, "Terminated action should target the unit.");
+
+        var missingDefinitionError = ContractAssert.Throws<ArgumentException>(
+            () => UnitOperationHostActionDefinitionCatalog.GetByIssueKind((UnitOperationHostConfigurationIssueKind)999),
+            "Unknown action definition lookups should be rejected.");
+        ContractAssert.Contains(missingDefinitionError.Message, "Unknown unit operation host action definition", "Missing action definition failures should stay explicit.");
     }
 
     public static void ConfigurationSnapshot_ExposesReadinessAndNextOperations(ContractTestContext context)
@@ -1010,6 +1091,11 @@ internal sealed class ContractTestContext : IDisposable
     public UnitOperationHostConfigurationSnapshot ReadConfiguration()
     {
         return UnitOperationHostConfigurationReader.Read(UnitOperation);
+    }
+
+    public UnitOperationHostObjectRuntimeSnapshot ReadObjectRuntime()
+    {
+        return UnitOperationHostObjectRuntimeReader.Read(UnitOperation);
     }
 
     public UnitOperationHostActionPlan ReadActionPlan()

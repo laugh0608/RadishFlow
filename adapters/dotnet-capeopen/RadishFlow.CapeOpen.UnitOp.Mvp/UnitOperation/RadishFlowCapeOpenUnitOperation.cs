@@ -26,8 +26,7 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
         ComponentDescription = "Minimal CAPE-OPEN unit operation skeleton.";
 
         Parameters = new UnitOperationPlaceholderCollection<UnitOperationParameterPlaceholder>(
-            "Parameters",
-            "Public CAPE-OPEN parameter collection for the MVP unit operation.",
+            UnitOperationParameterCatalog.CollectionDefinition,
             UnitOperationParameterCatalog.OrderedDefinitions.Select(
                 definition => new UnitOperationParameterPlaceholder(
                     definition,
@@ -35,8 +34,7 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
                     onStateChanged: InvalidateValidation)),
             ensureOwnerAccess: EnsurePlaceholderAccess);
         Ports = new UnitOperationPlaceholderCollection<UnitOperationPortPlaceholder>(
-            "Ports",
-            "Public CAPE-OPEN port collection for the MVP unit operation.",
+            UnitOperationPortCatalog.CollectionDefinition,
             UnitOperationPortCatalog.OrderedDefinitions.Select(
                 definition => new UnitOperationPortPlaceholder(
                     definition,

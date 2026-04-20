@@ -28,9 +28,7 @@ public sealed class UnitOperationParameterPlaceholder : ICapeIdentification, ICa
         _ensureOwnerAccess = ensureOwnerAccess;
         _onStateChanged = onStateChanged;
         _specification = new UnitOperationParameterSpecificationPlaceholder(
-            parameterName: definition.Name,
-            type: CapeParamType.CAPE_OPTION,
-            dimensionality: [],
+            definition: definition,
             ensureOwnerAccess: ensureOwnerAccess);
         ValStatus = CapeValidationStatus.NotValidated;
     }

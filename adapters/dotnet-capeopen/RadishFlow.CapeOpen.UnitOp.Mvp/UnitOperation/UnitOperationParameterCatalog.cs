@@ -5,6 +5,10 @@ namespace RadishFlow.CapeOpen.UnitOp.Mvp.UnitOperation;
 
 public static class UnitOperationParameterCatalog
 {
+    public static UnitOperationCollectionDefinition CollectionDefinition { get; } = new(
+        Name: "Parameters",
+        Description: "Public CAPE-OPEN parameter collection for the MVP unit operation.");
+
     public static UnitOperationParameterDefinition FlowsheetJson { get; } = new(
         Name: "Flowsheet Json",
         Description: "StoredProjectFile JSON used by the MVP unit operation skeleton.",
@@ -14,7 +18,9 @@ public static class UnitOperationParameterCatalog
         RequiredCompanionParameterName: null,
         ConfigurationOperationName: nameof(RadishFlowCapeOpenUnitOperation.LoadFlowsheetJson),
         Mode: CapeParamMode.CAPE_INPUT,
-        DefaultValue: null);
+        DefaultValue: null,
+        SpecificationType: CapeParamType.CAPE_OPTION,
+        SpecificationDimensionality: Array.Empty<double>());
 
     public static UnitOperationParameterDefinition PropertyPackageId { get; } = new(
         Name: "Property Package Id",
@@ -25,7 +31,9 @@ public static class UnitOperationParameterCatalog
         RequiredCompanionParameterName: null,
         ConfigurationOperationName: nameof(RadishFlowCapeOpenUnitOperation.SelectPropertyPackage),
         Mode: CapeParamMode.CAPE_INPUT,
-        DefaultValue: null);
+        DefaultValue: null,
+        SpecificationType: CapeParamType.CAPE_OPTION,
+        SpecificationDimensionality: Array.Empty<double>());
 
     public static UnitOperationParameterDefinition PropertyPackageManifestPath { get; } = new(
         Name: "Property Package Manifest Path",
@@ -36,7 +44,9 @@ public static class UnitOperationParameterCatalog
         RequiredCompanionParameterName: "Property Package Payload Path",
         ConfigurationOperationName: nameof(RadishFlowCapeOpenUnitOperation.LoadPropertyPackageFiles),
         Mode: CapeParamMode.CAPE_INPUT,
-        DefaultValue: null);
+        DefaultValue: null,
+        SpecificationType: CapeParamType.CAPE_OPTION,
+        SpecificationDimensionality: Array.Empty<double>());
 
     public static UnitOperationParameterDefinition PropertyPackagePayloadPath { get; } = new(
         Name: "Property Package Payload Path",
@@ -47,7 +57,9 @@ public static class UnitOperationParameterCatalog
         RequiredCompanionParameterName: "Property Package Manifest Path",
         ConfigurationOperationName: nameof(RadishFlowCapeOpenUnitOperation.LoadPropertyPackageFiles),
         Mode: CapeParamMode.CAPE_INPUT,
-        DefaultValue: null);
+        DefaultValue: null,
+        SpecificationType: CapeParamType.CAPE_OPTION,
+        SpecificationDimensionality: Array.Empty<double>());
 
     private static readonly IReadOnlyList<UnitOperationParameterDefinition> OrderedDefinitionsValue =
         ValidateDefinitions(
@@ -132,4 +144,6 @@ public sealed record UnitOperationParameterDefinition(
     string? RequiredCompanionParameterName,
     string ConfigurationOperationName,
     CapeParamMode Mode,
-    string? DefaultValue);
+    string? DefaultValue,
+    CapeParamType SpecificationType,
+    IReadOnlyList<double> SpecificationDimensionality);

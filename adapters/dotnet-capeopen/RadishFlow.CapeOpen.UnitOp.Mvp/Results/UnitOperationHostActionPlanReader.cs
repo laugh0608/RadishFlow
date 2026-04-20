@@ -16,15 +16,16 @@ public static class UnitOperationHostActionPlanReader
     {
         ArgumentNullException.ThrowIfNull(configurationSnapshot);
 
+        var resolutionContext = CreateResolutionContext(configurationSnapshot);
         var actions = configurationSnapshot.BlockingIssues
-            .Select(CreateFactory(configurationSnapshot))
+            .Select((issue, index) => CreateAction(resolutionContext, issue, index + 1))
             .ToArray();
         var groups = actions
             .GroupBy(static action => action.GroupKind)
-            .OrderBy(static group => GetGroupOrder(group.Key))
+            .OrderBy(static group => UnitOperationHostActionDefinitionCatalog.GetByIssueKind(group.First().IssueKind).GroupOrder)
             .Select(static group => new UnitOperationHostActionGroup(
                 Kind: group.Key,
-                Title: GetGroupTitle(group.Key),
+                Title: UnitOperationHostActionDefinitionCatalog.GetByIssueKind(group.First().IssueKind).GroupTitle,
                 Actions: group.OrderBy(static action => action.RecommendedOrder).ToArray()))
             .ToArray();
 
@@ -35,7 +36,7 @@ public static class UnitOperationHostActionPlanReader
             Actions: actions);
     }
 
-    private static Func<UnitOperationHostConfigurationIssue, int, UnitOperationHostActionItem> CreateFactory(
+    private static UnitOperationHostActionResolutionContext CreateResolutionContext(
         UnitOperationHostConfigurationSnapshot configurationSnapshot)
     {
         var parameterNames = configurationSnapshot.ParameterEntries
@@ -45,98 +46,27 @@ public static class UnitOperationHostActionPlanReader
             .Select(static entry => entry.Name)
             .ToDictionary(static name => name, static name => name, StringComparer.OrdinalIgnoreCase);
 
-        return (issue, index) => CreateAction(parameterNames, portNames, issue, index + 1);
+        return new UnitOperationHostActionResolutionContext(parameterNames, portNames);
     }
 
     private static UnitOperationHostActionItem CreateAction(
-        IReadOnlyDictionary<string, string> parameterNames,
-        IReadOnlyDictionary<string, string> portNames,
+        UnitOperationHostActionResolutionContext resolutionContext,
         UnitOperationHostConfigurationIssue issue,
         int recommendedOrder)
     {
-        var target = issue.Kind switch
-        {
-            UnitOperationHostConfigurationIssueKind.InitializeRequired => new UnitOperationHostActionTarget(
-                Kind: UnitOperationHostActionTargetKind.Unit,
-                Names: [issue.TargetName]),
-            UnitOperationHostConfigurationIssueKind.RequiredParameterMissing => new UnitOperationHostActionTarget(
-                Kind: UnitOperationHostActionTargetKind.Parameter,
-                Names: [ResolveName(parameterNames, issue.TargetName)]),
-            UnitOperationHostConfigurationIssueKind.CompanionParameterMismatch => new UnitOperationHostActionTarget(
-                Kind: UnitOperationHostActionTargetKind.Parameter,
-                Names: ResolveCompanionNames(parameterNames, issue.TargetName)),
-            UnitOperationHostConfigurationIssueKind.RequiredPortDisconnected => new UnitOperationHostActionTarget(
-                Kind: UnitOperationHostActionTargetKind.Port,
-                Names: [ResolveName(portNames, issue.TargetName)]),
-            UnitOperationHostConfigurationIssueKind.Terminated => new UnitOperationHostActionTarget(
-                Kind: UnitOperationHostActionTargetKind.Unit,
-                Names: [issue.TargetName]),
-            _ => throw new ArgumentOutOfRangeException(nameof(issue), issue.Kind, "Unknown host configuration issue kind."),
-        };
-
-        var groupKind = issue.Kind switch
-        {
-            UnitOperationHostConfigurationIssueKind.InitializeRequired => UnitOperationHostActionGroupKind.Lifecycle,
-            UnitOperationHostConfigurationIssueKind.RequiredParameterMissing => UnitOperationHostActionGroupKind.Parameters,
-            UnitOperationHostConfigurationIssueKind.CompanionParameterMismatch => UnitOperationHostActionGroupKind.Parameters,
-            UnitOperationHostConfigurationIssueKind.RequiredPortDisconnected => UnitOperationHostActionGroupKind.Ports,
-            UnitOperationHostConfigurationIssueKind.Terminated => UnitOperationHostActionGroupKind.Terminal,
-            _ => throw new ArgumentOutOfRangeException(nameof(issue), issue.Kind, "Unknown host configuration issue kind."),
-        };
+        var definition = UnitOperationHostActionDefinitionCatalog.GetByIssueKind(issue.Kind);
+        var target = new UnitOperationHostActionTarget(
+            Kind: definition.TargetKind,
+            Names: definition.ResolveTargetNames(resolutionContext, issue));
 
         return new UnitOperationHostActionItem(
             RecommendedOrder: recommendedOrder,
-            GroupKind: groupKind,
+            GroupKind: definition.GroupKind,
             Target: target,
             Reason: issue.Message,
-            IsBlocking: true,
+            IsBlocking: definition.IsBlocking,
             CanonicalOperationName: issue.OperationName,
             IssueKind: issue.Kind);
-    }
-
-    private static string ResolveName(
-        IReadOnlyDictionary<string, string> names,
-        string name)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(name);
-        return names.TryGetValue(name, out var resolvedName)
-            ? resolvedName
-            : name;
-    }
-
-    private static IReadOnlyList<string> ResolveCompanionNames(
-        IReadOnlyDictionary<string, string> parameterNames,
-        string pairKey)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(pairKey);
-        return pairKey
-            .Split('|', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .Select(name => ResolveName(parameterNames, name))
-            .ToArray();
-    }
-
-    private static int GetGroupOrder(UnitOperationHostActionGroupKind groupKind)
-    {
-        return groupKind switch
-        {
-            UnitOperationHostActionGroupKind.Lifecycle => 0,
-            UnitOperationHostActionGroupKind.Parameters => 1,
-            UnitOperationHostActionGroupKind.Ports => 2,
-            UnitOperationHostActionGroupKind.Terminal => 3,
-            _ => throw new ArgumentOutOfRangeException(nameof(groupKind), groupKind, "Unknown action group kind."),
-        };
-    }
-
-    private static string GetGroupTitle(UnitOperationHostActionGroupKind groupKind)
-    {
-        return groupKind switch
-        {
-            UnitOperationHostActionGroupKind.Lifecycle => "Lifecycle",
-            UnitOperationHostActionGroupKind.Parameters => "Parameters",
-            UnitOperationHostActionGroupKind.Ports => "Ports",
-            UnitOperationHostActionGroupKind.Terminal => "Terminal State",
-            _ => throw new ArgumentOutOfRangeException(nameof(groupKind), groupKind, "Unknown action group kind."),
-        };
     }
 }
 

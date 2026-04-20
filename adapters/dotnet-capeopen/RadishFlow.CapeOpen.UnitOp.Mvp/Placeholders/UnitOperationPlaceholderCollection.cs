@@ -1,6 +1,7 @@
 using System.Collections;
 using RadishFlow.CapeOpen.Interop.Common;
 using RadishFlow.CapeOpen.Interop.Errors;
+using RadishFlow.CapeOpen.UnitOp.Mvp.UnitOperation;
 
 namespace RadishFlow.CapeOpen.UnitOp.Mvp.Placeholders;
 
@@ -10,26 +11,22 @@ public sealed class UnitOperationPlaceholderCollection<T> : ICapeIdentification,
     private const string InterfaceName = nameof(ICapeCollection);
     private const string ItemOperation = "Item";
     private readonly Action<string, string, string?, object?>? _ensureOwnerAccess;
+    private readonly UnitOperationCollectionDefinition _definition;
     private readonly IReadOnlyList<T> _items;
     private readonly IReadOnlyDictionary<string, T> _itemsByName;
-    private string _componentName;
-    private string _componentDescription;
 
     public UnitOperationPlaceholderCollection(
-        string componentName,
-        string componentDescription,
+        UnitOperationCollectionDefinition definition,
         IEnumerable<T> items,
         Action<string, string, string?, object?>? ensureOwnerAccess = null)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(componentName);
-        ArgumentNullException.ThrowIfNull(componentDescription);
+        ArgumentNullException.ThrowIfNull(definition);
         ArgumentNullException.ThrowIfNull(items);
 
-        _componentName = componentName;
-        _componentDescription = componentDescription;
+        _definition = definition;
         _ensureOwnerAccess = ensureOwnerAccess;
         _items = CreateFrozenItems(items);
-        _itemsByName = CreateItemsByName(_items, componentName);
+        _itemsByName = CreateItemsByName(_items, definition.Name);
     }
 
     public string ComponentName
@@ -37,9 +34,9 @@ public sealed class UnitOperationPlaceholderCollection<T> : ICapeIdentification,
         get
         {
             EnsureOwnerAccess(nameof(ComponentName));
-            return _componentName;
+            return _definition.Name;
         }
-        set => _componentName = SetImmutableComponentName(_componentName, value, nameof(ComponentName));
+        set => SetImmutableComponentName(value, nameof(ComponentName));
     }
 
     public string ComponentDescription
@@ -47,9 +44,9 @@ public sealed class UnitOperationPlaceholderCollection<T> : ICapeIdentification,
         get
         {
             EnsureOwnerAccess(nameof(ComponentDescription));
-            return _componentDescription;
+            return _definition.Description;
         }
-        set => _componentDescription = SetImmutableComponentDescription(_componentDescription, value, nameof(ComponentDescription));
+        set => SetImmutableComponentDescription(value, nameof(ComponentDescription));
     }
 
     public int Count
@@ -263,29 +260,29 @@ public sealed class UnitOperationPlaceholderCollection<T> : ICapeIdentification,
         return itemsByName;
     }
 
-    private string SetImmutableComponentName(string currentValue, string value, string operation)
+    private void SetImmutableComponentName(string value, string operation)
     {
         EnsureOwnerAccess(operation, value);
         ArgumentException.ThrowIfNullOrWhiteSpace(value);
 
-        if (string.Equals(currentValue, value, StringComparison.Ordinal))
+        if (string.Equals(_definition.Name, value, StringComparison.Ordinal))
         {
-            return currentValue;
+            return;
         }
 
         throw new CapeInvalidArgumentException(
-            $"Collection `{currentValue}` does not allow ComponentName mutation in the MVP runtime.",
+            $"Collection `{_definition.Name}` does not allow ComponentName mutation in the MVP runtime.",
             CreateContext(operation, value));
     }
 
-    private string SetImmutableComponentDescription(string currentValue, string value, string operation)
+    private void SetImmutableComponentDescription(string value, string operation)
     {
         EnsureOwnerAccess(operation, value);
         ArgumentNullException.ThrowIfNull(value);
 
-        if (string.Equals(currentValue, value, StringComparison.Ordinal))
+        if (string.Equals(_definition.Description, value, StringComparison.Ordinal))
         {
-            return currentValue;
+            return;
         }
 
         throw new CapeInvalidArgumentException(
