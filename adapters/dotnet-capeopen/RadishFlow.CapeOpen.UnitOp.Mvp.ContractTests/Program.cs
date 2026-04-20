@@ -44,9 +44,13 @@ internal static class ContractTestExecutable
             ("collection-contract", static context => ContractTests.Collections_ExposeStableLookupAndRejectInvalidSelectors(context)),
             ("object-definition-contract", static _ => ContractTests.ObjectDefinitionSnapshot_ExposesFrozenCatalogShape()),
             ("object-runtime-contract", static context => ContractTests.ObjectRuntimeSnapshot_ExposesFrozenObjectMetadata(context)),
+            ("object-mutation-contract", static context => ContractTests.ObjectMutationDispatcher_AppliesCanonicalMutations(context)),
+            ("object-mutation-batch-contract", static context => ContractTests.ObjectMutationDispatcher_DispatchesCanonicalBatch(context)),
             ("action-definition-contract", static context => ContractTests.ActionDefinitionCatalog_StaysAlignedWithIssueKinds(context)),
             ("configuration-contract", static context => ContractTests.ConfigurationSnapshot_ExposesReadinessAndNextOperations(context)),
             ("action-plan-contract", static context => ContractTests.ActionPlan_ExposesCanonicalChecklistShape(context)),
+            ("action-mutation-bridge-contract", static context => ContractTests.ActionMutationBridge_TranslatesCanonicalHostActions(context)),
+            ("action-execution-contract", static context => ContractTests.ActionExecutionDispatcher_AppliesCanonicalHostActions(context)),
             ("port-material-contract", static context => ContractTests.PortMaterialSnapshot_ExposesBoundaryStreamsAndLifecycleState(context)),
             ("execution-snapshot-contract", static context => ContractTests.ExecutionSnapshot_ExposesStepAndDiagnosticShape(context)),
             ("session-snapshot-contract", static context => ContractTests.SessionSnapshot_ExposesUnifiedHostView(context)),
@@ -417,6 +421,130 @@ internal static class ContractTests
         ContractAssert.Equal(0, terminatedSnapshot.PortEntries.Count, "Terminated runtime snapshot should not bypass lifecycle guards to expose ports.");
     }
 
+    public static void ObjectMutationDispatcher_AppliesCanonicalMutations(ContractTestContext context)
+    {
+        context.Initialize();
+
+        var setParameterOutcome = UnitOperationHostObjectMutationDispatcher.SetParameterValue(
+            context.UnitOperation,
+            UnitOperationParameterCatalog.PropertyPackageId.Name,
+            context.PackageId);
+        AssertMutationOutcome(
+            setParameterOutcome,
+            UnitOperationHostObjectMutationKind.SetParameterValue,
+            UnitOperationHostActionTargetKind.Parameter,
+            UnitOperationParameterCatalog.PropertyPackageId.Name);
+        ContractAssert.Equal(context.PackageId, context.PackageIdParameter.Value, "SetParameterValue mutation should write the target parameter value.");
+        ContractAssert.True(context.PackageIdParameter.IsConfigured, "SetParameterValue mutation should configure the target parameter.");
+        ContractAssert.Equal(CapeValidationStatus.NotValidated, context.UnitOperation.ValStatus, "SetParameterValue mutation should invalidate validation state.");
+
+        var resetParameterOutcome = UnitOperationHostObjectMutationDispatcher.ResetParameter(
+            context.UnitOperation,
+            UnitOperationParameterCatalog.PropertyPackageId.Name);
+        AssertMutationOutcome(
+            resetParameterOutcome,
+            UnitOperationHostObjectMutationKind.ResetParameter,
+            UnitOperationHostActionTargetKind.Parameter,
+            UnitOperationParameterCatalog.PropertyPackageId.Name);
+        ContractAssert.Null(context.PackageIdParameter.Value, "ResetParameter mutation should restore the target parameter default value.");
+        ContractAssert.False(context.PackageIdParameter.IsConfigured, "ResetParameter mutation should clear configured state for optional-null default values.");
+
+        var connectPortOutcome = UnitOperationHostObjectMutationDispatcher.ConnectPort(
+            context.UnitOperation,
+            UnitOperationPortCatalog.Feed.Name,
+            new ContractConnectedObject("Dispatcher Feed"));
+        AssertMutationOutcome(
+            connectPortOutcome,
+            UnitOperationHostObjectMutationKind.ConnectPort,
+            UnitOperationHostActionTargetKind.Port,
+            UnitOperationPortCatalog.Feed.Name);
+        ContractAssert.True(context.FeedPort.IsConnected, "ConnectPort mutation should connect the target port.");
+
+        var replacementError = ContractAssert.Throws<CapeBadInvocationOrderException>(
+            () => UnitOperationHostObjectMutationDispatcher.ConnectPort(
+                context.UnitOperation,
+                UnitOperationPortCatalog.Feed.Name,
+                new ContractConnectedObject("Replacement Dispatcher Feed")),
+            "ConnectPort mutation should preserve explicit-disconnect replacement semantics.");
+        ContractAssert.Contains(replacementError.Description, "Disconnect it before replacing", "ConnectPort replacement failures should preserve port guidance.");
+
+        var disconnectPortOutcome = UnitOperationHostObjectMutationDispatcher.DisconnectPort(
+            context.UnitOperation,
+            UnitOperationPortCatalog.Feed.Name);
+        AssertMutationOutcome(
+            disconnectPortOutcome,
+            UnitOperationHostObjectMutationKind.DisconnectPort,
+            UnitOperationHostActionTargetKind.Port,
+            UnitOperationPortCatalog.Feed.Name);
+        ContractAssert.False(context.FeedPort.IsConnected, "DisconnectPort mutation should disconnect the target port.");
+
+        context.UnitOperation.Terminate();
+
+        var postTerminateMutationError = ContractAssert.Throws<CapeBadInvocationOrderException>(
+            () => UnitOperationHostObjectMutationDispatcher.SetParameterValue(
+                context.UnitOperation,
+                UnitOperationParameterCatalog.PropertyPackageId.Name,
+                context.PackageId),
+            "Object mutation dispatcher should preserve lifecycle guard after Terminate().");
+        ContractAssert.Contains(postTerminateMutationError.Description, "Terminate has already been called", "Post-terminate mutation failures should preserve lifecycle guidance.");
+    }
+
+    public static void ObjectMutationDispatcher_DispatchesCanonicalBatch(ContractTestContext context)
+    {
+        context.Initialize();
+
+        var batchResult = UnitOperationHostObjectMutationDispatcher.DispatchBatch(
+            context.UnitOperation,
+            [
+                UnitOperationHostObjectMutationCommand.SetParameterValue(UnitOperationParameterCatalog.FlowsheetJson.Name, context.FlowsheetJsonText),
+                UnitOperationHostObjectMutationCommand.SetParameterValue(UnitOperationParameterCatalog.PropertyPackageId.Name, context.PackageId),
+                UnitOperationHostObjectMutationCommand.ConnectPort(UnitOperationPortCatalog.Feed.Name, new ContractConnectedObject("Batch Feed")),
+                UnitOperationHostObjectMutationCommand.ConnectPort(UnitOperationPortCatalog.Product.Name, new ContractConnectedObject("Batch Product")),
+            ]);
+
+        ContractAssert.Equal(4, batchResult.AppliedCount, "Mutation batch should report the number of applied commands.");
+        ContractAssert.Equal(4, batchResult.Outcomes.Count, "Mutation batch should preserve ordered outcomes.");
+        ContractAssert.True(batchResult.InvalidatedValidation, "Mutation batch should report validation invalidation.");
+        ContractAssert.True(batchResult.InvalidatedCalculationReport, "Mutation batch should report calculation report invalidation.");
+        AssertMutationOutcome(
+            batchResult.Outcomes[0],
+            UnitOperationHostObjectMutationKind.SetParameterValue,
+            UnitOperationHostActionTargetKind.Parameter,
+            UnitOperationParameterCatalog.FlowsheetJson.Name);
+        AssertMutationOutcome(
+            batchResult.Outcomes[1],
+            UnitOperationHostObjectMutationKind.SetParameterValue,
+            UnitOperationHostActionTargetKind.Parameter,
+            UnitOperationParameterCatalog.PropertyPackageId.Name);
+        AssertMutationOutcome(
+            batchResult.Outcomes[2],
+            UnitOperationHostObjectMutationKind.ConnectPort,
+            UnitOperationHostActionTargetKind.Port,
+            UnitOperationPortCatalog.Feed.Name);
+        AssertMutationOutcome(
+            batchResult.Outcomes[3],
+            UnitOperationHostObjectMutationKind.ConnectPort,
+            UnitOperationHostActionTargetKind.Port,
+            UnitOperationPortCatalog.Product.Name);
+
+        ContractAssert.True(context.FlowsheetParameter.IsConfigured, "Mutation batch should configure flowsheet parameter.");
+        ContractAssert.True(context.PackageIdParameter.IsConfigured, "Mutation batch should configure package parameter.");
+        ContractAssert.True(context.FeedPort.IsConnected, "Mutation batch should connect feed port.");
+        ContractAssert.True(context.ProductPort.IsConnected, "Mutation batch should connect product port.");
+
+        var readyConfiguration = context.ReadConfiguration();
+        ContractAssert.Equal(UnitOperationHostConfigurationState.Ready, readyConfiguration.State, "Mutation batch should be able to produce a ready configuration state.");
+
+        var batchFailureError = ContractAssert.Throws<CapeBadInvocationOrderException>(
+            () => UnitOperationHostObjectMutationDispatcher.DispatchBatch(
+                context.UnitOperation,
+                [
+                    UnitOperationHostObjectMutationCommand.ConnectPort(UnitOperationPortCatalog.Feed.Name, new ContractConnectedObject("Replacement Batch Feed")),
+                ]),
+            "Mutation batch should preserve command failure semantics.");
+        ContractAssert.Contains(batchFailureError.Description, "Disconnect it before replacing", "Mutation batch failures should preserve connect replacement guidance.");
+    }
+
     public static void ActionDefinitionCatalog_StaysAlignedWithIssueKinds(ContractTestContext context)
     {
         var expectedIssueKinds = Enum.GetValues<UnitOperationHostConfigurationIssueKind>();
@@ -610,6 +738,207 @@ internal static class ContractTests
                 "Terminate has already been called",
                 context.UnitOperation.ComponentName));
         ContractAssert.False(terminatedPlan.ContainsCanonicalOperation(nameof(RadishFlowCapeOpenUnitOperation.Initialize)), "Terminated action plan should not suggest Initialize().");
+    }
+
+    public static void ActionMutationBridge_TranslatesCanonicalHostActions(ContractTestContext context)
+    {
+        var constructedPlan = context.ReadActionPlan();
+        var constructedBindings = UnitOperationHostActionMutationBridge.Describe(constructedPlan);
+        ContractAssert.Equal(5, constructedBindings.Count, "Constructed action plan should translate every action into a mutation binding.");
+
+        var initializeBinding = constructedBindings[0];
+        ContractAssert.Equal(UnitOperationHostActionMutationBindingKind.LifecycleOperation, initializeBinding.Kind, "InitializeRequired action should be classified as lifecycle-only.");
+        ContractAssert.False(initializeBinding.CanCreateMutationCommands, "InitializeRequired action should not produce mutation commands.");
+        ContractAssert.Equal(0, initializeBinding.CommandCount, "InitializeRequired action should not report mutation commands.");
+
+        var flowsheetBinding = constructedBindings[1];
+        ContractAssert.Equal(UnitOperationHostActionMutationBindingKind.ParameterValues, flowsheetBinding.Kind, "Missing flowsheet action should require parameter values.");
+        ContractAssert.True(flowsheetBinding.CanCreateMutationCommands, "Missing flowsheet action should support mutation command creation.");
+        ContractAssert.SequenceEqual(
+            [UnitOperationHostObjectMutationKind.SetParameterValue],
+            flowsheetBinding.MutationKinds,
+            "Missing flowsheet action should map to SetParameterValue.");
+
+        var flowsheetCommands = UnitOperationHostActionMutationBridge.CreateParameterCommandBatch(
+            constructedPlan.Actions[1],
+            new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase)
+            {
+                [UnitOperationParameterCatalog.FlowsheetJson.Name] = context.FlowsheetJsonText,
+            });
+        ContractAssert.Equal(1, flowsheetCommands.CommandCount, "Single-parameter action should produce one mutation command.");
+        AssertMutationCommand(
+            flowsheetCommands.Commands[0],
+            UnitOperationHostObjectMutationKind.SetParameterValue,
+            UnitOperationParameterCatalog.FlowsheetJson.Name,
+            context.FlowsheetJsonText);
+
+        var packageFileAction = new UnitOperationHostActionItem(
+            RecommendedOrder: 1,
+            GroupKind: UnitOperationHostActionGroupKind.Parameters,
+            Target: new UnitOperationHostActionTarget(
+                UnitOperationHostActionTargetKind.Parameter,
+                [
+                    UnitOperationParameterCatalog.PropertyPackageManifestPath.Name,
+                    UnitOperationParameterCatalog.PropertyPackagePayloadPath.Name,
+                ]),
+            Reason: "Optional parameters must be configured together.",
+            IsBlocking: true,
+            CanonicalOperationName: UnitOperationParameterCatalog.PropertyPackageManifestPath.ConfigurationOperationName,
+            IssueKind: UnitOperationHostConfigurationIssueKind.CompanionParameterMismatch);
+        var companionBinding = UnitOperationHostActionMutationBridge.Describe(packageFileAction);
+        ContractAssert.Equal(UnitOperationHostActionMutationBindingKind.ParameterValues, companionBinding.Kind, "Companion mismatch action should require parameter values.");
+        ContractAssert.Equal(2, companionBinding.CommandCount, "Companion mismatch action should produce two parameter commands.");
+        ContractAssert.SequenceEqual(
+            [UnitOperationHostObjectMutationKind.SetParameterValue, UnitOperationHostObjectMutationKind.SetParameterValue],
+            companionBinding.MutationKinds,
+            "Companion mismatch action should map both targets to SetParameterValue.");
+
+        var companionCommands = UnitOperationHostActionMutationBridge.CreateParameterCommandBatch(
+            packageFileAction,
+            new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase)
+            {
+                [UnitOperationParameterCatalog.PropertyPackageManifestPath.Name] = context.ManifestPath,
+                [UnitOperationParameterCatalog.PropertyPackagePayloadPath.Name] = context.PayloadPath,
+            });
+        ContractAssert.Equal(2, companionCommands.CommandCount, "Companion mismatch action should create one command per companion target.");
+        AssertMutationCommand(
+            companionCommands.Commands[0],
+            UnitOperationHostObjectMutationKind.SetParameterValue,
+            UnitOperationParameterCatalog.PropertyPackageManifestPath.Name,
+            context.ManifestPath);
+        AssertMutationCommand(
+            companionCommands.Commands[1],
+            UnitOperationHostObjectMutationKind.SetParameterValue,
+            UnitOperationParameterCatalog.PropertyPackagePayloadPath.Name,
+            context.PayloadPath);
+
+        var productPortAction = new UnitOperationHostActionItem(
+            RecommendedOrder: 1,
+            GroupKind: UnitOperationHostActionGroupKind.Ports,
+            Target: new UnitOperationHostActionTarget(
+                UnitOperationHostActionTargetKind.Port,
+                [UnitOperationPortCatalog.Product.Name]),
+            Reason: "Required port is not connected.",
+            IsBlocking: true,
+            CanonicalOperationName: UnitOperationPortCatalog.Product.ConnectionOperationName,
+            IssueKind: UnitOperationHostConfigurationIssueKind.RequiredPortDisconnected);
+        var portBinding = UnitOperationHostActionMutationBridge.Describe(productPortAction);
+        ContractAssert.Equal(UnitOperationHostActionMutationBindingKind.PortConnection, portBinding.Kind, "Disconnected required port action should require a port connection object.");
+        ContractAssert.Equal(1, portBinding.CommandCount, "Disconnected required port action should produce one connect command.");
+        ContractAssert.SequenceEqual(
+            [UnitOperationHostObjectMutationKind.ConnectPort],
+            portBinding.MutationKinds,
+            "Disconnected required port action should map to ConnectPort.");
+
+        var portObject = new ContractConnectedObject("Bridge Product");
+        var portCommands = UnitOperationHostActionMutationBridge.CreatePortConnectionCommandBatch(productPortAction, portObject);
+        ContractAssert.Equal(1, portCommands.CommandCount, "Port connection action should create one connect command.");
+        AssertMutationCommand(
+            portCommands.Commands[0],
+            UnitOperationHostObjectMutationKind.ConnectPort,
+            UnitOperationPortCatalog.Product.Name,
+            portObject);
+
+        context.UnitOperation.Terminate();
+        var terminatedBinding = UnitOperationHostActionMutationBridge.Describe(context.ReadActionPlan().Actions[0]);
+        ContractAssert.Equal(UnitOperationHostActionMutationBindingKind.Unsupported, terminatedBinding.Kind, "Terminated action should remain explicitly unsupported for mutation translation.");
+        ContractAssert.False(terminatedBinding.CanCreateMutationCommands, "Terminated action should not create mutation commands.");
+
+        var wrongBindingError = ContractAssert.Throws<InvalidOperationException>(
+            () => UnitOperationHostActionMutationBridge.CreatePortConnectionCommandBatch(constructedPlan.Actions[1], new ContractConnectedObject("Wrong Target")),
+            "Parameter action should reject port-connection translation.");
+        ContractAssert.Contains(wrongBindingError.Message, "does not accept port-connection mutation translation", "Wrong bridge usage should stay explicit.");
+
+        var missingValueError = ContractAssert.Throws<ArgumentException>(
+            () => UnitOperationHostActionMutationBridge.CreateParameterCommandBatch(
+                packageFileAction,
+                new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase)
+                {
+                    [UnitOperationParameterCatalog.PropertyPackageManifestPath.Name] = context.ManifestPath,
+                }),
+            "Companion action should reject incomplete parameter payloads.");
+        ContractAssert.Contains(missingValueError.Message, "Missing parameter value", "Incomplete parameter payload errors should stay explicit.");
+    }
+
+    public static void ActionExecutionDispatcher_AppliesCanonicalHostActions(ContractTestContext context)
+    {
+        var constructedPlan = context.ReadActionPlan();
+        var initializeOutcome = UnitOperationHostActionExecutionDispatcher.ApplyAction(
+            context.UnitOperation,
+            UnitOperationHostActionExecutionRequest.ForAction(constructedPlan.Actions[0]));
+        ContractAssert.Equal(UnitOperationHostActionExecutionDisposition.LifecycleOperationRequired, initializeOutcome.Disposition, "Initialize action should remain a lifecycle-only execution outcome.");
+        ContractAssert.Equal(nameof(RadishFlowCapeOpenUnitOperation.Initialize), initializeOutcome.LifecycleOperationName, "Initialize action should surface canonical lifecycle operation name.");
+        ContractAssert.False(initializeOutcome.AppliedMutations, "Initialize action should not apply object mutations.");
+        ContractAssert.Equal(0, initializeOutcome.ExecutedCommands.Count, "Initialize action should not execute mutation commands.");
+
+        context.Initialize();
+
+        var parameterOutcome = UnitOperationHostActionExecutionDispatcher.ApplyAction(
+            context.UnitOperation,
+            UnitOperationHostActionExecutionRequest.ForParameterValues(
+                context.ReadActionPlan().Actions[0],
+                new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase)
+                {
+                    [UnitOperationParameterCatalog.FlowsheetJson.Name] = context.FlowsheetJsonText,
+                }));
+        ContractAssert.Equal(UnitOperationHostActionExecutionDisposition.MutationApplied, parameterOutcome.Disposition, "Required parameter action should apply object mutations.");
+        ContractAssert.True(parameterOutcome.AppliedMutations, "Required parameter action should report applied mutations.");
+        ContractAssert.Equal(1, parameterOutcome.AppliedMutationCount, "Single required parameter action should apply one mutation.");
+        ContractAssert.True(parameterOutcome.InvalidatedValidation, "Required parameter action should invalidate validation state.");
+        ContractAssert.True(context.FlowsheetParameter.IsConfigured, "Required parameter action should configure the flowsheet parameter.");
+        AssertMutationCommand(
+            parameterOutcome.ExecutedCommands[0],
+            UnitOperationHostObjectMutationKind.SetParameterValue,
+            UnitOperationParameterCatalog.FlowsheetJson.Name,
+            context.FlowsheetJsonText);
+        AssertMutationOutcome(
+            parameterOutcome.MutationOutcomes[0],
+            UnitOperationHostObjectMutationKind.SetParameterValue,
+            UnitOperationHostActionTargetKind.Parameter,
+            UnitOperationParameterCatalog.FlowsheetJson.Name);
+
+        var currentPlan = context.ReadActionPlan();
+        var batchResult = UnitOperationHostActionExecutionDispatcher.ApplyActionBatch(
+            context.UnitOperation,
+            [
+                UnitOperationHostActionExecutionRequest.ForParameterValues(
+                    currentPlan.Actions[0],
+                    new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase)
+                    {
+                        [UnitOperationParameterCatalog.PropertyPackageId.Name] = context.PackageId,
+                    }),
+                UnitOperationHostActionExecutionRequest.ForPortConnection(
+                    currentPlan.Actions[1],
+                    new ContractConnectedObject("Execution Feed")),
+                UnitOperationHostActionExecutionRequest.ForPortConnection(
+                    currentPlan.Actions[2],
+                    new ContractConnectedObject("Execution Product")),
+            ]);
+        ContractAssert.Equal(3, batchResult.AppliedActionCount, "Action batch should report action count.");
+        ContractAssert.Equal(3, batchResult.AppliedMutationCount, "Action batch should sum applied mutation commands.");
+        ContractAssert.False(batchResult.HasLifecycleOperations, "Pure mutation action batch should not report lifecycle operations.");
+        ContractAssert.False(batchResult.HasUnsupportedActions, "Pure mutation action batch should not report unsupported actions.");
+        ContractAssert.True(batchResult.InvalidatedValidation, "Action batch should report validation invalidation.");
+        ContractAssert.True(batchResult.InvalidatedCalculationReport, "Action batch should report calculation report invalidation.");
+        ContractAssert.True(context.PackageIdParameter.IsConfigured, "Action batch should configure package id parameter.");
+        ContractAssert.True(context.FeedPort.IsConnected, "Action batch should connect feed port.");
+        ContractAssert.True(context.ProductPort.IsConnected, "Action batch should connect product port.");
+        ContractAssert.Equal(UnitOperationHostConfigurationState.Ready, context.ReadConfiguration().State, "Action batch should be able to drive configuration into ready state.");
+
+        context.UnitOperation.Terminate();
+
+        var terminatedOutcome = UnitOperationHostActionExecutionDispatcher.ApplyAction(
+            context.UnitOperation,
+            UnitOperationHostActionExecutionRequest.ForAction(context.ReadActionPlan().Actions[0]));
+        ContractAssert.Equal(UnitOperationHostActionExecutionDisposition.Unsupported, terminatedOutcome.Disposition, "Terminated action should remain unsupported for execution.");
+        ContractAssert.False(terminatedOutcome.AppliedMutations, "Terminated action should not apply mutations.");
+
+        var missingPayloadError = ContractAssert.Throws<InvalidOperationException>(
+            () => UnitOperationHostActionExecutionDispatcher.ApplyAction(
+                new RadishFlowCapeOpenUnitOperation(),
+                UnitOperationHostActionExecutionRequest.ForAction(constructedPlan.Actions[1])),
+            "Required parameter execution should reject missing parameter values.");
+        ContractAssert.Contains(missingPayloadError.Message, "requires parameter values", "Missing parameter values should stay explicit.");
     }
 
     public static void PortMaterialSnapshot_ExposesBoundaryStreamsAndLifecycleState(ContractTestContext context)
@@ -926,6 +1255,43 @@ internal static class ContractTests
         ContractAssert.SequenceEqual(expectedMaterialStreamIds, entry.MaterialEntries.Select(static entry => entry.StreamId), "Port/material entry should expose the expected current material stream ids.");
     }
 
+    private static void AssertMutationOutcome(
+        UnitOperationHostObjectMutationOutcome outcome,
+        UnitOperationHostObjectMutationKind expectedOperation,
+        UnitOperationHostActionTargetKind expectedTargetKind,
+        string expectedTargetName)
+    {
+        ContractAssert.True(outcome.Succeeded, "Mutation outcome should report success.");
+        ContractAssert.Equal(expectedOperation, outcome.Operation, "Mutation outcome should preserve operation kind.");
+        ContractAssert.Equal(expectedTargetKind, outcome.Target.Kind, "Mutation outcome should preserve target kind.");
+        ContractAssert.SequenceEqual([expectedTargetName], outcome.Target.Names, "Mutation outcome should preserve target name.");
+        ContractAssert.True(outcome.InvalidatesValidation, "Mutation outcome should report validation invalidation.");
+        ContractAssert.True(outcome.InvalidatesCalculationReport, "Mutation outcome should report calculation report invalidation.");
+    }
+
+    private static void AssertMutationCommand(
+        UnitOperationHostObjectMutationCommand command,
+        UnitOperationHostObjectMutationKind expectedKind,
+        string expectedTargetName,
+        object? expectedPayload)
+    {
+        ContractAssert.Equal(expectedKind, command.Kind, "Mutation command should preserve command kind.");
+        ContractAssert.Equal(expectedTargetName, command.TargetName, "Mutation command should preserve target name.");
+        if (expectedPayload is null)
+        {
+            ContractAssert.Null(command.Payload, "Mutation command should preserve null payload.");
+            return;
+        }
+
+        if (expectedPayload is string expectedString)
+        {
+            ContractAssert.Equal(expectedString, (string?)command.Payload, "Mutation command should preserve string payload.");
+            return;
+        }
+
+        ContractAssert.SameReference(expectedPayload, command.Payload, "Mutation command should preserve object payload by reference.");
+    }
+
     public static void Ports_RequireDisconnectBeforeReplacingConnections(ContractTestContext context)
     {
         context.Initialize();
@@ -1107,6 +1473,10 @@ internal sealed class ContractTestContext : IDisposable
 
     public string PayloadPath => _options.PayloadPath;
 
+    public string PackageId => _options.PackageId;
+
+    public string FlowsheetJsonText => File.ReadAllText(_options.ProjectPath);
+
     public ICapeCollection ParameterCollection { get; }
 
     public ICapeCollection PortCollection { get; }
@@ -1130,7 +1500,7 @@ internal sealed class ContractTestContext : IDisposable
 
     public void LoadFlowsheet()
     {
-        UnitOperation.LoadFlowsheetJson(File.ReadAllText(_options.ProjectPath));
+        UnitOperation.LoadFlowsheetJson(FlowsheetJsonText);
     }
 
     public void LoadPackageFiles()

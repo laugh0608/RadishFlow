@@ -84,6 +84,41 @@ internal sealed class UnitOperationSmokeHostDriver : IDisposable
         }
     }
 
+    public UnitOperationHostActionExecutionBatchResult ApplyMinimumConfigurationActions(bool includePackageId)
+    {
+        ThrowIfDisposed();
+
+        var requests = new List<UnitOperationHostActionExecutionRequest>();
+        foreach (var action in ReadActionPlan().Actions)
+        {
+            var request = CreateMinimumConfigurationRequest(action, includePackageId);
+            if (request is not null)
+            {
+                requests.Add(request);
+            }
+        }
+
+        var result = UnitOperationHostActionExecutionDispatcher.ApplyActionBatch(_unitOperation, requests);
+        ApplyOptionalPackageFileInputs();
+        return result;
+    }
+
+    public UnitOperationHostActionExecutionOutcome ApplyRequiredPortAction(string portName, string componentName)
+    {
+        ThrowIfDisposed();
+        ArgumentException.ThrowIfNullOrWhiteSpace(portName);
+        ArgumentException.ThrowIfNullOrWhiteSpace(componentName);
+
+        var action = ReadActionPlan().Actions.Single(action =>
+            action.IssueKind == UnitOperationHostConfigurationIssueKind.RequiredPortDisconnected &&
+            action.Target.Names.Any(targetName => string.Equals(targetName, portName, StringComparison.OrdinalIgnoreCase)));
+        return UnitOperationHostActionExecutionDispatcher.ApplyAction(
+            _unitOperation,
+            UnitOperationHostActionExecutionRequest.ForPortConnection(
+                action,
+                new SmokeConnectedObject(componentName)));
+    }
+
     public void ConnectRequiredPorts()
     {
         ThrowIfDisposed();
@@ -200,6 +235,103 @@ internal sealed class UnitOperationSmokeHostDriver : IDisposable
         }
 
         return UnitOperationHostDriverFailureKind.Unknown;
+    }
+
+    private UnitOperationHostActionExecutionRequest? CreateMinimumConfigurationRequest(
+        UnitOperationHostActionItem action,
+        bool includePackageId)
+    {
+        return action.IssueKind switch
+        {
+            UnitOperationHostConfigurationIssueKind.RequiredParameterMissing =>
+                CreateRequiredParameterRequest(action, includePackageId),
+            UnitOperationHostConfigurationIssueKind.CompanionParameterMismatch =>
+                CreatePackageFileRequest(action),
+            UnitOperationHostConfigurationIssueKind.RequiredPortDisconnected =>
+                UnitOperationHostActionExecutionRequest.ForPortConnection(
+                    action,
+                    new SmokeConnectedObject($"{action.Target.PrimaryName} Smoke")),
+            _ => null,
+        };
+    }
+
+    private UnitOperationHostActionExecutionRequest? CreateRequiredParameterRequest(
+        UnitOperationHostActionItem action,
+        bool includePackageId)
+    {
+        var values = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
+        foreach (var targetName in action.Target.Names)
+        {
+            if (string.Equals(targetName, UnitOperationParameterCatalog.FlowsheetJson.Name, StringComparison.OrdinalIgnoreCase))
+            {
+                values[targetName] = _projectJson;
+                continue;
+            }
+
+            if (string.Equals(targetName, UnitOperationParameterCatalog.PropertyPackageId.Name, StringComparison.OrdinalIgnoreCase))
+            {
+                if (!includePackageId)
+                {
+                    return null;
+                }
+
+                values[targetName] = _options.PackageId;
+                continue;
+            }
+
+            if (_options.LoadPackageFiles &&
+                string.Equals(targetName, UnitOperationParameterCatalog.PropertyPackageManifestPath.Name, StringComparison.OrdinalIgnoreCase))
+            {
+                values[targetName] = _options.ManifestPath!;
+                continue;
+            }
+
+            if (_options.LoadPackageFiles &&
+                string.Equals(targetName, UnitOperationParameterCatalog.PropertyPackagePayloadPath.Name, StringComparison.OrdinalIgnoreCase))
+            {
+                values[targetName] = _options.PayloadPath!;
+            }
+        }
+
+        return values.Count == action.Target.Names.Count
+            ? UnitOperationHostActionExecutionRequest.ForParameterValues(action, values)
+            : null;
+    }
+
+    private UnitOperationHostActionExecutionRequest? CreatePackageFileRequest(
+        UnitOperationHostActionItem action)
+    {
+        if (!_options.LoadPackageFiles)
+        {
+            return null;
+        }
+
+        return UnitOperationHostActionExecutionRequest.ForParameterValues(
+            action,
+            new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase)
+            {
+                [UnitOperationParameterCatalog.PropertyPackageManifestPath.Name] = _options.ManifestPath!,
+                [UnitOperationParameterCatalog.PropertyPackagePayloadPath.Name] = _options.PayloadPath!,
+            });
+    }
+
+    private void ApplyOptionalPackageFileInputs()
+    {
+        if (!_options.LoadPackageFiles)
+        {
+            return;
+        }
+
+        UnitOperationHostObjectMutationDispatcher.DispatchBatch(
+            _unitOperation,
+            [
+                UnitOperationHostObjectMutationCommand.SetParameterValue(
+                    UnitOperationParameterCatalog.PropertyPackageManifestPath.Name,
+                    _options.ManifestPath!),
+                UnitOperationHostObjectMutationCommand.SetParameterValue(
+                    UnitOperationParameterCatalog.PropertyPackagePayloadPath.Name,
+                    _options.PayloadPath!),
+            ]);
     }
 
     private void ThrowIfDisposed()
