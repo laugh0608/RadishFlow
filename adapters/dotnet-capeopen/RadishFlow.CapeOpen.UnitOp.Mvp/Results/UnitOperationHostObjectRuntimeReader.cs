@@ -22,8 +22,14 @@ public static class UnitOperationHostObjectRuntimeReader
         {
             return new UnitOperationHostObjectRuntimeSnapshot(
                 LifecycleState: UnitOperationHostObjectRuntimeState.Terminated,
-                ParameterEntries: [],
-                PortEntries: []);
+                ParameterCollection: new UnitOperationHostParameterCollectionRuntime(
+                    Name: UnitOperationParameterCatalog.CollectionDefinition.Name,
+                    Description: UnitOperationParameterCatalog.CollectionDefinition.Description,
+                    Entries: []),
+                PortCollection: new UnitOperationHostPortCollectionRuntime(
+                    Name: UnitOperationPortCatalog.CollectionDefinition.Name,
+                    Description: UnitOperationPortCatalog.CollectionDefinition.Description,
+                    Entries: []));
         }
 
         var parameterEntries = UnitOperationParameterCatalog.OrderedDefinitions
@@ -35,8 +41,14 @@ public static class UnitOperationHostObjectRuntimeReader
 
         return new UnitOperationHostObjectRuntimeSnapshot(
             LifecycleState: MapLifecycleState(lifecycleState),
-            ParameterEntries: parameterEntries,
-            PortEntries: portEntries);
+            ParameterCollection: new UnitOperationHostParameterCollectionRuntime(
+                Name: UnitOperationParameterCatalog.CollectionDefinition.Name,
+                Description: UnitOperationParameterCatalog.CollectionDefinition.Description,
+                Entries: parameterEntries),
+            PortCollection: new UnitOperationHostPortCollectionRuntime(
+                Name: UnitOperationPortCatalog.CollectionDefinition.Name,
+                Description: UnitOperationPortCatalog.CollectionDefinition.Description,
+                Entries: portEntries));
     }
 
     private static UnitOperationHostObjectRuntimeState MapLifecycleState(UnitOperationLifecycleState lifecycleState)
@@ -89,14 +101,36 @@ public static class UnitOperationHostObjectRuntimeReader
 
 public sealed record UnitOperationHostObjectRuntimeSnapshot(
     UnitOperationHostObjectRuntimeState LifecycleState,
-    IReadOnlyList<UnitOperationHostParameterRuntimeEntry> ParameterEntries,
-    IReadOnlyList<UnitOperationHostPortRuntimeEntry> PortEntries)
+    UnitOperationHostParameterCollectionRuntime ParameterCollection,
+    UnitOperationHostPortCollectionRuntime PortCollection)
 {
+    public IReadOnlyList<UnitOperationHostParameterRuntimeEntry> ParameterEntries => ParameterCollection.Entries;
+
+    public IReadOnlyList<UnitOperationHostPortRuntimeEntry> PortEntries => PortCollection.Entries;
+
     public UnitOperationHostParameterRuntimeEntry GetParameter(string name)
+    {
+        return ParameterCollection.GetEntry(name);
+    }
+
+    public UnitOperationHostPortRuntimeEntry GetPort(string name)
+    {
+        return PortCollection.GetEntry(name);
+    }
+}
+
+public sealed record UnitOperationHostParameterCollectionRuntime(
+    string Name,
+    string Description,
+    IReadOnlyList<UnitOperationHostParameterRuntimeEntry> Entries)
+{
+    public int Count => Entries.Count;
+
+    public UnitOperationHostParameterRuntimeEntry GetEntry(string name)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
 
-        foreach (var entry in ParameterEntries)
+        foreach (var entry in Entries)
         {
             if (string.Equals(entry.Name, name, StringComparison.OrdinalIgnoreCase))
             {
@@ -106,12 +140,20 @@ public sealed record UnitOperationHostObjectRuntimeSnapshot(
 
         throw new ArgumentException($"Unknown unit operation host runtime parameter `{name}`.", nameof(name));
     }
+}
 
-    public UnitOperationHostPortRuntimeEntry GetPort(string name)
+public sealed record UnitOperationHostPortCollectionRuntime(
+    string Name,
+    string Description,
+    IReadOnlyList<UnitOperationHostPortRuntimeEntry> Entries)
+{
+    public int Count => Entries.Count;
+
+    public UnitOperationHostPortRuntimeEntry GetEntry(string name)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
 
-        foreach (var entry in PortEntries)
+        foreach (var entry in Entries)
         {
             if (string.Equals(entry.Name, name, StringComparison.OrdinalIgnoreCase))
             {

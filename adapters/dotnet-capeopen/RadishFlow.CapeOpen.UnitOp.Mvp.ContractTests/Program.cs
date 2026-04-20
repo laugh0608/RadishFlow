@@ -42,6 +42,7 @@ internal static class ContractTestExecutable
         var tests = new (string Name, Action<ContractTestContext> Execute)[]
         {
             ("collection-contract", static context => ContractTests.Collections_ExposeStableLookupAndRejectInvalidSelectors(context)),
+            ("object-definition-contract", static _ => ContractTests.ObjectDefinitionSnapshot_ExposesFrozenCatalogShape()),
             ("object-runtime-contract", static context => ContractTests.ObjectRuntimeSnapshot_ExposesFrozenObjectMetadata(context)),
             ("action-definition-contract", static context => ContractTests.ActionDefinitionCatalog_StaysAlignedWithIssueKinds(context)),
             ("configuration-contract", static context => ContractTests.ConfigurationSnapshot_ExposesReadinessAndNextOperations(context)),
@@ -312,20 +313,72 @@ internal static class ContractTests
         ContractAssert.Contains(postTerminateSpecError.Description, "Terminate has already been called", "Post-terminate spec access should preserve lifecycle guidance.");
     }
 
+    public static void ObjectDefinitionSnapshot_ExposesFrozenCatalogShape()
+    {
+        var snapshot = UnitOperationHostObjectDefinitionReader.Read();
+
+        ContractAssert.Equal(UnitOperationParameterCatalog.CollectionDefinition.Name, snapshot.ParameterCollection.Name, "Object definition snapshot should preserve parameter collection name.");
+        ContractAssert.Equal(UnitOperationParameterCatalog.CollectionDefinition.Description, snapshot.ParameterCollection.Description, "Object definition snapshot should preserve parameter collection description.");
+        ContractAssert.Equal(UnitOperationPortCatalog.CollectionDefinition.Name, snapshot.PortCollection.Name, "Object definition snapshot should preserve port collection name.");
+        ContractAssert.Equal(UnitOperationPortCatalog.CollectionDefinition.Description, snapshot.PortCollection.Description, "Object definition snapshot should preserve port collection description.");
+        ContractAssert.Equal(4, snapshot.ParameterCollection.Count, "Object definition snapshot should expose parameter collection count.");
+        ContractAssert.Equal(2, snapshot.PortCollection.Count, "Object definition snapshot should expose port collection count.");
+        ContractAssert.SequenceEqual(UnitOperationParameterCatalog.OrderedNames, snapshot.ParameterEntries.Select(static entry => entry.Name), "Object definition snapshot should expose parameter entries in catalog order.");
+        ContractAssert.SequenceEqual(UnitOperationPortCatalog.OrderedNames, snapshot.PortEntries.Select(static entry => entry.Name), "Object definition snapshot should expose port entries in catalog order.");
+
+        var flowsheet = snapshot.GetParameter(UnitOperationParameterCatalog.FlowsheetJson.Name);
+        ContractAssert.SameReference(flowsheet, snapshot.ParameterCollection.GetEntry(UnitOperationParameterCatalog.FlowsheetJson.Name), "Object definition parameter collection lookup should return the same entry instance.");
+        ContractAssert.Equal(UnitOperationParameterCatalog.FlowsheetJson.Description, flowsheet.Description, "Object definition snapshot should preserve parameter description.");
+        ContractAssert.Equal(UnitOperationParameterCatalog.FlowsheetJson.IsRequired, flowsheet.IsRequired, "Object definition snapshot should preserve parameter required flag.");
+        ContractAssert.Equal(UnitOperationParameterCatalog.FlowsheetJson.ValueKind, flowsheet.ValueKind, "Object definition snapshot should preserve parameter value kind.");
+        ContractAssert.Equal(UnitOperationParameterCatalog.FlowsheetJson.AllowsEmptyValue, flowsheet.AllowsEmptyValue, "Object definition snapshot should preserve parameter allow-empty flag.");
+        ContractAssert.Equal(UnitOperationParameterCatalog.FlowsheetJson.ConfigurationOperationName, flowsheet.ConfigurationOperationName, "Object definition snapshot should preserve parameter configuration operation.");
+        ContractAssert.Equal(UnitOperationParameterCatalog.FlowsheetJson.Mode, flowsheet.Mode, "Object definition snapshot should preserve parameter mode.");
+        ContractAssert.Equal(UnitOperationParameterCatalog.FlowsheetJson.DefaultValue, flowsheet.DefaultValue, "Object definition snapshot should preserve parameter default value.");
+        ContractAssert.Equal(UnitOperationParameterCatalog.FlowsheetJson.SpecificationType, flowsheet.SpecificationType, "Object definition snapshot should preserve parameter spec type.");
+        ContractAssert.SequenceEqual(UnitOperationParameterCatalog.FlowsheetJson.SpecificationDimensionality, flowsheet.SpecificationDimensionality, "Object definition snapshot should preserve parameter spec dimensionality.");
+
+        var product = snapshot.GetPort(UnitOperationPortCatalog.Product.Name);
+        ContractAssert.SameReference(product, snapshot.PortCollection.GetEntry(UnitOperationPortCatalog.Product.Name), "Object definition port collection lookup should return the same entry instance.");
+        ContractAssert.Equal(UnitOperationPortCatalog.Product.Description, product.Description, "Object definition snapshot should preserve port description.");
+        ContractAssert.Equal(UnitOperationPortCatalog.Product.IsRequired, product.IsRequired, "Object definition snapshot should preserve port required flag.");
+        ContractAssert.Equal(UnitOperationPortCatalog.Product.Direction, product.Direction, "Object definition snapshot should preserve port direction.");
+        ContractAssert.Equal(UnitOperationPortCatalog.Product.PortType, product.PortType, "Object definition snapshot should preserve port type.");
+        ContractAssert.Equal(UnitOperationPortCatalog.Product.ConnectionOperationName, product.ConnectionOperationName, "Object definition snapshot should preserve port connection operation.");
+        ContractAssert.Equal(UnitOperationPortCatalog.Product.BoundaryMaterialRole, product.BoundaryMaterialRole, "Object definition snapshot should preserve port boundary-material role.");
+
+        var missingParameterError = ContractAssert.Throws<ArgumentException>(
+            () => snapshot.ParameterCollection.GetEntry("missing-parameter"),
+            "Unknown object definition parameter lookups should be rejected.");
+        ContractAssert.Contains(missingParameterError.Message, "Unknown unit operation host parameter definition", "Missing object definition parameter failures should stay explicit.");
+        var missingPortError = ContractAssert.Throws<ArgumentException>(
+            () => snapshot.PortCollection.GetEntry("missing-port"),
+            "Unknown object definition port lookups should be rejected.");
+        ContractAssert.Contains(missingPortError.Message, "Unknown unit operation host port definition", "Missing object definition port failures should stay explicit.");
+    }
+
     public static void ObjectRuntimeSnapshot_ExposesFrozenObjectMetadata(ContractTestContext context)
     {
         var constructedSnapshot = context.ReadObjectRuntime();
         ContractAssert.Equal(UnitOperationHostObjectRuntimeState.Constructed, constructedSnapshot.LifecycleState, "Object runtime snapshot should preserve constructed lifecycle state.");
+        ContractAssert.Equal(UnitOperationParameterCatalog.CollectionDefinition.Name, constructedSnapshot.ParameterCollection.Name, "Object runtime snapshot should preserve parameter collection name.");
+        ContractAssert.Equal(UnitOperationParameterCatalog.CollectionDefinition.Description, constructedSnapshot.ParameterCollection.Description, "Object runtime snapshot should preserve parameter collection description.");
+        ContractAssert.Equal(UnitOperationPortCatalog.CollectionDefinition.Name, constructedSnapshot.PortCollection.Name, "Object runtime snapshot should preserve port collection name.");
+        ContractAssert.Equal(UnitOperationPortCatalog.CollectionDefinition.Description, constructedSnapshot.PortCollection.Description, "Object runtime snapshot should preserve port collection description.");
+        ContractAssert.Equal(4, constructedSnapshot.ParameterCollection.Count, "Object runtime snapshot should expose parameter collection count.");
+        ContractAssert.Equal(2, constructedSnapshot.PortCollection.Count, "Object runtime snapshot should expose port collection count.");
         ContractAssert.Equal(4, constructedSnapshot.ParameterEntries.Count, "Object runtime snapshot should expose parameter entries in frozen catalog order.");
         ContractAssert.Equal(2, constructedSnapshot.PortEntries.Count, "Object runtime snapshot should expose port entries in frozen catalog order.");
 
         var constructedFlowsheet = constructedSnapshot.GetParameter(UnitOperationParameterCatalog.FlowsheetJson.Name);
+        ContractAssert.SameReference(constructedFlowsheet, constructedSnapshot.ParameterCollection.GetEntry(UnitOperationParameterCatalog.FlowsheetJson.Name), "Object runtime parameter collection lookup should return the same entry instance.");
         ContractAssert.False(constructedFlowsheet.IsConfigured, "Constructed flowsheet parameter should start unconfigured in runtime snapshot.");
         ContractAssert.Equal(UnitOperationParameterCatalog.FlowsheetJson.Mode, constructedFlowsheet.Mode, "Runtime snapshot should preserve parameter mode.");
         ContractAssert.Equal(UnitOperationParameterCatalog.FlowsheetJson.SpecificationType, constructedFlowsheet.SpecificationType, "Runtime snapshot should preserve parameter spec type.");
         ContractAssert.SequenceEqual(UnitOperationParameterCatalog.FlowsheetJson.SpecificationDimensionality, constructedFlowsheet.SpecificationDimensionality, "Runtime snapshot should preserve parameter spec dimensionality.");
 
         var constructedProduct = constructedSnapshot.GetPort(UnitOperationPortCatalog.Product.Name);
+        ContractAssert.SameReference(constructedProduct, constructedSnapshot.PortCollection.GetEntry(UnitOperationPortCatalog.Product.Name), "Object runtime port collection lookup should return the same entry instance.");
         ContractAssert.False(constructedProduct.IsConnected, "Constructed product port should start disconnected in runtime snapshot.");
         ContractAssert.Equal(UnitOperationPortCatalog.Product.BoundaryMaterialRole, constructedProduct.BoundaryMaterialRole, "Runtime snapshot should preserve port boundary-material role.");
 
@@ -342,6 +395,8 @@ internal static class ContractTests
 
         var terminatedSnapshot = context.ReadObjectRuntime();
         ContractAssert.Equal(UnitOperationHostObjectRuntimeState.Terminated, terminatedSnapshot.LifecycleState, "Object runtime snapshot should preserve terminated lifecycle state.");
+        ContractAssert.Equal(0, terminatedSnapshot.ParameterCollection.Count, "Terminated runtime snapshot should expose empty parameter collection.");
+        ContractAssert.Equal(0, terminatedSnapshot.PortCollection.Count, "Terminated runtime snapshot should expose empty port collection.");
         ContractAssert.Equal(0, terminatedSnapshot.ParameterEntries.Count, "Terminated runtime snapshot should not bypass lifecycle guards to expose parameters.");
         ContractAssert.Equal(0, terminatedSnapshot.PortEntries.Count, "Terminated runtime snapshot should not bypass lifecycle guards to expose ports.");
     }

@@ -29,10 +29,10 @@ public static class UnitOperationHostConfigurationReader
                 NextOperations: []);
         }
 
-        var parameterEntries = objectRuntime.ParameterEntries
+        var parameterEntries = objectRuntime.ParameterCollection.Entries
             .Select(static entry => CreateParameterEntry(entry))
             .ToArray();
-        var portEntries = objectRuntime.PortEntries
+        var portEntries = objectRuntime.PortCollection.Entries
             .Select(static entry => CreatePortEntry(entry))
             .ToArray();
 
