@@ -79,7 +79,8 @@ public static class UnitOperationHostObjectRuntimeReader
             Mode: definition.Mode,
             DefaultValue: definition.DefaultValue,
             SpecificationType: definition.SpecificationType,
-            SpecificationDimensionality: [.. definition.SpecificationDimensionality]);
+            SpecificationDimensionality: [.. definition.SpecificationDimensionality],
+            Capabilities: UnitOperationHostObjectDefinitionReader.ParameterCapabilities);
     }
 
     private static UnitOperationHostPortRuntimeEntry CreatePortEntry(
@@ -95,7 +96,8 @@ public static class UnitOperationHostObjectRuntimeReader
             Direction: definition.Direction,
             PortType: definition.PortType,
             ConnectionOperationName: definition.ConnectionOperationName,
-            BoundaryMaterialRole: definition.BoundaryMaterialRole);
+            BoundaryMaterialRole: definition.BoundaryMaterialRole,
+            Capabilities: UnitOperationHostObjectDefinitionReader.PortCapabilities);
     }
 }
 
@@ -176,7 +178,8 @@ public sealed record UnitOperationHostParameterRuntimeEntry(
     CapeParamMode Mode,
     string? DefaultValue,
     CapeParamType SpecificationType,
-    IReadOnlyList<double> SpecificationDimensionality);
+    IReadOnlyList<double> SpecificationDimensionality,
+    UnitOperationHostParameterCapabilities Capabilities);
 
 public sealed record UnitOperationHostPortRuntimeEntry(
     string Name,
@@ -186,7 +189,8 @@ public sealed record UnitOperationHostPortRuntimeEntry(
     CapePortDirection Direction,
     CapePortType PortType,
     string ConnectionOperationName,
-    UnitOperationPortBoundaryMaterialRole BoundaryMaterialRole);
+    UnitOperationPortBoundaryMaterialRole BoundaryMaterialRole,
+    UnitOperationHostPortCapabilities Capabilities);
 
 public enum UnitOperationHostObjectRuntimeState
 {

@@ -7,6 +7,22 @@ namespace RadishFlow.CapeOpen.UnitOp.Mvp.Results;
 
 public static class UnitOperationHostObjectDefinitionReader
 {
+    private static readonly UnitOperationHostParameterCapabilities ParameterCapabilitiesValue = new(
+        CanWriteValue: true,
+        CanResetValue: true,
+        CanMutateMode: false,
+        CanMutateIdentity: false);
+
+    private static readonly UnitOperationHostPortCapabilities PortCapabilitiesValue = new(
+        CanConnect: true,
+        CanDisconnect: true,
+        CanReplaceConnectionWithoutDisconnect: false,
+        CanMutateIdentity: false);
+
+    public static UnitOperationHostParameterCapabilities ParameterCapabilities => ParameterCapabilitiesValue;
+
+    public static UnitOperationHostPortCapabilities PortCapabilities => PortCapabilitiesValue;
+
     public static UnitOperationHostObjectDefinitionSnapshot Read()
     {
         var parameterEntries = UnitOperationParameterCatalog.OrderedDefinitions
@@ -40,7 +56,8 @@ public static class UnitOperationHostObjectDefinitionReader
             Mode: definition.Mode,
             DefaultValue: definition.DefaultValue,
             SpecificationType: definition.SpecificationType,
-            SpecificationDimensionality: [.. definition.SpecificationDimensionality]);
+            SpecificationDimensionality: [.. definition.SpecificationDimensionality],
+            Capabilities: ParameterCapabilitiesValue);
     }
 
     private static UnitOperationHostPortDefinitionEntry CreatePortEntry(UnitOperationPortDefinition definition)
@@ -52,7 +69,8 @@ public static class UnitOperationHostObjectDefinitionReader
             Direction: definition.Direction,
             PortType: definition.PortType,
             ConnectionOperationName: definition.ConnectionOperationName,
-            BoundaryMaterialRole: definition.BoundaryMaterialRole);
+            BoundaryMaterialRole: definition.BoundaryMaterialRole,
+            Capabilities: PortCapabilitiesValue);
     }
 }
 
@@ -132,7 +150,8 @@ public sealed record UnitOperationHostParameterDefinitionEntry(
     CapeParamMode Mode,
     string? DefaultValue,
     CapeParamType SpecificationType,
-    IReadOnlyList<double> SpecificationDimensionality);
+    IReadOnlyList<double> SpecificationDimensionality,
+    UnitOperationHostParameterCapabilities Capabilities);
 
 public sealed record UnitOperationHostPortDefinitionEntry(
     string Name,
@@ -141,4 +160,17 @@ public sealed record UnitOperationHostPortDefinitionEntry(
     CapePortDirection Direction,
     CapePortType PortType,
     string ConnectionOperationName,
-    UnitOperationPortBoundaryMaterialRole BoundaryMaterialRole);
+    UnitOperationPortBoundaryMaterialRole BoundaryMaterialRole,
+    UnitOperationHostPortCapabilities Capabilities);
+
+public sealed record UnitOperationHostParameterCapabilities(
+    bool CanWriteValue,
+    bool CanResetValue,
+    bool CanMutateMode,
+    bool CanMutateIdentity);
+
+public sealed record UnitOperationHostPortCapabilities(
+    bool CanConnect,
+    bool CanDisconnect,
+    bool CanReplaceConnectionWithoutDisconnect,
+    bool CanMutateIdentity);

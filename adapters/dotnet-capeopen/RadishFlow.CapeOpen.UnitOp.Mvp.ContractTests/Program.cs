@@ -337,6 +337,10 @@ internal static class ContractTests
         ContractAssert.Equal(UnitOperationParameterCatalog.FlowsheetJson.DefaultValue, flowsheet.DefaultValue, "Object definition snapshot should preserve parameter default value.");
         ContractAssert.Equal(UnitOperationParameterCatalog.FlowsheetJson.SpecificationType, flowsheet.SpecificationType, "Object definition snapshot should preserve parameter spec type.");
         ContractAssert.SequenceEqual(UnitOperationParameterCatalog.FlowsheetJson.SpecificationDimensionality, flowsheet.SpecificationDimensionality, "Object definition snapshot should preserve parameter spec dimensionality.");
+        ContractAssert.True(flowsheet.Capabilities.CanWriteValue, "Object definition parameter should expose value write capability.");
+        ContractAssert.True(flowsheet.Capabilities.CanResetValue, "Object definition parameter should expose reset capability.");
+        ContractAssert.False(flowsheet.Capabilities.CanMutateMode, "Object definition parameter should expose immutable mode capability.");
+        ContractAssert.False(flowsheet.Capabilities.CanMutateIdentity, "Object definition parameter should expose immutable identity capability.");
 
         var product = snapshot.GetPort(UnitOperationPortCatalog.Product.Name);
         ContractAssert.SameReference(product, snapshot.PortCollection.GetEntry(UnitOperationPortCatalog.Product.Name), "Object definition port collection lookup should return the same entry instance.");
@@ -346,6 +350,10 @@ internal static class ContractTests
         ContractAssert.Equal(UnitOperationPortCatalog.Product.PortType, product.PortType, "Object definition snapshot should preserve port type.");
         ContractAssert.Equal(UnitOperationPortCatalog.Product.ConnectionOperationName, product.ConnectionOperationName, "Object definition snapshot should preserve port connection operation.");
         ContractAssert.Equal(UnitOperationPortCatalog.Product.BoundaryMaterialRole, product.BoundaryMaterialRole, "Object definition snapshot should preserve port boundary-material role.");
+        ContractAssert.True(product.Capabilities.CanConnect, "Object definition port should expose connect capability.");
+        ContractAssert.True(product.Capabilities.CanDisconnect, "Object definition port should expose disconnect capability.");
+        ContractAssert.False(product.Capabilities.CanReplaceConnectionWithoutDisconnect, "Object definition port should expose explicit-disconnect replacement capability.");
+        ContractAssert.False(product.Capabilities.CanMutateIdentity, "Object definition port should expose immutable identity capability.");
 
         var missingParameterError = ContractAssert.Throws<ArgumentException>(
             () => snapshot.ParameterCollection.GetEntry("missing-parameter"),
@@ -376,11 +384,19 @@ internal static class ContractTests
         ContractAssert.Equal(UnitOperationParameterCatalog.FlowsheetJson.Mode, constructedFlowsheet.Mode, "Runtime snapshot should preserve parameter mode.");
         ContractAssert.Equal(UnitOperationParameterCatalog.FlowsheetJson.SpecificationType, constructedFlowsheet.SpecificationType, "Runtime snapshot should preserve parameter spec type.");
         ContractAssert.SequenceEqual(UnitOperationParameterCatalog.FlowsheetJson.SpecificationDimensionality, constructedFlowsheet.SpecificationDimensionality, "Runtime snapshot should preserve parameter spec dimensionality.");
+        ContractAssert.True(constructedFlowsheet.Capabilities.CanWriteValue, "Runtime parameter should expose value write capability.");
+        ContractAssert.True(constructedFlowsheet.Capabilities.CanResetValue, "Runtime parameter should expose reset capability.");
+        ContractAssert.False(constructedFlowsheet.Capabilities.CanMutateMode, "Runtime parameter should expose immutable mode capability.");
+        ContractAssert.False(constructedFlowsheet.Capabilities.CanMutateIdentity, "Runtime parameter should expose immutable identity capability.");
 
         var constructedProduct = constructedSnapshot.GetPort(UnitOperationPortCatalog.Product.Name);
         ContractAssert.SameReference(constructedProduct, constructedSnapshot.PortCollection.GetEntry(UnitOperationPortCatalog.Product.Name), "Object runtime port collection lookup should return the same entry instance.");
         ContractAssert.False(constructedProduct.IsConnected, "Constructed product port should start disconnected in runtime snapshot.");
         ContractAssert.Equal(UnitOperationPortCatalog.Product.BoundaryMaterialRole, constructedProduct.BoundaryMaterialRole, "Runtime snapshot should preserve port boundary-material role.");
+        ContractAssert.True(constructedProduct.Capabilities.CanConnect, "Runtime port should expose connect capability.");
+        ContractAssert.True(constructedProduct.Capabilities.CanDisconnect, "Runtime port should expose disconnect capability.");
+        ContractAssert.False(constructedProduct.Capabilities.CanReplaceConnectionWithoutDisconnect, "Runtime port should expose explicit-disconnect replacement capability.");
+        ContractAssert.False(constructedProduct.Capabilities.CanMutateIdentity, "Runtime port should expose immutable identity capability.");
 
         context.ConfigureMinimumValidInputs();
 
