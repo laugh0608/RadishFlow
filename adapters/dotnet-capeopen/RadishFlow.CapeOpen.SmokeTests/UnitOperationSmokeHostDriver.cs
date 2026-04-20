@@ -84,33 +84,40 @@ internal sealed class UnitOperationSmokeHostDriver : IDisposable
         }
     }
 
-    public UnitOperationHostActionExecutionBatchResult ApplyMinimumConfigurationActions(bool includePackageId)
+    public UnitOperationHostActionExecutionOrchestrationResult ApplyMinimumConfigurationActions(bool includePackageId)
     {
         ThrowIfDisposed();
 
-        var requestPlan = UnitOperationHostActionExecutionRequestPlanner.Plan(
-            ReadActionPlan(),
+        var result = UnitOperationHostActionExecutionOrchestrator.ExecutePlannedActions(
+            _unitOperation,
             CreateMinimumConfigurationInputSet(includePackageId));
-
-        var result = UnitOperationHostActionExecutionDispatcher.ApplyActionBatch(_unitOperation, requestPlan.Requests);
         ApplyOptionalPackageFileInputs();
         return result;
     }
 
-    public UnitOperationHostActionExecutionOutcome ApplyRequiredPortAction(string portName, string componentName)
+    public UnitOperationHostActionExecutionOrchestrationResult ApplyRequiredPortAction(string portName, string componentName)
     {
         ThrowIfDisposed();
         ArgumentException.ThrowIfNullOrWhiteSpace(portName);
         ArgumentException.ThrowIfNullOrWhiteSpace(componentName);
 
-        var action = ReadActionPlan().Actions.Single(action =>
+        var actionPlan = ReadActionPlan();
+        var action = actionPlan.Actions.Single(action =>
             action.IssueKind == UnitOperationHostConfigurationIssueKind.RequiredPortDisconnected &&
             action.Target.Names.Any(targetName => string.Equals(targetName, portName, StringComparison.OrdinalIgnoreCase)));
-        return UnitOperationHostActionExecutionDispatcher.ApplyAction(
+        var group = actionPlan.Groups.Single(group => group.Kind == action.GroupKind);
+        return UnitOperationHostActionExecutionOrchestrator.ExecutePlannedActions(
             _unitOperation,
-            UnitOperationHostActionExecutionRequest.ForPortConnection(
-                action,
-                new SmokeConnectedObject(componentName)));
+            new UnitOperationHostActionPlan(
+                State: actionPlan.State,
+                Headline: actionPlan.Headline,
+                Groups: [new UnitOperationHostActionGroup(group.Kind, group.Title, [action])],
+                Actions: [action]),
+            new UnitOperationHostActionExecutionInputSet(
+                portObjects: new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase)
+                {
+                    [portName] = new SmokeConnectedObject(componentName),
+                }));
     }
 
     public void ConnectRequiredPorts()

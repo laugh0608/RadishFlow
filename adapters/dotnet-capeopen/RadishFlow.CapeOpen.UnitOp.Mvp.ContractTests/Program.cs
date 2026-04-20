@@ -52,6 +52,7 @@ internal static class ContractTestExecutable
             ("action-mutation-bridge-contract", static context => ContractTests.ActionMutationBridge_TranslatesCanonicalHostActions(context)),
             ("action-execution-request-plan-contract", static context => ContractTests.ActionExecutionRequestPlanner_PlansRequestsFromHostInputs(context)),
             ("action-execution-contract", static context => ContractTests.ActionExecutionDispatcher_AppliesCanonicalHostActions(context)),
+            ("action-execution-orchestration-contract", static context => ContractTests.ActionExecutionOrchestrator_RefreshesHostViews(context)),
             ("port-material-contract", static context => ContractTests.PortMaterialSnapshot_ExposesBoundaryStreamsAndLifecycleState(context)),
             ("execution-snapshot-contract", static context => ContractTests.ExecutionSnapshot_ExposesStepAndDiagnosticShape(context)),
             ("session-snapshot-contract", static context => ContractTests.SessionSnapshot_ExposesUnifiedHostView(context)),
@@ -1071,6 +1072,82 @@ internal static class ContractTests
                 UnitOperationHostActionExecutionRequest.ForAction(constructedPlan.Actions[1])),
             "Required parameter execution should reject missing parameter values.");
         ContractAssert.Contains(missingPayloadError.Message, "requires parameter values", "Missing parameter values should stay explicit.");
+    }
+
+    public static void ActionExecutionOrchestrator_RefreshesHostViews(ContractTestContext context)
+    {
+        var constructedOrchestration = UnitOperationHostActionExecutionOrchestrator.ExecutePlannedActions(context.UnitOperation);
+        ContractAssert.Equal(5, constructedOrchestration.PlannedActionCount, "Constructed orchestration should include all blocking actions.");
+        ContractAssert.Equal(1, constructedOrchestration.ReadyRequestCount, "Constructed orchestration should only auto-carry the lifecycle request.");
+        ContractAssert.True(constructedOrchestration.HasMissingInputs, "Constructed orchestration should report missing inputs.");
+        ContractAssert.True(constructedOrchestration.HasLifecycleOperations, "Constructed orchestration should preserve lifecycle-only action visibility.");
+        ContractAssert.False(constructedOrchestration.HasUnsupportedActions, "Constructed orchestration should not report unsupported actions before terminate.");
+        ContractAssert.Equal(UnitOperationHostConfigurationState.Constructed, constructedOrchestration.Configuration.State, "Constructed orchestration should leave configuration unchanged.");
+        ContractAssert.Equal(UnitOperationHostSessionState.Constructed, constructedOrchestration.Session.State, "Constructed orchestration should leave session unchanged.");
+        ContractAssert.Equal(UnitOperationHostActionExecutionFollowUpKind.LifecycleOperation, constructedOrchestration.FollowUp.Kind, "Constructed orchestration should recommend lifecycle follow-up.");
+        ContractAssert.False(constructedOrchestration.FollowUp.CanValidate, "Constructed lifecycle follow-up should not allow validate.");
+        ContractAssert.False(constructedOrchestration.FollowUp.CanCalculate, "Constructed lifecycle follow-up should not allow calculate.");
+        ContractAssert.SequenceEqual([nameof(RadishFlowCapeOpenUnitOperation.Initialize)], constructedOrchestration.FollowUp.RecommendedOperations, "Constructed lifecycle follow-up should recommend Initialize().");
+        ContractAssert.Equal(UnitOperationHostActionExecutionDisposition.LifecycleOperationRequired, constructedOrchestration.Execution.Outcomes[0].Disposition, "Constructed orchestration should keep initialize as lifecycle-only outcome.");
+
+        context.Initialize();
+
+        var feedObject = new ContractConnectedObject("Orchestration Feed");
+        var productObject = new ContractConnectedObject("Orchestration Product");
+        var configuredOrchestration = UnitOperationHostActionExecutionOrchestrator.ExecutePlannedActions(
+            context.UnitOperation,
+            new UnitOperationHostActionExecutionInputSet(
+                parameterValues: new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase)
+                {
+                    [UnitOperationParameterCatalog.FlowsheetJson.Name] = context.FlowsheetJsonText,
+                    [UnitOperationParameterCatalog.PropertyPackageId.Name] = context.PackageId,
+                },
+                portObjects: new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase)
+                {
+                    [UnitOperationPortCatalog.Feed.Name] = feedObject,
+                    [UnitOperationPortCatalog.Product.Name] = productObject,
+                }));
+        ContractAssert.Equal(4, configuredOrchestration.PlannedActionCount, "Initialized orchestration should include all remaining blocking actions.");
+        ContractAssert.Equal(4, configuredOrchestration.ReadyRequestCount, "Initialized orchestration should produce one ready request per action when inputs are complete.");
+        ContractAssert.False(configuredOrchestration.HasMissingInputs, "Complete initialized orchestration should not report missing inputs.");
+        ContractAssert.True(configuredOrchestration.AppliedMutations, "Initialized orchestration should apply mutations.");
+        ContractAssert.True(configuredOrchestration.RequiresValidationRefresh, "Initialized orchestration should report validation refresh after applying mutations.");
+        ContractAssert.True(configuredOrchestration.RequiresCalculationRefresh, "Initialized orchestration should report calculation refresh after applying mutations.");
+        ContractAssert.Equal(UnitOperationHostConfigurationState.Ready, configuredOrchestration.Configuration.State, "Initialized orchestration should refresh configuration into ready state.");
+        ContractAssert.Equal(0, configuredOrchestration.ActionPlan.ActionCount, "Initialized orchestration should refresh action plan to empty once ready.");
+        ContractAssert.Equal(UnitOperationHostSessionState.Ready, configuredOrchestration.Session.State, "Initialized orchestration should refresh session into ready state.");
+        ContractAssert.Equal(UnitOperationHostActionExecutionFollowUpKind.Validate, configuredOrchestration.FollowUp.Kind, "Mutation-applied orchestration should recommend validate before calculate.");
+        ContractAssert.True(configuredOrchestration.FollowUp.CanValidate, "Validate follow-up should allow validation.");
+        ContractAssert.False(configuredOrchestration.FollowUp.CanCalculate, "Validate follow-up should not allow calculate yet.");
+
+        context.ManifestPathParameter.value = context.ManifestPath;
+        context.PayloadPathParameter.value = null;
+        var companionOrchestration = UnitOperationHostActionExecutionOrchestrator.ExecutePlannedActions(
+            context.UnitOperation,
+            new UnitOperationHostActionExecutionInputSet(
+                parameterValues: new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase)
+                {
+                    [UnitOperationParameterCatalog.PropertyPackageManifestPath.Name] = context.ManifestPath,
+                }));
+        ContractAssert.Equal(1, companionOrchestration.PlannedActionCount, "Companion mismatch orchestration should focus on one blocking action.");
+        ContractAssert.Equal(0, companionOrchestration.ReadyRequestCount, "Incomplete companion inputs should not produce ready requests.");
+        ContractAssert.True(companionOrchestration.HasMissingInputs, "Incomplete companion inputs should surface missing inputs.");
+        ContractAssert.Equal(UnitOperationHostConfigurationState.Incomplete, companionOrchestration.Configuration.State, "Companion mismatch orchestration should preserve incomplete configuration state.");
+        ContractAssert.Equal(UnitOperationHostSessionState.Incomplete, companionOrchestration.Session.State, "Companion mismatch orchestration should refresh session to incomplete when configuration is broken before any current results exist.");
+        ContractAssert.Equal(UnitOperationHostActionExecutionFollowUpKind.ProvideInputs, companionOrchestration.FollowUp.Kind, "Companion mismatch orchestration should recommend providing inputs.");
+        ContractAssert.SequenceEqual([UnitOperationParameterCatalog.PropertyPackagePayloadPath.Name], companionOrchestration.FollowUp.MissingInputNames, "Companion mismatch follow-up should report the missing payload input.");
+        ContractAssert.False(companionOrchestration.FollowUp.CanValidate, "Provide-inputs follow-up should not allow validate.");
+        ContractAssert.False(companionOrchestration.FollowUp.CanCalculate, "Provide-inputs follow-up should not allow calculate.");
+
+        context.UnitOperation.Terminate();
+        var terminatedOrchestration = UnitOperationHostActionExecutionOrchestrator.ExecutePlannedActions(context.UnitOperation);
+        ContractAssert.True(terminatedOrchestration.HasUnsupportedActions, "Terminated orchestration should surface unsupported terminal action.");
+        ContractAssert.Equal(0, terminatedOrchestration.ReadyRequestCount, "Terminated orchestration should not produce executable requests.");
+        ContractAssert.Equal(UnitOperationHostConfigurationState.Terminated, terminatedOrchestration.Configuration.State, "Terminated orchestration should refresh configuration to terminated.");
+        ContractAssert.Equal(UnitOperationHostSessionState.Terminated, terminatedOrchestration.Session.State, "Terminated orchestration should refresh session to terminated.");
+        ContractAssert.Equal(UnitOperationHostActionExecutionFollowUpKind.Terminated, terminatedOrchestration.FollowUp.Kind, "Terminated orchestration should report terminated follow-up.");
+        ContractAssert.False(terminatedOrchestration.FollowUp.CanValidate, "Terminated follow-up should not allow validate.");
+        ContractAssert.False(terminatedOrchestration.FollowUp.CanCalculate, "Terminated follow-up should not allow calculate.");
     }
 
     public static void PortMaterialSnapshot_ExposesBoundaryStreamsAndLifecycleState(ContractTestContext context)

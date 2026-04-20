@@ -93,26 +93,29 @@ internal sealed class UnitOperationSmokeSession : IDisposable
     {
         var actionResult = _driver.ApplyMinimumConfigurationActions(includePackageId: true);
         UnitOperationSmokeReportAssertions.EnsureCondition(
-            actionResult.AppliedMutationCount == 4 &&
-            actionResult.InvalidatedValidation &&
-            actionResult.InvalidatedCalculationReport,
+            actionResult.Execution.AppliedMutationCount == 4 &&
+            actionResult.Execution.InvalidatedValidation &&
+            actionResult.Execution.InvalidatedCalculationReport,
             $"{roundLabel} should configure minimum inputs through action execution.");
-        var configuration = _driver.ReadConfiguration();
+        UnitOperationSmokeReportAssertions.EnsureCondition(
+            actionResult.FollowUp.Kind == UnitOperationHostActionExecutionFollowUpKind.Validate &&
+            actionResult.FollowUp.CanValidate &&
+            !actionResult.FollowUp.CanCalculate,
+            $"{roundLabel} should recommend validation as the next formal host step after applying mutations.");
         UnitOperationSmokeConfigurationAssertions.AssertState(
-            configuration,
+            actionResult.Configuration,
             UnitOperationHostConfigurationState.Ready,
             expectedReady: true,
             $"{roundLabel} configuration");
         UnitOperationSmokeConfigurationAssertions.AssertActionPlan(
-            _driver.ReadActionPlan(),
+            actionResult.ActionPlan,
             $"{roundLabel} configuration");
         var validation = _driver.Validate();
         UnitOperationSmokeReportAssertions.EnsureCondition(
             validation.IsValid,
             $"{roundLabel} should validate once minimum inputs and required ports are configured.");
-        var session = _driver.ReadSession();
         UnitOperationSmokeHostSessionAssertions.AssertSummary(
-            session,
+            actionResult.Session,
             expectedState: UnitOperationHostSessionState.Ready,
             expectedReady: true,
             expectedBlockingActions: false,
@@ -122,7 +125,7 @@ internal sealed class UnitOperationSmokeSession : IDisposable
             expectedRefresh: false,
             expectedFailureReport: false,
             scenario: $"{roundLabel} host session");
-        _timeline.Add($"{roundLabel} configured: sessionState={session.State}, actions={actionResult.AppliedActionCount}, mutations={actionResult.AppliedMutationCount}, validation=valid");
+        _timeline.Add($"{roundLabel} configured: sessionState={actionResult.Session.State}, actions={actionResult.Execution.AppliedActionCount}, mutations={actionResult.Execution.AppliedMutationCount}, validation=valid");
     }
 
     public UnitOperationHostReportBundle ExpectCurrentReportToBeEmpty(string roundLabel)
@@ -272,23 +275,25 @@ internal sealed class UnitOperationSmokeSession : IDisposable
     {
         var actionResult = _driver.ApplyMinimumConfigurationActions(includePackageId: true);
         UnitOperationSmokeReportAssertions.EnsureCondition(
-            actionResult.AppliedMutationCount >= 1,
+            actionResult.Execution.AppliedMutationCount >= 1,
             $"{roundLabel} should restore minimum inputs through action execution.");
-        var configuration = _driver.ReadConfiguration();
+        UnitOperationSmokeReportAssertions.EnsureCondition(
+            actionResult.FollowUp.Kind == UnitOperationHostActionExecutionFollowUpKind.Validate &&
+            actionResult.FollowUp.CanValidate,
+            $"{roundLabel} should recommend validation after restoring minimum inputs.");
         UnitOperationSmokeConfigurationAssertions.AssertState(
-            configuration,
+            actionResult.Configuration,
             UnitOperationHostConfigurationState.Ready,
             expectedReady: true,
             $"{roundLabel} configuration");
         var validation = _driver.Validate();
         UnitOperationSmokeReportAssertions.EnsureCondition(validation.IsValid, $"{roundLabel} should restore a valid minimum input set.");
-        var session = _driver.ReadSession();
         UnitOperationSmokeReportAssertions.EnsureCondition(
-            (session.State == UnitOperationHostSessionState.Ready || session.State == UnitOperationHostSessionState.Stale) &&
-            session.Summary.IsReadyForCalculate &&
-            !session.Summary.HasFailureReport,
+            (actionResult.Session.State == UnitOperationHostSessionState.Ready || actionResult.Session.State == UnitOperationHostSessionState.Stale) &&
+            actionResult.Session.Summary.IsReadyForCalculate &&
+            !actionResult.Session.Summary.HasFailureReport,
             $"{roundLabel} host session should restore a ready-or-stale non-failure configuration after input recovery.");
-        _timeline.Add($"{roundLabel} inputs-restored: sessionState={session.State}, validation=valid");
+        _timeline.Add($"{roundLabel} inputs-restored: sessionState={actionResult.Session.State}, validation=valid");
     }
 
     public void DisconnectProductPortAndExpectRecoveryWindow(string roundLabel)
@@ -445,15 +450,15 @@ internal sealed class UnitOperationSmokeSession : IDisposable
     {
         var actionOutcome = _driver.ApplyRequiredPortAction(portName, componentName);
         UnitOperationSmokeReportAssertions.EnsureCondition(
-            actionOutcome.Disposition == UnitOperationHostActionExecutionDisposition.MutationApplied &&
-            actionOutcome.AppliedMutationCount == 1,
+            actionOutcome.Execution.Outcomes.Count == 1 &&
+            actionOutcome.Execution.Outcomes[0].Disposition == UnitOperationHostActionExecutionDisposition.MutationApplied &&
+            actionOutcome.Execution.AppliedMutationCount == 1,
             $"{roundLabel} should reconnect {portName} through action execution.");
         UnitOperationSmokeReportAssertions.EnsureCondition(
             port.IsConnected,
             $"{roundLabel} should leave {portName} connected after action execution.");
-        var configuration = _driver.ReadConfiguration();
         UnitOperationSmokeConfigurationAssertions.AssertState(
-            configuration,
+            actionOutcome.Configuration,
             UnitOperationHostConfigurationState.Ready,
             expectedReady: true,
             $"{roundLabel} configuration");
@@ -461,9 +466,8 @@ internal sealed class UnitOperationSmokeSession : IDisposable
         UnitOperationSmokeReportAssertions.EnsureCondition(
             validation.IsValid,
             $"{roundLabel} should restore a valid state after reconnecting {portName} port.");
-        var session = _driver.ReadSession();
         UnitOperationSmokeHostSessionAssertions.AssertSummary(
-            session,
+            actionOutcome.Session,
             expectedState: UnitOperationHostSessionState.Stale,
             expectedReady: true,
             expectedBlockingActions: false,
@@ -473,7 +477,7 @@ internal sealed class UnitOperationSmokeSession : IDisposable
             expectedRefresh: true,
             expectedFailureReport: false,
             scenario: $"{roundLabel} host session");
-        _timeline.Add($"{roundLabel} reconnected-{portName.ToLowerInvariant()}: sessionState={session.State}, validation=valid");
+        _timeline.Add($"{roundLabel} reconnected-{portName.ToLowerInvariant()}: sessionState={actionOutcome.Session.State}, validation=valid");
     }
 
 }
