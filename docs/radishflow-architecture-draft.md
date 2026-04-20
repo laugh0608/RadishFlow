@@ -610,6 +610,7 @@ Rust 与 .NET 的桥接层。
 - 当前可配置 native library 目录、加载示例 flowsheet 与本地 `manifest/payload` package
 - 当前可列出 package registry，并覆盖 direct adapter 的 flowsheet / stream snapshot JSON 导出，以及 `UnitOp.Mvp` 的最小成功结果契约、失败摘要契约、统一只读 report access、标量元数据入口、可枚举 detail 键值入口、最小文本导出面与标量逐行读取面验证
 - 当前 `unitop` 模式又已从“单条 console 冒烟脚本”收口为最小宿主验证骨架：`UnitOperationSmokeHostDriver` 固定真实宿主调用顺序，`UnitOperationSmokeBoundarySuite` 锁边界矩阵，`UnitOperationSmokeSession` 与 `UnitOperationSmokeScenarioCatalog` 负责时序变体编排；其中 action plan 到 execution request 的稳定公共部分已上移为 `UnitOperationHostActionExecutionRequestPlanner`，smoke driver 只继续负责准备样例输入、生命周期顺序和失败分类
+- 在上述 request planning 之上，当前又补出 `UnitOperationHostActionExecutionOrchestrator` 与正式 `FollowUp` 模型，把“执行 ready requests 后刷新 configuration/action/session”以及“宿主下一步应补输入、做 validate、做 calculate，还是只剩 lifecycle/terminated”这层判断继续前推到库内；smoke session 当前只保留 timeline 组织与场景脚本，不再私有维护这层执行后摘要
 - 当前已支持 `--unitop-scenario <all|session|recovery|shutdown>` 按宿主时序场景过滤运行，用于单独验证会话、恢复和收尾阶段，而不是每次都跑整套 timeline
 - 当前暂不承担 PME/COM 注册路径的冒烟验证
 
