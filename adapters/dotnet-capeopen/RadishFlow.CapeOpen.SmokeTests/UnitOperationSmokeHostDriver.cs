@@ -88,17 +88,11 @@ internal sealed class UnitOperationSmokeHostDriver : IDisposable
     {
         ThrowIfDisposed();
 
-        var requests = new List<UnitOperationHostActionExecutionRequest>();
-        foreach (var action in ReadActionPlan().Actions)
-        {
-            var request = CreateMinimumConfigurationRequest(action, includePackageId);
-            if (request is not null)
-            {
-                requests.Add(request);
-            }
-        }
+        var requestPlan = UnitOperationHostActionExecutionRequestPlanner.Plan(
+            ReadActionPlan(),
+            CreateMinimumConfigurationInputSet(includePackageId));
 
-        var result = UnitOperationHostActionExecutionDispatcher.ApplyActionBatch(_unitOperation, requests);
+        var result = UnitOperationHostActionExecutionDispatcher.ApplyActionBatch(_unitOperation, requestPlan.Requests);
         ApplyOptionalPackageFileInputs();
         return result;
     }
@@ -237,81 +231,28 @@ internal sealed class UnitOperationSmokeHostDriver : IDisposable
         return UnitOperationHostDriverFailureKind.Unknown;
     }
 
-    private UnitOperationHostActionExecutionRequest? CreateMinimumConfigurationRequest(
-        UnitOperationHostActionItem action,
-        bool includePackageId)
-    {
-        return action.IssueKind switch
-        {
-            UnitOperationHostConfigurationIssueKind.RequiredParameterMissing =>
-                CreateRequiredParameterRequest(action, includePackageId),
-            UnitOperationHostConfigurationIssueKind.CompanionParameterMismatch =>
-                CreatePackageFileRequest(action),
-            UnitOperationHostConfigurationIssueKind.RequiredPortDisconnected =>
-                UnitOperationHostActionExecutionRequest.ForPortConnection(
-                    action,
-                    new SmokeConnectedObject($"{action.Target.PrimaryName} Smoke")),
-            _ => null,
-        };
-    }
-
-    private UnitOperationHostActionExecutionRequest? CreateRequiredParameterRequest(
-        UnitOperationHostActionItem action,
-        bool includePackageId)
+    private UnitOperationHostActionExecutionInputSet CreateMinimumConfigurationInputSet(bool includePackageId)
     {
         var values = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
-        foreach (var targetName in action.Target.Names)
+        values[UnitOperationParameterCatalog.FlowsheetJson.Name] = _projectJson;
+
+        if (includePackageId)
         {
-            if (string.Equals(targetName, UnitOperationParameterCatalog.FlowsheetJson.Name, StringComparison.OrdinalIgnoreCase))
-            {
-                values[targetName] = _projectJson;
-                continue;
-            }
-
-            if (string.Equals(targetName, UnitOperationParameterCatalog.PropertyPackageId.Name, StringComparison.OrdinalIgnoreCase))
-            {
-                if (!includePackageId)
-                {
-                    return null;
-                }
-
-                values[targetName] = _options.PackageId;
-                continue;
-            }
-
-            if (_options.LoadPackageFiles &&
-                string.Equals(targetName, UnitOperationParameterCatalog.PropertyPackageManifestPath.Name, StringComparison.OrdinalIgnoreCase))
-            {
-                values[targetName] = _options.ManifestPath!;
-                continue;
-            }
-
-            if (_options.LoadPackageFiles &&
-                string.Equals(targetName, UnitOperationParameterCatalog.PropertyPackagePayloadPath.Name, StringComparison.OrdinalIgnoreCase))
-            {
-                values[targetName] = _options.PayloadPath!;
-            }
+            values[UnitOperationParameterCatalog.PropertyPackageId.Name] = _options.PackageId;
         }
 
-        return values.Count == action.Target.Names.Count
-            ? UnitOperationHostActionExecutionRequest.ForParameterValues(action, values)
-            : null;
-    }
-
-    private UnitOperationHostActionExecutionRequest? CreatePackageFileRequest(
-        UnitOperationHostActionItem action)
-    {
-        if (!_options.LoadPackageFiles)
+        if (_options.LoadPackageFiles)
         {
-            return null;
+            values[UnitOperationParameterCatalog.PropertyPackageManifestPath.Name] = _options.ManifestPath!;
+            values[UnitOperationParameterCatalog.PropertyPackagePayloadPath.Name] = _options.PayloadPath!;
         }
 
-        return UnitOperationHostActionExecutionRequest.ForParameterValues(
-            action,
-            new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase)
+        return new UnitOperationHostActionExecutionInputSet(
+            parameterValues: values,
+            portObjects: new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase)
             {
-                [UnitOperationParameterCatalog.PropertyPackageManifestPath.Name] = _options.ManifestPath!,
-                [UnitOperationParameterCatalog.PropertyPackagePayloadPath.Name] = _options.PayloadPath!,
+                [UnitOperationPortCatalog.Feed.Name] = new SmokeConnectedObject("Feed Smoke"),
+                [UnitOperationPortCatalog.Product.Name] = new SmokeConnectedObject("Product Smoke"),
             });
     }
 

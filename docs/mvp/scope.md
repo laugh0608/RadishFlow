@@ -46,8 +46,8 @@
 - `rf-unitops` 第一轮统一围绕标准 `MaterialStreamState` 输入输出，不提前把 flowsheet 调度或 FFI 细节塞进单元接口
 - `Feed`、`Mixer`、`Flash Drum` 当前先冻结为 canonical material ports：`Feed(outlet)`、`Mixer(inlet_a/inlet_b/outlet)`、`Flash Drum(inlet/liquid/vapor)`
 - `rf-flowsheet` 第一轮连接校验只覆盖 canonical material ports、流股存在性与“一股一源一汇”；终端产品流允许只有 source、没有 sink
-- `.NET 10` 适配层当前允许推进到 `M4/M5` 交界的最小互调与 `UnitOp.Mvp` 宿主语义收口，但范围只限于 `rf-ffi` 薄适配、`UnitOp.Mvp` 对象面、contract/smoke 基线与库内只读宿主模型
-- `UnitOp.Mvp` 当前应优先把宿主语义收口为正式只读模型，例如 configuration snapshot、action plan、port/material snapshot、execution snapshot、session snapshot 与 canonical session state，不把组合逻辑散落到 smoke host、测试字面量或未来 PME 入口
+- `.NET 10` 适配层当前允许推进到 `M4/M5` 交界的最小互调与 `UnitOp.Mvp` 宿主语义收口，但范围只限于 `rf-ffi` 薄适配、`UnitOp.Mvp` 对象面、contract/smoke 基线、库内只读宿主模型与 action execution request planning 这类不承担完整宿主生命周期的薄 helper
+- `UnitOp.Mvp` 当前应优先把宿主语义收口为正式只读模型或显式请求规划模型，例如 configuration snapshot、action plan、action execution request plan、port/material snapshot、execution snapshot、session snapshot 与 canonical session state，不把组合逻辑散落到 smoke host、测试字面量或未来 PME 入口
 - 当前明确不继续线性堆叠 calculation report accessor；若宿主需要更高层语义，应优先在库内增加 reader / snapshot / presentation，而不是继续在 PMC 主类追加 convenience API
 - 当前仍不提前展开 COM 注册、PME 互调壳、第三方 CAPE-OPEN 模型加载或完整外部 Thermo/Property Package 宿主兼容
 

@@ -106,6 +106,7 @@ Rust 与 `.NET 10` 之间的正式边界应保持简单稳定：
 - 在该文本面之上，当前又补出 `GetCalculationReportLineCount()` 与 `GetCalculationReportLine(int)` 两条标量读取入口，让后续最小 host / PME 可以按“line count + line(index)”逐步读取报告文本，而不提前要求消费自定义 DTO 或整段拼接文本
 - 在上述公开 report API 之上，当前又补出 `UnitOperationHostReportReader -> UnitOperationHostReportPresenter -> UnitOperationHostReportFormatter` 三级库内 helper，把最小宿主读取、展示模型与分区格式收口为稳定复用层，而不是继续给 PMC 主类追加 convenience accessor
 - 在上述 report/configuration/action-plan/port-material/execution readers 之上，当前又补出 `UnitOperationHostSessionReader`，把统一宿主整体视图继续收口到库内；最小 host 现在可以一次读取 configuration、action plan、port/material、execution 与 report，并直接复用 canonical session state 与 `IsReadyForCalculate / HasBlockingActions / HasCurrentResults / RequiresCalculateRefresh / HasFailureReport / RecommendedOperations` 这类摘要，而不必在外部再协调多次读取并拼一层私有 session state
+- 在 action plan 与 action execution dispatcher 之间，当前又补出 `UnitOperationHostActionExecutionRequestPlanner`，把“哪些 action 已能执行、哪些 action 仍缺 parameter value 或 port object、哪些 action 只是 lifecycle 提示或 terminal unsupported 状态”收口成正式 request plan；这层只消费宿主显式提供的输入，不替宿主选择 flowsheet JSON、package id、连接对象或生命周期调用时机
 - `UnitOp.Mvp` 内部当前又已把 `_initialized / _terminated / _disposed` 三布尔状态收口为 `UnitOperationLifecycleState`，并将 `EvaluateValidation()` 与 `Calculate()` 各自拆成显式阶段 helper；validation/calculation/report 的状态迁移也已统一进入正式 transition helper，避免宿主主线继续推进时出现隐式状态漂移
 
 当前不允许在边界上直接传递以下内容：
@@ -139,6 +140,7 @@ Rust 与 `.NET 10` 之间的正式边界应保持简单稳定：
 - `UnitOp.Mvp` 中基于上述结果对象继续收口出的最小只读 result/report access，以及建立在其上的标量元数据入口、可枚举 detail 键值读取入口、最小文本导出面与标量逐行读取入口，不要求外部宿主自己拼装成功结果、失败摘要或 headline/detail 文本
 - 建立在公开 report API 之上的库内宿主消费 helper，以及基于该 helper 的最小 sectioned host report 口径
 - 建立在 configuration/action-plan/port-material/execution/report 正式快照之上的库内统一 host session snapshot，用于减少外部宿主在边界层重复汇总整体状态
+- 建立在 action plan 之上的 action execution request planning helper，用于把宿主输入显式规划为可执行 request batch，并报告 missing inputs / lifecycle-only / unsupported action；该 helper 是库内正式边界，区别于 smoke driver 的完整生命周期编排
 - `SmokeTests` 中更接近真实宿主的最小 driver 路径，用于固定 `Initialize -> 配参数 -> 连端口 -> Validate -> Calculate -> 读结果 -> Terminate` 正式调用顺序、最小必需输入与 `InvocationOrder / Validation / Native` 三类失败分类
 - `RadishFlow.CapeOpen.UnitOp.Mvp.ContractTests` 这种不依赖外部 NuGet 测试框架的库侧 contract baseline，用于锁定 `UnitOp.Mvp` 的行为语义，而不是把这部分契约只留在 console 输出里
 

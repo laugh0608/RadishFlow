@@ -50,6 +50,7 @@ internal static class ContractTestExecutable
             ("configuration-contract", static context => ContractTests.ConfigurationSnapshot_ExposesReadinessAndNextOperations(context)),
             ("action-plan-contract", static context => ContractTests.ActionPlan_ExposesCanonicalChecklistShape(context)),
             ("action-mutation-bridge-contract", static context => ContractTests.ActionMutationBridge_TranslatesCanonicalHostActions(context)),
+            ("action-execution-request-plan-contract", static context => ContractTests.ActionExecutionRequestPlanner_PlansRequestsFromHostInputs(context)),
             ("action-execution-contract", static context => ContractTests.ActionExecutionDispatcher_AppliesCanonicalHostActions(context)),
             ("port-material-contract", static context => ContractTests.PortMaterialSnapshot_ExposesBoundaryStreamsAndLifecycleState(context)),
             ("execution-snapshot-contract", static context => ContractTests.ExecutionSnapshot_ExposesStepAndDiagnosticShape(context)),
@@ -697,6 +698,8 @@ internal static class ContractTests
         AssertActionPlan(readyPlan, "ready action plan");
         ContractAssert.False(readyPlan.HasBlockingActions, "Ready action plan should not expose blocking actions.");
 
+        context.ManifestPathParameter.value = context.ManifestPath;
+        context.ManifestPathParameter.value = context.ManifestPath;
         context.PayloadPathParameter.value = null;
         var companionMismatchPlan = context.ReadActionPlan();
         AssertActionPlan(
@@ -858,6 +861,135 @@ internal static class ContractTests
                 }),
             "Companion action should reject incomplete parameter payloads.");
         ContractAssert.Contains(missingValueError.Message, "Missing parameter value", "Incomplete parameter payload errors should stay explicit.");
+    }
+
+    public static void ActionExecutionRequestPlanner_PlansRequestsFromHostInputs(ContractTestContext context)
+    {
+        var emptyConstructedPlan = UnitOperationHostActionExecutionRequestPlanner.Plan(context.ReadActionPlan());
+        ContractAssert.Equal(5, emptyConstructedPlan.EntryCount, "Constructed request plan should include every action.");
+        ContractAssert.Equal(1, emptyConstructedPlan.RequestCount, "Constructed request plan with no inputs should only produce lifecycle request.");
+        ContractAssert.True(emptyConstructedPlan.HasLifecycleOperations, "Constructed request plan should surface lifecycle-only action.");
+        ContractAssert.True(emptyConstructedPlan.HasMissingInputs, "Constructed request plan should report missing parameter and port inputs.");
+        ContractAssert.False(emptyConstructedPlan.HasUnsupportedActions, "Constructed request plan should not mark active actions as unsupported.");
+        ContractAssert.Equal(
+            UnitOperationHostActionExecutionRequestPlanningDisposition.LifecycleOperationRequired,
+            emptyConstructedPlan.Entries[0].Disposition,
+            "Initialize action should be planned as lifecycle-only.");
+        ContractAssert.NotNull(emptyConstructedPlan.Entries[0].Request, "Lifecycle action should still produce an execution request.");
+        ContractAssert.Equal(
+            UnitOperationHostActionExecutionRequestPlanningDisposition.MissingInputs,
+            emptyConstructedPlan.Entries[1].Disposition,
+            "Missing parameter action should wait for host input.");
+        ContractAssert.SequenceEqual(
+            [UnitOperationParameterCatalog.FlowsheetJson.Name],
+            emptyConstructedPlan.Entries[1].MissingInputNames,
+            "Missing parameter entry should name the required parameter input.");
+
+        context.Initialize();
+        var initializedPlan = context.ReadActionPlan();
+        var feedObject = new ContractConnectedObject("Planned Feed");
+        var plannedInputs = new UnitOperationHostActionExecutionInputSet(
+            parameterValues: new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase)
+            {
+                [UnitOperationParameterCatalog.FlowsheetJson.Name] = context.FlowsheetJsonText,
+                [UnitOperationParameterCatalog.PropertyPackageId.Name] = context.PackageId,
+            },
+            portObjects: new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase)
+            {
+                [UnitOperationPortCatalog.Feed.Name] = feedObject,
+            });
+        var partialPlan = UnitOperationHostActionExecutionRequestPlanner.Plan(initializedPlan, plannedInputs);
+        ContractAssert.Equal(4, partialPlan.EntryCount, "Initialized request plan should include all blocking configuration actions.");
+        ContractAssert.Equal(3, partialPlan.RequestCount, "Partial host inputs should produce ready requests and skip the missing product port.");
+        ContractAssert.Equal(1, partialPlan.MissingInputCount, "Partial host inputs should report one missing port object.");
+        ContractAssert.SequenceEqual(
+            [UnitOperationPortCatalog.Product.Name],
+            partialPlan.Entries[3].MissingInputNames,
+            "Partial request plan should report the missing product port object.");
+        ContractAssert.Equal(
+            UnitOperationHostActionExecutionRequestPlanningDisposition.RequestReady,
+            partialPlan.Entries[0].Disposition,
+            "Flowsheet parameter action should be ready when its value is present.");
+        ContractAssert.Equal(
+            UnitOperationHostActionExecutionRequestPlanningDisposition.RequestReady,
+            partialPlan.Entries[2].Disposition,
+            "Feed port action should be ready when its object is present.");
+        ContractAssert.SameReference(
+            feedObject,
+            partialPlan.Entries[2].Request?.PortObject,
+            "Port request should preserve the supplied host object instance.");
+
+        var productObject = new ContractConnectedObject("Planned Product");
+        var completePlan = UnitOperationHostActionExecutionRequestPlanner.Plan(
+            initializedPlan,
+            new UnitOperationHostActionExecutionInputSet(
+                parameterValues: new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase)
+                {
+                    [UnitOperationParameterCatalog.FlowsheetJson.Name] = context.FlowsheetJsonText,
+                    [UnitOperationParameterCatalog.PropertyPackageId.Name] = context.PackageId,
+                },
+                portObjects: new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase)
+                {
+                    [UnitOperationPortCatalog.Feed.Name] = feedObject,
+                    [UnitOperationPortCatalog.Product.Name] = productObject,
+                }));
+        ContractAssert.Equal(4, completePlan.RequestCount, "Complete host inputs should produce one request per initialized action.");
+        ContractAssert.False(completePlan.HasMissingInputs, "Complete host inputs should not report missing inputs.");
+        ContractAssert.SequenceEqual(
+            [
+                UnitOperationHostActionExecutionRequestPlanningDisposition.RequestReady,
+                UnitOperationHostActionExecutionRequestPlanningDisposition.RequestReady,
+                UnitOperationHostActionExecutionRequestPlanningDisposition.RequestReady,
+                UnitOperationHostActionExecutionRequestPlanningDisposition.RequestReady,
+            ],
+            completePlan.Entries.Select(static entry => entry.Disposition),
+            "Complete request plan should mark every initialized action as request-ready.");
+
+        var batchResult = UnitOperationHostActionExecutionDispatcher.ApplyActionBatch(
+            context.UnitOperation,
+            completePlan.Requests);
+        ContractAssert.Equal(4, batchResult.AppliedActionCount, "Request plan should feed directly into action execution batch.");
+        ContractAssert.Equal(4, batchResult.AppliedMutationCount, "Request plan execution should apply all required object mutations.");
+        ContractAssert.Equal(UnitOperationHostConfigurationState.Ready, context.ReadConfiguration().State, "Planned requests should drive the unit into ready state.");
+
+        context.ManifestPathParameter.value = context.ManifestPath;
+        context.PayloadPathParameter.value = null;
+        var companionPlan = UnitOperationHostActionExecutionRequestPlanner.Plan(
+            context.ReadActionPlan(),
+            new UnitOperationHostActionExecutionInputSet(
+                parameterValues: new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase)
+                {
+                    [UnitOperationParameterCatalog.PropertyPackageManifestPath.Name] = context.ManifestPath,
+                }));
+        ContractAssert.Equal(1, companionPlan.EntryCount, "Companion mismatch should expose one action.");
+        ContractAssert.True(companionPlan.HasMissingInputs, "Companion mismatch plan should reject incomplete companion inputs.");
+        ContractAssert.SequenceEqual(
+            [UnitOperationParameterCatalog.PropertyPackagePayloadPath.Name],
+            companionPlan.Entries[0].MissingInputNames,
+            "Companion mismatch plan should report the missing companion parameter.");
+
+        var completeCompanionPlan = UnitOperationHostActionExecutionRequestPlanner.Plan(
+            context.ReadActionPlan(),
+            new UnitOperationHostActionExecutionInputSet(
+                parameterValues: new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase)
+                {
+                    [UnitOperationParameterCatalog.PropertyPackageManifestPath.Name] = context.ManifestPath,
+                    [UnitOperationParameterCatalog.PropertyPackagePayloadPath.Name] = context.PayloadPath,
+                }));
+        ContractAssert.Equal(1, completeCompanionPlan.RequestCount, "Complete companion inputs should produce one request.");
+        ContractAssert.Equal(
+            2,
+            completeCompanionPlan.Requests[0].ParameterValues?.Count ?? 0,
+            "Companion request should carry both parameter values.");
+
+        context.UnitOperation.Terminate();
+        var terminatedPlan = UnitOperationHostActionExecutionRequestPlanner.Plan(context.ReadActionPlan());
+        ContractAssert.True(terminatedPlan.HasUnsupportedActions, "Terminated request plan should surface unsupported terminal action.");
+        ContractAssert.Equal(0, terminatedPlan.RequestCount, "Unsupported terminal action should not produce an executable request.");
+        ContractAssert.Equal(
+            UnitOperationHostActionExecutionRequestPlanningDisposition.Unsupported,
+            terminatedPlan.Entries[0].Disposition,
+            "Terminated action should remain unsupported for request planning.");
     }
 
     public static void ActionExecutionDispatcher_AppliesCanonicalHostActions(ContractTestContext context)
