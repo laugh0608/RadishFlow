@@ -14,6 +14,22 @@ public static class UnitOperationHostSessionReader
         var portMaterial = UnitOperationHostPortMaterialReader.Read(unitOperation);
         var execution = UnitOperationHostExecutionReader.Read(unitOperation);
         var report = UnitOperationHostReportReader.Read(unitOperation);
+        return CreateSnapshot(configuration, actionPlan, portMaterial, execution, report);
+    }
+
+    public static UnitOperationHostSessionSnapshot CreateSnapshot(
+        UnitOperationHostConfigurationSnapshot configuration,
+        UnitOperationHostActionPlan actionPlan,
+        UnitOperationHostPortMaterialSnapshot portMaterial,
+        UnitOperationHostExecutionSnapshot execution,
+        UnitOperationHostReportSnapshot report)
+    {
+        ArgumentNullException.ThrowIfNull(configuration);
+        ArgumentNullException.ThrowIfNull(actionPlan);
+        ArgumentNullException.ThrowIfNull(portMaterial);
+        ArgumentNullException.ThrowIfNull(execution);
+        ArgumentNullException.ThrowIfNull(report);
+
         var summary = CreateSummary(configuration, actionPlan, portMaterial, execution, report);
         var state = DetermineState(configuration, portMaterial, execution, report, summary);
 

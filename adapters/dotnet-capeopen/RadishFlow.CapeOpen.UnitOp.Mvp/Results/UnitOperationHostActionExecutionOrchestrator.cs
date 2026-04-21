@@ -41,17 +41,13 @@ public static class UnitOperationHostActionExecutionOrchestrator
         UnitOperationHostActionExecutionRequestPlan requestPlan,
         UnitOperationHostActionExecutionBatchResult execution)
     {
-        var configuration = UnitOperationHostConfigurationReader.Read(unitOperation);
-        var refreshedActionPlan = UnitOperationHostActionPlanReader.Read(configuration);
-        var session = UnitOperationHostSessionReader.Read(unitOperation);
+        var views = UnitOperationHostViewReader.Read(unitOperation);
 
         return new UnitOperationHostActionExecutionOrchestrationResult(
             InitialActionPlan: initialActionPlan,
             RequestPlan: requestPlan,
             Execution: execution,
-            Configuration: configuration,
-            ActionPlan: refreshedActionPlan,
-            Session: session);
+            Views: views);
     }
 }
 
@@ -59,12 +55,22 @@ public sealed record UnitOperationHostActionExecutionOrchestrationResult(
     UnitOperationHostActionPlan InitialActionPlan,
     UnitOperationHostActionExecutionRequestPlan RequestPlan,
     UnitOperationHostActionExecutionBatchResult Execution,
-    UnitOperationHostConfigurationSnapshot Configuration,
-    UnitOperationHostActionPlan ActionPlan,
-    UnitOperationHostSessionSnapshot Session)
+    UnitOperationHostViewSnapshot Views)
 {
-    public UnitOperationHostActionExecutionFollowUp FollowUp { get; } =
-        CreateFollowUp(RequestPlan, Execution, Configuration, ActionPlan, Session);
+    public UnitOperationHostFollowUp FollowUp { get; } =
+        UnitOperationHostFollowUpPlanner.CreateFromActionExecution(RequestPlan, Execution, Views);
+
+    public UnitOperationHostConfigurationSnapshot Configuration => Views.Configuration;
+
+    public UnitOperationHostActionPlan ActionPlan => Views.ActionPlan;
+
+    public UnitOperationHostPortMaterialSnapshot PortMaterial => Views.PortMaterial;
+
+    public UnitOperationHostExecutionSnapshot ExecutionSnapshot => Views.Execution;
+
+    public UnitOperationHostReportSnapshot Report => Views.Report;
+
+    public UnitOperationHostSessionSnapshot Session => Views.Session;
 
     public int PlannedActionCount => RequestPlan.EntryCount;
 
@@ -84,110 +90,4 @@ public sealed record UnitOperationHostActionExecutionOrchestrationResult(
 
     public bool RequiresCalculationRefresh =>
         Execution.InvalidatedCalculationReport || Session.Summary.RequiresCalculateRefresh;
-
-    private static UnitOperationHostActionExecutionFollowUp CreateFollowUp(
-        UnitOperationHostActionExecutionRequestPlan requestPlan,
-        UnitOperationHostActionExecutionBatchResult execution,
-        UnitOperationHostConfigurationSnapshot configuration,
-        UnitOperationHostActionPlan actionPlan,
-        UnitOperationHostSessionSnapshot session)
-    {
-        if (configuration.State == UnitOperationHostConfigurationState.Terminated ||
-            session.State == UnitOperationHostSessionState.Terminated)
-        {
-            return new UnitOperationHostActionExecutionFollowUp(
-                Kind: UnitOperationHostActionExecutionFollowUpKind.Terminated,
-                Summary: "Unit operation has been terminated.",
-                MissingInputNames: [],
-                RecommendedOperations: [],
-                CanValidate: false,
-                CanCalculate: false);
-        }
-
-        if (requestPlan.HasLifecycleOperations)
-        {
-            var lifecycleOperations = requestPlan.Entries
-                .Where(static entry => entry.Disposition == UnitOperationHostActionExecutionRequestPlanningDisposition.LifecycleOperationRequired)
-                .Select(static entry => entry.Action.CanonicalOperationName)
-                .Where(static operationName => !string.IsNullOrWhiteSpace(operationName))
-                .Distinct(StringComparer.Ordinal)
-                .Cast<string>()
-                .ToArray();
-
-            return new UnitOperationHostActionExecutionFollowUp(
-                Kind: UnitOperationHostActionExecutionFollowUpKind.LifecycleOperation,
-                Summary: "Lifecycle operation is required before host actions can continue.",
-                MissingInputNames: [],
-                RecommendedOperations: lifecycleOperations,
-                CanValidate: false,
-                CanCalculate: false);
-        }
-
-        if (requestPlan.HasMissingInputs || actionPlan.HasBlockingActions)
-        {
-            var missingInputNames = requestPlan.Entries
-                .SelectMany(static entry => entry.MissingInputNames)
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .ToArray();
-
-            return new UnitOperationHostActionExecutionFollowUp(
-                Kind: UnitOperationHostActionExecutionFollowUpKind.ProvideInputs,
-                Summary: missingInputNames.Length == 0
-                    ? "Additional host inputs are required before validation can continue."
-                    : $"Additional host inputs are required: {string.Join(", ", missingInputNames)}.",
-                MissingInputNames: missingInputNames,
-                RecommendedOperations: session.Summary.RecommendedOperations,
-                CanValidate: false,
-                CanCalculate: false);
-        }
-
-        if (execution.InvalidatedValidation)
-        {
-            return new UnitOperationHostActionExecutionFollowUp(
-                Kind: UnitOperationHostActionExecutionFollowUpKind.Validate,
-                Summary: "Configuration changed; validate before calculate.",
-                MissingInputNames: [],
-                RecommendedOperations: [],
-                CanValidate: true,
-                CanCalculate: false);
-        }
-
-        if (session.Summary.IsReadyForCalculate)
-        {
-            return new UnitOperationHostActionExecutionFollowUp(
-                Kind: UnitOperationHostActionExecutionFollowUpKind.Calculate,
-                Summary: session.Summary.HasFailureReport
-                    ? "Configuration is ready; calculate can be retried."
-                    : "Configuration is ready; calculate can run.",
-                MissingInputNames: [],
-                RecommendedOperations: [],
-                CanValidate: true,
-                CanCalculate: true);
-        }
-
-        return new UnitOperationHostActionExecutionFollowUp(
-            Kind: UnitOperationHostActionExecutionFollowUpKind.ProvideInputs,
-            Summary: "Host state is incomplete and requires additional configuration.",
-            MissingInputNames: [],
-            RecommendedOperations: session.Summary.RecommendedOperations,
-            CanValidate: false,
-            CanCalculate: false);
-    }
-}
-
-public sealed record UnitOperationHostActionExecutionFollowUp(
-    UnitOperationHostActionExecutionFollowUpKind Kind,
-    string Summary,
-    IReadOnlyList<string> MissingInputNames,
-    IReadOnlyList<string> RecommendedOperations,
-    bool CanValidate,
-    bool CanCalculate);
-
-public enum UnitOperationHostActionExecutionFollowUpKind
-{
-    LifecycleOperation,
-    ProvideInputs,
-    Validate,
-    Calculate,
-    Terminated,
 }

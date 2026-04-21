@@ -53,6 +53,8 @@ internal static class ContractTestExecutable
             ("action-execution-request-plan-contract", static context => ContractTests.ActionExecutionRequestPlanner_PlansRequestsFromHostInputs(context)),
             ("action-execution-contract", static context => ContractTests.ActionExecutionDispatcher_AppliesCanonicalHostActions(context)),
             ("action-execution-orchestration-contract", static context => ContractTests.ActionExecutionOrchestrator_RefreshesHostViews(context)),
+            ("validation-round-contract", static context => ContractTests.ValidationRound_RefreshesHostViews(context)),
+            ("calculation-round-contract", static context => ContractTests.CalculationRound_RefreshesHostViews(context)),
             ("port-material-contract", static context => ContractTests.PortMaterialSnapshot_ExposesBoundaryStreamsAndLifecycleState(context)),
             ("execution-snapshot-contract", static context => ContractTests.ExecutionSnapshot_ExposesStepAndDiagnosticShape(context)),
             ("session-snapshot-contract", static context => ContractTests.SessionSnapshot_ExposesUnifiedHostView(context)),
@@ -1084,7 +1086,7 @@ internal static class ContractTests
         ContractAssert.False(constructedOrchestration.HasUnsupportedActions, "Constructed orchestration should not report unsupported actions before terminate.");
         ContractAssert.Equal(UnitOperationHostConfigurationState.Constructed, constructedOrchestration.Configuration.State, "Constructed orchestration should leave configuration unchanged.");
         ContractAssert.Equal(UnitOperationHostSessionState.Constructed, constructedOrchestration.Session.State, "Constructed orchestration should leave session unchanged.");
-        ContractAssert.Equal(UnitOperationHostActionExecutionFollowUpKind.LifecycleOperation, constructedOrchestration.FollowUp.Kind, "Constructed orchestration should recommend lifecycle follow-up.");
+        ContractAssert.Equal(UnitOperationHostFollowUpKind.LifecycleOperation, constructedOrchestration.FollowUp.Kind, "Constructed orchestration should recommend lifecycle follow-up.");
         ContractAssert.False(constructedOrchestration.FollowUp.CanValidate, "Constructed lifecycle follow-up should not allow validate.");
         ContractAssert.False(constructedOrchestration.FollowUp.CanCalculate, "Constructed lifecycle follow-up should not allow calculate.");
         ContractAssert.SequenceEqual([nameof(RadishFlowCapeOpenUnitOperation.Initialize)], constructedOrchestration.FollowUp.RecommendedOperations, "Constructed lifecycle follow-up should recommend Initialize().");
@@ -1116,7 +1118,7 @@ internal static class ContractTests
         ContractAssert.Equal(UnitOperationHostConfigurationState.Ready, configuredOrchestration.Configuration.State, "Initialized orchestration should refresh configuration into ready state.");
         ContractAssert.Equal(0, configuredOrchestration.ActionPlan.ActionCount, "Initialized orchestration should refresh action plan to empty once ready.");
         ContractAssert.Equal(UnitOperationHostSessionState.Ready, configuredOrchestration.Session.State, "Initialized orchestration should refresh session into ready state.");
-        ContractAssert.Equal(UnitOperationHostActionExecutionFollowUpKind.Validate, configuredOrchestration.FollowUp.Kind, "Mutation-applied orchestration should recommend validate before calculate.");
+        ContractAssert.Equal(UnitOperationHostFollowUpKind.Validate, configuredOrchestration.FollowUp.Kind, "Mutation-applied orchestration should recommend validate before calculate.");
         ContractAssert.True(configuredOrchestration.FollowUp.CanValidate, "Validate follow-up should allow validation.");
         ContractAssert.False(configuredOrchestration.FollowUp.CanCalculate, "Validate follow-up should not allow calculate yet.");
 
@@ -1134,7 +1136,7 @@ internal static class ContractTests
         ContractAssert.True(companionOrchestration.HasMissingInputs, "Incomplete companion inputs should surface missing inputs.");
         ContractAssert.Equal(UnitOperationHostConfigurationState.Incomplete, companionOrchestration.Configuration.State, "Companion mismatch orchestration should preserve incomplete configuration state.");
         ContractAssert.Equal(UnitOperationHostSessionState.Incomplete, companionOrchestration.Session.State, "Companion mismatch orchestration should refresh session to incomplete when configuration is broken before any current results exist.");
-        ContractAssert.Equal(UnitOperationHostActionExecutionFollowUpKind.ProvideInputs, companionOrchestration.FollowUp.Kind, "Companion mismatch orchestration should recommend providing inputs.");
+        ContractAssert.Equal(UnitOperationHostFollowUpKind.ProvideInputs, companionOrchestration.FollowUp.Kind, "Companion mismatch orchestration should recommend providing inputs.");
         ContractAssert.SequenceEqual([UnitOperationParameterCatalog.PropertyPackagePayloadPath.Name], companionOrchestration.FollowUp.MissingInputNames, "Companion mismatch follow-up should report the missing payload input.");
         ContractAssert.False(companionOrchestration.FollowUp.CanValidate, "Provide-inputs follow-up should not allow validate.");
         ContractAssert.False(companionOrchestration.FollowUp.CanCalculate, "Provide-inputs follow-up should not allow calculate.");
@@ -1145,9 +1147,82 @@ internal static class ContractTests
         ContractAssert.Equal(0, terminatedOrchestration.ReadyRequestCount, "Terminated orchestration should not produce executable requests.");
         ContractAssert.Equal(UnitOperationHostConfigurationState.Terminated, terminatedOrchestration.Configuration.State, "Terminated orchestration should refresh configuration to terminated.");
         ContractAssert.Equal(UnitOperationHostSessionState.Terminated, terminatedOrchestration.Session.State, "Terminated orchestration should refresh session to terminated.");
-        ContractAssert.Equal(UnitOperationHostActionExecutionFollowUpKind.Terminated, terminatedOrchestration.FollowUp.Kind, "Terminated orchestration should report terminated follow-up.");
+        ContractAssert.Equal(UnitOperationHostFollowUpKind.Terminated, terminatedOrchestration.FollowUp.Kind, "Terminated orchestration should report terminated follow-up.");
         ContractAssert.False(terminatedOrchestration.FollowUp.CanValidate, "Terminated follow-up should not allow validate.");
         ContractAssert.False(terminatedOrchestration.FollowUp.CanCalculate, "Terminated follow-up should not allow calculate.");
+    }
+
+    public static void ValidationRound_RefreshesHostViews(ContractTestContext context)
+    {
+        var constructedValidation = context.ValidateRound();
+        ContractAssert.False(constructedValidation.IsValid, "Constructed validation round should stay invalid.");
+        ContractAssert.Equal(CapeValidationStatus.Invalid, constructedValidation.ValidationStatus, "Constructed validation round should preserve invalid ValStatus.");
+        ContractAssert.Equal(UnitOperationHostSessionState.Constructed, constructedValidation.Session.State, "Constructed validation round should expose constructed session state.");
+        ContractAssert.Equal(UnitOperationHostFollowUpKind.LifecycleOperation, constructedValidation.FollowUp.Kind, "Constructed validation round should recommend Initialize().");
+        ContractAssert.SequenceEqual([nameof(RadishFlowCapeOpenUnitOperation.Initialize)], constructedValidation.FollowUp.RecommendedOperations, "Constructed validation round should preserve Initialize() recommendation.");
+
+        context.ConfigureMinimumValidInputs();
+
+        var readyValidation = context.ValidateRound();
+        ContractAssert.True(readyValidation.IsValid, "Ready validation round should succeed.");
+        ContractAssert.Equal(CapeValidationStatus.Valid, readyValidation.ValidationStatus, "Ready validation round should preserve valid ValStatus.");
+        ContractAssert.Equal(UnitOperationHostSessionState.Ready, readyValidation.Session.State, "Ready validation round should expose ready session state.");
+        ContractAssert.Equal(UnitOperationHostFollowUpKind.Calculate, readyValidation.FollowUp.Kind, "Ready validation round should recommend Calculate().");
+        ContractAssert.True(readyValidation.FollowUp.CanValidate, "Ready validation round should still allow Validate().");
+        ContractAssert.True(readyValidation.FollowUp.CanCalculate, "Ready validation round should allow Calculate().");
+
+        context.DisconnectProductPort();
+
+        var staleValidation = context.ValidateRound();
+        ContractAssert.False(staleValidation.IsValid, "Broken required-port validation round should fail.");
+        ContractAssert.Equal(UnitOperationHostSessionState.Incomplete, staleValidation.Session.State, "Broken required-port validation round should expose incomplete session state before any current results exist.");
+        ContractAssert.Equal(UnitOperationHostFollowUpKind.ProvideInputs, staleValidation.FollowUp.Kind, "Broken required-port validation round should recommend providing inputs.");
+        ContractAssert.True(staleValidation.FollowUp.MissingInputNames.Contains(UnitOperationPortCatalog.Product.Name), "Broken required-port validation round should surface the missing product port input.");
+
+        context.UnitOperation.Terminate();
+
+        var terminatedValidation = context.ValidateRound();
+        ContractAssert.False(terminatedValidation.IsValid, "Terminated validation round should stay invalid.");
+        ContractAssert.Equal(UnitOperationHostSessionState.Terminated, terminatedValidation.Session.State, "Terminated validation round should expose terminated session state.");
+        ContractAssert.Equal(UnitOperationHostFollowUpKind.Terminated, terminatedValidation.FollowUp.Kind, "Terminated validation round should report terminated follow-up.");
+        ContractAssert.False(terminatedValidation.FollowUp.CanCalculate, "Terminated validation round should not allow Calculate().");
+    }
+
+    public static void CalculationRound_RefreshesHostViews(ContractTestContext context)
+    {
+        var constructedCalculation = context.CalculateRound();
+        ContractAssert.False(constructedCalculation.Succeeded, "Constructed calculation round should fail before Initialize().");
+        ContractAssert.NotNull(constructedCalculation.Failure, "Constructed calculation round should preserve the invocation-order failure.");
+        ContractAssert.True(constructedCalculation.Failure is CapeBadInvocationOrderException, "Constructed calculation round should preserve CapeBadInvocationOrderException.");
+        ContractAssert.Equal(UnitOperationHostSessionState.Constructed, constructedCalculation.Session.State, "Constructed calculation round should expose constructed session state.");
+        ContractAssert.Equal(UnitOperationHostFollowUpKind.LifecycleOperation, constructedCalculation.FollowUp.Kind, "Constructed calculation round should recommend Initialize().");
+        ContractAssert.Equal(UnitOperationCalculationReportState.None, constructedCalculation.Report.State, "Constructed calculation round should preserve empty report state before any calculation result exists.");
+
+        context.ConfigureMinimumValidInputs();
+
+        var successCalculation = context.CalculateRound();
+        ContractAssert.True(successCalculation.Succeeded, "Ready calculation round should succeed.");
+        ContractAssert.Equal(UnitOperationHostSessionState.Available, successCalculation.Session.State, "Successful calculation round should expose available session state.");
+        ContractAssert.Equal(UnitOperationHostExecutionState.Available, successCalculation.Execution.State, "Successful calculation round should expose available execution snapshot.");
+        ContractAssert.Equal(UnitOperationCalculationReportState.Success, successCalculation.Report.State, "Successful calculation round should expose success report state.");
+        ContractAssert.Equal(UnitOperationHostFollowUpKind.CurrentResults, successCalculation.FollowUp.Kind, "Successful calculation round should report current results as the next host state.");
+        ContractAssert.True(successCalculation.FollowUp.CanCalculate, "Successful calculation round should still allow Calculate().");
+
+        context.UnitOperation.SelectPropertyPackage("missing-package-for-calculation-round");
+        var nativeFailureCalculation = context.CalculateRound();
+        ContractAssert.False(nativeFailureCalculation.Succeeded, "Native-failure calculation round should fail.");
+        ContractAssert.NotNull(nativeFailureCalculation.Failure, "Native-failure calculation round should preserve the native failure.");
+        ContractAssert.True(nativeFailureCalculation.Failure is CapeInvalidArgumentException, "Native-failure calculation round should preserve CapeInvalidArgumentException.");
+        ContractAssert.Equal(UnitOperationHostSessionState.Failure, nativeFailureCalculation.Session.State, "Native-failure calculation round should expose failure session state.");
+        ContractAssert.Equal(UnitOperationHostFollowUpKind.Calculate, nativeFailureCalculation.FollowUp.Kind, "Native-failure calculation round should recommend calculate retry after recovery.");
+        ContractAssert.True(nativeFailureCalculation.FollowUp.CanCalculate, "Native-failure calculation round should still allow Calculate() after recovery.");
+
+        context.UnitOperation.Terminate();
+        var terminatedCalculation = context.CalculateRound();
+        ContractAssert.False(terminatedCalculation.Succeeded, "Terminated calculation round should fail.");
+        ContractAssert.Equal(UnitOperationHostSessionState.Terminated, terminatedCalculation.Session.State, "Terminated calculation round should expose terminated session state.");
+        ContractAssert.Equal(UnitOperationHostFollowUpKind.Terminated, terminatedCalculation.FollowUp.Kind, "Terminated calculation round should report terminated follow-up.");
+        ContractAssert.False(terminatedCalculation.FollowUp.CanValidate, "Terminated calculation round should not allow Validate().");
     }
 
     public static void PortMaterialSnapshot_ExposesBoundaryStreamsAndLifecycleState(ContractTestContext context)
@@ -1766,6 +1841,16 @@ internal sealed class ContractTestContext : IDisposable
     public UnitOperationHostSessionSnapshot ReadSession()
     {
         return UnitOperationHostSessionReader.Read(UnitOperation);
+    }
+
+    public UnitOperationHostValidationOutcome ValidateRound()
+    {
+        return UnitOperationHostValidationRunner.Validate(UnitOperation);
+    }
+
+    public UnitOperationHostCalculationOutcome CalculateRound()
+    {
+        return UnitOperationHostCalculationRunner.Calculate(UnitOperation);
     }
 
     public void ConfigureMinimumValidInputs()

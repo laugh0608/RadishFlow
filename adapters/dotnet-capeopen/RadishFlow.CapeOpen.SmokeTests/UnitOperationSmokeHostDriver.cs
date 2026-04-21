@@ -130,28 +130,19 @@ internal sealed class UnitOperationSmokeHostDriver : IDisposable
     public UnitOperationSmokeValidationResult Validate()
     {
         ThrowIfDisposed();
-
-        var message = string.Empty;
-        var isValid = _unitOperation.Validate(ref message);
-        return new UnitOperationSmokeValidationResult(isValid, message);
+        return new UnitOperationSmokeValidationResult(
+            UnitOperationHostValidationRunner.Validate(_unitOperation));
     }
 
     public UnitOperationSmokeCalculationAttempt Calculate()
     {
         ThrowIfDisposed();
 
-        try
-        {
-            _unitOperation.Calculate();
-            return UnitOperationSmokeCalculationAttempt.FromSuccess(ReadReport());
-        }
-        catch (CapeOpenException error)
-        {
-            return UnitOperationSmokeCalculationAttempt.FromFailure(
-                ReadReport(),
-                error,
-                ClassifyFailure(error));
-        }
+        var outcome = UnitOperationHostCalculationRunner.Calculate(_unitOperation);
+        return UnitOperationSmokeCalculationAttempt.FromOutcome(
+            outcome,
+            CreateReportBundle(outcome.Report),
+            outcome.Failure is null ? null : ClassifyFailure(outcome.Failure));
     }
 
     public UnitOperationHostConfigurationSnapshot ReadConfiguration()
@@ -189,6 +180,12 @@ internal sealed class UnitOperationSmokeHostDriver : IDisposable
         ThrowIfDisposed();
 
         var snapshot = UnitOperationHostReportReader.Read(_unitOperation);
+        return CreateReportBundle(snapshot);
+    }
+
+    private static UnitOperationHostReportBundle CreateReportBundle(
+        UnitOperationHostReportSnapshot snapshot)
+    {
         var presentation = UnitOperationHostReportPresenter.Present(snapshot);
         var document = UnitOperationHostReportFormatter.Format(presentation);
         return new UnitOperationHostReportBundle(snapshot, presentation, document);
@@ -297,8 +294,20 @@ internal enum UnitOperationHostDriverFailureKind
 }
 
 internal sealed record UnitOperationSmokeValidationResult(
-    bool IsValid,
-    string Message);
+    UnitOperationHostValidationOutcome Outcome)
+{
+    public bool IsValid => Outcome.IsValid;
+
+    public string Message => Outcome.Message;
+
+    public UnitOperationHostViewSnapshot Views => Outcome.Views;
+
+    public UnitOperationHostFollowUp FollowUp => Outcome.FollowUp;
+
+    public UnitOperationHostSessionSnapshot Session => Outcome.Session;
+
+    public UnitOperationHostReportSnapshot Report => Outcome.Report;
+}
 
 internal sealed record UnitOperationHostReportBundle(
     UnitOperationHostReportSnapshot Snapshot,
@@ -307,28 +316,29 @@ internal sealed record UnitOperationHostReportBundle(
 
 internal sealed record UnitOperationSmokeCalculationAttempt(
     bool Succeeded,
+    UnitOperationHostCalculationOutcome Outcome,
     UnitOperationHostReportBundle Report,
     CapeOpenException? Failure,
     UnitOperationHostDriverFailureKind? FailureKind)
 {
-    public static UnitOperationSmokeCalculationAttempt FromSuccess(UnitOperationHostReportBundle report)
-    {
-        return new UnitOperationSmokeCalculationAttempt(
-            Succeeded: true,
-            Report: report,
-            Failure: null,
-            FailureKind: null);
-    }
+    public UnitOperationHostViewSnapshot Views => Outcome.Views;
 
-    public static UnitOperationSmokeCalculationAttempt FromFailure(
+    public UnitOperationHostFollowUp FollowUp => Outcome.FollowUp;
+
+    public UnitOperationHostSessionSnapshot Session => Outcome.Session;
+
+    public UnitOperationHostExecutionSnapshot Execution => Outcome.Execution;
+
+    public static UnitOperationSmokeCalculationAttempt FromOutcome(
+        UnitOperationHostCalculationOutcome outcome,
         UnitOperationHostReportBundle report,
-        CapeOpenException failure,
-        UnitOperationHostDriverFailureKind failureKind)
+        UnitOperationHostDriverFailureKind? failureKind)
     {
         return new UnitOperationSmokeCalculationAttempt(
-            Succeeded: false,
+            Succeeded: outcome.Succeeded,
+            Outcome: outcome,
             Report: report,
-            Failure: failure,
+            Failure: outcome.Failure,
             FailureKind: failureKind);
     }
 

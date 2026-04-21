@@ -1,6 +1,6 @@
 # CAPE-OPEN Boundary
 
-更新时间：2026-04-16
+更新时间：2026-04-21
 
 ## 边界目标
 
@@ -106,8 +106,10 @@ Rust 与 `.NET 10` 之间的正式边界应保持简单稳定：
 - 在该文本面之上，当前又补出 `GetCalculationReportLineCount()` 与 `GetCalculationReportLine(int)` 两条标量读取入口，让后续最小 host / PME 可以按“line count + line(index)”逐步读取报告文本，而不提前要求消费自定义 DTO 或整段拼接文本
 - 在上述公开 report API 之上，当前又补出 `UnitOperationHostReportReader -> UnitOperationHostReportPresenter -> UnitOperationHostReportFormatter` 三级库内 helper，把最小宿主读取、展示模型与分区格式收口为稳定复用层，而不是继续给 PMC 主类追加 convenience accessor
 - 在上述 report/configuration/action-plan/port-material/execution readers 之上，当前又补出 `UnitOperationHostSessionReader`，把统一宿主整体视图继续收口到库内；最小 host 现在可以一次读取 configuration、action plan、port/material、execution 与 report，并直接复用 canonical session state 与 `IsReadyForCalculate / HasBlockingActions / HasCurrentResults / RequiresCalculateRefresh / HasFailureReport / RecommendedOperations` 这类摘要，而不必在外部再协调多次读取并拼一层私有 session state
+- 在这组 readers 之上，当前又补出 `UnitOperationHostViewReader`，把 configuration/action plan/port-material/execution/report/session 六块正式 host view 继续收口到单一快照，避免 action execution、validate、calculate 三条宿主路径各自重复补读和拼装
 - 在 action plan 与 action execution dispatcher 之间，当前又补出 `UnitOperationHostActionExecutionRequestPlanner`，把“哪些 action 已能执行、哪些 action 仍缺 parameter value 或 port object、哪些 action 只是 lifecycle 提示或 terminal unsupported 状态”收口成正式 request plan；这层只消费宿主显式提供的输入，不替宿主选择 flowsheet JSON、package id、连接对象或生命周期调用时机
-- 在 request plan 与单次 action execution 之上，当前又补出 `UnitOperationHostActionExecutionOrchestrator` 与正式 `FollowUp` 模型，把“执行 ready requests 后宿主下一眼该看什么、下一步该补输入/做 validate/做 calculate 还是只剩 lifecycle/terminated”继续收口为正式 result；这层统一返回 request plan、execution batch outcome、刷新后的 configuration/action plan/session，以及 `LifecycleOperation / ProvideInputs / Validate / Calculate / Terminated` 五类 follow-up，但仍不负责 `Initialize / Validate / Calculate / Terminate`
+- 在 request plan 与单次 action execution 之上，当前又补出 `UnitOperationHostActionExecutionOrchestrator` 与正式 `FollowUp` 模型，把“执行 ready requests 后宿主下一眼该看什么、下一步该补输入/做 validate/做 calculate 还是只剩 lifecycle/terminated”继续收口为正式 result；这层统一返回 request plan、execution batch outcome、刷新后的 host view，以及 `LifecycleOperation / ProvideInputs / Validate / Calculate / CurrentResults / Terminated` 六类 follow-up，但仍不负责 `Initialize / Validate / Calculate / Terminate`
+- 在 action execution 之外，当前又补出 `UnitOperationHostValidationRunner` 与 `UnitOperationHostCalculationRunner`，把 `Validate()` / `Calculate()` 之后的正式 `host view + follow-up` 一并收口到库内；最小 host 现在不必在调用后继续手工补读 `session/report/execution` 再判断下一步
 - `UnitOp.Mvp` 内部当前又已把 `_initialized / _terminated / _disposed` 三布尔状态收口为 `UnitOperationLifecycleState`，并将 `EvaluateValidation()` 与 `Calculate()` 各自拆成显式阶段 helper；validation/calculation/report 的状态迁移也已统一进入正式 transition helper，避免宿主主线继续推进时出现隐式状态漂移
 
 当前不允许在边界上直接传递以下内容：
