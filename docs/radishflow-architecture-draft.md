@@ -1,6 +1,6 @@
 # RadishFlow 架构草案
 
-更新时间：2026-04-16
+更新时间：2026-04-21
 
 ## 文档目的
 
@@ -242,6 +242,7 @@ RadishFlow/
 │     ├─ RadishFlow.CapeOpen.Adapter/
 │     ├─ RadishFlow.CapeOpen.UnitOp.Mvp/
 │     ├─ RadishFlow.CapeOpen.UnitOp.Mvp.ContractTests/
+│     ├─ RadishFlow.CapeOpen.UnitOp.Mvp.SampleHost/
 │     ├─ RadishFlow.CapeOpen.Registration/
 │     └─ RadishFlow.CapeOpen.SmokeTests/
 ├─ bindings/
@@ -575,6 +576,8 @@ Rust 与 .NET 的桥接层。
 - 当前又已把上述 stable detail key 清单冻结为公开 catalog `UnitOperationCalculationReportDetailCatalog`，明确 success / failure 两条路径的 canonical key 顺序，避免宿主侧再依赖散落字符串常量或文档口径
 - 在最小结果面阶段性冻结后，当前又已把内部状态推进显式收口为 `UnitOperationLifecycleState`、分段 `EvaluateValidation()` guard 链、分段 `Calculate()` 执行链，以及统一的 validation/calculation/report transition helper，避免后续宿主主线继续推进时在同一个 PMC 类里堆叠隐式状态分支
 - 在公开 report API 之上，当前又已补出 `UnitOperationHostReportReader -> UnitOperationHostReportPresenter -> UnitOperationHostReportFormatter` 三级宿主消费 helper；这条链路的定位是冻结最小宿主读取/展示口径，而不是继续给 PMC 主类追加更多 convenience accessor
+- 当前 host-facing 主路径又已继续收口为 `UnitOperationHostViewReader`、`UnitOperationHostActionExecutionRequestPlanner`、`UnitOperationHostActionExecutionOrchestrator`、`UnitOperationHostValidationRunner`、`UnitOperationHostCalculationRunner`、`UnitOperationHostRoundOrchestrator` 与统一 `FollowUp` / `StopKind` 模型；这些 helper 负责正式消费面和窄边界 orchestration，不把 `SmokeTests` 的完整 driver DSL 上移成库 API
+- 当前又已通过 `UnitOperationComIdentity` 冻结 MVP PMC 的 `CLSID / ProgID / Versioned ProgID / DisplayName / Description`，并在 `RadishFlowCapeOpenUnitOperation` 上固定 `ComVisible / Guid / ProgId / ClassInterface(None)` 注册前置元数据；这仍只代表身份口径冻结，不代表已经执行 COM 注册
 
 ### `RadishFlow.CapeOpen.UnitOp.Mvp.ContractTests`
 
@@ -590,6 +593,21 @@ Rust 与 .NET 的桥接层。
 - 当前已覆盖 `Validate before Initialize`、validation failure report、native failure report、success report、配置变更 invalidation 与 `Terminate()` 后阻断共 6 条核心 contract case
 - 当前已显式锁住 validation/native 两类 failure report 在 detail 字段上的缺省规则，避免这部分行为只停留在 smoke 输出或 README 约定里
 
+### `RadishFlow.CapeOpen.UnitOp.Mvp.SampleHost`
+
+职责：
+
+- 演示外部宿主如何不依赖 `SmokeTests` driver DSL 消费 `UnitOp.Mvp` 正式 host-facing 模型
+- 提供更接近 PME host 的薄 session 样板
+- 验证 `view -> request planning -> host round -> session/execution/port-material/report` 的正式消费路径
+
+当前对齐：
+
+- 当前已建立独立 `net10.0` console，并已加入 `RadishFlow.CapeOpen.sln`
+- 当前 console 已默认通过 `PmeLikeUnitOperationHost / PmeLikeUnitOperationSession / PmeLikeUnitOperationInput` 执行“创建组件、初始化、读取视图、提交参数/端口对象、执行 validate/calculate round、读取正式结果面、终止”
+- 该样例只复用 `UnitOp.Mvp` 正式 reader / planner / host round / session-execution-port-material-report 消费面，不复用 `SmokeTests` driver DSL
+- 该样例不做 COM 注册、不驱动真实 PME、不加载第三方 CAPE-OPEN 模型，也不承诺完整 PME 生命周期框架
+
 ### `RadishFlow.CapeOpen.Registration`
 
 职责：
@@ -597,6 +615,15 @@ Rust 与 .NET 的桥接层。
 - COM host 注册与反注册
 - 管理员提权
 - 冒烟验证辅助
+
+当前对齐：
+
+- 当前已建立第一版 `net10.0` dry-run / preflight console，并已加入 `RadishFlow.CapeOpen.sln`
+- 当前可输出 MVP Unit Operation PMC 的 `CLSID / ProgID / Versioned ProgID`、CAPE-OPEN categories、最小已实现接口、当前 action / scope 与边界标志
+- 当前可按 `register / unregister` 与 `current-user / local-machine` 生成 registry key plan，并把 `.NET comhost` 路径解析列为执行前 `Verify` 步骤
+- 当前已启用 `UnitOp.Mvp` 的 `EnableComHosting`，并在 preflight 中只读检查 `RadishFlow.CapeOpen.UnitOp.Mvp.comhost.dll` 是否存在、PE 机器类型、当前进程位数、scope 权限口径、目标 registry key 现状和备份范围
+- 当前仍不写 Windows Registry、不注册或反注册 COM、不启动 PME、不加载第三方 CAPE-OPEN 模型；后续若进入执行型注册，必须先满足显式 `--execute`、确认 token、无 `Fail` preflight、权限检查、备份/回滚和审计日志
+- 目标 PME 人工验证路径当前已单独落到 `docs/capeopen/pme-validation.md`，注册工具本身不承担 PME 自动化互调
 
 ### `RadishFlow.CapeOpen.SmokeTests`
 
