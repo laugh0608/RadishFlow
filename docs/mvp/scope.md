@@ -50,7 +50,7 @@
 - `UnitOp.Mvp` 当前应优先把宿主语义收口为正式只读模型、显式请求规划模型或窄边界 outcome 模型，例如 configuration snapshot、action plan、action execution request plan、action execution orchestration result、host view snapshot、port/material snapshot、execution snapshot、session snapshot、canonical session state、validation outcome、calculation outcome、host round outcome、统一 follow-up 与 stop kind，不把组合逻辑散落到 smoke host、测试字面量或未来 PME 入口
 - `UnitOp.Mvp` 当前也已补出独立 `SampleHost`，用于证明未来 PME host / 其他宿主可直接复用上述正式消费面，而不是继续依赖 smoke driver
 - `SampleHost` 当前又已补出 `PmeLikeUnitOperationHost / PmeLikeUnitOperationSession / PmeLikeUnitOperationInput` 薄宿主入口，把“创建组件、初始化、读取视图、提交参数/端口对象、执行 validate/calculate round、读取正式结果面、终止”整理成更接近 PME host 的最小 session 形状；这层仍只消费 `UnitOp.Mvp` 正式 reader / planner / host round，不引入 COM 注册、PME 自动化互调或第三方模型加载
-- `UnitOp.Mvp` 当前已冻结自有 MVP Unit Operation PMC 的 `CLSID / ProgID / Versioned ProgID`，并新增 `RadishFlow.CapeOpen.Registration` dry-run/preflight 输出注册前置描述；当前 dry-run 也能按 `register / unregister` 与 `current-user / local-machine` 生成 registry key plan，但仍只冻结身份与计划，不写注册表、不注册 COM、不驱动 PME
+- `UnitOp.Mvp` 当前已冻结自有 MVP Unit Operation PMC 的 `CLSID / ProgID / Versioned ProgID`，并新增 `RadishFlow.CapeOpen.Registration` dry-run/preflight 输出注册前置描述；当前 dry-run 也能按 `register / unregister` 与 `current-user / local-machine` 生成 registry key plan，并只读检查 comhost、位数、权限口径、目标 registry key 现状和备份范围，但仍不写注册表、不注册 COM、不驱动 PME
 - 当前明确不继续线性堆叠 calculation report accessor；若宿主需要更高层语义，应优先在库内增加 reader / snapshot / presentation，而不是继续在 PMC 主类追加 convenience API
 - 当前仍不提前展开 COM 注册、PME 互调壳、第三方 CAPE-OPEN 模型加载或完整外部 Thermo/Property Package 宿主兼容
 

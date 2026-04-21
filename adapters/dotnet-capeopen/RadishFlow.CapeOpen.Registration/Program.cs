@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Microsoft.Win32;
 using RadishFlow.CapeOpen.Interop.Guids;
 using RadishFlow.CapeOpen.UnitOp.Mvp.UnitOperation;
 
@@ -20,7 +21,8 @@ internal static class RegistrationPreflightExecutable
 
             var descriptor = CapeOpenRegistrationDescriptor.CreateUnitOperationMvp(
                 options.Action,
-                options.Scope);
+                options.Scope,
+                options.ComHostPath);
             if (options.Json)
             {
                 Console.WriteLine(JsonSerializer.Serialize(
@@ -59,7 +61,9 @@ internal sealed record CapeOpenRegistrationDescriptor(
     CapeOpenRegistrationScope Scope,
     IReadOnlyList<CapeOpenRegistrationCategory> Categories,
     IReadOnlyList<CapeOpenImplementedInterface> ImplementedInterfaces,
+    IReadOnlyList<CapeOpenPreflightCheck> PreflightChecks,
     IReadOnlyList<CapeOpenRegistryPlanEntry> RegistryPlan,
+    IReadOnlyList<CapeOpenRegistryBackupPlanEntry> BackupPlan,
     bool WritesRegistry,
     bool RequiresComRegistration,
     bool RequiresPmeAutomation,
@@ -67,10 +71,20 @@ internal sealed record CapeOpenRegistrationDescriptor(
 {
     public static CapeOpenRegistrationDescriptor CreateUnitOperationMvp(
         CapeOpenRegistrationAction action,
-        CapeOpenRegistrationScope scope)
+        CapeOpenRegistrationScope scope,
+        string? comHostPath)
     {
         var unitOperationType = typeof(RadishFlowCapeOpenUnitOperation);
-        var registryPlan = CapeOpenRegistryPlanBuilder.BuildUnitOperationMvpPlan(action, scope);
+        var resolvedComHostPath = CapeOpenComHostPathResolver.Resolve(unitOperationType, comHostPath);
+        var preflightChecks = CapeOpenRegistrationPreflightChecker.Check(
+            action,
+            scope,
+            resolvedComHostPath);
+        var registryPlan = CapeOpenRegistryPlanBuilder.BuildUnitOperationMvpPlan(
+            action,
+            scope,
+            resolvedComHostPath);
+        var backupPlan = CapeOpenRegistryBackupPlanBuilder.BuildUnitOperationMvpPlan(scope);
         return new CapeOpenRegistrationDescriptor(
             ComponentName: UnitOperationComIdentity.DisplayName,
             Description: UnitOperationComIdentity.Description,
@@ -102,7 +116,9 @@ internal sealed record CapeOpenRegistrationDescriptor(
                     Name: "ICapeUnit",
                     InterfaceId: CapeOpenInterfaceIds.ICapeUnit),
             ],
+            PreflightChecks: preflightChecks,
             RegistryPlan: registryPlan,
+            BackupPlan: backupPlan,
             WritesRegistry: false,
             RequiresComRegistration: false,
             RequiresPmeAutomation: false,
@@ -118,6 +134,11 @@ internal sealed record CapeOpenImplementedInterface(
     string Name,
     string InterfaceId);
 
+internal sealed record CapeOpenPreflightCheck(
+    string Name,
+    CapeOpenPreflightCheckStatus Status,
+    string Detail);
+
 internal sealed record CapeOpenRegistryPlanEntry(
     CapeOpenRegistryPlanOperation Operation,
     string Hive,
@@ -126,12 +147,223 @@ internal sealed record CapeOpenRegistryPlanEntry(
     string? ValueData,
     string Reason);
 
+internal sealed record CapeOpenRegistryBackupPlanEntry(
+    string Hive,
+    string KeyPath,
+    bool Exists,
+    string Reason);
+
+internal static class CapeOpenComHostPathResolver
+{
+    public static string Resolve(
+        Type componentType,
+        string? explicitPath)
+    {
+        ArgumentNullException.ThrowIfNull(componentType);
+
+        if (!string.IsNullOrWhiteSpace(explicitPath))
+        {
+            return Path.GetFullPath(explicitPath);
+        }
+
+        var assemblyPath = componentType.Assembly.Location;
+        if (string.IsNullOrWhiteSpace(assemblyPath))
+        {
+            return Path.GetFullPath("RadishFlow.CapeOpen.UnitOp.Mvp.comhost.dll");
+        }
+
+        var assemblyDirectory = Path.GetDirectoryName(assemblyPath) ?? Environment.CurrentDirectory;
+        return Path.Combine(assemblyDirectory, "RadishFlow.CapeOpen.UnitOp.Mvp.comhost.dll");
+    }
+}
+
+internal static class CapeOpenRegistrationPreflightChecker
+{
+    public static IReadOnlyList<CapeOpenPreflightCheck> Check(
+        CapeOpenRegistrationAction action,
+        CapeOpenRegistrationScope scope,
+        string comHostPath)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(comHostPath);
+
+        var checks = new List<CapeOpenPreflightCheck>
+        {
+            CheckComHostPath(comHostPath),
+            CheckComHostArchitecture(comHostPath),
+            CheckProcessArchitecture(),
+            CheckScopePermission(scope),
+        };
+
+        checks.AddRange(CheckRegistryConflicts(action, scope));
+        return checks;
+    }
+
+    private static CapeOpenPreflightCheck CheckComHostPath(string comHostPath)
+    {
+        return File.Exists(comHostPath)
+            ? Pass("comhost path", $"Resolved comhost DLL: {comHostPath}")
+            : Fail("comhost path", $"Generated comhost DLL was not found: {comHostPath}");
+    }
+
+    private static CapeOpenPreflightCheck CheckProcessArchitecture()
+    {
+        return Pass(
+            "process architecture",
+            $"Current process is {(Environment.Is64BitProcess ? "64-bit" : "32-bit")}; registry view must match the target PME bitness.");
+    }
+
+    private static CapeOpenPreflightCheck CheckComHostArchitecture(string comHostPath)
+    {
+        if (!File.Exists(comHostPath))
+        {
+            return Fail("comhost architecture", "Cannot inspect comhost architecture because the file does not exist.");
+        }
+
+        try
+        {
+            var architecture = PortableExecutableArchitectureReader.ReadMachineArchitecture(comHostPath);
+            var processArchitecture = Environment.Is64BitProcess
+                ? PortableExecutableMachineArchitecture.X64
+                : PortableExecutableMachineArchitecture.X86;
+            if (architecture == PortableExecutableMachineArchitecture.Unknown)
+            {
+                return Warn("comhost architecture", $"Could not classify comhost machine type in `{comHostPath}`.");
+            }
+
+            if (architecture != processArchitecture &&
+                architecture is PortableExecutableMachineArchitecture.X64 or PortableExecutableMachineArchitecture.X86)
+            {
+                return Warn(
+                    "comhost architecture",
+                    $"Comhost is {architecture}, current process is {processArchitecture}; target PME bitness must match the registered in-proc server.");
+            }
+
+            return Pass(
+                "comhost architecture",
+                $"Comhost architecture is {architecture}; target PME bitness must match this in-proc server.");
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException or InvalidDataException)
+        {
+            return Fail("comhost architecture", $"Failed to inspect comhost PE header: {error.Message}");
+        }
+    }
+
+    private static CapeOpenPreflightCheck CheckScopePermission(CapeOpenRegistrationScope scope)
+    {
+        return scope == CapeOpenRegistrationScope.CurrentUser
+            ? Pass("scope permission", "Current-user dry-run targets HKCU and does not require elevation.")
+            : Warn("scope permission", "Local-machine registration will require elevation before any real HKLM write.");
+    }
+
+    private static IEnumerable<CapeOpenPreflightCheck> CheckRegistryConflicts(
+        CapeOpenRegistrationAction action,
+        CapeOpenRegistrationScope scope)
+    {
+        var hive = scope == CapeOpenRegistrationScope.CurrentUser
+            ? Registry.CurrentUser
+            : Registry.LocalMachine;
+        var prefix = scope == CapeOpenRegistrationScope.CurrentUser
+            ? "HKCU"
+            : "HKLM";
+        var keys = CapeOpenRegistryKeySet.CreateUnitOperationMvp();
+
+        foreach (var keyPath in keys.AllTopLevelKeys)
+        {
+            var exists = RegistryKeyExists(hive, keyPath);
+            if (action == CapeOpenRegistrationAction.Register)
+            {
+                yield return exists
+                    ? Warn("registry conflict", $"{prefix}\\{keyPath} already exists and would need backup/review before registration.")
+                    : Pass("registry conflict", $"{prefix}\\{keyPath} is currently absent.");
+                continue;
+            }
+
+            yield return exists
+                ? Pass("registry removal target", $"{prefix}\\{keyPath} exists and is a candidate for unregister.")
+                : Warn("registry removal target", $"{prefix}\\{keyPath} is absent; unregister would be a no-op for this key.");
+        }
+    }
+
+    private static bool RegistryKeyExists(
+        RegistryKey hive,
+        string keyPath)
+    {
+        using var key = hive.OpenSubKey(keyPath, writable: false);
+        return key is not null;
+    }
+
+    private static CapeOpenPreflightCheck Pass(string name, string detail)
+    {
+        return new CapeOpenPreflightCheck(name, CapeOpenPreflightCheckStatus.Pass, detail);
+    }
+
+    private static CapeOpenPreflightCheck Warn(string name, string detail)
+    {
+        return new CapeOpenPreflightCheck(name, CapeOpenPreflightCheckStatus.Warning, detail);
+    }
+
+    private static CapeOpenPreflightCheck Fail(string name, string detail)
+    {
+        return new CapeOpenPreflightCheck(name, CapeOpenPreflightCheckStatus.Fail, detail);
+    }
+}
+
+internal sealed record CapeOpenRegistryKeySet(
+    string ClassIdKey,
+    string ProgIdKey,
+    string VersionedProgIdKey)
+{
+    public IReadOnlyList<string> AllTopLevelKeys => [ClassIdKey, ProgIdKey, VersionedProgIdKey];
+
+    public static CapeOpenRegistryKeySet CreateUnitOperationMvp()
+    {
+        return new CapeOpenRegistryKeySet(
+            ClassIdKey: $@"Software\Classes\CLSID\{{{UnitOperationComIdentity.ClassId}}}",
+            ProgIdKey: $@"Software\Classes\{UnitOperationComIdentity.ProgId}",
+            VersionedProgIdKey: $@"Software\Classes\{UnitOperationComIdentity.VersionedProgId}");
+    }
+}
+
+internal static class CapeOpenRegistryBackupPlanBuilder
+{
+    public static IReadOnlyList<CapeOpenRegistryBackupPlanEntry> BuildUnitOperationMvpPlan(
+        CapeOpenRegistrationScope scope)
+    {
+        var hive = scope == CapeOpenRegistrationScope.CurrentUser
+            ? Registry.CurrentUser
+            : Registry.LocalMachine;
+        var hiveName = scope == CapeOpenRegistrationScope.CurrentUser
+            ? "HKCU"
+            : "HKLM";
+        var keySet = CapeOpenRegistryKeySet.CreateUnitOperationMvp();
+
+        return keySet.AllTopLevelKeys
+            .Select(keyPath => new CapeOpenRegistryBackupPlanEntry(
+                Hive: hiveName,
+                KeyPath: keyPath,
+                Exists: RegistryKeyExists(hive, keyPath),
+                Reason: "Capture existing registration tree before any future write/delete operation."))
+            .ToArray();
+    }
+
+    private static bool RegistryKeyExists(
+        RegistryKey hive,
+        string keyPath)
+    {
+        using var key = hive.OpenSubKey(keyPath, writable: false);
+        return key is not null;
+    }
+}
+
 internal static class CapeOpenRegistryPlanBuilder
 {
     public static IReadOnlyList<CapeOpenRegistryPlanEntry> BuildUnitOperationMvpPlan(
         CapeOpenRegistrationAction action,
-        CapeOpenRegistrationScope scope)
+        CapeOpenRegistrationScope scope,
+        string comHostPath)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(comHostPath);
+
         var hive = scope == CapeOpenRegistrationScope.CurrentUser
             ? "HKCU"
             : "HKLM";
@@ -142,10 +374,9 @@ internal static class CapeOpenRegistryPlanBuilder
         var progIdKey = $@"{classRoot}\{UnitOperationComIdentity.ProgId}";
         var versionedProgIdKey = $@"{classRoot}\{UnitOperationComIdentity.VersionedProgId}";
         var implementedCategoriesKey = $@"{clsidKey}\Implemented Categories";
-        const string unresolvedComHostPath = "<resolved RadishFlow.CapeOpen.UnitOp.Mvp.comhost.dll path>";
 
         return action == CapeOpenRegistrationAction.Register
-            ? CreateRegisterPlan(hive, clsidKey, progIdKey, versionedProgIdKey, implementedCategoriesKey, unresolvedComHostPath)
+            ? CreateRegisterPlan(hive, clsidKey, progIdKey, versionedProgIdKey, implementedCategoriesKey, comHostPath)
             : CreateUnregisterPlan(hive, clsidKey, progIdKey, versionedProgIdKey);
     }
 
@@ -248,6 +479,49 @@ internal static class CapeOpenRegistryPlanBuilder
     }
 }
 
+internal static class PortableExecutableArchitectureReader
+{
+    public static PortableExecutableMachineArchitecture ReadMachineArchitecture(string path)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(path);
+
+        using var stream = File.OpenRead(path);
+        using var reader = new BinaryReader(stream);
+
+        if (stream.Length < 0x40)
+        {
+            throw new InvalidDataException("File is too small to contain a PE header.");
+        }
+
+        if (reader.ReadUInt16() != 0x5A4D)
+        {
+            throw new InvalidDataException("Missing MZ signature.");
+        }
+
+        stream.Position = 0x3C;
+        var peHeaderOffset = reader.ReadInt32();
+        if (peHeaderOffset <= 0 || peHeaderOffset + 6 > stream.Length)
+        {
+            throw new InvalidDataException("Invalid PE header offset.");
+        }
+
+        stream.Position = peHeaderOffset;
+        if (reader.ReadUInt32() != 0x00004550)
+        {
+            throw new InvalidDataException("Missing PE signature.");
+        }
+
+        var machine = reader.ReadUInt16();
+        return machine switch
+        {
+            0x014C => PortableExecutableMachineArchitecture.X86,
+            0x8664 => PortableExecutableMachineArchitecture.X64,
+            0xAA64 => PortableExecutableMachineArchitecture.Arm64,
+            _ => PortableExecutableMachineArchitecture.Unknown,
+        };
+    }
+}
+
 internal static class CapeOpenRegistrationPlanFormatter
 {
     public static string Format(CapeOpenRegistrationDescriptor descriptor)
@@ -281,6 +555,14 @@ internal static class CapeOpenRegistrationPlanFormatter
             implementedInterface => $"  - {implementedInterface.Name}: {implementedInterface.InterfaceId}"));
 
         lines.Add(string.Empty);
+        lines.Add("Preflight checks:");
+        lines.AddRange(descriptor.PreflightChecks.Select(FormatPreflightCheck));
+
+        lines.Add(string.Empty);
+        lines.Add("Backup plan:");
+        lines.AddRange(descriptor.BackupPlan.Select(FormatBackupPlanEntry));
+
+        lines.Add(string.Empty);
         lines.Add("Dry-run registry plan:");
         lines.AddRange(descriptor.RegistryPlan.Select(FormatRegistryPlanEntry));
 
@@ -309,6 +591,17 @@ internal static class CapeOpenRegistrationPlanFormatter
                 ? $"  - DeleteTree {entry.Hive}\\{entry.KeyPath} | {entry.Reason}"
                 : $"  - Verify {entry.Hive}\\{entry.KeyPath} | {entry.Reason}";
     }
+
+    private static string FormatPreflightCheck(CapeOpenPreflightCheck check)
+    {
+        return $"  - {check.Status}: {check.Name} | {check.Detail}";
+    }
+
+    private static string FormatBackupPlanEntry(CapeOpenRegistryBackupPlanEntry entry)
+    {
+        var state = entry.Exists ? "exists" : "absent";
+        return $"  - {entry.Hive}\\{entry.KeyPath}: {state} | {entry.Reason}";
+    }
 }
 
 internal sealed class RegistrationPreflightOptions
@@ -317,12 +610,14 @@ internal sealed class RegistrationPreflightOptions
         bool showHelp,
         bool json,
         CapeOpenRegistrationAction action,
-        CapeOpenRegistrationScope scope)
+        CapeOpenRegistrationScope scope,
+        string? comHostPath)
     {
         ShowHelp = showHelp;
         Json = json;
         Action = action;
         Scope = scope;
+        ComHostPath = comHostPath;
     }
 
     public bool ShowHelp { get; }
@@ -332,6 +627,8 @@ internal sealed class RegistrationPreflightOptions
     public CapeOpenRegistrationAction Action { get; }
 
     public CapeOpenRegistrationScope Scope { get; }
+
+    public string? ComHostPath { get; }
 
     public static string HelpText =>
         """
@@ -343,6 +640,7 @@ internal sealed class RegistrationPreflightOptions
         Options:
           --action <register|unregister>           Dry-run action. Default: register
           --scope <current-user|local-machine>     Registry scope to plan. Default: current-user
+          --comhost <path>                         Optional explicit RadishFlow.CapeOpen.UnitOp.Mvp.comhost.dll path
           --json                                   Print descriptor as JSON
           --help                                   Show this help text
         """;
@@ -353,6 +651,7 @@ internal sealed class RegistrationPreflightOptions
         var json = false;
         var action = CapeOpenRegistrationAction.Register;
         var scope = CapeOpenRegistrationScope.CurrentUser;
+        string? comHostPath = null;
 
         for (var index = 0; index < args.Length; index++)
         {
@@ -381,10 +680,16 @@ internal sealed class RegistrationPreflightOptions
                 continue;
             }
 
+            if (string.Equals(arg, "--comhost", StringComparison.OrdinalIgnoreCase))
+            {
+                comHostPath = Path.GetFullPath(ReadOptionValue(args, ref index, arg));
+                continue;
+            }
+
             throw new ArgumentException($"Unknown option `{arg}`.");
         }
 
-        return new RegistrationPreflightOptions(showHelp, json, action, scope);
+        return new RegistrationPreflightOptions(showHelp, json, action, scope, comHostPath);
     }
 
     private static string ReadOptionValue(
@@ -438,4 +743,19 @@ internal enum CapeOpenRegistryPlanOperation
     Verify,
     SetValue,
     DeleteTree,
+}
+
+internal enum CapeOpenPreflightCheckStatus
+{
+    Pass,
+    Warning,
+    Fail,
+}
+
+internal enum PortableExecutableMachineArchitecture
+{
+    Unknown,
+    X86,
+    X64,
+    Arm64,
 }

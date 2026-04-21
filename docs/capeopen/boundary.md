@@ -151,7 +151,7 @@ Rust 与 `.NET 10` 之间的正式边界应保持简单稳定：
 - `SampleHost` 内的 PME-like 薄宿主 session，用于把上述正式消费路径整理成更接近真实 PME host 的入口形状；它仍不做 COM 注册、不驱动外部 PME、不加载第三方 CAPE-OPEN 模型，也不把完整 PME 生命周期框架提前塞进 `UnitOp.Mvp`
 - `UnitOp.Mvp` 中的 `UnitOperationComIdentity`，用于冻结自有 MVP Unit Operation PMC 的 `CLSID / ProgID / Versioned ProgID` 与 COM-visible class 元数据
 - `RadishFlow.CapeOpen.Registration` 的 dry-run / preflight console，用于输出组件注册计划、CAPE-OPEN categories、已实现接口清单，以及 `register / unregister`、`current-user / local-machine` 下的 registry key plan；当前只读输出，不写注册表、不注册 COM、不启动 PME
-- registration plan 当前明确把 `.NET comhost` 路径解析列为执行前 `Verify` 步骤，不把旧 `.NET Framework` `mscoree.dll` 注册口径写成未来事实；真实执行工具必须先确认生成的 `RadishFlow.CapeOpen.UnitOp.Mvp.comhost.dll` 路径、位数和可访问性
+- registration plan 当前明确把 `.NET comhost` 路径解析列为执行前 `Verify` 步骤，不把旧 `.NET Framework` `mscoree.dll` 注册口径写成未来事实；preflight 当前会只读确认生成的 `RadishFlow.CapeOpen.UnitOp.Mvp.comhost.dll` 路径、PE 机器类型、当前进程位数、scope 权限口径、目标 registry key 现状和备份范围
 - `SmokeTests` 中更接近真实宿主的最小 driver 路径，用于固定 `Initialize -> 配参数 -> 连端口 -> Validate -> Calculate -> 读结果 -> Terminate` 正式调用顺序、最小必需输入与 `InvocationOrder / Validation / Native` 三类失败分类
 - `RadishFlow.CapeOpen.UnitOp.Mvp.ContractTests` 这种不依赖外部 NuGet 测试框架的库侧 contract baseline，用于锁定 `UnitOp.Mvp` 的行为语义，而不是把这部分契约只留在 console 输出里
 

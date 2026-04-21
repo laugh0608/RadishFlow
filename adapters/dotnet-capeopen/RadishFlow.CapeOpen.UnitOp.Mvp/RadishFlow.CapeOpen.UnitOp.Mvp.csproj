@@ -3,6 +3,7 @@
     <TargetFramework>net10.0</TargetFramework>
     <RootNamespace>RadishFlow.CapeOpen.UnitOp.Mvp</RootNamespace>
     <AssemblyName>RadishFlow.CapeOpen.UnitOp.Mvp</AssemblyName>
+    <EnableComHosting>true</EnableComHosting>
   </PropertyGroup>
 
   <ItemGroup>

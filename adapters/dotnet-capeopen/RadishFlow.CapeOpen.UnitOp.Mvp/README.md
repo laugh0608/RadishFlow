@@ -10,6 +10,7 @@
 
 - `RadishFlowCapeOpenUnitOperation`
 - `UnitOperationComIdentity`，用于冻结 MVP PMC 的 `CLSID / ProgID / Versioned ProgID / DisplayName / Description`
+- 项目已启用 `EnableComHosting`，用于生成 `.NET 10` `RadishFlow.CapeOpen.UnitOp.Mvp.comhost.dll` 前置产物；该产物当前只供 `Registration` preflight 检查和未来注册工具规划使用，不代表本项目会自行写注册表
 - `UnitOperationPortPlaceholder` / `UnitOperationParameterPlaceholder`
 - `UnitOperationPlaceholderCollection<T>`
 - `Initialize / Validate / Calculate / Terminate / Edit` 的第一版状态骨架
