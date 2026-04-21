@@ -9,6 +9,7 @@
 当前已包含的最小公共面：
 
 - `RadishFlowCapeOpenUnitOperation`
+- `UnitOperationComIdentity`，用于冻结 MVP PMC 的 `CLSID / ProgID / Versioned ProgID / DisplayName / Description`
 - `UnitOperationPortPlaceholder` / `UnitOperationParameterPlaceholder`
 - `UnitOperationPlaceholderCollection<T>`
 - `Initialize / Validate / Calculate / Terminate / Edit` 的第一版状态骨架
@@ -30,6 +31,7 @@
 - `UnitOperationHostActionExecutionOrchestrator` 与 `UnitOperationHostActionExecutionOrchestrationResult`，用于把 request planning、action execution 与刷新后的 host view 一并收口成窄边界 orchestration helper：宿主可一次得到 planned action count、ready request count、missing inputs、mutation invalidation 摘要、执行后的最新 host views 与统一 follow-up，但该 helper 仍不负责 `Initialize / Validate / Calculate / Terminate`
 - `UnitOperationHostValidationRunner.Validate(...)`、`UnitOperationHostValidationOutcome`、`UnitOperationHostCalculationRunner.Calculate(...)` 与 `UnitOperationHostCalculationOutcome`，用于把 `Validate()` / `Calculate()` 之后的正式 host view、统一 follow-up 与结果状态继续收口到库内，而不再要求 smoke host / contract tests 在调用后自己补读 session/report/execution 再判断下一步
 - `UnitOperationHostRoundOrchestrator.Execute(...)`、`UnitOperationHostRoundRequest`、`UnitOperationHostRoundOutcome` 与 `UnitOperationHostRoundStopKind`，用于把“可选 action execution -> 可选 supplemental mutations -> 可选 validate -> 可选 calculate”这一条最常见宿主 round 主路径继续收口成正式结果：宿主可一次拿到 initial/final views、可选 action/supplemental/validation/calculation outcome、最终 follow-up 与统一 stop kind，但该 helper 仍不扩张成完整 smoke driver 或 PME 生命周期框架
+- `RadishFlow.CapeOpen.UnitOp.Mvp.SampleHost` 当前又已在 console 壳内补出 `PmeLikeUnitOperationHost / PmeLikeUnitOperationSession / PmeLikeUnitOperationInput` 薄宿主入口，用来把 SampleHost 已验证的正式消费路径整理成更接近 PME host 的 session 形状；这层只负责创建组件、初始化、提交宿主显式输入、执行正式 host round、读取正式结果和终止，不承担 COM 注册、PME 自动化互调或完整生命周期框架
 - `UnitOperationHostActionExecutionDispatcher`、`UnitOperationHostActionExecutionRequest`、`UnitOperationHostActionExecutionOutcome` 与 `UnitOperationHostActionExecutionBatchResult`，用于把 action execution 继续收口成正式 helper：对 parameter/port action 直接走 mutation dispatcher，对 lifecycle-only/unsupported action 则返回显式 disposition，而不是让宿主自己在 bridge 结果之上再写一层执行分发
 - `UnitOperationHostPortMaterialReader.Read(...)`、`UnitOperationHostPortMaterialSnapshot`、`UnitOperationHostPortMaterialEntry` 与 `UnitOperationHostMaterialStreamEntry`，用于在 calculate 结果面之上继续收口“每个 host port 当前绑定了哪些 boundary streams、这些 streams 是否已有当前 material result、若有则给出最小温压流量/相分率摘要”；宿主不必再自己解析 flowsheet JSON、推断 boundary stream 集或把 native solve snapshot 的 `streams` 数组重新映射回 `Feed/Product`
 - `UnitOperationHostExecutionReader.Read(...)`、`UnitOperationHostExecutionSnapshot`、`UnitOperationHostExecutionSummary`、`UnitOperationHostExecutionDiagnosticEntry` 与 `UnitOperationHostExecutionStepEntry`，用于在 calculate 结果面之上继续收口“这次执行做了什么”：宿主可直接读取 `None / Stale / Available / Terminated` 四态、calculation status、summary、diagnostics 与 step-by-step 执行序列，而不必继续从 report supplemental lines 间接反推
@@ -41,7 +43,7 @@
 当前明确不包含：
 
 - COM 注册 / 反注册
-- 稳定 CLSID / ProgID 策略
+- 注册表写入、PME discovery 自动化或注册工具执行逻辑
 - 报告接口的正式实现
 - PME 生命周期集成
 - 完整 CAPE-OPEN PMC 运行时
@@ -51,6 +53,7 @@
 - 若只是验证或教学用途，不要直接复用 `RadishFlow.CapeOpen.SmokeTests` 里的 `UnitOperationSmokeHostDriver`
 - 当前推荐直接复用 `UnitOperationHostViewReader`、`UnitOperationHostActionExecutionRequestPlanner`、`UnitOperationHostRoundOrchestrator`、`UnitOperationHostSessionReader`、`UnitOperationHostExecutionReader`、`UnitOperationHostPortMaterialReader` 与 `UnitOperationHostReportReader/Presenter/Formatter`
 - 仓库现在已补出独立样例 `RadishFlow.CapeOpen.UnitOp.Mvp.SampleHost`，专门演示外部 host 如何在不依赖 smoke DSL 的前提下走正式 `view -> request plan -> round outcome` 主路径，并通过 supplemental mutation phase 注入 optional package files
+- 若需要更接近 PME host 的最小接线蓝本，优先参考 `SampleHost` 内的 `PmeLikeUnitOperationHost` / `PmeLikeUnitOperationSession`，而不是参考 `SmokeTests` 的验证型 driver；前者只包一层宿主 session，后者仍承担 smoke 场景、断言和失败分类职责
 
 说明：
 
@@ -63,6 +66,7 @@
 - 当前 `UnitOperationPortCatalog` 又已继续吸收 host-facing material 语义：port definition 现显式声明 `BoundaryMaterialRole`，冻结 `Feed -> boundary inputs` 与 `Product -> boundary outputs` 这层映射，不再让 smoke/contract tests 各自猜测 placeholder port 该代表哪一组 flowsheet streams
 - 当前 parameter/port placeholder 又已进一步从“复制 catalog 元数据到运行时实例”收口为“直接绑定 catalog definition 对象”；运行时只保留 value / connection 这类可变状态，避免 definition 与 placeholder 元数据再次出现漂移
 - 当前 `RadishFlowCapeOpenUnitOperation` 自身也已改成按 `OrderedDefinitions` 构造 parameter/port collection，并通过 catalog 名称回取 canonical placeholder；这样 unit 内部不再额外维护一套私有参数/端口清单，catalog + typed collection 才是唯一真相源
+- 当前 `RadishFlowCapeOpenUnitOperation` 又已通过 `UnitOperationComIdentity` 冻结 `ComVisible / CLSID / ProgID / ClassInterface(None)` 这组注册前置元数据，并同步作为 `RadishFlow.CapeOpen.Registration` dry-run 输出来源；这只代表身份口径冻结，不代表已经执行 COM 注册或 PME discovery
 - 当前 parameter/port catalog 又已继续吸收“宿主应调用哪个公开操作来配置该对象”这层语义：parameter definition 现显式声明 `ConfigurationOperationName`，port definition 现显式声明 `ConnectionOperationName`；`Validate()` / `Calculate()` 失败时返回的 `requestedOperation` 已改为从这份 definition 元数据派生，而不是在 unit / smoke / contract tests 中各自硬编码
 - 当前 parameter/port catalog 之上又已补出正式 `UnitOperationHostObjectDefinitionReader`；宿主现在可以直接读取 parameter/port collection、object definition 与 capability 的只读形状，不必通过 runtime snapshot 或异常试探间接反推冻结元数据和可操作性
 - 当前 parameter/port 对象运行时又已补出正式 `UnitOperationHostObjectRuntimeReader`；configuration reader 现在基于这份 object runtime snapshot 构造配置摘要，不再同时直接混读 catalog definition 与 placeholder 状态
@@ -99,6 +103,7 @@
 - 基于 presentation，当前又补出 `UnitOperationHostReportFormatter.Format(...)`，把宿主展示继续收口为固定 section 文档；这样最小 host 不只拿到字段化语义，还能直接按 section 渲染 overview、stable details 与 supplemental diagnostics，而不必每个宿主再自己决定分区标题和文本拼接顺序
 - 在上述 report helper 之外，当前又补出 `UnitOperationHostConfigurationReader.Read(...)` 这一条配置只读路径，把“当前是否 ready for calculate”“还缺哪些 parameter/port”“下一步应该调用哪个公开操作”这类宿主驱动语义也正式前推到库内，避免这部分逻辑继续散落在 smoke host、未来 PME 适配或其他宿主入口中各自实现
 - 当前“完整宿主如何驱动 PMC”的验证型 orchestration 仍故意留在 `RadishFlow.CapeOpen.SmokeTests`：`UnitOperationSmokeHostDriver` 现在通过 `UnitOperationHostActionExecutionRequestPlanner` 与 `UnitOperationHostActionExecutionDispatcher` 应用 parameter/port 类阻塞配置动作，并继续用直接参数/端口改写覆盖非法状态和 stale 状态边界；driver 暂不整体上移到库内，`UnitOp.Mvp` 本身当前只承诺 PMC 对象面、action plan / request planning / action execution helper 与结果读取/展示 helper，不提前承诺更高层宿主驱动 convenience API
+- 当前 PME-like 薄宿主入口已落在 `RadishFlow.CapeOpen.UnitOp.Mvp.SampleHost`，它只作为外部宿主消费面的最小蓝本存在：生命周期由 host session 显式打开/终止，输入由 `PmeLikeUnitOperationInput` 显式提供，执行仍委托 `UnitOperationHostRoundOrchestrator`，结果仍读取正式 session/execution/port-material/report snapshot；这一步足以证明正式消费路径可承载更接近 PME host 的入口形状，但仍不代表进入 COM 注册或真实 PME 自动化互调
 - 当前又已补出同目录层级的自举 contract test 入口 `RadishFlow.CapeOpen.UnitOp.Mvp.ContractTests`，用于在不依赖外部 NuGet 测试框架的前提下，直接锁定 `Validate/Calculate/Terminate/report transition` 这类库侧行为契约；当前已覆盖 `Validate before Initialize`、validation failure report、native failure report、success report、配置变更 invalidation 与 `Terminate()` 后阻断 6 条核心 case；后续若继续冻结 `UnitOp.Mvp` 对外行为，应优先在这里补细粒度 contract case，而不是只依赖 smoke console 间接覆盖
 - 当前 contract tests 又已继续前推到对象面本身，新增 collection selector、parameter reset/lifecycle access 与 port reconnect 约束这三组契约，确保“最小宿主对象运行时”不再只靠 smoke 路径间接覆盖
 - 在上述对象面 contract tests 基础上，当前又已补上 spec 对象稳定性、post-terminate spec access guard 与 parameter mode immutability 三条参数语义约束，避免后续再次把参数对象回退成“值对象和 spec 对象合一”的松散实现

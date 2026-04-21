@@ -5,10 +5,15 @@ using RadishFlow.CapeOpen.Interop.Parameters;
 using RadishFlow.CapeOpen.Interop.Unit;
 using RadishFlow.CapeOpen.UnitOp.Mvp.Placeholders;
 using RadishFlow.CapeOpen.UnitOp.Mvp.Results;
+using System.Runtime.InteropServices;
 using System.Text.Json;
 
 namespace RadishFlow.CapeOpen.UnitOp.Mvp.UnitOperation;
 
+[ComVisible(true)]
+[Guid(UnitOperationComIdentity.ClassId)]
+[ProgId(UnitOperationComIdentity.ProgId)]
+[ClassInterface(ClassInterfaceType.None)]
 public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICapeUtilities, ICapeUnit, IDisposable
 {
     private const string UtilitiesInterfaceName = nameof(ICapeUtilities);
@@ -22,8 +27,8 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
 
     public RadishFlowCapeOpenUnitOperation()
     {
-        ComponentName = "RadishFlow Unit Operation";
-        ComponentDescription = "Minimal CAPE-OPEN unit operation skeleton.";
+        ComponentName = UnitOperationComIdentity.DisplayName;
+        ComponentDescription = UnitOperationComIdentity.Description;
 
         Parameters = new UnitOperationPlaceholderCollection<UnitOperationParameterPlaceholder>(
             UnitOperationParameterCatalog.CollectionDefinition,

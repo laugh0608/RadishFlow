@@ -111,6 +111,7 @@ Rust 与 `.NET 10` 之间的正式边界应保持简单稳定：
 - 在 request plan 与单次 action execution 之上，当前又补出 `UnitOperationHostActionExecutionOrchestrator` 与正式 `FollowUp` 模型，把“执行 ready requests 后宿主下一眼该看什么、下一步该补输入/做 validate/做 calculate 还是只剩 lifecycle/terminated”继续收口为正式 result；这层统一返回 request plan、execution batch outcome、刷新后的 host view，以及 `LifecycleOperation / ProvideInputs / Validate / Calculate / CurrentResults / Terminated` 六类 follow-up，但仍不负责 `Initialize / Validate / Calculate / Terminate`
 - 在 action execution 之外，当前又补出 `UnitOperationHostValidationRunner` 与 `UnitOperationHostCalculationRunner`，把 `Validate()` / `Calculate()` 之后的正式 `host view + follow-up` 一并收口到库内；最小 host 现在不必在调用后继续手工补读 `session/report/execution` 再判断下一步
 - 在 validation/calculation outcome 之上，当前又补出 `UnitOperationHostRoundOrchestrator`、`UnitOperationHostRoundRequest`、`UnitOperationHostRoundOutcome` 与 `UnitOperationHostRoundStopKind`，把“可选 action execution -> 可选 supplemental object mutations -> 可选 validate -> 可选 calculate”这一条最常见宿主 round 主路径继续收口为正式结果；这层统一返回 initial/final host views、可选 phase outcome、最终 follow-up 与 stop kind，但仍不扩张成完整 smoke driver 或 PME 生命周期框架
+- 在独立 `SampleHost` 之上，当前又补出 `PmeLikeUnitOperationHost / PmeLikeUnitOperationSession / PmeLikeUnitOperationInput` 薄宿主入口，把外部宿主最常见的“打开 unit session -> 提供 flowsheet/package/port material object -> 执行正式 host round -> 读取正式结果 -> 关闭 session”整理为更接近 PME host 的最小接线蓝本；这层只复用正式 reader / planner / round outcome，不复用 `SmokeTests` driver DSL
 - `UnitOp.Mvp` 内部当前又已把 `_initialized / _terminated / _disposed` 三布尔状态收口为 `UnitOperationLifecycleState`，并将 `EvaluateValidation()` 与 `Calculate()` 各自拆成显式阶段 helper；validation/calculation/report 的状态迁移也已统一进入正式 transition helper，避免宿主主线继续推进时出现隐式状态漂移
 
 当前不允许在边界上直接传递以下内容：
@@ -147,6 +148,9 @@ Rust 与 `.NET 10` 之间的正式边界应保持简单稳定：
 - 建立在 action plan 之上的 action execution request planning helper，用于把宿主输入显式规划为可执行 request batch，并报告 missing inputs / lifecycle-only / unsupported action；该 helper 是库内正式边界，区别于 smoke driver 的完整生命周期编排
 - 建立在 action execution / validation / calculation outcome 之上的 host round orchestration helper，用于把最常见的宿主 round 主路径收口到统一结果；该 helper 是库内正式边界，但不替代 smoke driver、PME adapter 或完整工作流框架
 - 独立的 `RadishFlow.CapeOpen.UnitOp.Mvp.SampleHost` console，用于演示外部 host 如何只复用正式 `host view / request planner / round outcome / session-report-execution-material readers`，而不依赖 smoke driver
+- `SampleHost` 内的 PME-like 薄宿主 session，用于把上述正式消费路径整理成更接近真实 PME host 的入口形状；它仍不做 COM 注册、不驱动外部 PME、不加载第三方 CAPE-OPEN 模型，也不把完整 PME 生命周期框架提前塞进 `UnitOp.Mvp`
+- `UnitOp.Mvp` 中的 `UnitOperationComIdentity`，用于冻结自有 MVP Unit Operation PMC 的 `CLSID / ProgID / Versioned ProgID` 与 COM-visible class 元数据
+- `RadishFlow.CapeOpen.Registration` 的 dry-run / preflight console，用于输出组件注册计划、CAPE-OPEN categories 与已实现接口清单；当前只读输出，不写注册表、不注册 COM、不启动 PME
 - `SmokeTests` 中更接近真实宿主的最小 driver 路径，用于固定 `Initialize -> 配参数 -> 连端口 -> Validate -> Calculate -> 读结果 -> Terminate` 正式调用顺序、最小必需输入与 `InvocationOrder / Validation / Native` 三类失败分类
 - `RadishFlow.CapeOpen.UnitOp.Mvp.ContractTests` 这种不依赖外部 NuGet 测试框架的库侧 contract baseline，用于锁定 `UnitOp.Mvp` 的行为语义，而不是把这部分契约只留在 console 输出里
 
@@ -154,7 +158,7 @@ Rust 与 `.NET 10` 之间的正式边界应保持简单稳定：
 
 - COM host 注册细节
 - 完整 ECape 接口/异常面与所有标准 IID 校准
-- 稳定 CLSID / ProgID 策略
+- 执行型 COM 注册 / 反注册工具
 - 端口集合、参数集合、报告接口与 `Collection/Parameter/UnitPort` 语义的完整 CAPE-OPEN 实现
 - PME 互调测试代码
 - 将当前验证型 `UnitOperationSmokeHostDriver` 直接上移为 `UnitOp.Mvp` 正式库 API；在它被证明不仅服务当前 smoke 验证样板之前，先继续保留在 `SmokeTests`
@@ -167,6 +171,7 @@ Rust 与 `.NET 10` 之间的正式边界应保持简单稳定：
 - 通过 `UnitOperationHostActionExecutionRequestPlanner.Plan(...)` 准备 parameter values / port objects 到 ready requests 的映射
 - 如需写入不属于 blocking action plan 的宿主配置，通过 `UnitOperationHostRoundRequest.SupplementalMutationCommands` 注入
 - 最终优先通过 `UnitOperationHostRoundOrchestrator.Execute(...)` 收口 `ready actions -> supplemental mutations -> Validate -> Calculate`
+- 如果需要一个更接近 PME host、但仍不依赖真实 COM/PME 环境的入口样板，优先参考 `SampleHost` 中的 `PmeLikeUnitOperationHost` / `PmeLikeUnitOperationSession`；它已经把上述步骤包成单个薄 session，而没有引入 smoke DSL 或外部环境副作用
 
 ## 对 Rust Core 的约束
 

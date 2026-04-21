@@ -1,7 +1,5 @@
-using RadishFlow.CapeOpen.Interop.Common;
 using RadishFlow.CapeOpen.Interop.Errors;
 using RadishFlow.CapeOpen.UnitOp.Mvp.Results;
-using RadishFlow.CapeOpen.UnitOp.Mvp.UnitOperation;
 
 Environment.ExitCode = SampleHostExecutable.Run(args);
 
@@ -42,79 +40,35 @@ internal static class SampleHostExecutable
             return 0;
         }
 
-        using var unitOperation = new RadishFlowCapeOpenUnitOperation();
-        if (!string.IsNullOrWhiteSpace(options.NativeLibraryDirectory))
-        {
-            unitOperation.ConfigureNativeLibraryDirectory(options.NativeLibraryDirectory);
-        }
+        var host = new PmeLikeUnitOperationHost(options.NativeLibraryDirectory);
+        using var session = host.CreateSession();
 
-        PrintViews("Constructed", UnitOperationHostViewReader.Read(unitOperation));
+        PrintViews("Constructed", session.ConstructedViews);
+        PrintViews("Initialized", session.InitializedViews);
 
-        unitOperation.Initialize();
+        var input = CreateInput(options);
+        var result = session.ExecuteRound(input);
+        PrintRequestPlan(result.RequestPlan);
+        PrintSupplementalCommands(result.SupplementalMutationCommands);
+        PrintRoundOutcome(result.Outcome);
 
-        var initializedViews = UnitOperationHostViewReader.Read(unitOperation);
-        PrintViews("Initialized", initializedViews);
-
-        var actionInputSet = CreateActionInputSet(options);
-        var requestPlan = UnitOperationHostActionExecutionRequestPlanner.Plan(initializedViews.ActionPlan, actionInputSet);
-        PrintRequestPlan(requestPlan);
-
-        var supplementalCommands = CreateSupplementalMutationCommands(options, initializedViews.ActionPlan);
-        PrintSupplementalCommands(supplementalCommands);
-
-        var roundOutcome = UnitOperationHostRoundOrchestrator.Execute(
-            unitOperation,
-            new UnitOperationHostRoundRequest(
-                actionInputSet: actionInputSet,
-                executeReadyActions: true,
-                runValidation: true,
-                runCalculation: true,
-                supplementalMutationCommands: supplementalCommands));
-
-        PrintRoundOutcome(roundOutcome);
-
-        unitOperation.Terminate();
+        var terminatedSession = session.Terminate();
         Console.WriteLine();
         Console.WriteLine("== Terminated ==");
-        Console.WriteLine(UnitOperationHostSessionReader.Read(unitOperation).Headline);
+        Console.WriteLine(terminatedSession.Headline);
 
-        return roundOutcome.Completed ? 0 : 3;
+        return result.Outcome.Completed ? 0 : 3;
     }
 
-    private static UnitOperationHostActionExecutionInputSet CreateActionInputSet(SampleHostOptions options)
+    private static PmeLikeUnitOperationInput CreateInput(SampleHostOptions options)
     {
-        return new UnitOperationHostActionExecutionInputSet(
-            parameterValues: new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase)
-            {
-                [UnitOperationParameterCatalog.FlowsheetJson.Name] = File.ReadAllText(options.ProjectPath),
-                [UnitOperationParameterCatalog.PropertyPackageId.Name] = options.PackageId,
-            },
-            portObjects: new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase)
-            {
-                [UnitOperationPortCatalog.Feed.Name] = new SampleConnectedObject("Sample Feed Material"),
-                [UnitOperationPortCatalog.Product.Name] = new SampleConnectedObject("Sample Product Material"),
-            });
-    }
-
-    private static IReadOnlyList<UnitOperationHostObjectMutationCommand> CreateSupplementalMutationCommands(
-        SampleHostOptions options,
-        UnitOperationHostActionPlan actionPlan)
-    {
-        if (!options.LoadPackageFiles ||
-            actionPlan.ContainsCanonicalOperation(nameof(RadishFlowCapeOpenUnitOperation.LoadPropertyPackageFiles)))
-        {
-            return [];
-        }
-
-        return
-        [
-            UnitOperationHostObjectMutationCommand.SetParameterValue(
-                UnitOperationParameterCatalog.PropertyPackageManifestPath.Name,
-                options.ManifestPath),
-            UnitOperationHostObjectMutationCommand.SetParameterValue(
-                UnitOperationParameterCatalog.PropertyPackagePayloadPath.Name,
-                options.PayloadPath),
-        ];
+        return new PmeLikeUnitOperationInput(
+            flowsheetJson: File.ReadAllText(options.ProjectPath),
+            packageId: options.PackageId,
+            manifestPath: options.ManifestPath,
+            payloadPath: options.PayloadPath,
+            feedMaterialObject: new PmeLikeMaterialObject("PME Feed Material"),
+            productMaterialObject: new PmeLikeMaterialObject("PME Product Material"));
     }
 
     private static void PrintViews(string label, UnitOperationHostViewSnapshot views)
@@ -307,7 +261,7 @@ internal sealed class SampleHostOptions
         """
         RadishFlow.CapeOpen.UnitOp.Mvp.SampleHost
 
-        A minimal external host sample that consumes UnitOp.Mvp formal view/planner/round APIs.
+        A PME-like thin external host sample that consumes UnitOp.Mvp formal view/planner/round APIs.
 
         Options:
           --project <path>        Project json path. Default: examples/flowsheets/feed-heater-flash-binary-hydrocarbon.rfproj.json
@@ -405,17 +359,4 @@ internal sealed class SampleHostOptions
 
         throw new InvalidOperationException("Could not locate repository root from AppContext.BaseDirectory.");
     }
-}
-
-internal sealed class SampleConnectedObject : ICapeIdentification
-{
-    public SampleConnectedObject(string componentName)
-    {
-        ComponentName = componentName;
-        ComponentDescription = "Sample host placeholder connected object.";
-    }
-
-    public string ComponentName { get; set; }
-
-    public string ComponentDescription { get; set; }
 }

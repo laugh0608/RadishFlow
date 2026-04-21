@@ -21,7 +21,7 @@
 当前明确不包含：
 
 - COM 注册 / 反注册
-- ProgID / CLSID 分配策略
+- 执行型 ProgID / CLSID 注册工具
 - 完整 CAPE-OPEN 端口、参数、集合实现
 - 完整 PMC 生命周期与 PME 集成
 
@@ -31,3 +31,4 @@
 - `ECapeRoot`、`ECapeUser`、`ECapeBadInvOrder`、`ECapeBadCOParameter` 等异常接口的 IID / DispId / 属性名当前依据 `adapters/reference/CapeOpenMixerExample_CSharp/CapeOpen/errorIDL.cs` 与 `COGuids1.cs` 校准
 - `ICapeUtilities` 与 `ICapeUnit` 当前已补齐最小 `IDispatch` marshalling 形状，用于后续 PMC/COM 边界继续复用
 - 已确认的 GUID 与 HRESULT 统一放在本项目内，避免后续 `Adapter`、`UnitOp.Mvp`、`Registration` 重复定义
+- 自有 MVP Unit Operation PMC 的 `CLSID / ProgID` 身份已由 `RadishFlow.CapeOpen.UnitOp.Mvp` 的 `UnitOperationComIdentity` 冻结；`Interop` 仍只维护标准接口 / category GUID，不承载具体组件身份
