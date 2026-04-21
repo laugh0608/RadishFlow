@@ -127,6 +127,33 @@ public static class UnitOperationHostFollowUpPlanner
             session.Summary.RecommendedOperations);
     }
 
+    public static UnitOperationHostFollowUp CreateFromMutationBatch(
+        UnitOperationHostObjectMutationBatchResult mutationBatch,
+        UnitOperationHostViewSnapshot views)
+    {
+        ArgumentNullException.ThrowIfNull(mutationBatch);
+        ArgumentNullException.ThrowIfNull(views);
+
+        if (views.Configuration.State == UnitOperationHostConfigurationState.Terminated ||
+            views.Session.State == UnitOperationHostSessionState.Terminated)
+        {
+            return CreateTerminatedFollowUp();
+        }
+
+        if (mutationBatch.InvalidatedValidation)
+        {
+            return new UnitOperationHostFollowUp(
+                Kind: UnitOperationHostFollowUpKind.Validate,
+                Summary: "Configuration changed; validate before calculate.",
+                MissingInputNames: [],
+                RecommendedOperations: [],
+                CanValidate: true,
+                CanCalculate: false);
+        }
+
+        return CreateFromCurrentState(views.Session);
+    }
+
     private static bool ContainsLifecycleOperation(UnitOperationHostSessionSnapshot session)
     {
         return CollectLifecycleOperations(session.ActionPlan).Length > 0;

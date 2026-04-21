@@ -84,15 +84,27 @@ internal sealed class UnitOperationSmokeHostDriver : IDisposable
         }
     }
 
-    public UnitOperationHostActionExecutionOrchestrationResult ApplyMinimumConfigurationActions(bool includePackageId)
+    public UnitOperationHostActionExecutionInputSet CreateMinimumConfigurationInputSet(bool includePackageId)
     {
         ThrowIfDisposed();
+        return CreateMinimumConfigurationInputSetCore(includePackageId);
+    }
 
-        var result = UnitOperationHostActionExecutionOrchestrator.ExecutePlannedActions(
-            _unitOperation,
-            CreateMinimumConfigurationInputSet(includePackageId));
-        ApplyOptionalPackageFileInputs();
-        return result;
+    public IReadOnlyList<UnitOperationHostObjectMutationCommand> CreateOptionalPackageFileMutationCommands()
+    {
+        ThrowIfDisposed();
+        if (!_options.LoadPackageFiles)
+        {
+            return [];
+        }
+
+        var actionPlan = ReadActionPlan();
+        if (actionPlan.ContainsCanonicalOperation(nameof(RadishFlowCapeOpenUnitOperation.LoadPropertyPackageFiles)))
+        {
+            return [];
+        }
+
+        return CreateOptionalPackageFileMutationCommandsCore();
     }
 
     public UnitOperationHostActionExecutionOrchestrationResult ApplyRequiredPortAction(string portName, string componentName)
@@ -132,6 +144,17 @@ internal sealed class UnitOperationSmokeHostDriver : IDisposable
         ThrowIfDisposed();
         return new UnitOperationSmokeValidationResult(
             UnitOperationHostValidationRunner.Validate(_unitOperation));
+    }
+
+    public UnitOperationSmokeRoundResult ExecuteRound(UnitOperationHostRoundRequest request)
+    {
+        ThrowIfDisposed();
+        ArgumentNullException.ThrowIfNull(request);
+
+        var outcome = UnitOperationHostRoundOrchestrator.Execute(_unitOperation, request);
+        return new UnitOperationSmokeRoundResult(
+            outcome,
+            CreateReportBundle(outcome.Report));
     }
 
     public UnitOperationSmokeCalculationAttempt Calculate()
@@ -235,7 +258,7 @@ internal sealed class UnitOperationSmokeHostDriver : IDisposable
         return UnitOperationHostDriverFailureKind.Unknown;
     }
 
-    private UnitOperationHostActionExecutionInputSet CreateMinimumConfigurationInputSet(bool includePackageId)
+    private UnitOperationHostActionExecutionInputSet CreateMinimumConfigurationInputSetCore(bool includePackageId)
     {
         var values = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
         values[UnitOperationParameterCatalog.FlowsheetJson.Name] = _projectJson;
@@ -260,23 +283,22 @@ internal sealed class UnitOperationSmokeHostDriver : IDisposable
             });
     }
 
-    private void ApplyOptionalPackageFileInputs()
+    private IReadOnlyList<UnitOperationHostObjectMutationCommand> CreateOptionalPackageFileMutationCommandsCore()
     {
         if (!_options.LoadPackageFiles)
         {
-            return;
+            return [];
         }
 
-        UnitOperationHostObjectMutationDispatcher.DispatchBatch(
-            _unitOperation,
-            [
-                UnitOperationHostObjectMutationCommand.SetParameterValue(
-                    UnitOperationParameterCatalog.PropertyPackageManifestPath.Name,
-                    _options.ManifestPath!),
-                UnitOperationHostObjectMutationCommand.SetParameterValue(
-                    UnitOperationParameterCatalog.PropertyPackagePayloadPath.Name,
-                    _options.PayloadPath!),
-            ]);
+        return
+        [
+            UnitOperationHostObjectMutationCommand.SetParameterValue(
+                UnitOperationParameterCatalog.PropertyPackageManifestPath.Name,
+                _options.ManifestPath!),
+            UnitOperationHostObjectMutationCommand.SetParameterValue(
+                UnitOperationParameterCatalog.PropertyPackagePayloadPath.Name,
+                _options.PayloadPath!),
+        ];
     }
 
     private void ThrowIfDisposed()
@@ -367,4 +389,31 @@ internal sealed record UnitOperationSmokeCalculationAttempt(
 
         return typedFailure;
     }
+}
+
+internal sealed record UnitOperationSmokeRoundResult(
+    UnitOperationHostRoundOutcome Outcome,
+    UnitOperationHostReportBundle ReportBundle)
+{
+    public UnitOperationHostActionExecutionOrchestrationResult? ActionExecution => Outcome.ActionExecution;
+
+    public UnitOperationHostValidationOutcome? Validation => Outcome.Validation;
+
+    public UnitOperationHostCalculationOutcome? Calculation => Outcome.Calculation;
+
+    public UnitOperationHostFollowUp FollowUp => Outcome.FollowUp;
+
+    public UnitOperationHostRoundStopKind StopKind => Outcome.StopKind;
+
+    public UnitOperationHostConfigurationSnapshot Configuration => Outcome.Configuration;
+
+    public UnitOperationHostActionPlan ActionPlan => Outcome.ActionPlan;
+
+    public UnitOperationHostPortMaterialSnapshot PortMaterial => Outcome.PortMaterial;
+
+    public UnitOperationHostExecutionSnapshot Execution => Outcome.Execution;
+
+    public UnitOperationHostSessionSnapshot Session => Outcome.Session;
+
+    public UnitOperationHostReportSnapshot Report => Outcome.Report;
 }

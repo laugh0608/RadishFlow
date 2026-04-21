@@ -110,6 +110,7 @@ Rust 与 `.NET 10` 之间的正式边界应保持简单稳定：
 - 在 action plan 与 action execution dispatcher 之间，当前又补出 `UnitOperationHostActionExecutionRequestPlanner`，把“哪些 action 已能执行、哪些 action 仍缺 parameter value 或 port object、哪些 action 只是 lifecycle 提示或 terminal unsupported 状态”收口成正式 request plan；这层只消费宿主显式提供的输入，不替宿主选择 flowsheet JSON、package id、连接对象或生命周期调用时机
 - 在 request plan 与单次 action execution 之上，当前又补出 `UnitOperationHostActionExecutionOrchestrator` 与正式 `FollowUp` 模型，把“执行 ready requests 后宿主下一眼该看什么、下一步该补输入/做 validate/做 calculate 还是只剩 lifecycle/terminated”继续收口为正式 result；这层统一返回 request plan、execution batch outcome、刷新后的 host view，以及 `LifecycleOperation / ProvideInputs / Validate / Calculate / CurrentResults / Terminated` 六类 follow-up，但仍不负责 `Initialize / Validate / Calculate / Terminate`
 - 在 action execution 之外，当前又补出 `UnitOperationHostValidationRunner` 与 `UnitOperationHostCalculationRunner`，把 `Validate()` / `Calculate()` 之后的正式 `host view + follow-up` 一并收口到库内；最小 host 现在不必在调用后继续手工补读 `session/report/execution` 再判断下一步
+- 在 validation/calculation outcome 之上，当前又补出 `UnitOperationHostRoundOrchestrator`、`UnitOperationHostRoundRequest`、`UnitOperationHostRoundOutcome` 与 `UnitOperationHostRoundStopKind`，把“可选 action execution -> 可选 supplemental object mutations -> 可选 validate -> 可选 calculate”这一条最常见宿主 round 主路径继续收口为正式结果；这层统一返回 initial/final host views、可选 phase outcome、最终 follow-up 与 stop kind，但仍不扩张成完整 smoke driver 或 PME 生命周期框架
 - `UnitOp.Mvp` 内部当前又已把 `_initialized / _terminated / _disposed` 三布尔状态收口为 `UnitOperationLifecycleState`，并将 `EvaluateValidation()` 与 `Calculate()` 各自拆成显式阶段 helper；validation/calculation/report 的状态迁移也已统一进入正式 transition helper，避免宿主主线继续推进时出现隐式状态漂移
 
 当前不允许在边界上直接传递以下内容：
@@ -144,6 +145,7 @@ Rust 与 `.NET 10` 之间的正式边界应保持简单稳定：
 - 建立在公开 report API 之上的库内宿主消费 helper，以及基于该 helper 的最小 sectioned host report 口径
 - 建立在 configuration/action-plan/port-material/execution/report 正式快照之上的库内统一 host session snapshot，用于减少外部宿主在边界层重复汇总整体状态
 - 建立在 action plan 之上的 action execution request planning helper，用于把宿主输入显式规划为可执行 request batch，并报告 missing inputs / lifecycle-only / unsupported action；该 helper 是库内正式边界，区别于 smoke driver 的完整生命周期编排
+- 建立在 action execution / validation / calculation outcome 之上的 host round orchestration helper，用于把最常见的宿主 round 主路径收口到统一结果；该 helper 是库内正式边界，但不替代 smoke driver、PME adapter 或完整工作流框架
 - `SmokeTests` 中更接近真实宿主的最小 driver 路径，用于固定 `Initialize -> 配参数 -> 连端口 -> Validate -> Calculate -> 读结果 -> Terminate` 正式调用顺序、最小必需输入与 `InvocationOrder / Validation / Native` 三类失败分类
 - `RadishFlow.CapeOpen.UnitOp.Mvp.ContractTests` 这种不依赖外部 NuGet 测试框架的库侧 contract baseline，用于锁定 `UnitOp.Mvp` 的行为语义，而不是把这部分契约只留在 console 输出里
 

@@ -55,6 +55,7 @@ internal static class ContractTestExecutable
             ("action-execution-orchestration-contract", static context => ContractTests.ActionExecutionOrchestrator_RefreshesHostViews(context)),
             ("validation-round-contract", static context => ContractTests.ValidationRound_RefreshesHostViews(context)),
             ("calculation-round-contract", static context => ContractTests.CalculationRound_RefreshesHostViews(context)),
+            ("host-round-contract", static context => ContractTests.HostRound_OrchestratesCanonicalHostPath(context)),
             ("port-material-contract", static context => ContractTests.PortMaterialSnapshot_ExposesBoundaryStreamsAndLifecycleState(context)),
             ("execution-snapshot-contract", static context => ContractTests.ExecutionSnapshot_ExposesStepAndDiagnosticShape(context)),
             ("session-snapshot-contract", static context => ContractTests.SessionSnapshot_ExposesUnifiedHostView(context)),
@@ -1225,6 +1226,101 @@ internal static class ContractTests
         ContractAssert.False(terminatedCalculation.FollowUp.CanValidate, "Terminated calculation round should not allow Validate().");
     }
 
+    public static void HostRound_OrchestratesCanonicalHostPath(ContractTestContext context)
+    {
+        var constructedRound = context.ExecuteRound();
+        ContractAssert.True(constructedRound.ExecutedActions, "Default constructed round should evaluate current host actions.");
+        ContractAssert.False(constructedRound.ExecutedValidation, "Constructed round should stop before Validate() when lifecycle is still required.");
+        ContractAssert.False(constructedRound.ExecutedCalculation, "Constructed round should stop before Calculate() when lifecycle is still required.");
+        ContractAssert.Equal(UnitOperationHostRoundStopKind.LifecycleOperationRequired, constructedRound.StopKind, "Constructed round should classify lifecycle gating explicitly.");
+        ContractAssert.Equal(UnitOperationHostFollowUpKind.LifecycleOperation, constructedRound.FollowUp.Kind, "Constructed round should recommend Initialize().");
+        ContractAssert.SequenceEqual([nameof(RadishFlowCapeOpenUnitOperation.Initialize)], constructedRound.FollowUp.RecommendedOperations, "Constructed round should preserve Initialize() recommendation.");
+
+        context.Initialize();
+        var configuredRound = context.ExecuteRound(
+            new UnitOperationHostRoundRequest(
+                actionInputSet: context.CreateMinimumConfigurationInputSet(
+                    includePackageId: true,
+                    includePackageFiles: false),
+                executeReadyActions: true,
+                runValidation: true,
+                runCalculation: true,
+                supplementalMutationCommands: context.CreateOptionalPackageFileMutationCommands()));
+        ContractAssert.True(configuredRound.ExecutedActions, "Configured round should execute blocking host actions.");
+        ContractAssert.True(configuredRound.ExecutedSupplementalMutations, "Configured round should apply supplemental package-file mutations.");
+        ContractAssert.True(configuredRound.ExecutedValidation, "Configured round should validate current configuration.");
+        ContractAssert.True(configuredRound.ExecutedCalculation, "Configured round should calculate after successful validation.");
+        ContractAssert.Equal(UnitOperationHostRoundStopKind.Completed, configuredRound.StopKind, "Configured round should complete the canonical host path.");
+        ContractAssert.Equal(UnitOperationHostSessionState.Available, configuredRound.Session.State, "Configured round should reach available session state.");
+        ContractAssert.Equal(UnitOperationCalculationReportState.Success, configuredRound.Report.State, "Configured round should expose success report state.");
+        ContractAssert.Equal(UnitOperationHostFollowUpKind.CurrentResults, configuredRound.FollowUp.Kind, "Configured round should end at current results.");
+        ContractAssert.True(configuredRound.FollowUp.CanCalculate, "Current-results round should still allow Calculate().");
+        ContractAssert.True(configuredRound.ActionExecution!.AppliedMutations, "Configured round should preserve action-execution mutation summary.");
+        ContractAssert.Equal(2, configuredRound.SupplementalMutations!.Batch.AppliedCount, "Configured round should apply both package-file supplemental mutations.");
+        ContractAssert.True(configuredRound.Configuration.GetParameter(UnitOperationParameterCatalog.PropertyPackageManifestPath.Name).IsConfigured, "Configured round should materialize manifest path through supplemental mutations.");
+        ContractAssert.True(configuredRound.Configuration.GetParameter(UnitOperationParameterCatalog.PropertyPackagePayloadPath.Name).IsConfigured, "Configured round should materialize payload path through supplemental mutations.");
+
+        var successRound = context.ExecuteRound(
+            new UnitOperationHostRoundRequest(
+                executeReadyActions: false,
+                runValidation: true,
+                runCalculation: true));
+        ContractAssert.False(successRound.ExecutedActions, "Ready round should be able to skip host actions when configuration is already present.");
+        ContractAssert.False(successRound.ExecutedSupplementalMutations, "Ready round should not require supplemental mutations once optional package files are already configured.");
+        ContractAssert.True(successRound.ExecutedValidation, "Ready round should validate current configuration.");
+        ContractAssert.True(successRound.ExecutedCalculation, "Ready round should calculate after successful validation.");
+        ContractAssert.Equal(UnitOperationHostRoundStopKind.Completed, successRound.StopKind, "Ready round should complete the canonical validate/calculate path.");
+        ContractAssert.Equal(UnitOperationHostSessionState.Available, successRound.Session.State, "Ready round should reach available session state.");
+        ContractAssert.Equal(UnitOperationCalculationReportState.Success, successRound.Report.State, "Ready round should expose success report state.");
+        ContractAssert.Equal(UnitOperationHostFollowUpKind.CurrentResults, successRound.FollowUp.Kind, "Ready round should end at current results.");
+        ContractAssert.True(successRound.FollowUp.CanCalculate, "Current-results round should still allow Calculate().");
+
+        context.PayloadPathParameter.value = null;
+        var missingCompanionRound = context.ExecuteRound(
+            new UnitOperationHostRoundRequest(
+                actionInputSet: new UnitOperationHostActionExecutionInputSet(
+                    parameterValues: new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase)
+                    {
+                        [UnitOperationParameterCatalog.PropertyPackageManifestPath.Name] = context.ManifestPath,
+                    }),
+                executeReadyActions: true,
+                runValidation: true,
+                runCalculation: true));
+        ContractAssert.True(missingCompanionRound.ExecutedActions, "Companion-input round should still evaluate current host actions.");
+        ContractAssert.False(missingCompanionRound.ExecutedValidation, "Companion-input round should stop before Validate() when companion values are incomplete.");
+        ContractAssert.False(missingCompanionRound.ExecutedCalculation, "Companion-input round should stop before Calculate() when companion values are incomplete.");
+        ContractAssert.Equal(UnitOperationHostRoundStopKind.MissingInputs, missingCompanionRound.StopKind, "Companion-input round should classify missing inputs explicitly.");
+        ContractAssert.Equal(UnitOperationHostFollowUpKind.ProvideInputs, missingCompanionRound.FollowUp.Kind, "Companion-input round should recommend additional inputs.");
+        ContractAssert.True(missingCompanionRound.FollowUp.MissingInputNames.Contains(UnitOperationParameterCatalog.PropertyPackagePayloadPath.Name), "Companion-input round should surface the missing payload path.");
+        context.PayloadPathParameter.value = context.PayloadPath;
+
+        context.UnitOperation.SelectPropertyPackage("missing-package-for-host-round");
+        var nativeFailureRound = context.ExecuteRound(
+            new UnitOperationHostRoundRequest(
+                executeReadyActions: false,
+                runValidation: false,
+                runCalculation: true,
+                requireSuccessfulValidationForCalculation: false));
+        ContractAssert.False(nativeFailureRound.Completed, "Native-failure round should not report completion.");
+        ContractAssert.True(nativeFailureRound.ExecutedCalculation, "Native-failure round should still execute Calculate().");
+        ContractAssert.Equal(UnitOperationHostRoundStopKind.CalculationFailed, nativeFailureRound.StopKind, "Native-failure round should classify calculate failure explicitly.");
+        ContractAssert.Equal(UnitOperationHostSessionState.Failure, nativeFailureRound.Session.State, "Native-failure round should expose failure session state.");
+        ContractAssert.Equal(UnitOperationHostFollowUpKind.Calculate, nativeFailureRound.FollowUp.Kind, "Native-failure round should allow calculate retry after recovery.");
+
+        context.UnitOperation.Terminate();
+        var terminatedRound = context.ExecuteRound(
+            new UnitOperationHostRoundRequest(
+                executeReadyActions: false,
+                runValidation: true,
+                runCalculation: true));
+        ContractAssert.False(terminatedRound.Completed, "Terminated round should not report completion.");
+        ContractAssert.True(terminatedRound.ExecutedValidation, "Terminated round should still expose validation outcome.");
+        ContractAssert.False(terminatedRound.ExecutedCalculation, "Terminated round should stop before Calculate().");
+        ContractAssert.Equal(UnitOperationHostRoundStopKind.Terminated, terminatedRound.StopKind, "Terminated round should classify terminal state explicitly.");
+        ContractAssert.Equal(UnitOperationHostSessionState.Terminated, terminatedRound.Session.State, "Terminated round should preserve terminated session state.");
+        ContractAssert.Equal(UnitOperationHostFollowUpKind.Terminated, terminatedRound.FollowUp.Kind, "Terminated round should preserve terminated follow-up.");
+    }
+
     public static void PortMaterialSnapshot_ExposesBoundaryStreamsAndLifecycleState(ContractTestContext context)
     {
         var constructedSnapshot = context.ReadPortMaterial();
@@ -1828,6 +1924,48 @@ internal sealed class ContractTestContext : IDisposable
         return UnitOperationHostActionPlanReader.Read(ReadConfiguration());
     }
 
+    public UnitOperationHostActionExecutionInputSet CreateMinimumConfigurationInputSet(
+        bool includePackageId,
+        bool includePackageFiles = true)
+    {
+        var values = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase)
+        {
+            [UnitOperationParameterCatalog.FlowsheetJson.Name] = FlowsheetJsonText,
+        };
+
+        if (includePackageId)
+        {
+            values[UnitOperationParameterCatalog.PropertyPackageId.Name] = PackageId;
+        }
+
+        if (includePackageFiles)
+        {
+            values[UnitOperationParameterCatalog.PropertyPackageManifestPath.Name] = ManifestPath;
+            values[UnitOperationParameterCatalog.PropertyPackagePayloadPath.Name] = PayloadPath;
+        }
+
+        return new UnitOperationHostActionExecutionInputSet(
+            parameterValues: values,
+            portObjects: new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase)
+            {
+                [UnitOperationPortCatalog.Feed.Name] = new ContractConnectedObject("Contract Round Feed"),
+                [UnitOperationPortCatalog.Product.Name] = new ContractConnectedObject("Contract Round Product"),
+            });
+    }
+
+    public IReadOnlyList<UnitOperationHostObjectMutationCommand> CreateOptionalPackageFileMutationCommands()
+    {
+        return
+        [
+            UnitOperationHostObjectMutationCommand.SetParameterValue(
+                UnitOperationParameterCatalog.PropertyPackageManifestPath.Name,
+                ManifestPath),
+            UnitOperationHostObjectMutationCommand.SetParameterValue(
+                UnitOperationParameterCatalog.PropertyPackagePayloadPath.Name,
+                PayloadPath),
+        ];
+    }
+
     public UnitOperationHostPortMaterialSnapshot ReadPortMaterial()
     {
         return UnitOperationHostPortMaterialReader.Read(UnitOperation);
@@ -1851,6 +1989,11 @@ internal sealed class ContractTestContext : IDisposable
     public UnitOperationHostCalculationOutcome CalculateRound()
     {
         return UnitOperationHostCalculationRunner.Calculate(UnitOperation);
+    }
+
+    public UnitOperationHostRoundOutcome ExecuteRound(UnitOperationHostRoundRequest? request = null)
+    {
+        return UnitOperationHostRoundOrchestrator.Execute(UnitOperation, request ?? UnitOperationHostRoundRequest.Default);
     }
 
     public void ConfigureMinimumValidInputs()
