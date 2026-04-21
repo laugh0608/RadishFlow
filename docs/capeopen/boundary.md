@@ -152,6 +152,7 @@ Rust 与 `.NET 10` 之间的正式边界应保持简单稳定：
 - `UnitOp.Mvp` 中的 `UnitOperationComIdentity`，用于冻结自有 MVP Unit Operation PMC 的 `CLSID / ProgID / Versioned ProgID` 与 COM-visible class 元数据
 - `RadishFlow.CapeOpen.Registration` 的 dry-run / preflight console，用于输出组件注册计划、CAPE-OPEN categories、已实现接口清单，以及 `register / unregister`、`current-user / local-machine` 下的 registry key plan；当前只读输出，不写注册表、不注册 COM、不启动 PME
 - registration plan 当前明确把 `.NET comhost` 路径解析列为执行前 `Verify` 步骤，不把旧 `.NET Framework` `mscoree.dll` 注册口径写成未来事实；preflight 当前会只读确认生成的 `RadishFlow.CapeOpen.UnitOp.Mvp.comhost.dll` 路径、PE 机器类型、当前进程位数、scope 权限口径、目标 registry key 现状和备份范围
+- `docs/capeopen/pme-validation.md` 当前已冻结目标 PME 人工验证说明和执行型注册门控设计；它只定义验证路径、通过标准、失败分类和真实写 registry 前的安全要求，不代表当前仓库已经允许默认注册 COM 或自动化 PME
 - `SmokeTests` 中更接近真实宿主的最小 driver 路径，用于固定 `Initialize -> 配参数 -> 连端口 -> Validate -> Calculate -> 读结果 -> Terminate` 正式调用顺序、最小必需输入与 `InvocationOrder / Validation / Native` 三类失败分类
 - `RadishFlow.CapeOpen.UnitOp.Mvp.ContractTests` 这种不依赖外部 NuGet 测试框架的库侧 contract baseline，用于锁定 `UnitOp.Mvp` 的行为语义，而不是把这部分契约只留在 console 输出里
 
@@ -160,6 +161,7 @@ Rust 与 `.NET 10` 之间的正式边界应保持简单稳定：
 - COM host 注册细节
 - 完整 ECape 接口/异常面与所有标准 IID 校准
 - 执行型 COM 注册 / 反注册工具
+- 自动化 PME 验证工具
 - 端口集合、参数集合、报告接口与 `Collection/Parameter/UnitPort` 语义的完整 CAPE-OPEN 实现
 - PME 互调测试代码
 - 将当前验证型 `UnitOperationSmokeHostDriver` 直接上移为 `UnitOp.Mvp` 正式库 API；在它被证明不仅服务当前 smoke 验证样板之前，先继续保留在 `SmokeTests`
@@ -173,6 +175,14 @@ Rust 与 `.NET 10` 之间的正式边界应保持简单稳定：
 - 如需写入不属于 blocking action plan 的宿主配置，通过 `UnitOperationHostRoundRequest.SupplementalMutationCommands` 注入
 - 最终优先通过 `UnitOperationHostRoundOrchestrator.Execute(...)` 收口 `ready actions -> supplemental mutations -> Validate -> Calculate`
 - 如果需要一个更接近 PME host、但仍不依赖真实 COM/PME 环境的入口样板，优先参考 `SampleHost` 中的 `PmeLikeUnitOperationHost` / `PmeLikeUnitOperationSession`；它已经把上述步骤包成单个薄 session，而没有引入 smoke DSL 或外部环境副作用
+
+当前推荐的真实 PME 前置验证路径为：
+
+- 先通过 `cargo check`、`UnitOp.Mvp` build、`Registration` build、contract tests build 与 `SampleHost` build
+- 再运行 `ContractTests` 与 `SampleHost`，确认正式 host-facing 消费路径仍可调用
+- 再运行 `Registration` dry-run，确认 `comhost`、位数、registry key 现状与备份范围
+- 只有在后续执行型注册工具具备显式 `--execute`、确认 token、无 `Fail` preflight、备份/回滚与权限检查后，才允许进入真实 registry 写入
+- 真实 PME 仍采用人工打开、人工 discovery、人工实例化、人工触发 `Validate/Calculate` 和人工记录结果的路径，不在当前阶段引入 PME 自动化互调壳
 
 ## 对 Rust Core 的约束
 

@@ -66,3 +66,17 @@ dotnet run --project .\adapters\dotnet-capeopen\RadishFlow.CapeOpen.Registration
 - preflight checks 只读检查 comhost 文件、comhost PE 机器类型、当前进程位数、scope 权限口径和目标 registry key 现状
 - backup plan 只列出真实执行前应备份的 registry tree，不导出、不删除、不写入
 - 默认 comhost 路径从当前加载到 `Registration` 进程中的 `RadishFlow.CapeOpen.UnitOp.Mvp` assembly 目录推导；开发构建下通常是 `Registration\bin\Debug\net10.0` 中被复制的项目引用产物。发布/安装工具后应显式传入最终安装目录中的 `--comhost <path>`
+
+## 后续执行型注册门控
+
+后续若把本工具从 dry-run 推进为执行型注册 / 反注册工具，默认行为仍必须保持 dry-run。真实写入至少需要额外满足以下门控：
+
+- 显式传入 `--execute`
+- 显式传入与 action / scope / CLSID 绑定的确认 token
+- 同一参数下 preflight 不存在 `Fail`
+- `local-machine` scope 必须确认当前进程已 elevation
+- 写入前必须记录或导出 `CLSID / ProgID / Versioned ProgID` 三棵 registry tree 的备份状态
+- 实际写入范围必须严格限制在 dry-run registry plan 列出的 key/value 内
+- unregister 必须走同等级确认门控，并输出可审计日志
+
+本工具即使进入执行型注册阶段，也不应负责启动 PME、自动操作 PME UI、加载第三方 CAPE-OPEN 模型或生成安装包。目标 PME 人工验证路径见 `docs/capeopen/pme-validation.md`。

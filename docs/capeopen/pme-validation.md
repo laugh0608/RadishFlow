@@ -1,0 +1,204 @@
+# CAPE-OPEN PME 人工验证说明
+
+更新时间：2026-04-21
+
+## 文档目的
+
+本文档用于冻结自有 MVP Unit Operation PMC 进入真实 PME 前的人工验证路径。
+
+当前文档只描述验证计划、执行前门控和记录口径，不代表仓库已经允许默认写 Windows Registry、自动化启动 PME，或加载第三方 CAPE-OPEN 模型。
+
+## 当前边界
+
+当前允许：
+
+- 使用 `RadishFlow.CapeOpen.UnitOp.Mvp.SampleHost` 验证正式 host-facing 消费路径
+- 使用 `RadishFlow.CapeOpen.Registration` 输出 dry-run / preflight
+- 检查 `RadishFlow.CapeOpen.UnitOp.Mvp.comhost.dll` 是否存在、位数是否匹配、目标 registry key 是否已有冲突
+- 记录将来 register / unregister 会涉及的 registry key、CAPE-OPEN categories 与备份范围
+- 编写目标 PME 人工验证记录
+
+当前不允许：
+
+- 默认写 Windows Registry
+- 默认注册或反注册 COM class
+- 自动化启动、控制或脚本化外部 PME
+- 加载第三方 CAPE-OPEN Unit Operation 或 Thermo/Property Package
+- 将 PME / COM 对象语义倒灌到 Rust core 或 `rf-ffi`
+
+## 目标 PME 选择口径
+
+第一轮目标 PME 只需要选定一个可人工安装、可手动打开、可显示 CAPE-OPEN Unit Operation PMC 列表并能实例化 Unit Operation 的宿主。
+
+目标 PME 记录应至少包含：
+
+- PME 名称
+- PME 版本
+- 进程位数
+- 操作系统版本
+- RadishFlow commit
+- `RadishFlow.CapeOpen.UnitOp.Mvp.comhost.dll` 路径
+- registry scope：`current-user` 或 `local-machine`
+- 验证人员与验证日期
+
+若目标 PME 只能读取机器级 COM 注册，则本仓库仍不应因此默认走 HKLM；只能在执行型注册工具具备显式确认、权限检查、备份与回滚后再单独执行。
+
+## 执行前验证基线
+
+进入真实 PME 前必须先通过以下本地基线：
+
+```powershell
+cargo check
+dotnet build .\adapters\dotnet-capeopen\RadishFlow.CapeOpen.UnitOp.Mvp\RadishFlow.CapeOpen.UnitOp.Mvp.csproj -v minimal
+dotnet build .\adapters\dotnet-capeopen\RadishFlow.CapeOpen.Registration\RadishFlow.CapeOpen.Registration.csproj -v minimal
+dotnet build .\adapters\dotnet-capeopen\RadishFlow.CapeOpen.UnitOp.Mvp.ContractTests\RadishFlow.CapeOpen.UnitOp.Mvp.ContractTests.csproj -v minimal
+dotnet build .\adapters\dotnet-capeopen\RadishFlow.CapeOpen.UnitOp.Mvp.SampleHost\RadishFlow.CapeOpen.UnitOp.Mvp.SampleHost.csproj -v minimal
+```
+
+真实 PME 前还应先运行最小 contract / sample host：
+
+```powershell
+.\adapters\dotnet-capeopen\RadishFlow.CapeOpen.UnitOp.Mvp.ContractTests\bin\Debug\net10.0\RadishFlow.CapeOpen.UnitOp.Mvp.ContractTests.exe --native-lib-dir D:\Code\RadishFlow\target\debug
+.\adapters\dotnet-capeopen\RadishFlow.CapeOpen.UnitOp.Mvp.SampleHost\bin\Debug\net10.0\RadishFlow.CapeOpen.UnitOp.Mvp.SampleHost.exe --native-lib-dir D:\Code\RadishFlow\target\debug
+```
+
+如果 `.NET 10` first-time use、restore、native path 或沙盒隔离导致结果与代码现状明显不符，应按仓库约定申请真实环境复验，而不是直接把失败归因到实现。
+
+## 注册前 dry-run
+
+真实写入前必须先执行 dry-run：
+
+```powershell
+dotnet run --project .\adapters\dotnet-capeopen\RadishFlow.CapeOpen.Registration\RadishFlow.CapeOpen.Registration.csproj -- --scope current-user --comhost .\adapters\dotnet-capeopen\RadishFlow.CapeOpen.UnitOp.Mvp\bin\Debug\net10.0\RadishFlow.CapeOpen.UnitOp.Mvp.comhost.dll
+```
+
+dry-run 输出必须人工确认：
+
+- `CLSID`、`ProgID` 与 `Versioned ProgID` 与文档一致
+- CAPE-OPEN categories 至少包含 CAPE-OPEN Object 与 Unit Operation
+- implemented interfaces 至少包含 `ICapeIdentification`、`ICapeUtilities` 与 `ICapeUnit`
+- `comhost path` 为 `Pass`
+- `comhost architecture` 与目标 PME 进程位数一致
+- `process architecture` 与预期 registry view 一致
+- `registry conflict` 没有未解释的冲突
+- `backup plan` 覆盖 `CLSID / ProgID / Versioned ProgID` 三棵树
+- `Writes registry` 仍为 `no`
+
+若 dry-run 出现 `Fail`，不得进入真实注册。若出现 `Warning`，必须在验证记录里解释是否接受。
+
+## 执行型注册工具门控
+
+后续若实现真实写入，默认行为仍必须保持 dry-run。执行型注册只能在额外显式参数下启用，并至少满足以下门控：
+
+- 必须存在 `--execute`
+- 必须存在与本次 action / scope / CLSID 绑定的确认 token，例如 `--confirm register-current-user-2F0E4C8F`
+- 必须先运行同一参数下的 preflight，并且不存在 `Fail`
+- `local-machine` scope 必须检测 elevation，不满足时直接拒绝写入
+- 必须显式提供备份输出路径，或由工具生成带时间戳的备份记录路径
+- 必须把实际写入范围限制在 dry-run registry plan 列出的 key/value 内
+- 必须在写入前记录已有 key 的存在状态和待覆盖值
+- 必须支持 `unregister`，并要求同等级确认门控
+- 必须输出可附加到人工验证记录的执行日志
+
+执行型注册工具不应顺手承担以下职责：
+
+- 启动 PME
+- 操作 PME UI
+- 加载第三方 CAPE-OPEN 模型
+- 生成安装包
+- 扩张 `UnitOp.Mvp` 的 host round 或 smoke driver DSL
+
+## 人工 PME 验证路径
+
+注册完成后，目标 PME 验证仍采用人工路径：
+
+1. 手动启动目标 PME。
+2. 打开 PME 的 CAPE-OPEN Unit Operation 或自定义单元选择入口。
+3. 确认能看到 `RadishFlow MVP Unit Operation` 或对应 `ProgID`。
+4. 实例化该 Unit Operation。
+5. 读取 identification，确认名称和描述符合 `UnitOperationComIdentity`。
+6. 读取 parameters，确认最小参数集合存在且名称稳定。
+7. 读取 ports，确认 `Feed` 与 `Product` 端口存在且方向语义符合预期。
+8. 尝试连接 PME 提供的 material object。
+9. 尝试写入 flowsheet JSON、package id、manifest/payload 路径等 MVP 参数。
+10. 触发 PME 侧 `Validate`。
+11. 触发 PME 侧 `Calculate`。
+12. 读取报告或 PME 日志，确认成功结果或可诊断失败被稳定暴露。
+13. 关闭 PME 后执行 unregister，并确认组件不再出现在 PME discovery 入口中。
+
+若目标 PME 的调用顺序与上述顺序不同，应记录实际顺序、触发的 `UnitOp.Mvp` 状态、异常类型和 report/follow-up 输出；不要为了某个 PME 行为立即把临时兼容逻辑塞进 Rust core。
+
+## 通过标准
+
+第一轮人工 PME 验证通过标准：
+
+- PME 能发现组件
+- PME 能实例化组件
+- PME 能读取 identification
+- PME 能读取最小 parameter collection
+- PME 能读取最小 port collection
+- PME 能连接必需端口或给出可解释失败
+- PME 能触发 `Validate`
+- PME 能触发 `Calculate`
+- 成功时能读取最小结果摘要
+- 失败时能读取稳定 diagnostic / report 文本
+- unregister 后同一 scope 下的组件发现结果被移除
+
+## 失败分类
+
+验证失败应先按以下分类记录：
+
+- `Discovery`：PME 没有发现组件
+- `Activation`：PME 发现但无法实例化 COM class
+- `Identity`：实例化后 identification 读取失败或字段漂移
+- `Collection`：parameters / ports collection 形状不符合 PME 期待
+- `Connection`：PME material object 连接失败
+- `Validation`：`Validate` 失败且无法诊断
+- `Calculation`：`Calculate` 失败且无法诊断
+- `Reporting`：结果已产生但 PME 无法读取报告或日志
+- `Unregister`：反注册后 discovery 仍残留
+
+失败修复优先级：
+
+- 先判断是否是注册信息、位数、权限或 comhost 路径问题
+- 再判断是否是 `.NET` COM-visible / marshalling / interface shape 问题
+- 再判断是否是 `UnitOp.Mvp` 对象运行时、collection、parameter 或 port 语义问题
+- 最后才考虑 host round / follow-up 层是否需要补正式 helper
+- 不把单个 PME 的非标准行为直接下沉到 Rust core
+
+## 验证记录模板
+
+建议每次人工验证记录以下内容：
+
+```text
+Date:
+RadishFlow commit:
+OS:
+PME:
+PME version:
+PME bitness:
+Registry scope:
+Comhost path:
+Registration command:
+Unregistration command:
+Preflight result:
+Warnings accepted:
+Discovery:
+Activation:
+Identity:
+Parameters:
+Ports:
+Validate:
+Calculate:
+Report:
+Unregister:
+Logs:
+Decision:
+Follow-up:
+```
+
+## 当前判断
+
+截至 2026-04-21，`SampleHost` 的 PME-like 薄宿主入口与 `Registration` dry-run/preflight 已足以结束 host round 兜底子任务，下一步可以继续推进 M5 的注册执行门控与真实 PME 人工验证准备。
+
+仍必须补齐的边界缺口不是新的 host round fallback，而是真实写 registry 前的执行门控、备份/回滚、安装/反安装说明，以及目标 PME 人工验证记录。
