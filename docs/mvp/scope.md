@@ -48,6 +48,7 @@
 - `rf-flowsheet` 第一轮连接校验只覆盖 canonical material ports、流股存在性与“一股一源一汇”；终端产品流允许只有 source、没有 sink
 - `.NET 10` 适配层当前允许推进到 `M4/M5` 交界的最小互调与 `UnitOp.Mvp` 宿主语义收口，但范围只限于 `rf-ffi` 薄适配、`UnitOp.Mvp` 对象面、contract/smoke 基线、库内只读宿主模型，以及 action execution request planning / orchestration result / host view snapshot / validation outcome / calculation outcome / host round outcome / follow-up 这类不承担完整宿主生命周期的薄 helper
 - `UnitOp.Mvp` 当前应优先把宿主语义收口为正式只读模型、显式请求规划模型或窄边界 outcome 模型，例如 configuration snapshot、action plan、action execution request plan、action execution orchestration result、host view snapshot、port/material snapshot、execution snapshot、session snapshot、canonical session state、validation outcome、calculation outcome、host round outcome、统一 follow-up 与 stop kind，不把组合逻辑散落到 smoke host、测试字面量或未来 PME 入口
+- `UnitOp.Mvp` 当前也已补出独立 `SampleHost`，用于证明未来 PME host / 其他宿主可直接复用上述正式消费面，而不是继续依赖 smoke driver
 - 当前明确不继续线性堆叠 calculation report accessor；若宿主需要更高层语义，应优先在库内增加 reader / snapshot / presentation，而不是继续在 PMC 主类追加 convenience API
 - 当前仍不提前展开 COM 注册、PME 互调壳、第三方 CAPE-OPEN 模型加载或完整外部 Thermo/Property Package 宿主兼容
 

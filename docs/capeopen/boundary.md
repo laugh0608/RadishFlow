@@ -146,6 +146,7 @@ Rust 与 `.NET 10` 之间的正式边界应保持简单稳定：
 - 建立在 configuration/action-plan/port-material/execution/report 正式快照之上的库内统一 host session snapshot，用于减少外部宿主在边界层重复汇总整体状态
 - 建立在 action plan 之上的 action execution request planning helper，用于把宿主输入显式规划为可执行 request batch，并报告 missing inputs / lifecycle-only / unsupported action；该 helper 是库内正式边界，区别于 smoke driver 的完整生命周期编排
 - 建立在 action execution / validation / calculation outcome 之上的 host round orchestration helper，用于把最常见的宿主 round 主路径收口到统一结果；该 helper 是库内正式边界，但不替代 smoke driver、PME adapter 或完整工作流框架
+- 独立的 `RadishFlow.CapeOpen.UnitOp.Mvp.SampleHost` console，用于演示外部 host 如何只复用正式 `host view / request planner / round outcome / session-report-execution-material readers`，而不依赖 smoke driver
 - `SmokeTests` 中更接近真实宿主的最小 driver 路径，用于固定 `Initialize -> 配参数 -> 连端口 -> Validate -> Calculate -> 读结果 -> Terminate` 正式调用顺序、最小必需输入与 `InvocationOrder / Validation / Native` 三类失败分类
 - `RadishFlow.CapeOpen.UnitOp.Mvp.ContractTests` 这种不依赖外部 NuGet 测试框架的库侧 contract baseline，用于锁定 `UnitOp.Mvp` 的行为语义，而不是把这部分契约只留在 console 输出里
 
@@ -158,6 +159,14 @@ Rust 与 `.NET 10` 之间的正式边界应保持简单稳定：
 - PME 互调测试代码
 - 将当前验证型 `UnitOperationSmokeHostDriver` 直接上移为 `UnitOp.Mvp` 正式库 API；在它被证明不仅服务当前 smoke 验证样板之前，先继续保留在 `SmokeTests`
 - 把 COBIA 作为当前主线运行时或因此提前改写既定 COM 兼容路径
+
+当前推荐的最小外部 host 路径为：
+
+- 宿主自行负责 `Initialize()` 与 `Terminate()`
+- 通过 `UnitOperationHostViewReader.Read(...)` 或 `UnitOperationHostSessionReader.Read(...)` 读取当前只读视图
+- 通过 `UnitOperationHostActionExecutionRequestPlanner.Plan(...)` 准备 parameter values / port objects 到 ready requests 的映射
+- 如需写入不属于 blocking action plan 的宿主配置，通过 `UnitOperationHostRoundRequest.SupplementalMutationCommands` 注入
+- 最终优先通过 `UnitOperationHostRoundOrchestrator.Execute(...)` 收口 `ready actions -> supplemental mutations -> Validate -> Calculate`
 
 ## 对 Rust Core 的约束
 

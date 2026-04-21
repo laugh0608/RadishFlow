@@ -46,6 +46,12 @@
 - PME 生命周期集成
 - 完整 CAPE-OPEN PMC 运行时
 
+推荐的最小外部 host 入口：
+
+- 若只是验证或教学用途，不要直接复用 `RadishFlow.CapeOpen.SmokeTests` 里的 `UnitOperationSmokeHostDriver`
+- 当前推荐直接复用 `UnitOperationHostViewReader`、`UnitOperationHostActionExecutionRequestPlanner`、`UnitOperationHostRoundOrchestrator`、`UnitOperationHostSessionReader`、`UnitOperationHostExecutionReader`、`UnitOperationHostPortMaterialReader` 与 `UnitOperationHostReportReader/Presenter/Formatter`
+- 仓库现在已补出独立样例 `RadishFlow.CapeOpen.UnitOp.Mvp.SampleHost`，专门演示外部 host 如何在不依赖 smoke DSL 的前提下走正式 `view -> request plan -> round outcome` 主路径，并通过 supplemental mutation phase 注入 optional package files
+
 说明：
 
 - 当前 `Ports` / `Parameters` 已返回带 `Item(object)` 和 `Count()` 的最小 `ICapeCollection` 风格对象，并支持按 `ComponentName` 或 1-based 索引取项
@@ -112,4 +118,10 @@
 ```powershell
 dotnet build .\adapters\dotnet-capeopen\RadishFlow.CapeOpen.UnitOp.Mvp.ContractTests\RadishFlow.CapeOpen.UnitOp.Mvp.ContractTests.csproj -v minimal
 .\adapters\dotnet-capeopen\RadishFlow.CapeOpen.UnitOp.Mvp.ContractTests\bin\Debug\net10.0\RadishFlow.CapeOpen.UnitOp.Mvp.ContractTests.exe --native-lib-dir D:\Code\RadishFlow\target\debug
+```
+
+最小外部 host 样例运行示例：
+
+```powershell
+dotnet run --project .\adapters\dotnet-capeopen\RadishFlow.CapeOpen.UnitOp.Mvp.SampleHost\RadishFlow.CapeOpen.UnitOp.Mvp.SampleHost.csproj -- --native-lib-dir D:\Code\RadishFlow\target\debug
 ```
