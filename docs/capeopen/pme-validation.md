@@ -69,7 +69,7 @@ dotnet build .\adapters\dotnet-capeopen\RadishFlow.CapeOpen.UnitOp.Mvp.SampleHos
 真实写入前必须先执行 dry-run：
 
 ```powershell
-dotnet run --project .\adapters\dotnet-capeopen\RadishFlow.CapeOpen.Registration\RadishFlow.CapeOpen.Registration.csproj -- --scope current-user --comhost .\adapters\dotnet-capeopen\RadishFlow.CapeOpen.UnitOp.Mvp\bin\Debug\net10.0\RadishFlow.CapeOpen.UnitOp.Mvp.comhost.dll
+pwsh .\scripts\register-com.ps1 -Scope current-user -ComHostPath .\adapters\dotnet-capeopen\RadishFlow.CapeOpen.UnitOp.Mvp\bin\Debug\net10.0\RadishFlow.CapeOpen.UnitOp.Mvp.comhost.dll
 ```
 
 dry-run 输出必须人工确认：
@@ -100,6 +100,13 @@ dry-run 输出必须人工确认：
 - 必须支持 `unregister`，并要求同等级确认门控
 - 必须输出可附加到人工验证记录的执行日志
 - 若执行过程中任一步骤失败，必须尝试用本次刚捕获的备份恢复三棵 registry tree，并把 rollback 结果写入 execution log
+
+建议优先通过仓库脚本入口执行，而不是直接手写底层 exe 命令：
+
+```powershell
+pwsh .\scripts\register-com.ps1 -Execute -ConfirmToken register-current-user-2F0E4C8F -BackupDir .\artifacts\registration-validation\register-current-user
+pwsh .\scripts\register-com.ps1 -Action unregister -Execute -ConfirmToken unregister-current-user-2F0E4C8F -BackupDir .\artifacts\registration-validation\unregister-current-user
+```
 
 执行型注册工具不应顺手承担以下职责：
 

@@ -31,6 +31,12 @@
 dotnet run --project .\adapters\dotnet-capeopen\RadishFlow.CapeOpen.Registration\RadishFlow.CapeOpen.Registration.csproj
 ```
 
+推荐仓库脚本入口：
+
+```powershell
+pwsh .\scripts\register-com.ps1
+```
+
 JSON 输出：
 
 ```powershell
@@ -61,10 +67,22 @@ dotnet run --project .\adapters\dotnet-capeopen\RadishFlow.CapeOpen.Registration
 dotnet run --project .\adapters\dotnet-capeopen\RadishFlow.CapeOpen.Registration\RadishFlow.CapeOpen.Registration.csproj -- --execute --confirm register-current-user-2F0E4C8F
 ```
 
+通过仓库脚本执行：
+
+```powershell
+pwsh .\scripts\register-com.ps1 -Execute -ConfirmToken register-current-user-2F0E4C8F
+```
+
 执行型 unregister：
 
 ```powershell
 dotnet run --project .\adapters\dotnet-capeopen\RadishFlow.CapeOpen.Registration\RadishFlow.CapeOpen.Registration.csproj -- --action unregister --execute --confirm unregister-current-user-2F0E4C8F
+```
+
+通过仓库脚本执行：
+
+```powershell
+pwsh .\scripts\register-com.ps1 -Action unregister -Execute -ConfirmToken unregister-current-user-2F0E4C8F
 ```
 
 当前冻结的组件标识：

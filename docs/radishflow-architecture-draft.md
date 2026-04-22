@@ -618,11 +618,12 @@ Rust 与 .NET 的桥接层。
 
 当前对齐：
 
-- 当前已建立第一版 `net10.0` dry-run / preflight console，并已加入 `RadishFlow.CapeOpen.sln`
+- 当前已建立第一版 `net10.0` 注册工具，并已加入 `RadishFlow.CapeOpen.sln`
 - 当前可输出 MVP Unit Operation PMC 的 `CLSID / ProgID / Versioned ProgID`、CAPE-OPEN categories、最小已实现接口、当前 action / scope 与边界标志
 - 当前可按 `register / unregister` 与 `current-user / local-machine` 生成 registry key plan，并把 `.NET comhost` 路径解析列为执行前 `Verify` 步骤
 - 当前已启用 `UnitOp.Mvp` 的 `EnableComHosting`，并在 preflight 中只读检查 `RadishFlow.CapeOpen.UnitOp.Mvp.comhost.dll` 是否存在、PE 机器类型、当前进程位数、scope 权限口径、目标 registry key 现状和备份范围
-- 当前仍不写 Windows Registry、不注册或反注册 COM、不启动 PME、不加载第三方 CAPE-OPEN 模型；后续若进入执行型注册，必须先满足显式 `--execute`、确认 token、无 `Fail` preflight、权限检查、备份/回滚和审计日志
+- 当前默认行为仍为 dry-run，但已支持在显式 `--execute`、匹配 confirmation token、无 `Fail` preflight、权限检查通过的前提下执行 `register / unregister`；执行边界已收口到 `CLSID / ProgID / Versioned ProgID` 三棵树备份、execution log 与失败 rollback
+- 仓库根 `scripts/register-com.ps1` 当前已作为正式脚本入口，负责统一 build、token 提示、环境变量重定向和 `Registration.exe` 调用
 - 目标 PME 人工验证路径当前已单独落到 `docs/capeopen/pme-validation.md`，注册工具本身不承担 PME 自动化互调
 
 ### `RadishFlow.CapeOpen.SmokeTests`

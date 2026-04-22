@@ -1,6 +1,6 @@
 # Architecture Overview
 
-更新时间：2026-04-21
+更新时间：2026-04-22
 
 ## 目标
 
@@ -144,7 +144,7 @@ RadishFlow 的目标架构已经冻结为“桌面端三层 + 外部控制面”
 | `RadishFlow.CapeOpen.UnitOp.Mvp` | 第一版自有 PMC | 已建立第一版 `net10.0` 最小 PMC 骨架项目，当前提供单个 `ICapeIdentification` + `ICapeUtilities` + `ICapeUnit` 实现类、最小状态机、最小 `ICapeCollection` / `ICapeParameter` / `ICapeUnitPort` 对象运行时、宿主生命周期访问守卫，以及经由 `RadishFlow.CapeOpen.Adapter` 调用 `rf-ffi` 的最小求解接线；`Calculate()` 对外结果面当前已收口为稳定的“成功结果 + 失败摘要”双契约，并进一步提供统一 report API、stable detail catalog、sectioned host report、configuration/action-plan/port-material/execution/session/view readers、action execution request planner / orchestrator、validation/calculation runner、host round orchestrator、supplemental mutation phase 与统一 follow-up / stop kind；当前又已通过 `UnitOperationComIdentity` 冻结 `CLSID / ProgID / Versioned ProgID` 与 COM-visible class 元数据，但尚未进入真实注册、完整 PME 生命周期或更完整 CAPE-OPEN 接口面 |
 | `RadishFlow.CapeOpen.UnitOp.Mvp.ContractTests` | 库侧行为契约验证 | 已建立第一版 `net10.0` 自举式 contract test runner，不依赖外部 NuGet 测试框架；当前锁定 `Validate before Initialize`、validation failure、native failure、success、配置变更 invalidation 与 `Terminate()` 后阻断共 6 条核心契约，并固定 validation/native 两类 failure report 的 detail 字段缺省规则 |
 | `RadishFlow.CapeOpen.UnitOp.Mvp.SampleHost` | 最小外部 host 样例 | 已建立独立 `net10.0` console，当前通过 `PmeLikeUnitOperationHost / PmeLikeUnitOperationSession / PmeLikeUnitOperationInput` 演示外部宿主如何不依赖 `SmokeTests` driver DSL，直接复用正式 `host view / request planner / host round / session-execution-port-material-report` 消费面完成“创建组件、初始化、提交输入、validate/calculate round、读取结果、终止”；该样例仍不做 COM 注册、不驱动真实 PME、不加载第三方 CAPE-OPEN 模型 |
-| `RadishFlow.CapeOpen.Registration` | 注册与反注册工具 | 已建立第一版 `net10.0` dry-run / preflight console，当前可输出 MVP Unit Operation PMC 的 `CLSID / ProgID / Versioned ProgID`、CAPE-OPEN categories、已实现接口清单、`register / unregister` 与 `current-user / local-machine` 下的 registry key plan，并只读检查 `.NET comhost` 路径、PE 机器类型、当前进程位数、scope 权限口径、目标 registry key 现状和备份范围；当前仍不写 Windows Registry、不注册 COM、不启动 PME，也不加载第三方 CAPE-OPEN 模型 |
+| `RadishFlow.CapeOpen.Registration` | 注册与反注册工具 | 已建立第一版 `net10.0` 注册工具，当前默认仍为 dry-run / preflight，但已支持在显式 `--execute` + `--confirm` 下执行 `register / unregister`；当前可输出 MVP Unit Operation PMC 的 `CLSID / ProgID / Versioned ProgID`、CAPE-OPEN categories、已实现接口清单、`register / unregister` 与 `current-user / local-machine` 下的 registry key plan，并检查 `.NET comhost` 路径、PE 机器类型、当前进程位数、scope 权限口径、目标 registry key 现状和备份范围；当前执行边界已收口到 confirmation token、preflight fail 阻断、HKLM elevation 检查、三棵 registry tree 备份、execution log 与失败 rollback。仓库根 `scripts/register-com.ps1` 当前已作为正式脚本入口封装这条路径 |
 | `RadishFlow.CapeOpen.SmokeTests` | 冒烟测试 | 已建立第一版最小 `net10.0` console，当前可配置 native library 目录、加载示例 flowsheet 与本地 package 文件、列出 package registry，并分别覆盖 direct adapter 的 flowsheet / stream snapshot 导出，以及 `UnitOp.Mvp` 的最小成功结果契约、失败摘要契约、统一只读 report access、configuration/action-plan/port-material/execution/session 五条宿主只读路径；其中 session 当前已进一步带 canonical state；`unitop` 路径当前又已收口为“最小外部宿主验证骨架”，显式固定 `Initialize -> 配参数 -> 连端口 -> Validate -> Calculate -> 读结果 -> Terminate` 调用顺序，形成 `driver + boundary suite + session catalog + Program 调度` 四层结构，并支持 `--unitop-scenario <all|session|recovery|shutdown>` 按宿主时序场景过滤 |
 
 ### External .NET 10 Control Plane
