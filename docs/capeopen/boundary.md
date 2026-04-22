@@ -1,6 +1,6 @@
 # CAPE-OPEN Boundary
 
-更新时间：2026-04-21
+更新时间：2026-04-22
 
 ## 边界目标
 
@@ -153,7 +153,8 @@ Rust 与 `.NET 10` 之间的正式边界应保持简单稳定：
 - `RadishFlow.CapeOpen.Registration` 当前已从纯 dry-run/preflight console 前推为“默认 dry-run、显式 `--execute` 才写入”的受限执行工具；它会继续输出组件注册计划、CAPE-OPEN categories、已实现接口清单，以及 `register / unregister`、`current-user / local-machine` 下的 registry key plan，但默认仍不写注册表
 - registration plan 当前明确把 `.NET comhost` 路径解析列为执行前 `Verify` 步骤，不把旧 `.NET Framework` `mscoree.dll` 注册口径写成未来事实；preflight 当前会确认生成的 `RadishFlow.CapeOpen.UnitOp.Mvp.comhost.dll` 路径、PE 机器类型、当前进程位数、scope 权限口径、目标 registry key 现状和备份范围
 - `Registration` 当前执行门控已冻结为：`--execute`、与 `action/scope/classid-prefix` 绑定的 confirmation token、无 `Fail` preflight、`local-machine` elevation 检查、`CLSID / ProgID / Versioned ProgID` 三棵树 JSON 备份、execution log，以及失败时按最新备份自动 rollback
-- `docs/capeopen/pme-validation.md` 当前已冻结目标 PME 人工验证说明和执行型注册门控设计；它只定义验证路径、通过标准、失败分类和真实写 registry 前的安全要求，不代表当前仓库已经允许默认注册 COM 或自动化 PME
+- 仓库根 `scripts/register-com.ps1` 当前已作为正式注册脚本入口，统一负责 build、环境变量重定向、confirmation token 提示和对 `Registration.exe` 的调用；真实 register / unregister 默认优先通过这条入口进入
+- `docs/capeopen/pme-validation.md` 当前已冻结目标 PME 人工验证说明、执行型注册门控与安装/反安装运行手册；`examples/pme-validation/` 当前也已补出验证记录模板，用于沉淀真实 PME 记录而不是继续把验证字段只留在文档正文里
 - `SmokeTests` 中更接近真实宿主的最小 driver 路径，用于固定 `Initialize -> 配参数 -> 连端口 -> Validate -> Calculate -> 读结果 -> Terminate` 正式调用顺序、最小必需输入与 `InvocationOrder / Validation / Native` 三类失败分类
 - `RadishFlow.CapeOpen.UnitOp.Mvp.ContractTests` 这种不依赖外部 NuGet 测试框架的库侧 contract baseline，用于锁定 `UnitOp.Mvp` 的行为语义，而不是把这部分契约只留在 console 输出里
 
@@ -161,7 +162,7 @@ Rust 与 `.NET 10` 之间的正式边界应保持简单稳定：
 
 - COM host 注册细节
 - 完整 ECape 接口/异常面与所有标准 IID 校准
-- 执行型 COM 注册 / 反注册工具
+- 默认 `local-machine` 安装路径、独立 restore CLI 与安装包化注册器
 - 自动化 PME 验证工具
 - 端口集合、参数集合、报告接口与 `Collection/Parameter/UnitPort` 语义的完整 CAPE-OPEN 实现
 - PME 互调测试代码
@@ -181,8 +182,10 @@ Rust 与 `.NET 10` 之间的正式边界应保持简单稳定：
 
 - 先通过 `cargo check`、`UnitOp.Mvp` build、`Registration` build、contract tests build 与 `SampleHost` build
 - 再运行 `ContractTests` 与 `SampleHost`，确认正式 host-facing 消费路径仍可调用
-- 再运行 `Registration` dry-run，确认 `comhost`、位数、registry key 现状与备份范围
-- 如需真实 registry 写入，只允许通过当前带门控的 `Registration` execute 路径进入；必须显式传入 `--execute`、匹配的 confirmation token，且 preflight 不存在 `Fail`
+- 再优先通过 `pwsh .\scripts\register-com.ps1` 运行 dry-run，确认 `comhost`、位数、registry key 现状与备份范围
+- 如需真实 registry 写入，只允许通过当前带门控的仓库脚本入口或等价 `Registration` execute 路径进入；必须显式传入 `--execute`、匹配的 confirmation token，且 preflight 不存在 `Fail`
+- register / unregister 后对 `CLSID / ProgID / Versioned ProgID` 三棵树的存在性检查必须顺序执行，不应与执行命令并行跑
+- 真实 PME 人工验证记录优先落到 `examples/pme-validation/YYYY-MM-DD-<pme>-<scope>.md`
 - 真实 PME 仍采用人工打开、人工 discovery、人工实例化、人工触发 `Validate/Calculate` 和人工记录结果的路径，不在当前阶段引入 PME 自动化互调壳
 
 ## 对 Rust Core 的约束

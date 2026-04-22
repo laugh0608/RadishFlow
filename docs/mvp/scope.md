@@ -1,6 +1,6 @@
 # MVP Scope
 
-更新时间：2026-04-21
+更新时间：2026-04-22
 
 ## MVP 目标
 
@@ -51,7 +51,8 @@
 - `UnitOp.Mvp` 当前也已补出独立 `SampleHost`，用于证明未来 PME host / 其他宿主可直接复用上述正式消费面，而不是继续依赖 smoke driver
 - `SampleHost` 当前又已补出 `PmeLikeUnitOperationHost / PmeLikeUnitOperationSession / PmeLikeUnitOperationInput` 薄宿主入口，把“创建组件、初始化、读取视图、提交参数/端口对象、执行 validate/calculate round、读取正式结果面、终止”整理成更接近 PME host 的最小 session 形状；这层仍只消费 `UnitOp.Mvp` 正式 reader / planner / host round，不引入 COM 注册、PME 自动化互调或第三方模型加载
 - `UnitOp.Mvp` 当前已冻结自有 MVP Unit Operation PMC 的 `CLSID / ProgID / Versioned ProgID`，并新增带执行门控的 `RadishFlow.CapeOpen.Registration`；当前默认仍是 dry-run，但已支持在显式 `--execute` + `--confirm` 下执行 `register / unregister`，并收口 preflight fail 阻断、HKLM elevation 检查、registry plan 限界、三棵树 JSON 备份、execution log 与失败 rollback；这不代表当前阶段已经默认注册 COM 或驱动 PME
-- `docs/capeopen/pme-validation.md` 当前已补出目标 PME 人工验证说明，冻结执行前验证基线、dry-run 审查项、执行型注册门控、人工 PME 验证路径、通过标准、失败分类与验证记录模板；这一步只把真实 PME 前置路径文档化，不代表当前阶段已经进入默认 COM 注册或 PME 自动化互调
+- 仓库根 `scripts/register-com.ps1` 当前已作为正式注册脚本入口，负责 build、环境变量重定向、confirmation token 提示与 `Registration.exe` 转调；本机 `current-user register/unregister` 闭环验证当前已通过这条入口完成一次顺序复查
+- `docs/capeopen/pme-validation.md` 当前已补出目标 PME 人工验证说明，冻结执行前验证基线、dry-run 审查项、执行型注册门控、安装/反安装运行手册、人工 PME 验证路径、通过标准、失败分类与验证记录模板；`examples/pme-validation/` 当前也已补出可复用模板；这一步只把真实 PME 前置路径文档化，不代表当前阶段已经进入默认 COM 注册或 PME 自动化互调
 - 当前明确不继续线性堆叠 calculation report accessor；若宿主需要更高层语义，应优先在库内增加 reader / snapshot / presentation，而不是继续在 PMC 主类追加 convenience API
 - 当前仍不提前展开 COM 注册、PME 互调壳、第三方 CAPE-OPEN 模型加载或完整外部 Thermo/Property Package 宿主兼容
 
