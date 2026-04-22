@@ -108,6 +108,37 @@ pwsh .\scripts\register-com.ps1 -Execute -ConfirmToken register-current-user-2F0
 pwsh .\scripts\register-com.ps1 -Action unregister -Execute -ConfirmToken unregister-current-user-2F0E4C8F -BackupDir .\artifacts\registration-validation\unregister-current-user
 ```
 
+## 安装/反安装运行手册
+
+推荐把真实注册、人工 PME 验证与反注册收口为以下顺序；除非目标 PME 明确只能读取 HKLM，否则默认优先走 `current-user`。
+
+1. 先执行验证基线，并确认 `SampleHost` 与 contract tests 结果稳定。
+2. 运行一次 dry-run，确认 `PreflightChecks` 中不存在 `Fail`，并把 `comhost path / architecture / registry conflict / backup plan` 结果抄入验证记录。
+3. 执行 register：
+
+   ```powershell
+   pwsh .\scripts\register-com.ps1 -Execute -ConfirmToken register-current-user-2F0E4C8F -BackupDir .\artifacts\registration-validation\register-current-user
+   ```
+
+4. register 成功后顺序复查三棵 registry tree 已落地，不要与注册命令并行执行：
+
+   ```powershell
+   Get-Item Registry::HKEY_CURRENT_USER\Software\Classes\CLSID\{2F0E4C8F-7C89-4DA7-A5D3-5F8C987D6718}
+   Get-Item Registry::HKEY_CURRENT_USER\Software\Classes\RadishFlow.CapeOpen.UnitOp.Mvp
+   Get-Item Registry::HKEY_CURRENT_USER\Software\Classes\RadishFlow.CapeOpen.UnitOp.Mvp.1
+   ```
+
+5. 按下文人工 PME 验证路径完成 discovery / activation / validate / calculate 记录，并把执行日志、备份路径和 PME 观察结果一起落到 `examples/pme-validation/` 对应记录文件。
+6. 验证完成后执行 unregister：
+
+   ```powershell
+   pwsh .\scripts\register-com.ps1 -Action unregister -Execute -ConfirmToken unregister-current-user-2F0E4C8F -BackupDir .\artifacts\registration-validation\unregister-current-user
+   ```
+
+7. unregister 成功后再次顺序复查三棵 registry tree 已删除；若任一键残留，应先记录为 `Unregister` 失败，再检查 execution log 与 rollback 状态。
+
+`local-machine` 只在目标 PME 明确要求 HKLM、且验证人员具备 elevation、备份路径和回滚窗口时才允许进入；当前仓库不建议把它作为默认安装路径。
+
 执行型注册工具不应顺手承担以下职责：
 
 - 启动 PME
@@ -178,8 +209,12 @@ pwsh .\scripts\register-com.ps1 -Action unregister -Execute -ConfirmToken unregi
 
 建议每次人工验证记录以下内容：
 
+- 正式模板已放到 `examples/pme-validation/pme-validation-record-template.md`
+- 建议每次记录按 `examples/pme-validation/YYYY-MM-DD-<pme>-<scope>.md` 命名，例如 `examples/pme-validation/2026-04-22-dwsim-current-user.md`
+
 ```text
 Date:
+Validator:
 RadishFlow commit:
 OS:
 PME:
@@ -187,19 +222,23 @@ PME version:
 PME bitness:
 Registry scope:
 Comhost path:
+Dry-run command:
 Registration command:
 Unregistration command:
 Preflight result:
 Warnings accepted:
+Register post-check:
 Discovery:
 Activation:
 Identity:
 Parameters:
 Ports:
+Connection:
 Validate:
 Calculate:
 Report:
 Unregister:
+Unregister post-check:
 Logs:
 Decision:
 Follow-up:
@@ -207,6 +246,6 @@ Follow-up:
 
 ## 当前判断
 
-截至 2026-04-22，`SampleHost` 的 PME-like 薄宿主入口与 `Registration` execute 门控已足以结束“注册工具设计缺口”这条子任务，下一步可以继续推进受控本机 register / unregister 验证与真实 PME 人工验证准备。
+截至 2026-04-22，`SampleHost` 的 PME-like 薄宿主入口、`Registration` execute 门控以及脚本化安装/反安装运行手册，已足以结束“注册工具设计缺口”这条子任务。
 
-仍必须补齐的边界缺口不是新的 host round fallback，而是执行型注册的本机验证记录、安装/反安装说明，以及目标 PME 人工验证记录。
+仍必须补齐的边界缺口不是新的 host round fallback，而是目标 PME 选型、真实 PME 人工验证记录，以及是否需要支持 `local-machine` 的单独策略判断。

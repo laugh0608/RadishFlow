@@ -13,6 +13,7 @@
 | `mvp/scope.md` | 第一阶段 MVP 的冻结范围、非目标与近期开发节奏 |
 | `thermo/mvp-model.md` | 热力学与 `TP Flash` 的最小接口与后续实现顺序 |
 | `capeopen/boundary.md` | Rust Core 与 .NET 10 CAPE-OPEN 适配层边界 |
+| `capeopen/pme-validation.md` | CAPE-OPEN 注册执行门控、安装/反安装运行手册与人工 PME 验证口径 |
 | `adr/0001-branch-and-pr-governance.md` | 分支、PR 与保护规则治理决策 |
 | `../.github/rulesets/master-protection.json` | `master` 保护规则模板 |
 | `devlogs/README.md` | 按周分文件的开发日志规范 |
