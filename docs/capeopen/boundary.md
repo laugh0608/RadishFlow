@@ -124,7 +124,7 @@ Rust 与 `.NET 10` 之间的正式边界应保持简单稳定：
 
 ## 当前仓库阶段约束
 
-截至 2026-04-21，`.NET 10` 适配层已从“纯目录占位”推进到“薄适配 + 冒烟闭环 + 最小互操作语义骨架 + 正式 host-facing 消费面 + PME-like 薄宿主样例 + 注册前置 dry-run/preflight”，但仍未进入真实 COM 注册、PME 自动化互调或第三方 CAPE-OPEN 模型加载。
+截至 2026-04-22，`.NET 10` 适配层已从“纯目录占位”推进到“薄适配 + 冒烟闭环 + 最小互操作语义骨架 + 正式 host-facing 消费面 + PME-like 薄宿主样例 + 带执行门控的 Registration 工具”，但仍未进入默认 COM 注册、PME 自动化互调或第三方 CAPE-OPEN 模型加载。
 
 当前允许推进的内容：
 
@@ -150,8 +150,9 @@ Rust 与 `.NET 10` 之间的正式边界应保持简单稳定：
 - 独立的 `RadishFlow.CapeOpen.UnitOp.Mvp.SampleHost` console，用于演示外部 host 如何只复用正式 `host view / request planner / round outcome / session-report-execution-material readers`，而不依赖 smoke driver
 - `SampleHost` 内的 PME-like 薄宿主 session，用于把上述正式消费路径整理成更接近真实 PME host 的入口形状；它仍不做 COM 注册、不驱动外部 PME、不加载第三方 CAPE-OPEN 模型，也不把完整 PME 生命周期框架提前塞进 `UnitOp.Mvp`
 - `UnitOp.Mvp` 中的 `UnitOperationComIdentity`，用于冻结自有 MVP Unit Operation PMC 的 `CLSID / ProgID / Versioned ProgID` 与 COM-visible class 元数据
-- `RadishFlow.CapeOpen.Registration` 的 dry-run / preflight console，用于输出组件注册计划、CAPE-OPEN categories、已实现接口清单，以及 `register / unregister`、`current-user / local-machine` 下的 registry key plan；当前只读输出，不写注册表、不注册 COM、不启动 PME
-- registration plan 当前明确把 `.NET comhost` 路径解析列为执行前 `Verify` 步骤，不把旧 `.NET Framework` `mscoree.dll` 注册口径写成未来事实；preflight 当前会只读确认生成的 `RadishFlow.CapeOpen.UnitOp.Mvp.comhost.dll` 路径、PE 机器类型、当前进程位数、scope 权限口径、目标 registry key 现状和备份范围
+- `RadishFlow.CapeOpen.Registration` 当前已从纯 dry-run/preflight console 前推为“默认 dry-run、显式 `--execute` 才写入”的受限执行工具；它会继续输出组件注册计划、CAPE-OPEN categories、已实现接口清单，以及 `register / unregister`、`current-user / local-machine` 下的 registry key plan，但默认仍不写注册表
+- registration plan 当前明确把 `.NET comhost` 路径解析列为执行前 `Verify` 步骤，不把旧 `.NET Framework` `mscoree.dll` 注册口径写成未来事实；preflight 当前会确认生成的 `RadishFlow.CapeOpen.UnitOp.Mvp.comhost.dll` 路径、PE 机器类型、当前进程位数、scope 权限口径、目标 registry key 现状和备份范围
+- `Registration` 当前执行门控已冻结为：`--execute`、与 `action/scope/classid-prefix` 绑定的 confirmation token、无 `Fail` preflight、`local-machine` elevation 检查、`CLSID / ProgID / Versioned ProgID` 三棵树 JSON 备份、execution log，以及失败时按最新备份自动 rollback
 - `docs/capeopen/pme-validation.md` 当前已冻结目标 PME 人工验证说明和执行型注册门控设计；它只定义验证路径、通过标准、失败分类和真实写 registry 前的安全要求，不代表当前仓库已经允许默认注册 COM 或自动化 PME
 - `SmokeTests` 中更接近真实宿主的最小 driver 路径，用于固定 `Initialize -> 配参数 -> 连端口 -> Validate -> Calculate -> 读结果 -> Terminate` 正式调用顺序、最小必需输入与 `InvocationOrder / Validation / Native` 三类失败分类
 - `RadishFlow.CapeOpen.UnitOp.Mvp.ContractTests` 这种不依赖外部 NuGet 测试框架的库侧 contract baseline，用于锁定 `UnitOp.Mvp` 的行为语义，而不是把这部分契约只留在 console 输出里
@@ -181,7 +182,7 @@ Rust 与 `.NET 10` 之间的正式边界应保持简单稳定：
 - 先通过 `cargo check`、`UnitOp.Mvp` build、`Registration` build、contract tests build 与 `SampleHost` build
 - 再运行 `ContractTests` 与 `SampleHost`，确认正式 host-facing 消费路径仍可调用
 - 再运行 `Registration` dry-run，确认 `comhost`、位数、registry key 现状与备份范围
-- 只有在后续执行型注册工具具备显式 `--execute`、确认 token、无 `Fail` preflight、备份/回滚与权限检查后，才允许进入真实 registry 写入
+- 如需真实 registry 写入，只允许通过当前带门控的 `Registration` execute 路径进入；必须显式传入 `--execute`、匹配的 confirmation token，且 preflight 不存在 `Fail`
 - 真实 PME 仍采用人工打开、人工 discovery、人工实例化、人工触发 `Validate/Calculate` 和人工记录结果的路径，不在当前阶段引入 PME 自动化互调壳
 
 ## 对 Rust Core 的约束

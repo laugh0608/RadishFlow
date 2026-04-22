@@ -1,6 +1,6 @@
 # CAPE-OPEN PME 人工验证说明
 
-更新时间：2026-04-21
+更新时间：2026-04-22
 
 ## 文档目的
 
@@ -13,7 +13,7 @@
 当前允许：
 
 - 使用 `RadishFlow.CapeOpen.UnitOp.Mvp.SampleHost` 验证正式 host-facing 消费路径
-- 使用 `RadishFlow.CapeOpen.Registration` 输出 dry-run / preflight
+- 使用 `RadishFlow.CapeOpen.Registration` 输出 dry-run / preflight，并在获准后通过 execute 门控执行真实 register / unregister
 - 检查 `RadishFlow.CapeOpen.UnitOp.Mvp.comhost.dll` 是否存在、位数是否匹配、目标 registry key 是否已有冲突
 - 记录将来 register / unregister 会涉及的 registry key、CAPE-OPEN categories 与备份范围
 - 编写目标 PME 人工验证记录
@@ -41,7 +41,7 @@
 - registry scope：`current-user` 或 `local-machine`
 - 验证人员与验证日期
 
-若目标 PME 只能读取机器级 COM 注册，则本仓库仍不应因此默认走 HKLM；只能在执行型注册工具具备显式确认、权限检查、备份与回滚后再单独执行。
+若目标 PME 只能读取机器级 COM 注册，则本仓库仍不应因此默认走 HKLM；只能在当前 execute 门控满足显式确认、权限检查、备份与回滚后再单独执行。
 
 ## 执行前验证基线
 
@@ -88,7 +88,7 @@ dry-run 输出必须人工确认：
 
 ## 执行型注册工具门控
 
-后续若实现真实写入，默认行为仍必须保持 dry-run。执行型注册只能在额外显式参数下启用，并至少满足以下门控：
+当前真实写入路径仍必须默认保持 dry-run。执行型注册只能在额外显式参数下启用，并至少满足以下门控：
 
 - 必须存在 `--execute`
 - 必须存在与本次 action / scope / CLSID 绑定的确认 token，例如 `--confirm register-current-user-2F0E4C8F`
@@ -99,6 +99,7 @@ dry-run 输出必须人工确认：
 - 必须在写入前记录已有 key 的存在状态和待覆盖值
 - 必须支持 `unregister`，并要求同等级确认门控
 - 必须输出可附加到人工验证记录的执行日志
+- 若执行过程中任一步骤失败，必须尝试用本次刚捕获的备份恢复三棵 registry tree，并把 rollback 结果写入 execution log
 
 执行型注册工具不应顺手承担以下职责：
 
@@ -199,6 +200,6 @@ Follow-up:
 
 ## 当前判断
 
-截至 2026-04-21，`SampleHost` 的 PME-like 薄宿主入口与 `Registration` dry-run/preflight 已足以结束 host round 兜底子任务，下一步可以继续推进 M5 的注册执行门控与真实 PME 人工验证准备。
+截至 2026-04-22，`SampleHost` 的 PME-like 薄宿主入口与 `Registration` execute 门控已足以结束“注册工具设计缺口”这条子任务，下一步可以继续推进受控本机 register / unregister 验证与真实 PME 人工验证准备。
 
-仍必须补齐的边界缺口不是新的 host round fallback，而是真实写 registry 前的执行门控、备份/回滚、安装/反安装说明，以及目标 PME 人工验证记录。
+仍必须补齐的边界缺口不是新的 host round fallback，而是执行型注册的本机验证记录、安装/反安装说明，以及目标 PME 人工验证记录。

@@ -41,6 +41,9 @@ internal static class ContractTestExecutable
         var options = ContractTestOptions.Parse(args);
         var tests = new (string Name, Action<ContractTestContext> Execute)[]
         {
+            ("registration-plan-contract", static _ => ContractTests.RegistrationPlan_ExposesGuardedExecutionBoundary()),
+            ("registration-execute-confirm-contract", static _ => ContractTests.RegistrationExecution_RequiresMatchingConfirmToken()),
+            ("registration-execute-preflight-contract", static _ => ContractTests.RegistrationExecution_StopsOnPreflightFailure()),
             ("collection-contract", static context => ContractTests.Collections_ExposeStableLookupAndRejectInvalidSelectors(context)),
             ("object-definition-contract", static _ => ContractTests.ObjectDefinitionSnapshot_ExposesFrozenCatalogShape()),
             ("object-runtime-contract", static context => ContractTests.ObjectRuntimeSnapshot_ExposesFrozenObjectMetadata(context)),
@@ -109,6 +112,100 @@ internal static class ContractTestExecutable
 
 internal static class ContractTests
 {
+    public static void RegistrationPlan_ExposesGuardedExecutionBoundary()
+    {
+        var explicitComHostPath = typeof(ContractTestExecutable).Assembly.Location;
+        var dryRunDescriptor = CapeOpenRegistrationDescriptor.CreateUnitOperationMvp(
+            CapeOpenRegistrationAction.Register,
+            CapeOpenRegistrationScope.CurrentUser,
+            CapeOpenRegistrationExecutionMode.DryRun,
+            explicitComHostPath);
+
+        ContractAssert.Equal(CapeOpenRegistrationExecutionMode.DryRun, dryRunDescriptor.ExecutionMode, "Dry-run descriptor should preserve execution mode.");
+        ContractAssert.Equal("register-current-user-2F0E4C8F", dryRunDescriptor.RequiredConfirmToken, "Registration descriptor should expose the stable confirmation token.");
+        ContractAssert.False(dryRunDescriptor.WritesRegistry, "Dry-run descriptor should not claim registry writes.");
+        ContractAssert.Equal(3, dryRunDescriptor.BackupPlan.Count, "Backup plan should cover CLSID, ProgID and versioned ProgID roots.");
+        ContractAssert.True(
+            dryRunDescriptor.RegistryPlan.Any(static entry => entry.Operation == CapeOpenRegistryPlanOperation.Verify),
+            "Register plan should preserve the pre-write comhost verification step.");
+        ContractAssert.True(
+            dryRunDescriptor.RegistryPlan.Any(static entry => entry.Operation == CapeOpenRegistryPlanOperation.SetValue && entry.KeyPath.Contains(@"Implemented Categories", StringComparison.Ordinal)),
+            "Register plan should advertise CAPE-OPEN categories.");
+
+        var executeDescriptor = CapeOpenRegistrationDescriptor.CreateUnitOperationMvp(
+            CapeOpenRegistrationAction.Unregister,
+            CapeOpenRegistrationScope.CurrentUser,
+            CapeOpenRegistrationExecutionMode.Execute,
+            explicitComHostPath);
+        ContractAssert.True(executeDescriptor.WritesRegistry, "Execute descriptor should explicitly mark registry writes.");
+        ContractAssert.Equal(3, executeDescriptor.RegistryPlan.Count, "Unregister plan should remain constrained to the three top-level registration trees.");
+        ContractAssert.True(
+            executeDescriptor.RegistryPlan.All(static entry => entry.Operation == CapeOpenRegistryPlanOperation.DeleteTree),
+            "Unregister plan should only delete the frozen registration roots.");
+    }
+
+    public static void RegistrationExecution_RequiresMatchingConfirmToken()
+    {
+        var explicitComHostPath = typeof(ContractTestExecutable).Assembly.Location;
+        var backupDirectory = Path.Combine(Path.GetTempPath(), "radishflow-registration-confirm-" + Guid.NewGuid().ToString("N"));
+        var options = RegistrationOptions.Parse(
+        [
+            "--execute",
+            "--confirm",
+            "wrong-token",
+            "--comhost",
+            explicitComHostPath,
+            "--backup-dir",
+            backupDirectory,
+        ]);
+        var descriptor = CapeOpenRegistrationDescriptor.CreateUnitOperationMvp(
+            options.Action,
+            options.Scope,
+            options.ExecutionMode,
+            options.ComHostPath);
+
+        var error = ContractAssert.Throws<InvalidOperationException>(
+            () => CapeOpenRegistrationExecutor.Execute(descriptor, options),
+            "Registration execution should reject a missing or mismatched confirmation token before writing.");
+
+        ContractAssert.Contains(error.Message, descriptor.RequiredConfirmToken, "Confirmation failures should report the required token.");
+        ContractAssert.False(Directory.Exists(backupDirectory), "Rejected execution should not create backup output.");
+    }
+
+    public static void RegistrationExecution_StopsOnPreflightFailure()
+    {
+        var missingComHostPath = Path.Combine(Path.GetTempPath(), "radishflow-registration-missing-" + Guid.NewGuid().ToString("N") + ".dll");
+        var backupDirectory = Path.Combine(Path.GetTempPath(), "radishflow-registration-preflight-" + Guid.NewGuid().ToString("N"));
+        var options = RegistrationOptions.Parse(
+        [
+            "--execute",
+            "--confirm",
+            "register-current-user-2F0E4C8F",
+            "--comhost",
+            missingComHostPath,
+            "--backup-dir",
+            backupDirectory,
+        ]);
+        var descriptor = CapeOpenRegistrationDescriptor.CreateUnitOperationMvp(
+            options.Action,
+            options.Scope,
+            options.ExecutionMode,
+            options.ComHostPath);
+
+        ContractAssert.True(
+            descriptor.PreflightChecks.Any(static check =>
+                check.Status == CapeOpenPreflightCheckStatus.Fail &&
+                string.Equals(check.Name, "comhost path", StringComparison.Ordinal)),
+            "Execute descriptor should surface failing preflight checks before any registry write.");
+
+        var error = ContractAssert.Throws<InvalidOperationException>(
+            () => CapeOpenRegistrationExecutor.Execute(descriptor, options),
+            "Registration execution should stop when preflight reports Fail.");
+
+        ContractAssert.Contains(error.Message, "preflight failures", "Preflight-blocked execution should explain why no write happened.");
+        ContractAssert.False(Directory.Exists(backupDirectory), "Preflight-blocked execution should not create backup output.");
+    }
+
     public static void Collections_ExposeStableLookupAndRejectInvalidSelectors(ContractTestContext context)
     {
         context.Initialize();
