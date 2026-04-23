@@ -6,11 +6,19 @@
 - 为后续真正的 CAPE-OPEN Unit Operation PMC 留出项目边界和最小状态机
 - 提供最小内部 flowsheet/package 配置入口，并通过 `RadishFlow.CapeOpen.Adapter` 接入 `rf-ffi` 求解闭环
 
+当前已确认的宿主兼容性现状：
+
+- `DWSIM / COFE` 已能发现当前 PMC，但晚绑定 `IDispatch` 调用仍会在真实 COM 激活后命中 `0x80131165 Type library is not registered`
+- 当前根因已从“注册树发现失败”收敛为“尚无真实 `TypeLib / TLB` 产物及注册链路”
+- 当前目录已新增 `typelib/RadishFlow.CapeOpen.UnitOp.Mvp.idl`，作为后续用 `MIDL` 生成 `RadishFlow.CapeOpen.UnitOp.Mvp.tlb` 的冻结真相源
+- 在真实 `TLB` 生成、嵌入并注册前，不应把 `register-com.ps1` 的“注册成功”误判为 `DWSIM / COFE` 已可正常实例化和调用
+
 当前已包含的最小公共面：
 
 - `RadishFlowCapeOpenUnitOperation`
 - `UnitOperationComIdentity`，用于冻结 MVP PMC 的 `CLSID / ProgID / Versioned ProgID / DisplayName / Description`
 - 项目已启用 `EnableComHosting`，用于生成 `.NET 10` `RadishFlow.CapeOpen.UnitOp.Mvp.comhost.dll` 前置产物；该产物当前只供 `Registration` preflight 检查和未来注册工具规划使用，不代表本项目会自行写注册表
+- `UnitOperationComIdentity` 当前也已冻结 `TypeLibraryId / TypeLibraryVersion / TypeLibraryFileName`，为后续 `TLB` 生成与注册链路预留稳定口径
 - `UnitOperationPortPlaceholder` / `UnitOperationParameterPlaceholder`
 - `UnitOperationParameterCollection`
 - `UnitOperationPortCollection`

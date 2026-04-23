@@ -156,6 +156,24 @@ internal static class ContractTests
                 entry.KeyPath.EndsWith(@"\CurVer", StringComparison.Ordinal) &&
                 string.Equals(entry.ValueData, "RadishFlow.CapeOpen.UnitOp.Mvp.1", StringComparison.Ordinal)),
             "Register plan should bind the stable ProgID to the current versioned ProgID.");
+        ContractAssert.True(
+            dryRunDescriptor.RegistryPlan.Any(static entry =>
+                entry.Operation == CapeOpenRegistryPlanOperation.SetValue &&
+                entry.KeyPath.EndsWith(@"RadishFlow.CapeOpen.UnitOp.Mvp\CLSID", StringComparison.Ordinal) &&
+                string.Equals(entry.ValueData, "{2F0E4C8F-7C89-4DA7-A5D3-5F8C987D6718}", StringComparison.Ordinal)),
+            "Register plan should write the stable ProgID CLSID mapping using the canonical braced GUID string.");
+        ContractAssert.True(
+            dryRunDescriptor.RegistryPlan.Any(static entry =>
+                entry.Operation == CapeOpenRegistryPlanOperation.SetValue &&
+                entry.KeyPath.EndsWith(@"RadishFlow.CapeOpen.UnitOp.Mvp.1\CLSID", StringComparison.Ordinal) &&
+                string.Equals(entry.ValueData, "{2F0E4C8F-7C89-4DA7-A5D3-5F8C987D6718}", StringComparison.Ordinal)),
+            "Register plan should write the versioned ProgID CLSID mapping using the canonical braced GUID string.");
+        ContractAssert.True(
+            dryRunDescriptor.PreflightChecks.Any(static check =>
+                check.Status == CapeOpenPreflightCheckStatus.Warning &&
+                string.Equals(check.Name, "type library", StringComparison.Ordinal) &&
+                check.Detail.Contains("0x80131165", StringComparison.Ordinal)),
+            "Register preflight should explicitly warn that late-bound CAPE-OPEN hosts still require a registered type library.");
 
         var executeDescriptor = CapeOpenRegistrationDescriptor.CreateUnitOperationMvp(
             CapeOpenRegistrationAction.Unregister,

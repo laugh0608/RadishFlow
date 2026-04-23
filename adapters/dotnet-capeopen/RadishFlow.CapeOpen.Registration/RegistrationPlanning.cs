@@ -63,6 +63,7 @@ internal static class CapeOpenRegistrationPreflightChecker
             CheckComHostArchitecture(comHostPath),
             CheckProcessArchitecture(),
             CheckScopePermission(scope, executionMode),
+            CheckTypeLibraryRegistrationGap(action),
         };
 
         checks.AddRange(CheckRegistryConflicts(action, scope));
@@ -136,6 +137,19 @@ internal static class CapeOpenRegistrationPreflightChecker
         return CapeOpenRegistrationElevationChecker.IsProcessElevated()
             ? Pass("scope permission", "Local-machine execution is running with elevation.")
             : Fail("scope permission", "Local-machine execution requires elevation before any HKLM write.");
+    }
+
+    private static CapeOpenPreflightCheck CheckTypeLibraryRegistrationGap(
+        CapeOpenRegistrationAction action)
+    {
+        if (action != CapeOpenRegistrationAction.Register)
+        {
+            return Pass("type library", "Unregister does not depend on type library availability.");
+        }
+
+        return Warn(
+            "type library",
+            "Current registration plan does not yet register a COM type library. Late-bound CAPE-OPEN hosts such as DWSIM/COFE can discover the CLSID but fail on IDispatch calls with 0x80131165 until a real TLB is generated and registered.");
     }
 
     private static IEnumerable<CapeOpenPreflightCheck> CheckRegistryConflicts(
@@ -258,6 +272,9 @@ internal static class CapeOpenRegistryBackupPlanBuilder
 
 internal static class CapeOpenRegistryPlanBuilder
 {
+    private static readonly string UnitOperationClassIdValue =
+        $"{{{RadishFlow.CapeOpen.UnitOp.Mvp.UnitOperation.UnitOperationComIdentity.ClassId}}}";
+
     public static IReadOnlyList<CapeOpenRegistryPlanEntry> BuildUnitOperationMvpPlan(
         CapeOpenRegistrationAction action,
         CapeOpenRegistrationScope scope,
@@ -353,10 +370,10 @@ internal static class CapeOpenRegistryPlanBuilder
                 RadishFlow.CapeOpen.UnitOp.Mvp.UnitOperation.UnitOperationComIdentity.About,
                 "Expose about-text metadata for CAPE-OPEN host discovery UIs."),
             SetDefaultValue(hive, progIdKey, RadishFlow.CapeOpen.UnitOp.Mvp.UnitOperation.UnitOperationComIdentity.ClassDisplayName, "Expose the stable ProgID display name."),
-            SetDefaultValue(hive, $@"{progIdKey}\CLSID", RadishFlow.CapeOpen.UnitOp.Mvp.UnitOperation.UnitOperationComIdentity.ClassId, "Bind stable ProgID to CLSID."),
+            SetDefaultValue(hive, $@"{progIdKey}\CLSID", UnitOperationClassIdValue, "Bind stable ProgID to CLSID."),
             SetDefaultValue(hive, $@"{progIdKey}\CurVer", RadishFlow.CapeOpen.UnitOp.Mvp.UnitOperation.UnitOperationComIdentity.VersionedProgId, "Bind stable ProgID to its current versioned ProgID."),
             SetDefaultValue(hive, versionedProgIdKey, RadishFlow.CapeOpen.UnitOp.Mvp.UnitOperation.UnitOperationComIdentity.ClassDisplayName, "Expose the versioned ProgID display name."),
-            SetDefaultValue(hive, $@"{versionedProgIdKey}\CLSID", RadishFlow.CapeOpen.UnitOp.Mvp.UnitOperation.UnitOperationComIdentity.ClassId, "Bind versioned ProgID to CLSID."),
+            SetDefaultValue(hive, $@"{versionedProgIdKey}\CLSID", UnitOperationClassIdValue, "Bind versioned ProgID to CLSID."),
             SetDefaultValue(hive, $@"{implementedCategoriesKey}\{{{RadishFlow.CapeOpen.Interop.Guids.CapeOpenCategoryIds.CapeOpenObject}}}", string.Empty, "Advertise CAPE-OPEN object category."),
             SetDefaultValue(hive, $@"{implementedCategoriesKey}\{{{RadishFlow.CapeOpen.Interop.Guids.CapeOpenCategoryIds.UnitOperation}}}", string.Empty, "Advertise CAPE-OPEN Unit Operation category."),
         ];

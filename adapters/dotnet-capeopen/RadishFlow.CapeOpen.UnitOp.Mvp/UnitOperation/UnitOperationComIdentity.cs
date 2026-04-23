@@ -25,4 +25,10 @@ public static class UnitOperationComIdentity
     public const string ComVersion = "1.0";
 
     public const string ThreadingModel = "Apartment";
+
+    public const string TypeLibraryId = "9D9E5F0D-5E28-4A45-9E2A-70A39D4C8D11";
+
+    public const string TypeLibraryVersion = "1.0";
+
+    public const string TypeLibraryFileName = "RadishFlow.CapeOpen.UnitOp.Mvp.tlb";
 }

@@ -39,6 +39,11 @@ Logs:
 - DWSIM process observed: `DWSIM (PID 26300)`
 Decision: `Blocked`
 Follow-up:
-- 等新的注册/COM 暴露修正落地后，再重新执行 `current-user register -> DWSIM/COFE discovery -> activation -> validate -> calculate`。
+- 已确认注册发现问题已基本收敛；真实阻塞点改为 `TypeLib / TLB` 缺失。
+- Windows PowerShell COM 探测结果：
+- `Type.GetTypeFromProgID("RadishFlow.CapeOpen.UnitOp.Mvp")`：`Pass`
+- `New-Object -ComObject "RadishFlow.CapeOpen.UnitOp.Mvp"`：`Pass`
+- 首个晚绑定 `IDispatch` 调用：`Fail`，错误 `0x80131165 Type library is not registered`
+- 等新的 `TLB` 生成/嵌入/注册链路落地后，再重新执行 `current-user register -> DWSIM/COFE discovery -> activation -> validate -> calculate`。
 - 完成 GUI 验证后，补写本记录中的 `Discovery` 至 `Report` 字段。
-- 若 DWSIM 无法发现或实例化组件，优先按 `Discovery / Activation / Collection / Reporting` 分类补充现象、截图和任何 DWSIM 侧报错文本。
+- 若 DWSIM / COFE 在补齐 `TLB` 后仍无法实例化组件，优先按 `Activation / IDispatch / Parameters / Ports / Reporting` 分类补充现象、截图和宿主侧报错文本。
