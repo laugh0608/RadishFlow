@@ -2,9 +2,13 @@ using RadishFlow.CapeOpen.Interop.Common;
 using RadishFlow.CapeOpen.Interop.Errors;
 using RadishFlow.CapeOpen.Interop.Unit;
 using RadishFlow.CapeOpen.UnitOp.Mvp.UnitOperation;
+using System.Runtime.InteropServices;
 
 namespace RadishFlow.CapeOpen.UnitOp.Mvp.Placeholders;
 
+[ComVisible(true)]
+[Guid(PlaceholderComClassIds.PortPlaceholder)]
+[ClassInterface(ClassInterfaceType.None)]
 public sealed class UnitOperationPortPlaceholder : ICapeIdentification, ICapeUnitPort
 {
     private const string InterfaceName = nameof(ICapeUnitPort);
@@ -203,6 +207,7 @@ public sealed class UnitOperationPortPlaceholder : ICapeIdentification, ICapeUni
     }
 }
 
+[ComVisible(false)]
 internal sealed class UnitOperationConnectedObjectPlaceholder : ICapeIdentification
 {
     public UnitOperationConnectedObjectPlaceholder(string componentName, string componentDescription)

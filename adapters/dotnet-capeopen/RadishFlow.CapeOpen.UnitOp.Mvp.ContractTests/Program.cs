@@ -131,6 +131,31 @@ internal static class ContractTests
         ContractAssert.True(
             dryRunDescriptor.RegistryPlan.Any(static entry => entry.Operation == CapeOpenRegistryPlanOperation.SetValue && entry.KeyPath.Contains(@"Implemented Categories", StringComparison.Ordinal)),
             "Register plan should advertise CAPE-OPEN categories.");
+        ContractAssert.True(
+            dryRunDescriptor.RegistryPlan.Any(static entry =>
+                entry.Operation == CapeOpenRegistryPlanOperation.SetValue &&
+                string.Equals(entry.KeyPath, @"Software\Classes\CLSID\{2F0E4C8F-7C89-4DA7-A5D3-5F8C987D6718}\InprocServer32", StringComparison.Ordinal) &&
+                string.Equals(entry.ValueName, "ThreadingModel", StringComparison.Ordinal) &&
+                string.Equals(entry.ValueData, "Apartment", StringComparison.Ordinal)),
+            "Register plan should expose classic COM ThreadingModel metadata.");
+        ContractAssert.True(
+            dryRunDescriptor.RegistryPlan.Any(static entry =>
+                entry.Operation == CapeOpenRegistryPlanOperation.SetValue &&
+                entry.KeyPath.Contains(@"\CapeDescription", StringComparison.Ordinal) &&
+                string.Equals(entry.ValueName, "Name", StringComparison.Ordinal)),
+            "Register plan should expose CAPE-OPEN description metadata for discovery UIs.");
+        ContractAssert.True(
+            dryRunDescriptor.RegistryPlan.Any(static entry =>
+                entry.Operation == CapeOpenRegistryPlanOperation.SetValue &&
+                entry.KeyPath.EndsWith(@"\Programmable", StringComparison.Ordinal) &&
+                entry.ValueName is null),
+            "Register plan should mark the component as programmable for legacy hosts.");
+        ContractAssert.True(
+            dryRunDescriptor.RegistryPlan.Any(static entry =>
+                entry.Operation == CapeOpenRegistryPlanOperation.SetValue &&
+                entry.KeyPath.EndsWith(@"\CurVer", StringComparison.Ordinal) &&
+                string.Equals(entry.ValueData, "RadishFlow.CapeOpen.UnitOp.Mvp.1", StringComparison.Ordinal)),
+            "Register plan should bind the stable ProgID to the current versioned ProgID.");
 
         var executeDescriptor = CapeOpenRegistrationDescriptor.CreateUnitOperationMvp(
             CapeOpenRegistrationAction.Unregister,

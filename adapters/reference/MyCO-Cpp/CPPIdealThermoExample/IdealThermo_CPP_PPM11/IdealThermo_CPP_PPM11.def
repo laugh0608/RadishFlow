@@ -1,0 +1,9 @@
+; IdealThermo_CPP_PPM11.def : Declares the module parameters.
+
+LIBRARY      "IdealThermo_CPP_PPM11.DLL"
+
+EXPORTS
+	DllCanUnloadNow		PRIVATE
+	DllGetClassObject	PRIVATE
+	DllRegisterServer	PRIVATE
+	DllUnregisterServer	PRIVATE

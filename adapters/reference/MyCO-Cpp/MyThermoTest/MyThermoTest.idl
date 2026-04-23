@@ -1,0 +1,53 @@
+﻿// MyThermoTest.idl: MyThermoTest 的 IDL 源
+//
+
+// 此文件将由 MIDL 工具处理以
+// 生成类型库(MyThermoTest.tlb)和封送处理代码。
+
+import "oaidl.idl";
+import "ocidl.idl";
+
+[
+	object,
+	uuid(18320331-78bd-46f2-968c-5e11d658feab),
+	dual,
+	nonextensible,
+	pointer_default(unique)
+]
+interface IFluidPackageManager : IDispatch
+{
+};
+[
+	object,
+	uuid(99fd9434-b506-43a0-9ef5-db5a1f4351d6),
+	dual,
+	nonextensible,
+	pointer_default(unique)
+]
+interface IMaterialObject : IDispatch
+{
+};
+[
+	uuid(b521d5a4-b34b-4c72-9b59-72a5e0d0139d),
+	version(1.0),
+]
+library MyThermoTestLib
+{
+	importlib("stdole2.tlb");
+	[
+		uuid(6d34b620-82c1-4d7d-aef0-14aa72193164)
+	]
+	coclass FluidPackageManager
+	{
+		[default] interface IFluidPackageManager;
+	};
+	[
+		uuid(e4129b60-a0cb-46a9-bad9-5e3d052adff5)
+	]
+	coclass MaterialObject
+	{
+		[default] interface IMaterialObject;
+	};
+};
+
+import "shobjidl.idl";

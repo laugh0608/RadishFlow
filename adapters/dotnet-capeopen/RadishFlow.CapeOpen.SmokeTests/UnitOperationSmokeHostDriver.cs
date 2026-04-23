@@ -41,9 +41,9 @@ internal sealed class UnitOperationSmokeHostDriver : IDisposable
 
     public RadishFlowCapeOpenUnitOperation UnitOperation => _unitOperation;
 
-    public UnitOperationPlaceholderCollection<UnitOperationParameterPlaceholder> Parameters { get; }
+    public UnitOperationParameterCollection Parameters { get; }
 
-    public UnitOperationPlaceholderCollection<UnitOperationPortPlaceholder> Ports { get; }
+    public UnitOperationPortCollection Ports { get; }
 
     public ICapeCollection ParameterCollection { get; }
 

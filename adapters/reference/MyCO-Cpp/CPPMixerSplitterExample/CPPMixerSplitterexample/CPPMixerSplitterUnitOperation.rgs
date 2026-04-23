@@ -1,0 +1,49 @@
+HKCU
+ {
+  NoRemove Software
+  {
+   NoRemove Classes
+   {
+	CPPMixerSplitterexample.CPPMixerSplit.1 = s 'CPPMixerSplitterUnitOperation Class'
+	{
+		CLSID = s '{3B7FDF53-EC5A-4BF8-99F2-819A8BF90579}'
+	}
+	CPPMixerSplitterexample.CPPMixerSplitte = s 'CPPMixerSplitterUnitOperation Class'
+	{
+		CLSID = s '{3B7FDF53-EC5A-4BF8-99F2-819A8BF90579}'
+		CurVer = s 'CPPMixerSplitterexample.CPPMixerSplit.1'
+	}
+	NoRemove CLSID
+	{
+		ForceRemove {3B7FDF53-EC5A-4BF8-99F2-819A8BF90579} = s 'CPPMixerSplitterUnitOperation Class'
+		{
+			ProgID = s 'CPPMixerSplitterexample.CPPMixerSplit.1'
+			VersionIndependentProgID = s 'CPPMixerSplitterexample.CPPMixerSplitte'
+			ForceRemove 'Programmable'
+			InprocServer32 = s '%MODULE%'
+			{
+				val ThreadingModel = s 'Apartment'
+			}
+			val AppID = s '%APPID%'
+			'TypeLib' = s '{D2588024-AC34-4F37-BC66-3B020A481366}'
+			'Implemented Categories'
+			{
+             {678C09A5-7D66-11D2-A67D-00105A42887F} 
+			 {678C09A1-7D66-11D2-A67D-00105A42887F}
+			 {4150C28A-EE06-403f-A871-87AFEC38A249}
+			 {0D562DC8-EA8E-4210-AB39-B66513C0CD09}
+			 {4667023A-5A8E-4CCA-AB6D-9D78C5112FED}
+			}
+			CapeDescription 
+			{ val Name =  s 'CPP Mixer Splitter Example'
+			  val Description = s 'Microsoft Visual C++ 2005 Mixer and Splitter Example according to CAPE-OPEN Unit Operation specification'
+			  val CapeVersion = s '1.0'
+			  val ComponentVersion = s '1.0.2'
+			  val VendorURL = s 'http://www.colan.org/'
+			  val About = s 'See http://www.colan.org/ for more information'
+			}
+		}
+	}
+   }
+  }
+ }

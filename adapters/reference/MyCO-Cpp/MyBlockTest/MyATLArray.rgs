@@ -1,0 +1,16 @@
+HKCR
+{
+	NoRemove CLSID
+	{
+		ForceRemove {f140756e-7558-4657-8599-3202bf871587} = s 'MyATLArray class'
+		{
+			ForceRemove Programmable
+			InprocServer32 = s '%MODULE%'
+			{
+				val ThreadingModel = s 'Apartment'
+			}
+			TypeLib = s '{abd5105a-8163-475f-adac-a66891f98448}'
+			Version = s '1.0'
+		}
+	}
+}

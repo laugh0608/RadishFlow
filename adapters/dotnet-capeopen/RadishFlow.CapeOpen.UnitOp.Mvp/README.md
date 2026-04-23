@@ -12,7 +12,8 @@
 - `UnitOperationComIdentity`，用于冻结 MVP PMC 的 `CLSID / ProgID / Versioned ProgID / DisplayName / Description`
 - 项目已启用 `EnableComHosting`，用于生成 `.NET 10` `RadishFlow.CapeOpen.UnitOp.Mvp.comhost.dll` 前置产物；该产物当前只供 `Registration` preflight 检查和未来注册工具规划使用，不代表本项目会自行写注册表
 - `UnitOperationPortPlaceholder` / `UnitOperationParameterPlaceholder`
-- `UnitOperationPlaceholderCollection<T>`
+- `UnitOperationParameterCollection`
+- `UnitOperationPortCollection`
 - `Initialize / Validate / Calculate / Terminate / Edit` 的第一版状态骨架
 - 内部 `LoadFlowsheetJson(...)`、`LoadPropertyPackageFiles(...)`、`SelectPropertyPackage(...)` 配置入口
 - `SetPortConnected(...)` 这一类最小端口状态入口
@@ -61,7 +62,7 @@
 - 当前 `Ports` / `Parameters` 已返回带 `Item(object)` 和 `Count()` 的最小 `ICapeCollection` 风格对象，并支持按 `ComponentName` 或 1-based 索引取项
 - 当前参数对象已提供最小 `ICapeParameter` + `ICapeParameterSpec` 语义，端口对象已提供最小 `ICapeUnitPort` 语义，但仍只覆盖 MVP 所需的字符串参数和占位连接对象
 - 当前 `ICapeCollection.Item(object)` 已冻结为“1-based 整数索引或 component name”双入口；除 `int/long` 外，也接受能无损落到整数的 `double/float/decimal` 选择子，以贴近 COM 宿主可能传入的数值 Variant 形状；空白名称、越界索引和非整数数值仍按 `CapeInvalidArgumentException` 拒绝
-- 在 COM 兼容的 `Item(object)` 之外，当前 `UnitOperationPlaceholderCollection<T>` 又已补出 typed runtime collection 主通路：`ContainsName(...)`、`TryGetByName(...)`、`GetByName(...)` 与 `GetByOneBasedIndex(...)`；后续 `UnitOp.Mvp` 自身、contract tests 和 smoke host 应优先走这条强类型入口，而不是继续在内部到处手写 `ICapeCollection.Item(object)` 选择子
+- 在 COM 兼容的 `Item(object)` 之外，当前 `UnitOperationParameterCollection` / `UnitOperationPortCollection` 继续复用同一套 typed runtime collection 主通路：`ContainsName(...)`、`TryGetByName(...)`、`GetByName(...)` 与 `GetByOneBasedIndex(...)`；后续 `UnitOp.Mvp` 自身、contract tests 和 smoke host 应优先走这条强类型入口，而不是继续在内部到处手写 `ICapeCollection.Item(object)` 选择子
 - 当前 `ICapeCollection`、`ICapeParameter` 与 `ICapeUnitPort` 的 `ComponentName/ComponentDescription` 已冻结为运行时不可变元数据；宿主可以重复读取，但不能在 MVP runtime 中修改这些标识字段，从而保持 collection lookup、required port 规则与 stable detail key 不漂移
 - 当前 `UnitOperationParameterCatalog` / `UnitOperationPortCatalog` 已进一步从“名字常量表”推进到“完整定义真相源”，把 canonical name、collection order、description、required/value-kind/mode 与 direction/port-type 一并收口，避免这些宿主契约继续散落在构造函数和测试字面量里
 - 当前 `UnitOperationPortCatalog` 又已继续吸收 host-facing material 语义：port definition 现显式声明 `BoundaryMaterialRole`，冻结 `Feed -> boundary inputs` 与 `Product -> boundary outputs` 这层映射，不再让 smoke/contract tests 各自猜测 placeholder port 该代表哪一组 flowsheet streams

@@ -1,0 +1,35 @@
+// IdealThermo_CPP_PPM11.idl : IDL source for IdealThermo_CPP_PPM11
+//
+
+// This file will be processed by the MIDL tool to
+// produce the type library (IdealThermo_CPP_PPM11.tlb) and marshalling code.
+
+import "oaidl.idl";
+import "ocidl.idl";
+
+[
+	uuid(3C6283E2-C6B0-479E-91C5-3C227C6CF0C3),
+	version(1.0),
+	helpstring("IdealThermo_CPP_PPM11 1.0 Type Library")
+]
+library IdealThermo_CPP_PPM11Lib
+{
+	importlib("stdole2.tlb");
+	[
+		uuid(39231282-CE4D-416D-8C85-A769BE927020),
+		helpstring("PropertyPackageManager Class")
+	]
+	coclass PropertyPackageManager
+	{
+		[default] interface IDispatch;
+	};
+	[
+		uuid(708AF201-BD16-4730-8AE2-187AA3E5F13D),
+		helpstring("PropertyPackage Class"),
+		hidden
+	]
+	coclass PropertyPackage
+	{
+		[default] interface IDispatch;
+	};
+};

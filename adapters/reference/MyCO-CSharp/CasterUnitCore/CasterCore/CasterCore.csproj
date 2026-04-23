@@ -1,0 +1,137 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{085CF196-265C-4070-A00C-EDC10CCB5D71}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>CasterCore</RootNamespace>
+    <AssemblyName>CasterCore</AssemblyName>
+    <TargetFrameworkVersion>v4.6</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+    <TargetFrameworkProfile />
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>..\bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <DocumentationFile>
+    </DocumentationFile>
+    <RegisterForComInterop>true</RegisterForComInterop>
+    <RunCodeAnalysis>false</RunCodeAnalysis>
+    <NoWarn>
+    </NoWarn>
+    <CodeAnalysisIgnoreGeneratedCode>false</CodeAnalysisIgnoreGeneratedCode>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>..\bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <RegisterForComInterop>true</RegisterForComInterop>
+  </PropertyGroup>
+  <PropertyGroup>
+    <SignAssembly>true</SignAssembly>
+  </PropertyGroup>
+  <PropertyGroup>
+    <AssemblyOriginatorKeyFile>CasterCore.snk</AssemblyOriginatorKeyFile>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'">
+    <DebugSymbols>true</DebugSymbols>
+    <OutputPath>..\bin\x64\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <DebugType>full</DebugType>
+    <PlatformTarget>x64</PlatformTarget>
+    <LangVersion>7.3</LangVersion>
+    <ErrorReport>prompt</ErrorReport>
+    <CodeAnalysisIgnoreGeneratedCode>false</CodeAnalysisIgnoreGeneratedCode>
+    <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
+    <DocumentationFile>
+    </DocumentationFile>
+    <RegisterForComInterop>true</RegisterForComInterop>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x64'">
+    <OutputPath>..\bin\x64\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <Optimize>true</Optimize>
+    <DebugType>pdbonly</DebugType>
+    <PlatformTarget>x64</PlatformTarget>
+    <LangVersion>7.3</LangVersion>
+    <ErrorReport>prompt</ErrorReport>
+    <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
+    <RegisterForComInterop>true</RegisterForComInterop>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="CAPE-OPENv1-1-0, Version=1.1.0.0, Culture=neutral, PublicKeyToken=10a1040e6624c81d, processorArchitecture=MSIL">
+      <EmbedInteropTypes>True</EmbedInteropTypes>
+    </Reference>
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Windows.Forms" />
+    <Reference Include="System.Xml.Linq" />
+    <Reference Include="System.Data.DataSetExtensions" />
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Net.Http" />
+    <Reference Include="System.Xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Attributes\CapeAboutAttribute.cs" />
+    <Compile Include="Attributes\CapeCategoryAttribute.cs" />
+    <Compile Include="Attributes\CapeDescriptionAttribute.cs" />
+    <Compile Include="Attributes\CapeHelpURLAttribute.cs" />
+    <Compile Include="Attributes\CapeNameAttribute.cs" />
+    <Compile Include="Attributes\CapeVendorURLAttribute.cs" />
+    <Compile Include="Attributes\CapeVersionAttribute.cs" />
+    <Compile Include="Attributes\TypeLibIDAttribute.cs" />
+    <Compile Include="Base\CapeCollection.cs" />
+    <Compile Include="Base\CapeCollectionPair.cs" />
+    <Compile Include="Base\CapeOpenBaseObject.cs" />
+    <Compile Include="CasterLocator.cs" />
+    <Compile Include="Enums\Phases.cs" />
+    <Compile Include="Enums\PropertyBasis.cs" />
+    <Compile Include="Enums\PropertyCategory.cs" />
+    <Compile Include="Exceptions\ECapeErrorHResult.cs" />
+    <Compile Include="Exceptions\ECapeUnknownException.cs" />
+    <Compile Include="GlobalSuppressions.cs" />
+    <Compile Include="CasterLogger.cs" />
+    <Compile Include="Parameters\CapeArrayParameter.cs" />
+    <Compile Include="Parameters\CapeBooleanParameter.cs" />
+    <Compile Include="Parameters\CapeIntParameter.cs" />
+    <Compile Include="Parameters\CapeMatrixParameter.cs" />
+    <Compile Include="Parameters\CapeOptionParameter.cs" />
+    <Compile Include="Parameters\CapeParameterBase.cs" />
+    <Compile Include="Parameters\CapeRealParameter.cs" />
+    <Compile Include="Parameters\UnitCategoryEnum.cs" />
+    <Compile Include="Parameters\Units.cs" />
+    <Compile Include="Persist\IPersistStream.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="SimulationContext\CapeCOSEUtilities.cs" />
+    <Compile Include="SimulationContext\CapeDiagnostic.cs" />
+    <Compile Include="SimulationContext\CapeMaterialTemplateSystem.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Parameters\unit.xml" />
+    <EmbeddedResource Include="Parameters\unitCategory.xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="CasterCore.snk" />
+    <None Include="log4net.config">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="log4net">
+      <Version>2.0.8</Version>
+    </PackageReference>
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+</Project>

@@ -1,0 +1,68 @@
+﻿<Window x:Class="CasterUnitCore.ParameterWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:CasterUnitCore"
+        Title="ParameterWindow" Height="400" Width="500">
+    <Window.Resources>
+        <DataTemplate x:Key="numberTemplate">
+            <StackPanel Orientation="Horizontal" Height="25">
+                <Label Content="{Binding Path=Name}" Width="100" Margin="10 0" HorizontalContentAlignment="Left"/>
+                <TextBox Text="{Binding Path=CurrentValue,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}" Width="70" Margin="10 0"
+                         TextAlignment="Right" HorizontalContentAlignment="Center" VerticalContentAlignment="Center"/>
+                <ComboBox ItemsSource="{Binding Path=CurrentUnitsList}"
+                          SelectedItem="{Binding Path=CurrentUnit}" Width="Auto" HorizontalContentAlignment="Center" VerticalContentAlignment="Center"/>
+            </StackPanel>
+        </DataTemplate>
+        <DataTemplate x:Key="optionTemplate">
+            <StackPanel Orientation="Horizontal" Height="25">
+                <Label Content="{Binding Path=Name}" Width="100" Margin="10 0" HorizontalContentAlignment="Left"/>
+                <ComboBox ItemsSource="{Binding Path=OptionList}"
+                          SelectedItem="{Binding Path=CurrentValue,Mode=TwoWay}" Width="100" Margin="10 0" HorizontalContentAlignment="Center" VerticalContentAlignment="Center"/>
+            </StackPanel>
+        </DataTemplate>
+        <DataTemplate x:Key="intTemplate">
+            <StackPanel Orientation="Horizontal" Height="25">
+                <Label Content="{Binding Path=Name}" Width="100" Margin="10 0" HorizontalContentAlignment="Left"/>
+                <TextBox Text="{Binding Path=CurrentValue}" Width="70" Margin="10 0"
+                         TextAlignment="Right" HorizontalContentAlignment="Center" VerticalContentAlignment="Center"/>
+            </StackPanel>
+        </DataTemplate>
+        <local:ParameterTemplateSelector x:Key="parameterTemplateSelector"
+                 RealTemplate="{StaticResource numberTemplate}"
+                 OptionTemplate="{StaticResource optionTemplate}"
+                 IntTemplate="{StaticResource intTemplate}"/>
+    </Window.Resources>
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="30"/>
+        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition MinWidth="50" MaxWidth="150" Width="Auto"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+        <TreeView Grid.Row="0" Grid.Column="0" Name="treeView" SelectedItemChanged="TreeView_OnSelectedItemChanged" Width="Auto">
+            <TreeViewItem Name="treeViewItem" IsExpanded="True" Margin="3">
+                <StackPanel Orientation="Horizontal" Name="paramTreeItem">
+                    <Image Source="../treeIcon/1.bmp"/>
+                    <Label Content="参数" VerticalAlignment="Top" Margin="1"/>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Name="resultTreeItem">
+                    <Image Source="../treeIcon/1.bmp"/>
+                    <Label Content="结果" VerticalAlignment="Top" Margin="1"/>
+                </StackPanel>
+            </TreeViewItem>
+        </TreeView>
+        <GridSplitter Grid.Row="0 " Grid.Column="0" Width="5"/>
+        <ScrollViewer VerticalScrollBarVisibility="Auto" Grid.Row="0" Grid.Column="1">
+            <Grid>
+                <ListBox Name="Paramlst" ItemTemplateSelector="{StaticResource parameterTemplateSelector}"/>
+                <ListBox Name="Resultlst" ItemTemplateSelector="{StaticResource parameterTemplateSelector}"/>
+            </Grid>
+        </ScrollViewer>
+        <StackPanel Grid.Row="1" Grid.ColumnSpan="2" HorizontalAlignment="Right" Orientation="Horizontal" Height="30">
+            <Button Margin="5" Width="80" Click="ButtonOK" IsDefault="True">确定</Button>
+            <Button Margin="5" Width="80" Click="ButtonCancel" IsCancel="True">取消</Button>
+        </StackPanel>
+    </Grid>
+</Window>

@@ -4,9 +4,13 @@ using RadishFlow.CapeOpen.Interop.Parameters;
 using RadishFlow.CapeOpen.Interop.Unit;
 using RadishFlow.CapeOpen.UnitOp.Mvp.UnitOperation;
 using System.Text.Json;
+using System.Runtime.InteropServices;
 
 namespace RadishFlow.CapeOpen.UnitOp.Mvp.Placeholders;
 
+[ComVisible(true)]
+[Guid(PlaceholderComClassIds.ParameterPlaceholder)]
+[ClassInterface(ClassInterfaceType.None)]
 public sealed class UnitOperationParameterPlaceholder : ICapeIdentification, ICapeParameter
 {
     private const string InterfaceName = nameof(ICapeParameter);

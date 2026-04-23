@@ -30,7 +30,7 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
         ComponentName = UnitOperationComIdentity.DisplayName;
         ComponentDescription = UnitOperationComIdentity.Description;
 
-        Parameters = new UnitOperationPlaceholderCollection<UnitOperationParameterPlaceholder>(
+        Parameters = new UnitOperationParameterCollection(
             UnitOperationParameterCatalog.CollectionDefinition,
             UnitOperationParameterCatalog.OrderedDefinitions.Select(
                 definition => new UnitOperationParameterPlaceholder(
@@ -38,7 +38,7 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
                     ensureOwnerAccess: EnsurePlaceholderAccess,
                     onStateChanged: InvalidateValidation)),
             ensureOwnerAccess: EnsurePlaceholderAccess);
-        Ports = new UnitOperationPlaceholderCollection<UnitOperationPortPlaceholder>(
+        Ports = new UnitOperationPortCollection(
             UnitOperationPortCatalog.CollectionDefinition,
             UnitOperationPortCatalog.OrderedDefinitions.Select(
                 definition => new UnitOperationPortPlaceholder(
@@ -55,11 +55,11 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
 
     public string ComponentDescription { get; set; }
 
-    public UnitOperationPlaceholderCollection<UnitOperationParameterPlaceholder> Parameters { get; }
+    public UnitOperationParameterCollection Parameters { get; }
 
     object? ICapeUtilities.Parameters => Parameters;
 
-    public UnitOperationPlaceholderCollection<UnitOperationPortPlaceholder> Ports { get; }
+    public UnitOperationPortCollection Ports { get; }
 
     object? ICapeUnit.Ports => Ports;
 

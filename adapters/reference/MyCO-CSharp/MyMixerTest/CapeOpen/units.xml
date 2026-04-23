@@ -1,0 +1,2040 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Units>
+  <Unit_Specs>
+    <Unit>mol</Unit>
+    <Category>AmountOfSubstance</Category>
+    <ConversionTimes>1</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>US$</Unit>
+    <Category>Currency</Category>
+    <ConversionTimes>1</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>A/cm2</Unit>
+    <Category>CurrentDensity</Category>
+    <ConversionTimes>10000</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>mA/cm2</Unit>
+    <Category>CurrentDensity</Category>
+    <ConversionTimes>10</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>A/dm2</Unit>
+    <Category>CurrentDensity</Category>
+    <ConversionTimes>100</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>A/m2</Unit>
+    <Category>CurrentDensity</Category>
+    <ConversionTimes>1</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>mA/m2</Unit>
+    <Category>CurrentDensity</Category>
+    <ConversionTimes>0.001</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>A/in2</Unit>
+    <Category>CurrentDensity</Category>
+    <ConversionTimes>1550</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>A</Unit>
+    <Category>ElectricalCurrent</Category>
+    <ConversionTimes>1</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>m3/s</Unit>
+    <Category>FlowRate</Category>
+    <ConversionTimes>1</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>bbl/day</Unit>
+    <Category>FlowRate</Category>
+    <ConversionTimes>1.8401307E-06</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>bbl/hr </Unit>
+    <Category>FlowRate</Category>
+    <ConversionTimes>4.415E-05</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>ft3/day </Unit>
+    <Category>FlowRate</Category>
+    <ConversionTimes>3.2774128E-07</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>ft3/hr</Unit>
+    <Category>FlowRate</Category>
+    <ConversionTimes>7.8657907E-06</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>ft3/min </Unit>
+    <Category>FlowRate</Category>
+    <ConversionTimes>0.00047194744</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>ft3/s </Unit>
+    <Category>FlowRate</Category>
+    <ConversionTimes>0.028316846</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>gal/hr </Unit>
+    <Category>FlowRate</Category>
+    <ConversionTimes>1.0515033E-06</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>gal/min </Unit>
+    <Category>FlowRate</Category>
+    <ConversionTimes>6.3090196E-05</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>l/day</Unit>
+    <Category>FlowRate</Category>
+    <ConversionTimes>1.157407E-08</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>l/hr </Unit>
+    <Category>FlowRate</Category>
+    <ConversionTimes>2.7777778E-07</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>l/min </Unit>
+    <Category>FlowRate</Category>
+    <ConversionTimes>1.6666667E-05</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>l/s </Unit>
+    <Category>FlowRate</Category>
+    <ConversionTimes>0.001</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>l/year </Unit>
+    <Category>FlowRate</Category>
+    <ConversionTimes>3.1688087E-11</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>m3/day</Unit>
+    <Category>FlowRate</Category>
+    <ConversionTimes>1.1574074E-05</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>m3/hr </Unit>
+    <Category>FlowRate</Category>
+    <ConversionTimes>0.00027777778</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>m3/min </Unit>
+    <Category>FlowRate</Category>
+    <ConversionTimes>0.016666667</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>m3/year</Unit>
+    <Category>FlowRate</Category>
+    <ConversionTimes>3.1688087E-08</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>Mft3/day </Unit>
+    <Category>FlowRate</Category>
+    <ConversionTimes>0.000327741279</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>1000 cubic feet per day </Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>MMft3/day </Unit>
+    <Category>FlowRate</Category>
+    <ConversionTimes>0.327741279</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>million cubic feet per day </Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>MMft3/hr </Unit>
+    <Category>FlowRate</Category>
+    <ConversionTimes>7.8657907</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>million cubic feet per hour </Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>Ang</Unit>
+    <Category>Length</Category>
+    <ConversionTimes>1E-10</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>cm</Unit>
+    <Category>Length</Category>
+    <ConversionTimes>0.01</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>dm</Unit>
+    <Category>Length</Category>
+    <ConversionTimes>0.1</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>ft</Unit>
+    <Category>Length</Category>
+    <ConversionTimes>0.3048</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>in</Unit>
+    <Category>Length</Category>
+    <ConversionTimes>0.0254</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>km</Unit>
+    <Category>Length</Category>
+    <ConversionTimes>1000</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>m</Unit>
+    <Category>Length</Category>
+    <ConversionTimes>1</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>mi</Unit>
+    <Category>Length</Category>
+    <ConversionTimes>1609.344</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>mm</Unit>
+    <Category>Length</Category>
+    <ConversionTimes>0.001</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>nm</Unit>
+    <Category>Length</Category>
+    <ConversionTimes>1E-09</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>um</Unit>
+    <Category>Length</Category>
+    <ConversionTimes>1E-06</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>yd</Unit>
+    <Category>Length</Category>
+    <ConversionTimes>0.9144</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>cd</Unit>
+    <Category>Luminous</Category>
+    <ConversionTimes>1</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>oz</Unit>
+    <Category>Mass</Category>
+    <ConversionTimes>0.028349523</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>g</Unit>
+    <Category>Mass</Category>
+    <ConversionTimes>0.001</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>kg</Unit>
+    <Category>Mass</Category>
+    <ConversionTimes>1</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>lb</Unit>
+    <Category>Mass</Category>
+    <ConversionTimes>0.45359237</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>Mlb</Unit>
+    <Category>Mass</Category>
+    <ConversionTimes>453.59237</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>ton</Unit>
+    <Category>Mass</Category>
+    <ConversionTimes>1000</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>ton(long)</Unit>
+    <Category>Mass</Category>
+    <ConversionTimes>1016.0469</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>ton(short)</Unit>
+    <Category>Mass</Category>
+    <ConversionTimes>907.18474</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>C</Unit>
+    <Category>Temperature</Category>
+    <ConversionTimes>1</ConversionTimes>
+    <ConversionPlus>273.15</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>F</Unit>
+    <Category>Temperature</Category>
+    <ConversionTimes>0.55555555</ConversionTimes>
+    <ConversionPlus>255.37222</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>K</Unit>
+    <Category>Temperature</Category>
+    <ConversionTimes>1</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>kK</Unit>
+    <Category>Temperature</Category>
+    <ConversionTimes>1000</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>mK</Unit>
+    <Category>Temperature</Category>
+    <ConversionTimes>0.001</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>R</Unit>
+    <Category>Temperature</Category>
+    <ConversionTimes>0.5555555</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>Rnk</Unit>
+    <Category>Temperature</Category>
+    <ConversionTimes>0.5555555</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>day</Unit>
+    <Category>Time</Category>
+    <ConversionTimes>86400</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>hr</Unit>
+    <Category>Time</Category>
+    <ConversionTimes>3600</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>min</Unit>
+    <Category>Time</Category>
+    <ConversionTimes>60</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>ms</Unit>
+    <Category>Time</Category>
+    <ConversionTimes>0.001</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>ns</Unit>
+    <Category>Time</Category>
+    <ConversionTimes>1E-09</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>ps</Unit>
+    <Category>Time</Category>
+    <ConversionTimes>1E-12</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>s</Unit>
+    <Category>Time</Category>
+    <ConversionTimes>1</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>us</Unit>
+    <Category>Time</Category>
+    <ConversionTimes>1E-06</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>year</Unit>
+    <Category>Time</Category>
+    <ConversionTimes>31536000</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>mg/day</Unit>
+    <Category>MassFlowRate</Category>
+    <ConversionTimes>1.15741E-11</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>g/s </Unit>
+    <Category>MassFlowRate</Category>
+    <ConversionTimes>0.001</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>kg/day</Unit>
+    <Category>MassFlowRate</Category>
+    <ConversionTimes>1.157407417E-05</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>kg/hr</Unit>
+    <Category>MassFlowRate</Category>
+    <ConversionTimes>0.00027777778</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>kg/min </Unit>
+    <Category>MassFlowRate</Category>
+    <ConversionTimes>0.0166666667</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>kg/s </Unit>
+    <Category>MassFlowRate</Category>
+    <ConversionTimes>1</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>lb/day</Unit>
+    <Category>MassFlowRate</Category>
+    <ConversionTimes>5.249911667E-06</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>lb/hr </Unit>
+    <Category>MassFlowRate</Category>
+    <ConversionTimes>0.00012599788</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>lb/s </Unit>
+    <Category>MassFlowRate</Category>
+    <ConversionTimes>0.45359237</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>Mlb/hr </Unit>
+    <Category>MassFlowRate</Category>
+    <ConversionTimes>0.12599788</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>1000 pounds (avdp) per hour </Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>ton/day</Unit>
+    <Category>MassFlowRate</Category>
+    <ConversionTimes>0.0115741</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>ton/hr</Unit>
+    <Category>MassFlowRate</Category>
+    <ConversionTimes>0.27777778</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>ton/year</Unit>
+    <Category>MassFlowRate</Category>
+    <ConversionTimes>3.1709792E-05</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>g/cm2 </Unit>
+    <Category>kg/m2 </Category>
+    <ConversionTimes>10</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>kg/cm2 </Unit>
+    <Category>kg/m2 </Category>
+    <ConversionTimes>0.0001</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>kg/m2</Unit>
+    <Category> kg/m2 </Category>
+    <ConversionTimes>1</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>lb/ft2</Unit>
+    <Category> kg/m2 </Category>
+    <ConversionTimes>0.04214</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>poundals/ft2 </Unit>
+    <Category>kg/m2 </Category>
+    <ConversionTimes>0.15175047</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>g/100ml</Unit>
+    <Category>DensityAndMassConcentration</Category>
+    <ConversionTimes>10</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>g/cm3 </Unit>
+    <Category>DensityAndMassConcentration</Category>
+    <ConversionTimes>1000</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>g/dm3 </Unit>
+    <Category>DensityAndMassConcentration</Category>
+    <ConversionTimes>1</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>g/l </Unit>
+    <Category>DensityAndMassConcentration</Category>
+    <ConversionTimes>1</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>g/m3</Unit>
+    <Category>DensityAndMassConcentration</Category>
+    <ConversionTimes>0.001</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>g/ml</Unit>
+    <Category>DensityAndMassConcentration</Category>
+    <ConversionTimes>1000</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>kg/cm3 </Unit>
+    <Category>DensityAndMassConcentration</Category>
+    <ConversionTimes>1000000</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>kg/dm3 </Unit>
+    <Category>DensityAndMassConcentration</Category>
+    <ConversionTimes>1000</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>kg/l </Unit>
+    <Category>DensityAndMassConcentration</Category>
+    <ConversionTimes>1000</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>kg/m3</Unit>
+    <Category>DensityAndMassConcentration</Category>
+    <ConversionTimes>1</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>lb/ft3</Unit>
+    <Category>DensityAndMassConcentration</Category>
+    <ConversionTimes>16.018463</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>lb/gal </Unit>
+    <Category>DensityAndMassConcentration</Category>
+    <ConversionTimes>119.82643</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>OZ/gal</Unit>
+    <Category>DensityAndMassConcentration</Category>
+    <ConversionTimes>7.489152</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>lb/in3 </Unit>
+    <Category>DensityAndMassConcentration</Category>
+    <ConversionTimes>27679.9</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>mg/cm3</Unit>
+    <Category>DensityAndMassConcentration</Category>
+    <ConversionTimes>1</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>mg/l </Unit>
+    <Category>DensityAndMassConcentration</Category>
+    <ConversionTimes>0.001</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>mg/m3 </Unit>
+    <Category>DensityAndMassConcentration</Category>
+    <ConversionTimes>1E-06</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>g/100g</Unit>
+    <Category> WeightFraction </Category>
+    <ConversionTimes>0.01</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>g/g </Unit>
+    <Category> WeightFraction </Category>
+    <ConversionTimes>1</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>g/kg </Unit>
+    <Category> WeightFraction </Category>
+    <ConversionTimes>0.001</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>kg/kg </Unit>
+    <Category> WeightFraction </Category>
+    <ConversionTimes>1</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>mg/kg </Unit>
+    <Category> WeightFraction </Category>
+    <ConversionTimes>1E-06</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>ppm</Unit>
+    <Category> WeightFraction </Category>
+    <ConversionTimes>1E-06</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>weight % </Unit>
+    <Category> WeightFraction </Category>
+    <ConversionTimes>0.01</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>weight fraction </Unit>
+    <Category> WeightFraction </Category>
+    <ConversionTimes>1</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>cm2 </Unit>
+    <Category>Area</Category>
+    <ConversionTimes>0.0001</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>dm2 </Unit>
+    <Category>Area</Category>
+    <ConversionTimes>0.01</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>ft2 </Unit>
+    <Category>Area</Category>
+    <ConversionTimes>0.09290304</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>in2 </Unit>
+    <Category>Area</Category>
+    <ConversionTimes>0.00064516</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>m2</Unit>
+    <Category>Area</Category>
+    <ConversionTimes>1</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>mm2</Unit>
+    <Category>Area</Category>
+    <ConversionTimes>1E-06</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>nm2 </Unit>
+    <Category>Area</Category>
+    <ConversionTimes>1E-18</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>bbl/ft2.hr </Unit>
+    <Category>Velocity</Category>
+    <ConversionTimes>0.00047535474</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>barrel per square foot and hour </Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>cm/hr </Unit>
+    <Category>Velocity</Category>
+    <ConversionTimes>2.7777778E-06</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>cm/s </Unit>
+    <Category>Velocity</Category>
+    <ConversionTimes>0.01</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>cm2/cm.s </Unit>
+    <Category>Velocity</Category>
+    <ConversionTimes>0.01</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>ft/hr </Unit>
+    <Category>Velocity</Category>
+    <ConversionTimes>8.46666667E-05</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>ft/min </Unit>
+    <Category>Velocity</Category>
+    <ConversionTimes>0.00508</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>ft/s </Unit>
+    <Category>Velocity</Category>
+    <ConversionTimes>0.3048</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>ft2/ft.hr</Unit>
+    <Category>Velocity</Category>
+    <ConversionTimes>8.4666667E-05</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>ft2/ft.s</Unit>
+    <Category>Velocity</Category>
+    <ConversionTimes>0.3048</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>ft3/ft2.s </Unit>
+    <Category>Velocity</Category>
+    <ConversionTimes>0.3048</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>ft3/ft2.hr</Unit>
+    <Category>Velocity</Category>
+    <ConversionTimes>8.46666667E-05</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>gal/ft2.min </Unit>
+    <Category>Velocity</Category>
+    <ConversionTimes>0.000679097</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>km/hr</Unit>
+    <Category>Velocity</Category>
+    <ConversionTimes>0.27777778</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>km/s </Unit>
+    <Category>Velocity</Category>
+    <ConversionTimes>1000</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>l/m2.hr </Unit>
+    <Category>Velocity</Category>
+    <ConversionTimes>2.7778E-07</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>l/m2.s </Unit>
+    <Category>Velocity</Category>
+    <ConversionTimes>0.001</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>m/hr</Unit>
+    <Category>Velocity</Category>
+    <ConversionTimes>0.000277777778</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>m/min</Unit>
+    <Category>Velocity</Category>
+    <ConversionTimes>0.0166666667</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>m/s</Unit>
+    <Category>Velocity</Category>
+    <ConversionTimes>1</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>m2/m.hr</Unit>
+    <Category>Velocity</Category>
+    <ConversionTimes>0.00027777778</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>m2/m.s</Unit>
+    <Category>Velocity</Category>
+    <ConversionTimes>1</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>m3/m2.s</Unit>
+    <Category>Velocity</Category>
+    <ConversionTimes>1</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>m3/m2.min</Unit>
+    <Category>Velocity</Category>
+    <ConversionTimes>0.016666667</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>mile/hr </Unit>
+    <Category>Velocity</Category>
+    <ConversionTimes>0.44704</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>cm-1</Unit>
+    <Category>m-1 </Category>
+    <ConversionTimes>100</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>cm2/cm3 </Unit>
+    <Category>m-1 </Category>
+    <ConversionTimes>100</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>ft-1</Unit>
+    <Category>m-1 </Category>
+    <ConversionTimes>3.28084</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>ft2/ft3 </Unit>
+    <Category>m-1 </Category>
+    <ConversionTimes>3.2808</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>in-1</Unit>
+    <Category>m-1 </Category>
+    <ConversionTimes>39.370079</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>in2/in3</Unit>
+    <Category>m-1 </Category>
+    <ConversionTimes>0.39370079</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>m-1</Unit>
+    <Category>m-1 </Category>
+    <ConversionTimes>1</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>m2/m3</Unit>
+    <Category>m-1 </Category>
+    <ConversionTimes>1</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>mm-1</Unit>
+    <Category>m-1 </Category>
+    <ConversionTimes>1000</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>mm2/mm3</Unit>
+    <Category>m-1 </Category>
+    <ConversionTimes>1000</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>g/mol </Unit>
+    <Category>kg/mol </Category>
+    <ConversionTimes>0.001</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>kg/mol </Unit>
+    <Category>kg/mol </Category>
+    <ConversionTimes>1</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>bbl/ft.hr </Unit>
+    <Category>Accelerate</Category>
+    <ConversionTimes>0.00091134442</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>barrel/(foot and hour) </Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>cm2/s </Unit>
+    <Category>Accelerate</Category>
+    <ConversionTimes>0.0001</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>cSt </Unit>
+    <Category>Accelerate</Category>
+    <ConversionTimes>1E-06</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>centistokes </Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>ft2/hr</Unit>
+    <Category>Accelerate</Category>
+    <ConversionTimes>2.58064E-05</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>ft2/min </Unit>
+    <Category>Accelerate</Category>
+    <ConversionTimes>0.001548385</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>ft3/ft.hr </Unit>
+    <Category>Accelerate</Category>
+    <ConversionTimes>2.58064E-05</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>l/hr.m </Unit>
+    <Category>Accelerate</Category>
+    <ConversionTimes>2.7777778E-07</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>m2/day</Unit>
+    <Category>Accelerate</Category>
+    <ConversionTimes>1.1574074E-05</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>m2/hr </Unit>
+    <Category>Accelerate</Category>
+    <ConversionTimes>0.00027777778</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>m2/s</Unit>
+    <Category>Accelerate</Category>
+    <ConversionTimes>1</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>m2/year</Unit>
+    <Category>Accelerate</Category>
+    <ConversionTimes>3.1688087E-08</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>m3/m.min </Unit>
+    <Category>Accelerate</Category>
+    <ConversionTimes>0.016666667</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>m3/m.s</Unit>
+    <Category>Accelerate</Category>
+    <ConversionTimes>1</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>mm2/s</Unit>
+    <Category>Accelerate</Category>
+    <ConversionTimes>1E-06</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>mSt </Unit>
+    <Category>Accelerate</Category>
+    <ConversionTimes>1E-07</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>St </Unit>
+    <Category>Accelerate</Category>
+    <ConversionTimes>0.0001</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>m3/K</Unit>
+    <Category>m3/K </Category>
+    <ConversionTimes>1</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>cm3/100g</Unit>
+    <Category>SpecificVolume</Category>
+    <ConversionTimes>1E-05</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>cm3/g </Unit>
+    <Category>SpecificVolume</Category>
+    <ConversionTimes>0.001</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>dm3/g </Unit>
+    <Category>SpecificVolume</Category>
+    <ConversionTimes>1</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>dm3/kg </Unit>
+    <Category>SpecificVolume</Category>
+    <ConversionTimes>0.001</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>ft3/lb</Unit>
+    <Category>SpecificVolume</Category>
+    <ConversionTimes>0.062427962</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>l/g </Unit>
+    <Category>SpecificVolume</Category>
+    <ConversionTimes>1</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>l/kg </Unit>
+    <Category>SpecificVolume</Category>
+    <ConversionTimes>0.001</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>m3/kg </Unit>
+    <Category>SpecificVolume</Category>
+    <ConversionTimes>1</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>ml/g </Unit>
+    <Category>SpecificVolume</Category>
+    <ConversionTimes>0.001</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>dm3/mol </Unit>
+    <Category>m3/mol </Category>
+    <ConversionTimes>0.001</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>ft3/lbmol </Unit>
+    <Category>m3/mol </Category>
+    <ConversionTimes>6.242796029E-05</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>l/mol</Unit>
+    <Category>m3/mol </Category>
+    <ConversionTimes>0.001</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>m3/kmol </Unit>
+    <Category>m3/mol </Category>
+    <ConversionTimes>0.001</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>m3/mol</Unit>
+    <Category>m3/mol </Category>
+    <ConversionTimes>1</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>ml/mol</Unit>
+    <Category>m3/mol </Category>
+    <ConversionTimes>1E-06</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>dmol/m3 </Unit>
+    <Category>MolarDensity</Category>
+    <ConversionTimes>0.1</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>kmol/m3</Unit>
+    <Category>MolarDensity</Category>
+    <ConversionTimes>1000</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>lbmol/ft3</Unit>
+    <Category>MolarDensity</Category>
+    <ConversionTimes>16018.463</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>lbmol/gal </Unit>
+    <Category>MolarDensity</Category>
+    <ConversionTimes>119826.43</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>mmol/cm3</Unit>
+    <Category>MolarDensity</Category>
+    <ConversionTimes>0.001</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>mmol/l </Unit>
+    <Category>MolarDensity</Category>
+    <ConversionTimes>1</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>mol/cm3</Unit>
+    <Category>MolarDensity</Category>
+    <ConversionTimes>1000000</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>mol/dm3</Unit>
+    <Category>MolarDensity</Category>
+    <ConversionTimes>1000</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>mol/l </Unit>
+    <Category>MolarDensity</Category>
+    <ConversionTimes>1000</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>mol/m3</Unit>
+    <Category>MolarDensity</Category>
+    <ConversionTimes>1</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>kmol/day</Unit>
+    <Category>MolarFlowRate</Category>
+    <ConversionTimes>0.01157407417</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>kmol/hr </Unit>
+    <Category>MolarFlowRate</Category>
+    <ConversionTimes>0.27777778</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>kmol/s </Unit>
+    <Category>MolarFlowRate</Category>
+    <ConversionTimes>1000</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>lbmol/hr </Unit>
+    <Category>MolarFlowRate</Category>
+    <ConversionTimes>0.12599788</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>lbmol/s </Unit>
+    <Category>MolarFlowRate</Category>
+    <ConversionTimes>453.59237</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>mol/min </Unit>
+    <Category>MolarFlowRate</Category>
+    <ConversionTimes>0.016666667</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>mol/s </Unit>
+    <Category>MolarFlowRate</Category>
+    <ConversionTimes>1</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>dyn</Unit>
+    <Category>Force</Category>
+    <ConversionTimes>1E-05</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>lb(force) </Unit>
+    <Category>Force</Category>
+    <ConversionTimes>4.4482216</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>N </Unit>
+    <Category>Force</Category>
+    <ConversionTimes>1</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>ata </Unit>
+    <Category>Pressure</Category>
+    <ConversionTimes>98066.5</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments> absolute atmospheres </Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>atm </Unit>
+    <Category>Pressure</Category>
+    <ConversionTimes>101325</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>bar </Unit>
+    <Category>Pressure</Category>
+    <ConversionTimes>100000</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>cmH2O </Unit>
+    <Category>Pressure</Category>
+    <ConversionTimes>98.063754</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>cm of water column (pressure) </Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>GPa </Unit>
+    <Category>Pressure</Category>
+    <ConversionTimes>1000000000</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>HPa </Unit>
+    <Category>Pressure</Category>
+    <ConversionTimes>100</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>inH2O </Unit>
+    <Category>Pressure</Category>
+    <ConversionTimes>249.0889</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>inches of water columns (pressure) </Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>inHg(32F) </Unit>
+    <Category>Pressure</Category>
+    <ConversionTimes>3386.39</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>inHg(60F) </Unit>
+    <Category>Pressure</Category>
+    <ConversionTimes>3332.69</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>kbar</Unit>
+    <Category>Pressure</Category>
+    <ConversionTimes>100000000</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>kg(force)/cm2</Unit>
+    <Category>Pressure</Category>
+    <ConversionTimes>98066.5</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>kN/m2 </Unit>
+    <Category>Pressure</Category>
+    <ConversionTimes>1000</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>kp/cm2</Unit>
+    <Category>Pressure</Category>
+    <ConversionTimes>98066.5</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>kp/m2 </Unit>
+    <Category>Pressure</Category>
+    <ConversionTimes>9.80665</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>kPa </Unit>
+    <Category>Pressure</Category>
+    <ConversionTimes>1000</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>lb(force)/in2 </Unit>
+    <Category>Pressure</Category>
+    <ConversionTimes>6894.76</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>lb/in2 </Unit>
+    <Category>Pressure</Category>
+    <ConversionTimes>6894.76</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>mbar</Unit>
+    <Category>Pressure</Category>
+    <ConversionTimes>100</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>mmH2O </Unit>
+    <Category>Pressure</Category>
+    <ConversionTimes>9.806348</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>mm of water column </Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>mmHg </Unit>
+    <Category>Pressure</Category>
+    <ConversionTimes>133.3223684</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>mm of Hg column (Torr) </Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>MN/m2 </Unit>
+    <Category>Pressure</Category>
+    <ConversionTimes>1000000</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>mPa </Unit>
+    <Category>Pressure</Category>
+    <ConversionTimes>0.001</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>MPa </Unit>
+    <Category>Pressure</Category>
+    <ConversionTimes>1000000</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>mTorr </Unit>
+    <Category>Pressure</Category>
+    <ConversionTimes>0.1333224</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>N/m2</Unit>
+    <Category>Pressure</Category>
+    <ConversionTimes>1</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>Pa</Unit>
+    <Category>Pressure</Category>
+    <ConversionTimes>1</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>psi </Unit>
+    <Category>Pressure</Category>
+    <ConversionTimes>6894.7573</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>pounds per square inch </Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>Torr </Unit>
+    <Category>Pressure</Category>
+    <ConversionTimes>133.3224</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>bbl</Unit>
+    <Category>Volume</Category>
+    <ConversionTimes>0.15898729</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>barrel </Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>cm3 </Unit>
+    <Category>Volume</Category>
+    <ConversionTimes>1E-06</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>dm3 </Unit>
+    <Category>Volume</Category>
+    <ConversionTimes>0.001</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>ft3 </Unit>
+    <Category>Volume</Category>
+    <ConversionTimes>0.028316847</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>gal </Unit>
+    <Category>Volume</Category>
+    <ConversionTimes>0.0037854118</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>in3 </Unit>
+    <Category>Volume</Category>
+    <ConversionTimes>1.6387064E-05</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>l </Unit>
+    <Category>Volume</Category>
+    <ConversionTimes>0.001</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>liters </Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>m3</Unit>
+    <Category>Volume</Category>
+    <ConversionTimes>1</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>ml</Unit>
+    <Category>Volume</Category>
+    <ConversionTimes>1E-06</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>V</Unit>
+    <Category>Voltage</Category>
+    <ConversionTimes>1</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>day-1 </Unit>
+    <Category>s-1 </Category>
+    <ConversionTimes>1.1574074E-05</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>GHz </Unit>
+    <Category>s-1 </Category>
+    <ConversionTimes>1000000000</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>kHz</Unit>
+    <Category> s-1 </Category>
+    <ConversionTimes>1000</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>MHz </Unit>
+    <Category>s-1 </Category>
+    <ConversionTimes>1000000</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>rad/s </Unit>
+    <Category>s-1 </Category>
+    <ConversionTimes>0.15915475</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>year-1</Unit>
+    <Category> s-1 </Category>
+    <ConversionTimes>3.1688088E-08</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>hr-1</Unit>
+    <Category>s-1 </Category>
+    <ConversionTimes>0.000277777777777777</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>min-1</Unit>
+    <Category>s-1 </Category>
+    <ConversionTimes>0.0166666666666667</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>s-1</Unit>
+    <Category>s-1 </Category>
+    <ConversionTimes>1</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>BTU </Unit>
+    <Category>Energy</Category>
+    <ConversionTimes>1055.0559</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>Britsh thermal unit </Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>cal </Unit>
+    <Category>Energy</Category>
+    <ConversionTimes>4.1868</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>erg</Unit>
+    <Category>Energy</Category>
+    <ConversionTimes>1E-07</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>eV </Unit>
+    <Category>Energy</Category>
+    <ConversionTimes>1.6021892E-19</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>GJ</Unit>
+    <Category>Energy</Category>
+    <ConversionTimes>1000000000</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>J </Unit>
+    <Category>Energy</Category>
+    <ConversionTimes>1</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>kcal </Unit>
+    <Category>Energy</Category>
+    <ConversionTimes>4186.8</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>kJ</Unit>
+    <Category>Energy</Category>
+    <ConversionTimes>1000</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>kp.m</Unit>
+    <Category>Energy</Category>
+    <ConversionTimes>9.80665</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>kW.hr</Unit>
+    <Category>Energy</Category>
+    <ConversionTimes>3600000</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>mJ</Unit>
+    <Category>Energy</Category>
+    <ConversionTimes>0.001</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>MMBTU</Unit>
+    <Category>Energy</Category>
+    <ConversionTimes>1055055900</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>million BTUs </Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>MMkcal </Unit>
+    <Category>Energy</Category>
+    <ConversionTimes>4186800000</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>million kilocalories </Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>BTU/hr</Unit>
+    <Category>Power</Category>
+    <ConversionTimes>0.29307107</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>cal/hr </Unit>
+    <Category>Power</Category>
+    <ConversionTimes>0.001163</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>cal/s </Unit>
+    <Category>Power</Category>
+    <ConversionTimes>4.1868</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>GJ/hr </Unit>
+    <Category>Power</Category>
+    <ConversionTimes>277777.78</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>Watt</Unit>
+    <Category>Power</Category>
+    <ConversionTimes>1</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>Watt/K</Unit>
+    <Category>Heat Transfer Coefficient</Category>
+    <ConversionTimes>1</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>J/s</Unit>
+    <Category>Power</Category>
+    <ConversionTimes>1</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>kcal/hr </Unit>
+    <Category>Power</Category>
+    <ConversionTimes>1.1629833</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>kJ/hr</Unit>
+    <Category>Power</Category>
+    <ConversionTimes>0.2777777778</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>kJ/min </Unit>
+    <Category>Power</Category>
+    <ConversionTimes>16.666667</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>kJ/s </Unit>
+    <Category>Power</Category>
+    <ConversionTimes>1000</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>MJ/hr </Unit>
+    <Category>Power</Category>
+    <ConversionTimes>277.77778</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>MMBTU/day</Unit>
+    <Category>Power</Category>
+    <ConversionTimes>12211.29458</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>MMBTU/hr </Unit>
+    <Category>Power</Category>
+    <ConversionTimes>293071.07</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>MMkcal/day</Unit>
+    <Category>Power</Category>
+    <ConversionTimes>48457.6375</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>MMkcal/hr </Unit>
+    <Category>Power</Category>
+    <ConversionTimes>1162983.3</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>mol/(sec1m2)</Unit>
+    <Category>MolarFlowRateDensity</Category>
+    <ConversionTimes>1</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>mol/(sec1dm2)</Unit>
+    <Category>MolarFlowRateDensity</Category>
+    <ConversionTimes>100</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>mol/m2</Unit>
+    <Category>MolarPlateDensity</Category>
+    <ConversionTimes>1</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>mol/dm2</Unit>
+    <Category>MolarPlateDensity</Category>
+    <ConversionTimes>100</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit> </Unit>
+    <Category>Dimensionless</Category>
+    <ConversionTimes>1</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>mol/mol</Unit>
+    <Category>Dimensionless</Category>
+    <ConversionTimes>1</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>g/100g</Unit>
+    <Category>Dimensionless</Category>
+    <ConversionTimes>0.01</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>g/kg</Unit>
+    <Category>Dimensionless</Category>
+    <ConversionTimes>0.001</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>kg/kg</Unit>
+    <Category>Dimensionless</Category>
+    <ConversionTimes>1</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>kg solute per kg solvent </Comments>
+  </Unit_Specs>
+  <Unit_Specs>
+    <Unit>mg/kg</Unit>
+    <Category>Dimensionless</Category>
+    <ConversionTimes>1E-06</ConversionTimes>
+    <ConversionPlus>0</ConversionPlus>
+    <Comments>0</Comments>
+  </Unit_Specs>
+</Units>

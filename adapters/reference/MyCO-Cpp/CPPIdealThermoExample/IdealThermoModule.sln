@@ -1,0 +1,60 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 9.00
+# Visual Studio 2005
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "IdealThermoModule", "IdealThermoModule\IdealThermoModule.vcproj", "{3D5854BF-9E40-4092-AF9C-2CAB8C169058}"
+	ProjectSection(WebsiteProperties) = preProject
+		Debug.AspNetCompiler.Debug = "True"
+		Release.AspNetCompiler.Debug = "False"
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "IdealThermo_CPP_TS10", "IdealThermo_CPP_TS10\IdealThermo_CPP_TS10.vcproj", "{98451EAB-DC41-426D-98A2-4CE4BA38C220}"
+	ProjectSection(WebsiteProperties) = preProject
+		Debug.AspNetCompiler.Debug = "True"
+		Release.AspNetCompiler.Debug = "False"
+	EndProjectSection
+	ProjectSection(ProjectDependencies) = postProject
+		{3D5854BF-9E40-4092-AF9C-2CAB8C169058} = {3D5854BF-9E40-4092-AF9C-2CAB8C169058}
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "PackageEditor", "PackageEditor\PackageEditor.vcproj", "{E834BFFF-BF0E-4269-B34C-B191A277AEEF}"
+	ProjectSection(WebsiteProperties) = preProject
+		Debug.AspNetCompiler.Debug = "True"
+		Release.AspNetCompiler.Debug = "False"
+	EndProjectSection
+	ProjectSection(ProjectDependencies) = postProject
+		{3D5854BF-9E40-4092-AF9C-2CAB8C169058} = {3D5854BF-9E40-4092-AF9C-2CAB8C169058}
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "IdealThermo_CPP_PPM11", "IdealThermo_CPP_PPM11\IdealThermo_CPP_PPM11.vcproj", "{5BE3DCF7-7076-45C7-9FE5-784E230017E3}"
+	ProjectSection(WebsiteProperties) = preProject
+		Debug.AspNetCompiler.Debug = "True"
+		Release.AspNetCompiler.Debug = "False"
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Win32 = Debug|Win32
+		Release|Win32 = Release|Win32
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{3D5854BF-9E40-4092-AF9C-2CAB8C169058}.Debug|Win32.ActiveCfg = Debug|Win32
+		{3D5854BF-9E40-4092-AF9C-2CAB8C169058}.Debug|Win32.Build.0 = Debug|Win32
+		{3D5854BF-9E40-4092-AF9C-2CAB8C169058}.Release|Win32.ActiveCfg = Release|Win32
+		{3D5854BF-9E40-4092-AF9C-2CAB8C169058}.Release|Win32.Build.0 = Release|Win32
+		{98451EAB-DC41-426D-98A2-4CE4BA38C220}.Debug|Win32.ActiveCfg = Debug|Win32
+		{98451EAB-DC41-426D-98A2-4CE4BA38C220}.Debug|Win32.Build.0 = Debug|Win32
+		{98451EAB-DC41-426D-98A2-4CE4BA38C220}.Release|Win32.ActiveCfg = Release|Win32
+		{98451EAB-DC41-426D-98A2-4CE4BA38C220}.Release|Win32.Build.0 = Release|Win32
+		{E834BFFF-BF0E-4269-B34C-B191A277AEEF}.Debug|Win32.ActiveCfg = Debug|Win32
+		{E834BFFF-BF0E-4269-B34C-B191A277AEEF}.Debug|Win32.Build.0 = Debug|Win32
+		{E834BFFF-BF0E-4269-B34C-B191A277AEEF}.Release|Win32.ActiveCfg = Release|Win32
+		{E834BFFF-BF0E-4269-B34C-B191A277AEEF}.Release|Win32.Build.0 = Release|Win32
+		{5BE3DCF7-7076-45C7-9FE5-784E230017E3}.Debug|Win32.ActiveCfg = Debug|Win32
+		{5BE3DCF7-7076-45C7-9FE5-784E230017E3}.Debug|Win32.Build.0 = Debug|Win32
+		{5BE3DCF7-7076-45C7-9FE5-784E230017E3}.Release|Win32.ActiveCfg = Release|Win32
+		{5BE3DCF7-7076-45C7-9FE5-784E230017E3}.Release|Win32.Build.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

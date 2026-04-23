@@ -1,0 +1,87 @@
+﻿// MyBlockTest.idl: MyBlockTest 的 IDL 源
+//
+
+// 此文件将由 MIDL 工具处理以
+// 生成类型库(MyBlockTest.tlb)和封送处理代码。
+
+import "oaidl.idl";
+import "ocidl.idl";
+
+[
+	object,
+	uuid(2d2d6ef6-dad0-42a2-aaa0-03a80e55f906),
+	dual,
+	nonextensible,
+	pointer_default(unique)
+]
+interface IMyBlock : IDispatch
+{
+};
+[
+	object,
+	uuid(3cd01822-702f-4ce2-b848-4bcc7b438d79),
+	dual,
+	nonextensible,
+	pointer_default(unique)
+]
+interface IMyBlockPortsArray : IDispatch
+{
+};
+[
+	object,
+	uuid(e8fa1f79-fcf1-43ee-9de0-991bf6be63cd),
+	dual,
+	nonextensible,
+	pointer_default(unique)
+]
+interface IBlockPort : IDispatch
+{
+};
+[
+	object,
+	uuid(2384df33-b52b-4b3a-9fa0-b25d470d45eb),
+	dual,
+	nonextensible,
+	pointer_default(unique)
+]
+interface IMyParameterArray : IDispatch
+{
+};
+[
+	uuid(abd5105a-8163-475f-adac-a66891f98448),
+	version(1.0),
+]
+library MyBlockTestLib
+{
+	importlib("stdole2.tlb");
+	[
+		uuid(a0d8984a-9a0e-4138-9a82-d4f7443d3365)
+	]
+	coclass MyBlock
+	{
+		[default] interface IMyBlock;
+	};
+	[
+		uuid(a7508ec8-f350-4c63-a5dc-18b0bc792f79)
+	]
+	coclass MyBlockPortsArray
+	{
+		[default] interface IMyBlockPortsArray;
+	};
+	[
+		uuid(09ec67a8-55fe-4a4e-abc3-142856078c5e)
+	]
+	coclass BlockPort
+	{
+		[default] interface IBlockPort;
+	};
+	[
+		uuid(3574b7c2-38b7-4b28-9b9e-ab4b414fe5de)
+	]
+	coclass MyParameterArray
+	{
+		[default] interface IMyParameterArray;
+	};
+};
+
+import "shobjidl.idl";

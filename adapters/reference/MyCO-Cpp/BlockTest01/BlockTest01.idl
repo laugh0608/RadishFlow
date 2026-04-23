@@ -1,0 +1,90 @@
+﻿// BlockTest01.idl: BlockTest01 的 IDL 源
+//
+
+// 此文件将由 MIDL 工具处理以
+// 生成类型库(BlockTest01.tlb)和封送处理代码。
+
+import "oaidl.idl";
+import "ocidl.idl";
+
+[
+	object,
+	uuid(b770e217-12f2-41c4-9142-d548db5465a1),
+	dual,
+	nonextensible,
+	pointer_default(unique)
+]
+interface IUnitExample : IDispatch
+{
+};
+[
+	object,
+	uuid(cfa97f6a-9424-481e-8aa2-085d2752ac8d),
+	dual,
+	nonextensible,
+	pointer_default(unique)
+]
+interface IPortsArray : IDispatch
+{
+};
+[
+	object,
+	uuid(f0235771-cb94-47d3-9e5a-34c51cb626d5),
+	dual,
+	nonextensible,
+	pointer_default(unique)
+]
+interface IMaterialPort : IDispatch
+{
+};
+[
+	object,
+	uuid(67ec64f2-5b2f-4a06-8d7b-b19d1b8f7a26),
+	dual,
+	nonextensible,
+	pointer_default(unique)
+]
+interface IParameterArray : IDispatch
+{
+};
+[
+	uuid(5fe4e419-f915-44f5-9af0-789285807df1),
+	version(1.0),
+]
+library BlockTest01Lib
+{
+	importlib("stdole2.tlb");
+	[
+		uuid(7059ac7c-40f2-434e-8f88-47ab5ca5ac40)
+	]
+	coclass UnitExample
+	{
+		[default] interface IUnitExample;
+	};
+	[
+		uuid(856fcaf2-6f2a-4a18-bfaa-dcf8f313378a)
+	]
+	coclass PortsArray
+	{
+		[default] interface IPortsArray;
+	};
+	[
+		uuid(c8b09757-dca4-4d3b-b435-e6eeafe594f0)
+	]
+	coclass MaterialPort
+	{
+		[default] interface IMaterialPort;
+	};
+	[
+		uuid(d5369f57-e7df-4ebb-89fd-8251bd93a56a)
+	]
+	coclass ParameterArray
+	{
+		[default] interface IParameterArray;
+	};
+};
+
+import "shobjidl.idl";
+import "shobjidl.idl";
+import "shobjidl.idl";
+import "shobjidl.idl";

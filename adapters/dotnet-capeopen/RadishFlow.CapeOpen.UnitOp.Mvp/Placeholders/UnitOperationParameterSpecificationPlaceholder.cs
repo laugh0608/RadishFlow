@@ -1,10 +1,14 @@
 using RadishFlow.CapeOpen.Interop.Errors;
 using RadishFlow.CapeOpen.Interop.Parameters;
 using RadishFlow.CapeOpen.UnitOp.Mvp.UnitOperation;
+using System.Runtime.InteropServices;
 
 namespace RadishFlow.CapeOpen.UnitOp.Mvp.Placeholders;
 
-internal sealed class UnitOperationParameterSpecificationPlaceholder : ICapeParameterSpec
+[ComVisible(true)]
+[Guid(PlaceholderComClassIds.ParameterSpecificationPlaceholder)]
+[ClassInterface(ClassInterfaceType.None)]
+public sealed class UnitOperationParameterSpecificationPlaceholder : ICapeParameterSpec
 {
     private const string InterfaceName = nameof(ICapeParameterSpec);
     private readonly Action<string, string, string?, object?>? _ensureOwnerAccess;

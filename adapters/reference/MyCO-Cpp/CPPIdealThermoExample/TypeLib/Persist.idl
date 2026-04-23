@@ -1,0 +1,41 @@
+// .IDL file for IPersistStreamInit
+
+[
+  uuid(EFA70119-4693-4ad6-92FC-A0ADE19DB68E),
+  version(1.00),
+  helpstring("Helper library for IPersistStreamInit interface")
+]
+library PersistHelperLib
+{
+    importlib("stdole2.tlb");
+
+    
+    interface IPersist;
+    interface IPersistStream;
+    interface IPersistStreamInit;
+/*
+    [
+      odl,
+      uuid(0000010C-0000-0000-C000-000000000046)
+    ]
+    interface IPersist : IUnknown {
+        HRESULT GetClassID([in, out] GUID* pClassID);
+    };
+*/
+    [
+      odl,
+      uuid(7FD52380-4E07-101B-AE2D-08002B2EC713),
+      helpstring("IPersistStreamInit interface")
+    ]
+    interface IPersistStreamInit : IPersist {
+        HRESULT IsDirty();
+        HRESULT Load([in] IStream* pStm);
+        HRESULT Save(
+                        [in] IStream* pStm, 
+                        [in] BOOL fClearDirty);
+        HRESULT GetSizeMax([out, retval] CURRENCY* pcbSize);
+        HRESULT InitNew();
+    };
+
+};
+

@@ -1,11 +1,15 @@
 using System.Collections;
+using System.Runtime.InteropServices;
 using RadishFlow.CapeOpen.Interop.Common;
 using RadishFlow.CapeOpen.Interop.Errors;
 using RadishFlow.CapeOpen.UnitOp.Mvp.UnitOperation;
 
 namespace RadishFlow.CapeOpen.UnitOp.Mvp.Placeholders;
 
-public sealed class UnitOperationPlaceholderCollection<T> : ICapeIdentification, ICapeCollection, IReadOnlyList<T>
+// Generic collection helpers are kept internal to the CLR side and should not be
+// surfaced directly as COM runtime types.
+[ComVisible(false)]
+public class UnitOperationPlaceholderCollection<T> : ICapeIdentification, ICapeCollection, IReadOnlyList<T>
     where T : class, ICapeIdentification
 {
     private const string InterfaceName = nameof(ICapeCollection);

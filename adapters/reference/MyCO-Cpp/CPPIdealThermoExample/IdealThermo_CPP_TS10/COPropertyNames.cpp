@@ -1,0 +1,116 @@
+#include "stdafx.h"
+#include "COPropertyNames.h"
+
+const OLECHAR *TDependentPropertyNames[ExposedTDependentPropertyCount]=
+{L"heatOfVaporization",
+ L"heatOfVaporization.Dtemperature",
+ L"idealGasHeatCapacity",
+ L"idealGasHeatCapacity.Dtemperature",
+ L"vaporPressure",
+ L"vaporPressure.Dtemperature"
+};
+
+const OLECHAR *SinglePhasePropertyNames[SinglePhasePropertyCount]=
+{L"density",
+ L"density.Dtemperature",
+ L"density.Dpressure",
+ L"density.DmolFraction",
+ L"density.Dmoles",
+ L"volume",
+ L"volume.Dtemperature",
+ L"volume.Dpressure",
+ L"volume.DmolFraction",
+ L"volume.Dmoles",
+ L"enthalpy",
+ L"enthalpy.Dtemperature",
+ L"enthalpy.Dpressure",
+ L"enthalpy.DmolFraction",
+ L"enthalpy.Dmoles",
+ L"entropy",
+ L"entropy.Dtemperature",
+ L"entropy.Dpressure",
+ L"entropy.DmolFraction",
+ L"entropy.Dmoles",
+ L"fugacity",
+ L"fugacity.Dtemperature",
+ L"fugacity.Dpressure",
+ L"fugacity.DmolFraction",
+ L"fugacity.Dmoles",
+ L"fugacityCoefficient",
+ L"fugacityCoefficient.Dtemperature",
+ L"fugacityCoefficient.Dpressure",
+ L"fugacityCoefficient.DmolFraction",
+ L"fugacityCoefficient.Dmoles",
+ L"logFugacityCoefficient",
+ L"logFugacityCoefficient.Dtemperature",
+ L"logFugacityCoefficient.Dpressure",
+ L"logFugacityCoefficient.DmolFraction",
+ L"logFugacityCoefficient.Dmoles",
+ L"activity",
+ L"activity.Dtemperature",
+ L"activity.Dpressure",
+ L"activity.DmolFraction",
+ L"activity.Dmoles"
+};
+
+const OLECHAR *TwoPhasePropertyNames[ExposedTwoPhasePropertyCount]=
+{L"kvalues",
+ L"kvalues.Dtemperature",
+ L"kvalues.Dpressure",
+ L"logkvalues",
+ L"logkvalues.Dtemperature",
+ L"logkvalues.Dpressure",
+};
+
+const bool TDependentPropertyMoleBasis[ExposedTDependentPropertyCount]=
+{true,  //L"heatOfVaporization",
+ true,  //L"heatOfVaporization.Dtemperature",
+ true,  //L"idealGasHeatCapacity",
+ true,  //L"idealGasHeatCapacity.Dtemperature",
+ false, //L"vaporPressure",
+ false, //L"vaporPressure.Dtemperature"
+};
+
+const bool SinglePhasePropertyMoleBasis[SinglePhasePropertyCount]=
+{true,  //L"density",
+ true,  //L"density.Dtemperature",
+ true,  //L"density.Dpressure",
+ true,  //L"density.DmolFraction",
+ true,  //L"density.Dmoles",
+ true,  //L"volume",
+ true,  //L"volume.Dtemperature",
+ true,  //L"volume.Dpressure",
+ true,  //L"volume.DmolFraction",
+ true,  //L"volume.Dmoles",
+ true,  //L"enthalpy",
+ true,  //L"enthalpy.Dtemperature",
+ true,  //L"enthalpy.Dpressure",
+ true,  //L"enthalpy.DmolFraction",
+ true,  //L"enthalpy.Dmoles",
+ true,  //L"entropy",
+ true,  //L"entropy.Dtemperature",
+ true,  //L"entropy.Dpressure",
+ true,  //L"entropy.DmolFraction",
+ true,  //L"entropy.Dmoles",
+ false, //L"fugacity",
+ false, //L"fugacity.Dtemperature",
+ false, //L"fugacity.Dpressure",
+ false, //L"fugacity.DmolFraction",
+ false, //L"fugacity.Dmoles",
+ false, //L"fugacityCoefficient",
+ false, //L"fugacityCoefficient.Dtemperature",
+ false, //L"fugacityCoefficient.Dpressure",
+ false, //L"fugacityCoefficient.DmolFraction",
+ false, //L"fugacityCoefficient.Dmoles",
+ false, //L"logFugacityCoefficient",
+ false, //L"logFugacityCoefficient.Dtemperature",
+ false, //L"logFugacityCoefficient.Dpressure",
+ false, //L"logFugacityCoefficient.DmolFraction",
+ false, //L"logFugacityCoefficient.Dmoles",
+ false, //L"activity",
+ false, //L"activity.Dtemperature",
+ false, //L"activity.Dpressure",
+ false, //L"activity.DmolFraction",
+ false //L"activity.Dmoles"
+};
+

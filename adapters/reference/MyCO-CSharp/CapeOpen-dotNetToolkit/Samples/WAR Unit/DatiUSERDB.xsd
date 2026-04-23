@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="utf-8"?>
+<xs:schema id="DatiUSERDB" targetNamespace="http://tempuri.org/DatiUSERDB.xsd" xmlns:mstns="http://tempuri.org/DatiUSERDB.xsd" xmlns="http://tempuri.org/DatiUSERDB.xsd" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata" xmlns:msprop="urn:schemas-microsoft-com:xml-msprop" attributeFormDefault="qualified" elementFormDefault="qualified">
+  <xs:annotation>
+    <xs:appinfo source="urn:schemas-microsoft-com:xml-msdatasource">
+      <DataSource DefaultConnectionIndex="0" FunctionsComponentName="QueriesTableAdapter" Modifier="AutoLayout, AnsiClass, Class, Public" SchemaSerializationMode="IncludeSchema" xmlns="urn:schemas-microsoft-com:xml-msdatasource">
+        <Connections>
+          <Connection AppSettingsObjectName="Settings" AppSettingsPropertyName="USERDBConnectionString" IsAppSettingsProperty="True" Modifier="Assembly" Name="USERDBConnectionString (Settings)" PropertyReference="ApplicationSettings.CapeOpenWar.Properties.Settings.GlobalReference.Default.USERDBConnectionString" Provider="System.Data.OleDb">
+          </Connection>
+        </Connections>
+        <Tables>
+        </Tables>
+        <Sources>
+        </Sources>
+      </DataSource>
+    </xs:appinfo>
+  </xs:annotation>
+  <xs:element name="DatiUSERDB" msdata:IsDataSet="true" msdata:UseCurrentLocale="true" msprop:Generator_UserDSName="DatiUSERDB" msprop:Generator_DataSetName="DatiUSERDB">
+    <xs:complexType>
+      <xs:choice minOccurs="0" maxOccurs="unbounded">
+        <xs:element name="Components" msprop:Generator_UserTableName="Components" msprop:Generator_RowDeletedName="ComponentsRowDeleted" msprop:Generator_RowChangedName="ComponentsRowChanged" msprop:Generator_RowClassName="ComponentsRow" msprop:Generator_RowChangingName="ComponentsRowChanging" msprop:Generator_RowEvArgName="ComponentsRowChangeEvent" msprop:Generator_RowEvHandlerName="ComponentsRowChangeEventHandler" msprop:Generator_TableClassName="ComponentsDataTable" msprop:Generator_TableVarName="tableComponents" msprop:Generator_RowDeletingName="ComponentsRowDeleting" msprop:Generator_TablePropName="Components">
+          <xs:complexType>
+            <xs:sequence>
+              <xs:element name="ChemicalName" msprop:Generator_UserColumnName="ChemicalName" msprop:Generator_ColumnVarNameInTable="columnChemicalName" msprop:Generator_ColumnPropNameInRow="ChemicalName" msprop:Generator_ColumnPropNameInTable="ChemicalNameColumn" minOccurs="0">
+                <xs:simpleType>
+                  <xs:restriction base="xs:string">
+                    <xs:maxLength value="255" />
+                  </xs:restriction>
+                </xs:simpleType>
+              </xs:element>
+              <xs:element name="CAS" msprop:Generator_UserColumnName="CAS" msprop:Generator_ColumnVarNameInTable="columnCAS" msprop:Generator_ColumnPropNameInRow="CAS" msprop:Generator_ColumnPropNameInTable="CASColumn">
+                <xs:simpleType>
+                  <xs:restriction base="xs:string">
+                    <xs:maxLength value="255" />
+                  </xs:restriction>
+                </xs:simpleType>
+              </xs:element>
+              <xs:element name="MW" msprop:Generator_UserColumnName="MW" msprop:Generator_ColumnVarNameInTable="columnMW" msprop:Generator_ColumnPropNameInRow="MW" msprop:Generator_ColumnPropNameInTable="MWColumn" type="xs:double" minOccurs="0" />
+              <xs:element name="Formula" msprop:Generator_UserColumnName="Formula" msprop:Generator_ColumnVarNameInTable="columnFormula" msprop:Generator_ColumnPropNameInRow="Formula" msprop:Generator_ColumnPropNameInTable="FormulaColumn" minOccurs="0">
+                <xs:simpleType>
+                  <xs:restriction base="xs:string">
+                    <xs:maxLength value="255" />
+                  </xs:restriction>
+                </xs:simpleType>
+              </xs:element>
+              <xs:element name="logKowValue" msprop:Generator_UserColumnName="logKowValue" msprop:Generator_ColumnVarNameInTable="columnlogKowValue" msprop:Generator_ColumnPropNameInRow="logKowValue" msprop:Generator_ColumnPropNameInTable="logKowValueColumn" type="xs:double" minOccurs="0" />
+              <xs:element name="logKowSource" msprop:Generator_UserColumnName="logKowSource" msprop:Generator_ColumnVarNameInTable="columnlogKowSource" msprop:Generator_ColumnPropNameInRow="logKowSource" msprop:Generator_ColumnPropNameInTable="logKowSourceColumn" minOccurs="0">
+                <xs:simpleType>
+                  <xs:restriction base="xs:string">
+                    <xs:maxLength value="255" />
+                  </xs:restriction>
+                </xs:simpleType>
+              </xs:element>
+              <xs:element name="LD50RatValue" msprop:Generator_UserColumnName="LD50RatValue" msprop:Generator_ColumnVarNameInTable="columnLD50RatValue" msprop:Generator_ColumnPropNameInRow="LD50RatValue" msprop:Generator_ColumnPropNameInTable="LD50RatValueColumn" type="xs:double" minOccurs="0" />
+              <xs:element name="LD50RatNotes" msprop:Generator_UserColumnName="LD50RatNotes" msprop:Generator_ColumnVarNameInTable="columnLD50RatNotes" msprop:Generator_ColumnPropNameInRow="LD50RatNotes" msprop:Generator_ColumnPropNameInTable="LD50RatNotesColumn" minOccurs="0">
+                <xs:simpleType>
+                  <xs:restriction base="xs:string">
+                    <xs:maxLength value="255" />
+                  </xs:restriction>
+                </xs:simpleType>
+              </xs:element>
+              <xs:element name="LD50RatSource" msprop:Generator_UserColumnName="LD50RatSource" msprop:Generator_ColumnVarNameInTable="columnLD50RatSource" msprop:Generator_ColumnPropNameInRow="LD50RatSource" msprop:Generator_ColumnPropNameInTable="LD50RatSourceColumn" minOccurs="0">
+                <xs:simpleType>
+                  <xs:restriction base="xs:string">
+                    <xs:maxLength value="255" />
+                  </xs:restriction>
+                </xs:simpleType>
+              </xs:element>
+              <xs:element name="LD50RatScore" msprop:Generator_UserColumnName="LD50RatScore" msprop:Generator_ColumnVarNameInTable="columnLD50RatScore" msprop:Generator_ColumnPropNameInRow="LD50RatScore" msprop:Generator_ColumnPropNameInTable="LD50RatScoreColumn" type="xs:double" minOccurs="0" />
+              <xs:element name="OSHA_TWA_Value" msprop:Generator_UserColumnName="OSHA_TWA_Value" msprop:Generator_ColumnVarNameInTable="columnOSHA_TWA_Value" msprop:Generator_ColumnPropNameInRow="OSHA_TWA_Value" msprop:Generator_ColumnPropNameInTable="OSHA_TWA_ValueColumn" type="xs:double" minOccurs="0" />
+              <xs:element name="OSHA_TWA_Notes" msprop:Generator_UserColumnName="OSHA_TWA_Notes" msprop:Generator_ColumnVarNameInTable="columnOSHA_TWA_Notes" msprop:Generator_ColumnPropNameInRow="OSHA_TWA_Notes" msprop:Generator_ColumnPropNameInTable="OSHA_TWA_NotesColumn" minOccurs="0">
+                <xs:simpleType>
+                  <xs:restriction base="xs:string">
+                    <xs:maxLength value="255" />
+                  </xs:restriction>
+                </xs:simpleType>
+              </xs:element>
+              <xs:element name="OSHA_TWA_Score" msprop:Generator_UserColumnName="OSHA_TWA_Score" msprop:Generator_ColumnVarNameInTable="columnOSHA_TWA_Score" msprop:Generator_ColumnPropNameInRow="OSHA_TWA_Score" msprop:Generator_ColumnPropNameInTable="OSHA_TWA_ScoreColumn" type="xs:double" minOccurs="0" />
+              <xs:element name="FHM_LC50_Value" msprop:Generator_UserColumnName="FHM_LC50_Value" msprop:Generator_ColumnVarNameInTable="columnFHM_LC50_Value" msprop:Generator_ColumnPropNameInRow="FHM_LC50_Value" msprop:Generator_ColumnPropNameInTable="FHM_LC50_ValueColumn" type="xs:double" minOccurs="0" />
+              <xs:element name="FHM_LC50_Notes" msprop:Generator_UserColumnName="FHM_LC50_Notes" msprop:Generator_ColumnVarNameInTable="columnFHM_LC50_Notes" msprop:Generator_ColumnPropNameInRow="FHM_LC50_Notes" msprop:Generator_ColumnPropNameInTable="FHM_LC50_NotesColumn" minOccurs="0">
+                <xs:simpleType>
+                  <xs:restriction base="xs:string">
+                    <xs:maxLength value="255" />
+                  </xs:restriction>
+                </xs:simpleType>
+              </xs:element>
+              <xs:element name="FHM_LC50_Source" msprop:Generator_UserColumnName="FHM_LC50_Source" msprop:Generator_ColumnVarNameInTable="columnFHM_LC50_Source" msprop:Generator_ColumnPropNameInRow="FHM_LC50_Source" msprop:Generator_ColumnPropNameInTable="FHM_LC50_SourceColumn" minOccurs="0">
+                <xs:simpleType>
+                  <xs:restriction base="xs:string">
+                    <xs:maxLength value="255" />
+                  </xs:restriction>
+                </xs:simpleType>
+              </xs:element>
+              <xs:element name="FHM_LC50_Score" msprop:Generator_UserColumnName="FHM_LC50_Score" msprop:Generator_ColumnVarNameInTable="columnFHM_LC50_Score" msprop:Generator_ColumnPropNameInRow="FHM_LC50_Score" msprop:Generator_ColumnPropNameInTable="FHM_LC50_ScoreColumn" type="xs:double" minOccurs="0" />
+              <xs:element name="GWP_Score" msprop:Generator_UserColumnName="GWP_Score" msprop:Generator_ColumnVarNameInTable="columnGWP_Score" msprop:Generator_ColumnPropNameInRow="GWP_Score" msprop:Generator_ColumnPropNameInTable="GWP_ScoreColumn" type="xs:double" minOccurs="0" />
+              <xs:element name="OD_Value" msprop:Generator_UserColumnName="OD_Value" msprop:Generator_ColumnVarNameInTable="columnOD_Value" msprop:Generator_ColumnPropNameInRow="OD_Value" msprop:Generator_ColumnPropNameInTable="OD_ValueColumn" type="xs:double" minOccurs="0" />
+              <xs:element name="OD_Score" msprop:Generator_UserColumnName="OD_Score" msprop:Generator_ColumnVarNameInTable="columnOD_Score" msprop:Generator_ColumnPropNameInRow="OD_Score" msprop:Generator_ColumnPropNameInTable="OD_ScoreColumn" type="xs:double" minOccurs="0" />
+              <xs:element name="PCO_Value" msprop:Generator_UserColumnName="PCO_Value" msprop:Generator_ColumnVarNameInTable="columnPCO_Value" msprop:Generator_ColumnPropNameInRow="PCO_Value" msprop:Generator_ColumnPropNameInTable="PCO_ValueColumn" type="xs:double" minOccurs="0" />
+              <xs:element name="PCO_Score" msprop:Generator_UserColumnName="PCO_Score" msprop:Generator_ColumnVarNameInTable="columnPCO_Score" msprop:Generator_ColumnPropNameInRow="PCO_Score" msprop:Generator_ColumnPropNameInTable="PCO_ScoreColumn" type="xs:double" minOccurs="0" />
+              <xs:element name="AP_Value" msprop:Generator_UserColumnName="AP_Value" msprop:Generator_ColumnVarNameInTable="columnAP_Value" msprop:Generator_ColumnPropNameInRow="AP_Value" msprop:Generator_ColumnPropNameInTable="AP_ValueColumn" type="xs:double" minOccurs="0" />
+              <xs:element name="AP_Score" msprop:Generator_UserColumnName="AP_Score" msprop:Generator_ColumnVarNameInTable="columnAP_Score" msprop:Generator_ColumnPropNameInRow="AP_Score" msprop:Generator_ColumnPropNameInTable="AP_ScoreColumn" type="xs:double" minOccurs="0" />
+              <xs:element name="ASPENID" msprop:Generator_UserColumnName="ASPENID" msprop:Generator_ColumnVarNameInTable="columnASPENID" msprop:Generator_ColumnPropNameInRow="ASPENID" msprop:Generator_ColumnPropNameInTable="ASPENIDColumn" minOccurs="0">
+                <xs:simpleType>
+                  <xs:restriction base="xs:string">
+                    <xs:maxLength value="10" />
+                  </xs:restriction>
+                </xs:simpleType>
+              </xs:element>
+            </xs:sequence>
+          </xs:complexType>
+        </xs:element>
+        <xs:element name="Factor" msprop:Generator_UserTableName="Factor" msprop:Generator_RowDeletedName="FactorRowDeleted" msprop:Generator_TableClassName="FactorDataTable" msprop:Generator_RowChangedName="FactorRowChanged" msprop:Generator_RowClassName="FactorRow" msprop:Generator_RowChangingName="FactorRowChanging" msprop:Generator_RowEvArgName="FactorRowChangeEvent" msprop:Generator_RowEvHandlerName="FactorRowChangeEventHandler" msprop:Generator_TablePropName="Factor" msprop:Generator_TableVarName="tableFactor" msprop:Generator_RowDeletingName="FactorRowDeleting">
+          <xs:complexType>
+            <xs:sequence>
+              <xs:element name="Name" msprop:Generator_UserColumnName="Name" msprop:Generator_ColumnPropNameInRow="Name" msprop:Generator_ColumnVarNameInTable="columnName" msprop:Generator_ColumnPropNameInTable="NameColumn" type="xs:string" />
+              <xs:element name="Value" msprop:Generator_UserColumnName="Value" msprop:Generator_ColumnPropNameInRow="Value" msprop:Generator_ColumnVarNameInTable="columnValue" msprop:Generator_ColumnPropNameInTable="ValueColumn" type="xs:double" minOccurs="0" />
+            </xs:sequence>
+          </xs:complexType>
+        </xs:element>
+      </xs:choice>
+    </xs:complexType>
+    <xs:unique name="ComponentsKey1" msdata:PrimaryKey="true">
+      <xs:selector xpath=".//mstns:Components" />
+      <xs:field xpath="mstns:CAS" />
+    </xs:unique>
+    <xs:unique name="Constraint1" msdata:PrimaryKey="true">
+      <xs:selector xpath=".//mstns:Factor" />
+      <xs:field xpath="mstns:Name" />
+    </xs:unique>
+  </xs:element>
+</xs:schema>
