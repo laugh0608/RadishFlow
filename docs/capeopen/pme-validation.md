@@ -1,6 +1,6 @@
 # CAPE-OPEN PME 人工验证说明
 
-更新时间：2026-04-22
+更新时间：2026-04-23
 
 ## 文档目的
 
@@ -246,6 +246,12 @@ Follow-up:
 
 ## 当前判断
 
-截至 2026-04-22，`SampleHost` 的 PME-like 薄宿主入口、`Registration` execute 门控以及脚本化安装/反安装运行手册，已足以结束“注册工具设计缺口”这条子任务。
+截至 2026-04-23，`SampleHost` 的 PME-like 薄宿主入口、`Registration` execute 门控以及脚本化安装/反安装运行手册，已足以结束“注册工具设计缺口”这条子任务。
 
-仍必须补齐的边界缺口不是新的 host round fallback，而是目标 PME 选型、真实 PME 人工验证记录，以及是否需要支持 `local-machine` 的单独策略判断。
+当前已新增的明确判断是：
+
+- `DWSIM` 与 `COFE` 的 discovery 基本已打通，不再是“完全看不到组件”
+- 真实 COM 探测已确认 `CoCreateInstance` 成功，但首个晚绑定 `IDispatch` 调用会报 `0x80131165 Type library is not registered`
+- 因此下一主线不是继续补 `ProgID / CurVer / CapeDescription`，而是补齐 `IDL -> TLB -> ComHostTypeLibrary -> TypeLib 注册` 这条链路
+
+仍必须补齐的边界缺口不是新的 host round fallback，而是标准 `TypeLib` 注册策略、`DWSIM + COFE` 的下一轮人工复验，以及是否需要支持 `local-machine` 的单独策略判断。

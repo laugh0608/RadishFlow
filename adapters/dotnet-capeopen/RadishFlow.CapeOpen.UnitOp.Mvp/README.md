@@ -10,7 +10,8 @@
 
 - `DWSIM / COFE` 已能发现当前 PMC，但晚绑定 `IDispatch` 调用仍会在真实 COM 激活后命中 `0x80131165 Type library is not registered`
 - 当前根因已从“注册树发现失败”收敛为“尚无真实 `TypeLib / TLB` 产物及注册链路”
-- 当前目录已新增 `typelib/RadishFlow.CapeOpen.UnitOp.Mvp.idl`，作为后续用 `MIDL` 生成 `RadishFlow.CapeOpen.UnitOp.Mvp.tlb` 的冻结真相源
+- 当前目录已同时包含冻结真相源 `typelib/RadishFlow.CapeOpen.UnitOp.Mvp.idl` 与首份 `typelib/RadishFlow.CapeOpen.UnitOp.Mvp.tlb`；该 `tlb` 已由本机 `Windows Kits 10 + Visual Studio` 工具链生成，用于继续推进 `IDL -> TLB -> TypeLib` 链路
+- 当前仓库并不内置 `MIDL` 工具链；后续仍需把 `TLB` 生成与 `TypeLib` 注册脚本化，而不是长期依赖手工本机构建
 - 在真实 `TLB` 生成、嵌入并注册前，不应把 `register-com.ps1` 的“注册成功”误判为 `DWSIM / COFE` 已可正常实例化和调用
 
 当前已包含的最小公共面：
