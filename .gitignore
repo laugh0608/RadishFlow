@@ -30,6 +30,11 @@ Thumbs.db
 .nuget/
 artifacts/*.log
 artifacts/registration-validation/
+artifacts/typelib-build/
+adapters/dotnet-capeopen/RadishFlow.CapeOpen.UnitOp.Mvp/typelib/*.h
+adapters/dotnet-capeopen/RadishFlow.CapeOpen.UnitOp.Mvp/typelib/*_i.c
+adapters/dotnet-capeopen/RadishFlow.CapeOpen.UnitOp.Mvp/typelib/*_p.c
+adapters/dotnet-capeopen/RadishFlow.CapeOpen.UnitOp.Mvp/typelib/*_dlldata.c
 
 # Codex
 .codex/
