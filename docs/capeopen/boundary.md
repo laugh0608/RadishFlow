@@ -126,12 +126,13 @@ Rust 与 `.NET 10` 之间的正式边界应保持简单稳定：
 
 截至 2026-04-22，`.NET 10` 适配层已从“纯目录占位”推进到“薄适配 + 冒烟闭环 + 最小互操作语义骨架 + 正式 host-facing 消费面 + PME-like 薄宿主样例 + 带执行门控的 Registration 工具”，但仍未进入默认 COM 注册、PME 自动化互调或第三方 CAPE-OPEN 模型加载。
 
-截至 2026-04-23，当前又已把 `DWSIM / COFE` 兼容性问题进一步收敛到 `TypeLib` 层：
+截至 2026-04-24，当前又已把 `DWSIM / COFE` 兼容性问题进一步收敛到 `TypeLib` 层：
 
 - `ProgID / CLSID / CurVer / CapeDescription / Programmable / ThreadingModel` 等 discovery 所需注册树已基本补齐
 - `CoCreateInstance` 当前已可成功，说明 COM class 激活不再是首要阻塞
 - `DWSIM / COFE` 的真实阻塞点已转为晚绑定 `IDispatch` 首次调用时报 `0x80131165 Type library is not registered`
-- 当前仓库已补入冻结的 `IDL` 真相源与首份 `TLB` 产物，但“如何完成标准 TypeLib 注册”仍是下一主线
+- 当前仓库已补入冻结的 `IDL` 真相源与首份 `TLB` 产物；`Registration` dry-run / execute 当前也已正式纳入 `TypeLib` 路径解析、`TypeLib GUID/version` 预检、`RegisterTypeLib(ForUser)` / `UnRegisterTypeLib(ForUser)` 调用，以及 `TypeLib` 树备份/回滚
+- 当前新的未完成项已从“如何完成标准 TypeLib 注册”收口为“在真实注册后重新完成 PowerShell 晚绑定探测与 `DWSIM + COFE` 人工复验”
 
 当前允许推进的内容：
 
@@ -159,10 +160,10 @@ Rust 与 `.NET 10` 之间的正式边界应保持简单稳定：
 - `UnitOp.Mvp` 中的 `UnitOperationComIdentity`，用于冻结自有 MVP Unit Operation PMC 的 `CLSID / ProgID / Versioned ProgID` 与 COM-visible class 元数据
 - `RadishFlow.CapeOpen.Registration` 当前已从纯 dry-run/preflight console 前推为“默认 dry-run、显式 `--execute` 才写入”的受限执行工具；它会继续输出组件注册计划、CAPE-OPEN categories、已实现接口清单，以及 `register / unregister`、`current-user / local-machine` 下的 registry key plan，但默认仍不写注册表
 - registration plan 当前明确把 `.NET comhost` 路径解析列为执行前 `Verify` 步骤，不把旧 `.NET Framework` `mscoree.dll` 注册口径写成未来事实；preflight 当前会确认生成的 `RadishFlow.CapeOpen.UnitOp.Mvp.comhost.dll` 路径、PE 机器类型、当前进程位数、scope 权限口径、目标 registry key 现状和备份范围
-- `Registration` 当前执行门控已冻结为：`--execute`、与 `action/scope/classid-prefix` 绑定的 confirmation token、无 `Fail` preflight、`local-machine` elevation 检查、`CLSID / ProgID / Versioned ProgID` 三棵树 JSON 备份、execution log，以及失败时按最新备份自动 rollback
+- `Registration` 当前执行门控已冻结为：`--execute`、与 `action/scope/classid-prefix` 绑定的 confirmation token、无 `Fail` preflight、`local-machine` elevation 检查、`CLSID / ProgID / Versioned ProgID / TypeLib` 四棵树 JSON 备份、execution log，以及失败时按最新备份自动 rollback
 - 仓库根 `scripts/register-com.ps1` 当前已作为正式注册脚本入口，统一负责 build、环境变量重定向、confirmation token 提示和对 `Registration.exe` 的调用；真实 register / unregister 默认优先通过这条入口进入
 - `docs/capeopen/pme-validation.md` 当前已冻结目标 PME 人工验证说明、执行型注册门控与安装/反安装运行手册；`examples/pme-validation/` 当前也已补出验证记录模板，用于沉淀真实 PME 记录而不是继续把验证字段只留在文档正文里
-- `UnitOp.Mvp` 当前已补入 `typelib/RadishFlow.CapeOpen.UnitOp.Mvp.idl` 与首份 `typelib/RadishFlow.CapeOpen.UnitOp.Mvp.tlb`，并可通过 `<ComHostTypeLibrary ...>` 挂入 `.NET comhost`；但这仍不等于标准 `TypeLib` 注册已完成
+- `UnitOp.Mvp` 当前已补入 `typelib/RadishFlow.CapeOpen.UnitOp.Mvp.idl` 与首份 `typelib/RadishFlow.CapeOpen.UnitOp.Mvp.tlb`，并可通过 `<ComHostTypeLibrary ...>` 挂入 `.NET comhost`；`tlb` 当前也会随 `UnitOp.Mvp` 与 `Registration` 输出一并复制，供 dry-run / execute 直接消费
 - `SmokeTests` 中更接近真实宿主的最小 driver 路径，用于固定 `Initialize -> 配参数 -> 连端口 -> Validate -> Calculate -> 读结果 -> Terminate` 正式调用顺序、最小必需输入与 `InvocationOrder / Validation / Native` 三类失败分类
 - `RadishFlow.CapeOpen.UnitOp.Mvp.ContractTests` 这种不依赖外部 NuGet 测试框架的库侧 contract baseline，用于锁定 `UnitOp.Mvp` 的行为语义，而不是把这部分契约只留在 console 输出里
 
@@ -191,6 +192,7 @@ Rust 与 `.NET 10` 之间的正式边界应保持简单稳定：
 - 先通过 `cargo check`、`UnitOp.Mvp` build、`Registration` build、contract tests build 与 `SampleHost` build
 - 再运行 `ContractTests` 与 `SampleHost`，确认正式 host-facing 消费路径仍可调用
 - 再优先通过 `pwsh .\scripts\register-com.ps1` 运行 dry-run，确认 `comhost`、位数、registry key 现状与备份范围
+- dry-run 当前也应确认 `ResolvedTypeLibraryPath`、`type library identity` 预检结果，以及 `RegisterTypeLibrary / UnregisterTypeLibrary` 计划步骤
 - 若 `DWSIM / COFE` 仍出现“能发现但添加无反应/直接崩溃”，应优先复验 PowerShell 晚绑定 COM 探测，并先排查 `TypeLib / IDispatch` 调用层，而不是再次回到发现层注册树
 - 如需真实 registry 写入，只允许通过当前带门控的仓库脚本入口或等价 `Registration` execute 路径进入；必须显式传入 `--execute`、匹配的 confirmation token，且 preflight 不存在 `Fail`
 - register / unregister 后对 `CLSID / ProgID / Versioned ProgID` 三棵树的存在性检查必须顺序执行，不应与执行命令并行跑

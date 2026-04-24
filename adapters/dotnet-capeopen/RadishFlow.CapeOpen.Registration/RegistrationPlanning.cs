@@ -1,4 +1,5 @@
 using System.Security.Principal;
+using System.Runtime.InteropServices;
 using Microsoft.Win32;
 
 internal static class CapeOpenRegistrationConfirmationToken
@@ -53,17 +54,20 @@ internal static class CapeOpenRegistrationPreflightChecker
         CapeOpenRegistrationAction action,
         CapeOpenRegistrationScope scope,
         CapeOpenRegistrationExecutionMode executionMode,
-        string comHostPath)
+        string comHostPath,
+        string typeLibraryPath)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(comHostPath);
+        ArgumentException.ThrowIfNullOrWhiteSpace(typeLibraryPath);
 
         var checks = new List<CapeOpenPreflightCheck>
         {
             CheckComHostPath(comHostPath),
             CheckComHostArchitecture(comHostPath),
+            CheckTypeLibraryPath(typeLibraryPath),
+            CheckTypeLibraryIdentity(typeLibraryPath),
             CheckProcessArchitecture(),
             CheckScopePermission(scope, executionMode),
-            CheckTypeLibraryRegistrationGap(action),
         };
 
         checks.AddRange(CheckRegistryConflicts(action, scope));
@@ -139,17 +143,48 @@ internal static class CapeOpenRegistrationPreflightChecker
             : Fail("scope permission", "Local-machine execution requires elevation before any HKLM write.");
     }
 
-    private static CapeOpenPreflightCheck CheckTypeLibraryRegistrationGap(
-        CapeOpenRegistrationAction action)
+    private static CapeOpenPreflightCheck CheckTypeLibraryPath(string typeLibraryPath)
     {
-        if (action != CapeOpenRegistrationAction.Register)
+        return File.Exists(typeLibraryPath)
+            ? Pass("type library path", $"Resolved type library: {typeLibraryPath}")
+            : Fail("type library path", $"Type library file was not found: {typeLibraryPath}");
+    }
+
+    private static CapeOpenPreflightCheck CheckTypeLibraryIdentity(string typeLibraryPath)
+    {
+        if (!File.Exists(typeLibraryPath))
         {
-            return Pass("type library", "Unregister does not depend on type library availability.");
+            return Fail("type library identity", "Cannot inspect type library identity because the file does not exist.");
         }
 
-        return Warn(
-            "type library",
-            "Current registration plan does not yet register a COM type library. Late-bound CAPE-OPEN hosts such as DWSIM/COFE can discover the CLSID but fail on IDispatch calls with 0x80131165 until a real TLB is generated and registered.");
+        try
+        {
+            var identity = CapeOpenTypeLibraryInspector.Inspect(typeLibraryPath);
+            var expectedGuid = Guid.Parse(RadishFlow.CapeOpen.UnitOp.Mvp.UnitOperation.UnitOperationComIdentity.TypeLibraryId);
+            var expectedVersion = CapeOpenTypeLibraryVersionParser.Parse(
+                RadishFlow.CapeOpen.UnitOp.Mvp.UnitOperation.UnitOperationComIdentity.TypeLibraryVersion);
+            if (identity.Guid != expectedGuid)
+            {
+                return Fail(
+                    "type library identity",
+                    $"Type library GUID mismatch. Expected {expectedGuid:B}, actual {identity.Guid:B}.");
+            }
+
+            if (identity.Version != expectedVersion)
+            {
+                return Fail(
+                    "type library identity",
+                    $"Type library version mismatch. Expected {expectedVersion}, actual {identity.Version}.");
+            }
+
+            return Pass(
+                "type library identity",
+                $"Type library GUID/version match expected identity; lcid={identity.LocaleId}, syskind={identity.SysKind}.");
+        }
+        catch (Exception error) when (error is COMException or IOException or UnauthorizedAccessException or InvalidOperationException)
+        {
+            return Fail("type library identity", $"Failed to inspect type library: {error.Message}");
+        }
     }
 
     private static IEnumerable<CapeOpenPreflightCheck> CheckRegistryConflicts(
@@ -213,16 +248,18 @@ internal static class CapeOpenRegistrationElevationChecker
 internal sealed record CapeOpenRegistryKeySet(
     string ClassIdKey,
     string ProgIdKey,
-    string VersionedProgIdKey)
+    string VersionedProgIdKey,
+    string TypeLibraryKey)
 {
-    public IReadOnlyList<string> AllTopLevelKeys => [ClassIdKey, ProgIdKey, VersionedProgIdKey];
+    public IReadOnlyList<string> AllTopLevelKeys => [ClassIdKey, ProgIdKey, VersionedProgIdKey, TypeLibraryKey];
 
     public static CapeOpenRegistryKeySet CreateUnitOperationMvp()
     {
         return new CapeOpenRegistryKeySet(
             ClassIdKey: $@"Software\Classes\CLSID\{{{RadishFlow.CapeOpen.UnitOp.Mvp.UnitOperation.UnitOperationComIdentity.ClassId}}}",
             ProgIdKey: $@"Software\Classes\{RadishFlow.CapeOpen.UnitOp.Mvp.UnitOperation.UnitOperationComIdentity.ProgId}",
-            VersionedProgIdKey: $@"Software\Classes\{RadishFlow.CapeOpen.UnitOp.Mvp.UnitOperation.UnitOperationComIdentity.VersionedProgId}");
+            VersionedProgIdKey: $@"Software\Classes\{RadishFlow.CapeOpen.UnitOp.Mvp.UnitOperation.UnitOperationComIdentity.VersionedProgId}",
+            TypeLibraryKey: $@"Software\Classes\TypeLib\{{{RadishFlow.CapeOpen.UnitOp.Mvp.UnitOperation.UnitOperationComIdentity.TypeLibraryId}}}");
     }
 }
 
@@ -278,20 +315,23 @@ internal static class CapeOpenRegistryPlanBuilder
     public static IReadOnlyList<CapeOpenRegistryPlanEntry> BuildUnitOperationMvpPlan(
         CapeOpenRegistrationAction action,
         CapeOpenRegistrationScope scope,
-        string comHostPath)
+        string comHostPath,
+        string typeLibraryPath)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(comHostPath);
+        ArgumentException.ThrowIfNullOrWhiteSpace(typeLibraryPath);
 
         var hive = CapeOpenRegistryHiveAccessor.GetHiveName(scope);
         const string classRoot = @"Software\Classes";
         var clsidKey = $@"{classRoot}\CLSID\{{{RadishFlow.CapeOpen.UnitOp.Mvp.UnitOperation.UnitOperationComIdentity.ClassId}}}";
         var progIdKey = $@"{classRoot}\{RadishFlow.CapeOpen.UnitOp.Mvp.UnitOperation.UnitOperationComIdentity.ProgId}";
         var versionedProgIdKey = $@"{classRoot}\{RadishFlow.CapeOpen.UnitOp.Mvp.UnitOperation.UnitOperationComIdentity.VersionedProgId}";
+        var typeLibraryKey = $@"{classRoot}\TypeLib\{{{RadishFlow.CapeOpen.UnitOp.Mvp.UnitOperation.UnitOperationComIdentity.TypeLibraryId}}}";
         var implementedCategoriesKey = $@"{clsidKey}\Implemented Categories";
 
         return action == CapeOpenRegistrationAction.Register
-            ? CreateRegisterPlan(hive, clsidKey, progIdKey, versionedProgIdKey, implementedCategoriesKey, comHostPath)
-            : CreateUnregisterPlan(hive, clsidKey, progIdKey, versionedProgIdKey);
+            ? CreateRegisterPlan(hive, clsidKey, progIdKey, versionedProgIdKey, typeLibraryKey, implementedCategoriesKey, comHostPath, typeLibraryPath)
+            : CreateUnregisterPlan(hive, clsidKey, progIdKey, versionedProgIdKey, typeLibraryKey, typeLibraryPath);
     }
 
     private static IReadOnlyList<CapeOpenRegistryPlanEntry> CreateRegisterPlan(
@@ -299,12 +339,15 @@ internal static class CapeOpenRegistryPlanBuilder
         string clsidKey,
         string progIdKey,
         string versionedProgIdKey,
+        string typeLibraryKey,
         string implementedCategoriesKey,
-        string unresolvedComHostPath)
+        string unresolvedComHostPath,
+        string unresolvedTypeLibraryPath)
     {
         return
         [
             Verify(hive, $@"{clsidKey}\InprocServer32", "Resolve the generated .NET comhost DLL path before any real registry write."),
+            RegisterTypeLibrary(hive, typeLibraryKey, unresolvedTypeLibraryPath, "Register the frozen COM type library required by late-bound IDispatch hosts."),
             SetDefaultValue(hive, clsidKey, RadishFlow.CapeOpen.UnitOp.Mvp.UnitOperation.UnitOperationComIdentity.ClassDisplayName, "Expose the COM class display name."),
             SetDefaultValue(hive, $@"{clsidKey}\InprocServer32", unresolvedComHostPath, "Host the .NET class through the generated native comhost DLL."),
             SetValue(
@@ -383,13 +426,17 @@ internal static class CapeOpenRegistryPlanBuilder
         string hive,
         string clsidKey,
         string progIdKey,
-        string versionedProgIdKey)
+        string versionedProgIdKey,
+        string typeLibraryKey,
+        string unresolvedTypeLibraryPath)
     {
         return
         [
+            UnregisterTypeLibrary(hive, typeLibraryKey, unresolvedTypeLibraryPath, "Unregister the frozen COM type library used by late-bound CAPE-OPEN hosts."),
             DeleteTree(hive, clsidKey, "Remove the COM class registration tree."),
             DeleteTree(hive, progIdKey, "Remove the stable ProgID registration tree."),
             DeleteTree(hive, versionedProgIdKey, "Remove the versioned ProgID registration tree."),
+            DeleteTree(hive, typeLibraryKey, "Remove the registered TypeLib tree after COM typelib unregistration."),
         ];
     }
 
@@ -435,6 +482,36 @@ internal static class CapeOpenRegistryPlanBuilder
             KeyPath: keyPath,
             ValueName: null,
             ValueData: null,
+            Reason: reason);
+    }
+
+    private static CapeOpenRegistryPlanEntry RegisterTypeLibrary(
+        string hive,
+        string keyPath,
+        string typeLibraryPath,
+        string reason)
+    {
+        return new CapeOpenRegistryPlanEntry(
+            Operation: CapeOpenRegistryPlanOperation.RegisterTypeLibrary,
+            Hive: hive,
+            KeyPath: keyPath,
+            ValueName: null,
+            ValueData: typeLibraryPath,
+            Reason: reason);
+    }
+
+    private static CapeOpenRegistryPlanEntry UnregisterTypeLibrary(
+        string hive,
+        string keyPath,
+        string typeLibraryPath,
+        string reason)
+    {
+        return new CapeOpenRegistryPlanEntry(
+            Operation: CapeOpenRegistryPlanOperation.UnregisterTypeLibrary,
+            Hive: hive,
+            KeyPath: keyPath,
+            ValueName: null,
+            ValueData: typeLibraryPath,
             Reason: reason);
     }
 

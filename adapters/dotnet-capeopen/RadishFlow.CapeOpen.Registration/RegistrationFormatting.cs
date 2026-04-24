@@ -15,6 +15,8 @@ internal static class CapeOpenRegistrationPlanFormatter
             $"  CLSID: {descriptor.ClassId}",
             $"  ProgID: {descriptor.ProgId}",
             $"  Versioned ProgID: {descriptor.VersionedProgId}",
+            $"  TypeLib ID: {descriptor.TypeLibraryId}",
+            $"  TypeLib version: {descriptor.TypeLibraryVersion}",
             $"  Assembly: {descriptor.AssemblyName}",
             $"  Type: {descriptor.TypeName}",
             $"  Action: {descriptor.Action}",
@@ -22,6 +24,7 @@ internal static class CapeOpenRegistrationPlanFormatter
             $"  Execution mode: {descriptor.ExecutionMode}",
             $"  Required confirm token: {descriptor.RequiredConfirmToken}",
             $"  Comhost path: {descriptor.ResolvedComHostPath}",
+            $"  TypeLib path: {descriptor.ResolvedTypeLibraryPath}",
             string.Empty,
             "CAPE-OPEN Categories:",
         };
@@ -91,11 +94,14 @@ internal static class CapeOpenRegistrationPlanFormatter
     {
         var valueName = entry.ValueName is null ? "(Default)" : entry.ValueName;
         var valueData = entry.ValueData is null ? string.Empty : $" = {entry.ValueData}";
-        return entry.Operation == CapeOpenRegistryPlanOperation.SetValue
-            ? $"  - Set {entry.Hive}\\{entry.KeyPath}\\{valueName}{valueData} | {entry.Reason}"
-            : entry.Operation == CapeOpenRegistryPlanOperation.DeleteTree
-                ? $"  - DeleteTree {entry.Hive}\\{entry.KeyPath} | {entry.Reason}"
-                : $"  - Verify {entry.Hive}\\{entry.KeyPath} | {entry.Reason}";
+        return entry.Operation switch
+        {
+            CapeOpenRegistryPlanOperation.SetValue => $"  - Set {entry.Hive}\\{entry.KeyPath}\\{valueName}{valueData} | {entry.Reason}",
+            CapeOpenRegistryPlanOperation.RegisterTypeLibrary => $"  - RegisterTypeLibrary {entry.Hive}\\{entry.KeyPath}{valueData} | {entry.Reason}",
+            CapeOpenRegistryPlanOperation.UnregisterTypeLibrary => $"  - UnregisterTypeLibrary {entry.Hive}\\{entry.KeyPath}{valueData} | {entry.Reason}",
+            CapeOpenRegistryPlanOperation.DeleteTree => $"  - DeleteTree {entry.Hive}\\{entry.KeyPath} | {entry.Reason}",
+            _ => $"  - Verify {entry.Hive}\\{entry.KeyPath} | {entry.Reason}",
+        };
     }
 
     private static string FormatPreflightCheck(CapeOpenPreflightCheck check)

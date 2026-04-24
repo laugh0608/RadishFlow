@@ -115,19 +115,26 @@ internal static class ContractTests
     public static void RegistrationPlan_ExposesGuardedExecutionBoundary()
     {
         var explicitComHostPath = typeof(ContractTestExecutable).Assembly.Location;
+        var explicitTypeLibraryPath = ResolveFrozenTypeLibraryPath();
         var dryRunDescriptor = CapeOpenRegistrationDescriptor.CreateUnitOperationMvp(
             CapeOpenRegistrationAction.Register,
             CapeOpenRegistrationScope.CurrentUser,
             CapeOpenRegistrationExecutionMode.DryRun,
-            explicitComHostPath);
+            explicitComHostPath,
+            explicitTypeLibraryPath);
 
         ContractAssert.Equal(CapeOpenRegistrationExecutionMode.DryRun, dryRunDescriptor.ExecutionMode, "Dry-run descriptor should preserve execution mode.");
         ContractAssert.Equal("register-current-user-2F0E4C8F", dryRunDescriptor.RequiredConfirmToken, "Registration descriptor should expose the stable confirmation token.");
         ContractAssert.False(dryRunDescriptor.WritesRegistry, "Dry-run descriptor should not claim registry writes.");
-        ContractAssert.Equal(3, dryRunDescriptor.BackupPlan.Count, "Backup plan should cover CLSID, ProgID and versioned ProgID roots.");
+        ContractAssert.Equal(4, dryRunDescriptor.BackupPlan.Count, "Backup plan should cover CLSID, ProgID, versioned ProgID and TypeLib roots.");
         ContractAssert.True(
             dryRunDescriptor.RegistryPlan.Any(static entry => entry.Operation == CapeOpenRegistryPlanOperation.Verify),
             "Register plan should preserve the pre-write comhost verification step.");
+        ContractAssert.True(
+            dryRunDescriptor.RegistryPlan.Any(static entry =>
+                entry.Operation == CapeOpenRegistryPlanOperation.RegisterTypeLibrary &&
+                entry.KeyPath.EndsWith(@"\TypeLib\{9D9E5F0D-5E28-4A45-9E2A-70A39D4C8D11}", StringComparison.Ordinal)),
+            "Register plan should include the frozen TypeLib registration step for late-bound hosts.");
         ContractAssert.True(
             dryRunDescriptor.RegistryPlan.Any(static entry => entry.Operation == CapeOpenRegistryPlanOperation.SetValue && entry.KeyPath.Contains(@"Implemented Categories", StringComparison.Ordinal)),
             "Register plan should advertise CAPE-OPEN categories.");
@@ -170,26 +177,32 @@ internal static class ContractTests
             "Register plan should write the versioned ProgID CLSID mapping using the canonical braced GUID string.");
         ContractAssert.True(
             dryRunDescriptor.PreflightChecks.Any(static check =>
-                check.Status == CapeOpenPreflightCheckStatus.Warning &&
-                string.Equals(check.Name, "type library", StringComparison.Ordinal) &&
-                check.Detail.Contains("0x80131165", StringComparison.Ordinal)),
-            "Register preflight should explicitly warn that late-bound CAPE-OPEN hosts still require a registered type library.");
+                check.Status == CapeOpenPreflightCheckStatus.Pass &&
+                string.Equals(check.Name, "type library identity", StringComparison.Ordinal) &&
+                check.Detail.Contains("GUID/version match", StringComparison.Ordinal)),
+            "Register preflight should confirm that the frozen TLB identity is ready for registration.");
 
         var executeDescriptor = CapeOpenRegistrationDescriptor.CreateUnitOperationMvp(
             CapeOpenRegistrationAction.Unregister,
             CapeOpenRegistrationScope.CurrentUser,
             CapeOpenRegistrationExecutionMode.Execute,
-            explicitComHostPath);
+            explicitComHostPath,
+            explicitTypeLibraryPath);
         ContractAssert.True(executeDescriptor.WritesRegistry, "Execute descriptor should explicitly mark registry writes.");
-        ContractAssert.Equal(3, executeDescriptor.RegistryPlan.Count, "Unregister plan should remain constrained to the three top-level registration trees.");
+        ContractAssert.Equal(5, executeDescriptor.RegistryPlan.Count, "Unregister plan should cover TypeLib API unregistration plus the four top-level registration roots.");
         ContractAssert.True(
-            executeDescriptor.RegistryPlan.All(static entry => entry.Operation == CapeOpenRegistryPlanOperation.DeleteTree),
-            "Unregister plan should only delete the frozen registration roots.");
+            executeDescriptor.RegistryPlan.Any(static entry => entry.Operation == CapeOpenRegistryPlanOperation.UnregisterTypeLibrary),
+            "Unregister plan should explicitly include the TypeLib unregistration step.");
+        ContractAssert.Equal(
+            4,
+            executeDescriptor.RegistryPlan.Count(static entry => entry.Operation == CapeOpenRegistryPlanOperation.DeleteTree),
+            "Unregister plan should still constrain tree deletion to the four frozen registration roots.");
     }
 
     public static void RegistrationExecution_RequiresMatchingConfirmToken()
     {
         var explicitComHostPath = typeof(ContractTestExecutable).Assembly.Location;
+        var explicitTypeLibraryPath = ResolveFrozenTypeLibraryPath();
         var backupDirectory = Path.Combine(Path.GetTempPath(), "radishflow-registration-confirm-" + Guid.NewGuid().ToString("N"));
         var options = RegistrationOptions.Parse(
         [
@@ -198,6 +211,8 @@ internal static class ContractTests
             "wrong-token",
             "--comhost",
             explicitComHostPath,
+            "--typelib",
+            explicitTypeLibraryPath,
             "--backup-dir",
             backupDirectory,
         ]);
@@ -205,7 +220,8 @@ internal static class ContractTests
             options.Action,
             options.Scope,
             options.ExecutionMode,
-            options.ComHostPath);
+            options.ComHostPath,
+            options.TypeLibraryPath);
 
         var error = ContractAssert.Throws<InvalidOperationException>(
             () => CapeOpenRegistrationExecutor.Execute(descriptor, options),
@@ -218,6 +234,7 @@ internal static class ContractTests
     public static void RegistrationExecution_StopsOnPreflightFailure()
     {
         var missingComHostPath = Path.Combine(Path.GetTempPath(), "radishflow-registration-missing-" + Guid.NewGuid().ToString("N") + ".dll");
+        var explicitTypeLibraryPath = ResolveFrozenTypeLibraryPath();
         var backupDirectory = Path.Combine(Path.GetTempPath(), "radishflow-registration-preflight-" + Guid.NewGuid().ToString("N"));
         var options = RegistrationOptions.Parse(
         [
@@ -226,6 +243,8 @@ internal static class ContractTests
             "register-current-user-2F0E4C8F",
             "--comhost",
             missingComHostPath,
+            "--typelib",
+            explicitTypeLibraryPath,
             "--backup-dir",
             backupDirectory,
         ]);
@@ -233,7 +252,8 @@ internal static class ContractTests
             options.Action,
             options.Scope,
             options.ExecutionMode,
-            options.ComHostPath);
+            options.ComHostPath,
+            options.TypeLibraryPath);
 
         ContractAssert.True(
             descriptor.PreflightChecks.Any(static check =>
@@ -247,6 +267,24 @@ internal static class ContractTests
 
         ContractAssert.Contains(error.Message, "preflight failures", "Preflight-blocked execution should explain why no write happened.");
         ContractAssert.False(Directory.Exists(backupDirectory), "Preflight-blocked execution should not create backup output.");
+    }
+
+    private static string ResolveFrozenTypeLibraryPath()
+    {
+        var fileName = UnitOperationComIdentity.TypeLibraryFileName;
+        var baseDirectory = AppContext.BaseDirectory;
+        var candidates = new[]
+        {
+            Path.Combine(baseDirectory, fileName),
+            Path.Combine(baseDirectory, "typelib", fileName),
+            Path.GetFullPath(Path.Combine(baseDirectory, @"..\..\..\..\RadishFlow.CapeOpen.UnitOp.Mvp\typelib", fileName)),
+            Path.GetFullPath(Path.Combine(baseDirectory, @"..\..\..\..\..\RadishFlow.CapeOpen.UnitOp.Mvp\typelib", fileName)),
+        };
+
+        var resolved = candidates.FirstOrDefault(File.Exists);
+        return resolved
+               ?? throw new InvalidOperationException(
+                   $"Failed to locate frozen type library fixture `{fileName}`. Candidates: {string.Join(", ", candidates)}");
     }
 
     public static void Collections_ExposeStableLookupAndRejectInvalidSelectors(ContractTestContext context)

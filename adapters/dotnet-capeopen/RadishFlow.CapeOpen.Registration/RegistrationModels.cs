@@ -6,9 +6,12 @@ internal sealed record CapeOpenRegistrationDescriptor(
     string ClassId,
     string ProgId,
     string VersionedProgId,
+    string TypeLibraryId,
+    string TypeLibraryVersion,
     string AssemblyName,
     string TypeName,
     string ResolvedComHostPath,
+    string ResolvedTypeLibraryPath,
     CapeOpenRegistrationAction Action,
     CapeOpenRegistrationScope Scope,
     CapeOpenRegistrationExecutionMode ExecutionMode,
@@ -27,19 +30,26 @@ internal sealed record CapeOpenRegistrationDescriptor(
         CapeOpenRegistrationAction action,
         CapeOpenRegistrationScope scope,
         CapeOpenRegistrationExecutionMode executionMode,
-        string? comHostPath)
+        string? comHostPath,
+        string? typeLibraryPath)
     {
         var unitOperationType = typeof(RadishFlow.CapeOpen.UnitOp.Mvp.UnitOperation.RadishFlowCapeOpenUnitOperation);
         var resolvedComHostPath = CapeOpenComHostPathResolver.Resolve(unitOperationType, comHostPath);
+        var resolvedTypeLibraryPath = CapeOpenTypeLibraryPathResolver.Resolve(
+            unitOperationType,
+            typeLibraryPath,
+            resolvedComHostPath);
         var preflightChecks = CapeOpenRegistrationPreflightChecker.Check(
             action,
             scope,
             executionMode,
-            resolvedComHostPath);
+            resolvedComHostPath,
+            resolvedTypeLibraryPath);
         var registryPlan = CapeOpenRegistryPlanBuilder.BuildUnitOperationMvpPlan(
             action,
             scope,
-            resolvedComHostPath);
+            resolvedComHostPath,
+            resolvedTypeLibraryPath);
         var backupPlan = CapeOpenRegistryBackupPlanBuilder.BuildUnitOperationMvpPlan(scope);
         return new CapeOpenRegistrationDescriptor(
             ComponentName: RadishFlow.CapeOpen.UnitOp.Mvp.UnitOperation.UnitOperationComIdentity.DisplayName,
@@ -47,9 +57,12 @@ internal sealed record CapeOpenRegistrationDescriptor(
             ClassId: RadishFlow.CapeOpen.UnitOp.Mvp.UnitOperation.UnitOperationComIdentity.ClassId,
             ProgId: RadishFlow.CapeOpen.UnitOp.Mvp.UnitOperation.UnitOperationComIdentity.ProgId,
             VersionedProgId: RadishFlow.CapeOpen.UnitOp.Mvp.UnitOperation.UnitOperationComIdentity.VersionedProgId,
+            TypeLibraryId: RadishFlow.CapeOpen.UnitOp.Mvp.UnitOperation.UnitOperationComIdentity.TypeLibraryId,
+            TypeLibraryVersion: RadishFlow.CapeOpen.UnitOp.Mvp.UnitOperation.UnitOperationComIdentity.TypeLibraryVersion,
             AssemblyName: unitOperationType.Assembly.GetName().Name ?? "RadishFlow.CapeOpen.UnitOp.Mvp",
             TypeName: unitOperationType.FullName ?? unitOperationType.Name,
             ResolvedComHostPath: resolvedComHostPath,
+            ResolvedTypeLibraryPath: resolvedTypeLibraryPath,
             Action: action,
             Scope: scope,
             ExecutionMode: executionMode,
@@ -192,6 +205,8 @@ internal enum CapeOpenRegistryPlanOperation
 {
     Verify,
     SetValue,
+    RegisterTypeLibrary,
+    UnregisterTypeLibrary,
     DeleteTree,
 }
 

@@ -14,4 +14,8 @@
   <ItemGroup>
     <ComHostTypeLibrary Include="typelib\RadishFlow.CapeOpen.UnitOp.Mvp.tlb" Id="1" />
   </ItemGroup>
+
+  <ItemGroup>
+    <None Update="typelib\RadishFlow.CapeOpen.UnitOp.Mvp.tlb" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
 </Project>

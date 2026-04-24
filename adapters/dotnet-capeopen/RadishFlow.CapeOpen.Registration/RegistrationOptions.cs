@@ -8,6 +8,7 @@ internal sealed class RegistrationOptions
         CapeOpenRegistrationExecutionMode executionMode,
         string? confirmToken,
         string? comHostPath,
+        string? typeLibraryPath,
         string? backupDirectory)
     {
         ShowHelp = showHelp;
@@ -17,6 +18,7 @@ internal sealed class RegistrationOptions
         ExecutionMode = executionMode;
         ConfirmToken = confirmToken;
         ComHostPath = comHostPath;
+        TypeLibraryPath = typeLibraryPath;
         BackupDirectory = backupDirectory;
     }
 
@@ -34,6 +36,8 @@ internal sealed class RegistrationOptions
 
     public string? ComHostPath { get; }
 
+    public string? TypeLibraryPath { get; }
+
     public string? BackupDirectory { get; }
 
     public static string HelpText =>
@@ -47,6 +51,7 @@ internal sealed class RegistrationOptions
           --action <register|unregister>           Registration action. Default: register
           --scope <current-user|local-machine>     Registry scope to plan. Default: current-user
           --comhost <path>                         Optional explicit RadishFlow.CapeOpen.UnitOp.Mvp.comhost.dll path
+          --typelib <path>                         Optional explicit RadishFlow.CapeOpen.UnitOp.Mvp.tlb path
           --execute                                Execute the planned registry changes after passing all gates
           --confirm <token>                        Required confirmation token for --execute
           --backup-dir <path>                      Optional backup/log output directory for --execute
@@ -63,6 +68,7 @@ internal sealed class RegistrationOptions
         var executionMode = CapeOpenRegistrationExecutionMode.DryRun;
         string? confirmToken = null;
         string? comHostPath = null;
+        string? typeLibraryPath = null;
         string? backupDirectory = null;
 
         for (var index = 0; index < args.Length; index++)
@@ -110,6 +116,12 @@ internal sealed class RegistrationOptions
                 continue;
             }
 
+            if (string.Equals(arg, "--typelib", StringComparison.OrdinalIgnoreCase))
+            {
+                typeLibraryPath = Path.GetFullPath(ReadOptionValue(args, ref index, arg));
+                continue;
+            }
+
             if (string.Equals(arg, "--backup-dir", StringComparison.OrdinalIgnoreCase))
             {
                 backupDirectory = Path.GetFullPath(ReadOptionValue(args, ref index, arg));
@@ -127,6 +139,7 @@ internal sealed class RegistrationOptions
             executionMode,
             confirmToken,
             comHostPath,
+            typeLibraryPath,
             backupDirectory);
     }
 

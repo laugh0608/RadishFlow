@@ -156,6 +156,8 @@ internal static class CapeOpenRegistryPlanExecutor
                 CapeOpenRegistryOperationResultStatus.Skipped,
                 "Verify steps are enforced through preflight and are not written during execution."),
             CapeOpenRegistryPlanOperation.SetValue => ApplySetValue(hive, entry),
+            CapeOpenRegistryPlanOperation.RegisterTypeLibrary => ApplyRegisterTypeLibrary(entry, scope),
+            CapeOpenRegistryPlanOperation.UnregisterTypeLibrary => ApplyUnregisterTypeLibrary(entry, scope),
             CapeOpenRegistryPlanOperation.DeleteTree => ApplyDeleteTree(hive, entry),
             _ => throw new InvalidOperationException($"Unsupported registry plan operation `{entry.Operation}`."),
         };
@@ -192,6 +194,40 @@ internal static class CapeOpenRegistryPlanExecutor
             entry.ValueData,
             existed ? CapeOpenRegistryOperationResultStatus.Applied : CapeOpenRegistryOperationResultStatus.Skipped,
             existed ? "Registry tree deleted." : "Registry tree was already absent.");
+    }
+
+    private static CapeOpenRegistryOperationResult ApplyRegisterTypeLibrary(
+        CapeOpenRegistryPlanEntry entry,
+        CapeOpenRegistrationScope scope)
+    {
+        var typeLibraryPath = entry.ValueData
+            ?? throw new InvalidOperationException("Type library registration requires a resolved .tlb path.");
+        var identity = CapeOpenTypeLibraryRegistrar.Register(scope, typeLibraryPath);
+        return new CapeOpenRegistryOperationResult(
+            entry.Operation,
+            entry.Hive,
+            entry.KeyPath,
+            entry.ValueName,
+            entry.ValueData,
+            CapeOpenRegistryOperationResultStatus.Applied,
+            $"Type library registered: {identity.Guid:B} v{identity.Version} lcid={identity.LocaleId} syskind={identity.SysKind}.");
+    }
+
+    private static CapeOpenRegistryOperationResult ApplyUnregisterTypeLibrary(
+        CapeOpenRegistryPlanEntry entry,
+        CapeOpenRegistrationScope scope)
+    {
+        var typeLibraryPath = entry.ValueData
+            ?? throw new InvalidOperationException("Type library unregistration requires a resolved .tlb path.");
+        var identity = CapeOpenTypeLibraryRegistrar.Unregister(scope, typeLibraryPath);
+        return new CapeOpenRegistryOperationResult(
+            entry.Operation,
+            entry.Hive,
+            entry.KeyPath,
+            entry.ValueName,
+            entry.ValueData,
+            CapeOpenRegistryOperationResultStatus.Applied,
+            $"Type library unregistered: {identity.Guid:B} v{identity.Version} lcid={identity.LocaleId} syskind={identity.SysKind}.");
     }
 }
 

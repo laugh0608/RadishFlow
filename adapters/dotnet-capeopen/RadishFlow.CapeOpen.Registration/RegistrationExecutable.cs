@@ -20,7 +20,8 @@ internal static class RegistrationExecutable
                 options.Action,
                 options.Scope,
                 options.ExecutionMode,
-                options.ComHostPath);
+                options.ComHostPath,
+                options.TypeLibraryPath);
 
             var runResult = options.ExecutionMode == CapeOpenRegistrationExecutionMode.Execute
                 ? CapeOpenRegistrationExecutor.Execute(descriptor, options)

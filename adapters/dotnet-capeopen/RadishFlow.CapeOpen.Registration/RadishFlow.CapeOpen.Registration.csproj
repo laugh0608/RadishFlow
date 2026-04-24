@@ -11,4 +11,10 @@
     <ProjectReference Include="..\RadishFlow.CapeOpen.Interop\RadishFlow.CapeOpen.Interop.csproj" />
     <ProjectReference Include="..\RadishFlow.CapeOpen.UnitOp.Mvp\RadishFlow.CapeOpen.UnitOp.Mvp.csproj" />
   </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\RadishFlow.CapeOpen.UnitOp.Mvp\typelib\RadishFlow.CapeOpen.UnitOp.Mvp.tlb"
+          Link="RadishFlow.CapeOpen.UnitOp.Mvp.tlb"
+          CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
 </Project>

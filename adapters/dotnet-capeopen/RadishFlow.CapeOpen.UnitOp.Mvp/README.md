@@ -9,17 +9,17 @@
 当前已确认的宿主兼容性现状：
 
 - `DWSIM / COFE` 已能发现当前 PMC，但晚绑定 `IDispatch` 调用仍会在真实 COM 激活后命中 `0x80131165 Type library is not registered`
-- 当前根因已从“注册树发现失败”收敛为“尚无真实 `TypeLib / TLB` 产物及注册链路”
-- 当前目录已同时包含冻结真相源 `typelib/RadishFlow.CapeOpen.UnitOp.Mvp.idl` 与首份 `typelib/RadishFlow.CapeOpen.UnitOp.Mvp.tlb`；该 `tlb` 已由本机 `Windows Kits 10 + Visual Studio` 工具链生成，用于继续推进 `IDL -> TLB -> TypeLib` 链路
-- 当前仓库并不内置 `MIDL` 工具链；后续仍需把 `TLB` 生成与 `TypeLib` 注册脚本化，而不是长期依赖手工本机构建
-- 在真实 `TLB` 生成、嵌入并注册前，不应把 `register-com.ps1` 的“注册成功”误判为 `DWSIM / COFE` 已可正常实例化和调用
+- 当前根因已从“注册树发现失败”收敛为“需要真实 `TypeLib / TLB` 注册链路并重新做晚绑定复验”
+- 当前目录已同时包含冻结真相源 `typelib/RadishFlow.CapeOpen.UnitOp.Mvp.idl` 与 `typelib/RadishFlow.CapeOpen.UnitOp.Mvp.tlb`；该 `tlb` 已由本机 `Windows Kits 10 + Visual Studio` 工具链生成，并已接入 `Registration` 的标准 `TypeLib` 注册/反注册路径
+- 当前仓库并不内置 `MIDL` 工具链；后续仍需继续把 `IDL -> TLB` 生成脚本化，而不是长期依赖手工本机构建
+- 截至 2026-04-24，`Registration` dry-run 已能自动解析 `TLB` 路径、校验 `TypeLib GUID/version`，并在 execute 模式下规划 `RegisterTypeLib(ForUser)` / `UnRegisterTypeLib(ForUser)`；但在重新做真实注册和 PowerShell / `DWSIM + COFE` 复验前，仍不应把这一步直接当成兼容性已闭环
 
 当前已包含的最小公共面：
 
 - `RadishFlowCapeOpenUnitOperation`
 - `UnitOperationComIdentity`，用于冻结 MVP PMC 的 `CLSID / ProgID / Versioned ProgID / DisplayName / Description`
 - 项目已启用 `EnableComHosting`，用于生成 `.NET 10` `RadishFlow.CapeOpen.UnitOp.Mvp.comhost.dll` 前置产物；该产物当前只供 `Registration` preflight 检查和未来注册工具规划使用，不代表本项目会自行写注册表
-- `UnitOperationComIdentity` 当前也已冻结 `TypeLibraryId / TypeLibraryVersion / TypeLibraryFileName`，为后续 `TLB` 生成与注册链路预留稳定口径
+- `UnitOperationComIdentity` 当前也已冻结 `TypeLibraryId / TypeLibraryVersion / TypeLibraryFileName`；`RadishFlow.CapeOpen.UnitOp.Mvp.tlb` 当前会随构建输出一并复制，供 `Registration` 在 dry-run / execute 中直接消费
 - `UnitOperationPortPlaceholder` / `UnitOperationParameterPlaceholder`
 - `UnitOperationParameterCollection`
 - `UnitOperationPortCollection`

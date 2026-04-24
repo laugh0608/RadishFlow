@@ -12,6 +12,8 @@ param(
 
     [string]$ComHostPath,
 
+    [string]$TypeLibPath,
+
     [string]$BackupDir,
 
     [switch]$Json,
@@ -98,6 +100,11 @@ if ($Execute) {
 if (-not [string]::IsNullOrWhiteSpace($ComHostPath)) {
     $registrationArgs += '--comhost'
     $registrationArgs += (Resolve-Path -LiteralPath $ComHostPath).Path
+}
+
+if (-not [string]::IsNullOrWhiteSpace($TypeLibPath)) {
+    $registrationArgs += '--typelib'
+    $registrationArgs += (Resolve-Path -LiteralPath $TypeLibPath).Path
 }
 
 if (-not [string]::IsNullOrWhiteSpace($BackupDir)) {
