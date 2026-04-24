@@ -621,9 +621,12 @@ Rust 与 .NET 的桥接层。
 - 当前已建立第一版 `net10.0` 注册工具，并已加入 `RadishFlow.CapeOpen.sln`
 - 当前可输出 MVP Unit Operation PMC 的 `CLSID / ProgID / Versioned ProgID`、CAPE-OPEN categories、最小已实现接口、当前 action / scope 与边界标志
 - 当前可按 `register / unregister` 与 `current-user / local-machine` 生成 registry key plan，并把 `.NET comhost` 路径解析列为执行前 `Verify` 步骤
-- 当前已启用 `UnitOp.Mvp` 的 `EnableComHosting`，并在 preflight 中只读检查 `RadishFlow.CapeOpen.UnitOp.Mvp.comhost.dll` 是否存在、PE 机器类型、当前进程位数、scope 权限口径、目标 registry key 现状和备份范围
-- 当前默认行为仍为 dry-run，但已支持在显式 `--execute`、匹配 confirmation token、无 `Fail` preflight、权限检查通过的前提下执行 `register / unregister`；执行边界已收口到 `CLSID / ProgID / Versioned ProgID` 三棵树备份、execution log 与失败 rollback
+- 当前已启用 `UnitOp.Mvp` 的 `EnableComHosting`，并在 preflight 中只读检查真实 `UnitOp.Mvp` 输出目录中的 `RadishFlow.CapeOpen.UnitOp.Mvp.comhost.dll`、PE 机器类型、`UnitOp.Mvp.runtimeconfig/deps` sidecar、当前进程位数、scope 权限口径、目标 registry key 现状和备份范围
+- 当前默认行为仍为 dry-run，但已支持在显式 `--execute`、匹配 confirmation token、无 `Fail` preflight、权限检查通过的前提下执行 `register / unregister`；执行边界已收口到 `CLSID / ProgID / Versioned ProgID / TypeLib` 四棵树备份、execution log 与失败 rollback
 - 仓库根 `scripts/register-com.ps1` 当前已作为正式脚本入口，负责统一 build、token 提示、环境变量重定向和 `Registration.exe` 调用
+- 当前仓库脚本默认会显式传入 `UnitOp.Mvp\bin\Debug\net10.0` 下的 comhost / typelib，不再依赖 `Registration.exe` 进程目录猜测默认路径
+- 当前 execute `register` 还会补写 classic COM 所需的 `CLSID\{...}\TypeLib` 关联值，避免只注册 `TypeLib` 树却不把 CLSID 回链到 typelib GUID
+- 当前真实复验还确认了一个宿主侧假阴性：`pwsh` 若已预加载 `.NET 9.0.10`，会因与当前 PMC 目标 `.NET 10.0.0` runtime 不兼容而触发 `0x800080A5`；后续 native COM / PME 类探测应优先改用 `Windows PowerShell 5` 或其他非预加载 .NET 宿主
 - 目标 PME 人工验证路径当前已单独落到 `docs/capeopen/pme-validation.md`，注册工具本身不承担 PME 自动化互调
 
 ### `RadishFlow.CapeOpen.SmokeTests`
