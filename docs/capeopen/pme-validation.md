@@ -79,12 +79,18 @@ dry-run 输出必须人工确认：
 - implemented interfaces 至少包含 `ICapeIdentification`、`ICapeUtilities` 与 `ICapeUnit`
 - `comhost path` 为 `Pass`
 - `comhost architecture` 与目标 PME 进程位数一致
+- `comhost runtime layout` 为 `Pass`
 - `process architecture` 与预期 registry view 一致
 - `registry conflict` 没有未解释的冲突
 - `backup plan` 覆盖 `CLSID / ProgID / Versioned ProgID` 三棵树
 - `Writes registry` 仍为 `no`
 
 若 dry-run 出现 `Fail`，不得进入真实注册。若出现 `Warning`，必须在验证记录里解释是否接受。
+
+补充探测约束：
+
+- 需要做 PowerShell COM 晚绑定复验时，优先使用 `C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe`
+- 不要默认用 `pwsh` 作为 native COM 探测宿主；若 `pwsh` 已预加载其它版本的 `.NET` runtime，可能会出现与注册树无关的 `0x800080A5` 假阴性
 
 ## 执行型注册工具门控
 

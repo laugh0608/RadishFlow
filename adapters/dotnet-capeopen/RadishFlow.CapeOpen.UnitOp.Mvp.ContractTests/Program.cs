@@ -114,7 +114,7 @@ internal static class ContractTests
 {
     public static void RegistrationPlan_ExposesGuardedExecutionBoundary()
     {
-        var explicitComHostPath = typeof(ContractTestExecutable).Assembly.Location;
+        var explicitComHostPath = ResolveFrozenComHostPath();
         var explicitTypeLibraryPath = ResolveFrozenTypeLibraryPath();
         var dryRunDescriptor = CapeOpenRegistrationDescriptor.CreateUnitOperationMvp(
             CapeOpenRegistrationAction.Register,
@@ -160,6 +160,12 @@ internal static class ContractTests
         ContractAssert.True(
             dryRunDescriptor.RegistryPlan.Any(static entry =>
                 entry.Operation == CapeOpenRegistryPlanOperation.SetValue &&
+                entry.KeyPath.EndsWith(@"\TypeLib", StringComparison.Ordinal) &&
+                string.Equals(entry.ValueData, "{9D9E5F0D-5E28-4A45-9E2A-70A39D4C8D11}", StringComparison.Ordinal)),
+            "Register plan should bind the CLSID tree back to the registered type library GUID.");
+        ContractAssert.True(
+            dryRunDescriptor.RegistryPlan.Any(static entry =>
+                entry.Operation == CapeOpenRegistryPlanOperation.SetValue &&
                 entry.KeyPath.EndsWith(@"\CurVer", StringComparison.Ordinal) &&
                 string.Equals(entry.ValueData, "RadishFlow.CapeOpen.UnitOp.Mvp.1", StringComparison.Ordinal)),
             "Register plan should bind the stable ProgID to the current versioned ProgID.");
@@ -181,6 +187,27 @@ internal static class ContractTests
                 string.Equals(check.Name, "type library identity", StringComparison.Ordinal) &&
                 check.Detail.Contains("GUID/version match", StringComparison.Ordinal)),
             "Register preflight should confirm that the frozen TLB identity is ready for registration.");
+        ContractAssert.True(
+            dryRunDescriptor.PreflightChecks.Any(static check =>
+                check.Status == CapeOpenPreflightCheckStatus.Pass &&
+                string.Equals(check.Name, "comhost runtime layout", StringComparison.Ordinal)),
+            "Register preflight should confirm that the resolved comhost directory contains the required .NET runtime sidecars.");
+
+        var defaultDescriptor = CapeOpenRegistrationDescriptor.CreateUnitOperationMvp(
+            CapeOpenRegistrationAction.Register,
+            CapeOpenRegistrationScope.CurrentUser,
+            CapeOpenRegistrationExecutionMode.DryRun,
+            null,
+            null);
+        ContractAssert.Contains(
+            defaultDescriptor.ResolvedComHostPath,
+            @"RadishFlow.CapeOpen.UnitOp.Mvp\bin\",
+            "Default resolver should prefer the UnitOp.Mvp project output directory in repository builds.");
+        ContractAssert.True(
+            defaultDescriptor.PreflightChecks.Any(static check =>
+                check.Status == CapeOpenPreflightCheckStatus.Pass &&
+                string.Equals(check.Name, "comhost runtime layout", StringComparison.Ordinal)),
+            "Default resolver should land on a comhost directory that is activation-ready for .NET COM hosting.");
 
         var executeDescriptor = CapeOpenRegistrationDescriptor.CreateUnitOperationMvp(
             CapeOpenRegistrationAction.Unregister,
@@ -201,7 +228,7 @@ internal static class ContractTests
 
     public static void RegistrationExecution_RequiresMatchingConfirmToken()
     {
-        var explicitComHostPath = typeof(ContractTestExecutable).Assembly.Location;
+        var explicitComHostPath = ResolveFrozenComHostPath();
         var explicitTypeLibraryPath = ResolveFrozenTypeLibraryPath();
         var backupDirectory = Path.Combine(Path.GetTempPath(), "radishflow-registration-confirm-" + Guid.NewGuid().ToString("N"));
         var options = RegistrationOptions.Parse(
@@ -285,6 +312,27 @@ internal static class ContractTests
         return resolved
                ?? throw new InvalidOperationException(
                    $"Failed to locate frozen type library fixture `{fileName}`. Candidates: {string.Join(", ", candidates)}");
+    }
+
+    private static string ResolveFrozenComHostPath()
+    {
+        const string fileName = "RadishFlow.CapeOpen.UnitOp.Mvp.comhost.dll";
+        var baseDirectory = AppContext.BaseDirectory;
+        var candidates = new[]
+        {
+            Path.GetFullPath(Path.Combine(baseDirectory, @"..\..\..\..\RadishFlow.CapeOpen.UnitOp.Mvp\bin\Debug\net10.0", fileName)),
+            Path.GetFullPath(Path.Combine(baseDirectory, @"..\..\..\..\..\RadishFlow.CapeOpen.UnitOp.Mvp\bin\Debug\net10.0", fileName)),
+            Path.Combine(baseDirectory, fileName),
+        };
+
+        var resolved = candidates.FirstOrDefault(static path =>
+                File.Exists(path) &&
+                File.Exists(Path.Combine(Path.GetDirectoryName(path)!, "RadishFlow.CapeOpen.UnitOp.Mvp.runtimeconfig.json")) &&
+                File.Exists(Path.Combine(Path.GetDirectoryName(path)!, "RadishFlow.CapeOpen.UnitOp.Mvp.deps.json")))
+            ?? candidates.FirstOrDefault(File.Exists);
+        return resolved
+               ?? throw new InvalidOperationException(
+                   $"Failed to locate generated comhost fixture `{fileName}`. Candidates: {string.Join(", ", candidates)}");
     }
 
     public static void Collections_ExposeStableLookupAndRejectInvalidSelectors(ContractTestContext context)

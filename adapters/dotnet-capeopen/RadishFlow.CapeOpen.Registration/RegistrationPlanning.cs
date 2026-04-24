@@ -37,14 +37,180 @@ internal static class CapeOpenComHostPathResolver
             return Path.GetFullPath(explicitPath);
         }
 
-        var assemblyPath = componentType.Assembly.Location;
-        if (string.IsNullOrWhiteSpace(assemblyPath))
+        var fileName = "RadishFlow.CapeOpen.UnitOp.Mvp.comhost.dll";
+        var candidates = CapeOpenUnitOperationOutputLocator.EnumerateCandidateOutputDirectories(componentType)
+            .Select(directory => Path.Combine(directory, fileName))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+        var resolved = candidates.FirstOrDefault(candidate =>
+                File.Exists(candidate) && CapeOpenComHostRuntimeLayoutInspector.HasRequiredSidecars(candidate))
+            ?? candidates.FirstOrDefault(File.Exists);
+
+        return resolved is not null
+            ? Path.GetFullPath(resolved)
+            : Path.GetFullPath(candidates[0]);
+    }
+}
+
+internal static class CapeOpenUnitOperationOutputLocator
+{
+    private const string CargoTomlFileName = "Cargo.toml";
+    private const string UnitOperationProjectRelativePath = @"adapters\dotnet-capeopen\RadishFlow.CapeOpen.UnitOp.Mvp";
+
+    public static IReadOnlyList<string> EnumerateCandidateOutputDirectories(Type componentType)
+    {
+        ArgumentNullException.ThrowIfNull(componentType);
+
+        var directories = new List<string>();
+        AddRepositoryOutputDirectory(directories, AppContext.BaseDirectory);
+        AddRepositoryOutputDirectory(directories, componentType.Assembly.Location);
+        AddDirectory(directories, Path.GetDirectoryName(componentType.Assembly.Location));
+        AddDirectory(directories, AppContext.BaseDirectory);
+        AddDirectory(directories, Environment.CurrentDirectory);
+
+        return directories
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+    }
+
+    private static void AddRepositoryOutputDirectory(
+        List<string> directories,
+        string? startPath)
+    {
+        if (!TryExtractBuildOutputCoordinates(startPath, out var configuration, out var targetFramework) ||
+            !TryResolveRepositoryRoot(startPath, out var repositoryRoot))
         {
-            return Path.GetFullPath("RadishFlow.CapeOpen.UnitOp.Mvp.comhost.dll");
+            return;
         }
 
-        var assemblyDirectory = Path.GetDirectoryName(assemblyPath) ?? Environment.CurrentDirectory;
-        return Path.Combine(assemblyDirectory, "RadishFlow.CapeOpen.UnitOp.Mvp.comhost.dll");
+        foreach (var targetFrameworkCandidate in EnumerateTargetFrameworkCandidates(targetFramework))
+        {
+            AddDirectory(
+                directories,
+                Path.Combine(
+                    repositoryRoot,
+                    UnitOperationProjectRelativePath,
+                    "bin",
+                    configuration,
+                    targetFrameworkCandidate));
+        }
+    }
+
+    private static void AddDirectory(
+        List<string> directories,
+        string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            return;
+        }
+
+        directories.Add(Path.GetFullPath(path));
+    }
+
+    private static bool TryExtractBuildOutputCoordinates(
+        string? startPath,
+        out string configuration,
+        out string targetFramework)
+    {
+        configuration = string.Empty;
+        targetFramework = string.Empty;
+
+        if (string.IsNullOrWhiteSpace(startPath))
+        {
+            return false;
+        }
+
+        var normalizedPath = Path.GetFullPath(startPath);
+        var directory = File.Exists(normalizedPath)
+            ? Path.GetDirectoryName(normalizedPath)
+            : normalizedPath;
+        if (string.IsNullOrWhiteSpace(directory))
+        {
+            return false;
+        }
+
+        var outputDirectory = new DirectoryInfo(directory);
+        var configurationDirectory = outputDirectory.Parent;
+        var binDirectory = configurationDirectory?.Parent;
+        if (configurationDirectory is null ||
+            binDirectory is null ||
+            !string.Equals(binDirectory.Name, "bin", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        configuration = configurationDirectory.Name;
+        targetFramework = outputDirectory.Name;
+        return !string.IsNullOrWhiteSpace(configuration) && !string.IsNullOrWhiteSpace(targetFramework);
+    }
+
+    private static bool TryResolveRepositoryRoot(
+        string? startPath,
+        out string repositoryRoot)
+    {
+        repositoryRoot = string.Empty;
+        if (string.IsNullOrWhiteSpace(startPath))
+        {
+            return false;
+        }
+
+        var normalizedPath = Path.GetFullPath(startPath);
+        var directory = File.Exists(normalizedPath)
+            ? Path.GetDirectoryName(normalizedPath)
+            : normalizedPath;
+        if (string.IsNullOrWhiteSpace(directory))
+        {
+            return false;
+        }
+
+        var current = new DirectoryInfo(directory);
+        while (current is not null)
+        {
+            if (File.Exists(Path.Combine(current.FullName, CargoTomlFileName)) &&
+                Directory.Exists(Path.Combine(current.FullName, UnitOperationProjectRelativePath)))
+            {
+                repositoryRoot = current.FullName;
+                return true;
+            }
+
+            current = current.Parent;
+        }
+
+        return false;
+    }
+
+    private static IEnumerable<string> EnumerateTargetFrameworkCandidates(string targetFramework)
+    {
+        yield return targetFramework;
+
+        var separatorIndex = targetFramework.IndexOf('-');
+        if (separatorIndex > 0)
+        {
+            yield return targetFramework[..separatorIndex];
+        }
+    }
+}
+
+internal static class CapeOpenComHostRuntimeLayoutInspector
+{
+    public static IReadOnlyList<string> GetMissingSidecars(string comHostPath)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(comHostPath);
+
+        var directory = Path.GetDirectoryName(comHostPath) ?? Environment.CurrentDirectory;
+        return new[]
+        {
+            Path.Combine(directory, "RadishFlow.CapeOpen.UnitOp.Mvp.runtimeconfig.json"),
+            Path.Combine(directory, "RadishFlow.CapeOpen.UnitOp.Mvp.deps.json"),
+        }
+            .Where(path => !File.Exists(path))
+            .ToArray();
+    }
+
+    public static bool HasRequiredSidecars(string comHostPath)
+    {
+        return GetMissingSidecars(comHostPath).Count == 0;
     }
 }
 
@@ -64,6 +230,7 @@ internal static class CapeOpenRegistrationPreflightChecker
         {
             CheckComHostPath(comHostPath),
             CheckComHostArchitecture(comHostPath),
+            CheckComHostRuntimeLayout(comHostPath),
             CheckTypeLibraryPath(typeLibraryPath),
             CheckTypeLibraryIdentity(typeLibraryPath),
             CheckProcessArchitecture(),
@@ -122,6 +289,21 @@ internal static class CapeOpenRegistrationPreflightChecker
         {
             return Fail("comhost architecture", $"Failed to inspect comhost PE header: {error.Message}");
         }
+    }
+
+    private static CapeOpenPreflightCheck CheckComHostRuntimeLayout(string comHostPath)
+    {
+        if (!File.Exists(comHostPath))
+        {
+            return Fail("comhost runtime layout", "Cannot inspect runtime sidecars because the comhost file does not exist.");
+        }
+
+        var missingSidecars = CapeOpenComHostRuntimeLayoutInspector.GetMissingSidecars(comHostPath);
+        return missingSidecars.Count == 0
+            ? Pass("comhost runtime layout", "Resolved comhost directory contains UnitOp.Mvp runtimeconfig/deps sidecars required for .NET COM activation.")
+            : Fail(
+                "comhost runtime layout",
+                $"Resolved comhost directory is missing required UnitOp.Mvp runtime sidecars: {string.Join(", ", missingSidecars)}");
     }
 
     private static CapeOpenPreflightCheck CheckScopePermission(
@@ -371,6 +553,11 @@ internal static class CapeOpenRegistryPlanBuilder
                 $@"{clsidKey}\Version",
                 RadishFlow.CapeOpen.UnitOp.Mvp.UnitOperation.UnitOperationComIdentity.ComVersion,
                 "Expose the component version under the CLSID registration tree."),
+            SetDefaultValue(
+                hive,
+                $@"{clsidKey}\TypeLib",
+                $"{{{RadishFlow.CapeOpen.UnitOp.Mvp.UnitOperation.UnitOperationComIdentity.TypeLibraryId}}}",
+                "Bind CLSID to the registered type library for classic late-bound COM hosts."),
             SetDefaultValue(
                 hive,
                 $@"{clsidKey}\Programmable",

@@ -69,6 +69,9 @@ $env:NUGET_PACKAGES = Join-Path $env:USERPROFILE '.nuget\packages'
 
 $registrationProject = Join-Path $repoRoot 'adapters\dotnet-capeopen\RadishFlow.CapeOpen.Registration\RadishFlow.CapeOpen.Registration.csproj'
 $registrationExe = Join-Path $repoRoot ("adapters\dotnet-capeopen\RadishFlow.CapeOpen.Registration\bin\{0}\net10.0\RadishFlow.CapeOpen.Registration.exe" -f $Configuration)
+$unitOperationOutputDir = Join-Path $repoRoot ("adapters\dotnet-capeopen\RadishFlow.CapeOpen.UnitOp.Mvp\bin\{0}\net10.0" -f $Configuration)
+$defaultComHostPath = Join-Path $unitOperationOutputDir 'RadishFlow.CapeOpen.UnitOp.Mvp.comhost.dll'
+$defaultTypeLibPath = Join-Path $unitOperationOutputDir 'typelib\RadishFlow.CapeOpen.UnitOp.Mvp.tlb'
 
 if (-not $SkipBuild) {
     & dotnet build $registrationProject -c $Configuration -v minimal
@@ -90,6 +93,14 @@ $registrationArgs = @(
     '--action', $Action,
     '--scope', $Scope
 )
+
+if ([string]::IsNullOrWhiteSpace($ComHostPath)) {
+    $ComHostPath = $defaultComHostPath
+}
+
+if ([string]::IsNullOrWhiteSpace($TypeLibPath)) {
+    $TypeLibPath = $defaultTypeLibPath
+}
 
 if ($Execute) {
     $registrationArgs += '--execute'

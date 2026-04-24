@@ -109,10 +109,11 @@ pwsh .\scripts\register-com.ps1 -Action unregister -Execute -ConfirmToken unregi
 - `unregister` 当前会先计划 `TypeLib` 反注册，再输出待删除的 `CLSID / ProgID / Versioned ProgID / TypeLib` 树
 - 输出中的 `.NET COM hosting` 键值仍是前置规划；工具会先解析并校验 `RadishFlow.CapeOpen.UnitOp.Mvp.comhost.dll` 路径，当前不会退回旧 `.NET Framework` 的 `mscoree.dll` 注册口径
 - 当前默认也会解析 `RadishFlow.CapeOpen.UnitOp.Mvp.tlb` 路径；开发构建下该文件会随 `UnitOp.Mvp` 与 `Registration` 输出目录一起复制，必要时也可显式传入 `--typelib <path>`
-- preflight checks 只读检查 comhost 文件、comhost PE 机器类型、`TLB` 路径、`TypeLib GUID/version`、当前进程位数、scope 权限口径和目标 registry key 现状
+- preflight checks 只读检查 comhost 文件、comhost PE 机器类型、`UnitOp.Mvp.runtimeconfig/deps` sidecar、`TLB` 路径、`TypeLib GUID/version`、当前进程位数、scope 权限口径和目标 registry key 现状
 - backup plan 只列出真实执行前应备份的 registry tree，不导出、不删除、不写入
-- 默认 comhost 路径从当前加载到 `Registration` 进程中的 `RadishFlow.CapeOpen.UnitOp.Mvp` assembly 目录推导；开发构建下通常是 `Registration\bin\Debug\net10.0` 中被复制的项目引用产物。发布/安装工具后应显式传入最终安装目录中的 `--comhost <path>`
-- 默认 type library 路径优先从 comhost 同目录或其 `typelib\` 子目录推导；开发构建下当前也会直接解析到 `Registration\bin\Debug\net10.0\RadishFlow.CapeOpen.UnitOp.Mvp.tlb`
+- 默认 comhost 路径当前会优先回到仓库内真实 `UnitOp.Mvp\bin\<Configuration>\<TFM>\` 输出目录，并要求该目录同时包含 `RadishFlow.CapeOpen.UnitOp.Mvp.runtimeconfig.json` 与 `RadishFlow.CapeOpen.UnitOp.Mvp.deps.json`；若只找到被复制到 `Registration\bin\...` 或 `ContractTests\bin\...` 的 comhost，但缺少 runtime sidecar，则不会被优先选中
+- 仓库脚本 `scripts/register-com.ps1` 当前也会默认显式传入 `UnitOp.Mvp\bin\<Configuration>\net10.0\RadishFlow.CapeOpen.UnitOp.Mvp.comhost.dll`
+- 默认 type library 路径优先从已解析的 comhost 同目录或其 `typelib\` 子目录推导；开发构建下当前会直接解析到 `UnitOp.Mvp\bin\Debug\net10.0\typelib\RadishFlow.CapeOpen.UnitOp.Mvp.tlb`
 
 当前执行门控口径：
 
@@ -123,6 +124,7 @@ pwsh .\scripts\register-com.ps1 -Action unregister -Execute -ConfirmToken unregi
 - 同一参数下 preflight 不存在 `Fail`
 - `local-machine` scope 在 execute 模式下必须通过 elevation 检查
 - execute `register` 当前会在写 `CLSID / ProgID / Versioned ProgID` 前先调用标准 `TypeLib` 注册 API：`current-user` 走 `RegisterTypeLibForUser(...)`，`local-machine` 走 `RegisterTypeLib(...)`
+- execute `register` 当前也会在 `CLSID\{...}` 下写入 classic COM 所需的 `TypeLib` 关联值，避免只注册 `TypeLib` 树却不把 CLSID 回链到 typelib GUID
 - execute `unregister` 当前会先调用标准 `TypeLib` 反注册 API，再清理 `CLSID / ProgID / Versioned ProgID / TypeLib` 四棵树
 - 执行前会把 `CLSID / ProgID / Versioned ProgID / TypeLib` 四棵 registry tree 备份到 JSON
 - 执行后会把 descriptor、执行结果、备份文件路径与回滚状态写入 execution log
@@ -135,6 +137,6 @@ pwsh .\scripts\register-com.ps1 -Action unregister -Execute -ConfirmToken unregi
 - 若未指定 `--backup-dir`，工具会在 `%LOCALAPPDATA%\RadishFlow\CapeOpen\RegistrationBackups\...` 下生成时间戳目录
 - 当前 rollback 是“失败时自动恢复刚捕获的四棵树”，不是面向用户公开的独立 restore CLI
 - 当前 contract tests 已锁住默认 dry-run、confirmation token 门控、preflight fail 阻断，以及 register / unregister 计划与备份范围
-- 截至 2026-04-24，本工具的 dry-run JSON 已可直接输出 `ResolvedTypeLibraryPath`、`type library identity` 预检结果，以及显式 `RegisterTypeLibrary / UnregisterTypeLibrary` 计划步骤；但是否已真正消除 `DWSIM / COFE` 的晚绑定 `0x80131165`，仍需在真实注册后重新做 PowerShell 与 PME 复验
+- 截至 2026-04-24，本工具的 dry-run JSON 已可直接输出 `ResolvedTypeLibraryPath`、`type library identity` 与 `comhost runtime layout` 预检结果，并包含显式 `RegisterTypeLibrary / UnregisterTypeLibrary` 计划步骤；但是否已真正消除 `DWSIM / COFE` 的晚绑定 `0x80131165`，仍需在真实注册后重新做 Windows PowerShell / PME 复验
 
 本工具即使进入执行型注册阶段，也不应负责启动 PME、自动操作 PME UI、加载第三方 CAPE-OPEN 模型或生成安装包。目标 PME 人工验证路径见 `docs/capeopen/pme-validation.md`。
