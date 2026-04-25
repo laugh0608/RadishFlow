@@ -15,14 +15,17 @@ namespace RadishFlow.CapeOpen.UnitOp.Mvp.UnitOperation;
 [ProgId(UnitOperationComIdentity.ProgId)]
 [ClassInterface(ClassInterfaceType.None)]
 [ComDefaultInterface(typeof(ICapeUtilities))]
-public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICapeUtilities, ICapeUnit, IDisposable
+public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICapeUtilities, ICapeUnit, ICapeUnitReport, IDisposable
 {
     private const string UtilitiesInterfaceName = nameof(ICapeUtilities);
     private const string UnitInterfaceName = nameof(ICapeUnit);
+    private const string UnitReportInterfaceName = nameof(ICapeUnitReport);
     private const string UnitScope = "RadishFlow.CapeOpen.UnitOp.Mvp";
+    private const string DefaultReportName = "RadishFlow calculation report";
     private object? _simulationContext;
     private UnitOperationCalculationResult? _lastCalculationResult;
     private UnitOperationCalculationFailure? _lastCalculationFailure;
+    private string _selectedReportName = DefaultReportName;
     private bool _materialResultsStale;
     private UnitOperationLifecycleState _lifecycleState;
 
@@ -81,6 +84,50 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
     public UnitOperationCalculationResult? LastCalculationResult => _lastCalculationResult;
 
     public UnitOperationCalculationFailure? LastCalculationFailure => _lastCalculationFailure;
+
+    public object reports
+    {
+        get
+        {
+            ThrowIfDisposed();
+            return new[] { DefaultReportName };
+        }
+    }
+
+    public string selectedReport
+    {
+        get
+        {
+            ThrowIfDisposed();
+            return _selectedReportName;
+        }
+
+        set
+        {
+            ThrowIfDisposed();
+            ThrowIfTerminated(nameof(selectedReport), UnitReportInterfaceName);
+
+            if (!string.Equals(value, DefaultReportName, StringComparison.Ordinal))
+            {
+                throw new CapeInvalidArgumentException(
+                    $"Unsupported unit report `{value}`.",
+                    CreateContext(
+                        UnitReportInterfaceName,
+                        nameof(selectedReport),
+                        moreInfo: $"Supported report: {DefaultReportName}",
+                        parameterName: nameof(selectedReport),
+                        parameter: value));
+            }
+
+            _selectedReportName = value;
+        }
+    }
+
+    public void ProduceReport(ref string reportContent)
+    {
+        ThrowIfDisposed();
+        reportContent = GetCalculationReportText();
+    }
 
     public UnitOperationCalculationReport GetCalculationReport()
     {

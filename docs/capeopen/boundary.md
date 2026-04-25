@@ -141,6 +141,7 @@ Rust 与 `.NET 10` 之间的正式边界应保持简单稳定：
 - `RadishFlowCapeOpenUnitOperation`、parameter/port collection、parameter/port placeholder 当前均已补出显式 `ComDefaultInterface`
 - `New-Object -ComObject`、`Initialize()`、`Parameters.Count()`、`Parameters.Item(1).Specification` 与 `Terminate()` 已通过，先前 `0x80131165` 不再复现
 - `ICapeUnit` 当前通过 `QueryInterface` 返回 `S_OK`，但 `Ports / Validate / Calculate` 仍需要真实 PME 或强类型宿主路径复验
+- 当前已补入最小 `ICapeUnitReport` 接口、主类实现与 IDL/TLB 描述，`ProduceReport(ref string)` 复用既有 `GetCalculationReportText()`，用于加固 PME activation 阶段可能读取 report 的调用面
 - 当前新的未完成项已从“补齐剩余 typelib 兼容细节”进一步收口为“重新完成 `DWSIM + COFE` 人工复验，并按真实调用点分类记录失败”
 
 当前允许推进的内容：
@@ -160,6 +161,7 @@ Rust 与 `.NET 10` 之间的正式边界应保持简单稳定：
 - `UnitOp.Mvp` 中用于 `Ports` / `Parameters` 的最小占位对象集合，以及基于对象状态的 `Validate()` 前置检查
 - `UnitOp.Mvp` 中经由 `RadishFlow.CapeOpen.Adapter` 调用 `rf-ffi` 的最小 `Calculate()` 求解接线，以及基于 native snapshot JSON / error JSON 材料化出的最小成功结果契约与失败摘要契约
 - `UnitOp.Mvp` 中基于上述结果对象继续收口出的最小只读 result/report access，以及建立在其上的标量元数据入口、可枚举 detail 键值读取入口、最小文本导出面与标量逐行读取入口，不要求外部宿主自己拼装成功结果、失败摘要或 headline/detail 文本
+- `UnitOp.Mvp` 中最小 `ICapeUnitReport` 兼容面，用于让 PME 能枚举默认报告、读取/设置 selected report，并通过标准 `ProduceReport(ref string)` 取得同一份 calculation report 文本
 - 建立在公开 report API 之上的库内宿主消费 helper，以及基于该 helper 的最小 sectioned host report 口径
 - 建立在 configuration/action-plan/port-material/execution/report 正式快照之上的库内统一 host session snapshot，用于减少外部宿主在边界层重复汇总整体状态
 - 建立在 action plan 之上的 action execution request planning helper，用于把宿主输入显式规划为可执行 request batch，并报告 missing inputs / lifecycle-only / unsupported action；该 helper 是库内正式边界，区别于 smoke driver 的完整生命周期编排
@@ -183,7 +185,7 @@ Rust 与 `.NET 10` 之间的正式边界应保持简单稳定：
 - 完整 ECape 接口/异常面与所有标准 IID 校准
 - 默认 `local-machine` 安装路径、独立 restore CLI 与安装包化注册器
 - 自动化 PME 验证工具
-- 端口集合、参数集合、报告接口与 `Collection/Parameter/UnitPort` 语义的完整 CAPE-OPEN 实现
+- 端口集合、参数集合、多报告菜单与 `Collection/Parameter/UnitPort` 语义的完整 CAPE-OPEN 实现
 - PME 互调测试代码
 - 将当前验证型 `UnitOperationSmokeHostDriver` 直接上移为 `UnitOp.Mvp` 正式库 API；在它被证明不仅服务当前 smoke 验证样板之前，先继续保留在 `SmokeTests`
 - 把 COBIA 作为当前主线运行时或因此提前改写既定 COM 兼容路径

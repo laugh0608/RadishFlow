@@ -5,6 +5,7 @@ using RadishFlow.CapeOpen.Interop.Unit;
 using RadishFlow.CapeOpen.UnitOp.Mvp.Placeholders;
 using RadishFlow.CapeOpen.UnitOp.Mvp.Results;
 using RadishFlow.CapeOpen.UnitOp.Mvp.UnitOperation;
+using System.Runtime.InteropServices;
 
 Environment.ExitCode = ContractTestExecutable.Run(args);
 
@@ -45,6 +46,7 @@ internal static class ContractTestExecutable
             ("registration-plan-contract", static _ => ContractTests.RegistrationPlan_ExposesGuardedExecutionBoundary()),
             ("registration-execute-confirm-contract", static _ => ContractTests.RegistrationExecution_RequiresMatchingConfirmToken()),
             ("registration-execute-preflight-contract", static _ => ContractTests.RegistrationExecution_StopsOnPreflightFailure()),
+            ("pme-activation-probe-contract", static context => ContractTests.PmeActivationProbe_ExposesStandardActivationSurface(context)),
             ("collection-contract", static context => ContractTests.Collections_ExposeStableLookupAndRejectInvalidSelectors(context)),
             ("object-definition-contract", static _ => ContractTests.ObjectDefinitionSnapshot_ExposesFrozenCatalogShape()),
             ("object-runtime-contract", static context => ContractTests.ObjectRuntimeSnapshot_ExposesFrozenObjectMetadata(context)),
@@ -142,6 +144,10 @@ internal static class ContractTests
             typeof(UnitOperationPortPlaceholder),
             typeof(ICapeUnitPort),
             "Port placeholder COM default interface should expose ICapeUnitPort for connection late binding.");
+
+        ContractAssert.True(
+            typeof(ICapeUnitReport).IsAssignableFrom(typeof(RadishFlowCapeOpenUnitOperation)),
+            "Unit operation should expose ICapeUnitReport as an optional PME activation/reporting surface.");
     }
 
     private static void AssertComDefaultInterface(Type classType, Type expectedInterface, string context)
@@ -197,6 +203,11 @@ internal static class ContractTests
         ContractAssert.True(
             dryRunDescriptor.RegistryPlan.Any(static entry => entry.Operation == CapeOpenRegistryPlanOperation.SetValue && entry.KeyPath.Contains(@"Implemented Categories", StringComparison.Ordinal)),
             "Register plan should advertise CAPE-OPEN categories.");
+        ContractAssert.True(
+            dryRunDescriptor.ImplementedInterfaces.Any(static implementedInterface =>
+                string.Equals(implementedInterface.Name, "ICapeUnitReport", StringComparison.Ordinal) &&
+                string.Equals(implementedInterface.InterfaceId, "678C099B-0093-11D2-A67D-00105A42887F", StringComparison.OrdinalIgnoreCase)),
+            "Register descriptor should advertise ICapeUnitReport as an implemented activation/reporting interface.");
         ContractAssert.True(
             dryRunDescriptor.RegistryPlan.Any(static entry =>
                 entry.Operation == CapeOpenRegistryPlanOperation.SetValue &&
@@ -392,6 +403,53 @@ internal static class ContractTests
         return resolved
                ?? throw new InvalidOperationException(
                    $"Failed to locate generated comhost fixture `{fileName}`. Candidates: {string.Join(", ", candidates)}");
+    }
+
+    public static void PmeActivationProbe_ExposesStandardActivationSurface(ContractTestContext context)
+    {
+        var identity = (ICapeIdentification)context.UnitOperation;
+        ContractAssert.Equal(UnitOperationComIdentity.DisplayName, identity.ComponentName, "Activation probe should read ICapeIdentification.ComponentName.");
+        ContractAssert.Contains(identity.ComponentDescription, "CAPE-OPEN", "Activation probe should read ICapeIdentification.ComponentDescription.");
+
+        var utilities = (ICapeUtilities)context.UnitOperation;
+        utilities.Initialize();
+        ContractAssert.NotNull(utilities.Parameters, "Activation probe should read ICapeUtilities.Parameters.");
+
+        var unit = (ICapeUnit)context.UnitOperation;
+        ContractAssert.NotNull(unit.Ports, "Activation probe should read ICapeUnit.Ports.");
+
+        var validationMessage = string.Empty;
+        ContractAssert.False(unit.Validate(ref validationMessage), "Activation probe should tolerate early Validate() before PME inputs are provided.");
+        ContractAssert.Contains(validationMessage, "Required parameter", "Early activation Validate() should return a diagnostic message instead of crashing.");
+
+        var report = (ICapeUnitReport)context.UnitOperation;
+        var availableReports = report.reports as string[];
+        ContractAssert.True(
+            availableReports is { Length: 1 },
+            "Activation probe should expose a stable report name array.");
+        ContractAssert.Equal(report.selectedReport, availableReports![0], "Default selected report should be one of the advertised reports.");
+
+        var reportContent = "stale report text";
+        report.ProduceReport(ref reportContent);
+        ContractAssert.Equal(context.UnitOperation.GetCalculationReportText(), reportContent, "ICapeUnitReport.ProduceReport should reuse the canonical calculation report text.");
+
+        var reportInterfacePointer = IntPtr.Zero;
+        try
+        {
+            reportInterfacePointer = Marshal.GetComInterfaceForObject(context.UnitOperation, typeof(ICapeUnitReport));
+            ContractAssert.True(
+                reportInterfacePointer != IntPtr.Zero,
+                "COM QueryInterface for ICapeUnitReport should succeed for the unit operation.");
+        }
+        finally
+        {
+            if (reportInterfacePointer != IntPtr.Zero)
+            {
+                Marshal.Release(reportInterfacePointer);
+            }
+        }
+
+        utilities.Terminate();
     }
 
     public static void Collections_ExposeStableLookupAndRejectInvalidSelectors(ContractTestContext context)

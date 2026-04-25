@@ -76,7 +76,7 @@ dry-run 输出必须人工确认：
 
 - `CLSID`、`ProgID` 与 `Versioned ProgID` 与文档一致
 - CAPE-OPEN categories 至少包含 CAPE-OPEN Object 与 Unit Operation
-- implemented interfaces 至少包含 `ICapeIdentification`、`ICapeUtilities` 与 `ICapeUnit`
+- implemented interfaces 至少包含 `ICapeIdentification`、`ICapeUtilities`、`ICapeUnit` 与 `ICapeUnitReport`
 - `comhost path` 为 `Pass`
 - `comhost architecture` 与目标 PME 进程位数一致
 - `comhost runtime layout` 为 `Pass`
@@ -260,5 +260,7 @@ Follow-up:
 - `IDL -> TLB -> ComHostTypeLibrary -> TypeLib 注册` 链路当前已具备执行路径，并已补齐 `Interop` / `UnitOp.Mvp` 程序集级 TLB identity 与主要 COM-visible class 的默认 interface 口径
 - 真实 Windows PowerShell 5 探测当前已确认 `New-Object -ComObject`、默认 `ICapeUtilities.Initialize()`、`Parameters.Count()`、`Parameters.Item(1).Specification` 与 `Terminate()` 均通过，先前 `0x80131165 Type library is not registered` 不再复现
 - `ICapeUnit` 当前已通过 `QueryInterface` 探测返回 `S_OK`；但 PowerShell 默认 late binding 只代表默认 `ICapeUtilities` 面，`Ports` / `Validate` / `Calculate` 仍应在真实 PME 或强类型宿主路径中复验
+- 当前已补入最小 `ICapeUnitReport` 接口与 TLB 描述，`ProduceReport(ref string)` 复用既有 canonical calculation report 文本，用于加固 PME 添加组件时可能读取报告接口的 activation 调用面
+- 本次终端验证中，非提权沙盒上下文执行 `RegisterTypeLibForUser` 会触发 `TYPE_E_REGISTRYACCESS (0x8002801C)` 并由注册工具自动 rollback；后续真实 PME 复验仍应以普通桌面用户上下文执行仓库脚本，避免把提权 `HKCU` 与 PME 用户 `HKCU` 混用
 
 仍必须补齐的边界缺口不是新的 host round fallback，而是 `DWSIM + COFE` 的下一轮人工复验，以及是否需要支持 `local-machine` 的单独策略判断。

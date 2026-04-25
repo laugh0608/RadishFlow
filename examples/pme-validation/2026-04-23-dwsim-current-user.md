@@ -52,4 +52,7 @@ Follow-up:
 - `UnitOp.Mvp` 已补齐 `Interop` / `UnitOp.Mvp` 程序集级 `Guid / TypeLibVersion`，并为主对象、parameter/port collection、parameter/port placeholder 补出显式 `ComDefaultInterface`。
 - `Windows PowerShell 5` 真实环境复验：`New-Object -ComObject`、`Initialize()`、`Parameters.Count()`、`Parameters.Item(1).Specification`、`Terminate()` 均为 `Pass`，`0x80131165` 不再复现。
 - `ICapeUnit` `QueryInterface` 返回 `S_OK`；`Ports` 仍需在真实 PME 或强类型宿主路径中复验，不能用 PowerShell 默认 `ICapeUtilities` binder 代替。
+- 已补入最小 `ICapeUnitReport` activation 兼容面与更新后的 `TLB`；下一轮注册后应额外复验 `QueryInterface(ICapeUnitReport)`、`reports`、`selectedReport` 与 `ProduceReport(ref string)`。
+- 本轮终端侧补充验证：`cargo check`、`UnitOp.Mvp` build、`ContractTests` build、32 项 contract tests、`SampleHost` build/run 均通过；`Registration` dry-run 已显示 `ICapeUnitReport`，preflight 全部 `Pass`。
+- 本轮终端侧注册注意事项：提权上下文可执行 register/unregister，但其 `HKCU` 与普通 DWSIM/COFE 用户上下文不同；非提权沙盒上下文执行 `RegisterTypeLibForUser` 命中 `TYPE_E_REGISTRYACCESS (0x8002801C)`，工具已 rollback，普通 HKCU 四棵目标树均 `exists=False`。
 - 下一步重新执行 `current-user register -> DWSIM/COFE discovery -> activation -> validate -> calculate`，并补写本记录中的 `Discovery` 至 `Report` 字段。

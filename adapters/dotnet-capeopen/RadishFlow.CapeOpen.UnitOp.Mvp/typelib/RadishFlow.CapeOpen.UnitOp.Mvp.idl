@@ -164,6 +164,22 @@ interface ICapeUnit : IDispatch
 };
 
 [
+    object,
+    uuid(678C099B-0093-11D2-A67D-00105A42887F),
+    dual,
+    nonextensible,
+    oleautomation,
+    pointer_default(unique)
+]
+interface ICapeUnitReport : IDispatch
+{
+    [id(1), propget] HRESULT reports([out, retval] VARIANT* value);
+    [id(2), propget] HRESULT selectedReport([out, retval] BSTR* value);
+    [id(2), propput] HRESULT selectedReport([in] BSTR value);
+    [id(3)] HRESULT ProduceReport([in, out] BSTR* reportContent);
+};
+
+[
     uuid(9D9E5F0D-5E28-4A45-9E2A-70A39D4C8D11),
     version(1.0)
 ]
@@ -178,6 +194,7 @@ library RadishFlowCapeOpenUnitOpMvpLib
     {
         [default] interface ICapeUtilities;
         interface ICapeUnit;
+        interface ICapeUnitReport;
         interface ICapeIdentification;
     };
 
