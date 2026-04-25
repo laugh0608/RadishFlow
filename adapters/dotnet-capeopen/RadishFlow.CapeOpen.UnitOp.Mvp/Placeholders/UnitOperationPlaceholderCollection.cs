@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Globalization;
 using System.Runtime.InteropServices;
 using RadishFlow.CapeOpen.Interop.Common;
 using RadishFlow.CapeOpen.Interop.Errors;
@@ -108,27 +109,64 @@ public class UnitOperationPlaceholderCollection<T> : ICapeIdentification, ICapeC
 
     object ICapeCollection.Item(object index)
     {
-        EnsureOwnerAccess(ItemOperation, index);
-
-        if (index is string name)
+        UnitOperationComTrace.Write($"{_definition.Name}.{nameof(ICapeCollection)}.{ItemOperation}", "enter", index?.ToString());
+        try
         {
-            return FindByName(name, ItemOperation);
-        }
+            EnsureOwnerAccess(ItemOperation, index);
 
-        if (TryGetOneBasedIndex(index, out var oneBasedIndex))
+            object item;
+            if (index is string name)
+            {
+                item = FindByName(name, ItemOperation);
+            }
+            else if (index is null)
+            {
+                throw new CapeInvalidArgumentException(
+                    $"Collection `{ComponentName}` requires a non-null selector.",
+                    CreateContext(ItemOperation, index));
+            }
+            else if (TryGetOneBasedIndex(index, out var oneBasedIndex))
+            {
+                item = ResolveByOneBasedIndex(oneBasedIndex, ItemOperation);
+            }
+            else
+            {
+                throw new CapeInvalidArgumentException(
+                    $"Collection `{ComponentName}` only accepts a 1-based integer index or component name.",
+                    CreateContext(ItemOperation, index));
+            }
+
+            UnitOperationComTrace.Write(
+                $"{_definition.Name}.{nameof(ICapeCollection)}.{ItemOperation}",
+                "exit",
+                ((ICapeIdentification)item).ComponentName);
+            return item;
+        }
+        catch (Exception error)
         {
-            return ResolveByOneBasedIndex(oneBasedIndex, ItemOperation);
+            UnitOperationComTrace.Exception($"{_definition.Name}.{nameof(ICapeCollection)}.{ItemOperation}", error);
+            throw;
         }
-
-        throw new CapeInvalidArgumentException(
-            $"Collection `{ComponentName}` only accepts a 1-based integer index or component name.",
-            CreateContext(ItemOperation, index));
     }
 
     int ICapeCollection.Count()
     {
-        EnsureOwnerAccess("Count");
-        return _items.Count;
+        UnitOperationComTrace.Write($"{_definition.Name}.{nameof(ICapeCollection)}.{nameof(ICapeCollection.Count)}", "enter");
+        try
+        {
+            EnsureOwnerAccess("Count");
+            var count = _items.Count;
+            UnitOperationComTrace.Write(
+                $"{_definition.Name}.{nameof(ICapeCollection)}.{nameof(ICapeCollection.Count)}",
+                "exit",
+                count.ToString(CultureInfo.InvariantCulture));
+            return count;
+        }
+        catch (Exception error)
+        {
+            UnitOperationComTrace.Exception($"{_definition.Name}.{nameof(ICapeCollection)}.{nameof(ICapeCollection.Count)}", error);
+            throw;
+        }
     }
 
     public IEnumerator<T> GetEnumerator()

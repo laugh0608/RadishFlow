@@ -1,5 +1,6 @@
 using RadishFlow.CapeOpen.Interop.Common;
 using RadishFlow.CapeOpen.Interop.Errors;
+using RadishFlow.CapeOpen.Interop.Guids;
 using RadishFlow.CapeOpen.Interop.Ole;
 using RadishFlow.CapeOpen.Interop.Parameters;
 using RadishFlow.CapeOpen.Interop.Persistence;
@@ -246,7 +247,7 @@ internal static class ContractTests
         AssertMarshalAs(
             simulationContext.GetMethod!.ReturnParameter,
             UnmanagedType.IDispatch,
-            "ICapeUtilities.SimulationContext getter should still expose an IDispatch pointer to native PME callers.");
+            "ICapeUtilities.SimulationContext getter should expose an IDispatch pointer for native PME callers.");
 
         var setter = simulationContext.SetMethod;
         ContractAssert.NotNull(
@@ -310,6 +311,29 @@ internal static class ContractTests
         ContractAssert.Equal(0, typeLibraryVersion.MinorVersion, $"{context} Minor version should stay aligned with IDL version 1.0.");
     }
 
+    private static void AssertRegistrationCategory(
+        CapeOpenRegistrationDescriptor descriptor,
+        string expectedName,
+        string expectedCategoryId)
+    {
+        ContractAssert.True(
+            descriptor.Categories.Any(category =>
+                string.Equals(category.Name, expectedName, StringComparison.Ordinal) &&
+                string.Equals(category.CategoryId, expectedCategoryId, StringComparison.OrdinalIgnoreCase)),
+            $"Register descriptor should advertise {expectedName}.");
+    }
+
+    private static void AssertRegistryCategoryPlan(
+        CapeOpenRegistrationDescriptor descriptor,
+        string expectedCategoryId)
+    {
+        ContractAssert.True(
+            descriptor.RegistryPlan.Any(entry =>
+                entry.Operation == CapeOpenRegistryPlanOperation.SetValue &&
+                entry.KeyPath.EndsWith($@"\Implemented Categories\{{{expectedCategoryId}}}", StringComparison.OrdinalIgnoreCase)),
+            $"Register plan should write implemented category {expectedCategoryId}.");
+    }
+
     public static void RegistrationPlan_ExposesGuardedExecutionBoundary()
     {
         var explicitComHostPath = ResolveFrozenComHostPath();
@@ -336,6 +360,12 @@ internal static class ContractTests
         ContractAssert.True(
             dryRunDescriptor.RegistryPlan.Any(static entry => entry.Operation == CapeOpenRegistryPlanOperation.SetValue && entry.KeyPath.Contains(@"Implemented Categories", StringComparison.Ordinal)),
             "Register plan should advertise CAPE-OPEN categories.");
+        AssertRegistrationCategory(dryRunDescriptor, "CAPE-OPEN Object", CapeOpenCategoryIds.CapeOpenObject);
+        AssertRegistrationCategory(dryRunDescriptor, "CAPE-OPEN Unit Operation", CapeOpenCategoryIds.UnitOperation);
+        AssertRegistrationCategory(dryRunDescriptor, "CAPE-OPEN Consumes Thermodynamics", CapeOpenCategoryIds.ConsumesThermodynamics);
+        AssertRegistrationCategory(dryRunDescriptor, "CAPE-OPEN Supports Thermodynamics 1.1", CapeOpenCategoryIds.SupportsThermodynamics11);
+        AssertRegistryCategoryPlan(dryRunDescriptor, CapeOpenCategoryIds.ConsumesThermodynamics);
+        AssertRegistryCategoryPlan(dryRunDescriptor, CapeOpenCategoryIds.SupportsThermodynamics11);
         ContractAssert.True(
             dryRunDescriptor.ImplementedInterfaces.Any(static implementedInterface =>
                 string.Equals(implementedInterface.Name, "ICapeUnitReport", StringComparison.Ordinal) &&

@@ -203,7 +203,7 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
             {
                 ThrowIfDisposed();
 #pragma warning disable CA1416 // UnitOp.Mvp COM activation is Windows-only.
-                var context = Marshal.GetComInterfaceForObject<ICapeCOSEUtilities, ICapeCOSEUtilities>(_simulationContextFallback);
+                var context = Marshal.GetIDispatchForObject(_simulationContextFallback);
 #pragma warning restore CA1416
                 UnitOperationComTrace.Write(
                     nameof(ICapeUtilities.SimulationContext),

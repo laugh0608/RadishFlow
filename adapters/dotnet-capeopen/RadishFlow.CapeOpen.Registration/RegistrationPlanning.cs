@@ -606,6 +606,8 @@ internal static class CapeOpenRegistryPlanBuilder
             SetDefaultValue(hive, $@"{versionedProgIdKey}\CLSID", UnitOperationClassIdValue, "Bind versioned ProgID to CLSID."),
             SetDefaultValue(hive, $@"{implementedCategoriesKey}\{{{RadishFlow.CapeOpen.Interop.Guids.CapeOpenCategoryIds.CapeOpenObject}}}", string.Empty, "Advertise CAPE-OPEN object category."),
             SetDefaultValue(hive, $@"{implementedCategoriesKey}\{{{RadishFlow.CapeOpen.Interop.Guids.CapeOpenCategoryIds.UnitOperation}}}", string.Empty, "Advertise CAPE-OPEN Unit Operation category."),
+            SetDefaultValue(hive, $@"{implementedCategoriesKey}\{{{RadishFlow.CapeOpen.Interop.Guids.CapeOpenCategoryIds.ConsumesThermodynamics}}}", string.Empty, "Advertise CAPE-OPEN thermodynamics consumption for PME canvas compatibility."),
+            SetDefaultValue(hive, $@"{implementedCategoriesKey}\{{{RadishFlow.CapeOpen.Interop.Guids.CapeOpenCategoryIds.SupportsThermodynamics11}}}", string.Empty, "Advertise CAPE-OPEN 1.1 thermodynamics compatibility for material-port PMEs."),
         ];
     }
 
