@@ -25,14 +25,23 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
     private object? _simulationContext;
     private UnitOperationCalculationResult? _lastCalculationResult;
     private UnitOperationCalculationFailure? _lastCalculationFailure;
+    private string _componentName;
+    private string _componentDescription;
     private string _selectedReportName = DefaultReportName;
     private bool _materialResultsStale;
     private UnitOperationLifecycleState _lifecycleState;
 
+    static RadishFlowCapeOpenUnitOperation()
+    {
+        UnitOperationComTrace.Write(nameof(RadishFlowCapeOpenUnitOperation), "static-init");
+    }
+
     public RadishFlowCapeOpenUnitOperation()
     {
-        ComponentName = UnitOperationComIdentity.DisplayName;
-        ComponentDescription = UnitOperationComIdentity.Description;
+        UnitOperationComTrace.Write(nameof(RadishFlowCapeOpenUnitOperation), "constructor-enter");
+
+        _componentName = UnitOperationComIdentity.DisplayName;
+        _componentDescription = UnitOperationComIdentity.Description;
 
         Parameters = new UnitOperationParameterCollection(
             UnitOperationParameterCatalog.CollectionDefinition,
@@ -53,29 +62,144 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
 
         ValStatus = CapeValidationStatus.NotValidated;
         _lifecycleState = UnitOperationLifecycleState.Constructed;
+        UnitOperationComTrace.Write(nameof(RadishFlowCapeOpenUnitOperation), "constructor-exit");
     }
 
-    public string ComponentName { get; set; }
+    public string ComponentName
+    {
+        get
+        {
+            UnitOperationComTrace.Write(nameof(ComponentName), "get-enter");
+            try
+            {
+                return _componentName;
+            }
+            catch (Exception error)
+            {
+                UnitOperationComTrace.Exception(nameof(ComponentName), error);
+                throw;
+            }
+            finally
+            {
+                UnitOperationComTrace.Write(nameof(ComponentName), "get-exit");
+            }
+        }
 
-    public string ComponentDescription { get; set; }
+        set
+        {
+            UnitOperationComTrace.Write(nameof(ComponentName), "set-enter", value);
+            try
+            {
+                _componentName = value;
+            }
+            catch (Exception error)
+            {
+                UnitOperationComTrace.Exception(nameof(ComponentName), error);
+                throw;
+            }
+            finally
+            {
+                UnitOperationComTrace.Write(nameof(ComponentName), "set-exit");
+            }
+        }
+    }
+
+    public string ComponentDescription
+    {
+        get
+        {
+            UnitOperationComTrace.Write(nameof(ComponentDescription), "get-enter");
+            try
+            {
+                return _componentDescription;
+            }
+            catch (Exception error)
+            {
+                UnitOperationComTrace.Exception(nameof(ComponentDescription), error);
+                throw;
+            }
+            finally
+            {
+                UnitOperationComTrace.Write(nameof(ComponentDescription), "get-exit");
+            }
+        }
+
+        set
+        {
+            UnitOperationComTrace.Write(nameof(ComponentDescription), "set-enter", value);
+            try
+            {
+                _componentDescription = value;
+            }
+            catch (Exception error)
+            {
+                UnitOperationComTrace.Exception(nameof(ComponentDescription), error);
+                throw;
+            }
+            finally
+            {
+                UnitOperationComTrace.Write(nameof(ComponentDescription), "set-exit");
+            }
+        }
+    }
 
     public UnitOperationParameterCollection Parameters { get; }
 
-    object? ICapeUtilities.Parameters => Parameters;
+    object? ICapeUtilities.Parameters
+    {
+        get
+        {
+            UnitOperationComTrace.Write(nameof(ICapeUtilities.Parameters), "get-enter");
+            try
+            {
+                return Parameters;
+            }
+            catch (Exception error)
+            {
+                UnitOperationComTrace.Exception(nameof(ICapeUtilities.Parameters), error);
+                throw;
+            }
+            finally
+            {
+                UnitOperationComTrace.Write(nameof(ICapeUtilities.Parameters), "get-exit");
+            }
+        }
+    }
 
     public UnitOperationPortCollection Ports { get; }
 
-    object? ICapeUnit.Ports => Ports;
+    object? ICapeUnit.Ports
+    {
+        get
+        {
+            UnitOperationComTrace.Write(nameof(ICapeUnit.Ports), "get-enter");
+            try
+            {
+                return Ports;
+            }
+            catch (Exception error)
+            {
+                UnitOperationComTrace.Exception(nameof(ICapeUnit.Ports), error);
+                throw;
+            }
+            finally
+            {
+                UnitOperationComTrace.Write(nameof(ICapeUnit.Ports), "get-exit");
+            }
+        }
+    }
 
     public object? SimulationContext
     {
         get => _simulationContext;
         set
         {
+            UnitOperationComTrace.Write(nameof(SimulationContext), "set-enter", value?.GetType().FullName);
             ThrowIfDisposed();
             ThrowIfTerminated(nameof(SimulationContext), UtilitiesInterfaceName);
             _simulationContext = value;
             InvalidateValidation();
+            UnitOperationComTrace.Write(nameof(SimulationContext), "set-exit");
         }
     }
 
@@ -89,8 +213,21 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
     {
         get
         {
-            ThrowIfDisposed();
-            return new[] { DefaultReportName };
+            UnitOperationComTrace.Write(nameof(reports), "get-enter");
+            try
+            {
+                ThrowIfDisposed();
+                return new[] { DefaultReportName };
+            }
+            catch (Exception error)
+            {
+                UnitOperationComTrace.Exception(nameof(reports), error);
+                throw;
+            }
+            finally
+            {
+                UnitOperationComTrace.Write(nameof(reports), "get-exit");
+            }
         }
     }
 
@@ -98,35 +235,74 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
     {
         get
         {
-            ThrowIfDisposed();
-            return _selectedReportName;
+            UnitOperationComTrace.Write(nameof(selectedReport), "get-enter");
+            try
+            {
+                ThrowIfDisposed();
+                return _selectedReportName;
+            }
+            catch (Exception error)
+            {
+                UnitOperationComTrace.Exception(nameof(selectedReport), error);
+                throw;
+            }
+            finally
+            {
+                UnitOperationComTrace.Write(nameof(selectedReport), "get-exit");
+            }
         }
 
         set
         {
-            ThrowIfDisposed();
-            ThrowIfTerminated(nameof(selectedReport), UnitReportInterfaceName);
-
-            if (!string.Equals(value, DefaultReportName, StringComparison.Ordinal))
+            UnitOperationComTrace.Write(nameof(selectedReport), "set-enter", value);
+            try
             {
-                throw new CapeInvalidArgumentException(
-                    $"Unsupported unit report `{value}`.",
-                    CreateContext(
-                        UnitReportInterfaceName,
-                        nameof(selectedReport),
-                        moreInfo: $"Supported report: {DefaultReportName}",
-                        parameterName: nameof(selectedReport),
-                        parameter: value));
-            }
+                ThrowIfDisposed();
+                ThrowIfTerminated(nameof(selectedReport), UnitReportInterfaceName);
 
-            _selectedReportName = value;
+                if (!string.Equals(value, DefaultReportName, StringComparison.Ordinal))
+                {
+                    throw new CapeInvalidArgumentException(
+                        $"Unsupported unit report `{value}`.",
+                        CreateContext(
+                            UnitReportInterfaceName,
+                            nameof(selectedReport),
+                            moreInfo: $"Supported report: {DefaultReportName}",
+                            parameterName: nameof(selectedReport),
+                            parameter: value));
+                }
+
+                _selectedReportName = value;
+            }
+            catch (Exception error)
+            {
+                UnitOperationComTrace.Exception(nameof(selectedReport), error);
+                throw;
+            }
+            finally
+            {
+                UnitOperationComTrace.Write(nameof(selectedReport), "set-exit");
+            }
         }
     }
 
     public void ProduceReport(ref string reportContent)
     {
-        ThrowIfDisposed();
-        reportContent = GetCalculationReportText();
+        UnitOperationComTrace.Write(nameof(ProduceReport), "enter");
+        try
+        {
+            ThrowIfDisposed();
+            reportContent = GetCalculationReportText();
+        }
+        catch (Exception error)
+        {
+            UnitOperationComTrace.Exception(nameof(ProduceReport), error);
+            throw;
+        }
+        finally
+        {
+            UnitOperationComTrace.Write(nameof(ProduceReport), "exit");
+        }
     }
 
     public UnitOperationCalculationReport GetCalculationReport()
@@ -262,40 +438,68 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
 
     public void Initialize()
     {
-        ThrowIfDisposed();
-        if (IsTerminated)
+        UnitOperationComTrace.Write(nameof(Initialize), "enter");
+        try
         {
-            throw CreateBadInvocation(
-                UtilitiesInterfaceName,
-                nameof(Initialize),
-                "This unit instance has already been terminated and cannot be reinitialized.");
-        }
+            ThrowIfDisposed();
+            if (IsTerminated)
+            {
+                throw CreateBadInvocation(
+                    UtilitiesInterfaceName,
+                    nameof(Initialize),
+                    "This unit instance has already been terminated and cannot be reinitialized.");
+            }
 
-        if (IsInitialized)
+            if (IsInitialized)
+            {
+                UnitOperationComTrace.Write(nameof(Initialize), "already-initialized");
+                return;
+            }
+
+            _lifecycleState = UnitOperationLifecycleState.Initialized;
+            InvalidateValidation();
+        }
+        catch (Exception error)
         {
-            return;
+            UnitOperationComTrace.Exception(nameof(Initialize), error);
+            throw;
         }
-
-        _lifecycleState = UnitOperationLifecycleState.Initialized;
-        InvalidateValidation();
+        finally
+        {
+            UnitOperationComTrace.Write(nameof(Initialize), "exit");
+        }
     }
 
     public void Terminate()
     {
-        if (IsDisposed || IsTerminated)
+        UnitOperationComTrace.Write(nameof(Terminate), "enter");
+        try
         {
-            return;
-        }
+            if (IsDisposed || IsTerminated)
+            {
+                UnitOperationComTrace.Write(nameof(Terminate), "already-terminal");
+                return;
+            }
 
-        _simulationContext = null;
-        foreach (var port in Ports)
+            _simulationContext = null;
+            foreach (var port in Ports)
+            {
+                port.ReleaseConnectedObject();
+            }
+
+            ResetCalculationState(CapeValidationStatus.NotValidated);
+            _materialResultsStale = false;
+            _lifecycleState = UnitOperationLifecycleState.Terminated;
+        }
+        catch (Exception error)
         {
-            port.ReleaseConnectedObject();
+            UnitOperationComTrace.Exception(nameof(Terminate), error);
+            throw;
         }
-
-        ResetCalculationState(CapeValidationStatus.NotValidated);
-        _materialResultsStale = false;
-        _lifecycleState = UnitOperationLifecycleState.Terminated;
+        finally
+        {
+            UnitOperationComTrace.Write(nameof(Terminate), "exit");
+        }
     }
 
     public int Edit()
@@ -309,10 +513,25 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
 
     public bool Validate(ref string message)
     {
-        ThrowIfDisposed();
+        UnitOperationComTrace.Write(nameof(Validate), "enter");
+        try
+        {
+            ThrowIfDisposed();
 
-        var result = EvaluateValidation();
-        return ApplyValidationOutcome(result, ref message);
+            var result = EvaluateValidation();
+            var isValid = ApplyValidationOutcome(result, ref message);
+            UnitOperationComTrace.Write(nameof(Validate), "result", $"isValid={isValid}; message={message}");
+            return isValid;
+        }
+        catch (Exception error)
+        {
+            UnitOperationComTrace.Exception(nameof(Validate), error);
+            throw;
+        }
+        finally
+        {
+            UnitOperationComTrace.Write(nameof(Validate), "exit");
+        }
     }
 
     public void Calculate()

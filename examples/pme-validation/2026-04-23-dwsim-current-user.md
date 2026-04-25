@@ -55,4 +55,6 @@ Follow-up:
 - 已补入最小 `ICapeUnitReport` activation 兼容面与更新后的 `TLB`；下一轮注册后应额外复验 `QueryInterface(ICapeUnitReport)`、`reports`、`selectedReport` 与 `ProduceReport(ref string)`。
 - 本轮终端侧补充验证：`cargo check`、`UnitOp.Mvp` build、`ContractTests` build、32 项 contract tests、`SampleHost` build/run 均通过；`Registration` dry-run 已显示 `ICapeUnitReport`，preflight 全部 `Pass`。
 - 本轮终端侧注册注意事项：提权上下文可执行 register/unregister，但其 `HKCU` 与普通 DWSIM/COFE 用户上下文不同；非提权沙盒上下文执行 `RegisterTypeLibForUser` 命中 `TYPE_E_REGISTRYACCESS (0x8002801C)`，工具已 rollback，普通 HKCU 四棵目标树均 `exists=False`。
+- 用户复验：补入 `ICapeUnitReport` 后，`DWSIM / COFE` 仍在“选择模块后加入 flowsheet 画布”时崩溃。WER 显示 DWSIM 加载 `RadishFlow.CapeOpen.UnitOp.Mvp.comhost.dll` 后继续加载 `.NET 10 hostfxr/hostpolicy/coreclr`，并在 `coreclr.dll` 上以 `c0000005 / 0x80131506` 终止；COFE 也在加载同一 comhost/CoreCLR 链路后崩溃。
+- 下一轮诊断：已加入临时文件 trace，路径为 `D:\Code\RadishFlow\artifacts\pme-trace\radishflow-unitop-trace.log`。若崩溃后无该文件，说明尚未进入 `RadishFlowCapeOpenUnitOperation` managed 成员；若有文件，最后一行即 PME 崩溃前最后进入/退出的 COM 成员。
 - 下一步重新执行 `current-user register -> DWSIM/COFE discovery -> activation -> validate -> calculate`，并补写本记录中的 `Discovery` 至 `Report` 字段。
