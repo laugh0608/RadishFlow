@@ -301,6 +301,7 @@ Follow-up:
 - 在用户侧 trace 复验确认 `DWSIM` 已调用并退出 `IPersistStreamInit.InitNew()` 后，当前又补入最小 `IPersistStorage` 接口、主类实现与 TLB 描述，继续覆盖 OLE canvas storage persistence 探测面
 - 在用户侧 trace 继续确认 `DWSIM` 仍停在 `IPersistStreamInit.InitNew()` 返回后、`IPersistStorage` 未被调用后，当前又补入最小 `IOleObject` 接口、主类实现与 TLB 描述，覆盖 OLE container embedding 探测面；该实现不承诺真实可视 OLE 嵌入或 in-place activation
 - 用户侧继续复验后，`DWSIM` 仍只到 `IPersistStreamInit.InitNew()` enter/exit，未进入 `IOleObject`；`COFE` 仍只到 constructor exit。这说明盲补常见 OLE/CAPE-OPEN 接口的收益已明显下降，下一轮应优先收集 WER LocalDumps / native 崩溃栈，确认崩溃是否来自 `.NET 10 in-proc comhost/CoreCLR` 承载冲突、宿主 native QI/返回值处理，或仍有具体 COM interface shape 问题。
+- 用户侧已采集 `COFE.exe.28544.dmp` 与 `DWSIM.exe.39524.dmp`：`COFE` 故障地址为 `COFE.exe+0xbc5ffe`，访问地址 `0x10`；`DWSIM` 故障地址为 `coreclr.dll+0x3b745`，访问地址 `0x8`。结合 trace，当前首要风险已从“继续缺某个普通 optional interface”转为 `.NET 10 in-proc comhost/CoreCLR` 与 PME 宿主进程承载兼容性，或宿主 native 侧在 activation 返回后处理接口指针失败。
 - 本次终端验证中，非提权沙盒上下文执行 `RegisterTypeLibForUser` 会触发 `TYPE_E_REGISTRYACCESS (0x8002801C)` 并由注册工具自动 rollback；后续真实 PME 复验仍应以普通桌面用户上下文执行仓库脚本，避免把提权 `HKCU` 与 PME 用户 `HKCU` 混用
 
-仍必须补齐的边界缺口不是新的 host round fallback，而是 `DWSIM + COFE` 的下一轮人工复验，以及是否需要支持 `local-machine` 的单独策略判断。
+仍必须补齐的边界缺口不是新的 host round fallback，也不是继续盲补普通 optional interface；下一步应围绕 `DWSIM + COFE` 的 in-proc comhost 承载风险评估 out-of-proc COM shim / local server 或更保守的 PME in-proc shim + 外部 worker 策略。

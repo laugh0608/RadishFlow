@@ -144,6 +144,14 @@ Rust 与 `.NET 10` 之间的正式边界应保持简单稳定：
 - 当前已补入最小 `ICapeUnitReport` 接口、主类实现与 IDL/TLB 描述，`ProduceReport(ref string)` 复用既有 `GetCalculationReportText()`，用于加固 PME activation 阶段可能读取 report 的调用面
 - 当前新的未完成项已从“补齐剩余 typelib 兼容细节”进一步收口为“重新完成 `DWSIM + COFE` 人工复验，并按真实调用点分类记录失败”
 
+同日后续 `DWSIM / COFE` dump 采集进一步改变了 M5 兼容性判断：
+
+- `DWSIM` 在添加组件到 flowsheet 画布时仍只进入 `IPersistStreamInit.InitNew()` 并正常返回，随后在下一个 RadishFlow 托管成员调用前崩溃
+- `DWSIM.exe` dump 显示故障地址位于 `.NET 10` `coreclr.dll+0x3b745`，同进程同时加载 `.NET Framework 4.x clr.dll/mscoree/mscoreei` 与 `.NET 10 coreclr/hostfxr/hostpolicy/comhost`
+- `COFE.exe` dump 显示故障地址位于 `COFE.exe+0xbc5ffe`，访问地址为 `0x10`，trace 仍只到 `RadishFlowCapeOpenUnitOperation` constructor exit
+- 这些证据说明当前首要风险已不再是 discovery 注册树、TypeLib late binding 或继续缺少某个普通 optional interface，而是 `.NET 10 in-proc comhost/CoreCLR` 被加载进 PME 进程后的承载兼容性，或 PME native 侧在 activation 返回后对接口指针 / HRESULT / host object 状态的处理路径崩溃
+- 下一阶段若继续推进真实 PME 互调，应先设计 out-of-proc COM shim / local server，或更保守的 in-proc shim + 外部 `.NET 10` worker 承载策略；该判断属于架构边界变化，不能作为小修小补直接落入当前 `UnitOp.Mvp` 主类
+
 当前允许推进的内容：
 
 - 文档

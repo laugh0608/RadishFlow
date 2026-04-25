@@ -90,3 +90,10 @@ Follow-up:
 2026-04-25 update 7:
 - 已确认先前 `scripts/configure-pme-dumps.ps1` 写入的是 `HKCU`，但 Microsoft WER `LocalDumps` 的有效配置位于 `HKLM\SOFTWARE\Microsoft\Windows\Windows Error Reporting\LocalDumps`，因此先前 `current-user` enable 状态不会产出 dump。
 - 脚本已改为默认使用 `local-machine/HKLM`，`enable/disable` 需要管理员 PowerShell；`current-user/HKCU` 仅保留用于清理旧的无效配置。
+
+2026-04-25 update 8:
+- 用户侧已成功采集 full dump：`COFE.exe.28544.dmp`（约 196 MB）与 `DWSIM.exe.39524.dmp`（约 782 MB）。
+- `COFE` dump：异常为 `0xc0000005`，故障地址 `COFE.exe+0xbc5ffe`，访问地址 `0x10`；trace 最后一行仍是 `RadishFlowCapeOpenUnitOperation constructor-exit`。当前判断为 COFE native 侧在 COM activation 返回后空指针解引用，尚无证据进入 RadishFlow 托管成员或新增 OLE/CAPE-OPEN 成员。
+- `DWSIM` dump：异常为 `0xc0000005`，故障地址 `coreclr.dll+0x3b745`，访问地址 `0x8`；同进程同时加载 `.NET Framework 4.x clr.dll/mscoree/mscoreei` 与 `.NET 10 coreclr/hostfxr/hostpolicy/comhost`，trace 最后一行仍是 `IPersistStreamInit.InitNew exit`。当前判断为 `.NET 10 in-proc comhost/CoreCLR` 在 DWSIM 进程内的承载风险已成为首要嫌疑。
+- DWSIM error log 中的 `AutomaticTranslation.AutomaticTranslator.SetMainWindow` `NullReferenceException` 出现在 Extender Initialization 阶段，早于本组件添加到画布的 crash trace；暂记录为宿主启动噪声候选，不作为 RadishFlow COM activation 主因。
+- 下一步不再继续补普通 optional interface；优先评估 out-of-proc COM shim / local server 或更保守的 PME in-proc shim + 外部 worker 承载策略，把 `.NET 10` runtime 从 PME 进程中隔离出去。
