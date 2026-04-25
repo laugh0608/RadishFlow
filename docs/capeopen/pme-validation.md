@@ -215,13 +215,13 @@ pwsh .\scripts\register-com.ps1 -Action unregister -Execute -ConfirmToken unregi
 
 若 `DWSIM` / `COFE` 能发现组件，但在选择组件并添加到 flowsheet 画布时直接闪退，应先收集 native 崩溃现场，再继续判断是否需要新增 COM 接口面或调整承载策略。
 
-仓库提供单行脚本配置当前用户的 Windows Error Reporting `LocalDumps`：
+仓库提供单行脚本配置 Windows Error Reporting `LocalDumps`。Microsoft 文档要求该功能写入 `HKLM\SOFTWARE\Microsoft\Windows\Windows Error Reporting\LocalDumps`，因此启用/清理有效 dump 配置需要管理员 PowerShell：
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\configure-pme-dumps.ps1 -Action enable
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\configure-pme-dumps.ps1 -Action enable -Scope local-machine
 ```
 
-默认会为 `DWSIM.exe` 与 `COFE.exe` 写入 `HKCU\Software\Microsoft\Windows\Windows Error Reporting\LocalDumps`，dump 输出目录为 `D:\Code\RadishFlow\artifacts\pme-dumps`，dump 类型为 full dump。人工复验后可查看：
+默认会为 `DWSIM.exe` 与 `COFE.exe` 写入进程级 `LocalDumps` 配置，dump 输出目录为 `D:\Code\RadishFlow\artifacts\pme-dumps`，dump 类型为 full dump。人工复验后可查看：
 
 ```powershell
 Get-ChildItem .\artifacts\pme-dumps
@@ -233,10 +233,16 @@ Get-ChildItem .\artifacts\pme-dumps
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\configure-pme-dumps.ps1 -Action status
 ```
 
+`current-user/HKCU` 下的 `LocalDumps` 配置不会被 WER 用于真实 dump 采集；如果曾经用旧脚本写入过 HKCU，可只用于清理：
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\configure-pme-dumps.ps1 -Action disable -Scope current-user
+```
+
 验证结束后应清理该 WER 配置：
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\configure-pme-dumps.ps1 -Action disable
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\configure-pme-dumps.ps1 -Action disable -Scope local-machine
 ```
 
 这一路径只用于捕捉 PME 进程崩溃栈，不替代 `current-user register / unregister` 的安装清理要求。

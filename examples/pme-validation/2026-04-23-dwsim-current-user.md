@@ -86,3 +86,7 @@ Follow-up:
 2026-04-25 update 6:
 - 用户侧 trace 复验仍与 update 5 一致：`DWSIM` 停在 `IPersistStreamInit.InitNew()` exit，`COFE` 停在 constructor exit。
 - 用户侧 `Get-ChildItem .\artifacts\pme-dumps` 未返回 dump 文件，说明 WER LocalDumps 路径没有产物；下一步先用 `scripts/configure-pme-dumps.ps1 -Action status` 确认 LocalDumps 仍处于 enable 状态，并检查 WER 禁用策略。
+
+2026-04-25 update 7:
+- 已确认先前 `scripts/configure-pme-dumps.ps1` 写入的是 `HKCU`，但 Microsoft WER `LocalDumps` 的有效配置位于 `HKLM\SOFTWARE\Microsoft\Windows\Windows Error Reporting\LocalDumps`，因此先前 `current-user` enable 状态不会产出 dump。
+- 脚本已改为默认使用 `local-machine/HKLM`，`enable/disable` 需要管理员 PowerShell；`current-user/HKCU` 仅保留用于清理旧的无效配置。
