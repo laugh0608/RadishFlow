@@ -2,10 +2,12 @@ using RadishFlow.CapeOpen.Adapter;
 using RadishFlow.CapeOpen.Interop.Common;
 using RadishFlow.CapeOpen.Interop.Errors;
 using RadishFlow.CapeOpen.Interop.Parameters;
+using RadishFlow.CapeOpen.Interop.Persistence;
 using RadishFlow.CapeOpen.Interop.Unit;
 using RadishFlow.CapeOpen.UnitOp.Mvp.Placeholders;
 using RadishFlow.CapeOpen.UnitOp.Mvp.Results;
 using System.Runtime.InteropServices;
+using System.Runtime.InteropServices.ComTypes;
 using System.Text.Json;
 
 namespace RadishFlow.CapeOpen.UnitOp.Mvp.UnitOperation;
@@ -15,7 +17,7 @@ namespace RadishFlow.CapeOpen.UnitOp.Mvp.UnitOperation;
 [ProgId(UnitOperationComIdentity.ProgId)]
 [ClassInterface(ClassInterfaceType.None)]
 [ComDefaultInterface(typeof(ICapeUtilities))]
-public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICapeUtilities, ICapeUnit, ICapeUnitReport, IDisposable
+public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICapeUtilities, ICapeUnit, ICapeUnitReport, IPersistStreamInit, IDisposable
 {
     private const string UtilitiesInterfaceName = nameof(ICapeUtilities);
     private const string UnitInterfaceName = nameof(ICapeUnit);
@@ -302,6 +304,124 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
         finally
         {
             UnitOperationComTrace.Write(nameof(ProduceReport), "exit");
+        }
+    }
+
+    public int GetClassID(out Guid classId)
+    {
+        UnitOperationComTrace.Write(nameof(GetClassID), "enter");
+        try
+        {
+            classId = Guid.Parse(UnitOperationComIdentity.ClassId);
+            UnitOperationComTrace.Write(nameof(GetClassID), "result", classId.ToString("D"));
+            return ComHResults.SOk;
+        }
+        catch (Exception error)
+        {
+            classId = Guid.Empty;
+            UnitOperationComTrace.Exception(nameof(GetClassID), error);
+            return error.HResult;
+        }
+        finally
+        {
+            UnitOperationComTrace.Write(nameof(GetClassID), "exit");
+        }
+    }
+
+    public int IsDirty()
+    {
+        UnitOperationComTrace.Write(nameof(IsDirty), "enter");
+        try
+        {
+            UnitOperationComTrace.Write(nameof(IsDirty), "result", "S_FALSE");
+            return ComHResults.SFalse;
+        }
+        catch (Exception error)
+        {
+            UnitOperationComTrace.Exception(nameof(IsDirty), error);
+            return error.HResult;
+        }
+        finally
+        {
+            UnitOperationComTrace.Write(nameof(IsDirty), "exit");
+        }
+    }
+
+    public int Load(IStream? stream)
+    {
+        UnitOperationComTrace.Write(nameof(Load), "enter", stream is null ? "stream=null" : "stream=provided");
+        try
+        {
+            return ComHResults.SOk;
+        }
+        catch (Exception error)
+        {
+            UnitOperationComTrace.Exception(nameof(Load), error);
+            return error.HResult;
+        }
+        finally
+        {
+            UnitOperationComTrace.Write(nameof(Load), "exit");
+        }
+    }
+
+    public int Save(IStream? stream, bool clearDirty)
+    {
+        UnitOperationComTrace.Write(
+            nameof(Save),
+            "enter",
+            $"stream={(stream is null ? "null" : "provided")}; clearDirty={clearDirty}");
+        try
+        {
+            return ComHResults.SOk;
+        }
+        catch (Exception error)
+        {
+            UnitOperationComTrace.Exception(nameof(Save), error);
+            return error.HResult;
+        }
+        finally
+        {
+            UnitOperationComTrace.Write(nameof(Save), "exit");
+        }
+    }
+
+    public int GetSizeMax(out long size)
+    {
+        UnitOperationComTrace.Write(nameof(GetSizeMax), "enter");
+        try
+        {
+            size = 0;
+            UnitOperationComTrace.Write(nameof(GetSizeMax), "result", "size=0");
+            return ComHResults.SOk;
+        }
+        catch (Exception error)
+        {
+            size = 0;
+            UnitOperationComTrace.Exception(nameof(GetSizeMax), error);
+            return error.HResult;
+        }
+        finally
+        {
+            UnitOperationComTrace.Write(nameof(GetSizeMax), "exit");
+        }
+    }
+
+    public int InitNew()
+    {
+        UnitOperationComTrace.Write(nameof(InitNew), "enter");
+        try
+        {
+            return ComHResults.SOk;
+        }
+        catch (Exception error)
+        {
+            UnitOperationComTrace.Exception(nameof(InitNew), error);
+            return error.HResult;
+        }
+        finally
+        {
+            UnitOperationComTrace.Write(nameof(InitNew), "exit");
         }
     }
 

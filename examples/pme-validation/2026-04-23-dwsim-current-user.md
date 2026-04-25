@@ -58,3 +58,9 @@ Follow-up:
 - 用户复验：补入 `ICapeUnitReport` 后，`DWSIM / COFE` 仍在“选择模块后加入 flowsheet 画布”时崩溃。WER 显示 DWSIM 加载 `RadishFlow.CapeOpen.UnitOp.Mvp.comhost.dll` 后继续加载 `.NET 10 hostfxr/hostpolicy/coreclr`，并在 `coreclr.dll` 上以 `c0000005 / 0x80131506` 终止；COFE 也在加载同一 comhost/CoreCLR 链路后崩溃。
 - 下一轮诊断：已加入临时文件 trace，路径为 `D:\Code\RadishFlow\artifacts\pme-trace\radishflow-unitop-trace.log`。若崩溃后无该文件，说明尚未进入 `RadishFlowCapeOpenUnitOperation` managed 成员；若有文件，最后一行即 PME 崩溃前最后进入/退出的 COM 成员。
 - 下一步重新执行 `current-user register -> DWSIM/COFE discovery -> activation -> validate -> calculate`，并补写本记录中的 `Discovery` 至 `Report` 字段。
+
+2026-04-25 update 2:
+- 用户侧 trace 复验：`COFE` 与 `DWSIM` 均只记录 `static-init -> constructor-enter -> constructor-exit`，未进入 `ComponentName / Initialize / Parameters / Ports / reports / ProduceReport` 等成员。
+- 当前判断：崩溃点位于对象构造完成后、正式 automation 调用前，优先怀疑 PME 添加到 flowsheet 画布时的 `QueryInterface` / OLE canvas persistence 探测面，或 `.NET 10 in-proc comhost` 与宿主进程 runtime 承载冲突。
+- 本轮已补入最小 `IPersistStreamInit`，并重新生成 `TLB`；下一轮 trace 应重点观察 `GetClassID / IsDirty / InitNew / Load / Save / GetSizeMax` 是否出现在崩溃前。
+- 本轮终端侧补充验证：`cargo check`、`UnitOp.Mvp` build（真实环境）、`ContractTests` build、33 项 contract tests 均通过。

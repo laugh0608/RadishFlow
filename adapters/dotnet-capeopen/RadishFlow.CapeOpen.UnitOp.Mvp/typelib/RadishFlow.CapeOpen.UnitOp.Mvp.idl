@@ -195,6 +195,7 @@ library RadishFlowCapeOpenUnitOpMvpLib
         [default] interface ICapeUtilities;
         interface ICapeUnit;
         interface ICapeUnitReport;
+        interface IPersistStreamInit;
         interface ICapeIdentification;
     };
 

@@ -1,6 +1,7 @@
 using RadishFlow.CapeOpen.Interop.Common;
 using RadishFlow.CapeOpen.Interop.Errors;
 using RadishFlow.CapeOpen.Interop.Parameters;
+using RadishFlow.CapeOpen.Interop.Persistence;
 using RadishFlow.CapeOpen.Interop.Unit;
 using RadishFlow.CapeOpen.UnitOp.Mvp.Placeholders;
 using RadishFlow.CapeOpen.UnitOp.Mvp.Results;
@@ -47,6 +48,7 @@ internal static class ContractTestExecutable
             ("registration-execute-confirm-contract", static _ => ContractTests.RegistrationExecution_RequiresMatchingConfirmToken()),
             ("registration-execute-preflight-contract", static _ => ContractTests.RegistrationExecution_StopsOnPreflightFailure()),
             ("pme-activation-probe-contract", static context => ContractTests.PmeActivationProbe_ExposesStandardActivationSurface(context)),
+            ("pme-persistence-probe-contract", static context => ContractTests.PmePersistenceProbe_ExposesNoOpPersistStreamInit(context)),
             ("collection-contract", static context => ContractTests.Collections_ExposeStableLookupAndRejectInvalidSelectors(context)),
             ("object-definition-contract", static _ => ContractTests.ObjectDefinitionSnapshot_ExposesFrozenCatalogShape()),
             ("object-runtime-contract", static context => ContractTests.ObjectRuntimeSnapshot_ExposesFrozenObjectMetadata(context)),
@@ -148,6 +150,9 @@ internal static class ContractTests
         ContractAssert.True(
             typeof(ICapeUnitReport).IsAssignableFrom(typeof(RadishFlowCapeOpenUnitOperation)),
             "Unit operation should expose ICapeUnitReport as an optional PME activation/reporting surface.");
+        ContractAssert.True(
+            typeof(IPersistStreamInit).IsAssignableFrom(typeof(RadishFlowCapeOpenUnitOperation)),
+            "Unit operation should expose IPersistStreamInit for PME canvas object persistence probing.");
     }
 
     private static void AssertComDefaultInterface(Type classType, Type expectedInterface, string context)
@@ -208,6 +213,11 @@ internal static class ContractTests
                 string.Equals(implementedInterface.Name, "ICapeUnitReport", StringComparison.Ordinal) &&
                 string.Equals(implementedInterface.InterfaceId, "678C099B-0093-11D2-A67D-00105A42887F", StringComparison.OrdinalIgnoreCase)),
             "Register descriptor should advertise ICapeUnitReport as an implemented activation/reporting interface.");
+        ContractAssert.True(
+            dryRunDescriptor.ImplementedInterfaces.Any(static implementedInterface =>
+                string.Equals(implementedInterface.Name, "IPersistStreamInit", StringComparison.Ordinal) &&
+                string.Equals(implementedInterface.InterfaceId, ComPersistenceInterfaceIds.IPersistStreamInit, StringComparison.OrdinalIgnoreCase)),
+            "Register descriptor should advertise IPersistStreamInit as an implemented PME canvas persistence interface.");
         ContractAssert.True(
             dryRunDescriptor.RegistryPlan.Any(static entry =>
                 entry.Operation == CapeOpenRegistryPlanOperation.SetValue &&
@@ -450,6 +460,57 @@ internal static class ContractTests
         }
 
         utilities.Terminate();
+    }
+
+    public static void PmePersistenceProbe_ExposesNoOpPersistStreamInit(ContractTestContext context)
+    {
+        var persistence = (IPersistStreamInit)context.UnitOperation;
+
+        ContractAssert.Equal(
+            ComHResults.SOk,
+            persistence.GetClassID(out var classId),
+            "IPersistStreamInit.GetClassID should return S_OK.");
+        ContractAssert.Equal(
+            Guid.Parse(UnitOperationComIdentity.ClassId),
+            classId,
+            "IPersistStreamInit.GetClassID should return the unit operation CLSID.");
+        ContractAssert.Equal(
+            ComHResults.SFalse,
+            persistence.IsDirty(),
+            "IPersistStreamInit.IsDirty should report clean no-op persistence state.");
+        ContractAssert.Equal(
+            ComHResults.SOk,
+            persistence.InitNew(),
+            "IPersistStreamInit.InitNew should accept PME canvas creation probing.");
+        ContractAssert.Equal(
+            ComHResults.SOk,
+            persistence.Load(null),
+            "IPersistStreamInit.Load should no-op successfully for the MVP stateless persistence surface.");
+        ContractAssert.Equal(
+            ComHResults.SOk,
+            persistence.Save(null, clearDirty: true),
+            "IPersistStreamInit.Save should no-op successfully for the MVP stateless persistence surface.");
+        ContractAssert.Equal(
+            ComHResults.SOk,
+            persistence.GetSizeMax(out var size),
+            "IPersistStreamInit.GetSizeMax should return S_OK.");
+        ContractAssert.Equal(0L, size, "IPersistStreamInit.GetSizeMax should report zero bytes for no-op persistence.");
+
+        var persistenceInterfacePointer = IntPtr.Zero;
+        try
+        {
+            persistenceInterfacePointer = Marshal.GetComInterfaceForObject(context.UnitOperation, typeof(IPersistStreamInit));
+            ContractAssert.True(
+                persistenceInterfacePointer != IntPtr.Zero,
+                "COM QueryInterface for IPersistStreamInit should succeed for the unit operation.");
+        }
+        finally
+        {
+            if (persistenceInterfacePointer != IntPtr.Zero)
+            {
+                Marshal.Release(persistenceInterfacePointer);
+            }
+        }
     }
 
     public static void Collections_ExposeStableLookupAndRejectInvalidSelectors(ContractTestContext context)
