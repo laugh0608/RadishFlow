@@ -70,3 +70,9 @@ Follow-up:
 - 当前判断：DWSIM 已确认走到 OLE canvas initialization，崩溃点从“constructor 后”进一步收窄到 `IPersistStreamInit.InitNew()` 返回后；下一优先排查面是相邻 `IPersistStorage` 或更大的 OLE embedding 接口。
 - 本轮已补入最小 `IPersistStorage`，并重新生成 `TLB`；下一轮 trace 应重点观察 `IPersistStorage.InitNew / Load / Save / SaveCompleted / HandsOffStorage` 是否出现在崩溃前。
 - 本轮终端侧补充验证：`cargo check`、`UnitOp.Mvp` build（真实环境）、`ContractTests` build、33 项 contract tests 均通过。
+
+2026-04-25 update 4:
+- 用户侧 trace 复验：`DWSIM` 仍记录 `IPersistStreamInit.InitNew enter/exit` 后崩溃，未进入 `IPersistStorage`；`COFE` 仍只记录到 constructor exit。
+- 当前判断：DWSIM 的下一步更可能是 OLE container embedding 探测，例如 `QueryInterface(IOleObject)`，而不是继续调用 `IPersistStorage`。
+- 本轮已补入最小 `IOleObject`，并重新生成 `TLB`；下一轮 trace 应重点观察 `SetClientSite / SetHostNames / DoVerb / GetUserClassID / GetUserType / SetExtent / GetExtent / GetMiscStatus / Close` 是否出现在崩溃前。
+- 本轮终端侧补充验证：`cargo check`、`UnitOp.Mvp` build（真实环境）、`ContractTests` build、34 项 contract tests 均通过。

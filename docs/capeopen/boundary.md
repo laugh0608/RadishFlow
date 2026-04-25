@@ -162,7 +162,7 @@ Rust 与 `.NET 10` 之间的正式边界应保持简单稳定：
 - `UnitOp.Mvp` 中经由 `RadishFlow.CapeOpen.Adapter` 调用 `rf-ffi` 的最小 `Calculate()` 求解接线，以及基于 native snapshot JSON / error JSON 材料化出的最小成功结果契约与失败摘要契约
 - `UnitOp.Mvp` 中基于上述结果对象继续收口出的最小只读 result/report access，以及建立在其上的标量元数据入口、可枚举 detail 键值读取入口、最小文本导出面与标量逐行读取入口，不要求外部宿主自己拼装成功结果、失败摘要或 headline/detail 文本
 - `UnitOp.Mvp` 中最小 `ICapeUnitReport` 兼容面，用于让 PME 能枚举默认报告、读取/设置 selected report，并通过标准 `ProduceReport(ref string)` 取得同一份 calculation report 文本
-- `UnitOp.Mvp` 中最小 `IPersistStreamInit` / `IPersistStorage` 兼容面，用于让 PME 在把 Unit Operation 加入 flowsheet 画布或做持久化探测时能稳定取得 CLSID、初始化新对象并执行无状态 load/save/size/storage 查询；当前不引入真实持久化，也不把 PME 持久化语义下沉到 Rust core
+- `UnitOp.Mvp` 中最小 `IPersistStreamInit` / `IPersistStorage` / `IOleObject` 兼容面，用于让 PME 在把 Unit Operation 加入 flowsheet 画布、做持久化探测或 OLE container embedding 探测时能稳定取得 CLSID、初始化新对象、读取 user type、设置 host/client site 和尺寸；当前不引入真实持久化、可视嵌入或 in-place activation，也不把 PME / OLE 语义下沉到 Rust core
 - 建立在公开 report API 之上的库内宿主消费 helper，以及基于该 helper 的最小 sectioned host report 口径
 - 建立在 configuration/action-plan/port-material/execution/report 正式快照之上的库内统一 host session snapshot，用于减少外部宿主在边界层重复汇总整体状态
 - 建立在 action plan 之上的 action execution request planning helper，用于把宿主输入显式规划为可执行 request batch，并报告 missing inputs / lifecycle-only / unsupported action；该 helper 是库内正式边界，区别于 smoke driver 的完整生命周期编排

@@ -1,5 +1,6 @@
 using RadishFlow.CapeOpen.Interop.Common;
 using RadishFlow.CapeOpen.Interop.Errors;
+using RadishFlow.CapeOpen.Interop.Ole;
 using RadishFlow.CapeOpen.Interop.Parameters;
 using RadishFlow.CapeOpen.Interop.Persistence;
 using RadishFlow.CapeOpen.Interop.Unit;
@@ -49,6 +50,7 @@ internal static class ContractTestExecutable
             ("registration-execute-preflight-contract", static _ => ContractTests.RegistrationExecution_StopsOnPreflightFailure()),
             ("pme-activation-probe-contract", static context => ContractTests.PmeActivationProbe_ExposesStandardActivationSurface(context)),
             ("pme-persistence-probe-contract", static context => ContractTests.PmePersistenceProbe_ExposesNoOpPersistStreamInit(context)),
+            ("pme-ole-object-probe-contract", static context => ContractTests.PmeOleObjectProbe_ExposesNoOpOleObject(context)),
             ("collection-contract", static context => ContractTests.Collections_ExposeStableLookupAndRejectInvalidSelectors(context)),
             ("object-definition-contract", static _ => ContractTests.ObjectDefinitionSnapshot_ExposesFrozenCatalogShape()),
             ("object-runtime-contract", static context => ContractTests.ObjectRuntimeSnapshot_ExposesFrozenObjectMetadata(context)),
@@ -156,6 +158,9 @@ internal static class ContractTests
         ContractAssert.True(
             typeof(IPersistStorage).IsAssignableFrom(typeof(RadishFlowCapeOpenUnitOperation)),
             "Unit operation should expose IPersistStorage for PME canvas storage persistence probing.");
+        ContractAssert.True(
+            typeof(IOleObject).IsAssignableFrom(typeof(RadishFlowCapeOpenUnitOperation)),
+            "Unit operation should expose IOleObject for PME canvas embedding probing.");
     }
 
     private static void AssertComDefaultInterface(Type classType, Type expectedInterface, string context)
@@ -226,6 +231,11 @@ internal static class ContractTests
                 string.Equals(implementedInterface.Name, "IPersistStorage", StringComparison.Ordinal) &&
                 string.Equals(implementedInterface.InterfaceId, ComPersistenceInterfaceIds.IPersistStorage, StringComparison.OrdinalIgnoreCase)),
             "Register descriptor should advertise IPersistStorage as an implemented PME canvas storage persistence interface.");
+        ContractAssert.True(
+            dryRunDescriptor.ImplementedInterfaces.Any(static implementedInterface =>
+                string.Equals(implementedInterface.Name, "IOleObject", StringComparison.Ordinal) &&
+                string.Equals(implementedInterface.InterfaceId, ComOleInterfaceIds.IOleObject, StringComparison.OrdinalIgnoreCase)),
+            "Register descriptor should advertise IOleObject as an implemented PME canvas embedding interface.");
         ContractAssert.True(
             dryRunDescriptor.RegistryPlan.Any(static entry =>
                 entry.Operation == CapeOpenRegistryPlanOperation.SetValue &&
@@ -561,6 +571,74 @@ internal static class ContractTests
             if (storagePersistenceInterfacePointer != IntPtr.Zero)
             {
                 Marshal.Release(storagePersistenceInterfacePointer);
+            }
+        }
+    }
+
+    public static void PmeOleObjectProbe_ExposesNoOpOleObject(ContractTestContext context)
+    {
+        var oleObject = (IOleObject)context.UnitOperation;
+
+        ContractAssert.Equal(ComHResults.SOk, oleObject.SetClientSite(IntPtr.Zero), "IOleObject.SetClientSite should accept a null client site.");
+        ContractAssert.Equal(ComHResults.SOk, oleObject.GetClientSite(out var clientSite), "IOleObject.GetClientSite should return S_OK.");
+        ContractAssert.Equal(IntPtr.Zero, clientSite, "IOleObject.GetClientSite should report no client site before a real container site is provided.");
+        ContractAssert.Equal(ComHResults.SOk, oleObject.SetHostNames("ContractTests", "RadishFlow Unit Operation"), "IOleObject.SetHostNames should no-op successfully.");
+        ContractAssert.Equal(ComHResults.SOk, oleObject.SetMoniker(0, IntPtr.Zero), "IOleObject.SetMoniker should no-op successfully.");
+        ContractAssert.Equal(ComHResults.ENotImpl, oleObject.GetMoniker(0, 0, out var moniker), "IOleObject.GetMoniker should report no moniker.");
+        ContractAssert.Equal(IntPtr.Zero, moniker, "IOleObject.GetMoniker should return a null moniker pointer.");
+        ContractAssert.Equal(ComHResults.SOk, oleObject.InitFromData(IntPtr.Zero, creation: true, reserved: 0), "IOleObject.InitFromData should no-op successfully.");
+        ContractAssert.Equal(ComHResults.ENotImpl, oleObject.GetClipboardData(0, out var dataObject), "IOleObject.GetClipboardData should report no data object.");
+        ContractAssert.Equal(IntPtr.Zero, dataObject, "IOleObject.GetClipboardData should return a null data object pointer.");
+        ContractAssert.Equal(ComHResults.SOk, oleObject.DoVerb(0, IntPtr.Zero, IntPtr.Zero, 0, IntPtr.Zero, IntPtr.Zero), "IOleObject.DoVerb should no-op successfully.");
+        ContractAssert.Equal(OleConstants.OleObjectNoVerbs, oleObject.EnumVerbs(out var enumOleVerb), "IOleObject.EnumVerbs should report no verbs.");
+        ContractAssert.Equal(IntPtr.Zero, enumOleVerb, "IOleObject.EnumVerbs should return a null enum pointer.");
+        ContractAssert.Equal(ComHResults.SOk, oleObject.Update(), "IOleObject.Update should no-op successfully.");
+        ContractAssert.Equal(ComHResults.SOk, oleObject.IsUpToDate(), "IOleObject.IsUpToDate should report S_OK.");
+        ContractAssert.Equal(ComHResults.SOk, oleObject.GetUserClassID(out var classId), "IOleObject.GetUserClassID should return S_OK.");
+        ContractAssert.Equal(Guid.Parse(UnitOperationComIdentity.ClassId), classId, "IOleObject.GetUserClassID should return the unit operation CLSID.");
+
+        var userType = IntPtr.Zero;
+        try
+        {
+            ContractAssert.Equal(ComHResults.SOk, oleObject.GetUserType(0, out userType), "IOleObject.GetUserType should return S_OK.");
+            ContractAssert.Equal(UnitOperationComIdentity.DisplayName, Marshal.PtrToStringUni(userType), "IOleObject.GetUserType should return the display name.");
+        }
+        finally
+        {
+            if (userType != IntPtr.Zero)
+            {
+                Marshal.FreeCoTaskMem(userType);
+            }
+        }
+
+        var size = new OleSize(100, 200);
+        ContractAssert.Equal(ComHResults.SOk, oleObject.SetExtent(1, ref size), "IOleObject.SetExtent should store the requested size.");
+        ContractAssert.Equal(ComHResults.SOk, oleObject.GetExtent(1, out var actualSize), "IOleObject.GetExtent should return S_OK.");
+        ContractAssert.Equal(100, actualSize.Width, "IOleObject.GetExtent should preserve width.");
+        ContractAssert.Equal(200, actualSize.Height, "IOleObject.GetExtent should preserve height.");
+        ContractAssert.Equal(OleConstants.OleAdviseNotSupported, oleObject.Advise(IntPtr.Zero, out var connection), "IOleObject.Advise should report no advise support.");
+        ContractAssert.Equal(0U, connection, "IOleObject.Advise should return a zero connection token.");
+        ContractAssert.Equal(OleConstants.OleAdviseNotSupported, oleObject.Unadvise(0), "IOleObject.Unadvise should report no advise support.");
+        ContractAssert.Equal(OleConstants.OleAdviseNotSupported, oleObject.EnumAdvise(out var enumAdvise), "IOleObject.EnumAdvise should report no advise support.");
+        ContractAssert.Equal(IntPtr.Zero, enumAdvise, "IOleObject.EnumAdvise should return a null enum pointer.");
+        ContractAssert.Equal(ComHResults.SOk, oleObject.GetMiscStatus(1, out var miscStatus), "IOleObject.GetMiscStatus should return S_OK.");
+        ContractAssert.Equal((uint)OleConstants.OleMiscNone, miscStatus, "IOleObject.GetMiscStatus should return no misc flags.");
+        ContractAssert.Equal(ComHResults.SOk, oleObject.SetColorScheme(IntPtr.Zero), "IOleObject.SetColorScheme should no-op successfully.");
+        ContractAssert.Equal(ComHResults.SOk, oleObject.Close(0), "IOleObject.Close should no-op successfully.");
+
+        var oleObjectPointer = IntPtr.Zero;
+        try
+        {
+            oleObjectPointer = Marshal.GetComInterfaceForObject(context.UnitOperation, typeof(IOleObject));
+            ContractAssert.True(
+                oleObjectPointer != IntPtr.Zero,
+                "COM QueryInterface for IOleObject should succeed for the unit operation.");
+        }
+        finally
+        {
+            if (oleObjectPointer != IntPtr.Zero)
+            {
+                Marshal.Release(oleObjectPointer);
             }
         }
     }
