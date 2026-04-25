@@ -38,6 +38,7 @@
 - 最小标准 `ICapeUnitReport` 实现：`reports`、`selectedReport` 与 `ProduceReport(ref string)`
 - 最小标准 `ICapeUtilities.SimulationContext` 兼容面：IDL/TLB 仍保持 CAPE-OPEN 标准 `IDispatch*` 形状，managed setter 当前只记录 PME 是否提供 context，不保存或释放宿主指针；getter 在尚无可消费 PME context 时返回非空的最小 `ICapeIdentification` placeholder，避免 COFE native 侧对 null `IDispatch*` 做解引用
 - COFE 复验显示它会在 `SimulationContext get` 返回后继续 native 消费该对象；当前 placeholder 又补出最小 `ICapeSimulationContext` marker、`ICapeCOSEUtilities` named values 与 `ICapeDiagnostic` no-op logging 面，并已同步 IDL/TLB 真相源，用于覆盖 COFE 对 simulation context 的早期 QI / IDispatch 探测
+- 后续复验显示 COFE 仍停在 `SimulationContext get-exit` 后且未进入 COSE/diagnostic 方法；当前 placeholder 又补出最小 `ICapeMaterialTemplateSystem`，并提升为公开 COM-visible coclass 写入 IDL/TLB，用于覆盖 COFE 只做早期 QI / typeinfo 探测的路径
 - 最小标准 `IPersistStreamInit` 实现：`GetClassID` 返回当前 Unit Operation CLSID，`IsDirty` 返回 `S_FALSE`，`InitNew / Load / Save / GetSizeMax` 以无状态 no-op 返回 `S_OK`；`Load / Save` 在 managed 签名中接收 raw `IntPtr` stream，以避免当前不消费 stream 时仍触发 CLR COM interface marshaler
 - 最小标准 `IPersistStorage` 实现：复用同一个 `GetClassID / IsDirty` 口径，`InitNew / Load / Save / SaveCompleted / HandsOffStorage` 以无状态 no-op 返回 `S_OK`
 - 最小标准 `IOleObject` 实现：覆盖 `SetClientSite / GetClientSite / SetHostNames / DoVerb / GetUserClassID / GetUserType / SetExtent / GetExtent / GetMiscStatus / Close` 等 OLE container 探测入口；当前不实现真实 inplace activation、verb 枚举、clipboard data 或 advise sink

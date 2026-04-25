@@ -119,5 +119,12 @@ Follow-up:
 - 同轮 `COFE` 仍闪退；trace 最后一段为 `SimulationContext get-enter -> get-result fallback=provided; hostContext=missing -> get-exit`，新 dump `COFE.exe.32048.dmp` 仍无当前托管异常。
 - 当前判断：COFE 不只是要求 `SimulationContext` getter 返回非空对象，它还会继续按 COSE context 相关接口消费该对象。参考接口显示 `ICapeSimulationContext` 是无方法 marker，常见可选消费面包括 `ICapeCOSEUtilities` 和 `ICapeDiagnostic`。
 - 本轮修正：新增最小 `ICapeSimulationContext`、`ICapeCOSEUtilities` 与 `ICapeDiagnostic` 接口定义；simulation context placeholder 同时实现这三个接口，`NamedValueList` 返回空字符串数组，`NamedValue(...)` 返回空字符串，diagnostic 方法只写 trace。
+
+## Update 16 - 2026-04-25
+
+- 用户侧复验新增 COSE context 接口后，`DWSIM` 仍推进到 `SimulationContext set/get`、`ComponentName/Description set`、`Ports get` 与 `Parameters get`，未产生新的 DWSIM dump。
+- 同轮 `COFE` 仍在 `SimulationContext get-result fallback=provided; hostContext=missing -> get-exit` 后 native 崩溃，新 dump 为 `COFE.exe.42720.dmp`，仍未进入 `NamedValueList / NamedValue / LogMessage / PopUpMessage`。
+- 当前判断：COFE 更可能在 getter 返回后做早期 `QueryInterface` 或 typeinfo 探测；若缺少 `ICapeMaterialTemplateSystem` 或 placeholder 没有公开 coclass typeinfo，COFE native 侧可能仍沿空指针路径崩溃。
+- 本轮修正：补入最小 `ICapeMaterialTemplateSystem`，并将 simulation context placeholder 提升为公开 COM-visible coclass；IDL/TLB 已同步，下一轮重点看 COFE 是否越过 `SimulationContext get-exit`。
 - 本轮已同步 `typelib/RadishFlow.CapeOpen.UnitOp.Mvp.idl` 并用 Windows SDK MIDL 重新生成 TLB；MIDL 仅报告 IDL 中文注释 code page warning，生成成功。
 - 本轮终端侧补充验证：`cargo check`、`UnitOp.Mvp` build（真实环境）、`ContractTests` build（真实环境）、34 项 contract tests 均通过。

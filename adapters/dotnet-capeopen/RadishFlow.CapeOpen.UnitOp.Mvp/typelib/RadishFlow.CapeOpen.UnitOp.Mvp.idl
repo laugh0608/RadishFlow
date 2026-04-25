@@ -155,6 +155,20 @@ interface ICapeDiagnostic : IDispatch
 
 [
     object,
+    uuid(678C0A9E-0100-11D2-A67D-00105A42887F),
+    dual,
+    nonextensible,
+    oleautomation,
+    pointer_default(unique)
+]
+interface ICapeMaterialTemplateSystem : IDispatch
+{
+    [id(1), propget] HRESULT MaterialTemplates([out, retval] VARIANT* value);
+    [id(2)] HRESULT CreateMaterialTemplate([in] BSTR materialTemplateName, [out, retval] IDispatch** value);
+};
+
+[
+    object,
     uuid(678C0A9F-0100-11D2-A67D-00105A42887F),
     dual,
     nonextensible,
@@ -235,6 +249,18 @@ library RadishFlowCapeOpenUnitOpMvpLib
         interface IPersistStreamInit;
         interface IPersistStorage;
         interface IOleObject;
+        interface ICapeIdentification;
+    };
+
+    [
+        uuid(8F1F9E3B-9D59-44BD-A564-1B8B2D6E6C4A)
+    ]
+    coclass UnitOperationSimulationContextPlaceholder
+    {
+        [default] interface ICapeCOSEUtilities;
+        interface ICapeSimulationContext;
+        interface ICapeDiagnostic;
+        interface ICapeMaterialTemplateSystem;
         interface ICapeIdentification;
     };
 

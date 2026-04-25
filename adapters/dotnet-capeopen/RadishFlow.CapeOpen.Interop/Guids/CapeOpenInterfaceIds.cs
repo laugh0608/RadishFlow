@@ -27,6 +27,9 @@ public static class CapeOpenInterfaceIds
     public const string ICapeDiagnostic = "678C0A9D-0100-11D2-A67D-00105A42887F";
 
     // Source: adapters/reference/CapeOpenMixerExample_CSharp/CapeOpen/COGuids1.cs
+    public const string ICapeMaterialTemplateSystem = "678C0A9E-0100-11D2-A67D-00105A42887F";
+
+    // Source: adapters/reference/CapeOpenMixerExample_CSharp/CapeOpen/COGuids1.cs
     public const string ICapeCOSEUtilities = "678C0A9F-0100-11D2-A67D-00105A42887F";
 
     // Source: adapters/reference/CapeOpenMixerExample_CSharp/CapeOpen/COGuids1.cs

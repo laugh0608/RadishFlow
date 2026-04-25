@@ -4,6 +4,8 @@ public static class UnitOperationComIdentity
 {
     public const string ClassId = "2F0E4C8F-7C89-4DA7-A5D3-5F8C987D6718";
 
+    public const string SimulationContextPlaceholderClassId = "8F1F9E3B-9D59-44BD-A564-1B8B2D6E6C4A";
+
     public const string ClassDisplayName = "RadishFlow Unit Operation Class";
 
     public const string ProgId = "RadishFlow.CapeOpen.UnitOp.Mvp";

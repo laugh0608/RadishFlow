@@ -1459,35 +1459,6 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
         string? ManifestPath,
         string? PayloadPath);
 
-    [ComVisible(true)]
-    [ClassInterface(ClassInterfaceType.None)]
-    [ComDefaultInterface(typeof(ICapeIdentification))]
-    private sealed class UnitOperationSimulationContextPlaceholder : ICapeIdentification, ICapeSimulationContext, ICapeCOSEUtilities, ICapeDiagnostic
-    {
-        public string ComponentName { get; set; } = "RadishFlow simulation context placeholder";
-
-        public string ComponentDescription { get; set; } =
-            "Placeholder returned before a PME simulation context is available.";
-
-        public object NamedValueList => Array.Empty<string>();
-
-        public object NamedValue(string value)
-        {
-            ArgumentNullException.ThrowIfNull(value);
-            return string.Empty;
-        }
-
-        public void PopUpMessage(string message)
-        {
-            UnitOperationComTrace.Write(nameof(ICapeDiagnostic.PopUpMessage), "enter", message);
-        }
-
-        public void LogMessage(string message)
-        {
-            UnitOperationComTrace.Write(nameof(ICapeDiagnostic.LogMessage), "enter", message);
-        }
-    }
-
     private sealed record ValidationResult(bool IsValid, string Message, string? RequestedOperation)
     {
         public static ValidationResult Valid(string message)

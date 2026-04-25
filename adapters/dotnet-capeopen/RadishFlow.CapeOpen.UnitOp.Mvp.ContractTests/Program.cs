@@ -149,6 +149,10 @@ internal static class ContractTests
             ComInterfaceType.InterfaceIsDual,
             "ICapeDiagnostic should expose the standard dual diagnostic shape.");
         AssertComInterfaceType(
+            typeof(ICapeMaterialTemplateSystem),
+            ComInterfaceType.InterfaceIsDual,
+            "ICapeMaterialTemplateSystem should expose the standard dual material-template shape.");
+        AssertComInterfaceType(
             typeof(ICapeUnit),
             ComInterfaceType.InterfaceIsDual,
             "ICapeUnit should stay aligned with the frozen dual IDL interface.");
@@ -194,6 +198,10 @@ internal static class ContractTests
             typeof(UnitOperationPortPlaceholder),
             typeof(ICapeUnitPort),
             "Port placeholder COM default interface should expose ICapeUnitPort for connection late binding.");
+        AssertComDefaultInterface(
+            typeof(UnitOperationSimulationContextPlaceholder),
+            typeof(ICapeCOSEUtilities),
+            "Simulation context placeholder COM default interface should expose ICapeCOSEUtilities for COFE context probing.");
 
         ContractAssert.True(
             typeof(ICapeUnitReport).IsAssignableFrom(typeof(RadishFlowCapeOpenUnitOperation)),
@@ -535,6 +543,10 @@ internal static class ContractTests
             ContractAssert.Equal(string.Empty, coseUtilities.NamedValue("FreeFORTRANchannel"), "SimulationContext placeholder should return an empty named value.");
             var diagnostic = (ICapeDiagnostic)simulationContextObject;
             diagnostic.LogMessage("activation probe");
+            var materialTemplateSystem = (ICapeMaterialTemplateSystem)simulationContextObject;
+            ContractAssert.NotNull(
+                materialTemplateSystem.MaterialTemplates,
+                "SimulationContext placeholder should expose material template names.");
         }
         finally
         {

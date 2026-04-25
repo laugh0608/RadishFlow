@@ -155,7 +155,8 @@ Rust 与 `.NET 10` 之间的正式边界应保持简单稳定：
 - 用户侧复验 raw stream 后，DWSIM 仍停在同一 `InterfaceMarshaler.ConvertToManaged` 栈；当前进一步发现 C# automation 接口仍是 `InterfaceIsIDispatch`，而冻结 IDL/TLB 已声明为 `dual`，并且 `ICapeUtilities.SimulationContext` setter 仍会把 PME 传入的 `IDispatch*` 转成托管对象。当前已把主要 CAPE-OPEN automation 接口对齐为 `InterfaceIsDual`，并把 `SimulationContext` managed 签名改成 raw `IntPtr` 接收，不把 PME context 对象带入 Rust/Core 边界
 - 用户侧复验 dual/raw `SimulationContext` 后，DWSIM 已不再闪退并推进到 `SimulationContext set-enter`，但 setter 内部曾因持有宿主指针触发 `NullReferenceException`，导致组件未添加到画布；COFE 则先调用 `SimulationContext get`，收到 null context 后仍在 native 侧闪退。当前因此进一步把 setter 收口为 no-op 记录，不保存/释放宿主指针；getter 在缺少真实 context 时返回非空 placeholder `IDispatch*`，作为 PME activation 兼容探测面，不代表实现了完整 COSE utilities
 - 用户侧复验 no-op setter 与非空 placeholder 后，DWSIM 已继续推进到 `ComponentName / ComponentDescription / Ports / Parameters`；COFE 仍在 `SimulationContext get` 返回后 native 崩溃。当前判断 COFE 不只是要求非空 `IDispatch*`，还会继续按 `ICapeSimulationContext` / `ICapeCOSEUtilities` / `ICapeDiagnostic` 形状消费该对象；因此当前已给 placeholder 补出这三个最小接口，其中 COSE named values 返回空集合/空值，diagnostic logging 为 no-op trace
-- 若最小 COSE simulation context placeholder 修正后仍在同一阶段崩溃，下一阶段应先设计 out-of-proc COM shim / local server，或更保守的 in-proc shim + 外部 `.NET 10` worker 承载策略；该判断属于架构边界变化，不能作为小修小补直接落入当前 `UnitOp.Mvp` 主类
+- 用户侧复验最小 COSE simulation context placeholder 后，DWSIM 仍推进到 `Ports / Parameters` 且未再生成 DWSIM dump；COFE 仍停在 `SimulationContext get-exit` 后 native 崩溃，未进入 `NamedValueList / NamedValue / Diagnostic` 方法。当前因此进一步把 placeholder 提升为公开 COM-visible coclass，并补入最小 `ICapeMaterialTemplateSystem`，用于覆盖 COFE 对 context 对象只做早期 `QueryInterface` / typeinfo 探测的路径
+- 若公开 context coclass 与 `ICapeMaterialTemplateSystem` 修正后仍在同一阶段崩溃，下一阶段应先设计 out-of-proc COM shim / local server，或更保守的 in-proc shim + 外部 `.NET 10` worker 承载策略；该判断属于架构边界变化，不能作为小修小补直接落入当前 `UnitOp.Mvp` 主类
 
 当前允许推进的内容：
 
