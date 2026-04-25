@@ -76,3 +76,9 @@ Follow-up:
 - 当前判断：DWSIM 的下一步更可能是 OLE container embedding 探测，例如 `QueryInterface(IOleObject)`，而不是继续调用 `IPersistStorage`。
 - 本轮已补入最小 `IOleObject`，并重新生成 `TLB`；下一轮 trace 应重点观察 `SetClientSite / SetHostNames / DoVerb / GetUserClassID / GetUserType / SetExtent / GetExtent / GetMiscStatus / Close` 是否出现在崩溃前。
 - 本轮终端侧补充验证：`cargo check`、`UnitOp.Mvp` build（真实环境）、`ContractTests` build、34 项 contract tests 均通过。
+
+2026-04-25 update 5:
+- 用户侧 trace 复验：`DWSIM` 仍只记录 `IPersistStreamInit.InitNew enter/exit` 后崩溃，未进入 `IOleObject` 任一成员；`COFE` 仍只记录到 constructor exit。
+- 当前判断：`ICapeUnitReport`、`IPersistStreamInit`、`IPersistStorage`、`IOleObject` 均未解决 PME 添加到 flowsheet 画布时的硬崩。DWSIM 崩溃点已收窄到 `IPersistStreamInit.InitNew()` 返回后的 native/COM 过渡；COFE 崩溃点仍在 constructor 返回后的 native/COM 过渡。
+- 下一轮不再优先盲补普通 COM/OLE 接口；应先通过 WER `LocalDumps` 或等价 native crash dump 拿到崩溃栈，确认是否为 `.NET 10 in-proc comhost/CoreCLR` 与 PME 宿主进程承载冲突，或宿主侧 `QueryInterface` / HRESULT / interface pointer 处理路径崩溃。
+- 已新增仓库脚本 `scripts/configure-pme-dumps.ps1`，用于单行启用/清理当前用户的 `DWSIM.exe` / `COFE.exe` WER dump 配置，默认 dump 输出目录为 `D:\Code\RadishFlow\artifacts\pme-dumps`。

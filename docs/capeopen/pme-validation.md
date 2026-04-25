@@ -211,6 +211,30 @@ pwsh .\scripts\register-com.ps1 -Action unregister -Execute -ConfirmToken unregi
 - 最后才考虑 host round / follow-up 层是否需要补正式 helper
 - 不把单个 PME 的非标准行为直接下沉到 Rust core
 
+## PME 崩溃 dump 采集
+
+若 `DWSIM` / `COFE` 能发现组件，但在选择组件并添加到 flowsheet 画布时直接闪退，应先收集 native 崩溃现场，再继续判断是否需要新增 COM 接口面或调整承载策略。
+
+仓库提供单行脚本配置当前用户的 Windows Error Reporting `LocalDumps`：
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\configure-pme-dumps.ps1 -Action enable
+```
+
+默认会为 `DWSIM.exe` 与 `COFE.exe` 写入 `HKCU\Software\Microsoft\Windows\Windows Error Reporting\LocalDumps`，dump 输出目录为 `D:\Code\RadishFlow\artifacts\pme-dumps`，dump 类型为 full dump。人工复验后可查看：
+
+```powershell
+Get-ChildItem .\artifacts\pme-dumps
+```
+
+验证结束后应清理该 WER 配置：
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\configure-pme-dumps.ps1 -Action disable
+```
+
+这一路径只用于捕捉 PME 进程崩溃栈，不替代 `current-user register / unregister` 的安装清理要求。
+
 ## 验证记录模板
 
 建议每次人工验证记录以下内容：
@@ -264,6 +288,7 @@ Follow-up:
 - 当前已补入最小 `IPersistStreamInit` 接口、主类实现与 TLB 描述，`GetClassID / IsDirty / InitNew / Load / Save / GetSizeMax` 当前均为无状态 no-op HRESULT 路径，用于加固 PME 把组件加入 flowsheet 画布时可能进行的 OLE 持久化探测
 - 在用户侧 trace 复验确认 `DWSIM` 已调用并退出 `IPersistStreamInit.InitNew()` 后，当前又补入最小 `IPersistStorage` 接口、主类实现与 TLB 描述，继续覆盖 OLE canvas storage persistence 探测面
 - 在用户侧 trace 继续确认 `DWSIM` 仍停在 `IPersistStreamInit.InitNew()` 返回后、`IPersistStorage` 未被调用后，当前又补入最小 `IOleObject` 接口、主类实现与 TLB 描述，覆盖 OLE container embedding 探测面；该实现不承诺真实可视 OLE 嵌入或 in-place activation
+- 用户侧继续复验后，`DWSIM` 仍只到 `IPersistStreamInit.InitNew()` enter/exit，未进入 `IOleObject`；`COFE` 仍只到 constructor exit。这说明盲补常见 OLE/CAPE-OPEN 接口的收益已明显下降，下一轮应优先收集 WER LocalDumps / native 崩溃栈，确认崩溃是否来自 `.NET 10 in-proc comhost/CoreCLR` 承载冲突、宿主 native QI/返回值处理，或仍有具体 COM interface shape 问题。
 - 本次终端验证中，非提权沙盒上下文执行 `RegisterTypeLibForUser` 会触发 `TYPE_E_REGISTRYACCESS (0x8002801C)` 并由注册工具自动 rollback；后续真实 PME 复验仍应以普通桌面用户上下文执行仓库脚本，避免把提权 `HKCU` 与 PME 用户 `HKCU` 混用
 
 仍必须补齐的边界缺口不是新的 host round fallback，而是 `DWSIM + COFE` 的下一轮人工复验，以及是否需要支持 `local-machine` 的单独策略判断。
