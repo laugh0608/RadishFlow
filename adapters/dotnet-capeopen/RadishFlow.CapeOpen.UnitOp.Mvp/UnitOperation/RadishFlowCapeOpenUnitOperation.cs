@@ -17,7 +17,7 @@ namespace RadishFlow.CapeOpen.UnitOp.Mvp.UnitOperation;
 [ProgId(UnitOperationComIdentity.ProgId)]
 [ClassInterface(ClassInterfaceType.None)]
 [ComDefaultInterface(typeof(ICapeUtilities))]
-public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICapeUtilities, ICapeUnit, ICapeUnitReport, IPersistStreamInit, IDisposable
+public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICapeUtilities, ICapeUnit, ICapeUnitReport, IPersistStreamInit, IPersistStorage, IDisposable
 {
     private const string UtilitiesInterfaceName = nameof(ICapeUtilities);
     private const string UnitInterfaceName = nameof(ICapeUnit);
@@ -422,6 +422,108 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
         finally
         {
             UnitOperationComTrace.Write(nameof(InitNew), "exit");
+        }
+    }
+
+    public int InitNew(IntPtr storage)
+    {
+        UnitOperationComTrace.Write(
+            "IPersistStorage.InitNew",
+            "enter",
+            storage == IntPtr.Zero ? "storage=null" : "storage=provided");
+        try
+        {
+            return ComHResults.SOk;
+        }
+        catch (Exception error)
+        {
+            UnitOperationComTrace.Exception("IPersistStorage.InitNew", error);
+            return error.HResult;
+        }
+        finally
+        {
+            UnitOperationComTrace.Write("IPersistStorage.InitNew", "exit");
+        }
+    }
+
+    public int Load(IntPtr storage)
+    {
+        UnitOperationComTrace.Write(
+            "IPersistStorage.Load",
+            "enter",
+            storage == IntPtr.Zero ? "storage=null" : "storage=provided");
+        try
+        {
+            return ComHResults.SOk;
+        }
+        catch (Exception error)
+        {
+            UnitOperationComTrace.Exception("IPersistStorage.Load", error);
+            return error.HResult;
+        }
+        finally
+        {
+            UnitOperationComTrace.Write("IPersistStorage.Load", "exit");
+        }
+    }
+
+    public int Save(IntPtr storage, bool sameAsLoad)
+    {
+        UnitOperationComTrace.Write(
+            "IPersistStorage.Save",
+            "enter",
+            $"storage={(storage == IntPtr.Zero ? "null" : "provided")}; sameAsLoad={sameAsLoad}");
+        try
+        {
+            return ComHResults.SOk;
+        }
+        catch (Exception error)
+        {
+            UnitOperationComTrace.Exception("IPersistStorage.Save", error);
+            return error.HResult;
+        }
+        finally
+        {
+            UnitOperationComTrace.Write("IPersistStorage.Save", "exit");
+        }
+    }
+
+    public int SaveCompleted(IntPtr storage)
+    {
+        UnitOperationComTrace.Write(
+            nameof(SaveCompleted),
+            "enter",
+            storage == IntPtr.Zero ? "storage=null" : "storage=provided");
+        try
+        {
+            return ComHResults.SOk;
+        }
+        catch (Exception error)
+        {
+            UnitOperationComTrace.Exception(nameof(SaveCompleted), error);
+            return error.HResult;
+        }
+        finally
+        {
+            UnitOperationComTrace.Write(nameof(SaveCompleted), "exit");
+        }
+    }
+
+    public int HandsOffStorage()
+    {
+        UnitOperationComTrace.Write(nameof(HandsOffStorage), "enter");
+        try
+        {
+            return ComHResults.SOk;
+        }
+        catch (Exception error)
+        {
+            UnitOperationComTrace.Exception(nameof(HandsOffStorage), error);
+            return error.HResult;
+        }
+        finally
+        {
+            UnitOperationComTrace.Write(nameof(HandsOffStorage), "exit");
         }
     }
 

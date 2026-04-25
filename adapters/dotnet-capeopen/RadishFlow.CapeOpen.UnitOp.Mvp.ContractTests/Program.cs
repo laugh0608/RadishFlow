@@ -153,6 +153,9 @@ internal static class ContractTests
         ContractAssert.True(
             typeof(IPersistStreamInit).IsAssignableFrom(typeof(RadishFlowCapeOpenUnitOperation)),
             "Unit operation should expose IPersistStreamInit for PME canvas object persistence probing.");
+        ContractAssert.True(
+            typeof(IPersistStorage).IsAssignableFrom(typeof(RadishFlowCapeOpenUnitOperation)),
+            "Unit operation should expose IPersistStorage for PME canvas storage persistence probing.");
     }
 
     private static void AssertComDefaultInterface(Type classType, Type expectedInterface, string context)
@@ -218,6 +221,11 @@ internal static class ContractTests
                 string.Equals(implementedInterface.Name, "IPersistStreamInit", StringComparison.Ordinal) &&
                 string.Equals(implementedInterface.InterfaceId, ComPersistenceInterfaceIds.IPersistStreamInit, StringComparison.OrdinalIgnoreCase)),
             "Register descriptor should advertise IPersistStreamInit as an implemented PME canvas persistence interface.");
+        ContractAssert.True(
+            dryRunDescriptor.ImplementedInterfaces.Any(static implementedInterface =>
+                string.Equals(implementedInterface.Name, "IPersistStorage", StringComparison.Ordinal) &&
+                string.Equals(implementedInterface.InterfaceId, ComPersistenceInterfaceIds.IPersistStorage, StringComparison.OrdinalIgnoreCase)),
+            "Register descriptor should advertise IPersistStorage as an implemented PME canvas storage persistence interface.");
         ContractAssert.True(
             dryRunDescriptor.RegistryPlan.Any(static entry =>
                 entry.Operation == CapeOpenRegistryPlanOperation.SetValue &&
@@ -464,11 +472,11 @@ internal static class ContractTests
 
     public static void PmePersistenceProbe_ExposesNoOpPersistStreamInit(ContractTestContext context)
     {
-        var persistence = (IPersistStreamInit)context.UnitOperation;
+        var streamPersistence = (IPersistStreamInit)context.UnitOperation;
 
         ContractAssert.Equal(
             ComHResults.SOk,
-            persistence.GetClassID(out var classId),
+            streamPersistence.GetClassID(out var classId),
             "IPersistStreamInit.GetClassID should return S_OK.");
         ContractAssert.Equal(
             Guid.Parse(UnitOperationComIdentity.ClassId),
@@ -476,39 +484,83 @@ internal static class ContractTests
             "IPersistStreamInit.GetClassID should return the unit operation CLSID.");
         ContractAssert.Equal(
             ComHResults.SFalse,
-            persistence.IsDirty(),
+            streamPersistence.IsDirty(),
             "IPersistStreamInit.IsDirty should report clean no-op persistence state.");
         ContractAssert.Equal(
             ComHResults.SOk,
-            persistence.InitNew(),
+            streamPersistence.InitNew(),
             "IPersistStreamInit.InitNew should accept PME canvas creation probing.");
         ContractAssert.Equal(
             ComHResults.SOk,
-            persistence.Load(null),
+            streamPersistence.Load(null),
             "IPersistStreamInit.Load should no-op successfully for the MVP stateless persistence surface.");
         ContractAssert.Equal(
             ComHResults.SOk,
-            persistence.Save(null, clearDirty: true),
+            streamPersistence.Save(null, clearDirty: true),
             "IPersistStreamInit.Save should no-op successfully for the MVP stateless persistence surface.");
         ContractAssert.Equal(
             ComHResults.SOk,
-            persistence.GetSizeMax(out var size),
+            streamPersistence.GetSizeMax(out var size),
             "IPersistStreamInit.GetSizeMax should return S_OK.");
         ContractAssert.Equal(0L, size, "IPersistStreamInit.GetSizeMax should report zero bytes for no-op persistence.");
 
-        var persistenceInterfacePointer = IntPtr.Zero;
+        var storagePersistence = (IPersistStorage)context.UnitOperation;
+        ContractAssert.Equal(
+            ComHResults.SOk,
+            storagePersistence.GetClassID(out var storageClassId),
+            "IPersistStorage.GetClassID should return S_OK.");
+        ContractAssert.Equal(
+            classId,
+            storageClassId,
+            "IPersistStorage.GetClassID should return the same unit operation CLSID.");
+        ContractAssert.Equal(
+            ComHResults.SFalse,
+            storagePersistence.IsDirty(),
+            "IPersistStorage.IsDirty should report clean no-op persistence state.");
+        ContractAssert.Equal(
+            ComHResults.SOk,
+            storagePersistence.InitNew(IntPtr.Zero),
+            "IPersistStorage.InitNew should accept PME canvas storage creation probing.");
+        ContractAssert.Equal(
+            ComHResults.SOk,
+            storagePersistence.Load(IntPtr.Zero),
+            "IPersistStorage.Load should no-op successfully for the MVP stateless persistence surface.");
+        ContractAssert.Equal(
+            ComHResults.SOk,
+            storagePersistence.Save(IntPtr.Zero, sameAsLoad: true),
+            "IPersistStorage.Save should no-op successfully for the MVP stateless persistence surface.");
+        ContractAssert.Equal(
+            ComHResults.SOk,
+            storagePersistence.SaveCompleted(IntPtr.Zero),
+            "IPersistStorage.SaveCompleted should no-op successfully for the MVP stateless persistence surface.");
+        ContractAssert.Equal(
+            ComHResults.SOk,
+            storagePersistence.HandsOffStorage(),
+            "IPersistStorage.HandsOffStorage should no-op successfully for the MVP stateless persistence surface.");
+
+        var streamPersistenceInterfacePointer = IntPtr.Zero;
+        var storagePersistenceInterfacePointer = IntPtr.Zero;
         try
         {
-            persistenceInterfacePointer = Marshal.GetComInterfaceForObject(context.UnitOperation, typeof(IPersistStreamInit));
+            streamPersistenceInterfacePointer = Marshal.GetComInterfaceForObject(context.UnitOperation, typeof(IPersistStreamInit));
             ContractAssert.True(
-                persistenceInterfacePointer != IntPtr.Zero,
+                streamPersistenceInterfacePointer != IntPtr.Zero,
                 "COM QueryInterface for IPersistStreamInit should succeed for the unit operation.");
+            storagePersistenceInterfacePointer = Marshal.GetComInterfaceForObject(context.UnitOperation, typeof(IPersistStorage));
+            ContractAssert.True(
+                storagePersistenceInterfacePointer != IntPtr.Zero,
+                "COM QueryInterface for IPersistStorage should succeed for the unit operation.");
         }
         finally
         {
-            if (persistenceInterfacePointer != IntPtr.Zero)
+            if (streamPersistenceInterfacePointer != IntPtr.Zero)
             {
-                Marshal.Release(persistenceInterfacePointer);
+                Marshal.Release(streamPersistenceInterfacePointer);
+            }
+
+            if (storagePersistenceInterfacePointer != IntPtr.Zero)
+            {
+                Marshal.Release(storagePersistenceInterfacePointer);
             }
         }
     }

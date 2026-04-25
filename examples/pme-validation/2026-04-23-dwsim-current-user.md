@@ -64,3 +64,9 @@ Follow-up:
 - 当前判断：崩溃点位于对象构造完成后、正式 automation 调用前，优先怀疑 PME 添加到 flowsheet 画布时的 `QueryInterface` / OLE canvas persistence 探测面，或 `.NET 10 in-proc comhost` 与宿主进程 runtime 承载冲突。
 - 本轮已补入最小 `IPersistStreamInit`，并重新生成 `TLB`；下一轮 trace 应重点观察 `GetClassID / IsDirty / InitNew / Load / Save / GetSizeMax` 是否出现在崩溃前。
 - 本轮终端侧补充验证：`cargo check`、`UnitOp.Mvp` build（真实环境）、`ContractTests` build、33 项 contract tests 均通过。
+
+2026-04-25 update 3:
+- 用户侧 trace 复验：`DWSIM` 已记录 `IPersistStreamInit.InitNew enter/exit`，随后在下一个 managed 成员调用前崩溃；`COFE` 仍只记录到 constructor exit。
+- 当前判断：DWSIM 已确认走到 OLE canvas initialization，崩溃点从“constructor 后”进一步收窄到 `IPersistStreamInit.InitNew()` 返回后；下一优先排查面是相邻 `IPersistStorage` 或更大的 OLE embedding 接口。
+- 本轮已补入最小 `IPersistStorage`，并重新生成 `TLB`；下一轮 trace 应重点观察 `IPersistStorage.InitNew / Load / Save / SaveCompleted / HandsOffStorage` 是否出现在崩溃前。
+- 本轮终端侧补充验证：`cargo check`、`UnitOp.Mvp` build（真实环境）、`ContractTests` build、33 项 contract tests 均通过。

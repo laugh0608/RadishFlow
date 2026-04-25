@@ -96,6 +96,9 @@ internal sealed record CapeOpenRegistrationDescriptor(
                 new CapeOpenImplementedInterface(
                     Name: "IPersistStreamInit",
                     InterfaceId: RadishFlow.CapeOpen.Interop.Persistence.ComPersistenceInterfaceIds.IPersistStreamInit),
+                new CapeOpenImplementedInterface(
+                    Name: "IPersistStorage",
+                    InterfaceId: RadishFlow.CapeOpen.Interop.Persistence.ComPersistenceInterfaceIds.IPersistStorage),
             ],
             PreflightChecks: preflightChecks,
             RegistryPlan: registryPlan,
