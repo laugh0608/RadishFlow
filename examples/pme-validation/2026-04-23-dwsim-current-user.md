@@ -142,3 +142,19 @@ Follow-up:
 - 本轮修正：`SimulationContext` setter 撤回显式 `IDispatch` marshalling，保留 raw `IntPtr` 以兼容 DWSIM；getter 继续显式返回 `IDispatch` 以兼容 COFE。端口连接改为只保存 connected object 的 `ICapeIdentification` 快照，不长期持有 PME material COM object。
 - 本轮已同步 `typelib/RadishFlow.CapeOpen.UnitOp.Mvp.idl` 并用 Windows SDK MIDL 重新生成 TLB；MIDL 仅报告 IDL 中文注释 code page warning，生成成功。
 - 本轮终端侧补充验证：`cargo check`、`UnitOp.Mvp` build（真实环境）、`ContractTests` build（真实环境）、34 项 contract tests 均通过。
+
+## Update 19 - 2026-04-25
+
+- 用户侧最新复验：`COFE` 仍可放置 unit、连接 `Feed / Product`，并在关闭前进入 `Initialize()`；关闭 case 时仍出现 material object release warning。trace 中仍未出现本轮新增的 `released-com-argument`，说明该补丁尚未注册到 PME 侧复验。
+- 同轮 `DWSIM` 仍无法把 unit 放到画布，trace 只到 constructor、`InitNew` 或 `SimulationContext set-exit` 这类早期接受路径，没有进入 `ComponentName / Ports / Parameters`。
+- 本轮修正：`UnitOperationPortPlaceholder.Connect` 在读取 PME material object 的 `ICapeIdentification` 快照后，在 `finally` 中对 COM 入参执行 `FinalReleaseComObject` 并写入 `released-com-argument` trace，用于验证 COFE 关闭 case warning 是否来自端口连接 RCW 持有。
+- 本轮修正：注册计划新增 `Consumes Thermodynamics` 与 `Supports Thermodynamics 1.1` 两个 CAPE-OPEN implemented categories，作为 DWSIM 画布接受条件 probe；该修正不代表 MVP 已实现 Thermo PMC 或第三方 property package 加载。
+- 本轮终端侧补充验证：`dotnet build` contract tests 项目通过，34 项 contract tests 通过，`cargo check` 通过，`git diff --check` 通过。
+
+## Update 20 - 2026-04-25
+
+- 用户侧复验 Update 19 后：`DWSIM` 仍无法放置，但 trace 已到 `SimulationContext get`、`ComponentName / ComponentDescription set`、`Ports get`、`Parameters get`；`COFE` 退回到 `SimulationContext get-result fallback=provided; hostContext=missing -> get-exit` 后 native 崩溃，并生成 `COFE.exe.25684.dmp`。
+- `dotnet-dump` 读取 `COFE.exe.25684.dmp`：无当前托管异常，仍是 getter 返回后 COFE native 侧崩溃。
+- 当前判断：COFE 退步来自 `ICapeUtilities.SimulationContext` getter 的 `IDispatch` return marshalling 被误撤。已恢复 getter `[return: MarshalAs(UnmanagedType.IDispatch)]`，同时继续保持 setter raw `IntPtr`，以保留 DWSIM setter 侧修正。
+- 本轮额外新增 `ICapeCollection.Item / Count` trace。下一轮 DWSIM 复验时，重点观察 `Ports.ICapeCollection.Count/Item` 与 `Parameters.ICapeCollection.Count/Item` 是否出现；若没有，DWSIM 很可能停在 collection QI/typeinfo 或画布接受条件阶段。
+- 本轮终端侧补充验证：`dotnet build` contract tests 项目通过，34 项 contract tests 通过，`cargo check` 通过，`git diff --check` 通过。

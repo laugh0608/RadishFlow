@@ -1,6 +1,6 @@
 # RadishFlow 架构草案
 
-更新时间：2026-04-21
+更新时间：2026-04-25
 
 ## 文档目的
 
@@ -572,12 +572,12 @@ Rust 与 .NET 的桥接层。
 
 - 当前已建立最小 PMC 类、`Initialize/Validate/Calculate/Terminate/Edit` 状态机与内部配置入口
 - 当前已把 `Ports` / `Parameters` 推进为最小占位对象集合，并让 `Validate()` 先基于对象状态做必填参数与必连端口检查
-- 当前仍未进入 COM 注册或完整 PME 生命周期；不过最小 native 求解接线已打通，且 `Calculate()` 对外结果面当前已收口为稳定的“成功结果 + 失败摘要”双契约，并进一步提供统一只读查询面 `GetCalculationReport()`、其上的标量元数据入口 `GetCalculationReportState()/GetCalculationReportHeadline()`、可枚举 detail 键值入口 `GetCalculationReportDetailKeyCount()/GetCalculationReportDetailKey(int)/GetCalculationReportDetailValue(string)`、最小文本导出面 `GetCalculationReportLines()/GetCalculationReportText()`，以及更接近宿主逐行消费习惯的 `GetCalculationReportLineCount()/GetCalculationReportLine(int)`，而不是继续直接暴露完整 snapshot JSON 或 native error JSON
+- 当前已进入受控 COM 注册与真实 `DWSIM / COFE` 人工复验收敛阶段，但仍未进入 PME 自动化互调或完整 PME 生命周期框架；最小 native 求解接线已打通，且 `Calculate()` 对外结果面当前已收口为稳定的“成功结果 + 失败摘要”双契约，并进一步提供统一只读查询面 `GetCalculationReport()`、其上的标量元数据入口 `GetCalculationReportState()/GetCalculationReportHeadline()`、可枚举 detail 键值入口 `GetCalculationReportDetailKeyCount()/GetCalculationReportDetailKey(int)/GetCalculationReportDetailValue(string)`、最小文本导出面 `GetCalculationReportLines()/GetCalculationReportText()`，以及更接近宿主逐行消费习惯的 `GetCalculationReportLineCount()/GetCalculationReportLine(int)`，而不是继续直接暴露完整 snapshot JSON 或 native error JSON
 - 当前又已把上述 stable detail key 清单冻结为公开 catalog `UnitOperationCalculationReportDetailCatalog`，明确 success / failure 两条路径的 canonical key 顺序，避免宿主侧再依赖散落字符串常量或文档口径
 - 在最小结果面阶段性冻结后，当前又已把内部状态推进显式收口为 `UnitOperationLifecycleState`、分段 `EvaluateValidation()` guard 链、分段 `Calculate()` 执行链，以及统一的 validation/calculation/report transition helper，避免后续宿主主线继续推进时在同一个 PMC 类里堆叠隐式状态分支
 - 在公开 report API 之上，当前又已补出 `UnitOperationHostReportReader -> UnitOperationHostReportPresenter -> UnitOperationHostReportFormatter` 三级宿主消费 helper；这条链路的定位是冻结最小宿主读取/展示口径，而不是继续给 PMC 主类追加更多 convenience accessor
 - 当前 host-facing 主路径又已继续收口为 `UnitOperationHostViewReader`、`UnitOperationHostActionExecutionRequestPlanner`、`UnitOperationHostActionExecutionOrchestrator`、`UnitOperationHostValidationRunner`、`UnitOperationHostCalculationRunner`、`UnitOperationHostRoundOrchestrator` 与统一 `FollowUp` / `StopKind` 模型；这些 helper 负责正式消费面和窄边界 orchestration，不把 `SmokeTests` 的完整 driver DSL 上移成库 API
-- 当前又已通过 `UnitOperationComIdentity` 冻结 MVP PMC 的 `CLSID / ProgID / Versioned ProgID / DisplayName / Description`，并在 `RadishFlowCapeOpenUnitOperation` 上固定 `ComVisible / Guid / ProgId / ClassInterface(None)` 注册前置元数据；这仍只代表身份口径冻结，不代表已经执行 COM 注册
+- 当前又已通过 `UnitOperationComIdentity` 冻结 MVP PMC 的 `CLSID / ProgID / Versioned ProgID / DisplayName / Description`，并在 `RadishFlowCapeOpenUnitOperation` 上固定 `ComVisible / Guid / ProgId / ClassInterface(None)` 注册前置元数据；真实注册只能经由带 execute/token/backup/rollback 门控的 `Registration` 与仓库脚本入口执行
 
 ### `RadishFlow.CapeOpen.UnitOp.Mvp.ContractTests`
 
@@ -626,6 +626,7 @@ Rust 与 .NET 的桥接层。
 - 仓库根 `scripts/register-com.ps1` 当前已作为正式脚本入口，负责统一 build、token 提示、环境变量重定向和 `Registration.exe` 调用
 - 当前仓库脚本默认会显式传入 `UnitOp.Mvp\bin\Debug\net10.0` 下的 comhost / typelib，不再依赖 `Registration.exe` 进程目录猜测默认路径
 - 当前 execute `register` 还会补写 classic COM 所需的 `CLSID\{...}\TypeLib` 关联值，避免只注册 `TypeLib` 树却不把 CLSID 回链到 typelib GUID
+- 当前 registration plan 又已补齐 `Consumes Thermodynamics` 与 `Supports Thermodynamics 1.1` 两个 CAPE-OPEN implemented categories，用于 DWSIM 画布接受条件 probe；这不代表 MVP 已实现完整 Thermo PMC 或第三方 property package 加载
 - 当前真实复验还确认了一个宿主侧假阴性：`pwsh` 若已预加载 `.NET 9.0.10`，会因与当前 PMC 目标 `.NET 10.0.0` runtime 不兼容而触发 `0x800080A5`；后续 native COM / PME 类探测应优先改用 `Windows PowerShell 5` 或其他非预加载 .NET 宿主
 - 目标 PME 人工验证路径当前已单独落到 `docs/capeopen/pme-validation.md`，注册工具本身不承担 PME 自动化互调
 

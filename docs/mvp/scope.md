@@ -1,6 +1,6 @@
 # MVP Scope
 
-更新时间：2026-04-22
+更新时间：2026-04-25
 
 ## MVP 目标
 
@@ -53,6 +53,9 @@
 - `UnitOp.Mvp` 当前已冻结自有 MVP Unit Operation PMC 的 `CLSID / ProgID / Versioned ProgID`，并新增带执行门控的 `RadishFlow.CapeOpen.Registration`；当前默认仍是 dry-run，但已支持在显式 `--execute` + `--confirm` 下执行 `register / unregister`，并收口 preflight fail 阻断、HKLM elevation 检查、registry plan 限界、三棵树 JSON 备份、execution log 与失败 rollback；这不代表当前阶段已经默认注册 COM 或驱动 PME
 - 仓库根 `scripts/register-com.ps1` 当前已作为正式注册脚本入口，负责 build、环境变量重定向、confirmation token 提示与 `Registration.exe` 转调；本机 `current-user register/unregister` 闭环验证当前已通过这条入口完成一次顺序复查
 - `docs/capeopen/pme-validation.md` 当前已补出目标 PME 人工验证说明，冻结执行前验证基线、dry-run 审查项、执行型注册门控、安装/反安装运行手册、人工 PME 验证路径、通过标准、失败分类与验证记录模板；`examples/pme-validation/` 当前也已补出可复用模板；这一步只把真实 PME 前置路径文档化，不代表当前阶段已经进入默认 COM 注册或 PME 自动化互调
+- `DWSIM / COFE` 人工复验当前已进入真实兼容性收敛阶段：注册、TypeLib 与基础 activation 已不再是唯一阻塞；DWSIM 当前可推进到 `SimulationContext / ComponentName / Ports / Parameters` 早期调用但仍无法落到画布，COFE 当前围绕 `SimulationContext` getter COM 形状和 material object release warning 收敛
+- 当前为 DWSIM 画布接受条件已补齐 `Consumes Thermodynamics` 与 `Supports Thermodynamics 1.1` 注册分类，但这只是 discovery/acceptance 层兼容 probe，不改变 MVP 不实现完整 Thermo PMC、不加载第三方 property package 的范围边界
+- 当前为 COFE material object release warning 已把端口连接收口为只保存 identification 快照，并释放 PME 传入的 COM 入参；这不代表 UnitOp.Mvp 开始长期持有或读取完整 PME material object
 - 当前明确不继续线性堆叠 calculation report accessor；若宿主需要更高层语义，应优先在库内增加 reader / snapshot / presentation，而不是继续在 PMC 主类追加 convenience API
 - 当前仍不提前展开 COM 注册、PME 互调壳、第三方 CAPE-OPEN 模型加载或完整外部 Thermo/Property Package 宿主兼容
 

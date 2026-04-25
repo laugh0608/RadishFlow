@@ -1,6 +1,6 @@
 # CAPE-OPEN PME 人工验证说明
 
-更新时间：2026-04-23
+更新时间：2026-04-25
 
 ## 文档目的
 
@@ -309,6 +309,10 @@ Follow-up:
 - 用户侧复验新增 `ICapeSimulationContext / ICapeCOSEUtilities / ICapeDiagnostic` 后，DWSIM 仍能推进到 `Ports / Parameters` 且无 dump；COFE 仍停在 `SimulationContext get-exit` 后 native 崩溃，未进入 COSE 或 diagnostic 方法。当前进一步补入最小 `ICapeMaterialTemplateSystem`，并将 simulation context placeholder 提升为公开 COM-visible coclass 且写入 TLB，用于覆盖 COFE 对 context 对象的早期 `QueryInterface` / typeinfo 探测。
 - 用户侧复验公开 placeholder coclass 与 `ICapeMaterialTemplateSystem` 后，COFE 仍停在 `SimulationContext get-exit` 后 native 崩溃，未进入任何 placeholder 方法。当前进一步保持 managed `SimulationContext` 为 raw `IntPtr`，但显式标注 getter/setter 的 `IDispatch` marshalling，让 native COM 侧签名继续对齐 IDL 的 `IDispatch** / IDispatch*`。
 - 用户侧复验 raw getter + dispatch getter marshalling 后，COFE 已能放置 unit 并连接 inlet/outlet material streams，关闭 case 时只剩 material object release 警告；DWSIM 不再崩溃但仍无法放置 unit，trace 停在 `IPersistStreamInit.InitNew` 后。当前把 `SimulationContext` setter 保持为 raw `IntPtr` 以避免 DWSIM setter 侧 marshaling，并让 port connection 只保存 connected object 的 `ICapeIdentification` 快照，不长期持有 PME material COM object。
+- 最新用户侧复验显示，COFE 已经可以正常放置 unit、连接 `Feed / Product`，并在稍后调用 `Initialize()`；关闭 case 时仍提示 material object 未释放。当前进一步在 `ICapeUnitPort.Connect` 内对 PME 传入的 COM stream object 只读 identification 快照，并在 `finally` 中 `FinalReleaseComObject`，下一轮应重点确认 trace 是否出现 `released-com-argument` 且关闭 case warning 是否消失。
+- 同轮 DWSIM 仍无法放置 unit，trace 只到 constructor / `InitNew` / `SimulationContext set-exit` 这类早期接受路径，没有进入 `ComponentName / Ports / Parameters`。当前进一步把注册计划补齐 `Consumes Thermodynamics` 与 `Supports Thermodynamics 1.1` 两个 CAPE-OPEN implemented categories，作为 DWSIM 画布接受条件 probe；若仍失败，后续应继续围绕 DWSIM 注册分类与 OLE canvas 接受路径排查。
+- 用户侧复验该 category probe 后，DWSIM 已再次推进到 `SimulationContext get`、`ComponentName / ComponentDescription set`、`Ports get` 与 `Parameters get`，但仍未放到画布；COFE 反而退回到 `SimulationContext get-exit` 后 native 崩溃。`COFE.exe.25684.dmp` 仍无当前托管异常，说明这是 getter 返回点之后的 native 崩溃。
+- 当前判断 COFE 退步来自 `ICapeUtilities.SimulationContext` getter 的 `IDispatch` return marshalling 被误撤；已恢复 getter `[return: MarshalAs(UnmanagedType.IDispatch)]`，同时继续保持 setter raw `IntPtr`，避免 DWSIM setter 入参再次触发 pre-method interface marshaling。另新增 `ICapeCollection.Item / Count` trace，用于下一轮确认 DWSIM 是否实际消费 `Ports / Parameters` 集合内容。
 - 本次终端验证中，非提权沙盒上下文执行 `RegisterTypeLibForUser` 会触发 `TYPE_E_REGISTRYACCESS (0x8002801C)` 并由注册工具自动 rollback；后续真实 PME 复验仍应以普通桌面用户上下文执行仓库脚本，避免把提权 `HKCU` 与 PME 用户 `HKCU` 混用
 
-仍必须补齐的边界缺口不是新的 host round fallback，也不是继续盲补普通 optional interface。下一步先复验 raw setter + dispatch getter marshalling 与 material connection snapshot 修正；如果 COFE warning 消失但 DWSIM 仍无法放置，再围绕 DWSIM 的 OLE canvas 接受条件做定向 probe。
+仍必须补齐的边界缺口不是新的 host round fallback，也不是继续盲补普通 optional interface。下一步先复验恢复 getter `IDispatch` marshalling 后 COFE 是否重新越过 `SimulationContext get-exit`；DWSIM 则重点看 `Ports.ICapeCollection.Count/Item` 与 `Parameters.ICapeCollection.Count/Item` 是否出现在 trace 中。

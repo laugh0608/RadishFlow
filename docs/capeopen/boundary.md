@@ -1,6 +1,6 @@
 # CAPE-OPEN Boundary
 
-更新时间：2026-04-23
+更新时间：2026-04-25
 
 ## 边界目标
 
@@ -158,7 +158,9 @@ Rust 与 `.NET 10` 之间的正式边界应保持简单稳定：
 - 用户侧复验最小 COSE simulation context placeholder 后，DWSIM 仍推进到 `Ports / Parameters` 且未再生成 DWSIM dump；COFE 仍停在 `SimulationContext get-exit` 后 native 崩溃，未进入 `NamedValueList / NamedValue / Diagnostic` 方法。当前因此进一步把 placeholder 提升为公开 COM-visible coclass，并补入最小 `ICapeMaterialTemplateSystem`，用于覆盖 COFE 对 context 对象只做早期 `QueryInterface` / typeinfo 探测的路径
 - 用户侧复验公开 placeholder coclass 与 `ICapeMaterialTemplateSystem` 后，COFE 仍停在 `SimulationContext get-exit` 后 native 崩溃，未进入任何 placeholder 方法。当前进一步判断普通 context optional interface 已基本排除，下一处具体小修正是保持 managed `SimulationContext` 为 raw `IntPtr`，同时显式标注 getter/setter 的 `IDispatch` marshalling，避免 CCW vtable 形状偏离 IDL 的 `IDispatch** / IDispatch*`
 - 用户侧复验 raw getter + dispatch getter marshalling 后，COFE 已能放置 unit 并连接 inlet/outlet material streams；DWSIM 不再崩溃但仍无法把 unit 放到画布，trace 停在 `IPersistStreamInit.InitNew` 后。当前继续把 `SimulationContext` setter 保持为 raw `IntPtr`，仅 getter 显式返回 `IDispatch`，并把端口连接对象改为只保存 `ICapeIdentification` 快照，不再长期持有 PME material COM object 引用，以处理 COFE 关闭 case 时的 material object release 警告
-- 若 DWSIM 仍停在 `InitNew` 后且没有新 dump/成员 trace，下一阶段应优先围绕 DWSIM 的 OLE canvas 接受条件与 `IPersistStreamInit / IOleObject` 返回值做定向 probe，而不是再回到 COFE simulation context 接口面
+- 最新用户侧复验显示 COFE 已能放置、连接端口并调用 `Initialize()`，但关闭 case 时仍有 material object release warning；DWSIM 仍无法放置，且 trace 只到 `SimulationContext set-exit` 或 `IPersistStreamInit.InitNew` 后即停止。当前进一步把 `Connect(objectToConnect)` 中的 PME COM 入参改为只读取 `ICapeIdentification` 快照后 `FinalReleaseComObject`，并在注册计划中补齐 `Consumes Thermodynamics` 与 `Supports Thermodynamics 1.1` 两个 CAPE-OPEN implemented categories，作为 DWSIM OLE canvas 接受条件的定向 probe
+- 用户侧复验上述 probe 后，DWSIM 仍无法放置但已再次推进到 `SimulationContext get`、`ComponentName / ComponentDescription set`、`Ports get` 与 `Parameters get`；COFE 退回到 `SimulationContext get-exit` 后 native 崩溃。当前确认 COFE 退步来自 `ICapeUtilities.SimulationContext` getter 的 `IDispatch` return marshalling 被误撤，已恢复 getter `[return: MarshalAs(UnmanagedType.IDispatch)]`，同时继续保持 setter raw `IntPtr`
+- 若下一轮 COFE trace 出现 `released-com-argument` 但关闭 case 仍警告，则应继续排查是否还有其它 PME material object RCW 被参数、collection 或 diagnostic 路径持有；若 DWSIM 仍停在 `Ports get / Parameters get` 后且没有 `ICapeCollection.Count / Item` trace，则下一阶段应优先围绕 DWSIM 的 collection QI/typeinfo、注册分类和 OLE canvas 接受条件做定向 probe，而不是再回到 COFE simulation context 接口面
 
 当前允许推进的内容：
 
