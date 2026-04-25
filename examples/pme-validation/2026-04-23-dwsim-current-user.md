@@ -113,3 +113,11 @@ Follow-up:
 - 当前判断：DWSIM 的下一阻塞是 `SimulationContext` setter 不应持有或释放宿主指针；COFE 的下一阻塞是 getter 不能返回 null `IDispatch*`。
 - 本轮修正：`SimulationContext` setter 改为 no-op 记录，只保存“宿主提供过 context”的布尔状态；getter 在尚无可消费 PME context 时返回非空 `ICapeIdentification` placeholder 指针，避免 COFE native 侧空指针解引用。
 - 本轮终端侧补充验证：`cargo check`、`UnitOp.Mvp` build（真实环境）、`ContractTests` build（真实环境）、34 项 contract tests 均通过。
+
+2026-04-25 update 11:
+- 用户侧复验 no-op `SimulationContext` setter 与非空 placeholder getter 后，`DWSIM` 已继续进入 `ComponentName set`、`ComponentDescription set`、`Ports get` 与 `Parameters get`，且没有产生 DWSIM dump；这说明 DWSIM 添加路径已越过原先的 simulation context 阻塞点。
+- 同轮 `COFE` 仍闪退；trace 最后一段为 `SimulationContext get-enter -> get-result fallback=provided; hostContext=missing -> get-exit`，新 dump `COFE.exe.32048.dmp` 仍无当前托管异常。
+- 当前判断：COFE 不只是要求 `SimulationContext` getter 返回非空对象，它还会继续按 COSE context 相关接口消费该对象。参考接口显示 `ICapeSimulationContext` 是无方法 marker，常见可选消费面包括 `ICapeCOSEUtilities` 和 `ICapeDiagnostic`。
+- 本轮修正：新增最小 `ICapeSimulationContext`、`ICapeCOSEUtilities` 与 `ICapeDiagnostic` 接口定义；simulation context placeholder 同时实现这三个接口，`NamedValueList` 返回空字符串数组，`NamedValue(...)` 返回空字符串，diagnostic 方法只写 trace。
+- 本轮已同步 `typelib/RadishFlow.CapeOpen.UnitOp.Mvp.idl` 并用 Windows SDK MIDL 重新生成 TLB；MIDL 仅报告 IDL 中文注释 code page warning，生成成功。
+- 本轮终端侧补充验证：`cargo check`、`UnitOp.Mvp` build（真实环境）、`ContractTests` build（真实环境）、34 项 contract tests 均通过。

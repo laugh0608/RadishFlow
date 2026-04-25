@@ -132,6 +132,43 @@ interface ICapeUtilities : IDispatch
 
 [
     object,
+    uuid(678C0A9C-0100-11D2-A67D-00105A42887F),
+    pointer_default(unique)
+]
+interface ICapeSimulationContext : IUnknown
+{
+};
+
+[
+    object,
+    uuid(678C0A9D-0100-11D2-A67D-00105A42887F),
+    dual,
+    nonextensible,
+    oleautomation,
+    pointer_default(unique)
+]
+interface ICapeDiagnostic : IDispatch
+{
+    [id(1)] HRESULT PopUpMessage([in] BSTR message);
+    [id(2)] HRESULT LogMessage([in] BSTR message);
+};
+
+[
+    object,
+    uuid(678C0A9F-0100-11D2-A67D-00105A42887F),
+    dual,
+    nonextensible,
+    oleautomation,
+    pointer_default(unique)
+]
+interface ICapeCOSEUtilities : IDispatch
+{
+    [id(1), propget] HRESULT NamedValueList([out, retval] VARIANT* value);
+    [id(2)] HRESULT NamedValue([in] BSTR valueName, [out, retval] VARIANT* value);
+};
+
+[
+    object,
     uuid(678C0999-0093-11D2-A67D-00105A42887F),
     dual,
     nonextensible,

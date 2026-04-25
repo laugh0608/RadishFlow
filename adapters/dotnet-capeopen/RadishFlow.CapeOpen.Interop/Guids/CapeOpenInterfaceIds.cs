@@ -21,6 +21,15 @@ public static class CapeOpenInterfaceIds
     public const string ICapeUtilities = "678C0A9B-0100-11D2-A67D-00105A42887F";
 
     // Source: adapters/reference/CapeOpenMixerExample_CSharp/CapeOpen/COGuids1.cs
+    public const string ICapeSimulationContext = "678C0A9C-0100-11D2-A67D-00105A42887F";
+
+    // Source: adapters/reference/CapeOpenMixerExample_CSharp/CapeOpen/COGuids1.cs
+    public const string ICapeDiagnostic = "678C0A9D-0100-11D2-A67D-00105A42887F";
+
+    // Source: adapters/reference/CapeOpenMixerExample_CSharp/CapeOpen/COGuids1.cs
+    public const string ICapeCOSEUtilities = "678C0A9F-0100-11D2-A67D-00105A42887F";
+
+    // Source: adapters/reference/CapeOpenMixerExample_CSharp/CapeOpen/COGuids1.cs
     public const string ICapeParameterSpec = "678C099C-0093-11D2-A67D-00105A42887F";
 
     // Source: adapters/reference/CapeOpenMixerExample_CSharp/CapeOpen/COGuids1.cs

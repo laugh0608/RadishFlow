@@ -137,6 +137,18 @@ internal static class ContractTests
             ComInterfaceType.InterfaceIsDual,
             "ICapeUtilities should stay aligned with the frozen dual IDL interface.");
         AssertComInterfaceType(
+            typeof(ICapeSimulationContext),
+            ComInterfaceType.InterfaceIsIUnknown,
+            "ICapeSimulationContext should expose the standard marker interface shape.");
+        AssertComInterfaceType(
+            typeof(ICapeCOSEUtilities),
+            ComInterfaceType.InterfaceIsDual,
+            "ICapeCOSEUtilities should expose the standard dual COSE utilities shape.");
+        AssertComInterfaceType(
+            typeof(ICapeDiagnostic),
+            ComInterfaceType.InterfaceIsDual,
+            "ICapeDiagnostic should expose the standard dual diagnostic shape.");
+        AssertComInterfaceType(
             typeof(ICapeUnit),
             ComInterfaceType.InterfaceIsDual,
             "ICapeUnit should stay aligned with the frozen dual IDL interface.");
@@ -512,7 +524,22 @@ internal static class ContractTests
         ContractAssert.True(
             simulationContextPointer != IntPtr.Zero,
             "Activation probe should return a non-null SimulationContext placeholder before a real PME context is consumed.");
-        Marshal.Release(simulationContextPointer);
+        try
+        {
+            var simulationContextObject = Marshal.GetObjectForIUnknown(simulationContextPointer);
+            ContractAssert.True(
+                simulationContextObject is ICapeSimulationContext,
+                "SimulationContext placeholder should support ICapeSimulationContext.");
+            var coseUtilities = (ICapeCOSEUtilities)simulationContextObject;
+            ContractAssert.NotNull(coseUtilities.NamedValueList, "SimulationContext placeholder should expose a NamedValueList.");
+            ContractAssert.Equal(string.Empty, coseUtilities.NamedValue("FreeFORTRANchannel"), "SimulationContext placeholder should return an empty named value.");
+            var diagnostic = (ICapeDiagnostic)simulationContextObject;
+            diagnostic.LogMessage("activation probe");
+        }
+        finally
+        {
+            Marshal.Release(simulationContextPointer);
+        }
 
         utilities.Initialize();
         ContractAssert.NotNull(utilities.Parameters, "Activation probe should read ICapeUtilities.Parameters.");
