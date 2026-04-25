@@ -77,6 +77,40 @@ function Write-DumpStatus {
     Write-Host ("  DumpCount: {0}" -f $properties.DumpCount)
 }
 
+function Write-RegistryValueStatus {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Path,
+
+        [Parameter(Mandatory = $true)]
+        [string]$Name
+    )
+
+    if (-not (Test-Path -LiteralPath $Path)) {
+        Write-Host ("{0}\{1}: absent" -f $Path, $Name)
+        return
+    }
+
+    $properties = Get-ItemProperty -LiteralPath $Path
+    $property = $properties.PSObject.Properties[$Name]
+    if ($null -eq $property) {
+        Write-Host ("{0}\{1}: absent" -f $Path, $Name)
+        return
+    }
+
+    Write-Host ("{0}\{1}: {2}" -f $Path, $Name, $property.Value)
+}
+
+function Write-WerStatus {
+    Write-Host 'WER policy/status:'
+    Write-RegistryValueStatus -Path 'HKCU:\Software\Microsoft\Windows\Windows Error Reporting' -Name 'Disabled'
+    Write-RegistryValueStatus -Path 'HKLM:\Software\Microsoft\Windows\Windows Error Reporting' -Name 'Disabled'
+    Write-RegistryValueStatus -Path 'HKCU:\Software\Policies\Microsoft\Windows\Windows Error Reporting' -Name 'Disabled'
+    Write-RegistryValueStatus -Path 'HKLM:\Software\Policies\Microsoft\Windows\Windows Error Reporting' -Name 'Disabled'
+    Write-RegistryValueStatus -Path 'HKCU:\Software\Microsoft\Windows\Windows Error Reporting' -Name 'DontShowUI'
+    Write-RegistryValueStatus -Path 'HKLM:\Software\Microsoft\Windows\Windows Error Reporting' -Name 'DontShowUI'
+}
+
 $repoRoot = Get-RepositoryRoot
 if ([string]::IsNullOrWhiteSpace($DumpFolder)) {
     $DumpFolder = Join-Path $repoRoot 'artifacts\pme-dumps'
@@ -114,4 +148,10 @@ foreach ($name in $ProcessName) {
     }
 
     Write-DumpStatus -Name $name
+}
+
+if ($Action -eq 'status') {
+    Write-WerStatus
+    Write-Host ("Default dump folder: {0}" -f $resolvedDumpFolder)
+    Write-Host ("Default dump folder exists: {0}" -f (Test-Path -LiteralPath $resolvedDumpFolder))
 }

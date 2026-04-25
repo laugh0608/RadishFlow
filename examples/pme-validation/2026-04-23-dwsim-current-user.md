@@ -82,3 +82,7 @@ Follow-up:
 - 当前判断：`ICapeUnitReport`、`IPersistStreamInit`、`IPersistStorage`、`IOleObject` 均未解决 PME 添加到 flowsheet 画布时的硬崩。DWSIM 崩溃点已收窄到 `IPersistStreamInit.InitNew()` 返回后的 native/COM 过渡；COFE 崩溃点仍在 constructor 返回后的 native/COM 过渡。
 - 下一轮不再优先盲补普通 COM/OLE 接口；应先通过 WER `LocalDumps` 或等价 native crash dump 拿到崩溃栈，确认是否为 `.NET 10 in-proc comhost/CoreCLR` 与 PME 宿主进程承载冲突，或宿主侧 `QueryInterface` / HRESULT / interface pointer 处理路径崩溃。
 - 已新增仓库脚本 `scripts/configure-pme-dumps.ps1`，用于单行启用/清理当前用户的 `DWSIM.exe` / `COFE.exe` WER dump 配置，默认 dump 输出目录为 `D:\Code\RadishFlow\artifacts\pme-dumps`。
+
+2026-04-25 update 6:
+- 用户侧 trace 复验仍与 update 5 一致：`DWSIM` 停在 `IPersistStreamInit.InitNew()` exit，`COFE` 停在 constructor exit。
+- 用户侧 `Get-ChildItem .\artifacts\pme-dumps` 未返回 dump 文件，说明 WER LocalDumps 路径没有产物；下一步先用 `scripts/configure-pme-dumps.ps1 -Action status` 确认 LocalDumps 仍处于 enable 状态，并检查 WER 禁用策略。

@@ -227,6 +227,12 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\configure-pme-dump
 Get-ChildItem .\artifacts\pme-dumps
 ```
 
+若崩溃后目录为空，先确认 LocalDumps 配置仍然启用，并检查是否存在 WER 禁用策略：
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\configure-pme-dumps.ps1 -Action status
+```
+
 验证结束后应清理该 WER 配置：
 
 ```powershell
