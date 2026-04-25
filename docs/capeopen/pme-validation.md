@@ -304,6 +304,7 @@ Follow-up:
 - 用户侧已采集 `COFE.exe.28544.dmp` 与 `DWSIM.exe.39524.dmp`：`COFE` 故障地址为 `COFE.exe+0xbc5ffe`，访问地址 `0x10`；`DWSIM` 故障地址为 `coreclr.dll+0x3b745`，访问地址 `0x8`。结合 trace，当前首要风险已从“继续缺某个普通 optional interface”转为 `.NET 10 in-proc comhost/CoreCLR` 与 PME 宿主进程承载兼容性，或宿主 native 侧在 activation 返回后处理接口指针失败。
 - `dotnet-dump` 复读 DWSIM dump 后确认托管栈停在 `System.StubHelpers.InterfaceMarshaler.ConvertToManaged -> IL_STUB_COMtoCLR -> ComMethodFrame`，因此当前又先做一处更具体的小修正：`IPersistStreamInit.Load / Save` 的 managed 签名使用 raw `IntPtr` stream，避免无状态 no-op persistence 在进入方法体前触发 `IStream` interface marshaling。
 - 用户侧复验 raw stream 后 DWSIM 仍停在同一 `InterfaceMarshaler.ConvertToManaged` 栈；下一轮复验应重点验证 C# `InterfaceIsDual` 对齐与 `ICapeUtilities.SimulationContext` raw `IntPtr` setter 是否让 trace 推进到 `SimulationContext set-enter/exit` 或后续 CAPE-OPEN 成员。
+- 用户侧复验 dual/raw `SimulationContext` 后，DWSIM 已推进到 `SimulationContext set-enter` 且不再闪退，但 setter 内部异常导致画布未添加；COFE 已推进到 `SimulationContext get-enter/get-exit`，但返回 null 后仍闪退。下一轮复验应重点验证 no-op setter 与非空 placeholder getter 是否能让 DWSIM 继续进入 `ComponentName / Parameters / Ports`，并让 COFE 不再在 getter 返回后崩溃。
 - 本次终端验证中，非提权沙盒上下文执行 `RegisterTypeLibForUser` 会触发 `TYPE_E_REGISTRYACCESS (0x8002801C)` 并由注册工具自动 rollback；后续真实 PME 复验仍应以普通桌面用户上下文执行仓库脚本，避免把提权 `HKCU` 与 PME 用户 `HKCU` 混用
 
-仍必须补齐的边界缺口不是新的 host round fallback，也不是继续盲补普通 optional interface。下一步先复验 dual interface 与 raw `SimulationContext` 修正；如果仍失败，再围绕 `DWSIM + COFE` 的 in-proc comhost 承载风险评估 out-of-proc COM shim / local server 或更保守的 PME in-proc shim + 外部 worker 策略。
+仍必须补齐的边界缺口不是新的 host round fallback，也不是继续盲补普通 optional interface。下一步先复验 no-op `SimulationContext` setter 与非空 placeholder getter 修正；如果仍失败，再围绕 `DWSIM + COFE` 的 in-proc comhost 承载风险评估 out-of-proc COM shim / local server 或更保守的 PME in-proc shim + 外部 worker 策略。

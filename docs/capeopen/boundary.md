@@ -152,8 +152,9 @@ Rust 与 `.NET 10` 之间的正式边界应保持简单稳定：
 - 这些证据说明当前首要风险已不再是 discovery 注册树、TypeLib late binding 或继续缺少某个普通 optional interface，而是 `.NET 10 in-proc comhost/CoreCLR` 被加载进 PME 进程后的承载兼容性，或 PME native 侧在 activation 返回后对接口指针 / HRESULT / host object 状态的处理路径崩溃
 - 用户安装 `dotnet-dump` 后复读 DWSIM dump，进一步确认崩溃线程托管栈停在 `System.StubHelpers.InterfaceMarshaler.ConvertToManaged -> IL_STUB_COMtoCLR -> ComMethodFrame`，指向 COM-to-CLR stub 进入方法体前的接口参数转换
 - 当前先允许一个小范围修正：对 MVP no-op persistence 中不消费的 `IPersistStreamInit.Load / Save` stream 参数，在 managed 签名中保留 raw `IntPtr`，避免触发 CLR `IStream` interface marshaler；该修正不改变 Rust/Core 边界，也不引入真实持久化语义
-- 用户侧复验 raw stream 后，DWSIM 仍停在同一 `InterfaceMarshaler.ConvertToManaged` 栈；当前进一步发现 C# automation 接口仍是 `InterfaceIsIDispatch`，而冻结 IDL/TLB 已声明为 `dual`，并且 `ICapeUtilities.SimulationContext` setter 仍会把 PME 传入的 `IDispatch*` 转成托管对象。当前已把主要 CAPE-OPEN automation 接口对齐为 `InterfaceIsDual`，并把 `SimulationContext` managed 签名改成 raw `IntPtr` 接收，只在 .NET 侧做 `AddRef/Release`，不把 PME context 对象带入 Rust/Core 边界
-- 若 dual interface 与 raw `SimulationContext` 修正后仍在同一阶段崩溃，下一阶段应先设计 out-of-proc COM shim / local server，或更保守的 in-proc shim + 外部 `.NET 10` worker 承载策略；该判断属于架构边界变化，不能作为小修小补直接落入当前 `UnitOp.Mvp` 主类
+- 用户侧复验 raw stream 后，DWSIM 仍停在同一 `InterfaceMarshaler.ConvertToManaged` 栈；当前进一步发现 C# automation 接口仍是 `InterfaceIsIDispatch`，而冻结 IDL/TLB 已声明为 `dual`，并且 `ICapeUtilities.SimulationContext` setter 仍会把 PME 传入的 `IDispatch*` 转成托管对象。当前已把主要 CAPE-OPEN automation 接口对齐为 `InterfaceIsDual`，并把 `SimulationContext` managed 签名改成 raw `IntPtr` 接收，不把 PME context 对象带入 Rust/Core 边界
+- 用户侧复验 dual/raw `SimulationContext` 后，DWSIM 已不再闪退并推进到 `SimulationContext set-enter`，但 setter 内部曾因持有宿主指针触发 `NullReferenceException`，导致组件未添加到画布；COFE 则先调用 `SimulationContext get`，收到 null context 后仍在 native 侧闪退。当前因此进一步把 setter 收口为 no-op 记录，不保存/释放宿主指针；getter 在缺少真实 context 时返回非空 placeholder `IDispatch*`，作为 PME activation 兼容探测面，不代表实现了完整 COSE utilities
+- 若 no-op `SimulationContext` setter 与非空 placeholder getter 修正后仍在同一阶段崩溃，下一阶段应先设计 out-of-proc COM shim / local server，或更保守的 in-proc shim + 外部 `.NET 10` worker 承载策略；该判断属于架构边界变化，不能作为小修小补直接落入当前 `UnitOp.Mvp` 主类
 
 当前允许推进的内容：
 

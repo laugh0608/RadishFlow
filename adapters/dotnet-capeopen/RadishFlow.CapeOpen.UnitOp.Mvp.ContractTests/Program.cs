@@ -507,6 +507,13 @@ internal static class ContractTests
         ContractAssert.Contains(identity.ComponentDescription, "CAPE-OPEN", "Activation probe should read ICapeIdentification.ComponentDescription.");
 
         var utilities = (ICapeUtilities)context.UnitOperation;
+        utilities.SimulationContext = new IntPtr(1);
+        var simulationContextPointer = utilities.SimulationContext;
+        ContractAssert.True(
+            simulationContextPointer != IntPtr.Zero,
+            "Activation probe should return a non-null SimulationContext placeholder before a real PME context is consumed.");
+        Marshal.Release(simulationContextPointer);
+
         utilities.Initialize();
         ContractAssert.NotNull(utilities.Parameters, "Activation probe should read ICapeUtilities.Parameters.");
 

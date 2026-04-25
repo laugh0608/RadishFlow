@@ -104,5 +104,12 @@ Follow-up:
 - 用户侧复验 raw pointer persistence 修正后仍崩溃：`DWSIM` trace 仍停在 `IPersistStreamInit.InitNew exit`，`COFE` trace 仍停在 constructor exit。
 - 新 dump：`DWSIM.exe.34144.dmp` 与 `COFE.exe.35284.dmp`。`dotnet-dump` 复读 DWSIM 新 dump 仍显示 `System.ExecutionEngineException (0x80131506)`，托管栈仍为 `System.StubHelpers.InterfaceMarshaler.ConvertToManaged -> IL_STUB_COMtoCLR -> ComMethodFrame`。
 - 当前判断：`IPersistStreamInit.Load / Save` 的 `IStream` 参数不是本轮触发点；更高概率触发面是 PME 在添加组件后设置 `ICapeUtilities.SimulationContext`，或早绑定调用 CAPE-OPEN dual interface 时遇到 C# `InterfaceIsIDispatch` 与 IDL/TLB `dual` 不一致。
-- 本轮修正：C# 侧主要 CAPE-OPEN automation 接口已改为 `InterfaceIsDual`，并将 `ICapeUtilities.SimulationContext` managed 签名改为 raw `IntPtr`，主类只保存并释放 COM 指针，不再让 CLR 在进入 setter 前创建 managed interface/RCW。
+- 本轮修正：C# 侧主要 CAPE-OPEN automation 接口已改为 `InterfaceIsDual`，并将 `ICapeUtilities.SimulationContext` managed 签名改为 raw `IntPtr`，不再让 CLR 在进入 setter 前创建 managed interface/RCW。
+- 本轮终端侧补充验证：`cargo check`、`UnitOp.Mvp` build（真实环境）、`ContractTests` build（真实环境）、34 项 contract tests 均通过。
+
+2026-04-25 update 10:
+- 用户侧复验 dual/raw `SimulationContext` 修正后，`DWSIM` 不再闪退，但组件未添加到画布；trace 已推进到 `SimulationContext set-enter`，随后 setter 记录 `NullReferenceException` 并退出。
+- 同轮 `COFE` 仍闪退；trace 已推进到 `SimulationContext get-enter/get-result context=null/get-exit`，随后 COFE native 侧崩溃；新 dump `COFE.exe.43200.dmp` 无当前托管异常。
+- 当前判断：DWSIM 的下一阻塞是 `SimulationContext` setter 不应持有或释放宿主指针；COFE 的下一阻塞是 getter 不能返回 null `IDispatch*`。
+- 本轮修正：`SimulationContext` setter 改为 no-op 记录，只保存“宿主提供过 context”的布尔状态；getter 在尚无可消费 PME context 时返回非空 `ICapeIdentification` placeholder 指针，避免 COFE native 侧空指针解引用。
 - 本轮终端侧补充验证：`cargo check`、`UnitOp.Mvp` build（真实环境）、`ContractTests` build（真实环境）、34 项 contract tests 均通过。

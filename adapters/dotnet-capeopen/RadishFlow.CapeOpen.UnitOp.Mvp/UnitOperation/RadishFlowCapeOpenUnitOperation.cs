@@ -24,7 +24,8 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
     private const string UnitReportInterfaceName = nameof(ICapeUnitReport);
     private const string UnitScope = "RadishFlow.CapeOpen.UnitOp.Mvp";
     private const string DefaultReportName = "RadishFlow calculation report";
-    private IntPtr _simulationContext;
+    private readonly UnitOperationSimulationContextPlaceholder _simulationContextFallback = new();
+    private bool _simulationContextProvided;
     private UnitOperationCalculationResult? _lastCalculationResult;
     private UnitOperationCalculationFailure? _lastCalculationFailure;
     private string _componentName;
@@ -201,16 +202,14 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
             try
             {
                 ThrowIfDisposed();
-                if (_simulationContext != IntPtr.Zero)
-                {
-                    Marshal.AddRef(_simulationContext);
-                }
-
+#pragma warning disable CA1416 // UnitOp.Mvp COM activation is Windows-only.
+                var context = Marshal.GetComInterfaceForObject<ICapeIdentification, ICapeIdentification>(_simulationContextFallback);
+#pragma warning restore CA1416
                 UnitOperationComTrace.Write(
                     nameof(ICapeUtilities.SimulationContext),
                     "get-result",
-                    _simulationContext == IntPtr.Zero ? "context=null" : "context=provided");
-                return _simulationContext;
+                    _simulationContextProvided ? "fallback=provided; hostContext=provided" : "fallback=provided; hostContext=missing");
+                return context;
             }
             catch (Exception error)
             {
@@ -233,7 +232,7 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
             {
                 ThrowIfDisposed();
                 ThrowIfTerminated(nameof(ICapeUtilities.SimulationContext), UtilitiesInterfaceName);
-                ReplaceSimulationContext(value);
+                _simulationContextProvided = value != IntPtr.Zero;
                 InvalidateValidation();
             }
             catch (Exception error)
@@ -996,7 +995,7 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
                 return;
             }
 
-            ReleaseSimulationContext();
+            _simulationContextProvided = false;
             foreach (var port in Ports)
             {
                 port.ReleaseConnectedObject();
@@ -1443,28 +1442,6 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
         _oleClientSite = IntPtr.Zero;
     }
 
-    private void ReplaceSimulationContext(IntPtr simulationContext)
-    {
-        if (simulationContext != IntPtr.Zero)
-        {
-            Marshal.AddRef(simulationContext);
-        }
-
-        ReleaseSimulationContext();
-        _simulationContext = simulationContext;
-    }
-
-    private void ReleaseSimulationContext()
-    {
-        if (_simulationContext == IntPtr.Zero)
-        {
-            return;
-        }
-
-        Marshal.Release(_simulationContext);
-        _simulationContext = IntPtr.Zero;
-    }
-
     private string GetRequiredParameterValue(UnitOperationParameterDefinition definition)
     {
         return GetParameterPlaceholder(definition).Value!;
@@ -1481,6 +1458,17 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
         string PackageId,
         string? ManifestPath,
         string? PayloadPath);
+
+    [ComVisible(true)]
+    [ClassInterface(ClassInterfaceType.None)]
+    [ComDefaultInterface(typeof(ICapeIdentification))]
+    private sealed class UnitOperationSimulationContextPlaceholder : ICapeIdentification
+    {
+        public string ComponentName { get; set; } = "RadishFlow simulation context placeholder";
+
+        public string ComponentDescription { get; set; } =
+            "Placeholder returned before a PME simulation context is available.";
+    }
 
     private sealed record ValidationResult(bool IsValid, string Message, string? RequestedOperation)
     {
