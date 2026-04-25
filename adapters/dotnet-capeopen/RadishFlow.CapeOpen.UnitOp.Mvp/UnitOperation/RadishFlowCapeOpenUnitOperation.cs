@@ -8,7 +8,6 @@ using RadishFlow.CapeOpen.Interop.Unit;
 using RadishFlow.CapeOpen.UnitOp.Mvp.Placeholders;
 using RadishFlow.CapeOpen.UnitOp.Mvp.Results;
 using System.Runtime.InteropServices;
-using System.Runtime.InteropServices.ComTypes;
 using System.Text.Json;
 
 namespace RadishFlow.CapeOpen.UnitOp.Mvp.UnitOperation;
@@ -350,42 +349,42 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
         }
     }
 
-    public int Load(IStream? stream)
+    int IPersistStreamInit.Load(IntPtr stream)
     {
-        UnitOperationComTrace.Write(nameof(Load), "enter", stream is null ? "stream=null" : "stream=provided");
+        UnitOperationComTrace.Write("IPersistStreamInit.Load", "enter", stream == IntPtr.Zero ? "stream=null" : "stream=provided");
         try
         {
             return ComHResults.SOk;
         }
         catch (Exception error)
         {
-            UnitOperationComTrace.Exception(nameof(Load), error);
+            UnitOperationComTrace.Exception("IPersistStreamInit.Load", error);
             return error.HResult;
         }
         finally
         {
-            UnitOperationComTrace.Write(nameof(Load), "exit");
+            UnitOperationComTrace.Write("IPersistStreamInit.Load", "exit");
         }
     }
 
-    public int Save(IStream? stream, bool clearDirty)
+    int IPersistStreamInit.Save(IntPtr stream, bool clearDirty)
     {
         UnitOperationComTrace.Write(
-            nameof(Save),
+            "IPersistStreamInit.Save",
             "enter",
-            $"stream={(stream is null ? "null" : "provided")}; clearDirty={clearDirty}");
+            $"stream={(stream == IntPtr.Zero ? "null" : "provided")}; clearDirty={clearDirty}");
         try
         {
             return ComHResults.SOk;
         }
         catch (Exception error)
         {
-            UnitOperationComTrace.Exception(nameof(Save), error);
+            UnitOperationComTrace.Exception("IPersistStreamInit.Save", error);
             return error.HResult;
         }
         finally
         {
-            UnitOperationComTrace.Write(nameof(Save), "exit");
+            UnitOperationComTrace.Write("IPersistStreamInit.Save", "exit");
         }
     }
 

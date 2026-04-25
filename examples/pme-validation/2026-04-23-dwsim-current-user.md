@@ -95,5 +95,7 @@ Follow-up:
 - 用户侧已成功采集 full dump：`COFE.exe.28544.dmp`（约 196 MB）与 `DWSIM.exe.39524.dmp`（约 782 MB）。
 - `COFE` dump：异常为 `0xc0000005`，故障地址 `COFE.exe+0xbc5ffe`，访问地址 `0x10`；trace 最后一行仍是 `RadishFlowCapeOpenUnitOperation constructor-exit`。当前判断为 COFE native 侧在 COM activation 返回后空指针解引用，尚无证据进入 RadishFlow 托管成员或新增 OLE/CAPE-OPEN 成员。
 - `DWSIM` dump：异常为 `0xc0000005`，故障地址 `coreclr.dll+0x3b745`，访问地址 `0x8`；同进程同时加载 `.NET Framework 4.x clr.dll/mscoree/mscoreei` 与 `.NET 10 coreclr/hostfxr/hostpolicy/comhost`，trace 最后一行仍是 `IPersistStreamInit.InitNew exit`。当前判断为 `.NET 10 in-proc comhost/CoreCLR` 在 DWSIM 进程内的承载风险已成为首要嫌疑。
+- 用户安装 `dotnet-dump` 后复读 DWSIM dump：崩溃线程存在 `System.ExecutionEngineException (0x80131506)`，托管栈为 `System.StubHelpers.InterfaceMarshaler.ConvertToManaged(IntPtr ByRef, IntPtr, IntPtr, Int32) -> ILStubClass.IL_STUB_COMtoCLR(IntPtr) -> ComMethodFrame`。这说明 DWSIM 在 COM-to-CLR stub 把接口参数转成 managed interface 时崩溃，尚未进入对应 C# 方法体。
+- 基于该结果，当前把 `IPersistStreamInit.Load / Save` managed 签名从 `IStream?` 改成 raw `IntPtr`，因为 MVP no-op persistence 当前不消费 stream；目标是避开 `IStream` interface marshaler，让方法体能稳定记录 trace 并返回 `S_OK`。
 - DWSIM error log 中的 `AutomaticTranslation.AutomaticTranslator.SetMainWindow` `NullReferenceException` 出现在 Extender Initialization 阶段，早于本组件添加到画布的 crash trace；暂记录为宿主启动噪声候选，不作为 RadishFlow COM activation 主因。
-- 下一步不再继续补普通 optional interface；优先评估 out-of-proc COM shim / local server 或更保守的 PME in-proc shim + 外部 worker 承载策略，把 `.NET 10` runtime 从 PME 进程中隔离出去。
+- 下一步先带回 DWSIM / COFE 复验该 raw pointer persistence 修正；若仍停在同一阶段，再评估 out-of-proc COM shim / local server 或更保守的 PME in-proc shim + 外部 worker 承载策略，把 `.NET 10` runtime 从 PME 进程中隔离出去。

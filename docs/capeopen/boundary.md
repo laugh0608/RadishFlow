@@ -150,7 +150,9 @@ Rust 与 `.NET 10` 之间的正式边界应保持简单稳定：
 - `DWSIM.exe` dump 显示故障地址位于 `.NET 10` `coreclr.dll+0x3b745`，同进程同时加载 `.NET Framework 4.x clr.dll/mscoree/mscoreei` 与 `.NET 10 coreclr/hostfxr/hostpolicy/comhost`
 - `COFE.exe` dump 显示故障地址位于 `COFE.exe+0xbc5ffe`，访问地址为 `0x10`，trace 仍只到 `RadishFlowCapeOpenUnitOperation` constructor exit
 - 这些证据说明当前首要风险已不再是 discovery 注册树、TypeLib late binding 或继续缺少某个普通 optional interface，而是 `.NET 10 in-proc comhost/CoreCLR` 被加载进 PME 进程后的承载兼容性，或 PME native 侧在 activation 返回后对接口指针 / HRESULT / host object 状态的处理路径崩溃
-- 下一阶段若继续推进真实 PME 互调，应先设计 out-of-proc COM shim / local server，或更保守的 in-proc shim + 外部 `.NET 10` worker 承载策略；该判断属于架构边界变化，不能作为小修小补直接落入当前 `UnitOp.Mvp` 主类
+- 用户安装 `dotnet-dump` 后复读 DWSIM dump，进一步确认崩溃线程托管栈停在 `System.StubHelpers.InterfaceMarshaler.ConvertToManaged -> IL_STUB_COMtoCLR -> ComMethodFrame`，指向 COM-to-CLR stub 进入方法体前的接口参数转换
+- 当前先允许一个小范围修正：对 MVP no-op persistence 中不消费的 `IPersistStreamInit.Load / Save` stream 参数，在 managed 签名中保留 raw `IntPtr`，避免触发 CLR `IStream` interface marshaler；该修正不改变 Rust/Core 边界，也不引入真实持久化语义
+- 若 raw pointer persistence 修正后仍在同一阶段崩溃，下一阶段应先设计 out-of-proc COM shim / local server，或更保守的 in-proc shim + 外部 `.NET 10` worker 承载策略；该判断属于架构边界变化，不能作为小修小补直接落入当前 `UnitOp.Mvp` 主类
 
 当前允许推进的内容：
 

@@ -1,5 +1,4 @@
 using System.Runtime.InteropServices;
-using System.Runtime.InteropServices.ComTypes;
 
 namespace RadishFlow.CapeOpen.Interop.Persistence;
 
@@ -15,10 +14,10 @@ public interface IPersistStreamInit
     int IsDirty();
 
     [PreserveSig]
-    int Load([MarshalAs(UnmanagedType.Interface)] IStream? stream);
+    int Load(IntPtr stream);
 
     [PreserveSig]
-    int Save([MarshalAs(UnmanagedType.Interface)] IStream? stream, [MarshalAs(UnmanagedType.Bool)] bool clearDirty);
+    int Save(IntPtr stream, [MarshalAs(UnmanagedType.Bool)] bool clearDirty);
 
     [PreserveSig]
     int GetSizeMax(out long size);

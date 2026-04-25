@@ -483,6 +483,16 @@ internal static class ContractTests
     public static void PmePersistenceProbe_ExposesNoOpPersistStreamInit(ContractTestContext context)
     {
         var streamPersistence = (IPersistStreamInit)context.UnitOperation;
+        var loadParameters = typeof(IPersistStreamInit).GetMethod(nameof(IPersistStreamInit.Load))!.GetParameters();
+        var saveParameters = typeof(IPersistStreamInit).GetMethod(nameof(IPersistStreamInit.Save))!.GetParameters();
+        ContractAssert.Equal(
+            typeof(IntPtr),
+            loadParameters[0].ParameterType,
+            "IPersistStreamInit.Load should keep the raw stream pointer to avoid COM interface marshaling before the no-op method body.");
+        ContractAssert.Equal(
+            typeof(IntPtr),
+            saveParameters[0].ParameterType,
+            "IPersistStreamInit.Save should keep the raw stream pointer to avoid COM interface marshaling before the no-op method body.");
 
         ContractAssert.Equal(
             ComHResults.SOk,
@@ -502,11 +512,11 @@ internal static class ContractTests
             "IPersistStreamInit.InitNew should accept PME canvas creation probing.");
         ContractAssert.Equal(
             ComHResults.SOk,
-            streamPersistence.Load(null),
+            streamPersistence.Load(IntPtr.Zero),
             "IPersistStreamInit.Load should no-op successfully for the MVP stateless persistence surface.");
         ContractAssert.Equal(
             ComHResults.SOk,
-            streamPersistence.Save(null, clearDirty: true),
+            streamPersistence.Save(IntPtr.Zero, clearDirty: true),
             "IPersistStreamInit.Save should no-op successfully for the MVP stateless persistence surface.");
         ContractAssert.Equal(
             ComHResults.SOk,
