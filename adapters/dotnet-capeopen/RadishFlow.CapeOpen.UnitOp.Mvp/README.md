@@ -16,6 +16,7 @@
 - 针对 DWSIM / COFE 在“添加到 flowsheet 画布”阶段仍只记录到 constructor 后即硬崩的现象，当前主 COM 类又补入最小 `IPersistStreamInit`、`IPersistStorage` 与 `IOleObject` 面；persistence 与 OLE embedding 相关方法均为稳定 no-op HRESULT 路径，并写入同一 trace 文件，用于确认 PME 是否在画布对象持久化或嵌入探测阶段崩溃
 - 用户侧最新复验显示，`IOleObject` 后 `DWSIM` 仍停在 `IPersistStreamInit.InitNew()` 返回后，`COFE` 仍停在 constructor 返回后；下一轮应优先采集 WER LocalDumps / native crash dump，而不是继续盲补普通 COM/OLE optional interface
 - `dotnet-dump` 复读 DWSIM dump 后确认崩溃线程停在 `System.StubHelpers.InterfaceMarshaler.ConvertToManaged -> IL_STUB_COMtoCLR`，因此当前 `IPersistStreamInit.Load / Save` 的 managed 签名保留 raw `IntPtr` stream 指针，避免在无状态 no-op 方法体前触发 `IStream` 接口 marshaling
+- 用户侧复验 raw stream 后 DWSIM 仍停在同一 COM-to-CLR interface marshaling 点；当前又将 C# CAPE-OPEN automation 接口从 `InterfaceIsIDispatch` 对齐为 IDL/TLB 中已声明的 `dual`，并把 `ICapeUtilities.SimulationContext` managed setter 改为 raw `IntPtr` 接收，避免 PME 设置 simulation context 时先触发 CLR interface marshaler
 - 当前仓库并不内置 `MIDL` 工具链；后续仍需继续把 `IDL -> TLB` 生成脚本化，而不是长期依赖手工本机构建
 - 截至 2026-04-25，`Registration` dry-run 已能自动解析真实 `UnitOp.Mvp` 输出目录中的 comhost / TLB、校验 `TypeLib GUID/version`，并在 execute 模式下规划 `RegisterTypeLib(ForUser)` / `UnRegisterTypeLib(ForUser)`；真实 Windows PowerShell 5 复验已确认默认 `ICapeUtilities`、`Parameters.Count()` 和 parameter specification 可晚绑定调用，但在重新做 `DWSIM + COFE` 复验前，仍不应把这一步直接当成 PME 兼容性已闭环
 - 同日真实探测又确认：`pwsh` 下的 `0x800080A5` 来自宿主进程已预加载 `.NET 9.0.10`，与当前 PMC 目标运行时 `.NET 10.0.0` 不兼容；因此后续 native / classic COM 探测应优先使用 `Windows PowerShell 5` 或其他非预加载 .NET 宿主
@@ -35,6 +36,7 @@
 - `SetPortConnected(...)` 这一类最小端口状态入口
 - `ConfigureNativeLibraryDirectory(...)`、`LastCalculationResult`、`LastCalculationFailure`、`GetCalculationReport()`、`GetCalculationReportState()`、`GetCalculationReportHeadline()`、`GetCalculationReportDetailKeyCount()`、`GetCalculationReportDetailKey(int)`、`GetCalculationReportDetailValue(string)`、`GetCalculationReportLineCount()`、`GetCalculationReportLine(int)`、`GetCalculationReportLines()`、`GetCalculationReportText()`，以及公开 stable key catalog `UnitOperationCalculationReportDetailCatalog`
 - 最小标准 `ICapeUnitReport` 实现：`reports`、`selectedReport` 与 `ProduceReport(ref string)`
+- 最小标准 `ICapeUtilities.SimulationContext` 兼容面：IDL/TLB 仍保持 CAPE-OPEN 标准 `IDispatch*` 形状，managed 实现只保存 raw `IntPtr` 并负责 `AddRef/Release`，当前不把 PME simulation context RCW 暴露到 Rust 或 host-facing helper
 - 最小标准 `IPersistStreamInit` 实现：`GetClassID` 返回当前 Unit Operation CLSID，`IsDirty` 返回 `S_FALSE`，`InitNew / Load / Save / GetSizeMax` 以无状态 no-op 返回 `S_OK`；`Load / Save` 在 managed 签名中接收 raw `IntPtr` stream，以避免当前不消费 stream 时仍触发 CLR COM interface marshaler
 - 最小标准 `IPersistStorage` 实现：复用同一个 `GetClassID / IsDirty` 口径，`InitNew / Load / Save / SaveCompleted / HandsOffStorage` 以无状态 no-op 返回 `S_OK`
 - 最小标准 `IOleObject` 实现：覆盖 `SetClientSite / GetClientSite / SetHostNames / DoVerb / GetUserClassID / GetUserType / SetExtent / GetExtent / GetMiscStatus / Close` 等 OLE container 探测入口；当前不实现真实 inplace activation、verb 枚举、clipboard data 或 advise sink

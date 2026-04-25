@@ -128,6 +128,40 @@ internal static class ContractTests
             typeof(ICapeUtilities).Assembly,
             "Interop assembly should expose the same COM type library identity used by the frozen MVP TLB.");
 
+        AssertComInterfaceType(
+            typeof(ICapeIdentification),
+            ComInterfaceType.InterfaceIsDual,
+            "ICapeIdentification should stay aligned with the frozen dual IDL interface.");
+        AssertComInterfaceType(
+            typeof(ICapeUtilities),
+            ComInterfaceType.InterfaceIsDual,
+            "ICapeUtilities should stay aligned with the frozen dual IDL interface.");
+        AssertComInterfaceType(
+            typeof(ICapeUnit),
+            ComInterfaceType.InterfaceIsDual,
+            "ICapeUnit should stay aligned with the frozen dual IDL interface.");
+        AssertComInterfaceType(
+            typeof(ICapeUnitReport),
+            ComInterfaceType.InterfaceIsDual,
+            "ICapeUnitReport should stay aligned with the frozen dual IDL interface.");
+        AssertComInterfaceType(
+            typeof(ICapeCollection),
+            ComInterfaceType.InterfaceIsDual,
+            "ICapeCollection should stay aligned with the frozen dual IDL interface.");
+        AssertComInterfaceType(
+            typeof(ICapeParameter),
+            ComInterfaceType.InterfaceIsDual,
+            "ICapeParameter should stay aligned with the frozen dual IDL interface.");
+        AssertComInterfaceType(
+            typeof(ICapeParameterSpec),
+            ComInterfaceType.InterfaceIsDual,
+            "ICapeParameterSpec should stay aligned with the frozen dual IDL interface.");
+        AssertComInterfaceType(
+            typeof(ICapeUnitPort),
+            ComInterfaceType.InterfaceIsDual,
+            "ICapeUnitPort should stay aligned with the frozen dual IDL interface.");
+        AssertSimulationContextUsesRawPointer();
+
         AssertComDefaultInterface(
             typeof(RadishFlowCapeOpenUnitOperation),
             typeof(ICapeUtilities),
@@ -161,6 +195,39 @@ internal static class ContractTests
         ContractAssert.True(
             typeof(IOleObject).IsAssignableFrom(typeof(RadishFlowCapeOpenUnitOperation)),
             "Unit operation should expose IOleObject for PME canvas embedding probing.");
+    }
+
+    private static void AssertComInterfaceType(Type interfaceType, ComInterfaceType expectedInterfaceType, string context)
+    {
+        var interfaceTypeAttribute = interfaceType
+            .GetCustomAttributes(typeof(InterfaceTypeAttribute), inherit: false)
+            .OfType<InterfaceTypeAttribute>()
+            .SingleOrDefault();
+
+        ContractAssert.NotNull(interfaceTypeAttribute, $"{context} Missing InterfaceType.");
+        ContractAssert.Equal(expectedInterfaceType, interfaceTypeAttribute!.Value, context);
+    }
+
+    private static void AssertSimulationContextUsesRawPointer()
+    {
+        var simulationContext = typeof(ICapeUtilities).GetProperty(nameof(ICapeUtilities.SimulationContext));
+        ContractAssert.NotNull(
+            simulationContext,
+            "ICapeUtilities should expose SimulationContext.");
+        ContractAssert.Equal(
+            typeof(IntPtr),
+            simulationContext!.PropertyType,
+            "ICapeUtilities.SimulationContext should use raw IntPtr in managed code to avoid pre-method interface marshaling.");
+
+        var setter = simulationContext.SetMethod;
+        ContractAssert.NotNull(
+            setter,
+            "ICapeUtilities.SimulationContext should expose a setter.");
+        var setterParameter = setter!.GetParameters().Single();
+        ContractAssert.Equal(
+            typeof(IntPtr),
+            setterParameter.ParameterType,
+            "ICapeUtilities.SimulationContext setter should receive the host context as a raw pointer.");
     }
 
     private static void AssertComDefaultInterface(Type classType, Type expectedInterface, string context)

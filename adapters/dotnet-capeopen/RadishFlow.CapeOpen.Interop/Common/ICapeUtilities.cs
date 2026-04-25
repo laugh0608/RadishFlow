@@ -5,7 +5,7 @@ namespace RadishFlow.CapeOpen.Interop.Common;
 
 [ComVisible(true)]
 [Guid(CapeOpenInterfaceIds.ICapeUtilities)]
-[InterfaceType(ComInterfaceType.InterfaceIsIDispatch)]
+[InterfaceType(ComInterfaceType.InterfaceIsDual)]
 public interface ICapeUtilities
 {
     [DispId(1)]
@@ -16,14 +16,7 @@ public interface ICapeUtilities
     }
 
     [DispId(2)]
-    object? SimulationContext
-    {
-        [return: MarshalAs(UnmanagedType.IDispatch)]
-        get;
-
-        [param: MarshalAs(UnmanagedType.IDispatch)]
-        set;
-    }
+    IntPtr SimulationContext { get; set; }
 
     [DispId(3)]
     void Initialize();

@@ -99,3 +99,10 @@ Follow-up:
 - 基于该结果，当前把 `IPersistStreamInit.Load / Save` managed 签名从 `IStream?` 改成 raw `IntPtr`，因为 MVP no-op persistence 当前不消费 stream；目标是避开 `IStream` interface marshaler，让方法体能稳定记录 trace 并返回 `S_OK`。
 - DWSIM error log 中的 `AutomaticTranslation.AutomaticTranslator.SetMainWindow` `NullReferenceException` 出现在 Extender Initialization 阶段，早于本组件添加到画布的 crash trace；暂记录为宿主启动噪声候选，不作为 RadishFlow COM activation 主因。
 - 下一步先带回 DWSIM / COFE 复验该 raw pointer persistence 修正；若仍停在同一阶段，再评估 out-of-proc COM shim / local server 或更保守的 PME in-proc shim + 外部 worker 承载策略，把 `.NET 10` runtime 从 PME 进程中隔离出去。
+
+2026-04-25 update 9:
+- 用户侧复验 raw pointer persistence 修正后仍崩溃：`DWSIM` trace 仍停在 `IPersistStreamInit.InitNew exit`，`COFE` trace 仍停在 constructor exit。
+- 新 dump：`DWSIM.exe.34144.dmp` 与 `COFE.exe.35284.dmp`。`dotnet-dump` 复读 DWSIM 新 dump 仍显示 `System.ExecutionEngineException (0x80131506)`，托管栈仍为 `System.StubHelpers.InterfaceMarshaler.ConvertToManaged -> IL_STUB_COMtoCLR -> ComMethodFrame`。
+- 当前判断：`IPersistStreamInit.Load / Save` 的 `IStream` 参数不是本轮触发点；更高概率触发面是 PME 在添加组件后设置 `ICapeUtilities.SimulationContext`，或早绑定调用 CAPE-OPEN dual interface 时遇到 C# `InterfaceIsIDispatch` 与 IDL/TLB `dual` 不一致。
+- 本轮修正：C# 侧主要 CAPE-OPEN automation 接口已改为 `InterfaceIsDual`，并将 `ICapeUtilities.SimulationContext` managed 签名改为 raw `IntPtr`，主类只保存并释放 COM 指针，不再让 CLR 在进入 setter 前创建 managed interface/RCW。
+- 本轮终端侧补充验证：`cargo check`、`UnitOp.Mvp` build（真实环境）、`ContractTests` build（真实环境）、34 项 contract tests 均通过。

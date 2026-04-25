@@ -24,7 +24,7 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
     private const string UnitReportInterfaceName = nameof(ICapeUnitReport);
     private const string UnitScope = "RadishFlow.CapeOpen.UnitOp.Mvp";
     private const string DefaultReportName = "RadishFlow calculation report";
-    private object? _simulationContext;
+    private IntPtr _simulationContext;
     private UnitOperationCalculationResult? _lastCalculationResult;
     private UnitOperationCalculationFailure? _lastCalculationFailure;
     private string _componentName;
@@ -193,17 +193,58 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
         }
     }
 
-    public object? SimulationContext
+    IntPtr ICapeUtilities.SimulationContext
     {
-        get => _simulationContext;
+        get
+        {
+            UnitOperationComTrace.Write(nameof(ICapeUtilities.SimulationContext), "get-enter");
+            try
+            {
+                ThrowIfDisposed();
+                if (_simulationContext != IntPtr.Zero)
+                {
+                    Marshal.AddRef(_simulationContext);
+                }
+
+                UnitOperationComTrace.Write(
+                    nameof(ICapeUtilities.SimulationContext),
+                    "get-result",
+                    _simulationContext == IntPtr.Zero ? "context=null" : "context=provided");
+                return _simulationContext;
+            }
+            catch (Exception error)
+            {
+                UnitOperationComTrace.Exception(nameof(ICapeUtilities.SimulationContext), error);
+                throw;
+            }
+            finally
+            {
+                UnitOperationComTrace.Write(nameof(ICapeUtilities.SimulationContext), "get-exit");
+            }
+        }
+
         set
         {
-            UnitOperationComTrace.Write(nameof(SimulationContext), "set-enter", value?.GetType().FullName);
-            ThrowIfDisposed();
-            ThrowIfTerminated(nameof(SimulationContext), UtilitiesInterfaceName);
-            _simulationContext = value;
-            InvalidateValidation();
-            UnitOperationComTrace.Write(nameof(SimulationContext), "set-exit");
+            UnitOperationComTrace.Write(
+                nameof(ICapeUtilities.SimulationContext),
+                "set-enter",
+                value == IntPtr.Zero ? "context=null" : "context=provided");
+            try
+            {
+                ThrowIfDisposed();
+                ThrowIfTerminated(nameof(ICapeUtilities.SimulationContext), UtilitiesInterfaceName);
+                ReplaceSimulationContext(value);
+                InvalidateValidation();
+            }
+            catch (Exception error)
+            {
+                UnitOperationComTrace.Exception(nameof(ICapeUtilities.SimulationContext), error);
+                throw;
+            }
+            finally
+            {
+                UnitOperationComTrace.Write(nameof(ICapeUtilities.SimulationContext), "set-exit");
+            }
         }
     }
 
@@ -955,7 +996,7 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
                 return;
             }
 
-            _simulationContext = null;
+            ReleaseSimulationContext();
             foreach (var port in Ports)
             {
                 port.ReleaseConnectedObject();
@@ -1400,6 +1441,28 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
 
         Marshal.Release(_oleClientSite);
         _oleClientSite = IntPtr.Zero;
+    }
+
+    private void ReplaceSimulationContext(IntPtr simulationContext)
+    {
+        if (simulationContext != IntPtr.Zero)
+        {
+            Marshal.AddRef(simulationContext);
+        }
+
+        ReleaseSimulationContext();
+        _simulationContext = simulationContext;
+    }
+
+    private void ReleaseSimulationContext()
+    {
+        if (_simulationContext == IntPtr.Zero)
+        {
+            return;
+        }
+
+        Marshal.Release(_simulationContext);
+        _simulationContext = IntPtr.Zero;
     }
 
     private string GetRequiredParameterValue(UnitOperationParameterDefinition definition)

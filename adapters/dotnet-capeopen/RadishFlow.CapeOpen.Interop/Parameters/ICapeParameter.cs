@@ -6,7 +6,7 @@ namespace RadishFlow.CapeOpen.Interop.Parameters;
 
 [ComVisible(true)]
 [Guid(CapeOpenInterfaceIds.ICapeParameter)]
-[InterfaceType(ComInterfaceType.InterfaceIsIDispatch)]
+[InterfaceType(ComInterfaceType.InterfaceIsDual)]
 public interface ICapeParameter
 {
     [DispId(1)]

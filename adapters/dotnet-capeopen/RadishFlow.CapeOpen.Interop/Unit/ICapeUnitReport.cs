@@ -5,7 +5,7 @@ namespace RadishFlow.CapeOpen.Interop.Unit;
 
 [ComVisible(true)]
 [Guid(CapeOpenInterfaceIds.ICapeUnitReport)]
-[InterfaceType(ComInterfaceType.InterfaceIsIDispatch)]
+[InterfaceType(ComInterfaceType.InterfaceIsDual)]
 public interface ICapeUnitReport
 {
     [DispId(1)]
