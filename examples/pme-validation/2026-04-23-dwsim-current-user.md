@@ -126,5 +126,12 @@ Follow-up:
 - 同轮 `COFE` 仍在 `SimulationContext get-result fallback=provided; hostContext=missing -> get-exit` 后 native 崩溃，新 dump 为 `COFE.exe.42720.dmp`，仍未进入 `NamedValueList / NamedValue / LogMessage / PopUpMessage`。
 - 当前判断：COFE 更可能在 getter 返回后做早期 `QueryInterface` 或 typeinfo 探测；若缺少 `ICapeMaterialTemplateSystem` 或 placeholder 没有公开 coclass typeinfo，COFE native 侧可能仍沿空指针路径崩溃。
 - 本轮修正：补入最小 `ICapeMaterialTemplateSystem`，并将 simulation context placeholder 提升为公开 COM-visible coclass；IDL/TLB 已同步，下一轮重点看 COFE 是否越过 `SimulationContext get-exit`。
+
+## Update 17 - 2026-04-25
+
+- 用户侧复验公开 placeholder coclass 与 `ICapeMaterialTemplateSystem` 后，`COFE` 仍在 `SimulationContext get-result fallback=provided; hostContext=missing -> get-exit` 后 native 崩溃，新 dump 为 `COFE.exe.11352.dmp`。
+- 同轮 `DWSIM` 仍推进到 `SimulationContext set/get`、`ComponentName/Description set`、`Ports get` 与 `Parameters get`，未产生新的 DWSIM dump。
+- 当前判断：COFE 未进入 `MaterialTemplates / NamedValueList / NamedValue / LogMessage / PopUpMessage`，因此继续补普通 context optional interface 的收益已经很低；更可能是 `SimulationContext` getter 的 native COM 签名与 managed raw pointer 形状存在不一致。
+- 本轮修正：`ICapeUtilities.SimulationContext` 继续在 managed 侧使用 raw `IntPtr`，但 getter/setter 显式标注 `IDispatch` marshalling，用于把 native 侧签名重新压回 IDL 的 `IDispatch** / IDispatch*`。
 - 本轮已同步 `typelib/RadishFlow.CapeOpen.UnitOp.Mvp.idl` 并用 Windows SDK MIDL 重新生成 TLB；MIDL 仅报告 IDL 中文注释 code page warning，生成成功。
 - 本轮终端侧补充验证：`cargo check`、`UnitOp.Mvp` build（真实环境）、`ContractTests` build（真实环境）、34 项 contract tests 均通过。

@@ -7,6 +7,7 @@ using RadishFlow.CapeOpen.Interop.Unit;
 using RadishFlow.CapeOpen.UnitOp.Mvp.Placeholders;
 using RadishFlow.CapeOpen.UnitOp.Mvp.Results;
 using RadishFlow.CapeOpen.UnitOp.Mvp.UnitOperation;
+using System.Reflection;
 using System.Runtime.InteropServices;
 
 Environment.ExitCode = ContractTestExecutable.Run(args);
@@ -238,6 +239,10 @@ internal static class ContractTests
             typeof(IntPtr),
             simulationContext!.PropertyType,
             "ICapeUtilities.SimulationContext should use raw IntPtr in managed code to avoid pre-method interface marshaling.");
+        AssertMarshalAs(
+            simulationContext.GetMethod!.ReturnParameter,
+            UnmanagedType.IDispatch,
+            "ICapeUtilities.SimulationContext getter should still expose an IDispatch pointer to native PME callers.");
 
         var setter = simulationContext.SetMethod;
         ContractAssert.NotNull(
@@ -248,6 +253,21 @@ internal static class ContractTests
             typeof(IntPtr),
             setterParameter.ParameterType,
             "ICapeUtilities.SimulationContext setter should receive the host context as a raw pointer.");
+        AssertMarshalAs(
+            setterParameter,
+            UnmanagedType.IDispatch,
+            "ICapeUtilities.SimulationContext setter should still accept an IDispatch pointer from native PME callers.");
+    }
+
+    private static void AssertMarshalAs(ParameterInfo parameter, UnmanagedType expectedType, string context)
+    {
+        var marshalAs = parameter
+            .GetCustomAttributes(typeof(MarshalAsAttribute), inherit: false)
+            .OfType<MarshalAsAttribute>()
+            .SingleOrDefault();
+
+        ContractAssert.NotNull(marshalAs, $"{context} Missing MarshalAs.");
+        ContractAssert.Equal(expectedType, marshalAs!.Value, context);
     }
 
     private static void AssertComDefaultInterface(Type classType, Type expectedInterface, string context)

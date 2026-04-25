@@ -16,7 +16,14 @@ public interface ICapeUtilities
     }
 
     [DispId(2)]
-    IntPtr SimulationContext { get; set; }
+    IntPtr SimulationContext
+    {
+        [return: MarshalAs(UnmanagedType.IDispatch)]
+        get;
+
+        [param: MarshalAs(UnmanagedType.IDispatch)]
+        set;
+    }
 
     [DispId(3)]
     void Initialize();
