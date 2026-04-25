@@ -16,7 +16,7 @@ public sealed class UnitOperationPortPlaceholder : ICapeIdentification, ICapeUni
     private readonly Action<string, string, string?, object?>? _ensureOwnerAccess;
     private readonly Action? _onStateChanged;
     private readonly UnitOperationPortDefinition _definition;
-    private object? _connectedObject;
+    private UnitOperationConnectedObjectPlaceholder? _connectedObject;
 
     public UnitOperationPortPlaceholder(
         UnitOperationPortDefinition definition,
@@ -83,6 +83,7 @@ public sealed class UnitOperationPortPlaceholder : ICapeIdentification, ICapeUni
 
     public void Connect(object objectToConnect)
     {
+        UnitOperationComTrace.Write($"{nameof(UnitOperationPortPlaceholder)}.{nameof(Connect)}", "enter", ComponentName);
         EnsureOwnerAccess(nameof(Connect), objectToConnect);
 
         if (objectToConnect is null)
@@ -93,10 +94,17 @@ public sealed class UnitOperationPortPlaceholder : ICapeIdentification, ICapeUni
         }
 
         var connectedIdentification = ValidateConnectedObject(objectToConnect);
+        var connectedSnapshot = new UnitOperationConnectedObjectPlaceholder(
+            connectedIdentification.ComponentName,
+            connectedIdentification.ComponentDescription);
         if (_connectedObject is not null)
         {
-            if (ReferenceEquals(_connectedObject, connectedIdentification))
+            if (string.Equals(_connectedObject.ComponentName, connectedSnapshot.ComponentName, StringComparison.Ordinal))
             {
+                UnitOperationComTrace.Write(
+                    $"{nameof(UnitOperationPortPlaceholder)}.{nameof(Connect)}",
+                    "already-connected",
+                    ComponentName);
                 return;
             }
 
@@ -105,21 +113,28 @@ public sealed class UnitOperationPortPlaceholder : ICapeIdentification, ICapeUni
                 CreateContext(nameof(Connect), objectToConnect, requestedOperation: nameof(Disconnect)));
         }
 
-        _connectedObject = connectedIdentification;
+        _connectedObject = connectedSnapshot;
         _onStateChanged?.Invoke();
+        UnitOperationComTrace.Write(
+            $"{nameof(UnitOperationPortPlaceholder)}.{nameof(Connect)}",
+            "exit",
+            $"{ComponentName}->{connectedSnapshot.ComponentName}");
     }
 
     public void Disconnect()
     {
+        UnitOperationComTrace.Write($"{nameof(UnitOperationPortPlaceholder)}.{nameof(Disconnect)}", "enter", ComponentName);
         EnsureOwnerAccess(nameof(Disconnect));
 
         if (_connectedObject is null)
         {
+            UnitOperationComTrace.Write($"{nameof(UnitOperationPortPlaceholder)}.{nameof(Disconnect)}", "already-disconnected", ComponentName);
             return;
         }
 
         _connectedObject = null;
         _onStateChanged?.Invoke();
+        UnitOperationComTrace.Write($"{nameof(UnitOperationPortPlaceholder)}.{nameof(Disconnect)}", "exit", ComponentName);
     }
 
     internal void ConnectPlaceholder()
@@ -136,6 +151,10 @@ public sealed class UnitOperationPortPlaceholder : ICapeIdentification, ICapeUni
 
     internal void ReleaseConnectedObject()
     {
+        UnitOperationComTrace.Write(
+            $"{nameof(UnitOperationPortPlaceholder)}.{nameof(ReleaseConnectedObject)}",
+            "enter",
+            ComponentName);
         _connectedObject = null;
     }
 
@@ -208,8 +227,11 @@ public sealed class UnitOperationPortPlaceholder : ICapeIdentification, ICapeUni
     }
 }
 
-[ComVisible(false)]
-internal sealed class UnitOperationConnectedObjectPlaceholder : ICapeIdentification
+[ComVisible(true)]
+[Guid(PlaceholderComClassIds.ConnectedObjectPlaceholder)]
+[ClassInterface(ClassInterfaceType.None)]
+[ComDefaultInterface(typeof(ICapeIdentification))]
+public sealed class UnitOperationConnectedObjectPlaceholder : ICapeIdentification
 {
     public UnitOperationConnectedObjectPlaceholder(string componentName, string componentDescription)
     {

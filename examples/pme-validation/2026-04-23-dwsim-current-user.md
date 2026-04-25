@@ -133,5 +133,12 @@ Follow-up:
 - 同轮 `DWSIM` 仍推进到 `SimulationContext set/get`、`ComponentName/Description set`、`Ports get` 与 `Parameters get`，未产生新的 DWSIM dump。
 - 当前判断：COFE 未进入 `MaterialTemplates / NamedValueList / NamedValue / LogMessage / PopUpMessage`，因此继续补普通 context optional interface 的收益已经很低；更可能是 `SimulationContext` getter 的 native COM 签名与 managed raw pointer 形状存在不一致。
 - 本轮修正：`ICapeUtilities.SimulationContext` 继续在 managed 侧使用 raw `IntPtr`，但 getter/setter 显式标注 `IDispatch` marshalling，用于把 native 侧签名重新压回 IDL 的 `IDispatch** / IDispatch*`。
+
+## Update 18 - 2026-04-25
+
+- 用户侧复验 raw getter + dispatch getter/setter marshalling 后，`COFE` 已可正常放置模块，并可连接 inlet/outlet material streams；关闭 case 时弹出 material object release warning，提示仍有两个 material object reference count 为 1。
+- 同轮 `DWSIM` 不再崩溃，但仍无法把模块放到画布；trace 只到 `IPersistStreamInit.InitNew enter/exit`，没有 dump。
+- 当前判断：COFE 的 activation 主阻塞已经越过，剩余 warning 更像 port connection 长期持有 PME material object RCW；DWSIM 的失败重新收缩为 OLE canvas 接受路径，而不是 discovery 或 COFE context shape。
+- 本轮修正：`SimulationContext` setter 撤回显式 `IDispatch` marshalling，保留 raw `IntPtr` 以兼容 DWSIM；getter 继续显式返回 `IDispatch` 以兼容 COFE。端口连接改为只保存 connected object 的 `ICapeIdentification` 快照，不长期持有 PME material COM object。
 - 本轮已同步 `typelib/RadishFlow.CapeOpen.UnitOp.Mvp.idl` 并用 Windows SDK MIDL 重新生成 TLB；MIDL 仅报告 IDL 中文注释 code page warning，生成成功。
 - 本轮终端侧补充验证：`cargo check`、`UnitOp.Mvp` build（真实环境）、`ContractTests` build（真实环境）、34 项 contract tests 均通过。

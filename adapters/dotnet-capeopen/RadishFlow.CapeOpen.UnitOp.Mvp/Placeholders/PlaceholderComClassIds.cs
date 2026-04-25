@@ -11,4 +11,6 @@ internal static class PlaceholderComClassIds
     public const string ParameterSpecificationPlaceholder = "E4CC1510-F855-4B74-8D70-6A0F4A8D2751";
 
     public const string PortPlaceholder = "A7F3D6B4-4DBF-4BA6-96F9-56A1C2D7B8E3";
+
+    public const string ConnectedObjectPlaceholder = "5BA49F7E-87DF-4F73-A84A-A13FB1E5E827";
 }

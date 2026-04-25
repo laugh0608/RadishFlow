@@ -20,8 +20,6 @@ public interface ICapeUtilities
     {
         [return: MarshalAs(UnmanagedType.IDispatch)]
         get;
-
-        [param: MarshalAs(UnmanagedType.IDispatch)]
         set;
     }
 

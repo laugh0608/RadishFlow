@@ -40,6 +40,7 @@
 - COFE 复验显示它会在 `SimulationContext get` 返回后继续 native 消费该对象；当前 placeholder 又补出最小 `ICapeSimulationContext` marker、`ICapeCOSEUtilities` named values 与 `ICapeDiagnostic` no-op logging 面，并已同步 IDL/TLB 真相源，用于覆盖 COFE 对 simulation context 的早期 QI / IDispatch 探测
 - 后续复验显示 COFE 仍停在 `SimulationContext get-exit` 后且未进入 COSE/diagnostic 方法；当前 placeholder 又补出最小 `ICapeMaterialTemplateSystem`，并提升为公开 COM-visible coclass 写入 IDL/TLB，用于覆盖 COFE 只做早期 QI / typeinfo 探测的路径
 - 再次复验后 COFE 仍停在 `SimulationContext get-exit` 后且未进入任何 placeholder 方法；当前 `ICapeUtilities.SimulationContext` 仍在 managed 侧使用 raw `IntPtr`，但 getter/setter 已显式标注 `IDispatch` marshalling，使 native COM 侧签名保持与 IDL 的 `IDispatch** / IDispatch*` 一致
+- 用户侧随后确认 COFE 已可放置 unit 并连接 material streams；当前 setter 又撤回显式 `IDispatch` marshalling，仅 getter 保持 `IDispatch` 返回，以兼顾 COFE getter 返回点和 DWSIM setter 侧 raw pointer 路径。端口连接现在只保存 connected object 的 identification 快照，不再长期持有 PME material COM object 引用
 - 最小标准 `IPersistStreamInit` 实现：`GetClassID` 返回当前 Unit Operation CLSID，`IsDirty` 返回 `S_FALSE`，`InitNew / Load / Save / GetSizeMax` 以无状态 no-op 返回 `S_OK`；`Load / Save` 在 managed 签名中接收 raw `IntPtr` stream，以避免当前不消费 stream 时仍触发 CLR COM interface marshaler
 - 最小标准 `IPersistStorage` 实现：复用同一个 `GetClassID / IsDirty` 口径，`InitNew / Load / Save / SaveCompleted / HandsOffStorage` 以无状态 no-op 返回 `S_OK`
 - 最小标准 `IOleObject` 实现：覆盖 `SetClientSite / GetClientSite / SetHostNames / DoVerb / GetUserClassID / GetUserType / SetExtent / GetExtent / GetMiscStatus / Close` 等 OLE container 探测入口；当前不实现真实 inplace activation、verb 枚举、clipboard data 或 advise sink

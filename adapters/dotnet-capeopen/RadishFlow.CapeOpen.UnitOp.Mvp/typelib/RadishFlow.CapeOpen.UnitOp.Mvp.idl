@@ -307,4 +307,12 @@ library RadishFlowCapeOpenUnitOpMvpLib
         [default] interface ICapeUnitPort;
         interface ICapeIdentification;
     };
+
+    [
+        uuid(5BA49F7E-87DF-4F73-A84A-A13FB1E5E827)
+    ]
+    coclass UnitOperationConnectedObjectPlaceholder
+    {
+        [default] interface ICapeIdentification;
+    };
 };

@@ -200,6 +200,10 @@ internal static class ContractTests
             typeof(ICapeUnitPort),
             "Port placeholder COM default interface should expose ICapeUnitPort for connection late binding.");
         AssertComDefaultInterface(
+            typeof(UnitOperationConnectedObjectPlaceholder),
+            typeof(ICapeIdentification),
+            "Connected object placeholder COM default interface should expose ICapeIdentification for connectedObject late binding.");
+        AssertComDefaultInterface(
             typeof(UnitOperationSimulationContextPlaceholder),
             typeof(ICapeCOSEUtilities),
             "Simulation context placeholder COM default interface should expose ICapeCOSEUtilities for COFE context probing.");
@@ -253,10 +257,9 @@ internal static class ContractTests
             typeof(IntPtr),
             setterParameter.ParameterType,
             "ICapeUtilities.SimulationContext setter should receive the host context as a raw pointer.");
-        AssertMarshalAs(
+        AssertNoMarshalAs(
             setterParameter,
-            UnmanagedType.IDispatch,
-            "ICapeUtilities.SimulationContext setter should still accept an IDispatch pointer from native PME callers.");
+            "ICapeUtilities.SimulationContext setter should remain raw to avoid DWSIM pre-method interface marshaling.");
     }
 
     private static void AssertMarshalAs(ParameterInfo parameter, UnmanagedType expectedType, string context)
@@ -268,6 +271,16 @@ internal static class ContractTests
 
         ContractAssert.NotNull(marshalAs, $"{context} Missing MarshalAs.");
         ContractAssert.Equal(expectedType, marshalAs!.Value, context);
+    }
+
+    private static void AssertNoMarshalAs(ParameterInfo parameter, string context)
+    {
+        var marshalAs = parameter
+            .GetCustomAttributes(typeof(MarshalAsAttribute), inherit: false)
+            .OfType<MarshalAsAttribute>()
+            .SingleOrDefault();
+
+        ContractAssert.Null(marshalAs, context);
     }
 
     private static void AssertComDefaultInterface(Type classType, Type expectedInterface, string context)
@@ -2357,10 +2370,10 @@ internal static class ContractTests
         var replacementConnection = new ContractConnectedObject("Contract Feed B");
 
         context.FeedPort.Connect(firstConnection);
-        ContractAssert.SameReference(firstConnection, context.FeedPort.connectedObject, "Port should expose the connected object that was just attached.");
+        AssertConnectedObjectSnapshot(context.FeedPort.connectedObject, firstConnection.ComponentName, "Port should expose a connection snapshot.");
 
         context.FeedPort.Connect(firstConnection);
-        ContractAssert.SameReference(firstConnection, context.FeedPort.connectedObject, "Reconnecting the same object should be a no-op.");
+        AssertConnectedObjectSnapshot(context.FeedPort.connectedObject, firstConnection.ComponentName, "Reconnecting the same object should keep the connection snapshot.");
 
         var replacementError = ContractAssert.Throws<CapeBadInvocationOrderException>(
             () => context.FeedPort.Connect(replacementConnection),
@@ -2371,12 +2384,19 @@ internal static class ContractTests
         ContractAssert.Null(context.FeedPort.connectedObject, "Disconnect() should clear the connected object.");
 
         context.FeedPort.Connect(replacementConnection);
-        ContractAssert.SameReference(replacementConnection, context.FeedPort.connectedObject, "Port should accept a new connection after Disconnect().");
+        AssertConnectedObjectSnapshot(context.FeedPort.connectedObject, replacementConnection.ComponentName, "Port should accept a new connection after Disconnect().");
 
         var portMutationError = ContractAssert.Throws<CapeInvalidArgumentException>(
             () => ((ICapeIdentification)context.FeedPort).ComponentName = "Mutated Feed",
             "Port identification should remain immutable.");
         ContractAssert.Contains(portMutationError.Description, "does not allow ComponentName mutation", "Port immutability failures should stay explicit.");
+    }
+
+    private static void AssertConnectedObjectSnapshot(object? connectedObject, string expectedName, string context)
+    {
+        ContractAssert.NotNull(connectedObject, context);
+        var identification = (ICapeIdentification)connectedObject!;
+        ContractAssert.Equal(expectedName, identification.ComponentName, context);
     }
 
     public static void ValidateBeforeInitialize_ReturnsInvalidAndEmptyReport(ContractTestContext context)
