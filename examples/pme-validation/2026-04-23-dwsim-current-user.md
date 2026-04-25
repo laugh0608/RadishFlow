@@ -47,3 +47,9 @@ Follow-up:
 - 等新的 `TLB` 生成/嵌入/注册链路落地后，再重新执行 `current-user register -> DWSIM/COFE discovery -> activation -> validate -> calculate`。
 - 完成 GUI 验证后，补写本记录中的 `Discovery` 至 `Report` 字段。
 - 若 DWSIM / COFE 在补齐 `TLB` 后仍无法实例化组件，优先按 `Activation / IDispatch / Parameters / Ports / Reporting` 分类补充现象、截图和宿主侧报错文本。
+
+2026-04-25 update:
+- `UnitOp.Mvp` 已补齐 `Interop` / `UnitOp.Mvp` 程序集级 `Guid / TypeLibVersion`，并为主对象、parameter/port collection、parameter/port placeholder 补出显式 `ComDefaultInterface`。
+- `Windows PowerShell 5` 真实环境复验：`New-Object -ComObject`、`Initialize()`、`Parameters.Count()`、`Parameters.Item(1).Specification`、`Terminate()` 均为 `Pass`，`0x80131165` 不再复现。
+- `ICapeUnit` `QueryInterface` 返回 `S_OK`；`Ports` 仍需在真实 PME 或强类型宿主路径中复验，不能用 PowerShell 默认 `ICapeUtilities` binder 代替。
+- 下一步重新执行 `current-user register -> DWSIM/COFE discovery -> activation -> validate -> calculate`，并补写本记录中的 `Discovery` 至 `Report` 字段。

@@ -8,13 +8,13 @@
 
 当前已确认的宿主兼容性现状：
 
-- `DWSIM / COFE` 已能发现当前 PMC，但晚绑定 `IDispatch` 调用仍会在真实 COM 激活后命中 `0x80131165 Type library is not registered`
-- 当前根因已从“注册树发现失败”收敛为“需要真实 `TypeLib / TLB` 注册链路并重新做晚绑定复验”
+- `DWSIM / COFE` 已能发现当前 PMC；先前 Windows PowerShell 5 晚绑定 `IDispatch` 探测中的 `0x80131165 Type library is not registered` 当前已不再复现
+- 当前根因已从“注册树发现失败 / TypeLib 缺失”收敛为“需要把 assembly-level TLB identity 与默认 interface 修正带回真实 PME 复验”
 - 当前目录已同时包含冻结真相源 `typelib/RadishFlow.CapeOpen.UnitOp.Mvp.idl` 与 `typelib/RadishFlow.CapeOpen.UnitOp.Mvp.tlb`；该 `tlb` 已由本机 `Windows Kits 10 + Visual Studio` 工具链生成，并已接入 `Registration` 的标准 `TypeLib` 注册/反注册路径
 - 当前仓库并不内置 `MIDL` 工具链；后续仍需继续把 `IDL -> TLB` 生成脚本化，而不是长期依赖手工本机构建
-- 截至 2026-04-24，`Registration` dry-run 已能自动解析真实 `UnitOp.Mvp` 输出目录中的 comhost / TLB、校验 `TypeLib GUID/version`，并在 execute 模式下规划 `RegisterTypeLib(ForUser)` / `UnRegisterTypeLib(ForUser)`；但在重新做真实注册和 `Windows PowerShell 5` / `DWSIM + COFE` 复验前，仍不应把这一步直接当成兼容性已闭环
+- 截至 2026-04-25，`Registration` dry-run 已能自动解析真实 `UnitOp.Mvp` 输出目录中的 comhost / TLB、校验 `TypeLib GUID/version`，并在 execute 模式下规划 `RegisterTypeLib(ForUser)` / `UnRegisterTypeLib(ForUser)`；真实 Windows PowerShell 5 复验已确认默认 `ICapeUtilities`、`Parameters.Count()` 和 parameter specification 可晚绑定调用，但在重新做 `DWSIM + COFE` 复验前，仍不应把这一步直接当成 PME 兼容性已闭环
 - 同日真实探测又确认：`pwsh` 下的 `0x800080A5` 来自宿主进程已预加载 `.NET 9.0.10`，与当前 PMC 目标运行时 `.NET 10.0.0` 不兼容；因此后续 native / classic COM 探测应优先使用 `Windows PowerShell 5` 或其他非预加载 .NET 宿主
-- 同日也确认：即使 current-user `TypeLib` 已出现在 `HKCR\TypeLib` 合并视图、`CLSID\{...}\TypeLib` 关联也已补上，`Windows PowerShell 5` 仍会报 `0x80131165`；这说明剩余阻塞已缩到 classic late-bound COM / typelib 兼容细节，而不再是默认 comhost 路径或 runtime sidecar 缺失
+- 当前也确认：`ICapeUnit` 可通过 `QueryInterface` 返回 `S_OK`，但 PowerShell 默认 late binding 只代表默认 `ICapeUtilities` 面；`Ports / Validate / Calculate` 仍应以真实 PME 或强类型宿主路径复验为准
 
 当前已包含的最小公共面：
 

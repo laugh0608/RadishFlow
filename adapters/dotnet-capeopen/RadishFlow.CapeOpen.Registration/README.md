@@ -137,6 +137,6 @@ pwsh .\scripts\register-com.ps1 -Action unregister -Execute -ConfirmToken unregi
 - 若未指定 `--backup-dir`，工具会在 `%LOCALAPPDATA%\RadishFlow\CapeOpen\RegistrationBackups\...` 下生成时间戳目录
 - 当前 rollback 是“失败时自动恢复刚捕获的四棵树”，不是面向用户公开的独立 restore CLI
 - 当前 contract tests 已锁住默认 dry-run、confirmation token 门控、preflight fail 阻断，以及 register / unregister 计划与备份范围
-- 截至 2026-04-24，本工具的 dry-run JSON 已可直接输出 `ResolvedTypeLibraryPath`、`type library identity` 与 `comhost runtime layout` 预检结果，并包含显式 `RegisterTypeLibrary / UnregisterTypeLibrary` 计划步骤；但是否已真正消除 `DWSIM / COFE` 的晚绑定 `0x80131165`，仍需在真实注册后重新做 Windows PowerShell / PME 复验
+- 截至 2026-04-25，本工具的 dry-run JSON 已可直接输出 `ResolvedTypeLibraryPath`、`type library identity` 与 `comhost runtime layout` 预检结果，并包含显式 `RegisterTypeLibrary / UnregisterTypeLibrary` 计划步骤；真实 Windows PowerShell 5 复验已确认默认 `ICapeUtilities` 与 parameter collection 晚绑定调用不再触发 `0x80131165`，但是否已满足 `DWSIM / COFE` 仍需通过目标 PME 人工复验确认
 
 本工具即使进入执行型注册阶段，也不应负责启动 PME、自动操作 PME UI、加载第三方 CAPE-OPEN 模型或生成安装包。目标 PME 人工验证路径见 `docs/capeopen/pme-validation.md`。

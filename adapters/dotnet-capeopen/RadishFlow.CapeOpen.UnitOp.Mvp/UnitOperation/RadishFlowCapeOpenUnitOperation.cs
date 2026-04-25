@@ -14,6 +14,7 @@ namespace RadishFlow.CapeOpen.UnitOp.Mvp.UnitOperation;
 [Guid(UnitOperationComIdentity.ClassId)]
 [ProgId(UnitOperationComIdentity.ProgId)]
 [ClassInterface(ClassInterfaceType.None)]
+[ComDefaultInterface(typeof(ICapeUtilities))]
 public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICapeUtilities, ICapeUnit, IDisposable
 {
     private const string UtilitiesInterfaceName = nameof(ICapeUtilities);

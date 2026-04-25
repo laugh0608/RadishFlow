@@ -9,6 +9,7 @@ namespace RadishFlow.CapeOpen.UnitOp.Mvp.Placeholders;
 [ComVisible(true)]
 [Guid(PlaceholderComClassIds.PortPlaceholder)]
 [ClassInterface(ClassInterfaceType.None)]
+[ComDefaultInterface(typeof(ICapeUnitPort))]
 public sealed class UnitOperationPortPlaceholder : ICapeIdentification, ICapeUnitPort
 {
     private const string InterfaceName = nameof(ICapeUnitPort);

@@ -1,3 +1,4 @@
+using RadishFlow.CapeOpen.Interop.Common;
 using System.Runtime.InteropServices;
 using RadishFlow.CapeOpen.UnitOp.Mvp.UnitOperation;
 
@@ -6,6 +7,7 @@ namespace RadishFlow.CapeOpen.UnitOp.Mvp.Placeholders;
 [ComVisible(true)]
 [Guid(PlaceholderComClassIds.ParameterCollection)]
 [ClassInterface(ClassInterfaceType.None)]
+[ComDefaultInterface(typeof(ICapeCollection))]
 public sealed class UnitOperationParameterCollection
     : UnitOperationPlaceholderCollection<UnitOperationParameterPlaceholder>
 {

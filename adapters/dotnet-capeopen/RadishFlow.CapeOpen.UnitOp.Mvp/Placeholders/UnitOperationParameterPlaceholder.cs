@@ -11,6 +11,7 @@ namespace RadishFlow.CapeOpen.UnitOp.Mvp.Placeholders;
 [ComVisible(true)]
 [Guid(PlaceholderComClassIds.ParameterPlaceholder)]
 [ClassInterface(ClassInterfaceType.None)]
+[ComDefaultInterface(typeof(ICapeParameter))]
 public sealed class UnitOperationParameterPlaceholder : ICapeIdentification, ICapeParameter
 {
     private const string InterfaceName = nameof(ICapeParameter);

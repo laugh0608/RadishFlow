@@ -135,6 +135,14 @@ Rust 与 `.NET 10` 之间的正式边界应保持简单稳定：
 - 同日真实复验又确认 `pwsh` 的 `0x800080A5` 来自宿主已预加载的 `.NET 9.0.10` 与当前 PMC 目标 `.NET 10.0.0` runtime 不兼容，因此后续 native COM 探测不应默认使用 `pwsh`
 - 当前新的未完成项已从“如何完成标准 TypeLib 注册”进一步收口为“在 `Windows PowerShell 5` / PME 这类 classic late-bound 宿主下补齐剩余 typelib 兼容细节，并重新完成 `DWSIM + COFE` 人工复验”
 
+截至 2026-04-25，`Windows PowerShell 5` 下的默认 late-bound `ICapeUtilities` 探测已继续推进：
+
+- `Interop` / `UnitOp.Mvp` 程序集当前均显式声明与冻结 TLB 一致的 assembly-level `Guid / TypeLibVersion`
+- `RadishFlowCapeOpenUnitOperation`、parameter/port collection、parameter/port placeholder 当前均已补出显式 `ComDefaultInterface`
+- `New-Object -ComObject`、`Initialize()`、`Parameters.Count()`、`Parameters.Item(1).Specification` 与 `Terminate()` 已通过，先前 `0x80131165` 不再复现
+- `ICapeUnit` 当前通过 `QueryInterface` 返回 `S_OK`，但 `Ports / Validate / Calculate` 仍需要真实 PME 或强类型宿主路径复验
+- 当前新的未完成项已从“补齐剩余 typelib 兼容细节”进一步收口为“重新完成 `DWSIM + COFE` 人工复验，并按真实调用点分类记录失败”
+
 当前允许推进的内容：
 
 - 文档

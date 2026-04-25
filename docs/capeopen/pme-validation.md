@@ -252,12 +252,13 @@ Follow-up:
 
 ## 当前判断
 
-截至 2026-04-23，`SampleHost` 的 PME-like 薄宿主入口、`Registration` execute 门控以及脚本化安装/反安装运行手册，已足以结束“注册工具设计缺口”这条子任务。
+截至 2026-04-25，`SampleHost` 的 PME-like 薄宿主入口、`Registration` execute 门控以及脚本化安装/反安装运行手册，已足以结束“注册工具设计缺口”这条子任务。
 
 当前已新增的明确判断是：
 
 - `DWSIM` 与 `COFE` 的 discovery 基本已打通，不再是“完全看不到组件”
-- 真实 COM 探测已确认 `CoCreateInstance` 成功，但首个晚绑定 `IDispatch` 调用会报 `0x80131165 Type library is not registered`
-- 因此下一主线不是继续补 `ProgID / CurVer / CapeDescription`，而是补齐 `IDL -> TLB -> ComHostTypeLibrary -> TypeLib 注册` 这条链路
+- `IDL -> TLB -> ComHostTypeLibrary -> TypeLib 注册` 链路当前已具备执行路径，并已补齐 `Interop` / `UnitOp.Mvp` 程序集级 TLB identity 与主要 COM-visible class 的默认 interface 口径
+- 真实 Windows PowerShell 5 探测当前已确认 `New-Object -ComObject`、默认 `ICapeUtilities.Initialize()`、`Parameters.Count()`、`Parameters.Item(1).Specification` 与 `Terminate()` 均通过，先前 `0x80131165 Type library is not registered` 不再复现
+- `ICapeUnit` 当前已通过 `QueryInterface` 探测返回 `S_OK`；但 PowerShell 默认 late binding 只代表默认 `ICapeUtilities` 面，`Ports` / `Validate` / `Calculate` 仍应在真实 PME 或强类型宿主路径中复验
 
-仍必须补齐的边界缺口不是新的 host round fallback，而是标准 `TypeLib` 注册策略、`DWSIM + COFE` 的下一轮人工复验，以及是否需要支持 `local-machine` 的单独策略判断。
+仍必须补齐的边界缺口不是新的 host round fallback，而是 `DWSIM + COFE` 的下一轮人工复验，以及是否需要支持 `local-machine` 的单独策略判断。

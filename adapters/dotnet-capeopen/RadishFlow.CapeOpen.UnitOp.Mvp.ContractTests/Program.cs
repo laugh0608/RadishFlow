@@ -41,6 +41,7 @@ internal static class ContractTestExecutable
         var options = ContractTestOptions.Parse(args);
         var tests = new (string Name, Action<ContractTestContext> Execute)[]
         {
+            ("assembly-com-identity-contract", static _ => ContractTests.AssemblyComIdentity_StaysAlignedWithTypeLibraryRegistration()),
             ("registration-plan-contract", static _ => ContractTests.RegistrationPlan_ExposesGuardedExecutionBoundary()),
             ("registration-execute-confirm-contract", static _ => ContractTests.RegistrationExecution_RequiresMatchingConfirmToken()),
             ("registration-execute-preflight-contract", static _ => ContractTests.RegistrationExecution_StopsOnPreflightFailure()),
@@ -112,6 +113,64 @@ internal static class ContractTestExecutable
 
 internal static class ContractTests
 {
+    public static void AssemblyComIdentity_StaysAlignedWithTypeLibraryRegistration()
+    {
+        AssertAssemblyTypeLibraryIdentity(
+            typeof(RadishFlowCapeOpenUnitOperation).Assembly,
+            "UnitOp.Mvp assembly should expose a stable COM type library identity.");
+        AssertAssemblyTypeLibraryIdentity(
+            typeof(ICapeUtilities).Assembly,
+            "Interop assembly should expose the same COM type library identity used by the frozen MVP TLB.");
+
+        AssertComDefaultInterface(
+            typeof(RadishFlowCapeOpenUnitOperation),
+            typeof(ICapeUtilities),
+            "Unit operation COM default interface should expose ICapeUtilities as the first late-bound surface.");
+        AssertComDefaultInterface(
+            typeof(UnitOperationParameterCollection),
+            typeof(ICapeCollection),
+            "Parameter collection COM default interface should expose ICapeCollection for Count/Item late binding.");
+        AssertComDefaultInterface(
+            typeof(UnitOperationPortCollection),
+            typeof(ICapeCollection),
+            "Port collection COM default interface should expose ICapeCollection for Count/Item late binding.");
+        AssertComDefaultInterface(
+            typeof(UnitOperationParameterPlaceholder),
+            typeof(ICapeParameter),
+            "Parameter placeholder COM default interface should expose ICapeParameter for value/specification late binding.");
+        AssertComDefaultInterface(
+            typeof(UnitOperationPortPlaceholder),
+            typeof(ICapeUnitPort),
+            "Port placeholder COM default interface should expose ICapeUnitPort for connection late binding.");
+    }
+
+    private static void AssertComDefaultInterface(Type classType, Type expectedInterface, string context)
+    {
+        var defaultInterface = classType
+            .GetCustomAttributes(typeof(System.Runtime.InteropServices.ComDefaultInterfaceAttribute), inherit: false)
+            .OfType<System.Runtime.InteropServices.ComDefaultInterfaceAttribute>()
+            .SingleOrDefault();
+
+        ContractAssert.NotNull(defaultInterface, $"{context} Missing ComDefaultInterface.");
+        ContractAssert.Equal(expectedInterface, defaultInterface!.Value, context);
+    }
+
+    private static void AssertAssemblyTypeLibraryIdentity(System.Reflection.Assembly assembly, string context)
+    {
+        var typeLibraryGuid = assembly.GetCustomAttributes(typeof(System.Runtime.InteropServices.GuidAttribute), inherit: false)
+            .OfType<System.Runtime.InteropServices.GuidAttribute>()
+            .SingleOrDefault();
+        var typeLibraryVersion = assembly.GetCustomAttributes(typeof(System.Runtime.InteropServices.TypeLibVersionAttribute), inherit: false)
+            .OfType<System.Runtime.InteropServices.TypeLibVersionAttribute>()
+            .SingleOrDefault();
+
+        ContractAssert.NotNull(typeLibraryGuid, $"{context} Missing GUID.");
+        ContractAssert.Equal(UnitOperationComIdentity.TypeLibraryId, typeLibraryGuid!.Value, $"{context} GUID should stay aligned with Registration and IDL identity.");
+        ContractAssert.NotNull(typeLibraryVersion, $"{context} Missing TypeLibVersion.");
+        ContractAssert.Equal(1, typeLibraryVersion!.MajorVersion, $"{context} Major version should stay aligned with IDL version 1.0.");
+        ContractAssert.Equal(0, typeLibraryVersion.MinorVersion, $"{context} Minor version should stay aligned with IDL version 1.0.");
+    }
+
     public static void RegistrationPlan_ExposesGuardedExecutionBoundary()
     {
         var explicitComHostPath = ResolveFrozenComHostPath();
