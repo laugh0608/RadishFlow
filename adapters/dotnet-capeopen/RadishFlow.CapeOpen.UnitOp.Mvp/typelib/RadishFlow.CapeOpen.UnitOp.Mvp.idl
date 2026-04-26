@@ -66,6 +66,35 @@ interface ICapeIdentification : IDispatch
 
 [
     object,
+    uuid(678C0B10-7D66-11D2-A67D-00105A42887F),
+    nonextensible,
+    oleautomation,
+    pointer_default(unique)
+]
+interface ECapeRoot : IDispatch
+{
+    [id(1), propget] HRESULT Name([out, retval] BSTR* value);
+};
+
+[
+    object,
+    uuid(678C0B11-7D66-11D2-A67D-00105A42887F),
+    nonextensible,
+    oleautomation,
+    pointer_default(unique)
+]
+interface ECapeUser : IDispatch
+{
+    [id(1), propget] HRESULT Code([out, retval] LONG* value);
+    [id(2), propget] HRESULT Description([out, retval] BSTR* value);
+    [id(3), propget] HRESULT Scope([out, retval] BSTR* value);
+    [id(4), propget] HRESULT InterfaceName([out, retval] BSTR* value);
+    [id(5), propget] HRESULT Operation([out, retval] BSTR* value);
+    [id(6), propget] HRESULT MoreInfo([out, retval] BSTR* value);
+};
+
+[
+    object,
     uuid(678C099A-0093-11D2-A67D-00105A42887F),
     dual,
     nonextensible,
@@ -266,6 +295,8 @@ library RadishFlowCapeOpenUnitOpMvpLib
         interface IPersistStorage;
         interface IOleObject;
         interface ICapeIdentification;
+        interface ECapeRoot;
+        interface ECapeUser;
     };
 
     [

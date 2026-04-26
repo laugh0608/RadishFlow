@@ -17,7 +17,7 @@ namespace RadishFlow.CapeOpen.UnitOp.Mvp.UnitOperation;
 [ProgId(UnitOperationComIdentity.ProgId)]
 [ClassInterface(ClassInterfaceType.None)]
 [ComDefaultInterface(typeof(ICapeUtilities))]
-public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICapeUtilities, ICapeUnit, ICapeUnitReport, IPersistStreamInit, IPersistStorage, IOleObject, IDisposable
+public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICapeUtilities, ICapeUnit, ICapeUnitReport, ECapeRoot, ECapeUser, IPersistStreamInit, IPersistStorage, IOleObject, IDisposable
 {
     private const string UtilitiesInterfaceName = nameof(ICapeUtilities);
     private const string UnitInterfaceName = nameof(ICapeUnit);
@@ -25,10 +25,12 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
     private const string UnitScope = "RadishFlow.CapeOpen.UnitOp.Mvp";
     private const string DefaultReportName = "RadishFlow calculation report";
     private const string SimulationContextMemberName = "SimulationContext";
+    private const string NoRecordedCapeOpenError = "No CAPE-OPEN error has been recorded for this unit instance.";
     private readonly UnitOperationSimulationContextPlaceholder _simulationContextFallback = new();
     private bool _simulationContextProvided;
     private UnitOperationCalculationResult? _lastCalculationResult;
     private UnitOperationCalculationFailure? _lastCalculationFailure;
+    private CapeOpenException? _lastCapeOpenError;
     private string _componentName;
     private string _componentDescription;
     private string _selectedReportName = DefaultReportName;
@@ -70,6 +72,20 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
         _lifecycleState = UnitOperationLifecycleState.Constructed;
         UnitOperationComTrace.Write(nameof(RadishFlowCapeOpenUnitOperation), "constructor-exit");
     }
+
+    public string Name => nameof(RadishFlowCapeOpenUnitOperation);
+
+    public int Code => _lastCapeOpenError?.Code ?? 0;
+
+    public string Description => _lastCapeOpenError?.Description ?? NoRecordedCapeOpenError;
+
+    public string Scope => _lastCapeOpenError?.Scope ?? UnitScope;
+
+    public string InterfaceName => _lastCapeOpenError?.InterfaceName ?? UtilitiesInterfaceName;
+
+    public string Operation => _lastCapeOpenError?.Operation ?? string.Empty;
+
+    public string? MoreInfo => _lastCapeOpenError?.MoreInfo;
 
     public string ComponentName
     {
@@ -1016,11 +1032,12 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
 
     public int Edit()
     {
+        UnitOperationComTrace.Write(nameof(Edit), "enter");
         ThrowIfDisposed();
         ThrowIfTerminated(nameof(Edit), UtilitiesInterfaceName);
-        throw new CapeNoImplementationException(
-            "Edit UI is not implemented for the MVP CAPE-OPEN unit operation skeleton.",
-            CreateContext(UtilitiesInterfaceName, nameof(Edit)));
+        UnitOperationComTrace.Write(nameof(Edit), "no-op", "MVP unit operation has no custom editor.");
+        UnitOperationComTrace.Write(nameof(Edit), "exit");
+        return 0;
     }
 
     public bool Validate(ref string message)
@@ -1048,29 +1065,51 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
 
     public void Calculate()
     {
-        ThrowIfDisposed();
-        ThrowIfTerminated(nameof(Calculate), UnitInterfaceName);
-
-        if (!IsInitialized)
-        {
-            throw CreateBadInvocation(
-                UnitInterfaceName,
-                nameof(Calculate),
-                "Initialize must be called before Calculate.",
-                nameof(Initialize));
-        }
-
+        UnitOperationComTrace.Write(nameof(Calculate), "enter");
         try
         {
+            ThrowIfDisposed();
+            ThrowIfTerminated(nameof(Calculate), UnitInterfaceName);
+
+            if (!IsInitialized)
+            {
+                throw CreateBadInvocation(
+                    UnitInterfaceName,
+                    nameof(Calculate),
+                    "Initialize must be called before Calculate.",
+                    nameof(Initialize));
+            }
+
             PrepareForCalculation();
             var inputs = BuildCalculationInputs();
             var snapshotJson = ExecuteNativeSolve(inputs);
-            RecordCalculationSuccess(MaterializeCalculationResult(snapshotJson));
+            var result = MaterializeCalculationResult(snapshotJson);
+            PublishProductMaterial(result);
+            RecordCalculationSuccess(result);
+            UnitOperationComTrace.Write(nameof(Calculate), "success");
         }
         catch (CapeOpenException error)
         {
-            RecordCalculationFailure(error);
+            UnitOperationComTrace.Exception(nameof(Calculate), error);
+            RememberCapeOpenError(error);
+            if (!IsLifecycleCalculationPreconditionFailure(error))
+            {
+                RecordCalculationFailure(error);
+            }
+
             throw;
+        }
+        catch (Exception error) when (IsNativeLibraryLoadException(error))
+        {
+            UnitOperationComTrace.Exception(nameof(Calculate), error);
+            var capeOpenError = CreateNativeLibraryLoadException(error);
+            RememberCapeOpenError(capeOpenError);
+            RecordCalculationFailure(capeOpenError);
+            throw capeOpenError;
+        }
+        finally
+        {
+            UnitOperationComTrace.Write(nameof(Calculate), "exit");
         }
     }
 
@@ -1251,6 +1290,26 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
         return ParseCalculationResult(snapshotJson);
     }
 
+    private void PublishProductMaterial(UnitOperationCalculationResult result)
+    {
+        var bindings = UnitOperationConfiguredBoundaryMaterialBindings.TryParse(FlowsheetParameter);
+        var outputStreamIds = bindings.GetBoundStreamIds(UnitOperationPortBoundaryMaterialRole.BoundaryOutputs);
+        if (outputStreamIds.Count == 0)
+        {
+            UnitOperationComTrace.Write(nameof(PublishProductMaterial), "skip", "No configured boundary output streams.");
+            return;
+        }
+
+        var streamsById = result.Streams.ToDictionary(static stream => stream.Id, StringComparer.Ordinal);
+        var outputStreams = outputStreamIds
+            .Where(streamsById.ContainsKey)
+            .Select(streamId => streamsById[streamId])
+            .ToArray();
+        CapeOpenMaterialObjectPublisher.PublishProductMaterial(
+            GetPortPlaceholder(UnitOperationPortCatalog.Product).ConnectedObjectReference,
+            outputStreams);
+    }
+
     private bool ApplyValidationOutcome(ValidationResult result, ref string message)
     {
         message = result.Message;
@@ -1271,7 +1330,17 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
     {
         _lastCalculationResult = null;
         _lastCalculationFailure = null;
+        if (validationStatus == CapeValidationStatus.NotValidated)
+        {
+            _lastCapeOpenError = null;
+        }
+
         ValStatus = validationStatus;
+    }
+
+    private void RememberCapeOpenError(CapeOpenException error)
+    {
+        _lastCapeOpenError = error;
     }
 
     private void ThrowIfDisposed()
@@ -1356,6 +1425,29 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
                 UnitInterfaceName,
                 nameof(Calculate),
                 moreInfo: "Failed to parse status/summary/diagnostics from native solve snapshot JSON."));
+    }
+
+    private static bool IsNativeLibraryLoadException(Exception error)
+    {
+        return error is DllNotFoundException or BadImageFormatException or EntryPointNotFoundException;
+    }
+
+    private bool IsLifecycleCalculationPreconditionFailure(CapeOpenException error)
+    {
+        return error is CapeBadInvocationOrderException &&
+               string.Equals(error.InterfaceName, UnitInterfaceName, StringComparison.Ordinal) &&
+               string.Equals(error.Operation, nameof(Calculate), StringComparison.Ordinal) &&
+               (IsTerminated || !IsInitialized);
+    }
+
+    private static CapeFailedInitialisationException CreateNativeLibraryLoadException(Exception error)
+    {
+        return new CapeFailedInitialisationException(
+            $"Native rf-ffi runtime could not be loaded: {error.Message}",
+            CreateContext(
+                "rf-ffi",
+                "load_native_library",
+                moreInfo: "Make sure rf_ffi.dll is available in RADISHFLOW_NATIVE_LIB_DIR, the PME process directory, or the repository target/debug directory."));
     }
 
     private void RecordCalculationFailure(CapeOpenException error)

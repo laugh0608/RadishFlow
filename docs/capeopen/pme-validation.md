@@ -110,6 +110,13 @@ dry-run 输出必须人工确认：
 建议优先通过仓库脚本入口执行，而不是直接手写底层 exe 命令：
 
 ```powershell
+pwsh .\scripts\pme-register-latest.ps1
+pwsh .\scripts\pme-unregister.ps1
+```
+
+上述两个脚本是日常 `DWSIM / COFE` 人工调试入口：`pme-register-latest.ps1` 会先构建最新 `rf-ffi`，再通过底层受控注册入口执行 `current-user` 注册；`pme-unregister.ps1` 通过同一底层入口执行反注册。若需要显式查看或复现底层门控参数，可直接使用：
+
+```powershell
 pwsh .\scripts\register-com.ps1 -Execute -ConfirmToken register-current-user-2F0E4C8F -BackupDir .\artifacts\registration-validation\register-current-user
 pwsh .\scripts\register-com.ps1 -Action unregister -Execute -ConfirmToken unregister-current-user-2F0E4C8F -BackupDir .\artifacts\registration-validation\unregister-current-user
 ```
@@ -123,7 +130,7 @@ pwsh .\scripts\register-com.ps1 -Action unregister -Execute -ConfirmToken unregi
 3. 执行 register：
 
    ```powershell
-   pwsh .\scripts\register-com.ps1 -Execute -ConfirmToken register-current-user-2F0E4C8F -BackupDir .\artifacts\registration-validation\register-current-user
+   pwsh .\scripts\pme-register-latest.ps1
    ```
 
 4. register 成功后顺序复查三棵 registry tree 已落地，不要与注册命令并行执行：
@@ -138,7 +145,7 @@ pwsh .\scripts\register-com.ps1 -Action unregister -Execute -ConfirmToken unregi
 6. 验证完成后执行 unregister：
 
    ```powershell
-   pwsh .\scripts\register-com.ps1 -Action unregister -Execute -ConfirmToken unregister-current-user-2F0E4C8F -BackupDir .\artifacts\registration-validation\unregister-current-user
+   pwsh .\scripts\pme-unregister.ps1
    ```
 
 7. unregister 成功后再次顺序复查三棵 registry tree 已删除；若任一键残留，应先记录为 `Unregister` 失败，再检查 execution log 与 rollback 状态。
@@ -296,9 +303,10 @@ Follow-up:
 - 真实 Windows PowerShell 5 探测已确认 `New-Object -ComObject`、默认 `ICapeUtilities.Initialize()`、`Parameters.Count()`、`Parameters.Item(1).Specification` 与 `Terminate()` 均通过，先前 `0x80131165 Type library is not registered` 不再复现。
 - `DWSIM / COFE` 均已能发现、实例化并放置当前 PMC，也能连接 `Feed / Product` material streams。
 - COFE 关闭 case 时的 material object release warning 已消失；端口连接当前只读取 PME material object 的 `ICapeIdentification` 快照，并释放 PME 传入的 COM 入参。
+- 最新 COFE trace 已确认 `Validate()` 能在参数配置后返回 valid，`Calculate()` 能完成 native solve；剩余计算弹窗来自 Product material object 未被写回/flash，当前适配层已改为通过最小 `ICapeThermoMaterial` / `ICapeThermoEquilibriumRoutine` / `ICapeThermoMaterialObject` COM interop 调用 PME material object，待下一轮 COFE 复验确认。
 - DWSIM 已确认会按 `InitNew -> Initialize -> SimulationContext set -> identification set -> Ports -> Parameters` 消费 UnitOp；`ICapeUtilities` 前序 vtable 需要保持 DWSIM setter-only PIA 兼容顺序，同时保留 COFE late-bound `SimulationContext` getter。
 - DWSIM `GetParams()` 会直接把 `myparms.Item(i)` 返回对象 cast 成 `ICapeIdentification`、`ICapeParameterSpec`、type-specific spec 与 `ICapeParameter`；因此 parameter placeholder 本身必须继续实现 `ICapeParameterSpec` 与 `ICapeOptionParameterSpec`，不能只依赖 `ICapeParameter.Specification`。
 - 当前 COFE trace 中 `Validate()` 返回 "Required parameter `Flowsheet Json` is not configured." 属于 MVP 必填参数未配置时的预期 invalid 结果，不再归类为 placement 或 connection 失败。
 - DWSIM 日志中的 `AutomaticTranslation.AutomaticTranslator.SetMainWindow(...)` `NullReferenceException` 来自 DWSIM 主窗口 extender 初始化路径，发生在 RadishFlow UnitOp activation 之前；当前仅作为宿主侧启动噪声记录，不作为 RadishFlow CAPE-OPEN blocker。
 
-当前仍未闭环的是完整 `Validate / Calculate / Report` 成功路径：需要在 PME 中配置 `Flowsheet Json`、property package id 以及必要 companion 路径后，再触发正式 validate/calculate 并记录结果面。
+当前仍未闭环的是 COFE 完整 `Calculate / Report` 成功路径：需要重新注册最新构建后复验 Product material object 是否出现 `PublishProductMaterial | flash` 或 `PublishProductMaterial | manual-phases` trace，并确认 COFE 不再提示 outlet stream 未 flashed。

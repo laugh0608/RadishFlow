@@ -182,6 +182,14 @@ internal static class ContractTests
             typeof(ICapeUnitPort),
             ComInterfaceType.InterfaceIsDual,
             "ICapeUnitPort should stay aligned with the frozen dual IDL interface.");
+        AssertComInterfaceType(
+            typeof(ECapeRoot),
+            ComInterfaceType.InterfaceIsIDispatch,
+            "ECapeRoot should expose the standard CAPE-OPEN dispatch error surface.");
+        AssertComInterfaceType(
+            typeof(ECapeUser),
+            ComInterfaceType.InterfaceIsIDispatch,
+            "ECapeUser should expose the standard CAPE-OPEN dispatch error surface.");
         AssertSimulationContextUsesRawPointer();
 
         AssertComDefaultInterface(
@@ -220,6 +228,12 @@ internal static class ContractTests
         ContractAssert.True(
             typeof(ICapeUnitReport).IsAssignableFrom(typeof(RadishFlowCapeOpenUnitOperation)),
             "Unit operation should expose ICapeUnitReport as an optional PME activation/reporting surface.");
+        ContractAssert.True(
+            typeof(ECapeRoot).IsAssignableFrom(typeof(RadishFlowCapeOpenUnitOperation)),
+            "Unit operation should expose ECapeRoot for DWSIM CAPE-OPEN exception handling compatibility.");
+        ContractAssert.True(
+            typeof(ECapeUser).IsAssignableFrom(typeof(RadishFlowCapeOpenUnitOperation)),
+            "Unit operation should expose ECapeUser for DWSIM CAPE-OPEN exception handling compatibility.");
         ContractAssert.True(
             typeof(ICapeOptionParameterSpec).IsAssignableFrom(typeof(UnitOperationParameterSpecificationPlaceholder)),
             "Option parameter specs should expose ICapeOptionParameterSpec for PME parameter inspectors.");
@@ -637,6 +651,11 @@ internal static class ContractTests
 
         utilities.Initialize();
         ContractAssert.NotNull(utilities.Parameters, "Activation probe should read ICapeUtilities.Parameters.");
+        ContractAssert.Equal(0, utilities.Edit(), "ICapeUtilities.Edit should be a successful no-op until the MVP ships a custom PME editor.");
+
+        var capeUser = (ECapeUser)context.UnitOperation;
+        ContractAssert.Equal(0, capeUser.Code, "DWSIM-compatible ECapeUser surface should be readable from the unit object.");
+        ContractAssert.Equal(nameof(ICapeUtilities), capeUser.InterfaceName, "DWSIM-compatible ECapeUser surface should identify the default utility interface.");
 
         var unit = (ICapeUnit)context.UnitOperation;
         ContractAssert.NotNull(unit.Ports, "Activation probe should read ICapeUnit.Ports.");
@@ -656,9 +675,15 @@ internal static class ContractTests
         report.ProduceReport(ref reportContent);
         ContractAssert.Equal(context.UnitOperation.GetCalculationReportText(), reportContent, "ICapeUnitReport.ProduceReport should reuse the canonical calculation report text.");
 
+        var capeUserInterfacePointer = IntPtr.Zero;
         var reportInterfacePointer = IntPtr.Zero;
         try
         {
+            capeUserInterfacePointer = Marshal.GetComInterfaceForObject(context.UnitOperation, typeof(ECapeUser));
+            ContractAssert.True(
+                capeUserInterfacePointer != IntPtr.Zero,
+                "COM QueryInterface for ECapeUser should succeed for DWSIM CAPE-OPEN exception handling.");
+
             reportInterfacePointer = Marshal.GetComInterfaceForObject(context.UnitOperation, typeof(ICapeUnitReport));
             ContractAssert.True(
                 reportInterfacePointer != IntPtr.Zero,
@@ -666,6 +691,11 @@ internal static class ContractTests
         }
         finally
         {
+            if (capeUserInterfacePointer != IntPtr.Zero)
+            {
+                Marshal.Release(capeUserInterfacePointer);
+            }
+
             if (reportInterfacePointer != IntPtr.Zero)
             {
                 Marshal.Release(reportInterfacePointer);
@@ -2448,10 +2478,10 @@ internal static class ContractTests
         var replacementConnection = new ContractConnectedObject("Contract Feed B");
 
         context.FeedPort.Connect(firstConnection);
-        AssertConnectedObjectSnapshot(context.FeedPort.connectedObject, firstConnection.ComponentName, "Port should expose a connection snapshot.");
+        AssertConnectedObjectReference(context.FeedPort.connectedObject, firstConnection, "Port should expose the live connected object.");
 
         context.FeedPort.Connect(firstConnection);
-        AssertConnectedObjectSnapshot(context.FeedPort.connectedObject, firstConnection.ComponentName, "Reconnecting the same object should keep the connection snapshot.");
+        AssertConnectedObjectReference(context.FeedPort.connectedObject, firstConnection, "Reconnecting the same object should keep the live connected object.");
 
         var replacementError = ContractAssert.Throws<CapeBadInvocationOrderException>(
             () => context.FeedPort.Connect(replacementConnection),
@@ -2462,7 +2492,7 @@ internal static class ContractTests
         ContractAssert.Null(context.FeedPort.connectedObject, "Disconnect() should clear the connected object.");
 
         context.FeedPort.Connect(replacementConnection);
-        AssertConnectedObjectSnapshot(context.FeedPort.connectedObject, replacementConnection.ComponentName, "Port should accept a new connection after Disconnect().");
+        AssertConnectedObjectReference(context.FeedPort.connectedObject, replacementConnection, "Port should accept a new connection after Disconnect().");
 
         var portMutationError = ContractAssert.Throws<CapeInvalidArgumentException>(
             () => ((ICapeIdentification)context.FeedPort).ComponentName = "Mutated Feed",
@@ -2470,11 +2500,12 @@ internal static class ContractTests
         ContractAssert.Contains(portMutationError.Description, "does not allow ComponentName mutation", "Port immutability failures should stay explicit.");
     }
 
-    private static void AssertConnectedObjectSnapshot(object? connectedObject, string expectedName, string context)
+    private static void AssertConnectedObjectReference(object? connectedObject, ContractConnectedObject expectedObject, string context)
     {
         ContractAssert.NotNull(connectedObject, context);
+        ContractAssert.SameReference(expectedObject, connectedObject, context);
         var identification = (ICapeIdentification)connectedObject!;
-        ContractAssert.Equal(expectedName, identification.ComponentName, context);
+        ContractAssert.Equal(expectedObject.ComponentName, identification.ComponentName, context);
     }
 
     public static void ValidateBeforeInitialize_ReturnsInvalidAndEmptyReport(ContractTestContext context)
@@ -2548,6 +2579,10 @@ internal static class ContractTests
         ContractAssert.Equal(error.ErrorName, context.UnitOperation.GetCalculationReportDetailValue(UnitOperationCalculationReportDetailCatalog.Error), "Native failure report should preserve semantic error name.");
         ContractAssert.Equal("MissingEntity", context.UnitOperation.GetCalculationReportDetailValue(UnitOperationCalculationReportDetailCatalog.NativeStatus), "Native failure should expose native status.");
         ContractAssert.Null(context.UnitOperation.GetCalculationReportDetailValue(UnitOperationCalculationReportDetailCatalog.RequestedOperation), "Native failure should not invent requested operation.");
+        var capeUser = (ECapeUser)context.UnitOperation;
+        ContractAssert.Equal(error.Code, capeUser.Code, "Native failure should be exposed through the unit ECapeUser compatibility surface.");
+        ContractAssert.Equal(error.Description, capeUser.Description, "Native failure description should be exposed through ECapeUser for DWSIM error handling.");
+        ContractAssert.Equal(error.InterfaceName, capeUser.InterfaceName, "Native failure interface name should be exposed through ECapeUser for DWSIM error handling.");
         ContractAssert.Null(context.UnitOperation.LastCalculationResult, "Native failure should clear the last success result.");
         ContractAssert.NotNull(context.UnitOperation.LastCalculationFailure, "Native failure should preserve failure summary.");
     }

@@ -17,6 +17,7 @@ public sealed class UnitOperationPortPlaceholder : ICapeIdentification, ICapeUni
     private readonly Action? _onStateChanged;
     private readonly UnitOperationPortDefinition _definition;
     private UnitOperationConnectedObjectPlaceholder? _connectedObject;
+    private object? _connectedObjectReference;
 
     public UnitOperationPortPlaceholder(
         UnitOperationPortDefinition definition,
@@ -55,6 +56,7 @@ public sealed class UnitOperationPortPlaceholder : ICapeIdentification, ICapeUni
         get
         {
             EnsureOwnerAccess(nameof(direction));
+            UnitOperationComTrace.Write($"{ComponentName}.{InterfaceName}.{nameof(direction)}", "get-exit", _definition.Direction.ToString());
             return _definition.Direction;
         }
     }
@@ -64,6 +66,7 @@ public sealed class UnitOperationPortPlaceholder : ICapeIdentification, ICapeUni
         get
         {
             EnsureOwnerAccess(nameof(portType));
+            UnitOperationComTrace.Write($"{ComponentName}.{InterfaceName}.{nameof(portType)}", "get-exit", _definition.PortType.ToString());
             return _definition.PortType;
         }
     }
@@ -75,11 +78,19 @@ public sealed class UnitOperationPortPlaceholder : ICapeIdentification, ICapeUni
         get
         {
             EnsureOwnerAccess(nameof(connectedObject));
-            return _connectedObject;
+            UnitOperationComTrace.Write(
+                $"{ComponentName}.{InterfaceName}.{nameof(connectedObject)}",
+                "get-exit",
+                _connectedObject is null
+                    ? "null"
+                    : $"{_connectedObject.ComponentName}; liveReference={_connectedObjectReference is not null}");
+            return _connectedObjectReference ?? _connectedObject;
         }
     }
 
     public bool IsConnected => _connectedObject is not null;
+
+    internal object? ConnectedObjectReference => _connectedObjectReference ?? _connectedObject;
 
     public void Connect(object objectToConnect)
     {
@@ -93,39 +104,33 @@ public sealed class UnitOperationPortPlaceholder : ICapeIdentification, ICapeUni
                 CreateContext(nameof(Connect), objectToConnect));
         }
 
-        try
+        var connectedIdentification = ValidateConnectedObject(objectToConnect);
+        var connectedSnapshot = new UnitOperationConnectedObjectPlaceholder(
+            connectedIdentification.ComponentName,
+            connectedIdentification.ComponentDescription);
+        if (_connectedObject is not null)
         {
-            var connectedIdentification = ValidateConnectedObject(objectToConnect);
-            var connectedSnapshot = new UnitOperationConnectedObjectPlaceholder(
-                connectedIdentification.ComponentName,
-                connectedIdentification.ComponentDescription);
-            if (_connectedObject is not null)
+            if (string.Equals(_connectedObject.ComponentName, connectedSnapshot.ComponentName, StringComparison.Ordinal))
             {
-                if (string.Equals(_connectedObject.ComponentName, connectedSnapshot.ComponentName, StringComparison.Ordinal))
-                {
-                    UnitOperationComTrace.Write(
-                        $"{nameof(UnitOperationPortPlaceholder)}.{nameof(Connect)}",
-                        "already-connected",
-                        ComponentName);
-                    return;
-                }
-
-                throw new CapeBadInvocationOrderException(
-                    $"Port `{ComponentName}` is already connected. Disconnect it before replacing the connected object.",
-                    CreateContext(nameof(Connect), objectToConnect, requestedOperation: nameof(Disconnect)));
+                UnitOperationComTrace.Write(
+                    $"{nameof(UnitOperationPortPlaceholder)}.{nameof(Connect)}",
+                    "already-connected",
+                    ComponentName);
+                return;
             }
 
-            _connectedObject = connectedSnapshot;
-            _onStateChanged?.Invoke();
-            UnitOperationComTrace.Write(
-                $"{nameof(UnitOperationPortPlaceholder)}.{nameof(Connect)}",
-                "exit",
-                $"{ComponentName}->{connectedSnapshot.ComponentName}");
+            throw new CapeBadInvocationOrderException(
+                $"Port `{ComponentName}` is already connected. Disconnect it before replacing the connected object.",
+                CreateContext(nameof(Connect), objectToConnect, requestedOperation: nameof(Disconnect)));
         }
-        finally
-        {
-            ReleaseComArgument(objectToConnect, nameof(Connect));
-        }
+
+        _connectedObject = connectedSnapshot;
+        _connectedObjectReference = objectToConnect;
+        _onStateChanged?.Invoke();
+        UnitOperationComTrace.Write(
+            $"{nameof(UnitOperationPortPlaceholder)}.{nameof(Connect)}",
+            "exit",
+            $"{ComponentName}->{connectedSnapshot.ComponentName}");
     }
 
     public void Disconnect()
@@ -135,10 +140,14 @@ public sealed class UnitOperationPortPlaceholder : ICapeIdentification, ICapeUni
 
         if (_connectedObject is null)
         {
-            UnitOperationComTrace.Write($"{nameof(UnitOperationPortPlaceholder)}.{nameof(Disconnect)}", "already-disconnected", ComponentName);
+            UnitOperationComTrace.Write(
+                $"{nameof(UnitOperationPortPlaceholder)}.{nameof(Disconnect)}",
+                "already-disconnected",
+                ComponentName);
             return;
         }
 
+        ReleaseConnectedObjectReference(nameof(Disconnect));
         _connectedObject = null;
         _onStateChanged?.Invoke();
         UnitOperationComTrace.Write($"{nameof(UnitOperationPortPlaceholder)}.{nameof(Disconnect)}", "exit", ComponentName);
@@ -162,6 +171,7 @@ public sealed class UnitOperationPortPlaceholder : ICapeIdentification, ICapeUni
             $"{nameof(UnitOperationPortPlaceholder)}.{nameof(ReleaseConnectedObject)}",
             "enter",
             ComponentName);
+        ReleaseConnectedObjectReference(nameof(ReleaseConnectedObject));
         _connectedObject = null;
     }
 
@@ -184,26 +194,42 @@ public sealed class UnitOperationPortPlaceholder : ICapeIdentification, ICapeUni
         return identifiedObject;
     }
 
-    private void ReleaseComArgument(object objectToRelease, string operation)
+    private void ReleaseConnectedObjectReference(string operation)
+    {
+        if (_connectedObjectReference is null)
+        {
+            return;
+        }
+
+        var objectToRelease = _connectedObjectReference;
+        _connectedObjectReference = null;
+        ReleaseComReference(objectToRelease, operation);
+    }
+
+    private void ReleaseComReference(object objectToRelease, string operation)
     {
         try
         {
             if (!Marshal.IsComObject(objectToRelease))
             {
+                UnitOperationComTrace.Write(
+                    $"{nameof(UnitOperationPortPlaceholder)}.{operation}",
+                    "cleared-connected-reference",
+                    ComponentName);
                 return;
             }
 
 #pragma warning disable CA1416 // UnitOp.Mvp COM activation is Windows-only.
-            var releasedCount = Marshal.FinalReleaseComObject(objectToRelease);
+            var remaining = Marshal.ReleaseComObject(objectToRelease);
 #pragma warning restore CA1416
             UnitOperationComTrace.Write(
                 $"{nameof(UnitOperationPortPlaceholder)}.{operation}",
-                "released-com-argument",
-                $"{ComponentName}; remaining={releasedCount}");
+                "released-connected-reference",
+                $"{ComponentName}; remaining={remaining}");
         }
         catch (Exception error)
         {
-            UnitOperationComTrace.Exception($"{nameof(UnitOperationPortPlaceholder)}.{operation}.ReleaseComArgument", error);
+            UnitOperationComTrace.Exception($"{nameof(UnitOperationPortPlaceholder)}.{operation}.ReleaseComReference", error);
         }
     }
 

@@ -92,6 +92,64 @@ public static class RfNativeLibraryLoader
 
             yield return fullPath;
         }
+
+        foreach (var candidate in EnumerateRepositoryNativeLibraryDirectories(assembly))
+        {
+            var fullPath = Path.GetFullPath(candidate);
+            if (!seen.Add(fullPath))
+            {
+                continue;
+            }
+
+            yield return fullPath;
+        }
+    }
+
+    private static IEnumerable<string> EnumerateRepositoryNativeLibraryDirectories(Assembly assembly)
+    {
+        foreach (var anchor in new[]
+        {
+            AppContext.BaseDirectory,
+            Path.GetDirectoryName(assembly.Location),
+            Environment.CurrentDirectory,
+        })
+        {
+            var repositoryRoot = TryFindRepositoryRoot(anchor);
+            if (repositoryRoot is null)
+            {
+                continue;
+            }
+
+            yield return Path.Combine(repositoryRoot, "target", "debug");
+            yield return Path.Combine(repositoryRoot, "target", "release");
+        }
+    }
+
+    private static string? TryFindRepositoryRoot(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            return null;
+        }
+
+        var current = new DirectoryInfo(Path.GetFullPath(path));
+        if (File.Exists(current.FullName))
+        {
+            current = current.Parent;
+        }
+
+        while (current is not null)
+        {
+            if (File.Exists(Path.Combine(current.FullName, "Cargo.toml")) &&
+                Directory.Exists(Path.Combine(current.FullName, "adapters", "dotnet-capeopen")))
+            {
+                return current.FullName;
+            }
+
+            current = current.Parent;
+        }
+
+        return null;
     }
 
     private static string GetPlatformLibraryFileName()
