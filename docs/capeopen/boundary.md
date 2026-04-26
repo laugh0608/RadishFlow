@@ -1,6 +1,6 @@
 # CAPE-OPEN Boundary
 
-更新时间：2026-04-25
+更新时间：2026-04-26
 
 ## 边界目标
 
@@ -148,10 +148,11 @@ Rust 与 `.NET 10` 之间的正式边界应保持简单稳定：
 
 - 先前的 hard crash、`0x80131165`、COFE material object release warning 与 DWSIM vtable/parameter-spec 卡点均已推进到明确修正点，并由用户侧 trace 复验确认。
 - `DWSIM / COFE` 当前均已能发现、实例化、放置当前 PMC，并连接 `Feed / Product` material streams。
+- `DWSIM / COFE` 当前均已能在 water/ethanol 复验样例下完成 `Validate / Calculate` 并收敛；COFE 侧已确认 Product material 写回、CAPE-OPEN 1.1 `CalcEquilibrium(TP)` 与入口 Feed material 覆盖路径共同消除了先前的 outlet not flashed 与 mass balance 警告。
 - `ICapeUtilities.SimulationContext` setter 必须继续保持 raw `IntPtr`，避免 DWSIM 在进入 setter 前触发 CLR interface marshaler；`ICapeUtilities` 前序 vtable 必须继续保持 DWSIM setter-only PIA 兼容顺序：`parameters get -> simulationContext set -> Initialize -> Terminate -> Edit`。
 - COFE 需要的 `SimulationContext` getter 继续作为 `Edit` 之后同 `DispId(2)` 的 late-bound 兼容面保留；该 getter 返回非空 placeholder 只是 activation 兼容面，不代表实现完整 COSE utilities。
 - 对照本地 DWSIM `CapeOpenUO.GetParams()`，DWSIM 直接把 `myparms.Item(i)` 返回对象 cast 成 `ICapeIdentification`、`ICapeParameterSpec`、type-specific spec 与 `ICapeParameter`；因此 parameter placeholder 本身必须继续实现 `ICapeParameterSpec` 与 `ICapeOptionParameterSpec`，并继续保留标准 `Specification` 对象入口。
-- COFE trace 中 `Validate()` 返回 "Required parameter `Flowsheet Json` is not configured." 属于 MVP 必填参数未配置时的预期 invalid 结果，不再视为 discovery、activation、placement 或 connection blocker。
+- COFE trace 中 `Validate()` 返回 "Required parameter `Flowsheet Json` is not configured." 属于 MVP 必填参数未配置时的预期 invalid 结果，不再视为 discovery、activation、placement 或 connection blocker；参数完整配置后 `Validate()` 与 `Calculate()` 已完成真实复验。
 - DWSIM 日志中的 `AutomaticTranslation.AutomaticTranslator.SetMainWindow(...)` `NullReferenceException` 属于 DWSIM 主窗口 extender 初始化路径，发生在 RadishFlow UnitOp activation 前；当前只记录为宿主侧启动噪声。
 
 当前允许推进的内容：

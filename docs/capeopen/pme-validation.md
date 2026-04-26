@@ -1,6 +1,6 @@
 # CAPE-OPEN PME 人工验证说明
 
-更新时间：2026-04-25
+更新时间：2026-04-26
 
 ## 文档目的
 
@@ -58,7 +58,7 @@ dotnet build .\adapters\dotnet-capeopen\RadishFlow.CapeOpen.UnitOp.Mvp.SampleHos
 真实 PME 前还应先运行最小 contract / sample host：
 
 ```powershell
-.\adapters\dotnet-capeopen\RadishFlow.CapeOpen.UnitOp.Mvp.ContractTests\bin\Debug\net10.0\RadishFlow.CapeOpen.UnitOp.Mvp.ContractTests.exe --native-lib-dir D:\Code\RadishFlow\target\debug
+.\adapters\dotnet-capeopen\RadishFlow.CapeOpen.UnitOp.Mvp.ContractTests\bin\Debug\net10.0-windows7.0\RadishFlow.CapeOpen.UnitOp.Mvp.ContractTests.exe --native-lib-dir D:\Code\RadishFlow\target\debug
 .\adapters\dotnet-capeopen\RadishFlow.CapeOpen.UnitOp.Mvp.SampleHost\bin\Debug\net10.0\RadishFlow.CapeOpen.UnitOp.Mvp.SampleHost.exe --native-lib-dir D:\Code\RadishFlow\target\debug
 ```
 
@@ -295,18 +295,18 @@ Follow-up:
 
 ## 当前判断
 
-截至 2026-04-26，`SampleHost` 的 PME-like 薄宿主入口、`Registration` execute 门控、脚本化安装/反安装运行手册，以及真实 `DWSIM / COFE` 人工复验已经把 discovery、activation、placement 与端口连接主路径推进到阶段性闭环。
+截至 2026-04-26，`SampleHost` 的 PME-like 薄宿主入口、`Registration` execute 门控、脚本化安装/反安装运行手册，以及真实 `DWSIM / COFE` 人工复验已经把 discovery、activation、placement、端口连接与最小 calculate 主路径推进到阶段性闭环。
 
 当前已确认：
 
 - `IDL -> TLB -> ComHostTypeLibrary -> TypeLib 注册` 链路已具备执行路径，并已补齐 `Interop` / `UnitOp.Mvp` 程序集级 TLB identity 与主要 COM-visible class 的默认 interface 口径。
 - 真实 Windows PowerShell 5 探测已确认 `New-Object -ComObject`、默认 `ICapeUtilities.Initialize()`、`Parameters.Count()`、`Parameters.Item(1).Specification` 与 `Terminate()` 均通过，先前 `0x80131165 Type library is not registered` 不再复现。
-- `DWSIM / COFE` 均已能发现、实例化并放置当前 PMC，也能连接 `Feed / Product` material streams。
-- COFE 关闭 case 时的 material object release warning 已消失；端口连接当前只读取 PME material object 的 `ICapeIdentification` 快照，并释放 PME 传入的 COM 入参。
-- 最新 COFE trace 已确认 `Validate()` 能在参数配置后返回 valid，`Calculate()` 能完成 native solve；剩余计算弹窗来自 Product material object 未被写回/flash，当前适配层已改为通过最小 `ICapeThermoMaterial` / `ICapeThermoEquilibriumRoutine` / `ICapeThermoMaterialObject` COM interop 调用 PME material object，待下一轮 COFE 复验确认。
+- `DWSIM / COFE` 均已能发现、实例化并放置当前 PMC，也能连接 `Feed / Product` material streams；water/ethanol 复验样例下均已能完成收敛。
+- COFE 关闭 case 时的 material object release warning 已消失；端口连接会在连接期间保留 live PME material object 引用，并在断开/终止时释放本 UnitOp 持有的 RCW。
+- 最新 COFE trace 已确认 `Validate()` 能在参数配置后返回 valid，`Calculate()` 能完成 native solve、Product material 写回和 CAPE-OPEN 1.1 `CalcEquilibrium(TP)`；后续 mass balance 红字已通过计算前读取 connected `Feed` material 并临时覆盖 native boundary input 解决。
 - DWSIM 已确认会按 `InitNew -> Initialize -> SimulationContext set -> identification set -> Ports -> Parameters` 消费 UnitOp；`ICapeUtilities` 前序 vtable 需要保持 DWSIM setter-only PIA 兼容顺序，同时保留 COFE late-bound `SimulationContext` getter。
 - DWSIM `GetParams()` 会直接把 `myparms.Item(i)` 返回对象 cast 成 `ICapeIdentification`、`ICapeParameterSpec`、type-specific spec 与 `ICapeParameter`；因此 parameter placeholder 本身必须继续实现 `ICapeParameterSpec` 与 `ICapeOptionParameterSpec`，不能只依赖 `ICapeParameter.Specification`。
 - 当前 COFE trace 中 `Validate()` 返回 "Required parameter `Flowsheet Json` is not configured." 属于 MVP 必填参数未配置时的预期 invalid 结果，不再归类为 placement 或 connection 失败。
 - DWSIM 日志中的 `AutomaticTranslation.AutomaticTranslator.SetMainWindow(...)` `NullReferenceException` 来自 DWSIM 主窗口 extender 初始化路径，发生在 RadishFlow UnitOp activation 之前；当前仅作为宿主侧启动噪声记录，不作为 RadishFlow CAPE-OPEN blocker。
 
-当前仍未闭环的是 COFE 完整 `Calculate / Report` 成功路径：需要重新注册最新构建后复验 Product material object 是否出现 `PublishProductMaterial | flash` 或 `PublishProductMaterial | manual-phases` trace，并确认 COFE 不再提示 outlet stream 未 flashed。
+当前仍未完成的是把本次真实 `DWSIM / COFE` 成功复验整理为正式 `examples/pme-validation/` 记录，并在后续移除或开关化 `artifacts/pme-trace` 临时诊断输出。

@@ -9,7 +9,8 @@
 当前已确认的宿主兼容性现状：
 
 - `DWSIM / COFE` 已能发现当前 PMC；先前 Windows PowerShell 5 晚绑定 `IDispatch` 探测中的 `0x80131165 Type library is not registered` 当前已不再复现
-- `DWSIM / COFE` 当前均已能正常放置 unit，并连接 `Feed / Product` material streams；COFE 关闭 case 时的 material object release warning 已消失
+- `DWSIM / COFE` 当前均已能正常放置 unit，并连接 `Feed / Product` material streams；COFE 关闭 case 时的 material object release warning 已消失，water/ethanol 复验样例下已能完成 `Validate / Calculate` 并收敛
+- COFE Product material 写回当前优先走最小 `ICapeThermoMaterial` / `ICapeThermoEquilibriumRoutine`，计算前会在可安全读取时用 connected `Feed` material 的 `temperature / pressure / totalFlow / fraction` 临时覆盖 native boundary input，避免自包含 flowsheet JSON 与 PME 入口物料不一致导致 mass balance 警告
 - DWSIM 当前真实消费顺序已收敛为 `InitNew -> Initialize -> SimulationContext set -> identification set -> Ports -> Parameters`；因此 `ICapeUtilities` vtable 前序必须保持 `Parameters get -> SimulationContext set -> Initialize -> Terminate -> Edit`，并把 COFE 需要的 `SimulationContext` getter 保留为 `Edit` 之后的同 `DispId(2)` late-bound getter
 - 对照本地 DWSIM `CapeOpenUO.GetParams()` 后，当前已确认 DWSIM 会把 `myparms.Item(i)` 返回的参数对象本身直接 cast 成 `ICapeParameterSpec`、type-specific spec 与 `ICapeParameter`；因此 parameter placeholder 本身也实现 `ICapeParameterSpec` 与 `ICapeOptionParameterSpec`，同时继续保留标准 `Specification` 对象入口
 - 当前 `Validate()` 在未配置 `Flowsheet Json` 等 MVP 必填参数时返回 invalid 是预期行为，不再归类为 discovery、activation、placement 或 port connection 失败
@@ -20,7 +21,7 @@
 - `IPersistStreamInit`、`IPersistStorage` 与 `IOleObject` 当前仍是 PME canvas / OLE 探测所需的最小 no-op 兼容面，不代表实现真实工程文件持久化、OLE 可视嵌入或 in-place activation
 - 主要 CAPE-OPEN automation 接口当前已对齐为 IDL/TLB 中声明的 `dual` 形状；`ICapeUtilities.SimulationContext` setter 继续使用 raw `IntPtr`，避免 PME context 对象在进入方法体前触发 CLR interface marshaler
 - 当前仓库并不内置 `MIDL` 工具链；后续仍需继续把 `IDL -> TLB` 生成脚本化，而不是长期依赖手工本机构建
-- 截至 2026-04-26，`Registration` dry-run 已能自动解析真实 `UnitOp.Mvp` 输出目录中的 comhost / TLB、校验 `TypeLib GUID/version`，并在 execute 模式下规划 `RegisterTypeLib(ForUser)` / `UnRegisterTypeLib(ForUser)`；真实 Windows PowerShell 5 复验已确认默认 `ICapeUtilities`、`Parameters.Count()` 和 parameter specification 可晚绑定调用，用户侧真实 `DWSIM / COFE` 复验也已确认 discovery、placement 与 port connection 主路径通过
+- 截至 2026-04-26，`Registration` dry-run 已能自动解析真实 `UnitOp.Mvp` 输出目录中的 comhost / TLB、校验 `TypeLib GUID/version`，并在 execute 模式下规划 `RegisterTypeLib(ForUser)` / `UnRegisterTypeLib(ForUser)`；真实 Windows PowerShell 5 复验已确认默认 `ICapeUtilities`、`Parameters.Count()` 和 parameter specification 可晚绑定调用，用户侧真实 `DWSIM / COFE` 复验也已确认 discovery、placement、port connection 与最小 calculate 主路径通过
 - 同日真实探测又确认：`pwsh` 下的 `0x800080A5` 来自宿主进程已预加载 `.NET 9.0.10`，与当前 PMC 目标运行时 `.NET 10.0.0` 不兼容；因此后续 native / classic COM 探测应优先使用 `Windows PowerShell 5` 或其他非预加载 .NET 宿主
 - 当前也确认：`ICapeUnit` 可通过 `QueryInterface` 返回 `S_OK`，但 PowerShell 默认 late binding 只代表默认 `ICapeUtilities` 面；`Ports / Validate / Calculate` 仍应以真实 PME 或强类型宿主路径复验为准
 
@@ -43,7 +44,7 @@
 - COFE 复验显示它会在 `SimulationContext get` 返回后继续 native 消费该对象；当前 placeholder 又补出最小 `ICapeSimulationContext` marker、`ICapeCOSEUtilities` named values 与 `ICapeDiagnostic` no-op logging 面，并已同步 IDL/TLB 真相源，用于覆盖 COFE 对 simulation context 的早期 QI / IDispatch 探测
 - 后续复验显示 COFE 仍停在 `SimulationContext get-exit` 后且未进入 COSE/diagnostic 方法；当前 placeholder 又补出最小 `ICapeMaterialTemplateSystem`，并提升为公开 COM-visible coclass 写入 IDL/TLB，用于覆盖 COFE 只做早期 QI / typeinfo 探测的路径
 - 再次复验后 COFE 仍停在 `SimulationContext get-exit` 后且未进入任何 placeholder 方法；当前 `ICapeUtilities.SimulationContext` 仍在 managed 侧使用 raw `IntPtr`，但 getter/setter 已显式标注 `IDispatch` marshalling，使 native COM 侧签名保持与 IDL 的 `IDispatch** / IDispatch*` 一致
-- 用户侧随后确认 COFE 已可放置 unit 并连接 material streams；当前 setter 又撤回显式 `IDispatch` marshalling，仅 getter 保持 `IDispatch` 返回，以兼顾 COFE getter 返回点和 DWSIM setter 侧 raw pointer 路径。端口连接现在只保存 connected object 的 identification 快照，不再长期持有 PME material COM object 引用
+- 用户侧随后确认 COFE 已可放置 unit 并连接 material streams；当前 setter 又撤回显式 `IDispatch` marshalling，仅 getter 保持 `IDispatch` 返回，以兼顾 COFE getter 返回点和 DWSIM setter 侧 raw pointer 路径。端口连接会保留 connected object 的 identification 快照与 live object 引用，后者只用于连接期间的 material 读写，并在 Disconnect / Terminate 时释放本 UnitOp 持有的 COM RCW
 - 最小标准 `IPersistStreamInit` 实现：`GetClassID` 返回当前 Unit Operation CLSID，`IsDirty` 返回 `S_FALSE`，`InitNew / Load / Save / GetSizeMax` 以无状态 no-op 返回 `S_OK`；`Load / Save` 在 managed 签名中接收 raw `IntPtr` stream，以避免当前不消费 stream 时仍触发 CLR COM interface marshaler
 - 最小标准 `IPersistStorage` 实现：复用同一个 `GetClassID / IsDirty` 口径，`InitNew / Load / Save / SaveCompleted / HandsOffStorage` 以无状态 no-op 返回 `S_OK`
 - 最小标准 `IOleObject` 实现：覆盖 `SetClientSite / GetClientSite / SetHostNames / DoVerb / GetUserClassID / GetUserType / SetExtent / GetExtent / GetMiscStatus / Close` 等 OLE container 探测入口；当前不实现真实 inplace activation、verb 枚举、clipboard data 或 advise sink
@@ -155,7 +156,7 @@
 
 ```powershell
 dotnet build .\adapters\dotnet-capeopen\RadishFlow.CapeOpen.UnitOp.Mvp.ContractTests\RadishFlow.CapeOpen.UnitOp.Mvp.ContractTests.csproj -v minimal
-.\adapters\dotnet-capeopen\RadishFlow.CapeOpen.UnitOp.Mvp.ContractTests\bin\Debug\net10.0\RadishFlow.CapeOpen.UnitOp.Mvp.ContractTests.exe --native-lib-dir D:\Code\RadishFlow\target\debug
+.\adapters\dotnet-capeopen\RadishFlow.CapeOpen.UnitOp.Mvp.ContractTests\bin\Debug\net10.0-windows7.0\RadishFlow.CapeOpen.UnitOp.Mvp.ContractTests.exe --native-lib-dir D:\Code\RadishFlow\target\debug
 ```
 
 最小外部 host 样例运行示例：
