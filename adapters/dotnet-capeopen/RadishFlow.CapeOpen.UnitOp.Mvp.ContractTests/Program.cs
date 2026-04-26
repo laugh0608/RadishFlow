@@ -175,6 +175,10 @@ internal static class ContractTests
             ComInterfaceType.InterfaceIsDual,
             "ICapeParameterSpec should stay aligned with the frozen dual IDL interface.");
         AssertComInterfaceType(
+            typeof(ICapeOptionParameterSpec),
+            ComInterfaceType.InterfaceIsDual,
+            "ICapeOptionParameterSpec should stay aligned with the frozen dual IDL interface.");
+        AssertComInterfaceType(
             typeof(ICapeUnitPort),
             ComInterfaceType.InterfaceIsDual,
             "ICapeUnitPort should stay aligned with the frozen dual IDL interface.");
@@ -197,6 +201,10 @@ internal static class ContractTests
             typeof(ICapeParameter),
             "Parameter placeholder COM default interface should expose ICapeParameter for value/specification late binding.");
         AssertComDefaultInterface(
+            typeof(UnitOperationParameterSpecificationPlaceholder),
+            typeof(ICapeParameterSpec),
+            "Parameter spec placeholder COM default interface should expose ICapeParameterSpec before type-specific spec interfaces.");
+        AssertComDefaultInterface(
             typeof(UnitOperationPortPlaceholder),
             typeof(ICapeUnitPort),
             "Port placeholder COM default interface should expose ICapeUnitPort for connection late binding.");
@@ -212,6 +220,15 @@ internal static class ContractTests
         ContractAssert.True(
             typeof(ICapeUnitReport).IsAssignableFrom(typeof(RadishFlowCapeOpenUnitOperation)),
             "Unit operation should expose ICapeUnitReport as an optional PME activation/reporting surface.");
+        ContractAssert.True(
+            typeof(ICapeOptionParameterSpec).IsAssignableFrom(typeof(UnitOperationParameterSpecificationPlaceholder)),
+            "Option parameter specs should expose ICapeOptionParameterSpec for PME parameter inspectors.");
+        ContractAssert.True(
+            typeof(ICapeParameterSpec).IsAssignableFrom(typeof(UnitOperationParameterPlaceholder)),
+            "Parameter placeholders should directly expose ICapeParameterSpec for DWSIM-style parameter enumeration.");
+        ContractAssert.True(
+            typeof(ICapeOptionParameterSpec).IsAssignableFrom(typeof(UnitOperationParameterPlaceholder)),
+            "CAPE_OPTION parameter placeholders should directly expose ICapeOptionParameterSpec for DWSIM-style parameter enumeration.");
         ContractAssert.True(
             typeof(IPersistStreamInit).IsAssignableFrom(typeof(RadishFlowCapeOpenUnitOperation)),
             "Unit operation should expose IPersistStreamInit for PME canvas object persistence probing.");
@@ -236,23 +253,23 @@ internal static class ContractTests
 
     private static void AssertSimulationContextUsesRawPointer()
     {
-        var simulationContext = typeof(ICapeUtilities).GetProperty(nameof(ICapeUtilities.SimulationContext));
-        ContractAssert.NotNull(
-            simulationContext,
-            "ICapeUtilities should expose SimulationContext.");
-        ContractAssert.Equal(
-            typeof(IntPtr),
-            simulationContext!.PropertyType,
-            "ICapeUtilities.SimulationContext should use raw IntPtr in managed code to avoid pre-method interface marshaling.");
-        AssertMarshalAs(
-            simulationContext.GetMethod!.ReturnParameter,
-            UnmanagedType.IDispatch,
-            "ICapeUtilities.SimulationContext getter should expose an IDispatch pointer for native PME callers.");
-
-        var setter = simulationContext.SetMethod;
+        var utilitiesMethods = typeof(ICapeUtilities).GetMethods();
+        var setter = utilitiesMethods.SingleOrDefault(static method => method.Name == "set_SimulationContext");
+        var getter = utilitiesMethods.SingleOrDefault(static method => method.Name == "get_SimulationContext");
         ContractAssert.NotNull(
             setter,
-            "ICapeUtilities.SimulationContext should expose a setter.");
+            "ICapeUtilities should expose a SimulationContext setter.");
+        ContractAssert.NotNull(
+            getter,
+            "ICapeUtilities should keep a SimulationContext getter for late-bound native PME callers.");
+        ContractAssert.SequenceEqual(
+            ["get_Parameters", "set_SimulationContext", "Initialize", "Terminate", "Edit", "get_SimulationContext"],
+            utilitiesMethods.Select(static method => method.Name).ToArray(),
+            "ICapeUtilities vtable order should match DWSIM's setter-only CAPE-OPEN PIA before exposing the COFE-compatible getter.");
+        AssertMarshalAs(
+            getter!.ReturnParameter,
+            UnmanagedType.IDispatch,
+            "ICapeUtilities.SimulationContext getter should expose an IDispatch pointer for native PME callers.");
         var setterParameter = setter!.GetParameters().Single();
         ContractAssert.Equal(
             typeof(IntPtr),
@@ -363,8 +380,10 @@ internal static class ContractTests
         AssertRegistrationCategory(dryRunDescriptor, "CAPE-OPEN Object", CapeOpenCategoryIds.CapeOpenObject);
         AssertRegistrationCategory(dryRunDescriptor, "CAPE-OPEN Unit Operation", CapeOpenCategoryIds.UnitOperation);
         AssertRegistrationCategory(dryRunDescriptor, "CAPE-OPEN Consumes Thermodynamics", CapeOpenCategoryIds.ConsumesThermodynamics);
+        AssertRegistrationCategory(dryRunDescriptor, "CAPE-OPEN Supports Thermodynamics 1.0", CapeOpenCategoryIds.SupportsThermodynamics10);
         AssertRegistrationCategory(dryRunDescriptor, "CAPE-OPEN Supports Thermodynamics 1.1", CapeOpenCategoryIds.SupportsThermodynamics11);
         AssertRegistryCategoryPlan(dryRunDescriptor, CapeOpenCategoryIds.ConsumesThermodynamics);
+        AssertRegistryCategoryPlan(dryRunDescriptor, CapeOpenCategoryIds.SupportsThermodynamics10);
         AssertRegistryCategoryPlan(dryRunDescriptor, CapeOpenCategoryIds.SupportsThermodynamics11);
         ContractAssert.True(
             dryRunDescriptor.ImplementedInterfaces.Any(static implementedInterface =>
@@ -590,8 +609,8 @@ internal static class ContractTests
         ContractAssert.Contains(identity.ComponentDescription, "CAPE-OPEN", "Activation probe should read ICapeIdentification.ComponentDescription.");
 
         var utilities = (ICapeUtilities)context.UnitOperation;
-        utilities.SimulationContext = new IntPtr(1);
-        var simulationContextPointer = utilities.SimulationContext;
+        utilities.set_SimulationContext(new IntPtr(1));
+        var simulationContextPointer = utilities.get_SimulationContext();
         ContractAssert.True(
             simulationContextPointer != IntPtr.Zero,
             "Activation probe should return a non-null SimulationContext placeholder before a real PME context is consumed.");
@@ -885,6 +904,15 @@ internal static class ContractTests
             var specification = (ICapeParameterSpec)parameter.Specification;
             ContractAssert.Equal(definition.SpecificationType, specification.Type, "Runtime parameter spec type should match the frozen catalog definition.");
             ContractAssert.SequenceEqual(definition.SpecificationDimensionality, specification.Dimensionality, "Runtime parameter dimensionality should match the frozen catalog definition.");
+            if (definition.SpecificationType == CapeParamType.CAPE_OPTION)
+            {
+                var optionSpecification = (ICapeOptionParameterSpec)parameter.Specification;
+                ContractAssert.Equal(definition.DefaultValue ?? string.Empty, optionSpecification.DefaultValue, "Option parameter spec default value should be non-null for COM hosts.");
+                ContractAssert.False(optionSpecification.RestrictedToList, "MVP option parameter specs should accept unrestricted strings.");
+                ContractAssert.SequenceEqual(Array.Empty<string>(), (string[])optionSpecification.OptionList, "Unrestricted option parameter specs should expose an empty option list.");
+                var optionValidationMessage = string.Empty;
+                ContractAssert.True(optionSpecification.Validate("candidate", ref optionValidationMessage), "Unrestricted option specs should accept arbitrary string candidates.");
+            }
         }
 
         foreach (var port in context.UnitOperation.Ports)
@@ -900,6 +928,26 @@ internal static class ContractTests
             context.FlowsheetParameter,
             context.ParameterCollection.Item(1),
             "Parameter collection should support 1-based numeric lookup.");
+        var dwsimStyleParameter = context.ParameterCollection.Item(1);
+        var dwsimStyleIdentification = (ICapeIdentification)dwsimStyleParameter;
+        var dwsimStyleSpecification = (ICapeParameterSpec)dwsimStyleParameter;
+        var dwsimStyleOptionSpecification = (ICapeOptionParameterSpec)dwsimStyleParameter;
+        var dwsimStyleCapeParameter = (ICapeParameter)dwsimStyleParameter;
+        ContractAssert.Equal(
+            UnitOperationParameterCatalog.FlowsheetJson.Name,
+            dwsimStyleIdentification.ComponentName,
+            "DWSIM-style parameter enumeration should read ICapeIdentification from the Item(i) result itself.");
+        ContractAssert.Equal(
+            UnitOperationParameterCatalog.FlowsheetJson.SpecificationType,
+            dwsimStyleSpecification.Type,
+            "DWSIM-style parameter enumeration should read ICapeParameterSpec from the Item(i) result itself.");
+        ContractAssert.False(
+            dwsimStyleOptionSpecification.RestrictedToList,
+            "DWSIM-style option parameter inspection should read ICapeOptionParameterSpec from the Item(i) result itself.");
+        ContractAssert.Equal(
+            UnitOperationParameterCatalog.FlowsheetJson.Mode,
+            dwsimStyleCapeParameter.Mode,
+            "DWSIM-style parameter enumeration should read ICapeParameter from the Item(i) result itself.");
         ContractAssert.SameReference(
             context.PayloadPathParameter,
             context.ParameterCollection.Item(4.0d),

@@ -9,5 +9,7 @@ public static class CapeOpenCategoryIds
 
     public const string ConsumesThermodynamics = "4150C28A-EE06-403F-A871-87AFEC38A249";
 
+    public const string SupportsThermodynamics10 = "0D562DC8-EA8E-4210-AB39-B66513C0CD09";
+
     public const string SupportsThermodynamics11 = "4667023A-5A8E-4CCA-AB6D-9D78C5112FED";
 }

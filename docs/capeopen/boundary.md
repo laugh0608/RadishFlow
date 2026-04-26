@@ -144,23 +144,15 @@ Rust 与 `.NET 10` 之间的正式边界应保持简单稳定：
 - 当前已补入最小 `ICapeUnitReport` 接口、主类实现与 IDL/TLB 描述，`ProduceReport(ref string)` 复用既有 `GetCalculationReportText()`，用于加固 PME activation 阶段可能读取 report 的调用面
 - 当前新的未完成项已从“补齐剩余 typelib 兼容细节”进一步收口为“重新完成 `DWSIM + COFE` 人工复验，并按真实调用点分类记录失败”
 
-同日后续 `DWSIM / COFE` dump 采集进一步改变了 M5 兼容性判断：
+真实 `DWSIM / COFE` 复验进一步改变了 M5 兼容性判断：
 
-- `DWSIM` 在添加组件到 flowsheet 画布时仍只进入 `IPersistStreamInit.InitNew()` 并正常返回，随后在下一个 RadishFlow 托管成员调用前崩溃
-- `DWSIM.exe` dump 显示故障地址位于 `.NET 10` `coreclr.dll+0x3b745`，同进程同时加载 `.NET Framework 4.x clr.dll/mscoree/mscoreei` 与 `.NET 10 coreclr/hostfxr/hostpolicy/comhost`
-- `COFE.exe` dump 显示故障地址位于 `COFE.exe+0xbc5ffe`，访问地址为 `0x10`，trace 仍只到 `RadishFlowCapeOpenUnitOperation` constructor exit
-- 这些证据说明当前首要风险已不再是 discovery 注册树、TypeLib late binding 或继续缺少某个普通 optional interface，而是 `.NET 10 in-proc comhost/CoreCLR` 被加载进 PME 进程后的承载兼容性，或 PME native 侧在 activation 返回后对接口指针 / HRESULT / host object 状态的处理路径崩溃
-- 用户安装 `dotnet-dump` 后复读 DWSIM dump，进一步确认崩溃线程托管栈停在 `System.StubHelpers.InterfaceMarshaler.ConvertToManaged -> IL_STUB_COMtoCLR -> ComMethodFrame`，指向 COM-to-CLR stub 进入方法体前的接口参数转换
-- 当前先允许一个小范围修正：对 MVP no-op persistence 中不消费的 `IPersistStreamInit.Load / Save` stream 参数，在 managed 签名中保留 raw `IntPtr`，避免触发 CLR `IStream` interface marshaler；该修正不改变 Rust/Core 边界，也不引入真实持久化语义
-- 用户侧复验 raw stream 后，DWSIM 仍停在同一 `InterfaceMarshaler.ConvertToManaged` 栈；当前进一步发现 C# automation 接口仍是 `InterfaceIsIDispatch`，而冻结 IDL/TLB 已声明为 `dual`，并且 `ICapeUtilities.SimulationContext` setter 仍会把 PME 传入的 `IDispatch*` 转成托管对象。当前已把主要 CAPE-OPEN automation 接口对齐为 `InterfaceIsDual`，并把 `SimulationContext` managed 签名改成 raw `IntPtr` 接收，不把 PME context 对象带入 Rust/Core 边界
-- 用户侧复验 dual/raw `SimulationContext` 后，DWSIM 已不再闪退并推进到 `SimulationContext set-enter`，但 setter 内部曾因持有宿主指针触发 `NullReferenceException`，导致组件未添加到画布；COFE 则先调用 `SimulationContext get`，收到 null context 后仍在 native 侧闪退。当前因此进一步把 setter 收口为 no-op 记录，不保存/释放宿主指针；getter 在缺少真实 context 时返回非空 placeholder `IDispatch*`，作为 PME activation 兼容探测面，不代表实现了完整 COSE utilities
-- 用户侧复验 no-op setter 与非空 placeholder 后，DWSIM 已继续推进到 `ComponentName / ComponentDescription / Ports / Parameters`；COFE 仍在 `SimulationContext get` 返回后 native 崩溃。当前判断 COFE 不只是要求非空 `IDispatch*`，还会继续按 `ICapeSimulationContext` / `ICapeCOSEUtilities` / `ICapeDiagnostic` 形状消费该对象；因此当前已给 placeholder 补出这三个最小接口，其中 COSE named values 返回空集合/空值，diagnostic logging 为 no-op trace
-- 用户侧复验最小 COSE simulation context placeholder 后，DWSIM 仍推进到 `Ports / Parameters` 且未再生成 DWSIM dump；COFE 仍停在 `SimulationContext get-exit` 后 native 崩溃，未进入 `NamedValueList / NamedValue / Diagnostic` 方法。当前因此进一步把 placeholder 提升为公开 COM-visible coclass，并补入最小 `ICapeMaterialTemplateSystem`，用于覆盖 COFE 对 context 对象只做早期 `QueryInterface` / typeinfo 探测的路径
-- 用户侧复验公开 placeholder coclass 与 `ICapeMaterialTemplateSystem` 后，COFE 仍停在 `SimulationContext get-exit` 后 native 崩溃，未进入任何 placeholder 方法。当前进一步判断普通 context optional interface 已基本排除，下一处具体小修正是保持 managed `SimulationContext` 为 raw `IntPtr`，同时显式标注 getter/setter 的 `IDispatch` marshalling，避免 CCW vtable 形状偏离 IDL 的 `IDispatch** / IDispatch*`
-- 用户侧复验 raw getter + dispatch getter marshalling 后，COFE 已能放置 unit 并连接 inlet/outlet material streams；DWSIM 不再崩溃但仍无法把 unit 放到画布，trace 停在 `IPersistStreamInit.InitNew` 后。当前继续把 `SimulationContext` setter 保持为 raw `IntPtr`，仅 getter 显式返回 `IDispatch`，并把端口连接对象改为只保存 `ICapeIdentification` 快照，不再长期持有 PME material COM object 引用，以处理 COFE 关闭 case 时的 material object release 警告
-- 最新用户侧复验显示 COFE 已能放置、连接端口并调用 `Initialize()`，但关闭 case 时仍有 material object release warning；DWSIM 仍无法放置，且 trace 只到 `SimulationContext set-exit` 或 `IPersistStreamInit.InitNew` 后即停止。当前进一步把 `Connect(objectToConnect)` 中的 PME COM 入参改为只读取 `ICapeIdentification` 快照后 `FinalReleaseComObject`，并在注册计划中补齐 `Consumes Thermodynamics` 与 `Supports Thermodynamics 1.1` 两个 CAPE-OPEN implemented categories，作为 DWSIM OLE canvas 接受条件的定向 probe
-- 用户侧复验上述 probe 后，DWSIM 仍无法放置但已再次推进到 `SimulationContext get`、`ComponentName / ComponentDescription set`、`Ports get` 与 `Parameters get`；COFE 退回到 `SimulationContext get-exit` 后 native 崩溃。当前确认 COFE 退步来自 `ICapeUtilities.SimulationContext` getter 的 `IDispatch` return marshalling 被误撤，已恢复 getter `[return: MarshalAs(UnmanagedType.IDispatch)]`，同时继续保持 setter raw `IntPtr`
-- 若下一轮 COFE trace 出现 `released-com-argument` 但关闭 case 仍警告，则应继续排查是否还有其它 PME material object RCW 被参数、collection 或 diagnostic 路径持有；若 DWSIM 仍停在 `Ports get / Parameters get` 后且没有 `ICapeCollection.Count / Item` trace，则下一阶段应优先围绕 DWSIM 的 collection QI/typeinfo、注册分类和 OLE canvas 接受条件做定向 probe，而不是再回到 COFE simulation context 接口面
+- 先前的 hard crash、`0x80131165`、COFE material object release warning 与 DWSIM vtable/parameter-spec 卡点均已推进到明确修正点，并由用户侧 trace 复验确认。
+- `DWSIM / COFE` 当前均已能发现、实例化、放置当前 PMC，并连接 `Feed / Product` material streams。
+- `ICapeUtilities.SimulationContext` setter 必须继续保持 raw `IntPtr`，避免 DWSIM 在进入 setter 前触发 CLR interface marshaler；`ICapeUtilities` 前序 vtable 必须继续保持 DWSIM setter-only PIA 兼容顺序：`parameters get -> simulationContext set -> Initialize -> Terminate -> Edit`。
+- COFE 需要的 `SimulationContext` getter 继续作为 `Edit` 之后同 `DispId(2)` 的 late-bound 兼容面保留；该 getter 返回非空 placeholder 只是 activation 兼容面，不代表实现完整 COSE utilities。
+- 对照本地 DWSIM `CapeOpenUO.GetParams()`，DWSIM 直接把 `myparms.Item(i)` 返回对象 cast 成 `ICapeIdentification`、`ICapeParameterSpec`、type-specific spec 与 `ICapeParameter`；因此 parameter placeholder 本身必须继续实现 `ICapeParameterSpec` 与 `ICapeOptionParameterSpec`，并继续保留标准 `Specification` 对象入口。
+- COFE trace 中 `Validate()` 返回 "Required parameter `Flowsheet Json` is not configured." 属于 MVP 必填参数未配置时的预期 invalid 结果，不再视为 discovery、activation、placement 或 connection blocker。
+- DWSIM 日志中的 `AutomaticTranslation.AutomaticTranslator.SetMainWindow(...)` `NullReferenceException` 属于 DWSIM 主窗口 extender 初始化路径，发生在 RadishFlow UnitOp activation 前；当前只记录为宿主侧启动噪声。
 
 当前允许推进的内容：
 

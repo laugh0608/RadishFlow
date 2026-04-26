@@ -82,6 +82,9 @@ internal sealed record CapeOpenRegistrationDescriptor(
                     Name: "CAPE-OPEN Consumes Thermodynamics",
                     CategoryId: RadishFlow.CapeOpen.Interop.Guids.CapeOpenCategoryIds.ConsumesThermodynamics),
                 new CapeOpenRegistrationCategory(
+                    Name: "CAPE-OPEN Supports Thermodynamics 1.0",
+                    CategoryId: RadishFlow.CapeOpen.Interop.Guids.CapeOpenCategoryIds.SupportsThermodynamics10),
+                new CapeOpenRegistrationCategory(
                     Name: "CAPE-OPEN Supports Thermodynamics 1.1",
                     CategoryId: RadishFlow.CapeOpen.Interop.Guids.CapeOpenCategoryIds.SupportsThermodynamics11),
             ],

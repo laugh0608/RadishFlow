@@ -626,7 +626,10 @@ Rust 与 .NET 的桥接层。
 - 仓库根 `scripts/register-com.ps1` 当前已作为正式脚本入口，负责统一 build、token 提示、环境变量重定向和 `Registration.exe` 调用
 - 当前仓库脚本默认会显式传入 `UnitOp.Mvp\bin\Debug\net10.0` 下的 comhost / typelib，不再依赖 `Registration.exe` 进程目录猜测默认路径
 - 当前 execute `register` 还会补写 classic COM 所需的 `CLSID\{...}\TypeLib` 关联值，避免只注册 `TypeLib` 树却不把 CLSID 回链到 typelib GUID
-- 当前 registration plan 又已补齐 `Consumes Thermodynamics` 与 `Supports Thermodynamics 1.1` 两个 CAPE-OPEN implemented categories，用于 DWSIM 画布接受条件 probe；这不代表 MVP 已实现完整 Thermo PMC 或第三方 property package 加载
+- 当前 registration plan 又已补齐 `Consumes Thermodynamics`、`Supports Thermodynamics 1.0` 与 `Supports Thermodynamics 1.1` 三个 CAPE-OPEN implemented categories，用于 DWSIM 画布接受条件 probe；这不代表 MVP 已实现完整 Thermo PMC 或第三方 property package 加载
+- 当前还已确认 DWSIM `CapeOpenUO.Instantiate()` 会按 `InitNew -> Initialize -> simulationContext set -> GetPorts -> GetParams` 消费 UnitOp；因此 `ICapeUtilities` vtable 必须保持 CAPE-OPEN PIA 兼容的 setter-only 前序槽位，同时把 COFE 需要的 `SimulationContext` getter 留作 late-bound 兼容面
+- 当前用户侧 `DWSIM / COFE` 人工复验已确认 discovery、activation、placement 与 `Feed / Product` 端口连接主路径通过；DWSIM parameter enumeration 还要求 `Parameters.Item(i)` 返回对象本身直接支持 `ICapeIdentification / ICapeParameterSpec / ICapeOptionParameterSpec / ICapeParameter`
+- 当前剩余 PME 验证重点转为配置 `Flowsheet Json` 等 MVP 参数后的完整 `Validate / Calculate / Report` 路径；未配置必填参数时 `Validate` 返回 invalid 属于预期行为
 - 当前真实复验还确认了一个宿主侧假阴性：`pwsh` 若已预加载 `.NET 9.0.10`，会因与当前 PMC 目标 `.NET 10.0.0` runtime 不兼容而触发 `0x800080A5`；后续 native COM / PME 类探测应优先改用 `Windows PowerShell 5` 或其他非预加载 .NET 宿主
 - 目标 PME 人工验证路径当前已单独落到 `docs/capeopen/pme-validation.md`，注册工具本身不承担 PME 自动化互调
 

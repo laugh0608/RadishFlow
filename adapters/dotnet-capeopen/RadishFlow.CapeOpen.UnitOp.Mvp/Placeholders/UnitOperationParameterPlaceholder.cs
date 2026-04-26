@@ -12,9 +12,12 @@ namespace RadishFlow.CapeOpen.UnitOp.Mvp.Placeholders;
 [Guid(PlaceholderComClassIds.ParameterPlaceholder)]
 [ClassInterface(ClassInterfaceType.None)]
 [ComDefaultInterface(typeof(ICapeParameter))]
-public sealed class UnitOperationParameterPlaceholder : ICapeIdentification, ICapeParameter
+public sealed class UnitOperationParameterPlaceholder : ICapeIdentification, ICapeParameter, ICapeParameterSpec, ICapeOptionParameterSpec
 {
     private const string InterfaceName = nameof(ICapeParameter);
+    private const string IdentificationInterfaceName = nameof(ICapeIdentification);
+    private const string ParameterSpecInterfaceName = nameof(ICapeParameterSpec);
+    private const string OptionSpecInterfaceName = nameof(ICapeOptionParameterSpec);
     private readonly Action<string, string, string?, object?>? _ensureOwnerAccess;
     private readonly Action? _onStateChanged;
     private readonly UnitOperationParameterDefinition _definition;
@@ -42,7 +45,11 @@ public sealed class UnitOperationParameterPlaceholder : ICapeIdentification, ICa
     {
         get
         {
-            EnsureOwnerAccess(nameof(ComponentName));
+            EnsureOwnerAccess(IdentificationInterfaceName, nameof(ComponentName));
+            UnitOperationComTrace.Write(
+                $"{_definition.Name}.{IdentificationInterfaceName}.{nameof(ComponentName)}",
+                "get-exit",
+                _definition.Name);
             return _definition.Name;
         }
         set => SetImmutableComponentName(value, nameof(ComponentName));
@@ -52,7 +59,11 @@ public sealed class UnitOperationParameterPlaceholder : ICapeIdentification, ICa
     {
         get
         {
-            EnsureOwnerAccess(nameof(ComponentDescription));
+            EnsureOwnerAccess(IdentificationInterfaceName, nameof(ComponentDescription));
+            UnitOperationComTrace.Write(
+                $"{_definition.Name}.{IdentificationInterfaceName}.{nameof(ComponentDescription)}",
+                "get-exit",
+                _definition.Description);
             return _definition.Description;
         }
         set => SetImmutableComponentDescription(value, nameof(ComponentDescription));
@@ -119,6 +130,10 @@ public sealed class UnitOperationParameterPlaceholder : ICapeIdentification, ICa
         get
         {
             EnsureOwnerAccess(nameof(Specification));
+            UnitOperationComTrace.Write(
+                $"{ComponentName}.{InterfaceName}.{nameof(Specification)}",
+                "get-exit",
+                _definition.SpecificationType.ToString());
             return _specification;
         }
     }
@@ -128,11 +143,19 @@ public sealed class UnitOperationParameterPlaceholder : ICapeIdentification, ICa
         get
         {
             EnsureOwnerAccess(nameof(value));
+            UnitOperationComTrace.Write(
+                $"{ComponentName}.{InterfaceName}.{nameof(value)}",
+                "get-exit",
+                _value is null ? "null" : "provided");
             return _value;
         }
         set
         {
-            EnsureOwnerAccess(nameof(value), value);
+            EnsureOwnerAccess(nameof(value), parameter: value);
+            UnitOperationComTrace.Write(
+                $"{ComponentName}.{InterfaceName}.{nameof(value)}",
+                "set-enter",
+                value is null ? "null" : value.ToString());
 
             if (value is not null and not string)
             {
@@ -142,6 +165,9 @@ public sealed class UnitOperationParameterPlaceholder : ICapeIdentification, ICa
             }
 
             SetValueCore((string?)value);
+            UnitOperationComTrace.Write(
+                $"{ComponentName}.{InterfaceName}.{nameof(value)}",
+                "set-exit");
         }
     }
 
@@ -150,6 +176,10 @@ public sealed class UnitOperationParameterPlaceholder : ICapeIdentification, ICa
         get
         {
             EnsureOwnerAccess(nameof(ValStatus));
+            UnitOperationComTrace.Write(
+                $"{ComponentName}.{InterfaceName}.{nameof(ValStatus)}",
+                "get-exit",
+                _valStatus.ToString());
             return _valStatus;
         }
         private set => _valStatus = value;
@@ -160,14 +190,26 @@ public sealed class UnitOperationParameterPlaceholder : ICapeIdentification, ICa
         get
         {
             EnsureOwnerAccess(nameof(Mode));
+            UnitOperationComTrace.Write(
+                $"{ComponentName}.{InterfaceName}.{nameof(Mode)}",
+                "get-exit",
+                _definition.Mode.ToString());
             return _definition.Mode;
         }
         set
         {
-            EnsureOwnerAccess(nameof(Mode), value);
+            EnsureOwnerAccess(nameof(Mode), parameter: value);
+            UnitOperationComTrace.Write(
+                $"{ComponentName}.{InterfaceName}.{nameof(Mode)}",
+                "set-enter",
+                value.ToString());
 
             if (_definition.Mode == value)
             {
+                UnitOperationComTrace.Write(
+                    $"{ComponentName}.{InterfaceName}.{nameof(Mode)}",
+                    "set-exit",
+                    "unchanged");
                 return;
             }
 
@@ -181,8 +223,13 @@ public sealed class UnitOperationParameterPlaceholder : ICapeIdentification, ICa
     {
         get
         {
-            EnsureOwnerAccess(nameof(Type));
-            return _specification.Type;
+            EnsureOwnerAccess(ParameterSpecInterfaceName, nameof(Type));
+            var type = _definition.SpecificationType;
+            UnitOperationComTrace.Write(
+                $"{ComponentName}.{ParameterSpecInterfaceName}.{nameof(Type)}",
+                "get-exit",
+                type.ToString());
+            return type;
         }
     }
 
@@ -190,25 +237,90 @@ public sealed class UnitOperationParameterPlaceholder : ICapeIdentification, ICa
     {
         get
         {
-            EnsureOwnerAccess(nameof(Dimensionality));
-            return _specification.Dimensionality;
+            EnsureOwnerAccess(ParameterSpecInterfaceName, nameof(Dimensionality));
+            var dimensionality = _definition.SpecificationDimensionality.ToArray();
+            UnitOperationComTrace.Write(
+                $"{ComponentName}.{ParameterSpecInterfaceName}.{nameof(Dimensionality)}",
+                "get-exit",
+                $"length={dimensionality.Length}");
+            return dimensionality;
         }
+    }
+
+    string ICapeOptionParameterSpec.DefaultValue
+    {
+        get
+        {
+            EnsureOwnerAccess(OptionSpecInterfaceName, nameof(ICapeOptionParameterSpec.DefaultValue));
+            var value = _definition.DefaultValue ?? string.Empty;
+            UnitOperationComTrace.Write(
+                $"{ComponentName}.{OptionSpecInterfaceName}.{nameof(ICapeOptionParameterSpec.DefaultValue)}",
+                "get-exit",
+                value);
+            return value;
+        }
+    }
+
+    object ICapeOptionParameterSpec.OptionList
+    {
+        get
+        {
+            EnsureOwnerAccess(OptionSpecInterfaceName, nameof(ICapeOptionParameterSpec.OptionList));
+            UnitOperationComTrace.Write(
+                $"{ComponentName}.{OptionSpecInterfaceName}.{nameof(ICapeOptionParameterSpec.OptionList)}",
+                "get-exit",
+                "length=0");
+            return Array.Empty<string>();
+        }
+    }
+
+    bool ICapeOptionParameterSpec.RestrictedToList
+    {
+        get
+        {
+            EnsureOwnerAccess(OptionSpecInterfaceName, nameof(ICapeOptionParameterSpec.RestrictedToList));
+            UnitOperationComTrace.Write(
+                $"{ComponentName}.{OptionSpecInterfaceName}.{nameof(ICapeOptionParameterSpec.RestrictedToList)}",
+                "get-exit",
+                "False");
+            return false;
+        }
+    }
+
+    bool ICapeOptionParameterSpec.Validate(string value, ref string message)
+    {
+        EnsureOwnerAccess(OptionSpecInterfaceName, nameof(ICapeOptionParameterSpec.Validate), parameter: value);
+        UnitOperationComTrace.Write(
+            $"{ComponentName}.{OptionSpecInterfaceName}.{nameof(ICapeOptionParameterSpec.Validate)}",
+            "enter",
+            value);
+        message = $"Option parameter `{ComponentName}` accepts unrestricted string values.";
+        UnitOperationComTrace.Write(
+            $"{ComponentName}.{OptionSpecInterfaceName}.{nameof(ICapeOptionParameterSpec.Validate)}",
+            "exit",
+            "True");
+        return true;
     }
 
     public void SetValue(string? value)
     {
-        EnsureOwnerAccess(nameof(SetValue), value);
+        EnsureOwnerAccess(nameof(SetValue), parameter: value);
         SetValueCore(value);
     }
 
     public bool Validate(ref string message)
     {
         EnsureOwnerAccess(nameof(Validate));
+        UnitOperationComTrace.Write($"{ComponentName}.{InterfaceName}.{nameof(Validate)}", "enter");
 
         if (IsRequired && !IsConfigured)
         {
             message = $"Required parameter `{ComponentName}` is not configured.";
             ValStatus = CapeValidationStatus.Invalid;
+            UnitOperationComTrace.Write(
+                $"{ComponentName}.{InterfaceName}.{nameof(Validate)}",
+                "exit",
+                $"False; {message}");
             return false;
         }
 
@@ -216,6 +328,10 @@ public sealed class UnitOperationParameterPlaceholder : ICapeIdentification, ICa
         {
             message = validationError;
             ValStatus = CapeValidationStatus.Invalid;
+            UnitOperationComTrace.Write(
+                $"{ComponentName}.{InterfaceName}.{nameof(Validate)}",
+                "exit",
+                $"False; {message}");
             return false;
         }
 
@@ -223,6 +339,10 @@ public sealed class UnitOperationParameterPlaceholder : ICapeIdentification, ICa
             ? $"Parameter `{ComponentName}` is configured as {DescribeValueKind(ValueKind)}."
             : $"Optional parameter `{ComponentName}` is not configured.";
         ValStatus = CapeValidationStatus.Valid;
+        UnitOperationComTrace.Write(
+            $"{ComponentName}.{InterfaceName}.{nameof(Validate)}",
+            "exit",
+            $"True; {message}");
         return true;
     }
 
@@ -346,7 +466,7 @@ public sealed class UnitOperationParameterPlaceholder : ICapeIdentification, ICa
 
     private void SetImmutableComponentDescription(string value, string operation)
     {
-        EnsureOwnerAccess(operation, value);
+        EnsureOwnerAccess(operation, parameter: value);
         ArgumentNullException.ThrowIfNull(value);
 
         if (string.Equals(_definition.Description, value, StringComparison.Ordinal))
@@ -361,7 +481,7 @@ public sealed class UnitOperationParameterPlaceholder : ICapeIdentification, ICa
 
     private void SetImmutableComponentName(string value, string operation)
     {
-        EnsureOwnerAccess(operation, value);
+        EnsureOwnerAccess(operation, parameter: value);
         ArgumentException.ThrowIfNullOrWhiteSpace(value);
 
         if (string.Equals(_definition.Name, value, StringComparison.Ordinal))
@@ -386,7 +506,12 @@ public sealed class UnitOperationParameterPlaceholder : ICapeIdentification, ICa
 
     private void EnsureOwnerAccess(string operation, object? parameter = null)
     {
-        _ensureOwnerAccess?.Invoke(InterfaceName, operation, _definition.Name, parameter);
+        EnsureOwnerAccess(InterfaceName, operation, parameter);
+    }
+
+    private void EnsureOwnerAccess(string interfaceName, string operation, object? parameter = null)
+    {
+        _ensureOwnerAccess?.Invoke(interfaceName, operation, _definition.Name, parameter);
     }
 
     private CapeValidationStatus _valStatus;

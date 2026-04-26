@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices;
+using System.Runtime.CompilerServices;
 using RadishFlow.CapeOpen.Interop.Guids;
 
 namespace RadishFlow.CapeOpen.Interop.Common;
@@ -16,12 +17,8 @@ public interface ICapeUtilities
     }
 
     [DispId(2)]
-    IntPtr SimulationContext
-    {
-        [return: MarshalAs(UnmanagedType.IDispatch)]
-        get;
-        set;
-    }
+    [SpecialName]
+    void set_SimulationContext(IntPtr value);
 
     [DispId(3)]
     void Initialize();
@@ -32,4 +29,9 @@ public interface ICapeUtilities
     [DispId(5)]
     [PreserveSig]
     int Edit();
+
+    [DispId(2)]
+    [SpecialName]
+    [return: MarshalAs(UnmanagedType.IDispatch)]
+    IntPtr get_SimulationContext();
 }

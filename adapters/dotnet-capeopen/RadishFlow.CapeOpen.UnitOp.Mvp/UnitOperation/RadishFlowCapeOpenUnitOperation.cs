@@ -24,6 +24,7 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
     private const string UnitReportInterfaceName = nameof(ICapeUnitReport);
     private const string UnitScope = "RadishFlow.CapeOpen.UnitOp.Mvp";
     private const string DefaultReportName = "RadishFlow calculation report";
+    private const string SimulationContextMemberName = "SimulationContext";
     private readonly UnitOperationSimulationContextPlaceholder _simulationContextFallback = new();
     private bool _simulationContextProvided;
     private UnitOperationCalculationResult? _lastCalculationResult;
@@ -194,56 +195,53 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
         }
     }
 
-    IntPtr ICapeUtilities.SimulationContext
+    IntPtr ICapeUtilities.get_SimulationContext()
     {
-        get
+        UnitOperationComTrace.Write(SimulationContextMemberName, "get-enter");
+        try
         {
-            UnitOperationComTrace.Write(nameof(ICapeUtilities.SimulationContext), "get-enter");
-            try
-            {
-                ThrowIfDisposed();
+            ThrowIfDisposed();
 #pragma warning disable CA1416 // UnitOp.Mvp COM activation is Windows-only.
-                var context = Marshal.GetIDispatchForObject(_simulationContextFallback);
+            var context = Marshal.GetIDispatchForObject(_simulationContextFallback);
 #pragma warning restore CA1416
-                UnitOperationComTrace.Write(
-                    nameof(ICapeUtilities.SimulationContext),
-                    "get-result",
-                    _simulationContextProvided ? "fallback=provided; hostContext=provided" : "fallback=provided; hostContext=missing");
-                return context;
-            }
-            catch (Exception error)
-            {
-                UnitOperationComTrace.Exception(nameof(ICapeUtilities.SimulationContext), error);
-                throw;
-            }
-            finally
-            {
-                UnitOperationComTrace.Write(nameof(ICapeUtilities.SimulationContext), "get-exit");
-            }
-        }
-
-        set
-        {
             UnitOperationComTrace.Write(
-                nameof(ICapeUtilities.SimulationContext),
-                "set-enter",
-                value == IntPtr.Zero ? "context=null" : "context=provided");
-            try
-            {
-                ThrowIfDisposed();
-                ThrowIfTerminated(nameof(ICapeUtilities.SimulationContext), UtilitiesInterfaceName);
-                _simulationContextProvided = value != IntPtr.Zero;
-                InvalidateValidation();
-            }
-            catch (Exception error)
-            {
-                UnitOperationComTrace.Exception(nameof(ICapeUtilities.SimulationContext), error);
-                throw;
-            }
-            finally
-            {
-                UnitOperationComTrace.Write(nameof(ICapeUtilities.SimulationContext), "set-exit");
-            }
+                SimulationContextMemberName,
+                "get-result",
+                _simulationContextProvided ? "fallback=provided; hostContext=provided" : "fallback=provided; hostContext=missing");
+            return context;
+        }
+        catch (Exception error)
+        {
+            UnitOperationComTrace.Exception(SimulationContextMemberName, error);
+            throw;
+        }
+        finally
+        {
+            UnitOperationComTrace.Write(SimulationContextMemberName, "get-exit");
+        }
+    }
+
+    void ICapeUtilities.set_SimulationContext(IntPtr value)
+    {
+        UnitOperationComTrace.Write(
+            SimulationContextMemberName,
+            "set-enter",
+            value == IntPtr.Zero ? "context=null" : "context=provided");
+        try
+        {
+            ThrowIfDisposed();
+            ThrowIfTerminated(SimulationContextMemberName, UtilitiesInterfaceName);
+            _simulationContextProvided = value != IntPtr.Zero;
+            InvalidateValidation();
+        }
+        catch (Exception error)
+        {
+            UnitOperationComTrace.Exception(SimulationContextMemberName, error);
+            throw;
+        }
+        finally
+        {
+            UnitOperationComTrace.Write(SimulationContextMemberName, "set-exit");
         }
     }
 

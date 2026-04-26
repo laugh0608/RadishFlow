@@ -39,6 +39,9 @@ public static class CapeOpenInterfaceIds
     public const string ICapeRealParameterSpec = "678C099D-0093-11D2-A67D-00105A42887F";
 
     // Source: adapters/reference/CapeOpenMixerExample_CSharp/CapeOpen/COGuids1.cs
+    public const string ICapeOptionParameterSpec = "678C099F-0093-11D2-A67D-00105A42887F";
+
+    // Source: adapters/reference/CapeOpenMixerExample_CSharp/CapeOpen/COGuids1.cs
     public const string ICapeParameter = "678C09A0-0093-11D2-A67D-00105A42887F";
 
     // Source: adapters/reference/CapeOpenMixerExample_CSharp/CapeOpen/COGuids1.cs

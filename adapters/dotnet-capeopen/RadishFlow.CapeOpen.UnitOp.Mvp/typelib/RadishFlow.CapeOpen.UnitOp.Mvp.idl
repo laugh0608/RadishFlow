@@ -94,6 +94,22 @@ interface ICapeParameterSpec : IDispatch
 
 [
     object,
+    uuid(678C099F-0093-11D2-A67D-00105A42887F),
+    dual,
+    nonextensible,
+    oleautomation,
+    pointer_default(unique)
+]
+interface ICapeOptionParameterSpec : IDispatch
+{
+    [id(1), propget] HRESULT DefaultValue([out, retval] BSTR* value);
+    [id(2), propget] HRESULT OptionList([out, retval] VARIANT* value);
+    [id(3), propget] HRESULT RestrictedToList([out, retval] VARIANT_BOOL* value);
+    [id(4)] HRESULT Validate([in] BSTR value, [in, out] BSTR* message, [out, retval] VARIANT_BOOL* isValid);
+};
+
+[
+    object,
     uuid(678C09A0-0093-11D2-A67D-00105A42887F),
     dual,
     nonextensible,
@@ -123,11 +139,11 @@ interface ICapeParameter : IDispatch
 interface ICapeUtilities : IDispatch
 {
     [id(1), propget] HRESULT Parameters([out, retval] IDispatch** value);
-    [id(2), propget] HRESULT SimulationContext([out, retval] IDispatch** value);
     [id(2), propputref] HRESULT SimulationContext([in] IDispatch* value);
     [id(3)] HRESULT Initialize();
     [id(4)] HRESULT Terminate();
     [id(5)] HRESULT Edit([out, retval] LONG* value);
+    [id(2), propget] HRESULT SimulationContext([out, retval] IDispatch** value);
 };
 
 [
@@ -288,6 +304,8 @@ library RadishFlowCapeOpenUnitOpMvpLib
     coclass UnitOperationParameterPlaceholder
     {
         [default] interface ICapeParameter;
+        interface ICapeParameterSpec;
+        interface ICapeOptionParameterSpec;
         interface ICapeIdentification;
     };
 
@@ -297,6 +315,7 @@ library RadishFlowCapeOpenUnitOpMvpLib
     coclass UnitOperationParameterSpecificationPlaceholder
     {
         [default] interface ICapeParameterSpec;
+        interface ICapeOptionParameterSpec;
     };
 
     [
