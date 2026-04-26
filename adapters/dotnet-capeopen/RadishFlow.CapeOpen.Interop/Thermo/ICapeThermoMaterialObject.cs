@@ -17,11 +17,13 @@ public interface ICapeThermoMaterialObject
 
     object? GetComponentConstant(object? props, object? compIds);
 
-    void CalcProp(object? props, object? phases, string calcType);
+    void CalcProp(object? props, object? phases, string? calcType);
 
-    object? GetProp(string property, string phase, object? compIds, string calcType, string basis);
+    object? GetProp(string property, string? phase, object? compIds, string? calcType, string? basis);
 
-    void SetProp(string property, string phase, object? compIds, string calcType, string basis, object? values);
+    void SetProp(string property, string? phase, object? compIds, string? calcType, string? basis, object? values);
 
     void CalcEquilibrium(string flashType, object? props);
+
+    void SetIndependentVar(object? indVars, object? values);
 }

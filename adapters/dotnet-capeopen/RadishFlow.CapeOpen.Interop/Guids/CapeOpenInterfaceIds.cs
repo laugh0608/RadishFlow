@@ -39,6 +39,9 @@ public static class CapeOpenInterfaceIds
     public const string ICapeThermoMaterial = "678C0A9B-7D66-11D2-A67D-00105A42887F";
 
     // Source: adapters/reference/MyCO-CSharp/CapeOpen/CapeOpen/ThrmIDL.cs
+    public const string ICapeThermoCompounds = "678C0A9D-7D66-11D2-A67D-00105A42887F";
+
+    // Source: adapters/reference/MyCO-CSharp/CapeOpen/CapeOpen/ThrmIDL.cs
     public const string ICapeThermoEquilibriumRoutine = "678C0AA0-7D66-11D2-A67D-00105A42887F";
 
     // Source: adapters/reference/CapeOpenMixerExample_CSharp/CapeOpen/COGuids1.cs

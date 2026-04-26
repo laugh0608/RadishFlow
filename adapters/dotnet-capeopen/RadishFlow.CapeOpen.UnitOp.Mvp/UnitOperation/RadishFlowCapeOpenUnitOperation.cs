@@ -1082,7 +1082,8 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
 
             PrepareForCalculation();
             var inputs = BuildCalculationInputs();
-            var snapshotJson = ExecuteNativeSolve(inputs);
+            var effectiveInputs = ApplyConnectedFeedMaterial(inputs);
+            var snapshotJson = ExecuteNativeSolve(effectiveInputs);
             var result = MaterializeCalculationResult(snapshotJson);
             PublishProductMaterial(result);
             RecordCalculationSuccess(result);
@@ -1253,6 +1254,25 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
             GetRequiredParameterValue(UnitOperationParameterCatalog.PropertyPackageId),
             GetOptionalParameterValue(UnitOperationParameterCatalog.PropertyPackageManifestPath),
             GetOptionalParameterValue(UnitOperationParameterCatalog.PropertyPackagePayloadPath));
+    }
+
+    private CalculationInputs ApplyConnectedFeedMaterial(CalculationInputs inputs)
+    {
+        var bindings = UnitOperationConfiguredBoundaryMaterialBindings.TryParse(FlowsheetParameter);
+        var feedMaterial = CapeOpenFeedMaterialReader.TryRead(
+            GetPortPlaceholder(UnitOperationPortCatalog.Feed).ConnectedObjectReference);
+        if (feedMaterial is null)
+        {
+            return inputs;
+        }
+
+        var effectiveFlowsheetJson = FlowsheetBoundaryFeedMaterialOverlay.ApplyOrOriginal(
+            inputs.FlowsheetJson,
+            bindings,
+            feedMaterial);
+        return string.Equals(effectiveFlowsheetJson, inputs.FlowsheetJson, StringComparison.Ordinal)
+            ? inputs
+            : inputs with { FlowsheetJson = effectiveFlowsheetJson };
     }
 
     private static string ExecuteNativeSolve(CalculationInputs inputs)

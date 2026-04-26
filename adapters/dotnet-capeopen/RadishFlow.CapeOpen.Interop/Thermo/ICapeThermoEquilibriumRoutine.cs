@@ -6,12 +6,13 @@ namespace RadishFlow.CapeOpen.Interop.Thermo;
 [ComImport]
 [ComVisible(false)]
 [Guid(CapeOpenInterfaceIds.ICapeThermoEquilibriumRoutine)]
-[InterfaceType(ComInterfaceType.InterfaceIsIDispatch)]
+[InterfaceType(ComInterfaceType.InterfaceIsDual)]
 public interface ICapeThermoEquilibriumRoutine
 {
     [DispId(1)]
-    void CalcEquilibrium(string[] specification1, string[] specification2, string solutionType);
+    void CalcEquilibrium(object? specification1, object? specification2, string solutionType);
 
     [DispId(2)]
-    bool CheckEquilibriumSpec(string[] specification1, string[] specification2, string solutionType);
+    [return: MarshalAs(UnmanagedType.VariantBool)]
+    bool CheckEquilibriumSpec(object? specification1, object? specification2, string solutionType);
 }

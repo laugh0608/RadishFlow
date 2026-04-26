@@ -1,0 +1,13 @@
+{
+  "kind": "radishflow.property-package-manifest",
+  "schemaVersion": 1,
+  "packageId": "water-ethanol-lite-v1",
+  "version": "2026.04.1",
+  "classification": "derived",
+  "source": "remote-derived-package",
+  "hash": "sha256:ce22d33f219ea0b268206cd57afcb24d57dd46d69b812d14f3df1d2aebc63d2b",
+  "sizeBytes": 721,
+  "componentIds": ["water", "ethanol"],
+  "leaseRequired": true,
+  "expiresAt": "1970-01-01T00:15:00Z"
+}
