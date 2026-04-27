@@ -1,6 +1,6 @@
 # Architecture Overview
 
-更新时间：2026-04-26
+更新时间：2026-04-27
 
 ## 目标
 
@@ -51,15 +51,15 @@ RadishFlow 的目标架构已经冻结为“桌面端三层 + 外部控制面”
 
 ### Rust Studio UI
 
-当前 UI 相关 crate 已进入“状态骨架与应用边界冻结”阶段，但仍未进入具体界面实现主线：
+当前 UI 相关 crate 已从“状态骨架与应用边界冻结”推进到第一版最小可操作工作台闭环，但仍不代表已经进入完整视觉设计、任意项目文件工作流或复杂画布编辑阶段：
 
 | crate | 当前职责 | 当前状态 |
 | --- | --- | --- |
 | `rf-ui` | UI 状态与行为逻辑 | 已建立 `AppState`、授权态、求解态与控制面 DTO 骨架；已补 `RunPanelState`、`RunPanelIntent`、`RunPanelCommandModel`、`RunPanelViewModel`、`RunPanelPresentation` 与 `RunPanelWidgetModel`，并可把 `rf-solver::SolveSnapshot` 映射为 UI 层结果快照 |
 | `rf-canvas` | 流程图画布能力 | 占位 |
-| `apps/radishflow-studio` | 桌面入口程序 | 已建立 auth cache sync 桥接、控制面 HTTP client、entitlement / manifest / lease / offline refresh 编排、下载获取抽象、基于 `reqwest + rustls` 的真实 HTTP transport、HTTP 请求/响应适配层、可重试/不可重试失败分类、下载 JSON 到本地 payload DTO 的协议映射、摘要校验、失败回滚与测试；并已补上 `PropertyPackageProvider -> rf-solver -> rf-ui::AppState` 的最小工作区求解桥接，可直接基于已加载物性包或本地 auth cache 执行真实 solve 并回写 UI 快照/日志；当前又已形成 `StudioGuiHost / StudioGuiDriver / StudioGuiSnapshot / StudioGuiWindowModel / StudioGuiWindowLayoutState` 这一条 GUI-facing 宿主与窗口布局契约，并把窗口布局持久化为项目同目录 sidecar；当前又已把 drop preview 前推为 `StudioGuiWindowDropTargetQuery -> StudioGuiHost / StudioGuiDriver` 的显式查询入口，并在 host 内补出非持久化 preview 会话态；当前又已补出 `StudioGuiNativeTimerRuntime`，让 GUI 可在消费 `StudioGuiNativeTimerEffects` 后继续跟踪逻辑 timer handle、`next_due_at` 和一次性 due callback，而不必在真实框架里从零重写同一套 timer 生命周期；当前又已把原生 timer callback 正式收口为 `StudioGuiEvent::NativeTimerElapsed { window_id, handle_id }`，由 driver 先校验当前绑定再回灌 `TimerElapsed`，避免真实宿主把 stale callback 误灌进 runtime；当前又已补出 `StudioGuiPlatformHost`，把“driver 派发后比较下一次 pending binding，并向平台发出携带 `window_id + handle_id + slot/due_at` 的 `Arm/Rearm/Clear` 请求”的逻辑固定在平台适配层，未来真实 GUI 不必再在框架入口手工维护 timer 差分或丢失 callback 身份；当前又已补出 `StudioGuiPlatformTimerDriverState`，把平台 native timer id 与逻辑 binding 的映射、rearm/clear 所需的旧平台句柄，以及“native timer callback -> `window_id + handle_id` 回灌目标”的桥接固定为显式状态机；当前这层状态机也已被 `StudioGuiPlatformHost` 正式持有，平台 timer 创建失败除了并入 `snapshot/window_model.runtime.log_entries`，还会直接进入 `runtime.platform_notice`；native callback 若命中不存在或过期的 `native_timer_id`，当前也已收口为 `StudioGuiPlatformNativeTimerCallbackOutcome::{IgnoredUnknownNativeTimer, IgnoredStaleNativeTimer}`，不再把这类真实平台边界当成上抛错误；当前又已引入第一版 `eframe/egui` GUI 壳，在单原生窗口内承载逻辑窗口切换，并直接消费 `window_model.drop_preview.overlay / changed_area_ids` 画出局部插入条、anchor 顶线、target-anchored 浮动 overlay 与局部 hint pill，而不是在壳层重算拖放语义 |
+| `apps/radishflow-studio` | 桌面入口程序 | 已建立 auth cache sync 桥接、控制面 HTTP client、entitlement / manifest / lease / offline refresh 编排、下载获取抽象、基于 `reqwest + rustls` 的真实 HTTP transport、HTTP 请求/响应适配层、可重试/不可重试失败分类、下载 JSON 到本地 payload DTO 的协议映射、摘要校验、失败回滚与测试；并已补上 `PropertyPackageProvider -> rf-solver -> rf-ui::AppState` 的最小工作区求解桥接，可直接基于已加载物性包或本地 auth cache 执行真实 solve 并回写 UI 快照/日志；当前又已形成 `StudioGuiHost / StudioGuiDriver / StudioGuiSnapshot / StudioGuiWindowModel / StudioGuiWindowLayoutState` 这一条 GUI-facing 宿主与窗口布局契约，并把窗口布局持久化为项目同目录 sidecar；当前又已把 drop preview 前推为 `StudioGuiWindowDropTargetQuery -> StudioGuiHost / StudioGuiDriver` 的显式查询入口，并在 host 内补出非持久化 preview 会话态；当前又已补出 `StudioGuiNativeTimerRuntime`，让 GUI 可在消费 `StudioGuiNativeTimerEffects` 后继续跟踪逻辑 timer handle、`next_due_at` 和一次性 due callback，而不必在真实框架里从零重写同一套 timer 生命周期；当前又已把原生 timer callback 正式收口为 `StudioGuiEvent::NativeTimerElapsed { window_id, handle_id }`，由 driver 先校验当前绑定再回灌 `TimerElapsed`，避免真实宿主把 stale callback 误灌进 runtime；当前又已补出 `StudioGuiPlatformHost` 与 `StudioGuiPlatformTimerDriverState`，把平台 timer request、native timer id 映射、stale callback 判定与平台 notice 固定为显式状态机；当前又已引入第一版 `eframe/egui` GUI 壳，在单原生窗口内承载逻辑窗口切换，并直接消费 `window_model.drop_preview.overlay / changed_area_ids` 画出局部插入条、anchor 顶线、target-anchored 浮动 overlay 与局部 hint pill；当前 Runtime 面板已能切换内置正向示例项目、触发既有运行栏动作，并展示 `SolveSnapshot` 映射出的流股结果、求解步骤、诊断、日志、工作区摘要与平台/授权状态；当前 shell 还提供中文/英文切换，并通过系统 CJK 字体 fallback 支持中文显示 |
 
-原因很直接：在 `M2/M3` 之前过早推进 UI，会掩盖内核尚未定型的问题。
+这一路径仍坚持先消费已冻结的应用层、运行栏和 snapshot presentation 边界；真实 UI 只做最小闭环承接，不反向改写内核、求解或项目文件语义。
 
 同时补充一条当前协作闸口：在 `apps/radishflow-studio` 还处于 GUI-facing 边界、宿主桥接和布局状态契约冻结阶段时，可以继续直接推进；但一旦工作重心切到真实界面布局、控件组织、视觉表达、交互流和较重的 UI 逻辑设计，后续实现前必须先向用户同步方向与关键取舍，并保留用户干预窗口，不把产品交互方案静默固化。
 
@@ -129,7 +129,7 @@ RadishFlow 的目标架构已经冻结为“桌面端三层 + 外部控制面”
 - 窗口布局持久化继续与项目文档语义分离，当前保存到 `<project>.rfstudio-layout.json` sidecar，而不是混入 `*.rfproj.json`
 - 多窗口布局 key 当前已从运行时 `window_id` 收口为基于 `window_role + layout_slot` 的稳定 scope，避免跨 host 重建时直接依赖临时窗口号
 
-这意味着当前仓库已从“只有 UI 层快照映射桥”推进到“应用组合层已有 facade / command 入口可驱动真实求解”，但仍未把这条入口接成最终桌面命令或交互动作。
+这意味着当前仓库已从“只有 UI 层快照映射桥”推进到“真实 `egui` 壳层可打开示例、运行求解并查看结果/诊断”。不过这仍是最小可操作工作台闭环，不等同于完整项目文件工作流、结果 inspector、画布编辑器或最终视觉方案。
 
 这些决定的目的是先把 UI 和求解层之间的长期接口边界定清楚，再决定具体控件和交互实现。
 
@@ -187,16 +187,13 @@ RadishFlow 的目标架构已经冻结为“桌面端三层 + 外部控制面”
 
 ## 当前阶段优先级调整
 
-虽然主线顺序仍然保持不变，但当前短期优先级已调整为“地基建设优先”。
+虽然主线顺序仍然保持不变，但当前短期优先级已从单纯“地基建设优先”调整为“在已冻结的边界上恢复 Rust Studio 最小工作台闭环”。
 
 当前应优先推进的内容：
 
-- 仓库治理
-- 分支与 PR 规则
-- 基础 CI
-- 代码与文档格式规范
-- App 架构规划
-- 设计与进度文档完善
+- 保持仓库治理、分支与 PR 规则、基础 CI、代码与文档格式规范稳定
+- 沿 Studio 既有应用层边界继续补“打开项目 / 运行求解 / 查看结果与诊断”的可见工作台闭环
+- 重要阶段性边界变化继续同步到正式设计、规划和开发日志文档
 
 原因：
 
@@ -205,7 +202,7 @@ RadishFlow 的目标架构已经冻结为“桌面端三层 + 外部控制面”
 
 这并不意味着放弃主线，而是先把主线开发赖以生存的仓库地基补完整。
 
-对 Studio 来说，这也意味着短期内仍优先补强宿主边界、平台 glue、状态模型和可测试组件 DTO；等真正进入界面设计和交互方案收口阶段，再显式拉用户一起确认，而不是在无感知状态下直接把产品 UI 方案推到深水区。
+对 Studio 来说，这也意味着短期内仍优先沿既有 `StudioAppFacade`、运行栏 DTO、GUI-facing snapshot 和 presentation 边界补用户可见闭环；等真正进入完整界面设计和交互方案收口阶段，再显式拉用户一起确认，而不是在无感知状态下直接把产品 UI 方案推到深水区。
 
 ## 初始化阶段结论
 

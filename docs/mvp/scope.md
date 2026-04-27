@@ -1,6 +1,6 @@
 # MVP Scope
 
-更新时间：2026-04-26
+更新时间：2026-04-27
 
 ## MVP 目标
 
@@ -102,6 +102,9 @@ App 与交互层当前进一步冻结以下口径：
 - Studio 当前默认包选择采取保守策略：只有唯一候选包明确时才自动选中；多包场景必须显式指定 package，不在当前阶段隐式猜包
 - Studio 当前 Automatic 触发在命中 `HoldMode` / `NoPendingRequest` 时应先返回 skip，再决定是否需要 package 解析，避免多包缓存场景下的无意义失败
 - 当前最小桌面入口 `run_studio_bootstrap` 也已改为默认走 `StudioBootstrapTrigger::WidgetPrimaryAction`，并向入口层输出 `RunPanelWidgetModel`，确保“桌面触发点 -> UI 组件动作 -> Studio driver / 控制动作 -> UI 组件 DTO”边界在样例入口里就成立
+- 当前 `egui` Studio 壳已开始消费上述运行入口与 `SolveSnapshot` presentation：Runtime 面板可切换仓库内置正向示例项目、触发运行、显示流股结果/求解步骤/诊断/日志，并保持 `StudioAppFacade -> WorkspaceRunCommand -> WorkspaceSolveService -> solver_bridge` 边界不被绕过
+- 中文/英文切换当前只属于 GUI shell 偏好，不写入 `DocumentMetadata`、`UserPreferences` 或项目文件；系统 CJK 字体 fallback 也只在应用启动时配置，不新增仓库字体资产
+- 当前仍不把 UI 范围扩张到完整视觉设计、任意文件打开/保存、复杂 inspector、结果导出或画布编辑体验；这些能力后续应先补正式 presentation / command 边界再进入真实 UI
 
 流程图交互增强方向当前补充冻结以下边界：
 
@@ -129,7 +132,7 @@ App 与交互层当前进一步冻结以下口径：
 
 ## 当前阶段优先目标
 
-在真正恢复主线功能推进前，当前阶段优先目标先调整为仓库地基建设：
+在真正恢复主线功能推进前，当前阶段优先目标曾调整为仓库地基建设：
 
 - 完善仓库规范
 - 完善代码与文档格式规范
@@ -142,6 +145,8 @@ App 与交互层当前进一步冻结以下口径：
 - 这些工作不直接产出功能，但会决定后续功能开发是否可持续
 - 在仓库还很新时完成这些约束，成本远低于中后期补治理
 - 当前主线还没有复杂历史包袱，适合现在就冻结工程基础口径
+
+截至 2026-04-27，CAPE-OPEN / PME 验证基线已阶段性冻结，仓库地基也已足以支撑短线主线回到 Rust Studio 的最小可操作工作台闭环；后续应继续保持边界清晰和验证稳定，但不再把“地基建设”作为阻止 Studio 可见闭环推进的理由。
 
 ## 近期开发节奏
 
@@ -212,8 +217,8 @@ App 与交互层当前进一步冻结以下口径：
 
 - 已提前完成 `rf-solver` 中首轮无回路顺序模块法
 - 已提前增加第一个可直接从 `*.rfproj.json` 载入并求解的示例 flowsheet
-- 在已接通的控制面调用编排之上补授权刷新后的 UI 事件流和更细的联网失败策略
-- 扩第二个内建单元闭环示例，并补更完整的端到端回归样例
+- 完成 `DWSIM / COFE` water/ethanol 人工 PME 验证记录、PME trace 开关化、TypeLib 生成脚本化与 CAPE-OPEN / PME 阶段性冻结
+- 回到 Rust Studio 主线，补出“打开示例项目 -> 运行求解 -> 查看结果/诊断”的第一版真实 `egui` 可见闭环，并补中文 shell 选项与 CJK 字体 fallback
 
 ### 2026-W19 以后
 
