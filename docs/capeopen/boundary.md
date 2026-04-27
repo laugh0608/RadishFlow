@@ -131,7 +131,7 @@ Rust 与 `.NET 10` 之间的正式边界应保持简单稳定：
 - `ProgID / CLSID / CurVer / CapeDescription / Programmable / ThreadingModel` 等 discovery 所需注册树已基本补齐
 - `CoCreateInstance` 当前已可成功，说明 COM class 激活不再是首要阻塞
 - `DWSIM / COFE` 的真实阻塞点已转为晚绑定 `IDispatch` 首次调用时报 `0x80131165 Type library is not registered`
-- 当前仓库已补入冻结的 `IDL` 真相源与首份 `TLB` 产物；`Registration` dry-run / execute 当前也已正式纳入真实 `UnitOp.Mvp` 输出目录解析、`comhost runtime layout` 预检、`TypeLib GUID/version` 预检、`RegisterTypeLib(ForUser)` / `UnRegisterTypeLib(ForUser)` 调用，以及 `TypeLib` 树备份/回滚
+- 当前仓库已补入冻结的 `IDL` 真相源、可脚本再生成的 `TLB` 产物与 `scripts/gen-typelib.ps1`；`Registration` dry-run / execute 当前也已正式纳入真实 `UnitOp.Mvp` 输出目录解析、`comhost runtime layout` 预检、`TypeLib GUID/version` 预检、`RegisterTypeLib(ForUser)` / `UnRegisterTypeLib(ForUser)` 调用，以及 `TypeLib` 树备份/回滚
 - 同日真实复验又确认 `pwsh` 的 `0x800080A5` 来自宿主已预加载的 `.NET 9.0.10` 与当前 PMC 目标 `.NET 10.0.0` runtime 不兼容，因此后续 native COM 探测不应默认使用 `pwsh`
 - 当前新的未完成项已从“如何完成标准 TypeLib 注册”进一步收口为“在 `Windows PowerShell 5` / PME 这类 classic late-bound 宿主下补齐剩余 typelib 兼容细节，并重新完成 `DWSIM + COFE` 人工复验”
 
@@ -154,6 +154,13 @@ Rust 与 `.NET 10` 之间的正式边界应保持简单稳定：
 - 对照本地 DWSIM `CapeOpenUO.GetParams()`，DWSIM 直接把 `myparms.Item(i)` 返回对象 cast 成 `ICapeIdentification`、`ICapeParameterSpec`、type-specific spec 与 `ICapeParameter`；因此 parameter placeholder 本身必须继续实现 `ICapeParameterSpec` 与 `ICapeOptionParameterSpec`，并继续保留标准 `Specification` 对象入口。
 - COFE trace 中 `Validate()` 返回 "Required parameter `Flowsheet Json` is not configured." 属于 MVP 必填参数未配置时的预期 invalid 结果，不再视为 discovery、activation、placement 或 connection blocker；参数完整配置后 `Validate()` 与 `Calculate()` 已完成真实复验。
 - DWSIM 日志中的 `AutomaticTranslation.AutomaticTranslator.SetMainWindow(...)` `NullReferenceException` 属于 DWSIM 主窗口 extender 初始化路径，发生在 RadishFlow UnitOp activation 前；当前只记录为宿主侧启动噪声。
+
+截至 2026-04-27，CAPE-OPEN / PME 主线进入阶段性冻结：
+
+- 当前以 `DWSIM / COFE` 人工验证记录、`ContractTests`、`SampleHost`、受控注册脚本和 `scripts/gen-typelib.ps1` 作为 M5 回归基线。
+- 除非出现明确回归，不再主动扩张新的 PME 兼容接口、PME 自动化互调、完整 OLE 持久化、out-of-proc COM shim、完整 Thermo PMC 或第三方 CAPE-OPEN 模型加载。
+- 后续 CAPE-OPEN 变更应优先是回归修复、验证脚本维护、文档校准或官方接口真相源对齐，不再把主开发节奏继续压在单个 PME 的边角行为上。
+- 主线开发应回到 RadishFlow 自身的最小桌面工作台闭环：打开示例项目、展示 flowsheet / run 状态、触发求解、查看结果和诊断。
 
 当前允许推进的内容：
 
@@ -187,7 +194,7 @@ Rust 与 `.NET 10` 之间的正式边界应保持简单稳定：
 - `Registration` 当前 execute `register` 还会在 `CLSID\{...}` 下写入 classic COM 所需的 `TypeLib` 关联值，避免只注册 `TypeLib` 树却不把 CLSID 回链到 typelib GUID
 - 仓库根 `scripts/register-com.ps1` 当前已作为正式注册脚本入口，统一负责 build、环境变量重定向、confirmation token 提示和对 `Registration.exe` 的调用；真实 register / unregister 默认优先通过这条入口进入
 - `docs/capeopen/pme-validation.md` 当前已冻结目标 PME 人工验证说明、执行型注册门控与安装/反安装运行手册；`examples/pme-validation/` 当前也已补出验证记录模板，用于沉淀真实 PME 记录而不是继续把验证字段只留在文档正文里
-- `UnitOp.Mvp` 当前已补入 `typelib/RadishFlow.CapeOpen.UnitOp.Mvp.idl` 与首份 `typelib/RadishFlow.CapeOpen.UnitOp.Mvp.tlb`，并可通过 `<ComHostTypeLibrary ...>` 挂入 `.NET comhost`；`tlb` 当前也会随 `UnitOp.Mvp` 与 `Registration` 输出一并复制，供 dry-run / execute 直接消费
+- `UnitOp.Mvp` 当前已补入 `typelib/RadishFlow.CapeOpen.UnitOp.Mvp.idl` 与 `typelib/RadishFlow.CapeOpen.UnitOp.Mvp.tlb`，并可通过 `<ComHostTypeLibrary ...>` 挂入 `.NET comhost`；`tlb` 当前可通过 `scripts/gen-typelib.ps1` 从 IDL 重新生成，也会随 `UnitOp.Mvp` 与 `Registration` 输出一并复制，供 dry-run / execute 直接消费
 - `SmokeTests` 中更接近真实宿主的最小 driver 路径，用于固定 `Initialize -> 配参数 -> 连端口 -> Validate -> Calculate -> 读结果 -> Terminate` 正式调用顺序、最小必需输入与 `InvocationOrder / Validation / Native` 三类失败分类
 - `RadishFlow.CapeOpen.UnitOp.Mvp.ContractTests` 这种不依赖外部 NuGet 测试框架的库侧 contract baseline，用于锁定 `UnitOp.Mvp` 的行为语义，而不是把这部分契约只留在 console 输出里
 

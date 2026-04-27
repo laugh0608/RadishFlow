@@ -15,12 +15,12 @@
 - 对照本地 DWSIM `CapeOpenUO.GetParams()` 后，当前已确认 DWSIM 会把 `myparms.Item(i)` 返回的参数对象本身直接 cast 成 `ICapeParameterSpec`、type-specific spec 与 `ICapeParameter`；因此 parameter placeholder 本身也实现 `ICapeParameterSpec` 与 `ICapeOptionParameterSpec`，同时继续保留标准 `Specification` 对象入口
 - 当前 `Validate()` 在未配置 `Flowsheet Json` 等 MVP 必填参数时返回 invalid 是预期行为，不再归类为 discovery、activation、placement 或 port connection 失败
 - DWSIM 日志中的 `AutomaticTranslation.AutomaticTranslator.SetMainWindow(...)` `NullReferenceException` 发生在 DWSIM 主窗口 extender 初始化阶段，时间上早于 RadishFlow UnitOp activation；当前仅作为宿主侧启动噪声记录，不作为 RadishFlow CAPE-OPEN blocker
-- 当前目录已同时包含冻结真相源 `typelib/RadishFlow.CapeOpen.UnitOp.Mvp.idl` 与 `typelib/RadishFlow.CapeOpen.UnitOp.Mvp.tlb`；该 `tlb` 已由本机 `Windows Kits 10 + Visual Studio` 工具链生成，并已接入 `Registration` 的标准 `TypeLib` 注册/反注册路径
+- 当前目录已同时包含冻结真相源 `typelib/RadishFlow.CapeOpen.UnitOp.Mvp.idl` 与 `typelib/RadishFlow.CapeOpen.UnitOp.Mvp.tlb`；该 `tlb` 现在可通过仓库脚本 `scripts/gen-typelib.ps1` 由 Windows SDK MIDL + Visual Studio C++ 工具链重新生成，并已接入 `Registration` 的标准 `TypeLib` 注册/反注册路径
 - 当前又补入最小 `ICapeUnitReport` activation 兼容面；主类可枚举一个默认报告，并把 `ProduceReport(ref string)` 转发到既有 canonical calculation report 文本
 - 先前为定位 PME 添加组件 hard crash 而补入的 COM trace 当前已改为显式诊断开关：默认不写文件，只有设置 `RADISHFLOW_CAPEOPEN_TRACE_DIR` 后才写入 trace，`RADISHFLOW_CAPEOPEN_TRACE_FILE` 可覆盖默认文件名
 - `IPersistStreamInit`、`IPersistStorage` 与 `IOleObject` 当前仍是 PME canvas / OLE 探测所需的最小 no-op 兼容面，不代表实现真实工程文件持久化、OLE 可视嵌入或 in-place activation
 - 主要 CAPE-OPEN automation 接口当前已对齐为 IDL/TLB 中声明的 `dual` 形状；`ICapeUtilities.SimulationContext` setter 继续使用 raw `IntPtr`，避免 PME context 对象在进入方法体前触发 CLR interface marshaler
-- 当前仓库并不内置 `MIDL` 工具链；后续仍需继续把 `IDL -> TLB` 生成脚本化，而不是长期依赖手工本机构建
+- 当前仓库并不内置 `MIDL` / Visual Studio C++ 工具链；`scripts/gen-typelib.ps1` 会优先自动发现本机 Windows Kits / VS C++ 环境，也允许显式传入 `-MidlPath` 与 `-VcVarsPath`
 - 截至 2026-04-26，`Registration` dry-run 已能自动解析真实 `UnitOp.Mvp` 输出目录中的 comhost / TLB、校验 `TypeLib GUID/version`，并在 execute 模式下规划 `RegisterTypeLib(ForUser)` / `UnRegisterTypeLib(ForUser)`；真实 Windows PowerShell 5 复验已确认默认 `ICapeUtilities`、`Parameters.Count()` 和 parameter specification 可晚绑定调用，用户侧真实 `DWSIM / COFE` 复验也已确认 discovery、placement、port connection 与最小 calculate 主路径通过
 - 同日真实探测又确认：`pwsh` 下的 `0x800080A5` 来自宿主进程已预加载 `.NET 9.0.10`，与当前 PMC 目标运行时 `.NET 10.0.0` 不兼容；因此后续 native / classic COM 探测应优先使用 `Windows PowerShell 5` 或其他非预加载 .NET 宿主
 - 当前也确认：`ICapeUnit` 可通过 `QueryInterface` 返回 `S_OK`，但 PowerShell 默认 late binding 只代表默认 `ICapeUtilities` 面；`Ports / Validate / Calculate` 仍应以真实 PME 或强类型宿主路径复验为准

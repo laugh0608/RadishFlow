@@ -1,10 +1,11 @@
 // RadishFlow.CapeOpen.UnitOp.Mvp.idl
 //
-// 说明：
-// - 该 IDL 是为 DWSIM / COFE 这类依赖 IDispatch + TypeInfo 的 CAPE-OPEN 宿主准备的
-// - 当前仓库尚未包含可用的 MIDL 工具链，因此该文件先作为冻结的类型库真相源落库
-// - 后续需要在可用的 Windows SDK / Visual Studio 环境中编译为
-//   RadishFlow.CapeOpen.UnitOp.Mvp.tlb，并通过 ComHostTypeLibrary/注册脚本完成注册
+// Notes:
+// - This IDL is the type library source of truth for CAPE-OPEN hosts that rely
+//   on IDispatch + TypeInfo, including DWSIM and COFE.
+// - Build scripts compile this file into RadishFlow.CapeOpen.UnitOp.Mvp.tlb,
+//   then the UnitOp project embeds it through ComHostTypeLibrary and the
+//   registration tool registers it for classic COM hosts.
 
 import "oaidl.idl";
 import "ocidl.idl";

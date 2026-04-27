@@ -39,6 +39,22 @@ dotnet run --project .\adapters\dotnet-capeopen\RadishFlow.CapeOpen.Registration
 pwsh .\scripts\register-com.ps1
 ```
 
+重新生成 `UnitOp.Mvp` type library：
+
+```powershell
+pwsh .\scripts\gen-typelib.ps1
+```
+
+该脚本会从 `RadishFlow.CapeOpen.UnitOp.Mvp.idl` 生成 `RadishFlow.CapeOpen.UnitOp.Mvp.tlb`，默认使用 `x64` MIDL 环境；若工具不在常见位置，可传入 `-MidlPath` 与 `-VcVarsPath`。
+
+日常 PME 调试注册入口：
+
+```powershell
+pwsh .\scripts\pme-register-latest.ps1
+```
+
+该入口默认会先构建最新 `rf-ffi`，再重新生成 `UnitOp.Mvp` TLB，最后通过受控注册脚本执行 `current-user` 注册。只有在明确复用现有 TLB 时才使用 `-SkipTypeLibGeneration`。
+
 JSON 输出：
 
 ```powershell
@@ -109,6 +125,7 @@ pwsh .\scripts\register-com.ps1 -Action unregister -Execute -ConfirmToken unregi
 - `unregister` 当前会先计划 `TypeLib` 反注册，再输出待删除的 `CLSID / ProgID / Versioned ProgID / TypeLib` 树
 - 输出中的 `.NET COM hosting` 键值仍是前置规划；工具会先解析并校验 `RadishFlow.CapeOpen.UnitOp.Mvp.comhost.dll` 路径，当前不会退回旧 `.NET Framework` 的 `mscoree.dll` 注册口径
 - 当前默认也会解析 `RadishFlow.CapeOpen.UnitOp.Mvp.tlb` 路径；开发构建下该文件会随 `UnitOp.Mvp` 与 `Registration` 输出目录一起复制，必要时也可显式传入 `--typelib <path>`
+- `RadishFlow.CapeOpen.UnitOp.Mvp.tlb` 的仓库内源产物应通过 `scripts/gen-typelib.ps1` 从 IDL 重新生成；`scripts/pme-register-latest.ps1` 默认会在注册前执行这一步
 - preflight checks 只读检查 comhost 文件、comhost PE 机器类型、`UnitOp.Mvp.runtimeconfig/deps` sidecar、`TLB` 路径、`TypeLib GUID/version`、当前进程位数、scope 权限口径和目标 registry key 现状
 - backup plan 只列出真实执行前应备份的 registry tree，不导出、不删除、不写入
 - 默认 comhost 路径当前会优先回到仓库内真实 `UnitOp.Mvp\bin\<Configuration>\<TFM>\` 输出目录，并要求该目录同时包含 `RadishFlow.CapeOpen.UnitOp.Mvp.runtimeconfig.json` 与 `RadishFlow.CapeOpen.UnitOp.Mvp.deps.json`；若只找到被复制到 `Registration\bin\...` 或 `ContractTests\bin\...` 的 comhost，但缺少 runtime sidecar，则不会被优先选中

@@ -10,6 +10,8 @@ param(
 
     [switch]$SkipRustBuild,
 
+    [switch]$SkipTypeLibGeneration,
+
     [switch]$SkipDotnetBuild,
 
     [switch]$Json
@@ -62,6 +64,15 @@ if (-not $SkipRustBuild) {
     & cargo @cargoArgs
     if ($LASTEXITCODE -ne 0) {
         throw 'cargo build failed for rf-ffi.'
+    }
+}
+
+if (-not $SkipTypeLibGeneration) {
+    $typeLibScript = Join-Path $repoRoot 'scripts\gen-typelib.ps1'
+    Write-Host 'Generating CAPE-OPEN UnitOp type library...'
+    & $typeLibScript -Architecture x64
+    if ($LASTEXITCODE -ne 0) {
+        throw 'type library generation failed.'
     }
 }
 
