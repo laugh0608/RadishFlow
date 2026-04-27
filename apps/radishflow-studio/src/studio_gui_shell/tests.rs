@@ -139,6 +139,31 @@ fn clamp_overlay_pos_to_rect_keeps_overlay_inside_screen_padding() {
 }
 
 #[test]
+fn shell_locale_defaults_to_chinese_and_can_translate_runtime_labels() {
+    let locale = StudioShellLocale::default();
+
+    assert_eq!(locale, StudioShellLocale::ZhCn);
+    assert_eq!(locale.text(ShellText::Runtime), "运行");
+    assert_eq!(locale.runtime_label("Converged").as_ref(), "已收敛");
+    assert_eq!(
+        StudioShellLocale::En.runtime_label("Converged").as_ref(),
+        "Converged"
+    );
+}
+
+#[test]
+fn right_sidebar_width_keeps_runtime_panel_readable() {
+    let width = region_panel_width_from_values(
+        StudioGuiWindowDockRegion::RightSidebar,
+        1_280.0,
+        100.0,
+        24.0,
+    );
+
+    assert_eq!(width, 360.0);
+}
+
+#[test]
 fn command_palette_state_open_close_and_selection_reset_cleanly() {
     let mut state = CommandPaletteState {
         open: false,
@@ -1046,6 +1071,7 @@ fn ready_app_state(config: &StudioRuntimeConfig) -> ReadyAppState {
         platform_host: StudioGuiPlatformHost::new(config).expect("expected platform host"),
         platform_timer_executor: EguiPlatformTimerExecutor::default(),
         command_palette: CommandPaletteState::default(),
+        locale: StudioShellLocale::default(),
         last_area_focus: None,
         drag_session: None,
         active_drop_preview: None,

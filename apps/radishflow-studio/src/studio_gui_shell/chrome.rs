@@ -16,21 +16,32 @@ impl ReadyAppState {
             });
             ui.separator();
             ui.horizontal_wrapped(|ui| {
-                if ui.button("New logical window").clicked() {
+                if ui
+                    .button(self.locale.text(ShellText::NewLogicalWindow))
+                    .clicked()
+                {
                     self.dispatch_event(StudioGuiEvent::OpenWindowRequested);
                 }
                 if current_window_id.is_none() {
-                    ui.small("no active logical window");
+                    ui.small(self.locale.text(ShellText::NoActiveLogicalWindow));
                 }
             });
             ui.separator();
             ui.horizontal_wrapped(|ui| {
-                ui.label(egui::RichText::new("Logical windows").strong());
+                ui.label(egui::RichText::new(self.locale.text(ShellText::LogicalWindows)).strong());
                 if windows.is_empty() {
-                    ui.small("none");
+                    ui.small(self.locale.text(ShellText::None));
                 } else {
                     self.render_logical_window_chips(ui, windows);
                 }
+            });
+            ui.separator();
+            ui.horizontal_wrapped(|ui| {
+                ui.label(egui::RichText::new(self.locale.text(ShellText::Language)).strong());
+                let english = self.locale.text(ShellText::English);
+                let chinese = self.locale.text(ShellText::Chinese);
+                ui.selectable_value(&mut self.locale, StudioShellLocale::ZhCn, chinese);
+                ui.selectable_value(&mut self.locale, StudioShellLocale::En, english);
             });
             if !window.commands.menu_tree.is_empty() {
                 ui.separator();
@@ -38,9 +49,9 @@ impl ReadyAppState {
                 ui.horizontal_wrapped(|ui| {
                     self.render_command_toolbar(ui, &window.commands.toolbar_sections);
                     let palette_label = if self.command_palette.open {
-                        "Hide command palette"
+                        self.locale.text(ShellText::HideCommandPalette)
                     } else {
-                        "Command palette (Ctrl+K)"
+                        self.locale.text(ShellText::CommandPalette)
                     };
                     if ui.button(palette_label).clicked() {
                         self.command_palette.toggle();
@@ -54,51 +65,53 @@ impl ReadyAppState {
                     current_window_id,
                     &window.layout_state,
                     StudioGuiWindowAreaId::Commands,
-                    "Commands",
+                    self.locale.text(ShellText::Commands),
                 );
                 self.render_panel_toggle(
                     ui,
                     current_window_id,
                     &window.layout_state,
                     StudioGuiWindowAreaId::Canvas,
-                    "Canvas",
+                    self.locale.text(ShellText::Canvas),
                 );
                 self.render_panel_toggle(
                     ui,
                     current_window_id,
                     &window.layout_state,
                     StudioGuiWindowAreaId::Runtime,
-                    "Runtime",
+                    self.locale.text(ShellText::Runtime),
                 );
             });
             ui.horizontal_wrapped(|ui| {
-                ui.label(egui::RichText::new("Region weights").strong());
+                ui.label(egui::RichText::new(self.locale.text(ShellText::RegionWeights)).strong());
                 self.render_region_weight_slider(
                     ui,
                     current_window_id,
                     &window.layout_state,
                     StudioGuiWindowDockRegion::LeftSidebar,
-                    "Left",
+                    self.locale.text(ShellText::Left),
                 );
                 self.render_region_weight_slider(
                     ui,
                     current_window_id,
                     &window.layout_state,
                     StudioGuiWindowDockRegion::CenterStage,
-                    "Center",
+                    self.locale.text(ShellText::Center),
                 );
                 self.render_region_weight_slider(
                     ui,
                     current_window_id,
                     &window.layout_state,
                     StudioGuiWindowDockRegion::RightSidebar,
-                    "Right",
+                    self.locale.text(ShellText::Right),
                 );
             });
             if let Some(drag_session) = self.drag_session {
                 ui.separator();
                 ui.horizontal_wrapped(|ui| {
-                    ui.label(egui::RichText::new("Drop preview").strong());
+                    ui.label(
+                        egui::RichText::new(self.locale.text(ShellText::DropPreview)).strong(),
+                    );
                     ui.label(format!("dragging {}", area_label(drag_session.area_id)));
                     if drag_session.window_id == current_window_id {
                         ui.small(
@@ -113,7 +126,7 @@ impl ReadyAppState {
                                 .color(egui::Color32::from_rgb(92, 104, 117)),
                         );
                     }
-                    if ui.button("Cancel").clicked() {
+                    if ui.button(self.locale.text(ShellText::Cancel)).clicked() {
                         self.cancel_drag_session(current_window_id);
                     }
                 });
@@ -300,7 +313,7 @@ impl ReadyAppState {
             ui.add_space(6.0);
         }
         if groups.is_empty() {
-            ui.label("No panels in this region.");
+            ui.label(self.locale.text(ShellText::NoPanelsInRegion));
             return;
         }
 
@@ -541,14 +554,16 @@ impl ReadyAppState {
                                 .unwrap_or(false);
                             if is_drag_source {
                                 ui.small(
-                                    egui::RichText::new("Dragging from header/tab")
+                                    egui::RichText::new(
+                                        self.locale.text(ShellText::DraggingFromHeaderTab),
+                                    )
                                         .color(egui::Color32::from_rgb(56, 126, 214)),
                                 );
                             } else {
-                                ui.small("Drag header or tab to move");
+                                ui.small(self.locale.text(ShellText::DragHeaderOrTabToMove));
                             }
 
-                            if ui.button("Center").clicked() {
+                            if ui.button(self.locale.text(ShellText::CenterPanel)).clicked() {
                                 self.dispatch_layout_mutation(
                                     window_id,
                                     StudioGuiWindowLayoutMutation::SetCenterArea { area_id },
@@ -556,9 +571,9 @@ impl ReadyAppState {
                             }
 
                             let collapse_label = if panel.collapsed {
-                                "Expand"
+                                self.locale.text(ShellText::Expand)
                             } else {
-                                "Collapse"
+                                self.locale.text(ShellText::Collapse)
                             };
                             if ui.button(collapse_label).clicked() {
                                 self.dispatch_layout_mutation(
@@ -570,7 +585,7 @@ impl ReadyAppState {
                                 );
                             }
 
-                            if ui.button("Hide").clicked() {
+                            if ui.button(self.locale.text(ShellText::Hide)).clicked() {
                                 self.dispatch_layout_mutation(
                                     window_id,
                                     StudioGuiWindowLayoutMutation::SetPanelVisibility {
@@ -608,7 +623,7 @@ impl ReadyAppState {
                         ui.separator();
 
                         if panel.collapsed {
-                            ui.label("Panel is collapsed.");
+                            ui.label(self.locale.text(ShellText::PanelIsCollapsed));
                             return;
                         }
 

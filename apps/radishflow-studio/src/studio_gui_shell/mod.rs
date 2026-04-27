@@ -25,6 +25,7 @@ use rf_ui::{
 
 mod app;
 mod chrome;
+mod locale;
 mod panels;
 mod utils;
 
@@ -33,6 +34,7 @@ mod tests;
 #[cfg(test)]
 mod timer_tests;
 
+use self::locale::{ShellText, StudioShellLocale};
 use self::utils::*;
 
 pub fn run() -> eframe::Result<()> {
@@ -58,6 +60,7 @@ struct ReadyAppState {
     platform_host: StudioGuiPlatformHost,
     platform_timer_executor: EguiPlatformTimerExecutor,
     command_palette: CommandPaletteState,
+    locale: StudioShellLocale,
     last_area_focus: Option<StudioGuiWindowAreaId>,
     drag_session: Option<PanelDragSession>,
     active_drop_preview: Option<ActiveDropPreview>,
@@ -111,6 +114,7 @@ impl RadishFlowStudioApp {
                     platform_host,
                     platform_timer_executor: EguiPlatformTimerExecutor::default(),
                     command_palette: CommandPaletteState::default(),
+                    locale: StudioShellLocale::default(),
                     last_area_focus: None,
                     drag_session: None,
                     active_drop_preview: None,

@@ -161,7 +161,22 @@ pub(super) fn region_panel_width(
         .map(|item| item.weight)
         .unwrap_or(24) as f32;
     let available_width = ctx.available_rect().width().max(960.0);
-    (available_width * (region_weight / total_weight)).clamp(180.0, 480.0)
+    region_panel_width_from_values(dock_region, available_width, total_weight, region_weight)
+}
+
+pub(super) fn region_panel_width_from_values(
+    dock_region: StudioGuiWindowDockRegion,
+    available_width: f32,
+    total_weight: f32,
+    region_weight: f32,
+) -> f32 {
+    let proportional_width = available_width * (region_weight / total_weight.max(1.0));
+    let (min_width, max_width) = match dock_region {
+        StudioGuiWindowDockRegion::LeftSidebar => (240.0, 520.0),
+        StudioGuiWindowDockRegion::CenterStage => (320.0, 960.0),
+        StudioGuiWindowDockRegion::RightSidebar => (360.0, 640.0),
+    };
+    proportional_width.clamp(min_width, max_width)
 }
 
 pub(super) fn dock_region_label(dock_region: StudioGuiWindowDockRegion) -> &'static str {
@@ -705,6 +720,21 @@ pub(super) fn render_status_chip(ui: &mut egui::Ui, label: &str, color: egui::Co
         .show(ui, |ui| {
             ui.label(egui::RichText::new(label).color(color).small());
         });
+}
+
+pub(super) fn render_wrapped_label(ui: &mut egui::Ui, text: impl ToString) {
+    ui.add(egui::Label::new(text.to_string()).wrap());
+}
+
+pub(super) fn render_wrapped_small(ui: &mut egui::Ui, text: impl ToString) {
+    ui.add(
+        egui::Label::new(
+            egui::RichText::new(text.to_string())
+                .small()
+                .color(egui::Color32::from_rgb(92, 104, 117)),
+        )
+        .wrap(),
+    );
 }
 
 pub(super) fn run_status_color(status_label: &str) -> egui::Color32 {
