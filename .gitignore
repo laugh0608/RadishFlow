@@ -19,6 +19,9 @@
 Thumbs.db
 .DS_Store
 
+# Studio local UI state
+*.rfstudio-layout.json
+
 # Local automation / temp
 .dotnetcli/
 .dotnet/
