@@ -2,8 +2,8 @@ use std::collections::BTreeMap;
 
 use crate::{
     EntitlementSessionHostRuntimeOutput, StudioAppHostState, StudioAppHostUiCommandModel,
-    StudioGuiCanvasWidgetModel, StudioGuiCommandRegistry, StudioGuiWindowDropPreviewState,
-    StudioGuiWindowLayoutState, WorkspaceControlState,
+    StudioExampleProjectModel, StudioGuiCanvasWidgetModel, StudioGuiCommandRegistry,
+    StudioGuiWindowDropPreviewState, StudioGuiWindowLayoutState, WorkspaceControlState,
 };
 
 #[derive(Debug, Clone, PartialEq)]
@@ -21,6 +21,7 @@ pub struct StudioGuiWorkspaceDocumentSnapshot {
 #[derive(Debug, Clone, PartialEq)]
 pub struct StudioGuiRuntimeSnapshot {
     pub workspace_document: StudioGuiWorkspaceDocumentSnapshot,
+    pub example_projects: Vec<StudioExampleProjectModel>,
     pub control_state: WorkspaceControlState,
     pub run_panel: rf_ui::RunPanelWidgetModel,
     pub latest_solve_snapshot: Option<rf_ui::SolveSnapshot>,

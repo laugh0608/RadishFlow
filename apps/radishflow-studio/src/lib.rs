@@ -15,6 +15,7 @@ mod property_package_download_client;
 mod run_panel_driver;
 mod solver_bridge;
 mod studio_app_host;
+mod studio_example_projects;
 mod studio_gui_canvas_presentation;
 mod studio_gui_canvas_widget;
 mod studio_gui_command_registry;
@@ -155,6 +156,7 @@ pub use studio_app_host::{
     StudioAppHostWindowChange, StudioAppHostWindowDispatchResult,
     StudioAppHostWindowSelectionChange, StudioAppHostWindowSnapshot, StudioAppHostWindowState,
 };
+pub use studio_example_projects::{StudioExampleProjectModel, studio_example_project_models};
 pub use studio_gui_canvas_presentation::{
     StudioGuiCanvasPresentation, StudioGuiCanvasSuggestionViewModel, StudioGuiCanvasTextView,
     StudioGuiCanvasViewModel,

@@ -50,6 +50,9 @@ impl StudioGuiHost {
             self.canvas_state().widget(),
             StudioGuiRuntimeSnapshot {
                 workspace_document: workspace_document_snapshot_from_controller(&self.controller),
+                example_projects: crate::studio_example_project_models(
+                    self.controller.document_path(),
+                ),
                 control_state: self.controller.workspace_control_state(),
                 run_panel: self.controller.run_panel_widget(),
                 latest_solve_snapshot: self.controller.latest_solve_snapshot(),

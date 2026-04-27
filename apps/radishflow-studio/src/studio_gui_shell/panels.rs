@@ -227,6 +227,27 @@ impl ReadyAppState {
             if let Some(path) = document.project_path.as_ref() {
                 ui.small(path);
             }
+            if !window.runtime.example_projects.is_empty() {
+                ui.separator();
+                ui.label(egui::RichText::new("Example projects").strong());
+                let mut requested_project = None;
+                for example in &window.runtime.example_projects {
+                    ui.horizontal_wrapped(|ui| {
+                        let button = egui::Button::new(example.title).selected(example.is_current);
+                        if ui
+                            .add_enabled(!example.is_current, button)
+                            .on_hover_text(example.detail)
+                            .clicked()
+                        {
+                            requested_project = Some(example.project_path.clone());
+                        }
+                        ui.small(example.detail);
+                    });
+                }
+                if let Some(project_path) = requested_project {
+                    self.open_example_project(project_path);
+                }
+            }
         });
 
         ui.add_space(8.0);

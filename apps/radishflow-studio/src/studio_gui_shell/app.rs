@@ -1,6 +1,35 @@
 use super::*;
 
 impl ReadyAppState {
+    pub(super) fn open_example_project(&mut self, project_path: PathBuf) {
+        let config = StudioRuntimeConfig {
+            project_path: project_path.clone(),
+            ..StudioRuntimeConfig::default()
+        };
+
+        match StudioGuiPlatformHost::new(&config) {
+            Ok(platform_host) => {
+                self.platform_host = platform_host;
+                self.platform_timer_executor = EguiPlatformTimerExecutor::default();
+                self.command_palette.close();
+                self.last_area_focus = None;
+                self.drag_session = None;
+                self.active_drop_preview = None;
+                self.drop_preview_overlay_anchor = None;
+                self.last_viewport_focused = None;
+                self.dispatch_event(StudioGuiEvent::OpenWindowRequested);
+            }
+            Err(error) => {
+                self.platform_host.record_activity_line(format!(
+                    "open example project failed [{}]: {} ({})",
+                    error.code().as_str(),
+                    error.message(),
+                    project_path.display()
+                ));
+            }
+        }
+    }
+
     pub(super) fn update(&mut self, ctx: &egui::Context) {
         self.sync_viewport_close(ctx);
         self.sync_viewport_lifecycle(ctx);

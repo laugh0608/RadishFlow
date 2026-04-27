@@ -1,10 +1,10 @@
 use crate::{
-    EntitlementSessionHostRuntimeOutput, StudioGuiCanvasWidgetModel, StudioGuiCommandEntry,
-    StudioGuiCommandMenuNode, StudioGuiCommandRegistry, StudioGuiCommandSection, StudioGuiSnapshot,
-    StudioGuiWindowAreaId, StudioGuiWindowDockRegion, StudioGuiWindowDropTarget,
-    StudioGuiWindowDropTargetKind, StudioGuiWindowDropTargetQuery, StudioGuiWindowLayoutModel,
-    StudioGuiWindowLayoutState, StudioGuiWorkspaceDocumentSnapshot, StudioWindowHostId,
-    WorkspaceControlState,
+    EntitlementSessionHostRuntimeOutput, StudioExampleProjectModel, StudioGuiCanvasWidgetModel,
+    StudioGuiCommandEntry, StudioGuiCommandMenuNode, StudioGuiCommandRegistry,
+    StudioGuiCommandSection, StudioGuiSnapshot, StudioGuiWindowAreaId, StudioGuiWindowDockRegion,
+    StudioGuiWindowDropTarget, StudioGuiWindowDropTargetKind, StudioGuiWindowDropTargetQuery,
+    StudioGuiWindowLayoutModel, StudioGuiWindowLayoutState, StudioGuiWorkspaceDocumentSnapshot,
+    StudioWindowHostId, WorkspaceControlState,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -107,6 +107,7 @@ pub struct StudioGuiWindowCanvasAreaModel {
 pub struct StudioGuiWindowRuntimeAreaModel {
     pub title: &'static str,
     pub workspace_document: StudioGuiWorkspaceDocumentSnapshot,
+    pub example_projects: Vec<StudioExampleProjectModel>,
     pub control_state: WorkspaceControlState,
     pub run_panel: rf_ui::RunPanelWidgetModel,
     pub latest_solve_snapshot: Option<StudioGuiWindowSolveSnapshotModel>,
@@ -480,6 +481,7 @@ fn runtime_from_snapshot(snapshot: &StudioGuiSnapshot) -> StudioGuiWindowRuntime
     StudioGuiWindowRuntimeAreaModel {
         title: "Runtime",
         workspace_document: snapshot.runtime.workspace_document.clone(),
+        example_projects: snapshot.runtime.example_projects.clone(),
         control_state: snapshot.runtime.control_state.clone(),
         run_panel: snapshot.runtime.run_panel.clone(),
         latest_solve_snapshot: snapshot
@@ -752,6 +754,17 @@ mod tests {
         assert_eq!(
             window.runtime.run_panel.view().primary_action.label,
             "Resume"
+        );
+        assert_eq!(window.runtime.example_projects.len(), 7);
+        assert_eq!(
+            window
+                .runtime
+                .example_projects
+                .iter()
+                .find(|example| example.is_current)
+                .map(|example| example.id),
+            None,
+            "temporary edited project should not be marked as a bundled example"
         );
         assert!(window.runtime.entitlement_host.is_some());
         assert!(window.runtime.platform_timer_lines.is_empty());

@@ -724,6 +724,66 @@ fn command_palette_items_surface_window_model_results() {
     );
 }
 
+#[test]
+fn open_example_project_rebuilds_runtime_for_selected_sample() {
+    let mut app = ready_app_state(&synced_workspace_config());
+    let target_project = app
+        .platform_host
+        .snapshot()
+        .window_model()
+        .runtime
+        .example_projects
+        .iter()
+        .find(|example| example.id == "feed-valve-flash")
+        .expect("expected feed valve example")
+        .project_path
+        .clone();
+
+    app.dispatch_ui_command("run_panel.run_manual");
+    assert_eq!(
+        app.platform_host
+            .snapshot()
+            .window_model()
+            .runtime
+            .workspace_document
+            .snapshot_history_count,
+        1
+    );
+
+    app.open_example_project(target_project);
+    let window = app.platform_host.snapshot().window_model();
+
+    assert_eq!(
+        window.runtime.workspace_document.title,
+        "Feed Valve Flash Example"
+    );
+    assert_eq!(window.runtime.workspace_document.snapshot_history_count, 0);
+    assert_eq!(
+        window
+            .runtime
+            .example_projects
+            .iter()
+            .find(|example| example.is_current)
+            .map(|example| example.id),
+        Some("feed-valve-flash")
+    );
+    assert_eq!(
+        window.runtime.run_panel.view().primary_action.label,
+        "Resume"
+    );
+
+    app.dispatch_ui_command("run_panel.run_manual");
+    assert_eq!(
+        app.platform_host
+            .snapshot()
+            .window_model()
+            .runtime
+            .control_state
+            .run_status,
+        rf_ui::RunStatus::Converged
+    );
+}
+
 fn palette_commands_for_test(commands: &[(&str, bool)]) -> Vec<&'static StudioGuiCommandEntry> {
     commands
         .iter()
