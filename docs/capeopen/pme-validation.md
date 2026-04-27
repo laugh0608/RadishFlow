@@ -254,6 +254,19 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\configure-pme-dump
 
 这一路径只用于捕捉 PME 进程崩溃栈，不替代 `current-user register / unregister` 的安装清理要求。
 
+## PME 调用 trace
+
+`UnitOp.Mvp` 仍保留轻量 COM 调用 trace 钩子，用于未来定位真实 PME 调用顺序、COM marshalling 或 material object 读写问题。
+
+该 trace 默认关闭，不再固定写入仓库 `artifacts/pme-trace`。需要临时启用时，先在启动 PME 的同一用户环境中设置：
+
+```powershell
+$env:RADISHFLOW_CAPEOPEN_TRACE_DIR = "D:\Code\RadishFlow\artifacts\pme-trace"
+$env:RADISHFLOW_CAPEOPEN_TRACE_FILE = "radishflow-unitop-trace.log"
+```
+
+`RADISHFLOW_CAPEOPEN_TRACE_FILE` 可省略，默认文件名为 `radishflow-unitop-trace.log`。验证结束后应清理这两个环境变量；trace 文件只作为诊断附件，不作为正式产品输出。
+
 ## 验证记录模板
 
 建议每次人工验证记录以下内容：
@@ -295,7 +308,7 @@ Follow-up:
 
 ## 当前判断
 
-截至 2026-04-26，`SampleHost` 的 PME-like 薄宿主入口、`Registration` execute 门控、脚本化安装/反安装运行手册，以及真实 `DWSIM / COFE` 人工复验已经把 discovery、activation、placement、端口连接与最小 calculate 主路径推进到阶段性闭环。
+截至 2026-04-27，`SampleHost` 的 PME-like 薄宿主入口、`Registration` execute 门控、脚本化安装/反安装运行手册，以及真实 `DWSIM / COFE` 人工复验已经把 discovery、activation、placement、端口连接与最小 calculate 主路径推进到阶段性闭环。
 
 当前已确认：
 
@@ -309,4 +322,9 @@ Follow-up:
 - 当前 COFE trace 中 `Validate()` 返回 "Required parameter `Flowsheet Json` is not configured." 属于 MVP 必填参数未配置时的预期 invalid 结果，不再归类为 placement 或 connection 失败。
 - DWSIM 日志中的 `AutomaticTranslation.AutomaticTranslator.SetMainWindow(...)` `NullReferenceException` 来自 DWSIM 主窗口 extender 初始化路径，发生在 RadishFlow UnitOp activation 之前；当前仅作为宿主侧启动噪声记录，不作为 RadishFlow CAPE-OPEN blocker。
 
-当前仍未完成的是把本次真实 `DWSIM / COFE` 成功复验整理为正式 `examples/pme-validation/` 记录，并在后续移除或开关化 `artifacts/pme-trace` 临时诊断输出。
+本次真实 `DWSIM / COFE` 成功复验已经沉淀为正式记录：
+
+- `examples/pme-validation/2026-04-27-dwsim-current-user.md`
+- `examples/pme-validation/2026-04-27-cofe-current-user.md`
+
+先前固定写入 `artifacts/pme-trace` 的临时诊断输出也已收口为显式环境变量开关；后续只有在新的 PME 失败需要调用顺序证据时才临时启用。

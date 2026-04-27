@@ -17,7 +17,7 @@
 - DWSIM 日志中的 `AutomaticTranslation.AutomaticTranslator.SetMainWindow(...)` `NullReferenceException` 发生在 DWSIM 主窗口 extender 初始化阶段，时间上早于 RadishFlow UnitOp activation；当前仅作为宿主侧启动噪声记录，不作为 RadishFlow CAPE-OPEN blocker
 - 当前目录已同时包含冻结真相源 `typelib/RadishFlow.CapeOpen.UnitOp.Mvp.idl` 与 `typelib/RadishFlow.CapeOpen.UnitOp.Mvp.tlb`；该 `tlb` 已由本机 `Windows Kits 10 + Visual Studio` 工具链生成，并已接入 `Registration` 的标准 `TypeLib` 注册/反注册路径
 - 当前又补入最小 `ICapeUnitReport` activation 兼容面；主类可枚举一个默认报告，并把 `ProduceReport(ref string)` 转发到既有 canonical calculation report 文本
-- 先前为定位 PME 添加组件 hard crash 而补入的临时 trace 仍写入 `D:\Code\RadishFlow\artifacts\pme-trace\radishflow-unitop-trace.log`；当前主问题已越过 placement/connection，后续应把该 trace 改成显式诊断开关或清理
+- 先前为定位 PME 添加组件 hard crash 而补入的 COM trace 当前已改为显式诊断开关：默认不写文件，只有设置 `RADISHFLOW_CAPEOPEN_TRACE_DIR` 后才写入 trace，`RADISHFLOW_CAPEOPEN_TRACE_FILE` 可覆盖默认文件名
 - `IPersistStreamInit`、`IPersistStorage` 与 `IOleObject` 当前仍是 PME canvas / OLE 探测所需的最小 no-op 兼容面，不代表实现真实工程文件持久化、OLE 可视嵌入或 in-place activation
 - 主要 CAPE-OPEN automation 接口当前已对齐为 IDL/TLB 中声明的 `dual` 形状；`ICapeUtilities.SimulationContext` setter 继续使用 raw `IntPtr`，避免 PME context 对象在进入方法体前触发 CLR interface marshaler
 - 当前仓库并不内置 `MIDL` 工具链；后续仍需继续把 `IDL -> TLB` 生成脚本化，而不是长期依赖手工本机构建

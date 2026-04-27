@@ -5,19 +5,26 @@ namespace RadishFlow.CapeOpen.UnitOp.Mvp.UnitOperation;
 
 internal static class UnitOperationComTrace
 {
-    private const string TraceDirectory = @"D:\Code\RadishFlow\artifacts\pme-trace";
-    private const string TraceFileName = "radishflow-unitop-trace.log";
+    private const string TraceDirectoryEnvironmentVariable = "RADISHFLOW_CAPEOPEN_TRACE_DIR";
+    private const string TraceFileNameEnvironmentVariable = "RADISHFLOW_CAPEOPEN_TRACE_FILE";
+    private const string DefaultTraceFileName = "radishflow-unitop-trace.log";
     private static readonly object Gate = new();
 
     public static void Write(string memberName, string stage, string? detail = null)
     {
         try
         {
-            Directory.CreateDirectory(TraceDirectory);
+            var tracePath = TryGetTracePath();
+            if (tracePath is null)
+            {
+                return;
+            }
+
+            Directory.CreateDirectory(Path.GetDirectoryName(tracePath)!);
             var line = FormatLine(memberName, stage, detail);
             lock (Gate)
             {
-                File.AppendAllText(Path.Combine(TraceDirectory, TraceFileName), line + Environment.NewLine);
+                File.AppendAllText(tracePath, line + Environment.NewLine);
             }
         }
         catch
@@ -29,6 +36,23 @@ internal static class UnitOperationComTrace
     public static void Exception(string memberName, Exception error)
     {
         Write(memberName, "exception", $"{error.GetType().FullName}: {error.Message}");
+    }
+
+    private static string? TryGetTracePath()
+    {
+        var traceDirectory = Environment.GetEnvironmentVariable(TraceDirectoryEnvironmentVariable);
+        if (string.IsNullOrWhiteSpace(traceDirectory))
+        {
+            return null;
+        }
+
+        var traceFileName = Environment.GetEnvironmentVariable(TraceFileNameEnvironmentVariable);
+        if (string.IsNullOrWhiteSpace(traceFileName))
+        {
+            traceFileName = DefaultTraceFileName;
+        }
+
+        return Path.Combine(traceDirectory, traceFileName);
     }
 
     private static string FormatLine(string memberName, string stage, string? detail)
