@@ -598,6 +598,17 @@ impl StudioAppHost {
             .clone()
     }
 
+    pub fn document(&self) -> &rf_ui::FlowsheetDocument {
+        &self
+            .window_host_manager
+            .session()
+            .host_port()
+            .runtime()
+            .app_state()
+            .workspace
+            .document
+    }
+
     pub fn document_path(&self) -> Option<&Path> {
         self.window_host_manager
             .session()
@@ -607,6 +618,30 @@ impl StudioAppHost {
             .workspace
             .document_path
             .as_deref()
+    }
+
+    pub fn latest_solve_snapshot(&self) -> Option<rf_ui::SolveSnapshot> {
+        rf_ui::latest_snapshot(
+            &self
+                .window_host_manager
+                .session()
+                .host_port()
+                .runtime()
+                .app_state()
+                .workspace,
+        )
+        .cloned()
+    }
+
+    pub fn snapshot_history_count(&self) -> usize {
+        self.window_host_manager
+            .session()
+            .host_port()
+            .runtime()
+            .app_state()
+            .workspace
+            .snapshot_history
+            .len()
     }
 
     pub fn snapshot(&self) -> StudioAppHostSnapshot {
@@ -826,8 +861,20 @@ impl StudioAppHostController {
         self.app_host.canvas_interaction()
     }
 
+    pub fn document(&self) -> &rf_ui::FlowsheetDocument {
+        self.app_host.document()
+    }
+
     pub fn document_path(&self) -> Option<&Path> {
         self.app_host.document_path()
+    }
+
+    pub fn latest_solve_snapshot(&self) -> Option<rf_ui::SolveSnapshot> {
+        self.app_host.latest_solve_snapshot()
+    }
+
+    pub fn snapshot_history_count(&self) -> usize {
+        self.app_host.snapshot_history_count()
     }
 
     pub fn open_window(&mut self) -> RfResult<StudioAppHostOpenWindowResult> {

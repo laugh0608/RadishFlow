@@ -49,8 +49,10 @@ impl StudioGuiHost {
             self.command_registry(),
             self.canvas_state().widget(),
             StudioGuiRuntimeSnapshot {
+                workspace_document: workspace_document_snapshot_from_controller(&self.controller),
                 control_state: self.controller.workspace_control_state(),
                 run_panel: self.controller.run_panel_widget(),
+                latest_solve_snapshot: self.controller.latest_solve_snapshot(),
                 entitlement_host: self.controller.entitlement_host_output(),
                 platform_notice: None,
                 platform_timer_lines: Vec::new(),
@@ -190,5 +192,23 @@ impl StudioGuiHost {
                 .unwrap_or_default(),
             close: closed.close,
         })
+    }
+}
+
+fn workspace_document_snapshot_from_controller(
+    controller: &crate::StudioAppHostController,
+) -> crate::StudioGuiWorkspaceDocumentSnapshot {
+    let document = controller.document();
+    crate::StudioGuiWorkspaceDocumentSnapshot {
+        document_id: document.metadata.document_id.as_str().to_string(),
+        title: document.metadata.title.clone(),
+        flowsheet_name: document.flowsheet.name.clone(),
+        revision: document.revision,
+        project_path: controller
+            .document_path()
+            .map(|path| path.display().to_string()),
+        unit_count: document.flowsheet.units.len(),
+        stream_count: document.flowsheet.streams.len(),
+        snapshot_history_count: controller.snapshot_history_count(),
     }
 }

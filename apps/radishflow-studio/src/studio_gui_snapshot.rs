@@ -7,9 +7,23 @@ use crate::{
 };
 
 #[derive(Debug, Clone, PartialEq)]
+pub struct StudioGuiWorkspaceDocumentSnapshot {
+    pub document_id: String,
+    pub title: String,
+    pub flowsheet_name: String,
+    pub revision: u64,
+    pub project_path: Option<String>,
+    pub unit_count: usize,
+    pub stream_count: usize,
+    pub snapshot_history_count: usize,
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub struct StudioGuiRuntimeSnapshot {
+    pub workspace_document: StudioGuiWorkspaceDocumentSnapshot,
     pub control_state: WorkspaceControlState,
     pub run_panel: rf_ui::RunPanelWidgetModel,
+    pub latest_solve_snapshot: Option<rf_ui::SolveSnapshot>,
     pub entitlement_host: Option<EntitlementSessionHostRuntimeOutput>,
     pub platform_notice: Option<rf_ui::RunPanelNotice>,
     pub platform_timer_lines: Vec<String>,

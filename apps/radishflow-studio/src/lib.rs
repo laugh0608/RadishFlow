@@ -207,7 +207,9 @@ pub use studio_gui_platform_timer_driver::{
 pub use studio_gui_shortcut_router::{
     StudioGuiFocusContext, StudioGuiShortcutIgnoreReason, StudioGuiShortcutRoute, route_shortcut,
 };
-pub use studio_gui_snapshot::{StudioGuiRuntimeSnapshot, StudioGuiSnapshot};
+pub use studio_gui_snapshot::{
+    StudioGuiRuntimeSnapshot, StudioGuiSnapshot, StudioGuiWorkspaceDocumentSnapshot,
+};
 pub use studio_gui_timer_host::{
     StudioGuiNativeTimerDueEvent, StudioGuiNativeTimerEffects, StudioGuiNativeTimerOperation,
     StudioGuiNativeTimerRuntime, StudioGuiNativeTimerSchedule,
@@ -225,9 +227,11 @@ pub use studio_gui_window_layout::{
 pub use studio_gui_window_model::{
     StudioGuiWindowCanvasAreaModel, StudioGuiWindowCommandAreaModel,
     StudioGuiWindowCommandListItemModel, StudioGuiWindowCommandListSectionModel,
-    StudioGuiWindowCommandPaletteItemModel, StudioGuiWindowDropPreviewModel,
-    StudioGuiWindowDropPreviewOverlayModel, StudioGuiWindowDropPreviewState,
-    StudioGuiWindowHeaderModel, StudioGuiWindowModel, StudioGuiWindowRuntimeAreaModel,
+    StudioGuiWindowCommandPaletteItemModel, StudioGuiWindowDiagnosticModel,
+    StudioGuiWindowDropPreviewModel, StudioGuiWindowDropPreviewOverlayModel,
+    StudioGuiWindowDropPreviewState, StudioGuiWindowHeaderModel, StudioGuiWindowModel,
+    StudioGuiWindowRuntimeAreaModel, StudioGuiWindowSolveSnapshotModel,
+    StudioGuiWindowSolveStepModel, StudioGuiWindowStreamResultModel,
     StudioGuiWindowToolbarItemModel, StudioGuiWindowToolbarSectionModel,
 };
 pub use studio_runtime::{

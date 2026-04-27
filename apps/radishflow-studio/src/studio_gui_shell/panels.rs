@@ -205,6 +205,138 @@ impl ReadyAppState {
             });
         }
 
+        ui.add_space(8.0);
+        egui::Frame::group(ui.style()).show(ui, |ui| {
+            let document = &window.runtime.workspace_document;
+            ui.label(egui::RichText::new("Workspace").strong());
+            ui.horizontal_wrapped(|ui| {
+                ui.label(&document.title);
+                render_status_chip(
+                    ui,
+                    &format!("rev {}", document.revision),
+                    egui::Color32::from_rgb(86, 118, 168),
+                );
+            });
+            ui.small(format!(
+                "{} | {} unit(s) | {} stream(s) | {} snapshot(s)",
+                document.flowsheet_name,
+                document.unit_count,
+                document.stream_count,
+                document.snapshot_history_count
+            ));
+            if let Some(path) = document.project_path.as_ref() {
+                ui.small(path);
+            }
+        });
+
+        ui.add_space(8.0);
+        egui::Frame::group(ui.style()).show(ui, |ui| {
+            ui.label(egui::RichText::new("Results").strong());
+            if let Some(snapshot) = window.runtime.latest_solve_snapshot.as_ref() {
+                ui.horizontal_wrapped(|ui| {
+                    render_status_chip(
+                        ui,
+                        snapshot.status_label,
+                        run_status_color(snapshot.status_label),
+                    );
+                    ui.small(format!(
+                        "{} stream(s), {} step(s), {} diagnostic(s)",
+                        snapshot.stream_count, snapshot.step_count, snapshot.diagnostic_count
+                    ));
+                });
+                ui.small(format!(
+                    "Snapshot {} seq {}",
+                    snapshot.snapshot_id, snapshot.sequence
+                ));
+                ui.label(&snapshot.summary);
+                ui.separator();
+                egui::ScrollArea::vertical()
+                    .id_salt(format!(
+                        "scroll:{}:{}:results",
+                        window.layout_state.scope.layout_key,
+                        area_label(area_id)
+                    ))
+                    .max_height(260.0)
+                    .show(ui, |ui| {
+                        if snapshot.streams.is_empty() {
+                            ui.small("当前快照没有流股结果。");
+                        } else {
+                            for stream in &snapshot.streams {
+                                ui.label(egui::RichText::new(&stream.stream_id).strong());
+                                ui.small(&stream.label);
+                                ui.horizontal_wrapped(|ui| {
+                                    ui.small(format!("T {}", stream.temperature_text));
+                                    ui.small(format!("P {}", stream.pressure_text));
+                                    ui.small(format!("F {}", stream.molar_flow_text));
+                                });
+                                ui.small(&stream.composition_text);
+                                ui.small(&stream.phase_text);
+                                ui.add_space(6.0);
+                            }
+                        }
+                    });
+            } else {
+                ui.small("还没有可显示的求解结果。");
+            }
+        });
+
+        if let Some(snapshot) = window.runtime.latest_solve_snapshot.as_ref() {
+            ui.add_space(8.0);
+            egui::Frame::group(ui.style()).show(ui, |ui| {
+                ui.label(egui::RichText::new("Solve steps").strong());
+                if snapshot.steps.is_empty() {
+                    ui.small("当前快照没有逐步执行记录。");
+                } else {
+                    for step in &snapshot.steps {
+                        ui.small(format!(
+                            "#{} {} -> {}",
+                            step.index,
+                            step.unit_id,
+                            step.produced_streams.join(", ")
+                        ));
+                        ui.label(&step.summary);
+                        ui.add_space(4.0);
+                    }
+                }
+            });
+
+            ui.add_space(8.0);
+            egui::Frame::group(ui.style()).show(ui, |ui| {
+                ui.label(egui::RichText::new("Diagnostics").strong());
+                if snapshot.diagnostics.is_empty() {
+                    ui.small("当前快照没有诊断记录。");
+                } else {
+                    egui::ScrollArea::vertical()
+                        .id_salt(format!(
+                            "scroll:{}:{}:diagnostics",
+                            window.layout_state.scope.layout_key,
+                            area_label(area_id)
+                        ))
+                        .max_height(180.0)
+                        .show(ui, |ui| {
+                            for diagnostic in &snapshot.diagnostics {
+                                ui.horizontal_wrapped(|ui| {
+                                    render_status_chip(
+                                        ui,
+                                        diagnostic.severity_label,
+                                        diagnostic_color(diagnostic.severity_label),
+                                    );
+                                    ui.small(&diagnostic.code);
+                                });
+                                ui.label(&diagnostic.message);
+                                if let Some(units) = diagnostic.related_units_text.as_ref() {
+                                    ui.small(format!("units: {units}"));
+                                }
+                                if let Some(streams) = diagnostic.related_streams_text.as_ref() {
+                                    ui.small(format!("streams: {streams}"));
+                                }
+                                ui.add_space(6.0);
+                            }
+                        });
+                }
+            });
+        }
+
         if let Some(entitlement_host) = window.runtime.entitlement_host.as_ref() {
             let entitlement = &entitlement_host.presentation.panel.view;
             ui.add_space(8.0);

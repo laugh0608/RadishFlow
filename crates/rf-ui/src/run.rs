@@ -32,9 +32,22 @@ pub enum SolvePendingReason {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+pub struct PhaseStateSnapshot {
+    pub label: String,
+    pub phase_fraction: f64,
+    pub composition: Vec<(String, f64)>,
+    pub molar_enthalpy_j_per_mol: Option<f64>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub struct StreamStateSnapshot {
     pub stream_id: StreamId,
     pub label: String,
+    pub temperature_k: f64,
+    pub pressure_pa: f64,
+    pub total_molar_flow_mol_s: f64,
+    pub overall_mole_fractions: Vec<(String, f64)>,
+    pub phases: Vec<PhaseStateSnapshot>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -61,6 +74,7 @@ pub struct SolveSnapshot {
     pub status: RunStatus,
     pub summary: DiagnosticSummary,
     pub diagnostics: Vec<DiagnosticSnapshot>,
+    pub streams: Vec<StreamStateSnapshot>,
     pub steps: Vec<StepSnapshot>,
 }
 
@@ -79,6 +93,7 @@ impl SolveSnapshot {
             status,
             summary,
             diagnostics: Vec::new(),
+            streams: Vec::new(),
             steps: Vec::new(),
         }
     }
@@ -119,6 +134,11 @@ impl SolveSnapshot {
                     related_port_targets: Vec::new(),
                 })
                 .collect(),
+            streams: snapshot
+                .streams
+                .values()
+                .map(stream_state_snapshot_from_model)
+                .collect(),
             steps: snapshot
                 .steps
                 .iter()
@@ -134,14 +154,54 @@ impl SolveSnapshot {
                     streams: step
                         .produced_stream_ids
                         .iter()
-                        .map(|stream_id| StreamStateSnapshot {
-                            stream_id: stream_id.clone(),
-                            label: stream_id.as_str().to_string(),
+                        .map(|stream_id| {
+                            snapshot
+                                .streams
+                                .get(stream_id)
+                                .map(stream_state_snapshot_from_model)
+                                .unwrap_or_else(|| StreamStateSnapshot {
+                                    stream_id: stream_id.clone(),
+                                    label: stream_id.as_str().to_string(),
+                                    temperature_k: 0.0,
+                                    pressure_pa: 0.0,
+                                    total_molar_flow_mol_s: 0.0,
+                                    overall_mole_fractions: Vec::new(),
+                                    phases: Vec::new(),
+                                })
                         })
                         .collect(),
                 })
                 .collect(),
         }
+    }
+}
+
+fn stream_state_snapshot_from_model(stream: &rf_model::MaterialStreamState) -> StreamStateSnapshot {
+    StreamStateSnapshot {
+        stream_id: stream.id.clone(),
+        label: stream.name.clone(),
+        temperature_k: stream.temperature_k,
+        pressure_pa: stream.pressure_pa,
+        total_molar_flow_mol_s: stream.total_molar_flow_mol_s,
+        overall_mole_fractions: stream
+            .overall_mole_fractions
+            .iter()
+            .map(|(component_id, fraction)| (component_id.as_str().to_string(), *fraction))
+            .collect(),
+        phases: stream
+            .phases
+            .iter()
+            .map(|phase| PhaseStateSnapshot {
+                label: phase.label.as_str().to_string(),
+                phase_fraction: phase.phase_fraction,
+                composition: phase
+                    .mole_fractions
+                    .iter()
+                    .map(|(component_id, fraction)| (component_id.as_str().to_string(), *fraction))
+                    .collect(),
+                molar_enthalpy_j_per_mol: phase.molar_enthalpy_j_per_mol,
+            })
+            .collect(),
     }
 }
 

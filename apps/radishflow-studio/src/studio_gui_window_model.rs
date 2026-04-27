@@ -3,7 +3,8 @@ use crate::{
     StudioGuiCommandMenuNode, StudioGuiCommandRegistry, StudioGuiCommandSection, StudioGuiSnapshot,
     StudioGuiWindowAreaId, StudioGuiWindowDockRegion, StudioGuiWindowDropTarget,
     StudioGuiWindowDropTargetKind, StudioGuiWindowDropTargetQuery, StudioGuiWindowLayoutModel,
-    StudioGuiWindowLayoutState, StudioWindowHostId, WorkspaceControlState,
+    StudioGuiWindowLayoutState, StudioGuiWorkspaceDocumentSnapshot, StudioWindowHostId,
+    WorkspaceControlState,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -105,14 +106,58 @@ pub struct StudioGuiWindowCanvasAreaModel {
 #[derive(Debug, Clone, PartialEq)]
 pub struct StudioGuiWindowRuntimeAreaModel {
     pub title: &'static str,
+    pub workspace_document: StudioGuiWorkspaceDocumentSnapshot,
     pub control_state: WorkspaceControlState,
     pub run_panel: rf_ui::RunPanelWidgetModel,
+    pub latest_solve_snapshot: Option<StudioGuiWindowSolveSnapshotModel>,
     pub entitlement_host: Option<EntitlementSessionHostRuntimeOutput>,
     pub platform_notice: Option<rf_ui::RunPanelNotice>,
     pub platform_timer_lines: Vec<String>,
     pub gui_activity_lines: Vec<String>,
     pub log_entries: Vec<rf_ui::AppLogEntry>,
     pub latest_log_entry: Option<rf_ui::AppLogEntry>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct StudioGuiWindowSolveSnapshotModel {
+    pub snapshot_id: String,
+    pub sequence: u64,
+    pub status_label: &'static str,
+    pub summary: String,
+    pub diagnostic_count: usize,
+    pub step_count: usize,
+    pub stream_count: usize,
+    pub streams: Vec<StudioGuiWindowStreamResultModel>,
+    pub steps: Vec<StudioGuiWindowSolveStepModel>,
+    pub diagnostics: Vec<StudioGuiWindowDiagnosticModel>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct StudioGuiWindowStreamResultModel {
+    pub stream_id: String,
+    pub label: String,
+    pub temperature_text: String,
+    pub pressure_text: String,
+    pub molar_flow_text: String,
+    pub composition_text: String,
+    pub phase_text: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioGuiWindowSolveStepModel {
+    pub index: usize,
+    pub unit_id: String,
+    pub summary: String,
+    pub produced_streams: Vec<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioGuiWindowDiagnosticModel {
+    pub severity_label: &'static str,
+    pub code: String,
+    pub message: String,
+    pub related_units_text: Option<String>,
+    pub related_streams_text: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -434,14 +479,147 @@ fn canvas_from_snapshot(snapshot: &StudioGuiSnapshot) -> StudioGuiWindowCanvasAr
 fn runtime_from_snapshot(snapshot: &StudioGuiSnapshot) -> StudioGuiWindowRuntimeAreaModel {
     StudioGuiWindowRuntimeAreaModel {
         title: "Runtime",
+        workspace_document: snapshot.runtime.workspace_document.clone(),
         control_state: snapshot.runtime.control_state.clone(),
         run_panel: snapshot.runtime.run_panel.clone(),
+        latest_solve_snapshot: snapshot
+            .runtime
+            .latest_solve_snapshot
+            .as_ref()
+            .map(solve_snapshot_model_from_ui),
         entitlement_host: snapshot.runtime.entitlement_host.clone(),
         platform_notice: snapshot.runtime.platform_notice.clone(),
         platform_timer_lines: snapshot.runtime.platform_timer_lines.clone(),
         gui_activity_lines: snapshot.runtime.gui_activity_lines.clone(),
         latest_log_entry: snapshot.runtime.log_entries.last().cloned(),
         log_entries: snapshot.runtime.log_entries.clone(),
+    }
+}
+
+fn solve_snapshot_model_from_ui(
+    snapshot: &rf_ui::SolveSnapshot,
+) -> StudioGuiWindowSolveSnapshotModel {
+    StudioGuiWindowSolveSnapshotModel {
+        snapshot_id: snapshot.id.as_str().to_string(),
+        sequence: snapshot.sequence,
+        status_label: run_status_label(snapshot.status),
+        summary: snapshot.summary.primary_message.clone(),
+        diagnostic_count: snapshot.diagnostics.len(),
+        step_count: snapshot.steps.len(),
+        stream_count: snapshot.streams.len(),
+        streams: snapshot
+            .streams
+            .iter()
+            .map(stream_result_model_from_ui)
+            .collect(),
+        steps: snapshot
+            .steps
+            .iter()
+            .map(|step| StudioGuiWindowSolveStepModel {
+                index: step.index,
+                unit_id: step.unit_id.as_str().to_string(),
+                summary: step.summary.clone(),
+                produced_streams: step
+                    .streams
+                    .iter()
+                    .map(|stream| stream.stream_id.as_str().to_string())
+                    .collect(),
+            })
+            .collect(),
+        diagnostics: snapshot
+            .diagnostics
+            .iter()
+            .map(|diagnostic| StudioGuiWindowDiagnosticModel {
+                severity_label: diagnostic_severity_label(diagnostic.severity),
+                code: diagnostic.code.clone(),
+                message: diagnostic.message.clone(),
+                related_units_text: non_empty_join(
+                    diagnostic
+                        .related_unit_ids
+                        .iter()
+                        .map(|unit_id| unit_id.as_str())
+                        .collect::<Vec<_>>(),
+                ),
+                related_streams_text: non_empty_join(
+                    diagnostic
+                        .related_stream_ids
+                        .iter()
+                        .map(|stream_id| stream_id.as_str())
+                        .collect::<Vec<_>>(),
+                ),
+            })
+            .collect(),
+    }
+}
+
+fn stream_result_model_from_ui(
+    stream: &rf_ui::StreamStateSnapshot,
+) -> StudioGuiWindowStreamResultModel {
+    StudioGuiWindowStreamResultModel {
+        stream_id: stream.stream_id.as_str().to_string(),
+        label: stream.label.clone(),
+        temperature_text: format!("{:.2} K", stream.temperature_k),
+        pressure_text: format!("{:.0} Pa", stream.pressure_pa),
+        molar_flow_text: format!("{:.6} mol/s", stream.total_molar_flow_mol_s),
+        composition_text: format_composition(&stream.overall_mole_fractions),
+        phase_text: format_phases(&stream.phases),
+    }
+}
+
+fn format_composition(composition: &[(String, f64)]) -> String {
+    if composition.is_empty() {
+        return "z: none".to_string();
+    }
+
+    format!(
+        "z: {}",
+        composition
+            .iter()
+            .map(|(component_id, fraction)| format!("{component_id}={fraction:.4}"))
+            .collect::<Vec<_>>()
+            .join(", ")
+    )
+}
+
+fn format_phases(phases: &[rf_ui::PhaseStateSnapshot]) -> String {
+    if phases.is_empty() {
+        return "phases: none".to_string();
+    }
+
+    format!(
+        "phases: {}",
+        phases
+            .iter()
+            .map(|phase| format!("{}={:.4}", phase.label, phase.phase_fraction))
+            .collect::<Vec<_>>()
+            .join(", ")
+    )
+}
+
+fn non_empty_join(values: Vec<&str>) -> Option<String> {
+    (!values.is_empty()).then(|| values.join(", "))
+}
+
+fn run_status_label(status: rf_ui::RunStatus) -> &'static str {
+    match status {
+        rf_ui::RunStatus::Idle => "Idle",
+        rf_ui::RunStatus::Dirty => "Dirty",
+        rf_ui::RunStatus::Checking => "Checking",
+        rf_ui::RunStatus::Runnable => "Runnable",
+        rf_ui::RunStatus::Solving => "Solving",
+        rf_ui::RunStatus::Converged => "Converged",
+        rf_ui::RunStatus::UnderSpecified => "Under-specified",
+        rf_ui::RunStatus::OverSpecified => "Over-specified",
+        rf_ui::RunStatus::Unconverged => "Unconverged",
+        rf_ui::RunStatus::Error => "Error",
+    }
+}
+
+fn diagnostic_severity_label(severity: rf_ui::DiagnosticSeverity) -> &'static str {
+    match severity {
+        rf_ui::DiagnosticSeverity::Info => "Info",
+        rf_ui::DiagnosticSeverity::Warning => "Warning",
+        rf_ui::DiagnosticSeverity::Error => "Error",
     }
 }
 
@@ -594,6 +772,60 @@ mod tests {
         assert_eq!(window.drop_preview, None);
 
         let _ = fs::remove_file(project_path);
+    }
+
+    #[test]
+    fn studio_gui_window_model_surfaces_workspace_results_and_diagnostics() {
+        let config = StudioRuntimeConfig {
+            entitlement_preflight: StudioRuntimeEntitlementPreflight::Skip,
+            entitlement_seed: StudioRuntimeEntitlementSeed::Synced,
+            ..StudioRuntimeConfig::default()
+        };
+        let mut driver = StudioGuiDriver::new(&config).expect("expected driver");
+        let opened = driver
+            .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+            .expect("expected open dispatch");
+        let window_id = match opened.outcome {
+            StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::WindowOpened(
+                opened,
+            )) => opened.registration.window_id,
+            other => panic!("expected window opened outcome, got {other:?}"),
+        };
+
+        let dispatch = driver
+            .dispatch_event(StudioGuiEvent::UiCommandRequested {
+                command_id: "run_panel.run_manual".to_string(),
+            })
+            .expect("expected run dispatch");
+        let window = dispatch.window;
+
+        assert_eq!(window.layout_state.scope.window_id, Some(window_id));
+        assert_eq!(window.runtime.workspace_document.revision, 0);
+        assert_eq!(window.runtime.workspace_document.unit_count, 3);
+        assert_eq!(window.runtime.workspace_document.snapshot_history_count, 1);
+
+        let snapshot = window
+            .runtime
+            .latest_solve_snapshot
+            .expect("expected latest solve snapshot");
+        assert_eq!(snapshot.status_label, "Converged");
+        assert_eq!(snapshot.stream_count, 4);
+        assert_eq!(snapshot.step_count, 3);
+        assert_eq!(snapshot.diagnostic_count, 4);
+        assert!(
+            snapshot
+                .streams
+                .iter()
+                .any(|stream| stream.stream_id == "stream-heated"
+                    && stream.temperature_text == "345.00 K"
+                    && stream.composition_text.contains("component-a="))
+        );
+        assert!(
+            snapshot
+                .diagnostics
+                .iter()
+                .any(|diagnostic| diagnostic.code == "solver.unit_executed")
+        );
     }
 
     #[test]
