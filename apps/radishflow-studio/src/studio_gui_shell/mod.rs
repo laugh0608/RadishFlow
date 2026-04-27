@@ -25,6 +25,7 @@ use rf_ui::{
 
 mod app;
 mod chrome;
+mod fonts;
 mod locale;
 mod panels;
 mod utils;
@@ -42,7 +43,10 @@ pub fn run() -> eframe::Result<()> {
     eframe::run_native(
         "RadishFlow Studio",
         native_options,
-        Box::new(|_cc| Ok(Box::new(RadishFlowStudioApp::new()))),
+        Box::new(|cc| {
+            fonts::configure_studio_fonts(&cc.egui_ctx);
+            Ok(Box::new(RadishFlowStudioApp::new()))
+        }),
     )
 }
 
