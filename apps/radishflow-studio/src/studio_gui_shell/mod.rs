@@ -103,6 +103,7 @@ struct CommandPaletteState {
 struct ProjectOpenState {
     path_input: String,
     notice: Option<ProjectOpenNotice>,
+    pending_confirmation: Option<ProjectOpenRequest>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -115,7 +116,14 @@ struct ProjectOpenNotice {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum ProjectOpenNoticeLevel {
     Info,
+    Warning,
     Error,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct ProjectOpenRequest {
+    project_path: PathBuf,
+    source_label: String,
 }
 
 #[derive(Debug, Default)]
@@ -197,6 +205,7 @@ impl ProjectOpenState {
         Self {
             path_input: path.display().to_string(),
             notice: None,
+            pending_confirmation: None,
         }
     }
 

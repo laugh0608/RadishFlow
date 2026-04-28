@@ -207,6 +207,8 @@ fn workspace_document_snapshot_from_controller(
         title: document.metadata.title.clone(),
         flowsheet_name: document.flowsheet.name.clone(),
         revision: document.revision,
+        last_saved_revision: controller.document_last_saved_revision(),
+        has_unsaved_changes: controller.document_has_unsaved_changes(),
         project_path: controller
             .document_path()
             .map(|path| path.display().to_string()),

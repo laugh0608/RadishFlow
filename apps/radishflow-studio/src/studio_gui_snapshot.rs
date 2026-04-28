@@ -12,6 +12,8 @@ pub struct StudioGuiWorkspaceDocumentSnapshot {
     pub title: String,
     pub flowsheet_name: String,
     pub revision: u64,
+    pub last_saved_revision: Option<u64>,
+    pub has_unsaved_changes: bool,
     pub project_path: Option<String>,
     pub unit_count: usize,
     pub stream_count: usize,

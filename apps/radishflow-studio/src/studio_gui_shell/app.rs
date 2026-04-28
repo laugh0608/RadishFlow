@@ -2,7 +2,7 @@ use super::*;
 
 impl ReadyAppState {
     pub(super) fn open_example_project(&mut self, project_path: PathBuf) {
-        self.open_project(project_path, "example project");
+        self.request_open_project(project_path, "example project");
     }
 
     pub(super) fn open_project_from_input(&mut self) {
@@ -14,7 +14,49 @@ impl ReadyAppState {
             });
             return;
         };
-        self.open_project(project_path, "project");
+        self.request_open_project(project_path, "project");
+    }
+
+    pub(super) fn request_open_project(&mut self, project_path: PathBuf, source_label: &str) {
+        if self
+            .platform_host
+            .snapshot()
+            .runtime
+            .workspace_document
+            .has_unsaved_changes
+        {
+            self.project_open.pending_confirmation = Some(ProjectOpenRequest {
+                project_path: project_path.clone(),
+                source_label: source_label.to_string(),
+            });
+            self.project_open.notice = Some(ProjectOpenNotice {
+                level: ProjectOpenNoticeLevel::Warning,
+                title: "Unsaved changes".to_string(),
+                detail: format!(
+                    "Opening {source_label} will discard changes after the last saved revision: {}",
+                    project_path.display()
+                ),
+            });
+            return;
+        }
+
+        self.open_project(project_path, source_label);
+    }
+
+    pub(super) fn confirm_pending_project_open(&mut self) {
+        let Some(request) = self.project_open.pending_confirmation.take() else {
+            return;
+        };
+        self.open_project(request.project_path, &request.source_label);
+    }
+
+    pub(super) fn cancel_pending_project_open(&mut self) {
+        self.project_open.pending_confirmation = None;
+        self.project_open.notice = Some(ProjectOpenNotice {
+            level: ProjectOpenNoticeLevel::Info,
+            title: "Project open canceled".to_string(),
+            detail: "Current workspace remains open.".to_string(),
+        });
     }
 
     pub(super) fn open_project(&mut self, project_path: PathBuf, source_label: &str) {
@@ -34,6 +76,7 @@ impl ReadyAppState {
                 self.drop_preview_overlay_anchor = None;
                 self.last_viewport_focused = None;
                 self.project_open.path_input = project_path.display().to_string();
+                self.project_open.pending_confirmation = None;
                 self.project_open.notice = Some(ProjectOpenNotice {
                     level: ProjectOpenNoticeLevel::Info,
                     title: "Project opened".to_string(),

@@ -103,7 +103,7 @@ App 与交互层当前进一步冻结以下口径：
 - Studio 当前 Automatic 触发在命中 `HoldMode` / `NoPendingRequest` 时应先返回 skip，再决定是否需要 package 解析，避免多包缓存场景下的无意义失败
 - 当前最小桌面入口 `run_studio_bootstrap` 也已改为默认走 `StudioBootstrapTrigger::WidgetPrimaryAction`，并向入口层输出 `RunPanelWidgetModel`，确保“桌面触发点 -> UI 组件动作 -> Studio driver / 控制动作 -> UI 组件 DTO”边界在样例入口里就成立
 - 当前 `egui` Studio 壳已开始消费上述运行入口与 `SolveSnapshot` presentation：Runtime 面板可切换仓库内置正向示例项目、触发运行、显示流股结果/求解步骤/诊断/日志，并保持 `StudioAppFacade -> WorkspaceRunCommand -> WorkspaceSolveService -> solver_bridge` 边界不被绕过
-- 当前 `egui` Studio 壳又已补出路径输入式项目打开入口：打开现有 `*.rfproj.json` 会重建当前 Studio runtime，打开失败会保留当前工作区并显示错误反馈；内置示例切换复用这条打开流程
+- 当前 `egui` Studio 壳又已补出路径输入式项目打开入口：打开现有 `*.rfproj.json` 会重建当前 Studio runtime，打开失败会保留当前工作区并显示错误反馈；内置示例切换复用这条打开流程；若当前文档存在未保存修订，则先进入显式确认状态，避免静默丢弃当前上下文
 - 中文/英文切换当前只属于 GUI shell 偏好，不写入 `DocumentMetadata`、`UserPreferences` 或项目文件；系统 CJK 字体 fallback 也只在应用启动时配置，不新增仓库字体资产
 - 当前仍不把 UI 范围扩张到完整视觉设计、原生文件选择器、保存/另存为、复杂 inspector、结果导出或画布编辑体验；这些能力后续应先补正式 presentation / command 边界再进入真实 UI
 
@@ -219,7 +219,7 @@ App 与交互层当前进一步冻结以下口径：
 - 已提前完成 `rf-solver` 中首轮无回路顺序模块法
 - 已提前增加第一个可直接从 `*.rfproj.json` 载入并求解的示例 flowsheet
 - 完成 `DWSIM / COFE` water/ethanol 人工 PME 验证记录、PME trace 开关化、TypeLib 生成脚本化与 CAPE-OPEN / PME 阶段性冻结
-- 回到 Rust Studio 主线，补出“打开示例项目 -> 运行求解 -> 查看结果/诊断”的第一版真实 `egui` 可见闭环，并补中文 shell 选项与 CJK 字体 fallback；2026-04-28 继续补出路径输入式项目打开入口、打开反馈与结果区基础本地化
+- 回到 Rust Studio 主线，补出“打开示例项目 -> 运行求解 -> 查看结果/诊断”的第一版真实 `egui` 可见闭环，并补中文 shell 选项与 CJK 字体 fallback；2026-04-28 继续补出路径输入式项目打开入口、打开反馈、未保存改动打开前确认与结果区基础本地化
 
 ### 2026-W19 以后
 

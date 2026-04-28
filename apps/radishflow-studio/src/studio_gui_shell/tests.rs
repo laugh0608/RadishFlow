@@ -893,6 +893,102 @@ fn open_project_failure_keeps_current_runtime_and_surfaces_error_notice() {
     );
 }
 
+#[test]
+fn open_project_from_input_requires_confirmation_when_workspace_has_unsaved_changes() {
+    let (config, project_path) = flash_drum_local_rules_synced_config();
+    let mut app = ready_app_state(&config);
+    let target_project = app
+        .platform_host
+        .snapshot()
+        .window_model()
+        .runtime
+        .example_projects
+        .iter()
+        .find(|example| example.id == "feed-valve-flash")
+        .expect("expected feed valve example")
+        .project_path
+        .clone();
+
+    app.dispatch_ui_command("canvas.accept_focused");
+    let dirty_window = app.platform_host.snapshot().window_model();
+    assert!(dirty_window.runtime.workspace_document.has_unsaved_changes);
+    assert_eq!(
+        dirty_window.runtime.workspace_document.last_saved_revision,
+        Some(0)
+    );
+    assert_eq!(dirty_window.runtime.workspace_document.revision, 1);
+
+    app.project_open.path_input = target_project.display().to_string();
+    app.open_project_from_input();
+
+    let blocked_window = app.platform_host.snapshot().window_model();
+    assert_eq!(
+        blocked_window.runtime.workspace_document.title,
+        dirty_window.runtime.workspace_document.title
+    );
+    assert_eq!(
+        app.project_open.notice.as_ref().map(|notice| notice.level),
+        Some(ProjectOpenNoticeLevel::Warning)
+    );
+    assert!(app.project_open.pending_confirmation.is_some());
+
+    app.confirm_pending_project_open();
+    let opened_window = app.platform_host.snapshot().window_model();
+    assert_eq!(
+        opened_window.runtime.workspace_document.title,
+        "Feed Valve Flash Example"
+    );
+    assert!(!opened_window.runtime.workspace_document.has_unsaved_changes);
+
+    let _ = std::fs::remove_file(project_path);
+}
+
+#[test]
+fn cancel_pending_project_open_keeps_dirty_workspace_active() {
+    let (config, project_path) = flash_drum_local_rules_synced_config();
+    let mut app = ready_app_state(&config);
+    let target_project = app
+        .platform_host
+        .snapshot()
+        .window_model()
+        .runtime
+        .example_projects
+        .iter()
+        .find(|example| example.id == "feed-valve-flash")
+        .expect("expected feed valve example")
+        .project_path
+        .clone();
+
+    app.dispatch_ui_command("canvas.accept_focused");
+    let dirty_window = app.platform_host.snapshot().window_model();
+    app.project_open.path_input = target_project.display().to_string();
+    app.open_project_from_input();
+
+    app.cancel_pending_project_open();
+
+    let canceled_window = app.platform_host.snapshot().window_model();
+    assert_eq!(
+        canceled_window.runtime.workspace_document.title,
+        dirty_window.runtime.workspace_document.title
+    );
+    assert!(
+        canceled_window
+            .runtime
+            .workspace_document
+            .has_unsaved_changes
+    );
+    assert!(app.project_open.pending_confirmation.is_none());
+    assert_eq!(
+        app.project_open
+            .notice
+            .as_ref()
+            .map(|notice| notice.title.as_str()),
+        Some("Project open canceled")
+    );
+
+    let _ = std::fs::remove_file(project_path);
+}
+
 fn palette_commands_for_test(commands: &[(&str, bool)]) -> Vec<&'static StudioGuiCommandEntry> {
     commands
         .iter()

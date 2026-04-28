@@ -243,6 +243,13 @@ impl ReadyAppState {
                     &format!("rev {}", document.revision),
                     egui::Color32::from_rgb(86, 118, 168),
                 );
+                if document.has_unsaved_changes {
+                    render_status_chip(
+                        ui,
+                        self.locale.text(ShellText::Unsaved),
+                        egui::Color32::from_rgb(160, 120, 40),
+                    );
+                }
             });
             ui.small(self.locale.workspace_counts(
                 &document.flowsheet_name,
@@ -279,10 +286,27 @@ impl ReadyAppState {
             if let Some(notice) = self.project_open.notice.as_ref() {
                 let color = match notice.level {
                     ProjectOpenNoticeLevel::Info => egui::Color32::from_rgb(66, 118, 92),
+                    ProjectOpenNoticeLevel::Warning => egui::Color32::from_rgb(160, 120, 40),
                     ProjectOpenNoticeLevel::Error => egui::Color32::from_rgb(180, 40, 40),
                 };
                 ui.colored_label(color, &notice.title);
                 render_wrapped_small(ui, &notice.detail);
+            }
+            if self.project_open.pending_confirmation.is_some() {
+                ui.horizontal_wrapped(|ui| {
+                    if ui
+                        .button(self.locale.text(ShellText::ContinueOpenProject))
+                        .clicked()
+                    {
+                        self.confirm_pending_project_open();
+                    }
+                    if ui
+                        .button(self.locale.text(ShellText::CancelOpenProject))
+                        .clicked()
+                    {
+                        self.cancel_pending_project_open();
+                    }
+                });
             }
             if !window.runtime.example_projects.is_empty() {
                 ui.separator();

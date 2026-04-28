@@ -620,6 +620,20 @@ impl StudioAppHost {
             .as_deref()
     }
 
+    pub fn document_last_saved_revision(&self) -> Option<u64> {
+        self.window_host_manager
+            .session()
+            .host_port()
+            .runtime()
+            .app_state()
+            .workspace
+            .last_saved_revision
+    }
+
+    pub fn document_has_unsaved_changes(&self) -> bool {
+        self.document_last_saved_revision() != Some(self.document().revision)
+    }
+
     pub fn latest_solve_snapshot(&self) -> Option<rf_ui::SolveSnapshot> {
         rf_ui::latest_snapshot(
             &self
@@ -867,6 +881,14 @@ impl StudioAppHostController {
 
     pub fn document_path(&self) -> Option<&Path> {
         self.app_host.document_path()
+    }
+
+    pub fn document_last_saved_revision(&self) -> Option<u64> {
+        self.app_host.document_last_saved_revision()
+    }
+
+    pub fn document_has_unsaved_changes(&self) -> bool {
+        self.app_host.document_has_unsaved_changes()
     }
 
     pub fn latest_solve_snapshot(&self) -> Option<rf_ui::SolveSnapshot> {
