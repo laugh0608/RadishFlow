@@ -855,6 +855,66 @@ fn open_project_from_input_rebuilds_runtime_and_records_feedback() {
             .iter()
             .any(|line| line.contains("opened project"))
     );
+    assert_eq!(
+        app.project_open.recent_projects.first(),
+        Some(&target_project)
+    );
+}
+
+#[test]
+fn successful_project_opens_keep_recent_projects_deduped_and_ordered() {
+    let mut app = ready_app_state(&synced_workspace_config());
+    let examples = app
+        .platform_host
+        .snapshot()
+        .window_model()
+        .runtime
+        .example_projects;
+    let valve_project = examples
+        .iter()
+        .find(|example| example.id == "feed-valve-flash")
+        .expect("expected feed valve example")
+        .project_path
+        .clone();
+    let ethanol_project = examples
+        .iter()
+        .find(|example| example.id == "water-ethanol-heater-flash")
+        .expect("expected water ethanol example")
+        .project_path
+        .clone();
+
+    app.open_project(valve_project.clone(), "project");
+    app.open_project(ethanol_project.clone(), "project");
+    app.open_recent_project(valve_project.clone());
+
+    assert_eq!(
+        app.project_open.recent_projects,
+        vec![valve_project, ethanol_project]
+    );
+    assert_eq!(
+        app.platform_host
+            .snapshot()
+            .window_model()
+            .runtime
+            .workspace_document
+            .title,
+        "Feed Valve Flash Example"
+    );
+    assert_eq!(
+        app.project_open
+            .notice
+            .as_ref()
+            .map(|notice| notice.detail.as_str())
+            .unwrap_or(""),
+        format!(
+            "Opened recent project: {}",
+            app.project_open
+                .recent_projects
+                .first()
+                .expect("expected recent project")
+                .display()
+        )
+    );
 }
 
 #[test]
@@ -890,6 +950,10 @@ fn open_project_failure_keeps_current_runtime_and_surfaces_error_notice() {
             .gui_activity_lines
             .iter()
             .any(|line| line.contains("open project failed"))
+    );
+    assert!(
+        app.project_open.recent_projects.is_empty(),
+        "failed project opens should not enter recent projects"
     );
 }
 
@@ -931,6 +995,58 @@ fn open_project_from_input_requires_confirmation_when_workspace_has_unsaved_chan
         Some(ProjectOpenNoticeLevel::Warning)
     );
     assert!(app.project_open.pending_confirmation.is_some());
+
+    app.confirm_pending_project_open();
+    let opened_window = app.platform_host.snapshot().window_model();
+    assert_eq!(
+        opened_window.runtime.workspace_document.title,
+        "Feed Valve Flash Example"
+    );
+    assert!(!opened_window.runtime.workspace_document.has_unsaved_changes);
+
+    let _ = std::fs::remove_file(project_path);
+}
+
+#[test]
+fn open_recent_project_requires_confirmation_when_workspace_has_unsaved_changes() {
+    let (config, project_path) = flash_drum_local_rules_synced_config();
+    let mut app = ready_app_state(&config);
+    let target_project = app
+        .platform_host
+        .snapshot()
+        .window_model()
+        .runtime
+        .example_projects
+        .iter()
+        .find(|example| example.id == "feed-valve-flash")
+        .expect("expected feed valve example")
+        .project_path
+        .clone();
+    app.project_open
+        .record_recent_project(target_project.clone());
+
+    app.dispatch_ui_command("canvas.accept_focused");
+    let dirty_window = app.platform_host.snapshot().window_model();
+    assert!(dirty_window.runtime.workspace_document.has_unsaved_changes);
+
+    app.open_recent_project(target_project);
+
+    let blocked_window = app.platform_host.snapshot().window_model();
+    assert_eq!(
+        blocked_window.runtime.workspace_document.title,
+        dirty_window.runtime.workspace_document.title
+    );
+    assert_eq!(
+        app.project_open
+            .pending_confirmation
+            .as_ref()
+            .map(|request| request.source_label.as_str()),
+        Some("recent project")
+    );
+    assert_eq!(
+        app.project_open.notice.as_ref().map(|notice| notice.level),
+        Some(ProjectOpenNoticeLevel::Warning)
+    );
 
     app.confirm_pending_project_open();
     let opened_window = app.platform_host.snapshot().window_model();

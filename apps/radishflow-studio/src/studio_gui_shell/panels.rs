@@ -308,6 +308,39 @@ impl ReadyAppState {
                     }
                 });
             }
+            ui.separator();
+            ui.label(egui::RichText::new(self.locale.text(ShellText::RecentProjects)).strong());
+            if self.project_open.recent_projects.is_empty() {
+                ui.small(self.locale.text(ShellText::NoRecentProjects));
+            } else {
+                let current_project_path =
+                    document.project_path.as_deref().map(std::path::Path::new);
+                let mut requested_recent_project = None;
+                for recent_project in self.project_open.recent_projects.clone() {
+                    let is_current = current_project_path
+                        .map(|current| paths_match(&recent_project, current))
+                        .unwrap_or(false);
+                    ui.vertical(|ui| {
+                        let label = recent_project
+                            .file_name()
+                            .and_then(|file_name| file_name.to_str())
+                            .unwrap_or("project");
+                        let button = egui::Button::new(label).selected(is_current);
+                        if ui
+                            .add_enabled(!is_current, button)
+                            .on_hover_text(recent_project.display().to_string())
+                            .clicked()
+                        {
+                            requested_recent_project = Some(recent_project.clone());
+                        }
+                        render_wrapped_small(ui, recent_project.display().to_string());
+                    });
+                    ui.add_space(4.0);
+                }
+                if let Some(project_path) = requested_recent_project {
+                    self.open_recent_project(project_path);
+                }
+            }
             if !window.runtime.example_projects.is_empty() {
                 ui.separator();
                 ui.label(

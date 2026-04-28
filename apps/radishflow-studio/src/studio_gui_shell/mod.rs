@@ -102,6 +102,7 @@ struct CommandPaletteState {
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 struct ProjectOpenState {
     path_input: String,
+    recent_projects: Vec<PathBuf>,
     notice: Option<ProjectOpenNotice>,
     pending_confirmation: Option<ProjectOpenRequest>,
 }
@@ -201,9 +202,12 @@ impl CommandPaletteState {
 }
 
 impl ProjectOpenState {
+    const MAX_RECENT_PROJECTS: usize = 8;
+
     fn from_path(path: &std::path::Path) -> Self {
         Self {
             path_input: path.display().to_string(),
+            recent_projects: Vec::new(),
             notice: None,
             pending_confirmation: None,
         }
@@ -217,6 +221,23 @@ impl ProjectOpenState {
             Some(PathBuf::from(trimmed))
         }
     }
+
+    fn record_recent_project(&mut self, project_path: PathBuf) {
+        self.recent_projects
+            .retain(|recent| !paths_match(recent, &project_path));
+        self.recent_projects.insert(0, project_path);
+        self.recent_projects.truncate(Self::MAX_RECENT_PROJECTS);
+    }
+}
+
+fn paths_match(left: &std::path::Path, right: &std::path::Path) -> bool {
+    left == right
+        || left
+            .canonicalize()
+            .ok()
+            .zip(right.canonicalize().ok())
+            .map(|(left, right)| left == right)
+            .unwrap_or(false)
 }
 
 impl eframe::App for RadishFlowStudioApp {

@@ -5,6 +5,10 @@ impl ReadyAppState {
         self.request_open_project(project_path, "example project");
     }
 
+    pub(super) fn open_recent_project(&mut self, project_path: PathBuf) {
+        self.request_open_project(project_path, "recent project");
+    }
+
     pub(super) fn open_project_from_input(&mut self) {
         let Some(project_path) = self.project_open.current_path() else {
             self.project_open.notice = Some(ProjectOpenNotice {
@@ -76,6 +80,8 @@ impl ReadyAppState {
                 self.drop_preview_overlay_anchor = None;
                 self.last_viewport_focused = None;
                 self.project_open.path_input = project_path.display().to_string();
+                self.project_open
+                    .record_recent_project(project_path.clone());
                 self.project_open.pending_confirmation = None;
                 self.project_open.notice = Some(ProjectOpenNotice {
                     level: ProjectOpenNoticeLevel::Info,
