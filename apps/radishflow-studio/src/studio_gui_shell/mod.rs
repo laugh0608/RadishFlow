@@ -31,6 +31,7 @@ mod chrome;
 mod fonts;
 mod locale;
 mod panels;
+mod project_picker;
 mod utils;
 
 #[cfg(test)]
@@ -39,6 +40,7 @@ mod tests;
 mod timer_tests;
 
 use self::locale::{ShellText, StudioShellLocale};
+use self::project_picker::{NativeProjectFilePicker, ProjectFilePicker};
 use self::utils::*;
 
 pub fn run() -> eframe::Result<()> {
@@ -68,6 +70,7 @@ struct ReadyAppState {
     platform_timer_executor: EguiPlatformTimerExecutor,
     command_palette: CommandPaletteState,
     project_open: ProjectOpenState,
+    project_file_picker: Box<dyn ProjectFilePicker>,
     preferences_path: PathBuf,
     locale: StudioShellLocale,
     last_area_focus: Option<StudioGuiWindowAreaId>,
@@ -161,6 +164,18 @@ impl RadishFlowStudioApp {
 
 impl ReadyAppState {
     fn from_config(config: &StudioRuntimeConfig, preferences_path: PathBuf) -> RfResult<Self> {
+        Self::from_config_with_project_file_picker(
+            config,
+            preferences_path,
+            Box::<NativeProjectFilePicker>::default(),
+        )
+    }
+
+    fn from_config_with_project_file_picker(
+        config: &StudioRuntimeConfig,
+        preferences_path: PathBuf,
+        project_file_picker: Box<dyn ProjectFilePicker>,
+    ) -> RfResult<Self> {
         let (recent_projects, preferences_notice) =
             match load_recent_project_paths(&preferences_path) {
                 Ok(recent_projects) => (recent_projects, None),
@@ -186,6 +201,7 @@ impl ReadyAppState {
                 &config.project_path,
                 recent_projects,
             ),
+            project_file_picker,
             preferences_path,
             locale: StudioShellLocale::default(),
             last_area_focus: None,

@@ -273,6 +273,12 @@ impl ReadyAppState {
                 {
                     self.open_project_from_input();
                 }
+                if ui
+                    .button(self.locale.text(ShellText::BrowseProject))
+                    .clicked()
+                {
+                    self.open_project_from_picker();
+                }
                 if let Some(path) = document.project_path.as_ref() {
                     if ui
                         .button(self.locale.text(ShellText::UseCurrentPath))

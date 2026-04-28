@@ -872,6 +872,84 @@ fn open_project_from_input_rebuilds_runtime_and_records_feedback() {
 }
 
 #[test]
+fn open_project_from_picker_rebuilds_runtime_and_records_recent_project() {
+    let config = synced_workspace_config();
+    let preferences_path = test_preferences_path("picker-open");
+    let base_app =
+        ReadyAppState::from_config(&config, preferences_path.clone()).expect("expected base app");
+    let target_project = base_app
+        .platform_host
+        .snapshot()
+        .window_model()
+        .runtime
+        .example_projects
+        .iter()
+        .find(|example| example.id == "feed-valve-flash")
+        .expect("expected feed valve example")
+        .project_path
+        .clone();
+    let mut app = ReadyAppState::from_config_with_project_file_picker(
+        &config,
+        preferences_path.clone(),
+        Box::new(TestProjectFilePicker::new(Some(target_project.clone()))),
+    )
+    .expect("expected app state");
+
+    app.open_project_from_picker();
+
+    let window = app.platform_host.snapshot().window_model();
+    assert_eq!(
+        window.runtime.workspace_document.title,
+        "Feed Valve Flash Example"
+    );
+    assert_eq!(
+        app.project_open.path_input,
+        target_project.display().to_string()
+    );
+    assert_eq!(
+        app.project_open.recent_projects.first(),
+        Some(&target_project)
+    );
+    assert_eq!(
+        app.project_open.notice.as_ref().map(|notice| notice.level),
+        Some(ProjectOpenNoticeLevel::Info)
+    );
+
+    let _ = std::fs::remove_file(preferences_path);
+}
+
+#[test]
+fn canceling_project_picker_keeps_current_workspace_active() {
+    let config = synced_workspace_config();
+    let original_title = ready_app_state(&config)
+        .platform_host
+        .snapshot()
+        .window_model()
+        .runtime
+        .workspace_document
+        .title;
+    let mut app = ReadyAppState::from_config_with_project_file_picker(
+        &config,
+        test_preferences_path("picker-cancel"),
+        Box::new(TestProjectFilePicker::new(None)),
+    )
+    .expect("expected app state");
+
+    app.open_project_from_picker();
+
+    let window = app.platform_host.snapshot().window_model();
+    assert_eq!(window.runtime.workspace_document.title, original_title);
+    assert!(app.project_open.recent_projects.is_empty());
+    assert_eq!(
+        app.project_open
+            .notice
+            .as_ref()
+            .map(|notice| notice.title.as_str()),
+        Some("Project picker canceled")
+    );
+}
+
+#[test]
 fn successful_project_opens_keep_recent_projects_deduped_and_ordered() {
     let mut app = ready_app_state(&synced_workspace_config());
     let examples = app
@@ -1052,6 +1130,53 @@ fn open_project_from_input_requires_confirmation_when_workspace_has_unsaved_chan
         "Feed Valve Flash Example"
     );
     assert!(!opened_window.runtime.workspace_document.has_unsaved_changes);
+
+    let _ = std::fs::remove_file(project_path);
+}
+
+#[test]
+fn open_project_from_picker_requires_confirmation_when_workspace_has_unsaved_changes() {
+    let (config, project_path) = flash_drum_local_rules_synced_config();
+    let target_project = ready_app_state(&synced_workspace_config())
+        .platform_host
+        .snapshot()
+        .window_model()
+        .runtime
+        .example_projects
+        .iter()
+        .find(|example| example.id == "feed-valve-flash")
+        .expect("expected feed valve example")
+        .project_path
+        .clone();
+    let mut app = ReadyAppState::from_config_with_project_file_picker(
+        &config,
+        test_preferences_path("picker-unsaved"),
+        Box::new(TestProjectFilePicker::new(Some(target_project))),
+    )
+    .expect("expected app state");
+
+    app.dispatch_ui_command("canvas.accept_focused");
+    let dirty_window = app.platform_host.snapshot().window_model();
+    assert!(dirty_window.runtime.workspace_document.has_unsaved_changes);
+
+    app.open_project_from_picker();
+
+    let blocked_window = app.platform_host.snapshot().window_model();
+    assert_eq!(
+        blocked_window.runtime.workspace_document.title,
+        dirty_window.runtime.workspace_document.title
+    );
+    assert_eq!(
+        app.project_open
+            .pending_confirmation
+            .as_ref()
+            .map(|request| request.source_label.as_str()),
+        Some("project picker")
+    );
+    assert_eq!(
+        app.project_open.notice.as_ref().map(|notice| notice.level),
+        Some(ProjectOpenNoticeLevel::Warning)
+    );
 
     let _ = std::fs::remove_file(project_path);
 }
@@ -1414,6 +1539,22 @@ fn ready_failed_app_state() -> ReadyAppState {
 fn ready_app_state(config: &StudioRuntimeConfig) -> ReadyAppState {
     ReadyAppState::from_config(config, test_preferences_path("default"))
         .expect("expected app state")
+}
+
+struct TestProjectFilePicker {
+    selected_project: Option<PathBuf>,
+}
+
+impl TestProjectFilePicker {
+    fn new(selected_project: Option<PathBuf>) -> Self {
+        Self { selected_project }
+    }
+}
+
+impl ProjectFilePicker for TestProjectFilePicker {
+    fn pick_project_file(&mut self) -> Option<PathBuf> {
+        self.selected_project.take()
+    }
 }
 
 fn dispatch_shortcut_for_test(app: &mut ReadyAppState, key: egui::Key, modifiers: egui::Modifiers) {

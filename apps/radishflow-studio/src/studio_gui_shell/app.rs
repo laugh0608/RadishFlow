@@ -23,6 +23,20 @@ impl ReadyAppState {
         self.request_open_project(project_path, "project");
     }
 
+    pub(super) fn open_project_from_picker(&mut self) {
+        let Some(project_path) = self.project_file_picker.pick_project_file() else {
+            self.project_open.notice = Some(ProjectOpenNotice {
+                level: ProjectOpenNoticeLevel::Info,
+                title: "Project picker canceled".to_string(),
+                detail: "Current workspace remains open.".to_string(),
+            });
+            return;
+        };
+
+        self.project_open.path_input = project_path.display().to_string();
+        self.request_open_project(project_path, "project picker");
+    }
+
     pub(super) fn request_open_project(&mut self, project_path: PathBuf, source_label: &str) {
         if self
             .platform_host
