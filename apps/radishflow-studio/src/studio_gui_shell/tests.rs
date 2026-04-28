@@ -101,6 +101,16 @@ fn unbound_outlet_failure_synced_config() -> StudioRuntimeConfig {
     }
 }
 
+fn test_preferences_path(name: &str) -> PathBuf {
+    let timestamp = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("expected current timestamp")
+        .as_nanos();
+    std::env::temp_dir()
+        .join(format!("radishflow-studio-shell-{name}-{timestamp}"))
+        .join("preferences.rfstudio-preferences.json")
+}
+
 #[test]
 fn insert_neighbors_from_area_ids_returns_previous_and_next_for_middle_target() {
     let area_ids = [
@@ -918,6 +928,45 @@ fn successful_project_opens_keep_recent_projects_deduped_and_ordered() {
 }
 
 #[test]
+fn successful_project_opens_persist_recent_projects_for_next_shell_start() {
+    let config = synced_workspace_config();
+    let preferences_path = test_preferences_path("recent-projects");
+    let mut app =
+        ReadyAppState::from_config(&config, preferences_path.clone()).expect("expected app state");
+    let examples = app
+        .platform_host
+        .snapshot()
+        .window_model()
+        .runtime
+        .example_projects;
+    let valve_project = examples
+        .iter()
+        .find(|example| example.id == "feed-valve-flash")
+        .expect("expected feed valve example")
+        .project_path
+        .clone();
+    let ethanol_project = examples
+        .iter()
+        .find(|example| example.id == "water-ethanol-heater-flash")
+        .expect("expected water ethanol example")
+        .project_path
+        .clone();
+
+    app.open_project(valve_project.clone(), "project");
+    app.open_project(ethanol_project.clone(), "project");
+
+    let restarted =
+        ReadyAppState::from_config(&config, preferences_path.clone()).expect("expected restart");
+
+    assert_eq!(
+        restarted.project_open.recent_projects,
+        vec![ethanol_project, valve_project]
+    );
+
+    let _ = std::fs::remove_file(preferences_path);
+}
+
+#[test]
 fn open_project_failure_keeps_current_runtime_and_surfaces_error_notice() {
     let mut app = ready_app_state(&synced_workspace_config());
     let original_window = app.platform_host.snapshot().window_model();
@@ -1363,20 +1412,8 @@ fn ready_failed_app_state() -> ReadyAppState {
 }
 
 fn ready_app_state(config: &StudioRuntimeConfig) -> ReadyAppState {
-    let mut app = ReadyAppState {
-        platform_host: StudioGuiPlatformHost::new(config).expect("expected platform host"),
-        platform_timer_executor: EguiPlatformTimerExecutor::default(),
-        command_palette: CommandPaletteState::default(),
-        project_open: ProjectOpenState::from_path(&config.project_path),
-        locale: StudioShellLocale::default(),
-        last_area_focus: None,
-        drag_session: None,
-        active_drop_preview: None,
-        drop_preview_overlay_anchor: None,
-        last_viewport_focused: None,
-    };
-    app.dispatch_event(StudioGuiEvent::OpenWindowRequested);
-    app
+    ReadyAppState::from_config(config, test_preferences_path("default"))
+        .expect("expected app state")
 }
 
 fn dispatch_shortcut_for_test(app: &mut ReadyAppState, key: egui::Key, modifiers: egui::Modifiers) {

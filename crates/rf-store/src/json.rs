@@ -15,9 +15,12 @@ use crate::package_cache::{
 };
 use crate::project::{STORED_PROJECT_FILE_KIND, STORED_PROJECT_FILE_SCHEMA_VERSION};
 use crate::studio_layout::{STORED_STUDIO_LAYOUT_FILE_KIND, STORED_STUDIO_LAYOUT_SCHEMA_VERSION};
+use crate::studio_preferences::{
+    STORED_STUDIO_PREFERENCES_FILE_KIND, STORED_STUDIO_PREFERENCES_SCHEMA_VERSION,
+};
 use crate::{
     StoredAuthCacheIndex, StoredProjectFile, StoredPropertyPackageManifest,
-    StoredPropertyPackagePayload, StoredStudioLayoutFile,
+    StoredPropertyPackagePayload, StoredStudioLayoutFile, StoredStudioPreferencesFile,
 };
 
 pub fn read_project_file(path: impl AsRef<Path>) -> RfResult<StoredProjectFile> {
@@ -80,6 +83,48 @@ pub fn parse_studio_layout_file_json(contents: &str) -> RfResult<StoredStudioLay
 pub fn studio_layout_file_to_pretty_json(layout_file: &StoredStudioLayoutFile) -> RfResult<String> {
     layout_file.validate()?;
     to_pretty_json(layout_file, "serialize stored studio layout file")
+}
+
+pub fn read_studio_preferences_file(
+    path: impl AsRef<Path>,
+) -> RfResult<StoredStudioPreferencesFile> {
+    let path = path.as_ref();
+    let contents = fs::read_to_string(path)
+        .map_err(|error| map_io_error("read stored studio preferences file", path, &error))?;
+    parse_studio_preferences_file_json(&contents)
+}
+
+pub fn write_studio_preferences_file(
+    path: impl AsRef<Path>,
+    preferences_file: &StoredStudioPreferencesFile,
+) -> RfResult<()> {
+    preferences_file.validate()?;
+    write_json_file(
+        path.as_ref(),
+        preferences_file,
+        "write stored studio preferences file",
+    )
+}
+
+pub fn parse_studio_preferences_file_json(contents: &str) -> RfResult<StoredStudioPreferencesFile> {
+    let raw_value: Value = parse_json(
+        contents,
+        "deserialize stored studio preferences file envelope",
+    )?;
+    let migrated_value = migrate_studio_preferences_file_value(raw_value)?;
+    let preferences_file: StoredStudioPreferencesFile = parse_json_value(
+        migrated_value,
+        "deserialize stored studio preferences file body",
+    )?;
+    preferences_file.validate()?;
+    Ok(preferences_file)
+}
+
+pub fn studio_preferences_file_to_pretty_json(
+    preferences_file: &StoredStudioPreferencesFile,
+) -> RfResult<String> {
+    preferences_file.validate()?;
+    to_pretty_json(preferences_file, "serialize stored studio preferences file")
 }
 
 pub fn read_auth_cache_index(path: impl AsRef<Path>) -> RfResult<StoredAuthCacheIndex> {
@@ -295,6 +340,33 @@ fn migrate_studio_layout_file_value(value: Value) -> RfResult<Value> {
     }
 }
 
+fn migrate_studio_preferences_file_value(value: Value) -> RfResult<Value> {
+    let envelope = parse_stored_envelope(&value, "stored studio preferences file")?;
+
+    if envelope.kind.as_deref() != Some(STORED_STUDIO_PREFERENCES_FILE_KIND) {
+        return Err(RfError::invalid_input(format!(
+            "unsupported stored studio preferences file kind `{}`",
+            envelope.kind.unwrap_or_default()
+        )));
+    }
+
+    match envelope.schema_version {
+        STORED_STUDIO_PREFERENCES_SCHEMA_VERSION => {
+            migrate_studio_preferences_file_v1_to_current(value)
+        }
+        version if version > STORED_STUDIO_PREFERENCES_SCHEMA_VERSION => Err(newer_schema_error(
+            "stored studio preferences file",
+            version,
+            STORED_STUDIO_PREFERENCES_SCHEMA_VERSION,
+        )),
+        version => Err(older_schema_error(
+            "stored studio preferences file",
+            version,
+            STORED_STUDIO_PREFERENCES_SCHEMA_VERSION,
+        )),
+    }
+}
+
 fn migrate_auth_cache_index_value(value: Value) -> RfResult<Value> {
     let envelope = parse_stored_envelope(&value, "stored auth cache index")?;
 
@@ -379,6 +451,10 @@ fn migrate_project_file_v1_to_current(value: Value) -> RfResult<Value> {
 }
 
 fn migrate_studio_layout_file_v1_to_current(value: Value) -> RfResult<Value> {
+    Ok(value)
+}
+
+fn migrate_studio_preferences_file_v1_to_current(value: Value) -> RfResult<Value> {
     Ok(value)
 }
 

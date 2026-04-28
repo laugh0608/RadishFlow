@@ -2,6 +2,9 @@ use std::collections::BTreeMap;
 use std::path::PathBuf;
 use std::time::{Duration, SystemTime};
 
+use crate::studio_gui_preferences_store::{
+    default_studio_preferences_path, load_recent_project_paths,
+};
 use eframe::egui;
 use radishflow_studio::{
     StudioAppHostWindowState, StudioGuiCommandEntry, StudioGuiCommandMenuCommandModel,
@@ -65,6 +68,7 @@ struct ReadyAppState {
     platform_timer_executor: EguiPlatformTimerExecutor,
     command_palette: CommandPaletteState,
     project_open: ProjectOpenState,
+    preferences_path: PathBuf,
     locale: StudioShellLocale,
     last_area_focus: Option<StudioGuiWindowAreaId>,
     drag_session: Option<PanelDragSession>,
@@ -141,23 +145,9 @@ struct EguiNativeTimerRegistration {
 impl RadishFlowStudioApp {
     fn new() -> Self {
         let config = StudioRuntimeConfig::default();
-        let state = match StudioGuiPlatformHost::new(&config) {
-            Ok(platform_host) => {
-                let mut ready = ReadyAppState {
-                    platform_host,
-                    platform_timer_executor: EguiPlatformTimerExecutor::default(),
-                    command_palette: CommandPaletteState::default(),
-                    project_open: ProjectOpenState::from_path(&config.project_path),
-                    locale: StudioShellLocale::default(),
-                    last_area_focus: None,
-                    drag_session: None,
-                    active_drop_preview: None,
-                    drop_preview_overlay_anchor: None,
-                    last_viewport_focused: None,
-                };
-                ready.dispatch_event(StudioGuiEvent::OpenWindowRequested);
-                AppState::Ready(ready)
-            }
+        let preferences_path = default_studio_preferences_path();
+        let state = match ReadyAppState::from_config(&config, preferences_path) {
+            Ok(ready) => AppState::Ready(ready),
             Err(error) => AppState::Failed(format!(
                 "Studio 初始化失败 [{}]: {}",
                 error.code().as_str(),
@@ -166,6 +156,49 @@ impl RadishFlowStudioApp {
         };
 
         Self { state }
+    }
+}
+
+impl ReadyAppState {
+    fn from_config(config: &StudioRuntimeConfig, preferences_path: PathBuf) -> RfResult<Self> {
+        let (recent_projects, preferences_notice) =
+            match load_recent_project_paths(&preferences_path) {
+                Ok(recent_projects) => (recent_projects, None),
+                Err(error) => (
+                    Vec::new(),
+                    Some(ProjectOpenNotice {
+                        level: ProjectOpenNoticeLevel::Warning,
+                        title: "Recent projects not loaded".to_string(),
+                        detail: format!(
+                            "[{}] {} ({})",
+                            error.code().as_str(),
+                            error.message(),
+                            preferences_path.display()
+                        ),
+                    }),
+                ),
+            };
+        let mut ready = ReadyAppState {
+            platform_host: StudioGuiPlatformHost::new(config)?,
+            platform_timer_executor: EguiPlatformTimerExecutor::default(),
+            command_palette: CommandPaletteState::default(),
+            project_open: ProjectOpenState::from_path_and_recent(
+                &config.project_path,
+                recent_projects,
+            ),
+            preferences_path,
+            locale: StudioShellLocale::default(),
+            last_area_focus: None,
+            drag_session: None,
+            active_drop_preview: None,
+            drop_preview_overlay_anchor: None,
+            last_viewport_focused: None,
+        };
+        if let Some(notice) = preferences_notice {
+            ready.project_open.notice = Some(notice);
+        }
+        ready.dispatch_event(StudioGuiEvent::OpenWindowRequested);
+        Ok(ready)
     }
 }
 
@@ -204,12 +237,21 @@ impl CommandPaletteState {
 impl ProjectOpenState {
     const MAX_RECENT_PROJECTS: usize = 8;
 
-    fn from_path(path: &std::path::Path) -> Self {
-        Self {
+    fn from_path_and_recent(path: &std::path::Path, recent_projects: Vec<PathBuf>) -> Self {
+        let mut state = Self {
             path_input: path.display().to_string(),
             recent_projects: Vec::new(),
             notice: None,
             pending_confirmation: None,
+        };
+        state.replace_recent_projects(recent_projects);
+        state
+    }
+
+    fn replace_recent_projects(&mut self, recent_projects: Vec<PathBuf>) {
+        self.recent_projects.clear();
+        for project_path in recent_projects.into_iter().rev() {
+            self.record_recent_project(project_path);
         }
     }
 

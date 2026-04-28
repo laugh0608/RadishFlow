@@ -447,7 +447,7 @@ pub enum SolvePendingReason {
 
 - 这里保存的是“用户怎么用 App”，不是“文档当前是什么状态”
 - `snapshot_history_limit` 只影响工作区内存中的快照保留窗口，不改变文档语义
-- `recent_project_paths` 属于应用级 MRU 列表，不参与项目文件序列化
+- `recent_project_paths` 属于应用级 MRU 列表，不参与项目文件序列化；当前 Studio shell 已用独立 `preferences.rfstudio-preferences.json` 持久化这一字段，但尚未把语言、主题等其他偏好并入完整偏好系统
 
 ### `AuthSessionState`
 

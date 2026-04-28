@@ -1,3 +1,5 @@
+use crate::studio_gui_preferences_store::save_recent_project_paths;
+
 use super::*;
 
 impl ReadyAppState {
@@ -80,14 +82,15 @@ impl ReadyAppState {
                 self.drop_preview_overlay_anchor = None;
                 self.last_viewport_focused = None;
                 self.project_open.path_input = project_path.display().to_string();
-                self.project_open
-                    .record_recent_project(project_path.clone());
+                let recent_projects_notice =
+                    self.record_and_persist_recent_project(project_path.clone());
                 self.project_open.pending_confirmation = None;
-                self.project_open.notice = Some(ProjectOpenNotice {
-                    level: ProjectOpenNoticeLevel::Info,
-                    title: "Project opened".to_string(),
-                    detail: format!("Opened {source_label}: {}", project_path.display()),
-                });
+                self.project_open.notice =
+                    Some(recent_projects_notice.unwrap_or(ProjectOpenNotice {
+                        level: ProjectOpenNoticeLevel::Info,
+                        title: "Project opened".to_string(),
+                        detail: format!("Opened {source_label}: {}", project_path.display()),
+                    }));
                 self.platform_host.record_activity_line(format!(
                     "opened {source_label}: {}",
                     project_path.display()
@@ -113,6 +116,34 @@ impl ReadyAppState {
                 ));
             }
         }
+    }
+
+    pub(super) fn record_and_persist_recent_project(
+        &mut self,
+        project_path: PathBuf,
+    ) -> Option<ProjectOpenNotice> {
+        self.project_open.record_recent_project(project_path);
+        if let Err(error) =
+            save_recent_project_paths(&self.preferences_path, &self.project_open.recent_projects)
+        {
+            self.platform_host.record_activity_line(format!(
+                "save recent projects failed [{}]: {} ({})",
+                error.code().as_str(),
+                error.message(),
+                self.preferences_path.display()
+            ));
+            return Some(ProjectOpenNotice {
+                level: ProjectOpenNoticeLevel::Warning,
+                title: "Recent projects not saved".to_string(),
+                detail: format!(
+                    "[{}] {} ({})",
+                    error.code().as_str(),
+                    error.message(),
+                    self.preferences_path.display()
+                ),
+            });
+        }
+        None
     }
 
     pub(super) fn update(&mut self, ctx: &egui::Context) {
