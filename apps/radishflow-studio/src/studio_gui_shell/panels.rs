@@ -401,16 +401,7 @@ impl ReadyAppState {
                             ui.small(self.locale.text(ShellText::NoStreamResults));
                         } else {
                             for stream in &snapshot.streams {
-                                ui.label(egui::RichText::new(&stream.stream_id).strong());
-                                render_wrapped_small(ui, &stream.label);
-                                ui.horizontal_wrapped(|ui| {
-                                    ui.small(format!("T {}", stream.temperature_text));
-                                    ui.small(format!("P {}", stream.pressure_text));
-                                    ui.small(format!("F {}", stream.molar_flow_text));
-                                });
-                                render_wrapped_small(ui, &stream.composition_text);
-                                render_wrapped_small(ui, &stream.phase_text);
-                                ui.add_space(6.0);
+                                self.render_stream_result_inspector(ui, stream);
                             }
                         }
                     });
@@ -649,6 +640,80 @@ impl ReadyAppState {
                     }
                 });
         });
+    }
+
+    pub(super) fn render_stream_result_inspector(
+        &self,
+        ui: &mut egui::Ui,
+        stream: &radishflow_studio::StudioGuiWindowStreamResultModel,
+    ) {
+        ui.label(egui::RichText::new(&stream.stream_id).strong());
+        render_wrapped_small(ui, &stream.label);
+
+        ui.small(egui::RichText::new(self.locale.text(ShellText::StreamSummary)).strong());
+        egui::Grid::new(format!("stream-summary:{}", stream.stream_id))
+            .num_columns(2)
+            .striped(true)
+            .show(ui, |ui| {
+                for row in &stream.summary_rows {
+                    ui.small(row.label);
+                    ui.small(&row.value);
+                    ui.end_row();
+                }
+            });
+
+        ui.collapsing(self.locale.text(ShellText::OverallComposition), |ui| {
+            if stream.composition_rows.is_empty() {
+                ui.small(self.locale.text(ShellText::NoComposition));
+                return;
+            }
+            egui::Grid::new(format!("stream-composition:{}", stream.stream_id))
+                .num_columns(2)
+                .striped(true)
+                .show(ui, |ui| {
+                    ui.small(egui::RichText::new(self.locale.text(ShellText::Component)).strong());
+                    ui.small(
+                        egui::RichText::new(self.locale.text(ShellText::MoleFraction)).strong(),
+                    );
+                    ui.end_row();
+                    for row in &stream.composition_rows {
+                        ui.small(&row.component_id);
+                        ui.small(&row.fraction_text);
+                        ui.end_row();
+                    }
+                });
+        });
+
+        ui.collapsing(self.locale.text(ShellText::PhaseResults), |ui| {
+            if stream.phase_rows.is_empty() {
+                ui.small(self.locale.text(ShellText::NoPhases));
+                return;
+            }
+            egui::Grid::new(format!("stream-phases:{}", stream.stream_id))
+                .num_columns(4)
+                .striped(true)
+                .show(ui, |ui| {
+                    ui.small(egui::RichText::new(self.locale.text(ShellText::Phase)).strong());
+                    ui.small(egui::RichText::new(self.locale.text(ShellText::Fraction)).strong());
+                    ui.small(
+                        egui::RichText::new(self.locale.text(ShellText::OverallComposition))
+                            .strong(),
+                    );
+                    ui.small(egui::RichText::new(self.locale.text(ShellText::Enthalpy)).strong());
+                    ui.end_row();
+                    for row in &stream.phase_rows {
+                        ui.small(&row.label);
+                        ui.small(&row.phase_fraction_text);
+                        render_wrapped_small(ui, &row.composition_text);
+                        ui.small(row.molar_enthalpy_text.as_deref().unwrap_or("-"));
+                        ui.end_row();
+                    }
+                });
+        });
+
+        render_wrapped_small(ui, &stream.composition_text);
+        render_wrapped_small(ui, &stream.phase_text);
+        ui.add_space(8.0);
     }
 
     pub(super) fn render_command_menu_bar(

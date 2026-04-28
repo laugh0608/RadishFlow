@@ -140,8 +140,31 @@ pub struct StudioGuiWindowStreamResultModel {
     pub temperature_text: String,
     pub pressure_text: String,
     pub molar_flow_text: String,
+    pub summary_rows: Vec<StudioGuiWindowStreamSummaryRowModel>,
+    pub composition_rows: Vec<StudioGuiWindowCompositionResultModel>,
+    pub phase_rows: Vec<StudioGuiWindowPhaseResultModel>,
     pub composition_text: String,
     pub phase_text: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioGuiWindowStreamSummaryRowModel {
+    pub label: &'static str,
+    pub value: String,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct StudioGuiWindowCompositionResultModel {
+    pub component_id: String,
+    pub fraction_text: String,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct StudioGuiWindowPhaseResultModel {
+    pub label: String,
+    pub phase_fraction_text: String,
+    pub composition_text: String,
+    pub molar_enthalpy_text: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -557,12 +580,51 @@ fn solve_snapshot_model_from_ui(
 fn stream_result_model_from_ui(
     stream: &rf_ui::StreamStateSnapshot,
 ) -> StudioGuiWindowStreamResultModel {
+    let temperature_text = format!("{:.2} K", stream.temperature_k);
+    let pressure_text = format!("{:.0} Pa", stream.pressure_pa);
+    let molar_flow_text = format!("{:.6} mol/s", stream.total_molar_flow_mol_s);
     StudioGuiWindowStreamResultModel {
         stream_id: stream.stream_id.as_str().to_string(),
         label: stream.label.clone(),
-        temperature_text: format!("{:.2} K", stream.temperature_k),
-        pressure_text: format!("{:.0} Pa", stream.pressure_pa),
-        molar_flow_text: format!("{:.6} mol/s", stream.total_molar_flow_mol_s),
+        temperature_text: temperature_text.clone(),
+        pressure_text: pressure_text.clone(),
+        molar_flow_text: molar_flow_text.clone(),
+        summary_rows: vec![
+            StudioGuiWindowStreamSummaryRowModel {
+                label: "T",
+                value: temperature_text,
+            },
+            StudioGuiWindowStreamSummaryRowModel {
+                label: "P",
+                value: pressure_text,
+            },
+            StudioGuiWindowStreamSummaryRowModel {
+                label: "F",
+                value: molar_flow_text,
+            },
+        ],
+        composition_rows: stream
+            .overall_mole_fractions
+            .iter()
+            .map(
+                |(component_id, fraction)| StudioGuiWindowCompositionResultModel {
+                    component_id: component_id.clone(),
+                    fraction_text: format_fraction(*fraction),
+                },
+            )
+            .collect(),
+        phase_rows: stream
+            .phases
+            .iter()
+            .map(|phase| StudioGuiWindowPhaseResultModel {
+                label: phase.label.clone(),
+                phase_fraction_text: format_fraction(phase.phase_fraction),
+                composition_text: format_phase_composition(&phase.composition),
+                molar_enthalpy_text: phase
+                    .molar_enthalpy_j_per_mol
+                    .map(|value| format!("{value:.3} J/mol")),
+            })
+            .collect(),
         composition_text: format_composition(&stream.overall_mole_fractions),
         phase_text: format_phases(&stream.phases),
     }
@@ -596,6 +658,22 @@ fn format_phases(phases: &[rf_ui::PhaseStateSnapshot]) -> String {
             .collect::<Vec<_>>()
             .join(", ")
     )
+}
+
+fn format_phase_composition(composition: &[(String, f64)]) -> String {
+    if composition.is_empty() {
+        return "z: none".to_string();
+    }
+
+    composition
+        .iter()
+        .map(|(component_id, fraction)| format!("{component_id}={}", format_fraction(*fraction)))
+        .collect::<Vec<_>>()
+        .join(", ")
+}
+
+fn format_fraction(value: f64) -> String {
+    format!("{value:.4}")
 }
 
 fn non_empty_join(values: Vec<&str>) -> Option<String> {
@@ -825,13 +903,33 @@ mod tests {
         assert_eq!(snapshot.stream_count, 4);
         assert_eq!(snapshot.step_count, 3);
         assert_eq!(snapshot.diagnostic_count, 4);
+        let heated_stream = snapshot
+            .streams
+            .iter()
+            .find(|stream| stream.stream_id == "stream-heated")
+            .expect("expected heated stream");
+        assert_eq!(heated_stream.temperature_text, "345.00 K");
+        assert!(heated_stream.composition_text.contains("component-a="));
+        assert_eq!(heated_stream.summary_rows.len(), 3);
+        assert!(
+            heated_stream
+                .summary_rows
+                .iter()
+                .any(|row| row.label == "T" && row.value == "345.00 K")
+        );
+        assert!(
+            heated_stream
+                .composition_rows
+                .iter()
+                .any(|row| row.component_id == "component-a" && !row.fraction_text.is_empty())
+        );
         assert!(
             snapshot
                 .streams
                 .iter()
-                .any(|stream| stream.stream_id == "stream-heated"
-                    && stream.temperature_text == "345.00 K"
-                    && stream.composition_text.contains("component-a="))
+                .flat_map(|stream| stream.phase_rows.iter())
+                .any(|row| row.phase_fraction_text == "1.0000"
+                    && row.composition_text.contains("component-a="))
         );
         assert!(
             snapshot

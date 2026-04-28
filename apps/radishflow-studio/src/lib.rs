@@ -229,12 +229,14 @@ pub use studio_gui_window_layout::{
 pub use studio_gui_window_model::{
     StudioGuiWindowCanvasAreaModel, StudioGuiWindowCommandAreaModel,
     StudioGuiWindowCommandListItemModel, StudioGuiWindowCommandListSectionModel,
-    StudioGuiWindowCommandPaletteItemModel, StudioGuiWindowDiagnosticModel,
-    StudioGuiWindowDropPreviewModel, StudioGuiWindowDropPreviewOverlayModel,
-    StudioGuiWindowDropPreviewState, StudioGuiWindowHeaderModel, StudioGuiWindowModel,
+    StudioGuiWindowCommandPaletteItemModel, StudioGuiWindowCompositionResultModel,
+    StudioGuiWindowDiagnosticModel, StudioGuiWindowDropPreviewModel,
+    StudioGuiWindowDropPreviewOverlayModel, StudioGuiWindowDropPreviewState,
+    StudioGuiWindowHeaderModel, StudioGuiWindowModel, StudioGuiWindowPhaseResultModel,
     StudioGuiWindowRuntimeAreaModel, StudioGuiWindowSolveSnapshotModel,
     StudioGuiWindowSolveStepModel, StudioGuiWindowStreamResultModel,
-    StudioGuiWindowToolbarItemModel, StudioGuiWindowToolbarSectionModel,
+    StudioGuiWindowStreamSummaryRowModel, StudioGuiWindowToolbarItemModel,
+    StudioGuiWindowToolbarSectionModel,
 };
 pub use studio_runtime::{
     StudioRuntime, StudioRuntimeConfig, StudioRuntimeDispatch, StudioRuntimeEffect,
