@@ -2,6 +2,22 @@ use super::*;
 
 impl ReadyAppState {
     pub(super) fn open_example_project(&mut self, project_path: PathBuf) {
+        self.open_project(project_path, "example project");
+    }
+
+    pub(super) fn open_project_from_input(&mut self) {
+        let Some(project_path) = self.project_open.current_path() else {
+            self.project_open.notice = Some(ProjectOpenNotice {
+                level: ProjectOpenNoticeLevel::Error,
+                title: "Project path is empty".to_string(),
+                detail: "Enter a .rfproj.json path before opening a project.".to_string(),
+            });
+            return;
+        };
+        self.open_project(project_path, "project");
+    }
+
+    pub(super) fn open_project(&mut self, project_path: PathBuf, source_label: &str) {
         let config = StudioRuntimeConfig {
             project_path: project_path.clone(),
             ..StudioRuntimeConfig::default()
@@ -17,11 +33,31 @@ impl ReadyAppState {
                 self.active_drop_preview = None;
                 self.drop_preview_overlay_anchor = None;
                 self.last_viewport_focused = None;
+                self.project_open.path_input = project_path.display().to_string();
+                self.project_open.notice = Some(ProjectOpenNotice {
+                    level: ProjectOpenNoticeLevel::Info,
+                    title: "Project opened".to_string(),
+                    detail: format!("Opened {source_label}: {}", project_path.display()),
+                });
+                self.platform_host.record_activity_line(format!(
+                    "opened {source_label}: {}",
+                    project_path.display()
+                ));
                 self.dispatch_event(StudioGuiEvent::OpenWindowRequested);
             }
             Err(error) => {
+                self.project_open.notice = Some(ProjectOpenNotice {
+                    level: ProjectOpenNoticeLevel::Error,
+                    title: "Project open failed".to_string(),
+                    detail: format!(
+                        "[{}] {} ({})",
+                        error.code().as_str(),
+                        error.message(),
+                        project_path.display()
+                    ),
+                });
                 self.platform_host.record_activity_line(format!(
-                    "open example project failed [{}]: {} ({})",
+                    "open {source_label} failed [{}]: {} ({})",
                     error.code().as_str(),
                     error.message(),
                     project_path.display()

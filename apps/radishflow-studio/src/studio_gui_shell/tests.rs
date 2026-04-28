@@ -146,6 +146,18 @@ fn shell_locale_defaults_to_chinese_and_can_translate_runtime_labels() {
     assert_eq!(locale.text(ShellText::Runtime), "运行");
     assert_eq!(locale.runtime_label("Converged").as_ref(), "已收敛");
     assert_eq!(
+        locale.workspace_counts("Demo", 2, 3, 1),
+        "Demo | 2 个单元 | 3 股流股 | 1 个快照"
+    );
+    assert_eq!(
+        locale.solve_snapshot_counts(3, 4, 1),
+        "3 股流股，4 个步骤，1 条诊断"
+    );
+    assert_eq!(
+        locale.snapshot_identity("snapshot-a", 7),
+        "快照 snapshot-a，序号 7"
+    );
+    assert_eq!(
         StudioShellLocale::En.runtime_label("Converged").as_ref(),
         "Converged"
     );
@@ -809,6 +821,78 @@ fn open_example_project_rebuilds_runtime_for_selected_sample() {
     );
 }
 
+#[test]
+fn open_project_from_input_rebuilds_runtime_and_records_feedback() {
+    let mut app = ready_app_state(&synced_workspace_config());
+    let target_project = app
+        .platform_host
+        .snapshot()
+        .window_model()
+        .runtime
+        .example_projects
+        .iter()
+        .find(|example| example.id == "water-ethanol-heater-flash")
+        .expect("expected water ethanol example")
+        .project_path
+        .clone();
+
+    app.project_open.path_input = target_project.display().to_string();
+    app.open_project_from_input();
+
+    let window = app.platform_host.snapshot().window_model();
+    assert_eq!(
+        window.runtime.workspace_document.title,
+        "Feed Heater Flash Water Ethanol Example"
+    );
+    assert_eq!(
+        app.project_open.notice.as_ref().map(|notice| notice.level),
+        Some(ProjectOpenNoticeLevel::Info)
+    );
+    assert!(
+        window
+            .runtime
+            .gui_activity_lines
+            .iter()
+            .any(|line| line.contains("opened project"))
+    );
+}
+
+#[test]
+fn open_project_failure_keeps_current_runtime_and_surfaces_error_notice() {
+    let mut app = ready_app_state(&synced_workspace_config());
+    let original_window = app.platform_host.snapshot().window_model();
+    let missing_project = std::env::temp_dir().join("radishflow-missing-project.rfproj.json");
+
+    app.project_open.path_input = missing_project.display().to_string();
+    app.open_project_from_input();
+
+    let window = app.platform_host.snapshot().window_model();
+    assert_eq!(
+        window.runtime.workspace_document.title,
+        original_window.runtime.workspace_document.title
+    );
+    assert_eq!(
+        app.project_open.notice.as_ref().map(|notice| notice.level),
+        Some(ProjectOpenNoticeLevel::Error)
+    );
+    assert!(
+        app.project_open
+            .notice
+            .as_ref()
+            .map(|notice| notice
+                .detail
+                .contains("radishflow-missing-project.rfproj.json"))
+            .unwrap_or(false)
+    );
+    assert!(
+        window
+            .runtime
+            .gui_activity_lines
+            .iter()
+            .any(|line| line.contains("open project failed"))
+    );
+}
+
 fn palette_commands_for_test(commands: &[(&str, bool)]) -> Vec<&'static StudioGuiCommandEntry> {
     commands
         .iter()
@@ -1071,6 +1155,7 @@ fn ready_app_state(config: &StudioRuntimeConfig) -> ReadyAppState {
         platform_host: StudioGuiPlatformHost::new(config).expect("expected platform host"),
         platform_timer_executor: EguiPlatformTimerExecutor::default(),
         command_palette: CommandPaletteState::default(),
+        project_open: ProjectOpenState::from_path(&config.project_path),
         locale: StudioShellLocale::default(),
         last_area_focus: None,
         drag_session: None,

@@ -64,6 +64,7 @@ struct ReadyAppState {
     platform_host: StudioGuiPlatformHost,
     platform_timer_executor: EguiPlatformTimerExecutor,
     command_palette: CommandPaletteState,
+    project_open: ProjectOpenState,
     locale: StudioShellLocale,
     last_area_focus: Option<StudioGuiWindowAreaId>,
     drag_session: Option<PanelDragSession>,
@@ -98,6 +99,25 @@ struct CommandPaletteState {
     focus_query_input: bool,
 }
 
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+struct ProjectOpenState {
+    path_input: String,
+    notice: Option<ProjectOpenNotice>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct ProjectOpenNotice {
+    level: ProjectOpenNoticeLevel,
+    title: String,
+    detail: String,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ProjectOpenNoticeLevel {
+    Info,
+    Error,
+}
+
 #[derive(Debug, Default)]
 struct EguiPlatformTimerExecutor {
     next_native_timer_id: StudioGuiPlatformNativeTimerId,
@@ -118,6 +138,7 @@ impl RadishFlowStudioApp {
                     platform_host,
                     platform_timer_executor: EguiPlatformTimerExecutor::default(),
                     command_palette: CommandPaletteState::default(),
+                    project_open: ProjectOpenState::from_path(&config.project_path),
                     locale: StudioShellLocale::default(),
                     last_area_focus: None,
                     drag_session: None,
@@ -168,6 +189,24 @@ impl CommandPaletteState {
 
     fn move_selection<T: PaletteSelectable>(&mut self, delta: isize, commands: &[T]) {
         self.selected_index = moved_palette_selection(commands, self.selected_index, delta);
+    }
+}
+
+impl ProjectOpenState {
+    fn from_path(path: &std::path::Path) -> Self {
+        Self {
+            path_input: path.display().to_string(),
+            notice: None,
+        }
+    }
+
+    fn current_path(&self) -> Option<PathBuf> {
+        let trimmed = self.path_input.trim();
+        if trimmed.is_empty() {
+            None
+        } else {
+            Some(PathBuf::from(trimmed))
+        }
     }
 }
 

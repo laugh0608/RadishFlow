@@ -42,6 +42,9 @@ pub(super) enum ShellText {
     PlatformNotice,
     Platform,
     Workspace,
+    ProjectPath,
+    OpenProject,
+    UseCurrentPath,
     ExampleProjects,
     Results,
     NoStreamResults,
@@ -102,6 +105,46 @@ impl StudioShellLocale {
             _ => Cow::Borrowed(label),
         }
     }
+
+    pub(super) fn workspace_counts(
+        self,
+        flowsheet_name: &str,
+        unit_count: usize,
+        stream_count: usize,
+        snapshot_count: usize,
+    ) -> String {
+        match self {
+            StudioShellLocale::En => format!(
+                "{flowsheet_name} | {unit_count} unit(s) | {stream_count} stream(s) | {snapshot_count} snapshot(s)"
+            ),
+            StudioShellLocale::ZhCn => format!(
+                "{flowsheet_name} | {unit_count} 个单元 | {stream_count} 股流股 | {snapshot_count} 个快照"
+            ),
+        }
+    }
+
+    pub(super) fn solve_snapshot_counts(
+        self,
+        stream_count: usize,
+        step_count: usize,
+        diagnostic_count: usize,
+    ) -> String {
+        match self {
+            StudioShellLocale::En => format!(
+                "{stream_count} stream(s), {step_count} step(s), {diagnostic_count} diagnostic(s)"
+            ),
+            StudioShellLocale::ZhCn => {
+                format!("{stream_count} 股流股，{step_count} 个步骤，{diagnostic_count} 条诊断")
+            }
+        }
+    }
+
+    pub(super) fn snapshot_identity(self, snapshot_id: &str, sequence: u64) -> String {
+        match self {
+            StudioShellLocale::En => format!("Snapshot {snapshot_id} seq {sequence}"),
+            StudioShellLocale::ZhCn => format!("快照 {snapshot_id}，序号 {sequence}"),
+        }
+    }
 }
 
 impl ShellText {
@@ -140,6 +183,9 @@ impl ShellText {
             ShellText::PlatformNotice => "Platform notice",
             ShellText::Platform => "Platform",
             ShellText::Workspace => "Workspace",
+            ShellText::ProjectPath => "Project path",
+            ShellText::OpenProject => "Open project",
+            ShellText::UseCurrentPath => "Use current path",
             ShellText::ExampleProjects => "Example projects",
             ShellText::Results => "Results",
             ShellText::NoStreamResults => "This snapshot has no stream results.",
@@ -202,6 +248,9 @@ impl ShellText {
             ShellText::PlatformNotice => "平台提示",
             ShellText::Platform => "平台",
             ShellText::Workspace => "工作区",
+            ShellText::ProjectPath => "项目路径",
+            ShellText::OpenProject => "打开项目",
+            ShellText::UseCurrentPath => "使用当前路径",
             ShellText::ExampleProjects => "示例项目",
             ShellText::Results => "结果",
             ShellText::NoStreamResults => "当前快照没有流股结果。",

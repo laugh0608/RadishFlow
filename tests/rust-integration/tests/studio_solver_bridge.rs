@@ -84,7 +84,11 @@ fn studio_solver_bridge_maps_project_snapshot_into_app_state_end_to_end() {
     assert_eq!(snapshot.steps.len(), 3);
     assert_eq!(snapshot.steps[1].unit_id, UnitId::new("heater-1"));
     assert_eq!(snapshot.steps[1].streams.len(), 1);
-    assert_eq!(snapshot.steps[1].streams[0].label, "stream-heated");
+    assert_eq!(
+        snapshot.steps[1].streams[0].stream_id,
+        StreamId::new("stream-heated")
+    );
+    assert_eq!(snapshot.steps[1].streams[0].label, "Heated Outlet");
 }
 
 #[test]

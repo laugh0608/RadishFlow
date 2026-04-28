@@ -244,15 +244,45 @@ impl ReadyAppState {
                     egui::Color32::from_rgb(86, 118, 168),
                 );
             });
-            ui.small(format!(
-                "{} | {} unit(s) | {} stream(s) | {} snapshot(s)",
-                document.flowsheet_name,
+            ui.small(self.locale.workspace_counts(
+                &document.flowsheet_name,
                 document.unit_count,
                 document.stream_count,
-                document.snapshot_history_count
+                document.snapshot_history_count,
             ));
             if let Some(path) = document.project_path.as_ref() {
                 render_wrapped_small(ui, path);
+            }
+            ui.separator();
+            ui.label(egui::RichText::new(self.locale.text(ShellText::ProjectPath)).strong());
+            ui.add(
+                egui::TextEdit::singleline(&mut self.project_open.path_input)
+                    .desired_width(f32::INFINITY),
+            );
+            ui.horizontal_wrapped(|ui| {
+                if ui
+                    .button(self.locale.text(ShellText::OpenProject))
+                    .clicked()
+                {
+                    self.open_project_from_input();
+                }
+                if let Some(path) = document.project_path.as_ref() {
+                    if ui
+                        .button(self.locale.text(ShellText::UseCurrentPath))
+                        .clicked()
+                    {
+                        self.project_open.path_input = path.clone();
+                        self.project_open.notice = None;
+                    }
+                }
+            });
+            if let Some(notice) = self.project_open.notice.as_ref() {
+                let color = match notice.level {
+                    ProjectOpenNoticeLevel::Info => egui::Color32::from_rgb(66, 118, 92),
+                    ProjectOpenNoticeLevel::Error => egui::Color32::from_rgb(180, 40, 40),
+                };
+                ui.colored_label(color, &notice.title);
+                render_wrapped_small(ui, &notice.detail);
             }
             if !window.runtime.example_projects.is_empty() {
                 ui.separator();
@@ -290,15 +320,16 @@ impl ReadyAppState {
                         self.locale.runtime_label(snapshot.status_label).as_ref(),
                         run_status_color(snapshot.status_label),
                     );
-                    ui.small(format!(
-                        "{} stream(s), {} step(s), {} diagnostic(s)",
-                        snapshot.stream_count, snapshot.step_count, snapshot.diagnostic_count
+                    ui.small(self.locale.solve_snapshot_counts(
+                        snapshot.stream_count,
+                        snapshot.step_count,
+                        snapshot.diagnostic_count,
                     ));
                 });
-                ui.small(format!(
-                    "Snapshot {} seq {}",
-                    snapshot.snapshot_id, snapshot.sequence
-                ));
+                ui.small(
+                    self.locale
+                        .snapshot_identity(&snapshot.snapshot_id, snapshot.sequence),
+                );
                 render_wrapped_label(ui, &snapshot.summary);
                 ui.separator();
                 egui::ScrollArea::vertical()
