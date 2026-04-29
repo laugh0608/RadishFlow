@@ -1,3 +1,4 @@
+use rf_model::Flowsheet;
 use rf_types::{StreamId, UnitId};
 
 #[derive(Debug, Clone, PartialEq)]
@@ -74,11 +75,32 @@ pub enum DocumentCommand {
 pub struct CommandHistoryEntry {
     pub revision: u64,
     pub command: DocumentCommand,
+    pub before: Option<Flowsheet>,
+    pub after: Option<Flowsheet>,
 }
 
 impl CommandHistoryEntry {
     pub fn new(revision: u64, command: DocumentCommand) -> Self {
-        Self { revision, command }
+        Self {
+            revision,
+            command,
+            before: None,
+            after: None,
+        }
+    }
+
+    pub fn with_snapshots(
+        revision: u64,
+        command: DocumentCommand,
+        before: Flowsheet,
+        after: Flowsheet,
+    ) -> Self {
+        Self {
+            revision,
+            command,
+            before: Some(before),
+            after: Some(after),
+        }
     }
 }
 
@@ -115,6 +137,22 @@ impl CommandHistory {
             .and_then(|index| self.entries.get(index))
     }
 
+    pub fn undo_entry(&self) -> Option<&CommandHistoryEntry> {
+        if !self.can_undo() {
+            return None;
+        }
+
+        self.entries.get(self.cursor - 1)
+    }
+
+    pub fn redo_entry(&self) -> Option<&CommandHistoryEntry> {
+        if !self.can_redo() {
+            return None;
+        }
+
+        self.entries.get(self.cursor)
+    }
+
     pub fn record(&mut self, entry: CommandHistoryEntry) {
         if self.cursor < self.entries.len() {
             self.entries.truncate(self.cursor);
@@ -141,5 +179,24 @@ impl CommandHistory {
         let entry = self.entries.get(self.cursor).cloned();
         self.cursor += 1;
         entry
+    }
+
+    pub fn step_undo(&mut self) -> Option<&CommandHistoryEntry> {
+        if !self.can_undo() {
+            return None;
+        }
+
+        self.cursor -= 1;
+        self.entries.get(self.cursor)
+    }
+
+    pub fn step_redo(&mut self) -> Option<&CommandHistoryEntry> {
+        if !self.can_redo() {
+            return None;
+        }
+
+        let index = self.cursor;
+        self.cursor += 1;
+        self.entries.get(index)
     }
 }

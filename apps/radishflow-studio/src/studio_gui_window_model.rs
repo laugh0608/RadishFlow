@@ -1277,7 +1277,7 @@ mod tests {
                 .command_list_sections
                 .first()
                 .map(|section| section.title),
-            Some("Run Panel")
+            Some("Edit")
         );
         assert!(
             window
@@ -1669,10 +1669,10 @@ mod tests {
                 .iter()
                 .map(|section| section.title)
                 .collect::<Vec<_>>(),
-            vec!["Run Panel", "Recovery", "Entitlement", "Canvas"]
+            vec!["Edit", "Run Panel", "Recovery", "Entitlement", "Canvas"]
         );
         assert_eq!(
-            window.commands.toolbar_sections[0]
+            window.commands.toolbar_sections[1]
                 .items
                 .iter()
                 .map(|item| item.command_id.as_str())
@@ -1705,10 +1705,10 @@ mod tests {
                 .iter()
                 .map(|section| section.title)
                 .collect::<Vec<_>>(),
-            vec!["Run Panel", "Recovery", "Entitlement", "Canvas"]
+            vec!["Edit", "Run Panel", "Recovery", "Entitlement", "Canvas"]
         );
         assert_eq!(
-            window.commands.command_list_sections[0]
+            window.commands.command_list_sections[1]
                 .items
                 .iter()
                 .map(|item| item.command_id.as_str())
@@ -1721,7 +1721,7 @@ mod tests {
             ]
         );
         assert!(
-            window.commands.command_list_sections[0].items[0]
+            window.commands.command_list_sections[1].items[0]
                 .label
                 .contains("F5")
         );

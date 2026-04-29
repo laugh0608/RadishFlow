@@ -19,6 +19,8 @@ use crate::{
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StudioAppHostUiAction {
+    UndoDocumentCommand,
+    RedoDocumentCommand,
     RunManualWorkspace,
     ResumeWorkspace,
     HoldWorkspace,
@@ -31,6 +33,8 @@ pub enum StudioAppHostUiAction {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StudioAppHostUiActionDisabledReason {
     NoRegisteredWindow,
+    UndoUnavailable,
+    RedoUnavailable,
     RunManualUnavailable,
     ResumeUnavailable,
     HoldUnavailable,
@@ -91,6 +95,7 @@ pub struct StudioAppHostUiActionModel {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StudioAppHostUiCommandGroup {
+    Edit,
     RunPanel,
     Recovery,
     Entitlement,
@@ -1320,6 +1325,8 @@ fn map_command(command: StudioAppHostCommand) -> StudioAppWindowHostCommand {
 impl From<StudioAppHostUiAction> for StudioAppWindowHostUiAction {
     fn from(value: StudioAppHostUiAction) -> Self {
         match value {
+            StudioAppHostUiAction::UndoDocumentCommand => Self::UndoDocumentCommand,
+            StudioAppHostUiAction::RedoDocumentCommand => Self::RedoDocumentCommand,
             StudioAppHostUiAction::RunManualWorkspace => Self::RunManualWorkspace,
             StudioAppHostUiAction::ResumeWorkspace => Self::ResumeWorkspace,
             StudioAppHostUiAction::HoldWorkspace => Self::HoldWorkspace,
@@ -1334,6 +1341,8 @@ impl From<StudioAppHostUiAction> for StudioAppWindowHostUiAction {
 impl From<StudioAppWindowHostUiAction> for StudioAppHostUiAction {
     fn from(value: StudioAppWindowHostUiAction) -> Self {
         match value {
+            StudioAppWindowHostUiAction::UndoDocumentCommand => Self::UndoDocumentCommand,
+            StudioAppWindowHostUiAction::RedoDocumentCommand => Self::RedoDocumentCommand,
             StudioAppWindowHostUiAction::RunManualWorkspace => Self::RunManualWorkspace,
             StudioAppWindowHostUiAction::ResumeWorkspace => Self::ResumeWorkspace,
             StudioAppWindowHostUiAction::HoldWorkspace => Self::HoldWorkspace,
@@ -1351,6 +1360,8 @@ impl From<StudioAppWindowHostUiActionDisabledReason> for StudioAppHostUiActionDi
             StudioAppWindowHostUiActionDisabledReason::NoRegisteredWindow => {
                 Self::NoRegisteredWindow
             }
+            StudioAppWindowHostUiActionDisabledReason::UndoUnavailable => Self::UndoUnavailable,
+            StudioAppWindowHostUiActionDisabledReason::RedoUnavailable => Self::RedoUnavailable,
             StudioAppWindowHostUiActionDisabledReason::RunManualUnavailable => {
                 Self::RunManualUnavailable
             }
@@ -1408,6 +1419,18 @@ fn ui_command_model_from_states(
 
 fn ui_action_model_from_state(state: StudioAppHostUiActionState) -> StudioAppHostUiActionModel {
     let (command_id, group, sort_order, label) = match state.action {
+        StudioAppHostUiAction::UndoDocumentCommand => (
+            crate::EDIT_UNDO_COMMAND_ID,
+            StudioAppHostUiCommandGroup::Edit,
+            10,
+            "Undo",
+        ),
+        StudioAppHostUiAction::RedoDocumentCommand => (
+            crate::EDIT_REDO_COMMAND_ID,
+            StudioAppHostUiCommandGroup::Edit,
+            20,
+            "Redo",
+        ),
         StudioAppHostUiAction::RunManualWorkspace => (
             "run_panel.run_manual",
             StudioAppHostUiCommandGroup::RunPanel,
@@ -1454,6 +1477,12 @@ fn ui_action_model_from_state(state: StudioAppHostUiActionState) -> StudioAppHos
     let (enabled, detail, target_window_id) = match state.availability {
         StudioAppHostUiActionAvailability::Enabled { target_window_id } => {
             let detail = match state.action {
+                StudioAppHostUiAction::UndoDocumentCommand => {
+                    "Undo the latest document command in the target window"
+                }
+                StudioAppHostUiAction::RedoDocumentCommand => {
+                    "Redo the next document command in the target window"
+                }
                 StudioAppHostUiAction::RunManualWorkspace => {
                     "Dispatch the current manual run action in the target window"
                 }
@@ -1484,6 +1513,12 @@ fn ui_action_model_from_state(state: StudioAppHostUiActionState) -> StudioAppHos
             target_window_id,
         } => {
             let detail = match state.action {
+                StudioAppHostUiAction::UndoDocumentCommand => {
+                    "Open a studio window before undoing document commands"
+                }
+                StudioAppHostUiAction::RedoDocumentCommand => {
+                    "Open a studio window before redoing document commands"
+                }
                 StudioAppHostUiAction::RunManualWorkspace => {
                     "Open a studio window before running the workspace"
                 }
@@ -1509,6 +1544,22 @@ fn ui_action_model_from_state(state: StudioAppHostUiActionState) -> StudioAppHos
 
             (false, detail, target_window_id)
         }
+        StudioAppHostUiActionAvailability::Disabled {
+            reason: StudioAppHostUiActionDisabledReason::UndoUnavailable,
+            target_window_id,
+        } => (
+            false,
+            "There is no document command to undo in the target window",
+            target_window_id,
+        ),
+        StudioAppHostUiActionAvailability::Disabled {
+            reason: StudioAppHostUiActionDisabledReason::RedoUnavailable,
+            target_window_id,
+        } => (
+            false,
+            "There is no document command to redo in the target window",
+            target_window_id,
+        ),
         StudioAppHostUiActionAvailability::Disabled {
             reason: StudioAppHostUiActionDisabledReason::RunManualUnavailable,
             target_window_id,
@@ -1585,6 +1636,7 @@ fn placeholder_ui_command_models() -> Vec<StudioAppHostUiActionModel> {
 
 fn ui_command_group_sort_key(group: StudioAppHostUiCommandGroup) -> u16 {
     match group {
+        StudioAppHostUiCommandGroup::Edit => 10,
         StudioAppHostUiCommandGroup::RunPanel => 100,
         StudioAppHostUiCommandGroup::Recovery => 200,
         StudioAppHostUiCommandGroup::Entitlement => 300,
@@ -1749,6 +1801,20 @@ mod tests {
         assert_eq!(
             first.snapshot.ui_actions,
             vec![
+                StudioAppHostUiActionState {
+                    action: StudioAppHostUiAction::UndoDocumentCommand,
+                    availability: StudioAppHostUiActionAvailability::Disabled {
+                        reason: StudioAppHostUiActionDisabledReason::UndoUnavailable,
+                        target_window_id: Some(first_window.window_id),
+                    },
+                },
+                StudioAppHostUiActionState {
+                    action: StudioAppHostUiAction::RedoDocumentCommand,
+                    availability: StudioAppHostUiActionAvailability::Disabled {
+                        reason: StudioAppHostUiActionDisabledReason::RedoUnavailable,
+                        target_window_id: Some(first_window.window_id),
+                    },
+                },
                 StudioAppHostUiActionState {
                     action: StudioAppHostUiAction::RunManualWorkspace,
                     availability: StudioAppHostUiActionAvailability::Enabled {
@@ -3036,7 +3102,33 @@ mod tests {
         let opened = controller.open_window().expect("expected window open");
         let no_recovery = opened.projection.state.ui_command_model();
         assert_eq!(
-            no_recovery.actions[0],
+            no_recovery.action(StudioAppHostUiAction::UndoDocumentCommand),
+            Some(&StudioAppHostUiActionModel {
+                action: Some(StudioAppHostUiAction::UndoDocumentCommand),
+                command_id: "edit.undo",
+                group: StudioAppHostUiCommandGroup::Edit,
+                sort_order: 10,
+                label: "Undo",
+                enabled: false,
+                detail: "There is no document command to undo in the target window",
+                target_window_id: Some(opened.registration.window_id),
+            })
+        );
+        assert_eq!(
+            no_recovery.action(StudioAppHostUiAction::RedoDocumentCommand),
+            Some(&StudioAppHostUiActionModel {
+                action: Some(StudioAppHostUiAction::RedoDocumentCommand),
+                command_id: "edit.redo",
+                group: StudioAppHostUiCommandGroup::Edit,
+                sort_order: 20,
+                label: "Redo",
+                enabled: false,
+                detail: "There is no document command to redo in the target window",
+                target_window_id: Some(opened.registration.window_id),
+            })
+        );
+        assert_eq!(
+            no_recovery.actions[2],
             StudioAppHostUiActionModel {
                 action: Some(StudioAppHostUiAction::RunManualWorkspace),
                 command_id: "run_panel.run_manual",
@@ -3049,7 +3141,7 @@ mod tests {
             }
         );
         assert_eq!(
-            no_recovery.actions[1],
+            no_recovery.actions[3],
             StudioAppHostUiActionModel {
                 action: Some(StudioAppHostUiAction::ResumeWorkspace),
                 command_id: "run_panel.resume_workspace",
@@ -3062,7 +3154,7 @@ mod tests {
             }
         );
         assert_eq!(
-            no_recovery.actions[2],
+            no_recovery.actions[4],
             StudioAppHostUiActionModel {
                 action: Some(StudioAppHostUiAction::HoldWorkspace),
                 command_id: "run_panel.set_hold",
@@ -3075,7 +3167,7 @@ mod tests {
             }
         );
         assert_eq!(
-            no_recovery.actions[3],
+            no_recovery.actions[5],
             StudioAppHostUiActionModel {
                 action: Some(StudioAppHostUiAction::ActivateWorkspace),
                 command_id: "run_panel.set_active",
@@ -3293,6 +3385,32 @@ mod tests {
 
         let model = controller.state().ui_command_model();
         assert_eq!(
+            model.action(StudioAppHostUiAction::UndoDocumentCommand),
+            Some(&StudioAppHostUiActionModel {
+                action: Some(StudioAppHostUiAction::UndoDocumentCommand),
+                command_id: "edit.undo",
+                group: StudioAppHostUiCommandGroup::Edit,
+                sort_order: 10,
+                label: "Undo",
+                enabled: false,
+                detail: "There is no document command to undo in the target window",
+                target_window_id: Some(opened.registration.window_id),
+            })
+        );
+        assert_eq!(
+            model.action(StudioAppHostUiAction::RedoDocumentCommand),
+            Some(&StudioAppHostUiActionModel {
+                action: Some(StudioAppHostUiAction::RedoDocumentCommand),
+                command_id: "edit.redo",
+                group: StudioAppHostUiCommandGroup::Edit,
+                sort_order: 20,
+                label: "Redo",
+                enabled: false,
+                detail: "There is no document command to redo in the target window",
+                target_window_id: Some(opened.registration.window_id),
+            })
+        );
+        assert_eq!(
             model.action(StudioAppHostUiAction::RunManualWorkspace),
             Some(&StudioAppHostUiActionModel {
                 action: Some(StudioAppHostUiAction::RunManualWorkspace),
@@ -3383,7 +3501,7 @@ mod tests {
                 target_window_id: Some(opened.registration.window_id),
             })
         );
-        assert_eq!(model.actions.len(), 7);
+        assert_eq!(model.actions.len(), 9);
 
         let _ = fs::remove_file(project_path);
     }

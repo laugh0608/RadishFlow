@@ -124,6 +124,7 @@ pub struct StudioGuiCommandMenuCommandModel {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StudioGuiCommandGroup {
+    Edit,
     RunPanel,
     Recovery,
     Entitlement,
@@ -146,6 +147,7 @@ impl StudioGuiCommandRegistry {
         canvas_target_window_id: Option<StudioWindowHostId>,
     ) -> Self {
         let mut run_panel = Vec::new();
+        let mut edit = Vec::new();
         let mut recovery = Vec::new();
         let mut entitlement = Vec::new();
         let mut canvas_commands = Vec::new();
@@ -172,6 +174,7 @@ impl StudioGuiCommandRegistry {
                 shortcut: defaults.shortcut,
             };
             match action.group {
+                StudioAppHostUiCommandGroup::Edit => edit.push(entry),
                 StudioAppHostUiCommandGroup::RunPanel => run_panel.push(entry),
                 StudioAppHostUiCommandGroup::Recovery => recovery.push(entry),
                 StudioAppHostUiCommandGroup::Entitlement => entitlement.push(entry),
@@ -205,6 +208,14 @@ impl StudioGuiCommandRegistry {
         }
 
         let mut sections = Vec::new();
+        if !edit.is_empty() {
+            edit.sort_by_key(|entry| entry.sort_order);
+            sections.push(StudioGuiCommandSection {
+                group: StudioGuiCommandGroup::Edit,
+                title: "Edit",
+                commands: edit,
+            });
+        }
         if !run_panel.is_empty() {
             run_panel.sort_by_key(|entry| entry.sort_order);
             sections.push(StudioGuiCommandSection {
@@ -291,6 +302,16 @@ struct StudioGuiCommandDefaults {
 
 fn command_defaults(command_id: &str) -> StudioGuiCommandDefaults {
     match command_id {
+        "edit.undo" => StudioGuiCommandDefaults {
+            menu_path: &["Edit", "Undo"],
+            search_terms: &["edit", "undo", "history"],
+            shortcut: None,
+        },
+        "edit.redo" => StudioGuiCommandDefaults {
+            menu_path: &["Edit", "Redo"],
+            search_terms: &["edit", "redo", "history"],
+            shortcut: None,
+        },
         "run_panel.run_manual" => StudioGuiCommandDefaults {
             menu_path: &["Run", "Run Workspace"],
             search_terms: &["run", "workspace", "manual", "solve"],

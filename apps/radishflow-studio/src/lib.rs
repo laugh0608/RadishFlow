@@ -3,6 +3,7 @@ mod auth_cache_sync;
 mod bootstrap;
 mod control_plane_client;
 mod control_plane_sync;
+mod document_history_driver;
 mod entitlement_control;
 mod entitlement_panel_driver;
 mod entitlement_preflight;
@@ -17,6 +18,7 @@ mod property_package_download_client;
 mod run_panel_driver;
 mod solver_bridge;
 mod studio_app_host;
+mod studio_document_history_command;
 mod studio_example_projects;
 mod studio_gui_canvas_presentation;
 mod studio_gui_canvas_widget;
@@ -69,6 +71,9 @@ pub use control_plane_client::{
     ReqwestRadishFlowControlPlaneHttpTransport, ReqwestRadishFlowControlPlaneHttpTransportOptions,
 };
 pub use control_plane_sync::{EntitlementSyncResult, RadishFlowControlPlaneSyncService};
+pub use document_history_driver::{
+    DocumentHistoryOutcome, dispatch_document_history, dispatch_document_history_at,
+};
 pub use entitlement_control::{
     StudioEntitlementAction, StudioEntitlementActionOutcome, StudioEntitlementFailure,
     StudioEntitlementFailureReason, StudioEntitlementOutcome,
@@ -164,6 +169,10 @@ pub use studio_app_host::{
     StudioAppHostUiCommandDispatchResult, StudioAppHostUiCommandGroup, StudioAppHostUiCommandModel,
     StudioAppHostWindowChange, StudioAppHostWindowDispatchResult,
     StudioAppHostWindowSelectionChange, StudioAppHostWindowSnapshot, StudioAppHostWindowState,
+};
+pub use studio_document_history_command::{
+    EDIT_REDO_COMMAND_ID, EDIT_UNDO_COMMAND_ID, StudioDocumentHistoryCommand,
+    document_history_command_from_id,
 };
 pub use studio_example_projects::{StudioExampleProjectModel, studio_example_project_models};
 pub use studio_gui_canvas_presentation::{

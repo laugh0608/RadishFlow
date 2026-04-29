@@ -2,7 +2,7 @@ use std::fs;
 
 use super::test_support::{
     find_menu_command, find_menu_command_by_label, flash_drum_local_rules_config,
-    flash_drum_local_rules_synced_config, lease_expiring_config,
+    flash_drum_local_rules_synced_config, lease_expiring_config, synced_workspace_config,
     unbound_outlet_failure_synced_config,
 };
 use super::*;
@@ -240,6 +240,127 @@ fn gui_driver_routes_inspector_draft_commit_through_driver_boundary() {
 }
 
 #[test]
+fn gui_driver_routes_document_history_commands_through_command_surface() {
+    let mut driver = StudioGuiDriver::new(&synced_workspace_config()).expect("expected driver");
+    driver
+        .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+        .expect("expected open dispatch");
+    let focus = driver
+        .dispatch_event(StudioGuiEvent::UiCommandRequested {
+            command_id: "inspector.focus_stream:stream-feed".to_string(),
+        })
+        .expect("expected inspector focus dispatch");
+    let field = focus
+        .window
+        .runtime
+        .active_inspector_detail
+        .as_ref()
+        .and_then(|detail| {
+            detail
+                .property_fields
+                .iter()
+                .find(|field| field.key == "stream:stream-feed:temperature_k")
+        })
+        .cloned()
+        .expect("expected stream temperature field");
+    let update = driver
+        .dispatch_event(StudioGuiEvent::InspectorFieldDraftUpdateRequested {
+            command_id: field.draft_update_command_id,
+            raw_value: "333.5".to_string(),
+        })
+        .expect("expected draft update dispatch");
+    let commit_command_id = update
+        .window
+        .runtime
+        .active_inspector_detail
+        .as_ref()
+        .and_then(|detail| {
+            detail
+                .property_fields
+                .iter()
+                .find(|field| field.key == "stream:stream-feed:temperature_k")
+        })
+        .and_then(|field| field.commit_command_id.clone())
+        .expect("expected commit command id");
+    driver
+        .dispatch_event(StudioGuiEvent::InspectorFieldDraftCommitRequested {
+            command_id: commit_command_id,
+        })
+        .expect("expected draft commit dispatch");
+
+    let undo = driver
+        .dispatch_event(StudioGuiEvent::UiCommandRequested {
+            command_id: "edit.undo".to_string(),
+        })
+        .expect("expected undo dispatch");
+
+    match &undo.outcome {
+        StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::UiCommandDispatched(
+            StudioGuiHostUiCommandDispatchResult::Executed(executed),
+        )) => match &executed.effects.runtime_report.dispatch {
+            crate::StudioRuntimeDispatch::DocumentHistory(outcome) => {
+                assert_eq!(outcome.command, crate::StudioDocumentHistoryCommand::Undo);
+                assert!(outcome.applied);
+                assert_eq!(outcome.document_revision, 2);
+                assert_eq!(outcome.command_history_cursor, 0);
+            }
+            other => panic!("expected document history dispatch, got {other:?}"),
+        },
+        other => panic!("expected executed undo outcome, got {other:?}"),
+    }
+    assert_eq!(undo.window.runtime.workspace_document.revision, 2);
+    let undone_field = undo
+        .window
+        .runtime
+        .active_inspector_detail
+        .as_ref()
+        .and_then(|detail| {
+            detail
+                .property_fields
+                .iter()
+                .find(|field| field.key == "stream:stream-feed:temperature_k")
+        })
+        .expect("expected undone temperature field");
+    assert_eq!(undone_field.current_value, "300");
+    assert!(!undone_field.is_dirty);
+
+    let redo = driver
+        .dispatch_event(StudioGuiEvent::UiCommandRequested {
+            command_id: "edit.redo".to_string(),
+        })
+        .expect("expected redo dispatch");
+
+    match &redo.outcome {
+        StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::UiCommandDispatched(
+            StudioGuiHostUiCommandDispatchResult::Executed(executed),
+        )) => match &executed.effects.runtime_report.dispatch {
+            crate::StudioRuntimeDispatch::DocumentHistory(outcome) => {
+                assert_eq!(outcome.command, crate::StudioDocumentHistoryCommand::Redo);
+                assert!(outcome.applied);
+                assert_eq!(outcome.document_revision, 3);
+                assert_eq!(outcome.command_history_cursor, 1);
+            }
+            other => panic!("expected document history dispatch, got {other:?}"),
+        },
+        other => panic!("expected executed redo outcome, got {other:?}"),
+    }
+    let redone_field = redo
+        .window
+        .runtime
+        .active_inspector_detail
+        .as_ref()
+        .and_then(|detail| {
+            detail
+                .property_fields
+                .iter()
+                .find(|field| field.key == "stream:stream-feed:temperature_k")
+        })
+        .expect("expected redone temperature field");
+    assert_eq!(redone_field.current_value, "333.5");
+    assert!(!redone_field.is_dirty);
+}
+
+#[test]
 fn gui_driver_routes_entitlement_primary_action_through_single_event_entry() {
     let mut driver = StudioGuiDriver::new(&lease_expiring_config()).expect("expected driver");
     let open = driver
@@ -425,7 +546,7 @@ fn gui_driver_dispatch_snapshot_aggregates_gui_facing_state() {
             .sections
             .first()
             .map(|section| section.title),
-        Some("Run Panel")
+        Some("Edit")
     );
     assert_eq!(
         dispatch.snapshot.runtime.control_state.run_status,

@@ -274,6 +274,19 @@ pub struct StreamInspectorDraftCommitResult {
     pub revision: u64,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DocumentHistoryDirection {
+    Undo,
+    Redo,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct DocumentHistoryApplyResult {
+    pub direction: DocumentHistoryDirection,
+    pub command: DocumentCommand,
+    pub revision: u64,
+}
+
 pub fn stream_inspector_draft_key(
     stream_id: &StreamId,
     field: StreamInspectorDraftField,
@@ -364,9 +377,13 @@ impl WorkspaceState {
         next_flowsheet: Flowsheet,
         changed_at: DateTimeUtc,
     ) -> u64 {
+        let before = self.document.flowsheet.clone();
+        let after = next_flowsheet.clone();
         let revision = self.document.replace_flowsheet(next_flowsheet, changed_at);
         self.command_history
-            .record(CommandHistoryEntry::new(revision, command));
+            .record(CommandHistoryEntry::with_snapshots(
+                revision, command, before, after,
+            ));
         self.canvas_interaction.invalidate_all();
         self.solve_session.mark_document_revision_advanced(revision);
         self.drafts.clear();
@@ -379,12 +396,47 @@ impl WorkspaceState {
         next_flowsheet: Flowsheet,
         changed_at: DateTimeUtc,
     ) -> u64 {
+        let before = self.document.flowsheet.clone();
+        let after = next_flowsheet.clone();
         let revision = self.document.replace_flowsheet(next_flowsheet, changed_at);
         self.command_history
-            .record(CommandHistoryEntry::new(revision, command));
+            .record(CommandHistoryEntry::with_snapshots(
+                revision, command, before, after,
+            ));
         self.canvas_interaction.invalidate_all();
         self.solve_session.mark_document_revision_advanced(revision);
         revision
+    }
+
+    fn apply_history_flowsheet(&mut self, flowsheet: Flowsheet, changed_at: DateTimeUtc) -> u64 {
+        let revision = self.document.replace_flowsheet(flowsheet, changed_at);
+        self.canvas_interaction.invalidate_all();
+        self.solve_session.mark_document_revision_advanced(revision);
+        self.prune_focus_against_document();
+        self.drafts.fields.clear();
+        revision
+    }
+
+    fn prune_focus_against_document(&mut self) {
+        self.selection
+            .selected_units
+            .retain(|unit_id| self.document.flowsheet.units.contains_key(unit_id));
+        self.selection
+            .selected_streams
+            .retain(|stream_id| self.document.flowsheet.streams.contains_key(stream_id));
+
+        let active_target_exists = match self.drafts.active_target.as_ref() {
+            Some(InspectorTarget::Unit(unit_id)) => {
+                self.document.flowsheet.units.contains_key(unit_id)
+            }
+            Some(InspectorTarget::Stream(stream_id)) => {
+                self.document.flowsheet.streams.contains_key(stream_id)
+            }
+            None => true,
+        };
+        if !active_target_exists {
+            self.drafts.active_target = None;
+        }
     }
 
     pub fn mark_saved(&mut self, path: impl Into<PathBuf>) {
@@ -448,6 +500,56 @@ impl AppState {
             .commit_document_change(command, next_flowsheet, changed_at);
         self.refresh_run_panel_state();
         revision
+    }
+
+    pub fn undo_document_command(
+        &mut self,
+        changed_at: DateTimeUtc,
+    ) -> RfResult<Option<DocumentHistoryApplyResult>> {
+        let Some(entry) = self.workspace.command_history.undo_entry().cloned() else {
+            return Ok(None);
+        };
+        let Some(before) = entry.before.clone() else {
+            return Err(RfError::invalid_input(format!(
+                "document command history entry at revision {} cannot be undone because it has no before snapshot",
+                entry.revision
+            )));
+        };
+
+        let revision = self.workspace.apply_history_flowsheet(before, changed_at);
+        self.workspace.command_history.step_undo();
+        self.refresh_run_panel_state();
+
+        Ok(Some(DocumentHistoryApplyResult {
+            direction: DocumentHistoryDirection::Undo,
+            command: entry.command,
+            revision,
+        }))
+    }
+
+    pub fn redo_document_command(
+        &mut self,
+        changed_at: DateTimeUtc,
+    ) -> RfResult<Option<DocumentHistoryApplyResult>> {
+        let Some(entry) = self.workspace.command_history.redo_entry().cloned() else {
+            return Ok(None);
+        };
+        let Some(after) = entry.after.clone() else {
+            return Err(RfError::invalid_input(format!(
+                "document command history entry at revision {} cannot be redone because it has no after snapshot",
+                entry.revision
+            )));
+        };
+
+        let revision = self.workspace.apply_history_flowsheet(after, changed_at);
+        self.workspace.command_history.step_redo();
+        self.refresh_run_panel_state();
+
+        Ok(Some(DocumentHistoryApplyResult {
+            direction: DocumentHistoryDirection::Redo,
+            command: entry.command,
+            revision,
+        }))
     }
 
     pub fn store_snapshot(&mut self, snapshot: SolveSnapshot) {

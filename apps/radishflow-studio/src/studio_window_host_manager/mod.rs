@@ -7,9 +7,9 @@ use rf_ui::{
 };
 
 use crate::{
-    StudioRuntimeConfig, StudioRuntimeTrigger, StudioWindowHostId, StudioWindowHostLifecycleEvent,
-    StudioWindowHostRetirement, StudioWindowSession, StudioWindowSessionDispatch,
-    StudioWindowSessionShutdown,
+    StudioDocumentHistoryCommand, StudioRuntimeConfig, StudioRuntimeTrigger, StudioWindowHostId,
+    StudioWindowHostLifecycleEvent, StudioWindowHostRetirement, StudioWindowSession,
+    StudioWindowSessionDispatch, StudioWindowSessionShutdown,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -22,6 +22,8 @@ pub enum StudioAppWindowHostGlobalEvent {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StudioAppWindowHostUiAction {
+    UndoDocumentCommand,
+    RedoDocumentCommand,
     RunManualWorkspace,
     ResumeWorkspace,
     HoldWorkspace,
@@ -34,6 +36,8 @@ pub enum StudioAppWindowHostUiAction {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StudioAppWindowHostUiActionDisabledReason {
     NoRegisteredWindow,
+    UndoUnavailable,
+    RedoUnavailable,
     RunManualUnavailable,
     ResumeUnavailable,
     HoldUnavailable,
@@ -254,6 +258,28 @@ impl StudioAppWindowHostManager {
     ) -> StudioAppWindowHostUiActionState {
         let target_window_id = self.preferred_window_id();
         let availability = match (action, target_window_id) {
+            (StudioAppWindowHostUiAction::UndoDocumentCommand, Some(target_window_id))
+                if self.document_history_undo_available() =>
+            {
+                StudioAppWindowHostUiActionAvailability::Enabled { target_window_id }
+            }
+            (StudioAppWindowHostUiAction::UndoDocumentCommand, Some(target_window_id)) => {
+                StudioAppWindowHostUiActionAvailability::Disabled {
+                    reason: StudioAppWindowHostUiActionDisabledReason::UndoUnavailable,
+                    target_window_id: Some(target_window_id),
+                }
+            }
+            (StudioAppWindowHostUiAction::RedoDocumentCommand, Some(target_window_id))
+                if self.document_history_redo_available() =>
+            {
+                StudioAppWindowHostUiActionAvailability::Enabled { target_window_id }
+            }
+            (StudioAppWindowHostUiAction::RedoDocumentCommand, Some(target_window_id)) => {
+                StudioAppWindowHostUiActionAvailability::Disabled {
+                    reason: StudioAppWindowHostUiActionDisabledReason::RedoUnavailable,
+                    target_window_id: Some(target_window_id),
+                }
+            }
             (StudioAppWindowHostUiAction::RunManualWorkspace, Some(target_window_id))
                 if self.run_panel_action_available(RunPanelActionId::RunManual) =>
             {
@@ -346,6 +372,8 @@ impl StudioAppWindowHostManager {
 
     pub fn ui_action_states(&self) -> Vec<StudioAppWindowHostUiActionState> {
         vec![
+            self.ui_action_state(StudioAppWindowHostUiAction::UndoDocumentCommand),
+            self.ui_action_state(StudioAppWindowHostUiAction::RedoDocumentCommand),
             self.ui_action_state(StudioAppWindowHostUiAction::RunManualWorkspace),
             self.ui_action_state(StudioAppWindowHostUiAction::ResumeWorkspace),
             self.ui_action_state(StudioAppWindowHostUiAction::HoldWorkspace),
@@ -447,6 +475,12 @@ impl StudioAppWindowHostManager {
         action: StudioAppWindowHostUiAction,
     ) -> RfResult<Option<StudioAppWindowHostDispatch>> {
         match action {
+            StudioAppWindowHostUiAction::UndoDocumentCommand => self.dispatch_preferred_trigger(
+                &StudioRuntimeTrigger::DocumentHistory(StudioDocumentHistoryCommand::Undo),
+            ),
+            StudioAppWindowHostUiAction::RedoDocumentCommand => self.dispatch_preferred_trigger(
+                &StudioRuntimeTrigger::DocumentHistory(StudioDocumentHistoryCommand::Redo),
+            ),
             StudioAppWindowHostUiAction::RunManualWorkspace => {
                 self.dispatch_foreground_run_panel_action(RunPanelActionId::RunManual)
             }
@@ -627,6 +661,26 @@ impl StudioAppWindowHostManager {
 
     fn run_panel_recovery_available(&self) -> bool {
         self.run_panel_widget().recovery_action().is_some()
+    }
+
+    fn document_history_undo_available(&self) -> bool {
+        self.session
+            .host_port()
+            .runtime()
+            .app_state()
+            .workspace
+            .command_history
+            .can_undo()
+    }
+
+    fn document_history_redo_available(&self) -> bool {
+        self.session
+            .host_port()
+            .runtime()
+            .app_state()
+            .workspace
+            .command_history
+            .can_redo()
     }
 
     fn run_panel_action_available(&self, action_id: RunPanelActionId) -> bool {

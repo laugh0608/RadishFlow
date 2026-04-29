@@ -38,6 +38,7 @@ pub enum StudioBootstrapTrigger {
     InspectorTarget(rf_ui::InspectorTarget),
     InspectorDraftUpdate(crate::StudioInspectorDraftUpdateCommand),
     InspectorDraftCommit(crate::StudioInspectorDraftCommitCommand),
+    DocumentHistory(crate::StudioDocumentHistoryCommand),
     EntitlementWidgetPrimaryAction,
     EntitlementWidgetAction(rf_ui::EntitlementActionId),
     EntitlementSessionEvent(StudioBootstrapEntitlementSessionEvent),
@@ -110,6 +111,7 @@ pub enum StudioBootstrapDispatch {
     InspectorTarget(crate::InspectorTargetFocusOutcome),
     InspectorDraftUpdate(crate::InspectorDraftUpdateOutcome),
     InspectorDraftCommit(crate::InspectorDraftCommitOutcome),
+    DocumentHistory(crate::DocumentHistoryOutcome),
     EntitlementSessionEvent(EntitlementSessionEventDriverOutcome),
 }
 

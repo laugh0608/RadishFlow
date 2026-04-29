@@ -60,12 +60,13 @@ pub use run_panel_text::RunPanelTextView;
 pub use run_panel_view::{RunPanelActionProminence, RunPanelRenderableAction, RunPanelViewModel};
 pub use run_panel_widget::{RunPanelRecoveryWidgetEvent, RunPanelWidgetEvent, RunPanelWidgetModel};
 pub use state::{
-    AppLogEntry, AppLogFeed, AppLogLevel, AppState, AppTheme, DateTimeUtc, DocumentMetadata,
-    DraftValidationState, DraftValue, FieldDraft, FlowsheetDocument, InspectorDraftState,
-    InspectorTarget, LocaleCode, PanelLayoutPreferences, SelectionState,
-    StreamInspectorDraftCommitResult, StreamInspectorDraftField, StreamInspectorDraftUpdateResult,
-    UiPanelsState, UserPreferences, WorkspaceState, latest_snapshot, latest_snapshot_id,
-    stream_inspector_draft_key, stream_inspector_draft_key_parts,
+    AppLogEntry, AppLogFeed, AppLogLevel, AppState, AppTheme, DateTimeUtc,
+    DocumentHistoryApplyResult, DocumentHistoryDirection, DocumentMetadata, DraftValidationState,
+    DraftValue, FieldDraft, FlowsheetDocument, InspectorDraftState, InspectorTarget, LocaleCode,
+    PanelLayoutPreferences, SelectionState, StreamInspectorDraftCommitResult,
+    StreamInspectorDraftField, StreamInspectorDraftUpdateResult, UiPanelsState, UserPreferences,
+    WorkspaceState, latest_snapshot, latest_snapshot_id, stream_inspector_draft_key,
+    stream_inspector_draft_key_parts,
 };
 
 #[cfg(test)]
@@ -1853,6 +1854,70 @@ mod tests {
             Some(SolvePendingReason::DocumentRevisionAdvanced)
         );
         assert_eq!(app_state.workspace.solve_session.status, RunStatus::Dirty);
+    }
+
+    #[test]
+    fn undo_redo_replays_stream_inspector_document_snapshots() {
+        let document = inspector_focus_document();
+        let mut app_state = AppState::new(document);
+        let stream_id = StreamId::new("stream-feed");
+        app_state.focus_inspector_target(crate::InspectorTarget::Stream(stream_id.clone()));
+        app_state
+            .update_stream_inspector_draft(
+                &stream_id,
+                crate::StreamInspectorDraftField::TemperatureK,
+                "333.5",
+            )
+            .expect("expected draft update");
+        app_state
+            .commit_stream_inspector_draft(
+                &stream_id,
+                crate::StreamInspectorDraftField::TemperatureK,
+                timestamp(42),
+            )
+            .expect("expected draft commit")
+            .expect("expected applied draft commit");
+
+        let undo = app_state
+            .undo_document_command(timestamp(43))
+            .expect("expected undo")
+            .expect("expected undo result");
+
+        assert_eq!(undo.direction, crate::DocumentHistoryDirection::Undo);
+        assert_eq!(undo.revision, 2);
+        assert_eq!(app_state.workspace.command_history.cursor, 0);
+        assert!(app_state.workspace.command_history.can_redo());
+        assert_eq!(
+            app_state.workspace.document.flowsheet.streams[&stream_id].temperature_k,
+            298.15
+        );
+        assert_eq!(
+            app_state.workspace.drafts.active_target,
+            Some(crate::InspectorTarget::Stream(stream_id.clone()))
+        );
+        assert_eq!(
+            app_state.workspace.solve_session.pending_reason,
+            Some(SolvePendingReason::DocumentRevisionAdvanced)
+        );
+
+        let redo = app_state
+            .redo_document_command(timestamp(44))
+            .expect("expected redo")
+            .expect("expected redo result");
+
+        assert_eq!(redo.direction, crate::DocumentHistoryDirection::Redo);
+        assert_eq!(redo.revision, 3);
+        assert_eq!(app_state.workspace.command_history.cursor, 1);
+        assert!(!app_state.workspace.command_history.can_redo());
+        assert_eq!(
+            app_state.workspace.document.flowsheet.streams[&stream_id].temperature_k,
+            333.5
+        );
+        assert_eq!(
+            app_state.workspace.drafts.active_target,
+            Some(crate::InspectorTarget::Stream(stream_id))
+        );
+        assert!(app_state.workspace.drafts.fields.is_empty());
     }
 
     #[test]

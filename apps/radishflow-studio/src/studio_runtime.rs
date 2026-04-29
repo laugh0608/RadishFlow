@@ -818,6 +818,9 @@ mod tests {
             StudioRuntimeDispatch::InspectorDraftCommit(_) => {
                 panic!("expected entitlement session event dispatch")
             }
+            StudioRuntimeDispatch::DocumentHistory(_) => {
+                panic!("expected entitlement session event dispatch")
+            }
         }
     }
 }

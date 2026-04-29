@@ -828,6 +828,20 @@ fn app_window_host_manager_reports_ui_action_states_for_run_panel_commands() {
     assert_eq!(
         states,
         vec![
+            StudioAppWindowHostUiActionState {
+                action: StudioAppWindowHostUiAction::UndoDocumentCommand,
+                availability: StudioAppWindowHostUiActionAvailability::Disabled {
+                    reason: StudioAppWindowHostUiActionDisabledReason::UndoUnavailable,
+                    target_window_id: Some(second.window_id),
+                },
+            },
+            StudioAppWindowHostUiActionState {
+                action: StudioAppWindowHostUiAction::RedoDocumentCommand,
+                availability: StudioAppWindowHostUiActionAvailability::Disabled {
+                    reason: StudioAppWindowHostUiActionDisabledReason::RedoUnavailable,
+                    target_window_id: Some(second.window_id),
+                },
+            },
             run_manual.clone(),
             resume_disabled.clone(),
             hold.clone(),
@@ -898,6 +912,20 @@ fn app_window_host_manager_reports_ui_action_state_for_foreground_recovery() {
     assert_eq!(
         states,
         vec![
+            StudioAppWindowHostUiActionState {
+                action: StudioAppWindowHostUiAction::UndoDocumentCommand,
+                availability: StudioAppWindowHostUiActionAvailability::Disabled {
+                    reason: StudioAppWindowHostUiActionDisabledReason::UndoUnavailable,
+                    target_window_id: Some(second.window_id),
+                },
+            },
+            StudioAppWindowHostUiActionState {
+                action: StudioAppWindowHostUiAction::RedoDocumentCommand,
+                availability: StudioAppWindowHostUiActionAvailability::Disabled {
+                    reason: StudioAppWindowHostUiActionDisabledReason::RedoUnavailable,
+                    target_window_id: Some(second.window_id),
+                },
+            },
             StudioAppWindowHostUiActionState {
                 action: StudioAppWindowHostUiAction::RunManualWorkspace,
                 availability: StudioAppWindowHostUiActionAvailability::Enabled {
