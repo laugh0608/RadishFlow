@@ -28,11 +28,34 @@ pub struct StudioGuiRuntimeSnapshot {
     pub run_panel: rf_ui::RunPanelWidgetModel,
     pub latest_solve_snapshot: Option<rf_ui::SolveSnapshot>,
     pub active_inspector_target: Option<rf_ui::InspectorTarget>,
+    pub active_inspector_detail: Option<StudioGuiInspectorTargetDetailSnapshot>,
     pub entitlement_host: Option<EntitlementSessionHostRuntimeOutput>,
     pub platform_notice: Option<rf_ui::RunPanelNotice>,
     pub platform_timer_lines: Vec<String>,
     pub gui_activity_lines: Vec<String>,
     pub log_entries: Vec<rf_ui::AppLogEntry>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioGuiInspectorTargetDetailSnapshot {
+    pub target: rf_ui::InspectorTarget,
+    pub title: String,
+    pub summary_rows: Vec<StudioGuiInspectorTargetSummaryRowSnapshot>,
+    pub unit_ports: Vec<StudioGuiInspectorTargetPortSnapshot>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioGuiInspectorTargetSummaryRowSnapshot {
+    pub label: String,
+    pub value: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioGuiInspectorTargetPortSnapshot {
+    pub name: String,
+    pub direction: String,
+    pub kind: String,
+    pub stream_id: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq)]

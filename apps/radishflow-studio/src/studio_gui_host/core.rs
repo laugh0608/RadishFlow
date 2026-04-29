@@ -57,6 +57,7 @@ impl StudioGuiHost {
                 run_panel: self.controller.run_panel_widget(),
                 latest_solve_snapshot: self.controller.latest_solve_snapshot(),
                 active_inspector_target: self.controller.active_inspector_target(),
+                active_inspector_detail: active_inspector_detail_from_controller(&self.controller),
                 entitlement_host: self.controller.entitlement_host_output(),
                 platform_notice: None,
                 platform_timer_lines: Vec::new(),
@@ -196,6 +197,76 @@ impl StudioGuiHost {
                 .unwrap_or_default(),
             close: closed.close,
         })
+    }
+}
+
+fn active_inspector_detail_from_controller(
+    controller: &StudioAppHostController,
+) -> Option<StudioGuiInspectorTargetDetailSnapshot> {
+    let target = controller.active_inspector_target()?;
+    let flowsheet = &controller.document().flowsheet;
+
+    match &target {
+        rf_ui::InspectorTarget::Unit(unit_id) => {
+            let unit = flowsheet.units.get(unit_id)?;
+            Some(StudioGuiInspectorTargetDetailSnapshot {
+                target,
+                title: unit.name.clone(),
+                summary_rows: vec![
+                    StudioGuiInspectorTargetSummaryRowSnapshot {
+                        label: "Id".to_string(),
+                        value: unit.id.as_str().to_string(),
+                    },
+                    StudioGuiInspectorTargetSummaryRowSnapshot {
+                        label: "Kind".to_string(),
+                        value: unit.kind.clone(),
+                    },
+                    StudioGuiInspectorTargetSummaryRowSnapshot {
+                        label: "Ports".to_string(),
+                        value: unit.ports.len().to_string(),
+                    },
+                ],
+                unit_ports: unit
+                    .ports
+                    .iter()
+                    .map(|port| StudioGuiInspectorTargetPortSnapshot {
+                        name: port.name.clone(),
+                        direction: port.direction.as_str().to_string(),
+                        kind: port.kind.as_str().to_string(),
+                        stream_id: port
+                            .stream_id
+                            .as_ref()
+                            .map(|stream_id| stream_id.as_str().to_string()),
+                    })
+                    .collect(),
+            })
+        }
+        rf_ui::InspectorTarget::Stream(stream_id) => {
+            let stream = flowsheet.streams.get(stream_id)?;
+            Some(StudioGuiInspectorTargetDetailSnapshot {
+                target,
+                title: stream.name.clone(),
+                summary_rows: vec![
+                    StudioGuiInspectorTargetSummaryRowSnapshot {
+                        label: "Id".to_string(),
+                        value: stream.id.as_str().to_string(),
+                    },
+                    StudioGuiInspectorTargetSummaryRowSnapshot {
+                        label: "T".to_string(),
+                        value: format!("{:.2} K", stream.temperature_k),
+                    },
+                    StudioGuiInspectorTargetSummaryRowSnapshot {
+                        label: "P".to_string(),
+                        value: format!("{:.0} Pa", stream.pressure_pa),
+                    },
+                    StudioGuiInspectorTargetSummaryRowSnapshot {
+                        label: "F".to_string(),
+                        value: format!("{:.6} mol/s", stream.total_molar_flow_mol_s),
+                    },
+                ],
+                unit_ports: Vec::new(),
+            })
+        }
     }
 }
 

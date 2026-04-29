@@ -213,7 +213,9 @@ pub use studio_gui_shortcut_router::{
     StudioGuiFocusContext, StudioGuiShortcutIgnoreReason, StudioGuiShortcutRoute, route_shortcut,
 };
 pub use studio_gui_snapshot::{
-    StudioGuiRuntimeSnapshot, StudioGuiSnapshot, StudioGuiWorkspaceDocumentSnapshot,
+    StudioGuiInspectorTargetDetailSnapshot, StudioGuiInspectorTargetPortSnapshot,
+    StudioGuiInspectorTargetSummaryRowSnapshot, StudioGuiRuntimeSnapshot, StudioGuiSnapshot,
+    StudioGuiWorkspaceDocumentSnapshot,
 };
 pub use studio_gui_timer_host::{
     StudioGuiNativeTimerDueEvent, StudioGuiNativeTimerEffects, StudioGuiNativeTimerOperation,
@@ -236,12 +238,13 @@ pub use studio_gui_window_model::{
     StudioGuiWindowDiagnosticModel, StudioGuiWindowDropPreviewModel,
     StudioGuiWindowDropPreviewOverlayModel, StudioGuiWindowDropPreviewState,
     StudioGuiWindowFailureResultModel, StudioGuiWindowHeaderModel,
-    StudioGuiWindowInspectorTargetModel, StudioGuiWindowModel, StudioGuiWindowPhaseResultModel,
-    StudioGuiWindowResultInspectorModel, StudioGuiWindowResultInspectorStreamOptionModel,
-    StudioGuiWindowRuntimeAreaModel, StudioGuiWindowSolveSnapshotModel,
-    StudioGuiWindowSolveStepModel, StudioGuiWindowStreamResultModel,
-    StudioGuiWindowStreamSummaryRowModel, StudioGuiWindowToolbarItemModel,
-    StudioGuiWindowToolbarSectionModel,
+    StudioGuiWindowInspectorTargetDetailModel, StudioGuiWindowInspectorTargetModel,
+    StudioGuiWindowInspectorTargetPortModel, StudioGuiWindowInspectorTargetSummaryRowModel,
+    StudioGuiWindowModel, StudioGuiWindowPhaseResultModel, StudioGuiWindowResultInspectorModel,
+    StudioGuiWindowResultInspectorStreamOptionModel, StudioGuiWindowRuntimeAreaModel,
+    StudioGuiWindowSolveSnapshotModel, StudioGuiWindowSolveStepModel,
+    StudioGuiWindowStreamResultModel, StudioGuiWindowStreamSummaryRowModel,
+    StudioGuiWindowToolbarItemModel, StudioGuiWindowToolbarSectionModel,
 };
 pub use studio_inspector_target_command::{
     inspector_target_command_id, inspector_target_from_command_id,

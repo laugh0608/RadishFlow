@@ -113,6 +113,7 @@ pub struct StudioGuiWindowRuntimeAreaModel {
     pub latest_solve_snapshot: Option<StudioGuiWindowSolveSnapshotModel>,
     pub latest_failure: Option<StudioGuiWindowFailureResultModel>,
     pub active_inspector_target: Option<StudioGuiWindowInspectorTargetModel>,
+    pub active_inspector_detail: Option<StudioGuiWindowInspectorTargetDetailModel>,
     pub entitlement_host: Option<EntitlementSessionHostRuntimeOutput>,
     pub platform_notice: Option<rf_ui::RunPanelNotice>,
     pub platform_timer_lines: Vec<String>,
@@ -152,6 +153,32 @@ pub struct StudioGuiWindowInspectorTargetModel {
     pub target_id: String,
     pub summary: String,
     pub command_id: String,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct StudioGuiWindowInspectorTargetDetailModel {
+    pub target: StudioGuiWindowInspectorTargetModel,
+    pub title: String,
+    pub summary_rows: Vec<StudioGuiWindowInspectorTargetSummaryRowModel>,
+    pub unit_ports: Vec<StudioGuiWindowInspectorTargetPortModel>,
+    pub latest_stream_result: Option<StudioGuiWindowStreamResultModel>,
+    pub related_steps: Vec<StudioGuiWindowSolveStepModel>,
+    pub related_diagnostics: Vec<StudioGuiWindowDiagnosticModel>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioGuiWindowInspectorTargetSummaryRowModel {
+    pub label: String,
+    pub value: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioGuiWindowInspectorTargetPortModel {
+    pub name: String,
+    pub direction: String,
+    pub kind: String,
+    pub stream_id: Option<String>,
+    pub stream_command_id: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -634,6 +661,13 @@ fn runtime_from_snapshot(snapshot: &StudioGuiSnapshot) -> StudioGuiWindowRuntime
         .is_none()
         .then(|| failure_result_model_from_control_state(&snapshot.runtime.control_state))
         .flatten();
+    let active_inspector_detail = snapshot
+        .runtime
+        .active_inspector_detail
+        .as_ref()
+        .map(|detail| {
+            inspector_target_detail_model_from_snapshot(detail, latest_solve_snapshot.as_ref())
+        });
 
     StudioGuiWindowRuntimeAreaModel {
         title: "Runtime",
@@ -648,6 +682,7 @@ fn runtime_from_snapshot(snapshot: &StudioGuiSnapshot) -> StudioGuiWindowRuntime
             .active_inspector_target
             .as_ref()
             .map(inspector_target_model_from_ui),
+        active_inspector_detail,
         entitlement_host: snapshot.runtime.entitlement_host.clone(),
         platform_notice: snapshot.runtime.platform_notice.clone(),
         platform_timer_lines: snapshot.runtime.platform_timer_lines.clone(),
@@ -724,6 +759,114 @@ fn inspector_target_model_from_ui(
                 target_id,
             }
         }
+    }
+}
+
+fn inspector_target_detail_model_from_snapshot(
+    detail: &crate::StudioGuiInspectorTargetDetailSnapshot,
+    latest_solve_snapshot: Option<&StudioGuiWindowSolveSnapshotModel>,
+) -> StudioGuiWindowInspectorTargetDetailModel {
+    let target = inspector_target_model_from_ui(&detail.target);
+    let latest_stream_result = match &detail.target {
+        rf_ui::InspectorTarget::Stream(stream_id) => latest_solve_snapshot.and_then(|snapshot| {
+            snapshot
+                .streams
+                .iter()
+                .find(|stream| stream.stream_id == stream_id.as_str())
+                .cloned()
+        }),
+        rf_ui::InspectorTarget::Unit(_) => None,
+    };
+    let related_steps = latest_solve_snapshot
+        .map(|snapshot| related_steps_for_target(snapshot, &detail.target))
+        .unwrap_or_default();
+    let related_diagnostics = latest_solve_snapshot
+        .map(|snapshot| related_diagnostics_for_target(snapshot, &detail.target))
+        .unwrap_or_default();
+
+    StudioGuiWindowInspectorTargetDetailModel {
+        target,
+        title: detail.title.clone(),
+        summary_rows: detail
+            .summary_rows
+            .iter()
+            .map(|row| StudioGuiWindowInspectorTargetSummaryRowModel {
+                label: row.label.clone(),
+                value: row.value.clone(),
+            })
+            .collect(),
+        unit_ports: detail
+            .unit_ports
+            .iter()
+            .map(|port| StudioGuiWindowInspectorTargetPortModel {
+                name: port.name.clone(),
+                direction: port.direction.clone(),
+                kind: port.kind.clone(),
+                stream_id: port.stream_id.clone(),
+                stream_command_id: port.stream_id.as_ref().map(|stream_id| {
+                    crate::inspector_target_command_id(&rf_ui::InspectorTarget::Stream(
+                        rf_types::StreamId::new(stream_id.clone()),
+                    ))
+                }),
+            })
+            .collect(),
+        latest_stream_result,
+        related_steps,
+        related_diagnostics,
+    }
+}
+
+fn related_steps_for_target(
+    snapshot: &StudioGuiWindowSolveSnapshotModel,
+    target: &rf_ui::InspectorTarget,
+) -> Vec<StudioGuiWindowSolveStepModel> {
+    match target {
+        rf_ui::InspectorTarget::Unit(unit_id) => snapshot
+            .steps
+            .iter()
+            .filter(|step| step.unit_id == unit_id.as_str())
+            .cloned()
+            .collect(),
+        rf_ui::InspectorTarget::Stream(stream_id) => snapshot
+            .steps
+            .iter()
+            .filter(|step| {
+                step.produced_streams
+                    .iter()
+                    .any(|candidate| candidate == stream_id.as_str())
+            })
+            .cloned()
+            .collect(),
+    }
+}
+
+fn related_diagnostics_for_target(
+    snapshot: &StudioGuiWindowSolveSnapshotModel,
+    target: &rf_ui::InspectorTarget,
+) -> Vec<StudioGuiWindowDiagnosticModel> {
+    match target {
+        rf_ui::InspectorTarget::Unit(unit_id) => snapshot
+            .diagnostics
+            .iter()
+            .filter(|diagnostic| {
+                diagnostic
+                    .related_unit_ids
+                    .iter()
+                    .any(|candidate| candidate == unit_id.as_str())
+            })
+            .cloned()
+            .collect(),
+        rf_ui::InspectorTarget::Stream(stream_id) => snapshot
+            .diagnostics
+            .iter()
+            .filter(|diagnostic| {
+                diagnostic
+                    .related_stream_ids
+                    .iter()
+                    .any(|candidate| candidate == stream_id.as_str())
+            })
+            .cloned()
+            .collect(),
     }
 }
 
@@ -1248,6 +1391,30 @@ mod tests {
                 .map(|target| (target.kind_label, target.target_id.as_str())),
             Some(("Stream", "stream-heated"))
         );
+        let active_detail = target_dispatch
+            .window
+            .runtime
+            .active_inspector_detail
+            .expect("expected active stream inspector detail");
+        assert_eq!(
+            active_detail
+                .latest_stream_result
+                .as_ref()
+                .map(|stream| stream.stream_id.as_str()),
+            Some("stream-heated")
+        );
+        assert!(
+            active_detail
+                .related_steps
+                .iter()
+                .any(|step| step.unit_id == "heater-1")
+        );
+        assert!(
+            active_detail
+                .related_diagnostics
+                .iter()
+                .any(|diagnostic| diagnostic.code == "solver.unit_executed")
+        );
 
         let fallback_inspector = snapshot.result_inspector(Some("missing-stream"));
         assert!(fallback_inspector.has_stale_selection);
@@ -1314,6 +1481,24 @@ mod tests {
                 .as_ref()
                 .map(|target| (target.kind_label, target.target_id.as_str())),
             Some(("Unit", "feed-1"))
+        );
+        let detail = recovery
+            .window
+            .runtime
+            .active_inspector_detail
+            .expect("expected active unit inspector detail");
+        assert_eq!(detail.target.target_id, "feed-1");
+        assert!(
+            detail
+                .summary_rows
+                .iter()
+                .any(|row| row.label == "Kind" && row.value == "feed")
+        );
+        assert!(
+            detail
+                .unit_ports
+                .iter()
+                .any(|port| port.name == "outlet" && port.stream_id.is_some())
         );
         let rerun = driver
             .dispatch_event(StudioGuiEvent::UiCommandRequested {
