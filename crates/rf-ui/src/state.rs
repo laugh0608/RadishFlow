@@ -206,7 +206,7 @@ impl<T: Clone + PartialEq> FieldDraft<T> {
 #[derive(Debug, Clone, PartialEq)]
 pub enum DraftValue {
     Text(FieldDraft<String>),
-    Number(FieldDraft<f64>),
+    Number(FieldDraft<String>),
     Choice(FieldDraft<String>),
 }
 
@@ -227,6 +227,64 @@ impl InspectorDraftState {
         self.active_target = None;
         self.fields.clear();
     }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum StreamInspectorDraftField {
+    Name,
+    TemperatureK,
+    PressurePa,
+    TotalMolarFlowMolS,
+}
+
+impl StreamInspectorDraftField {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Name => "name",
+            Self::TemperatureK => "temperature_k",
+            Self::PressurePa => "pressure_pa",
+            Self::TotalMolarFlowMolS => "total_molar_flow_mol_s",
+        }
+    }
+
+    pub fn from_key_segment(value: &str) -> Option<Self> {
+        match value {
+            "name" => Some(Self::Name),
+            "temperature_k" => Some(Self::TemperatureK),
+            "pressure_pa" => Some(Self::PressurePa),
+            "total_molar_flow_mol_s" => Some(Self::TotalMolarFlowMolS),
+            _ => None,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StreamInspectorDraftUpdateResult {
+    pub key: String,
+    pub active_target: InspectorTarget,
+    pub is_dirty: bool,
+    pub validation: DraftValidationState,
+}
+
+pub fn stream_inspector_draft_key(
+    stream_id: &StreamId,
+    field: StreamInspectorDraftField,
+) -> String {
+    format!("stream:{}:{}", stream_id.as_str(), field.as_str())
+}
+
+pub fn stream_inspector_draft_key_parts(
+    key: &str,
+) -> Option<(StreamId, StreamInspectorDraftField)> {
+    let rest = key.strip_prefix("stream:")?;
+    let (stream_id, field) = rest.rsplit_once(':')?;
+    if stream_id.is_empty() {
+        return None;
+    }
+    Some((
+        StreamId::new(stream_id),
+        StreamInspectorDraftField::from_key_segment(field)?,
+    ))
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -605,6 +663,40 @@ impl AppState {
         }
     }
 
+    pub fn update_stream_inspector_draft(
+        &mut self,
+        stream_id: &StreamId,
+        field: StreamInspectorDraftField,
+        raw_value: impl Into<String>,
+    ) -> Option<StreamInspectorDraftUpdateResult> {
+        let active_target = InspectorTarget::Stream(stream_id.clone());
+        if self.workspace.drafts.active_target.as_ref() != Some(&active_target) {
+            return None;
+        }
+
+        let stream = self.workspace.document.flowsheet.streams.get(stream_id)?;
+        let raw_value = raw_value.into();
+        let key = stream_inspector_draft_key(stream_id, field);
+        let (draft_value, is_dirty, validation) =
+            stream_draft_value_from_raw(field, stream, raw_value);
+
+        if !is_dirty && validation != DraftValidationState::Invalid {
+            self.workspace.drafts.fields.remove(&key);
+        } else {
+            self.workspace
+                .drafts
+                .fields
+                .insert(key.clone(), draft_value);
+        }
+
+        Some(StreamInspectorDraftUpdateResult {
+            key,
+            active_target,
+            is_dirty,
+            validation,
+        })
+    }
+
     pub fn begin_browser_login(&mut self, authority_url: impl Into<String>) {
         self.auth_session.begin_browser_login(authority_url);
     }
@@ -633,6 +725,77 @@ impl AppState {
         self.auth_session.clear();
         self.entitlement.clear();
     }
+}
+
+fn stream_draft_value_from_raw(
+    field: StreamInspectorDraftField,
+    stream: &MaterialStreamState,
+    raw_value: String,
+) -> (DraftValue, bool, DraftValidationState) {
+    match field {
+        StreamInspectorDraftField::Name => {
+            let original = stream.name.clone();
+            let validation = if raw_value.trim().is_empty() {
+                DraftValidationState::Invalid
+            } else {
+                DraftValidationState::Valid
+            };
+            let is_dirty = raw_value != original;
+            let draft = FieldDraft {
+                original,
+                current: raw_value,
+                is_dirty,
+                validation,
+            };
+            (DraftValue::Text(draft), is_dirty, validation)
+        }
+        StreamInspectorDraftField::TemperatureK => {
+            stream_number_draft_value(stream.temperature_k, raw_value, |value| {
+                value.is_finite() && value > 0.0
+            })
+        }
+        StreamInspectorDraftField::PressurePa => {
+            stream_number_draft_value(stream.pressure_pa, raw_value, |value| {
+                value.is_finite() && value > 0.0
+            })
+        }
+        StreamInspectorDraftField::TotalMolarFlowMolS => {
+            stream_number_draft_value(stream.total_molar_flow_mol_s, raw_value, |value| {
+                value.is_finite() && value >= 0.0
+            })
+        }
+    }
+}
+
+fn stream_number_draft_value<F>(
+    original_number: f64,
+    raw_value: String,
+    is_valid_number: F,
+) -> (DraftValue, bool, DraftValidationState)
+where
+    F: Fn(f64) -> bool,
+{
+    let original = format_edit_number(original_number);
+    let parsed = raw_value.trim().parse::<f64>();
+    let validation = match parsed {
+        Ok(value) if is_valid_number(value) => DraftValidationState::Valid,
+        _ => DraftValidationState::Invalid,
+    };
+    let is_dirty = match parsed {
+        Ok(value) if validation == DraftValidationState::Valid => value != original_number,
+        _ => raw_value != original,
+    };
+    let draft = FieldDraft {
+        original,
+        current: raw_value,
+        is_dirty,
+        validation,
+    };
+    (DraftValue::Number(draft), is_dirty, validation)
+}
+
+fn format_edit_number(value: f64) -> String {
+    value.to_string()
 }
 
 pub fn latest_snapshot_id(workspace: &WorkspaceState) -> Option<&SolveSnapshotId> {

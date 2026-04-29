@@ -219,6 +219,17 @@ impl ReadyAppState {
         });
     }
 
+    pub(super) fn dispatch_inspector_field_draft_update(
+        &mut self,
+        command_id: impl Into<String>,
+        raw_value: impl Into<String>,
+    ) {
+        self.dispatch_event(StudioGuiEvent::InspectorFieldDraftUpdateRequested {
+            command_id: command_id.into(),
+            raw_value: raw_value.into(),
+        });
+    }
+
     pub(super) fn dispatch_layout_mutation(
         &mut self,
         window_id: Option<StudioWindowHostId>,

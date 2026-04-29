@@ -812,6 +812,9 @@ mod tests {
             StudioRuntimeDispatch::InspectorTarget(_) => {
                 panic!("expected entitlement session event dispatch")
             }
+            StudioRuntimeDispatch::InspectorDraftUpdate(_) => {
+                panic!("expected entitlement session event dispatch")
+            }
         }
     }
 }

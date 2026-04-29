@@ -190,6 +190,10 @@ pub enum StudioGuiHostCommand {
     DispatchUiCommand {
         command_id: String,
     },
+    DispatchInspectorDraftUpdate {
+        command_id: String,
+        raw_value: String,
+    },
     QueryWindowDropTarget {
         window_id: Option<StudioWindowHostId>,
         query: StudioGuiWindowDropTargetQuery,
@@ -218,6 +222,7 @@ pub enum StudioGuiHostCommandOutcome {
     CanvasInteracted(StudioGuiHostCanvasInteractionResult),
     LifecycleDispatched(StudioGuiHostLifecycleDispatch),
     UiCommandDispatched(StudioGuiHostUiCommandDispatchResult),
+    InspectorDraftUpdated(StudioGuiHostDispatch),
     WindowDropTargetQueried(StudioGuiHostWindowDropTargetQueryResult),
     WindowDropTargetPreviewUpdated(StudioGuiHostWindowDropTargetQueryResult),
     WindowDropTargetPreviewCleared(StudioGuiHostWindowDropPreviewClearResult),

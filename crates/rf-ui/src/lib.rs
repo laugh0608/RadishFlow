@@ -62,8 +62,10 @@ pub use run_panel_widget::{RunPanelRecoveryWidgetEvent, RunPanelWidgetEvent, Run
 pub use state::{
     AppLogEntry, AppLogFeed, AppLogLevel, AppState, AppTheme, DateTimeUtc, DocumentMetadata,
     DraftValidationState, DraftValue, FieldDraft, FlowsheetDocument, InspectorDraftState,
-    InspectorTarget, LocaleCode, PanelLayoutPreferences, SelectionState, UiPanelsState,
-    UserPreferences, WorkspaceState, latest_snapshot, latest_snapshot_id,
+    InspectorTarget, LocaleCode, PanelLayoutPreferences, SelectionState, StreamInspectorDraftField,
+    StreamInspectorDraftUpdateResult, UiPanelsState, UserPreferences, WorkspaceState,
+    latest_snapshot, latest_snapshot_id, stream_inspector_draft_key,
+    stream_inspector_draft_key_parts,
 };
 
 #[cfg(test)]
@@ -1705,6 +1707,94 @@ mod tests {
             app_state.workspace.drafts.active_target,
             Some(crate::InspectorTarget::Unit(UnitId::new("feed-1")))
         );
+    }
+
+    #[test]
+    fn updating_stream_inspector_draft_keeps_document_unchanged() {
+        let document = inspector_focus_document();
+        let mut app_state = AppState::new(document);
+        app_state
+            .focus_inspector_target(crate::InspectorTarget::Stream(StreamId::new("stream-feed")));
+
+        let outcome = app_state
+            .update_stream_inspector_draft(
+                &StreamId::new("stream-feed"),
+                crate::StreamInspectorDraftField::TemperatureK,
+                "333.5",
+            )
+            .expect("expected draft update");
+
+        assert_eq!(
+            outcome.key,
+            crate::stream_inspector_draft_key(
+                &StreamId::new("stream-feed"),
+                crate::StreamInspectorDraftField::TemperatureK,
+            )
+        );
+        assert!(outcome.is_dirty);
+        assert_eq!(outcome.validation, crate::DraftValidationState::Valid);
+        assert_eq!(app_state.workspace.document.revision, 0);
+        assert!(app_state.workspace.command_history.is_empty());
+        assert_eq!(
+            app_state.workspace.document.flowsheet.streams[&StreamId::new("stream-feed")]
+                .temperature_k,
+            298.15
+        );
+        assert_eq!(
+            app_state.workspace.drafts.fields.get(&outcome.key),
+            Some(&crate::DraftValue::Number(crate::FieldDraft {
+                original: "298.15".to_string(),
+                current: "333.5".to_string(),
+                is_dirty: true,
+                validation: crate::DraftValidationState::Valid,
+            }))
+        );
+    }
+
+    #[test]
+    fn updating_stream_inspector_draft_preserves_invalid_raw_number() {
+        let document = inspector_focus_document();
+        let mut app_state = AppState::new(document);
+        app_state
+            .focus_inspector_target(crate::InspectorTarget::Stream(StreamId::new("stream-feed")));
+
+        let outcome = app_state
+            .update_stream_inspector_draft(
+                &StreamId::new("stream-feed"),
+                crate::StreamInspectorDraftField::PressurePa,
+                "not-a-pressure",
+            )
+            .expect("expected draft update");
+
+        assert_eq!(outcome.validation, crate::DraftValidationState::Invalid);
+        assert_eq!(
+            app_state.workspace.drafts.fields.get(&outcome.key),
+            Some(&crate::DraftValue::Number(crate::FieldDraft {
+                original: "101325".to_string(),
+                current: "not-a-pressure".to_string(),
+                is_dirty: true,
+                validation: crate::DraftValidationState::Invalid,
+            }))
+        );
+        assert_eq!(app_state.workspace.document.revision, 0);
+        assert!(app_state.workspace.command_history.is_empty());
+    }
+
+    #[test]
+    fn updating_stream_inspector_draft_requires_active_stream_target() {
+        let document = inspector_focus_document();
+        let mut app_state = AppState::new(document);
+        app_state.focus_inspector_target(crate::InspectorTarget::Unit(UnitId::new("feed-1")));
+
+        let outcome = app_state.update_stream_inspector_draft(
+            &StreamId::new("stream-feed"),
+            crate::StreamInspectorDraftField::Name,
+            "Edited stream",
+        );
+
+        assert_eq!(outcome, None);
+        assert!(app_state.workspace.drafts.fields.is_empty());
+        assert_eq!(app_state.workspace.document.revision, 0);
     }
 
     #[test]

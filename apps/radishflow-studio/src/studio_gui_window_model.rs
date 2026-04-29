@@ -190,6 +190,7 @@ pub struct StudioGuiWindowInspectorTargetFieldModel {
     pub current_value: String,
     pub status_label: &'static str,
     pub is_dirty: bool,
+    pub draft_update_command_id: String,
     pub commit_command_id: Option<String>,
 }
 
@@ -866,6 +867,7 @@ fn inspector_field_model_from_snapshot(
         current_value: field.current_value.clone(),
         status_label: inspector_field_status_label(field.validation, field.is_dirty),
         is_dirty: field.is_dirty,
+        draft_update_command_id: field.draft_update_command_id.clone(),
         commit_command_id: field.commit_command_id.clone(),
     }
 }
@@ -1490,6 +1492,8 @@ mod tests {
                     && field.value_kind_label == "Number"
                     && field.status_label == "Synced"
                     && !field.is_dirty
+                    && field.draft_update_command_id
+                        == "inspector.update_stream_draft:stream:stream-heated:temperature_k"
                     && field.commit_command_id.is_none()
             }),
             "expected stream inspector detail to expose field-level property presentation"

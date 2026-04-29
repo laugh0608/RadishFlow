@@ -1210,6 +1210,9 @@ fn format_platform_dispatch_activity(dispatch: &StudioGuiPlatformDispatch) -> St
             }
         },
         StudioGuiDriverOutcome::HostCommand(
+            crate::StudioGuiHostCommandOutcome::InspectorDraftUpdated(dispatch),
+        ) => format!("inspector draft update #{}", dispatch.target_window_id),
+        StudioGuiDriverOutcome::HostCommand(
             crate::StudioGuiHostCommandOutcome::WindowDropTargetQueried(result),
         ) => format!("drop query {:?}", result.query),
         StudioGuiDriverOutcome::HostCommand(

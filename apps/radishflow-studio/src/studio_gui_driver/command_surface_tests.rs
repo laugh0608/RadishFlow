@@ -71,6 +71,72 @@ fn gui_driver_routes_ui_command_request_through_single_event_entry() {
 }
 
 #[test]
+fn gui_driver_routes_inspector_draft_update_through_driver_boundary() {
+    let mut driver = StudioGuiDriver::new(&lease_expiring_config()).expect("expected driver");
+    driver
+        .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+        .expect("expected open dispatch");
+    let focus = driver
+        .dispatch_event(StudioGuiEvent::UiCommandRequested {
+            command_id: "inspector.focus_stream:stream-feed".to_string(),
+        })
+        .expect("expected inspector focus dispatch");
+    let field = focus
+        .window
+        .runtime
+        .active_inspector_detail
+        .as_ref()
+        .and_then(|detail| {
+            detail
+                .property_fields
+                .iter()
+                .find(|field| field.key == "stream:stream-feed:temperature_k")
+        })
+        .cloned()
+        .expect("expected stream temperature field");
+
+    let dispatch = driver
+        .dispatch_event(StudioGuiEvent::InspectorFieldDraftUpdateRequested {
+            command_id: field.draft_update_command_id,
+            raw_value: "333.5".to_string(),
+        })
+        .expect("expected draft update dispatch");
+
+    match dispatch.outcome {
+        StudioGuiDriverOutcome::HostCommand(
+            StudioGuiHostCommandOutcome::InspectorDraftUpdated(updated),
+        ) => {
+            assert_eq!(updated.target_window_id, 1);
+            match &updated.effects.runtime_report.dispatch {
+                crate::StudioRuntimeDispatch::InspectorDraftUpdate(outcome) => {
+                    assert!(outcome.applied);
+                    assert_eq!(outcome.document_revision, 0);
+                    assert_eq!(outcome.command_history_len, 0);
+                }
+                other => panic!("expected inspector draft update dispatch, got {other:?}"),
+            }
+        }
+        other => panic!("expected inspector draft update outcome, got {other:?}"),
+    }
+
+    let updated_field = dispatch
+        .window
+        .runtime
+        .active_inspector_detail
+        .as_ref()
+        .and_then(|detail| {
+            detail
+                .property_fields
+                .iter()
+                .find(|field| field.key == "stream:stream-feed:temperature_k")
+        })
+        .expect("expected updated temperature field");
+    assert_eq!(updated_field.current_value, "333.5");
+    assert_eq!(updated_field.status_label, "Draft");
+    assert!(updated_field.is_dirty);
+}
+
+#[test]
 fn gui_driver_routes_entitlement_primary_action_through_single_event_entry() {
     let mut driver = StudioGuiDriver::new(&lease_expiring_config()).expect("expected driver");
     let open = driver

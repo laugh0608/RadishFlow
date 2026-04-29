@@ -836,7 +836,15 @@ impl ReadyAppState {
                             ui,
                             self.locale.runtime_label(field.value_kind_label).as_ref(),
                         );
-                        render_wrapped_small(ui, &field.current_value);
+                        let mut draft_value = field.current_value.clone();
+                        let response = ui
+                            .add_sized([150.0, 22.0], egui::TextEdit::singleline(&mut draft_value));
+                        if response.changed() {
+                            self.dispatch_inspector_field_draft_update(
+                                field.draft_update_command_id.clone(),
+                                draft_value,
+                            );
+                        }
                         render_status_chip(
                             ui,
                             self.locale.runtime_label(field.status_label).as_ref(),

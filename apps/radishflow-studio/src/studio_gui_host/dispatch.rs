@@ -170,6 +170,27 @@ impl StudioGuiHost {
         }
     }
 
+    pub fn dispatch_inspector_draft_update(
+        &mut self,
+        command_id: &str,
+        raw_value: impl Into<String>,
+    ) -> RfResult<StudioGuiHostDispatch> {
+        let command = crate::inspector_draft_update_command_from_id(command_id, raw_value)
+            .ok_or_else(|| {
+                RfError::invalid_input(format!(
+                    "inspector draft update command `{command_id}` is not supported"
+                ))
+            })?;
+        let target_window_id = self.preferred_target_window_id().ok_or_else(|| {
+            RfError::invalid_input("open a studio window before updating inspector draft")
+        })?;
+        let dispatch = self.controller.dispatch_window_trigger(
+            target_window_id,
+            StudioRuntimeTrigger::InspectorDraftUpdate(command),
+        )?;
+        Ok(dispatch_from_controller(dispatch, self.canvas_state()))
+    }
+
     pub(super) fn preferred_target_window_id(&self) -> Option<StudioWindowHostId> {
         self.state()
             .foreground_window_id

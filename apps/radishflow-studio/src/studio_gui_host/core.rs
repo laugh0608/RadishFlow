@@ -108,6 +108,12 @@ impl StudioGuiHost {
             StudioGuiHostCommand::DispatchUiCommand { command_id } => self
                 .dispatch_ui_command(&command_id)
                 .map(StudioGuiHostCommandOutcome::UiCommandDispatched),
+            StudioGuiHostCommand::DispatchInspectorDraftUpdate {
+                command_id,
+                raw_value,
+            } => self
+                .dispatch_inspector_draft_update(&command_id, raw_value)
+                .map(StudioGuiHostCommandOutcome::InspectorDraftUpdated),
             StudioGuiHostCommand::QueryWindowDropTarget { window_id, query } => self
                 .query_window_drop_target(window_id, query)
                 .map(StudioGuiHostCommandOutcome::WindowDropTargetQueried),
@@ -276,34 +282,39 @@ fn stream_property_fields(
     stream: &rf_model::MaterialStreamState,
     drafts: &rf_ui::InspectorDraftState,
 ) -> Vec<StudioGuiInspectorTargetFieldSnapshot> {
-    let stream_id = stream.id.as_str();
     vec![
         inspector_text_field(
             drafts,
-            format!("stream:{stream_id}:name"),
+            rf_ui::stream_inspector_draft_key(&stream.id, rf_ui::StreamInspectorDraftField::Name),
             "Name",
             stream.name.clone(),
         ),
         inspector_number_field(
             drafts,
-            format!("stream:{stream_id}:temperature_k"),
-            "Temperature",
+            rf_ui::stream_inspector_draft_key(
+                &stream.id,
+                rf_ui::StreamInspectorDraftField::TemperatureK,
+            ),
+            "Temperature (K)",
             stream.temperature_k,
-            "K",
         ),
         inspector_number_field(
             drafts,
-            format!("stream:{stream_id}:pressure_pa"),
-            "Pressure",
+            rf_ui::stream_inspector_draft_key(
+                &stream.id,
+                rf_ui::StreamInspectorDraftField::PressurePa,
+            ),
+            "Pressure (Pa)",
             stream.pressure_pa,
-            "Pa",
         ),
         inspector_number_field(
             drafts,
-            format!("stream:{stream_id}:total_molar_flow_mol_s"),
-            "Molar flow",
+            rf_ui::stream_inspector_draft_key(
+                &stream.id,
+                rf_ui::StreamInspectorDraftField::TotalMolarFlowMolS,
+            ),
+            "Molar flow (mol/s)",
             stream.total_molar_flow_mol_s,
-            "mol/s",
         ),
     ]
 }
@@ -316,23 +327,25 @@ fn inspector_text_field(
 ) -> StudioGuiInspectorTargetFieldSnapshot {
     match drafts.fields.get(&key) {
         Some(rf_ui::DraftValue::Text(draft)) => StudioGuiInspectorTargetFieldSnapshot {
-            key,
+            key: key.clone(),
             label: label.to_string(),
             value_kind: StudioGuiInspectorTargetFieldValueKindSnapshot::Text,
             original_value: draft.original.clone(),
             current_value: draft.current.clone(),
             is_dirty: draft.is_dirty,
             validation: inspector_validation_from_ui(draft.validation),
+            draft_update_command_id: crate::inspector_draft_update_command_id(&key),
             commit_command_id: None,
         },
         _ => StudioGuiInspectorTargetFieldSnapshot {
-            key,
+            key: key.clone(),
             label: label.to_string(),
             value_kind: StudioGuiInspectorTargetFieldValueKindSnapshot::Text,
             original_value: original.clone(),
             current_value: original,
             is_dirty: false,
             validation: StudioGuiInspectorTargetFieldValidationSnapshot::Unknown,
+            draft_update_command_id: crate::inspector_draft_update_command_id(&key),
             commit_command_id: None,
         },
     }
@@ -343,27 +356,28 @@ fn inspector_number_field(
     key: String,
     label: &str,
     original: f64,
-    unit: &str,
 ) -> StudioGuiInspectorTargetFieldSnapshot {
     match drafts.fields.get(&key) {
         Some(rf_ui::DraftValue::Number(draft)) => StudioGuiInspectorTargetFieldSnapshot {
-            key,
+            key: key.clone(),
             label: label.to_string(),
             value_kind: StudioGuiInspectorTargetFieldValueKindSnapshot::Number,
-            original_value: format_field_number(draft.original, unit),
-            current_value: format_field_number(draft.current, unit),
+            original_value: draft.original.clone(),
+            current_value: draft.current.clone(),
             is_dirty: draft.is_dirty,
             validation: inspector_validation_from_ui(draft.validation),
+            draft_update_command_id: crate::inspector_draft_update_command_id(&key),
             commit_command_id: None,
         },
         _ => StudioGuiInspectorTargetFieldSnapshot {
-            key,
+            key: key.clone(),
             label: label.to_string(),
             value_kind: StudioGuiInspectorTargetFieldValueKindSnapshot::Number,
-            original_value: format_field_number(original, unit),
-            current_value: format_field_number(original, unit),
+            original_value: format_field_number(original),
+            current_value: format_field_number(original),
             is_dirty: false,
             validation: StudioGuiInspectorTargetFieldValidationSnapshot::Unknown,
+            draft_update_command_id: crate::inspector_draft_update_command_id(&key),
             commit_command_id: None,
         },
     }
@@ -385,13 +399,8 @@ fn inspector_validation_from_ui(
     }
 }
 
-fn format_field_number(value: f64, unit: &str) -> String {
-    match unit {
-        "K" => format!("{value:.2} K"),
-        "Pa" => format!("{value:.0} Pa"),
-        "mol/s" => format!("{value:.6} mol/s"),
-        _ => value.to_string(),
-    }
+fn format_field_number(value: f64) -> String {
+    value.to_string()
 }
 
 fn workspace_document_snapshot_from_controller(

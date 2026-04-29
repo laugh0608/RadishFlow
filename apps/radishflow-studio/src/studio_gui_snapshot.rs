@@ -60,6 +60,7 @@ pub struct StudioGuiInspectorTargetFieldSnapshot {
     pub current_value: String,
     pub is_dirty: bool,
     pub validation: StudioGuiInspectorTargetFieldValidationSnapshot,
+    pub draft_update_command_id: String,
     pub commit_command_id: Option<String>,
 }
 

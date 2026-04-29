@@ -10,7 +10,7 @@ use crate::{
     dispatch_run_panel_intent_with_auth_cache, dispatch_run_panel_primary_action_with_auth_cache,
     dispatch_run_panel_widget_action_with_auth_cache, focus_inspector_target,
     snapshot_entitlement_session_driver_state, snapshot_entitlement_session_schedule,
-    snapshot_run_panel_driver_state,
+    snapshot_run_panel_driver_state, update_inspector_draft,
 };
 use rf_store::{StoredAuthCacheIndex, read_project_file};
 use rf_types::{RfError, RfResult};
@@ -199,6 +199,10 @@ fn dispatch_bootstrap_trigger(
                 )));
             }
             Ok(StudioBootstrapDispatch::InspectorTarget(outcome))
+        }
+        StudioBootstrapTrigger::InspectorDraftUpdate(command) => {
+            let outcome = update_inspector_draft(session.app_state, command.clone())?;
+            Ok(StudioBootstrapDispatch::InspectorDraftUpdate(outcome))
         }
         StudioBootstrapTrigger::EntitlementWidgetPrimaryAction => {
             dispatch_bootstrap_entitlement_host_trigger(
