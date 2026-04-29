@@ -62,10 +62,10 @@ pub use run_panel_widget::{RunPanelRecoveryWidgetEvent, RunPanelWidgetEvent, Run
 pub use state::{
     AppLogEntry, AppLogFeed, AppLogLevel, AppState, AppTheme, DateTimeUtc, DocumentMetadata,
     DraftValidationState, DraftValue, FieldDraft, FlowsheetDocument, InspectorDraftState,
-    InspectorTarget, LocaleCode, PanelLayoutPreferences, SelectionState, StreamInspectorDraftField,
-    StreamInspectorDraftUpdateResult, UiPanelsState, UserPreferences, WorkspaceState,
-    latest_snapshot, latest_snapshot_id, stream_inspector_draft_key,
-    stream_inspector_draft_key_parts,
+    InspectorTarget, LocaleCode, PanelLayoutPreferences, SelectionState,
+    StreamInspectorDraftCommitResult, StreamInspectorDraftField, StreamInspectorDraftUpdateResult,
+    UiPanelsState, UserPreferences, WorkspaceState, latest_snapshot, latest_snapshot_id,
+    stream_inspector_draft_key, stream_inspector_draft_key_parts,
 };
 
 #[cfg(test)]
@@ -84,7 +84,7 @@ mod tests {
         AppLogLevel, AppState, AuthSessionStatus, AuthenticatedUser, CanvasPoint,
         CanvasSuggestedMaterialConnection, CanvasSuggestedStreamBinding, CanvasSuggestion,
         CanvasSuggestionAcceptance, CanvasSuggestionId, CanvasViewMode, CommandHistory,
-        CommandHistoryEntry, DiagnosticSeverity, DiagnosticSummary, DocumentCommand,
+        CommandHistoryEntry, CommandValue, DiagnosticSeverity, DiagnosticSummary, DocumentCommand,
         DocumentMetadata, EntitlementActionId, EntitlementPanelState, EntitlementPanelWidgetEvent,
         EntitlementPanelWidgetModel, EntitlementSnapshot, FlowsheetDocument, GhostElement,
         GhostElementKind, OfflineLeaseRefreshResponse, PropertyPackageManifest,
@@ -1795,6 +1795,96 @@ mod tests {
         assert_eq!(outcome, None);
         assert!(app_state.workspace.drafts.fields.is_empty());
         assert_eq!(app_state.workspace.document.revision, 0);
+    }
+
+    #[test]
+    fn committing_stream_inspector_draft_writes_document_command_and_preserves_focus() {
+        let document = inspector_focus_document();
+        let mut app_state = AppState::new(document);
+        let stream_id = StreamId::new("stream-feed");
+        app_state.focus_inspector_target(crate::InspectorTarget::Stream(stream_id.clone()));
+        app_state
+            .update_stream_inspector_draft(
+                &stream_id,
+                crate::StreamInspectorDraftField::TemperatureK,
+                "333.5",
+            )
+            .expect("expected draft update");
+
+        let outcome = app_state
+            .commit_stream_inspector_draft(
+                &stream_id,
+                crate::StreamInspectorDraftField::TemperatureK,
+                timestamp(42),
+            )
+            .expect("expected draft commit")
+            .expect("expected applied draft commit");
+
+        assert_eq!(outcome.revision, 1);
+        assert_eq!(
+            outcome.command,
+            DocumentCommand::SetStreamSpecification {
+                stream_id: stream_id.clone(),
+                field: "temperature_k".to_string(),
+                value: CommandValue::Number(333.5),
+            }
+        );
+        assert_eq!(app_state.workspace.document.revision, 1);
+        assert_eq!(
+            app_state.workspace.document.flowsheet.streams[&stream_id].temperature_k,
+            333.5
+        );
+        assert_eq!(app_state.workspace.command_history.len(), 1);
+        assert_eq!(
+            app_state
+                .workspace
+                .command_history
+                .current_entry()
+                .map(|entry| &entry.command),
+            Some(&outcome.command)
+        );
+        assert_eq!(
+            app_state.workspace.drafts.active_target,
+            Some(crate::InspectorTarget::Stream(stream_id.clone()))
+        );
+        assert!(!app_state.workspace.drafts.fields.contains_key(&outcome.key));
+        assert_eq!(
+            app_state.workspace.solve_session.pending_reason,
+            Some(SolvePendingReason::DocumentRevisionAdvanced)
+        );
+        assert_eq!(app_state.workspace.solve_session.status, RunStatus::Dirty);
+    }
+
+    #[test]
+    fn committing_invalid_stream_inspector_draft_is_ignored_without_document_mutation() {
+        let document = inspector_focus_document();
+        let mut app_state = AppState::new(document);
+        let stream_id = StreamId::new("stream-feed");
+        app_state.focus_inspector_target(crate::InspectorTarget::Stream(stream_id.clone()));
+        let update = app_state
+            .update_stream_inspector_draft(
+                &stream_id,
+                crate::StreamInspectorDraftField::PressurePa,
+                "not-a-pressure",
+            )
+            .expect("expected draft update");
+
+        let outcome = app_state
+            .commit_stream_inspector_draft(
+                &stream_id,
+                crate::StreamInspectorDraftField::PressurePa,
+                timestamp(42),
+            )
+            .expect("expected ignored invalid commit");
+
+        assert_eq!(outcome, None);
+        assert_eq!(app_state.workspace.document.revision, 0);
+        assert!(app_state.workspace.command_history.is_empty());
+        assert_eq!(
+            app_state.workspace.document.flowsheet.streams[&stream_id].pressure_pa,
+            101_325.0
+        );
+        assert!(app_state.workspace.drafts.fields.contains_key(&update.key));
     }
 
     #[test]

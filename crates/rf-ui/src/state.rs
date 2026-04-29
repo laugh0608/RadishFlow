@@ -16,7 +16,7 @@ use crate::canvas_interaction::{
     CanvasSuggestion, CanvasSuggestionAcceptance, CanvasViewMode, SuggestionSource,
     SuggestionStatus,
 };
-use crate::commands::{CommandHistory, CommandHistoryEntry, DocumentCommand};
+use crate::commands::{CommandHistory, CommandHistoryEntry, CommandValue, DocumentCommand};
 use crate::diagnostics::DiagnosticSummary;
 use crate::ids::{DocumentId, SolveSnapshotId};
 use crate::run::{RunStatus, SimulationMode, SolvePendingReason, SolveSessionState, SolveSnapshot};
@@ -266,6 +266,14 @@ pub struct StreamInspectorDraftUpdateResult {
     pub validation: DraftValidationState,
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct StreamInspectorDraftCommitResult {
+    pub key: String,
+    pub active_target: InspectorTarget,
+    pub command: DocumentCommand,
+    pub revision: u64,
+}
+
 pub fn stream_inspector_draft_key(
     stream_id: &StreamId,
     field: StreamInspectorDraftField,
@@ -362,6 +370,20 @@ impl WorkspaceState {
         self.canvas_interaction.invalidate_all();
         self.solve_session.mark_document_revision_advanced(revision);
         self.drafts.clear();
+        revision
+    }
+
+    fn commit_inspector_document_change(
+        &mut self,
+        command: DocumentCommand,
+        next_flowsheet: Flowsheet,
+        changed_at: DateTimeUtc,
+    ) -> u64 {
+        let revision = self.document.replace_flowsheet(next_flowsheet, changed_at);
+        self.command_history
+            .record(CommandHistoryEntry::new(revision, command));
+        self.canvas_interaction.invalidate_all();
+        self.solve_session.mark_document_revision_advanced(revision);
         revision
     }
 
@@ -697,6 +719,59 @@ impl AppState {
         })
     }
 
+    pub fn commit_stream_inspector_draft(
+        &mut self,
+        stream_id: &StreamId,
+        field: StreamInspectorDraftField,
+        changed_at: DateTimeUtc,
+    ) -> RfResult<Option<StreamInspectorDraftCommitResult>> {
+        let active_target = InspectorTarget::Stream(stream_id.clone());
+        if self.workspace.drafts.active_target.as_ref() != Some(&active_target) {
+            return Ok(None);
+        }
+
+        if !self
+            .workspace
+            .document
+            .flowsheet
+            .streams
+            .contains_key(stream_id)
+        {
+            return Ok(None);
+        }
+
+        let key = stream_inspector_draft_key(stream_id, field);
+        let Some(draft_value) = self.workspace.drafts.fields.get(&key) else {
+            return Ok(None);
+        };
+        let Some(command_value) = stream_command_value_from_draft(field, draft_value)? else {
+            return Ok(None);
+        };
+
+        let mut next_flowsheet = self.workspace.document.flowsheet.clone();
+        apply_stream_specification_value(&mut next_flowsheet, stream_id, field, &command_value)?;
+
+        let command = DocumentCommand::SetStreamSpecification {
+            stream_id: stream_id.clone(),
+            field: field.as_str().to_string(),
+            value: command_value,
+        };
+        let revision = self.workspace.commit_inspector_document_change(
+            command.clone(),
+            next_flowsheet,
+            changed_at,
+        );
+        self.workspace.drafts.fields.remove(&key);
+        self.refresh_run_panel_state();
+
+        Ok(Some(StreamInspectorDraftCommitResult {
+            key,
+            active_target,
+            command,
+            revision,
+        }))
+    }
+
     pub fn begin_browser_login(&mut self, authority_url: impl Into<String>) {
         self.auth_session.begin_browser_login(authority_url);
     }
@@ -792,6 +867,95 @@ where
         validation,
     };
     (DraftValue::Number(draft), is_dirty, validation)
+}
+
+fn stream_command_value_from_draft(
+    field: StreamInspectorDraftField,
+    draft_value: &DraftValue,
+) -> RfResult<Option<CommandValue>> {
+    match (field, draft_value) {
+        (StreamInspectorDraftField::Name, DraftValue::Text(draft)) => {
+            if !draft.is_dirty || draft.validation != DraftValidationState::Valid {
+                return Ok(None);
+            }
+            Ok(Some(CommandValue::Text(draft.current.clone())))
+        }
+        (
+            StreamInspectorDraftField::TemperatureK
+            | StreamInspectorDraftField::PressurePa
+            | StreamInspectorDraftField::TotalMolarFlowMolS,
+            DraftValue::Number(draft),
+        ) => {
+            if !draft.is_dirty || draft.validation != DraftValidationState::Valid {
+                return Ok(None);
+            }
+            let value = draft.current.trim().parse::<f64>().map_err(|_| {
+                RfError::invalid_input(format!(
+                    "stream inspector draft `{}` is not a valid number",
+                    draft.current
+                ))
+            })?;
+            if !is_valid_stream_number(field, value) {
+                return Ok(None);
+            }
+            Ok(Some(CommandValue::Number(value)))
+        }
+        _ => Ok(None),
+    }
+}
+
+fn apply_stream_specification_value(
+    flowsheet: &mut Flowsheet,
+    stream_id: &StreamId,
+    field: StreamInspectorDraftField,
+    value: &CommandValue,
+) -> RfResult<()> {
+    let stream = flowsheet
+        .streams
+        .get_mut(stream_id)
+        .ok_or_else(|| RfError::missing_entity("stream", stream_id))?;
+
+    match (field, value) {
+        (StreamInspectorDraftField::Name, CommandValue::Text(value)) => {
+            if value.trim().is_empty() {
+                return Err(RfError::invalid_input("stream name cannot be empty"));
+            }
+            stream.name = value.clone();
+        }
+        (StreamInspectorDraftField::TemperatureK, CommandValue::Number(value))
+            if is_valid_stream_number(field, *value) =>
+        {
+            stream.temperature_k = *value;
+        }
+        (StreamInspectorDraftField::PressurePa, CommandValue::Number(value))
+            if is_valid_stream_number(field, *value) =>
+        {
+            stream.pressure_pa = *value;
+        }
+        (StreamInspectorDraftField::TotalMolarFlowMolS, CommandValue::Number(value))
+            if is_valid_stream_number(field, *value) =>
+        {
+            stream.total_molar_flow_mol_s = *value;
+        }
+        _ => {
+            return Err(RfError::invalid_input(format!(
+                "stream field `{}` cannot be set from value `{value:?}`",
+                field.as_str()
+            )));
+        }
+    }
+
+    Ok(())
+}
+
+fn is_valid_stream_number(field: StreamInspectorDraftField, value: f64) -> bool {
+    match field {
+        StreamInspectorDraftField::Name => false,
+        StreamInspectorDraftField::TemperatureK | StreamInspectorDraftField::PressurePa => {
+            value.is_finite() && value > 0.0
+        }
+        StreamInspectorDraftField::TotalMolarFlowMolS => value.is_finite() && value >= 0.0,
+    }
 }
 
 fn format_edit_number(value: f64) -> String {

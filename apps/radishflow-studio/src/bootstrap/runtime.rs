@@ -6,7 +6,8 @@ use crate::{
     EntitlementSessionPanelDriverOutcome, EntitlementSessionPolicy, EntitlementSessionRuntime,
     EntitlementSessionState, RunPanelDriverOutcome, StudioAppAuthCacheContext,
     StudioAppCommandOutcome, StudioAppMutableAuthCacheContext, WorkspaceControlActionOutcome,
-    apply_run_panel_recovery_action, dispatch_entitlement_session_event_with_control_plane,
+    apply_run_panel_recovery_action, commit_inspector_draft,
+    dispatch_entitlement_session_event_with_control_plane,
     dispatch_run_panel_intent_with_auth_cache, dispatch_run_panel_primary_action_with_auth_cache,
     dispatch_run_panel_widget_action_with_auth_cache, focus_inspector_target,
     snapshot_entitlement_session_driver_state, snapshot_entitlement_session_schedule,
@@ -203,6 +204,10 @@ fn dispatch_bootstrap_trigger(
         StudioBootstrapTrigger::InspectorDraftUpdate(command) => {
             let outcome = update_inspector_draft(session.app_state, command.clone())?;
             Ok(StudioBootstrapDispatch::InspectorDraftUpdate(outcome))
+        }
+        StudioBootstrapTrigger::InspectorDraftCommit(command) => {
+            let outcome = commit_inspector_draft(session.app_state, command.clone())?;
+            Ok(StudioBootstrapDispatch::InspectorDraftCommit(outcome))
         }
         StudioBootstrapTrigger::EntitlementWidgetPrimaryAction => {
             dispatch_bootstrap_entitlement_host_trigger(

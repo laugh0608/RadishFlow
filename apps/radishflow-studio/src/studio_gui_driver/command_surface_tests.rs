@@ -134,6 +134,109 @@ fn gui_driver_routes_inspector_draft_update_through_driver_boundary() {
     assert_eq!(updated_field.current_value, "333.5");
     assert_eq!(updated_field.status_label, "Draft");
     assert!(updated_field.is_dirty);
+    assert_eq!(
+        updated_field.commit_command_id.as_deref(),
+        Some("inspector.commit_stream_draft:stream:stream-feed:temperature_k")
+    );
+}
+
+#[test]
+fn gui_driver_routes_inspector_draft_commit_through_driver_boundary() {
+    let mut driver = StudioGuiDriver::new(&lease_expiring_config()).expect("expected driver");
+    driver
+        .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+        .expect("expected open dispatch");
+    let focus = driver
+        .dispatch_event(StudioGuiEvent::UiCommandRequested {
+            command_id: "inspector.focus_stream:stream-feed".to_string(),
+        })
+        .expect("expected inspector focus dispatch");
+    let field = focus
+        .window
+        .runtime
+        .active_inspector_detail
+        .as_ref()
+        .and_then(|detail| {
+            detail
+                .property_fields
+                .iter()
+                .find(|field| field.key == "stream:stream-feed:temperature_k")
+        })
+        .cloned()
+        .expect("expected stream temperature field");
+    let update = driver
+        .dispatch_event(StudioGuiEvent::InspectorFieldDraftUpdateRequested {
+            command_id: field.draft_update_command_id,
+            raw_value: "333.5".to_string(),
+        })
+        .expect("expected draft update dispatch");
+    let commit_command_id = update
+        .window
+        .runtime
+        .active_inspector_detail
+        .as_ref()
+        .and_then(|detail| {
+            detail
+                .property_fields
+                .iter()
+                .find(|field| field.key == "stream:stream-feed:temperature_k")
+        })
+        .and_then(|field| field.commit_command_id.clone())
+        .expect("expected commit command id");
+
+    let dispatch = driver
+        .dispatch_event(StudioGuiEvent::InspectorFieldDraftCommitRequested {
+            command_id: commit_command_id,
+        })
+        .expect("expected draft commit dispatch");
+
+    match dispatch.outcome {
+        StudioGuiDriverOutcome::HostCommand(
+            StudioGuiHostCommandOutcome::InspectorDraftCommitted(committed),
+        ) => {
+            assert_eq!(committed.target_window_id, 1);
+            match &committed.effects.runtime_report.dispatch {
+                crate::StudioRuntimeDispatch::InspectorDraftCommit(outcome) => {
+                    assert!(outcome.applied);
+                    assert_eq!(outcome.document_revision, 1);
+                    assert_eq!(outcome.command_history_len, 1);
+                }
+                other => panic!("expected inspector draft commit dispatch, got {other:?}"),
+            }
+        }
+        other => panic!("expected inspector draft commit outcome, got {other:?}"),
+    }
+
+    assert_eq!(dispatch.window.runtime.workspace_document.revision, 1);
+    assert_eq!(
+        dispatch
+            .window
+            .runtime
+            .active_inspector_target
+            .as_ref()
+            .map(|target| (target.kind_label, target.target_id.as_str())),
+        Some(("Stream", "stream-feed"))
+    );
+    let committed_field = dispatch
+        .window
+        .runtime
+        .active_inspector_detail
+        .as_ref()
+        .and_then(|detail| {
+            detail
+                .property_fields
+                .iter()
+                .find(|field| field.key == "stream:stream-feed:temperature_k")
+        })
+        .expect("expected committed temperature field");
+    assert_eq!(committed_field.current_value, "333.5");
+    assert_eq!(committed_field.status_label, "Synced");
+    assert!(!committed_field.is_dirty);
+    assert!(committed_field.commit_command_id.is_none());
+    assert_eq!(
+        dispatch.window.runtime.control_state.pending_reason,
+        Some(rf_ui::SolvePendingReason::DocumentRevisionAdvanced)
+    );
 }
 
 #[test]

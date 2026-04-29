@@ -810,7 +810,7 @@ impl ReadyAppState {
                 egui::RichText::new(self.locale.text(ShellText::InspectorProperties)).strong(),
             );
             egui::Grid::new(format!("inspector-fields:{}", detail.target.command_id))
-                .num_columns(4)
+                .num_columns(5)
                 .spacing([8.0, 3.0])
                 .show(ui, |ui| {
                     ui.small(
@@ -829,6 +829,10 @@ impl ReadyAppState {
                         egui::RichText::new(self.locale.text(ShellText::InspectorFieldStatus))
                             .strong(),
                     );
+                    ui.small(
+                        egui::RichText::new(self.locale.text(ShellText::InspectorFieldAction))
+                            .strong(),
+                    );
                     ui.end_row();
                     for field in &detail.property_fields {
                         render_wrapped_small(ui, &field.label);
@@ -845,11 +849,24 @@ impl ReadyAppState {
                                 draft_value,
                             );
                         }
+                        let submit_on_enter = response.lost_focus()
+                            && ui.input(|input| input.key_pressed(egui::Key::Enter));
                         render_status_chip(
                             ui,
                             self.locale.runtime_label(field.status_label).as_ref(),
                             inspector_field_status_color(field.status_label),
                         );
+                        if let Some(command_id) = field.commit_command_id.as_ref() {
+                            if submit_on_enter
+                                || ui
+                                    .small_button(self.locale.text(ShellText::InspectorFieldApply))
+                                    .clicked()
+                            {
+                                self.dispatch_inspector_field_draft_commit(command_id.clone());
+                            }
+                        } else {
+                            ui.small("-");
+                        }
                         ui.end_row();
                     }
                 });

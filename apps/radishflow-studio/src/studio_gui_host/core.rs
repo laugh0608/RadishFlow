@@ -114,6 +114,9 @@ impl StudioGuiHost {
             } => self
                 .dispatch_inspector_draft_update(&command_id, raw_value)
                 .map(StudioGuiHostCommandOutcome::InspectorDraftUpdated),
+            StudioGuiHostCommand::DispatchInspectorDraftCommit { command_id } => self
+                .dispatch_inspector_draft_commit(&command_id)
+                .map(StudioGuiHostCommandOutcome::InspectorDraftCommitted),
             StudioGuiHostCommand::QueryWindowDropTarget { window_id, query } => self
                 .query_window_drop_target(window_id, query)
                 .map(StudioGuiHostCommandOutcome::WindowDropTargetQueried),
@@ -335,7 +338,11 @@ fn inspector_text_field(
             is_dirty: draft.is_dirty,
             validation: inspector_validation_from_ui(draft.validation),
             draft_update_command_id: crate::inspector_draft_update_command_id(&key),
-            commit_command_id: None,
+            commit_command_id: inspector_commit_command_id_for_field(
+                &key,
+                draft.is_dirty,
+                draft.validation,
+            ),
         },
         _ => StudioGuiInspectorTargetFieldSnapshot {
             key: key.clone(),
@@ -367,7 +374,11 @@ fn inspector_number_field(
             is_dirty: draft.is_dirty,
             validation: inspector_validation_from_ui(draft.validation),
             draft_update_command_id: crate::inspector_draft_update_command_id(&key),
-            commit_command_id: None,
+            commit_command_id: inspector_commit_command_id_for_field(
+                &key,
+                draft.is_dirty,
+                draft.validation,
+            ),
         },
         _ => StudioGuiInspectorTargetFieldSnapshot {
             key: key.clone(),
@@ -397,6 +408,15 @@ fn inspector_validation_from_ui(
             StudioGuiInspectorTargetFieldValidationSnapshot::Invalid
         }
     }
+}
+
+fn inspector_commit_command_id_for_field(
+    key: &str,
+    is_dirty: bool,
+    validation: rf_ui::DraftValidationState,
+) -> Option<String> {
+    (is_dirty && validation == rf_ui::DraftValidationState::Valid)
+        .then(|| crate::inspector_draft_commit_command_id(key))
 }
 
 fn format_field_number(value: f64) -> String {

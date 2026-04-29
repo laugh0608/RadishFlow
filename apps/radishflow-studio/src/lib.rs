@@ -121,7 +121,10 @@ pub use entitlement_session_host_runtime::{
     EntitlementSessionHostRuntime, EntitlementSessionHostRuntimeDispatchOutcome,
     EntitlementSessionHostRuntimeOutput, EntitlementSessionHostTimerEffect,
 };
-pub use inspector_draft_driver::{InspectorDraftUpdateOutcome, update_inspector_draft};
+pub use inspector_draft_driver::{
+    InspectorDraftCommitOutcome, InspectorDraftUpdateOutcome, commit_inspector_draft,
+    commit_inspector_draft_at, update_inspector_draft,
+};
 pub use inspector_target_driver::{InspectorTargetFocusOutcome, focus_inspector_target};
 pub use property_package_download::{
     PROPERTY_PACKAGE_DOWNLOAD_KIND, PROPERTY_PACKAGE_DOWNLOAD_SCHEMA_VERSION,
@@ -253,8 +256,9 @@ pub use studio_gui_window_model::{
     StudioGuiWindowToolbarItemModel, StudioGuiWindowToolbarSectionModel,
 };
 pub use studio_inspector_draft_command::{
-    StudioInspectorDraftUpdateCommand, inspector_draft_update_command_from_id,
-    inspector_draft_update_command_id,
+    StudioInspectorDraftCommitCommand, StudioInspectorDraftUpdateCommand,
+    inspector_draft_commit_command_from_id, inspector_draft_commit_command_id,
+    inspector_draft_update_command_from_id, inspector_draft_update_command_id,
 };
 pub use studio_inspector_target_command::{
     inspector_target_command_id, inspector_target_from_command_id,

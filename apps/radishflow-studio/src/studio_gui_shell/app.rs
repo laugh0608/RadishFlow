@@ -230,6 +230,12 @@ impl ReadyAppState {
         });
     }
 
+    pub(super) fn dispatch_inspector_field_draft_commit(&mut self, command_id: impl Into<String>) {
+        self.dispatch_event(StudioGuiEvent::InspectorFieldDraftCommitRequested {
+            command_id: command_id.into(),
+        });
+    }
+
     pub(super) fn dispatch_layout_mutation(
         &mut self,
         window_id: Option<StudioWindowHostId>,
