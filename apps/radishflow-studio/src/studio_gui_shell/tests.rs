@@ -172,6 +172,8 @@ fn shell_locale_defaults_to_chinese_and_can_translate_runtime_labels() {
         locale.text(ShellText::StaleStreamSelection),
         "已选流股不在最新快照中。"
     );
+    assert_eq!(locale.text(ShellText::LastRunFailed), "最近一次运行失败");
+    assert_eq!(locale.text(ShellText::SuggestedRecovery), "建议修复");
     assert_eq!(
         StudioShellLocale::En.runtime_label("Converged").as_ref(),
         "Converged"

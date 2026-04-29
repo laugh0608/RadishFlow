@@ -404,6 +404,36 @@ impl ReadyAppState {
                     let inspector = snapshot.result_inspector(selected_stream_id.as_deref());
                     self.render_result_inspector(ui, &inspector);
                 }
+            } else if let Some(failure) = window.runtime.latest_failure.as_ref() {
+                ui.horizontal_wrapped(|ui| {
+                    render_status_chip(
+                        ui,
+                        self.locale.runtime_label(failure.status_label).as_ref(),
+                        run_status_color(failure.status_label),
+                    );
+                    ui.label(egui::RichText::new(
+                        self.locale.text(ShellText::LastRunFailed),
+                    ));
+                });
+                ui.colored_label(
+                    notice_color(rf_ui::RunPanelNoticeLevel::Error),
+                    &failure.title,
+                );
+                render_wrapped_label(ui, &failure.message);
+                if let Some(message) = failure.latest_log_message.as_ref() {
+                    render_wrapped_small(
+                        ui,
+                        format!("{}: {message}", self.locale.text(ShellText::LatestLog)),
+                    );
+                }
+                if let Some(recovery_detail) = failure.recovery_detail {
+                    ui.add_space(4.0);
+                    let title = failure
+                        .recovery_title
+                        .unwrap_or(self.locale.text(ShellText::SuggestedRecovery));
+                    ui.small(egui::RichText::new(title).strong());
+                    render_wrapped_small(ui, recovery_detail);
+                }
             } else {
                 ui.small(self.locale.text(ShellText::NoVisibleSolveResults));
             }

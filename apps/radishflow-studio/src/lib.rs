@@ -232,12 +232,12 @@ pub use studio_gui_window_model::{
     StudioGuiWindowCommandPaletteItemModel, StudioGuiWindowCompositionResultModel,
     StudioGuiWindowDiagnosticModel, StudioGuiWindowDropPreviewModel,
     StudioGuiWindowDropPreviewOverlayModel, StudioGuiWindowDropPreviewState,
-    StudioGuiWindowHeaderModel, StudioGuiWindowModel, StudioGuiWindowPhaseResultModel,
-    StudioGuiWindowResultInspectorModel, StudioGuiWindowResultInspectorStreamOptionModel,
-    StudioGuiWindowRuntimeAreaModel, StudioGuiWindowSolveSnapshotModel,
-    StudioGuiWindowSolveStepModel, StudioGuiWindowStreamResultModel,
-    StudioGuiWindowStreamSummaryRowModel, StudioGuiWindowToolbarItemModel,
-    StudioGuiWindowToolbarSectionModel,
+    StudioGuiWindowFailureResultModel, StudioGuiWindowHeaderModel, StudioGuiWindowModel,
+    StudioGuiWindowPhaseResultModel, StudioGuiWindowResultInspectorModel,
+    StudioGuiWindowResultInspectorStreamOptionModel, StudioGuiWindowRuntimeAreaModel,
+    StudioGuiWindowSolveSnapshotModel, StudioGuiWindowSolveStepModel,
+    StudioGuiWindowStreamResultModel, StudioGuiWindowStreamSummaryRowModel,
+    StudioGuiWindowToolbarItemModel, StudioGuiWindowToolbarSectionModel,
 };
 pub use studio_runtime::{
     StudioRuntime, StudioRuntimeConfig, StudioRuntimeDispatch, StudioRuntimeEffect,

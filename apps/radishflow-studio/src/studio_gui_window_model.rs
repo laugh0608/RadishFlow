@@ -111,6 +111,7 @@ pub struct StudioGuiWindowRuntimeAreaModel {
     pub control_state: WorkspaceControlState,
     pub run_panel: rf_ui::RunPanelWidgetModel,
     pub latest_solve_snapshot: Option<StudioGuiWindowSolveSnapshotModel>,
+    pub latest_failure: Option<StudioGuiWindowFailureResultModel>,
     pub entitlement_host: Option<EntitlementSessionHostRuntimeOutput>,
     pub platform_notice: Option<rf_ui::RunPanelNotice>,
     pub platform_timer_lines: Vec<String>,
@@ -131,6 +132,16 @@ pub struct StudioGuiWindowSolveSnapshotModel {
     pub streams: Vec<StudioGuiWindowStreamResultModel>,
     pub steps: Vec<StudioGuiWindowSolveStepModel>,
     pub diagnostics: Vec<StudioGuiWindowDiagnosticModel>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioGuiWindowFailureResultModel {
+    pub status_label: &'static str,
+    pub title: String,
+    pub message: String,
+    pub recovery_title: Option<&'static str>,
+    pub recovery_detail: Option<&'static str>,
+    pub latest_log_message: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -603,17 +614,24 @@ fn canvas_from_snapshot(snapshot: &StudioGuiSnapshot) -> StudioGuiWindowCanvasAr
 }
 
 fn runtime_from_snapshot(snapshot: &StudioGuiSnapshot) -> StudioGuiWindowRuntimeAreaModel {
+    let latest_solve_snapshot = snapshot
+        .runtime
+        .latest_solve_snapshot
+        .as_ref()
+        .map(solve_snapshot_model_from_ui);
+    let latest_failure = latest_solve_snapshot
+        .is_none()
+        .then(|| failure_result_model_from_control_state(&snapshot.runtime.control_state))
+        .flatten();
+
     StudioGuiWindowRuntimeAreaModel {
         title: "Runtime",
         workspace_document: snapshot.runtime.workspace_document.clone(),
         example_projects: snapshot.runtime.example_projects.clone(),
         control_state: snapshot.runtime.control_state.clone(),
         run_panel: snapshot.runtime.run_panel.clone(),
-        latest_solve_snapshot: snapshot
-            .runtime
-            .latest_solve_snapshot
-            .as_ref()
-            .map(solve_snapshot_model_from_ui),
+        latest_solve_snapshot,
+        latest_failure,
         entitlement_host: snapshot.runtime.entitlement_host.clone(),
         platform_notice: snapshot.runtime.platform_notice.clone(),
         platform_timer_lines: snapshot.runtime.platform_timer_lines.clone(),
@@ -621,6 +639,31 @@ fn runtime_from_snapshot(snapshot: &StudioGuiSnapshot) -> StudioGuiWindowRuntime
         latest_log_entry: snapshot.runtime.log_entries.last().cloned(),
         log_entries: snapshot.runtime.log_entries.clone(),
     }
+}
+
+fn failure_result_model_from_control_state(
+    control_state: &WorkspaceControlState,
+) -> Option<StudioGuiWindowFailureResultModel> {
+    if !matches!(control_state.run_status, rf_ui::RunStatus::Error) {
+        return None;
+    }
+
+    let notice = control_state.notice.as_ref()?;
+    if !matches!(notice.level, rf_ui::RunPanelNoticeLevel::Error) {
+        return None;
+    }
+
+    Some(StudioGuiWindowFailureResultModel {
+        status_label: run_status_label(control_state.run_status),
+        title: notice.title.clone(),
+        message: notice.message.clone(),
+        recovery_title: notice.recovery_action.as_ref().map(|action| action.title),
+        recovery_detail: notice.recovery_action.as_ref().map(|action| action.detail),
+        latest_log_message: control_state
+            .latest_log_entry
+            .as_ref()
+            .map(|entry| entry.message.clone()),
+    })
 }
 
 fn solve_snapshot_model_from_ui(
@@ -875,6 +918,20 @@ mod tests {
         )
     }
 
+    fn unbound_outlet_failure_synced_config() -> StudioRuntimeConfig {
+        StudioRuntimeConfig {
+            project_path: PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .join("../..")
+                .join("examples")
+                .join("flowsheets")
+                .join("failures")
+                .join("unbound-outlet-port.rfproj.json"),
+            entitlement_preflight: StudioRuntimeEntitlementPreflight::Skip,
+            entitlement_seed: StudioRuntimeEntitlementSeed::Synced,
+            trigger: StudioRuntimeTrigger::WidgetAction(rf_ui::RunPanelActionId::RunManual),
+        }
+    }
+
     #[test]
     fn studio_gui_window_model_groups_snapshot_into_window_regions() {
         let (config, project_path) = flash_drum_local_rules_config();
@@ -1083,6 +1140,66 @@ mod tests {
                 .first()
                 .map(|stream| stream.stream_id.as_str())
         );
+    }
+
+    #[test]
+    fn studio_gui_window_model_surfaces_failure_result_until_rerun_succeeds() {
+        let mut driver =
+            StudioGuiDriver::new(&unbound_outlet_failure_synced_config()).expect("expected driver");
+        let _ = driver
+            .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+            .expect("expected open dispatch");
+
+        let failed = driver
+            .dispatch_event(StudioGuiEvent::UiCommandRequested {
+                command_id: "run_panel.run_manual".to_string(),
+            })
+            .expect("expected failed run dispatch");
+        assert_eq!(
+            failed.window.runtime.control_state.run_status,
+            rf_ui::RunStatus::Error
+        );
+        assert_eq!(failed.window.runtime.latest_solve_snapshot, None);
+        let failure = failed
+            .window
+            .runtime
+            .latest_failure
+            .expect("expected visible failure result");
+        assert_eq!(failure.status_label, "Error");
+        assert_eq!(failure.title, "Unbound outlet port");
+        assert!(
+            failure.message.contains("unbound_outlet_port"),
+            "expected solver diagnostic in failure message, got {}",
+            failure.message
+        );
+        assert_eq!(failure.recovery_title, Some("Create outlet stream"));
+        assert!(failure.recovery_detail.is_some());
+        assert!(failure.latest_log_message.is_some());
+
+        let _ = driver
+            .dispatch_event(StudioGuiEvent::UiCommandRequested {
+                command_id: "run_panel.recover_failure".to_string(),
+            })
+            .expect("expected recovery dispatch");
+        let rerun = driver
+            .dispatch_event(StudioGuiEvent::UiCommandRequested {
+                command_id: "run_panel.resume_workspace".to_string(),
+            })
+            .expect("expected successful rerun dispatch");
+
+        assert_eq!(
+            rerun.window.runtime.control_state.run_status,
+            rf_ui::RunStatus::Converged
+        );
+        assert_eq!(rerun.window.runtime.latest_failure, None);
+        let snapshot = rerun
+            .window
+            .runtime
+            .latest_solve_snapshot
+            .expect("expected solve snapshot after recovery rerun");
+        let inspector = snapshot.result_inspector(None);
+        assert!(inspector.selected_stream.is_some());
+        assert!(!inspector.has_stale_selection);
     }
 
     #[test]
