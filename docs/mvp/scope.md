@@ -1,6 +1,6 @@
 # MVP Scope
 
-更新时间：2026-04-28
+更新时间：2026-04-29
 
 ## MVP 目标
 
@@ -104,8 +104,9 @@ App 与交互层当前进一步冻结以下口径：
 - 当前最小桌面入口 `run_studio_bootstrap` 也已改为默认走 `StudioBootstrapTrigger::WidgetPrimaryAction`，并向入口层输出 `RunPanelWidgetModel`，确保“桌面触发点 -> UI 组件动作 -> Studio driver / 控制动作 -> UI 组件 DTO”边界在样例入口里就成立
 - 当前 `egui` Studio 壳已开始消费上述运行入口与 `SolveSnapshot` presentation：Runtime 面板可切换仓库内置正向示例项目、触发运行、按 summary / overall composition / phases 结构化显示流股结果，并展示求解步骤、诊断、日志；这一路径继续保持 `StudioAppFacade -> WorkspaceRunCommand -> WorkspaceSolveService -> solver_bridge` 边界不被绕过
 - 当前 `egui` Studio 壳又已补出项目打开入口：用户可通过路径输入或 Windows 原生文件选择器打开现有 `*.rfproj.json`，打开会重建当前 Studio runtime，打开失败会保留当前工作区并显示错误反馈；内置示例切换复用这条打开流程；若当前文档存在未保存修订，则先进入显式确认状态，避免静默丢弃当前上下文；打开成功后会记录到 shell 级最近项目列表并写入独立 Studio preferences 文件，重启后会恢复该列表；点击最近项目继续复用相同打开流程与未保存确认保护
+- 当前 `egui` Studio 壳又已补出最小 Result Inspector、失败结果 presentation、诊断目标定位命令、活动 Inspector 详情、通用 action DTO、Stream Inspector 字段级 presentation、字段 draft update / commit driver，以及基础 `edit.undo / edit.redo` 文档历史命令；这些入口均通过正式 command / driver / runtime 边界执行，不由 shell 直接写 `FlowsheetDocument`
 - 中文/英文切换当前只属于 GUI shell 偏好，不写入 `DocumentMetadata`、`UserPreferences` 或项目文件；系统 CJK 字体 fallback 也只在应用启动时配置，不新增仓库字体资产
-- 当前仍不把 UI 范围扩张到完整视觉设计、保存/另存为、复杂 inspector、结果导出或画布编辑体验；当前原生文件选择器只覆盖 Windows 打开已有项目，不承诺跨平台文件工作流；当前最近项目持久化只覆盖 shell 级 MRU 路径列表，不等同于完整应用偏好系统；当前结构化结果展示只冻结最小 presentation，不等同于完整 inspector；这些能力后续应先补正式 presentation / command 边界再进入真实 UI
+- 当前仍不把 UI 范围扩张到完整视觉设计、保存/另存为、结果导出、跨会话历史持久化或画布编辑体验；当前原生文件选择器只覆盖 Windows 打开已有项目，不承诺跨平台文件工作流；当前最近项目持久化只覆盖 shell 级 MRU 路径列表，不等同于完整应用偏好系统；当前 Inspector 与 undo/redo 仍是最小可操作闭环，后续保存、多字段提交和更完整画布编辑仍应先补正式 presentation / command 边界再进入真实 UI
 
 流程图交互增强方向当前补充冻结以下边界：
 
@@ -219,7 +220,7 @@ App 与交互层当前进一步冻结以下口径：
 - 已提前完成 `rf-solver` 中首轮无回路顺序模块法
 - 已提前增加第一个可直接从 `*.rfproj.json` 载入并求解的示例 flowsheet
 - 完成 `DWSIM / COFE` water/ethanol 人工 PME 验证记录、PME trace 开关化、TypeLib 生成脚本化与 CAPE-OPEN / PME 阶段性冻结
-- 回到 Rust Studio 主线，补出“打开示例项目 -> 运行求解 -> 查看结果/诊断”的第一版真实 `egui` 可见闭环，并补中文 shell 选项与 CJK 字体 fallback；2026-04-28 继续补出路径输入式项目打开入口、Windows 原生打开选择器、打开反馈、未保存改动打开前确认、shell 级最近项目列表及其独立 preferences 持久化、结构化流股结果 presentation 与结果区基础本地化
+- 回到 Rust Studio 主线，补出“打开示例项目 -> 运行求解 -> 查看结果/诊断”的第一版真实 `egui` 可见闭环，并补中文 shell 选项与 CJK 字体 fallback；2026-04-28 继续补出路径输入式项目打开入口、Windows 原生打开选择器、打开反馈、未保存改动打开前确认、shell 级最近项目列表及其独立 preferences 持久化、结构化流股结果 presentation 与结果区基础本地化；2026-04-29 继续补出 Result Inspector、失败结果、诊断目标命令、活动 Inspector 详情、Stream Inspector 字段级草稿更新/提交和基础文档历史 undo/redo
 
 ### 2026-W19 以后
 
