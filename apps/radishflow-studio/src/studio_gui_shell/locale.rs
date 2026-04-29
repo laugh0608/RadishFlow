@@ -60,7 +60,9 @@ pub(super) enum ShellText {
     NoRelatedSteps,
     NoRelatedDiagnostics,
     StaleStreamSelection,
+    ActiveInspectorTarget,
     LastRunFailed,
+    RecoveryTarget,
     SuggestedRecovery,
     NoStreamResults,
     NoVisibleSolveResults,
@@ -228,7 +230,9 @@ impl ShellText {
             ShellText::StaleStreamSelection => {
                 "Selected stream was not present in the latest snapshot."
             }
+            ShellText::ActiveInspectorTarget => "Inspector target",
             ShellText::LastRunFailed => "Last run failed",
+            ShellText::RecoveryTarget => "Recovery target",
             ShellText::SuggestedRecovery => "Suggested recovery",
             ShellText::NoStreamResults => "This snapshot has no stream results.",
             ShellText::NoVisibleSolveResults => "No solve results to display yet.",
@@ -318,7 +322,9 @@ impl ShellText {
             ShellText::NoRelatedSteps => "没有直接产出这股流股的求解步骤。",
             ShellText::NoRelatedDiagnostics => "没有直接关联这股流股的诊断。",
             ShellText::StaleStreamSelection => "已选流股不在最新快照中。",
+            ShellText::ActiveInspectorTarget => "检查器目标",
             ShellText::LastRunFailed => "最近一次运行失败",
+            ShellText::RecoveryTarget => "修复目标",
             ShellText::SuggestedRecovery => "建议修复",
             ShellText::NoStreamResults => "当前快照没有流股结果。",
             ShellText::NoVisibleSolveResults => "还没有可显示的求解结果。",

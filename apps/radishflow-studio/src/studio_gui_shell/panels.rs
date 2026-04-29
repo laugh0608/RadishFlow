@@ -194,6 +194,16 @@ impl ReadyAppState {
                     format!("{}: {message}", self.locale.text(ShellText::LatestLog)),
                 );
             }
+            if let Some(target) = window.runtime.active_inspector_target.as_ref() {
+                render_wrapped_small(
+                    ui,
+                    format!(
+                        "{}: {}",
+                        self.locale.text(ShellText::ActiveInspectorTarget),
+                        target.summary
+                    ),
+                );
+            }
             if let Some(notice) = run_panel_view.notice.as_ref() {
                 ui.add_space(6.0);
                 ui.colored_label(notice_color(notice.level), &notice.title);
@@ -433,6 +443,16 @@ impl ReadyAppState {
                         .unwrap_or(self.locale.text(ShellText::SuggestedRecovery));
                     ui.small(egui::RichText::new(title).strong());
                     render_wrapped_small(ui, recovery_detail);
+                }
+                if let Some(target) = failure.recovery_target.as_ref() {
+                    render_wrapped_small(
+                        ui,
+                        format!(
+                            "{}: {}",
+                            self.locale.text(ShellText::RecoveryTarget),
+                            target.summary
+                        ),
+                    );
                 }
             } else {
                 ui.small(self.locale.text(ShellText::NoVisibleSolveResults));

@@ -27,6 +27,7 @@ pub struct StudioGuiRuntimeSnapshot {
     pub control_state: WorkspaceControlState,
     pub run_panel: rf_ui::RunPanelWidgetModel,
     pub latest_solve_snapshot: Option<rf_ui::SolveSnapshot>,
+    pub active_inspector_target: Option<rf_ui::InspectorTarget>,
     pub entitlement_host: Option<EntitlementSessionHostRuntimeOutput>,
     pub platform_notice: Option<rf_ui::RunPanelNotice>,
     pub platform_timer_lines: Vec<String>,

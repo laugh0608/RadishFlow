@@ -56,6 +56,7 @@ impl StudioGuiHost {
                 control_state: self.controller.workspace_control_state(),
                 run_panel: self.controller.run_panel_widget(),
                 latest_solve_snapshot: self.controller.latest_solve_snapshot(),
+                active_inspector_target: self.controller.active_inspector_target(),
                 entitlement_host: self.controller.entitlement_host_output(),
                 platform_notice: None,
                 platform_timer_lines: Vec::new(),

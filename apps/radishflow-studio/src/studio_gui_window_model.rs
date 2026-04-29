@@ -112,6 +112,7 @@ pub struct StudioGuiWindowRuntimeAreaModel {
     pub run_panel: rf_ui::RunPanelWidgetModel,
     pub latest_solve_snapshot: Option<StudioGuiWindowSolveSnapshotModel>,
     pub latest_failure: Option<StudioGuiWindowFailureResultModel>,
+    pub active_inspector_target: Option<StudioGuiWindowInspectorTargetModel>,
     pub entitlement_host: Option<EntitlementSessionHostRuntimeOutput>,
     pub platform_notice: Option<rf_ui::RunPanelNotice>,
     pub platform_timer_lines: Vec<String>,
@@ -141,7 +142,15 @@ pub struct StudioGuiWindowFailureResultModel {
     pub message: String,
     pub recovery_title: Option<&'static str>,
     pub recovery_detail: Option<&'static str>,
+    pub recovery_target: Option<StudioGuiWindowInspectorTargetModel>,
     pub latest_log_message: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioGuiWindowInspectorTargetModel {
+    pub kind_label: &'static str,
+    pub target_id: String,
+    pub summary: String,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -632,6 +641,11 @@ fn runtime_from_snapshot(snapshot: &StudioGuiSnapshot) -> StudioGuiWindowRuntime
         run_panel: snapshot.runtime.run_panel.clone(),
         latest_solve_snapshot,
         latest_failure,
+        active_inspector_target: snapshot
+            .runtime
+            .active_inspector_target
+            .as_ref()
+            .map(inspector_target_model_from_ui),
         entitlement_host: snapshot.runtime.entitlement_host.clone(),
         platform_notice: snapshot.runtime.platform_notice.clone(),
         platform_timer_lines: snapshot.runtime.platform_timer_lines.clone(),
@@ -659,11 +673,54 @@ fn failure_result_model_from_control_state(
         message: notice.message.clone(),
         recovery_title: notice.recovery_action.as_ref().map(|action| action.title),
         recovery_detail: notice.recovery_action.as_ref().map(|action| action.detail),
+        recovery_target: notice
+            .recovery_action
+            .as_ref()
+            .and_then(inspector_target_model_from_recovery_action),
         latest_log_message: control_state
             .latest_log_entry
             .as_ref()
             .map(|entry| entry.message.clone()),
     })
+}
+
+fn inspector_target_model_from_recovery_action(
+    action: &rf_ui::RunPanelRecoveryAction,
+) -> Option<StudioGuiWindowInspectorTargetModel> {
+    if let Some(unit_id) = action.target_unit_id.as_ref() {
+        return Some(inspector_target_model_from_ui(
+            &rf_ui::InspectorTarget::Unit(unit_id.clone()),
+        ));
+    }
+    if let Some(stream_id) = action.target_stream_id.as_ref() {
+        return Some(inspector_target_model_from_ui(
+            &rf_ui::InspectorTarget::Stream(stream_id.clone()),
+        ));
+    }
+    None
+}
+
+fn inspector_target_model_from_ui(
+    target: &rf_ui::InspectorTarget,
+) -> StudioGuiWindowInspectorTargetModel {
+    match target {
+        rf_ui::InspectorTarget::Unit(unit_id) => {
+            let target_id = unit_id.as_str().to_string();
+            StudioGuiWindowInspectorTargetModel {
+                kind_label: "Unit",
+                summary: format!("Unit {target_id}"),
+                target_id,
+            }
+        }
+        rf_ui::InspectorTarget::Stream(stream_id) => {
+            let target_id = stream_id.as_str().to_string();
+            StudioGuiWindowInspectorTargetModel {
+                kind_label: "Stream",
+                summary: format!("Stream {target_id}"),
+                target_id,
+            }
+        }
+    }
 }
 
 fn solve_snapshot_model_from_ui(
@@ -1174,13 +1231,29 @@ mod tests {
         );
         assert_eq!(failure.recovery_title, Some("Create outlet stream"));
         assert!(failure.recovery_detail.is_some());
+        assert_eq!(
+            failure
+                .recovery_target
+                .as_ref()
+                .map(|target| (target.kind_label, target.target_id.as_str())),
+            Some(("Unit", "feed-1"))
+        );
         assert!(failure.latest_log_message.is_some());
 
-        let _ = driver
+        let recovery = driver
             .dispatch_event(StudioGuiEvent::UiCommandRequested {
                 command_id: "run_panel.recover_failure".to_string(),
             })
             .expect("expected recovery dispatch");
+        assert_eq!(
+            recovery
+                .window
+                .runtime
+                .active_inspector_target
+                .as_ref()
+                .map(|target| (target.kind_label, target.target_id.as_str())),
+            Some(("Unit", "feed-1"))
+        );
         let rerun = driver
             .dispatch_event(StudioGuiEvent::UiCommandRequested {
                 command_id: "run_panel.resume_workspace".to_string(),
