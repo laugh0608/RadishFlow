@@ -213,7 +213,9 @@ pub use studio_gui_shortcut_router::{
     StudioGuiFocusContext, StudioGuiShortcutIgnoreReason, StudioGuiShortcutRoute, route_shortcut,
 };
 pub use studio_gui_snapshot::{
-    StudioGuiInspectorTargetDetailSnapshot, StudioGuiInspectorTargetPortSnapshot,
+    StudioGuiInspectorTargetDetailSnapshot, StudioGuiInspectorTargetFieldSnapshot,
+    StudioGuiInspectorTargetFieldValidationSnapshot,
+    StudioGuiInspectorTargetFieldValueKindSnapshot, StudioGuiInspectorTargetPortSnapshot,
     StudioGuiInspectorTargetSummaryRowSnapshot, StudioGuiRuntimeSnapshot, StudioGuiSnapshot,
     StudioGuiWorkspaceDocumentSnapshot,
 };
@@ -238,9 +240,10 @@ pub use studio_gui_window_model::{
     StudioGuiWindowCompositionResultModel, StudioGuiWindowDiagnosticModel,
     StudioGuiWindowDropPreviewModel, StudioGuiWindowDropPreviewOverlayModel,
     StudioGuiWindowDropPreviewState, StudioGuiWindowFailureResultModel, StudioGuiWindowHeaderModel,
-    StudioGuiWindowInspectorTargetDetailModel, StudioGuiWindowInspectorTargetModel,
-    StudioGuiWindowInspectorTargetPortModel, StudioGuiWindowInspectorTargetSummaryRowModel,
-    StudioGuiWindowModel, StudioGuiWindowPhaseResultModel, StudioGuiWindowResultInspectorModel,
+    StudioGuiWindowInspectorTargetDetailModel, StudioGuiWindowInspectorTargetFieldModel,
+    StudioGuiWindowInspectorTargetModel, StudioGuiWindowInspectorTargetPortModel,
+    StudioGuiWindowInspectorTargetSummaryRowModel, StudioGuiWindowModel,
+    StudioGuiWindowPhaseResultModel, StudioGuiWindowResultInspectorModel,
     StudioGuiWindowResultInspectorStreamOptionModel, StudioGuiWindowRuntimeAreaModel,
     StudioGuiWindowSolveSnapshotModel, StudioGuiWindowSolveStepModel,
     StudioGuiWindowStreamResultModel, StudioGuiWindowStreamSummaryRowModel,

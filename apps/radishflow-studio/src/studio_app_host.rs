@@ -587,6 +587,17 @@ impl StudioAppHost {
             .clone()
     }
 
+    pub fn inspector_drafts(&self) -> &rf_ui::InspectorDraftState {
+        &self
+            .window_host_manager
+            .session()
+            .host_port()
+            .runtime()
+            .app_state()
+            .workspace
+            .drafts
+    }
+
     pub fn canvas_interaction(&self) -> rf_ui::CanvasInteractionState {
         self.window_host_manager
             .session()
@@ -869,6 +880,10 @@ impl StudioAppHostController {
 
     pub fn active_inspector_target(&self) -> Option<rf_ui::InspectorTarget> {
         self.app_host.active_inspector_target()
+    }
+
+    pub fn inspector_drafts(&self) -> &rf_ui::InspectorDraftState {
+        self.app_host.inspector_drafts()
     }
 
     pub fn canvas_interaction(&self) -> rf_ui::CanvasInteractionState {

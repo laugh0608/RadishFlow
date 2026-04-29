@@ -168,6 +168,7 @@ pub struct StudioGuiWindowInspectorTargetDetailModel {
     pub target: StudioGuiWindowInspectorTargetModel,
     pub title: String,
     pub summary_rows: Vec<StudioGuiWindowInspectorTargetSummaryRowModel>,
+    pub property_fields: Vec<StudioGuiWindowInspectorTargetFieldModel>,
     pub unit_ports: Vec<StudioGuiWindowInspectorTargetPortModel>,
     pub latest_stream_result: Option<StudioGuiWindowStreamResultModel>,
     pub related_steps: Vec<StudioGuiWindowSolveStepModel>,
@@ -178,6 +179,18 @@ pub struct StudioGuiWindowInspectorTargetDetailModel {
 pub struct StudioGuiWindowInspectorTargetSummaryRowModel {
     pub label: String,
     pub value: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioGuiWindowInspectorTargetFieldModel {
+    pub key: String,
+    pub label: String,
+    pub value_kind_label: &'static str,
+    pub original_value: String,
+    pub current_value: String,
+    pub status_label: &'static str,
+    pub is_dirty: bool,
+    pub commit_command_id: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -817,6 +830,11 @@ fn inspector_target_detail_model_from_snapshot(
                 value: row.value.clone(),
             })
             .collect(),
+        property_fields: detail
+            .property_fields
+            .iter()
+            .map(inspector_field_model_from_snapshot)
+            .collect(),
         unit_ports: detail
             .unit_ports
             .iter()
@@ -834,6 +852,44 @@ fn inspector_target_detail_model_from_snapshot(
         latest_stream_result,
         related_steps,
         related_diagnostics,
+    }
+}
+
+fn inspector_field_model_from_snapshot(
+    field: &crate::StudioGuiInspectorTargetFieldSnapshot,
+) -> StudioGuiWindowInspectorTargetFieldModel {
+    StudioGuiWindowInspectorTargetFieldModel {
+        key: field.key.clone(),
+        label: field.label.clone(),
+        value_kind_label: inspector_field_kind_label(field.value_kind),
+        original_value: field.original_value.clone(),
+        current_value: field.current_value.clone(),
+        status_label: inspector_field_status_label(field.validation, field.is_dirty),
+        is_dirty: field.is_dirty,
+        commit_command_id: field.commit_command_id.clone(),
+    }
+}
+
+fn inspector_field_kind_label(
+    value_kind: crate::StudioGuiInspectorTargetFieldValueKindSnapshot,
+) -> &'static str {
+    match value_kind {
+        crate::StudioGuiInspectorTargetFieldValueKindSnapshot::Text => "Text",
+        crate::StudioGuiInspectorTargetFieldValueKindSnapshot::Number => "Number",
+        crate::StudioGuiInspectorTargetFieldValueKindSnapshot::Choice => "Choice",
+    }
+}
+
+fn inspector_field_status_label(
+    validation: crate::StudioGuiInspectorTargetFieldValidationSnapshot,
+    is_dirty: bool,
+) -> &'static str {
+    match validation {
+        crate::StudioGuiInspectorTargetFieldValidationSnapshot::Invalid => "Invalid",
+        crate::StudioGuiInspectorTargetFieldValidationSnapshot::Valid if is_dirty => "Draft",
+        crate::StudioGuiInspectorTargetFieldValidationSnapshot::Valid => "Valid",
+        crate::StudioGuiInspectorTargetFieldValidationSnapshot::Unknown if is_dirty => "Draft",
+        crate::StudioGuiInspectorTargetFieldValidationSnapshot::Unknown => "Synced",
     }
 }
 
@@ -1428,6 +1484,16 @@ mod tests {
             .runtime
             .active_inspector_detail
             .expect("expected active stream inspector detail");
+        assert!(
+            active_detail.property_fields.iter().any(|field| {
+                field.key == "stream:stream-heated:temperature_k"
+                    && field.value_kind_label == "Number"
+                    && field.status_label == "Synced"
+                    && !field.is_dirty
+                    && field.commit_command_id.is_none()
+            }),
+            "expected stream inspector detail to expose field-level property presentation"
+        );
         assert_eq!(
             active_detail
                 .latest_stream_result

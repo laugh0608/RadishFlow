@@ -41,6 +41,7 @@ pub struct StudioGuiInspectorTargetDetailSnapshot {
     pub target: rf_ui::InspectorTarget,
     pub title: String,
     pub summary_rows: Vec<StudioGuiInspectorTargetSummaryRowSnapshot>,
+    pub property_fields: Vec<StudioGuiInspectorTargetFieldSnapshot>,
     pub unit_ports: Vec<StudioGuiInspectorTargetPortSnapshot>,
 }
 
@@ -48,6 +49,32 @@ pub struct StudioGuiInspectorTargetDetailSnapshot {
 pub struct StudioGuiInspectorTargetSummaryRowSnapshot {
     pub label: String,
     pub value: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioGuiInspectorTargetFieldSnapshot {
+    pub key: String,
+    pub label: String,
+    pub value_kind: StudioGuiInspectorTargetFieldValueKindSnapshot,
+    pub original_value: String,
+    pub current_value: String,
+    pub is_dirty: bool,
+    pub validation: StudioGuiInspectorTargetFieldValidationSnapshot,
+    pub commit_command_id: Option<String>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum StudioGuiInspectorTargetFieldValueKindSnapshot {
+    Text,
+    Number,
+    Choice,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum StudioGuiInspectorTargetFieldValidationSnapshot {
+    Unknown,
+    Valid,
+    Invalid,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

@@ -177,6 +177,9 @@ fn shell_locale_defaults_to_chinese_and_can_translate_runtime_labels() {
     assert_eq!(locale.text(ShellText::RecoveryTarget), "修复目标");
     assert_eq!(locale.text(ShellText::SuggestedRecovery), "建议修复");
     assert_eq!(locale.text(ShellText::ActiveInspectorTarget), "检查器目标");
+    assert_eq!(locale.text(ShellText::InspectorProperties), "属性");
+    assert_eq!(locale.runtime_label("Number").as_ref(), "数值");
+    assert_eq!(locale.runtime_label("Synced").as_ref(), "已同步");
     assert_eq!(locale.text(ShellText::InspectorPorts), "端口");
     assert_eq!(locale.runtime_label("Unit").as_ref(), "单元");
     assert_eq!(locale.runtime_label("Stream").as_ref(), "流股");

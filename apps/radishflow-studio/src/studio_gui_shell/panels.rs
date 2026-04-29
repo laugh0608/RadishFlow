@@ -804,6 +804,49 @@ impl ReadyAppState {
                 });
         }
 
+        if !detail.property_fields.is_empty() {
+            ui.add_space(4.0);
+            ui.small(
+                egui::RichText::new(self.locale.text(ShellText::InspectorProperties)).strong(),
+            );
+            egui::Grid::new(format!("inspector-fields:{}", detail.target.command_id))
+                .num_columns(4)
+                .spacing([8.0, 3.0])
+                .show(ui, |ui| {
+                    ui.small(
+                        egui::RichText::new(self.locale.text(ShellText::InspectorFieldName))
+                            .strong(),
+                    );
+                    ui.small(
+                        egui::RichText::new(self.locale.text(ShellText::InspectorFieldKind))
+                            .strong(),
+                    );
+                    ui.small(
+                        egui::RichText::new(self.locale.text(ShellText::InspectorFieldValue))
+                            .strong(),
+                    );
+                    ui.small(
+                        egui::RichText::new(self.locale.text(ShellText::InspectorFieldStatus))
+                            .strong(),
+                    );
+                    ui.end_row();
+                    for field in &detail.property_fields {
+                        render_wrapped_small(ui, &field.label);
+                        render_wrapped_small(
+                            ui,
+                            self.locale.runtime_label(field.value_kind_label).as_ref(),
+                        );
+                        render_wrapped_small(ui, &field.current_value);
+                        render_status_chip(
+                            ui,
+                            self.locale.runtime_label(field.status_label).as_ref(),
+                            inspector_field_status_color(field.status_label),
+                        );
+                        ui.end_row();
+                    }
+                });
+        }
+
         if !detail.unit_ports.is_empty() {
             ui.add_space(4.0);
             ui.small(egui::RichText::new(self.locale.text(ShellText::InspectorPorts)).strong());

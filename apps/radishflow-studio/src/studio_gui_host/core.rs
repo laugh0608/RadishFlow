@@ -226,6 +226,7 @@ fn active_inspector_detail_from_controller(
                         value: unit.ports.len().to_string(),
                     },
                 ],
+                property_fields: Vec::new(),
                 unit_ports: unit
                     .ports
                     .iter()
@@ -264,9 +265,132 @@ fn active_inspector_detail_from_controller(
                         value: format!("{:.6} mol/s", stream.total_molar_flow_mol_s),
                     },
                 ],
+                property_fields: stream_property_fields(stream, controller.inspector_drafts()),
                 unit_ports: Vec::new(),
             })
         }
+    }
+}
+
+fn stream_property_fields(
+    stream: &rf_model::MaterialStreamState,
+    drafts: &rf_ui::InspectorDraftState,
+) -> Vec<StudioGuiInspectorTargetFieldSnapshot> {
+    let stream_id = stream.id.as_str();
+    vec![
+        inspector_text_field(
+            drafts,
+            format!("stream:{stream_id}:name"),
+            "Name",
+            stream.name.clone(),
+        ),
+        inspector_number_field(
+            drafts,
+            format!("stream:{stream_id}:temperature_k"),
+            "Temperature",
+            stream.temperature_k,
+            "K",
+        ),
+        inspector_number_field(
+            drafts,
+            format!("stream:{stream_id}:pressure_pa"),
+            "Pressure",
+            stream.pressure_pa,
+            "Pa",
+        ),
+        inspector_number_field(
+            drafts,
+            format!("stream:{stream_id}:total_molar_flow_mol_s"),
+            "Molar flow",
+            stream.total_molar_flow_mol_s,
+            "mol/s",
+        ),
+    ]
+}
+
+fn inspector_text_field(
+    drafts: &rf_ui::InspectorDraftState,
+    key: String,
+    label: &str,
+    original: String,
+) -> StudioGuiInspectorTargetFieldSnapshot {
+    match drafts.fields.get(&key) {
+        Some(rf_ui::DraftValue::Text(draft)) => StudioGuiInspectorTargetFieldSnapshot {
+            key,
+            label: label.to_string(),
+            value_kind: StudioGuiInspectorTargetFieldValueKindSnapshot::Text,
+            original_value: draft.original.clone(),
+            current_value: draft.current.clone(),
+            is_dirty: draft.is_dirty,
+            validation: inspector_validation_from_ui(draft.validation),
+            commit_command_id: None,
+        },
+        _ => StudioGuiInspectorTargetFieldSnapshot {
+            key,
+            label: label.to_string(),
+            value_kind: StudioGuiInspectorTargetFieldValueKindSnapshot::Text,
+            original_value: original.clone(),
+            current_value: original,
+            is_dirty: false,
+            validation: StudioGuiInspectorTargetFieldValidationSnapshot::Unknown,
+            commit_command_id: None,
+        },
+    }
+}
+
+fn inspector_number_field(
+    drafts: &rf_ui::InspectorDraftState,
+    key: String,
+    label: &str,
+    original: f64,
+    unit: &str,
+) -> StudioGuiInspectorTargetFieldSnapshot {
+    match drafts.fields.get(&key) {
+        Some(rf_ui::DraftValue::Number(draft)) => StudioGuiInspectorTargetFieldSnapshot {
+            key,
+            label: label.to_string(),
+            value_kind: StudioGuiInspectorTargetFieldValueKindSnapshot::Number,
+            original_value: format_field_number(draft.original, unit),
+            current_value: format_field_number(draft.current, unit),
+            is_dirty: draft.is_dirty,
+            validation: inspector_validation_from_ui(draft.validation),
+            commit_command_id: None,
+        },
+        _ => StudioGuiInspectorTargetFieldSnapshot {
+            key,
+            label: label.to_string(),
+            value_kind: StudioGuiInspectorTargetFieldValueKindSnapshot::Number,
+            original_value: format_field_number(original, unit),
+            current_value: format_field_number(original, unit),
+            is_dirty: false,
+            validation: StudioGuiInspectorTargetFieldValidationSnapshot::Unknown,
+            commit_command_id: None,
+        },
+    }
+}
+
+fn inspector_validation_from_ui(
+    validation: rf_ui::DraftValidationState,
+) -> StudioGuiInspectorTargetFieldValidationSnapshot {
+    match validation {
+        rf_ui::DraftValidationState::Unknown => {
+            StudioGuiInspectorTargetFieldValidationSnapshot::Unknown
+        }
+        rf_ui::DraftValidationState::Valid => {
+            StudioGuiInspectorTargetFieldValidationSnapshot::Valid
+        }
+        rf_ui::DraftValidationState::Invalid => {
+            StudioGuiInspectorTargetFieldValidationSnapshot::Invalid
+        }
+    }
+}
+
+fn format_field_number(value: f64, unit: &str) -> String {
+    match unit {
+        "K" => format!("{value:.2} K"),
+        "Pa" => format!("{value:.0} Pa"),
+        "mol/s" => format!("{value:.6} mol/s"),
+        _ => value.to_string(),
     }
 }
 
