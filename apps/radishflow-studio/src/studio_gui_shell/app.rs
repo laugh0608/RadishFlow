@@ -95,6 +95,7 @@ impl ReadyAppState {
                 self.active_drop_preview = None;
                 self.drop_preview_overlay_anchor = None;
                 self.last_viewport_focused = None;
+                self.result_inspector.reset();
                 self.project_open.path_input = project_path.display().to_string();
                 let recent_projects_notice =
                     self.record_and_persist_recent_project(project_path.clone());

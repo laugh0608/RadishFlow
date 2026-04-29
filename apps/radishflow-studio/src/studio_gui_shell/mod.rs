@@ -70,6 +70,7 @@ struct ReadyAppState {
     platform_timer_executor: EguiPlatformTimerExecutor,
     command_palette: CommandPaletteState,
     project_open: ProjectOpenState,
+    result_inspector: ResultInspectorState,
     project_file_picker: Box<dyn ProjectFilePicker>,
     preferences_path: PathBuf,
     locale: StudioShellLocale,
@@ -132,6 +133,12 @@ enum ProjectOpenNoticeLevel {
 struct ProjectOpenRequest {
     project_path: PathBuf,
     source_label: String,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+struct ResultInspectorState {
+    snapshot_id: Option<String>,
+    selected_stream_id: Option<String>,
 }
 
 #[derive(Debug, Default)]
@@ -201,6 +208,7 @@ impl ReadyAppState {
                 &config.project_path,
                 recent_projects,
             ),
+            result_inspector: ResultInspectorState::default(),
             project_file_picker,
             preferences_path,
             locale: StudioShellLocale::default(),
@@ -215,6 +223,50 @@ impl ReadyAppState {
         }
         ready.dispatch_event(StudioGuiEvent::OpenWindowRequested);
         Ok(ready)
+    }
+}
+
+impl ResultInspectorState {
+    fn selected_stream_id_for_snapshot(
+        &mut self,
+        snapshot: &radishflow_studio::StudioGuiWindowSolveSnapshotModel,
+    ) -> Option<String> {
+        if self.snapshot_id.as_deref() != Some(snapshot.snapshot_id.as_str()) {
+            self.snapshot_id = Some(snapshot.snapshot_id.clone());
+            self.selected_stream_id = None;
+        }
+
+        if self
+            .selected_stream_id
+            .as_deref()
+            .is_some_and(|selected_id| {
+                !snapshot
+                    .streams
+                    .iter()
+                    .any(|stream| stream.stream_id == selected_id)
+            })
+        {
+            self.selected_stream_id = None;
+        }
+
+        if self.selected_stream_id.is_none() {
+            self.selected_stream_id = snapshot
+                .streams
+                .first()
+                .map(|stream| stream.stream_id.clone());
+        }
+
+        self.selected_stream_id.clone()
+    }
+
+    fn select_stream(&mut self, snapshot_id: &str, stream_id: impl Into<String>) {
+        self.snapshot_id = Some(snapshot_id.to_string());
+        self.selected_stream_id = Some(stream_id.into());
+    }
+
+    fn reset(&mut self) {
+        self.snapshot_id = None;
+        self.selected_stream_id = None;
     }
 }
 

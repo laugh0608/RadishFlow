@@ -180,8 +180,29 @@ pub struct StudioGuiWindowDiagnosticModel {
     pub severity_label: &'static str,
     pub code: String,
     pub message: String,
+    pub related_unit_ids: Vec<String>,
+    pub related_stream_ids: Vec<String>,
     pub related_units_text: Option<String>,
     pub related_streams_text: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct StudioGuiWindowResultInspectorModel {
+    pub snapshot_id: String,
+    pub selected_stream_id: Option<String>,
+    pub selected_stream: Option<StudioGuiWindowStreamResultModel>,
+    pub stream_options: Vec<StudioGuiWindowResultInspectorStreamOptionModel>,
+    pub related_steps: Vec<StudioGuiWindowSolveStepModel>,
+    pub related_diagnostics: Vec<StudioGuiWindowDiagnosticModel>,
+    pub has_stale_selection: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioGuiWindowResultInspectorStreamOptionModel {
+    pub stream_id: String,
+    pub label: String,
+    pub summary: String,
+    pub is_selected: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -283,6 +304,87 @@ impl StudioGuiWindowModel {
         window.layout_state = layout_state;
         window.drop_preview = None;
         window
+    }
+}
+
+impl StudioGuiWindowSolveSnapshotModel {
+    pub fn result_inspector(
+        &self,
+        requested_stream_id: Option<&str>,
+    ) -> StudioGuiWindowResultInspectorModel {
+        let selected_stream_id = requested_stream_id
+            .filter(|stream_id| {
+                self.streams
+                    .iter()
+                    .any(|stream| stream.stream_id == *stream_id)
+            })
+            .map(str::to_string)
+            .or_else(|| self.streams.first().map(|stream| stream.stream_id.clone()));
+        let has_stale_selection = requested_stream_id.is_some()
+            && requested_stream_id.map(str::to_string) != selected_stream_id;
+        let selected_stream = selected_stream_id
+            .as_deref()
+            .and_then(|selected_id| {
+                self.streams
+                    .iter()
+                    .find(|stream| stream.stream_id == selected_id)
+            })
+            .cloned();
+        let related_steps = selected_stream_id
+            .as_deref()
+            .map(|selected_id| {
+                self.steps
+                    .iter()
+                    .filter(|step| {
+                        step.produced_streams
+                            .iter()
+                            .any(|stream_id| stream_id == selected_id)
+                    })
+                    .cloned()
+                    .collect()
+            })
+            .unwrap_or_default();
+        let related_diagnostics = selected_stream_id
+            .as_deref()
+            .map(|selected_id| {
+                self.diagnostics
+                    .iter()
+                    .filter(|diagnostic| {
+                        diagnostic
+                            .related_stream_ids
+                            .iter()
+                            .any(|stream_id| stream_id == selected_id)
+                    })
+                    .cloned()
+                    .collect()
+            })
+            .unwrap_or_default();
+        let stream_options = self
+            .streams
+            .iter()
+            .map(|stream| StudioGuiWindowResultInspectorStreamOptionModel {
+                stream_id: stream.stream_id.clone(),
+                label: stream.label.clone(),
+                summary: format!(
+                    "{} | {} | {}",
+                    stream.stream_id, stream.temperature_text, stream.molar_flow_text
+                ),
+                is_selected: selected_stream_id
+                    .as_deref()
+                    .map(|selected_id| selected_id == stream.stream_id)
+                    .unwrap_or(false),
+            })
+            .collect();
+
+        StudioGuiWindowResultInspectorModel {
+            snapshot_id: self.snapshot_id.clone(),
+            selected_stream_id,
+            selected_stream,
+            stream_options,
+            related_steps,
+            related_diagnostics,
+            has_stale_selection,
+        }
     }
 }
 
@@ -558,6 +660,16 @@ fn solve_snapshot_model_from_ui(
                 severity_label: diagnostic_severity_label(diagnostic.severity),
                 code: diagnostic.code.clone(),
                 message: diagnostic.message.clone(),
+                related_unit_ids: diagnostic
+                    .related_unit_ids
+                    .iter()
+                    .map(|unit_id| unit_id.as_str().to_string())
+                    .collect(),
+                related_stream_ids: diagnostic
+                    .related_stream_ids
+                    .iter()
+                    .map(|stream_id| stream_id.as_str().to_string())
+                    .collect(),
                 related_units_text: non_empty_join(
                     diagnostic
                         .related_unit_ids
@@ -936,6 +1048,40 @@ mod tests {
                 .diagnostics
                 .iter()
                 .any(|diagnostic| diagnostic.code == "solver.unit_executed")
+        );
+        let inspector = snapshot.result_inspector(Some("stream-heated"));
+        assert_eq!(
+            inspector.selected_stream_id.as_deref(),
+            Some("stream-heated")
+        );
+        assert_eq!(
+            inspector
+                .selected_stream
+                .as_ref()
+                .map(|stream| stream.temperature_text.as_str()),
+            Some("345.00 K")
+        );
+        assert!(
+            inspector
+                .stream_options
+                .iter()
+                .any(|option| option.stream_id == "stream-heated" && option.is_selected)
+        );
+        assert!(
+            inspector
+                .related_steps
+                .iter()
+                .any(|step| step.unit_id == "heater-1")
+        );
+
+        let fallback_inspector = snapshot.result_inspector(Some("missing-stream"));
+        assert!(fallback_inspector.has_stale_selection);
+        assert_eq!(
+            fallback_inspector.selected_stream_id.as_deref(),
+            snapshot
+                .streams
+                .first()
+                .map(|stream| stream.stream_id.as_str())
         );
     }
 

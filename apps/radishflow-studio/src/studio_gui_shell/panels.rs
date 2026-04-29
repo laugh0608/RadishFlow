@@ -395,22 +395,15 @@ impl ReadyAppState {
                 );
                 render_wrapped_label(ui, &snapshot.summary);
                 ui.separator();
-                egui::ScrollArea::vertical()
-                    .id_salt(format!(
-                        "scroll:{}:{}:results",
-                        window.layout_state.scope.layout_key,
-                        area_label(area_id)
-                    ))
-                    .max_height(260.0)
-                    .show(ui, |ui| {
-                        if snapshot.streams.is_empty() {
-                            ui.small(self.locale.text(ShellText::NoStreamResults));
-                        } else {
-                            for stream in &snapshot.streams {
-                                self.render_stream_result_inspector(ui, stream);
-                            }
-                        }
-                    });
+                if snapshot.streams.is_empty() {
+                    ui.small(self.locale.text(ShellText::NoStreamResults));
+                } else {
+                    let selected_stream_id = self
+                        .result_inspector
+                        .selected_stream_id_for_snapshot(snapshot);
+                    let inspector = snapshot.result_inspector(selected_stream_id.as_deref());
+                    self.render_result_inspector(ui, &inspector);
+                }
             } else {
                 ui.small(self.locale.text(ShellText::NoVisibleSolveResults));
             }
@@ -720,6 +713,83 @@ impl ReadyAppState {
         render_wrapped_small(ui, &stream.composition_text);
         render_wrapped_small(ui, &stream.phase_text);
         ui.add_space(8.0);
+    }
+
+    pub(super) fn render_result_inspector(
+        &mut self,
+        ui: &mut egui::Ui,
+        inspector: &radishflow_studio::StudioGuiWindowResultInspectorModel,
+    ) {
+        ui.label(egui::RichText::new(self.locale.text(ShellText::ResultInspector)).strong());
+        ui.small(self.locale.text(ShellText::SelectStream));
+        ui.horizontal_wrapped(|ui| {
+            for option in &inspector.stream_options {
+                let label = if option.label.is_empty() {
+                    option.stream_id.as_str()
+                } else {
+                    option.label.as_str()
+                };
+                let response = ui
+                    .add(egui::Button::new(label).selected(option.is_selected))
+                    .on_hover_text(&option.summary);
+                if response.clicked() {
+                    self.result_inspector
+                        .select_stream(&inspector.snapshot_id, option.stream_id.clone());
+                }
+            }
+        });
+        if inspector.has_stale_selection {
+            render_wrapped_small(ui, self.locale.text(ShellText::StaleStreamSelection));
+        }
+        ui.separator();
+
+        if let Some(stream) = inspector.selected_stream.as_ref() {
+            self.render_stream_result_inspector(ui, stream);
+        } else {
+            ui.small(self.locale.text(ShellText::NoStreamResults));
+            return;
+        }
+
+        ui.collapsing(self.locale.text(ShellText::RelatedSolveSteps), |ui| {
+            if inspector.related_steps.is_empty() {
+                ui.small(self.locale.text(ShellText::NoRelatedSteps));
+                return;
+            }
+            for step in &inspector.related_steps {
+                render_wrapped_small(
+                    ui,
+                    format!(
+                        "#{} {} -> {}",
+                        step.index,
+                        step.unit_id,
+                        step.produced_streams.join(", ")
+                    ),
+                );
+                render_wrapped_label(ui, &step.summary);
+                ui.add_space(4.0);
+            }
+        });
+
+        ui.collapsing(self.locale.text(ShellText::RelatedDiagnostics), |ui| {
+            if inspector.related_diagnostics.is_empty() {
+                ui.small(self.locale.text(ShellText::NoRelatedDiagnostics));
+                return;
+            }
+            for diagnostic in &inspector.related_diagnostics {
+                ui.horizontal_wrapped(|ui| {
+                    render_status_chip(
+                        ui,
+                        self.locale
+                            .runtime_label(diagnostic.severity_label)
+                            .as_ref(),
+                        diagnostic_color(diagnostic.severity_label),
+                    );
+                    ui.small(&diagnostic.code);
+                });
+                render_wrapped_label(ui, &diagnostic.message);
+                ui.add_space(4.0);
+            }
+        });
     }
 
     pub(super) fn render_command_menu_bar(

@@ -233,6 +233,7 @@ pub use studio_gui_window_model::{
     StudioGuiWindowDiagnosticModel, StudioGuiWindowDropPreviewModel,
     StudioGuiWindowDropPreviewOverlayModel, StudioGuiWindowDropPreviewState,
     StudioGuiWindowHeaderModel, StudioGuiWindowModel, StudioGuiWindowPhaseResultModel,
+    StudioGuiWindowResultInspectorModel, StudioGuiWindowResultInspectorStreamOptionModel,
     StudioGuiWindowRuntimeAreaModel, StudioGuiWindowSolveSnapshotModel,
     StudioGuiWindowSolveStepModel, StudioGuiWindowStreamResultModel,
     StudioGuiWindowStreamSummaryRowModel, StudioGuiWindowToolbarItemModel,

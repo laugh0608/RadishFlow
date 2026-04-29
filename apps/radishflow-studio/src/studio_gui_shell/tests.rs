@@ -167,9 +167,59 @@ fn shell_locale_defaults_to_chinese_and_can_translate_runtime_labels() {
         locale.snapshot_identity("snapshot-a", 7),
         "快照 snapshot-a，序号 7"
     );
+    assert_eq!(locale.text(ShellText::ResultInspector), "结果检查器");
+    assert_eq!(
+        locale.text(ShellText::StaleStreamSelection),
+        "已选流股不在最新快照中。"
+    );
     assert_eq!(
         StudioShellLocale::En.runtime_label("Converged").as_ref(),
         "Converged"
+    );
+}
+
+#[test]
+fn result_inspector_state_tracks_selected_stream_per_snapshot() {
+    let mut app = ready_app_state(&synced_workspace_config());
+    app.dispatch_ui_command("run_panel.run_manual");
+    let snapshot = app
+        .platform_host
+        .snapshot()
+        .window_model()
+        .runtime
+        .latest_solve_snapshot
+        .expect("expected solve snapshot");
+
+    let default_selected = app
+        .result_inspector
+        .selected_stream_id_for_snapshot(&snapshot);
+    assert_eq!(
+        default_selected.as_deref(),
+        snapshot
+            .streams
+            .first()
+            .map(|stream| stream.stream_id.as_str())
+    );
+
+    app.result_inspector
+        .select_stream(&snapshot.snapshot_id, "stream-heated");
+    assert_eq!(
+        app.result_inspector
+            .selected_stream_id_for_snapshot(&snapshot)
+            .as_deref(),
+        Some("stream-heated")
+    );
+
+    let mut next_snapshot = snapshot.clone();
+    next_snapshot.snapshot_id = "snapshot-next".to_string();
+    assert_eq!(
+        app.result_inspector
+            .selected_stream_id_for_snapshot(&next_snapshot)
+            .as_deref(),
+        next_snapshot
+            .streams
+            .first()
+            .map(|stream| stream.stream_id.as_str())
     );
 }
 
