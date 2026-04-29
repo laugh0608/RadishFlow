@@ -148,11 +148,19 @@ pub struct StudioGuiWindowFailureResultModel {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioGuiWindowCommandActionModel {
+    pub label: String,
+    pub hover_text: String,
+    pub command_id: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StudioGuiWindowInspectorTargetModel {
     pub kind_label: &'static str,
     pub target_id: String,
     pub summary: String,
     pub command_id: String,
+    pub action: StudioGuiWindowCommandActionModel,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -178,7 +186,7 @@ pub struct StudioGuiWindowInspectorTargetPortModel {
     pub direction: String,
     pub kind: String,
     pub stream_id: Option<String>,
-    pub stream_command_id: Option<String>,
+    pub stream_action: Option<StudioGuiWindowCommandActionModel>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -743,20 +751,34 @@ fn inspector_target_model_from_ui(
     match target {
         rf_ui::InspectorTarget::Unit(unit_id) => {
             let target_id = unit_id.as_str().to_string();
+            let summary = format!("Unit {target_id}");
+            let command_id = crate::inspector_target_command_id(target);
             StudioGuiWindowInspectorTargetModel {
                 kind_label: "Unit",
-                summary: format!("Unit {target_id}"),
-                command_id: crate::inspector_target_command_id(target),
-                target_id,
+                target_id: target_id.clone(),
+                summary: summary.clone(),
+                command_id: command_id.clone(),
+                action: StudioGuiWindowCommandActionModel {
+                    label: format!("Unit {target_id}"),
+                    hover_text: summary,
+                    command_id,
+                },
             }
         }
         rf_ui::InspectorTarget::Stream(stream_id) => {
             let target_id = stream_id.as_str().to_string();
+            let summary = format!("Stream {target_id}");
+            let command_id = crate::inspector_target_command_id(target);
             StudioGuiWindowInspectorTargetModel {
                 kind_label: "Stream",
-                summary: format!("Stream {target_id}"),
-                command_id: crate::inspector_target_command_id(target),
-                target_id,
+                target_id: target_id.clone(),
+                summary: summary.clone(),
+                command_id: command_id.clone(),
+                action: StudioGuiWindowCommandActionModel {
+                    label: format!("Stream {target_id}"),
+                    hover_text: summary,
+                    command_id,
+                },
             }
         }
     }
@@ -803,16 +825,24 @@ fn inspector_target_detail_model_from_snapshot(
                 direction: port.direction.clone(),
                 kind: port.kind.clone(),
                 stream_id: port.stream_id.clone(),
-                stream_command_id: port.stream_id.as_ref().map(|stream_id| {
-                    crate::inspector_target_command_id(&rf_ui::InspectorTarget::Stream(
-                        rf_types::StreamId::new(stream_id.clone()),
-                    ))
-                }),
+                stream_action: port
+                    .stream_id
+                    .as_ref()
+                    .map(|stream_id| inspector_stream_action(stream_id)),
             })
             .collect(),
         latest_stream_result,
         related_steps,
         related_diagnostics,
+    }
+}
+
+fn inspector_stream_action(stream_id: &str) -> StudioGuiWindowCommandActionModel {
+    let target = rf_ui::InspectorTarget::Stream(rf_types::StreamId::new(stream_id.to_string()));
+    StudioGuiWindowCommandActionModel {
+        label: stream_id.to_string(),
+        hover_text: format!("Stream {stream_id}"),
+        command_id: crate::inspector_target_command_id(&target),
     }
 }
 
@@ -1331,6 +1361,8 @@ mod tests {
                     target.kind_label == "Unit"
                         && target.target_id == "heater-1"
                         && target.command_id == "inspector.focus_unit:heater-1"
+                        && target.action.command_id == "inspector.focus_unit:heater-1"
+                        && target.action.label == "Unit heater-1"
                 })
             }),
             "expected diagnostics to expose unit inspector target candidates"
@@ -1494,12 +1526,15 @@ mod tests {
                 .iter()
                 .any(|row| row.label == "Kind" && row.value == "feed")
         );
-        assert!(
-            detail
-                .unit_ports
-                .iter()
-                .any(|port| port.name == "outlet" && port.stream_id.is_some())
-        );
+        assert!(detail.unit_ports.iter().any(|port| port.name == "outlet"
+            && port.stream_id.as_ref().is_some_and(|stream_id| {
+                port.stream_action
+                    .as_ref()
+                    .map(|action| {
+                        action.command_id == format!("inspector.focus_stream:{stream_id}")
+                    })
+                    .unwrap_or(false)
+            })));
         let rerun = driver
             .dispatch_event(StudioGuiEvent::UiCommandRequested {
                 command_id: "run_panel.resume_workspace".to_string(),

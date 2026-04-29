@@ -232,12 +232,12 @@ pub use studio_gui_window_layout::{
     StudioGuiWindowTitlebarModel,
 };
 pub use studio_gui_window_model::{
-    StudioGuiWindowCanvasAreaModel, StudioGuiWindowCommandAreaModel,
-    StudioGuiWindowCommandListItemModel, StudioGuiWindowCommandListSectionModel,
-    StudioGuiWindowCommandPaletteItemModel, StudioGuiWindowCompositionResultModel,
-    StudioGuiWindowDiagnosticModel, StudioGuiWindowDropPreviewModel,
-    StudioGuiWindowDropPreviewOverlayModel, StudioGuiWindowDropPreviewState,
-    StudioGuiWindowFailureResultModel, StudioGuiWindowHeaderModel,
+    StudioGuiWindowCanvasAreaModel, StudioGuiWindowCommandActionModel,
+    StudioGuiWindowCommandAreaModel, StudioGuiWindowCommandListItemModel,
+    StudioGuiWindowCommandListSectionModel, StudioGuiWindowCommandPaletteItemModel,
+    StudioGuiWindowCompositionResultModel, StudioGuiWindowDiagnosticModel,
+    StudioGuiWindowDropPreviewModel, StudioGuiWindowDropPreviewOverlayModel,
+    StudioGuiWindowDropPreviewState, StudioGuiWindowFailureResultModel, StudioGuiWindowHeaderModel,
     StudioGuiWindowInspectorTargetDetailModel, StudioGuiWindowInspectorTargetModel,
     StudioGuiWindowInspectorTargetPortModel, StudioGuiWindowInspectorTargetSummaryRowModel,
     StudioGuiWindowModel, StudioGuiWindowPhaseResultModel, StudioGuiWindowResultInspectorModel,

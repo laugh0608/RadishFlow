@@ -832,14 +832,10 @@ impl ReadyAppState {
                         render_wrapped_small(ui, &port.name);
                         render_wrapped_small(ui, &port.direction);
                         render_wrapped_small(ui, &port.kind);
-                        match (&port.stream_id, &port.stream_command_id) {
-                            (Some(stream_id), Some(command_id)) => {
-                                if ui.small_button(stream_id).clicked() {
-                                    self.dispatch_ui_command(command_id);
-                                }
-                            }
+                        match (&port.stream_id, &port.stream_action) {
+                            (_, Some(action)) => self.render_small_command_action(ui, action),
                             (Some(stream_id), None) => render_wrapped_small(ui, stream_id),
-                            (None, _) => {
+                            (None, None) => {
                                 ui.small("-");
                             }
                         };
@@ -986,15 +982,23 @@ impl ReadyAppState {
         ui.horizontal_wrapped(|ui| {
             ui.small(self.locale.text(ShellText::DiagnosticTargets));
             for target in &diagnostic.target_candidates {
-                if ui
-                    .small_button(format!("{} {}", target.kind_label, target.target_id))
-                    .on_hover_text(&target.summary)
-                    .clicked()
-                {
-                    self.dispatch_ui_command(&target.command_id);
-                }
+                self.render_small_command_action(ui, &target.action);
             }
         });
+    }
+
+    fn render_small_command_action(
+        &mut self,
+        ui: &mut egui::Ui,
+        action: &radishflow_studio::StudioGuiWindowCommandActionModel,
+    ) {
+        if ui
+            .small_button(&action.label)
+            .on_hover_text(&action.hover_text)
+            .clicked()
+        {
+            self.dispatch_ui_command(&action.command_id);
+        }
     }
 
     pub(super) fn render_command_menu_bar(
