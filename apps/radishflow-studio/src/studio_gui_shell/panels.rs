@@ -508,6 +508,7 @@ impl ReadyAppState {
                                     ui.small(&diagnostic.code);
                                 });
                                 render_wrapped_label(ui, &diagnostic.message);
+                                self.render_diagnostic_targets(ui, diagnostic);
                                 if let Some(units) = diagnostic.related_units_text.as_ref() {
                                     render_wrapped_small(ui, format!("units: {units}"));
                                 }
@@ -837,7 +838,24 @@ impl ReadyAppState {
                     ui.small(&diagnostic.code);
                 });
                 render_wrapped_label(ui, &diagnostic.message);
+                self.render_diagnostic_targets(ui, diagnostic);
                 ui.add_space(4.0);
+            }
+        });
+    }
+
+    fn render_diagnostic_targets(
+        &self,
+        ui: &mut egui::Ui,
+        diagnostic: &radishflow_studio::StudioGuiWindowDiagnosticModel,
+    ) {
+        if diagnostic.target_candidates.is_empty() {
+            return;
+        }
+        ui.horizontal_wrapped(|ui| {
+            ui.small(self.locale.text(ShellText::DiagnosticTargets));
+            for target in &diagnostic.target_candidates {
+                ui.small(format!("{} {}", target.kind_label, target.target_id));
             }
         });
     }

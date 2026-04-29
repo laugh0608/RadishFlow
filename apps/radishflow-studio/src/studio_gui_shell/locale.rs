@@ -57,6 +57,7 @@ pub(super) enum ShellText {
     SelectStream,
     RelatedSolveSteps,
     RelatedDiagnostics,
+    DiagnosticTargets,
     NoRelatedSteps,
     NoRelatedDiagnostics,
     StaleStreamSelection,
@@ -225,6 +226,7 @@ impl ShellText {
             ShellText::SelectStream => "Select stream",
             ShellText::RelatedSolveSteps => "Related solve steps",
             ShellText::RelatedDiagnostics => "Related diagnostics",
+            ShellText::DiagnosticTargets => "Diagnostic targets",
             ShellText::NoRelatedSteps => "No solve step directly produced this stream.",
             ShellText::NoRelatedDiagnostics => "No diagnostics directly reference this stream.",
             ShellText::StaleStreamSelection => {
@@ -319,6 +321,7 @@ impl ShellText {
             ShellText::SelectStream => "选择流股",
             ShellText::RelatedSolveSteps => "关联求解步骤",
             ShellText::RelatedDiagnostics => "关联诊断",
+            ShellText::DiagnosticTargets => "诊断目标",
             ShellText::NoRelatedSteps => "没有直接产出这股流股的求解步骤。",
             ShellText::NoRelatedDiagnostics => "没有直接关联这股流股的诊断。",
             ShellText::StaleStreamSelection => "已选流股不在最新快照中。",

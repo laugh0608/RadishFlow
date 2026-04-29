@@ -202,6 +202,7 @@ pub struct StudioGuiWindowDiagnosticModel {
     pub message: String,
     pub related_unit_ids: Vec<String>,
     pub related_stream_ids: Vec<String>,
+    pub target_candidates: Vec<StudioGuiWindowInspectorTargetModel>,
     pub related_units_text: Option<String>,
     pub related_streams_text: Option<String>,
 }
@@ -756,37 +757,52 @@ fn solve_snapshot_model_from_ui(
         diagnostics: snapshot
             .diagnostics
             .iter()
-            .map(|diagnostic| StudioGuiWindowDiagnosticModel {
-                severity_label: diagnostic_severity_label(diagnostic.severity),
-                code: diagnostic.code.clone(),
-                message: diagnostic.message.clone(),
-                related_unit_ids: diagnostic
-                    .related_unit_ids
-                    .iter()
-                    .map(|unit_id| unit_id.as_str().to_string())
-                    .collect(),
-                related_stream_ids: diagnostic
-                    .related_stream_ids
-                    .iter()
-                    .map(|stream_id| stream_id.as_str().to_string())
-                    .collect(),
-                related_units_text: non_empty_join(
-                    diagnostic
-                        .related_unit_ids
-                        .iter()
-                        .map(|unit_id| unit_id.as_str())
-                        .collect::<Vec<_>>(),
-                ),
-                related_streams_text: non_empty_join(
-                    diagnostic
-                        .related_stream_ids
-                        .iter()
-                        .map(|stream_id| stream_id.as_str())
-                        .collect::<Vec<_>>(),
-                ),
-            })
+            .map(diagnostic_model_from_ui)
             .collect(),
     }
+}
+
+fn diagnostic_model_from_ui(
+    diagnostic: &rf_ui::DiagnosticSnapshot,
+) -> StudioGuiWindowDiagnosticModel {
+    let related_unit_ids = diagnostic
+        .related_unit_ids
+        .iter()
+        .map(|unit_id| unit_id.as_str().to_string())
+        .collect::<Vec<_>>();
+    let related_stream_ids = diagnostic
+        .related_stream_ids
+        .iter()
+        .map(|stream_id| stream_id.as_str().to_string())
+        .collect::<Vec<_>>();
+
+    StudioGuiWindowDiagnosticModel {
+        severity_label: diagnostic_severity_label(diagnostic.severity),
+        code: diagnostic.code.clone(),
+        message: diagnostic.message.clone(),
+        target_candidates: diagnostic_target_candidates_from_ui(diagnostic),
+        related_units_text: non_empty_join(related_unit_ids.iter().map(String::as_str).collect()),
+        related_streams_text: non_empty_join(
+            related_stream_ids.iter().map(String::as_str).collect(),
+        ),
+        related_unit_ids,
+        related_stream_ids,
+    }
+}
+
+fn diagnostic_target_candidates_from_ui(
+    diagnostic: &rf_ui::DiagnosticSnapshot,
+) -> Vec<StudioGuiWindowInspectorTargetModel> {
+    diagnostic
+        .related_unit_ids
+        .iter()
+        .map(|unit_id| {
+            inspector_target_model_from_ui(&rf_ui::InspectorTarget::Unit(unit_id.clone()))
+        })
+        .chain(diagnostic.related_stream_ids.iter().map(|stream_id| {
+            inspector_target_model_from_ui(&rf_ui::InspectorTarget::Stream(stream_id.clone()))
+        }))
+        .collect()
 }
 
 fn stream_result_model_from_ui(
@@ -1163,6 +1179,15 @@ mod tests {
                 .iter()
                 .any(|diagnostic| diagnostic.code == "solver.unit_executed")
         );
+        assert!(
+            snapshot.diagnostics.iter().any(|diagnostic| {
+                diagnostic
+                    .target_candidates
+                    .iter()
+                    .any(|target| target.kind_label == "Unit" && target.target_id == "heater-1")
+            }),
+            "expected diagnostics to expose unit inspector target candidates"
+        );
         let inspector = snapshot.result_inspector(Some("stream-heated"));
         assert_eq!(
             inspector.selected_stream_id.as_deref(),
@@ -1186,6 +1211,14 @@ mod tests {
                 .related_steps
                 .iter()
                 .any(|step| step.unit_id == "heater-1")
+        );
+        assert!(
+            inspector.related_diagnostics.iter().any(|diagnostic| {
+                diagnostic.target_candidates.iter().any(|target| {
+                    target.kind_label == "Stream" && target.target_id == "stream-heated"
+                })
+            }),
+            "expected related diagnostics to expose stream target candidates"
         );
 
         let fallback_inspector = snapshot.result_inspector(Some("missing-stream"));

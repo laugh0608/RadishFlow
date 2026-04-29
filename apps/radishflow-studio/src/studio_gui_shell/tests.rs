@@ -168,6 +168,7 @@ fn shell_locale_defaults_to_chinese_and_can_translate_runtime_labels() {
         "快照 snapshot-a，序号 7"
     );
     assert_eq!(locale.text(ShellText::ResultInspector), "结果检查器");
+    assert_eq!(locale.text(ShellText::DiagnosticTargets), "诊断目标");
     assert_eq!(
         locale.text(ShellText::StaleStreamSelection),
         "已选流股不在最新快照中。"
