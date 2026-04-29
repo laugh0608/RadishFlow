@@ -151,6 +151,7 @@ pub struct StudioGuiWindowInspectorTargetModel {
     pub kind_label: &'static str,
     pub target_id: String,
     pub summary: String,
+    pub command_id: String,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -710,6 +711,7 @@ fn inspector_target_model_from_ui(
             StudioGuiWindowInspectorTargetModel {
                 kind_label: "Unit",
                 summary: format!("Unit {target_id}"),
+                command_id: crate::inspector_target_command_id(target),
                 target_id,
             }
         }
@@ -718,6 +720,7 @@ fn inspector_target_model_from_ui(
             StudioGuiWindowInspectorTargetModel {
                 kind_label: "Stream",
                 summary: format!("Stream {target_id}"),
+                command_id: crate::inspector_target_command_id(target),
                 target_id,
             }
         }
@@ -1181,10 +1184,11 @@ mod tests {
         );
         assert!(
             snapshot.diagnostics.iter().any(|diagnostic| {
-                diagnostic
-                    .target_candidates
-                    .iter()
-                    .any(|target| target.kind_label == "Unit" && target.target_id == "heater-1")
+                diagnostic.target_candidates.iter().any(|target| {
+                    target.kind_label == "Unit"
+                        && target.target_id == "heater-1"
+                        && target.command_id == "inspector.focus_unit:heater-1"
+                })
             }),
             "expected diagnostics to expose unit inspector target candidates"
         );
@@ -1215,10 +1219,34 @@ mod tests {
         assert!(
             inspector.related_diagnostics.iter().any(|diagnostic| {
                 diagnostic.target_candidates.iter().any(|target| {
-                    target.kind_label == "Stream" && target.target_id == "stream-heated"
+                    target.kind_label == "Stream"
+                        && target.target_id == "stream-heated"
+                        && target.command_id == "inspector.focus_stream:stream-heated"
                 })
             }),
             "expected related diagnostics to expose stream target candidates"
+        );
+        let stream_target_command_id = inspector
+            .related_diagnostics
+            .iter()
+            .flat_map(|diagnostic| diagnostic.target_candidates.iter())
+            .find(|target| target.target_id == "stream-heated")
+            .map(|target| target.command_id.clone())
+            .expect("expected stream target command id");
+
+        let target_dispatch = driver
+            .dispatch_event(StudioGuiEvent::UiCommandRequested {
+                command_id: stream_target_command_id,
+            })
+            .expect("expected inspector target dispatch");
+        assert_eq!(
+            target_dispatch
+                .window
+                .runtime
+                .active_inspector_target
+                .as_ref()
+                .map(|target| (target.kind_label, target.target_id.as_str())),
+            Some(("Stream", "stream-heated"))
         );
 
         let fallback_inspector = snapshot.result_inspector(Some("missing-stream"));

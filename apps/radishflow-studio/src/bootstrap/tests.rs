@@ -820,6 +820,9 @@ fn app_command(report: &super::StudioBootstrapReport) -> &crate::StudioAppComman
         StudioBootstrapDispatch::RunPanelRecovery(_) => {
             panic!("expected app command dispatch")
         }
+        StudioBootstrapDispatch::InspectorTarget(_) => {
+            panic!("expected app command dispatch")
+        }
         StudioBootstrapDispatch::EntitlementSessionEvent(_) => {
             panic!("expected app command dispatch")
         }
@@ -835,6 +838,9 @@ fn session_event(
             panic!("expected entitlement session event dispatch")
         }
         StudioBootstrapDispatch::RunPanelRecovery(_) => {
+            panic!("expected entitlement session event dispatch")
+        }
+        StudioBootstrapDispatch::InspectorTarget(_) => {
             panic!("expected entitlement session event dispatch")
         }
     }

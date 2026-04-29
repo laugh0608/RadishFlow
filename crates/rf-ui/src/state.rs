@@ -559,6 +559,52 @@ impl AppState {
         None
     }
 
+    pub fn focus_inspector_target(&mut self, target: InspectorTarget) -> Option<InspectorTarget> {
+        match target {
+            InspectorTarget::Unit(unit_id) => {
+                if !self
+                    .workspace
+                    .document
+                    .flowsheet
+                    .units
+                    .contains_key(&unit_id)
+                {
+                    return None;
+                }
+                self.workspace.selection.selected_units.clear();
+                self.workspace.selection.selected_streams.clear();
+                self.workspace
+                    .selection
+                    .selected_units
+                    .insert(unit_id.clone());
+                self.workspace.drafts.active_target = Some(InspectorTarget::Unit(unit_id.clone()));
+                self.workspace.panels.inspector_open = true;
+                Some(InspectorTarget::Unit(unit_id))
+            }
+            InspectorTarget::Stream(stream_id) => {
+                if !self
+                    .workspace
+                    .document
+                    .flowsheet
+                    .streams
+                    .contains_key(&stream_id)
+                {
+                    return None;
+                }
+                self.workspace.selection.selected_units.clear();
+                self.workspace.selection.selected_streams.clear();
+                self.workspace
+                    .selection
+                    .selected_streams
+                    .insert(stream_id.clone());
+                self.workspace.drafts.active_target =
+                    Some(InspectorTarget::Stream(stream_id.clone()));
+                self.workspace.panels.inspector_open = true;
+                Some(InspectorTarget::Stream(stream_id))
+            }
+        }
+    }
+
     pub fn begin_browser_login(&mut self, authority_url: impl Into<String>) {
         self.auth_session.begin_browser_login(authority_url);
     }

@@ -61,6 +61,24 @@ impl StudioGuiHost {
         &mut self,
         command_id: &str,
     ) -> RfResult<StudioGuiHostUiCommandDispatchResult> {
+        if let Some(target) = crate::inspector_target_from_command_id(command_id) {
+            let Some(target_window_id) = self.preferred_target_window_id() else {
+                return Ok(StudioGuiHostUiCommandDispatchResult::IgnoredDisabled {
+                    command_id: command_id.to_string(),
+                    detail: "Open a studio window before focusing an inspector target".to_string(),
+                    target_window_id: None,
+                    ui_commands: self.ui_commands(),
+                });
+            };
+            let dispatch = self.controller.dispatch_window_trigger(
+                target_window_id,
+                StudioRuntimeTrigger::InspectorTarget(target),
+            )?;
+            return Ok(StudioGuiHostUiCommandDispatchResult::Executed(
+                dispatch_from_controller(dispatch, self.canvas_state()),
+            ));
+        }
+
         if let Some(action_id) = canvas_action_id_from_command_id(command_id) {
             let target_window_id = self.preferred_target_window_id();
             let canvas = self.canvas_state();

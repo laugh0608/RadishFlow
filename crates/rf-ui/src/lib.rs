@@ -76,7 +76,7 @@ mod tests {
     use rf_thermo::{
         AntoineCoefficients, PlaceholderThermoProvider, ThermoComponent, ThermoSystem,
     };
-    use rf_types::{PortDirection, PortKind, UnitId};
+    use rf_types::{PortDirection, PortKind, StreamId, UnitId};
 
     use crate::{
         AppLogLevel, AppState, AuthSessionStatus, AuthenticatedUser, CanvasPoint,
@@ -100,6 +100,28 @@ mod tests {
 
     fn sample_document() -> FlowsheetDocument {
         let flowsheet = Flowsheet::new("demo");
+        let metadata = DocumentMetadata::new("doc-1", "Demo", timestamp(10));
+        FlowsheetDocument::new(flowsheet, metadata)
+    }
+
+    fn inspector_focus_document() -> FlowsheetDocument {
+        let mut flowsheet = Flowsheet::new("demo");
+        flowsheet
+            .insert_unit(UnitNode::new(
+                "feed-1",
+                "Feed",
+                "feed",
+                vec![UnitPort::new(
+                    "outlet",
+                    PortDirection::Outlet,
+                    PortKind::Material,
+                    Some("stream-feed".into()),
+                )],
+            ))
+            .expect("expected feed insert");
+        flowsheet
+            .insert_stream(MaterialStreamState::new("stream-feed", "Feed Stream"))
+            .expect("expected stream insert");
         let metadata = DocumentMetadata::new("doc-1", "Demo", timestamp(10));
         FlowsheetDocument::new(flowsheet, metadata)
     }
@@ -1604,6 +1626,85 @@ mod tests {
             Some(crate::InspectorTarget::Unit(UnitId::new("heater-1")))
         );
         assert!(app_state.workspace.panels.inspector_open);
+    }
+
+    #[test]
+    fn focusing_inspector_target_selects_unit_without_document_mutation() {
+        let document = inspector_focus_document();
+        let mut app_state = AppState::new(document);
+
+        let applied_target =
+            app_state.focus_inspector_target(crate::InspectorTarget::Unit(UnitId::new("feed-1")));
+
+        assert_eq!(
+            applied_target,
+            Some(crate::InspectorTarget::Unit(UnitId::new("feed-1")))
+        );
+        assert_eq!(app_state.workspace.document.revision, 0);
+        assert!(app_state.workspace.command_history.is_empty());
+        assert!(
+            app_state
+                .workspace
+                .selection
+                .selected_units
+                .contains(&UnitId::new("feed-1"))
+        );
+        assert!(app_state.workspace.selection.selected_streams.is_empty());
+        assert_eq!(
+            app_state.workspace.drafts.active_target,
+            Some(crate::InspectorTarget::Unit(UnitId::new("feed-1")))
+        );
+        assert!(app_state.workspace.panels.inspector_open);
+    }
+
+    #[test]
+    fn focusing_inspector_target_selects_stream_and_clears_previous_unit() {
+        let document = inspector_focus_document();
+        let mut app_state = AppState::new(document);
+        app_state.focus_inspector_target(crate::InspectorTarget::Unit(UnitId::new("feed-1")));
+
+        let applied_target = app_state
+            .focus_inspector_target(crate::InspectorTarget::Stream(StreamId::new("stream-feed")));
+
+        assert_eq!(
+            applied_target,
+            Some(crate::InspectorTarget::Stream(StreamId::new("stream-feed")))
+        );
+        assert!(app_state.workspace.selection.selected_units.is_empty());
+        assert!(
+            app_state
+                .workspace
+                .selection
+                .selected_streams
+                .contains(&StreamId::new("stream-feed"))
+        );
+        assert_eq!(
+            app_state.workspace.drafts.active_target,
+            Some(crate::InspectorTarget::Stream(StreamId::new("stream-feed")))
+        );
+    }
+
+    #[test]
+    fn focusing_missing_inspector_target_keeps_current_focus() {
+        let document = inspector_focus_document();
+        let mut app_state = AppState::new(document);
+        app_state.focus_inspector_target(crate::InspectorTarget::Unit(UnitId::new("feed-1")));
+
+        let applied_target = app_state
+            .focus_inspector_target(crate::InspectorTarget::Unit(UnitId::new("missing-unit")));
+
+        assert_eq!(applied_target, None);
+        assert!(
+            app_state
+                .workspace
+                .selection
+                .selected_units
+                .contains(&UnitId::new("feed-1"))
+        );
+        assert_eq!(
+            app_state.workspace.drafts.active_target,
+            Some(crate::InspectorTarget::Unit(UnitId::new("feed-1")))
+        );
     }
 
     #[test]

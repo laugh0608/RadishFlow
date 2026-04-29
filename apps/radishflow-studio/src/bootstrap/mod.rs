@@ -35,6 +35,7 @@ pub enum StudioBootstrapTrigger {
     WidgetPrimaryAction,
     WidgetAction(rf_ui::RunPanelActionId),
     WidgetRecoveryAction,
+    InspectorTarget(rf_ui::InspectorTarget),
     EntitlementWidgetPrimaryAction,
     EntitlementWidgetAction(rf_ui::EntitlementActionId),
     EntitlementSessionEvent(StudioBootstrapEntitlementSessionEvent),
@@ -104,6 +105,7 @@ pub struct StudioBootstrapReport {
 pub enum StudioBootstrapDispatch {
     AppCommand(StudioAppCommandOutcome),
     RunPanelRecovery(RunPanelRecoveryOutcome),
+    InspectorTarget(crate::InspectorTargetFocusOutcome),
     EntitlementSessionEvent(EntitlementSessionEventDriverOutcome),
 }
 

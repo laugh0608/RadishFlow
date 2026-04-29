@@ -8,8 +8,9 @@ use crate::{
     StudioAppCommandOutcome, StudioAppMutableAuthCacheContext, WorkspaceControlActionOutcome,
     apply_run_panel_recovery_action, dispatch_entitlement_session_event_with_control_plane,
     dispatch_run_panel_intent_with_auth_cache, dispatch_run_panel_primary_action_with_auth_cache,
-    dispatch_run_panel_widget_action_with_auth_cache, snapshot_entitlement_session_driver_state,
-    snapshot_entitlement_session_schedule, snapshot_run_panel_driver_state,
+    dispatch_run_panel_widget_action_with_auth_cache, focus_inspector_target,
+    snapshot_entitlement_session_driver_state, snapshot_entitlement_session_schedule,
+    snapshot_run_panel_driver_state,
 };
 use rf_store::{StoredAuthCacheIndex, read_project_file};
 use rf_types::{RfError, RfResult};
@@ -190,6 +191,15 @@ fn dispatch_bootstrap_trigger(
                 "bootstrap run panel recovery action is unavailable in current widget model",
             )
         }),
+        StudioBootstrapTrigger::InspectorTarget(target) => {
+            let outcome = focus_inspector_target(session.app_state, target.clone());
+            if outcome.applied_target.is_none() {
+                return Err(RfError::invalid_input(format!(
+                    "bootstrap inspector target `{target:?}` is not available in current workspace"
+                )));
+            }
+            Ok(StudioBootstrapDispatch::InspectorTarget(outcome))
+        }
         StudioBootstrapTrigger::EntitlementWidgetPrimaryAction => {
             dispatch_bootstrap_entitlement_host_trigger(
                 session,

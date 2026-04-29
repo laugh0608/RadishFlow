@@ -10,6 +10,7 @@ mod entitlement_session_driver;
 mod entitlement_session_host;
 mod entitlement_session_host_presentation;
 mod entitlement_session_host_runtime;
+mod inspector_target_driver;
 mod property_package_download;
 mod property_package_download_client;
 mod run_panel_driver;
@@ -29,6 +30,7 @@ mod studio_gui_snapshot;
 mod studio_gui_timer_host;
 mod studio_gui_window_layout;
 mod studio_gui_window_model;
+mod studio_inspector_target_command;
 mod studio_local_rules;
 mod studio_runtime;
 mod studio_window_host;
@@ -117,6 +119,7 @@ pub use entitlement_session_host_runtime::{
     EntitlementSessionHostRuntime, EntitlementSessionHostRuntimeDispatchOutcome,
     EntitlementSessionHostRuntimeOutput, EntitlementSessionHostTimerEffect,
 };
+pub use inspector_target_driver::{InspectorTargetFocusOutcome, focus_inspector_target};
 pub use property_package_download::{
     PROPERTY_PACKAGE_DOWNLOAD_KIND, PROPERTY_PACKAGE_DOWNLOAD_SCHEMA_VERSION,
     PropertyPackageDownload, PropertyPackageDownloadAntoineCoefficients,
@@ -239,6 +242,9 @@ pub use studio_gui_window_model::{
     StudioGuiWindowSolveStepModel, StudioGuiWindowStreamResultModel,
     StudioGuiWindowStreamSummaryRowModel, StudioGuiWindowToolbarItemModel,
     StudioGuiWindowToolbarSectionModel,
+};
+pub use studio_inspector_target_command::{
+    inspector_target_command_id, inspector_target_from_command_id,
 };
 pub use studio_runtime::{
     StudioRuntime, StudioRuntimeConfig, StudioRuntimeDispatch, StudioRuntimeEffect,

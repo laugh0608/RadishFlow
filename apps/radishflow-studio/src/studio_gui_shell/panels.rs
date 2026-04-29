@@ -845,7 +845,7 @@ impl ReadyAppState {
     }
 
     fn render_diagnostic_targets(
-        &self,
+        &mut self,
         ui: &mut egui::Ui,
         diagnostic: &radishflow_studio::StudioGuiWindowDiagnosticModel,
     ) {
@@ -855,7 +855,13 @@ impl ReadyAppState {
         ui.horizontal_wrapped(|ui| {
             ui.small(self.locale.text(ShellText::DiagnosticTargets));
             for target in &diagnostic.target_candidates {
-                ui.small(format!("{} {}", target.kind_label, target.target_id));
+                if ui
+                    .small_button(format!("{} {}", target.kind_label, target.target_id))
+                    .on_hover_text(&target.summary)
+                    .clicked()
+                {
+                    self.dispatch_ui_command(&target.command_id);
+                }
             }
         });
     }
