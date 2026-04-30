@@ -870,7 +870,10 @@ impl ReadyAppState {
                             );
                         }
                         let submit_on_enter = response.lost_focus()
-                            && ui.input(|input| input.key_pressed(egui::Key::Enter));
+                            && ui.input(|input| {
+                                input.key_pressed(egui::Key::Enter)
+                                    && input.modifiers == egui::Modifiers::NONE
+                            });
                         render_status_chip(
                             ui,
                             self.locale.runtime_label(field.status_label).as_ref(),

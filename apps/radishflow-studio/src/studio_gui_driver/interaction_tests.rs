@@ -59,6 +59,43 @@ fn gui_driver_reports_ignored_shortcut_when_text_input_owns_tab() {
 }
 
 #[test]
+fn gui_driver_reports_ignored_shortcut_when_text_input_owns_undo_redo() {
+    let mut driver = StudioGuiDriver::new(&lease_expiring_config()).expect("expected driver");
+    driver
+        .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+        .expect("expected open dispatch");
+
+    for (key, shortcut_name) in [
+        (crate::StudioGuiShortcutKey::Z, "ctrl-z"),
+        (crate::StudioGuiShortcutKey::Y, "ctrl-y"),
+    ] {
+        let dispatch = driver
+            .dispatch_event(StudioGuiEvent::ShortcutPressed {
+                shortcut: StudioGuiShortcut {
+                    modifiers: vec![crate::StudioGuiShortcutModifier::Ctrl],
+                    key,
+                },
+                focus_context: StudioGuiFocusContext::TextInput,
+            })
+            .expect("expected shortcut dispatch");
+
+        assert_ignored_shortcut(
+            &dispatch,
+            StudioGuiShortcut {
+                modifiers: vec![crate::StudioGuiShortcutModifier::Ctrl],
+                key,
+            },
+            StudioGuiShortcutIgnoreReason::TextInputOwnsShortcut,
+        );
+        assert_eq!(
+            dispatch.snapshot.runtime.control_state.simulation_mode,
+            rf_ui::SimulationMode::Hold,
+            "{shortcut_name} should not leave the text input boundary"
+        );
+    }
+}
+
+#[test]
 fn gui_driver_reports_ignored_shortcut_when_command_palette_owns_function_key() {
     let mut driver = StudioGuiDriver::new(&lease_expiring_config()).expect("expected driver");
     let _ = driver

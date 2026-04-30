@@ -148,6 +148,76 @@ fn gui_driver_saves_current_project_through_command_surface() {
         saved.document.revision,
         save.window.runtime.workspace_document.revision
     );
+
+    let _ = fs::remove_file(project_path);
+}
+
+#[test]
+fn gui_driver_routes_ctrl_s_from_text_input_to_save_command() {
+    let (config, project_path) = flash_drum_local_rules_synced_config();
+    let mut driver = StudioGuiDriver::new(&config).expect("expected driver");
+    driver
+        .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+        .expect("expected open dispatch");
+
+    let dispatch = driver
+        .dispatch_event(StudioGuiEvent::ShortcutPressed {
+            shortcut: StudioGuiShortcut {
+                modifiers: vec![crate::StudioGuiShortcutModifier::Ctrl],
+                key: crate::StudioGuiShortcutKey::S,
+            },
+            focus_context: StudioGuiFocusContext::TextInput,
+        })
+        .expect("expected save shortcut dispatch");
+
+    match &dispatch.outcome {
+        StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::UiCommandDispatched(
+            StudioGuiHostUiCommandDispatchResult::Executed(executed),
+        )) => match &executed.effects.runtime_report.dispatch {
+            crate::StudioRuntimeDispatch::DocumentLifecycle(outcome) => {
+                assert_eq!(outcome.action, crate::StudioDocumentLifecycleAction::Save);
+                assert_eq!(outcome.path, project_path);
+                assert!(!outcome.has_unsaved_changes);
+            }
+            other => panic!("expected document lifecycle dispatch, got {other:?}"),
+        },
+        other => panic!("expected save command dispatch, got {other:?}"),
+    }
+
+    let _ = fs::remove_file(project_path);
+}
+
+#[test]
+fn gui_driver_routes_disabled_ctrl_z_without_executing_history() {
+    let mut driver = StudioGuiDriver::new(&synced_workspace_config()).expect("expected driver");
+    driver
+        .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+        .expect("expected open dispatch");
+
+    let dispatch = driver
+        .dispatch_event(StudioGuiEvent::ShortcutPressed {
+            shortcut: StudioGuiShortcut {
+                modifiers: vec![crate::StudioGuiShortcutModifier::Ctrl],
+                key: crate::StudioGuiShortcutKey::Z,
+            },
+            focus_context: StudioGuiFocusContext::Global,
+        })
+        .expect("expected disabled undo dispatch");
+
+    match &dispatch.outcome {
+        StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::UiCommandDispatched(
+            StudioGuiHostUiCommandDispatchResult::IgnoredDisabled {
+                command_id,
+                target_window_id,
+                ..
+            },
+        )) => {
+            assert_eq!(command_id, "edit.undo");
+            assert_eq!(*target_window_id, Some(1));
+        }
+        other => panic!("expected disabled undo outcome, got {other:?}"),
+    }
+    assert_eq!(dispatch.window.runtime.workspace_document.revision, 0);
 }
 
 #[test]

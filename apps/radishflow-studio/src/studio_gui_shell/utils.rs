@@ -97,6 +97,24 @@ pub(super) fn drain_due_platform_timer_callbacks(
 pub(super) fn collect_shortcuts(input: &egui::InputState) -> Vec<StudioGuiShortcut> {
     let mut shortcuts = Vec::new();
 
+    if input.modifiers.command && input.key_pressed(egui::Key::S) {
+        shortcuts.push(StudioGuiShortcut {
+            modifiers: command_modifiers_from_egui(input.modifiers),
+            key: StudioGuiShortcutKey::S,
+        });
+    }
+    if input.modifiers.command && input.key_pressed(egui::Key::Z) {
+        shortcuts.push(StudioGuiShortcut {
+            modifiers: command_modifiers_from_egui(input.modifiers),
+            key: StudioGuiShortcutKey::Z,
+        });
+    }
+    if input.modifiers.command && input.key_pressed(egui::Key::Y) {
+        shortcuts.push(StudioGuiShortcut {
+            modifiers: command_modifiers_from_egui(input.modifiers),
+            key: StudioGuiShortcutKey::Y,
+        });
+    }
     if input.key_pressed(egui::Key::F5) {
         shortcuts.push(StudioGuiShortcut {
             modifiers: modifiers_from_egui(input.modifiers),
@@ -136,6 +154,17 @@ pub(super) fn modifiers_from_egui(modifiers: egui::Modifiers) -> Vec<StudioGuiSh
     if modifiers.ctrl {
         items.push(StudioGuiShortcutModifier::Ctrl);
     }
+    if modifiers.shift {
+        items.push(StudioGuiShortcutModifier::Shift);
+    }
+    if modifiers.alt {
+        items.push(StudioGuiShortcutModifier::Alt);
+    }
+    items
+}
+
+fn command_modifiers_from_egui(modifiers: egui::Modifiers) -> Vec<StudioGuiShortcutModifier> {
+    let mut items = vec![StudioGuiShortcutModifier::Ctrl];
     if modifiers.shift {
         items.push(StudioGuiShortcutModifier::Shift);
     }
@@ -821,6 +850,9 @@ pub(super) fn format_shortcut(shortcut: &StudioGuiShortcut) -> String {
         })
         .collect::<Vec<_>>();
     let key = match shortcut.key {
+        StudioGuiShortcutKey::S => "S",
+        StudioGuiShortcutKey::Z => "Z",
+        StudioGuiShortcutKey::Y => "Y",
         StudioGuiShortcutKey::F5 => "F5",
         StudioGuiShortcutKey::F6 => "F6",
         StudioGuiShortcutKey::F8 => "F8",

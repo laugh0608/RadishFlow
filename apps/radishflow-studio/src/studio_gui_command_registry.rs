@@ -12,6 +12,9 @@ pub enum StudioGuiShortcutModifier {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum StudioGuiShortcutKey {
+    S,
+    Z,
+    Y,
     F5,
     F6,
     F8,
@@ -316,17 +319,26 @@ fn command_defaults(command_id: &str) -> StudioGuiCommandDefaults {
         "file.save" => StudioGuiCommandDefaults {
             menu_path: &["File", "Save"],
             search_terms: &["file", "save", "project"],
-            shortcut: None,
+            shortcut: Some(StudioGuiShortcut {
+                modifiers: vec![StudioGuiShortcutModifier::Ctrl],
+                key: StudioGuiShortcutKey::S,
+            }),
         },
         "edit.undo" => StudioGuiCommandDefaults {
             menu_path: &["Edit", "Undo"],
             search_terms: &["edit", "undo", "history"],
-            shortcut: None,
+            shortcut: Some(StudioGuiShortcut {
+                modifiers: vec![StudioGuiShortcutModifier::Ctrl],
+                key: StudioGuiShortcutKey::Z,
+            }),
         },
         "edit.redo" => StudioGuiCommandDefaults {
             menu_path: &["Edit", "Redo"],
             search_terms: &["edit", "redo", "history"],
-            shortcut: None,
+            shortcut: Some(StudioGuiShortcut {
+                modifiers: vec![StudioGuiShortcutModifier::Ctrl],
+                key: StudioGuiShortcutKey::Y,
+            }),
         },
         "run_panel.run_manual" => StudioGuiCommandDefaults {
             menu_path: &["Run", "Run Workspace"],
@@ -507,6 +519,9 @@ fn format_shortcut(shortcut: &StudioGuiShortcut) -> String {
         parts.push(label);
     }
     let key = match shortcut.key {
+        StudioGuiShortcutKey::S => "S",
+        StudioGuiShortcutKey::Z => "Z",
+        StudioGuiShortcutKey::Y => "Y",
         StudioGuiShortcutKey::F5 => "F5",
         StudioGuiShortcutKey::F6 => "F6",
         StudioGuiShortcutKey::F8 => "F8",
@@ -651,6 +666,77 @@ mod tests {
             .expect("expected command from shortcut");
 
         assert_eq!(command.command_id, "run_panel.resume_workspace");
+    }
+
+    #[test]
+    fn gui_command_registry_assigns_file_and_history_shortcuts() {
+        let model = StudioAppHostUiCommandModel {
+            actions: vec![
+                StudioAppHostUiActionModel {
+                    action: None,
+                    command_id: "file.save",
+                    group: StudioAppHostUiCommandGroup::File,
+                    sort_order: 10,
+                    label: "Save",
+                    enabled: true,
+                    detail: "Save",
+                    target_window_id: Some(2),
+                },
+                StudioAppHostUiActionModel {
+                    action: None,
+                    command_id: "edit.undo",
+                    group: StudioAppHostUiCommandGroup::Edit,
+                    sort_order: 20,
+                    label: "Undo",
+                    enabled: true,
+                    detail: "Undo",
+                    target_window_id: Some(2),
+                },
+                StudioAppHostUiActionModel {
+                    action: None,
+                    command_id: "edit.redo",
+                    group: StudioAppHostUiCommandGroup::Edit,
+                    sort_order: 30,
+                    label: "Redo",
+                    enabled: true,
+                    detail: "Redo",
+                    target_window_id: Some(2),
+                },
+            ],
+        };
+
+        let registry = StudioGuiCommandRegistry::from_model(&model);
+
+        for (shortcut, command_id) in [
+            (
+                StudioGuiShortcut {
+                    modifiers: vec![StudioGuiShortcutModifier::Ctrl],
+                    key: StudioGuiShortcutKey::S,
+                },
+                "file.save",
+            ),
+            (
+                StudioGuiShortcut {
+                    modifiers: vec![StudioGuiShortcutModifier::Ctrl],
+                    key: StudioGuiShortcutKey::Z,
+                },
+                "edit.undo",
+            ),
+            (
+                StudioGuiShortcut {
+                    modifiers: vec![StudioGuiShortcutModifier::Ctrl],
+                    key: StudioGuiShortcutKey::Y,
+                },
+                "edit.redo",
+            ),
+        ] {
+            assert_eq!(
+                registry
+                    .find_by_shortcut(&shortcut)
+                    .map(|command| command.command_id.as_str()),
+                Some(command_id)
+            );
+        }
     }
 
     #[test]
