@@ -303,6 +303,8 @@ RadishFlow/
 - 当前最小桌面入口 `run_studio_bootstrap` / `main.rs` 已改为默认通过 `StudioBootstrapTrigger::WidgetPrimaryAction -> RunPanelWidgetEvent -> run_panel_driver -> WorkspaceControlAction -> StudioAppFacade` 触发运行链路，同时仍保留显式 `RunPanelIntent` 兼容入口
 - 当前 entitlement 会话调度也已通过 `EntitlementSessionEvent::{SessionStarted, LoginCompleted, TimerElapsed, EntitlementCommandCompleted}` 形成统一事件语义，并由 Studio 侧维护失败退避与下一次建议检查时机
 - 当前 GUI / app host 命令面也已继续收口：`run_panel.recover_failure`、`entitlement.sync` 与 `entitlement.refresh_offline_lease` 等正式动作已统一走稳定 `command_id -> UiAction/trigger` 主通路，不再继续保留 entitlement 或 foreground recovery 的历史包装旁路
+- 当前 Studio 文档生命周期已接入正式 runtime 边界：`Save / Save As` 通过 `StudioRuntimeTrigger::DocumentLifecycle -> document_lifecycle_driver -> rf-store::write_project_file` 写回项目文件，保存态由 `last_saved_revision / has_unsaved_changes` 表达，不进入 `CommandHistory`
+- 当前 GUI 快捷键策略已把文本输入焦点、文档历史和项目保存边界分清：`Ctrl+S` 继续走 `file.save`，`Ctrl+Z / Ctrl+Y` 在文本输入焦点下交还输入框自身编辑历史，普通焦点下才派发 `edit.undo / edit.redo`
 - 当前默认包选择策略保持保守，只在唯一候选时自动选中，多包场景要求显式指定 package
 - Automatic 运行当前先根据 `SimulationMode` / `pending_reason` 决定是否 skip，再决定是否需要 preferred package 解析
 
@@ -467,6 +469,7 @@ Rust UI 逻辑层。
 - 已补 `RunPanelCommandModel`，把 `Run/Resume/Hold/Active` 的主动作、可见性与可用性冻结到 UI 层
 - 已补 `RunPanelViewModel` / `RunPanelTextView` / `RunPanelPresentation`，把最小渲染与文本展示组织收回 UI 层
 - 已补 `RunPanelWidgetModel` / `RunPanelWidgetEvent`，把最小 widget 激活语义冻结到 UI 层
+- 已补 Stream Inspector 字段级草稿、单字段提交、多字段批量提交和 `CommandHistory` 基础 undo/redo；只有 valid dirty 草稿在语义提交时写回 `FlowsheetDocument`，无效中间态继续停留在 UI 草稿状态
 
 后续规划：
 
