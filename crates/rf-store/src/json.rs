@@ -1,5 +1,8 @@
-use std::fs;
+use std::fs::{self, File, OpenOptions};
+use std::io::Write;
 use std::path::Path;
+use std::path::PathBuf;
+use std::process;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use rf_types::{RfError, RfResult};
@@ -259,7 +262,124 @@ where
         fs::create_dir_all(parent)
             .map_err(|error| map_io_error("create parent directories", parent, &error))?;
     }
-    fs::write(path, contents).map_err(|error| map_io_error(action, path, &error))
+    write_staged_json_file(path, contents.as_bytes(), action)
+}
+
+fn write_staged_json_file(path: &Path, contents: &[u8], action: &str) -> RfResult<()> {
+    if path.exists() && !path.is_file() {
+        return Err(RfError::invalid_input(format!(
+            "{action} `{}`: target path exists and is not a file",
+            path.display()
+        )));
+    }
+
+    let temp_path = create_unique_temp_sibling(path)?;
+    let write_result = write_all_and_sync(&temp_path, contents, action)
+        .and_then(|_| replace_with_staged_file(&temp_path, path, action));
+
+    if write_result.is_err() {
+        let _ = fs::remove_file(&temp_path);
+    }
+
+    write_result
+}
+
+fn write_all_and_sync(path: &Path, contents: &[u8], action: &str) -> RfResult<()> {
+    let mut file = File::create(path).map_err(|error| map_io_error(action, path, &error))?;
+    file.write_all(contents)
+        .map_err(|error| map_io_error(action, path, &error))?;
+    file.sync_all()
+        .map_err(|error| map_io_error(action, path, &error))
+}
+
+#[cfg(not(windows))]
+fn replace_with_staged_file(temp_path: &Path, path: &Path, action: &str) -> RfResult<()> {
+    fs::rename(temp_path, path).map_err(|error| map_io_error(action, path, &error))
+}
+
+#[cfg(windows)]
+fn replace_with_staged_file(temp_path: &Path, path: &Path, action: &str) -> RfResult<()> {
+    if !path.exists() {
+        return fs::rename(temp_path, path).map_err(|error| map_io_error(action, path, &error));
+    }
+
+    let backup_path = create_unique_backup_sibling(path)?;
+    fs::rename(path, &backup_path).map_err(|error| map_io_error(action, path, &error))?;
+
+    match fs::rename(temp_path, path) {
+        Ok(()) => {
+            let _ = fs::remove_file(&backup_path);
+            Ok(())
+        }
+        Err(error) => {
+            let _ = fs::rename(&backup_path, path);
+            Err(map_io_error(action, path, &error))
+        }
+    }
+}
+
+fn create_unique_temp_sibling(path: &Path) -> RfResult<PathBuf> {
+    create_unique_sibling(path, "tmp")
+}
+
+#[cfg(windows)]
+fn create_unique_backup_sibling(path: &Path) -> RfResult<PathBuf> {
+    let directory = path.parent().unwrap_or_else(|| Path::new("."));
+    let file_name = path
+        .file_name()
+        .and_then(|name| name.to_str())
+        .unwrap_or("radishflow");
+    let timestamp = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_nanos();
+    let pid = process::id();
+
+    for attempt in 0..32 {
+        let candidate = directory.join(format!(".{file_name}.{pid}.{timestamp}.{attempt}.bak"));
+        if !candidate.exists() {
+            return Ok(candidate);
+        }
+    }
+
+    Err(RfError::invalid_input(format!(
+        "create staged backup file `{}`: could not allocate a unique sibling path",
+        path.display()
+    )))
+}
+
+fn create_unique_sibling(path: &Path, suffix: &str) -> RfResult<PathBuf> {
+    let directory = path.parent().unwrap_or_else(|| Path::new("."));
+    let file_name = path
+        .file_name()
+        .and_then(|name| name.to_str())
+        .unwrap_or("radishflow");
+    let timestamp = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_nanos();
+    let pid = process::id();
+
+    for attempt in 0..32 {
+        let candidate =
+            directory.join(format!(".{file_name}.{pid}.{timestamp}.{attempt}.{suffix}"));
+        match OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(&candidate)
+        {
+            Ok(_) => return Ok(candidate),
+            Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {}
+            Err(error) => {
+                return Err(map_io_error("create staged json file", &candidate, &error));
+            }
+        }
+    }
+
+    Err(RfError::invalid_input(format!(
+        "create staged json file `{}`: could not allocate a unique sibling path",
+        path.display()
+    )))
 }
 
 fn parse_json<T>(contents: &str, action: &str) -> RfResult<T>

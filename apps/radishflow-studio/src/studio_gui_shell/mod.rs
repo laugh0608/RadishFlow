@@ -113,6 +113,7 @@ struct ProjectOpenState {
     recent_projects: Vec<PathBuf>,
     notice: Option<ProjectOpenNotice>,
     pending_confirmation: Option<ProjectOpenRequest>,
+    pending_save_as_overwrite: Option<PathBuf>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -311,6 +312,7 @@ impl ProjectOpenState {
             recent_projects: Vec::new(),
             notice: None,
             pending_confirmation: None,
+            pending_save_as_overwrite: None,
         };
         state.replace_recent_projects(recent_projects);
         state

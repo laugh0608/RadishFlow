@@ -57,7 +57,7 @@ pub use studio_preferences::{
 mod tests {
     use std::collections::BTreeSet;
     use std::fs;
-    use std::path::PathBuf;
+    use std::path::{Path, PathBuf};
     use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
     use rf_model::{Component, Flowsheet};
@@ -462,6 +462,51 @@ mod tests {
     }
 
     #[test]
+    fn write_project_file_replaces_existing_file_from_staged_write() {
+        let root = unique_temp_path("project-replace");
+        let path = root.join("demo.rfproj.json");
+        let first = StoredProjectFile::new(
+            Flowsheet::new("first"),
+            StoredDocumentMetadata::new("doc-1", "First Project", timestamp(10)),
+        );
+        let second = StoredProjectFile::new(
+            Flowsheet::new("second"),
+            StoredDocumentMetadata::new("doc-1", "Second Project", timestamp(20)),
+        );
+
+        write_project_file(&path, &first).expect("expected first project file write");
+        write_project_file(&path, &second).expect("expected replacement project file write");
+
+        let loaded = read_project_file(&path).expect("expected replaced project file read");
+        assert_eq!(loaded, second);
+        assert!(staged_siblings_for(&path).is_empty());
+        fs::remove_dir_all(&root).expect("expected temp dir cleanup");
+    }
+
+    #[test]
+    fn write_project_file_rejects_directory_target_without_staged_leftovers() {
+        let root = unique_temp_path("project-directory-target");
+        let path = root.join("demo.rfproj.json");
+        fs::create_dir_all(&path).expect("expected directory target");
+        let project = StoredProjectFile::new(
+            Flowsheet::new("demo"),
+            StoredDocumentMetadata::new("doc-1", "Demo Project", timestamp(10)),
+        );
+
+        let error = write_project_file(&path, &project).expect_err("expected write error");
+
+        assert_eq!(error.code().as_str(), "invalid_input");
+        assert!(
+            error
+                .message()
+                .contains("target path exists and is not a file")
+        );
+        assert!(path.is_dir());
+        assert!(staged_siblings_for(&path).is_empty());
+        fs::remove_dir_all(&root).expect("expected temp dir cleanup");
+    }
+
+    #[test]
     fn studio_layout_path_uses_project_sidecar_suffix() {
         let project = PathBuf::from("demo").join("sample.rfproj.json");
         let sidecar = studio_layout_path_for_project(&project);
@@ -487,6 +532,27 @@ mod tests {
 
         assert_eq!(loaded, auth_cache);
         fs::remove_dir_all(&root).expect("expected temp dir cleanup");
+    }
+
+    fn staged_siblings_for(path: &Path) -> Vec<PathBuf> {
+        let Some(directory) = path.parent() else {
+            return Vec::new();
+        };
+        let file_name = path
+            .file_name()
+            .and_then(|name| name.to_str())
+            .unwrap_or_default();
+        let prefix = format!(".{file_name}.");
+        fs::read_dir(directory)
+            .expect("expected readable temp directory")
+            .filter_map(|entry| entry.ok().map(|entry| entry.path()))
+            .filter(|path| {
+                path.file_name()
+                    .and_then(|name| name.to_str())
+                    .map(|name| name.starts_with(&prefix))
+                    .unwrap_or(false)
+            })
+            .collect()
     }
 
     #[test]

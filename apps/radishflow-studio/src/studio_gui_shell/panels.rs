@@ -343,6 +343,22 @@ impl ReadyAppState {
                     }
                 });
             }
+            if self.project_open.pending_save_as_overwrite.is_some() {
+                ui.horizontal_wrapped(|ui| {
+                    if ui
+                        .button(self.locale.text(ShellText::ConfirmSaveAsOverwrite))
+                        .clicked()
+                    {
+                        self.confirm_pending_save_as_overwrite();
+                    }
+                    if ui
+                        .button(self.locale.text(ShellText::CancelSaveAsOverwrite))
+                        .clicked()
+                    {
+                        self.cancel_pending_save_as_overwrite();
+                    }
+                });
+            }
             ui.separator();
             ui.label(egui::RichText::new(self.locale.text(ShellText::RecentProjects)).strong());
             if self.project_open.recent_projects.is_empty() {

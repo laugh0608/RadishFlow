@@ -1059,6 +1059,96 @@ fn save_project_as_from_picker_writes_project_and_records_recent_project() {
 }
 
 #[test]
+fn save_project_as_from_picker_requires_confirmation_before_overwrite() {
+    let config = synced_workspace_config();
+    let preferences_path = test_preferences_path("save-as-overwrite");
+    let target_project = std::env::temp_dir().join(format!(
+        "radishflow-studio-shell-save-as-overwrite-{}.rfproj.json",
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("expected current timestamp")
+            .as_nanos()
+    ));
+    fs::write(&target_project, "existing project placeholder").expect("expected target seed");
+    let mut app = ReadyAppState::from_config_with_project_file_picker(
+        &config,
+        preferences_path.clone(),
+        Box::new(TestProjectFilePicker::new(Some(target_project.clone()))),
+    )
+    .expect("expected app state");
+
+    app.save_project_as_from_picker();
+
+    assert_eq!(
+        fs::read_to_string(&target_project).expect("expected target read"),
+        "existing project placeholder"
+    );
+    assert_eq!(
+        app.project_open.pending_save_as_overwrite.as_deref(),
+        Some(target_project.as_path())
+    );
+    assert_eq!(
+        app.project_open
+            .notice
+            .as_ref()
+            .map(|notice| notice.title.as_str()),
+        Some("Confirm overwrite")
+    );
+
+    app.confirm_pending_save_as_overwrite();
+
+    let window = app.platform_host.snapshot().window_model();
+    assert_eq!(
+        window.runtime.workspace_document.project_path.as_deref(),
+        Some(target_project.display().to_string().as_str())
+    );
+    assert!(app.project_open.pending_save_as_overwrite.is_none());
+    assert!(read_project_file(&target_project).is_ok());
+
+    let _ = std::fs::remove_file(preferences_path);
+    let _ = std::fs::remove_file(target_project);
+}
+
+#[test]
+fn cancel_pending_save_as_overwrite_keeps_existing_file() {
+    let config = synced_workspace_config();
+    let preferences_path = test_preferences_path("save-as-overwrite-cancel");
+    let target_project = std::env::temp_dir().join(format!(
+        "radishflow-studio-shell-save-as-overwrite-cancel-{}.rfproj.json",
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("expected current timestamp")
+            .as_nanos()
+    ));
+    fs::write(&target_project, "existing project placeholder").expect("expected target seed");
+    let mut app = ReadyAppState::from_config_with_project_file_picker(
+        &config,
+        preferences_path.clone(),
+        Box::new(TestProjectFilePicker::new(Some(target_project.clone()))),
+    )
+    .expect("expected app state");
+
+    app.save_project_as_from_picker();
+    app.cancel_pending_save_as_overwrite();
+
+    assert_eq!(
+        fs::read_to_string(&target_project).expect("expected target read"),
+        "existing project placeholder"
+    );
+    assert!(app.project_open.pending_save_as_overwrite.is_none());
+    assert_eq!(
+        app.project_open
+            .notice
+            .as_ref()
+            .map(|notice| notice.title.as_str()),
+        Some("Save As canceled")
+    );
+
+    let _ = std::fs::remove_file(preferences_path);
+    let _ = std::fs::remove_file(target_project);
+}
+
+#[test]
 fn successful_project_opens_keep_recent_projects_deduped_and_ordered() {
     let mut app = ready_app_state(&synced_workspace_config());
     let examples = app

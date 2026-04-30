@@ -65,6 +65,7 @@ impl ReadyAppState {
                     },
                     detail: format!("Saved revision {} to {path}", document.revision),
                 });
+                self.project_open.pending_save_as_overwrite = None;
             }
             Err(error) => {
                 self.project_open.notice = Some(ProjectOpenNotice {
@@ -86,6 +87,14 @@ impl ReadyAppState {
             return;
         };
 
+        self.request_save_project_as(project_path, true);
+    }
+
+    pub(super) fn request_save_project_as(
+        &mut self,
+        project_path: PathBuf,
+        require_overwrite_confirmation: bool,
+    ) {
         let Some(window_id) = self.current_window_id() else {
             self.project_open.notice = Some(ProjectOpenNotice {
                 level: ProjectOpenNoticeLevel::Error,
@@ -94,6 +103,21 @@ impl ReadyAppState {
             });
             return;
         };
+
+        if require_overwrite_confirmation
+            && self.save_as_requires_overwrite_confirmation(&project_path)
+        {
+            self.project_open.pending_save_as_overwrite = Some(project_path.clone());
+            self.project_open.notice = Some(ProjectOpenNotice {
+                level: ProjectOpenNoticeLevel::Warning,
+                title: "Confirm overwrite".to_string(),
+                detail: format!(
+                    "Save As target already exists and will be replaced: {}",
+                    project_path.display()
+                ),
+            });
+            return;
+        }
 
         let trigger = StudioRuntimeTrigger::DocumentLifecycle(
             radishflow_studio::StudioDocumentLifecycleCommand::SaveAs {
@@ -106,6 +130,7 @@ impl ReadyAppState {
             Ok(dispatch) => {
                 let document = &dispatch.dispatch.window.runtime.workspace_document;
                 self.project_open.path_input = project_path.display().to_string();
+                self.project_open.pending_save_as_overwrite = None;
                 let recent_projects_notice =
                     self.record_and_persist_recent_project(project_path.clone());
                 self.project_open.notice =
@@ -132,6 +157,38 @@ impl ReadyAppState {
                 });
             }
         }
+    }
+
+    pub(super) fn confirm_pending_save_as_overwrite(&mut self) {
+        let Some(project_path) = self.project_open.pending_save_as_overwrite.take() else {
+            return;
+        };
+        self.request_save_project_as(project_path, false);
+    }
+
+    pub(super) fn cancel_pending_save_as_overwrite(&mut self) {
+        self.project_open.pending_save_as_overwrite = None;
+        self.project_open.notice = Some(ProjectOpenNotice {
+            level: ProjectOpenNoticeLevel::Info,
+            title: "Save As canceled".to_string(),
+            detail: "Existing project file was not overwritten.".to_string(),
+        });
+    }
+
+    fn save_as_requires_overwrite_confirmation(&self, project_path: &std::path::Path) -> bool {
+        if !project_path.exists() {
+            return false;
+        }
+
+        self.platform_host
+            .snapshot()
+            .runtime
+            .workspace_document
+            .project_path
+            .as_deref()
+            .map(std::path::Path::new)
+            .map(|current_path| !paths_match(current_path, project_path))
+            .unwrap_or(true)
     }
 
     pub(super) fn request_open_project(&mut self, project_path: PathBuf, source_label: &str) {
@@ -197,6 +254,7 @@ impl ReadyAppState {
                 let recent_projects_notice =
                     self.record_and_persist_recent_project(project_path.clone());
                 self.project_open.pending_confirmation = None;
+                self.project_open.pending_save_as_overwrite = None;
                 self.project_open.notice =
                     Some(recent_projects_notice.unwrap_or(ProjectOpenNotice {
                         level: ProjectOpenNoticeLevel::Info,
