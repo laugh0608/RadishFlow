@@ -117,6 +117,9 @@ impl StudioGuiHost {
             StudioGuiHostCommand::DispatchInspectorDraftCommit { command_id } => self
                 .dispatch_inspector_draft_commit(&command_id)
                 .map(StudioGuiHostCommandOutcome::InspectorDraftCommitted),
+            StudioGuiHostCommand::DispatchInspectorDraftBatchCommit { command_id } => self
+                .dispatch_inspector_draft_batch_commit(&command_id)
+                .map(StudioGuiHostCommandOutcome::InspectorDraftBatchCommitted),
             StudioGuiHostCommand::QueryWindowDropTarget { window_id, query } => self
                 .query_window_drop_target(window_id, query)
                 .map(StudioGuiHostCommandOutcome::WindowDropTargetQueried),
@@ -236,6 +239,7 @@ fn active_inspector_detail_from_controller(
                     },
                 ],
                 property_fields: Vec::new(),
+                property_batch_commit_command_id: None,
                 unit_ports: unit
                     .ports
                     .iter()
@@ -253,6 +257,7 @@ fn active_inspector_detail_from_controller(
         }
         rf_ui::InspectorTarget::Stream(stream_id) => {
             let stream = flowsheet.streams.get(stream_id)?;
+            let property_fields = stream_property_fields(stream, controller.inspector_drafts());
             Some(StudioGuiInspectorTargetDetailSnapshot {
                 target,
                 title: stream.name.clone(),
@@ -274,7 +279,11 @@ fn active_inspector_detail_from_controller(
                         value: format!("{:.6} mol/s", stream.total_molar_flow_mol_s),
                     },
                 ],
-                property_fields: stream_property_fields(stream, controller.inspector_drafts()),
+                property_batch_commit_command_id: stream_property_batch_commit_command_id(
+                    stream,
+                    &property_fields,
+                ),
+                property_fields,
                 unit_ports: Vec::new(),
             })
         }
@@ -417,6 +426,18 @@ fn inspector_commit_command_id_for_field(
 ) -> Option<String> {
     (is_dirty && validation == rf_ui::DraftValidationState::Valid)
         .then(|| crate::inspector_draft_commit_command_id(key))
+}
+
+fn stream_property_batch_commit_command_id(
+    stream: &rf_model::MaterialStreamState,
+    fields: &[StudioGuiInspectorTargetFieldSnapshot],
+) -> Option<String> {
+    let committable_field_count = fields
+        .iter()
+        .filter(|field| field.commit_command_id.is_some())
+        .count();
+    (committable_field_count > 1)
+        .then(|| crate::inspector_draft_batch_commit_command_id(stream.id.as_str()))
 }
 
 fn format_field_number(value: f64) -> String {

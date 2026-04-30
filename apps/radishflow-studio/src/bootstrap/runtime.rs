@@ -6,8 +6,9 @@ use crate::{
     EntitlementSessionPanelDriverOutcome, EntitlementSessionPolicy, EntitlementSessionRuntime,
     EntitlementSessionState, RunPanelDriverOutcome, StudioAppAuthCacheContext,
     StudioAppCommandOutcome, StudioAppMutableAuthCacheContext, WorkspaceControlActionOutcome,
-    apply_run_panel_recovery_action, commit_inspector_draft, dispatch_document_history,
-    dispatch_document_lifecycle, dispatch_entitlement_session_event_with_control_plane,
+    apply_run_panel_recovery_action, commit_inspector_draft, commit_inspector_drafts,
+    dispatch_document_history, dispatch_document_lifecycle,
+    dispatch_entitlement_session_event_with_control_plane,
     dispatch_run_panel_intent_with_auth_cache, dispatch_run_panel_primary_action_with_auth_cache,
     dispatch_run_panel_widget_action_with_auth_cache, focus_inspector_target,
     snapshot_entitlement_session_driver_state, snapshot_entitlement_session_schedule,
@@ -212,6 +213,10 @@ fn dispatch_bootstrap_trigger(
         StudioBootstrapTrigger::InspectorDraftCommit(command) => {
             let outcome = commit_inspector_draft(session.app_state, command.clone())?;
             Ok(StudioBootstrapDispatch::InspectorDraftCommit(outcome))
+        }
+        StudioBootstrapTrigger::InspectorDraftBatchCommit(command) => {
+            let outcome = commit_inspector_drafts(session.app_state, command.clone())?;
+            Ok(StudioBootstrapDispatch::InspectorDraftBatchCommit(outcome))
         }
         StudioBootstrapTrigger::DocumentHistory(command) => {
             let outcome = dispatch_document_history(session.app_state, *command)?;

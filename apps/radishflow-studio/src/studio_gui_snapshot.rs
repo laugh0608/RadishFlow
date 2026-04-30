@@ -42,6 +42,7 @@ pub struct StudioGuiInspectorTargetDetailSnapshot {
     pub title: String,
     pub summary_rows: Vec<StudioGuiInspectorTargetSummaryRowSnapshot>,
     pub property_fields: Vec<StudioGuiInspectorTargetFieldSnapshot>,
+    pub property_batch_commit_command_id: Option<String>,
     pub unit_ports: Vec<StudioGuiInspectorTargetPortSnapshot>,
 }
 

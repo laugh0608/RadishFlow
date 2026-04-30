@@ -69,6 +69,16 @@ pub enum DocumentCommand {
         field: String,
         value: CommandValue,
     },
+    SetStreamSpecifications {
+        stream_id: StreamId,
+        values: Vec<StreamSpecificationValue>,
+    },
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct StreamSpecificationValue {
+    pub field: String,
+    pub value: CommandValue,
 }
 
 #[derive(Debug, Clone, PartialEq)]

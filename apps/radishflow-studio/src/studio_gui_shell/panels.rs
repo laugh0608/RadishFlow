@@ -821,6 +821,14 @@ impl ReadyAppState {
             ui.small(
                 egui::RichText::new(self.locale.text(ShellText::InspectorProperties)).strong(),
             );
+            if let Some(command_id) = detail.property_batch_commit_command_id.as_ref() {
+                if ui
+                    .small_button(self.locale.text(ShellText::InspectorFieldApplyAll))
+                    .clicked()
+                {
+                    self.dispatch_inspector_field_draft_batch_commit(command_id.clone());
+                }
+            }
             egui::Grid::new(format!("inspector-fields:{}", detail.target.command_id))
                 .num_columns(5)
                 .spacing([8.0, 3.0])

@@ -47,6 +47,9 @@ pub enum StudioGuiEvent {
     InspectorFieldDraftCommitRequested {
         command_id: String,
     },
+    InspectorFieldDraftBatchCommitRequested {
+        command_id: String,
+    },
     CanvasSuggestionAcceptRequested,
     CanvasSuggestionRejectRequested,
     CanvasSuggestionFocusNextRequested,
@@ -285,6 +288,9 @@ impl StudioGuiDriver {
             StudioGuiDriverOutcome::HostCommand(
                 StudioGuiHostCommandOutcome::InspectorDraftCommitted(dispatch),
             ) => Some(&dispatch.native_timers),
+            StudioGuiDriverOutcome::HostCommand(
+                StudioGuiHostCommandOutcome::InspectorDraftBatchCommitted(dispatch),
+            ) => Some(&dispatch.native_timers),
             StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::WindowClosed(
                 closed,
             )) => Some(&closed.native_timers),
@@ -323,6 +329,9 @@ fn layout_scope_window_id(outcome: &StudioGuiDriverOutcome) -> Option<StudioWind
         ) => Some(dispatch.target_window_id),
         StudioGuiDriverOutcome::HostCommand(
             StudioGuiHostCommandOutcome::InspectorDraftCommitted(dispatch),
+        ) => Some(dispatch.target_window_id),
+        StudioGuiDriverOutcome::HostCommand(
+            StudioGuiHostCommandOutcome::InspectorDraftBatchCommitted(dispatch),
         ) => Some(dispatch.target_window_id),
         StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::UiCommandDispatched(
             crate::StudioGuiHostUiCommandDispatchResult::ExecutedCanvasInteraction {
@@ -447,6 +456,9 @@ fn surfaced_ui_commands(
         StudioGuiDriverOutcome::HostCommand(
             StudioGuiHostCommandOutcome::InspectorDraftCommitted(dispatch),
         ) => Some(dispatch.ui_commands.clone()),
+        StudioGuiDriverOutcome::HostCommand(
+            StudioGuiHostCommandOutcome::InspectorDraftBatchCommitted(dispatch),
+        ) => Some(dispatch.ui_commands.clone()),
         StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::UiCommandDispatched(
             StudioGuiHostUiCommandDispatchResult::ExecutedCanvasInteraction { result, .. },
         )) => Some(result.ui_commands.clone()),
@@ -493,6 +505,9 @@ fn surfaced_canvas_state(outcome: &StudioGuiDriverOutcome) -> Option<StudioGuiCa
         ) => Some(dispatch.canvas.clone()),
         StudioGuiDriverOutcome::HostCommand(
             StudioGuiHostCommandOutcome::InspectorDraftCommitted(dispatch),
+        ) => Some(dispatch.canvas.clone()),
+        StudioGuiDriverOutcome::HostCommand(
+            StudioGuiHostCommandOutcome::InspectorDraftBatchCommitted(dispatch),
         ) => Some(dispatch.canvas.clone()),
         StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::UiCommandDispatched(
             StudioGuiHostUiCommandDispatchResult::ExecutedCanvasInteraction { result, .. },
@@ -570,6 +585,11 @@ fn route_driver_event(event: &StudioGuiEvent, registry: &StudioGuiCommandRegistr
         }),
         StudioGuiEvent::InspectorFieldDraftCommitRequested { command_id } => {
             DriverRoute::HostCommand(StudioGuiHostCommand::DispatchInspectorDraftCommit {
+                command_id: command_id.clone(),
+            })
+        }
+        StudioGuiEvent::InspectorFieldDraftBatchCommitRequested { command_id } => {
+            DriverRoute::HostCommand(StudioGuiHostCommand::DispatchInspectorDraftBatchCommit {
                 command_id: command_id.clone(),
             })
         }

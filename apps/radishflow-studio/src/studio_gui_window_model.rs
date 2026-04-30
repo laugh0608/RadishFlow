@@ -169,6 +169,7 @@ pub struct StudioGuiWindowInspectorTargetDetailModel {
     pub title: String,
     pub summary_rows: Vec<StudioGuiWindowInspectorTargetSummaryRowModel>,
     pub property_fields: Vec<StudioGuiWindowInspectorTargetFieldModel>,
+    pub property_batch_commit_command_id: Option<String>,
     pub unit_ports: Vec<StudioGuiWindowInspectorTargetPortModel>,
     pub latest_stream_result: Option<StudioGuiWindowStreamResultModel>,
     pub related_steps: Vec<StudioGuiWindowSolveStepModel>,
@@ -836,6 +837,7 @@ fn inspector_target_detail_model_from_snapshot(
             .iter()
             .map(inspector_field_model_from_snapshot)
             .collect(),
+        property_batch_commit_command_id: detail.property_batch_commit_command_id.clone(),
         unit_ports: detail
             .unit_ports
             .iter()

@@ -1216,6 +1216,12 @@ fn format_platform_dispatch_activity(dispatch: &StudioGuiPlatformDispatch) -> St
             crate::StudioGuiHostCommandOutcome::InspectorDraftCommitted(dispatch),
         ) => format!("inspector draft commit #{}", dispatch.target_window_id),
         StudioGuiDriverOutcome::HostCommand(
+            crate::StudioGuiHostCommandOutcome::InspectorDraftBatchCommitted(dispatch),
+        ) => format!(
+            "inspector draft batch commit #{}",
+            dispatch.target_window_id
+        ),
+        StudioGuiDriverOutcome::HostCommand(
             crate::StudioGuiHostCommandOutcome::WindowDropTargetQueried(result),
         ) => format!("drop query {:?}", result.query),
         StudioGuiDriverOutcome::HostCommand(

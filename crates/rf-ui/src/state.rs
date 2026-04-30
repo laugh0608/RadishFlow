@@ -16,7 +16,9 @@ use crate::canvas_interaction::{
     CanvasSuggestion, CanvasSuggestionAcceptance, CanvasViewMode, SuggestionSource,
     SuggestionStatus,
 };
-use crate::commands::{CommandHistory, CommandHistoryEntry, CommandValue, DocumentCommand};
+use crate::commands::{
+    CommandHistory, CommandHistoryEntry, CommandValue, DocumentCommand, StreamSpecificationValue,
+};
 use crate::diagnostics::DiagnosticSummary;
 use crate::ids::{DocumentId, SolveSnapshotId};
 use crate::run::{RunStatus, SimulationMode, SolvePendingReason, SolveSessionState, SolveSnapshot};
@@ -269,6 +271,14 @@ pub struct StreamInspectorDraftUpdateResult {
 #[derive(Debug, Clone, PartialEq)]
 pub struct StreamInspectorDraftCommitResult {
     pub key: String,
+    pub active_target: InspectorTarget,
+    pub command: DocumentCommand,
+    pub revision: u64,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct StreamInspectorDraftBatchCommitResult {
+    pub keys: Vec<String>,
     pub active_target: InspectorTarget,
     pub command: DocumentCommand,
     pub revision: u64,
@@ -874,6 +884,75 @@ impl AppState {
         }))
     }
 
+    pub fn commit_stream_inspector_drafts(
+        &mut self,
+        stream_id: &StreamId,
+        changed_at: DateTimeUtc,
+    ) -> RfResult<Option<StreamInspectorDraftBatchCommitResult>> {
+        let active_target = InspectorTarget::Stream(stream_id.clone());
+        if self.workspace.drafts.active_target.as_ref() != Some(&active_target) {
+            return Ok(None);
+        }
+
+        if !self
+            .workspace
+            .document
+            .flowsheet
+            .streams
+            .contains_key(stream_id)
+        {
+            return Ok(None);
+        }
+
+        let mut next_flowsheet = self.workspace.document.flowsheet.clone();
+        let mut keys = Vec::new();
+        let mut values = Vec::new();
+
+        for field in stream_inspector_draft_fields() {
+            let key = stream_inspector_draft_key(stream_id, field);
+            let Some(draft_value) = self.workspace.drafts.fields.get(&key) else {
+                continue;
+            };
+            let Some(command_value) = stream_command_value_from_draft(field, draft_value)? else {
+                continue;
+            };
+
+            apply_stream_specification_value(
+                &mut next_flowsheet,
+                stream_id,
+                field,
+                &command_value,
+            )?;
+            keys.push(key);
+            values.push(StreamSpecificationValue {
+                field: field.as_str().to_string(),
+                value: command_value,
+            });
+        }
+
+        if values.is_empty() {
+            return Ok(None);
+        }
+
+        let command = stream_specification_command(stream_id, values);
+        let revision = self.workspace.commit_inspector_document_change(
+            command.clone(),
+            next_flowsheet,
+            changed_at,
+        );
+        for key in &keys {
+            self.workspace.drafts.fields.remove(key);
+        }
+        self.refresh_run_panel_state();
+
+        Ok(Some(StreamInspectorDraftBatchCommitResult {
+            keys,
+            active_target,
+            command,
+            revision,
+        }))
+    }
+
     pub fn begin_browser_login(&mut self, authority_url: impl Into<String>) {
         self.auth_session.begin_browser_login(authority_url);
     }
@@ -1003,6 +1082,37 @@ fn stream_command_value_from_draft(
             Ok(Some(CommandValue::Number(value)))
         }
         _ => Ok(None),
+    }
+}
+
+fn stream_inspector_draft_fields() -> [StreamInspectorDraftField; 4] {
+    [
+        StreamInspectorDraftField::Name,
+        StreamInspectorDraftField::TemperatureK,
+        StreamInspectorDraftField::PressurePa,
+        StreamInspectorDraftField::TotalMolarFlowMolS,
+    ]
+}
+
+fn stream_specification_command(
+    stream_id: &StreamId,
+    values: Vec<StreamSpecificationValue>,
+) -> DocumentCommand {
+    let mut values = values;
+    if values.len() == 1 {
+        let value = values
+            .pop()
+            .expect("single stream specification value should exist");
+        DocumentCommand::SetStreamSpecification {
+            stream_id: stream_id.clone(),
+            field: value.field,
+            value: value.value,
+        }
+    } else {
+        DocumentCommand::SetStreamSpecifications {
+            stream_id: stream_id.clone(),
+            values,
+        }
     }
 }
 

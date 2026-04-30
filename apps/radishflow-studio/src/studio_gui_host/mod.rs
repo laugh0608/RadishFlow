@@ -197,6 +197,9 @@ pub enum StudioGuiHostCommand {
     DispatchInspectorDraftCommit {
         command_id: String,
     },
+    DispatchInspectorDraftBatchCommit {
+        command_id: String,
+    },
     QueryWindowDropTarget {
         window_id: Option<StudioWindowHostId>,
         query: StudioGuiWindowDropTargetQuery,
@@ -227,6 +230,7 @@ pub enum StudioGuiHostCommandOutcome {
     UiCommandDispatched(StudioGuiHostUiCommandDispatchResult),
     InspectorDraftUpdated(StudioGuiHostDispatch),
     InspectorDraftCommitted(StudioGuiHostDispatch),
+    InspectorDraftBatchCommitted(StudioGuiHostDispatch),
     WindowDropTargetQueried(StudioGuiHostWindowDropTargetQueryResult),
     WindowDropTargetPreviewUpdated(StudioGuiHostWindowDropTargetQueryResult),
     WindowDropTargetPreviewCleared(StudioGuiHostWindowDropPreviewClearResult),
