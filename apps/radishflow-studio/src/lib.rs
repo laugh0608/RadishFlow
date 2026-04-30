@@ -4,6 +4,7 @@ mod bootstrap;
 mod control_plane_client;
 mod control_plane_sync;
 mod document_history_driver;
+mod document_lifecycle_driver;
 mod entitlement_control;
 mod entitlement_panel_driver;
 mod entitlement_preflight;
@@ -73,6 +74,10 @@ pub use control_plane_client::{
 pub use control_plane_sync::{EntitlementSyncResult, RadishFlowControlPlaneSyncService};
 pub use document_history_driver::{
     DocumentHistoryOutcome, dispatch_document_history, dispatch_document_history_at,
+};
+pub use document_lifecycle_driver::{
+    DocumentLifecycleOutcome, FILE_SAVE_AS_COMMAND_ID, FILE_SAVE_COMMAND_ID,
+    StudioDocumentLifecycleAction, StudioDocumentLifecycleCommand, dispatch_document_lifecycle,
 };
 pub use entitlement_control::{
     StudioEntitlementAction, StudioEntitlementActionOutcome, StudioEntitlementFailure,

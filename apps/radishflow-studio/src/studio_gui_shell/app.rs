@@ -37,6 +37,103 @@ impl ReadyAppState {
         self.request_open_project(project_path, "project picker");
     }
 
+    pub(super) fn save_project(&mut self) {
+        match self.dispatch_event_result(StudioGuiEvent::UiCommandRequested {
+            command_id: radishflow_studio::FILE_SAVE_COMMAND_ID.to_string(),
+        }) {
+            Ok(dispatch) => {
+                let document = &dispatch.dispatch.window.runtime.workspace_document;
+                let Some(path) = document.project_path.as_ref() else {
+                    self.project_open.notice = Some(ProjectOpenNotice {
+                        level: ProjectOpenNoticeLevel::Warning,
+                        title: "Project save skipped".to_string(),
+                        detail: "Current document has no project path; use Save As.".to_string(),
+                    });
+                    return;
+                };
+                let level = if document.has_unsaved_changes {
+                    ProjectOpenNoticeLevel::Warning
+                } else {
+                    ProjectOpenNoticeLevel::Info
+                };
+                self.project_open.notice = Some(ProjectOpenNotice {
+                    level,
+                    title: if document.has_unsaved_changes {
+                        "Project save incomplete".to_string()
+                    } else {
+                        "Project saved".to_string()
+                    },
+                    detail: format!("Saved revision {} to {path}", document.revision),
+                });
+            }
+            Err(error) => {
+                self.project_open.notice = Some(ProjectOpenNotice {
+                    level: ProjectOpenNoticeLevel::Error,
+                    title: "Project save failed".to_string(),
+                    detail: format!("[{}] {}", error.code().as_str(), error.message()),
+                });
+            }
+        }
+    }
+
+    pub(super) fn save_project_as_from_picker(&mut self) {
+        let Some(project_path) = self.project_file_picker.pick_save_project_file() else {
+            self.project_open.notice = Some(ProjectOpenNotice {
+                level: ProjectOpenNoticeLevel::Info,
+                title: "Save As canceled".to_string(),
+                detail: "Current workspace remains open.".to_string(),
+            });
+            return;
+        };
+
+        let Some(window_id) = self.current_window_id() else {
+            self.project_open.notice = Some(ProjectOpenNotice {
+                level: ProjectOpenNoticeLevel::Error,
+                title: "Save As unavailable".to_string(),
+                detail: "Open a Studio window before saving the project.".to_string(),
+            });
+            return;
+        };
+
+        let trigger = StudioRuntimeTrigger::DocumentLifecycle(
+            radishflow_studio::StudioDocumentLifecycleCommand::SaveAs {
+                path: project_path.clone(),
+            },
+        );
+        match self
+            .dispatch_event_result(StudioGuiEvent::WindowTriggerRequested { window_id, trigger })
+        {
+            Ok(dispatch) => {
+                let document = &dispatch.dispatch.window.runtime.workspace_document;
+                self.project_open.path_input = project_path.display().to_string();
+                let recent_projects_notice =
+                    self.record_and_persist_recent_project(project_path.clone());
+                self.project_open.notice =
+                    Some(recent_projects_notice.unwrap_or(ProjectOpenNotice {
+                        level: ProjectOpenNoticeLevel::Info,
+                        title: "Project saved as".to_string(),
+                        detail: format!(
+                            "Saved revision {} to {}",
+                            document.revision,
+                            project_path.display()
+                        ),
+                    }));
+            }
+            Err(error) => {
+                self.project_open.notice = Some(ProjectOpenNotice {
+                    level: ProjectOpenNoticeLevel::Error,
+                    title: "Save As failed".to_string(),
+                    detail: format!(
+                        "[{}] {} ({})",
+                        error.code().as_str(),
+                        error.message(),
+                        project_path.display()
+                    ),
+                });
+            }
+        }
+    }
+
     pub(super) fn request_open_project(&mut self, project_path: PathBuf, source_label: &str) {
         if self
             .platform_host
@@ -354,12 +451,7 @@ impl ReadyAppState {
     }
 
     pub(super) fn dispatch_event(&mut self, event: StudioGuiEvent) {
-        match self
-            .platform_host
-            .dispatch_event_and_execute_platform_timer(
-                event.clone(),
-                &mut self.platform_timer_executor,
-            ) {
+        match self.dispatch_event_result(event.clone()) {
             Ok(_) => {}
             Err(error) => {
                 let message = format!("[{}] {}", error.code().as_str(), error.message());
@@ -367,6 +459,14 @@ impl ReadyAppState {
                     .record_activity_line(format!("event failed: {message}"));
             }
         }
+    }
+
+    pub(super) fn dispatch_event_result(
+        &mut self,
+        event: StudioGuiEvent,
+    ) -> RfResult<StudioGuiPlatformExecutedDispatch> {
+        self.platform_host
+            .dispatch_event_and_execute_platform_timer(event, &mut self.platform_timer_executor)
     }
 
     pub(super) fn drain_due_timers(&mut self, ctx: &egui::Context) {

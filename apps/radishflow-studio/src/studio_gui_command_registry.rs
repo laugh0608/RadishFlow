@@ -124,6 +124,7 @@ pub struct StudioGuiCommandMenuCommandModel {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StudioGuiCommandGroup {
+    File,
     Edit,
     RunPanel,
     Recovery,
@@ -147,6 +148,7 @@ impl StudioGuiCommandRegistry {
         canvas_target_window_id: Option<StudioWindowHostId>,
     ) -> Self {
         let mut run_panel = Vec::new();
+        let mut file = Vec::new();
         let mut edit = Vec::new();
         let mut recovery = Vec::new();
         let mut entitlement = Vec::new();
@@ -174,6 +176,7 @@ impl StudioGuiCommandRegistry {
                 shortcut: defaults.shortcut,
             };
             match action.group {
+                StudioAppHostUiCommandGroup::File => file.push(entry),
                 StudioAppHostUiCommandGroup::Edit => edit.push(entry),
                 StudioAppHostUiCommandGroup::RunPanel => run_panel.push(entry),
                 StudioAppHostUiCommandGroup::Recovery => recovery.push(entry),
@@ -208,6 +211,14 @@ impl StudioGuiCommandRegistry {
         }
 
         let mut sections = Vec::new();
+        if !file.is_empty() {
+            file.sort_by_key(|entry| entry.sort_order);
+            sections.push(StudioGuiCommandSection {
+                group: StudioGuiCommandGroup::File,
+                title: "File",
+                commands: file,
+            });
+        }
         if !edit.is_empty() {
             edit.sort_by_key(|entry| entry.sort_order);
             sections.push(StudioGuiCommandSection {
@@ -302,6 +313,11 @@ struct StudioGuiCommandDefaults {
 
 fn command_defaults(command_id: &str) -> StudioGuiCommandDefaults {
     match command_id {
+        "file.save" => StudioGuiCommandDefaults {
+            menu_path: &["File", "Save"],
+            search_terms: &["file", "save", "project"],
+            shortcut: None,
+        },
         "edit.undo" => StudioGuiCommandDefaults {
             menu_path: &["Edit", "Undo"],
             search_terms: &["edit", "undo", "history"],

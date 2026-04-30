@@ -2,6 +2,7 @@ use super::*;
 use radishflow_studio::{
     StudioRuntimeEntitlementPreflight, StudioRuntimeEntitlementSeed, StudioRuntimeTrigger,
 };
+use rf_store::read_project_file;
 use std::{fs, path::PathBuf, time::UNIX_EPOCH};
 
 fn lease_expiring_config() -> StudioRuntimeConfig {
@@ -1011,6 +1012,53 @@ fn canceling_project_picker_keeps_current_workspace_active() {
 }
 
 #[test]
+fn save_project_as_from_picker_writes_project_and_records_recent_project() {
+    let config = synced_workspace_config();
+    let preferences_path = test_preferences_path("save-as-picker");
+    let target_project = std::env::temp_dir().join(format!(
+        "radishflow-studio-shell-save-as-{}.rfproj.json",
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("expected current timestamp")
+            .as_nanos()
+    ));
+    let mut app = ReadyAppState::from_config_with_project_file_picker(
+        &config,
+        preferences_path.clone(),
+        Box::new(TestProjectFilePicker::new(Some(target_project.clone()))),
+    )
+    .expect("expected app state");
+
+    app.save_project_as_from_picker();
+
+    let window = app.platform_host.snapshot().window_model();
+    assert_eq!(
+        window.runtime.workspace_document.project_path.as_deref(),
+        Some(target_project.display().to_string().as_str())
+    );
+    assert!(!window.runtime.workspace_document.has_unsaved_changes);
+    assert_eq!(
+        app.project_open.path_input,
+        target_project.display().to_string()
+    );
+    assert_eq!(
+        app.project_open.recent_projects.first(),
+        Some(&target_project)
+    );
+    assert_eq!(
+        app.project_open
+            .notice
+            .as_ref()
+            .map(|notice| notice.title.as_str()),
+        Some("Project saved as")
+    );
+    assert!(read_project_file(&target_project).is_ok());
+
+    let _ = std::fs::remove_file(preferences_path);
+    let _ = std::fs::remove_file(target_project);
+}
+
+#[test]
 fn successful_project_opens_keep_recent_projects_deduped_and_ordered() {
     let mut app = ready_app_state(&synced_workspace_config());
     let examples = app
@@ -1614,6 +1662,10 @@ impl TestProjectFilePicker {
 
 impl ProjectFilePicker for TestProjectFilePicker {
     fn pick_project_file(&mut self) -> Option<PathBuf> {
+        self.selected_project.take()
+    }
+
+    fn pick_save_project_file(&mut self) -> Option<PathBuf> {
         self.selected_project.take()
     }
 }

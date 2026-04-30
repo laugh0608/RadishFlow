@@ -829,6 +829,12 @@ fn app_window_host_manager_reports_ui_action_states_for_run_panel_commands() {
         states,
         vec![
             StudioAppWindowHostUiActionState {
+                action: StudioAppWindowHostUiAction::SaveDocument,
+                availability: StudioAppWindowHostUiActionAvailability::Enabled {
+                    target_window_id: second.window_id,
+                },
+            },
+            StudioAppWindowHostUiActionState {
                 action: StudioAppWindowHostUiAction::UndoDocumentCommand,
                 availability: StudioAppWindowHostUiActionAvailability::Disabled {
                     reason: StudioAppWindowHostUiActionDisabledReason::UndoUnavailable,
@@ -912,6 +918,12 @@ fn app_window_host_manager_reports_ui_action_state_for_foreground_recovery() {
     assert_eq!(
         states,
         vec![
+            StudioAppWindowHostUiActionState {
+                action: StudioAppWindowHostUiAction::SaveDocument,
+                availability: StudioAppWindowHostUiActionAvailability::Enabled {
+                    target_window_id: second.window_id,
+                },
+            },
             StudioAppWindowHostUiActionState {
                 action: StudioAppWindowHostUiAction::UndoDocumentCommand,
                 availability: StudioAppWindowHostUiActionAvailability::Disabled {

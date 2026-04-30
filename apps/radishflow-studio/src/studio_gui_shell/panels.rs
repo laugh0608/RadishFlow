@@ -285,6 +285,18 @@ impl ReadyAppState {
             );
             ui.horizontal_wrapped(|ui| {
                 if ui
+                    .button(self.locale.text(ShellText::SaveProject))
+                    .clicked()
+                {
+                    self.save_project();
+                }
+                if ui
+                    .button(self.locale.text(ShellText::SaveProjectAs))
+                    .clicked()
+                {
+                    self.save_project_as_from_picker();
+                }
+                if ui
                     .button(self.locale.text(ShellText::OpenProject))
                     .clicked()
                 {

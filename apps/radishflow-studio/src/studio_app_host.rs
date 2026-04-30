@@ -19,6 +19,7 @@ use crate::{
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StudioAppHostUiAction {
+    SaveDocument,
     UndoDocumentCommand,
     RedoDocumentCommand,
     RunManualWorkspace,
@@ -33,6 +34,7 @@ pub enum StudioAppHostUiAction {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StudioAppHostUiActionDisabledReason {
     NoRegisteredWindow,
+    SaveUnavailable,
     UndoUnavailable,
     RedoUnavailable,
     RunManualUnavailable,
@@ -95,6 +97,7 @@ pub struct StudioAppHostUiActionModel {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StudioAppHostUiCommandGroup {
+    File,
     Edit,
     RunPanel,
     Recovery,
@@ -1325,6 +1328,7 @@ fn map_command(command: StudioAppHostCommand) -> StudioAppWindowHostCommand {
 impl From<StudioAppHostUiAction> for StudioAppWindowHostUiAction {
     fn from(value: StudioAppHostUiAction) -> Self {
         match value {
+            StudioAppHostUiAction::SaveDocument => Self::SaveDocument,
             StudioAppHostUiAction::UndoDocumentCommand => Self::UndoDocumentCommand,
             StudioAppHostUiAction::RedoDocumentCommand => Self::RedoDocumentCommand,
             StudioAppHostUiAction::RunManualWorkspace => Self::RunManualWorkspace,
@@ -1341,6 +1345,7 @@ impl From<StudioAppHostUiAction> for StudioAppWindowHostUiAction {
 impl From<StudioAppWindowHostUiAction> for StudioAppHostUiAction {
     fn from(value: StudioAppWindowHostUiAction) -> Self {
         match value {
+            StudioAppWindowHostUiAction::SaveDocument => Self::SaveDocument,
             StudioAppWindowHostUiAction::UndoDocumentCommand => Self::UndoDocumentCommand,
             StudioAppWindowHostUiAction::RedoDocumentCommand => Self::RedoDocumentCommand,
             StudioAppWindowHostUiAction::RunManualWorkspace => Self::RunManualWorkspace,
@@ -1360,6 +1365,7 @@ impl From<StudioAppWindowHostUiActionDisabledReason> for StudioAppHostUiActionDi
             StudioAppWindowHostUiActionDisabledReason::NoRegisteredWindow => {
                 Self::NoRegisteredWindow
             }
+            StudioAppWindowHostUiActionDisabledReason::SaveUnavailable => Self::SaveUnavailable,
             StudioAppWindowHostUiActionDisabledReason::UndoUnavailable => Self::UndoUnavailable,
             StudioAppWindowHostUiActionDisabledReason::RedoUnavailable => Self::RedoUnavailable,
             StudioAppWindowHostUiActionDisabledReason::RunManualUnavailable => {
@@ -1419,6 +1425,12 @@ fn ui_command_model_from_states(
 
 fn ui_action_model_from_state(state: StudioAppHostUiActionState) -> StudioAppHostUiActionModel {
     let (command_id, group, sort_order, label) = match state.action {
+        StudioAppHostUiAction::SaveDocument => (
+            crate::FILE_SAVE_COMMAND_ID,
+            StudioAppHostUiCommandGroup::File,
+            10,
+            "Save",
+        ),
         StudioAppHostUiAction::UndoDocumentCommand => (
             crate::EDIT_UNDO_COMMAND_ID,
             StudioAppHostUiCommandGroup::Edit,
@@ -1477,6 +1489,9 @@ fn ui_action_model_from_state(state: StudioAppHostUiActionState) -> StudioAppHos
     let (enabled, detail, target_window_id) = match state.availability {
         StudioAppHostUiActionAvailability::Enabled { target_window_id } => {
             let detail = match state.action {
+                StudioAppHostUiAction::SaveDocument => {
+                    "Save the current document to its project path"
+                }
                 StudioAppHostUiAction::UndoDocumentCommand => {
                     "Undo the latest document command in the target window"
                 }
@@ -1513,6 +1528,9 @@ fn ui_action_model_from_state(state: StudioAppHostUiActionState) -> StudioAppHos
             target_window_id,
         } => {
             let detail = match state.action {
+                StudioAppHostUiAction::SaveDocument => {
+                    "Open a studio window before saving the document"
+                }
                 StudioAppHostUiAction::UndoDocumentCommand => {
                     "Open a studio window before undoing document commands"
                 }
@@ -1544,6 +1562,14 @@ fn ui_action_model_from_state(state: StudioAppHostUiActionState) -> StudioAppHos
 
             (false, detail, target_window_id)
         }
+        StudioAppHostUiActionAvailability::Disabled {
+            reason: StudioAppHostUiActionDisabledReason::SaveUnavailable,
+            target_window_id,
+        } => (
+            false,
+            "The current document has no project path; use Save As from the workspace panel",
+            target_window_id,
+        ),
         StudioAppHostUiActionAvailability::Disabled {
             reason: StudioAppHostUiActionDisabledReason::UndoUnavailable,
             target_window_id,
@@ -1636,7 +1662,8 @@ fn placeholder_ui_command_models() -> Vec<StudioAppHostUiActionModel> {
 
 fn ui_command_group_sort_key(group: StudioAppHostUiCommandGroup) -> u16 {
     match group {
-        StudioAppHostUiCommandGroup::Edit => 10,
+        StudioAppHostUiCommandGroup::File => 10,
+        StudioAppHostUiCommandGroup::Edit => 20,
         StudioAppHostUiCommandGroup::RunPanel => 100,
         StudioAppHostUiCommandGroup::Recovery => 200,
         StudioAppHostUiCommandGroup::Entitlement => 300,
@@ -1801,6 +1828,12 @@ mod tests {
         assert_eq!(
             first.snapshot.ui_actions,
             vec![
+                StudioAppHostUiActionState {
+                    action: StudioAppHostUiAction::SaveDocument,
+                    availability: StudioAppHostUiActionAvailability::Enabled {
+                        target_window_id: first_window.window_id,
+                    },
+                },
                 StudioAppHostUiActionState {
                     action: StudioAppHostUiAction::UndoDocumentCommand,
                     availability: StudioAppHostUiActionAvailability::Disabled {
@@ -3102,6 +3135,19 @@ mod tests {
         let opened = controller.open_window().expect("expected window open");
         let no_recovery = opened.projection.state.ui_command_model();
         assert_eq!(
+            no_recovery.action(StudioAppHostUiAction::SaveDocument),
+            Some(&StudioAppHostUiActionModel {
+                action: Some(StudioAppHostUiAction::SaveDocument),
+                command_id: "file.save",
+                group: StudioAppHostUiCommandGroup::File,
+                sort_order: 10,
+                label: "Save",
+                enabled: true,
+                detail: "Save the current document to its project path",
+                target_window_id: Some(opened.registration.window_id),
+            })
+        );
+        assert_eq!(
             no_recovery.action(StudioAppHostUiAction::UndoDocumentCommand),
             Some(&StudioAppHostUiActionModel {
                 action: Some(StudioAppHostUiAction::UndoDocumentCommand),
@@ -3128,7 +3174,7 @@ mod tests {
             })
         );
         assert_eq!(
-            no_recovery.actions[2],
+            no_recovery.actions[3],
             StudioAppHostUiActionModel {
                 action: Some(StudioAppHostUiAction::RunManualWorkspace),
                 command_id: "run_panel.run_manual",
@@ -3141,7 +3187,7 @@ mod tests {
             }
         );
         assert_eq!(
-            no_recovery.actions[3],
+            no_recovery.actions[4],
             StudioAppHostUiActionModel {
                 action: Some(StudioAppHostUiAction::ResumeWorkspace),
                 command_id: "run_panel.resume_workspace",
@@ -3154,7 +3200,7 @@ mod tests {
             }
         );
         assert_eq!(
-            no_recovery.actions[4],
+            no_recovery.actions[5],
             StudioAppHostUiActionModel {
                 action: Some(StudioAppHostUiAction::HoldWorkspace),
                 command_id: "run_panel.set_hold",
@@ -3167,7 +3213,7 @@ mod tests {
             }
         );
         assert_eq!(
-            no_recovery.actions[5],
+            no_recovery.actions[6],
             StudioAppHostUiActionModel {
                 action: Some(StudioAppHostUiAction::ActivateWorkspace),
                 command_id: "run_panel.set_active",
@@ -3191,6 +3237,10 @@ mod tests {
                 detail: "No run panel recovery action is currently available in the target window",
                 target_window_id: Some(opened.registration.window_id),
             })
+        );
+        assert_eq!(
+            no_recovery.command("file.save"),
+            no_recovery.action(StudioAppHostUiAction::SaveDocument)
         );
         assert_eq!(
             no_recovery.command("run_panel.run_manual"),
@@ -3501,7 +3551,7 @@ mod tests {
                 target_window_id: Some(opened.registration.window_id),
             })
         );
-        assert_eq!(model.actions.len(), 9);
+        assert_eq!(model.actions.len(), 10);
 
         let _ = fs::remove_file(project_path);
     }

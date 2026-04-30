@@ -1,5 +1,7 @@
 use std::fs;
 
+use rf_store::read_project_file;
+
 use super::test_support::{
     find_menu_command, find_menu_command_by_label, flash_drum_local_rules_config,
     flash_drum_local_rules_synced_config, lease_expiring_config, synced_workspace_config,
@@ -68,6 +70,84 @@ fn gui_driver_routes_ui_command_request_through_single_event_entry() {
         }
         other => panic!("expected executed ui command outcome, got {other:?}"),
     }
+}
+
+#[test]
+fn gui_driver_saves_current_project_through_command_surface() {
+    let (config, project_path) = flash_drum_local_rules_synced_config();
+    let mut driver = StudioGuiDriver::new(&config).expect("expected driver");
+    driver
+        .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+        .expect("expected open dispatch");
+    let focus = driver
+        .dispatch_event(StudioGuiEvent::UiCommandRequested {
+            command_id: "inspector.focus_stream:stream-feed".to_string(),
+        })
+        .expect("expected stream focus dispatch");
+    let field = focus
+        .window
+        .runtime
+        .active_inspector_detail
+        .as_ref()
+        .and_then(|detail| {
+            detail
+                .property_fields
+                .iter()
+                .find(|field| field.key == "stream:stream-feed:temperature_k")
+        })
+        .cloned()
+        .expect("expected temperature field");
+    let update = driver
+        .dispatch_event(StudioGuiEvent::InspectorFieldDraftUpdateRequested {
+            command_id: field.draft_update_command_id,
+            raw_value: "333.5".to_string(),
+        })
+        .expect("expected draft update");
+    let commit_command_id = update
+        .window
+        .runtime
+        .active_inspector_detail
+        .as_ref()
+        .and_then(|detail| {
+            detail
+                .property_fields
+                .iter()
+                .find(|field| field.key == "stream:stream-feed:temperature_k")
+        })
+        .and_then(|field| field.commit_command_id.clone())
+        .expect("expected commit command");
+    let dirty = driver
+        .dispatch_event(StudioGuiEvent::InspectorFieldDraftCommitRequested {
+            command_id: commit_command_id,
+        })
+        .expect("expected draft commit");
+    assert!(dirty.window.runtime.workspace_document.has_unsaved_changes);
+
+    let save = driver
+        .dispatch_event(StudioGuiEvent::UiCommandRequested {
+            command_id: crate::FILE_SAVE_COMMAND_ID.to_string(),
+        })
+        .expect("expected save dispatch");
+
+    match &save.outcome {
+        StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::UiCommandDispatched(
+            StudioGuiHostUiCommandDispatchResult::Executed(executed),
+        )) => match &executed.effects.runtime_report.dispatch {
+            crate::StudioRuntimeDispatch::DocumentLifecycle(outcome) => {
+                assert_eq!(outcome.action, crate::StudioDocumentLifecycleAction::Save);
+                assert_eq!(outcome.path, project_path);
+                assert!(!outcome.has_unsaved_changes);
+            }
+            other => panic!("expected document lifecycle dispatch, got {other:?}"),
+        },
+        other => panic!("expected save command dispatch, got {other:?}"),
+    }
+    assert!(!save.window.runtime.workspace_document.has_unsaved_changes);
+    let saved = read_project_file(&project_path).expect("expected saved project");
+    assert_eq!(
+        saved.document.revision,
+        save.window.runtime.workspace_document.revision
+    );
 }
 
 #[test]
@@ -546,7 +626,7 @@ fn gui_driver_dispatch_snapshot_aggregates_gui_facing_state() {
             .sections
             .first()
             .map(|section| section.title),
-        Some("Edit")
+        Some("File")
     );
     assert_eq!(
         dispatch.snapshot.runtime.control_state.run_status,

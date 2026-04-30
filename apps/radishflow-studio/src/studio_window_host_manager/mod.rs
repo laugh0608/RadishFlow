@@ -7,9 +7,10 @@ use rf_ui::{
 };
 
 use crate::{
-    StudioDocumentHistoryCommand, StudioRuntimeConfig, StudioRuntimeTrigger, StudioWindowHostId,
-    StudioWindowHostLifecycleEvent, StudioWindowHostRetirement, StudioWindowSession,
-    StudioWindowSessionDispatch, StudioWindowSessionShutdown,
+    StudioDocumentHistoryCommand, StudioDocumentLifecycleCommand, StudioRuntimeConfig,
+    StudioRuntimeTrigger, StudioWindowHostId, StudioWindowHostLifecycleEvent,
+    StudioWindowHostRetirement, StudioWindowSession, StudioWindowSessionDispatch,
+    StudioWindowSessionShutdown,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -22,6 +23,7 @@ pub enum StudioAppWindowHostGlobalEvent {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StudioAppWindowHostUiAction {
+    SaveDocument,
     UndoDocumentCommand,
     RedoDocumentCommand,
     RunManualWorkspace,
@@ -36,6 +38,7 @@ pub enum StudioAppWindowHostUiAction {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StudioAppWindowHostUiActionDisabledReason {
     NoRegisteredWindow,
+    SaveUnavailable,
     UndoUnavailable,
     RedoUnavailable,
     RunManualUnavailable,
@@ -258,6 +261,17 @@ impl StudioAppWindowHostManager {
     ) -> StudioAppWindowHostUiActionState {
         let target_window_id = self.preferred_window_id();
         let availability = match (action, target_window_id) {
+            (StudioAppWindowHostUiAction::SaveDocument, Some(target_window_id))
+                if self.document_save_available() =>
+            {
+                StudioAppWindowHostUiActionAvailability::Enabled { target_window_id }
+            }
+            (StudioAppWindowHostUiAction::SaveDocument, Some(target_window_id)) => {
+                StudioAppWindowHostUiActionAvailability::Disabled {
+                    reason: StudioAppWindowHostUiActionDisabledReason::SaveUnavailable,
+                    target_window_id: Some(target_window_id),
+                }
+            }
             (StudioAppWindowHostUiAction::UndoDocumentCommand, Some(target_window_id))
                 if self.document_history_undo_available() =>
             {
@@ -372,6 +386,7 @@ impl StudioAppWindowHostManager {
 
     pub fn ui_action_states(&self) -> Vec<StudioAppWindowHostUiActionState> {
         vec![
+            self.ui_action_state(StudioAppWindowHostUiAction::SaveDocument),
             self.ui_action_state(StudioAppWindowHostUiAction::UndoDocumentCommand),
             self.ui_action_state(StudioAppWindowHostUiAction::RedoDocumentCommand),
             self.ui_action_state(StudioAppWindowHostUiAction::RunManualWorkspace),
@@ -475,6 +490,9 @@ impl StudioAppWindowHostManager {
         action: StudioAppWindowHostUiAction,
     ) -> RfResult<Option<StudioAppWindowHostDispatch>> {
         match action {
+            StudioAppWindowHostUiAction::SaveDocument => self.dispatch_preferred_trigger(
+                &StudioRuntimeTrigger::DocumentLifecycle(StudioDocumentLifecycleCommand::Save),
+            ),
             StudioAppWindowHostUiAction::UndoDocumentCommand => self.dispatch_preferred_trigger(
                 &StudioRuntimeTrigger::DocumentHistory(StudioDocumentHistoryCommand::Undo),
             ),
@@ -661,6 +679,16 @@ impl StudioAppWindowHostManager {
 
     fn run_panel_recovery_available(&self) -> bool {
         self.run_panel_widget().recovery_action().is_some()
+    }
+
+    fn document_save_available(&self) -> bool {
+        self.session
+            .host_port()
+            .runtime()
+            .app_state()
+            .workspace
+            .document_path
+            .is_some()
     }
 
     fn document_history_undo_available(&self) -> bool {
