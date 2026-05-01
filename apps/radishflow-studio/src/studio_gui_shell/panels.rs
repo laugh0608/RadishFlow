@@ -160,7 +160,16 @@ impl ReadyAppState {
                     if response.clicked() {
                         self.dispatch_ui_command(&item.command_id);
                     }
-                    ui.small(format!("{} · {}", item.target_id, item.detail));
+                    ui.horizontal_wrapped(|ui| {
+                        for badge in &item.status_badges {
+                            render_status_chip(
+                                ui,
+                                &badge.short_label,
+                                canvas_status_badge_color(badge.severity_label),
+                            );
+                        }
+                        ui.small(format!("{} · {}", item.target_id, item.detail));
+                    });
                     ui.end_row();
                 }
             });
@@ -172,6 +181,26 @@ impl ReadyAppState {
         widget: &radishflow_studio::StudioGuiCanvasWidgetModel,
     ) {
         ui.horizontal_wrapped(|ui| {
+            if let Some(status) = widget.view().run_status.as_ref() {
+                render_status_chip(
+                    ui,
+                    status.status_label,
+                    run_status_color(status.status_label),
+                );
+                if status.attention_count > 0 {
+                    render_status_chip(
+                        ui,
+                        &format!("{} attention", status.attention_count),
+                        notice_color(rf_ui::RunPanelNoticeLevel::Warning),
+                    );
+                }
+                if let Some(summary) = status.summary.as_ref() {
+                    ui.small(truncate_canvas_label(summary, 42));
+                } else if let Some(reason) = status.pending_reason_label {
+                    ui.small(format!("pending={reason}"));
+                }
+                ui.separator();
+            }
             ui.small(egui::RichText::new("Selection").strong());
             if let Some(selection) = widget.view().current_selection.as_ref() {
                 render_status_chip(
@@ -223,6 +252,7 @@ impl ReadyAppState {
         for stream in stream_lines {
             let geometry = canvas_stream_line_geometry(rect, stream);
             paint_canvas_stream_line(&painter, geometry, stream);
+            paint_canvas_stream_status_badges(&painter, geometry, &stream.status_badges);
             let stream_response = ui
                 .interact(
                     canvas_stream_line_hit_rect(geometry),
@@ -242,6 +272,7 @@ impl ReadyAppState {
         for unit in unit_blocks {
             let unit_rect = canvas_unit_block_rect(rect, unit.layout_slot);
             paint_canvas_unit_block(&painter, unit_rect, unit);
+            paint_canvas_unit_status_badges(&painter, unit_rect, &unit.status_badges);
             for port in &unit.ports {
                 let port_anchor = canvas_unit_port_anchor_in_rect(
                     unit_rect,
@@ -1957,6 +1988,19 @@ fn paint_canvas_stream_line(
     paint_canvas_stream_arrow(painter, geometry, color);
 }
 
+fn paint_canvas_stream_status_badges(
+    painter: &egui::Painter,
+    geometry: CanvasStreamLineGeometry,
+    badges: &[radishflow_studio::StudioGuiCanvasStatusBadgeViewModel],
+) {
+    if badges.is_empty() {
+        return;
+    }
+
+    let anchor = geometry.start.lerp(geometry.end, 0.5) + egui::vec2(0.0, -16.0);
+    paint_canvas_status_badges(painter, anchor, badges);
+}
+
 fn paint_canvas_stream_arrow(
     painter: &egui::Painter,
     geometry: CanvasStreamLineGeometry,
@@ -2096,6 +2140,40 @@ fn paint_canvas_unit_block(
         egui::FontId::proportional(11.0),
         egui::Color32::from_rgb(86, 96, 108),
     );
+}
+
+fn paint_canvas_unit_status_badges(
+    painter: &egui::Painter,
+    rect: egui::Rect,
+    badges: &[radishflow_studio::StudioGuiCanvasStatusBadgeViewModel],
+) {
+    if badges.is_empty() {
+        return;
+    }
+
+    paint_canvas_status_badges(painter, rect.right_top() + egui::vec2(-8.0, 8.0), badges);
+}
+
+fn paint_canvas_status_badges(
+    painter: &egui::Painter,
+    anchor: egui::Pos2,
+    badges: &[radishflow_studio::StudioGuiCanvasStatusBadgeViewModel],
+) {
+    let mut right = anchor.x;
+    for badge in badges.iter().rev() {
+        let width = 16.0 + badge.short_label.chars().count() as f32 * 6.0;
+        let rect =
+            egui::Rect::from_min_size(egui::pos2(right - width, anchor.y), egui::vec2(width, 18.0));
+        painter.rect_filled(rect, 4.0, canvas_status_badge_color(badge.severity_label));
+        painter.text(
+            rect.center(),
+            egui::Align2::CENTER_CENTER,
+            &badge.short_label,
+            egui::FontId::proportional(10.0),
+            egui::Color32::WHITE,
+        );
+        right = rect.left() - 4.0;
+    }
 }
 
 fn paint_canvas_unit_port_marker(
@@ -2286,4 +2364,12 @@ fn truncate_canvas_label(value: &str, max_chars: usize) -> String {
         label.push_str("...");
     }
     label
+}
+
+fn canvas_status_badge_color(severity_label: &str) -> egui::Color32 {
+    match severity_label {
+        "Error" => egui::Color32::from_rgb(180, 40, 40),
+        "Warning" => egui::Color32::from_rgb(180, 120, 20),
+        _ => egui::Color32::from_rgb(86, 96, 108),
+    }
 }

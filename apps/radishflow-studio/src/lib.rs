@@ -184,7 +184,8 @@ pub use studio_example_projects::{StudioExampleProjectModel, studio_example_proj
 pub use studio_gui_canvas_presentation::{
     StudioGuiCanvasFocusCalloutViewModel, StudioGuiCanvasObjectListItemViewModel,
     StudioGuiCanvasObjectListViewModel, StudioGuiCanvasPendingEditViewModel,
-    StudioGuiCanvasPresentation, StudioGuiCanvasSelectionViewModel,
+    StudioGuiCanvasPresentation, StudioGuiCanvasRunStatusViewModel,
+    StudioGuiCanvasSelectionViewModel, StudioGuiCanvasStatusBadgeViewModel,
     StudioGuiCanvasStreamLineEndpointViewModel, StudioGuiCanvasStreamLineViewModel,
     StudioGuiCanvasSuggestionViewModel, StudioGuiCanvasTextView, StudioGuiCanvasUnitBlockViewModel,
     StudioGuiCanvasUnitPortViewModel, StudioGuiCanvasViewModel,
@@ -202,15 +203,15 @@ pub use studio_gui_driver::{
     StudioGuiDriver, StudioGuiDriverDispatch, StudioGuiDriverOutcome, StudioGuiEvent,
 };
 pub use studio_gui_host::{
-    StudioGuiCanvasInteractionAction, StudioGuiCanvasState, StudioGuiCanvasStreamEndpointState,
-    StudioGuiCanvasStreamState, StudioGuiCanvasUnitPortState, StudioGuiCanvasUnitState,
-    StudioGuiHost, StudioGuiHostCanvasInteractionResult, StudioGuiHostCanvasSuggestionResult,
-    StudioGuiHostCloseWindowResult, StudioGuiHostCommand, StudioGuiHostCommandOutcome,
-    StudioGuiHostDispatch, StudioGuiHostGlobalEventDispatch, StudioGuiHostLifecycleDispatch,
-    StudioGuiHostLifecycleEvent, StudioGuiHostUiCommandDispatchResult,
-    StudioGuiHostWindowDropPreviewClearResult, StudioGuiHostWindowDropTargetApplyResult,
-    StudioGuiHostWindowDropTargetQueryResult, StudioGuiHostWindowLayoutUpdateResult,
-    StudioGuiHostWindowOpened,
+    StudioGuiCanvasDiagnosticState, StudioGuiCanvasInteractionAction, StudioGuiCanvasState,
+    StudioGuiCanvasStreamEndpointState, StudioGuiCanvasStreamState, StudioGuiCanvasUnitPortState,
+    StudioGuiCanvasUnitState, StudioGuiHost, StudioGuiHostCanvasInteractionResult,
+    StudioGuiHostCanvasSuggestionResult, StudioGuiHostCloseWindowResult, StudioGuiHostCommand,
+    StudioGuiHostCommandOutcome, StudioGuiHostDispatch, StudioGuiHostGlobalEventDispatch,
+    StudioGuiHostLifecycleDispatch, StudioGuiHostLifecycleEvent,
+    StudioGuiHostUiCommandDispatchResult, StudioGuiHostWindowDropPreviewClearResult,
+    StudioGuiHostWindowDropTargetApplyResult, StudioGuiHostWindowDropTargetQueryResult,
+    StudioGuiHostWindowLayoutUpdateResult, StudioGuiHostWindowOpened,
 };
 pub use studio_gui_platform_host::{
     StudioGuiPlatformAsyncRound, StudioGuiPlatformAsyncRoundAction,

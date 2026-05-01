@@ -123,9 +123,24 @@ pub struct StudioGuiHostCloseWindowResult {
 pub struct StudioGuiCanvasState {
     pub units: Vec<StudioGuiCanvasUnitState>,
     pub streams: Vec<StudioGuiCanvasStreamState>,
+    pub run_status: Option<rf_ui::RunStatus>,
+    pub pending_reason: Option<rf_ui::SolvePendingReason>,
+    pub latest_snapshot_id: Option<String>,
+    pub latest_snapshot_summary: Option<String>,
+    pub diagnostics: Vec<StudioGuiCanvasDiagnosticState>,
     pub suggestions: Vec<CanvasSuggestion>,
     pub focused_suggestion_id: Option<CanvasSuggestionId>,
     pub pending_edit: Option<CanvasEditIntent>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioGuiCanvasDiagnosticState {
+    pub severity: rf_ui::DiagnosticSeverity,
+    pub code: String,
+    pub message: String,
+    pub related_unit_ids: Vec<rf_types::UnitId>,
+    pub related_stream_ids: Vec<rf_types::StreamId>,
+    pub related_port_targets: Vec<rf_types::DiagnosticPortTarget>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

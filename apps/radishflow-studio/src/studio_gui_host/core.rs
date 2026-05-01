@@ -28,6 +28,8 @@ impl StudioGuiHost {
 
     pub fn canvas_state(&self) -> StudioGuiCanvasState {
         let canvas = self.controller.canvas_interaction();
+        let control_state = self.controller.workspace_control_state();
+        let latest_solve_snapshot = self.controller.latest_solve_snapshot();
         let active_unit_id = match self.controller.active_inspector_target() {
             Some(rf_ui::InspectorTarget::Unit(unit_id)) => Some(unit_id),
             _ => None,
@@ -101,9 +103,18 @@ impl StudioGuiHost {
                     .collect::<Vec<_>>()
             })
             .collect();
+        let diagnostics = canvas_diagnostics_from_runtime(
+            latest_solve_snapshot.as_ref(),
+            control_state.notice.as_ref(),
+        );
         StudioGuiCanvasState {
             units,
             streams,
+            run_status: Some(control_state.run_status),
+            pending_reason: control_state.pending_reason,
+            latest_snapshot_id: control_state.latest_snapshot_id,
+            latest_snapshot_summary: control_state.latest_snapshot_summary,
+            diagnostics,
             suggestions: canvas.suggestions,
             focused_suggestion_id: canvas.focused_suggestion_id,
             pending_edit: canvas.pending_edit,
@@ -324,6 +335,62 @@ fn canvas_material_stream_endpoints(
         }
     }
     endpoints
+}
+
+fn canvas_diagnostics_from_runtime(
+    latest_solve_snapshot: Option<&rf_ui::SolveSnapshot>,
+    notice: Option<&rf_ui::RunPanelNotice>,
+) -> Vec<StudioGuiCanvasDiagnosticState> {
+    if let Some(snapshot) = latest_solve_snapshot {
+        return snapshot
+            .diagnostics
+            .iter()
+            .map(|diagnostic| StudioGuiCanvasDiagnosticState {
+                severity: diagnostic.severity,
+                code: diagnostic.code.clone(),
+                message: diagnostic.message.clone(),
+                related_unit_ids: diagnostic.related_unit_ids.clone(),
+                related_stream_ids: diagnostic.related_stream_ids.clone(),
+                related_port_targets: diagnostic.related_port_targets.clone(),
+            })
+            .collect();
+    }
+
+    let Some(notice) = notice else {
+        return Vec::new();
+    };
+    let severity = match notice.level {
+        rf_ui::RunPanelNoticeLevel::Info => rf_ui::DiagnosticSeverity::Info,
+        rf_ui::RunPanelNoticeLevel::Warning => rf_ui::DiagnosticSeverity::Warning,
+        rf_ui::RunPanelNoticeLevel::Error => rf_ui::DiagnosticSeverity::Error,
+    };
+    let (related_unit_ids, related_stream_ids, related_port_targets) = notice
+        .recovery_action
+        .as_ref()
+        .map(|action| {
+            let related_unit_ids = action.target_unit_id.clone().into_iter().collect();
+            let related_stream_ids = action.target_stream_id.clone().into_iter().collect();
+            let related_port_targets = action
+                .target_unit_id
+                .as_ref()
+                .zip(action.target_port_name.as_ref())
+                .map(|(unit_id, port_name)| {
+                    rf_types::DiagnosticPortTarget::new(unit_id.clone(), port_name.clone())
+                })
+                .into_iter()
+                .collect();
+            (related_unit_ids, related_stream_ids, related_port_targets)
+        })
+        .unwrap_or_default();
+
+    vec![StudioGuiCanvasDiagnosticState {
+        severity,
+        code: "run_panel.notice".to_string(),
+        message: format!("{}: {}", notice.title, notice.message),
+        related_unit_ids,
+        related_stream_ids,
+        related_port_targets,
+    }]
 }
 
 fn active_inspector_detail_from_controller(
