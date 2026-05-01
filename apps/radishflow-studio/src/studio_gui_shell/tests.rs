@@ -169,6 +169,8 @@ fn shell_locale_defaults_to_chinese_and_can_translate_runtime_labels() {
         "快照 snapshot-a，序号 7"
     );
     assert_eq!(locale.text(ShellText::ResultInspector), "结果检查器");
+    assert_eq!(locale.text(ShellText::StreamComparison), "流股对比");
+    assert_eq!(locale.text(ShellText::Delta), "差值");
     assert_eq!(locale.text(ShellText::DiagnosticTargets), "诊断目标");
     assert_eq!(
         locale.text(ShellText::StaleStreamSelection),
@@ -218,11 +220,17 @@ fn result_inspector_state_tracks_selected_stream_per_snapshot() {
 
     app.result_inspector
         .select_stream(&snapshot.snapshot_id, "stream-heated");
+    app.result_inspector
+        .select_comparison_stream(&snapshot.snapshot_id, "stream-feed");
     assert_eq!(
         app.result_inspector
             .selected_stream_id_for_snapshot(&snapshot)
             .as_deref(),
         Some("stream-heated")
+    );
+    assert_eq!(
+        app.result_inspector.comparison_stream_id.as_deref(),
+        Some("stream-feed")
     );
 
     let mut next_snapshot = snapshot.clone();
@@ -236,6 +244,7 @@ fn result_inspector_state_tracks_selected_stream_per_snapshot() {
             .first()
             .map(|stream| stream.stream_id.as_str())
     );
+    assert_eq!(app.result_inspector.comparison_stream_id, None);
 }
 
 #[test]

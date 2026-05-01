@@ -140,6 +140,7 @@ struct ProjectOpenRequest {
 struct ResultInspectorState {
     snapshot_id: Option<String>,
     selected_stream_id: Option<String>,
+    comparison_stream_id: Option<String>,
 }
 
 #[derive(Debug, Default)]
@@ -235,6 +236,7 @@ impl ResultInspectorState {
         if self.snapshot_id.as_deref() != Some(snapshot.snapshot_id.as_str()) {
             self.snapshot_id = Some(snapshot.snapshot_id.clone());
             self.selected_stream_id = None;
+            self.comparison_stream_id = None;
         }
 
         if self
@@ -249,6 +251,23 @@ impl ResultInspectorState {
         {
             self.selected_stream_id = None;
         }
+        if self
+            .comparison_stream_id
+            .as_deref()
+            .is_some_and(|comparison_id| {
+                !snapshot
+                    .streams
+                    .iter()
+                    .any(|stream| stream.stream_id == comparison_id)
+                    || self
+                        .selected_stream_id
+                        .as_deref()
+                        .map(|selected_id| selected_id == comparison_id)
+                        .unwrap_or(false)
+            })
+        {
+            self.comparison_stream_id = None;
+        }
 
         if self.selected_stream_id.is_none() {
             self.selected_stream_id = snapshot
@@ -256,18 +275,31 @@ impl ResultInspectorState {
                 .first()
                 .map(|stream| stream.stream_id.clone());
         }
+        if self.comparison_stream_id.as_deref() == self.selected_stream_id.as_deref() {
+            self.comparison_stream_id = None;
+        }
 
         self.selected_stream_id.clone()
     }
 
     fn select_stream(&mut self, snapshot_id: &str, stream_id: impl Into<String>) {
+        let stream_id = stream_id.into();
         self.snapshot_id = Some(snapshot_id.to_string());
-        self.selected_stream_id = Some(stream_id.into());
+        if self.comparison_stream_id.as_deref() == Some(stream_id.as_str()) {
+            self.comparison_stream_id = None;
+        }
+        self.selected_stream_id = Some(stream_id);
+    }
+
+    fn select_comparison_stream(&mut self, snapshot_id: &str, stream_id: impl Into<String>) {
+        self.snapshot_id = Some(snapshot_id.to_string());
+        self.comparison_stream_id = Some(stream_id.into());
     }
 
     fn reset(&mut self) {
         self.snapshot_id = None;
         self.selected_stream_id = None;
+        self.comparison_stream_id = None;
     }
 }
 

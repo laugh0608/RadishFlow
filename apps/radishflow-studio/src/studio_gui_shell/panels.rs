@@ -446,7 +446,10 @@ impl ReadyAppState {
                     let selected_stream_id = self
                         .result_inspector
                         .selected_stream_id_for_snapshot(snapshot);
-                    let inspector = snapshot.result_inspector(selected_stream_id.as_deref());
+                    let inspector = snapshot.result_inspector_with_comparison(
+                        selected_stream_id.as_deref(),
+                        self.result_inspector.comparison_stream_id.as_deref(),
+                    );
                     self.render_result_inspector(ui, &inspector);
                 }
             } else if let Some(failure) = window.runtime.latest_failure.as_ref() {
@@ -1039,6 +1042,38 @@ impl ReadyAppState {
             return;
         }
 
+        if !inspector.comparison_options.is_empty() {
+            ui.collapsing(self.locale.text(ShellText::StreamComparison), |ui| {
+                ui.small(self.locale.text(ShellText::CompareWith));
+                ui.horizontal_wrapped(|ui| {
+                    for option in &inspector.comparison_options {
+                        let label = if option.label.is_empty() {
+                            option.stream_id.as_str()
+                        } else {
+                            option.label.as_str()
+                        };
+                        let response = ui
+                            .add(egui::Button::new(label).selected(option.is_selected))
+                            .on_hover_text(&option.summary);
+                        if response.clicked() {
+                            self.result_inspector.select_comparison_stream(
+                                &inspector.snapshot_id,
+                                option.stream_id.clone(),
+                            );
+                        }
+                    }
+                });
+                if inspector.has_stale_comparison {
+                    render_wrapped_small(ui, self.locale.text(ShellText::StaleStreamSelection));
+                }
+                if let Some(comparison) = inspector.comparison.as_ref() {
+                    self.render_result_inspector_comparison(ui, comparison);
+                } else {
+                    ui.small(self.locale.text(ShellText::NoComparison));
+                }
+            });
+        }
+
         ui.collapsing(self.locale.text(ShellText::RelatedSolveSteps), |ui| {
             if inspector.related_steps.is_empty() {
                 ui.small(self.locale.text(ShellText::NoRelatedSteps));
@@ -1080,6 +1115,73 @@ impl ReadyAppState {
                 ui.add_space(4.0);
             }
         });
+    }
+
+    fn render_result_inspector_comparison(
+        &self,
+        ui: &mut egui::Ui,
+        comparison: &radishflow_studio::StudioGuiWindowResultInspectorComparisonModel,
+    ) {
+        ui.add_space(4.0);
+        render_wrapped_small(
+            ui,
+            format!(
+                "{}: {}  {}: {}",
+                self.locale.text(ShellText::BaseStream),
+                comparison.base_stream_id,
+                self.locale.text(ShellText::ComparedStream),
+                comparison.compared_stream_id
+            ),
+        );
+        egui::Grid::new(format!(
+            "result-comparison-summary:{}:{}",
+            comparison.base_stream_id, comparison.compared_stream_id
+        ))
+        .num_columns(4)
+        .striped(true)
+        .show(ui, |ui| {
+            ui.small(self.locale.text(ShellText::StreamSummary));
+            ui.small(self.locale.text(ShellText::BaseStream));
+            ui.small(self.locale.text(ShellText::ComparedStream));
+            ui.small(self.locale.text(ShellText::Delta));
+            ui.end_row();
+            for row in &comparison.summary_rows {
+                ui.small(format!(
+                    "{} · {}",
+                    row.label,
+                    self.locale.runtime_label(row.detail_label)
+                ));
+                ui.small(&row.base_value);
+                ui.small(&row.compared_value);
+                ui.small(&row.delta_text);
+                ui.end_row();
+            }
+        });
+
+        if !comparison.composition_rows.is_empty() {
+            ui.add_space(4.0);
+            ui.small(egui::RichText::new(self.locale.text(ShellText::OverallComposition)).strong());
+            egui::Grid::new(format!(
+                "result-comparison-composition:{}:{}",
+                comparison.base_stream_id, comparison.compared_stream_id
+            ))
+            .num_columns(4)
+            .striped(true)
+            .show(ui, |ui| {
+                ui.small(self.locale.text(ShellText::Component));
+                ui.small(self.locale.text(ShellText::BaseStream));
+                ui.small(self.locale.text(ShellText::ComparedStream));
+                ui.small(self.locale.text(ShellText::Delta));
+                ui.end_row();
+                for row in &comparison.composition_rows {
+                    ui.small(&row.component_id);
+                    ui.small(&row.base_fraction_text);
+                    ui.small(&row.compared_fraction_text);
+                    ui.small(&row.delta_text);
+                    ui.end_row();
+                }
+            });
+        }
     }
 
     fn render_diagnostic_targets(

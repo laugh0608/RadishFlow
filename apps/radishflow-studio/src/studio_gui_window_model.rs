@@ -1,4 +1,4 @@
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 
 use crate::{
     EntitlementSessionHostRuntimeOutput, StudioExampleProjectModel, StudioGuiCanvasWidgetModel,
@@ -210,6 +210,9 @@ pub struct StudioGuiWindowInspectorTargetPortModel {
 pub struct StudioGuiWindowStreamResultModel {
     pub stream_id: String,
     pub label: String,
+    pub temperature_k: f64,
+    pub pressure_pa: f64,
+    pub total_molar_flow_mol_s: f64,
     pub temperature_text: String,
     pub pressure_text: String,
     pub molar_flow_text: String,
@@ -230,6 +233,7 @@ pub struct StudioGuiWindowStreamSummaryRowModel {
 #[derive(Debug, Clone, PartialEq)]
 pub struct StudioGuiWindowCompositionResultModel {
     pub component_id: String,
+    pub fraction: f64,
     pub fraction_text: String,
 }
 
@@ -266,10 +270,15 @@ pub struct StudioGuiWindowResultInspectorModel {
     pub snapshot_id: String,
     pub selected_stream_id: Option<String>,
     pub selected_stream: Option<StudioGuiWindowStreamResultModel>,
+    pub comparison_stream_id: Option<String>,
+    pub comparison_stream: Option<StudioGuiWindowStreamResultModel>,
     pub stream_options: Vec<StudioGuiWindowResultInspectorStreamOptionModel>,
+    pub comparison_options: Vec<StudioGuiWindowResultInspectorStreamOptionModel>,
+    pub comparison: Option<StudioGuiWindowResultInspectorComparisonModel>,
     pub related_steps: Vec<StudioGuiWindowSolveStepModel>,
     pub related_diagnostics: Vec<StudioGuiWindowDiagnosticModel>,
     pub has_stale_selection: bool,
+    pub has_stale_comparison: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -278,6 +287,31 @@ pub struct StudioGuiWindowResultInspectorStreamOptionModel {
     pub label: String,
     pub summary: String,
     pub is_selected: bool,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct StudioGuiWindowResultInspectorComparisonModel {
+    pub base_stream_id: String,
+    pub compared_stream_id: String,
+    pub summary_rows: Vec<StudioGuiWindowResultInspectorComparisonRowModel>,
+    pub composition_rows: Vec<StudioGuiWindowResultInspectorCompositionComparisonRowModel>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioGuiWindowResultInspectorComparisonRowModel {
+    pub label: &'static str,
+    pub detail_label: &'static str,
+    pub base_value: String,
+    pub compared_value: String,
+    pub delta_text: String,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct StudioGuiWindowResultInspectorCompositionComparisonRowModel {
+    pub component_id: String,
+    pub base_fraction_text: String,
+    pub compared_fraction_text: String,
+    pub delta_text: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -387,6 +421,14 @@ impl StudioGuiWindowSolveSnapshotModel {
         &self,
         requested_stream_id: Option<&str>,
     ) -> StudioGuiWindowResultInspectorModel {
+        self.result_inspector_with_comparison(requested_stream_id, None)
+    }
+
+    pub fn result_inspector_with_comparison(
+        &self,
+        requested_stream_id: Option<&str>,
+        requested_comparison_stream_id: Option<&str>,
+    ) -> StudioGuiWindowResultInspectorModel {
         let selected_stream_id = requested_stream_id
             .filter(|stream_id| {
                 self.streams
@@ -405,6 +447,32 @@ impl StudioGuiWindowSolveSnapshotModel {
                     .find(|stream| stream.stream_id == selected_id)
             })
             .cloned();
+        let comparison_stream_id = requested_comparison_stream_id
+            .filter(|stream_id| {
+                selected_stream_id
+                    .as_deref()
+                    .map(|selected_id| selected_id != *stream_id)
+                    .unwrap_or(true)
+                    && self
+                        .streams
+                        .iter()
+                        .any(|stream| stream.stream_id == *stream_id)
+            })
+            .map(str::to_string);
+        let has_stale_comparison = requested_comparison_stream_id.is_some()
+            && requested_comparison_stream_id.map(str::to_string) != comparison_stream_id;
+        let comparison_stream = comparison_stream_id
+            .as_deref()
+            .and_then(|comparison_id| {
+                self.streams
+                    .iter()
+                    .find(|stream| stream.stream_id == comparison_id)
+            })
+            .cloned();
+        let comparison = selected_stream
+            .as_ref()
+            .zip(comparison_stream.as_ref())
+            .map(|(base, compared)| result_inspector_comparison_model(base, compared));
         let related_steps: Vec<StudioGuiWindowSolveStepModel> = selected_stream_id
             .as_deref()
             .map(|selected_id| {
@@ -461,15 +529,45 @@ impl StudioGuiWindowSolveSnapshotModel {
                     .unwrap_or(false),
             })
             .collect();
+        let comparison_options = self
+            .streams
+            .iter()
+            .filter(|stream| {
+                selected_stream_id
+                    .as_deref()
+                    .map(|selected_id| selected_id != stream.stream_id)
+                    .unwrap_or(true)
+            })
+            .map(|stream| StudioGuiWindowResultInspectorStreamOptionModel {
+                stream_id: stream.stream_id.clone(),
+                label: stream.label.clone(),
+                summary: format!(
+                    "{} | T {} | P {} | F {}",
+                    stream.stream_id,
+                    stream.temperature_text,
+                    stream.pressure_text,
+                    stream.molar_flow_text
+                ),
+                is_selected: comparison_stream_id
+                    .as_deref()
+                    .map(|comparison_id| comparison_id == stream.stream_id)
+                    .unwrap_or(false),
+            })
+            .collect();
 
         StudioGuiWindowResultInspectorModel {
             snapshot_id: self.snapshot_id.clone(),
             selected_stream_id,
             selected_stream,
+            comparison_stream_id,
+            comparison_stream,
             stream_options,
+            comparison_options,
+            comparison,
             related_steps,
             related_diagnostics,
             has_stale_selection,
+            has_stale_comparison,
         }
     }
 }
@@ -1064,6 +1162,9 @@ fn stream_result_model_from_ui(
     StudioGuiWindowStreamResultModel {
         stream_id: stream.stream_id.as_str().to_string(),
         label: stream.label.clone(),
+        temperature_k: stream.temperature_k,
+        pressure_pa: stream.pressure_pa,
+        total_molar_flow_mol_s: stream.total_molar_flow_mol_s,
         temperature_text: temperature_text.clone(),
         pressure_text: pressure_text.clone(),
         molar_flow_text: molar_flow_text.clone(),
@@ -1090,6 +1191,7 @@ fn stream_result_model_from_ui(
             .map(
                 |(component_id, fraction)| StudioGuiWindowCompositionResultModel {
                     component_id: component_id.clone(),
+                    fraction: *fraction,
                     fraction_text: format_fraction(*fraction),
                 },
             )
@@ -1108,6 +1210,89 @@ fn stream_result_model_from_ui(
             .collect(),
         composition_text: format_composition(&stream.overall_mole_fractions),
         phase_text: format_phases(&stream.phases),
+    }
+}
+
+fn result_inspector_comparison_model(
+    base: &StudioGuiWindowStreamResultModel,
+    compared: &StudioGuiWindowStreamResultModel,
+) -> StudioGuiWindowResultInspectorComparisonModel {
+    let base_composition = base
+        .composition_rows
+        .iter()
+        .map(|row| (row.component_id.as_str(), row.fraction))
+        .collect::<BTreeMap<_, _>>();
+    let compared_composition = compared
+        .composition_rows
+        .iter()
+        .map(|row| (row.component_id.as_str(), row.fraction))
+        .collect::<BTreeMap<_, _>>();
+    let component_ids = base_composition
+        .keys()
+        .chain(compared_composition.keys())
+        .copied()
+        .collect::<BTreeSet<_>>();
+
+    StudioGuiWindowResultInspectorComparisonModel {
+        base_stream_id: base.stream_id.clone(),
+        compared_stream_id: compared.stream_id.clone(),
+        summary_rows: vec![
+            StudioGuiWindowResultInspectorComparisonRowModel {
+                label: "T",
+                detail_label: "Temperature",
+                base_value: base.temperature_text.clone(),
+                compared_value: compared.temperature_text.clone(),
+                delta_text: format_signed_delta(
+                    compared.temperature_k - base.temperature_k,
+                    "K",
+                    2,
+                ),
+            },
+            StudioGuiWindowResultInspectorComparisonRowModel {
+                label: "P",
+                detail_label: "Pressure",
+                base_value: base.pressure_text.clone(),
+                compared_value: compared.pressure_text.clone(),
+                delta_text: format_signed_delta(compared.pressure_pa - base.pressure_pa, "Pa", 0),
+            },
+            StudioGuiWindowResultInspectorComparisonRowModel {
+                label: "F",
+                detail_label: "Molar flow",
+                base_value: base.molar_flow_text.clone(),
+                compared_value: compared.molar_flow_text.clone(),
+                delta_text: format_signed_delta(
+                    compared.total_molar_flow_mol_s - base.total_molar_flow_mol_s,
+                    "mol/s",
+                    6,
+                ),
+            },
+        ],
+        composition_rows: component_ids
+            .into_iter()
+            .map(|component_id| {
+                let base_fraction = base_composition.get(component_id).copied().unwrap_or(0.0);
+                let compared_fraction = compared_composition
+                    .get(component_id)
+                    .copied()
+                    .unwrap_or(0.0);
+                StudioGuiWindowResultInspectorCompositionComparisonRowModel {
+                    component_id: component_id.to_string(),
+                    base_fraction_text: format_fraction(base_fraction),
+                    compared_fraction_text: format_fraction(compared_fraction),
+                    delta_text: format_signed_delta(compared_fraction - base_fraction, "", 4),
+                }
+            })
+            .collect(),
+    }
+}
+
+fn format_signed_delta(value: f64, unit: &str, decimals: usize) -> String {
+    let sign = if value >= 0.0 { "+" } else { "" };
+    let number = format!("{value:.decimals$}");
+    if unit.is_empty() {
+        format!("{sign}{number}")
+    } else {
+        format!("{sign}{number} {unit}")
     }
 }
 
@@ -1555,6 +1740,44 @@ mod tests {
                 .first()
                 .map(|stream| stream.stream_id.as_str())
         );
+
+        let comparison_inspector =
+            snapshot.result_inspector_with_comparison(Some("stream-feed"), Some("stream-heated"));
+        assert_eq!(
+            comparison_inspector.selected_stream_id.as_deref(),
+            Some("stream-feed")
+        );
+        assert_eq!(
+            comparison_inspector.comparison_stream_id.as_deref(),
+            Some("stream-heated")
+        );
+        assert!(
+            comparison_inspector
+                .comparison_options
+                .iter()
+                .all(|option| option.stream_id != "stream-feed")
+        );
+        let comparison = comparison_inspector
+            .comparison
+            .as_ref()
+            .expect("expected stream comparison model");
+        assert!(comparison.summary_rows.iter().any(|row| {
+            row.label == "T"
+                && row.detail_label == "Temperature"
+                && row.base_value.ends_with(" K")
+                && row.compared_value.ends_with(" K")
+                && row.delta_text.ends_with(" K")
+        }));
+        assert!(comparison.composition_rows.iter().any(|row| {
+            row.component_id == "component-a"
+                && !row.base_fraction_text.is_empty()
+                && !row.compared_fraction_text.is_empty()
+                && (row.delta_text.starts_with('+') || row.delta_text.starts_with('-'))
+        }));
+        let stale_comparison =
+            snapshot.result_inspector_with_comparison(Some("stream-feed"), Some("stream-feed"));
+        assert!(stale_comparison.has_stale_comparison);
+        assert_eq!(stale_comparison.comparison, None);
     }
 
     #[test]
