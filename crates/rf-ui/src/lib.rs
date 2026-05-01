@@ -62,7 +62,7 @@ pub use run_panel_text::RunPanelTextView;
 pub use run_panel_view::{RunPanelActionProminence, RunPanelRenderableAction, RunPanelViewModel};
 pub use run_panel_widget::{RunPanelRecoveryWidgetEvent, RunPanelWidgetEvent, RunPanelWidgetModel};
 pub use state::{
-    AppLogEntry, AppLogFeed, AppLogLevel, AppState, AppTheme, DateTimeUtc,
+    AppLogEntry, AppLogFeed, AppLogLevel, AppState, AppTheme, CanvasEditCommitResult, DateTimeUtc,
     DocumentHistoryApplyResult, DocumentHistoryDirection, DocumentMetadata, DraftValidationState,
     DraftValue, FieldDraft, FlowsheetDocument, InspectorDraftState, InspectorTarget, LocaleCode,
     PanelLayoutPreferences, SelectionState, StreamInspectorDraftBatchCommitResult,
@@ -90,7 +90,7 @@ mod tests {
         CommandHistoryEntry, CommandValue, DiagnosticSeverity, DiagnosticSummary, DocumentCommand,
         DocumentMetadata, EntitlementActionId, EntitlementPanelState, EntitlementPanelWidgetEvent,
         EntitlementPanelWidgetModel, EntitlementSnapshot, FlowsheetDocument, GhostElement,
-        GhostElementKind, OfflineLeaseRefreshResponse, PropertyPackageManifest,
+        GhostElementKind, InspectorTarget, OfflineLeaseRefreshResponse, PropertyPackageManifest,
         PropertyPackageManifestList, PropertyPackageSource, RunPanelActionId,
         RunPanelActionProminence, RunPanelPresentation, RunPanelRecoveryWidgetEvent, RunPanelState,
         RunPanelTextView, RunPanelViewModel, RunPanelWidgetEvent, RunPanelWidgetModel, RunStatus,
@@ -471,6 +471,118 @@ mod tests {
         );
 
         assert_eq!(app_state.workspace.canvas_interaction.pending_edit, None);
+    }
+
+    #[test]
+    fn committing_canvas_place_unit_intent_creates_canonical_unit_command() {
+        let mut app_state = AppState::new(sample_document());
+        app_state.begin_canvas_place_unit("Flash Drum");
+
+        let result = app_state
+            .commit_canvas_pending_edit_at(CanvasPoint::new(160.0, 96.0), timestamp(30))
+            .expect("expected canvas edit commit")
+            .expect("expected pending canvas edit");
+
+        assert_eq!(result.unit_id, UnitId::new("flash-1"));
+        assert_eq!(result.position, CanvasPoint::new(160.0, 96.0));
+        assert_eq!(
+            result.command,
+            DocumentCommand::CreateUnit {
+                unit_id: UnitId::new("flash-1"),
+                kind: "flash_drum".to_string(),
+            }
+        );
+        assert_eq!(result.revision, 1);
+        assert_eq!(app_state.workspace.canvas_interaction.pending_edit, None);
+        assert_eq!(
+            app_state.workspace.drafts.active_target,
+            Some(InspectorTarget::Unit(UnitId::new("flash-1")))
+        );
+        assert!(app_state.workspace.panels.inspector_open);
+        assert!(app_state.workspace.command_history.can_undo());
+
+        let unit = app_state
+            .workspace
+            .document
+            .flowsheet
+            .unit(&UnitId::new("flash-1"))
+            .expect("expected committed flash unit");
+        assert_eq!(unit.name, "Flash Drum");
+        assert_eq!(unit.kind, "flash_drum");
+        assert_eq!(unit.ports.len(), 3);
+        assert!(unit.ports.iter().any(|port| {
+            port.name == "inlet"
+                && port.direction == PortDirection::Inlet
+                && port.kind == PortKind::Material
+                && port.stream_id.is_none()
+        }));
+        assert!(unit.ports.iter().any(|port| {
+            port.name == "liquid"
+                && port.direction == PortDirection::Outlet
+                && port.kind == PortKind::Material
+                && port.stream_id.is_none()
+        }));
+        assert_eq!(
+            app_state
+                .log_feed
+                .entries
+                .back()
+                .map(|entry| entry.message.clone()),
+            Some("Created canvas unit `flash-1` of kind `Flash Drum` at (160.0, 96.0)".to_string())
+        );
+    }
+
+    #[test]
+    fn committing_canvas_place_unit_intent_allocates_next_available_unit_id() {
+        let mut app_state = AppState::new(sample_document());
+        let mut flowsheet = app_state.workspace.document.flowsheet.clone();
+        flowsheet
+            .insert_unit(UnitNode::new(
+                "flash-1",
+                "Flash Drum",
+                "flash_drum",
+                Vec::new(),
+            ))
+            .expect("expected existing unit insert");
+        app_state.commit_document_change(
+            DocumentCommand::CreateUnit {
+                unit_id: UnitId::new("flash-1"),
+                kind: "flash_drum".to_string(),
+            },
+            flowsheet,
+            timestamp(25),
+        );
+        app_state.begin_canvas_place_unit("flash_drum");
+
+        let result = app_state
+            .commit_canvas_pending_edit_at(CanvasPoint::new(10.0, 20.0), timestamp(30))
+            .expect("expected canvas edit commit")
+            .expect("expected pending canvas edit");
+
+        assert_eq!(result.unit_id, UnitId::new("flash-2"));
+        assert_eq!(
+            app_state
+                .workspace
+                .document
+                .flowsheet
+                .unit(&UnitId::new("flash-2"))
+                .expect("expected second flash unit")
+                .name,
+            "Flash Drum 2"
+        );
+    }
+
+    #[test]
+    fn committing_canvas_edit_without_pending_intent_is_noop() {
+        let mut app_state = AppState::new(sample_document());
+
+        let result = app_state
+            .commit_canvas_pending_edit_at(CanvasPoint::new(1.0, 2.0), timestamp(30))
+            .expect("expected no-op commit");
+
+        assert_eq!(result, None);
+        assert_eq!(app_state.workspace.document.revision, 0);
+        assert!(!app_state.workspace.command_history.can_undo());
     }
 
     #[test]

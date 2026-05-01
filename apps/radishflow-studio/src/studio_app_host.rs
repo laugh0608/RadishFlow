@@ -123,7 +123,7 @@ impl StudioAppHostUiCommandModel {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum StudioAppHostCommand {
     OpenWindow,
     DispatchWindowTrigger {
@@ -505,6 +505,14 @@ impl StudioAppHost {
         self.window_host_manager.cancel_canvas_pending_edit()
     }
 
+    pub fn commit_canvas_pending_edit_at(
+        &mut self,
+        position: rf_ui::CanvasPoint,
+    ) -> RfResult<Option<rf_ui::CanvasEditCommitResult>> {
+        self.window_host_manager
+            .commit_canvas_pending_edit_at(position)
+    }
+
     pub fn accept_focused_canvas_suggestion_by_tab(
         &mut self,
     ) -> RfResult<Option<rf_ui::CanvasSuggestion>> {
@@ -806,6 +814,13 @@ impl StudioAppHostController {
 
     pub fn cancel_canvas_pending_edit(&mut self) -> Option<rf_ui::CanvasEditIntent> {
         self.app_host.cancel_canvas_pending_edit()
+    }
+
+    pub fn commit_canvas_pending_edit_at(
+        &mut self,
+        position: rf_ui::CanvasPoint,
+    ) -> RfResult<Option<rf_ui::CanvasEditCommitResult>> {
+        self.app_host.commit_canvas_pending_edit_at(position)
     }
 
     pub fn refresh_local_canvas_suggestions(&mut self) {

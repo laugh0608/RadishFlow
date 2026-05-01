@@ -410,6 +410,7 @@ fn app_window_host_manager_executes_canvas_interaction_through_command_surface()
         StudioAppWindowHostCommandOutcome::CanvasInteracted(
             StudioAppWindowHostCanvasInteractionResult {
                 action: StudioCanvasInteractionAction::AcceptFocusedByTab,
+                committed_edit: None,
                 accepted: Some(accepted),
                 rejected: None,
                 focused: None,

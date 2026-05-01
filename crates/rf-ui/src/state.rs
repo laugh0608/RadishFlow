@@ -3,9 +3,11 @@ use std::path::PathBuf;
 use std::time::SystemTime;
 
 use rf_flowsheet::validate_connections;
-use rf_model::{Flowsheet, MaterialStreamState, UnitPort};
+use rf_model::{Flowsheet, MaterialStreamState, UnitNode, UnitPort};
 use rf_types::{ComponentId, RfError, RfResult, StreamId, UnitId};
-use rf_unitops::{UnitOperationSpec, builtin_unit_spec_by_name};
+use rf_unitops::{
+    BuiltinUnitKind, UnitOperationSpec, builtin_unit_spec, builtin_unit_spec_by_name,
+};
 
 use crate::auth::{
     AuthSessionState, AuthenticatedUser, EntitlementSnapshot, EntitlementState,
@@ -17,7 +19,8 @@ use crate::canvas_interaction::{
     SuggestionSource, SuggestionStatus,
 };
 use crate::commands::{
-    CommandHistory, CommandHistoryEntry, CommandValue, DocumentCommand, StreamSpecificationValue,
+    CanvasPoint, CommandHistory, CommandHistoryEntry, CommandValue, DocumentCommand,
+    StreamSpecificationValue,
 };
 use crate::diagnostics::DiagnosticSummary;
 use crate::ids::{DocumentId, SolveSnapshotId};
@@ -290,6 +293,15 @@ pub struct StreamInspectorDraftBatchCommitResult {
     pub active_target: InspectorTarget,
     pub command: DocumentCommand,
     pub revision: u64,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct CanvasEditCommitResult {
+    pub intent: CanvasEditIntent,
+    pub command: DocumentCommand,
+    pub revision: u64,
+    pub unit_id: UnitId,
+    pub position: CanvasPoint,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -669,6 +681,40 @@ impl AppState {
 
     pub fn cancel_canvas_pending_edit(&mut self) -> Option<CanvasEditIntent> {
         self.workspace.canvas_interaction.cancel_pending_edit()
+    }
+
+    pub fn commit_canvas_pending_edit_at(
+        &mut self,
+        position: CanvasPoint,
+        changed_at: DateTimeUtc,
+    ) -> RfResult<Option<CanvasEditCommitResult>> {
+        let Some(intent) = self.workspace.canvas_interaction.pending_edit.clone() else {
+            return Ok(None);
+        };
+
+        let (command, next_flowsheet, unit_id) =
+            apply_canvas_edit_intent(&self.workspace.document.flowsheet, &intent)?;
+        let revision = self.commit_document_change(command.clone(), next_flowsheet, changed_at);
+        self.workspace.selection.selected_units.clear();
+        self.workspace.selection.selected_streams.clear();
+        self.workspace
+            .selection
+            .selected_units
+            .insert(unit_id.clone());
+        self.workspace.drafts.active_target = Some(InspectorTarget::Unit(unit_id.clone()));
+        self.workspace.panels.inspector_open = true;
+        self.push_log(
+            AppLogLevel::Info,
+            format_canvas_edit_commit_message(&intent, &unit_id, position),
+        );
+
+        Ok(Some(CanvasEditCommitResult {
+            intent,
+            command,
+            revision,
+            unit_id,
+            position,
+        }))
     }
 
     pub fn accept_focused_canvas_suggestion_by_tab(
@@ -1307,6 +1353,130 @@ pub fn latest_snapshot(workspace: &WorkspaceState) -> Option<&SolveSnapshot> {
         .rev()
         .find(|snapshot| &snapshot.id == latest_snapshot_id)?;
     (snapshot.document_revision == workspace.solve_session.observed_revision).then_some(snapshot)
+}
+
+fn apply_canvas_edit_intent(
+    flowsheet: &Flowsheet,
+    intent: &CanvasEditIntent,
+) -> RfResult<(DocumentCommand, Flowsheet, UnitId)> {
+    match intent {
+        CanvasEditIntent::PlaceUnit { unit_kind } => {
+            apply_place_unit_canvas_edit(flowsheet, unit_kind)
+        }
+    }
+}
+
+fn apply_place_unit_canvas_edit(
+    flowsheet: &Flowsheet,
+    unit_kind: &str,
+) -> RfResult<(DocumentCommand, Flowsheet, UnitId)> {
+    let builtin_kind = parse_canvas_unit_kind(unit_kind).ok_or_else(|| {
+        RfError::invalid_input(format!(
+            "canvas place unit intent uses unsupported unit kind `{unit_kind}`"
+        ))
+    })?;
+    let spec = builtin_unit_spec(builtin_kind);
+    let unit_id = next_canvas_unit_id(flowsheet, builtin_kind);
+    let unit = UnitNode::new(
+        unit_id.clone(),
+        next_canvas_unit_name(flowsheet, builtin_kind),
+        spec.kind.as_str(),
+        spec.ports
+            .iter()
+            .map(|port| UnitPort::new(port.name, port.direction, port.kind, None))
+            .collect(),
+    );
+
+    let mut next_flowsheet = flowsheet.clone();
+    next_flowsheet.insert_unit(unit)?;
+
+    Ok((
+        DocumentCommand::CreateUnit {
+            unit_id: unit_id.clone(),
+            kind: spec.kind.as_str().to_string(),
+        },
+        next_flowsheet,
+        unit_id,
+    ))
+}
+
+fn parse_canvas_unit_kind(unit_kind: &str) -> Option<BuiltinUnitKind> {
+    let normalized = unit_kind
+        .trim()
+        .to_ascii_lowercase()
+        .replace([' ', '-'], "_");
+    match normalized.as_str() {
+        "feed" => Some(BuiltinUnitKind::Feed),
+        "mixer" => Some(BuiltinUnitKind::Mixer),
+        "heater" => Some(BuiltinUnitKind::Heater),
+        "cooler" => Some(BuiltinUnitKind::Cooler),
+        "valve" => Some(BuiltinUnitKind::Valve),
+        "flash" | "flash_drum" => Some(BuiltinUnitKind::FlashDrum),
+        _ => None,
+    }
+}
+
+fn next_canvas_unit_id(flowsheet: &Flowsheet, kind: BuiltinUnitKind) -> UnitId {
+    let prefix = canvas_unit_id_prefix(kind);
+    for index in 1.. {
+        let candidate = UnitId::new(format!("{prefix}-{index}"));
+        if !flowsheet.units.contains_key(&candidate) {
+            return candidate;
+        }
+    }
+    unreachable!("unbounded unit id sequence should eventually find an unused id")
+}
+
+fn next_canvas_unit_name(flowsheet: &Flowsheet, kind: BuiltinUnitKind) -> String {
+    let label = canvas_unit_label(kind);
+    let used_count = flowsheet
+        .units
+        .values()
+        .filter(|unit| parse_canvas_unit_kind(&unit.kind) == Some(kind))
+        .count();
+    if used_count == 0 {
+        label.to_string()
+    } else {
+        format!("{label} {}", used_count + 1)
+    }
+}
+
+fn canvas_unit_id_prefix(kind: BuiltinUnitKind) -> &'static str {
+    match kind {
+        BuiltinUnitKind::Feed => "feed",
+        BuiltinUnitKind::Mixer => "mixer",
+        BuiltinUnitKind::Heater => "heater",
+        BuiltinUnitKind::Cooler => "cooler",
+        BuiltinUnitKind::Valve => "valve",
+        BuiltinUnitKind::FlashDrum => "flash",
+    }
+}
+
+fn canvas_unit_label(kind: BuiltinUnitKind) -> &'static str {
+    match kind {
+        BuiltinUnitKind::Feed => "Feed",
+        BuiltinUnitKind::Mixer => "Mixer",
+        BuiltinUnitKind::Heater => "Heater",
+        BuiltinUnitKind::Cooler => "Cooler",
+        BuiltinUnitKind::Valve => "Valve",
+        BuiltinUnitKind::FlashDrum => "Flash Drum",
+    }
+}
+
+fn format_canvas_edit_commit_message(
+    intent: &CanvasEditIntent,
+    unit_id: &UnitId,
+    position: CanvasPoint,
+) -> String {
+    match intent {
+        CanvasEditIntent::PlaceUnit { unit_kind } => format!(
+            "Created canvas unit `{}` of kind `{}` at ({:.1}, {:.1})",
+            unit_id.as_str(),
+            unit_kind,
+            position.x,
+            position.y
+        ),
+    }
 }
 
 fn apply_canvas_suggestion_acceptance(

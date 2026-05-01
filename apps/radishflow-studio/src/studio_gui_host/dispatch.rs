@@ -39,6 +39,15 @@ impl StudioGuiHost {
         self.dispatch_canvas_interaction(StudioGuiCanvasInteractionAction::CancelPendingEdit)
     }
 
+    pub fn commit_canvas_pending_edit_at(
+        &mut self,
+        position: rf_ui::CanvasPoint,
+    ) -> RfResult<StudioGuiHostCanvasInteractionResult> {
+        self.dispatch_canvas_interaction(StudioGuiCanvasInteractionAction::CommitPendingEditAt {
+            position,
+        })
+    }
+
     pub fn dispatch_lifecycle_event(
         &mut self,
         event: StudioGuiHostLifecycleEvent,
@@ -256,18 +265,21 @@ impl StudioGuiHost {
     pub(super) fn build_canvas_interaction_result_with_focus(
         &self,
         action: StudioGuiCanvasInteractionAction,
+        committed_edit: Option<rf_ui::CanvasEditCommitResult>,
         accepted: Option<CanvasSuggestion>,
         rejected: Option<CanvasSuggestion>,
         focused: Option<CanvasSuggestion>,
     ) -> StudioGuiHostCanvasInteractionResult {
+        let applied_document_change = accepted.is_some() || committed_edit.is_some();
         StudioGuiHostCanvasInteractionResult {
             action,
-            applied_target: accepted
-                .as_ref()
-                .and_then(|_| self.controller.active_inspector_target()),
-            latest_log_entry: accepted
-                .as_ref()
-                .and_then(|_| self.controller.latest_log_entry()),
+            applied_target: applied_document_change
+                .then(|| self.controller.active_inspector_target())
+                .flatten(),
+            latest_log_entry: applied_document_change
+                .then(|| self.controller.latest_log_entry())
+                .flatten(),
+            committed_edit,
             accepted,
             rejected,
             focused,
@@ -285,6 +297,7 @@ impl StudioGuiHost {
             .dispatch_canvas_interaction(action.clone())?;
         Ok(self.build_canvas_interaction_result_with_focus(
             action,
+            result.committed_edit,
             result.accepted,
             result.rejected,
             result.focused,

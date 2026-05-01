@@ -129,6 +129,7 @@ pub struct StudioGuiCanvasState {
 #[derive(Debug, Clone, PartialEq)]
 pub struct StudioGuiHostCanvasInteractionResult {
     pub action: StudioGuiCanvasInteractionAction,
+    pub committed_edit: Option<rf_ui::CanvasEditCommitResult>,
     pub accepted: Option<CanvasSuggestion>,
     pub rejected: Option<CanvasSuggestion>,
     pub focused: Option<CanvasSuggestion>,
@@ -175,7 +176,7 @@ pub struct StudioGuiHostWindowDropPreviewClearResult {
 
 pub type StudioGuiCanvasInteractionAction = StudioCanvasInteractionAction;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum StudioGuiHostCommand {
     OpenWindow,
     DispatchWindowTrigger {

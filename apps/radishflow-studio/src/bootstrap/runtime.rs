@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::{path::Path, time::SystemTime};
 
 use crate::{
     EntitlementSessionEvent, EntitlementSessionEventDriverOutcome, EntitlementSessionHostDispatch,
@@ -451,6 +451,14 @@ impl BootstrapSession {
 
     pub(crate) fn cancel_canvas_pending_edit(&mut self) -> Option<rf_ui::CanvasEditIntent> {
         self.app_state.cancel_canvas_pending_edit()
+    }
+
+    pub(crate) fn commit_canvas_pending_edit_at(
+        &mut self,
+        position: rf_ui::CanvasPoint,
+    ) -> RfResult<Option<rf_ui::CanvasEditCommitResult>> {
+        self.app_state
+            .commit_canvas_pending_edit_at(position, SystemTime::now())
     }
 
     pub(crate) fn accept_focused_canvas_suggestion_by_tab(

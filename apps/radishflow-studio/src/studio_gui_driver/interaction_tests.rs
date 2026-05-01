@@ -247,6 +247,57 @@ fn gui_driver_focuses_next_canvas_suggestion_from_explicit_event() {
 }
 
 #[test]
+fn gui_driver_commits_pending_canvas_edit_from_explicit_position_event() {
+    let mut driver = StudioGuiDriver::new(&lease_expiring_config()).expect("expected driver");
+    driver
+        .begin_canvas_place_unit("Flash Drum")
+        .expect("expected begin canvas place unit");
+
+    let dispatch = driver
+        .dispatch_event(StudioGuiEvent::CanvasPendingEditCommitRequested {
+            position: rf_ui::CanvasPoint::new(144.0, 88.0),
+        })
+        .expect("expected pending edit commit dispatch");
+
+    match dispatch.outcome {
+        StudioGuiDriverOutcome::CanvasInteraction(result) => {
+            assert_eq!(
+                result.action,
+                StudioGuiCanvasInteractionAction::CommitPendingEditAt {
+                    position: rf_ui::CanvasPoint::new(144.0, 88.0),
+                }
+            );
+            let committed = result.committed_edit.expect("expected committed edit");
+            assert_eq!(committed.unit_id, rf_types::UnitId::new("flash-2"));
+            assert_eq!(
+                committed.command,
+                rf_ui::DocumentCommand::CreateUnit {
+                    unit_id: rf_types::UnitId::new("flash-2"),
+                    kind: "flash_drum".to_string(),
+                }
+            );
+            assert_eq!(
+                result.applied_target,
+                Some(rf_ui::InspectorTarget::Unit(rf_types::UnitId::new(
+                    "flash-2"
+                )))
+            );
+            assert_eq!(result.canvas.pending_edit, None);
+            assert_eq!(dispatch.canvas.pending_edit, None);
+        }
+        other => panic!("expected canvas interaction outcome, got {other:?}"),
+    }
+
+    assert!(
+        dispatch
+            .snapshot
+            .runtime
+            .workspace_document
+            .has_unsaved_changes
+    );
+}
+
+#[test]
 fn gui_driver_rejects_focused_canvas_suggestion_from_shortcut() {
     let (config, project_path) = flash_drum_local_rules_config();
     let mut driver = StudioGuiDriver::new(&config).expect("expected driver");

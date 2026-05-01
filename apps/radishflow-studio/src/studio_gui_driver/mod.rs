@@ -24,7 +24,7 @@ mod test_support;
 #[cfg(test)]
 mod timer_tests;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum StudioGuiEvent {
     OpenWindowRequested,
     CloseWindowRequested {
@@ -54,6 +54,9 @@ pub enum StudioGuiEvent {
     CanvasSuggestionRejectRequested,
     CanvasSuggestionFocusNextRequested,
     CanvasSuggestionFocusPreviousRequested,
+    CanvasPendingEditCommitRequested {
+        position: rf_ui::CanvasPoint,
+    },
     WindowLayoutMutationRequested {
         window_id: Option<StudioWindowHostId>,
         mutation: StudioGuiWindowLayoutMutation,
@@ -180,6 +183,13 @@ impl StudioGuiDriver {
         unit_kind: impl Into<String>,
     ) -> RfResult<StudioGuiHostCanvasInteractionResult> {
         self.host.begin_canvas_place_unit(unit_kind)
+    }
+
+    pub fn commit_canvas_pending_edit_at(
+        &mut self,
+        position: rf_ui::CanvasPoint,
+    ) -> RfResult<StudioGuiHostCanvasInteractionResult> {
+        self.host.commit_canvas_pending_edit_at(position)
     }
 
     pub fn drain_due_native_timer_events(
@@ -611,6 +621,11 @@ fn route_driver_event(event: &StudioGuiEvent, registry: &StudioGuiCommandRegistr
         }
         StudioGuiEvent::CanvasSuggestionFocusPreviousRequested => {
             DriverRoute::CanvasInteraction(StudioGuiCanvasInteractionAction::FocusPrevious)
+        }
+        StudioGuiEvent::CanvasPendingEditCommitRequested { position } => {
+            DriverRoute::CanvasInteraction(StudioGuiCanvasInteractionAction::CommitPendingEditAt {
+                position: *position,
+            })
         }
         StudioGuiEvent::WindowLayoutMutationRequested {
             window_id,

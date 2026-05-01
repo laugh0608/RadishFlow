@@ -22,7 +22,7 @@ pub struct StudioGuiCanvasRenderableAction {
     pub shortcut: Option<StudioGuiShortcut>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum StudioGuiCanvasWidgetEvent {
     Requested {
         action_id: StudioGuiCanvasActionId,

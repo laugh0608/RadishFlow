@@ -87,9 +87,10 @@ impl StudioAppWindowHostUiActionState {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum StudioCanvasInteractionAction {
     BeginPlaceUnit { unit_kind: String },
+    CommitPendingEditAt { position: rf_ui::CanvasPoint },
     CancelPendingEdit,
     AcceptFocusedByTab,
     RejectFocused,
@@ -100,12 +101,13 @@ pub enum StudioCanvasInteractionAction {
 #[derive(Debug, Clone, PartialEq)]
 pub struct StudioAppWindowHostCanvasInteractionResult {
     pub action: StudioCanvasInteractionAction,
+    pub committed_edit: Option<rf_ui::CanvasEditCommitResult>,
     pub accepted: Option<CanvasSuggestion>,
     pub rejected: Option<CanvasSuggestion>,
     pub focused: Option<CanvasSuggestion>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum StudioAppWindowHostCommand {
     OpenWindow,
     DispatchTrigger {
@@ -228,35 +230,52 @@ impl StudioAppWindowHostManager {
         self.session.cancel_canvas_pending_edit()
     }
 
+    pub fn commit_canvas_pending_edit_at(
+        &mut self,
+        position: rf_ui::CanvasPoint,
+    ) -> RfResult<Option<rf_ui::CanvasEditCommitResult>> {
+        self.session.commit_canvas_pending_edit_at(position)
+    }
+
     pub fn dispatch_canvas_interaction(
         &mut self,
         action: StudioCanvasInteractionAction,
     ) -> RfResult<StudioAppWindowHostCanvasInteractionResult> {
-        let (accepted, rejected, focused) = match &action {
+        let (committed_edit, accepted, rejected, focused) = match &action {
             StudioCanvasInteractionAction::BeginPlaceUnit { unit_kind } => {
                 self.begin_canvas_place_unit(unit_kind.clone());
-                (None, None, None)
+                (None, None, None, None)
             }
+            StudioCanvasInteractionAction::CommitPendingEditAt { position } => (
+                self.commit_canvas_pending_edit_at(*position)?,
+                None,
+                None,
+                None,
+            ),
             StudioCanvasInteractionAction::CancelPendingEdit => {
                 self.cancel_canvas_pending_edit();
-                (None, None, None)
+                (None, None, None, None)
             }
-            StudioCanvasInteractionAction::AcceptFocusedByTab => {
-                (self.accept_focused_canvas_suggestion_by_tab()?, None, None)
-            }
+            StudioCanvasInteractionAction::AcceptFocusedByTab => (
+                None,
+                self.accept_focused_canvas_suggestion_by_tab()?,
+                None,
+                None,
+            ),
             StudioCanvasInteractionAction::RejectFocused => {
-                (None, self.reject_focused_canvas_suggestion(), None)
+                (None, None, self.reject_focused_canvas_suggestion(), None)
             }
             StudioCanvasInteractionAction::FocusNext => {
-                (None, None, self.focus_next_canvas_suggestion())
+                (None, None, None, self.focus_next_canvas_suggestion())
             }
             StudioCanvasInteractionAction::FocusPrevious => {
-                (None, None, self.focus_previous_canvas_suggestion())
+                (None, None, None, self.focus_previous_canvas_suggestion())
             }
         };
 
         Ok(StudioAppWindowHostCanvasInteractionResult {
             action,
+            committed_edit,
             accepted,
             rejected,
             focused,
