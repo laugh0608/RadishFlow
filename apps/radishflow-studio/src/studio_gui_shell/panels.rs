@@ -185,9 +185,11 @@ impl ReadyAppState {
         ui: &mut egui::Ui,
         widget: &radishflow_studio::StudioGuiCanvasWidgetModel,
     ) {
-        let pending_edit = widget.view().pending_edit.as_ref();
-        let unit_blocks = &widget.view().unit_blocks;
-        let stream_lines = &widget.view().stream_lines;
+        let view = widget.view();
+        let pending_edit = view.pending_edit.as_ref();
+        let focus_callout = view.focus_callout.as_ref();
+        let unit_blocks = &view.unit_blocks;
+        let stream_lines = &view.stream_lines;
         let available_width = ui.available_width().max(320.0);
         let desired_size = egui::vec2(available_width, 280.0);
         let (rect, response) = ui.allocate_exact_size(desired_size, egui::Sense::click());
@@ -238,6 +240,15 @@ impl ReadyAppState {
                 self.dispatch_ui_command(&unit.command_id);
             }
         }
+
+        if let Some(callout) = focus_callout {
+            if let Some(anchor) =
+                canvas_focus_callout_anchor(rect, callout, unit_blocks, stream_lines)
+            {
+                paint_canvas_focus_callout(&painter, rect, anchor, callout);
+            }
+        }
+
         let clicked_stream = clicked_stream_command.is_some();
         if !clicked_unit {
             if let Some(command_id) = clicked_stream_command {
@@ -1883,6 +1894,12 @@ fn paint_canvas_stream_line(
         },
         color,
     );
+    if stream.is_active_inspector_target {
+        painter.line_segment(
+            [geometry.start, geometry.end],
+            egui::Stroke::new(6.0, egui::Color32::from_rgba_unmultiplied(48, 112, 188, 42)),
+        );
+    }
     painter.line_segment([geometry.start, geometry.end], stroke);
     painter.circle_filled(geometry.start, 3.5, color);
     paint_canvas_stream_arrow(painter, geometry, color);
@@ -1945,6 +1962,13 @@ fn paint_canvas_unit_block(
     } else {
         egui::Stroke::new(1.2, egui::Color32::from_rgb(98, 113, 126))
     };
+    if unit.is_active_inspector_target {
+        paint_canvas_rect_border(
+            painter,
+            rect.expand(4.0),
+            egui::Stroke::new(3.0, egui::Color32::from_rgba_unmultiplied(48, 112, 188, 50)),
+        );
+    }
     painter.rect_filled(rect, 6.0, fill);
     paint_canvas_rect_border(painter, rect, stroke);
 
@@ -1985,6 +2009,87 @@ fn paint_canvas_unit_block(
             "{} | ports {}/{}",
             unit.unit_id, unit.connected_port_count, unit.port_count
         ),
+        egui::FontId::proportional(11.0),
+        egui::Color32::from_rgb(86, 96, 108),
+    );
+}
+
+fn canvas_focus_callout_anchor(
+    rect: egui::Rect,
+    callout: &radishflow_studio::StudioGuiCanvasFocusCalloutViewModel,
+    unit_blocks: &[radishflow_studio::StudioGuiCanvasUnitBlockViewModel],
+    stream_lines: &[radishflow_studio::StudioGuiCanvasStreamLineViewModel],
+) -> Option<egui::Pos2> {
+    if callout.kind_label == "Unit" {
+        return unit_blocks
+            .iter()
+            .find(|unit| unit.unit_id == callout.target_id)
+            .map(|unit| canvas_unit_block_rect(rect, unit.layout_slot).right_top());
+    }
+
+    stream_lines
+        .iter()
+        .find(|stream| stream.stream_id == callout.target_id)
+        .map(|stream| {
+            let geometry = canvas_stream_line_geometry(rect, stream);
+            geometry.start.lerp(geometry.end, 0.58)
+        })
+}
+
+fn paint_canvas_focus_callout(
+    painter: &egui::Painter,
+    canvas_rect: egui::Rect,
+    anchor: egui::Pos2,
+    callout: &radishflow_studio::StudioGuiCanvasFocusCalloutViewModel,
+) {
+    let color = if callout.kind_label == "Stream" {
+        egui::Color32::from_rgb(42, 142, 122)
+    } else {
+        egui::Color32::from_rgb(48, 112, 188)
+    };
+    let size = egui::vec2(196.0, 54.0);
+    let mut min = anchor + egui::vec2(14.0, -62.0);
+    min.x = min.x.clamp(
+        canvas_rect.left() + 10.0,
+        canvas_rect.right() - size.x - 10.0,
+    );
+    min.y = min.y.clamp(
+        canvas_rect.top() + 10.0,
+        canvas_rect.bottom() - size.y - 10.0,
+    );
+    let callout_rect = egui::Rect::from_min_size(min, size);
+    let connector_end = egui::pos2(
+        callout_rect.left() + 18.0,
+        callout_rect.top() + callout_rect.height() * 0.5,
+    );
+
+    painter.line_segment(
+        [anchor, connector_end],
+        egui::Stroke::new(1.2, egui::Color32::from_rgba_unmultiplied(38, 50, 62, 130)),
+    );
+    painter.rect_filled(
+        callout_rect.translate(egui::vec2(0.0, 2.0)),
+        6.0,
+        egui::Color32::from_rgba_unmultiplied(30, 42, 54, 32),
+    );
+    painter.rect_filled(callout_rect, 6.0, egui::Color32::from_rgb(255, 255, 255));
+    paint_canvas_rect_border(painter, callout_rect, egui::Stroke::new(1.4, color));
+    painter.rect_filled(
+        egui::Rect::from_min_size(callout_rect.min, egui::vec2(5.0, callout_rect.height())),
+        0.0,
+        color,
+    );
+    painter.text(
+        callout_rect.left_top() + egui::vec2(13.0, 8.0),
+        egui::Align2::LEFT_TOP,
+        truncate_canvas_label(&format!("{} · {}", callout.kind_label, callout.title), 24),
+        egui::FontId::proportional(13.0),
+        egui::Color32::from_rgb(35, 49, 63),
+    );
+    painter.text(
+        callout_rect.left_top() + egui::vec2(13.0, 30.0),
+        egui::Align2::LEFT_TOP,
+        truncate_canvas_label(&callout.detail, 30),
         egui::FontId::proportional(11.0),
         egui::Color32::from_rgb(86, 96, 108),
     );

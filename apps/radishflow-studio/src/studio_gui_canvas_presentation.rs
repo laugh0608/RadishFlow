@@ -45,6 +45,15 @@ pub struct StudioGuiCanvasSelectionViewModel {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioGuiCanvasFocusCalloutViewModel {
+    pub kind_label: &'static str,
+    pub target_id: String,
+    pub title: String,
+    pub detail: String,
+    pub command_id: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StudioGuiCanvasObjectListItemViewModel {
     pub kind_label: &'static str,
     pub target_id: String,
@@ -85,6 +94,7 @@ pub struct StudioGuiCanvasViewModel {
     pub pending_edit: Option<StudioGuiCanvasPendingEditViewModel>,
     pub focused_suggestion_id: Option<String>,
     pub current_selection: Option<StudioGuiCanvasSelectionViewModel>,
+    pub focus_callout: Option<StudioGuiCanvasFocusCalloutViewModel>,
     pub object_list: StudioGuiCanvasObjectListViewModel,
     pub unit_count: usize,
     pub stream_line_count: usize,
@@ -230,6 +240,7 @@ impl StudioGuiCanvasViewModel {
                         }
                     })
             });
+        let focus_callout = canvas_focus_callout(&unit_blocks, &stream_lines);
         let object_list = canvas_object_list(&unit_blocks, &stream_lines);
         let suggestions = state
             .suggestions
@@ -250,6 +261,7 @@ impl StudioGuiCanvasViewModel {
             pending_edit,
             focused_suggestion_id,
             current_selection,
+            focus_callout,
             object_list,
             unit_count: unit_blocks.len(),
             stream_line_count: stream_lines.len(),
@@ -296,6 +308,20 @@ impl StudioGuiCanvasTextView {
                         selection.target_id,
                         selection.summary,
                         selection.command_id
+                    ))
+                    .unwrap_or_else(|| "none".to_string())
+            ),
+            format!(
+                "focus callout: {}",
+                view.focus_callout
+                    .as_ref()
+                    .map(|callout| format!(
+                        "{} {} title={} detail={} command={}",
+                        callout.kind_label,
+                        callout.target_id,
+                        callout.title,
+                        callout.detail,
+                        callout.command_id
                     ))
                     .unwrap_or_else(|| "none".to_string())
             ),
@@ -381,6 +407,49 @@ impl StudioGuiCanvasPresentation {
         let text = StudioGuiCanvasTextView::from_view_model(&view);
         Self { view, text }
     }
+}
+
+fn canvas_focus_callout(
+    units: &[StudioGuiCanvasUnitBlockViewModel],
+    stream_lines: &[StudioGuiCanvasStreamLineViewModel],
+) -> Option<StudioGuiCanvasFocusCalloutViewModel> {
+    units
+        .iter()
+        .find(|unit| unit.is_active_inspector_target)
+        .map(|unit| StudioGuiCanvasFocusCalloutViewModel {
+            kind_label: "Unit",
+            target_id: unit.unit_id.clone(),
+            title: unit.name.clone(),
+            detail: format!(
+                "{} | ports {}/{}",
+                unit.kind, unit.connected_port_count, unit.port_count
+            ),
+            command_id: unit.command_id.clone(),
+        })
+        .or_else(|| {
+            stream_lines
+                .iter()
+                .find(|stream| stream.is_active_inspector_target)
+                .map(|stream| {
+                    let source = stream
+                        .source
+                        .as_ref()
+                        .map(|endpoint| format!("{}:{}", endpoint.unit_id, endpoint.port_name))
+                        .unwrap_or_else(|| "unbound-source".to_string());
+                    let sink = stream
+                        .sink
+                        .as_ref()
+                        .map(|endpoint| format!("{}:{}", endpoint.unit_id, endpoint.port_name))
+                        .unwrap_or_else(|| "terminal".to_string());
+                    StudioGuiCanvasFocusCalloutViewModel {
+                        kind_label: "Stream",
+                        target_id: stream.stream_id.clone(),
+                        title: stream.name.clone(),
+                        detail: format!("{source} -> {sink}"),
+                        command_id: stream.command_id.clone(),
+                    }
+                })
+        })
 }
 
 fn canvas_object_list(
@@ -536,6 +605,7 @@ mod tests {
         assert_eq!(presentation.view.focused_suggestion_id, None);
         assert_eq!(presentation.view.pending_edit, None);
         assert_eq!(presentation.view.current_selection, None);
+        assert_eq!(presentation.view.focus_callout, None);
         assert_eq!(
             presentation.view.object_list,
             crate::StudioGuiCanvasObjectListViewModel {
@@ -556,6 +626,7 @@ mod tests {
                 "pending edit: none".to_string(),
                 "focused suggestion: none".to_string(),
                 "current selection: none".to_string(),
+                "focus callout: none".to_string(),
                 "unit count: 0".to_string(),
                 "stream line count: 0".to_string(),
                 "object list count: units=0 streams=0 items=0".to_string(),
@@ -590,6 +661,7 @@ mod tests {
                     .to_string(),
                 "focused suggestion: none".to_string(),
                 "current selection: none".to_string(),
+                "focus callout: none".to_string(),
                 "unit count: 0".to_string(),
                 "stream line count: 0".to_string(),
                 "object list count: units=0 streams=0 items=0".to_string(),
@@ -669,6 +741,7 @@ mod tests {
                 "focused suggestion: local.flash_drum.connect_inlet.flash-1.stream-heated"
                     .to_string(),
                 "current selection: none".to_string(),
+                "focus callout: none".to_string(),
                 "unit count: 3".to_string(),
                 "stream line count: 2".to_string(),
                 "object list count: units=3 streams=2 items=5".to_string(),
@@ -705,6 +778,16 @@ mod tests {
                 kind_label: "Unit",
                 target_id: "flash-1".to_string(),
                 summary: "Flash Drum (flash_drum) ports 0/3".to_string(),
+                command_id: "inspector.focus_unit:flash-1".to_string(),
+            })
+        );
+        assert_eq!(
+            focused_unit.window.canvas.widget.view().focus_callout,
+            Some(crate::StudioGuiCanvasFocusCalloutViewModel {
+                kind_label: "Unit",
+                target_id: "flash-1".to_string(),
+                title: "Flash Drum".to_string(),
+                detail: "flash_drum | ports 0/3".to_string(),
                 command_id: "inspector.focus_unit:flash-1".to_string(),
             })
         );
@@ -752,6 +835,16 @@ mod tests {
                 kind_label: "Stream",
                 target_id: "stream-feed".to_string(),
                 summary: "Feed feed-1:outlet -> heater-1:inlet".to_string(),
+                command_id: "inspector.focus_stream:stream-feed".to_string(),
+            })
+        );
+        assert_eq!(
+            focused_stream.window.canvas.widget.view().focus_callout,
+            Some(crate::StudioGuiCanvasFocusCalloutViewModel {
+                kind_label: "Stream",
+                target_id: "stream-feed".to_string(),
+                title: "Feed".to_string(),
+                detail: "feed-1:outlet -> heater-1:inlet".to_string(),
                 command_id: "inspector.focus_stream:stream-feed".to_string(),
             })
         );
