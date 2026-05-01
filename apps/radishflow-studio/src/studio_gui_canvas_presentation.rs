@@ -44,6 +44,23 @@ pub struct StudioGuiCanvasSelectionViewModel {
     pub command_id: String,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioGuiCanvasObjectListItemViewModel {
+    pub kind_label: &'static str,
+    pub target_id: String,
+    pub label: String,
+    pub detail: String,
+    pub command_id: String,
+    pub is_active: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioGuiCanvasObjectListViewModel {
+    pub unit_count: usize,
+    pub stream_count: usize,
+    pub items: Vec<StudioGuiCanvasObjectListItemViewModel>,
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct StudioGuiCanvasSuggestionViewModel {
     pub id: String,
@@ -68,6 +85,7 @@ pub struct StudioGuiCanvasViewModel {
     pub pending_edit: Option<StudioGuiCanvasPendingEditViewModel>,
     pub focused_suggestion_id: Option<String>,
     pub current_selection: Option<StudioGuiCanvasSelectionViewModel>,
+    pub object_list: StudioGuiCanvasObjectListViewModel,
     pub unit_count: usize,
     pub stream_line_count: usize,
     pub suggestion_count: usize,
@@ -212,6 +230,7 @@ impl StudioGuiCanvasViewModel {
                         }
                     })
             });
+        let object_list = canvas_object_list(&unit_blocks, &stream_lines);
         let suggestions = state
             .suggestions
             .iter()
@@ -231,6 +250,7 @@ impl StudioGuiCanvasViewModel {
             pending_edit,
             focused_suggestion_id,
             current_selection,
+            object_list,
             unit_count: unit_blocks.len(),
             stream_line_count: stream_lines.len(),
             suggestion_count: suggestions.len(),
@@ -281,6 +301,12 @@ impl StudioGuiCanvasTextView {
             ),
             format!("unit count: {}", view.unit_count),
             format!("stream line count: {}", view.stream_line_count),
+            format!(
+                "object list count: units={} streams={} items={}",
+                view.object_list.unit_count,
+                view.object_list.stream_count,
+                view.object_list.items.len()
+            ),
             format!("suggestion count: {}", view.suggestion_count),
         ];
 
@@ -354,6 +380,60 @@ impl StudioGuiCanvasPresentation {
         let view = StudioGuiCanvasViewModel::from_state(state);
         let text = StudioGuiCanvasTextView::from_view_model(&view);
         Self { view, text }
+    }
+}
+
+fn canvas_object_list(
+    units: &[StudioGuiCanvasUnitBlockViewModel],
+    stream_lines: &[StudioGuiCanvasStreamLineViewModel],
+) -> StudioGuiCanvasObjectListViewModel {
+    let mut items = units
+        .iter()
+        .map(|unit| StudioGuiCanvasObjectListItemViewModel {
+            kind_label: "Unit",
+            target_id: unit.unit_id.clone(),
+            label: unit.name.clone(),
+            detail: format!(
+                "{} | ports {}/{}",
+                unit.kind, unit.connected_port_count, unit.port_count
+            ),
+            command_id: unit.command_id.clone(),
+            is_active: unit.is_active_inspector_target,
+        })
+        .collect::<Vec<_>>();
+
+    let mut stream_items = BTreeMap::<String, StudioGuiCanvasObjectListItemViewModel>::new();
+    for stream in stream_lines {
+        stream_items
+            .entry(stream.stream_id.clone())
+            .or_insert_with(|| {
+                let source = stream
+                    .source
+                    .as_ref()
+                    .map(|endpoint| format!("{}:{}", endpoint.unit_id, endpoint.port_name))
+                    .unwrap_or_else(|| "unbound-source".to_string());
+                let sink = stream
+                    .sink
+                    .as_ref()
+                    .map(|endpoint| format!("{}:{}", endpoint.unit_id, endpoint.port_name))
+                    .unwrap_or_else(|| "terminal".to_string());
+                StudioGuiCanvasObjectListItemViewModel {
+                    kind_label: "Stream",
+                    target_id: stream.stream_id.clone(),
+                    label: stream.name.clone(),
+                    detail: format!("{source} -> {sink}"),
+                    command_id: stream.command_id.clone(),
+                    is_active: stream.is_active_inspector_target,
+                }
+            });
+    }
+    let stream_count = stream_items.len();
+    items.extend(stream_items.into_values());
+
+    StudioGuiCanvasObjectListViewModel {
+        unit_count: units.len(),
+        stream_count,
+        items,
     }
 }
 
@@ -456,6 +536,14 @@ mod tests {
         assert_eq!(presentation.view.focused_suggestion_id, None);
         assert_eq!(presentation.view.pending_edit, None);
         assert_eq!(presentation.view.current_selection, None);
+        assert_eq!(
+            presentation.view.object_list,
+            crate::StudioGuiCanvasObjectListViewModel {
+                unit_count: 0,
+                stream_count: 0,
+                items: Vec::new(),
+            }
+        );
         assert_eq!(presentation.view.unit_count, 0);
         assert!(presentation.view.unit_blocks.is_empty());
         assert_eq!(presentation.view.stream_line_count, 0);
@@ -470,6 +558,7 @@ mod tests {
                 "current selection: none".to_string(),
                 "unit count: 0".to_string(),
                 "stream line count: 0".to_string(),
+                "object list count: units=0 streams=0 items=0".to_string(),
                 "suggestion count: 0".to_string(),
             ]
         );
@@ -503,6 +592,7 @@ mod tests {
                 "current selection: none".to_string(),
                 "unit count: 0".to_string(),
                 "stream line count: 0".to_string(),
+                "object list count: units=0 streams=0 items=0".to_string(),
                 "suggestion count: 0".to_string(),
             ]
         );
@@ -547,6 +637,27 @@ mod tests {
             "expected canvas presentation to surface existing stream connection lines"
         );
         assert_eq!(presentation.view.suggestion_count, 3);
+        assert_eq!(presentation.view.object_list.unit_count, 3);
+        assert_eq!(presentation.view.object_list.stream_count, 2);
+        assert_eq!(presentation.view.object_list.items.len(), 5);
+        assert!(
+            presentation.view.object_list.items.iter().any(|item| {
+                item.kind_label == "Unit"
+                    && item.target_id == "flash-1"
+                    && item.command_id == "inspector.focus_unit:flash-1"
+                    && item.detail == "flash_drum | ports 0/3"
+            }),
+            "expected object list to expose unit navigation entries"
+        );
+        assert!(
+            presentation.view.object_list.items.iter().any(|item| {
+                item.kind_label == "Stream"
+                    && item.target_id == "stream-feed"
+                    && item.command_id == "inspector.focus_stream:stream-feed"
+                    && item.detail == "feed-1:outlet -> heater-1:inlet"
+            }),
+            "expected object list to expose stream navigation entries"
+        );
         assert_eq!(presentation.view.suggestions[0].status_label, "focused");
         assert_eq!(presentation.view.suggestions[0].source_label, "local_rules");
         assert!(presentation.view.suggestions[0].is_focused);
@@ -560,6 +671,7 @@ mod tests {
                 "current selection: none".to_string(),
                 "unit count: 3".to_string(),
                 "stream line count: 2".to_string(),
+                "object list count: units=3 streams=2 items=5".to_string(),
                 "suggestion count: 3".to_string(),
                 "- unit feed-1 kind=feed ports=1/1 command=inspector.focus_unit:feed-1".to_string(),
                 "- unit flash-1 kind=flash_drum ports=0/3 command=inspector.focus_unit:flash-1".to_string(),
@@ -596,6 +708,19 @@ mod tests {
                 command_id: "inspector.focus_unit:flash-1".to_string(),
             })
         );
+        assert!(
+            focused_unit
+                .window
+                .canvas
+                .widget
+                .view()
+                .object_list
+                .items
+                .iter()
+                .any(|item| item.kind_label == "Unit"
+                    && item.target_id == "flash-1"
+                    && item.is_active)
+        );
         assert_eq!(
             focused_unit
                 .window
@@ -629,6 +754,19 @@ mod tests {
                 summary: "Feed feed-1:outlet -> heater-1:inlet".to_string(),
                 command_id: "inspector.focus_stream:stream-feed".to_string(),
             })
+        );
+        assert!(
+            focused_stream
+                .window
+                .canvas
+                .widget
+                .view()
+                .object_list
+                .items
+                .iter()
+                .any(|item| item.kind_label == "Stream"
+                    && item.target_id == "stream-feed"
+                    && item.is_active)
         );
         assert_eq!(
             focused_stream

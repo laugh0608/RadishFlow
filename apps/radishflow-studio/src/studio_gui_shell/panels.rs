@@ -71,6 +71,8 @@ impl ReadyAppState {
         ui.separator();
         self.render_canvas_drop_surface(ui, widget);
         ui.add_space(8.0);
+        self.render_canvas_object_list(ui, widget);
+        ui.add_space(8.0);
         egui::ScrollArea::vertical()
             .id_salt(format!(
                 "scroll:{}:{}:suggestions",
@@ -97,6 +99,56 @@ impl ReadyAppState {
                         ui.small(format!("id={}", suggestion.id));
                     });
                     ui.add_space(6.0);
+                }
+            });
+    }
+
+    fn render_canvas_object_list(
+        &mut self,
+        ui: &mut egui::Ui,
+        widget: &radishflow_studio::StudioGuiCanvasWidgetModel,
+    ) {
+        let object_list = &widget.view().object_list;
+        ui.horizontal_wrapped(|ui| {
+            ui.small(egui::RichText::new("Objects").strong());
+            render_status_chip(
+                ui,
+                &format!("{} units", object_list.unit_count),
+                egui::Color32::from_rgb(86, 118, 168),
+            );
+            render_status_chip(
+                ui,
+                &format!("{} streams", object_list.stream_count),
+                egui::Color32::from_rgb(42, 142, 122),
+            );
+        });
+        if object_list.items.is_empty() {
+            ui.small("none");
+            return;
+        }
+
+        egui::Grid::new("canvas-object-list")
+            .num_columns(3)
+            .striped(true)
+            .show(ui, |ui| {
+                for item in &object_list.items {
+                    render_status_chip(
+                        ui,
+                        item.kind_label,
+                        if item.kind_label == "Unit" {
+                            egui::Color32::from_rgb(48, 112, 188)
+                        } else {
+                            egui::Color32::from_rgb(42, 142, 122)
+                        },
+                    );
+                    let response = ui
+                        .add(egui::Button::new(&item.label).selected(item.is_active))
+                        .on_hover_text(&item.detail);
+                    if response.clicked() {
+                        self.dispatch_ui_command(&item.command_id);
+                    }
+                    ui.small(format!("{} · {}", item.target_id, item.detail));
+                    ui.end_row();
                 }
             });
     }
