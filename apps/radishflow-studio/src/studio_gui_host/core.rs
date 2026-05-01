@@ -28,7 +28,31 @@ impl StudioGuiHost {
 
     pub fn canvas_state(&self) -> StudioGuiCanvasState {
         let canvas = self.controller.canvas_interaction();
+        let active_unit_id = match self.controller.active_inspector_target() {
+            Some(rf_ui::InspectorTarget::Unit(unit_id)) => Some(unit_id),
+            _ => None,
+        };
+        let units = self
+            .controller
+            .document()
+            .flowsheet
+            .units
+            .values()
+            .map(|unit| StudioGuiCanvasUnitState {
+                unit_id: unit.id.clone(),
+                name: unit.name.clone(),
+                kind: unit.kind.clone(),
+                port_count: unit.ports.len(),
+                connected_port_count: unit
+                    .ports
+                    .iter()
+                    .filter(|port| port.stream_id.is_some())
+                    .count(),
+                is_active_inspector_target: active_unit_id.as_ref() == Some(&unit.id),
+            })
+            .collect();
         StudioGuiCanvasState {
+            units,
             suggestions: canvas.suggestions,
             focused_suggestion_id: canvas.focused_suggestion_id,
             pending_edit: canvas.pending_edit,

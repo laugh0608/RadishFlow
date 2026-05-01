@@ -1,5 +1,19 @@
 use crate::StudioGuiCanvasState;
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioGuiCanvasUnitBlockViewModel {
+    pub unit_id: String,
+    pub name: String,
+    pub kind: String,
+    pub port_count: usize,
+    pub connected_port_count: usize,
+    pub command_id: String,
+    pub action_label: String,
+    pub hover_text: String,
+    pub layout_slot: usize,
+    pub is_active_inspector_target: bool,
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct StudioGuiCanvasSuggestionViewModel {
     pub id: String,
@@ -23,7 +37,9 @@ pub struct StudioGuiCanvasPendingEditViewModel {
 pub struct StudioGuiCanvasViewModel {
     pub pending_edit: Option<StudioGuiCanvasPendingEditViewModel>,
     pub focused_suggestion_id: Option<String>,
+    pub unit_count: usize,
     pub suggestion_count: usize,
+    pub unit_blocks: Vec<StudioGuiCanvasUnitBlockViewModel>,
     pub suggestions: Vec<StudioGuiCanvasSuggestionViewModel>,
 }
 
@@ -42,6 +58,31 @@ impl StudioGuiCanvasViewModel {
                 }
             }
         });
+        let unit_blocks = state
+            .units
+            .iter()
+            .enumerate()
+            .map(|(layout_slot, unit)| {
+                let target = rf_ui::InspectorTarget::Unit(unit.unit_id.clone());
+                let command_id = crate::inspector_target_command_id(&target);
+                StudioGuiCanvasUnitBlockViewModel {
+                    unit_id: unit.unit_id.as_str().to_string(),
+                    name: unit.name.clone(),
+                    kind: unit.kind.clone(),
+                    port_count: unit.port_count,
+                    connected_port_count: unit.connected_port_count,
+                    action_label: format!("Unit {}", unit.unit_id.as_str()),
+                    hover_text: format!(
+                        "Focus unit inspector for `{}` ({})",
+                        unit.unit_id.as_str(),
+                        unit.kind
+                    ),
+                    command_id,
+                    layout_slot,
+                    is_active_inspector_target: unit.is_active_inspector_target,
+                }
+            })
+            .collect::<Vec<_>>();
         let suggestions = state
             .suggestions
             .iter()
@@ -60,7 +101,9 @@ impl StudioGuiCanvasViewModel {
         Self {
             pending_edit,
             focused_suggestion_id,
+            unit_count: unit_blocks.len(),
             suggestion_count: suggestions.len(),
+            unit_blocks,
             suggestions,
         }
     }
@@ -91,8 +134,25 @@ impl StudioGuiCanvasTextView {
                 "focused suggestion: {}",
                 view.focused_suggestion_id.as_deref().unwrap_or("none")
             ),
+            format!("unit count: {}", view.unit_count),
             format!("suggestion count: {}", view.suggestion_count),
         ];
+
+        lines.extend(view.unit_blocks.iter().map(|unit| {
+            let focus_marker = if unit.is_active_inspector_target {
+                "*"
+            } else {
+                "-"
+            };
+            format!(
+                "{focus_marker} unit {} kind={} ports={}/{} command={}",
+                unit.unit_id,
+                unit.kind,
+                unit.connected_port_count,
+                unit.port_count,
+                unit.command_id
+            )
+        }));
 
         lines.extend(view.suggestions.iter().map(|suggestion| {
             let focus_marker = if suggestion.is_focused { "*" } else { "-" };
@@ -227,6 +287,8 @@ mod tests {
 
         assert_eq!(presentation.view.focused_suggestion_id, None);
         assert_eq!(presentation.view.pending_edit, None);
+        assert_eq!(presentation.view.unit_count, 0);
+        assert!(presentation.view.unit_blocks.is_empty());
         assert_eq!(presentation.view.suggestion_count, 0);
         assert!(presentation.view.suggestions.is_empty());
         assert_eq!(
@@ -234,6 +296,7 @@ mod tests {
             vec![
                 "pending edit: none".to_string(),
                 "focused suggestion: none".to_string(),
+                "unit count: 0".to_string(),
                 "suggestion count: 0".to_string(),
             ]
         );
@@ -264,6 +327,7 @@ mod tests {
                 "pending edit: place_unit summary=place unit kind=Flash Drum cancel=yes"
                     .to_string(),
                 "focused suggestion: none".to_string(),
+                "unit count: 0".to_string(),
                 "suggestion count: 0".to_string(),
             ]
         );
@@ -283,6 +347,16 @@ mod tests {
             presentation.view.focused_suggestion_id.as_deref(),
             Some("local.flash_drum.connect_inlet.flash-1.stream-heated")
         );
+        assert!(
+            presentation.view.unit_blocks.iter().any(|unit| {
+                unit.unit_id == "flash-1"
+                    && unit.kind == "flash_drum"
+                    && unit.command_id == "inspector.focus_unit:flash-1"
+                    && unit.port_count == 3
+                    && unit.layout_slot > 0
+            }),
+            "expected canvas presentation to surface existing UnitNode blocks"
+        );
         assert_eq!(presentation.view.suggestion_count, 3);
         assert_eq!(presentation.view.suggestions[0].status_label, "focused");
         assert_eq!(presentation.view.suggestions[0].source_label, "local_rules");
@@ -294,11 +368,40 @@ mod tests {
                 "pending edit: none".to_string(),
                 "focused suggestion: local.flash_drum.connect_inlet.flash-1.stream-heated"
                     .to_string(),
+                "unit count: 3".to_string(),
                 "suggestion count: 3".to_string(),
+                "- unit feed-1 kind=feed ports=1/1 command=inspector.focus_unit:feed-1".to_string(),
+                "- unit flash-1 kind=flash_drum ports=0/3 command=inspector.focus_unit:flash-1".to_string(),
+                "- unit heater-1 kind=heater ports=2/2 command=inspector.focus_unit:heater-1".to_string(),
                 "* local.flash_drum.connect_inlet.flash-1.stream-heated [focused] source=local_rules confidence=0.97 target=flash-1 tab_accept=yes reason=Connect stream `stream-heated` to flash drum inlet `inlet`".to_string(),
                 "- local.flash_drum.create_outlet.flash-1.liquid [proposed] source=local_rules confidence=0.93 target=flash-1 tab_accept=yes reason=Create terminal stream `Flash Drum Liquid Outlet` for flash drum outlet `liquid`".to_string(),
                 "- local.flash_drum.create_outlet.flash-1.vapor [proposed] source=local_rules confidence=0.92 target=flash-1 tab_accept=yes reason=Create terminal stream `Flash Drum Vapor Outlet` for flash drum outlet `vapor`".to_string(),
             ]
+        );
+
+        let focused_unit = driver
+            .dispatch_event(StudioGuiEvent::UiCommandRequested {
+                command_id: "inspector.focus_unit:flash-1".to_string(),
+            })
+            .expect("expected unit focus dispatch");
+        let focused_unit_block = focused_unit
+            .window
+            .canvas
+            .widget
+            .view()
+            .unit_blocks
+            .iter()
+            .find(|unit| unit.unit_id == "flash-1")
+            .expect("expected focused flash unit block");
+        assert!(focused_unit_block.is_active_inspector_target);
+        assert_eq!(
+            focused_unit
+                .window
+                .runtime
+                .active_inspector_target
+                .as_ref()
+                .map(|target| (target.kind_label, target.target_id.as_str())),
+            Some(("Unit", "flash-1"))
         );
 
         let _ = fs::remove_file(project_path);

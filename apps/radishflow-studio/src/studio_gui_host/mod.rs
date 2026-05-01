@@ -121,9 +121,20 @@ pub struct StudioGuiHostCloseWindowResult {
 
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct StudioGuiCanvasState {
+    pub units: Vec<StudioGuiCanvasUnitState>,
     pub suggestions: Vec<CanvasSuggestion>,
     pub focused_suggestion_id: Option<CanvasSuggestionId>,
     pub pending_edit: Option<CanvasEditIntent>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioGuiCanvasUnitState {
+    pub unit_id: rf_types::UnitId,
+    pub name: String,
+    pub kind: String,
+    pub port_count: usize,
+    pub connected_port_count: usize,
+    pub is_active_inspector_target: bool,
 }
 
 #[derive(Debug, Clone, PartialEq)]

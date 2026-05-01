@@ -106,6 +106,7 @@ impl ReadyAppState {
         widget: &radishflow_studio::StudioGuiCanvasWidgetModel,
     ) {
         let pending_edit = widget.view().pending_edit.as_ref();
+        let unit_blocks = &widget.view().unit_blocks;
         let available_width = ui.available_width().max(320.0);
         let desired_size = egui::vec2(available_width, 280.0);
         let (rect, response) = ui.allocate_exact_size(desired_size, egui::Sense::click());
@@ -122,12 +123,30 @@ impl ReadyAppState {
         };
         paint_canvas_surface_labels(&painter, rect, title, subtitle);
 
+        let mut clicked_unit = false;
+        for unit in unit_blocks {
+            let unit_rect = canvas_unit_block_rect(rect, unit.layout_slot);
+            paint_canvas_unit_block(&painter, unit_rect, unit);
+            let unit_response = ui
+                .interact(
+                    unit_rect,
+                    ui.make_persistent_id(format!("canvas-unit:{}", unit.unit_id)),
+                    egui::Sense::click(),
+                )
+                .on_hover_text(&unit.hover_text)
+                .on_hover_cursor(egui::CursorIcon::PointingHand);
+            if unit_response.clicked() {
+                clicked_unit = true;
+                self.dispatch_ui_command(&unit.command_id);
+            }
+        }
+
         let response = if pending_edit.is_some() {
             response.on_hover_cursor(egui::CursorIcon::Crosshair)
         } else {
             response
         };
-        if pending_edit.is_some() && response.clicked() {
+        if pending_edit.is_some() && response.clicked() && !clicked_unit {
             if let Some(pointer_pos) = response.interact_pointer_pos() {
                 let local = pointer_pos - rect.min;
                 self.dispatch_event(StudioGuiEvent::CanvasPendingEditCommitRequested {
@@ -1697,4 +1716,91 @@ fn paint_canvas_surface_labels(
         subtitle_galley,
         subtitle_color,
     );
+}
+
+fn canvas_unit_block_rect(rect: egui::Rect, layout_slot: usize) -> egui::Rect {
+    let block_size = egui::vec2(156.0, 72.0);
+    let gap = egui::vec2(22.0, 20.0);
+    let left_padding = 18.0;
+    let top_padding = 72.0;
+    let available_width = (rect.width() - left_padding * 2.0).max(block_size.x);
+    let columns = ((available_width + gap.x) / (block_size.x + gap.x))
+        .floor()
+        .max(1.0) as usize;
+    let column = layout_slot % columns;
+    let row = layout_slot / columns;
+    let min = egui::pos2(
+        rect.left() + left_padding + column as f32 * (block_size.x + gap.x),
+        rect.top() + top_padding + row as f32 * (block_size.y + gap.y),
+    );
+    egui::Rect::from_min_size(min, block_size)
+}
+
+fn paint_canvas_unit_block(
+    painter: &egui::Painter,
+    rect: egui::Rect,
+    unit: &radishflow_studio::StudioGuiCanvasUnitBlockViewModel,
+) {
+    let fill = if unit.is_active_inspector_target {
+        egui::Color32::from_rgb(230, 243, 255)
+    } else {
+        egui::Color32::from_rgb(255, 255, 255)
+    };
+    let stroke = if unit.is_active_inspector_target {
+        egui::Stroke::new(2.0, egui::Color32::from_rgb(48, 112, 188))
+    } else {
+        egui::Stroke::new(1.2, egui::Color32::from_rgb(98, 113, 126))
+    };
+    painter.rect_filled(rect, 6.0, fill);
+    paint_canvas_rect_border(painter, rect, stroke);
+
+    let accent = match unit.kind.as_str() {
+        "feed" | "Feed" => egui::Color32::from_rgb(48, 132, 98),
+        "heater" | "Heater" => egui::Color32::from_rgb(190, 112, 42),
+        "valve" | "Valve" => egui::Color32::from_rgb(96, 96, 150),
+        "flash_drum" | "Flash Drum" => egui::Color32::from_rgb(48, 112, 188),
+        "mixer" | "Mixer" => egui::Color32::from_rgb(132, 86, 150),
+        _ => egui::Color32::from_rgb(86, 96, 108),
+    };
+    painter.rect_filled(
+        egui::Rect::from_min_size(rect.min, egui::vec2(6.0, rect.height())),
+        0.0,
+        accent,
+    );
+
+    let text_left = rect.left() + 14.0;
+    let text_top = rect.top() + 10.0;
+    painter.text(
+        egui::pos2(text_left, text_top),
+        egui::Align2::LEFT_TOP,
+        truncate_canvas_label(&unit.name, 18),
+        egui::FontId::proportional(14.0),
+        egui::Color32::from_rgb(35, 49, 63),
+    );
+    painter.text(
+        egui::pos2(text_left, text_top + 21.0),
+        egui::Align2::LEFT_TOP,
+        truncate_canvas_label(&unit.kind, 20),
+        egui::FontId::proportional(12.0),
+        egui::Color32::from_rgb(86, 96, 108),
+    );
+    painter.text(
+        egui::pos2(text_left, text_top + 43.0),
+        egui::Align2::LEFT_TOP,
+        format!(
+            "{} | ports {}/{}",
+            unit.unit_id, unit.connected_port_count, unit.port_count
+        ),
+        egui::FontId::proportional(11.0),
+        egui::Color32::from_rgb(86, 96, 108),
+    );
+}
+
+fn truncate_canvas_label(value: &str, max_chars: usize) -> String {
+    let mut chars = value.chars();
+    let mut label = chars.by_ref().take(max_chars).collect::<String>();
+    if chars.next().is_some() {
+        label.push_str("...");
+    }
+    label
 }

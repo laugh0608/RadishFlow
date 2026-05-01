@@ -260,6 +260,7 @@ mod tests {
             )],
             focused_suggestion_id: Some(rf_ui::CanvasSuggestionId::new("sug-a")),
             pending_edit: None,
+            ..crate::StudioGuiCanvasState::default()
         };
 
         StudioGuiCommandRegistry::from_surfaces(

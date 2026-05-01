@@ -183,7 +183,8 @@ pub use studio_document_history_command::{
 pub use studio_example_projects::{StudioExampleProjectModel, studio_example_project_models};
 pub use studio_gui_canvas_presentation::{
     StudioGuiCanvasPendingEditViewModel, StudioGuiCanvasPresentation,
-    StudioGuiCanvasSuggestionViewModel, StudioGuiCanvasTextView, StudioGuiCanvasViewModel,
+    StudioGuiCanvasSuggestionViewModel, StudioGuiCanvasTextView, StudioGuiCanvasUnitBlockViewModel,
+    StudioGuiCanvasViewModel,
 };
 pub use studio_gui_canvas_widget::{
     StudioGuiCanvasActionId, StudioGuiCanvasRenderableAction, StudioGuiCanvasWidgetEvent,
@@ -198,8 +199,8 @@ pub use studio_gui_driver::{
     StudioGuiDriver, StudioGuiDriverDispatch, StudioGuiDriverOutcome, StudioGuiEvent,
 };
 pub use studio_gui_host::{
-    StudioGuiCanvasInteractionAction, StudioGuiCanvasState, StudioGuiHost,
-    StudioGuiHostCanvasInteractionResult, StudioGuiHostCanvasSuggestionResult,
+    StudioGuiCanvasInteractionAction, StudioGuiCanvasState, StudioGuiCanvasUnitState,
+    StudioGuiHost, StudioGuiHostCanvasInteractionResult, StudioGuiHostCanvasSuggestionResult,
     StudioGuiHostCloseWindowResult, StudioGuiHostCommand, StudioGuiHostCommandOutcome,
     StudioGuiHostDispatch, StudioGuiHostGlobalEventDispatch, StudioGuiHostLifecycleDispatch,
     StudioGuiHostLifecycleEvent, StudioGuiHostUiCommandDispatchResult,
