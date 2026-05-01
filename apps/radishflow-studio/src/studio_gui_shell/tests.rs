@@ -248,6 +248,47 @@ fn result_inspector_state_tracks_selected_stream_per_snapshot() {
 }
 
 #[test]
+fn canvas_object_list_filter_matches_expected_object_groups() {
+    let unit = radishflow_studio::StudioGuiCanvasObjectListItemViewModel {
+        kind_label: "Unit",
+        target_id: "flash-1".to_string(),
+        label: "Flash Drum".to_string(),
+        detail: "flash_drum | ports 1/3".to_string(),
+        command_id: "inspector.focus_unit:flash-1".to_string(),
+        related_stream_ids: Vec::new(),
+        status_badges: vec![radishflow_studio::StudioGuiCanvasStatusBadgeViewModel {
+            severity_label: "Error",
+            short_label: "E1".to_string(),
+            detail: "solver.step.execution: unit failed".to_string(),
+        }],
+        is_active: false,
+    };
+    let stream = radishflow_studio::StudioGuiCanvasObjectListItemViewModel {
+        kind_label: "Stream",
+        target_id: "stream-feed".to_string(),
+        label: "Feed".to_string(),
+        detail: "feed-1:outlet -> flash-1:inlet".to_string(),
+        command_id: "inspector.focus_stream:stream-feed".to_string(),
+        related_stream_ids: vec!["stream-feed".to_string()],
+        status_badges: Vec::new(),
+        is_active: false,
+    };
+
+    assert_eq!(
+        CanvasObjectListFilter::from_filter_id("attention"),
+        Some(CanvasObjectListFilter::Attention)
+    );
+    assert_eq!(CanvasObjectListFilter::Units.filter_id(), "units");
+    assert!(CanvasObjectListFilter::All.matches(&unit));
+    assert!(CanvasObjectListFilter::Attention.matches(&unit));
+    assert!(!CanvasObjectListFilter::Attention.matches(&stream));
+    assert!(CanvasObjectListFilter::Units.matches(&unit));
+    assert!(!CanvasObjectListFilter::Units.matches(&stream));
+    assert!(CanvasObjectListFilter::Streams.matches(&stream));
+    assert!(!CanvasObjectListFilter::Streams.matches(&unit));
+}
+
+#[test]
 fn right_sidebar_width_keeps_runtime_panel_readable() {
     let width = region_panel_width_from_values(
         StudioGuiWindowDockRegion::RightSidebar,

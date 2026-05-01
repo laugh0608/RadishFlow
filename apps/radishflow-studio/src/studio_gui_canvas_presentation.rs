@@ -89,7 +89,17 @@ pub struct StudioGuiCanvasObjectListItemViewModel {
 pub struct StudioGuiCanvasObjectListViewModel {
     pub unit_count: usize,
     pub stream_count: usize,
+    pub attention_count: usize,
+    pub filter_options: Vec<StudioGuiCanvasObjectListFilterOptionViewModel>,
     pub items: Vec<StudioGuiCanvasObjectListItemViewModel>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioGuiCanvasObjectListFilterOptionViewModel {
+    pub filter_id: &'static str,
+    pub label: &'static str,
+    pub count: usize,
+    pub enabled: bool,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -433,9 +443,10 @@ impl StudioGuiCanvasTextView {
             format!("unit count: {}", view.unit_count),
             format!("stream line count: {}", view.stream_line_count),
             format!(
-                "object list count: units={} streams={} items={}",
+                "object list count: units={} streams={} attention={} items={}",
                 view.object_list.unit_count,
                 view.object_list.stream_count,
+                view.object_list.attention_count,
                 view.object_list.items.len()
             ),
             format!("suggestion count: {}", view.suggestion_count),
@@ -732,11 +743,58 @@ fn canvas_object_list(
     }
     let stream_count = stream_items.len();
     items.extend(stream_items.into_values());
+    items.sort_by_key(|item| {
+        (
+            item.status_badges.is_empty(),
+            object_list_kind_order(item.kind_label),
+            item.label.clone(),
+            item.target_id.clone(),
+        )
+    });
+    let attention_count = items
+        .iter()
+        .filter(|item| !item.status_badges.is_empty())
+        .count();
 
     StudioGuiCanvasObjectListViewModel {
         unit_count: units.len(),
         stream_count,
+        attention_count,
+        filter_options: vec![
+            StudioGuiCanvasObjectListFilterOptionViewModel {
+                filter_id: "all",
+                label: "All",
+                count: items.len(),
+                enabled: !items.is_empty(),
+            },
+            StudioGuiCanvasObjectListFilterOptionViewModel {
+                filter_id: "attention",
+                label: "Attention",
+                count: attention_count,
+                enabled: attention_count > 0,
+            },
+            StudioGuiCanvasObjectListFilterOptionViewModel {
+                filter_id: "units",
+                label: "Units",
+                count: units.len(),
+                enabled: !units.is_empty(),
+            },
+            StudioGuiCanvasObjectListFilterOptionViewModel {
+                filter_id: "streams",
+                label: "Streams",
+                count: stream_count,
+                enabled: stream_count > 0,
+            },
+        ],
         items,
+    }
+}
+
+fn object_list_kind_order(kind_label: &str) -> u8 {
+    match kind_label {
+        "Unit" => 0,
+        "Stream" => 1,
+        _ => 2,
     }
 }
 
@@ -961,6 +1019,33 @@ mod tests {
             crate::StudioGuiCanvasObjectListViewModel {
                 unit_count: 0,
                 stream_count: 0,
+                attention_count: 0,
+                filter_options: vec![
+                    crate::StudioGuiCanvasObjectListFilterOptionViewModel {
+                        filter_id: "all",
+                        label: "All",
+                        count: 0,
+                        enabled: false,
+                    },
+                    crate::StudioGuiCanvasObjectListFilterOptionViewModel {
+                        filter_id: "attention",
+                        label: "Attention",
+                        count: 0,
+                        enabled: false,
+                    },
+                    crate::StudioGuiCanvasObjectListFilterOptionViewModel {
+                        filter_id: "units",
+                        label: "Units",
+                        count: 0,
+                        enabled: false,
+                    },
+                    crate::StudioGuiCanvasObjectListFilterOptionViewModel {
+                        filter_id: "streams",
+                        label: "Streams",
+                        count: 0,
+                        enabled: false,
+                    },
+                ],
                 items: Vec::new(),
             }
         );
@@ -980,7 +1065,7 @@ mod tests {
                 "focus callout: none".to_string(),
                 "unit count: 0".to_string(),
                 "stream line count: 0".to_string(),
-                "object list count: units=0 streams=0 items=0".to_string(),
+                "object list count: units=0 streams=0 attention=0 items=0".to_string(),
                 "suggestion count: 0".to_string(),
             ]
         );
@@ -1016,7 +1101,7 @@ mod tests {
                 "focus callout: none".to_string(),
                 "unit count: 0".to_string(),
                 "stream line count: 0".to_string(),
-                "object list count: units=0 streams=0 items=0".to_string(),
+                "object list count: units=0 streams=0 attention=0 items=0".to_string(),
                 "suggestion count: 0".to_string(),
             ]
         );
@@ -1096,6 +1181,22 @@ mod tests {
         assert!(presentation.view.object_list.items.iter().any(|item| {
             item.target_id == "flash-1" && item.status_badges == unit.status_badges
         }));
+        assert_eq!(presentation.view.object_list.attention_count, 2);
+        assert_eq!(
+            presentation
+                .view
+                .object_list
+                .filter_options
+                .iter()
+                .map(|option| (option.filter_id, option.count, option.enabled))
+                .collect::<Vec<_>>(),
+            vec![
+                ("all", 2, true),
+                ("attention", 2, true),
+                ("units", 1, true),
+                ("streams", 1, true),
+            ]
+        );
         assert!(presentation.text.lines.iter().any(|line| {
             line == "- unit flash-1 kind=flash_drum ports=1/1 badges=E1 command=inspector.focus_unit:flash-1"
         }));
@@ -1199,7 +1300,23 @@ mod tests {
         assert_eq!(presentation.view.suggestion_count, 3);
         assert_eq!(presentation.view.object_list.unit_count, 3);
         assert_eq!(presentation.view.object_list.stream_count, 2);
+        assert_eq!(presentation.view.object_list.attention_count, 0);
         assert_eq!(presentation.view.object_list.items.len(), 5);
+        assert_eq!(
+            presentation
+                .view
+                .object_list
+                .filter_options
+                .iter()
+                .map(|option| (option.filter_id, option.count, option.enabled))
+                .collect::<Vec<_>>(),
+            vec![
+                ("all", 5, true),
+                ("attention", 0, false),
+                ("units", 3, true),
+                ("streams", 2, true),
+            ]
+        );
         assert!(
             presentation.view.object_list.items.iter().any(|item| {
                 item.kind_label == "Unit"
@@ -1235,7 +1352,7 @@ mod tests {
                 "focus callout: none".to_string(),
                 "unit count: 3".to_string(),
                 "stream line count: 2".to_string(),
-                "object list count: units=3 streams=2 items=5".to_string(),
+                "object list count: units=3 streams=2 attention=0 items=5".to_string(),
                 "suggestion count: 3".to_string(),
                 "- unit feed-1 kind=feed ports=1/1 badges=none command=inspector.focus_unit:feed-1".to_string(),
                 "- unit flash-1 kind=flash_drum ports=0/3 badges=none command=inspector.focus_unit:flash-1".to_string(),

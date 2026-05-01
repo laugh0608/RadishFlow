@@ -71,6 +71,7 @@ struct ReadyAppState {
     command_palette: CommandPaletteState,
     project_open: ProjectOpenState,
     result_inspector: ResultInspectorState,
+    canvas_object_filter: CanvasObjectListFilter,
     project_file_picker: Box<dyn ProjectFilePicker>,
     preferences_path: PathBuf,
     locale: StudioShellLocale,
@@ -143,6 +144,15 @@ struct ResultInspectorState {
     comparison_stream_id: Option<String>,
 }
 
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+enum CanvasObjectListFilter {
+    #[default]
+    All,
+    Attention,
+    Units,
+    Streams,
+}
+
 #[derive(Debug, Default)]
 struct EguiPlatformTimerExecutor {
     next_native_timer_id: StudioGuiPlatformNativeTimerId,
@@ -211,6 +221,7 @@ impl ReadyAppState {
                 recent_projects,
             ),
             result_inspector: ResultInspectorState::default(),
+            canvas_object_filter: CanvasObjectListFilter::default(),
             project_file_picker,
             preferences_path,
             locale: StudioShellLocale::default(),
@@ -300,6 +311,36 @@ impl ResultInspectorState {
         self.snapshot_id = None;
         self.selected_stream_id = None;
         self.comparison_stream_id = None;
+    }
+}
+
+impl CanvasObjectListFilter {
+    fn from_filter_id(filter_id: &str) -> Option<Self> {
+        match filter_id {
+            "all" => Some(Self::All),
+            "attention" => Some(Self::Attention),
+            "units" => Some(Self::Units),
+            "streams" => Some(Self::Streams),
+            _ => None,
+        }
+    }
+
+    fn filter_id(self) -> &'static str {
+        match self {
+            Self::All => "all",
+            Self::Attention => "attention",
+            Self::Units => "units",
+            Self::Streams => "streams",
+        }
+    }
+
+    fn matches(self, item: &radishflow_studio::StudioGuiCanvasObjectListItemViewModel) -> bool {
+        match self {
+            Self::All => true,
+            Self::Attention => !item.status_badges.is_empty(),
+            Self::Units => item.kind_label == "Unit",
+            Self::Streams => item.kind_label == "Stream",
+        }
     }
 }
 

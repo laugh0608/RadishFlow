@@ -110,6 +110,15 @@ impl ReadyAppState {
         hovered_stream_id: Option<&str>,
     ) {
         let object_list = &widget.view().object_list;
+        let selected_filter_enabled = object_list
+            .filter_options
+            .iter()
+            .find(|option| option.filter_id == self.canvas_object_filter.filter_id())
+            .map(|option| option.enabled)
+            .unwrap_or(false);
+        if !selected_filter_enabled {
+            self.canvas_object_filter = CanvasObjectListFilter::All;
+        }
         ui.horizontal_wrapped(|ui| {
             ui.small(egui::RichText::new("Objects").strong());
             render_status_chip(
@@ -122,9 +131,40 @@ impl ReadyAppState {
                 &format!("{} streams", object_list.stream_count),
                 egui::Color32::from_rgb(42, 142, 122),
             );
+            if object_list.attention_count > 0 {
+                render_status_chip(
+                    ui,
+                    &format!("{} attention", object_list.attention_count),
+                    notice_color(rf_ui::RunPanelNoticeLevel::Warning),
+                );
+            }
+        });
+        ui.horizontal_wrapped(|ui| {
+            for option in &object_list.filter_options {
+                let selected = self.canvas_object_filter.filter_id() == option.filter_id;
+                let label = format!("{} {}", option.label, option.count);
+                if ui
+                    .add_enabled(option.enabled, egui::Button::new(label).selected(selected))
+                    .on_hover_text("Filter the read-only canvas object list")
+                    .clicked()
+                {
+                    if let Some(filter) = CanvasObjectListFilter::from_filter_id(option.filter_id) {
+                        self.canvas_object_filter = filter;
+                    }
+                }
+            }
         });
         if object_list.items.is_empty() {
             ui.small("none");
+            return;
+        }
+        let visible_items = object_list
+            .items
+            .iter()
+            .filter(|item| self.canvas_object_filter.matches(item))
+            .collect::<Vec<_>>();
+        if visible_items.is_empty() {
+            ui.small("no objects in this filter");
             return;
         }
 
@@ -132,7 +172,7 @@ impl ReadyAppState {
             .num_columns(3)
             .striped(true)
             .show(ui, |ui| {
-                for item in &object_list.items {
+                for item in visible_items {
                     let is_hover_related = hovered_stream_id
                         .map(|stream_id| {
                             item.related_stream_ids

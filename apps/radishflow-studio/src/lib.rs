@@ -182,13 +182,14 @@ pub use studio_document_history_command::{
 };
 pub use studio_example_projects::{StudioExampleProjectModel, studio_example_project_models};
 pub use studio_gui_canvas_presentation::{
-    StudioGuiCanvasFocusCalloutViewModel, StudioGuiCanvasObjectListItemViewModel,
-    StudioGuiCanvasObjectListViewModel, StudioGuiCanvasPendingEditViewModel,
-    StudioGuiCanvasPresentation, StudioGuiCanvasRunStatusViewModel,
-    StudioGuiCanvasSelectionViewModel, StudioGuiCanvasStatusBadgeViewModel,
-    StudioGuiCanvasStreamLineEndpointViewModel, StudioGuiCanvasStreamLineViewModel,
-    StudioGuiCanvasSuggestionViewModel, StudioGuiCanvasTextView, StudioGuiCanvasUnitBlockViewModel,
-    StudioGuiCanvasUnitPortViewModel, StudioGuiCanvasViewModel,
+    StudioGuiCanvasFocusCalloutViewModel, StudioGuiCanvasObjectListFilterOptionViewModel,
+    StudioGuiCanvasObjectListItemViewModel, StudioGuiCanvasObjectListViewModel,
+    StudioGuiCanvasPendingEditViewModel, StudioGuiCanvasPresentation,
+    StudioGuiCanvasRunStatusViewModel, StudioGuiCanvasSelectionViewModel,
+    StudioGuiCanvasStatusBadgeViewModel, StudioGuiCanvasStreamLineEndpointViewModel,
+    StudioGuiCanvasStreamLineViewModel, StudioGuiCanvasSuggestionViewModel,
+    StudioGuiCanvasTextView, StudioGuiCanvasUnitBlockViewModel, StudioGuiCanvasUnitPortViewModel,
+    StudioGuiCanvasViewModel,
 };
 pub use studio_gui_canvas_widget::{
     StudioGuiCanvasActionId, StudioGuiCanvasRenderableAction, StudioGuiCanvasWidgetEvent,
