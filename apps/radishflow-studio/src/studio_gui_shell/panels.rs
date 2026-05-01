@@ -69,9 +69,9 @@ impl ReadyAppState {
         });
         self.render_canvas_selection_summary(ui, widget);
         ui.separator();
-        self.render_canvas_drop_surface(ui, widget);
+        let hovered_stream_id = self.render_canvas_drop_surface(ui, widget);
         ui.add_space(8.0);
-        self.render_canvas_object_list(ui, widget);
+        self.render_canvas_object_list(ui, widget, hovered_stream_id.as_deref());
         ui.add_space(8.0);
         egui::ScrollArea::vertical()
             .id_salt(format!(
@@ -107,6 +107,7 @@ impl ReadyAppState {
         &mut self,
         ui: &mut egui::Ui,
         widget: &radishflow_studio::StudioGuiCanvasWidgetModel,
+        hovered_stream_id: Option<&str>,
     ) {
         let object_list = &widget.view().object_list;
         ui.horizontal_wrapped(|ui| {
@@ -132,17 +133,29 @@ impl ReadyAppState {
             .striped(true)
             .show(ui, |ui| {
                 for item in &object_list.items {
+                    let is_hover_related = hovered_stream_id
+                        .map(|stream_id| {
+                            item.related_stream_ids
+                                .iter()
+                                .any(|related_stream_id| related_stream_id == stream_id)
+                        })
+                        .unwrap_or(false);
                     render_status_chip(
                         ui,
                         item.kind_label,
-                        if item.kind_label == "Unit" {
+                        if is_hover_related {
+                            egui::Color32::from_rgb(180, 124, 42)
+                        } else if item.kind_label == "Unit" {
                             egui::Color32::from_rgb(48, 112, 188)
                         } else {
                             egui::Color32::from_rgb(42, 142, 122)
                         },
                     );
                     let response = ui
-                        .add(egui::Button::new(&item.label).selected(item.is_active))
+                        .add(
+                            egui::Button::new(&item.label)
+                                .selected(item.is_active || is_hover_related),
+                        )
                         .on_hover_text(&item.detail);
                     if response.clicked() {
                         self.dispatch_ui_command(&item.command_id);
@@ -184,7 +197,7 @@ impl ReadyAppState {
         &mut self,
         ui: &mut egui::Ui,
         widget: &radishflow_studio::StudioGuiCanvasWidgetModel,
-    ) {
+    ) -> Option<String> {
         let view = widget.view();
         let pending_edit = view.pending_edit.as_ref();
         let focus_callout = view.focus_callout.as_ref();
@@ -224,9 +237,33 @@ impl ReadyAppState {
         }
 
         let mut clicked_unit = false;
+        let mut hovered_port_stream_id = None;
+        let mut hovered_port_callout = None;
         for unit in unit_blocks {
             let unit_rect = canvas_unit_block_rect(rect, unit.layout_slot);
             paint_canvas_unit_block(&painter, unit_rect, unit);
+            for port in &unit.ports {
+                let port_anchor = canvas_unit_port_anchor_in_rect(
+                    unit_rect,
+                    port.direction_label == "outlet",
+                    port.side_index,
+                    port.side_count,
+                );
+                let port_response = ui
+                    .interact(
+                        egui::Rect::from_center_size(port_anchor, egui::vec2(18.0, 18.0)),
+                        ui.make_persistent_id(format!(
+                            "canvas-port:{}:{}",
+                            unit.unit_id, port.name
+                        )),
+                        egui::Sense::hover(),
+                    )
+                    .on_hover_text(&port.hover_text);
+                if port_response.hovered() {
+                    hovered_port_stream_id = port.stream_id.clone();
+                    hovered_port_callout = Some((port_anchor, port));
+                }
+            }
             let unit_response = ui
                 .interact(
                     unit_rect,
@@ -247,6 +284,9 @@ impl ReadyAppState {
             {
                 paint_canvas_focus_callout(&painter, rect, anchor, callout);
             }
+        }
+        if let Some((anchor, port)) = hovered_port_callout {
+            paint_canvas_port_hover_callout(&painter, rect, anchor, port);
         }
 
         let clicked_stream = clicked_stream_command.is_some();
@@ -269,6 +309,8 @@ impl ReadyAppState {
                 });
             }
         }
+
+        hovered_port_stream_id
     }
 
     pub(super) fn render_runtime_area(
@@ -2096,6 +2138,63 @@ fn paint_canvas_unit_port_marker(
         } else {
             egui::Color32::from_rgb(106, 118, 130)
         },
+    );
+}
+
+fn paint_canvas_port_hover_callout(
+    painter: &egui::Painter,
+    canvas_rect: egui::Rect,
+    anchor: egui::Pos2,
+    port: &radishflow_studio::StudioGuiCanvasUnitPortViewModel,
+) {
+    let color = if port.is_connected {
+        egui::Color32::from_rgb(42, 142, 122)
+    } else {
+        egui::Color32::from_rgb(112, 124, 136)
+    };
+    let size = egui::vec2(188.0, 46.0);
+    let mut min = if port.direction_label == "outlet" {
+        anchor + egui::vec2(-size.x - 12.0, -22.0)
+    } else {
+        anchor + egui::vec2(12.0, -22.0)
+    };
+    min.x = min
+        .x
+        .clamp(canvas_rect.left() + 8.0, canvas_rect.right() - size.x - 8.0);
+    min.y = min
+        .y
+        .clamp(canvas_rect.top() + 8.0, canvas_rect.bottom() - size.y - 8.0);
+    let callout_rect = egui::Rect::from_min_size(min, size);
+    let connector_end = if port.direction_label == "outlet" {
+        egui::pos2(callout_rect.right(), callout_rect.center().y)
+    } else {
+        egui::pos2(callout_rect.left(), callout_rect.center().y)
+    };
+
+    painter.line_segment(
+        [anchor, connector_end],
+        egui::Stroke::new(1.0, egui::Color32::from_rgba_unmultiplied(38, 50, 62, 120)),
+    );
+    painter.rect_filled(
+        callout_rect.translate(egui::vec2(0.0, 2.0)),
+        5.0,
+        egui::Color32::from_rgba_unmultiplied(30, 42, 54, 26),
+    );
+    painter.rect_filled(callout_rect, 5.0, egui::Color32::from_rgb(255, 255, 255));
+    paint_canvas_rect_border(painter, callout_rect, egui::Stroke::new(1.2, color));
+    painter.text(
+        callout_rect.left_top() + egui::vec2(9.0, 7.0),
+        egui::Align2::LEFT_TOP,
+        truncate_canvas_label(&format!("{} · {}", port.direction_label, port.name), 24),
+        egui::FontId::proportional(11.5),
+        egui::Color32::from_rgb(35, 49, 63),
+    );
+    painter.text(
+        callout_rect.left_top() + egui::vec2(9.0, 25.0),
+        egui::Align2::LEFT_TOP,
+        truncate_canvas_label(&port.binding_label, 28),
+        egui::FontId::proportional(10.5),
+        egui::Color32::from_rgb(86, 96, 108),
     );
 }
 

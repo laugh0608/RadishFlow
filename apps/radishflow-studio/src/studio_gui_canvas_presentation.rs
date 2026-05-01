@@ -23,6 +23,10 @@ pub struct StudioGuiCanvasUnitPortViewModel {
     pub direction_label: &'static str,
     pub kind_label: &'static str,
     pub stream_id: Option<String>,
+    pub stream_label: Option<String>,
+    pub stream_command_id: Option<String>,
+    pub binding_label: String,
+    pub hover_text: String,
     pub is_connected: bool,
     pub side_index: usize,
     pub side_count: usize,
@@ -74,6 +78,7 @@ pub struct StudioGuiCanvasObjectListItemViewModel {
     pub label: String,
     pub detail: String,
     pub command_id: String,
+    pub related_stream_ids: Vec<String>,
     pub is_active: bool,
 }
 
@@ -133,6 +138,11 @@ impl StudioGuiCanvasViewModel {
                 }
             }
         });
+        let stream_names = state
+            .streams
+            .iter()
+            .map(|stream| (stream.stream_id.as_str().to_string(), stream.name.clone()))
+            .collect::<BTreeMap<_, _>>();
         let unit_blocks = state
             .units
             .iter()
@@ -140,7 +150,7 @@ impl StudioGuiCanvasViewModel {
             .map(|(layout_slot, unit)| {
                 let target = rf_ui::InspectorTarget::Unit(unit.unit_id.clone());
                 let command_id = crate::inspector_target_command_id(&target);
-                let ports = canvas_unit_material_ports(unit);
+                let ports = canvas_unit_material_ports(unit, &stream_names);
                 StudioGuiCanvasUnitBlockViewModel {
                     unit_id: unit.unit_id.as_str().to_string(),
                     name: unit.name.clone(),
@@ -393,12 +403,13 @@ impl StudioGuiCanvasTextView {
             unit.ports.iter().map(move |port| {
                 let stream = port.stream_id.as_deref().unwrap_or("unbound");
                 format!(
-                    "  port {}:{} direction={} kind={} stream={} slot={}/{}",
+                    "  port {}:{} direction={} kind={} stream={} binding={} slot={}/{}",
                     unit.unit_id,
                     port.name,
                     port.direction_label,
                     port.kind_label,
                     stream,
+                    port.binding_label,
                     port.side_index + 1,
                     port.side_count
                 )
@@ -464,6 +475,7 @@ impl StudioGuiCanvasPresentation {
 
 fn canvas_unit_material_ports(
     unit: &crate::StudioGuiCanvasUnitState,
+    stream_names: &BTreeMap<String, String>,
 ) -> Vec<StudioGuiCanvasUnitPortViewModel> {
     let inlet_count = unit
         .ports
@@ -500,20 +512,64 @@ fn canvas_unit_material_ports(
                     (index, outlet_count)
                 }
             };
+            let stream_id = port
+                .stream_id
+                .as_ref()
+                .map(|stream_id| stream_id.as_str().to_string());
+            let stream_label = stream_id
+                .as_ref()
+                .map(|stream_id| canvas_port_stream_label(stream_id, stream_names));
+            let stream_command_id = port.stream_id.as_ref().map(|stream_id| {
+                crate::inspector_target_command_id(&rf_ui::InspectorTarget::Stream(
+                    stream_id.clone(),
+                ))
+            });
+            let binding_label = stream_label
+                .clone()
+                .unwrap_or_else(|| "unbound".to_string());
+            let hover_text = canvas_port_hover_text(unit, port, stream_label.as_deref());
             StudioGuiCanvasUnitPortViewModel {
                 name: port.name.clone(),
                 direction_label: port.direction.as_str(),
                 kind_label: port.kind.as_str(),
-                stream_id: port
-                    .stream_id
-                    .as_ref()
-                    .map(|stream_id| stream_id.as_str().to_string()),
+                stream_id,
+                stream_label,
+                stream_command_id,
+                binding_label,
+                hover_text,
                 is_connected: port.stream_id.is_some(),
                 side_index,
                 side_count,
             }
         })
         .collect()
+}
+
+fn canvas_port_stream_label(stream_id: &str, stream_names: &BTreeMap<String, String>) -> String {
+    match stream_names.get(stream_id) {
+        Some(name) if name != stream_id => format!("{name} ({stream_id})"),
+        _ => stream_id.to_string(),
+    }
+}
+
+fn canvas_port_hover_text(
+    unit: &crate::StudioGuiCanvasUnitState,
+    port: &crate::StudioGuiCanvasUnitPortState,
+    stream_label: Option<&str>,
+) -> String {
+    let port_label = format!(
+        "{}:{} {} {}",
+        unit.unit_id.as_str(),
+        port.name,
+        port.direction.as_str(),
+        port.kind.as_str()
+    );
+    match stream_label {
+        Some(stream_label) => {
+            format!("{port_label}\nbound stream: {stream_label}\nRead-only marker")
+        }
+        None => format!("{port_label}\nbound stream: unbound\nRead-only marker"),
+    }
 }
 
 fn canvas_focus_callout(
@@ -574,6 +630,11 @@ fn canvas_object_list(
                 unit.kind, unit.connected_port_count, unit.port_count
             ),
             command_id: unit.command_id.clone(),
+            related_stream_ids: unit
+                .ports
+                .iter()
+                .filter_map(|port| port.stream_id.clone())
+                .collect(),
             is_active: unit.is_active_inspector_target,
         })
         .collect::<Vec<_>>();
@@ -599,6 +660,7 @@ fn canvas_object_list(
                     label: stream.name.clone(),
                     detail: format!("{source} -> {sink}"),
                     command_id: stream.command_id.clone(),
+                    related_stream_ids: vec![stream.stream_id.clone()],
                     is_active: stream.is_active_inspector_target,
                 }
             });
@@ -802,12 +864,45 @@ mod tests {
                         port.name == "liquid"
                             && port.direction_label == "outlet"
                             && !port.is_connected
+                            && port.binding_label == "unbound"
+                            && port.stream_command_id.is_none()
+                            && port.hover_text.contains("bound stream: unbound")
                             && port.side_index == 0
                             && port.side_count == 2
+                    })
+                    && unit.ports.iter().any(|port| {
+                        port.name == "inlet"
+                            && port.stream_id.is_none()
+                            && port.stream_label.is_none()
                     })
                     && unit.layout_slot > 0
             }),
             "expected canvas presentation to surface existing UnitNode blocks"
+        );
+        let feed_block = presentation
+            .view
+            .unit_blocks
+            .iter()
+            .find(|unit| unit.unit_id == "feed-1")
+            .expect("expected feed unit block");
+        let feed_outlet = feed_block
+            .ports
+            .iter()
+            .find(|port| port.name == "outlet")
+            .expect("expected feed outlet port");
+        assert_eq!(feed_outlet.stream_id.as_deref(), Some("stream-feed"));
+        assert_eq!(
+            feed_outlet.stream_label.as_deref(),
+            Some("Feed (stream-feed)")
+        );
+        assert_eq!(
+            feed_outlet.stream_command_id.as_deref(),
+            Some("inspector.focus_stream:stream-feed")
+        );
+        assert!(
+            feed_outlet
+                .hover_text
+                .contains("bound stream: Feed (stream-feed)")
         );
         assert!(
             presentation.view.stream_lines.iter().any(|stream| {
@@ -838,6 +933,7 @@ mod tests {
                     && item.target_id == "flash-1"
                     && item.command_id == "inspector.focus_unit:flash-1"
                     && item.detail == "flash_drum | ports 0/3"
+                    && item.related_stream_ids.is_empty()
             }),
             "expected object list to expose unit navigation entries"
         );
@@ -847,6 +943,7 @@ mod tests {
                     && item.target_id == "stream-feed"
                     && item.command_id == "inspector.focus_stream:stream-feed"
                     && item.detail == "feed-1:outlet -> heater-1:inlet"
+                    && item.related_stream_ids == vec!["stream-feed".to_string()]
             }),
             "expected object list to expose stream navigation entries"
         );
@@ -869,12 +966,12 @@ mod tests {
                 "- unit feed-1 kind=feed ports=1/1 command=inspector.focus_unit:feed-1".to_string(),
                 "- unit flash-1 kind=flash_drum ports=0/3 command=inspector.focus_unit:flash-1".to_string(),
                 "- unit heater-1 kind=heater ports=2/2 command=inspector.focus_unit:heater-1".to_string(),
-                "  port feed-1:outlet direction=outlet kind=material stream=stream-feed slot=1/1".to_string(),
-                "  port flash-1:inlet direction=inlet kind=material stream=unbound slot=1/1".to_string(),
-                "  port flash-1:liquid direction=outlet kind=material stream=unbound slot=1/2".to_string(),
-                "  port flash-1:vapor direction=outlet kind=material stream=unbound slot=2/2".to_string(),
-                "  port heater-1:inlet direction=inlet kind=material stream=stream-feed slot=1/1".to_string(),
-                "  port heater-1:outlet direction=outlet kind=material stream=stream-heated slot=1/1".to_string(),
+                "  port feed-1:outlet direction=outlet kind=material stream=stream-feed binding=Feed (stream-feed) slot=1/1".to_string(),
+                "  port flash-1:inlet direction=inlet kind=material stream=unbound binding=unbound slot=1/1".to_string(),
+                "  port flash-1:liquid direction=outlet kind=material stream=unbound binding=unbound slot=1/2".to_string(),
+                "  port flash-1:vapor direction=outlet kind=material stream=unbound binding=unbound slot=2/2".to_string(),
+                "  port heater-1:inlet direction=inlet kind=material stream=stream-feed binding=Feed (stream-feed) slot=1/1".to_string(),
+                "  port heater-1:outlet direction=outlet kind=material stream=stream-heated binding=Heated Outlet (stream-heated) slot=1/1".to_string(),
                 "- stream stream-feed feed-1:outlet -> heater-1:inlet command=inspector.focus_stream:stream-feed".to_string(),
                 "- stream stream-heated heater-1:outlet -> terminal command=inspector.focus_stream:stream-heated".to_string(),
                 "* local.flash_drum.connect_inlet.flash-1.stream-heated [focused] source=local_rules confidence=0.97 target=flash-1 tab_accept=yes reason=Connect stream `stream-heated` to flash drum inlet `inlet`".to_string(),
