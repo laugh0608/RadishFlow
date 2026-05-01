@@ -218,7 +218,7 @@ MVP 阶段明确不做：
 - Studio 当前中文/英文切换先作为 GUI shell 级偏好存在，默认显示中文壳层文案；中文字体通过系统 CJK 字体 fallback 解决，不把字体资产或语言偏好写入 `*.rfproj.json`。
 - Studio 当前又已把结果区推进到最小 Result Inspector 和失败结果 presentation，并把诊断目标、活动 Inspector 详情、Stream Inspector 字段 presentation、字段级 draft update / 单字段 commit / 多字段批量 commit command，以及基础 `edit.undo / edit.redo` 文档历史命令接入正式 driver / runtime 边界；Stream Inspector 字段当前覆盖基础状态字段与已有总体组成组分条目；Result Inspector 当前还补出中英文可读的 `T / P / F` 摘要标签、产出单元诊断关联和当前快照内两股流股对比。
 - Studio 当前又已补出 `Save / Save As` 文档生命周期、字段编辑快捷键焦点策略、项目文件 staged write、`Save As` 覆盖确认和保存 / 另存失败恢复：保存只写回项目真相源并刷新保存态，不进入文档历史；`Ctrl+S` 在文本输入焦点下仍保存，`Ctrl+Z / Ctrl+Y` 在文本输入焦点下保留给输入框；覆盖已有非当前项目文件前必须先停在 shell 确认态；写入失败不会污染当前项目路径、保存修订号、文档历史或最近项目。
-- 这一路径仍限定在“打开已有项目或内置示例 -> 最近项目入口 -> 运行求解 -> 查看结构化结果/诊断 -> Result Inspector 与当前快照内流股对比 -> 定位 Inspector -> 编辑 Stream 基础状态与总体组成字段草稿并提交 -> 基础撤销/重做 -> 保存/另存为 -> 快捷键与覆盖确认/失败恢复保护”的最小可操作工作台闭环；当前原生文件选择器只覆盖 Windows 打开与另存为，不代表已经进入完整画布编辑器、跨平台文件工作流、结果表格导出、完整应用偏好系统、跨会话历史持久化或 UI 视觉精修阶段。
+- 这一路径仍限定在“打开已有项目或内置示例 -> 最近项目入口 -> 运行求解 -> 查看结构化结果/诊断 -> Result Inspector 与当前快照内流股对比 -> 定位 Inspector -> 编辑 Stream 基础状态与总体组成字段草稿并提交 -> 基础撤销/重做 -> 保存/另存为 -> 快捷键与覆盖确认/失败恢复保护 -> `egui` 画布单类型放置入口”的最小可操作工作台闭环；当前原生文件选择器只覆盖 Windows 打开与另存为，不代表已经进入完整画布编辑器、跨平台文件工作流、结果表格导出、完整应用偏好系统、跨会话历史持久化或 UI 视觉精修阶段。
 
 ### 退出标准
 
@@ -396,7 +396,7 @@ Studio 当前又已继续把这条 GUI 命令入口推进为稳定 host command 
 - 同一条 GUI command registry 当前又已扩到 canvas suggestion 交互与 pending edit 取消：`canvas.accept_focused`、`canvas.reject_focused`、`canvas.focus_next`、`canvas.focus_previous`、`canvas.cancel_pending_edit`
 - `StudioGuiCanvasWidget`、`StudioGuiShortcutRouter` 与 `StudioGuiHost` 当前都已统一走 `UiCommandRequested { command_id } -> dispatch_ui_command(command_id)`，真实桌面 GUI 后续不应再把 canvas accept/reject/focus/cancel 写成框架私有 shortcut/typed action 分支
 - 对 canvas 而言，local-rules suggestion refresh 当前也已收紧为“文档写回或显式重算时才触发”；纯 `focus/reject` 交互不应顺手重刷 suggestion 列表，否则会破坏正式命令面的焦点延续语义
-- 画布编辑前置状态当前先冻结为 `rf-ui::CanvasEditIntent`：`BeginPlaceUnit` 只创建 transient pending edit，`CancelPendingEdit` 只清理该状态；`CommitPendingEditAt { position }` 会把当前 `PlaceUnit` 意图提交成 canonical `UnitNode` 与 `DocumentCommand::CreateUnit`，递增 revision、进入撤销栈并打开对应 Inspector；动态 `CanvasPoint` 当前只出现在提交结果中，尚不写入项目文档或布局 sidecar，真实 GUI 后续应先消费 `StudioGuiCanvasState / StudioGuiCanvasPresentation` 再扩完整画布编辑器
+- 画布编辑前置状态当前先冻结为 `rf-ui::CanvasEditIntent`：`BeginPlaceUnit` 只创建 transient pending edit，`CancelPendingEdit` 只清理该状态；`CommitPendingEditAt { position }` 会把当前 `PlaceUnit` 意图提交成 canonical `UnitNode` 与 `DocumentCommand::CreateUnit`，递增 revision、进入撤销栈并打开对应 Inspector；动态 `CanvasPoint` 当前只出现在提交结果中，尚不写入项目文档或布局 sidecar。真实 `egui` GUI 当前只接入 `Place Flash Drum -> BeginPlaceUnit -> 点击落点提交` 的单类型入口，不做拖拽、不持久化坐标、不扩 CAPE-OPEN；后续完整画布编辑器仍应继续消费 `StudioGuiCanvasState / StudioGuiCanvasPresentation` 并补正式 layout state 边界
 - `rf-ui` 当前也已把 run panel 动作展示继续冻结到 GUI-facing `label/detail/enabled` 口径，第一版 `eframe/egui` GUI 壳已直接消费这份动作详情，而不再在壳层重复拼按钮说明文本
 - `rf-ui` 当前也已把 entitlement panel 动作展示继续冻结到 GUI-facing `label/detail/enabled` 口径，第一版 `eframe/egui` GUI 壳已直接消费这份动作详情，并沿既有 foreground host routing 回灌 Studio runtime
 - 后续真实桌面框架在建立原生命令绑定时，应优先复用这组 `UiCommandModel` / command registry，而不是继续让各入口重复拼装运行栏 availability、disabled reason 或窗口前景派发逻辑

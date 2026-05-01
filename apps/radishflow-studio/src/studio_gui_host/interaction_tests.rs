@@ -270,6 +270,40 @@ fn gui_host_dispatches_canvas_ui_command_by_command_id() {
 }
 
 #[test]
+fn gui_host_dispatches_canvas_begin_place_unit_command_by_command_id() {
+    let mut gui_host = StudioGuiHost::new(&lease_expiring_config()).expect("expected gui host");
+    let opened = gui_host.open_window().expect("expected window open");
+
+    let dispatch = gui_host
+        .dispatch_ui_command("canvas.begin_place_unit.flash_drum")
+        .expect("expected begin place unit canvas ui command");
+
+    match dispatch {
+        StudioGuiHostUiCommandDispatchResult::ExecutedCanvasInteraction {
+            command_id,
+            target_window_id,
+            result,
+        } => {
+            assert_eq!(command_id, "canvas.begin_place_unit.flash_drum");
+            assert_eq!(target_window_id, Some(opened.registration.window_id));
+            assert_eq!(
+                result.action,
+                StudioGuiCanvasInteractionAction::BeginPlaceUnit {
+                    unit_kind: "Flash Drum".to_string(),
+                }
+            );
+            assert_eq!(
+                result.canvas.pending_edit,
+                Some(rf_ui::CanvasEditIntent::PlaceUnit {
+                    unit_kind: "Flash Drum".to_string()
+                })
+            );
+        }
+        other => panic!("expected begin place unit canvas ui command outcome, got {other:?}"),
+    }
+}
+
+#[test]
 fn gui_host_canvas_ui_command_focus_persists_for_followup_reject() {
     let (config, project_path) = flash_drum_local_rules_config();
     let mut gui_host = StudioGuiHost::new(&config).expect("expected gui host");

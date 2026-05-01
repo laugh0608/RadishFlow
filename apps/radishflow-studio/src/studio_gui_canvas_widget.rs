@@ -5,6 +5,7 @@ use crate::{
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StudioGuiCanvasActionId {
+    BeginPlaceFlashDrum,
     AcceptFocused,
     RejectFocused,
     FocusNext,
@@ -63,10 +64,19 @@ impl StudioGuiCanvasWidgetModel {
             .as_ref()
             .map(|pending| pending.cancel_enabled)
             .unwrap_or(false);
+        let can_begin_place_unit = presentation.view.pending_edit.is_none();
 
         Self {
             presentation,
             actions: vec![
+                StudioGuiCanvasRenderableAction {
+                    id: StudioGuiCanvasActionId::BeginPlaceFlashDrum,
+                    command_id: canvas_command_id(StudioGuiCanvasActionId::BeginPlaceFlashDrum),
+                    label: "Place Flash Drum",
+                    detail: "Start placing a Flash Drum on the canvas",
+                    enabled: can_begin_place_unit,
+                    shortcut: None,
+                },
                 StudioGuiCanvasRenderableAction {
                     id: StudioGuiCanvasActionId::AcceptFocused,
                     command_id: canvas_command_id(StudioGuiCanvasActionId::AcceptFocused),
@@ -175,6 +185,7 @@ fn action_event(action_id: StudioGuiCanvasActionId) -> StudioGuiEvent {
 
 pub(crate) fn canvas_command_id(action_id: StudioGuiCanvasActionId) -> &'static str {
     match action_id {
+        StudioGuiCanvasActionId::BeginPlaceFlashDrum => "canvas.begin_place_unit.flash_drum",
         StudioGuiCanvasActionId::AcceptFocused => "canvas.accept_focused",
         StudioGuiCanvasActionId::RejectFocused => "canvas.reject_focused",
         StudioGuiCanvasActionId::FocusNext => "canvas.focus_next",
@@ -187,6 +198,7 @@ pub(crate) fn canvas_action_id_from_command_id(
     command_id: &str,
 ) -> Option<StudioGuiCanvasActionId> {
     match command_id {
+        "canvas.begin_place_unit.flash_drum" => Some(StudioGuiCanvasActionId::BeginPlaceFlashDrum),
         "canvas.accept_focused" => Some(StudioGuiCanvasActionId::AcceptFocused),
         "canvas.reject_focused" => Some(StudioGuiCanvasActionId::RejectFocused),
         "canvas.focus_next" => Some(StudioGuiCanvasActionId::FocusNext),
@@ -279,6 +291,12 @@ mod tests {
 
         let widget = driver.canvas_state().widget();
 
+        assert!(
+            widget
+                .action(StudioGuiCanvasActionId::BeginPlaceFlashDrum)
+                .expect("expected begin place action")
+                .enabled
+        );
         assert!(widget.primary_action().enabled);
         assert!(
             widget
@@ -309,6 +327,12 @@ mod tests {
 
         let widget = driver.canvas_state().widget();
 
+        assert!(
+            widget
+                .action(StudioGuiCanvasActionId::BeginPlaceFlashDrum)
+                .expect("expected begin place action")
+                .enabled
+        );
         assert!(!widget.primary_action().enabled);
         assert!(
             widget
@@ -346,6 +370,12 @@ mod tests {
         let widget = driver.canvas_state().widget();
 
         assert!(
+            !widget
+                .action(StudioGuiCanvasActionId::BeginPlaceFlashDrum)
+                .expect("expected begin place action")
+                .enabled
+        );
+        assert!(
             widget
                 .action(StudioGuiCanvasActionId::CancelPendingEdit)
                 .expect("expected cancel action")
@@ -359,6 +389,15 @@ mod tests {
         let driver = StudioGuiDriver::new(&config).expect("expected driver");
         let widget = driver.canvas_state().widget();
 
+        assert_eq!(
+            widget.activate(StudioGuiCanvasActionId::BeginPlaceFlashDrum),
+            StudioGuiCanvasWidgetEvent::Requested {
+                action_id: StudioGuiCanvasActionId::BeginPlaceFlashDrum,
+                event: StudioGuiEvent::UiCommandRequested {
+                    command_id: "canvas.begin_place_unit.flash_drum".to_string(),
+                },
+            }
+        );
         assert_eq!(
             widget.activate_primary(),
             StudioGuiCanvasWidgetEvent::Requested {

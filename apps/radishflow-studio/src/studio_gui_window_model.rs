@@ -1494,7 +1494,7 @@ mod tests {
 
         assert_eq!(window.canvas.title, "Canvas");
         assert_eq!(window.canvas.suggestion_count, 3);
-        assert_eq!(window.canvas.enabled_action_count, 4);
+        assert_eq!(window.canvas.enabled_action_count, 5);
         assert_eq!(
             window.canvas.focused_suggestion_id.as_deref(),
             Some("local.flash_drum.connect_inlet.flash-1.stream-heated")

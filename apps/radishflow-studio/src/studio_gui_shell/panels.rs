@@ -68,6 +68,8 @@ impl ReadyAppState {
             }
         });
         ui.separator();
+        self.render_canvas_drop_surface(ui, widget);
+        ui.add_space(8.0);
         egui::ScrollArea::vertical()
             .id_salt(format!(
                 "scroll:{}:{}:suggestions",
@@ -96,6 +98,43 @@ impl ReadyAppState {
                     ui.add_space(6.0);
                 }
             });
+    }
+
+    fn render_canvas_drop_surface(
+        &mut self,
+        ui: &mut egui::Ui,
+        widget: &radishflow_studio::StudioGuiCanvasWidgetModel,
+    ) {
+        let pending_edit = widget.view().pending_edit.as_ref();
+        let available_width = ui.available_width().max(320.0);
+        let desired_size = egui::vec2(available_width, 280.0);
+        let (rect, response) = ui.allocate_exact_size(desired_size, egui::Sense::click());
+        let painter = ui.painter_at(rect);
+        paint_canvas_drop_surface(&painter, rect, pending_edit.is_some());
+
+        let title = pending_edit
+            .map(|pending| pending.summary.as_str())
+            .unwrap_or("Select a canvas tool");
+        let subtitle = if pending_edit.is_some() {
+            "Click to place the pending unit"
+        } else {
+            "Use Place Flash Drum to start a canvas edit"
+        };
+        paint_canvas_surface_labels(&painter, rect, title, subtitle);
+
+        let response = if pending_edit.is_some() {
+            response.on_hover_cursor(egui::CursorIcon::Crosshair)
+        } else {
+            response
+        };
+        if pending_edit.is_some() && response.clicked() {
+            if let Some(pointer_pos) = response.interact_pointer_pos() {
+                let local = pointer_pos - rect.min;
+                self.dispatch_event(StudioGuiEvent::CanvasPendingEditCommitRequested {
+                    position: rf_ui::CanvasPoint::new(local.x as f64, local.y as f64),
+                });
+            }
+        }
     }
 
     pub(super) fn render_runtime_area(
@@ -1581,4 +1620,81 @@ fn entitlement_command_id(action_id: rf_ui::EntitlementActionId) -> &'static str
         rf_ui::EntitlementActionId::SyncEntitlement => "entitlement.sync",
         rf_ui::EntitlementActionId::RefreshOfflineLease => "entitlement.refresh_offline_lease",
     }
+}
+
+fn paint_canvas_drop_surface(painter: &egui::Painter, rect: egui::Rect, active: bool) {
+    let fill = if active {
+        egui::Color32::from_rgb(236, 247, 242)
+    } else {
+        egui::Color32::from_rgb(246, 248, 250)
+    };
+    let stroke_color = if active {
+        egui::Color32::from_rgb(52, 128, 89)
+    } else {
+        egui::Color32::from_rgb(170, 178, 188)
+    };
+    painter.rect_filled(rect, 6.0, fill);
+    paint_canvas_rect_border(painter, rect, egui::Stroke::new(1.5, stroke_color));
+    paint_canvas_grid(
+        painter,
+        rect.shrink(1.0),
+        egui::Stroke::new(
+            1.0,
+            egui::Color32::from_rgba_unmultiplied(120, 135, 150, 34),
+        ),
+    );
+}
+
+fn paint_canvas_rect_border(painter: &egui::Painter, rect: egui::Rect, stroke: egui::Stroke) {
+    painter.line_segment([rect.left_top(), rect.right_top()], stroke);
+    painter.line_segment([rect.right_top(), rect.right_bottom()], stroke);
+    painter.line_segment([rect.right_bottom(), rect.left_bottom()], stroke);
+    painter.line_segment([rect.left_bottom(), rect.left_top()], stroke);
+}
+
+fn paint_canvas_grid(painter: &egui::Painter, rect: egui::Rect, stroke: egui::Stroke) {
+    let step = 32.0;
+    let mut x = rect.left() + step;
+    while x < rect.right() {
+        painter.line_segment(
+            [egui::pos2(x, rect.top()), egui::pos2(x, rect.bottom())],
+            stroke,
+        );
+        x += step;
+    }
+    let mut y = rect.top() + step;
+    while y < rect.bottom() {
+        painter.line_segment(
+            [egui::pos2(rect.left(), y), egui::pos2(rect.right(), y)],
+            stroke,
+        );
+        y += step;
+    }
+}
+
+fn paint_canvas_surface_labels(
+    painter: &egui::Painter,
+    rect: egui::Rect,
+    title: &str,
+    subtitle: &str,
+) {
+    let title_color = egui::Color32::from_rgb(35, 49, 63);
+    let subtitle_color = egui::Color32::from_rgb(86, 96, 108);
+    let title_galley = painter.layout_no_wrap(
+        title.to_owned(),
+        egui::FontId::proportional(16.0),
+        title_color,
+    );
+    let subtitle_galley = painter.layout_no_wrap(
+        subtitle.to_owned(),
+        egui::FontId::proportional(12.0),
+        subtitle_color,
+    );
+    let title_pos = egui::pos2(rect.left() + 16.0, rect.top() + 16.0);
+    painter.galley(title_pos, title_galley, title_color);
+    painter.galley(
+        title_pos + egui::vec2(0.0, 24.0),
+        subtitle_galley,
+        subtitle_color,
+    );
 }

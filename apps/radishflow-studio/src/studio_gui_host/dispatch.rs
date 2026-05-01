@@ -104,7 +104,10 @@ impl StudioGuiHost {
         if let Some(action_id) = canvas_action_id_from_command_id(command_id) {
             let target_window_id = self.preferred_target_window_id();
             let canvas = self.canvas_state();
-            if canvas.suggestions.is_empty() && canvas.pending_edit.is_none() {
+            if canvas.suggestions.is_empty()
+                && canvas.pending_edit.is_none()
+                && action_id != crate::StudioGuiCanvasActionId::BeginPlaceFlashDrum
+            {
                 return Ok(StudioGuiHostUiCommandDispatchResult::IgnoredMissing {
                     command_id: command_id.to_string(),
                     ui_commands: self.ui_commands(),
@@ -124,6 +127,11 @@ impl StudioGuiHost {
                 });
             }
             let action = match action_id {
+                crate::StudioGuiCanvasActionId::BeginPlaceFlashDrum => {
+                    StudioGuiCanvasInteractionAction::BeginPlaceUnit {
+                        unit_kind: "Flash Drum".to_string(),
+                    }
+                }
                 crate::StudioGuiCanvasActionId::AcceptFocused => {
                     StudioGuiCanvasInteractionAction::AcceptFocusedByTab
                 }

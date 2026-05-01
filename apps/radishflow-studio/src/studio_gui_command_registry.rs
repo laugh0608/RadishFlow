@@ -430,6 +430,11 @@ fn command_defaults(command_id: &str) -> StudioGuiCommandDefaults {
             search_terms: &["canvas", "cancel", "pending", "edit"],
             shortcut: None,
         },
+        "canvas.begin_place_unit.flash_drum" => StudioGuiCommandDefaults {
+            menu_path: &["Canvas", "Place Flash Drum"],
+            search_terms: &["canvas", "place", "unit", "flash drum"],
+            shortcut: None,
+        },
         _ => StudioGuiCommandDefaults {
             menu_path: &["Commands"],
             search_terms: &[],
@@ -440,6 +445,7 @@ fn command_defaults(command_id: &str) -> StudioGuiCommandDefaults {
 
 fn canvas_sort_order(action_id: StudioGuiCanvasActionId) -> u16 {
     match action_id {
+        StudioGuiCanvasActionId::BeginPlaceFlashDrum => 290,
         StudioGuiCanvasActionId::AcceptFocused => 300,
         StudioGuiCanvasActionId::RejectFocused => 310,
         StudioGuiCanvasActionId::FocusNext => 320,
@@ -794,6 +800,7 @@ mod tests {
                 .map(|entry| entry.command_id.as_str())
                 .collect::<Vec<_>>(),
             vec![
+                canvas_command_id(StudioGuiCanvasActionId::BeginPlaceFlashDrum),
                 canvas_command_id(StudioGuiCanvasActionId::AcceptFocused),
                 canvas_command_id(StudioGuiCanvasActionId::RejectFocused),
                 canvas_command_id(StudioGuiCanvasActionId::FocusNext),
