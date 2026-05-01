@@ -223,7 +223,7 @@ App 与交互层当前进一步冻结以下口径：
 - 已提前完成 `rf-solver` 中首轮无回路顺序模块法
 - 已提前增加第一个可直接从 `*.rfproj.json` 载入并求解的示例 flowsheet
 - 完成 `DWSIM / COFE` water/ethanol 人工 PME 验证记录、PME trace 开关化、TypeLib 生成脚本化与 CAPE-OPEN / PME 阶段性冻结
-- 回到 Rust Studio 主线，补出“打开示例项目 -> 运行求解 -> 查看结果/诊断”的第一版真实 `egui` 可见闭环，并补中文 shell 选项与 CJK 字体 fallback；2026-04-28 继续补出路径输入式项目打开入口、Windows 原生打开选择器、打开反馈、未保存改动打开前确认、shell 级最近项目列表及其独立 preferences 持久化、结构化流股结果 presentation 与结果区基础本地化；2026-04-29 继续补出 Result Inspector、失败结果、诊断目标命令、活动 Inspector 详情、Stream Inspector 字段级草稿更新/提交和基础文档历史 undo/redo；2026-04-30 继续补出保存 / 另存为生命周期、Stream Inspector 多字段批量提交、字段编辑快捷键焦点策略、项目文件 staged write 与 Save As 覆盖确认
+- 回到 Rust Studio 主线，补出“打开示例项目 -> 运行求解 -> 查看结果/诊断”的第一版真实 `egui` 可见闭环，并补中文 shell 选项与 CJK 字体 fallback；2026-04-28 继续补出路径输入式项目打开入口、Windows 原生打开选择器、打开反馈、未保存改动打开前确认、shell 级最近项目列表及其独立 preferences 持久化、结构化流股结果 presentation 与结果区基础本地化；2026-04-29 继续补出 Result Inspector、失败结果、诊断目标命令、活动 Inspector 详情、Stream Inspector 字段级草稿更新/提交和基础文档历史 undo/redo；2026-04-30 继续补出保存 / 另存为生命周期、Stream Inspector 多字段批量提交、字段编辑快捷键焦点策略、项目文件 staged write 与 Save As 覆盖确认；2026-05-01 继续补出保存 / 另存失败恢复、Result Inspector 摘要可读性、产出单元诊断关联和当前快照内两股流股对比，并通过 `pwsh ./scripts/check-repo.ps1` 完成仓库级验证
 
 ### 2026-W19 以后
 
