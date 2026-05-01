@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use crate::StudioGuiCanvasState;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -11,6 +13,26 @@ pub struct StudioGuiCanvasUnitBlockViewModel {
     pub action_label: String,
     pub hover_text: String,
     pub layout_slot: usize,
+    pub is_active_inspector_target: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioGuiCanvasStreamLineEndpointViewModel {
+    pub unit_id: String,
+    pub port_name: String,
+    pub layout_slot: usize,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioGuiCanvasStreamLineViewModel {
+    pub line_id: String,
+    pub stream_id: String,
+    pub name: String,
+    pub source: Option<StudioGuiCanvasStreamLineEndpointViewModel>,
+    pub sink: Option<StudioGuiCanvasStreamLineEndpointViewModel>,
+    pub command_id: String,
+    pub action_label: String,
+    pub hover_text: String,
     pub is_active_inspector_target: bool,
 }
 
@@ -38,8 +60,10 @@ pub struct StudioGuiCanvasViewModel {
     pub pending_edit: Option<StudioGuiCanvasPendingEditViewModel>,
     pub focused_suggestion_id: Option<String>,
     pub unit_count: usize,
+    pub stream_line_count: usize,
     pub suggestion_count: usize,
     pub unit_blocks: Vec<StudioGuiCanvasUnitBlockViewModel>,
+    pub stream_lines: Vec<StudioGuiCanvasStreamLineViewModel>,
     pub suggestions: Vec<StudioGuiCanvasSuggestionViewModel>,
 }
 
@@ -83,6 +107,67 @@ impl StudioGuiCanvasViewModel {
                 }
             })
             .collect::<Vec<_>>();
+        let unit_layout_slots = unit_blocks
+            .iter()
+            .map(|unit| (unit.unit_id.clone(), unit.layout_slot))
+            .collect::<BTreeMap<_, _>>();
+        let stream_lines = state
+            .streams
+            .iter()
+            .enumerate()
+            .filter_map(|(line_index, stream)| {
+                let source = stream.source.as_ref().and_then(|endpoint| {
+                    unit_layout_slots
+                        .get(endpoint.unit_id.as_str())
+                        .copied()
+                        .map(|layout_slot| StudioGuiCanvasStreamLineEndpointViewModel {
+                            unit_id: endpoint.unit_id.as_str().to_string(),
+                            port_name: endpoint.port_name.clone(),
+                            layout_slot,
+                        })
+                });
+                let sink = stream.sink.as_ref().and_then(|endpoint| {
+                    unit_layout_slots
+                        .get(endpoint.unit_id.as_str())
+                        .copied()
+                        .map(|layout_slot| StudioGuiCanvasStreamLineEndpointViewModel {
+                            unit_id: endpoint.unit_id.as_str().to_string(),
+                            port_name: endpoint.port_name.clone(),
+                            layout_slot,
+                        })
+                });
+                if source.is_none() && sink.is_none() {
+                    return None;
+                }
+
+                let target = rf_ui::InspectorTarget::Stream(stream.stream_id.clone());
+                let command_id = crate::inspector_target_command_id(&target);
+                let source_label = source
+                    .as_ref()
+                    .map(|endpoint| format!("{}:{}", endpoint.unit_id, endpoint.port_name))
+                    .unwrap_or_else(|| "unbound-source".to_string());
+                let sink_label = sink
+                    .as_ref()
+                    .map(|endpoint| format!("{}:{}", endpoint.unit_id, endpoint.port_name))
+                    .unwrap_or_else(|| "terminal".to_string());
+                Some(StudioGuiCanvasStreamLineViewModel {
+                    line_id: format!("{}:{line_index}", stream.stream_id.as_str()),
+                    stream_id: stream.stream_id.as_str().to_string(),
+                    name: stream.name.clone(),
+                    source,
+                    sink,
+                    action_label: format!("Stream {}", stream.stream_id.as_str()),
+                    hover_text: format!(
+                        "Focus stream inspector for `{}` ({} -> {})",
+                        stream.stream_id.as_str(),
+                        source_label,
+                        sink_label
+                    ),
+                    command_id,
+                    is_active_inspector_target: stream.is_active_inspector_target,
+                })
+            })
+            .collect::<Vec<_>>();
         let suggestions = state
             .suggestions
             .iter()
@@ -102,8 +187,10 @@ impl StudioGuiCanvasViewModel {
             pending_edit,
             focused_suggestion_id,
             unit_count: unit_blocks.len(),
+            stream_line_count: stream_lines.len(),
             suggestion_count: suggestions.len(),
             unit_blocks,
+            stream_lines,
             suggestions,
         }
     }
@@ -135,6 +222,7 @@ impl StudioGuiCanvasTextView {
                 view.focused_suggestion_id.as_deref().unwrap_or("none")
             ),
             format!("unit count: {}", view.unit_count),
+            format!("stream line count: {}", view.stream_line_count),
             format!("suggestion count: {}", view.suggestion_count),
         ];
 
@@ -151,6 +239,28 @@ impl StudioGuiCanvasTextView {
                 unit.connected_port_count,
                 unit.port_count,
                 unit.command_id
+            )
+        }));
+
+        lines.extend(view.stream_lines.iter().map(|stream| {
+            let focus_marker = if stream.is_active_inspector_target {
+                "*"
+            } else {
+                "-"
+            };
+            let source = stream
+                .source
+                .as_ref()
+                .map(|endpoint| format!("{}:{}", endpoint.unit_id, endpoint.port_name))
+                .unwrap_or_else(|| "unbound-source".to_string());
+            let sink = stream
+                .sink
+                .as_ref()
+                .map(|endpoint| format!("{}:{}", endpoint.unit_id, endpoint.port_name))
+                .unwrap_or_else(|| "terminal".to_string());
+            format!(
+                "{focus_marker} stream {} {} -> {} command={}",
+                stream.stream_id, source, sink, stream.command_id
             )
         }));
 
@@ -289,6 +399,8 @@ mod tests {
         assert_eq!(presentation.view.pending_edit, None);
         assert_eq!(presentation.view.unit_count, 0);
         assert!(presentation.view.unit_blocks.is_empty());
+        assert_eq!(presentation.view.stream_line_count, 0);
+        assert!(presentation.view.stream_lines.is_empty());
         assert_eq!(presentation.view.suggestion_count, 0);
         assert!(presentation.view.suggestions.is_empty());
         assert_eq!(
@@ -297,6 +409,7 @@ mod tests {
                 "pending edit: none".to_string(),
                 "focused suggestion: none".to_string(),
                 "unit count: 0".to_string(),
+                "stream line count: 0".to_string(),
                 "suggestion count: 0".to_string(),
             ]
         );
@@ -328,6 +441,7 @@ mod tests {
                     .to_string(),
                 "focused suggestion: none".to_string(),
                 "unit count: 0".to_string(),
+                "stream line count: 0".to_string(),
                 "suggestion count: 0".to_string(),
             ]
         );
@@ -357,6 +471,20 @@ mod tests {
             }),
             "expected canvas presentation to surface existing UnitNode blocks"
         );
+        assert!(
+            presentation.view.stream_lines.iter().any(|stream| {
+                stream.stream_id == "stream-feed"
+                    && stream.command_id == "inspector.focus_stream:stream-feed"
+                    && stream.source.as_ref().is_some_and(|source| {
+                        source.unit_id == "feed-1" && source.port_name == "outlet"
+                    })
+                    && stream
+                        .sink
+                        .as_ref()
+                        .is_some_and(|sink| sink.unit_id == "heater-1" && sink.port_name == "inlet")
+            }),
+            "expected canvas presentation to surface existing stream connection lines"
+        );
         assert_eq!(presentation.view.suggestion_count, 3);
         assert_eq!(presentation.view.suggestions[0].status_label, "focused");
         assert_eq!(presentation.view.suggestions[0].source_label, "local_rules");
@@ -369,10 +497,13 @@ mod tests {
                 "focused suggestion: local.flash_drum.connect_inlet.flash-1.stream-heated"
                     .to_string(),
                 "unit count: 3".to_string(),
+                "stream line count: 2".to_string(),
                 "suggestion count: 3".to_string(),
                 "- unit feed-1 kind=feed ports=1/1 command=inspector.focus_unit:feed-1".to_string(),
                 "- unit flash-1 kind=flash_drum ports=0/3 command=inspector.focus_unit:flash-1".to_string(),
                 "- unit heater-1 kind=heater ports=2/2 command=inspector.focus_unit:heater-1".to_string(),
+                "- stream stream-feed feed-1:outlet -> heater-1:inlet command=inspector.focus_stream:stream-feed".to_string(),
+                "- stream stream-heated heater-1:outlet -> terminal command=inspector.focus_stream:stream-heated".to_string(),
                 "* local.flash_drum.connect_inlet.flash-1.stream-heated [focused] source=local_rules confidence=0.97 target=flash-1 tab_accept=yes reason=Connect stream `stream-heated` to flash drum inlet `inlet`".to_string(),
                 "- local.flash_drum.create_outlet.flash-1.liquid [proposed] source=local_rules confidence=0.93 target=flash-1 tab_accept=yes reason=Create terminal stream `Flash Drum Liquid Outlet` for flash drum outlet `liquid`".to_string(),
                 "- local.flash_drum.create_outlet.flash-1.vapor [proposed] source=local_rules confidence=0.92 target=flash-1 tab_accept=yes reason=Create terminal stream `Flash Drum Vapor Outlet` for flash drum outlet `vapor`".to_string(),
@@ -402,6 +533,31 @@ mod tests {
                 .as_ref()
                 .map(|target| (target.kind_label, target.target_id.as_str())),
             Some(("Unit", "flash-1"))
+        );
+
+        let focused_stream = driver
+            .dispatch_event(StudioGuiEvent::UiCommandRequested {
+                command_id: "inspector.focus_stream:stream-feed".to_string(),
+            })
+            .expect("expected stream focus dispatch");
+        let focused_stream_line = focused_stream
+            .window
+            .canvas
+            .widget
+            .view()
+            .stream_lines
+            .iter()
+            .find(|stream| stream.stream_id == "stream-feed")
+            .expect("expected focused feed stream line");
+        assert!(focused_stream_line.is_active_inspector_target);
+        assert_eq!(
+            focused_stream
+                .window
+                .runtime
+                .active_inspector_target
+                .as_ref()
+                .map(|target| (target.kind_label, target.target_id.as_str())),
+            Some(("Stream", "stream-feed"))
         );
 
         let _ = fs::remove_file(project_path);

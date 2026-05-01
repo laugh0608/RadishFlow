@@ -107,6 +107,7 @@ impl ReadyAppState {
     ) {
         let pending_edit = widget.view().pending_edit.as_ref();
         let unit_blocks = &widget.view().unit_blocks;
+        let stream_lines = &widget.view().stream_lines;
         let available_width = ui.available_width().max(320.0);
         let desired_size = egui::vec2(available_width, 280.0);
         let (rect, response) = ui.allocate_exact_size(desired_size, egui::Sense::click());
@@ -122,6 +123,23 @@ impl ReadyAppState {
             "Use Place Flash Drum to start a canvas edit"
         };
         paint_canvas_surface_labels(&painter, rect, title, subtitle);
+
+        let mut clicked_stream_command = None;
+        for stream in stream_lines {
+            let geometry = canvas_stream_line_geometry(rect, stream);
+            paint_canvas_stream_line(&painter, geometry, stream);
+            let stream_response = ui
+                .interact(
+                    canvas_stream_line_hit_rect(geometry),
+                    ui.make_persistent_id(format!("canvas-stream:{}", stream.line_id)),
+                    egui::Sense::click(),
+                )
+                .on_hover_text(&stream.hover_text)
+                .on_hover_cursor(egui::CursorIcon::PointingHand);
+            if stream_response.clicked() {
+                clicked_stream_command = Some(stream.command_id.clone());
+            }
+        }
 
         let mut clicked_unit = false;
         for unit in unit_blocks {
@@ -140,13 +158,19 @@ impl ReadyAppState {
                 self.dispatch_ui_command(&unit.command_id);
             }
         }
+        let clicked_stream = clicked_stream_command.is_some();
+        if !clicked_unit {
+            if let Some(command_id) = clicked_stream_command {
+                self.dispatch_ui_command(command_id);
+            }
+        }
 
         let response = if pending_edit.is_some() {
             response.on_hover_cursor(egui::CursorIcon::Crosshair)
         } else {
             response
         };
-        if pending_edit.is_some() && response.clicked() && !clicked_unit {
+        if pending_edit.is_some() && response.clicked() && !clicked_unit && !clicked_stream {
             if let Some(pointer_pos) = response.interact_pointer_pos() {
                 let local = pointer_pos - rect.min;
                 self.dispatch_event(StudioGuiEvent::CanvasPendingEditCommitRequested {
@@ -1715,6 +1739,96 @@ fn paint_canvas_surface_labels(
         title_pos + egui::vec2(0.0, 24.0),
         subtitle_galley,
         subtitle_color,
+    );
+}
+
+#[derive(Debug, Clone, Copy)]
+struct CanvasStreamLineGeometry {
+    start: egui::Pos2,
+    end: egui::Pos2,
+}
+
+fn canvas_stream_line_geometry(
+    rect: egui::Rect,
+    stream: &radishflow_studio::StudioGuiCanvasStreamLineViewModel,
+) -> CanvasStreamLineGeometry {
+    let source = stream.source.as_ref().map(|endpoint| {
+        let unit_rect = canvas_unit_block_rect(rect, endpoint.layout_slot);
+        egui::pos2(unit_rect.right(), unit_rect.center().y)
+    });
+    let sink = stream.sink.as_ref().map(|endpoint| {
+        let unit_rect = canvas_unit_block_rect(rect, endpoint.layout_slot);
+        egui::pos2(unit_rect.left(), unit_rect.center().y)
+    });
+
+    match (source, sink) {
+        (Some(start), Some(end)) => CanvasStreamLineGeometry { start, end },
+        (Some(start), None) => CanvasStreamLineGeometry {
+            start,
+            end: egui::pos2((start.x + 88.0).min(rect.right() - 18.0), start.y),
+        },
+        (None, Some(end)) => CanvasStreamLineGeometry {
+            start: egui::pos2((end.x - 88.0).max(rect.left() + 18.0), end.y),
+            end,
+        },
+        (None, None) => {
+            let center = rect.center();
+            CanvasStreamLineGeometry {
+                start: center,
+                end: center,
+            }
+        }
+    }
+}
+
+fn canvas_stream_line_hit_rect(geometry: CanvasStreamLineGeometry) -> egui::Rect {
+    egui::Rect::from_two_pos(geometry.start, geometry.end).expand(8.0)
+}
+
+fn paint_canvas_stream_line(
+    painter: &egui::Painter,
+    geometry: CanvasStreamLineGeometry,
+    stream: &radishflow_studio::StudioGuiCanvasStreamLineViewModel,
+) {
+    let color = if stream.is_active_inspector_target {
+        egui::Color32::from_rgb(32, 102, 176)
+    } else {
+        egui::Color32::from_rgb(42, 142, 122)
+    };
+    let stroke = egui::Stroke::new(
+        if stream.is_active_inspector_target {
+            2.4
+        } else {
+            1.6
+        },
+        color,
+    );
+    painter.line_segment([geometry.start, geometry.end], stroke);
+    painter.circle_filled(geometry.start, 3.5, color);
+    paint_canvas_stream_arrow(painter, geometry, color);
+}
+
+fn paint_canvas_stream_arrow(
+    painter: &egui::Painter,
+    geometry: CanvasStreamLineGeometry,
+    color: egui::Color32,
+) {
+    let delta = geometry.end - geometry.start;
+    let length = delta.length();
+    if length <= 1.0 {
+        return;
+    }
+
+    let direction = delta / length;
+    let normal = egui::vec2(-direction.y, direction.x);
+    let back = geometry.end - direction * 10.0;
+    painter.line_segment(
+        [geometry.end, back + normal * 4.5],
+        egui::Stroke::new(1.6, color),
+    );
+    painter.line_segment(
+        [geometry.end, back - normal * 4.5],
+        egui::Stroke::new(1.6, color),
     );
 }
 

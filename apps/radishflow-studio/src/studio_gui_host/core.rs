@@ -32,6 +32,11 @@ impl StudioGuiHost {
             Some(rf_ui::InspectorTarget::Unit(unit_id)) => Some(unit_id),
             _ => None,
         };
+        let active_stream_id = match self.controller.active_inspector_target() {
+            Some(rf_ui::InspectorTarget::Stream(stream_id)) => Some(stream_id),
+            _ => None,
+        };
+        let flowsheet = &self.controller.document().flowsheet;
         let units = self
             .controller
             .document()
@@ -51,8 +56,44 @@ impl StudioGuiHost {
                 is_active_inspector_target: active_unit_id.as_ref() == Some(&unit.id),
             })
             .collect();
+        let stream_endpoints = canvas_material_stream_endpoints(flowsheet);
+        let streams = flowsheet
+            .streams
+            .values()
+            .flat_map(|stream| {
+                let endpoint = stream_endpoints
+                    .get(&stream.id)
+                    .cloned()
+                    .unwrap_or_default();
+                let is_active_inspector_target = active_stream_id.as_ref() == Some(&stream.id);
+                if endpoint.source.is_none() && endpoint.sinks.is_empty() {
+                    return Vec::new();
+                }
+                if endpoint.sinks.is_empty() {
+                    return vec![StudioGuiCanvasStreamState {
+                        stream_id: stream.id.clone(),
+                        name: stream.name.clone(),
+                        source: endpoint.source,
+                        sink: None,
+                        is_active_inspector_target,
+                    }];
+                }
+                endpoint
+                    .sinks
+                    .into_iter()
+                    .map(|sink| StudioGuiCanvasStreamState {
+                        stream_id: stream.id.clone(),
+                        name: stream.name.clone(),
+                        source: endpoint.source.clone(),
+                        sink: Some(sink),
+                        is_active_inspector_target,
+                    })
+                    .collect::<Vec<_>>()
+            })
+            .collect();
         StudioGuiCanvasState {
             units,
+            streams,
             suggestions: canvas.suggestions,
             focused_suggestion_id: canvas.focused_suggestion_id,
             pending_edit: canvas.pending_edit,
@@ -235,6 +276,44 @@ impl StudioGuiHost {
             close: closed.close,
         })
     }
+}
+
+#[derive(Debug, Clone, Default)]
+struct CanvasMaterialStreamEndpoints {
+    source: Option<StudioGuiCanvasStreamEndpointState>,
+    sinks: Vec<StudioGuiCanvasStreamEndpointState>,
+}
+
+fn canvas_material_stream_endpoints(
+    flowsheet: &rf_model::Flowsheet,
+) -> BTreeMap<rf_types::StreamId, CanvasMaterialStreamEndpoints> {
+    let mut endpoints = BTreeMap::<rf_types::StreamId, CanvasMaterialStreamEndpoints>::new();
+    for unit in flowsheet.units.values() {
+        for port in &unit.ports {
+            if port.kind != rf_types::PortKind::Material {
+                continue;
+            }
+            let Some(stream_id) = port.stream_id.clone() else {
+                continue;
+            };
+            let endpoint = StudioGuiCanvasStreamEndpointState {
+                unit_id: unit.id.clone(),
+                port_name: port.name.clone(),
+            };
+            let entry = endpoints.entry(stream_id).or_default();
+            match port.direction {
+                rf_types::PortDirection::Outlet => {
+                    if entry.source.is_none() {
+                        entry.source = Some(endpoint);
+                    }
+                }
+                rf_types::PortDirection::Inlet => {
+                    entry.sinks.push(endpoint);
+                }
+            }
+        }
+    }
+    endpoints
 }
 
 fn active_inspector_detail_from_controller(

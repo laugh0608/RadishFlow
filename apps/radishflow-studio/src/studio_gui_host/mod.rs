@@ -122,6 +122,7 @@ pub struct StudioGuiHostCloseWindowResult {
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct StudioGuiCanvasState {
     pub units: Vec<StudioGuiCanvasUnitState>,
+    pub streams: Vec<StudioGuiCanvasStreamState>,
     pub suggestions: Vec<CanvasSuggestion>,
     pub focused_suggestion_id: Option<CanvasSuggestionId>,
     pub pending_edit: Option<CanvasEditIntent>,
@@ -135,6 +136,21 @@ pub struct StudioGuiCanvasUnitState {
     pub port_count: usize,
     pub connected_port_count: usize,
     pub is_active_inspector_target: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioGuiCanvasStreamState {
+    pub stream_id: rf_types::StreamId,
+    pub name: String,
+    pub source: Option<StudioGuiCanvasStreamEndpointState>,
+    pub sink: Option<StudioGuiCanvasStreamEndpointState>,
+    pub is_active_inspector_target: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioGuiCanvasStreamEndpointState {
+    pub unit_id: rf_types::UnitId,
+    pub port_name: String,
 }
 
 #[derive(Debug, Clone, PartialEq)]
