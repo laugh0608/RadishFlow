@@ -87,8 +87,10 @@ impl StudioAppWindowHostUiActionState {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum StudioCanvasInteractionAction {
+    BeginPlaceUnit { unit_kind: String },
+    CancelPendingEdit,
     AcceptFocusedByTab,
     RejectFocused,
     FocusNext,
@@ -215,11 +217,30 @@ impl StudioAppWindowHostManager {
         self.session.focus_previous_canvas_suggestion()
     }
 
+    pub fn begin_canvas_place_unit(
+        &mut self,
+        unit_kind: impl Into<String>,
+    ) -> rf_ui::CanvasEditIntent {
+        self.session.begin_canvas_place_unit(unit_kind)
+    }
+
+    pub fn cancel_canvas_pending_edit(&mut self) -> Option<rf_ui::CanvasEditIntent> {
+        self.session.cancel_canvas_pending_edit()
+    }
+
     pub fn dispatch_canvas_interaction(
         &mut self,
         action: StudioCanvasInteractionAction,
     ) -> RfResult<StudioAppWindowHostCanvasInteractionResult> {
-        let (accepted, rejected, focused) = match action {
+        let (accepted, rejected, focused) = match &action {
+            StudioCanvasInteractionAction::BeginPlaceUnit { unit_kind } => {
+                self.begin_canvas_place_unit(unit_kind.clone());
+                (None, None, None)
+            }
+            StudioCanvasInteractionAction::CancelPendingEdit => {
+                self.cancel_canvas_pending_edit();
+                (None, None, None)
+            }
             StudioCanvasInteractionAction::AcceptFocusedByTab => {
                 (self.accept_focused_canvas_suggestion_by_tab()?, None, None)
             }

@@ -9,6 +9,7 @@ pub enum StudioGuiCanvasActionId {
     RejectFocused,
     FocusNext,
     FocusPrevious,
+    CancelPendingEdit,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -56,6 +57,12 @@ impl StudioGuiCanvasWidgetModel {
             .map(|suggestion| suggestion.tab_accept_enabled)
             .unwrap_or(false);
         let can_cycle_focus = suggestion_count > 1;
+        let can_cancel_pending_edit = presentation
+            .view
+            .pending_edit
+            .as_ref()
+            .map(|pending| pending.cancel_enabled)
+            .unwrap_or(false);
 
         Self {
             presentation,
@@ -106,6 +113,14 @@ impl StudioGuiCanvasWidgetModel {
                         ],
                         key: StudioGuiShortcutKey::Tab,
                     }),
+                },
+                StudioGuiCanvasRenderableAction {
+                    id: StudioGuiCanvasActionId::CancelPendingEdit,
+                    command_id: canvas_command_id(StudioGuiCanvasActionId::CancelPendingEdit),
+                    label: "Cancel pending edit",
+                    detail: "Cancel the current canvas edit intent",
+                    enabled: can_cancel_pending_edit,
+                    shortcut: None,
                 },
             ],
         }
@@ -164,6 +179,7 @@ pub(crate) fn canvas_command_id(action_id: StudioGuiCanvasActionId) -> &'static 
         StudioGuiCanvasActionId::RejectFocused => "canvas.reject_focused",
         StudioGuiCanvasActionId::FocusNext => "canvas.focus_next",
         StudioGuiCanvasActionId::FocusPrevious => "canvas.focus_previous",
+        StudioGuiCanvasActionId::CancelPendingEdit => "canvas.cancel_pending_edit",
     }
 }
 
@@ -175,6 +191,7 @@ pub(crate) fn canvas_action_id_from_command_id(
         "canvas.reject_focused" => Some(StudioGuiCanvasActionId::RejectFocused),
         "canvas.focus_next" => Some(StudioGuiCanvasActionId::FocusNext),
         "canvas.focus_previous" => Some(StudioGuiCanvasActionId::FocusPrevious),
+        "canvas.cancel_pending_edit" => Some(StudioGuiCanvasActionId::CancelPendingEdit),
         _ => None,
     }
 }
@@ -311,6 +328,29 @@ mod tests {
                 .expect("expected previous action")
                 .enabled
         );
+        assert!(
+            !widget
+                .action(StudioGuiCanvasActionId::CancelPendingEdit)
+                .expect("expected cancel action")
+                .enabled
+        );
+    }
+
+    #[test]
+    fn canvas_widget_enables_cancel_for_pending_canvas_edit() {
+        let mut driver = StudioGuiDriver::new(&lease_expiring_config()).expect("expected driver");
+        driver
+            .begin_canvas_place_unit("Flash Drum")
+            .expect("expected begin canvas place unit");
+
+        let widget = driver.canvas_state().widget();
+
+        assert!(
+            widget
+                .action(StudioGuiCanvasActionId::CancelPendingEdit)
+                .expect("expected cancel action")
+                .enabled
+        );
     }
 
     #[test]
@@ -353,6 +393,12 @@ mod tests {
                 event: StudioGuiEvent::UiCommandRequested {
                     command_id: "canvas.reject_focused".to_string(),
                 },
+            }
+        );
+        assert_eq!(
+            widget.activate(StudioGuiCanvasActionId::CancelPendingEdit),
+            StudioGuiCanvasWidgetEvent::Disabled {
+                action_id: StudioGuiCanvasActionId::CancelPendingEdit,
             }
         );
 
@@ -428,5 +474,43 @@ mod tests {
         }
 
         let _ = fs::remove_file(project_path);
+    }
+
+    #[test]
+    fn canvas_widget_cancel_event_dispatches_through_driver() {
+        let mut driver = StudioGuiDriver::new(&lease_expiring_config()).expect("expected driver");
+        driver
+            .begin_canvas_place_unit("Flash Drum")
+            .expect("expected begin canvas place unit");
+        let widget = driver.canvas_state().widget();
+        let event = match widget.activate(StudioGuiCanvasActionId::CancelPendingEdit) {
+            StudioGuiCanvasWidgetEvent::Requested { event, .. } => event,
+            other => panic!("expected requested widget event, got {other:?}"),
+        };
+
+        let dispatch = driver
+            .dispatch_event(event)
+            .expect("expected driver dispatch");
+
+        match dispatch.outcome {
+            StudioGuiDriverOutcome::HostCommand(
+                crate::StudioGuiHostCommandOutcome::UiCommandDispatched(
+                    crate::StudioGuiHostUiCommandDispatchResult::ExecutedCanvasInteraction {
+                        command_id,
+                        result,
+                        ..
+                    },
+                ),
+            ) => {
+                assert_eq!(command_id, "canvas.cancel_pending_edit");
+                assert_eq!(
+                    result.action,
+                    StudioGuiCanvasInteractionAction::CancelPendingEdit
+                );
+                assert_eq!(result.canvas.pending_edit, None);
+                assert_eq!(dispatch.canvas.pending_edit, None);
+            }
+            other => panic!("expected canvas ui command outcome, got {other:?}"),
+        }
     }
 }

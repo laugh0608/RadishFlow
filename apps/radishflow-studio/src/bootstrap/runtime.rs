@@ -442,6 +442,17 @@ impl BootstrapSession {
         self.app_state.replace_canvas_suggestions(suggestions);
     }
 
+    pub(crate) fn begin_canvas_place_unit(
+        &mut self,
+        unit_kind: impl Into<String>,
+    ) -> rf_ui::CanvasEditIntent {
+        self.app_state.begin_canvas_place_unit(unit_kind)
+    }
+
+    pub(crate) fn cancel_canvas_pending_edit(&mut self) -> Option<rf_ui::CanvasEditIntent> {
+        self.app_state.cancel_canvas_pending_edit()
+    }
+
     pub(crate) fn accept_focused_canvas_suggestion_by_tab(
         &mut self,
     ) -> RfResult<Option<rf_ui::CanvasSuggestion>> {

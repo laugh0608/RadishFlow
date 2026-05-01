@@ -31,6 +31,7 @@ impl StudioGuiHost {
         StudioGuiCanvasState {
             suggestions: canvas.suggestions,
             focused_suggestion_id: canvas.focused_suggestion_id,
+            pending_edit: canvas.pending_edit,
         }
     }
 

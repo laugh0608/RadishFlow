@@ -182,8 +182,8 @@ pub use studio_document_history_command::{
 };
 pub use studio_example_projects::{StudioExampleProjectModel, studio_example_project_models};
 pub use studio_gui_canvas_presentation::{
-    StudioGuiCanvasPresentation, StudioGuiCanvasSuggestionViewModel, StudioGuiCanvasTextView,
-    StudioGuiCanvasViewModel,
+    StudioGuiCanvasPendingEditViewModel, StudioGuiCanvasPresentation,
+    StudioGuiCanvasSuggestionViewModel, StudioGuiCanvasTextView, StudioGuiCanvasViewModel,
 };
 pub use studio_gui_canvas_widget::{
     StudioGuiCanvasActionId, StudioGuiCanvasRenderableAction, StudioGuiCanvasWidgetEvent,

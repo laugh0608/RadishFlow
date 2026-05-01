@@ -393,9 +393,10 @@ Studio 当前又已继续把这条 GUI 命令入口推进为稳定 host command 
 
 - `StudioAppHostController` 当前已提供 `dispatch_ui_command(command_id)`，让菜单、快捷键和命令面板后续可直接按稳定 command id 触发宿主动作
 - 首批已接成真实宿主命令的 run panel command id 为 `run_panel.run_manual`、`run_panel.resume_workspace`、`run_panel.set_hold`、`run_panel.set_active` 与 `run_panel.recover_failure`
-- 同一条 GUI command registry 当前又已扩到 canvas suggestion 交互：`canvas.accept_focused`、`canvas.reject_focused`、`canvas.focus_next`、`canvas.focus_previous`
-- `StudioGuiCanvasWidget`、`StudioGuiShortcutRouter` 与 `StudioGuiHost` 当前都已统一走 `UiCommandRequested { command_id } -> dispatch_ui_command(command_id)`，真实桌面 GUI 后续不应再把 canvas accept/reject/focus 写成框架私有 shortcut/typed action 分支
+- 同一条 GUI command registry 当前又已扩到 canvas suggestion 交互与 pending edit 取消：`canvas.accept_focused`、`canvas.reject_focused`、`canvas.focus_next`、`canvas.focus_previous`、`canvas.cancel_pending_edit`
+- `StudioGuiCanvasWidget`、`StudioGuiShortcutRouter` 与 `StudioGuiHost` 当前都已统一走 `UiCommandRequested { command_id } -> dispatch_ui_command(command_id)`，真实桌面 GUI 后续不应再把 canvas accept/reject/focus/cancel 写成框架私有 shortcut/typed action 分支
 - 对 canvas 而言，local-rules suggestion refresh 当前也已收紧为“文档写回或显式重算时才触发”；纯 `focus/reject` 交互不应顺手重刷 suggestion 列表，否则会破坏正式命令面的焦点延续语义
+- 画布编辑前置状态当前先冻结为 `rf-ui::CanvasEditIntent`：`BeginPlaceUnit` 只创建 transient pending edit，`CancelPendingEdit` 只清理该状态；二者都不写入文档、不进入撤销栈，真实 GUI 后续应先消费 `StudioGuiCanvasState / StudioGuiCanvasPresentation` 再扩完整画布编辑器
 - `rf-ui` 当前也已把 run panel 动作展示继续冻结到 GUI-facing `label/detail/enabled` 口径，第一版 `eframe/egui` GUI 壳已直接消费这份动作详情，而不再在壳层重复拼按钮说明文本
 - `rf-ui` 当前也已把 entitlement panel 动作展示继续冻结到 GUI-facing `label/detail/enabled` 口径，第一版 `eframe/egui` GUI 壳已直接消费这份动作详情，并沿既有 foreground host routing 回灌 Studio runtime
 - 后续真实桌面框架在建立原生命令绑定时，应优先复用这组 `UiCommandModel` / command registry，而不是继续让各入口重复拼装运行栏 availability、disabled reason 或窗口前景派发逻辑

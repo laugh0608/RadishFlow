@@ -259,6 +259,7 @@ mod tests {
                 "test",
             )],
             focused_suggestion_id: Some(rf_ui::CanvasSuggestionId::new("sug-a")),
+            pending_edit: None,
         };
 
         StudioGuiCommandRegistry::from_surfaces(

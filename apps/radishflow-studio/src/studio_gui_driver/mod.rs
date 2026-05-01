@@ -175,6 +175,13 @@ impl StudioGuiDriver {
         self.host.replace_canvas_suggestions(suggestions);
     }
 
+    pub fn begin_canvas_place_unit(
+        &mut self,
+        unit_kind: impl Into<String>,
+    ) -> RfResult<StudioGuiHostCanvasInteractionResult> {
+        self.host.begin_canvas_place_unit(unit_kind)
+    }
+
     pub fn drain_due_native_timer_events(
         &mut self,
         now: SystemTime,

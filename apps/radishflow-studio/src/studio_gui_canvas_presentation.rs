@@ -12,8 +12,16 @@ pub struct StudioGuiCanvasSuggestionViewModel {
     pub tab_accept_enabled: bool,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioGuiCanvasPendingEditViewModel {
+    pub intent_label: &'static str,
+    pub summary: String,
+    pub cancel_enabled: bool,
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct StudioGuiCanvasViewModel {
+    pub pending_edit: Option<StudioGuiCanvasPendingEditViewModel>,
     pub focused_suggestion_id: Option<String>,
     pub suggestion_count: usize,
     pub suggestions: Vec<StudioGuiCanvasSuggestionViewModel>,
@@ -25,6 +33,15 @@ impl StudioGuiCanvasViewModel {
             .focused_suggestion_id
             .as_ref()
             .map(|id| id.as_str().to_string());
+        let pending_edit = state.pending_edit.as_ref().map(|intent| match intent {
+            rf_ui::CanvasEditIntent::PlaceUnit { unit_kind } => {
+                StudioGuiCanvasPendingEditViewModel {
+                    intent_label: "place_unit",
+                    summary: format!("place unit kind={unit_kind}"),
+                    cancel_enabled: true,
+                }
+            }
+        });
         let suggestions = state
             .suggestions
             .iter()
@@ -41,6 +58,7 @@ impl StudioGuiCanvasViewModel {
             .collect::<Vec<_>>();
 
         Self {
+            pending_edit,
             focused_suggestion_id,
             suggestion_count: suggestions.len(),
             suggestions,
@@ -57,6 +75,18 @@ pub struct StudioGuiCanvasTextView {
 impl StudioGuiCanvasTextView {
     pub fn from_view_model(view: &StudioGuiCanvasViewModel) -> Self {
         let mut lines = vec![
+            format!(
+                "pending edit: {}",
+                view.pending_edit
+                    .as_ref()
+                    .map(|pending| format!(
+                        "{} summary={} cancel={}",
+                        pending.intent_label,
+                        pending.summary,
+                        enabled_label(pending.cancel_enabled)
+                    ))
+                    .unwrap_or_else(|| "none".to_string())
+            ),
             format!(
                 "focused suggestion: {}",
                 view.focused_suggestion_id.as_deref().unwrap_or("none")
@@ -196,11 +226,43 @@ mod tests {
         let presentation = crate::StudioGuiCanvasState::default().presentation();
 
         assert_eq!(presentation.view.focused_suggestion_id, None);
+        assert_eq!(presentation.view.pending_edit, None);
         assert_eq!(presentation.view.suggestion_count, 0);
         assert!(presentation.view.suggestions.is_empty());
         assert_eq!(
             presentation.text.lines,
             vec![
+                "pending edit: none".to_string(),
+                "focused suggestion: none".to_string(),
+                "suggestion count: 0".to_string(),
+            ]
+        );
+    }
+
+    #[test]
+    fn canvas_presentation_reports_pending_canvas_edit() {
+        let state = crate::StudioGuiCanvasState {
+            pending_edit: Some(rf_ui::CanvasEditIntent::PlaceUnit {
+                unit_kind: "Flash Drum".to_string(),
+            }),
+            ..crate::StudioGuiCanvasState::default()
+        };
+
+        let presentation = state.presentation();
+
+        assert_eq!(
+            presentation.view.pending_edit,
+            Some(crate::StudioGuiCanvasPendingEditViewModel {
+                intent_label: "place_unit",
+                summary: "place unit kind=Flash Drum".to_string(),
+                cancel_enabled: true,
+            })
+        );
+        assert_eq!(
+            presentation.text.lines,
+            vec![
+                "pending edit: place_unit summary=place unit kind=Flash Drum cancel=yes"
+                    .to_string(),
                 "focused suggestion: none".to_string(),
                 "suggestion count: 0".to_string(),
             ]
@@ -229,6 +291,7 @@ mod tests {
         assert_eq!(
             presentation.text.lines,
             vec![
+                "pending edit: none".to_string(),
                 "focused suggestion: local.flash_drum.connect_inlet.flash-1.stream-heated"
                     .to_string(),
                 "suggestion count: 3".to_string(),

@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use rf_types::{RfError, RfResult};
-use rf_ui::{AppLogEntry, CanvasSuggestion, CanvasSuggestionId};
+use rf_ui::{AppLogEntry, CanvasEditIntent, CanvasSuggestion, CanvasSuggestionId};
 
 use crate::studio_gui_layout_store::{
     load_persisted_window_layouts, save_persisted_window_layouts,
@@ -123,6 +123,7 @@ pub struct StudioGuiHostCloseWindowResult {
 pub struct StudioGuiCanvasState {
     pub suggestions: Vec<CanvasSuggestion>,
     pub focused_suggestion_id: Option<CanvasSuggestionId>,
+    pub pending_edit: Option<CanvasEditIntent>,
 }
 
 #[derive(Debug, Clone, PartialEq)]

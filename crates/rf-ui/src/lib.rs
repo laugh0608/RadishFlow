@@ -25,9 +25,10 @@ pub use auth::{
     PropertyPackageUsageEvent, PropertyPackageUsageEventKind, SecureCredentialHandle, TokenLease,
 };
 pub use canvas_interaction::{
-    CanvasInteractionState, CanvasSuggestedMaterialConnection, CanvasSuggestedStreamBinding,
-    CanvasSuggestion, CanvasSuggestionAcceptance, CanvasViewMode, GhostElement, GhostElementKind,
-    StreamAnimationMode, StreamVisualKind, StreamVisualState, SuggestionSource, SuggestionStatus,
+    CanvasEditIntent, CanvasInteractionState, CanvasSuggestedMaterialConnection,
+    CanvasSuggestedStreamBinding, CanvasSuggestion, CanvasSuggestionAcceptance, CanvasViewMode,
+    GhostElement, GhostElementKind, StreamAnimationMode, StreamVisualKind, StreamVisualState,
+    SuggestionSource, SuggestionStatus,
 };
 pub use commands::{
     CanvasPoint, CommandHistory, CommandHistoryEntry, CommandValue, DocumentCommand,
@@ -83,7 +84,7 @@ mod tests {
     use rf_types::{ComponentId, PortDirection, PortKind, StreamId, UnitId};
 
     use crate::{
-        AppLogLevel, AppState, AuthSessionStatus, AuthenticatedUser, CanvasPoint,
+        AppLogLevel, AppState, AuthSessionStatus, AuthenticatedUser, CanvasEditIntent, CanvasPoint,
         CanvasSuggestedMaterialConnection, CanvasSuggestedStreamBinding, CanvasSuggestion,
         CanvasSuggestionAcceptance, CanvasSuggestionId, CanvasViewMode, CommandHistory,
         CommandHistoryEntry, CommandValue, DiagnosticSeverity, DiagnosticSummary, DocumentCommand,
@@ -403,6 +404,73 @@ mod tests {
             app_state.workspace.canvas_interaction.focused_suggestion_id,
             None
         );
+        assert_eq!(app_state.workspace.canvas_interaction.pending_edit, None);
+    }
+
+    #[test]
+    fn canvas_place_unit_intent_is_transient_and_not_document_history() {
+        let mut app_state = AppState::new(sample_document());
+
+        let intent = app_state.begin_canvas_place_unit("Flash Drum");
+
+        assert_eq!(
+            intent,
+            CanvasEditIntent::PlaceUnit {
+                unit_kind: "Flash Drum".to_string()
+            }
+        );
+        assert_eq!(
+            app_state.workspace.canvas_interaction.pending_edit,
+            Some(CanvasEditIntent::PlaceUnit {
+                unit_kind: "Flash Drum".to_string()
+            })
+        );
+        assert_eq!(app_state.workspace.document.revision, 0);
+        assert!(!app_state.workspace.command_history.can_undo());
+    }
+
+    #[test]
+    fn cancelling_canvas_place_unit_intent_clears_pending_edit() {
+        let mut app_state = AppState::new(sample_document());
+        app_state.begin_canvas_place_unit("Flash Drum");
+
+        let cancelled = app_state.cancel_canvas_pending_edit();
+
+        assert_eq!(
+            cancelled,
+            Some(CanvasEditIntent::PlaceUnit {
+                unit_kind: "Flash Drum".to_string()
+            })
+        );
+        assert_eq!(app_state.workspace.canvas_interaction.pending_edit, None);
+        assert_eq!(app_state.workspace.document.revision, 0);
+        assert!(!app_state.workspace.command_history.can_undo());
+    }
+
+    #[test]
+    fn document_change_invalidates_canvas_pending_edit() {
+        let mut app_state = AppState::new(sample_document());
+        app_state.begin_canvas_place_unit("Flash Drum");
+        let mut next_flowsheet = app_state.workspace.document.flowsheet.clone();
+        next_flowsheet
+            .insert_unit(UnitNode::new(
+                "flash-1",
+                "Flash Drum",
+                "flash_drum",
+                Vec::new(),
+            ))
+            .expect("expected unit insert");
+
+        app_state.commit_document_change(
+            DocumentCommand::CreateUnit {
+                unit_id: UnitId::new("flash-1"),
+                kind: "flash_drum".to_string(),
+            },
+            next_flowsheet,
+            timestamp(20),
+        );
+
+        assert_eq!(app_state.workspace.canvas_interaction.pending_edit, None);
     }
 
     #[test]

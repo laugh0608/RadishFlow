@@ -187,7 +187,7 @@ impl StudioGuiCommandRegistry {
             }
         }
 
-        if !canvas.suggestions.is_empty() {
+        if !canvas.suggestions.is_empty() || canvas.pending_edit.is_some() {
             let widget = canvas.widget();
             for action in widget.actions {
                 let defaults = command_defaults(action.command_id);
@@ -425,6 +425,11 @@ fn command_defaults(command_id: &str) -> StudioGuiCommandDefaults {
                 key: StudioGuiShortcutKey::Tab,
             }),
         },
+        "canvas.cancel_pending_edit" => StudioGuiCommandDefaults {
+            menu_path: &["Canvas", "Cancel Pending Edit"],
+            search_terms: &["canvas", "cancel", "pending", "edit"],
+            shortcut: None,
+        },
         _ => StudioGuiCommandDefaults {
             menu_path: &["Commands"],
             search_terms: &[],
@@ -439,6 +444,7 @@ fn canvas_sort_order(action_id: StudioGuiCanvasActionId) -> u16 {
         StudioGuiCanvasActionId::RejectFocused => 310,
         StudioGuiCanvasActionId::FocusNext => 320,
         StudioGuiCanvasActionId::FocusPrevious => 330,
+        StudioGuiCanvasActionId::CancelPendingEdit => 340,
     }
 }
 
@@ -769,6 +775,7 @@ mod tests {
                 ),
             ],
             focused_suggestion_id: Some(rf_ui::CanvasSuggestionId::new("sug-a")),
+            pending_edit: None,
         };
 
         let registry = StudioGuiCommandRegistry::from_surfaces(
@@ -791,6 +798,7 @@ mod tests {
                 canvas_command_id(StudioGuiCanvasActionId::RejectFocused),
                 canvas_command_id(StudioGuiCanvasActionId::FocusNext),
                 canvas_command_id(StudioGuiCanvasActionId::FocusPrevious),
+                canvas_command_id(StudioGuiCanvasActionId::CancelPendingEdit),
             ]
         );
         assert_eq!(
@@ -799,6 +807,30 @@ mod tests {
                 .and_then(|entry| entry.target_window_id),
             Some(3)
         );
+    }
+
+    #[test]
+    fn gui_command_registry_includes_cancel_command_for_pending_canvas_edit() {
+        let canvas = crate::StudioGuiCanvasState {
+            pending_edit: Some(rf_ui::CanvasEditIntent::PlaceUnit {
+                unit_kind: "Flash Drum".to_string(),
+            }),
+            ..crate::StudioGuiCanvasState::default()
+        };
+
+        let registry = StudioGuiCommandRegistry::from_surfaces(
+            &StudioAppHostUiCommandModel::default(),
+            &canvas,
+            Some(7),
+        );
+
+        let cancel = registry
+            .command(canvas_command_id(
+                StudioGuiCanvasActionId::CancelPendingEdit,
+            ))
+            .expect("expected cancel pending edit command");
+        assert!(cancel.enabled);
+        assert_eq!(cancel.target_window_id, Some(7));
     }
 
     #[test]

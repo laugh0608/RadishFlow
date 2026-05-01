@@ -12,9 +12,9 @@ use crate::auth::{
     PropertyPackageManifest, TokenLease,
 };
 use crate::canvas_interaction::{
-    CanvasInteractionState, CanvasSuggestedMaterialConnection, CanvasSuggestedStreamBinding,
-    CanvasSuggestion, CanvasSuggestionAcceptance, CanvasViewMode, SuggestionSource,
-    SuggestionStatus,
+    CanvasEditIntent, CanvasInteractionState, CanvasSuggestedMaterialConnection,
+    CanvasSuggestedStreamBinding, CanvasSuggestion, CanvasSuggestionAcceptance, CanvasViewMode,
+    SuggestionSource, SuggestionStatus,
 };
 use crate::commands::{
     CommandHistory, CommandHistoryEntry, CommandValue, DocumentCommand, StreamSpecificationValue,
@@ -659,6 +659,16 @@ impl AppState {
         self.workspace
             .canvas_interaction
             .replace_suggestions(suggestions);
+    }
+
+    pub fn begin_canvas_place_unit(&mut self, unit_kind: impl Into<String>) -> CanvasEditIntent {
+        self.workspace
+            .canvas_interaction
+            .begin_place_unit(unit_kind)
+    }
+
+    pub fn cancel_canvas_pending_edit(&mut self) -> Option<CanvasEditIntent> {
+        self.workspace.canvas_interaction.cancel_pending_edit()
     }
 
     pub fn accept_focused_canvas_suggestion_by_tab(

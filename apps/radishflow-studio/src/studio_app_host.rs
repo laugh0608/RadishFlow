@@ -494,6 +494,17 @@ impl StudioAppHost {
             .replace_canvas_suggestions(suggestions);
     }
 
+    pub fn begin_canvas_place_unit(
+        &mut self,
+        unit_kind: impl Into<String>,
+    ) -> rf_ui::CanvasEditIntent {
+        self.window_host_manager.begin_canvas_place_unit(unit_kind)
+    }
+
+    pub fn cancel_canvas_pending_edit(&mut self) -> Option<rf_ui::CanvasEditIntent> {
+        self.window_host_manager.cancel_canvas_pending_edit()
+    }
+
     pub fn accept_focused_canvas_suggestion_by_tab(
         &mut self,
     ) -> RfResult<Option<rf_ui::CanvasSuggestion>> {
@@ -786,6 +797,17 @@ impl StudioAppHostController {
         self.app_host.replace_canvas_suggestions(suggestions);
     }
 
+    pub fn begin_canvas_place_unit(
+        &mut self,
+        unit_kind: impl Into<String>,
+    ) -> rf_ui::CanvasEditIntent {
+        self.app_host.begin_canvas_place_unit(unit_kind)
+    }
+
+    pub fn cancel_canvas_pending_edit(&mut self) -> Option<rf_ui::CanvasEditIntent> {
+        self.app_host.cancel_canvas_pending_edit()
+    }
+
     pub fn refresh_local_canvas_suggestions(&mut self) {
         self.app_host.refresh_local_canvas_suggestions();
     }
@@ -819,11 +841,12 @@ impl StudioAppHostController {
         &mut self,
         action: StudioCanvasInteractionAction,
     ) -> RfResult<StudioAppWindowHostCanvasInteractionResult> {
+        let expected_action = action.clone();
         let (outcome, _) =
             self.execute_command(StudioAppHostCommand::DispatchCanvasInteraction { action })?;
         let StudioAppHostCommandOutcome::CanvasInteracted(result) = outcome else {
             return Err(RfError::invalid_input(format!(
-                "app host controller expected canvas interaction outcome for {action:?}"
+                "app host controller expected canvas interaction outcome for {expected_action:?}"
             )));
         };
         Ok(result)

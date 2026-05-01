@@ -26,6 +26,19 @@ impl StudioGuiHost {
         self.dispatch_canvas_interaction(StudioGuiCanvasInteractionAction::FocusPrevious)
     }
 
+    pub fn begin_canvas_place_unit(
+        &mut self,
+        unit_kind: impl Into<String>,
+    ) -> RfResult<StudioGuiHostCanvasInteractionResult> {
+        self.dispatch_canvas_interaction(StudioGuiCanvasInteractionAction::BeginPlaceUnit {
+            unit_kind: unit_kind.into(),
+        })
+    }
+
+    pub fn cancel_canvas_pending_edit(&mut self) -> RfResult<StudioGuiHostCanvasInteractionResult> {
+        self.dispatch_canvas_interaction(StudioGuiCanvasInteractionAction::CancelPendingEdit)
+    }
+
     pub fn dispatch_lifecycle_event(
         &mut self,
         event: StudioGuiHostLifecycleEvent,
@@ -82,7 +95,7 @@ impl StudioGuiHost {
         if let Some(action_id) = canvas_action_id_from_command_id(command_id) {
             let target_window_id = self.preferred_target_window_id();
             let canvas = self.canvas_state();
-            if canvas.suggestions.is_empty() {
+            if canvas.suggestions.is_empty() && canvas.pending_edit.is_none() {
                 return Ok(StudioGuiHostUiCommandDispatchResult::IgnoredMissing {
                     command_id: command_id.to_string(),
                     ui_commands: self.ui_commands(),
@@ -113,6 +126,9 @@ impl StudioGuiHost {
                 }
                 crate::StudioGuiCanvasActionId::FocusPrevious => {
                     StudioGuiCanvasInteractionAction::FocusPrevious
+                }
+                crate::StudioGuiCanvasActionId::CancelPendingEdit => {
+                    StudioGuiCanvasInteractionAction::CancelPendingEdit
                 }
             };
             let mut result = self.dispatch_canvas_interaction(action)?;
@@ -264,7 +280,9 @@ impl StudioGuiHost {
         &mut self,
         action: StudioGuiCanvasInteractionAction,
     ) -> RfResult<StudioGuiHostCanvasInteractionResult> {
-        let result = self.controller.dispatch_canvas_interaction(action)?;
+        let result = self
+            .controller
+            .dispatch_canvas_interaction(action.clone())?;
         Ok(self.build_canvas_interaction_result_with_focus(
             action,
             result.accepted,
