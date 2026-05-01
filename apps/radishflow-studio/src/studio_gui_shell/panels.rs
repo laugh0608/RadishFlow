@@ -67,6 +67,7 @@ impl ReadyAppState {
                 }
             }
         });
+        self.render_canvas_selection_summary(ui, widget);
         ui.separator();
         self.render_canvas_drop_surface(ui, widget);
         ui.add_space(8.0);
@@ -98,6 +99,33 @@ impl ReadyAppState {
                     ui.add_space(6.0);
                 }
             });
+    }
+
+    fn render_canvas_selection_summary(
+        &mut self,
+        ui: &mut egui::Ui,
+        widget: &radishflow_studio::StudioGuiCanvasWidgetModel,
+    ) {
+        ui.horizontal_wrapped(|ui| {
+            ui.small(egui::RichText::new("Selection").strong());
+            if let Some(selection) = widget.view().current_selection.as_ref() {
+                render_status_chip(
+                    ui,
+                    selection.kind_label,
+                    egui::Color32::from_rgb(48, 112, 188),
+                );
+                ui.small(format!("{} · {}", selection.target_id, selection.summary));
+                if ui
+                    .small_button("Focus")
+                    .on_hover_text("Focus the selected Inspector target")
+                    .clicked()
+                {
+                    self.dispatch_ui_command(&selection.command_id);
+                }
+            } else {
+                ui.small("none");
+            }
+        });
     }
 
     fn render_canvas_drop_surface(

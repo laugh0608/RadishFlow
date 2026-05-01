@@ -36,6 +36,14 @@ pub struct StudioGuiCanvasStreamLineViewModel {
     pub is_active_inspector_target: bool,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioGuiCanvasSelectionViewModel {
+    pub kind_label: &'static str,
+    pub target_id: String,
+    pub summary: String,
+    pub command_id: String,
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct StudioGuiCanvasSuggestionViewModel {
     pub id: String,
@@ -59,6 +67,7 @@ pub struct StudioGuiCanvasPendingEditViewModel {
 pub struct StudioGuiCanvasViewModel {
     pub pending_edit: Option<StudioGuiCanvasPendingEditViewModel>,
     pub focused_suggestion_id: Option<String>,
+    pub current_selection: Option<StudioGuiCanvasSelectionViewModel>,
     pub unit_count: usize,
     pub stream_line_count: usize,
     pub suggestion_count: usize,
@@ -168,6 +177,41 @@ impl StudioGuiCanvasViewModel {
                 })
             })
             .collect::<Vec<_>>();
+        let current_selection = unit_blocks
+            .iter()
+            .find(|unit| unit.is_active_inspector_target)
+            .map(|unit| StudioGuiCanvasSelectionViewModel {
+                kind_label: "Unit",
+                target_id: unit.unit_id.clone(),
+                summary: format!(
+                    "{} ({}) ports {}/{}",
+                    unit.name, unit.kind, unit.connected_port_count, unit.port_count
+                ),
+                command_id: unit.command_id.clone(),
+            })
+            .or_else(|| {
+                stream_lines
+                    .iter()
+                    .find(|stream| stream.is_active_inspector_target)
+                    .map(|stream| {
+                        let source = stream
+                            .source
+                            .as_ref()
+                            .map(|endpoint| format!("{}:{}", endpoint.unit_id, endpoint.port_name))
+                            .unwrap_or_else(|| "unbound-source".to_string());
+                        let sink = stream
+                            .sink
+                            .as_ref()
+                            .map(|endpoint| format!("{}:{}", endpoint.unit_id, endpoint.port_name))
+                            .unwrap_or_else(|| "terminal".to_string());
+                        StudioGuiCanvasSelectionViewModel {
+                            kind_label: "Stream",
+                            target_id: stream.stream_id.clone(),
+                            summary: format!("{} {} -> {}", stream.name, source, sink),
+                            command_id: stream.command_id.clone(),
+                        }
+                    })
+            });
         let suggestions = state
             .suggestions
             .iter()
@@ -186,6 +230,7 @@ impl StudioGuiCanvasViewModel {
         Self {
             pending_edit,
             focused_suggestion_id,
+            current_selection,
             unit_count: unit_blocks.len(),
             stream_line_count: stream_lines.len(),
             suggestion_count: suggestions.len(),
@@ -220,6 +265,19 @@ impl StudioGuiCanvasTextView {
             format!(
                 "focused suggestion: {}",
                 view.focused_suggestion_id.as_deref().unwrap_or("none")
+            ),
+            format!(
+                "current selection: {}",
+                view.current_selection
+                    .as_ref()
+                    .map(|selection| format!(
+                        "{} {} summary={} command={}",
+                        selection.kind_label,
+                        selection.target_id,
+                        selection.summary,
+                        selection.command_id
+                    ))
+                    .unwrap_or_else(|| "none".to_string())
             ),
             format!("unit count: {}", view.unit_count),
             format!("stream line count: {}", view.stream_line_count),
@@ -397,6 +455,7 @@ mod tests {
 
         assert_eq!(presentation.view.focused_suggestion_id, None);
         assert_eq!(presentation.view.pending_edit, None);
+        assert_eq!(presentation.view.current_selection, None);
         assert_eq!(presentation.view.unit_count, 0);
         assert!(presentation.view.unit_blocks.is_empty());
         assert_eq!(presentation.view.stream_line_count, 0);
@@ -408,6 +467,7 @@ mod tests {
             vec![
                 "pending edit: none".to_string(),
                 "focused suggestion: none".to_string(),
+                "current selection: none".to_string(),
                 "unit count: 0".to_string(),
                 "stream line count: 0".to_string(),
                 "suggestion count: 0".to_string(),
@@ -440,6 +500,7 @@ mod tests {
                 "pending edit: place_unit summary=place unit kind=Flash Drum cancel=yes"
                     .to_string(),
                 "focused suggestion: none".to_string(),
+                "current selection: none".to_string(),
                 "unit count: 0".to_string(),
                 "stream line count: 0".to_string(),
                 "suggestion count: 0".to_string(),
@@ -496,6 +557,7 @@ mod tests {
                 "pending edit: none".to_string(),
                 "focused suggestion: local.flash_drum.connect_inlet.flash-1.stream-heated"
                     .to_string(),
+                "current selection: none".to_string(),
                 "unit count: 3".to_string(),
                 "stream line count: 2".to_string(),
                 "suggestion count: 3".to_string(),
@@ -526,6 +588,15 @@ mod tests {
             .expect("expected focused flash unit block");
         assert!(focused_unit_block.is_active_inspector_target);
         assert_eq!(
+            focused_unit.window.canvas.widget.view().current_selection,
+            Some(crate::StudioGuiCanvasSelectionViewModel {
+                kind_label: "Unit",
+                target_id: "flash-1".to_string(),
+                summary: "Flash Drum (flash_drum) ports 0/3".to_string(),
+                command_id: "inspector.focus_unit:flash-1".to_string(),
+            })
+        );
+        assert_eq!(
             focused_unit
                 .window
                 .runtime
@@ -550,6 +621,15 @@ mod tests {
             .find(|stream| stream.stream_id == "stream-feed")
             .expect("expected focused feed stream line");
         assert!(focused_stream_line.is_active_inspector_target);
+        assert_eq!(
+            focused_stream.window.canvas.widget.view().current_selection,
+            Some(crate::StudioGuiCanvasSelectionViewModel {
+                kind_label: "Stream",
+                target_id: "stream-feed".to_string(),
+                summary: "Feed feed-1:outlet -> heater-1:inlet".to_string(),
+                command_id: "inspector.focus_stream:stream-feed".to_string(),
+            })
+        );
         assert_eq!(
             focused_stream
                 .window

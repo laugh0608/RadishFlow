@@ -183,9 +183,9 @@ pub use studio_document_history_command::{
 pub use studio_example_projects::{StudioExampleProjectModel, studio_example_project_models};
 pub use studio_gui_canvas_presentation::{
     StudioGuiCanvasPendingEditViewModel, StudioGuiCanvasPresentation,
-    StudioGuiCanvasStreamLineEndpointViewModel, StudioGuiCanvasStreamLineViewModel,
-    StudioGuiCanvasSuggestionViewModel, StudioGuiCanvasTextView, StudioGuiCanvasUnitBlockViewModel,
-    StudioGuiCanvasViewModel,
+    StudioGuiCanvasSelectionViewModel, StudioGuiCanvasStreamLineEndpointViewModel,
+    StudioGuiCanvasStreamLineViewModel, StudioGuiCanvasSuggestionViewModel,
+    StudioGuiCanvasTextView, StudioGuiCanvasUnitBlockViewModel, StudioGuiCanvasViewModel,
 };
 pub use studio_gui_canvas_widget::{
     StudioGuiCanvasActionId, StudioGuiCanvasRenderableAction, StudioGuiCanvasWidgetEvent,
