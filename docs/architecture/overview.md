@@ -1,6 +1,6 @@
 # Architecture Overview
 
-更新时间：2026-04-29
+更新时间：2026-05-01
 
 ## 目标
 
@@ -60,6 +60,8 @@ RadishFlow 的目标架构已经冻结为“桌面端三层 + 外部控制面”
 | `apps/radishflow-studio` | 桌面入口程序 | 已建立 auth cache sync 桥接、控制面 HTTP client、entitlement / manifest / lease / offline refresh 编排、下载获取抽象、基于 `reqwest + rustls` 的真实 HTTP transport、HTTP 请求/响应适配层、可重试/不可重试失败分类、下载 JSON 到本地 payload DTO 的协议映射、摘要校验、失败回滚与测试；并已补上 `PropertyPackageProvider -> rf-solver -> rf-ui::AppState` 的最小工作区求解桥接，可直接基于已加载物性包或本地 auth cache 执行真实 solve 并回写 UI 快照/日志；当前又已形成 `StudioGuiHost / StudioGuiDriver / StudioGuiSnapshot / StudioGuiWindowModel / StudioGuiWindowLayoutState` 这一条 GUI-facing 宿主与窗口布局契约，并把窗口布局持久化为项目同目录 sidecar；当前又已把 drop preview 前推为 `StudioGuiWindowDropTargetQuery -> StudioGuiHost / StudioGuiDriver` 的显式查询入口，并在 host 内补出非持久化 preview 会话态；当前又已补出 `StudioGuiNativeTimerRuntime`，让 GUI 可在消费 `StudioGuiNativeTimerEffects` 后继续跟踪逻辑 timer handle、`next_due_at` 和一次性 due callback，而不必在真实框架里从零重写同一套 timer 生命周期；当前又已把原生 timer callback 正式收口为 `StudioGuiEvent::NativeTimerElapsed { window_id, handle_id }`，由 driver 先校验当前绑定再回灌 `TimerElapsed`，避免真实宿主把 stale callback 误灌进 runtime；当前又已补出 `StudioGuiPlatformHost` 与 `StudioGuiPlatformTimerDriverState`，把平台 timer request、native timer id 映射、stale callback 判定与平台 notice 固定为显式状态机；当前又已引入第一版 `eframe/egui` GUI 壳，在单原生窗口内承载逻辑窗口切换，并直接消费 `window_model.drop_preview.overlay / changed_area_ids` 画出局部插入条、anchor 顶线、target-anchored 浮动 overlay 与局部 hint pill；当前 Runtime 面板已能切换内置正向示例项目、输入路径或 Windows 原生文件选择器打开现有 `*.rfproj.json`、在未保存修订存在时先确认打开、打开成功后记录并持久化 shell 级最近项目入口、触发既有运行栏动作，并展示 `SolveSnapshot` 映射出的结构化流股结果、Result Inspector、失败结果、诊断目标、活动 Inspector 详情、Stream Inspector 字段草稿/提交、求解步骤、诊断、日志、工作区摘要与平台/授权状态；当前 `edit.undo / edit.redo` 也已进入正式 command surface 并经由 `StudioRuntimeTrigger::DocumentHistory` 执行；当前 shell 还提供中文/英文切换，并通过系统 CJK 字体 fallback 支持中文显示 |
 
 这一路径仍坚持先消费已冻结的应用层、运行栏和 snapshot presentation 边界；真实 UI 只做最小闭环承接，不反向改写内核、求解或项目文件语义。
+
+截至 2026-05-01，Studio Canvas 已补出最小可见与只读扫读层：单元块、物流线、Inspector 焦点高亮、对象列表导航、焦点气泡、material port marker、端口 hover、运行/诊断 badge 与对象列表 `All / Attention / Units / Streams` 临时筛选都通过 GUI-facing presentation 暴露并由 `egui` 渲染。当前画布仍只把已有 `FlowsheetDocument` 对象投影到临时布局，单元创建也只保留单类型 `Place Flash Drum` 的 pending edit/commit 最小路径；端口点击编辑、连线创建、拖拽布局、坐标持久化、项目 schema 扩张和 CAPE-OPEN 扩张都不属于当前阶段。
 
 同时补充一条当前协作闸口：在 `apps/radishflow-studio` 还处于 GUI-facing 边界、宿主桥接和布局状态契约冻结阶段时，可以继续直接推进；但一旦工作重心切到真实界面布局、控件组织、视觉表达、交互流和较重的 UI 逻辑设计，后续实现前必须先向用户同步方向与关键取舍，并保留用户干预窗口，不把产品交互方案静默固化。
 
@@ -129,7 +131,7 @@ RadishFlow 的目标架构已经冻结为“桌面端三层 + 外部控制面”
 - 窗口布局持久化继续与项目文档语义分离，当前保存到 `<project>.rfstudio-layout.json` sidecar，而不是混入 `*.rfproj.json`
 - 多窗口布局 key 当前已从运行时 `window_id` 收口为基于 `window_role + layout_slot` 的稳定 scope，避免跨 host 重建时直接依赖临时窗口号
 
-这意味着当前仓库已从“只有 UI 层快照映射桥”推进到“真实 `egui` 壳层可通过路径输入、Windows 原生选择器或内置示例打开已有项目、持久化 shell 级最近项目、运行求解、查看结构化结果/诊断、定位 Inspector、编辑 Stream 字段草稿并提交，以及执行基础撤销/重做”。最近项目写入独立 Studio preferences 文件，不进入 `*.rfproj.json`。不过这仍是最小可操作工作台闭环，不等同于完整项目文件工作流、保存/另存为、完整应用偏好系统、完整画布编辑器、跨会话历史持久化或最终视觉方案。
+这意味着当前仓库已从“只有 UI 层快照映射桥”推进到“真实 `egui` 壳层可打开已有项目、持久化 shell 级最近项目、运行求解、查看结构化结果/诊断、定位 Inspector、编辑 Stream 字段草稿并提交、执行基础撤销/重做、保存/另存为，并在画布中查看已有单元/流股/端口/诊断状态”。最近项目写入独立 Studio preferences 文件，画布筛选与对比选择等状态仍属于 shell 临时状态，不进入 `*.rfproj.json`。不过这仍是最小可操作工作台闭环，不等同于完整跨平台文件工作流、完整应用偏好系统、完整画布编辑器、跨会话历史持久化或最终视觉方案。
 
 这些决定的目的是先把 UI 和求解层之间的长期接口边界定清楚，再决定具体控件和交互实现。
 
