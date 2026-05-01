@@ -47,6 +47,16 @@ impl StudioGuiHost {
                 unit_id: unit.id.clone(),
                 name: unit.name.clone(),
                 kind: unit.kind.clone(),
+                ports: unit
+                    .ports
+                    .iter()
+                    .map(|port| StudioGuiCanvasUnitPortState {
+                        name: port.name.clone(),
+                        direction: port.direction,
+                        kind: port.kind,
+                        stream_id: port.stream_id.clone(),
+                    })
+                    .collect(),
                 port_count: unit.ports.len(),
                 connected_port_count: unit
                     .ports

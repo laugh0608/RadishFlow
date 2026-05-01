@@ -1844,12 +1844,22 @@ fn canvas_stream_line_geometry(
     stream: &radishflow_studio::StudioGuiCanvasStreamLineViewModel,
 ) -> CanvasStreamLineGeometry {
     let source = stream.source.as_ref().map(|endpoint| {
-        let unit_rect = canvas_unit_block_rect(rect, endpoint.layout_slot);
-        egui::pos2(unit_rect.right(), unit_rect.center().y)
+        canvas_unit_port_anchor(
+            rect,
+            endpoint.layout_slot,
+            true,
+            endpoint.port_side_index,
+            endpoint.port_side_count,
+        )
     });
     let sink = stream.sink.as_ref().map(|endpoint| {
-        let unit_rect = canvas_unit_block_rect(rect, endpoint.layout_slot);
-        egui::pos2(unit_rect.left(), unit_rect.center().y)
+        canvas_unit_port_anchor(
+            rect,
+            endpoint.layout_slot,
+            false,
+            endpoint.port_side_index,
+            endpoint.port_side_count,
+        )
     });
 
     match (source, sink) {
@@ -1947,6 +1957,35 @@ fn canvas_unit_block_rect(rect: egui::Rect, layout_slot: usize) -> egui::Rect {
     egui::Rect::from_min_size(min, block_size)
 }
 
+fn canvas_unit_port_anchor(
+    rect: egui::Rect,
+    layout_slot: usize,
+    is_outlet: bool,
+    side_index: usize,
+    side_count: usize,
+) -> egui::Pos2 {
+    let unit_rect = canvas_unit_block_rect(rect, layout_slot);
+    canvas_unit_port_anchor_in_rect(unit_rect, is_outlet, side_index, side_count)
+}
+
+fn canvas_unit_port_anchor_in_rect(
+    unit_rect: egui::Rect,
+    is_outlet: bool,
+    side_index: usize,
+    side_count: usize,
+) -> egui::Pos2 {
+    let count = side_count.max(1) as f32;
+    let y_min = unit_rect.top() + 17.0;
+    let y_max = unit_rect.bottom() - 17.0;
+    let ratio = (side_index as f32 + 1.0) / (count + 1.0);
+    let y = egui::lerp(y_min..=y_max, ratio);
+    if is_outlet {
+        egui::pos2(unit_rect.right(), y)
+    } else {
+        egui::pos2(unit_rect.left(), y)
+    }
+}
+
 fn paint_canvas_unit_block(
     painter: &egui::Painter,
     rect: egui::Rect,
@@ -1985,8 +2024,11 @@ fn paint_canvas_unit_block(
         0.0,
         accent,
     );
+    for port in &unit.ports {
+        paint_canvas_unit_port_marker(painter, rect, port);
+    }
 
-    let text_left = rect.left() + 14.0;
+    let text_left = rect.left() + 22.0;
     let text_top = rect.top() + 10.0;
     painter.text(
         egui::pos2(text_left, text_top),
@@ -2011,6 +2053,49 @@ fn paint_canvas_unit_block(
         ),
         egui::FontId::proportional(11.0),
         egui::Color32::from_rgb(86, 96, 108),
+    );
+}
+
+fn paint_canvas_unit_port_marker(
+    painter: &egui::Painter,
+    rect: egui::Rect,
+    port: &radishflow_studio::StudioGuiCanvasUnitPortViewModel,
+) {
+    let is_outlet = port.direction_label == "outlet";
+    let anchor = canvas_unit_port_anchor_in_rect(rect, is_outlet, port.side_index, port.side_count);
+    let fill = if port.is_connected {
+        egui::Color32::from_rgb(42, 142, 122)
+    } else {
+        egui::Color32::from_rgb(174, 184, 194)
+    };
+    let stroke = if port.is_connected {
+        egui::Stroke::new(1.1, egui::Color32::from_rgb(34, 92, 82))
+    } else {
+        egui::Stroke::new(1.0, egui::Color32::from_rgb(112, 124, 136))
+    };
+    painter.circle_filled(anchor, 4.2, fill);
+    painter.circle_stroke(anchor, 4.2, stroke);
+
+    let label_pos = if is_outlet {
+        anchor + egui::vec2(-8.0, -5.5)
+    } else {
+        anchor + egui::vec2(8.0, -5.5)
+    };
+    let align = if is_outlet {
+        egui::Align2::RIGHT_TOP
+    } else {
+        egui::Align2::LEFT_TOP
+    };
+    painter.text(
+        label_pos,
+        align,
+        truncate_canvas_label(&port.name, 9),
+        egui::FontId::proportional(9.5),
+        if port.is_connected {
+            egui::Color32::from_rgb(49, 71, 84)
+        } else {
+            egui::Color32::from_rgb(106, 118, 130)
+        },
     );
 }
 

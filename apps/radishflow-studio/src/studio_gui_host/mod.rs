@@ -133,9 +133,18 @@ pub struct StudioGuiCanvasUnitState {
     pub unit_id: rf_types::UnitId,
     pub name: String,
     pub kind: String,
+    pub ports: Vec<StudioGuiCanvasUnitPortState>,
     pub port_count: usize,
     pub connected_port_count: usize,
     pub is_active_inspector_target: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioGuiCanvasUnitPortState {
+    pub name: String,
+    pub direction: rf_types::PortDirection,
+    pub kind: rf_types::PortKind,
+    pub stream_id: Option<rf_types::StreamId>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

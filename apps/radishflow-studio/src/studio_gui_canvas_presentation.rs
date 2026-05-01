@@ -7,6 +7,7 @@ pub struct StudioGuiCanvasUnitBlockViewModel {
     pub unit_id: String,
     pub name: String,
     pub kind: String,
+    pub ports: Vec<StudioGuiCanvasUnitPortViewModel>,
     pub port_count: usize,
     pub connected_port_count: usize,
     pub command_id: String,
@@ -17,10 +18,23 @@ pub struct StudioGuiCanvasUnitBlockViewModel {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioGuiCanvasUnitPortViewModel {
+    pub name: String,
+    pub direction_label: &'static str,
+    pub kind_label: &'static str,
+    pub stream_id: Option<String>,
+    pub is_connected: bool,
+    pub side_index: usize,
+    pub side_count: usize,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StudioGuiCanvasStreamLineEndpointViewModel {
     pub unit_id: String,
     pub port_name: String,
     pub layout_slot: usize,
+    pub port_side_index: usize,
+    pub port_side_count: usize,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -126,10 +140,12 @@ impl StudioGuiCanvasViewModel {
             .map(|(layout_slot, unit)| {
                 let target = rf_ui::InspectorTarget::Unit(unit.unit_id.clone());
                 let command_id = crate::inspector_target_command_id(&target);
+                let ports = canvas_unit_material_ports(unit);
                 StudioGuiCanvasUnitBlockViewModel {
                     unit_id: unit.unit_id.as_str().to_string(),
                     name: unit.name.clone(),
                     kind: unit.kind.clone(),
+                    ports,
                     port_count: unit.port_count,
                     connected_port_count: unit.connected_port_count,
                     action_label: format!("Unit {}", unit.unit_id.as_str()),
@@ -144,9 +160,16 @@ impl StudioGuiCanvasViewModel {
                 }
             })
             .collect::<Vec<_>>();
-        let unit_layout_slots = unit_blocks
+        let unit_port_layouts = unit_blocks
             .iter()
-            .map(|unit| (unit.unit_id.clone(), unit.layout_slot))
+            .flat_map(|unit| {
+                unit.ports.iter().map(|port| {
+                    (
+                        (unit.unit_id.clone(), port.name.clone()),
+                        (unit.layout_slot, port.side_index, port.side_count),
+                    )
+                })
+            })
             .collect::<BTreeMap<_, _>>();
         let stream_lines = state
             .streams
@@ -154,23 +177,37 @@ impl StudioGuiCanvasViewModel {
             .enumerate()
             .filter_map(|(line_index, stream)| {
                 let source = stream.source.as_ref().and_then(|endpoint| {
-                    unit_layout_slots
-                        .get(endpoint.unit_id.as_str())
+                    unit_port_layouts
+                        .get(&(
+                            endpoint.unit_id.as_str().to_string(),
+                            endpoint.port_name.clone(),
+                        ))
                         .copied()
-                        .map(|layout_slot| StudioGuiCanvasStreamLineEndpointViewModel {
-                            unit_id: endpoint.unit_id.as_str().to_string(),
-                            port_name: endpoint.port_name.clone(),
-                            layout_slot,
+                        .map(|(layout_slot, port_side_index, port_side_count)| {
+                            StudioGuiCanvasStreamLineEndpointViewModel {
+                                unit_id: endpoint.unit_id.as_str().to_string(),
+                                port_name: endpoint.port_name.clone(),
+                                layout_slot,
+                                port_side_index,
+                                port_side_count,
+                            }
                         })
                 });
                 let sink = stream.sink.as_ref().and_then(|endpoint| {
-                    unit_layout_slots
-                        .get(endpoint.unit_id.as_str())
+                    unit_port_layouts
+                        .get(&(
+                            endpoint.unit_id.as_str().to_string(),
+                            endpoint.port_name.clone(),
+                        ))
                         .copied()
-                        .map(|layout_slot| StudioGuiCanvasStreamLineEndpointViewModel {
-                            unit_id: endpoint.unit_id.as_str().to_string(),
-                            port_name: endpoint.port_name.clone(),
-                            layout_slot,
+                        .map(|(layout_slot, port_side_index, port_side_count)| {
+                            StudioGuiCanvasStreamLineEndpointViewModel {
+                                unit_id: endpoint.unit_id.as_str().to_string(),
+                                port_name: endpoint.port_name.clone(),
+                                layout_slot,
+                                port_side_index,
+                                port_side_count,
+                            }
                         })
                 });
                 if source.is_none() && sink.is_none() {
@@ -352,6 +389,22 @@ impl StudioGuiCanvasTextView {
             )
         }));
 
+        lines.extend(view.unit_blocks.iter().flat_map(|unit| {
+            unit.ports.iter().map(move |port| {
+                let stream = port.stream_id.as_deref().unwrap_or("unbound");
+                format!(
+                    "  port {}:{} direction={} kind={} stream={} slot={}/{}",
+                    unit.unit_id,
+                    port.name,
+                    port.direction_label,
+                    port.kind_label,
+                    stream,
+                    port.side_index + 1,
+                    port.side_count
+                )
+            })
+        }));
+
         lines.extend(view.stream_lines.iter().map(|stream| {
             let focus_marker = if stream.is_active_inspector_target {
                 "*"
@@ -407,6 +460,60 @@ impl StudioGuiCanvasPresentation {
         let text = StudioGuiCanvasTextView::from_view_model(&view);
         Self { view, text }
     }
+}
+
+fn canvas_unit_material_ports(
+    unit: &crate::StudioGuiCanvasUnitState,
+) -> Vec<StudioGuiCanvasUnitPortViewModel> {
+    let inlet_count = unit
+        .ports
+        .iter()
+        .filter(|port| {
+            port.kind == rf_types::PortKind::Material
+                && port.direction == rf_types::PortDirection::Inlet
+        })
+        .count();
+    let outlet_count = unit
+        .ports
+        .iter()
+        .filter(|port| {
+            port.kind == rf_types::PortKind::Material
+                && port.direction == rf_types::PortDirection::Outlet
+        })
+        .count();
+    let mut inlet_index = 0;
+    let mut outlet_index = 0;
+
+    unit.ports
+        .iter()
+        .filter(|port| port.kind == rf_types::PortKind::Material)
+        .map(|port| {
+            let (side_index, side_count) = match port.direction {
+                rf_types::PortDirection::Inlet => {
+                    let index = inlet_index;
+                    inlet_index += 1;
+                    (index, inlet_count)
+                }
+                rf_types::PortDirection::Outlet => {
+                    let index = outlet_index;
+                    outlet_index += 1;
+                    (index, outlet_count)
+                }
+            };
+            StudioGuiCanvasUnitPortViewModel {
+                name: port.name.clone(),
+                direction_label: port.direction.as_str(),
+                kind_label: port.kind.as_str(),
+                stream_id: port
+                    .stream_id
+                    .as_ref()
+                    .map(|stream_id| stream_id.as_str().to_string()),
+                is_connected: port.stream_id.is_some(),
+                side_index,
+                side_count,
+            }
+        })
+        .collect()
 }
 
 fn canvas_focus_callout(
@@ -690,6 +797,14 @@ mod tests {
                     && unit.kind == "flash_drum"
                     && unit.command_id == "inspector.focus_unit:flash-1"
                     && unit.port_count == 3
+                    && unit.ports.len() == 3
+                    && unit.ports.iter().any(|port| {
+                        port.name == "liquid"
+                            && port.direction_label == "outlet"
+                            && !port.is_connected
+                            && port.side_index == 0
+                            && port.side_count == 2
+                    })
                     && unit.layout_slot > 0
             }),
             "expected canvas presentation to surface existing UnitNode blocks"
@@ -699,12 +814,17 @@ mod tests {
                 stream.stream_id == "stream-feed"
                     && stream.command_id == "inspector.focus_stream:stream-feed"
                     && stream.source.as_ref().is_some_and(|source| {
-                        source.unit_id == "feed-1" && source.port_name == "outlet"
+                        source.unit_id == "feed-1"
+                            && source.port_name == "outlet"
+                            && source.port_side_index == 0
+                            && source.port_side_count == 1
                     })
-                    && stream
-                        .sink
-                        .as_ref()
-                        .is_some_and(|sink| sink.unit_id == "heater-1" && sink.port_name == "inlet")
+                    && stream.sink.as_ref().is_some_and(|sink| {
+                        sink.unit_id == "heater-1"
+                            && sink.port_name == "inlet"
+                            && sink.port_side_index == 0
+                            && sink.port_side_count == 1
+                    })
             }),
             "expected canvas presentation to surface existing stream connection lines"
         );
@@ -749,6 +869,12 @@ mod tests {
                 "- unit feed-1 kind=feed ports=1/1 command=inspector.focus_unit:feed-1".to_string(),
                 "- unit flash-1 kind=flash_drum ports=0/3 command=inspector.focus_unit:flash-1".to_string(),
                 "- unit heater-1 kind=heater ports=2/2 command=inspector.focus_unit:heater-1".to_string(),
+                "  port feed-1:outlet direction=outlet kind=material stream=stream-feed slot=1/1".to_string(),
+                "  port flash-1:inlet direction=inlet kind=material stream=unbound slot=1/1".to_string(),
+                "  port flash-1:liquid direction=outlet kind=material stream=unbound slot=1/2".to_string(),
+                "  port flash-1:vapor direction=outlet kind=material stream=unbound slot=2/2".to_string(),
+                "  port heater-1:inlet direction=inlet kind=material stream=stream-feed slot=1/1".to_string(),
+                "  port heater-1:outlet direction=outlet kind=material stream=stream-heated slot=1/1".to_string(),
                 "- stream stream-feed feed-1:outlet -> heater-1:inlet command=inspector.focus_stream:stream-feed".to_string(),
                 "- stream stream-heated heater-1:outlet -> terminal command=inspector.focus_stream:stream-heated".to_string(),
                 "* local.flash_drum.connect_inlet.flash-1.stream-heated [focused] source=local_rules confidence=0.97 target=flash-1 tab_accept=yes reason=Connect stream `stream-heated` to flash drum inlet `inlet`".to_string(),

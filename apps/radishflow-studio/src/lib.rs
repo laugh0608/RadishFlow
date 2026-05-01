@@ -187,7 +187,7 @@ pub use studio_gui_canvas_presentation::{
     StudioGuiCanvasPresentation, StudioGuiCanvasSelectionViewModel,
     StudioGuiCanvasStreamLineEndpointViewModel, StudioGuiCanvasStreamLineViewModel,
     StudioGuiCanvasSuggestionViewModel, StudioGuiCanvasTextView, StudioGuiCanvasUnitBlockViewModel,
-    StudioGuiCanvasViewModel,
+    StudioGuiCanvasUnitPortViewModel, StudioGuiCanvasViewModel,
 };
 pub use studio_gui_canvas_widget::{
     StudioGuiCanvasActionId, StudioGuiCanvasRenderableAction, StudioGuiCanvasWidgetEvent,
@@ -203,8 +203,8 @@ pub use studio_gui_driver::{
 };
 pub use studio_gui_host::{
     StudioGuiCanvasInteractionAction, StudioGuiCanvasState, StudioGuiCanvasStreamEndpointState,
-    StudioGuiCanvasStreamState, StudioGuiCanvasUnitState, StudioGuiHost,
-    StudioGuiHostCanvasInteractionResult, StudioGuiHostCanvasSuggestionResult,
+    StudioGuiCanvasStreamState, StudioGuiCanvasUnitPortState, StudioGuiCanvasUnitState,
+    StudioGuiHost, StudioGuiHostCanvasInteractionResult, StudioGuiHostCanvasSuggestionResult,
     StudioGuiHostCloseWindowResult, StudioGuiHostCommand, StudioGuiHostCommandOutcome,
     StudioGuiHostDispatch, StudioGuiHostGlobalEventDispatch, StudioGuiHostLifecycleDispatch,
     StudioGuiHostLifecycleEvent, StudioGuiHostUiCommandDispatchResult,
