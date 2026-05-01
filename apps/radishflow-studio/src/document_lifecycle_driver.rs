@@ -201,4 +201,60 @@ mod tests {
         );
         assert!(read_project_file(&outcome.path).is_ok());
     }
+
+    #[test]
+    fn save_as_failure_keeps_workspace_path_saved_revision_and_history() {
+        let source_path = temp_project_path("save-as-failure-source");
+        let target_path = temp_project_path("save-as-failure-target");
+        fs::create_dir_all(&target_path).expect("expected directory target");
+        let mut app_state = app_state_from_example(&source_path);
+        let original_saved_revision = app_state.workspace.last_saved_revision;
+        let mut next_flowsheet = app_state.workspace.document.flowsheet.clone();
+        next_flowsheet
+            .streams
+            .get_mut(&StreamId::new("stream-feed"))
+            .expect("expected feed stream")
+            .pressure_pa = 123_456.0;
+        let dirty_revision = app_state.commit_document_change(
+            rf_ui::DocumentCommand::SetStreamSpecification {
+                stream_id: StreamId::new("stream-feed"),
+                field: "pressure_pa".to_string(),
+                value: rf_ui::CommandValue::Number(123_456.0),
+            },
+            next_flowsheet,
+            SystemTime::now(),
+        );
+
+        let error = dispatch_document_lifecycle(
+            &mut app_state,
+            StudioDocumentLifecycleCommand::SaveAs {
+                path: target_path.clone(),
+            },
+        )
+        .expect_err("expected save-as failure");
+
+        assert!(
+            error
+                .message()
+                .contains("target path exists and is not a file")
+        );
+        assert_eq!(
+            app_state.workspace.document_path.as_deref(),
+            Some(source_path.as_path())
+        );
+        assert_eq!(
+            app_state.workspace.last_saved_revision,
+            original_saved_revision
+        );
+        assert_eq!(app_state.workspace.document.revision, dirty_revision);
+        assert_ne!(
+            app_state.workspace.last_saved_revision,
+            Some(app_state.workspace.document.revision)
+        );
+        assert_eq!(app_state.workspace.command_history.len(), 1);
+        assert!(target_path.is_dir());
+
+        let _ = fs::remove_dir_all(target_path);
+        let _ = fs::remove_file(source_path);
+    }
 }

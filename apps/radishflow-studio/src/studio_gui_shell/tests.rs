@@ -1110,6 +1110,81 @@ fn save_project_as_from_picker_requires_confirmation_before_overwrite() {
 }
 
 #[test]
+fn failed_confirmed_save_as_keeps_workspace_state_and_retry_target() {
+    let config = synced_workspace_config();
+    let preferences_path = test_preferences_path("save-as-overwrite-failure");
+    let target_project = std::env::temp_dir().join(format!(
+        "radishflow-studio-shell-save-as-overwrite-failure-{}.rfproj.json",
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("expected current timestamp")
+            .as_nanos()
+    ));
+    fs::create_dir_all(&target_project).expect("expected directory target");
+    let mut app = ReadyAppState::from_config_with_project_file_picker(
+        &config,
+        preferences_path.clone(),
+        Box::new(TestProjectFilePicker::new(Some(target_project.clone()))),
+    )
+    .expect("expected app state");
+    let original_window = app.platform_host.snapshot().window_model();
+    let original_document = original_window.runtime.workspace_document.clone();
+
+    app.save_project_as_from_picker();
+    assert_eq!(
+        app.project_open.pending_save_as_overwrite.as_deref(),
+        Some(target_project.as_path())
+    );
+
+    app.confirm_pending_save_as_overwrite();
+
+    let failed_window = app.platform_host.snapshot().window_model();
+    assert_eq!(
+        failed_window.runtime.workspace_document.project_path,
+        original_document.project_path
+    );
+    assert_eq!(
+        failed_window.runtime.workspace_document.last_saved_revision,
+        original_document.last_saved_revision
+    );
+    assert_eq!(
+        failed_window.runtime.workspace_document.has_unsaved_changes,
+        original_document.has_unsaved_changes
+    );
+    assert!(app.project_open.recent_projects.is_empty());
+    assert_eq!(
+        app.project_open.pending_save_as_overwrite.as_deref(),
+        Some(target_project.as_path()),
+        "failed overwrite save-as should keep the retry/cancel target visible"
+    );
+    assert_eq!(
+        app.project_open
+            .notice
+            .as_ref()
+            .map(|notice| notice.title.as_str()),
+        Some("Save As failed")
+    );
+    assert!(
+        app.project_open
+            .notice
+            .as_ref()
+            .map(|notice| notice.detail.contains("Current workspace remains open"))
+            .unwrap_or(false)
+    );
+    assert!(
+        failed_window
+            .runtime
+            .gui_activity_lines
+            .iter()
+            .any(|line| line.contains("save as failed"))
+    );
+    assert!(target_project.is_dir());
+
+    let _ = std::fs::remove_file(preferences_path);
+    let _ = std::fs::remove_dir_all(target_project);
+}
+
+#[test]
 fn cancel_pending_save_as_overwrite_keeps_existing_file() {
     let config = synced_workspace_config();
     let preferences_path = test_preferences_path("save-as-overwrite-cancel");

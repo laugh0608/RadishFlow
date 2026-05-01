@@ -71,8 +71,17 @@ impl ReadyAppState {
                 self.project_open.notice = Some(ProjectOpenNotice {
                     level: ProjectOpenNoticeLevel::Error,
                     title: "Project save failed".to_string(),
-                    detail: format!("[{}] {}", error.code().as_str(), error.message()),
+                    detail: format!(
+                        "[{}] {}. Current workspace remains open.",
+                        error.code().as_str(),
+                        error.message()
+                    ),
                 });
+                self.platform_host.record_activity_line(format!(
+                    "save project failed [{}]: {}",
+                    error.code().as_str(),
+                    error.message()
+                ));
             }
         }
     }
@@ -149,18 +158,24 @@ impl ReadyAppState {
                     level: ProjectOpenNoticeLevel::Error,
                     title: "Save As failed".to_string(),
                     detail: format!(
-                        "[{}] {} ({})",
+                        "[{}] {} ({}). Current workspace remains open; choose another target or retry.",
                         error.code().as_str(),
                         error.message(),
                         project_path.display()
                     ),
                 });
+                self.platform_host.record_activity_line(format!(
+                    "save as failed [{}]: {} ({})",
+                    error.code().as_str(),
+                    error.message(),
+                    project_path.display()
+                ));
             }
         }
     }
 
     pub(super) fn confirm_pending_save_as_overwrite(&mut self) {
-        let Some(project_path) = self.project_open.pending_save_as_overwrite.take() else {
+        let Some(project_path) = self.project_open.pending_save_as_overwrite.clone() else {
             return;
         };
         self.request_save_project_as(project_path, false);
