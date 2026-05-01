@@ -741,7 +741,11 @@ impl ReadyAppState {
             .striped(true)
             .show(ui, |ui| {
                 for row in &stream.summary_rows {
-                    ui.small(row.label);
+                    ui.small(format!(
+                        "{} · {}",
+                        row.label,
+                        self.locale.runtime_label(row.detail_label)
+                    ));
                     ui.small(&row.value);
                     ui.end_row();
                 }

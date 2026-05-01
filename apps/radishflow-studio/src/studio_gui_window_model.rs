@@ -1,3 +1,5 @@
+use std::collections::BTreeSet;
+
 use crate::{
     EntitlementSessionHostRuntimeOutput, StudioExampleProjectModel, StudioGuiCanvasWidgetModel,
     StudioGuiCommandEntry, StudioGuiCommandMenuNode, StudioGuiCommandRegistry,
@@ -221,6 +223,7 @@ pub struct StudioGuiWindowStreamResultModel {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StudioGuiWindowStreamSummaryRowModel {
     pub label: &'static str,
+    pub detail_label: &'static str,
     pub value: String,
 }
 
@@ -402,7 +405,7 @@ impl StudioGuiWindowSolveSnapshotModel {
                     .find(|stream| stream.stream_id == selected_id)
             })
             .cloned();
-        let related_steps = selected_stream_id
+        let related_steps: Vec<StudioGuiWindowSolveStepModel> = selected_stream_id
             .as_deref()
             .map(|selected_id| {
                 self.steps
@@ -416,6 +419,10 @@ impl StudioGuiWindowSolveSnapshotModel {
                     .collect()
             })
             .unwrap_or_default();
+        let related_step_unit_ids = related_steps
+            .iter()
+            .map(|step| step.unit_id.as_str())
+            .collect::<BTreeSet<_>>();
         let related_diagnostics = selected_stream_id
             .as_deref()
             .map(|selected_id| {
@@ -426,6 +433,10 @@ impl StudioGuiWindowSolveSnapshotModel {
                             .related_stream_ids
                             .iter()
                             .any(|stream_id| stream_id == selected_id)
+                            || diagnostic
+                                .related_unit_ids
+                                .iter()
+                                .any(|unit_id| related_step_unit_ids.contains(unit_id.as_str()))
                     })
                     .cloned()
                     .collect()
@@ -438,8 +449,11 @@ impl StudioGuiWindowSolveSnapshotModel {
                 stream_id: stream.stream_id.clone(),
                 label: stream.label.clone(),
                 summary: format!(
-                    "{} | {} | {}",
-                    stream.stream_id, stream.temperature_text, stream.molar_flow_text
+                    "{} | T {} | P {} | F {}",
+                    stream.stream_id,
+                    stream.temperature_text,
+                    stream.pressure_text,
+                    stream.molar_flow_text
                 ),
                 is_selected: selected_stream_id
                     .as_deref()
@@ -1056,14 +1070,17 @@ fn stream_result_model_from_ui(
         summary_rows: vec![
             StudioGuiWindowStreamSummaryRowModel {
                 label: "T",
+                detail_label: "Temperature",
                 value: temperature_text,
             },
             StudioGuiWindowStreamSummaryRowModel {
                 label: "P",
+                detail_label: "Pressure",
                 value: pressure_text,
             },
             StudioGuiWindowStreamSummaryRowModel {
                 label: "F",
+                detail_label: "Molar flow",
                 value: molar_flow_text,
             },
         ],
@@ -1389,12 +1406,9 @@ mod tests {
         assert_eq!(heated_stream.temperature_text, "345.00 K");
         assert!(heated_stream.composition_text.contains("component-a="));
         assert_eq!(heated_stream.summary_rows.len(), 3);
-        assert!(
-            heated_stream
-                .summary_rows
-                .iter()
-                .any(|row| row.label == "T" && row.value == "345.00 K")
-        );
+        assert!(heated_stream.summary_rows.iter().any(|row| row.label == "T"
+            && row.detail_label == "Temperature"
+            && row.value == "345.00 K"));
         assert!(
             heated_stream
                 .composition_rows
@@ -1443,7 +1457,9 @@ mod tests {
             inspector
                 .stream_options
                 .iter()
-                .any(|option| option.stream_id == "stream-heated" && option.is_selected)
+                .any(|option| option.stream_id == "stream-heated"
+                    && option.is_selected
+                    && option.summary.contains("P 95000 Pa"))
         );
         assert!(
             inspector
@@ -1460,6 +1476,16 @@ mod tests {
                 })
             }),
             "expected related diagnostics to expose stream target candidates"
+        );
+        assert!(
+            inspector.related_diagnostics.iter().any(|diagnostic| {
+                diagnostic.code == "solver.unit_executed"
+                    && diagnostic
+                        .related_unit_ids
+                        .iter()
+                        .any(|unit_id| unit_id == "heater-1")
+            }),
+            "expected result inspector to include diagnostics from the unit that produced the selected stream"
         );
         let stream_target_command_id = inspector
             .related_diagnostics
