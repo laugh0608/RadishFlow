@@ -1,6 +1,6 @@
 # MVP Scope
 
-更新时间：2026-04-30
+更新时间：2026-05-01
 
 ## MVP 目标
 
@@ -104,7 +104,7 @@ App 与交互层当前进一步冻结以下口径：
 - 当前最小桌面入口 `run_studio_bootstrap` 也已改为默认走 `StudioBootstrapTrigger::WidgetPrimaryAction`，并向入口层输出 `RunPanelWidgetModel`，确保“桌面触发点 -> UI 组件动作 -> Studio driver / 控制动作 -> UI 组件 DTO”边界在样例入口里就成立
 - 当前 `egui` Studio 壳已开始消费上述运行入口与 `SolveSnapshot` presentation：Runtime 面板可切换仓库内置正向示例项目、触发运行、按 summary / overall composition / phases 结构化显示流股结果，并展示求解步骤、诊断、日志；这一路径继续保持 `StudioAppFacade -> WorkspaceRunCommand -> WorkspaceSolveService -> solver_bridge` 边界不被绕过
 - 当前 `egui` Studio 壳又已补出项目打开入口：用户可通过路径输入或 Windows 原生文件选择器打开现有 `*.rfproj.json`，打开会重建当前 Studio runtime，打开失败会保留当前工作区并显示错误反馈；内置示例切换复用这条打开流程；若当前文档存在未保存修订，则先进入显式确认状态，避免静默丢弃当前上下文；打开成功后会记录到 shell 级最近项目列表并写入独立 Studio preferences 文件，重启后会恢复该列表；点击最近项目继续复用相同打开流程与未保存确认保护
-- 当前 `egui` Studio 壳又已补出最小 Result Inspector、失败结果 presentation、诊断目标定位命令、活动 Inspector 详情、通用 action DTO、Stream Inspector 字段级 presentation、字段 draft update / 单字段 commit / 多字段批量 commit driver，以及基础 `edit.undo / edit.redo` 文档历史命令；这些入口均通过正式 command / driver / runtime 边界执行，不由 shell 直接写 `FlowsheetDocument`
+- 当前 `egui` Studio 壳又已补出最小 Result Inspector、失败结果 presentation、诊断目标定位命令、活动 Inspector 详情、通用 action DTO、Stream Inspector 字段级 presentation、字段 draft update / 单字段 commit / 多字段批量 commit driver，以及基础 `edit.undo / edit.redo` 文档历史命令；Stream Inspector 字段当前覆盖 `name / temperature_k / pressure_pa / total_molar_flow_mol_s` 与已有 `overall_mole_fractions` 组分条目，所有入口均通过正式 command / driver / runtime 边界执行，不由 shell 直接写 `FlowsheetDocument`
 - 当前 `egui` Studio 壳又已补出 `file.save` 与 `Save As` 最小项目持久化闭环：保存命令经由 `StudioRuntimeTrigger::DocumentLifecycle` 写回当前 `*.rfproj.json`，成功后刷新 `last_saved_revision / has_unsaved_changes`；另存为通过 Windows 原生保存选择器写入新路径，并更新当前项目路径、项目路径输入框与最近项目列表；若 `Save As` 目标文件已存在且不是当前项目路径，shell 先进入显式覆盖确认，确认后才写入，取消则保留当前工作区和目标文件
 - 当前 `rf-store::write_project_file` 已改为同目录 staged write：先写临时 sibling 并同步，再替换正式项目文件；Unix 类平台使用 `rename` 替换语义，Windows 当前用临时备份做受控替换和失败回滚，避免半写入 JSON 直接污染项目文件
 - 当前 Studio 字段编辑快捷键策略已冻结为最小安全闭环：`Ctrl+S` 即使在文本输入焦点下也触发 `file.save`；`Ctrl+Z / Ctrl+Y` 在普通焦点下触发 `edit.undo / edit.redo`，但文本输入焦点下保留给输入框自身的编辑撤销/重做；Stream Inspector 输入框的 `Enter` 只提交当前字段，不隐式触发 `Apply all`
@@ -223,7 +223,7 @@ App 与交互层当前进一步冻结以下口径：
 - 已提前完成 `rf-solver` 中首轮无回路顺序模块法
 - 已提前增加第一个可直接从 `*.rfproj.json` 载入并求解的示例 flowsheet
 - 完成 `DWSIM / COFE` water/ethanol 人工 PME 验证记录、PME trace 开关化、TypeLib 生成脚本化与 CAPE-OPEN / PME 阶段性冻结
-- 回到 Rust Studio 主线，补出“打开示例项目 -> 运行求解 -> 查看结果/诊断”的第一版真实 `egui` 可见闭环，并补中文 shell 选项与 CJK 字体 fallback；2026-04-28 继续补出路径输入式项目打开入口、Windows 原生打开选择器、打开反馈、未保存改动打开前确认、shell 级最近项目列表及其独立 preferences 持久化、结构化流股结果 presentation 与结果区基础本地化；2026-04-29 继续补出 Result Inspector、失败结果、诊断目标命令、活动 Inspector 详情、Stream Inspector 字段级草稿更新/提交和基础文档历史 undo/redo；2026-04-30 继续补出保存 / 另存为生命周期、Stream Inspector 多字段批量提交、字段编辑快捷键焦点策略、项目文件 staged write 与 Save As 覆盖确认；2026-05-01 继续补出保存 / 另存失败恢复、Result Inspector 摘要可读性、产出单元诊断关联和当前快照内两股流股对比，并通过 `pwsh ./scripts/check-repo.ps1` 完成仓库级验证
+- 回到 Rust Studio 主线，补出“打开示例项目 -> 运行求解 -> 查看结果/诊断”的第一版真实 `egui` 可见闭环，并补中文 shell 选项与 CJK 字体 fallback；2026-04-28 继续补出路径输入式项目打开入口、Windows 原生打开选择器、打开反馈、未保存改动打开前确认、shell 级最近项目列表及其独立 preferences 持久化、结构化流股结果 presentation 与结果区基础本地化；2026-04-29 继续补出 Result Inspector、失败结果、诊断目标命令、活动 Inspector 详情、Stream Inspector 字段级草稿更新/提交和基础文档历史 undo/redo；2026-04-30 继续补出保存 / 另存为生命周期、Stream Inspector 多字段批量提交、字段编辑快捷键焦点策略、项目文件 staged write 与 Save As 覆盖确认；2026-05-01 继续补出保存 / 另存失败恢复、Result Inspector 摘要可读性、产出单元诊断关联、当前快照内两股流股对比，以及 Stream Inspector 总体组成字段编辑边界，并通过 `pwsh ./scripts/check-repo.ps1` 完成仓库级验证
 
 ### 2026-W19 以后
 

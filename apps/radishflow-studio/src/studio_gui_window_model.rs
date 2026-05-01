@@ -1711,6 +1711,16 @@ mod tests {
             }),
             "expected stream inspector detail to expose field-level property presentation"
         );
+        assert!(
+            active_detail.property_fields.iter().any(|field| {
+                field.key == "stream:stream-heated:overall_mole_fraction:component-a"
+                    && field.label == "Overall mole fraction (component-a)"
+                    && field.value_kind_label == "Number"
+                    && field.draft_update_command_id
+                        == "inspector.update_stream_draft:stream:stream-heated:overall_mole_fraction:component-a"
+            }),
+            "expected stream inspector detail to expose composition field presentation"
+        );
         assert_eq!(
             active_detail
                 .latest_stream_result

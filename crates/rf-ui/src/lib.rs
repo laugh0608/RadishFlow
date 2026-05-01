@@ -80,7 +80,7 @@ mod tests {
     use rf_thermo::{
         AntoineCoefficients, PlaceholderThermoProvider, ThermoComponent, ThermoSystem,
     };
-    use rf_types::{PortDirection, PortKind, StreamId, UnitId};
+    use rf_types::{ComponentId, PortDirection, PortKind, StreamId, UnitId};
 
     use crate::{
         AppLogLevel, AppState, AuthSessionStatus, AuthenticatedUser, CanvasPoint,
@@ -124,7 +124,19 @@ mod tests {
             ))
             .expect("expected feed insert");
         flowsheet
-            .insert_stream(MaterialStreamState::new("stream-feed", "Feed Stream"))
+            .insert_stream(MaterialStreamState::from_tpzf(
+                "stream-feed",
+                "Feed Stream",
+                298.15,
+                101_325.0,
+                1.0,
+                [
+                    (ComponentId::new("component-a"), 0.4),
+                    (ComponentId::new("component-b"), 0.6),
+                ]
+                .into_iter()
+                .collect(),
+            ))
             .expect("expected stream insert");
         let metadata = DocumentMetadata::new("doc-1", "Demo", timestamp(10));
         FlowsheetDocument::new(flowsheet, metadata)
@@ -1730,7 +1742,7 @@ mod tests {
             outcome.key,
             crate::stream_inspector_draft_key(
                 &StreamId::new("stream-feed"),
-                crate::StreamInspectorDraftField::TemperatureK,
+                &crate::StreamInspectorDraftField::TemperatureK,
             )
         );
         assert!(outcome.is_dirty);
@@ -1855,6 +1867,82 @@ mod tests {
             Some(SolvePendingReason::DocumentRevisionAdvanced)
         );
         assert_eq!(app_state.workspace.solve_session.status, RunStatus::Dirty);
+    }
+
+    #[test]
+    fn committing_stream_inspector_composition_draft_updates_overall_mole_fraction() {
+        let document = inspector_focus_document();
+        let mut app_state = AppState::new(document);
+        let stream_id = StreamId::new("stream-feed");
+        let component_id = ComponentId::new("component-a");
+        let field = crate::StreamInspectorDraftField::OverallMoleFraction(component_id.clone());
+        app_state.focus_inspector_target(crate::InspectorTarget::Stream(stream_id.clone()));
+
+        let update = app_state
+            .update_stream_inspector_draft(&stream_id, field.clone(), "0.25")
+            .expect("expected composition draft update");
+
+        assert_eq!(
+            update.key,
+            "stream:stream-feed:overall_mole_fraction:component-a"
+        );
+        assert!(update.is_dirty);
+        assert_eq!(update.validation, crate::DraftValidationState::Valid);
+        assert_eq!(
+            app_state.workspace.drafts.fields.get(&update.key),
+            Some(&crate::DraftValue::Number(crate::FieldDraft {
+                original: "0.4".to_string(),
+                current: "0.25".to_string(),
+                is_dirty: true,
+                validation: crate::DraftValidationState::Valid,
+            }))
+        );
+        assert_eq!(
+            app_state.workspace.document.flowsheet.streams[&stream_id].overall_mole_fractions
+                [&component_id],
+            0.4
+        );
+
+        let outcome = app_state
+            .commit_stream_inspector_draft(&stream_id, field, timestamp(42))
+            .expect("expected draft commit")
+            .expect("expected applied composition draft commit");
+
+        assert_eq!(outcome.revision, 1);
+        assert_eq!(
+            outcome.command,
+            DocumentCommand::SetStreamSpecification {
+                stream_id: stream_id.clone(),
+                field: "overall_mole_fraction:component-a".to_string(),
+                value: CommandValue::Number(0.25),
+            }
+        );
+        assert_eq!(
+            app_state.workspace.document.flowsheet.streams[&stream_id].overall_mole_fractions
+                [&component_id],
+            0.25
+        );
+        assert!(!app_state.workspace.drafts.fields.contains_key(&update.key));
+    }
+
+    #[test]
+    fn updating_stream_inspector_composition_draft_rejects_unknown_component() {
+        let document = inspector_focus_document();
+        let mut app_state = AppState::new(document);
+        let stream_id = StreamId::new("stream-feed");
+        app_state.focus_inspector_target(crate::InspectorTarget::Stream(stream_id.clone()));
+
+        let outcome = app_state.update_stream_inspector_draft(
+            &stream_id,
+            crate::StreamInspectorDraftField::OverallMoleFraction(ComponentId::new(
+                "missing-component",
+            )),
+            "0.25",
+        );
+
+        assert_eq!(outcome, None);
+        assert!(app_state.workspace.drafts.fields.is_empty());
+        assert_eq!(app_state.workspace.document.revision, 0);
     }
 
     #[test]

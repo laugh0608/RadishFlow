@@ -125,7 +125,7 @@ pub fn commit_inspector_drafts_at(
 #[cfg(test)]
 mod tests {
     use rf_model::{Flowsheet, MaterialStreamState};
-    use rf_types::StreamId;
+    use rf_types::{ComponentId, StreamId};
     use rf_ui::{
         AppState, CommandValue, DocumentCommand, DocumentMetadata, FlowsheetDocument,
         InspectorTarget, SolvePendingReason,
@@ -340,5 +340,67 @@ mod tests {
         assert_eq!(stream.temperature_k, 333.5);
         assert_eq!(stream.pressure_pa, 202650.0);
         assert!(app_state.workspace.drafts.fields.is_empty());
+    }
+
+    #[test]
+    fn inspector_draft_driver_commits_composition_draft_through_command_id() {
+        let mut flowsheet = Flowsheet::new("demo");
+        flowsheet
+            .insert_stream(MaterialStreamState::from_tpzf(
+                "stream-feed",
+                "Feed stream",
+                298.15,
+                101_325.0,
+                1.0,
+                [
+                    (ComponentId::new("component-a"), 0.4),
+                    (ComponentId::new("component-b"), 0.6),
+                ]
+                .into_iter()
+                .collect(),
+            ))
+            .expect("expected stream insert");
+        let mut app_state = AppState::new(FlowsheetDocument::new(
+            flowsheet,
+            DocumentMetadata::new("doc", "Demo", std::time::UNIX_EPOCH),
+        ));
+        app_state.focus_inspector_target(InspectorTarget::Stream(StreamId::new("stream-feed")));
+        update_inspector_draft(
+            &mut app_state,
+            StudioInspectorDraftUpdateCommand::new(
+                "stream:stream-feed:overall_mole_fraction:component-a",
+                "0.25",
+            ),
+        )
+        .expect("expected composition draft update");
+
+        let outcome = commit_inspector_draft_at(
+            &mut app_state,
+            StudioInspectorDraftCommitCommand::new(
+                "stream:stream-feed:overall_mole_fraction:component-a",
+            ),
+            std::time::UNIX_EPOCH,
+        )
+        .expect("expected composition draft commit");
+
+        assert!(outcome.applied);
+        assert_eq!(outcome.document_revision, 1);
+        assert_eq!(
+            app_state
+                .workspace
+                .command_history
+                .current_entry()
+                .map(|entry| &entry.command),
+            Some(&DocumentCommand::SetStreamSpecification {
+                stream_id: StreamId::new("stream-feed"),
+                field: "overall_mole_fraction:component-a".to_string(),
+                value: CommandValue::Number(0.25),
+            })
+        );
+        assert_eq!(
+            app_state.workspace.document.flowsheet.streams[&StreamId::new("stream-feed")]
+                .overall_mole_fractions[&ComponentId::new("component-a")],
+            0.25
+        );
     }
 }

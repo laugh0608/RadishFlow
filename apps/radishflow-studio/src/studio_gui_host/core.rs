@@ -297,7 +297,7 @@ fn stream_property_fields(
     vec![
         inspector_text_field(
             drafts,
-            rf_ui::stream_inspector_draft_key(&stream.id, rf_ui::StreamInspectorDraftField::Name),
+            rf_ui::stream_inspector_draft_key(&stream.id, &rf_ui::StreamInspectorDraftField::Name),
             "Name",
             stream.name.clone(),
         ),
@@ -305,7 +305,7 @@ fn stream_property_fields(
             drafts,
             rf_ui::stream_inspector_draft_key(
                 &stream.id,
-                rf_ui::StreamInspectorDraftField::TemperatureK,
+                &rf_ui::StreamInspectorDraftField::TemperatureK,
             ),
             "Temperature (K)",
             stream.temperature_k,
@@ -314,7 +314,7 @@ fn stream_property_fields(
             drafts,
             rf_ui::stream_inspector_draft_key(
                 &stream.id,
-                rf_ui::StreamInspectorDraftField::PressurePa,
+                &rf_ui::StreamInspectorDraftField::PressurePa,
             ),
             "Pressure (Pa)",
             stream.pressure_pa,
@@ -323,12 +323,32 @@ fn stream_property_fields(
             drafts,
             rf_ui::stream_inspector_draft_key(
                 &stream.id,
-                rf_ui::StreamInspectorDraftField::TotalMolarFlowMolS,
+                &rf_ui::StreamInspectorDraftField::TotalMolarFlowMolS,
             ),
             "Molar flow (mol/s)",
             stream.total_molar_flow_mol_s,
         ),
     ]
+    .into_iter()
+    .chain(
+        stream
+            .overall_mole_fractions
+            .iter()
+            .map(|(component_id, fraction)| {
+                inspector_number_field(
+                    drafts,
+                    rf_ui::stream_inspector_draft_key(
+                        &stream.id,
+                        &rf_ui::StreamInspectorDraftField::OverallMoleFraction(
+                            component_id.clone(),
+                        ),
+                    ),
+                    &format!("Overall mole fraction ({})", component_id.as_str()),
+                    *fraction,
+                )
+            }),
+    )
+    .collect()
 }
 
 fn inspector_text_field(

@@ -4,7 +4,7 @@ use std::time::SystemTime;
 
 use rf_flowsheet::validate_connections;
 use rf_model::{Flowsheet, MaterialStreamState, UnitPort};
-use rf_types::{RfError, RfResult, StreamId, UnitId};
+use rf_types::{ComponentId, RfError, RfResult, StreamId, UnitId};
 use rf_unitops::{UnitOperationSpec, builtin_unit_spec_by_name};
 
 use crate::auth::{
@@ -231,25 +231,33 @@ impl InspectorDraftState {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum StreamInspectorDraftField {
     Name,
     TemperatureK,
     PressurePa,
     TotalMolarFlowMolS,
+    OverallMoleFraction(ComponentId),
 }
 
 impl StreamInspectorDraftField {
-    pub fn as_str(self) -> &'static str {
+    pub fn key_segment(&self) -> String {
         match self {
-            Self::Name => "name",
-            Self::TemperatureK => "temperature_k",
-            Self::PressurePa => "pressure_pa",
-            Self::TotalMolarFlowMolS => "total_molar_flow_mol_s",
+            Self::Name => "name".to_string(),
+            Self::TemperatureK => "temperature_k".to_string(),
+            Self::PressurePa => "pressure_pa".to_string(),
+            Self::TotalMolarFlowMolS => "total_molar_flow_mol_s".to_string(),
+            Self::OverallMoleFraction(component_id) => {
+                format!("overall_mole_fraction:{}", component_id.as_str())
+            }
         }
     }
 
-    pub fn from_key_segment(value: &str) -> Option<Self> {
+    pub fn command_field(&self) -> String {
+        self.key_segment()
+    }
+
+    pub fn from_static_key_segment(value: &str) -> Option<Self> {
         match value {
             "name" => Some(Self::Name),
             "temperature_k" => Some(Self::TemperatureK),
@@ -299,22 +307,31 @@ pub struct DocumentHistoryApplyResult {
 
 pub fn stream_inspector_draft_key(
     stream_id: &StreamId,
-    field: StreamInspectorDraftField,
+    field: &StreamInspectorDraftField,
 ) -> String {
-    format!("stream:{}:{}", stream_id.as_str(), field.as_str())
+    format!("stream:{}:{}", stream_id.as_str(), field.key_segment())
 }
 
 pub fn stream_inspector_draft_key_parts(
     key: &str,
 ) -> Option<(StreamId, StreamInspectorDraftField)> {
     let rest = key.strip_prefix("stream:")?;
+    if let Some((stream_id, component_id)) = rest.split_once(":overall_mole_fraction:") {
+        if stream_id.is_empty() || component_id.is_empty() {
+            return None;
+        }
+        return Some((
+            StreamId::new(stream_id),
+            StreamInspectorDraftField::OverallMoleFraction(ComponentId::new(component_id)),
+        ));
+    }
     let (stream_id, field) = rest.rsplit_once(':')?;
     if stream_id.is_empty() {
         return None;
     }
     Some((
         StreamId::new(stream_id),
-        StreamInspectorDraftField::from_key_segment(field)?,
+        StreamInspectorDraftField::from_static_key_segment(field)?,
     ))
 }
 
@@ -809,10 +826,13 @@ impl AppState {
         }
 
         let stream = self.workspace.document.flowsheet.streams.get(stream_id)?;
+        if !stream_inspector_draft_fields(stream).contains(&field) {
+            return None;
+        }
         let raw_value = raw_value.into();
-        let key = stream_inspector_draft_key(stream_id, field);
+        let key = stream_inspector_draft_key(stream_id, &field);
         let (draft_value, is_dirty, validation) =
-            stream_draft_value_from_raw(field, stream, raw_value);
+            stream_draft_value_from_raw(&field, stream, raw_value);
 
         if !is_dirty && validation != DraftValidationState::Invalid {
             self.workspace.drafts.fields.remove(&key);
@@ -852,20 +872,20 @@ impl AppState {
             return Ok(None);
         }
 
-        let key = stream_inspector_draft_key(stream_id, field);
+        let key = stream_inspector_draft_key(stream_id, &field);
         let Some(draft_value) = self.workspace.drafts.fields.get(&key) else {
             return Ok(None);
         };
-        let Some(command_value) = stream_command_value_from_draft(field, draft_value)? else {
+        let Some(command_value) = stream_command_value_from_draft(&field, draft_value)? else {
             return Ok(None);
         };
 
         let mut next_flowsheet = self.workspace.document.flowsheet.clone();
-        apply_stream_specification_value(&mut next_flowsheet, stream_id, field, &command_value)?;
+        apply_stream_specification_value(&mut next_flowsheet, stream_id, &field, &command_value)?;
 
         let command = DocumentCommand::SetStreamSpecification {
             stream_id: stream_id.clone(),
-            field: field.as_str().to_string(),
+            field: field.command_field(),
             value: command_value,
         };
         let revision = self.workspace.commit_inspector_document_change(
@@ -904,28 +924,36 @@ impl AppState {
             return Ok(None);
         }
 
+        let stream = self
+            .workspace
+            .document
+            .flowsheet
+            .streams
+            .get(stream_id)
+            .expect("stream existence was checked above");
+        let fields = stream_inspector_draft_fields(stream);
         let mut next_flowsheet = self.workspace.document.flowsheet.clone();
         let mut keys = Vec::new();
         let mut values = Vec::new();
 
-        for field in stream_inspector_draft_fields() {
-            let key = stream_inspector_draft_key(stream_id, field);
+        for field in fields {
+            let key = stream_inspector_draft_key(stream_id, &field);
             let Some(draft_value) = self.workspace.drafts.fields.get(&key) else {
                 continue;
             };
-            let Some(command_value) = stream_command_value_from_draft(field, draft_value)? else {
+            let Some(command_value) = stream_command_value_from_draft(&field, draft_value)? else {
                 continue;
             };
 
             apply_stream_specification_value(
                 &mut next_flowsheet,
                 stream_id,
-                field,
+                &field,
                 &command_value,
             )?;
             keys.push(key);
             values.push(StreamSpecificationValue {
-                field: field.as_str().to_string(),
+                field: field.command_field(),
                 value: command_value,
             });
         }
@@ -984,7 +1012,7 @@ impl AppState {
 }
 
 fn stream_draft_value_from_raw(
-    field: StreamInspectorDraftField,
+    field: &StreamInspectorDraftField,
     stream: &MaterialStreamState,
     raw_value: String,
 ) -> (DraftValue, bool, DraftValidationState) {
@@ -1020,6 +1048,18 @@ fn stream_draft_value_from_raw(
                 value.is_finite() && value >= 0.0
             })
         }
+        StreamInspectorDraftField::OverallMoleFraction(component_id) => {
+            let original = stream
+                .overall_mole_fractions
+                .get(component_id)
+                .copied()
+                .unwrap_or(0.0);
+            stream_number_draft_value(original, raw_value, |value| {
+                is_valid_stream_scalar_value(field, value)
+                    && composition_sum_after_fraction(stream, component_id, value)
+                        .is_some_and(|sum| sum > 0.0)
+            })
+        }
     }
 }
 
@@ -1051,7 +1091,7 @@ where
 }
 
 fn stream_command_value_from_draft(
-    field: StreamInspectorDraftField,
+    field: &StreamInspectorDraftField,
     draft_value: &DraftValue,
 ) -> RfResult<Option<CommandValue>> {
     match (field, draft_value) {
@@ -1064,7 +1104,8 @@ fn stream_command_value_from_draft(
         (
             StreamInspectorDraftField::TemperatureK
             | StreamInspectorDraftField::PressurePa
-            | StreamInspectorDraftField::TotalMolarFlowMolS,
+            | StreamInspectorDraftField::TotalMolarFlowMolS
+            | StreamInspectorDraftField::OverallMoleFraction(_),
             DraftValue::Number(draft),
         ) => {
             if !draft.is_dirty || draft.validation != DraftValidationState::Valid {
@@ -1076,7 +1117,7 @@ fn stream_command_value_from_draft(
                     draft.current
                 ))
             })?;
-            if !is_valid_stream_number(field, value) {
+            if !is_valid_stream_scalar_value(field, value) {
                 return Ok(None);
             }
             Ok(Some(CommandValue::Number(value)))
@@ -1085,13 +1126,21 @@ fn stream_command_value_from_draft(
     }
 }
 
-fn stream_inspector_draft_fields() -> [StreamInspectorDraftField; 4] {
-    [
+fn stream_inspector_draft_fields(stream: &MaterialStreamState) -> Vec<StreamInspectorDraftField> {
+    let mut fields = vec![
         StreamInspectorDraftField::Name,
         StreamInspectorDraftField::TemperatureK,
         StreamInspectorDraftField::PressurePa,
         StreamInspectorDraftField::TotalMolarFlowMolS,
-    ]
+    ];
+    fields.extend(
+        stream
+            .overall_mole_fractions
+            .keys()
+            .cloned()
+            .map(StreamInspectorDraftField::OverallMoleFraction),
+    );
+    fields
 }
 
 fn stream_specification_command(
@@ -1119,7 +1168,7 @@ fn stream_specification_command(
 fn apply_stream_specification_value(
     flowsheet: &mut Flowsheet,
     stream_id: &StreamId,
-    field: StreamInspectorDraftField,
+    field: &StreamInspectorDraftField,
     value: &CommandValue,
 ) -> RfResult<()> {
     let stream = flowsheet
@@ -1135,24 +1184,33 @@ fn apply_stream_specification_value(
             stream.name = value.clone();
         }
         (StreamInspectorDraftField::TemperatureK, CommandValue::Number(value))
-            if is_valid_stream_number(field, *value) =>
+            if is_valid_stream_scalar_value(field, *value) =>
         {
             stream.temperature_k = *value;
         }
         (StreamInspectorDraftField::PressurePa, CommandValue::Number(value))
-            if is_valid_stream_number(field, *value) =>
+            if is_valid_stream_scalar_value(field, *value) =>
         {
             stream.pressure_pa = *value;
         }
         (StreamInspectorDraftField::TotalMolarFlowMolS, CommandValue::Number(value))
-            if is_valid_stream_number(field, *value) =>
+            if is_valid_stream_scalar_value(field, *value) =>
         {
             stream.total_molar_flow_mol_s = *value;
+        }
+        (
+            StreamInspectorDraftField::OverallMoleFraction(component_id),
+            CommandValue::Number(value),
+        ) if is_valid_stream_scalar_value(field, *value) => {
+            stream
+                .overall_mole_fractions
+                .insert(component_id.clone(), *value);
+            validate_stream_overall_mole_fractions(stream)?;
         }
         _ => {
             return Err(RfError::invalid_input(format!(
                 "stream field `{}` cannot be set from value `{value:?}`",
-                field.as_str()
+                field.command_field()
             )));
         }
     }
@@ -1160,14 +1218,67 @@ fn apply_stream_specification_value(
     Ok(())
 }
 
-fn is_valid_stream_number(field: StreamInspectorDraftField, value: f64) -> bool {
+fn is_valid_stream_scalar_value(field: &StreamInspectorDraftField, value: f64) -> bool {
     match field {
         StreamInspectorDraftField::Name => false,
         StreamInspectorDraftField::TemperatureK | StreamInspectorDraftField::PressurePa => {
             value.is_finite() && value > 0.0
         }
         StreamInspectorDraftField::TotalMolarFlowMolS => value.is_finite() && value >= 0.0,
+        StreamInspectorDraftField::OverallMoleFraction(_) => {
+            value.is_finite() && (0.0..=1.0).contains(&value)
+        }
     }
+}
+
+fn composition_sum_after_fraction(
+    stream: &MaterialStreamState,
+    component_id: &ComponentId,
+    value: f64,
+) -> Option<f64> {
+    stream
+        .overall_mole_fractions
+        .iter()
+        .map(|(candidate_id, fraction)| {
+            if candidate_id == component_id {
+                value
+            } else {
+                *fraction
+            }
+        })
+        .try_fold(0.0, |sum, fraction| {
+            (fraction.is_finite() && fraction >= 0.0).then_some(sum + fraction)
+        })
+}
+
+fn validate_stream_overall_mole_fractions(stream: &MaterialStreamState) -> RfResult<()> {
+    if stream.overall_mole_fractions.is_empty() {
+        return Err(RfError::invalid_input(format!(
+            "stream `{}` must define at least one overall mole fraction entry",
+            stream.id
+        )));
+    }
+
+    let sum = stream
+        .overall_mole_fractions
+        .values()
+        .try_fold(0.0, |sum, value| {
+            (value.is_finite() && (0.0..=1.0).contains(value)).then_some(sum + value)
+        })
+        .ok_or_else(|| {
+            RfError::invalid_input(format!(
+                "stream `{}` overall mole fractions must be finite values between zero and one",
+                stream.id
+            ))
+        })?;
+    if sum <= 0.0 {
+        return Err(RfError::invalid_input(format!(
+            "stream `{}` overall mole fractions must sum to a positive finite value",
+            stream.id
+        )));
+    }
+
+    Ok(())
 }
 
 fn format_edit_number(value: f64) -> String {
