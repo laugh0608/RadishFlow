@@ -19,14 +19,23 @@
 Thumbs.db
 .DS_Store
 
+# Studio local UI state
+*.rfstudio-layout.json
+
 # Local automation / temp
 .dotnetcli/
 .dotnet/
+.dotnet-cli/
 .dotnet-home/
 .dotnet-user/
 .dotnet-appdata/
+.dotnet-localappdata/
 .nuget/
-artifacts/*.log
+/artifacts/
+adapters/dotnet-capeopen/RadishFlow.CapeOpen.UnitOp.Mvp/typelib/*.h
+adapters/dotnet-capeopen/RadishFlow.CapeOpen.UnitOp.Mvp/typelib/*_i.c
+adapters/dotnet-capeopen/RadishFlow.CapeOpen.UnitOp.Mvp/typelib/*_p.c
+adapters/dotnet-capeopen/RadishFlow.CapeOpen.UnitOp.Mvp/typelib/*_dlldata.c
 
 # Codex
 .codex/

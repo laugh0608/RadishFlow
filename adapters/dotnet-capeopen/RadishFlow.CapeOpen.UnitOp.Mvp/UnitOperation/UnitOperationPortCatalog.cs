@@ -4,6 +4,10 @@ namespace RadishFlow.CapeOpen.UnitOp.Mvp.UnitOperation;
 
 public static class UnitOperationPortCatalog
 {
+    public static UnitOperationCollectionDefinition CollectionDefinition { get; } = new(
+        Name: "Ports",
+        Description: "Public CAPE-OPEN port collection for the MVP unit operation.");
+
     public static UnitOperationPortDefinition Feed { get; } = new(
         Name: "Feed",
         Description: "Required inlet material placeholder port.",

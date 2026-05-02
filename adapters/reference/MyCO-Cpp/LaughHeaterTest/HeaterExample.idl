@@ -1,0 +1,88 @@
+﻿// HeaterExample.idl: HeaterExample 的 IDL 源
+//
+
+// 此文件将由 MIDL 工具处理以
+// 生成类型库(HeaterExample.tlb)和封送处理代码。
+
+import "oaidl.idl";
+import "ocidl.idl";
+
+[
+	object,
+	uuid(cc526f4e-e068-4eff-a559-f7ac6a06cce0),
+	dual,
+	nonextensible,
+	pointer_default(unique)
+]
+interface IHeaterExampleOperation : IDispatch
+{
+};
+[
+	object,
+	uuid(f21f264b-40f6-4f36-b95b-0a1d2fd833e9),
+	dual,
+	nonextensible,
+	pointer_default(unique)
+]
+interface IPortsArray : IDispatch
+{
+};
+[
+	object,
+	uuid(58b6a235-e3cc-415f-ac11-bc519ca454a5),
+	dual,
+	nonextensible,
+	pointer_default(unique)
+]
+interface IMaterialPort : IDispatch
+{
+};
+[
+	object,
+	uuid(454939a2-1064-4d89-a547-34389227f7a5),
+	dual,
+	nonextensible,
+	pointer_default(unique)
+]
+interface IParametersArray : IDispatch
+{
+};
+[
+	uuid(a488d911-5b85-497a-80a4-2a085146bdc6),
+	version(1.0),
+]
+library HeaterExampleLib
+{
+	importlib("stdole2.tlb");
+	[
+		uuid(fd8bf0be-74a9-45c2-ad39-d066c74b98ed)
+	]
+	coclass HeaterExampleOperation
+	{
+		[default] interface IHeaterExampleOperation;
+	};
+	[
+		uuid(c5d168d3-0b5b-4a87-b998-ac05555c310d)
+	]
+	coclass PortsArray
+	{
+		[default] interface IPortsArray;
+	};
+	[
+		uuid(e78b3378-5eb6-41d2-bc95-3750fae55110)
+	]
+	coclass MaterialPort
+	{
+		[default] interface IMaterialPort;
+	};
+	[
+		uuid(bfcb1265-b5dc-497d-b4ce-d700f8c58e29)
+	]
+	coclass ParametersArray
+	{
+		[default] interface IParametersArray;
+	};
+};
+
+import "shobjidl.idl";
+import "shobjidl.idl";

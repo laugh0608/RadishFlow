@@ -96,7 +96,7 @@ fn studio_gui_window_layout_maps_panels_into_dock_regions() {
     assert!(commands.active_in_stack);
     assert!(commands.visible);
     assert!(!commands.collapsed);
-    assert_eq!(commands.badge.as_deref(), Some("11"));
+    assert_eq!(commands.badge.as_deref(), Some("16"));
 
     let canvas = layout
         .panel(StudioGuiWindowAreaId::Canvas)
@@ -771,6 +771,6 @@ fn studio_gui_window_layout_disables_close_when_all_windows_are_closed() {
         layout
             .panel(StudioGuiWindowAreaId::Commands)
             .and_then(|panel| panel.badge.as_deref()),
-        Some("7")
+        Some("10")
     );
 }

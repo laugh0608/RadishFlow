@@ -1,0 +1,98 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" ToolsVersion="4.0">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProductVersion>8.0.50727</ProductVersion>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>{FE82D5D1-4FAE-45CB-9B62-F8747404D506}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>Mose.CapeOpenToolkit.UnitProxy</RootNamespace>
+    <AssemblyName>UnitProxy</AssemblyName>
+    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
+    <FileUpgradeFlags>
+    </FileUpgradeFlags>
+    <UpgradeBackupLocation>
+    </UpgradeBackupLocation>
+    <OldToolsVersion>2.0</OldToolsVersion>
+    <TargetFrameworkProfile />
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>..\..\Bin\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <RegisterForComInterop>true</RegisterForComInterop>
+    <Prefer32Bit>false</Prefer32Bit>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <Prefer32Bit>false</Prefer32Bit>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="CAPEOPEN093">
+      <HintPath>..\CAPEOPEN093.dll</HintPath>
+      <EmbedInteropTypes>True</EmbedInteropTypes>
+    </Reference>
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="System" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="CapeOpenCalculationType.cs" />
+    <Compile Include="CapeOpenError.cs" />
+    <Compile Include="CapeOpenException.cs" />
+    <Compile Include="CapeOpenFlashType.cs" />
+    <Compile Include="CapeOpenIdBase.cs" />
+    <Compile Include="CapeOpenObjectBase.cs" />
+    <Compile Include="CapeOpenParameterMode.cs" />
+    <Compile Include="CapeOpenParameterType.cs" />
+    <Compile Include="CapeOpenPhaseType.cs" />
+    <Compile Include="CapeOpenPortDirection.cs" />
+    <Compile Include="CapeOpenPortType.cs" />
+    <Compile Include="CapeOpenSpecBase.cs" />
+    <Compile Include="CapeOpenThermoMaterialObject.cs" />
+    <Compile Include="CapeOpenUnitBase.cs" />
+    <Compile Include="CapeOpenUnitCollectionBase.cs" />
+    <Compile Include="CapeOpenUnitInfo.cs" />
+    <Compile Include="CapeOpenUnitSimple.cs" />
+    <Compile Include="CapeOpenSimpleUnitCollection.cs" />
+    <Compile Include="CapeOpenUnitParameter.cs" />
+    <Compile Include="CapeOpenUnitPort.cs" />
+    <Compile Include="CapeOpenValidationStatus.cs" />
+    <Compile Include="COMRegistryInfoWriter.cs" />
+    <Compile Include="DoubleParameter.cs" />
+    <Compile Include="IEditableUnit.cs" />
+    <Compile Include="IntegerParameter.cs" />
+    <Compile Include="LogClass.cs" />
+    <Compile Include="MaterialPort.cs" />
+    <Compile Include="OptionParameter.cs" />
+    <Compile Include="ParameterCollectionBase.cs" />
+    <Compile Include="PortCollectionBase.cs" />
+    <Compile Include="SimpleParameterCollection.cs" />
+    <Compile Include="SimplePortCollection.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="CapeOpenThermoMaterialPropertyType.cs" />
+    <Compile Include="CapeOpenIntegerParameterSpec.cs" />
+    <Compile Include="CapeOpenOptionParameterSpec.cs" />
+    <Compile Include="CapeOpenRealParameterSpec.cs" />
+  </ItemGroup>
+  <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+</Project>

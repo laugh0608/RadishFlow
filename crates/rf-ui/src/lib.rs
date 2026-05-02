@@ -25,12 +25,14 @@ pub use auth::{
     PropertyPackageUsageEvent, PropertyPackageUsageEventKind, SecureCredentialHandle, TokenLease,
 };
 pub use canvas_interaction::{
-    CanvasInteractionState, CanvasSuggestedMaterialConnection, CanvasSuggestedStreamBinding,
-    CanvasSuggestion, CanvasSuggestionAcceptance, CanvasViewMode, GhostElement, GhostElementKind,
-    StreamAnimationMode, StreamVisualKind, StreamVisualState, SuggestionSource, SuggestionStatus,
+    CanvasEditIntent, CanvasInteractionState, CanvasSuggestedMaterialConnection,
+    CanvasSuggestedStreamBinding, CanvasSuggestion, CanvasSuggestionAcceptance, CanvasViewMode,
+    GhostElement, GhostElementKind, StreamAnimationMode, StreamVisualKind, StreamVisualState,
+    SuggestionSource, SuggestionStatus,
 };
 pub use commands::{
     CanvasPoint, CommandHistory, CommandHistoryEntry, CommandValue, DocumentCommand,
+    StreamSpecificationValue,
 };
 pub use diagnostics::{DiagnosticSeverity, DiagnosticSnapshot, DiagnosticSummary};
 pub use entitlement_panel::{
@@ -45,8 +47,8 @@ pub use entitlement_panel_view::{
 pub use entitlement_panel_widget::{EntitlementPanelWidgetEvent, EntitlementPanelWidgetModel};
 pub use ids::{CanvasSuggestionId, DocumentId, SolveSnapshotId};
 pub use run::{
-    RunStatus, SimulationMode, SolvePendingReason, SolveSessionState, SolveSnapshot, StepSnapshot,
-    StreamStateSnapshot, UnitExecutionSnapshot,
+    PhaseStateSnapshot, RunStatus, SimulationMode, SolvePendingReason, SolveSessionState,
+    SolveSnapshot, StepSnapshot, StreamStateSnapshot, UnitExecutionSnapshot,
 };
 pub use run_panel::{
     RunPanelActionId, RunPanelActionModel, RunPanelCommandModel, RunPanelIntent, RunPanelNotice,
@@ -60,10 +62,13 @@ pub use run_panel_text::RunPanelTextView;
 pub use run_panel_view::{RunPanelActionProminence, RunPanelRenderableAction, RunPanelViewModel};
 pub use run_panel_widget::{RunPanelRecoveryWidgetEvent, RunPanelWidgetEvent, RunPanelWidgetModel};
 pub use state::{
-    AppLogEntry, AppLogFeed, AppLogLevel, AppState, AppTheme, DateTimeUtc, DocumentMetadata,
-    DraftValidationState, DraftValue, FieldDraft, FlowsheetDocument, InspectorDraftState,
-    InspectorTarget, LocaleCode, PanelLayoutPreferences, SelectionState, UiPanelsState,
-    UserPreferences, WorkspaceState, latest_snapshot, latest_snapshot_id,
+    AppLogEntry, AppLogFeed, AppLogLevel, AppState, AppTheme, CanvasEditCommitResult, DateTimeUtc,
+    DocumentHistoryApplyResult, DocumentHistoryDirection, DocumentMetadata, DraftValidationState,
+    DraftValue, FieldDraft, FlowsheetDocument, InspectorDraftState, InspectorTarget, LocaleCode,
+    PanelLayoutPreferences, SelectionState, StreamInspectorDraftBatchCommitResult,
+    StreamInspectorDraftCommitResult, StreamInspectorDraftField, StreamInspectorDraftUpdateResult,
+    UiPanelsState, UserPreferences, WorkspaceState, latest_snapshot, latest_snapshot_id,
+    stream_inspector_draft_key, stream_inspector_draft_key_parts,
 };
 
 #[cfg(test)]
@@ -76,16 +81,16 @@ mod tests {
     use rf_thermo::{
         AntoineCoefficients, PlaceholderThermoProvider, ThermoComponent, ThermoSystem,
     };
-    use rf_types::{PortDirection, PortKind, UnitId};
+    use rf_types::{ComponentId, PortDirection, PortKind, StreamId, UnitId};
 
     use crate::{
-        AppLogLevel, AppState, AuthSessionStatus, AuthenticatedUser, CanvasPoint,
+        AppLogLevel, AppState, AuthSessionStatus, AuthenticatedUser, CanvasEditIntent, CanvasPoint,
         CanvasSuggestedMaterialConnection, CanvasSuggestedStreamBinding, CanvasSuggestion,
         CanvasSuggestionAcceptance, CanvasSuggestionId, CanvasViewMode, CommandHistory,
-        CommandHistoryEntry, DiagnosticSeverity, DiagnosticSummary, DocumentCommand,
+        CommandHistoryEntry, CommandValue, DiagnosticSeverity, DiagnosticSummary, DocumentCommand,
         DocumentMetadata, EntitlementActionId, EntitlementPanelState, EntitlementPanelWidgetEvent,
         EntitlementPanelWidgetModel, EntitlementSnapshot, FlowsheetDocument, GhostElement,
-        GhostElementKind, OfflineLeaseRefreshResponse, PropertyPackageManifest,
+        GhostElementKind, InspectorTarget, OfflineLeaseRefreshResponse, PropertyPackageManifest,
         PropertyPackageManifestList, PropertyPackageSource, RunPanelActionId,
         RunPanelActionProminence, RunPanelPresentation, RunPanelRecoveryWidgetEvent, RunPanelState,
         RunPanelTextView, RunPanelViewModel, RunPanelWidgetEvent, RunPanelWidgetModel, RunStatus,
@@ -100,6 +105,40 @@ mod tests {
 
     fn sample_document() -> FlowsheetDocument {
         let flowsheet = Flowsheet::new("demo");
+        let metadata = DocumentMetadata::new("doc-1", "Demo", timestamp(10));
+        FlowsheetDocument::new(flowsheet, metadata)
+    }
+
+    fn inspector_focus_document() -> FlowsheetDocument {
+        let mut flowsheet = Flowsheet::new("demo");
+        flowsheet
+            .insert_unit(UnitNode::new(
+                "feed-1",
+                "Feed",
+                "feed",
+                vec![UnitPort::new(
+                    "outlet",
+                    PortDirection::Outlet,
+                    PortKind::Material,
+                    Some("stream-feed".into()),
+                )],
+            ))
+            .expect("expected feed insert");
+        flowsheet
+            .insert_stream(MaterialStreamState::from_tpzf(
+                "stream-feed",
+                "Feed Stream",
+                298.15,
+                101_325.0,
+                1.0,
+                [
+                    (ComponentId::new("component-a"), 0.4),
+                    (ComponentId::new("component-b"), 0.6),
+                ]
+                .into_iter()
+                .collect(),
+            ))
+            .expect("expected stream insert");
         let metadata = DocumentMetadata::new("doc-1", "Demo", timestamp(10));
         FlowsheetDocument::new(flowsheet, metadata)
     }
@@ -365,6 +404,185 @@ mod tests {
             app_state.workspace.canvas_interaction.focused_suggestion_id,
             None
         );
+        assert_eq!(app_state.workspace.canvas_interaction.pending_edit, None);
+    }
+
+    #[test]
+    fn canvas_place_unit_intent_is_transient_and_not_document_history() {
+        let mut app_state = AppState::new(sample_document());
+
+        let intent = app_state.begin_canvas_place_unit("Flash Drum");
+
+        assert_eq!(
+            intent,
+            CanvasEditIntent::PlaceUnit {
+                unit_kind: "Flash Drum".to_string()
+            }
+        );
+        assert_eq!(
+            app_state.workspace.canvas_interaction.pending_edit,
+            Some(CanvasEditIntent::PlaceUnit {
+                unit_kind: "Flash Drum".to_string()
+            })
+        );
+        assert_eq!(app_state.workspace.document.revision, 0);
+        assert!(!app_state.workspace.command_history.can_undo());
+    }
+
+    #[test]
+    fn cancelling_canvas_place_unit_intent_clears_pending_edit() {
+        let mut app_state = AppState::new(sample_document());
+        app_state.begin_canvas_place_unit("Flash Drum");
+
+        let cancelled = app_state.cancel_canvas_pending_edit();
+
+        assert_eq!(
+            cancelled,
+            Some(CanvasEditIntent::PlaceUnit {
+                unit_kind: "Flash Drum".to_string()
+            })
+        );
+        assert_eq!(app_state.workspace.canvas_interaction.pending_edit, None);
+        assert_eq!(app_state.workspace.document.revision, 0);
+        assert!(!app_state.workspace.command_history.can_undo());
+    }
+
+    #[test]
+    fn document_change_invalidates_canvas_pending_edit() {
+        let mut app_state = AppState::new(sample_document());
+        app_state.begin_canvas_place_unit("Flash Drum");
+        let mut next_flowsheet = app_state.workspace.document.flowsheet.clone();
+        next_flowsheet
+            .insert_unit(UnitNode::new(
+                "flash-1",
+                "Flash Drum",
+                "flash_drum",
+                Vec::new(),
+            ))
+            .expect("expected unit insert");
+
+        app_state.commit_document_change(
+            DocumentCommand::CreateUnit {
+                unit_id: UnitId::new("flash-1"),
+                kind: "flash_drum".to_string(),
+            },
+            next_flowsheet,
+            timestamp(20),
+        );
+
+        assert_eq!(app_state.workspace.canvas_interaction.pending_edit, None);
+    }
+
+    #[test]
+    fn committing_canvas_place_unit_intent_creates_canonical_unit_command() {
+        let mut app_state = AppState::new(sample_document());
+        app_state.begin_canvas_place_unit("Flash Drum");
+
+        let result = app_state
+            .commit_canvas_pending_edit_at(CanvasPoint::new(160.0, 96.0), timestamp(30))
+            .expect("expected canvas edit commit")
+            .expect("expected pending canvas edit");
+
+        assert_eq!(result.unit_id, UnitId::new("flash-1"));
+        assert_eq!(result.position, CanvasPoint::new(160.0, 96.0));
+        assert_eq!(
+            result.command,
+            DocumentCommand::CreateUnit {
+                unit_id: UnitId::new("flash-1"),
+                kind: "flash_drum".to_string(),
+            }
+        );
+        assert_eq!(result.revision, 1);
+        assert_eq!(app_state.workspace.canvas_interaction.pending_edit, None);
+        assert_eq!(
+            app_state.workspace.drafts.active_target,
+            Some(InspectorTarget::Unit(UnitId::new("flash-1")))
+        );
+        assert!(app_state.workspace.panels.inspector_open);
+        assert!(app_state.workspace.command_history.can_undo());
+
+        let unit = app_state
+            .workspace
+            .document
+            .flowsheet
+            .unit(&UnitId::new("flash-1"))
+            .expect("expected committed flash unit");
+        assert_eq!(unit.name, "Flash Drum");
+        assert_eq!(unit.kind, "flash_drum");
+        assert_eq!(unit.ports.len(), 3);
+        assert!(unit.ports.iter().any(|port| {
+            port.name == "inlet"
+                && port.direction == PortDirection::Inlet
+                && port.kind == PortKind::Material
+                && port.stream_id.is_none()
+        }));
+        assert!(unit.ports.iter().any(|port| {
+            port.name == "liquid"
+                && port.direction == PortDirection::Outlet
+                && port.kind == PortKind::Material
+                && port.stream_id.is_none()
+        }));
+        assert_eq!(
+            app_state
+                .log_feed
+                .entries
+                .back()
+                .map(|entry| entry.message.clone()),
+            Some("Created canvas unit `flash-1` of kind `Flash Drum` at (160.0, 96.0)".to_string())
+        );
+    }
+
+    #[test]
+    fn committing_canvas_place_unit_intent_allocates_next_available_unit_id() {
+        let mut app_state = AppState::new(sample_document());
+        let mut flowsheet = app_state.workspace.document.flowsheet.clone();
+        flowsheet
+            .insert_unit(UnitNode::new(
+                "flash-1",
+                "Flash Drum",
+                "flash_drum",
+                Vec::new(),
+            ))
+            .expect("expected existing unit insert");
+        app_state.commit_document_change(
+            DocumentCommand::CreateUnit {
+                unit_id: UnitId::new("flash-1"),
+                kind: "flash_drum".to_string(),
+            },
+            flowsheet,
+            timestamp(25),
+        );
+        app_state.begin_canvas_place_unit("flash_drum");
+
+        let result = app_state
+            .commit_canvas_pending_edit_at(CanvasPoint::new(10.0, 20.0), timestamp(30))
+            .expect("expected canvas edit commit")
+            .expect("expected pending canvas edit");
+
+        assert_eq!(result.unit_id, UnitId::new("flash-2"));
+        assert_eq!(
+            app_state
+                .workspace
+                .document
+                .flowsheet
+                .unit(&UnitId::new("flash-2"))
+                .expect("expected second flash unit")
+                .name,
+            "Flash Drum 2"
+        );
+    }
+
+    #[test]
+    fn committing_canvas_edit_without_pending_intent_is_noop() {
+        let mut app_state = AppState::new(sample_document());
+
+        let result = app_state
+            .commit_canvas_pending_edit_at(CanvasPoint::new(1.0, 2.0), timestamp(30))
+            .expect("expected no-op commit");
+
+        assert_eq!(result, None);
+        assert_eq!(app_state.workspace.document.revision, 0);
+        assert!(!app_state.workspace.command_history.can_undo());
     }
 
     #[test]
@@ -1604,6 +1822,517 @@ mod tests {
             Some(crate::InspectorTarget::Unit(UnitId::new("heater-1")))
         );
         assert!(app_state.workspace.panels.inspector_open);
+    }
+
+    #[test]
+    fn focusing_inspector_target_selects_unit_without_document_mutation() {
+        let document = inspector_focus_document();
+        let mut app_state = AppState::new(document);
+
+        let applied_target =
+            app_state.focus_inspector_target(crate::InspectorTarget::Unit(UnitId::new("feed-1")));
+
+        assert_eq!(
+            applied_target,
+            Some(crate::InspectorTarget::Unit(UnitId::new("feed-1")))
+        );
+        assert_eq!(app_state.workspace.document.revision, 0);
+        assert!(app_state.workspace.command_history.is_empty());
+        assert!(
+            app_state
+                .workspace
+                .selection
+                .selected_units
+                .contains(&UnitId::new("feed-1"))
+        );
+        assert!(app_state.workspace.selection.selected_streams.is_empty());
+        assert_eq!(
+            app_state.workspace.drafts.active_target,
+            Some(crate::InspectorTarget::Unit(UnitId::new("feed-1")))
+        );
+        assert!(app_state.workspace.panels.inspector_open);
+    }
+
+    #[test]
+    fn focusing_inspector_target_selects_stream_and_clears_previous_unit() {
+        let document = inspector_focus_document();
+        let mut app_state = AppState::new(document);
+        app_state.focus_inspector_target(crate::InspectorTarget::Unit(UnitId::new("feed-1")));
+
+        let applied_target = app_state
+            .focus_inspector_target(crate::InspectorTarget::Stream(StreamId::new("stream-feed")));
+
+        assert_eq!(
+            applied_target,
+            Some(crate::InspectorTarget::Stream(StreamId::new("stream-feed")))
+        );
+        assert!(app_state.workspace.selection.selected_units.is_empty());
+        assert!(
+            app_state
+                .workspace
+                .selection
+                .selected_streams
+                .contains(&StreamId::new("stream-feed"))
+        );
+        assert_eq!(
+            app_state.workspace.drafts.active_target,
+            Some(crate::InspectorTarget::Stream(StreamId::new("stream-feed")))
+        );
+    }
+
+    #[test]
+    fn focusing_missing_inspector_target_keeps_current_focus() {
+        let document = inspector_focus_document();
+        let mut app_state = AppState::new(document);
+        app_state.focus_inspector_target(crate::InspectorTarget::Unit(UnitId::new("feed-1")));
+
+        let applied_target = app_state
+            .focus_inspector_target(crate::InspectorTarget::Unit(UnitId::new("missing-unit")));
+
+        assert_eq!(applied_target, None);
+        assert!(
+            app_state
+                .workspace
+                .selection
+                .selected_units
+                .contains(&UnitId::new("feed-1"))
+        );
+        assert_eq!(
+            app_state.workspace.drafts.active_target,
+            Some(crate::InspectorTarget::Unit(UnitId::new("feed-1")))
+        );
+    }
+
+    #[test]
+    fn updating_stream_inspector_draft_keeps_document_unchanged() {
+        let document = inspector_focus_document();
+        let mut app_state = AppState::new(document);
+        app_state
+            .focus_inspector_target(crate::InspectorTarget::Stream(StreamId::new("stream-feed")));
+
+        let outcome = app_state
+            .update_stream_inspector_draft(
+                &StreamId::new("stream-feed"),
+                crate::StreamInspectorDraftField::TemperatureK,
+                "333.5",
+            )
+            .expect("expected draft update");
+
+        assert_eq!(
+            outcome.key,
+            crate::stream_inspector_draft_key(
+                &StreamId::new("stream-feed"),
+                &crate::StreamInspectorDraftField::TemperatureK,
+            )
+        );
+        assert!(outcome.is_dirty);
+        assert_eq!(outcome.validation, crate::DraftValidationState::Valid);
+        assert_eq!(app_state.workspace.document.revision, 0);
+        assert!(app_state.workspace.command_history.is_empty());
+        assert_eq!(
+            app_state.workspace.document.flowsheet.streams[&StreamId::new("stream-feed")]
+                .temperature_k,
+            298.15
+        );
+        assert_eq!(
+            app_state.workspace.drafts.fields.get(&outcome.key),
+            Some(&crate::DraftValue::Number(crate::FieldDraft {
+                original: "298.15".to_string(),
+                current: "333.5".to_string(),
+                is_dirty: true,
+                validation: crate::DraftValidationState::Valid,
+            }))
+        );
+    }
+
+    #[test]
+    fn updating_stream_inspector_draft_preserves_invalid_raw_number() {
+        let document = inspector_focus_document();
+        let mut app_state = AppState::new(document);
+        app_state
+            .focus_inspector_target(crate::InspectorTarget::Stream(StreamId::new("stream-feed")));
+
+        let outcome = app_state
+            .update_stream_inspector_draft(
+                &StreamId::new("stream-feed"),
+                crate::StreamInspectorDraftField::PressurePa,
+                "not-a-pressure",
+            )
+            .expect("expected draft update");
+
+        assert_eq!(outcome.validation, crate::DraftValidationState::Invalid);
+        assert_eq!(
+            app_state.workspace.drafts.fields.get(&outcome.key),
+            Some(&crate::DraftValue::Number(crate::FieldDraft {
+                original: "101325".to_string(),
+                current: "not-a-pressure".to_string(),
+                is_dirty: true,
+                validation: crate::DraftValidationState::Invalid,
+            }))
+        );
+        assert_eq!(app_state.workspace.document.revision, 0);
+        assert!(app_state.workspace.command_history.is_empty());
+    }
+
+    #[test]
+    fn updating_stream_inspector_draft_requires_active_stream_target() {
+        let document = inspector_focus_document();
+        let mut app_state = AppState::new(document);
+        app_state.focus_inspector_target(crate::InspectorTarget::Unit(UnitId::new("feed-1")));
+
+        let outcome = app_state.update_stream_inspector_draft(
+            &StreamId::new("stream-feed"),
+            crate::StreamInspectorDraftField::Name,
+            "Edited stream",
+        );
+
+        assert_eq!(outcome, None);
+        assert!(app_state.workspace.drafts.fields.is_empty());
+        assert_eq!(app_state.workspace.document.revision, 0);
+    }
+
+    #[test]
+    fn committing_stream_inspector_draft_writes_document_command_and_preserves_focus() {
+        let document = inspector_focus_document();
+        let mut app_state = AppState::new(document);
+        let stream_id = StreamId::new("stream-feed");
+        app_state.focus_inspector_target(crate::InspectorTarget::Stream(stream_id.clone()));
+        app_state
+            .update_stream_inspector_draft(
+                &stream_id,
+                crate::StreamInspectorDraftField::TemperatureK,
+                "333.5",
+            )
+            .expect("expected draft update");
+
+        let outcome = app_state
+            .commit_stream_inspector_draft(
+                &stream_id,
+                crate::StreamInspectorDraftField::TemperatureK,
+                timestamp(42),
+            )
+            .expect("expected draft commit")
+            .expect("expected applied draft commit");
+
+        assert_eq!(outcome.revision, 1);
+        assert_eq!(
+            outcome.command,
+            DocumentCommand::SetStreamSpecification {
+                stream_id: stream_id.clone(),
+                field: "temperature_k".to_string(),
+                value: CommandValue::Number(333.5),
+            }
+        );
+        assert_eq!(app_state.workspace.document.revision, 1);
+        assert_eq!(
+            app_state.workspace.document.flowsheet.streams[&stream_id].temperature_k,
+            333.5
+        );
+        assert_eq!(app_state.workspace.command_history.len(), 1);
+        assert_eq!(
+            app_state
+                .workspace
+                .command_history
+                .current_entry()
+                .map(|entry| &entry.command),
+            Some(&outcome.command)
+        );
+        assert_eq!(
+            app_state.workspace.drafts.active_target,
+            Some(crate::InspectorTarget::Stream(stream_id.clone()))
+        );
+        assert!(!app_state.workspace.drafts.fields.contains_key(&outcome.key));
+        assert_eq!(
+            app_state.workspace.solve_session.pending_reason,
+            Some(SolvePendingReason::DocumentRevisionAdvanced)
+        );
+        assert_eq!(app_state.workspace.solve_session.status, RunStatus::Dirty);
+    }
+
+    #[test]
+    fn committing_stream_inspector_composition_draft_updates_overall_mole_fraction() {
+        let document = inspector_focus_document();
+        let mut app_state = AppState::new(document);
+        let stream_id = StreamId::new("stream-feed");
+        let component_id = ComponentId::new("component-a");
+        let field = crate::StreamInspectorDraftField::OverallMoleFraction(component_id.clone());
+        app_state.focus_inspector_target(crate::InspectorTarget::Stream(stream_id.clone()));
+
+        let update = app_state
+            .update_stream_inspector_draft(&stream_id, field.clone(), "0.25")
+            .expect("expected composition draft update");
+
+        assert_eq!(
+            update.key,
+            "stream:stream-feed:overall_mole_fraction:component-a"
+        );
+        assert!(update.is_dirty);
+        assert_eq!(update.validation, crate::DraftValidationState::Valid);
+        assert_eq!(
+            app_state.workspace.drafts.fields.get(&update.key),
+            Some(&crate::DraftValue::Number(crate::FieldDraft {
+                original: "0.4".to_string(),
+                current: "0.25".to_string(),
+                is_dirty: true,
+                validation: crate::DraftValidationState::Valid,
+            }))
+        );
+        assert_eq!(
+            app_state.workspace.document.flowsheet.streams[&stream_id].overall_mole_fractions
+                [&component_id],
+            0.4
+        );
+
+        let outcome = app_state
+            .commit_stream_inspector_draft(&stream_id, field, timestamp(42))
+            .expect("expected draft commit")
+            .expect("expected applied composition draft commit");
+
+        assert_eq!(outcome.revision, 1);
+        assert_eq!(
+            outcome.command,
+            DocumentCommand::SetStreamSpecification {
+                stream_id: stream_id.clone(),
+                field: "overall_mole_fraction:component-a".to_string(),
+                value: CommandValue::Number(0.25),
+            }
+        );
+        assert_eq!(
+            app_state.workspace.document.flowsheet.streams[&stream_id].overall_mole_fractions
+                [&component_id],
+            0.25
+        );
+        assert!(!app_state.workspace.drafts.fields.contains_key(&update.key));
+    }
+
+    #[test]
+    fn updating_stream_inspector_composition_draft_rejects_unknown_component() {
+        let document = inspector_focus_document();
+        let mut app_state = AppState::new(document);
+        let stream_id = StreamId::new("stream-feed");
+        app_state.focus_inspector_target(crate::InspectorTarget::Stream(stream_id.clone()));
+
+        let outcome = app_state.update_stream_inspector_draft(
+            &stream_id,
+            crate::StreamInspectorDraftField::OverallMoleFraction(ComponentId::new(
+                "missing-component",
+            )),
+            "0.25",
+        );
+
+        assert_eq!(outcome, None);
+        assert!(app_state.workspace.drafts.fields.is_empty());
+        assert_eq!(app_state.workspace.document.revision, 0);
+    }
+
+    #[test]
+    fn committing_stream_inspector_drafts_records_one_batch_history_entry() {
+        let document = inspector_focus_document();
+        let mut app_state = AppState::new(document);
+        let stream_id = StreamId::new("stream-feed");
+        app_state.focus_inspector_target(crate::InspectorTarget::Stream(stream_id.clone()));
+        app_state
+            .update_stream_inspector_draft(
+                &stream_id,
+                crate::StreamInspectorDraftField::TemperatureK,
+                "333.5",
+            )
+            .expect("expected temperature draft update");
+        app_state
+            .update_stream_inspector_draft(
+                &stream_id,
+                crate::StreamInspectorDraftField::PressurePa,
+                "202650",
+            )
+            .expect("expected pressure draft update");
+
+        let outcome = app_state
+            .commit_stream_inspector_drafts(&stream_id, timestamp(42))
+            .expect("expected batch commit")
+            .expect("expected applied batch commit");
+
+        assert_eq!(outcome.revision, 1);
+        assert_eq!(
+            outcome.keys,
+            vec![
+                "stream:stream-feed:temperature_k".to_string(),
+                "stream:stream-feed:pressure_pa".to_string()
+            ]
+        );
+        assert_eq!(
+            outcome.command,
+            DocumentCommand::SetStreamSpecifications {
+                stream_id: stream_id.clone(),
+                values: vec![
+                    crate::StreamSpecificationValue {
+                        field: "temperature_k".to_string(),
+                        value: CommandValue::Number(333.5),
+                    },
+                    crate::StreamSpecificationValue {
+                        field: "pressure_pa".to_string(),
+                        value: CommandValue::Number(202650.0),
+                    },
+                ],
+            }
+        );
+        let stream = &app_state.workspace.document.flowsheet.streams[&stream_id];
+        assert_eq!(stream.temperature_k, 333.5);
+        assert_eq!(stream.pressure_pa, 202650.0);
+        assert_eq!(app_state.workspace.command_history.len(), 1);
+        assert_eq!(
+            app_state
+                .workspace
+                .command_history
+                .current_entry()
+                .map(|entry| &entry.command),
+            Some(&outcome.command)
+        );
+        assert!(app_state.workspace.drafts.fields.is_empty());
+        assert_eq!(
+            app_state.workspace.solve_session.pending_reason,
+            Some(SolvePendingReason::DocumentRevisionAdvanced)
+        );
+    }
+
+    #[test]
+    fn batch_commit_preserves_invalid_stream_inspector_drafts() {
+        let document = inspector_focus_document();
+        let mut app_state = AppState::new(document);
+        let stream_id = StreamId::new("stream-feed");
+        app_state.focus_inspector_target(crate::InspectorTarget::Stream(stream_id.clone()));
+        app_state
+            .update_stream_inspector_draft(
+                &stream_id,
+                crate::StreamInspectorDraftField::TemperatureK,
+                "333.5",
+            )
+            .expect("expected temperature draft update");
+        app_state
+            .update_stream_inspector_draft(
+                &stream_id,
+                crate::StreamInspectorDraftField::PressurePa,
+                "not-a-pressure",
+            )
+            .expect("expected invalid pressure draft update");
+
+        let outcome = app_state
+            .commit_stream_inspector_drafts(&stream_id, timestamp(42))
+            .expect("expected batch commit")
+            .expect("expected applied batch commit");
+
+        assert_eq!(outcome.keys, vec!["stream:stream-feed:temperature_k"]);
+        assert_eq!(app_state.workspace.document.revision, 1);
+        assert_eq!(
+            app_state.workspace.document.flowsheet.streams[&stream_id].temperature_k,
+            333.5
+        );
+        assert_eq!(
+            app_state.workspace.document.flowsheet.streams[&stream_id].pressure_pa,
+            101_325.0
+        );
+        assert!(
+            app_state
+                .workspace
+                .drafts
+                .fields
+                .contains_key("stream:stream-feed:pressure_pa")
+        );
+    }
+
+    #[test]
+    fn undo_redo_replays_stream_inspector_document_snapshots() {
+        let document = inspector_focus_document();
+        let mut app_state = AppState::new(document);
+        let stream_id = StreamId::new("stream-feed");
+        app_state.focus_inspector_target(crate::InspectorTarget::Stream(stream_id.clone()));
+        app_state
+            .update_stream_inspector_draft(
+                &stream_id,
+                crate::StreamInspectorDraftField::TemperatureK,
+                "333.5",
+            )
+            .expect("expected draft update");
+        app_state
+            .commit_stream_inspector_draft(
+                &stream_id,
+                crate::StreamInspectorDraftField::TemperatureK,
+                timestamp(42),
+            )
+            .expect("expected draft commit")
+            .expect("expected applied draft commit");
+
+        let undo = app_state
+            .undo_document_command(timestamp(43))
+            .expect("expected undo")
+            .expect("expected undo result");
+
+        assert_eq!(undo.direction, crate::DocumentHistoryDirection::Undo);
+        assert_eq!(undo.revision, 2);
+        assert_eq!(app_state.workspace.command_history.cursor, 0);
+        assert!(app_state.workspace.command_history.can_redo());
+        assert_eq!(
+            app_state.workspace.document.flowsheet.streams[&stream_id].temperature_k,
+            298.15
+        );
+        assert_eq!(
+            app_state.workspace.drafts.active_target,
+            Some(crate::InspectorTarget::Stream(stream_id.clone()))
+        );
+        assert_eq!(
+            app_state.workspace.solve_session.pending_reason,
+            Some(SolvePendingReason::DocumentRevisionAdvanced)
+        );
+
+        let redo = app_state
+            .redo_document_command(timestamp(44))
+            .expect("expected redo")
+            .expect("expected redo result");
+
+        assert_eq!(redo.direction, crate::DocumentHistoryDirection::Redo);
+        assert_eq!(redo.revision, 3);
+        assert_eq!(app_state.workspace.command_history.cursor, 1);
+        assert!(!app_state.workspace.command_history.can_redo());
+        assert_eq!(
+            app_state.workspace.document.flowsheet.streams[&stream_id].temperature_k,
+            333.5
+        );
+        assert_eq!(
+            app_state.workspace.drafts.active_target,
+            Some(crate::InspectorTarget::Stream(stream_id))
+        );
+        assert!(app_state.workspace.drafts.fields.is_empty());
+    }
+
+    #[test]
+    fn committing_invalid_stream_inspector_draft_is_ignored_without_document_mutation() {
+        let document = inspector_focus_document();
+        let mut app_state = AppState::new(document);
+        let stream_id = StreamId::new("stream-feed");
+        app_state.focus_inspector_target(crate::InspectorTarget::Stream(stream_id.clone()));
+        let update = app_state
+            .update_stream_inspector_draft(
+                &stream_id,
+                crate::StreamInspectorDraftField::PressurePa,
+                "not-a-pressure",
+            )
+            .expect("expected draft update");
+
+        let outcome = app_state
+            .commit_stream_inspector_draft(
+                &stream_id,
+                crate::StreamInspectorDraftField::PressurePa,
+                timestamp(42),
+            )
+            .expect("expected ignored invalid commit");
+
+        assert_eq!(outcome, None);
+        assert_eq!(app_state.workspace.document.revision, 0);
+        assert!(app_state.workspace.command_history.is_empty());
+        assert_eq!(
+            app_state.workspace.document.flowsheet.streams[&stream_id].pressure_pa,
+            101_325.0
+        );
+        assert!(app_state.workspace.drafts.fields.contains_key(&update.key));
     }
 
     #[test]

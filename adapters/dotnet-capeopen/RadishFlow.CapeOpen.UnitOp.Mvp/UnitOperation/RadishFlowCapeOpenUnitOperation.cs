@@ -1,42 +1,66 @@
 using RadishFlow.CapeOpen.Adapter;
 using RadishFlow.CapeOpen.Interop.Common;
 using RadishFlow.CapeOpen.Interop.Errors;
+using RadishFlow.CapeOpen.Interop.Ole;
 using RadishFlow.CapeOpen.Interop.Parameters;
+using RadishFlow.CapeOpen.Interop.Persistence;
 using RadishFlow.CapeOpen.Interop.Unit;
 using RadishFlow.CapeOpen.UnitOp.Mvp.Placeholders;
 using RadishFlow.CapeOpen.UnitOp.Mvp.Results;
+using System.Runtime.InteropServices;
 using System.Text.Json;
 
 namespace RadishFlow.CapeOpen.UnitOp.Mvp.UnitOperation;
 
-public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICapeUtilities, ICapeUnit, IDisposable
+[ComVisible(true)]
+[Guid(UnitOperationComIdentity.ClassId)]
+[ProgId(UnitOperationComIdentity.ProgId)]
+[ClassInterface(ClassInterfaceType.None)]
+[ComDefaultInterface(typeof(ICapeUtilities))]
+public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICapeUtilities, ICapeUnit, ICapeUnitReport, ECapeRoot, ECapeUser, IPersistStreamInit, IPersistStorage, IOleObject, IDisposable
 {
     private const string UtilitiesInterfaceName = nameof(ICapeUtilities);
     private const string UnitInterfaceName = nameof(ICapeUnit);
+    private const string UnitReportInterfaceName = nameof(ICapeUnitReport);
     private const string UnitScope = "RadishFlow.CapeOpen.UnitOp.Mvp";
-    private object? _simulationContext;
+    private const string DefaultReportName = "RadishFlow calculation report";
+    private const string SimulationContextMemberName = "SimulationContext";
+    private const string NoRecordedCapeOpenError = "No CAPE-OPEN error has been recorded for this unit instance.";
+    private readonly UnitOperationSimulationContextPlaceholder _simulationContextFallback = new();
+    private bool _simulationContextProvided;
     private UnitOperationCalculationResult? _lastCalculationResult;
     private UnitOperationCalculationFailure? _lastCalculationFailure;
+    private CapeOpenException? _lastCapeOpenError;
+    private string _componentName;
+    private string _componentDescription;
+    private string _selectedReportName = DefaultReportName;
     private bool _materialResultsStale;
     private UnitOperationLifecycleState _lifecycleState;
+    private IntPtr _oleClientSite;
+    private OleSize _oleExtent = new(2540, 2540);
+
+    static RadishFlowCapeOpenUnitOperation()
+    {
+        UnitOperationComTrace.Write(nameof(RadishFlowCapeOpenUnitOperation), "static-init");
+    }
 
     public RadishFlowCapeOpenUnitOperation()
     {
-        ComponentName = "RadishFlow Unit Operation";
-        ComponentDescription = "Minimal CAPE-OPEN unit operation skeleton.";
+        UnitOperationComTrace.Write(nameof(RadishFlowCapeOpenUnitOperation), "constructor-enter");
 
-        Parameters = new UnitOperationPlaceholderCollection<UnitOperationParameterPlaceholder>(
-            "Parameters",
-            "Public CAPE-OPEN parameter collection for the MVP unit operation.",
+        _componentName = UnitOperationComIdentity.DisplayName;
+        _componentDescription = UnitOperationComIdentity.Description;
+
+        Parameters = new UnitOperationParameterCollection(
+            UnitOperationParameterCatalog.CollectionDefinition,
             UnitOperationParameterCatalog.OrderedDefinitions.Select(
                 definition => new UnitOperationParameterPlaceholder(
                     definition,
                     ensureOwnerAccess: EnsurePlaceholderAccess,
                     onStateChanged: InvalidateValidation)),
             ensureOwnerAccess: EnsurePlaceholderAccess);
-        Ports = new UnitOperationPlaceholderCollection<UnitOperationPortPlaceholder>(
-            "Ports",
-            "Public CAPE-OPEN port collection for the MVP unit operation.",
+        Ports = new UnitOperationPortCollection(
+            UnitOperationPortCatalog.CollectionDefinition,
             UnitOperationPortCatalog.OrderedDefinitions.Select(
                 definition => new UnitOperationPortPlaceholder(
                     definition,
@@ -46,29 +70,194 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
 
         ValStatus = CapeValidationStatus.NotValidated;
         _lifecycleState = UnitOperationLifecycleState.Constructed;
+        UnitOperationComTrace.Write(nameof(RadishFlowCapeOpenUnitOperation), "constructor-exit");
     }
 
-    public string ComponentName { get; set; }
+    public string Name => nameof(RadishFlowCapeOpenUnitOperation);
 
-    public string ComponentDescription { get; set; }
+    public int Code => _lastCapeOpenError?.Code ?? 0;
 
-    public UnitOperationPlaceholderCollection<UnitOperationParameterPlaceholder> Parameters { get; }
+    public string Description => _lastCapeOpenError?.Description ?? NoRecordedCapeOpenError;
 
-    object? ICapeUtilities.Parameters => Parameters;
+    public string Scope => _lastCapeOpenError?.Scope ?? UnitScope;
 
-    public UnitOperationPlaceholderCollection<UnitOperationPortPlaceholder> Ports { get; }
+    public string InterfaceName => _lastCapeOpenError?.InterfaceName ?? UtilitiesInterfaceName;
 
-    object? ICapeUnit.Ports => Ports;
+    public string Operation => _lastCapeOpenError?.Operation ?? string.Empty;
 
-    public object? SimulationContext
+    public string? MoreInfo => _lastCapeOpenError?.MoreInfo;
+
+    public string ComponentName
     {
-        get => _simulationContext;
+        get
+        {
+            UnitOperationComTrace.Write(nameof(ComponentName), "get-enter");
+            try
+            {
+                return _componentName;
+            }
+            catch (Exception error)
+            {
+                UnitOperationComTrace.Exception(nameof(ComponentName), error);
+                throw;
+            }
+            finally
+            {
+                UnitOperationComTrace.Write(nameof(ComponentName), "get-exit");
+            }
+        }
+
         set
         {
+            UnitOperationComTrace.Write(nameof(ComponentName), "set-enter", value);
+            try
+            {
+                _componentName = value;
+            }
+            catch (Exception error)
+            {
+                UnitOperationComTrace.Exception(nameof(ComponentName), error);
+                throw;
+            }
+            finally
+            {
+                UnitOperationComTrace.Write(nameof(ComponentName), "set-exit");
+            }
+        }
+    }
+
+    public string ComponentDescription
+    {
+        get
+        {
+            UnitOperationComTrace.Write(nameof(ComponentDescription), "get-enter");
+            try
+            {
+                return _componentDescription;
+            }
+            catch (Exception error)
+            {
+                UnitOperationComTrace.Exception(nameof(ComponentDescription), error);
+                throw;
+            }
+            finally
+            {
+                UnitOperationComTrace.Write(nameof(ComponentDescription), "get-exit");
+            }
+        }
+
+        set
+        {
+            UnitOperationComTrace.Write(nameof(ComponentDescription), "set-enter", value);
+            try
+            {
+                _componentDescription = value;
+            }
+            catch (Exception error)
+            {
+                UnitOperationComTrace.Exception(nameof(ComponentDescription), error);
+                throw;
+            }
+            finally
+            {
+                UnitOperationComTrace.Write(nameof(ComponentDescription), "set-exit");
+            }
+        }
+    }
+
+    public UnitOperationParameterCollection Parameters { get; }
+
+    object? ICapeUtilities.Parameters
+    {
+        get
+        {
+            UnitOperationComTrace.Write(nameof(ICapeUtilities.Parameters), "get-enter");
+            try
+            {
+                return Parameters;
+            }
+            catch (Exception error)
+            {
+                UnitOperationComTrace.Exception(nameof(ICapeUtilities.Parameters), error);
+                throw;
+            }
+            finally
+            {
+                UnitOperationComTrace.Write(nameof(ICapeUtilities.Parameters), "get-exit");
+            }
+        }
+    }
+
+    public UnitOperationPortCollection Ports { get; }
+
+    object? ICapeUnit.Ports
+    {
+        get
+        {
+            UnitOperationComTrace.Write(nameof(ICapeUnit.Ports), "get-enter");
+            try
+            {
+                return Ports;
+            }
+            catch (Exception error)
+            {
+                UnitOperationComTrace.Exception(nameof(ICapeUnit.Ports), error);
+                throw;
+            }
+            finally
+            {
+                UnitOperationComTrace.Write(nameof(ICapeUnit.Ports), "get-exit");
+            }
+        }
+    }
+
+    IntPtr ICapeUtilities.get_SimulationContext()
+    {
+        UnitOperationComTrace.Write(SimulationContextMemberName, "get-enter");
+        try
+        {
             ThrowIfDisposed();
-            ThrowIfTerminated(nameof(SimulationContext), UtilitiesInterfaceName);
-            _simulationContext = value;
+#pragma warning disable CA1416 // UnitOp.Mvp COM activation is Windows-only.
+            var context = Marshal.GetIDispatchForObject(_simulationContextFallback);
+#pragma warning restore CA1416
+            UnitOperationComTrace.Write(
+                SimulationContextMemberName,
+                "get-result",
+                _simulationContextProvided ? "fallback=provided; hostContext=provided" : "fallback=provided; hostContext=missing");
+            return context;
+        }
+        catch (Exception error)
+        {
+            UnitOperationComTrace.Exception(SimulationContextMemberName, error);
+            throw;
+        }
+        finally
+        {
+            UnitOperationComTrace.Write(SimulationContextMemberName, "get-exit");
+        }
+    }
+
+    void ICapeUtilities.set_SimulationContext(IntPtr value)
+    {
+        UnitOperationComTrace.Write(
+            SimulationContextMemberName,
+            "set-enter",
+            value == IntPtr.Zero ? "context=null" : "context=provided");
+        try
+        {
+            ThrowIfDisposed();
+            ThrowIfTerminated(SimulationContextMemberName, UtilitiesInterfaceName);
+            _simulationContextProvided = value != IntPtr.Zero;
             InvalidateValidation();
+        }
+        catch (Exception error)
+        {
+            UnitOperationComTrace.Exception(SimulationContextMemberName, error);
+            throw;
+        }
+        finally
+        {
+            UnitOperationComTrace.Write(SimulationContextMemberName, "set-exit");
         }
     }
 
@@ -77,6 +266,572 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
     public UnitOperationCalculationResult? LastCalculationResult => _lastCalculationResult;
 
     public UnitOperationCalculationFailure? LastCalculationFailure => _lastCalculationFailure;
+
+    public object reports
+    {
+        get
+        {
+            UnitOperationComTrace.Write(nameof(reports), "get-enter");
+            try
+            {
+                ThrowIfDisposed();
+                return new[] { DefaultReportName };
+            }
+            catch (Exception error)
+            {
+                UnitOperationComTrace.Exception(nameof(reports), error);
+                throw;
+            }
+            finally
+            {
+                UnitOperationComTrace.Write(nameof(reports), "get-exit");
+            }
+        }
+    }
+
+    public string selectedReport
+    {
+        get
+        {
+            UnitOperationComTrace.Write(nameof(selectedReport), "get-enter");
+            try
+            {
+                ThrowIfDisposed();
+                return _selectedReportName;
+            }
+            catch (Exception error)
+            {
+                UnitOperationComTrace.Exception(nameof(selectedReport), error);
+                throw;
+            }
+            finally
+            {
+                UnitOperationComTrace.Write(nameof(selectedReport), "get-exit");
+            }
+        }
+
+        set
+        {
+            UnitOperationComTrace.Write(nameof(selectedReport), "set-enter", value);
+            try
+            {
+                ThrowIfDisposed();
+                ThrowIfTerminated(nameof(selectedReport), UnitReportInterfaceName);
+
+                if (!string.Equals(value, DefaultReportName, StringComparison.Ordinal))
+                {
+                    throw new CapeInvalidArgumentException(
+                        $"Unsupported unit report `{value}`.",
+                        CreateContext(
+                            UnitReportInterfaceName,
+                            nameof(selectedReport),
+                            moreInfo: $"Supported report: {DefaultReportName}",
+                            parameterName: nameof(selectedReport),
+                            parameter: value));
+                }
+
+                _selectedReportName = value;
+            }
+            catch (Exception error)
+            {
+                UnitOperationComTrace.Exception(nameof(selectedReport), error);
+                throw;
+            }
+            finally
+            {
+                UnitOperationComTrace.Write(nameof(selectedReport), "set-exit");
+            }
+        }
+    }
+
+    public void ProduceReport(ref string reportContent)
+    {
+        UnitOperationComTrace.Write(nameof(ProduceReport), "enter");
+        try
+        {
+            ThrowIfDisposed();
+            reportContent = GetCalculationReportText();
+        }
+        catch (Exception error)
+        {
+            UnitOperationComTrace.Exception(nameof(ProduceReport), error);
+            throw;
+        }
+        finally
+        {
+            UnitOperationComTrace.Write(nameof(ProduceReport), "exit");
+        }
+    }
+
+    public int GetClassID(out Guid classId)
+    {
+        UnitOperationComTrace.Write(nameof(GetClassID), "enter");
+        try
+        {
+            classId = Guid.Parse(UnitOperationComIdentity.ClassId);
+            UnitOperationComTrace.Write(nameof(GetClassID), "result", classId.ToString("D"));
+            return ComHResults.SOk;
+        }
+        catch (Exception error)
+        {
+            classId = Guid.Empty;
+            UnitOperationComTrace.Exception(nameof(GetClassID), error);
+            return error.HResult;
+        }
+        finally
+        {
+            UnitOperationComTrace.Write(nameof(GetClassID), "exit");
+        }
+    }
+
+    public int IsDirty()
+    {
+        UnitOperationComTrace.Write(nameof(IsDirty), "enter");
+        try
+        {
+            UnitOperationComTrace.Write(nameof(IsDirty), "result", "S_FALSE");
+            return ComHResults.SFalse;
+        }
+        catch (Exception error)
+        {
+            UnitOperationComTrace.Exception(nameof(IsDirty), error);
+            return error.HResult;
+        }
+        finally
+        {
+            UnitOperationComTrace.Write(nameof(IsDirty), "exit");
+        }
+    }
+
+    int IPersistStreamInit.Load(IntPtr stream)
+    {
+        UnitOperationComTrace.Write("IPersistStreamInit.Load", "enter", stream == IntPtr.Zero ? "stream=null" : "stream=provided");
+        try
+        {
+            return ComHResults.SOk;
+        }
+        catch (Exception error)
+        {
+            UnitOperationComTrace.Exception("IPersistStreamInit.Load", error);
+            return error.HResult;
+        }
+        finally
+        {
+            UnitOperationComTrace.Write("IPersistStreamInit.Load", "exit");
+        }
+    }
+
+    int IPersistStreamInit.Save(IntPtr stream, bool clearDirty)
+    {
+        UnitOperationComTrace.Write(
+            "IPersistStreamInit.Save",
+            "enter",
+            $"stream={(stream == IntPtr.Zero ? "null" : "provided")}; clearDirty={clearDirty}");
+        try
+        {
+            return ComHResults.SOk;
+        }
+        catch (Exception error)
+        {
+            UnitOperationComTrace.Exception("IPersistStreamInit.Save", error);
+            return error.HResult;
+        }
+        finally
+        {
+            UnitOperationComTrace.Write("IPersistStreamInit.Save", "exit");
+        }
+    }
+
+    public int GetSizeMax(out long size)
+    {
+        UnitOperationComTrace.Write(nameof(GetSizeMax), "enter");
+        try
+        {
+            size = 0;
+            UnitOperationComTrace.Write(nameof(GetSizeMax), "result", "size=0");
+            return ComHResults.SOk;
+        }
+        catch (Exception error)
+        {
+            size = 0;
+            UnitOperationComTrace.Exception(nameof(GetSizeMax), error);
+            return error.HResult;
+        }
+        finally
+        {
+            UnitOperationComTrace.Write(nameof(GetSizeMax), "exit");
+        }
+    }
+
+    public int InitNew()
+    {
+        UnitOperationComTrace.Write(nameof(InitNew), "enter");
+        try
+        {
+            return ComHResults.SOk;
+        }
+        catch (Exception error)
+        {
+            UnitOperationComTrace.Exception(nameof(InitNew), error);
+            return error.HResult;
+        }
+        finally
+        {
+            UnitOperationComTrace.Write(nameof(InitNew), "exit");
+        }
+    }
+
+    public int InitNew(IntPtr storage)
+    {
+        UnitOperationComTrace.Write(
+            "IPersistStorage.InitNew",
+            "enter",
+            storage == IntPtr.Zero ? "storage=null" : "storage=provided");
+        try
+        {
+            return ComHResults.SOk;
+        }
+        catch (Exception error)
+        {
+            UnitOperationComTrace.Exception("IPersistStorage.InitNew", error);
+            return error.HResult;
+        }
+        finally
+        {
+            UnitOperationComTrace.Write("IPersistStorage.InitNew", "exit");
+        }
+    }
+
+    public int Load(IntPtr storage)
+    {
+        UnitOperationComTrace.Write(
+            "IPersistStorage.Load",
+            "enter",
+            storage == IntPtr.Zero ? "storage=null" : "storage=provided");
+        try
+        {
+            return ComHResults.SOk;
+        }
+        catch (Exception error)
+        {
+            UnitOperationComTrace.Exception("IPersistStorage.Load", error);
+            return error.HResult;
+        }
+        finally
+        {
+            UnitOperationComTrace.Write("IPersistStorage.Load", "exit");
+        }
+    }
+
+    public int Save(IntPtr storage, bool sameAsLoad)
+    {
+        UnitOperationComTrace.Write(
+            "IPersistStorage.Save",
+            "enter",
+            $"storage={(storage == IntPtr.Zero ? "null" : "provided")}; sameAsLoad={sameAsLoad}");
+        try
+        {
+            return ComHResults.SOk;
+        }
+        catch (Exception error)
+        {
+            UnitOperationComTrace.Exception("IPersistStorage.Save", error);
+            return error.HResult;
+        }
+        finally
+        {
+            UnitOperationComTrace.Write("IPersistStorage.Save", "exit");
+        }
+    }
+
+    public int SaveCompleted(IntPtr storage)
+    {
+        UnitOperationComTrace.Write(
+            nameof(SaveCompleted),
+            "enter",
+            storage == IntPtr.Zero ? "storage=null" : "storage=provided");
+        try
+        {
+            return ComHResults.SOk;
+        }
+        catch (Exception error)
+        {
+            UnitOperationComTrace.Exception(nameof(SaveCompleted), error);
+            return error.HResult;
+        }
+        finally
+        {
+            UnitOperationComTrace.Write(nameof(SaveCompleted), "exit");
+        }
+    }
+
+    public int HandsOffStorage()
+    {
+        UnitOperationComTrace.Write(nameof(HandsOffStorage), "enter");
+        try
+        {
+            return ComHResults.SOk;
+        }
+        catch (Exception error)
+        {
+            UnitOperationComTrace.Exception(nameof(HandsOffStorage), error);
+            return error.HResult;
+        }
+        finally
+        {
+            UnitOperationComTrace.Write(nameof(HandsOffStorage), "exit");
+        }
+    }
+
+    public int SetClientSite(IntPtr clientSite)
+    {
+        UnitOperationComTrace.Write(
+            nameof(SetClientSite),
+            "enter",
+            clientSite == IntPtr.Zero ? "clientSite=null" : "clientSite=provided");
+        try
+        {
+            ReplaceOleClientSite(clientSite);
+            return ComHResults.SOk;
+        }
+        catch (Exception error)
+        {
+            UnitOperationComTrace.Exception(nameof(SetClientSite), error);
+            return error.HResult;
+        }
+        finally
+        {
+            UnitOperationComTrace.Write(nameof(SetClientSite), "exit");
+        }
+    }
+
+    public int GetClientSite(out IntPtr clientSite)
+    {
+        UnitOperationComTrace.Write(nameof(GetClientSite), "enter");
+        try
+        {
+            clientSite = _oleClientSite;
+            if (clientSite != IntPtr.Zero)
+            {
+                Marshal.AddRef(clientSite);
+            }
+
+            UnitOperationComTrace.Write(nameof(GetClientSite), "result", clientSite == IntPtr.Zero ? "clientSite=null" : "clientSite=provided");
+            return ComHResults.SOk;
+        }
+        catch (Exception error)
+        {
+            clientSite = IntPtr.Zero;
+            UnitOperationComTrace.Exception(nameof(GetClientSite), error);
+            return error.HResult;
+        }
+        finally
+        {
+            UnitOperationComTrace.Write(nameof(GetClientSite), "exit");
+        }
+    }
+
+    public int SetHostNames(string? containerApplication, string? containerObject)
+    {
+        UnitOperationComTrace.Write(
+            nameof(SetHostNames),
+            "enter",
+            $"containerApplication={containerApplication ?? "<null>"}; containerObject={containerObject ?? "<null>"}");
+        try
+        {
+            return ComHResults.SOk;
+        }
+        catch (Exception error)
+        {
+            UnitOperationComTrace.Exception(nameof(SetHostNames), error);
+            return error.HResult;
+        }
+        finally
+        {
+            UnitOperationComTrace.Write(nameof(SetHostNames), "exit");
+        }
+    }
+
+    public int Close(uint saveOption)
+    {
+        UnitOperationComTrace.Write(nameof(Close), "enter", $"saveOption={saveOption}");
+        try
+        {
+            ReleaseOleClientSite();
+            return ComHResults.SOk;
+        }
+        catch (Exception error)
+        {
+            UnitOperationComTrace.Exception(nameof(Close), error);
+            return error.HResult;
+        }
+        finally
+        {
+            UnitOperationComTrace.Write(nameof(Close), "exit");
+        }
+    }
+
+    public int SetMoniker(uint whichMoniker, IntPtr moniker)
+    {
+        UnitOperationComTrace.Write(
+            nameof(SetMoniker),
+            "enter",
+            $"whichMoniker={whichMoniker}; moniker={(moniker == IntPtr.Zero ? "null" : "provided")}");
+        return ComHResults.SOk;
+    }
+
+    public int GetMoniker(uint assign, uint whichMoniker, out IntPtr moniker)
+    {
+        UnitOperationComTrace.Write(nameof(GetMoniker), "enter", $"assign={assign}; whichMoniker={whichMoniker}");
+        moniker = IntPtr.Zero;
+        UnitOperationComTrace.Write(nameof(GetMoniker), "result", "moniker=null; E_NOTIMPL");
+        return ComHResults.ENotImpl;
+    }
+
+    public int InitFromData(IntPtr dataObject, bool creation, uint reserved)
+    {
+        UnitOperationComTrace.Write(
+            nameof(InitFromData),
+            "enter",
+            $"dataObject={(dataObject == IntPtr.Zero ? "null" : "provided")}; creation={creation}; reserved={reserved}");
+        return ComHResults.SOk;
+    }
+
+    public int GetClipboardData(uint reserved, out IntPtr dataObject)
+    {
+        UnitOperationComTrace.Write(nameof(GetClipboardData), "enter", $"reserved={reserved}");
+        dataObject = IntPtr.Zero;
+        UnitOperationComTrace.Write(nameof(GetClipboardData), "result", "dataObject=null; E_NOTIMPL");
+        return ComHResults.ENotImpl;
+    }
+
+    public int DoVerb(int verb, IntPtr message, IntPtr activeSite, int index, IntPtr parentWindow, IntPtr positionRectangle)
+    {
+        UnitOperationComTrace.Write(
+            nameof(DoVerb),
+            "enter",
+            $"verb={verb}; activeSite={(activeSite == IntPtr.Zero ? "null" : "provided")}; parentWindow={(parentWindow == IntPtr.Zero ? "null" : "provided")}");
+        return ComHResults.SOk;
+    }
+
+    public int EnumVerbs(out IntPtr enumOleVerb)
+    {
+        UnitOperationComTrace.Write(nameof(EnumVerbs), "enter");
+        enumOleVerb = IntPtr.Zero;
+        UnitOperationComTrace.Write(nameof(EnumVerbs), "result", "enumOleVerb=null; OLEOBJ_E_NOVERBS");
+        return OleConstants.OleObjectNoVerbs;
+    }
+
+    public int Update()
+    {
+        UnitOperationComTrace.Write(nameof(Update), "enter");
+        UnitOperationComTrace.Write(nameof(Update), "exit");
+        return ComHResults.SOk;
+    }
+
+    public int IsUpToDate()
+    {
+        UnitOperationComTrace.Write(nameof(IsUpToDate), "enter");
+        UnitOperationComTrace.Write(nameof(IsUpToDate), "exit");
+        return ComHResults.SOk;
+    }
+
+    public int GetUserClassID(out Guid classId)
+    {
+        UnitOperationComTrace.Write(nameof(GetUserClassID), "enter");
+        try
+        {
+            classId = Guid.Parse(UnitOperationComIdentity.ClassId);
+            UnitOperationComTrace.Write(nameof(GetUserClassID), "result", classId.ToString("D"));
+            return ComHResults.SOk;
+        }
+        catch (Exception error)
+        {
+            classId = Guid.Empty;
+            UnitOperationComTrace.Exception(nameof(GetUserClassID), error);
+            return error.HResult;
+        }
+        finally
+        {
+            UnitOperationComTrace.Write(nameof(GetUserClassID), "exit");
+        }
+    }
+
+    public int GetUserType(uint formOfType, out IntPtr userType)
+    {
+        UnitOperationComTrace.Write(nameof(GetUserType), "enter", $"formOfType={formOfType}");
+        try
+        {
+            userType = Marshal.StringToCoTaskMemUni(UnitOperationComIdentity.DisplayName);
+            UnitOperationComTrace.Write(nameof(GetUserType), "result", UnitOperationComIdentity.DisplayName);
+            return ComHResults.SOk;
+        }
+        catch (Exception error)
+        {
+            userType = IntPtr.Zero;
+            UnitOperationComTrace.Exception(nameof(GetUserType), error);
+            return error.HResult;
+        }
+        finally
+        {
+            UnitOperationComTrace.Write(nameof(GetUserType), "exit");
+        }
+    }
+
+    public int SetExtent(uint drawAspect, ref OleSize size)
+    {
+        UnitOperationComTrace.Write(nameof(SetExtent), "enter", $"drawAspect={drawAspect}; width={size.Width}; height={size.Height}");
+        _oleExtent = size;
+        UnitOperationComTrace.Write(nameof(SetExtent), "exit");
+        return ComHResults.SOk;
+    }
+
+    public int GetExtent(uint drawAspect, out OleSize size)
+    {
+        UnitOperationComTrace.Write(nameof(GetExtent), "enter", $"drawAspect={drawAspect}");
+        size = _oleExtent;
+        UnitOperationComTrace.Write(nameof(GetExtent), "result", $"width={size.Width}; height={size.Height}");
+        UnitOperationComTrace.Write(nameof(GetExtent), "exit");
+        return ComHResults.SOk;
+    }
+
+    public int Advise(IntPtr adviseSink, out uint connection)
+    {
+        UnitOperationComTrace.Write(nameof(Advise), "enter", adviseSink == IntPtr.Zero ? "adviseSink=null" : "adviseSink=provided");
+        connection = 0;
+        UnitOperationComTrace.Write(nameof(Advise), "result", "OLE_E_ADVISENOTSUPPORTED");
+        return OleConstants.OleAdviseNotSupported;
+    }
+
+    public int Unadvise(uint connection)
+    {
+        UnitOperationComTrace.Write(nameof(Unadvise), "enter", $"connection={connection}");
+        UnitOperationComTrace.Write(nameof(Unadvise), "result", "OLE_E_ADVISENOTSUPPORTED");
+        return OleConstants.OleAdviseNotSupported;
+    }
+
+    public int EnumAdvise(out IntPtr enumAdvise)
+    {
+        UnitOperationComTrace.Write(nameof(EnumAdvise), "enter");
+        enumAdvise = IntPtr.Zero;
+        UnitOperationComTrace.Write(nameof(EnumAdvise), "result", "enumAdvise=null; OLE_E_ADVISENOTSUPPORTED");
+        return OleConstants.OleAdviseNotSupported;
+    }
+
+    public int GetMiscStatus(uint aspect, out uint status)
+    {
+        UnitOperationComTrace.Write(nameof(GetMiscStatus), "enter", $"aspect={aspect}");
+        status = OleConstants.OleMiscNone;
+        UnitOperationComTrace.Write(nameof(GetMiscStatus), "result", $"status={status}");
+        return ComHResults.SOk;
+    }
+
+    public int SetColorScheme(IntPtr logPalette)
+    {
+        UnitOperationComTrace.Write(nameof(SetColorScheme), "enter", logPalette == IntPtr.Zero ? "logPalette=null" : "logPalette=provided");
+        UnitOperationComTrace.Write(nameof(SetColorScheme), "exit");
+        return ComHResults.SOk;
+    }
 
     public UnitOperationCalculationReport GetCalculationReport()
     {
@@ -211,84 +966,151 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
 
     public void Initialize()
     {
-        ThrowIfDisposed();
-        if (IsTerminated)
+        UnitOperationComTrace.Write(nameof(Initialize), "enter");
+        try
         {
-            throw CreateBadInvocation(
-                UtilitiesInterfaceName,
-                nameof(Initialize),
-                "This unit instance has already been terminated and cannot be reinitialized.");
-        }
+            ThrowIfDisposed();
+            if (IsTerminated)
+            {
+                throw CreateBadInvocation(
+                    UtilitiesInterfaceName,
+                    nameof(Initialize),
+                    "This unit instance has already been terminated and cannot be reinitialized.");
+            }
 
-        if (IsInitialized)
+            if (IsInitialized)
+            {
+                UnitOperationComTrace.Write(nameof(Initialize), "already-initialized");
+                return;
+            }
+
+            _lifecycleState = UnitOperationLifecycleState.Initialized;
+            InvalidateValidation();
+        }
+        catch (Exception error)
         {
-            return;
+            UnitOperationComTrace.Exception(nameof(Initialize), error);
+            throw;
         }
-
-        _lifecycleState = UnitOperationLifecycleState.Initialized;
-        InvalidateValidation();
+        finally
+        {
+            UnitOperationComTrace.Write(nameof(Initialize), "exit");
+        }
     }
 
     public void Terminate()
     {
-        if (IsDisposed || IsTerminated)
+        UnitOperationComTrace.Write(nameof(Terminate), "enter");
+        try
         {
-            return;
-        }
+            if (IsDisposed || IsTerminated)
+            {
+                UnitOperationComTrace.Write(nameof(Terminate), "already-terminal");
+                return;
+            }
 
-        _simulationContext = null;
-        foreach (var port in Ports)
+            _simulationContextProvided = false;
+            foreach (var port in Ports)
+            {
+                port.ReleaseConnectedObject();
+            }
+
+            ResetCalculationState(CapeValidationStatus.NotValidated);
+            _materialResultsStale = false;
+            _lifecycleState = UnitOperationLifecycleState.Terminated;
+        }
+        catch (Exception error)
         {
-            port.ReleaseConnectedObject();
+            UnitOperationComTrace.Exception(nameof(Terminate), error);
+            throw;
         }
-
-        ResetCalculationState(CapeValidationStatus.NotValidated);
-        _materialResultsStale = false;
-        _lifecycleState = UnitOperationLifecycleState.Terminated;
+        finally
+        {
+            UnitOperationComTrace.Write(nameof(Terminate), "exit");
+        }
     }
 
     public int Edit()
     {
+        UnitOperationComTrace.Write(nameof(Edit), "enter");
         ThrowIfDisposed();
         ThrowIfTerminated(nameof(Edit), UtilitiesInterfaceName);
-        throw new CapeNoImplementationException(
-            "Edit UI is not implemented for the MVP CAPE-OPEN unit operation skeleton.",
-            CreateContext(UtilitiesInterfaceName, nameof(Edit)));
+        UnitOperationComTrace.Write(nameof(Edit), "no-op", "MVP unit operation has no custom editor.");
+        UnitOperationComTrace.Write(nameof(Edit), "exit");
+        return 0;
     }
 
     public bool Validate(ref string message)
     {
-        ThrowIfDisposed();
+        UnitOperationComTrace.Write(nameof(Validate), "enter");
+        try
+        {
+            ThrowIfDisposed();
 
-        var result = EvaluateValidation();
-        return ApplyValidationOutcome(result, ref message);
+            var result = EvaluateValidation();
+            var isValid = ApplyValidationOutcome(result, ref message);
+            UnitOperationComTrace.Write(nameof(Validate), "result", $"isValid={isValid}; message={message}");
+            return isValid;
+        }
+        catch (Exception error)
+        {
+            UnitOperationComTrace.Exception(nameof(Validate), error);
+            throw;
+        }
+        finally
+        {
+            UnitOperationComTrace.Write(nameof(Validate), "exit");
+        }
     }
 
     public void Calculate()
     {
-        ThrowIfDisposed();
-        ThrowIfTerminated(nameof(Calculate), UnitInterfaceName);
-
-        if (!IsInitialized)
-        {
-            throw CreateBadInvocation(
-                UnitInterfaceName,
-                nameof(Calculate),
-                "Initialize must be called before Calculate.",
-                nameof(Initialize));
-        }
-
+        UnitOperationComTrace.Write(nameof(Calculate), "enter");
         try
         {
+            ThrowIfDisposed();
+            ThrowIfTerminated(nameof(Calculate), UnitInterfaceName);
+
+            if (!IsInitialized)
+            {
+                throw CreateBadInvocation(
+                    UnitInterfaceName,
+                    nameof(Calculate),
+                    "Initialize must be called before Calculate.",
+                    nameof(Initialize));
+            }
+
             PrepareForCalculation();
             var inputs = BuildCalculationInputs();
-            var snapshotJson = ExecuteNativeSolve(inputs);
-            RecordCalculationSuccess(MaterializeCalculationResult(snapshotJson));
+            var effectiveInputs = ApplyConnectedFeedMaterial(inputs);
+            var snapshotJson = ExecuteNativeSolve(effectiveInputs);
+            var result = MaterializeCalculationResult(snapshotJson);
+            PublishProductMaterial(result);
+            RecordCalculationSuccess(result);
+            UnitOperationComTrace.Write(nameof(Calculate), "success");
         }
         catch (CapeOpenException error)
         {
-            RecordCalculationFailure(error);
+            UnitOperationComTrace.Exception(nameof(Calculate), error);
+            RememberCapeOpenError(error);
+            if (!IsLifecycleCalculationPreconditionFailure(error))
+            {
+                RecordCalculationFailure(error);
+            }
+
             throw;
+        }
+        catch (Exception error) when (IsNativeLibraryLoadException(error))
+        {
+            UnitOperationComTrace.Exception(nameof(Calculate), error);
+            var capeOpenError = CreateNativeLibraryLoadException(error);
+            RememberCapeOpenError(capeOpenError);
+            RecordCalculationFailure(capeOpenError);
+            throw capeOpenError;
+        }
+        finally
+        {
+            UnitOperationComTrace.Write(nameof(Calculate), "exit");
         }
     }
 
@@ -300,6 +1122,7 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
         }
 
         Terminate();
+        ReleaseOleClientSite();
         _lifecycleState = UnitOperationLifecycleState.Disposed;
     }
 
@@ -433,6 +1256,25 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
             GetOptionalParameterValue(UnitOperationParameterCatalog.PropertyPackagePayloadPath));
     }
 
+    private CalculationInputs ApplyConnectedFeedMaterial(CalculationInputs inputs)
+    {
+        var bindings = UnitOperationConfiguredBoundaryMaterialBindings.TryParse(FlowsheetParameter);
+        var feedMaterial = CapeOpenFeedMaterialReader.TryRead(
+            GetPortPlaceholder(UnitOperationPortCatalog.Feed).ConnectedObjectReference);
+        if (feedMaterial is null)
+        {
+            return inputs;
+        }
+
+        var effectiveFlowsheetJson = FlowsheetBoundaryFeedMaterialOverlay.ApplyOrOriginal(
+            inputs.FlowsheetJson,
+            bindings,
+            feedMaterial);
+        return string.Equals(effectiveFlowsheetJson, inputs.FlowsheetJson, StringComparison.Ordinal)
+            ? inputs
+            : inputs with { FlowsheetJson = effectiveFlowsheetJson };
+    }
+
     private static string ExecuteNativeSolve(CalculationInputs inputs)
     {
         using var engine = new RadishFlowNativeEngine();
@@ -468,6 +1310,26 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
         return ParseCalculationResult(snapshotJson);
     }
 
+    private void PublishProductMaterial(UnitOperationCalculationResult result)
+    {
+        var bindings = UnitOperationConfiguredBoundaryMaterialBindings.TryParse(FlowsheetParameter);
+        var outputStreamIds = bindings.GetBoundStreamIds(UnitOperationPortBoundaryMaterialRole.BoundaryOutputs);
+        if (outputStreamIds.Count == 0)
+        {
+            UnitOperationComTrace.Write(nameof(PublishProductMaterial), "skip", "No configured boundary output streams.");
+            return;
+        }
+
+        var streamsById = result.Streams.ToDictionary(static stream => stream.Id, StringComparer.Ordinal);
+        var outputStreams = outputStreamIds
+            .Where(streamsById.ContainsKey)
+            .Select(streamId => streamsById[streamId])
+            .ToArray();
+        CapeOpenMaterialObjectPublisher.PublishProductMaterial(
+            GetPortPlaceholder(UnitOperationPortCatalog.Product).ConnectedObjectReference,
+            outputStreams);
+    }
+
     private bool ApplyValidationOutcome(ValidationResult result, ref string message)
     {
         message = result.Message;
@@ -488,7 +1350,17 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
     {
         _lastCalculationResult = null;
         _lastCalculationFailure = null;
+        if (validationStatus == CapeValidationStatus.NotValidated)
+        {
+            _lastCapeOpenError = null;
+        }
+
         ValStatus = validationStatus;
+    }
+
+    private void RememberCapeOpenError(CapeOpenException error)
+    {
+        _lastCapeOpenError = error;
     }
 
     private void ThrowIfDisposed()
@@ -575,6 +1447,29 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
                 moreInfo: "Failed to parse status/summary/diagnostics from native solve snapshot JSON."));
     }
 
+    private static bool IsNativeLibraryLoadException(Exception error)
+    {
+        return error is DllNotFoundException or BadImageFormatException or EntryPointNotFoundException;
+    }
+
+    private bool IsLifecycleCalculationPreconditionFailure(CapeOpenException error)
+    {
+        return error is CapeBadInvocationOrderException &&
+               string.Equals(error.InterfaceName, UnitInterfaceName, StringComparison.Ordinal) &&
+               string.Equals(error.Operation, nameof(Calculate), StringComparison.Ordinal) &&
+               (IsTerminated || !IsInitialized);
+    }
+
+    private static CapeFailedInitialisationException CreateNativeLibraryLoadException(Exception error)
+    {
+        return new CapeFailedInitialisationException(
+            $"Native rf-ffi runtime could not be loaded: {error.Message}",
+            CreateContext(
+                "rf-ffi",
+                "load_native_library",
+                moreInfo: "Make sure rf_ffi.dll is available in RADISHFLOW_NATIVE_LIB_DIR, the PME process directory, or the repository target/debug directory."));
+    }
+
     private void RecordCalculationFailure(CapeOpenException error)
     {
         _lastCalculationResult = null;
@@ -633,6 +1528,28 @@ public sealed class RadishFlowCapeOpenUnitOperation : ICapeIdentification, ICape
     private UnitOperationPortPlaceholder GetPortPlaceholder(UnitOperationPortDefinition definition)
     {
         return Ports.GetByName(definition.Name);
+    }
+
+    private void ReplaceOleClientSite(IntPtr clientSite)
+    {
+        if (clientSite != IntPtr.Zero)
+        {
+            Marshal.AddRef(clientSite);
+        }
+
+        ReleaseOleClientSite();
+        _oleClientSite = clientSite;
+    }
+
+    private void ReleaseOleClientSite()
+    {
+        if (_oleClientSite == IntPtr.Zero)
+        {
+            return;
+        }
+
+        Marshal.Release(_oleClientSite);
+        _oleClientSite = IntPtr.Zero;
     }
 
     private string GetRequiredParameterValue(UnitOperationParameterDefinition definition)

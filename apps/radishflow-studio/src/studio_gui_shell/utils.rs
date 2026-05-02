@@ -97,6 +97,24 @@ pub(super) fn drain_due_platform_timer_callbacks(
 pub(super) fn collect_shortcuts(input: &egui::InputState) -> Vec<StudioGuiShortcut> {
     let mut shortcuts = Vec::new();
 
+    if input.modifiers.command && input.key_pressed(egui::Key::S) {
+        shortcuts.push(StudioGuiShortcut {
+            modifiers: command_modifiers_from_egui(input.modifiers),
+            key: StudioGuiShortcutKey::S,
+        });
+    }
+    if input.modifiers.command && input.key_pressed(egui::Key::Z) {
+        shortcuts.push(StudioGuiShortcut {
+            modifiers: command_modifiers_from_egui(input.modifiers),
+            key: StudioGuiShortcutKey::Z,
+        });
+    }
+    if input.modifiers.command && input.key_pressed(egui::Key::Y) {
+        shortcuts.push(StudioGuiShortcut {
+            modifiers: command_modifiers_from_egui(input.modifiers),
+            key: StudioGuiShortcutKey::Y,
+        });
+    }
     if input.key_pressed(egui::Key::F5) {
         shortcuts.push(StudioGuiShortcut {
             modifiers: modifiers_from_egui(input.modifiers),
@@ -145,6 +163,17 @@ pub(super) fn modifiers_from_egui(modifiers: egui::Modifiers) -> Vec<StudioGuiSh
     items
 }
 
+fn command_modifiers_from_egui(modifiers: egui::Modifiers) -> Vec<StudioGuiShortcutModifier> {
+    let mut items = vec![StudioGuiShortcutModifier::Ctrl];
+    if modifiers.shift {
+        items.push(StudioGuiShortcutModifier::Shift);
+    }
+    if modifiers.alt {
+        items.push(StudioGuiShortcutModifier::Alt);
+    }
+    items
+}
+
 pub(super) fn region_panel_width(
     layout_state: &radishflow_studio::StudioGuiWindowLayoutState,
     ctx: &egui::Context,
@@ -161,7 +190,22 @@ pub(super) fn region_panel_width(
         .map(|item| item.weight)
         .unwrap_or(24) as f32;
     let available_width = ctx.available_rect().width().max(960.0);
-    (available_width * (region_weight / total_weight)).clamp(180.0, 480.0)
+    region_panel_width_from_values(dock_region, available_width, total_weight, region_weight)
+}
+
+pub(super) fn region_panel_width_from_values(
+    dock_region: StudioGuiWindowDockRegion,
+    available_width: f32,
+    total_weight: f32,
+    region_weight: f32,
+) -> f32 {
+    let proportional_width = available_width * (region_weight / total_weight.max(1.0));
+    let (min_width, max_width) = match dock_region {
+        StudioGuiWindowDockRegion::LeftSidebar => (240.0, 520.0),
+        StudioGuiWindowDockRegion::CenterStage => (320.0, 960.0),
+        StudioGuiWindowDockRegion::RightSidebar => (360.0, 640.0),
+    };
+    proportional_width.clamp(min_width, max_width)
 }
 
 pub(super) fn dock_region_label(dock_region: StudioGuiWindowDockRegion) -> &'static str {
@@ -707,6 +751,21 @@ pub(super) fn render_status_chip(ui: &mut egui::Ui, label: &str, color: egui::Co
         });
 }
 
+pub(super) fn render_wrapped_label(ui: &mut egui::Ui, text: impl ToString) {
+    ui.add(egui::Label::new(text.to_string()).wrap());
+}
+
+pub(super) fn render_wrapped_small(ui: &mut egui::Ui, text: impl ToString) {
+    ui.add(
+        egui::Label::new(
+            egui::RichText::new(text.to_string())
+                .small()
+                .color(egui::Color32::from_rgb(92, 104, 117)),
+        )
+        .wrap(),
+    );
+}
+
 pub(super) fn run_status_color(status_label: &str) -> egui::Color32 {
     match status_label {
         "Converged" | "Runnable" => egui::Color32::from_rgb(54, 128, 84),
@@ -725,6 +784,24 @@ pub(super) fn entitlement_status_color(status_label: &str) -> egui::Color32 {
         "Syncing" => egui::Color32::from_rgb(40, 90, 160),
         "Lease expired" => egui::Color32::from_rgb(180, 120, 20),
         "Error" => egui::Color32::from_rgb(180, 40, 40),
+        _ => egui::Color32::from_rgb(110, 110, 110),
+    }
+}
+
+pub(super) fn diagnostic_color(severity_label: &str) -> egui::Color32 {
+    match severity_label {
+        "Info" => egui::Color32::from_rgb(40, 90, 160),
+        "Warning" => egui::Color32::from_rgb(180, 120, 20),
+        "Error" => egui::Color32::from_rgb(180, 40, 40),
+        _ => egui::Color32::from_rgb(110, 110, 110),
+    }
+}
+
+pub(super) fn inspector_field_status_color(status_label: &str) -> egui::Color32 {
+    match status_label {
+        "Draft" => egui::Color32::from_rgb(180, 120, 20),
+        "Invalid" => egui::Color32::from_rgb(180, 40, 40),
+        "Valid" | "Synced" => egui::Color32::from_rgb(54, 128, 84),
         _ => egui::Color32::from_rgb(110, 110, 110),
     }
 }
@@ -773,6 +850,9 @@ pub(super) fn format_shortcut(shortcut: &StudioGuiShortcut) -> String {
         })
         .collect::<Vec<_>>();
     let key = match shortcut.key {
+        StudioGuiShortcutKey::S => "S",
+        StudioGuiShortcutKey::Z => "Z",
+        StudioGuiShortcutKey::Y => "Y",
         StudioGuiShortcutKey::F5 => "F5",
         StudioGuiShortcutKey::F6 => "F6",
         StudioGuiShortcutKey::F8 => "F8",

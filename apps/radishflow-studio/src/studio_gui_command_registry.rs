@@ -12,6 +12,9 @@ pub enum StudioGuiShortcutModifier {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum StudioGuiShortcutKey {
+    S,
+    Z,
+    Y,
     F5,
     F6,
     F8,
@@ -124,6 +127,8 @@ pub struct StudioGuiCommandMenuCommandModel {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StudioGuiCommandGroup {
+    File,
+    Edit,
     RunPanel,
     Recovery,
     Entitlement,
@@ -146,6 +151,8 @@ impl StudioGuiCommandRegistry {
         canvas_target_window_id: Option<StudioWindowHostId>,
     ) -> Self {
         let mut run_panel = Vec::new();
+        let mut file = Vec::new();
+        let mut edit = Vec::new();
         let mut recovery = Vec::new();
         let mut entitlement = Vec::new();
         let mut canvas_commands = Vec::new();
@@ -172,13 +179,15 @@ impl StudioGuiCommandRegistry {
                 shortcut: defaults.shortcut,
             };
             match action.group {
+                StudioAppHostUiCommandGroup::File => file.push(entry),
+                StudioAppHostUiCommandGroup::Edit => edit.push(entry),
                 StudioAppHostUiCommandGroup::RunPanel => run_panel.push(entry),
                 StudioAppHostUiCommandGroup::Recovery => recovery.push(entry),
                 StudioAppHostUiCommandGroup::Entitlement => entitlement.push(entry),
             }
         }
 
-        if !canvas.suggestions.is_empty() {
+        if !canvas.suggestions.is_empty() || canvas.pending_edit.is_some() {
             let widget = canvas.widget();
             for action in widget.actions {
                 let defaults = command_defaults(action.command_id);
@@ -205,6 +214,22 @@ impl StudioGuiCommandRegistry {
         }
 
         let mut sections = Vec::new();
+        if !file.is_empty() {
+            file.sort_by_key(|entry| entry.sort_order);
+            sections.push(StudioGuiCommandSection {
+                group: StudioGuiCommandGroup::File,
+                title: "File",
+                commands: file,
+            });
+        }
+        if !edit.is_empty() {
+            edit.sort_by_key(|entry| entry.sort_order);
+            sections.push(StudioGuiCommandSection {
+                group: StudioGuiCommandGroup::Edit,
+                title: "Edit",
+                commands: edit,
+            });
+        }
         if !run_panel.is_empty() {
             run_panel.sort_by_key(|entry| entry.sort_order);
             sections.push(StudioGuiCommandSection {
@@ -291,6 +316,30 @@ struct StudioGuiCommandDefaults {
 
 fn command_defaults(command_id: &str) -> StudioGuiCommandDefaults {
     match command_id {
+        "file.save" => StudioGuiCommandDefaults {
+            menu_path: &["File", "Save"],
+            search_terms: &["file", "save", "project"],
+            shortcut: Some(StudioGuiShortcut {
+                modifiers: vec![StudioGuiShortcutModifier::Ctrl],
+                key: StudioGuiShortcutKey::S,
+            }),
+        },
+        "edit.undo" => StudioGuiCommandDefaults {
+            menu_path: &["Edit", "Undo"],
+            search_terms: &["edit", "undo", "history"],
+            shortcut: Some(StudioGuiShortcut {
+                modifiers: vec![StudioGuiShortcutModifier::Ctrl],
+                key: StudioGuiShortcutKey::Z,
+            }),
+        },
+        "edit.redo" => StudioGuiCommandDefaults {
+            menu_path: &["Edit", "Redo"],
+            search_terms: &["edit", "redo", "history"],
+            shortcut: Some(StudioGuiShortcut {
+                modifiers: vec![StudioGuiShortcutModifier::Ctrl],
+                key: StudioGuiShortcutKey::Y,
+            }),
+        },
         "run_panel.run_manual" => StudioGuiCommandDefaults {
             menu_path: &["Run", "Run Workspace"],
             search_terms: &["run", "workspace", "manual", "solve"],
@@ -376,6 +425,16 @@ fn command_defaults(command_id: &str) -> StudioGuiCommandDefaults {
                 key: StudioGuiShortcutKey::Tab,
             }),
         },
+        "canvas.cancel_pending_edit" => StudioGuiCommandDefaults {
+            menu_path: &["Canvas", "Cancel Pending Edit"],
+            search_terms: &["canvas", "cancel", "pending", "edit"],
+            shortcut: None,
+        },
+        "canvas.begin_place_unit.flash_drum" => StudioGuiCommandDefaults {
+            menu_path: &["Canvas", "Place Flash Drum"],
+            search_terms: &["canvas", "place", "unit", "flash drum"],
+            shortcut: None,
+        },
         _ => StudioGuiCommandDefaults {
             menu_path: &["Commands"],
             search_terms: &[],
@@ -386,10 +445,12 @@ fn command_defaults(command_id: &str) -> StudioGuiCommandDefaults {
 
 fn canvas_sort_order(action_id: StudioGuiCanvasActionId) -> u16 {
     match action_id {
+        StudioGuiCanvasActionId::BeginPlaceFlashDrum => 290,
         StudioGuiCanvasActionId::AcceptFocused => 300,
         StudioGuiCanvasActionId::RejectFocused => 310,
         StudioGuiCanvasActionId::FocusNext => 320,
         StudioGuiCanvasActionId::FocusPrevious => 330,
+        StudioGuiCanvasActionId::CancelPendingEdit => 340,
     }
 }
 
@@ -470,6 +531,9 @@ fn format_shortcut(shortcut: &StudioGuiShortcut) -> String {
         parts.push(label);
     }
     let key = match shortcut.key {
+        StudioGuiShortcutKey::S => "S",
+        StudioGuiShortcutKey::Z => "Z",
+        StudioGuiShortcutKey::Y => "Y",
         StudioGuiShortcutKey::F5 => "F5",
         StudioGuiShortcutKey::F6 => "F6",
         StudioGuiShortcutKey::F8 => "F8",
@@ -617,6 +681,77 @@ mod tests {
     }
 
     #[test]
+    fn gui_command_registry_assigns_file_and_history_shortcuts() {
+        let model = StudioAppHostUiCommandModel {
+            actions: vec![
+                StudioAppHostUiActionModel {
+                    action: None,
+                    command_id: "file.save",
+                    group: StudioAppHostUiCommandGroup::File,
+                    sort_order: 10,
+                    label: "Save",
+                    enabled: true,
+                    detail: "Save",
+                    target_window_id: Some(2),
+                },
+                StudioAppHostUiActionModel {
+                    action: None,
+                    command_id: "edit.undo",
+                    group: StudioAppHostUiCommandGroup::Edit,
+                    sort_order: 20,
+                    label: "Undo",
+                    enabled: true,
+                    detail: "Undo",
+                    target_window_id: Some(2),
+                },
+                StudioAppHostUiActionModel {
+                    action: None,
+                    command_id: "edit.redo",
+                    group: StudioAppHostUiCommandGroup::Edit,
+                    sort_order: 30,
+                    label: "Redo",
+                    enabled: true,
+                    detail: "Redo",
+                    target_window_id: Some(2),
+                },
+            ],
+        };
+
+        let registry = StudioGuiCommandRegistry::from_model(&model);
+
+        for (shortcut, command_id) in [
+            (
+                StudioGuiShortcut {
+                    modifiers: vec![StudioGuiShortcutModifier::Ctrl],
+                    key: StudioGuiShortcutKey::S,
+                },
+                "file.save",
+            ),
+            (
+                StudioGuiShortcut {
+                    modifiers: vec![StudioGuiShortcutModifier::Ctrl],
+                    key: StudioGuiShortcutKey::Z,
+                },
+                "edit.undo",
+            ),
+            (
+                StudioGuiShortcut {
+                    modifiers: vec![StudioGuiShortcutModifier::Ctrl],
+                    key: StudioGuiShortcutKey::Y,
+                },
+                "edit.redo",
+            ),
+        ] {
+            assert_eq!(
+                registry
+                    .find_by_shortcut(&shortcut)
+                    .map(|command| command.command_id.as_str()),
+                Some(command_id)
+            );
+        }
+    }
+
+    #[test]
     fn gui_command_registry_includes_canvas_commands_when_suggestions_exist() {
         let canvas = crate::StudioGuiCanvasState {
             suggestions: vec![
@@ -646,6 +781,8 @@ mod tests {
                 ),
             ],
             focused_suggestion_id: Some(rf_ui::CanvasSuggestionId::new("sug-a")),
+            pending_edit: None,
+            ..crate::StudioGuiCanvasState::default()
         };
 
         let registry = StudioGuiCommandRegistry::from_surfaces(
@@ -664,10 +801,12 @@ mod tests {
                 .map(|entry| entry.command_id.as_str())
                 .collect::<Vec<_>>(),
             vec![
+                canvas_command_id(StudioGuiCanvasActionId::BeginPlaceFlashDrum),
                 canvas_command_id(StudioGuiCanvasActionId::AcceptFocused),
                 canvas_command_id(StudioGuiCanvasActionId::RejectFocused),
                 canvas_command_id(StudioGuiCanvasActionId::FocusNext),
                 canvas_command_id(StudioGuiCanvasActionId::FocusPrevious),
+                canvas_command_id(StudioGuiCanvasActionId::CancelPendingEdit),
             ]
         );
         assert_eq!(
@@ -676,6 +815,30 @@ mod tests {
                 .and_then(|entry| entry.target_window_id),
             Some(3)
         );
+    }
+
+    #[test]
+    fn gui_command_registry_includes_cancel_command_for_pending_canvas_edit() {
+        let canvas = crate::StudioGuiCanvasState {
+            pending_edit: Some(rf_ui::CanvasEditIntent::PlaceUnit {
+                unit_kind: "Flash Drum".to_string(),
+            }),
+            ..crate::StudioGuiCanvasState::default()
+        };
+
+        let registry = StudioGuiCommandRegistry::from_surfaces(
+            &StudioAppHostUiCommandModel::default(),
+            &canvas,
+            Some(7),
+        );
+
+        let cancel = registry
+            .command(canvas_command_id(
+                StudioGuiCanvasActionId::CancelPendingEdit,
+            ))
+            .expect("expected cancel pending edit command");
+        assert!(cancel.enabled);
+        assert_eq!(cancel.target_window_id, Some(7));
     }
 
     #[test]

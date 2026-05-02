@@ -1,11 +1,12 @@
 using System.Runtime.InteropServices;
+using System.Runtime.CompilerServices;
 using RadishFlow.CapeOpen.Interop.Guids;
 
 namespace RadishFlow.CapeOpen.Interop.Common;
 
 [ComVisible(true)]
 [Guid(CapeOpenInterfaceIds.ICapeUtilities)]
-[InterfaceType(ComInterfaceType.InterfaceIsIDispatch)]
+[InterfaceType(ComInterfaceType.InterfaceIsDual)]
 public interface ICapeUtilities
 {
     [DispId(1)]
@@ -16,14 +17,8 @@ public interface ICapeUtilities
     }
 
     [DispId(2)]
-    object? SimulationContext
-    {
-        [return: MarshalAs(UnmanagedType.IDispatch)]
-        get;
-
-        [param: MarshalAs(UnmanagedType.IDispatch)]
-        set;
-    }
+    [SpecialName]
+    void set_SimulationContext(IntPtr value);
 
     [DispId(3)]
     void Initialize();
@@ -34,4 +29,9 @@ public interface ICapeUtilities
     [DispId(5)]
     [PreserveSig]
     int Edit();
+
+    [DispId(2)]
+    [SpecialName]
+    [return: MarshalAs(UnmanagedType.IDispatch)]
+    IntPtr get_SimulationContext();
 }

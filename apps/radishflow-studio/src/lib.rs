@@ -3,6 +3,8 @@ mod auth_cache_sync;
 mod bootstrap;
 mod control_plane_client;
 mod control_plane_sync;
+mod document_history_driver;
+mod document_lifecycle_driver;
 mod entitlement_control;
 mod entitlement_panel_driver;
 mod entitlement_preflight;
@@ -10,11 +12,15 @@ mod entitlement_session_driver;
 mod entitlement_session_host;
 mod entitlement_session_host_presentation;
 mod entitlement_session_host_runtime;
+mod inspector_draft_driver;
+mod inspector_target_driver;
 mod property_package_download;
 mod property_package_download_client;
 mod run_panel_driver;
 mod solver_bridge;
 mod studio_app_host;
+mod studio_document_history_command;
+mod studio_example_projects;
 mod studio_gui_canvas_presentation;
 mod studio_gui_canvas_widget;
 mod studio_gui_command_registry;
@@ -28,6 +34,8 @@ mod studio_gui_snapshot;
 mod studio_gui_timer_host;
 mod studio_gui_window_layout;
 mod studio_gui_window_model;
+mod studio_inspector_draft_command;
+mod studio_inspector_target_command;
 mod studio_local_rules;
 mod studio_runtime;
 mod studio_window_host;
@@ -64,6 +72,13 @@ pub use control_plane_client::{
     ReqwestRadishFlowControlPlaneHttpTransport, ReqwestRadishFlowControlPlaneHttpTransportOptions,
 };
 pub use control_plane_sync::{EntitlementSyncResult, RadishFlowControlPlaneSyncService};
+pub use document_history_driver::{
+    DocumentHistoryOutcome, dispatch_document_history, dispatch_document_history_at,
+};
+pub use document_lifecycle_driver::{
+    DocumentLifecycleOutcome, FILE_SAVE_AS_COMMAND_ID, FILE_SAVE_COMMAND_ID,
+    StudioDocumentLifecycleAction, StudioDocumentLifecycleCommand, dispatch_document_lifecycle,
+};
 pub use entitlement_control::{
     StudioEntitlementAction, StudioEntitlementActionOutcome, StudioEntitlementFailure,
     StudioEntitlementFailureReason, StudioEntitlementOutcome,
@@ -116,6 +131,12 @@ pub use entitlement_session_host_runtime::{
     EntitlementSessionHostRuntime, EntitlementSessionHostRuntimeDispatchOutcome,
     EntitlementSessionHostRuntimeOutput, EntitlementSessionHostTimerEffect,
 };
+pub use inspector_draft_driver::{
+    InspectorDraftBatchCommitOutcome, InspectorDraftCommitOutcome, InspectorDraftUpdateOutcome,
+    commit_inspector_draft, commit_inspector_draft_at, commit_inspector_drafts,
+    commit_inspector_drafts_at, update_inspector_draft,
+};
+pub use inspector_target_driver::{InspectorTargetFocusOutcome, focus_inspector_target};
 pub use property_package_download::{
     PROPERTY_PACKAGE_DOWNLOAD_KIND, PROPERTY_PACKAGE_DOWNLOAD_SCHEMA_VERSION,
     PropertyPackageDownload, PropertyPackageDownloadAntoineCoefficients,
@@ -155,8 +176,19 @@ pub use studio_app_host::{
     StudioAppHostWindowChange, StudioAppHostWindowDispatchResult,
     StudioAppHostWindowSelectionChange, StudioAppHostWindowSnapshot, StudioAppHostWindowState,
 };
+pub use studio_document_history_command::{
+    EDIT_REDO_COMMAND_ID, EDIT_UNDO_COMMAND_ID, StudioDocumentHistoryCommand,
+    document_history_command_from_id,
+};
+pub use studio_example_projects::{StudioExampleProjectModel, studio_example_project_models};
 pub use studio_gui_canvas_presentation::{
-    StudioGuiCanvasPresentation, StudioGuiCanvasSuggestionViewModel, StudioGuiCanvasTextView,
+    StudioGuiCanvasFocusCalloutViewModel, StudioGuiCanvasObjectListFilterOptionViewModel,
+    StudioGuiCanvasObjectListItemViewModel, StudioGuiCanvasObjectListViewModel,
+    StudioGuiCanvasPendingEditViewModel, StudioGuiCanvasPresentation,
+    StudioGuiCanvasRunStatusViewModel, StudioGuiCanvasSelectionViewModel,
+    StudioGuiCanvasStatusBadgeViewModel, StudioGuiCanvasStreamLineEndpointViewModel,
+    StudioGuiCanvasStreamLineViewModel, StudioGuiCanvasSuggestionViewModel,
+    StudioGuiCanvasTextView, StudioGuiCanvasUnitBlockViewModel, StudioGuiCanvasUnitPortViewModel,
     StudioGuiCanvasViewModel,
 };
 pub use studio_gui_canvas_widget::{
@@ -172,14 +204,15 @@ pub use studio_gui_driver::{
     StudioGuiDriver, StudioGuiDriverDispatch, StudioGuiDriverOutcome, StudioGuiEvent,
 };
 pub use studio_gui_host::{
-    StudioGuiCanvasInteractionAction, StudioGuiCanvasState, StudioGuiHost,
-    StudioGuiHostCanvasInteractionResult, StudioGuiHostCanvasSuggestionResult,
-    StudioGuiHostCloseWindowResult, StudioGuiHostCommand, StudioGuiHostCommandOutcome,
-    StudioGuiHostDispatch, StudioGuiHostGlobalEventDispatch, StudioGuiHostLifecycleDispatch,
-    StudioGuiHostLifecycleEvent, StudioGuiHostUiCommandDispatchResult,
-    StudioGuiHostWindowDropPreviewClearResult, StudioGuiHostWindowDropTargetApplyResult,
-    StudioGuiHostWindowDropTargetQueryResult, StudioGuiHostWindowLayoutUpdateResult,
-    StudioGuiHostWindowOpened,
+    StudioGuiCanvasDiagnosticState, StudioGuiCanvasInteractionAction, StudioGuiCanvasState,
+    StudioGuiCanvasStreamEndpointState, StudioGuiCanvasStreamState, StudioGuiCanvasUnitPortState,
+    StudioGuiCanvasUnitState, StudioGuiHost, StudioGuiHostCanvasInteractionResult,
+    StudioGuiHostCanvasSuggestionResult, StudioGuiHostCloseWindowResult, StudioGuiHostCommand,
+    StudioGuiHostCommandOutcome, StudioGuiHostDispatch, StudioGuiHostGlobalEventDispatch,
+    StudioGuiHostLifecycleDispatch, StudioGuiHostLifecycleEvent,
+    StudioGuiHostUiCommandDispatchResult, StudioGuiHostWindowDropPreviewClearResult,
+    StudioGuiHostWindowDropTargetApplyResult, StudioGuiHostWindowDropTargetQueryResult,
+    StudioGuiHostWindowLayoutUpdateResult, StudioGuiHostWindowOpened,
 };
 pub use studio_gui_platform_host::{
     StudioGuiPlatformAsyncRound, StudioGuiPlatformAsyncRoundAction,
@@ -207,7 +240,13 @@ pub use studio_gui_platform_timer_driver::{
 pub use studio_gui_shortcut_router::{
     StudioGuiFocusContext, StudioGuiShortcutIgnoreReason, StudioGuiShortcutRoute, route_shortcut,
 };
-pub use studio_gui_snapshot::{StudioGuiRuntimeSnapshot, StudioGuiSnapshot};
+pub use studio_gui_snapshot::{
+    StudioGuiInspectorTargetDetailSnapshot, StudioGuiInspectorTargetFieldSnapshot,
+    StudioGuiInspectorTargetFieldValidationSnapshot,
+    StudioGuiInspectorTargetFieldValueKindSnapshot, StudioGuiInspectorTargetPortSnapshot,
+    StudioGuiInspectorTargetSummaryRowSnapshot, StudioGuiRuntimeSnapshot, StudioGuiSnapshot,
+    StudioGuiWorkspaceDocumentSnapshot,
+};
 pub use studio_gui_timer_host::{
     StudioGuiNativeTimerDueEvent, StudioGuiNativeTimerEffects, StudioGuiNativeTimerOperation,
     StudioGuiNativeTimerRuntime, StudioGuiNativeTimerSchedule,
@@ -223,12 +262,33 @@ pub use studio_gui_window_layout::{
     StudioGuiWindowTitlebarModel,
 };
 pub use studio_gui_window_model::{
-    StudioGuiWindowCanvasAreaModel, StudioGuiWindowCommandAreaModel,
-    StudioGuiWindowCommandListItemModel, StudioGuiWindowCommandListSectionModel,
-    StudioGuiWindowCommandPaletteItemModel, StudioGuiWindowDropPreviewModel,
-    StudioGuiWindowDropPreviewOverlayModel, StudioGuiWindowDropPreviewState,
-    StudioGuiWindowHeaderModel, StudioGuiWindowModel, StudioGuiWindowRuntimeAreaModel,
-    StudioGuiWindowToolbarItemModel, StudioGuiWindowToolbarSectionModel,
+    StudioGuiWindowCanvasAreaModel, StudioGuiWindowCommandActionModel,
+    StudioGuiWindowCommandAreaModel, StudioGuiWindowCommandListItemModel,
+    StudioGuiWindowCommandListSectionModel, StudioGuiWindowCommandPaletteItemModel,
+    StudioGuiWindowCompositionResultModel, StudioGuiWindowDiagnosticModel,
+    StudioGuiWindowDropPreviewModel, StudioGuiWindowDropPreviewOverlayModel,
+    StudioGuiWindowDropPreviewState, StudioGuiWindowFailureResultModel, StudioGuiWindowHeaderModel,
+    StudioGuiWindowInspectorTargetDetailModel, StudioGuiWindowInspectorTargetFieldModel,
+    StudioGuiWindowInspectorTargetModel, StudioGuiWindowInspectorTargetPortModel,
+    StudioGuiWindowInspectorTargetSummaryRowModel, StudioGuiWindowModel,
+    StudioGuiWindowPhaseResultModel, StudioGuiWindowResultInspectorComparisonModel,
+    StudioGuiWindowResultInspectorComparisonRowModel,
+    StudioGuiWindowResultInspectorCompositionComparisonRowModel,
+    StudioGuiWindowResultInspectorModel, StudioGuiWindowResultInspectorStreamOptionModel,
+    StudioGuiWindowRuntimeAreaModel, StudioGuiWindowSolveSnapshotModel,
+    StudioGuiWindowSolveStepModel, StudioGuiWindowStreamResultModel,
+    StudioGuiWindowStreamSummaryRowModel, StudioGuiWindowToolbarItemModel,
+    StudioGuiWindowToolbarSectionModel,
+};
+pub use studio_inspector_draft_command::{
+    StudioInspectorDraftBatchCommitCommand, StudioInspectorDraftCommitCommand,
+    StudioInspectorDraftUpdateCommand, inspector_draft_batch_commit_command_from_id,
+    inspector_draft_batch_commit_command_id, inspector_draft_commit_command_from_id,
+    inspector_draft_commit_command_id, inspector_draft_update_command_from_id,
+    inspector_draft_update_command_id,
+};
+pub use studio_inspector_target_command::{
+    inspector_target_command_id, inspector_target_from_command_id,
 };
 pub use studio_runtime::{
     StudioRuntime, StudioRuntimeConfig, StudioRuntimeDispatch, StudioRuntimeEffect,

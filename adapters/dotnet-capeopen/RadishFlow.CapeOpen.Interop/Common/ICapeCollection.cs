@@ -5,7 +5,7 @@ namespace RadishFlow.CapeOpen.Interop.Common;
 
 [ComVisible(true)]
 [Guid(CapeOpenInterfaceIds.ICapeCollection)]
-[InterfaceType(ComInterfaceType.InterfaceIsIDispatch)]
+[InterfaceType(ComInterfaceType.InterfaceIsDual)]
 public interface ICapeCollection
 {
     [DispId(1)]

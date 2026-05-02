@@ -1,0 +1,138 @@
+{
+  "kind": "radishflow.project-file",
+  "schemaVersion": 1,
+  "document": {
+    "revision": 0,
+    "flowsheet": {
+      "name": "feed-heater-flash-water-ethanol",
+      "components": {
+        "water": {
+          "id": "water",
+          "name": "Water",
+          "formula": "H2O"
+        },
+        "ethanol": {
+          "id": "ethanol",
+          "name": "Ethanol",
+          "formula": "C2H6O"
+        }
+      },
+      "streams": {
+        "stream-feed": {
+          "id": "stream-feed",
+          "name": "Feed",
+          "temperature_k": 300.0,
+          "pressure_pa": 120000.0,
+          "total_molar_flow_mol_s": 5.0,
+          "overall_mole_fractions": {
+            "water": 0.55,
+            "ethanol": 0.45
+          },
+          "phases": []
+        },
+        "stream-heated": {
+          "id": "stream-heated",
+          "name": "Heated Outlet",
+          "temperature_k": 345.0,
+          "pressure_pa": 95000.0,
+          "total_molar_flow_mol_s": 0.0,
+          "overall_mole_fractions": {
+            "water": 0.55,
+            "ethanol": 0.45
+          },
+          "phases": []
+        },
+        "stream-liquid": {
+          "id": "stream-liquid",
+          "name": "Liquid Outlet",
+          "temperature_k": 345.0,
+          "pressure_pa": 95000.0,
+          "total_molar_flow_mol_s": 0.0,
+          "overall_mole_fractions": {
+            "water": 0.55,
+            "ethanol": 0.45
+          },
+          "phases": []
+        },
+        "stream-vapor": {
+          "id": "stream-vapor",
+          "name": "Vapor Outlet",
+          "temperature_k": 345.0,
+          "pressure_pa": 95000.0,
+          "total_molar_flow_mol_s": 0.0,
+          "overall_mole_fractions": {
+            "water": 0.55,
+            "ethanol": 0.45
+          },
+          "phases": []
+        }
+      },
+      "units": {
+        "feed-1": {
+          "id": "feed-1",
+          "name": "Feed",
+          "kind": "feed",
+          "ports": [
+            {
+              "name": "outlet",
+              "direction": "outlet",
+              "kind": "material",
+              "stream_id": "stream-feed"
+            }
+          ]
+        },
+        "heater-1": {
+          "id": "heater-1",
+          "name": "Heater",
+          "kind": "heater",
+          "ports": [
+            {
+              "name": "inlet",
+              "direction": "inlet",
+              "kind": "material",
+              "stream_id": "stream-feed"
+            },
+            {
+              "name": "outlet",
+              "direction": "outlet",
+              "kind": "material",
+              "stream_id": "stream-heated"
+            }
+          ]
+        },
+        "flash-1": {
+          "id": "flash-1",
+          "name": "Flash Drum",
+          "kind": "flash_drum",
+          "ports": [
+            {
+              "name": "inlet",
+              "direction": "inlet",
+              "kind": "material",
+              "stream_id": "stream-heated"
+            },
+            {
+              "name": "liquid",
+              "direction": "outlet",
+              "kind": "material",
+              "stream_id": "stream-liquid"
+            },
+            {
+              "name": "vapor",
+              "direction": "outlet",
+              "kind": "material",
+              "stream_id": "stream-vapor"
+            }
+          ]
+        }
+      }
+    },
+    "metadata": {
+      "documentId": "example-feed-heater-flash-water-ethanol",
+      "title": "Feed Heater Flash Water Ethanol Example",
+      "schemaVersion": 1,
+      "createdAt": "2026-04-26T00:00:00Z",
+      "updatedAt": "2026-04-26T00:00:00Z"
+    }
+  }
+}

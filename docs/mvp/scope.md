@@ -1,6 +1,6 @@
 # MVP Scope
 
-更新时间：2026-04-18
+更新时间：2026-05-01
 
 ## MVP 目标
 
@@ -46,8 +46,16 @@
 - `rf-unitops` 第一轮统一围绕标准 `MaterialStreamState` 输入输出，不提前把 flowsheet 调度或 FFI 细节塞进单元接口
 - `Feed`、`Mixer`、`Flash Drum` 当前先冻结为 canonical material ports：`Feed(outlet)`、`Mixer(inlet_a/inlet_b/outlet)`、`Flash Drum(inlet/liquid/vapor)`
 - `rf-flowsheet` 第一轮连接校验只覆盖 canonical material ports、流股存在性与“一股一源一汇”；终端产品流允许只有 source、没有 sink
-- `.NET 10` 适配层当前允许推进到 `M4/M5` 交界的最小互调与 `UnitOp.Mvp` 宿主语义收口，但范围只限于 `rf-ffi` 薄适配、`UnitOp.Mvp` 对象面、contract/smoke 基线与库内只读宿主模型
-- `UnitOp.Mvp` 当前应优先把宿主语义收口为正式只读模型，例如 configuration snapshot、action plan、port/material snapshot、execution snapshot、session snapshot 与 canonical session state，不把组合逻辑散落到 smoke host、测试字面量或未来 PME 入口
+- `.NET 10` 适配层当前允许推进到 `M4/M5` 交界的最小互调与 `UnitOp.Mvp` 宿主语义收口，但范围只限于 `rf-ffi` 薄适配、`UnitOp.Mvp` 对象面、contract/smoke 基线、库内只读宿主模型，以及 action execution request planning / orchestration result / host view snapshot / validation outcome / calculation outcome / host round outcome / follow-up 这类不承担完整宿主生命周期的薄 helper
+- `UnitOp.Mvp` 当前应优先把宿主语义收口为正式只读模型、显式请求规划模型或窄边界 outcome 模型，例如 configuration snapshot、action plan、action execution request plan、action execution orchestration result、host view snapshot、port/material snapshot、execution snapshot、session snapshot、canonical session state、validation outcome、calculation outcome、host round outcome、统一 follow-up 与 stop kind，不把组合逻辑散落到 smoke host、测试字面量或未来 PME 入口
+- `UnitOp.Mvp` 当前也已补出独立 `SampleHost`，用于证明未来 PME host / 其他宿主可直接复用上述正式消费面，而不是继续依赖 smoke driver
+- `SampleHost` 当前又已补出 `PmeLikeUnitOperationHost / PmeLikeUnitOperationSession / PmeLikeUnitOperationInput` 薄宿主入口，把“创建组件、初始化、读取视图、提交参数/端口对象、执行 validate/calculate round、读取正式结果面、终止”整理成更接近 PME host 的最小 session 形状；这层仍只消费 `UnitOp.Mvp` 正式 reader / planner / host round，不引入 COM 注册、PME 自动化互调或第三方模型加载
+- `UnitOp.Mvp` 当前已冻结自有 MVP Unit Operation PMC 的 `CLSID / ProgID / Versioned ProgID`，并新增带执行门控的 `RadishFlow.CapeOpen.Registration`；当前默认仍是 dry-run，但已支持在显式 `--execute` + `--confirm` 下执行 `register / unregister`，并收口 preflight fail 阻断、HKLM elevation 检查、registry plan 限界、三棵树 JSON 备份、execution log 与失败 rollback；这不代表当前阶段已经默认注册 COM 或驱动 PME
+- 仓库根 `scripts/register-com.ps1` 当前已作为正式注册脚本入口，负责 build、环境变量重定向、confirmation token 提示与 `Registration.exe` 转调；本机 `current-user register/unregister` 闭环验证当前已通过这条入口完成一次顺序复查
+- `docs/capeopen/pme-validation.md` 当前已补出目标 PME 人工验证说明，冻结执行前验证基线、dry-run 审查项、执行型注册门控、安装/反安装运行手册、人工 PME 验证路径、通过标准、失败分类与验证记录模板；`examples/pme-validation/` 当前也已补出可复用模板；这一步只把真实 PME 前置路径文档化，不代表当前阶段已经进入默认 COM 注册或 PME 自动化互调
+- `DWSIM / COFE` 人工复验当前已把 discovery、activation、placement、端口连接与最小 `Validate / Calculate` 主路径推进到阶段性闭环：两者均能发现并放置当前 PMC，也能连接 `Feed / Product` material streams；COFE material object release warning、outlet not flashed 报错与 mass balance 警告均已在 water/ethanol 复验样例下收敛
+- 当前为 DWSIM 画布接受条件已补齐 `Consumes Thermodynamics`、`Supports Thermodynamics 1.0` 与 `Supports Thermodynamics 1.1` 注册分类，但这只是 discovery/acceptance 层兼容 probe，不改变 MVP 不实现完整 Thermo PMC、不加载第三方 property package 的范围边界
+- 当前已把 `ICapeUtilities` 前序 slot 调整为 `Parameters get -> SimulationContext set -> Initialize -> Terminate -> Edit`，并把 COFE 需要的 `SimulationContext` getter 保留为 `Edit` 之后的同 `DispId(2)` late-bound getter；端口连接当前允许在连接期间保留 live PME material object 引用，用于短生命周期读取 Feed material 与写回 Product material，并在断开/终止时释放本 UnitOp 持有的 RCW。DWSIM parameter enumeration 要求 `Parameters.Item(i)` 返回对象本身同时支持 `ICapeIdentification / ICapeParameterSpec / ICapeOptionParameterSpec / ICapeParameter`，这一路径已纳入 contract test
 - 当前明确不继续线性堆叠 calculation report accessor；若宿主需要更高层语义，应优先在库内增加 reader / snapshot / presentation，而不是继续在 PMC 主类追加 convenience API
 - 当前仍不提前展开 COM 注册、PME 互调壳、第三方 CAPE-OPEN 模型加载或完整外部 Thermo/Property Package 宿主兼容
 
@@ -94,6 +102,16 @@ App 与交互层当前进一步冻结以下口径：
 - Studio 当前默认包选择采取保守策略：只有唯一候选包明确时才自动选中；多包场景必须显式指定 package，不在当前阶段隐式猜包
 - Studio 当前 Automatic 触发在命中 `HoldMode` / `NoPendingRequest` 时应先返回 skip，再决定是否需要 package 解析，避免多包缓存场景下的无意义失败
 - 当前最小桌面入口 `run_studio_bootstrap` 也已改为默认走 `StudioBootstrapTrigger::WidgetPrimaryAction`，并向入口层输出 `RunPanelWidgetModel`，确保“桌面触发点 -> UI 组件动作 -> Studio driver / 控制动作 -> UI 组件 DTO”边界在样例入口里就成立
+- 当前 `egui` Studio 壳已开始消费上述运行入口与 `SolveSnapshot` presentation：Runtime 面板可切换仓库内置正向示例项目、触发运行、按 summary / overall composition / phases 结构化显示流股结果，并展示求解步骤、诊断、日志；这一路径继续保持 `StudioAppFacade -> WorkspaceRunCommand -> WorkspaceSolveService -> solver_bridge` 边界不被绕过
+- 当前 `egui` Studio 壳又已补出项目打开入口：用户可通过路径输入或 Windows 原生文件选择器打开现有 `*.rfproj.json`，打开会重建当前 Studio runtime，打开失败会保留当前工作区并显示错误反馈；内置示例切换复用这条打开流程；若当前文档存在未保存修订，则先进入显式确认状态，避免静默丢弃当前上下文；打开成功后会记录到 shell 级最近项目列表并写入独立 Studio preferences 文件，重启后会恢复该列表；点击最近项目继续复用相同打开流程与未保存确认保护
+- 当前 `egui` Studio 壳又已补出最小 Result Inspector、失败结果 presentation、诊断目标定位命令、活动 Inspector 详情、通用 action DTO、Stream Inspector 字段级 presentation、字段 draft update / 单字段 commit / 多字段批量 commit driver，以及基础 `edit.undo / edit.redo` 文档历史命令；Stream Inspector 字段当前覆盖 `name / temperature_k / pressure_pa / total_molar_flow_mol_s` 与已有 `overall_mole_fractions` 组分条目，所有入口均通过正式 command / driver / runtime 边界执行，不由 shell 直接写 `FlowsheetDocument`
+- 当前画布编辑前置状态先冻结为 `CanvasEditIntent` transient state：`begin_place_unit` 只表达“准备放置某类单元”的意图，不写入 `FlowsheetDocument`、不递增 revision、也不进入 `CommandHistory`；`commit_canvas_pending_edit_at(CanvasPoint)` 会把当前 `PlaceUnit` 意图提交为带 canonical ports 的 `DocumentCommand::CreateUnit`，并把动态落点留在 commit result 中供后续布局状态消费；文档语义变化会清理 pending edit。GUI 侧当前已通过 `StudioGuiCanvasState / StudioGuiCanvasPresentation / canvas.cancel_pending_edit` 展示和取消当前意图，并在 `egui` Canvas 面板中接入单类型 `Place Flash Drum -> BeginPlaceUnit -> 点击落点提交` 的最小入口；这仍不代表已经实现完整画布单元创建器或项目级坐标持久化
+- 当前 `egui` Studio 壳又已补出 Canvas 最小可见与只读扫读层：已有 unit 会投影为临时布局单元块，已有 material stream 绑定会投影为物流线，活动 Inspector 目标会驱动画布 selection 与 focus callout；对象列表会统一展示 unit / stream，并可按 `All / Attention / Units / Streams` 临时筛选；material port marker、端口 hover、运行/诊断 badge 只帮助扫读已有绑定和诊断目标，不引入端口点击编辑、连线创建、拖拽布局、坐标持久化或项目 schema 扩张
+- 当前 `egui` Studio 壳又已补出 `file.save` 与 `Save As` 最小项目持久化闭环：保存命令经由 `StudioRuntimeTrigger::DocumentLifecycle` 写回当前 `*.rfproj.json`，成功后刷新 `last_saved_revision / has_unsaved_changes`；另存为通过 Windows 原生保存选择器写入新路径，并更新当前项目路径、项目路径输入框与最近项目列表；若 `Save As` 目标文件已存在且不是当前项目路径，shell 先进入显式覆盖确认，确认后才写入，取消则保留当前工作区和目标文件
+- 当前 `rf-store::write_project_file` 已改为同目录 staged write：先写临时 sibling 并同步，再替换正式项目文件；Unix 类平台使用 `rename` 替换语义，Windows 当前用临时备份做受控替换和失败回滚，避免半写入 JSON 直接污染项目文件
+- 当前 Studio 字段编辑快捷键策略已冻结为最小安全闭环：`Ctrl+S` 即使在文本输入焦点下也触发 `file.save`；`Ctrl+Z / Ctrl+Y` 在普通焦点下触发 `edit.undo / edit.redo`，但文本输入焦点下保留给输入框自身的编辑撤销/重做；Stream Inspector 输入框的 `Enter` 只提交当前字段，不隐式触发 `Apply all`
+- 中文/英文切换当前只属于 GUI shell 偏好，不写入 `DocumentMetadata`、`UserPreferences` 或项目文件；系统 CJK 字体 fallback 也只在应用启动时配置，不新增仓库字体资产
+- 当前仍不把 UI 范围扩张到完整视觉设计、结果导出、跨会话历史持久化或完整画布编辑体验；当前原生文件选择器只覆盖 Windows 打开与另存为，不承诺跨平台文件工作流；当前最近项目持久化只覆盖 shell 级 MRU 路径列表，不等同于完整应用偏好系统；当前 Inspector、undo/redo、保存、快捷键、覆盖确认、画布 pending edit、`egui` 单类型放置入口、最小单元创建提交、只读单元/连线/端口/诊断可视化与对象列表筛选仍是最小可操作边界，后续更完整画布编辑仍应先补正式 presentation / command / state 边界再进入真实 UI
 
 流程图交互增强方向当前补充冻结以下边界：
 
@@ -121,7 +139,7 @@ App 与交互层当前进一步冻结以下口径：
 
 ## 当前阶段优先目标
 
-在真正恢复主线功能推进前，当前阶段优先目标先调整为仓库地基建设：
+在真正恢复主线功能推进前，当前阶段优先目标曾调整为仓库地基建设：
 
 - 完善仓库规范
 - 完善代码与文档格式规范
@@ -134,6 +152,8 @@ App 与交互层当前进一步冻结以下口径：
 - 这些工作不直接产出功能，但会决定后续功能开发是否可持续
 - 在仓库还很新时完成这些约束，成本远低于中后期补治理
 - 当前主线还没有复杂历史包袱，适合现在就冻结工程基础口径
+
+截至 2026-04-27，CAPE-OPEN / PME 验证基线已阶段性冻结，仓库地基也已足以支撑短线主线回到 Rust Studio 的最小可操作工作台闭环；后续应继续保持边界清晰和验证稳定，但不再把“地基建设”作为阻止 Studio 可见闭环推进的理由。
 
 ## 近期开发节奏
 
@@ -204,8 +224,8 @@ App 与交互层当前进一步冻结以下口径：
 
 - 已提前完成 `rf-solver` 中首轮无回路顺序模块法
 - 已提前增加第一个可直接从 `*.rfproj.json` 载入并求解的示例 flowsheet
-- 在已接通的控制面调用编排之上补授权刷新后的 UI 事件流和更细的联网失败策略
-- 扩第二个内建单元闭环示例，并补更完整的端到端回归样例
+- 完成 `DWSIM / COFE` water/ethanol 人工 PME 验证记录、PME trace 开关化、TypeLib 生成脚本化与 CAPE-OPEN / PME 阶段性冻结
+- 回到 Rust Studio 主线，补出“打开示例项目 -> 运行求解 -> 查看结果/诊断”的第一版真实 `egui` 可见闭环，并补中文 shell 选项与 CJK 字体 fallback；2026-04-28 继续补出路径输入式项目打开入口、Windows 原生打开选择器、打开反馈、未保存改动打开前确认、shell 级最近项目列表及其独立 preferences 持久化、结构化流股结果 presentation 与结果区基础本地化；2026-04-29 继续补出 Result Inspector、失败结果、诊断目标命令、活动 Inspector 详情、Stream Inspector 字段级草稿更新/提交和基础文档历史 undo/redo；2026-04-30 继续补出保存 / 另存为生命周期、Stream Inspector 多字段批量提交、字段编辑快捷键焦点策略、项目文件 staged write 与 Save As 覆盖确认；2026-05-01 继续补出保存 / 另存失败恢复、Result Inspector 摘要可读性、产出单元诊断关联、当前快照内两股流股对比、Stream Inspector 总体组成字段编辑边界，以及 Canvas pending edit、单类型放置、单元块、物流线、选择反馈、对象列表、焦点气泡、端口 marker、端口 hover、运行/诊断 badge 和对象列表临时筛选，并通过 `pwsh ./scripts/check-repo.ps1` 完成仓库级验证
 
 ### 2026-W19 以后
 

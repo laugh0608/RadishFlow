@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+  <Product Id="*" Name="CasterCore=.." Language="1033" Version="1.0.0.0"
+           Manufacturer="Microsoft" UpgradeCode="89a2bdad-369b-4d17-8013-3e3f5b2f3382">
+
+    <Package Id="{509E0A46-CFCA-46BF-A2E3-49F81E26EACF}" InstallerVersion="200" Compressed="yes" InstallScope="perUser"
+             Description="Installer for CasterUnit and its Sample code." />
+
+    <!--net2.0 NETFRAMEWORK20;net3.0 NETFRAMEWORK30 net3.5 NETFRAMEWORK35 net4.0 NETFRAMEWORK40FULL net4.5 NETFRAMEWORK45-->
+    <PropertyRef Id="NETFRAMEWORK45"></PropertyRef>
+    <Condition Message="This application requires .NET Framework 4.6.   
+               Please install the .NET Framework then run this installer again.">
+      <![CDATA[Installed OR NETFRAMEWORK46]]>
+    </Condition>
+
+    <Media Id="1" Cabinet="data.cab" EmbedCab="yes"/>
+
+    <Feature Id="ALL" Title="All" Description="Install All" Level="1" Display="expand">
+      <Feature Id="CasterCore" Title="CasterCore" Description="Install CasterCore" Level="1">
+        <ComponentRef Id="ProductComponent" />
+        <!--<ComponentRef Id="GACComponent" />-->
+      </Feature>
+      <Feature Id="SampleCode" Title="SampleCode" Description="Install SampleCode" Level="1">
+        <ComponentGroupRef Id="SampleCode"/>
+      </Feature>
+    </Feature>
+
+    <!--<Property Id="UI" Value="INSTALLFOLDER"/>-->
+    <UIRef Id="WixUI_InstallDir"/>
+    <UIRef Id="WixUI_ErrorProgressText"/>
+    <Property Id="WIXUI_INSTALLDIR" Value="INSTALLFOLDER"/>
+    <WixVariable Id="WixUILicenseRtf" Value="$(var.CasterCore)license.rtf" />
+
+    <Directory Id="TARGETDIR" Name="SourceDir">
+      <Directory Id="ProgramFilesFolder">
+        <Directory Id="INSTALLFOLDER" Name="CasterUnit" >
+
+          <!--<Directory Id="GACComponent" Name="GAC">
+            <Component Id="GACComponent" Guid="4D8719F6-92D4-4E92-B872-0FA76D263715">
+              <File Id="GAC" LongName="CasterUnitCore.dll" 
+                    Assembly=".net" Source="$(var.CasterUnitCoreDebug)CasterUnitCore.dll" 
+                    KeyPath="yes"/>
+              <File Id="GACXML" LongName="CasterUnitCore.XML"  
+                    Source="$(var.CasterUnitCoreDebug)CasterUnitCore.XML" />
+            </Component>
+          </Directory>-->
+
+          <Component Id="ProductComponent" Guid="4DC0D0D6-355B-49D9-8633-551C94D45EA9">
+            <File Id="programfile" LongName="CasterUnitCore.dll" Source="$(var.CasterCore)CasterUnitCore.dll" KeyPath="yes"/>
+            <File Id="programfileXML" LongName="CasterUnitCore.XML" Source="$(var.CasterCore)CasterUnitCore.XML"/>
+            <!--<Registry Id="register" Root="HKLM" Key="SOFTWAREMicrosoft.NETFrameworkAssemblyFolders[CasterUnitCore]" Value="[$ProductComponent]" Type="string"/>-->
+            <File Id="license" Source="$(var.CasterUnitCore)license.rtf"/>
+            <File Id="help" Source="$(var.CasterUnitCore)/Guide/Build Your Own CapeOpen Unit In 15 Minutes.docx"/>
+            <File Id="COPIA" Source="$(var.CasterUnitCore)packages/CAPE-OPENv1-1-0.dll"/>
+          </Component>
+
+          <Directory Id="SampleFold" Name="SampleCode">
+          </Directory>
+
+        </Directory>
+      </Directory>
+    </Directory>
+
+    <ComponentGroup Id="SampleCode" Directory="SampleFold">
+      <ComponentGroupRef Id="CasterFlashComponentGroup"/>
+    </ComponentGroup>
+  </Product>
+
+</Wix>

@@ -59,6 +59,43 @@ fn gui_driver_reports_ignored_shortcut_when_text_input_owns_tab() {
 }
 
 #[test]
+fn gui_driver_reports_ignored_shortcut_when_text_input_owns_undo_redo() {
+    let mut driver = StudioGuiDriver::new(&lease_expiring_config()).expect("expected driver");
+    driver
+        .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+        .expect("expected open dispatch");
+
+    for (key, shortcut_name) in [
+        (crate::StudioGuiShortcutKey::Z, "ctrl-z"),
+        (crate::StudioGuiShortcutKey::Y, "ctrl-y"),
+    ] {
+        let dispatch = driver
+            .dispatch_event(StudioGuiEvent::ShortcutPressed {
+                shortcut: StudioGuiShortcut {
+                    modifiers: vec![crate::StudioGuiShortcutModifier::Ctrl],
+                    key,
+                },
+                focus_context: StudioGuiFocusContext::TextInput,
+            })
+            .expect("expected shortcut dispatch");
+
+        assert_ignored_shortcut(
+            &dispatch,
+            StudioGuiShortcut {
+                modifiers: vec![crate::StudioGuiShortcutModifier::Ctrl],
+                key,
+            },
+            StudioGuiShortcutIgnoreReason::TextInputOwnsShortcut,
+        );
+        assert_eq!(
+            dispatch.snapshot.runtime.control_state.simulation_mode,
+            rf_ui::SimulationMode::Hold,
+            "{shortcut_name} should not leave the text input boundary"
+        );
+    }
+}
+
+#[test]
 fn gui_driver_reports_ignored_shortcut_when_command_palette_owns_function_key() {
     let mut driver = StudioGuiDriver::new(&lease_expiring_config()).expect("expected driver");
     let _ = driver
@@ -207,6 +244,57 @@ fn gui_driver_focuses_next_canvas_suggestion_from_explicit_event() {
     }
 
     let _ = fs::remove_file(project_path);
+}
+
+#[test]
+fn gui_driver_commits_pending_canvas_edit_from_explicit_position_event() {
+    let mut driver = StudioGuiDriver::new(&lease_expiring_config()).expect("expected driver");
+    driver
+        .begin_canvas_place_unit("Flash Drum")
+        .expect("expected begin canvas place unit");
+
+    let dispatch = driver
+        .dispatch_event(StudioGuiEvent::CanvasPendingEditCommitRequested {
+            position: rf_ui::CanvasPoint::new(144.0, 88.0),
+        })
+        .expect("expected pending edit commit dispatch");
+
+    match dispatch.outcome {
+        StudioGuiDriverOutcome::CanvasInteraction(result) => {
+            assert_eq!(
+                result.action,
+                StudioGuiCanvasInteractionAction::CommitPendingEditAt {
+                    position: rf_ui::CanvasPoint::new(144.0, 88.0),
+                }
+            );
+            let committed = result.committed_edit.expect("expected committed edit");
+            assert_eq!(committed.unit_id, rf_types::UnitId::new("flash-2"));
+            assert_eq!(
+                committed.command,
+                rf_ui::DocumentCommand::CreateUnit {
+                    unit_id: rf_types::UnitId::new("flash-2"),
+                    kind: "flash_drum".to_string(),
+                }
+            );
+            assert_eq!(
+                result.applied_target,
+                Some(rf_ui::InspectorTarget::Unit(rf_types::UnitId::new(
+                    "flash-2"
+                )))
+            );
+            assert_eq!(result.canvas.pending_edit, None);
+            assert_eq!(dispatch.canvas.pending_edit, None);
+        }
+        other => panic!("expected canvas interaction outcome, got {other:?}"),
+    }
+
+    assert!(
+        dispatch
+            .snapshot
+            .runtime
+            .workspace_document
+            .has_unsaved_changes
+    );
 }
 
 #[test]

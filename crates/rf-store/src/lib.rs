@@ -5,6 +5,7 @@ mod layout;
 mod package_cache;
 mod project;
 mod studio_layout;
+mod studio_preferences;
 
 pub use auth_cache::{
     StoredAuthCacheIndex, StoredCredentialReference, StoredEntitlementCache,
@@ -17,12 +18,13 @@ pub use integrity::{
 pub use json::{
     auth_cache_index_to_pretty_json, parse_auth_cache_index_json, parse_project_file_json,
     parse_property_package_manifest_json, parse_property_package_payload_json,
-    parse_studio_layout_file_json, project_file_to_pretty_json,
+    parse_studio_layout_file_json, parse_studio_preferences_file_json, project_file_to_pretty_json,
     property_package_manifest_to_pretty_json, property_package_payload_to_pretty_json,
     read_auth_cache_index, read_project_file, read_property_package_manifest,
-    read_property_package_payload, read_studio_layout_file, studio_layout_file_to_pretty_json,
+    read_property_package_payload, read_studio_layout_file, read_studio_preferences_file,
+    studio_layout_file_to_pretty_json, studio_preferences_file_to_pretty_json,
     write_auth_cache_index, write_project_file, write_property_package_manifest,
-    write_property_package_payload, write_studio_layout_file,
+    write_property_package_payload, write_studio_layout_file, write_studio_preferences_file,
 };
 pub use json::{option_time_format, time_format};
 pub use layout::{
@@ -46,12 +48,16 @@ pub use studio_layout::{
     StoredStudioLayoutRegionWeight, StoredStudioLayoutStackGroupState,
     StoredStudioWindowLayoutEntry, studio_layout_path_for_project,
 };
+pub use studio_preferences::{
+    STORED_STUDIO_PREFERENCES_FILE_KIND, STORED_STUDIO_PREFERENCES_FILE_NAME,
+    STORED_STUDIO_PREFERENCES_SCHEMA_VERSION, StoredStudioPreferencesFile,
+};
 
 #[cfg(test)]
 mod tests {
     use std::collections::BTreeSet;
     use std::fs;
-    use std::path::PathBuf;
+    use std::path::{Path, PathBuf};
     use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
     use rf_model::{Component, Flowsheet};
@@ -63,15 +69,18 @@ mod tests {
         StoredProjectFile, StoredPropertyPackageManifest, StoredPropertyPackagePayload,
         StoredPropertyPackageRecord, StoredPropertyPackageSource, StoredStudioLayoutFile,
         StoredStudioLayoutPanelState, StoredStudioLayoutRegionWeight,
-        StoredStudioLayoutStackGroupState, StoredStudioWindowLayoutEntry, StoredThermoComponent,
-        auth_cache_index_to_pretty_json, parse_auth_cache_index_json, parse_project_file_json,
-        parse_property_package_manifest_json, parse_property_package_payload_json,
-        parse_studio_layout_file_json, project_file_to_pretty_json,
+        StoredStudioLayoutStackGroupState, StoredStudioPreferencesFile,
+        StoredStudioWindowLayoutEntry, StoredThermoComponent, auth_cache_index_to_pretty_json,
+        parse_auth_cache_index_json, parse_project_file_json, parse_property_package_manifest_json,
+        parse_property_package_payload_json, parse_studio_layout_file_json,
+        parse_studio_preferences_file_json, project_file_to_pretty_json,
         property_package_manifest_to_pretty_json, property_package_payload_to_pretty_json,
         read_auth_cache_index, read_project_file, read_property_package_manifest,
-        read_property_package_payload, read_studio_layout_file, studio_layout_file_to_pretty_json,
-        studio_layout_path_for_project, write_auth_cache_index, write_project_file,
+        read_property_package_payload, read_studio_layout_file, read_studio_preferences_file,
+        studio_layout_file_to_pretty_json, studio_layout_path_for_project,
+        studio_preferences_file_to_pretty_json, write_auth_cache_index, write_project_file,
         write_property_package_manifest, write_property_package_payload, write_studio_layout_file,
+        write_studio_preferences_file,
     };
 
     fn timestamp(seconds: u64) -> std::time::SystemTime {
@@ -316,6 +325,40 @@ mod tests {
     }
 
     #[test]
+    fn studio_preferences_file_round_trips_as_camel_case_json() {
+        let preferences = StoredStudioPreferencesFile::new(vec![
+            "D:\\Code\\RadishFlow\\examples\\flowsheets\\feed-heater-flash.rfproj.json".to_string(),
+            "D:\\Code\\RadishFlow\\examples\\flowsheets\\feed-valve-flash.rfproj.json".to_string(),
+        ]);
+
+        let json = studio_preferences_file_to_pretty_json(&preferences)
+            .expect("expected preferences json");
+        let round_trip = parse_studio_preferences_file_json(&json)
+            .expect("expected preferences parse round trip");
+
+        assert_eq!(round_trip, preferences);
+        assert!(json.contains("\"kind\": \"radishflow.studio-preferences-file\""));
+        assert!(json.contains("\"schemaVersion\": 1"));
+        assert!(json.contains("\"recentProjectPaths\""));
+    }
+
+    #[test]
+    fn studio_preferences_file_rejects_duplicate_recent_project_paths() {
+        let preferences = StoredStudioPreferencesFile::new(vec!["demo.rfproj.json".to_string(); 2]);
+
+        let error = preferences
+            .validate()
+            .expect_err("expected duplicate path error");
+
+        assert_eq!(error.code().as_str(), "invalid_input");
+        assert!(
+            error
+                .message()
+                .contains("duplicate recent project path `demo.rfproj.json`")
+        );
+    }
+
+    #[test]
     fn parse_rejects_wrong_project_file_kind() {
         let json = r#"{
   "kind": "wrong-kind",
@@ -419,6 +462,51 @@ mod tests {
     }
 
     #[test]
+    fn write_project_file_replaces_existing_file_from_staged_write() {
+        let root = unique_temp_path("project-replace");
+        let path = root.join("demo.rfproj.json");
+        let first = StoredProjectFile::new(
+            Flowsheet::new("first"),
+            StoredDocumentMetadata::new("doc-1", "First Project", timestamp(10)),
+        );
+        let second = StoredProjectFile::new(
+            Flowsheet::new("second"),
+            StoredDocumentMetadata::new("doc-1", "Second Project", timestamp(20)),
+        );
+
+        write_project_file(&path, &first).expect("expected first project file write");
+        write_project_file(&path, &second).expect("expected replacement project file write");
+
+        let loaded = read_project_file(&path).expect("expected replaced project file read");
+        assert_eq!(loaded, second);
+        assert!(staged_siblings_for(&path).is_empty());
+        fs::remove_dir_all(&root).expect("expected temp dir cleanup");
+    }
+
+    #[test]
+    fn write_project_file_rejects_directory_target_without_staged_leftovers() {
+        let root = unique_temp_path("project-directory-target");
+        let path = root.join("demo.rfproj.json");
+        fs::create_dir_all(&path).expect("expected directory target");
+        let project = StoredProjectFile::new(
+            Flowsheet::new("demo"),
+            StoredDocumentMetadata::new("doc-1", "Demo Project", timestamp(10)),
+        );
+
+        let error = write_project_file(&path, &project).expect_err("expected write error");
+
+        assert_eq!(error.code().as_str(), "invalid_input");
+        assert!(
+            error
+                .message()
+                .contains("target path exists and is not a file")
+        );
+        assert!(path.is_dir());
+        assert!(staged_siblings_for(&path).is_empty());
+        fs::remove_dir_all(&root).expect("expected temp dir cleanup");
+    }
+
+    #[test]
     fn studio_layout_path_uses_project_sidecar_suffix() {
         let project = PathBuf::from("demo").join("sample.rfproj.json");
         let sidecar = studio_layout_path_for_project(&project);
@@ -444,6 +532,27 @@ mod tests {
 
         assert_eq!(loaded, auth_cache);
         fs::remove_dir_all(&root).expect("expected temp dir cleanup");
+    }
+
+    fn staged_siblings_for(path: &Path) -> Vec<PathBuf> {
+        let Some(directory) = path.parent() else {
+            return Vec::new();
+        };
+        let file_name = path
+            .file_name()
+            .and_then(|name| name.to_str())
+            .unwrap_or_default();
+        let prefix = format!(".{file_name}.");
+        fs::read_dir(directory)
+            .expect("expected readable temp directory")
+            .filter_map(|entry| entry.ok().map(|entry| entry.path()))
+            .filter(|path| {
+                path.file_name()
+                    .and_then(|name| name.to_str())
+                    .map(|name| name.starts_with(&prefix))
+                    .unwrap_or(false)
+            })
+            .collect()
     }
 
     #[test]
@@ -476,6 +585,26 @@ mod tests {
         let loaded = read_studio_layout_file(&path).expect("expected studio layout read");
 
         assert_eq!(loaded, layout);
+        fs::remove_dir_all(&root).expect("expected temp dir cleanup");
+    }
+
+    #[test]
+    fn write_studio_preferences_file_creates_parent_directories_and_round_trips() {
+        let root = unique_temp_path("studio-preferences-write");
+        let path = root
+            .join("RadishFlow")
+            .join("Studio")
+            .join("preferences.rfstudio-preferences.json");
+        let preferences = StoredStudioPreferencesFile::new(vec![
+            "demo-a.rfproj.json".to_string(),
+            "demo-b.rfproj.json".to_string(),
+        ]);
+
+        write_studio_preferences_file(&path, &preferences)
+            .expect("expected studio preferences write");
+        let loaded = read_studio_preferences_file(&path).expect("expected studio preferences read");
+
+        assert_eq!(loaded, preferences);
         fs::remove_dir_all(&root).expect("expected temp dir cleanup");
     }
 

@@ -5,7 +5,7 @@ namespace RadishFlow.CapeOpen.Interop.Unit;
 
 [ComVisible(true)]
 [Guid(CapeOpenInterfaceIds.ICapeUnitPort)]
-[InterfaceType(ComInterfaceType.InterfaceIsIDispatch)]
+[InterfaceType(ComInterfaceType.InterfaceIsDual)]
 public interface ICapeUnitPort
 {
     [DispId(1)]

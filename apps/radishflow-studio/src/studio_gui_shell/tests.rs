@@ -2,6 +2,7 @@ use super::*;
 use radishflow_studio::{
     StudioRuntimeEntitlementPreflight, StudioRuntimeEntitlementSeed, StudioRuntimeTrigger,
 };
+use rf_store::read_project_file;
 use std::{fs, path::PathBuf, time::UNIX_EPOCH};
 
 fn lease_expiring_config() -> StudioRuntimeConfig {
@@ -101,6 +102,16 @@ fn unbound_outlet_failure_synced_config() -> StudioRuntimeConfig {
     }
 }
 
+fn test_preferences_path(name: &str) -> PathBuf {
+    let timestamp = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("expected current timestamp")
+        .as_nanos();
+    std::env::temp_dir()
+        .join(format!("radishflow-studio-shell-{name}-{timestamp}"))
+        .join("preferences.rfstudio-preferences.json")
+}
+
 #[test]
 fn insert_neighbors_from_area_ids_returns_previous_and_next_for_middle_target() {
     let area_ids = [
@@ -136,6 +147,157 @@ fn clamp_overlay_pos_to_rect_keeps_overlay_inside_screen_padding() {
     let clamped = clamp_overlay_pos_to_rect(screen, egui::pos2(180.0, 110.0), size);
 
     assert_eq!(clamped, egui::pos2(112.0, 72.0));
+}
+
+#[test]
+fn shell_locale_defaults_to_chinese_and_can_translate_runtime_labels() {
+    let locale = StudioShellLocale::default();
+
+    assert_eq!(locale, StudioShellLocale::ZhCn);
+    assert_eq!(locale.text(ShellText::Runtime), "运行");
+    assert_eq!(locale.runtime_label("Converged").as_ref(), "已收敛");
+    assert_eq!(
+        locale.workspace_counts("Demo", 2, 3, 1),
+        "Demo | 2 个单元 | 3 股流股 | 1 个快照"
+    );
+    assert_eq!(
+        locale.solve_snapshot_counts(3, 4, 1),
+        "3 股流股，4 个步骤，1 条诊断"
+    );
+    assert_eq!(
+        locale.snapshot_identity("snapshot-a", 7),
+        "快照 snapshot-a，序号 7"
+    );
+    assert_eq!(locale.text(ShellText::ResultInspector), "结果检查器");
+    assert_eq!(locale.text(ShellText::StreamComparison), "流股对比");
+    assert_eq!(locale.text(ShellText::Delta), "差值");
+    assert_eq!(locale.text(ShellText::DiagnosticTargets), "诊断目标");
+    assert_eq!(
+        locale.text(ShellText::StaleStreamSelection),
+        "已选流股不在最新快照中。"
+    );
+    assert_eq!(locale.text(ShellText::LastRunFailed), "最近一次运行失败");
+    assert_eq!(locale.text(ShellText::RecoveryTarget), "修复目标");
+    assert_eq!(locale.text(ShellText::SuggestedRecovery), "建议修复");
+    assert_eq!(locale.text(ShellText::ActiveInspectorTarget), "检查器目标");
+    assert_eq!(locale.text(ShellText::InspectorProperties), "属性");
+    assert_eq!(locale.runtime_label("Number").as_ref(), "数值");
+    assert_eq!(locale.runtime_label("Synced").as_ref(), "已同步");
+    assert_eq!(locale.runtime_label("Temperature").as_ref(), "温度");
+    assert_eq!(locale.runtime_label("Pressure").as_ref(), "压力");
+    assert_eq!(locale.runtime_label("Molar flow").as_ref(), "摩尔流量");
+    assert_eq!(locale.text(ShellText::InspectorPorts), "端口");
+    assert_eq!(locale.runtime_label("Unit").as_ref(), "单元");
+    assert_eq!(locale.runtime_label("Stream").as_ref(), "流股");
+    assert_eq!(
+        StudioShellLocale::En.runtime_label("Converged").as_ref(),
+        "Converged"
+    );
+}
+
+#[test]
+fn result_inspector_state_tracks_selected_stream_per_snapshot() {
+    let mut app = ready_app_state(&synced_workspace_config());
+    app.dispatch_ui_command("run_panel.run_manual");
+    let snapshot = app
+        .platform_host
+        .snapshot()
+        .window_model()
+        .runtime
+        .latest_solve_snapshot
+        .expect("expected solve snapshot");
+
+    let default_selected = app
+        .result_inspector
+        .selected_stream_id_for_snapshot(&snapshot);
+    assert_eq!(
+        default_selected.as_deref(),
+        snapshot
+            .streams
+            .first()
+            .map(|stream| stream.stream_id.as_str())
+    );
+
+    app.result_inspector
+        .select_stream(&snapshot.snapshot_id, "stream-heated");
+    app.result_inspector
+        .select_comparison_stream(&snapshot.snapshot_id, "stream-feed");
+    assert_eq!(
+        app.result_inspector
+            .selected_stream_id_for_snapshot(&snapshot)
+            .as_deref(),
+        Some("stream-heated")
+    );
+    assert_eq!(
+        app.result_inspector.comparison_stream_id.as_deref(),
+        Some("stream-feed")
+    );
+
+    let mut next_snapshot = snapshot.clone();
+    next_snapshot.snapshot_id = "snapshot-next".to_string();
+    assert_eq!(
+        app.result_inspector
+            .selected_stream_id_for_snapshot(&next_snapshot)
+            .as_deref(),
+        next_snapshot
+            .streams
+            .first()
+            .map(|stream| stream.stream_id.as_str())
+    );
+    assert_eq!(app.result_inspector.comparison_stream_id, None);
+}
+
+#[test]
+fn canvas_object_list_filter_matches_expected_object_groups() {
+    let unit = radishflow_studio::StudioGuiCanvasObjectListItemViewModel {
+        kind_label: "Unit",
+        target_id: "flash-1".to_string(),
+        label: "Flash Drum".to_string(),
+        detail: "flash_drum | ports 1/3".to_string(),
+        command_id: "inspector.focus_unit:flash-1".to_string(),
+        related_stream_ids: Vec::new(),
+        status_badges: vec![radishflow_studio::StudioGuiCanvasStatusBadgeViewModel {
+            severity_label: "Error",
+            short_label: "E1".to_string(),
+            detail: "solver.step.execution: unit failed".to_string(),
+        }],
+        is_active: false,
+    };
+    let stream = radishflow_studio::StudioGuiCanvasObjectListItemViewModel {
+        kind_label: "Stream",
+        target_id: "stream-feed".to_string(),
+        label: "Feed".to_string(),
+        detail: "feed-1:outlet -> flash-1:inlet".to_string(),
+        command_id: "inspector.focus_stream:stream-feed".to_string(),
+        related_stream_ids: vec!["stream-feed".to_string()],
+        status_badges: Vec::new(),
+        is_active: false,
+    };
+
+    assert_eq!(
+        CanvasObjectListFilter::from_filter_id("attention"),
+        Some(CanvasObjectListFilter::Attention)
+    );
+    assert_eq!(CanvasObjectListFilter::Units.filter_id(), "units");
+    assert!(CanvasObjectListFilter::All.matches(&unit));
+    assert!(CanvasObjectListFilter::Attention.matches(&unit));
+    assert!(!CanvasObjectListFilter::Attention.matches(&stream));
+    assert!(CanvasObjectListFilter::Units.matches(&unit));
+    assert!(!CanvasObjectListFilter::Units.matches(&stream));
+    assert!(CanvasObjectListFilter::Streams.matches(&stream));
+    assert!(!CanvasObjectListFilter::Streams.matches(&unit));
+}
+
+#[test]
+fn right_sidebar_width_keeps_runtime_panel_readable() {
+    let width = region_panel_width_from_values(
+        StudioGuiWindowDockRegion::RightSidebar,
+        1_280.0,
+        100.0,
+        24.0,
+    );
+
+    assert_eq!(width, 360.0);
 }
 
 #[test]
@@ -724,6 +886,726 @@ fn command_palette_items_surface_window_model_results() {
     );
 }
 
+#[test]
+fn open_example_project_rebuilds_runtime_for_selected_sample() {
+    let mut app = ready_app_state(&synced_workspace_config());
+    let target_project = app
+        .platform_host
+        .snapshot()
+        .window_model()
+        .runtime
+        .example_projects
+        .iter()
+        .find(|example| example.id == "feed-valve-flash")
+        .expect("expected feed valve example")
+        .project_path
+        .clone();
+
+    app.dispatch_ui_command("run_panel.run_manual");
+    assert_eq!(
+        app.platform_host
+            .snapshot()
+            .window_model()
+            .runtime
+            .workspace_document
+            .snapshot_history_count,
+        1
+    );
+
+    app.open_example_project(target_project);
+    let window = app.platform_host.snapshot().window_model();
+
+    assert_eq!(
+        window.runtime.workspace_document.title,
+        "Feed Valve Flash Example"
+    );
+    assert_eq!(window.runtime.workspace_document.snapshot_history_count, 0);
+    assert_eq!(
+        window
+            .runtime
+            .example_projects
+            .iter()
+            .find(|example| example.is_current)
+            .map(|example| example.id),
+        Some("feed-valve-flash")
+    );
+    assert_eq!(
+        window.runtime.run_panel.view().primary_action.label,
+        "Resume"
+    );
+
+    app.dispatch_ui_command("run_panel.run_manual");
+    assert_eq!(
+        app.platform_host
+            .snapshot()
+            .window_model()
+            .runtime
+            .control_state
+            .run_status,
+        rf_ui::RunStatus::Converged
+    );
+}
+
+#[test]
+fn open_project_from_input_rebuilds_runtime_and_records_feedback() {
+    let mut app = ready_app_state(&synced_workspace_config());
+    let target_project = app
+        .platform_host
+        .snapshot()
+        .window_model()
+        .runtime
+        .example_projects
+        .iter()
+        .find(|example| example.id == "water-ethanol-heater-flash")
+        .expect("expected water ethanol example")
+        .project_path
+        .clone();
+
+    app.project_open.path_input = target_project.display().to_string();
+    app.open_project_from_input();
+
+    let window = app.platform_host.snapshot().window_model();
+    assert_eq!(
+        window.runtime.workspace_document.title,
+        "Feed Heater Flash Water Ethanol Example"
+    );
+    assert_eq!(
+        app.project_open.notice.as_ref().map(|notice| notice.level),
+        Some(ProjectOpenNoticeLevel::Info)
+    );
+    assert!(
+        window
+            .runtime
+            .gui_activity_lines
+            .iter()
+            .any(|line| line.contains("opened project"))
+    );
+    assert_eq!(
+        app.project_open.recent_projects.first(),
+        Some(&target_project)
+    );
+}
+
+#[test]
+fn open_project_from_picker_rebuilds_runtime_and_records_recent_project() {
+    let config = synced_workspace_config();
+    let preferences_path = test_preferences_path("picker-open");
+    let base_app =
+        ReadyAppState::from_config(&config, preferences_path.clone()).expect("expected base app");
+    let target_project = base_app
+        .platform_host
+        .snapshot()
+        .window_model()
+        .runtime
+        .example_projects
+        .iter()
+        .find(|example| example.id == "feed-valve-flash")
+        .expect("expected feed valve example")
+        .project_path
+        .clone();
+    let mut app = ReadyAppState::from_config_with_project_file_picker(
+        &config,
+        preferences_path.clone(),
+        Box::new(TestProjectFilePicker::new(Some(target_project.clone()))),
+    )
+    .expect("expected app state");
+
+    app.open_project_from_picker();
+
+    let window = app.platform_host.snapshot().window_model();
+    assert_eq!(
+        window.runtime.workspace_document.title,
+        "Feed Valve Flash Example"
+    );
+    assert_eq!(
+        app.project_open.path_input,
+        target_project.display().to_string()
+    );
+    assert_eq!(
+        app.project_open.recent_projects.first(),
+        Some(&target_project)
+    );
+    assert_eq!(
+        app.project_open.notice.as_ref().map(|notice| notice.level),
+        Some(ProjectOpenNoticeLevel::Info)
+    );
+
+    let _ = std::fs::remove_file(preferences_path);
+}
+
+#[test]
+fn canceling_project_picker_keeps_current_workspace_active() {
+    let config = synced_workspace_config();
+    let original_title = ready_app_state(&config)
+        .platform_host
+        .snapshot()
+        .window_model()
+        .runtime
+        .workspace_document
+        .title;
+    let mut app = ReadyAppState::from_config_with_project_file_picker(
+        &config,
+        test_preferences_path("picker-cancel"),
+        Box::new(TestProjectFilePicker::new(None)),
+    )
+    .expect("expected app state");
+
+    app.open_project_from_picker();
+
+    let window = app.platform_host.snapshot().window_model();
+    assert_eq!(window.runtime.workspace_document.title, original_title);
+    assert!(app.project_open.recent_projects.is_empty());
+    assert_eq!(
+        app.project_open
+            .notice
+            .as_ref()
+            .map(|notice| notice.title.as_str()),
+        Some("Project picker canceled")
+    );
+}
+
+#[test]
+fn save_project_as_from_picker_writes_project_and_records_recent_project() {
+    let config = synced_workspace_config();
+    let preferences_path = test_preferences_path("save-as-picker");
+    let target_project = std::env::temp_dir().join(format!(
+        "radishflow-studio-shell-save-as-{}.rfproj.json",
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("expected current timestamp")
+            .as_nanos()
+    ));
+    let mut app = ReadyAppState::from_config_with_project_file_picker(
+        &config,
+        preferences_path.clone(),
+        Box::new(TestProjectFilePicker::new(Some(target_project.clone()))),
+    )
+    .expect("expected app state");
+
+    app.save_project_as_from_picker();
+
+    let window = app.platform_host.snapshot().window_model();
+    assert_eq!(
+        window.runtime.workspace_document.project_path.as_deref(),
+        Some(target_project.display().to_string().as_str())
+    );
+    assert!(!window.runtime.workspace_document.has_unsaved_changes);
+    assert_eq!(
+        app.project_open.path_input,
+        target_project.display().to_string()
+    );
+    assert_eq!(
+        app.project_open.recent_projects.first(),
+        Some(&target_project)
+    );
+    assert_eq!(
+        app.project_open
+            .notice
+            .as_ref()
+            .map(|notice| notice.title.as_str()),
+        Some("Project saved as")
+    );
+    assert!(read_project_file(&target_project).is_ok());
+
+    let _ = std::fs::remove_file(preferences_path);
+    let _ = std::fs::remove_file(target_project);
+}
+
+#[test]
+fn save_project_as_from_picker_requires_confirmation_before_overwrite() {
+    let config = synced_workspace_config();
+    let preferences_path = test_preferences_path("save-as-overwrite");
+    let target_project = std::env::temp_dir().join(format!(
+        "radishflow-studio-shell-save-as-overwrite-{}.rfproj.json",
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("expected current timestamp")
+            .as_nanos()
+    ));
+    fs::write(&target_project, "existing project placeholder").expect("expected target seed");
+    let mut app = ReadyAppState::from_config_with_project_file_picker(
+        &config,
+        preferences_path.clone(),
+        Box::new(TestProjectFilePicker::new(Some(target_project.clone()))),
+    )
+    .expect("expected app state");
+
+    app.save_project_as_from_picker();
+
+    assert_eq!(
+        fs::read_to_string(&target_project).expect("expected target read"),
+        "existing project placeholder"
+    );
+    assert_eq!(
+        app.project_open.pending_save_as_overwrite.as_deref(),
+        Some(target_project.as_path())
+    );
+    assert_eq!(
+        app.project_open
+            .notice
+            .as_ref()
+            .map(|notice| notice.title.as_str()),
+        Some("Confirm overwrite")
+    );
+
+    app.confirm_pending_save_as_overwrite();
+
+    let window = app.platform_host.snapshot().window_model();
+    assert_eq!(
+        window.runtime.workspace_document.project_path.as_deref(),
+        Some(target_project.display().to_string().as_str())
+    );
+    assert!(app.project_open.pending_save_as_overwrite.is_none());
+    assert!(read_project_file(&target_project).is_ok());
+
+    let _ = std::fs::remove_file(preferences_path);
+    let _ = std::fs::remove_file(target_project);
+}
+
+#[test]
+fn failed_confirmed_save_as_keeps_workspace_state_and_retry_target() {
+    let config = synced_workspace_config();
+    let preferences_path = test_preferences_path("save-as-overwrite-failure");
+    let target_project = std::env::temp_dir().join(format!(
+        "radishflow-studio-shell-save-as-overwrite-failure-{}.rfproj.json",
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("expected current timestamp")
+            .as_nanos()
+    ));
+    fs::create_dir_all(&target_project).expect("expected directory target");
+    let mut app = ReadyAppState::from_config_with_project_file_picker(
+        &config,
+        preferences_path.clone(),
+        Box::new(TestProjectFilePicker::new(Some(target_project.clone()))),
+    )
+    .expect("expected app state");
+    let original_window = app.platform_host.snapshot().window_model();
+    let original_document = original_window.runtime.workspace_document.clone();
+
+    app.save_project_as_from_picker();
+    assert_eq!(
+        app.project_open.pending_save_as_overwrite.as_deref(),
+        Some(target_project.as_path())
+    );
+
+    app.confirm_pending_save_as_overwrite();
+
+    let failed_window = app.platform_host.snapshot().window_model();
+    assert_eq!(
+        failed_window.runtime.workspace_document.project_path,
+        original_document.project_path
+    );
+    assert_eq!(
+        failed_window.runtime.workspace_document.last_saved_revision,
+        original_document.last_saved_revision
+    );
+    assert_eq!(
+        failed_window.runtime.workspace_document.has_unsaved_changes,
+        original_document.has_unsaved_changes
+    );
+    assert!(app.project_open.recent_projects.is_empty());
+    assert_eq!(
+        app.project_open.pending_save_as_overwrite.as_deref(),
+        Some(target_project.as_path()),
+        "failed overwrite save-as should keep the retry/cancel target visible"
+    );
+    assert_eq!(
+        app.project_open
+            .notice
+            .as_ref()
+            .map(|notice| notice.title.as_str()),
+        Some("Save As failed")
+    );
+    assert!(
+        app.project_open
+            .notice
+            .as_ref()
+            .map(|notice| notice.detail.contains("Current workspace remains open"))
+            .unwrap_or(false)
+    );
+    assert!(
+        failed_window
+            .runtime
+            .gui_activity_lines
+            .iter()
+            .any(|line| line.contains("save as failed"))
+    );
+    assert!(target_project.is_dir());
+
+    let _ = std::fs::remove_file(preferences_path);
+    let _ = std::fs::remove_dir_all(target_project);
+}
+
+#[test]
+fn cancel_pending_save_as_overwrite_keeps_existing_file() {
+    let config = synced_workspace_config();
+    let preferences_path = test_preferences_path("save-as-overwrite-cancel");
+    let target_project = std::env::temp_dir().join(format!(
+        "radishflow-studio-shell-save-as-overwrite-cancel-{}.rfproj.json",
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("expected current timestamp")
+            .as_nanos()
+    ));
+    fs::write(&target_project, "existing project placeholder").expect("expected target seed");
+    let mut app = ReadyAppState::from_config_with_project_file_picker(
+        &config,
+        preferences_path.clone(),
+        Box::new(TestProjectFilePicker::new(Some(target_project.clone()))),
+    )
+    .expect("expected app state");
+
+    app.save_project_as_from_picker();
+    app.cancel_pending_save_as_overwrite();
+
+    assert_eq!(
+        fs::read_to_string(&target_project).expect("expected target read"),
+        "existing project placeholder"
+    );
+    assert!(app.project_open.pending_save_as_overwrite.is_none());
+    assert_eq!(
+        app.project_open
+            .notice
+            .as_ref()
+            .map(|notice| notice.title.as_str()),
+        Some("Save As canceled")
+    );
+
+    let _ = std::fs::remove_file(preferences_path);
+    let _ = std::fs::remove_file(target_project);
+}
+
+#[test]
+fn successful_project_opens_keep_recent_projects_deduped_and_ordered() {
+    let mut app = ready_app_state(&synced_workspace_config());
+    let examples = app
+        .platform_host
+        .snapshot()
+        .window_model()
+        .runtime
+        .example_projects;
+    let valve_project = examples
+        .iter()
+        .find(|example| example.id == "feed-valve-flash")
+        .expect("expected feed valve example")
+        .project_path
+        .clone();
+    let ethanol_project = examples
+        .iter()
+        .find(|example| example.id == "water-ethanol-heater-flash")
+        .expect("expected water ethanol example")
+        .project_path
+        .clone();
+
+    app.open_project(valve_project.clone(), "project");
+    app.open_project(ethanol_project.clone(), "project");
+    app.open_recent_project(valve_project.clone());
+
+    assert_eq!(
+        app.project_open.recent_projects,
+        vec![valve_project, ethanol_project]
+    );
+    assert_eq!(
+        app.platform_host
+            .snapshot()
+            .window_model()
+            .runtime
+            .workspace_document
+            .title,
+        "Feed Valve Flash Example"
+    );
+    assert_eq!(
+        app.project_open
+            .notice
+            .as_ref()
+            .map(|notice| notice.detail.as_str())
+            .unwrap_or(""),
+        format!(
+            "Opened recent project: {}",
+            app.project_open
+                .recent_projects
+                .first()
+                .expect("expected recent project")
+                .display()
+        )
+    );
+}
+
+#[test]
+fn successful_project_opens_persist_recent_projects_for_next_shell_start() {
+    let config = synced_workspace_config();
+    let preferences_path = test_preferences_path("recent-projects");
+    let mut app =
+        ReadyAppState::from_config(&config, preferences_path.clone()).expect("expected app state");
+    let examples = app
+        .platform_host
+        .snapshot()
+        .window_model()
+        .runtime
+        .example_projects;
+    let valve_project = examples
+        .iter()
+        .find(|example| example.id == "feed-valve-flash")
+        .expect("expected feed valve example")
+        .project_path
+        .clone();
+    let ethanol_project = examples
+        .iter()
+        .find(|example| example.id == "water-ethanol-heater-flash")
+        .expect("expected water ethanol example")
+        .project_path
+        .clone();
+
+    app.open_project(valve_project.clone(), "project");
+    app.open_project(ethanol_project.clone(), "project");
+
+    let restarted =
+        ReadyAppState::from_config(&config, preferences_path.clone()).expect("expected restart");
+
+    assert_eq!(
+        restarted.project_open.recent_projects,
+        vec![ethanol_project, valve_project]
+    );
+
+    let _ = std::fs::remove_file(preferences_path);
+}
+
+#[test]
+fn open_project_failure_keeps_current_runtime_and_surfaces_error_notice() {
+    let mut app = ready_app_state(&synced_workspace_config());
+    let original_window = app.platform_host.snapshot().window_model();
+    let missing_project = std::env::temp_dir().join("radishflow-missing-project.rfproj.json");
+
+    app.project_open.path_input = missing_project.display().to_string();
+    app.open_project_from_input();
+
+    let window = app.platform_host.snapshot().window_model();
+    assert_eq!(
+        window.runtime.workspace_document.title,
+        original_window.runtime.workspace_document.title
+    );
+    assert_eq!(
+        app.project_open.notice.as_ref().map(|notice| notice.level),
+        Some(ProjectOpenNoticeLevel::Error)
+    );
+    assert!(
+        app.project_open
+            .notice
+            .as_ref()
+            .map(|notice| notice
+                .detail
+                .contains("radishflow-missing-project.rfproj.json"))
+            .unwrap_or(false)
+    );
+    assert!(
+        window
+            .runtime
+            .gui_activity_lines
+            .iter()
+            .any(|line| line.contains("open project failed"))
+    );
+    assert!(
+        app.project_open.recent_projects.is_empty(),
+        "failed project opens should not enter recent projects"
+    );
+}
+
+#[test]
+fn open_project_from_input_requires_confirmation_when_workspace_has_unsaved_changes() {
+    let (config, project_path) = flash_drum_local_rules_synced_config();
+    let mut app = ready_app_state(&config);
+    let target_project = app
+        .platform_host
+        .snapshot()
+        .window_model()
+        .runtime
+        .example_projects
+        .iter()
+        .find(|example| example.id == "feed-valve-flash")
+        .expect("expected feed valve example")
+        .project_path
+        .clone();
+
+    app.dispatch_ui_command("canvas.accept_focused");
+    let dirty_window = app.platform_host.snapshot().window_model();
+    assert!(dirty_window.runtime.workspace_document.has_unsaved_changes);
+    assert_eq!(
+        dirty_window.runtime.workspace_document.last_saved_revision,
+        Some(0)
+    );
+    assert_eq!(dirty_window.runtime.workspace_document.revision, 1);
+
+    app.project_open.path_input = target_project.display().to_string();
+    app.open_project_from_input();
+
+    let blocked_window = app.platform_host.snapshot().window_model();
+    assert_eq!(
+        blocked_window.runtime.workspace_document.title,
+        dirty_window.runtime.workspace_document.title
+    );
+    assert_eq!(
+        app.project_open.notice.as_ref().map(|notice| notice.level),
+        Some(ProjectOpenNoticeLevel::Warning)
+    );
+    assert!(app.project_open.pending_confirmation.is_some());
+
+    app.confirm_pending_project_open();
+    let opened_window = app.platform_host.snapshot().window_model();
+    assert_eq!(
+        opened_window.runtime.workspace_document.title,
+        "Feed Valve Flash Example"
+    );
+    assert!(!opened_window.runtime.workspace_document.has_unsaved_changes);
+
+    let _ = std::fs::remove_file(project_path);
+}
+
+#[test]
+fn open_project_from_picker_requires_confirmation_when_workspace_has_unsaved_changes() {
+    let (config, project_path) = flash_drum_local_rules_synced_config();
+    let target_project = ready_app_state(&synced_workspace_config())
+        .platform_host
+        .snapshot()
+        .window_model()
+        .runtime
+        .example_projects
+        .iter()
+        .find(|example| example.id == "feed-valve-flash")
+        .expect("expected feed valve example")
+        .project_path
+        .clone();
+    let mut app = ReadyAppState::from_config_with_project_file_picker(
+        &config,
+        test_preferences_path("picker-unsaved"),
+        Box::new(TestProjectFilePicker::new(Some(target_project))),
+    )
+    .expect("expected app state");
+
+    app.dispatch_ui_command("canvas.accept_focused");
+    let dirty_window = app.platform_host.snapshot().window_model();
+    assert!(dirty_window.runtime.workspace_document.has_unsaved_changes);
+
+    app.open_project_from_picker();
+
+    let blocked_window = app.platform_host.snapshot().window_model();
+    assert_eq!(
+        blocked_window.runtime.workspace_document.title,
+        dirty_window.runtime.workspace_document.title
+    );
+    assert_eq!(
+        app.project_open
+            .pending_confirmation
+            .as_ref()
+            .map(|request| request.source_label.as_str()),
+        Some("project picker")
+    );
+    assert_eq!(
+        app.project_open.notice.as_ref().map(|notice| notice.level),
+        Some(ProjectOpenNoticeLevel::Warning)
+    );
+
+    let _ = std::fs::remove_file(project_path);
+}
+
+#[test]
+fn open_recent_project_requires_confirmation_when_workspace_has_unsaved_changes() {
+    let (config, project_path) = flash_drum_local_rules_synced_config();
+    let mut app = ready_app_state(&config);
+    let target_project = app
+        .platform_host
+        .snapshot()
+        .window_model()
+        .runtime
+        .example_projects
+        .iter()
+        .find(|example| example.id == "feed-valve-flash")
+        .expect("expected feed valve example")
+        .project_path
+        .clone();
+    app.project_open
+        .record_recent_project(target_project.clone());
+
+    app.dispatch_ui_command("canvas.accept_focused");
+    let dirty_window = app.platform_host.snapshot().window_model();
+    assert!(dirty_window.runtime.workspace_document.has_unsaved_changes);
+
+    app.open_recent_project(target_project);
+
+    let blocked_window = app.platform_host.snapshot().window_model();
+    assert_eq!(
+        blocked_window.runtime.workspace_document.title,
+        dirty_window.runtime.workspace_document.title
+    );
+    assert_eq!(
+        app.project_open
+            .pending_confirmation
+            .as_ref()
+            .map(|request| request.source_label.as_str()),
+        Some("recent project")
+    );
+    assert_eq!(
+        app.project_open.notice.as_ref().map(|notice| notice.level),
+        Some(ProjectOpenNoticeLevel::Warning)
+    );
+
+    app.confirm_pending_project_open();
+    let opened_window = app.platform_host.snapshot().window_model();
+    assert_eq!(
+        opened_window.runtime.workspace_document.title,
+        "Feed Valve Flash Example"
+    );
+    assert!(!opened_window.runtime.workspace_document.has_unsaved_changes);
+
+    let _ = std::fs::remove_file(project_path);
+}
+
+#[test]
+fn cancel_pending_project_open_keeps_dirty_workspace_active() {
+    let (config, project_path) = flash_drum_local_rules_synced_config();
+    let mut app = ready_app_state(&config);
+    let target_project = app
+        .platform_host
+        .snapshot()
+        .window_model()
+        .runtime
+        .example_projects
+        .iter()
+        .find(|example| example.id == "feed-valve-flash")
+        .expect("expected feed valve example")
+        .project_path
+        .clone();
+
+    app.dispatch_ui_command("canvas.accept_focused");
+    let dirty_window = app.platform_host.snapshot().window_model();
+    app.project_open.path_input = target_project.display().to_string();
+    app.open_project_from_input();
+
+    app.cancel_pending_project_open();
+
+    let canceled_window = app.platform_host.snapshot().window_model();
+    assert_eq!(
+        canceled_window.runtime.workspace_document.title,
+        dirty_window.runtime.workspace_document.title
+    );
+    assert!(
+        canceled_window
+            .runtime
+            .workspace_document
+            .has_unsaved_changes
+    );
+    assert!(app.project_open.pending_confirmation.is_none());
+    assert_eq!(
+        app.project_open
+            .notice
+            .as_ref()
+            .map(|notice| notice.title.as_str()),
+        Some("Project open canceled")
+    );
+
+    let _ = std::fs::remove_file(project_path);
+}
+
 fn palette_commands_for_test(commands: &[(&str, bool)]) -> Vec<&'static StudioGuiCommandEntry> {
     commands
         .iter()
@@ -982,18 +1864,28 @@ fn ready_failed_app_state() -> ReadyAppState {
 }
 
 fn ready_app_state(config: &StudioRuntimeConfig) -> ReadyAppState {
-    let mut app = ReadyAppState {
-        platform_host: StudioGuiPlatformHost::new(config).expect("expected platform host"),
-        platform_timer_executor: EguiPlatformTimerExecutor::default(),
-        command_palette: CommandPaletteState::default(),
-        last_area_focus: None,
-        drag_session: None,
-        active_drop_preview: None,
-        drop_preview_overlay_anchor: None,
-        last_viewport_focused: None,
-    };
-    app.dispatch_event(StudioGuiEvent::OpenWindowRequested);
-    app
+    ReadyAppState::from_config(config, test_preferences_path("default"))
+        .expect("expected app state")
+}
+
+struct TestProjectFilePicker {
+    selected_project: Option<PathBuf>,
+}
+
+impl TestProjectFilePicker {
+    fn new(selected_project: Option<PathBuf>) -> Self {
+        Self { selected_project }
+    }
+}
+
+impl ProjectFilePicker for TestProjectFilePicker {
+    fn pick_project_file(&mut self) -> Option<PathBuf> {
+        self.selected_project.take()
+    }
+
+    fn pick_save_project_file(&mut self) -> Option<PathBuf> {
+        self.selected_project.take()
+    }
 }
 
 fn dispatch_shortcut_for_test(app: &mut ReadyAppState, key: egui::Key, modifiers: egui::Modifiers) {

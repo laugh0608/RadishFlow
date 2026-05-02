@@ -3,10 +3,19 @@
     <TargetFramework>net10.0</TargetFramework>
     <RootNamespace>RadishFlow.CapeOpen.UnitOp.Mvp</RootNamespace>
     <AssemblyName>RadishFlow.CapeOpen.UnitOp.Mvp</AssemblyName>
+    <EnableComHosting>true</EnableComHosting>
   </PropertyGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\RadishFlow.CapeOpen.Adapter\RadishFlow.CapeOpen.Adapter.csproj" />
     <ProjectReference Include="..\RadishFlow.CapeOpen.Interop\RadishFlow.CapeOpen.Interop.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ComHostTypeLibrary Include="typelib\RadishFlow.CapeOpen.UnitOp.Mvp.tlb" Id="1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="typelib\RadishFlow.CapeOpen.UnitOp.Mvp.tlb" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

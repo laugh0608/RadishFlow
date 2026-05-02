@@ -91,6 +91,7 @@ public sealed record UnitOperationCalculationResult(
                 TemperatureK: GetRequiredDouble(stream, "temperature_k", streamPath),
                 PressurePa: GetRequiredDouble(stream, "pressure_pa", streamPath),
                 TotalMolarFlowMolS: GetRequiredDouble(stream, "total_molar_flow_mol_s", streamPath),
+                OverallMoleFractions: ReadRequiredDoubleMap(stream, "overall_mole_fractions", streamPath),
                 Phases: ParsePhases(
                     GetRequiredProperty(stream, "phases", streamPath),
                     $"{streamPath}.phases")));
@@ -118,6 +119,7 @@ public sealed record UnitOperationCalculationResult(
             var phase = RequireObject(item, phasePath);
             phases.Add(new UnitOperationCalculationPhase(
                 Label: GetRequiredString(phase, "label", phasePath),
+                MoleFractions: ReadRequiredDoubleMap(phase, "mole_fractions", phasePath),
                 PhaseFraction: GetRequiredDouble(phase, "phase_fraction", phasePath)));
             index++;
         }
@@ -255,6 +257,33 @@ public sealed record UnitOperationCalculationResult(
 
         return values;
     }
+
+    private static IReadOnlyDictionary<string, double> ReadRequiredDoubleMap(
+        JsonElement element,
+        string propertyName,
+        string path)
+    {
+        var property = GetRequiredProperty(element, propertyName, path);
+        if (property.ValueKind != JsonValueKind.Object)
+        {
+            throw new InvalidDataException(
+                $"Expected `{path}.{propertyName}` to be a JSON object but found `{property.ValueKind}`.");
+        }
+
+        var values = new Dictionary<string, double>(StringComparer.Ordinal);
+        foreach (var item in property.EnumerateObject())
+        {
+            if (!item.Value.TryGetDouble(out var value))
+            {
+                throw new InvalidDataException(
+                    $"Expected `{path}.{propertyName}.{item.Name}` to be a floating-point number but found `{item.Value.ValueKind}`.");
+            }
+
+            values[item.Name] = value;
+        }
+
+        return values;
+    }
 }
 
 public sealed record UnitOperationCalculationSummary(
@@ -277,10 +306,12 @@ public sealed record UnitOperationCalculationStream(
     double TemperatureK,
     double PressurePa,
     double TotalMolarFlowMolS,
+    IReadOnlyDictionary<string, double> OverallMoleFractions,
     IReadOnlyList<UnitOperationCalculationPhase> Phases);
 
 public sealed record UnitOperationCalculationPhase(
     string Label,
+    IReadOnlyDictionary<string, double> MoleFractions,
     double PhaseFraction);
 
 public sealed record UnitOperationCalculationStep(

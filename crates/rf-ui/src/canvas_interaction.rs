@@ -71,6 +71,11 @@ pub enum CanvasSuggestionAcceptance {
     MaterialConnection(CanvasSuggestedMaterialConnection),
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum CanvasEditIntent {
+    PlaceUnit { unit_kind: String },
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum SuggestionStatus {
     Proposed,
@@ -145,6 +150,7 @@ pub struct CanvasInteractionState {
     pub view_mode: CanvasViewMode,
     pub suggestions: Vec<CanvasSuggestion>,
     pub focused_suggestion_id: Option<CanvasSuggestionId>,
+    pub pending_edit: Option<CanvasEditIntent>,
 }
 
 impl CanvasInteractionState {
@@ -167,6 +173,18 @@ impl CanvasInteractionState {
     pub fn focused_suggestion(&self) -> Option<&CanvasSuggestion> {
         let focused_id = self.focused_suggestion_id.as_ref()?;
         self.suggestions.iter().find(|item| &item.id == focused_id)
+    }
+
+    pub fn begin_place_unit(&mut self, unit_kind: impl Into<String>) -> CanvasEditIntent {
+        let intent = CanvasEditIntent::PlaceUnit {
+            unit_kind: unit_kind.into(),
+        };
+        self.pending_edit = Some(intent.clone());
+        intent
+    }
+
+    pub fn cancel_pending_edit(&mut self) -> Option<CanvasEditIntent> {
+        self.pending_edit.take()
     }
 
     pub fn accept_focused_by_tab(&mut self) -> Option<CanvasSuggestion> {
@@ -209,6 +227,7 @@ impl CanvasInteractionState {
             }
         }
         self.focused_suggestion_id = None;
+        self.pending_edit = None;
     }
 
     fn focus_next_available(&mut self) {

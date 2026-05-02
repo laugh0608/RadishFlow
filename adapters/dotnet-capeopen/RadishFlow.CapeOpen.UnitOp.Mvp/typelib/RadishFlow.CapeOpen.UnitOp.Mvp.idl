@@ -1,0 +1,369 @@
+// RadishFlow.CapeOpen.UnitOp.Mvp.idl
+//
+// Notes:
+// - This IDL is the type library source of truth for CAPE-OPEN hosts that rely
+//   on IDispatch + TypeInfo, including DWSIM and COFE.
+// - Build scripts compile this file into RadishFlow.CapeOpen.UnitOp.Mvp.tlb,
+//   then the UnitOp project embeds it through ComHostTypeLibrary and the
+//   registration tool registers it for classic COM hosts.
+
+import "oaidl.idl";
+import "ocidl.idl";
+
+typedef enum CapeValidationStatus
+{
+    NotValidated = 0,
+    Invalid = 1,
+    Valid = 2
+} CapeValidationStatus;
+
+typedef enum CapeParamType
+{
+    CAPE_REAL = 0,
+    CAPE_INT = 1,
+    CAPE_OPTION = 2,
+    CAPE_BOOLEAN = 3,
+    CAPE_ARRAY = 4
+} CapeParamType;
+
+typedef enum CapeParamMode
+{
+    CAPE_INPUT = 0,
+    CAPE_OUTPUT = 1,
+    CAPE_INPUT_OUTPUT = 2
+} CapeParamMode;
+
+typedef enum CapePortDirection
+{
+    CAPE_INLET = 0,
+    CAPE_OUTLET = 1,
+    CAPE_INLET_OUTLET = 2
+} CapePortDirection;
+
+typedef enum CapePortType
+{
+    CAPE_MATERIAL = 0,
+    CAPE_ENERGY = 1,
+    CAPE_INFORMATION = 2,
+    CAPE_ANY = 3
+} CapePortType;
+
+[
+    object,
+    uuid(678C0990-7D66-11D2-A67D-00105A42887F),
+    dual,
+    nonextensible,
+    oleautomation,
+    pointer_default(unique)
+]
+interface ICapeIdentification : IDispatch
+{
+    [id(1), propget] HRESULT ComponentName([out, retval] BSTR* value);
+    [id(1), propput] HRESULT ComponentName([in] BSTR value);
+
+    [id(2), propget] HRESULT ComponentDescription([out, retval] BSTR* value);
+    [id(2), propput] HRESULT ComponentDescription([in] BSTR value);
+};
+
+[
+    object,
+    uuid(678C0B10-7D66-11D2-A67D-00105A42887F),
+    nonextensible,
+    oleautomation,
+    pointer_default(unique)
+]
+interface ECapeRoot : IDispatch
+{
+    [id(1), propget] HRESULT Name([out, retval] BSTR* value);
+};
+
+[
+    object,
+    uuid(678C0B11-7D66-11D2-A67D-00105A42887F),
+    nonextensible,
+    oleautomation,
+    pointer_default(unique)
+]
+interface ECapeUser : IDispatch
+{
+    [id(1), propget] HRESULT Code([out, retval] LONG* value);
+    [id(2), propget] HRESULT Description([out, retval] BSTR* value);
+    [id(3), propget] HRESULT Scope([out, retval] BSTR* value);
+    [id(4), propget] HRESULT InterfaceName([out, retval] BSTR* value);
+    [id(5), propget] HRESULT Operation([out, retval] BSTR* value);
+    [id(6), propget] HRESULT MoreInfo([out, retval] BSTR* value);
+};
+
+[
+    object,
+    uuid(678C099A-0093-11D2-A67D-00105A42887F),
+    dual,
+    nonextensible,
+    oleautomation,
+    pointer_default(unique)
+]
+interface ICapeCollection : IDispatch
+{
+    [id(1)] HRESULT Item([in] VARIANT index, [out, retval] IDispatch** value);
+    [id(2)] HRESULT Count([out, retval] LONG* value);
+};
+
+[
+    object,
+    uuid(678C099C-0093-11D2-A67D-00105A42887F),
+    dual,
+    nonextensible,
+    oleautomation,
+    pointer_default(unique)
+]
+interface ICapeParameterSpec : IDispatch
+{
+    [id(1), propget] HRESULT Type([out, retval] CapeParamType* value);
+    [id(2), propget] HRESULT Dimensionality([out, retval] SAFEARRAY(double)* value);
+};
+
+[
+    object,
+    uuid(678C099F-0093-11D2-A67D-00105A42887F),
+    dual,
+    nonextensible,
+    oleautomation,
+    pointer_default(unique)
+]
+interface ICapeOptionParameterSpec : IDispatch
+{
+    [id(1), propget] HRESULT DefaultValue([out, retval] BSTR* value);
+    [id(2), propget] HRESULT OptionList([out, retval] VARIANT* value);
+    [id(3), propget] HRESULT RestrictedToList([out, retval] VARIANT_BOOL* value);
+    [id(4)] HRESULT Validate([in] BSTR value, [in, out] BSTR* message, [out, retval] VARIANT_BOOL* isValid);
+};
+
+[
+    object,
+    uuid(678C09A0-0093-11D2-A67D-00105A42887F),
+    dual,
+    nonextensible,
+    oleautomation,
+    pointer_default(unique)
+]
+interface ICapeParameter : IDispatch
+{
+    [id(1), propget] HRESULT Specification([out, retval] IDispatch** value);
+    [id(2), propget] HRESULT value([out, retval] VARIANT* currentValue);
+    [id(2), propput] HRESULT value([in] VARIANT newValue);
+    [id(3), propget] HRESULT ValStatus([out, retval] CapeValidationStatus* value);
+    [id(4), propget] HRESULT Mode([out, retval] CapeParamMode* value);
+    [id(4), propput] HRESULT Mode([in] CapeParamMode value);
+    [id(5)] HRESULT Validate([in, out] BSTR* message, [out, retval] VARIANT_BOOL* isValid);
+    [id(6)] HRESULT Reset();
+};
+
+[
+    object,
+    uuid(678C0A9B-0100-11D2-A67D-00105A42887F),
+    dual,
+    nonextensible,
+    oleautomation,
+    pointer_default(unique)
+]
+interface ICapeUtilities : IDispatch
+{
+    [id(1), propget] HRESULT Parameters([out, retval] IDispatch** value);
+    [id(2), propputref] HRESULT SimulationContext([in] IDispatch* value);
+    [id(3)] HRESULT Initialize();
+    [id(4)] HRESULT Terminate();
+    [id(5)] HRESULT Edit([out, retval] LONG* value);
+    [id(2), propget] HRESULT SimulationContext([out, retval] IDispatch** value);
+};
+
+[
+    object,
+    uuid(678C0A9C-0100-11D2-A67D-00105A42887F),
+    pointer_default(unique)
+]
+interface ICapeSimulationContext : IUnknown
+{
+};
+
+[
+    object,
+    uuid(678C0A9D-0100-11D2-A67D-00105A42887F),
+    dual,
+    nonextensible,
+    oleautomation,
+    pointer_default(unique)
+]
+interface ICapeDiagnostic : IDispatch
+{
+    [id(1)] HRESULT PopUpMessage([in] BSTR message);
+    [id(2)] HRESULT LogMessage([in] BSTR message);
+};
+
+[
+    object,
+    uuid(678C0A9E-0100-11D2-A67D-00105A42887F),
+    dual,
+    nonextensible,
+    oleautomation,
+    pointer_default(unique)
+]
+interface ICapeMaterialTemplateSystem : IDispatch
+{
+    [id(1), propget] HRESULT MaterialTemplates([out, retval] VARIANT* value);
+    [id(2)] HRESULT CreateMaterialTemplate([in] BSTR materialTemplateName, [out, retval] IDispatch** value);
+};
+
+[
+    object,
+    uuid(678C0A9F-0100-11D2-A67D-00105A42887F),
+    dual,
+    nonextensible,
+    oleautomation,
+    pointer_default(unique)
+]
+interface ICapeCOSEUtilities : IDispatch
+{
+    [id(1), propget] HRESULT NamedValueList([out, retval] VARIANT* value);
+    [id(2)] HRESULT NamedValue([in] BSTR valueName, [out, retval] VARIANT* value);
+};
+
+[
+    object,
+    uuid(678C0999-0093-11D2-A67D-00105A42887F),
+    dual,
+    nonextensible,
+    oleautomation,
+    pointer_default(unique)
+]
+interface ICapeUnitPort : IDispatch
+{
+    [id(1), propget] HRESULT portType([out, retval] CapePortType* value);
+    [id(2), propget] HRESULT direction([out, retval] CapePortDirection* value);
+    [id(3), propget] HRESULT connectedObject([out, retval] IDispatch** value);
+    [id(4)] HRESULT Connect([in] IDispatch* objectToConnect);
+    [id(5)] HRESULT Disconnect();
+};
+
+[
+    object,
+    uuid(678C0998-0100-11D2-A67D-00105A42887F),
+    dual,
+    nonextensible,
+    oleautomation,
+    pointer_default(unique)
+]
+interface ICapeUnit : IDispatch
+{
+    [id(1), propget] HRESULT Ports([out, retval] IDispatch** value);
+    [id(2), propget] HRESULT ValStatus([out, retval] CapeValidationStatus* value);
+    [id(3)] HRESULT Calculate();
+    [id(4)] HRESULT Validate([in, out] BSTR* message, [out, retval] VARIANT_BOOL* isValid);
+};
+
+[
+    object,
+    uuid(678C099B-0093-11D2-A67D-00105A42887F),
+    dual,
+    nonextensible,
+    oleautomation,
+    pointer_default(unique)
+]
+interface ICapeUnitReport : IDispatch
+{
+    [id(1), propget] HRESULT reports([out, retval] VARIANT* value);
+    [id(2), propget] HRESULT selectedReport([out, retval] BSTR* value);
+    [id(2), propput] HRESULT selectedReport([in] BSTR value);
+    [id(3)] HRESULT ProduceReport([in, out] BSTR* reportContent);
+};
+
+[
+    uuid(9D9E5F0D-5E28-4A45-9E2A-70A39D4C8D11),
+    version(1.0)
+]
+library RadishFlowCapeOpenUnitOpMvpLib
+{
+    importlib("stdole2.tlb");
+
+    [
+        uuid(2F0E4C8F-7C89-4DA7-A5D3-5F8C987D6718)
+    ]
+    coclass RadishFlowCapeOpenUnitOperation
+    {
+        [default] interface ICapeUtilities;
+        interface ICapeUnit;
+        interface ICapeUnitReport;
+        interface IPersistStreamInit;
+        interface IPersistStorage;
+        interface IOleObject;
+        interface ICapeIdentification;
+        interface ECapeRoot;
+        interface ECapeUser;
+    };
+
+    [
+        uuid(8F1F9E3B-9D59-44BD-A564-1B8B2D6E6C4A)
+    ]
+    coclass UnitOperationSimulationContextPlaceholder
+    {
+        [default] interface ICapeCOSEUtilities;
+        interface ICapeSimulationContext;
+        interface ICapeDiagnostic;
+        interface ICapeMaterialTemplateSystem;
+        interface ICapeIdentification;
+    };
+
+    [
+        uuid(64C9E6E2-7A8A-4A58-9C5D-6D4E8D70E3B1)
+    ]
+    coclass UnitOperationParameterCollection
+    {
+        [default] interface ICapeCollection;
+        interface ICapeIdentification;
+    };
+
+    [
+        uuid(B6E2C856-2F47-4D7E-8E14-65B2A0A9C1D2)
+    ]
+    coclass UnitOperationPortCollection
+    {
+        [default] interface ICapeCollection;
+        interface ICapeIdentification;
+    };
+
+    [
+        uuid(C243B1AA-1D92-4D65-BF13-6B91F9AE6D44)
+    ]
+    coclass UnitOperationParameterPlaceholder
+    {
+        [default] interface ICapeParameter;
+        interface ICapeParameterSpec;
+        interface ICapeOptionParameterSpec;
+        interface ICapeIdentification;
+    };
+
+    [
+        uuid(E4CC1510-F855-4B74-8D70-6A0F4A8D2751)
+    ]
+    coclass UnitOperationParameterSpecificationPlaceholder
+    {
+        [default] interface ICapeParameterSpec;
+        interface ICapeOptionParameterSpec;
+    };
+
+    [
+        uuid(A7F3D6B4-4DBF-4BA6-96F9-56A1C2D7B8E3)
+    ]
+    coclass UnitOperationPortPlaceholder
+    {
+        [default] interface ICapeUnitPort;
+        interface ICapeIdentification;
+    };
+
+    [
+        uuid(5BA49F7E-87DF-4F73-A84A-A13FB1E5E827)
+    ]
+    coclass UnitOperationConnectedObjectPlaceholder
+    {
+        [default] interface ICapeIdentification;
+    };
+};

@@ -41,9 +41,9 @@ internal sealed class UnitOperationSmokeHostDriver : IDisposable
 
     public RadishFlowCapeOpenUnitOperation UnitOperation => _unitOperation;
 
-    public UnitOperationPlaceholderCollection<UnitOperationParameterPlaceholder> Parameters { get; }
+    public UnitOperationParameterCollection Parameters { get; }
 
-    public UnitOperationPlaceholderCollection<UnitOperationPortPlaceholder> Ports { get; }
+    public UnitOperationPortCollection Ports { get; }
 
     public ICapeCollection ParameterCollection { get; }
 
@@ -84,6 +84,54 @@ internal sealed class UnitOperationSmokeHostDriver : IDisposable
         }
     }
 
+    public UnitOperationHostActionExecutionInputSet CreateMinimumConfigurationInputSet(bool includePackageId)
+    {
+        ThrowIfDisposed();
+        return CreateMinimumConfigurationInputSetCore(includePackageId);
+    }
+
+    public IReadOnlyList<UnitOperationHostObjectMutationCommand> CreateOptionalPackageFileMutationCommands()
+    {
+        ThrowIfDisposed();
+        if (!_options.LoadPackageFiles)
+        {
+            return [];
+        }
+
+        var actionPlan = ReadActionPlan();
+        if (actionPlan.ContainsCanonicalOperation(nameof(RadishFlowCapeOpenUnitOperation.LoadPropertyPackageFiles)))
+        {
+            return [];
+        }
+
+        return CreateOptionalPackageFileMutationCommandsCore();
+    }
+
+    public UnitOperationHostActionExecutionOrchestrationResult ApplyRequiredPortAction(string portName, string componentName)
+    {
+        ThrowIfDisposed();
+        ArgumentException.ThrowIfNullOrWhiteSpace(portName);
+        ArgumentException.ThrowIfNullOrWhiteSpace(componentName);
+
+        var actionPlan = ReadActionPlan();
+        var action = actionPlan.Actions.Single(action =>
+            action.IssueKind == UnitOperationHostConfigurationIssueKind.RequiredPortDisconnected &&
+            action.Target.Names.Any(targetName => string.Equals(targetName, portName, StringComparison.OrdinalIgnoreCase)));
+        var group = actionPlan.Groups.Single(group => group.Kind == action.GroupKind);
+        return UnitOperationHostActionExecutionOrchestrator.ExecutePlannedActions(
+            _unitOperation,
+            new UnitOperationHostActionPlan(
+                State: actionPlan.State,
+                Headline: actionPlan.Headline,
+                Groups: [new UnitOperationHostActionGroup(group.Kind, group.Title, [action])],
+                Actions: [action]),
+            new UnitOperationHostActionExecutionInputSet(
+                portObjects: new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase)
+                {
+                    [portName] = new SmokeConnectedObject(componentName),
+                }));
+    }
+
     public void ConnectRequiredPorts()
     {
         ThrowIfDisposed();
@@ -94,28 +142,30 @@ internal sealed class UnitOperationSmokeHostDriver : IDisposable
     public UnitOperationSmokeValidationResult Validate()
     {
         ThrowIfDisposed();
+        return new UnitOperationSmokeValidationResult(
+            UnitOperationHostValidationRunner.Validate(_unitOperation));
+    }
 
-        var message = string.Empty;
-        var isValid = _unitOperation.Validate(ref message);
-        return new UnitOperationSmokeValidationResult(isValid, message);
+    public UnitOperationSmokeRoundResult ExecuteRound(UnitOperationHostRoundRequest request)
+    {
+        ThrowIfDisposed();
+        ArgumentNullException.ThrowIfNull(request);
+
+        var outcome = UnitOperationHostRoundOrchestrator.Execute(_unitOperation, request);
+        return new UnitOperationSmokeRoundResult(
+            outcome,
+            CreateReportBundle(outcome.Report));
     }
 
     public UnitOperationSmokeCalculationAttempt Calculate()
     {
         ThrowIfDisposed();
 
-        try
-        {
-            _unitOperation.Calculate();
-            return UnitOperationSmokeCalculationAttempt.FromSuccess(ReadReport());
-        }
-        catch (CapeOpenException error)
-        {
-            return UnitOperationSmokeCalculationAttempt.FromFailure(
-                ReadReport(),
-                error,
-                ClassifyFailure(error));
-        }
+        var outcome = UnitOperationHostCalculationRunner.Calculate(_unitOperation);
+        return UnitOperationSmokeCalculationAttempt.FromOutcome(
+            outcome,
+            CreateReportBundle(outcome.Report),
+            outcome.Failure is null ? null : ClassifyFailure(outcome.Failure));
     }
 
     public UnitOperationHostConfigurationSnapshot ReadConfiguration()
@@ -153,6 +203,12 @@ internal sealed class UnitOperationSmokeHostDriver : IDisposable
         ThrowIfDisposed();
 
         var snapshot = UnitOperationHostReportReader.Read(_unitOperation);
+        return CreateReportBundle(snapshot);
+    }
+
+    private static UnitOperationHostReportBundle CreateReportBundle(
+        UnitOperationHostReportSnapshot snapshot)
+    {
         var presentation = UnitOperationHostReportPresenter.Present(snapshot);
         var document = UnitOperationHostReportFormatter.Format(presentation);
         return new UnitOperationHostReportBundle(snapshot, presentation, document);
@@ -202,6 +258,49 @@ internal sealed class UnitOperationSmokeHostDriver : IDisposable
         return UnitOperationHostDriverFailureKind.Unknown;
     }
 
+    private UnitOperationHostActionExecutionInputSet CreateMinimumConfigurationInputSetCore(bool includePackageId)
+    {
+        var values = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
+        values[UnitOperationParameterCatalog.FlowsheetJson.Name] = _projectJson;
+
+        if (includePackageId)
+        {
+            values[UnitOperationParameterCatalog.PropertyPackageId.Name] = _options.PackageId;
+        }
+
+        if (_options.LoadPackageFiles)
+        {
+            values[UnitOperationParameterCatalog.PropertyPackageManifestPath.Name] = _options.ManifestPath!;
+            values[UnitOperationParameterCatalog.PropertyPackagePayloadPath.Name] = _options.PayloadPath!;
+        }
+
+        return new UnitOperationHostActionExecutionInputSet(
+            parameterValues: values,
+            portObjects: new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase)
+            {
+                [UnitOperationPortCatalog.Feed.Name] = new SmokeConnectedObject("Feed Smoke"),
+                [UnitOperationPortCatalog.Product.Name] = new SmokeConnectedObject("Product Smoke"),
+            });
+    }
+
+    private IReadOnlyList<UnitOperationHostObjectMutationCommand> CreateOptionalPackageFileMutationCommandsCore()
+    {
+        if (!_options.LoadPackageFiles)
+        {
+            return [];
+        }
+
+        return
+        [
+            UnitOperationHostObjectMutationCommand.SetParameterValue(
+                UnitOperationParameterCatalog.PropertyPackageManifestPath.Name,
+                _options.ManifestPath!),
+            UnitOperationHostObjectMutationCommand.SetParameterValue(
+                UnitOperationParameterCatalog.PropertyPackagePayloadPath.Name,
+                _options.PayloadPath!),
+        ];
+    }
+
     private void ThrowIfDisposed()
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
@@ -217,8 +316,20 @@ internal enum UnitOperationHostDriverFailureKind
 }
 
 internal sealed record UnitOperationSmokeValidationResult(
-    bool IsValid,
-    string Message);
+    UnitOperationHostValidationOutcome Outcome)
+{
+    public bool IsValid => Outcome.IsValid;
+
+    public string Message => Outcome.Message;
+
+    public UnitOperationHostViewSnapshot Views => Outcome.Views;
+
+    public UnitOperationHostFollowUp FollowUp => Outcome.FollowUp;
+
+    public UnitOperationHostSessionSnapshot Session => Outcome.Session;
+
+    public UnitOperationHostReportSnapshot Report => Outcome.Report;
+}
 
 internal sealed record UnitOperationHostReportBundle(
     UnitOperationHostReportSnapshot Snapshot,
@@ -227,28 +338,29 @@ internal sealed record UnitOperationHostReportBundle(
 
 internal sealed record UnitOperationSmokeCalculationAttempt(
     bool Succeeded,
+    UnitOperationHostCalculationOutcome Outcome,
     UnitOperationHostReportBundle Report,
     CapeOpenException? Failure,
     UnitOperationHostDriverFailureKind? FailureKind)
 {
-    public static UnitOperationSmokeCalculationAttempt FromSuccess(UnitOperationHostReportBundle report)
-    {
-        return new UnitOperationSmokeCalculationAttempt(
-            Succeeded: true,
-            Report: report,
-            Failure: null,
-            FailureKind: null);
-    }
+    public UnitOperationHostViewSnapshot Views => Outcome.Views;
 
-    public static UnitOperationSmokeCalculationAttempt FromFailure(
+    public UnitOperationHostFollowUp FollowUp => Outcome.FollowUp;
+
+    public UnitOperationHostSessionSnapshot Session => Outcome.Session;
+
+    public UnitOperationHostExecutionSnapshot Execution => Outcome.Execution;
+
+    public static UnitOperationSmokeCalculationAttempt FromOutcome(
+        UnitOperationHostCalculationOutcome outcome,
         UnitOperationHostReportBundle report,
-        CapeOpenException failure,
-        UnitOperationHostDriverFailureKind failureKind)
+        UnitOperationHostDriverFailureKind? failureKind)
     {
         return new UnitOperationSmokeCalculationAttempt(
-            Succeeded: false,
+            Succeeded: outcome.Succeeded,
+            Outcome: outcome,
             Report: report,
-            Failure: failure,
+            Failure: outcome.Failure,
             FailureKind: failureKind);
     }
 
@@ -277,4 +389,31 @@ internal sealed record UnitOperationSmokeCalculationAttempt(
 
         return typedFailure;
     }
+}
+
+internal sealed record UnitOperationSmokeRoundResult(
+    UnitOperationHostRoundOutcome Outcome,
+    UnitOperationHostReportBundle ReportBundle)
+{
+    public UnitOperationHostActionExecutionOrchestrationResult? ActionExecution => Outcome.ActionExecution;
+
+    public UnitOperationHostValidationOutcome? Validation => Outcome.Validation;
+
+    public UnitOperationHostCalculationOutcome? Calculation => Outcome.Calculation;
+
+    public UnitOperationHostFollowUp FollowUp => Outcome.FollowUp;
+
+    public UnitOperationHostRoundStopKind StopKind => Outcome.StopKind;
+
+    public UnitOperationHostConfigurationSnapshot Configuration => Outcome.Configuration;
+
+    public UnitOperationHostActionPlan ActionPlan => Outcome.ActionPlan;
+
+    public UnitOperationHostPortMaterialSnapshot PortMaterial => Outcome.PortMaterial;
+
+    public UnitOperationHostExecutionSnapshot Execution => Outcome.Execution;
+
+    public UnitOperationHostSessionSnapshot Session => Outcome.Session;
+
+    public UnitOperationHostReportSnapshot Report => Outcome.Report;
 }

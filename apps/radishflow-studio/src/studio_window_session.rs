@@ -60,6 +60,24 @@ impl StudioWindowSession {
         self.host_port.replace_canvas_suggestions(suggestions);
     }
 
+    pub fn begin_canvas_place_unit(
+        &mut self,
+        unit_kind: impl Into<String>,
+    ) -> rf_ui::CanvasEditIntent {
+        self.host_port.begin_canvas_place_unit(unit_kind)
+    }
+
+    pub fn cancel_canvas_pending_edit(&mut self) -> Option<rf_ui::CanvasEditIntent> {
+        self.host_port.cancel_canvas_pending_edit()
+    }
+
+    pub fn commit_canvas_pending_edit_at(
+        &mut self,
+        position: rf_ui::CanvasPoint,
+    ) -> RfResult<Option<rf_ui::CanvasEditCommitResult>> {
+        self.host_port.commit_canvas_pending_edit_at(position)
+    }
+
     pub fn accept_focused_canvas_suggestion_by_tab(
         &mut self,
     ) -> RfResult<Option<rf_ui::CanvasSuggestion>> {

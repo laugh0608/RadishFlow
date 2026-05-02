@@ -1,0 +1,15 @@
+﻿<?xml version='1.0' encoding='utf-8'?>
+<SettingsFile xmlns="http://schemas.microsoft.com/VisualStudio/2004/01/settings" CurrentProfile="(Default)" GeneratedClassNamespace="" GeneratedClassName="Settings">
+  <Profiles />
+  <Settings>
+    <Setting Name="WARDataPath" Type="System.String" Scope="User">
+      <Value Profile="(Default)">C:\CapeOpenUnits\WAR\WarData.xml</Value>
+    </Setting>
+    <Setting Name="FactorsData" Type="System.String" Scope="User">
+      <Value Profile="(Default)">C:\CapeOpenUnits\WAR\Factors.xml</Value>
+    </Setting>
+    <Setting Name="EnergyData" Type="System.String" Scope="User">
+      <Value Profile="(Default)">C:\CapeOpenUnits\WAR\ENERGY.txt</Value>
+    </Setting>
+  </Settings>
+</SettingsFile>

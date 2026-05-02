@@ -6,20 +6,65 @@
 - 为后续真正的 CAPE-OPEN Unit Operation PMC 留出项目边界和最小状态机
 - 提供最小内部 flowsheet/package 配置入口，并通过 `RadishFlow.CapeOpen.Adapter` 接入 `rf-ffi` 求解闭环
 
+当前已确认的宿主兼容性现状：
+
+- `DWSIM / COFE` 已能发现当前 PMC；先前 Windows PowerShell 5 晚绑定 `IDispatch` 探测中的 `0x80131165 Type library is not registered` 当前已不再复现
+- `DWSIM / COFE` 当前均已能正常放置 unit，并连接 `Feed / Product` material streams；COFE 关闭 case 时的 material object release warning 已消失，water/ethanol 复验样例下已能完成 `Validate / Calculate` 并收敛
+- COFE Product material 写回当前优先走最小 `ICapeThermoMaterial` / `ICapeThermoEquilibriumRoutine`，计算前会在可安全读取时用 connected `Feed` material 的 `temperature / pressure / totalFlow / fraction` 临时覆盖 native boundary input，避免自包含 flowsheet JSON 与 PME 入口物料不一致导致 mass balance 警告
+- DWSIM 当前真实消费顺序已收敛为 `InitNew -> Initialize -> SimulationContext set -> identification set -> Ports -> Parameters`；因此 `ICapeUtilities` vtable 前序必须保持 `Parameters get -> SimulationContext set -> Initialize -> Terminate -> Edit`，并把 COFE 需要的 `SimulationContext` getter 保留为 `Edit` 之后的同 `DispId(2)` late-bound getter
+- 对照本地 DWSIM `CapeOpenUO.GetParams()` 后，当前已确认 DWSIM 会把 `myparms.Item(i)` 返回的参数对象本身直接 cast 成 `ICapeParameterSpec`、type-specific spec 与 `ICapeParameter`；因此 parameter placeholder 本身也实现 `ICapeParameterSpec` 与 `ICapeOptionParameterSpec`，同时继续保留标准 `Specification` 对象入口
+- 当前 `Validate()` 在未配置 `Flowsheet Json` 等 MVP 必填参数时返回 invalid 是预期行为，不再归类为 discovery、activation、placement 或 port connection 失败
+- DWSIM 日志中的 `AutomaticTranslation.AutomaticTranslator.SetMainWindow(...)` `NullReferenceException` 发生在 DWSIM 主窗口 extender 初始化阶段，时间上早于 RadishFlow UnitOp activation；当前仅作为宿主侧启动噪声记录，不作为 RadishFlow CAPE-OPEN blocker
+- 当前目录已同时包含冻结真相源 `typelib/RadishFlow.CapeOpen.UnitOp.Mvp.idl` 与 `typelib/RadishFlow.CapeOpen.UnitOp.Mvp.tlb`；该 `tlb` 现在可通过仓库脚本 `scripts/gen-typelib.ps1` 由 Windows SDK MIDL + Visual Studio C++ 工具链重新生成，并已接入 `Registration` 的标准 `TypeLib` 注册/反注册路径
+- 当前又补入最小 `ICapeUnitReport` activation 兼容面；主类可枚举一个默认报告，并把 `ProduceReport(ref string)` 转发到既有 canonical calculation report 文本
+- 先前为定位 PME 添加组件 hard crash 而补入的 COM trace 当前已改为显式诊断开关：默认不写文件，只有设置 `RADISHFLOW_CAPEOPEN_TRACE_DIR` 后才写入 trace，`RADISHFLOW_CAPEOPEN_TRACE_FILE` 可覆盖默认文件名
+- `IPersistStreamInit`、`IPersistStorage` 与 `IOleObject` 当前仍是 PME canvas / OLE 探测所需的最小 no-op 兼容面，不代表实现真实工程文件持久化、OLE 可视嵌入或 in-place activation
+- 主要 CAPE-OPEN automation 接口当前已对齐为 IDL/TLB 中声明的 `dual` 形状；`ICapeUtilities.SimulationContext` setter 继续使用 raw `IntPtr`，避免 PME context 对象在进入方法体前触发 CLR interface marshaler
+- 当前仓库并不内置 `MIDL` / Visual Studio C++ 工具链；`scripts/gen-typelib.ps1` 会优先自动发现本机 Windows Kits / VS C++ 环境，也允许显式传入 `-MidlPath` 与 `-VcVarsPath`
+- 截至 2026-04-26，`Registration` dry-run 已能自动解析真实 `UnitOp.Mvp` 输出目录中的 comhost / TLB、校验 `TypeLib GUID/version`，并在 execute 模式下规划 `RegisterTypeLib(ForUser)` / `UnRegisterTypeLib(ForUser)`；真实 Windows PowerShell 5 复验已确认默认 `ICapeUtilities`、`Parameters.Count()` 和 parameter specification 可晚绑定调用，用户侧真实 `DWSIM / COFE` 复验也已确认 discovery、placement、port connection 与最小 calculate 主路径通过
+- 同日真实探测又确认：`pwsh` 下的 `0x800080A5` 来自宿主进程已预加载 `.NET 9.0.10`，与当前 PMC 目标运行时 `.NET 10.0.0` 不兼容；因此后续 native / classic COM 探测应优先使用 `Windows PowerShell 5` 或其他非预加载 .NET 宿主
+- 当前也确认：`ICapeUnit` 可通过 `QueryInterface` 返回 `S_OK`，但 PowerShell 默认 late binding 只代表默认 `ICapeUtilities` 面；`Ports / Validate / Calculate` 仍应以真实 PME 或强类型宿主路径复验为准
+
 当前已包含的最小公共面：
 
 - `RadishFlowCapeOpenUnitOperation`
+- `UnitOperationComIdentity`，用于冻结 MVP PMC 的 `CLSID / ProgID / Versioned ProgID / DisplayName / Description`
+- 项目已启用 `EnableComHosting`，用于生成 `.NET 10` `RadishFlow.CapeOpen.UnitOp.Mvp.comhost.dll` 前置产物；该产物当前只供 `Registration` preflight 检查和未来注册工具规划使用，不代表本项目会自行写注册表
+- `UnitOperationComIdentity` 当前也已冻结 `TypeLibraryId / TypeLibraryVersion / TypeLibraryFileName`；`RadishFlow.CapeOpen.UnitOp.Mvp.tlb` 当前会随构建输出一并复制，供 `Registration` 在 dry-run / execute 中直接消费
 - `UnitOperationPortPlaceholder` / `UnitOperationParameterPlaceholder`
-- `UnitOperationPlaceholderCollection<T>`
+- `UnitOperationParameterCollection`
+- `UnitOperationPortCollection`
 - `Initialize / Validate / Calculate / Terminate / Edit` 的第一版状态骨架
 - 内部 `LoadFlowsheetJson(...)`、`LoadPropertyPackageFiles(...)`、`SelectPropertyPackage(...)` 配置入口
 - `SetPortConnected(...)` 这一类最小端口状态入口
 - `ConfigureNativeLibraryDirectory(...)`、`LastCalculationResult`、`LastCalculationFailure`、`GetCalculationReport()`、`GetCalculationReportState()`、`GetCalculationReportHeadline()`、`GetCalculationReportDetailKeyCount()`、`GetCalculationReportDetailKey(int)`、`GetCalculationReportDetailValue(string)`、`GetCalculationReportLineCount()`、`GetCalculationReportLine(int)`、`GetCalculationReportLines()`、`GetCalculationReportText()`，以及公开 stable key catalog `UnitOperationCalculationReportDetailCatalog`
+- 最小标准 `ICapeUnitReport` 实现：`reports`、`selectedReport` 与 `ProduceReport(ref string)`
+- 最小标准 `ICapeUtilities.SimulationContext` 兼容面：IDL/TLB 仍保持 CAPE-OPEN 标准 `IDispatch*` 形状，managed setter 当前只记录 PME 是否提供 context，不保存或释放宿主指针；`ICapeUtilities` vtable 前序保持 DWSIM setter-only PIA 兼容顺序，getter 则保留为 `Edit` 之后的同 `DispId(2)` late-bound getter，并在尚无可消费 PME context 时返回非空 placeholder，避免 COFE native 侧对 null `IDispatch*` 做解引用
+- 最小标准 `ICapeOptionParameterSpec` 实现：当前所有 MVP 参数仍是字符串形态的 `CAPE_OPTION` 参数，parameter placeholder 本身和独立 `Specification` placeholder 都实现 `ICapeParameterSpec / ICapeOptionParameterSpec`；`DefaultValue` 返回非空 BSTR，`OptionList` 返回空字符串数组，`RestrictedToList` 返回 `false`，`Validate` 接受任意字符串候选值
+- COFE 复验显示它会在 `SimulationContext get` 返回后继续 native 消费该对象；当前 placeholder 又补出最小 `ICapeSimulationContext` marker、`ICapeCOSEUtilities` named values 与 `ICapeDiagnostic` no-op logging 面，并已同步 IDL/TLB 真相源，用于覆盖 COFE 对 simulation context 的早期 QI / IDispatch 探测
+- 后续复验显示 COFE 仍停在 `SimulationContext get-exit` 后且未进入 COSE/diagnostic 方法；当前 placeholder 又补出最小 `ICapeMaterialTemplateSystem`，并提升为公开 COM-visible coclass 写入 IDL/TLB，用于覆盖 COFE 只做早期 QI / typeinfo 探测的路径
+- 再次复验后 COFE 仍停在 `SimulationContext get-exit` 后且未进入任何 placeholder 方法；当前 `ICapeUtilities.SimulationContext` 仍在 managed 侧使用 raw `IntPtr`，但 getter/setter 已显式标注 `IDispatch` marshalling，使 native COM 侧签名保持与 IDL 的 `IDispatch** / IDispatch*` 一致
+- 用户侧随后确认 COFE 已可放置 unit 并连接 material streams；当前 setter 又撤回显式 `IDispatch` marshalling，仅 getter 保持 `IDispatch` 返回，以兼顾 COFE getter 返回点和 DWSIM setter 侧 raw pointer 路径。端口连接会保留 connected object 的 identification 快照与 live object 引用，后者只用于连接期间的 material 读写，并在 Disconnect / Terminate 时释放本 UnitOp 持有的 COM RCW
+- 最小标准 `IPersistStreamInit` 实现：`GetClassID` 返回当前 Unit Operation CLSID，`IsDirty` 返回 `S_FALSE`，`InitNew / Load / Save / GetSizeMax` 以无状态 no-op 返回 `S_OK`；`Load / Save` 在 managed 签名中接收 raw `IntPtr` stream，以避免当前不消费 stream 时仍触发 CLR COM interface marshaler
+- 最小标准 `IPersistStorage` 实现：复用同一个 `GetClassID / IsDirty` 口径，`InitNew / Load / Save / SaveCompleted / HandsOffStorage` 以无状态 no-op 返回 `S_OK`
+- 最小标准 `IOleObject` 实现：覆盖 `SetClientSite / GetClientSite / SetHostNames / DoVerb / GetUserClassID / GetUserType / SetExtent / GetExtent / GetMiscStatus / Close` 等 OLE container 探测入口；当前不实现真实 inplace activation、verb 枚举、clipboard data 或 advise sink
 - `UnitOperationHostReportReader.Read(...)`、`UnitOperationHostReportSnapshot` 与 `UnitOperationHostReportDetailEntry`，用于让外部最小 host 基于既有公开 report API 一次性材料化状态、stable detail entries、scalar lines、vector lines 与 text，而不必在每个宿主里重复写同样的读取样板
 - `UnitOperationHostReportPresenter.Present(...)` 与 `UnitOperationHostReportPresentation`，用于把 host snapshot 继续整理成更接近 UI / 日志组件的展示模型，明确 `StateLabel`、`RequiresAttention`、`StableDetails` 与 `SupplementalLines`
 - `UnitOperationHostReportFormatter.Format(...)`、`UnitOperationHostReportDocument` 与 `UnitOperationHostReportSection`，用于把 presentation 收口成固定 section 输出，便于宿主直接渲染 `Overview / Stable Details / Supplemental` 这类展示分区
+- `UnitOperationHostObjectDefinitionReader.Read(...)`、`UnitOperationHostObjectDefinitionSnapshot`、`UnitOperationHostParameterCollectionDefinition`、`UnitOperationHostPortCollectionDefinition`、`UnitOperationHostParameterCapabilities` 与 `UnitOperationHostPortCapabilities`，用于把 parameter/port catalog 的冻结对象定义和 host 可执行能力作为正式只读 host model 暴露出来，而不是让宿主从 runtime snapshot、catalog 静态类型或异常试探间接拼 definition/capability view
+- `UnitOperationHostObjectRuntimeReader.Read(...)`、`UnitOperationHostObjectRuntimeSnapshot`、`UnitOperationHostParameterRuntimeEntry` 与 `UnitOperationHostPortRuntimeEntry`，用于把 parameter/port 当前运行时对象语义先收口成正式只读 snapshot，并同步暴露该对象的 capability，再供 configuration/action-plan 等更高层 reader 复用
+- `UnitOperationHostObjectMutationDispatcher`、`UnitOperationHostObjectMutationCommand`、`UnitOperationHostObjectMutationOutcome` 与 `UnitOperationHostObjectMutationBatchResult`，用于把 parameter value 写入/reset 与 port connect/disconnect 这组最小对象修改动作收口成统一 host-facing mutation 边界；宿主既可逐条 `Dispatch(...)`，也可按输入顺序 `DispatchBatch(...)` 获取 ordered outcomes 与统一 invalidation 摘要，而不是让宿主侧散落直接调用 placeholder API
 - `UnitOperationHostConfigurationReader.Read(...)`、`UnitOperationHostConfigurationSnapshot`、`UnitOperationHostConfigurationParameterEntry`、`UnitOperationHostConfigurationPortEntry` 与 `UnitOperationHostConfigurationIssue`，用于让外部最小 host 直接读取当前配置就绪度、blocking issues、next operations，以及 parameter/port 的只读配置摘要，而不必再自己把 catalog、placeholder 状态和 validation 失败分支重新拼成一套宿主私有判断
-- `UnitOperationHostActionPlanReader.Read(...)`、`UnitOperationHostActionPlan`、`UnitOperationHostActionGroup`、`UnitOperationHostActionItem` 与 `UnitOperationHostActionTarget`，用于在 configuration snapshot 之上继续收口“宿主下一步该做什么”：按 `Lifecycle / Parameters / Ports / Terminal` 分组，直接给出 target kind/name(s)、reason、blocking 标记、canonical operation name 与推荐顺序，而不必再让宿主把 blocking issues 和 next operations 重新折叠成自己的 checklist
+- `UnitOperationHostActionDefinitionCatalog`、`UnitOperationHostActionPlanReader.Read(...)`、`UnitOperationHostActionPlan`、`UnitOperationHostActionGroup`、`UnitOperationHostActionItem` 与 `UnitOperationHostActionTarget`，用于在 configuration snapshot 之上继续收口“宿主下一步该做什么”：按 `Lifecycle / Parameters / Ports / Terminal` 分组，直接给出 target kind/name(s)、reason、blocking 标记、canonical operation name 与推荐顺序，而不必再让宿主把 blocking issues 和 next operations 重新折叠成自己的 checklist
+- `UnitOperationHostActionMutationBridge`、`UnitOperationHostActionMutationBinding` 与 `UnitOperationHostActionMutationCommandBatch`，用于把 action plan 继续桥接到可执行 mutation translation：显式区分 lifecycle-only、parameter value、port connection 与 unsupported 四类动作，并把可执行 action 收口成正式 `UnitOperationHostObjectMutationCommand` 批次，而不是让宿主继续手写 “action item -> mutation command” 映射
+- `UnitOperationHostActionExecutionRequestPlanner`、`UnitOperationHostActionExecutionInputSet`、`UnitOperationHostActionExecutionRequestPlan` 与 `UnitOperationHostActionExecutionRequestPlanEntry`，用于把 action plan、宿主提供的 parameter values / port objects 与正式 execution requests 对齐：库内统一标记 `RequestReady / MissingInputs / LifecycleOperationRequired / Unsupported`，但不替宿主决定具体 flowsheet JSON、package id、连接对象命名或 lifecycle 调用时机
+- `UnitOperationHostViewReader.Read(...)` 与 `UnitOperationHostViewSnapshot`，用于把 configuration、action plan、port/material、execution、report 与 session 六块正式 host view 收口到单一快照，避免不同 helper 再分别重复读取与拼装
+- `UnitOperationHostFollowUpPlanner` 与 `UnitOperationHostFollowUp`，用于把“宿主下一步该做什么”统一收口为正式模型；当前覆盖 `LifecycleOperation / ProvideInputs / Validate / Calculate / CurrentResults / Terminated`
+- `UnitOperationHostActionExecutionOrchestrator` 与 `UnitOperationHostActionExecutionOrchestrationResult`，用于把 request planning、action execution 与刷新后的 host view 一并收口成窄边界 orchestration helper：宿主可一次得到 planned action count、ready request count、missing inputs、mutation invalidation 摘要、执行后的最新 host views 与统一 follow-up，但该 helper 仍不负责 `Initialize / Validate / Calculate / Terminate`
+- `UnitOperationHostValidationRunner.Validate(...)`、`UnitOperationHostValidationOutcome`、`UnitOperationHostCalculationRunner.Calculate(...)` 与 `UnitOperationHostCalculationOutcome`，用于把 `Validate()` / `Calculate()` 之后的正式 host view、统一 follow-up 与结果状态继续收口到库内，而不再要求 smoke host / contract tests 在调用后自己补读 session/report/execution 再判断下一步
+- `UnitOperationHostRoundOrchestrator.Execute(...)`、`UnitOperationHostRoundRequest`、`UnitOperationHostRoundOutcome` 与 `UnitOperationHostRoundStopKind`，用于把“可选 action execution -> 可选 supplemental mutations -> 可选 validate -> 可选 calculate”这一条最常见宿主 round 主路径继续收口成正式结果：宿主可一次拿到 initial/final views、可选 action/supplemental/validation/calculation outcome、最终 follow-up 与统一 stop kind，但该 helper 仍不扩张成完整 smoke driver 或 PME 生命周期框架
+- `RadishFlow.CapeOpen.UnitOp.Mvp.SampleHost` 当前又已在 console 壳内补出 `PmeLikeUnitOperationHost / PmeLikeUnitOperationSession / PmeLikeUnitOperationInput` 薄宿主入口，用来把 SampleHost 已验证的正式消费路径整理成更接近 PME host 的 session 形状；这层只负责创建组件、初始化、提交宿主显式输入、执行正式 host round、读取正式结果和终止，不承担 COM 注册、PME 自动化互调或完整生命周期框架
+- `UnitOperationHostActionExecutionDispatcher`、`UnitOperationHostActionExecutionRequest`、`UnitOperationHostActionExecutionOutcome` 与 `UnitOperationHostActionExecutionBatchResult`，用于把 action execution 继续收口成正式 helper：对 parameter/port action 直接走 mutation dispatcher，对 lifecycle-only/unsupported action 则返回显式 disposition，而不是让宿主自己在 bridge 结果之上再写一层执行分发
 - `UnitOperationHostPortMaterialReader.Read(...)`、`UnitOperationHostPortMaterialSnapshot`、`UnitOperationHostPortMaterialEntry` 与 `UnitOperationHostMaterialStreamEntry`，用于在 calculate 结果面之上继续收口“每个 host port 当前绑定了哪些 boundary streams、这些 streams 是否已有当前 material result、若有则给出最小温压流量/相分率摘要”；宿主不必再自己解析 flowsheet JSON、推断 boundary stream 集或把 native solve snapshot 的 `streams` 数组重新映射回 `Feed/Product`
 - `UnitOperationHostExecutionReader.Read(...)`、`UnitOperationHostExecutionSnapshot`、`UnitOperationHostExecutionSummary`、`UnitOperationHostExecutionDiagnosticEntry` 与 `UnitOperationHostExecutionStepEntry`，用于在 calculate 结果面之上继续收口“这次执行做了什么”：宿主可直接读取 `None / Stale / Available / Terminated` 四态、calculation status、summary、diagnostics 与 step-by-step 执行序列，而不必继续从 report supplemental lines 间接反推
 - `UnitOperationHostSessionReader.Read(...)`、`UnitOperationHostSessionSnapshot`、`UnitOperationHostSessionSummary` 与 `UnitOperationHostSessionState`，用于在上述 readers 之上继续收口“一次读取当前完整宿主视图”：直接聚合 configuration、action plan、port/material、execution 与 report，并额外给出 canonical session state，以及 `IsReadyForCalculate / HasBlockingActions / HasCurrentResults / RequiresCalculateRefresh / HasFailureReport / RecommendedOperations` 这类宿主摘要
@@ -30,25 +75,42 @@
 当前明确不包含：
 
 - COM 注册 / 反注册
-- 稳定 CLSID / ProgID 策略
-- 报告接口的正式实现
+- 注册表写入、PME discovery 自动化或注册工具执行逻辑
+- 多报告菜单、格式选择或完整 PME 报告 UI 集成
+- 真实 OLE 可视嵌入、in-place activation、verb 菜单或 clipboard/advise 数据交换；当前 `IOleObject` 只是 PME canvas 添加阶段的最小兼容探测面
+- 长期保留诊断 trace；该 trace 仅用于当前 PME activation 排查，问题定位后应删除或改成显式开关
 - PME 生命周期集成
 - 完整 CAPE-OPEN PMC 运行时
+
+推荐的最小外部 host 入口：
+
+- 若只是验证或教学用途，不要直接复用 `RadishFlow.CapeOpen.SmokeTests` 里的 `UnitOperationSmokeHostDriver`
+- 当前推荐直接复用 `UnitOperationHostViewReader`、`UnitOperationHostActionExecutionRequestPlanner`、`UnitOperationHostRoundOrchestrator`、`UnitOperationHostSessionReader`、`UnitOperationHostExecutionReader`、`UnitOperationHostPortMaterialReader` 与 `UnitOperationHostReportReader/Presenter/Formatter`
+- 仓库现在已补出独立样例 `RadishFlow.CapeOpen.UnitOp.Mvp.SampleHost`，专门演示外部 host 如何在不依赖 smoke DSL 的前提下走正式 `view -> request plan -> round outcome` 主路径，并通过 supplemental mutation phase 注入 optional package files
+- 若需要更接近 PME host 的最小接线蓝本，优先参考 `SampleHost` 内的 `PmeLikeUnitOperationHost` / `PmeLikeUnitOperationSession`，而不是参考 `SmokeTests` 的验证型 driver；前者只包一层宿主 session，后者仍承担 smoke 场景、断言和失败分类职责
 
 说明：
 
 - 当前 `Ports` / `Parameters` 已返回带 `Item(object)` 和 `Count()` 的最小 `ICapeCollection` 风格对象，并支持按 `ComponentName` 或 1-based 索引取项
 - 当前参数对象已提供最小 `ICapeParameter` + `ICapeParameterSpec` 语义，端口对象已提供最小 `ICapeUnitPort` 语义，但仍只覆盖 MVP 所需的字符串参数和占位连接对象
 - 当前 `ICapeCollection.Item(object)` 已冻结为“1-based 整数索引或 component name”双入口；除 `int/long` 外，也接受能无损落到整数的 `double/float/decimal` 选择子，以贴近 COM 宿主可能传入的数值 Variant 形状；空白名称、越界索引和非整数数值仍按 `CapeInvalidArgumentException` 拒绝
-- 在 COM 兼容的 `Item(object)` 之外，当前 `UnitOperationPlaceholderCollection<T>` 又已补出 typed runtime collection 主通路：`ContainsName(...)`、`TryGetByName(...)`、`GetByName(...)` 与 `GetByOneBasedIndex(...)`；后续 `UnitOp.Mvp` 自身、contract tests 和 smoke host 应优先走这条强类型入口，而不是继续在内部到处手写 `ICapeCollection.Item(object)` 选择子
+- 在 COM 兼容的 `Item(object)` 之外，当前 `UnitOperationParameterCollection` / `UnitOperationPortCollection` 继续复用同一套 typed runtime collection 主通路：`ContainsName(...)`、`TryGetByName(...)`、`GetByName(...)` 与 `GetByOneBasedIndex(...)`；后续 `UnitOp.Mvp` 自身、contract tests 和 smoke host 应优先走这条强类型入口，而不是继续在内部到处手写 `ICapeCollection.Item(object)` 选择子
 - 当前 `ICapeCollection`、`ICapeParameter` 与 `ICapeUnitPort` 的 `ComponentName/ComponentDescription` 已冻结为运行时不可变元数据；宿主可以重复读取，但不能在 MVP runtime 中修改这些标识字段，从而保持 collection lookup、required port 规则与 stable detail key 不漂移
 - 当前 `UnitOperationParameterCatalog` / `UnitOperationPortCatalog` 已进一步从“名字常量表”推进到“完整定义真相源”，把 canonical name、collection order、description、required/value-kind/mode 与 direction/port-type 一并收口，避免这些宿主契约继续散落在构造函数和测试字面量里
 - 当前 `UnitOperationPortCatalog` 又已继续吸收 host-facing material 语义：port definition 现显式声明 `BoundaryMaterialRole`，冻结 `Feed -> boundary inputs` 与 `Product -> boundary outputs` 这层映射，不再让 smoke/contract tests 各自猜测 placeholder port 该代表哪一组 flowsheet streams
 - 当前 parameter/port placeholder 又已进一步从“复制 catalog 元数据到运行时实例”收口为“直接绑定 catalog definition 对象”；运行时只保留 value / connection 这类可变状态，避免 definition 与 placeholder 元数据再次出现漂移
 - 当前 `RadishFlowCapeOpenUnitOperation` 自身也已改成按 `OrderedDefinitions` 构造 parameter/port collection，并通过 catalog 名称回取 canonical placeholder；这样 unit 内部不再额外维护一套私有参数/端口清单，catalog + typed collection 才是唯一真相源
+- 当前 `RadishFlowCapeOpenUnitOperation` 又已通过 `UnitOperationComIdentity` 冻结 `ComVisible / CLSID / ProgID / ClassInterface(None)` 这组注册前置元数据，并同步作为 `RadishFlow.CapeOpen.Registration` dry-run 输出来源；这只代表身份口径冻结，不代表已经执行 COM 注册或 PME discovery
 - 当前 parameter/port catalog 又已继续吸收“宿主应调用哪个公开操作来配置该对象”这层语义：parameter definition 现显式声明 `ConfigurationOperationName`，port definition 现显式声明 `ConnectionOperationName`；`Validate()` / `Calculate()` 失败时返回的 `requestedOperation` 已改为从这份 definition 元数据派生，而不是在 unit / smoke / contract tests 中各自硬编码
+- 当前 parameter/port catalog 之上又已补出正式 `UnitOperationHostObjectDefinitionReader`；宿主现在可以直接读取 parameter/port collection、object definition 与 capability 的只读形状，不必通过 runtime snapshot 或异常试探间接反推冻结元数据和可操作性
+- 当前 parameter/port 对象运行时又已补出正式 `UnitOperationHostObjectRuntimeReader`；configuration reader 现在基于这份 object runtime snapshot 构造配置摘要，不再同时直接混读 catalog definition 与 placeholder 状态
+- 当前又已补出 `UnitOperationHostObjectMutationDispatcher`，并进一步冻结 `UnitOperationHostObjectMutationCommand` command model：先把 `SetParameterValue / ResetParameter / ConnectPort / DisconnectPort` 这四个最小 host mutation 收口为统一 `Dispatch(...)` 入口，再补出 `DispatchBatch(...)` 让宿主按顺序提交一组命令，并得到 `AppliedCount`、ordered outcomes、`InvalidatedValidation` 与 `InvalidatedCalculationReport` 这组批量摘要；失败路径仍继续保留既有 ECape 异常语义，不吞异常
 - 基于这层 catalog 元数据，当前又已补出正式 `UnitOperationHostConfigurationReader`：宿主现在可以在 `Constructed / Incomplete / Ready / Terminated` 四种 configuration state 上读取 headline、blocking issues、next operations、以及按 catalog 顺序冻结的 parameter/port configuration entries，而不必先调用 `Validate()` 再反解析错误消息
-- 基于这份 configuration snapshot，当前又继续补出 `UnitOperationHostActionPlanReader`：宿主现在可以直接读取分组后的 action checklist，而不必只拿到 `next operations` 名字数组后，再自己决定 action 分组、target、blocking reason 和推荐顺序
+- 基于这份 configuration snapshot，当前又继续补出 `UnitOperationHostActionPlanReader` 与 `UnitOperationHostActionDefinitionCatalog`：宿主现在可以直接读取分组后的 action checklist，而 action group、target kind、group title、group order 与 blocking 语义已收口到 action definition catalog，不再散落在 reader switch 分支里
+- 在这份 action checklist 之上，当前又继续补出 `UnitOperationHostActionMutationBridge`：宿主现在可以先读取每条 action 属于 `LifecycleOperation / ParameterValues / PortConnection / Unsupported` 哪一类，再把可执行 action 明确翻译成 `UnitOperationHostObjectMutationCommand` 批次；manifest/payload 这类 companion action 会生成按目标顺序排列的多条 parameter commands，而 terminated / initialize 这类非对象修改动作则会继续显式停留在不可直接 mutation 的桥接状态
+- 在这层 bridge 之上，当前又继续补出 `UnitOperationHostActionExecutionRequestPlanner`、`UnitOperationHostActionExecutionDispatcher`、`UnitOperationHostViewReader`、`UnitOperationHostFollowUpPlanner` 与 `UnitOperationHostActionExecutionOrchestrator`：planner 只把 action plan 和宿主显式提供的输入规划成 executable request plan，并清晰暴露缺失输入、lifecycle-only 与 unsupported action；dispatcher 再消费 ready requests，统一决定是返回 `LifecycleOperationRequired / Unsupported`，还是把 parameter/port action 落到 `UnitOperationHostObjectMutationDispatcher.DispatchBatch(...)` 并回传 ordered mutation outcomes、applied mutation count 与 invalidation 摘要；view reader 与 follow-up planner 继续统一刷新并归纳正式 host view / next-step 语义；orchestrator 最终把它们收口到单一结果对象。这样“读 action plan -> 准备宿主输入 -> 规划 execution request -> 执行 -> 刷新宿主视图 -> 判断下一步”这条最小宿主配置动作链已在库内收口，但仍不把 smoke 专用默认输入或完整 driver 生命周期上移成正式 API
+- 在上述 action execution orchestration 之外，当前又继续补出 `UnitOperationHostValidationRunner` 与 `UnitOperationHostCalculationRunner`：最小 host 现在可以在 `Validate()` / `Calculate()` 后直接得到正式 `Views + FollowUp` 结果，不必继续手工补读 `session/report/execution` 再判断“下一步该 ProvideInputs、Calculate，还是已经进入 CurrentResults”
+- 在 validation/calculation round outcome 之上，当前又继续补出 `UnitOperationHostRoundOrchestrator`：最小 host 现在可以把“先执行 ready actions、再按需要应用 supplemental object mutations、最后再 validate/calculate”这条常见 round 主路径直接收口到 `InitialViews + FinalViews + ActionExecution? + SupplementalMutations? + Validation? + Calculation? + FollowUp + StopKind`，而不必在 smoke host、contract tests 或未来 PME host 里重复写 phase gating、optional mutation 注入和 stop reason 判断
 - 基于 flowsheet 配置与 calculate 结果，当前又继续补出 `UnitOperationHostPortMaterialReader`：宿主现在可以直接读取 `None / Stale / Available / Terminated` 四态的 port/material snapshot，以及每个 host port 对应的 boundary stream ids 和当前 material entries，而不必自己重做“flowsheet boundary -> host placeholder port -> solved stream”映射
 - 在这层结果对象之上，当前又继续补出 `UnitOperationHostExecutionReader`：宿主现在可以直接读取 execution snapshot，而不必继续依赖 `GetCalculationReportLines()` 或 sectioned report 的 supplemental 文本去推断本次执行包含哪些 unit steps、消费了哪些 streams、生成了哪些 streams
 - 在上述宿主只读面之上，当前又继续补出 `UnitOperationHostSessionReader`：宿主现在可以一次读取 configuration/action plan/port-material/execution/report 五块正式快照，并复用统一 summary 与 canonical session state，而不必在外部自己协调多次 reader 调用、汇总 headline 或再拼一层私有 status view
@@ -74,12 +136,14 @@
 - 基于 host snapshot，当前又补出 `UnitOperationHostReportPresenter.Present(...)`，把“稳定 detail 行”和“补充展示行”拆开，并显式前推 `StateLabel / RequiresAttention / HasStableDetails / HasSupplementalLines` 这类更接近宿主 UI 和日志组件的展示语义，避免每个宿主再各自推断 failure 高亮、success 附加诊断区或 idle 空态标签
 - 基于 presentation，当前又补出 `UnitOperationHostReportFormatter.Format(...)`，把宿主展示继续收口为固定 section 文档；这样最小 host 不只拿到字段化语义，还能直接按 section 渲染 overview、stable details 与 supplemental diagnostics，而不必每个宿主再自己决定分区标题和文本拼接顺序
 - 在上述 report helper 之外，当前又补出 `UnitOperationHostConfigurationReader.Read(...)` 这一条配置只读路径，把“当前是否 ready for calculate”“还缺哪些 parameter/port”“下一步应该调用哪个公开操作”这类宿主驱动语义也正式前推到库内，避免这部分逻辑继续散落在 smoke host、未来 PME 适配或其他宿主入口中各自实现
-- 当前“宿主如何驱动 PMC”这条最小 orchestration helper 仍故意留在 `RadishFlow.CapeOpen.SmokeTests`：先用 `UnitOperationSmokeHostDriver` 验证正式调用顺序、最小必需输入和失败分类是否稳定，再决定是否有必要把 driver 上移到库内；`UnitOp.Mvp` 本身当前继续只负责 PMC 对象面与结果读取/展示 helper，不在这一轮提前承诺宿主驱动 convenience API
+- 当前“完整宿主如何驱动 PMC”的验证型 orchestration 仍故意留在 `RadishFlow.CapeOpen.SmokeTests`：`UnitOperationSmokeHostDriver` 现在通过 `UnitOperationHostActionExecutionRequestPlanner` 与 `UnitOperationHostActionExecutionDispatcher` 应用 parameter/port 类阻塞配置动作，并继续用直接参数/端口改写覆盖非法状态和 stale 状态边界；driver 暂不整体上移到库内，`UnitOp.Mvp` 本身当前只承诺 PMC 对象面、action plan / request planning / action execution helper 与结果读取/展示 helper，不提前承诺更高层宿主驱动 convenience API
+- 当前 PME-like 薄宿主入口已落在 `RadishFlow.CapeOpen.UnitOp.Mvp.SampleHost`，它只作为外部宿主消费面的最小蓝本存在：生命周期由 host session 显式打开/终止，输入由 `PmeLikeUnitOperationInput` 显式提供，执行仍委托 `UnitOperationHostRoundOrchestrator`，结果仍读取正式 session/execution/port-material/report snapshot；这一步足以证明正式消费路径可承载更接近 PME host 的入口形状，但仍不代表进入 COM 注册或真实 PME 自动化互调
 - 当前又已补出同目录层级的自举 contract test 入口 `RadishFlow.CapeOpen.UnitOp.Mvp.ContractTests`，用于在不依赖外部 NuGet 测试框架的前提下，直接锁定 `Validate/Calculate/Terminate/report transition` 这类库侧行为契约；当前已覆盖 `Validate before Initialize`、validation failure report、native failure report、success report、配置变更 invalidation 与 `Terminate()` 后阻断 6 条核心 case；后续若继续冻结 `UnitOp.Mvp` 对外行为，应优先在这里补细粒度 contract case，而不是只依赖 smoke console 间接覆盖
 - 当前 contract tests 又已继续前推到对象面本身，新增 collection selector、parameter reset/lifecycle access 与 port reconnect 约束这三组契约，确保“最小宿主对象运行时”不再只靠 smoke 路径间接覆盖
 - 在上述对象面 contract tests 基础上，当前又已补上 spec 对象稳定性、post-terminate spec access guard 与 parameter mode immutability 三条参数语义约束，避免后续再次把参数对象回退成“值对象和 spec 对象合一”的松散实现
 - 当前 `SmokeTests` 与 `ContractTests` 也已切到消费同一份 parameter/port catalog；后续若 canonical order 或对象定义继续演进，应优先改 catalog，而不是在多个 host/test 入口各自追字面量
 - 当前 contract tests 又已把 typed runtime collection 本身纳入行为契约：除 `ICapeCollection.Item(object)` 兼容面外，还锁住了 `ContainsName/TryGetByName/GetByName/GetByOneBasedIndex` 的成功/失败语义，并要求 typed lookup 返回的对象与集合中的 placeholder 实例保持同一引用
+- 当前 contract tests 又已补上 action execution request planning contract，锁住 constructed/initialized/companion/terminated 下的 request-ready、missing-input、lifecycle-only 与 unsupported 规划语义，并确认 planner 产出的 ready requests 可以直接交给 dispatcher 把 unit 推进到 ready 配置状态
 - 当前 contract tests 又已补上 companion validation failure 这条 case，并锁住 requested operation 会从 parameter catalog 的共享 `ConfigurationOperationName` 回读；`SmokeTests` 的 validation/native failure 断言也已同步改成依赖这份 catalog 元数据，而不是私有 `nameof(...)` 字面量
 - 当前 contract tests 又已补上 configuration snapshot contract，锁住 constructed/ready/companion-mismatch/terminated 四种 configuration state、blocking issue kinds、next operations 与只读 entry 形状；`SmokeTests` 的 boundary/session 路径当前也已开始优先消费这套 configuration snapshot，而不是只靠散落的 parameter/port 判断
 - 在 configuration snapshot contract 之上，当前又新增 action plan contract，进一步锁住 constructed / missing required parameter / companion mismatch / disconnected required port / ready / terminated 六类宿主 checklist 形状；`SmokeTests` 当前也已切到优先断言 action group、target、reason、blocking 与 canonical operation，而不再只盯 `NextOperations`
@@ -92,5 +156,11 @@
 
 ```powershell
 dotnet build .\adapters\dotnet-capeopen\RadishFlow.CapeOpen.UnitOp.Mvp.ContractTests\RadishFlow.CapeOpen.UnitOp.Mvp.ContractTests.csproj -v minimal
-.\adapters\dotnet-capeopen\RadishFlow.CapeOpen.UnitOp.Mvp.ContractTests\bin\Debug\net10.0\RadishFlow.CapeOpen.UnitOp.Mvp.ContractTests.exe --native-lib-dir D:\Code\RadishFlow\target\debug
+.\adapters\dotnet-capeopen\RadishFlow.CapeOpen.UnitOp.Mvp.ContractTests\bin\Debug\net10.0-windows7.0\RadishFlow.CapeOpen.UnitOp.Mvp.ContractTests.exe --native-lib-dir D:\Code\RadishFlow\target\debug
+```
+
+最小外部 host 样例运行示例：
+
+```powershell
+dotnet run --project .\adapters\dotnet-capeopen\RadishFlow.CapeOpen.UnitOp.Mvp.SampleHost\RadishFlow.CapeOpen.UnitOp.Mvp.SampleHost.csproj -- --native-lib-dir D:\Code\RadishFlow\target\debug
 ```

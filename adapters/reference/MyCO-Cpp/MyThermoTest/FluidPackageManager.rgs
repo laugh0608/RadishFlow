@@ -1,0 +1,30 @@
+HKCR
+{
+	NoRemove CLSID
+	{
+		ForceRemove {6d34b620-82c1-4d7d-aef0-14aa72193164} = s 'FluidPackageManager class'
+		{
+			ForceRemove Programmable
+			InprocServer32 = s '%MODULE%'
+			{
+				val ThreadingModel = s 'Apartment'
+			}
+			TypeLib = s '{b521d5a4-b34b-4c72-9b59-72a5e0d0139d}'
+			Version = s '1.0'
+			'Implemented Categories'
+			{
+				{678C09A1-7D66-11D2-A67D-00105A42887F}
+				{CF51E383-0110-4ed8-ACB7-B50CFDE6908E}
+			}
+			CapeDescription
+			{
+				val Name =  s 'Test Property Package Manager'
+				val Description = s 'Written By laugh'
+				val CapeVersion = s '1.1'
+				val ComponentVersion = s '24.01.15.1'
+				val VendorURL = s 'http://imbhj.com/'
+				val About = s 'Test My Thermo Property Package Manager'
+			}
+		}
+	}
+}

@@ -1,0 +1,1 @@
+heat dir "E:\Projects\CSharp\CasterUnit\CasterFlash" -dr SampleFold -cg CasterFlashComponentGroup -gg -gl -sfrag -srd -var "var.CasterFlash" -out "E:\Projects\CSharp\CasterUnit\CasterUnitCore\CasterUnitSetup\CasterFlash.wxs"

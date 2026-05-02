@@ -1,0 +1,777 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+    <Fragment>
+        <DirectoryRef Id="SampleFold">
+            <Component Id="cmpE6A49C5456C0D96A60132A0F404E7D75" Guid="{C7C39E59-ED26-4937-886F-08D131BC1EBF}">
+                <File Id="fil0DC079282D19A21C31138B1DA4F37876" KeyPath="yes" Source="$(var.CasterFlash)\CasterFlash.sln" />
+            </Component>
+            <Component Id="cmpD3C6D5BF6CE67082E8FE0AAB0285023A" Guid="{61058BEC-E8EF-4E8F-A01C-4902C65C8A23}">
+                <File Id="fil0781536C2B5D0AD4A0A0F3F54BC3974A" KeyPath="yes" Source="$(var.CasterFlash)\CasterFlash.sln.DotSettings.user" />
+            </Component>
+            <Component Id="cmp09DB0BA847B84192F61C2C49D1132F22" Guid="{FE155A94-CBB2-4219-B9AD-9C3B1E6C504C}">
+                <File Id="fil705B3CDB634BF7DD13217891D7C0357D" KeyPath="yes" Source="$(var.CasterFlash)\CasterFlash.v12.suo" />
+            </Component>
+            <Component Id="cmp101894923BD6D4A1A8ADE4A97C84CB65" Guid="{99DD2309-1C5D-44DF-BD8A-F7E97079389A}">
+                <File Id="filD8EA604C2A9294D32D9BCBE2B93BD09E" KeyPath="yes" Source="$(var.CasterFlash)\CasterFlashTest.bkp" />
+            </Component>
+            <Component Id="cmpF53E8A98B92FDA6F2D0272C8C08CDDB2" Guid="{020D2174-3F48-4991-924C-6B7D030133C9}">
+                <File Id="filDAE9D1162C83FAD2D28FB3B3C8D3144A" KeyPath="yes" Source="$(var.CasterFlash)\CasterFlashTest.fsd" />
+            </Component>
+            <Component Id="cmpFF23754EEE596EC9B16193AA8D068F90" Guid="{7D019471-396A-4601-809E-3E1674BFB908}">
+                <File Id="filC5AD86F3C7F85AB2F53F2021D0FBFD8B" KeyPath="yes" Source="$(var.CasterFlash)\CasterUnitCoreTester.fsd" />
+            </Component>
+            <Directory Id="dir687FFF6F679F7FCA18DBDC6692244B9F" Name="CasterFlash">
+                <Component Id="cmp57EA9A8D22E15B8E77E98C7E36B8D5A5" Guid="{B1E8DC7A-5C42-453D-A34F-2DA4A69657A4}">
+                    <File Id="fil4CB3AD9DC93A25863F2BEF1993CA258B" KeyPath="yes" Source="$(var.CasterFlash)\CasterFlash\CasterFlash.csproj" />
+                </Component>
+                <Component Id="cmpEEEAC4AE0F95158F04216273BCFA8E88" Guid="{2C1632F9-94A4-480F-9AB3-EFB447E262E9}">
+                    <File Id="fil19D8B43414F6B559B6EA95D38B39C567" KeyPath="yes" Source="$(var.CasterFlash)\CasterFlash\CasterFlash.csproj.user" />
+                </Component>
+                <Component Id="cmpE9355878D795ABEB72B4AC4C28AA3404" Guid="{719C0256-0773-4129-A2C6-3B36A5408810}">
+                    <File Id="filE67D1B8023883F34D003A77F240A8B33" KeyPath="yes" Source="$(var.CasterFlash)\CasterFlash\CasterFlashUnitOp.cs" />
+                </Component>
+                <Component Id="cmpDFCEDABE8E8C0520BBEC9F4594433045" Guid="{CC8C7D5B-76D2-40BE-8A2D-82BD68D7F227}">
+                    <File Id="filB09490B34F2DADDCBCB1018A8AB4685B" KeyPath="yes" Source="$(var.CasterFlash)\CasterFlash\FlashCalculator.cs" />
+                </Component>
+                <Component Id="cmpA61711C6B28947982FD603707F0D8FC4" Guid="{0A5CE8B8-C282-4C0D-8588-EA207BF3C462}">
+                    <File Id="fil78CCE6C2CAB9660DD89C438825CF959E" KeyPath="yes" Source="$(var.CasterFlash)\CasterFlash\IFlash.cs" />
+                </Component>
+                <Directory Id="dir14B4846D8DEF8081DA9EBC687AE27C65" Name="Options">
+                    <Component Id="cmp8CDE6FC5CBF8101A3374C2B353FEE6ED" Guid="{B7F37672-9391-48A7-AB78-8E5407BCABDA}">
+                        <File Id="filE5768DFEA55BAD9106E8EAD774684F6C" KeyPath="yes" Source="$(var.CasterFlash)\CasterFlash\Options\FlashOptions.cs" />
+                    </Component>
+                </Directory>
+                <Directory Id="dir98EE4B192F05FB063C09EF244074B0F1" Name="Properties">
+                    <Component Id="cmp1C09B61745AA99E752F3B4AAD5727B28" Guid="{3D0926F3-1571-4186-831A-8CCA5363DBEB}">
+                        <File Id="filBCF03735BF67410F600E81C73008E204" KeyPath="yes" Source="$(var.CasterFlash)\CasterFlash\Properties\AssemblyInfo.cs" />
+                    </Component>
+                </Directory>
+            </Directory>
+            <Directory Id="dirB546234FDF2118C06B43081129A54448" Name="CasterFlashGUI">
+                <Component Id="cmp852AAB2E52EDD17F78CDC40CBFB25250" Guid="{12678A1B-05F3-48B3-8D6C-B4A12EF8C993}">
+                    <File Id="fil5E9AF28524F73C70128F99E41CF2C128" KeyPath="yes" Source="$(var.CasterFlash)\CasterFlashGUI\App.xaml" />
+                </Component>
+                <Component Id="cmpFFB84F7B2E7D0513E2D8E92A0548DB2F" Guid="{0ABEED21-2B4E-4B13-B354-019986DAFC9E}">
+                    <File Id="fil6AEFB1D90BD410966568C38D3C20E67F" KeyPath="yes" Source="$(var.CasterFlash)\CasterFlashGUI\App.xaml.cs" />
+                </Component>
+                <Component Id="cmpCF38E0BB38A6E984E1346E78DBB57469" Guid="{041D4B63-F956-4114-B528-FA98B856A0B2}">
+                    <File Id="filDFFA155EE3E5634B5F44B92679FD0E61" KeyPath="yes" Source="$(var.CasterFlash)\CasterFlashGUI\CasterFlashGUI.csproj" />
+                </Component>
+                <Component Id="cmpFB6B55018B67B32AC8F21309509BA8E2" Guid="{6490921B-526E-4537-B5CB-E6594C6263B6}">
+                    <File Id="fil90D6EB7546E0864CF4246BB4C1E75A64" KeyPath="yes" Source="$(var.CasterFlash)\CasterFlashGUI\CasterFlashGUI.csproj.user" />
+                </Component>
+                <Component Id="cmpAA28799AA4208F69D659EAE9272ADDB7" Guid="{EC024C11-07B0-45BC-AB26-83F4FCB00604}">
+                    <File Id="fil0C7421AD7078F1210EB01D4B342BF81E" KeyPath="yes" Source="$(var.CasterFlash)\CasterFlashGUI\MainWindow.xaml" />
+                </Component>
+                <Component Id="cmpC4F3839A20E202C86F9674A68010E7DD" Guid="{D4426D30-411A-4DB4-ABF2-11DACEE4EE1F}">
+                    <File Id="fil458C1A5C20592C212BC530C6C7F42666" KeyPath="yes" Source="$(var.CasterFlash)\CasterFlashGUI\MainWindow.xaml.cs" />
+                </Component>
+                <Component Id="cmpE3D7E435369C12D48896F0761DB2D5B5" Guid="{FF602D79-A4A9-4A5B-8193-17BFCE40704E}">
+                    <File Id="fil67E50C70049D2E9E945EB8606DB27F53" KeyPath="yes" Source="$(var.CasterFlash)\CasterFlashGUI\OptionParamControl.xaml" />
+                </Component>
+                <Component Id="cmpB1EF6E4486912EABCB74CB7828A163CE" Guid="{68E6C176-66E3-4926-A027-F9FE655BC5D3}">
+                    <File Id="fil9D0BD73789AA7432E9AA0338B9E07F5C" KeyPath="yes" Source="$(var.CasterFlash)\CasterFlashGUI\OptionParamControl.xaml.cs" />
+                </Component>
+                <Component Id="cmp6CA28C1A0D813A3B8607D149168CFB84" Guid="{99E4D80B-D2B2-448E-88F2-D7621DDB0C63}">
+                    <File Id="fil297F69FF7F41F84838817DFBC222873A" KeyPath="yes" Source="$(var.CasterFlash)\CasterFlashGUI\packages.config" />
+                </Component>
+                <Component Id="cmp1DAF250C91E4B1FB48592D69064DB951" Guid="{32380F8F-E7AE-43F4-BE18-7801B0819A6D}">
+                    <File Id="fil7C798E6CB0019039E6D3A74053AF5A9A" KeyPath="yes" Source="$(var.CasterFlash)\CasterFlashGUI\RealParamControl.xaml" />
+                </Component>
+                <Component Id="cmp4E70EA33BE6611FC231599D4C437832A" Guid="{EA56FAFB-0C49-4C22-B3CB-3C2B8F17DC9A}">
+                    <File Id="fil4DCFA048AB2533D17DE47DDC1CB17CAE" KeyPath="yes" Source="$(var.CasterFlash)\CasterFlashGUI\RealParamControl.xaml.cs" />
+                </Component>
+                <Component Id="cmpB1DF25FBAA029266A6E60C272F840E23" Guid="{A9DC1D49-54E1-406B-915D-49BA1C0A9E72}">
+                    <File Id="fil328B87DE6002FAE7EFE76548316D8231" KeyPath="yes" Source="$(var.CasterFlash)\CasterFlashGUI\ResultPage.xaml" />
+                </Component>
+                <Component Id="cmp58EA4943122A38A0EACF80C24F75B255" Guid="{9E89412B-C070-4C8F-A6E8-3E98B45584BE}">
+                    <File Id="filB49A5AF963FF9CFC244A04D9CE461CC5" KeyPath="yes" Source="$(var.CasterFlash)\CasterFlashGUI\ResultPage.xaml.cs" />
+                </Component>
+                <Component Id="cmpD24D9FAE48D359853815162F0AD601A3" Guid="{AC37FAB3-FC75-41EE-81EA-DD4C02548EED}">
+                    <File Id="filF3778E77D1AB7AA5A126A396BCF15EB3" KeyPath="yes" Source="$(var.CasterFlash)\CasterFlashGUI\SpecificationPage.xaml" />
+                </Component>
+                <Component Id="cmp450E5458D203B99CC397F51ADC4FE71D" Guid="{2122222D-B492-4F3D-ADEB-637B3626D849}">
+                    <File Id="filD8C9691D7985C3DB508BEE2CC6370381" KeyPath="yes" Source="$(var.CasterFlash)\CasterFlashGUI\SpecificationPage.xaml.cs" />
+                </Component>
+                <Directory Id="dirD7310551EC05F0F43C1AB35E452AF14E" Name="Design">
+                    <Component Id="cmp169DDCF562A2A4E7E7DFF3DB9A2B7CAC" Guid="{593A25D9-59C6-4697-A85F-EA84BA64B825}">
+                        <File Id="fil56BCD3EAB750D698A792AEDA5A745774" KeyPath="yes" Source="$(var.CasterFlash)\CasterFlashGUI\Design\DesignDataService.cs" />
+                    </Component>
+                </Directory>
+                <Directory Id="dirAB8D9E04BC6ADD00F7AA4767CD333D1C" Name="Model">
+                    <Component Id="cmpE1773835130BF14AD33416A5ED30967E" Guid="{A2826207-C88E-4D12-B650-90E06174E24B}">
+                        <File Id="fil085DC60549E57F67C52A6187DA54AB9A" KeyPath="yes" Source="$(var.CasterFlash)\CasterFlashGUI\Model\DataItem.cs" />
+                    </Component>
+                    <Component Id="cmp6A0F08D4BB819FF6C1739E29315B821F" Guid="{6130154F-800F-46E9-9797-B96C658B2FDC}">
+                        <File Id="filA337FE16F455B7455094DED8739EE13A" KeyPath="yes" Source="$(var.CasterFlash)\CasterFlashGUI\Model\DataService.cs" />
+                    </Component>
+                    <Component Id="cmp980143F14EAA6C890E6E5F51324F1B56" Guid="{6AEFDA49-D24E-4C7F-B367-D29782D6F5A2}">
+                        <File Id="fil98974EAED0C5EE865A13040D7455F9AE" KeyPath="yes" Source="$(var.CasterFlash)\CasterFlashGUI\Model\IDataService.cs" />
+                    </Component>
+                </Directory>
+                <Directory Id="dir129F49E17B39A14DAC3C916A575BE3B4" Name="Properties">
+                    <Component Id="cmp189842680DC5203DF1D18BE81E7AAD18" Guid="{23551371-02AD-44CF-BDE2-930090B95219}">
+                        <File Id="fil481AB10981782204F07BA9106ABEDCCD" KeyPath="yes" Source="$(var.CasterFlash)\CasterFlashGUI\Properties\AssemblyInfo.cs" />
+                    </Component>
+                    <Component Id="cmp72F58B8E9D3B0CA48E205D2DB8FA6BC8" Guid="{E53213E9-D1F0-4B69-8993-C0193D275C27}">
+                        <File Id="fil7E627AE8A4747F6086C7DA9595315A20" KeyPath="yes" Source="$(var.CasterFlash)\CasterFlashGUI\Properties\Resources.Designer.cs" />
+                    </Component>
+                    <Component Id="cmp7E16A344015ABE1332219C4CCCB7DE19" Guid="{D16ED1DE-08D5-400E-ABD8-81BBDEA06AFD}">
+                        <File Id="filF1038BFBFAE41274DAB78617DA8E352B" KeyPath="yes" Source="$(var.CasterFlash)\CasterFlashGUI\Properties\Resources.resx" />
+                    </Component>
+                    <Component Id="cmpD5B1FB92F64B4329946161A7177BFFB2" Guid="{1750892A-23EB-42A3-AEEB-A38EF7A1F461}">
+                        <File Id="fil33ADE4C885BAC3BD99A6049A9ED604CC" KeyPath="yes" Source="$(var.CasterFlash)\CasterFlashGUI\Properties\Settings.Designer.cs" />
+                    </Component>
+                    <Component Id="cmp35355865F6D95E923D65861C40A66477" Guid="{98128B47-74FE-4C56-AB3C-D1375DC7190B}">
+                        <File Id="filCA45FC6AF1F58FD7F369143A26D503BF" KeyPath="yes" Source="$(var.CasterFlash)\CasterFlashGUI\Properties\Settings.settings" />
+                    </Component>
+                </Directory>
+                <Directory Id="dirBEF577A751DCAB1041782AA80BAFCE44" Name="Skins">
+                    <Component Id="cmp9616D818F1E03CB2FFFB24216E8EFA67" Guid="{EE42A690-E8D2-4F8D-B8F4-304250CEAEA3}">
+                        <File Id="fil24E45E610A741CA6EA3331861E9AEB0C" KeyPath="yes" Source="$(var.CasterFlash)\CasterFlashGUI\Skins\MainSkin.xaml" />
+                    </Component>
+                </Directory>
+                <Directory Id="dir7488BD150D26351D760C8DDA2444DF8C" Name="ViewModel">
+                    <Component Id="cmpC5C7F6E447441B4CE43D386167671444" Guid="{6819C56B-D585-4190-8332-8F74441C66CF}">
+                        <File Id="fil2BB4F9B8451E5953EF68C3E78F49D3B0" KeyPath="yes" Source="$(var.CasterFlash)\CasterFlashGUI\ViewModel\MainViewModel.cs" />
+                    </Component>
+                    <Component Id="cmp3346A834B0E78B579D4AF81471021231" Guid="{BBD9E20B-0DBD-4AB8-BDD7-C4E690E58EF5}">
+                        <File Id="fil6BD3BA44F12ADF4B216383FB8F0B29F2" KeyPath="yes" Source="$(var.CasterFlash)\CasterFlashGUI\ViewModel\OptionParamViewModel.cs" />
+                    </Component>
+                    <Component Id="cmp3A0A40D4FAFCB6863FC3E5490419B7D7" Guid="{5B435B2A-D3F2-41B4-96BB-58C74C1B9E83}">
+                        <File Id="fil8217916282351CD326A724D83139B23C" KeyPath="yes" Source="$(var.CasterFlash)\CasterFlashGUI\ViewModel\RealParamViewBase.cs" />
+                    </Component>
+                    <Component Id="cmpDD5A21CCC59546C9DB32927B3D44FE43" Guid="{17022532-4AD5-4945-803F-4A3879B8897C}">
+                        <File Id="filC6FCA4FE1C767B233F8BC8A7EC8B2C82" KeyPath="yes" Source="$(var.CasterFlash)\CasterFlashGUI\ViewModel\ResultViewModel.cs" />
+                    </Component>
+                    <Component Id="cmp4ECAB5F9B644886D4FE7C175EA0B81E6" Guid="{E2262643-B504-4523-94D0-B886AE6DFEC1}">
+                        <File Id="filC151344B54E159A51B70A47CCFBB8F36" KeyPath="yes" Source="$(var.CasterFlash)\CasterFlashGUI\ViewModel\SpecificationViewModel.cs" />
+                    </Component>
+                    <Component Id="cmp8888F32E3C422D87AFFF0A8A109036A8" Guid="{7F2BCF78-1356-4B82-B41F-6E5C934C3E38}">
+                        <File Id="fil640BD42ADD75B7A1DC413F16EE925334" KeyPath="yes" Source="$(var.CasterFlash)\CasterFlashGUI\ViewModel\ViewModelLocator.cs" />
+                    </Component>
+                </Directory>
+            </Directory>
+            <Directory Id="dir1A70E6900FE4F8F4C43D5383CBFCA60C" Name="packages">
+                <Component Id="cmp126F1F0BBA5D010DA49E31FDBC32D47C" Guid="{E95E320F-C69F-490A-B61D-FCF66C787462}">
+                    <File Id="fil4AEA8A91DAEA48962FF0444276E13279" KeyPath="yes" Source="$(var.CasterFlash)\packages\repositories.config" />
+                </Component>
+                <Directory Id="dirBED880CA260F298AED7FEC33F8DE82E6" Name="CommonServiceLocator.1.3">
+                    <Component Id="cmp28AF25565AD10D7A71532A9F9C8B5E1F" Guid="{E8895535-AB91-4B0B-9A25-A66744861725}">
+                        <File Id="fil9CBC354330CFDF0A1D33D20FA271E646" KeyPath="yes" Source="$(var.CasterFlash)\packages\CommonServiceLocator.1.3\CommonServiceLocator.1.3.nupkg" />
+                    </Component>
+                    <Directory Id="dir79FFB9BF0F6F4FA98A12D3DCAF76FDCB" Name="lib">
+                        <Directory Id="dir3C13B62528D655E07AFEC362C166B288" Name="portable-net4+sl5+netcore45+wpa81+wp8">
+                            <Component Id="cmp83903E58B3DEE23CBB7577331EA7910C" Guid="{86EDF446-898B-411B-AB2E-357A16E342A0}">
+                                <Class Id="{3CA2611C-F83B-3F7C-B26C-DEA377803521}" Context="InprocServer32" Description="Microsoft.Practices.ServiceLocation.ActivationException" ThreadingModel="both" ForeignServer="mscoree.dll">
+                                    <ProgId Id="Microsoft.Practices.ServiceLocation.ActivationException" Description="Microsoft.Practices.ServiceLocation.ActivationException" />
+                                </Class>
+                                <File Id="filD273FAE0074BE8D6BBB83665BF59AA17" KeyPath="yes" Source="$(var.CasterFlash)\packages\CommonServiceLocator.1.3\lib\portable-net4+sl5+netcore45+wpa81+wp8\Microsoft.Practices.ServiceLocation.dll" />
+                                <RegistryValue Root="HKCR" Key="CLSID\{3CA2611C-F83B-3F7C-B26C-DEA377803521}\Implemented Categories\{62C8FE65-4EBB-45e7-B440-6E39B2CDBF29}" Value="" Type="string" Action="write" />
+                                <RegistryValue Root="HKCR" Key="CLSID\{3CA2611C-F83B-3F7C-B26C-DEA377803521}\InprocServer32\1.3.0.0" Name="Class" Value="Microsoft.Practices.ServiceLocation.ActivationException" Type="string" Action="write" />
+                                <RegistryValue Root="HKCR" Key="CLSID\{3CA2611C-F83B-3F7C-B26C-DEA377803521}\InprocServer32\1.3.0.0" Name="Assembly" Value="Microsoft.Practices.ServiceLocation, Version=1.3.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35" Type="string" Action="write" />
+                                <RegistryValue Root="HKCR" Key="CLSID\{3CA2611C-F83B-3F7C-B26C-DEA377803521}\InprocServer32\1.3.0.0" Name="RuntimeVersion" Value="v4.0.30319" Type="string" Action="write" />
+                                <RegistryValue Root="HKCR" Key="CLSID\{3CA2611C-F83B-3F7C-B26C-DEA377803521}\InprocServer32\1.3.0.0" Name="CodeBase" Value="file:///[#filD273FAE0074BE8D6BBB83665BF59AA17]" Type="string" Action="write" />
+                                <RegistryValue Root="HKCR" Key="CLSID\{3CA2611C-F83B-3F7C-B26C-DEA377803521}\InprocServer32" Name="Class" Value="Microsoft.Practices.ServiceLocation.ActivationException" Type="string" Action="write" />
+                                <RegistryValue Root="HKCR" Key="CLSID\{3CA2611C-F83B-3F7C-B26C-DEA377803521}\InprocServer32" Name="Assembly" Value="Microsoft.Practices.ServiceLocation, Version=1.3.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35" Type="string" Action="write" />
+                                <RegistryValue Root="HKCR" Key="CLSID\{3CA2611C-F83B-3F7C-B26C-DEA377803521}\InprocServer32" Name="RuntimeVersion" Value="v4.0.30319" Type="string" Action="write" />
+                                <RegistryValue Root="HKCR" Key="CLSID\{3CA2611C-F83B-3F7C-B26C-DEA377803521}\InprocServer32" Name="CodeBase" Value="file:///[#filD273FAE0074BE8D6BBB83665BF59AA17]" Type="string" Action="write" />
+                            </Component>
+                            <Component Id="cmp617D98E7818FC4BF07311736874B0E63" Guid="{FFDBF098-1B35-4C4A-9A1B-533CF9CA08D2}">
+                                <File Id="fil436F8089C680861A8C491CE2E75B69F5" KeyPath="yes" Source="$(var.CasterFlash)\packages\CommonServiceLocator.1.3\lib\portable-net4+sl5+netcore45+wpa81+wp8\Microsoft.Practices.ServiceLocation.pdb" />
+                            </Component>
+                            <Component Id="cmp6611FB466E47622BF5D9A900EA7722E4" Guid="{2958E215-4A3F-46F8-BFCB-4B7A164D5366}">
+                                <File Id="filE46C86299B69EBA43C268972354A2207" KeyPath="yes" Source="$(var.CasterFlash)\packages\CommonServiceLocator.1.3\lib\portable-net4+sl5+netcore45+wpa81+wp8\Microsoft.Practices.ServiceLocation.XML" />
+                            </Component>
+                        </Directory>
+                    </Directory>
+                </Directory>
+                <Directory Id="dir2E8200C2CFFB93C79D0420690113E8D8" Name="MvvmLightLibs.5.2.0.0">
+                    <Component Id="cmp3A6EB8A42377D3190F100A62B88171DB" Guid="{980ED7E5-9E37-4C98-94E5-F88FD7FAC111}">
+                        <File Id="fil1012FD40CCF30C916FBDFBDF6FA69294" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\MvvmLightLibs.5.2.0.0.nupkg" />
+                    </Component>
+                    <Directory Id="dirE9A04CF12A6B5BA7ADE5186D21C4C61E" Name="lib">
+                        <Directory Id="dir84864334BCDAA853F9766552A675A98D" Name="monoandroid1">
+                            <Component Id="cmpCBF47CB5838C33825E3A1D47F4B41F39" Guid="{17E9F909-F360-46E9-BEB7-A0DA15206CED}">
+                                <File Id="fil497656E84916B7B771ACBB2FF1A8B3F8" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\monoandroid1\GalaSoft.MvvmLight.dll" />
+                            </Component>
+                            <Component Id="cmpF3BC3E2C4039F04733D0D90D6DCC5CD2" Guid="{38BF1827-20A6-4489-9718-F64CFFBBBF04}">
+                                <File Id="fil6E283E5B6F11CA2270FF430451B4026A" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\monoandroid1\GalaSoft.MvvmLight.Extras.dll" />
+                            </Component>
+                            <Component Id="cmp0E88972F4F8E98BB3634CB742BB0C24C" Guid="{DF7FBDE1-6417-49EE-91D5-B0B08F63E6DD}">
+                                <File Id="fil60EBBEE1E2F45EB46D34655AF997EB8D" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\monoandroid1\GalaSoft.MvvmLight.Extras.pdb" />
+                            </Component>
+                            <Component Id="cmpD56443BBFFC81A5285E687D0B605E48B" Guid="{6AEA0F26-D50A-41A3-8018-75881802B6DD}">
+                                <File Id="fil5D61F026AFE257E284D85349B092263E" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\monoandroid1\GalaSoft.MvvmLight.Extras.XML" />
+                            </Component>
+                            <Component Id="cmp26001B03B118F3063E59FF734C1C9639" Guid="{89E10724-828A-4AD3-8042-D0EC3EFCAACF}">
+                                <File Id="fil1F9FC0BB1BB95D27514016652C108828" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\monoandroid1\GalaSoft.MvvmLight.pdb" />
+                            </Component>
+                            <Component Id="cmpA8704FF8271B4030D01A6AE146E4B94B" Guid="{4EF2DA66-3807-4D23-A306-A2B50B70DE99}">
+                                <File Id="fil0AFD928E6F270C138FCBBA720913F0F4" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\monoandroid1\GalaSoft.MvvmLight.Platform.dll" />
+                            </Component>
+                            <Component Id="cmp40F5F4A7C4B320F7C69E45CC140B6CC5" Guid="{F2050E6F-DC60-44A3-A61F-113D08E053BC}">
+                                <File Id="fil9A89B4200E0809FE2E7416CBF2D878D5" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\monoandroid1\GalaSoft.MvvmLight.Platform.pdb" />
+                            </Component>
+                            <Component Id="cmp308FCC20CFF055351BDB3EDDEE281B9F" Guid="{3ACA3CDA-AB9D-4396-9CF9-B9E2B4932200}">
+                                <File Id="filC52A1C20313C4AB056EB7F6F18449D83" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\monoandroid1\GalaSoft.MvvmLight.Platform.XML" />
+                            </Component>
+                            <Component Id="cmp3F358531E6D7EAEDC8700A40C6BCA29F" Guid="{D368F640-5819-4A97-9FE5-97D2AA80CC18}">
+                                <File Id="fil9AE0F42F7C1D3660EEE7BA693E78BE77" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\monoandroid1\GalaSoft.MvvmLight.XML" />
+                            </Component>
+                        </Directory>
+                        <Directory Id="dir6828203A0BF79DB6E51534DB78BBEAB6" Name="net35">
+                            <Component Id="cmp2F2ADAC31C9738018BFD0A8B80B35BF9" Guid="{42800877-B839-4C34-88A0-DF9E788FFA32}">
+                                <File Id="fil3C1311AC481247BF45D1A38689E297B8" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\net35\GalaSoft.MvvmLight.dll" />
+                            </Component>
+                            <Component Id="cmp980C6A33B6766B050F7C2271A831F3B6" Guid="{3155D1DE-728C-4C83-96F2-8C38F58DF053}">
+                                <File Id="fil6B0BC7AB66F910AF0D68A80D8D8FC6CA" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\net35\GalaSoft.MvvmLight.Extras.dll" />
+                            </Component>
+                            <Component Id="cmpBA644256D6242D78949DA7A83AEA6167" Guid="{9DF599D2-8D07-41D4-898C-6BEFA039EAB8}">
+                                <File Id="fil831ECBA29DBE3767A579C99C8069F3FE" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\net35\GalaSoft.MvvmLight.Extras.pdb" />
+                            </Component>
+                            <Component Id="cmpC086542CE83D1748066E85EA9A5D0662" Guid="{A981A02A-C22C-406D-9A47-40EFECDEDC09}">
+                                <File Id="filF834618175768680CE0A2C3855C44DA5" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\net35\GalaSoft.MvvmLight.Extras.xml" />
+                            </Component>
+                            <Component Id="cmp86EEBC977A6DAA803C707F20A6965C90" Guid="{4CAE465C-BDAF-4041-987F-48E533BCDC7D}">
+                                <File Id="fil13F9DD4CCEB9933FE3303C5BBD1C58F3" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\net35\GalaSoft.MvvmLight.pdb" />
+                            </Component>
+                            <Component Id="cmp91BAF0A07242FAEA4974F5E23680D90D" Guid="{9A08A5C4-CBA6-44BD-9443-085920437445}">
+                                <File Id="filC3FE464C4350329C639B2B5694EE0F1D" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\net35\GalaSoft.MvvmLight.xml" />
+                            </Component>
+                            <Component Id="cmpECD9A41E41691A7023ACA35DC56499F4" Guid="{A36D4A9F-6EAA-4712-BA11-B73912064242}">
+                                <File Id="fil96AE490539339223FBFAD4C3DE435040" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\net35\System.Windows.Interactivity.dll" />
+                            </Component>
+                            <Component Id="cmp9EAA8CE306516E36165EAE54C6D30F50" Guid="{8C4A6D36-CBE2-4773-AF68-0BAB1A357880}">
+                                <File Id="filBE14E7C7FF180EDCBD8A4DE17B153C1A" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\net35\System.Windows.Interactivity.xml" />
+                            </Component>
+                        </Directory>
+                        <Directory Id="dir98D603E8112476C572DE754BA029E188" Name="net40">
+                            <Component Id="cmpB69A705D6DD7794178E059DD1938BF59" Guid="{390248D7-E9E0-4BA6-8B55-A1E923EDD5C6}">
+                                <File Id="fil5785B381B17D8CD21F726F3CEEE46FE1" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\net40\GalaSoft.MvvmLight.dll" />
+                            </Component>
+                            <Component Id="cmp74CEEBD3D485C98864D4181CD8AB40AB" Guid="{7556A77C-0CAB-4C00-BFE6-B35E757DE094}">
+                                <File Id="fil20BF17B6004A2D1895817113D14DBD71" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\net40\GalaSoft.MvvmLight.Extras.dll" />
+                            </Component>
+                            <Component Id="cmpB004E1E7303927A89EFB6E9250911D4B" Guid="{41390BB1-65E3-4F35-9DC6-92DF7E45E5BE}">
+                                <File Id="fil7333731BAEAC3A53A3A54E586B165F4F" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\net40\GalaSoft.MvvmLight.Extras.pdb" />
+                            </Component>
+                            <Component Id="cmp5A748DBA84FA8A8E1A17A40ABE70C14B" Guid="{82A80C53-1386-4F1B-BC8C-4B392AF88B1C}">
+                                <File Id="filCA66018C25B3AC7B3AF18AF53D3CAFD8" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\net40\GalaSoft.MvvmLight.Extras.xml" />
+                            </Component>
+                            <Component Id="cmp332C831B6AD8E28C9289BB7473E0DE9C" Guid="{D23C65A1-0C75-45C9-8801-0AEB254DC580}">
+                                <File Id="filE1682D15BCA2B24C7EDE16360820CB32" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\net40\GalaSoft.MvvmLight.pdb" />
+                            </Component>
+                            <Component Id="cmpCDB98304F1D134400D9375D7054F7DF1" Guid="{1F7A46B5-843C-429B-A2BD-10E688DDEE8D}">
+                                <File Id="fil68E7263006844FA8ED5EF2D5DFB096F1" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\net40\GalaSoft.MvvmLight.xml" />
+                            </Component>
+                            <Component Id="cmp7386751E5330164FEF64C50CD04F4A28" Guid="{C34C6631-7A88-4024-BC96-D617FFFA8EAB}">
+                                <File Id="fil2822E2355A0941F589D6A162E1B75B5F" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\net40\System.Windows.Interactivity.dll" />
+                            </Component>
+                            <Component Id="cmpD97B4640BAF03E6823DAFE1D63603CB1" Guid="{4F93BD3E-F88C-4C8C-ADCA-7A92ADFD2D84}">
+                                <File Id="fil8FBFFDB837B72DFEA0F5197F926D8DCD" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\net40\System.Windows.Interactivity.xml" />
+                            </Component>
+                        </Directory>
+                        <Directory Id="dir218B346B0ED3BA315AFE7B731AA00DDD" Name="net45">
+                            <Component Id="cmp69051F8814841560BC3B1E30F8AED898" Guid="{51E90B7D-73C3-4E73-92D3-8DF17D9098F7}">
+                                <File Id="fil536E492E41DDE7884B02097D6F5E220A" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\net45\GalaSoft.MvvmLight.dll" />
+                            </Component>
+                            <Component Id="cmp27FF372A997ADE86EB684CB8AC6F40F7" Guid="{A4FC6F9A-0A99-4D0F-B981-E7B0AB4F9123}">
+                                <File Id="filFE4A48EB9A81FB3C8D37B26D08C4DFEC" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\net45\GalaSoft.MvvmLight.Extras.dll" />
+                            </Component>
+                            <Component Id="cmp718289D68226DAD8C49F177044495F8C" Guid="{31C28469-FA67-42FC-8FFA-64D7B200EFAF}">
+                                <File Id="filD04AFF05C3592AF3C6FFE2E57EB6D537" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\net45\GalaSoft.MvvmLight.Extras.pdb" />
+                            </Component>
+                            <Component Id="cmp4AE01230F325CC58D4C54B5215813E74" Guid="{37515210-374D-4EC5-92C3-3FCA89BB209E}">
+                                <File Id="fil7EBB8B76BE8E88D9C5CF3B52BFB54E7B" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\net45\GalaSoft.MvvmLight.Extras.xml" />
+                            </Component>
+                            <Component Id="cmp8435D7F57707A4E52EE8642F0481D7C2" Guid="{324261B6-AF89-42AC-857C-109299B2C2C3}">
+                                <File Id="fil51DAB60BEBC0F704C22E7BD7DD7EEDCB" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\net45\GalaSoft.MvvmLight.pdb" />
+                            </Component>
+                            <Component Id="cmp7F3E7CF764DB87889FC86F4F355104AD" Guid="{0B50BF67-15BD-4642-BA14-664803B6B637}">
+                                <File Id="filAA84E4F28B060FC4CD0DD72DDE2F5C75" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\net45\GalaSoft.MvvmLight.Platform.dll" />
+                            </Component>
+                            <Component Id="cmp28E124A384940B579020FC0C2B213ACD" Guid="{7C73F918-22E2-4801-A4E0-1FB6425745CD}">
+                                <File Id="filFC25744BD483ECB81E8B79CDC9535239" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\net45\GalaSoft.MvvmLight.Platform.pdb" />
+                            </Component>
+                            <Component Id="cmp6DE4F153287547214648885D4B4E5978" Guid="{B666E496-CC26-4DF1-9913-16CC51151173}">
+                                <File Id="fil84D5AAF24CB3072A053F79800ADC968C" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\net45\GalaSoft.MvvmLight.Platform.xml" />
+                            </Component>
+                            <Component Id="cmp5C8B6A50037DC738ACF82D2184AD734B" Guid="{6B3891CE-A939-4E1D-975D-ABF8F4906A00}">
+                                <File Id="fil95C7B57F26101944483595D3D4393386" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\net45\GalaSoft.MvvmLight.xml" />
+                            </Component>
+                            <Component Id="cmp8291D7FEC1F5F135EF8C52F9A2AD20F8" Guid="{62BA8D31-AB29-45AC-A882-055FEB21CDFF}">
+                                <File Id="fil39D557C51675B4E8B373B3FF71E3FECA" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\net45\System.Windows.Interactivity.dll" />
+                            </Component>
+                        </Directory>
+                        <Directory Id="dir713A481F1E16136B847978AAAB26ED33" Name="portable-net45+wp8+wpa81+netcore45+monoandroid1+xamarin.ios10">
+                            <Component Id="cmpDD2613D6C31EA5CFC9EB1CA15A69F0A0" Guid="{C89F3990-1B1B-4E05-B88A-7900AF726FD5}">
+                                <File Id="fil12F7E34953590F456F332E243F533525" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\portable-net45+wp8+wpa81+netcore45+monoandroid1+xamarin.ios10\GalaSoft.MvvmLight.dll" />
+                            </Component>
+                            <Component Id="cmp488D0DA0FFF55D6881C76FAD962A1724" Guid="{A1F57481-8278-46EB-A3EE-B87D9D6820B4}">
+                                <File Id="fil658CB48A78F4D54857041084FD060730" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\portable-net45+wp8+wpa81+netcore45+monoandroid1+xamarin.ios10\GalaSoft.MvvmLight.Extras.dll" />
+                            </Component>
+                            <Component Id="cmp4FB09EC816FE488CD7C2578AE0836724" Guid="{FCA817D1-2C6B-46BD-9353-E657FE4A3ADC}">
+                                <File Id="fil31A34B04171906894B8C4FB676ADEFA6" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\portable-net45+wp8+wpa81+netcore45+monoandroid1+xamarin.ios10\GalaSoft.MvvmLight.Extras.pdb" />
+                            </Component>
+                            <Component Id="cmp79E0A75C2E4E09BC6BC2A18C7760A774" Guid="{A0427714-B580-4B09-921F-C6D803F746E8}">
+                                <File Id="filA6B45C6A81E67E3F7D90B3614FCF8803" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\portable-net45+wp8+wpa81+netcore45+monoandroid1+xamarin.ios10\GalaSoft.MvvmLight.Extras.XML" />
+                            </Component>
+                            <Component Id="cmp12381B0064FE154FD49F727292113DCB" Guid="{225D9CAE-32B8-41B8-9557-E78D630E922D}">
+                                <File Id="fil231E5EE3472E91A335D08794F07EC322" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\portable-net45+wp8+wpa81+netcore45+monoandroid1+xamarin.ios10\GalaSoft.MvvmLight.pdb" />
+                            </Component>
+                            <Component Id="cmp29A0129E596F4DFC24334D04A5A4F01A" Guid="{964309DE-1FCF-4516-83EF-1861FB4A6234}">
+                                <File Id="fil085FD3778BDCC9F584991443CFCDA525" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\portable-net45+wp8+wpa81+netcore45+monoandroid1+xamarin.ios10\GalaSoft.MvvmLight.XML" />
+                            </Component>
+                        </Directory>
+                        <Directory Id="dir8DC437701F76BFF8FC0286EBC16C3418" Name="SL4">
+                            <Component Id="cmp488C5789BBDF93D9E6F6D26EA7B7B189" Guid="{BB36BAC8-2799-40EA-8211-52977075EAB5}">
+                                <File Id="filB9F9FA14B28B0CD38F0B8BD2B6A2730B" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\SL4\GalaSoft.MvvmLight.dll" />
+                            </Component>
+                            <Component Id="cmpCA9DF5BA8FFB8DFDE0040CD77CC5C98E" Guid="{F965C3D6-D2E8-4A95-AB89-2F621C55EEA9}">
+                                <File Id="filC27C3887A24B1C434A5F0B101D336750" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\SL4\GalaSoft.MvvmLight.Extras.dll" />
+                            </Component>
+                            <Component Id="cmp171AEE0BA393187EDDAC119B06100B9B" Guid="{BC81993F-1546-4EC2-A5B7-DC3A1F279D9A}">
+                                <File Id="fil39BC96823CB746C450065CC4418F9222" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\SL4\GalaSoft.MvvmLight.Extras.pdb" />
+                            </Component>
+                            <Component Id="cmp89F6EB1D4C850848D9B477E58D36A6D0" Guid="{70458C7A-2B24-4151-B7CB-00A0553C6A6D}">
+                                <File Id="filC1DEDBAFBD9926BD56B05AF1C21BDDBA" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\SL4\GalaSoft.MvvmLight.Extras.xml" />
+                            </Component>
+                            <Component Id="cmp2C6711B97C3FFDB85626214F02C56B6B" Guid="{A3147611-6369-4DB9-A540-6D5F50A98BD0}">
+                                <File Id="filD9D80A7E1D0C1CCE47A5542A2D94CD31" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\SL4\GalaSoft.MvvmLight.pdb" />
+                            </Component>
+                            <Component Id="cmpE82C5A5FD4B5B0A65D4717D168F7D380" Guid="{5645EE8E-C4BF-41D0-91AD-6CDCDFBC0E59}">
+                                <File Id="filA29CB42DF4D38AA1B1F34316694F2C2B" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\SL4\GalaSoft.MvvmLight.xml" />
+                            </Component>
+                            <Component Id="cmpD287A2195C1E0049600E1896437F871C" Guid="{EA48AC3D-564E-41D5-A3E7-BCB1E145B946}">
+                                <File Id="filFEDF8DD0E670F44F963683FDA3E0025F" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\SL4\System.Windows.Interactivity.dll" />
+                            </Component>
+                            <Component Id="cmp92479BA44102FF85DF9E9DEBD1864E7D" Guid="{EE5413D0-6469-4D45-90B5-962B90E4075F}">
+                                <File Id="fil4F27919F0781564EF883FE44D36080C6" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\SL4\System.Windows.Interactivity.xml" />
+                            </Component>
+                        </Directory>
+                        <Directory Id="dir489E7FAD5F56534A9A2A683AB4CE87AF" Name="sl4-wp71">
+                            <Component Id="cmp2C1625B35014BA2A199CF04D2723251E" Guid="{FBC3BE64-F50C-4DB3-A5B3-EAE02D3F8DAC}">
+                                <File Id="fil86A19F24310EFD98B87C2EA5346A04AD" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\sl4-wp71\GalaSoft.MvvmLight.dll" />
+                            </Component>
+                            <Component Id="cmp721DFBBBECBE5C6A9196B9BB75AABDE2" Guid="{59314193-9205-41E5-8A9F-97ACE45182EA}">
+                                <File Id="filE201104CC54039658692404B4277552C" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\sl4-wp71\GalaSoft.MvvmLight.Extras.dll" />
+                            </Component>
+                            <Component Id="cmpBB592997361567E85365219DF1BE45D8" Guid="{0397B685-E946-44B9-8D82-149B48CE5E15}">
+                                <File Id="filE3B80E20505D1352AFC8B1A563321F45" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\sl4-wp71\GalaSoft.MvvmLight.Extras.pdb" />
+                            </Component>
+                            <Component Id="cmp8F087E08B3C6F88AD45E52D4B24D3990" Guid="{D16467C3-7A70-46CD-AF57-24D162890AC9}">
+                                <File Id="filD95B2FA1DE45E02356D134C540A2397C" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\sl4-wp71\GalaSoft.MvvmLight.Extras.xml" />
+                            </Component>
+                            <Component Id="cmp10D2C658F2C394B23F55EE115D3C6189" Guid="{91A4FF7F-4706-4022-8D9C-A485E9D7F13C}">
+                                <File Id="fil6BA0A30A350B551F33B64F55FB073787" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\sl4-wp71\GalaSoft.MvvmLight.pdb" />
+                            </Component>
+                            <Component Id="cmpB866F5A9817AB4E00BD129B82FE0E470" Guid="{C3F85544-032C-4B9B-BDE3-300F78282A78}">
+                                <File Id="fil28183AF05E7F648628BAFFE5240500F8" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\sl4-wp71\GalaSoft.MvvmLight.xml" />
+                            </Component>
+                            <Component Id="cmpAB93721727BCC83901E669FAA6D29224" Guid="{1CA0EAF9-8A33-489F-B992-822066B4FC45}">
+                                <File Id="filE58C49DB5A4909010230A6AA0489310D" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\sl4-wp71\Microsoft.Practices.ServiceLocation.dll" />
+                            </Component>
+                            <Component Id="cmpBA04B0BB62A99854CE557AB1233FA317" Guid="{AA05F324-6D3D-4AC8-A42A-CF40D936FA9A}">
+                                <File Id="filD2EFB93606A89445AF91797740AD48DB" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\sl4-wp71\Microsoft.Practices.ServiceLocation.xml" />
+                            </Component>
+                            <Component Id="cmpC8CE9C01ADCA70FBCCF70B47D0F3B11B" Guid="{CD6B5280-139C-46FC-BDA8-23B96A9C12FB}">
+                                <File Id="fil9B1FB7D0EA0BB567B9E2BA497F59B3F6" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\sl4-wp71\System.Windows.Interactivity.dll" />
+                            </Component>
+                            <Component Id="cmpF61835BAF3CE9B29E7F0C4784BE317EF" Guid="{4366C00D-1A59-4BEE-8DDF-1E9C63C10E41}">
+                                <File Id="fil981138B5EC72DD96EA6B0E3AFC5D4FF8" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\sl4-wp71\System.Windows.Interactivity.xml" />
+                            </Component>
+                        </Directory>
+                        <Directory Id="dirD2BE9A641538642F2EC820A2949C7409" Name="SL5">
+                            <Component Id="cmp51D4F9A620EB9DB586EE47F5DD4122BA" Guid="{D0D69BF7-1498-4819-A819-865D7F13BB08}">
+                                <File Id="filC57B5EF3F717AF47B87DBFD9A3AEABE4" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\SL5\GalaSoft.MvvmLight.dll" />
+                            </Component>
+                            <Component Id="cmp76FDE4D198F2E00AC2EBD3442D88E084" Guid="{0C383A13-04B4-477B-995C-4B93F581BB90}">
+                                <File Id="filEBC4F8B484A62A1180AEA6F4DB8A70DF" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\SL5\GalaSoft.MvvmLight.Extras.dll" />
+                            </Component>
+                            <Component Id="cmpB52BF443E91A63028628F3B4B4345963" Guid="{5451F3CA-2F19-4C6C-839D-E8A0782C0598}">
+                                <File Id="fil9A9D71F432CCD2160B10FB9526557A28" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\SL5\GalaSoft.MvvmLight.Extras.pdb" />
+                            </Component>
+                            <Component Id="cmpF93C806B07C972C20B8475274804EC23" Guid="{2FA99084-E2EF-4FFA-B9FF-977EA3678003}">
+                                <File Id="filD0C17D1838446BA8722A696999EB49BF" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\SL5\GalaSoft.MvvmLight.Extras.xml" />
+                            </Component>
+                            <Component Id="cmpFA5BE6124F7FD0064C28FAAB0E009F55" Guid="{B844DB86-F705-4BA8-BDBB-D6033954192E}">
+                                <File Id="filC36CE984C14FC9C637E278CCF3888C22" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\SL5\GalaSoft.MvvmLight.pdb" />
+                            </Component>
+                            <Component Id="cmp0681EC45A13B3351DD55B13B01B16D07" Guid="{493C48E4-A5E7-431A-81FF-D76C75CF5EC7}">
+                                <File Id="fil97D8978668369F26CE815C37D020BC45" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\SL5\GalaSoft.MvvmLight.xml" />
+                            </Component>
+                            <Component Id="cmp4974E319E2D37D74F8614FD49DFD86C0" Guid="{0B546269-F0F3-4CAF-8B78-43CBC4A9F6EC}">
+                                <File Id="fil2B4F26D19726832179F8373CA5F8BDD5" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\SL5\System.Windows.Interactivity.dll" />
+                            </Component>
+                        </Directory>
+                        <Directory Id="dir1738198D1085821F3977552098ABAEF5" Name="windows8">
+                            <Component Id="cmp4460910B7B1CFD06929E1D227CFCA746" Guid="{6FFA6A15-CB7D-437B-8CFE-BC684EC56468}">
+                                <File Id="filEE75BF75F70E320AEC49BA51DA13D9EC" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\windows8\GalaSoft.MvvmLight.dll" />
+                            </Component>
+                            <Component Id="cmpA14264F0F6D2E26DBDB9D4D0F151BB9C" Guid="{D3AF6D41-0A32-4EB7-BC58-3FE5AE33F524}">
+                                <File Id="fil3ED7E5C3A1FB2CAA31CE0B039A2D7C0D" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\windows8\GalaSoft.MvvmLight.Extras.dll" />
+                            </Component>
+                            <Component Id="cmp789E8D8E02CF2823DA9C74B6B4090695" Guid="{28C32B42-C6FB-4EDB-A96A-D1EE32A0EB9D}">
+                                <File Id="filBF4D2C41913A4830A49CC00494313777" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\windows8\GalaSoft.MvvmLight.Extras.pdb" />
+                            </Component>
+                            <Component Id="cmpB94A72C6424A8DF9DFA54A6475D14999" Guid="{FEFF909B-0F8E-45E6-B3F3-FB2383935DA5}">
+                                <File Id="fil2C0848C806E01FBEEF90F3C5E67D2403" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\windows8\GalaSoft.MvvmLight.Extras.xml" />
+                            </Component>
+                            <Component Id="cmpA8CEB8CE2A517DA8164566858902FEB3" Guid="{13672F44-AD87-4061-9824-35B3FD65AA3D}">
+                                <File Id="fil4BCA9AC198008DFED26F15DC2CE26A9B" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\windows8\GalaSoft.MvvmLight.pdb" />
+                            </Component>
+                            <Component Id="cmp116196CC8FC55F3D0557127B78A764E7" Guid="{9AC357BA-049A-4AB2-83DA-64BA86A7B962}">
+                                <File Id="filF80E58218F45AC629014D90910BDA612" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\windows8\GalaSoft.MvvmLight.Platform.dll" />
+                            </Component>
+                            <Component Id="cmp71B692220D25AD08D452886F79783ACB" Guid="{47757281-A2FA-412B-99EC-82465B4FE13E}">
+                                <File Id="fil8FDB88A5C1E113FF1DB2BD54329377A2" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\windows8\GalaSoft.MvvmLight.Platform.pdb" />
+                            </Component>
+                            <Component Id="cmp9D120C4FBE8C0227761A45C7EEE9AEB1" Guid="{75D771E4-E569-4BA7-93CA-D7E5EB02B037}">
+                                <File Id="fil29961C8EA2B34EBDD6994E1816DE1CF1" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\windows8\GalaSoft.MvvmLight.Platform.pri" />
+                            </Component>
+                            <Component Id="cmp36CAF3FE32F7F25906C9486555E9EFBE" Guid="{C492CBF0-3295-44CB-93B2-A0D075A252FD}">
+                                <File Id="filE64080C628420D79B6FD35E897E39C2A" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\windows8\GalaSoft.MvvmLight.Platform.xml" />
+                            </Component>
+                            <Component Id="cmp3606BB1BBF2EBA363D52A97214F18AE2" Guid="{309F9709-053D-4F1B-8D78-D2E55BF65438}">
+                                <File Id="fil011AB8D5439D95BE6DD0250DA84996DB" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\windows8\GalaSoft.MvvmLight.xml" />
+                            </Component>
+                        </Directory>
+                        <Directory Id="dir4801E1400C666A80BE724CDC5D5CC2A7" Name="windows81">
+                            <Component Id="cmpD2C37DE0758D44F00F43D2141202D7F8" Guid="{064AEAA6-B0AA-43A2-83B3-01C34236430C}">
+                                <File Id="fil761DF31549C7633917276674642E4DBF" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\windows81\GalaSoft.MvvmLight.dll" />
+                            </Component>
+                            <Component Id="cmpBBCEAB2DF756E17B1CF1842814C8CB67" Guid="{7E525210-7961-4FC7-BCF6-31F6AC0385E7}">
+                                <File Id="fil3269A5F0867EFF414A34C3CC986CCFBA" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\windows81\GalaSoft.MvvmLight.Extras.dll" />
+                            </Component>
+                            <Component Id="cmpF5E399F8498F0385B2FC73BBB946618E" Guid="{246E8827-A131-4596-94DD-0378AC0CAC2A}">
+                                <File Id="fil8DEAA1C84D14E3A3AE464AE438F6918A" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\windows81\GalaSoft.MvvmLight.Extras.pdb" />
+                            </Component>
+                            <Component Id="cmp62DB895DFF9740272D60BDB3C14DF5CA" Guid="{6CE1AD7D-2603-4287-A886-C1ABD944150B}">
+                                <File Id="filA1562624D1F1775E1875E15808FC3E8E" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\windows81\GalaSoft.MvvmLight.Extras.xml" />
+                            </Component>
+                            <Component Id="cmpBD7B89F2BD909A63FDBE449698634C45" Guid="{FEF533CC-C085-4A2E-A6AE-A7D06333ED90}">
+                                <File Id="fil6EFBA355CBC87FCF8E5204FF8AB55C9F" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\windows81\GalaSoft.MvvmLight.pdb" />
+                            </Component>
+                            <Component Id="cmp5665B5D70723BCFBA2721D0862C170B1" Guid="{577A00BB-DCF9-437F-B0D0-7D13FEEAC0AC}">
+                                <File Id="fil467C414308B19757E6007E367E6DC64E" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\windows81\GalaSoft.MvvmLight.Platform.dll" />
+                            </Component>
+                            <Component Id="cmp465B68539A72F135529E740C36A70129" Guid="{A7199068-FED1-4977-991B-98A92E356B35}">
+                                <File Id="filC8DA38950D2C7166D0023A9ECA051986" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\windows81\GalaSoft.MvvmLight.Platform.pdb" />
+                            </Component>
+                            <Component Id="cmpC7DB9D58E83ECAEA33EAF180489FC2F7" Guid="{2064731F-1643-467A-A804-DDB84ED6AFC9}">
+                                <File Id="fil60EB79508313CEB8D34D09D5031CC04D" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\windows81\GalaSoft.MvvmLight.Platform.pri" />
+                            </Component>
+                            <Component Id="cmpF228A0A577E32BFF6A842203782D2CFF" Guid="{611D619B-3AD3-44C4-8117-2C0BF4D2D101}">
+                                <File Id="filF45C4E36819BD3F5DCBE52BA310E9725" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\windows81\GalaSoft.MvvmLight.Platform.xml" />
+                            </Component>
+                            <Component Id="cmpE62E15FD4DD08F6E45C35FC85A641DA6" Guid="{BA7C9844-194A-4B5B-B186-A5B447C413C4}">
+                                <File Id="fil1E194BCB4703B6FBD289EC4AA3A7965C" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\windows81\GalaSoft.MvvmLight.xml" />
+                            </Component>
+                        </Directory>
+                        <Directory Id="dir1F191F95C6AB020B89401F7E022BE093" Name="wp8">
+                            <Component Id="cmpB05AB58747B57BE6831ADB9671D5616B" Guid="{9617AF97-E21E-4B14-8015-B7E6D16E612A}">
+                                <File Id="fil9102121379DED8942D91BAB128E54449" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\wp8\GalaSoft.MvvmLight.dll" />
+                            </Component>
+                            <Component Id="cmp188412544C81A724BBAF389588B8D48A" Guid="{A77A1948-6715-4F37-8560-F0C1C0E7BA6A}">
+                                <File Id="fil5640D20CDB90FD7943B32D6E8D671402" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\wp8\GalaSoft.MvvmLight.Extras.dll" />
+                            </Component>
+                            <Component Id="cmp31FD4094DA5E7C387479D3ABD8A83712" Guid="{BB6609E3-EBA8-4359-8E6E-CCFD3E6DC23A}">
+                                <File Id="fil1A54C417DAA1DA31689172981B3EB34B" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\wp8\GalaSoft.MvvmLight.Extras.pdb" />
+                            </Component>
+                            <Component Id="cmpF03216E1BD87B5C9AB8E69095065F74D" Guid="{9E395B1F-10F9-431E-9855-17A9E59F4F1C}">
+                                <File Id="filC431EBD8B93DF68F98E9A5FB7F9F4FB0" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\wp8\GalaSoft.MvvmLight.Extras.xml" />
+                            </Component>
+                            <Component Id="cmpF6005545E3D6E0B7838C60BAC7784710" Guid="{06CA57C8-EABF-4853-9726-2631B53E6C32}">
+                                <File Id="fil4AFA3448FA8EEABBC653357470D69B79" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\wp8\GalaSoft.MvvmLight.pdb" />
+                            </Component>
+                            <Component Id="cmp0AB12D771108B468F06AB8D6DAC1A6CB" Guid="{DBCA96E3-6106-427B-AB6D-E17CE1F5D6CE}">
+                                <File Id="filE14128A0C70D8932458F6616A63A025C" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\wp8\GalaSoft.MvvmLight.Platform.dll" />
+                            </Component>
+                            <Component Id="cmp2C0C77DDD636279AAB258DC9B95F8AC1" Guid="{1145A5D2-2B19-4D9C-9BD8-B11659B6C1B0}">
+                                <File Id="filD29034995F073842E1FC884E6E9B1078" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\wp8\GalaSoft.MvvmLight.Platform.pdb" />
+                            </Component>
+                            <Component Id="cmp1C61A7DA784FB0D60DA811EA13C7F9BD" Guid="{5F6E503C-203F-45E5-A829-EAEFD478976C}">
+                                <File Id="fil0AAD31F051FC0F2B7AA1D1963767617D" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\wp8\GalaSoft.MvvmLight.Platform.xml" />
+                            </Component>
+                            <Component Id="cmpB3CC7BF65741C04863E8D38D9F9FC521" Guid="{E5E0D29F-EA97-4014-989F-B723DEBC7ECD}">
+                                <File Id="fil5AD8113868DAB6EA9B1156703CBE53C1" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\wp8\GalaSoft.MvvmLight.xml" />
+                            </Component>
+                            <Component Id="cmp2459E48012554EB4AA4DC1E5AF4FA42D" Guid="{C11C9CAA-56CC-48D7-9B80-C1307DF50FD5}">
+                                <File Id="fil60024590F8EC7A69FDF969FECFDC72CE" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\wp8\System.Windows.Interactivity.dll" />
+                            </Component>
+                        </Directory>
+                        <Directory Id="dirD8E89B499B10AA740B8E56FF94F29B71" Name="wp81">
+                            <Component Id="cmpDCBB114CC3AF7BE9CD468232CB9F7593" Guid="{E89D4A9E-B8B1-446B-9873-2539957A9B05}">
+                                <File Id="filE9CA9019EB7AEC38F46752C6C72E2E74" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\wp81\GalaSoft.MvvmLight.dll" />
+                            </Component>
+                            <Component Id="cmp24275D1A5872F24BF522C18A49D93EAE" Guid="{2697C9FA-610E-4E4F-A11E-17770C58D902}">
+                                <File Id="filF0E1EB4D6B228E4612A0E557373F7268" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\wp81\GalaSoft.MvvmLight.Extras.dll" />
+                            </Component>
+                            <Component Id="cmp1EED05C401D9E822B86ED6D4C1B98058" Guid="{3182F437-F84F-4340-8AEC-5DF1895C0810}">
+                                <File Id="filA9DD8B7557891A99D86D967DBAB9D05A" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\wp81\GalaSoft.MvvmLight.Extras.pdb" />
+                            </Component>
+                            <Component Id="cmp2D8E71B7B280FB66D2D60E351B1D8DA7" Guid="{55EFC529-1992-444E-82A8-18F431D5965A}">
+                                <File Id="fil44AEF6BA466A21406B76A3BE83D025FB" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\wp81\GalaSoft.MvvmLight.Extras.xml" />
+                            </Component>
+                            <Component Id="cmp46444B9901889CD35A4BA2EF49E2D813" Guid="{D7A49C02-C91D-4035-B507-1522018F49D6}">
+                                <File Id="filCC9F2954CF34455DB8E66FBBD63E8D09" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\wp81\GalaSoft.MvvmLight.pdb" />
+                            </Component>
+                            <Component Id="cmpFFA58D0C9762CF7E3A4D73F6D460E1C0" Guid="{857B7D56-628E-431B-992D-BA6A773EA32C}">
+                                <File Id="fil7400C10337888BF369AB9672D06E0328" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\wp81\GalaSoft.MvvmLight.Platform.dll" />
+                            </Component>
+                            <Component Id="cmpB6BCACE4A2DA2F485FF721AFB763AD32" Guid="{8BCE262A-FAF5-4EDC-94CF-C2AC465F3156}">
+                                <File Id="fil7BE0507DA26B06F93ED3181177A67281" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\wp81\GalaSoft.MvvmLight.Platform.pdb" />
+                            </Component>
+                            <Component Id="cmp5969F12770638AF2481411EE4346BE73" Guid="{C8422DFF-9403-499B-B294-747C316DAA21}">
+                                <File Id="fil3D4846A2B93E472052F9CB6035D39CA0" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\wp81\GalaSoft.MvvmLight.Platform.xml" />
+                            </Component>
+                            <Component Id="cmpB8948FA1AE6DC15FCC78AE51DE7323B5" Guid="{E0A899DB-06E6-468F-8458-565C9829F76F}">
+                                <File Id="filD40BE8744B97AE6CD5B1CA698044C31D" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\wp81\GalaSoft.MvvmLight.xml" />
+                            </Component>
+                            <Component Id="cmpBA5653F0AC06CEFAF2DE40BF73934A31" Guid="{441D8EA0-7998-4659-9613-B384DDED3564}">
+                                <File Id="filB47333A108A40EF60357EF8B24BFA541" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\wp81\System.Windows.Interactivity.dll" />
+                            </Component>
+                        </Directory>
+                        <Directory Id="dirB9EC8586059B4E4401DA4AEF2C30A441" Name="wpa81">
+                            <Component Id="cmpF4BEBF0F3B6A409A865DD250EBF77546" Guid="{08A94E67-DC17-443F-AE7E-2D50BFD0AA5F}">
+                                <File Id="filBB5FE615644A1CB94B35F2E9BBE9E0B2" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\wpa81\GalaSoft.MvvmLight.dll" />
+                            </Component>
+                            <Component Id="cmp72BB2CA170FA6E3512A092D7B7B9701A" Guid="{E5C59734-E8A2-46D3-A291-5BBE8324FD39}">
+                                <File Id="filD0B38C077BD213889C8ECA6D9242644A" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\wpa81\GalaSoft.MvvmLight.Extras.dll" />
+                            </Component>
+                            <Component Id="cmpB892316A8792E03CA4B93ECDADC74CBF" Guid="{BD0C117A-67CB-4F37-A855-A672C81436B6}">
+                                <File Id="filBDE25A44EA6C5ADF465607618A725AF2" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\wpa81\GalaSoft.MvvmLight.Extras.pdb" />
+                            </Component>
+                            <Component Id="cmp11FF4650DE00AB550CCA6A27ED1CA201" Guid="{098429F4-E0FA-49E3-AFF6-EBB241D05D61}">
+                                <File Id="fil28F4705AB7C3E1904187BD544B60AD38" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\wpa81\GalaSoft.MvvmLight.Extras.XML" />
+                            </Component>
+                            <Component Id="cmp564DF11B0A15DA399E55AF73F03BF170" Guid="{294C4C31-F6A1-42DC-A8F2-FBB202AC97A4}">
+                                <File Id="fil62E39971DC125F1EA8259742BAF870CC" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\wpa81\GalaSoft.MvvmLight.pdb" />
+                            </Component>
+                            <Component Id="cmpBB2E656ACE05D459756BD3EE05EA6C48" Guid="{C559E724-049C-42FD-8134-03526817B124}">
+                                <File Id="fil812924585410C2F010EA293B5E7EFFB5" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\wpa81\GalaSoft.MvvmLight.Platform.dll" />
+                            </Component>
+                            <Component Id="cmp2514CADA62CB767988D6B9CC879D5CC1" Guid="{1469ECAA-84EE-42B3-AA39-4D9F37BCE3FD}">
+                                <File Id="fil835178E46E7D1494FCDEAF73D03B241A" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\wpa81\GalaSoft.MvvmLight.Platform.pdb" />
+                            </Component>
+                            <Component Id="cmp782C997BC18E160C148CEC402DC54950" Guid="{1CA0CC77-9E91-431B-B968-40A55AE931FC}">
+                                <File Id="fil0D75ACBE1B52B23FCD913E86131BB1EA" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\wpa81\GalaSoft.MvvmLight.Platform.pri" />
+                            </Component>
+                            <Component Id="cmp504ED064F02D917DE7EECAE45B492C73" Guid="{DF6EA2E3-0DD3-4B60-95C0-263E4B21BA6B}">
+                                <File Id="fil319FBD38950AEFE28041209D62FAC607" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\wpa81\GalaSoft.MvvmLight.Platform.XML" />
+                            </Component>
+                            <Component Id="cmp5AA096AADFD4C6D4DB9C920D763A9362" Guid="{AA428723-977A-4E68-BBEA-B8F1719EBE6F}">
+                                <File Id="fil998605FF51C4581880106CD401054DF5" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\wpa81\GalaSoft.MvvmLight.XML" />
+                            </Component>
+                        </Directory>
+                        <Directory Id="dir802CB407AA7E37E7016B4AE716C58A3F" Name="xamarin.ios10">
+                            <Component Id="cmp2DEA7B63BC93C0233E9BACD289A27F9C" Guid="{E29C91AA-AB11-4FD9-938F-8E33F6AAB312}">
+                                <File Id="fil12C31CECD397639F3B7FEB345024FD5B" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\xamarin.ios10\GalaSoft.MvvmLight.dll" />
+                            </Component>
+                            <Component Id="cmpC78A26E2897BA1FB7DB1C7BD52DE2E74" Guid="{546EB1C4-54B0-4B39-AD87-FD1671995A89}">
+                                <File Id="fil97537C7F96E63D07C0D3E193505B840A" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\xamarin.ios10\GalaSoft.MvvmLight.Extras.dll" />
+                            </Component>
+                            <Component Id="cmp6C121ADB266BE3A5D83F0E17C3E49455" Guid="{450C1B43-B827-4029-98F9-4258F781F314}">
+                                <File Id="filE71C5951CF0D60D24B7851B33DF351EB" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\xamarin.ios10\GalaSoft.MvvmLight.Extras.pdb" />
+                            </Component>
+                            <Component Id="cmpFA616D44D70193065C9BFB52DE955C37" Guid="{0876434C-A6C4-476D-8F1A-A209F14C6FE9}">
+                                <File Id="fil0F12672A61621EC0AF992B935117A6E3" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\xamarin.ios10\GalaSoft.MvvmLight.Extras.XML" />
+                            </Component>
+                            <Component Id="cmp1CFF901C7A1E5BA3EE2E7D1F86D6CBEC" Guid="{388BF71A-C8B5-4141-8FAF-9654377C3BB4}">
+                                <File Id="fil37B5AF0B9B7C9589640C00A41DDD0789" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\xamarin.ios10\GalaSoft.MvvmLight.pdb" />
+                            </Component>
+                            <Component Id="cmp3F191FFACF1FF665751F7D35809BB5E4" Guid="{7F45C14E-83BF-4C24-81A5-56580B7328E6}">
+                                <File Id="fil436C6F05B9C92D86DBB170F0BDB71A36" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\xamarin.ios10\GalaSoft.MvvmLight.Platform.dll" />
+                            </Component>
+                            <Component Id="cmpE1D4335AC0FADE2F1F5DF9883B46B320" Guid="{6960CB41-6A64-4AC5-AF4D-A962B7954C80}">
+                                <File Id="filB6E29B266A0DF70FA8B0BD7338D378EF" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\xamarin.ios10\GalaSoft.MvvmLight.Platform.XML" />
+                            </Component>
+                            <Component Id="cmp8621957B2C5DF464EB6F40865FA53E09" Guid="{B7B44718-1B49-4EF9-9DA7-7C4853C8AA8E}">
+                                <File Id="filF90ED35918F3CC386ED84A6C6E8020D1" KeyPath="yes" Source="$(var.CasterFlash)\packages\MvvmLightLibs.5.2.0.0\lib\xamarin.ios10\GalaSoft.MvvmLight.XML" />
+                            </Component>
+                        </Directory>
+                    </Directory>
+                </Directory>
+            </Directory>
+        </DirectoryRef>
+    </Fragment>
+    <Fragment>
+        <ComponentGroup Id="CasterFlashComponentGroup">
+            <ComponentRef Id="cmpE6A49C5456C0D96A60132A0F404E7D75" />
+            <ComponentRef Id="cmpD3C6D5BF6CE67082E8FE0AAB0285023A" />
+            <ComponentRef Id="cmp09DB0BA847B84192F61C2C49D1132F22" />
+            <ComponentRef Id="cmp101894923BD6D4A1A8ADE4A97C84CB65" />
+            <ComponentRef Id="cmpF53E8A98B92FDA6F2D0272C8C08CDDB2" />
+            <ComponentRef Id="cmpFF23754EEE596EC9B16193AA8D068F90" />
+            <ComponentRef Id="cmp57EA9A8D22E15B8E77E98C7E36B8D5A5" />
+            <ComponentRef Id="cmpEEEAC4AE0F95158F04216273BCFA8E88" />
+            <ComponentRef Id="cmpE9355878D795ABEB72B4AC4C28AA3404" />
+            <ComponentRef Id="cmpDFCEDABE8E8C0520BBEC9F4594433045" />
+            <ComponentRef Id="cmpA61711C6B28947982FD603707F0D8FC4" />
+            <ComponentRef Id="cmp8CDE6FC5CBF8101A3374C2B353FEE6ED" />
+            <ComponentRef Id="cmp1C09B61745AA99E752F3B4AAD5727B28" />
+            <ComponentRef Id="cmp852AAB2E52EDD17F78CDC40CBFB25250" />
+            <ComponentRef Id="cmpFFB84F7B2E7D0513E2D8E92A0548DB2F" />
+            <ComponentRef Id="cmpCF38E0BB38A6E984E1346E78DBB57469" />
+            <ComponentRef Id="cmpFB6B55018B67B32AC8F21309509BA8E2" />
+            <ComponentRef Id="cmpAA28799AA4208F69D659EAE9272ADDB7" />
+            <ComponentRef Id="cmpC4F3839A20E202C86F9674A68010E7DD" />
+            <ComponentRef Id="cmpE3D7E435369C12D48896F0761DB2D5B5" />
+            <ComponentRef Id="cmpB1EF6E4486912EABCB74CB7828A163CE" />
+            <ComponentRef Id="cmp6CA28C1A0D813A3B8607D149168CFB84" />
+            <ComponentRef Id="cmp1DAF250C91E4B1FB48592D69064DB951" />
+            <ComponentRef Id="cmp4E70EA33BE6611FC231599D4C437832A" />
+            <ComponentRef Id="cmpB1DF25FBAA029266A6E60C272F840E23" />
+            <ComponentRef Id="cmp58EA4943122A38A0EACF80C24F75B255" />
+            <ComponentRef Id="cmpD24D9FAE48D359853815162F0AD601A3" />
+            <ComponentRef Id="cmp450E5458D203B99CC397F51ADC4FE71D" />
+            <ComponentRef Id="cmp169DDCF562A2A4E7E7DFF3DB9A2B7CAC" />
+            <ComponentRef Id="cmpE1773835130BF14AD33416A5ED30967E" />
+            <ComponentRef Id="cmp6A0F08D4BB819FF6C1739E29315B821F" />
+            <ComponentRef Id="cmp980143F14EAA6C890E6E5F51324F1B56" />
+            <ComponentRef Id="cmp189842680DC5203DF1D18BE81E7AAD18" />
+            <ComponentRef Id="cmp72F58B8E9D3B0CA48E205D2DB8FA6BC8" />
+            <ComponentRef Id="cmp7E16A344015ABE1332219C4CCCB7DE19" />
+            <ComponentRef Id="cmpD5B1FB92F64B4329946161A7177BFFB2" />
+            <ComponentRef Id="cmp35355865F6D95E923D65861C40A66477" />
+            <ComponentRef Id="cmp9616D818F1E03CB2FFFB24216E8EFA67" />
+            <ComponentRef Id="cmpC5C7F6E447441B4CE43D386167671444" />
+            <ComponentRef Id="cmp3346A834B0E78B579D4AF81471021231" />
+            <ComponentRef Id="cmp3A0A40D4FAFCB6863FC3E5490419B7D7" />
+            <ComponentRef Id="cmpDD5A21CCC59546C9DB32927B3D44FE43" />
+            <ComponentRef Id="cmp4ECAB5F9B644886D4FE7C175EA0B81E6" />
+            <ComponentRef Id="cmp8888F32E3C422D87AFFF0A8A109036A8" />
+            <ComponentRef Id="cmp126F1F0BBA5D010DA49E31FDBC32D47C" />
+            <ComponentRef Id="cmp28AF25565AD10D7A71532A9F9C8B5E1F" />
+            <ComponentRef Id="cmp83903E58B3DEE23CBB7577331EA7910C" />
+            <ComponentRef Id="cmp617D98E7818FC4BF07311736874B0E63" />
+            <ComponentRef Id="cmp6611FB466E47622BF5D9A900EA7722E4" />
+            <ComponentRef Id="cmp3A6EB8A42377D3190F100A62B88171DB" />
+            <ComponentRef Id="cmpCBF47CB5838C33825E3A1D47F4B41F39" />
+            <ComponentRef Id="cmpF3BC3E2C4039F04733D0D90D6DCC5CD2" />
+            <ComponentRef Id="cmp0E88972F4F8E98BB3634CB742BB0C24C" />
+            <ComponentRef Id="cmpD56443BBFFC81A5285E687D0B605E48B" />
+            <ComponentRef Id="cmp26001B03B118F3063E59FF734C1C9639" />
+            <ComponentRef Id="cmpA8704FF8271B4030D01A6AE146E4B94B" />
+            <ComponentRef Id="cmp40F5F4A7C4B320F7C69E45CC140B6CC5" />
+            <ComponentRef Id="cmp308FCC20CFF055351BDB3EDDEE281B9F" />
+            <ComponentRef Id="cmp3F358531E6D7EAEDC8700A40C6BCA29F" />
+            <ComponentRef Id="cmp2F2ADAC31C9738018BFD0A8B80B35BF9" />
+            <ComponentRef Id="cmp980C6A33B6766B050F7C2271A831F3B6" />
+            <ComponentRef Id="cmpBA644256D6242D78949DA7A83AEA6167" />
+            <ComponentRef Id="cmpC086542CE83D1748066E85EA9A5D0662" />
+            <ComponentRef Id="cmp86EEBC977A6DAA803C707F20A6965C90" />
+            <ComponentRef Id="cmp91BAF0A07242FAEA4974F5E23680D90D" />
+            <ComponentRef Id="cmpECD9A41E41691A7023ACA35DC56499F4" />
+            <ComponentRef Id="cmp9EAA8CE306516E36165EAE54C6D30F50" />
+            <ComponentRef Id="cmpB69A705D6DD7794178E059DD1938BF59" />
+            <ComponentRef Id="cmp74CEEBD3D485C98864D4181CD8AB40AB" />
+            <ComponentRef Id="cmpB004E1E7303927A89EFB6E9250911D4B" />
+            <ComponentRef Id="cmp5A748DBA84FA8A8E1A17A40ABE70C14B" />
+            <ComponentRef Id="cmp332C831B6AD8E28C9289BB7473E0DE9C" />
+            <ComponentRef Id="cmpCDB98304F1D134400D9375D7054F7DF1" />
+            <ComponentRef Id="cmp7386751E5330164FEF64C50CD04F4A28" />
+            <ComponentRef Id="cmpD97B4640BAF03E6823DAFE1D63603CB1" />
+            <ComponentRef Id="cmp69051F8814841560BC3B1E30F8AED898" />
+            <ComponentRef Id="cmp27FF372A997ADE86EB684CB8AC6F40F7" />
+            <ComponentRef Id="cmp718289D68226DAD8C49F177044495F8C" />
+            <ComponentRef Id="cmp4AE01230F325CC58D4C54B5215813E74" />
+            <ComponentRef Id="cmp8435D7F57707A4E52EE8642F0481D7C2" />
+            <ComponentRef Id="cmp7F3E7CF764DB87889FC86F4F355104AD" />
+            <ComponentRef Id="cmp28E124A384940B579020FC0C2B213ACD" />
+            <ComponentRef Id="cmp6DE4F153287547214648885D4B4E5978" />
+            <ComponentRef Id="cmp5C8B6A50037DC738ACF82D2184AD734B" />
+            <ComponentRef Id="cmp8291D7FEC1F5F135EF8C52F9A2AD20F8" />
+            <ComponentRef Id="cmpDD2613D6C31EA5CFC9EB1CA15A69F0A0" />
+            <ComponentRef Id="cmp488D0DA0FFF55D6881C76FAD962A1724" />
+            <ComponentRef Id="cmp4FB09EC816FE488CD7C2578AE0836724" />
+            <ComponentRef Id="cmp79E0A75C2E4E09BC6BC2A18C7760A774" />
+            <ComponentRef Id="cmp12381B0064FE154FD49F727292113DCB" />
+            <ComponentRef Id="cmp29A0129E596F4DFC24334D04A5A4F01A" />
+            <ComponentRef Id="cmp488C5789BBDF93D9E6F6D26EA7B7B189" />
+            <ComponentRef Id="cmpCA9DF5BA8FFB8DFDE0040CD77CC5C98E" />
+            <ComponentRef Id="cmp171AEE0BA393187EDDAC119B06100B9B" />
+            <ComponentRef Id="cmp89F6EB1D4C850848D9B477E58D36A6D0" />
+            <ComponentRef Id="cmp2C6711B97C3FFDB85626214F02C56B6B" />
+            <ComponentRef Id="cmpE82C5A5FD4B5B0A65D4717D168F7D380" />
+            <ComponentRef Id="cmpD287A2195C1E0049600E1896437F871C" />
+            <ComponentRef Id="cmp92479BA44102FF85DF9E9DEBD1864E7D" />
+            <ComponentRef Id="cmp2C1625B35014BA2A199CF04D2723251E" />
+            <ComponentRef Id="cmp721DFBBBECBE5C6A9196B9BB75AABDE2" />
+            <ComponentRef Id="cmpBB592997361567E85365219DF1BE45D8" />
+            <ComponentRef Id="cmp8F087E08B3C6F88AD45E52D4B24D3990" />
+            <ComponentRef Id="cmp10D2C658F2C394B23F55EE115D3C6189" />
+            <ComponentRef Id="cmpB866F5A9817AB4E00BD129B82FE0E470" />
+            <ComponentRef Id="cmpAB93721727BCC83901E669FAA6D29224" />
+            <ComponentRef Id="cmpBA04B0BB62A99854CE557AB1233FA317" />
+            <ComponentRef Id="cmpC8CE9C01ADCA70FBCCF70B47D0F3B11B" />
+            <ComponentRef Id="cmpF61835BAF3CE9B29E7F0C4784BE317EF" />
+            <ComponentRef Id="cmp51D4F9A620EB9DB586EE47F5DD4122BA" />
+            <ComponentRef Id="cmp76FDE4D198F2E00AC2EBD3442D88E084" />
+            <ComponentRef Id="cmpB52BF443E91A63028628F3B4B4345963" />
+            <ComponentRef Id="cmpF93C806B07C972C20B8475274804EC23" />
+            <ComponentRef Id="cmpFA5BE6124F7FD0064C28FAAB0E009F55" />
+            <ComponentRef Id="cmp0681EC45A13B3351DD55B13B01B16D07" />
+            <ComponentRef Id="cmp4974E319E2D37D74F8614FD49DFD86C0" />
+            <ComponentRef Id="cmp4460910B7B1CFD06929E1D227CFCA746" />
+            <ComponentRef Id="cmpA14264F0F6D2E26DBDB9D4D0F151BB9C" />
+            <ComponentRef Id="cmp789E8D8E02CF2823DA9C74B6B4090695" />
+            <ComponentRef Id="cmpB94A72C6424A8DF9DFA54A6475D14999" />
+            <ComponentRef Id="cmpA8CEB8CE2A517DA8164566858902FEB3" />
+            <ComponentRef Id="cmp116196CC8FC55F3D0557127B78A764E7" />
+            <ComponentRef Id="cmp71B692220D25AD08D452886F79783ACB" />
+            <ComponentRef Id="cmp9D120C4FBE8C0227761A45C7EEE9AEB1" />
+            <ComponentRef Id="cmp36CAF3FE32F7F25906C9486555E9EFBE" />
+            <ComponentRef Id="cmp3606BB1BBF2EBA363D52A97214F18AE2" />
+            <ComponentRef Id="cmpD2C37DE0758D44F00F43D2141202D7F8" />
+            <ComponentRef Id="cmpBBCEAB2DF756E17B1CF1842814C8CB67" />
+            <ComponentRef Id="cmpF5E399F8498F0385B2FC73BBB946618E" />
+            <ComponentRef Id="cmp62DB895DFF9740272D60BDB3C14DF5CA" />
+            <ComponentRef Id="cmpBD7B89F2BD909A63FDBE449698634C45" />
+            <ComponentRef Id="cmp5665B5D70723BCFBA2721D0862C170B1" />
+            <ComponentRef Id="cmp465B68539A72F135529E740C36A70129" />
+            <ComponentRef Id="cmpC7DB9D58E83ECAEA33EAF180489FC2F7" />
+            <ComponentRef Id="cmpF228A0A577E32BFF6A842203782D2CFF" />
+            <ComponentRef Id="cmpE62E15FD4DD08F6E45C35FC85A641DA6" />
+            <ComponentRef Id="cmpB05AB58747B57BE6831ADB9671D5616B" />
+            <ComponentRef Id="cmp188412544C81A724BBAF389588B8D48A" />
+            <ComponentRef Id="cmp31FD4094DA5E7C387479D3ABD8A83712" />
+            <ComponentRef Id="cmpF03216E1BD87B5C9AB8E69095065F74D" />
+            <ComponentRef Id="cmpF6005545E3D6E0B7838C60BAC7784710" />
+            <ComponentRef Id="cmp0AB12D771108B468F06AB8D6DAC1A6CB" />
+            <ComponentRef Id="cmp2C0C77DDD636279AAB258DC9B95F8AC1" />
+            <ComponentRef Id="cmp1C61A7DA784FB0D60DA811EA13C7F9BD" />
+            <ComponentRef Id="cmpB3CC7BF65741C04863E8D38D9F9FC521" />
+            <ComponentRef Id="cmp2459E48012554EB4AA4DC1E5AF4FA42D" />
+            <ComponentRef Id="cmpDCBB114CC3AF7BE9CD468232CB9F7593" />
+            <ComponentRef Id="cmp24275D1A5872F24BF522C18A49D93EAE" />
+            <ComponentRef Id="cmp1EED05C401D9E822B86ED6D4C1B98058" />
+            <ComponentRef Id="cmp2D8E71B7B280FB66D2D60E351B1D8DA7" />
+            <ComponentRef Id="cmp46444B9901889CD35A4BA2EF49E2D813" />
+            <ComponentRef Id="cmpFFA58D0C9762CF7E3A4D73F6D460E1C0" />
+            <ComponentRef Id="cmpB6BCACE4A2DA2F485FF721AFB763AD32" />
+            <ComponentRef Id="cmp5969F12770638AF2481411EE4346BE73" />
+            <ComponentRef Id="cmpB8948FA1AE6DC15FCC78AE51DE7323B5" />
+            <ComponentRef Id="cmpBA5653F0AC06CEFAF2DE40BF73934A31" />
+            <ComponentRef Id="cmpF4BEBF0F3B6A409A865DD250EBF77546" />
+            <ComponentRef Id="cmp72BB2CA170FA6E3512A092D7B7B9701A" />
+            <ComponentRef Id="cmpB892316A8792E03CA4B93ECDADC74CBF" />
+            <ComponentRef Id="cmp11FF4650DE00AB550CCA6A27ED1CA201" />
+            <ComponentRef Id="cmp564DF11B0A15DA399E55AF73F03BF170" />
+            <ComponentRef Id="cmpBB2E656ACE05D459756BD3EE05EA6C48" />
+            <ComponentRef Id="cmp2514CADA62CB767988D6B9CC879D5CC1" />
+            <ComponentRef Id="cmp782C997BC18E160C148CEC402DC54950" />
+            <ComponentRef Id="cmp504ED064F02D917DE7EECAE45B492C73" />
+            <ComponentRef Id="cmp5AA096AADFD4C6D4DB9C920D763A9362" />
+            <ComponentRef Id="cmp2DEA7B63BC93C0233E9BACD289A27F9C" />
+            <ComponentRef Id="cmpC78A26E2897BA1FB7DB1C7BD52DE2E74" />
+            <ComponentRef Id="cmp6C121ADB266BE3A5D83F0E17C3E49455" />
+            <ComponentRef Id="cmpFA616D44D70193065C9BFB52DE955C37" />
+            <ComponentRef Id="cmp1CFF901C7A1E5BA3EE2E7D1F86D6CBEC" />
+            <ComponentRef Id="cmp3F191FFACF1FF665751F7D35809BB5E4" />
+            <ComponentRef Id="cmpE1D4335AC0FADE2F1F5DF9883B46B320" />
+            <ComponentRef Id="cmp8621957B2C5DF464EB6F40865FA53E09" />
+        </ComponentGroup>
+    </Fragment>
+</Wix>

@@ -1,0 +1,33 @@
+HKCR
+{
+	NoRemove CLSID
+	{
+		ForceRemove {a0d8984a-9a0e-4138-9a82-d4f7443d3365} = s 'MyBlock class'
+		{
+			ForceRemove Programmable
+			InprocServer32 = s '%MODULE%'
+			{
+				val ThreadingModel = s 'Apartment'
+			}
+			TypeLib = s '{abd5105a-8163-475f-adac-a66891f98448}'
+			Version = s '1.0'
+			'Implemented Categories'
+			{
+				{678C09A5-7D66-11D2-A67D-00105A42887F} 
+				{678C09A1-7D66-11D2-A67D-00105A42887F}
+				{4150C28A-EE06-403f-A871-87AFEC38A249}
+				{0D562DC8-EA8E-4210-AB39-B66513C0CD09}
+				{4667023A-5A8E-4CCA-AB6D-9D78C5112FED}
+			}
+			CapeDescription 
+			{
+			val Name =  s 'Test Block'
+			val Description = s 'Written By laugh'
+			val CapeVersion = s '1.1'
+			val ComponentVersion = s '24.01.24.1'
+			val VendorURL = s 'http://imbhj.com/'
+			val About = s 'Test My First Unit Operations Block'
+			}
+		}
+	}
+}

@@ -1,0 +1,34 @@
+{
+  "kind": "radishflow.property-package-download",
+  "schemaVersion": 1,
+  "packageId": "water-ethanol-lite-v1",
+  "version": "2026.04.1",
+  "components": [
+    {
+      "id": "water",
+      "name": "Water",
+      "antoine": {
+        "a": 16.569,
+        "b": 3984.9,
+        "c": -39.724
+      },
+      "liquidHeatCapacityJPerMolK": 75.3,
+      "vaporHeatCapacityJPerMolK": 33.6
+    },
+    {
+      "id": "ethanol",
+      "name": "Ethanol",
+      "antoine": {
+        "a": 16.874,
+        "b": 3782.9,
+        "c": -42.85
+      },
+      "liquidHeatCapacityJPerMolK": 112.4,
+      "vaporHeatCapacityJPerMolK": 65.0
+    }
+  ],
+  "method": {
+    "liquidPhaseModel": "ideal-solution",
+    "vaporPhaseModel": "ideal-gas"
+  }
+}

@@ -1,6 +1,336 @@
+use crate::studio_gui_preferences_store::save_recent_project_paths;
+
 use super::*;
 
 impl ReadyAppState {
+    pub(super) fn open_example_project(&mut self, project_path: PathBuf) {
+        self.request_open_project(project_path, "example project");
+    }
+
+    pub(super) fn open_recent_project(&mut self, project_path: PathBuf) {
+        self.request_open_project(project_path, "recent project");
+    }
+
+    pub(super) fn open_project_from_input(&mut self) {
+        let Some(project_path) = self.project_open.current_path() else {
+            self.project_open.notice = Some(ProjectOpenNotice {
+                level: ProjectOpenNoticeLevel::Error,
+                title: "Project path is empty".to_string(),
+                detail: "Enter a .rfproj.json path before opening a project.".to_string(),
+            });
+            return;
+        };
+        self.request_open_project(project_path, "project");
+    }
+
+    pub(super) fn open_project_from_picker(&mut self) {
+        let Some(project_path) = self.project_file_picker.pick_project_file() else {
+            self.project_open.notice = Some(ProjectOpenNotice {
+                level: ProjectOpenNoticeLevel::Info,
+                title: "Project picker canceled".to_string(),
+                detail: "Current workspace remains open.".to_string(),
+            });
+            return;
+        };
+
+        self.project_open.path_input = project_path.display().to_string();
+        self.request_open_project(project_path, "project picker");
+    }
+
+    pub(super) fn save_project(&mut self) {
+        match self.dispatch_event_result(StudioGuiEvent::UiCommandRequested {
+            command_id: radishflow_studio::FILE_SAVE_COMMAND_ID.to_string(),
+        }) {
+            Ok(dispatch) => {
+                let document = &dispatch.dispatch.window.runtime.workspace_document;
+                let Some(path) = document.project_path.as_ref() else {
+                    self.project_open.notice = Some(ProjectOpenNotice {
+                        level: ProjectOpenNoticeLevel::Warning,
+                        title: "Project save skipped".to_string(),
+                        detail: "Current document has no project path; use Save As.".to_string(),
+                    });
+                    return;
+                };
+                let level = if document.has_unsaved_changes {
+                    ProjectOpenNoticeLevel::Warning
+                } else {
+                    ProjectOpenNoticeLevel::Info
+                };
+                self.project_open.notice = Some(ProjectOpenNotice {
+                    level,
+                    title: if document.has_unsaved_changes {
+                        "Project save incomplete".to_string()
+                    } else {
+                        "Project saved".to_string()
+                    },
+                    detail: format!("Saved revision {} to {path}", document.revision),
+                });
+                self.project_open.pending_save_as_overwrite = None;
+            }
+            Err(error) => {
+                self.project_open.notice = Some(ProjectOpenNotice {
+                    level: ProjectOpenNoticeLevel::Error,
+                    title: "Project save failed".to_string(),
+                    detail: format!(
+                        "[{}] {}. Current workspace remains open.",
+                        error.code().as_str(),
+                        error.message()
+                    ),
+                });
+                self.platform_host.record_activity_line(format!(
+                    "save project failed [{}]: {}",
+                    error.code().as_str(),
+                    error.message()
+                ));
+            }
+        }
+    }
+
+    pub(super) fn save_project_as_from_picker(&mut self) {
+        let Some(project_path) = self.project_file_picker.pick_save_project_file() else {
+            self.project_open.notice = Some(ProjectOpenNotice {
+                level: ProjectOpenNoticeLevel::Info,
+                title: "Save As canceled".to_string(),
+                detail: "Current workspace remains open.".to_string(),
+            });
+            return;
+        };
+
+        self.request_save_project_as(project_path, true);
+    }
+
+    pub(super) fn request_save_project_as(
+        &mut self,
+        project_path: PathBuf,
+        require_overwrite_confirmation: bool,
+    ) {
+        let Some(window_id) = self.current_window_id() else {
+            self.project_open.notice = Some(ProjectOpenNotice {
+                level: ProjectOpenNoticeLevel::Error,
+                title: "Save As unavailable".to_string(),
+                detail: "Open a Studio window before saving the project.".to_string(),
+            });
+            return;
+        };
+
+        if require_overwrite_confirmation
+            && self.save_as_requires_overwrite_confirmation(&project_path)
+        {
+            self.project_open.pending_save_as_overwrite = Some(project_path.clone());
+            self.project_open.notice = Some(ProjectOpenNotice {
+                level: ProjectOpenNoticeLevel::Warning,
+                title: "Confirm overwrite".to_string(),
+                detail: format!(
+                    "Save As target already exists and will be replaced: {}",
+                    project_path.display()
+                ),
+            });
+            return;
+        }
+
+        let trigger = StudioRuntimeTrigger::DocumentLifecycle(
+            radishflow_studio::StudioDocumentLifecycleCommand::SaveAs {
+                path: project_path.clone(),
+            },
+        );
+        match self
+            .dispatch_event_result(StudioGuiEvent::WindowTriggerRequested { window_id, trigger })
+        {
+            Ok(dispatch) => {
+                let document = &dispatch.dispatch.window.runtime.workspace_document;
+                self.project_open.path_input = project_path.display().to_string();
+                self.project_open.pending_save_as_overwrite = None;
+                let recent_projects_notice =
+                    self.record_and_persist_recent_project(project_path.clone());
+                self.project_open.notice =
+                    Some(recent_projects_notice.unwrap_or(ProjectOpenNotice {
+                        level: ProjectOpenNoticeLevel::Info,
+                        title: "Project saved as".to_string(),
+                        detail: format!(
+                            "Saved revision {} to {}",
+                            document.revision,
+                            project_path.display()
+                        ),
+                    }));
+            }
+            Err(error) => {
+                self.project_open.notice = Some(ProjectOpenNotice {
+                    level: ProjectOpenNoticeLevel::Error,
+                    title: "Save As failed".to_string(),
+                    detail: format!(
+                        "[{}] {} ({}). Current workspace remains open; choose another target or retry.",
+                        error.code().as_str(),
+                        error.message(),
+                        project_path.display()
+                    ),
+                });
+                self.platform_host.record_activity_line(format!(
+                    "save as failed [{}]: {} ({})",
+                    error.code().as_str(),
+                    error.message(),
+                    project_path.display()
+                ));
+            }
+        }
+    }
+
+    pub(super) fn confirm_pending_save_as_overwrite(&mut self) {
+        let Some(project_path) = self.project_open.pending_save_as_overwrite.clone() else {
+            return;
+        };
+        self.request_save_project_as(project_path, false);
+    }
+
+    pub(super) fn cancel_pending_save_as_overwrite(&mut self) {
+        self.project_open.pending_save_as_overwrite = None;
+        self.project_open.notice = Some(ProjectOpenNotice {
+            level: ProjectOpenNoticeLevel::Info,
+            title: "Save As canceled".to_string(),
+            detail: "Existing project file was not overwritten.".to_string(),
+        });
+    }
+
+    fn save_as_requires_overwrite_confirmation(&self, project_path: &std::path::Path) -> bool {
+        if !project_path.exists() {
+            return false;
+        }
+
+        self.platform_host
+            .snapshot()
+            .runtime
+            .workspace_document
+            .project_path
+            .as_deref()
+            .map(std::path::Path::new)
+            .map(|current_path| !paths_match(current_path, project_path))
+            .unwrap_or(true)
+    }
+
+    pub(super) fn request_open_project(&mut self, project_path: PathBuf, source_label: &str) {
+        if self
+            .platform_host
+            .snapshot()
+            .runtime
+            .workspace_document
+            .has_unsaved_changes
+        {
+            self.project_open.pending_confirmation = Some(ProjectOpenRequest {
+                project_path: project_path.clone(),
+                source_label: source_label.to_string(),
+            });
+            self.project_open.notice = Some(ProjectOpenNotice {
+                level: ProjectOpenNoticeLevel::Warning,
+                title: "Unsaved changes".to_string(),
+                detail: format!(
+                    "Opening {source_label} will discard changes after the last saved revision: {}",
+                    project_path.display()
+                ),
+            });
+            return;
+        }
+
+        self.open_project(project_path, source_label);
+    }
+
+    pub(super) fn confirm_pending_project_open(&mut self) {
+        let Some(request) = self.project_open.pending_confirmation.take() else {
+            return;
+        };
+        self.open_project(request.project_path, &request.source_label);
+    }
+
+    pub(super) fn cancel_pending_project_open(&mut self) {
+        self.project_open.pending_confirmation = None;
+        self.project_open.notice = Some(ProjectOpenNotice {
+            level: ProjectOpenNoticeLevel::Info,
+            title: "Project open canceled".to_string(),
+            detail: "Current workspace remains open.".to_string(),
+        });
+    }
+
+    pub(super) fn open_project(&mut self, project_path: PathBuf, source_label: &str) {
+        let config = StudioRuntimeConfig {
+            project_path: project_path.clone(),
+            ..StudioRuntimeConfig::default()
+        };
+
+        match StudioGuiPlatformHost::new(&config) {
+            Ok(platform_host) => {
+                self.platform_host = platform_host;
+                self.platform_timer_executor = EguiPlatformTimerExecutor::default();
+                self.command_palette.close();
+                self.last_area_focus = None;
+                self.drag_session = None;
+                self.active_drop_preview = None;
+                self.drop_preview_overlay_anchor = None;
+                self.last_viewport_focused = None;
+                self.result_inspector.reset();
+                self.project_open.path_input = project_path.display().to_string();
+                let recent_projects_notice =
+                    self.record_and_persist_recent_project(project_path.clone());
+                self.project_open.pending_confirmation = None;
+                self.project_open.pending_save_as_overwrite = None;
+                self.project_open.notice =
+                    Some(recent_projects_notice.unwrap_or(ProjectOpenNotice {
+                        level: ProjectOpenNoticeLevel::Info,
+                        title: "Project opened".to_string(),
+                        detail: format!("Opened {source_label}: {}", project_path.display()),
+                    }));
+                self.platform_host.record_activity_line(format!(
+                    "opened {source_label}: {}",
+                    project_path.display()
+                ));
+                self.dispatch_event(StudioGuiEvent::OpenWindowRequested);
+            }
+            Err(error) => {
+                self.project_open.notice = Some(ProjectOpenNotice {
+                    level: ProjectOpenNoticeLevel::Error,
+                    title: "Project open failed".to_string(),
+                    detail: format!(
+                        "[{}] {} ({})",
+                        error.code().as_str(),
+                        error.message(),
+                        project_path.display()
+                    ),
+                });
+                self.platform_host.record_activity_line(format!(
+                    "open {source_label} failed [{}]: {} ({})",
+                    error.code().as_str(),
+                    error.message(),
+                    project_path.display()
+                ));
+            }
+        }
+    }
+
+    pub(super) fn record_and_persist_recent_project(
+        &mut self,
+        project_path: PathBuf,
+    ) -> Option<ProjectOpenNotice> {
+        self.project_open.record_recent_project(project_path);
+        if let Err(error) =
+            save_recent_project_paths(&self.preferences_path, &self.project_open.recent_projects)
+        {
+            self.platform_host.record_activity_line(format!(
+                "save recent projects failed [{}]: {} ({})",
+                error.code().as_str(),
+                error.message(),
+                self.preferences_path.display()
+            ));
+            return Some(ProjectOpenNotice {
+                level: ProjectOpenNoticeLevel::Warning,
+                title: "Recent projects not saved".to_string(),
+                detail: format!(
+                    "[{}] {} ({})",
+                    error.code().as_str(),
+                    error.message(),
+                    self.preferences_path.display()
+                ),
+            });
+        }
+        None
+    }
+
     pub(super) fn update(&mut self, ctx: &egui::Context) {
         self.sync_viewport_close(ctx);
         self.sync_viewport_lifecycle(ctx);
@@ -55,6 +385,32 @@ impl ReadyAppState {
 
     pub(super) fn dispatch_ui_command(&mut self, command_id: impl Into<String>) {
         self.dispatch_event(StudioGuiEvent::UiCommandRequested {
+            command_id: command_id.into(),
+        });
+    }
+
+    pub(super) fn dispatch_inspector_field_draft_update(
+        &mut self,
+        command_id: impl Into<String>,
+        raw_value: impl Into<String>,
+    ) {
+        self.dispatch_event(StudioGuiEvent::InspectorFieldDraftUpdateRequested {
+            command_id: command_id.into(),
+            raw_value: raw_value.into(),
+        });
+    }
+
+    pub(super) fn dispatch_inspector_field_draft_commit(&mut self, command_id: impl Into<String>) {
+        self.dispatch_event(StudioGuiEvent::InspectorFieldDraftCommitRequested {
+            command_id: command_id.into(),
+        });
+    }
+
+    pub(super) fn dispatch_inspector_field_draft_batch_commit(
+        &mut self,
+        command_id: impl Into<String>,
+    ) {
+        self.dispatch_event(StudioGuiEvent::InspectorFieldDraftBatchCommitRequested {
             command_id: command_id.into(),
         });
     }
@@ -177,12 +533,7 @@ impl ReadyAppState {
     }
 
     pub(super) fn dispatch_event(&mut self, event: StudioGuiEvent) {
-        match self
-            .platform_host
-            .dispatch_event_and_execute_platform_timer(
-                event.clone(),
-                &mut self.platform_timer_executor,
-            ) {
+        match self.dispatch_event_result(event.clone()) {
             Ok(_) => {}
             Err(error) => {
                 let message = format!("[{}] {}", error.code().as_str(), error.message());
@@ -190,6 +541,14 @@ impl ReadyAppState {
                     .record_activity_line(format!("event failed: {message}"));
             }
         }
+    }
+
+    pub(super) fn dispatch_event_result(
+        &mut self,
+        event: StudioGuiEvent,
+    ) -> RfResult<StudioGuiPlatformExecutedDispatch> {
+        self.platform_host
+            .dispatch_event_and_execute_platform_timer(event, &mut self.platform_timer_executor)
     }
 
     pub(super) fn drain_due_timers(&mut self, ctx: &egui::Context) {

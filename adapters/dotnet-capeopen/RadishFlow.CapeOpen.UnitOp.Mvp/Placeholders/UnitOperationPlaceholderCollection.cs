@@ -1,35 +1,37 @@
 using System.Collections;
+using System.Globalization;
+using System.Runtime.InteropServices;
 using RadishFlow.CapeOpen.Interop.Common;
 using RadishFlow.CapeOpen.Interop.Errors;
+using RadishFlow.CapeOpen.UnitOp.Mvp.UnitOperation;
 
 namespace RadishFlow.CapeOpen.UnitOp.Mvp.Placeholders;
 
-public sealed class UnitOperationPlaceholderCollection<T> : ICapeIdentification, ICapeCollection, IReadOnlyList<T>
+// Generic collection helpers are kept internal to the CLR side and should not be
+// surfaced directly as COM runtime types.
+[ComVisible(false)]
+public class UnitOperationPlaceholderCollection<T> : ICapeIdentification, ICapeCollection, IReadOnlyList<T>
     where T : class, ICapeIdentification
 {
     private const string InterfaceName = nameof(ICapeCollection);
     private const string ItemOperation = "Item";
     private readonly Action<string, string, string?, object?>? _ensureOwnerAccess;
+    private readonly UnitOperationCollectionDefinition _definition;
     private readonly IReadOnlyList<T> _items;
     private readonly IReadOnlyDictionary<string, T> _itemsByName;
-    private string _componentName;
-    private string _componentDescription;
 
     public UnitOperationPlaceholderCollection(
-        string componentName,
-        string componentDescription,
+        UnitOperationCollectionDefinition definition,
         IEnumerable<T> items,
         Action<string, string, string?, object?>? ensureOwnerAccess = null)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(componentName);
-        ArgumentNullException.ThrowIfNull(componentDescription);
+        ArgumentNullException.ThrowIfNull(definition);
         ArgumentNullException.ThrowIfNull(items);
 
-        _componentName = componentName;
-        _componentDescription = componentDescription;
+        _definition = definition;
         _ensureOwnerAccess = ensureOwnerAccess;
         _items = CreateFrozenItems(items);
-        _itemsByName = CreateItemsByName(_items, componentName);
+        _itemsByName = CreateItemsByName(_items, definition.Name);
     }
 
     public string ComponentName
@@ -37,9 +39,9 @@ public sealed class UnitOperationPlaceholderCollection<T> : ICapeIdentification,
         get
         {
             EnsureOwnerAccess(nameof(ComponentName));
-            return _componentName;
+            return _definition.Name;
         }
-        set => _componentName = SetImmutableComponentName(_componentName, value, nameof(ComponentName));
+        set => SetImmutableComponentName(value, nameof(ComponentName));
     }
 
     public string ComponentDescription
@@ -47,9 +49,9 @@ public sealed class UnitOperationPlaceholderCollection<T> : ICapeIdentification,
         get
         {
             EnsureOwnerAccess(nameof(ComponentDescription));
-            return _componentDescription;
+            return _definition.Description;
         }
-        set => _componentDescription = SetImmutableComponentDescription(_componentDescription, value, nameof(ComponentDescription));
+        set => SetImmutableComponentDescription(value, nameof(ComponentDescription));
     }
 
     public int Count
@@ -107,27 +109,64 @@ public sealed class UnitOperationPlaceholderCollection<T> : ICapeIdentification,
 
     object ICapeCollection.Item(object index)
     {
-        EnsureOwnerAccess(ItemOperation, index);
-
-        if (index is string name)
+        UnitOperationComTrace.Write($"{_definition.Name}.{nameof(ICapeCollection)}.{ItemOperation}", "enter", index?.ToString());
+        try
         {
-            return FindByName(name, ItemOperation);
-        }
+            EnsureOwnerAccess(ItemOperation, index);
 
-        if (TryGetOneBasedIndex(index, out var oneBasedIndex))
+            object item;
+            if (index is string name)
+            {
+                item = FindByName(name, ItemOperation);
+            }
+            else if (index is null)
+            {
+                throw new CapeInvalidArgumentException(
+                    $"Collection `{ComponentName}` requires a non-null selector.",
+                    CreateContext(ItemOperation, index));
+            }
+            else if (TryGetOneBasedIndex(index, out var oneBasedIndex))
+            {
+                item = ResolveByOneBasedIndex(oneBasedIndex, ItemOperation);
+            }
+            else
+            {
+                throw new CapeInvalidArgumentException(
+                    $"Collection `{ComponentName}` only accepts a 1-based integer index or component name.",
+                    CreateContext(ItemOperation, index));
+            }
+
+            UnitOperationComTrace.Write(
+                $"{_definition.Name}.{nameof(ICapeCollection)}.{ItemOperation}",
+                "exit",
+                ((ICapeIdentification)item).ComponentName);
+            return item;
+        }
+        catch (Exception error)
         {
-            return ResolveByOneBasedIndex(oneBasedIndex, ItemOperation);
+            UnitOperationComTrace.Exception($"{_definition.Name}.{nameof(ICapeCollection)}.{ItemOperation}", error);
+            throw;
         }
-
-        throw new CapeInvalidArgumentException(
-            $"Collection `{ComponentName}` only accepts a 1-based integer index or component name.",
-            CreateContext(ItemOperation, index));
     }
 
     int ICapeCollection.Count()
     {
-        EnsureOwnerAccess("Count");
-        return _items.Count;
+        UnitOperationComTrace.Write($"{_definition.Name}.{nameof(ICapeCollection)}.{nameof(ICapeCollection.Count)}", "enter");
+        try
+        {
+            EnsureOwnerAccess("Count");
+            var count = _items.Count;
+            UnitOperationComTrace.Write(
+                $"{_definition.Name}.{nameof(ICapeCollection)}.{nameof(ICapeCollection.Count)}",
+                "exit",
+                count.ToString(CultureInfo.InvariantCulture));
+            return count;
+        }
+        catch (Exception error)
+        {
+            UnitOperationComTrace.Exception($"{_definition.Name}.{nameof(ICapeCollection)}.{nameof(ICapeCollection.Count)}", error);
+            throw;
+        }
     }
 
     public IEnumerator<T> GetEnumerator()
@@ -263,29 +302,29 @@ public sealed class UnitOperationPlaceholderCollection<T> : ICapeIdentification,
         return itemsByName;
     }
 
-    private string SetImmutableComponentName(string currentValue, string value, string operation)
+    private void SetImmutableComponentName(string value, string operation)
     {
         EnsureOwnerAccess(operation, value);
         ArgumentException.ThrowIfNullOrWhiteSpace(value);
 
-        if (string.Equals(currentValue, value, StringComparison.Ordinal))
+        if (string.Equals(_definition.Name, value, StringComparison.Ordinal))
         {
-            return currentValue;
+            return;
         }
 
         throw new CapeInvalidArgumentException(
-            $"Collection `{currentValue}` does not allow ComponentName mutation in the MVP runtime.",
+            $"Collection `{_definition.Name}` does not allow ComponentName mutation in the MVP runtime.",
             CreateContext(operation, value));
     }
 
-    private string SetImmutableComponentDescription(string currentValue, string value, string operation)
+    private void SetImmutableComponentDescription(string value, string operation)
     {
         EnsureOwnerAccess(operation, value);
         ArgumentNullException.ThrowIfNull(value);
 
-        if (string.Equals(currentValue, value, StringComparison.Ordinal))
+        if (string.Equals(_definition.Description, value, StringComparison.Ordinal))
         {
-            return currentValue;
+            return;
         }
 
         throw new CapeInvalidArgumentException(

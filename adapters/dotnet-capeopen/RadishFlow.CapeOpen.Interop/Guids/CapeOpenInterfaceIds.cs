@@ -15,13 +15,43 @@ public static class CapeOpenInterfaceIds
     public const string ICapeUnitPort = "678C0999-0093-11D2-A67D-00105A42887F";
 
     // Source: adapters/reference/CapeOpenMixerExample_CSharp/CapeOpen/COGuids1.cs
+    public const string ICapeUnitReport = "678C099B-0093-11D2-A67D-00105A42887F";
+
+    // Source: adapters/reference/CapeOpenMixerExample_CSharp/CapeOpen/COGuids1.cs
     public const string ICapeUtilities = "678C0A9B-0100-11D2-A67D-00105A42887F";
+
+    // Source: adapters/reference/CapeOpenMixerExample_CSharp/CapeOpen/COGuids1.cs
+    public const string ICapeSimulationContext = "678C0A9C-0100-11D2-A67D-00105A42887F";
+
+    // Source: adapters/reference/CapeOpenMixerExample_CSharp/CapeOpen/COGuids1.cs
+    public const string ICapeDiagnostic = "678C0A9D-0100-11D2-A67D-00105A42887F";
+
+    // Source: adapters/reference/CapeOpenMixerExample_CSharp/CapeOpen/COGuids1.cs
+    public const string ICapeMaterialTemplateSystem = "678C0A9E-0100-11D2-A67D-00105A42887F";
+
+    // Source: adapters/reference/CapeOpenMixerExample_CSharp/CapeOpen/COGuids1.cs
+    public const string ICapeCOSEUtilities = "678C0A9F-0100-11D2-A67D-00105A42887F";
+
+    // Source: adapters/reference/MyCO-CSharp/CapeOpen/CapeOpen/ThrmIDL.cs
+    public const string ICapeThermoMaterialObject = "678C0994-7D66-11D2-A67D-00105A42887F";
+
+    // Source: adapters/reference/MyCO-CSharp/CapeOpen/CapeOpen/ThrmIDL.cs
+    public const string ICapeThermoMaterial = "678C0A9B-7D66-11D2-A67D-00105A42887F";
+
+    // Source: adapters/reference/MyCO-CSharp/CapeOpen/CapeOpen/ThrmIDL.cs
+    public const string ICapeThermoCompounds = "678C0A9D-7D66-11D2-A67D-00105A42887F";
+
+    // Source: adapters/reference/MyCO-CSharp/CapeOpen/CapeOpen/ThrmIDL.cs
+    public const string ICapeThermoEquilibriumRoutine = "678C0AA0-7D66-11D2-A67D-00105A42887F";
 
     // Source: adapters/reference/CapeOpenMixerExample_CSharp/CapeOpen/COGuids1.cs
     public const string ICapeParameterSpec = "678C099C-0093-11D2-A67D-00105A42887F";
 
     // Source: adapters/reference/CapeOpenMixerExample_CSharp/CapeOpen/COGuids1.cs
     public const string ICapeRealParameterSpec = "678C099D-0093-11D2-A67D-00105A42887F";
+
+    // Source: adapters/reference/CapeOpenMixerExample_CSharp/CapeOpen/COGuids1.cs
+    public const string ICapeOptionParameterSpec = "678C099F-0093-11D2-A67D-00105A42887F";
 
     // Source: adapters/reference/CapeOpenMixerExample_CSharp/CapeOpen/COGuids1.cs
     public const string ICapeParameter = "678C09A0-0093-11D2-A67D-00105A42887F";

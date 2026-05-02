@@ -1,6 +1,6 @@
 # Architecture Overview
 
-更新时间：2026-04-16
+更新时间：2026-05-01
 
 ## 目标
 
@@ -51,15 +51,17 @@ RadishFlow 的目标架构已经冻结为“桌面端三层 + 外部控制面”
 
 ### Rust Studio UI
 
-当前 UI 相关 crate 已进入“状态骨架与应用边界冻结”阶段，但仍未进入具体界面实现主线：
+当前 UI 相关 crate 已从“状态骨架与应用边界冻结”推进到第一版最小可操作工作台闭环，但仍不代表已经进入完整视觉设计、任意项目文件工作流或复杂画布编辑阶段：
 
 | crate | 当前职责 | 当前状态 |
 | --- | --- | --- |
-| `rf-ui` | UI 状态与行为逻辑 | 已建立 `AppState`、授权态、求解态与控制面 DTO 骨架；已补 `RunPanelState`、`RunPanelIntent`、`RunPanelCommandModel`、`RunPanelViewModel`、`RunPanelPresentation` 与 `RunPanelWidgetModel`，并可把 `rf-solver::SolveSnapshot` 映射为 UI 层结果快照 |
+| `rf-ui` | UI 状态与行为逻辑 | 已建立 `AppState`、授权态、求解态与控制面 DTO 骨架；已补 `RunPanelState`、`RunPanelIntent`、`RunPanelCommandModel`、`RunPanelViewModel`、`RunPanelPresentation` 与 `RunPanelWidgetModel`，并可把 `rf-solver::SolveSnapshot` 映射为 UI 层结果快照；当前字段级 Inspector 草稿态已落入 `WorkspaceState.drafts`，Stream Inspector 的有效单字段提交会生成 `DocumentCommand::SetStreamSpecification`；`CommandHistoryEntry` 当前也已携带 `before / after` flowsheet 快照，用于基础 undo/redo |
 | `rf-canvas` | 流程图画布能力 | 占位 |
-| `apps/radishflow-studio` | 桌面入口程序 | 已建立 auth cache sync 桥接、控制面 HTTP client、entitlement / manifest / lease / offline refresh 编排、下载获取抽象、基于 `reqwest + rustls` 的真实 HTTP transport、HTTP 请求/响应适配层、可重试/不可重试失败分类、下载 JSON 到本地 payload DTO 的协议映射、摘要校验、失败回滚与测试；并已补上 `PropertyPackageProvider -> rf-solver -> rf-ui::AppState` 的最小工作区求解桥接，可直接基于已加载物性包或本地 auth cache 执行真实 solve 并回写 UI 快照/日志；当前又已形成 `StudioGuiHost / StudioGuiDriver / StudioGuiSnapshot / StudioGuiWindowModel / StudioGuiWindowLayoutState` 这一条 GUI-facing 宿主与窗口布局契约，并把窗口布局持久化为项目同目录 sidecar；当前又已把 drop preview 前推为 `StudioGuiWindowDropTargetQuery -> StudioGuiHost / StudioGuiDriver` 的显式查询入口，并在 host 内补出非持久化 preview 会话态；当前又已补出 `StudioGuiNativeTimerRuntime`，让 GUI 可在消费 `StudioGuiNativeTimerEffects` 后继续跟踪逻辑 timer handle、`next_due_at` 和一次性 due callback，而不必在真实框架里从零重写同一套 timer 生命周期；当前又已把原生 timer callback 正式收口为 `StudioGuiEvent::NativeTimerElapsed { window_id, handle_id }`，由 driver 先校验当前绑定再回灌 `TimerElapsed`，避免真实宿主把 stale callback 误灌进 runtime；当前又已补出 `StudioGuiPlatformHost`，把“driver 派发后比较下一次 pending binding，并向平台发出携带 `window_id + handle_id + slot/due_at` 的 `Arm/Rearm/Clear` 请求”的逻辑固定在平台适配层，未来真实 GUI 不必再在框架入口手工维护 timer 差分或丢失 callback 身份；当前又已补出 `StudioGuiPlatformTimerDriverState`，把平台 native timer id 与逻辑 binding 的映射、rearm/clear 所需的旧平台句柄，以及“native timer callback -> `window_id + handle_id` 回灌目标”的桥接固定为显式状态机；当前这层状态机也已被 `StudioGuiPlatformHost` 正式持有，平台 timer 创建失败除了并入 `snapshot/window_model.runtime.log_entries`，还会直接进入 `runtime.platform_notice`；native callback 若命中不存在或过期的 `native_timer_id`，当前也已收口为 `StudioGuiPlatformNativeTimerCallbackOutcome::{IgnoredUnknownNativeTimer, IgnoredStaleNativeTimer}`，不再把这类真实平台边界当成上抛错误；当前又已引入第一版 `eframe/egui` GUI 壳，在单原生窗口内承载逻辑窗口切换，并直接消费 `window_model.drop_preview.overlay / changed_area_ids` 画出局部插入条、anchor 顶线、target-anchored 浮动 overlay 与局部 hint pill，而不是在壳层重算拖放语义 |
+| `apps/radishflow-studio` | 桌面入口程序 | 已建立 auth cache sync 桥接、控制面 HTTP client、entitlement / manifest / lease / offline refresh 编排、下载获取抽象、基于 `reqwest + rustls` 的真实 HTTP transport、HTTP 请求/响应适配层、可重试/不可重试失败分类、下载 JSON 到本地 payload DTO 的协议映射、摘要校验、失败回滚与测试；并已补上 `PropertyPackageProvider -> rf-solver -> rf-ui::AppState` 的最小工作区求解桥接，可直接基于已加载物性包或本地 auth cache 执行真实 solve 并回写 UI 快照/日志；当前又已形成 `StudioGuiHost / StudioGuiDriver / StudioGuiSnapshot / StudioGuiWindowModel / StudioGuiWindowLayoutState` 这一条 GUI-facing 宿主与窗口布局契约，并把窗口布局持久化为项目同目录 sidecar；当前又已把 drop preview 前推为 `StudioGuiWindowDropTargetQuery -> StudioGuiHost / StudioGuiDriver` 的显式查询入口，并在 host 内补出非持久化 preview 会话态；当前又已补出 `StudioGuiNativeTimerRuntime`，让 GUI 可在消费 `StudioGuiNativeTimerEffects` 后继续跟踪逻辑 timer handle、`next_due_at` 和一次性 due callback，而不必在真实框架里从零重写同一套 timer 生命周期；当前又已把原生 timer callback 正式收口为 `StudioGuiEvent::NativeTimerElapsed { window_id, handle_id }`，由 driver 先校验当前绑定再回灌 `TimerElapsed`，避免真实宿主把 stale callback 误灌进 runtime；当前又已补出 `StudioGuiPlatformHost` 与 `StudioGuiPlatformTimerDriverState`，把平台 timer request、native timer id 映射、stale callback 判定与平台 notice 固定为显式状态机；当前又已引入第一版 `eframe/egui` GUI 壳，在单原生窗口内承载逻辑窗口切换，并直接消费 `window_model.drop_preview.overlay / changed_area_ids` 画出局部插入条、anchor 顶线、target-anchored 浮动 overlay 与局部 hint pill；当前 Runtime 面板已能切换内置正向示例项目、输入路径或 Windows 原生文件选择器打开现有 `*.rfproj.json`、在未保存修订存在时先确认打开、打开成功后记录并持久化 shell 级最近项目入口、触发既有运行栏动作，并展示 `SolveSnapshot` 映射出的结构化流股结果、Result Inspector、失败结果、诊断目标、活动 Inspector 详情、Stream Inspector 字段草稿/提交、求解步骤、诊断、日志、工作区摘要与平台/授权状态；当前 `edit.undo / edit.redo` 也已进入正式 command surface 并经由 `StudioRuntimeTrigger::DocumentHistory` 执行；当前 shell 还提供中文/英文切换，并通过系统 CJK 字体 fallback 支持中文显示 |
 
-原因很直接：在 `M2/M3` 之前过早推进 UI，会掩盖内核尚未定型的问题。
+这一路径仍坚持先消费已冻结的应用层、运行栏和 snapshot presentation 边界；真实 UI 只做最小闭环承接，不反向改写内核、求解或项目文件语义。
+
+截至 2026-05-01，Studio Canvas 已补出最小可见与只读扫读层：单元块、物流线、Inspector 焦点高亮、对象列表导航、焦点气泡、material port marker、端口 hover、运行/诊断 badge 与对象列表 `All / Attention / Units / Streams` 临时筛选都通过 GUI-facing presentation 暴露并由 `egui` 渲染。当前画布仍只把已有 `FlowsheetDocument` 对象投影到临时布局，单元创建也只保留单类型 `Place Flash Drum` 的 pending edit/commit 最小路径；端口点击编辑、连线创建、拖拽布局、坐标持久化、项目 schema 扩张和 CAPE-OPEN 扩张都不属于当前阶段。
 
 同时补充一条当前协作闸口：在 `apps/radishflow-studio` 还处于 GUI-facing 边界、宿主桥接和布局状态契约冻结阶段时，可以继续直接推进；但一旦工作重心切到真实界面布局、控件组织、视觉表达、交互流和较重的 UI 逻辑设计，后续实现前必须先向用户同步方向与关键取舍，并保留用户干预窗口，不把产品交互方案静默固化。
 
@@ -129,21 +131,22 @@ RadishFlow 的目标架构已经冻结为“桌面端三层 + 外部控制面”
 - 窗口布局持久化继续与项目文档语义分离，当前保存到 `<project>.rfstudio-layout.json` sidecar，而不是混入 `*.rfproj.json`
 - 多窗口布局 key 当前已从运行时 `window_id` 收口为基于 `window_role + layout_slot` 的稳定 scope，避免跨 host 重建时直接依赖临时窗口号
 
-这意味着当前仓库已从“只有 UI 层快照映射桥”推进到“应用组合层已有 facade / command 入口可驱动真实求解”，但仍未把这条入口接成最终桌面命令或交互动作。
+这意味着当前仓库已从“只有 UI 层快照映射桥”推进到“真实 `egui` 壳层可打开已有项目、持久化 shell 级最近项目、运行求解、查看结构化结果/诊断、定位 Inspector、编辑 Stream 字段草稿并提交、执行基础撤销/重做、保存/另存为，并在画布中查看已有单元/流股/端口/诊断状态”。最近项目写入独立 Studio preferences 文件，画布筛选与对比选择等状态仍属于 shell 临时状态，不进入 `*.rfproj.json`。不过这仍是最小可操作工作台闭环，不等同于完整跨平台文件工作流、完整应用偏好系统、完整画布编辑器、跨会话历史持久化或最终视觉方案。
 
 这些决定的目的是先把 UI 和求解层之间的长期接口边界定清楚，再决定具体控件和交互实现。
 
 ### .NET 10 CAPE-OPEN Bridge
 
-当前 `.NET 10` 目录只冻结项目边界，不进入复杂实现：
+当前 `.NET 10` 目录已从单纯项目边界推进到 M4/M5 交界处的最小互调、正式 host-facing 消费面、外部 host 样例、受控 COM 注册工具和真实 `DWSIM / COFE` 人工复验阶段性收敛；但仍不默认进入 PME 自动化互调、第三方 CAPE-OPEN 模型加载或完整 Thermo PMC。
 
 | 目录 | 当前职责 | 当前状态 |
 | --- | --- | --- |
-| `RadishFlow.CapeOpen.Interop` | 接口、GUID、异常语义 | 已建立第一版 `net10.0` 公共语义项目，当前覆盖 `ICapeIdentification`、`ICapeUtilities`、`ICapeUnit` 的最小接口骨架、最小 `IDispatch` marshalling 形状、已确认 CAPE-OPEN interface/category GUID 常量源，以及 `ECapeRoot` / `ECapeUser` / `ECapeBadInvOrder` / `ECapeBadCOParameter` 等最小异常契约、HRESULT 与语义化派生异常 |
+| `RadishFlow.CapeOpen.Interop` | 接口、GUID、异常语义 | 已建立第一版 `net10.0` 公共语义项目，当前覆盖 `ICapeIdentification`、`ICapeUtilities`、`ICapeUnit` 的最小接口骨架、最小 `IDispatch` marshalling 形状、已确认 CAPE-OPEN interface/category GUID 常量源，以及 `ECapeRoot` / `ECapeUser` / `ECapeBadInvOrder` / `ECapeBadCOParameter` 等最小异常契约、HRESULT 与语义化派生异常；当前也已声明与冻结 MVP TLB 一致的 assembly-level `Guid / TypeLibVersion`，并补齐 `Consumes Thermodynamics` / `Supports Thermodynamics 1.0` / `Supports Thermodynamics 1.1` category 常量，用于支持 classic late-bound 宿主与 DWSIM 画布接受条件 probe |
 | `RadishFlow.CapeOpen.Adapter` | PInvoke 与句柄封装 | 已建立第一版 `net10.0` 薄适配项目，当前覆盖 native engine 句柄生命周期、UTF-8 字符串分配释放、`LibraryImport` 对 `rf-ffi` 的最小调用面，以及 `RfFfiStatus + last_error_message/json` 到更细粒度 ECape 语义异常的收口 |
-| `RadishFlow.CapeOpen.UnitOp.Mvp` | 第一版自有 PMC | 已建立第一版 `net10.0` 最小 PMC 骨架项目，当前提供单个 `ICapeIdentification` + `ICapeUtilities` + `ICapeUnit` 实现类、最小状态机、最小 `ICapeCollection` / `ICapeParameter` / `ICapeUnitPort` 对象运行时、宿主生命周期访问守卫，以及经由 `RadishFlow.CapeOpen.Adapter` 调用 `rf-ffi` 的最小求解接线；`Calculate()` 对外结果面当前已收口为稳定的“成功结果 + 失败摘要”双契约，并进一步提供统一只读查询面 `GetCalculationReport()`、其上的标量元数据入口 `GetCalculationReportState()/GetCalculationReportHeadline()`、可枚举 detail 键值入口 `GetCalculationReportDetailKeyCount()/GetCalculationReportDetailKey(int)/GetCalculationReportDetailValue(string)`、最小文本导出面 `GetCalculationReportLines()/GetCalculationReportText()`，以及更接近宿主逐行消费习惯的 `GetCalculationReportLineCount()/GetCalculationReportLine(int)`；当前又已把 stable detail key 清单冻结到公开 catalog `UnitOperationCalculationReportDetailCatalog`，并把内部生命周期、验证守卫、计算执行阶段与 report 状态迁移分别收口到显式 helper；当前在其上又已形成 `UnitOperationHostReportReader -> Presenter -> Formatter`、`UnitOperationHostConfigurationReader`、`UnitOperationHostActionPlanReader`、`UnitOperationHostPortMaterialReader`、`UnitOperationHostExecutionReader` 与带 canonical state 的 `UnitOperationHostSessionReader` 这一组宿主只读消费面，但尚未进入注册、完整 PME 生命周期或更完整 CAPE-OPEN 接口面 |
-| `RadishFlow.CapeOpen.UnitOp.Mvp.ContractTests` | 库侧行为契约验证 | 已建立第一版 `net10.0` 自举式 contract test runner，不依赖外部 NuGet 测试框架；当前锁定 `Validate before Initialize`、validation failure、native failure、success、配置变更 invalidation 与 `Terminate()` 后阻断共 6 条核心契约，并固定 validation/native 两类 failure report 的 detail 字段缺省规则 |
-| `RadishFlow.CapeOpen.Registration` | 注册与反注册工具 | 目录占位 |
+| `RadishFlow.CapeOpen.UnitOp.Mvp` | 第一版自有 PMC | 已建立第一版 `net10.0` 最小 PMC 骨架项目，当前提供单个 `ICapeIdentification` + `ICapeUtilities` + `ICapeUnit` 实现类、最小状态机、最小 `ICapeCollection` / `ICapeParameter` / `ICapeUnitPort` 对象运行时、宿主生命周期访问守卫，以及经由 `RadishFlow.CapeOpen.Adapter` 调用 `rf-ffi` 的最小求解接线；`Calculate()` 对外结果面当前已收口为稳定的“成功结果 + 失败摘要”双契约，并进一步提供统一 report API、stable detail catalog、sectioned host report、configuration/action-plan/port-material/execution/session/view readers、action execution request planner / orchestrator、validation/calculation runner、host round orchestrator、supplemental mutation phase 与统一 follow-up / stop kind；当前又已通过 `UnitOperationComIdentity` 冻结 `CLSID / ProgID / Versioned ProgID / TypeLibraryId / TypeLibraryVersion`，并补入冻结的 `IDL` 真相源、可脚本再生成的 `TLB` 产物与 `scripts/gen-typelib.ps1`；当前 `UnitOp.Mvp` 程序集与主要 COM-visible class 已补齐 assembly-level TLB identity 与 `ComDefaultInterface`，Windows PowerShell 5 默认 `ICapeUtilities` late-bound 探测已通过，`ICapeUnit` 也已通过 `QueryInterface` 返回 `S_OK`；真实 PME 侧当前已确认 `DWSIM / COFE` 均可正常放置当前 PMC、连接 `Feed / Product` material streams，并在 water/ethanol 复验样例下完成 `Validate / Calculate` 收敛；COFE material object release warning、outlet not flashed 报错与 mass balance 警告已消失；DWSIM 兼容面要求 `ICapeUtilities` 前序 slot 保持 `Parameters get -> SimulationContext set -> Initialize -> Terminate -> Edit`，且 `Parameters.Item(i)` 返回对象本身可直接暴露 `ICapeIdentification / ICapeParameterSpec / ICapeOptionParameterSpec / ICapeParameter` |
+| `RadishFlow.CapeOpen.UnitOp.Mvp.ContractTests` | 库侧行为契约验证 | 已建立第一版 `net10.0` 自举式 contract test runner，不依赖外部 NuGet 测试框架；当前锁定 `Validate before Initialize`、validation failure、native failure、success、配置变更 invalidation 与 `Terminate()` 后阻断等核心契约，并固定 validation/native 两类 failure report 的 detail 字段缺省规则；当前还覆盖 assembly COM identity、PME material publication、feed material boundary overlay 与 water/ethanol 样例路径 |
+| `RadishFlow.CapeOpen.UnitOp.Mvp.SampleHost` | 最小外部 host 样例 | 已建立独立 `net10.0` console，当前通过 `PmeLikeUnitOperationHost / PmeLikeUnitOperationSession / PmeLikeUnitOperationInput` 演示外部宿主如何不依赖 `SmokeTests` driver DSL，直接复用正式 `host view / request planner / host round / session-execution-port-material-report` 消费面完成“创建组件、初始化、提交输入、validate/calculate round、读取结果、终止”；该样例仍不做 COM 注册、不驱动真实 PME、不加载第三方 CAPE-OPEN 模型 |
+| `RadishFlow.CapeOpen.Registration` | 注册与反注册工具 | 已建立第一版 `net10.0` 注册工具，当前默认仍为 dry-run / preflight，但已支持在显式 `--execute` + `--confirm` 下执行 `register / unregister`；当前可输出 MVP Unit Operation PMC 的 `CLSID / ProgID / Versioned ProgID`、CAPE-OPEN categories、已实现接口清单、`register / unregister` 与 `current-user / local-machine` 下的 registry key plan，并检查真实 `UnitOp.Mvp` 输出目录中的 `.NET comhost` 路径、PE 机器类型、`UnitOp.Mvp.runtimeconfig/deps` sidecar、当前进程位数、scope 权限口径、目标 registry key 现状和备份范围；当前执行边界已收口到 confirmation token、preflight fail 阻断、HKLM elevation 检查、`CLSID / ProgID / Versioned ProgID / TypeLib` 四棵树备份、execution log 与失败 rollback。仓库根 `scripts/register-com.ps1` 与 `scripts/pme-register-latest.ps1` 当前已作为正式脚本入口封装这条路径；当前 `TypeLib` 标准注册、`CLSID\TypeLib` 关联、路径问题、Windows PowerShell 5 默认 `ICapeUtilities` late-bound 探测、thermodynamics implemented categories plan 与用户侧 `DWSIM / COFE` placement/connection/calculate 复验均已通过，并已沉淀为 `examples/pme-validation/` 下的正式验证记录；临时 COM trace 当前也已改为显式环境变量开关 |
 | `RadishFlow.CapeOpen.SmokeTests` | 冒烟测试 | 已建立第一版最小 `net10.0` console，当前可配置 native library 目录、加载示例 flowsheet 与本地 package 文件、列出 package registry，并分别覆盖 direct adapter 的 flowsheet / stream snapshot 导出，以及 `UnitOp.Mvp` 的最小成功结果契约、失败摘要契约、统一只读 report access、configuration/action-plan/port-material/execution/session 五条宿主只读路径；其中 session 当前已进一步带 canonical state；`unitop` 路径当前又已收口为“最小外部宿主验证骨架”，显式固定 `Initialize -> 配参数 -> 连端口 -> Validate -> Calculate -> 读结果 -> Terminate` 调用顺序，形成 `driver + boundary suite + session catalog + Program 调度` 四层结构，并支持 `--unitop-scenario <all|session|recovery|shutdown>` 按宿主时序场景过滤 |
 
 ### External .NET 10 Control Plane
@@ -186,16 +189,13 @@ RadishFlow 的目标架构已经冻结为“桌面端三层 + 外部控制面”
 
 ## 当前阶段优先级调整
 
-虽然主线顺序仍然保持不变，但当前短期优先级已调整为“地基建设优先”。
+虽然主线顺序仍然保持不变，但当前短期优先级已从单纯“地基建设优先”调整为“在已冻结的边界上恢复 Rust Studio 最小工作台闭环”。
 
 当前应优先推进的内容：
 
-- 仓库治理
-- 分支与 PR 规则
-- 基础 CI
-- 代码与文档格式规范
-- App 架构规划
-- 设计与进度文档完善
+- 保持仓库治理、分支与 PR 规则、基础 CI、代码与文档格式规范稳定
+- 沿 Studio 既有应用层边界继续补“打开项目 / 运行求解 / 查看结果与诊断”的可见工作台闭环
+- 重要阶段性边界变化继续同步到正式设计、规划和开发日志文档
 
 原因：
 
@@ -204,7 +204,7 @@ RadishFlow 的目标架构已经冻结为“桌面端三层 + 外部控制面”
 
 这并不意味着放弃主线，而是先把主线开发赖以生存的仓库地基补完整。
 
-对 Studio 来说，这也意味着短期内仍优先补强宿主边界、平台 glue、状态模型和可测试组件 DTO；等真正进入界面设计和交互方案收口阶段，再显式拉用户一起确认，而不是在无感知状态下直接把产品 UI 方案推到深水区。
+对 Studio 来说，这也意味着短期内仍优先沿既有 `StudioAppFacade`、运行栏 DTO、GUI-facing snapshot 和 presentation 边界补用户可见闭环；等真正进入完整界面设计和交互方案收口阶段，再显式拉用户一起确认，而不是在无感知状态下直接把产品 UI 方案推到深水区。
 
 ## 初始化阶段结论
 

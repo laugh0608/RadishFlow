@@ -11,13 +11,9 @@ public static class UnitOperationHostConfigurationReader
     {
         ArgumentNullException.ThrowIfNull(unitOperation);
 
-        var lifecycleState = unitOperation.HostLifecycleState;
-        if (lifecycleState == UnitOperationLifecycleState.Disposed)
-        {
-            throw new ObjectDisposedException(unitOperation.GetType().FullName);
-        }
-
-        if (lifecycleState == UnitOperationLifecycleState.Terminated)
+        var objectRuntime = UnitOperationHostObjectRuntimeReader.Read(unitOperation);
+        var lifecycleState = objectRuntime.LifecycleState;
+        if (lifecycleState == UnitOperationHostObjectRuntimeState.Terminated)
         {
             var terminatedIssue = new UnitOperationHostConfigurationIssue(
                 Kind: UnitOperationHostConfigurationIssueKind.Terminated,
@@ -33,15 +29,15 @@ public static class UnitOperationHostConfigurationReader
                 NextOperations: []);
         }
 
-        var parameterEntries = UnitOperationParameterCatalog.OrderedDefinitions
-            .Select(definition => CreateParameterEntry(unitOperation, definition))
+        var parameterEntries = objectRuntime.ParameterCollection.Entries
+            .Select(static entry => CreateParameterEntry(entry))
             .ToArray();
-        var portEntries = UnitOperationPortCatalog.OrderedDefinitions
-            .Select(definition => CreatePortEntry(unitOperation, definition))
+        var portEntries = objectRuntime.PortCollection.Entries
+            .Select(static entry => CreatePortEntry(entry))
             .ToArray();
 
         var issues = new List<UnitOperationHostConfigurationIssue>();
-        if (lifecycleState == UnitOperationLifecycleState.Constructed)
+        if (lifecycleState == UnitOperationHostObjectRuntimeState.Constructed)
         {
             issues.Add(new UnitOperationHostConfigurationIssue(
                 Kind: UnitOperationHostConfigurationIssueKind.InitializeRequired,
@@ -56,7 +52,7 @@ public static class UnitOperationHostConfigurationReader
 
         var state = issues.Count == 0
             ? UnitOperationHostConfigurationState.Ready
-            : lifecycleState == UnitOperationLifecycleState.Constructed
+            : lifecycleState == UnitOperationHostObjectRuntimeState.Constructed
                 ? UnitOperationHostConfigurationState.Constructed
                 : UnitOperationHostConfigurationState.Incomplete;
         var headline = issues.Count == 0
@@ -79,33 +75,29 @@ public static class UnitOperationHostConfigurationReader
     }
 
     private static UnitOperationHostConfigurationParameterEntry CreateParameterEntry(
-        RadishFlowCapeOpenUnitOperation unitOperation,
-        UnitOperationParameterDefinition definition)
+        UnitOperationHostParameterRuntimeEntry entry)
     {
-        var parameter = unitOperation.Parameters.GetByName(definition.Name);
         return new UnitOperationHostConfigurationParameterEntry(
-            Name: definition.Name,
-            Description: definition.Description,
-            IsRequired: definition.IsRequired,
-            IsConfigured: parameter.IsConfigured,
-            ValueKind: definition.ValueKind,
-            RequiredCompanionParameterName: definition.RequiredCompanionParameterName,
-            ConfigurationOperationName: definition.ConfigurationOperationName);
+            Name: entry.Name,
+            Description: entry.Description,
+            IsRequired: entry.IsRequired,
+            IsConfigured: entry.IsConfigured,
+            ValueKind: entry.ValueKind,
+            RequiredCompanionParameterName: entry.RequiredCompanionParameterName,
+            ConfigurationOperationName: entry.ConfigurationOperationName);
     }
 
     private static UnitOperationHostConfigurationPortEntry CreatePortEntry(
-        RadishFlowCapeOpenUnitOperation unitOperation,
-        UnitOperationPortDefinition definition)
+        UnitOperationHostPortRuntimeEntry entry)
     {
-        var port = unitOperation.Ports.GetByName(definition.Name);
         return new UnitOperationHostConfigurationPortEntry(
-            Name: definition.Name,
-            Description: definition.Description,
-            IsRequired: definition.IsRequired,
-            IsConnected: port.IsConnected,
-            Direction: definition.Direction,
-            PortType: definition.PortType,
-            ConnectionOperationName: definition.ConnectionOperationName);
+            Name: entry.Name,
+            Description: entry.Description,
+            IsRequired: entry.IsRequired,
+            IsConnected: entry.IsConnected,
+            Direction: entry.Direction,
+            PortType: entry.PortType,
+            ConnectionOperationName: entry.ConnectionOperationName);
     }
 
     private static void AppendRequiredParameterIssues(

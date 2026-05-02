@@ -820,6 +820,24 @@ fn app_command(report: &super::StudioBootstrapReport) -> &crate::StudioAppComman
         StudioBootstrapDispatch::RunPanelRecovery(_) => {
             panic!("expected app command dispatch")
         }
+        StudioBootstrapDispatch::DocumentLifecycle(_) => {
+            panic!("expected app command dispatch")
+        }
+        StudioBootstrapDispatch::InspectorTarget(_) => {
+            panic!("expected app command dispatch")
+        }
+        StudioBootstrapDispatch::InspectorDraftUpdate(_) => {
+            panic!("expected app command dispatch")
+        }
+        StudioBootstrapDispatch::InspectorDraftCommit(_) => {
+            panic!("expected app command dispatch")
+        }
+        StudioBootstrapDispatch::InspectorDraftBatchCommit(_) => {
+            panic!("expected app command dispatch")
+        }
+        StudioBootstrapDispatch::DocumentHistory(_) => {
+            panic!("expected app command dispatch")
+        }
         StudioBootstrapDispatch::EntitlementSessionEvent(_) => {
             panic!("expected app command dispatch")
         }
@@ -835,6 +853,24 @@ fn session_event(
             panic!("expected entitlement session event dispatch")
         }
         StudioBootstrapDispatch::RunPanelRecovery(_) => {
+            panic!("expected entitlement session event dispatch")
+        }
+        StudioBootstrapDispatch::DocumentLifecycle(_) => {
+            panic!("expected entitlement session event dispatch")
+        }
+        StudioBootstrapDispatch::InspectorTarget(_) => {
+            panic!("expected entitlement session event dispatch")
+        }
+        StudioBootstrapDispatch::InspectorDraftUpdate(_) => {
+            panic!("expected entitlement session event dispatch")
+        }
+        StudioBootstrapDispatch::InspectorDraftCommit(_) => {
+            panic!("expected entitlement session event dispatch")
+        }
+        StudioBootstrapDispatch::InspectorDraftBatchCommit(_) => {
+            panic!("expected entitlement session event dispatch")
+        }
+        StudioBootstrapDispatch::DocumentHistory(_) => {
             panic!("expected entitlement session event dispatch")
         }
     }

@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use rf_types::{RfError, RfResult};
-use rf_ui::{AppLogEntry, CanvasSuggestion, CanvasSuggestionId};
+use rf_ui::{AppLogEntry, CanvasEditIntent, CanvasSuggestion, CanvasSuggestionId};
 
 use crate::studio_gui_layout_store::{
     load_persisted_window_layouts, save_persisted_window_layouts,
@@ -11,7 +11,11 @@ use crate::{
     StudioAppHostGlobalEventResult, StudioAppHostProjection, StudioAppHostState,
     StudioAppHostUiCommandDispatchResult, StudioAppHostUiCommandModel,
     StudioAppHostWindowDispatchResult, StudioAppWindowHostGlobalEvent,
-    StudioCanvasInteractionAction, StudioGuiCommandRegistry, StudioGuiNativeTimerEffects,
+    StudioCanvasInteractionAction, StudioGuiCommandRegistry,
+    StudioGuiInspectorTargetDetailSnapshot, StudioGuiInspectorTargetFieldSnapshot,
+    StudioGuiInspectorTargetFieldValidationSnapshot,
+    StudioGuiInspectorTargetFieldValueKindSnapshot, StudioGuiInspectorTargetPortSnapshot,
+    StudioGuiInspectorTargetSummaryRowSnapshot, StudioGuiNativeTimerEffects,
     StudioGuiRuntimeSnapshot, StudioGuiSnapshot, StudioGuiWindowDropPreviewState,
     StudioGuiWindowDropTarget, StudioGuiWindowDropTargetQuery, StudioGuiWindowLayoutMutation,
     StudioGuiWindowLayoutPersistenceState, StudioGuiWindowLayoutState, StudioGuiWindowModel,
@@ -117,13 +121,66 @@ pub struct StudioGuiHostCloseWindowResult {
 
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct StudioGuiCanvasState {
+    pub units: Vec<StudioGuiCanvasUnitState>,
+    pub streams: Vec<StudioGuiCanvasStreamState>,
+    pub run_status: Option<rf_ui::RunStatus>,
+    pub pending_reason: Option<rf_ui::SolvePendingReason>,
+    pub latest_snapshot_id: Option<String>,
+    pub latest_snapshot_summary: Option<String>,
+    pub diagnostics: Vec<StudioGuiCanvasDiagnosticState>,
     pub suggestions: Vec<CanvasSuggestion>,
     pub focused_suggestion_id: Option<CanvasSuggestionId>,
+    pub pending_edit: Option<CanvasEditIntent>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioGuiCanvasDiagnosticState {
+    pub severity: rf_ui::DiagnosticSeverity,
+    pub code: String,
+    pub message: String,
+    pub related_unit_ids: Vec<rf_types::UnitId>,
+    pub related_stream_ids: Vec<rf_types::StreamId>,
+    pub related_port_targets: Vec<rf_types::DiagnosticPortTarget>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioGuiCanvasUnitState {
+    pub unit_id: rf_types::UnitId,
+    pub name: String,
+    pub kind: String,
+    pub ports: Vec<StudioGuiCanvasUnitPortState>,
+    pub port_count: usize,
+    pub connected_port_count: usize,
+    pub is_active_inspector_target: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioGuiCanvasUnitPortState {
+    pub name: String,
+    pub direction: rf_types::PortDirection,
+    pub kind: rf_types::PortKind,
+    pub stream_id: Option<rf_types::StreamId>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioGuiCanvasStreamState {
+    pub stream_id: rf_types::StreamId,
+    pub name: String,
+    pub source: Option<StudioGuiCanvasStreamEndpointState>,
+    pub sink: Option<StudioGuiCanvasStreamEndpointState>,
+    pub is_active_inspector_target: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioGuiCanvasStreamEndpointState {
+    pub unit_id: rf_types::UnitId,
+    pub port_name: String,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct StudioGuiHostCanvasInteractionResult {
     pub action: StudioGuiCanvasInteractionAction,
+    pub committed_edit: Option<rf_ui::CanvasEditCommitResult>,
     pub accepted: Option<CanvasSuggestion>,
     pub rejected: Option<CanvasSuggestion>,
     pub focused: Option<CanvasSuggestion>,
@@ -170,7 +227,7 @@ pub struct StudioGuiHostWindowDropPreviewClearResult {
 
 pub type StudioGuiCanvasInteractionAction = StudioCanvasInteractionAction;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum StudioGuiHostCommand {
     OpenWindow,
     DispatchWindowTrigger {
@@ -184,6 +241,16 @@ pub enum StudioGuiHostCommand {
         event: StudioGuiHostLifecycleEvent,
     },
     DispatchUiCommand {
+        command_id: String,
+    },
+    DispatchInspectorDraftUpdate {
+        command_id: String,
+        raw_value: String,
+    },
+    DispatchInspectorDraftCommit {
+        command_id: String,
+    },
+    DispatchInspectorDraftBatchCommit {
         command_id: String,
     },
     QueryWindowDropTarget {
@@ -214,6 +281,9 @@ pub enum StudioGuiHostCommandOutcome {
     CanvasInteracted(StudioGuiHostCanvasInteractionResult),
     LifecycleDispatched(StudioGuiHostLifecycleDispatch),
     UiCommandDispatched(StudioGuiHostUiCommandDispatchResult),
+    InspectorDraftUpdated(StudioGuiHostDispatch),
+    InspectorDraftCommitted(StudioGuiHostDispatch),
+    InspectorDraftBatchCommitted(StudioGuiHostDispatch),
     WindowDropTargetQueried(StudioGuiHostWindowDropTargetQueryResult),
     WindowDropTargetPreviewUpdated(StudioGuiHostWindowDropTargetQueryResult),
     WindowDropTargetPreviewCleared(StudioGuiHostWindowDropPreviewClearResult),

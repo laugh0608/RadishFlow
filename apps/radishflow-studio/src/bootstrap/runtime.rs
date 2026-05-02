@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::{path::Path, time::SystemTime};
 
 use crate::{
     EntitlementSessionEvent, EntitlementSessionEventDriverOutcome, EntitlementSessionHostDispatch,
@@ -6,10 +6,13 @@ use crate::{
     EntitlementSessionPanelDriverOutcome, EntitlementSessionPolicy, EntitlementSessionRuntime,
     EntitlementSessionState, RunPanelDriverOutcome, StudioAppAuthCacheContext,
     StudioAppCommandOutcome, StudioAppMutableAuthCacheContext, WorkspaceControlActionOutcome,
-    apply_run_panel_recovery_action, dispatch_entitlement_session_event_with_control_plane,
+    apply_run_panel_recovery_action, commit_inspector_draft, commit_inspector_drafts,
+    dispatch_document_history, dispatch_document_lifecycle,
+    dispatch_entitlement_session_event_with_control_plane,
     dispatch_run_panel_intent_with_auth_cache, dispatch_run_panel_primary_action_with_auth_cache,
-    dispatch_run_panel_widget_action_with_auth_cache, snapshot_entitlement_session_driver_state,
-    snapshot_entitlement_session_schedule, snapshot_run_panel_driver_state,
+    dispatch_run_panel_widget_action_with_auth_cache, focus_inspector_target,
+    snapshot_entitlement_session_driver_state, snapshot_entitlement_session_schedule,
+    snapshot_run_panel_driver_state, update_inspector_draft,
 };
 use rf_store::{StoredAuthCacheIndex, read_project_file};
 use rf_types::{RfError, RfResult};
@@ -190,6 +193,35 @@ fn dispatch_bootstrap_trigger(
                 "bootstrap run panel recovery action is unavailable in current widget model",
             )
         }),
+        StudioBootstrapTrigger::DocumentLifecycle(command) => {
+            let outcome = dispatch_document_lifecycle(session.app_state, command.clone())?;
+            Ok(StudioBootstrapDispatch::DocumentLifecycle(outcome))
+        }
+        StudioBootstrapTrigger::InspectorTarget(target) => {
+            let outcome = focus_inspector_target(session.app_state, target.clone());
+            if outcome.applied_target.is_none() {
+                return Err(RfError::invalid_input(format!(
+                    "bootstrap inspector target `{target:?}` is not available in current workspace"
+                )));
+            }
+            Ok(StudioBootstrapDispatch::InspectorTarget(outcome))
+        }
+        StudioBootstrapTrigger::InspectorDraftUpdate(command) => {
+            let outcome = update_inspector_draft(session.app_state, command.clone())?;
+            Ok(StudioBootstrapDispatch::InspectorDraftUpdate(outcome))
+        }
+        StudioBootstrapTrigger::InspectorDraftCommit(command) => {
+            let outcome = commit_inspector_draft(session.app_state, command.clone())?;
+            Ok(StudioBootstrapDispatch::InspectorDraftCommit(outcome))
+        }
+        StudioBootstrapTrigger::InspectorDraftBatchCommit(command) => {
+            let outcome = commit_inspector_drafts(session.app_state, command.clone())?;
+            Ok(StudioBootstrapDispatch::InspectorDraftBatchCommit(outcome))
+        }
+        StudioBootstrapTrigger::DocumentHistory(command) => {
+            let outcome = dispatch_document_history(session.app_state, *command)?;
+            Ok(StudioBootstrapDispatch::DocumentHistory(outcome))
+        }
         StudioBootstrapTrigger::EntitlementWidgetPrimaryAction => {
             dispatch_bootstrap_entitlement_host_trigger(
                 session,
@@ -408,6 +440,25 @@ impl BootstrapSession {
 
     pub(crate) fn replace_canvas_suggestions(&mut self, suggestions: Vec<rf_ui::CanvasSuggestion>) {
         self.app_state.replace_canvas_suggestions(suggestions);
+    }
+
+    pub(crate) fn begin_canvas_place_unit(
+        &mut self,
+        unit_kind: impl Into<String>,
+    ) -> rf_ui::CanvasEditIntent {
+        self.app_state.begin_canvas_place_unit(unit_kind)
+    }
+
+    pub(crate) fn cancel_canvas_pending_edit(&mut self) -> Option<rf_ui::CanvasEditIntent> {
+        self.app_state.cancel_canvas_pending_edit()
+    }
+
+    pub(crate) fn commit_canvas_pending_edit_at(
+        &mut self,
+        position: rf_ui::CanvasPoint,
+    ) -> RfResult<Option<rf_ui::CanvasEditCommitResult>> {
+        self.app_state
+            .commit_canvas_pending_edit_at(position, SystemTime::now())
     }
 
     pub(crate) fn accept_focused_canvas_suggestion_by_tab(

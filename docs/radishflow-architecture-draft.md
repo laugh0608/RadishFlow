@@ -1,6 +1,6 @@
 # RadishFlow 架构草案
 
-更新时间：2026-04-16
+更新时间：2026-05-01
 
 ## 文档目的
 
@@ -242,6 +242,7 @@ RadishFlow/
 │     ├─ RadishFlow.CapeOpen.Adapter/
 │     ├─ RadishFlow.CapeOpen.UnitOp.Mvp/
 │     ├─ RadishFlow.CapeOpen.UnitOp.Mvp.ContractTests/
+│     ├─ RadishFlow.CapeOpen.UnitOp.Mvp.SampleHost/
 │     ├─ RadishFlow.CapeOpen.Registration/
 │     └─ RadishFlow.CapeOpen.SmokeTests/
 ├─ bindings/
@@ -302,6 +303,9 @@ RadishFlow/
 - 当前最小桌面入口 `run_studio_bootstrap` / `main.rs` 已改为默认通过 `StudioBootstrapTrigger::WidgetPrimaryAction -> RunPanelWidgetEvent -> run_panel_driver -> WorkspaceControlAction -> StudioAppFacade` 触发运行链路，同时仍保留显式 `RunPanelIntent` 兼容入口
 - 当前 entitlement 会话调度也已通过 `EntitlementSessionEvent::{SessionStarted, LoginCompleted, TimerElapsed, EntitlementCommandCompleted}` 形成统一事件语义，并由 Studio 侧维护失败退避与下一次建议检查时机
 - 当前 GUI / app host 命令面也已继续收口：`run_panel.recover_failure`、`entitlement.sync` 与 `entitlement.refresh_offline_lease` 等正式动作已统一走稳定 `command_id -> UiAction/trigger` 主通路，不再继续保留 entitlement 或 foreground recovery 的历史包装旁路
+- 当前 Studio 文档生命周期已接入正式 runtime 边界：`Save / Save As` 通过 `StudioRuntimeTrigger::DocumentLifecycle -> document_lifecycle_driver -> rf-store::write_project_file` 写回项目文件，保存态由 `last_saved_revision / has_unsaved_changes` 表达，不进入 `CommandHistory`
+- 当前 GUI 快捷键策略已把文本输入焦点、文档历史和项目保存边界分清：`Ctrl+S` 继续走 `file.save`，`Ctrl+Z / Ctrl+Y` 在文本输入焦点下交还输入框自身编辑历史，普通焦点下才派发 `edit.undo / edit.redo`
+- 当前 Studio Canvas 已从 pending edit 前置状态推进到最小可见与只读扫读层：单元块、物流线、Inspector 焦点反馈、对象列表导航、端口 marker、端口 hover、运行/诊断 badge 与对象列表临时筛选均消费 GUI-facing presentation；除单类型 `Place Flash Drum` 的最小 pending edit/commit 路径外，当前仍不做端口点击编辑、连线创建、拖拽布局或坐标持久化
 - 当前默认包选择策略保持保守，只在唯一候选时自动选中，多包场景要求显式指定 package
 - Automatic 运行当前先根据 `SimulationMode` / `pending_reason` 决定是否 skip，再决定是否需要 preferred package 解析
 
@@ -466,6 +470,7 @@ Rust UI 逻辑层。
 - 已补 `RunPanelCommandModel`，把 `Run/Resume/Hold/Active` 的主动作、可见性与可用性冻结到 UI 层
 - 已补 `RunPanelViewModel` / `RunPanelTextView` / `RunPanelPresentation`，把最小渲染与文本展示组织收回 UI 层
 - 已补 `RunPanelWidgetModel` / `RunPanelWidgetEvent`，把最小 widget 激活语义冻结到 UI 层
+- 已补 Stream Inspector 字段级草稿、单字段提交、多字段批量提交和 `CommandHistory` 基础 undo/redo；只有 valid dirty 草稿在语义提交时写回 `FlowsheetDocument`，无效中间态继续停留在 UI 草稿状态
 
 后续规划：
 
@@ -571,10 +576,12 @@ Rust 与 .NET 的桥接层。
 
 - 当前已建立最小 PMC 类、`Initialize/Validate/Calculate/Terminate/Edit` 状态机与内部配置入口
 - 当前已把 `Ports` / `Parameters` 推进为最小占位对象集合，并让 `Validate()` 先基于对象状态做必填参数与必连端口检查
-- 当前仍未进入 COM 注册或完整 PME 生命周期；不过最小 native 求解接线已打通，且 `Calculate()` 对外结果面当前已收口为稳定的“成功结果 + 失败摘要”双契约，并进一步提供统一只读查询面 `GetCalculationReport()`、其上的标量元数据入口 `GetCalculationReportState()/GetCalculationReportHeadline()`、可枚举 detail 键值入口 `GetCalculationReportDetailKeyCount()/GetCalculationReportDetailKey(int)/GetCalculationReportDetailValue(string)`、最小文本导出面 `GetCalculationReportLines()/GetCalculationReportText()`，以及更接近宿主逐行消费习惯的 `GetCalculationReportLineCount()/GetCalculationReportLine(int)`，而不是继续直接暴露完整 snapshot JSON 或 native error JSON
+- 当前已进入受控 COM 注册与真实 `DWSIM / COFE` 人工复验阶段性收敛阶段，但仍未进入 PME 自动化互调或完整 PME 生命周期框架；最小 native 求解接线已打通，且 `Calculate()` 对外结果面当前已收口为稳定的“成功结果 + 失败摘要”双契约，并进一步提供统一只读查询面 `GetCalculationReport()`、其上的标量元数据入口 `GetCalculationReportState()/GetCalculationReportHeadline()`、可枚举 detail 键值入口 `GetCalculationReportDetailKeyCount()/GetCalculationReportDetailKey(int)/GetCalculationReportDetailValue(string)`、最小文本导出面 `GetCalculationReportLines()/GetCalculationReportText()`，以及更接近宿主逐行消费习惯的 `GetCalculationReportLineCount()/GetCalculationReportLine(int)`，而不是继续直接暴露完整 snapshot JSON 或 native error JSON
 - 当前又已把上述 stable detail key 清单冻结为公开 catalog `UnitOperationCalculationReportDetailCatalog`，明确 success / failure 两条路径的 canonical key 顺序，避免宿主侧再依赖散落字符串常量或文档口径
 - 在最小结果面阶段性冻结后，当前又已把内部状态推进显式收口为 `UnitOperationLifecycleState`、分段 `EvaluateValidation()` guard 链、分段 `Calculate()` 执行链，以及统一的 validation/calculation/report transition helper，避免后续宿主主线继续推进时在同一个 PMC 类里堆叠隐式状态分支
 - 在公开 report API 之上，当前又已补出 `UnitOperationHostReportReader -> UnitOperationHostReportPresenter -> UnitOperationHostReportFormatter` 三级宿主消费 helper；这条链路的定位是冻结最小宿主读取/展示口径，而不是继续给 PMC 主类追加更多 convenience accessor
+- 当前 host-facing 主路径又已继续收口为 `UnitOperationHostViewReader`、`UnitOperationHostActionExecutionRequestPlanner`、`UnitOperationHostActionExecutionOrchestrator`、`UnitOperationHostValidationRunner`、`UnitOperationHostCalculationRunner`、`UnitOperationHostRoundOrchestrator` 与统一 `FollowUp` / `StopKind` 模型；这些 helper 负责正式消费面和窄边界 orchestration，不把 `SmokeTests` 的完整 driver DSL 上移成库 API
+- 当前又已通过 `UnitOperationComIdentity` 冻结 MVP PMC 的 `CLSID / ProgID / Versioned ProgID / DisplayName / Description`，并在 `RadishFlowCapeOpenUnitOperation` 上固定 `ComVisible / Guid / ProgId / ClassInterface(None)` 注册前置元数据；真实注册只能经由带 execute/token/backup/rollback 门控的 `Registration` 与仓库脚本入口执行
 
 ### `RadishFlow.CapeOpen.UnitOp.Mvp.ContractTests`
 
@@ -590,6 +597,21 @@ Rust 与 .NET 的桥接层。
 - 当前已覆盖 `Validate before Initialize`、validation failure report、native failure report、success report、配置变更 invalidation 与 `Terminate()` 后阻断共 6 条核心 contract case
 - 当前已显式锁住 validation/native 两类 failure report 在 detail 字段上的缺省规则，避免这部分行为只停留在 smoke 输出或 README 约定里
 
+### `RadishFlow.CapeOpen.UnitOp.Mvp.SampleHost`
+
+职责：
+
+- 演示外部宿主如何不依赖 `SmokeTests` driver DSL 消费 `UnitOp.Mvp` 正式 host-facing 模型
+- 提供更接近 PME host 的薄 session 样板
+- 验证 `view -> request planning -> host round -> session/execution/port-material/report` 的正式消费路径
+
+当前对齐：
+
+- 当前已建立独立 `net10.0` console，并已加入 `RadishFlow.CapeOpen.sln`
+- 当前 console 已默认通过 `PmeLikeUnitOperationHost / PmeLikeUnitOperationSession / PmeLikeUnitOperationInput` 执行“创建组件、初始化、读取视图、提交参数/端口对象、执行 validate/calculate round、读取正式结果面、终止”
+- 该样例只复用 `UnitOp.Mvp` 正式 reader / planner / host round / session-execution-port-material-report 消费面，不复用 `SmokeTests` driver DSL
+- 该样例不做 COM 注册、不驱动真实 PME、不加载第三方 CAPE-OPEN 模型，也不承诺完整 PME 生命周期框架
+
 ### `RadishFlow.CapeOpen.Registration`
 
 职责：
@@ -597,6 +619,23 @@ Rust 与 .NET 的桥接层。
 - COM host 注册与反注册
 - 管理员提权
 - 冒烟验证辅助
+
+当前对齐：
+
+- 当前已建立第一版 `net10.0` 注册工具，并已加入 `RadishFlow.CapeOpen.sln`
+- 当前可输出 MVP Unit Operation PMC 的 `CLSID / ProgID / Versioned ProgID`、CAPE-OPEN categories、最小已实现接口、当前 action / scope 与边界标志
+- 当前可按 `register / unregister` 与 `current-user / local-machine` 生成 registry key plan，并把 `.NET comhost` 路径解析列为执行前 `Verify` 步骤
+- 当前已启用 `UnitOp.Mvp` 的 `EnableComHosting`，并在 preflight 中只读检查真实 `UnitOp.Mvp` 输出目录中的 `RadishFlow.CapeOpen.UnitOp.Mvp.comhost.dll`、PE 机器类型、`UnitOp.Mvp.runtimeconfig/deps` sidecar、当前进程位数、scope 权限口径、目标 registry key 现状和备份范围
+- 当前默认行为仍为 dry-run，但已支持在显式 `--execute`、匹配 confirmation token、无 `Fail` preflight、权限检查通过的前提下执行 `register / unregister`；执行边界已收口到 `CLSID / ProgID / Versioned ProgID / TypeLib` 四棵树备份、execution log 与失败 rollback
+- 仓库根 `scripts/register-com.ps1` 当前已作为正式脚本入口，负责统一 build、token 提示、环境变量重定向和 `Registration.exe` 调用
+- 当前仓库脚本默认会显式传入 `UnitOp.Mvp\bin\Debug\net10.0` 下的 comhost / typelib，不再依赖 `Registration.exe` 进程目录猜测默认路径
+- 当前 execute `register` 还会补写 classic COM 所需的 `CLSID\{...}\TypeLib` 关联值，避免只注册 `TypeLib` 树却不把 CLSID 回链到 typelib GUID
+- 当前 registration plan 又已补齐 `Consumes Thermodynamics`、`Supports Thermodynamics 1.0` 与 `Supports Thermodynamics 1.1` 三个 CAPE-OPEN implemented categories，用于 DWSIM 画布接受条件 probe；这不代表 MVP 已实现完整 Thermo PMC 或第三方 property package 加载
+- 当前还已确认 DWSIM `CapeOpenUO.Instantiate()` 会按 `InitNew -> Initialize -> simulationContext set -> GetPorts -> GetParams` 消费 UnitOp；因此 `ICapeUtilities` vtable 必须保持 CAPE-OPEN PIA 兼容的 setter-only 前序槽位，同时把 COFE 需要的 `SimulationContext` getter 留作 late-bound 兼容面
+- 当前用户侧 `DWSIM / COFE` 人工复验已确认 discovery、activation、placement、`Feed / Product` 端口连接与 water/ethanol 样例 `Validate / Calculate` 收敛主路径通过；DWSIM parameter enumeration 还要求 `Parameters.Item(i)` 返回对象本身直接支持 `ICapeIdentification / ICapeParameterSpec / ICapeOptionParameterSpec / ICapeParameter`
+- 当前 `DWSIM / COFE` 成功复验已沉淀到 `examples/pme-validation/` 正式记录，临时 COM trace 也已清理为显式环境变量开关；未配置必填参数时 `Validate` 返回 invalid 属于预期行为
+- 当前真实复验还确认了一个宿主侧假阴性：`pwsh` 若已预加载 `.NET 9.0.10`，会因与当前 PMC 目标 `.NET 10.0.0` runtime 不兼容而触发 `0x800080A5`；后续 native COM / PME 类探测应优先改用 `Windows PowerShell 5` 或其他非预加载 .NET 宿主
+- 目标 PME 人工验证路径当前已单独落到 `docs/capeopen/pme-validation.md`，注册工具本身不承担 PME 自动化互调
 
 ### `RadishFlow.CapeOpen.SmokeTests`
 
@@ -609,7 +648,8 @@ Rust 与 .NET 的桥接层。
 
 - 当前可配置 native library 目录、加载示例 flowsheet 与本地 `manifest/payload` package
 - 当前可列出 package registry，并覆盖 direct adapter 的 flowsheet / stream snapshot JSON 导出，以及 `UnitOp.Mvp` 的最小成功结果契约、失败摘要契约、统一只读 report access、标量元数据入口、可枚举 detail 键值入口、最小文本导出面与标量逐行读取面验证
-- 当前 `unitop` 模式又已从“单条 console 冒烟脚本”收口为最小宿主验证骨架：`UnitOperationSmokeHostDriver` 固定真实宿主调用顺序，`UnitOperationSmokeBoundarySuite` 锁边界矩阵，`UnitOperationSmokeSession` 与 `UnitOperationSmokeScenarioCatalog` 负责时序变体编排
+- 当前 `unitop` 模式又已从“单条 console 冒烟脚本”收口为最小宿主验证骨架：`UnitOperationSmokeHostDriver` 固定真实宿主调用顺序，`UnitOperationSmokeBoundarySuite` 锁边界矩阵，`UnitOperationSmokeSession` 与 `UnitOperationSmokeScenarioCatalog` 负责时序变体编排；其中 action plan 到 execution request 的稳定公共部分已上移为 `UnitOperationHostActionExecutionRequestPlanner`，smoke driver 只继续负责准备样例输入、生命周期顺序和失败分类
+- 在上述 request planning 之上，当前又补出 `UnitOperationHostActionExecutionOrchestrator` 与正式 `FollowUp` 模型，把“执行 ready requests 后刷新 configuration/action/session”以及“宿主下一步应补输入、做 validate、做 calculate，还是只剩 lifecycle/terminated”这层判断继续前推到库内；smoke session 当前只保留 timeline 组织与场景脚本，不再私有维护这层执行后摘要
 - 当前已支持 `--unitop-scenario <all|session|recovery|shutdown>` 按宿主时序场景过滤运行，用于单独验证会话、恢复和收尾阶段，而不是每次都跑整套 timeline
 - 当前暂不承担 PME/COM 注册路径的冒烟验证
 
