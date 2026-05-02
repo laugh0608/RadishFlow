@@ -8,7 +8,7 @@ use crate::studio_gui_preferences_store::{
 use eframe::egui;
 use radishflow_studio::{
     StudioAppHostWindowState, StudioGuiCommandEntry, StudioGuiCommandMenuCommandModel,
-    StudioGuiCommandMenuNode, StudioGuiEvent, StudioGuiFocusContext,
+    StudioGuiCommandMenuNode, StudioGuiDriverOutcome, StudioGuiEvent, StudioGuiFocusContext,
     StudioGuiPlatformExecutedDispatch, StudioGuiPlatformExecutedNativeTimerCallbackBatch,
     StudioGuiPlatformExecutedNativeTimerCallbackOutcome, StudioGuiPlatformHost,
     StudioGuiPlatformNativeTimerId, StudioGuiPlatformTimerCommand, StudioGuiPlatformTimerExecutor,
@@ -148,6 +148,7 @@ struct ResultInspectorState {
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 struct CanvasViewportNavigationState {
     active_focus: Option<CanvasViewportFocusNavigation>,
+    notice: Option<CanvasViewportNavigationNotice>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -157,6 +158,22 @@ struct CanvasViewportFocusNavigation {
     anchor_label: String,
     command_id: String,
     pending_scroll: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct CanvasViewportNavigationNotice {
+    level: RunPanelNoticeLevel,
+    title: String,
+    detail: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct CanvasObjectNavigationRequest {
+    kind_label: &'static str,
+    target_id: String,
+    label: String,
+    viewport_anchor_label: Option<String>,
+    command_id: String,
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
@@ -352,6 +369,14 @@ impl CanvasViewportNavigationState {
             command_id: focus.command_id.clone(),
             pending_scroll: true,
         });
+        self.notice = Some(CanvasViewportNavigationNotice {
+            level: RunPanelNoticeLevel::Info,
+            title: "Canvas object located".to_string(),
+            detail: format!(
+                "{} `{}` is anchored at `{}`.",
+                focus.kind_label, focus.target_id, focus.anchor_label
+            ),
+        });
         true
     }
 
@@ -371,6 +396,14 @@ impl CanvasViewportNavigationState {
             })
             .unwrap_or(false);
         if !still_current {
+            self.notice = Some(CanvasViewportNavigationNotice {
+                level: RunPanelNoticeLevel::Warning,
+                title: "Canvas navigation anchor expired".to_string(),
+                detail: format!(
+                    "{} `{}` is no longer exposed by the current Canvas viewport presentation.",
+                    active.kind_label, active.target_id
+                ),
+            });
             self.active_focus = None;
         }
     }

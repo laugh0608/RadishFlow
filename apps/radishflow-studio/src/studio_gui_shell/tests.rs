@@ -307,6 +307,21 @@ fn canvas_viewport_navigation_records_inspector_focus_commands() {
     assert_eq!(unit_focus.anchor_label, "unit-slot-1");
     assert_eq!(unit_focus.command_id, "inspector.focus_unit:flash-1");
     assert!(unit_focus.pending_scroll);
+    assert_eq!(
+        app.canvas_viewport_navigation
+            .notice
+            .as_ref()
+            .map(|notice| (notice.level, notice.title.as_str())),
+        Some((RunPanelNoticeLevel::Info, "Canvas object located"))
+    );
+    assert!(
+        app.platform_host
+            .snapshot()
+            .runtime
+            .gui_activity_lines
+            .iter()
+            .any(|line| line == "canvas object located: Unit flash-1 -> unit-slot-1")
+    );
     assert_eq!(app.last_area_focus, Some(StudioGuiWindowAreaId::Canvas));
     assert!(
         app.canvas_viewport_navigation
@@ -332,6 +347,43 @@ fn canvas_viewport_navigation_records_inspector_focus_commands() {
         "inspector.focus_stream:stream-feed"
     );
     assert!(stream_focus.pending_scroll);
+
+    let _ = std::fs::remove_file(project_path);
+}
+
+#[test]
+fn canvas_viewport_navigation_reports_missing_inspector_target() {
+    let (config, project_path) = flash_drum_local_rules_config();
+    let mut app = ready_app_state(&config);
+
+    app.dispatch_ui_command("inspector.focus_unit:missing-unit");
+
+    assert_eq!(app.canvas_viewport_navigation.active_focus, None);
+    assert_eq!(
+        app.canvas_viewport_navigation
+            .notice
+            .as_ref()
+            .map(|notice| (notice.level, notice.title.as_str())),
+        Some((
+            RunPanelNoticeLevel::Error,
+            "Canvas object navigation failed"
+        ))
+    );
+    assert!(
+        app.canvas_viewport_navigation
+            .notice
+            .as_ref()
+            .map(|notice| notice.detail.contains("missing-unit"))
+            .unwrap_or(false)
+    );
+    assert!(
+        app.platform_host
+            .snapshot()
+            .runtime
+            .gui_activity_lines
+            .iter()
+            .any(|line| line.contains("Canvas object navigation failed: Unit missing-unit"))
+    );
 
     let _ = std::fs::remove_file(project_path);
 }

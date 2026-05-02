@@ -299,6 +299,10 @@ impl ReadyAppState {
                 }
             }
         });
+        if let Some(notice) = self.canvas_viewport_navigation.notice.as_ref() {
+            ui.colored_label(notice_color(notice.level), &notice.title);
+            render_wrapped_small(ui, &notice.detail);
+        }
     }
 
     fn render_canvas_legend(
