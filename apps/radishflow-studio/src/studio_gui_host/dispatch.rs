@@ -106,7 +106,7 @@ impl StudioGuiHost {
             let canvas = self.canvas_state();
             if canvas.suggestions.is_empty()
                 && canvas.pending_edit.is_none()
-                && action_id != crate::StudioGuiCanvasActionId::BeginPlaceFlashDrum
+                && !matches!(action_id, crate::StudioGuiCanvasActionId::BeginPlaceUnit(_))
             {
                 return Ok(StudioGuiHostUiCommandDispatchResult::IgnoredMissing {
                     command_id: command_id.to_string(),
@@ -127,9 +127,9 @@ impl StudioGuiHost {
                 });
             }
             let action = match action_id {
-                crate::StudioGuiCanvasActionId::BeginPlaceFlashDrum => {
+                crate::StudioGuiCanvasActionId::BeginPlaceUnit(kind) => {
                     StudioGuiCanvasInteractionAction::BeginPlaceUnit {
-                        unit_kind: "Flash Drum".to_string(),
+                        unit_kind: kind.unit_kind().to_string(),
                     }
                 }
                 crate::StudioGuiCanvasActionId::AcceptFocused => {

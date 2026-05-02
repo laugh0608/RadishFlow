@@ -433,6 +433,7 @@ pub struct StudioGuiCanvasLegendViewModel {
 pub struct StudioGuiCanvasViewModel {
     pub run_status: Option<StudioGuiCanvasRunStatusViewModel>,
     pub pending_edit: Option<StudioGuiCanvasPendingEditViewModel>,
+    pub place_unit_palette: StudioGuiCanvasPlaceUnitPaletteViewModel,
     pub focused_suggestion_id: Option<String>,
     pub current_selection: Option<StudioGuiCanvasSelectionViewModel>,
     pub focus_callout: Option<StudioGuiCanvasFocusCalloutViewModel>,
@@ -445,6 +446,167 @@ pub struct StudioGuiCanvasViewModel {
     pub unit_blocks: Vec<StudioGuiCanvasUnitBlockViewModel>,
     pub stream_lines: Vec<StudioGuiCanvasStreamLineViewModel>,
     pub suggestions: Vec<StudioGuiCanvasSuggestionViewModel>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum StudioGuiCanvasPlaceUnitKind {
+    Feed,
+    Mixer,
+    Heater,
+    Cooler,
+    Valve,
+    FlashDrum,
+}
+
+impl StudioGuiCanvasPlaceUnitKind {
+    pub const fn all() -> &'static [Self] {
+        &[
+            Self::Feed,
+            Self::Mixer,
+            Self::Heater,
+            Self::Cooler,
+            Self::Valve,
+            Self::FlashDrum,
+        ]
+    }
+
+    pub const fn command_id(self) -> &'static str {
+        match self {
+            Self::Feed => "canvas.begin_place_unit.feed",
+            Self::Mixer => "canvas.begin_place_unit.mixer",
+            Self::Heater => "canvas.begin_place_unit.heater",
+            Self::Cooler => "canvas.begin_place_unit.cooler",
+            Self::Valve => "canvas.begin_place_unit.valve",
+            Self::FlashDrum => "canvas.begin_place_unit.flash_drum",
+        }
+    }
+
+    pub const fn unit_kind(self) -> &'static str {
+        match self {
+            Self::Feed => "Feed",
+            Self::Mixer => "Mixer",
+            Self::Heater => "Heater",
+            Self::Cooler => "Cooler",
+            Self::Valve => "Valve",
+            Self::FlashDrum => "Flash Drum",
+        }
+    }
+
+    pub const fn label(self) -> &'static str {
+        match self {
+            Self::Feed => "Place Feed",
+            Self::Mixer => "Place Mixer",
+            Self::Heater => "Place Heater",
+            Self::Cooler => "Place Cooler",
+            Self::Valve => "Place Valve",
+            Self::FlashDrum => "Place Flash Drum",
+        }
+    }
+
+    pub const fn detail(self) -> &'static str {
+        match self {
+            Self::Feed => "Start placing a Feed on the canvas",
+            Self::Mixer => "Start placing a Mixer on the canvas",
+            Self::Heater => "Start placing a Heater on the canvas",
+            Self::Cooler => "Start placing a Cooler on the canvas",
+            Self::Valve => "Start placing a Valve on the canvas",
+            Self::FlashDrum => "Start placing a Flash Drum on the canvas",
+        }
+    }
+
+    pub const fn menu_label(self) -> &'static str {
+        match self {
+            Self::Feed => "Place Feed",
+            Self::Mixer => "Place Mixer",
+            Self::Heater => "Place Heater",
+            Self::Cooler => "Place Cooler",
+            Self::Valve => "Place Valve",
+            Self::FlashDrum => "Place Flash Drum",
+        }
+    }
+
+    pub const fn sort_index(self) -> u16 {
+        match self {
+            Self::Feed => 0,
+            Self::Mixer => 1,
+            Self::Heater => 2,
+            Self::Cooler => 3,
+            Self::Valve => 4,
+            Self::FlashDrum => 5,
+        }
+    }
+
+    pub fn from_command_id(command_id: &str) -> Option<Self> {
+        Self::all()
+            .iter()
+            .copied()
+            .find(|kind| kind.command_id() == command_id)
+    }
+
+    fn matches_unit_kind(self, unit_kind: &str) -> bool {
+        normalize_canvas_unit_kind(self.unit_kind()) == normalize_canvas_unit_kind(unit_kind)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioGuiCanvasPlaceUnitPaletteViewModel {
+    pub title: &'static str,
+    pub enabled: bool,
+    pub active_unit_kind: Option<String>,
+    pub options: Vec<StudioGuiCanvasPlaceUnitOptionViewModel>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioGuiCanvasPlaceUnitOptionViewModel {
+    pub kind: StudioGuiCanvasPlaceUnitKind,
+    pub command_id: String,
+    pub unit_kind: String,
+    pub label: String,
+    pub detail: String,
+    pub enabled: bool,
+    pub active: bool,
+    pub search_terms: Vec<String>,
+}
+
+impl StudioGuiCanvasPlaceUnitPaletteViewModel {
+    fn from_pending_edit(pending_edit: Option<&rf_ui::CanvasEditIntent>) -> Self {
+        let active_unit_kind = pending_edit.map(|intent| match intent {
+            rf_ui::CanvasEditIntent::PlaceUnit { unit_kind } => unit_kind.clone(),
+        });
+        let enabled = pending_edit.is_none();
+        let options = StudioGuiCanvasPlaceUnitKind::all()
+            .iter()
+            .copied()
+            .map(|kind| {
+                let active = active_unit_kind
+                    .as_deref()
+                    .map(|unit_kind| kind.matches_unit_kind(unit_kind))
+                    .unwrap_or(false);
+                StudioGuiCanvasPlaceUnitOptionViewModel {
+                    kind,
+                    command_id: kind.command_id().to_string(),
+                    unit_kind: kind.unit_kind().to_string(),
+                    label: kind.label().to_string(),
+                    detail: kind.detail().to_string(),
+                    enabled,
+                    active,
+                    search_terms: vec![
+                        "canvas".to_string(),
+                        "place".to_string(),
+                        "unit".to_string(),
+                        kind.unit_kind().to_string(),
+                    ],
+                }
+            })
+            .collect();
+
+        Self {
+            title: "Place unit",
+            enabled,
+            active_unit_kind,
+            options,
+        }
+    }
 }
 
 impl StudioGuiCanvasViewModel {
@@ -477,6 +639,9 @@ impl StudioGuiCanvasViewModel {
                 }
             }
         });
+        let place_unit_palette = StudioGuiCanvasPlaceUnitPaletteViewModel::from_pending_edit(
+            state.pending_edit.as_ref(),
+        );
         let stream_names = state
             .streams
             .iter()
@@ -666,6 +831,7 @@ impl StudioGuiCanvasViewModel {
         Self {
             run_status,
             pending_edit,
+            place_unit_palette,
             focused_suggestion_id,
             current_selection,
             focus_callout,
@@ -680,6 +846,13 @@ impl StudioGuiCanvasViewModel {
             suggestions,
         }
     }
+}
+
+fn normalize_canvas_unit_kind(unit_kind: &str) -> String {
+    unit_kind
+        .trim()
+        .to_ascii_lowercase()
+        .replace([' ', '-'], "_")
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -1639,6 +1812,39 @@ mod tests {
                 summary: "place unit kind=Flash Drum".to_string(),
                 cancel_enabled: true,
             })
+        );
+        assert_eq!(presentation.view.place_unit_palette.title, "Place unit");
+        assert!(!presentation.view.place_unit_palette.enabled);
+        assert_eq!(
+            presentation.view.place_unit_palette.active_unit_kind,
+            Some("Flash Drum".to_string())
+        );
+        assert_eq!(
+            presentation
+                .view
+                .place_unit_palette
+                .options
+                .iter()
+                .map(|option| (
+                    option.command_id.as_str(),
+                    option.unit_kind.as_str(),
+                    option.enabled,
+                    option.active
+                ))
+                .collect::<Vec<_>>(),
+            vec![
+                ("canvas.begin_place_unit.feed", "Feed", false, false),
+                ("canvas.begin_place_unit.mixer", "Mixer", false, false),
+                ("canvas.begin_place_unit.heater", "Heater", false, false),
+                ("canvas.begin_place_unit.cooler", "Cooler", false, false),
+                ("canvas.begin_place_unit.valve", "Valve", false, false),
+                (
+                    "canvas.begin_place_unit.flash_drum",
+                    "Flash Drum",
+                    false,
+                    true
+                ),
+            ]
         );
         assert_eq!(
             presentation.text.lines,

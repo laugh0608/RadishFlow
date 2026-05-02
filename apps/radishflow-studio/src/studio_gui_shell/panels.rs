@@ -375,7 +375,7 @@ impl ReadyAppState {
         let subtitle = if pending_edit.is_some() {
             "Click to place the pending unit"
         } else {
-            "Use Place Flash Drum to start a canvas edit"
+            "Use a Place Unit action to start a canvas edit"
         };
         paint_canvas_surface_labels(&painter, rect, title, subtitle);
 

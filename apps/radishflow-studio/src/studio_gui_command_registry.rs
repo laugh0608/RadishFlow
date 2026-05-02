@@ -188,9 +188,15 @@ impl StudioGuiCommandRegistry {
         }
 
         let widget = canvas.widget();
-        if !canvas.suggestions.is_empty() || canvas.pending_edit.is_some() {
-            for action in &widget.actions {
-                let defaults = command_defaults(action.command_id);
+        for action in &widget.actions {
+            let is_place_unit = matches!(action.id, StudioGuiCanvasActionId::BeginPlaceUnit(_));
+            let should_include = if is_place_unit {
+                canvas_target_window_id.is_some()
+            } else {
+                !canvas.suggestions.is_empty() || canvas.pending_edit.is_some()
+            };
+            if should_include {
+                let defaults = command_defaults(action.command_id.as_str());
                 canvas_commands.push(StudioGuiCommandEntry {
                     command_id: action.command_id.to_string(),
                     label: action.label.to_string(),
@@ -437,8 +443,33 @@ fn command_defaults(command_id: &str) -> StudioGuiCommandDefaults {
             search_terms: &["canvas", "cancel", "pending", "edit"],
             shortcut: None,
         },
+        "canvas.begin_place_unit.feed" => StudioGuiCommandDefaults {
+            menu_path: &["Canvas", "Place Unit", "Feed"],
+            search_terms: &["canvas", "place", "unit", "feed"],
+            shortcut: None,
+        },
+        "canvas.begin_place_unit.mixer" => StudioGuiCommandDefaults {
+            menu_path: &["Canvas", "Place Unit", "Mixer"],
+            search_terms: &["canvas", "place", "unit", "mixer"],
+            shortcut: None,
+        },
+        "canvas.begin_place_unit.heater" => StudioGuiCommandDefaults {
+            menu_path: &["Canvas", "Place Unit", "Heater"],
+            search_terms: &["canvas", "place", "unit", "heater"],
+            shortcut: None,
+        },
+        "canvas.begin_place_unit.cooler" => StudioGuiCommandDefaults {
+            menu_path: &["Canvas", "Place Unit", "Cooler"],
+            search_terms: &["canvas", "place", "unit", "cooler"],
+            shortcut: None,
+        },
+        "canvas.begin_place_unit.valve" => StudioGuiCommandDefaults {
+            menu_path: &["Canvas", "Place Unit", "Valve"],
+            search_terms: &["canvas", "place", "unit", "valve"],
+            shortcut: None,
+        },
         "canvas.begin_place_unit.flash_drum" => StudioGuiCommandDefaults {
-            menu_path: &["Canvas", "Place Flash Drum"],
+            menu_path: &["Canvas", "Place Unit", "Flash Drum"],
             search_terms: &["canvas", "place", "unit", "flash drum"],
             shortcut: None,
         },
@@ -452,7 +483,7 @@ fn command_defaults(command_id: &str) -> StudioGuiCommandDefaults {
 
 fn canvas_sort_order(action_id: StudioGuiCanvasActionId) -> u16 {
     match action_id {
-        StudioGuiCanvasActionId::BeginPlaceFlashDrum => 290,
+        StudioGuiCanvasActionId::BeginPlaceUnit(kind) => 290 + kind.sort_index(),
         StudioGuiCanvasActionId::AcceptFocused => 300,
         StudioGuiCanvasActionId::RejectFocused => 310,
         StudioGuiCanvasActionId::FocusNext => 320,
@@ -599,10 +630,10 @@ fn format_shortcut(shortcut: &StudioGuiShortcut) -> String {
 mod tests {
     use crate::{
         StudioAppHostUiActionModel, StudioAppHostUiCommandGroup, StudioAppHostUiCommandModel,
-        StudioGuiCanvasActionId, StudioGuiCommandEntry, StudioGuiCommandGroup,
-        StudioGuiCommandMenuCommandModel, StudioGuiCommandMenuNode, StudioGuiCommandRegistry,
-        StudioGuiShortcut, StudioGuiShortcutKey, StudioGuiShortcutModifier,
-        studio_gui_canvas_widget::canvas_command_id,
+        StudioGuiCanvasActionId, StudioGuiCanvasPlaceUnitKind, StudioGuiCommandEntry,
+        StudioGuiCommandGroup, StudioGuiCommandMenuCommandModel, StudioGuiCommandMenuNode,
+        StudioGuiCommandRegistry, StudioGuiShortcut, StudioGuiShortcutKey,
+        StudioGuiShortcutModifier, studio_gui_canvas_widget::canvas_command_id,
     };
 
     #[test]
@@ -852,7 +883,24 @@ mod tests {
                 .map(|entry| entry.command_id.as_str())
                 .collect::<Vec<_>>(),
             vec![
-                canvas_command_id(StudioGuiCanvasActionId::BeginPlaceFlashDrum),
+                canvas_command_id(StudioGuiCanvasActionId::BeginPlaceUnit(
+                    StudioGuiCanvasPlaceUnitKind::Feed,
+                )),
+                canvas_command_id(StudioGuiCanvasActionId::BeginPlaceUnit(
+                    StudioGuiCanvasPlaceUnitKind::Mixer,
+                )),
+                canvas_command_id(StudioGuiCanvasActionId::BeginPlaceUnit(
+                    StudioGuiCanvasPlaceUnitKind::Heater,
+                )),
+                canvas_command_id(StudioGuiCanvasActionId::BeginPlaceUnit(
+                    StudioGuiCanvasPlaceUnitKind::Cooler,
+                )),
+                canvas_command_id(StudioGuiCanvasActionId::BeginPlaceUnit(
+                    StudioGuiCanvasPlaceUnitKind::Valve,
+                )),
+                canvas_command_id(StudioGuiCanvasActionId::BeginPlaceUnit(
+                    StudioGuiCanvasPlaceUnitKind::FlashDrum,
+                )),
                 canvas_command_id(StudioGuiCanvasActionId::AcceptFocused),
                 canvas_command_id(StudioGuiCanvasActionId::RejectFocused),
                 canvas_command_id(StudioGuiCanvasActionId::FocusNext),
@@ -865,6 +913,102 @@ mod tests {
                 .command(canvas_command_id(StudioGuiCanvasActionId::AcceptFocused))
                 .and_then(|entry| entry.target_window_id),
             Some(3)
+        );
+    }
+
+    #[test]
+    fn gui_command_registry_exposes_place_unit_palette_for_target_window() {
+        let canvas = crate::StudioGuiCanvasState::default();
+        let registry = StudioGuiCommandRegistry::from_surfaces(
+            &StudioAppHostUiCommandModel::default(),
+            &canvas,
+            Some(5),
+        );
+
+        assert_eq!(
+            registry.sections[0]
+                .commands
+                .iter()
+                .map(|entry| (
+                    entry.command_id.as_str(),
+                    entry.label.as_str(),
+                    entry.menu_path.clone(),
+                    entry.enabled,
+                    entry.target_window_id
+                ))
+                .collect::<Vec<_>>(),
+            vec![
+                (
+                    "canvas.begin_place_unit.feed",
+                    "Place Feed",
+                    vec![
+                        "Canvas".to_string(),
+                        "Place Unit".to_string(),
+                        "Feed".to_string()
+                    ],
+                    true,
+                    Some(5)
+                ),
+                (
+                    "canvas.begin_place_unit.mixer",
+                    "Place Mixer",
+                    vec![
+                        "Canvas".to_string(),
+                        "Place Unit".to_string(),
+                        "Mixer".to_string()
+                    ],
+                    true,
+                    Some(5)
+                ),
+                (
+                    "canvas.begin_place_unit.heater",
+                    "Place Heater",
+                    vec![
+                        "Canvas".to_string(),
+                        "Place Unit".to_string(),
+                        "Heater".to_string()
+                    ],
+                    true,
+                    Some(5)
+                ),
+                (
+                    "canvas.begin_place_unit.cooler",
+                    "Place Cooler",
+                    vec![
+                        "Canvas".to_string(),
+                        "Place Unit".to_string(),
+                        "Cooler".to_string()
+                    ],
+                    true,
+                    Some(5)
+                ),
+                (
+                    "canvas.begin_place_unit.valve",
+                    "Place Valve",
+                    vec![
+                        "Canvas".to_string(),
+                        "Place Unit".to_string(),
+                        "Valve".to_string()
+                    ],
+                    true,
+                    Some(5)
+                ),
+                (
+                    "canvas.begin_place_unit.flash_drum",
+                    "Place Flash Drum",
+                    vec![
+                        "Canvas".to_string(),
+                        "Place Unit".to_string(),
+                        "Flash Drum".to_string()
+                    ],
+                    true,
+                    Some(5)
+                ),
+            ]
+        );
+        assert!(
+            registry.command("canvas.accept_focused").is_none(),
+            "empty canvas should not expose suggestion commands"
         );
     }
 
@@ -887,11 +1031,15 @@ mod tests {
         assert_eq!(pending_edit.summary, "place unit kind=Flash Drum");
         assert!(pending_edit.cancel_enabled);
         let begin_action = widget
-            .action(StudioGuiCanvasActionId::BeginPlaceFlashDrum)
+            .action(StudioGuiCanvasActionId::BeginPlaceUnit(
+                StudioGuiCanvasPlaceUnitKind::FlashDrum,
+            ))
             .expect("expected begin place action");
         assert_eq!(
             begin_action.command_id,
-            canvas_command_id(StudioGuiCanvasActionId::BeginPlaceFlashDrum)
+            canvas_command_id(StudioGuiCanvasActionId::BeginPlaceUnit(
+                StudioGuiCanvasPlaceUnitKind::FlashDrum,
+            ))
         );
         assert!(!begin_action.enabled);
         let cancel_action = widget
@@ -910,13 +1058,13 @@ mod tests {
         );
 
         let begin = registry
-            .command(canvas_command_id(
-                StudioGuiCanvasActionId::BeginPlaceFlashDrum,
-            ))
+            .command(canvas_command_id(StudioGuiCanvasActionId::BeginPlaceUnit(
+                StudioGuiCanvasPlaceUnitKind::FlashDrum,
+            )))
             .expect("expected begin place command");
         assert_eq!(begin.label, "Place Flash Drum");
         assert_eq!(begin.detail, "Start placing a Flash Drum on the canvas");
-        assert_eq!(begin.menu_path, vec!["Canvas", "Place Flash Drum"]);
+        assert_eq!(begin.menu_path, vec!["Canvas", "Place Unit", "Flash Drum"]);
         assert!(!begin.enabled);
         assert_eq!(begin.target_window_id, Some(7));
 
@@ -988,9 +1136,15 @@ mod tests {
             })
             .collect::<Vec<_>>();
 
-        assert_eq!(commands.len(), 2);
+        assert_eq!(commands.len(), 8);
+        let object_commands = commands
+            .iter()
+            .filter(|command| command.0.starts_with("inspector.focus_"))
+            .cloned()
+            .collect::<Vec<_>>();
+        assert_eq!(object_commands.len(), 2);
         assert_eq!(
-            commands[0],
+            object_commands[0],
             (
                 "inspector.focus_unit:flash-1",
                 "Locate Unit Flash Drum",
@@ -1018,7 +1172,7 @@ mod tests {
             )
         );
         assert_eq!(
-            commands[1].0, "inspector.focus_stream:stream-feed",
+            object_commands[1].0, "inspector.focus_stream:stream-feed",
             "expected stream object navigation command"
         );
         assert!(

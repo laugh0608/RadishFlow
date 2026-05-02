@@ -61,7 +61,7 @@ RadishFlow 的目标架构已经冻结为“桌面端三层 + 外部控制面”
 
 这一路径仍坚持先消费已冻结的应用层、运行栏和 snapshot presentation 边界；真实 UI 只做最小闭环承接，不反向改写内核、求解或项目文件语义。
 
-截至 2026-05-02，Studio Canvas 已补出最小可见、只读扫读层和单类型放置反馈闭环：单元块、物流线、Inspector 焦点高亮、对象列表导航、焦点气泡、material port marker、端口 hover、运行/诊断 badge、状态 legend、viewport focus anchor、对象列表 `All / Attention / Units / Streams` 临时筛选，以及 `Place Flash Drum` 的 pending edit / commit 路径都通过 GUI-facing presentation 暴露并由 `egui` 渲染。`CommitPendingEditAt -> DocumentCommand::CreateUnit` 成功后会复用新单元的 object command target 和 focus anchor，统一生成 `StudioGuiCanvasCommandResultViewModel`，从而让新建提示、Inspector 焦点、Canvas 一次性定位、GUI activity 与命令面只读反馈走同一条结果路径；无 pending edit、unsupported unit kind、dispatch 失败或 anchor 过期也使用同一套 warning / error result。当前画布仍只把已有 `FlowsheetDocument` 对象投影到临时布局，定位滚动和高亮属于 shell-local 一次性状态；端口点击编辑、连线创建、拖拽布局、视口或坐标持久化、项目 schema / layout sidecar 扩张和 CAPE-OPEN 扩张都不属于当前阶段。
+截至 2026-05-02，Studio Canvas 已补出最小可见、只读扫读层和多单元放置反馈闭环：单元块、物流线、Inspector 焦点高亮、对象列表导航、焦点气泡、material port marker、端口 hover、运行/诊断 badge、状态 legend、viewport focus anchor、对象列表 `All / Attention / Units / Streams` 临时筛选，以及 `Feed / Mixer / Heater / Cooler / Valve / Flash Drum` 的 pending edit palette / commit 路径都通过 GUI-facing presentation 暴露并由 `egui` 渲染。`CommitPendingEditAt -> DocumentCommand::CreateUnit` 成功后会复用新单元的 object command target 和 focus anchor，统一生成 `StudioGuiCanvasCommandResultViewModel`，从而让新建提示、Inspector 焦点、Canvas 一次性定位、GUI activity 与命令面只读反馈走同一条结果路径；无 pending edit、unsupported unit kind、dispatch 失败或 anchor 过期也使用同一套 warning / error result。当前画布仍只把已有 `FlowsheetDocument` 对象投影到临时布局，定位滚动和高亮属于 shell-local 一次性状态；端口点击编辑、连线创建、拖拽布局、视口或坐标持久化、项目 schema / layout sidecar 扩张和 CAPE-OPEN 扩张都不属于当前阶段。
 
 同时补充一条当前协作闸口：在 `apps/radishflow-studio` 还处于 GUI-facing 边界、宿主桥接和布局状态契约冻结阶段时，可以继续直接推进；但一旦工作重心切到真实界面布局、控件组织、视觉表达、交互流和较重的 UI 逻辑设计，后续实现前必须先向用户同步方向与关键取舍，并保留用户干预窗口，不把产品交互方案静默固化。
 
@@ -131,7 +131,7 @@ RadishFlow 的目标架构已经冻结为“桌面端三层 + 外部控制面”
 - 窗口布局持久化继续与项目文档语义分离，当前保存到 `<project>.rfstudio-layout.json` sidecar，而不是混入 `*.rfproj.json`
 - 多窗口布局 key 当前已从运行时 `window_id` 收口为基于 `window_role + layout_slot` 的稳定 scope，避免跨 host 重建时直接依赖临时窗口号
 
-这意味着当前仓库已从“只有 UI 层快照映射桥”推进到“真实 `egui` 壳层可打开已有项目、持久化 shell 级最近项目、运行求解、查看结构化结果/诊断、定位 Inspector、编辑 Stream 字段草稿并提交、执行基础撤销/重做、保存/另存为，并在画布中查看已有单元/流股/端口/诊断状态和执行单类型放置”。最近项目写入独立 Studio preferences 文件，画布筛选、对比选择、focus navigation 与最近一次 command result 展示等状态仍属于 shell 临时状态或 presentation 反馈，不进入 `*.rfproj.json`。不过这仍是最小可操作工作台闭环，不等同于完整跨平台文件工作流、完整应用偏好系统、完整画布编辑器、跨会话历史持久化或最终视觉方案。
+这意味着当前仓库已从“只有 UI 层快照映射桥”推进到“真实 `egui` 壳层可打开已有项目、持久化 shell 级最近项目、运行求解、查看结构化结果/诊断、定位 Inspector、编辑 Stream 字段草稿并提交、执行基础撤销/重做、保存/另存为，并在画布中查看已有单元/流股/端口/诊断状态和执行多单元 pending placement”。最近项目写入独立 Studio preferences 文件，画布筛选、对比选择、focus navigation 与最近一次 command result 展示等状态仍属于 shell 临时状态或 presentation 反馈，不进入 `*.rfproj.json`。不过这仍是最小可操作工作台闭环，不等同于完整跨平台文件工作流、完整应用偏好系统、完整画布编辑器、跨会话历史持久化或最终视觉方案。
 
 这些决定的目的是先把 UI 和求解层之间的长期接口边界定清楚，再决定具体控件和交互实现。
 

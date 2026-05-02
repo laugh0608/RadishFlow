@@ -275,7 +275,7 @@ fn gui_host_dispatches_canvas_begin_place_unit_command_by_command_id() {
     let opened = gui_host.open_window().expect("expected window open");
 
     let dispatch = gui_host
-        .dispatch_ui_command("canvas.begin_place_unit.flash_drum")
+        .dispatch_ui_command("canvas.begin_place_unit.heater")
         .expect("expected begin place unit canvas ui command");
 
     match dispatch {
@@ -284,18 +284,18 @@ fn gui_host_dispatches_canvas_begin_place_unit_command_by_command_id() {
             target_window_id,
             result,
         } => {
-            assert_eq!(command_id, "canvas.begin_place_unit.flash_drum");
+            assert_eq!(command_id, "canvas.begin_place_unit.heater");
             assert_eq!(target_window_id, Some(opened.registration.window_id));
             assert_eq!(
                 result.action,
                 StudioGuiCanvasInteractionAction::BeginPlaceUnit {
-                    unit_kind: "Flash Drum".to_string(),
+                    unit_kind: "Heater".to_string(),
                 }
             );
             assert_eq!(
                 result.canvas.pending_edit,
                 Some(rf_ui::CanvasEditIntent::PlaceUnit {
-                    unit_kind: "Flash Drum".to_string()
+                    unit_kind: "Heater".to_string()
                 })
             );
         }
