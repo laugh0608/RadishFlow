@@ -424,6 +424,13 @@ fn canvas_pending_edit_commit_records_created_unit_focus_feedback() {
             .workspace_document
             .has_unsaved_changes
     );
+    let surface = app
+        .canvas_command_result_command_surface()
+        .expect("expected canvas command result command surface");
+    assert_eq!(surface.status_label, "created");
+    assert_eq!(surface.target_command_id, "inspector.focus_unit:flash-2");
+    assert!(surface.matches_query("canvas result created flash-2"));
+    assert!(!surface.matches_query("stream-feed"));
 }
 
 #[test]
@@ -473,6 +480,12 @@ fn canvas_pending_edit_commit_reports_missing_pending_edit_through_command_resul
             .workspace_document
             .has_unsaved_changes
     );
+    let surface = app
+        .canvas_command_result_command_surface()
+        .expect("expected canvas command result command surface");
+    assert_eq!(surface.status_label, "pending_edit_unavailable");
+    assert_eq!(surface.target_command_id, "canvas.commit_pending_edit_at");
+    assert!(surface.matches_query("pending edit unavailable"));
 }
 
 #[test]

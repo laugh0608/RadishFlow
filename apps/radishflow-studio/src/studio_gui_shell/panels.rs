@@ -14,6 +14,10 @@ impl ReadyAppState {
                 area_label(area_id)
             ))
             .show(ui, |ui| {
+                if let Some(result) = self.canvas_command_result_command_surface() {
+                    self.render_canvas_command_result_command_surface(ui, &result);
+                    ui.add_space(6.0);
+                }
                 for section in &window.commands.command_list_sections {
                     ui.label(egui::RichText::new(section.title).strong());
                     for command in &section.items {
@@ -38,6 +42,23 @@ impl ReadyAppState {
         ui.label(&command.detail);
         ui.small(&command.menu_path_text);
         ui.add_space(4.0);
+    }
+
+    pub(super) fn render_canvas_command_result_command_surface(
+        &self,
+        ui: &mut egui::Ui,
+        result: &radishflow_studio::StudioGuiCanvasCommandResultCommandSurfaceViewModel,
+    ) {
+        ui.label(egui::RichText::new("Canvas result").strong());
+        ui.horizontal_wrapped(|ui| {
+            render_status_chip(ui, result.status_label, notice_color(result.level));
+            ui.label(egui::RichText::new(&result.title).strong());
+        });
+        render_wrapped_small(ui, &result.detail);
+        ui.small(format!(
+            "{} | target command={}",
+            result.menu_path_text, result.target_command_id
+        ));
     }
 
     pub(super) fn render_canvas_area(
@@ -1686,6 +1707,9 @@ impl ReadyAppState {
             .show(ctx, |ui| {
                 ui.set_min_width(560.0);
                 let palette_items = commands.palette_items(&self.command_palette.query);
+                let canvas_result = self
+                    .canvas_command_result_command_surface()
+                    .filter(|result| result.matches_query(&self.command_palette.query));
                 ui.small(format!(
                     "{} / {} commands",
                     commands.total_command_count.min(palette_items.len()),
@@ -1709,7 +1733,11 @@ impl ReadyAppState {
                 egui::ScrollArea::vertical()
                     .max_height(320.0)
                     .show(ui, |ui| {
-                        if palette_items.is_empty() {
+                        if let Some(result) = canvas_result.as_ref() {
+                            self.render_canvas_command_result_palette_surface(ui, result);
+                            ui.separator();
+                        }
+                        if palette_items.is_empty() && canvas_result.is_none() {
                             ui.small(self.locale.text(ShellText::NoMatchingCommands));
                             return;
                         }
@@ -1747,6 +1775,21 @@ impl ReadyAppState {
         if !open {
             self.command_palette.close();
         }
+    }
+
+    fn render_canvas_command_result_palette_surface(
+        &self,
+        ui: &mut egui::Ui,
+        result: &radishflow_studio::StudioGuiCanvasCommandResultCommandSurfaceViewModel,
+    ) {
+        ui.small(egui::RichText::new("Canvas result").strong());
+        ui.horizontal_wrapped(|ui| {
+            render_status_chip(ui, result.status_label, notice_color(result.level));
+            ui.label(&result.title);
+        });
+        render_wrapped_small(ui, &result.detail);
+        ui.small(&result.menu_path_text);
+        ui.add_space(6.0);
     }
 
     pub(super) fn render_panel_toggle(

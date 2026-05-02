@@ -791,6 +791,14 @@ impl ReadyAppState {
         self.canvas_command_result = Some(result);
     }
 
+    pub(super) fn canvas_command_result_command_surface(
+        &self,
+    ) -> Option<radishflow_studio::StudioGuiCanvasCommandResultCommandSurfaceViewModel> {
+        self.canvas_command_result
+            .as_ref()
+            .map(|result| result.command_surface())
+    }
+
     pub(super) fn record_ui_command_ignored_feedback(&mut self, outcome: &StudioGuiDriverOutcome) {
         if let StudioGuiDriverOutcome::HostCommand(
             radishflow_studio::StudioGuiHostCommandOutcome::UiCommandDispatched(result),

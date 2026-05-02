@@ -113,7 +113,65 @@ pub struct StudioGuiCanvasCommandResultViewModel {
     pub anchor_label: Option<String>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioGuiCanvasCommandResultCommandSurfaceViewModel {
+    pub level: rf_ui::RunPanelNoticeLevel,
+    pub status_label: &'static str,
+    pub title: String,
+    pub detail: String,
+    pub target_command_id: String,
+    pub target_label: String,
+    pub menu_path_text: String,
+    pub search_text: String,
+}
+
+impl StudioGuiCanvasCommandResultCommandSurfaceViewModel {
+    pub fn matches_query(&self, query: &str) -> bool {
+        let query = query.trim().to_ascii_lowercase();
+        query.is_empty()
+            || query
+                .split_whitespace()
+                .all(|token| self.search_text.contains(token))
+    }
+}
+
 impl StudioGuiCanvasCommandResultViewModel {
+    pub fn command_surface(&self) -> StudioGuiCanvasCommandResultCommandSurfaceViewModel {
+        let target_label = format!(
+            "{} {} ({})",
+            self.target.kind_label, self.target.target_id, self.target.label
+        );
+        let menu_path_text = format!(
+            "Canvas > Last result > {} > {}",
+            self.status_label, self.target.command_id
+        );
+        let search_text = [
+            "canvas",
+            "result",
+            self.status_label,
+            self.title.as_str(),
+            self.detail.as_str(),
+            self.target.kind_label,
+            self.target.target_id.as_str(),
+            self.target.label.as_str(),
+            self.target.command_id.as_str(),
+            self.anchor_label.as_deref().unwrap_or(""),
+        ]
+        .join(" ")
+        .to_ascii_lowercase();
+
+        StudioGuiCanvasCommandResultCommandSurfaceViewModel {
+            level: self.level,
+            status_label: self.status_label,
+            title: self.title.clone(),
+            detail: self.detail.clone(),
+            target_command_id: self.target.command_id.clone(),
+            target_label,
+            menu_path_text,
+            search_text,
+        }
+    }
+
     pub fn pending_edit_unavailable(position: rf_ui::CanvasPoint) -> Self {
         let target = pending_edit_command_target();
         let title = "Canvas pending edit unavailable".to_string();
@@ -1651,6 +1709,17 @@ mod tests {
             created.activity_line,
             "canvas unit created: Unit flash-1 -> unit-slot-1"
         );
+        let surface = created.command_surface();
+        assert_eq!(surface.status_label, "created");
+        assert_eq!(surface.title, "Canvas unit created");
+        assert_eq!(surface.target_command_id, "inspector.focus_unit:flash-1");
+        assert_eq!(
+            surface.menu_path_text,
+            "Canvas > Last result > created > inspector.focus_unit:flash-1"
+        );
+        assert!(surface.matches_query("canvas created"));
+        assert!(surface.matches_query("flash-1"));
+        assert!(!surface.matches_query("stream-feed"));
 
         let unavailable_edit =
             crate::StudioGuiCanvasCommandResultViewModel::pending_edit_unavailable(
