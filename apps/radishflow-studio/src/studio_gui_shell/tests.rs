@@ -254,6 +254,7 @@ fn canvas_object_list_filter_matches_expected_object_groups() {
         target_id: "flash-1".to_string(),
         label: "Flash Drum".to_string(),
         detail: "flash_drum | ports 1/3".to_string(),
+        viewport_anchor_label: "unit-slot-1".to_string(),
         command_id: "inspector.focus_unit:flash-1".to_string(),
         related_stream_ids: Vec::new(),
         status_badges: vec![radishflow_studio::StudioGuiCanvasStatusBadgeViewModel {
@@ -268,6 +269,7 @@ fn canvas_object_list_filter_matches_expected_object_groups() {
         target_id: "stream-feed".to_string(),
         label: "Feed".to_string(),
         detail: "feed-1:outlet -> flash-1:inlet".to_string(),
+        viewport_anchor_label: "stream-feed:0".to_string(),
         command_id: "inspector.focus_stream:stream-feed".to_string(),
         related_stream_ids: vec!["stream-feed".to_string()],
         status_badges: Vec::new(),
@@ -957,6 +959,53 @@ fn command_palette_items_surface_window_model_results() {
             .collect::<Vec<_>>(),
         vec!["run_panel.set_active".to_string()]
     );
+}
+
+#[test]
+fn command_palette_can_focus_canvas_object_navigation_command() {
+    let (config, project_path) = flash_drum_local_rules_config();
+    let mut app = ready_app_state(&config);
+    app.command_palette.open();
+    app.command_palette.query = "viewport flash-1".to_string();
+    let commands = app.platform_host.snapshot().window_model().commands;
+
+    let palette_items = commands.palette_items(&app.command_palette.query);
+    assert_eq!(palette_items.len(), 1);
+    assert_eq!(palette_items[0].command_id, "inspector.focus_unit:flash-1");
+    assert_eq!(
+        palette_items[0].menu_path_text,
+        "Canvas > Objects > Unit > Flash Drum"
+    );
+
+    let consumed = run_with_key_press(egui::Key::Enter, egui::Modifiers::NONE, |ctx| {
+        app.handle_command_palette_keyboard(ctx, &commands)
+    });
+
+    assert!(consumed);
+    assert!(!app.command_palette.open);
+    assert_eq!(
+        app.platform_host
+            .snapshot()
+            .window_model()
+            .runtime
+            .active_inspector_target
+            .as_ref()
+            .map(|target| (target.kind_label, target.target_id.as_str())),
+        Some(("Unit", "flash-1"))
+    );
+    assert_eq!(
+        app.canvas_viewport_navigation
+            .active_focus
+            .as_ref()
+            .map(|focus| (
+                focus.kind_label,
+                focus.target_id.as_str(),
+                focus.anchor_label.as_str()
+            )),
+        Some(("Unit", "flash-1", "unit-slot-1"))
+    );
+
+    let _ = std::fs::remove_file(project_path);
 }
 
 #[test]

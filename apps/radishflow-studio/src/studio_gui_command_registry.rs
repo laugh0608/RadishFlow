@@ -1,6 +1,6 @@
 use crate::{
     StudioAppHostUiCommandGroup, StudioAppHostUiCommandModel, StudioGuiCanvasActionId,
-    StudioGuiCanvasState, StudioWindowHostId,
+    StudioGuiCanvasObjectListItemViewModel, StudioGuiCanvasState, StudioWindowHostId,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -187,9 +187,9 @@ impl StudioGuiCommandRegistry {
             }
         }
 
+        let widget = canvas.widget();
         if !canvas.suggestions.is_empty() || canvas.pending_edit.is_some() {
-            let widget = canvas.widget();
-            for action in widget.actions {
+            for action in &widget.actions {
                 let defaults = command_defaults(action.command_id);
                 canvas_commands.push(StudioGuiCommandEntry {
                     command_id: action.command_id.to_string(),
@@ -211,6 +211,13 @@ impl StudioGuiCommandRegistry {
                     shortcut: defaults.shortcut,
                 });
             }
+        }
+        if canvas_target_window_id.is_some() {
+            canvas_commands.extend(widget.view().object_list.items.iter().enumerate().map(
+                |(index, item)| {
+                    canvas_object_navigation_command_entry(item, index, canvas_target_window_id)
+                },
+            ));
         }
 
         let mut sections = Vec::new();
@@ -451,6 +458,48 @@ fn canvas_sort_order(action_id: StudioGuiCanvasActionId) -> u16 {
         StudioGuiCanvasActionId::FocusNext => 320,
         StudioGuiCanvasActionId::FocusPrevious => 330,
         StudioGuiCanvasActionId::CancelPendingEdit => 340,
+    }
+}
+
+fn canvas_object_navigation_command_entry(
+    item: &StudioGuiCanvasObjectListItemViewModel,
+    index: usize,
+    target_window_id: Option<StudioWindowHostId>,
+) -> StudioGuiCommandEntry {
+    let sort_order = 400u16.saturating_add(index.min(u16::MAX as usize - 400) as u16);
+    let label = format!("Locate {} {}", item.kind_label, item.label);
+    let detail = format!(
+        "Open the {} Inspector for `{}` and request Canvas viewport focus at `{}`. {}",
+        item.kind_label, item.target_id, item.viewport_anchor_label, item.detail
+    );
+
+    StudioGuiCommandEntry {
+        command_id: item.command_id.clone(),
+        label,
+        detail,
+        enabled: true,
+        sort_order,
+        target_window_id,
+        menu_path: vec![
+            "Canvas".to_string(),
+            "Objects".to_string(),
+            item.kind_label.to_string(),
+            item.label.clone(),
+        ],
+        search_terms: vec![
+            "canvas".to_string(),
+            "object".to_string(),
+            "objects".to_string(),
+            "locate".to_string(),
+            "focus".to_string(),
+            "viewport".to_string(),
+            item.kind_label.to_string(),
+            item.target_id.clone(),
+            item.label.clone(),
+            item.detail.clone(),
+            item.viewport_anchor_label.clone(),
+        ],
+        shortcut: None,
     }
 }
 
@@ -839,6 +888,88 @@ mod tests {
             .expect("expected cancel pending edit command");
         assert!(cancel.enabled);
         assert_eq!(cancel.target_window_id, Some(7));
+    }
+
+    #[test]
+    fn gui_command_registry_includes_canvas_object_navigation_commands() {
+        let canvas = crate::StudioGuiCanvasState {
+            units: vec![crate::StudioGuiCanvasUnitState {
+                unit_id: rf_types::UnitId::new("flash-1"),
+                name: "Flash Drum".to_string(),
+                kind: "flash_drum".to_string(),
+                ports: vec![crate::StudioGuiCanvasUnitPortState {
+                    name: "inlet".to_string(),
+                    direction: rf_types::PortDirection::Inlet,
+                    kind: rf_types::PortKind::Material,
+                    stream_id: Some(rf_types::StreamId::new("stream-feed")),
+                }],
+                port_count: 1,
+                connected_port_count: 1,
+                is_active_inspector_target: false,
+            }],
+            streams: vec![crate::StudioGuiCanvasStreamState {
+                stream_id: rf_types::StreamId::new("stream-feed"),
+                name: "Feed".to_string(),
+                source: None,
+                sink: Some(crate::StudioGuiCanvasStreamEndpointState {
+                    unit_id: rf_types::UnitId::new("flash-1"),
+                    port_name: "inlet".to_string(),
+                }),
+                is_active_inspector_target: false,
+            }],
+            ..crate::StudioGuiCanvasState::default()
+        };
+
+        let registry = StudioGuiCommandRegistry::from_surfaces(
+            &StudioAppHostUiCommandModel::default(),
+            &canvas,
+            Some(9),
+        );
+
+        let commands = registry
+            .sections
+            .iter()
+            .find(|section| section.group == StudioGuiCommandGroup::Canvas)
+            .expect("expected canvas command section")
+            .commands
+            .iter()
+            .map(|entry| {
+                (
+                    entry.command_id.as_str(),
+                    entry.label.as_str(),
+                    entry.detail.as_str(),
+                    entry.menu_path.clone(),
+                    entry.target_window_id,
+                )
+            })
+            .collect::<Vec<_>>();
+
+        assert_eq!(commands.len(), 2);
+        assert_eq!(
+            commands[0],
+            (
+                "inspector.focus_unit:flash-1",
+                "Locate Unit Flash Drum",
+                "Open the Unit Inspector for `flash-1` and request Canvas viewport focus at `unit-slot-0`. flash_drum | ports 1/1",
+                vec![
+                    "Canvas".to_string(),
+                    "Objects".to_string(),
+                    "Unit".to_string(),
+                    "Flash Drum".to_string(),
+                ],
+                Some(9),
+            )
+        );
+        assert_eq!(
+            commands[1].0, "inspector.focus_stream:stream-feed",
+            "expected stream object navigation command"
+        );
+        assert!(
+            registry
+                .filtered_commands("canvas viewport stream-feed")
+                .iter()
+                .any(|entry| entry.command_id == "inspector.focus_stream:stream-feed")
+        );
     }
 
     #[test]

@@ -99,6 +99,7 @@ pub struct StudioGuiCanvasObjectListItemViewModel {
     pub target_id: String,
     pub label: String,
     pub detail: String,
+    pub viewport_anchor_label: String,
     pub command_id: String,
     pub related_stream_ids: Vec<String>,
     pub status_badges: Vec<StudioGuiCanvasStatusBadgeViewModel>,
@@ -854,6 +855,7 @@ fn canvas_object_list(
                 "{} | ports {}/{}",
                 unit.kind, unit.connected_port_count, unit.port_count
             ),
+            viewport_anchor_label: format!("unit-slot-{}", unit.layout_slot),
             command_id: unit.command_id.clone(),
             related_stream_ids: unit
                 .ports
@@ -885,6 +887,7 @@ fn canvas_object_list(
                     target_id: stream.stream_id.clone(),
                     label: stream.name.clone(),
                     detail: format!("{source} -> {sink}"),
+                    viewport_anchor_label: stream.line_id.clone(),
                     command_id: stream.command_id.clone(),
                     related_stream_ids: vec![stream.stream_id.clone()],
                     status_badges: stream.status_badges.clone(),
