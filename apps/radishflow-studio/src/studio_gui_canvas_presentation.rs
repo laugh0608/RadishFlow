@@ -74,6 +74,26 @@ pub struct StudioGuiCanvasFocusCalloutViewModel {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioGuiCanvasViewportFocusViewModel {
+    pub kind_label: &'static str,
+    pub target_id: String,
+    pub source_label: &'static str,
+    pub anchor_label: String,
+    pub detail: String,
+    pub command_id: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioGuiCanvasViewportViewModel {
+    pub mode_label: &'static str,
+    pub layout_label: &'static str,
+    pub summary: String,
+    pub unit_count: usize,
+    pub stream_line_count: usize,
+    pub focus: Option<StudioGuiCanvasViewportFocusViewModel>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StudioGuiCanvasObjectListItemViewModel {
     pub kind_label: &'static str,
     pub target_id: String,
@@ -160,6 +180,7 @@ pub struct StudioGuiCanvasViewModel {
     pub focused_suggestion_id: Option<String>,
     pub current_selection: Option<StudioGuiCanvasSelectionViewModel>,
     pub focus_callout: Option<StudioGuiCanvasFocusCalloutViewModel>,
+    pub viewport: StudioGuiCanvasViewportViewModel,
     pub object_list: StudioGuiCanvasObjectListViewModel,
     pub legend: StudioGuiCanvasLegendViewModel,
     pub unit_count: usize,
@@ -357,6 +378,13 @@ impl StudioGuiCanvasViewModel {
             });
         let focus_callout = canvas_focus_callout(&unit_blocks, &stream_lines);
         let object_list = canvas_object_list(&unit_blocks, &stream_lines);
+        let viewport = canvas_viewport(
+            state.view_mode,
+            &unit_blocks,
+            &stream_lines,
+            current_selection.as_ref(),
+            state.focused_suggestion_id.as_ref().map(|id| id.as_str()),
+        );
         let legend = canvas_legend(
             run_status.as_ref(),
             pending_edit.as_ref(),
@@ -385,6 +413,7 @@ impl StudioGuiCanvasViewModel {
             focused_suggestion_id,
             current_selection,
             focus_callout,
+            viewport,
             object_list,
             legend,
             unit_count: unit_blocks.len(),
@@ -461,6 +490,21 @@ impl StudioGuiCanvasTextView {
                         callout.title,
                         callout.detail,
                         callout.command_id
+                    ))
+                    .unwrap_or_else(|| "none".to_string())
+            ),
+            format!(
+                "viewport: mode={} layout={} units={} streams={} focus={}",
+                view.viewport.mode_label,
+                view.viewport.layout_label,
+                view.viewport.unit_count,
+                view.viewport.stream_line_count,
+                view.viewport
+                    .focus
+                    .as_ref()
+                    .map(|focus| format!(
+                        "{} {} source={} anchor={}",
+                        focus.kind_label, focus.target_id, focus.source_label, focus.anchor_label
                     ))
                     .unwrap_or_else(|| "none".to_string())
             ),
@@ -716,6 +760,84 @@ fn canvas_focus_callout(
                     }
                 })
         })
+}
+
+fn canvas_viewport(
+    view_mode: rf_ui::CanvasViewMode,
+    units: &[StudioGuiCanvasUnitBlockViewModel],
+    stream_lines: &[StudioGuiCanvasStreamLineViewModel],
+    current_selection: Option<&StudioGuiCanvasSelectionViewModel>,
+    focused_suggestion_id: Option<&str>,
+) -> StudioGuiCanvasViewportViewModel {
+    let layout_label = "transient_grid";
+    let mode_label = canvas_view_mode_label(view_mode);
+    let unit_count = units.len();
+    let stream_line_count = stream_lines.len();
+    let focus = current_selection
+        .and_then(|selection| canvas_viewport_focus_for_selection(selection, units, stream_lines));
+    let focus_summary = focus
+        .as_ref()
+        .map(|focus| format!("focus {} {}", focus.kind_label, focus.target_id))
+        .or_else(|| focused_suggestion_id.map(|id| format!("suggestion {id} focused")))
+        .unwrap_or_else(|| "no active focus target".to_string());
+
+    StudioGuiCanvasViewportViewModel {
+        mode_label,
+        layout_label,
+        summary: format!(
+            "{mode_label} {layout_label}: {unit_count} unit(s), {stream_line_count} material line(s), {focus_summary}"
+        ),
+        unit_count,
+        stream_line_count,
+        focus,
+    }
+}
+
+fn canvas_viewport_focus_for_selection(
+    selection: &StudioGuiCanvasSelectionViewModel,
+    units: &[StudioGuiCanvasUnitBlockViewModel],
+    stream_lines: &[StudioGuiCanvasStreamLineViewModel],
+) -> Option<StudioGuiCanvasViewportFocusViewModel> {
+    match selection.kind_label {
+        "Unit" => units
+            .iter()
+            .find(|unit| unit.unit_id == selection.target_id)
+            .map(|unit| StudioGuiCanvasViewportFocusViewModel {
+                kind_label: "Unit",
+                target_id: unit.unit_id.clone(),
+                source_label: "active_inspector_target",
+                anchor_label: format!("unit-slot-{}", unit.layout_slot),
+                detail: format!(
+                    "{} | ports {}/{}",
+                    unit.kind, unit.connected_port_count, unit.port_count
+                ),
+                command_id: unit.command_id.clone(),
+            }),
+        "Stream" => stream_lines
+            .iter()
+            .find(|stream| stream.stream_id == selection.target_id)
+            .map(|stream| {
+                let source = stream
+                    .source
+                    .as_ref()
+                    .map(|endpoint| format!("{}:{}", endpoint.unit_id, endpoint.port_name))
+                    .unwrap_or_else(|| "unbound-source".to_string());
+                let sink = stream
+                    .sink
+                    .as_ref()
+                    .map(|endpoint| format!("{}:{}", endpoint.unit_id, endpoint.port_name))
+                    .unwrap_or_else(|| "terminal".to_string());
+                StudioGuiCanvasViewportFocusViewModel {
+                    kind_label: "Stream",
+                    target_id: stream.stream_id.clone(),
+                    source_label: "active_inspector_target",
+                    anchor_label: stream.line_id.clone(),
+                    detail: format!("{source} -> {sink}"),
+                    command_id: stream.command_id.clone(),
+                }
+            }),
+        _ => None,
+    }
 }
 
 fn canvas_object_list(
@@ -1043,6 +1165,13 @@ fn run_status_label(status: rf_ui::RunStatus) -> &'static str {
     }
 }
 
+fn canvas_view_mode_label(view_mode: rf_ui::CanvasViewMode) -> &'static str {
+    match view_mode {
+        rf_ui::CanvasViewMode::Planar => "Planar",
+        rf_ui::CanvasViewMode::Perspective => "Perspective",
+    }
+}
+
 fn solve_pending_reason_label(reason: rf_ui::SolvePendingReason) -> &'static str {
     match reason {
         rf_ui::SolvePendingReason::DocumentRevisionAdvanced => "DocumentRevisionAdvanced",
@@ -1188,12 +1317,27 @@ mod tests {
                 "focused suggestion: none".to_string(),
                 "current selection: none".to_string(),
                 "focus callout: none".to_string(),
+                "viewport: mode=Planar layout=transient_grid units=0 streams=0 focus=none"
+                    .to_string(),
                 "unit count: 0".to_string(),
                 "stream line count: 0".to_string(),
                 "object list count: units=0 streams=0 attention=0 items=0".to_string(),
                 "legend: Canvas legend items=1".to_string(),
                 "suggestion count: 0".to_string(),
             ]
+        );
+        assert_eq!(
+            presentation.view.viewport,
+            crate::StudioGuiCanvasViewportViewModel {
+                mode_label: "Planar",
+                layout_label: "transient_grid",
+                summary:
+                    "Planar transient_grid: 0 unit(s), 0 material line(s), no active focus target"
+                        .to_string(),
+                unit_count: 0,
+                stream_line_count: 0,
+                focus: None,
+            }
         );
         assert_eq!(
             presentation.view.legend,
@@ -1237,6 +1381,8 @@ mod tests {
                 "focused suggestion: none".to_string(),
                 "current selection: none".to_string(),
                 "focus callout: none".to_string(),
+                "viewport: mode=Planar layout=transient_grid units=0 streams=0 focus=none"
+                    .to_string(),
                 "unit count: 0".to_string(),
                 "stream line count: 0".to_string(),
                 "object list count: units=0 streams=0 attention=0 items=0".to_string(),
@@ -1514,6 +1660,8 @@ mod tests {
                     .to_string(),
                 "current selection: none".to_string(),
                 "focus callout: none".to_string(),
+                "viewport: mode=Planar layout=transient_grid units=3 streams=2 focus=none"
+                    .to_string(),
                 "unit count: 3".to_string(),
                 "stream line count: 2".to_string(),
                 "object list count: units=3 streams=2 attention=0 items=5".to_string(),
@@ -1566,6 +1714,17 @@ mod tests {
                 kind_label: "Unit",
                 target_id: "flash-1".to_string(),
                 title: "Flash Drum".to_string(),
+                detail: "flash_drum | ports 0/3".to_string(),
+                command_id: "inspector.focus_unit:flash-1".to_string(),
+            })
+        );
+        assert_eq!(
+            focused_unit.window.canvas.widget.view().viewport.focus,
+            Some(crate::StudioGuiCanvasViewportFocusViewModel {
+                kind_label: "Unit",
+                target_id: "flash-1".to_string(),
+                source_label: "active_inspector_target",
+                anchor_label: "unit-slot-1".to_string(),
                 detail: "flash_drum | ports 0/3".to_string(),
                 command_id: "inspector.focus_unit:flash-1".to_string(),
             })
@@ -1623,6 +1782,17 @@ mod tests {
                 kind_label: "Stream",
                 target_id: "stream-feed".to_string(),
                 title: "Feed".to_string(),
+                detail: "feed-1:outlet -> heater-1:inlet".to_string(),
+                command_id: "inspector.focus_stream:stream-feed".to_string(),
+            })
+        );
+        assert_eq!(
+            focused_stream.window.canvas.widget.view().viewport.focus,
+            Some(crate::StudioGuiCanvasViewportFocusViewModel {
+                kind_label: "Stream",
+                target_id: "stream-feed".to_string(),
+                source_label: "active_inspector_target",
+                anchor_label: "stream-feed:0".to_string(),
                 detail: "feed-1:outlet -> heater-1:inlet".to_string(),
                 command_id: "inspector.focus_stream:stream-feed".to_string(),
             })

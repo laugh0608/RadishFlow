@@ -68,6 +68,7 @@ impl ReadyAppState {
             }
         });
         self.render_canvas_selection_summary(ui, widget);
+        self.render_canvas_viewport_summary(ui, widget);
         self.render_canvas_legend(ui, widget);
         ui.separator();
         let hovered_stream_id = self.render_canvas_drop_surface(ui, widget);
@@ -259,6 +260,43 @@ impl ReadyAppState {
                 }
             } else {
                 ui.small("none");
+            }
+        });
+    }
+
+    fn render_canvas_viewport_summary(
+        &mut self,
+        ui: &mut egui::Ui,
+        widget: &radishflow_studio::StudioGuiCanvasWidgetModel,
+    ) {
+        let viewport = &widget.view().viewport;
+        ui.horizontal_wrapped(|ui| {
+            ui.small(egui::RichText::new("Viewport").strong());
+            render_status_chip(
+                ui,
+                viewport.mode_label,
+                egui::Color32::from_rgb(86, 118, 168),
+            );
+            render_status_chip(
+                ui,
+                viewport.layout_label,
+                egui::Color32::from_rgb(86, 96, 108),
+            );
+            ui.small(&viewport.summary);
+            if let Some(focus) = viewport.focus.as_ref() {
+                render_status_chip(
+                    ui,
+                    &format!("{} {}", focus.kind_label, focus.target_id),
+                    egui::Color32::from_rgb(48, 112, 188),
+                );
+                ui.small(&focus.anchor_label);
+                if ui
+                    .small_button("Focus")
+                    .on_hover_text(&focus.detail)
+                    .clicked()
+                {
+                    self.dispatch_ui_command(&focus.command_id);
+                }
             }
         });
     }

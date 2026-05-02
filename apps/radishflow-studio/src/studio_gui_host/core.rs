@@ -108,6 +108,7 @@ impl StudioGuiHost {
             control_state.notice.as_ref(),
         );
         StudioGuiCanvasState {
+            view_mode: canvas.view_mode,
             units,
             streams,
             run_status: Some(control_state.run_status),

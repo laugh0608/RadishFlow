@@ -190,7 +190,8 @@ pub use studio_gui_canvas_presentation::{
     StudioGuiCanvasStatusBadgeViewModel, StudioGuiCanvasStreamLineEndpointViewModel,
     StudioGuiCanvasStreamLineViewModel, StudioGuiCanvasSuggestionViewModel,
     StudioGuiCanvasTextView, StudioGuiCanvasUnitBlockViewModel, StudioGuiCanvasUnitPortViewModel,
-    StudioGuiCanvasViewModel,
+    StudioGuiCanvasViewModel, StudioGuiCanvasViewportFocusViewModel,
+    StudioGuiCanvasViewportViewModel,
 };
 pub use studio_gui_canvas_widget::{
     StudioGuiCanvasActionId, StudioGuiCanvasRenderableAction, StudioGuiCanvasWidgetEvent,

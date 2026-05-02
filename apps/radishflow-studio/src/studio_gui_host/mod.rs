@@ -121,6 +121,7 @@ pub struct StudioGuiHostCloseWindowResult {
 
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct StudioGuiCanvasState {
+    pub view_mode: rf_ui::CanvasViewMode,
     pub units: Vec<StudioGuiCanvasUnitState>,
     pub streams: Vec<StudioGuiCanvasStreamState>,
     pub run_status: Option<rf_ui::RunStatus>,
