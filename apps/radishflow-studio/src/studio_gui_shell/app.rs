@@ -446,11 +446,12 @@ impl ReadyAppState {
         match self
             .dispatch_event_result(StudioGuiEvent::CanvasPendingEditCommitRequested { position })
         {
-            Ok(dispatch) => self.record_canvas_pending_edit_commit_feedback(&dispatch),
+            Ok(dispatch) => self.record_canvas_pending_edit_commit_feedback(&dispatch, position),
             Err(error) => {
                 let message = format!("[{}] {}", error.code().as_str(), error.message());
                 self.platform_host
                     .record_activity_line(format!("event failed: {message}"));
+                self.record_canvas_pending_edit_commit_error(position, &message);
             }
         }
     }
@@ -708,6 +709,7 @@ impl ReadyAppState {
     pub(super) fn record_canvas_pending_edit_commit_feedback(
         &mut self,
         dispatch: &StudioGuiPlatformExecutedDispatch,
+        position: rf_ui::CanvasPoint,
     ) {
         let committed = match &dispatch.dispatch.outcome {
             StudioGuiDriverOutcome::CanvasInteraction(result) => result.committed_edit.as_ref(),
@@ -722,6 +724,13 @@ impl ReadyAppState {
             _ => None,
         };
         let Some(committed) = committed else {
+            let result =
+                radishflow_studio::StudioGuiCanvasCommandResultViewModel::pending_edit_unavailable(
+                    position,
+                );
+            self.platform_host
+                .record_activity_line(result.activity_line.clone());
+            self.canvas_command_result = Some(result);
             return;
         };
 
@@ -763,6 +772,20 @@ impl ReadyAppState {
         } else {
             radishflow_studio::StudioGuiCanvasCommandResultViewModel::anchor_unavailable(target)
         };
+        self.platform_host
+            .record_activity_line(result.activity_line.clone());
+        self.canvas_command_result = Some(result);
+    }
+
+    pub(super) fn record_canvas_pending_edit_commit_error(
+        &mut self,
+        position: rf_ui::CanvasPoint,
+        error_message: &str,
+    ) {
+        let result = radishflow_studio::StudioGuiCanvasCommandResultViewModel::pending_edit_failed(
+            position,
+            error_message,
+        );
         self.platform_host
             .record_activity_line(result.activity_line.clone());
         self.canvas_command_result = Some(result);

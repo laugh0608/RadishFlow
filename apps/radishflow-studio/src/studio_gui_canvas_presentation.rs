@@ -114,6 +114,42 @@ pub struct StudioGuiCanvasCommandResultViewModel {
 }
 
 impl StudioGuiCanvasCommandResultViewModel {
+    pub fn pending_edit_unavailable(position: rf_ui::CanvasPoint) -> Self {
+        let target = pending_edit_command_target();
+        let title = "Canvas pending edit unavailable".to_string();
+        let activity_line = command_result_activity_line(&title, &target);
+        Self {
+            level: rf_ui::RunPanelNoticeLevel::Warning,
+            status_label: "pending_edit_unavailable",
+            detail: format!(
+                "Canvas pending edit commit at ({:.1}, {:.1}) did not create a unit because no pending edit was active.",
+                position.x, position.y
+            ),
+            title,
+            activity_line,
+            anchor_label: None,
+            target,
+        }
+    }
+
+    pub fn pending_edit_failed(position: rf_ui::CanvasPoint, error_message: &str) -> Self {
+        let target = pending_edit_command_target();
+        let title = "Canvas pending edit failed".to_string();
+        let activity_line = command_result_activity_line(&title, &target);
+        Self {
+            level: rf_ui::RunPanelNoticeLevel::Error,
+            status_label: "pending_edit_failed",
+            detail: format!(
+                "Canvas pending edit commit at ({:.1}, {:.1}) failed through `{}`: {}",
+                position.x, position.y, target.command_id, error_message
+            ),
+            title,
+            activity_line,
+            anchor_label: None,
+            target,
+        }
+    }
+
     pub fn created_unit(
         target: StudioGuiCanvasCommandTargetViewModel,
         anchor_label: impl Into<String>,
@@ -229,6 +265,16 @@ impl StudioGuiCanvasCommandResultViewModel {
             target,
             anchor_label: Some(anchor_label),
         }
+    }
+}
+
+fn pending_edit_command_target() -> StudioGuiCanvasCommandTargetViewModel {
+    StudioGuiCanvasCommandTargetViewModel {
+        kind_label: "Edit",
+        target_id: "pending_edit".to_string(),
+        label: "Pending canvas edit".to_string(),
+        viewport_anchor_label: None,
+        command_id: "canvas.commit_pending_edit_at".to_string(),
     }
 }
 
@@ -1605,6 +1651,34 @@ mod tests {
             created.activity_line,
             "canvas unit created: Unit flash-1 -> unit-slot-1"
         );
+
+        let unavailable_edit =
+            crate::StudioGuiCanvasCommandResultViewModel::pending_edit_unavailable(
+                rf_ui::CanvasPoint::new(4.0, 8.0),
+            );
+        assert_eq!(unavailable_edit.level, rf_ui::RunPanelNoticeLevel::Warning);
+        assert_eq!(unavailable_edit.status_label, "pending_edit_unavailable");
+        assert_eq!(
+            unavailable_edit.activity_line,
+            "Canvas pending edit unavailable: Edit pending_edit (Pending canvas edit)"
+        );
+        assert!(
+            unavailable_edit
+                .detail
+                .contains("no pending edit was active")
+        );
+
+        let failed_edit = crate::StudioGuiCanvasCommandResultViewModel::pending_edit_failed(
+            rf_ui::CanvasPoint::new(5.0, 9.0),
+            "[invalid_input] unsupported unit kind",
+        );
+        assert_eq!(failed_edit.level, rf_ui::RunPanelNoticeLevel::Error);
+        assert_eq!(failed_edit.status_label, "pending_edit_failed");
+        assert_eq!(
+            failed_edit.target.command_id,
+            "canvas.commit_pending_edit_at"
+        );
+        assert!(failed_edit.detail.contains("unsupported unit kind"));
 
         let unavailable =
             crate::StudioGuiCanvasCommandResultViewModel::anchor_unavailable(target.clone());

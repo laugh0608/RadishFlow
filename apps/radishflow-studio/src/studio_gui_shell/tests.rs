@@ -427,6 +427,100 @@ fn canvas_pending_edit_commit_records_created_unit_focus_feedback() {
 }
 
 #[test]
+fn canvas_pending_edit_commit_reports_missing_pending_edit_through_command_result() {
+    let mut app = ready_app_state(&lease_expiring_config());
+
+    app.dispatch_canvas_pending_edit_commit(rf_ui::CanvasPoint::new(12.0, 24.0));
+
+    assert_eq!(app.canvas_viewport_navigation.active_anchor, None);
+    assert_eq!(
+        app.canvas_command_result.as_ref().map(|result| (
+            result.level,
+            result.status_label,
+            result.title.as_str(),
+            result.target.kind_label,
+            result.target.target_id.as_str(),
+            result.target.command_id.as_str(),
+        )),
+        Some((
+            RunPanelNoticeLevel::Warning,
+            "pending_edit_unavailable",
+            "Canvas pending edit unavailable",
+            "Edit",
+            "pending_edit",
+            "canvas.commit_pending_edit_at",
+        ))
+    );
+    assert!(
+        app.canvas_command_result
+            .as_ref()
+            .map(|result| result.detail.contains("no pending edit was active"))
+            .unwrap_or(false)
+    );
+    assert!(
+        app.platform_host
+            .snapshot()
+            .runtime
+            .gui_activity_lines
+            .iter()
+            .any(|line| line
+                == "Canvas pending edit unavailable: Edit pending_edit (Pending canvas edit)")
+    );
+    assert!(
+        !app.platform_host
+            .snapshot()
+            .runtime
+            .workspace_document
+            .has_unsaved_changes
+    );
+}
+
+#[test]
+fn canvas_pending_edit_commit_reports_dispatch_error_through_command_result() {
+    let mut app = ready_app_state(&lease_expiring_config());
+
+    app.record_canvas_pending_edit_commit_error(
+        rf_ui::CanvasPoint::new(12.0, 24.0),
+        "[invalid_input] canvas place unit intent uses unsupported unit kind `Pump`",
+    );
+
+    assert_eq!(app.canvas_viewport_navigation.active_anchor, None);
+    assert_eq!(
+        app.canvas_command_result.as_ref().map(|result| (
+            result.level,
+            result.status_label,
+            result.title.as_str(),
+            result.target.kind_label,
+            result.target.target_id.as_str(),
+            result.target.command_id.as_str(),
+        )),
+        Some((
+            RunPanelNoticeLevel::Error,
+            "pending_edit_failed",
+            "Canvas pending edit failed",
+            "Edit",
+            "pending_edit",
+            "canvas.commit_pending_edit_at",
+        ))
+    );
+    assert!(
+        app.canvas_command_result
+            .as_ref()
+            .map(|result| result.detail.contains("unsupported unit kind `Pump`"))
+            .unwrap_or(false)
+    );
+    assert!(
+        app.platform_host
+            .snapshot()
+            .runtime
+            .gui_activity_lines
+            .iter()
+            .any(|line| line
+                == "Canvas pending edit failed: Edit pending_edit (Pending canvas edit)")
+    );
+}
+
+#[test]
 fn canvas_viewport_navigation_reports_missing_inspector_target() {
     let (config, project_path) = flash_drum_local_rules_config();
     let mut app = ready_app_state(&config);
