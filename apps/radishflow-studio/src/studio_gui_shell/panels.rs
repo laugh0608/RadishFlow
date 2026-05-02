@@ -68,6 +68,7 @@ impl ReadyAppState {
             }
         });
         self.render_canvas_selection_summary(ui, widget);
+        self.render_canvas_legend(ui, widget);
         ui.separator();
         let hovered_stream_id = self.render_canvas_drop_surface(ui, widget);
         ui.add_space(8.0);
@@ -145,7 +146,7 @@ impl ReadyAppState {
                 let label = format!("{} {}", option.label, option.count);
                 if ui
                     .add_enabled(option.enabled, egui::Button::new(label).selected(selected))
-                    .on_hover_text("Filter the read-only canvas object list")
+                    .on_hover_text(option.detail)
                     .clicked()
                 {
                     if let Some(filter) = CanvasObjectListFilter::from_filter_id(option.filter_id) {
@@ -258,6 +259,32 @@ impl ReadyAppState {
                 }
             } else {
                 ui.small("none");
+            }
+        });
+    }
+
+    fn render_canvas_legend(
+        &self,
+        ui: &mut egui::Ui,
+        widget: &radishflow_studio::StudioGuiCanvasWidgetModel,
+    ) {
+        let legend = &widget.view().legend;
+        if legend.items.is_empty() {
+            return;
+        }
+
+        ui.horizontal_wrapped(|ui| {
+            ui.small(egui::RichText::new(legend.title).strong());
+            for item in &legend.items {
+                let color = canvas_legend_swatch_color(item.swatch_label);
+                let label = format!("{}: {}", item.kind_label, item.label);
+                render_status_chip(ui, &label, color);
+                ui.add(
+                    egui::Label::new(egui::RichText::new(&item.detail).small())
+                        .wrap()
+                        .sense(egui::Sense::hover()),
+                )
+                .on_hover_text(&item.detail);
             }
         });
     }
@@ -2410,6 +2437,17 @@ fn canvas_status_badge_color(severity_label: &str) -> egui::Color32 {
     match severity_label {
         "Error" => egui::Color32::from_rgb(180, 40, 40),
         "Warning" => egui::Color32::from_rgb(180, 120, 20),
+        _ => egui::Color32::from_rgb(86, 96, 108),
+    }
+}
+
+fn canvas_legend_swatch_color(swatch_label: &str) -> egui::Color32 {
+    match swatch_label {
+        "run_status" => egui::Color32::from_rgb(86, 118, 168),
+        "attention" => notice_color(rf_ui::RunPanelNoticeLevel::Warning),
+        "port" => egui::Color32::from_rgb(42, 142, 122),
+        "stream" => egui::Color32::from_rgb(42, 142, 122),
+        "pending_edit" => egui::Color32::from_rgb(52, 128, 89),
         _ => egui::Color32::from_rgb(86, 96, 108),
     }
 }

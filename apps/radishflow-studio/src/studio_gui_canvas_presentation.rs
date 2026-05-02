@@ -98,6 +98,7 @@ pub struct StudioGuiCanvasObjectListViewModel {
 pub struct StudioGuiCanvasObjectListFilterOptionViewModel {
     pub filter_id: &'static str,
     pub label: &'static str,
+    pub detail: &'static str,
     pub count: usize,
     pub enabled: bool,
 }
@@ -138,6 +139,20 @@ pub struct StudioGuiCanvasStatusBadgeViewModel {
     pub detail: String,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioGuiCanvasLegendItemViewModel {
+    pub kind_label: &'static str,
+    pub label: String,
+    pub detail: String,
+    pub swatch_label: &'static str,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioGuiCanvasLegendViewModel {
+    pub title: &'static str,
+    pub items: Vec<StudioGuiCanvasLegendItemViewModel>,
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct StudioGuiCanvasViewModel {
     pub run_status: Option<StudioGuiCanvasRunStatusViewModel>,
@@ -146,6 +161,7 @@ pub struct StudioGuiCanvasViewModel {
     pub current_selection: Option<StudioGuiCanvasSelectionViewModel>,
     pub focus_callout: Option<StudioGuiCanvasFocusCalloutViewModel>,
     pub object_list: StudioGuiCanvasObjectListViewModel,
+    pub legend: StudioGuiCanvasLegendViewModel,
     pub unit_count: usize,
     pub stream_line_count: usize,
     pub suggestion_count: usize,
@@ -341,6 +357,13 @@ impl StudioGuiCanvasViewModel {
             });
         let focus_callout = canvas_focus_callout(&unit_blocks, &stream_lines);
         let object_list = canvas_object_list(&unit_blocks, &stream_lines);
+        let legend = canvas_legend(
+            run_status.as_ref(),
+            pending_edit.as_ref(),
+            &object_list,
+            &unit_blocks,
+            &stream_lines,
+        );
         let suggestions = state
             .suggestions
             .iter()
@@ -363,6 +386,7 @@ impl StudioGuiCanvasViewModel {
             current_selection,
             focus_callout,
             object_list,
+            legend,
             unit_count: unit_blocks.len(),
             stream_line_count: stream_lines.len(),
             suggestion_count: suggestions.len(),
@@ -448,6 +472,11 @@ impl StudioGuiCanvasTextView {
                 view.object_list.stream_count,
                 view.object_list.attention_count,
                 view.object_list.items.len()
+            ),
+            format!(
+                "legend: {} items={}",
+                view.legend.title,
+                view.legend.items.len()
             ),
             format!("suggestion count: {}", view.suggestion_count),
         ];
@@ -764,28 +793,120 @@ fn canvas_object_list(
             StudioGuiCanvasObjectListFilterOptionViewModel {
                 filter_id: "all",
                 label: "All",
+                detail: "Every canvas object surfaced by the current document",
                 count: items.len(),
                 enabled: !items.is_empty(),
             },
             StudioGuiCanvasObjectListFilterOptionViewModel {
                 filter_id: "attention",
                 label: "Attention",
+                detail: "Objects with warning or error badges",
                 count: attention_count,
                 enabled: attention_count > 0,
             },
             StudioGuiCanvasObjectListFilterOptionViewModel {
                 filter_id: "units",
                 label: "Units",
+                detail: "Unit blocks",
                 count: units.len(),
                 enabled: !units.is_empty(),
             },
             StudioGuiCanvasObjectListFilterOptionViewModel {
                 filter_id: "streams",
                 label: "Streams",
+                detail: "Material stream lines",
                 count: stream_count,
                 enabled: stream_count > 0,
             },
         ],
+        items,
+    }
+}
+
+fn canvas_legend(
+    run_status: Option<&StudioGuiCanvasRunStatusViewModel>,
+    pending_edit: Option<&StudioGuiCanvasPendingEditViewModel>,
+    object_list: &StudioGuiCanvasObjectListViewModel,
+    units: &[StudioGuiCanvasUnitBlockViewModel],
+    stream_lines: &[StudioGuiCanvasStreamLineViewModel],
+) -> StudioGuiCanvasLegendViewModel {
+    let mut items = Vec::new();
+
+    if let Some(status) = run_status {
+        let run_detail = status
+            .summary
+            .clone()
+            .or_else(|| {
+                status
+                    .pending_reason_label
+                    .map(|reason| format!("pending reason {reason}"))
+            })
+            .unwrap_or_else(|| "no current solve summary".to_string());
+        items.push(StudioGuiCanvasLegendItemViewModel {
+            kind_label: "Run",
+            label: status.status_label.to_string(),
+            detail: format!(
+                "{run_detail}; diagnostics={} attention={}",
+                status.diagnostic_count, status.attention_count
+            ),
+            swatch_label: "run_status",
+        });
+    }
+
+    if object_list.attention_count > 0 {
+        items.push(StudioGuiCanvasLegendItemViewModel {
+            kind_label: "Attention",
+            label: format!("{} object(s)", object_list.attention_count),
+            detail: "warning/error badges are aggregated onto related units and streams"
+                .to_string(),
+            swatch_label: "attention",
+        });
+    } else {
+        items.push(StudioGuiCanvasLegendItemViewModel {
+            kind_label: "Attention",
+            label: "No warning/error badges".to_string(),
+            detail: "info diagnostics stay out of the canvas badge layer".to_string(),
+            swatch_label: "neutral",
+        });
+    }
+
+    let connected_port_count = units
+        .iter()
+        .flat_map(|unit| unit.ports.iter())
+        .filter(|port| port.is_connected)
+        .count();
+    let total_port_count = units.iter().map(|unit| unit.ports.len()).sum::<usize>();
+    if total_port_count > 0 {
+        items.push(StudioGuiCanvasLegendItemViewModel {
+            kind_label: "Ports",
+            label: format!("{connected_port_count}/{total_port_count} bound"),
+            detail: "green markers have stream bindings; gray markers are unbound".to_string(),
+            swatch_label: "port",
+        });
+    }
+
+    if !stream_lines.is_empty() {
+        items.push(StudioGuiCanvasLegendItemViewModel {
+            kind_label: "Streams",
+            label: format!("{} material line(s)", stream_lines.len()),
+            detail:
+                "arrows indicate source port to sink port; terminal lines end at product outlets"
+                    .to_string(),
+            swatch_label: "stream",
+        });
+    }
+
+    if pending_edit.is_some() {
+        items.push(StudioGuiCanvasLegendItemViewModel {
+            kind_label: "Edit",
+            label: "Pending placement".to_string(),
+            detail: "unit placement intent is active".to_string(),
+            swatch_label: "pending_edit",
+        });
+    }
+
+    StudioGuiCanvasLegendViewModel {
+        title: "Canvas legend",
         items,
     }
 }
@@ -1024,24 +1145,28 @@ mod tests {
                     crate::StudioGuiCanvasObjectListFilterOptionViewModel {
                         filter_id: "all",
                         label: "All",
+                        detail: "Every canvas object surfaced by the current document",
                         count: 0,
                         enabled: false,
                     },
                     crate::StudioGuiCanvasObjectListFilterOptionViewModel {
                         filter_id: "attention",
                         label: "Attention",
+                        detail: "Objects with warning or error badges",
                         count: 0,
                         enabled: false,
                     },
                     crate::StudioGuiCanvasObjectListFilterOptionViewModel {
                         filter_id: "units",
                         label: "Units",
+                        detail: "Unit blocks",
                         count: 0,
                         enabled: false,
                     },
                     crate::StudioGuiCanvasObjectListFilterOptionViewModel {
                         filter_id: "streams",
                         label: "Streams",
+                        detail: "Material stream lines",
                         count: 0,
                         enabled: false,
                     },
@@ -1066,8 +1191,21 @@ mod tests {
                 "unit count: 0".to_string(),
                 "stream line count: 0".to_string(),
                 "object list count: units=0 streams=0 attention=0 items=0".to_string(),
+                "legend: Canvas legend items=1".to_string(),
                 "suggestion count: 0".to_string(),
             ]
+        );
+        assert_eq!(
+            presentation.view.legend,
+            crate::StudioGuiCanvasLegendViewModel {
+                title: "Canvas legend",
+                items: vec![crate::StudioGuiCanvasLegendItemViewModel {
+                    kind_label: "Attention",
+                    label: "No warning/error badges".to_string(),
+                    detail: "info diagnostics stay out of the canvas badge layer".to_string(),
+                    swatch_label: "neutral",
+                }],
+            }
         );
     }
 
@@ -1102,9 +1240,15 @@ mod tests {
                 "unit count: 0".to_string(),
                 "stream line count: 0".to_string(),
                 "object list count: units=0 streams=0 attention=0 items=0".to_string(),
+                "legend: Canvas legend items=2".to_string(),
                 "suggestion count: 0".to_string(),
             ]
         );
+        assert!(presentation.view.legend.items.iter().any(|item| {
+            item.kind_label == "Edit"
+                && item.label == "Pending placement"
+                && item.swatch_label == "pending_edit"
+        }));
     }
 
     #[test]
@@ -1157,6 +1301,26 @@ mod tests {
                 .map(|status| (status.status_label, status.attention_count)),
             Some(("Error", 1))
         );
+        assert!(presentation.view.legend.items.iter().any(|item| {
+            item.kind_label == "Run"
+                && item.label == "Error"
+                && item.detail.contains("diagnostics=1 attention=1")
+        }));
+        assert!(presentation.view.legend.items.iter().any(|item| {
+            item.kind_label == "Attention"
+                && item.label == "2 object(s)"
+                && item.swatch_label == "attention"
+        }));
+        assert!(presentation.view.legend.items.iter().any(|item| {
+            item.kind_label == "Ports"
+                && item.label == "1/1 bound"
+                && item.detail.contains("green markers")
+        }));
+        assert!(presentation.view.legend.items.iter().any(|item| {
+            item.kind_label == "Streams"
+                && item.label == "1 material line(s)"
+                && item.detail.contains("terminal lines")
+        }));
         let unit = presentation
             .view
             .unit_blocks
@@ -1353,6 +1517,7 @@ mod tests {
                 "unit count: 3".to_string(),
                 "stream line count: 2".to_string(),
                 "object list count: units=3 streams=2 attention=0 items=5".to_string(),
+                "legend: Canvas legend items=4".to_string(),
                 "suggestion count: 3".to_string(),
                 "- unit feed-1 kind=feed ports=1/1 badges=none command=inspector.focus_unit:feed-1".to_string(),
                 "- unit flash-1 kind=flash_drum ports=0/3 badges=none command=inspector.focus_unit:flash-1".to_string(),
