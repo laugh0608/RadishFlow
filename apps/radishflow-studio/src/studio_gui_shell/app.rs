@@ -265,6 +265,7 @@ impl ReadyAppState {
                 self.drop_preview_overlay_anchor = None;
                 self.last_viewport_focused = None;
                 self.canvas_viewport_navigation = CanvasViewportNavigationState::default();
+                self.canvas_command_result = None;
                 self.result_inspector.reset();
                 self.project_open.path_input = project_path.display().to_string();
                 let recent_projects_notice =
@@ -585,20 +586,46 @@ impl ReadyAppState {
         let snapshot = self.platform_host.snapshot();
         let window = snapshot.window_model();
         let focus = window.canvas.widget.view().viewport.focus.as_ref();
-        if self
+        if let Some(anchor_label) = self
             .canvas_viewport_navigation
-            .request_for_command(command_id, focus, canvas_navigation)
+            .request_for_command(command_id, focus)
         {
             self.last_area_focus = Some(StudioGuiWindowAreaId::Canvas);
-            if canvas_navigation.is_some() {
-                if let Some(result) = self.canvas_viewport_navigation.command_result.as_ref() {
-                    self.platform_host
-                        .record_activity_line(result.activity_line.clone());
-                }
+            if let Some(target) = canvas_navigation {
+                let result = radishflow_studio::StudioGuiCanvasCommandResultViewModel::located(
+                    target.clone(),
+                    anchor_label,
+                );
+                self.platform_host
+                    .record_activity_line(result.activity_line.clone());
+                self.canvas_command_result = Some(result);
             }
             return true;
         }
         false
+    }
+
+    pub(super) fn reconcile_canvas_viewport_navigation(
+        &mut self,
+        focus: Option<&radishflow_studio::StudioGuiCanvasViewportFocusViewModel>,
+    ) {
+        let Some(expired_anchor) = self.canvas_viewport_navigation.reconcile(focus) else {
+            return;
+        };
+        let Some(target) = self
+            .canvas_command_result
+            .as_ref()
+            .filter(|result| result.anchor_label.as_deref() == Some(expired_anchor.as_str()))
+            .map(|result| result.target.clone())
+        else {
+            return;
+        };
+        self.canvas_command_result = Some(
+            radishflow_studio::StudioGuiCanvasCommandResultViewModel::anchor_expired(
+                target,
+                expired_anchor,
+            ),
+        );
     }
 
     pub(super) fn canvas_object_navigation_request(
@@ -662,7 +689,7 @@ impl ReadyAppState {
         };
         self.platform_host
             .record_activity_line(result.activity_line.clone());
-        self.canvas_viewport_navigation.command_result = Some(result);
+        self.canvas_command_result = Some(result);
     }
 
     pub(super) fn record_ui_command_ignored_feedback(&mut self, outcome: &StudioGuiDriverOutcome) {

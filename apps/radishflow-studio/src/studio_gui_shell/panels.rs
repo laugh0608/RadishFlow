@@ -299,7 +299,7 @@ impl ReadyAppState {
                 }
             }
         });
-        if let Some(result) = self.canvas_viewport_navigation.command_result.as_ref() {
+        if let Some(result) = self.canvas_command_result.as_ref() {
             ui.colored_label(notice_color(result.level), &result.title);
             render_wrapped_small(ui, &result.detail);
         }
@@ -341,8 +341,7 @@ impl ReadyAppState {
         let focus_callout = view.focus_callout.as_ref();
         let unit_blocks = &view.unit_blocks;
         let stream_lines = &view.stream_lines;
-        self.canvas_viewport_navigation
-            .reconcile(view.viewport.focus.as_ref());
+        self.reconcile_canvas_viewport_navigation(view.viewport.focus.as_ref());
         let available_width = ui.available_width().max(320.0);
         let desired_size = egui::vec2(available_width, 280.0);
         let (rect, response) = ui.allocate_exact_size(desired_size, egui::Sense::click());

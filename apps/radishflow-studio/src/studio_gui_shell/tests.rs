@@ -299,19 +299,17 @@ fn canvas_viewport_navigation_records_inspector_focus_commands() {
 
     let unit_focus = app
         .canvas_viewport_navigation
-        .active_focus
+        .active_anchor
         .as_ref()
         .expect("expected unit viewport focus");
-    assert_eq!(unit_focus.kind_label, "Unit");
-    assert_eq!(unit_focus.target_id, "flash-1");
     assert_eq!(unit_focus.anchor_label, "unit-slot-1");
-    assert_eq!(unit_focus.command_id, "inspector.focus_unit:flash-1");
     assert!(unit_focus.pending_scroll);
     assert_eq!(
-        app.canvas_viewport_navigation
-            .command_result
-            .as_ref()
-            .map(|result| (result.level, result.status_label, result.title.as_str())),
+        app.canvas_command_result.as_ref().map(|result| (
+            result.level,
+            result.status_label,
+            result.title.as_str()
+        )),
         Some((
             RunPanelNoticeLevel::Info,
             "located",
@@ -340,16 +338,10 @@ fn canvas_viewport_navigation_records_inspector_focus_commands() {
 
     let stream_focus = app
         .canvas_viewport_navigation
-        .active_focus
+        .active_anchor
         .as_ref()
         .expect("expected stream viewport focus");
-    assert_eq!(stream_focus.kind_label, "Stream");
-    assert_eq!(stream_focus.target_id, "stream-feed");
     assert_eq!(stream_focus.anchor_label, "stream-feed:0");
-    assert_eq!(
-        stream_focus.command_id,
-        "inspector.focus_stream:stream-feed"
-    );
     assert!(stream_focus.pending_scroll);
 
     let _ = std::fs::remove_file(project_path);
@@ -362,12 +354,13 @@ fn canvas_viewport_navigation_reports_missing_inspector_target() {
 
     app.dispatch_ui_command("inspector.focus_unit:missing-unit");
 
-    assert_eq!(app.canvas_viewport_navigation.active_focus, None);
+    assert_eq!(app.canvas_viewport_navigation.active_anchor, None);
     assert_eq!(
-        app.canvas_viewport_navigation
-            .command_result
-            .as_ref()
-            .map(|result| (result.level, result.status_label, result.title.as_str())),
+        app.canvas_command_result.as_ref().map(|result| (
+            result.level,
+            result.status_label,
+            result.title.as_str()
+        )),
         Some((
             RunPanelNoticeLevel::Error,
             "dispatch_failed",
@@ -375,8 +368,7 @@ fn canvas_viewport_navigation_reports_missing_inspector_target() {
         ))
     );
     assert!(
-        app.canvas_viewport_navigation
-            .command_result
+        app.canvas_command_result
             .as_ref()
             .map(|result| result.detail.contains("missing-unit"))
             .unwrap_or(false)
@@ -398,29 +390,29 @@ fn canvas_viewport_navigation_reconciles_against_current_presentation_focus() {
     let (config, project_path) = flash_drum_local_rules_config();
     let mut app = ready_app_state(&config);
     app.dispatch_ui_command("inspector.focus_unit:flash-1");
-    assert!(app.canvas_viewport_navigation.active_focus.is_some());
+    assert!(app.canvas_viewport_navigation.active_anchor.is_some());
 
     app.dispatch_ui_command("inspector.focus_stream:stream-feed");
     let window = app.platform_host.snapshot().window_model();
-    app.canvas_viewport_navigation
-        .reconcile(window.canvas.widget.view().viewport.focus.as_ref());
+    app.reconcile_canvas_viewport_navigation(window.canvas.widget.view().viewport.focus.as_ref());
 
     assert_eq!(
         app.canvas_viewport_navigation
-            .active_focus
+            .active_anchor
             .as_ref()
-            .map(|focus| (focus.kind_label, focus.target_id.as_str())),
-        Some(("Stream", "stream-feed"))
+            .map(|focus| focus.anchor_label.as_str()),
+        Some("stream-feed:0")
     );
 
-    app.canvas_viewport_navigation.reconcile(None);
+    app.reconcile_canvas_viewport_navigation(None);
 
-    assert_eq!(app.canvas_viewport_navigation.active_focus, None);
+    assert_eq!(app.canvas_viewport_navigation.active_anchor, None);
     assert_eq!(
-        app.canvas_viewport_navigation
-            .command_result
-            .as_ref()
-            .map(|result| (result.level, result.status_label, result.title.as_str())),
+        app.canvas_command_result.as_ref().map(|result| (
+            result.level,
+            result.status_label,
+            result.title.as_str()
+        )),
         Some((
             RunPanelNoticeLevel::Warning,
             "anchor_expired",
@@ -1063,14 +1055,10 @@ fn command_palette_can_focus_canvas_object_navigation_command() {
     );
     assert_eq!(
         app.canvas_viewport_navigation
-            .active_focus
+            .active_anchor
             .as_ref()
-            .map(|focus| (
-                focus.kind_label,
-                focus.target_id.as_str(),
-                focus.anchor_label.as_str()
-            )),
-        Some(("Unit", "flash-1", "unit-slot-1"))
+            .map(|focus| focus.anchor_label.as_str()),
+        Some("unit-slot-1")
     );
 
     let _ = std::fs::remove_file(project_path);
