@@ -546,10 +546,19 @@ mod tests {
                     result.action,
                     StudioGuiCanvasInteractionAction::CancelPendingEdit
                 );
+                assert_eq!(result.committed_edit, None);
                 assert_eq!(result.canvas.pending_edit, None);
                 assert_eq!(dispatch.canvas.pending_edit, None);
             }
             other => panic!("expected canvas ui command outcome, got {other:?}"),
         }
+
+        assert!(
+            !dispatch
+                .snapshot
+                .runtime
+                .workspace_document
+                .has_unsaved_changes
+        );
     }
 }

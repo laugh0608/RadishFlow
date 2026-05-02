@@ -876,6 +876,32 @@ mod tests {
             }),
             ..crate::StudioGuiCanvasState::default()
         };
+        let widget = canvas.widget();
+
+        let pending_edit = widget
+            .view()
+            .pending_edit
+            .as_ref()
+            .expect("expected pending edit presentation");
+        assert_eq!(pending_edit.intent_label, "place_unit");
+        assert_eq!(pending_edit.summary, "place unit kind=Flash Drum");
+        assert!(pending_edit.cancel_enabled);
+        let begin_action = widget
+            .action(StudioGuiCanvasActionId::BeginPlaceFlashDrum)
+            .expect("expected begin place action");
+        assert_eq!(
+            begin_action.command_id,
+            canvas_command_id(StudioGuiCanvasActionId::BeginPlaceFlashDrum)
+        );
+        assert!(!begin_action.enabled);
+        let cancel_action = widget
+            .action(StudioGuiCanvasActionId::CancelPendingEdit)
+            .expect("expected cancel pending edit action");
+        assert_eq!(
+            cancel_action.command_id,
+            canvas_command_id(StudioGuiCanvasActionId::CancelPendingEdit)
+        );
+        assert!(cancel_action.enabled);
 
         let registry = StudioGuiCommandRegistry::from_surfaces(
             &StudioAppHostUiCommandModel::default(),
@@ -883,11 +909,25 @@ mod tests {
             Some(7),
         );
 
+        let begin = registry
+            .command(canvas_command_id(
+                StudioGuiCanvasActionId::BeginPlaceFlashDrum,
+            ))
+            .expect("expected begin place command");
+        assert_eq!(begin.label, "Place Flash Drum");
+        assert_eq!(begin.detail, "Start placing a Flash Drum on the canvas");
+        assert_eq!(begin.menu_path, vec!["Canvas", "Place Flash Drum"]);
+        assert!(!begin.enabled);
+        assert_eq!(begin.target_window_id, Some(7));
+
         let cancel = registry
             .command(canvas_command_id(
                 StudioGuiCanvasActionId::CancelPendingEdit,
             ))
             .expect("expected cancel pending edit command");
+        assert_eq!(cancel.label, "Cancel pending edit");
+        assert_eq!(cancel.detail, "Cancel the current canvas edit intent");
+        assert_eq!(cancel.menu_path, vec!["Canvas", "Cancel Pending Edit"]);
         assert!(cancel.enabled);
         assert_eq!(cancel.target_window_id, Some(7));
     }
