@@ -45,6 +45,7 @@ fn pick_native_save_project_file() -> Option<PathBuf> {
     None
 }
 
+#[cfg(target_os = "windows")]
 fn ensure_project_file_extension(path: PathBuf) -> PathBuf {
     let value = path.to_string_lossy();
     if value.ends_with(rf_store::STORED_PROJECT_FILE_EXTENSION) {
