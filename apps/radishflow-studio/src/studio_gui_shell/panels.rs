@@ -473,9 +473,10 @@ impl ReadyAppState {
         if pending_edit.is_some() && response.clicked() && !clicked_unit && !clicked_stream {
             if let Some(pointer_pos) = response.interact_pointer_pos() {
                 let local = pointer_pos - rect.min;
-                self.dispatch_event(StudioGuiEvent::CanvasPendingEditCommitRequested {
-                    position: rf_ui::CanvasPoint::new(local.x as f64, local.y as f64),
-                });
+                self.dispatch_canvas_pending_edit_commit(rf_ui::CanvasPoint::new(
+                    local.x as f64,
+                    local.y as f64,
+                ));
             }
         }
 

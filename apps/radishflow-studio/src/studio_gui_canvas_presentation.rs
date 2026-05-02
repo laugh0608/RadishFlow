@@ -114,6 +114,35 @@ pub struct StudioGuiCanvasCommandResultViewModel {
 }
 
 impl StudioGuiCanvasCommandResultViewModel {
+    pub fn created_unit(
+        target: StudioGuiCanvasCommandTargetViewModel,
+        anchor_label: impl Into<String>,
+        committed: &rf_ui::CanvasEditCommitResult,
+    ) -> Self {
+        let anchor_label = anchor_label.into();
+        let title = "Canvas unit created".to_string();
+        Self {
+            level: rf_ui::RunPanelNoticeLevel::Info,
+            status_label: "created",
+            detail: format!(
+                "{} `{}` was created at ({:.1}, {:.1}), revision {}, and anchored at `{}`.",
+                target.kind_label,
+                target.target_id,
+                committed.position.x,
+                committed.position.y,
+                committed.revision,
+                anchor_label
+            ),
+            activity_line: format!(
+                "canvas unit created: {} {} -> {}",
+                target.kind_label, target.target_id, anchor_label
+            ),
+            title,
+            target,
+            anchor_label: Some(anchor_label),
+        }
+    }
+
     pub fn located(
         target: StudioGuiCanvasCommandTargetViewModel,
         anchor_label: impl Into<String>,
@@ -1549,6 +1578,32 @@ mod tests {
         assert_eq!(
             located.activity_line,
             "canvas object located: Unit flash-1 -> unit-slot-1"
+        );
+
+        let committed = rf_ui::CanvasEditCommitResult {
+            intent: rf_ui::CanvasEditIntent::PlaceUnit {
+                unit_kind: "Flash Drum".to_string(),
+            },
+            command: rf_ui::DocumentCommand::CreateUnit {
+                unit_id: rf_types::UnitId::new("flash-1"),
+                kind: "flash_drum".to_string(),
+            },
+            revision: 3,
+            unit_id: rf_types::UnitId::new("flash-1"),
+            position: rf_ui::CanvasPoint::new(12.0, 24.0),
+        };
+        let created = crate::StudioGuiCanvasCommandResultViewModel::created_unit(
+            target.clone(),
+            "unit-slot-1",
+            &committed,
+        );
+        assert_eq!(created.level, rf_ui::RunPanelNoticeLevel::Info);
+        assert_eq!(created.status_label, "created");
+        assert_eq!(created.title, "Canvas unit created");
+        assert!(created.detail.contains("revision 3"));
+        assert_eq!(
+            created.activity_line,
+            "canvas unit created: Unit flash-1 -> unit-slot-1"
         );
 
         let unavailable =

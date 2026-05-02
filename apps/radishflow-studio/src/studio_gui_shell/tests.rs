@@ -348,6 +348,85 @@ fn canvas_viewport_navigation_records_inspector_focus_commands() {
 }
 
 #[test]
+fn canvas_pending_edit_commit_records_created_unit_focus_feedback() {
+    let mut app = ready_app_state(&lease_expiring_config());
+
+    app.dispatch_ui_command("canvas.begin_place_unit.flash_drum");
+    app.dispatch_canvas_pending_edit_commit(rf_ui::CanvasPoint::new(144.0, 88.0));
+
+    let window = app.platform_host.snapshot().window_model();
+    let focus = window
+        .canvas
+        .widget
+        .view()
+        .viewport
+        .focus
+        .as_ref()
+        .expect("expected created unit focus");
+    assert_eq!(focus.kind_label, "Unit");
+    assert_eq!(focus.target_id, "flash-2");
+    assert_eq!(focus.command_id, "inspector.focus_unit:flash-2");
+    assert_eq!(
+        window
+            .runtime
+            .active_inspector_target
+            .as_ref()
+            .map(|target| {
+                (
+                    target.kind_label,
+                    target.target_id.as_str(),
+                    target.command_id.as_str(),
+                )
+            }),
+        Some(("Unit", "flash-2", "inspector.focus_unit:flash-2"))
+    );
+
+    let active_anchor = app
+        .canvas_viewport_navigation
+        .active_anchor
+        .as_ref()
+        .expect("expected created unit canvas anchor");
+    assert_eq!(active_anchor.anchor_label, focus.anchor_label);
+    assert!(active_anchor.pending_scroll);
+    assert_eq!(app.last_area_focus, Some(StudioGuiWindowAreaId::Canvas));
+    assert_eq!(
+        app.canvas_command_result.as_ref().map(|result| (
+            result.level,
+            result.status_label,
+            result.title.as_str(),
+            result.target.command_id.as_str(),
+            result.anchor_label.as_deref()
+        )),
+        Some((
+            RunPanelNoticeLevel::Info,
+            "created",
+            "Canvas unit created",
+            "inspector.focus_unit:flash-2",
+            Some(focus.anchor_label.as_str())
+        ))
+    );
+    assert!(
+        app.platform_host
+            .snapshot()
+            .runtime
+            .gui_activity_lines
+            .iter()
+            .any(|line| line
+                == &format!(
+                    "canvas unit created: Unit flash-2 -> {}",
+                    focus.anchor_label
+                ))
+    );
+    assert!(
+        app.platform_host
+            .snapshot()
+            .runtime
+            .workspace_document
+            .has_unsaved_changes
+    );
+}
+
+#[test]
 fn canvas_viewport_navigation_reports_missing_inspector_target() {
     let (config, project_path) = flash_drum_local_rules_config();
     let mut app = ready_app_state(&config);

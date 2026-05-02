@@ -330,6 +330,15 @@ impl ResultInspectorState {
 }
 
 impl CanvasViewportNavigationState {
+    fn request_anchor(&mut self, anchor_label: impl Into<String>) -> String {
+        let anchor_label = anchor_label.into();
+        self.active_anchor = Some(CanvasViewportAnchorNavigation {
+            anchor_label: anchor_label.clone(),
+            pending_scroll: true,
+        });
+        anchor_label
+    }
+
     fn request_for_command(
         &mut self,
         command_id: &str,

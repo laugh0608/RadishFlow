@@ -442,6 +442,19 @@ impl ReadyAppState {
         });
     }
 
+    pub(super) fn dispatch_canvas_pending_edit_commit(&mut self, position: rf_ui::CanvasPoint) {
+        match self
+            .dispatch_event_result(StudioGuiEvent::CanvasPendingEditCommitRequested { position })
+        {
+            Ok(dispatch) => self.record_canvas_pending_edit_commit_feedback(&dispatch),
+            Err(error) => {
+                let message = format!("[{}] {}", error.code().as_str(), error.message());
+                self.platform_host
+                    .record_activity_line(format!("event failed: {message}"));
+            }
+        }
+    }
+
     pub(super) fn dispatch_layout_mutation(
         &mut self,
         window_id: Option<StudioWindowHostId>,
@@ -686,6 +699,69 @@ impl ReadyAppState {
             None => radishflow_studio::StudioGuiCanvasCommandResultViewModel::anchor_unavailable(
                 request.clone(),
             ),
+        };
+        self.platform_host
+            .record_activity_line(result.activity_line.clone());
+        self.canvas_command_result = Some(result);
+    }
+
+    pub(super) fn record_canvas_pending_edit_commit_feedback(
+        &mut self,
+        dispatch: &StudioGuiPlatformExecutedDispatch,
+    ) {
+        let committed = match &dispatch.dispatch.outcome {
+            StudioGuiDriverOutcome::CanvasInteraction(result) => result.committed_edit.as_ref(),
+            StudioGuiDriverOutcome::HostCommand(
+                radishflow_studio::StudioGuiHostCommandOutcome::UiCommandDispatched(
+                    radishflow_studio::StudioGuiHostUiCommandDispatchResult::ExecutedCanvasInteraction {
+                        result,
+                        ..
+                    },
+                ),
+            ) => result.committed_edit.as_ref(),
+            _ => None,
+        };
+        let Some(committed) = committed else {
+            return;
+        };
+
+        let window = dispatch.dispatch.window.clone();
+        let view = window.canvas.widget.view();
+        let target = view
+            .object_list
+            .items
+            .iter()
+            .find(|item| item.kind_label == "Unit" && item.target_id == committed.unit_id.as_str())
+            .map(|item| item.command_target())
+            .unwrap_or_else(|| {
+                let command_id = radishflow_studio::inspector_target_command_id(
+                    &rf_ui::InspectorTarget::Unit(committed.unit_id.clone()),
+                );
+                radishflow_studio::StudioGuiCanvasCommandTargetViewModel {
+                    kind_label: "Unit",
+                    target_id: committed.unit_id.as_str().to_string(),
+                    label: committed.unit_id.as_str().to_string(),
+                    viewport_anchor_label: None,
+                    command_id,
+                }
+            });
+        let focus_anchor = view.viewport.focus.as_ref().and_then(|focus| {
+            (focus.kind_label == target.kind_label
+                && focus.target_id == target.target_id
+                && focus.command_id == target.command_id)
+                .then(|| focus.anchor_label.clone())
+        });
+
+        let result = if let Some(anchor_label) = focus_anchor {
+            let anchor_label = self.canvas_viewport_navigation.request_anchor(anchor_label);
+            self.last_area_focus = Some(StudioGuiWindowAreaId::Canvas);
+            radishflow_studio::StudioGuiCanvasCommandResultViewModel::created_unit(
+                target,
+                anchor_label,
+                committed,
+            )
+        } else {
+            radishflow_studio::StudioGuiCanvasCommandResultViewModel::anchor_unavailable(target)
         };
         self.platform_host
             .record_activity_line(result.activity_line.clone());
