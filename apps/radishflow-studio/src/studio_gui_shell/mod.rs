@@ -148,7 +148,7 @@ struct ResultInspectorState {
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 struct CanvasViewportNavigationState {
     active_focus: Option<CanvasViewportFocusNavigation>,
-    notice: Option<CanvasViewportNavigationNotice>,
+    command_result: Option<radishflow_studio::StudioGuiCanvasCommandResultViewModel>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -158,22 +158,6 @@ struct CanvasViewportFocusNavigation {
     anchor_label: String,
     command_id: String,
     pending_scroll: bool,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-struct CanvasViewportNavigationNotice {
-    level: RunPanelNoticeLevel,
-    title: String,
-    detail: String,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-struct CanvasObjectNavigationRequest {
-    kind_label: &'static str,
-    target_id: String,
-    label: String,
-    viewport_anchor_label: Option<String>,
-    command_id: String,
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
@@ -352,6 +336,7 @@ impl CanvasViewportNavigationState {
         &mut self,
         command_id: &str,
         focus: Option<&radishflow_studio::StudioGuiCanvasViewportFocusViewModel>,
+        target: Option<&radishflow_studio::StudioGuiCanvasCommandTargetViewModel>,
     ) -> bool {
         let Some(focus) = focus else {
             self.clear_if_command(command_id);
@@ -369,14 +354,15 @@ impl CanvasViewportNavigationState {
             command_id: focus.command_id.clone(),
             pending_scroll: true,
         });
-        self.notice = Some(CanvasViewportNavigationNotice {
-            level: RunPanelNoticeLevel::Info,
-            title: "Canvas object located".to_string(),
-            detail: format!(
-                "{} `{}` is anchored at `{}`.",
-                focus.kind_label, focus.target_id, focus.anchor_label
+        let target = target
+            .cloned()
+            .unwrap_or_else(|| canvas_command_target_from_focus(focus));
+        self.command_result = Some(
+            radishflow_studio::StudioGuiCanvasCommandResultViewModel::located(
+                target,
+                focus.anchor_label.clone(),
             ),
-        });
+        );
         true
     }
 
@@ -396,14 +382,12 @@ impl CanvasViewportNavigationState {
             })
             .unwrap_or(false);
         if !still_current {
-            self.notice = Some(CanvasViewportNavigationNotice {
-                level: RunPanelNoticeLevel::Warning,
-                title: "Canvas navigation anchor expired".to_string(),
-                detail: format!(
-                    "{} `{}` is no longer exposed by the current Canvas viewport presentation.",
-                    active.kind_label, active.target_id
+            self.command_result = Some(
+                radishflow_studio::StudioGuiCanvasCommandResultViewModel::anchor_expired(
+                    active.canvas_command_target(),
+                    active.anchor_label.clone(),
                 ),
-            });
+            );
             self.active_focus = None;
         }
     }
@@ -435,6 +419,30 @@ impl CanvasViewportNavigationState {
         {
             self.active_focus = None;
         }
+    }
+}
+
+impl CanvasViewportFocusNavigation {
+    fn canvas_command_target(&self) -> radishflow_studio::StudioGuiCanvasCommandTargetViewModel {
+        radishflow_studio::StudioGuiCanvasCommandTargetViewModel {
+            kind_label: self.kind_label,
+            target_id: self.target_id.clone(),
+            label: self.target_id.clone(),
+            viewport_anchor_label: Some(self.anchor_label.clone()),
+            command_id: self.command_id.clone(),
+        }
+    }
+}
+
+fn canvas_command_target_from_focus(
+    focus: &radishflow_studio::StudioGuiCanvasViewportFocusViewModel,
+) -> radishflow_studio::StudioGuiCanvasCommandTargetViewModel {
+    radishflow_studio::StudioGuiCanvasCommandTargetViewModel {
+        kind_label: focus.kind_label,
+        target_id: focus.target_id.clone(),
+        label: focus.target_id.clone(),
+        viewport_anchor_label: Some(focus.anchor_label.clone()),
+        command_id: focus.command_id.clone(),
     }
 }
 

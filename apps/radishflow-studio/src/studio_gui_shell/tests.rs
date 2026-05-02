@@ -309,10 +309,14 @@ fn canvas_viewport_navigation_records_inspector_focus_commands() {
     assert!(unit_focus.pending_scroll);
     assert_eq!(
         app.canvas_viewport_navigation
-            .notice
+            .command_result
             .as_ref()
-            .map(|notice| (notice.level, notice.title.as_str())),
-        Some((RunPanelNoticeLevel::Info, "Canvas object located"))
+            .map(|result| (result.level, result.status_label, result.title.as_str())),
+        Some((
+            RunPanelNoticeLevel::Info,
+            "located",
+            "Canvas object located"
+        ))
     );
     assert!(
         app.platform_host
@@ -361,19 +365,20 @@ fn canvas_viewport_navigation_reports_missing_inspector_target() {
     assert_eq!(app.canvas_viewport_navigation.active_focus, None);
     assert_eq!(
         app.canvas_viewport_navigation
-            .notice
+            .command_result
             .as_ref()
-            .map(|notice| (notice.level, notice.title.as_str())),
+            .map(|result| (result.level, result.status_label, result.title.as_str())),
         Some((
             RunPanelNoticeLevel::Error,
+            "dispatch_failed",
             "Canvas object navigation failed"
         ))
     );
     assert!(
         app.canvas_viewport_navigation
-            .notice
+            .command_result
             .as_ref()
-            .map(|notice| notice.detail.contains("missing-unit"))
+            .map(|result| result.detail.contains("missing-unit"))
             .unwrap_or(false)
     );
     assert!(
@@ -411,6 +416,17 @@ fn canvas_viewport_navigation_reconciles_against_current_presentation_focus() {
     app.canvas_viewport_navigation.reconcile(None);
 
     assert_eq!(app.canvas_viewport_navigation.active_focus, None);
+    assert_eq!(
+        app.canvas_viewport_navigation
+            .command_result
+            .as_ref()
+            .map(|result| (result.level, result.status_label, result.title.as_str())),
+        Some((
+            RunPanelNoticeLevel::Warning,
+            "anchor_expired",
+            "Canvas navigation anchor expired"
+        ))
+    );
 
     let _ = std::fs::remove_file(project_path);
 }

@@ -299,9 +299,9 @@ impl ReadyAppState {
                 }
             }
         });
-        if let Some(notice) = self.canvas_viewport_navigation.notice.as_ref() {
-            ui.colored_label(notice_color(notice.level), &notice.title);
-            render_wrapped_small(ui, &notice.detail);
+        if let Some(result) = self.canvas_viewport_navigation.command_result.as_ref() {
+            ui.colored_label(notice_color(result.level), &result.title);
+            render_wrapped_small(ui, &result.detail);
         }
     }
 

@@ -182,6 +182,7 @@ pub use studio_document_history_command::{
 };
 pub use studio_example_projects::{StudioExampleProjectModel, studio_example_project_models};
 pub use studio_gui_canvas_presentation::{
+    StudioGuiCanvasCommandResultViewModel, StudioGuiCanvasCommandTargetViewModel,
     StudioGuiCanvasFocusCalloutViewModel, StudioGuiCanvasLegendItemViewModel,
     StudioGuiCanvasLegendViewModel, StudioGuiCanvasObjectListFilterOptionViewModel,
     StudioGuiCanvasObjectListItemViewModel, StudioGuiCanvasObjectListViewModel,

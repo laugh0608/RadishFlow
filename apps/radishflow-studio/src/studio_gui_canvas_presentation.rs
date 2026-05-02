@@ -94,6 +94,116 @@ pub struct StudioGuiCanvasViewportViewModel {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioGuiCanvasCommandTargetViewModel {
+    pub kind_label: &'static str,
+    pub target_id: String,
+    pub label: String,
+    pub viewport_anchor_label: Option<String>,
+    pub command_id: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioGuiCanvasCommandResultViewModel {
+    pub level: rf_ui::RunPanelNoticeLevel,
+    pub status_label: &'static str,
+    pub title: String,
+    pub detail: String,
+    pub activity_line: String,
+    pub target: StudioGuiCanvasCommandTargetViewModel,
+    pub anchor_label: Option<String>,
+}
+
+impl StudioGuiCanvasCommandResultViewModel {
+    pub fn located(
+        target: StudioGuiCanvasCommandTargetViewModel,
+        anchor_label: impl Into<String>,
+    ) -> Self {
+        let anchor_label = anchor_label.into();
+        let title = "Canvas object located".to_string();
+        Self {
+            level: rf_ui::RunPanelNoticeLevel::Info,
+            status_label: "located",
+            detail: format!(
+                "{} `{}` is anchored at `{}`.",
+                target.kind_label, target.target_id, anchor_label
+            ),
+            activity_line: format!(
+                "canvas object located: {} {} -> {}",
+                target.kind_label, target.target_id, anchor_label
+            ),
+            title,
+            target,
+            anchor_label: Some(anchor_label),
+        }
+    }
+
+    pub fn anchor_unavailable(target: StudioGuiCanvasCommandTargetViewModel) -> Self {
+        let title = "Canvas viewport anchor unavailable".to_string();
+        let detail = match target.viewport_anchor_label.as_ref() {
+            Some(anchor) => format!(
+                "{} `{}` was requested at `{anchor}`, but the current Canvas presentation did not confirm that focus anchor.",
+                target.kind_label, target.target_id
+            ),
+            None => format!(
+                "{} `{}` was requested, but it is not exposed as a current Canvas object.",
+                target.kind_label, target.target_id
+            ),
+        };
+        let activity_line = command_result_activity_line(&title, &target);
+        Self {
+            level: rf_ui::RunPanelNoticeLevel::Warning,
+            status_label: "anchor_unavailable",
+            title,
+            detail,
+            activity_line,
+            anchor_label: target.viewport_anchor_label.clone(),
+            target,
+        }
+    }
+
+    pub fn dispatch_failed(
+        target: StudioGuiCanvasCommandTargetViewModel,
+        error_message: &str,
+    ) -> Self {
+        let title = "Canvas object navigation failed".to_string();
+        let activity_line = command_result_activity_line(&title, &target);
+        Self {
+            level: rf_ui::RunPanelNoticeLevel::Error,
+            status_label: "dispatch_failed",
+            detail: format!(
+                "{} `{}` could not be focused through `{}`: {}",
+                target.kind_label, target.target_id, target.command_id, error_message
+            ),
+            title,
+            activity_line,
+            anchor_label: target.viewport_anchor_label.clone(),
+            target,
+        }
+    }
+
+    pub fn anchor_expired(
+        target: StudioGuiCanvasCommandTargetViewModel,
+        anchor_label: impl Into<String>,
+    ) -> Self {
+        let anchor_label = anchor_label.into();
+        let title = "Canvas navigation anchor expired".to_string();
+        let activity_line = command_result_activity_line(&title, &target);
+        Self {
+            level: rf_ui::RunPanelNoticeLevel::Warning,
+            status_label: "anchor_expired",
+            detail: format!(
+                "{} `{}` is no longer exposed by the current Canvas viewport presentation.",
+                target.kind_label, target.target_id
+            ),
+            title,
+            activity_line,
+            target,
+            anchor_label: Some(anchor_label),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StudioGuiCanvasObjectListItemViewModel {
     pub kind_label: &'static str,
     pub target_id: String,
@@ -698,6 +808,16 @@ fn canvas_port_stream_label(stream_id: &str, stream_names: &BTreeMap<String, Str
         Some(name) if name != stream_id => format!("{name} ({stream_id})"),
         _ => stream_id.to_string(),
     }
+}
+
+fn command_result_activity_line(
+    title: &str,
+    target: &StudioGuiCanvasCommandTargetViewModel,
+) -> String {
+    format!(
+        "{}: {} {} ({})",
+        title, target.kind_label, target.target_id, target.label
+    )
 }
 
 fn canvas_port_hover_text(
@@ -1398,6 +1518,46 @@ mod tests {
                 && item.label == "Pending placement"
                 && item.swatch_label == "pending_edit"
         }));
+    }
+
+    #[test]
+    fn canvas_command_result_presentation_reports_navigation_outcomes() {
+        let target = crate::StudioGuiCanvasCommandTargetViewModel {
+            kind_label: "Unit",
+            target_id: "flash-1".to_string(),
+            label: "Flash Drum".to_string(),
+            viewport_anchor_label: Some("unit-slot-1".to_string()),
+            command_id: "inspector.focus_unit:flash-1".to_string(),
+        };
+
+        let located =
+            crate::StudioGuiCanvasCommandResultViewModel::located(target.clone(), "unit-slot-1");
+        assert_eq!(located.level, rf_ui::RunPanelNoticeLevel::Info);
+        assert_eq!(located.status_label, "located");
+        assert_eq!(
+            located.activity_line,
+            "canvas object located: Unit flash-1 -> unit-slot-1"
+        );
+
+        let unavailable =
+            crate::StudioGuiCanvasCommandResultViewModel::anchor_unavailable(target.clone());
+        assert_eq!(unavailable.level, rf_ui::RunPanelNoticeLevel::Warning);
+        assert_eq!(unavailable.status_label, "anchor_unavailable");
+        assert!(unavailable.detail.contains("unit-slot-1"));
+
+        let failed = crate::StudioGuiCanvasCommandResultViewModel::dispatch_failed(
+            target.clone(),
+            "[invalid_input] missing target",
+        );
+        assert_eq!(failed.level, rf_ui::RunPanelNoticeLevel::Error);
+        assert_eq!(failed.status_label, "dispatch_failed");
+        assert!(failed.detail.contains("inspector.focus_unit:flash-1"));
+
+        let expired =
+            crate::StudioGuiCanvasCommandResultViewModel::anchor_expired(target, "unit-slot-1");
+        assert_eq!(expired.level, rf_ui::RunPanelNoticeLevel::Warning);
+        assert_eq!(expired.status_label, "anchor_expired");
+        assert_eq!(expired.anchor_label.as_deref(), Some("unit-slot-1"));
     }
 
     #[test]
