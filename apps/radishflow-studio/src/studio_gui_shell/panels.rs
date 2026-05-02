@@ -337,6 +337,8 @@ impl ReadyAppState {
         let focus_callout = view.focus_callout.as_ref();
         let unit_blocks = &view.unit_blocks;
         let stream_lines = &view.stream_lines;
+        self.canvas_viewport_navigation
+            .reconcile(view.viewport.focus.as_ref());
         let available_width = ui.available_width().max(320.0);
         let desired_size = egui::vec2(available_width, 280.0);
         let (rect, response) = ui.allocate_exact_size(desired_size, egui::Sense::click());
@@ -356,6 +358,21 @@ impl ReadyAppState {
         let mut clicked_stream_command = None;
         for stream in stream_lines {
             let geometry = canvas_stream_line_geometry(rect, stream);
+            let is_viewport_focus = self
+                .canvas_viewport_navigation
+                .is_active_anchor(&stream.line_id);
+            if self
+                .canvas_viewport_navigation
+                .take_pending_scroll_for_anchor(&stream.line_id)
+            {
+                ui.scroll_to_rect(
+                    canvas_stream_line_hit_rect(geometry).expand(42.0),
+                    Some(egui::Align::Center),
+                );
+            }
+            if is_viewport_focus {
+                paint_canvas_viewport_stream_focus(&painter, geometry);
+            }
             paint_canvas_stream_line(&painter, geometry, stream);
             paint_canvas_stream_status_badges(&painter, geometry, &stream.status_badges);
             let stream_response = ui
@@ -376,6 +393,19 @@ impl ReadyAppState {
         let mut hovered_port_callout = None;
         for unit in unit_blocks {
             let unit_rect = canvas_unit_block_rect(rect, unit.layout_slot);
+            let anchor_label = canvas_unit_viewport_anchor_label(unit.layout_slot);
+            let is_viewport_focus = self
+                .canvas_viewport_navigation
+                .is_active_anchor(&anchor_label);
+            if self
+                .canvas_viewport_navigation
+                .take_pending_scroll_for_anchor(&anchor_label)
+            {
+                ui.scroll_to_rect(unit_rect.expand(42.0), Some(egui::Align::Center));
+            }
+            if is_viewport_focus {
+                paint_canvas_viewport_unit_focus(&painter, unit_rect);
+            }
             paint_canvas_unit_block(&painter, unit_rect, unit);
             paint_canvas_unit_status_badges(&painter, unit_rect, &unit.status_badges);
             for port in &unit.ports {
@@ -2093,6 +2123,18 @@ fn paint_canvas_stream_line(
     paint_canvas_stream_arrow(painter, geometry, color);
 }
 
+fn paint_canvas_viewport_stream_focus(painter: &egui::Painter, geometry: CanvasStreamLineGeometry) {
+    painter.line_segment(
+        [geometry.start, geometry.end],
+        egui::Stroke::new(8.0, egui::Color32::from_rgba_unmultiplied(210, 128, 38, 54)),
+    );
+    painter.circle_stroke(
+        geometry.start.lerp(geometry.end, 0.5),
+        13.0,
+        egui::Stroke::new(2.0, egui::Color32::from_rgb(210, 128, 38)),
+    );
+}
+
 fn paint_canvas_stream_status_badges(
     painter: &egui::Painter,
     geometry: CanvasStreamLineGeometry,
@@ -2146,6 +2188,10 @@ fn canvas_unit_block_rect(rect: egui::Rect, layout_slot: usize) -> egui::Rect {
         rect.top() + top_padding + row as f32 * (block_size.y + gap.y),
     );
     egui::Rect::from_min_size(min, block_size)
+}
+
+fn canvas_unit_viewport_anchor_label(layout_slot: usize) -> String {
+    format!("unit-slot-{layout_slot}")
 }
 
 fn canvas_unit_port_anchor(
@@ -2244,6 +2290,20 @@ fn paint_canvas_unit_block(
         ),
         egui::FontId::proportional(11.0),
         egui::Color32::from_rgb(86, 96, 108),
+    );
+}
+
+fn paint_canvas_viewport_unit_focus(painter: &egui::Painter, rect: egui::Rect) {
+    let focus_rect = rect.expand(8.0);
+    painter.rect_filled(
+        focus_rect,
+        7.0,
+        egui::Color32::from_rgba_unmultiplied(210, 128, 38, 28),
+    );
+    paint_canvas_rect_border(
+        painter,
+        focus_rect,
+        egui::Stroke::new(2.4, egui::Color32::from_rgb(210, 128, 38)),
     );
 }
 

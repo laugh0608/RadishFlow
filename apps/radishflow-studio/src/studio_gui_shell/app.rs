@@ -264,6 +264,7 @@ impl ReadyAppState {
                 self.active_drop_preview = None;
                 self.drop_preview_overlay_anchor = None;
                 self.last_viewport_focused = None;
+                self.canvas_viewport_navigation = CanvasViewportNavigationState::default();
                 self.result_inspector.reset();
                 self.project_open.path_input = project_path.display().to_string();
                 let recent_projects_notice =
@@ -384,9 +385,11 @@ impl ReadyAppState {
     }
 
     pub(super) fn dispatch_ui_command(&mut self, command_id: impl Into<String>) {
+        let command_id = command_id.into();
         self.dispatch_event(StudioGuiEvent::UiCommandRequested {
-            command_id: command_id.into(),
+            command_id: command_id.clone(),
         });
+        self.record_canvas_viewport_navigation_for_command(&command_id);
     }
 
     pub(super) fn dispatch_inspector_field_draft_update(
@@ -549,6 +552,18 @@ impl ReadyAppState {
     ) -> RfResult<StudioGuiPlatformExecutedDispatch> {
         self.platform_host
             .dispatch_event_and_execute_platform_timer(event, &mut self.platform_timer_executor)
+    }
+
+    pub(super) fn record_canvas_viewport_navigation_for_command(&mut self, command_id: &str) {
+        let snapshot = self.platform_host.snapshot();
+        let window = snapshot.window_model();
+        let focus = window.canvas.widget.view().viewport.focus.as_ref();
+        if self
+            .canvas_viewport_navigation
+            .request_for_command(command_id, focus)
+        {
+            self.last_area_focus = Some(StudioGuiWindowAreaId::Canvas);
+        }
     }
 
     pub(super) fn drain_due_timers(&mut self, ctx: &egui::Context) {

@@ -72,6 +72,7 @@ struct ReadyAppState {
     project_open: ProjectOpenState,
     result_inspector: ResultInspectorState,
     canvas_object_filter: CanvasObjectListFilter,
+    canvas_viewport_navigation: CanvasViewportNavigationState,
     project_file_picker: Box<dyn ProjectFilePicker>,
     preferences_path: PathBuf,
     locale: StudioShellLocale,
@@ -142,6 +143,20 @@ struct ResultInspectorState {
     snapshot_id: Option<String>,
     selected_stream_id: Option<String>,
     comparison_stream_id: Option<String>,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+struct CanvasViewportNavigationState {
+    active_focus: Option<CanvasViewportFocusNavigation>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct CanvasViewportFocusNavigation {
+    kind_label: &'static str,
+    target_id: String,
+    anchor_label: String,
+    command_id: String,
+    pending_scroll: bool,
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
@@ -222,6 +237,7 @@ impl ReadyAppState {
             ),
             result_inspector: ResultInspectorState::default(),
             canvas_object_filter: CanvasObjectListFilter::default(),
+            canvas_viewport_navigation: CanvasViewportNavigationState::default(),
             project_file_picker,
             preferences_path,
             locale: StudioShellLocale::default(),
@@ -311,6 +327,81 @@ impl ResultInspectorState {
         self.snapshot_id = None;
         self.selected_stream_id = None;
         self.comparison_stream_id = None;
+    }
+}
+
+impl CanvasViewportNavigationState {
+    fn request_for_command(
+        &mut self,
+        command_id: &str,
+        focus: Option<&radishflow_studio::StudioGuiCanvasViewportFocusViewModel>,
+    ) -> bool {
+        let Some(focus) = focus else {
+            self.clear_if_command(command_id);
+            return false;
+        };
+        if focus.command_id != command_id {
+            self.clear_if_command(command_id);
+            return false;
+        }
+
+        self.active_focus = Some(CanvasViewportFocusNavigation {
+            kind_label: focus.kind_label,
+            target_id: focus.target_id.clone(),
+            anchor_label: focus.anchor_label.clone(),
+            command_id: focus.command_id.clone(),
+            pending_scroll: true,
+        });
+        true
+    }
+
+    fn reconcile(
+        &mut self,
+        focus: Option<&radishflow_studio::StudioGuiCanvasViewportFocusViewModel>,
+    ) {
+        let Some(active) = self.active_focus.as_ref() else {
+            return;
+        };
+        let still_current = focus
+            .map(|focus| {
+                focus.kind_label == active.kind_label
+                    && focus.target_id == active.target_id
+                    && focus.anchor_label == active.anchor_label
+                    && focus.command_id == active.command_id
+            })
+            .unwrap_or(false);
+        if !still_current {
+            self.active_focus = None;
+        }
+    }
+
+    fn is_active_anchor(&self, anchor_label: &str) -> bool {
+        self.active_focus
+            .as_ref()
+            .map(|focus| focus.anchor_label == anchor_label)
+            .unwrap_or(false)
+    }
+
+    fn take_pending_scroll_for_anchor(&mut self, anchor_label: &str) -> bool {
+        let Some(active) = self.active_focus.as_mut() else {
+            return false;
+        };
+        if active.anchor_label == anchor_label && active.pending_scroll {
+            active.pending_scroll = false;
+            return true;
+        }
+        false
+    }
+
+    fn clear_if_command(&mut self, command_id: &str) {
+        if self
+            .active_focus
+            .as_ref()
+            .map(|focus| focus.command_id == command_id)
+            .unwrap_or(false)
+        {
+            self.active_focus = None;
+        }
     }
 }
 

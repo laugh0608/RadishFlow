@@ -289,6 +289,79 @@ fn canvas_object_list_filter_matches_expected_object_groups() {
 }
 
 #[test]
+fn canvas_viewport_navigation_records_inspector_focus_commands() {
+    let (config, project_path) = flash_drum_local_rules_config();
+    let mut app = ready_app_state(&config);
+
+    app.dispatch_ui_command("inspector.focus_unit:flash-1");
+
+    let unit_focus = app
+        .canvas_viewport_navigation
+        .active_focus
+        .as_ref()
+        .expect("expected unit viewport focus");
+    assert_eq!(unit_focus.kind_label, "Unit");
+    assert_eq!(unit_focus.target_id, "flash-1");
+    assert_eq!(unit_focus.anchor_label, "unit-slot-1");
+    assert_eq!(unit_focus.command_id, "inspector.focus_unit:flash-1");
+    assert!(unit_focus.pending_scroll);
+    assert_eq!(app.last_area_focus, Some(StudioGuiWindowAreaId::Canvas));
+    assert!(
+        app.canvas_viewport_navigation
+            .take_pending_scroll_for_anchor("unit-slot-1")
+    );
+    assert!(
+        !app.canvas_viewport_navigation
+            .take_pending_scroll_for_anchor("unit-slot-1")
+    );
+
+    app.dispatch_ui_command("inspector.focus_stream:stream-feed");
+
+    let stream_focus = app
+        .canvas_viewport_navigation
+        .active_focus
+        .as_ref()
+        .expect("expected stream viewport focus");
+    assert_eq!(stream_focus.kind_label, "Stream");
+    assert_eq!(stream_focus.target_id, "stream-feed");
+    assert_eq!(stream_focus.anchor_label, "stream-feed:0");
+    assert_eq!(
+        stream_focus.command_id,
+        "inspector.focus_stream:stream-feed"
+    );
+    assert!(stream_focus.pending_scroll);
+
+    let _ = std::fs::remove_file(project_path);
+}
+
+#[test]
+fn canvas_viewport_navigation_reconciles_against_current_presentation_focus() {
+    let (config, project_path) = flash_drum_local_rules_config();
+    let mut app = ready_app_state(&config);
+    app.dispatch_ui_command("inspector.focus_unit:flash-1");
+    assert!(app.canvas_viewport_navigation.active_focus.is_some());
+
+    app.dispatch_ui_command("inspector.focus_stream:stream-feed");
+    let window = app.platform_host.snapshot().window_model();
+    app.canvas_viewport_navigation
+        .reconcile(window.canvas.widget.view().viewport.focus.as_ref());
+
+    assert_eq!(
+        app.canvas_viewport_navigation
+            .active_focus
+            .as_ref()
+            .map(|focus| (focus.kind_label, focus.target_id.as_str())),
+        Some(("Stream", "stream-feed"))
+    );
+
+    app.canvas_viewport_navigation.reconcile(None);
+
+    assert_eq!(app.canvas_viewport_navigation.active_focus, None);
+
+    let _ = std::fs::remove_file(project_path);
+}
+
+#[test]
 fn right_sidebar_width_keeps_runtime_panel_readable() {
     let width = region_panel_width_from_values(
         StudioGuiWindowDockRegion::RightSidebar,
