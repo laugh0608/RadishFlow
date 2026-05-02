@@ -466,15 +466,17 @@ fn canvas_object_navigation_command_entry(
     index: usize,
     target_window_id: Option<StudioWindowHostId>,
 ) -> StudioGuiCommandEntry {
+    let target = item.command_target();
     let sort_order = 400u16.saturating_add(index.min(u16::MAX as usize - 400) as u16);
-    let label = format!("Locate {} {}", item.kind_label, item.label);
+    let label = format!("Locate {} {}", target.kind_label, target.label);
+    let anchor = target.viewport_anchor_label.as_deref().unwrap_or("none");
     let detail = format!(
         "Open the {} Inspector for `{}` and request Canvas viewport focus at `{}`. {}",
-        item.kind_label, item.target_id, item.viewport_anchor_label, item.detail
+        target.kind_label, target.target_id, anchor, item.detail
     );
 
     StudioGuiCommandEntry {
-        command_id: item.command_id.clone(),
+        command_id: target.command_id,
         label,
         detail,
         enabled: true,
@@ -483,8 +485,8 @@ fn canvas_object_navigation_command_entry(
         menu_path: vec![
             "Canvas".to_string(),
             "Objects".to_string(),
-            item.kind_label.to_string(),
-            item.label.clone(),
+            target.kind_label.to_string(),
+            target.label.clone(),
         ],
         search_terms: vec![
             "canvas".to_string(),
@@ -493,11 +495,11 @@ fn canvas_object_navigation_command_entry(
             "locate".to_string(),
             "focus".to_string(),
             "viewport".to_string(),
-            item.kind_label.to_string(),
-            item.target_id.clone(),
-            item.label.clone(),
+            target.kind_label.to_string(),
+            target.target_id,
+            target.label,
             item.detail.clone(),
-            item.viewport_anchor_label.clone(),
+            anchor.to_string(),
         ],
         shortcut: None,
     }
@@ -925,6 +927,7 @@ mod tests {
             &canvas,
             Some(9),
         );
+        let canvas_view = canvas.widget().view().clone();
 
         let commands = registry
             .sections
@@ -939,6 +942,7 @@ mod tests {
                     entry.label.as_str(),
                     entry.detail.as_str(),
                     entry.menu_path.clone(),
+                    entry.search_terms.clone(),
                     entry.target_window_id,
                 )
             })
@@ -957,6 +961,19 @@ mod tests {
                     "Unit".to_string(),
                     "Flash Drum".to_string(),
                 ],
+                vec![
+                    "canvas".to_string(),
+                    "object".to_string(),
+                    "objects".to_string(),
+                    "locate".to_string(),
+                    "focus".to_string(),
+                    "viewport".to_string(),
+                    "Unit".to_string(),
+                    "flash-1".to_string(),
+                    "Flash Drum".to_string(),
+                    "flash_drum | ports 1/1".to_string(),
+                    "unit-slot-0".to_string(),
+                ],
                 Some(9),
             )
         );
@@ -970,6 +987,34 @@ mod tests {
                 .iter()
                 .any(|entry| entry.command_id == "inspector.focus_stream:stream-feed")
         );
+        for item in &canvas_view.object_list.items {
+            let target = item.command_target();
+            let command = registry
+                .command(&target.command_id)
+                .expect("expected object command");
+            assert_eq!(command.target_window_id, Some(9));
+            assert_eq!(
+                command.menu_path,
+                vec![
+                    "Canvas".to_string(),
+                    "Objects".to_string(),
+                    target.kind_label.to_string(),
+                    target.label.clone(),
+                ]
+            );
+            assert!(
+                command
+                    .detail
+                    .contains(target.viewport_anchor_label.as_deref().unwrap_or("none")),
+                "expected command detail to include viewport anchor"
+            );
+            assert!(
+                command
+                    .search_terms
+                    .contains(&target.viewport_anchor_label.unwrap_or_default()),
+                "expected command search terms to include viewport anchor"
+            );
+        }
     }
 
     #[test]

@@ -216,6 +216,18 @@ pub struct StudioGuiCanvasObjectListItemViewModel {
     pub is_active: bool,
 }
 
+impl StudioGuiCanvasObjectListItemViewModel {
+    pub fn command_target(&self) -> StudioGuiCanvasCommandTargetViewModel {
+        StudioGuiCanvasCommandTargetViewModel {
+            kind_label: self.kind_label,
+            target_id: self.target_id.clone(),
+            label: self.label.clone(),
+            viewport_anchor_label: Some(self.viewport_anchor_label.clone()),
+            command_id: self.command_id.clone(),
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StudioGuiCanvasObjectListViewModel {
     pub unit_count: usize,
@@ -1558,6 +1570,52 @@ mod tests {
         assert_eq!(expired.level, rf_ui::RunPanelNoticeLevel::Warning);
         assert_eq!(expired.status_label, "anchor_expired");
         assert_eq!(expired.anchor_label.as_deref(), Some("unit-slot-1"));
+    }
+
+    #[test]
+    fn canvas_object_navigation_contract_aligns_object_focus_and_result_target() {
+        let state = crate::StudioGuiCanvasState {
+            units: vec![crate::StudioGuiCanvasUnitState {
+                unit_id: rf_types::UnitId::new("flash-1"),
+                name: "Flash Drum".to_string(),
+                kind: "flash_drum".to_string(),
+                ports: Vec::new(),
+                port_count: 0,
+                connected_port_count: 0,
+                is_active_inspector_target: true,
+            }],
+            ..crate::StudioGuiCanvasState::default()
+        };
+
+        let presentation = state.presentation();
+        let focus = presentation
+            .view
+            .viewport
+            .focus
+            .as_ref()
+            .expect("expected viewport focus");
+        let item = presentation
+            .view
+            .object_list
+            .items
+            .iter()
+            .find(|item| item.is_active)
+            .expect("expected active object list item");
+        let target = item.command_target();
+        let result = crate::StudioGuiCanvasCommandResultViewModel::located(
+            target.clone(),
+            focus.anchor_label.clone(),
+        );
+
+        assert_eq!(target.command_id, focus.command_id);
+        assert_eq!(target.kind_label, focus.kind_label);
+        assert_eq!(target.target_id, focus.target_id);
+        assert_eq!(
+            target.viewport_anchor_label.as_deref(),
+            Some(focus.anchor_label.as_str())
+        );
+        assert_eq!(result.target, target);
+        assert_eq!(result.anchor_label.as_deref(), Some("unit-slot-0"));
     }
 
     #[test]

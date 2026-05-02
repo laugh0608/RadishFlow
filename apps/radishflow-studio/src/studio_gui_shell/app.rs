@@ -616,13 +616,7 @@ impl ReadyAppState {
             .iter()
             .find(|item| item.command_id == command_id)
         {
-            return Some(radishflow_studio::StudioGuiCanvasCommandTargetViewModel {
-                kind_label: item.kind_label,
-                target_id: item.target_id.clone(),
-                label: item.label.clone(),
-                viewport_anchor_label: Some(item.viewport_anchor_label.clone()),
-                command_id: item.command_id.clone(),
-            });
+            return Some(item.command_target());
         }
 
         radishflow_studio::inspector_target_from_command_id(command_id).map(|target| {
