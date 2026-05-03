@@ -434,6 +434,110 @@ fn canvas_pending_edit_commit_records_created_unit_focus_feedback() {
 }
 
 #[test]
+fn canvas_placement_palette_commit_matrix_records_created_unit_feedback() {
+    let cases = [
+        ("canvas.begin_place_unit.feed", "feed", "feed-"),
+        ("canvas.begin_place_unit.mixer", "mixer", "mixer-"),
+        ("canvas.begin_place_unit.heater", "heater", "heater-"),
+        ("canvas.begin_place_unit.cooler", "cooler", "cooler-"),
+        ("canvas.begin_place_unit.valve", "valve", "valve-"),
+        ("canvas.begin_place_unit.flash_drum", "flash_drum", "flash-"),
+    ];
+
+    for (command_id, expected_kind, expected_prefix) in cases {
+        let mut app = ready_app_state(&lease_expiring_config());
+
+        app.dispatch_ui_command(command_id);
+        app.dispatch_canvas_pending_edit_commit(rf_ui::CanvasPoint::new(64.0, 40.0));
+
+        let window = app.platform_host.snapshot().window_model();
+        let focus = window
+            .canvas
+            .widget
+            .view()
+            .viewport
+            .focus
+            .as_ref()
+            .unwrap_or_else(|| panic!("{command_id} should focus the created unit"));
+        assert_eq!(focus.kind_label, "Unit", "{command_id}");
+        assert!(
+            focus.target_id.starts_with(expected_prefix),
+            "{command_id} should allocate unit id with prefix `{expected_prefix}`"
+        );
+        assert_eq!(
+            focus.command_id,
+            format!("inspector.focus_unit:{}", focus.target_id),
+            "{command_id}"
+        );
+
+        let created_unit = window
+            .canvas
+            .widget
+            .view()
+            .unit_blocks
+            .iter()
+            .find(|unit| unit.unit_id == focus.target_id)
+            .unwrap_or_else(|| panic!("{command_id} should expose created unit block"));
+        assert_eq!(created_unit.kind, expected_kind, "{command_id}");
+        assert!(
+            created_unit.port_count > 0,
+            "{command_id} should expose canonical ports"
+        );
+
+        assert_eq!(
+            window
+                .runtime
+                .active_inspector_target
+                .as_ref()
+                .map(|target| target.command_id.as_str()),
+            Some(focus.command_id.as_str()),
+            "{command_id}"
+        );
+        assert_eq!(
+            app.canvas_viewport_navigation
+                .active_anchor
+                .as_ref()
+                .map(|anchor| (anchor.anchor_label.as_str(), anchor.pending_scroll)),
+            Some((focus.anchor_label.as_str(), true)),
+            "{command_id}"
+        );
+        assert_eq!(
+            app.canvas_command_result.as_ref().map(|result| (
+                result.level,
+                result.status_label,
+                result.title.as_str(),
+                result.target.target_id.as_str(),
+                result.target.command_id.as_str(),
+                result.anchor_label.as_deref(),
+            )),
+            Some((
+                RunPanelNoticeLevel::Info,
+                "created",
+                "Canvas unit created",
+                focus.target_id.as_str(),
+                focus.command_id.as_str(),
+                Some(focus.anchor_label.as_str()),
+            )),
+            "{command_id}"
+        );
+        assert!(
+            app.canvas_command_result_command_surface()
+                .expect("expected canvas command result command surface")
+                .matches_query(&format!("created {}", focus.target_id)),
+            "{command_id}"
+        );
+        assert!(
+            app.platform_host
+                .snapshot()
+                .runtime
+                .workspace_document
+                .has_unsaved_changes,
+            "{command_id}"
+        );
+    }
+}
+
+#[test]
 fn canvas_pending_edit_commit_reports_missing_pending_edit_through_command_result() {
     let mut app = ready_app_state(&lease_expiring_config());
 

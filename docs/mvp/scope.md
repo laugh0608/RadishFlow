@@ -225,13 +225,14 @@ App 与交互层当前进一步冻结以下口径：
 - 已提前完成 `rf-solver` 中首轮无回路顺序模块法
 - 已提前增加第一个可直接从 `*.rfproj.json` 载入并求解的示例 flowsheet
 - 完成 `DWSIM / COFE` water/ethanol 人工 PME 验证记录、PME trace 开关化、TypeLib 生成脚本化与 CAPE-OPEN / PME 阶段性冻结
-- 回到 Rust Studio 主线，补出“打开示例项目 -> 运行求解 -> 查看结果/诊断”的第一版真实 `egui` 可见闭环，并补中文 shell 选项与 CJK 字体 fallback；2026-04-28 继续补出路径输入式项目打开入口、Windows 原生打开选择器、打开反馈、未保存改动打开前确认、shell 级最近项目列表及其独立 preferences 持久化、结构化流股结果 presentation 与结果区基础本地化；2026-04-29 继续补出 Result Inspector、失败结果、诊断目标命令、活动 Inspector 详情、Stream Inspector 字段级草稿更新/提交和基础文档历史 undo/redo；2026-04-30 继续补出保存 / 另存为生命周期、Stream Inspector 多字段批量提交、字段编辑快捷键焦点策略、项目文件 staged write 与 Save As 覆盖确认；2026-05-01 继续补出保存 / 另存失败恢复、Result Inspector 摘要可读性、产出单元诊断关联、当前快照内两股流股对比、Stream Inspector 总体组成字段编辑边界，以及 Canvas pending edit、单类型放置、单元块、物流线、选择反馈、对象列表、焦点气泡、端口 marker、端口 hover、运行/诊断 badge 和对象列表临时筛选；2026-05-02 继续补出 Canvas legend、viewport/focus anchor、对象定位结果、pending edit 创建/失败统一 `StudioGuiCanvasCommandResultViewModel` 反馈、最近一次 command result 的只读 command-surface 摘要，以及 Feed/Mixer/Heater/Cooler/Valve/Flash Drum 多单元 placement palette，并通过 `pwsh ./scripts/check-repo.ps1` 完成仓库级验证
+- 回到 Rust Studio 主线，补出“打开示例项目 -> 运行求解 -> 查看结果/诊断”的第一版真实 `egui` 可见闭环，并补中文 shell 选项与 CJK 字体 fallback；2026-04-28 继续补出路径输入式项目打开入口、Windows 原生打开选择器、打开反馈、未保存改动打开前确认、shell 级最近项目列表及其独立 preferences 持久化、结构化流股结果 presentation 与结果区基础本地化；2026-04-29 继续补出 Result Inspector、失败结果、诊断目标命令、活动 Inspector 详情、Stream Inspector 字段级草稿更新/提交和基础文档历史 undo/redo；2026-04-30 继续补出保存 / 另存为生命周期、Stream Inspector 多字段批量提交、字段编辑快捷键焦点策略、项目文件 staged write 与 Save As 覆盖确认；2026-05-01 继续补出保存 / 另存失败恢复、Result Inspector 摘要可读性、产出单元诊断关联、当前快照内两股流股对比、Stream Inspector 总体组成字段编辑边界，以及 Canvas pending edit、单类型放置、单元块、物流线、选择反馈、对象列表、焦点气泡、端口 marker、端口 hover、运行/诊断 badge 和对象列表临时筛选；2026-05-02 继续补出 Canvas legend、viewport/focus anchor、对象定位结果、pending edit 创建/失败统一 `StudioGuiCanvasCommandResultViewModel` 反馈、最近一次 command result 的只读 command-surface 摘要，以及 Feed/Mixer/Heater/Cooler/Valve/Flash Drum 多单元 placement palette，并通过 `pwsh ./scripts/check-repo.ps1` 完成仓库级验证；2026-05-03 补齐多单元 placement 提交端回归矩阵，逐类锁定 `CreateUnit kind`、canonical ports、Inspector 焦点、Canvas focus anchor 和 command result 反馈，并将 Canvas 当前只读扫读层标记为阶段收口
 
 ### 2026-W19 以后
 
-- 设计 `rf-ffi` 的句柄式 C ABI
-- 衔接 `.NET 10` 适配层
-- 再开始 PME 侧人工验证
+- 不再把 `rf-ffi`、`.NET 10` 适配层或 PME 人工验证列为“尚未启动”的后续项；这些路径已经形成当前回归基线，后续只做明确回归修复、验证脚本维护和官方接口真相源校准
+- Studio / Canvas 暂停继续扩 hover、legend、focus、command feedback 等周边 presentation 细节，把当前只读扫读层和多单元 placement palette 视为已收口边界
+- 下一轮主线优先评估“空白或已有项目 -> 放置内建单元 -> 补齐连接/必要参数 -> 运行求解”的最短可操作路径，先找出阻塞 MVP 闭环的缺口，再决定是否进入连线编辑、布局持久化或结果审阅增强
+- 若继续推进 Canvas，必须先补正式 `DocumentCommand` / validation / layout state 边界，不在 `egui` shell 中直接堆完整画布编辑器、拖拽布局或坐标 schema
 
 ## 当前阶段的判断标准
 

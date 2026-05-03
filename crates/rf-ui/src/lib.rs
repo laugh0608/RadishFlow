@@ -82,6 +82,7 @@ mod tests {
         AntoineCoefficients, PlaceholderThermoProvider, ThermoComponent, ThermoSystem,
     };
     use rf_types::{ComponentId, PortDirection, PortKind, StreamId, UnitId};
+    use rf_unitops::{BuiltinUnitKind, builtin_unit_spec};
 
     use crate::{
         AppLogLevel, AppState, AuthSessionStatus, AuthenticatedUser, CanvasEditIntent, CanvasPoint,
@@ -530,6 +531,88 @@ mod tests {
                 .map(|entry| entry.message.clone()),
             Some("Created canvas unit `flash-1` of kind `Flash Drum` at (160.0, 96.0)".to_string())
         );
+    }
+
+    #[test]
+    fn committing_canvas_place_unit_intent_covers_builtin_unit_matrix() {
+        let cases = [
+            (BuiltinUnitKind::Feed, "Feed", "feed-1"),
+            (BuiltinUnitKind::Mixer, "Mixer", "mixer-1"),
+            (BuiltinUnitKind::Heater, "Heater", "heater-1"),
+            (BuiltinUnitKind::Cooler, "Cooler", "cooler-1"),
+            (BuiltinUnitKind::Valve, "Valve", "valve-1"),
+            (BuiltinUnitKind::FlashDrum, "Flash Drum", "flash-1"),
+        ];
+
+        for (builtin_kind, unit_kind, expected_unit_id) in cases {
+            let mut app_state = AppState::new(sample_document());
+            let expected_spec = builtin_unit_spec(builtin_kind);
+
+            app_state.begin_canvas_place_unit(unit_kind);
+            let result = app_state
+                .commit_canvas_pending_edit_at(CanvasPoint::new(32.0, 48.0), timestamp(30))
+                .expect("expected canvas edit commit")
+                .expect("expected pending canvas edit");
+
+            assert_eq!(result.unit_id, UnitId::new(expected_unit_id), "{unit_kind}");
+            assert_eq!(result.position, CanvasPoint::new(32.0, 48.0));
+            assert_eq!(
+                result.command,
+                DocumentCommand::CreateUnit {
+                    unit_id: UnitId::new(expected_unit_id),
+                    kind: expected_spec.kind.as_str().to_string(),
+                },
+                "{unit_kind}"
+            );
+            assert_eq!(result.revision, 1, "{unit_kind}");
+            assert_eq!(
+                app_state.workspace.drafts.active_target,
+                Some(InspectorTarget::Unit(UnitId::new(expected_unit_id))),
+                "{unit_kind}"
+            );
+            assert!(app_state.workspace.panels.inspector_open, "{unit_kind}");
+            assert!(
+                app_state.workspace.command_history.can_undo(),
+                "{unit_kind}"
+            );
+
+            let unit = app_state
+                .workspace
+                .document
+                .flowsheet
+                .unit(&UnitId::new(expected_unit_id))
+                .unwrap_or_else(|_| panic!("expected committed {unit_kind} unit"));
+            assert_eq!(unit.name, unit_kind, "{unit_kind}");
+            assert_eq!(unit.kind, expected_spec.kind.as_str(), "{unit_kind}");
+            assert_eq!(unit.ports.len(), expected_spec.ports.len(), "{unit_kind}");
+            for expected_port in expected_spec.ports {
+                assert!(
+                    unit.ports.iter().any(|port| {
+                        port.name == expected_port.name
+                            && port.direction == expected_port.direction
+                            && port.kind == expected_port.kind
+                            && port.stream_id.is_none()
+                    }),
+                    "{unit_kind} should include canonical material port `{}`",
+                    expected_port.name
+                );
+            }
+
+            assert_eq!(
+                app_state
+                    .log_feed
+                    .entries
+                    .back()
+                    .map(|entry| (entry.level, entry.message.clone())),
+                Some((
+                    AppLogLevel::Info,
+                    format!(
+                        "Created canvas unit `{expected_unit_id}` of kind `{unit_kind}` at (32.0, 48.0)"
+                    ),
+                )),
+                "{unit_kind}"
+            );
+        }
     }
 
     #[test]
