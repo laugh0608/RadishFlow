@@ -950,15 +950,9 @@ impl ReadyAppState {
                         .unwrap_or(self.locale.text(ShellText::SuggestedRecovery));
                     ui.small(egui::RichText::new(title).strong());
                     render_wrapped_small(ui, recovery_detail);
-                    if let Some(action) = failure.recovery_action.as_ref() {
-                        self.render_small_command_action(ui, action);
-                    }
                 }
-                if let Some(target) = failure.recovery_target.as_ref() {
-                    ui.horizontal_wrapped(|ui| {
-                        ui.small(self.locale.text(ShellText::RecoveryTarget));
-                        self.render_small_command_action(ui, &target.action);
-                    });
+                if !failure.diagnostic_actions.is_empty() {
+                    self.render_diagnostic_target_actions(ui, &failure.diagnostic_actions);
                 }
             } else {
                 ui.small(self.locale.text(ShellText::NoVisibleSolveResults));
@@ -1493,6 +1487,13 @@ impl ReadyAppState {
             });
         }
 
+        if !detail.diagnostic_actions.is_empty() {
+            ui.add_space(4.0);
+            ui.collapsing(self.locale.text(ShellText::DiagnosticTargets), |ui| {
+                self.render_diagnostic_target_actions(ui, &detail.diagnostic_actions);
+            });
+        }
+
         if !detail.related_diagnostics.is_empty() {
             ui.add_space(4.0);
             ui.collapsing(self.locale.text(ShellText::RelatedDiagnostics), |ui| {
@@ -1579,6 +1580,12 @@ impl ReadyAppState {
                 } else {
                     ui.small(self.locale.text(ShellText::NoComparison));
                 }
+            });
+        }
+
+        if !inspector.diagnostic_actions.is_empty() {
+            ui.collapsing(self.locale.text(ShellText::DiagnosticTargets), |ui| {
+                self.render_diagnostic_target_actions(ui, &inspector.diagnostic_actions);
             });
         }
 
@@ -1694,6 +1701,23 @@ impl ReadyAppState {
             ui.small(self.locale.text(ShellText::DiagnosticTargets));
             for target in &diagnostic.target_candidates {
                 self.render_small_command_action(ui, &target.action);
+            }
+        });
+    }
+
+    fn render_diagnostic_target_actions(
+        &mut self,
+        ui: &mut egui::Ui,
+        actions: &[radishflow_studio::StudioGuiWindowDiagnosticTargetActionModel],
+    ) {
+        ui.horizontal_wrapped(|ui| {
+            ui.small(self.locale.text(ShellText::DiagnosticTargets));
+            for action in actions {
+                ui.small(format!(
+                    "{} | {} | {}",
+                    action.source_label, action.target_label, action.summary
+                ));
+                self.render_small_command_action(ui, &action.action);
             }
         });
     }

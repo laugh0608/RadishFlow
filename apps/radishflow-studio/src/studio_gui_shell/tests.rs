@@ -203,7 +203,6 @@ fn shell_locale_defaults_to_chinese_and_can_translate_runtime_labels() {
         "已选流股不在最新快照中。"
     );
     assert_eq!(locale.text(ShellText::LastRunFailed), "最近一次运行失败");
-    assert_eq!(locale.text(ShellText::RecoveryTarget), "修复目标");
     assert_eq!(locale.text(ShellText::SuggestedRecovery), "建议修复");
     assert_eq!(locale.text(ShellText::ActiveInspectorTarget), "检查器目标");
     assert_eq!(locale.text(ShellText::InspectorProperties), "属性");

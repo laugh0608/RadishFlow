@@ -147,6 +147,7 @@ pub struct StudioGuiWindowFailureResultModel {
     pub recovery_detail: Option<&'static str>,
     pub recovery_action: Option<StudioGuiWindowCommandActionModel>,
     pub recovery_target: Option<StudioGuiWindowInspectorTargetModel>,
+    pub diagnostic_actions: Vec<StudioGuiWindowDiagnosticTargetActionModel>,
     pub latest_log_message: Option<String>,
 }
 
@@ -166,6 +167,14 @@ pub struct StudioGuiWindowInspectorTargetModel {
     pub action: StudioGuiWindowCommandActionModel,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioGuiWindowDiagnosticTargetActionModel {
+    pub source_label: &'static str,
+    pub target_label: &'static str,
+    pub summary: String,
+    pub action: StudioGuiWindowCommandActionModel,
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct StudioGuiWindowInspectorTargetDetailModel {
     pub target: StudioGuiWindowInspectorTargetModel,
@@ -178,6 +187,7 @@ pub struct StudioGuiWindowInspectorTargetDetailModel {
     pub latest_stream_result: Option<StudioGuiWindowStreamResultModel>,
     pub related_steps: Vec<StudioGuiWindowSolveStepModel>,
     pub related_diagnostics: Vec<StudioGuiWindowDiagnosticModel>,
+    pub diagnostic_actions: Vec<StudioGuiWindowDiagnosticTargetActionModel>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -266,6 +276,7 @@ pub struct StudioGuiWindowSolveStepModel {
     pub produced_streams: Vec<String>,
     pub unit_action: StudioGuiWindowCommandActionModel,
     pub produced_stream_actions: Vec<StudioGuiWindowCommandActionModel>,
+    pub diagnostic_actions: Vec<StudioGuiWindowDiagnosticTargetActionModel>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -276,6 +287,7 @@ pub struct StudioGuiWindowDiagnosticModel {
     pub related_unit_ids: Vec<String>,
     pub related_stream_ids: Vec<String>,
     pub target_candidates: Vec<StudioGuiWindowInspectorTargetModel>,
+    pub diagnostic_actions: Vec<StudioGuiWindowDiagnosticTargetActionModel>,
     pub related_units_text: Option<String>,
     pub related_streams_text: Option<String>,
 }
@@ -292,6 +304,7 @@ pub struct StudioGuiWindowResultInspectorModel {
     pub comparison: Option<StudioGuiWindowResultInspectorComparisonModel>,
     pub related_steps: Vec<StudioGuiWindowSolveStepModel>,
     pub related_diagnostics: Vec<StudioGuiWindowDiagnosticModel>,
+    pub diagnostic_actions: Vec<StudioGuiWindowDiagnosticTargetActionModel>,
     pub has_stale_selection: bool,
     pub has_stale_comparison: bool,
 }
@@ -506,7 +519,7 @@ impl StudioGuiWindowSolveSnapshotModel {
             .iter()
             .map(|step| step.unit_id.as_str())
             .collect::<BTreeSet<_>>();
-        let related_diagnostics = selected_stream_id
+        let related_diagnostics: Vec<StudioGuiWindowDiagnosticModel> = selected_stream_id
             .as_deref()
             .map(|selected_id| {
                 self.diagnostics
@@ -525,6 +538,11 @@ impl StudioGuiWindowSolveSnapshotModel {
                     .collect()
             })
             .unwrap_or_default();
+        let diagnostic_actions = result_inspector_diagnostic_actions(
+            selected_stream_id.as_deref(),
+            &related_steps,
+            &related_diagnostics,
+        );
         let stream_options = self
             .streams
             .iter()
@@ -581,6 +599,7 @@ impl StudioGuiWindowSolveSnapshotModel {
             comparison,
             related_steps,
             related_diagnostics,
+            diagnostic_actions,
             has_stale_selection,
             has_stale_comparison,
         }
@@ -854,20 +873,39 @@ fn failure_result_model_from_control_state(
         return None;
     }
 
+    let recovery_action = notice
+        .recovery_action
+        .as_ref()
+        .map(failure_recovery_action_model);
+    let recovery_target = notice
+        .recovery_action
+        .as_ref()
+        .and_then(inspector_target_model_from_recovery_action);
+    let mut diagnostic_actions = Vec::new();
+    if let Some(action) = recovery_action.as_ref() {
+        diagnostic_actions.push(StudioGuiWindowDiagnosticTargetActionModel {
+            source_label: "Recovery",
+            target_label: "Run panel",
+            summary: notice.title.clone(),
+            action: action.clone(),
+        });
+    }
+    if let Some(target) = recovery_target.as_ref() {
+        diagnostic_actions.push(diagnostic_target_action_from_target(
+            "Recovery target",
+            target,
+        ));
+    }
+
     Some(StudioGuiWindowFailureResultModel {
         status_label: run_status_label(control_state.run_status),
         title: notice.title.clone(),
         message: notice.message.clone(),
         recovery_title: notice.recovery_action.as_ref().map(|action| action.title),
         recovery_detail: notice.recovery_action.as_ref().map(|action| action.detail),
-        recovery_action: notice
-            .recovery_action
-            .as_ref()
-            .map(failure_recovery_action_model),
-        recovery_target: notice
-            .recovery_action
-            .as_ref()
-            .and_then(inspector_target_model_from_recovery_action),
+        recovery_action,
+        recovery_target,
+        diagnostic_actions,
         latest_log_message: control_state
             .latest_log_entry
             .as_ref()
@@ -963,6 +1001,12 @@ fn inspector_target_detail_model_from_snapshot(
     let related_diagnostics = latest_solve_snapshot
         .map(|snapshot| related_diagnostics_for_target(snapshot, &detail.target))
         .unwrap_or_default();
+    let diagnostic_actions = inspector_detail_diagnostic_actions(
+        &target,
+        latest_unit_result.as_ref(),
+        &related_steps,
+        &related_diagnostics,
+    );
 
     StudioGuiWindowInspectorTargetDetailModel {
         target,
@@ -999,6 +1043,7 @@ fn inspector_target_detail_model_from_snapshot(
         latest_stream_result,
         related_steps,
         related_diagnostics,
+        diagnostic_actions,
     }
 }
 
@@ -1158,22 +1203,34 @@ fn solve_snapshot_model_from_ui(
         steps: snapshot
             .steps
             .iter()
-            .map(|step| StudioGuiWindowSolveStepModel {
-                index: step.index,
-                unit_id: step.unit_id.as_str().to_string(),
-                summary: step.summary.clone(),
-                execution_status_label: run_status_label(step.execution.status),
-                produced_streams: step
+            .map(|step| {
+                let produced_streams = step
                     .streams
                     .iter()
                     .map(|stream| stream.stream_id.as_str().to_string())
-                    .collect(),
-                unit_action: inspector_unit_action(step.unit_id.as_str()),
-                produced_stream_actions: step
-                    .streams
+                    .collect::<Vec<_>>();
+                let unit_action = inspector_unit_action(step.unit_id.as_str());
+                let produced_stream_actions = produced_streams
                     .iter()
-                    .map(|stream| inspector_stream_action(stream.stream_id.as_str()))
-                    .collect(),
+                    .map(|stream_id| inspector_stream_action(stream_id))
+                    .collect::<Vec<_>>();
+                let diagnostic_actions = solve_step_diagnostic_actions(
+                    step.index,
+                    &step.unit_id,
+                    &unit_action,
+                    &produced_streams,
+                    &produced_stream_actions,
+                );
+                StudioGuiWindowSolveStepModel {
+                    index: step.index,
+                    unit_id: step.unit_id.as_str().to_string(),
+                    summary: step.summary.clone(),
+                    execution_status_label: run_status_label(step.execution.status),
+                    produced_streams,
+                    unit_action,
+                    produced_stream_actions,
+                    diagnostic_actions,
+                }
             })
             .collect(),
         diagnostics: snapshot
@@ -1198,11 +1255,18 @@ fn diagnostic_model_from_ui(
         .map(|stream_id| stream_id.as_str().to_string())
         .collect::<Vec<_>>();
 
+    let target_candidates = diagnostic_target_candidates_from_ui(diagnostic);
+    let diagnostic_actions = target_candidates
+        .iter()
+        .map(|target| diagnostic_target_action_from_target("Diagnostic", target))
+        .collect();
+
     StudioGuiWindowDiagnosticModel {
         severity_label: diagnostic_severity_label(diagnostic.severity),
         code: diagnostic.code.clone(),
         message: diagnostic.message.clone(),
-        target_candidates: diagnostic_target_candidates_from_ui(diagnostic),
+        target_candidates,
+        diagnostic_actions,
         related_units_text: non_empty_join(related_unit_ids.iter().map(String::as_str).collect()),
         related_streams_text: non_empty_join(
             related_stream_ids.iter().map(String::as_str).collect(),
@@ -1225,6 +1289,131 @@ fn diagnostic_target_candidates_from_ui(
             inspector_target_model_from_ui(&rf_ui::InspectorTarget::Stream(stream_id.clone()))
         }))
         .collect()
+}
+
+fn diagnostic_target_action_from_target(
+    source_label: &'static str,
+    target: &StudioGuiWindowInspectorTargetModel,
+) -> StudioGuiWindowDiagnosticTargetActionModel {
+    StudioGuiWindowDiagnosticTargetActionModel {
+        source_label,
+        target_label: target.kind_label,
+        summary: target.summary.clone(),
+        action: target.action.clone(),
+    }
+}
+
+fn diagnostic_target_action_from_action(
+    source_label: &'static str,
+    target_label: &'static str,
+    summary: String,
+    action: &StudioGuiWindowCommandActionModel,
+) -> StudioGuiWindowDiagnosticTargetActionModel {
+    StudioGuiWindowDiagnosticTargetActionModel {
+        source_label,
+        target_label,
+        summary,
+        action: action.clone(),
+    }
+}
+
+fn dedupe_diagnostic_actions(
+    actions: impl IntoIterator<Item = StudioGuiWindowDiagnosticTargetActionModel>,
+) -> Vec<StudioGuiWindowDiagnosticTargetActionModel> {
+    let mut seen = BTreeSet::new();
+    actions
+        .into_iter()
+        .filter(|action| seen.insert(action.action.command_id.clone()))
+        .collect()
+}
+
+fn solve_step_diagnostic_actions(
+    step_index: usize,
+    unit_id: &rf_types::UnitId,
+    unit_action: &StudioGuiWindowCommandActionModel,
+    produced_streams: &[String],
+    produced_stream_actions: &[StudioGuiWindowCommandActionModel],
+) -> Vec<StudioGuiWindowDiagnosticTargetActionModel> {
+    let unit_summary = format!("Step #{step_index} unit {}", unit_id.as_str());
+    let unit =
+        diagnostic_target_action_from_action("Solve step", "Unit", unit_summary, unit_action);
+    let streams = produced_streams
+        .iter()
+        .zip(produced_stream_actions.iter())
+        .map(|(stream_id, action)| {
+            diagnostic_target_action_from_action(
+                "Solve step",
+                "Stream",
+                format!("Step #{step_index} output stream {stream_id}"),
+                action,
+            )
+        });
+    dedupe_diagnostic_actions(std::iter::once(unit).chain(streams))
+}
+
+fn result_inspector_diagnostic_actions(
+    selected_stream_id: Option<&str>,
+    related_steps: &[StudioGuiWindowSolveStepModel],
+    related_diagnostics: &[StudioGuiWindowDiagnosticModel],
+) -> Vec<StudioGuiWindowDiagnosticTargetActionModel> {
+    let selected_stream = selected_stream_id.map(|stream_id| {
+        diagnostic_target_action_from_action(
+            "Selected stream",
+            "Stream",
+            format!("Selected result stream {stream_id}"),
+            &inspector_stream_action(stream_id),
+        )
+    });
+    let step_actions = related_steps
+        .iter()
+        .flat_map(|step| step.diagnostic_actions.iter().cloned());
+    let diagnostic_actions = related_diagnostics
+        .iter()
+        .flat_map(|diagnostic| diagnostic.diagnostic_actions.iter().cloned());
+    dedupe_diagnostic_actions(
+        selected_stream
+            .into_iter()
+            .chain(step_actions)
+            .chain(diagnostic_actions),
+    )
+}
+
+fn inspector_detail_diagnostic_actions(
+    target: &StudioGuiWindowInspectorTargetModel,
+    latest_unit_result: Option<&StudioGuiWindowUnitExecutionResultModel>,
+    related_steps: &[StudioGuiWindowSolveStepModel],
+    related_diagnostics: &[StudioGuiWindowDiagnosticModel],
+) -> Vec<StudioGuiWindowDiagnosticTargetActionModel> {
+    let active_target = std::iter::once(diagnostic_target_action_from_target(
+        "Inspector target",
+        target,
+    ));
+    let latest_result_actions = latest_unit_result.into_iter().flat_map(|unit| {
+        unit.produced_stream_ids
+            .iter()
+            .zip(unit.produced_stream_actions.iter())
+            .map(|(stream_id, action)| {
+                diagnostic_target_action_from_action(
+                    "Latest result",
+                    "Stream",
+                    format!("Latest result output stream {stream_id}"),
+                    action,
+                )
+            })
+    });
+    let step_actions = related_steps
+        .iter()
+        .flat_map(|step| step.diagnostic_actions.iter().cloned());
+    let diagnostic_actions = related_diagnostics
+        .iter()
+        .flat_map(|diagnostic| diagnostic.diagnostic_actions.iter().cloned());
+
+    dedupe_diagnostic_actions(
+        active_target
+            .chain(latest_result_actions)
+            .chain(step_actions)
+            .chain(diagnostic_actions),
+    )
 }
 
 fn stream_result_model_from_ui(
@@ -1735,12 +1924,25 @@ mod tests {
             related_heater_step.unit_action.command_id,
             "inspector.focus_unit:heater-1"
         );
+        assert!(related_heater_step.diagnostic_actions.iter().any(|action| {
+            action.source_label == "Solve step"
+                && action.target_label == "Unit"
+                && action.action.command_id == "inspector.focus_unit:heater-1"
+        }));
         assert!(
             related_heater_step
                 .produced_stream_actions
                 .iter()
                 .any(|action| action.command_id == "inspector.focus_stream:stream-heated")
         );
+        assert!(inspector.diagnostic_actions.iter().any(|action| {
+            action.source_label == "Selected stream"
+                && action.action.command_id == "inspector.focus_stream:stream-heated"
+        }));
+        assert!(inspector.diagnostic_actions.iter().any(|action| {
+            action.source_label == "Solve step"
+                && action.action.command_id == "inspector.focus_unit:heater-1"
+        }));
         assert!(
             inspector.related_diagnostics.iter().any(|diagnostic| {
                 diagnostic.target_candidates.iter().any(|target| {
@@ -1829,6 +2031,14 @@ mod tests {
                     .produced_stream_actions
                     .iter()
                     .any(|action| action.command_id == "inspector.focus_stream:stream-heated")
+        }));
+        assert!(active_detail.diagnostic_actions.iter().any(|action| {
+            action.source_label == "Inspector target"
+                && action.action.command_id == "inspector.focus_stream:stream-heated"
+        }));
+        assert!(active_detail.diagnostic_actions.iter().any(|action| {
+            action.source_label == "Solve step"
+                && action.action.command_id == "inspector.focus_unit:heater-1"
         }));
         assert!(
             active_detail
@@ -1969,6 +2179,16 @@ mod tests {
                 .map(|target| target.action.command_id.as_str()),
             Some("inspector.focus_unit:feed-1")
         );
+        assert!(failure.diagnostic_actions.iter().any(|action| {
+            action.source_label == "Recovery"
+                && action.target_label == "Run panel"
+                && action.action.command_id == "run_panel.recover_failure"
+        }));
+        assert!(failure.diagnostic_actions.iter().any(|action| {
+            action.source_label == "Recovery target"
+                && action.target_label == "Unit"
+                && action.action.command_id == "inspector.focus_unit:feed-1"
+        }));
         assert!(failure.latest_log_message.is_some());
 
         let recovery = driver
