@@ -135,7 +135,7 @@ RadishFlow 的目标架构已经冻结为“桌面端三层 + 外部控制面”
 - 窗口布局、Canvas placement 坐标持久化和 Canvas unit layout nudge 继续与项目文档语义分离，当前保存到 `<project>.rfstudio-layout.json` sidecar，而不是混入 `*.rfproj.json`
 - 多窗口布局 key 当前已从运行时 `window_id` 收口为基于 `window_role + layout_slot` 的稳定 scope，避免跨 host 重建时直接依赖临时窗口号
 
-这意味着当前仓库已从“只有 UI 层快照映射桥”推进到“真实 `egui` 壳层可打开已有项目、持久化 shell 级最近项目、运行求解、查看结构化结果/诊断、定位 Inspector、审阅流股结果与单元最新执行结果、从求解步骤跳转到单元和产出流股、从失败摘要触发修复或定位目标、编辑 Stream 字段草稿并提交、执行基础撤销/重做、保存/另存为，并在画布中查看已有单元/流股/端口/诊断状态、执行多单元 pending placement 和离散调整已有 sidecar 单元位置”。最近项目写入独立 Studio preferences 文件，画布筛选、对比选择、focus navigation、layout nudge 与最近一次 command result 展示等状态仍属于 shell 临时状态或 Studio layout sidecar / presentation 反馈，不进入 `*.rfproj.json`。不过这仍是最小可操作工作台闭环，不等同于完整跨平台文件工作流、完整应用偏好系统、完整画布编辑器、结果报表系统、跨会话历史持久化或最终视觉方案。
+这意味着当前仓库已从“只有 UI 层快照映射桥”推进到“真实 `egui` 壳层可打开已有项目、持久化 shell 级最近项目、运行求解、查看结构化结果/诊断、定位 Inspector、审阅流股结果与单元最新执行结果、从求解步骤跳转到单元和产出流股、从失败摘要触发修复或定位目标、在 Canvas 与 Active Inspector 中查看只读 port attention 摘要、编辑 Stream 字段草稿并提交、执行基础撤销/重做、保存/另存为，并在画布中查看已有单元/流股/端口/诊断状态、执行多单元 pending placement 和离散调整已有 sidecar 单元位置”。最近项目写入独立 Studio preferences 文件，画布筛选、对比选择、focus navigation、layout nudge 与最近一次 command result 展示等状态仍属于 shell 临时状态或 Studio layout sidecar / presentation 反馈，不进入 `*.rfproj.json`。不过这仍是最小可操作工作台闭环，不等同于完整跨平台文件工作流、完整应用偏好系统、完整画布编辑器、结果报表系统、跨会话历史持久化或最终视觉方案。
 
 这些决定的目的是先把 UI 和求解层之间的长期接口边界定清楚，再决定具体控件和交互实现。
 
