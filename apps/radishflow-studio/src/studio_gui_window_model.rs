@@ -143,12 +143,32 @@ pub struct StudioGuiWindowFailureResultModel {
     pub status_label: &'static str,
     pub title: String,
     pub message: String,
+    pub diagnostic_detail: Option<StudioGuiWindowFailureDiagnosticDetailModel>,
     pub recovery_title: Option<&'static str>,
     pub recovery_detail: Option<&'static str>,
     pub recovery_action: Option<StudioGuiWindowCommandActionModel>,
     pub recovery_target: Option<StudioGuiWindowInspectorTargetModel>,
     pub diagnostic_actions: Vec<StudioGuiWindowDiagnosticTargetActionModel>,
     pub latest_log_message: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioGuiWindowFailureDiagnosticDetailModel {
+    pub document_revision: u64,
+    pub severity_label: &'static str,
+    pub primary_code: Option<String>,
+    pub diagnostic_count: usize,
+    pub related_units: Vec<StudioGuiWindowInspectorTargetModel>,
+    pub related_streams: Vec<StudioGuiWindowInspectorTargetModel>,
+    pub related_ports: Vec<StudioGuiWindowFailureDiagnosticPortTargetModel>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioGuiWindowFailureDiagnosticPortTargetModel {
+    pub unit_id: String,
+    pub port_name: String,
+    pub summary: String,
+    pub unit_action: StudioGuiWindowCommandActionModel,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -896,11 +916,20 @@ fn failure_result_model_from_control_state(
             target,
         ));
     }
+    let diagnostic_detail = control_state
+        .latest_diagnostic
+        .as_ref()
+        .map(failure_diagnostic_detail_model_from_summary);
+    if let Some(detail) = diagnostic_detail.as_ref() {
+        diagnostic_actions.extend(failure_diagnostic_actions(detail));
+    }
+    diagnostic_actions = dedupe_diagnostic_actions(diagnostic_actions);
 
     Some(StudioGuiWindowFailureResultModel {
         status_label: run_status_label(control_state.run_status),
         title: notice.title.clone(),
         message: notice.message.clone(),
+        diagnostic_detail,
         recovery_title: notice.recovery_action.as_ref().map(|action| action.title),
         recovery_detail: notice.recovery_action.as_ref().map(|action| action.detail),
         recovery_action,
@@ -911,6 +940,68 @@ fn failure_result_model_from_control_state(
             .as_ref()
             .map(|entry| entry.message.clone()),
     })
+}
+
+fn failure_diagnostic_detail_model_from_summary(
+    summary: &rf_ui::DiagnosticSummary,
+) -> StudioGuiWindowFailureDiagnosticDetailModel {
+    StudioGuiWindowFailureDiagnosticDetailModel {
+        document_revision: summary.document_revision,
+        severity_label: diagnostic_severity_label(summary.highest_severity),
+        primary_code: summary.primary_code.clone(),
+        diagnostic_count: summary.diagnostic_count,
+        related_units: summary
+            .related_unit_ids
+            .iter()
+            .map(|unit_id| {
+                inspector_target_model_from_ui(&rf_ui::InspectorTarget::Unit(unit_id.clone()))
+            })
+            .collect(),
+        related_streams: summary
+            .related_stream_ids
+            .iter()
+            .map(|stream_id| {
+                inspector_target_model_from_ui(&rf_ui::InspectorTarget::Stream(stream_id.clone()))
+            })
+            .collect(),
+        related_ports: summary
+            .related_port_targets
+            .iter()
+            .map(|target| {
+                let unit_id = target.unit_id.as_str().to_string();
+                let port_name = target.port_name.clone();
+                StudioGuiWindowFailureDiagnosticPortTargetModel {
+                    unit_id: unit_id.clone(),
+                    port_name: port_name.clone(),
+                    summary: format!("Unit {unit_id} port {port_name}"),
+                    unit_action: inspector_unit_action(&unit_id),
+                }
+            })
+            .collect(),
+    }
+}
+
+fn failure_diagnostic_actions(
+    detail: &StudioGuiWindowFailureDiagnosticDetailModel,
+) -> Vec<StudioGuiWindowDiagnosticTargetActionModel> {
+    let unit_actions = detail
+        .related_units
+        .iter()
+        .map(|target| diagnostic_target_action_from_target("Failure diagnostic", target));
+    let stream_actions = detail
+        .related_streams
+        .iter()
+        .map(|target| diagnostic_target_action_from_target("Failure diagnostic", target));
+    let port_actions = detail.related_ports.iter().map(|port| {
+        diagnostic_target_action_from_action(
+            "Failure port",
+            "Port",
+            port.summary.clone(),
+            &port.unit_action,
+        )
+    });
+
+    dedupe_diagnostic_actions(unit_actions.chain(stream_actions).chain(port_actions))
 }
 
 fn failure_recovery_action_model(
@@ -1323,7 +1414,14 @@ fn dedupe_diagnostic_actions(
     let mut seen = BTreeSet::new();
     actions
         .into_iter()
-        .filter(|action| seen.insert(action.action.command_id.clone()))
+        .filter(|action| {
+            seen.insert((
+                action.source_label,
+                action.target_label,
+                action.summary.clone(),
+                action.action.command_id.clone(),
+            ))
+        })
         .collect()
 }
 
@@ -2156,6 +2254,29 @@ mod tests {
             "expected solver diagnostic in failure message, got {}",
             failure.message
         );
+        let diagnostic_detail = failure
+            .diagnostic_detail
+            .as_ref()
+            .expect("expected structured failure diagnostic detail");
+        assert_eq!(
+            diagnostic_detail.primary_code.as_deref(),
+            Some("solver.connection_validation.unbound_outlet_port")
+        );
+        assert_eq!(diagnostic_detail.document_revision, 0);
+        assert_eq!(diagnostic_detail.severity_label, "Error");
+        assert_eq!(diagnostic_detail.diagnostic_count, 1);
+        assert!(
+            diagnostic_detail
+                .related_units
+                .iter()
+                .any(|target| target.target_id == "feed-1"
+                    && target.action.command_id == "inspector.focus_unit:feed-1")
+        );
+        assert!(diagnostic_detail.related_ports.iter().any(|target| {
+            target.unit_id == "feed-1"
+                && target.port_name == "outlet"
+                && target.unit_action.command_id == "inspector.focus_unit:feed-1"
+        }));
         assert_eq!(failure.recovery_title, Some("Create outlet stream"));
         assert!(failure.recovery_detail.is_some());
         assert_eq!(
@@ -2187,6 +2308,12 @@ mod tests {
         assert!(failure.diagnostic_actions.iter().any(|action| {
             action.source_label == "Recovery target"
                 && action.target_label == "Unit"
+                && action.action.command_id == "inspector.focus_unit:feed-1"
+        }));
+        assert!(failure.diagnostic_actions.iter().any(|action| {
+            action.source_label == "Failure port"
+                && action.target_label == "Port"
+                && action.summary == "Unit feed-1 port outlet"
                 && action.action.command_id == "inspector.focus_unit:feed-1"
         }));
         assert!(failure.latest_log_message.is_some());

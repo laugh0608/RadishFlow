@@ -275,6 +275,7 @@ pub use studio_gui_window_model::{
     StudioGuiWindowCompositionResultModel, StudioGuiWindowDiagnosticModel,
     StudioGuiWindowDiagnosticTargetActionModel, StudioGuiWindowDropPreviewModel,
     StudioGuiWindowDropPreviewOverlayModel, StudioGuiWindowDropPreviewState,
+    StudioGuiWindowFailureDiagnosticDetailModel, StudioGuiWindowFailureDiagnosticPortTargetModel,
     StudioGuiWindowFailureResultModel, StudioGuiWindowHeaderModel,
     StudioGuiWindowInspectorTargetDetailModel, StudioGuiWindowInspectorTargetFieldModel,
     StudioGuiWindowInspectorTargetModel, StudioGuiWindowInspectorTargetPortModel,

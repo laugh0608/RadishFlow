@@ -240,6 +240,7 @@ App 与交互层当前进一步冻结以下口径：
 - 2026-05-04 又补出求解步骤导航 action：Runtime 全局步骤、Active Inspector 关联步骤和 Result Inspector 关联步骤都可复用同一单元/产出流股跳转 presentation
 - 2026-05-04 又补出失败摘要动作：失败结果可直接暴露修复命令与 recovery target 定位命令，继续复用既有 RunPanel recovery 与 Inspector target 边界
 - 2026-05-04 又把上述错误定位入口收口为统一 `StudioGuiWindowDiagnosticTargetActionModel`：失败摘要、Result Inspector、Active Inspector 与求解步骤都会汇总可执行的诊断目标 action，仍只复用 `run_panel.recover_failure` 与 `InspectorTarget` command，不新增第二套错误处理状态机
+- 2026-05-04 又补出失败详情结构化 presentation：失败结果现在可直接显示 latest diagnostic 的 document revision、severity、primary code、diagnostic count、相关 unit / stream / port target；port target 只定位到所属 unit，不新增端口级私有命令，也不从错误 message 文本反解析
 - 2026-05-04 又补出 Canvas unit layout nudge 的正式边界：`canvas.move_selected_unit.left/right/up/down` 由 `StudioGuiCanvasWidgetModel`、`StudioGuiCommandRegistry` 与 `dispatch_ui_command(command_id)` 统一派发，只更新 `<project>.rfstudio-layout.json` 中的单元坐标；缺少 sidecar 坐标时先按当前 transient grid slot pin 出初始位置，保存后重开可恢复，且不会把布局移动误记为项目文档修改。当前 selection presentation 与 command result 会显式显示 `sidecar position` / `transient grid` 来源，避免 pin 行为隐藏在 shell 私有逻辑里
 - 下一轮主线应在该固定 MVP 基线之上继续收口结果审阅导航/错误定位，或评估更明确的布局编辑边界；不要把这次空白项目初始化、suggestion Apply、placement 坐标持久化和单元结果摘要误扩为完整组件库、完整物性包浏览/切换、项目向导、自由连线编辑器、拖拽布局编辑器或结果报表系统
 - 若继续推进 Canvas，必须先补正式 `DocumentCommand` / validation / layout state 边界，不在 `egui` shell 中直接堆完整画布编辑器或拖拽布局

@@ -937,6 +937,9 @@ impl ReadyAppState {
                     &failure.title,
                 );
                 render_wrapped_label(ui, &failure.message);
+                if let Some(detail) = failure.diagnostic_detail.as_ref() {
+                    self.render_failure_diagnostic_detail(ui, detail);
+                }
                 if let Some(message) = failure.latest_log_message.as_ref() {
                     render_wrapped_small(
                         ui,
@@ -1720,6 +1723,52 @@ impl ReadyAppState {
                 self.render_small_command_action(ui, &action.action);
             }
         });
+    }
+
+    fn render_failure_diagnostic_detail(
+        &mut self,
+        ui: &mut egui::Ui,
+        detail: &radishflow_studio::StudioGuiWindowFailureDiagnosticDetailModel,
+    ) {
+        ui.add_space(4.0);
+        ui.horizontal_wrapped(|ui| {
+            ui.small(egui::RichText::new("Failure diagnostic").strong());
+            render_status_chip(
+                ui,
+                self.locale.runtime_label(detail.severity_label).as_ref(),
+                diagnostic_color(detail.severity_label),
+            );
+            ui.small(format!("revision {}", detail.document_revision));
+            ui.small(format!("count {}", detail.diagnostic_count));
+        });
+        if let Some(code) = detail.primary_code.as_ref() {
+            render_wrapped_small(ui, format!("code: {code}"));
+        }
+        if !detail.related_units.is_empty() {
+            ui.horizontal_wrapped(|ui| {
+                ui.small("units");
+                for target in &detail.related_units {
+                    self.render_small_command_action(ui, &target.action);
+                }
+            });
+        }
+        if !detail.related_streams.is_empty() {
+            ui.horizontal_wrapped(|ui| {
+                ui.small("streams");
+                for target in &detail.related_streams {
+                    self.render_small_command_action(ui, &target.action);
+                }
+            });
+        }
+        if !detail.related_ports.is_empty() {
+            ui.horizontal_wrapped(|ui| {
+                ui.small("ports");
+                for target in &detail.related_ports {
+                    ui.small(format!("{}:{}", target.unit_id, target.port_name));
+                    self.render_small_command_action(ui, &target.unit_action);
+                }
+            });
+        }
     }
 
     fn render_small_command_action(

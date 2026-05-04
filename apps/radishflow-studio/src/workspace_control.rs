@@ -1,6 +1,6 @@
 use rf_types::{DiagnosticPortTarget, RfResult, StreamId, UnitId};
 use rf_ui::{
-    AppLogEntry, AppState, RunPanelCommandModel, RunPanelIntent, RunPanelNotice,
+    AppLogEntry, AppState, DiagnosticSummary, RunPanelCommandModel, RunPanelIntent, RunPanelNotice,
     RunPanelNoticeLevel, RunPanelPackageSelection, RunPanelRecoveryAction,
     RunPanelRecoveryActionKind, RunPanelState, RunPanelWidgetEvent, RunStatus, SimulationMode,
     SolvePendingReason, run_panel_failure_notice,
@@ -51,6 +51,7 @@ pub struct WorkspaceControlState {
     pub pending_reason: Option<SolvePendingReason>,
     pub latest_snapshot_id: Option<String>,
     pub latest_snapshot_summary: Option<String>,
+    pub latest_diagnostic: Option<DiagnosticSummary>,
     pub latest_log_entry: Option<AppLogEntry>,
     pub notice: Option<RunPanelNotice>,
     pub can_run_manual: bool,
@@ -88,6 +89,7 @@ pub fn snapshot_workspace_control_state(app_state: &AppState) -> WorkspaceContro
         pending_reason: run_panel.pending_reason,
         latest_snapshot_id: run_panel.latest_snapshot_id.clone(),
         latest_snapshot_summary: run_panel.latest_snapshot_summary.clone(),
+        latest_diagnostic: app_state.workspace.solve_session.latest_diagnostic.clone(),
         latest_log_entry: app_state.log_feed.entries.back().cloned(),
         notice: run_panel.notice.clone(),
         can_run_manual: true,
