@@ -1230,6 +1230,14 @@ fn format_platform_dispatch_activity(dispatch: &StudioGuiPlatformDispatch) -> St
         StudioGuiDriverOutcome::HostCommand(
             crate::StudioGuiHostCommandOutcome::CanvasInteracted(result),
         ) => format!("canvas {}", format!("{:?}", result.action).to_lowercase()),
+        StudioGuiDriverOutcome::HostCommand(
+            crate::StudioGuiHostCommandOutcome::CanvasUnitLayoutMoved(result),
+        ) => format!(
+            "canvas layout move {} -> ({:.1}, {:.1})",
+            result.unit_id.as_str(),
+            result.position.x,
+            result.position.y
+        ),
         StudioGuiDriverOutcome::HostCommand(crate::StudioGuiHostCommandOutcome::WindowClosed(
             result,
         )) => match result.close.as_ref() {

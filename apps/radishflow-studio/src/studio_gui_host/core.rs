@@ -196,6 +196,9 @@ impl StudioGuiHost {
             StudioGuiHostCommand::DispatchCanvasInteraction { action } => self
                 .dispatch_canvas_interaction(action)
                 .map(StudioGuiHostCommandOutcome::CanvasInteracted),
+            StudioGuiHostCommand::MoveCanvasUnitLayout { unit_id, position } => self
+                .move_canvas_unit_layout(unit_id, position)
+                .map(StudioGuiHostCommandOutcome::CanvasUnitLayoutMoved),
             StudioGuiHostCommand::DispatchLifecycleEvent { event } => self
                 .dispatch_lifecycle_event(event)
                 .map(StudioGuiHostCommandOutcome::LifecycleDispatched),

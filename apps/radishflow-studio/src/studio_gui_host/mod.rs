@@ -195,6 +195,15 @@ pub struct StudioGuiHostCanvasInteractionResult {
 
 pub type StudioGuiHostCanvasSuggestionResult = StudioGuiHostCanvasInteractionResult;
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct StudioGuiHostCanvasUnitLayoutMoveResult {
+    pub unit_id: rf_types::UnitId,
+    pub previous_position: Option<rf_ui::CanvasPoint>,
+    pub position: rf_ui::CanvasPoint,
+    pub ui_commands: StudioAppHostUiCommandModel,
+    pub canvas: StudioGuiCanvasState,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StudioGuiHostWindowLayoutUpdateResult {
     pub target_window_id: Option<StudioWindowHostId>,
@@ -240,6 +249,10 @@ pub enum StudioGuiHostCommand {
     DispatchCanvasInteraction {
         action: StudioGuiCanvasInteractionAction,
     },
+    MoveCanvasUnitLayout {
+        unit_id: rf_types::UnitId,
+        position: rf_ui::CanvasPoint,
+    },
     DispatchLifecycleEvent {
         event: StudioGuiHostLifecycleEvent,
     },
@@ -282,6 +295,7 @@ pub enum StudioGuiHostCommandOutcome {
     WindowOpened(StudioGuiHostWindowOpened),
     WindowDispatched(StudioGuiHostDispatch),
     CanvasInteracted(StudioGuiHostCanvasInteractionResult),
+    CanvasUnitLayoutMoved(StudioGuiHostCanvasUnitLayoutMoveResult),
     LifecycleDispatched(StudioGuiHostLifecycleDispatch),
     UiCommandDispatched(StudioGuiHostUiCommandDispatchResult),
     InspectorDraftUpdated(StudioGuiHostDispatch),

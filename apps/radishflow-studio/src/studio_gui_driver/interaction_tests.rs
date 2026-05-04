@@ -1,8 +1,8 @@
 use std::fs;
 
 use super::test_support::{
-    assert_ignored_shortcut, flash_drum_local_rules_config, lease_expiring_config,
-    sample_canvas_suggestion,
+    assert_ignored_shortcut, flash_drum_local_rules_config, layout_persistence_config,
+    lease_expiring_config, sample_canvas_suggestion,
 };
 use super::*;
 
@@ -295,6 +295,68 @@ fn gui_driver_commits_pending_canvas_edit_from_explicit_position_event() {
             .workspace_document
             .has_unsaved_changes
     );
+}
+
+#[test]
+fn gui_driver_moves_canvas_unit_layout_from_explicit_event_without_dirtying_document() {
+    let (config, project_path, layout_path) = layout_persistence_config();
+    let mut driver = StudioGuiDriver::new(&config).expect("expected driver");
+    driver
+        .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+        .expect("expected open dispatch");
+
+    let dispatch = driver
+        .dispatch_event(StudioGuiEvent::CanvasUnitLayoutMoveRequested {
+            unit_id: rf_types::UnitId::new("feed-1"),
+            position: rf_ui::CanvasPoint::new(128.0, 96.0),
+        })
+        .expect("expected canvas layout move dispatch");
+
+    match dispatch.outcome {
+        StudioGuiDriverOutcome::HostCommand(
+            crate::StudioGuiHostCommandOutcome::CanvasUnitLayoutMoved(result),
+        ) => {
+            assert_eq!(result.unit_id, rf_types::UnitId::new("feed-1"));
+            assert_eq!(result.previous_position, None);
+            assert_eq!(result.position, rf_ui::CanvasPoint::new(128.0, 96.0));
+            assert_eq!(
+                result
+                    .canvas
+                    .units
+                    .iter()
+                    .find(|unit| unit.unit_id == rf_types::UnitId::new("feed-1"))
+                    .and_then(|unit| unit.layout_position),
+                Some(rf_ui::CanvasPoint::new(128.0, 96.0))
+            );
+        }
+        other => panic!("expected canvas unit layout move outcome, got {other:?}"),
+    }
+    assert!(
+        !dispatch
+            .snapshot
+            .runtime
+            .workspace_document
+            .has_unsaved_changes
+    );
+
+    let stored = rf_store::read_studio_layout_file(&layout_path).expect("expected layout sidecar");
+    assert!(stored.canvas_unit_positions.iter().any(|position| {
+        position.unit_id == "feed-1" && position.x == 128.0 && position.y == 96.0
+    }));
+
+    let reopened = StudioGuiDriver::new(&config).expect("expected reopened driver");
+    assert_eq!(
+        reopened
+            .canvas_state()
+            .units
+            .iter()
+            .find(|unit| unit.unit_id == rf_types::UnitId::new("feed-1"))
+            .and_then(|unit| unit.layout_position),
+        Some(rf_ui::CanvasPoint::new(128.0, 96.0))
+    );
+
+    let _ = fs::remove_file(layout_path);
+    let _ = fs::remove_file(project_path);
 }
 
 #[test]

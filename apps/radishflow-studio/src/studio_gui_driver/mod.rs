@@ -60,6 +60,10 @@ pub enum StudioGuiEvent {
     CanvasPendingEditCommitRequested {
         position: rf_ui::CanvasPoint,
     },
+    CanvasUnitLayoutMoveRequested {
+        unit_id: rf_types::UnitId,
+        position: rf_ui::CanvasPoint,
+    },
     WindowLayoutMutationRequested {
         window_id: Option<StudioWindowHostId>,
         mutation: StudioGuiWindowLayoutMutation,
@@ -400,6 +404,9 @@ fn layout_scope_window_id(outcome: &StudioGuiDriverOutcome) -> Option<StudioWind
             ),
         )
         | StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::CanvasInteracted(_))
+        | StudioGuiDriverOutcome::HostCommand(
+            StudioGuiHostCommandOutcome::CanvasUnitLayoutMoved(_),
+        )
         | StudioGuiDriverOutcome::WindowLayoutUpdated(
             crate::StudioGuiHostWindowLayoutUpdateResult {
                 target_window_id: None,
@@ -464,6 +471,9 @@ fn surfaced_ui_commands(
         StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::CanvasInteracted(
             result,
         )) => Some(result.ui_commands.clone()),
+        StudioGuiDriverOutcome::HostCommand(
+            StudioGuiHostCommandOutcome::CanvasUnitLayoutMoved(result),
+        ) => Some(result.ui_commands.clone()),
         StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::LifecycleDispatched(
             lifecycle,
         )) => Some(lifecycle.ui_commands.clone()),
@@ -514,6 +524,9 @@ fn surfaced_canvas_state(outcome: &StudioGuiDriverOutcome) -> Option<StudioGuiCa
             result,
         ))
         | StudioGuiDriverOutcome::CanvasInteraction(result) => Some(result.canvas.clone()),
+        StudioGuiDriverOutcome::HostCommand(
+            StudioGuiHostCommandOutcome::CanvasUnitLayoutMoved(result),
+        ) => Some(result.canvas.clone()),
         StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::LifecycleDispatched(
             lifecycle,
         )) => Some(lifecycle.canvas.clone()),
@@ -632,6 +645,12 @@ fn route_driver_event(event: &StudioGuiEvent, registry: &StudioGuiCommandRegistr
         }
         StudioGuiEvent::CanvasPendingEditCommitRequested { position } => {
             DriverRoute::CanvasInteraction(StudioGuiCanvasInteractionAction::CommitPendingEditAt {
+                position: *position,
+            })
+        }
+        StudioGuiEvent::CanvasUnitLayoutMoveRequested { unit_id, position } => {
+            DriverRoute::HostCommand(StudioGuiHostCommand::MoveCanvasUnitLayout {
+                unit_id: unit_id.clone(),
                 position: *position,
             })
         }

@@ -456,6 +456,26 @@ impl ReadyAppState {
         }
     }
 
+    pub(super) fn dispatch_canvas_unit_layout_move(
+        &mut self,
+        unit_id: impl Into<rf_types::UnitId>,
+        position: rf_ui::CanvasPoint,
+    ) {
+        let unit_id = unit_id.into();
+        match self.dispatch_event_result(StudioGuiEvent::CanvasUnitLayoutMoveRequested {
+            unit_id: unit_id.clone(),
+            position,
+        }) {
+            Ok(dispatch) => self.record_canvas_unit_layout_move_feedback(&dispatch),
+            Err(error) => {
+                let message = format!("[{}] {}", error.code().as_str(), error.message());
+                self.platform_host
+                    .record_activity_line(format!("event failed: {message}"));
+                self.record_canvas_unit_layout_move_error(&unit_id, position, &message);
+            }
+        }
+    }
+
     pub(super) fn dispatch_layout_mutation(
         &mut self,
         window_id: Option<StudioWindowHostId>,
@@ -785,6 +805,83 @@ impl ReadyAppState {
         let result = radishflow_studio::StudioGuiCanvasCommandResultViewModel::pending_edit_failed(
             position,
             error_message,
+        );
+        self.platform_host
+            .record_activity_line(result.activity_line.clone());
+        self.canvas_command_result = Some(result);
+    }
+
+    pub(super) fn record_canvas_unit_layout_move_feedback(
+        &mut self,
+        dispatch: &StudioGuiPlatformExecutedDispatch,
+    ) {
+        let moved = match &dispatch.dispatch.outcome {
+            StudioGuiDriverOutcome::HostCommand(
+                radishflow_studio::StudioGuiHostCommandOutcome::CanvasUnitLayoutMoved(result),
+            ) => Some(result),
+            _ => None,
+        };
+        let Some(moved) = moved else {
+            return;
+        };
+
+        let window = dispatch.dispatch.window.clone();
+        let view = window.canvas.widget.view();
+        let target = view
+            .object_list
+            .items
+            .iter()
+            .find(|item| item.kind_label == "Unit" && item.target_id == moved.unit_id.as_str())
+            .map(|item| item.command_target())
+            .unwrap_or_else(
+                || radishflow_studio::StudioGuiCanvasCommandTargetViewModel {
+                    kind_label: "Unit",
+                    target_id: moved.unit_id.as_str().to_string(),
+                    label: moved.unit_id.as_str().to_string(),
+                    viewport_anchor_label: None,
+                    command_id: radishflow_studio::inspector_target_command_id(
+                        &rf_ui::InspectorTarget::Unit(moved.unit_id.clone()),
+                    ),
+                },
+            );
+        let anchor_label = target
+            .viewport_anchor_label
+            .clone()
+            .unwrap_or_else(|| moved.unit_id.as_str().to_string());
+        let anchor_label = self.canvas_viewport_navigation.request_anchor(anchor_label);
+        self.last_area_focus = Some(StudioGuiWindowAreaId::Canvas);
+        let result = radishflow_studio::StudioGuiCanvasCommandResultViewModel::moved_unit(
+            target,
+            anchor_label,
+            moved.previous_position,
+            moved.position,
+        );
+        self.platform_host
+            .record_activity_line(result.activity_line.clone());
+        self.canvas_command_result = Some(result);
+    }
+
+    pub(super) fn record_canvas_unit_layout_move_error(
+        &mut self,
+        unit_id: &rf_types::UnitId,
+        position: rf_ui::CanvasPoint,
+        error_message: &str,
+    ) {
+        let target = radishflow_studio::StudioGuiCanvasCommandTargetViewModel {
+            kind_label: "Unit",
+            target_id: unit_id.as_str().to_string(),
+            label: unit_id.as_str().to_string(),
+            viewport_anchor_label: None,
+            command_id: radishflow_studio::inspector_target_command_id(
+                &rf_ui::InspectorTarget::Unit(unit_id.clone()),
+            ),
+        };
+        let result = radishflow_studio::StudioGuiCanvasCommandResultViewModel::dispatch_failed(
+            target,
+            &format!(
+                "canvas layout move to ({:.1}, {:.1}) failed: {}",
+                position.x, position.y, error_message
+            ),
         );
         self.platform_host
             .record_activity_line(result.activity_line.clone());

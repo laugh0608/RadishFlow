@@ -48,6 +48,35 @@ impl StudioGuiHost {
         })
     }
 
+    pub fn move_canvas_unit_layout(
+        &mut self,
+        unit_id: rf_types::UnitId,
+        position: rf_ui::CanvasPoint,
+    ) -> RfResult<StudioGuiHostCanvasUnitLayoutMoveResult> {
+        if !self
+            .controller
+            .document()
+            .flowsheet
+            .units
+            .contains_key(&unit_id)
+        {
+            return Err(RfError::invalid_input(format!(
+                "cannot move canvas layout for missing unit `{}`",
+                unit_id.as_str()
+            )));
+        }
+
+        let previous_position = self.canvas_unit_positions.get(&unit_id).copied();
+        self.record_canvas_unit_position(&unit_id, position)?;
+        Ok(StudioGuiHostCanvasUnitLayoutMoveResult {
+            unit_id,
+            previous_position,
+            position,
+            ui_commands: self.ui_commands(),
+            canvas: self.canvas_state(),
+        })
+    }
+
     pub fn dispatch_lifecycle_event(
         &mut self,
         event: StudioGuiHostLifecycleEvent,

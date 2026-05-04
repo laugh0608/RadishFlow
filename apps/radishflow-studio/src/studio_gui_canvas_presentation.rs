@@ -239,6 +239,39 @@ impl StudioGuiCanvasCommandResultViewModel {
         }
     }
 
+    pub fn moved_unit(
+        target: StudioGuiCanvasCommandTargetViewModel,
+        anchor_label: impl Into<String>,
+        previous_position: Option<rf_ui::CanvasPoint>,
+        position: rf_ui::CanvasPoint,
+    ) -> Self {
+        let anchor_label = anchor_label.into();
+        let previous_label = previous_position
+            .map(|previous| format!("({:.1}, {:.1})", previous.x, previous.y))
+            .unwrap_or_else(|| "transient grid".to_string());
+        let title = "Canvas unit moved".to_string();
+        Self {
+            level: rf_ui::RunPanelNoticeLevel::Info,
+            status_label: "moved",
+            detail: format!(
+                "{} `{}` moved from {} to ({:.1}, {:.1}) and remains anchored at `{}`.",
+                target.kind_label,
+                target.target_id,
+                previous_label,
+                position.x,
+                position.y,
+                anchor_label
+            ),
+            activity_line: format!(
+                "canvas unit moved: {} {} -> {}",
+                target.kind_label, target.target_id, anchor_label
+            ),
+            title,
+            target,
+            anchor_label: Some(anchor_label),
+        }
+    }
+
     pub fn located(
         target: StudioGuiCanvasCommandTargetViewModel,
         anchor_label: impl Into<String>,
