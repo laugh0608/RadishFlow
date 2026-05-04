@@ -263,6 +263,8 @@ pub struct StudioGuiWindowSolveStepModel {
     pub summary: String,
     pub execution_status_label: &'static str,
     pub produced_streams: Vec<String>,
+    pub unit_action: StudioGuiWindowCommandActionModel,
+    pub produced_stream_actions: Vec<StudioGuiWindowCommandActionModel>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -1033,6 +1035,15 @@ fn inspector_stream_action(stream_id: &str) -> StudioGuiWindowCommandActionModel
     }
 }
 
+fn inspector_unit_action(unit_id: &str) -> StudioGuiWindowCommandActionModel {
+    let target = rf_ui::InspectorTarget::Unit(rf_types::UnitId::new(unit_id.to_string()));
+    StudioGuiWindowCommandActionModel {
+        label: unit_id.to_string(),
+        hover_text: format!("Unit {unit_id}"),
+        command_id: crate::inspector_target_command_id(&target),
+    }
+}
+
 fn related_steps_for_target(
     snapshot: &StudioGuiWindowSolveSnapshotModel,
     target: &rf_ui::InspectorTarget,
@@ -1141,6 +1152,12 @@ fn solve_snapshot_model_from_ui(
                     .streams
                     .iter()
                     .map(|stream| stream.stream_id.as_str().to_string())
+                    .collect(),
+                unit_action: inspector_unit_action(step.unit_id.as_str()),
+                produced_stream_actions: step
+                    .streams
+                    .iter()
+                    .map(|stream| inspector_stream_action(stream.stream_id.as_str()))
                     .collect(),
             })
             .collect(),
@@ -1694,6 +1711,21 @@ mod tests {
                 .iter()
                 .any(|step| step.unit_id == "heater-1")
         );
+        let related_heater_step = inspector
+            .related_steps
+            .iter()
+            .find(|step| step.unit_id == "heater-1")
+            .expect("expected related heater step");
+        assert_eq!(
+            related_heater_step.unit_action.command_id,
+            "inspector.focus_unit:heater-1"
+        );
+        assert!(
+            related_heater_step
+                .produced_stream_actions
+                .iter()
+                .any(|action| action.command_id == "inspector.focus_stream:stream-heated")
+        );
         assert!(
             inspector.related_diagnostics.iter().any(|diagnostic| {
                 diagnostic.target_candidates.iter().any(|target| {
@@ -1776,6 +1808,13 @@ mod tests {
                 .iter()
                 .any(|step| step.unit_id == "heater-1")
         );
+        assert!(active_detail.related_steps.iter().any(|step| {
+            step.unit_action.command_id == "inspector.focus_unit:heater-1"
+                && step
+                    .produced_stream_actions
+                    .iter()
+                    .any(|action| action.command_id == "inspector.focus_stream:stream-heated")
+        }));
         assert!(
             active_detail
                 .related_diagnostics

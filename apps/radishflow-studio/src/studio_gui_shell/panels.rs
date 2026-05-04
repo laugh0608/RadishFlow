@@ -949,17 +949,7 @@ impl ReadyAppState {
                     ui.small(self.locale.text(ShellText::NoSteps));
                 } else {
                     for step in &snapshot.steps {
-                        render_wrapped_small(
-                            ui,
-                            format!(
-                                "#{} {} -> {}",
-                                step.index,
-                                step.unit_id,
-                                step.produced_streams.join(", ")
-                            ),
-                        );
-                        render_wrapped_label(ui, &step.summary);
-                        ui.add_space(4.0);
+                        self.render_solve_step_inspector(ui, step);
                     }
                 }
             });
@@ -1278,6 +1268,32 @@ impl ReadyAppState {
         ui.add_space(8.0);
     }
 
+    fn render_solve_step_inspector(
+        &mut self,
+        ui: &mut egui::Ui,
+        step: &radishflow_studio::StudioGuiWindowSolveStepModel,
+    ) {
+        ui.horizontal_wrapped(|ui| {
+            ui.small(format!("#{}", step.index));
+            render_status_chip(
+                ui,
+                self.locale
+                    .runtime_label(step.execution_status_label)
+                    .as_ref(),
+                run_status_color(step.execution_status_label),
+            );
+            self.render_small_command_action(ui, &step.unit_action);
+            if !step.produced_stream_actions.is_empty() {
+                ui.small("->");
+                for action in &step.produced_stream_actions {
+                    self.render_small_command_action(ui, action);
+                }
+            }
+        });
+        render_wrapped_label(ui, &step.summary);
+        ui.add_space(4.0);
+    }
+
     fn render_active_inspector_detail(
         &mut self,
         ui: &mut egui::Ui,
@@ -1448,17 +1464,7 @@ impl ReadyAppState {
             ui.add_space(4.0);
             ui.collapsing(self.locale.text(ShellText::RelatedSolveSteps), |ui| {
                 for step in &detail.related_steps {
-                    render_wrapped_small(
-                        ui,
-                        format!(
-                            "#{} {} -> {}",
-                            step.index,
-                            step.unit_id,
-                            step.produced_streams.join(", ")
-                        ),
-                    );
-                    render_wrapped_label(ui, &step.summary);
-                    ui.add_space(4.0);
+                    self.render_solve_step_inspector(ui, step);
                 }
             });
         }
@@ -1558,17 +1564,7 @@ impl ReadyAppState {
                 return;
             }
             for step in &inspector.related_steps {
-                render_wrapped_small(
-                    ui,
-                    format!(
-                        "#{} {} -> {}",
-                        step.index,
-                        step.unit_id,
-                        step.produced_streams.join(", ")
-                    ),
-                );
-                render_wrapped_label(ui, &step.summary);
-                ui.add_space(4.0);
+                self.render_solve_step_inspector(ui, step);
             }
         });
 

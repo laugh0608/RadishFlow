@@ -472,7 +472,8 @@ fn canvas_placement_palette_commit_matrix_records_created_unit_feedback() {
     ];
 
     for (command_id, expected_kind, expected_prefix) in cases {
-        let mut app = ready_app_state(&lease_expiring_config());
+        let (config, project_path) = blank_workspace_config();
+        let mut app = ready_app_state(&config);
 
         app.dispatch_ui_command(command_id);
         app.dispatch_canvas_pending_edit_commit(rf_ui::CanvasPoint::new(64.0, 40.0));
@@ -561,6 +562,9 @@ fn canvas_placement_palette_commit_matrix_records_created_unit_feedback() {
                 .has_unsaved_changes,
             "{command_id}"
         );
+
+        let _ = fs::remove_file(studio_layout_path_for_project(&project_path));
+        let _ = fs::remove_file(project_path);
     }
 }
 
