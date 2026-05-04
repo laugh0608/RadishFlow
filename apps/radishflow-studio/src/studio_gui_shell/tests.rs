@@ -688,6 +688,84 @@ fn canvas_feed_heater_flash_minimal_path_can_run_after_accepting_suggestions() {
 }
 
 #[test]
+fn canvas_feed_mixer_flash_minimal_path_can_run_after_accepting_suggestions() {
+    let mut app = ready_app_state(&synced_workspace_config());
+
+    for point in [
+        rf_ui::CanvasPoint::new(64.0, 40.0),
+        rf_ui::CanvasPoint::new(64.0, 140.0),
+    ] {
+        app.dispatch_ui_command("canvas.begin_place_unit.feed");
+        app.dispatch_canvas_pending_edit_commit(point);
+        app.dispatch_ui_command("canvas.accept_focused");
+    }
+
+    app.dispatch_ui_command("canvas.begin_place_unit.mixer");
+    app.dispatch_canvas_pending_edit_commit(rf_ui::CanvasPoint::new(210.0, 90.0));
+    let after_mixer = app.platform_host.snapshot().window_model();
+    assert_eq!(after_mixer.canvas.suggestion_count, 3);
+    assert_eq!(
+        after_mixer.canvas.focused_suggestion_id.as_deref(),
+        Some("local.mixer.connect_inlet_a.mixer-1.stream-feed-2-outlet")
+    );
+
+    app.dispatch_ui_command("canvas.accept_focused");
+    let after_mixer_inlet_a = app.platform_host.snapshot().window_model();
+    assert_eq!(
+        after_mixer_inlet_a.canvas.focused_suggestion_id.as_deref(),
+        Some("local.mixer.connect_inlet_b.mixer-1.stream-feed-3-outlet")
+    );
+
+    app.dispatch_ui_command("canvas.accept_focused");
+    let after_mixer_inlet_b = app.platform_host.snapshot().window_model();
+    assert_eq!(
+        after_mixer_inlet_b.canvas.focused_suggestion_id.as_deref(),
+        Some("local.mixer.create_outlet.mixer-1")
+    );
+
+    app.dispatch_ui_command("canvas.accept_focused");
+    let after_mixer_outlet = app.platform_host.snapshot().window_model();
+    assert_eq!(after_mixer_outlet.canvas.suggestion_count, 0);
+
+    app.dispatch_ui_command("canvas.begin_place_unit.flash_drum");
+    app.dispatch_canvas_pending_edit_commit(rf_ui::CanvasPoint::new(360.0, 90.0));
+    let after_flash = app.platform_host.snapshot().window_model();
+    assert_eq!(
+        after_flash.canvas.focused_suggestion_id.as_deref(),
+        Some("local.flash_drum.connect_inlet.flash-2.stream-mixer-1-outlet")
+    );
+
+    app.dispatch_ui_command("canvas.accept_focused");
+    app.dispatch_ui_command("canvas.accept_focused");
+    app.dispatch_ui_command("canvas.accept_focused");
+
+    app.dispatch_ui_command("run_panel.run_manual");
+    let completed = app.platform_host.snapshot().window_model();
+    assert_eq!(
+        completed.runtime.control_state.run_status,
+        rf_ui::RunStatus::Converged
+    );
+    assert_eq!(completed.runtime.control_state.pending_reason, None);
+    assert!(
+        completed
+            .runtime
+            .control_state
+            .latest_snapshot_id
+            .as_deref()
+            .is_some_and(|snapshot_id| snapshot_id.contains("rev-12-seq-1"))
+    );
+    assert!(
+        completed
+            .canvas
+            .widget
+            .view()
+            .stream_lines
+            .iter()
+            .any(|stream| stream.stream_id == "stream-mixer-1-outlet")
+    );
+}
+
+#[test]
 fn canvas_pending_edit_commit_reports_missing_pending_edit_through_command_result() {
     let mut app = ready_app_state(&lease_expiring_config());
 
