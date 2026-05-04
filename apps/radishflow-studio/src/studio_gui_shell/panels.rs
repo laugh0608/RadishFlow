@@ -1437,7 +1437,7 @@ impl ReadyAppState {
             ui.add_space(4.0);
             ui.small(egui::RichText::new(self.locale.text(ShellText::InspectorPorts)).strong());
             egui::Grid::new(format!("inspector-ports:{}", detail.target.command_id))
-                .num_columns(4)
+                .num_columns(5)
                 .spacing([8.0, 3.0])
                 .show(ui, |ui| {
                     ui.small(
@@ -1456,6 +1456,7 @@ impl ReadyAppState {
                         egui::RichText::new(self.locale.text(ShellText::InspectorPortStream))
                             .strong(),
                     );
+                    ui.small(egui::RichText::new("Attention").strong());
                     ui.end_row();
                     for port in &detail.unit_ports {
                         render_wrapped_small(ui, &port.name);
@@ -1468,6 +1469,18 @@ impl ReadyAppState {
                                 ui.small("-");
                             }
                         };
+                        if let Some(summary) = port.attention_summary.as_ref() {
+                            ui.vertical(|ui| {
+                                render_status_chip(
+                                    ui,
+                                    "attention",
+                                    notice_color(rf_ui::RunPanelNoticeLevel::Warning),
+                                );
+                                render_wrapped_small(ui, summary);
+                            });
+                        } else {
+                            ui.small("-");
+                        }
                         ui.end_row();
                     }
                 });

@@ -236,6 +236,7 @@ pub struct StudioGuiWindowInspectorTargetPortModel {
     pub kind: String,
     pub stream_id: Option<String>,
     pub stream_action: Option<StudioGuiWindowCommandActionModel>,
+    pub attention_summary: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -855,7 +856,19 @@ fn runtime_from_snapshot(snapshot: &StudioGuiSnapshot) -> StudioGuiWindowRuntime
         .active_inspector_detail
         .as_ref()
         .map(|detail| {
-            inspector_target_detail_model_from_snapshot(detail, latest_solve_snapshot.as_ref())
+            let latest_diagnostic_for_document = snapshot
+                .runtime
+                .control_state
+                .latest_diagnostic
+                .as_ref()
+                .filter(|diagnostic| {
+                    diagnostic.document_revision == snapshot.runtime.workspace_document.revision
+                });
+            inspector_target_detail_model_from_snapshot(
+                detail,
+                latest_solve_snapshot.as_ref(),
+                latest_diagnostic_for_document,
+            )
         });
 
     StudioGuiWindowRuntimeAreaModel {
@@ -1072,6 +1085,7 @@ fn inspector_target_model_from_ui(
 fn inspector_target_detail_model_from_snapshot(
     detail: &crate::StudioGuiInspectorTargetDetailSnapshot,
     latest_solve_snapshot: Option<&StudioGuiWindowSolveSnapshotModel>,
+    latest_diagnostic: Option<&rf_ui::DiagnosticSummary>,
 ) -> StudioGuiWindowInspectorTargetDetailModel {
     let target = inspector_target_model_from_ui(&detail.target);
     let latest_unit_result = latest_solve_snapshot
@@ -1128,6 +1142,11 @@ fn inspector_target_detail_model_from_snapshot(
                     .stream_id
                     .as_ref()
                     .map(|stream_id| inspector_stream_action(stream_id)),
+                attention_summary: inspector_port_attention_summary(
+                    &detail.target,
+                    &port.name,
+                    latest_diagnostic,
+                ),
             })
             .collect(),
         latest_unit_result,
@@ -1136,6 +1155,40 @@ fn inspector_target_detail_model_from_snapshot(
         related_diagnostics,
         diagnostic_actions,
     }
+}
+
+fn inspector_port_attention_summary(
+    target: &rf_ui::InspectorTarget,
+    port_name: &str,
+    latest_diagnostic: Option<&rf_ui::DiagnosticSummary>,
+) -> Option<String> {
+    let rf_ui::InspectorTarget::Unit(unit_id) = target else {
+        return None;
+    };
+    let diagnostic = latest_diagnostic?;
+    if !matches!(
+        diagnostic.highest_severity,
+        rf_ui::DiagnosticSeverity::Warning | rf_ui::DiagnosticSeverity::Error
+    ) {
+        return None;
+    }
+    if !diagnostic.related_port_targets.iter().any(|port_target| {
+        port_target.unit_id.as_str() == unit_id.as_str()
+            && port_target.port_name.as_str() == port_name
+    }) {
+        return None;
+    }
+
+    let mut parts = vec![
+        diagnostic_severity_label(diagnostic.highest_severity).to_string(),
+        format!("port {}:{}", unit_id.as_str(), port_name),
+    ];
+    if let Some(code) = diagnostic.primary_code.as_ref() {
+        parts.push(format!("code {code}"));
+    }
+    parts.push(format!("count {}", diagnostic.diagnostic_count));
+
+    Some(format!("attention: {}", parts.join("; ")))
 }
 
 fn inspector_field_model_from_snapshot(
@@ -2318,6 +2371,24 @@ mod tests {
         }));
         assert!(failure.latest_log_message.is_some());
 
+        let focused_failure_unit = driver
+            .dispatch_event(StudioGuiEvent::UiCommandRequested {
+                command_id: "inspector.focus_unit:feed-1".to_string(),
+            })
+            .expect("expected failure target focus dispatch");
+        let failure_detail = focused_failure_unit
+            .window
+            .runtime
+            .active_inspector_detail
+            .expect("expected active failure unit inspector detail");
+        assert!(failure_detail.unit_ports.iter().any(|port| {
+            port.name == "outlet"
+                && port.attention_summary.as_ref().is_some_and(|summary| {
+                    summary.contains("port feed-1:outlet")
+                        && summary.contains("solver.connection_validation.unbound_outlet_port")
+                })
+        }));
+
         let recovery = driver
             .dispatch_event(StudioGuiEvent::UiCommandRequested {
                 command_id: "run_panel.recover_failure".to_string(),
@@ -2353,6 +2424,13 @@ mod tests {
                     })
                     .unwrap_or(false)
             })));
+        assert!(
+            detail
+                .unit_ports
+                .iter()
+                .all(|port| port.attention_summary.is_none()),
+            "expected stale failure attention to stay off the post-recovery unit port list"
+        );
         let rerun = driver
             .dispatch_event(StudioGuiEvent::UiCommandRequested {
                 command_id: "run_panel.resume_workspace".to_string(),
