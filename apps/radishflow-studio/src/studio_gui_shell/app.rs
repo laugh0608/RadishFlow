@@ -755,14 +755,19 @@ impl ReadyAppState {
                     command_id,
                 }
             });
-        let focus_anchor = view.viewport.focus.as_ref().and_then(|focus| {
-            (focus.kind_label == target.kind_label
-                && focus.target_id == target.target_id
-                && focus.command_id == target.command_id)
-                .then(|| focus.anchor_label.clone())
-        });
+        let anchor_label = view
+            .viewport
+            .focus
+            .as_ref()
+            .and_then(|focus| {
+                (focus.kind_label == target.kind_label
+                    && focus.target_id == target.target_id
+                    && focus.command_id == target.command_id)
+                    .then(|| focus.anchor_label.clone())
+            })
+            .or_else(|| target.viewport_anchor_label.clone());
 
-        let result = if let Some(anchor_label) = focus_anchor {
+        let result = if let Some(anchor_label) = anchor_label {
             let anchor_label = self.canvas_viewport_navigation.request_anchor(anchor_label);
             self.last_area_focus = Some(StudioGuiWindowAreaId::Canvas);
             radishflow_studio::StudioGuiCanvasCommandResultViewModel::created_unit(
