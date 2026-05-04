@@ -612,6 +612,82 @@ fn canvas_feed_to_flash_minimal_path_surfaces_local_connection_suggestions() {
 }
 
 #[test]
+fn canvas_feed_heater_flash_minimal_path_can_run_after_accepting_suggestions() {
+    let mut app = ready_app_state(&synced_workspace_config());
+
+    app.dispatch_ui_command("canvas.begin_place_unit.feed");
+    app.dispatch_canvas_pending_edit_commit(rf_ui::CanvasPoint::new(64.0, 40.0));
+    assert_eq!(
+        app.platform_host
+            .snapshot()
+            .window_model()
+            .canvas
+            .focused_suggestion_id
+            .as_deref(),
+        Some("local.feed.create_outlet.feed-2")
+    );
+    app.dispatch_ui_command("canvas.accept_focused");
+
+    app.dispatch_ui_command("canvas.begin_place_unit.heater");
+    app.dispatch_canvas_pending_edit_commit(rf_ui::CanvasPoint::new(180.0, 40.0));
+    let after_heater = app.platform_host.snapshot().window_model();
+    assert_eq!(after_heater.canvas.suggestion_count, 2);
+    assert_eq!(
+        after_heater.canvas.focused_suggestion_id.as_deref(),
+        Some("local.heater.connect_inlet.heater-2.stream-feed-2-outlet")
+    );
+
+    app.dispatch_ui_command("canvas.accept_focused");
+    let after_heater_inlet = app.platform_host.snapshot().window_model();
+    assert_eq!(
+        after_heater_inlet.canvas.focused_suggestion_id.as_deref(),
+        Some("local.heater.create_outlet.heater-2")
+    );
+
+    app.dispatch_ui_command("canvas.accept_focused");
+    let after_heater_outlet = app.platform_host.snapshot().window_model();
+    assert_eq!(after_heater_outlet.canvas.suggestion_count, 0);
+
+    app.dispatch_ui_command("canvas.begin_place_unit.flash_drum");
+    app.dispatch_canvas_pending_edit_commit(rf_ui::CanvasPoint::new(320.0, 40.0));
+    let after_flash = app.platform_host.snapshot().window_model();
+    assert_eq!(after_flash.canvas.suggestion_count, 3);
+    assert_eq!(
+        after_flash.canvas.focused_suggestion_id.as_deref(),
+        Some("local.flash_drum.connect_inlet.flash-2.stream-heater-2-outlet")
+    );
+
+    app.dispatch_ui_command("canvas.accept_focused");
+    app.dispatch_ui_command("canvas.accept_focused");
+    app.dispatch_ui_command("canvas.accept_focused");
+
+    app.dispatch_ui_command("run_panel.run_manual");
+    let completed = app.platform_host.snapshot().window_model();
+    assert_eq!(
+        completed.runtime.control_state.run_status,
+        rf_ui::RunStatus::Converged
+    );
+    assert_eq!(completed.runtime.control_state.pending_reason, None);
+    assert!(
+        completed
+            .runtime
+            .control_state
+            .latest_snapshot_id
+            .as_deref()
+            .is_some_and(|snapshot_id| snapshot_id.contains("rev-9-seq-1"))
+    );
+    assert!(
+        completed
+            .canvas
+            .widget
+            .view()
+            .stream_lines
+            .iter()
+            .any(|stream| stream.stream_id == "stream-heater-2-outlet")
+    );
+}
+
+#[test]
 fn canvas_pending_edit_commit_reports_missing_pending_edit_through_command_result() {
     let mut app = ready_app_state(&lease_expiring_config());
 
