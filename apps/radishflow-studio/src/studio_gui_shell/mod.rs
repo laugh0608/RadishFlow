@@ -144,6 +144,7 @@ struct ResultInspectorState {
     snapshot_id: Option<String>,
     selected_stream_id: Option<String>,
     comparison_stream_id: Option<String>,
+    selected_unit_id: Option<String>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -263,6 +264,7 @@ impl ResultInspectorState {
             self.snapshot_id = Some(snapshot.snapshot_id.clone());
             self.selected_stream_id = None;
             self.comparison_stream_id = None;
+            self.selected_unit_id = None;
         }
 
         if self
@@ -308,6 +310,40 @@ impl ResultInspectorState {
         self.selected_stream_id.clone()
     }
 
+    fn selected_unit_id_for_snapshot(
+        &mut self,
+        snapshot: &radishflow_studio::StudioGuiWindowSolveSnapshotModel,
+    ) -> Option<String> {
+        if self.snapshot_id.as_deref() != Some(snapshot.snapshot_id.as_str()) {
+            // selected_stream_id_for_snapshot is expected to run first and
+            // already reset selections; this branch keeps the helper safe to
+            // call independently.
+            self.snapshot_id = Some(snapshot.snapshot_id.clone());
+            self.selected_stream_id = None;
+            self.comparison_stream_id = None;
+            self.selected_unit_id = None;
+        }
+
+        if self
+            .selected_unit_id
+            .as_deref()
+            .is_some_and(|selected_unit| {
+                !snapshot
+                    .steps
+                    .iter()
+                    .any(|step| step.unit_id == selected_unit)
+            })
+        {
+            self.selected_unit_id = None;
+        }
+
+        if self.selected_unit_id.is_none() {
+            self.selected_unit_id = snapshot.steps.first().map(|step| step.unit_id.clone());
+        }
+
+        self.selected_unit_id.clone()
+    }
+
     fn select_stream(&mut self, snapshot_id: &str, stream_id: impl Into<String>) {
         let stream_id = stream_id.into();
         self.snapshot_id = Some(snapshot_id.to_string());
@@ -322,10 +358,16 @@ impl ResultInspectorState {
         self.comparison_stream_id = Some(stream_id.into());
     }
 
+    fn select_unit(&mut self, snapshot_id: &str, unit_id: impl Into<String>) {
+        self.snapshot_id = Some(snapshot_id.to_string());
+        self.selected_unit_id = Some(unit_id.into());
+    }
+
     fn reset(&mut self) {
         self.snapshot_id = None;
         self.selected_stream_id = None;
         self.comparison_stream_id = None;
+        self.selected_unit_id = None;
     }
 }
 

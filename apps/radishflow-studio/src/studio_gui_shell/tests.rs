@@ -274,6 +274,79 @@ fn result_inspector_state_tracks_selected_stream_per_snapshot() {
 }
 
 #[test]
+fn result_inspector_state_tracks_selected_unit_per_snapshot() {
+    let mut app = ready_app_state(&synced_workspace_config());
+    app.dispatch_ui_command("run_panel.run_manual");
+    let snapshot = app
+        .platform_host
+        .snapshot()
+        .window_model()
+        .runtime
+        .latest_solve_snapshot
+        .expect("expected solve snapshot");
+
+    let default_unit = app
+        .result_inspector
+        .selected_unit_id_for_snapshot(&snapshot);
+    assert_eq!(
+        default_unit.as_deref(),
+        snapshot.steps.first().map(|step| step.unit_id.as_str())
+    );
+
+    app.result_inspector
+        .select_unit(&snapshot.snapshot_id, "heater-1");
+    assert_eq!(
+        app.result_inspector
+            .selected_unit_id_for_snapshot(&snapshot)
+            .as_deref(),
+        Some("heater-1")
+    );
+
+    let inspector = snapshot.result_inspector_with_unit(
+        snapshot
+            .streams
+            .first()
+            .map(|stream| stream.stream_id.as_str()),
+        None,
+        Some("heater-1"),
+    );
+    assert_eq!(inspector.selected_unit_id.as_deref(), Some("heater-1"));
+    assert!(
+        inspector
+            .unit_options
+            .iter()
+            .any(|option| option.unit_id == "heater-1" && option.is_selected),
+        "expected heater-1 unit option to be marked selected"
+    );
+
+    // missing unit on the same snapshot falls back to first unit and the
+    // shell-side state is reset to that fallback.
+    app.result_inspector
+        .select_unit(&snapshot.snapshot_id, "missing-unit");
+    let fallback_unit = app
+        .result_inspector
+        .selected_unit_id_for_snapshot(&snapshot);
+    assert_eq!(
+        fallback_unit.as_deref(),
+        snapshot.steps.first().map(|step| step.unit_id.as_str())
+    );
+
+    let mut next_snapshot = snapshot.clone();
+    next_snapshot.snapshot_id = "snapshot-next-unit".to_string();
+    let next_default_unit = app
+        .result_inspector
+        .selected_unit_id_for_snapshot(&next_snapshot);
+    assert_eq!(
+        next_default_unit.as_deref(),
+        next_snapshot
+            .steps
+            .first()
+            .map(|step| step.unit_id.as_str()),
+        "expected unit selection to reset on snapshot identity change"
+    );
+}
+
+#[test]
 fn canvas_object_list_filter_matches_expected_object_groups() {
     let unit = radishflow_studio::StudioGuiCanvasObjectListItemViewModel {
         kind_label: "Unit",

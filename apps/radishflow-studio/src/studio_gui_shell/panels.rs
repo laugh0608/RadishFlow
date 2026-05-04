@@ -923,9 +923,13 @@ impl ReadyAppState {
                     let selected_stream_id = self
                         .result_inspector
                         .selected_stream_id_for_snapshot(snapshot);
-                    let inspector = snapshot.result_inspector_with_comparison(
+                    let selected_unit_id = self
+                        .result_inspector
+                        .selected_unit_id_for_snapshot(snapshot);
+                    let inspector = snapshot.result_inspector_with_unit(
                         selected_stream_id.as_deref(),
                         self.result_inspector.comparison_stream_id.as_deref(),
+                        selected_unit_id.as_deref(),
                     );
                     self.render_result_inspector(ui, &inspector);
                 }
@@ -1573,6 +1577,73 @@ impl ReadyAppState {
         } else {
             ui.small(self.locale.text(ShellText::NoStreamResults));
             return;
+        }
+
+        if !inspector.unit_options.is_empty() {
+            ui.collapsing(self.locale.text(ShellText::ResultUnitView), |ui| {
+                ui.small(self.locale.text(ShellText::SelectUnit));
+                ui.horizontal_wrapped(|ui| {
+                    for option in &inspector.unit_options {
+                        let response = ui
+                            .add(egui::Button::new(&option.unit_id).selected(option.is_selected))
+                            .on_hover_text(&option.summary);
+                        if response.clicked() {
+                            self.result_inspector
+                                .select_unit(&inspector.snapshot_id, option.unit_id.clone());
+                        }
+                    }
+                });
+                if inspector.has_stale_unit_selection {
+                    render_wrapped_small(ui, self.locale.text(ShellText::StaleUnitSelection));
+                }
+                if let Some(unit) = inspector.selected_unit.as_ref() {
+                    ui.add_space(4.0);
+                    self.render_unit_execution_result_inspector(ui, unit);
+                } else {
+                    ui.small(self.locale.text(ShellText::NoUnitResults));
+                }
+
+                if !inspector.unit_diagnostic_actions.is_empty() {
+                    ui.collapsing(self.locale.text(ShellText::DiagnosticTargets), |ui| {
+                        self.render_diagnostic_target_actions(
+                            ui,
+                            &inspector.unit_diagnostic_actions,
+                        );
+                    });
+                }
+
+                ui.collapsing(self.locale.text(ShellText::RelatedSolveSteps), |ui| {
+                    if inspector.unit_related_steps.is_empty() {
+                        ui.small(self.locale.text(ShellText::NoRelatedSteps));
+                        return;
+                    }
+                    for step in &inspector.unit_related_steps {
+                        self.render_solve_step_inspector(ui, step);
+                    }
+                });
+
+                ui.collapsing(self.locale.text(ShellText::RelatedDiagnostics), |ui| {
+                    if inspector.unit_related_diagnostics.is_empty() {
+                        ui.small(self.locale.text(ShellText::NoRelatedDiagnostics));
+                        return;
+                    }
+                    for diagnostic in &inspector.unit_related_diagnostics {
+                        ui.horizontal_wrapped(|ui| {
+                            render_status_chip(
+                                ui,
+                                self.locale
+                                    .runtime_label(diagnostic.severity_label)
+                                    .as_ref(),
+                                diagnostic_color(diagnostic.severity_label),
+                            );
+                            ui.small(&diagnostic.code);
+                        });
+                        render_wrapped_label(ui, &diagnostic.message);
+                        self.render_diagnostic_targets(ui, diagnostic);
+                        ui.add_space(4.0);
+                    }
+                });
+            });
         }
 
         if !inspector.comparison_options.is_empty() {

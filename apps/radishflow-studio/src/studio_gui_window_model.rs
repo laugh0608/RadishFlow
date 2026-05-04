@@ -328,6 +328,13 @@ pub struct StudioGuiWindowResultInspectorModel {
     pub diagnostic_actions: Vec<StudioGuiWindowDiagnosticTargetActionModel>,
     pub has_stale_selection: bool,
     pub has_stale_comparison: bool,
+    pub unit_options: Vec<StudioGuiWindowResultInspectorUnitOptionModel>,
+    pub selected_unit_id: Option<String>,
+    pub selected_unit: Option<StudioGuiWindowUnitExecutionResultModel>,
+    pub unit_related_steps: Vec<StudioGuiWindowSolveStepModel>,
+    pub unit_related_diagnostics: Vec<StudioGuiWindowDiagnosticModel>,
+    pub unit_diagnostic_actions: Vec<StudioGuiWindowDiagnosticTargetActionModel>,
+    pub has_stale_unit_selection: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -336,6 +343,16 @@ pub struct StudioGuiWindowResultInspectorStreamOptionModel {
     pub label: String,
     pub summary: String,
     pub is_selected: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioGuiWindowResultInspectorUnitOptionModel {
+    pub unit_id: String,
+    pub status_label: &'static str,
+    pub step_index: usize,
+    pub summary: String,
+    pub is_selected: bool,
+    pub focus_action: StudioGuiWindowCommandActionModel,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -478,6 +495,15 @@ impl StudioGuiWindowSolveSnapshotModel {
         requested_stream_id: Option<&str>,
         requested_comparison_stream_id: Option<&str>,
     ) -> StudioGuiWindowResultInspectorModel {
+        self.result_inspector_with_unit(requested_stream_id, requested_comparison_stream_id, None)
+    }
+
+    pub fn result_inspector_with_unit(
+        &self,
+        requested_stream_id: Option<&str>,
+        requested_comparison_stream_id: Option<&str>,
+        requested_unit_id: Option<&str>,
+    ) -> StudioGuiWindowResultInspectorModel {
         let selected_stream_id = requested_stream_id
             .filter(|stream_id| {
                 self.streams
@@ -609,6 +635,107 @@ impl StudioGuiWindowSolveSnapshotModel {
             })
             .collect();
 
+        let unit_id_order: Vec<String> = self.steps.iter().map(|step| step.unit_id.clone()).fold(
+            Vec::new(),
+            |mut acc, unit_id| {
+                if !acc.iter().any(|existing| existing == &unit_id) {
+                    acc.push(unit_id);
+                }
+                acc
+            },
+        );
+        let selected_unit_id = requested_unit_id
+            .filter(|unit_id| unit_id_order.iter().any(|existing| existing == *unit_id))
+            .map(str::to_string)
+            .or_else(|| unit_id_order.first().cloned());
+        let has_stale_unit_selection = requested_unit_id.is_some()
+            && requested_unit_id.map(str::to_string) != selected_unit_id;
+        let unit_related_steps: Vec<StudioGuiWindowSolveStepModel> = selected_unit_id
+            .as_deref()
+            .map(|selected_unit| {
+                self.steps
+                    .iter()
+                    .filter(|step| step.unit_id == selected_unit)
+                    .cloned()
+                    .collect()
+            })
+            .unwrap_or_default();
+        let unit_related_diagnostics: Vec<StudioGuiWindowDiagnosticModel> = selected_unit_id
+            .as_deref()
+            .map(|selected_unit| {
+                let produced_streams: BTreeSet<&str> = unit_related_steps
+                    .iter()
+                    .flat_map(|step| step.produced_streams.iter().map(String::as_str))
+                    .collect();
+                self.diagnostics
+                    .iter()
+                    .filter(|diagnostic| {
+                        diagnostic
+                            .related_unit_ids
+                            .iter()
+                            .any(|unit_id| unit_id == selected_unit)
+                            || diagnostic
+                                .related_stream_ids
+                                .iter()
+                                .any(|stream_id| produced_streams.contains(stream_id.as_str()))
+                    })
+                    .cloned()
+                    .collect()
+            })
+            .unwrap_or_default();
+        let selected_unit = selected_unit_id.as_deref().and_then(|selected_unit| {
+            unit_related_steps
+                .last()
+                .map(|step| StudioGuiWindowUnitExecutionResultModel {
+                    unit_id: selected_unit.to_string(),
+                    step_index: step.index,
+                    status_label: step.execution_status_label,
+                    summary: step.summary.clone(),
+                    produced_stream_ids: step.produced_streams.clone(),
+                    produced_stream_actions: step.produced_stream_actions.clone(),
+                })
+        });
+        let unit_options: Vec<StudioGuiWindowResultInspectorUnitOptionModel> = unit_id_order
+            .iter()
+            .map(|unit_id| {
+                let last_step = self
+                    .steps
+                    .iter()
+                    .rev()
+                    .find(|step| &step.unit_id == unit_id);
+                let status_label = last_step
+                    .map(|step| step.execution_status_label)
+                    .unwrap_or("Idle");
+                let step_index = last_step.map(|step| step.index).unwrap_or(0);
+                let produced_streams_text = last_step
+                    .map(|step| step.produced_streams.join(", "))
+                    .unwrap_or_default();
+                let summary = if produced_streams_text.is_empty() {
+                    format!("{unit_id} | {status_label} | step #{step_index}")
+                } else {
+                    format!(
+                        "{unit_id} | {status_label} | step #{step_index} | -> {produced_streams_text}"
+                    )
+                };
+                StudioGuiWindowResultInspectorUnitOptionModel {
+                    unit_id: unit_id.clone(),
+                    status_label,
+                    step_index,
+                    summary,
+                    is_selected: selected_unit_id
+                        .as_deref()
+                        .map(|selected_unit| selected_unit == unit_id)
+                        .unwrap_or(false),
+                    focus_action: inspector_unit_action(unit_id),
+                }
+            })
+            .collect();
+        let unit_diagnostic_actions = result_inspector_unit_diagnostic_actions(
+            selected_unit_id.as_deref(),
+            &unit_related_steps,
+            &unit_related_diagnostics,
+        );
+
         StudioGuiWindowResultInspectorModel {
             snapshot_id: self.snapshot_id.clone(),
             selected_stream_id,
@@ -623,6 +750,13 @@ impl StudioGuiWindowSolveSnapshotModel {
             diagnostic_actions,
             has_stale_selection,
             has_stale_comparison,
+            unit_options,
+            selected_unit_id,
+            selected_unit,
+            unit_related_steps,
+            unit_related_diagnostics,
+            unit_diagnostic_actions,
+            has_stale_unit_selection,
         }
     }
 }
@@ -1529,6 +1663,33 @@ fn result_inspector_diagnostic_actions(
     )
 }
 
+fn result_inspector_unit_diagnostic_actions(
+    selected_unit_id: Option<&str>,
+    related_steps: &[StudioGuiWindowSolveStepModel],
+    related_diagnostics: &[StudioGuiWindowDiagnosticModel],
+) -> Vec<StudioGuiWindowDiagnosticTargetActionModel> {
+    let selected_unit = selected_unit_id.map(|unit_id| {
+        diagnostic_target_action_from_action(
+            "Selected unit",
+            "Unit",
+            format!("Selected result unit {unit_id}"),
+            &inspector_unit_action(unit_id),
+        )
+    });
+    let step_actions = related_steps
+        .iter()
+        .flat_map(|step| step.diagnostic_actions.iter().cloned());
+    let diagnostic_actions = related_diagnostics
+        .iter()
+        .flat_map(|diagnostic| diagnostic.diagnostic_actions.iter().cloned());
+    dedupe_diagnostic_actions(
+        selected_unit
+            .into_iter()
+            .chain(step_actions)
+            .chain(diagnostic_actions),
+    )
+}
+
 fn inspector_detail_diagnostic_actions(
     target: &StudioGuiWindowInspectorTargetModel,
     latest_unit_result: Option<&StudioGuiWindowUnitExecutionResultModel>,
@@ -2275,6 +2436,90 @@ mod tests {
             snapshot.result_inspector_with_comparison(Some("stream-feed"), Some("stream-feed"));
         assert!(stale_comparison.has_stale_comparison);
         assert_eq!(stale_comparison.comparison, None);
+
+        // unit-centric Result Inspector contract
+        let default_inspector = snapshot.result_inspector(Some("stream-heated"));
+        assert!(
+            !default_inspector.unit_options.is_empty(),
+            "expected unit options in result inspector"
+        );
+        assert!(
+            default_inspector
+                .unit_options
+                .iter()
+                .any(|option| option.unit_id == "feed-1"
+                    && option.focus_action.command_id == "inspector.focus_unit:feed-1"
+                    && option.summary.contains("step #")),
+            "expected unit option to expose canonical inspector command"
+        );
+        let default_unit_id = default_inspector
+            .selected_unit_id
+            .as_deref()
+            .expect("expected default unit selection");
+        assert!(
+            default_inspector
+                .unit_options
+                .iter()
+                .find(|option| option.unit_id == default_unit_id)
+                .is_some_and(|option| option.is_selected),
+            "expected default unit option to be marked selected"
+        );
+        assert!(!default_inspector.has_stale_unit_selection);
+
+        let unit_inspector =
+            snapshot.result_inspector_with_unit(Some("stream-heated"), None, Some("heater-1"));
+        assert_eq!(unit_inspector.selected_unit_id.as_deref(), Some("heater-1"));
+        let selected_unit = unit_inspector
+            .selected_unit
+            .as_ref()
+            .expect("expected selected unit execution result");
+        assert_eq!(selected_unit.unit_id, "heater-1");
+        assert_eq!(selected_unit.status_label, "Converged");
+        assert!(
+            selected_unit
+                .produced_stream_actions
+                .iter()
+                .any(|action| action.command_id == "inspector.focus_stream:stream-heated"),
+            "expected unit execution result to expose produced stream actions"
+        );
+        assert!(
+            unit_inspector
+                .unit_related_steps
+                .iter()
+                .all(|step| step.unit_id == "heater-1"),
+            "expected unit-related steps to be filtered to the selected unit"
+        );
+        assert!(
+            unit_inspector
+                .unit_related_diagnostics
+                .iter()
+                .any(|diagnostic| diagnostic
+                    .related_unit_ids
+                    .iter()
+                    .any(|unit_id| unit_id == "heater-1")
+                    || diagnostic
+                        .related_stream_ids
+                        .iter()
+                        .any(|stream_id| stream_id == "stream-heated")),
+            "expected unit-related diagnostics to include the selected unit's outputs"
+        );
+        assert!(unit_inspector.unit_diagnostic_actions.iter().any(|action| {
+            action.source_label == "Selected unit"
+                && action.action.command_id == "inspector.focus_unit:heater-1"
+        }));
+        assert!(unit_inspector.unit_diagnostic_actions.iter().any(|action| {
+            action.source_label == "Solve step"
+                && action.action.command_id == "inspector.focus_unit:heater-1"
+        }));
+        assert!(!unit_inspector.has_stale_unit_selection);
+
+        let stale_unit =
+            snapshot.result_inspector_with_unit(Some("stream-heated"), None, Some("missing-unit"));
+        assert!(stale_unit.has_stale_unit_selection);
+        assert_eq!(
+            stale_unit.selected_unit_id.as_deref(),
+            snapshot.steps.first().map(|step| step.unit_id.as_str())
+        );
     }
 
     #[test]
