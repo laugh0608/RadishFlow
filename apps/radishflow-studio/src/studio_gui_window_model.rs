@@ -145,6 +145,7 @@ pub struct StudioGuiWindowFailureResultModel {
     pub message: String,
     pub recovery_title: Option<&'static str>,
     pub recovery_detail: Option<&'static str>,
+    pub recovery_action: Option<StudioGuiWindowCommandActionModel>,
     pub recovery_target: Option<StudioGuiWindowInspectorTargetModel>,
     pub latest_log_message: Option<String>,
 }
@@ -859,6 +860,10 @@ fn failure_result_model_from_control_state(
         message: notice.message.clone(),
         recovery_title: notice.recovery_action.as_ref().map(|action| action.title),
         recovery_detail: notice.recovery_action.as_ref().map(|action| action.detail),
+        recovery_action: notice
+            .recovery_action
+            .as_ref()
+            .map(failure_recovery_action_model),
         recovery_target: notice
             .recovery_action
             .as_ref()
@@ -868,6 +873,16 @@ fn failure_result_model_from_control_state(
             .as_ref()
             .map(|entry| entry.message.clone()),
     })
+}
+
+fn failure_recovery_action_model(
+    action: &rf_ui::RunPanelRecoveryAction,
+) -> StudioGuiWindowCommandActionModel {
+    StudioGuiWindowCommandActionModel {
+        label: action.title.to_string(),
+        hover_text: action.detail.to_string(),
+        command_id: "run_panel.recover_failure".to_string(),
+    }
 }
 
 fn inspector_target_model_from_recovery_action(
@@ -1935,10 +1950,24 @@ mod tests {
         assert!(failure.recovery_detail.is_some());
         assert_eq!(
             failure
+                .recovery_action
+                .as_ref()
+                .map(|action| (action.label.as_str(), action.command_id.as_str())),
+            Some(("Create outlet stream", "run_panel.recover_failure"))
+        );
+        assert_eq!(
+            failure
                 .recovery_target
                 .as_ref()
                 .map(|target| (target.kind_label, target.target_id.as_str())),
             Some(("Unit", "feed-1"))
+        );
+        assert_eq!(
+            failure
+                .recovery_target
+                .as_ref()
+                .map(|target| target.action.command_id.as_str()),
+            Some("inspector.focus_unit:feed-1")
         );
         assert!(failure.latest_log_message.is_some());
 

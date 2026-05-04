@@ -925,16 +925,15 @@ impl ReadyAppState {
                         .unwrap_or(self.locale.text(ShellText::SuggestedRecovery));
                     ui.small(egui::RichText::new(title).strong());
                     render_wrapped_small(ui, recovery_detail);
+                    if let Some(action) = failure.recovery_action.as_ref() {
+                        self.render_small_command_action(ui, action);
+                    }
                 }
                 if let Some(target) = failure.recovery_target.as_ref() {
-                    render_wrapped_small(
-                        ui,
-                        format!(
-                            "{}: {}",
-                            self.locale.text(ShellText::RecoveryTarget),
-                            target.summary
-                        ),
-                    );
+                    ui.horizontal_wrapped(|ui| {
+                        ui.small(self.locale.text(ShellText::RecoveryTarget));
+                        self.render_small_command_action(ui, &target.action);
+                    });
                 }
             } else {
                 ui.small(self.locale.text(ShellText::NoVisibleSolveResults));
