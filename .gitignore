@@ -40,3 +40,5 @@ adapters/dotnet-capeopen/RadishFlow.CapeOpen.UnitOp.Mvp/typelib/*_dlldata.c
 # Codex
 .codex/
 .codex
+.claude
+.claude/
