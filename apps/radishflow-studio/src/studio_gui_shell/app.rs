@@ -401,6 +401,7 @@ impl ReadyAppState {
                     viewport_requested,
                     None,
                 );
+                self.record_canvas_unit_layout_move_feedback(&dispatch);
                 self.record_ui_command_ignored_feedback(&dispatch.dispatch.outcome);
             }
             Err(error) => {
@@ -452,26 +453,6 @@ impl ReadyAppState {
                 self.platform_host
                     .record_activity_line(format!("event failed: {message}"));
                 self.record_canvas_pending_edit_commit_error(position, &message);
-            }
-        }
-    }
-
-    pub(super) fn dispatch_canvas_unit_layout_move(
-        &mut self,
-        unit_id: impl Into<rf_types::UnitId>,
-        position: rf_ui::CanvasPoint,
-    ) {
-        let unit_id = unit_id.into();
-        match self.dispatch_event_result(StudioGuiEvent::CanvasUnitLayoutMoveRequested {
-            unit_id: unit_id.clone(),
-            position,
-        }) {
-            Ok(dispatch) => self.record_canvas_unit_layout_move_feedback(&dispatch),
-            Err(error) => {
-                let message = format!("[{}] {}", error.code().as_str(), error.message());
-                self.platform_host
-                    .record_activity_line(format!("event failed: {message}"));
-                self.record_canvas_unit_layout_move_error(&unit_id, position, &message);
             }
         }
     }
@@ -819,6 +800,14 @@ impl ReadyAppState {
             StudioGuiDriverOutcome::HostCommand(
                 radishflow_studio::StudioGuiHostCommandOutcome::CanvasUnitLayoutMoved(result),
             ) => Some(result),
+            StudioGuiDriverOutcome::HostCommand(
+                radishflow_studio::StudioGuiHostCommandOutcome::UiCommandDispatched(
+                    radishflow_studio::StudioGuiHostUiCommandDispatchResult::ExecutedCanvasUnitLayoutMove {
+                        result,
+                        ..
+                    },
+                ),
+            ) => Some(result),
             _ => None,
         };
         let Some(moved) = moved else {
@@ -861,33 +850,6 @@ impl ReadyAppState {
         self.canvas_command_result = Some(result);
     }
 
-    pub(super) fn record_canvas_unit_layout_move_error(
-        &mut self,
-        unit_id: &rf_types::UnitId,
-        position: rf_ui::CanvasPoint,
-        error_message: &str,
-    ) {
-        let target = radishflow_studio::StudioGuiCanvasCommandTargetViewModel {
-            kind_label: "Unit",
-            target_id: unit_id.as_str().to_string(),
-            label: unit_id.as_str().to_string(),
-            viewport_anchor_label: None,
-            command_id: radishflow_studio::inspector_target_command_id(
-                &rf_ui::InspectorTarget::Unit(unit_id.clone()),
-            ),
-        };
-        let result = radishflow_studio::StudioGuiCanvasCommandResultViewModel::dispatch_failed(
-            target,
-            &format!(
-                "canvas layout move to ({:.1}, {:.1}) failed: {}",
-                position.x, position.y, error_message
-            ),
-        );
-        self.platform_host
-            .record_activity_line(result.activity_line.clone());
-        self.canvas_command_result = Some(result);
-    }
-
     pub(super) fn canvas_command_result_command_surface(
         &self,
     ) -> Option<radishflow_studio::StudioGuiCanvasCommandResultCommandSurfaceViewModel> {
@@ -919,6 +881,9 @@ impl ReadyAppState {
                 }
                 radishflow_studio::StudioGuiHostUiCommandDispatchResult::Executed(_)
                 | radishflow_studio::StudioGuiHostUiCommandDispatchResult::ExecutedCanvasInteraction {
+                    ..
+                }
+                | radishflow_studio::StudioGuiHostUiCommandDispatchResult::ExecutedCanvasUnitLayoutMove {
                     ..
                 } => {}
             }

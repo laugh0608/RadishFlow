@@ -874,6 +874,65 @@ fn canvas_unit_positions_persist_through_project_save_and_reopen() {
 }
 
 #[test]
+fn canvas_unit_layout_nudge_commands_move_selected_unit_from_command_surface() {
+    let (config, project_path) = blank_workspace_config();
+    let mut app = ready_app_state(&config);
+
+    app.dispatch_ui_command("canvas.begin_place_unit.feed");
+    app.dispatch_canvas_pending_edit_commit(rf_ui::CanvasPoint::new(64.0, 40.0));
+    app.save_project();
+    app.dispatch_ui_command("inspector.focus_unit:feed-1");
+
+    let before = app.platform_host.snapshot().window_model();
+    let move_right = before.commands.palette_items("move right");
+    assert_eq!(move_right.len(), 1);
+    assert_eq!(
+        move_right[0].command_id,
+        "canvas.move_selected_unit.right".to_string()
+    );
+    assert!(move_right[0].enabled);
+    assert_eq!(
+        find_command_list_command_id(
+            &before.commands.command_list_sections,
+            "canvas.move_selected_unit.right"
+        ),
+        Some("canvas.move_selected_unit.right")
+    );
+
+    app.dispatch_ui_command("canvas.move_selected_unit.right");
+    let moved = app.platform_host.snapshot().window_model();
+    assert_eq!(
+        moved
+            .canvas
+            .widget
+            .view()
+            .unit_blocks
+            .iter()
+            .find(|unit| unit.unit_id == "feed-1")
+            .and_then(|unit| unit.layout_position),
+        Some(rf_ui::CanvasPoint::new(104.0, 40.0))
+    );
+    assert!(
+        !moved.runtime.workspace_document.has_unsaved_changes,
+        "layout nudge should only update the Studio layout sidecar"
+    );
+    let result = app
+        .canvas_command_result_command_surface()
+        .expect("expected canvas move command result");
+    assert_eq!(result.status_label, "moved");
+    assert_eq!(result.target_command_id, "inspector.focus_unit:feed-1");
+
+    let layout_path = studio_layout_path_for_project(&project_path);
+    let stored_layout = read_studio_layout_file(&layout_path).expect("expected layout sidecar");
+    assert!(stored_layout.canvas_unit_positions.iter().any(|position| {
+        position.unit_id == "feed-1" && position.x == 104.0 && position.y == 40.0
+    }));
+
+    let _ = fs::remove_file(project_path);
+    let _ = fs::remove_file(layout_path);
+}
+
+#[test]
 fn canvas_feed_heater_flash_minimal_path_can_run_after_accepting_suggestions() {
     let mut app = ready_app_state(&synced_workspace_config());
 

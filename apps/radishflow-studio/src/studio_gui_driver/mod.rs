@@ -303,7 +303,8 @@ impl StudioGuiDriver {
             ) => Some(&dispatch.native_timers),
             StudioGuiDriverOutcome::HostCommand(
                 StudioGuiHostCommandOutcome::UiCommandDispatched(
-                    StudioGuiHostUiCommandDispatchResult::ExecutedCanvasInteraction { .. },
+                    StudioGuiHostUiCommandDispatchResult::ExecutedCanvasInteraction { .. }
+                    | StudioGuiHostUiCommandDispatchResult::ExecutedCanvasUnitLayoutMove { .. },
                 ),
             ) => None,
             StudioGuiDriverOutcome::HostCommand(
@@ -359,6 +360,12 @@ fn layout_scope_window_id(outcome: &StudioGuiDriverOutcome) -> Option<StudioWind
         ) => Some(dispatch.target_window_id),
         StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::UiCommandDispatched(
             crate::StudioGuiHostUiCommandDispatchResult::ExecutedCanvasInteraction {
+                target_window_id,
+                ..
+            },
+        )) => *target_window_id,
+        StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::UiCommandDispatched(
+            crate::StudioGuiHostUiCommandDispatchResult::ExecutedCanvasUnitLayoutMove {
                 target_window_id,
                 ..
             },
@@ -493,6 +500,9 @@ fn surfaced_ui_commands(
             StudioGuiHostUiCommandDispatchResult::ExecutedCanvasInteraction { result, .. },
         )) => Some(result.ui_commands.clone()),
         StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::UiCommandDispatched(
+            StudioGuiHostUiCommandDispatchResult::ExecutedCanvasUnitLayoutMove { result, .. },
+        )) => Some(result.ui_commands.clone()),
+        StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::UiCommandDispatched(
             StudioGuiHostUiCommandDispatchResult::IgnoredDisabled { ui_commands, .. }
             | StudioGuiHostUiCommandDispatchResult::IgnoredMissing { ui_commands, .. },
         )) => Some(ui_commands.clone()),
@@ -544,6 +554,9 @@ fn surfaced_canvas_state(outcome: &StudioGuiDriverOutcome) -> Option<StudioGuiCa
         ) => Some(dispatch.canvas.clone()),
         StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::UiCommandDispatched(
             StudioGuiHostUiCommandDispatchResult::ExecutedCanvasInteraction { result, .. },
+        )) => Some(result.canvas.clone()),
+        StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::UiCommandDispatched(
+            StudioGuiHostUiCommandDispatchResult::ExecutedCanvasUnitLayoutMove { result, .. },
         )) => Some(result.canvas.clone()),
         StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::WindowClosed(closed)) => {
             Some(closed.canvas.clone())

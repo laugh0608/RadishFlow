@@ -11,6 +11,57 @@ pub enum StudioGuiCanvasActionId {
     FocusNext,
     FocusPrevious,
     CancelPendingEdit,
+    MoveSelectedUnit(StudioGuiCanvasUnitLayoutNudgeDirection),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum StudioGuiCanvasUnitLayoutNudgeDirection {
+    Left,
+    Right,
+    Up,
+    Down,
+}
+
+impl StudioGuiCanvasUnitLayoutNudgeDirection {
+    pub const fn all() -> &'static [Self] {
+        &[Self::Left, Self::Up, Self::Down, Self::Right]
+    }
+
+    pub const fn command_id(self) -> &'static str {
+        match self {
+            Self::Left => "canvas.move_selected_unit.left",
+            Self::Right => "canvas.move_selected_unit.right",
+            Self::Up => "canvas.move_selected_unit.up",
+            Self::Down => "canvas.move_selected_unit.down",
+        }
+    }
+
+    pub const fn label(self) -> &'static str {
+        match self {
+            Self::Left => "Move left",
+            Self::Right => "Move right",
+            Self::Up => "Move up",
+            Self::Down => "Move down",
+        }
+    }
+
+    pub const fn detail(self) -> &'static str {
+        match self {
+            Self::Left => "Move the selected unit left in the canvas layout sidecar",
+            Self::Right => "Move the selected unit right in the canvas layout sidecar",
+            Self::Up => "Move the selected unit up in the canvas layout sidecar",
+            Self::Down => "Move the selected unit down in the canvas layout sidecar",
+        }
+    }
+
+    pub const fn search_term(self) -> &'static str {
+        match self {
+            Self::Left => "left",
+            Self::Right => "right",
+            Self::Up => "up",
+            Self::Down => "down",
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -74,6 +125,11 @@ impl StudioGuiCanvasWidgetModel {
             .as_ref()
             .map(|pending| pending.cancel_enabled)
             .unwrap_or(false);
+        let selected_unit = presentation
+            .view
+            .current_selection
+            .as_ref()
+            .filter(|selection| selection.kind_label == "Unit");
         let mut actions = presentation
             .view
             .place_unit_palette
@@ -147,6 +203,26 @@ impl StudioGuiCanvasWidgetModel {
                 shortcut: None,
             },
         ]);
+        actions.extend(StudioGuiCanvasUnitLayoutNudgeDirection::all().iter().map(
+            |direction| {
+                let detail = match selected_unit {
+                    Some(selection) => format!(
+                        "{} `{}` by one layout step; if no sidecar position exists, pin it from its current transient grid slot first.",
+                        direction.detail(),
+                        selection.target_id
+                    ),
+                    None => format!("{}; select a unit first.", direction.detail()),
+                };
+                StudioGuiCanvasRenderableAction {
+                    id: StudioGuiCanvasActionId::MoveSelectedUnit(*direction),
+                    command_id: direction.command_id().to_string(),
+                    label: direction.label().to_string(),
+                    detail,
+                    enabled: selected_unit.is_some(),
+                    shortcut: None,
+                }
+            },
+        ));
 
         Self {
             presentation,
@@ -234,6 +310,7 @@ pub(crate) fn canvas_command_id(action_id: StudioGuiCanvasActionId) -> &'static 
         StudioGuiCanvasActionId::FocusNext => "canvas.focus_next",
         StudioGuiCanvasActionId::FocusPrevious => "canvas.focus_previous",
         StudioGuiCanvasActionId::CancelPendingEdit => "canvas.cancel_pending_edit",
+        StudioGuiCanvasActionId::MoveSelectedUnit(direction) => direction.command_id(),
     }
 }
 
@@ -250,6 +327,18 @@ pub(crate) fn canvas_action_id_from_command_id(
         "canvas.focus_next" => Some(StudioGuiCanvasActionId::FocusNext),
         "canvas.focus_previous" => Some(StudioGuiCanvasActionId::FocusPrevious),
         "canvas.cancel_pending_edit" => Some(StudioGuiCanvasActionId::CancelPendingEdit),
+        "canvas.move_selected_unit.left" => Some(StudioGuiCanvasActionId::MoveSelectedUnit(
+            StudioGuiCanvasUnitLayoutNudgeDirection::Left,
+        )),
+        "canvas.move_selected_unit.right" => Some(StudioGuiCanvasActionId::MoveSelectedUnit(
+            StudioGuiCanvasUnitLayoutNudgeDirection::Right,
+        )),
+        "canvas.move_selected_unit.up" => Some(StudioGuiCanvasActionId::MoveSelectedUnit(
+            StudioGuiCanvasUnitLayoutNudgeDirection::Up,
+        )),
+        "canvas.move_selected_unit.down" => Some(StudioGuiCanvasActionId::MoveSelectedUnit(
+            StudioGuiCanvasUnitLayoutNudgeDirection::Down,
+        )),
         _ => None,
     }
 }
@@ -264,8 +353,9 @@ mod tests {
 
     use crate::{
         StudioGuiCanvasActionId, StudioGuiCanvasInteractionAction, StudioGuiCanvasPlaceUnitKind,
-        StudioGuiCanvasWidgetEvent, StudioGuiDriver, StudioGuiDriverOutcome, StudioGuiEvent,
-        StudioRuntimeConfig, StudioRuntimeEntitlementPreflight, StudioRuntimeEntitlementSeed,
+        StudioGuiCanvasUnitLayoutNudgeDirection, StudioGuiCanvasWidgetEvent, StudioGuiDriver,
+        StudioGuiDriverOutcome, StudioGuiEvent, StudioRuntimeConfig,
+        StudioRuntimeEntitlementPreflight, StudioRuntimeEntitlementSeed,
     };
     use rf_ui::{
         GhostElement, GhostElementKind, StreamVisualKind, StreamVisualState, SuggestionSource,
@@ -541,6 +631,52 @@ mod tests {
         );
 
         let _ = fs::remove_file(project_path);
+    }
+
+    #[test]
+    fn canvas_widget_exposes_selected_unit_layout_nudge_actions() {
+        let canvas = crate::StudioGuiCanvasState {
+            units: vec![crate::StudioGuiCanvasUnitState {
+                unit_id: rf_types::UnitId::new("feed-1"),
+                name: "Feed".to_string(),
+                kind: "feed".to_string(),
+                layout_position: None,
+                ports: Vec::new(),
+                port_count: 0,
+                connected_port_count: 0,
+                is_active_inspector_target: true,
+            }],
+            ..crate::StudioGuiCanvasState::default()
+        };
+        let widget = canvas.widget();
+
+        for direction in StudioGuiCanvasUnitLayoutNudgeDirection::all() {
+            let action = widget
+                .action(StudioGuiCanvasActionId::MoveSelectedUnit(*direction))
+                .expect("expected selected unit layout nudge action");
+            assert_eq!(action.command_id, direction.command_id());
+            assert_eq!(action.label, direction.label());
+            assert!(action.enabled);
+            assert!(action.detail.contains("feed-1"));
+            assert!(
+                action
+                    .detail
+                    .contains("pin it from its current transient grid slot")
+            );
+        }
+        assert_eq!(
+            widget.activate(StudioGuiCanvasActionId::MoveSelectedUnit(
+                StudioGuiCanvasUnitLayoutNudgeDirection::Left,
+            )),
+            StudioGuiCanvasWidgetEvent::Requested {
+                action_id: StudioGuiCanvasActionId::MoveSelectedUnit(
+                    StudioGuiCanvasUnitLayoutNudgeDirection::Left,
+                ),
+                event: StudioGuiEvent::UiCommandRequested {
+                    command_id: "canvas.move_selected_unit.left".to_string(),
+                },
+            }
+        );
     }
 
     #[test]

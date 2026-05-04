@@ -197,7 +197,8 @@ pub use studio_gui_canvas_presentation::{
     StudioGuiCanvasViewportViewModel,
 };
 pub use studio_gui_canvas_widget::{
-    StudioGuiCanvasActionId, StudioGuiCanvasRenderableAction, StudioGuiCanvasWidgetEvent,
+    StudioGuiCanvasActionId, StudioGuiCanvasRenderableAction,
+    StudioGuiCanvasUnitLayoutNudgeDirection, StudioGuiCanvasWidgetEvent,
     StudioGuiCanvasWidgetModel,
 };
 pub use studio_gui_command_registry::{

@@ -77,6 +77,32 @@ impl StudioGuiHost {
         })
     }
 
+    pub fn move_selected_canvas_unit_layout(
+        &mut self,
+        direction: crate::StudioGuiCanvasUnitLayoutNudgeDirection,
+    ) -> RfResult<StudioGuiHostCanvasUnitLayoutMoveResult> {
+        let Some(unit) = self
+            .canvas_state()
+            .units
+            .iter()
+            .enumerate()
+            .find(|(_, unit)| unit.is_active_inspector_target)
+            .map(|(layout_slot, unit)| {
+                (
+                    unit.unit_id.clone(),
+                    unit.layout_position
+                        .unwrap_or_else(|| transient_canvas_grid_position(layout_slot)),
+                )
+            })
+        else {
+            return Err(RfError::invalid_input(
+                "cannot move canvas layout because no unit is selected",
+            ));
+        };
+
+        self.move_canvas_unit_layout(unit.0, nudged_canvas_position(unit.1, direction))
+    }
+
     pub fn dispatch_lifecycle_event(
         &mut self,
         event: StudioGuiHostLifecycleEvent,
@@ -133,15 +159,6 @@ impl StudioGuiHost {
         if let Some(action_id) = canvas_action_id_from_command_id(command_id) {
             let target_window_id = self.preferred_target_window_id();
             let canvas = self.canvas_state();
-            if canvas.suggestions.is_empty()
-                && canvas.pending_edit.is_none()
-                && !matches!(action_id, crate::StudioGuiCanvasActionId::BeginPlaceUnit(_))
-            {
-                return Ok(StudioGuiHostUiCommandDispatchResult::IgnoredMissing {
-                    command_id: command_id.to_string(),
-                    ui_commands: self.ui_commands(),
-                });
-            }
             let action_entry = canvas
                 .widget()
                 .action(action_id)
@@ -175,6 +192,16 @@ impl StudioGuiHost {
                 }
                 crate::StudioGuiCanvasActionId::CancelPendingEdit => {
                     StudioGuiCanvasInteractionAction::CancelPendingEdit
+                }
+                crate::StudioGuiCanvasActionId::MoveSelectedUnit(direction) => {
+                    let result = self.move_selected_canvas_unit_layout(direction)?;
+                    return Ok(
+                        StudioGuiHostUiCommandDispatchResult::ExecutedCanvasUnitLayoutMove {
+                            command_id: action_entry.command_id.to_string(),
+                            target_window_id,
+                            result,
+                        },
+                    );
                 }
             };
             let mut result = self.dispatch_canvas_interaction(action)?;
@@ -358,6 +385,45 @@ impl StudioGuiHost {
                 save_persisted_canvas_unit_positions(project_path, &self.canvas_unit_positions)
             }
             None => Ok(()),
+        }
+    }
+}
+
+fn transient_canvas_grid_position(layout_slot: usize) -> rf_ui::CanvasPoint {
+    const LEFT_PADDING: f64 = 18.0;
+    const TOP_PADDING: f64 = 72.0;
+    const BLOCK_WIDTH: f64 = 156.0;
+    const BLOCK_HEIGHT: f64 = 72.0;
+    const GAP_X: f64 = 22.0;
+    const GAP_Y: f64 = 20.0;
+    const FALLBACK_COLUMNS: usize = 3;
+
+    let column = layout_slot % FALLBACK_COLUMNS;
+    let row = layout_slot / FALLBACK_COLUMNS;
+    rf_ui::CanvasPoint::new(
+        LEFT_PADDING + column as f64 * (BLOCK_WIDTH + GAP_X),
+        TOP_PADDING + row as f64 * (BLOCK_HEIGHT + GAP_Y),
+    )
+}
+
+fn nudged_canvas_position(
+    position: rf_ui::CanvasPoint,
+    direction: crate::StudioGuiCanvasUnitLayoutNudgeDirection,
+) -> rf_ui::CanvasPoint {
+    const STEP: f64 = 40.0;
+
+    match direction {
+        crate::StudioGuiCanvasUnitLayoutNudgeDirection::Left => {
+            rf_ui::CanvasPoint::new((position.x - STEP).max(0.0), position.y)
+        }
+        crate::StudioGuiCanvasUnitLayoutNudgeDirection::Right => {
+            rf_ui::CanvasPoint::new(position.x + STEP, position.y)
+        }
+        crate::StudioGuiCanvasUnitLayoutNudgeDirection::Up => {
+            rf_ui::CanvasPoint::new(position.x, (position.y - STEP).max(0.0))
+        }
+        crate::StudioGuiCanvasUnitLayoutNudgeDirection::Down => {
+            rf_ui::CanvasPoint::new(position.x, position.y + STEP)
         }
     }
 }

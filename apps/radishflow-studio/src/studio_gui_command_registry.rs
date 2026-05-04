@@ -190,8 +190,11 @@ impl StudioGuiCommandRegistry {
         let widget = canvas.widget();
         for action in &widget.actions {
             let is_place_unit = matches!(action.id, StudioGuiCanvasActionId::BeginPlaceUnit(_));
+            let is_layout_nudge = matches!(action.id, StudioGuiCanvasActionId::MoveSelectedUnit(_));
             let should_include = if is_place_unit {
                 canvas_target_window_id.is_some()
+            } else if is_layout_nudge {
+                canvas_target_window_id.is_some() && action.enabled
             } else {
                 !canvas.suggestions.is_empty() || canvas.pending_edit.is_some()
             };
@@ -473,6 +476,26 @@ fn command_defaults(command_id: &str) -> StudioGuiCommandDefaults {
             search_terms: &["canvas", "place", "unit", "flash drum"],
             shortcut: None,
         },
+        "canvas.move_selected_unit.left" => StudioGuiCommandDefaults {
+            menu_path: &["Canvas", "Layout", "Move Left"],
+            search_terms: &["canvas", "layout", "unit", "move", "left", "nudge"],
+            shortcut: None,
+        },
+        "canvas.move_selected_unit.right" => StudioGuiCommandDefaults {
+            menu_path: &["Canvas", "Layout", "Move Right"],
+            search_terms: &["canvas", "layout", "unit", "move", "right", "nudge"],
+            shortcut: None,
+        },
+        "canvas.move_selected_unit.up" => StudioGuiCommandDefaults {
+            menu_path: &["Canvas", "Layout", "Move Up"],
+            search_terms: &["canvas", "layout", "unit", "move", "up", "nudge"],
+            shortcut: None,
+        },
+        "canvas.move_selected_unit.down" => StudioGuiCommandDefaults {
+            menu_path: &["Canvas", "Layout", "Move Down"],
+            search_terms: &["canvas", "layout", "unit", "move", "down", "nudge"],
+            shortcut: None,
+        },
         _ => StudioGuiCommandDefaults {
             menu_path: &["Commands"],
             search_terms: &[],
@@ -489,6 +512,12 @@ fn canvas_sort_order(action_id: StudioGuiCanvasActionId) -> u16 {
         StudioGuiCanvasActionId::FocusNext => 320,
         StudioGuiCanvasActionId::FocusPrevious => 330,
         StudioGuiCanvasActionId::CancelPendingEdit => 340,
+        StudioGuiCanvasActionId::MoveSelectedUnit(direction) => match direction {
+            crate::StudioGuiCanvasUnitLayoutNudgeDirection::Left => 350,
+            crate::StudioGuiCanvasUnitLayoutNudgeDirection::Up => 360,
+            crate::StudioGuiCanvasUnitLayoutNudgeDirection::Down => 370,
+            crate::StudioGuiCanvasUnitLayoutNudgeDirection::Right => 380,
+        },
     }
 }
 
@@ -1209,6 +1238,57 @@ mod tests {
                     .contains(&target.viewport_anchor_label.unwrap_or_default()),
                 "expected command search terms to include viewport anchor"
             );
+        }
+    }
+
+    #[test]
+    fn gui_command_registry_includes_selected_unit_layout_nudge_commands() {
+        let canvas = crate::StudioGuiCanvasState {
+            units: vec![crate::StudioGuiCanvasUnitState {
+                unit_id: rf_types::UnitId::new("feed-1"),
+                name: "Feed".to_string(),
+                kind: "feed".to_string(),
+                layout_position: None,
+                ports: Vec::new(),
+                port_count: 0,
+                connected_port_count: 0,
+                is_active_inspector_target: true,
+            }],
+            ..crate::StudioGuiCanvasState::default()
+        };
+
+        let registry = StudioGuiCommandRegistry::from_surfaces(
+            &StudioAppHostUiCommandModel::default(),
+            &canvas,
+            Some(11),
+        );
+
+        for (command_id, label, menu_tail) in [
+            ("canvas.move_selected_unit.left", "Move left", "Move Left"),
+            ("canvas.move_selected_unit.up", "Move up", "Move Up"),
+            ("canvas.move_selected_unit.down", "Move down", "Move Down"),
+            (
+                "canvas.move_selected_unit.right",
+                "Move right",
+                "Move Right",
+            ),
+        ] {
+            let command = registry
+                .command(command_id)
+                .expect("expected selected unit layout command");
+            assert_eq!(command.label, label);
+            assert_eq!(
+                command.menu_path,
+                vec![
+                    "Canvas".to_string(),
+                    "Layout".to_string(),
+                    menu_tail.to_string()
+                ]
+            );
+            assert!(command.enabled);
+            assert_eq!(command.target_window_id, Some(11));
+            assert!(command.detail.contains("feed-1"));
+            assert!(command.search_terms.contains(&"nudge".to_string()));
         }
     }
 

@@ -73,6 +73,11 @@ pub enum StudioGuiHostUiCommandDispatchResult {
         target_window_id: Option<StudioWindowHostId>,
         result: StudioGuiHostCanvasInteractionResult,
     },
+    ExecutedCanvasUnitLayoutMove {
+        command_id: String,
+        target_window_id: Option<StudioWindowHostId>,
+        result: StudioGuiHostCanvasUnitLayoutMoveResult,
+    },
     IgnoredDisabled {
         command_id: String,
         detail: String,

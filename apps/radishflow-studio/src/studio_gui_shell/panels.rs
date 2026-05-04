@@ -318,23 +318,20 @@ impl ReadyAppState {
                     self.dispatch_ui_command(&selection.command_id);
                 }
                 if selection.kind_label == "Unit" {
-                    if let Some(position) = widget
-                        .view()
-                        .unit_blocks
-                        .iter()
-                        .find(|unit| unit.unit_id == selection.target_id)
-                        .and_then(|unit| unit.layout_position)
+                    for direction in
+                        radishflow_studio::StudioGuiCanvasUnitLayoutNudgeDirection::all()
                     {
-                        for action in canvas_unit_layout_nudge_actions(position) {
+                        if let Some(action) = widget.action(
+                            radishflow_studio::StudioGuiCanvasActionId::MoveSelectedUnit(
+                                *direction,
+                            ),
+                        ) {
                             if ui
-                                .small_button(action.label)
-                                .on_hover_text(action.detail)
+                                .add_enabled(action.enabled, egui::Button::new(&action.label))
+                                .on_hover_text(&action.detail)
                                 .clicked()
                             {
-                                self.dispatch_canvas_unit_layout_move(
-                                    rf_types::UnitId::new(selection.target_id.clone()),
-                                    action.position,
-                                );
+                                self.dispatch_ui_command(&action.command_id);
                             }
                         }
                     }
@@ -2338,40 +2335,6 @@ fn canvas_unit_block_rect(
         rect.top() + top_padding + row as f32 * (block_size.y + gap.y),
     );
     egui::Rect::from_min_size(min, block_size)
-}
-
-struct CanvasUnitLayoutNudgeAction {
-    label: &'static str,
-    detail: &'static str,
-    position: rf_ui::CanvasPoint,
-}
-
-fn canvas_unit_layout_nudge_actions(
-    position: rf_ui::CanvasPoint,
-) -> [CanvasUnitLayoutNudgeAction; 4] {
-    const STEP: f64 = 40.0;
-    [
-        CanvasUnitLayoutNudgeAction {
-            label: "<",
-            detail: "Move selected unit left in the canvas layout sidecar",
-            position: rf_ui::CanvasPoint::new((position.x - STEP).max(0.0), position.y),
-        },
-        CanvasUnitLayoutNudgeAction {
-            label: "^",
-            detail: "Move selected unit up in the canvas layout sidecar",
-            position: rf_ui::CanvasPoint::new(position.x, (position.y - STEP).max(0.0)),
-        },
-        CanvasUnitLayoutNudgeAction {
-            label: "v",
-            detail: "Move selected unit down in the canvas layout sidecar",
-            position: rf_ui::CanvasPoint::new(position.x, position.y + STEP),
-        },
-        CanvasUnitLayoutNudgeAction {
-            label: ">",
-            detail: "Move selected unit right in the canvas layout sidecar",
-            position: rf_ui::CanvasPoint::new(position.x + STEP, position.y),
-        },
-    ]
 }
 
 fn canvas_unit_viewport_anchor_label(layout_slot: usize) -> String {
