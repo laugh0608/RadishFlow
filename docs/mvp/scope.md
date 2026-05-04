@@ -107,11 +107,12 @@ App 与交互层当前进一步冻结以下口径：
 - 当前 `egui` Studio 壳又已补出最小 Result Inspector、失败结果 presentation、诊断目标定位命令、活动 Inspector 详情、通用 action DTO、Stream Inspector 字段级 presentation、字段 draft update / 单字段 commit / 多字段批量 commit driver，以及基础 `edit.undo / edit.redo` 文档历史命令；Stream Inspector 字段当前覆盖 `name / temperature_k / pressure_pa / total_molar_flow_mol_s` 与已有 `overall_mole_fractions` 组分条目，所有入口均通过正式 command / driver / runtime 边界执行，不由 shell 直接写 `FlowsheetDocument`
 - 当前画布编辑前置状态先冻结为 `CanvasEditIntent` transient state：`begin_place_unit` 只表达“准备放置某类单元”的意图，不写入 `FlowsheetDocument`、不递增 revision、也不进入 `CommandHistory`；`commit_canvas_pending_edit_at(CanvasPoint)` 会把当前 `PlaceUnit` 意图提交为带 canonical ports 的 `DocumentCommand::CreateUnit`，并把动态落点留在 commit result 中供后续布局状态消费；文档语义变化会清理 pending edit。GUI 侧当前已通过 `StudioGuiCanvasState / StudioGuiCanvasPresentation / canvas.cancel_pending_edit` 展示和取消当前意图，并通过 `StudioGuiCanvasPlaceUnitPaletteViewModel` 暴露 `Feed / Mixer / Heater / Cooler / Valve / Flash Drum` 六类内建单元的 begin-place command；`egui` Canvas 面板只消费这份 palette 来发起 pending edit，点击落点仍复用同一条提交路径。提交成功后会经由新单元的 object command target / focus anchor 生成 `StudioGuiCanvasCommandResultViewModel`，统一驱动新建提示、Inspector 焦点、Canvas 一次性定位、GUI activity 与命令面只读反馈；无 pending edit、unsupported unit kind、dispatch 失败或 anchor 过期也使用同一套 warning / error result。这仍不代表已经实现完整画布单元创建器或项目级坐标持久化
 - 当前 `egui` Studio 壳又已补出 Canvas 最小可见与只读扫读层：已有 unit 会投影为临时布局单元块，已有 material stream 绑定会投影为物流线，活动 Inspector 目标会驱动画布 selection、focus callout 和 viewport focus anchor；对象列表会统一展示 unit / stream，并可按 `All / Attention / Units / Streams` 临时筛选；material port marker、端口 hover、运行/诊断 badge 与状态 legend 只帮助扫读已有绑定和诊断目标；最近一次 Canvas command result 会以只读 command-surface 摘要进入命令列表 / 命令面板，但不是可执行命令、不参与 Enter 选择、不进入项目状态或跨会话历史。上述能力不引入端口点击编辑、连线创建、拖拽布局、坐标持久化或项目 schema 扩张
+- 当前 Canvas 本地建模建议已从只读扫读继续补到最短可求解路径：`Feed -> Flash Drum`、`Feed -> Heater/Cooler/Valve -> Flash Drum` 与 `Feed + Feed -> Mixer -> Flash Drum` 都可通过 placement palette、local Canvas suggestions、`DocumentCommand::ConnectPorts` 与 `run_panel.run_manual` 走到求解收敛。suggestion acceptance 当前只校验本次 source/sink/stream 的局部一致性，不要求半成品 flowsheet 立即通过完整连接校验；完整性错误继续由运行诊断与 recovery path 承担。`Mixer` 入口建议只在可连接 source-only stream 数量与未绑定 inlet 数量一致时生成，避免多来源场景静默猜测入口
 - 当前 `egui` Studio 壳又已补出 `file.save` 与 `Save As` 最小项目持久化闭环：保存命令经由 `StudioRuntimeTrigger::DocumentLifecycle` 写回当前 `*.rfproj.json`，成功后刷新 `last_saved_revision / has_unsaved_changes`；另存为通过 Windows 原生保存选择器写入新路径，并更新当前项目路径、项目路径输入框与最近项目列表；若 `Save As` 目标文件已存在且不是当前项目路径，shell 先进入显式覆盖确认，确认后才写入，取消则保留当前工作区和目标文件
 - 当前 `rf-store::write_project_file` 已改为同目录 staged write：先写临时 sibling 并同步，再替换正式项目文件；Unix 类平台使用 `rename` 替换语义，Windows 当前用临时备份做受控替换和失败回滚，避免半写入 JSON 直接污染项目文件
 - 当前 Studio 字段编辑快捷键策略已冻结为最小安全闭环：`Ctrl+S` 即使在文本输入焦点下也触发 `file.save`；`Ctrl+Z / Ctrl+Y` 在普通焦点下触发 `edit.undo / edit.redo`，但文本输入焦点下保留给输入框自身的编辑撤销/重做；Stream Inspector 输入框的 `Enter` 只提交当前字段，不隐式触发 `Apply all`
 - 中文/英文切换当前只属于 GUI shell 偏好，不写入 `DocumentMetadata`、`UserPreferences` 或项目文件；系统 CJK 字体 fallback 也只在应用启动时配置，不新增仓库字体资产
-- 当前仍不把 UI 范围扩张到完整视觉设计、结果导出、跨会话历史持久化或完整画布编辑体验；当前原生文件选择器只覆盖 Windows 打开与另存为，不承诺跨平台文件工作流；当前最近项目持久化只覆盖 shell 级 MRU 路径列表，不等同于完整应用偏好系统；当前 Inspector、undo/redo、保存、快捷键、覆盖确认、画布 pending edit、多单元 palette 放置入口、最小单元创建提交、只读单元/连线/端口/诊断可视化、viewport/focus anchor、对象列表筛选与 Canvas command result / command-surface 反馈仍是最小可操作边界，后续更完整画布编辑仍应先补正式 presentation / command / state 边界再进入真实 UI
+- 当前仍不把 UI 范围扩张到完整视觉设计、结果导出、跨会话历史持久化或完整画布编辑体验；当前原生文件选择器只覆盖 Windows 打开与另存为，不承诺跨平台文件工作流；当前最近项目持久化只覆盖 shell 级 MRU 路径列表，不等同于完整应用偏好系统；当前 Inspector、undo/redo、保存、快捷键、覆盖确认、画布 pending edit、多单元 palette 放置入口、最小单元创建提交、本地连接/出口建议、只读单元/连线/端口/诊断可视化、viewport/focus anchor、对象列表筛选与 Canvas command result / command-surface 反馈仍是最小可操作边界，后续更完整画布编辑仍应先补正式 presentation / command / state 边界再进入真实 UI
 
 流程图交互增强方向当前补充冻结以下边界：
 
@@ -231,7 +232,8 @@ App 与交互层当前进一步冻结以下口径：
 
 - 不再把 `rf-ffi`、`.NET 10` 适配层或 PME 人工验证列为“尚未启动”的后续项；这些路径已经形成当前回归基线，后续只做明确回归修复、验证脚本维护和官方接口真相源校准
 - Studio / Canvas 暂停继续扩 hover、legend、focus、command feedback 等周边 presentation 细节，把当前只读扫读层和多单元 placement palette 视为已收口边界
-- 下一轮主线优先评估“空白或已有项目 -> 放置内建单元 -> 补齐连接/必要参数 -> 运行求解”的最短可操作路径，先找出阻塞 MVP 闭环的缺口，再决定是否进入连线编辑、布局持久化或结果审阅增强
+- 2026-05-04 已补齐三条最短可操作建模路径：`Feed -> Flash Drum`、`Feed -> Heater/Cooler/Valve -> Flash Drum`、`Feed + Feed -> Mixer -> Flash Drum`；这些路径当前通过本地 Canvas suggestions 补齐连接和必要 outlet stream，并已由 shell 回归测试锁定到手动求解收敛
+- 下一轮主线应优先评估真正空白项目的前置缺口，例如组件/物性包初始化、Feed source stream 默认值确认、保存后再打开的最短编辑闭环；再决定是否进入显式连线选择、布局持久化或结果审阅增强
 - 若继续推进 Canvas，必须先补正式 `DocumentCommand` / validation / layout state 边界，不在 `egui` shell 中直接堆完整画布编辑器、拖拽布局或坐标 schema
 
 ## 当前阶段的判断标准
