@@ -5,7 +5,7 @@ use crate::{
     RadishFlowControlPlaneClient, RadishFlowControlPlaneClientError,
     RadishFlowControlPlaneClientErrorKind, RadishFlowControlPlaneResponse,
 };
-use rf_model::Flowsheet;
+use rf_model::{Component, Flowsheet};
 use rf_store::{
     StoredAntoineCoefficients, StoredAuthCacheIndex, StoredCredentialReference,
     StoredEntitlementCache, StoredProjectFile, StoredPropertyPackageManifest,
@@ -15,13 +15,17 @@ use rf_store::{
 };
 use rf_types::{ComponentId, RfError, RfResult};
 use rf_ui::{
-    AppState, AuthenticatedUser, DocumentMetadata, EntitlementSnapshot, FlowsheetDocument,
-    OfflineLeaseRefreshRequest, OfflineLeaseRefreshResponse, PropertyPackageLeaseGrant,
-    PropertyPackageLeaseRequest, PropertyPackageManifest, PropertyPackageManifestList,
-    PropertyPackageSource, SecureCredentialHandle, TokenLease,
+    AppLogLevel, AppState, AuthenticatedUser, DocumentMetadata, EntitlementSnapshot,
+    FlowsheetDocument, OfflineLeaseRefreshRequest, OfflineLeaseRefreshResponse,
+    PropertyPackageLeaseGrant, PropertyPackageLeaseRequest, PropertyPackageManifest,
+    PropertyPackageManifestList, PropertyPackageSource, SecureCredentialHandle, TokenLease,
 };
 
 use super::StudioBootstrapEntitlementSeed;
+
+pub(super) const BOOTSTRAP_MVP_PROPERTY_PACKAGE_ID: &str = "binary-hydrocarbon-lite-v1";
+const BOOTSTRAP_MVP_COMPONENT_A_ID: &str = "component-a";
+const BOOTSTRAP_MVP_COMPONENT_B_ID: &str = "component-b";
 
 #[derive(Debug, Clone)]
 pub(super) struct BootstrapSeedState {
@@ -152,6 +156,40 @@ pub(super) fn app_state_from_project_file(
     let mut app_state = AppState::new(document);
     app_state.mark_saved(project_path.to_path_buf());
     app_state
+}
+
+pub(super) fn initialize_blank_project_thermo_basis(
+    app_state: &mut AppState,
+    changed_at: SystemTime,
+) -> RfResult<Option<u64>> {
+    if !app_state.workspace.document.flowsheet.components.is_empty() {
+        return Ok(None);
+    }
+
+    let mut flowsheet = app_state.workspace.document.flowsheet.clone();
+    flowsheet.insert_component(Component::new(BOOTSTRAP_MVP_COMPONENT_A_ID, "Component A"))?;
+    flowsheet.insert_component(Component::new(BOOTSTRAP_MVP_COMPONENT_B_ID, "Component B"))?;
+
+    let revision = app_state
+        .workspace
+        .document
+        .replace_flowsheet(flowsheet, changed_at);
+    app_state.workspace.canvas_interaction.invalidate_all();
+    app_state
+        .workspace
+        .solve_session
+        .mark_document_revision_advanced(revision);
+    app_state.workspace.drafts.clear();
+    app_state.push_log(
+        AppLogLevel::Info,
+        format!(
+            "initialized blank project with MVP components `{}` / `{}` and property package `{}`",
+            BOOTSTRAP_MVP_COMPONENT_A_ID,
+            BOOTSTRAP_MVP_COMPONENT_B_ID,
+            BOOTSTRAP_MVP_PROPERTY_PACKAGE_ID
+        ),
+    );
+    Ok(Some(revision))
 }
 
 pub(super) fn seed_sample_auth_cache(

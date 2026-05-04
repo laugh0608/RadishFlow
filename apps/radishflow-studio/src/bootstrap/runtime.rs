@@ -19,7 +19,8 @@ use rf_types::{RfError, RfResult};
 use rf_ui::AppState;
 
 use super::seed::{
-    BootstrapControlPlaneClient, app_state_from_project_file, normalized_system_time_now,
+    BOOTSTRAP_MVP_PROPERTY_PACKAGE_ID, BootstrapControlPlaneClient, app_state_from_project_file,
+    initialize_blank_project_thermo_basis, normalized_system_time_now,
     seed_bootstrap_runtime_state, seed_sample_auth_cache,
 };
 use super::temp_cache::TemporaryCacheRoot;
@@ -322,11 +323,12 @@ impl BootstrapSession {
     pub(crate) fn new(config: &StudioBootstrapConfig) -> RfResult<Self> {
         let project_file = read_project_file(&config.project_path)?;
         let mut app_state = app_state_from_project_file(&project_file, &config.project_path);
+        initialize_blank_project_thermo_basis(&mut app_state, normalized_system_time_now()?)?;
         let cache_root = TemporaryCacheRoot::new("studio-bootstrap")?;
         let seeded_auth_cache = seed_sample_auth_cache(
             cache_root.path(),
-            &project_file.document.flowsheet,
-            "binary-hydrocarbon-lite-v1",
+            &app_state.workspace.document.flowsheet,
+            BOOTSTRAP_MVP_PROPERTY_PACKAGE_ID,
             config.entitlement_seed,
         )?;
         seed_bootstrap_runtime_state(&mut app_state, &seeded_auth_cache);

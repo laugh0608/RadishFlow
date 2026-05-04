@@ -2,7 +2,7 @@ use super::*;
 use radishflow_studio::{
     StudioRuntimeEntitlementPreflight, StudioRuntimeEntitlementSeed, StudioRuntimeTrigger,
 };
-use rf_store::read_project_file;
+use rf_store::{StoredDocumentMetadata, StoredProjectFile, read_project_file, write_project_file};
 use std::{fs, path::PathBuf, time::UNIX_EPOCH};
 
 fn lease_expiring_config() -> StudioRuntimeConfig {
@@ -55,6 +55,29 @@ fn synced_workspace_config() -> StudioRuntimeConfig {
         entitlement_seed: StudioRuntimeEntitlementSeed::Synced,
         ..StudioRuntimeConfig::default()
     }
+}
+
+fn blank_workspace_config() -> (StudioRuntimeConfig, PathBuf) {
+    let timestamp = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("expected current timestamp")
+        .as_nanos();
+    let project_path = std::env::temp_dir().join(format!(
+        "radishflow-studio-shell-blank-project-{timestamp}.rfproj.json"
+    ));
+    let project = StoredProjectFile::new(
+        rf_model::Flowsheet::new("Blank Project"),
+        StoredDocumentMetadata::new("blank-doc", "Blank Project", UNIX_EPOCH),
+    );
+    write_project_file(&project_path, &project).expect("expected blank project write");
+
+    (
+        StudioRuntimeConfig {
+            project_path: project_path.clone(),
+            ..synced_workspace_config()
+        },
+        project_path,
+    )
 }
 
 fn flash_drum_local_rules_synced_config() -> (StudioRuntimeConfig, PathBuf) {
@@ -609,6 +632,96 @@ fn canvas_feed_to_flash_minimal_path_surfaces_local_connection_suggestions() {
             .iter()
             .any(|stream| stream.stream_id == "stream-flash-2-vapor")
     );
+}
+
+#[test]
+fn blank_project_initializes_components_saves_reopens_and_runs_feed_flash_path() {
+    let (config, project_path) = blank_workspace_config();
+    let mut app = ready_app_state(&config);
+
+    let opened_blank = app.platform_host.snapshot().window_model();
+    assert_eq!(opened_blank.runtime.workspace_document.revision, 1);
+    assert!(opened_blank.runtime.workspace_document.has_unsaved_changes);
+
+    app.dispatch_ui_command("canvas.begin_place_unit.feed");
+    app.dispatch_canvas_pending_edit_commit(rf_ui::CanvasPoint::new(64.0, 40.0));
+    assert_eq!(
+        app.platform_host
+            .snapshot()
+            .window_model()
+            .canvas
+            .focused_suggestion_id
+            .as_deref(),
+        Some("local.feed.create_outlet.feed-1")
+    );
+    app.dispatch_ui_command("canvas.accept_focused");
+
+    app.dispatch_ui_command("canvas.begin_place_unit.flash_drum");
+    app.dispatch_canvas_pending_edit_commit(rf_ui::CanvasPoint::new(220.0, 40.0));
+    assert_eq!(
+        app.platform_host
+            .snapshot()
+            .window_model()
+            .canvas
+            .focused_suggestion_id
+            .as_deref(),
+        Some("local.flash_drum.connect_inlet.flash-1.stream-feed-1-outlet")
+    );
+    app.dispatch_ui_command("canvas.accept_focused");
+    app.dispatch_ui_command("canvas.accept_focused");
+    app.dispatch_ui_command("canvas.accept_focused");
+
+    app.dispatch_ui_command("run_panel.run_manual");
+    let solved = app.platform_host.snapshot().window_model();
+    assert_eq!(
+        solved.runtime.control_state.run_status,
+        rf_ui::RunStatus::Converged
+    );
+    assert_eq!(solved.runtime.control_state.pending_reason, None);
+
+    app.save_project();
+    let saved = read_project_file(&project_path).expect("expected saved blank project");
+    assert_eq!(saved.document.flowsheet.components.len(), 2);
+    let feed_stream = saved
+        .document
+        .flowsheet
+        .streams
+        .get(&rf_types::StreamId::new("stream-feed-1-outlet"))
+        .expect("expected feed source stream");
+    assert_eq!(feed_stream.total_molar_flow_mol_s, 1.0);
+    assert_eq!(feed_stream.overall_mole_fractions.len(), 2);
+    assert_eq!(
+        feed_stream
+            .overall_mole_fractions
+            .get(&rf_types::ComponentId::new("component-a"))
+            .copied(),
+        Some(0.5)
+    );
+    assert_eq!(
+        feed_stream
+            .overall_mole_fractions
+            .get(&rf_types::ComponentId::new("component-b"))
+            .copied(),
+        Some(0.5)
+    );
+
+    app.open_project(project_path.clone(), "project");
+    let reopened = app.platform_host.snapshot().window_model();
+    assert_eq!(
+        reopened.runtime.workspace_document.revision,
+        saved.document.revision
+    );
+    assert!(!reopened.runtime.workspace_document.has_unsaved_changes);
+
+    app.dispatch_ui_command("run_panel.run_manual");
+    let rerun = app.platform_host.snapshot().window_model();
+    assert_eq!(
+        rerun.runtime.control_state.run_status,
+        rf_ui::RunStatus::Converged
+    );
+    assert_eq!(rerun.runtime.control_state.pending_reason, None);
+
+    let _ = fs::remove_file(project_path);
 }
 
 #[test]

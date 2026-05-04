@@ -233,7 +233,8 @@ App 与交互层当前进一步冻结以下口径：
 - 不再把 `rf-ffi`、`.NET 10` 适配层或 PME 人工验证列为“尚未启动”的后续项；这些路径已经形成当前回归基线，后续只做明确回归修复、验证脚本维护和官方接口真相源校准
 - Studio / Canvas 暂停继续扩 hover、legend、focus、command feedback 等周边 presentation 细节，把当前只读扫读层和多单元 placement palette 视为已收口边界
 - 2026-05-04 已补齐三条最短可操作建模路径：`Feed -> Flash Drum`、`Feed -> Heater/Cooler/Valve -> Flash Drum`、`Feed + Feed -> Mixer -> Flash Drum`；这些路径当前通过本地 Canvas suggestions 补齐连接和必要 outlet stream，并已由 shell 回归测试锁定到手动求解收敛
-- 下一轮主线应优先评估真正空白项目的前置缺口，例如组件/物性包初始化、Feed source stream 默认值确认、保存后再打开的最短编辑闭环；再决定是否进入显式连线选择、布局持久化或结果审阅增强
+- 2026-05-04 继续补齐真正空白项目前置缺口：无组件项目打开时会初始化 MVP 默认二元组件 `component-a / component-b`，并用初始化后的 flowsheet 生成本地 `binary-hydrocarbon-lite-v1` 物性包缓存；Feed source stream 默认值固定为 `298.15 K / 101325 Pa / 1 mol/s / 等摩尔组成`，保存后重新打开仍可继续运行 `Feed -> Flash Drum` 最短闭环
+- 下一轮主线应在该固定 MVP 基线之上评估显式连线选择、布局持久化或结果审阅增强；不要把这次空白项目初始化误扩为完整组件库、完整物性包浏览/切换或项目向导
 - 若继续推进 Canvas，必须先补正式 `DocumentCommand` / validation / layout state 边界，不在 `egui` shell 中直接堆完整画布编辑器、拖拽布局或坐标 schema
 
 ## 当前阶段的判断标准
