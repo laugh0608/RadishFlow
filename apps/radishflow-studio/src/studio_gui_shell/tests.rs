@@ -920,6 +920,8 @@ fn canvas_unit_layout_nudge_commands_move_selected_unit_from_command_surface() {
         .canvas_command_result_command_surface()
         .expect("expected canvas move command result");
     assert_eq!(result.status_label, "moved");
+    assert_eq!(result.title, "Canvas unit moved");
+    assert!(result.detail.contains("moved from sidecar (64.0, 40.0)"));
     assert_eq!(result.target_command_id, "inspector.focus_unit:feed-1");
 
     let layout_path = studio_layout_path_for_project(&project_path);

@@ -64,6 +64,8 @@ pub struct StudioGuiCanvasSelectionViewModel {
     pub target_id: String,
     pub summary: String,
     pub command_id: String,
+    pub layout_source_label: Option<&'static str>,
+    pub layout_detail: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -247,21 +249,38 @@ impl StudioGuiCanvasCommandResultViewModel {
     ) -> Self {
         let anchor_label = anchor_label.into();
         let previous_label = previous_position
-            .map(|previous| format!("({:.1}, {:.1})", previous.x, previous.y))
-            .unwrap_or_else(|| "transient grid".to_string());
-        let title = "Canvas unit moved".to_string();
-        Self {
-            level: rf_ui::RunPanelNoticeLevel::Info,
-            status_label: "moved",
-            detail: format!(
-                "{} `{}` moved from {} to ({:.1}, {:.1}) and remains anchored at `{}`.",
+            .map(|previous| format!("sidecar ({:.1}, {:.1})", previous.x, previous.y))
+            .unwrap_or_else(|| "transient grid slot".to_string());
+        let title = if previous_position.is_some() {
+            "Canvas unit moved".to_string()
+        } else {
+            "Canvas unit pinned and moved".to_string()
+        };
+        let detail = if previous_position.is_some() {
+            format!(
+                "{} `{}` moved from {} to sidecar ({:.1}, {:.1}) and remains anchored at `{}`.",
                 target.kind_label,
                 target.target_id,
                 previous_label,
                 position.x,
                 position.y,
                 anchor_label
-            ),
+            )
+        } else {
+            format!(
+                "{} `{}` had no sidecar position, so it was pinned from its {} and moved to sidecar ({:.1}, {:.1}); it remains anchored at `{}`.",
+                target.kind_label,
+                target.target_id,
+                previous_label,
+                position.x,
+                position.y,
+                anchor_label
+            )
+        };
+        Self {
+            level: rf_ui::RunPanelNoticeLevel::Info,
+            status_label: "moved",
+            detail,
             activity_line: format!(
                 "canvas unit moved: {} {} -> {}",
                 target.kind_label, target.target_id, anchor_label
@@ -822,6 +841,8 @@ impl StudioGuiCanvasViewModel {
                     unit.name, unit.kind, unit.connected_port_count, unit.port_count
                 ),
                 command_id: unit.command_id.clone(),
+                layout_source_label: Some(canvas_unit_layout_source_label(unit)),
+                layout_detail: Some(canvas_unit_layout_detail(unit)),
             })
             .or_else(|| {
                 stream_lines
@@ -843,6 +864,8 @@ impl StudioGuiCanvasViewModel {
                             target_id: stream.stream_id.clone(),
                             summary: format!("{} {} -> {}", stream.name, source, sink),
                             command_id: stream.command_id.clone(),
+                            layout_source_label: None,
+                            layout_detail: None,
                         }
                     })
             });
@@ -899,6 +922,27 @@ impl StudioGuiCanvasViewModel {
             stream_lines,
             suggestions,
         }
+    }
+}
+
+fn canvas_unit_layout_source_label(unit: &StudioGuiCanvasUnitBlockViewModel) -> &'static str {
+    if unit.layout_position.is_some() {
+        "sidecar position"
+    } else {
+        "transient grid"
+    }
+}
+
+fn canvas_unit_layout_detail(unit: &StudioGuiCanvasUnitBlockViewModel) -> String {
+    match unit.layout_position {
+        Some(position) => format!(
+            "layout sidecar position ({:.1}, {:.1})",
+            position.x, position.y
+        ),
+        None => format!(
+            "no sidecar position; nudge will pin from unit-slot-{}",
+            unit.layout_slot
+        ),
     }
 }
 
@@ -1986,6 +2030,34 @@ mod tests {
         assert!(surface.matches_query("flash-1"));
         assert!(!surface.matches_query("stream-feed"));
 
+        let pinned = crate::StudioGuiCanvasCommandResultViewModel::moved_unit(
+            target.clone(),
+            "unit-slot-1",
+            None,
+            rf_ui::CanvasPoint::new(52.0, 72.0),
+        );
+        assert_eq!(pinned.status_label, "moved");
+        assert_eq!(pinned.title, "Canvas unit pinned and moved");
+        assert!(pinned.detail.contains("had no sidecar position"));
+        assert!(
+            pinned
+                .detail
+                .contains("pinned from its transient grid slot")
+        );
+        assert!(pinned.detail.contains("sidecar (52.0, 72.0)"));
+        let pinned_surface = pinned.command_surface();
+        assert_eq!(pinned_surface.title, "Canvas unit pinned and moved");
+        assert!(pinned_surface.matches_query("pinned sidecar"));
+
+        let moved = crate::StudioGuiCanvasCommandResultViewModel::moved_unit(
+            target.clone(),
+            "unit-slot-1",
+            Some(rf_ui::CanvasPoint::new(52.0, 72.0)),
+            rf_ui::CanvasPoint::new(92.0, 72.0),
+        );
+        assert_eq!(moved.title, "Canvas unit moved");
+        assert!(moved.detail.contains("moved from sidecar (52.0, 72.0)"));
+
         let unavailable_edit =
             crate::StudioGuiCanvasCommandResultViewModel::pending_edit_unavailable(
                 rf_ui::CanvasPoint::new(4.0, 8.0),
@@ -2393,6 +2465,10 @@ mod tests {
                 target_id: "flash-1".to_string(),
                 summary: "Flash Drum (flash_drum) ports 0/3".to_string(),
                 command_id: "inspector.focus_unit:flash-1".to_string(),
+                layout_source_label: Some("transient grid"),
+                layout_detail: Some(
+                    "no sidecar position; nudge will pin from unit-slot-1".to_string()
+                ),
             })
         );
         assert_eq!(
@@ -2461,6 +2537,8 @@ mod tests {
                 target_id: "stream-feed".to_string(),
                 summary: "Feed feed-1:outlet -> heater-1:inlet".to_string(),
                 command_id: "inspector.focus_stream:stream-feed".to_string(),
+                layout_source_label: None,
+                layout_detail: None,
             })
         );
         assert_eq!(

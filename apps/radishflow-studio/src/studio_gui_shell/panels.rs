@@ -310,6 +310,12 @@ impl ReadyAppState {
                     egui::Color32::from_rgb(48, 112, 188),
                 );
                 ui.small(format!("{} · {}", selection.target_id, selection.summary));
+                if let Some(layout_source) = selection.layout_source_label {
+                    render_status_chip(ui, layout_source, egui::Color32::from_rgb(86, 96, 108));
+                }
+                if let Some(layout_detail) = selection.layout_detail.as_ref() {
+                    ui.small(layout_detail);
+                }
                 if ui
                     .small_button("Focus")
                     .on_hover_text("Focus the selected Inspector target")
