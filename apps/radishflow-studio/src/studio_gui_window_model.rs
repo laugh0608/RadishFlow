@@ -173,6 +173,7 @@ pub struct StudioGuiWindowInspectorTargetDetailModel {
     pub property_fields: Vec<StudioGuiWindowInspectorTargetFieldModel>,
     pub property_batch_commit_command_id: Option<String>,
     pub unit_ports: Vec<StudioGuiWindowInspectorTargetPortModel>,
+    pub latest_unit_result: Option<StudioGuiWindowUnitExecutionResultModel>,
     pub latest_stream_result: Option<StudioGuiWindowStreamResultModel>,
     pub related_steps: Vec<StudioGuiWindowSolveStepModel>,
     pub related_diagnostics: Vec<StudioGuiWindowDiagnosticModel>,
@@ -204,6 +205,16 @@ pub struct StudioGuiWindowInspectorTargetPortModel {
     pub kind: String,
     pub stream_id: Option<String>,
     pub stream_action: Option<StudioGuiWindowCommandActionModel>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioGuiWindowUnitExecutionResultModel {
+    pub unit_id: String,
+    pub step_index: usize,
+    pub status_label: &'static str,
+    pub summary: String,
+    pub produced_stream_ids: Vec<String>,
+    pub produced_stream_actions: Vec<StudioGuiWindowCommandActionModel>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -250,6 +261,7 @@ pub struct StudioGuiWindowSolveStepModel {
     pub index: usize,
     pub unit_id: String,
     pub summary: String,
+    pub execution_status_label: &'static str,
     pub produced_streams: Vec<String>,
 }
 
@@ -916,6 +928,8 @@ fn inspector_target_detail_model_from_snapshot(
     latest_solve_snapshot: Option<&StudioGuiWindowSolveSnapshotModel>,
 ) -> StudioGuiWindowInspectorTargetDetailModel {
     let target = inspector_target_model_from_ui(&detail.target);
+    let latest_unit_result = latest_solve_snapshot
+        .and_then(|snapshot| latest_unit_result_for_target(snapshot, &detail.target));
     let latest_stream_result = match &detail.target {
         rf_ui::InspectorTarget::Stream(stream_id) => latest_solve_snapshot.and_then(|snapshot| {
             snapshot
@@ -964,6 +978,7 @@ fn inspector_target_detail_model_from_snapshot(
                     .map(|stream_id| inspector_stream_action(stream_id)),
             })
             .collect(),
+        latest_unit_result,
         latest_stream_result,
         related_steps,
         related_diagnostics,
@@ -1072,6 +1087,32 @@ fn related_diagnostics_for_target(
     }
 }
 
+fn latest_unit_result_for_target(
+    snapshot: &StudioGuiWindowSolveSnapshotModel,
+    target: &rf_ui::InspectorTarget,
+) -> Option<StudioGuiWindowUnitExecutionResultModel> {
+    let rf_ui::InspectorTarget::Unit(unit_id) = target else {
+        return None;
+    };
+    snapshot
+        .steps
+        .iter()
+        .rev()
+        .find(|step| step.unit_id == unit_id.as_str())
+        .map(|step| StudioGuiWindowUnitExecutionResultModel {
+            unit_id: step.unit_id.clone(),
+            step_index: step.index,
+            status_label: step.execution_status_label,
+            summary: step.summary.clone(),
+            produced_stream_ids: step.produced_streams.clone(),
+            produced_stream_actions: step
+                .produced_streams
+                .iter()
+                .map(|stream_id| inspector_stream_action(stream_id))
+                .collect(),
+        })
+}
+
 fn solve_snapshot_model_from_ui(
     snapshot: &rf_ui::SolveSnapshot,
 ) -> StudioGuiWindowSolveSnapshotModel {
@@ -1095,6 +1136,7 @@ fn solve_snapshot_model_from_ui(
                 index: step.index,
                 unit_id: step.unit_id.as_str().to_string(),
                 summary: step.summary.clone(),
+                execution_status_label: run_status_label(step.execution.status),
                 produced_streams: step
                     .streams
                     .iter()
@@ -1740,6 +1782,36 @@ mod tests {
                 .iter()
                 .any(|diagnostic| diagnostic.code == "solver.unit_executed")
         );
+
+        let unit_target_dispatch = driver
+            .dispatch_event(StudioGuiEvent::UiCommandRequested {
+                command_id: "inspector.focus_unit:heater-1".to_string(),
+            })
+            .expect("expected unit inspector target dispatch");
+        let unit_detail = unit_target_dispatch
+            .window
+            .runtime
+            .active_inspector_detail
+            .expect("expected active unit inspector detail");
+        let unit_result = unit_detail
+            .latest_unit_result
+            .as_ref()
+            .expect("expected active unit detail to expose latest execution result");
+        assert_eq!(unit_result.unit_id, "heater-1");
+        assert_eq!(unit_result.status_label, "Converged");
+        assert_eq!(unit_result.step_index, 1);
+        assert_eq!(
+            unit_result.produced_stream_ids,
+            vec!["stream-heated".to_string()]
+        );
+        assert!(unit_result.summary.contains("stream-heated"));
+        assert!(
+            unit_result
+                .produced_stream_actions
+                .iter()
+                .any(|action| action.command_id == "inspector.focus_stream:stream-heated")
+        );
+        assert_eq!(unit_detail.latest_stream_result, None);
 
         let fallback_inspector = snapshot.result_inspector(Some("missing-stream"));
         assert!(fallback_inspector.has_stale_selection);

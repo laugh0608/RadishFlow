@@ -1252,6 +1252,32 @@ impl ReadyAppState {
         ui.add_space(8.0);
     }
 
+    fn render_unit_execution_result_inspector(
+        &mut self,
+        ui: &mut egui::Ui,
+        unit: &radishflow_studio::StudioGuiWindowUnitExecutionResultModel,
+    ) {
+        ui.horizontal_wrapped(|ui| {
+            ui.label(egui::RichText::new(&unit.unit_id).strong());
+            render_status_chip(
+                ui,
+                self.locale.runtime_label(unit.status_label).as_ref(),
+                run_status_color(unit.status_label),
+            );
+            ui.small(format!("#{}", unit.step_index));
+        });
+        render_wrapped_label(ui, &unit.summary);
+        if !unit.produced_stream_actions.is_empty() {
+            ui.horizontal_wrapped(|ui| {
+                ui.small(self.locale.text(ShellText::InspectorProducedStreams));
+                for action in &unit.produced_stream_actions {
+                    self.render_small_command_action(ui, action);
+                }
+            });
+        }
+        ui.add_space(8.0);
+    }
+
     fn render_active_inspector_detail(
         &mut self,
         ui: &mut egui::Ui,
@@ -1400,6 +1426,14 @@ impl ReadyAppState {
                         ui.end_row();
                     }
                 });
+        }
+
+        if let Some(unit) = detail.latest_unit_result.as_ref() {
+            ui.add_space(4.0);
+            ui.small(
+                egui::RichText::new(self.locale.text(ShellText::InspectorLatestResult)).strong(),
+            );
+            self.render_unit_execution_result_inspector(ui, unit);
         }
 
         if let Some(stream) = detail.latest_stream_result.as_ref() {

@@ -283,7 +283,7 @@ pub use studio_gui_window_model::{
     StudioGuiWindowRuntimeAreaModel, StudioGuiWindowSolveSnapshotModel,
     StudioGuiWindowSolveStepModel, StudioGuiWindowStreamResultModel,
     StudioGuiWindowStreamSummaryRowModel, StudioGuiWindowToolbarItemModel,
-    StudioGuiWindowToolbarSectionModel,
+    StudioGuiWindowToolbarSectionModel, StudioGuiWindowUnitExecutionResultModel,
 };
 pub use studio_inspector_draft_command::{
     StudioInspectorDraftBatchCommitCommand, StudioInspectorDraftCommitCommand,

@@ -1,10 +1,12 @@
 use std::collections::BTreeMap;
+use std::fs;
+use std::io::ErrorKind;
 use std::path::Path;
 
 use rf_store::{
     StoredStudioCanvasUnitPosition, StoredStudioLayoutFile, StoredStudioLayoutPanelState,
     StoredStudioLayoutRegionWeight, StoredStudioLayoutStackGroupState,
-    StoredStudioWindowLayoutEntry, read_studio_layout_file, studio_layout_path_for_project,
+    StoredStudioWindowLayoutEntry, parse_studio_layout_file_json, studio_layout_path_for_project,
     write_studio_layout_file,
 };
 use rf_types::{RfError, RfResult, UnitId};
@@ -19,11 +21,7 @@ pub fn load_persisted_window_layouts(
     project_path: &Path,
 ) -> RfResult<BTreeMap<String, StudioGuiWindowLayoutPersistenceState>> {
     let layout_path = studio_layout_path_for_project(project_path);
-    if !layout_path.exists() {
-        return Ok(BTreeMap::new());
-    }
-
-    let stored = read_studio_layout_file(&layout_path)?;
+    let stored = read_stored_layout_or_empty(&layout_path)?;
     stored
         .entries
         .into_iter()
@@ -36,11 +34,7 @@ pub fn load_persisted_canvas_unit_positions(
     project_path: &Path,
 ) -> RfResult<BTreeMap<UnitId, CanvasPoint>> {
     let layout_path = studio_layout_path_for_project(project_path);
-    if !layout_path.exists() {
-        return Ok(BTreeMap::new());
-    }
-
-    let stored = read_studio_layout_file(&layout_path)?;
+    let stored = read_stored_layout_or_empty(&layout_path)?;
     stored
         .canvas_unit_positions
         .into_iter()
@@ -90,19 +84,26 @@ pub fn save_persisted_canvas_unit_positions(
 }
 
 fn load_stored_window_entries(layout_path: &Path) -> RfResult<Vec<StoredStudioWindowLayoutEntry>> {
-    if !layout_path.exists() {
-        return Ok(Vec::new());
-    }
-    Ok(read_studio_layout_file(layout_path)?.entries)
+    Ok(read_stored_layout_or_empty(layout_path)?.entries)
 }
 
 fn load_stored_canvas_unit_positions(
     layout_path: &Path,
 ) -> RfResult<Vec<StoredStudioCanvasUnitPosition>> {
-    if !layout_path.exists() {
-        return Ok(Vec::new());
+    Ok(read_stored_layout_or_empty(layout_path)?.canvas_unit_positions)
+}
+
+fn read_stored_layout_or_empty(layout_path: &Path) -> RfResult<StoredStudioLayoutFile> {
+    match fs::read_to_string(layout_path) {
+        Ok(contents) => parse_studio_layout_file_json(&contents),
+        Err(error) if error.kind() == ErrorKind::NotFound => {
+            Ok(StoredStudioLayoutFile::new(Vec::new()))
+        }
+        Err(error) => Err(RfError::invalid_input(format!(
+            "read stored studio layout file `{}`: {error}",
+            layout_path.display()
+        ))),
     }
-    Ok(read_studio_layout_file(layout_path)?.canvas_unit_positions)
 }
 
 fn persistence_from_stored_entry(
@@ -366,6 +367,31 @@ mod tests {
             load_persisted_canvas_unit_positions(&project_path)
                 .expect("expected canvas position load"),
             positions
+        );
+
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn layout_store_treats_missing_project_sidecar_as_empty_layout() {
+        let unique = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("expected time after epoch")
+            .as_nanos();
+        let root = std::env::temp_dir().join(format!("radishflow-missing-layout-store-{unique}"));
+        fs::create_dir_all(&root).expect("expected temp root");
+        let project_path = root.join("demo.rfproj.json");
+        fs::write(&project_path, "{}").expect("expected temp project file");
+
+        assert!(
+            load_persisted_window_layouts(&project_path)
+                .expect("expected empty window layouts")
+                .is_empty()
+        );
+        assert!(
+            load_persisted_canvas_unit_positions(&project_path)
+                .expect("expected empty canvas positions")
+                .is_empty()
         );
 
         let _ = fs::remove_dir_all(&root);

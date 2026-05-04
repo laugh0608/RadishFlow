@@ -213,6 +213,7 @@ fn shell_locale_defaults_to_chinese_and_can_translate_runtime_labels() {
     assert_eq!(locale.runtime_label("Pressure").as_ref(), "压力");
     assert_eq!(locale.runtime_label("Molar flow").as_ref(), "摩尔流量");
     assert_eq!(locale.text(ShellText::InspectorPorts), "端口");
+    assert_eq!(locale.text(ShellText::InspectorProducedStreams), "产出流股");
     assert_eq!(locale.runtime_label("Unit").as_ref(), "单元");
     assert_eq!(locale.runtime_label("Stream").as_ref(), "流股");
     assert_eq!(
