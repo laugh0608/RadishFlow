@@ -538,6 +538,80 @@ fn canvas_placement_palette_commit_matrix_records_created_unit_feedback() {
 }
 
 #[test]
+fn canvas_feed_to_flash_minimal_path_surfaces_local_connection_suggestions() {
+    let mut app = ready_app_state(&lease_expiring_config());
+
+    app.dispatch_ui_command("canvas.begin_place_unit.feed");
+    app.dispatch_canvas_pending_edit_commit(rf_ui::CanvasPoint::new(64.0, 40.0));
+
+    let after_feed = app.platform_host.snapshot().window_model();
+    assert_eq!(
+        after_feed.canvas.focused_suggestion_id.as_deref(),
+        Some("local.feed.create_outlet.feed-2")
+    );
+
+    app.dispatch_ui_command("canvas.accept_focused");
+    let after_feed_outlet = app.platform_host.snapshot().window_model();
+    assert_eq!(after_feed_outlet.canvas.suggestion_count, 0);
+
+    app.dispatch_ui_command("canvas.begin_place_unit.flash_drum");
+    app.dispatch_canvas_pending_edit_commit(rf_ui::CanvasPoint::new(220.0, 40.0));
+
+    let after_flash = app.platform_host.snapshot().window_model();
+    assert_eq!(
+        after_flash.canvas.focused_suggestion_id.as_deref(),
+        Some("local.flash_drum.connect_inlet.flash-2.stream-feed-2-outlet")
+    );
+    assert_eq!(after_flash.canvas.suggestion_count, 3);
+
+    app.dispatch_ui_command("canvas.accept_focused");
+    let after_inlet = app.platform_host.snapshot().window_model();
+    assert_eq!(
+        after_inlet.canvas.focused_suggestion_id.as_deref(),
+        Some("local.flash_drum.create_outlet.flash-2.liquid")
+    );
+
+    app.dispatch_ui_command("canvas.accept_focused");
+    let after_liquid = app.platform_host.snapshot().window_model();
+    assert_eq!(
+        after_liquid.canvas.focused_suggestion_id.as_deref(),
+        Some("local.flash_drum.create_outlet.flash-2.vapor")
+    );
+
+    app.dispatch_ui_command("canvas.accept_focused");
+    let completed = app.platform_host.snapshot().window_model();
+    assert_eq!(completed.canvas.suggestion_count, 0);
+    assert!(completed.runtime.workspace_document.has_unsaved_changes);
+    assert!(
+        completed
+            .canvas
+            .widget
+            .view()
+            .stream_lines
+            .iter()
+            .any(|stream| stream.stream_id == "stream-feed-2-outlet")
+    );
+    assert!(
+        completed
+            .canvas
+            .widget
+            .view()
+            .stream_lines
+            .iter()
+            .any(|stream| stream.stream_id == "stream-flash-2-liquid")
+    );
+    assert!(
+        completed
+            .canvas
+            .widget
+            .view()
+            .stream_lines
+            .iter()
+            .any(|stream| stream.stream_id == "stream-flash-2-vapor")
+    );
+}
+
+#[test]
 fn canvas_pending_edit_commit_reports_missing_pending_edit_through_command_result() {
     let mut app = ready_app_state(&lease_expiring_config());
 

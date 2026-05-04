@@ -457,8 +457,13 @@ impl BootstrapSession {
         &mut self,
         position: rf_ui::CanvasPoint,
     ) -> RfResult<Option<rf_ui::CanvasEditCommitResult>> {
-        self.app_state
-            .commit_canvas_pending_edit_at(position, SystemTime::now())
+        let result = self
+            .app_state
+            .commit_canvas_pending_edit_at(position, SystemTime::now())?;
+        if result.is_some() {
+            self.refresh_local_canvas_suggestions();
+        }
+        Ok(result)
     }
 
     pub(crate) fn accept_focused_canvas_suggestion_by_tab(

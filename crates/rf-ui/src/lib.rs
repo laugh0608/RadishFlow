@@ -923,6 +923,118 @@ mod tests {
     }
 
     #[test]
+    fn tab_accepts_connection_suggestion_while_other_ports_remain_unbound() {
+        let mut flowsheet = Flowsheet::new("demo");
+        flowsheet
+            .insert_component(rf_model::Component::new("component-a", "Component A"))
+            .expect("expected component-a");
+        flowsheet
+            .insert_component(rf_model::Component::new("component-b", "Component B"))
+            .expect("expected component-b");
+        flowsheet
+            .insert_unit(rf_model::UnitNode::new(
+                "feed-1",
+                "Feed",
+                "feed",
+                vec![rf_model::UnitPort::new(
+                    "outlet",
+                    rf_types::PortDirection::Outlet,
+                    rf_types::PortKind::Material,
+                    Some("stream-feed".into()),
+                )],
+            ))
+            .expect("expected feed insert");
+        flowsheet
+            .insert_unit(rf_model::UnitNode::new(
+                "flash-1",
+                "Flash Drum",
+                "flash_drum",
+                vec![
+                    rf_model::UnitPort::new(
+                        "inlet",
+                        rf_types::PortDirection::Inlet,
+                        rf_types::PortKind::Material,
+                        None,
+                    ),
+                    rf_model::UnitPort::new(
+                        "liquid",
+                        rf_types::PortDirection::Outlet,
+                        rf_types::PortKind::Material,
+                        None,
+                    ),
+                    rf_model::UnitPort::new(
+                        "vapor",
+                        rf_types::PortDirection::Outlet,
+                        rf_types::PortKind::Material,
+                        None,
+                    ),
+                ],
+            ))
+            .expect("expected flash insert");
+        flowsheet
+            .insert_stream(MaterialStreamState::new("stream-feed", "Feed"))
+            .expect("expected feed stream");
+        let mut app_state = AppState::new(FlowsheetDocument::new(
+            flowsheet,
+            DocumentMetadata::new("doc-incremental", "Incremental", timestamp(10)),
+        ));
+        app_state.replace_canvas_suggestions(vec![
+            sample_canvas_suggestion("sug-connect-inlet", 0.97, SuggestionSource::LocalRules)
+                .with_acceptance(sample_existing_connection_acceptance()),
+        ]);
+
+        let accepted = app_state
+            .accept_focused_canvas_suggestion_by_tab()
+            .expect("expected partial connection acceptance");
+
+        assert_eq!(
+            accepted.as_ref().map(|item| item.id.as_str()),
+            Some("sug-connect-inlet")
+        );
+        assert!(matches!(
+            app_state.workspace.command_history.current_entry(),
+            Some(crate::CommandHistoryEntry {
+                command: crate::DocumentCommand::ConnectPorts {
+                    stream_id,
+                    from_unit_id,
+                    from_port,
+                    to_unit_id: Some(to_unit_id),
+                    to_port: Some(to_port),
+                },
+                ..
+            }) if stream_id.as_str() == "stream-feed"
+                && from_unit_id.as_str() == "feed-1"
+                && from_port == "outlet"
+                && to_unit_id.as_str() == "flash-1"
+                && to_port == "inlet"
+        ));
+        let flash = app_state
+            .workspace
+            .document
+            .flowsheet
+            .units
+            .get(&UnitId::new("flash-1"))
+            .expect("expected flash unit");
+        assert_eq!(
+            flash
+                .ports
+                .iter()
+                .find(|port| port.name == "inlet")
+                .and_then(|port| port.stream_id.as_ref())
+                .map(|stream_id| stream_id.as_str()),
+            Some("stream-feed")
+        );
+        assert!(
+            flash
+                .ports
+                .iter()
+                .filter(|port| port.name == "liquid" || port.name == "vapor")
+                .all(|port| port.stream_id.is_none()),
+            "incremental canvas connection should not require all other ports to be complete"
+        );
+    }
+
+    #[test]
     fn tab_accepts_suggestion_that_creates_terminal_outlet_stream() {
         let mut flowsheet = Flowsheet::new("demo");
         flowsheet

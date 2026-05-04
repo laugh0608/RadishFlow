@@ -8,6 +8,8 @@ use rf_ui::{
     StreamVisualKind, StreamVisualState, SuggestionSource,
 };
 
+const FEED_KIND: &str = "feed";
+const FEED_OUTLET_PORT: &str = "outlet";
 const FLASH_DRUM_KIND: &str = "flash_drum";
 const FLASH_DRUM_INLET_PORT: &str = "inlet";
 const FLASH_DRUM_LIQUID_PORT: &str = "liquid";
@@ -25,19 +27,19 @@ pub fn generate_local_canvas_suggestions(app_state: &AppState) -> Vec<CanvasSugg
 
 fn generate_local_canvas_suggestions_for_flowsheet(flowsheet: &Flowsheet) -> Vec<CanvasSuggestion> {
     let endpoints = material_stream_endpoints(flowsheet);
-    let source_only_streams: Vec<_> = endpoints
-        .iter()
-        .filter_map(|(stream_id, endpoint)| {
-            if endpoint.source.is_some() && endpoint.sinks.is_empty() {
-                Some(stream_id.clone())
-            } else {
-                None
-            }
-        })
-        .collect();
+    let connectable_source_only_streams = connectable_source_only_streams(flowsheet, &endpoints);
     let mut suggestions = Vec::new();
 
     for unit in flowsheet.units.values() {
+        if unit.kind == FEED_KIND {
+            suggestions.extend(build_missing_feed_outlet_suggestions(
+                flowsheet,
+                unit.id.clone(),
+                &unit.name,
+                &unit.ports,
+            ));
+        }
+
         if unit.kind != FLASH_DRUM_KIND {
             continue;
         }
@@ -47,8 +49,8 @@ fn generate_local_canvas_suggestions_for_flowsheet(flowsheet: &Flowsheet) -> Vec
             .iter()
             .find(|port| port.name == FLASH_DRUM_INLET_PORT);
         if let Some(inlet) = inlet.filter(|port| port.stream_id.is_none()) {
-            if source_only_streams.len() == 1 {
-                let stream_id = source_only_streams[0].clone();
+            if connectable_source_only_streams.len() == 1 {
+                let stream_id = connectable_source_only_streams[0].clone();
                 if let Some((source_unit_id, source_port)) = endpoints
                     .get(&stream_id)
                     .and_then(|endpoint| endpoint.source.clone())
@@ -97,6 +99,84 @@ fn generate_local_canvas_suggestions_for_flowsheet(flowsheet: &Flowsheet) -> Vec
     }
 
     suggestions
+}
+
+fn build_missing_feed_outlet_suggestions(
+    flowsheet: &Flowsheet,
+    unit_id: UnitId,
+    unit_name: &str,
+    ports: &[UnitPort],
+) -> Vec<CanvasSuggestion> {
+    let Some(port) = ports
+        .iter()
+        .find(|candidate| candidate.name == FEED_OUTLET_PORT)
+    else {
+        return Vec::new();
+    };
+    if port.stream_id.is_some() {
+        return Vec::new();
+    }
+
+    let stream_id = unique_stream_id(flowsheet, &unit_id, FEED_OUTLET_PORT);
+    let stream_name = format!("{unit_name} Outlet");
+    vec![
+        CanvasSuggestion::new(
+            CanvasSuggestionId::new(format!("local.feed.create_outlet.{}", unit_id)),
+            SuggestionSource::LocalRules,
+            0.96,
+            GhostElement {
+                kind: GhostElementKind::Connection,
+                target_unit_id: unit_id.clone(),
+                visual_kind: StreamVisualKind::Material,
+                visual_state: StreamVisualState::Suggested,
+            },
+            format!(
+                "Create source stream `{}` for feed outlet `{}`",
+                stream_name, port.name
+            ),
+        )
+        .with_acceptance(CanvasSuggestionAcceptance::MaterialConnection(
+            CanvasSuggestedMaterialConnection {
+                stream: CanvasSuggestedStreamBinding::Create {
+                    stream: default_source_stream(flowsheet, stream_id, stream_name),
+                },
+                source_unit_id: unit_id,
+                source_port: port.name.clone(),
+                sink_unit_id: None,
+                sink_port: None,
+            },
+        )),
+    ]
+}
+
+fn connectable_source_only_streams(
+    flowsheet: &Flowsheet,
+    endpoints: &BTreeMap<StreamId, MaterialStreamEndpoints>,
+) -> Vec<StreamId> {
+    endpoints
+        .iter()
+        .filter_map(|(stream_id, endpoint)| {
+            let (source_unit_id, source_port) = endpoint.source.as_ref()?;
+            if !endpoint.sinks.is_empty()
+                || is_terminal_flash_drum_outlet(flowsheet, source_unit_id, source_port)
+            {
+                return None;
+            }
+
+            Some(stream_id.clone())
+        })
+        .collect()
+}
+
+fn is_terminal_flash_drum_outlet(
+    flowsheet: &Flowsheet,
+    source_unit_id: &UnitId,
+    source_port: &str,
+) -> bool {
+    flowsheet.units.get(source_unit_id).is_some_and(|unit| {
+        unit.kind == FLASH_DRUM_KIND
+            && matches!(source_port, FLASH_DRUM_LIQUID_PORT | FLASH_DRUM_VAPOR_PORT)
+    })
 }
 
 fn build_missing_flash_drum_outlet_suggestions(
@@ -153,6 +233,25 @@ fn build_missing_flash_drum_outlet_suggestions(
     }
 
     suggestions
+}
+
+fn default_source_stream(
+    flowsheet: &Flowsheet,
+    stream_id: StreamId,
+    stream_name: String,
+) -> MaterialStreamState {
+    let composition = if flowsheet.components.is_empty() {
+        Default::default()
+    } else {
+        let fraction = 1.0 / flowsheet.components.len() as f64;
+        flowsheet
+            .components
+            .keys()
+            .cloned()
+            .map(|component_id| (component_id, fraction))
+            .collect()
+    };
+    MaterialStreamState::from_tpzf(stream_id, stream_name, 298.15, 101_325.0, 1.0, composition)
 }
 
 fn material_stream_endpoints(flowsheet: &Flowsheet) -> BTreeMap<StreamId, MaterialStreamEndpoints> {
@@ -276,5 +375,51 @@ mod tests {
             suggestions[2].id.as_str(),
             "local.flash_drum.create_outlet.flash-1.vapor"
         );
+    }
+
+    #[test]
+    fn local_rules_generate_feed_outlet_suggestion_for_unbound_feed() {
+        let mut flowsheet = Flowsheet::new("demo");
+        flowsheet
+            .insert_component(Component::new("component-a", "Component A"))
+            .expect("expected component-a");
+        flowsheet
+            .insert_component(Component::new("component-b", "Component B"))
+            .expect("expected component-b");
+        flowsheet
+            .insert_unit(UnitNode::new(
+                "feed-1",
+                "Feed",
+                "feed",
+                vec![UnitPort::new(
+                    "outlet",
+                    rf_types::PortDirection::Outlet,
+                    rf_types::PortKind::Material,
+                    None,
+                )],
+            ))
+            .expect("expected feed unit");
+
+        let suggestions = generate_local_canvas_suggestions_for_flowsheet(&flowsheet);
+
+        assert_eq!(suggestions.len(), 1);
+        assert_eq!(
+            suggestions[0].id.as_str(),
+            "local.feed.create_outlet.feed-1"
+        );
+        let Some(rf_ui::CanvasSuggestionAcceptance::MaterialConnection(connection)) =
+            suggestions[0].acceptance.as_ref()
+        else {
+            panic!("expected material connection acceptance");
+        };
+        assert_eq!(connection.source_unit_id.as_str(), "feed-1");
+        assert_eq!(connection.source_port, "outlet");
+        assert!(connection.sink_unit_id.is_none());
+        let rf_ui::CanvasSuggestedStreamBinding::Create { stream } = &connection.stream else {
+            panic!("expected stream creation");
+        };
+        assert_eq!(stream.id.as_str(), "stream-feed-1-outlet");
+        assert_eq!(stream.total_molar_flow_mol_s, 1.0);
+        assert_eq!(stream.overall_mole_fractions.len(), 2);
     }
 }

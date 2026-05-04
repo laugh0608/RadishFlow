@@ -2,9 +2,8 @@ use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::path::PathBuf;
 use std::time::SystemTime;
 
-use rf_flowsheet::validate_connections;
 use rf_model::{Flowsheet, MaterialStreamState, UnitNode, UnitPort};
-use rf_types::{ComponentId, RfError, RfResult, StreamId, UnitId};
+use rf_types::{ComponentId, PortDirection, PortKind, RfError, RfResult, StreamId, UnitId};
 use rf_unitops::{
     BuiltinUnitKind, UnitOperationSpec, builtin_unit_spec, builtin_unit_spec_by_name,
 };
@@ -1547,7 +1546,7 @@ fn apply_material_connection_acceptance(
         ));
     }
 
-    validate_connections(&next_flowsheet)?;
+    validate_material_connection_acceptance(flowsheet, connection, &stream_id)?;
 
     let command = DocumentCommand::ConnectPorts {
         stream_id,
@@ -1558,6 +1557,119 @@ fn apply_material_connection_acceptance(
     };
 
     Ok((command, next_flowsheet))
+}
+
+fn validate_material_connection_acceptance(
+    flowsheet: &Flowsheet,
+    connection: &CanvasSuggestedMaterialConnection,
+    stream_id: &StreamId,
+) -> RfResult<()> {
+    validate_connection_endpoint(
+        flowsheet,
+        &connection.source_unit_id,
+        &connection.source_port,
+        PortDirection::Outlet,
+        stream_id,
+    )?;
+
+    if let (Some(sink_unit_id), Some(sink_port)) = (&connection.sink_unit_id, &connection.sink_port)
+    {
+        validate_connection_endpoint(
+            flowsheet,
+            sink_unit_id,
+            sink_port,
+            PortDirection::Inlet,
+            stream_id,
+        )?;
+    }
+
+    for unit in flowsheet.units.values() {
+        for port in &unit.ports {
+            if port.kind != PortKind::Material || port.stream_id.as_ref() != Some(stream_id) {
+                continue;
+            }
+
+            match port.direction {
+                PortDirection::Outlet
+                    if unit.id != connection.source_unit_id
+                        || port.name != connection.source_port =>
+                {
+                    return Err(RfError::invalid_connection(format!(
+                        "stream `{}` already has upstream source `{}.{}`",
+                        stream_id, unit.id, port.name
+                    )));
+                }
+                PortDirection::Inlet => {
+                    let expected_sink = connection
+                        .sink_unit_id
+                        .as_ref()
+                        .zip(connection.sink_port.as_ref());
+                    if expected_sink.is_none_or(|(sink_unit_id, sink_port)| {
+                        sink_unit_id != &unit.id || sink_port != &port.name
+                    }) {
+                        return Err(RfError::invalid_connection(format!(
+                            "stream `{}` already has downstream sink `{}.{}`",
+                            stream_id, unit.id, port.name
+                        )));
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+
+    Ok(())
+}
+
+fn validate_connection_endpoint(
+    flowsheet: &Flowsheet,
+    unit_id: &UnitId,
+    port_name: &str,
+    expected_direction: PortDirection,
+    stream_id: &StreamId,
+) -> RfResult<()> {
+    let unit = flowsheet
+        .units
+        .get(unit_id)
+        .ok_or_else(|| RfError::missing_entity("unit", unit_id))?;
+    let port = unit
+        .ports
+        .iter()
+        .find(|port| port.name == port_name)
+        .ok_or_else(|| {
+            RfError::invalid_input(format!(
+                "unit `{}` does not expose material port `{}`",
+                unit_id, port_name
+            ))
+        })?;
+    if port.kind != PortKind::Material {
+        return Err(RfError::invalid_input(format!(
+            "unit `{}` port `{}` is not a material port",
+            unit_id, port_name
+        )));
+    }
+    if port.direction != expected_direction {
+        return Err(RfError::invalid_connection(format!(
+            "unit `{}` port `{}` has direction `{:?}` but canvas connection expected `{:?}`",
+            unit_id, port_name, port.direction, expected_direction
+        )));
+    }
+    if port
+        .stream_id
+        .as_ref()
+        .is_some_and(|existing| existing != stream_id)
+    {
+        return Err(RfError::invalid_connection(format!(
+            "unit `{}` port `{}` is already connected to stream `{}`",
+            unit_id,
+            port_name,
+            port.stream_id
+                .as_ref()
+                .expect("checked existing stream id above")
+        )));
+    }
+
+    Ok(())
 }
 
 fn apply_run_panel_recovery_mutation(
