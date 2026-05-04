@@ -2,7 +2,10 @@ use super::*;
 use radishflow_studio::{
     StudioRuntimeEntitlementPreflight, StudioRuntimeEntitlementSeed, StudioRuntimeTrigger,
 };
-use rf_store::{StoredDocumentMetadata, StoredProjectFile, read_project_file, write_project_file};
+use rf_store::{
+    StoredDocumentMetadata, StoredProjectFile, read_project_file, read_studio_layout_file,
+    studio_layout_path_for_project, write_project_file,
+};
 use std::{fs, path::PathBuf, time::UNIX_EPOCH};
 
 fn lease_expiring_config() -> StudioRuntimeConfig {
@@ -763,6 +766,106 @@ fn blank_project_initializes_components_saves_reopens_and_runs_feed_flash_path()
     assert_eq!(rerun.runtime.control_state.pending_reason, None);
 
     let _ = fs::remove_file(project_path);
+}
+
+#[test]
+fn canvas_unit_positions_persist_through_project_save_and_reopen() {
+    let (config, project_path) = blank_workspace_config();
+    let mut app = ready_app_state(&config);
+
+    app.dispatch_ui_command("canvas.begin_place_unit.feed");
+    app.dispatch_canvas_pending_edit_commit(rf_ui::CanvasPoint::new(64.0, 40.0));
+    accept_canvas_suggestion_by_id(&mut app, "local.feed.create_outlet.feed-1");
+
+    app.dispatch_ui_command("canvas.begin_place_unit.flash_drum");
+    app.dispatch_canvas_pending_edit_commit(rf_ui::CanvasPoint::new(220.0, 40.0));
+
+    let before_save = app.platform_host.snapshot().window_model();
+    let before_feed = before_save
+        .canvas
+        .widget
+        .view()
+        .unit_blocks
+        .iter()
+        .find(|unit| unit.unit_id == "feed-1")
+        .expect("expected feed block before save");
+    let before_flash = before_save
+        .canvas
+        .widget
+        .view()
+        .unit_blocks
+        .iter()
+        .find(|unit| unit.unit_id == "flash-1")
+        .expect("expected flash block before save");
+    assert_eq!(
+        before_feed.layout_position,
+        Some(rf_ui::CanvasPoint::new(64.0, 40.0))
+    );
+    assert_eq!(
+        before_flash.layout_position,
+        Some(rf_ui::CanvasPoint::new(220.0, 40.0))
+    );
+    assert_eq!(
+        before_save.canvas.widget.view().viewport.layout_label,
+        "persisted_positions"
+    );
+
+    let layout_path = studio_layout_path_for_project(&project_path);
+    let stored_layout = read_studio_layout_file(&layout_path).expect("expected layout sidecar");
+    assert!(stored_layout.canvas_unit_positions.iter().any(|position| {
+        position.unit_id == "feed-1" && position.x == 64.0 && position.y == 40.0
+    }));
+    assert!(stored_layout.canvas_unit_positions.iter().any(|position| {
+        position.unit_id == "flash-1" && position.x == 220.0 && position.y == 40.0
+    }));
+
+    app.save_project();
+    app.open_project(project_path.clone(), "project");
+
+    let reopened = app.platform_host.snapshot().window_model();
+    assert!(!reopened.runtime.workspace_document.has_unsaved_changes);
+    assert_eq!(
+        reopened
+            .canvas
+            .widget
+            .view()
+            .unit_blocks
+            .iter()
+            .find(|unit| unit.unit_id == "feed-1")
+            .and_then(|unit| unit.layout_position),
+        Some(rf_ui::CanvasPoint::new(64.0, 40.0))
+    );
+    assert_eq!(
+        reopened
+            .canvas
+            .widget
+            .view()
+            .unit_blocks
+            .iter()
+            .find(|unit| unit.unit_id == "flash-1")
+            .and_then(|unit| unit.layout_position),
+        Some(rf_ui::CanvasPoint::new(220.0, 40.0))
+    );
+    assert_eq!(
+        reopened.canvas.focused_suggestion_id.as_deref(),
+        Some("local.flash_drum.connect_inlet.flash-1.stream-feed-1-outlet")
+    );
+
+    accept_canvas_suggestion_by_id(
+        &mut app,
+        "local.flash_drum.connect_inlet.flash-1.stream-feed-1-outlet",
+    );
+    accept_canvas_suggestion_by_id(&mut app, "local.flash_drum.create_outlet.flash-1.liquid");
+    accept_canvas_suggestion_by_id(&mut app, "local.flash_drum.create_outlet.flash-1.vapor");
+    app.dispatch_ui_command("run_panel.run_manual");
+    let solved = app.platform_host.snapshot().window_model();
+    assert_eq!(
+        solved.runtime.control_state.run_status,
+        rf_ui::RunStatus::Converged
+    );
+
+    let _ = fs::remove_file(project_path);
+    let _ = fs::remove_file(layout_path);
 }
 
 #[test]

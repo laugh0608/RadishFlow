@@ -1087,6 +1087,7 @@ mod tests {
                 unit_id: rf_types::UnitId::new("flash-1"),
                 name: "Flash Drum".to_string(),
                 kind: "flash_drum".to_string(),
+                layout_position: None,
                 ports: vec![crate::StudioGuiCanvasUnitPortState {
                     name: "inlet".to_string(),
                     direction: rf_types::PortDirection::Inlet,

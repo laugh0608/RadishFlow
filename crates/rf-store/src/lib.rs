@@ -44,9 +44,10 @@ pub use project::{
 };
 pub use studio_layout::{
     STORED_STUDIO_LAYOUT_FILE_KIND, STORED_STUDIO_LAYOUT_FILE_SUFFIX,
-    STORED_STUDIO_LAYOUT_SCHEMA_VERSION, StoredStudioLayoutFile, StoredStudioLayoutPanelState,
-    StoredStudioLayoutRegionWeight, StoredStudioLayoutStackGroupState,
-    StoredStudioWindowLayoutEntry, studio_layout_path_for_project,
+    STORED_STUDIO_LAYOUT_SCHEMA_VERSION, StoredStudioCanvasUnitPosition, StoredStudioLayoutFile,
+    StoredStudioLayoutPanelState, StoredStudioLayoutRegionWeight,
+    StoredStudioLayoutStackGroupState, StoredStudioWindowLayoutEntry,
+    studio_layout_path_for_project,
 };
 pub use studio_preferences::{
     STORED_STUDIO_PREFERENCES_FILE_KIND, STORED_STUDIO_PREFERENCES_FILE_NAME,
@@ -67,8 +68,8 @@ mod tests {
         STORED_PROJECT_FILE_EXTENSION, StoredAuthCacheIndex, StoredAuthCacheLayout,
         StoredCredentialReference, StoredDocumentMetadata, StoredEntitlementCache,
         StoredProjectFile, StoredPropertyPackageManifest, StoredPropertyPackagePayload,
-        StoredPropertyPackageRecord, StoredPropertyPackageSource, StoredStudioLayoutFile,
-        StoredStudioLayoutPanelState, StoredStudioLayoutRegionWeight,
+        StoredPropertyPackageRecord, StoredPropertyPackageSource, StoredStudioCanvasUnitPosition,
+        StoredStudioLayoutFile, StoredStudioLayoutPanelState, StoredStudioLayoutRegionWeight,
         StoredStudioLayoutStackGroupState, StoredStudioPreferencesFile,
         StoredStudioWindowLayoutEntry, StoredThermoComponent, auth_cache_index_to_pretty_json,
         parse_auth_cache_index_json, parse_project_file_json, parse_property_package_manifest_json,
@@ -311,6 +312,11 @@ mod tests {
                 dock_region: "center-stage".to_string(),
                 weight: 52,
             }],
+        }])
+        .with_canvas_unit_positions(vec![StoredStudioCanvasUnitPosition {
+            unit_id: "feed-1".to_string(),
+            x: 64.0,
+            y: 40.0,
         }]);
 
         let json = studio_layout_file_to_pretty_json(&layout).expect("expected layout json");
@@ -322,6 +328,8 @@ mod tests {
         assert!(json.contains("\"layoutKey\": \"studio.window.owner.slot-1\""));
         assert!(json.contains("\"centerArea\": \"canvas\""));
         assert!(json.contains("\"stackGroups\""));
+        assert!(json.contains("\"canvasUnitPositions\""));
+        assert!(json.contains("\"unitId\": \"feed-1\""));
     }
 
     #[test]

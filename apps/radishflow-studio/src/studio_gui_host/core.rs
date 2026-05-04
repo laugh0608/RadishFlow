@@ -10,10 +10,15 @@ impl StudioGuiHost {
             Some(project_path) => load_persisted_window_layouts(project_path)?,
             None => BTreeMap::new(),
         };
+        let canvas_unit_positions = match controller.document_path() {
+            Some(project_path) => load_persisted_canvas_unit_positions(project_path)?,
+            None => BTreeMap::new(),
+        };
 
         Ok(Self {
             controller,
             layout_state_overrides,
+            canvas_unit_positions,
             window_drop_previews: BTreeMap::new(),
         })
     }
@@ -49,6 +54,7 @@ impl StudioGuiHost {
                 unit_id: unit.id.clone(),
                 name: unit.name.clone(),
                 kind: unit.kind.clone(),
+                layout_position: self.canvas_unit_positions.get(&unit.id).copied(),
                 ports: unit
                     .ports
                     .iter()

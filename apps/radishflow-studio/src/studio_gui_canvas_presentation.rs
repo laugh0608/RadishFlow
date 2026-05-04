@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use crate::StudioGuiCanvasState;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct StudioGuiCanvasUnitBlockViewModel {
     pub unit_id: String,
     pub name: String,
@@ -15,6 +15,7 @@ pub struct StudioGuiCanvasUnitBlockViewModel {
     pub action_label: String,
     pub hover_text: String,
     pub layout_slot: usize,
+    pub layout_position: Option<rf_ui::CanvasPoint>,
     pub is_active_inspector_target: bool,
 }
 
@@ -33,16 +34,17 @@ pub struct StudioGuiCanvasUnitPortViewModel {
     pub side_count: usize,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct StudioGuiCanvasStreamLineEndpointViewModel {
     pub unit_id: String,
     pub port_name: String,
     pub layout_slot: usize,
+    pub layout_position: Option<rf_ui::CanvasPoint>,
     pub port_side_index: usize,
     pub port_side_count: usize,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct StudioGuiCanvasStreamLineViewModel {
     pub line_id: String,
     pub stream_id: String,
@@ -675,6 +677,7 @@ impl StudioGuiCanvasViewModel {
                     ),
                     command_id,
                     layout_slot,
+                    layout_position: unit.layout_position,
                     is_active_inspector_target: unit.is_active_inspector_target,
                 }
             })
@@ -685,7 +688,12 @@ impl StudioGuiCanvasViewModel {
                 unit.ports.iter().map(|port| {
                     (
                         (unit.unit_id.clone(), port.name.clone()),
-                        (unit.layout_slot, port.side_index, port.side_count),
+                        (
+                            unit.layout_slot,
+                            unit.layout_position,
+                            port.side_index,
+                            port.side_count,
+                        ),
                     )
                 })
             })
@@ -702,15 +710,18 @@ impl StudioGuiCanvasViewModel {
                             endpoint.port_name.clone(),
                         ))
                         .copied()
-                        .map(|(layout_slot, port_side_index, port_side_count)| {
-                            StudioGuiCanvasStreamLineEndpointViewModel {
-                                unit_id: endpoint.unit_id.as_str().to_string(),
-                                port_name: endpoint.port_name.clone(),
-                                layout_slot,
-                                port_side_index,
-                                port_side_count,
-                            }
-                        })
+                        .map(
+                            |(layout_slot, layout_position, port_side_index, port_side_count)| {
+                                StudioGuiCanvasStreamLineEndpointViewModel {
+                                    unit_id: endpoint.unit_id.as_str().to_string(),
+                                    port_name: endpoint.port_name.clone(),
+                                    layout_slot,
+                                    layout_position,
+                                    port_side_index,
+                                    port_side_count,
+                                }
+                            },
+                        )
                 });
                 let sink = stream.sink.as_ref().and_then(|endpoint| {
                     unit_port_layouts
@@ -719,15 +730,18 @@ impl StudioGuiCanvasViewModel {
                             endpoint.port_name.clone(),
                         ))
                         .copied()
-                        .map(|(layout_slot, port_side_index, port_side_count)| {
-                            StudioGuiCanvasStreamLineEndpointViewModel {
-                                unit_id: endpoint.unit_id.as_str().to_string(),
-                                port_name: endpoint.port_name.clone(),
-                                layout_slot,
-                                port_side_index,
-                                port_side_count,
-                            }
-                        })
+                        .map(
+                            |(layout_slot, layout_position, port_side_index, port_side_count)| {
+                                StudioGuiCanvasStreamLineEndpointViewModel {
+                                    unit_id: endpoint.unit_id.as_str().to_string(),
+                                    port_name: endpoint.port_name.clone(),
+                                    layout_slot,
+                                    layout_position,
+                                    port_side_index,
+                                    port_side_count,
+                                }
+                            },
+                        )
                 });
                 if source.is_none() && sink.is_none() {
                     return None;
@@ -1216,7 +1230,11 @@ fn canvas_viewport(
     current_selection: Option<&StudioGuiCanvasSelectionViewModel>,
     focused_suggestion_id: Option<&str>,
 ) -> StudioGuiCanvasViewportViewModel {
-    let layout_label = "transient_grid";
+    let layout_label = if units.iter().any(|unit| unit.layout_position.is_some()) {
+        "persisted_positions"
+    } else {
+        "transient_grid"
+    };
     let mode_label = canvas_view_mode_label(view_mode);
     let unit_count = units.len();
     let stream_line_count = stream_lines.len();
@@ -1991,6 +2009,7 @@ mod tests {
                 unit_id: rf_types::UnitId::new("flash-1"),
                 name: "Flash Drum".to_string(),
                 kind: "flash_drum".to_string(),
+                layout_position: None,
                 ports: Vec::new(),
                 port_count: 0,
                 connected_port_count: 0,
@@ -2037,6 +2056,7 @@ mod tests {
                 unit_id: rf_types::UnitId::new("flash-1"),
                 name: "Flash Drum".to_string(),
                 kind: "flash_drum".to_string(),
+                layout_position: None,
                 ports: vec![crate::StudioGuiCanvasUnitPortState {
                     name: "inlet".to_string(),
                     direction: rf_types::PortDirection::Inlet,

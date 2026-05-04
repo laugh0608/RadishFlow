@@ -454,7 +454,7 @@ impl ReadyAppState {
         let mut hovered_port_stream_id = None;
         let mut hovered_port_callout = None;
         for unit in unit_blocks {
-            let unit_rect = canvas_unit_block_rect(rect, unit.layout_slot);
+            let unit_rect = canvas_unit_block_rect(rect, unit.layout_slot, unit.layout_position);
             let anchor_label = canvas_unit_viewport_anchor_label(unit.layout_slot);
             let is_viewport_focus = self
                 .canvas_viewport_navigation
@@ -2140,6 +2140,7 @@ fn canvas_stream_line_geometry(
         canvas_unit_port_anchor(
             rect,
             endpoint.layout_slot,
+            endpoint.layout_position,
             true,
             endpoint.port_side_index,
             endpoint.port_side_count,
@@ -2149,6 +2150,7 @@ fn canvas_stream_line_geometry(
         canvas_unit_port_anchor(
             rect,
             endpoint.layout_slot,
+            endpoint.layout_position,
             false,
             endpoint.port_side_index,
             endpoint.port_side_count,
@@ -2257,8 +2259,20 @@ fn paint_canvas_stream_arrow(
     );
 }
 
-fn canvas_unit_block_rect(rect: egui::Rect, layout_slot: usize) -> egui::Rect {
+fn canvas_unit_block_rect(
+    rect: egui::Rect,
+    layout_slot: usize,
+    layout_position: Option<rf_ui::CanvasPoint>,
+) -> egui::Rect {
     let block_size = egui::vec2(156.0, 72.0);
+    if let Some(position) = layout_position {
+        let min = egui::pos2(
+            rect.left() + (position.x as f32).clamp(0.0, (rect.width() - block_size.x).max(0.0)),
+            rect.top() + (position.y as f32).clamp(0.0, (rect.height() - block_size.y).max(0.0)),
+        );
+        return egui::Rect::from_min_size(min, block_size);
+    }
+
     let gap = egui::vec2(22.0, 20.0);
     let left_padding = 18.0;
     let top_padding = 72.0;
@@ -2282,11 +2296,12 @@ fn canvas_unit_viewport_anchor_label(layout_slot: usize) -> String {
 fn canvas_unit_port_anchor(
     rect: egui::Rect,
     layout_slot: usize,
+    layout_position: Option<rf_ui::CanvasPoint>,
     is_outlet: bool,
     side_index: usize,
     side_count: usize,
 ) -> egui::Pos2 {
-    let unit_rect = canvas_unit_block_rect(rect, layout_slot);
+    let unit_rect = canvas_unit_block_rect(rect, layout_slot, layout_position);
     canvas_unit_port_anchor_in_rect(unit_rect, is_outlet, side_index, side_count)
 }
 
@@ -2536,7 +2551,9 @@ fn canvas_focus_callout_anchor(
         return unit_blocks
             .iter()
             .find(|unit| unit.unit_id == callout.target_id)
-            .map(|unit| canvas_unit_block_rect(rect, unit.layout_slot).right_top());
+            .map(|unit| {
+                canvas_unit_block_rect(rect, unit.layout_slot, unit.layout_position).right_top()
+            });
     }
 
     stream_lines

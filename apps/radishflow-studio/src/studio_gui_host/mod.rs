@@ -4,7 +4,8 @@ use rf_types::{RfError, RfResult};
 use rf_ui::{AppLogEntry, CanvasEditIntent, CanvasSuggestion, CanvasSuggestionId};
 
 use crate::studio_gui_layout_store::{
-    load_persisted_window_layouts, save_persisted_window_layouts,
+    load_persisted_canvas_unit_positions, load_persisted_window_layouts,
+    save_persisted_canvas_unit_positions, save_persisted_window_layouts,
 };
 use crate::{
     StudioAppHostCloseEffects, StudioAppHostController, StudioAppHostDispatchEffects,
@@ -144,11 +145,12 @@ pub struct StudioGuiCanvasDiagnosticState {
     pub related_port_targets: Vec<rf_types::DiagnosticPortTarget>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct StudioGuiCanvasUnitState {
     pub unit_id: rf_types::UnitId,
     pub name: String,
     pub kind: String,
+    pub layout_position: Option<rf_ui::CanvasPoint>,
     pub ports: Vec<StudioGuiCanvasUnitPortState>,
     pub port_count: usize,
     pub connected_port_count: usize,
@@ -295,5 +297,6 @@ pub enum StudioGuiHostCommandOutcome {
 pub struct StudioGuiHost {
     controller: StudioAppHostController,
     layout_state_overrides: BTreeMap<String, StudioGuiWindowLayoutPersistenceState>,
+    canvas_unit_positions: BTreeMap<rf_types::UnitId, rf_ui::CanvasPoint>,
     window_drop_previews: BTreeMap<String, StudioGuiWindowDropPreviewState>,
 }

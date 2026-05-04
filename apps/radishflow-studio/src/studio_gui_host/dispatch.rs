@@ -303,6 +303,9 @@ impl StudioGuiHost {
         let result = self
             .controller
             .dispatch_canvas_interaction(action.clone())?;
+        if let Some(committed) = result.committed_edit.as_ref() {
+            self.record_canvas_unit_position(&committed.unit_id, committed.position)?;
+        }
         Ok(self.build_canvas_interaction_result_with_focus(
             action,
             result.committed_edit,
@@ -310,5 +313,22 @@ impl StudioGuiHost {
             result.rejected,
             result.focused,
         ))
+    }
+
+    fn record_canvas_unit_position(
+        &mut self,
+        unit_id: &rf_types::UnitId,
+        position: rf_ui::CanvasPoint,
+    ) -> RfResult<()> {
+        self.canvas_unit_positions.insert(unit_id.clone(), position);
+        let flowsheet = &self.controller.document().flowsheet;
+        self.canvas_unit_positions
+            .retain(|unit_id, _| flowsheet.units.contains_key(unit_id));
+        match self.controller.document_path() {
+            Some(project_path) => {
+                save_persisted_canvas_unit_positions(project_path, &self.canvas_unit_positions)
+            }
+            None => Ok(()),
+        }
     }
 }
