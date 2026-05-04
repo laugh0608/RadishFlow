@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use crate::StudioGuiCanvasState;
 
@@ -14,6 +14,7 @@ pub struct StudioGuiCanvasUnitBlockViewModel {
     pub command_id: String,
     pub action_label: String,
     pub hover_text: String,
+    pub attention_summary: Option<String>,
     pub layout_slot: usize,
     pub layout_position: Option<rf_ui::CanvasPoint>,
     pub is_active_inspector_target: bool,
@@ -55,6 +56,7 @@ pub struct StudioGuiCanvasStreamLineViewModel {
     pub command_id: String,
     pub action_label: String,
     pub hover_text: String,
+    pub attention_summary: Option<String>,
     pub is_active_inspector_target: bool,
 }
 
@@ -396,6 +398,7 @@ pub struct StudioGuiCanvasObjectListItemViewModel {
     pub target_id: String,
     pub label: String,
     pub detail: String,
+    pub attention_summary: Option<String>,
     pub viewport_anchor_label: String,
     pub command_id: String,
     pub related_stream_ids: Vec<String>,
@@ -710,9 +713,19 @@ impl StudioGuiCanvasViewModel {
             .map(|(layout_slot, unit)| {
                 let target = rf_ui::InspectorTarget::Unit(unit.unit_id.clone());
                 let command_id = crate::inspector_target_command_id(&target);
-                let ports = canvas_unit_material_ports(unit, &stream_names);
+                let ports = canvas_unit_material_ports(unit, &stream_names, &state.diagnostics);
                 let status_badges =
                     canvas_unit_status_badges(unit.unit_id.as_str(), &state.diagnostics);
+                let attention_summary =
+                    canvas_unit_attention_summary(unit.unit_id.as_str(), &state.diagnostics);
+                let hover_text = append_canvas_hover_attention(
+                    format!(
+                        "Focus unit inspector for `{}` ({})",
+                        unit.unit_id.as_str(),
+                        unit.kind
+                    ),
+                    attention_summary.as_deref(),
+                );
                 StudioGuiCanvasUnitBlockViewModel {
                     unit_id: unit.unit_id.as_str().to_string(),
                     name: unit.name.clone(),
@@ -722,11 +735,8 @@ impl StudioGuiCanvasViewModel {
                     port_count: unit.port_count,
                     connected_port_count: unit.connected_port_count,
                     action_label: format!("Unit {}", unit.unit_id.as_str()),
-                    hover_text: format!(
-                        "Focus unit inspector for `{}` ({})",
-                        unit.unit_id.as_str(),
-                        unit.kind
-                    ),
+                    hover_text,
+                    attention_summary,
                     command_id,
                     layout_slot,
                     layout_position: unit.layout_position,
@@ -803,6 +813,8 @@ impl StudioGuiCanvasViewModel {
                 let command_id = crate::inspector_target_command_id(&target);
                 let status_badges =
                     canvas_stream_status_badges(stream.stream_id.as_str(), &state.diagnostics);
+                let attention_summary =
+                    canvas_stream_attention_summary(stream.stream_id.as_str(), &state.diagnostics);
                 let source_label = source
                     .as_ref()
                     .map(|endpoint| format!("{}:{}", endpoint.unit_id, endpoint.port_name))
@@ -819,12 +831,16 @@ impl StudioGuiCanvasViewModel {
                     sink,
                     status_badges,
                     action_label: format!("Stream {}", stream.stream_id.as_str()),
-                    hover_text: format!(
-                        "Focus stream inspector for `{}` ({} -> {})",
-                        stream.stream_id.as_str(),
-                        source_label,
-                        sink_label
+                    hover_text: append_canvas_hover_attention(
+                        format!(
+                            "Focus stream inspector for `{}` ({} -> {})",
+                            stream.stream_id.as_str(),
+                            source_label,
+                            sink_label
+                        ),
+                        attention_summary.as_deref(),
                     ),
+                    attention_summary,
                     command_id,
                     is_active_inspector_target: stream.is_active_inspector_target,
                 })
@@ -1151,6 +1167,7 @@ impl StudioGuiCanvasPresentation {
 fn canvas_unit_material_ports(
     unit: &crate::StudioGuiCanvasUnitState,
     stream_names: &BTreeMap<String, String>,
+    diagnostics: &[crate::StudioGuiCanvasDiagnosticState],
 ) -> Vec<StudioGuiCanvasUnitPortViewModel> {
     let inlet_count = unit
         .ports
@@ -1202,7 +1219,12 @@ fn canvas_unit_material_ports(
             let binding_label = stream_label
                 .clone()
                 .unwrap_or_else(|| "unbound".to_string());
-            let hover_text = canvas_port_hover_text(unit, port, stream_label.as_deref());
+            let attention_summary =
+                canvas_port_attention_summary(unit.unit_id.as_str(), &port.name, diagnostics);
+            let hover_text = append_canvas_hover_attention(
+                canvas_port_hover_text(unit, port, stream_label.as_deref()),
+                attention_summary.as_deref(),
+            );
             StudioGuiCanvasUnitPortViewModel {
                 name: port.name.clone(),
                 direction_label: port.direction.as_str(),
@@ -1396,6 +1418,7 @@ fn canvas_object_list(
                 "{} | ports {}/{}",
                 unit.kind, unit.connected_port_count, unit.port_count
             ),
+            attention_summary: unit.attention_summary.clone(),
             viewport_anchor_label: format!("unit-slot-{}", unit.layout_slot),
             command_id: unit.command_id.clone(),
             related_stream_ids: unit
@@ -1428,6 +1451,7 @@ fn canvas_object_list(
                     target_id: stream.stream_id.clone(),
                     label: stream.name.clone(),
                     detail: format!("{source} -> {sink}"),
+                    attention_summary: stream.attention_summary.clone(),
                     viewport_anchor_label: stream.line_id.clone(),
                     command_id: stream.command_id.clone(),
                     related_stream_ids: vec![stream.stream_id.clone()],
@@ -1613,6 +1637,103 @@ fn canvas_stream_status_badges(
     }))
 }
 
+fn canvas_unit_attention_summary(
+    unit_id: &str,
+    diagnostics: &[crate::StudioGuiCanvasDiagnosticState],
+) -> Option<String> {
+    canvas_attention_summary(diagnostics.iter().filter(|diagnostic| {
+        diagnostic
+            .related_unit_ids
+            .iter()
+            .any(|related_unit_id| related_unit_id.as_str() == unit_id)
+            || diagnostic
+                .related_port_targets
+                .iter()
+                .any(|target| target.unit_id.as_str() == unit_id)
+    }))
+}
+
+fn canvas_stream_attention_summary(
+    stream_id: &str,
+    diagnostics: &[crate::StudioGuiCanvasDiagnosticState],
+) -> Option<String> {
+    canvas_attention_summary(diagnostics.iter().filter(|diagnostic| {
+        diagnostic
+            .related_stream_ids
+            .iter()
+            .any(|related_stream_id| related_stream_id.as_str() == stream_id)
+    }))
+}
+
+fn canvas_port_attention_summary(
+    unit_id: &str,
+    port_name: &str,
+    diagnostics: &[crate::StudioGuiCanvasDiagnosticState],
+) -> Option<String> {
+    canvas_attention_summary(diagnostics.iter().filter(|diagnostic| {
+        diagnostic.related_port_targets.iter().any(|target| {
+            target.unit_id.as_str() == unit_id && target.port_name.as_str() == port_name
+        })
+    }))
+}
+
+fn canvas_attention_summary<'a>(
+    diagnostics: impl Iterator<Item = &'a crate::StudioGuiCanvasDiagnosticState>,
+) -> Option<String> {
+    let mut error_count = 0;
+    let mut warning_count = 0;
+    let mut codes = BTreeSet::new();
+    let mut ports = BTreeSet::new();
+
+    for diagnostic in diagnostics {
+        if !canvas_diagnostic_requires_attention(diagnostic.severity) {
+            continue;
+        }
+        match diagnostic.severity {
+            rf_ui::DiagnosticSeverity::Error => error_count += 1,
+            rf_ui::DiagnosticSeverity::Warning => warning_count += 1,
+            rf_ui::DiagnosticSeverity::Info => {}
+        }
+        codes.insert(diagnostic.code.clone());
+        for target in &diagnostic.related_port_targets {
+            ports.insert(format!("{}:{}", target.unit_id.as_str(), target.port_name));
+        }
+    }
+
+    if error_count == 0 && warning_count == 0 {
+        return None;
+    }
+
+    let mut parts = Vec::new();
+    if error_count > 0 {
+        parts.push(format!("{error_count} error(s)"));
+    }
+    if warning_count > 0 {
+        parts.push(format!("{warning_count} warning(s)"));
+    }
+    if !ports.is_empty() {
+        parts.push(format!(
+            "ports {}",
+            ports.into_iter().collect::<Vec<_>>().join(", ")
+        ));
+    }
+    if !codes.is_empty() {
+        parts.push(format!(
+            "codes {}",
+            codes.into_iter().collect::<Vec<_>>().join(", ")
+        ));
+    }
+
+    Some(format!("attention: {}", parts.join("; ")))
+}
+
+fn append_canvas_hover_attention(base: String, attention_summary: Option<&str>) -> String {
+    match attention_summary {
+        Some(summary) => format!("{base}\n{summary}\nRead-only attention summary"),
+        None => base,
+    }
+}
+
 fn canvas_status_badges<'a>(
     diagnostics: impl Iterator<Item = &'a crate::StudioGuiCanvasDiagnosticState>,
 ) -> Vec<StudioGuiCanvasStatusBadgeViewModel> {
@@ -1654,7 +1775,21 @@ fn canvas_status_badges<'a>(
 }
 
 fn canvas_diagnostic_detail(diagnostic: &crate::StudioGuiCanvasDiagnosticState) -> String {
-    format!("{}: {}", diagnostic.code, diagnostic.message)
+    let port_targets = diagnostic
+        .related_port_targets
+        .iter()
+        .map(|target| format!("{}:{}", target.unit_id.as_str(), target.port_name))
+        .collect::<Vec<_>>();
+    if port_targets.is_empty() {
+        format!("{}: {}", diagnostic.code, diagnostic.message)
+    } else {
+        format!(
+            "{}: {} (ports {})",
+            diagnostic.code,
+            diagnostic.message,
+            port_targets.join(", ")
+        )
+    }
 }
 
 fn canvas_diagnostic_requires_attention(severity: rf_ui::DiagnosticSeverity) -> bool {
@@ -2236,8 +2371,25 @@ mod tests {
             vec![crate::StudioGuiCanvasStatusBadgeViewModel {
                 severity_label: "Error",
                 short_label: "E1".to_string(),
-                detail: "solver.step.execution: unit failed".to_string(),
+                detail: "solver.step.execution: unit failed (ports flash-1:inlet)".to_string(),
             }]
+        );
+        assert_eq!(
+            unit.attention_summary.as_deref(),
+            Some("attention: 1 error(s); ports flash-1:inlet; codes solver.step.execution")
+        );
+        assert!(
+            unit.hover_text
+                .contains("attention: 1 error(s); ports flash-1:inlet")
+        );
+        let port = unit
+            .ports
+            .iter()
+            .find(|port| port.name == "inlet")
+            .expect("expected inlet port");
+        assert!(
+            port.hover_text
+                .contains("attention: 1 error(s); ports flash-1:inlet")
         );
         let stream = presentation
             .view
@@ -2246,8 +2398,14 @@ mod tests {
             .find(|stream| stream.stream_id == "stream-feed")
             .expect("expected stream line");
         assert_eq!(stream.status_badges, unit.status_badges);
+        assert_eq!(
+            stream.attention_summary.as_deref(),
+            Some("attention: 1 error(s); ports flash-1:inlet; codes solver.step.execution")
+        );
         assert!(presentation.view.object_list.items.iter().any(|item| {
-            item.target_id == "flash-1" && item.status_badges == unit.status_badges
+            item.target_id == "flash-1"
+                && item.status_badges == unit.status_badges
+                && item.attention_summary == unit.attention_summary
         }));
         assert_eq!(presentation.view.object_list.attention_count, 2);
         assert_eq!(

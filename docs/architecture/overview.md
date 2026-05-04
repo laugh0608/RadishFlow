@@ -111,6 +111,7 @@ RadishFlow 的目标架构已经冻结为“桌面端三层 + 外部控制面”
 - `StudioGuiWindowModel` 作为窗口内容分区模型
 - `StudioGuiWindowDiagnosticTargetActionModel` 当前作为结果审阅/错误定位的统一 action presentation，汇总失败恢复、Inspector 目标、求解步骤单元和产出流股跳转；真实 GUI 继续按既有 `command_id` 派发，不新增导航或 recovery 私有状态机
 - `StudioGuiWindowFailureDiagnosticDetailModel` 当前作为失败详情只读 presentation，直接承接 latest diagnostic summary 的 code / revision / severity / related targets，避免 GUI 从失败 message 中反解析结构化信息
+- Canvas attention presentation 当前也消费同一组结构化 diagnostic target：unit / stream hover、material port hover 与 object list attention summary 会展示 `related_port_targets` 归并出的只读 port 摘要，但定位仍复用现有 `InspectorTarget` command，不新增端口级私有命令
 - `StudioGuiWindowLayoutState` 作为正式布局状态契约，覆盖 `panel dock_region/stack_group/visibility/collapsed/order`、stack active tab、region 内 stack placement、`center_area`、`region_weights`、多窗口 `layout scope` 与 GUI 可直接消费的 `drop target` 摘要推导
 - runtime 区域当前也会把 `platform_notice` 前推到窗口布局摘要与 badge，真实 GUI 在 panel 折叠或 tab strip 状态下不必退回日志列表才能感知平台 timer 异常
 - `StudioGuiWindowLayoutModel` / `StudioGuiWindowPanelLayout` 当前也已冻结 tab 展示语义，显式区分 `Standalone / ActiveTab / InactiveTab`，让真实 GUI 不必自己再猜非 active tab 的展示角色

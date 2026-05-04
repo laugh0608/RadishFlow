@@ -280,6 +280,9 @@ fn canvas_object_list_filter_matches_expected_object_groups() {
         target_id: "flash-1".to_string(),
         label: "Flash Drum".to_string(),
         detail: "flash_drum | ports 1/3".to_string(),
+        attention_summary: Some(
+            "attention: 1 error(s); ports flash-1:inlet; codes solver.step.execution".to_string(),
+        ),
         viewport_anchor_label: "unit-slot-1".to_string(),
         command_id: "inspector.focus_unit:flash-1".to_string(),
         related_stream_ids: Vec::new(),
@@ -295,6 +298,7 @@ fn canvas_object_list_filter_matches_expected_object_groups() {
         target_id: "stream-feed".to_string(),
         label: "Feed".to_string(),
         detail: "feed-1:outlet -> flash-1:inlet".to_string(),
+        attention_summary: None,
         viewport_anchor_label: "stream-feed:0".to_string(),
         command_id: "inspector.focus_stream:stream-feed".to_string(),
         related_stream_ids: vec!["stream-feed".to_string()],

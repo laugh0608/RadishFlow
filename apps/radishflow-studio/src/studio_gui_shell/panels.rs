@@ -269,6 +269,14 @@ impl ReadyAppState {
                                 canvas_status_badge_color(badge.severity_label),
                             );
                         }
+                        if let Some(summary) = item.attention_summary.as_ref() {
+                            render_status_chip(
+                                ui,
+                                "attention",
+                                notice_color(rf_ui::RunPanelNoticeLevel::Warning),
+                            );
+                            ui.small(summary);
+                        }
                         ui.small(format!("{} · {}", item.target_id, item.detail));
                     });
                     ui.end_row();
