@@ -390,6 +390,13 @@ impl StudioRuntime {
         self.session.accept_focused_canvas_suggestion_by_tab()
     }
 
+    pub fn accept_canvas_suggestion(
+        &mut self,
+        suggestion_id: &rf_ui::CanvasSuggestionId,
+    ) -> RfResult<Option<rf_ui::CanvasSuggestion>> {
+        self.session.accept_canvas_suggestion(suggestion_id)
+    }
+
     pub fn reject_focused_canvas_suggestion(&mut self) -> Option<rf_ui::CanvasSuggestion> {
         self.session.reject_focused_canvas_suggestion()
     }

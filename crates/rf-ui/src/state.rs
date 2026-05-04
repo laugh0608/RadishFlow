@@ -22,7 +22,7 @@ use crate::commands::{
     StreamSpecificationValue,
 };
 use crate::diagnostics::DiagnosticSummary;
-use crate::ids::{DocumentId, SolveSnapshotId};
+use crate::ids::{CanvasSuggestionId, DocumentId, SolveSnapshotId};
 use crate::run::{RunStatus, SimulationMode, SolvePendingReason, SolveSessionState, SolveSnapshot};
 use crate::run_panel::{RunPanelRecoveryAction, RunPanelRecoveryMutation, RunPanelState};
 
@@ -748,6 +748,33 @@ impl AppState {
             .canvas_interaction
             .accept_suggestion(&focused.id)
             .expect("focused suggestion should remain addressable until it is accepted");
+        apply_canvas_suggestion_target(self, &accepted);
+        self.push_log(
+            AppLogLevel::Info,
+            format_canvas_suggestion_accept_message(&accepted),
+        );
+        Ok(Some(accepted))
+    }
+
+    pub fn accept_canvas_suggestion(
+        &mut self,
+        suggestion_id: &CanvasSuggestionId,
+    ) -> RfResult<Option<CanvasSuggestion>> {
+        let suggestion = self
+            .workspace
+            .canvas_interaction
+            .suggestion(suggestion_id)
+            .cloned();
+        let Some(suggestion) = suggestion else {
+            return Ok(None);
+        };
+        if !suggestion.can_accept_explicitly() {
+            return Ok(None);
+        }
+
+        apply_canvas_suggestion_acceptance(self, &suggestion)?;
+        let mut accepted = suggestion;
+        accepted.status = SuggestionStatus::Accepted;
         apply_canvas_suggestion_target(self, &accepted);
         self.push_log(
             AppLogLevel::Info,

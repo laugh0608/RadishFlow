@@ -520,6 +520,16 @@ impl StudioAppHost {
             .map(|result| result.accepted)
     }
 
+    pub fn accept_canvas_suggestion(
+        &mut self,
+        suggestion_id: rf_ui::CanvasSuggestionId,
+    ) -> RfResult<Option<rf_ui::CanvasSuggestion>> {
+        self.dispatch_canvas_interaction(StudioCanvasInteractionAction::AcceptById {
+            suggestion_id,
+        })
+        .map(|result| result.accepted)
+    }
+
     pub fn reject_focused_canvas_suggestion(&mut self) -> Option<rf_ui::CanvasSuggestion> {
         self.dispatch_canvas_interaction(StudioCanvasInteractionAction::RejectFocused)
             .expect("canvas rejection should not fail")
@@ -832,6 +842,16 @@ impl StudioAppHostController {
     ) -> RfResult<Option<rf_ui::CanvasSuggestion>> {
         self.dispatch_canvas_interaction(StudioCanvasInteractionAction::AcceptFocusedByTab)
             .map(|result| result.accepted)
+    }
+
+    pub fn accept_canvas_suggestion(
+        &mut self,
+        suggestion_id: rf_ui::CanvasSuggestionId,
+    ) -> RfResult<Option<rf_ui::CanvasSuggestion>> {
+        self.dispatch_canvas_interaction(StudioCanvasInteractionAction::AcceptById {
+            suggestion_id,
+        })
+        .map(|result| result.accepted)
     }
 
     pub fn reject_focused_canvas_suggestion(&mut self) -> Option<rf_ui::CanvasSuggestion> {

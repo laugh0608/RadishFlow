@@ -175,6 +175,63 @@ mod tests {
         })
     }
 
+    fn sample_feed_flash_document() -> FlowsheetDocument {
+        let mut flowsheet = Flowsheet::new("demo");
+        flowsheet
+            .insert_component(rf_model::Component::new("component-a", "Component A"))
+            .expect("expected component-a");
+        flowsheet
+            .insert_component(rf_model::Component::new("component-b", "Component B"))
+            .expect("expected component-b");
+        flowsheet
+            .insert_unit(rf_model::UnitNode::new(
+                "feed-1",
+                "Feed",
+                "feed",
+                vec![rf_model::UnitPort::new(
+                    "outlet",
+                    rf_types::PortDirection::Outlet,
+                    rf_types::PortKind::Material,
+                    Some("stream-feed".into()),
+                )],
+            ))
+            .expect("expected feed insert");
+        flowsheet
+            .insert_unit(rf_model::UnitNode::new(
+                "flash-1",
+                "Flash Drum",
+                "flash_drum",
+                vec![
+                    rf_model::UnitPort::new(
+                        "inlet",
+                        rf_types::PortDirection::Inlet,
+                        rf_types::PortKind::Material,
+                        None,
+                    ),
+                    rf_model::UnitPort::new(
+                        "liquid",
+                        rf_types::PortDirection::Outlet,
+                        rf_types::PortKind::Material,
+                        None,
+                    ),
+                    rf_model::UnitPort::new(
+                        "vapor",
+                        rf_types::PortDirection::Outlet,
+                        rf_types::PortKind::Material,
+                        None,
+                    ),
+                ],
+            ))
+            .expect("expected flash insert");
+        flowsheet
+            .insert_stream(MaterialStreamState::new("stream-feed", "Feed"))
+            .expect("expected feed stream");
+        FlowsheetDocument::new(
+            flowsheet,
+            DocumentMetadata::new("doc-feed-flash", "Feed Flash", timestamp(10)),
+        )
+    }
+
     fn sample_solver_provider() -> PlaceholderThermoProvider {
         let pressure_pa = 100_000.0_f64;
         let mut first = ThermoComponent::new("component-a", "Component A");
@@ -1032,6 +1089,53 @@ mod tests {
                 .all(|port| port.stream_id.is_none()),
             "incremental canvas connection should not require all other ports to be complete"
         );
+    }
+
+    #[test]
+    fn explicit_accept_can_apply_non_focused_suggestion_by_id() {
+        let mut app_state = AppState::new(sample_feed_flash_document());
+        app_state.replace_canvas_suggestions(vec![
+            sample_canvas_suggestion("sug-focused", 0.97, SuggestionSource::LocalRules)
+                .with_acceptance(sample_existing_connection_acceptance()),
+            sample_canvas_suggestion("sug-explicit", 0.60, SuggestionSource::LocalRules)
+                .with_acceptance(sample_existing_connection_acceptance()),
+        ]);
+
+        assert_eq!(
+            app_state
+                .workspace
+                .canvas_interaction
+                .focused_suggestion_id
+                .as_ref()
+                .map(|id| id.as_str()),
+            Some("sug-focused")
+        );
+
+        let accepted = app_state
+            .accept_canvas_suggestion(&CanvasSuggestionId::new("sug-explicit"))
+            .expect("expected explicit suggestion acceptance");
+
+        assert_eq!(
+            accepted.as_ref().map(|item| item.id.as_str()),
+            Some("sug-explicit")
+        );
+        assert!(matches!(
+            app_state.workspace.command_history.current_entry(),
+            Some(crate::CommandHistoryEntry {
+                command: crate::DocumentCommand::ConnectPorts {
+                    stream_id,
+                    from_unit_id,
+                    from_port,
+                    to_unit_id: Some(to_unit_id),
+                    to_port: Some(to_port),
+                },
+                ..
+            }) if stream_id.as_str() == "stream-feed"
+                && from_unit_id.as_str() == "feed-1"
+                && from_port == "outlet"
+                && to_unit_id.as_str() == "flash-1"
+                && to_port == "inlet"
+        ));
     }
 
     #[test]

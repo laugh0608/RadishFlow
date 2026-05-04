@@ -389,6 +389,8 @@ pub struct StudioGuiCanvasSuggestionViewModel {
     pub reason: String,
     pub is_focused: bool,
     pub tab_accept_enabled: bool,
+    pub explicit_accept_enabled: bool,
+    pub explicit_accept_command_id: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -825,6 +827,11 @@ impl StudioGuiCanvasViewModel {
                 reason: suggestion.reason.clone(),
                 is_focused: state.focused_suggestion_id.as_ref() == Some(&suggestion.id),
                 tab_accept_enabled: suggestion.can_accept_with_tab(),
+                explicit_accept_enabled: suggestion.can_accept_explicitly(),
+                explicit_accept_command_id: format!(
+                    "canvas.accept_suggestion.{}",
+                    suggestion.id.as_str()
+                ),
             })
             .collect::<Vec<_>>();
 
@@ -1017,13 +1024,14 @@ impl StudioGuiCanvasTextView {
         lines.extend(view.suggestions.iter().map(|suggestion| {
             let focus_marker = if suggestion.is_focused { "*" } else { "-" };
             format!(
-                "{focus_marker} {} [{}] source={} confidence={:.2} target={} tab_accept={} reason={}",
+                "{focus_marker} {} [{}] source={} confidence={:.2} target={} tab_accept={} explicit_accept={} reason={}",
                 suggestion.id,
                 suggestion.status_label,
                 suggestion.source_label,
                 suggestion.confidence,
                 suggestion.target_unit_id,
                 enabled_label(suggestion.tab_accept_enabled),
+                enabled_label(suggestion.explicit_accept_enabled),
                 suggestion.reason
             )
         }));
@@ -2276,6 +2284,7 @@ mod tests {
         assert_eq!(presentation.view.suggestions[0].source_label, "local_rules");
         assert!(presentation.view.suggestions[0].is_focused);
         assert!(presentation.view.suggestions[0].tab_accept_enabled);
+        assert!(presentation.view.suggestions[0].explicit_accept_enabled);
         assert_eq!(
             presentation.text.lines,
             vec![
@@ -2303,9 +2312,9 @@ mod tests {
                 "  port heater-1:outlet direction=outlet kind=material stream=stream-heated binding=Heated Outlet (stream-heated) slot=1/1".to_string(),
                 "- stream stream-feed feed-1:outlet -> heater-1:inlet badges=none command=inspector.focus_stream:stream-feed".to_string(),
                 "- stream stream-heated heater-1:outlet -> terminal badges=none command=inspector.focus_stream:stream-heated".to_string(),
-                "* local.flash_drum.connect_inlet.flash-1.stream-heated [focused] source=local_rules confidence=0.97 target=flash-1 tab_accept=yes reason=Connect stream `stream-heated` to flash drum inlet `inlet`".to_string(),
-                "- local.flash_drum.create_outlet.flash-1.liquid [proposed] source=local_rules confidence=0.93 target=flash-1 tab_accept=yes reason=Create terminal stream `Flash Drum Liquid Outlet` for flash drum outlet `liquid`".to_string(),
-                "- local.flash_drum.create_outlet.flash-1.vapor [proposed] source=local_rules confidence=0.92 target=flash-1 tab_accept=yes reason=Create terminal stream `Flash Drum Vapor Outlet` for flash drum outlet `vapor`".to_string(),
+                "* local.flash_drum.connect_inlet.flash-1.stream-heated [focused] source=local_rules confidence=0.97 target=flash-1 tab_accept=yes explicit_accept=yes reason=Connect stream `stream-heated` to flash drum inlet `inlet`".to_string(),
+                "- local.flash_drum.create_outlet.flash-1.liquid [proposed] source=local_rules confidence=0.93 target=flash-1 tab_accept=yes explicit_accept=yes reason=Create terminal stream `Flash Drum Liquid Outlet` for flash drum outlet `liquid`".to_string(),
+                "- local.flash_drum.create_outlet.flash-1.vapor [proposed] source=local_rules confidence=0.92 target=flash-1 tab_accept=yes explicit_accept=yes reason=Create terminal stream `Flash Drum Vapor Outlet` for flash drum outlet `vapor`".to_string(),
             ]
         );
 

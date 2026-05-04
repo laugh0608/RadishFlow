@@ -89,10 +89,17 @@ impl StudioAppWindowHostUiActionState {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum StudioCanvasInteractionAction {
-    BeginPlaceUnit { unit_kind: String },
-    CommitPendingEditAt { position: rf_ui::CanvasPoint },
+    BeginPlaceUnit {
+        unit_kind: String,
+    },
+    CommitPendingEditAt {
+        position: rf_ui::CanvasPoint,
+    },
     CancelPendingEdit,
     AcceptFocusedByTab,
+    AcceptById {
+        suggestion_id: rf_ui::CanvasSuggestionId,
+    },
     RejectFocused,
     FocusNext,
     FocusPrevious,
@@ -207,6 +214,13 @@ impl StudioAppWindowHostManager {
         self.session.accept_focused_canvas_suggestion_by_tab()
     }
 
+    pub fn accept_canvas_suggestion(
+        &mut self,
+        suggestion_id: &rf_ui::CanvasSuggestionId,
+    ) -> RfResult<Option<rf_ui::CanvasSuggestion>> {
+        self.session.accept_canvas_suggestion(suggestion_id)
+    }
+
     pub fn reject_focused_canvas_suggestion(&mut self) -> Option<rf_ui::CanvasSuggestion> {
         self.session.reject_focused_canvas_suggestion()
     }
@@ -259,6 +273,12 @@ impl StudioAppWindowHostManager {
             StudioCanvasInteractionAction::AcceptFocusedByTab => (
                 None,
                 self.accept_focused_canvas_suggestion_by_tab()?,
+                None,
+                None,
+            ),
+            StudioCanvasInteractionAction::AcceptById { suggestion_id } => (
+                None,
+                self.accept_canvas_suggestion(suggestion_id)?,
                 None,
                 None,
             ),

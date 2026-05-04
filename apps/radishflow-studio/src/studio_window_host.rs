@@ -209,6 +209,13 @@ impl StudioRuntimeHostPort {
         self.runtime.accept_focused_canvas_suggestion_by_tab()
     }
 
+    pub fn accept_canvas_suggestion(
+        &mut self,
+        suggestion_id: &rf_ui::CanvasSuggestionId,
+    ) -> RfResult<Option<rf_ui::CanvasSuggestion>> {
+        self.runtime.accept_canvas_suggestion(suggestion_id)
+    }
+
     pub fn reject_focused_canvas_suggestion(&mut self) -> Option<rf_ui::CanvasSuggestion> {
         self.runtime.reject_focused_canvas_suggestion()
     }

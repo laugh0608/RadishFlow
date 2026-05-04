@@ -635,6 +635,47 @@ fn canvas_feed_to_flash_minimal_path_surfaces_local_connection_suggestions() {
 }
 
 #[test]
+fn canvas_feed_to_flash_explicit_suggestion_selection_can_run() {
+    let mut app = ready_app_state(&lease_expiring_config());
+
+    app.dispatch_ui_command("canvas.begin_place_unit.feed");
+    app.dispatch_canvas_pending_edit_commit(rf_ui::CanvasPoint::new(64.0, 40.0));
+    accept_canvas_suggestion_by_id(&mut app, "local.feed.create_outlet.feed-2");
+
+    app.dispatch_ui_command("canvas.begin_place_unit.flash_drum");
+    app.dispatch_canvas_pending_edit_commit(rf_ui::CanvasPoint::new(220.0, 40.0));
+    let after_flash = app.platform_host.snapshot().window_model();
+    assert!(
+        after_flash
+            .canvas
+            .widget
+            .view()
+            .suggestions
+            .iter()
+            .any(
+                |suggestion| suggestion.id == "local.flash_drum.create_outlet.flash-2.vapor"
+                    && suggestion.explicit_accept_enabled
+            )
+    );
+
+    accept_canvas_suggestion_by_id(&mut app, "local.flash_drum.create_outlet.flash-2.vapor");
+    accept_canvas_suggestion_by_id(
+        &mut app,
+        "local.flash_drum.connect_inlet.flash-2.stream-feed-2-outlet",
+    );
+    accept_canvas_suggestion_by_id(&mut app, "local.flash_drum.create_outlet.flash-2.liquid");
+
+    app.dispatch_ui_command("run_panel.run_manual");
+    let completed = app.platform_host.snapshot().window_model();
+    assert_eq!(
+        completed.runtime.control_state.run_status,
+        rf_ui::RunStatus::Converged
+    );
+    assert_eq!(completed.runtime.control_state.pending_reason, None);
+    assert_eq!(completed.canvas.suggestion_count, 0);
+}
+
+#[test]
 fn blank_project_initializes_components_saves_reopens_and_runs_feed_flash_path() {
     let (config, project_path) = blank_workspace_config();
     let mut app = ready_app_state(&config);
@@ -2675,6 +2716,12 @@ fn ready_failed_app_state() -> ReadyAppState {
 fn ready_app_state(config: &StudioRuntimeConfig) -> ReadyAppState {
     ReadyAppState::from_config(config, test_preferences_path("default"))
         .expect("expected app state")
+}
+
+fn accept_canvas_suggestion_by_id(app: &mut ReadyAppState, suggestion_id: &str) {
+    app.dispatch_event(StudioGuiEvent::CanvasSuggestionAcceptByIdRequested {
+        suggestion_id: rf_ui::CanvasSuggestionId::new(suggestion_id),
+    });
 }
 
 struct TestProjectFilePicker {

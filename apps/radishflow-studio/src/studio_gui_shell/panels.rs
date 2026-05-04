@@ -83,7 +83,16 @@ impl ReadyAppState {
                             event, ..
                         } => self.dispatch_event(event),
                         radishflow_studio::StudioGuiCanvasWidgetEvent::Disabled { .. }
-                        | radishflow_studio::StudioGuiCanvasWidgetEvent::Missing { .. } => {}
+                        | radishflow_studio::StudioGuiCanvasWidgetEvent::Missing { .. }
+                        | radishflow_studio::StudioGuiCanvasWidgetEvent::SuggestionRequested {
+                            ..
+                        }
+                        | radishflow_studio::StudioGuiCanvasWidgetEvent::SuggestionDisabled {
+                            ..
+                        }
+                        | radishflow_studio::StudioGuiCanvasWidgetEvent::SuggestionMissing {
+                            ..
+                        } => {}
                     }
                 }
             }
@@ -120,6 +129,35 @@ impl ReadyAppState {
                         ui.label(format!("target={}", suggestion.target_unit_id));
                         ui.label(&suggestion.reason);
                         ui.small(format!("id={}", suggestion.id));
+                        if ui
+                            .add_enabled(
+                                suggestion.explicit_accept_enabled,
+                                egui::Button::new("Apply"),
+                            )
+                            .clicked()
+                        {
+                            match widget.activate_suggestion(&suggestion.id) {
+                                radishflow_studio::StudioGuiCanvasWidgetEvent::SuggestionRequested {
+                                    event,
+                                    ..
+                                } => self.dispatch_event(event),
+                                radishflow_studio::StudioGuiCanvasWidgetEvent::SuggestionDisabled {
+                                    ..
+                                }
+                                | radishflow_studio::StudioGuiCanvasWidgetEvent::SuggestionMissing {
+                                    ..
+                                }
+                                | radishflow_studio::StudioGuiCanvasWidgetEvent::Requested {
+                                    ..
+                                }
+                                | radishflow_studio::StudioGuiCanvasWidgetEvent::Disabled {
+                                    ..
+                                }
+                                | radishflow_studio::StudioGuiCanvasWidgetEvent::Missing {
+                                    ..
+                                } => {}
+                            }
+                        }
                     });
                     ui.add_space(6.0);
                 }

@@ -29,11 +29,21 @@ pub enum StudioGuiCanvasWidgetEvent {
         action_id: StudioGuiCanvasActionId,
         event: StudioGuiEvent,
     },
+    SuggestionRequested {
+        suggestion_id: String,
+        event: StudioGuiEvent,
+    },
     Disabled {
         action_id: StudioGuiCanvasActionId,
     },
+    SuggestionDisabled {
+        suggestion_id: String,
+    },
     Missing {
         action_id: StudioGuiCanvasActionId,
+    },
+    SuggestionMissing {
+        suggestion_id: String,
     },
 }
 
@@ -175,6 +185,31 @@ impl StudioGuiCanvasWidgetModel {
                 event: action_event(id),
             },
             None => StudioGuiCanvasWidgetEvent::Missing { action_id: id },
+        }
+    }
+
+    pub fn activate_suggestion(&self, suggestion_id: &str) -> StudioGuiCanvasWidgetEvent {
+        match self
+            .presentation
+            .view
+            .suggestions
+            .iter()
+            .find(|suggestion| suggestion.id == suggestion_id)
+        {
+            Some(suggestion) if !suggestion.explicit_accept_enabled => {
+                StudioGuiCanvasWidgetEvent::SuggestionDisabled {
+                    suggestion_id: suggestion_id.to_string(),
+                }
+            }
+            Some(_) => StudioGuiCanvasWidgetEvent::SuggestionRequested {
+                suggestion_id: suggestion_id.to_string(),
+                event: StudioGuiEvent::CanvasSuggestionAcceptByIdRequested {
+                    suggestion_id: rf_ui::CanvasSuggestionId::new(suggestion_id),
+                },
+            },
+            None => StudioGuiCanvasWidgetEvent::SuggestionMissing {
+                suggestion_id: suggestion_id.to_string(),
+            },
         }
     }
 }
@@ -504,6 +539,56 @@ mod tests {
                 action_id: StudioGuiCanvasActionId::CancelPendingEdit,
             }
         );
+
+        let _ = fs::remove_file(project_path);
+    }
+
+    #[test]
+    fn canvas_widget_maps_explicit_suggestion_acceptance_to_driver_event() {
+        let (config, project_path) = flash_drum_local_rules_config();
+        let mut driver = StudioGuiDriver::new(&config).expect("expected driver");
+        let widget = driver.canvas_state().widget();
+        let suggestion = widget
+            .view()
+            .suggestions
+            .iter()
+            .find(|suggestion| suggestion.id == "local.flash_drum.create_outlet.flash-1.liquid")
+            .expect("expected liquid outlet suggestion");
+
+        assert!(suggestion.explicit_accept_enabled);
+        assert_eq!(
+            suggestion.explicit_accept_command_id,
+            "canvas.accept_suggestion.local.flash_drum.create_outlet.flash-1.liquid"
+        );
+
+        let event = match widget.activate_suggestion(&suggestion.id) {
+            StudioGuiCanvasWidgetEvent::SuggestionRequested { event, .. } => event,
+            other => panic!("expected explicit suggestion request, got {other:?}"),
+        };
+        let dispatch = driver
+            .dispatch_event(event)
+            .expect("expected explicit suggestion dispatch");
+
+        match dispatch.outcome {
+            StudioGuiDriverOutcome::CanvasInteraction(result) => {
+                assert_eq!(
+                    result.action,
+                    StudioGuiCanvasInteractionAction::AcceptById {
+                        suggestion_id: rf_ui::CanvasSuggestionId::new(
+                            "local.flash_drum.create_outlet.flash-1.liquid"
+                        ),
+                    }
+                );
+                assert_eq!(
+                    result
+                        .accepted
+                        .as_ref()
+                        .map(|suggestion| suggestion.id.as_str()),
+                    Some("local.flash_drum.create_outlet.flash-1.liquid")
+                );
+            }
+            other => panic!("expected direct canvas interaction outcome, got {other:?}"),
+        }
 
         let _ = fs::remove_file(project_path);
     }

@@ -51,6 +51,9 @@ pub enum StudioGuiEvent {
         command_id: String,
     },
     CanvasSuggestionAcceptRequested,
+    CanvasSuggestionAcceptByIdRequested {
+        suggestion_id: rf_ui::CanvasSuggestionId,
+    },
     CanvasSuggestionRejectRequested,
     CanvasSuggestionFocusNextRequested,
     CanvasSuggestionFocusPreviousRequested,
@@ -612,6 +615,11 @@ fn route_driver_event(event: &StudioGuiEvent, registry: &StudioGuiCommandRegistr
         }
         StudioGuiEvent::CanvasSuggestionAcceptRequested => {
             DriverRoute::CanvasInteraction(StudioGuiCanvasInteractionAction::AcceptFocusedByTab)
+        }
+        StudioGuiEvent::CanvasSuggestionAcceptByIdRequested { suggestion_id } => {
+            DriverRoute::CanvasInteraction(StudioGuiCanvasInteractionAction::AcceptById {
+                suggestion_id: suggestion_id.clone(),
+            })
         }
         StudioGuiEvent::CanvasSuggestionRejectRequested => {
             DriverRoute::CanvasInteraction(StudioGuiCanvasInteractionAction::RejectFocused)

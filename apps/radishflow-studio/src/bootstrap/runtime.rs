@@ -482,6 +482,21 @@ impl BootstrapSession {
         Ok(accepted)
     }
 
+    pub(crate) fn accept_canvas_suggestion(
+        &mut self,
+        suggestion_id: &rf_ui::CanvasSuggestionId,
+    ) -> RfResult<Option<rf_ui::CanvasSuggestion>> {
+        let accepted = self.app_state.accept_canvas_suggestion(suggestion_id)?;
+        if accepted.is_none() {
+            return Ok(None);
+        }
+
+        self.refresh_local_canvas_suggestions();
+        self.dispatch_automatic_run_after_canvas_write_if_needed()?;
+
+        Ok(accepted)
+    }
+
     pub(crate) fn reject_focused_canvas_suggestion(&mut self) -> Option<rf_ui::CanvasSuggestion> {
         self.app_state.reject_focused_canvas_suggestion()
     }
