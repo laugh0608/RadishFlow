@@ -1076,8 +1076,9 @@ fn related_steps_for_target(
             .steps
             .iter()
             .filter(|step| {
-                step.produced_streams
+                step.consumed_streams
                     .iter()
+                    .chain(step.produced_streams.iter())
                     .any(|candidate| candidate == stream_id.as_str())
             })
             .cloned()

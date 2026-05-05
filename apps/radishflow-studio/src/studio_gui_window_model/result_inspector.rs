@@ -74,8 +74,9 @@ impl StudioGuiWindowSolveSnapshotModel {
                 self.steps
                     .iter()
                     .filter(|step| {
-                        step.produced_streams
+                        step.consumed_streams
                             .iter()
+                            .chain(step.produced_streams.iter())
                             .any(|stream_id| stream_id == selected_id)
                     })
                     .cloned()

@@ -283,7 +283,7 @@ impl ShellText {
             ShellText::RelatedSolveSteps => "Related solve steps",
             ShellText::RelatedDiagnostics => "Related diagnostics",
             ShellText::DiagnosticTargets => "Diagnostic targets",
-            ShellText::NoRelatedSteps => "No solve step directly produced this stream.",
+            ShellText::NoRelatedSteps => "No solve step consumes or produces this stream.",
             ShellText::NoRelatedDiagnostics => "No diagnostics directly reference this stream.",
             ShellText::StaleStreamSelection => {
                 "Selected stream was not present in the latest snapshot."
@@ -407,7 +407,7 @@ impl ShellText {
             ShellText::RelatedSolveSteps => "关联求解步骤",
             ShellText::RelatedDiagnostics => "关联诊断",
             ShellText::DiagnosticTargets => "诊断目标",
-            ShellText::NoRelatedSteps => "没有直接产出这股流股的求解步骤。",
+            ShellText::NoRelatedSteps => "没有消费或产出这股流股的求解步骤。",
             ShellText::NoRelatedDiagnostics => "没有直接关联这股流股的诊断。",
             ShellText::StaleStreamSelection => "已选流股不在最新快照中。",
             ShellText::ActiveInspectorTarget => "检查器目标",

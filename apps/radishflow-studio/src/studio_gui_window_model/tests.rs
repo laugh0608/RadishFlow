@@ -297,6 +297,17 @@ fn studio_gui_window_model_surfaces_workspace_results_and_diagnostics() {
             .iter()
             .any(|step| step.unit_id == "heater-1")
     );
+    assert!(
+        inspector
+            .related_steps
+            .iter()
+            .any(|step| step.unit_id == "flash-1"
+                && step
+                    .consumed_streams
+                    .iter()
+                    .any(|stream_id| stream_id == "stream-heated")),
+        "expected stream result inspector to include downstream consuming step"
+    );
     let related_heater_step = inspector
         .related_steps
         .iter()
@@ -361,6 +372,16 @@ fn studio_gui_window_model_surfaces_workspace_results_and_diagnostics() {
         }),
         "expected result inspector to include diagnostics from the unit that produced the selected stream"
     );
+    assert!(
+        inspector.related_diagnostics.iter().any(|diagnostic| {
+            diagnostic.code == "solver.unit_executed"
+                && diagnostic
+                    .related_unit_ids
+                    .iter()
+                    .any(|unit_id| unit_id == "flash-1")
+        }),
+        "expected result inspector to include diagnostics from units that consumed the selected stream"
+    );
     let stream_target_command_id = inspector
         .stream_options
         .iter()
@@ -421,6 +442,17 @@ fn studio_gui_window_model_surfaces_workspace_results_and_diagnostics() {
             .related_steps
             .iter()
             .any(|step| step.unit_id == "heater-1")
+    );
+    assert!(
+        active_detail
+            .related_steps
+            .iter()
+            .any(|step| step.unit_id == "flash-1"
+                && step
+                    .consumed_stream_actions
+                    .iter()
+                    .any(|action| action.command_id == "inspector.focus_stream:stream-heated")),
+        "expected active stream inspector to include downstream consuming step"
     );
     assert!(active_detail.related_steps.iter().any(|step| {
         step.unit_action.command_id == "inspector.focus_unit:heater-1"
