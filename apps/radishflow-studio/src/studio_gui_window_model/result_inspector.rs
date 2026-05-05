@@ -127,6 +127,7 @@ impl StudioGuiWindowSolveSnapshotModel {
                     .as_deref()
                     .map(|selected_id| selected_id == stream.stream_id)
                     .unwrap_or(false),
+                focus_action: result_inspector_stream_focus_action(&stream.stream_id),
             })
             .collect();
         let comparison_options = self
@@ -152,6 +153,7 @@ impl StudioGuiWindowSolveSnapshotModel {
                     .as_deref()
                     .map(|comparison_id| comparison_id == stream.stream_id)
                     .unwrap_or(false),
+                focus_action: result_inspector_stream_focus_action(&stream.stream_id),
             })
             .collect();
 
@@ -246,7 +248,7 @@ impl StudioGuiWindowSolveSnapshotModel {
                         .as_deref()
                         .map(|selected_unit| selected_unit == unit_id)
                         .unwrap_or(false),
-                    focus_action: inspector_unit_action(unit_id),
+                    focus_action: result_inspector_unit_focus_action(unit_id),
                 }
             })
             .collect();
@@ -334,6 +336,21 @@ fn result_inspector_unit_diagnostic_actions(
             .chain(diagnostic_actions),
     )
 }
+
+fn result_inspector_stream_focus_action(stream_id: &str) -> StudioGuiWindowCommandActionModel {
+    let mut action = inspector_stream_action(stream_id);
+    action.label = "Inspect".to_string();
+    action.hover_text = format!("Open Stream Inspector for {stream_id}");
+    action
+}
+
+fn result_inspector_unit_focus_action(unit_id: &str) -> StudioGuiWindowCommandActionModel {
+    let mut action = inspector_unit_action(unit_id);
+    action.label = "Inspect".to_string();
+    action.hover_text = format!("Open Unit Inspector for {unit_id}");
+    action
+}
+
 fn result_inspector_comparison_model(
     base: &StudioGuiWindowStreamResultModel,
     compared: &StudioGuiWindowStreamResultModel,

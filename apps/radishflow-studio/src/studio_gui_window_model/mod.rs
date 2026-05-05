@@ -346,6 +346,7 @@ pub struct StudioGuiWindowResultInspectorStreamOptionModel {
     pub label: String,
     pub summary: String,
     pub is_selected: bool,
+    pub focus_action: StudioGuiWindowCommandActionModel,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

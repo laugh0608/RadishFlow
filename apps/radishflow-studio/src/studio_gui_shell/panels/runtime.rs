@@ -992,6 +992,7 @@ impl ReadyAppState {
                     self.result_inspector
                         .select_stream(&inspector.snapshot_id, option.stream_id.clone());
                 }
+                self.render_small_command_action(ui, &option.focus_action);
             }
         });
         if inspector.has_stale_selection {
@@ -1018,6 +1019,7 @@ impl ReadyAppState {
                             self.result_inspector
                                 .select_unit(&inspector.snapshot_id, option.unit_id.clone());
                         }
+                        self.render_small_command_action(ui, &option.focus_action);
                     }
                 });
                 if inspector.has_stale_unit_selection {
@@ -1092,6 +1094,7 @@ impl ReadyAppState {
                                 option.stream_id.clone(),
                             );
                         }
+                        self.render_small_command_action(ui, &option.focus_action);
                     }
                 });
                 if inspector.has_stale_comparison {

@@ -271,7 +271,9 @@ fn studio_gui_window_model_surfaces_workspace_results_and_diagnostics() {
             .iter()
             .any(|option| option.stream_id == "stream-heated"
                 && option.is_selected
-                && option.summary.contains("P 95000 Pa"))
+                && option.summary.contains("P 95000 Pa")
+                && option.focus_action.label == "Inspect"
+                && option.focus_action.command_id == "inspector.focus_stream:stream-heated")
     );
     assert!(
         inspector
@@ -328,12 +330,11 @@ fn studio_gui_window_model_surfaces_workspace_results_and_diagnostics() {
         "expected result inspector to include diagnostics from the unit that produced the selected stream"
     );
     let stream_target_command_id = inspector
-        .related_diagnostics
+        .stream_options
         .iter()
-        .flat_map(|diagnostic| diagnostic.target_candidates.iter())
-        .find(|target| target.target_id == "stream-heated")
-        .map(|target| target.command_id.clone())
-        .expect("expected stream target command id");
+        .find(|option| option.stream_id == "stream-heated")
+        .map(|option| option.focus_action.command_id.clone())
+        .expect("expected stream result option focus command id");
 
     let target_dispatch = driver
         .dispatch_event(StudioGuiEvent::UiCommandRequested {
@@ -467,6 +468,14 @@ fn studio_gui_window_model_surfaces_workspace_results_and_diagnostics() {
             .iter()
             .all(|option| option.stream_id != "stream-feed")
     );
+    assert!(
+        comparison_inspector
+            .comparison_options
+            .iter()
+            .any(|option| option.stream_id == "stream-heated"
+                && option.focus_action.command_id == "inspector.focus_stream:stream-heated"),
+        "expected comparison stream options to expose the same inspector focus action"
+    );
     let comparison = comparison_inspector
         .comparison
         .as_ref()
@@ -501,6 +510,7 @@ fn studio_gui_window_model_surfaces_workspace_results_and_diagnostics() {
             .iter()
             .any(|option| option.unit_id == "feed-1"
                 && option.focus_action.command_id == "inspector.focus_unit:feed-1"
+                && option.focus_action.label == "Inspect"
                 && option.summary.contains("step #")),
         "expected unit option to expose canonical inspector command"
     );
