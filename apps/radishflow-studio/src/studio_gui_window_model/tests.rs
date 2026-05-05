@@ -635,8 +635,20 @@ fn studio_gui_window_model_surfaces_workspace_results_and_diagnostics() {
             .any(|option| option.unit_id == "feed-1"
                 && option.focus_action.command_id == "inspector.focus_unit:feed-1"
                 && option.focus_action.label == "Inspect"
-                && option.summary.contains("step #")),
+                && option.summary.contains("step #")
+                && option.summary.contains("out stream-feed")),
         "expected unit option to expose canonical inspector command"
+    );
+    assert!(
+        default_inspector
+            .unit_options
+            .iter()
+            .any(|option| option.unit_id == "heater-1"
+                && option.focus_action.command_id == "inspector.focus_unit:heater-1"
+                && option.summary.contains("step #1")
+                && option.summary.contains("in stream-feed")
+                && option.summary.contains("out stream-heated")),
+        "expected unit option summary to expose consumed and produced stream context"
     );
     let default_unit_id = default_inspector
         .selected_unit_id

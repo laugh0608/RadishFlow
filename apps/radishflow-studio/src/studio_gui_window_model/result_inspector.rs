@@ -225,16 +225,12 @@ impl StudioGuiWindowSolveSnapshotModel {
                     .map(|step| step.execution_status_label)
                     .unwrap_or("Idle");
                 let step_index = last_step.map(|step| step.index).unwrap_or(0);
-                let produced_streams_text = last_step
-                    .map(|step| step.produced_streams.join(", "))
-                    .unwrap_or_default();
-                let summary = if produced_streams_text.is_empty() {
-                    format!("{unit_id} | {status_label} | step #{step_index}")
-                } else {
-                    format!(
-                        "{unit_id} | {status_label} | step #{step_index} | -> {produced_streams_text}"
-                    )
-                };
+                let summary = result_inspector_unit_option_summary(
+                    unit_id,
+                    status_label,
+                    step_index,
+                    last_step,
+                );
                 StudioGuiWindowResultInspectorUnitOptionModel {
                     unit_id: unit_id.clone(),
                     status_label,
@@ -288,6 +284,28 @@ fn result_inspector_stream_option_summary(stream: &StudioGuiWindowStreamResultMo
     ];
     if let Some(molar_enthalpy_text) = stream.molar_enthalpy_text.as_ref() {
         parts.push(format!("H {molar_enthalpy_text}"));
+    }
+    parts.join(" | ")
+}
+
+fn result_inspector_unit_option_summary(
+    unit_id: &str,
+    status_label: &str,
+    step_index: usize,
+    last_step: Option<&StudioGuiWindowSolveStepModel>,
+) -> String {
+    let mut parts = vec![
+        unit_id.to_string(),
+        status_label.to_string(),
+        format!("step #{step_index}"),
+    ];
+    if let Some(step) = last_step {
+        if !step.consumed_streams.is_empty() {
+            parts.push(format!("in {}", step.consumed_streams.join(", ")));
+        }
+        if !step.produced_streams.is_empty() {
+            parts.push(format!("out {}", step.produced_streams.join(", ")));
+        }
     }
     parts.join(" | ")
 }
