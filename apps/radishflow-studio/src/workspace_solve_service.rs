@@ -221,6 +221,8 @@ mod tests {
             0.0,
             0.0,
         ));
+        first.liquid_heat_capacity_j_per_mol_k = Some(35.0);
+        first.vapor_heat_capacity_j_per_mol_k = Some(36.5);
 
         let mut second = ThermoComponent::new("component-b", "Component B");
         second.antoine = Some(AntoineCoefficients::new(
@@ -228,6 +230,8 @@ mod tests {
             0.0,
             0.0,
         ));
+        second.liquid_heat_capacity_j_per_mol_k = Some(52.0);
+        second.vapor_heat_capacity_j_per_mol_k = Some(65.0);
 
         InMemoryPropertyPackageProvider::new(vec![(
             PropertyPackageManifest::new(
@@ -443,12 +447,16 @@ mod tests {
             0.0,
             0.0,
         ));
+        first.liquid_heat_capacity_j_per_mol_k = Some(35.0);
+        first.vapor_heat_capacity_j_per_mol_k = Some(36.5);
         let mut second = StoredThermoComponent::new(ComponentId::new("component-b"), "Component B");
         second.antoine = Some(StoredAntoineCoefficients::new(
             ((0.5_f64 * 100_000.0_f64) / 1_000.0_f64).ln(),
             0.0,
             0.0,
         ));
+        second.liquid_heat_capacity_j_per_mol_k = Some(52.0);
+        second.vapor_heat_capacity_j_per_mol_k = Some(65.0);
         let payload = StoredPropertyPackagePayload::new(
             "binary-hydrocarbon-lite-v1",
             "2026.03.1",

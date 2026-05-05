@@ -1,5 +1,5 @@
 use rf_model::{Composition, MaterialStreamState, PhaseState};
-use rf_thermo::{ThermoProvider, ThermoState};
+use rf_thermo::{PhaseThermoState, ThermoProvider, ThermoState};
 use rf_types::{PhaseLabel, RfError, RfResult, StreamId};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -190,10 +190,6 @@ impl TpFlashSolver for PlaceholderTpFlashSolver {
         let vapor_fraction = Self::solve_vapor_fraction(&input.overall_mole_fractions, &k_values)?;
         let liquid_fraction = 1.0 - vapor_fraction;
 
-        let overall_mole_fractions = Self::build_composition(thermo, &input.overall_mole_fractions);
-        let overall_phase =
-            PhaseState::new(PhaseLabel::Overall, 1.0, overall_mole_fractions.clone());
-
         let liquid_mole_fractions = Self::normalize_composition(
             input
                 .overall_mole_fractions
@@ -209,6 +205,37 @@ impl TpFlashSolver for PlaceholderTpFlashSolver {
                 .map(|(x_i, k_i)| k_i * x_i)
                 .collect(),
         )?;
+        let liquid_enthalpy = (liquid_fraction > 0.0)
+            .then(|| {
+                thermo.phase_molar_enthalpy(&PhaseThermoState::new(
+                    PhaseLabel::Liquid,
+                    input.temperature_k,
+                    input.pressure_pa,
+                    liquid_mole_fractions.clone(),
+                ))
+            })
+            .transpose()?;
+        let vapor_enthalpy = (vapor_fraction > 0.0)
+            .then(|| {
+                thermo.phase_molar_enthalpy(&PhaseThermoState::new(
+                    PhaseLabel::Vapor,
+                    input.temperature_k,
+                    input.pressure_pa,
+                    vapor_mole_fractions.clone(),
+                ))
+            })
+            .transpose()?;
+        let overall_enthalpy = phase_weighted_enthalpy(
+            liquid_fraction,
+            liquid_enthalpy,
+            vapor_fraction,
+            vapor_enthalpy,
+        );
+
+        let overall_mole_fractions = Self::build_composition(thermo, &input.overall_mole_fractions);
+        let mut overall_phase =
+            PhaseState::new(PhaseLabel::Overall, 1.0, overall_mole_fractions.clone());
+        overall_phase.molar_enthalpy_j_per_mol = overall_enthalpy;
 
         let mut stream = MaterialStreamState::from_tpzf(
             input.stream_id.clone(),
@@ -220,18 +247,22 @@ impl TpFlashSolver for PlaceholderTpFlashSolver {
         );
         stream.phases.push(overall_phase);
         if liquid_fraction > 0.0 {
-            stream.phases.push(PhaseState::new(
+            let mut liquid_phase = PhaseState::new(
                 PhaseLabel::Liquid,
                 liquid_fraction,
                 Self::build_composition(thermo, &liquid_mole_fractions),
-            ));
+            );
+            liquid_phase.molar_enthalpy_j_per_mol = liquid_enthalpy;
+            stream.phases.push(liquid_phase);
         }
         if vapor_fraction > 0.0 {
-            stream.phases.push(PhaseState::new(
+            let mut vapor_phase = PhaseState::new(
                 PhaseLabel::Vapor,
                 vapor_fraction,
                 Self::build_composition(thermo, &vapor_mole_fractions),
-            ));
+            );
+            vapor_phase.molar_enthalpy_j_per_mol = vapor_enthalpy;
+            stream.phases.push(vapor_phase);
         }
 
         Ok(TpFlashResult {
@@ -240,6 +271,20 @@ impl TpFlashSolver for PlaceholderTpFlashSolver {
             vapor_fraction: Some(vapor_fraction),
             k_values: Some(k_values),
         })
+    }
+}
+
+fn phase_weighted_enthalpy(
+    liquid_fraction: f64,
+    liquid_enthalpy: Option<f64>,
+    vapor_fraction: f64,
+    vapor_enthalpy: Option<f64>,
+) -> Option<f64> {
+    match (liquid_enthalpy, vapor_enthalpy) {
+        (Some(liquid), Some(vapor)) => Some(liquid_fraction * liquid + vapor_fraction * vapor),
+        (Some(liquid), None) => Some(liquid),
+        (None, Some(vapor)) => Some(vapor),
+        (None, None) => None,
     }
 }
 
@@ -266,6 +311,8 @@ mod tests {
             0.0,
             0.0,
         ));
+        first.liquid_heat_capacity_j_per_mol_k = Some(35.0);
+        first.vapor_heat_capacity_j_per_mol_k = Some(36.5);
 
         let mut second = ThermoComponent::new(ComponentId::new("component-b"), "Component B");
         second.antoine = Some(AntoineCoefficients::new(
@@ -273,6 +320,8 @@ mod tests {
             0.0,
             0.0,
         ));
+        second.liquid_heat_capacity_j_per_mol_k = Some(52.0);
+        second.vapor_heat_capacity_j_per_mol_k = Some(65.0);
 
         PlaceholderThermoProvider::new(ThermoSystem::binary([first, second]))
     }
@@ -310,6 +359,27 @@ mod tests {
 
         assert_close(liquid.phase_fraction, 0.5, 1e-10);
         assert_close(vapor.phase_fraction, 0.5, 1e-10);
+        assert_close(
+            liquid
+                .molar_enthalpy_j_per_mol
+                .expect("expected liquid enthalpy"),
+            85.7166666666677,
+            1e-10,
+        );
+        assert_close(
+            vapor
+                .molar_enthalpy_j_per_mol
+                .expect("expected vapor enthalpy"),
+            85.100000000001,
+            1e-10,
+        );
+        assert_close(
+            result.stream.phases[0]
+                .molar_enthalpy_j_per_mol
+                .expect("expected overall enthalpy"),
+            85.4083333333344,
+            1e-10,
+        );
         assert_close(
             *liquid
                 .mole_fractions

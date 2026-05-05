@@ -20,6 +20,8 @@ struct GoldenComponent {
     id: String,
     name: String,
     antoine: GoldenAntoine,
+    liquid_heat_capacity_j_per_mol_k: f64,
+    vapor_heat_capacity_j_per_mol_k: f64,
 }
 
 #[derive(Debug, Deserialize)]
@@ -33,8 +35,11 @@ struct FlashGoldenCase {
     components: Vec<GoldenComponent>,
     expected_k_values: Vec<f64>,
     expected_vapor_fraction: f64,
+    expected_overall_molar_enthalpy_j_per_mol: f64,
     expected_liquid_mole_fractions: Vec<f64>,
+    expected_liquid_molar_enthalpy_j_per_mol: f64,
     expected_vapor_mole_fractions: Vec<f64>,
+    expected_vapor_molar_enthalpy_j_per_mol: f64,
 }
 
 fn assert_close(actual: f64, expected: f64, tolerance: f64) {
@@ -67,6 +72,10 @@ fn build_provider(case: &FlashGoldenCase) -> PlaceholderThermoProvider {
                 component.antoine.b,
                 component.antoine.c,
             ));
+            runtime.liquid_heat_capacity_j_per_mol_k =
+                Some(component.liquid_heat_capacity_j_per_mol_k);
+            runtime.vapor_heat_capacity_j_per_mol_k =
+                Some(component.vapor_heat_capacity_j_per_mol_k);
             runtime
         })
         .collect();
@@ -117,6 +126,28 @@ fn binary_hydrocarbon_lite_flash_case_matches_expected_result() {
         .iter()
         .find(|phase| phase.label == PhaseLabel::Vapor)
         .expect("expected vapor phase");
+
+    assert_close(
+        result.stream.phases[0]
+            .molar_enthalpy_j_per_mol
+            .expect("expected overall enthalpy"),
+        case.expected_overall_molar_enthalpy_j_per_mol,
+        1e-10,
+    );
+    assert_close(
+        liquid
+            .molar_enthalpy_j_per_mol
+            .expect("expected liquid enthalpy"),
+        case.expected_liquid_molar_enthalpy_j_per_mol,
+        1e-10,
+    );
+    assert_close(
+        vapor
+            .molar_enthalpy_j_per_mol
+            .expect("expected vapor enthalpy"),
+        case.expected_vapor_molar_enthalpy_j_per_mol,
+        1e-10,
+    );
 
     for (component, expected) in case
         .components

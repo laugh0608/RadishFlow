@@ -214,6 +214,7 @@ App 与交互层当前进一步冻结以下口径：
 - 已提前完成 `rf-thermo` 中的 Antoine 饱和蒸气压与理想体系 `K` 值估算
 - 已提前完成 `rf-flash` 中的 Rachford-Rice 和最小二元 `TP Flash`
 - 已提前建立 `tests/thermo-golden` 与 `tests/flash-golden` 的首批黄金样例
+- 2026-05-05 又补齐 M2 的基础焓值出口：`rf-thermo` 当前按物性包 liquid/vapor 常热容计算相对 `298.15 K` 的 MVP 显热相焓，`rf-flash` 当前会把 liquid/vapor 与 overall molar enthalpy 写入 `PhaseState`，`Flash Drum` outlet stream 继续保留对应相焓；这仍不是完整焓基准或相变潜热模型
 
 ### 2026-W17
 

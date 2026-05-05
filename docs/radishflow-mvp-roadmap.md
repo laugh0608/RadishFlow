@@ -135,6 +135,10 @@ MVP 阶段明确不做：
 - `rf-thermo`：组分参数与热力学模型
 - `rf-flash`：闪蒸算法
 
+### 当前补充收口
+
+- 2026-05-05：M2 的“基础焓值”已按 MVP 边界补齐为常热容显热基线。`rf-thermo` 使用 property package 中的 liquid/vapor heat capacity 计算相对 `298.15 K` 的相 molar enthalpy；`rf-flash` 在 `TP Flash` 结果中写入 liquid/vapor 与按相分率加权的 overall molar enthalpy，并由 `Flash Drum` outlet stream 保留该相焓。该实现只作为当前二元理想体系结果消费面的基础数值，不代表完整焓参考态、相变潜热或真实物性模型已完成。
+
 ### 退出标准
 
 - 至少一个二元样例可稳定计算

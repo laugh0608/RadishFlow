@@ -2,10 +2,10 @@ use std::fs;
 use std::path::PathBuf;
 
 use rf_thermo::{
-    AntoineCoefficients, PlaceholderThermoProvider, ThermoComponent, ThermoProvider, ThermoState,
-    ThermoSystem,
+    AntoineCoefficients, PhaseThermoState, PlaceholderThermoProvider, ThermoComponent,
+    ThermoProvider, ThermoState, ThermoSystem,
 };
-use rf_types::ComponentId;
+use rf_types::{ComponentId, PhaseLabel};
 use serde::Deserialize;
 
 #[derive(Debug, Deserialize)]
@@ -22,6 +22,8 @@ struct GoldenComponent {
     id: String,
     name: String,
     antoine: GoldenAntoine,
+    liquid_heat_capacity_j_per_mol_k: f64,
+    vapor_heat_capacity_j_per_mol_k: f64,
 }
 
 #[derive(Debug, Deserialize)]
@@ -34,6 +36,8 @@ struct ThermoGoldenCase {
     components: Vec<GoldenComponent>,
     expected_saturation_pressure_pa: Vec<f64>,
     expected_k_values: Vec<f64>,
+    expected_liquid_molar_enthalpy_j_per_mol: f64,
+    expected_vapor_molar_enthalpy_j_per_mol: f64,
 }
 
 fn assert_close(actual: f64, expected: f64, tolerance: f64) {
@@ -66,6 +70,10 @@ fn build_provider(case: &ThermoGoldenCase) -> PlaceholderThermoProvider {
                 component.antoine.b,
                 component.antoine.c,
             ));
+            runtime.liquid_heat_capacity_j_per_mol_k =
+                Some(component.liquid_heat_capacity_j_per_mol_k);
+            runtime.vapor_heat_capacity_j_per_mol_k =
+                Some(component.vapor_heat_capacity_j_per_mol_k);
             runtime
         })
         .collect();
@@ -110,4 +118,32 @@ fn binary_hydrocarbon_lite_case_matches_expected_k_values() {
     for (actual, expected) in k_values.iter().zip(case.expected_k_values.iter()) {
         assert_close(*actual, *expected, 1e-12);
     }
+
+    let liquid_enthalpy = provider
+        .phase_molar_enthalpy(&PhaseThermoState::new(
+            PhaseLabel::Liquid,
+            case.temperature_k,
+            case.pressure_pa,
+            case.overall_mole_fractions.clone(),
+        ))
+        .expect("expected liquid enthalpy");
+    let vapor_enthalpy = provider
+        .phase_molar_enthalpy(&PhaseThermoState::new(
+            PhaseLabel::Vapor,
+            case.temperature_k,
+            case.pressure_pa,
+            case.overall_mole_fractions.clone(),
+        ))
+        .expect("expected vapor enthalpy");
+
+    assert_close(
+        liquid_enthalpy,
+        case.expected_liquid_molar_enthalpy_j_per_mol,
+        1e-10,
+    );
+    assert_close(
+        vapor_enthalpy,
+        case.expected_vapor_molar_enthalpy_j_per_mol,
+        1e-10,
+    );
 }

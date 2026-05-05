@@ -162,6 +162,8 @@ fn sample_solver_provider() -> PlaceholderThermoProvider {
         0.0,
         0.0,
     ));
+    first.liquid_heat_capacity_j_per_mol_k = Some(35.0);
+    first.vapor_heat_capacity_j_per_mol_k = Some(36.5);
 
     let mut second = ThermoComponent::new("component-b", "Component B");
     second.antoine = Some(AntoineCoefficients::new(
@@ -169,6 +171,8 @@ fn sample_solver_provider() -> PlaceholderThermoProvider {
         0.0,
         0.0,
     ));
+    second.liquid_heat_capacity_j_per_mol_k = Some(52.0);
+    second.vapor_heat_capacity_j_per_mol_k = Some(65.0);
 
     PlaceholderThermoProvider::new(ThermoSystem::binary([first, second]))
 }

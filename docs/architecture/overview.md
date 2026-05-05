@@ -39,8 +39,8 @@ RadishFlow 的目标架构已经冻结为“桌面端三层 + 外部控制面”
 | --- | --- | --- |
 | `rf-types` | 基础 ID、枚举、错误类型 | 已建立第一批基础类型 |
 | `rf-model` | 组分、流股、单元、流程图对象模型 | 已建立第一批领域数据结构 |
-| `rf-thermo` | 热力学数据结构与热力学接口 | 已建立最小 API、内存 provider、基于本地缓存目录/授权缓存索引的 `PropertyPackageProvider` 实现，并用首个真实样例包覆盖装载测试 |
-| `rf-flash` | `TP Flash` 输入输出契约与求解器接口 | 已建立最小 API，并已实现最小二元 `TP Flash`、Rachford-Rice 与黄金样例 |
+| `rf-thermo` | 热力学数据结构与热力学接口 | 已建立最小 API、内存 provider、基于本地缓存目录/授权缓存索引的 `PropertyPackageProvider` 实现，并用首个真实样例包覆盖装载测试；当前已补基于 liquid/vapor 常热容和 `298.15 K` 参考温度的 MVP 基础相焓 |
+| `rf-flash` | `TP Flash` 输入输出契约与求解器接口 | 已建立最小 API，并已实现最小二元 `TP Flash`、Rachford-Rice、相分率/相组成与基础 molar enthalpy 黄金样例 |
 | `rf-unitops` | 单元模块行为抽象 | 已建立内建单元规范、统一流股输入输出接口，并实现 `Feed`、`Mixer`、`Heater/Cooler`、`Valve`、`Flash Drum` 的最小行为边界 |
 | `rf-flowsheet` | 连接关系与图结构校验 | 已建立首轮材料端口连接校验，覆盖 canonical port signature、流股存在性与“一股一源一汇”约束 |
 | `rf-solver` | 顺序模块法求解器 | 已建立首轮无回路顺序模块法，可执行 `Feed + Mixer + Flash Drum`、`Feed -> Heater -> Flash Drum` 与 `Feed -> Valve -> Flash Drum` 闭环，并产出带 summary / diagnostics / step 明细的最小 `SolveSnapshot`；当前失败路径已继续收口到 solver-stage + 稳定 diagnostic code + unit/port helper 上下文 |

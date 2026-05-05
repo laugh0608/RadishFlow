@@ -132,7 +132,7 @@ pub fn plan_entitlement_session_timer_command(
     next: Option<&EntitlementSessionTimerArm>,
 ) -> Option<EntitlementSessionTimerCommand> {
     match (current, next) {
-        (Some(current), Some(next)) if current == next => {
+        (Some(current), Some(next)) if same_timer_schedule(current, next) => {
             Some(EntitlementSessionTimerCommand::Keep {
                 timer: current.clone(),
             })
@@ -149,6 +149,13 @@ pub fn plan_entitlement_session_timer_command(
         }),
         (None, None) => None,
     }
+}
+
+fn same_timer_schedule(
+    current: &EntitlementSessionTimerArm,
+    next: &EntitlementSessionTimerArm,
+) -> bool {
+    current.event == next.event && current.due_at == next.due_at && current.reason == next.reason
 }
 
 pub fn snapshot_entitlement_session_panel_driver_state_with_host_notice(
