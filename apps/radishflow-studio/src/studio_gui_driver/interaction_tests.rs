@@ -2,7 +2,8 @@ use std::fs;
 
 use super::test_support::{
     assert_ignored_shortcut, flash_drum_local_rules_config, layout_persistence_config,
-    lease_expiring_config, sample_canvas_suggestion,
+    lease_expiring_config, sample_canvas_suggestion, synced_workspace_config,
+    unbound_outlet_failure_synced_config,
 };
 use super::*;
 
@@ -454,4 +455,206 @@ fn gui_driver_routes_ctrl_tab_to_canvas_focus_next() {
     }
 
     let _ = fs::remove_file(project_path);
+}
+
+#[test]
+fn gui_driver_dispatches_result_and_step_diagnostic_actions_through_inspector_focus() {
+    let mut driver = StudioGuiDriver::new(&synced_workspace_config()).expect("expected driver");
+    driver
+        .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+        .expect("expected open dispatch");
+    let solved = driver
+        .dispatch_event(StudioGuiEvent::UiCommandRequested {
+            command_id: "run_panel.run_manual".to_string(),
+        })
+        .expect("expected solve dispatch");
+    let snapshot = solved
+        .window
+        .runtime
+        .latest_solve_snapshot
+        .clone()
+        .expect("expected solved snapshot");
+
+    let result_inspector =
+        snapshot.result_inspector_with_unit(Some("stream-heated"), None, Some("heater-1"));
+    let result_stream_command = result_inspector
+        .diagnostic_actions
+        .iter()
+        .find(|action| {
+            action.source_label == "Selected stream"
+                && action.action.command_id == "inspector.focus_stream:stream-heated"
+        })
+        .map(|action| action.action.command_id.clone())
+        .expect("expected selected stream diagnostic action");
+    assert_inspector_focus_dispatch(
+        &mut driver,
+        &result_stream_command,
+        ("Stream", "stream-heated"),
+    );
+
+    let unit_command = result_inspector
+        .unit_diagnostic_actions
+        .iter()
+        .find(|action| {
+            action.source_label == "Selected unit"
+                && action.action.command_id == "inspector.focus_unit:heater-1"
+        })
+        .map(|action| action.action.command_id.clone())
+        .expect("expected selected unit diagnostic action");
+    assert_inspector_focus_dispatch(&mut driver, &unit_command, ("Unit", "heater-1"));
+
+    let step = snapshot
+        .steps
+        .iter()
+        .find(|step| step.unit_id == "heater-1")
+        .expect("expected heater step");
+    for action in &step.diagnostic_actions {
+        assert!(
+            crate::inspector_target_from_command_id(&action.action.command_id).is_some(),
+            "solve step diagnostic action should stay on inspector focus command surface: {}",
+            action.action.command_id
+        );
+    }
+    let step_stream_command = step
+        .diagnostic_actions
+        .iter()
+        .find(|action| action.action.command_id == "inspector.focus_stream:stream-heated")
+        .map(|action| action.action.command_id.clone())
+        .expect("expected solve step produced stream action");
+    assert_inspector_focus_dispatch(
+        &mut driver,
+        &step_stream_command,
+        ("Stream", "stream-heated"),
+    );
+
+    let active_stream_detail = driver
+        .window_model()
+        .runtime
+        .active_inspector_detail
+        .expect("expected active stream inspector detail");
+    let active_step_unit_command = active_stream_detail
+        .diagnostic_actions
+        .iter()
+        .find(|action| {
+            action.source_label == "Solve step"
+                && action.action.command_id == "inspector.focus_unit:heater-1"
+        })
+        .map(|action| action.action.command_id.clone())
+        .expect("expected active inspector solve step action");
+    assert_inspector_focus_dispatch(&mut driver, &active_step_unit_command, ("Unit", "heater-1"));
+}
+
+#[test]
+fn gui_driver_dispatches_failure_diagnostic_actions_through_recovery_or_inspector_focus() {
+    let mut driver =
+        StudioGuiDriver::new(&unbound_outlet_failure_synced_config()).expect("expected driver");
+    driver
+        .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+        .expect("expected open dispatch");
+    let failed = driver
+        .dispatch_event(StudioGuiEvent::UiCommandRequested {
+            command_id: "run_panel.run_manual".to_string(),
+        })
+        .expect("expected failed run dispatch");
+    let failure = failed
+        .window
+        .runtime
+        .latest_failure
+        .as_ref()
+        .expect("expected visible failure");
+
+    for action in &failure.diagnostic_actions {
+        let command_id = action.action.command_id.as_str();
+        assert!(
+            command_id == "run_panel.recover_failure"
+                || crate::inspector_target_from_command_id(command_id).is_some(),
+            "failure diagnostic action should stay on recovery or inspector command surface: {command_id}"
+        );
+    }
+
+    let focus_command = failure
+        .diagnostic_actions
+        .iter()
+        .find(|action| action.action.command_id == "inspector.focus_unit:feed-1")
+        .map(|action| action.action.command_id.clone())
+        .expect("expected failure focus action");
+    assert_inspector_focus_dispatch(&mut driver, &focus_command, ("Unit", "feed-1"));
+    assert_eq!(
+        driver.window_model().runtime.control_state.run_status,
+        rf_ui::RunStatus::Error,
+        "focusing a failure target must not apply recovery"
+    );
+
+    let recovery_command = failure
+        .diagnostic_actions
+        .iter()
+        .find(|action| action.action.command_id == "run_panel.recover_failure")
+        .map(|action| action.action.command_id.clone())
+        .expect("expected failure recovery action");
+    let recovery = driver
+        .dispatch_event(StudioGuiEvent::UiCommandRequested {
+            command_id: recovery_command,
+        })
+        .expect("expected recovery dispatch");
+    match recovery.outcome {
+        StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::UiCommandDispatched(
+            StudioGuiHostUiCommandDispatchResult::Executed(executed),
+        )) => match &executed.effects.runtime_report.dispatch {
+            crate::StudioRuntimeDispatch::RunPanelRecovery(outcome) => {
+                assert_eq!(outcome.action.title, "Create outlet stream");
+                assert_eq!(
+                    outcome.applied_target,
+                    Some(rf_ui::InspectorTarget::Unit(rf_types::UnitId::new(
+                        "feed-1"
+                    )))
+                );
+            }
+            other => panic!("expected run panel recovery dispatch, got {other:?}"),
+        },
+        other => panic!("expected executed recovery command, got {other:?}"),
+    }
+    assert_eq!(
+        recovery
+            .window
+            .runtime
+            .active_inspector_target
+            .as_ref()
+            .map(|target| (target.kind_label, target.target_id.as_str())),
+        Some(("Unit", "feed-1"))
+    );
+    assert_eq!(
+        recovery.window.runtime.control_state.run_status,
+        rf_ui::RunStatus::Dirty
+    );
+}
+
+fn assert_inspector_focus_dispatch(
+    driver: &mut StudioGuiDriver,
+    command_id: &str,
+    expected_target: (&str, &str),
+) {
+    assert!(
+        crate::inspector_target_from_command_id(command_id).is_some(),
+        "expected inspector focus command id, got {command_id}"
+    );
+    let dispatch = driver
+        .dispatch_event(StudioGuiEvent::UiCommandRequested {
+            command_id: command_id.to_string(),
+        })
+        .expect("expected inspector focus dispatch");
+    match dispatch.outcome {
+        StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::UiCommandDispatched(
+            StudioGuiHostUiCommandDispatchResult::Executed(_),
+        )) => {}
+        other => panic!("expected executed inspector focus command, got {other:?}"),
+    }
+    assert_eq!(
+        dispatch
+            .window
+            .runtime
+            .active_inspector_target
+            .as_ref()
+            .map(|target| (target.kind_label, target.target_id.as_str())),
+        Some(expected_target)
+    );
 }
