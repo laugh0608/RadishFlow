@@ -213,6 +213,8 @@ impl StudioGuiWindowSolveSnapshotModel {
                     step_index: step.index,
                     status_label: step.execution_status_label,
                     summary: step.summary.clone(),
+                    consumed_stream_ids: step.consumed_streams.clone(),
+                    consumed_stream_actions: step.consumed_stream_actions.clone(),
                     produced_stream_ids: step.produced_streams.clone(),
                     produced_stream_actions: step.produced_stream_actions.clone(),
                 })

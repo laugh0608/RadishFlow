@@ -63,6 +63,7 @@ pub struct StepSnapshot {
     pub unit_id: UnitId,
     pub summary: String,
     pub execution: UnitExecutionSnapshot,
+    pub consumed_streams: Vec<StreamStateSnapshot>,
     pub streams: Vec<StreamStateSnapshot>,
 }
 
@@ -151,6 +152,25 @@ impl SolveSnapshot {
                         status: RunStatus::Converged,
                         summary: step.summary.clone(),
                     },
+                    consumed_streams: step
+                        .consumed_stream_ids
+                        .iter()
+                        .map(|stream_id| {
+                            snapshot
+                                .streams
+                                .get(stream_id)
+                                .map(stream_state_snapshot_from_model)
+                                .unwrap_or_else(|| StreamStateSnapshot {
+                                    stream_id: stream_id.clone(),
+                                    label: stream_id.as_str().to_string(),
+                                    temperature_k: 0.0,
+                                    pressure_pa: 0.0,
+                                    total_molar_flow_mol_s: 0.0,
+                                    overall_mole_fractions: Vec::new(),
+                                    phases: Vec::new(),
+                                })
+                        })
+                        .collect(),
                     streams: step
                         .produced_stream_ids
                         .iter()

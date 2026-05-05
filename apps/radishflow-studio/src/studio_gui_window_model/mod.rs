@@ -248,6 +248,8 @@ pub struct StudioGuiWindowUnitExecutionResultModel {
     pub step_index: usize,
     pub status_label: &'static str,
     pub summary: String,
+    pub consumed_stream_ids: Vec<String>,
+    pub consumed_stream_actions: Vec<StudioGuiWindowCommandActionModel>,
     pub produced_stream_ids: Vec<String>,
     pub produced_stream_actions: Vec<StudioGuiWindowCommandActionModel>,
 }
@@ -301,6 +303,8 @@ pub struct StudioGuiWindowSolveStepModel {
     pub unit_id: String,
     pub summary: String,
     pub execution_status_label: &'static str,
+    pub consumed_streams: Vec<String>,
+    pub consumed_stream_actions: Vec<StudioGuiWindowCommandActionModel>,
     pub produced_streams: Vec<String>,
     pub unit_action: StudioGuiWindowCommandActionModel,
     pub produced_stream_actions: Vec<StudioGuiWindowCommandActionModel>,
@@ -1128,6 +1132,12 @@ fn latest_unit_result_for_target(
             step_index: step.index,
             status_label: step.execution_status_label,
             summary: step.summary.clone(),
+            consumed_stream_ids: step.consumed_streams.clone(),
+            consumed_stream_actions: step
+                .consumed_streams
+                .iter()
+                .map(|stream_id| inspector_stream_action(stream_id))
+                .collect(),
             produced_stream_ids: step.produced_streams.clone(),
             produced_stream_actions: step
                 .produced_streams
@@ -1162,7 +1172,16 @@ fn solve_snapshot_model_from_ui(
                     .iter()
                     .map(|stream| stream.stream_id.as_str().to_string())
                     .collect::<Vec<_>>();
+                let consumed_streams = step
+                    .consumed_streams
+                    .iter()
+                    .map(|stream| stream.stream_id.as_str().to_string())
+                    .collect::<Vec<_>>();
                 let unit_action = inspector_unit_action(step.unit_id.as_str());
+                let consumed_stream_actions = consumed_streams
+                    .iter()
+                    .map(|stream_id| inspector_stream_action(stream_id))
+                    .collect::<Vec<_>>();
                 let produced_stream_actions = produced_streams
                     .iter()
                     .map(|stream_id| inspector_stream_action(stream_id))
@@ -1171,6 +1190,8 @@ fn solve_snapshot_model_from_ui(
                     step.index,
                     &step.unit_id,
                     &unit_action,
+                    &consumed_streams,
+                    &consumed_stream_actions,
                     &produced_streams,
                     &produced_stream_actions,
                 );
@@ -1179,6 +1200,8 @@ fn solve_snapshot_model_from_ui(
                     unit_id: step.unit_id.as_str().to_string(),
                     summary: step.summary.clone(),
                     execution_status_label: run_status_label(step.execution.status),
+                    consumed_streams,
+                    consumed_stream_actions,
                     produced_streams,
                     unit_action,
                     produced_stream_actions,
@@ -1291,12 +1314,25 @@ fn solve_step_diagnostic_actions(
     step_index: usize,
     unit_id: &rf_types::UnitId,
     unit_action: &StudioGuiWindowCommandActionModel,
+    consumed_streams: &[String],
+    consumed_stream_actions: &[StudioGuiWindowCommandActionModel],
     produced_streams: &[String],
     produced_stream_actions: &[StudioGuiWindowCommandActionModel],
 ) -> Vec<StudioGuiWindowDiagnosticTargetActionModel> {
     let unit_summary = format!("Step #{step_index} unit {}", unit_id.as_str());
     let unit =
         diagnostic_target_action_from_action("Solve step", "Unit", unit_summary, unit_action);
+    let consumed = consumed_streams
+        .iter()
+        .zip(consumed_stream_actions.iter())
+        .map(|(stream_id, action)| {
+            diagnostic_target_action_from_action(
+                "Solve step",
+                "Stream",
+                format!("Step #{step_index} input stream {stream_id}"),
+                action,
+            )
+        });
     let streams = produced_streams
         .iter()
         .zip(produced_stream_actions.iter())
@@ -1308,7 +1344,7 @@ fn solve_step_diagnostic_actions(
                 action,
             )
         });
-    dedupe_diagnostic_actions(std::iter::once(unit).chain(streams))
+    dedupe_diagnostic_actions(std::iter::once(unit).chain(consumed).chain(streams))
 }
 
 fn inspector_detail_diagnostic_actions(

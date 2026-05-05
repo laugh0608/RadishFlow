@@ -311,12 +311,28 @@ fn studio_gui_window_model_surfaces_workspace_results_and_diagnostics() {
             && action.target_label == "Unit"
             && action.action.command_id == "inspector.focus_unit:heater-1"
     }));
+    assert_eq!(
+        related_heater_step.consumed_streams,
+        vec!["stream-feed".to_string()]
+    );
+    assert!(
+        related_heater_step
+            .consumed_stream_actions
+            .iter()
+            .any(|action| action.command_id == "inspector.focus_stream:stream-feed")
+    );
     assert!(
         related_heater_step
             .produced_stream_actions
             .iter()
             .any(|action| action.command_id == "inspector.focus_stream:stream-heated")
     );
+    assert!(related_heater_step.diagnostic_actions.iter().any(|action| {
+        action.source_label == "Solve step"
+            && action.target_label == "Stream"
+            && action.summary == "Step #1 input stream stream-feed"
+            && action.action.command_id == "inspector.focus_stream:stream-feed"
+    }));
     assert!(inspector.diagnostic_actions.iter().any(|action| {
         action.source_label == "Selected stream"
             && action.action.command_id == "inspector.focus_stream:stream-heated"
@@ -409,6 +425,10 @@ fn studio_gui_window_model_surfaces_workspace_results_and_diagnostics() {
     assert!(active_detail.related_steps.iter().any(|step| {
         step.unit_action.command_id == "inspector.focus_unit:heater-1"
             && step
+                .consumed_stream_actions
+                .iter()
+                .any(|action| action.command_id == "inspector.focus_stream:stream-feed")
+            && step
                 .produced_stream_actions
                 .iter()
                 .any(|action| action.command_id == "inspector.focus_stream:stream-heated")
@@ -446,10 +466,20 @@ fn studio_gui_window_model_surfaces_workspace_results_and_diagnostics() {
     assert_eq!(unit_result.status_label, "Converged");
     assert_eq!(unit_result.step_index, 1);
     assert_eq!(
+        unit_result.consumed_stream_ids,
+        vec!["stream-feed".to_string()]
+    );
+    assert_eq!(
         unit_result.produced_stream_ids,
         vec!["stream-heated".to_string()]
     );
     assert!(unit_result.summary.contains("stream-heated"));
+    assert!(
+        unit_result
+            .consumed_stream_actions
+            .iter()
+            .any(|action| action.command_id == "inspector.focus_stream:stream-feed")
+    );
     assert!(
         unit_result
             .produced_stream_actions
@@ -587,6 +617,13 @@ fn studio_gui_window_model_surfaces_workspace_results_and_diagnostics() {
         .expect("expected selected unit execution result");
     assert_eq!(selected_unit.unit_id, "heater-1");
     assert_eq!(selected_unit.status_label, "Converged");
+    assert!(
+        selected_unit
+            .consumed_stream_actions
+            .iter()
+            .any(|action| action.command_id == "inspector.focus_stream:stream-feed"),
+        "expected unit execution result to expose consumed stream actions"
+    );
     assert!(
         selected_unit
             .produced_stream_actions

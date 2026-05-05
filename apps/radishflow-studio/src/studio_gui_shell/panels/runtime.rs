@@ -717,6 +717,14 @@ impl ReadyAppState {
             ui.small(format!("#{}", unit.step_index));
         });
         render_wrapped_label(ui, &unit.summary);
+        if !unit.consumed_stream_actions.is_empty() {
+            ui.horizontal_wrapped(|ui| {
+                ui.small(self.locale.text(ShellText::InspectorConsumedStreams));
+                for action in &unit.consumed_stream_actions {
+                    self.render_small_command_action(ui, action);
+                }
+            });
+        }
         if !unit.produced_stream_actions.is_empty() {
             ui.horizontal_wrapped(|ui| {
                 ui.small(self.locale.text(ShellText::InspectorProducedStreams));
@@ -742,6 +750,12 @@ impl ReadyAppState {
                     .as_ref(),
                 run_status_color(step.execution_status_label),
             );
+            if !step.consumed_stream_actions.is_empty() {
+                for action in &step.consumed_stream_actions {
+                    self.render_small_command_action(ui, action);
+                }
+                ui.small("->");
+            }
             self.render_small_command_action(ui, &step.unit_action);
             if !step.produced_stream_actions.is_empty() {
                 ui.small("->");
