@@ -618,6 +618,121 @@ fn canvas_unit_layout_nudge_commands_move_selected_unit_from_command_surface() {
 }
 
 #[test]
+fn canvas_unit_layout_nudge_pins_transient_grid_without_dirtying_project() {
+    let (config, project_path) = flash_drum_local_rules_config();
+    let layout_path = studio_layout_path_for_project(&project_path);
+    let _ = fs::remove_file(&layout_path);
+    let project_before = fs::read_to_string(&project_path).expect("expected project file");
+    let mut app = ready_app_state(&config);
+
+    app.dispatch_ui_command("inspector.focus_unit:feed-1");
+    let before = app.platform_host.snapshot().window_model();
+    let revision_before = before.runtime.workspace_document.revision;
+    let saved_revision_before = before.runtime.workspace_document.last_saved_revision;
+    assert!(
+        !before.runtime.workspace_document.has_unsaved_changes,
+        "fixture should start from a saved project"
+    );
+    assert_eq!(
+        before
+            .canvas
+            .widget
+            .view()
+            .current_selection
+            .as_ref()
+            .and_then(|selection| selection.layout_source_label),
+        Some("transient grid")
+    );
+    assert_eq!(
+        before
+            .canvas
+            .widget
+            .view()
+            .unit_blocks
+            .iter()
+            .find(|unit| unit.unit_id == "feed-1")
+            .and_then(|unit| unit.layout_position),
+        None,
+        "fixture should not have a sidecar position before the first nudge"
+    );
+
+    app.dispatch_ui_command("canvas.move_selected_unit.right");
+
+    let moved = app.platform_host.snapshot().window_model();
+    assert_eq!(moved.runtime.workspace_document.revision, revision_before);
+    assert_eq!(
+        moved.runtime.workspace_document.last_saved_revision,
+        saved_revision_before
+    );
+    assert!(
+        !moved.runtime.workspace_document.has_unsaved_changes,
+        "layout nudge must not dirty the project document"
+    );
+    assert_eq!(
+        fs::read_to_string(&project_path).expect("expected project file after nudge"),
+        project_before,
+        "layout nudge must not rewrite the project JSON"
+    );
+    assert_eq!(
+        moved
+            .canvas
+            .widget
+            .view()
+            .unit_blocks
+            .iter()
+            .find(|unit| unit.unit_id == "feed-1")
+            .and_then(|unit| unit.layout_position),
+        Some(rf_ui::CanvasPoint::new(58.0, 72.0))
+    );
+    assert_eq!(
+        moved
+            .canvas
+            .widget
+            .view()
+            .current_selection
+            .as_ref()
+            .and_then(|selection| selection.layout_source_label),
+        Some("sidecar position")
+    );
+    let result = app
+        .canvas_command_result_command_surface()
+        .expect("expected canvas move command result");
+    assert_eq!(result.status_label, "moved");
+    assert!(result.detail.contains("had no sidecar position"));
+    assert!(
+        result
+            .detail
+            .contains("pinned from its transient grid slot")
+    );
+    assert_eq!(result.target_command_id, "inspector.focus_unit:feed-1");
+
+    let stored_layout = read_studio_layout_file(&layout_path).expect("expected layout sidecar");
+    assert!(stored_layout.canvas_unit_positions.iter().any(|position| {
+        position.unit_id == "feed-1" && position.x == 58.0 && position.y == 72.0
+    }));
+
+    let reopened = ready_app_state(&config)
+        .platform_host
+        .snapshot()
+        .window_model();
+    assert_eq!(
+        reopened
+            .canvas
+            .widget
+            .view()
+            .unit_blocks
+            .iter()
+            .find(|unit| unit.unit_id == "feed-1")
+            .and_then(|unit| unit.layout_position),
+        Some(rf_ui::CanvasPoint::new(58.0, 72.0)),
+        "reopened project should restore the pinned sidecar position"
+    );
+
+    let _ = fs::remove_file(project_path);
+    let _ = fs::remove_file(layout_path);
+}
+
+#[test]
 fn canvas_feed_heater_flash_minimal_path_can_run_after_accepting_suggestions() {
     let mut app = ready_app_state(&synced_workspace_config());
 
