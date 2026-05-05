@@ -185,9 +185,14 @@ impl StudioGuiWindowSolveSnapshotModel {
         let unit_related_diagnostics: Vec<StudioGuiWindowDiagnosticModel> = selected_unit_id
             .as_deref()
             .map(|selected_unit| {
-                let produced_streams: BTreeSet<&str> = unit_related_steps
+                let step_streams: BTreeSet<&str> = unit_related_steps
                     .iter()
-                    .flat_map(|step| step.produced_streams.iter().map(String::as_str))
+                    .flat_map(|step| {
+                        step.consumed_streams
+                            .iter()
+                            .chain(step.produced_streams.iter())
+                            .map(String::as_str)
+                    })
                     .collect();
                 self.diagnostics
                     .iter()
@@ -199,7 +204,7 @@ impl StudioGuiWindowSolveSnapshotModel {
                             || diagnostic
                                 .related_stream_ids
                                 .iter()
-                                .any(|stream_id| produced_streams.contains(stream_id.as_str()))
+                                .any(|stream_id| step_streams.contains(stream_id.as_str()))
                     })
                     .cloned()
                     .collect()

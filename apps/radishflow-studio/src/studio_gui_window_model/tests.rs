@@ -652,6 +652,24 @@ fn studio_gui_window_model_surfaces_workspace_results_and_diagnostics() {
                     .any(|stream_id| stream_id == "stream-heated")),
         "expected unit-related diagnostics to include the selected unit's outputs"
     );
+    assert!(
+        unit_inspector
+            .unit_related_diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic
+                .related_unit_ids
+                .iter()
+                .any(|unit_id| unit_id == "feed-1")
+                && diagnostic
+                    .related_stream_ids
+                    .iter()
+                    .any(|stream_id| stream_id == "stream-feed")),
+        "expected unit-related diagnostics to include consumed stream context"
+    );
+    assert!(unit_inspector.unit_diagnostic_actions.iter().any(|action| {
+        action.source_label == "Diagnostic"
+            && action.action.command_id == "inspector.focus_stream:stream-feed"
+    }));
     assert!(unit_inspector.unit_diagnostic_actions.iter().any(|action| {
         action.source_label == "Selected unit"
             && action.action.command_id == "inspector.focus_unit:heater-1"
