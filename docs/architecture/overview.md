@@ -110,6 +110,7 @@ RadishFlow 的目标架构已经冻结为“桌面端三层 + 外部控制面”
 - `StudioGuiSnapshot` 作为跨模块聚合快照真相源
 - `StudioGuiWindowModel` 作为窗口内容分区模型
 - `StudioGuiWindowDiagnosticTargetActionModel` 当前作为结果审阅/错误定位的统一 action presentation，汇总失败恢复、Inspector 目标、求解步骤单元、输入流股和产出流股跳转；真实 GUI 继续按既有 `command_id` 派发，不新增导航或 recovery 私有状态机
+- Result Inspector 当前只消费当前 `SolveSnapshot` 已物化的流股、相、焓值、求解步骤和诊断 DTO：stream-centric 与 unit-centric 视图并列，stream comparison 只比较当前快照中已有的 summary / composition / phase rows，并为 base / compared stream 暴露既有 Inspector focus action；这一层不承担结果报表、导出、跨快照历史或重新计算热力学
 - `StudioGuiWindowFailureDiagnosticDetailModel` 当前作为失败详情只读 presentation，直接承接 latest diagnostic summary 的 code / revision / severity / related targets，避免 GUI 从失败 message 中反解析结构化信息
 - Canvas attention presentation 当前也消费同一组结构化 diagnostic target：unit / stream hover、material port hover 与 object list attention summary 会展示 `related_port_targets` 归并出的只读 port 摘要，但定位仍复用现有 `InspectorTarget` command，不新增端口级私有命令
 - Active Inspector 的 unit port 列表当前也会在 diagnostic document revision 匹配当前工作区修订时，按当前 unit 和 `port_name` 匹配 `DiagnosticSummary.related_port_targets`，显示只读 attention 摘要；端口行仍只复用已有 stream Inspector action，不新增端口级 command
@@ -135,7 +136,7 @@ RadishFlow 的目标架构已经冻结为“桌面端三层 + 外部控制面”
 - 窗口布局、Canvas placement 坐标持久化和 Canvas unit layout nudge 继续与项目文档语义分离，当前保存到 `<project>.rfstudio-layout.json` sidecar，而不是混入 `*.rfproj.json`
 - 多窗口布局 key 当前已从运行时 `window_id` 收口为基于 `window_role + layout_slot` 的稳定 scope，避免跨 host 重建时直接依赖临时窗口号
 
-这意味着当前仓库已从“只有 UI 层快照映射桥”推进到“真实 `egui` 壳层可打开已有项目、持久化 shell 级最近项目、运行求解、查看结构化结果/诊断、定位 Inspector、审阅流股结果与单元最新执行结果、从求解步骤跳转到单元和产出流股、从失败摘要触发修复或定位目标、在 Canvas 与 Active Inspector 中查看只读 port attention 摘要、编辑 Stream 字段草稿并提交、执行基础撤销/重做、保存/另存为，并在画布中查看已有单元/流股/端口/诊断状态、执行多单元 pending placement 和离散调整已有 sidecar 单元位置”。最近项目写入独立 Studio preferences 文件，画布筛选、对比选择、focus navigation、layout nudge 与最近一次 command result 展示等状态仍属于 shell 临时状态或 Studio layout sidecar / presentation 反馈，不进入 `*.rfproj.json`。不过这仍是最小可操作工作台闭环，不等同于完整跨平台文件工作流、完整应用偏好系统、完整画布编辑器、结果报表系统、跨会话历史持久化或最终视觉方案。
+这意味着当前仓库已从“只有 UI 层快照映射桥”推进到“真实 `egui` 壳层可打开已有项目、持久化 shell 级最近项目、运行求解、查看结构化结果/诊断、定位 Inspector、审阅流股结果与单元最新执行结果、对比当前快照内流股 summary / composition / phase rows、从求解步骤跳转到单元、输入流股和产出流股、从失败摘要触发修复或定位目标、在 Canvas 与 Active Inspector 中查看只读 port attention 摘要、编辑 Stream 字段草稿并提交、执行基础撤销/重做、保存/另存为，并在画布中查看已有单元/流股/端口/诊断状态、执行多单元 pending placement 和离散调整已有 sidecar 单元位置”。最近项目写入独立 Studio preferences 文件，画布筛选、对比选择、focus navigation、layout nudge 与最近一次 command result 展示等状态仍属于 shell 临时状态或 Studio layout sidecar / presentation 反馈，不进入 `*.rfproj.json`。不过这仍是最小可操作工作台闭环，不等同于完整跨平台文件工作流、完整应用偏好系统、完整画布编辑器、结果报表系统、跨会话历史持久化或最终视觉方案。
 
 这些决定的目的是先把 UI 和求解层之间的长期接口边界定清楚，再决定具体控件和交互实现。
 

@@ -1,6 +1,6 @@
 # Thermo MVP Model
 
-更新时间：2026-03-31
+更新时间：2026-05-05
 
 该目录用于沉淀第一阶段热力学模型范围与样例数据。
 
@@ -34,15 +34,16 @@
 
 - `rf-thermo` 已实现基于 Antoine 相关式的饱和蒸气压计算
 - `rf-thermo` 已实现基于理想体系假设的 `K` 值估算
+- `rf-thermo` 已实现基于 property package 中 liquid/vapor 常热容的 MVP 相 molar enthalpy，参考温度固定为 `298.15 K`
 - `rf-flash` 已实现 Rachford-Rice 求解
 - `rf-flash` 已实现最小二元汽液两相 `TP Flash`
-- `rf-flash` 当前已可产出带 `overall` / `liquid` / `vapor` 相态结果的 `MaterialStreamState`
+- `rf-flash` 当前已可产出带 `overall` / `liquid` / `vapor` 相态结果的 `MaterialStreamState`，并把 liquid/vapor 与按相分率加权的 overall molar enthalpy 写入相态结果
 
 ## 当前刻意未实现的内容
 
 为了避免在第一轮就把范围扩散到完整热力学求解，以下内容仍保持为后续任务：
 
-- 焓模型的数值实现
+- 完整焓参考态、相变潜热与更真实物性模型
 - `PH Flash`
 - `PS Flash`
 - 泡点 / 露点
@@ -55,7 +56,7 @@
 
 1. 继续补更稳定的黄金样例与边界条件测试
 2. 让 `rf-unitops` / `rf-solver` 复用现有 `TP Flash` 能力形成更完整的可求解流程闭环
-3. 在接口不漂移的前提下，再考虑焓模型和更复杂 flash 能力
+3. 在接口不漂移的前提下，再考虑更复杂 flash 能力与更真实的焓基准
 4. 待 MVP 闭环更稳后，再评估更真实 EOS 或更复杂物性模型
 
 ## 测试样例要求
