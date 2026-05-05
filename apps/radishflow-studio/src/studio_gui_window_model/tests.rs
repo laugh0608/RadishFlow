@@ -233,8 +233,24 @@ fn studio_gui_window_model_surfaces_workspace_results_and_diagnostics() {
             .iter()
             .flat_map(|stream| stream.phase_rows.iter())
             .any(|row| row.phase_fraction_text == "1.0000"
-                && row.composition_text.contains("component-a="))
+                && row.composition_text.contains("component-a=")
+                && row
+                    .molar_enthalpy_text
+                    .as_deref()
+                    .is_some_and(|value| value.ends_with(" J/mol")))
     );
+    let liquid_stream = snapshot
+        .streams
+        .iter()
+        .find(|stream| stream.stream_id == "stream-liquid")
+        .expect("expected liquid outlet stream");
+    assert!(
+        liquid_stream.molar_enthalpy_j_per_mol.is_some(),
+        "expected stream summary to expose overall molar enthalpy from flash result"
+    );
+    assert!(liquid_stream.summary_rows.iter().any(|row| {
+        row.label == "H" && row.detail_label == "Molar enthalpy" && row.value.ends_with(" J/mol")
+    }));
     assert!(
         snapshot
             .diagnostics
@@ -492,6 +508,19 @@ fn studio_gui_window_model_surfaces_workspace_results_and_diagnostics() {
             && !row.base_fraction_text.is_empty()
             && !row.compared_fraction_text.is_empty()
             && (row.delta_text.starts_with('+') || row.delta_text.starts_with('-'))
+    }));
+    let phase_comparison =
+        snapshot.result_inspector_with_comparison(Some("stream-liquid"), Some("stream-vapor"));
+    let phase_comparison = phase_comparison
+        .comparison
+        .as_ref()
+        .expect("expected phase outlet comparison model");
+    assert!(phase_comparison.summary_rows.iter().any(|row| {
+        row.label == "H"
+            && row.detail_label == "Molar enthalpy"
+            && row.base_value.ends_with(" J/mol")
+            && row.compared_value.ends_with(" J/mol")
+            && row.delta_text.ends_with(" J/mol")
     }));
     let stale_comparison =
         snapshot.result_inspector_with_comparison(Some("stream-feed"), Some("stream-feed"));

@@ -371,40 +371,59 @@ fn result_inspector_comparison_model(
         .copied()
         .collect::<BTreeSet<_>>();
 
+    let mut summary_rows = vec![
+        StudioGuiWindowResultInspectorComparisonRowModel {
+            label: "T",
+            detail_label: "Temperature",
+            base_value: base.temperature_text.clone(),
+            compared_value: compared.temperature_text.clone(),
+            delta_text: format_signed_delta(compared.temperature_k - base.temperature_k, "K", 2),
+        },
+        StudioGuiWindowResultInspectorComparisonRowModel {
+            label: "P",
+            detail_label: "Pressure",
+            base_value: base.pressure_text.clone(),
+            compared_value: compared.pressure_text.clone(),
+            delta_text: format_signed_delta(compared.pressure_pa - base.pressure_pa, "Pa", 0),
+        },
+        StudioGuiWindowResultInspectorComparisonRowModel {
+            label: "F",
+            detail_label: "Molar flow",
+            base_value: base.molar_flow_text.clone(),
+            compared_value: compared.molar_flow_text.clone(),
+            delta_text: format_signed_delta(
+                compared.total_molar_flow_mol_s - base.total_molar_flow_mol_s,
+                "mol/s",
+                6,
+            ),
+        },
+    ];
+    if base.molar_enthalpy_j_per_mol.is_some() || compared.molar_enthalpy_j_per_mol.is_some() {
+        summary_rows.push(StudioGuiWindowResultInspectorComparisonRowModel {
+            label: "H",
+            detail_label: "Molar enthalpy",
+            base_value: base
+                .molar_enthalpy_text
+                .clone()
+                .unwrap_or_else(|| "-".to_string()),
+            compared_value: compared
+                .molar_enthalpy_text
+                .clone()
+                .unwrap_or_else(|| "-".to_string()),
+            delta_text: match (
+                base.molar_enthalpy_j_per_mol,
+                compared.molar_enthalpy_j_per_mol,
+            ) {
+                (Some(base), Some(compared)) => format_signed_delta(compared - base, "J/mol", 3),
+                _ => "-".to_string(),
+            },
+        });
+    }
+
     StudioGuiWindowResultInspectorComparisonModel {
         base_stream_id: base.stream_id.clone(),
         compared_stream_id: compared.stream_id.clone(),
-        summary_rows: vec![
-            StudioGuiWindowResultInspectorComparisonRowModel {
-                label: "T",
-                detail_label: "Temperature",
-                base_value: base.temperature_text.clone(),
-                compared_value: compared.temperature_text.clone(),
-                delta_text: format_signed_delta(
-                    compared.temperature_k - base.temperature_k,
-                    "K",
-                    2,
-                ),
-            },
-            StudioGuiWindowResultInspectorComparisonRowModel {
-                label: "P",
-                detail_label: "Pressure",
-                base_value: base.pressure_text.clone(),
-                compared_value: compared.pressure_text.clone(),
-                delta_text: format_signed_delta(compared.pressure_pa - base.pressure_pa, "Pa", 0),
-            },
-            StudioGuiWindowResultInspectorComparisonRowModel {
-                label: "F",
-                detail_label: "Molar flow",
-                base_value: base.molar_flow_text.clone(),
-                compared_value: compared.molar_flow_text.clone(),
-                delta_text: format_signed_delta(
-                    compared.total_molar_flow_mol_s - base.total_molar_flow_mol_s,
-                    "mol/s",
-                    6,
-                ),
-            },
-        ],
+        summary_rows,
         composition_rows: component_ids
             .into_iter()
             .map(|component_id| {

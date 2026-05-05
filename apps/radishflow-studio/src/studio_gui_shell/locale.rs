@@ -166,6 +166,7 @@ impl StudioShellLocale {
             "Temperature" => Cow::Borrowed("温度"),
             "Pressure" => Cow::Borrowed("压力"),
             "Molar flow" => Cow::Borrowed("摩尔流量"),
+            "Molar enthalpy" => Cow::Borrowed("摩尔焓"),
             "Run" => Cow::Borrowed("运行"),
             "Resume" => Cow::Borrowed("恢复"),
             "Activate" | "Active mode" => Cow::Borrowed("活动模式"),

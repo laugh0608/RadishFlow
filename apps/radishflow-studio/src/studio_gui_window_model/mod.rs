@@ -259,9 +259,11 @@ pub struct StudioGuiWindowStreamResultModel {
     pub temperature_k: f64,
     pub pressure_pa: f64,
     pub total_molar_flow_mol_s: f64,
+    pub molar_enthalpy_j_per_mol: Option<f64>,
     pub temperature_text: String,
     pub pressure_text: String,
     pub molar_flow_text: String,
+    pub molar_enthalpy_text: Option<String>,
     pub summary_rows: Vec<StudioGuiWindowStreamSummaryRowModel>,
     pub composition_rows: Vec<StudioGuiWindowCompositionResultModel>,
     pub phase_rows: Vec<StudioGuiWindowPhaseResultModel>,
@@ -1339,32 +1341,44 @@ fn stream_result_model_from_ui(
     let temperature_text = format!("{:.2} K", stream.temperature_k);
     let pressure_text = format!("{:.0} Pa", stream.pressure_pa);
     let molar_flow_text = format!("{:.6} mol/s", stream.total_molar_flow_mol_s);
+    let molar_enthalpy_j_per_mol = overall_molar_enthalpy_j_per_mol(&stream.phases);
+    let molar_enthalpy_text = molar_enthalpy_j_per_mol.map(format_molar_enthalpy);
+    let mut summary_rows = vec![
+        StudioGuiWindowStreamSummaryRowModel {
+            label: "T",
+            detail_label: "Temperature",
+            value: temperature_text.clone(),
+        },
+        StudioGuiWindowStreamSummaryRowModel {
+            label: "P",
+            detail_label: "Pressure",
+            value: pressure_text.clone(),
+        },
+        StudioGuiWindowStreamSummaryRowModel {
+            label: "F",
+            detail_label: "Molar flow",
+            value: molar_flow_text.clone(),
+        },
+    ];
+    if let Some(value) = molar_enthalpy_text.clone() {
+        summary_rows.push(StudioGuiWindowStreamSummaryRowModel {
+            label: "H",
+            detail_label: "Molar enthalpy",
+            value,
+        });
+    }
     StudioGuiWindowStreamResultModel {
         stream_id: stream.stream_id.as_str().to_string(),
         label: stream.label.clone(),
         temperature_k: stream.temperature_k,
         pressure_pa: stream.pressure_pa,
         total_molar_flow_mol_s: stream.total_molar_flow_mol_s,
+        molar_enthalpy_j_per_mol,
         temperature_text: temperature_text.clone(),
         pressure_text: pressure_text.clone(),
         molar_flow_text: molar_flow_text.clone(),
-        summary_rows: vec![
-            StudioGuiWindowStreamSummaryRowModel {
-                label: "T",
-                detail_label: "Temperature",
-                value: temperature_text,
-            },
-            StudioGuiWindowStreamSummaryRowModel {
-                label: "P",
-                detail_label: "Pressure",
-                value: pressure_text,
-            },
-            StudioGuiWindowStreamSummaryRowModel {
-                label: "F",
-                detail_label: "Molar flow",
-                value: molar_flow_text,
-            },
-        ],
+        molar_enthalpy_text,
+        summary_rows,
         composition_rows: stream
             .overall_mole_fractions
             .iter()
@@ -1383,14 +1397,23 @@ fn stream_result_model_from_ui(
                 label: phase.label.clone(),
                 phase_fraction_text: format_fraction(phase.phase_fraction),
                 composition_text: format_phase_composition(&phase.composition),
-                molar_enthalpy_text: phase
-                    .molar_enthalpy_j_per_mol
-                    .map(|value| format!("{value:.3} J/mol")),
+                molar_enthalpy_text: phase.molar_enthalpy_j_per_mol.map(format_molar_enthalpy),
             })
             .collect(),
         composition_text: format_composition(&stream.overall_mole_fractions),
         phase_text: format_phases(&stream.phases),
     }
+}
+
+fn overall_molar_enthalpy_j_per_mol(phases: &[rf_ui::PhaseStateSnapshot]) -> Option<f64> {
+    phases
+        .iter()
+        .find(|phase| phase.label == "overall")
+        .and_then(|phase| phase.molar_enthalpy_j_per_mol)
+}
+
+fn format_molar_enthalpy(value: f64) -> String {
+    format!("{value:.3} J/mol")
 }
 
 fn format_composition(composition: &[(String, f64)]) -> String {
