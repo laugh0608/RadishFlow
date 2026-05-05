@@ -117,13 +117,7 @@ impl StudioGuiWindowSolveSnapshotModel {
             .map(|stream| StudioGuiWindowResultInspectorStreamOptionModel {
                 stream_id: stream.stream_id.clone(),
                 label: stream.label.clone(),
-                summary: format!(
-                    "{} | T {} | P {} | F {}",
-                    stream.stream_id,
-                    stream.temperature_text,
-                    stream.pressure_text,
-                    stream.molar_flow_text
-                ),
+                summary: result_inspector_stream_option_summary(stream),
                 is_selected: selected_stream_id
                     .as_deref()
                     .map(|selected_id| selected_id == stream.stream_id)
@@ -143,13 +137,7 @@ impl StudioGuiWindowSolveSnapshotModel {
             .map(|stream| StudioGuiWindowResultInspectorStreamOptionModel {
                 stream_id: stream.stream_id.clone(),
                 label: stream.label.clone(),
-                summary: format!(
-                    "{} | T {} | P {} | F {}",
-                    stream.stream_id,
-                    stream.temperature_text,
-                    stream.pressure_text,
-                    stream.molar_flow_text
-                ),
+                summary: result_inspector_stream_option_summary(stream),
                 is_selected: comparison_stream_id
                     .as_deref()
                     .map(|comparison_id| comparison_id == stream.stream_id)
@@ -289,6 +277,19 @@ impl StudioGuiWindowSolveSnapshotModel {
             has_stale_unit_selection,
         }
     }
+}
+
+fn result_inspector_stream_option_summary(stream: &StudioGuiWindowStreamResultModel) -> String {
+    let mut parts = vec![
+        stream.stream_id.clone(),
+        format!("T {}", stream.temperature_text),
+        format!("P {}", stream.pressure_text),
+        format!("F {}", stream.molar_flow_text),
+    ];
+    if let Some(molar_enthalpy_text) = stream.molar_enthalpy_text.as_ref() {
+        parts.push(format!("H {molar_enthalpy_text}"));
+    }
+    parts.join(" | ")
 }
 
 fn result_inspector_diagnostic_actions(

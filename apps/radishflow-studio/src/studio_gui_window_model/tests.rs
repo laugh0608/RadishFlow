@@ -288,8 +288,18 @@ fn studio_gui_window_model_surfaces_workspace_results_and_diagnostics() {
             .any(|option| option.stream_id == "stream-heated"
                 && option.is_selected
                 && option.summary.contains("P 95000 Pa")
+                && !option.summary.contains("H ")
                 && option.focus_action.label == "Inspect"
                 && option.focus_action.command_id == "inspector.focus_stream:stream-heated")
+    );
+    assert!(
+        inspector
+            .stream_options
+            .iter()
+            .any(|option| option.stream_id == "stream-liquid"
+                && option.summary.contains("H ")
+                && option.summary.contains("J/mol")),
+        "expected stream result options to include enthalpy when it exists"
     );
     assert!(
         inspector
@@ -550,9 +560,11 @@ fn studio_gui_window_model_surfaces_workspace_results_and_diagnostics() {
         comparison_inspector
             .comparison_options
             .iter()
-            .any(|option| option.stream_id == "stream-heated"
-                && option.focus_action.command_id == "inspector.focus_stream:stream-heated"),
-        "expected comparison stream options to expose the same inspector focus action"
+            .any(|option| option.stream_id == "stream-liquid"
+                && option.summary.contains("H ")
+                && option.summary.contains("J/mol")
+                && option.focus_action.command_id == "inspector.focus_stream:stream-liquid"),
+        "expected comparison stream options to expose enthalpy and the same inspector focus action"
     );
     let comparison = comparison_inspector
         .comparison
