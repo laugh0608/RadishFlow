@@ -371,6 +371,8 @@ pub struct StudioGuiWindowResultInspectorUnitOptionModel {
 pub struct StudioGuiWindowResultInspectorComparisonModel {
     pub base_stream_id: String,
     pub compared_stream_id: String,
+    pub base_stream_focus_action: StudioGuiWindowCommandActionModel,
+    pub compared_stream_focus_action: StudioGuiWindowCommandActionModel,
     pub summary_rows: Vec<StudioGuiWindowResultInspectorComparisonRowModel>,
     pub composition_rows: Vec<StudioGuiWindowResultInspectorCompositionComparisonRowModel>,
     pub phase_rows: Vec<StudioGuiWindowResultInspectorPhaseComparisonRowModel>,

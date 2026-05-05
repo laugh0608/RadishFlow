@@ -1162,21 +1162,25 @@ impl ReadyAppState {
     }
 
     fn render_result_inspector_comparison(
-        &self,
+        &mut self,
         ui: &mut egui::Ui,
         comparison: &radishflow_studio::StudioGuiWindowResultInspectorComparisonModel,
     ) {
         ui.add_space(4.0);
-        render_wrapped_small(
-            ui,
-            format!(
-                "{}: {}  {}: {}",
+        ui.horizontal_wrapped(|ui| {
+            ui.small(format!(
+                "{}: {}",
                 self.locale.text(ShellText::BaseStream),
-                comparison.base_stream_id,
+                comparison.base_stream_id
+            ));
+            self.render_small_command_action(ui, &comparison.base_stream_focus_action);
+            ui.small(format!(
+                "{}: {}",
                 self.locale.text(ShellText::ComparedStream),
                 comparison.compared_stream_id
-            ),
-        );
+            ));
+            self.render_small_command_action(ui, &comparison.compared_stream_focus_action);
+        });
         egui::Grid::new(format!(
             "result-comparison-summary:{}:{}",
             comparison.base_stream_id, comparison.compared_stream_id

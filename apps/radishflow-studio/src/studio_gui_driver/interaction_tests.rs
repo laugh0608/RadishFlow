@@ -503,6 +503,21 @@ fn gui_driver_dispatches_result_and_step_diagnostic_actions_through_inspector_fo
         .expect("expected selected unit diagnostic action");
     assert_inspector_focus_dispatch(&mut driver, &unit_command, ("Unit", "heater-1"));
 
+    let comparison = snapshot
+        .result_inspector_with_comparison(Some("stream-feed"), Some("stream-heated"))
+        .comparison
+        .expect("expected comparison stream focus actions");
+    assert_inspector_focus_dispatch(
+        &mut driver,
+        &comparison.base_stream_focus_action.command_id,
+        ("Stream", "stream-feed"),
+    );
+    assert_inspector_focus_dispatch(
+        &mut driver,
+        &comparison.compared_stream_focus_action.command_id,
+        ("Stream", "stream-heated"),
+    );
+
     let step = snapshot
         .steps
         .iter()

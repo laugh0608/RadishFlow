@@ -570,6 +570,16 @@ fn studio_gui_window_model_surfaces_workspace_results_and_diagnostics() {
         .comparison
         .as_ref()
         .expect("expected stream comparison model");
+    assert_eq!(
+        comparison.base_stream_focus_action.command_id,
+        "inspector.focus_stream:stream-feed"
+    );
+    assert_eq!(
+        comparison.compared_stream_focus_action.command_id,
+        "inspector.focus_stream:stream-heated"
+    );
+    assert_eq!(comparison.base_stream_focus_action.label, "Inspect");
+    assert_eq!(comparison.compared_stream_focus_action.label, "Inspect");
     assert!(comparison.summary_rows.iter().any(|row| {
         row.label == "T"
             && row.detail_label == "Temperature"

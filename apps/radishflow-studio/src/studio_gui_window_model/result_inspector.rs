@@ -465,6 +465,8 @@ fn result_inspector_comparison_model(
     StudioGuiWindowResultInspectorComparisonModel {
         base_stream_id: base.stream_id.clone(),
         compared_stream_id: compared.stream_id.clone(),
+        base_stream_focus_action: result_inspector_stream_focus_action(&base.stream_id),
+        compared_stream_focus_action: result_inspector_stream_focus_action(&compared.stream_id),
         summary_rows,
         composition_rows: component_ids
             .into_iter()
