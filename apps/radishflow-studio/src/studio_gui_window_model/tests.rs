@@ -522,6 +522,27 @@ fn studio_gui_window_model_surfaces_workspace_results_and_diagnostics() {
             && row.compared_value.ends_with(" J/mol")
             && row.delta_text.ends_with(" J/mol")
     }));
+    assert!(phase_comparison.phase_rows.iter().any(|row| {
+        row.phase_label == "overall"
+            && row.base_fraction_text == "1.0000"
+            && row.compared_fraction_text == "1.0000"
+            && row.fraction_delta_text == "+0.0000"
+            && row.base_molar_enthalpy_text.ends_with(" J/mol")
+            && row.compared_molar_enthalpy_text.ends_with(" J/mol")
+            && row.molar_enthalpy_delta_text.ends_with(" J/mol")
+    }));
+    assert!(phase_comparison.phase_rows.iter().any(|row| {
+        row.phase_label == "liquid"
+            && row.base_molar_enthalpy_text.ends_with(" J/mol")
+            && row.compared_molar_enthalpy_text == "-"
+            && row.molar_enthalpy_delta_text == "-"
+    }));
+    assert!(phase_comparison.phase_rows.iter().any(|row| {
+        row.phase_label == "vapor"
+            && row.base_molar_enthalpy_text == "-"
+            && row.compared_molar_enthalpy_text.ends_with(" J/mol")
+            && row.molar_enthalpy_delta_text == "-"
+    }));
     let stale_comparison =
         snapshot.result_inspector_with_comparison(Some("stream-feed"), Some("stream-feed"));
     assert!(stale_comparison.has_stale_comparison);

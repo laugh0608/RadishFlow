@@ -370,6 +370,21 @@ fn result_inspector_comparison_model(
         .chain(compared_composition.keys())
         .copied()
         .collect::<BTreeSet<_>>();
+    let base_phases = base
+        .phase_rows
+        .iter()
+        .map(|row| (row.label.as_str(), row))
+        .collect::<BTreeMap<_, _>>();
+    let compared_phases = compared
+        .phase_rows
+        .iter()
+        .map(|row| (row.label.as_str(), row))
+        .collect::<BTreeMap<_, _>>();
+    let phase_labels = base_phases
+        .keys()
+        .chain(compared_phases.keys())
+        .copied()
+        .collect::<BTreeSet<_>>();
 
     let mut summary_rows = vec![
         StudioGuiWindowResultInspectorComparisonRowModel {
@@ -437,6 +452,45 @@ fn result_inspector_comparison_model(
                     base_fraction_text: format_fraction(base_fraction),
                     compared_fraction_text: format_fraction(compared_fraction),
                     delta_text: format_signed_delta(compared_fraction - base_fraction, "", 4),
+                }
+            })
+            .collect(),
+        phase_rows: phase_labels
+            .into_iter()
+            .map(|phase_label| {
+                let base_phase = base_phases.get(phase_label).copied();
+                let compared_phase = compared_phases.get(phase_label).copied();
+                StudioGuiWindowResultInspectorPhaseComparisonRowModel {
+                    phase_label: phase_label.to_string(),
+                    base_fraction_text: base_phase
+                        .map(|phase| phase.phase_fraction_text.clone())
+                        .unwrap_or_else(|| "-".to_string()),
+                    compared_fraction_text: compared_phase
+                        .map(|phase| phase.phase_fraction_text.clone())
+                        .unwrap_or_else(|| "-".to_string()),
+                    fraction_delta_text: match (base_phase, compared_phase) {
+                        (Some(base), Some(compared)) => format_signed_delta(
+                            compared.phase_fraction - base.phase_fraction,
+                            "",
+                            4,
+                        ),
+                        _ => "-".to_string(),
+                    },
+                    base_molar_enthalpy_text: base_phase
+                        .and_then(|phase| phase.molar_enthalpy_text.clone())
+                        .unwrap_or_else(|| "-".to_string()),
+                    compared_molar_enthalpy_text: compared_phase
+                        .and_then(|phase| phase.molar_enthalpy_text.clone())
+                        .unwrap_or_else(|| "-".to_string()),
+                    molar_enthalpy_delta_text: match (
+                        base_phase.and_then(|phase| phase.molar_enthalpy_j_per_mol),
+                        compared_phase.and_then(|phase| phase.molar_enthalpy_j_per_mol),
+                    ) {
+                        (Some(base), Some(compared)) => {
+                            format_signed_delta(compared - base, "J/mol", 3)
+                        }
+                        _ => "-".to_string(),
+                    },
                 }
             })
             .collect(),

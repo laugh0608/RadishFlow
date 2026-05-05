@@ -283,11 +283,12 @@ pub use studio_gui_window_model::{
     StudioGuiWindowPhaseResultModel, StudioGuiWindowResultInspectorComparisonModel,
     StudioGuiWindowResultInspectorComparisonRowModel,
     StudioGuiWindowResultInspectorCompositionComparisonRowModel,
-    StudioGuiWindowResultInspectorModel, StudioGuiWindowResultInspectorStreamOptionModel,
-    StudioGuiWindowRuntimeAreaModel, StudioGuiWindowSolveSnapshotModel,
-    StudioGuiWindowSolveStepModel, StudioGuiWindowStreamResultModel,
-    StudioGuiWindowStreamSummaryRowModel, StudioGuiWindowToolbarItemModel,
-    StudioGuiWindowToolbarSectionModel, StudioGuiWindowUnitExecutionResultModel,
+    StudioGuiWindowResultInspectorModel, StudioGuiWindowResultInspectorPhaseComparisonRowModel,
+    StudioGuiWindowResultInspectorStreamOptionModel, StudioGuiWindowRuntimeAreaModel,
+    StudioGuiWindowSolveSnapshotModel, StudioGuiWindowSolveStepModel,
+    StudioGuiWindowStreamResultModel, StudioGuiWindowStreamSummaryRowModel,
+    StudioGuiWindowToolbarItemModel, StudioGuiWindowToolbarSectionModel,
+    StudioGuiWindowUnitExecutionResultModel,
 };
 pub use studio_inspector_draft_command::{
     StudioInspectorDraftBatchCommitCommand, StudioInspectorDraftCommitCommand,

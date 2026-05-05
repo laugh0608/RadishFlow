@@ -288,8 +288,10 @@ pub struct StudioGuiWindowCompositionResultModel {
 #[derive(Debug, Clone, PartialEq)]
 pub struct StudioGuiWindowPhaseResultModel {
     pub label: String,
+    pub phase_fraction: f64,
     pub phase_fraction_text: String,
     pub composition_text: String,
+    pub molar_enthalpy_j_per_mol: Option<f64>,
     pub molar_enthalpy_text: Option<String>,
 }
 
@@ -367,6 +369,7 @@ pub struct StudioGuiWindowResultInspectorComparisonModel {
     pub compared_stream_id: String,
     pub summary_rows: Vec<StudioGuiWindowResultInspectorComparisonRowModel>,
     pub composition_rows: Vec<StudioGuiWindowResultInspectorCompositionComparisonRowModel>,
+    pub phase_rows: Vec<StudioGuiWindowResultInspectorPhaseComparisonRowModel>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -384,6 +387,17 @@ pub struct StudioGuiWindowResultInspectorCompositionComparisonRowModel {
     pub base_fraction_text: String,
     pub compared_fraction_text: String,
     pub delta_text: String,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct StudioGuiWindowResultInspectorPhaseComparisonRowModel {
+    pub phase_label: String,
+    pub base_fraction_text: String,
+    pub compared_fraction_text: String,
+    pub fraction_delta_text: String,
+    pub base_molar_enthalpy_text: String,
+    pub compared_molar_enthalpy_text: String,
+    pub molar_enthalpy_delta_text: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -1395,8 +1409,10 @@ fn stream_result_model_from_ui(
             .iter()
             .map(|phase| StudioGuiWindowPhaseResultModel {
                 label: phase.label.clone(),
+                phase_fraction: phase.phase_fraction,
                 phase_fraction_text: format_fraction(phase.phase_fraction),
                 composition_text: format_phase_composition(&phase.composition),
+                molar_enthalpy_j_per_mol: phase.molar_enthalpy_j_per_mol,
                 molar_enthalpy_text: phase.molar_enthalpy_j_per_mol.map(format_molar_enthalpy),
             })
             .collect(),

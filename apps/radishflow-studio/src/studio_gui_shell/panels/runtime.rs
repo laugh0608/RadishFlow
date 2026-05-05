@@ -1212,6 +1212,53 @@ impl ReadyAppState {
                 }
             });
         }
+
+        if !comparison.phase_rows.is_empty() {
+            ui.add_space(4.0);
+            ui.small(egui::RichText::new(self.locale.text(ShellText::PhaseResults)).strong());
+            egui::Grid::new(format!(
+                "result-comparison-phases:{}:{}",
+                comparison.base_stream_id, comparison.compared_stream_id
+            ))
+            .num_columns(7)
+            .striped(true)
+            .show(ui, |ui| {
+                ui.small(self.locale.text(ShellText::Phase));
+                ui.small(format!(
+                    "{} {}",
+                    self.locale.text(ShellText::BaseStream),
+                    self.locale.text(ShellText::Fraction)
+                ));
+                ui.small(format!(
+                    "{} {}",
+                    self.locale.text(ShellText::ComparedStream),
+                    self.locale.text(ShellText::Fraction)
+                ));
+                ui.small(self.locale.text(ShellText::Delta));
+                ui.small(format!(
+                    "{} {}",
+                    self.locale.text(ShellText::BaseStream),
+                    self.locale.text(ShellText::Enthalpy)
+                ));
+                ui.small(format!(
+                    "{} {}",
+                    self.locale.text(ShellText::ComparedStream),
+                    self.locale.text(ShellText::Enthalpy)
+                ));
+                ui.small(self.locale.text(ShellText::Delta));
+                ui.end_row();
+                for row in &comparison.phase_rows {
+                    ui.small(&row.phase_label);
+                    ui.small(&row.base_fraction_text);
+                    ui.small(&row.compared_fraction_text);
+                    ui.small(&row.fraction_delta_text);
+                    ui.small(&row.base_molar_enthalpy_text);
+                    ui.small(&row.compared_molar_enthalpy_text);
+                    ui.small(&row.molar_enthalpy_delta_text);
+                    ui.end_row();
+                }
+            });
+        }
     }
 
     fn render_diagnostic_targets(
