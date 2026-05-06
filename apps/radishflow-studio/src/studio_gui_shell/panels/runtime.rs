@@ -820,6 +820,17 @@ impl ReadyAppState {
                     self.dispatch_inspector_composition_normalize(command_id.clone());
                 }
             }
+            for notice in &detail.property_notices {
+                ui.add_space(4.0);
+                ui.horizontal_wrapped(|ui| {
+                    render_status_chip(
+                        ui,
+                        self.locale.runtime_label(notice.status_label).as_ref(),
+                        inspector_field_status_color(notice.status_label),
+                    );
+                    render_wrapped_small(ui, &notice.message);
+                });
+            }
             if let Some(summary) = detail.property_composition_summary.as_ref() {
                 ui.add_space(4.0);
                 ui.horizontal_wrapped(|ui| {

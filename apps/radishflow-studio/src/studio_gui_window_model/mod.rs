@@ -204,6 +204,7 @@ pub struct StudioGuiWindowInspectorTargetDetailModel {
     pub title: String,
     pub summary_rows: Vec<StudioGuiWindowInspectorTargetSummaryRowModel>,
     pub property_fields: Vec<StudioGuiWindowInspectorTargetFieldModel>,
+    pub property_notices: Vec<StudioGuiWindowInspectorPropertyNoticeModel>,
     pub property_composition_summary: Option<StudioGuiWindowInspectorCompositionSummaryModel>,
     pub property_batch_commit_command_id: Option<String>,
     pub property_composition_normalize_command_id: Option<String>,
@@ -232,6 +233,12 @@ pub struct StudioGuiWindowInspectorTargetFieldModel {
     pub is_dirty: bool,
     pub draft_update_command_id: String,
     pub commit_command_id: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioGuiWindowInspectorPropertyNoticeModel {
+    pub status_label: &'static str,
+    pub message: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -953,6 +960,11 @@ fn inspector_target_detail_model_from_snapshot(
             .iter()
             .map(inspector_field_model_from_snapshot)
             .collect(),
+        property_notices: detail
+            .property_notices
+            .iter()
+            .map(inspector_property_notice_model_from_snapshot)
+            .collect(),
         property_composition_summary: detail
             .property_composition_summary
             .as_ref()
@@ -1020,6 +1032,15 @@ fn inspector_port_attention_summary(
     parts.push(format!("count {}", diagnostic.diagnostic_count));
 
     Some(format!("attention: {}", parts.join("; ")))
+}
+
+fn inspector_property_notice_model_from_snapshot(
+    notice: &crate::StudioGuiInspectorPropertyNoticeSnapshot,
+) -> StudioGuiWindowInspectorPropertyNoticeModel {
+    StudioGuiWindowInspectorPropertyNoticeModel {
+        status_label: notice.status_label,
+        message: notice.message.clone(),
+    }
 }
 
 fn inspector_composition_summary_model_from_snapshot(

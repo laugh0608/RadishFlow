@@ -433,6 +433,7 @@ fn active_inspector_detail_from_controller(
                     },
                 ],
                 property_fields: Vec::new(),
+                property_notices: Vec::new(),
                 property_composition_summary: None,
                 property_batch_commit_command_id: None,
                 property_composition_normalize_command_id: None,
@@ -454,6 +455,15 @@ fn active_inspector_detail_from_controller(
         rf_ui::InspectorTarget::Stream(stream_id) => {
             let stream = flowsheet.streams.get(stream_id)?;
             let property_fields = stream_property_fields(stream, controller.inspector_drafts());
+            let property_composition_summary =
+                stream_property_composition_summary(stream, controller.inspector_drafts());
+            let property_composition_normalize_command_id =
+                stream_property_composition_normalize_command_id(
+                    stream,
+                    controller.inspector_drafts(),
+                );
+            let property_notices =
+                stream_property_notices(stream, controller.inspector_drafts(), &property_fields);
             Some(StudioGuiInspectorTargetDetailSnapshot {
                 target,
                 title: stream.name.clone(),
@@ -479,15 +489,9 @@ fn active_inspector_detail_from_controller(
                     stream,
                     &property_fields,
                 ),
-                property_composition_summary: stream_property_composition_summary(
-                    stream,
-                    controller.inspector_drafts(),
-                ),
-                property_composition_normalize_command_id:
-                    stream_property_composition_normalize_command_id(
-                        stream,
-                        controller.inspector_drafts(),
-                    ),
+                property_notices,
+                property_composition_summary,
+                property_composition_normalize_command_id,
                 property_fields,
                 unit_ports: Vec::new(),
             })
@@ -665,6 +669,42 @@ fn stream_property_batch_commit_command_id(
         .then(|| crate::inspector_draft_batch_commit_command_id(stream.id.as_str()))
 }
 
+fn stream_property_notices(
+    stream: &rf_model::MaterialStreamState,
+    drafts: &rf_ui::InspectorDraftState,
+    fields: &[StudioGuiInspectorTargetFieldSnapshot],
+) -> Vec<crate::StudioGuiInspectorPropertyNoticeSnapshot> {
+    let mut notices = Vec::new();
+
+    if fields
+        .iter()
+        .any(|field| field.validation == StudioGuiInspectorTargetFieldValidationSnapshot::Invalid)
+    {
+        notices.push(crate::StudioGuiInspectorPropertyNoticeSnapshot {
+            status_label: "Invalid",
+            message: "Fix invalid stream property drafts before applying changes; invalid drafts are preserved and are not committed.".to_string(),
+        });
+    }
+
+    if let Some(sum) = stream_property_composition_sum(stream, drafts) {
+        if !sum.is_finite() || sum <= 0.0 {
+            notices.push(crate::StudioGuiInspectorPropertyNoticeSnapshot {
+                status_label: "Invalid",
+                message: "Overall mole fraction sum must be positive and finite before it can be normalized.".to_string(),
+            });
+        } else if (sum - 1.0).abs() > 1e-9 {
+            notices.push(crate::StudioGuiInspectorPropertyNoticeSnapshot {
+                status_label: "Draft",
+                message: format!(
+                    "Overall mole fraction sum is {sum:.6}, not 1.000000. Use Normalize composition or adjust the draft values explicitly; no automatic compensation is applied."
+                ),
+            });
+        }
+    }
+
+    notices
+}
+
 fn stream_property_composition_normalize_command_id(
     stream: &rf_model::MaterialStreamState,
     drafts: &rf_ui::InspectorDraftState,
@@ -706,6 +746,40 @@ fn stream_property_composition_normalize_command_id(
 
     (sum.is_finite() && sum > 0.0 && (has_dirty_composition || (sum - 1.0).abs() > 1e-9))
         .then(|| crate::inspector_composition_normalize_command_id(stream.id.as_str()))
+}
+
+fn stream_property_composition_sum(
+    stream: &rf_model::MaterialStreamState,
+    drafts: &rf_ui::InspectorDraftState,
+) -> Option<f64> {
+    if stream.overall_mole_fractions.is_empty() {
+        return None;
+    }
+
+    let mut sum = 0.0;
+    for (component_id, original_value) in &stream.overall_mole_fractions {
+        let key = rf_ui::stream_inspector_draft_key(
+            &stream.id,
+            &rf_ui::StreamInspectorDraftField::OverallMoleFraction(component_id.clone()),
+        );
+        let value = match drafts.fields.get(&key) {
+            Some(rf_ui::DraftValue::Number(draft))
+                if draft.validation == rf_ui::DraftValidationState::Valid =>
+            {
+                draft.current.trim().parse::<f64>().ok()?
+            }
+            Some(rf_ui::DraftValue::Number(draft))
+                if draft.validation == rf_ui::DraftValidationState::Unknown =>
+            {
+                *original_value
+            }
+            Some(_) => return None,
+            None => *original_value,
+        };
+        sum += value;
+    }
+
+    Some(sum)
 }
 
 fn stream_property_composition_summary(

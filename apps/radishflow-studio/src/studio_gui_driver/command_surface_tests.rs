@@ -527,6 +527,25 @@ fn gui_driver_routes_composition_normalize_through_driver_boundary() {
             .normalized_preview_text
             .contains("component-a=0.277778")
     );
+    let notices = &update
+        .window
+        .runtime
+        .active_inspector_detail
+        .as_ref()
+        .expect("expected active inspector detail")
+        .property_notices;
+    assert!(
+        notices.iter().any(|notice| {
+            notice.status_label == "Draft"
+                && notice
+                    .message
+                    .contains("Overall mole fraction sum is 0.900000")
+                && notice
+                    .message
+                    .contains("no automatic compensation is applied")
+        }),
+        "expected non-normalized composition sum to surface a read-only notice"
+    );
 
     let dispatch = driver
         .dispatch_event(StudioGuiEvent::InspectorCompositionNormalizeRequested {
@@ -576,6 +595,49 @@ fn gui_driver_routes_composition_normalize_through_driver_boundary() {
             .iter()
             .filter(|field| field.key.contains(":overall_mole_fraction:"))
             .all(|field| !field.is_dirty && field.commit_command_id.is_none())
+    );
+}
+
+#[test]
+fn gui_driver_surfaces_invalid_stream_draft_notice_without_private_shell_state() {
+    let mut driver = StudioGuiDriver::new(&lease_expiring_config()).expect("expected driver");
+    driver
+        .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+        .expect("expected open dispatch");
+    driver
+        .dispatch_event(StudioGuiEvent::UiCommandRequested {
+            command_id: "inspector.focus_stream:stream-feed".to_string(),
+        })
+        .expect("expected inspector focus dispatch");
+
+    let update = driver
+        .dispatch_event(StudioGuiEvent::InspectorFieldDraftUpdateRequested {
+            command_id: "inspector.update_stream_draft:stream:stream-feed:temperature_k"
+                .to_string(),
+            raw_value: "not-a-number".to_string(),
+        })
+        .expect("expected invalid draft update");
+
+    let detail = update
+        .window
+        .runtime
+        .active_inspector_detail
+        .as_ref()
+        .expect("expected active inspector detail");
+    assert!(detail.property_fields.iter().any(|field| {
+        field.key == "stream:stream-feed:temperature_k"
+            && field.status_label == "Invalid"
+            && field.commit_command_id.is_none()
+    }));
+    assert!(
+        detail.property_notices.iter().any(|notice| {
+            notice.status_label == "Invalid"
+                && notice
+                    .message
+                    .contains("Fix invalid stream property drafts")
+                && notice.message.contains("not committed")
+        }),
+        "expected invalid draft state to be exposed through inspector presentation"
     );
 }
 
