@@ -43,6 +43,7 @@ pub struct StudioGuiInspectorTargetDetailSnapshot {
     pub summary_rows: Vec<StudioGuiInspectorTargetSummaryRowSnapshot>,
     pub property_fields: Vec<StudioGuiInspectorTargetFieldSnapshot>,
     pub property_batch_commit_command_id: Option<String>,
+    pub property_composition_normalize_command_id: Option<String>,
     pub unit_ports: Vec<StudioGuiInspectorTargetPortSnapshot>,
 }
 

@@ -1065,6 +1065,92 @@ impl AppState {
         }))
     }
 
+    pub fn normalize_stream_inspector_composition_drafts(
+        &mut self,
+        stream_id: &StreamId,
+        changed_at: DateTimeUtc,
+    ) -> RfResult<Option<StreamInspectorDraftBatchCommitResult>> {
+        let active_target = InspectorTarget::Stream(stream_id.clone());
+        if self.workspace.drafts.active_target.as_ref() != Some(&active_target) {
+            return Ok(None);
+        }
+
+        let stream = match self.workspace.document.flowsheet.streams.get(stream_id) {
+            Some(stream) => stream,
+            None => return Ok(None),
+        };
+        if stream.overall_mole_fractions.is_empty() {
+            return Ok(None);
+        }
+
+        let mut entries = Vec::new();
+        let mut has_composition_draft = false;
+        for (component_id, original_value) in &stream.overall_mole_fractions {
+            let field = StreamInspectorDraftField::OverallMoleFraction(component_id.clone());
+            let key = stream_inspector_draft_key(stream_id, &field);
+            let value = match self.workspace.drafts.fields.get(&key) {
+                Some(draft_value) => {
+                    has_composition_draft = true;
+                    match stream_command_value_from_draft(&field, draft_value)? {
+                        Some(CommandValue::Number(value)) => value,
+                        _ => return Ok(None),
+                    }
+                }
+                None => *original_value,
+            };
+            entries.push((component_id.clone(), key, *original_value, value));
+        }
+
+        let sum = entries.iter().map(|(_, _, _, value)| value).sum::<f64>();
+        if !sum.is_finite() || sum <= 0.0 {
+            return Ok(None);
+        }
+
+        let mut values = Vec::new();
+        let mut keys = Vec::new();
+        let mut next_flowsheet = self.workspace.document.flowsheet.clone();
+        let mut changes_document = false;
+        for (component_id, key, original_value, value) in entries {
+            let normalized = value / sum;
+            changes_document |= normalized != original_value;
+            let field = StreamInspectorDraftField::OverallMoleFraction(component_id);
+            let command_value = CommandValue::Number(normalized);
+            apply_stream_specification_value(
+                &mut next_flowsheet,
+                stream_id,
+                &field,
+                &command_value,
+            )?;
+            keys.push(key);
+            values.push(StreamSpecificationValue {
+                field: field.command_field(),
+                value: command_value,
+            });
+        }
+
+        if !changes_document && !has_composition_draft {
+            return Ok(None);
+        }
+
+        let command = stream_specification_command(stream_id, values);
+        let revision = self.workspace.commit_inspector_document_change(
+            command.clone(),
+            next_flowsheet,
+            changed_at,
+        );
+        for key in &keys {
+            self.workspace.drafts.fields.remove(key);
+        }
+        self.refresh_run_panel_state();
+
+        Ok(Some(StreamInspectorDraftBatchCommitResult {
+            keys,
+            active_target,
+            command,
+            revision,
+        }))
+    }
+
     pub fn begin_browser_login(&mut self, authority_url: impl Into<String>) {
         self.auth_session.begin_browser_login(authority_url);
     }

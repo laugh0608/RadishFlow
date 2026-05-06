@@ -333,6 +333,86 @@ fn committing_stream_inspector_composition_draft_updates_overall_mole_fraction()
 }
 
 #[test]
+fn normalizing_stream_inspector_composition_drafts_commits_all_mole_fractions() {
+    let document = inspector_focus_document();
+    let mut app_state = AppState::new(document);
+    let stream_id = StreamId::new("stream-feed");
+    app_state.focus_inspector_target(crate::InspectorTarget::Stream(stream_id.clone()));
+    app_state
+        .update_stream_inspector_draft(
+            &stream_id,
+            crate::StreamInspectorDraftField::OverallMoleFraction(ComponentId::new("component-a")),
+            "0.25",
+        )
+        .expect("expected component-a draft update");
+
+    let outcome = app_state
+        .normalize_stream_inspector_composition_drafts(&stream_id, timestamp(42))
+        .expect("expected composition normalize")
+        .expect("expected applied composition normalize");
+
+    assert_eq!(outcome.revision, 1);
+    assert_eq!(
+        outcome.keys,
+        vec![
+            "stream:stream-feed:overall_mole_fraction:component-a".to_string(),
+            "stream:stream-feed:overall_mole_fraction:component-b".to_string(),
+        ]
+    );
+    assert_eq!(
+        outcome.command,
+        DocumentCommand::SetStreamSpecifications {
+            stream_id: stream_id.clone(),
+            values: vec![
+                crate::StreamSpecificationValue {
+                    field: "overall_mole_fraction:component-a".to_string(),
+                    value: CommandValue::Number(0.25 / 0.85),
+                },
+                crate::StreamSpecificationValue {
+                    field: "overall_mole_fraction:component-b".to_string(),
+                    value: CommandValue::Number(0.6 / 0.85),
+                },
+            ],
+        }
+    );
+    let stream = &app_state.workspace.document.flowsheet.streams[&stream_id];
+    let component_a = stream.overall_mole_fractions[&ComponentId::new("component-a")];
+    let component_b = stream.overall_mole_fractions[&ComponentId::new("component-b")];
+    assert_eq!(component_a, 0.25 / 0.85);
+    assert_eq!(component_b, 0.6 / 0.85);
+    assert!((component_a + component_b - 1.0).abs() <= 1e-12);
+    assert!(app_state.workspace.drafts.fields.is_empty());
+    assert_eq!(
+        app_state.workspace.solve_session.pending_reason,
+        Some(SolvePendingReason::DocumentRevisionAdvanced)
+    );
+}
+
+#[test]
+fn normalizing_stream_inspector_composition_drafts_preserves_invalid_drafts() {
+    let document = inspector_focus_document();
+    let mut app_state = AppState::new(document);
+    let stream_id = StreamId::new("stream-feed");
+    app_state.focus_inspector_target(crate::InspectorTarget::Stream(stream_id.clone()));
+    let update = app_state
+        .update_stream_inspector_draft(
+            &stream_id,
+            crate::StreamInspectorDraftField::OverallMoleFraction(ComponentId::new("component-a")),
+            "not-a-fraction",
+        )
+        .expect("expected invalid component draft update");
+
+    let outcome = app_state
+        .normalize_stream_inspector_composition_drafts(&stream_id, timestamp(42))
+        .expect("expected ignored composition normalize");
+
+    assert_eq!(outcome, None);
+    assert_eq!(app_state.workspace.document.revision, 0);
+    assert_eq!(app_state.workspace.command_history.len(), 0);
+    assert!(app_state.workspace.drafts.fields.contains_key(&update.key));
+}
+
+#[test]
 fn updating_stream_inspector_composition_draft_rejects_unknown_component() {
     let document = inspector_focus_document();
     let mut app_state = AppState::new(document);

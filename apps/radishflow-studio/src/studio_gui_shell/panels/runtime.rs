@@ -812,6 +812,14 @@ impl ReadyAppState {
                     self.dispatch_inspector_field_draft_batch_commit(command_id.clone());
                 }
             }
+            if let Some(command_id) = detail.property_composition_normalize_command_id.as_ref() {
+                if ui
+                    .small_button(self.locale.text(ShellText::InspectorNormalizeComposition))
+                    .clicked()
+                {
+                    self.dispatch_inspector_composition_normalize(command_id.clone());
+                }
+            }
             egui::Grid::new(format!("inspector-fields:{}", detail.target.command_id))
                 .num_columns(5)
                 .spacing([8.0, 3.0])

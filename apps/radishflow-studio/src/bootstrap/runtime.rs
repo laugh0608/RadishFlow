@@ -11,8 +11,8 @@ use crate::{
     dispatch_entitlement_session_event_with_control_plane,
     dispatch_run_panel_intent_with_auth_cache, dispatch_run_panel_primary_action_with_auth_cache,
     dispatch_run_panel_widget_action_with_auth_cache, focus_inspector_target,
-    snapshot_entitlement_session_driver_state, snapshot_entitlement_session_schedule,
-    snapshot_run_panel_driver_state, update_inspector_draft,
+    normalize_inspector_composition, snapshot_entitlement_session_driver_state,
+    snapshot_entitlement_session_schedule, snapshot_run_panel_driver_state, update_inspector_draft,
 };
 use rf_store::{StoredAuthCacheIndex, read_project_file};
 use rf_types::{RfError, RfResult};
@@ -218,6 +218,12 @@ fn dispatch_bootstrap_trigger(
         StudioBootstrapTrigger::InspectorDraftBatchCommit(command) => {
             let outcome = commit_inspector_drafts(session.app_state, command.clone())?;
             Ok(StudioBootstrapDispatch::InspectorDraftBatchCommit(outcome))
+        }
+        StudioBootstrapTrigger::InspectorCompositionNormalize(command) => {
+            let outcome = normalize_inspector_composition(session.app_state, command.clone())?;
+            Ok(StudioBootstrapDispatch::InspectorCompositionNormalize(
+                outcome,
+            ))
         }
         StudioBootstrapTrigger::DocumentHistory(command) => {
             let outcome = dispatch_document_history(session.app_state, *command)?;

@@ -488,6 +488,77 @@ fn gui_driver_routes_inspector_draft_batch_commit_through_driver_boundary() {
 }
 
 #[test]
+fn gui_driver_routes_composition_normalize_through_driver_boundary() {
+    let mut driver = StudioGuiDriver::new(&lease_expiring_config()).expect("expected driver");
+    driver
+        .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+        .expect("expected open dispatch");
+    driver
+        .dispatch_event(StudioGuiEvent::UiCommandRequested {
+            command_id: "inspector.focus_stream:stream-feed".to_string(),
+        })
+        .expect("expected inspector focus dispatch");
+    let update = driver
+        .dispatch_event(StudioGuiEvent::InspectorFieldDraftUpdateRequested {
+            command_id:
+                "inspector.update_stream_draft:stream:stream-feed:overall_mole_fraction:component-a"
+                    .to_string(),
+            raw_value: "0.25".to_string(),
+        })
+        .expect("expected composition draft update");
+    let normalize_command_id = update
+        .window
+        .runtime
+        .active_inspector_detail
+        .as_ref()
+        .and_then(|detail| detail.property_composition_normalize_command_id.clone())
+        .expect("expected composition normalize command id");
+
+    let dispatch = driver
+        .dispatch_event(StudioGuiEvent::InspectorCompositionNormalizeRequested {
+            command_id: normalize_command_id,
+        })
+        .expect("expected composition normalize dispatch");
+
+    match dispatch.outcome {
+        StudioGuiDriverOutcome::HostCommand(
+            StudioGuiHostCommandOutcome::InspectorCompositionNormalized(normalized),
+        ) => {
+            assert_eq!(normalized.target_window_id, 1);
+            match &normalized.effects.runtime_report.dispatch {
+                crate::StudioRuntimeDispatch::InspectorCompositionNormalize(outcome) => {
+                    assert!(outcome.applied);
+                    assert_eq!(outcome.document_revision, 1);
+                    assert_eq!(outcome.command_history_len, 1);
+                    assert!(outcome.committed_keys.iter().any(|key| {
+                        key == "stream:stream-feed:overall_mole_fraction:component-a"
+                    }));
+                }
+                other => {
+                    panic!("expected inspector composition normalize dispatch, got {other:?}")
+                }
+            }
+        }
+        other => panic!("expected inspector composition normalize outcome, got {other:?}"),
+    }
+
+    let detail = dispatch
+        .window
+        .runtime
+        .active_inspector_detail
+        .as_ref()
+        .expect("expected inspector detail");
+    assert!(detail.property_composition_normalize_command_id.is_none());
+    assert!(
+        detail
+            .property_fields
+            .iter()
+            .filter(|field| field.key.contains(":overall_mole_fraction:"))
+            .all(|field| !field.is_dirty && field.commit_command_id.is_none())
+    );
+}
+
+#[test]
 fn gui_driver_routes_document_history_commands_through_command_surface() {
     let mut driver = StudioGuiDriver::new(&synced_workspace_config()).expect("expected driver");
     driver

@@ -217,6 +217,9 @@ impl StudioGuiHost {
             StudioGuiHostCommand::DispatchInspectorDraftBatchCommit { command_id } => self
                 .dispatch_inspector_draft_batch_commit(&command_id)
                 .map(StudioGuiHostCommandOutcome::InspectorDraftBatchCommitted),
+            StudioGuiHostCommand::DispatchInspectorCompositionNormalize { command_id } => self
+                .dispatch_inspector_composition_normalize(&command_id)
+                .map(StudioGuiHostCommandOutcome::InspectorCompositionNormalized),
             StudioGuiHostCommand::QueryWindowDropTarget { window_id, query } => self
                 .query_window_drop_target(window_id, query)
                 .map(StudioGuiHostCommandOutcome::WindowDropTargetQueried),
@@ -431,6 +434,7 @@ fn active_inspector_detail_from_controller(
                 ],
                 property_fields: Vec::new(),
                 property_batch_commit_command_id: None,
+                property_composition_normalize_command_id: None,
                 unit_ports: unit
                     .ports
                     .iter()
@@ -474,6 +478,11 @@ fn active_inspector_detail_from_controller(
                     stream,
                     &property_fields,
                 ),
+                property_composition_normalize_command_id:
+                    stream_property_composition_normalize_command_id(
+                        stream,
+                        controller.inspector_drafts(),
+                    ),
                 property_fields,
                 unit_ports: Vec::new(),
             })
@@ -649,6 +658,49 @@ fn stream_property_batch_commit_command_id(
         .count();
     (committable_field_count > 1)
         .then(|| crate::inspector_draft_batch_commit_command_id(stream.id.as_str()))
+}
+
+fn stream_property_composition_normalize_command_id(
+    stream: &rf_model::MaterialStreamState,
+    drafts: &rf_ui::InspectorDraftState,
+) -> Option<String> {
+    if stream.overall_mole_fractions.is_empty() {
+        return None;
+    }
+
+    let mut has_dirty_composition = false;
+    let mut sum = 0.0;
+    for (component_id, original_value) in &stream.overall_mole_fractions {
+        let key = rf_ui::stream_inspector_draft_key(
+            &stream.id,
+            &rf_ui::StreamInspectorDraftField::OverallMoleFraction(component_id.clone()),
+        );
+        let value = match drafts.fields.get(&key) {
+            Some(rf_ui::DraftValue::Number(draft))
+                if draft.is_dirty && draft.validation == rf_ui::DraftValidationState::Valid =>
+            {
+                has_dirty_composition = true;
+                match draft.current.trim().parse::<f64>() {
+                    Ok(value) => value,
+                    Err(_) => return None,
+                }
+            }
+            Some(rf_ui::DraftValue::Number(draft))
+                if draft.validation == rf_ui::DraftValidationState::Invalid =>
+            {
+                return None;
+            }
+            Some(_) => return None,
+            None => *original_value,
+        };
+        if !value.is_finite() || value < 0.0 {
+            return None;
+        }
+        sum += value;
+    }
+
+    (sum.is_finite() && sum > 0.0 && (has_dirty_composition || (sum - 1.0).abs() > 1e-9))
+        .then(|| crate::inspector_composition_normalize_command_id(stream.id.as_str()))
 }
 
 fn format_field_number(value: f64) -> String {

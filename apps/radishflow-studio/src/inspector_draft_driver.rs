@@ -4,8 +4,8 @@ use rf_types::{RfError, RfResult};
 use rf_ui::{AppState, InspectorTarget};
 
 use crate::{
-    StudioInspectorDraftBatchCommitCommand, StudioInspectorDraftCommitCommand,
-    StudioInspectorDraftUpdateCommand,
+    StudioInspectorCompositionNormalizeCommand, StudioInspectorDraftBatchCommitCommand,
+    StudioInspectorDraftCommitCommand, StudioInspectorDraftUpdateCommand,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -29,6 +29,16 @@ pub struct InspectorDraftCommitOutcome {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct InspectorDraftBatchCommitOutcome {
     pub command: StudioInspectorDraftBatchCommitCommand,
+    pub applied: bool,
+    pub committed_keys: Vec<String>,
+    pub active_target: Option<InspectorTarget>,
+    pub document_revision: u64,
+    pub command_history_len: usize,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct InspectorCompositionNormalizeOutcome {
+    pub command: StudioInspectorCompositionNormalizeCommand,
     pub applied: bool,
     pub committed_keys: Vec<String>,
     pub active_target: Option<InspectorTarget>,
@@ -122,6 +132,36 @@ pub fn commit_inspector_drafts_at(
     })
 }
 
+pub fn normalize_inspector_composition(
+    app_state: &mut AppState,
+    command: StudioInspectorCompositionNormalizeCommand,
+) -> RfResult<InspectorCompositionNormalizeOutcome> {
+    normalize_inspector_composition_at(app_state, command, SystemTime::now())
+}
+
+pub fn normalize_inspector_composition_at(
+    app_state: &mut AppState,
+    command: StudioInspectorCompositionNormalizeCommand,
+    changed_at: rf_ui::DateTimeUtc,
+) -> RfResult<InspectorCompositionNormalizeOutcome> {
+    let stream_id = rf_types::StreamId::new(command.stream_id.clone());
+    let result = app_state.normalize_stream_inspector_composition_drafts(&stream_id, changed_at)?;
+    let committed_keys = result
+        .as_ref()
+        .map(|result| result.keys.clone())
+        .unwrap_or_default();
+    let applied = result.is_some();
+
+    Ok(InspectorCompositionNormalizeOutcome {
+        command,
+        applied,
+        committed_keys,
+        active_target: app_state.workspace.drafts.active_target.clone(),
+        document_revision: app_state.workspace.document.revision,
+        command_history_len: app_state.workspace.command_history.len(),
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use rf_model::{Flowsheet, MaterialStreamState};
@@ -132,8 +172,9 @@ mod tests {
     };
 
     use crate::{
-        StudioInspectorDraftBatchCommitCommand, StudioInspectorDraftCommitCommand,
-        StudioInspectorDraftUpdateCommand, commit_inspector_draft_at, commit_inspector_drafts_at,
+        StudioInspectorCompositionNormalizeCommand, StudioInspectorDraftBatchCommitCommand,
+        StudioInspectorDraftCommitCommand, StudioInspectorDraftUpdateCommand,
+        commit_inspector_draft_at, commit_inspector_drafts_at, normalize_inspector_composition_at,
         update_inspector_draft,
     };
 
@@ -402,5 +443,66 @@ mod tests {
                 .overall_mole_fractions[&ComponentId::new("component-a")],
             0.25
         );
+    }
+
+    #[test]
+    fn inspector_draft_driver_normalizes_composition_drafts_as_one_history_entry() {
+        let mut flowsheet = Flowsheet::new("demo");
+        flowsheet
+            .insert_stream(MaterialStreamState::from_tpzf(
+                "stream-feed",
+                "Feed stream",
+                298.15,
+                101_325.0,
+                1.0,
+                [
+                    (ComponentId::new("component-a"), 0.4),
+                    (ComponentId::new("component-b"), 0.6),
+                ]
+                .into_iter()
+                .collect(),
+            ))
+            .expect("expected stream insert");
+        let mut app_state = AppState::new(FlowsheetDocument::new(
+            flowsheet,
+            DocumentMetadata::new("doc", "Demo", std::time::UNIX_EPOCH),
+        ));
+        app_state.focus_inspector_target(InspectorTarget::Stream(StreamId::new("stream-feed")));
+        update_inspector_draft(
+            &mut app_state,
+            StudioInspectorDraftUpdateCommand::new(
+                "stream:stream-feed:overall_mole_fraction:component-a",
+                "0.25",
+            ),
+        )
+        .expect("expected composition draft update");
+
+        let outcome = normalize_inspector_composition_at(
+            &mut app_state,
+            StudioInspectorCompositionNormalizeCommand::new("stream-feed"),
+            std::time::UNIX_EPOCH,
+        )
+        .expect("expected composition normalize");
+
+        assert!(outcome.applied);
+        assert_eq!(outcome.document_revision, 1);
+        assert_eq!(outcome.command_history_len, 1);
+        assert_eq!(
+            outcome.committed_keys,
+            vec![
+                "stream:stream-feed:overall_mole_fraction:component-a".to_string(),
+                "stream:stream-feed:overall_mole_fraction:component-b".to_string(),
+            ]
+        );
+        let stream = &app_state.workspace.document.flowsheet.streams[&StreamId::new("stream-feed")];
+        assert_eq!(
+            stream.overall_mole_fractions[&ComponentId::new("component-a")],
+            0.25 / 0.85
+        );
+        assert_eq!(
+            stream.overall_mole_fractions[&ComponentId::new("component-b")],
+            0.6 / 0.85
+        );
+        assert!(app_state.workspace.drafts.fields.is_empty());
     }
 }

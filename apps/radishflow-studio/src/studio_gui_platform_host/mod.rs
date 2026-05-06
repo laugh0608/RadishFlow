@@ -1227,6 +1227,12 @@ fn format_platform_dispatch_activity(dispatch: &StudioGuiPlatformDispatch) -> St
             dispatch.target_window_id
         ),
         StudioGuiDriverOutcome::HostCommand(
+            crate::StudioGuiHostCommandOutcome::InspectorCompositionNormalized(dispatch),
+        ) => format!(
+            "inspector composition normalize #{}",
+            dispatch.target_window_id
+        ),
+        StudioGuiDriverOutcome::HostCommand(
             crate::StudioGuiHostCommandOutcome::WindowDropTargetQueried(result),
         ) => format!("drop query {:?}", result.query),
         StudioGuiDriverOutcome::HostCommand(

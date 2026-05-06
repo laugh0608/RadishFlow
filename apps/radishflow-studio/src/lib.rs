@@ -132,9 +132,10 @@ pub use entitlement_session_host_runtime::{
     EntitlementSessionHostRuntimeOutput, EntitlementSessionHostTimerEffect,
 };
 pub use inspector_draft_driver::{
-    InspectorDraftBatchCommitOutcome, InspectorDraftCommitOutcome, InspectorDraftUpdateOutcome,
-    commit_inspector_draft, commit_inspector_draft_at, commit_inspector_drafts,
-    commit_inspector_drafts_at, update_inspector_draft,
+    InspectorCompositionNormalizeOutcome, InspectorDraftBatchCommitOutcome,
+    InspectorDraftCommitOutcome, InspectorDraftUpdateOutcome, commit_inspector_draft,
+    commit_inspector_draft_at, commit_inspector_drafts, commit_inspector_drafts_at,
+    normalize_inspector_composition, normalize_inspector_composition_at, update_inspector_draft,
 };
 pub use inspector_target_driver::{InspectorTargetFocusOutcome, focus_inspector_target};
 pub use property_package_download::{
@@ -291,11 +292,12 @@ pub use studio_gui_window_model::{
     StudioGuiWindowUnitExecutionResultModel,
 };
 pub use studio_inspector_draft_command::{
-    StudioInspectorDraftBatchCommitCommand, StudioInspectorDraftCommitCommand,
-    StudioInspectorDraftUpdateCommand, inspector_draft_batch_commit_command_from_id,
-    inspector_draft_batch_commit_command_id, inspector_draft_commit_command_from_id,
-    inspector_draft_commit_command_id, inspector_draft_update_command_from_id,
-    inspector_draft_update_command_id,
+    StudioInspectorCompositionNormalizeCommand, StudioInspectorDraftBatchCommitCommand,
+    StudioInspectorDraftCommitCommand, StudioInspectorDraftUpdateCommand,
+    inspector_composition_normalize_command_from_id, inspector_composition_normalize_command_id,
+    inspector_draft_batch_commit_command_from_id, inspector_draft_batch_commit_command_id,
+    inspector_draft_commit_command_from_id, inspector_draft_commit_command_id,
+    inspector_draft_update_command_from_id, inspector_draft_update_command_id,
 };
 pub use studio_inspector_target_command::{
     inspector_target_command_id, inspector_target_from_command_id,
