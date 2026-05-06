@@ -226,6 +226,9 @@ impl StudioGuiHost {
             StudioGuiHostCommand::DispatchInspectorCompositionNormalize { command_id } => self
                 .dispatch_inspector_composition_normalize(&command_id)
                 .map(StudioGuiHostCommandOutcome::InspectorCompositionNormalized),
+            StudioGuiHostCommand::DispatchInspectorCompositionComponentAdd { command_id } => self
+                .dispatch_inspector_composition_component_add(&command_id)
+                .map(StudioGuiHostCommandOutcome::InspectorCompositionComponentAdded),
             StudioGuiHostCommand::QueryWindowDropTarget { window_id, query } => self
                 .query_window_drop_target(window_id, query)
                 .map(StudioGuiHostCommandOutcome::WindowDropTargetQueried),
@@ -444,6 +447,7 @@ fn active_inspector_detail_from_controller(
                 property_batch_commit_command_id: None,
                 property_batch_discard_command_id: None,
                 property_composition_normalize_command_id: None,
+                property_composition_component_actions: Vec::new(),
                 unit_ports: unit
                     .ports
                     .iter()
@@ -469,6 +473,8 @@ fn active_inspector_detail_from_controller(
                     stream,
                     controller.inspector_drafts(),
                 );
+            let property_composition_component_actions =
+                stream_property_composition_component_actions(stream, flowsheet);
             let property_notices =
                 stream_property_notices(stream, controller.inspector_drafts(), &property_fields);
             Some(StudioGuiInspectorTargetDetailSnapshot {
@@ -503,6 +509,7 @@ fn active_inspector_detail_from_controller(
                 property_notices,
                 property_composition_summary,
                 property_composition_normalize_command_id,
+                property_composition_component_actions,
                 property_fields,
                 unit_ports: Vec::new(),
             })
@@ -569,6 +576,27 @@ fn stream_property_fields(
             }),
     )
     .collect()
+}
+
+fn stream_property_composition_component_actions(
+    stream: &rf_model::MaterialStreamState,
+    flowsheet: &rf_model::Flowsheet,
+) -> Vec<crate::StudioGuiInspectorCompositionComponentActionSnapshot> {
+    flowsheet
+        .components
+        .values()
+        .filter(|component| !stream.overall_mole_fractions.contains_key(&component.id))
+        .map(
+            |component| crate::StudioGuiInspectorCompositionComponentActionSnapshot {
+                component_id: component.id.as_str().to_string(),
+                component_name: component.name.clone(),
+                command_id: crate::inspector_composition_component_add_command_id(
+                    stream.id.as_str(),
+                    component.id.as_str(),
+                ),
+            },
+        )
+        .collect()
 }
 
 fn inspector_text_field(

@@ -6,9 +6,10 @@ use crate::{
     EntitlementSessionPanelDriverOutcome, EntitlementSessionPolicy, EntitlementSessionRuntime,
     EntitlementSessionState, RunPanelDriverOutcome, StudioAppAuthCacheContext,
     StudioAppCommandOutcome, StudioAppMutableAuthCacheContext, WorkspaceControlActionOutcome,
-    apply_run_panel_recovery_action, commit_inspector_draft, commit_inspector_drafts,
-    discard_inspector_draft, discard_inspector_drafts, dispatch_document_history,
-    dispatch_document_lifecycle, dispatch_entitlement_session_event_with_control_plane,
+    add_inspector_composition_component, apply_run_panel_recovery_action, commit_inspector_draft,
+    commit_inspector_drafts, discard_inspector_draft, discard_inspector_drafts,
+    dispatch_document_history, dispatch_document_lifecycle,
+    dispatch_entitlement_session_event_with_control_plane,
     dispatch_run_panel_intent_with_auth_cache, dispatch_run_panel_primary_action_with_auth_cache,
     dispatch_run_panel_widget_action_with_auth_cache, focus_inspector_target,
     normalize_inspector_composition, snapshot_entitlement_session_driver_state,
@@ -230,6 +231,12 @@ fn dispatch_bootstrap_trigger(
         StudioBootstrapTrigger::InspectorCompositionNormalize(command) => {
             let outcome = normalize_inspector_composition(session.app_state, command.clone())?;
             Ok(StudioBootstrapDispatch::InspectorCompositionNormalize(
+                outcome,
+            ))
+        }
+        StudioBootstrapTrigger::InspectorCompositionComponentAdd(command) => {
+            let outcome = add_inspector_composition_component(session.app_state, command.clone())?;
+            Ok(StudioBootstrapDispatch::InspectorCompositionComponentAdd(
                 outcome,
             ))
         }

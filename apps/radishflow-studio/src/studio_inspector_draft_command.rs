@@ -4,6 +4,7 @@ const COMMIT_STREAM_DRAFTS_PREFIX: &str = "inspector.commit_stream_drafts:";
 const DISCARD_STREAM_DRAFT_PREFIX: &str = "inspector.discard_stream_draft:";
 const DISCARD_STREAM_DRAFTS_PREFIX: &str = "inspector.discard_stream_drafts:";
 const NORMALIZE_STREAM_COMPOSITION_PREFIX: &str = "inspector.normalize_stream_composition:";
+const ADD_STREAM_COMPOSITION_COMPONENT_PREFIX: &str = "inspector.add_stream_composition_component:";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StudioInspectorDraftUpdateCommand {
@@ -34,6 +35,12 @@ pub struct StudioInspectorDraftBatchDiscardCommand {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StudioInspectorCompositionNormalizeCommand {
     pub stream_id: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioInspectorCompositionComponentAddCommand {
+    pub stream_id: String,
+    pub component_id: String,
 }
 
 impl StudioInspectorDraftUpdateCommand {
@@ -85,6 +92,15 @@ impl StudioInspectorCompositionNormalizeCommand {
     }
 }
 
+impl StudioInspectorCompositionComponentAddCommand {
+    pub fn new(stream_id: impl Into<String>, component_id: impl Into<String>) -> Self {
+        Self {
+            stream_id: stream_id.into(),
+            component_id: component_id.into(),
+        }
+    }
+}
+
 pub fn inspector_draft_update_command_id(draft_key: &str) -> String {
     format!("{UPDATE_STREAM_DRAFT_PREFIX}{draft_key}")
 }
@@ -107,6 +123,13 @@ pub fn inspector_draft_batch_discard_command_id(stream_id: &str) -> String {
 
 pub fn inspector_composition_normalize_command_id(stream_id: &str) -> String {
     format!("{NORMALIZE_STREAM_COMPOSITION_PREFIX}stream:{stream_id}")
+}
+
+pub fn inspector_composition_component_add_command_id(
+    stream_id: &str,
+    component_id: &str,
+) -> String {
+    format!("{ADD_STREAM_COMPOSITION_COMPONENT_PREFIX}stream:{stream_id}:component:{component_id}")
 }
 
 pub fn inspector_draft_update_command_from_id(
@@ -167,9 +190,21 @@ pub fn inspector_composition_normalize_command_from_id(
         .map(StudioInspectorCompositionNormalizeCommand::new)
 }
 
+pub fn inspector_composition_component_add_command_from_id(
+    command_id: &str,
+) -> Option<StudioInspectorCompositionComponentAddCommand> {
+    let target = command_id.strip_prefix(ADD_STREAM_COMPOSITION_COMPONENT_PREFIX)?;
+    let (stream_id, component_id) = target.split_once(":component:")?;
+    let stream_id = stream_id.strip_prefix("stream:")?;
+    (!stream_id.is_empty() && !component_id.is_empty())
+        .then(|| StudioInspectorCompositionComponentAddCommand::new(stream_id, component_id))
+}
+
 #[cfg(test)]
 mod tests {
     use crate::{
+        inspector_composition_component_add_command_from_id,
+        inspector_composition_component_add_command_id,
         inspector_composition_normalize_command_from_id,
         inspector_composition_normalize_command_id, inspector_draft_batch_commit_command_from_id,
         inspector_draft_batch_commit_command_id, inspector_draft_batch_discard_command_from_id,
@@ -345,6 +380,44 @@ mod tests {
         assert_eq!(
             inspector_composition_normalize_command_from_id(
                 "inspector.commit_stream_drafts:stream:stream-feed"
+            ),
+            None
+        );
+    }
+
+    #[test]
+    fn inspector_composition_component_add_command_round_trips_stream_and_component() {
+        let command_id =
+            inspector_composition_component_add_command_id("stream-feed", "component-c");
+
+        let command = inspector_composition_component_add_command_from_id(&command_id)
+            .expect("expected component add command");
+
+        assert_eq!(
+            command_id,
+            "inspector.add_stream_composition_component:stream:stream-feed:component:component-c"
+        );
+        assert_eq!(command.stream_id, "stream-feed");
+        assert_eq!(command.component_id, "component-c");
+    }
+
+    #[test]
+    fn inspector_composition_component_add_command_rejects_unknown_or_empty_command_id() {
+        assert_eq!(
+            inspector_composition_component_add_command_from_id(
+                "inspector.add_stream_composition_component:stream:stream-feed:component:"
+            ),
+            None
+        );
+        assert_eq!(
+            inspector_composition_component_add_command_from_id(
+                "inspector.add_stream_composition_component:stream::component:component-c"
+            ),
+            None
+        );
+        assert_eq!(
+            inspector_composition_component_add_command_from_id(
+                "inspector.normalize_stream_composition:stream:stream-feed"
             ),
             None
         );

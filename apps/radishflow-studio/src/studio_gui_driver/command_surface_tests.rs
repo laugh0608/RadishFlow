@@ -767,6 +767,95 @@ fn gui_driver_routes_composition_normalize_through_driver_boundary() {
 }
 
 #[test]
+fn gui_driver_routes_composition_component_add_through_controlled_selector_boundary() {
+    let timestamp = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .expect("expected current timestamp")
+        .as_nanos();
+    let project_path = std::env::temp_dir().join(format!(
+        "radishflow-studio-composition-component-add-{timestamp}.rfproj.json"
+    ));
+    let project = include_str!("../../../../examples/flowsheets/feed-heater-flash.rfproj.json")
+        .replacen(
+            "        \"component-b\": {\n          \"id\": \"component-b\",\n          \"name\": \"Component B\",\n          \"formula\": null\n        }",
+            "        \"component-b\": {\n          \"id\": \"component-b\",\n          \"name\": \"Component B\",\n          \"formula\": null\n        },\n        \"component-c\": {\n          \"id\": \"component-c\",\n          \"name\": \"Component C\",\n          \"formula\": null\n        }",
+            1,
+        );
+    fs::write(&project_path, project).expect("expected project with extra component");
+    let mut driver = StudioGuiDriver::new(&StudioRuntimeConfig {
+        project_path: project_path.clone(),
+        ..lease_expiring_config()
+    })
+    .expect("expected driver");
+    driver
+        .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+        .expect("expected open dispatch");
+
+    let focused = driver
+        .dispatch_event(StudioGuiEvent::UiCommandRequested {
+            command_id: "inspector.focus_stream:stream-feed".to_string(),
+        })
+        .expect("expected stream focus dispatch");
+    let action = focused
+        .window
+        .runtime
+        .active_inspector_detail
+        .as_ref()
+        .expect("expected active stream inspector")
+        .property_composition_component_actions
+        .iter()
+        .find(|action| action.component_id == "component-c")
+        .cloned()
+        .expect("expected addable component-c action");
+    assert_eq!(
+        action.action.command_id,
+        "inspector.add_stream_composition_component:stream:stream-feed:component:component-c"
+    );
+
+    let dispatch = driver
+        .dispatch_event(StudioGuiEvent::InspectorCompositionComponentAddRequested {
+            command_id: action.action.command_id,
+        })
+        .expect("expected composition component add dispatch");
+
+    match dispatch.outcome {
+        StudioGuiDriverOutcome::HostCommand(
+            StudioGuiHostCommandOutcome::InspectorCompositionComponentAdded(added),
+        ) => match &added.effects.runtime_report.dispatch {
+            crate::StudioRuntimeDispatch::InspectorCompositionComponentAdd(outcome) => {
+                assert!(outcome.applied);
+                assert_eq!(outcome.document_revision, 1);
+                assert_eq!(outcome.command_history_len, 1);
+                assert_eq!(
+                    outcome.added_key.as_deref(),
+                    Some("stream:stream-feed:overall_mole_fraction:component-c")
+                );
+            }
+            other => panic!("expected inspector composition component add dispatch, got {other:?}"),
+        },
+        other => panic!("expected inspector composition component add outcome, got {other:?}"),
+    }
+
+    let detail = dispatch
+        .window
+        .runtime
+        .active_inspector_detail
+        .as_ref()
+        .expect("expected stream inspector detail after add");
+    assert!(detail.property_composition_component_actions.is_empty());
+    assert!(
+        detail.property_fields.iter().any(|field| {
+            field.key == "stream:stream-feed:overall_mole_fraction:component-c"
+                && field.current_value == "0"
+                && field.status_label == "Synced"
+        }),
+        "expected component-c to become an explicit zero-fraction stream composition field"
+    );
+
+    let _ = fs::remove_file(project_path);
+}
+
+#[test]
 fn gui_driver_surfaces_invalid_stream_draft_notice_without_private_shell_state() {
     let mut driver = StudioGuiDriver::new(&lease_expiring_config()).expect("expected driver");
     driver

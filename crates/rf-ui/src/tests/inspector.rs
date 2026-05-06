@@ -413,6 +413,76 @@ fn normalizing_stream_inspector_composition_drafts_preserves_invalid_drafts() {
 }
 
 #[test]
+fn adding_stream_inspector_composition_component_uses_flowsheet_component_list() {
+    let mut document = inspector_focus_document();
+    document
+        .flowsheet
+        .insert_component(rf_model::Component::new("component-c", "Component C"))
+        .expect("expected component-c insert");
+    let mut app_state = AppState::new(document);
+    let stream_id = StreamId::new("stream-feed");
+    let component_id = ComponentId::new("component-c");
+    app_state.focus_inspector_target(crate::InspectorTarget::Stream(stream_id.clone()));
+
+    let outcome = app_state
+        .add_stream_inspector_composition_component(&stream_id, component_id.clone(), timestamp(42))
+        .expect("expected component add")
+        .expect("expected applied component add");
+
+    assert_eq!(outcome.revision, 1);
+    assert_eq!(
+        outcome.key,
+        "stream:stream-feed:overall_mole_fraction:component-c"
+    );
+    assert_eq!(
+        outcome.command,
+        DocumentCommand::SetStreamSpecification {
+            stream_id: stream_id.clone(),
+            field: "overall_mole_fraction:component-c".to_string(),
+            value: CommandValue::Number(0.0),
+        }
+    );
+    assert_eq!(
+        app_state.workspace.document.flowsheet.streams[&stream_id].overall_mole_fractions
+            [&component_id],
+        0.0
+    );
+    assert_eq!(app_state.workspace.command_history.len(), 1);
+    assert_eq!(
+        app_state.workspace.solve_session.pending_reason,
+        Some(SolvePendingReason::DocumentRevisionAdvanced)
+    );
+}
+
+#[test]
+fn adding_stream_inspector_composition_component_rejects_unknown_or_existing_component() {
+    let document = inspector_focus_document();
+    let mut app_state = AppState::new(document);
+    let stream_id = StreamId::new("stream-feed");
+    app_state.focus_inspector_target(crate::InspectorTarget::Stream(stream_id.clone()));
+
+    let unknown = app_state
+        .add_stream_inspector_composition_component(
+            &stream_id,
+            ComponentId::new("missing-component"),
+            timestamp(42),
+        )
+        .expect("expected ignored unknown component");
+    let existing = app_state
+        .add_stream_inspector_composition_component(
+            &stream_id,
+            ComponentId::new("component-a"),
+            timestamp(43),
+        )
+        .expect("expected ignored existing component");
+
+    assert_eq!(unknown, None);
+    assert_eq!(existing, None);
+    assert_eq!(app_state.workspace.document.revision, 0);
+    assert!(app_state.workspace.command_history.is_empty());
+}
+
+#[test]
 fn updating_stream_inspector_composition_draft_rejects_unknown_component() {
     let document = inspector_focus_document();
     let mut app_state = AppState::new(document);

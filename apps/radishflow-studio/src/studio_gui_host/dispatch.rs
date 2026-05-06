@@ -380,6 +380,28 @@ impl StudioGuiHost {
         Ok(dispatch_from_controller(dispatch, self.canvas_state()))
     }
 
+    pub fn dispatch_inspector_composition_component_add(
+        &mut self,
+        command_id: &str,
+    ) -> RfResult<StudioGuiHostDispatch> {
+        let command = crate::inspector_composition_component_add_command_from_id(command_id)
+            .ok_or_else(|| {
+                RfError::invalid_input(format!(
+                    "inspector composition component add command `{command_id}` is not supported"
+                ))
+            })?;
+        let target_window_id = self.preferred_target_window_id().ok_or_else(|| {
+            RfError::invalid_input(
+                "open a studio window before adding stream composition component",
+            )
+        })?;
+        let dispatch = self.controller.dispatch_window_trigger(
+            target_window_id,
+            StudioRuntimeTrigger::InspectorCompositionComponentAdd(command),
+        )?;
+        Ok(dispatch_from_controller(dispatch, self.canvas_state()))
+    }
+
     pub(super) fn preferred_target_window_id(&self) -> Option<StudioWindowHostId> {
         self.state()
             .foreground_window_id

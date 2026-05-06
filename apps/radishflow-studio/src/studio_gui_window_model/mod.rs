@@ -209,6 +209,8 @@ pub struct StudioGuiWindowInspectorTargetDetailModel {
     pub property_batch_commit_command_id: Option<String>,
     pub property_batch_discard_command_id: Option<String>,
     pub property_composition_normalize_command_id: Option<String>,
+    pub property_composition_component_actions:
+        Vec<StudioGuiWindowInspectorCompositionComponentActionModel>,
     pub unit_ports: Vec<StudioGuiWindowInspectorTargetPortModel>,
     pub latest_unit_result: Option<StudioGuiWindowUnitExecutionResultModel>,
     pub latest_stream_result: Option<StudioGuiWindowStreamResultModel>,
@@ -248,6 +250,13 @@ pub struct StudioGuiWindowInspectorCompositionSummaryModel {
     pub current_sum_text: String,
     pub normalized_preview_text: String,
     pub status_label: &'static str,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioGuiWindowInspectorCompositionComponentActionModel {
+    pub component_id: String,
+    pub component_name: String,
+    pub action: StudioGuiWindowCommandActionModel,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -976,6 +985,11 @@ fn inspector_target_detail_model_from_snapshot(
         property_composition_normalize_command_id: detail
             .property_composition_normalize_command_id
             .clone(),
+        property_composition_component_actions: detail
+            .property_composition_component_actions
+            .iter()
+            .map(inspector_composition_component_action_model_from_snapshot)
+            .collect(),
         unit_ports: detail
             .unit_ports
             .iter()
@@ -1053,6 +1067,23 @@ fn inspector_composition_summary_model_from_snapshot(
         current_sum_text: summary.current_sum_text.clone(),
         normalized_preview_text: summary.normalized_preview_text.clone(),
         status_label: summary.status_label,
+    }
+}
+
+fn inspector_composition_component_action_model_from_snapshot(
+    action: &crate::StudioGuiInspectorCompositionComponentActionSnapshot,
+) -> StudioGuiWindowInspectorCompositionComponentActionModel {
+    StudioGuiWindowInspectorCompositionComponentActionModel {
+        component_id: action.component_id.clone(),
+        component_name: action.component_name.clone(),
+        action: StudioGuiWindowCommandActionModel {
+            label: format!("Add {}", action.component_name),
+            hover_text: format!(
+                "Add component `{}` to this stream composition with an explicit zero mole fraction",
+                action.component_id
+            ),
+            command_id: action.command_id.clone(),
+        },
     }
 }
 

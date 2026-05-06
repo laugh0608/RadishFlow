@@ -467,6 +467,15 @@ impl ReadyAppState {
         });
     }
 
+    pub(super) fn dispatch_inspector_composition_component_add(
+        &mut self,
+        command_id: impl Into<String>,
+    ) {
+        self.dispatch_event(StudioGuiEvent::InspectorCompositionComponentAddRequested {
+            command_id: command_id.into(),
+        });
+    }
+
     pub(super) fn dispatch_canvas_pending_edit_commit(&mut self, position: rf_ui::CanvasPoint) {
         match self
             .dispatch_event_result(StudioGuiEvent::CanvasPendingEditCommitRequested { position })

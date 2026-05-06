@@ -47,6 +47,8 @@ pub struct StudioGuiInspectorTargetDetailSnapshot {
     pub property_batch_commit_command_id: Option<String>,
     pub property_batch_discard_command_id: Option<String>,
     pub property_composition_normalize_command_id: Option<String>,
+    pub property_composition_component_actions:
+        Vec<StudioGuiInspectorCompositionComponentActionSnapshot>,
     pub unit_ports: Vec<StudioGuiInspectorTargetPortSnapshot>,
 }
 
@@ -81,6 +83,13 @@ pub struct StudioGuiInspectorCompositionSummarySnapshot {
     pub current_sum_text: String,
     pub normalized_preview_text: String,
     pub status_label: &'static str,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioGuiInspectorCompositionComponentActionSnapshot {
+    pub component_id: String,
+    pub component_name: String,
+    pub command_id: String,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

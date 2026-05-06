@@ -359,9 +359,9 @@ fn build_bootstrap_payload(
     package_id: &str,
 ) -> RfResult<StoredPropertyPackagePayload> {
     let components = flowsheet.components.values().collect::<Vec<_>>();
-    if components.len() != 2 {
+    if components.len() < 2 {
         return Err(RfError::invalid_input(format!(
-            "studio bootstrap expects exactly 2 flowsheet components, got {}",
+            "studio bootstrap expects at least 2 flowsheet components, got {}",
             components.len()
         )));
     }

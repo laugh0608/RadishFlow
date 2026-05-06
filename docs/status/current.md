@@ -24,6 +24,7 @@
 - `rf-thermo` / `rf-flash` 已补 MVP 常热容显热焓值；`Flash Drum` outlet 会传递 liquid / vapor / overall molar enthalpy。
 - `rf-thermo` / `rf-flash` 已收紧直接数值 API 的 mole fraction 输入契约，未归一组成会被拒绝；unit operation 层继续在调用 flash 前归一化文档流股组成。
 - Stream Inspector 已补正式 composition normalize / draft discard command surface，并展示当前组成总和、归一化预览与只读草稿提示；写回、归一化或丢弃草稿都必须由用户显式触发。
+- Stream Inspector 已补受控组分添加入口：只能从当前 flowsheet 已定义但流股组成尚未包含的组件中显式添加，已有组成非空时新增条目初始值为 `0.0`，不自动补偿其他组分。
 - Studio 运行入口现在会在存在未提交/无效 Inspector 草稿或文档流股总体组成未归一时通过既有 run panel notice 阻塞运行，不做隐式自动补偿。
 - 协作文档已新增 Docs 简约入口约束与代码规范专题文档：`docs/development/code-style.md`。
 

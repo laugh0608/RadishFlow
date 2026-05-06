@@ -132,12 +132,13 @@ pub use entitlement_session_host_runtime::{
     EntitlementSessionHostRuntimeOutput, EntitlementSessionHostTimerEffect,
 };
 pub use inspector_draft_driver::{
-    InspectorCompositionNormalizeOutcome, InspectorDraftBatchCommitOutcome,
-    InspectorDraftBatchDiscardOutcome, InspectorDraftCommitOutcome, InspectorDraftDiscardOutcome,
-    InspectorDraftUpdateOutcome, commit_inspector_draft, commit_inspector_draft_at,
-    commit_inspector_drafts, commit_inspector_drafts_at, discard_inspector_draft,
-    discard_inspector_drafts, normalize_inspector_composition, normalize_inspector_composition_at,
-    update_inspector_draft,
+    InspectorCompositionComponentAddOutcome, InspectorCompositionNormalizeOutcome,
+    InspectorDraftBatchCommitOutcome, InspectorDraftBatchDiscardOutcome,
+    InspectorDraftCommitOutcome, InspectorDraftDiscardOutcome, InspectorDraftUpdateOutcome,
+    add_inspector_composition_component, add_inspector_composition_component_at,
+    commit_inspector_draft, commit_inspector_draft_at, commit_inspector_drafts,
+    commit_inspector_drafts_at, discard_inspector_draft, discard_inspector_drafts,
+    normalize_inspector_composition, normalize_inspector_composition_at, update_inspector_draft,
 };
 pub use inspector_target_driver::{InspectorTargetFocusOutcome, focus_inspector_target};
 pub use property_package_download::{
@@ -251,6 +252,7 @@ pub use studio_gui_shortcut_router::{
     StudioGuiFocusContext, StudioGuiShortcutIgnoreReason, StudioGuiShortcutRoute, route_shortcut,
 };
 pub use studio_gui_snapshot::{
+    StudioGuiInspectorCompositionComponentActionSnapshot,
     StudioGuiInspectorCompositionSummarySnapshot, StudioGuiInspectorPropertyNoticeSnapshot,
     StudioGuiInspectorTargetDetailSnapshot, StudioGuiInspectorTargetFieldSnapshot,
     StudioGuiInspectorTargetFieldValidationSnapshot,
@@ -281,6 +283,7 @@ pub use studio_gui_window_model::{
     StudioGuiWindowDropPreviewOverlayModel, StudioGuiWindowDropPreviewState,
     StudioGuiWindowFailureDiagnosticDetailModel, StudioGuiWindowFailureDiagnosticPortTargetModel,
     StudioGuiWindowFailureResultModel, StudioGuiWindowHeaderModel,
+    StudioGuiWindowInspectorCompositionComponentActionModel,
     StudioGuiWindowInspectorCompositionSummaryModel, StudioGuiWindowInspectorPropertyNoticeModel,
     StudioGuiWindowInspectorTargetDetailModel, StudioGuiWindowInspectorTargetFieldModel,
     StudioGuiWindowInspectorTargetModel, StudioGuiWindowInspectorTargetPortModel,
@@ -296,9 +299,11 @@ pub use studio_gui_window_model::{
     StudioGuiWindowUnitExecutionResultModel,
 };
 pub use studio_inspector_draft_command::{
-    StudioInspectorCompositionNormalizeCommand, StudioInspectorDraftBatchCommitCommand,
-    StudioInspectorDraftBatchDiscardCommand, StudioInspectorDraftCommitCommand,
-    StudioInspectorDraftDiscardCommand, StudioInspectorDraftUpdateCommand,
+    StudioInspectorCompositionComponentAddCommand, StudioInspectorCompositionNormalizeCommand,
+    StudioInspectorDraftBatchCommitCommand, StudioInspectorDraftBatchDiscardCommand,
+    StudioInspectorDraftCommitCommand, StudioInspectorDraftDiscardCommand,
+    StudioInspectorDraftUpdateCommand, inspector_composition_component_add_command_from_id,
+    inspector_composition_component_add_command_id,
     inspector_composition_normalize_command_from_id, inspector_composition_normalize_command_id,
     inspector_draft_batch_commit_command_from_id, inspector_draft_batch_commit_command_id,
     inspector_draft_batch_discard_command_from_id, inspector_draft_batch_discard_command_id,

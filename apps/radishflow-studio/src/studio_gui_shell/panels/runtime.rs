@@ -868,6 +868,23 @@ impl ReadyAppState {
                     ),
                 );
             }
+            if !detail.property_composition_component_actions.is_empty() {
+                ui.add_space(4.0);
+                ui.horizontal_wrapped(|ui| {
+                    ui.small(egui::RichText::new("Add component").strong());
+                    for component_action in &detail.property_composition_component_actions {
+                        if ui
+                            .small_button(&component_action.action.label)
+                            .on_hover_text(&component_action.action.hover_text)
+                            .clicked()
+                        {
+                            self.dispatch_inspector_composition_component_add(
+                                component_action.action.command_id.clone(),
+                            );
+                        }
+                    }
+                });
+            }
             egui::Grid::new(format!("inspector-fields:{}", detail.target.command_id))
                 .num_columns(5)
                 .spacing([8.0, 3.0])

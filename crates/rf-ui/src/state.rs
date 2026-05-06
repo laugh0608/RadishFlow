@@ -309,6 +309,15 @@ pub struct StreamInspectorDraftBatchDiscardResult {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+pub struct StreamInspectorCompositionComponentAddResult {
+    pub key: String,
+    pub active_target: InspectorTarget,
+    pub component_id: ComponentId,
+    pub command: DocumentCommand,
+    pub revision: u64,
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub struct CanvasEditCommitResult {
     pub intent: CanvasEditIntent,
     pub command: DocumentCommand,
@@ -1208,6 +1217,64 @@ impl AppState {
         Ok(Some(StreamInspectorDraftBatchCommitResult {
             keys,
             active_target,
+            command,
+            revision,
+        }))
+    }
+
+    pub fn add_stream_inspector_composition_component(
+        &mut self,
+        stream_id: &StreamId,
+        component_id: ComponentId,
+        changed_at: DateTimeUtc,
+    ) -> RfResult<Option<StreamInspectorCompositionComponentAddResult>> {
+        let active_target = InspectorTarget::Stream(stream_id.clone());
+        if self.workspace.drafts.active_target.as_ref() != Some(&active_target) {
+            return Ok(None);
+        }
+
+        let Some(stream) = self.workspace.document.flowsheet.streams.get(stream_id) else {
+            return Ok(None);
+        };
+        if !self
+            .workspace
+            .document
+            .flowsheet
+            .components
+            .contains_key(&component_id)
+            || stream.overall_mole_fractions.contains_key(&component_id)
+        {
+            return Ok(None);
+        }
+
+        let initial_fraction = if stream.overall_mole_fractions.is_empty() {
+            1.0
+        } else {
+            0.0
+        };
+        let field = StreamInspectorDraftField::OverallMoleFraction(component_id.clone());
+        let key = stream_inspector_draft_key(stream_id, &field);
+        let command_value = CommandValue::Number(initial_fraction);
+        let mut next_flowsheet = self.workspace.document.flowsheet.clone();
+        apply_stream_specification_value(&mut next_flowsheet, stream_id, &field, &command_value)?;
+
+        let command = DocumentCommand::SetStreamSpecification {
+            stream_id: stream_id.clone(),
+            field: field.command_field(),
+            value: command_value,
+        };
+        let revision = self.workspace.commit_inspector_document_change(
+            command.clone(),
+            next_flowsheet,
+            changed_at,
+        );
+        self.workspace.drafts.fields.remove(&key);
+        self.refresh_run_panel_state();
+
+        Ok(Some(StreamInspectorCompositionComponentAddResult {
+            key,
+            active_target,
+            component_id,
             command,
             revision,
         }))

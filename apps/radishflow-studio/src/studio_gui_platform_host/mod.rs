@@ -1242,6 +1242,12 @@ fn format_platform_dispatch_activity(dispatch: &StudioGuiPlatformDispatch) -> St
             dispatch.target_window_id
         ),
         StudioGuiDriverOutcome::HostCommand(
+            crate::StudioGuiHostCommandOutcome::InspectorCompositionComponentAdded(dispatch),
+        ) => format!(
+            "inspector composition component add #{}",
+            dispatch.target_window_id
+        ),
+        StudioGuiDriverOutcome::HostCommand(
             crate::StudioGuiHostCommandOutcome::WindowDropTargetQueried(result),
         ) => format!("drop query {:?}", result.query),
         StudioGuiDriverOutcome::HostCommand(

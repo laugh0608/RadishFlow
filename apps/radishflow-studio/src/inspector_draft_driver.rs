@@ -4,9 +4,10 @@ use rf_types::{RfError, RfResult};
 use rf_ui::{AppState, InspectorTarget};
 
 use crate::{
-    StudioInspectorCompositionNormalizeCommand, StudioInspectorDraftBatchCommitCommand,
-    StudioInspectorDraftBatchDiscardCommand, StudioInspectorDraftCommitCommand,
-    StudioInspectorDraftDiscardCommand, StudioInspectorDraftUpdateCommand,
+    StudioInspectorCompositionComponentAddCommand, StudioInspectorCompositionNormalizeCommand,
+    StudioInspectorDraftBatchCommitCommand, StudioInspectorDraftBatchDiscardCommand,
+    StudioInspectorDraftCommitCommand, StudioInspectorDraftDiscardCommand,
+    StudioInspectorDraftUpdateCommand,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -62,6 +63,16 @@ pub struct InspectorCompositionNormalizeOutcome {
     pub command: StudioInspectorCompositionNormalizeCommand,
     pub applied: bool,
     pub committed_keys: Vec<String>,
+    pub active_target: Option<InspectorTarget>,
+    pub document_revision: u64,
+    pub command_history_len: usize,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct InspectorCompositionComponentAddOutcome {
+    pub command: StudioInspectorCompositionComponentAddCommand,
+    pub applied: bool,
+    pub added_key: Option<String>,
     pub active_target: Option<InspectorTarget>,
     pub document_revision: u64,
     pub command_history_len: usize,
@@ -230,9 +241,41 @@ pub fn normalize_inspector_composition_at(
     })
 }
 
+pub fn add_inspector_composition_component(
+    app_state: &mut AppState,
+    command: StudioInspectorCompositionComponentAddCommand,
+) -> RfResult<InspectorCompositionComponentAddOutcome> {
+    add_inspector_composition_component_at(app_state, command, SystemTime::now())
+}
+
+pub fn add_inspector_composition_component_at(
+    app_state: &mut AppState,
+    command: StudioInspectorCompositionComponentAddCommand,
+    changed_at: rf_ui::DateTimeUtc,
+) -> RfResult<InspectorCompositionComponentAddOutcome> {
+    let stream_id = rf_types::StreamId::new(command.stream_id.clone());
+    let component_id = rf_types::ComponentId::new(command.component_id.clone());
+    let result = app_state.add_stream_inspector_composition_component(
+        &stream_id,
+        component_id,
+        changed_at,
+    )?;
+    let added_key = result.as_ref().map(|result| result.key.clone());
+    let applied = result.is_some();
+
+    Ok(InspectorCompositionComponentAddOutcome {
+        command,
+        applied,
+        added_key,
+        active_target: app_state.workspace.drafts.active_target.clone(),
+        document_revision: app_state.workspace.document.revision,
+        command_history_len: app_state.workspace.command_history.len(),
+    })
+}
+
 #[cfg(test)]
 mod tests {
-    use rf_model::{Flowsheet, MaterialStreamState};
+    use rf_model::{Component, Flowsheet, MaterialStreamState};
     use rf_types::{ComponentId, StreamId};
     use rf_ui::{
         AppState, CommandValue, DocumentCommand, DocumentMetadata, FlowsheetDocument,
@@ -240,9 +283,10 @@ mod tests {
     };
 
     use crate::{
-        StudioInspectorCompositionNormalizeCommand, StudioInspectorDraftBatchCommitCommand,
-        StudioInspectorDraftBatchDiscardCommand, StudioInspectorDraftCommitCommand,
-        StudioInspectorDraftDiscardCommand, StudioInspectorDraftUpdateCommand,
+        StudioInspectorCompositionComponentAddCommand, StudioInspectorCompositionNormalizeCommand,
+        StudioInspectorDraftBatchCommitCommand, StudioInspectorDraftBatchDiscardCommand,
+        StudioInspectorDraftCommitCommand, StudioInspectorDraftDiscardCommand,
+        StudioInspectorDraftUpdateCommand, add_inspector_composition_component_at,
         commit_inspector_draft_at, commit_inspector_drafts_at, discard_inspector_draft,
         discard_inspector_drafts, normalize_inspector_composition_at, update_inspector_draft,
     };
@@ -647,5 +691,59 @@ mod tests {
             0.6 / 0.85
         );
         assert!(app_state.workspace.drafts.fields.is_empty());
+    }
+
+    #[test]
+    fn inspector_draft_driver_adds_composition_component_through_command_id_boundary() {
+        let mut flowsheet = Flowsheet::new("demo");
+        flowsheet
+            .insert_component(Component::new("component-a", "Component A"))
+            .expect("expected component-a insert");
+        flowsheet
+            .insert_component(Component::new("component-b", "Component B"))
+            .expect("expected component-b insert");
+        flowsheet
+            .insert_component(Component::new("component-c", "Component C"))
+            .expect("expected component-c insert");
+        flowsheet
+            .insert_stream(MaterialStreamState::from_tpzf(
+                "stream-feed",
+                "Feed stream",
+                298.15,
+                101_325.0,
+                1.0,
+                [
+                    (ComponentId::new("component-a"), 0.4),
+                    (ComponentId::new("component-b"), 0.6),
+                ]
+                .into_iter()
+                .collect(),
+            ))
+            .expect("expected stream insert");
+        let mut app_state = AppState::new(FlowsheetDocument::new(
+            flowsheet,
+            DocumentMetadata::new("doc", "Demo", std::time::UNIX_EPOCH),
+        ));
+        app_state.focus_inspector_target(InspectorTarget::Stream(StreamId::new("stream-feed")));
+
+        let outcome = add_inspector_composition_component_at(
+            &mut app_state,
+            StudioInspectorCompositionComponentAddCommand::new("stream-feed", "component-c"),
+            std::time::UNIX_EPOCH,
+        )
+        .expect("expected component add");
+
+        assert!(outcome.applied);
+        assert_eq!(outcome.document_revision, 1);
+        assert_eq!(outcome.command_history_len, 1);
+        assert_eq!(
+            outcome.added_key.as_deref(),
+            Some("stream:stream-feed:overall_mole_fraction:component-c")
+        );
+        assert_eq!(
+            app_state.workspace.document.flowsheet.streams[&StreamId::new("stream-feed")]
+                .overall_mole_fractions[&ComponentId::new("component-c")],
+            0.0
+        );
     }
 }
