@@ -22,6 +22,7 @@
 - Canvas placement 坐标已保存到 `<project>.rfstudio-layout.json` sidecar；离散 nudge 只更新 sidecar，不改项目文档、不进入 undo/redo。
 - Result Inspector 已补 stream-centric 与 unit-centric 两个消费面，可审阅当前快照内输入/输出流股、相结果、关联步骤和关联诊断。
 - `rf-thermo` / `rf-flash` 已补 MVP 常热容显热焓值；`Flash Drum` outlet 会传递 liquid / vapor / overall molar enthalpy。
+- `rf-thermo` / `rf-flash` 已收紧直接数值 API 的 mole fraction 输入契约，未归一组成会被拒绝；unit operation 层继续在调用 flash 前归一化文档流股组成。
 - 协作文档已新增 Docs 简约入口约束与代码规范专题文档：`docs/development/code-style.md`。
 
 ## 今天优先推进

@@ -445,4 +445,19 @@ mod tests {
                 .any(|phase| phase.label == PhaseLabel::Vapor)
         );
     }
+
+    #[test]
+    fn flash_solver_rejects_unnormalized_overall_mole_fractions() {
+        let pressure_pa = 100_000.0;
+        let provider = build_provider([2.0, 0.5], pressure_pa);
+        let solver = PlaceholderTpFlashSolver;
+        let input = TpFlashInput::new("stream-1", "Feed", 300.0, pressure_pa, 10.0, vec![0.5, 0.7]);
+
+        let error = solver
+            .flash(&provider, &input)
+            .expect_err("expected unnormalized overall mole fractions to be rejected");
+
+        assert_eq!(error.code().as_str(), "invalid_input");
+        assert!(error.message().contains("must sum to one"));
+    }
 }

@@ -11,6 +11,7 @@ use rf_store::{
 use rf_types::{ComponentId, PhaseLabel, RfError, RfResult};
 
 const REFERENCE_TEMPERATURE_K: f64 = 298.15;
+const MOLE_FRACTION_SUM_TOLERANCE: f64 = 1e-9;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct AntoineCoefficients {
@@ -168,6 +169,12 @@ impl ThermoSystem {
             return Err(RfError::invalid_input(
                 "mole fractions must sum to a positive finite value",
             ));
+        }
+
+        if (sum - 1.0).abs() > MOLE_FRACTION_SUM_TOLERANCE {
+            return Err(RfError::invalid_input(format!(
+                "mole fractions must sum to one within tolerance {MOLE_FRACTION_SUM_TOLERANCE}, received {sum}"
+            )));
         }
 
         Ok(())
@@ -693,6 +700,25 @@ mod tests {
 
         assert_eq!(error.code().as_str(), "thermo");
         assert!(error.message().contains("missing `liquid` heat capacity"));
+    }
+
+    #[test]
+    fn placeholder_provider_rejects_unnormalized_mole_fractions() {
+        let mut methane = ThermoComponent::new(ComponentId::new("methane"), "Methane");
+        methane.antoine = Some(AntoineCoefficients::new(50.0_f64.ln(), 0.0, 0.0));
+
+        let mut ethane = ThermoComponent::new(ComponentId::new("ethane"), "Ethane");
+        ethane.antoine = Some(AntoineCoefficients::new(25.0_f64.ln(), 0.0, 0.0));
+
+        let provider = PlaceholderThermoProvider::new(ThermoSystem::binary([methane, ethane]));
+        let state = ThermoState::new(300.0, 50_000.0, vec![0.4, 0.4]);
+
+        let error = provider
+            .estimate_k_values(&state)
+            .expect_err("expected unnormalized mole fractions to be rejected");
+
+        assert_eq!(error.code().as_str(), "invalid_input");
+        assert!(error.message().contains("must sum to one"));
     }
 
     #[test]
