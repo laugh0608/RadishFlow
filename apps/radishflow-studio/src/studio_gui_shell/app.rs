@@ -476,6 +476,17 @@ impl ReadyAppState {
         });
     }
 
+    pub(super) fn dispatch_inspector_composition_component_remove(
+        &mut self,
+        command_id: impl Into<String>,
+    ) {
+        self.dispatch_event(
+            StudioGuiEvent::InspectorCompositionComponentRemoveRequested {
+                command_id: command_id.into(),
+            },
+        );
+    }
+
     pub(super) fn dispatch_canvas_pending_edit_commit(&mut self, position: rf_ui::CanvasPoint) {
         match self
             .dispatch_event_result(StudioGuiEvent::CanvasPendingEditCommitRequested { position })

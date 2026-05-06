@@ -3,6 +3,7 @@ use std::time::SystemTime;
 use rf_types::{RfError, RfResult};
 use rf_ui::{AppState, InspectorTarget};
 
+use crate::StudioInspectorCompositionComponentRemoveCommand;
 use crate::{
     StudioInspectorCompositionComponentAddCommand, StudioInspectorCompositionNormalizeCommand,
     StudioInspectorDraftBatchCommitCommand, StudioInspectorDraftBatchDiscardCommand,
@@ -73,6 +74,16 @@ pub struct InspectorCompositionComponentAddOutcome {
     pub command: StudioInspectorCompositionComponentAddCommand,
     pub applied: bool,
     pub added_key: Option<String>,
+    pub active_target: Option<InspectorTarget>,
+    pub document_revision: u64,
+    pub command_history_len: usize,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct InspectorCompositionComponentRemoveOutcome {
+    pub command: StudioInspectorCompositionComponentRemoveCommand,
+    pub applied: bool,
+    pub removed_key: Option<String>,
     pub active_target: Option<InspectorTarget>,
     pub document_revision: u64,
     pub command_history_len: usize,
@@ -273,6 +284,38 @@ pub fn add_inspector_composition_component_at(
     })
 }
 
+pub fn remove_inspector_composition_component(
+    app_state: &mut AppState,
+    command: StudioInspectorCompositionComponentRemoveCommand,
+) -> RfResult<InspectorCompositionComponentRemoveOutcome> {
+    remove_inspector_composition_component_at(app_state, command, SystemTime::now())
+}
+
+pub fn remove_inspector_composition_component_at(
+    app_state: &mut AppState,
+    command: StudioInspectorCompositionComponentRemoveCommand,
+    changed_at: rf_ui::DateTimeUtc,
+) -> RfResult<InspectorCompositionComponentRemoveOutcome> {
+    let stream_id = rf_types::StreamId::new(command.stream_id.clone());
+    let component_id = rf_types::ComponentId::new(command.component_id.clone());
+    let result = app_state.remove_stream_inspector_composition_component(
+        &stream_id,
+        component_id,
+        changed_at,
+    )?;
+    let removed_key = result.as_ref().map(|result| result.key.clone());
+    let applied = result.is_some();
+
+    Ok(InspectorCompositionComponentRemoveOutcome {
+        command,
+        applied,
+        removed_key,
+        active_target: app_state.workspace.drafts.active_target.clone(),
+        document_revision: app_state.workspace.document.revision,
+        command_history_len: app_state.workspace.command_history.len(),
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use rf_model::{Component, Flowsheet, MaterialStreamState};
@@ -283,12 +326,15 @@ mod tests {
     };
 
     use crate::{
-        StudioInspectorCompositionComponentAddCommand, StudioInspectorCompositionNormalizeCommand,
-        StudioInspectorDraftBatchCommitCommand, StudioInspectorDraftBatchDiscardCommand,
-        StudioInspectorDraftCommitCommand, StudioInspectorDraftDiscardCommand,
-        StudioInspectorDraftUpdateCommand, add_inspector_composition_component_at,
-        commit_inspector_draft_at, commit_inspector_drafts_at, discard_inspector_draft,
-        discard_inspector_drafts, normalize_inspector_composition_at, update_inspector_draft,
+        StudioInspectorCompositionComponentAddCommand,
+        StudioInspectorCompositionComponentRemoveCommand,
+        StudioInspectorCompositionNormalizeCommand, StudioInspectorDraftBatchCommitCommand,
+        StudioInspectorDraftBatchDiscardCommand, StudioInspectorDraftCommitCommand,
+        StudioInspectorDraftDiscardCommand, StudioInspectorDraftUpdateCommand,
+        add_inspector_composition_component_at, commit_inspector_draft_at,
+        commit_inspector_drafts_at, discard_inspector_draft, discard_inspector_drafts,
+        normalize_inspector_composition_at, remove_inspector_composition_component_at,
+        update_inspector_draft,
     };
 
     #[test]
@@ -744,6 +790,51 @@ mod tests {
             app_state.workspace.document.flowsheet.streams[&StreamId::new("stream-feed")]
                 .overall_mole_fractions[&ComponentId::new("component-c")],
             0.0
+        );
+    }
+
+    #[test]
+    fn inspector_draft_driver_removes_composition_component_through_command_id_boundary() {
+        let mut flowsheet = Flowsheet::new("demo");
+        flowsheet
+            .insert_stream(MaterialStreamState::from_tpzf(
+                "stream-feed",
+                "Feed stream",
+                298.15,
+                101_325.0,
+                1.0,
+                [
+                    (ComponentId::new("component-a"), 0.4),
+                    (ComponentId::new("component-b"), 0.6),
+                ]
+                .into_iter()
+                .collect(),
+            ))
+            .expect("expected stream insert");
+        let mut app_state = AppState::new(FlowsheetDocument::new(
+            flowsheet,
+            DocumentMetadata::new("doc", "Demo", std::time::UNIX_EPOCH),
+        ));
+        app_state.focus_inspector_target(InspectorTarget::Stream(StreamId::new("stream-feed")));
+
+        let outcome = remove_inspector_composition_component_at(
+            &mut app_state,
+            StudioInspectorCompositionComponentRemoveCommand::new("stream-feed", "component-b"),
+            std::time::UNIX_EPOCH,
+        )
+        .expect("expected component remove");
+
+        assert!(outcome.applied);
+        assert_eq!(outcome.document_revision, 1);
+        assert_eq!(outcome.command_history_len, 1);
+        assert_eq!(
+            outcome.removed_key.as_deref(),
+            Some("stream:stream-feed:overall_mole_fraction:component-b")
+        );
+        assert!(
+            !app_state.workspace.document.flowsheet.streams[&StreamId::new("stream-feed")]
+                .overall_mole_fractions
+                .contains_key(&ComponentId::new("component-b"))
         );
     }
 }

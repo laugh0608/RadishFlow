@@ -1,5 +1,6 @@
 use std::{path::Path, time::SystemTime};
 
+use crate::remove_inspector_composition_component;
 use crate::{
     EntitlementSessionEvent, EntitlementSessionEventDriverOutcome, EntitlementSessionHostDispatch,
     EntitlementSessionHostRuntime, EntitlementSessionHostTrigger, EntitlementSessionLifecycleEvent,
@@ -239,6 +240,11 @@ fn dispatch_bootstrap_trigger(
             Ok(StudioBootstrapDispatch::InspectorCompositionComponentAdd(
                 outcome,
             ))
+        }
+        StudioBootstrapTrigger::InspectorCompositionComponentRemove(command) => {
+            let outcome =
+                remove_inspector_composition_component(session.app_state, command.clone())?;
+            Ok(StudioBootstrapDispatch::InspectorCompositionComponentRemove(outcome))
         }
         StudioBootstrapTrigger::DocumentHistory(command) => {
             let outcome = dispatch_document_history(session.app_state, *command)?;

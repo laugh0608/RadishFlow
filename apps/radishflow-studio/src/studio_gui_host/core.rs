@@ -229,6 +229,10 @@ impl StudioGuiHost {
             StudioGuiHostCommand::DispatchInspectorCompositionComponentAdd { command_id } => self
                 .dispatch_inspector_composition_component_add(&command_id)
                 .map(StudioGuiHostCommandOutcome::InspectorCompositionComponentAdded),
+            StudioGuiHostCommand::DispatchInspectorCompositionComponentRemove { command_id } => {
+                self.dispatch_inspector_composition_component_remove(&command_id)
+                    .map(StudioGuiHostCommandOutcome::InspectorCompositionComponentRemoved)
+            }
             StudioGuiHostCommand::QueryWindowDropTarget { window_id, query } => self
                 .query_window_drop_target(window_id, query)
                 .map(StudioGuiHostCommandOutcome::WindowDropTargetQueried),
@@ -562,7 +566,7 @@ fn stream_property_fields(
             .overall_mole_fractions
             .iter()
             .map(|(component_id, fraction)| {
-                inspector_number_field(
+                let mut field = inspector_number_field(
                     drafts,
                     rf_ui::stream_inspector_draft_key(
                         &stream.id,
@@ -572,7 +576,14 @@ fn stream_property_fields(
                     ),
                     &format!("Overall mole fraction ({})", component_id.as_str()),
                     *fraction,
-                )
+                );
+                field.remove_command_id = (stream.overall_mole_fractions.len() > 1).then(|| {
+                    crate::inspector_composition_component_remove_command_id(
+                        stream.id.as_str(),
+                        component_id.as_str(),
+                    )
+                });
+                field
             }),
     )
     .collect()
@@ -625,6 +636,7 @@ fn inspector_text_field(
                 draft.is_dirty,
                 draft.validation,
             ),
+            remove_command_id: None,
         },
         _ => StudioGuiInspectorTargetFieldSnapshot {
             key: key.clone(),
@@ -637,6 +649,7 @@ fn inspector_text_field(
             draft_update_command_id: crate::inspector_draft_update_command_id(&key),
             commit_command_id: None,
             discard_command_id: None,
+            remove_command_id: None,
         },
     }
 }
@@ -667,6 +680,7 @@ fn inspector_number_field(
                 draft.is_dirty,
                 draft.validation,
             ),
+            remove_command_id: None,
         },
         _ => StudioGuiInspectorTargetFieldSnapshot {
             key: key.clone(),
@@ -679,6 +693,7 @@ fn inspector_number_field(
             draft_update_command_id: crate::inspector_draft_update_command_id(&key),
             commit_command_id: None,
             discard_command_id: None,
+            remove_command_id: None,
         },
     }
 }

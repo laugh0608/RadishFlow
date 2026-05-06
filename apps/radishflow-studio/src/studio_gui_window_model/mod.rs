@@ -237,6 +237,7 @@ pub struct StudioGuiWindowInspectorTargetFieldModel {
     pub draft_update_command_id: String,
     pub commit_command_id: Option<String>,
     pub discard_command_id: Option<String>,
+    pub remove_command_id: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -1101,6 +1102,7 @@ fn inspector_field_model_from_snapshot(
         draft_update_command_id: field.draft_update_command_id.clone(),
         commit_command_id: field.commit_command_id.clone(),
         discard_command_id: field.discard_command_id.clone(),
+        remove_command_id: field.remove_command_id.clone(),
     }
 }
 

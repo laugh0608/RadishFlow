@@ -1,5 +1,5 @@
 use rf_model::Flowsheet;
-use rf_types::{StreamId, UnitId};
+use rf_types::{ComponentId, StreamId, UnitId};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum CommandValue {
@@ -72,6 +72,10 @@ pub enum DocumentCommand {
     SetStreamSpecifications {
         stream_id: StreamId,
         values: Vec<StreamSpecificationValue>,
+    },
+    RemoveStreamCompositionComponent {
+        stream_id: StreamId,
+        component_id: ComponentId,
     },
 }
 

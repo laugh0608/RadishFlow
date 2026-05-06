@@ -318,6 +318,15 @@ pub struct StreamInspectorCompositionComponentAddResult {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+pub struct StreamInspectorCompositionComponentRemoveResult {
+    pub key: String,
+    pub active_target: InspectorTarget,
+    pub component_id: ComponentId,
+    pub command: DocumentCommand,
+    pub revision: u64,
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub struct CanvasEditCommitResult {
     pub intent: CanvasEditIntent,
     pub command: DocumentCommand,
@@ -1272,6 +1281,57 @@ impl AppState {
         self.refresh_run_panel_state();
 
         Ok(Some(StreamInspectorCompositionComponentAddResult {
+            key,
+            active_target,
+            component_id,
+            command,
+            revision,
+        }))
+    }
+
+    pub fn remove_stream_inspector_composition_component(
+        &mut self,
+        stream_id: &StreamId,
+        component_id: ComponentId,
+        changed_at: DateTimeUtc,
+    ) -> RfResult<Option<StreamInspectorCompositionComponentRemoveResult>> {
+        let active_target = InspectorTarget::Stream(stream_id.clone());
+        if self.workspace.drafts.active_target.as_ref() != Some(&active_target) {
+            return Ok(None);
+        }
+
+        let Some(stream) = self.workspace.document.flowsheet.streams.get(stream_id) else {
+            return Ok(None);
+        };
+        if !stream.overall_mole_fractions.contains_key(&component_id)
+            || stream.overall_mole_fractions.len() <= 1
+        {
+            return Ok(None);
+        }
+
+        let field = StreamInspectorDraftField::OverallMoleFraction(component_id.clone());
+        let key = stream_inspector_draft_key(stream_id, &field);
+        let mut next_flowsheet = self.workspace.document.flowsheet.clone();
+        let next_stream = next_flowsheet
+            .streams
+            .get_mut(stream_id)
+            .ok_or_else(|| RfError::missing_entity("stream", stream_id))?;
+        next_stream.overall_mole_fractions.remove(&component_id);
+        validate_stream_overall_mole_fractions(next_stream)?;
+
+        let command = DocumentCommand::RemoveStreamCompositionComponent {
+            stream_id: stream_id.clone(),
+            component_id: component_id.clone(),
+        };
+        let revision = self.workspace.commit_inspector_document_change(
+            command.clone(),
+            next_flowsheet,
+            changed_at,
+        );
+        self.workspace.drafts.fields.remove(&key);
+        self.refresh_run_panel_state();
+
+        Ok(Some(StreamInspectorCompositionComponentRemoveResult {
             key,
             active_target,
             component_id,

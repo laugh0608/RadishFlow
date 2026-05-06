@@ -483,6 +483,83 @@ fn adding_stream_inspector_composition_component_rejects_unknown_or_existing_com
 }
 
 #[test]
+fn removing_stream_inspector_composition_component_deletes_explicit_entry_without_compensation() {
+    let document = inspector_focus_document();
+    let mut app_state = AppState::new(document);
+    let stream_id = StreamId::new("stream-feed");
+    let component_id = ComponentId::new("component-b");
+    app_state.focus_inspector_target(crate::InspectorTarget::Stream(stream_id.clone()));
+
+    let outcome = app_state
+        .remove_stream_inspector_composition_component(
+            &stream_id,
+            component_id.clone(),
+            timestamp(42),
+        )
+        .expect("expected component remove")
+        .expect("expected applied component remove");
+
+    assert_eq!(outcome.revision, 1);
+    assert_eq!(
+        outcome.key,
+        "stream:stream-feed:overall_mole_fraction:component-b"
+    );
+    assert_eq!(
+        outcome.command,
+        DocumentCommand::RemoveStreamCompositionComponent {
+            stream_id: stream_id.clone(),
+            component_id: component_id.clone(),
+        }
+    );
+    let stream = &app_state.workspace.document.flowsheet.streams[&stream_id];
+    assert!(!stream.overall_mole_fractions.contains_key(&component_id));
+    assert_eq!(
+        stream.overall_mole_fractions[&ComponentId::new("component-a")],
+        0.4
+    );
+    assert_eq!(app_state.workspace.command_history.len(), 1);
+    assert_eq!(
+        app_state.workspace.solve_session.pending_reason,
+        Some(SolvePendingReason::DocumentRevisionAdvanced)
+    );
+}
+
+#[test]
+fn removing_stream_inspector_composition_component_rejects_last_or_missing_component() {
+    let mut document = inspector_focus_document();
+    let stream_id = StreamId::new("stream-feed");
+    document
+        .flowsheet
+        .streams
+        .get_mut(&stream_id)
+        .expect("expected feed stream")
+        .overall_mole_fractions
+        .remove(&ComponentId::new("component-b"));
+    let mut app_state = AppState::new(document);
+    app_state.focus_inspector_target(crate::InspectorTarget::Stream(stream_id.clone()));
+
+    let last = app_state
+        .remove_stream_inspector_composition_component(
+            &stream_id,
+            ComponentId::new("component-a"),
+            timestamp(42),
+        )
+        .expect("expected ignored last component");
+    let missing = app_state
+        .remove_stream_inspector_composition_component(
+            &stream_id,
+            ComponentId::new("missing-component"),
+            timestamp(43),
+        )
+        .expect("expected ignored missing component");
+
+    assert_eq!(last, None);
+    assert_eq!(missing, None);
+    assert_eq!(app_state.workspace.document.revision, 0);
+    assert!(app_state.workspace.command_history.is_empty());
+}
+
+#[test]
 fn updating_stream_inspector_composition_draft_rejects_unknown_component() {
     let document = inspector_focus_document();
     let mut app_state = AppState::new(document);

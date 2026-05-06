@@ -856,6 +856,86 @@ fn gui_driver_routes_composition_component_add_through_controlled_selector_bound
 }
 
 #[test]
+fn gui_driver_routes_composition_component_remove_without_compensation() {
+    let mut driver = StudioGuiDriver::new(&lease_expiring_config()).expect("expected driver");
+    driver
+        .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+        .expect("expected open dispatch");
+    let focused = driver
+        .dispatch_event(StudioGuiEvent::UiCommandRequested {
+            command_id: "inspector.focus_stream:stream-feed".to_string(),
+        })
+        .expect("expected stream focus dispatch");
+    let remove_command_id = focused
+        .window
+        .runtime
+        .active_inspector_detail
+        .as_ref()
+        .expect("expected active stream inspector")
+        .property_fields
+        .iter()
+        .find(|field| field.key == "stream:stream-feed:overall_mole_fraction:component-b")
+        .and_then(|field| field.remove_command_id.clone())
+        .expect("expected component-b remove command");
+
+    let dispatch = driver
+        .dispatch_event(
+            StudioGuiEvent::InspectorCompositionComponentRemoveRequested {
+                command_id: remove_command_id,
+            },
+        )
+        .expect("expected composition component remove dispatch");
+
+    match dispatch.outcome {
+        StudioGuiDriverOutcome::HostCommand(
+            StudioGuiHostCommandOutcome::InspectorCompositionComponentRemoved(removed),
+        ) => match &removed.effects.runtime_report.dispatch {
+            crate::StudioRuntimeDispatch::InspectorCompositionComponentRemove(outcome) => {
+                assert!(outcome.applied);
+                assert_eq!(outcome.document_revision, 1);
+                assert_eq!(outcome.command_history_len, 1);
+                assert_eq!(
+                    outcome.removed_key.as_deref(),
+                    Some("stream:stream-feed:overall_mole_fraction:component-b")
+                );
+            }
+            other => {
+                panic!("expected inspector composition component remove dispatch, got {other:?}")
+            }
+        },
+        other => panic!("expected inspector composition component remove outcome, got {other:?}"),
+    }
+
+    let detail = dispatch
+        .window
+        .runtime
+        .active_inspector_detail
+        .as_ref()
+        .expect("expected stream inspector detail after remove");
+    assert!(
+        !detail
+            .property_fields
+            .iter()
+            .any(|field| field.key == "stream:stream-feed:overall_mole_fraction:component-b")
+    );
+    assert!(
+        detail.property_fields.iter().any(|field| {
+            field.key == "stream:stream-feed:overall_mole_fraction:component-a"
+                && field.current_value == "0.35"
+                && field.remove_command_id.is_none()
+        }),
+        "expected remaining component to be unchanged and protected from last-entry removal"
+    );
+    assert_eq!(
+        detail
+            .property_composition_summary
+            .as_ref()
+            .map(|summary| (summary.status_label, summary.current_sum_text.as_str())),
+        Some(("Draft", "0.350000"))
+    );
+}
+
+#[test]
 fn gui_driver_surfaces_invalid_stream_draft_notice_without_private_shell_state() {
     let mut driver = StudioGuiDriver::new(&lease_expiring_config()).expect("expected driver");
     driver

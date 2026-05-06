@@ -286,6 +286,9 @@ pub enum StudioGuiHostCommand {
     DispatchInspectorCompositionComponentAdd {
         command_id: String,
     },
+    DispatchInspectorCompositionComponentRemove {
+        command_id: String,
+    },
     QueryWindowDropTarget {
         window_id: Option<StudioWindowHostId>,
         query: StudioGuiWindowDropTargetQuery,
@@ -322,6 +325,7 @@ pub enum StudioGuiHostCommandOutcome {
     InspectorDraftBatchDiscarded(StudioGuiHostDispatch),
     InspectorCompositionNormalized(StudioGuiHostDispatch),
     InspectorCompositionComponentAdded(StudioGuiHostDispatch),
+    InspectorCompositionComponentRemoved(StudioGuiHostDispatch),
     WindowDropTargetQueried(StudioGuiHostWindowDropTargetQueryResult),
     WindowDropTargetPreviewUpdated(StudioGuiHostWindowDropTargetQueryResult),
     WindowDropTargetPreviewCleared(StudioGuiHostWindowDropPreviewClearResult),

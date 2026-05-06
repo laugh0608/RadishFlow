@@ -959,14 +959,52 @@ impl ReadyAppState {
                                         );
                                     }
                                 }
+                                if let Some(remove_command_id) = field.remove_command_id.as_ref() {
+                                    if ui
+                                        .small_button(
+                                            self.locale.text(
+                                                ShellText::InspectorRemoveCompositionComponent,
+                                            ),
+                                        )
+                                        .clicked()
+                                    {
+                                        self.dispatch_inspector_composition_component_remove(
+                                            remove_command_id.clone(),
+                                        );
+                                    }
+                                }
                             });
-                        } else if let Some(command_id) = field.discard_command_id.as_ref() {
-                            if ui
-                                .small_button(self.locale.text(ShellText::InspectorFieldDiscard))
-                                .clicked()
-                            {
-                                self.dispatch_inspector_field_draft_discard(command_id.clone());
-                            }
+                        } else if field.discard_command_id.is_some()
+                            || field.remove_command_id.is_some()
+                        {
+                            ui.horizontal_wrapped(|ui| {
+                                if let Some(command_id) = field.discard_command_id.as_ref() {
+                                    if ui
+                                        .small_button(
+                                            self.locale.text(ShellText::InspectorFieldDiscard),
+                                        )
+                                        .clicked()
+                                    {
+                                        self.dispatch_inspector_field_draft_discard(
+                                            command_id.clone(),
+                                        );
+                                    }
+                                }
+                                if let Some(remove_command_id) = field.remove_command_id.as_ref() {
+                                    if ui
+                                        .small_button(
+                                            self.locale.text(
+                                                ShellText::InspectorRemoveCompositionComponent,
+                                            ),
+                                        )
+                                        .clicked()
+                                    {
+                                        self.dispatch_inspector_composition_component_remove(
+                                            remove_command_id.clone(),
+                                        );
+                                    }
+                                }
+                            });
                         } else {
                             ui.small("-");
                         }

@@ -70,6 +70,7 @@ pub struct StudioGuiInspectorTargetFieldSnapshot {
     pub draft_update_command_id: String,
     pub commit_command_id: Option<String>,
     pub discard_command_id: Option<String>,
+    pub remove_command_id: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
