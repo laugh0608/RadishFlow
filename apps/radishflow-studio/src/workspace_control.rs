@@ -309,6 +309,12 @@ fn notice_title_for_blocked_outcome(
             "Entitlement update required"
         }
         crate::StudioWorkspaceRunBlockedReason::InvalidSelection => "Run blocked",
+        crate::StudioWorkspaceRunBlockedReason::PendingInspectorDrafts => {
+            "Stream edits not applied"
+        }
+        crate::StudioWorkspaceRunBlockedReason::UnnormalizedStreamComposition => {
+            "Composition must be normalized"
+        }
     }
 }
 
@@ -366,8 +372,9 @@ mod tests {
     };
     use rf_types::ComponentId;
     use rf_ui::{
-        AppState, DocumentMetadata, FlowsheetDocument, RunPanelIntent, RunPanelPackageSelection,
-        RunPanelWidgetEvent, RunPanelWidgetModel, RunStatus, SimulationMode, SolvePendingReason,
+        AppState, DocumentMetadata, FlowsheetDocument, InspectorTarget, RunPanelIntent,
+        RunPanelPackageSelection, RunPanelWidgetEvent, RunPanelWidgetModel, RunStatus,
+        SimulationMode, SolvePendingReason, StreamInspectorDraftField,
     };
 
     use super::{
@@ -859,6 +866,172 @@ mod tests {
                 "multiple cached property packages are available; explicit package selection is required"
             )
         );
+    }
+
+    #[test]
+    fn pending_stream_inspector_drafts_block_workspace_run_notice() {
+        let cache_root = unique_temp_path("workspace-control-pending-drafts");
+        let mut auth_cache_index = StoredAuthCacheIndex::new(
+            "https://id.radish.local",
+            "user-123",
+            StoredCredentialReference::new("radishflow-studio", "user-123-primary"),
+        );
+        write_cached_package(
+            &cache_root,
+            &mut auth_cache_index,
+            "binary-hydrocarbon-lite-v1",
+        );
+        let facade = StudioAppFacade::new();
+        let project = parse_project_file_json(include_str!(
+            "../../../examples/flowsheets/feed-heater-flash.rfproj.json"
+        ))
+        .expect("expected project parse");
+        let mut app_state = AppState::new(FlowsheetDocument::new(
+            project.document.flowsheet,
+            DocumentMetadata::new("doc-pending-drafts", "Pending Drafts Demo", timestamp(90)),
+        ));
+        app_state.focus_inspector_target(InspectorTarget::Stream("stream-feed".into()));
+        app_state
+            .update_stream_inspector_draft(
+                &"stream-feed".into(),
+                StreamInspectorDraftField::TemperatureK,
+                "333.5",
+            )
+            .expect("expected stream draft update");
+        let context = StudioAppAuthCacheContext::new(&cache_root, &auth_cache_index);
+
+        let outcome = dispatch_workspace_control_action_with_auth_cache(
+            &facade,
+            &mut app_state,
+            &context,
+            &WorkspaceControlAction::run_manual(WorkspaceRunPackageSelection::Preferred),
+        )
+        .expect("expected blocked control action");
+
+        match outcome.dispatch {
+            StudioAppResultDispatch::WorkspaceRun(dispatch) => {
+                assert_eq!(dispatch.package_id, None);
+                assert!(matches!(
+                    dispatch.outcome,
+                    StudioWorkspaceRunOutcome::Blocked(crate::StudioWorkspaceRunBlocked {
+                        reason: crate::StudioWorkspaceRunBlockedReason::PendingInspectorDrafts,
+                        ..
+                    })
+                ));
+            }
+            _ => panic!("expected workspace run dispatch"),
+        }
+        assert_eq!(outcome.control_state.run_status, RunStatus::Idle);
+        assert_eq!(
+            outcome
+                .control_state
+                .notice
+                .as_ref()
+                .map(|notice| (notice.level, notice.title.as_str())),
+            Some((
+                rf_ui::RunPanelNoticeLevel::Warning,
+                "Stream edits not applied"
+            ))
+        );
+        assert!(
+            app_state
+                .workspace
+                .run_panel
+                .notice
+                .as_ref()
+                .map(|notice| notice
+                    .message
+                    .contains("solver only reads the committed flowsheet document"))
+                .unwrap_or(false)
+        );
+
+        std::fs::remove_dir_all(cache_root).expect("expected temp dir cleanup");
+    }
+
+    #[test]
+    fn unnormalized_document_stream_composition_blocks_workspace_run_notice() {
+        let cache_root = unique_temp_path("workspace-control-unnormalized-composition");
+        let mut auth_cache_index = StoredAuthCacheIndex::new(
+            "https://id.radish.local",
+            "user-123",
+            StoredCredentialReference::new("radishflow-studio", "user-123-primary"),
+        );
+        write_cached_package(
+            &cache_root,
+            &mut auth_cache_index,
+            "binary-hydrocarbon-lite-v1",
+        );
+        let facade = StudioAppFacade::new();
+        let project = parse_project_file_json(include_str!(
+            "../../../examples/flowsheets/feed-heater-flash.rfproj.json"
+        ))
+        .expect("expected project parse");
+        let mut flowsheet = project.document.flowsheet;
+        flowsheet
+            .streams
+            .get_mut(&"stream-feed".into())
+            .expect("expected feed stream")
+            .overall_mole_fractions
+            .insert(ComponentId::new("component-a"), 0.25);
+        let mut app_state = AppState::new(FlowsheetDocument::new(
+            flowsheet,
+            DocumentMetadata::new(
+                "doc-unnormalized-composition",
+                "Unnormalized Composition Demo",
+                timestamp(95),
+            ),
+        ));
+        let context = StudioAppAuthCacheContext::new(&cache_root, &auth_cache_index);
+
+        let outcome = dispatch_workspace_control_action_with_auth_cache(
+            &facade,
+            &mut app_state,
+            &context,
+            &WorkspaceControlAction::run_manual(WorkspaceRunPackageSelection::Preferred),
+        )
+        .expect("expected blocked control action");
+
+        match outcome.dispatch {
+            StudioAppResultDispatch::WorkspaceRun(dispatch) => {
+                assert_eq!(dispatch.package_id, None);
+                assert!(matches!(
+                    dispatch.outcome,
+                    StudioWorkspaceRunOutcome::Blocked(crate::StudioWorkspaceRunBlocked {
+                        reason:
+                            crate::StudioWorkspaceRunBlockedReason::UnnormalizedStreamComposition,
+                        ..
+                    })
+                ));
+            }
+            _ => panic!("expected workspace run dispatch"),
+        }
+        assert_eq!(outcome.control_state.run_status, RunStatus::Idle);
+        assert_eq!(
+            outcome
+                .control_state
+                .notice
+                .as_ref()
+                .map(|notice| (notice.level, notice.title.as_str())),
+            Some((
+                rf_ui::RunPanelNoticeLevel::Warning,
+                "Composition must be normalized"
+            ))
+        );
+        assert!(
+            outcome
+                .control_state
+                .notice
+                .as_ref()
+                .map(|notice| {
+                    notice.message.contains("not 1.000000")
+                        && notice
+                            .message
+                            .contains("no automatic compensation is applied")
+                })
+                .unwrap_or(false)
+        );
+
+        std::fs::remove_dir_all(cache_root).expect("expected temp dir cleanup");
     }
 
     #[test]
