@@ -204,6 +204,7 @@ pub struct StudioGuiWindowInspectorTargetDetailModel {
     pub title: String,
     pub summary_rows: Vec<StudioGuiWindowInspectorTargetSummaryRowModel>,
     pub property_fields: Vec<StudioGuiWindowInspectorTargetFieldModel>,
+    pub property_composition_summary: Option<StudioGuiWindowInspectorCompositionSummaryModel>,
     pub property_batch_commit_command_id: Option<String>,
     pub property_composition_normalize_command_id: Option<String>,
     pub unit_ports: Vec<StudioGuiWindowInspectorTargetPortModel>,
@@ -231,6 +232,13 @@ pub struct StudioGuiWindowInspectorTargetFieldModel {
     pub is_dirty: bool,
     pub draft_update_command_id: String,
     pub commit_command_id: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioGuiWindowInspectorCompositionSummaryModel {
+    pub current_sum_text: String,
+    pub normalized_preview_text: String,
+    pub status_label: &'static str,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -945,6 +953,10 @@ fn inspector_target_detail_model_from_snapshot(
             .iter()
             .map(inspector_field_model_from_snapshot)
             .collect(),
+        property_composition_summary: detail
+            .property_composition_summary
+            .as_ref()
+            .map(inspector_composition_summary_model_from_snapshot),
         property_batch_commit_command_id: detail.property_batch_commit_command_id.clone(),
         property_composition_normalize_command_id: detail
             .property_composition_normalize_command_id
@@ -1008,6 +1020,16 @@ fn inspector_port_attention_summary(
     parts.push(format!("count {}", diagnostic.diagnostic_count));
 
     Some(format!("attention: {}", parts.join("; ")))
+}
+
+fn inspector_composition_summary_model_from_snapshot(
+    summary: &crate::StudioGuiInspectorCompositionSummarySnapshot,
+) -> StudioGuiWindowInspectorCompositionSummaryModel {
+    StudioGuiWindowInspectorCompositionSummaryModel {
+        current_sum_text: summary.current_sum_text.clone(),
+        normalized_preview_text: summary.normalized_preview_text.clone(),
+        status_label: summary.status_label,
+    }
 }
 
 fn inspector_field_model_from_snapshot(

@@ -442,6 +442,18 @@ fn studio_gui_window_model_surfaces_workspace_results_and_diagnostics() {
     );
     assert_eq!(
         active_detail
+            .property_composition_summary
+            .as_ref()
+            .map(|summary| (
+                summary.status_label,
+                summary.current_sum_text.as_str(),
+                summary.normalized_preview_text.contains("component-a=")
+            )),
+        Some(("Synced", "1.000000", true)),
+        "expected stream inspector detail to expose composition sum and normalized preview"
+    );
+    assert_eq!(
+        active_detail
             .latest_stream_result
             .as_ref()
             .map(|stream| stream.stream_id.as_str()),

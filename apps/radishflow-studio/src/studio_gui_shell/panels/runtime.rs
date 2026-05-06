@@ -820,6 +820,35 @@ impl ReadyAppState {
                     self.dispatch_inspector_composition_normalize(command_id.clone());
                 }
             }
+            if let Some(summary) = detail.property_composition_summary.as_ref() {
+                ui.add_space(4.0);
+                ui.horizontal_wrapped(|ui| {
+                    ui.small(
+                        egui::RichText::new(
+                            self.locale.text(ShellText::InspectorCompositionSummary),
+                        )
+                        .strong(),
+                    );
+                    render_status_chip(
+                        ui,
+                        self.locale.runtime_label(summary.status_label).as_ref(),
+                        inspector_field_status_color(summary.status_label),
+                    );
+                    ui.small(format!(
+                        "{} {}",
+                        self.locale.text(ShellText::InspectorCompositionSum),
+                        summary.current_sum_text
+                    ));
+                });
+                render_wrapped_small(
+                    ui,
+                    format!(
+                        "{}: {}",
+                        self.locale.text(ShellText::InspectorNormalizedPreview),
+                        summary.normalized_preview_text
+                    ),
+                );
+            }
             egui::Grid::new(format!("inspector-fields:{}", detail.target.command_id))
                 .num_columns(5)
                 .spacing([8.0, 3.0])

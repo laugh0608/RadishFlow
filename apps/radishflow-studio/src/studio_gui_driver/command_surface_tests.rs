@@ -513,6 +513,20 @@ fn gui_driver_routes_composition_normalize_through_driver_boundary() {
         .as_ref()
         .and_then(|detail| detail.property_composition_normalize_command_id.clone())
         .expect("expected composition normalize command id");
+    let draft_summary = update
+        .window
+        .runtime
+        .active_inspector_detail
+        .as_ref()
+        .and_then(|detail| detail.property_composition_summary.as_ref())
+        .expect("expected composition draft summary");
+    assert_eq!(draft_summary.status_label, "Draft");
+    assert_eq!(draft_summary.current_sum_text, "0.900000");
+    assert!(
+        draft_summary
+            .normalized_preview_text
+            .contains("component-a=0.277778")
+    );
 
     let dispatch = driver
         .dispatch_event(StudioGuiEvent::InspectorCompositionNormalizeRequested {
@@ -549,6 +563,13 @@ fn gui_driver_routes_composition_normalize_through_driver_boundary() {
         .as_ref()
         .expect("expected inspector detail");
     assert!(detail.property_composition_normalize_command_id.is_none());
+    assert_eq!(
+        detail
+            .property_composition_summary
+            .as_ref()
+            .map(|summary| summary.status_label),
+        Some("Synced")
+    );
     assert!(
         detail
             .property_fields

@@ -42,6 +42,7 @@ pub struct StudioGuiInspectorTargetDetailSnapshot {
     pub title: String,
     pub summary_rows: Vec<StudioGuiInspectorTargetSummaryRowSnapshot>,
     pub property_fields: Vec<StudioGuiInspectorTargetFieldSnapshot>,
+    pub property_composition_summary: Option<StudioGuiInspectorCompositionSummarySnapshot>,
     pub property_batch_commit_command_id: Option<String>,
     pub property_composition_normalize_command_id: Option<String>,
     pub unit_ports: Vec<StudioGuiInspectorTargetPortSnapshot>,
@@ -64,6 +65,13 @@ pub struct StudioGuiInspectorTargetFieldSnapshot {
     pub validation: StudioGuiInspectorTargetFieldValidationSnapshot,
     pub draft_update_command_id: String,
     pub commit_command_id: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioGuiInspectorCompositionSummarySnapshot {
+    pub current_sum_text: String,
+    pub normalized_preview_text: String,
+    pub status_label: &'static str,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

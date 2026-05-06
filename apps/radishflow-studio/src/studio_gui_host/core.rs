@@ -433,6 +433,7 @@ fn active_inspector_detail_from_controller(
                     },
                 ],
                 property_fields: Vec::new(),
+                property_composition_summary: None,
                 property_batch_commit_command_id: None,
                 property_composition_normalize_command_id: None,
                 unit_ports: unit
@@ -477,6 +478,10 @@ fn active_inspector_detail_from_controller(
                 property_batch_commit_command_id: stream_property_batch_commit_command_id(
                     stream,
                     &property_fields,
+                ),
+                property_composition_summary: stream_property_composition_summary(
+                    stream,
+                    controller.inspector_drafts(),
                 ),
                 property_composition_normalize_command_id:
                     stream_property_composition_normalize_command_id(
@@ -701,6 +706,81 @@ fn stream_property_composition_normalize_command_id(
 
     (sum.is_finite() && sum > 0.0 && (has_dirty_composition || (sum - 1.0).abs() > 1e-9))
         .then(|| crate::inspector_composition_normalize_command_id(stream.id.as_str()))
+}
+
+fn stream_property_composition_summary(
+    stream: &rf_model::MaterialStreamState,
+    drafts: &rf_ui::InspectorDraftState,
+) -> Option<StudioGuiInspectorCompositionSummarySnapshot> {
+    if stream.overall_mole_fractions.is_empty() {
+        return None;
+    }
+
+    let mut values = Vec::new();
+    let mut has_dirty_composition = false;
+    let mut has_invalid_composition = false;
+    for (component_id, original_value) in &stream.overall_mole_fractions {
+        let key = rf_ui::stream_inspector_draft_key(
+            &stream.id,
+            &rf_ui::StreamInspectorDraftField::OverallMoleFraction(component_id.clone()),
+        );
+        let value = match drafts.fields.get(&key) {
+            Some(rf_ui::DraftValue::Number(draft)) => match draft.validation {
+                rf_ui::DraftValidationState::Valid => {
+                    has_dirty_composition |= draft.is_dirty;
+                    draft.current.trim().parse::<f64>().ok()
+                }
+                rf_ui::DraftValidationState::Invalid => {
+                    has_invalid_composition = true;
+                    None
+                }
+                rf_ui::DraftValidationState::Unknown => Some(*original_value),
+            },
+            Some(_) => {
+                has_invalid_composition = true;
+                None
+            }
+            None => Some(*original_value),
+        };
+        if let Some(value) = value {
+            values.push((component_id.as_str().to_string(), value));
+        }
+    }
+
+    if has_invalid_composition {
+        return Some(StudioGuiInspectorCompositionSummarySnapshot {
+            current_sum_text: "-".to_string(),
+            normalized_preview_text: "Fix invalid composition drafts before normalizing."
+                .to_string(),
+            status_label: "Invalid",
+        });
+    }
+
+    let sum = values.iter().map(|(_, value)| value).sum::<f64>();
+    if !sum.is_finite() || sum <= 0.0 {
+        return Some(StudioGuiInspectorCompositionSummarySnapshot {
+            current_sum_text: format_field_number(sum),
+            normalized_preview_text: "Composition sum must be positive and finite.".to_string(),
+            status_label: "Invalid",
+        });
+    }
+
+    let normalized_preview_text = values
+        .iter()
+        .map(|(component_id, value)| format!("{component_id}={:.6}", value / sum))
+        .collect::<Vec<_>>()
+        .join(", ");
+    let status_label = if has_dirty_composition || (sum - 1.0).abs() > 1e-9 {
+        "Draft"
+    } else {
+        "Synced"
+    };
+
+    Some(StudioGuiInspectorCompositionSummarySnapshot {
+        current_sum_text: format!("{sum:.6}"),
+        normalized_preview_text,
+        status_label,
+    })
 }
 
 fn format_field_number(value: f64) -> String {
