@@ -547,6 +547,71 @@ fn batch_commit_preserves_invalid_stream_inspector_drafts() {
 }
 
 #[test]
+fn discarding_stream_inspector_draft_removes_field_without_document_mutation() {
+    let document = inspector_focus_document();
+    let mut app_state = AppState::new(document);
+    let stream_id = StreamId::new("stream-feed");
+    app_state.focus_inspector_target(crate::InspectorTarget::Stream(stream_id.clone()));
+    let update = app_state
+        .update_stream_inspector_draft(
+            &stream_id,
+            crate::StreamInspectorDraftField::TemperatureK,
+            "333.5",
+        )
+        .expect("expected temperature draft update");
+
+    let outcome = app_state
+        .discard_stream_inspector_draft(&stream_id, crate::StreamInspectorDraftField::TemperatureK)
+        .expect("expected discarded draft");
+
+    assert_eq!(outcome.key, update.key);
+    assert_eq!(app_state.workspace.document.revision, 0);
+    assert_eq!(app_state.workspace.command_history.len(), 0);
+    assert_eq!(
+        app_state.workspace.document.flowsheet.streams[&stream_id].temperature_k,
+        298.15
+    );
+    assert!(app_state.workspace.drafts.fields.is_empty());
+}
+
+#[test]
+fn discarding_stream_inspector_drafts_removes_valid_and_invalid_fields() {
+    let document = inspector_focus_document();
+    let mut app_state = AppState::new(document);
+    let stream_id = StreamId::new("stream-feed");
+    app_state.focus_inspector_target(crate::InspectorTarget::Stream(stream_id.clone()));
+    app_state
+        .update_stream_inspector_draft(
+            &stream_id,
+            crate::StreamInspectorDraftField::TemperatureK,
+            "333.5",
+        )
+        .expect("expected temperature draft update");
+    app_state
+        .update_stream_inspector_draft(
+            &stream_id,
+            crate::StreamInspectorDraftField::PressurePa,
+            "not-a-pressure",
+        )
+        .expect("expected invalid pressure draft update");
+
+    let outcome = app_state
+        .discard_stream_inspector_drafts(&stream_id)
+        .expect("expected discarded drafts");
+
+    assert_eq!(
+        outcome.keys,
+        vec![
+            "stream:stream-feed:temperature_k".to_string(),
+            "stream:stream-feed:pressure_pa".to_string()
+        ]
+    );
+    assert_eq!(app_state.workspace.document.revision, 0);
+    assert_eq!(app_state.workspace.command_history.len(), 0);
+    assert!(app_state.workspace.drafts.fields.is_empty());
+}
+
+#[test]
 fn undo_redo_replays_stream_inspector_document_snapshots() {
     let document = inspector_focus_document();
     let mut app_state = AppState::new(document);

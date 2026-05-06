@@ -5,7 +5,8 @@ use rf_ui::{AppState, InspectorTarget};
 
 use crate::{
     StudioInspectorCompositionNormalizeCommand, StudioInspectorDraftBatchCommitCommand,
-    StudioInspectorDraftCommitCommand, StudioInspectorDraftUpdateCommand,
+    StudioInspectorDraftBatchDiscardCommand, StudioInspectorDraftCommitCommand,
+    StudioInspectorDraftDiscardCommand, StudioInspectorDraftUpdateCommand,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -27,10 +28,30 @@ pub struct InspectorDraftCommitOutcome {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct InspectorDraftDiscardOutcome {
+    pub command: StudioInspectorDraftDiscardCommand,
+    pub applied: bool,
+    pub discarded_key: Option<String>,
+    pub active_target: Option<InspectorTarget>,
+    pub document_revision: u64,
+    pub command_history_len: usize,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct InspectorDraftBatchCommitOutcome {
     pub command: StudioInspectorDraftBatchCommitCommand,
     pub applied: bool,
     pub committed_keys: Vec<String>,
+    pub active_target: Option<InspectorTarget>,
+    pub document_revision: u64,
+    pub command_history_len: usize,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct InspectorDraftBatchDiscardOutcome {
+    pub command: StudioInspectorDraftBatchDiscardCommand,
+    pub applied: bool,
+    pub discarded_keys: Vec<String>,
     pub active_target: Option<InspectorTarget>,
     pub document_revision: u64,
     pub command_history_len: usize,
@@ -102,6 +123,31 @@ pub fn commit_inspector_draft_at(
     })
 }
 
+pub fn discard_inspector_draft(
+    app_state: &mut AppState,
+    command: StudioInspectorDraftDiscardCommand,
+) -> RfResult<InspectorDraftDiscardOutcome> {
+    let (stream_id, field) = rf_ui::stream_inspector_draft_key_parts(&command.draft_key)
+        .ok_or_else(|| {
+            RfError::invalid_input(format!(
+                "inspector draft key `{}` is not a supported stream field",
+                command.draft_key
+            ))
+        })?;
+    let result = app_state.discard_stream_inspector_draft(&stream_id, field);
+    let discarded_key = result.as_ref().map(|result| result.key.clone());
+    let applied = result.is_some();
+
+    Ok(InspectorDraftDiscardOutcome {
+        command,
+        applied,
+        discarded_key,
+        active_target: app_state.workspace.drafts.active_target.clone(),
+        document_revision: app_state.workspace.document.revision,
+        command_history_len: app_state.workspace.command_history.len(),
+    })
+}
+
 pub fn commit_inspector_drafts(
     app_state: &mut AppState,
     command: StudioInspectorDraftBatchCommitCommand,
@@ -126,6 +172,28 @@ pub fn commit_inspector_drafts_at(
         command,
         applied,
         committed_keys,
+        active_target: app_state.workspace.drafts.active_target.clone(),
+        document_revision: app_state.workspace.document.revision,
+        command_history_len: app_state.workspace.command_history.len(),
+    })
+}
+
+pub fn discard_inspector_drafts(
+    app_state: &mut AppState,
+    command: StudioInspectorDraftBatchDiscardCommand,
+) -> RfResult<InspectorDraftBatchDiscardOutcome> {
+    let stream_id = rf_types::StreamId::new(command.stream_id.clone());
+    let result = app_state.discard_stream_inspector_drafts(&stream_id);
+    let discarded_keys = result
+        .as_ref()
+        .map(|result| result.keys.clone())
+        .unwrap_or_default();
+    let applied = result.is_some();
+
+    Ok(InspectorDraftBatchDiscardOutcome {
+        command,
+        applied,
+        discarded_keys,
         active_target: app_state.workspace.drafts.active_target.clone(),
         document_revision: app_state.workspace.document.revision,
         command_history_len: app_state.workspace.command_history.len(),
@@ -173,9 +241,10 @@ mod tests {
 
     use crate::{
         StudioInspectorCompositionNormalizeCommand, StudioInspectorDraftBatchCommitCommand,
-        StudioInspectorDraftCommitCommand, StudioInspectorDraftUpdateCommand,
-        commit_inspector_draft_at, commit_inspector_drafts_at, normalize_inspector_composition_at,
-        update_inspector_draft,
+        StudioInspectorDraftBatchDiscardCommand, StudioInspectorDraftCommitCommand,
+        StudioInspectorDraftDiscardCommand, StudioInspectorDraftUpdateCommand,
+        commit_inspector_draft_at, commit_inspector_drafts_at, discard_inspector_draft,
+        discard_inspector_drafts, normalize_inspector_composition_at, update_inspector_draft,
     };
 
     #[test]
@@ -336,6 +405,80 @@ mod tests {
                 .fields
                 .contains_key("stream:stream-feed:pressure_pa")
         );
+    }
+
+    #[test]
+    fn inspector_draft_driver_discards_active_stream_draft_without_document_mutation() {
+        let mut flowsheet = Flowsheet::new("demo");
+        flowsheet
+            .insert_stream(MaterialStreamState::new("stream-feed", "Feed stream"))
+            .expect("expected stream insert");
+        let mut app_state = AppState::new(FlowsheetDocument::new(
+            flowsheet,
+            DocumentMetadata::new("doc", "Demo", std::time::UNIX_EPOCH),
+        ));
+        app_state.focus_inspector_target(InspectorTarget::Stream(StreamId::new("stream-feed")));
+        update_inspector_draft(
+            &mut app_state,
+            StudioInspectorDraftUpdateCommand::new("stream:stream-feed:pressure_pa", "bad"),
+        )
+        .expect("expected invalid draft update");
+
+        let outcome = discard_inspector_draft(
+            &mut app_state,
+            StudioInspectorDraftDiscardCommand::new("stream:stream-feed:pressure_pa"),
+        )
+        .expect("expected discarded draft");
+
+        assert!(outcome.applied);
+        assert_eq!(
+            outcome.discarded_key.as_deref(),
+            Some("stream:stream-feed:pressure_pa")
+        );
+        assert_eq!(outcome.document_revision, 0);
+        assert_eq!(outcome.command_history_len, 0);
+        assert!(app_state.workspace.drafts.fields.is_empty());
+    }
+
+    #[test]
+    fn inspector_draft_driver_discards_stream_drafts_without_document_mutation() {
+        let mut flowsheet = Flowsheet::new("demo");
+        flowsheet
+            .insert_stream(MaterialStreamState::new("stream-feed", "Feed stream"))
+            .expect("expected stream insert");
+        let mut app_state = AppState::new(FlowsheetDocument::new(
+            flowsheet,
+            DocumentMetadata::new("doc", "Demo", std::time::UNIX_EPOCH),
+        ));
+        app_state.focus_inspector_target(InspectorTarget::Stream(StreamId::new("stream-feed")));
+        update_inspector_draft(
+            &mut app_state,
+            StudioInspectorDraftUpdateCommand::new("stream:stream-feed:temperature_k", "333.5"),
+        )
+        .expect("expected temperature draft update");
+        update_inspector_draft(
+            &mut app_state,
+            StudioInspectorDraftUpdateCommand::new("stream:stream-feed:pressure_pa", "bad"),
+        )
+        .expect("expected invalid pressure draft update");
+
+        let outcome = discard_inspector_drafts(
+            &mut app_state,
+            StudioInspectorDraftBatchDiscardCommand::new("stream-feed"),
+        )
+        .expect("expected discarded drafts");
+
+        assert!(outcome.applied);
+        assert_eq!(
+            outcome.discarded_keys,
+            vec![
+                "stream:stream-feed:temperature_k".to_string(),
+                "stream:stream-feed:pressure_pa".to_string()
+            ]
+        );
+        assert_eq!(outcome.document_revision, 0);
+        assert_eq!(outcome.command_history_len, 0);
+        assert!(app_state.workspace.drafts.fields.is_empty());
     }
 
     #[test]

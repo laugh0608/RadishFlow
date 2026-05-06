@@ -47,7 +47,13 @@ pub enum StudioGuiEvent {
     InspectorFieldDraftCommitRequested {
         command_id: String,
     },
+    InspectorFieldDraftDiscardRequested {
+        command_id: String,
+    },
     InspectorFieldDraftBatchCommitRequested {
+        command_id: String,
+    },
+    InspectorFieldDraftBatchDiscardRequested {
         command_id: String,
     },
     InspectorCompositionNormalizeRequested {
@@ -317,7 +323,13 @@ impl StudioGuiDriver {
                 StudioGuiHostCommandOutcome::InspectorDraftCommitted(dispatch),
             ) => Some(&dispatch.native_timers),
             StudioGuiDriverOutcome::HostCommand(
+                StudioGuiHostCommandOutcome::InspectorDraftDiscarded(dispatch),
+            ) => Some(&dispatch.native_timers),
+            StudioGuiDriverOutcome::HostCommand(
                 StudioGuiHostCommandOutcome::InspectorDraftBatchCommitted(dispatch),
+            ) => Some(&dispatch.native_timers),
+            StudioGuiDriverOutcome::HostCommand(
+                StudioGuiHostCommandOutcome::InspectorDraftBatchDiscarded(dispatch),
             ) => Some(&dispatch.native_timers),
             StudioGuiDriverOutcome::HostCommand(
                 StudioGuiHostCommandOutcome::InspectorCompositionNormalized(dispatch),
@@ -362,7 +374,13 @@ fn layout_scope_window_id(outcome: &StudioGuiDriverOutcome) -> Option<StudioWind
             StudioGuiHostCommandOutcome::InspectorDraftCommitted(dispatch),
         ) => Some(dispatch.target_window_id),
         StudioGuiDriverOutcome::HostCommand(
+            StudioGuiHostCommandOutcome::InspectorDraftDiscarded(dispatch),
+        ) => Some(dispatch.target_window_id),
+        StudioGuiDriverOutcome::HostCommand(
             StudioGuiHostCommandOutcome::InspectorDraftBatchCommitted(dispatch),
+        ) => Some(dispatch.target_window_id),
+        StudioGuiDriverOutcome::HostCommand(
+            StudioGuiHostCommandOutcome::InspectorDraftBatchDiscarded(dispatch),
         ) => Some(dispatch.target_window_id),
         StudioGuiDriverOutcome::HostCommand(
             StudioGuiHostCommandOutcome::InspectorCompositionNormalized(dispatch),
@@ -503,7 +521,13 @@ fn surfaced_ui_commands(
             StudioGuiHostCommandOutcome::InspectorDraftCommitted(dispatch),
         ) => Some(dispatch.ui_commands.clone()),
         StudioGuiDriverOutcome::HostCommand(
+            StudioGuiHostCommandOutcome::InspectorDraftDiscarded(dispatch),
+        ) => Some(dispatch.ui_commands.clone()),
+        StudioGuiDriverOutcome::HostCommand(
             StudioGuiHostCommandOutcome::InspectorDraftBatchCommitted(dispatch),
+        ) => Some(dispatch.ui_commands.clone()),
+        StudioGuiDriverOutcome::HostCommand(
+            StudioGuiHostCommandOutcome::InspectorDraftBatchDiscarded(dispatch),
         ) => Some(dispatch.ui_commands.clone()),
         StudioGuiDriverOutcome::HostCommand(
             StudioGuiHostCommandOutcome::InspectorCompositionNormalized(dispatch),
@@ -562,7 +586,13 @@ fn surfaced_canvas_state(outcome: &StudioGuiDriverOutcome) -> Option<StudioGuiCa
             StudioGuiHostCommandOutcome::InspectorDraftCommitted(dispatch),
         ) => Some(dispatch.canvas.clone()),
         StudioGuiDriverOutcome::HostCommand(
+            StudioGuiHostCommandOutcome::InspectorDraftDiscarded(dispatch),
+        ) => Some(dispatch.canvas.clone()),
+        StudioGuiDriverOutcome::HostCommand(
             StudioGuiHostCommandOutcome::InspectorDraftBatchCommitted(dispatch),
+        ) => Some(dispatch.canvas.clone()),
+        StudioGuiDriverOutcome::HostCommand(
+            StudioGuiHostCommandOutcome::InspectorDraftBatchDiscarded(dispatch),
         ) => Some(dispatch.canvas.clone()),
         StudioGuiDriverOutcome::HostCommand(
             StudioGuiHostCommandOutcome::InspectorCompositionNormalized(dispatch),
@@ -649,8 +679,18 @@ fn route_driver_event(event: &StudioGuiEvent, registry: &StudioGuiCommandRegistr
                 command_id: command_id.clone(),
             })
         }
+        StudioGuiEvent::InspectorFieldDraftDiscardRequested { command_id } => {
+            DriverRoute::HostCommand(StudioGuiHostCommand::DispatchInspectorDraftDiscard {
+                command_id: command_id.clone(),
+            })
+        }
         StudioGuiEvent::InspectorFieldDraftBatchCommitRequested { command_id } => {
             DriverRoute::HostCommand(StudioGuiHostCommand::DispatchInspectorDraftBatchCommit {
+                command_id: command_id.clone(),
+            })
+        }
+        StudioGuiEvent::InspectorFieldDraftBatchDiscardRequested { command_id } => {
+            DriverRoute::HostCommand(StudioGuiHostCommand::DispatchInspectorDraftBatchDiscard {
                 command_id: command_id.clone(),
             })
         }

@@ -59,7 +59,9 @@ fn canvas_viewport_navigation_records_inspector_focus_commands() {
 
 #[test]
 fn canvas_pending_edit_commit_records_created_unit_focus_feedback() {
-    let mut app = ready_app_state(&lease_expiring_config());
+    let (config, project_path) = flash_drum_local_rules_config();
+    let layout_path = studio_layout_path_for_project(&project_path);
+    let mut app = ready_app_state(&config);
 
     app.dispatch_ui_command("canvas.begin_place_unit.flash_drum");
     app.dispatch_canvas_pending_edit_commit(rf_ui::CanvasPoint::new(144.0, 88.0));
@@ -141,6 +143,9 @@ fn canvas_pending_edit_commit_records_created_unit_focus_feedback() {
     assert_eq!(surface.target_command_id, "inspector.focus_unit:flash-2");
     assert!(surface.matches_query("canvas result created flash-2"));
     assert!(!surface.matches_query("stream-feed"));
+
+    let _ = std::fs::remove_file(layout_path);
+    let _ = std::fs::remove_file(project_path);
 }
 
 #[test]

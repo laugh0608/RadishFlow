@@ -66,7 +66,8 @@ pub use state::{
     DocumentHistoryApplyResult, DocumentHistoryDirection, DocumentMetadata, DraftValidationState,
     DraftValue, FieldDraft, FlowsheetDocument, InspectorDraftState, InspectorTarget, LocaleCode,
     PanelLayoutPreferences, SelectionState, StreamInspectorDraftBatchCommitResult,
-    StreamInspectorDraftCommitResult, StreamInspectorDraftField, StreamInspectorDraftUpdateResult,
+    StreamInspectorDraftBatchDiscardResult, StreamInspectorDraftCommitResult,
+    StreamInspectorDraftDiscardResult, StreamInspectorDraftField, StreamInspectorDraftUpdateResult,
     UiPanelsState, UserPreferences, WorkspaceState, latest_snapshot, latest_snapshot_id,
     stream_inspector_draft_key, stream_inspector_draft_key_parts,
 };

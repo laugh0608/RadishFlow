@@ -7,8 +7,8 @@ use crate::{
     EntitlementSessionState, RunPanelDriverOutcome, StudioAppAuthCacheContext,
     StudioAppCommandOutcome, StudioAppMutableAuthCacheContext, WorkspaceControlActionOutcome,
     apply_run_panel_recovery_action, commit_inspector_draft, commit_inspector_drafts,
-    dispatch_document_history, dispatch_document_lifecycle,
-    dispatch_entitlement_session_event_with_control_plane,
+    discard_inspector_draft, discard_inspector_drafts, dispatch_document_history,
+    dispatch_document_lifecycle, dispatch_entitlement_session_event_with_control_plane,
     dispatch_run_panel_intent_with_auth_cache, dispatch_run_panel_primary_action_with_auth_cache,
     dispatch_run_panel_widget_action_with_auth_cache, focus_inspector_target,
     normalize_inspector_composition, snapshot_entitlement_session_driver_state,
@@ -215,9 +215,17 @@ fn dispatch_bootstrap_trigger(
             let outcome = commit_inspector_draft(session.app_state, command.clone())?;
             Ok(StudioBootstrapDispatch::InspectorDraftCommit(outcome))
         }
+        StudioBootstrapTrigger::InspectorDraftDiscard(command) => {
+            let outcome = discard_inspector_draft(session.app_state, command.clone())?;
+            Ok(StudioBootstrapDispatch::InspectorDraftDiscard(outcome))
+        }
         StudioBootstrapTrigger::InspectorDraftBatchCommit(command) => {
             let outcome = commit_inspector_drafts(session.app_state, command.clone())?;
             Ok(StudioBootstrapDispatch::InspectorDraftBatchCommit(outcome))
+        }
+        StudioBootstrapTrigger::InspectorDraftBatchDiscard(command) => {
+            let outcome = discard_inspector_drafts(session.app_state, command.clone())?;
+            Ok(StudioBootstrapDispatch::InspectorDraftBatchDiscard(outcome))
         }
         StudioBootstrapTrigger::InspectorCompositionNormalize(command) => {
             let outcome = normalize_inspector_composition(session.app_state, command.clone())?;

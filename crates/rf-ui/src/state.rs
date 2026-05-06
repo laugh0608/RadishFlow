@@ -288,12 +288,24 @@ pub struct StreamInspectorDraftCommitResult {
     pub revision: u64,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StreamInspectorDraftDiscardResult {
+    pub key: String,
+    pub active_target: InspectorTarget,
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct StreamInspectorDraftBatchCommitResult {
     pub keys: Vec<String>,
     pub active_target: InspectorTarget,
     pub command: DocumentCommand,
     pub revision: u64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StreamInspectorDraftBatchDiscardResult {
+    pub keys: Vec<String>,
+    pub active_target: InspectorTarget,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -988,6 +1000,27 @@ impl AppState {
         }))
     }
 
+    pub fn discard_stream_inspector_draft(
+        &mut self,
+        stream_id: &StreamId,
+        field: StreamInspectorDraftField,
+    ) -> Option<StreamInspectorDraftDiscardResult> {
+        let active_target = InspectorTarget::Stream(stream_id.clone());
+        if self.workspace.drafts.active_target.as_ref() != Some(&active_target) {
+            return None;
+        }
+
+        let stream = self.workspace.document.flowsheet.streams.get(stream_id)?;
+        if !stream_inspector_draft_fields(stream).contains(&field) {
+            return None;
+        }
+
+        let key = stream_inspector_draft_key(stream_id, &field);
+        self.workspace.drafts.fields.remove(&key)?;
+
+        Some(StreamInspectorDraftDiscardResult { key, active_target })
+    }
+
     pub fn commit_stream_inspector_drafts(
         &mut self,
         stream_id: &StreamId,
@@ -1063,6 +1096,35 @@ impl AppState {
             command,
             revision,
         }))
+    }
+
+    pub fn discard_stream_inspector_drafts(
+        &mut self,
+        stream_id: &StreamId,
+    ) -> Option<StreamInspectorDraftBatchDiscardResult> {
+        let active_target = InspectorTarget::Stream(stream_id.clone());
+        if self.workspace.drafts.active_target.as_ref() != Some(&active_target) {
+            return None;
+        }
+
+        let stream = self.workspace.document.flowsheet.streams.get(stream_id)?;
+        let keys = stream_inspector_draft_fields(stream)
+            .into_iter()
+            .map(|field| stream_inspector_draft_key(stream_id, &field))
+            .filter(|key| self.workspace.drafts.fields.contains_key(key))
+            .collect::<Vec<_>>();
+        if keys.is_empty() {
+            return None;
+        }
+
+        for key in &keys {
+            self.workspace.drafts.fields.remove(key);
+        }
+
+        Some(StreamInspectorDraftBatchDiscardResult {
+            keys,
+            active_target,
+        })
     }
 
     pub fn normalize_stream_inspector_composition_drafts(

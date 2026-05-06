@@ -1,6 +1,8 @@
 const UPDATE_STREAM_DRAFT_PREFIX: &str = "inspector.update_stream_draft:";
 const COMMIT_STREAM_DRAFT_PREFIX: &str = "inspector.commit_stream_draft:";
 const COMMIT_STREAM_DRAFTS_PREFIX: &str = "inspector.commit_stream_drafts:";
+const DISCARD_STREAM_DRAFT_PREFIX: &str = "inspector.discard_stream_draft:";
+const DISCARD_STREAM_DRAFTS_PREFIX: &str = "inspector.discard_stream_drafts:";
 const NORMALIZE_STREAM_COMPOSITION_PREFIX: &str = "inspector.normalize_stream_composition:";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -15,7 +17,17 @@ pub struct StudioInspectorDraftCommitCommand {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioInspectorDraftDiscardCommand {
+    pub draft_key: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StudioInspectorDraftBatchCommitCommand {
+    pub stream_id: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioInspectorDraftBatchDiscardCommand {
     pub stream_id: String,
 }
 
@@ -41,7 +53,23 @@ impl StudioInspectorDraftCommitCommand {
     }
 }
 
+impl StudioInspectorDraftDiscardCommand {
+    pub fn new(draft_key: impl Into<String>) -> Self {
+        Self {
+            draft_key: draft_key.into(),
+        }
+    }
+}
+
 impl StudioInspectorDraftBatchCommitCommand {
+    pub fn new(stream_id: impl Into<String>) -> Self {
+        Self {
+            stream_id: stream_id.into(),
+        }
+    }
+}
+
+impl StudioInspectorDraftBatchDiscardCommand {
     pub fn new(stream_id: impl Into<String>) -> Self {
         Self {
             stream_id: stream_id.into(),
@@ -67,6 +95,14 @@ pub fn inspector_draft_commit_command_id(draft_key: &str) -> String {
 
 pub fn inspector_draft_batch_commit_command_id(stream_id: &str) -> String {
     format!("{COMMIT_STREAM_DRAFTS_PREFIX}stream:{stream_id}")
+}
+
+pub fn inspector_draft_discard_command_id(draft_key: &str) -> String {
+    format!("{DISCARD_STREAM_DRAFT_PREFIX}{draft_key}")
+}
+
+pub fn inspector_draft_batch_discard_command_id(stream_id: &str) -> String {
+    format!("{DISCARD_STREAM_DRAFTS_PREFIX}stream:{stream_id}")
 }
 
 pub fn inspector_composition_normalize_command_id(stream_id: &str) -> String {
@@ -102,6 +138,25 @@ pub fn inspector_draft_batch_commit_command_from_id(
         .map(StudioInspectorDraftBatchCommitCommand::new)
 }
 
+pub fn inspector_draft_discard_command_from_id(
+    command_id: &str,
+) -> Option<StudioInspectorDraftDiscardCommand> {
+    command_id
+        .strip_prefix(DISCARD_STREAM_DRAFT_PREFIX)
+        .filter(|draft_key| !draft_key.is_empty())
+        .map(StudioInspectorDraftDiscardCommand::new)
+}
+
+pub fn inspector_draft_batch_discard_command_from_id(
+    command_id: &str,
+) -> Option<StudioInspectorDraftBatchDiscardCommand> {
+    command_id
+        .strip_prefix(DISCARD_STREAM_DRAFTS_PREFIX)
+        .and_then(|target| target.strip_prefix("stream:"))
+        .filter(|stream_id| !stream_id.is_empty())
+        .map(StudioInspectorDraftBatchDiscardCommand::new)
+}
+
 pub fn inspector_composition_normalize_command_from_id(
     command_id: &str,
 ) -> Option<StudioInspectorCompositionNormalizeCommand> {
@@ -117,8 +172,10 @@ mod tests {
     use crate::{
         inspector_composition_normalize_command_from_id,
         inspector_composition_normalize_command_id, inspector_draft_batch_commit_command_from_id,
-        inspector_draft_batch_commit_command_id, inspector_draft_commit_command_from_id,
-        inspector_draft_commit_command_id, inspector_draft_update_command_from_id,
+        inspector_draft_batch_commit_command_id, inspector_draft_batch_discard_command_from_id,
+        inspector_draft_batch_discard_command_id, inspector_draft_commit_command_from_id,
+        inspector_draft_commit_command_id, inspector_draft_discard_command_from_id,
+        inspector_draft_discard_command_id, inspector_draft_update_command_from_id,
         inspector_draft_update_command_id,
     };
 
@@ -178,6 +235,34 @@ mod tests {
     }
 
     #[test]
+    fn inspector_draft_discard_command_round_trips_key() {
+        let command_id = inspector_draft_discard_command_id("stream:stream-feed:temperature_k");
+
+        let command =
+            inspector_draft_discard_command_from_id(&command_id).expect("expected discard command");
+
+        assert_eq!(
+            command_id,
+            "inspector.discard_stream_draft:stream:stream-feed:temperature_k"
+        );
+        assert_eq!(command.draft_key, "stream:stream-feed:temperature_k");
+    }
+
+    #[test]
+    fn inspector_draft_discard_command_rejects_unknown_or_empty_command_id() {
+        assert_eq!(
+            inspector_draft_discard_command_from_id("inspector.discard_stream_draft:"),
+            None
+        );
+        assert_eq!(
+            inspector_draft_discard_command_from_id(
+                "inspector.commit_stream_draft:stream:stream-feed:temperature_k"
+            ),
+            None
+        );
+    }
+
+    #[test]
     fn inspector_draft_batch_commit_command_round_trips_stream() {
         let command_id = inspector_draft_batch_commit_command_id("stream-feed");
 
@@ -200,6 +285,36 @@ mod tests {
         assert_eq!(
             inspector_draft_batch_commit_command_from_id(
                 "inspector.commit_stream_draft:stream:stream-feed:temperature_k"
+            ),
+            None
+        );
+    }
+
+    #[test]
+    fn inspector_draft_batch_discard_command_round_trips_stream() {
+        let command_id = inspector_draft_batch_discard_command_id("stream-feed");
+
+        let command = inspector_draft_batch_discard_command_from_id(&command_id)
+            .expect("expected batch discard command");
+
+        assert_eq!(
+            command_id,
+            "inspector.discard_stream_drafts:stream:stream-feed"
+        );
+        assert_eq!(command.stream_id, "stream-feed");
+    }
+
+    #[test]
+    fn inspector_draft_batch_discard_command_rejects_unknown_or_empty_command_id() {
+        assert_eq!(
+            inspector_draft_batch_discard_command_from_id(
+                "inspector.discard_stream_drafts:stream:"
+            ),
+            None
+        );
+        assert_eq!(
+            inspector_draft_batch_discard_command_from_id(
+                "inspector.commit_stream_drafts:stream:stream-feed"
             ),
             None
         );

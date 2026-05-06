@@ -271,7 +271,13 @@ pub enum StudioGuiHostCommand {
     DispatchInspectorDraftCommit {
         command_id: String,
     },
+    DispatchInspectorDraftDiscard {
+        command_id: String,
+    },
     DispatchInspectorDraftBatchCommit {
+        command_id: String,
+    },
+    DispatchInspectorDraftBatchDiscard {
         command_id: String,
     },
     DispatchInspectorCompositionNormalize {
@@ -308,7 +314,9 @@ pub enum StudioGuiHostCommandOutcome {
     UiCommandDispatched(StudioGuiHostUiCommandDispatchResult),
     InspectorDraftUpdated(StudioGuiHostDispatch),
     InspectorDraftCommitted(StudioGuiHostDispatch),
+    InspectorDraftDiscarded(StudioGuiHostDispatch),
     InspectorDraftBatchCommitted(StudioGuiHostDispatch),
+    InspectorDraftBatchDiscarded(StudioGuiHostDispatch),
     InspectorCompositionNormalized(StudioGuiHostDispatch),
     WindowDropTargetQueried(StudioGuiHostWindowDropTargetQueryResult),
     WindowDropTargetPreviewUpdated(StudioGuiHostWindowDropTargetQueryResult),

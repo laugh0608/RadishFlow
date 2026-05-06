@@ -207,6 +207,7 @@ pub struct StudioGuiWindowInspectorTargetDetailModel {
     pub property_notices: Vec<StudioGuiWindowInspectorPropertyNoticeModel>,
     pub property_composition_summary: Option<StudioGuiWindowInspectorCompositionSummaryModel>,
     pub property_batch_commit_command_id: Option<String>,
+    pub property_batch_discard_command_id: Option<String>,
     pub property_composition_normalize_command_id: Option<String>,
     pub unit_ports: Vec<StudioGuiWindowInspectorTargetPortModel>,
     pub latest_unit_result: Option<StudioGuiWindowUnitExecutionResultModel>,
@@ -233,6 +234,7 @@ pub struct StudioGuiWindowInspectorTargetFieldModel {
     pub is_dirty: bool,
     pub draft_update_command_id: String,
     pub commit_command_id: Option<String>,
+    pub discard_command_id: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -970,6 +972,7 @@ fn inspector_target_detail_model_from_snapshot(
             .as_ref()
             .map(inspector_composition_summary_model_from_snapshot),
         property_batch_commit_command_id: detail.property_batch_commit_command_id.clone(),
+        property_batch_discard_command_id: detail.property_batch_discard_command_id.clone(),
         property_composition_normalize_command_id: detail
             .property_composition_normalize_command_id
             .clone(),
@@ -1066,6 +1069,7 @@ fn inspector_field_model_from_snapshot(
         is_dirty: field.is_dirty,
         draft_update_command_id: field.draft_update_command_id.clone(),
         commit_command_id: field.commit_command_id.clone(),
+        discard_command_id: field.discard_command_id.clone(),
     }
 }
 

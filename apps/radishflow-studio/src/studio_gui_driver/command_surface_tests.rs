@@ -288,6 +288,10 @@ fn gui_driver_routes_inspector_draft_update_through_driver_boundary() {
         updated_field.commit_command_id.as_deref(),
         Some("inspector.commit_stream_draft:stream:stream-feed:temperature_k")
     );
+    assert_eq!(
+        updated_field.discard_command_id.as_deref(),
+        Some("inspector.discard_stream_draft:stream:stream-feed:temperature_k")
+    );
 }
 
 #[test]
@@ -383,10 +387,86 @@ fn gui_driver_routes_inspector_draft_commit_through_driver_boundary() {
     assert_eq!(committed_field.status_label, "Synced");
     assert!(!committed_field.is_dirty);
     assert!(committed_field.commit_command_id.is_none());
+    assert!(committed_field.discard_command_id.is_none());
     assert_eq!(
         dispatch.window.runtime.control_state.pending_reason,
         Some(rf_ui::SolvePendingReason::DocumentRevisionAdvanced)
     );
+}
+
+#[test]
+fn gui_driver_routes_inspector_draft_discard_through_driver_boundary() {
+    let mut driver = StudioGuiDriver::new(&lease_expiring_config()).expect("expected driver");
+    driver
+        .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+        .expect("expected open dispatch");
+    driver
+        .dispatch_event(StudioGuiEvent::UiCommandRequested {
+            command_id: "inspector.focus_stream:stream-feed".to_string(),
+        })
+        .expect("expected inspector focus dispatch");
+    let update = driver
+        .dispatch_event(StudioGuiEvent::InspectorFieldDraftUpdateRequested {
+            command_id: "inspector.update_stream_draft:stream:stream-feed:pressure_pa".to_string(),
+            raw_value: "not-a-pressure".to_string(),
+        })
+        .expect("expected invalid draft update");
+    let discard_command_id = update
+        .window
+        .runtime
+        .active_inspector_detail
+        .as_ref()
+        .and_then(|detail| {
+            detail
+                .property_fields
+                .iter()
+                .find(|field| field.key == "stream:stream-feed:pressure_pa")
+        })
+        .and_then(|field| field.discard_command_id.clone())
+        .expect("expected discard command id");
+
+    let dispatch = driver
+        .dispatch_event(StudioGuiEvent::InspectorFieldDraftDiscardRequested {
+            command_id: discard_command_id,
+        })
+        .expect("expected draft discard dispatch");
+
+    match dispatch.outcome {
+        StudioGuiDriverOutcome::HostCommand(
+            StudioGuiHostCommandOutcome::InspectorDraftDiscarded(discarded),
+        ) => {
+            assert_eq!(discarded.target_window_id, 1);
+            match &discarded.effects.runtime_report.dispatch {
+                crate::StudioRuntimeDispatch::InspectorDraftDiscard(outcome) => {
+                    assert!(outcome.applied);
+                    assert_eq!(
+                        outcome.discarded_key.as_deref(),
+                        Some("stream:stream-feed:pressure_pa")
+                    );
+                    assert_eq!(outcome.document_revision, 0);
+                    assert_eq!(outcome.command_history_len, 0);
+                }
+                other => panic!("expected inspector draft discard dispatch, got {other:?}"),
+            }
+        }
+        other => panic!("expected inspector draft discard outcome, got {other:?}"),
+    }
+
+    let detail = dispatch
+        .window
+        .runtime
+        .active_inspector_detail
+        .as_ref()
+        .expect("expected active inspector detail");
+    let pressure = detail
+        .property_fields
+        .iter()
+        .find(|field| field.key == "stream:stream-feed:pressure_pa")
+        .expect("expected pressure field");
+    assert_eq!(pressure.status_label, "Synced");
+    assert_eq!(pressure.current_value, "120000");
+    assert!(pressure.discard_command_id.is_none());
+    assert!(detail.property_notices.is_empty());
 }
 
 #[test]
@@ -415,6 +495,15 @@ fn gui_driver_routes_inspector_draft_batch_commit_through_driver_boundary() {
             .as_ref()
             .and_then(|detail| detail.property_batch_commit_command_id.as_ref())
             .is_none()
+    );
+    assert!(
+        update_temperature
+            .window
+            .runtime
+            .active_inspector_detail
+            .as_ref()
+            .and_then(|detail| detail.property_batch_discard_command_id.as_ref())
+            .is_some()
     );
     let update_pressure = driver
         .dispatch_event(StudioGuiEvent::InspectorFieldDraftUpdateRequested {
@@ -467,6 +556,7 @@ fn gui_driver_routes_inspector_draft_batch_commit_through_driver_boundary() {
         .as_ref()
         .expect("expected inspector detail");
     assert!(detail.property_batch_commit_command_id.is_none());
+    assert!(detail.property_batch_discard_command_id.is_none());
     let temperature = detail
         .property_fields
         .iter()
@@ -484,6 +574,84 @@ fn gui_driver_routes_inspector_draft_batch_commit_through_driver_boundary() {
     assert_eq!(
         dispatch.window.runtime.control_state.pending_reason,
         Some(rf_ui::SolvePendingReason::DocumentRevisionAdvanced)
+    );
+}
+
+#[test]
+fn gui_driver_routes_inspector_draft_batch_discard_through_driver_boundary() {
+    let mut driver = StudioGuiDriver::new(&lease_expiring_config()).expect("expected driver");
+    driver
+        .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+        .expect("expected open dispatch");
+    driver
+        .dispatch_event(StudioGuiEvent::UiCommandRequested {
+            command_id: "inspector.focus_stream:stream-feed".to_string(),
+        })
+        .expect("expected inspector focus dispatch");
+    driver
+        .dispatch_event(StudioGuiEvent::InspectorFieldDraftUpdateRequested {
+            command_id: "inspector.update_stream_draft:stream:stream-feed:temperature_k"
+                .to_string(),
+            raw_value: "333.5".to_string(),
+        })
+        .expect("expected temperature draft update");
+    let update = driver
+        .dispatch_event(StudioGuiEvent::InspectorFieldDraftUpdateRequested {
+            command_id: "inspector.update_stream_draft:stream:stream-feed:pressure_pa".to_string(),
+            raw_value: "not-a-pressure".to_string(),
+        })
+        .expect("expected pressure draft update");
+    let batch_discard_command_id = update
+        .window
+        .runtime
+        .active_inspector_detail
+        .as_ref()
+        .and_then(|detail| detail.property_batch_discard_command_id.clone())
+        .expect("expected batch discard command id");
+
+    let dispatch = driver
+        .dispatch_event(StudioGuiEvent::InspectorFieldDraftBatchDiscardRequested {
+            command_id: batch_discard_command_id,
+        })
+        .expect("expected batch draft discard dispatch");
+
+    match dispatch.outcome {
+        StudioGuiDriverOutcome::HostCommand(
+            StudioGuiHostCommandOutcome::InspectorDraftBatchDiscarded(discarded),
+        ) => {
+            assert_eq!(discarded.target_window_id, 1);
+            match &discarded.effects.runtime_report.dispatch {
+                crate::StudioRuntimeDispatch::InspectorDraftBatchDiscard(outcome) => {
+                    assert!(outcome.applied);
+                    assert_eq!(outcome.document_revision, 0);
+                    assert_eq!(outcome.command_history_len, 0);
+                    assert_eq!(
+                        outcome.discarded_keys,
+                        vec![
+                            "stream:stream-feed:temperature_k".to_string(),
+                            "stream:stream-feed:pressure_pa".to_string()
+                        ]
+                    );
+                }
+                other => panic!("expected inspector draft batch discard dispatch, got {other:?}"),
+            }
+        }
+        other => panic!("expected inspector draft batch discard outcome, got {other:?}"),
+    }
+
+    let detail = dispatch
+        .window
+        .runtime
+        .active_inspector_detail
+        .as_ref()
+        .expect("expected inspector detail");
+    assert!(detail.property_batch_discard_command_id.is_none());
+    assert!(detail.property_notices.is_empty());
+    assert!(
+        detail
+            .property_fields
+            .iter()
+            .all(|field| !field.is_dirty && field.discard_command_id.is_none())
     );
 }
 

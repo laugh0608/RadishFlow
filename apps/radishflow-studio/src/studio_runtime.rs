@@ -846,7 +846,13 @@ mod tests {
             StudioRuntimeDispatch::InspectorDraftCommit(_) => {
                 panic!("expected entitlement session event dispatch")
             }
+            StudioRuntimeDispatch::InspectorDraftDiscard(_) => {
+                panic!("expected entitlement session event dispatch")
+            }
             StudioRuntimeDispatch::InspectorDraftBatchCommit(_) => {
+                panic!("expected entitlement session event dispatch")
+            }
+            StudioRuntimeDispatch::InspectorDraftBatchDiscard(_) => {
                 panic!("expected entitlement session event dispatch")
             }
             StudioRuntimeDispatch::InspectorCompositionNormalize(_) => {

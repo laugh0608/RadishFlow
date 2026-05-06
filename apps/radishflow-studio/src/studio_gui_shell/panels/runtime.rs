@@ -812,6 +812,14 @@ impl ReadyAppState {
                     self.dispatch_inspector_field_draft_batch_commit(command_id.clone());
                 }
             }
+            if let Some(command_id) = detail.property_batch_discard_command_id.as_ref() {
+                if ui
+                    .small_button(self.locale.text(ShellText::InspectorFieldDiscardAll))
+                    .clicked()
+                {
+                    self.dispatch_inspector_field_draft_batch_discard(command_id.clone());
+                }
+            }
             if let Some(command_id) = detail.property_composition_normalize_command_id.as_ref() {
                 if ui
                     .small_button(self.locale.text(ShellText::InspectorNormalizeComposition))
@@ -911,12 +919,36 @@ impl ReadyAppState {
                             inspector_field_status_color(field.status_label),
                         );
                         if let Some(command_id) = field.commit_command_id.as_ref() {
-                            if submit_on_enter
-                                || ui
-                                    .small_button(self.locale.text(ShellText::InspectorFieldApply))
-                                    .clicked()
+                            ui.horizontal_wrapped(|ui| {
+                                if submit_on_enter
+                                    || ui
+                                        .small_button(
+                                            self.locale.text(ShellText::InspectorFieldApply),
+                                        )
+                                        .clicked()
+                                {
+                                    self.dispatch_inspector_field_draft_commit(command_id.clone());
+                                }
+                                if let Some(discard_command_id) = field.discard_command_id.as_ref()
+                                {
+                                    if ui
+                                        .small_button(
+                                            self.locale.text(ShellText::InspectorFieldDiscard),
+                                        )
+                                        .clicked()
+                                    {
+                                        self.dispatch_inspector_field_draft_discard(
+                                            discard_command_id.clone(),
+                                        );
+                                    }
+                                }
+                            });
+                        } else if let Some(command_id) = field.discard_command_id.as_ref() {
+                            if ui
+                                .small_button(self.locale.text(ShellText::InspectorFieldDiscard))
+                                .clicked()
                             {
-                                self.dispatch_inspector_field_draft_commit(command_id.clone());
+                                self.dispatch_inspector_field_draft_discard(command_id.clone());
                             }
                         } else {
                             ui.small("-");

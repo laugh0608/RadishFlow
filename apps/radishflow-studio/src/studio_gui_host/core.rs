@@ -214,9 +214,15 @@ impl StudioGuiHost {
             StudioGuiHostCommand::DispatchInspectorDraftCommit { command_id } => self
                 .dispatch_inspector_draft_commit(&command_id)
                 .map(StudioGuiHostCommandOutcome::InspectorDraftCommitted),
+            StudioGuiHostCommand::DispatchInspectorDraftDiscard { command_id } => self
+                .dispatch_inspector_draft_discard(&command_id)
+                .map(StudioGuiHostCommandOutcome::InspectorDraftDiscarded),
             StudioGuiHostCommand::DispatchInspectorDraftBatchCommit { command_id } => self
                 .dispatch_inspector_draft_batch_commit(&command_id)
                 .map(StudioGuiHostCommandOutcome::InspectorDraftBatchCommitted),
+            StudioGuiHostCommand::DispatchInspectorDraftBatchDiscard { command_id } => self
+                .dispatch_inspector_draft_batch_discard(&command_id)
+                .map(StudioGuiHostCommandOutcome::InspectorDraftBatchDiscarded),
             StudioGuiHostCommand::DispatchInspectorCompositionNormalize { command_id } => self
                 .dispatch_inspector_composition_normalize(&command_id)
                 .map(StudioGuiHostCommandOutcome::InspectorCompositionNormalized),
@@ -436,6 +442,7 @@ fn active_inspector_detail_from_controller(
                 property_notices: Vec::new(),
                 property_composition_summary: None,
                 property_batch_commit_command_id: None,
+                property_batch_discard_command_id: None,
                 property_composition_normalize_command_id: None,
                 unit_ports: unit
                     .ports
@@ -486,6 +493,10 @@ fn active_inspector_detail_from_controller(
                     },
                 ],
                 property_batch_commit_command_id: stream_property_batch_commit_command_id(
+                    stream,
+                    &property_fields,
+                ),
+                property_batch_discard_command_id: stream_property_batch_discard_command_id(
                     stream,
                     &property_fields,
                 ),
@@ -581,6 +592,11 @@ fn inspector_text_field(
                 draft.is_dirty,
                 draft.validation,
             ),
+            discard_command_id: inspector_discard_command_id_for_field(
+                &key,
+                draft.is_dirty,
+                draft.validation,
+            ),
         },
         _ => StudioGuiInspectorTargetFieldSnapshot {
             key: key.clone(),
@@ -592,6 +608,7 @@ fn inspector_text_field(
             validation: StudioGuiInspectorTargetFieldValidationSnapshot::Unknown,
             draft_update_command_id: crate::inspector_draft_update_command_id(&key),
             commit_command_id: None,
+            discard_command_id: None,
         },
     }
 }
@@ -617,6 +634,11 @@ fn inspector_number_field(
                 draft.is_dirty,
                 draft.validation,
             ),
+            discard_command_id: inspector_discard_command_id_for_field(
+                &key,
+                draft.is_dirty,
+                draft.validation,
+            ),
         },
         _ => StudioGuiInspectorTargetFieldSnapshot {
             key: key.clone(),
@@ -628,6 +650,7 @@ fn inspector_number_field(
             validation: StudioGuiInspectorTargetFieldValidationSnapshot::Unknown,
             draft_update_command_id: crate::inspector_draft_update_command_id(&key),
             commit_command_id: None,
+            discard_command_id: None,
         },
     }
 }
@@ -657,6 +680,15 @@ fn inspector_commit_command_id_for_field(
         .then(|| crate::inspector_draft_commit_command_id(key))
 }
 
+fn inspector_discard_command_id_for_field(
+    key: &str,
+    is_dirty: bool,
+    validation: rf_ui::DraftValidationState,
+) -> Option<String> {
+    (is_dirty || validation == rf_ui::DraftValidationState::Invalid)
+        .then(|| crate::inspector_draft_discard_command_id(key))
+}
+
 fn stream_property_batch_commit_command_id(
     stream: &rf_model::MaterialStreamState,
     fields: &[StudioGuiInspectorTargetFieldSnapshot],
@@ -667,6 +699,16 @@ fn stream_property_batch_commit_command_id(
         .count();
     (committable_field_count > 1)
         .then(|| crate::inspector_draft_batch_commit_command_id(stream.id.as_str()))
+}
+
+fn stream_property_batch_discard_command_id(
+    stream: &rf_model::MaterialStreamState,
+    fields: &[StudioGuiInspectorTargetFieldSnapshot],
+) -> Option<String> {
+    fields
+        .iter()
+        .any(|field| field.discard_command_id.is_some())
+        .then(|| crate::inspector_draft_batch_discard_command_id(stream.id.as_str()))
 }
 
 fn stream_property_notices(
