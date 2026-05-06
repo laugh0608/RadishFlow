@@ -22,22 +22,23 @@
 
 ## 文档真相源
 
-`docs/` 是本仓库的正式文档源，当前优先级最高的文档如下：
+`docs/` 是本仓库的正式文档源。新会话默认只优先读取最小入口文档，避免为获取背景而消耗过多上下文：
 
-1. `docs/radishflow-architecture-draft.md`
-2. `docs/radishflow-startup-checklist.md`
-3. `docs/radishflow-mvp-roadmap.md`
-4. `docs/radishflow-capeopen-asset-checklist.md`
-5. `docs/architecture/overview.md`
-6. `docs/mvp/scope.md`
-7. `docs/capeopen/boundary.md`
-8. `docs/thermo/mvp-model.md`
-9. `docs/devlogs/README.md`
+1. `docs/status/current.md`
+2. `docs/README.md`
+
+当用户询问“根据项目规划和开发进度，今天要做什么”这类问题时，优先读取 `docs/status/current.md`，再按该文档的“按需阅读”列表补读专题文档，不默认展开 `overview`、`scope` 或整篇周志。
+
+涉及具体领域时，再按需读取对应专题文档，例如 `docs/capeopen/boundary.md`、`docs/thermo/mvp-model.md`、`docs/architecture/app-architecture.md`、`docs/architecture/auth-entitlement-architecture.md`、`docs/radishflow-mvp-roadmap.md`。
+
+涉及实现风格争议、命名争议或抽象边界判断时，读取 `docs/development/code-style.md`。
 
 规则：
 
 - 若代码与文档冲突，先判断是代码偏离文档，还是文档已过期，再统一修正
 - 优先更新已有文档，不为一次性讨论创建大量散文档
+- `docs/` 的关键入口文档必须尽可能简约，只描述当前阶段、最近进度、稳定边界和下一步；历史背景、详细过程和长篇推演应放入专题文档或周志
+- 更新关键入口文档时，应优先删减过期背景和重复叙述，避免让 AI/Agent 在新会话中读取大量低价值上下文
 - 周志按 `docs/devlogs/YYYY-Www.md` 命名
 - 许可条款以仓库根 `LICENSE` 文件为准
 
@@ -53,7 +54,6 @@
 - 产品定位：稳态流程模拟软件
 - 核心技术栈：Rust Core + Rust UI + `.NET 10` CAPE-OPEN/COM 适配层
 - 当前阶段：`M1/M2` 之间，重点是把骨架推进为真正可开发的基础结构
-- 当前工作区：只在 `D:\Code\RadishFlow` 内工作
 - 外部参考：`CapeOpenCore` 仅作为 CAPE-OPEN / COM 语义和历史经验参考；`DWSIM` 仅作为模块拆分、自动化入口和 flowsheet solver 组织经验参考；二者都不在本仓库协作中跨工作区修改，也不直接迁移实现代码
 
 ## 当前阶段产品边界
@@ -193,6 +193,16 @@
 - 求解结果采用独立 `SolveSnapshot`，不直接覆盖 `FlowsheetDocument`
 - 每次新增/修改功能、修复 bug 或完成其他任务时，不应优先追求“最小修复方案”，而应优先考虑能否做出完善、稳妥的根治性修改
 - 避免连续叠加治标不治本的兜底逻辑；如果问题的根因已可定位，应优先修正根因，而不是无止境地继续包裹一层又一层 fallback
+
+## 语言与代码风格约束
+
+- 详细规范见 `docs/development/code-style.md`；协作入口只保留必须始终遵守的高层约束
+- 新增 Rust、C#、脚本或前端代码时，应遵循对应语言的主流、清晰、可维护实践，优先使用语言和标准库已有表达能力，而不是自造晦涩框架
+- 命名必须表达真实领域职责；禁止新增含义不清的方法、类型或抽象层，例如只有技术包装意义、不能说明业务边界的泛化 helper、manager、orchestrator、context、adapter
+- 若确需新增抽象，必须能减少真实重复、隔离稳定边界或表达明确领域概念，并应有清楚的调用面、错误语义和测试覆盖
+- Rust 代码优先使用类型系统、`Result` / `Option`、所有权和小而明确的模块边界表达约束，避免通过字符串标记、全局状态或多层 fallback 掩盖模型问题
+- C# / `.NET` 代码优先使用符合现代 .NET 的类型、异常和 interop 边界；COM / CAPE-OPEN 适配语义只能留在适配层，不向 Rust Core 或通用模型扩散
+- 文档中描述代码约束时应落到可执行规则和边界，不写无法指导实现的抽象口号
 
 ## 常见偏航点
 

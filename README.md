@@ -127,4 +127,4 @@ vYY.M.RELEASE
 ## 参考仓库
 
 - [CapeOpenCore](https://github.com/laugh0608/CapeOpenCore): 当前阶段用于提取 CAPE-OPEN 接口、GUID、异常语义与注册语义的参考仓库。
-- `D:\Code\Radish`: 当前阶段用于参考 OIDC / Auth / Client Registration 能力的统一平台仓库。
+- [Radish](https://github.com/laugh0608/Radish): 当前阶段用于参考 OIDC / Auth / Client Registration 能力的统一平台仓库。

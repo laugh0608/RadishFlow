@@ -15,7 +15,7 @@
 
 ## 参考来源
 
-当前版本命名规则参考 `D:\Code\Radish` 中已经落地的日历版本号规范，并保留对 RadishFlow 当前阶段更保守的收口：
+当前版本命名规则参考 [Radish](https://github.com/laugh0608/Radish) 中已经落地的日历版本号规范，并保留对 RadishFlow 当前阶段更保守的收口：
 
 - 继续沿用 **Calendar Versioning**
 - 继续沿用 `-dev` / `-test` / `-release` 轨道后缀
@@ -177,4 +177,3 @@ vYY.M.RELEASE.DDXX
 1. 是否在首个对外版本前统一把 workspace crate version 从 `0.1.0` 切到发布口径
 2. 是否需要补一份 RadishFlow 的发布操作清单，覆盖 version 更新、tag、Release Notes 和验收记录
 3. tag push 后除仓库检查外，后续是否需要增加打包、工件归档或安装包产出流程
-
