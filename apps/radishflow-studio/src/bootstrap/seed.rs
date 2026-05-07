@@ -26,6 +26,9 @@ use super::StudioBootstrapEntitlementSeed;
 pub(super) const BOOTSTRAP_MVP_PROPERTY_PACKAGE_ID: &str = "binary-hydrocarbon-lite-v1";
 const BOOTSTRAP_MVP_COMPONENT_A_ID: &str = "component-a";
 const BOOTSTRAP_MVP_COMPONENT_B_ID: &str = "component-b";
+const BOOTSTRAP_ANTOINE_BOUNDARY_SLOPE: f64 = 250.0;
+const BOOTSTRAP_REFERENCE_TEMPERATURE_K: f64 = 300.0;
+const BOOTSTRAP_REFERENCE_PRESSURE_PA: f64 = 100_000.0;
 
 #[derive(Debug, Clone)]
 pub(super) struct BootstrapSeedState {
@@ -368,21 +371,13 @@ fn build_bootstrap_payload(
 
     let mut more_volatile =
         StoredThermoComponent::new(components[0].id.clone(), components[0].name.clone());
-    more_volatile.antoine = Some(StoredAntoineCoefficients::new(
-        ((2.0_f64 * 100_000.0_f64) / 1_000.0_f64).ln(),
-        0.0,
-        0.0,
-    ));
+    more_volatile.antoine = Some(build_bootstrap_antoine_coefficients(2.0));
     more_volatile.liquid_heat_capacity_j_per_mol_k = Some(35.0);
     more_volatile.vapor_heat_capacity_j_per_mol_k = Some(36.5);
 
     let mut less_volatile =
         StoredThermoComponent::new(components[1].id.clone(), components[1].name.clone());
-    less_volatile.antoine = Some(StoredAntoineCoefficients::new(
-        ((0.5_f64 * 100_000.0_f64) / 1_000.0_f64).ln(),
-        0.0,
-        0.0,
-    ));
+    less_volatile.antoine = Some(build_bootstrap_antoine_coefficients(0.5));
     less_volatile.liquid_heat_capacity_j_per_mol_k = Some(52.0);
     less_volatile.vapor_heat_capacity_j_per_mol_k = Some(65.0);
 
@@ -391,4 +386,13 @@ fn build_bootstrap_payload(
         "2026.04.2",
         vec![more_volatile, less_volatile],
     ))
+}
+
+fn build_bootstrap_antoine_coefficients(k_value: f64) -> StoredAntoineCoefficients {
+    StoredAntoineCoefficients::new(
+        ((k_value * BOOTSTRAP_REFERENCE_PRESSURE_PA) / 1_000.0).ln()
+            + BOOTSTRAP_ANTOINE_BOUNDARY_SLOPE / BOOTSTRAP_REFERENCE_TEMPERATURE_K,
+        BOOTSTRAP_ANTOINE_BOUNDARY_SLOPE,
+        0.0,
+    )
 }
