@@ -43,6 +43,7 @@
 - `rf-flash` 当前会在 `TP Flash` 结果中显式携带 `liquid-only / two-phase / vapor-only` phase region 与 bubble/dew pressure / temperature
 - `rf-model::MaterialStreamState` 当前已为相平衡边界正式携带结构化 `bubble_dew_window`
 - `Flash Drum` liquid / vapor outlet、`rf-solver::SolveSnapshot` 与 `rf-ui::SolveSnapshot` 当前已能透传这组窗口；其中 flash outlet 会按各自 outlet composition 重算窗口，而不是直接复用 overall flash feed 的边界
+- `apps/radishflow-studio` bootstrap 生成的本地 `binary-hydrocarbon-lite-v1` 样例包当前也已对齐同一套 Antoine 温度依赖假设，确保空白项目 / Studio run path 与 golden / integration 样例共享一致的 bubble/dew temperature 基线
 - `rf-thermo` 当前要求传入热力学状态和相态焓计算的 mole fractions 在有限、非负之外必须归一到 1；`rf-flash` 直接调用入口会继承该契约，unit operation 层仍负责先把文档流股组成归一化后再调用 flash
 
 ## 当前刻意未实现的内容
@@ -61,8 +62,8 @@
 当前数值主线已经从“补第一版算法”切换为“围绕已实现算法建立更稳定的闭环与回归基线”，优先顺序建议保持为：
 
 1. 继续补更稳定的黄金样例与边界条件测试
-2. 让 Result Inspector / Active Inspector 开始只读消费已结构化的 `bubble_dew_window`
-3. 在 `Flash Drum` 之外，评估是否把同一组窗口扩到更多中间流股结果
+2. 在 `Flash Drum` 之外，评估是否把同一组窗口扩到更多中间流股结果
+3. 保持 Result Inspector / Active Inspector 继续只读消费已结构化的 `bubble_dew_window`，不要在 shell / UI 中分叉第二套相平衡语义
 4. 待 MVP 闭环更稳后，再评估更真实 EOS 或更复杂物性模型
 
 ## 测试样例要求

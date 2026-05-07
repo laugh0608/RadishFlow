@@ -25,6 +25,7 @@
 - `rf-thermo` 已补基于当前 Antoine / Raoult MVP 假设的 bubble/dew pressure 边界估算，以及 fixed-pressure bubble/dew temperature 边界估算；`rf-flash` 的 `TP Flash` 结果现在会显式物化 `liquid-only / two-phase / vapor-only` phase region 与对应 bubble/dew pressure / temperature 窗口，并已补齐 golden / focused tests。
 - `rf-model::MaterialStreamState`、`rf-solver` 与 `rf-ui::SolveSnapshot` 现在已为 flash 产物流股正式透传结构化 `bubble_dew_window`；`Flash Drum` liquid / vapor outlet 会按各自 outlet 组成重算并携带这组窗口，而不是复用 overall flash feed 的边界。
 - Result Inspector / Active Inspector 现在会只读消费 `SolveSnapshot` 已物化的 `bubble_dew_window`，显式展示 `phase_region` 与 bubble/dew pressure / temperature；这层继续只消费 DTO，不在 shell 中重算热力学或分叉第二套相平衡语义。
+- Studio bootstrap 内置的 `binary-hydrocarbon-lite-v1` 样例包 Antoine 系数现在也已与当前 bubble/dew temperature 数值基线对齐，空白项目和 shell/solver 回归继续共享同一套相平衡假设。
 - Result Inspector / Active Inspector 的流股相结果与相对比现在会显式展示各相摩尔流量，并继续只消费 `SolveSnapshot` 已物化的 phase fraction / molar enthalpy，不在 shell 中重算热力学。
 - Solve step / Active Inspector / unit-centric Result Inspector 现在会为输入和输出流股显式展示 `T / P / F / H` 结果摘要，便于直接审阅单元前后变化；这层仍只消费已有 DTO 与既有 `InspectorTarget` command。
 - Diagnostics 列表与 failure diagnostic 现在会前推相关流股数值上下文：成功路径直接显示 `SolveSnapshot` 已物化的 `T / P / F / H` 摘要，失败路径在诊断 revision 与当前文档匹配时显示文档态 `T / P / F / z` 与 port 绑定流股上下文；这层仍只消费结构化 snapshot，不在 shell 中反查文档或反解析错误消息。

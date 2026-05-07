@@ -1,6 +1,6 @@
 # RadishFlow MVP 开发路线图
 
-更新时间：2026-05-01
+更新时间：2026-05-07
 
 ## 文档目的
 
@@ -138,6 +138,8 @@ MVP 阶段明确不做：
 ### 当前补充收口
 
 - 2026-05-05：M2 的“基础焓值”已按 MVP 边界补齐为常热容显热基线。`rf-thermo` 使用 property package 中的 liquid/vapor heat capacity 计算相对 `298.15 K` 的相 molar enthalpy；`rf-flash` 在 `TP Flash` 结果中写入 liquid/vapor 与按相分率加权的 overall molar enthalpy，并由 `Flash Drum` outlet stream 保留该相焓。该实现只作为当前二元理想体系结果消费面的基础数值，不代表完整焓参考态、相变潜热或真实物性模型已完成。
+- 2026-05-07：M2 当前又已在现有 Antoine / Raoult MVP 假设上补出 bubble/dew pressure 与 fixed-pressure bubble/dew temperature 边界；`rf-flash` 的 `TP Flash` 结果会显式携带 `phase region + bubble/dew pressure / temperature`，并把结构化 `bubble_dew_window` 前推到 `rf-model -> rf-solver -> rf-ui::SolveSnapshot`。
+- 2026-05-07：Studio bootstrap 内置的 `binary-hydrocarbon-lite-v1` 样例包 Antoine 系数当前也已与上述边界基线对齐，避免空白项目 / Studio run path 与 thermo golden / integration 样例分叉成两套数值假设。
 
 ### 退出标准
 
@@ -189,6 +191,7 @@ MVP 阶段明确不做：
 - `examples/flowsheets` 当前应维护至少三条可直接从 `*.rfproj.json` 载入并求解的示例项目，作为内核闭环回归基线
 - `tests/rust-integration` 当前应作为仓库级 Rust 集成测试入口，覆盖“加载项目 -> 求解 -> 读取结果”的示例流程回归
 - `rf-ui` 当前已具备把 `rf-solver::SolveSnapshot` 回写为 UI 层结果快照的稳定映射
+- Studio 当前又已让 Result Inspector / Active Inspector 只读消费 `SolveSnapshot` 已物化的 `bubble_dew_window`，显式展示 `phase region` 与 bubble/dew pressure / temperature；shell 继续只消费 DTO，不在界面层重算热力学
 - `rf-ui` 当前已补出 `RunPanelState`，并由 `AppState` 在文档提交、快照写入、模式切换、失败记录和日志追加后自动刷新运行栏摘要
 - `rf-ui` 当前已把运行栏按钮模型冻结为 `RunPanelCommandModel`，让主按钮选择和 `Run/Resume/Hold/Active` 的启用逻辑正式留在 UI 层
 - `apps/radishflow-studio` 当前已具备 `StudioAppFacade -> WorkspaceRunCommand -> WorkspaceSolveService -> solver_bridge` 四级应用层入口，可基于 `PropertyPackageProvider` 或本地 `StoredAuthCacheIndex` 执行真实 solve
