@@ -1,25 +1,28 @@
 use std::{path::Path, time::SystemTime};
 
+use crate::remove_inspector_composition_component;
 use crate::{
     EntitlementSessionEvent, EntitlementSessionEventDriverOutcome, EntitlementSessionHostDispatch,
     EntitlementSessionHostRuntime, EntitlementSessionHostTrigger, EntitlementSessionLifecycleEvent,
     EntitlementSessionPanelDriverOutcome, EntitlementSessionPolicy, EntitlementSessionRuntime,
     EntitlementSessionState, RunPanelDriverOutcome, StudioAppAuthCacheContext,
     StudioAppCommandOutcome, StudioAppMutableAuthCacheContext, WorkspaceControlActionOutcome,
-    apply_run_panel_recovery_action, commit_inspector_draft, commit_inspector_drafts,
+    add_inspector_composition_component, apply_run_panel_recovery_action, commit_inspector_draft,
+    commit_inspector_drafts, discard_inspector_draft, discard_inspector_drafts,
     dispatch_document_history, dispatch_document_lifecycle,
     dispatch_entitlement_session_event_with_control_plane,
     dispatch_run_panel_intent_with_auth_cache, dispatch_run_panel_primary_action_with_auth_cache,
     dispatch_run_panel_widget_action_with_auth_cache, focus_inspector_target,
-    snapshot_entitlement_session_driver_state, snapshot_entitlement_session_schedule,
-    snapshot_run_panel_driver_state, update_inspector_draft,
+    normalize_inspector_composition, snapshot_entitlement_session_driver_state,
+    snapshot_entitlement_session_schedule, snapshot_run_panel_driver_state, update_inspector_draft,
 };
 use rf_store::{StoredAuthCacheIndex, read_project_file};
 use rf_types::{RfError, RfResult};
 use rf_ui::AppState;
 
 use super::seed::{
-    BootstrapControlPlaneClient, app_state_from_project_file, normalized_system_time_now,
+    BOOTSTRAP_MVP_PROPERTY_PACKAGE_ID, BootstrapControlPlaneClient, app_state_from_project_file,
+    initialize_blank_project_thermo_basis, normalized_system_time_now,
     seed_bootstrap_runtime_state, seed_sample_auth_cache,
 };
 use super::temp_cache::TemporaryCacheRoot;
@@ -214,9 +217,34 @@ fn dispatch_bootstrap_trigger(
             let outcome = commit_inspector_draft(session.app_state, command.clone())?;
             Ok(StudioBootstrapDispatch::InspectorDraftCommit(outcome))
         }
+        StudioBootstrapTrigger::InspectorDraftDiscard(command) => {
+            let outcome = discard_inspector_draft(session.app_state, command.clone())?;
+            Ok(StudioBootstrapDispatch::InspectorDraftDiscard(outcome))
+        }
         StudioBootstrapTrigger::InspectorDraftBatchCommit(command) => {
             let outcome = commit_inspector_drafts(session.app_state, command.clone())?;
             Ok(StudioBootstrapDispatch::InspectorDraftBatchCommit(outcome))
+        }
+        StudioBootstrapTrigger::InspectorDraftBatchDiscard(command) => {
+            let outcome = discard_inspector_drafts(session.app_state, command.clone())?;
+            Ok(StudioBootstrapDispatch::InspectorDraftBatchDiscard(outcome))
+        }
+        StudioBootstrapTrigger::InspectorCompositionNormalize(command) => {
+            let outcome = normalize_inspector_composition(session.app_state, command.clone())?;
+            Ok(StudioBootstrapDispatch::InspectorCompositionNormalize(
+                outcome,
+            ))
+        }
+        StudioBootstrapTrigger::InspectorCompositionComponentAdd(command) => {
+            let outcome = add_inspector_composition_component(session.app_state, command.clone())?;
+            Ok(StudioBootstrapDispatch::InspectorCompositionComponentAdd(
+                outcome,
+            ))
+        }
+        StudioBootstrapTrigger::InspectorCompositionComponentRemove(command) => {
+            let outcome =
+                remove_inspector_composition_component(session.app_state, command.clone())?;
+            Ok(StudioBootstrapDispatch::InspectorCompositionComponentRemove(outcome))
         }
         StudioBootstrapTrigger::DocumentHistory(command) => {
             let outcome = dispatch_document_history(session.app_state, *command)?;
@@ -322,11 +350,12 @@ impl BootstrapSession {
     pub(crate) fn new(config: &StudioBootstrapConfig) -> RfResult<Self> {
         let project_file = read_project_file(&config.project_path)?;
         let mut app_state = app_state_from_project_file(&project_file, &config.project_path);
+        initialize_blank_project_thermo_basis(&mut app_state, normalized_system_time_now()?)?;
         let cache_root = TemporaryCacheRoot::new("studio-bootstrap")?;
         let seeded_auth_cache = seed_sample_auth_cache(
             cache_root.path(),
-            &project_file.document.flowsheet,
-            "binary-hydrocarbon-lite-v1",
+            &app_state.workspace.document.flowsheet,
+            BOOTSTRAP_MVP_PROPERTY_PACKAGE_ID,
             config.entitlement_seed,
         )?;
         seed_bootstrap_runtime_state(&mut app_state, &seeded_auth_cache);
@@ -457,14 +486,34 @@ impl BootstrapSession {
         &mut self,
         position: rf_ui::CanvasPoint,
     ) -> RfResult<Option<rf_ui::CanvasEditCommitResult>> {
-        self.app_state
-            .commit_canvas_pending_edit_at(position, SystemTime::now())
+        let result = self
+            .app_state
+            .commit_canvas_pending_edit_at(position, SystemTime::now())?;
+        if result.is_some() {
+            self.refresh_local_canvas_suggestions();
+        }
+        Ok(result)
     }
 
     pub(crate) fn accept_focused_canvas_suggestion_by_tab(
         &mut self,
     ) -> RfResult<Option<rf_ui::CanvasSuggestion>> {
         let accepted = self.app_state.accept_focused_canvas_suggestion_by_tab()?;
+        if accepted.is_none() {
+            return Ok(None);
+        }
+
+        self.refresh_local_canvas_suggestions();
+        self.dispatch_automatic_run_after_canvas_write_if_needed()?;
+
+        Ok(accepted)
+    }
+
+    pub(crate) fn accept_canvas_suggestion(
+        &mut self,
+        suggestion_id: &rf_ui::CanvasSuggestionId,
+    ) -> RfResult<Option<rf_ui::CanvasSuggestion>> {
+        let accepted = self.app_state.accept_canvas_suggestion(suggestion_id)?;
         if accepted.is_none() {
             return Ok(None);
         }

@@ -139,6 +139,28 @@ pub(super) fn flash_drum_local_rules_config() -> (StudioRuntimeConfig, PathBuf) 
     )
 }
 
+pub(super) fn layout_persistence_config() -> (StudioRuntimeConfig, PathBuf, PathBuf) {
+    let timestamp = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("expected current timestamp")
+        .as_nanos();
+    let project_path = std::env::temp_dir().join(format!(
+        "radishflow-studio-driver-layout-persistence-{timestamp}.rfproj.json"
+    ));
+    let project = include_str!("../../../../examples/flowsheets/feed-heater-flash.rfproj.json");
+    fs::write(&project_path, project).expect("expected persistence project");
+    let layout_path = rf_store::studio_layout_path_for_project(&project_path);
+
+    (
+        StudioRuntimeConfig {
+            project_path: project_path.clone(),
+            ..lease_expiring_config()
+        },
+        project_path,
+        layout_path,
+    )
+}
+
 pub(super) fn sample_canvas_suggestion(id: &str, confidence: f32) -> rf_ui::CanvasSuggestion {
     rf_ui::CanvasSuggestion::new(
         rf_ui::CanvasSuggestionId::new(id),

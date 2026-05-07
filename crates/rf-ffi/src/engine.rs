@@ -226,6 +226,8 @@ fn build_demo_package() -> (PropertyPackageManifest, ThermoSystem) {
         0.0,
         0.0,
     ));
+    first.liquid_heat_capacity_j_per_mol_k = Some(35.0);
+    first.vapor_heat_capacity_j_per_mol_k = Some(36.5);
 
     let mut second = ThermoComponent::new(ComponentId::new("component-b"), "Component B");
     second.antoine = Some(AntoineCoefficients::new(
@@ -233,6 +235,8 @@ fn build_demo_package() -> (PropertyPackageManifest, ThermoSystem) {
         0.0,
         0.0,
     ));
+    second.liquid_heat_capacity_j_per_mol_k = Some(52.0);
+    second.vapor_heat_capacity_j_per_mol_k = Some(65.0);
 
     (
         PropertyPackageManifest::new(

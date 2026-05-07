@@ -37,6 +37,14 @@ pub struct StoredStudioLayoutRegionWeight {
     pub weight: u16,
 }
 
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct StoredStudioCanvasUnitPosition {
+    pub unit_id: String,
+    pub x: f64,
+    pub y: f64,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct StoredStudioWindowLayoutEntry {
@@ -48,12 +56,14 @@ pub struct StoredStudioWindowLayoutEntry {
     pub region_weights: Vec<StoredStudioLayoutRegionWeight>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct StoredStudioLayoutFile {
     pub kind: String,
     pub schema_version: u32,
     pub entries: Vec<StoredStudioWindowLayoutEntry>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub canvas_unit_positions: Vec<StoredStudioCanvasUnitPosition>,
 }
 
 impl StoredStudioLayoutFile {
@@ -62,7 +72,16 @@ impl StoredStudioLayoutFile {
             kind: STORED_STUDIO_LAYOUT_FILE_KIND.to_string(),
             schema_version: STORED_STUDIO_LAYOUT_SCHEMA_VERSION,
             entries,
+            canvas_unit_positions: Vec::new(),
         }
+    }
+
+    pub fn with_canvas_unit_positions(
+        mut self,
+        canvas_unit_positions: Vec<StoredStudioCanvasUnitPosition>,
+    ) -> Self {
+        self.canvas_unit_positions = canvas_unit_positions;
+        self
     }
 
     pub fn validate(&self) -> RfResult<()> {
@@ -87,6 +106,17 @@ impl StoredStudioLayoutFile {
                 return Err(RfError::invalid_input(format!(
                     "stored studio layout file contains duplicate layout key `{}`",
                     entry.layout_key
+                )));
+            }
+        }
+
+        let mut unit_ids = BTreeSet::new();
+        for position in &self.canvas_unit_positions {
+            position.validate()?;
+            if !unit_ids.insert(position.unit_id.clone()) {
+                return Err(RfError::invalid_input(format!(
+                    "stored studio layout file contains duplicate canvas unit position `{}`",
+                    position.unit_id
                 )));
             }
         }
@@ -215,6 +245,23 @@ impl StoredStudioLayoutRegionWeight {
             return Err(RfError::invalid_input(
                 "stored studio layout region weight must be greater than zero",
             ));
+        }
+        Ok(())
+    }
+}
+
+impl StoredStudioCanvasUnitPosition {
+    pub fn validate(&self) -> RfResult<()> {
+        if self.unit_id.trim().is_empty() {
+            return Err(RfError::invalid_input(
+                "stored studio canvas unit position must contain a non-empty unit_id",
+            ));
+        }
+        if !self.x.is_finite() || !self.y.is_finite() {
+            return Err(RfError::invalid_input(format!(
+                "stored studio canvas unit position `{}` must contain finite coordinates",
+                self.unit_id
+            )));
         }
         Ok(())
     }

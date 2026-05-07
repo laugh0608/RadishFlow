@@ -143,6 +143,13 @@ impl CanvasSuggestion {
             SuggestionStatus::Proposed | SuggestionStatus::Focused
         ) && self.confidence >= DEFAULT_TAB_ACCEPT_CONFIDENCE
     }
+
+    pub fn can_accept_explicitly(&self) -> bool {
+        matches!(
+            self.status,
+            SuggestionStatus::Proposed | SuggestionStatus::Focused
+        ) && self.acceptance.is_some()
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Default)]
@@ -173,6 +180,12 @@ impl CanvasInteractionState {
     pub fn focused_suggestion(&self) -> Option<&CanvasSuggestion> {
         let focused_id = self.focused_suggestion_id.as_ref()?;
         self.suggestions.iter().find(|item| &item.id == focused_id)
+    }
+
+    pub fn suggestion(&self, suggestion_id: &CanvasSuggestionId) -> Option<&CanvasSuggestion> {
+        self.suggestions
+            .iter()
+            .find(|item| &item.id == suggestion_id)
     }
 
     pub fn begin_place_unit(&mut self, unit_kind: impl Into<String>) -> CanvasEditIntent {

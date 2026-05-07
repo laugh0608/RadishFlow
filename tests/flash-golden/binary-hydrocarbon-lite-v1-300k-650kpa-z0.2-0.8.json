@@ -12,7 +12,9 @@
         "a": 8.987,
         "b": 659.7,
         "c": -16.7
-      }
+      },
+      "liquidHeatCapacityJPerMolK": 35.0,
+      "vaporHeatCapacityJPerMolK": 36.5
     },
     {
       "id": "ethane",
@@ -21,11 +23,16 @@
         "a": 8.952,
         "b": 699.7,
         "c": -22.8
-      }
+      },
+      "liquidHeatCapacityJPerMolK": 52.0,
+      "vaporHeatCapacityJPerMolK": 65.0
     }
   ],
   "expectedKValues": [1.1988955282274087, 0.952045323067378],
   "expectedVaporFraction": 0.14839258047004478,
+  "expectedOverallMolarEnthalpyJPerMol": 92.74354832008909,
   "expectedLiquidMoleFractions": [0.19426630373482381, 0.8057336962651762],
-  "expectedVaporMoleFractions": [0.23290500283294777, 0.7670949971670521]
+  "expectedLiquidMolarEnthalpyJPerMol": 90.0903247475409,
+  "expectedVaporMoleFractions": [0.23290500283294777, 0.7670949971670521],
+  "expectedVaporMolarEnthalpyJPerMol": 107.970083725634
 }

@@ -48,6 +48,61 @@ impl StudioGuiHost {
         })
     }
 
+    pub fn move_canvas_unit_layout(
+        &mut self,
+        unit_id: rf_types::UnitId,
+        position: rf_ui::CanvasPoint,
+    ) -> RfResult<StudioGuiHostCanvasUnitLayoutMoveResult> {
+        if !self
+            .controller
+            .document()
+            .flowsheet
+            .units
+            .contains_key(&unit_id)
+        {
+            return Err(RfError::invalid_input(format!(
+                "cannot move canvas layout for missing unit `{}`",
+                unit_id.as_str()
+            )));
+        }
+
+        let previous_position = self.canvas_unit_positions.get(&unit_id).copied();
+        self.record_canvas_unit_position(&unit_id, position)?;
+        Ok(StudioGuiHostCanvasUnitLayoutMoveResult {
+            unit_id,
+            previous_position,
+            position,
+            ui_commands: self.ui_commands(),
+            canvas: self.canvas_state(),
+        })
+    }
+
+    pub fn move_selected_canvas_unit_layout(
+        &mut self,
+        direction: crate::StudioGuiCanvasUnitLayoutNudgeDirection,
+    ) -> RfResult<StudioGuiHostCanvasUnitLayoutMoveResult> {
+        let Some(unit) = self
+            .canvas_state()
+            .units
+            .iter()
+            .enumerate()
+            .find(|(_, unit)| unit.is_active_inspector_target)
+            .map(|(layout_slot, unit)| {
+                (
+                    unit.unit_id.clone(),
+                    unit.layout_position
+                        .unwrap_or_else(|| transient_canvas_grid_position(layout_slot)),
+                )
+            })
+        else {
+            return Err(RfError::invalid_input(
+                "cannot move canvas layout because no unit is selected",
+            ));
+        };
+
+        self.move_canvas_unit_layout(unit.0, nudged_canvas_position(unit.1, direction))
+    }
+
     pub fn dispatch_lifecycle_event(
         &mut self,
         event: StudioGuiHostLifecycleEvent,
@@ -104,15 +159,6 @@ impl StudioGuiHost {
         if let Some(action_id) = canvas_action_id_from_command_id(command_id) {
             let target_window_id = self.preferred_target_window_id();
             let canvas = self.canvas_state();
-            if canvas.suggestions.is_empty()
-                && canvas.pending_edit.is_none()
-                && action_id != crate::StudioGuiCanvasActionId::BeginPlaceFlashDrum
-            {
-                return Ok(StudioGuiHostUiCommandDispatchResult::IgnoredMissing {
-                    command_id: command_id.to_string(),
-                    ui_commands: self.ui_commands(),
-                });
-            }
             let action_entry = canvas
                 .widget()
                 .action(action_id)
@@ -127,9 +173,9 @@ impl StudioGuiHost {
                 });
             }
             let action = match action_id {
-                crate::StudioGuiCanvasActionId::BeginPlaceFlashDrum => {
+                crate::StudioGuiCanvasActionId::BeginPlaceUnit(kind) => {
                     StudioGuiCanvasInteractionAction::BeginPlaceUnit {
-                        unit_kind: "Flash Drum".to_string(),
+                        unit_kind: kind.unit_kind().to_string(),
                     }
                 }
                 crate::StudioGuiCanvasActionId::AcceptFocused => {
@@ -146,6 +192,16 @@ impl StudioGuiHost {
                 }
                 crate::StudioGuiCanvasActionId::CancelPendingEdit => {
                     StudioGuiCanvasInteractionAction::CancelPendingEdit
+                }
+                crate::StudioGuiCanvasActionId::MoveSelectedUnit(direction) => {
+                    let result = self.move_selected_canvas_unit_layout(direction)?;
+                    return Ok(
+                        StudioGuiHostUiCommandDispatchResult::ExecutedCanvasUnitLayoutMove {
+                            command_id: action_entry.command_id.to_string(),
+                            target_window_id,
+                            result,
+                        },
+                    );
                 }
             };
             let mut result = self.dispatch_canvas_interaction(action)?;
@@ -244,6 +300,26 @@ impl StudioGuiHost {
         Ok(dispatch_from_controller(dispatch, self.canvas_state()))
     }
 
+    pub fn dispatch_inspector_draft_discard(
+        &mut self,
+        command_id: &str,
+    ) -> RfResult<StudioGuiHostDispatch> {
+        let command =
+            crate::inspector_draft_discard_command_from_id(command_id).ok_or_else(|| {
+                RfError::invalid_input(format!(
+                    "inspector draft discard command `{command_id}` is not supported"
+                ))
+            })?;
+        let target_window_id = self.preferred_target_window_id().ok_or_else(|| {
+            RfError::invalid_input("open a studio window before discarding inspector draft")
+        })?;
+        let dispatch = self.controller.dispatch_window_trigger(
+            target_window_id,
+            StudioRuntimeTrigger::InspectorDraftDiscard(command),
+        )?;
+        Ok(dispatch_from_controller(dispatch, self.canvas_state()))
+    }
+
     pub fn dispatch_inspector_draft_batch_commit(
         &mut self,
         command_id: &str,
@@ -260,6 +336,90 @@ impl StudioGuiHost {
         let dispatch = self.controller.dispatch_window_trigger(
             target_window_id,
             StudioRuntimeTrigger::InspectorDraftBatchCommit(command),
+        )?;
+        Ok(dispatch_from_controller(dispatch, self.canvas_state()))
+    }
+
+    pub fn dispatch_inspector_draft_batch_discard(
+        &mut self,
+        command_id: &str,
+    ) -> RfResult<StudioGuiHostDispatch> {
+        let command =
+            crate::inspector_draft_batch_discard_command_from_id(command_id).ok_or_else(|| {
+                RfError::invalid_input(format!(
+                    "inspector draft batch discard command `{command_id}` is not supported"
+                ))
+            })?;
+        let target_window_id = self.preferred_target_window_id().ok_or_else(|| {
+            RfError::invalid_input("open a studio window before discarding inspector drafts")
+        })?;
+        let dispatch = self.controller.dispatch_window_trigger(
+            target_window_id,
+            StudioRuntimeTrigger::InspectorDraftBatchDiscard(command),
+        )?;
+        Ok(dispatch_from_controller(dispatch, self.canvas_state()))
+    }
+
+    pub fn dispatch_inspector_composition_normalize(
+        &mut self,
+        command_id: &str,
+    ) -> RfResult<StudioGuiHostDispatch> {
+        let command = crate::inspector_composition_normalize_command_from_id(command_id)
+            .ok_or_else(|| {
+                RfError::invalid_input(format!(
+                    "inspector composition normalize command `{command_id}` is not supported"
+                ))
+            })?;
+        let target_window_id = self.preferred_target_window_id().ok_or_else(|| {
+            RfError::invalid_input("open a studio window before normalizing stream composition")
+        })?;
+        let dispatch = self.controller.dispatch_window_trigger(
+            target_window_id,
+            StudioRuntimeTrigger::InspectorCompositionNormalize(command),
+        )?;
+        Ok(dispatch_from_controller(dispatch, self.canvas_state()))
+    }
+
+    pub fn dispatch_inspector_composition_component_add(
+        &mut self,
+        command_id: &str,
+    ) -> RfResult<StudioGuiHostDispatch> {
+        let command = crate::inspector_composition_component_add_command_from_id(command_id)
+            .ok_or_else(|| {
+                RfError::invalid_input(format!(
+                    "inspector composition component add command `{command_id}` is not supported"
+                ))
+            })?;
+        let target_window_id = self.preferred_target_window_id().ok_or_else(|| {
+            RfError::invalid_input(
+                "open a studio window before adding stream composition component",
+            )
+        })?;
+        let dispatch = self.controller.dispatch_window_trigger(
+            target_window_id,
+            StudioRuntimeTrigger::InspectorCompositionComponentAdd(command),
+        )?;
+        Ok(dispatch_from_controller(dispatch, self.canvas_state()))
+    }
+
+    pub fn dispatch_inspector_composition_component_remove(
+        &mut self,
+        command_id: &str,
+    ) -> RfResult<StudioGuiHostDispatch> {
+        let command = crate::inspector_composition_component_remove_command_from_id(command_id)
+            .ok_or_else(|| {
+                RfError::invalid_input(format!(
+                    "inspector composition component remove command `{command_id}` is not supported"
+                ))
+            })?;
+        let target_window_id = self.preferred_target_window_id().ok_or_else(|| {
+            RfError::invalid_input(
+                "open a studio window before removing stream composition component",
+            )
+        })?;
+        let dispatch = self.controller.dispatch_window_trigger(
+            target_window_id,
+            StudioRuntimeTrigger::InspectorCompositionComponentRemove(command),
         )?;
         Ok(dispatch_from_controller(dispatch, self.canvas_state()))
     }
@@ -303,6 +463,9 @@ impl StudioGuiHost {
         let result = self
             .controller
             .dispatch_canvas_interaction(action.clone())?;
+        if let Some(committed) = result.committed_edit.as_ref() {
+            self.record_canvas_unit_position(&committed.unit_id, committed.position)?;
+        }
         Ok(self.build_canvas_interaction_result_with_focus(
             action,
             result.committed_edit,
@@ -310,5 +473,61 @@ impl StudioGuiHost {
             result.rejected,
             result.focused,
         ))
+    }
+
+    fn record_canvas_unit_position(
+        &mut self,
+        unit_id: &rf_types::UnitId,
+        position: rf_ui::CanvasPoint,
+    ) -> RfResult<()> {
+        self.canvas_unit_positions.insert(unit_id.clone(), position);
+        let flowsheet = &self.controller.document().flowsheet;
+        self.canvas_unit_positions
+            .retain(|unit_id, _| flowsheet.units.contains_key(unit_id));
+        match self.controller.document_path() {
+            Some(project_path) => {
+                save_persisted_canvas_unit_positions(project_path, &self.canvas_unit_positions)
+            }
+            None => Ok(()),
+        }
+    }
+}
+
+fn transient_canvas_grid_position(layout_slot: usize) -> rf_ui::CanvasPoint {
+    const LEFT_PADDING: f64 = 18.0;
+    const TOP_PADDING: f64 = 72.0;
+    const BLOCK_WIDTH: f64 = 156.0;
+    const BLOCK_HEIGHT: f64 = 72.0;
+    const GAP_X: f64 = 22.0;
+    const GAP_Y: f64 = 20.0;
+    const FALLBACK_COLUMNS: usize = 3;
+
+    let column = layout_slot % FALLBACK_COLUMNS;
+    let row = layout_slot / FALLBACK_COLUMNS;
+    rf_ui::CanvasPoint::new(
+        LEFT_PADDING + column as f64 * (BLOCK_WIDTH + GAP_X),
+        TOP_PADDING + row as f64 * (BLOCK_HEIGHT + GAP_Y),
+    )
+}
+
+fn nudged_canvas_position(
+    position: rf_ui::CanvasPoint,
+    direction: crate::StudioGuiCanvasUnitLayoutNudgeDirection,
+) -> rf_ui::CanvasPoint {
+    const STEP: f64 = 40.0;
+
+    match direction {
+        crate::StudioGuiCanvasUnitLayoutNudgeDirection::Left => {
+            rf_ui::CanvasPoint::new((position.x - STEP).max(0.0), position.y)
+        }
+        crate::StudioGuiCanvasUnitLayoutNudgeDirection::Right => {
+            rf_ui::CanvasPoint::new(position.x + STEP, position.y)
+        }
+        crate::StudioGuiCanvasUnitLayoutNudgeDirection::Up => {
+            rf_ui::CanvasPoint::new(position.x, (position.y - STEP).max(0.0))
+        }
+        crate::StudioGuiCanvasUnitLayoutNudgeDirection::Down => {
+            rf_ui::CanvasPoint::new(position.x, position.y + STEP)
+        }
     }
 }

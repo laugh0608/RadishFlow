@@ -21,6 +21,8 @@ pub fn build_binary_demo_provider() -> PlaceholderThermoProvider {
         0.0,
         0.0,
     ));
+    first.liquid_heat_capacity_j_per_mol_k = Some(35.0);
+    first.vapor_heat_capacity_j_per_mol_k = Some(36.5);
 
     let mut second = ThermoComponent::new(ComponentId::new("component-b"), "Component B");
     second.antoine = Some(AntoineCoefficients::new(
@@ -28,6 +30,8 @@ pub fn build_binary_demo_provider() -> PlaceholderThermoProvider {
         0.0,
         0.0,
     ));
+    second.liquid_heat_capacity_j_per_mol_k = Some(52.0);
+    second.vapor_heat_capacity_j_per_mol_k = Some(65.0);
 
     PlaceholderThermoProvider::new(ThermoSystem::binary([first, second]))
 }
@@ -48,6 +52,8 @@ pub fn build_binary_demo_package_provider() -> InMemoryPropertyPackageProvider {
         0.0,
         0.0,
     ));
+    first.liquid_heat_capacity_j_per_mol_k = Some(35.0);
+    first.vapor_heat_capacity_j_per_mol_k = Some(36.5);
 
     let mut second = ThermoComponent::new(ComponentId::new("component-b"), "Component B");
     second.antoine = Some(AntoineCoefficients::new(
@@ -55,6 +61,8 @@ pub fn build_binary_demo_package_provider() -> InMemoryPropertyPackageProvider {
         0.0,
         0.0,
     ));
+    second.liquid_heat_capacity_j_per_mol_k = Some(52.0);
+    second.vapor_heat_capacity_j_per_mol_k = Some(65.0);
 
     InMemoryPropertyPackageProvider::new(vec![(
         PropertyPackageManifest::new(
@@ -114,12 +122,16 @@ pub fn write_cached_package(
         0.0,
         0.0,
     ));
+    first.liquid_heat_capacity_j_per_mol_k = Some(35.0);
+    first.vapor_heat_capacity_j_per_mol_k = Some(36.5);
     let mut second = StoredThermoComponent::new(ComponentId::new("component-b"), "Component B");
     second.antoine = Some(StoredAntoineCoefficients::new(
         ((0.5_f64 * 100_000.0_f64) / 1_000.0_f64).ln(),
         0.0,
         0.0,
     ));
+    second.liquid_heat_capacity_j_per_mol_k = Some(52.0);
+    second.vapor_heat_capacity_j_per_mol_k = Some(65.0);
 
     let payload = StoredPropertyPackagePayload::new(package_id, "2026.03.1", vec![first, second]);
     let integrity = property_package_payload_integrity(&payload).expect("expected payload hash");

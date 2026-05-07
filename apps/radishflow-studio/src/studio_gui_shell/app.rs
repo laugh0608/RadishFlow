@@ -264,6 +264,8 @@ impl ReadyAppState {
                 self.active_drop_preview = None;
                 self.drop_preview_overlay_anchor = None;
                 self.last_viewport_focused = None;
+                self.canvas_viewport_navigation = CanvasViewportNavigationState::default();
+                self.canvas_command_result = None;
                 self.result_inspector.reset();
                 self.project_open.path_input = project_path.display().to_string();
                 let recent_projects_notice =
@@ -384,9 +386,35 @@ impl ReadyAppState {
     }
 
     pub(super) fn dispatch_ui_command(&mut self, command_id: impl Into<String>) {
-        self.dispatch_event(StudioGuiEvent::UiCommandRequested {
-            command_id: command_id.into(),
-        });
+        let command_id = command_id.into();
+        let canvas_navigation = self.canvas_object_navigation_request(&command_id);
+        match self.dispatch_event_result(StudioGuiEvent::UiCommandRequested {
+            command_id: command_id.clone(),
+        }) {
+            Ok(dispatch) => {
+                let viewport_requested = self.record_canvas_viewport_navigation_for_command(
+                    &command_id,
+                    canvas_navigation.as_ref(),
+                );
+                self.record_canvas_object_navigation_feedback(
+                    canvas_navigation.as_ref(),
+                    viewport_requested,
+                    None,
+                );
+                self.record_canvas_unit_layout_move_feedback(&dispatch);
+                self.record_ui_command_ignored_feedback(&dispatch.dispatch.outcome);
+            }
+            Err(error) => {
+                let message = format!("[{}] {}", error.code().as_str(), error.message());
+                self.platform_host
+                    .record_activity_line(format!("event failed: {message}"));
+                self.record_canvas_object_navigation_feedback(
+                    canvas_navigation.as_ref(),
+                    false,
+                    Some(message.as_str()),
+                );
+            }
+        }
     }
 
     pub(super) fn dispatch_inspector_field_draft_update(
@@ -406,6 +434,12 @@ impl ReadyAppState {
         });
     }
 
+    pub(super) fn dispatch_inspector_field_draft_discard(&mut self, command_id: impl Into<String>) {
+        self.dispatch_event(StudioGuiEvent::InspectorFieldDraftDiscardRequested {
+            command_id: command_id.into(),
+        });
+    }
+
     pub(super) fn dispatch_inspector_field_draft_batch_commit(
         &mut self,
         command_id: impl Into<String>,
@@ -413,6 +447,58 @@ impl ReadyAppState {
         self.dispatch_event(StudioGuiEvent::InspectorFieldDraftBatchCommitRequested {
             command_id: command_id.into(),
         });
+    }
+
+    pub(super) fn dispatch_inspector_field_draft_batch_discard(
+        &mut self,
+        command_id: impl Into<String>,
+    ) {
+        self.dispatch_event(StudioGuiEvent::InspectorFieldDraftBatchDiscardRequested {
+            command_id: command_id.into(),
+        });
+    }
+
+    pub(super) fn dispatch_inspector_composition_normalize(
+        &mut self,
+        command_id: impl Into<String>,
+    ) {
+        self.dispatch_event(StudioGuiEvent::InspectorCompositionNormalizeRequested {
+            command_id: command_id.into(),
+        });
+    }
+
+    pub(super) fn dispatch_inspector_composition_component_add(
+        &mut self,
+        command_id: impl Into<String>,
+    ) {
+        self.dispatch_event(StudioGuiEvent::InspectorCompositionComponentAddRequested {
+            command_id: command_id.into(),
+        });
+    }
+
+    pub(super) fn dispatch_inspector_composition_component_remove(
+        &mut self,
+        command_id: impl Into<String>,
+    ) {
+        self.dispatch_event(
+            StudioGuiEvent::InspectorCompositionComponentRemoveRequested {
+                command_id: command_id.into(),
+            },
+        );
+    }
+
+    pub(super) fn dispatch_canvas_pending_edit_commit(&mut self, position: rf_ui::CanvasPoint) {
+        match self
+            .dispatch_event_result(StudioGuiEvent::CanvasPendingEditCommitRequested { position })
+        {
+            Ok(dispatch) => self.record_canvas_pending_edit_commit_feedback(&dispatch, position),
+            Err(error) => {
+                let message = format!("[{}] {}", error.code().as_str(), error.message());
+                self.platform_host
+                    .record_activity_line(format!("event failed: {message}"));
+                self.record_canvas_pending_edit_commit_error(position, &message);
+            }
+        }
     }
 
     pub(super) fn dispatch_layout_mutation(
@@ -549,6 +635,308 @@ impl ReadyAppState {
     ) -> RfResult<StudioGuiPlatformExecutedDispatch> {
         self.platform_host
             .dispatch_event_and_execute_platform_timer(event, &mut self.platform_timer_executor)
+    }
+
+    pub(super) fn record_canvas_viewport_navigation_for_command(
+        &mut self,
+        command_id: &str,
+        canvas_navigation: Option<&radishflow_studio::StudioGuiCanvasCommandTargetViewModel>,
+    ) -> bool {
+        let snapshot = self.platform_host.snapshot();
+        let window = snapshot.window_model();
+        let focus = window.canvas.widget.view().viewport.focus.as_ref();
+        if let Some(anchor_label) = self
+            .canvas_viewport_navigation
+            .request_for_command(command_id, focus)
+        {
+            self.last_area_focus = Some(StudioGuiWindowAreaId::Canvas);
+            if let Some(target) = canvas_navigation {
+                let result = radishflow_studio::StudioGuiCanvasCommandResultViewModel::located(
+                    target.clone(),
+                    anchor_label,
+                );
+                self.platform_host
+                    .record_activity_line(result.activity_line.clone());
+                self.canvas_command_result = Some(result);
+            }
+            return true;
+        }
+        false
+    }
+
+    pub(super) fn reconcile_canvas_viewport_navigation(
+        &mut self,
+        focus: Option<&radishflow_studio::StudioGuiCanvasViewportFocusViewModel>,
+    ) {
+        let Some(expired_anchor) = self.canvas_viewport_navigation.reconcile(focus) else {
+            return;
+        };
+        let Some(target) = self
+            .canvas_command_result
+            .as_ref()
+            .filter(|result| result.anchor_label.as_deref() == Some(expired_anchor.as_str()))
+            .map(|result| result.target.clone())
+        else {
+            return;
+        };
+        self.canvas_command_result = Some(
+            radishflow_studio::StudioGuiCanvasCommandResultViewModel::anchor_expired(
+                target,
+                expired_anchor,
+            ),
+        );
+    }
+
+    pub(super) fn canvas_object_navigation_request(
+        &self,
+        command_id: &str,
+    ) -> Option<radishflow_studio::StudioGuiCanvasCommandTargetViewModel> {
+        let snapshot = self.platform_host.snapshot();
+        let window = snapshot.window_model();
+        if let Some(item) = window
+            .canvas
+            .widget
+            .view()
+            .object_list
+            .items
+            .iter()
+            .find(|item| item.command_id == command_id)
+        {
+            return Some(item.command_target());
+        }
+
+        radishflow_studio::inspector_target_from_command_id(command_id).map(|target| {
+            let (kind_label, target_id) = match target {
+                rf_ui::InspectorTarget::Unit(unit_id) => ("Unit", unit_id.as_str().to_string()),
+                rf_ui::InspectorTarget::Stream(stream_id) => {
+                    ("Stream", stream_id.as_str().to_string())
+                }
+            };
+            radishflow_studio::StudioGuiCanvasCommandTargetViewModel {
+                kind_label,
+                label: target_id.clone(),
+                target_id,
+                viewport_anchor_label: None,
+                command_id: command_id.to_string(),
+            }
+        })
+    }
+
+    pub(super) fn record_canvas_object_navigation_feedback(
+        &mut self,
+        request: Option<&radishflow_studio::StudioGuiCanvasCommandTargetViewModel>,
+        viewport_requested: bool,
+        error_message: Option<&str>,
+    ) {
+        let Some(request) = request else {
+            return;
+        };
+        if viewport_requested {
+            return;
+        }
+
+        let result = match error_message {
+            Some(error_message) => {
+                radishflow_studio::StudioGuiCanvasCommandResultViewModel::dispatch_failed(
+                    request.clone(),
+                    error_message,
+                )
+            }
+            None => radishflow_studio::StudioGuiCanvasCommandResultViewModel::anchor_unavailable(
+                request.clone(),
+            ),
+        };
+        self.platform_host
+            .record_activity_line(result.activity_line.clone());
+        self.canvas_command_result = Some(result);
+    }
+
+    pub(super) fn record_canvas_pending_edit_commit_feedback(
+        &mut self,
+        dispatch: &StudioGuiPlatformExecutedDispatch,
+        position: rf_ui::CanvasPoint,
+    ) {
+        let committed = match &dispatch.dispatch.outcome {
+            StudioGuiDriverOutcome::CanvasInteraction(result) => result.committed_edit.as_ref(),
+            StudioGuiDriverOutcome::HostCommand(
+                radishflow_studio::StudioGuiHostCommandOutcome::UiCommandDispatched(
+                    radishflow_studio::StudioGuiHostUiCommandDispatchResult::ExecutedCanvasInteraction {
+                        result,
+                        ..
+                    },
+                ),
+            ) => result.committed_edit.as_ref(),
+            _ => None,
+        };
+        let Some(committed) = committed else {
+            let result =
+                radishflow_studio::StudioGuiCanvasCommandResultViewModel::pending_edit_unavailable(
+                    position,
+                );
+            self.platform_host
+                .record_activity_line(result.activity_line.clone());
+            self.canvas_command_result = Some(result);
+            return;
+        };
+
+        let window = dispatch.dispatch.window.clone();
+        let view = window.canvas.widget.view();
+        let target = view
+            .object_list
+            .items
+            .iter()
+            .find(|item| item.kind_label == "Unit" && item.target_id == committed.unit_id.as_str())
+            .map(|item| item.command_target())
+            .unwrap_or_else(|| {
+                let command_id = radishflow_studio::inspector_target_command_id(
+                    &rf_ui::InspectorTarget::Unit(committed.unit_id.clone()),
+                );
+                radishflow_studio::StudioGuiCanvasCommandTargetViewModel {
+                    kind_label: "Unit",
+                    target_id: committed.unit_id.as_str().to_string(),
+                    label: committed.unit_id.as_str().to_string(),
+                    viewport_anchor_label: None,
+                    command_id,
+                }
+            });
+        let anchor_label = view
+            .viewport
+            .focus
+            .as_ref()
+            .and_then(|focus| {
+                (focus.kind_label == target.kind_label
+                    && focus.target_id == target.target_id
+                    && focus.command_id == target.command_id)
+                    .then(|| focus.anchor_label.clone())
+            })
+            .or_else(|| target.viewport_anchor_label.clone());
+
+        let result = if let Some(anchor_label) = anchor_label {
+            let anchor_label = self.canvas_viewport_navigation.request_anchor(anchor_label);
+            self.last_area_focus = Some(StudioGuiWindowAreaId::Canvas);
+            radishflow_studio::StudioGuiCanvasCommandResultViewModel::created_unit(
+                target,
+                anchor_label,
+                committed,
+            )
+        } else {
+            radishflow_studio::StudioGuiCanvasCommandResultViewModel::anchor_unavailable(target)
+        };
+        self.platform_host
+            .record_activity_line(result.activity_line.clone());
+        self.canvas_command_result = Some(result);
+    }
+
+    pub(super) fn record_canvas_pending_edit_commit_error(
+        &mut self,
+        position: rf_ui::CanvasPoint,
+        error_message: &str,
+    ) {
+        let result = radishflow_studio::StudioGuiCanvasCommandResultViewModel::pending_edit_failed(
+            position,
+            error_message,
+        );
+        self.platform_host
+            .record_activity_line(result.activity_line.clone());
+        self.canvas_command_result = Some(result);
+    }
+
+    pub(super) fn record_canvas_unit_layout_move_feedback(
+        &mut self,
+        dispatch: &StudioGuiPlatformExecutedDispatch,
+    ) {
+        let moved = match &dispatch.dispatch.outcome {
+            StudioGuiDriverOutcome::HostCommand(
+                radishflow_studio::StudioGuiHostCommandOutcome::CanvasUnitLayoutMoved(result),
+            ) => Some(result),
+            StudioGuiDriverOutcome::HostCommand(
+                radishflow_studio::StudioGuiHostCommandOutcome::UiCommandDispatched(
+                    radishflow_studio::StudioGuiHostUiCommandDispatchResult::ExecutedCanvasUnitLayoutMove {
+                        result,
+                        ..
+                    },
+                ),
+            ) => Some(result),
+            _ => None,
+        };
+        let Some(moved) = moved else {
+            return;
+        };
+
+        let window = dispatch.dispatch.window.clone();
+        let view = window.canvas.widget.view();
+        let target = view
+            .object_list
+            .items
+            .iter()
+            .find(|item| item.kind_label == "Unit" && item.target_id == moved.unit_id.as_str())
+            .map(|item| item.command_target())
+            .unwrap_or_else(
+                || radishflow_studio::StudioGuiCanvasCommandTargetViewModel {
+                    kind_label: "Unit",
+                    target_id: moved.unit_id.as_str().to_string(),
+                    label: moved.unit_id.as_str().to_string(),
+                    viewport_anchor_label: None,
+                    command_id: radishflow_studio::inspector_target_command_id(
+                        &rf_ui::InspectorTarget::Unit(moved.unit_id.clone()),
+                    ),
+                },
+            );
+        let anchor_label = target
+            .viewport_anchor_label
+            .clone()
+            .unwrap_or_else(|| moved.unit_id.as_str().to_string());
+        let anchor_label = self.canvas_viewport_navigation.request_anchor(anchor_label);
+        self.last_area_focus = Some(StudioGuiWindowAreaId::Canvas);
+        let result = radishflow_studio::StudioGuiCanvasCommandResultViewModel::moved_unit(
+            target,
+            anchor_label,
+            moved.previous_position,
+            moved.position,
+        );
+        self.platform_host
+            .record_activity_line(result.activity_line.clone());
+        self.canvas_command_result = Some(result);
+    }
+
+    pub(super) fn canvas_command_result_command_surface(
+        &self,
+    ) -> Option<radishflow_studio::StudioGuiCanvasCommandResultCommandSurfaceViewModel> {
+        self.canvas_command_result
+            .as_ref()
+            .map(|result| result.command_surface())
+    }
+
+    pub(super) fn record_ui_command_ignored_feedback(&mut self, outcome: &StudioGuiDriverOutcome) {
+        if let StudioGuiDriverOutcome::HostCommand(
+            radishflow_studio::StudioGuiHostCommandOutcome::UiCommandDispatched(result),
+        ) = outcome
+        {
+            match result {
+                radishflow_studio::StudioGuiHostUiCommandDispatchResult::IgnoredDisabled {
+                    command_id,
+                    detail,
+                    ..
+                } => {
+                    self.platform_host
+                        .record_activity_line(format!("ui command disabled: {command_id}: {detail}"));
+                }
+                radishflow_studio::StudioGuiHostUiCommandDispatchResult::IgnoredMissing {
+                    command_id,
+                    ..
+                } => {
+                    self.platform_host
+                        .record_activity_line(format!("ui command missing: {command_id}"));
+                }
+                radishflow_studio::StudioGuiHostUiCommandDispatchResult::Executed(_)
+                | radishflow_studio::StudioGuiHostUiCommandDispatchResult::ExecutedCanvasInteraction {
+                    ..
+                }
+                | radishflow_studio::StudioGuiHostUiCommandDispatchResult::ExecutedCanvasUnitLayoutMove {
+                    ..
+                } => {}
+            }
+        }
     }
 
     pub(super) fn drain_due_timers(&mut self, ctx: &egui::Context) {

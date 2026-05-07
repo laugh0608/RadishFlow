@@ -58,8 +58,8 @@ dotnet build .\adapters\dotnet-capeopen\RadishFlow.CapeOpen.UnitOp.Mvp.SampleHos
 真实 PME 前还应先运行最小 contract / sample host：
 
 ```powershell
-.\adapters\dotnet-capeopen\RadishFlow.CapeOpen.UnitOp.Mvp.ContractTests\bin\Debug\net10.0-windows7.0\RadishFlow.CapeOpen.UnitOp.Mvp.ContractTests.exe --native-lib-dir D:\Code\RadishFlow\target\debug
-.\adapters\dotnet-capeopen\RadishFlow.CapeOpen.UnitOp.Mvp.SampleHost\bin\Debug\net10.0\RadishFlow.CapeOpen.UnitOp.Mvp.SampleHost.exe --native-lib-dir D:\Code\RadishFlow\target\debug
+.\adapters\dotnet-capeopen\RadishFlow.CapeOpen.UnitOp.Mvp.ContractTests\bin\Debug\net10.0-windows7.0\RadishFlow.CapeOpen.UnitOp.Mvp.ContractTests.exe --native-lib-dir <repo>\target\debug
+.\adapters\dotnet-capeopen\RadishFlow.CapeOpen.UnitOp.Mvp.SampleHost\bin\Debug\net10.0\RadishFlow.CapeOpen.UnitOp.Mvp.SampleHost.exe --native-lib-dir <repo>\target\debug
 ```
 
 如果 `.NET 10` first-time use、restore、native path 或沙盒隔离导致结果与代码现状明显不符，应按仓库约定申请真实环境复验，而不是直接把失败归因到实现。
@@ -228,7 +228,7 @@ pwsh .\scripts\register-com.ps1 -Action unregister -Execute -ConfirmToken unregi
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\configure-pme-dumps.ps1 -Action enable -Scope local-machine
 ```
 
-默认会为 `DWSIM.exe` 与 `COFE.exe` 写入进程级 `LocalDumps` 配置，dump 输出目录为 `D:\Code\RadishFlow\artifacts\pme-dumps`，dump 类型为 full dump。人工复验后可查看：
+默认会为 `DWSIM.exe` 与 `COFE.exe` 写入进程级 `LocalDumps` 配置，dump 输出目录为 `<repo>\artifacts\pme-dumps`，dump 类型为 full dump。人工复验后可查看：
 
 ```powershell
 Get-ChildItem .\artifacts\pme-dumps
@@ -261,7 +261,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\configure-pme-dump
 该 trace 默认关闭，不再固定写入仓库 `artifacts/pme-trace`。需要临时启用时，先在启动 PME 的同一用户环境中设置：
 
 ```powershell
-$env:RADISHFLOW_CAPEOPEN_TRACE_DIR = "D:\Code\RadishFlow\artifacts\pme-trace"
+$env:RADISHFLOW_CAPEOPEN_TRACE_DIR = "<repo>\artifacts\pme-trace"
 $env:RADISHFLOW_CAPEOPEN_TRACE_FILE = "radishflow-unitop-trace.log"
 ```
 

@@ -953,14 +953,14 @@ fn build_phase_outlet_stream(
     );
 
     if total_flow > 0.0 {
-        outlet.phases.push(PhaseState::new(
-            PhaseLabel::Overall,
-            1.0,
-            overall_mole_fractions.clone(),
-        ));
-        outlet
-            .phases
-            .push(PhaseState::new(phase_label, 1.0, overall_mole_fractions));
+        let phase_enthalpy = phase.and_then(|phase| phase.molar_enthalpy_j_per_mol);
+        let mut overall_phase =
+            PhaseState::new(PhaseLabel::Overall, 1.0, overall_mole_fractions.clone());
+        overall_phase.molar_enthalpy_j_per_mol = phase_enthalpy;
+        let mut outlet_phase = PhaseState::new(phase_label, 1.0, overall_mole_fractions);
+        outlet_phase.molar_enthalpy_j_per_mol = phase_enthalpy;
+        outlet.phases.push(overall_phase);
+        outlet.phases.push(outlet_phase);
     }
 
     outlet
@@ -1025,6 +1025,8 @@ mod tests {
             0.0,
             0.0,
         ));
+        first.liquid_heat_capacity_j_per_mol_k = Some(35.0);
+        first.vapor_heat_capacity_j_per_mol_k = Some(36.5);
 
         let mut second = ThermoComponent::new(ComponentId::new("component-b"), "Component B");
         second.antoine = Some(AntoineCoefficients::new(
@@ -1032,6 +1034,8 @@ mod tests {
             0.0,
             0.0,
         ));
+        second.liquid_heat_capacity_j_per_mol_k = Some(52.0);
+        second.vapor_heat_capacity_j_per_mol_k = Some(65.0);
 
         PlaceholderThermoProvider::new(ThermoSystem::binary([first, second]))
     }
@@ -1284,6 +1288,20 @@ mod tests {
         assert_close(vapor.total_molar_flow_mol_s, 4.0, 1e-10);
         assert_eq!(liquid.phases[1].label, PhaseLabel::Liquid);
         assert_eq!(vapor.phases[1].label, PhaseLabel::Vapor);
+        assert_close(
+            liquid.phases[1]
+                .molar_enthalpy_j_per_mol
+                .expect("expected liquid outlet enthalpy"),
+            85.7166666666677,
+            1e-10,
+        );
+        assert_close(
+            vapor.phases[1]
+                .molar_enthalpy_j_per_mol
+                .expect("expected vapor outlet enthalpy"),
+            85.100000000001,
+            1e-10,
+        );
         assert_close(
             *liquid
                 .overall_mole_fractions

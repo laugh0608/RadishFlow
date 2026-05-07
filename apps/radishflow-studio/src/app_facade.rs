@@ -4,8 +4,8 @@ use rf_solver::SolveFailureContext;
 use rf_store::StoredAuthCacheIndex;
 use rf_types::{ErrorCode, RfError, RfResult};
 use rf_ui::{
-    AppLogEntry, AppLogLevel, AppState, DiagnosticSeverity, DiagnosticSummary, RunStatus,
-    SimulationMode, SolvePendingReason, latest_snapshot, latest_snapshot_id,
+    AppLogEntry, AppLogLevel, AppState, DiagnosticSeverity, DiagnosticSummary, DraftValue,
+    RunStatus, SimulationMode, SolvePendingReason, latest_snapshot, latest_snapshot_id,
 };
 
 use crate::{
@@ -127,6 +127,8 @@ pub enum StudioWorkspaceRunBlockedReason {
     ExplicitPackageSelectionRequired,
     EntitlementMismatch,
     InvalidSelection,
+    PendingInspectorDrafts,
+    UnnormalizedStreamComposition,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -287,6 +289,12 @@ impl StudioAppFacade {
             return Ok(map_workspace_run_dispatch(app_state, None, outcome));
         }
 
+        if let Some(blocked) = workspace_run_preflight_block(app_state) {
+            let outcome = StudioWorkspaceRunOutcome::Blocked(blocked);
+            record_workspace_run_outcome(app_state, &outcome);
+            return Ok(map_workspace_run_dispatch(app_state, None, outcome));
+        }
+
         let package_id = match resolve_workspace_run_package_id(
             app_state,
             context.auth_cache_index,
@@ -428,6 +436,107 @@ fn map_workspace_solve_dispatch(dispatch: WorkspaceSolveDispatch) -> StudioWorks
         WorkspaceSolveDispatch::Started(request) => StudioWorkspaceRunOutcome::Started(request),
         WorkspaceSolveDispatch::Skipped(reason) => StudioWorkspaceRunOutcome::Skipped(reason),
     }
+}
+
+fn workspace_run_preflight_block(app_state: &AppState) -> Option<StudioWorkspaceRunBlocked> {
+    let invalid_draft_count = app_state
+        .workspace
+        .drafts
+        .fields
+        .values()
+        .filter(|draft| draft_validation(draft) == rf_ui::DraftValidationState::Invalid)
+        .count();
+    if invalid_draft_count > 0 {
+        return Some(StudioWorkspaceRunBlocked {
+            reason: StudioWorkspaceRunBlockedReason::PendingInspectorDrafts,
+            message: format!(
+                "Stream Inspector has {invalid_draft_count} invalid draft{}. Fix or revert invalid values before running; drafts are not part of the document until they are applied.",
+                plural_suffix(invalid_draft_count),
+            ),
+        });
+    }
+
+    let dirty_draft_count = app_state
+        .workspace
+        .drafts
+        .fields
+        .values()
+        .filter(|draft| draft_is_dirty(draft))
+        .count();
+    if dirty_draft_count > 0 {
+        return Some(StudioWorkspaceRunBlocked {
+            reason: StudioWorkspaceRunBlockedReason::PendingInspectorDrafts,
+            message: format!(
+                "Stream Inspector has {dirty_draft_count} uncommitted draft{}. Apply or revert inspector drafts before running; the solver only reads the committed flowsheet document.",
+                plural_suffix(dirty_draft_count),
+            ),
+        });
+    }
+
+    app_state
+        .workspace
+        .document
+        .flowsheet
+        .streams
+        .values()
+        .find_map(|stream| {
+            if stream.overall_mole_fractions.is_empty() {
+                return None;
+            }
+
+            let sum = stream
+                .overall_mole_fractions
+                .values()
+                .try_fold(0.0, |sum, value| {
+                    (value.is_finite() && (0.0..=1.0).contains(value)).then_some(sum + value)
+                });
+            match sum {
+                Some(sum) if (sum - 1.0).abs() <= 1e-9 => None,
+                Some(sum) if sum.is_finite() && sum > 0.0 => {
+                    Some(StudioWorkspaceRunBlocked {
+                        reason: StudioWorkspaceRunBlockedReason::UnnormalizedStreamComposition,
+                        message: format!(
+                            "stream `{}` overall mole fractions sum to {sum:.6}, not 1.000000. Normalize composition explicitly before running; no automatic compensation is applied by the run command.",
+                            stream.id
+                        ),
+                    })
+                }
+                Some(sum) => Some(StudioWorkspaceRunBlocked {
+                    reason: StudioWorkspaceRunBlockedReason::UnnormalizedStreamComposition,
+                    message: format!(
+                        "stream `{}` overall mole fraction sum `{sum}` is not positive and finite. Fix composition explicitly before running.",
+                        stream.id
+                    ),
+                }),
+                None => Some(StudioWorkspaceRunBlocked {
+                    reason: StudioWorkspaceRunBlockedReason::UnnormalizedStreamComposition,
+                    message: format!(
+                        "stream `{}` overall mole fractions must be finite values between zero and one before running.",
+                        stream.id
+                    ),
+                }),
+            }
+        })
+}
+
+fn draft_is_dirty(draft: &DraftValue) -> bool {
+    match draft {
+        DraftValue::Text(draft) | DraftValue::Number(draft) | DraftValue::Choice(draft) => {
+            draft.is_dirty
+        }
+    }
+}
+
+fn draft_validation(draft: &DraftValue) -> rf_ui::DraftValidationState {
+    match draft {
+        DraftValue::Text(draft) | DraftValue::Number(draft) | DraftValue::Choice(draft) => {
+            draft.validation
+        }
+    }
+}
+
+fn plural_suffix(count: usize) -> &'static str {
+    if count == 1 { "" } else { "s" }
 }
 
 fn map_workspace_run_blocked(error: &RfError) -> StudioWorkspaceRunBlocked {

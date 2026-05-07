@@ -8,7 +8,7 @@ use crate::studio_gui_preferences_store::{
 use eframe::egui;
 use radishflow_studio::{
     StudioAppHostWindowState, StudioGuiCommandEntry, StudioGuiCommandMenuCommandModel,
-    StudioGuiCommandMenuNode, StudioGuiEvent, StudioGuiFocusContext,
+    StudioGuiCommandMenuNode, StudioGuiDriverOutcome, StudioGuiEvent, StudioGuiFocusContext,
     StudioGuiPlatformExecutedDispatch, StudioGuiPlatformExecutedNativeTimerCallbackBatch,
     StudioGuiPlatformExecutedNativeTimerCallbackOutcome, StudioGuiPlatformHost,
     StudioGuiPlatformNativeTimerId, StudioGuiPlatformTimerCommand, StudioGuiPlatformTimerExecutor,
@@ -72,6 +72,8 @@ struct ReadyAppState {
     project_open: ProjectOpenState,
     result_inspector: ResultInspectorState,
     canvas_object_filter: CanvasObjectListFilter,
+    canvas_viewport_navigation: CanvasViewportNavigationState,
+    canvas_command_result: Option<radishflow_studio::StudioGuiCanvasCommandResultViewModel>,
     project_file_picker: Box<dyn ProjectFilePicker>,
     preferences_path: PathBuf,
     locale: StudioShellLocale,
@@ -142,6 +144,18 @@ struct ResultInspectorState {
     snapshot_id: Option<String>,
     selected_stream_id: Option<String>,
     comparison_stream_id: Option<String>,
+    selected_unit_id: Option<String>,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+struct CanvasViewportNavigationState {
+    active_anchor: Option<CanvasViewportAnchorNavigation>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct CanvasViewportAnchorNavigation {
+    anchor_label: String,
+    pending_scroll: bool,
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
@@ -222,6 +236,8 @@ impl ReadyAppState {
             ),
             result_inspector: ResultInspectorState::default(),
             canvas_object_filter: CanvasObjectListFilter::default(),
+            canvas_viewport_navigation: CanvasViewportNavigationState::default(),
+            canvas_command_result: None,
             project_file_picker,
             preferences_path,
             locale: StudioShellLocale::default(),
@@ -248,6 +264,7 @@ impl ResultInspectorState {
             self.snapshot_id = Some(snapshot.snapshot_id.clone());
             self.selected_stream_id = None;
             self.comparison_stream_id = None;
+            self.selected_unit_id = None;
         }
 
         if self
@@ -293,6 +310,40 @@ impl ResultInspectorState {
         self.selected_stream_id.clone()
     }
 
+    fn selected_unit_id_for_snapshot(
+        &mut self,
+        snapshot: &radishflow_studio::StudioGuiWindowSolveSnapshotModel,
+    ) -> Option<String> {
+        if self.snapshot_id.as_deref() != Some(snapshot.snapshot_id.as_str()) {
+            // selected_stream_id_for_snapshot is expected to run first and
+            // already reset selections; this branch keeps the helper safe to
+            // call independently.
+            self.snapshot_id = Some(snapshot.snapshot_id.clone());
+            self.selected_stream_id = None;
+            self.comparison_stream_id = None;
+            self.selected_unit_id = None;
+        }
+
+        if self
+            .selected_unit_id
+            .as_deref()
+            .is_some_and(|selected_unit| {
+                !snapshot
+                    .steps
+                    .iter()
+                    .any(|step| step.unit_id == selected_unit)
+            })
+        {
+            self.selected_unit_id = None;
+        }
+
+        if self.selected_unit_id.is_none() {
+            self.selected_unit_id = snapshot.steps.first().map(|step| step.unit_id.clone());
+        }
+
+        self.selected_unit_id.clone()
+    }
+
     fn select_stream(&mut self, snapshot_id: &str, stream_id: impl Into<String>) {
         let stream_id = stream_id.into();
         self.snapshot_id = Some(snapshot_id.to_string());
@@ -307,10 +358,82 @@ impl ResultInspectorState {
         self.comparison_stream_id = Some(stream_id.into());
     }
 
+    fn select_unit(&mut self, snapshot_id: &str, unit_id: impl Into<String>) {
+        self.snapshot_id = Some(snapshot_id.to_string());
+        self.selected_unit_id = Some(unit_id.into());
+    }
+
     fn reset(&mut self) {
         self.snapshot_id = None;
         self.selected_stream_id = None;
         self.comparison_stream_id = None;
+        self.selected_unit_id = None;
+    }
+}
+
+impl CanvasViewportNavigationState {
+    fn request_anchor(&mut self, anchor_label: impl Into<String>) -> String {
+        let anchor_label = anchor_label.into();
+        self.active_anchor = Some(CanvasViewportAnchorNavigation {
+            anchor_label: anchor_label.clone(),
+            pending_scroll: true,
+        });
+        anchor_label
+    }
+
+    fn request_for_command(
+        &mut self,
+        command_id: &str,
+        focus: Option<&radishflow_studio::StudioGuiCanvasViewportFocusViewModel>,
+    ) -> Option<String> {
+        let Some(focus) = focus else {
+            self.active_anchor = None;
+            return None;
+        };
+        if focus.command_id != command_id {
+            self.active_anchor = None;
+            return None;
+        }
+
+        self.active_anchor = Some(CanvasViewportAnchorNavigation {
+            anchor_label: focus.anchor_label.clone(),
+            pending_scroll: true,
+        });
+        Some(focus.anchor_label.clone())
+    }
+
+    fn reconcile(
+        &mut self,
+        focus: Option<&radishflow_studio::StudioGuiCanvasViewportFocusViewModel>,
+    ) -> Option<String> {
+        let active = self.active_anchor.as_ref()?;
+        let still_current = focus
+            .map(|focus| focus.anchor_label == active.anchor_label)
+            .unwrap_or(false);
+        if !still_current {
+            let anchor_label = active.anchor_label.clone();
+            self.active_anchor = None;
+            return Some(anchor_label);
+        }
+        None
+    }
+
+    fn is_active_anchor(&self, anchor_label: &str) -> bool {
+        self.active_anchor
+            .as_ref()
+            .map(|focus| focus.anchor_label == anchor_label)
+            .unwrap_or(false)
+    }
+
+    fn take_pending_scroll_for_anchor(&mut self, anchor_label: &str) -> bool {
+        let Some(active) = self.active_anchor.as_mut() else {
+            return false;
+        };
+        if active.anchor_label == anchor_label && active.pending_scroll {
+            active.pending_scroll = false;
+            return true;
+        }
+        false
     }
 }
 

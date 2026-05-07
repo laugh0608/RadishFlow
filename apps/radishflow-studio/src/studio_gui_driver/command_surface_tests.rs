@@ -288,6 +288,10 @@ fn gui_driver_routes_inspector_draft_update_through_driver_boundary() {
         updated_field.commit_command_id.as_deref(),
         Some("inspector.commit_stream_draft:stream:stream-feed:temperature_k")
     );
+    assert_eq!(
+        updated_field.discard_command_id.as_deref(),
+        Some("inspector.discard_stream_draft:stream:stream-feed:temperature_k")
+    );
 }
 
 #[test]
@@ -383,10 +387,86 @@ fn gui_driver_routes_inspector_draft_commit_through_driver_boundary() {
     assert_eq!(committed_field.status_label, "Synced");
     assert!(!committed_field.is_dirty);
     assert!(committed_field.commit_command_id.is_none());
+    assert!(committed_field.discard_command_id.is_none());
     assert_eq!(
         dispatch.window.runtime.control_state.pending_reason,
         Some(rf_ui::SolvePendingReason::DocumentRevisionAdvanced)
     );
+}
+
+#[test]
+fn gui_driver_routes_inspector_draft_discard_through_driver_boundary() {
+    let mut driver = StudioGuiDriver::new(&lease_expiring_config()).expect("expected driver");
+    driver
+        .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+        .expect("expected open dispatch");
+    driver
+        .dispatch_event(StudioGuiEvent::UiCommandRequested {
+            command_id: "inspector.focus_stream:stream-feed".to_string(),
+        })
+        .expect("expected inspector focus dispatch");
+    let update = driver
+        .dispatch_event(StudioGuiEvent::InspectorFieldDraftUpdateRequested {
+            command_id: "inspector.update_stream_draft:stream:stream-feed:pressure_pa".to_string(),
+            raw_value: "not-a-pressure".to_string(),
+        })
+        .expect("expected invalid draft update");
+    let discard_command_id = update
+        .window
+        .runtime
+        .active_inspector_detail
+        .as_ref()
+        .and_then(|detail| {
+            detail
+                .property_fields
+                .iter()
+                .find(|field| field.key == "stream:stream-feed:pressure_pa")
+        })
+        .and_then(|field| field.discard_command_id.clone())
+        .expect("expected discard command id");
+
+    let dispatch = driver
+        .dispatch_event(StudioGuiEvent::InspectorFieldDraftDiscardRequested {
+            command_id: discard_command_id,
+        })
+        .expect("expected draft discard dispatch");
+
+    match dispatch.outcome {
+        StudioGuiDriverOutcome::HostCommand(
+            StudioGuiHostCommandOutcome::InspectorDraftDiscarded(discarded),
+        ) => {
+            assert_eq!(discarded.target_window_id, 1);
+            match &discarded.effects.runtime_report.dispatch {
+                crate::StudioRuntimeDispatch::InspectorDraftDiscard(outcome) => {
+                    assert!(outcome.applied);
+                    assert_eq!(
+                        outcome.discarded_key.as_deref(),
+                        Some("stream:stream-feed:pressure_pa")
+                    );
+                    assert_eq!(outcome.document_revision, 0);
+                    assert_eq!(outcome.command_history_len, 0);
+                }
+                other => panic!("expected inspector draft discard dispatch, got {other:?}"),
+            }
+        }
+        other => panic!("expected inspector draft discard outcome, got {other:?}"),
+    }
+
+    let detail = dispatch
+        .window
+        .runtime
+        .active_inspector_detail
+        .as_ref()
+        .expect("expected active inspector detail");
+    let pressure = detail
+        .property_fields
+        .iter()
+        .find(|field| field.key == "stream:stream-feed:pressure_pa")
+        .expect("expected pressure field");
+    assert_eq!(pressure.status_label, "Synced");
+    assert_eq!(pressure.current_value, "120000");
+    assert!(pressure.discard_command_id.is_none());
+    assert!(detail.property_notices.is_empty());
 }
 
 #[test]
@@ -415,6 +495,15 @@ fn gui_driver_routes_inspector_draft_batch_commit_through_driver_boundary() {
             .as_ref()
             .and_then(|detail| detail.property_batch_commit_command_id.as_ref())
             .is_none()
+    );
+    assert!(
+        update_temperature
+            .window
+            .runtime
+            .active_inspector_detail
+            .as_ref()
+            .and_then(|detail| detail.property_batch_discard_command_id.as_ref())
+            .is_some()
     );
     let update_pressure = driver
         .dispatch_event(StudioGuiEvent::InspectorFieldDraftUpdateRequested {
@@ -467,6 +556,7 @@ fn gui_driver_routes_inspector_draft_batch_commit_through_driver_boundary() {
         .as_ref()
         .expect("expected inspector detail");
     assert!(detail.property_batch_commit_command_id.is_none());
+    assert!(detail.property_batch_discard_command_id.is_none());
     let temperature = detail
         .property_fields
         .iter()
@@ -484,6 +574,407 @@ fn gui_driver_routes_inspector_draft_batch_commit_through_driver_boundary() {
     assert_eq!(
         dispatch.window.runtime.control_state.pending_reason,
         Some(rf_ui::SolvePendingReason::DocumentRevisionAdvanced)
+    );
+}
+
+#[test]
+fn gui_driver_routes_inspector_draft_batch_discard_through_driver_boundary() {
+    let mut driver = StudioGuiDriver::new(&lease_expiring_config()).expect("expected driver");
+    driver
+        .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+        .expect("expected open dispatch");
+    driver
+        .dispatch_event(StudioGuiEvent::UiCommandRequested {
+            command_id: "inspector.focus_stream:stream-feed".to_string(),
+        })
+        .expect("expected inspector focus dispatch");
+    driver
+        .dispatch_event(StudioGuiEvent::InspectorFieldDraftUpdateRequested {
+            command_id: "inspector.update_stream_draft:stream:stream-feed:temperature_k"
+                .to_string(),
+            raw_value: "333.5".to_string(),
+        })
+        .expect("expected temperature draft update");
+    let update = driver
+        .dispatch_event(StudioGuiEvent::InspectorFieldDraftUpdateRequested {
+            command_id: "inspector.update_stream_draft:stream:stream-feed:pressure_pa".to_string(),
+            raw_value: "not-a-pressure".to_string(),
+        })
+        .expect("expected pressure draft update");
+    let batch_discard_command_id = update
+        .window
+        .runtime
+        .active_inspector_detail
+        .as_ref()
+        .and_then(|detail| detail.property_batch_discard_command_id.clone())
+        .expect("expected batch discard command id");
+
+    let dispatch = driver
+        .dispatch_event(StudioGuiEvent::InspectorFieldDraftBatchDiscardRequested {
+            command_id: batch_discard_command_id,
+        })
+        .expect("expected batch draft discard dispatch");
+
+    match dispatch.outcome {
+        StudioGuiDriverOutcome::HostCommand(
+            StudioGuiHostCommandOutcome::InspectorDraftBatchDiscarded(discarded),
+        ) => {
+            assert_eq!(discarded.target_window_id, 1);
+            match &discarded.effects.runtime_report.dispatch {
+                crate::StudioRuntimeDispatch::InspectorDraftBatchDiscard(outcome) => {
+                    assert!(outcome.applied);
+                    assert_eq!(outcome.document_revision, 0);
+                    assert_eq!(outcome.command_history_len, 0);
+                    assert_eq!(
+                        outcome.discarded_keys,
+                        vec![
+                            "stream:stream-feed:temperature_k".to_string(),
+                            "stream:stream-feed:pressure_pa".to_string()
+                        ]
+                    );
+                }
+                other => panic!("expected inspector draft batch discard dispatch, got {other:?}"),
+            }
+        }
+        other => panic!("expected inspector draft batch discard outcome, got {other:?}"),
+    }
+
+    let detail = dispatch
+        .window
+        .runtime
+        .active_inspector_detail
+        .as_ref()
+        .expect("expected inspector detail");
+    assert!(detail.property_batch_discard_command_id.is_none());
+    assert!(detail.property_notices.is_empty());
+    assert!(
+        detail
+            .property_fields
+            .iter()
+            .all(|field| !field.is_dirty && field.discard_command_id.is_none())
+    );
+}
+
+#[test]
+fn gui_driver_routes_composition_normalize_through_driver_boundary() {
+    let mut driver = StudioGuiDriver::new(&lease_expiring_config()).expect("expected driver");
+    driver
+        .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+        .expect("expected open dispatch");
+    driver
+        .dispatch_event(StudioGuiEvent::UiCommandRequested {
+            command_id: "inspector.focus_stream:stream-feed".to_string(),
+        })
+        .expect("expected inspector focus dispatch");
+    let update = driver
+        .dispatch_event(StudioGuiEvent::InspectorFieldDraftUpdateRequested {
+            command_id:
+                "inspector.update_stream_draft:stream:stream-feed:overall_mole_fraction:component-a"
+                    .to_string(),
+            raw_value: "0.25".to_string(),
+        })
+        .expect("expected composition draft update");
+    let normalize_command_id = update
+        .window
+        .runtime
+        .active_inspector_detail
+        .as_ref()
+        .and_then(|detail| detail.property_composition_normalize_command_id.clone())
+        .expect("expected composition normalize command id");
+    let draft_summary = update
+        .window
+        .runtime
+        .active_inspector_detail
+        .as_ref()
+        .and_then(|detail| detail.property_composition_summary.as_ref())
+        .expect("expected composition draft summary");
+    assert_eq!(draft_summary.status_label, "Draft");
+    assert_eq!(draft_summary.current_sum_text, "0.900000");
+    assert!(
+        draft_summary
+            .normalized_preview_text
+            .contains("component-a=0.277778")
+    );
+    let notices = &update
+        .window
+        .runtime
+        .active_inspector_detail
+        .as_ref()
+        .expect("expected active inspector detail")
+        .property_notices;
+    assert!(
+        notices.iter().any(|notice| {
+            notice.status_label == "Draft"
+                && notice
+                    .message
+                    .contains("Overall mole fraction sum is 0.900000")
+                && notice
+                    .message
+                    .contains("no automatic compensation is applied")
+        }),
+        "expected non-normalized composition sum to surface a read-only notice"
+    );
+
+    let dispatch = driver
+        .dispatch_event(StudioGuiEvent::InspectorCompositionNormalizeRequested {
+            command_id: normalize_command_id,
+        })
+        .expect("expected composition normalize dispatch");
+
+    match dispatch.outcome {
+        StudioGuiDriverOutcome::HostCommand(
+            StudioGuiHostCommandOutcome::InspectorCompositionNormalized(normalized),
+        ) => {
+            assert_eq!(normalized.target_window_id, 1);
+            match &normalized.effects.runtime_report.dispatch {
+                crate::StudioRuntimeDispatch::InspectorCompositionNormalize(outcome) => {
+                    assert!(outcome.applied);
+                    assert_eq!(outcome.document_revision, 1);
+                    assert_eq!(outcome.command_history_len, 1);
+                    assert!(outcome.committed_keys.iter().any(|key| {
+                        key == "stream:stream-feed:overall_mole_fraction:component-a"
+                    }));
+                }
+                other => {
+                    panic!("expected inspector composition normalize dispatch, got {other:?}")
+                }
+            }
+        }
+        other => panic!("expected inspector composition normalize outcome, got {other:?}"),
+    }
+
+    let detail = dispatch
+        .window
+        .runtime
+        .active_inspector_detail
+        .as_ref()
+        .expect("expected inspector detail");
+    assert!(detail.property_composition_normalize_command_id.is_none());
+    assert_eq!(
+        detail
+            .property_composition_summary
+            .as_ref()
+            .map(|summary| summary.status_label),
+        Some("Synced")
+    );
+    assert!(
+        detail
+            .property_fields
+            .iter()
+            .filter(|field| field.key.contains(":overall_mole_fraction:"))
+            .all(|field| !field.is_dirty && field.commit_command_id.is_none())
+    );
+}
+
+#[test]
+fn gui_driver_routes_composition_component_add_through_controlled_selector_boundary() {
+    let timestamp = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .expect("expected current timestamp")
+        .as_nanos();
+    let project_path = std::env::temp_dir().join(format!(
+        "radishflow-studio-composition-component-add-{timestamp}.rfproj.json"
+    ));
+    let project = include_str!("../../../../examples/flowsheets/feed-heater-flash.rfproj.json")
+        .replacen(
+            "        \"component-b\": {\n          \"id\": \"component-b\",\n          \"name\": \"Component B\",\n          \"formula\": null\n        }",
+            "        \"component-b\": {\n          \"id\": \"component-b\",\n          \"name\": \"Component B\",\n          \"formula\": null\n        },\n        \"component-c\": {\n          \"id\": \"component-c\",\n          \"name\": \"Component C\",\n          \"formula\": null\n        }",
+            1,
+        );
+    fs::write(&project_path, project).expect("expected project with extra component");
+    let mut driver = StudioGuiDriver::new(&StudioRuntimeConfig {
+        project_path: project_path.clone(),
+        ..lease_expiring_config()
+    })
+    .expect("expected driver");
+    driver
+        .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+        .expect("expected open dispatch");
+
+    let focused = driver
+        .dispatch_event(StudioGuiEvent::UiCommandRequested {
+            command_id: "inspector.focus_stream:stream-feed".to_string(),
+        })
+        .expect("expected stream focus dispatch");
+    let action = focused
+        .window
+        .runtime
+        .active_inspector_detail
+        .as_ref()
+        .expect("expected active stream inspector")
+        .property_composition_component_actions
+        .iter()
+        .find(|action| action.component_id == "component-c")
+        .cloned()
+        .expect("expected addable component-c action");
+    assert_eq!(
+        action.action.command_id,
+        "inspector.add_stream_composition_component:stream:stream-feed:component:component-c"
+    );
+
+    let dispatch = driver
+        .dispatch_event(StudioGuiEvent::InspectorCompositionComponentAddRequested {
+            command_id: action.action.command_id,
+        })
+        .expect("expected composition component add dispatch");
+
+    match dispatch.outcome {
+        StudioGuiDriverOutcome::HostCommand(
+            StudioGuiHostCommandOutcome::InspectorCompositionComponentAdded(added),
+        ) => match &added.effects.runtime_report.dispatch {
+            crate::StudioRuntimeDispatch::InspectorCompositionComponentAdd(outcome) => {
+                assert!(outcome.applied);
+                assert_eq!(outcome.document_revision, 1);
+                assert_eq!(outcome.command_history_len, 1);
+                assert_eq!(
+                    outcome.added_key.as_deref(),
+                    Some("stream:stream-feed:overall_mole_fraction:component-c")
+                );
+            }
+            other => panic!("expected inspector composition component add dispatch, got {other:?}"),
+        },
+        other => panic!("expected inspector composition component add outcome, got {other:?}"),
+    }
+
+    let detail = dispatch
+        .window
+        .runtime
+        .active_inspector_detail
+        .as_ref()
+        .expect("expected stream inspector detail after add");
+    assert!(detail.property_composition_component_actions.is_empty());
+    assert!(
+        detail.property_fields.iter().any(|field| {
+            field.key == "stream:stream-feed:overall_mole_fraction:component-c"
+                && field.current_value == "0"
+                && field.status_label == "Synced"
+        }),
+        "expected component-c to become an explicit zero-fraction stream composition field"
+    );
+
+    let _ = fs::remove_file(project_path);
+}
+
+#[test]
+fn gui_driver_routes_composition_component_remove_without_compensation() {
+    let mut driver = StudioGuiDriver::new(&lease_expiring_config()).expect("expected driver");
+    driver
+        .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+        .expect("expected open dispatch");
+    let focused = driver
+        .dispatch_event(StudioGuiEvent::UiCommandRequested {
+            command_id: "inspector.focus_stream:stream-feed".to_string(),
+        })
+        .expect("expected stream focus dispatch");
+    let remove_command_id = focused
+        .window
+        .runtime
+        .active_inspector_detail
+        .as_ref()
+        .expect("expected active stream inspector")
+        .property_fields
+        .iter()
+        .find(|field| field.key == "stream:stream-feed:overall_mole_fraction:component-b")
+        .and_then(|field| field.remove_command_id.clone())
+        .expect("expected component-b remove command");
+
+    let dispatch = driver
+        .dispatch_event(
+            StudioGuiEvent::InspectorCompositionComponentRemoveRequested {
+                command_id: remove_command_id,
+            },
+        )
+        .expect("expected composition component remove dispatch");
+
+    match dispatch.outcome {
+        StudioGuiDriverOutcome::HostCommand(
+            StudioGuiHostCommandOutcome::InspectorCompositionComponentRemoved(removed),
+        ) => match &removed.effects.runtime_report.dispatch {
+            crate::StudioRuntimeDispatch::InspectorCompositionComponentRemove(outcome) => {
+                assert!(outcome.applied);
+                assert_eq!(outcome.document_revision, 1);
+                assert_eq!(outcome.command_history_len, 1);
+                assert_eq!(
+                    outcome.removed_key.as_deref(),
+                    Some("stream:stream-feed:overall_mole_fraction:component-b")
+                );
+            }
+            other => {
+                panic!("expected inspector composition component remove dispatch, got {other:?}")
+            }
+        },
+        other => panic!("expected inspector composition component remove outcome, got {other:?}"),
+    }
+
+    let detail = dispatch
+        .window
+        .runtime
+        .active_inspector_detail
+        .as_ref()
+        .expect("expected stream inspector detail after remove");
+    assert!(
+        !detail
+            .property_fields
+            .iter()
+            .any(|field| field.key == "stream:stream-feed:overall_mole_fraction:component-b")
+    );
+    assert!(
+        detail.property_fields.iter().any(|field| {
+            field.key == "stream:stream-feed:overall_mole_fraction:component-a"
+                && field.current_value == "0.35"
+                && field.remove_command_id.is_none()
+        }),
+        "expected remaining component to be unchanged and protected from last-entry removal"
+    );
+    assert_eq!(
+        detail
+            .property_composition_summary
+            .as_ref()
+            .map(|summary| (summary.status_label, summary.current_sum_text.as_str())),
+        Some(("Draft", "0.350000"))
+    );
+}
+
+#[test]
+fn gui_driver_surfaces_invalid_stream_draft_notice_without_private_shell_state() {
+    let mut driver = StudioGuiDriver::new(&lease_expiring_config()).expect("expected driver");
+    driver
+        .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+        .expect("expected open dispatch");
+    driver
+        .dispatch_event(StudioGuiEvent::UiCommandRequested {
+            command_id: "inspector.focus_stream:stream-feed".to_string(),
+        })
+        .expect("expected inspector focus dispatch");
+
+    let update = driver
+        .dispatch_event(StudioGuiEvent::InspectorFieldDraftUpdateRequested {
+            command_id: "inspector.update_stream_draft:stream:stream-feed:temperature_k"
+                .to_string(),
+            raw_value: "not-a-number".to_string(),
+        })
+        .expect("expected invalid draft update");
+
+    let detail = update
+        .window
+        .runtime
+        .active_inspector_detail
+        .as_ref()
+        .expect("expected active inspector detail");
+    assert!(detail.property_fields.iter().any(|field| {
+        field.key == "stream:stream-feed:temperature_k"
+            && field.status_label == "Invalid"
+            && field.commit_command_id.is_none()
+    }));
+    assert!(
+        detail.property_notices.iter().any(|notice| {
+            notice.status_label == "Invalid"
+                && notice
+                    .message
+                    .contains("Fix invalid stream property drafts")
+                && notice.message.contains("not committed")
+        }),
+        "expected invalid draft state to be exposed through inspector presentation"
     );
 }
 

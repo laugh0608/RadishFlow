@@ -275,7 +275,7 @@ fn gui_host_dispatches_canvas_begin_place_unit_command_by_command_id() {
     let opened = gui_host.open_window().expect("expected window open");
 
     let dispatch = gui_host
-        .dispatch_ui_command("canvas.begin_place_unit.flash_drum")
+        .dispatch_ui_command("canvas.begin_place_unit.heater")
         .expect("expected begin place unit canvas ui command");
 
     match dispatch {
@@ -284,18 +284,18 @@ fn gui_host_dispatches_canvas_begin_place_unit_command_by_command_id() {
             target_window_id,
             result,
         } => {
-            assert_eq!(command_id, "canvas.begin_place_unit.flash_drum");
+            assert_eq!(command_id, "canvas.begin_place_unit.heater");
             assert_eq!(target_window_id, Some(opened.registration.window_id));
             assert_eq!(
                 result.action,
                 StudioGuiCanvasInteractionAction::BeginPlaceUnit {
-                    unit_kind: "Flash Drum".to_string(),
+                    unit_kind: "Heater".to_string(),
                 }
             );
             assert_eq!(
                 result.canvas.pending_edit,
                 Some(rf_ui::CanvasEditIntent::PlaceUnit {
-                    unit_kind: "Flash Drum".to_string()
+                    unit_kind: "Heater".to_string()
                 })
             );
         }
@@ -340,6 +340,61 @@ fn gui_host_canvas_ui_command_focus_persists_for_followup_reject() {
         other => panic!("expected reject canvas ui command outcome, got {other:?}"),
     }
 
+    let _ = fs::remove_file(project_path);
+}
+
+#[test]
+fn gui_host_dispatches_selected_unit_layout_nudge_by_command_id() {
+    let (config, project_path, layout_path) = layout_persistence_config();
+    let mut gui_host = StudioGuiHost::new(&config).expect("expected gui host");
+    let opened = gui_host.open_window().expect("expected window open");
+
+    gui_host
+        .dispatch_ui_command("inspector.focus_unit:feed-1")
+        .expect("expected unit focus dispatch");
+
+    let dispatch = gui_host
+        .dispatch_ui_command("canvas.move_selected_unit.right")
+        .expect("expected selected unit layout move command");
+    match dispatch {
+        StudioGuiHostUiCommandDispatchResult::ExecutedCanvasUnitLayoutMove {
+            command_id,
+            target_window_id,
+            result,
+        } => {
+            assert_eq!(command_id, "canvas.move_selected_unit.right");
+            assert_eq!(target_window_id, Some(opened.registration.window_id));
+            assert_eq!(result.unit_id, rf_types::UnitId::new("feed-1"));
+            assert_eq!(result.previous_position, None);
+            assert_eq!(result.position, rf_ui::CanvasPoint::new(58.0, 72.0));
+            assert_eq!(
+                result
+                    .canvas
+                    .units
+                    .iter()
+                    .find(|unit| unit.unit_id == rf_types::UnitId::new("feed-1"))
+                    .and_then(|unit| unit.layout_position),
+                Some(rf_ui::CanvasPoint::new(58.0, 72.0))
+            );
+        }
+        other => panic!("expected selected unit layout move result, got {other:?}"),
+    }
+
+    assert!(
+        !gui_host
+            .snapshot()
+            .runtime
+            .workspace_document
+            .has_unsaved_changes,
+        "layout nudge should not dirty the project document"
+    );
+
+    let stored = rf_store::read_studio_layout_file(&layout_path).expect("expected layout sidecar");
+    assert!(stored.canvas_unit_positions.iter().any(|position| {
+        position.unit_id == "feed-1" && position.x == 58.0 && position.y == 72.0
+    }));
+
+    let _ = fs::remove_file(layout_path);
     let _ = fs::remove_file(project_path);
 }
 

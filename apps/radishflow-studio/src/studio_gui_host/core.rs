@@ -10,10 +10,15 @@ impl StudioGuiHost {
             Some(project_path) => load_persisted_window_layouts(project_path)?,
             None => BTreeMap::new(),
         };
+        let canvas_unit_positions = match controller.document_path() {
+            Some(project_path) => load_persisted_canvas_unit_positions(project_path)?,
+            None => BTreeMap::new(),
+        };
 
         Ok(Self {
             controller,
             layout_state_overrides,
+            canvas_unit_positions,
             window_drop_previews: BTreeMap::new(),
         })
     }
@@ -49,6 +54,7 @@ impl StudioGuiHost {
                 unit_id: unit.id.clone(),
                 name: unit.name.clone(),
                 kind: unit.kind.clone(),
+                layout_position: self.canvas_unit_positions.get(&unit.id).copied(),
                 ports: unit
                     .ports
                     .iter()
@@ -108,6 +114,7 @@ impl StudioGuiHost {
             control_state.notice.as_ref(),
         );
         StudioGuiCanvasState {
+            view_mode: canvas.view_mode,
             units,
             streams,
             run_status: Some(control_state.run_status),
@@ -189,6 +196,9 @@ impl StudioGuiHost {
             StudioGuiHostCommand::DispatchCanvasInteraction { action } => self
                 .dispatch_canvas_interaction(action)
                 .map(StudioGuiHostCommandOutcome::CanvasInteracted),
+            StudioGuiHostCommand::MoveCanvasUnitLayout { unit_id, position } => self
+                .move_canvas_unit_layout(unit_id, position)
+                .map(StudioGuiHostCommandOutcome::CanvasUnitLayoutMoved),
             StudioGuiHostCommand::DispatchLifecycleEvent { event } => self
                 .dispatch_lifecycle_event(event)
                 .map(StudioGuiHostCommandOutcome::LifecycleDispatched),
@@ -204,9 +214,25 @@ impl StudioGuiHost {
             StudioGuiHostCommand::DispatchInspectorDraftCommit { command_id } => self
                 .dispatch_inspector_draft_commit(&command_id)
                 .map(StudioGuiHostCommandOutcome::InspectorDraftCommitted),
+            StudioGuiHostCommand::DispatchInspectorDraftDiscard { command_id } => self
+                .dispatch_inspector_draft_discard(&command_id)
+                .map(StudioGuiHostCommandOutcome::InspectorDraftDiscarded),
             StudioGuiHostCommand::DispatchInspectorDraftBatchCommit { command_id } => self
                 .dispatch_inspector_draft_batch_commit(&command_id)
                 .map(StudioGuiHostCommandOutcome::InspectorDraftBatchCommitted),
+            StudioGuiHostCommand::DispatchInspectorDraftBatchDiscard { command_id } => self
+                .dispatch_inspector_draft_batch_discard(&command_id)
+                .map(StudioGuiHostCommandOutcome::InspectorDraftBatchDiscarded),
+            StudioGuiHostCommand::DispatchInspectorCompositionNormalize { command_id } => self
+                .dispatch_inspector_composition_normalize(&command_id)
+                .map(StudioGuiHostCommandOutcome::InspectorCompositionNormalized),
+            StudioGuiHostCommand::DispatchInspectorCompositionComponentAdd { command_id } => self
+                .dispatch_inspector_composition_component_add(&command_id)
+                .map(StudioGuiHostCommandOutcome::InspectorCompositionComponentAdded),
+            StudioGuiHostCommand::DispatchInspectorCompositionComponentRemove { command_id } => {
+                self.dispatch_inspector_composition_component_remove(&command_id)
+                    .map(StudioGuiHostCommandOutcome::InspectorCompositionComponentRemoved)
+            }
             StudioGuiHostCommand::QueryWindowDropTarget { window_id, query } => self
                 .query_window_drop_target(window_id, query)
                 .map(StudioGuiHostCommandOutcome::WindowDropTargetQueried),
@@ -420,7 +446,12 @@ fn active_inspector_detail_from_controller(
                     },
                 ],
                 property_fields: Vec::new(),
+                property_notices: Vec::new(),
+                property_composition_summary: None,
                 property_batch_commit_command_id: None,
+                property_batch_discard_command_id: None,
+                property_composition_normalize_command_id: None,
+                property_composition_component_actions: Vec::new(),
                 unit_ports: unit
                     .ports
                     .iter()
@@ -439,6 +470,17 @@ fn active_inspector_detail_from_controller(
         rf_ui::InspectorTarget::Stream(stream_id) => {
             let stream = flowsheet.streams.get(stream_id)?;
             let property_fields = stream_property_fields(stream, controller.inspector_drafts());
+            let property_composition_summary =
+                stream_property_composition_summary(stream, controller.inspector_drafts());
+            let property_composition_normalize_command_id =
+                stream_property_composition_normalize_command_id(
+                    stream,
+                    controller.inspector_drafts(),
+                );
+            let property_composition_component_actions =
+                stream_property_composition_component_actions(stream, flowsheet);
+            let property_notices =
+                stream_property_notices(stream, controller.inspector_drafts(), &property_fields);
             Some(StudioGuiInspectorTargetDetailSnapshot {
                 target,
                 title: stream.name.clone(),
@@ -464,6 +506,14 @@ fn active_inspector_detail_from_controller(
                     stream,
                     &property_fields,
                 ),
+                property_batch_discard_command_id: stream_property_batch_discard_command_id(
+                    stream,
+                    &property_fields,
+                ),
+                property_notices,
+                property_composition_summary,
+                property_composition_normalize_command_id,
+                property_composition_component_actions,
                 property_fields,
                 unit_ports: Vec::new(),
             })
@@ -516,7 +566,7 @@ fn stream_property_fields(
             .overall_mole_fractions
             .iter()
             .map(|(component_id, fraction)| {
-                inspector_number_field(
+                let mut field = inspector_number_field(
                     drafts,
                     rf_ui::stream_inspector_draft_key(
                         &stream.id,
@@ -526,10 +576,38 @@ fn stream_property_fields(
                     ),
                     &format!("Overall mole fraction ({})", component_id.as_str()),
                     *fraction,
-                )
+                );
+                field.remove_command_id = (stream.overall_mole_fractions.len() > 1).then(|| {
+                    crate::inspector_composition_component_remove_command_id(
+                        stream.id.as_str(),
+                        component_id.as_str(),
+                    )
+                });
+                field
             }),
     )
     .collect()
+}
+
+fn stream_property_composition_component_actions(
+    stream: &rf_model::MaterialStreamState,
+    flowsheet: &rf_model::Flowsheet,
+) -> Vec<crate::StudioGuiInspectorCompositionComponentActionSnapshot> {
+    flowsheet
+        .components
+        .values()
+        .filter(|component| !stream.overall_mole_fractions.contains_key(&component.id))
+        .map(
+            |component| crate::StudioGuiInspectorCompositionComponentActionSnapshot {
+                component_id: component.id.as_str().to_string(),
+                component_name: component.name.clone(),
+                command_id: crate::inspector_composition_component_add_command_id(
+                    stream.id.as_str(),
+                    component.id.as_str(),
+                ),
+            },
+        )
+        .collect()
 }
 
 fn inspector_text_field(
@@ -553,6 +631,12 @@ fn inspector_text_field(
                 draft.is_dirty,
                 draft.validation,
             ),
+            discard_command_id: inspector_discard_command_id_for_field(
+                &key,
+                draft.is_dirty,
+                draft.validation,
+            ),
+            remove_command_id: None,
         },
         _ => StudioGuiInspectorTargetFieldSnapshot {
             key: key.clone(),
@@ -564,6 +648,8 @@ fn inspector_text_field(
             validation: StudioGuiInspectorTargetFieldValidationSnapshot::Unknown,
             draft_update_command_id: crate::inspector_draft_update_command_id(&key),
             commit_command_id: None,
+            discard_command_id: None,
+            remove_command_id: None,
         },
     }
 }
@@ -589,6 +675,12 @@ fn inspector_number_field(
                 draft.is_dirty,
                 draft.validation,
             ),
+            discard_command_id: inspector_discard_command_id_for_field(
+                &key,
+                draft.is_dirty,
+                draft.validation,
+            ),
+            remove_command_id: None,
         },
         _ => StudioGuiInspectorTargetFieldSnapshot {
             key: key.clone(),
@@ -600,6 +692,8 @@ fn inspector_number_field(
             validation: StudioGuiInspectorTargetFieldValidationSnapshot::Unknown,
             draft_update_command_id: crate::inspector_draft_update_command_id(&key),
             commit_command_id: None,
+            discard_command_id: None,
+            remove_command_id: None,
         },
     }
 }
@@ -629,6 +723,15 @@ fn inspector_commit_command_id_for_field(
         .then(|| crate::inspector_draft_commit_command_id(key))
 }
 
+fn inspector_discard_command_id_for_field(
+    key: &str,
+    is_dirty: bool,
+    validation: rf_ui::DraftValidationState,
+) -> Option<String> {
+    (is_dirty || validation == rf_ui::DraftValidationState::Invalid)
+        .then(|| crate::inspector_draft_discard_command_id(key))
+}
+
 fn stream_property_batch_commit_command_id(
     stream: &rf_model::MaterialStreamState,
     fields: &[StudioGuiInspectorTargetFieldSnapshot],
@@ -639,6 +742,204 @@ fn stream_property_batch_commit_command_id(
         .count();
     (committable_field_count > 1)
         .then(|| crate::inspector_draft_batch_commit_command_id(stream.id.as_str()))
+}
+
+fn stream_property_batch_discard_command_id(
+    stream: &rf_model::MaterialStreamState,
+    fields: &[StudioGuiInspectorTargetFieldSnapshot],
+) -> Option<String> {
+    fields
+        .iter()
+        .any(|field| field.discard_command_id.is_some())
+        .then(|| crate::inspector_draft_batch_discard_command_id(stream.id.as_str()))
+}
+
+fn stream_property_notices(
+    stream: &rf_model::MaterialStreamState,
+    drafts: &rf_ui::InspectorDraftState,
+    fields: &[StudioGuiInspectorTargetFieldSnapshot],
+) -> Vec<crate::StudioGuiInspectorPropertyNoticeSnapshot> {
+    let mut notices = Vec::new();
+
+    if fields
+        .iter()
+        .any(|field| field.validation == StudioGuiInspectorTargetFieldValidationSnapshot::Invalid)
+    {
+        notices.push(crate::StudioGuiInspectorPropertyNoticeSnapshot {
+            status_label: "Invalid",
+            message: "Fix invalid stream property drafts before applying changes; invalid drafts are preserved and are not committed.".to_string(),
+        });
+    }
+
+    if let Some(sum) = stream_property_composition_sum(stream, drafts) {
+        if !sum.is_finite() || sum <= 0.0 {
+            notices.push(crate::StudioGuiInspectorPropertyNoticeSnapshot {
+                status_label: "Invalid",
+                message: "Overall mole fraction sum must be positive and finite before it can be normalized.".to_string(),
+            });
+        } else if (sum - 1.0).abs() > 1e-9 {
+            notices.push(crate::StudioGuiInspectorPropertyNoticeSnapshot {
+                status_label: "Draft",
+                message: format!(
+                    "Overall mole fraction sum is {sum:.6}, not 1.000000. Use Normalize composition or adjust the draft values explicitly; no automatic compensation is applied."
+                ),
+            });
+        }
+    }
+
+    notices
+}
+
+fn stream_property_composition_normalize_command_id(
+    stream: &rf_model::MaterialStreamState,
+    drafts: &rf_ui::InspectorDraftState,
+) -> Option<String> {
+    if stream.overall_mole_fractions.is_empty() {
+        return None;
+    }
+
+    let mut has_dirty_composition = false;
+    let mut sum = 0.0;
+    for (component_id, original_value) in &stream.overall_mole_fractions {
+        let key = rf_ui::stream_inspector_draft_key(
+            &stream.id,
+            &rf_ui::StreamInspectorDraftField::OverallMoleFraction(component_id.clone()),
+        );
+        let value = match drafts.fields.get(&key) {
+            Some(rf_ui::DraftValue::Number(draft))
+                if draft.is_dirty && draft.validation == rf_ui::DraftValidationState::Valid =>
+            {
+                has_dirty_composition = true;
+                match draft.current.trim().parse::<f64>() {
+                    Ok(value) => value,
+                    Err(_) => return None,
+                }
+            }
+            Some(rf_ui::DraftValue::Number(draft))
+                if draft.validation == rf_ui::DraftValidationState::Invalid =>
+            {
+                return None;
+            }
+            Some(_) => return None,
+            None => *original_value,
+        };
+        if !value.is_finite() || value < 0.0 {
+            return None;
+        }
+        sum += value;
+    }
+
+    (sum.is_finite() && sum > 0.0 && (has_dirty_composition || (sum - 1.0).abs() > 1e-9))
+        .then(|| crate::inspector_composition_normalize_command_id(stream.id.as_str()))
+}
+
+fn stream_property_composition_sum(
+    stream: &rf_model::MaterialStreamState,
+    drafts: &rf_ui::InspectorDraftState,
+) -> Option<f64> {
+    if stream.overall_mole_fractions.is_empty() {
+        return None;
+    }
+
+    let mut sum = 0.0;
+    for (component_id, original_value) in &stream.overall_mole_fractions {
+        let key = rf_ui::stream_inspector_draft_key(
+            &stream.id,
+            &rf_ui::StreamInspectorDraftField::OverallMoleFraction(component_id.clone()),
+        );
+        let value = match drafts.fields.get(&key) {
+            Some(rf_ui::DraftValue::Number(draft))
+                if draft.validation == rf_ui::DraftValidationState::Valid =>
+            {
+                draft.current.trim().parse::<f64>().ok()?
+            }
+            Some(rf_ui::DraftValue::Number(draft))
+                if draft.validation == rf_ui::DraftValidationState::Unknown =>
+            {
+                *original_value
+            }
+            Some(_) => return None,
+            None => *original_value,
+        };
+        sum += value;
+    }
+
+    Some(sum)
+}
+
+fn stream_property_composition_summary(
+    stream: &rf_model::MaterialStreamState,
+    drafts: &rf_ui::InspectorDraftState,
+) -> Option<StudioGuiInspectorCompositionSummarySnapshot> {
+    if stream.overall_mole_fractions.is_empty() {
+        return None;
+    }
+
+    let mut values = Vec::new();
+    let mut has_dirty_composition = false;
+    let mut has_invalid_composition = false;
+    for (component_id, original_value) in &stream.overall_mole_fractions {
+        let key = rf_ui::stream_inspector_draft_key(
+            &stream.id,
+            &rf_ui::StreamInspectorDraftField::OverallMoleFraction(component_id.clone()),
+        );
+        let value = match drafts.fields.get(&key) {
+            Some(rf_ui::DraftValue::Number(draft)) => match draft.validation {
+                rf_ui::DraftValidationState::Valid => {
+                    has_dirty_composition |= draft.is_dirty;
+                    draft.current.trim().parse::<f64>().ok()
+                }
+                rf_ui::DraftValidationState::Invalid => {
+                    has_invalid_composition = true;
+                    None
+                }
+                rf_ui::DraftValidationState::Unknown => Some(*original_value),
+            },
+            Some(_) => {
+                has_invalid_composition = true;
+                None
+            }
+            None => Some(*original_value),
+        };
+        if let Some(value) = value {
+            values.push((component_id.as_str().to_string(), value));
+        }
+    }
+
+    if has_invalid_composition {
+        return Some(StudioGuiInspectorCompositionSummarySnapshot {
+            current_sum_text: "-".to_string(),
+            normalized_preview_text: "Fix invalid composition drafts before normalizing."
+                .to_string(),
+            status_label: "Invalid",
+        });
+    }
+
+    let sum = values.iter().map(|(_, value)| value).sum::<f64>();
+    if !sum.is_finite() || sum <= 0.0 {
+        return Some(StudioGuiInspectorCompositionSummarySnapshot {
+            current_sum_text: format_field_number(sum),
+            normalized_preview_text: "Composition sum must be positive and finite.".to_string(),
+            status_label: "Invalid",
+        });
+    }
+
+    let normalized_preview_text = values
+        .iter()
+        .map(|(component_id, value)| format!("{component_id}={:.6}", value / sum))
+        .collect::<Vec<_>>()
+        .join(", ");
+    let status_label = if has_dirty_composition || (sum - 1.0).abs() > 1e-9 {
+        "Draft"
+    } else {
+        "Synced"
+    };
+
+    Some(StudioGuiInspectorCompositionSummarySnapshot {
+        current_sum_text: format!("{sum:.6}"),
+        normalized_preview_text,
+        status_label,
+    })
 }
 
 fn format_field_number(value: f64) -> String {

@@ -10,6 +10,9 @@ use rf_store::{
 };
 use rf_types::{ComponentId, PhaseLabel, RfError, RfResult};
 
+const REFERENCE_TEMPERATURE_K: f64 = 298.15;
+const MOLE_FRACTION_SUM_TOLERANCE: f64 = 1e-9;
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct AntoineCoefficients {
     pub a: f64,
@@ -152,32 +155,41 @@ impl ThermoSystem {
             )));
         }
 
-        if mole_fractions.iter().any(|value| *value < 0.0) {
+        if mole_fractions
+            .iter()
+            .any(|value| !value.is_finite() || *value < 0.0)
+        {
             return Err(RfError::invalid_input(
-                "mole fractions must be non-negative",
+                "mole fractions must be finite non-negative values",
             ));
         }
 
         let sum = mole_fractions.iter().sum::<f64>();
-        if sum <= 0.0 {
+        if !sum.is_finite() || sum <= 0.0 {
             return Err(RfError::invalid_input(
-                "mole fractions must sum to a positive value",
+                "mole fractions must sum to a positive finite value",
             ));
+        }
+
+        if (sum - 1.0).abs() > MOLE_FRACTION_SUM_TOLERANCE {
+            return Err(RfError::invalid_input(format!(
+                "mole fractions must sum to one within tolerance {MOLE_FRACTION_SUM_TOLERANCE}, received {sum}"
+            )));
         }
 
         Ok(())
     }
 
     pub fn validate_state(&self, state: &ThermoState) -> RfResult<()> {
-        if state.temperature_k <= 0.0 {
+        if !state.temperature_k.is_finite() || state.temperature_k <= 0.0 {
             return Err(RfError::invalid_input(
-                "temperature must be greater than zero kelvin",
+                "temperature must be a finite value greater than zero kelvin",
             ));
         }
 
-        if state.pressure_pa <= 0.0 {
+        if !state.pressure_pa.is_finite() || state.pressure_pa <= 0.0 {
             return Err(RfError::invalid_input(
-                "pressure must be greater than zero pascal",
+                "pressure must be a finite value greater than zero pascal",
             ));
         }
 
@@ -439,24 +451,59 @@ impl ThermoProvider for PlaceholderThermoProvider {
     }
 
     fn phase_molar_enthalpy(&self, state: &PhaseThermoState) -> RfResult<f64> {
-        if state.temperature_k <= 0.0 {
+        if !state.temperature_k.is_finite() || state.temperature_k <= 0.0 {
             return Err(RfError::invalid_input(
-                "temperature must be greater than zero kelvin",
+                "temperature must be a finite value greater than zero kelvin",
             ));
         }
 
-        if state.pressure_pa <= 0.0 {
+        if !state.pressure_pa.is_finite() || state.pressure_pa <= 0.0 {
             return Err(RfError::invalid_input(
-                "pressure must be greater than zero pascal",
+                "pressure must be a finite value greater than zero pascal",
             ));
         }
 
         self.system.validate_mole_fractions(&state.mole_fractions)?;
 
-        Err(RfError::not_implemented(
-            "phase enthalpy evaluation is not implemented yet",
-        ))
+        let heat_capacity = self
+            .system
+            .components
+            .iter()
+            .zip(state.mole_fractions.iter())
+            .try_fold(0.0, |total, (component, fraction)| {
+                let capacity = component_heat_capacity(component, state.label)?;
+                Ok(total + fraction * capacity)
+            })?;
+
+        Ok(heat_capacity * (state.temperature_k - REFERENCE_TEMPERATURE_K))
     }
+}
+
+fn component_heat_capacity(component: &ThermoComponent, label: PhaseLabel) -> RfResult<f64> {
+    let capacity = match label {
+        PhaseLabel::Liquid => component.liquid_heat_capacity_j_per_mol_k,
+        PhaseLabel::Vapor => component.vapor_heat_capacity_j_per_mol_k,
+        PhaseLabel::Overall => {
+            return Err(RfError::thermo(
+                "phase enthalpy requires a concrete liquid or vapor phase label",
+            ));
+        }
+    }
+    .ok_or_else(|| {
+        RfError::thermo(format!(
+            "component `{}` is missing `{}` heat capacity",
+            component.id, label
+        ))
+    })?;
+
+    if !capacity.is_finite() || capacity <= 0.0 {
+        return Err(RfError::thermo(format!(
+            "component `{}` has a non-positive or non-finite `{}` heat capacity",
+            component.id, label
+        )));
+    }
+
+    Ok(capacity)
 }
 
 fn property_package_manifest_from_stored(
@@ -570,11 +617,11 @@ mod tests {
 
     use super::{
         AntoineCoefficients, CachedPropertyPackageProvider, InMemoryPropertyPackageProvider,
-        PlaceholderThermoProvider, PropertyPackageClassification, PropertyPackageManifest,
-        PropertyPackageProvider, PropertyPackageSource, ThermoComponent, ThermoProvider,
-        ThermoState, ThermoSystem,
+        PhaseThermoState, PlaceholderThermoProvider, PropertyPackageClassification,
+        PropertyPackageManifest, PropertyPackageProvider, PropertyPackageSource, ThermoComponent,
+        ThermoProvider, ThermoState, ThermoSystem,
     };
-    use rf_types::ComponentId;
+    use rf_types::{ComponentId, PhaseLabel};
 
     fn assert_close(actual: f64, expected: f64, tolerance: f64) {
         let delta = (actual - expected).abs();
@@ -612,6 +659,66 @@ mod tests {
         assert_eq!(k_values.len(), 2);
         assert_close(k_values[0], 1.0, 1e-12);
         assert_close(k_values[1], 0.5, 1e-12);
+    }
+
+    #[test]
+    fn placeholder_provider_estimates_phase_molar_enthalpy_from_heat_capacity() {
+        let mut methane = ThermoComponent::new(ComponentId::new("methane"), "Methane");
+        methane.liquid_heat_capacity_j_per_mol_k = Some(35.0);
+        methane.vapor_heat_capacity_j_per_mol_k = Some(36.5);
+
+        let mut ethane = ThermoComponent::new(ComponentId::new("ethane"), "Ethane");
+        ethane.liquid_heat_capacity_j_per_mol_k = Some(52.0);
+        ethane.vapor_heat_capacity_j_per_mol_k = Some(65.0);
+
+        let provider = PlaceholderThermoProvider::new(ThermoSystem::binary([methane, ethane]));
+        let liquid_state =
+            PhaseThermoState::new(PhaseLabel::Liquid, 300.0, 650_000.0, vec![0.2, 0.8]);
+        let vapor_state =
+            PhaseThermoState::new(PhaseLabel::Vapor, 300.0, 650_000.0, vec![0.2, 0.8]);
+
+        let liquid_enthalpy = provider
+            .phase_molar_enthalpy(&liquid_state)
+            .expect("expected liquid enthalpy");
+        let vapor_enthalpy = provider
+            .phase_molar_enthalpy(&vapor_state)
+            .expect("expected vapor enthalpy");
+
+        assert_close(liquid_enthalpy, 89.91, 1e-10);
+        assert_close(vapor_enthalpy, 109.705, 1e-10);
+    }
+
+    #[test]
+    fn placeholder_provider_rejects_missing_phase_heat_capacity() {
+        let methane = ThermoComponent::new(ComponentId::new("methane"), "Methane");
+        let provider = PlaceholderThermoProvider::new(ThermoSystem::new(vec![methane]));
+        let state = PhaseThermoState::new(PhaseLabel::Liquid, 300.0, 101_325.0, vec![1.0]);
+
+        let error = provider
+            .phase_molar_enthalpy(&state)
+            .expect_err("expected missing heat capacity");
+
+        assert_eq!(error.code().as_str(), "thermo");
+        assert!(error.message().contains("missing `liquid` heat capacity"));
+    }
+
+    #[test]
+    fn placeholder_provider_rejects_unnormalized_mole_fractions() {
+        let mut methane = ThermoComponent::new(ComponentId::new("methane"), "Methane");
+        methane.antoine = Some(AntoineCoefficients::new(50.0_f64.ln(), 0.0, 0.0));
+
+        let mut ethane = ThermoComponent::new(ComponentId::new("ethane"), "Ethane");
+        ethane.antoine = Some(AntoineCoefficients::new(25.0_f64.ln(), 0.0, 0.0));
+
+        let provider = PlaceholderThermoProvider::new(ThermoSystem::binary([methane, ethane]));
+        let state = ThermoState::new(300.0, 50_000.0, vec![0.4, 0.4]);
+
+        let error = provider
+            .estimate_k_values(&state)
+            .expect_err("expected unnormalized mole fractions to be rejected");
+
+        assert_eq!(error.code().as_str(), "invalid_input");
+        assert!(error.message().contains("must sum to one"));
     }
 
     #[test]

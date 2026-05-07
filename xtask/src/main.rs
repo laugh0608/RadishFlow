@@ -8,10 +8,11 @@ use std::{
 
 const TEXT_EXTENSIONS: &[&str] = &[
     "md", "toml", "rs", "ps1", "sh", "yml", "yaml", "json", "props", "targets", "sln", "txt", "cs",
-    "csproj",
+    "csproj", "idl",
 ];
 
 const TEXT_FILE_NAMES: &[&str] = &[
+    ".dockerignore",
     ".editorconfig",
     ".gitattributes",
     ".gitignore",
@@ -318,6 +319,10 @@ mod tests {
         assert!(should_check_text_path("scripts/check-repo.sh"));
         assert!(should_check_text_path("README.md"));
         assert!(should_check_text_path("xtask/Cargo.toml"));
+        assert!(should_check_text_path(
+            "adapters/dotnet-capeopen/RadishFlow.CapeOpen.UnitOp.Mvp/typelib/RadishFlow.CapeOpen.UnitOp.Mvp.idl"
+        ));
+        assert!(should_check_text_path(".dockerignore"));
         assert!(!should_check_text_path("assets/logo.png"));
     }
 

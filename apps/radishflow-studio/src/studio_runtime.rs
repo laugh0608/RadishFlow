@@ -390,6 +390,13 @@ impl StudioRuntime {
         self.session.accept_focused_canvas_suggestion_by_tab()
     }
 
+    pub fn accept_canvas_suggestion(
+        &mut self,
+        suggestion_id: &rf_ui::CanvasSuggestionId,
+    ) -> RfResult<Option<rf_ui::CanvasSuggestion>> {
+        self.session.accept_canvas_suggestion(suggestion_id)
+    }
+
     pub fn reject_focused_canvas_suggestion(&mut self) -> Option<rf_ui::CanvasSuggestion> {
         self.session.reject_focused_canvas_suggestion()
     }
@@ -839,7 +846,22 @@ mod tests {
             StudioRuntimeDispatch::InspectorDraftCommit(_) => {
                 panic!("expected entitlement session event dispatch")
             }
+            StudioRuntimeDispatch::InspectorDraftDiscard(_) => {
+                panic!("expected entitlement session event dispatch")
+            }
             StudioRuntimeDispatch::InspectorDraftBatchCommit(_) => {
+                panic!("expected entitlement session event dispatch")
+            }
+            StudioRuntimeDispatch::InspectorDraftBatchDiscard(_) => {
+                panic!("expected entitlement session event dispatch")
+            }
+            StudioRuntimeDispatch::InspectorCompositionNormalize(_) => {
+                panic!("expected entitlement session event dispatch")
+            }
+            StudioRuntimeDispatch::InspectorCompositionComponentAdd(_) => {
+                panic!("expected entitlement session event dispatch")
+            }
+            StudioRuntimeDispatch::InspectorCompositionComponentRemove(_) => {
                 panic!("expected entitlement session event dispatch")
             }
             StudioRuntimeDispatch::DocumentHistory(_) => {

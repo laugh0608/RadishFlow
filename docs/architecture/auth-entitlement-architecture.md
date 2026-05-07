@@ -40,10 +40,7 @@ RadishFlow 虽然是桌面客户端，但后续会承载一部分高价值、不
 
 当前参考资产包括：
 
-- `D:\Code\Radish\Docs\guide\authentication.md`
-- `D:\Code\Radish\Docs\architecture\overview.md`
-- `D:\Code\Radish\Frontend\radish.client\src\services\auth.ts`
-- `D:\Code\Radish\Frontend\radish.client\src\services\tokenService.ts`
+- [Radish](https://github.com/laugh0608/Radish) 中的认证指南、架构总览与前端 auth / token service 实现
 
 从 `Radish` 当前实现中，RadishFlow 直接继承以下方向：
 

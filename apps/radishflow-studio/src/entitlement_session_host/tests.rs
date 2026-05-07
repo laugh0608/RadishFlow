@@ -729,6 +729,27 @@ fn timer_command_keeps_when_timer_is_unchanged() {
 }
 
 #[test]
+fn timer_command_keeps_when_only_derived_delay_changes() {
+    let current = EntitlementSessionTimerArm {
+        event: EntitlementSessionLifecycleEvent::TimerElapsed,
+        due_at: timestamp(260),
+        delay: Duration::from_secs(60),
+        reason: EntitlementSessionTimerReason::ScheduledCheck,
+    };
+    let next = EntitlementSessionTimerArm {
+        delay: Duration::from_secs(59),
+        ..current.clone()
+    };
+
+    let command = plan_entitlement_session_timer_command(Some(&current), Some(&next));
+
+    assert_eq!(
+        command,
+        Some(EntitlementSessionTimerCommand::Keep { timer: current })
+    );
+}
+
+#[test]
 fn timer_command_reschedules_when_due_time_changes() {
     let previous = EntitlementSessionTimerArm {
         event: EntitlementSessionLifecycleEvent::TimerElapsed,
