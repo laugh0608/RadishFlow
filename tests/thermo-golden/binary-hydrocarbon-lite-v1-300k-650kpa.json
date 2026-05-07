@@ -29,6 +29,8 @@
   ],
   "expectedSaturationPressurePa": [779282.0933478157, 618829.4599937957],
   "expectedKValues": [1.1988955282274087, 0.952045323067378],
+  "expectedBubblePressurePa": 650919.9866646,
+  "expectedDewPressurePa": 645407.066294851,
   "expectedLiquidMolarEnthalpyJPerMol": 89.9100000000011,
   "expectedVaporMolarEnthalpyJPerMol": 109.705000000001
 }

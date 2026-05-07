@@ -1,6 +1,6 @@
 # Thermo MVP Model
 
-更新时间：2026-05-05
+更新时间：2026-05-07
 
 该目录用于沉淀第一阶段热力学模型范围与样例数据。
 
@@ -34,10 +34,12 @@
 
 - `rf-thermo` 已实现基于 Antoine 相关式的饱和蒸气压计算
 - `rf-thermo` 已实现基于理想体系假设的 `K` 值估算
+- `rf-thermo` 已实现固定温度下的 bubble/dew pressure 边界估算
 - `rf-thermo` 已实现基于 property package 中 liquid/vapor 常热容的 MVP 相 molar enthalpy，参考温度固定为 `298.15 K`
 - `rf-flash` 已实现 Rachford-Rice 求解
 - `rf-flash` 已实现最小二元汽液两相 `TP Flash`
 - `rf-flash` 当前已可产出带 `overall` / `liquid` / `vapor` 相态结果的 `MaterialStreamState`，并把 liquid/vapor 与按相分率加权的 overall molar enthalpy 写入相态结果
+- `rf-flash` 当前会在 `TP Flash` 结果中显式携带 `liquid-only / two-phase / vapor-only` phase region 与 bubble/dew pressure
 - `rf-thermo` 当前要求传入热力学状态和相态焓计算的 mole fractions 在有限、非负之外必须归一到 1；`rf-flash` 直接调用入口会继承该契约，unit operation 层仍负责先把文档流股组成归一化后再调用 flash
 
 ## 当前刻意未实现的内容
@@ -47,7 +49,7 @@
 - 完整焓参考态、相变潜热与更真实物性模型
 - `PH Flash`
 - `PS Flash`
-- 泡点 / 露点
+- 固定压力下的 bubble/dew temperature 与更完整 phase envelope tracing
 - 多物性模型切换与更复杂 EOS
 - 超出当前 MVP 的复杂多组分与更大数据库能力
 
@@ -66,6 +68,7 @@
 
 - `tests/thermo-golden` 中的热力学黄金样例
 - `tests/flash-golden` 中的 `TP Flash` 黄金样例
+- bubble/dew pressure 边界与 phase region 的 focused tests
 - 与 flowsheet 闭环样例联动的端到端回归样例
 - 未归一、非有限、负组成等输入契约边界测试，避免数值 API 静默接受无效 mole fractions
 - 黄金样例进入版本控制，数值变更应能够被回归测试直接发现

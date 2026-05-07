@@ -22,6 +22,7 @@
 - Canvas placement 坐标已保存到 `<project>.rfstudio-layout.json` sidecar；离散 nudge 只更新 sidecar，不改项目文档、不进入 undo/redo。
 - Result Inspector 已补 stream-centric 与 unit-centric 两个消费面，可审阅当前快照内输入/输出流股、相结果、关联步骤和关联诊断。
 - `rf-thermo` / `rf-flash` 已补 MVP 常热容显热焓值；`Flash Drum` outlet 会传递 liquid / vapor / overall molar enthalpy。
+- `rf-thermo` 已补基于当前 Antoine / Raoult MVP 假设的 bubble/dew pressure 边界估算；`rf-flash` 的 `TP Flash` 结果现在会显式物化 `liquid-only / two-phase / vapor-only` phase region 与对应 bubble/dew pressure 窗口，并已补齐 golden / focused tests。
 - Result Inspector / Active Inspector 的流股相结果与相对比现在会显式展示各相摩尔流量，并继续只消费 `SolveSnapshot` 已物化的 phase fraction / molar enthalpy，不在 shell 中重算热力学。
 - Solve step / Active Inspector / unit-centric Result Inspector 现在会为输入和输出流股显式展示 `T / P / F / H` 结果摘要，便于直接审阅单元前后变化；这层仍只消费已有 DTO 与既有 `InspectorTarget` command。
 - Diagnostics 列表与 failure diagnostic 现在会前推相关流股数值上下文：成功路径直接显示 `SolveSnapshot` 已物化的 `T / P / F / H` 摘要，失败路径在诊断 revision 与当前文档匹配时显示文档态 `T / P / F / z` 与 port 绑定流股上下文；这层仍只消费结构化 snapshot，不在 shell 中反查文档或反解析错误消息。

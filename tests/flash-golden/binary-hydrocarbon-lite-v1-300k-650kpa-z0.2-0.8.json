@@ -29,6 +29,9 @@
     }
   ],
   "expectedKValues": [1.1988955282274087, 0.952045323067378],
+  "expectedPhaseRegion": "twoPhase",
+  "expectedBubblePressurePa": 650919.9866646,
+  "expectedDewPressurePa": 645407.066294851,
   "expectedVaporFraction": 0.14839258047004478,
   "expectedOverallMolarEnthalpyJPerMol": 92.74354832008909,
   "expectedLiquidMoleFractions": [0.19426630373482381, 0.8057336962651762],

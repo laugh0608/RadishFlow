@@ -1,7 +1,9 @@
 use std::fs;
 use std::path::PathBuf;
 
-use rf_flash::{FlashStatus, PlaceholderTpFlashSolver, TpFlashInput, TpFlashSolver};
+use rf_flash::{
+    FlashPhaseRegion, FlashStatus, PlaceholderTpFlashSolver, TpFlashInput, TpFlashSolver,
+};
 use rf_thermo::{AntoineCoefficients, PlaceholderThermoProvider, ThermoComponent, ThermoSystem};
 use rf_types::{ComponentId, PhaseLabel};
 use serde::Deserialize;
@@ -34,12 +36,23 @@ struct FlashGoldenCase {
     overall_mole_fractions: Vec<f64>,
     components: Vec<GoldenComponent>,
     expected_k_values: Vec<f64>,
+    expected_phase_region: GoldenPhaseRegion,
+    expected_bubble_pressure_pa: f64,
+    expected_dew_pressure_pa: f64,
     expected_vapor_fraction: f64,
     expected_overall_molar_enthalpy_j_per_mol: f64,
     expected_liquid_mole_fractions: Vec<f64>,
     expected_liquid_molar_enthalpy_j_per_mol: f64,
     expected_vapor_mole_fractions: Vec<f64>,
     expected_vapor_molar_enthalpy_j_per_mol: f64,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+enum GoldenPhaseRegion {
+    LiquidOnly,
+    TwoPhase,
+    VaporOnly,
 }
 
 fn assert_close(actual: f64, expected: f64, tolerance: f64) {
@@ -102,6 +115,18 @@ fn binary_hydrocarbon_lite_flash_case_matches_expected_result() {
         .expect("expected flash result");
 
     assert_eq!(result.status, FlashStatus::Converged);
+    let expected_phase_region = match case.expected_phase_region {
+        GoldenPhaseRegion::LiquidOnly => FlashPhaseRegion::LiquidOnly,
+        GoldenPhaseRegion::TwoPhase => FlashPhaseRegion::TwoPhase,
+        GoldenPhaseRegion::VaporOnly => FlashPhaseRegion::VaporOnly,
+    };
+    assert_eq!(result.phase_region, expected_phase_region);
+    assert_close(
+        result.bubble_pressure_pa,
+        case.expected_bubble_pressure_pa,
+        1e-6,
+    );
+    assert_close(result.dew_pressure_pa, case.expected_dew_pressure_pa, 1e-6);
     assert_close(
         result.vapor_fraction.expect("expected vapor fraction"),
         case.expected_vapor_fraction,

@@ -1,11 +1,20 @@
 use rf_model::{Composition, MaterialStreamState, PhaseState};
-use rf_thermo::{PhaseThermoState, ThermoProvider, ThermoState};
+use rf_thermo::{
+    BubbleDewPressureInput, BubbleDewPressures, PhaseThermoState, ThermoProvider, ThermoState,
+};
 use rf_types::{PhaseLabel, RfError, RfResult, StreamId};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FlashStatus {
     Placeholder,
     Converged,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FlashPhaseRegion {
+    LiquidOnly,
+    TwoPhase,
+    VaporOnly,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -50,6 +59,9 @@ impl TpFlashInput {
 pub struct TpFlashResult {
     pub status: FlashStatus,
     pub stream: MaterialStreamState,
+    pub phase_region: FlashPhaseRegion,
+    pub bubble_pressure_pa: f64,
+    pub dew_pressure_pa: f64,
     pub vapor_fraction: Option<f64>,
     pub k_values: Option<Vec<f64>>,
 }
@@ -62,6 +74,18 @@ pub trait TpFlashSolver {
 pub struct PlaceholderTpFlashSolver;
 
 impl PlaceholderTpFlashSolver {
+    fn classify_phase_region(pressure_pa: f64, pressures: BubbleDewPressures) -> FlashPhaseRegion {
+        const PRESSURE_REGION_TOLERANCE_PA: f64 = 1e-6;
+
+        if pressure_pa - pressures.bubble_pressure_pa > PRESSURE_REGION_TOLERANCE_PA {
+            FlashPhaseRegion::LiquidOnly
+        } else if pressures.dew_pressure_pa - pressure_pa > PRESSURE_REGION_TOLERANCE_PA {
+            FlashPhaseRegion::VaporOnly
+        } else {
+            FlashPhaseRegion::TwoPhase
+        }
+    }
+
     fn build_composition(thermo: &dyn ThermoProvider, mole_fractions: &[f64]) -> Composition {
         thermo
             .system()
@@ -169,6 +193,10 @@ impl TpFlashSolver for PlaceholderTpFlashSolver {
             ));
         }
 
+        let bubble_dew_pressures = thermo.estimate_bubble_dew_pressures(
+            &BubbleDewPressureInput::new(input.temperature_k, input.overall_mole_fractions.clone()),
+        )?;
+        let phase_region = Self::classify_phase_region(input.pressure_pa, bubble_dew_pressures);
         let k_values = thermo.estimate_k_values(&state)?;
         if k_values.len() != input.overall_mole_fractions.len() {
             return Err(RfError::flash(format!(
@@ -268,6 +296,9 @@ impl TpFlashSolver for PlaceholderTpFlashSolver {
         Ok(TpFlashResult {
             status: FlashStatus::Converged,
             stream,
+            phase_region,
+            bubble_pressure_pa: bubble_dew_pressures.bubble_pressure_pa,
+            dew_pressure_pa: bubble_dew_pressures.dew_pressure_pa,
             vapor_fraction: Some(vapor_fraction),
             k_values: Some(k_values),
         })
@@ -290,7 +321,9 @@ fn phase_weighted_enthalpy(
 
 #[cfg(test)]
 mod tests {
-    use super::{FlashStatus, PlaceholderTpFlashSolver, TpFlashInput, TpFlashSolver};
+    use super::{
+        FlashPhaseRegion, FlashStatus, PlaceholderTpFlashSolver, TpFlashInput, TpFlashSolver,
+    };
     use rf_thermo::{
         AntoineCoefficients, PlaceholderThermoProvider, ThermoComponent, ThermoSystem,
     };
@@ -338,6 +371,9 @@ mod tests {
             .expect("expected flash result");
 
         assert_eq!(result.status, FlashStatus::Converged);
+        assert_eq!(result.phase_region, FlashPhaseRegion::TwoPhase);
+        assert_close(result.bubble_pressure_pa, 125_000.0, 1e-9);
+        assert_close(result.dew_pressure_pa, 80_000.0, 1e-9);
         assert_close(
             result.vapor_fraction.expect("expected vapor fraction"),
             0.5,
@@ -417,6 +453,9 @@ mod tests {
             .expect("expected flash result");
 
         assert_eq!(result.status, FlashStatus::Converged);
+        assert_eq!(result.phase_region, FlashPhaseRegion::LiquidOnly);
+        assert_close(result.bubble_pressure_pa, 65_000.0, 1e-9);
+        assert_close(result.dew_pressure_pa, 64_000.0, 1e-9);
         assert_close(
             result.vapor_fraction.expect("expected vapor fraction"),
             0.0,
@@ -443,6 +482,57 @@ mod tests {
                 .phases
                 .iter()
                 .any(|phase| phase.label == PhaseLabel::Vapor)
+        );
+    }
+
+    #[test]
+    fn flash_solver_returns_single_vapor_phase_when_all_k_values_above_one() {
+        let pressure_pa = 100_000.0;
+        let provider = build_provider([1.8, 1.3], pressure_pa);
+        let solver = PlaceholderTpFlashSolver;
+        let input = TpFlashInput::new(
+            "stream-1",
+            "Feed",
+            300.0,
+            pressure_pa,
+            10.0,
+            vec![0.25, 0.75],
+        );
+
+        let result = solver
+            .flash(&provider, &input)
+            .expect("expected flash result");
+
+        assert_eq!(result.status, FlashStatus::Converged);
+        assert_eq!(result.phase_region, FlashPhaseRegion::VaporOnly);
+        assert_close(result.bubble_pressure_pa, 142_500.0, 1e-9);
+        assert_close(result.dew_pressure_pa, 139_701.4925373134, 1e-9);
+        assert_close(
+            result.vapor_fraction.expect("expected vapor fraction"),
+            1.0,
+            1e-12,
+        );
+        assert_eq!(result.stream.phases.len(), 2);
+        assert!(
+            result
+                .stream
+                .phases
+                .iter()
+                .any(|phase| phase.label == PhaseLabel::Overall)
+        );
+        assert!(
+            result
+                .stream
+                .phases
+                .iter()
+                .any(|phase| phase.label == PhaseLabel::Vapor)
+        );
+        assert!(
+            !result
+                .stream
+                .phases
+                .iter()
+                .any(|phase| phase.label == PhaseLabel::Liquid)
         );
     }
 
