@@ -9,6 +9,12 @@
 # .NET
 **/bin/
 **/obj/
+**/TestResults/
+*.trx
+*.coverage
+*.coveragexml
+*.user
+*.suo
 
 # IDE
 .vs/
@@ -42,3 +48,5 @@ adapters/dotnet-capeopen/RadishFlow.CapeOpen.UnitOp.Mvp/typelib/*_dlldata.c
 .codex
 .claude
 .claude/
+*.log
+*.tmp

@@ -19,10 +19,12 @@ $textExtensions = @(
     ".sln",
     ".txt",
     ".cs",
-    ".csproj"
+    ".csproj",
+    ".idl"
 )
 
 $textFileNames = @(
+    ".dockerignore",
     ".editorconfig",
     ".gitattributes",
     ".gitignore",
