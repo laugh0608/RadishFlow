@@ -154,23 +154,27 @@ fn sample_feed_flash_document() -> FlowsheetDocument {
     )
 }
 
+fn build_test_antoine_coefficients(k_value: f64, pressure_pa: f64) -> AntoineCoefficients {
+    const TEST_ANTOINE_BOUNDARY_SLOPE: f64 = 250.0;
+    const TEST_REFERENCE_TEMPERATURE_K: f64 = 300.0;
+
+    AntoineCoefficients::new(
+        ((k_value * pressure_pa) / 1_000.0).ln()
+            + TEST_ANTOINE_BOUNDARY_SLOPE / TEST_REFERENCE_TEMPERATURE_K,
+        TEST_ANTOINE_BOUNDARY_SLOPE,
+        0.0,
+    )
+}
+
 fn sample_solver_provider() -> PlaceholderThermoProvider {
     let pressure_pa = 100_000.0_f64;
     let mut first = ThermoComponent::new("component-a", "Component A");
-    first.antoine = Some(AntoineCoefficients::new(
-        ((2.0_f64 * pressure_pa) / 1_000.0_f64).ln(),
-        0.0,
-        0.0,
-    ));
+    first.antoine = Some(build_test_antoine_coefficients(2.0, pressure_pa));
     first.liquid_heat_capacity_j_per_mol_k = Some(35.0);
     first.vapor_heat_capacity_j_per_mol_k = Some(36.5);
 
     let mut second = ThermoComponent::new("component-b", "Component B");
-    second.antoine = Some(AntoineCoefficients::new(
-        ((0.5_f64 * pressure_pa) / 1_000.0_f64).ln(),
-        0.0,
-        0.0,
-    ));
+    second.antoine = Some(build_test_antoine_coefficients(0.5, pressure_pa));
     second.liquid_heat_capacity_j_per_mol_k = Some(52.0);
     second.vapor_heat_capacity_j_per_mol_k = Some(65.0);
 

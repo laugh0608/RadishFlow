@@ -324,6 +324,26 @@ fn storing_solver_snapshot_maps_solver_diagnostics_into_ui_snapshot() {
         stored.steps[1].streams[0].stream_id.as_str(),
         "stream-heated"
     );
+    let liquid = stored
+        .streams
+        .iter()
+        .find(|stream| stream.stream_id.as_str() == "stream-liquid")
+        .expect("expected liquid stream snapshot");
+    assert_eq!(
+        liquid
+            .bubble_dew_window
+            .as_ref()
+            .expect("expected liquid stream bubble/dew window")
+            .phase_region,
+        rf_types::PhaseEquilibriumRegion::TwoPhase
+    );
+    assert!(
+        stored.steps[2].streams[0]
+            .bubble_dew_window
+            .as_ref()
+            .is_some(),
+        "expected produced flash outlet snapshot to keep bubble/dew window"
+    );
     assert_eq!(
         app_state
             .workspace

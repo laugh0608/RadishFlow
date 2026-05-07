@@ -1,4 +1,4 @@
-use rf_types::{StreamId, UnitId};
+use rf_types::{PhaseEquilibriumRegion, StreamId, UnitId};
 
 use crate::diagnostics::{DiagnosticSnapshot, DiagnosticSummary};
 use crate::ids::SolveSnapshotId;
@@ -40,6 +40,15 @@ pub struct PhaseStateSnapshot {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+pub struct BubbleDewWindowSnapshot {
+    pub phase_region: PhaseEquilibriumRegion,
+    pub bubble_pressure_pa: f64,
+    pub dew_pressure_pa: f64,
+    pub bubble_temperature_k: f64,
+    pub dew_temperature_k: f64,
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub struct StreamStateSnapshot {
     pub stream_id: StreamId,
     pub label: String,
@@ -48,6 +57,7 @@ pub struct StreamStateSnapshot {
     pub total_molar_flow_mol_s: f64,
     pub overall_mole_fractions: Vec<(String, f64)>,
     pub phases: Vec<PhaseStateSnapshot>,
+    pub bubble_dew_window: Option<BubbleDewWindowSnapshot>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -168,6 +178,7 @@ impl SolveSnapshot {
                                     total_molar_flow_mol_s: 0.0,
                                     overall_mole_fractions: Vec::new(),
                                     phases: Vec::new(),
+                                    bubble_dew_window: None,
                                 })
                         })
                         .collect(),
@@ -187,6 +198,7 @@ impl SolveSnapshot {
                                     total_molar_flow_mol_s: 0.0,
                                     overall_mole_fractions: Vec::new(),
                                     phases: Vec::new(),
+                                    bubble_dew_window: None,
                                 })
                         })
                         .collect(),
@@ -222,6 +234,15 @@ fn stream_state_snapshot_from_model(stream: &rf_model::MaterialStreamState) -> S
                 molar_enthalpy_j_per_mol: phase.molar_enthalpy_j_per_mol,
             })
             .collect(),
+        bubble_dew_window: stream.bubble_dew_window.as_ref().map(|window| {
+            BubbleDewWindowSnapshot {
+                phase_region: window.phase_region,
+                bubble_pressure_pa: window.bubble_pressure_pa,
+                dew_pressure_pa: window.dew_pressure_pa,
+                bubble_temperature_k: window.bubble_temperature_k,
+                dew_temperature_k: window.dew_temperature_k,
+            }
+        }),
     }
 }
 

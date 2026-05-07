@@ -47,8 +47,8 @@ pub use entitlement_panel_view::{
 pub use entitlement_panel_widget::{EntitlementPanelWidgetEvent, EntitlementPanelWidgetModel};
 pub use ids::{CanvasSuggestionId, DocumentId, SolveSnapshotId};
 pub use run::{
-    PhaseStateSnapshot, RunStatus, SimulationMode, SolvePendingReason, SolveSessionState,
-    SolveSnapshot, StepSnapshot, StreamStateSnapshot, UnitExecutionSnapshot,
+    BubbleDewWindowSnapshot, PhaseStateSnapshot, RunStatus, SimulationMode, SolvePendingReason,
+    SolveSessionState, SolveSnapshot, StepSnapshot, StreamStateSnapshot, UnitExecutionSnapshot,
 };
 pub use run_panel::{
     RunPanelActionId, RunPanelActionModel, RunPanelCommandModel, RunPanelIntent, RunPanelNotice,

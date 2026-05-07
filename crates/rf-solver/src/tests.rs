@@ -5,8 +5,8 @@ use rf_model::{Component, Composition, Flowsheet, MaterialStreamState, UnitNode,
 use rf_store::parse_project_file_json;
 use rf_thermo::{AntoineCoefficients, PlaceholderThermoProvider, ThermoComponent, ThermoSystem};
 use rf_types::{
-    ComponentId, DiagnosticPortTarget, PhaseLabel, PortDirection, PortKind, RfError, StreamId,
-    UnitId,
+    ComponentId, DiagnosticPortTarget, PhaseEquilibriumRegion, PhaseLabel, PortDirection, PortKind,
+    RfError, StreamId, UnitId,
 };
 use rf_unitops::{
     UnitOperationOutputs, build_cooler_node, build_feed_node, build_flash_drum_node,
@@ -503,6 +503,10 @@ fn sequential_solver_solves_feed_mixer_flash_chain() {
         0.46,
         1e-12,
     );
+    assert!(
+        mixer_out.bubble_dew_window.is_none(),
+        "expected non-flash mixer outlet to stay without bubble/dew window for now"
+    );
 
     let liquid = snapshot
         .stream(&"stream-liquid".into())
@@ -514,6 +518,40 @@ fn sequential_solver_solves_feed_mixer_flash_chain() {
     assert_close(vapor.total_molar_flow_mol_s, 2.79881129272326, 1e-9);
     assert_eq!(liquid.phases[1].label, PhaseLabel::Liquid);
     assert_eq!(vapor.phases[1].label, PhaseLabel::Vapor);
+    assert_eq!(
+        liquid
+            .bubble_dew_window
+            .as_ref()
+            .expect("expected liquid outlet bubble/dew window")
+            .phase_region,
+        PhaseEquilibriumRegion::TwoPhase
+    );
+    assert_close(
+        liquid
+            .bubble_dew_window
+            .as_ref()
+            .expect("expected liquid outlet bubble/dew window")
+            .bubble_pressure_pa,
+        liquid.pressure_pa,
+        1e-6,
+    );
+    assert_eq!(
+        vapor
+            .bubble_dew_window
+            .as_ref()
+            .expect("expected vapor outlet bubble/dew window")
+            .phase_region,
+        PhaseEquilibriumRegion::TwoPhase
+    );
+    assert_close(
+        vapor
+            .bubble_dew_window
+            .as_ref()
+            .expect("expected vapor outlet bubble/dew window")
+            .dew_pressure_pa,
+        vapor.pressure_pa,
+        1e-6,
+    );
 }
 
 #[test]
@@ -590,6 +628,8 @@ fn sequential_solver_solves_feed_heater_flash_chain() {
     assert!(vapor.total_molar_flow_mol_s > 0.0);
     assert_eq!(liquid.phases[1].label, PhaseLabel::Liquid);
     assert_eq!(vapor.phases[1].label, PhaseLabel::Vapor);
+    assert!(liquid.bubble_dew_window.is_some());
+    assert!(vapor.bubble_dew_window.is_some());
 }
 
 #[test]

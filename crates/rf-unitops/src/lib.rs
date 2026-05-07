@@ -1,6 +1,6 @@
 use std::collections::{BTreeMap, BTreeSet};
 
-use rf_flash::{TpFlashInput, TpFlashSolver};
+use rf_flash::{TpFlashInput, TpFlashSolver, estimate_bubble_dew_window};
 use rf_model::{Composition, MaterialStreamState, PhaseState, UnitNode, UnitPort};
 use rf_thermo::ThermoProvider;
 use rf_types::{PhaseLabel, PortDirection, PortKind, RfError, RfResult, StreamId, UnitId};
@@ -719,20 +719,22 @@ impl UnitOperation for FlashDrum {
             .iter()
             .find(|phase| phase.label == PhaseLabel::Vapor);
 
-        let liquid_stream = build_phase_outlet_stream(
+        let mut liquid_stream = build_phase_outlet_stream(
             &self.liquid_outlet,
             &flash_result.stream,
             liquid_phase,
             PhaseLabel::Liquid,
             &inlet.overall_mole_fractions,
         );
-        let vapor_stream = build_phase_outlet_stream(
+        let mut vapor_stream = build_phase_outlet_stream(
             &self.vapor_outlet,
             &flash_result.stream,
             vapor_phase,
             PhaseLabel::Vapor,
             &inlet.overall_mole_fractions,
         );
+        attach_bubble_dew_window(thermo, &mut liquid_stream)?;
+        attach_bubble_dew_window(thermo, &mut vapor_stream)?;
 
         let mut outputs = UnitOperationOutputs::new();
         outputs.insert_material_stream(FLASH_DRUM_LIQUID_PORT, liquid_stream);
@@ -927,6 +929,25 @@ fn stream_composition_vector(
             })
         })
         .collect()
+}
+
+fn attach_bubble_dew_window(
+    thermo: &dyn ThermoProvider,
+    stream: &mut MaterialStreamState,
+) -> RfResult<()> {
+    if stream.total_molar_flow_mol_s <= 0.0 || stream.overall_mole_fractions.is_empty() {
+        stream.bubble_dew_window = None;
+        return Ok(());
+    }
+
+    let composition = stream_composition_vector(stream, thermo)?;
+    stream.bubble_dew_window = Some(estimate_bubble_dew_window(
+        thermo,
+        stream.temperature_k,
+        stream.pressure_pa,
+        composition,
+    )?);
+    Ok(())
 }
 
 fn build_phase_outlet_stream(
@@ -1322,5 +1343,23 @@ mod tests {
             2.0 / 3.0,
             1e-10,
         );
+        let liquid_window = liquid
+            .bubble_dew_window
+            .as_ref()
+            .expect("expected liquid outlet bubble/dew window");
+        assert_eq!(liquid_window.phase_region.as_str(), "two_phase");
+        assert_close(liquid_window.bubble_pressure_pa, liquid.pressure_pa, 1e-6);
+        assert_close(
+            liquid_window.bubble_temperature_k,
+            liquid.temperature_k,
+            1e-4,
+        );
+        let vapor_window = vapor
+            .bubble_dew_window
+            .as_ref()
+            .expect("expected vapor outlet bubble/dew window");
+        assert_eq!(vapor_window.phase_region.as_str(), "two_phase");
+        assert_close(vapor_window.dew_pressure_pa, vapor.pressure_pa, 1e-6);
+        assert_close(vapor_window.dew_temperature_k, vapor.temperature_k, 1e-4);
     }
 }

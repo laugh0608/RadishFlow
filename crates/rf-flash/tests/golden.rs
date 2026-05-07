@@ -139,6 +139,32 @@ fn binary_hydrocarbon_lite_flash_case_matches_expected_result() {
         case.expected_dew_temperature_k,
         1e-4,
     );
+    let bubble_dew_window = result
+        .stream
+        .bubble_dew_window
+        .as_ref()
+        .expect("expected flashed stream bubble/dew window");
+    assert_eq!(bubble_dew_window.phase_region, expected_phase_region);
+    assert_close(
+        bubble_dew_window.bubble_pressure_pa,
+        case.expected_bubble_pressure_pa,
+        1e-6,
+    );
+    assert_close(
+        bubble_dew_window.dew_pressure_pa,
+        case.expected_dew_pressure_pa,
+        1e-6,
+    );
+    assert_close(
+        bubble_dew_window.bubble_temperature_k,
+        case.expected_bubble_temperature_k,
+        1e-4,
+    );
+    assert_close(
+        bubble_dew_window.dew_temperature_k,
+        case.expected_dew_temperature_k,
+        1e-4,
+    );
     assert_close(
         result.vapor_fraction.expect("expected vapor fraction"),
         case.expected_vapor_fraction,

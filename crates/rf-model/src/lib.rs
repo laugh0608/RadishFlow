@@ -1,7 +1,8 @@
 use std::collections::BTreeMap;
 
 use rf_types::{
-    ComponentId, PhaseLabel, PortDirection, PortKind, RfError, RfResult, StreamId, UnitId,
+    ComponentId, PhaseEquilibriumRegion, PhaseLabel, PortDirection, PortKind, RfError, RfResult,
+    StreamId, UnitId,
 };
 use serde::{Deserialize, Serialize};
 
@@ -49,6 +50,33 @@ impl PhaseState {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct BubbleDewWindow {
+    pub phase_region: PhaseEquilibriumRegion,
+    pub bubble_pressure_pa: f64,
+    pub dew_pressure_pa: f64,
+    pub bubble_temperature_k: f64,
+    pub dew_temperature_k: f64,
+}
+
+impl BubbleDewWindow {
+    pub fn new(
+        phase_region: PhaseEquilibriumRegion,
+        bubble_pressure_pa: f64,
+        dew_pressure_pa: f64,
+        bubble_temperature_k: f64,
+        dew_temperature_k: f64,
+    ) -> Self {
+        Self {
+            phase_region,
+            bubble_pressure_pa,
+            dew_pressure_pa,
+            bubble_temperature_k,
+            dew_temperature_k,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct MaterialStreamState {
     pub id: StreamId,
     pub name: String,
@@ -57,6 +85,8 @@ pub struct MaterialStreamState {
     pub total_molar_flow_mol_s: f64,
     pub overall_mole_fractions: Composition,
     pub phases: Vec<PhaseState>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub bubble_dew_window: Option<BubbleDewWindow>,
 }
 
 impl MaterialStreamState {
@@ -80,6 +110,7 @@ impl MaterialStreamState {
             total_molar_flow_mol_s,
             overall_mole_fractions,
             phases: Vec::new(),
+            bubble_dew_window: None,
         }
     }
 }
