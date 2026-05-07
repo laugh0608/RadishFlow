@@ -639,6 +639,38 @@ impl ReadyAppState {
                 }
             });
 
+        if let Some(window) = stream.bubble_dew_window.as_ref() {
+            ui.collapsing(self.locale.text(ShellText::BubbleDewWindow), |ui| {
+                egui::Grid::new(format!("stream-bubble-dew-window:{}", stream.stream_id))
+                    .num_columns(2)
+                    .striped(true)
+                    .show(ui, |ui| {
+                        ui.small(
+                            egui::RichText::new(self.locale.runtime_label("Phase region").as_ref())
+                                .strong(),
+                        );
+                        ui.small(self.locale.runtime_label(&window.phase_region).as_ref());
+                        ui.end_row();
+
+                        ui.small(self.locale.runtime_label("Bubble pressure").as_ref());
+                        ui.small(&window.bubble_pressure_text);
+                        ui.end_row();
+
+                        ui.small(self.locale.runtime_label("Dew pressure").as_ref());
+                        ui.small(&window.dew_pressure_text);
+                        ui.end_row();
+
+                        ui.small(self.locale.runtime_label("Bubble temperature").as_ref());
+                        ui.small(&window.bubble_temperature_text);
+                        ui.end_row();
+
+                        ui.small(self.locale.runtime_label("Dew temperature").as_ref());
+                        ui.small(&window.dew_temperature_text);
+                        ui.end_row();
+                    });
+            });
+        }
+
         ui.collapsing(self.locale.text(ShellText::OverallComposition), |ui| {
             if stream.composition_rows.is_empty() {
                 ui.small(self.locale.text(ShellText::NoComposition));

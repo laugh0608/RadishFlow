@@ -68,12 +68,22 @@ fn shell_locale_defaults_to_chinese_and_can_translate_runtime_labels() {
     assert_eq!(locale.text(ShellText::SuggestedRecovery), "建议修复");
     assert_eq!(locale.text(ShellText::ActiveInspectorTarget), "检查器目标");
     assert_eq!(locale.text(ShellText::InspectorProperties), "属性");
+    assert_eq!(locale.text(ShellText::BubbleDewWindow), "泡点/露点窗口");
     assert_eq!(locale.runtime_label("Number").as_ref(), "数值");
     assert_eq!(locale.runtime_label("Synced").as_ref(), "已同步");
     assert_eq!(locale.runtime_label("Temperature").as_ref(), "温度");
     assert_eq!(locale.runtime_label("Pressure").as_ref(), "压力");
     assert_eq!(locale.runtime_label("Molar flow").as_ref(), "摩尔流量");
     assert_eq!(locale.runtime_label("Molar enthalpy").as_ref(), "摩尔焓");
+    assert_eq!(locale.runtime_label("Phase region").as_ref(), "相区");
+    assert_eq!(locale.runtime_label("Bubble pressure").as_ref(), "泡点压力");
+    assert_eq!(locale.runtime_label("Dew pressure").as_ref(), "露点压力");
+    assert_eq!(
+        locale.runtime_label("Bubble temperature").as_ref(),
+        "泡点温度"
+    );
+    assert_eq!(locale.runtime_label("Dew temperature").as_ref(), "露点温度");
+    assert_eq!(locale.runtime_label("two_phase").as_ref(), "两相");
     assert_eq!(locale.text(ShellText::InspectorPorts), "端口");
     assert_eq!(locale.text(ShellText::InspectorConsumedStreams), "消费流股");
     assert_eq!(locale.text(ShellText::InspectorProducedStreams), "产出流股");

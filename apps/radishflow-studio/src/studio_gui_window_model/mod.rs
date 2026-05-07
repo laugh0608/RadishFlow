@@ -306,11 +306,25 @@ pub struct StudioGuiWindowStreamResultModel {
     pub pressure_text: String,
     pub molar_flow_text: String,
     pub molar_enthalpy_text: Option<String>,
+    pub bubble_dew_window: Option<StudioGuiWindowBubbleDewWindowModel>,
     pub summary_rows: Vec<StudioGuiWindowStreamSummaryRowModel>,
     pub composition_rows: Vec<StudioGuiWindowCompositionResultModel>,
     pub phase_rows: Vec<StudioGuiWindowPhaseResultModel>,
     pub composition_text: String,
     pub phase_text: String,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct StudioGuiWindowBubbleDewWindowModel {
+    pub phase_region: String,
+    pub bubble_pressure_pa: f64,
+    pub dew_pressure_pa: f64,
+    pub bubble_temperature_k: f64,
+    pub dew_temperature_k: f64,
+    pub bubble_pressure_text: String,
+    pub dew_pressure_text: String,
+    pub bubble_temperature_text: String,
+    pub dew_temperature_text: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -1532,8 +1546,8 @@ fn inspector_detail_diagnostic_actions(
 fn stream_result_model_from_ui(
     stream: &rf_ui::StreamStateSnapshot,
 ) -> StudioGuiWindowStreamResultModel {
-    let temperature_text = format!("{:.2} K", stream.temperature_k);
-    let pressure_text = format!("{:.0} Pa", stream.pressure_pa);
+    let temperature_text = format_temperature(stream.temperature_k);
+    let pressure_text = format_pressure(stream.pressure_pa);
     let molar_flow_text = format_molar_flow(stream.total_molar_flow_mol_s);
     let molar_enthalpy_j_per_mol = overall_molar_enthalpy_j_per_mol(&stream.phases);
     let molar_enthalpy_text = molar_enthalpy_j_per_mol.map(format_molar_enthalpy);
@@ -1572,6 +1586,10 @@ fn stream_result_model_from_ui(
         pressure_text: pressure_text.clone(),
         molar_flow_text: molar_flow_text.clone(),
         molar_enthalpy_text,
+        bubble_dew_window: stream
+            .bubble_dew_window
+            .as_ref()
+            .map(bubble_dew_window_model_from_ui),
         summary_rows,
         composition_rows: stream
             .overall_mole_fractions
@@ -1609,8 +1627,8 @@ fn stream_result_model_from_ui(
 fn stream_result_reference_model_from_ui(
     stream: &rf_ui::StreamStateSnapshot,
 ) -> StudioGuiWindowStreamResultReferenceModel {
-    let temperature_text = format!("{:.2} K", stream.temperature_k);
-    let pressure_text = format!("{:.0} Pa", stream.pressure_pa);
+    let temperature_text = format_temperature(stream.temperature_k);
+    let pressure_text = format_pressure(stream.pressure_pa);
     let molar_flow_text = format_molar_flow(stream.total_molar_flow_mol_s);
     let molar_enthalpy_text =
         overall_molar_enthalpy_j_per_mol(&stream.phases).map(format_molar_enthalpy);
@@ -1652,6 +1670,30 @@ fn overall_molar_enthalpy_j_per_mol(phases: &[rf_ui::PhaseStateSnapshot]) -> Opt
         .iter()
         .find(|phase| phase.label == "overall")
         .and_then(|phase| phase.molar_enthalpy_j_per_mol)
+}
+
+fn bubble_dew_window_model_from_ui(
+    window: &rf_ui::BubbleDewWindowSnapshot,
+) -> StudioGuiWindowBubbleDewWindowModel {
+    StudioGuiWindowBubbleDewWindowModel {
+        phase_region: window.phase_region.as_str().to_string(),
+        bubble_pressure_pa: window.bubble_pressure_pa,
+        dew_pressure_pa: window.dew_pressure_pa,
+        bubble_temperature_k: window.bubble_temperature_k,
+        dew_temperature_k: window.dew_temperature_k,
+        bubble_pressure_text: format_pressure(window.bubble_pressure_pa),
+        dew_pressure_text: format_pressure(window.dew_pressure_pa),
+        bubble_temperature_text: format_temperature(window.bubble_temperature_k),
+        dew_temperature_text: format_temperature(window.dew_temperature_k),
+    }
+}
+
+fn format_temperature(value: f64) -> String {
+    format!("{value:.2} K")
+}
+
+fn format_pressure(value: f64) -> String {
+    format!("{value:.0} Pa")
 }
 
 fn format_molar_enthalpy(value: f64) -> String {

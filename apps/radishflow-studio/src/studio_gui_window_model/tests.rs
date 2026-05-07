@@ -875,6 +875,171 @@ fn studio_gui_window_model_surfaces_workspace_results_and_diagnostics() {
 }
 
 #[test]
+fn studio_gui_window_model_surfaces_bubble_dew_window_in_stream_inspectors() {
+    let mut snapshot = rf_ui::SolveSnapshot::new(
+        "snapshot-bubble-dew",
+        0,
+        7,
+        rf_ui::RunStatus::Converged,
+        rf_ui::DiagnosticSummary::new(
+            0,
+            rf_ui::DiagnosticSeverity::Info,
+            "bubble/dew window presentation",
+        ),
+    );
+    snapshot.streams = vec![
+        rf_ui::StreamStateSnapshot {
+            stream_id: rf_types::StreamId::new("stream-heated"),
+            label: "Heated Outlet".to_string(),
+            temperature_k: 345.0,
+            pressure_pa: 95_000.0,
+            total_molar_flow_mol_s: 1.0,
+            overall_mole_fractions: vec![
+                ("component-a".to_string(), 0.5),
+                ("component-b".to_string(), 0.5),
+            ],
+            phases: Vec::new(),
+            bubble_dew_window: None,
+        },
+        rf_ui::StreamStateSnapshot {
+            stream_id: rf_types::StreamId::new("stream-liquid"),
+            label: "Liquid Outlet".to_string(),
+            temperature_k: 345.0,
+            pressure_pa: 125_000.0,
+            total_molar_flow_mol_s: 0.4,
+            overall_mole_fractions: vec![
+                ("component-a".to_string(), 0.8),
+                ("component-b".to_string(), 0.2),
+            ],
+            phases: vec![rf_ui::PhaseStateSnapshot {
+                label: "liquid".to_string(),
+                phase_fraction: 1.0,
+                composition: vec![
+                    ("component-a".to_string(), 0.8),
+                    ("component-b".to_string(), 0.2),
+                ],
+                molar_enthalpy_j_per_mol: Some(12_500.0),
+            }],
+            bubble_dew_window: Some(rf_ui::BubbleDewWindowSnapshot {
+                phase_region: rf_types::PhaseEquilibriumRegion::TwoPhase,
+                bubble_pressure_pa: 125_000.0,
+                dew_pressure_pa: 80_000.0,
+                bubble_temperature_k: 345.0,
+                dew_temperature_k: 409.708580367858,
+            }),
+        },
+        rf_ui::StreamStateSnapshot {
+            stream_id: rf_types::StreamId::new("stream-vapor"),
+            label: "Vapor Outlet".to_string(),
+            temperature_k: 214.101379883055,
+            pressure_pa: 139_701.4925373134,
+            total_molar_flow_mol_s: 0.6,
+            overall_mole_fractions: vec![
+                ("component-a".to_string(), 0.2),
+                ("component-b".to_string(), 0.8),
+            ],
+            phases: vec![rf_ui::PhaseStateSnapshot {
+                label: "vapor".to_string(),
+                phase_fraction: 1.0,
+                composition: vec![
+                    ("component-a".to_string(), 0.2),
+                    ("component-b".to_string(), 0.8),
+                ],
+                molar_enthalpy_j_per_mol: Some(18_750.0),
+            }],
+            bubble_dew_window: Some(rf_ui::BubbleDewWindowSnapshot {
+                phase_region: rf_types::PhaseEquilibriumRegion::TwoPhase,
+                bubble_pressure_pa: 142_500.0,
+                dew_pressure_pa: 139_701.4925373134,
+                bubble_temperature_k: 210.52540329633,
+                dew_temperature_k: 214.101379883055,
+            }),
+        },
+    ];
+    let snapshot = super::solve_snapshot_model_from_ui(&snapshot);
+
+    let heated_stream = snapshot
+        .streams
+        .iter()
+        .find(|stream| stream.stream_id == "stream-heated")
+        .expect("expected heated stream");
+    assert_eq!(
+        heated_stream.bubble_dew_window, None,
+        "expected non-flash intermediate stream to stay without bubble/dew window"
+    );
+
+    let liquid_inspector = snapshot.result_inspector(Some("stream-liquid"));
+    let liquid_stream = liquid_inspector
+        .selected_stream
+        .as_ref()
+        .expect("expected selected liquid stream");
+    let liquid_window = liquid_stream
+        .bubble_dew_window
+        .clone()
+        .expect("expected liquid stream bubble/dew window");
+    assert_eq!(liquid_window.phase_region, "two_phase");
+    assert_eq!(liquid_window.bubble_pressure_pa, liquid_stream.pressure_pa);
+    assert_eq!(
+        liquid_window.bubble_pressure_text,
+        liquid_stream.pressure_text
+    );
+    assert_eq!(
+        liquid_window.bubble_temperature_k,
+        liquid_stream.temperature_k
+    );
+    assert_eq!(
+        liquid_window.bubble_temperature_text,
+        liquid_stream.temperature_text
+    );
+    assert!(liquid_window.dew_pressure_pa < liquid_window.bubble_pressure_pa);
+    assert!(liquid_window.dew_temperature_k > liquid_window.bubble_temperature_k);
+
+    let vapor_inspector = snapshot.result_inspector(Some("stream-vapor"));
+    let vapor_stream = vapor_inspector
+        .selected_stream
+        .as_ref()
+        .expect("expected selected vapor stream");
+    let vapor_window = vapor_stream
+        .bubble_dew_window
+        .as_ref()
+        .expect("expected vapor stream bubble/dew window");
+    assert_eq!(vapor_window.phase_region, "two_phase");
+    assert_eq!(vapor_window.dew_pressure_pa, vapor_stream.pressure_pa);
+    assert_eq!(vapor_window.dew_pressure_text, vapor_stream.pressure_text);
+    assert_eq!(vapor_window.dew_temperature_k, vapor_stream.temperature_k);
+    assert_eq!(
+        vapor_window.dew_temperature_text,
+        vapor_stream.temperature_text
+    );
+    assert!(vapor_window.bubble_pressure_pa > vapor_window.dew_pressure_pa);
+    assert!(vapor_window.bubble_temperature_k < vapor_window.dew_temperature_k);
+
+    let active_detail = super::inspector_target_detail_model_from_snapshot(
+        &crate::StudioGuiInspectorTargetDetailSnapshot {
+            target: rf_ui::InspectorTarget::Stream(rf_types::StreamId::new("stream-liquid")),
+            title: "Liquid Outlet".to_string(),
+            summary_rows: Vec::new(),
+            property_fields: Vec::new(),
+            property_notices: Vec::new(),
+            property_composition_summary: None,
+            property_batch_commit_command_id: None,
+            property_batch_discard_command_id: None,
+            property_composition_normalize_command_id: None,
+            property_composition_component_actions: Vec::new(),
+            unit_ports: Vec::new(),
+        },
+        Some(&snapshot),
+        None,
+    );
+    let active_window = active_detail
+        .latest_stream_result
+        .as_ref()
+        .and_then(|stream| stream.bubble_dew_window.as_ref())
+        .expect("expected active stream inspector bubble/dew window");
+    assert_eq!(active_window, &liquid_window);
+}
+
+#[test]
 fn studio_gui_window_model_surfaces_failure_result_until_rerun_succeeds() {
     let mut driver =
         StudioGuiDriver::new(&unbound_outlet_failure_synced_config()).expect("expected driver");
