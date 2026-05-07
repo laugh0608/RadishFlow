@@ -13,6 +13,9 @@ use rf_types::{ComponentId, PhaseLabel, RfError, RfResult};
 const REFERENCE_TEMPERATURE_K: f64 = 298.15;
 const MOLE_FRACTION_SUM_TOLERANCE: f64 = 1e-9;
 const PRESSURE_ORDER_TOLERANCE_PA: f64 = 1e-6;
+const TEMPERATURE_ORDER_TOLERANCE_K: f64 = 1e-9;
+const BOUNDARY_SOLVER_TEMPERATURE_TOLERANCE_K: f64 = 1e-9;
+const BOUNDARY_SOLVER_PRESSURE_TOLERANCE_PA: f64 = 1e-6;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct AntoineCoefficients {
@@ -53,6 +56,27 @@ impl AntoineCoefficients {
 
         Ok(saturation_pressure_pa)
     }
+
+    pub fn saturation_temperature_k(&self, pressure_pa: f64) -> RfResult<f64> {
+        validate_pressure(pressure_pa)?;
+
+        let pressure_kpa = pressure_pa / 1_000.0;
+        let denominator = self.a - pressure_kpa.ln();
+        if !denominator.is_finite() || denominator.abs() <= f64::EPSILON {
+            return Err(RfError::thermo(
+                "Antoine correlation cannot invert a zero or non-finite temperature denominator",
+            ));
+        }
+
+        let temperature_k = (self.b / denominator) - self.c;
+        if !temperature_k.is_finite() || temperature_k <= 0.0 {
+            return Err(RfError::thermo(
+                "Antoine correlation produced a non-finite saturation temperature",
+            ));
+        }
+
+        Ok(temperature_k)
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -84,6 +108,17 @@ impl ThermoComponent {
         })?;
 
         antoine.saturation_pressure_pa(temperature_k)
+    }
+
+    pub fn saturation_temperature_k(&self, pressure_pa: f64) -> RfResult<f64> {
+        let antoine = self.antoine.as_ref().ok_or_else(|| {
+            RfError::thermo(format!(
+                "component `{}` is missing Antoine coefficients",
+                self.id
+            ))
+        })?;
+
+        antoine.saturation_temperature_k(pressure_pa)
     }
 }
 
@@ -228,6 +263,27 @@ pub struct BubbleDewPressures {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+pub struct BubbleDewTemperatureInput {
+    pub pressure_pa: f64,
+    pub overall_mole_fractions: Vec<f64>,
+}
+
+impl BubbleDewTemperatureInput {
+    pub fn new(pressure_pa: f64, overall_mole_fractions: Vec<f64>) -> Self {
+        Self {
+            pressure_pa,
+            overall_mole_fractions,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct BubbleDewTemperatures {
+    pub bubble_temperature_k: f64,
+    pub dew_temperature_k: f64,
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub struct PhaseThermoState {
     pub label: PhaseLabel,
     pub temperature_k: f64,
@@ -261,6 +317,11 @@ pub trait ThermoProvider {
         input: &BubbleDewPressureInput,
     ) -> RfResult<BubbleDewPressures>;
 
+    fn estimate_bubble_dew_temperatures(
+        &self,
+        input: &BubbleDewTemperatureInput,
+    ) -> RfResult<BubbleDewTemperatures>;
+
     fn phase_molar_enthalpy(&self, state: &PhaseThermoState) -> RfResult<f64>;
 }
 
@@ -281,6 +342,16 @@ impl PlaceholderThermoProvider {
             .components
             .iter()
             .map(|component| component.saturation_pressure_pa(temperature_k))
+            .collect()
+    }
+
+    fn saturation_temperatures_k(&self, pressure_pa: f64) -> RfResult<Vec<f64>> {
+        validate_pressure(pressure_pa)?;
+
+        self.system
+            .components
+            .iter()
+            .map(|component| component.saturation_temperature_k(pressure_pa))
             .collect()
     }
 }
@@ -483,36 +554,14 @@ impl ThermoProvider for PlaceholderThermoProvider {
             .validate_mole_fractions(&input.overall_mole_fractions)?;
 
         let saturation_pressures = self.saturation_pressures_pa(input.temperature_k)?;
-        let bubble_pressure_pa = input
-            .overall_mole_fractions
-            .iter()
-            .zip(saturation_pressures.iter())
-            .map(|(fraction, saturation_pressure_pa)| fraction * saturation_pressure_pa)
-            .sum::<f64>();
-        if !bubble_pressure_pa.is_finite() || bubble_pressure_pa <= 0.0 {
-            return Err(RfError::thermo(
-                "bubble pressure estimate produced a non-finite pressure",
-            ));
-        }
-
-        let dew_denominator = input
-            .overall_mole_fractions
-            .iter()
-            .zip(saturation_pressures.iter())
-            .map(|(fraction, saturation_pressure_pa)| fraction / saturation_pressure_pa)
-            .sum::<f64>();
-        if !dew_denominator.is_finite() || dew_denominator <= 0.0 {
-            return Err(RfError::thermo(
-                "dew pressure estimate produced a non-finite denominator",
-            ));
-        }
-
-        let dew_pressure_pa = 1.0 / dew_denominator;
-        if !dew_pressure_pa.is_finite() || dew_pressure_pa <= 0.0 {
-            return Err(RfError::thermo(
-                "dew pressure estimate produced a non-finite pressure",
-            ));
-        }
+        let bubble_pressure_pa = bubble_pressure_from_saturation_pressures(
+            &input.overall_mole_fractions,
+            &saturation_pressures,
+        )?;
+        let dew_pressure_pa = dew_pressure_from_saturation_pressures(
+            &input.overall_mole_fractions,
+            &saturation_pressures,
+        )?;
 
         if bubble_pressure_pa + PRESSURE_ORDER_TOLERANCE_PA < dew_pressure_pa {
             return Err(RfError::thermo(
@@ -523,6 +572,57 @@ impl ThermoProvider for PlaceholderThermoProvider {
         Ok(BubbleDewPressures {
             bubble_pressure_pa,
             dew_pressure_pa,
+        })
+    }
+
+    fn estimate_bubble_dew_temperatures(
+        &self,
+        input: &BubbleDewTemperatureInput,
+    ) -> RfResult<BubbleDewTemperatures> {
+        validate_pressure(input.pressure_pa)?;
+        self.system
+            .validate_mole_fractions(&input.overall_mole_fractions)?;
+
+        let saturation_temperatures = self.saturation_temperatures_k(input.pressure_pa)?;
+        let (lower_temperature_k, upper_temperature_k) =
+            pure_temperature_bracket(&saturation_temperatures)?;
+
+        let bubble_temperature_k = solve_boundary_temperature(
+            lower_temperature_k,
+            upper_temperature_k,
+            input.pressure_pa,
+            "bubble",
+            |temperature_k| {
+                let saturation_pressures = self.saturation_pressures_pa(temperature_k)?;
+                bubble_pressure_from_saturation_pressures(
+                    &input.overall_mole_fractions,
+                    &saturation_pressures,
+                )
+            },
+        )?;
+        let dew_temperature_k = solve_boundary_temperature(
+            lower_temperature_k,
+            upper_temperature_k,
+            input.pressure_pa,
+            "dew",
+            |temperature_k| {
+                let saturation_pressures = self.saturation_pressures_pa(temperature_k)?;
+                dew_pressure_from_saturation_pressures(
+                    &input.overall_mole_fractions,
+                    &saturation_pressures,
+                )
+            },
+        )?;
+
+        if bubble_temperature_k - dew_temperature_k > TEMPERATURE_ORDER_TOLERANCE_K {
+            return Err(RfError::thermo(
+                "bubble temperature cannot exceed dew temperature for the same mixture state",
+            ));
+        }
+
+        Ok(BubbleDewTemperatures {
+            bubble_temperature_k,
+            dew_temperature_k,
         })
     }
 
@@ -571,6 +671,155 @@ fn component_heat_capacity(component: &ThermoComponent, label: PhaseLabel) -> Rf
     }
 
     Ok(capacity)
+}
+
+fn bubble_pressure_from_saturation_pressures(
+    mole_fractions: &[f64],
+    saturation_pressures: &[f64],
+) -> RfResult<f64> {
+    let bubble_pressure_pa = mole_fractions
+        .iter()
+        .zip(saturation_pressures.iter())
+        .map(|(fraction, saturation_pressure_pa)| fraction * saturation_pressure_pa)
+        .sum::<f64>();
+    if !bubble_pressure_pa.is_finite() || bubble_pressure_pa <= 0.0 {
+        return Err(RfError::thermo(
+            "bubble pressure estimate produced a non-finite pressure",
+        ));
+    }
+
+    Ok(bubble_pressure_pa)
+}
+
+fn dew_pressure_from_saturation_pressures(
+    mole_fractions: &[f64],
+    saturation_pressures: &[f64],
+) -> RfResult<f64> {
+    let dew_denominator = mole_fractions
+        .iter()
+        .zip(saturation_pressures.iter())
+        .map(|(fraction, saturation_pressure_pa)| fraction / saturation_pressure_pa)
+        .sum::<f64>();
+    if !dew_denominator.is_finite() || dew_denominator <= 0.0 {
+        return Err(RfError::thermo(
+            "dew pressure estimate produced a non-finite denominator",
+        ));
+    }
+
+    let dew_pressure_pa = 1.0 / dew_denominator;
+    if !dew_pressure_pa.is_finite() || dew_pressure_pa <= 0.0 {
+        return Err(RfError::thermo(
+            "dew pressure estimate produced a non-finite pressure",
+        ));
+    }
+
+    Ok(dew_pressure_pa)
+}
+
+fn pure_temperature_bracket(saturation_temperatures: &[f64]) -> RfResult<(f64, f64)> {
+    let mut lower_temperature_k = f64::INFINITY;
+    let mut upper_temperature_k = f64::NEG_INFINITY;
+
+    for temperature_k in saturation_temperatures {
+        if !temperature_k.is_finite() || *temperature_k <= 0.0 {
+            return Err(RfError::thermo(
+                "pure-component saturation temperature bracket contains a non-finite temperature",
+            ));
+        }
+
+        lower_temperature_k = lower_temperature_k.min(*temperature_k);
+        upper_temperature_k = upper_temperature_k.max(*temperature_k);
+    }
+
+    if !lower_temperature_k.is_finite()
+        || !upper_temperature_k.is_finite()
+        || lower_temperature_k <= 0.0
+        || upper_temperature_k <= 0.0
+    {
+        return Err(RfError::thermo(
+            "could not derive a finite pure-component temperature bracket",
+        ));
+    }
+
+    Ok((lower_temperature_k, upper_temperature_k))
+}
+
+fn solve_boundary_temperature(
+    lower_temperature_k: f64,
+    upper_temperature_k: f64,
+    target_pressure_pa: f64,
+    label: &str,
+    estimate_pressure: impl Fn(f64) -> RfResult<f64>,
+) -> RfResult<f64> {
+    let mut lower = lower_temperature_k;
+    let mut upper = upper_temperature_k;
+    let mut lower_delta = estimate_pressure(lower)? - target_pressure_pa;
+    if !lower_delta.is_finite() {
+        return Err(RfError::thermo(format!(
+            "{label} temperature estimate produced a non-finite lower bracket value"
+        )));
+    }
+
+    let mut upper_delta = estimate_pressure(upper)? - target_pressure_pa;
+    if !upper_delta.is_finite() {
+        return Err(RfError::thermo(format!(
+            "{label} temperature estimate produced a non-finite upper bracket value"
+        )));
+    }
+
+    if lower_delta.abs() <= BOUNDARY_SOLVER_PRESSURE_TOLERANCE_PA {
+        return Ok(lower);
+    }
+
+    if upper_delta.abs() <= BOUNDARY_SOLVER_PRESSURE_TOLERANCE_PA {
+        return Ok(upper);
+    }
+
+    if lower_delta > BOUNDARY_SOLVER_PRESSURE_TOLERANCE_PA
+        || upper_delta < -BOUNDARY_SOLVER_PRESSURE_TOLERANCE_PA
+    {
+        return Err(RfError::thermo(format!(
+            "{label} temperature estimate could not bracket the target pressure `{target_pressure_pa}` Pa"
+        )));
+    }
+
+    for _ in 0..100 {
+        let midpoint = 0.5 * (lower + upper);
+        let midpoint_delta = estimate_pressure(midpoint)? - target_pressure_pa;
+        if !midpoint_delta.is_finite() {
+            return Err(RfError::thermo(format!(
+                "{label} temperature estimate produced a non-finite iteration value"
+            )));
+        }
+
+        if midpoint_delta.abs() <= BOUNDARY_SOLVER_PRESSURE_TOLERANCE_PA
+            || (upper - lower).abs() <= BOUNDARY_SOLVER_TEMPERATURE_TOLERANCE_K
+        {
+            return Ok(midpoint);
+        }
+
+        if midpoint_delta < 0.0 {
+            lower = midpoint;
+            lower_delta = midpoint_delta;
+        } else {
+            upper = midpoint;
+            upper_delta = midpoint_delta;
+        }
+    }
+
+    let midpoint = 0.5 * (lower + upper);
+    let midpoint_delta = estimate_pressure(midpoint)? - target_pressure_pa;
+    if midpoint_delta.abs() > BOUNDARY_SOLVER_PRESSURE_TOLERANCE_PA
+        && (upper - lower).abs() > BOUNDARY_SOLVER_TEMPERATURE_TOLERANCE_K
+    {
+        return Err(RfError::thermo(format!(
+            "{label} temperature estimate did not converge within the boundary solver tolerance"
+        )));
+    }
+
+    let _ = lower_delta;
+    let _ = upper_delta;
+    Ok(midpoint)
 }
 
 fn validate_temperature(temperature_k: f64) -> RfResult<()> {
@@ -703,10 +952,11 @@ mod tests {
     };
 
     use super::{
-        AntoineCoefficients, BubbleDewPressureInput, CachedPropertyPackageProvider,
-        InMemoryPropertyPackageProvider, PhaseThermoState, PlaceholderThermoProvider,
-        PropertyPackageClassification, PropertyPackageManifest, PropertyPackageProvider,
-        PropertyPackageSource, ThermoComponent, ThermoProvider, ThermoState, ThermoSystem,
+        AntoineCoefficients, BubbleDewPressureInput, BubbleDewTemperatureInput,
+        CachedPropertyPackageProvider, InMemoryPropertyPackageProvider, PhaseThermoState,
+        PlaceholderThermoProvider, PropertyPackageClassification, PropertyPackageManifest,
+        PropertyPackageProvider, PropertyPackageSource, ThermoComponent, ThermoProvider,
+        ThermoState, ThermoSystem,
     };
     use rf_types::{ComponentId, PhaseLabel};
 
@@ -726,6 +976,16 @@ mod tests {
             .expect("expected saturation pressure");
 
         assert_close(pressure, std::f64::consts::E * 1_000.0, 1e-9);
+    }
+
+    #[test]
+    fn antoine_coefficients_estimate_saturation_temperature_in_kelvin() {
+        let coefficients = AntoineCoefficients::new(5.0, 1_200.0, 0.0);
+        let temperature = coefficients
+            .saturation_temperature_k(std::f64::consts::E * 1_000.0)
+            .expect("expected saturation temperature");
+
+        assert_close(temperature, 300.0, 1e-9);
     }
 
     #[test]
@@ -793,6 +1053,40 @@ mod tests {
     }
 
     #[test]
+    fn placeholder_provider_estimates_bubble_and_dew_temperatures() {
+        let reference_pressure_pa = 100_000.0;
+        let reference_temperature_k = 300.0;
+        let boundary_slope = 250.0;
+
+        let mut methane = ThermoComponent::new(ComponentId::new("methane"), "Methane");
+        methane.antoine = Some(AntoineCoefficients::new(
+            ((2.0_f64 * reference_pressure_pa) / 1_000.0_f64).ln()
+                + boundary_slope / reference_temperature_k,
+            boundary_slope,
+            0.0,
+        ));
+
+        let mut ethane = ThermoComponent::new(ComponentId::new("ethane"), "Ethane");
+        ethane.antoine = Some(AntoineCoefficients::new(
+            ((0.5_f64 * reference_pressure_pa) / 1_000.0_f64).ln()
+                + boundary_slope / reference_temperature_k,
+            boundary_slope,
+            0.0,
+        ));
+
+        let provider = PlaceholderThermoProvider::new(ThermoSystem::binary([methane, ethane]));
+        let temperatures = provider
+            .estimate_bubble_dew_temperatures(&BubbleDewTemperatureInput::new(
+                reference_pressure_pa,
+                vec![0.5, 0.5],
+            ))
+            .expect("expected bubble/dew temperatures");
+
+        assert_close(temperatures.bubble_temperature_k, 236.635560732978, 1e-4);
+        assert_close(temperatures.dew_temperature_k, 409.708580367858, 1e-4);
+    }
+
+    #[test]
     fn placeholder_provider_rejects_missing_phase_heat_capacity() {
         let methane = ThermoComponent::new(ComponentId::new("methane"), "Methane");
         let provider = PlaceholderThermoProvider::new(ThermoSystem::new(vec![methane]));
@@ -836,6 +1130,37 @@ mod tests {
         let provider = PlaceholderThermoProvider::new(ThermoSystem::binary([methane, ethane]));
         let error = provider
             .estimate_bubble_dew_pressures(&BubbleDewPressureInput::new(300.0, vec![0.4, 0.4]))
+            .expect_err("expected unnormalized mole fractions to be rejected");
+
+        assert_eq!(error.code().as_str(), "invalid_input");
+        assert!(error.message().contains("must sum to one"));
+    }
+
+    #[test]
+    fn placeholder_provider_rejects_unnormalized_bubble_dew_temperature_input() {
+        let reference_pressure_pa = 100_000.0;
+        let boundary_slope = 250.0;
+
+        let mut methane = ThermoComponent::new(ComponentId::new("methane"), "Methane");
+        methane.antoine = Some(AntoineCoefficients::new(
+            ((2.0_f64 * reference_pressure_pa) / 1_000.0_f64).ln() + boundary_slope / 300.0,
+            boundary_slope,
+            0.0,
+        ));
+
+        let mut ethane = ThermoComponent::new(ComponentId::new("ethane"), "Ethane");
+        ethane.antoine = Some(AntoineCoefficients::new(
+            ((0.5_f64 * reference_pressure_pa) / 1_000.0_f64).ln() + boundary_slope / 300.0,
+            boundary_slope,
+            0.0,
+        ));
+
+        let provider = PlaceholderThermoProvider::new(ThermoSystem::binary([methane, ethane]));
+        let error = provider
+            .estimate_bubble_dew_temperatures(&BubbleDewTemperatureInput::new(
+                reference_pressure_pa,
+                vec![0.4, 0.4],
+            ))
             .expect_err("expected unnormalized mole fractions to be rejected");
 
         assert_eq!(error.code().as_str(), "invalid_input");

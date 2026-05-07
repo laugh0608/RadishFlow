@@ -31,6 +31,8 @@
   "expectedKValues": [1.1988955282274087, 0.952045323067378],
   "expectedBubblePressurePa": 650919.9866646,
   "expectedDewPressurePa": 645407.066294851,
+  "expectedBubbleTemperatureK": 299.841061392724,
+  "expectedDewTemperatureK": 300.79375395993,
   "expectedLiquidMolarEnthalpyJPerMol": 89.9100000000011,
   "expectedVaporMolarEnthalpyJPerMol": 109.705000000001
 }

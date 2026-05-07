@@ -2,8 +2,8 @@ use std::fs;
 use std::path::PathBuf;
 
 use rf_thermo::{
-    AntoineCoefficients, BubbleDewPressureInput, PhaseThermoState, PlaceholderThermoProvider,
-    ThermoComponent, ThermoProvider, ThermoState, ThermoSystem,
+    AntoineCoefficients, BubbleDewPressureInput, BubbleDewTemperatureInput, PhaseThermoState,
+    PlaceholderThermoProvider, ThermoComponent, ThermoProvider, ThermoState, ThermoSystem,
 };
 use rf_types::{ComponentId, PhaseLabel};
 use serde::Deserialize;
@@ -38,6 +38,8 @@ struct ThermoGoldenCase {
     expected_k_values: Vec<f64>,
     expected_bubble_pressure_pa: f64,
     expected_dew_pressure_pa: f64,
+    expected_bubble_temperature_k: f64,
+    expected_dew_temperature_k: f64,
     expected_liquid_molar_enthalpy_j_per_mol: f64,
     expected_vapor_molar_enthalpy_j_per_mol: f64,
 }
@@ -136,6 +138,23 @@ fn binary_hydrocarbon_lite_case_matches_expected_k_values() {
         pressures.dew_pressure_pa,
         case.expected_dew_pressure_pa,
         1e-6,
+    );
+
+    let temperatures = provider
+        .estimate_bubble_dew_temperatures(&BubbleDewTemperatureInput::new(
+            case.pressure_pa,
+            case.overall_mole_fractions.clone(),
+        ))
+        .expect("expected bubble/dew temperatures");
+    assert_close(
+        temperatures.bubble_temperature_k,
+        case.expected_bubble_temperature_k,
+        1e-4,
+    );
+    assert_close(
+        temperatures.dew_temperature_k,
+        case.expected_dew_temperature_k,
+        1e-4,
     );
 
     let liquid_enthalpy = provider

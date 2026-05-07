@@ -13,23 +13,27 @@ use rf_thermo::{
 };
 use rf_types::ComponentId;
 
+pub fn build_demo_antoine_coefficients(k_value: f64, pressure_pa: f64) -> AntoineCoefficients {
+    const TEST_ANTOINE_BOUNDARY_SLOPE: f64 = 250.0;
+    const TEST_REFERENCE_TEMPERATURE_K: f64 = 300.0;
+
+    AntoineCoefficients::new(
+        ((k_value * pressure_pa) / 1_000.0).ln()
+            + TEST_ANTOINE_BOUNDARY_SLOPE / TEST_REFERENCE_TEMPERATURE_K,
+        TEST_ANTOINE_BOUNDARY_SLOPE,
+        0.0,
+    )
+}
+
 pub fn build_binary_demo_provider() -> PlaceholderThermoProvider {
     let pressure_pa = 100_000.0_f64;
     let mut first = ThermoComponent::new(ComponentId::new("component-a"), "Component A");
-    first.antoine = Some(AntoineCoefficients::new(
-        ((2.0_f64 * pressure_pa) / 1_000.0_f64).ln(),
-        0.0,
-        0.0,
-    ));
+    first.antoine = Some(build_demo_antoine_coefficients(2.0, pressure_pa));
     first.liquid_heat_capacity_j_per_mol_k = Some(35.0);
     first.vapor_heat_capacity_j_per_mol_k = Some(36.5);
 
     let mut second = ThermoComponent::new(ComponentId::new("component-b"), "Component B");
-    second.antoine = Some(AntoineCoefficients::new(
-        ((0.5_f64 * pressure_pa) / 1_000.0_f64).ln(),
-        0.0,
-        0.0,
-    ));
+    second.antoine = Some(build_demo_antoine_coefficients(0.5, pressure_pa));
     second.liquid_heat_capacity_j_per_mol_k = Some(52.0);
     second.vapor_heat_capacity_j_per_mol_k = Some(65.0);
 
@@ -47,20 +51,12 @@ pub fn assert_close(actual: f64, expected: f64, tolerance: f64) {
 pub fn build_binary_demo_package_provider() -> InMemoryPropertyPackageProvider {
     let pressure_pa = 100_000.0_f64;
     let mut first = ThermoComponent::new(ComponentId::new("component-a"), "Component A");
-    first.antoine = Some(AntoineCoefficients::new(
-        ((2.0_f64 * pressure_pa) / 1_000.0_f64).ln(),
-        0.0,
-        0.0,
-    ));
+    first.antoine = Some(build_demo_antoine_coefficients(2.0, pressure_pa));
     first.liquid_heat_capacity_j_per_mol_k = Some(35.0);
     first.vapor_heat_capacity_j_per_mol_k = Some(36.5);
 
     let mut second = ThermoComponent::new(ComponentId::new("component-b"), "Component B");
-    second.antoine = Some(AntoineCoefficients::new(
-        ((0.5_f64 * pressure_pa) / 1_000.0_f64).ln(),
-        0.0,
-        0.0,
-    ));
+    second.antoine = Some(build_demo_antoine_coefficients(0.5, pressure_pa));
     second.liquid_heat_capacity_j_per_mol_k = Some(52.0);
     second.vapor_heat_capacity_j_per_mol_k = Some(65.0);
 
@@ -117,18 +113,20 @@ pub fn write_cached_package(
     package_id: &str,
 ) {
     let mut first = StoredThermoComponent::new(ComponentId::new("component-a"), "Component A");
+    let first_antoine = build_demo_antoine_coefficients(2.0, 100_000.0);
     first.antoine = Some(StoredAntoineCoefficients::new(
-        ((2.0_f64 * 100_000.0_f64) / 1_000.0_f64).ln(),
-        0.0,
-        0.0,
+        first_antoine.a,
+        first_antoine.b,
+        first_antoine.c,
     ));
     first.liquid_heat_capacity_j_per_mol_k = Some(35.0);
     first.vapor_heat_capacity_j_per_mol_k = Some(36.5);
     let mut second = StoredThermoComponent::new(ComponentId::new("component-b"), "Component B");
+    let second_antoine = build_demo_antoine_coefficients(0.5, 100_000.0);
     second.antoine = Some(StoredAntoineCoefficients::new(
-        ((0.5_f64 * 100_000.0_f64) / 1_000.0_f64).ln(),
-        0.0,
-        0.0,
+        second_antoine.a,
+        second_antoine.b,
+        second_antoine.c,
     ));
     second.liquid_heat_capacity_j_per_mol_k = Some(52.0);
     second.vapor_heat_capacity_j_per_mol_k = Some(65.0);

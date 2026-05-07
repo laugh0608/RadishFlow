@@ -39,6 +39,8 @@ struct FlashGoldenCase {
     expected_phase_region: GoldenPhaseRegion,
     expected_bubble_pressure_pa: f64,
     expected_dew_pressure_pa: f64,
+    expected_bubble_temperature_k: f64,
+    expected_dew_temperature_k: f64,
     expected_vapor_fraction: f64,
     expected_overall_molar_enthalpy_j_per_mol: f64,
     expected_liquid_mole_fractions: Vec<f64>,
@@ -127,6 +129,16 @@ fn binary_hydrocarbon_lite_flash_case_matches_expected_result() {
         1e-6,
     );
     assert_close(result.dew_pressure_pa, case.expected_dew_pressure_pa, 1e-6);
+    assert_close(
+        result.bubble_temperature_k,
+        case.expected_bubble_temperature_k,
+        1e-4,
+    );
+    assert_close(
+        result.dew_temperature_k,
+        case.expected_dew_temperature_k,
+        1e-4,
+    );
     assert_close(
         result.vapor_fraction.expect("expected vapor fraction"),
         case.expected_vapor_fraction,

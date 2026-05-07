@@ -28,6 +28,18 @@ fn assert_close(actual: f64, expected: f64, tolerance: f64) {
     );
 }
 
+fn build_test_antoine_coefficients(k_value: f64, pressure_pa: f64) -> AntoineCoefficients {
+    const TEST_ANTOINE_BOUNDARY_SLOPE: f64 = 250.0;
+    const TEST_REFERENCE_TEMPERATURE_K: f64 = 300.0;
+
+    AntoineCoefficients::new(
+        ((k_value * pressure_pa) / 1_000.0).ln()
+            + TEST_ANTOINE_BOUNDARY_SLOPE / TEST_REFERENCE_TEMPERATURE_K,
+        TEST_ANTOINE_BOUNDARY_SLOPE,
+        0.0,
+    )
+}
+
 fn binary_composition(first: f64, second: f64) -> Composition {
     [
         (ComponentId::new("component-a"), first),
@@ -58,20 +70,12 @@ fn build_stream(
 fn build_provider() -> PlaceholderThermoProvider {
     let pressure_pa = 100_000.0_f64;
     let mut first = ThermoComponent::new(ComponentId::new("component-a"), "Component A");
-    first.antoine = Some(AntoineCoefficients::new(
-        ((2.0_f64 * pressure_pa) / 1_000.0_f64).ln(),
-        0.0,
-        0.0,
-    ));
+    first.antoine = Some(build_test_antoine_coefficients(2.0, pressure_pa));
     first.liquid_heat_capacity_j_per_mol_k = Some(35.0);
     first.vapor_heat_capacity_j_per_mol_k = Some(36.5);
 
     let mut second = ThermoComponent::new(ComponentId::new("component-b"), "Component B");
-    second.antoine = Some(AntoineCoefficients::new(
-        ((0.5_f64 * pressure_pa) / 1_000.0_f64).ln(),
-        0.0,
-        0.0,
-    ));
+    second.antoine = Some(build_test_antoine_coefficients(0.5, pressure_pa));
     second.liquid_heat_capacity_j_per_mol_k = Some(52.0);
     second.vapor_heat_capacity_j_per_mol_k = Some(65.0);
 
@@ -506,8 +510,8 @@ fn sequential_solver_solves_feed_mixer_flash_chain() {
     let vapor = snapshot
         .stream(&"stream-vapor".into())
         .expect("expected vapor outlet");
-    assert_close(liquid.total_molar_flow_mol_s, 3.099999999994907, 1e-9);
-    assert_close(vapor.total_molar_flow_mol_s, 1.900000000005093, 1e-9);
+    assert_close(liquid.total_molar_flow_mol_s, 2.20118870727674, 1e-9);
+    assert_close(vapor.total_molar_flow_mol_s, 2.79881129272326, 1e-9);
     assert_eq!(liquid.phases[1].label, PhaseLabel::Liquid);
     assert_eq!(vapor.phases[1].label, PhaseLabel::Vapor);
 }

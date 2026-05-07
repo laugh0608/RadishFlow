@@ -1018,22 +1018,26 @@ mod tests {
         )
     }
 
+    fn build_test_antoine_coefficients(k_value: f64, pressure_pa: f64) -> AntoineCoefficients {
+        const TEST_ANTOINE_BOUNDARY_SLOPE: f64 = 250.0;
+        const TEST_REFERENCE_TEMPERATURE_K: f64 = 300.0;
+
+        AntoineCoefficients::new(
+            ((k_value * pressure_pa) / 1_000.0).ln()
+                + TEST_ANTOINE_BOUNDARY_SLOPE / TEST_REFERENCE_TEMPERATURE_K,
+            TEST_ANTOINE_BOUNDARY_SLOPE,
+            0.0,
+        )
+    }
+
     fn build_provider(k_values: [f64; 2], pressure_pa: f64) -> PlaceholderThermoProvider {
         let mut first = ThermoComponent::new(ComponentId::new("component-a"), "Component A");
-        first.antoine = Some(AntoineCoefficients::new(
-            ((k_values[0] * pressure_pa) / 1_000.0).ln(),
-            0.0,
-            0.0,
-        ));
+        first.antoine = Some(build_test_antoine_coefficients(k_values[0], pressure_pa));
         first.liquid_heat_capacity_j_per_mol_k = Some(35.0);
         first.vapor_heat_capacity_j_per_mol_k = Some(36.5);
 
         let mut second = ThermoComponent::new(ComponentId::new("component-b"), "Component B");
-        second.antoine = Some(AntoineCoefficients::new(
-            ((k_values[1] * pressure_pa) / 1_000.0).ln(),
-            0.0,
-            0.0,
-        ));
+        second.antoine = Some(build_test_antoine_coefficients(k_values[1], pressure_pa));
         second.liquid_heat_capacity_j_per_mol_k = Some(52.0);
         second.vapor_heat_capacity_j_per_mol_k = Some(65.0);
 

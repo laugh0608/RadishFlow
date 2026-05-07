@@ -1,6 +1,7 @@
 use rf_model::{Composition, MaterialStreamState, PhaseState};
 use rf_thermo::{
-    BubbleDewPressureInput, BubbleDewPressures, PhaseThermoState, ThermoProvider, ThermoState,
+    BubbleDewPressureInput, BubbleDewPressures, BubbleDewTemperatureInput, BubbleDewTemperatures,
+    PhaseThermoState, ThermoProvider, ThermoState,
 };
 use rf_types::{PhaseLabel, RfError, RfResult, StreamId};
 
@@ -62,6 +63,8 @@ pub struct TpFlashResult {
     pub phase_region: FlashPhaseRegion,
     pub bubble_pressure_pa: f64,
     pub dew_pressure_pa: f64,
+    pub bubble_temperature_k: f64,
+    pub dew_temperature_k: f64,
     pub vapor_fraction: Option<f64>,
     pub k_values: Option<Vec<f64>>,
 }
@@ -74,6 +77,21 @@ pub trait TpFlashSolver {
 pub struct PlaceholderTpFlashSolver;
 
 impl PlaceholderTpFlashSolver {
+    fn classify_phase_region_from_temperature(
+        temperature_k: f64,
+        temperatures: BubbleDewTemperatures,
+    ) -> FlashPhaseRegion {
+        const TEMPERATURE_REGION_TOLERANCE_K: f64 = 1e-6;
+
+        if temperatures.bubble_temperature_k - temperature_k > TEMPERATURE_REGION_TOLERANCE_K {
+            FlashPhaseRegion::LiquidOnly
+        } else if temperature_k - temperatures.dew_temperature_k > TEMPERATURE_REGION_TOLERANCE_K {
+            FlashPhaseRegion::VaporOnly
+        } else {
+            FlashPhaseRegion::TwoPhase
+        }
+    }
+
     fn classify_phase_region(pressure_pa: f64, pressures: BubbleDewPressures) -> FlashPhaseRegion {
         const PRESSURE_REGION_TOLERANCE_PA: f64 = 1e-6;
 
@@ -196,7 +214,24 @@ impl TpFlashSolver for PlaceholderTpFlashSolver {
         let bubble_dew_pressures = thermo.estimate_bubble_dew_pressures(
             &BubbleDewPressureInput::new(input.temperature_k, input.overall_mole_fractions.clone()),
         )?;
-        let phase_region = Self::classify_phase_region(input.pressure_pa, bubble_dew_pressures);
+        let bubble_dew_temperatures =
+            thermo.estimate_bubble_dew_temperatures(&BubbleDewTemperatureInput::new(
+                input.pressure_pa,
+                input.overall_mole_fractions.clone(),
+            ))?;
+        let pressure_phase_region =
+            Self::classify_phase_region(input.pressure_pa, bubble_dew_pressures);
+        let temperature_phase_region = Self::classify_phase_region_from_temperature(
+            input.temperature_k,
+            bubble_dew_temperatures,
+        );
+        if pressure_phase_region != temperature_phase_region {
+            return Err(RfError::flash(format!(
+                "pressure and temperature phase region estimates disagree: pressure={pressure_phase_region:?}, temperature={temperature_phase_region:?}"
+            )));
+        }
+
+        let phase_region = pressure_phase_region;
         let k_values = thermo.estimate_k_values(&state)?;
         if k_values.len() != input.overall_mole_fractions.len() {
             return Err(RfError::flash(format!(
@@ -299,6 +334,8 @@ impl TpFlashSolver for PlaceholderTpFlashSolver {
             phase_region,
             bubble_pressure_pa: bubble_dew_pressures.bubble_pressure_pa,
             dew_pressure_pa: bubble_dew_pressures.dew_pressure_pa,
+            bubble_temperature_k: bubble_dew_temperatures.bubble_temperature_k,
+            dew_temperature_k: bubble_dew_temperatures.dew_temperature_k,
             vapor_fraction: Some(vapor_fraction),
             k_values: Some(k_values),
         })
@@ -337,22 +374,26 @@ mod tests {
         );
     }
 
+    fn build_test_antoine_coefficients(k_value: f64, pressure_pa: f64) -> AntoineCoefficients {
+        const TEST_ANTOINE_BOUNDARY_SLOPE: f64 = 250.0;
+        const TEST_REFERENCE_TEMPERATURE_K: f64 = 300.0;
+
+        AntoineCoefficients::new(
+            ((k_value * pressure_pa) / 1_000.0).ln()
+                + TEST_ANTOINE_BOUNDARY_SLOPE / TEST_REFERENCE_TEMPERATURE_K,
+            TEST_ANTOINE_BOUNDARY_SLOPE,
+            0.0,
+        )
+    }
+
     fn build_provider(k_values: [f64; 2], pressure_pa: f64) -> PlaceholderThermoProvider {
         let mut first = ThermoComponent::new(ComponentId::new("component-a"), "Component A");
-        first.antoine = Some(AntoineCoefficients::new(
-            ((k_values[0] * pressure_pa) / 1_000.0).ln(),
-            0.0,
-            0.0,
-        ));
+        first.antoine = Some(build_test_antoine_coefficients(k_values[0], pressure_pa));
         first.liquid_heat_capacity_j_per_mol_k = Some(35.0);
         first.vapor_heat_capacity_j_per_mol_k = Some(36.5);
 
         let mut second = ThermoComponent::new(ComponentId::new("component-b"), "Component B");
-        second.antoine = Some(AntoineCoefficients::new(
-            ((k_values[1] * pressure_pa) / 1_000.0).ln(),
-            0.0,
-            0.0,
-        ));
+        second.antoine = Some(build_test_antoine_coefficients(k_values[1], pressure_pa));
         second.liquid_heat_capacity_j_per_mol_k = Some(52.0);
         second.vapor_heat_capacity_j_per_mol_k = Some(65.0);
 
@@ -374,6 +415,8 @@ mod tests {
         assert_eq!(result.phase_region, FlashPhaseRegion::TwoPhase);
         assert_close(result.bubble_pressure_pa, 125_000.0, 1e-9);
         assert_close(result.dew_pressure_pa, 80_000.0, 1e-9);
+        assert_close(result.bubble_temperature_k, 236.635560732978, 1e-4);
+        assert_close(result.dew_temperature_k, 409.708580367858, 1e-4);
         assert_close(
             result.vapor_fraction.expect("expected vapor fraction"),
             0.5,
@@ -456,6 +499,8 @@ mod tests {
         assert_eq!(result.phase_region, FlashPhaseRegion::LiquidOnly);
         assert_close(result.bubble_pressure_pa, 65_000.0, 1e-9);
         assert_close(result.dew_pressure_pa, 64_000.0, 1e-9);
+        assert_close(result.bubble_temperature_k, 621.040220784083, 1e-4);
+        assert_close(result.dew_temperature_k, 645.917663866654, 1e-4);
         assert_close(
             result.vapor_fraction.expect("expected vapor fraction"),
             0.0,
@@ -507,6 +552,8 @@ mod tests {
         assert_eq!(result.phase_region, FlashPhaseRegion::VaporOnly);
         assert_close(result.bubble_pressure_pa, 142_500.0, 1e-9);
         assert_close(result.dew_pressure_pa, 139_701.4925373134, 1e-9);
+        assert_close(result.bubble_temperature_k, 210.52540329633, 1e-4);
+        assert_close(result.dew_temperature_k, 214.101379883055, 1e-4);
         assert_close(
             result.vapor_fraction.expect("expected vapor fraction"),
             1.0,
