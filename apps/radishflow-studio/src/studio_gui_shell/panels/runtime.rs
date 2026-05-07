@@ -719,21 +719,21 @@ impl ReadyAppState {
             ui.small(format!("#{}", unit.step_index));
         });
         render_wrapped_label(ui, &unit.summary);
-        if !unit.consumed_stream_actions.is_empty() {
-            ui.horizontal_wrapped(|ui| {
-                ui.small(self.locale.text(ShellText::InspectorConsumedStreams));
-                for action in &unit.consumed_stream_actions {
-                    self.render_small_command_action(ui, action);
-                }
-            });
+        if !unit.consumed_stream_results.is_empty() {
+            self.render_stream_result_reference_grid(
+                ui,
+                format!("unit-consumed-streams:{}:{}", unit.unit_id, unit.step_index),
+                self.locale.text(ShellText::InspectorConsumedStreams),
+                &unit.consumed_stream_results,
+            );
         }
-        if !unit.produced_stream_actions.is_empty() {
-            ui.horizontal_wrapped(|ui| {
-                ui.small(self.locale.text(ShellText::InspectorProducedStreams));
-                for action in &unit.produced_stream_actions {
-                    self.render_small_command_action(ui, action);
-                }
-            });
+        if !unit.produced_stream_results.is_empty() {
+            self.render_stream_result_reference_grid(
+                ui,
+                format!("unit-produced-streams:{}:{}", unit.unit_id, unit.step_index),
+                self.locale.text(ShellText::InspectorProducedStreams),
+                &unit.produced_stream_results,
+            );
         }
         ui.add_space(8.0);
     }
@@ -767,7 +767,50 @@ impl ReadyAppState {
             }
         });
         render_wrapped_label(ui, &step.summary);
+        if !step.consumed_stream_results.is_empty() {
+            self.render_stream_result_reference_grid(
+                ui,
+                format!(
+                    "solve-step-consumed-streams:{}:{}",
+                    step.unit_id, step.index
+                ),
+                self.locale.text(ShellText::InspectorConsumedStreams),
+                &step.consumed_stream_results,
+            );
+        }
+        if !step.produced_stream_results.is_empty() {
+            self.render_stream_result_reference_grid(
+                ui,
+                format!(
+                    "solve-step-produced-streams:{}:{}",
+                    step.unit_id, step.index
+                ),
+                self.locale.text(ShellText::InspectorProducedStreams),
+                &step.produced_stream_results,
+            );
+        }
         ui.add_space(4.0);
+    }
+
+    fn render_stream_result_reference_grid(
+        &mut self,
+        ui: &mut egui::Ui,
+        grid_id: String,
+        title: &str,
+        streams: &[radishflow_studio::StudioGuiWindowStreamResultReferenceModel],
+    ) {
+        ui.add_space(4.0);
+        ui.small(egui::RichText::new(title).strong());
+        egui::Grid::new(grid_id)
+            .num_columns(2)
+            .striped(true)
+            .show(ui, |ui| {
+                for stream in streams {
+                    self.render_small_command_action(ui, &stream.focus_action);
+                    render_wrapped_small(ui, &stream.summary);
+                    ui.end_row();
+                }
+            });
     }
 
     fn render_active_inspector_detail(

@@ -23,6 +23,7 @@
 - Result Inspector 已补 stream-centric 与 unit-centric 两个消费面，可审阅当前快照内输入/输出流股、相结果、关联步骤和关联诊断。
 - `rf-thermo` / `rf-flash` 已补 MVP 常热容显热焓值；`Flash Drum` outlet 会传递 liquid / vapor / overall molar enthalpy。
 - Result Inspector / Active Inspector 的流股相结果与相对比现在会显式展示各相摩尔流量，并继续只消费 `SolveSnapshot` 已物化的 phase fraction / molar enthalpy，不在 shell 中重算热力学。
+- Solve step / Active Inspector / unit-centric Result Inspector 现在会为输入和输出流股显式展示 `T / P / F / H` 结果摘要，便于直接审阅单元前后变化；这层仍只消费已有 DTO 与既有 `InspectorTarget` command。
 - `rf-thermo` / `rf-flash` 已收紧直接数值 API 的 mole fraction 输入契约，未归一组成会被拒绝；unit operation 层继续在调用 flash 前归一化文档流股组成。
 - Stream Inspector 已补正式 composition normalize / draft discard command surface，并展示当前组成总和、归一化预览与只读草稿提示；写回、归一化或丢弃草稿都必须由用户显式触发。
 - Stream Inspector 已补受控组分添加 / 删除入口：添加只能从当前 flowsheet 已定义但流股组成尚未包含的组件中显式选择；删除不能移除最后一个组成条目；新增或删除都不自动补偿其他组分。

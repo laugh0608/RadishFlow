@@ -208,8 +208,10 @@ impl StudioGuiWindowSolveSnapshotModel {
                     status_label: step.execution_status_label,
                     summary: step.summary.clone(),
                     consumed_stream_ids: step.consumed_streams.clone(),
+                    consumed_stream_results: step.consumed_stream_results.clone(),
                     consumed_stream_actions: step.consumed_stream_actions.clone(),
                     produced_stream_ids: step.produced_streams.clone(),
+                    produced_stream_results: step.produced_stream_results.clone(),
                     produced_stream_actions: step.produced_stream_actions.clone(),
                 })
         });
@@ -276,16 +278,16 @@ impl StudioGuiWindowSolveSnapshotModel {
 }
 
 fn result_inspector_stream_option_summary(stream: &StudioGuiWindowStreamResultModel) -> String {
-    let mut parts = vec![
-        stream.stream_id.clone(),
-        format!("T {}", stream.temperature_text),
-        format!("P {}", stream.pressure_text),
-        format!("F {}", stream.molar_flow_text),
-    ];
-    if let Some(molar_enthalpy_text) = stream.molar_enthalpy_text.as_ref() {
-        parts.push(format!("H {molar_enthalpy_text}"));
-    }
-    parts.join(" | ")
+    format!(
+        "{} | {}",
+        stream.stream_id,
+        stream_result_numeric_summary(
+            &stream.temperature_text,
+            &stream.pressure_text,
+            &stream.molar_flow_text,
+            stream.molar_enthalpy_text.as_deref(),
+        )
+    )
 }
 
 fn result_inspector_unit_option_summary(

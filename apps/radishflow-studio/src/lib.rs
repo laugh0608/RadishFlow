@@ -296,9 +296,9 @@ pub use studio_gui_window_model::{
     StudioGuiWindowResultInspectorModel, StudioGuiWindowResultInspectorPhaseComparisonRowModel,
     StudioGuiWindowResultInspectorStreamOptionModel, StudioGuiWindowRuntimeAreaModel,
     StudioGuiWindowSolveSnapshotModel, StudioGuiWindowSolveStepModel,
-    StudioGuiWindowStreamResultModel, StudioGuiWindowStreamSummaryRowModel,
-    StudioGuiWindowToolbarItemModel, StudioGuiWindowToolbarSectionModel,
-    StudioGuiWindowUnitExecutionResultModel,
+    StudioGuiWindowStreamResultModel, StudioGuiWindowStreamResultReferenceModel,
+    StudioGuiWindowStreamSummaryRowModel, StudioGuiWindowToolbarItemModel,
+    StudioGuiWindowToolbarSectionModel, StudioGuiWindowUnitExecutionResultModel,
 };
 pub use studio_inspector_draft_command::{
     StudioInspectorCompositionComponentAddCommand,

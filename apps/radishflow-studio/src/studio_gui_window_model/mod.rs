@@ -277,9 +277,18 @@ pub struct StudioGuiWindowUnitExecutionResultModel {
     pub status_label: &'static str,
     pub summary: String,
     pub consumed_stream_ids: Vec<String>,
+    pub consumed_stream_results: Vec<StudioGuiWindowStreamResultReferenceModel>,
     pub consumed_stream_actions: Vec<StudioGuiWindowCommandActionModel>,
     pub produced_stream_ids: Vec<String>,
+    pub produced_stream_results: Vec<StudioGuiWindowStreamResultReferenceModel>,
     pub produced_stream_actions: Vec<StudioGuiWindowCommandActionModel>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioGuiWindowStreamResultReferenceModel {
+    pub stream_id: String,
+    pub summary: String,
+    pub focus_action: StudioGuiWindowCommandActionModel,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -334,9 +343,11 @@ pub struct StudioGuiWindowSolveStepModel {
     pub summary: String,
     pub execution_status_label: &'static str,
     pub consumed_streams: Vec<String>,
+    pub consumed_stream_results: Vec<StudioGuiWindowStreamResultReferenceModel>,
     pub consumed_stream_actions: Vec<StudioGuiWindowCommandActionModel>,
     pub produced_streams: Vec<String>,
     pub unit_action: StudioGuiWindowCommandActionModel,
+    pub produced_stream_results: Vec<StudioGuiWindowStreamResultReferenceModel>,
     pub produced_stream_actions: Vec<StudioGuiWindowCommandActionModel>,
     pub diagnostic_actions: Vec<StudioGuiWindowDiagnosticTargetActionModel>,
 }
@@ -1225,17 +1236,11 @@ fn latest_unit_result_for_target(
             status_label: step.execution_status_label,
             summary: step.summary.clone(),
             consumed_stream_ids: step.consumed_streams.clone(),
-            consumed_stream_actions: step
-                .consumed_streams
-                .iter()
-                .map(|stream_id| inspector_stream_action(stream_id))
-                .collect(),
+            consumed_stream_results: step.consumed_stream_results.clone(),
+            consumed_stream_actions: step.consumed_stream_actions.clone(),
             produced_stream_ids: step.produced_streams.clone(),
-            produced_stream_actions: step
-                .produced_streams
-                .iter()
-                .map(|stream_id| inspector_stream_action(stream_id))
-                .collect(),
+            produced_stream_results: step.produced_stream_results.clone(),
+            produced_stream_actions: step.produced_stream_actions.clone(),
         })
 }
 
@@ -1259,24 +1264,32 @@ fn solve_snapshot_model_from_ui(
             .steps
             .iter()
             .map(|step| {
-                let produced_streams = step
+                let produced_stream_results = step
                     .streams
                     .iter()
-                    .map(|stream| stream.stream_id.as_str().to_string())
+                    .map(stream_result_reference_model_from_ui)
                     .collect::<Vec<_>>();
-                let consumed_streams = step
+                let produced_streams = produced_stream_results
+                    .iter()
+                    .map(|stream| stream.stream_id.clone())
+                    .collect::<Vec<_>>();
+                let consumed_stream_results = step
                     .consumed_streams
                     .iter()
-                    .map(|stream| stream.stream_id.as_str().to_string())
+                    .map(stream_result_reference_model_from_ui)
+                    .collect::<Vec<_>>();
+                let consumed_streams = consumed_stream_results
+                    .iter()
+                    .map(|stream| stream.stream_id.clone())
                     .collect::<Vec<_>>();
                 let unit_action = inspector_unit_action(step.unit_id.as_str());
-                let consumed_stream_actions = consumed_streams
+                let consumed_stream_actions = consumed_stream_results
                     .iter()
-                    .map(|stream_id| inspector_stream_action(stream_id))
+                    .map(|stream| stream.focus_action.clone())
                     .collect::<Vec<_>>();
-                let produced_stream_actions = produced_streams
+                let produced_stream_actions = produced_stream_results
                     .iter()
-                    .map(|stream_id| inspector_stream_action(stream_id))
+                    .map(|stream| stream.focus_action.clone())
                     .collect::<Vec<_>>();
                 let diagnostic_actions = solve_step_diagnostic_actions(
                     step.index,
@@ -1293,9 +1306,11 @@ fn solve_snapshot_model_from_ui(
                     summary: step.summary.clone(),
                     execution_status_label: run_status_label(step.execution.status),
                     consumed_streams,
+                    consumed_stream_results,
                     consumed_stream_actions,
                     produced_streams,
                     unit_action,
+                    produced_stream_results,
                     produced_stream_actions,
                     diagnostic_actions,
                 }
@@ -1554,6 +1569,26 @@ fn stream_result_model_from_ui(
     }
 }
 
+fn stream_result_reference_model_from_ui(
+    stream: &rf_ui::StreamStateSnapshot,
+) -> StudioGuiWindowStreamResultReferenceModel {
+    let temperature_text = format!("{:.2} K", stream.temperature_k);
+    let pressure_text = format!("{:.0} Pa", stream.pressure_pa);
+    let molar_flow_text = format_molar_flow(stream.total_molar_flow_mol_s);
+    let molar_enthalpy_text =
+        overall_molar_enthalpy_j_per_mol(&stream.phases).map(format_molar_enthalpy);
+    StudioGuiWindowStreamResultReferenceModel {
+        stream_id: stream.stream_id.as_str().to_string(),
+        summary: stream_result_numeric_summary(
+            &temperature_text,
+            &pressure_text,
+            &molar_flow_text,
+            molar_enthalpy_text.as_deref(),
+        ),
+        focus_action: inspector_stream_action(stream.stream_id.as_str()),
+    }
+}
+
 fn overall_molar_enthalpy_j_per_mol(phases: &[rf_ui::PhaseStateSnapshot]) -> Option<f64> {
     phases
         .iter()
@@ -1567,6 +1602,23 @@ fn format_molar_enthalpy(value: f64) -> String {
 
 fn format_molar_flow(value: f64) -> String {
     format!("{value:.6} mol/s")
+}
+
+fn stream_result_numeric_summary(
+    temperature_text: &str,
+    pressure_text: &str,
+    molar_flow_text: &str,
+    molar_enthalpy_text: Option<&str>,
+) -> String {
+    let mut parts = vec![
+        format!("T {temperature_text}"),
+        format!("P {pressure_text}"),
+        format!("F {molar_flow_text}"),
+    ];
+    if let Some(molar_enthalpy_text) = molar_enthalpy_text {
+        parts.push(format!("H {molar_enthalpy_text}"));
+    }
+    parts.join(" | ")
 }
 
 fn format_composition(composition: &[(String, f64)]) -> String {

@@ -346,9 +346,29 @@ fn studio_gui_window_model_surfaces_workspace_results_and_diagnostics() {
     );
     assert!(
         related_heater_step
+            .consumed_stream_results
+            .iter()
+            .any(|stream| stream.stream_id == "stream-feed"
+                && stream.summary.contains("T ")
+                && stream.summary.contains("P ")
+                && stream.summary.contains("F ")),
+        "expected solve step consumed stream summaries to expose T/P/F"
+    );
+    assert!(
+        related_heater_step
             .produced_stream_actions
             .iter()
             .any(|action| action.command_id == "inspector.focus_stream:stream-heated")
+    );
+    assert!(
+        related_heater_step
+            .produced_stream_results
+            .iter()
+            .any(|stream| stream.stream_id == "stream-heated"
+                && stream.summary.contains("T ")
+                && stream.summary.contains("P ")
+                && stream.summary.contains("F ")),
+        "expected solve step produced stream summaries to expose T/P/F"
     );
     assert!(related_heater_step.diagnostic_actions.iter().any(|action| {
         action.source_label == "Solve step"
@@ -364,6 +384,18 @@ fn studio_gui_window_model_surfaces_workspace_results_and_diagnostics() {
         action.source_label == "Solve step"
             && action.action.command_id == "inspector.focus_unit:heater-1"
     }));
+    let flash_step = inspector
+        .related_steps
+        .iter()
+        .find(|step| step.unit_id == "flash-1")
+        .expect("expected related flash step");
+    assert!(
+        flash_step
+            .produced_stream_results
+            .iter()
+            .any(|stream| stream.stream_id == "stream-liquid" && stream.summary.contains("H ")),
+        "expected flash step produced stream summaries to expose enthalpy when materialized"
+    );
     assert!(
         inspector.related_diagnostics.iter().any(|diagnostic| {
             diagnostic.target_candidates.iter().any(|target| {
@@ -538,9 +570,29 @@ fn studio_gui_window_model_surfaces_workspace_results_and_diagnostics() {
     );
     assert!(
         unit_result
+            .consumed_stream_results
+            .iter()
+            .any(|stream| stream.stream_id == "stream-feed"
+                && stream.summary.contains("T ")
+                && stream.summary.contains("P ")
+                && stream.summary.contains("F ")),
+        "expected active unit result to expose consumed stream numeric summary"
+    );
+    assert!(
+        unit_result
             .produced_stream_actions
             .iter()
             .any(|action| action.command_id == "inspector.focus_stream:stream-heated")
+    );
+    assert!(
+        unit_result
+            .produced_stream_results
+            .iter()
+            .any(|stream| stream.stream_id == "stream-heated"
+                && stream.summary.contains("T ")
+                && stream.summary.contains("P ")
+                && stream.summary.contains("F ")),
+        "expected active unit result to expose produced stream numeric summary"
     );
     assert_eq!(unit_detail.latest_stream_result, None);
 
@@ -715,10 +767,30 @@ fn studio_gui_window_model_surfaces_workspace_results_and_diagnostics() {
     );
     assert!(
         selected_unit
+            .consumed_stream_results
+            .iter()
+            .any(|stream| stream.stream_id == "stream-feed"
+                && stream.summary.contains("T ")
+                && stream.summary.contains("P ")
+                && stream.summary.contains("F ")),
+        "expected unit execution result to expose consumed stream numeric summary"
+    );
+    assert!(
+        selected_unit
             .produced_stream_actions
             .iter()
             .any(|action| action.command_id == "inspector.focus_stream:stream-heated"),
         "expected unit execution result to expose produced stream actions"
+    );
+    assert!(
+        selected_unit
+            .produced_stream_results
+            .iter()
+            .any(|stream| stream.stream_id == "stream-heated"
+                && stream.summary.contains("T ")
+                && stream.summary.contains("P ")
+                && stream.summary.contains("F ")),
+        "expected unit execution result to expose produced stream numeric summary"
     );
     assert!(
         unit_inspector
