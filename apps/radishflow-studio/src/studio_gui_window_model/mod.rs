@@ -5,10 +5,11 @@ mod result_inspector;
 use crate::{
     EntitlementSessionHostRuntimeOutput, StudioExampleProjectModel, StudioGuiCanvasWidgetModel,
     StudioGuiCommandEntry, StudioGuiCommandMenuNode, StudioGuiCommandRegistry,
-    StudioGuiCommandSection, StudioGuiSnapshot, StudioGuiWindowAreaId, StudioGuiWindowDockRegion,
-    StudioGuiWindowDropTarget, StudioGuiWindowDropTargetKind, StudioGuiWindowDropTargetQuery,
-    StudioGuiWindowLayoutModel, StudioGuiWindowLayoutState, StudioGuiWorkspaceDocumentSnapshot,
-    StudioWindowHostId, WorkspaceControlState,
+    StudioGuiCommandSection, StudioGuiDiagnosticStreamSnapshot,
+    StudioGuiFailureDiagnosticContextSnapshot, StudioGuiSnapshot, StudioGuiWindowAreaId,
+    StudioGuiWindowDockRegion, StudioGuiWindowDropTarget, StudioGuiWindowDropTargetKind,
+    StudioGuiWindowDropTargetQuery, StudioGuiWindowLayoutModel, StudioGuiWindowLayoutState,
+    StudioGuiWorkspaceDocumentSnapshot, StudioWindowHostId, WorkspaceControlState,
 };
 use drop_preview::{build_drop_preview_overlay, changed_area_ids_for_preview};
 
@@ -163,6 +164,7 @@ pub struct StudioGuiWindowFailureDiagnosticDetailModel {
     pub diagnostic_count: usize,
     pub related_units: Vec<StudioGuiWindowInspectorTargetModel>,
     pub related_streams: Vec<StudioGuiWindowInspectorTargetModel>,
+    pub related_stream_results: Vec<StudioGuiWindowStreamResultReferenceModel>,
     pub related_ports: Vec<StudioGuiWindowFailureDiagnosticPortTargetModel>,
 }
 
@@ -172,6 +174,7 @@ pub struct StudioGuiWindowFailureDiagnosticPortTargetModel {
     pub port_name: String,
     pub summary: String,
     pub unit_action: StudioGuiWindowCommandActionModel,
+    pub stream_result: Option<StudioGuiWindowStreamResultReferenceModel>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -359,6 +362,7 @@ pub struct StudioGuiWindowDiagnosticModel {
     pub message: String,
     pub related_unit_ids: Vec<String>,
     pub related_stream_ids: Vec<String>,
+    pub related_stream_results: Vec<StudioGuiWindowStreamResultReferenceModel>,
     pub target_candidates: Vec<StudioGuiWindowInspectorTargetModel>,
     pub diagnostic_actions: Vec<StudioGuiWindowDiagnosticTargetActionModel>,
     pub related_units_text: Option<String>,
@@ -708,7 +712,12 @@ fn runtime_from_snapshot(snapshot: &StudioGuiSnapshot) -> StudioGuiWindowRuntime
         .map(solve_snapshot_model_from_ui);
     let latest_failure = latest_solve_snapshot
         .is_none()
-        .then(|| failure_result_model_from_control_state(&snapshot.runtime.control_state))
+        .then(|| {
+            failure_result_model_from_control_state(
+                &snapshot.runtime.control_state,
+                snapshot.runtime.latest_failure_diagnostic_context.as_ref(),
+            )
+        })
         .flatten();
     let active_inspector_detail = snapshot
         .runtime
@@ -755,6 +764,7 @@ fn runtime_from_snapshot(snapshot: &StudioGuiSnapshot) -> StudioGuiWindowRuntime
 
 fn failure_result_model_from_control_state(
     control_state: &WorkspaceControlState,
+    diagnostic_context: Option<&StudioGuiFailureDiagnosticContextSnapshot>,
 ) -> Option<StudioGuiWindowFailureResultModel> {
     if !matches!(control_state.run_status, rf_ui::RunStatus::Error) {
         return None;
@@ -791,7 +801,7 @@ fn failure_result_model_from_control_state(
     let diagnostic_detail = control_state
         .latest_diagnostic
         .as_ref()
-        .map(failure_diagnostic_detail_model_from_summary);
+        .map(|summary| failure_diagnostic_detail_model_from_summary(summary, diagnostic_context));
     if let Some(detail) = diagnostic_detail.as_ref() {
         diagnostic_actions.extend(failure_diagnostic_actions(detail));
     }
@@ -816,6 +826,7 @@ fn failure_result_model_from_control_state(
 
 fn failure_diagnostic_detail_model_from_summary(
     summary: &rf_ui::DiagnosticSummary,
+    diagnostic_context: Option<&StudioGuiFailureDiagnosticContextSnapshot>,
 ) -> StudioGuiWindowFailureDiagnosticDetailModel {
     StudioGuiWindowFailureDiagnosticDetailModel {
         document_revision: summary.document_revision,
@@ -836,10 +847,20 @@ fn failure_diagnostic_detail_model_from_summary(
                 inspector_target_model_from_ui(&rf_ui::InspectorTarget::Stream(stream_id.clone()))
             })
             .collect(),
+        related_stream_results: diagnostic_context
+            .map(|context| {
+                context
+                    .related_streams
+                    .iter()
+                    .map(stream_result_reference_model_from_diagnostic_snapshot)
+                    .collect()
+            })
+            .unwrap_or_default(),
         related_ports: summary
             .related_port_targets
             .iter()
-            .map(|target| {
+            .enumerate()
+            .map(|(index, target)| {
                 let unit_id = target.unit_id.as_str().to_string();
                 let port_name = target.port_name.clone();
                 StudioGuiWindowFailureDiagnosticPortTargetModel {
@@ -847,6 +868,10 @@ fn failure_diagnostic_detail_model_from_summary(
                     port_name: port_name.clone(),
                     summary: format!("Unit {unit_id} port {port_name}"),
                     unit_action: inspector_unit_action(&unit_id),
+                    stream_result: diagnostic_context
+                        .and_then(|context| context.related_ports.get(index))
+                        .and_then(|port| port.stream.as_ref())
+                        .map(stream_result_reference_model_from_diagnostic_snapshot),
                 }
             })
             .collect(),
@@ -1319,13 +1344,14 @@ fn solve_snapshot_model_from_ui(
         diagnostics: snapshot
             .diagnostics
             .iter()
-            .map(diagnostic_model_from_ui)
+            .map(|diagnostic| diagnostic_model_from_ui(diagnostic, &snapshot.streams))
             .collect(),
     }
 }
 
 fn diagnostic_model_from_ui(
     diagnostic: &rf_ui::DiagnosticSnapshot,
+    streams: &[rf_ui::StreamStateSnapshot],
 ) -> StudioGuiWindowDiagnosticModel {
     let related_unit_ids = diagnostic
         .related_unit_ids
@@ -1343,11 +1369,22 @@ fn diagnostic_model_from_ui(
         .iter()
         .map(|target| diagnostic_target_action_from_target("Diagnostic", target))
         .collect();
+    let related_stream_results = streams
+        .iter()
+        .filter(|stream| {
+            diagnostic
+                .related_stream_ids
+                .iter()
+                .any(|stream_id| *stream_id == stream.stream_id)
+        })
+        .map(stream_result_reference_model_from_ui)
+        .collect();
 
     StudioGuiWindowDiagnosticModel {
         severity_label: diagnostic_severity_label(diagnostic.severity),
         code: diagnostic.code.clone(),
         message: diagnostic.message.clone(),
+        related_stream_results,
         target_candidates,
         diagnostic_actions,
         related_units_text: non_empty_join(related_unit_ids.iter().map(String::as_str).collect()),
@@ -1584,8 +1621,29 @@ fn stream_result_reference_model_from_ui(
             &pressure_text,
             &molar_flow_text,
             molar_enthalpy_text.as_deref(),
+            None,
         ),
         focus_action: inspector_stream_action(stream.stream_id.as_str()),
+    }
+}
+
+fn stream_result_reference_model_from_diagnostic_snapshot(
+    stream: &StudioGuiDiagnosticStreamSnapshot,
+) -> StudioGuiWindowStreamResultReferenceModel {
+    let temperature_text = format!("{:.2} K", stream.temperature_k);
+    let pressure_text = format!("{:.0} Pa", stream.pressure_pa);
+    let molar_flow_text = format_molar_flow(stream.total_molar_flow_mol_s);
+    let composition_text = format_composition(&stream.overall_mole_fractions);
+    StudioGuiWindowStreamResultReferenceModel {
+        stream_id: stream.stream_id.clone(),
+        summary: stream_result_numeric_summary(
+            &temperature_text,
+            &pressure_text,
+            &molar_flow_text,
+            None,
+            Some(&composition_text),
+        ),
+        focus_action: inspector_stream_action(&stream.stream_id),
     }
 }
 
@@ -1609,6 +1667,7 @@ fn stream_result_numeric_summary(
     pressure_text: &str,
     molar_flow_text: &str,
     molar_enthalpy_text: Option<&str>,
+    composition_text: Option<&str>,
 ) -> String {
     let mut parts = vec![
         format!("T {temperature_text}"),
@@ -1617,6 +1676,9 @@ fn stream_result_numeric_summary(
     ];
     if let Some(molar_enthalpy_text) = molar_enthalpy_text {
         parts.push(format!("H {molar_enthalpy_text}"));
+    }
+    if let Some(composition_text) = composition_text {
+        parts.push(composition_text.to_string());
     }
     parts.join(" | ")
 }

@@ -24,6 +24,7 @@
 - `rf-thermo` / `rf-flash` 已补 MVP 常热容显热焓值；`Flash Drum` outlet 会传递 liquid / vapor / overall molar enthalpy。
 - Result Inspector / Active Inspector 的流股相结果与相对比现在会显式展示各相摩尔流量，并继续只消费 `SolveSnapshot` 已物化的 phase fraction / molar enthalpy，不在 shell 中重算热力学。
 - Solve step / Active Inspector / unit-centric Result Inspector 现在会为输入和输出流股显式展示 `T / P / F / H` 结果摘要，便于直接审阅单元前后变化；这层仍只消费已有 DTO 与既有 `InspectorTarget` command。
+- Diagnostics 列表与 failure diagnostic 现在会前推相关流股数值上下文：成功路径直接显示 `SolveSnapshot` 已物化的 `T / P / F / H` 摘要，失败路径在诊断 revision 与当前文档匹配时显示文档态 `T / P / F / z` 与 port 绑定流股上下文；这层仍只消费结构化 snapshot，不在 shell 中反查文档或反解析错误消息。
 - `rf-thermo` / `rf-flash` 已收紧直接数值 API 的 mole fraction 输入契约，未归一组成会被拒绝；unit operation 层继续在调用 flash 前归一化文档流股组成。
 - Stream Inspector 已补正式 composition normalize / draft discard command surface，并展示当前组成总和、归一化预览与只读草稿提示；写回、归一化或丢弃草稿都必须由用户显式触发。
 - Stream Inspector 已补受控组分添加 / 删除入口：添加只能从当前 flowsheet 已定义但流股组成尚未包含的组件中显式选择；删除不能移除最后一个组成条目；新增或删除都不自动补偿其他组分。
@@ -34,7 +35,7 @@
 ## 下一步建议
 
 1. 优先回到数值与结果主线，而不是继续扩 Canvas UI。
-2. 在当前 `SolveSnapshot` 边界内补齐结果审阅、错误定位或热力学结果展示的明显缺口。
+2. 继续补 `rf-thermo` / `rf-flash` 的 MVP 数值能力与 golden tests；结果审阅面当前先维持在已收口的 snapshot 消费边界内，不再横向扩展示意 UI。
 3. 若推进 `rf-thermo` / `rf-flash`，优先补可验证的 MVP 数值能力和 golden tests，不提前引入完整 EOS、活度模型或复杂物性包选择器。
 4. 若继续推进 Stream Inspector，优先收紧 flowsheet component catalog / presentation 边界；不要提前做完整组件库、项目级组件删除迁移或隐式差值补偿。
 5. 若推进 Studio，优先消费已结构化 DTO 和既有 command surface，不新增第二套 shell 私有状态机。

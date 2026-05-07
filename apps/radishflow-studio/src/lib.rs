@@ -254,7 +254,8 @@ pub use studio_gui_shortcut_router::{
     StudioGuiFocusContext, StudioGuiShortcutIgnoreReason, StudioGuiShortcutRoute, route_shortcut,
 };
 pub use studio_gui_snapshot::{
-    StudioGuiInspectorCompositionComponentActionSnapshot,
+    StudioGuiDiagnosticStreamSnapshot, StudioGuiFailureDiagnosticContextSnapshot,
+    StudioGuiFailureDiagnosticPortSnapshot, StudioGuiInspectorCompositionComponentActionSnapshot,
     StudioGuiInspectorCompositionSummarySnapshot, StudioGuiInspectorPropertyNoticeSnapshot,
     StudioGuiInspectorTargetDetailSnapshot, StudioGuiInspectorTargetFieldSnapshot,
     StudioGuiInspectorTargetFieldValidationSnapshot,

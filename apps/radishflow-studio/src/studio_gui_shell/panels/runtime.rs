@@ -428,25 +428,16 @@ impl ReadyAppState {
                         ))
                         .max_height(180.0)
                         .show(ui, |ui| {
-                            for diagnostic in &snapshot.diagnostics {
-                                ui.horizontal_wrapped(|ui| {
-                                    render_status_chip(
-                                        ui,
-                                        self.locale
-                                            .runtime_label(diagnostic.severity_label)
-                                            .as_ref(),
-                                        diagnostic_color(diagnostic.severity_label),
-                                    );
-                                    ui.small(&diagnostic.code);
-                                });
-                                render_wrapped_label(ui, &diagnostic.message);
-                                self.render_diagnostic_targets(ui, diagnostic);
-                                if let Some(units) = diagnostic.related_units_text.as_ref() {
-                                    render_wrapped_small(ui, format!("units: {units}"));
-                                }
-                                if let Some(streams) = diagnostic.related_streams_text.as_ref() {
-                                    render_wrapped_small(ui, format!("streams: {streams}"));
-                                }
+                            for (index, diagnostic) in snapshot.diagnostics.iter().enumerate() {
+                                self.render_diagnostic_summary(
+                                    ui,
+                                    diagnostic,
+                                    format!(
+                                        "runtime:{}:{}:diagnostic:{index}",
+                                        window.layout_state.scope.layout_key,
+                                        area_label(area_id)
+                                    ),
+                                );
                                 ui.add_space(6.0);
                             }
                         });
@@ -1146,19 +1137,15 @@ impl ReadyAppState {
         if !detail.related_diagnostics.is_empty() {
             ui.add_space(4.0);
             ui.collapsing(self.locale.text(ShellText::RelatedDiagnostics), |ui| {
-                for diagnostic in &detail.related_diagnostics {
-                    ui.horizontal_wrapped(|ui| {
-                        render_status_chip(
-                            ui,
-                            self.locale
-                                .runtime_label(diagnostic.severity_label)
-                                .as_ref(),
-                            diagnostic_color(diagnostic.severity_label),
-                        );
-                        ui.small(&diagnostic.code);
-                    });
-                    render_wrapped_label(ui, &diagnostic.message);
-                    self.render_diagnostic_targets(ui, diagnostic);
+                for (index, diagnostic) in detail.related_diagnostics.iter().enumerate() {
+                    self.render_diagnostic_summary(
+                        ui,
+                        diagnostic,
+                        format!(
+                            "active-inspector:{}:diagnostic:{index}",
+                            detail.target.command_id
+                        ),
+                    );
                     ui.add_space(4.0);
                 }
             });
@@ -1250,19 +1237,17 @@ impl ReadyAppState {
                         ui.small(self.locale.text(ShellText::NoRelatedDiagnostics));
                         return;
                     }
-                    for diagnostic in &inspector.unit_related_diagnostics {
-                        ui.horizontal_wrapped(|ui| {
-                            render_status_chip(
-                                ui,
-                                self.locale
-                                    .runtime_label(diagnostic.severity_label)
-                                    .as_ref(),
-                                diagnostic_color(diagnostic.severity_label),
-                            );
-                            ui.small(&diagnostic.code);
-                        });
-                        render_wrapped_label(ui, &diagnostic.message);
-                        self.render_diagnostic_targets(ui, diagnostic);
+                    for (index, diagnostic) in inspector.unit_related_diagnostics.iter().enumerate()
+                    {
+                        self.render_diagnostic_summary(
+                            ui,
+                            diagnostic,
+                            format!(
+                                "result-unit:{}:{}:diagnostic:{index}",
+                                inspector.snapshot_id,
+                                inspector.selected_unit_id.as_deref().unwrap_or("none")
+                            ),
+                        );
                         ui.add_space(4.0);
                     }
                 });
@@ -1323,19 +1308,16 @@ impl ReadyAppState {
                 ui.small(self.locale.text(ShellText::NoRelatedDiagnostics));
                 return;
             }
-            for diagnostic in &inspector.related_diagnostics {
-                ui.horizontal_wrapped(|ui| {
-                    render_status_chip(
-                        ui,
-                        self.locale
-                            .runtime_label(diagnostic.severity_label)
-                            .as_ref(),
-                        diagnostic_color(diagnostic.severity_label),
-                    );
-                    ui.small(&diagnostic.code);
-                });
-                render_wrapped_label(ui, &diagnostic.message);
-                self.render_diagnostic_targets(ui, diagnostic);
+            for (index, diagnostic) in inspector.related_diagnostics.iter().enumerate() {
+                self.render_diagnostic_summary(
+                    ui,
+                    diagnostic,
+                    format!(
+                        "result-stream:{}:{}:diagnostic:{index}",
+                        inspector.snapshot_id,
+                        inspector.selected_stream_id.as_deref().unwrap_or("none")
+                    ),
+                );
                 ui.add_space(4.0);
             }
         });
@@ -1505,6 +1487,40 @@ impl ReadyAppState {
         });
     }
 
+    fn render_diagnostic_summary(
+        &mut self,
+        ui: &mut egui::Ui,
+        diagnostic: &radishflow_studio::StudioGuiWindowDiagnosticModel,
+        grid_id_prefix: String,
+    ) {
+        ui.horizontal_wrapped(|ui| {
+            render_status_chip(
+                ui,
+                self.locale
+                    .runtime_label(diagnostic.severity_label)
+                    .as_ref(),
+                diagnostic_color(diagnostic.severity_label),
+            );
+            ui.small(&diagnostic.code);
+        });
+        render_wrapped_label(ui, &diagnostic.message);
+        self.render_diagnostic_targets(ui, diagnostic);
+        if let Some(units) = diagnostic.related_units_text.as_ref() {
+            render_wrapped_small(ui, format!("units: {units}"));
+        }
+        if let Some(streams) = diagnostic.related_streams_text.as_ref() {
+            render_wrapped_small(ui, format!("streams: {streams}"));
+        }
+        if !diagnostic.related_stream_results.is_empty() {
+            self.render_stream_result_reference_grid(
+                ui,
+                format!("{grid_id_prefix}:streams"),
+                "stream context",
+                &diagnostic.related_stream_results,
+            );
+        }
+    }
+
     fn render_diagnostic_target_actions(
         &mut self,
         ui: &mut egui::Ui,
@@ -1557,14 +1573,33 @@ impl ReadyAppState {
                 }
             });
         }
+        if !detail.related_stream_results.is_empty() {
+            self.render_stream_result_reference_grid(
+                ui,
+                format!(
+                    "failure-diagnostic:{}:{}:streams",
+                    detail.document_revision,
+                    detail.primary_code.as_deref().unwrap_or("none")
+                ),
+                "stream context",
+                &detail.related_stream_results,
+            );
+        }
         if !detail.related_ports.is_empty() {
-            ui.horizontal_wrapped(|ui| {
-                ui.small("ports");
-                for target in &detail.related_ports {
+            ui.add_space(4.0);
+            ui.small(egui::RichText::new("port context").strong());
+            for target in &detail.related_ports {
+                ui.horizontal_wrapped(|ui| {
                     ui.small(format!("{}:{}", target.unit_id, target.port_name));
                     self.render_small_command_action(ui, &target.unit_action);
+                    if let Some(stream) = target.stream_result.as_ref() {
+                        self.render_small_command_action(ui, &stream.focus_action);
+                    }
+                });
+                if let Some(stream) = target.stream_result.as_ref() {
+                    render_wrapped_small(ui, &stream.summary);
                 }
-            });
+            }
         }
     }
 

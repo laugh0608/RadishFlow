@@ -70,6 +70,20 @@ fn unbound_outlet_failure_synced_config() -> StudioRuntimeConfig {
     }
 }
 
+fn missing_upstream_failure_synced_config() -> StudioRuntimeConfig {
+    StudioRuntimeConfig {
+        project_path: PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../..")
+            .join("examples")
+            .join("flowsheets")
+            .join("failures")
+            .join("missing-upstream-source.rfproj.json"),
+        entitlement_preflight: StudioRuntimeEntitlementPreflight::Skip,
+        entitlement_seed: StudioRuntimeEntitlementSeed::Synced,
+        trigger: StudioRuntimeTrigger::WidgetAction(rf_ui::RunPanelActionId::RunManual),
+    }
+}
+
 #[test]
 fn studio_gui_window_model_groups_snapshot_into_window_regions() {
     let (config, project_path) = flash_drum_local_rules_config();
@@ -270,6 +284,16 @@ fn studio_gui_window_model_surfaces_workspace_results_and_diagnostics() {
             })
         }),
         "expected diagnostics to expose unit inspector target candidates"
+    );
+    assert!(
+        snapshot.diagnostics.iter().any(|diagnostic| {
+            diagnostic.related_stream_results.iter().any(|stream| {
+                stream.summary.contains("T ")
+                    && stream.summary.contains("P ")
+                    && stream.summary.contains("F ")
+            })
+        }),
+        "expected diagnostics to expose related stream numeric summaries from solve snapshot"
     );
     let inspector = snapshot.result_inspector(Some("stream-heated"));
     assert_eq!(
@@ -1021,6 +1045,64 @@ fn studio_gui_window_model_surfaces_failure_result_until_rerun_succeeds() {
     let inspector = snapshot.result_inspector(None);
     assert!(inspector.selected_stream.is_some());
     assert!(!inspector.has_stale_selection);
+}
+
+#[test]
+fn studio_gui_window_model_surfaces_failure_stream_context_from_document_state() {
+    let mut driver =
+        StudioGuiDriver::new(&missing_upstream_failure_synced_config()).expect("expected driver");
+    let _ = driver
+        .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+        .expect("expected open dispatch");
+
+    let failed = driver
+        .dispatch_event(StudioGuiEvent::UiCommandRequested {
+            command_id: "run_panel.run_manual".to_string(),
+        })
+        .expect("expected failed run dispatch");
+    let failure = failed
+        .window
+        .runtime
+        .latest_failure
+        .expect("expected visible failure result");
+    let diagnostic_detail = failure
+        .diagnostic_detail
+        .as_ref()
+        .expect("expected structured failure diagnostic detail");
+
+    assert_eq!(
+        diagnostic_detail.primary_code.as_deref(),
+        Some("solver.connection_validation.missing_upstream_source")
+    );
+    assert!(
+        diagnostic_detail
+            .related_streams
+            .iter()
+            .any(|target| target.target_id == "stream-feed-a"),
+        "expected failure diagnostic to keep related stream target buttons"
+    );
+    assert!(
+        diagnostic_detail
+            .related_stream_results
+            .iter()
+            .any(|stream| {
+                stream.stream_id == "stream-feed-a"
+                    && stream.summary.contains("T ")
+                    && stream.summary.contains("P ")
+                    && stream.summary.contains("F ")
+                    && stream.summary.contains("z:")
+                    && !stream.summary.contains("H ")
+            }),
+        "expected failure diagnostic to expose document-state stream numeric context"
+    );
+    assert!(diagnostic_detail.related_ports.iter().any(|target| {
+        target.unit_id == "mixer-1"
+            && target.port_name == "inlet_a"
+            && target.unit_action.command_id == "inspector.focus_unit:mixer-1"
+            && target.stream_result.as_ref().is_some_and(|stream| {
+                stream.stream_id == "stream-feed-a" && stream.summary.contains("z:")
+            })
+    }));
 }
 
 #[test]

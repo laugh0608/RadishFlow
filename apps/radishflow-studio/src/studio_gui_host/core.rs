@@ -2,6 +2,10 @@ use super::helpers::{
     dispatch_from_controller, global_event_from_controller, ui_commands_from_projection,
 };
 use super::*;
+use crate::{
+    StudioGuiDiagnosticStreamSnapshot, StudioGuiFailureDiagnosticContextSnapshot,
+    StudioGuiFailureDiagnosticPortSnapshot, WorkspaceControlState,
+};
 
 impl StudioGuiHost {
     pub fn new(config: &StudioRuntimeConfig) -> RfResult<Self> {
@@ -137,26 +141,40 @@ impl StudioGuiHost {
     }
 
     pub fn snapshot(&self) -> StudioGuiSnapshot {
+        let workspace_document = workspace_document_snapshot_from_controller(&self.controller);
+        let control_state = self.controller.workspace_control_state();
+        let run_panel = self.controller.run_panel_widget();
+        let latest_solve_snapshot = self.controller.latest_solve_snapshot();
+        let latest_failure_diagnostic_context = failure_diagnostic_context_from_controller(
+            &self.controller,
+            &control_state,
+            workspace_document.revision,
+        );
+        let active_inspector_target = self.controller.active_inspector_target();
+        let active_inspector_detail = active_inspector_detail_from_controller(&self.controller);
+        let entitlement_host = self.controller.entitlement_host_output();
+        let log_entries = self.controller.log_entries();
         let mut snapshot = StudioGuiSnapshot::new(
             self.state().clone(),
             self.ui_commands(),
             self.command_registry(),
             self.canvas_state().widget(),
             StudioGuiRuntimeSnapshot {
-                workspace_document: workspace_document_snapshot_from_controller(&self.controller),
+                workspace_document,
                 example_projects: crate::studio_example_project_models(
                     self.controller.document_path(),
                 ),
-                control_state: self.controller.workspace_control_state(),
-                run_panel: self.controller.run_panel_widget(),
-                latest_solve_snapshot: self.controller.latest_solve_snapshot(),
-                active_inspector_target: self.controller.active_inspector_target(),
-                active_inspector_detail: active_inspector_detail_from_controller(&self.controller),
-                entitlement_host: self.controller.entitlement_host_output(),
+                control_state,
+                run_panel,
+                latest_solve_snapshot,
+                latest_failure_diagnostic_context,
+                active_inspector_target,
+                active_inspector_detail,
+                entitlement_host,
                 platform_notice: None,
                 platform_timer_lines: Vec::new(),
                 gui_activity_lines: Vec::new(),
-                log_entries: self.controller.log_entries(),
+                log_entries,
             },
             self.window_drop_previews.clone(),
         );
@@ -417,6 +435,61 @@ fn canvas_diagnostics_from_runtime(
         related_stream_ids,
         related_port_targets,
     }]
+}
+
+fn failure_diagnostic_context_from_controller(
+    controller: &StudioAppHostController,
+    control_state: &WorkspaceControlState,
+    document_revision: u64,
+) -> Option<StudioGuiFailureDiagnosticContextSnapshot> {
+    let diagnostic = control_state.latest_diagnostic.as_ref()?;
+    if diagnostic.document_revision != document_revision {
+        return None;
+    }
+
+    let flowsheet = &controller.document().flowsheet;
+    Some(StudioGuiFailureDiagnosticContextSnapshot {
+        related_streams: diagnostic
+            .related_stream_ids
+            .iter()
+            .filter_map(|stream_id| flowsheet.streams.get(stream_id))
+            .map(diagnostic_stream_snapshot_from_model)
+            .collect(),
+        related_ports: diagnostic
+            .related_port_targets
+            .iter()
+            .map(|target| {
+                let stream = flowsheet
+                    .units
+                    .get(&target.unit_id)
+                    .and_then(|unit| unit.ports.iter().find(|port| port.name == target.port_name))
+                    .and_then(|port| port.stream_id.as_ref())
+                    .and_then(|stream_id| flowsheet.streams.get(stream_id))
+                    .map(diagnostic_stream_snapshot_from_model);
+                StudioGuiFailureDiagnosticPortSnapshot {
+                    unit_id: target.unit_id.as_str().to_string(),
+                    port_name: target.port_name.clone(),
+                    stream,
+                }
+            })
+            .collect(),
+    })
+}
+
+fn diagnostic_stream_snapshot_from_model(
+    stream: &rf_model::MaterialStreamState,
+) -> StudioGuiDiagnosticStreamSnapshot {
+    StudioGuiDiagnosticStreamSnapshot {
+        stream_id: stream.id.as_str().to_string(),
+        temperature_k: stream.temperature_k,
+        pressure_pa: stream.pressure_pa,
+        total_molar_flow_mol_s: stream.total_molar_flow_mol_s,
+        overall_mole_fractions: stream
+            .overall_mole_fractions
+            .iter()
+            .map(|(component_id, fraction)| (component_id.as_str().to_string(), *fraction))
+            .collect(),
+    }
 }
 
 fn active_inspector_detail_from_controller(

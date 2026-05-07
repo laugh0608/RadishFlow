@@ -286,6 +286,7 @@ fn result_inspector_stream_option_summary(stream: &StudioGuiWindowStreamResultMo
             &stream.pressure_text,
             &stream.molar_flow_text,
             stream.molar_enthalpy_text.as_deref(),
+            None,
         )
     )
 }
