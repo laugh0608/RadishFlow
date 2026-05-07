@@ -505,6 +505,20 @@ fn result_inspector_comparison_model(
                         ),
                         _ => "-".to_string(),
                     },
+                    base_molar_flow_text: base_phase
+                        .map(|phase| phase.molar_flow_text.clone())
+                        .unwrap_or_else(|| "-".to_string()),
+                    compared_molar_flow_text: compared_phase
+                        .map(|phase| phase.molar_flow_text.clone())
+                        .unwrap_or_else(|| "-".to_string()),
+                    molar_flow_delta_text: match (base_phase, compared_phase) {
+                        (Some(base), Some(compared)) => format_signed_delta(
+                            compared.molar_flow_mol_s - base.molar_flow_mol_s,
+                            "mol/s",
+                            6,
+                        ),
+                        _ => "-".to_string(),
+                    },
                     base_molar_enthalpy_text: base_phase
                         .and_then(|phase| phase.molar_enthalpy_text.clone())
                         .unwrap_or_else(|| "-".to_string()),

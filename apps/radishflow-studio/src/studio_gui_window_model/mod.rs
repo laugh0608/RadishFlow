@@ -320,6 +320,8 @@ pub struct StudioGuiWindowPhaseResultModel {
     pub label: String,
     pub phase_fraction: f64,
     pub phase_fraction_text: String,
+    pub molar_flow_mol_s: f64,
+    pub molar_flow_text: String,
     pub composition_text: String,
     pub molar_enthalpy_j_per_mol: Option<f64>,
     pub molar_enthalpy_text: Option<String>,
@@ -429,6 +431,9 @@ pub struct StudioGuiWindowResultInspectorPhaseComparisonRowModel {
     pub base_fraction_text: String,
     pub compared_fraction_text: String,
     pub fraction_delta_text: String,
+    pub base_molar_flow_text: String,
+    pub compared_molar_flow_text: String,
+    pub molar_flow_delta_text: String,
     pub base_molar_enthalpy_text: String,
     pub compared_molar_enthalpy_text: String,
     pub molar_enthalpy_delta_text: String,
@@ -1477,7 +1482,7 @@ fn stream_result_model_from_ui(
 ) -> StudioGuiWindowStreamResultModel {
     let temperature_text = format!("{:.2} K", stream.temperature_k);
     let pressure_text = format!("{:.0} Pa", stream.pressure_pa);
-    let molar_flow_text = format!("{:.6} mol/s", stream.total_molar_flow_mol_s);
+    let molar_flow_text = format_molar_flow(stream.total_molar_flow_mol_s);
     let molar_enthalpy_j_per_mol = overall_molar_enthalpy_j_per_mol(&stream.phases);
     let molar_enthalpy_text = molar_enthalpy_j_per_mol.map(format_molar_enthalpy);
     let mut summary_rows = vec![
@@ -1530,17 +1535,22 @@ fn stream_result_model_from_ui(
         phase_rows: stream
             .phases
             .iter()
-            .map(|phase| StudioGuiWindowPhaseResultModel {
-                label: phase.label.clone(),
-                phase_fraction: phase.phase_fraction,
-                phase_fraction_text: format_fraction(phase.phase_fraction),
-                composition_text: format_phase_composition(&phase.composition),
-                molar_enthalpy_j_per_mol: phase.molar_enthalpy_j_per_mol,
-                molar_enthalpy_text: phase.molar_enthalpy_j_per_mol.map(format_molar_enthalpy),
+            .map(|phase| {
+                let molar_flow_mol_s = phase.phase_fraction * stream.total_molar_flow_mol_s;
+                StudioGuiWindowPhaseResultModel {
+                    label: phase.label.clone(),
+                    phase_fraction: phase.phase_fraction,
+                    phase_fraction_text: format_fraction(phase.phase_fraction),
+                    molar_flow_mol_s,
+                    molar_flow_text: format_molar_flow(molar_flow_mol_s),
+                    composition_text: format_phase_composition(&phase.composition),
+                    molar_enthalpy_j_per_mol: phase.molar_enthalpy_j_per_mol,
+                    molar_enthalpy_text: phase.molar_enthalpy_j_per_mol.map(format_molar_enthalpy),
+                }
             })
             .collect(),
         composition_text: format_composition(&stream.overall_mole_fractions),
-        phase_text: format_phases(&stream.phases),
+        phase_text: format_phases(&stream.phases, stream.total_molar_flow_mol_s),
     }
 }
 
@@ -1553,6 +1563,10 @@ fn overall_molar_enthalpy_j_per_mol(phases: &[rf_ui::PhaseStateSnapshot]) -> Opt
 
 fn format_molar_enthalpy(value: f64) -> String {
     format!("{value:.3} J/mol")
+}
+
+fn format_molar_flow(value: f64) -> String {
+    format!("{value:.6} mol/s")
 }
 
 fn format_composition(composition: &[(String, f64)]) -> String {
@@ -1570,7 +1584,7 @@ fn format_composition(composition: &[(String, f64)]) -> String {
     )
 }
 
-fn format_phases(phases: &[rf_ui::PhaseStateSnapshot]) -> String {
+fn format_phases(phases: &[rf_ui::PhaseStateSnapshot], total_molar_flow_mol_s: f64) -> String {
     if phases.is_empty() {
         return "phases: none".to_string();
     }
@@ -1579,7 +1593,15 @@ fn format_phases(phases: &[rf_ui::PhaseStateSnapshot]) -> String {
         "phases: {}",
         phases
             .iter()
-            .map(|phase| format!("{}={:.4}", phase.label, phase.phase_fraction))
+            .map(|phase| {
+                let molar_flow_mol_s = phase.phase_fraction * total_molar_flow_mol_s;
+                format!(
+                    "{}={} ({})",
+                    phase.label,
+                    format_fraction(phase.phase_fraction),
+                    format_molar_flow(molar_flow_mol_s)
+                )
+            })
             .collect::<Vec<_>>()
             .join(", ")
     )

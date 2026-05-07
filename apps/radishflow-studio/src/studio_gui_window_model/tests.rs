@@ -228,16 +228,8 @@ fn studio_gui_window_model_surfaces_workspace_results_and_diagnostics() {
             .any(|row| row.component_id == "component-a" && !row.fraction_text.is_empty())
     );
     assert!(
-        snapshot
-            .streams
-            .iter()
-            .flat_map(|stream| stream.phase_rows.iter())
-            .any(|row| row.phase_fraction_text == "1.0000"
-                && row.composition_text.contains("component-a=")
-                && row
-                    .molar_enthalpy_text
-                    .as_deref()
-                    .is_some_and(|value| value.ends_with(" J/mol")))
+        heated_stream.phase_text.contains("mol/s"),
+        "expected phase summary text to include phase molar flow"
     );
     let liquid_stream = snapshot
         .streams
@@ -250,6 +242,16 @@ fn studio_gui_window_model_surfaces_workspace_results_and_diagnostics() {
     );
     assert!(liquid_stream.summary_rows.iter().any(|row| {
         row.label == "H" && row.detail_label == "Molar enthalpy" && row.value.ends_with(" J/mol")
+    }));
+    assert!(liquid_stream.phase_rows.iter().any(|row| {
+        row.phase_fraction_text == "1.0000"
+            && (row.molar_flow_mol_s - liquid_stream.total_molar_flow_mol_s).abs() < 1e-9
+            && row.molar_flow_text == liquid_stream.molar_flow_text
+            && row.composition_text.contains("component-a=")
+            && row
+                .molar_enthalpy_text
+                .as_deref()
+                .is_some_and(|value| value.ends_with(" J/mol"))
     }));
     assert!(
         snapshot
@@ -623,18 +625,27 @@ fn studio_gui_window_model_surfaces_workspace_results_and_diagnostics() {
             && row.base_fraction_text == "1.0000"
             && row.compared_fraction_text == "1.0000"
             && row.fraction_delta_text == "+0.0000"
+            && row.base_molar_flow_text.ends_with(" mol/s")
+            && row.compared_molar_flow_text.ends_with(" mol/s")
+            && row.molar_flow_delta_text.ends_with(" mol/s")
             && row.base_molar_enthalpy_text.ends_with(" J/mol")
             && row.compared_molar_enthalpy_text.ends_with(" J/mol")
             && row.molar_enthalpy_delta_text.ends_with(" J/mol")
     }));
     assert!(phase_comparison.phase_rows.iter().any(|row| {
         row.phase_label == "liquid"
+            && row.base_molar_flow_text.ends_with(" mol/s")
+            && row.compared_molar_flow_text == "-"
+            && row.molar_flow_delta_text == "-"
             && row.base_molar_enthalpy_text.ends_with(" J/mol")
             && row.compared_molar_enthalpy_text == "-"
             && row.molar_enthalpy_delta_text == "-"
     }));
     assert!(phase_comparison.phase_rows.iter().any(|row| {
         row.phase_label == "vapor"
+            && row.base_molar_flow_text == "-"
+            && row.compared_molar_flow_text.ends_with(" mol/s")
+            && row.molar_flow_delta_text == "-"
             && row.base_molar_enthalpy_text == "-"
             && row.compared_molar_enthalpy_text.ends_with(" J/mol")
             && row.molar_enthalpy_delta_text == "-"
