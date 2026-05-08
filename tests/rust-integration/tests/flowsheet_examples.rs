@@ -2,7 +2,7 @@ use rf_flash::PlaceholderTpFlashSolver;
 use rf_rust_integration::{assert_close, build_binary_demo_provider};
 use rf_solver::{FlowsheetSolver, SequentialModularSolver, SolveStatus, SolverServices};
 use rf_store::parse_project_file_json;
-use rf_types::{ComponentId, PhaseLabel, UnitId};
+use rf_types::{ComponentId, PhaseEquilibriumRegion, PhaseLabel, StreamId, UnitId};
 
 fn solve_example(project_json: &str) -> rf_solver::SolveSnapshot {
     solve_example_result(project_json).expect("expected solve snapshot")
@@ -18,6 +18,35 @@ fn solve_example_result(project_json: &str) -> rf_types::RfResult<rf_solver::Sol
     let project = parse_project_file_json(project_json).expect("expected example project parse");
 
     SequentialModularSolver.solve(&services, &project.document.flowsheet)
+}
+
+fn assert_two_phase_window_spans_solver_stream(
+    snapshot: &rf_solver::SolveSnapshot,
+    stream_id: &str,
+) {
+    let stream = snapshot
+        .stream(&StreamId::new(stream_id))
+        .expect("expected stream");
+    let window = stream
+        .bubble_dew_window
+        .as_ref()
+        .expect("expected bubble/dew window");
+
+    assert_eq!(window.phase_region, PhaseEquilibriumRegion::TwoPhase);
+    assert!(window.dew_pressure_pa < stream.pressure_pa);
+    assert!(window.bubble_pressure_pa > stream.pressure_pa);
+    assert!(window.bubble_temperature_k < stream.temperature_k);
+    assert!(window.dew_temperature_k > stream.temperature_k);
+}
+
+fn assert_flash_consumes_stream(snapshot: &rf_solver::SolveSnapshot, stream_id: &str) {
+    let flash_step = snapshot.steps.last().expect("expected flash step");
+
+    assert_eq!(flash_step.unit_id, UnitId::new("flash-1"));
+    assert_eq!(
+        flash_step.consumed_stream_ids,
+        vec![StreamId::new(stream_id)]
+    );
 }
 
 #[test]
@@ -42,6 +71,8 @@ fn feed_mixer_flash_project_solves_end_to_end() {
         0.46,
         1e-12,
     );
+    assert_two_phase_window_spans_solver_stream(&snapshot, "stream-mix-out");
+    assert_flash_consumes_stream(&snapshot, "stream-mix-out");
 
     let liquid = snapshot
         .stream(&"stream-liquid".into())
@@ -90,6 +121,9 @@ fn feed_mixer_heater_flash_project_solves_end_to_end() {
         0.46,
         1e-12,
     );
+    assert_two_phase_window_spans_solver_stream(&snapshot, "stream-mix-out");
+    assert_two_phase_window_spans_solver_stream(&snapshot, "stream-heated");
+    assert_flash_consumes_stream(&snapshot, "stream-heated");
 }
 
 #[test]
@@ -115,6 +149,8 @@ fn feed_heater_flash_project_solves_end_to_end() {
         0.35,
         1e-12,
     );
+    assert_two_phase_window_spans_solver_stream(&snapshot, "stream-heated");
+    assert_flash_consumes_stream(&snapshot, "stream-heated");
 }
 
 #[test]
@@ -140,6 +176,8 @@ fn feed_cooler_flash_project_solves_end_to_end() {
         0.35,
         1e-12,
     );
+    assert_two_phase_window_spans_solver_stream(&snapshot, "stream-cooled");
+    assert_flash_consumes_stream(&snapshot, "stream-cooled");
 }
 
 #[test]
@@ -165,6 +203,8 @@ fn feed_valve_flash_project_solves_end_to_end() {
         0.35,
         1e-12,
     );
+    assert_two_phase_window_spans_solver_stream(&snapshot, "stream-throttled");
+    assert_flash_consumes_stream(&snapshot, "stream-throttled");
 }
 
 #[test]

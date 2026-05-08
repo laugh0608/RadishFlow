@@ -4,7 +4,7 @@ use radishflow_studio::{StudioSolveRequest, solve_workspace_with_property_packag
 use rf_rust_integration::build_binary_demo_package_provider;
 use rf_store::parse_project_file_json;
 use rf_thermo::InMemoryPropertyPackageProvider;
-use rf_types::{StreamId, UnitId};
+use rf_types::{PhaseEquilibriumRegion, StreamId, UnitId};
 use rf_ui::{
     AppState, DocumentMetadata, FlowsheetDocument, RunPanelRecoveryActionKind,
     RunPanelRecoveryMutation, RunStatus,
@@ -25,6 +25,30 @@ fn app_state_from_project(
         project.document.flowsheet,
         DocumentMetadata::new(document_id, title, timestamp(created_at_seconds)),
     ))
+}
+
+fn find_snapshot_stream<'a>(
+    snapshot: &'a rf_ui::SolveSnapshot,
+    stream_id: &str,
+) -> &'a rf_ui::StreamStateSnapshot {
+    snapshot
+        .streams
+        .iter()
+        .find(|stream| stream.stream_id == StreamId::new(stream_id))
+        .expect("expected snapshot stream")
+}
+
+fn assert_two_phase_window_spans_ui_stream(stream: &rf_ui::StreamStateSnapshot) {
+    let window = stream
+        .bubble_dew_window
+        .as_ref()
+        .expect("expected bubble/dew window");
+
+    assert_eq!(window.phase_region, PhaseEquilibriumRegion::TwoPhase);
+    assert!(window.dew_pressure_pa < stream.pressure_pa);
+    assert!(window.bubble_pressure_pa > stream.pressure_pa);
+    assert!(window.bubble_temperature_k < stream.temperature_k);
+    assert!(window.dew_temperature_k > stream.temperature_k);
 }
 
 #[test]
@@ -89,6 +113,83 @@ fn studio_solver_bridge_maps_project_snapshot_into_app_state_end_to_end() {
         StreamId::new("stream-heated")
     );
     assert_eq!(snapshot.steps[1].streams[0].label, "Heated Outlet");
+
+    let heated = find_snapshot_stream(snapshot, "stream-heated");
+    assert_two_phase_window_spans_ui_stream(heated);
+
+    let flash_step = snapshot
+        .steps
+        .iter()
+        .find(|step| step.unit_id == UnitId::new("flash-1"))
+        .expect("expected flash step");
+    assert_eq!(flash_step.consumed_streams.len(), 1);
+    assert_eq!(
+        flash_step.consumed_streams[0].stream_id,
+        StreamId::new("stream-heated")
+    );
+    assert_eq!(
+        flash_step.consumed_streams[0].bubble_dew_window,
+        heated.bubble_dew_window
+    );
+}
+
+#[test]
+fn studio_solver_bridge_preserves_intermediate_stream_windows_across_steps_end_to_end() {
+    let provider = build_binary_demo_package_provider();
+    let mut app_state = app_state_from_project(
+        include_str!("../../../examples/flowsheets/feed-mixer-heater-flash.rfproj.json"),
+        "doc-studio-intermediate-window-success",
+        "Studio Intermediate Window Success Demo",
+        15,
+    );
+
+    solve_workspace_with_property_package(
+        &mut app_state,
+        &provider,
+        &StudioSolveRequest::new("binary-hydrocarbon-lite-v1", "snapshot-intermediate-1", 1),
+    )
+    .expect("expected solve");
+
+    let snapshot = app_state
+        .workspace
+        .snapshot_history
+        .back()
+        .expect("expected stored snapshot");
+
+    let mixed = find_snapshot_stream(snapshot, "stream-mix-out");
+    let heated = find_snapshot_stream(snapshot, "stream-heated");
+    assert_two_phase_window_spans_ui_stream(mixed);
+    assert_two_phase_window_spans_ui_stream(heated);
+
+    let heater_step = snapshot
+        .steps
+        .iter()
+        .find(|step| step.unit_id == UnitId::new("heater-1"))
+        .expect("expected heater step");
+    assert_eq!(heater_step.consumed_streams.len(), 1);
+    assert_eq!(
+        heater_step.consumed_streams[0].stream_id,
+        StreamId::new("stream-mix-out")
+    );
+    assert_eq!(
+        heater_step.consumed_streams[0].bubble_dew_window,
+        mixed.bubble_dew_window
+    );
+
+    let flash_step = snapshot
+        .steps
+        .iter()
+        .find(|step| step.unit_id == UnitId::new("flash-1"))
+        .expect("expected flash step");
+    assert_eq!(flash_step.consumed_streams.len(), 1);
+    assert_eq!(
+        flash_step.consumed_streams[0].stream_id,
+        StreamId::new("stream-heated")
+    );
+    assert_eq!(
+        flash_step.consumed_streams[0].bubble_dew_window,
+        heated.bubble_dew_window
+    );
 }
 
 #[test]

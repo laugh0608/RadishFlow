@@ -12,6 +12,7 @@ use rf_rust_integration::{
     sample_auth_cache_index, timestamp, unique_temp_path, write_cached_package,
 };
 use rf_store::parse_project_file_json;
+use rf_types::{PhaseEquilibriumRegion, StreamId, UnitId};
 use rf_ui::{
     AppState, DocumentCommand, DocumentMetadata, EntitlementSnapshot, FlowsheetDocument,
     InspectorTarget, PropertyPackageManifest, PropertyPackageSource, RunPanelRecoveryActionKind,
@@ -54,6 +55,30 @@ fn stream_exists(app_state: &AppState, stream_id: &str) -> bool {
 
 fn port_target_stream_id(app_state: &AppState, unit_id: &str, port_name: &str) -> Option<String> {
     material_port_stream_id(app_state, unit_id, port_name)
+}
+
+fn find_snapshot_stream<'a>(
+    snapshot: &'a rf_ui::SolveSnapshot,
+    stream_id: &str,
+) -> &'a rf_ui::StreamStateSnapshot {
+    snapshot
+        .streams
+        .iter()
+        .find(|stream| stream.stream_id == StreamId::new(stream_id))
+        .expect("expected snapshot stream")
+}
+
+fn assert_two_phase_window_spans_ui_stream(stream: &rf_ui::StreamStateSnapshot) {
+    let window = stream
+        .bubble_dew_window
+        .as_ref()
+        .expect("expected bubble/dew window");
+
+    assert_eq!(window.phase_region, PhaseEquilibriumRegion::TwoPhase);
+    assert!(window.dew_pressure_pa < stream.pressure_pa);
+    assert!(window.bubble_pressure_pa > stream.pressure_pa);
+    assert!(window.bubble_temperature_k < stream.temperature_k);
+    assert!(window.dew_temperature_k > stream.temperature_k);
 }
 
 fn sample_entitlement_snapshot(package_ids: &[&str]) -> EntitlementSnapshot {
@@ -128,6 +153,29 @@ fn run_panel_primary_action_executes_workspace_run_end_to_end() {
     assert_eq!(
         app_state.workspace.run_panel.latest_snapshot_id.as_deref(),
         Some("doc-control-success-rev-0-seq-1")
+    );
+
+    let snapshot = app_state
+        .workspace
+        .snapshot_history
+        .back()
+        .expect("expected stored snapshot");
+    let heated = find_snapshot_stream(snapshot, "stream-heated");
+    assert_two_phase_window_spans_ui_stream(heated);
+
+    let flash_step = snapshot
+        .steps
+        .iter()
+        .find(|step| step.unit_id == UnitId::new("flash-1"))
+        .expect("expected flash step");
+    assert_eq!(flash_step.consumed_streams.len(), 1);
+    assert_eq!(
+        flash_step.consumed_streams[0].stream_id,
+        StreamId::new("stream-heated")
+    );
+    assert_eq!(
+        flash_step.consumed_streams[0].bubble_dew_window,
+        heated.bubble_dew_window
     );
 
     fs::remove_dir_all(cache_root).expect("expected temp dir cleanup");

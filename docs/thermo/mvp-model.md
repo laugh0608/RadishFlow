@@ -44,6 +44,7 @@
 - `rf-model::MaterialStreamState` 当前已为相平衡边界正式携带结构化 `bubble_dew_window`
 - `Flash Drum` liquid / vapor outlet，以及 `Mixer`、`Heater/Cooler`、`Valve` 的非 flash 中间流股 outlet，当前都已能在 unit operation 层直接物化并透传这组窗口；其中 flash outlet 会按各自 outlet composition 重算窗口，而不是直接复用 overall flash feed 的边界
 - `rf-solver::SolveSnapshot` 与 `rf-ui::SolveSnapshot` 当前已能稳定透传上述窗口，供 Result Inspector / Active Inspector 继续只读消费
+- `examples/` 与 `tests/rust-integration` 当前也已锁定非 flash 中间流股 `bubble_dew_window`、后续 flash inlet 和 workspace run path 之间的端到端一致性回归，避免 example / Studio / solver 快照链路各跑一套窗口判断
 - `apps/radishflow-studio` bootstrap 生成的本地 `binary-hydrocarbon-lite-v1` 样例包当前也已对齐同一套 Antoine 温度依赖假设，确保空白项目 / Studio run path 与 golden / integration 样例共享一致的 bubble/dew temperature 基线
 - `rf-thermo` 当前要求传入热力学状态和相态焓计算的 mole fractions 在有限、非负之外必须归一到 1；`rf-flash` 直接调用入口会继承该契约，unit operation 层仍负责先把文档流股组成归一化后再调用 flash
 
@@ -63,7 +64,7 @@
 当前数值主线已经从“补第一版算法”切换为“围绕已实现算法建立更稳定的闭环与回归基线”，优先顺序建议保持为：
 
 1. 继续补更稳定的黄金样例与边界条件测试
-2. 优先锁定非 flash 中间流股 `bubble_dew_window` 与后续 flash inlet / 现有 golden 样例之间的一致性回归
+2. 继续围绕已落地的非 flash 中间流股 / flash inlet 一致性回归补单相边界、接近 bubble/dew 边界和数值漂移监测
 3. 保持 Result Inspector / Active Inspector 继续只读消费已结构化的 `bubble_dew_window`，不要在 shell / UI 中分叉第二套相平衡语义
 4. 待 MVP 闭环更稳后，再评估更真实 EOS 或更复杂物性模型
 
