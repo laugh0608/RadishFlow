@@ -958,7 +958,10 @@ mod tests {
         PropertyPackageProvider, PropertyPackageSource, ThermoComponent, ThermoProvider,
         ThermoState, ThermoSystem,
     };
-    use rf_types::{ComponentId, PhaseLabel};
+    use rf_types::{
+        ComponentId, PhaseEquilibriumRegion, PhaseLabel, phase_equilibrium_region_from_pressure,
+        phase_equilibrium_region_from_temperature,
+    };
 
     fn assert_close(actual: f64, expected: f64, tolerance: f64) {
         let delta = (actual - expected).abs();
@@ -966,6 +969,20 @@ mod tests {
             delta <= tolerance,
             "expected {actual} to be within {tolerance} of {expected}, delta was {delta}"
         );
+    }
+
+    fn build_binary_hydrocarbon_lite_provider() -> PlaceholderThermoProvider {
+        let mut methane = ThermoComponent::new(ComponentId::new("methane"), "Methane");
+        methane.antoine = Some(AntoineCoefficients::new(8.987, 659.7, -16.7));
+        methane.liquid_heat_capacity_j_per_mol_k = Some(35.0);
+        methane.vapor_heat_capacity_j_per_mol_k = Some(36.5);
+
+        let mut ethane = ThermoComponent::new(ComponentId::new("ethane"), "Ethane");
+        ethane.antoine = Some(AntoineCoefficients::new(8.952, 699.7, -22.8));
+        ethane.liquid_heat_capacity_j_per_mol_k = Some(52.0);
+        ethane.vapor_heat_capacity_j_per_mol_k = Some(65.0);
+
+        PlaceholderThermoProvider::new(ThermoSystem::binary([methane, ethane]))
     }
 
     #[test]
@@ -1084,6 +1101,192 @@ mod tests {
 
         assert_close(temperatures.bubble_temperature_k, 236.635560732978, 1e-4);
         assert_close(temperatures.dew_temperature_k, 409.708580367858, 1e-4);
+    }
+
+    #[test]
+    fn binary_hydrocarbon_lite_pressure_boundary_perturbations_keep_window_consistent() {
+        struct Case {
+            label: &'static str,
+            pressure_pa: f64,
+            expected_region: PhaseEquilibriumRegion,
+            expected_bubble_temperature_k: f64,
+            expected_dew_temperature_k: f64,
+        }
+
+        const TEMPERATURE_K: f64 = 300.0;
+        const EXACT_BUBBLE_PRESSURE_PA: f64 = 650_919.9866646;
+        const EXACT_DEW_PRESSURE_PA: f64 = 645_407.066294851;
+
+        let provider = build_binary_hydrocarbon_lite_provider();
+        let cases = [
+            Case {
+                label: "bubble-boundary - 0.1 Pa",
+                pressure_pa: 650_919.8866645998,
+                expected_region: PhaseEquilibriumRegion::TwoPhase,
+                expected_bubble_temperature_k: 299.9999827261904,
+                expected_dew_temperature_k: 300.95260505288763,
+            },
+            Case {
+                label: "bubble-boundary + 0.1 Pa",
+                pressure_pa: 650_920.0866645997,
+                expected_region: PhaseEquilibriumRegion::LiquidOnly,
+                expected_bubble_temperature_k: 300.0000172736834,
+                expected_dew_temperature_k: 300.9526395843402,
+            },
+            Case {
+                label: "dew-boundary + 0.1 Pa",
+                pressure_pa: 645_407.1662948506,
+                expected_region: PhaseEquilibriumRegion::TwoPhase,
+                expected_bubble_temperature_k: 299.04693549691126,
+                expected_dew_temperature_k: 300.0000172943121,
+            },
+            Case {
+                label: "dew-boundary - 0.1 Pa",
+                pressure_pa: 645_406.9662948507,
+                expected_region: PhaseEquilibriumRegion::VaporOnly,
+                expected_bubble_temperature_k: 299.04690089204394,
+                expected_dew_temperature_k: 299.9999827057845,
+            },
+        ];
+
+        for case in cases {
+            let pressures = provider
+                .estimate_bubble_dew_pressures(&BubbleDewPressureInput::new(
+                    TEMPERATURE_K,
+                    vec![0.2, 0.8],
+                ))
+                .expect("expected pressure window");
+            let temperatures = provider
+                .estimate_bubble_dew_temperatures(&BubbleDewTemperatureInput::new(
+                    case.pressure_pa,
+                    vec![0.2, 0.8],
+                ))
+                .expect("expected temperature window");
+
+            assert_close(pressures.bubble_pressure_pa, EXACT_BUBBLE_PRESSURE_PA, 1e-6);
+            assert_close(pressures.dew_pressure_pa, EXACT_DEW_PRESSURE_PA, 1e-6);
+            assert_close(
+                temperatures.bubble_temperature_k,
+                case.expected_bubble_temperature_k,
+                1e-4,
+            );
+            assert_close(
+                temperatures.dew_temperature_k,
+                case.expected_dew_temperature_k,
+                1e-4,
+            );
+
+            let pressure_region = phase_equilibrium_region_from_pressure(
+                case.pressure_pa,
+                pressures.bubble_pressure_pa,
+                pressures.dew_pressure_pa,
+            );
+            let temperature_region = phase_equilibrium_region_from_temperature(
+                TEMPERATURE_K,
+                temperatures.bubble_temperature_k,
+                temperatures.dew_temperature_k,
+            );
+
+            assert_eq!(pressure_region, case.expected_region, "{}", case.label);
+            assert_eq!(temperature_region, case.expected_region, "{}", case.label);
+        }
+    }
+
+    #[test]
+    fn binary_hydrocarbon_lite_temperature_boundary_perturbations_keep_window_consistent() {
+        struct Case {
+            label: &'static str,
+            temperature_k: f64,
+            expected_region: PhaseEquilibriumRegion,
+            expected_bubble_pressure_pa: f64,
+            expected_dew_pressure_pa: f64,
+        }
+
+        const PRESSURE_PA: f64 = 650_000.0;
+        const EXACT_BUBBLE_TEMPERATURE_K: f64 = 299.8410613926369;
+        const EXACT_DEW_TEMPERATURE_K: f64 = 300.79375964816904;
+
+        let provider = build_binary_hydrocarbon_lite_provider();
+        let cases = [
+            Case {
+                label: "bubble-temperature - 0.001 K",
+                temperature_k: 299.8400613926369,
+                expected_region: PhaseEquilibriumRegion::LiquidOnly,
+                expected_bubble_pressure_pa: 649_994.2124871389,
+                expected_dew_pressure_pa: 644_482.3840045808,
+            },
+            Case {
+                label: "bubble-temperature + 0.001 K",
+                temperature_k: 299.8420613926369,
+                expected_region: PhaseEquilibriumRegion::TwoPhase,
+                expected_bubble_pressure_pa: 650_005.7875219034,
+                expected_dew_pressure_pa: 644_493.9453632077,
+            },
+            Case {
+                label: "dew-temperature - 0.001 K",
+                temperature_k: 300.79275964816907,
+                expected_region: PhaseEquilibriumRegion::TwoPhase,
+                expected_bubble_pressure_pa: 655_512.4890424822,
+                expected_dew_pressure_pa: 649_994.2097160413,
+            },
+            Case {
+                label: "dew-temperature + 0.001 K",
+                temperature_k: 300.794759648169,
+                expected_region: PhaseEquilibriumRegion::VaporOnly,
+                expected_bubble_pressure_pa: 655_524.0830284748,
+                expected_dew_pressure_pa: 650_005.7902937229,
+            },
+        ];
+
+        for case in cases {
+            let pressures = provider
+                .estimate_bubble_dew_pressures(&BubbleDewPressureInput::new(
+                    case.temperature_k,
+                    vec![0.2, 0.8],
+                ))
+                .expect("expected pressure window");
+            let temperatures = provider
+                .estimate_bubble_dew_temperatures(&BubbleDewTemperatureInput::new(
+                    PRESSURE_PA,
+                    vec![0.2, 0.8],
+                ))
+                .expect("expected temperature window");
+
+            assert_close(
+                pressures.bubble_pressure_pa,
+                case.expected_bubble_pressure_pa,
+                1e-6,
+            );
+            assert_close(
+                pressures.dew_pressure_pa,
+                case.expected_dew_pressure_pa,
+                1e-6,
+            );
+            assert_close(
+                temperatures.bubble_temperature_k,
+                EXACT_BUBBLE_TEMPERATURE_K,
+                1e-4,
+            );
+            assert_close(
+                temperatures.dew_temperature_k,
+                EXACT_DEW_TEMPERATURE_K,
+                1e-4,
+            );
+
+            let pressure_region = phase_equilibrium_region_from_pressure(
+                PRESSURE_PA,
+                pressures.bubble_pressure_pa,
+                pressures.dew_pressure_pa,
+            );
+            let temperature_region = phase_equilibrium_region_from_temperature(
+                case.temperature_k,
+                temperatures.bubble_temperature_k,
+                temperatures.dew_temperature_k,
+            );
+
+            assert_eq!(pressure_region, case.expected_region, "{}", case.label);
+            assert_eq!(temperature_region, case.expected_region, "{}", case.label);
+        }
     }
 
     #[test]
