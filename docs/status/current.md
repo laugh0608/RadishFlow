@@ -24,7 +24,7 @@
 - `rf-thermo` / `rf-flash` 已补 MVP 常热容显热焓值；`Flash Drum` outlet 会传递 liquid / vapor / overall molar enthalpy。
 - `rf-thermo` 已补基于当前 Antoine / Raoult MVP 假设的 bubble/dew pressure 边界估算，以及 fixed-pressure bubble/dew temperature 边界估算；`rf-flash` 的 `TP Flash` 结果现在会显式物化 `liquid-only / two-phase / vapor-only` phase region 与对应 bubble/dew pressure / temperature 窗口，并已补齐 golden / focused tests。
 - `tests/thermo-golden` 与 `tests/flash-golden` 现在都已覆盖 `liquid-only / two-phase / vapor-only` 三类正式金样；`rf-flash` 与 `rf-types` focused tests 也已锁定 exact bubble/dew boundary 和 tolerance 内外的 phase region 语义，避免边界漂移被集成层才发现。
-- `tests/thermo-golden` 与 `tests/flash-golden` 已继续补齐 near-boundary `±ΔP / ±ΔT` 小扰动金样；`rf-thermo` 与 `rf-flash` focused tests 也已锁定 bubble/dew 两侧跨 boundary 前后的 phase region 与 `bubble_dew_window` 稳定行为，避免边界附近漂移只在集成层或 UI 审阅时才暴露。
+- `tests/thermo-golden` 与 `tests/flash-golden` 已继续补齐 near-boundary `±ΔP / ±ΔT` 小扰动金样，并从 `binary-hydrocarbon-lite-v1` 扩到现有 synthetic `liquid-only / vapor-only` 样例；`rf-thermo` 与 `rf-flash` focused tests 也已锁定 bubble/dew 两侧跨 boundary 前后的 phase region 与 `bubble_dew_window` 稳定行为，避免边界附近漂移只在集成层或 UI 审阅时才暴露。
 - `rf-model::MaterialStreamState`、`rf-solver` 与 `rf-ui::SolveSnapshot` 现在已为 flash 产物流股正式透传结构化 `bubble_dew_window`；`Flash Drum` liquid / vapor outlet 会按各自 outlet 组成重算并携带这组窗口，而不是复用 overall flash feed 的边界。
 - `Mixer`、`Heater/Cooler` 与 `Valve` 的 outlet 结果现在也会在 unit operation 层直接物化同一组结构化 `bubble_dew_window`，并通过 `rf-solver -> rf-ui::SolveSnapshot -> Result Inspector / Active Inspector` 只读透传；这层继续只消费正式 thermo DTO，不在 shell / UI 中重算或分叉第二套相平衡语义。
 - `examples/`、`tests/rust-integration` 与 workspace run path 现在已补齐非 flash 中间流股 `bubble_dew_window` 和后续 flash inlet 的端到端一致性回归；`flowsheet_examples`、`studio_solver_bridge` 与 `studio_workspace_control` 都会锁定同一条正式快照链路，不在集成层分叉第二套窗口判断。
@@ -42,7 +42,7 @@
 
 ## 下一步建议
 
-1. 若继续推进 `rf-thermo` / `rf-flash`，优先把当前 `binary-hydrocarbon-lite-v1` 的 near-boundary `±ΔP / ±ΔT` 漂移监测扩到更多 overall composition / synthetic cases，继续避免边界漂移只在集成层才暴露。
+1. 若继续推进 `rf-thermo` / `rf-flash`，优先把当前 near-boundary `±ΔP / ±ΔT` 漂移监测从现有二元基线与 synthetic 单相样例继续扩到更多 overall composition，尤其补新的 two-phase composition cases，继续避免边界漂移只在集成层才暴露。
 2. 若继续推进 `rf-thermo` / `rf-flash`，保持现有非 flash 中间流股到 flash inlet 的端到端一致性回归和当前 golden 目录多样例遍历为正式基线，不额外分叉第二套窗口估算或判断语义。
 3. 若继续推进 Stream Inspector，优先收紧 flowsheet component catalog / presentation 边界；不要提前做完整组件库、项目级组件删除迁移或隐式差值补偿。
 4. 若推进 Studio，优先继续消费已结构化 DTO 和既有 command surface，不新增第二套 shell 私有状态机。

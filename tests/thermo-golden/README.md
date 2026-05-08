@@ -4,14 +4,9 @@
 
 当前样例：
 
-- `binary-hydrocarbon-lite-v1-300k-650kpa.json`
-- `binary-hydrocarbon-lite-v1-300k-bubble-pressure-minus-0.1pa.json`
-- `binary-hydrocarbon-lite-v1-300k-bubble-pressure-plus-0.1pa.json`
-- `binary-hydrocarbon-lite-v1-300k-dew-pressure-minus-0.1pa.json`
-- `binary-hydrocarbon-lite-v1-300k-dew-pressure-plus-0.1pa.json`
-- `binary-hydrocarbon-lite-v1-650kpa-bubble-temperature-minus-0.001k.json`
-- `binary-hydrocarbon-lite-v1-650kpa-bubble-temperature-plus-0.001k.json`
-- `binary-hydrocarbon-lite-v1-650kpa-dew-temperature-minus-0.001k.json`
-- `binary-hydrocarbon-lite-v1-650kpa-dew-temperature-plus-0.001k.json`
-- `binary-hydrocarbon-synthetic-liquid-only-300k-100kpa.json`
-- `binary-hydrocarbon-synthetic-vapor-only-300k-100kpa.json`
+- `binary-hydrocarbon-lite-v1-*.json`
+  覆盖当前 two-phase 基线与 near-boundary `±ΔP / ±ΔT` 漂移监测。
+- `binary-hydrocarbon-synthetic-liquid-only-*.json`
+  覆盖 synthetic liquid-only 基线与跨 bubble/dew 边界的 near-boundary 漂移监测。
+- `binary-hydrocarbon-synthetic-vapor-only-*.json`
+  覆盖 synthetic vapor-only 基线与跨 bubble/dew 边界的 near-boundary 漂移监测。
