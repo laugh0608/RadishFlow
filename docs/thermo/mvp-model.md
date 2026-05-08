@@ -46,7 +46,7 @@
 - `rf-solver::SolveSnapshot` 与 `rf-ui::SolveSnapshot` 当前已能稳定透传上述窗口，供 Result Inspector / Active Inspector 继续只读消费
 - `examples/` 与 `tests/rust-integration` 当前也已锁定非 flash 中间流股 `bubble_dew_window`、后续 flash inlet 和 workspace run path 之间的端到端一致性回归，避免 example / Studio / solver 快照链路各跑一套窗口判断
 - `tests/thermo-golden` 与 `tests/flash-golden` 当前都已从单一样例扩到覆盖 `liquid-only / two-phase / vapor-only` 三类正式金样；`rf-flash` 与 `rf-types` focused tests 也已锁定 exact bubble/dew boundary 和 tolerance 内外的 phase region 判定
-- `tests/thermo-golden` 与 `tests/flash-golden` 当前也已补齐 near-boundary `±ΔP / ±ΔT` 小扰动金样，并从 `binary-hydrocarbon-lite-v1` 扩到现有 synthetic `liquid-only / vapor-only` 样例；`rf-thermo` 与 `rf-flash` focused tests 会继续锁定 bubble/dew 两侧跨 boundary 前后的 phase region 与 `bubble_dew_window` 稳定行为
+- `tests/thermo-golden` 与 `tests/flash-golden` 当前也已补齐 near-boundary `±ΔP / ±ΔT` 小扰动金样，并把 `binary-hydrocarbon-lite-v1` 的 two-phase 组成从单一 `z=[0.2, 0.8]` 扩到靠 bubble / dew 两侧的 `z=[0.195, 0.805]` 与 `z=[0.23, 0.77]`；再加上现有 synthetic `liquid-only / vapor-only` 样例，`rf-thermo` 与 `rf-flash` focused tests 会继续锁定 bubble/dew 两侧跨 boundary 前后的 phase region 与 `bubble_dew_window` 稳定行为
 - `apps/radishflow-studio` bootstrap 生成的本地 `binary-hydrocarbon-lite-v1` 样例包当前也已对齐同一套 Antoine 温度依赖假设，确保空白项目 / Studio run path 与 golden / integration 样例共享一致的 bubble/dew temperature 基线
 - `rf-thermo` 当前要求传入热力学状态和相态焓计算的 mole fractions 在有限、非负之外必须归一到 1；`rf-flash` 直接调用入口会继承该契约，unit operation 层仍负责先把文档流股组成归一化后再调用 flash
 
@@ -65,8 +65,8 @@
 
 当前数值主线已经从“补第一版算法”切换为“围绕已实现算法建立更稳定的闭环与回归基线”，优先顺序建议保持为：
 
-1. 把当前 near-boundary `±ΔP / ±ΔT` 漂移监测从现有二元基线与 synthetic 单相样例继续扩到更多 overall composition，尤其补新的 two-phase composition cases，避免边界样例仍只集中在少量固定组成
-2. 继续围绕已落地的非 flash 中间流股 / flash inlet 一致性回归补更广的单相边界和数值漂移监测
+1. 先把当前已覆盖三组 two-phase overall composition 与 synthetic 单相样例的 near-boundary `±ΔP / ±ΔT` 漂移监测前推到更广的端到端链路，尤其补到非 flash 中间流股 / flash inlet 一致性回归
+2. 若继续补数值样例，优先围绕当前二元 MVP 假设继续扩更广的 boundary drift / tolerance-focused cases，而不是回退到只看单一组成
 3. 保持 Result Inspector / Active Inspector 继续只读消费已结构化的 `bubble_dew_window`，不要在 shell / UI 中分叉第二套相平衡语义
 4. 待 MVP 闭环更稳后，再评估更真实 EOS 或更复杂物性模型
 

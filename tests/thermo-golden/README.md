@@ -5,7 +5,7 @@
 当前样例：
 
 - `binary-hydrocarbon-lite-v1-*.json`
-  覆盖当前 two-phase 基线与 near-boundary `±ΔP / ±ΔT` 漂移监测。
+  覆盖当前 three-composition two-phase 基线（`z=[0.195, 0.805] / [0.2, 0.8] / [0.23, 0.77]`）与 near-boundary `±ΔP / ±ΔT` 漂移监测。
 - `binary-hydrocarbon-synthetic-liquid-only-*.json`
   覆盖 synthetic liquid-only 基线与跨 bubble/dew 边界的 near-boundary 漂移监测。
 - `binary-hydrocarbon-synthetic-vapor-only-*.json`

@@ -1137,6 +1137,223 @@ mod tests {
         }
     }
 
+    struct BinaryHydrocarbonLiteBoundaryScenario {
+        overall_mole_fractions: [f64; 2],
+        exact_bubble_pressure_pa: f64,
+        exact_dew_pressure_pa: f64,
+        exact_bubble_temperature_k: f64,
+        exact_dew_temperature_k: f64,
+        pressure_cases: Vec<ThermoPressureBoundaryPerturbationCase>,
+        temperature_cases: Vec<ThermoTemperatureBoundaryPerturbationCase>,
+    }
+
+    fn binary_hydrocarbon_lite_two_phase_boundary_scenarios()
+    -> Vec<BinaryHydrocarbonLiteBoundaryScenario> {
+        vec![
+            BinaryHydrocarbonLiteBoundaryScenario {
+                overall_mole_fractions: [0.195, 0.805],
+                exact_bubble_pressure_pa: 650_117.7234978296,
+                exact_dew_pressure_pa: 644_714.832888367,
+                exact_bubble_temperature_k: 299.9796507687297,
+                exact_dew_temperature_k: 300.9138867482865,
+                pressure_cases: vec![
+                    ThermoPressureBoundaryPerturbationCase {
+                        label: "z=[0.195, 0.805] bubble-boundary - 0.1 Pa",
+                        pressure_pa: 650_117.6234978297,
+                        expected_region: PhaseEquilibriumRegion::TwoPhase,
+                        expected_bubble_temperature_k: 299.99998271468905,
+                        expected_dew_temperature_k: 300.9342091831396,
+                    },
+                    ThermoPressureBoundaryPerturbationCase {
+                        label: "z=[0.195, 0.805] bubble-boundary + 0.1 Pa",
+                        pressure_pa: 650_117.8234978296,
+                        expected_region: PhaseEquilibriumRegion::LiquidOnly,
+                        expected_bubble_temperature_k: 300.00001728531026,
+                        expected_dew_temperature_k: 300.9342437375931,
+                    },
+                    ThermoPressureBoundaryPerturbationCase {
+                        label: "z=[0.195, 0.805] dew-boundary + 0.1 Pa",
+                        pressure_pa: 644_714.932888367,
+                        expected_region: PhaseEquilibriumRegion::TwoPhase,
+                        expected_bubble_temperature_k: 299.06534905353476,
+                        expected_dew_temperature_k: 300.00001730535257,
+                    },
+                    ThermoPressureBoundaryPerturbationCase {
+                        label: "z=[0.195, 0.805] dew-boundary - 0.1 Pa",
+                        pressure_pa: 644_714.732888367,
+                        expected_region: PhaseEquilibriumRegion::VaporOnly,
+                        expected_bubble_temperature_k: 299.0653144262868,
+                        expected_dew_temperature_k: 299.99998269464675,
+                    },
+                ],
+                temperature_cases: vec![
+                    ThermoTemperatureBoundaryPerturbationCase {
+                        label: "z=[0.195, 0.805] bubble-temperature - 0.001 K",
+                        temperature_k: 299.9786507687297,
+                        expected_region: PhaseEquilibriumRegion::LiquidOnly,
+                        expected_bubble_pressure_pa: 649_994.2149500577,
+                        expected_dew_pressure_pa: 644_591.4674174292,
+                    },
+                    ThermoTemperatureBoundaryPerturbationCase {
+                        label: "z=[0.195, 0.805] bubble-temperature + 0.001 K",
+                        temperature_k: 299.9806507687297,
+                        expected_region: PhaseEquilibriumRegion::TwoPhase,
+                        expected_bubble_pressure_pa: 650_005.7850599772,
+                        expected_dew_pressure_pa: 644_603.0241212061,
+                    },
+                    ThermoTemperatureBoundaryPerturbationCase {
+                        label: "z=[0.195, 0.805] dew-temperature - 0.001 K",
+                        temperature_k: 300.9128867482865,
+                        expected_region: PhaseEquilibriumRegion::TwoPhase,
+                        expected_bubble_pressure_pa: 655_403.161968214,
+                        expected_dew_pressure_pa: 649_994.2122419368,
+                    },
+                    ThermoTemperatureBoundaryPerturbationCase {
+                        label: "z=[0.195, 0.805] dew-temperature + 0.001 K",
+                        temperature_k: 300.91488674828645,
+                        expected_region: PhaseEquilibriumRegion::VaporOnly,
+                        expected_bubble_pressure_pa: 655_414.7506432333,
+                        expected_dew_pressure_pa: 650_005.7877680402,
+                    },
+                ],
+            },
+            BinaryHydrocarbonLiteBoundaryScenario {
+                overall_mole_fractions: [0.2, 0.8],
+                exact_bubble_pressure_pa: 650_919.9866646,
+                exact_dew_pressure_pa: 645_407.066294851,
+                exact_bubble_temperature_k: 299.8410613926369,
+                exact_dew_temperature_k: 300.79375964816904,
+                pressure_cases: vec![
+                    ThermoPressureBoundaryPerturbationCase {
+                        label: "z=[0.2, 0.8] bubble-boundary - 0.1 Pa",
+                        pressure_pa: 650_919.8866645998,
+                        expected_region: PhaseEquilibriumRegion::TwoPhase,
+                        expected_bubble_temperature_k: 299.9999827261904,
+                        expected_dew_temperature_k: 300.95260505288763,
+                    },
+                    ThermoPressureBoundaryPerturbationCase {
+                        label: "z=[0.2, 0.8] bubble-boundary + 0.1 Pa",
+                        pressure_pa: 650_920.0866645997,
+                        expected_region: PhaseEquilibriumRegion::LiquidOnly,
+                        expected_bubble_temperature_k: 300.0000172736834,
+                        expected_dew_temperature_k: 300.9526395843402,
+                    },
+                    ThermoPressureBoundaryPerturbationCase {
+                        label: "z=[0.2, 0.8] dew-boundary + 0.1 Pa",
+                        pressure_pa: 645_407.1662948506,
+                        expected_region: PhaseEquilibriumRegion::TwoPhase,
+                        expected_bubble_temperature_k: 299.04693549691126,
+                        expected_dew_temperature_k: 300.0000172943121,
+                    },
+                    ThermoPressureBoundaryPerturbationCase {
+                        label: "z=[0.2, 0.8] dew-boundary - 0.1 Pa",
+                        pressure_pa: 645_406.9662948507,
+                        expected_region: PhaseEquilibriumRegion::VaporOnly,
+                        expected_bubble_temperature_k: 299.04690089204394,
+                        expected_dew_temperature_k: 299.9999827057845,
+                    },
+                ],
+                temperature_cases: vec![
+                    ThermoTemperatureBoundaryPerturbationCase {
+                        label: "z=[0.2, 0.8] bubble-temperature - 0.001 K",
+                        temperature_k: 299.8400613926369,
+                        expected_region: PhaseEquilibriumRegion::LiquidOnly,
+                        expected_bubble_pressure_pa: 649_994.2124871389,
+                        expected_dew_pressure_pa: 644_482.3840045808,
+                    },
+                    ThermoTemperatureBoundaryPerturbationCase {
+                        label: "z=[0.2, 0.8] bubble-temperature + 0.001 K",
+                        temperature_k: 299.8420613926369,
+                        expected_region: PhaseEquilibriumRegion::TwoPhase,
+                        expected_bubble_pressure_pa: 650_005.7875219034,
+                        expected_dew_pressure_pa: 644_493.9453632077,
+                    },
+                    ThermoTemperatureBoundaryPerturbationCase {
+                        label: "z=[0.2, 0.8] dew-temperature - 0.001 K",
+                        temperature_k: 300.79275964816907,
+                        expected_region: PhaseEquilibriumRegion::TwoPhase,
+                        expected_bubble_pressure_pa: 655_512.4890424822,
+                        expected_dew_pressure_pa: 649_994.2097160413,
+                    },
+                    ThermoTemperatureBoundaryPerturbationCase {
+                        label: "z=[0.2, 0.8] dew-temperature + 0.001 K",
+                        temperature_k: 300.794759648169,
+                        expected_region: PhaseEquilibriumRegion::VaporOnly,
+                        expected_bubble_pressure_pa: 655_524.0830284748,
+                        expected_dew_pressure_pa: 650_005.7902937229,
+                    },
+                ],
+            },
+            BinaryHydrocarbonLiteBoundaryScenario {
+                overall_mole_fractions: [0.23, 0.77],
+                exact_bubble_pressure_pa: 655_733.5656652204,
+                exact_dew_pressure_pa: 649_591.885824445,
+                exact_bubble_temperature_k: 299.01269611750297,
+                exact_dew_temperature_k: 300.07030238460186,
+                pressure_cases: vec![
+                    ThermoPressureBoundaryPerturbationCase {
+                        label: "z=[0.23, 0.77] bubble-boundary - 0.1 Pa",
+                        pressure_pa: 655_733.4656652204,
+                        expected_region: PhaseEquilibriumRegion::TwoPhase,
+                        expected_bubble_temperature_k: 299.99998279487806,
+                        expected_dew_temperature_k: 301.05706034196055,
+                    },
+                    ThermoPressureBoundaryPerturbationCase {
+                        label: "z=[0.23, 0.77] bubble-boundary + 0.1 Pa",
+                        pressure_pa: 655_733.6656652204,
+                        expected_region: PhaseEquilibriumRegion::LiquidOnly,
+                        expected_bubble_temperature_k: 300.00001720512125,
+                        expected_dew_temperature_k: 301.0570947339811,
+                    },
+                    ThermoPressureBoundaryPerturbationCase {
+                        label: "z=[0.23, 0.77] dew-boundary + 0.1 Pa",
+                        pressure_pa: 649_591.985824445,
+                        expected_region: PhaseEquilibriumRegion::TwoPhase,
+                        expected_bubble_temperature_k: 298.9423728489804,
+                        expected_dew_temperature_k: 300.0000172272056,
+                    },
+                    ThermoPressureBoundaryPerturbationCase {
+                        label: "z=[0.23, 0.77] dew-boundary - 0.1 Pa",
+                        pressure_pa: 649_591.7858244451,
+                        expected_region: PhaseEquilibriumRegion::VaporOnly,
+                        expected_bubble_temperature_k: 298.9423383758716,
+                        expected_dew_temperature_k: 299.9999827727937,
+                    },
+                ],
+                temperature_cases: vec![
+                    ThermoTemperatureBoundaryPerturbationCase {
+                        label: "z=[0.23, 0.77] bubble-temperature - 0.001 K",
+                        temperature_k: 299.011696117503,
+                        expected_region: PhaseEquilibriumRegion::LiquidOnly,
+                        expected_bubble_pressure_pa: 649_994.1976695253,
+                        expected_dew_pressure_pa: 643_859.9583286671,
+                    },
+                    ThermoTemperatureBoundaryPerturbationCase {
+                        label: "z=[0.23, 0.77] bubble-temperature + 0.001 K",
+                        temperature_k: 299.01369611750295,
+                        expected_region: PhaseEquilibriumRegion::TwoPhase,
+                        expected_bubble_pressure_pa: 650_005.8023405897,
+                        expected_dew_pressure_pa: 643_871.5477872168,
+                    },
+                    ThermoTemperatureBoundaryPerturbationCase {
+                        label: "z=[0.23, 0.77] dew-temperature - 0.001 K",
+                        temperature_k: 300.0693023846019,
+                        expected_region: PhaseEquilibriumRegion::TwoPhase,
+                        expected_bubble_pressure_pa: 656_136.3903625292,
+                        expected_dew_pressure_pa: 649_994.1945257499,
+                    },
+                    ThermoTemperatureBoundaryPerturbationCase {
+                        label: "z=[0.23, 0.77] dew-temperature + 0.001 K",
+                        temperature_k: 300.07130238460184,
+                        expected_region: PhaseEquilibriumRegion::VaporOnly,
+                        expected_bubble_pressure_pa: 656_148.016201093,
+                        expected_dew_pressure_pa: 650_005.8054843098,
+                    },
+                ],
+            },
+        ]
+    }
+
     #[test]
     fn antoine_coefficients_estimate_saturation_pressure_in_pascal() {
         let coefficients = AntoineCoefficients::new(5.0, 1_200.0, 0.0);
@@ -1256,89 +1473,34 @@ mod tests {
     }
 
     #[test]
-    fn binary_hydrocarbon_lite_pressure_boundary_perturbations_keep_window_consistent() {
+    fn binary_hydrocarbon_lite_two_phase_pressure_boundary_perturbations_keep_window_consistent() {
         let provider = build_binary_hydrocarbon_lite_provider();
-        let cases = [
-            ThermoPressureBoundaryPerturbationCase {
-                label: "bubble-boundary - 0.1 Pa",
-                pressure_pa: 650_919.8866645998,
-                expected_region: PhaseEquilibriumRegion::TwoPhase,
-                expected_bubble_temperature_k: 299.9999827261904,
-                expected_dew_temperature_k: 300.95260505288763,
-            },
-            ThermoPressureBoundaryPerturbationCase {
-                label: "bubble-boundary + 0.1 Pa",
-                pressure_pa: 650_920.0866645997,
-                expected_region: PhaseEquilibriumRegion::LiquidOnly,
-                expected_bubble_temperature_k: 300.0000172736834,
-                expected_dew_temperature_k: 300.9526395843402,
-            },
-            ThermoPressureBoundaryPerturbationCase {
-                label: "dew-boundary + 0.1 Pa",
-                pressure_pa: 645_407.1662948506,
-                expected_region: PhaseEquilibriumRegion::TwoPhase,
-                expected_bubble_temperature_k: 299.04693549691126,
-                expected_dew_temperature_k: 300.0000172943121,
-            },
-            ThermoPressureBoundaryPerturbationCase {
-                label: "dew-boundary - 0.1 Pa",
-                pressure_pa: 645_406.9662948507,
-                expected_region: PhaseEquilibriumRegion::VaporOnly,
-                expected_bubble_temperature_k: 299.04690089204394,
-                expected_dew_temperature_k: 299.9999827057845,
-            },
-        ];
-        assert_pressure_boundary_perturbations_keep_window_consistent(
-            &provider,
-            &[0.2, 0.8],
-            300.0,
-            650_919.9866646,
-            645_407.066294851,
-            &cases,
-        );
+        for scenario in binary_hydrocarbon_lite_two_phase_boundary_scenarios() {
+            assert_pressure_boundary_perturbations_keep_window_consistent(
+                &provider,
+                &scenario.overall_mole_fractions,
+                300.0,
+                scenario.exact_bubble_pressure_pa,
+                scenario.exact_dew_pressure_pa,
+                &scenario.pressure_cases,
+            );
+        }
     }
 
     #[test]
-    fn binary_hydrocarbon_lite_temperature_boundary_perturbations_keep_window_consistent() {
+    fn binary_hydrocarbon_lite_two_phase_temperature_boundary_perturbations_keep_window_consistent()
+    {
         let provider = build_binary_hydrocarbon_lite_provider();
-        let cases = [
-            ThermoTemperatureBoundaryPerturbationCase {
-                label: "bubble-temperature - 0.001 K",
-                temperature_k: 299.8400613926369,
-                expected_region: PhaseEquilibriumRegion::LiquidOnly,
-                expected_bubble_pressure_pa: 649_994.2124871389,
-                expected_dew_pressure_pa: 644_482.3840045808,
-            },
-            ThermoTemperatureBoundaryPerturbationCase {
-                label: "bubble-temperature + 0.001 K",
-                temperature_k: 299.8420613926369,
-                expected_region: PhaseEquilibriumRegion::TwoPhase,
-                expected_bubble_pressure_pa: 650_005.7875219034,
-                expected_dew_pressure_pa: 644_493.9453632077,
-            },
-            ThermoTemperatureBoundaryPerturbationCase {
-                label: "dew-temperature - 0.001 K",
-                temperature_k: 300.79275964816907,
-                expected_region: PhaseEquilibriumRegion::TwoPhase,
-                expected_bubble_pressure_pa: 655_512.4890424822,
-                expected_dew_pressure_pa: 649_994.2097160413,
-            },
-            ThermoTemperatureBoundaryPerturbationCase {
-                label: "dew-temperature + 0.001 K",
-                temperature_k: 300.794759648169,
-                expected_region: PhaseEquilibriumRegion::VaporOnly,
-                expected_bubble_pressure_pa: 655_524.0830284748,
-                expected_dew_pressure_pa: 650_005.7902937229,
-            },
-        ];
-        assert_temperature_boundary_perturbations_keep_window_consistent(
-            &provider,
-            &[0.2, 0.8],
-            650_000.0,
-            299.8410613926369,
-            300.79375964816904,
-            &cases,
-        );
+        for scenario in binary_hydrocarbon_lite_two_phase_boundary_scenarios() {
+            assert_temperature_boundary_perturbations_keep_window_consistent(
+                &provider,
+                &scenario.overall_mole_fractions,
+                650_000.0,
+                scenario.exact_bubble_temperature_k,
+                scenario.exact_dew_temperature_k,
+                &scenario.temperature_cases,
+            );
+        }
     }
 
     #[test]
