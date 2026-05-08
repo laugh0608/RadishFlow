@@ -1385,12 +1385,7 @@ fn diagnostic_model_from_ui(
         .collect();
     let related_stream_results = streams
         .iter()
-        .filter(|stream| {
-            diagnostic
-                .related_stream_ids
-                .iter()
-                .any(|stream_id| *stream_id == stream.stream_id)
-        })
+        .filter(|stream| diagnostic.related_stream_ids.contains(&stream.stream_id))
         .map(stream_result_reference_model_from_ui)
         .collect();
 

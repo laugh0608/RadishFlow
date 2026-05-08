@@ -500,7 +500,7 @@ impl UnitOperation for Mixer {
 
     fn run(
         &self,
-        _services: &UnitOperationServices<'_>,
+        services: &UnitOperationServices<'_>,
         inputs: &UnitOperationInputs,
     ) -> RfResult<UnitOperationOutputs> {
         inputs.validate_against_spec(self.spec())?;
@@ -540,6 +540,8 @@ impl UnitOperation for Mixer {
             1.0,
             overall_mole_fractions,
         ));
+        let thermo = services.require_thermo()?;
+        attach_bubble_dew_window(thermo, &mut outlet_stream)?;
 
         let mut outputs = UnitOperationOutputs::new();
         outputs.insert_material_stream(MIXER_OUTLET_PORT, outlet_stream);
@@ -575,7 +577,7 @@ impl UnitOperation for HeaterCooler {
 
     fn run(
         &self,
-        _services: &UnitOperationServices<'_>,
+        services: &UnitOperationServices<'_>,
         inputs: &UnitOperationInputs,
     ) -> RfResult<UnitOperationOutputs> {
         inputs.validate_against_spec(self.spec())?;
@@ -602,6 +604,8 @@ impl UnitOperation for HeaterCooler {
                 overall_mole_fractions,
             ));
         }
+        let thermo = services.require_thermo()?;
+        attach_bubble_dew_window(thermo, &mut outlet_stream)?;
 
         let mut outputs = UnitOperationOutputs::new();
         outputs.insert_material_stream(HEATER_COOLER_OUTLET_PORT, outlet_stream);
@@ -627,7 +631,7 @@ impl UnitOperation for Valve {
 
     fn run(
         &self,
-        _services: &UnitOperationServices<'_>,
+        services: &UnitOperationServices<'_>,
         inputs: &UnitOperationInputs,
     ) -> RfResult<UnitOperationOutputs> {
         inputs.validate_against_spec(self.spec())?;
@@ -661,6 +665,8 @@ impl UnitOperation for Valve {
                 overall_mole_fractions,
             ));
         }
+        let thermo = services.require_thermo()?;
+        attach_bubble_dew_window(thermo, &mut outlet_stream)?;
 
         let mut outputs = UnitOperationOutputs::new();
         outputs.insert_material_stream(HEATER_COOLER_OUTLET_PORT, outlet_stream);
@@ -1112,6 +1118,7 @@ mod tests {
 
     #[test]
     fn mixer_combines_two_material_inlets_into_one_overall_stream() {
+        let provider = build_provider([2.0, 0.5], 100_000.0);
         let inlet_a = build_stream(
             "stream-a",
             "Feed A",
@@ -1133,8 +1140,12 @@ mod tests {
         let inputs = UnitOperationInputs::new()
             .with_material_stream(MIXER_INLET_A_PORT, inlet_a)
             .with_material_stream(MIXER_INLET_B_PORT, inlet_b);
+        let services = UnitOperationServices {
+            thermo: Some(&provider),
+            flash_solver: None,
+        };
         let outputs = mixer
-            .run(&UnitOperationServices::default(), &inputs)
+            .run(&services, &inputs)
             .expect("expected mixer output");
 
         let outlet = outputs
@@ -1154,17 +1165,27 @@ mod tests {
         );
         assert_eq!(outlet.phases.len(), 1);
         assert_eq!(outlet.phases[0].label, PhaseLabel::Overall);
+        let window = outlet
+            .bubble_dew_window
+            .as_ref()
+            .expect("expected mixer outlet bubble/dew window");
+        assert_eq!(window.phase_region.as_str(), "two_phase");
+        assert!(window.dew_pressure_pa < outlet.pressure_pa);
+        assert!(window.bubble_pressure_pa > outlet.pressure_pa);
+        assert!(window.bubble_temperature_k < outlet.temperature_k);
+        assert!(window.dew_temperature_k > outlet.temperature_k);
     }
 
     #[test]
     fn heater_cooler_updates_outlet_tp_and_preserves_flow_and_composition() {
+        let provider = build_provider([2.0, 0.5], 100_000.0);
         let inlet = build_stream(
             "stream-feed",
             "Feed",
             300.0,
             120_000.0,
             5.0,
-            binary_composition(0.25, 0.75),
+            binary_composition(0.35, 0.65),
         );
         let outlet_template = build_stream(
             "stream-heated",
@@ -1179,8 +1200,12 @@ mod tests {
 
         let inputs =
             UnitOperationInputs::new().with_material_stream(HEATER_COOLER_INLET_PORT, inlet);
+        let services = UnitOperationServices {
+            thermo: Some(&provider),
+            flash_solver: None,
+        };
         let outputs = heater
-            .run(&UnitOperationServices::default(), &inputs)
+            .run(&services, &inputs)
             .expect("expected heater output");
 
         let outlet = outputs
@@ -1195,22 +1220,32 @@ mod tests {
                 .overall_mole_fractions
                 .get(&ComponentId::new("component-a"))
                 .expect("expected component-a"),
-            0.25,
+            0.35,
             1e-12,
         );
         assert_eq!(outlet.phases.len(), 1);
         assert_eq!(outlet.phases[0].label, PhaseLabel::Overall);
+        let window = outlet
+            .bubble_dew_window
+            .as_ref()
+            .expect("expected heater outlet bubble/dew window");
+        assert_eq!(window.phase_region.as_str(), "two_phase");
+        assert!(window.dew_pressure_pa < outlet.pressure_pa);
+        assert!(window.bubble_pressure_pa > outlet.pressure_pa);
+        assert!(window.bubble_temperature_k < outlet.temperature_k);
+        assert!(window.dew_temperature_k > outlet.temperature_k);
     }
 
     #[test]
     fn valve_updates_outlet_pressure_and_preserves_inlet_state() {
+        let provider = build_provider([2.0, 0.5], 100_000.0);
         let inlet = build_stream(
             "stream-feed",
             "Feed",
             315.0,
             120_000.0,
             5.0,
-            binary_composition(0.25, 0.75),
+            binary_composition(0.35, 0.65),
         );
         let outlet_template = build_stream(
             "stream-valve-out",
@@ -1224,8 +1259,12 @@ mod tests {
 
         let inputs =
             UnitOperationInputs::new().with_material_stream(HEATER_COOLER_INLET_PORT, inlet);
+        let services = UnitOperationServices {
+            thermo: Some(&provider),
+            flash_solver: None,
+        };
         let outputs = valve
-            .run(&UnitOperationServices::default(), &inputs)
+            .run(&services, &inputs)
             .expect("expected valve output");
 
         let outlet = outputs
@@ -1240,11 +1279,20 @@ mod tests {
                 .overall_mole_fractions
                 .get(&ComponentId::new("component-a"))
                 .expect("expected component-a"),
-            0.25,
+            0.35,
             1e-12,
         );
         assert_eq!(outlet.phases.len(), 1);
         assert_eq!(outlet.phases[0].label, PhaseLabel::Overall);
+        let window = outlet
+            .bubble_dew_window
+            .as_ref()
+            .expect("expected valve outlet bubble/dew window");
+        assert_eq!(window.phase_region.as_str(), "two_phase");
+        assert!(window.dew_pressure_pa < outlet.pressure_pa);
+        assert!(window.bubble_pressure_pa > outlet.pressure_pa);
+        assert!(window.bubble_temperature_k < outlet.temperature_k);
+        assert!(window.dew_temperature_k > outlet.temperature_k);
     }
 
     #[test]

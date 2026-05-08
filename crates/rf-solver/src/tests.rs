@@ -503,10 +503,15 @@ fn sequential_solver_solves_feed_mixer_flash_chain() {
         0.46,
         1e-12,
     );
-    assert!(
-        mixer_out.bubble_dew_window.is_none(),
-        "expected non-flash mixer outlet to stay without bubble/dew window for now"
-    );
+    let mixer_window = mixer_out
+        .bubble_dew_window
+        .as_ref()
+        .expect("expected mixer outlet bubble/dew window");
+    assert_eq!(mixer_window.phase_region, PhaseEquilibriumRegion::TwoPhase);
+    assert!(mixer_window.dew_pressure_pa < mixer_out.pressure_pa);
+    assert!(mixer_window.bubble_pressure_pa > mixer_out.pressure_pa);
+    assert!(mixer_window.bubble_temperature_k < mixer_out.temperature_k);
+    assert!(mixer_window.dew_temperature_k > mixer_out.temperature_k);
 
     let liquid = snapshot
         .stream(&"stream-liquid".into())
@@ -617,6 +622,15 @@ fn sequential_solver_solves_feed_heater_flash_chain() {
         0.35,
         1e-12,
     );
+    let heated_window = heated
+        .bubble_dew_window
+        .as_ref()
+        .expect("expected heated outlet bubble/dew window");
+    assert_eq!(heated_window.phase_region, PhaseEquilibriumRegion::TwoPhase);
+    assert!(heated_window.dew_pressure_pa < heated.pressure_pa);
+    assert!(heated_window.bubble_pressure_pa > heated.pressure_pa);
+    assert!(heated_window.bubble_temperature_k < heated.temperature_k);
+    assert!(heated_window.dew_temperature_k > heated.temperature_k);
 
     let liquid = snapshot
         .stream(&"stream-liquid".into())
@@ -694,6 +708,15 @@ fn sequential_solver_solves_feed_mixer_heater_flash_chain() {
         0.46,
         1e-12,
     );
+    let mixed_window = mixed
+        .bubble_dew_window
+        .as_ref()
+        .expect("expected mixer outlet bubble/dew window");
+    assert_eq!(mixed_window.phase_region, PhaseEquilibriumRegion::TwoPhase);
+    assert!(mixed_window.dew_pressure_pa < mixed.pressure_pa);
+    assert!(mixed_window.bubble_pressure_pa > mixed.pressure_pa);
+    assert!(mixed_window.bubble_temperature_k < mixed.temperature_k);
+    assert!(mixed_window.dew_temperature_k > mixed.temperature_k);
 
     let heated = snapshot
         .stream(&"stream-heated".into())
@@ -709,6 +732,15 @@ fn sequential_solver_solves_feed_mixer_heater_flash_chain() {
         0.46,
         1e-12,
     );
+    let heated_window = heated
+        .bubble_dew_window
+        .as_ref()
+        .expect("expected heated outlet bubble/dew window");
+    assert_eq!(heated_window.phase_region, PhaseEquilibriumRegion::TwoPhase);
+    assert!(heated_window.dew_pressure_pa < heated.pressure_pa);
+    assert!(heated_window.bubble_pressure_pa > heated.pressure_pa);
+    assert!(heated_window.bubble_temperature_k < heated.temperature_k);
+    assert!(heated_window.dew_temperature_k > heated.temperature_k);
 }
 
 #[test]
@@ -777,6 +809,15 @@ fn sequential_solver_solves_feed_cooler_flash_chain() {
         0.35,
         1e-12,
     );
+    let cooled_window = cooled
+        .bubble_dew_window
+        .as_ref()
+        .expect("expected cooled outlet bubble/dew window");
+    assert_eq!(cooled_window.phase_region, PhaseEquilibriumRegion::TwoPhase);
+    assert!(cooled_window.dew_pressure_pa < cooled.pressure_pa);
+    assert!(cooled_window.bubble_pressure_pa > cooled.pressure_pa);
+    assert!(cooled_window.bubble_temperature_k < cooled.temperature_k);
+    assert!(cooled_window.dew_temperature_k > cooled.temperature_k);
 
     let liquid = snapshot
         .stream(&"stream-liquid".into())
@@ -856,6 +897,18 @@ fn sequential_solver_solves_feed_valve_flash_chain() {
         0.35,
         1e-12,
     );
+    let throttled_window = throttled
+        .bubble_dew_window
+        .as_ref()
+        .expect("expected valve outlet bubble/dew window");
+    assert_eq!(
+        throttled_window.phase_region,
+        PhaseEquilibriumRegion::TwoPhase
+    );
+    assert!(throttled_window.dew_pressure_pa < throttled.pressure_pa);
+    assert!(throttled_window.bubble_pressure_pa > throttled.pressure_pa);
+    assert!(throttled_window.bubble_temperature_k < throttled.temperature_k);
+    assert!(throttled_window.dew_temperature_k > throttled.temperature_k);
 
     let liquid = snapshot
         .stream(&"stream-liquid".into())

@@ -899,7 +899,13 @@ fn studio_gui_window_model_surfaces_bubble_dew_window_in_stream_inspectors() {
                 ("component-b".to_string(), 0.5),
             ],
             phases: Vec::new(),
-            bubble_dew_window: None,
+            bubble_dew_window: Some(rf_ui::BubbleDewWindowSnapshot {
+                phase_region: rf_types::PhaseEquilibriumRegion::TwoPhase,
+                bubble_pressure_pa: 123_500.0,
+                dew_pressure_pa: 79_500.0,
+                bubble_temperature_k: 334.0,
+                dew_temperature_k: 401.0,
+            }),
         },
         rf_ui::StreamStateSnapshot {
             stream_id: rf_types::StreamId::new("stream-liquid"),
@@ -963,10 +969,15 @@ fn studio_gui_window_model_surfaces_bubble_dew_window_in_stream_inspectors() {
         .iter()
         .find(|stream| stream.stream_id == "stream-heated")
         .expect("expected heated stream");
-    assert_eq!(
-        heated_stream.bubble_dew_window, None,
-        "expected non-flash intermediate stream to stay without bubble/dew window"
-    );
+    let heated_window = heated_stream
+        .bubble_dew_window
+        .as_ref()
+        .expect("expected heated stream bubble/dew window");
+    assert_eq!(heated_window.phase_region, "two_phase");
+    assert!(heated_window.dew_pressure_pa < heated_stream.pressure_pa);
+    assert!(heated_window.bubble_pressure_pa > heated_stream.pressure_pa);
+    assert!(heated_window.bubble_temperature_k < heated_stream.temperature_k);
+    assert!(heated_window.dew_temperature_k > heated_stream.temperature_k);
 
     let liquid_inspector = snapshot.result_inspector(Some("stream-liquid"));
     let liquid_stream = liquid_inspector

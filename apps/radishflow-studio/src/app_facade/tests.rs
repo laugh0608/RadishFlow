@@ -88,25 +88,29 @@ fn unique_temp_path(name: &str) -> PathBuf {
     std::env::temp_dir().join(format!("radishflow-{name}-{unique}"))
 }
 
+fn build_stored_test_antoine_coefficients(k_value: f64) -> StoredAntoineCoefficients {
+    const TEST_ANTOINE_BOUNDARY_SLOPE: f64 = 250.0;
+    const TEST_REFERENCE_TEMPERATURE_K: f64 = 300.0;
+
+    StoredAntoineCoefficients::new(
+        ((k_value * 100_000.0) / 1_000.0).ln()
+            + TEST_ANTOINE_BOUNDARY_SLOPE / TEST_REFERENCE_TEMPERATURE_K,
+        TEST_ANTOINE_BOUNDARY_SLOPE,
+        0.0,
+    )
+}
+
 fn write_cached_package(
     cache_root: &Path,
     auth_cache_index: &mut StoredAuthCacheIndex,
     package_id: &str,
 ) {
     let mut first = StoredThermoComponent::new(ComponentId::new("component-a"), "Component A");
-    first.antoine = Some(StoredAntoineCoefficients::new(
-        ((2.0_f64 * 100_000.0_f64) / 1_000.0_f64).ln(),
-        0.0,
-        0.0,
-    ));
+    first.antoine = Some(build_stored_test_antoine_coefficients(2.0));
     first.liquid_heat_capacity_j_per_mol_k = Some(35.0);
     first.vapor_heat_capacity_j_per_mol_k = Some(36.5);
     let mut second = StoredThermoComponent::new(ComponentId::new("component-b"), "Component B");
-    second.antoine = Some(StoredAntoineCoefficients::new(
-        ((0.5_f64 * 100_000.0_f64) / 1_000.0_f64).ln(),
-        0.0,
-        0.0,
-    ));
+    second.antoine = Some(build_stored_test_antoine_coefficients(0.5));
     second.liquid_heat_capacity_j_per_mol_k = Some(52.0);
     second.vapor_heat_capacity_j_per_mol_k = Some(65.0);
 

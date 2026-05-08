@@ -219,22 +219,26 @@ fn build_demo_package_provider() -> EnginePropertyPackageRegistry {
     EnginePropertyPackageRegistry::with_demo_package()
 }
 
+fn build_demo_antoine_coefficients(k_value: f64) -> AntoineCoefficients {
+    const DEMO_ANTOINE_BOUNDARY_SLOPE: f64 = 250.0;
+    const DEMO_REFERENCE_TEMPERATURE_K: f64 = 300.0;
+
+    AntoineCoefficients::new(
+        ((k_value * DEMO_REFERENCE_PRESSURE_PA) / 1_000.0).ln()
+            + DEMO_ANTOINE_BOUNDARY_SLOPE / DEMO_REFERENCE_TEMPERATURE_K,
+        DEMO_ANTOINE_BOUNDARY_SLOPE,
+        0.0,
+    )
+}
+
 fn build_demo_package() -> (PropertyPackageManifest, ThermoSystem) {
     let mut first = ThermoComponent::new(ComponentId::new("component-a"), "Component A");
-    first.antoine = Some(AntoineCoefficients::new(
-        ((2.0_f64 * DEMO_REFERENCE_PRESSURE_PA) / 1_000.0_f64).ln(),
-        0.0,
-        0.0,
-    ));
+    first.antoine = Some(build_demo_antoine_coefficients(2.0));
     first.liquid_heat_capacity_j_per_mol_k = Some(35.0);
     first.vapor_heat_capacity_j_per_mol_k = Some(36.5);
 
     let mut second = ThermoComponent::new(ComponentId::new("component-b"), "Component B");
-    second.antoine = Some(AntoineCoefficients::new(
-        ((0.5_f64 * DEMO_REFERENCE_PRESSURE_PA) / 1_000.0_f64).ln(),
-        0.0,
-        0.0,
-    ));
+    second.antoine = Some(build_demo_antoine_coefficients(0.5));
     second.liquid_heat_capacity_j_per_mol_k = Some(52.0);
     second.vapor_heat_capacity_j_per_mol_k = Some(65.0);
 
