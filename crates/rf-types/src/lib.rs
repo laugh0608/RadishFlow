@@ -424,7 +424,10 @@ pub type RfResult<T> = Result<T, RfError>;
 
 #[cfg(test)]
 mod tests {
-    use super::{DiagnosticPortTarget, RfError, StreamId, UnitId};
+    use super::{
+        DiagnosticPortTarget, PhaseEquilibriumRegion, RfError, StreamId, UnitId,
+        phase_equilibrium_region_from_pressure, phase_equilibrium_region_from_temperature,
+    };
 
     #[test]
     fn rf_error_can_carry_stable_diagnostic_context() {
@@ -459,6 +462,74 @@ mod tests {
                 DiagnosticPortTarget::new("flash-1", "outlet")
             ]
             .as_slice()
+        );
+    }
+
+    #[test]
+    fn phase_region_from_pressure_treats_boundary_values_within_tolerance_as_two_phase() {
+        assert_eq!(
+            phase_equilibrium_region_from_pressure(125_000.0, 125_000.0, 80_000.0),
+            PhaseEquilibriumRegion::TwoPhase
+        );
+        assert_eq!(
+            phase_equilibrium_region_from_pressure(125_000.0 + 5e-7, 125_000.0, 80_000.0),
+            PhaseEquilibriumRegion::TwoPhase
+        );
+        assert_eq!(
+            phase_equilibrium_region_from_pressure(80_000.0 - 5e-7, 125_000.0, 80_000.0),
+            PhaseEquilibriumRegion::TwoPhase
+        );
+        assert_eq!(
+            phase_equilibrium_region_from_pressure(125_000.0 + 2e-6, 125_000.0, 80_000.0),
+            PhaseEquilibriumRegion::LiquidOnly
+        );
+        assert_eq!(
+            phase_equilibrium_region_from_pressure(80_000.0 - 2e-6, 125_000.0, 80_000.0),
+            PhaseEquilibriumRegion::VaporOnly
+        );
+    }
+
+    #[test]
+    fn phase_region_from_temperature_treats_boundary_values_within_tolerance_as_two_phase() {
+        assert_eq!(
+            phase_equilibrium_region_from_temperature(
+                236.635560732978,
+                236.635560732978,
+                409.708580367858
+            ),
+            PhaseEquilibriumRegion::TwoPhase
+        );
+        assert_eq!(
+            phase_equilibrium_region_from_temperature(
+                236.635560732978 - 5e-7,
+                236.635560732978,
+                409.708580367858
+            ),
+            PhaseEquilibriumRegion::TwoPhase
+        );
+        assert_eq!(
+            phase_equilibrium_region_from_temperature(
+                409.708580367858 + 5e-7,
+                236.635560732978,
+                409.708580367858
+            ),
+            PhaseEquilibriumRegion::TwoPhase
+        );
+        assert_eq!(
+            phase_equilibrium_region_from_temperature(
+                236.635560732978 - 2e-6,
+                236.635560732978,
+                409.708580367858
+            ),
+            PhaseEquilibriumRegion::LiquidOnly
+        );
+        assert_eq!(
+            phase_equilibrium_region_from_temperature(
+                409.708580367858 + 2e-6,
+                236.635560732978,
+                409.708580367858
+            ),
+            PhaseEquilibriumRegion::VaporOnly
         );
     }
 }

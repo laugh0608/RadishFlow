@@ -355,6 +355,7 @@ fn phase_weighted_enthalpy(
 mod tests {
     use super::{
         FlashPhaseRegion, FlashStatus, PlaceholderTpFlashSolver, TpFlashInput, TpFlashSolver,
+        estimate_bubble_dew_window,
     };
     use rf_thermo::{
         AntoineCoefficients, PlaceholderThermoProvider, ThermoComponent, ThermoSystem,
@@ -393,6 +394,20 @@ mod tests {
         second.vapor_heat_capacity_j_per_mol_k = Some(65.0);
 
         PlaceholderThermoProvider::new(ThermoSystem::binary([first, second]))
+    }
+
+    fn build_binary_hydrocarbon_lite_provider() -> PlaceholderThermoProvider {
+        let mut methane = ThermoComponent::new(ComponentId::new("methane"), "Methane");
+        methane.antoine = Some(AntoineCoefficients::new(8.987, 659.7, -16.7));
+        methane.liquid_heat_capacity_j_per_mol_k = Some(35.0);
+        methane.vapor_heat_capacity_j_per_mol_k = Some(36.5);
+
+        let mut ethane = ThermoComponent::new(ComponentId::new("ethane"), "Ethane");
+        ethane.antoine = Some(AntoineCoefficients::new(8.952, 699.7, -22.8));
+        ethane.liquid_heat_capacity_j_per_mol_k = Some(52.0);
+        ethane.vapor_heat_capacity_j_per_mol_k = Some(65.0);
+
+        PlaceholderThermoProvider::new(ThermoSystem::binary([methane, ethane]))
     }
 
     #[test]
@@ -608,6 +623,45 @@ mod tests {
                 .iter()
                 .any(|phase| phase.label == PhaseLabel::Liquid)
         );
+    }
+
+    #[test]
+    fn bubble_dew_window_treats_exact_pressure_boundaries_as_two_phase() {
+        let provider = build_binary_hydrocarbon_lite_provider();
+
+        let bubble_boundary =
+            estimate_bubble_dew_window(&provider, 300.0, 650_919.9866646, vec![0.2, 0.8])
+                .expect("expected bubble-boundary window");
+        assert_eq!(bubble_boundary.phase_region, FlashPhaseRegion::TwoPhase);
+        assert_close(bubble_boundary.bubble_pressure_pa, 650_919.9866646, 1e-6);
+        assert_close(bubble_boundary.dew_pressure_pa, 645_407.066294851, 1e-6);
+
+        let dew_boundary =
+            estimate_bubble_dew_window(&provider, 300.0, 645_407.066294851, vec![0.2, 0.8])
+                .expect("expected dew-boundary window");
+        assert_eq!(dew_boundary.phase_region, FlashPhaseRegion::TwoPhase);
+        assert_close(dew_boundary.bubble_pressure_pa, 650_919.9866646, 1e-6);
+        assert_close(dew_boundary.dew_pressure_pa, 645_407.066294851, 1e-6);
+    }
+
+    #[test]
+    fn bubble_dew_window_treats_exact_temperature_boundaries_as_two_phase() {
+        let pressure_pa = 650_000.0;
+        let provider = build_binary_hydrocarbon_lite_provider();
+
+        let bubble_boundary =
+            estimate_bubble_dew_window(&provider, 299.841061392724, pressure_pa, vec![0.2, 0.8])
+                .expect("expected bubble-temperature boundary window");
+        assert_eq!(bubble_boundary.phase_region, FlashPhaseRegion::TwoPhase);
+        assert_close(bubble_boundary.bubble_temperature_k, 299.841061392724, 1e-4);
+        assert_close(bubble_boundary.dew_temperature_k, 300.79375395993, 1e-4);
+
+        let dew_boundary =
+            estimate_bubble_dew_window(&provider, 300.79375395993, pressure_pa, vec![0.2, 0.8])
+                .expect("expected dew-temperature boundary window");
+        assert_eq!(dew_boundary.phase_region, FlashPhaseRegion::TwoPhase);
+        assert_close(dew_boundary.bubble_temperature_k, 299.841061392724, 1e-4);
+        assert_close(dew_boundary.dew_temperature_k, 300.79375395993, 1e-4);
     }
 
     #[test]

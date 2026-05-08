@@ -5,3 +5,5 @@
 当前样例：
 
 - `binary-hydrocarbon-lite-v1-300k-650kpa.json`
+- `binary-hydrocarbon-synthetic-liquid-only-300k-100kpa.json`
+- `binary-hydrocarbon-synthetic-vapor-only-300k-100kpa.json`
