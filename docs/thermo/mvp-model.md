@@ -44,7 +44,7 @@
 - `rf-model::MaterialStreamState` 当前已为相平衡边界正式携带结构化 `bubble_dew_window`
 - `Flash Drum` liquid / vapor outlet，以及 `Mixer`、`Heater/Cooler`、`Valve` 的非 flash 中间流股 outlet，当前都已能在 unit operation 层直接物化并透传这组窗口；其中 flash outlet 会按各自 outlet composition 重算窗口，而不是直接复用 overall flash feed 的边界
 - `rf-solver::SolveSnapshot` 与 `rf-ui::SolveSnapshot` 当前已能稳定透传上述窗口，供 Result Inspector / Active Inspector 继续只读消费
-- `tests/rust-integration` 与 workspace run path 当前也已把 `binary-hydrocarbon-lite-v1` 三组 two-phase 组成的 near-boundary `±ΔP / ±ΔT` case 前推到 `feed-heater-flash-binary-hydrocarbon` 正式链路，并把 synthetic `liquid-only / vapor-only` 单相 near-boundary case 前推到 `feed-heater-flash` 正式链路，锁定非 flash 中间流股 `bubble_dew_window`、后续 flash inlet consumed stream 与 workspace run path 之间的端到端一致性回归，避免 example / Studio / solver 快照链路各跑一套窗口判断
+- `tests/rust-integration` 与 workspace run path 当前也已把 `binary-hydrocarbon-lite-v1` 三组 two-phase 组成的 near-boundary `±ΔP / ±ΔT` case 前推到 `feed-heater-flash-binary-hydrocarbon` 正式链路，并把 synthetic `liquid-only / vapor-only` 单相 near-boundary case 前推到 `feed-heater-flash` / `feed-cooler-flash` / `feed-valve-flash` 正式链路，锁定非 flash 中间流股 `bubble_dew_window`、后续 flash inlet consumed stream 与 workspace run path 之间的端到端一致性回归，避免 example / Studio / solver 快照链路各跑一套窗口判断
 - `tests/thermo-golden` 与 `tests/flash-golden` 当前都已从单一样例扩到覆盖 `liquid-only / two-phase / vapor-only` 三类正式金样；`rf-flash` 与 `rf-types` focused tests 也已锁定 exact bubble/dew boundary 和 tolerance 内外的 phase region 判定
 - `tests/thermo-golden` 与 `tests/flash-golden` 当前也已补齐 near-boundary `±ΔP / ±ΔT` 小扰动金样，并把 `binary-hydrocarbon-lite-v1` 的 two-phase 组成从单一 `z=[0.2, 0.8]` 扩到靠 bubble / dew 两侧的 `z=[0.195, 0.805]` 与 `z=[0.23, 0.77]`；再加上现有 synthetic `liquid-only / vapor-only` 样例，`rf-thermo` 与 `rf-flash` focused tests 会继续锁定 bubble/dew 两侧跨 boundary 前后的 phase region 与 `bubble_dew_window` 稳定行为
 - `apps/radishflow-studio` bootstrap 生成的本地 `binary-hydrocarbon-lite-v1` 样例包当前也已对齐同一套 Antoine 温度依赖假设，确保空白项目 / Studio run path 与 golden / integration 样例共享一致的 bubble/dew temperature 基线
@@ -65,7 +65,7 @@
 
 当前数值主线已经从“补第一版算法”切换为“围绕已实现算法建立更稳定的闭环与回归基线”，优先顺序建议保持为：
 
-1. 先把当前 three-composition two-phase 与 synthetic 单相样例都已前推到 integration / workspace run path 的 near-boundary `±ΔP / ±ΔT` 基线维持为正式回归；若继续扩展，优先沿同一模式补到更多非 flash 中间流股 / flash inlet 链路
+1. 先把当前 three-composition two-phase 与 synthetic 单相样例都已前推到 integration / workspace run path 的 near-boundary `±ΔP / ±ΔT` 基线维持为正式回归；若继续扩展，优先沿同一模式补到 `Mixer`，并视需要为 `Cooler` / `Valve` 再补 dedicated binary-hydrocarbon two-phase 链路
 2. 若继续补数值样例，优先围绕当前二元 MVP 假设继续扩更广的 boundary drift / tolerance-focused cases，而不是回退到只看单一组成
 3. 保持 Result Inspector / Active Inspector 继续只读消费已结构化的 `bubble_dew_window`，不要在 shell / UI 中分叉第二套相平衡语义
 4. 待 MVP 闭环更稳后，再评估更真实 EOS 或更复杂物性模型
