@@ -27,7 +27,7 @@
 - `tests/thermo-golden` 与 `tests/flash-golden` 已继续补齐 near-boundary `±ΔP / ±ΔT` 小扰动金样；当前不仅覆盖 `binary-hydrocarbon-lite-v1` 原有 `z=[0.2, 0.8]` two-phase 基线，还补到靠 bubble / dew 两侧的 `z=[0.195, 0.805]` 与 `z=[0.23, 0.77]` 两组 two-phase 组成，并继续覆盖现有 synthetic `liquid-only / vapor-only` 样例；`rf-thermo` 与 `rf-flash` focused tests 也已锁定 bubble/dew 两侧跨 boundary 前后的 phase region 与 `bubble_dew_window` 稳定行为，避免边界附近漂移只在集成层或 UI 审阅时才暴露。
 - `rf-model::MaterialStreamState`、`rf-solver` 与 `rf-ui::SolveSnapshot` 现在已为 flash 产物流股正式透传结构化 `bubble_dew_window`；`Flash Drum` liquid / vapor outlet 会按各自 outlet 组成重算并携带这组窗口，而不是复用 overall flash feed 的边界。
 - `Mixer`、`Heater/Cooler` 与 `Valve` 的 outlet 结果现在也会在 unit operation 层直接物化同一组结构化 `bubble_dew_window`，并通过 `rf-solver -> rf-ui::SolveSnapshot -> Result Inspector / Active Inspector` 只读透传；这层继续只消费正式 thermo DTO，不在 shell / UI 中重算或分叉第二套相平衡语义。
-- `tests/rust-integration` 与 workspace run path 现在已把 `binary-hydrocarbon-lite-v1` 三组 two-phase 组成 `z=[0.195, 0.805] / [0.2, 0.8] / [0.23, 0.77]` 的 near-boundary `±ΔP / ±ΔT` case 前推到 `feed-heater-flash-binary-hydrocarbon` 正式链路；同一套回归也已补到 synthetic `liquid-only / vapor-only` 单相样例的 `feed-heater-flash` / `feed-cooler-flash` / `feed-valve-flash` 链路。`studio_solver_bridge` 与 `studio_workspace_control` 都会锁定非 flash 中间流股 `phase_region` / `bubble_dew_window` 与后续 flash inlet consumed stream 的同一份 DTO，不在集成层分叉第二套窗口判断。
+- `tests/rust-integration` 与 workspace run path 现在已把 `binary-hydrocarbon-lite-v1` 三组 two-phase 组成 `z=[0.195, 0.805] / [0.2, 0.8] / [0.23, 0.77]` 的 near-boundary `±ΔP / ±ΔT` case 前推到 `feed-heater-flash-binary-hydrocarbon` 与 `feed-mixer-flash-binary-hydrocarbon` 正式链路；同一套回归也已补到 synthetic `liquid-only / vapor-only` 单相样例的 `feed-heater-flash` / `feed-cooler-flash` / `feed-valve-flash` / `feed-mixer-flash` 链路。`studio_solver_bridge` 与 `studio_workspace_control` 都会锁定非 flash 中间流股 `phase_region` / `bubble_dew_window` 与后续 flash inlet consumed stream 的同一份 DTO，不在集成层分叉第二套窗口判断。
 - Result Inspector / Active Inspector 现在会只读消费 `SolveSnapshot` 已物化的 `bubble_dew_window`，显式展示 `phase_region` 与 bubble/dew pressure / temperature；这层继续只消费 DTO，不在 shell 中重算热力学或分叉第二套相平衡语义。
 - Studio bootstrap 内置的 `binary-hydrocarbon-lite-v1` 样例包 Antoine 系数现在也已与当前 bubble/dew temperature 数值基线对齐，空白项目和 shell/solver 回归继续共享同一套相平衡假设。
 - Result Inspector / Active Inspector 的流股相结果与相对比现在会显式展示各相摩尔流量，并继续只消费 `SolveSnapshot` 已物化的 phase fraction / molar enthalpy，不在 shell 中重算热力学。
@@ -42,8 +42,8 @@
 
 ## 下一步建议
 
-1. 若继续推进 `rf-thermo` / `rf-flash`，优先把当前 two-phase 与 synthetic 单相样例都已前推到 `tests/rust-integration` / workspace run path 的 near-boundary `±ΔP / ±ΔT` 基线维持为正式回归；若要继续扩展，优先沿同一模式补到 `Mixer`，并视需要为 `Cooler` / `Valve` 再补 dedicated binary-hydrocarbon two-phase 链路，而不是分叉第二套判断语义。
-2. 若继续推进 `rf-thermo` / `rf-flash`，保持现有 golden 目录多样例遍历、focused tests 与非 flash 中间流股到 flash inlet 的端到端一致性回归为同一套正式基线，不额外分叉第二套窗口估算或判断语义。
+1. 若继续推进 `rf-thermo` / `rf-flash`，优先把当前 two-phase 与 synthetic 单相样例在 `Heater/Cooler/Valve/Mixer -> Flash` 已前推到 `tests/rust-integration` / workspace run path 的 near-boundary `±ΔP / ±ΔT` 基线维持为正式回归；若要继续扩展，优先为 `Cooler` / `Valve` 再补 dedicated binary-hydrocarbon two-phase 链路，而不是分叉第二套判断语义。
+2. 若继续推进 `rf-thermo` / `rf-flash`，保持现有 golden 目录多样例遍历、focused tests 与非 flash 中间流股到 flash inlet 的 `Heater/Cooler/Valve/Mixer` 端到端一致性回归为同一套正式基线，不额外分叉第二套窗口估算或判断语义。
 3. 若继续推进 Stream Inspector，优先收紧 flowsheet component catalog / presentation 边界；不要提前做完整组件库、项目级组件删除迁移或隐式差值补偿。
 4. 若推进 Studio，优先继续消费已结构化 DTO 和既有 command surface，不新增第二套 shell 私有状态机。
 5. 若发现入口文档继续膨胀，优先更新本文档和对应专题文档，不把长篇历史写回 `overview.md` 或 `scope.md`。

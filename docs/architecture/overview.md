@@ -1,6 +1,6 @@
 # Architecture Overview
 
-更新时间：2026-05-01
+更新时间：2026-05-08
 
 ## 目标
 
@@ -39,15 +39,15 @@ RadishFlow 的目标架构已经冻结为“桌面端三层 + 外部控制面”
 | --- | --- | --- |
 | `rf-types` | 基础 ID、枚举、错误类型 | 已建立第一批基础类型 |
 | `rf-model` | 组分、流股、单元、流程图对象模型 | 已建立第一批领域数据结构 |
-| `rf-thermo` | 热力学数据结构与热力学接口 | 已建立最小 API、内存 provider、基于本地缓存目录/授权缓存索引的 `PropertyPackageProvider` 实现，并用首个真实样例包覆盖装载测试；当前已补基于 liquid/vapor 常热容和 `298.15 K` 参考温度的 MVP 基础相焓 |
-| `rf-flash` | `TP Flash` 输入输出契约与求解器接口 | 已建立最小 API，并已实现最小二元 `TP Flash`、Rachford-Rice、相分率/相组成与基础 molar enthalpy 黄金样例 |
+| `rf-thermo` | 热力学数据结构与热力学接口 | 已建立最小 API、内存 provider、基于本地缓存目录/授权缓存索引的 `PropertyPackageProvider` 实现，并用首个真实样例包覆盖装载测试；当前已补基于 liquid/vapor 常热容和 `298.15 K` 参考温度的 MVP 基础相焓、bubble/dew pressure / fixed-pressure temperature 边界估算，以及 near-boundary golden / focused regression 基线 |
+| `rf-flash` | `TP Flash` 输入输出契约与求解器接口 | 已建立最小 API，并已实现最小二元 `TP Flash`、Rachford-Rice、相分率/相组成与基础 molar enthalpy 黄金样例；当前 `TP Flash` 结果会显式携带 `phase_region + bubble_dew_window`，并已补齐 near-boundary golden / focused regressions |
 | `rf-unitops` | 单元模块行为抽象 | 已建立内建单元规范、统一流股输入输出接口，并实现 `Feed`、`Mixer`、`Heater/Cooler`、`Valve`、`Flash Drum` 的最小行为边界 |
 | `rf-flowsheet` | 连接关系与图结构校验 | 已建立首轮材料端口连接校验，覆盖 canonical port signature、流股存在性与“一股一源一汇”约束 |
 | `rf-solver` | 顺序模块法求解器 | 已建立首轮无回路顺序模块法，可执行 `Feed + Mixer + Flash Drum`、`Feed -> Heater -> Flash Drum` 与 `Feed -> Valve -> Flash Drum` 闭环，并产出带 summary / diagnostics / step 明细的最小 `SolveSnapshot`；当前失败路径已继续收口到 solver-stage + 稳定 diagnostic code + unit/port helper 上下文 |
 | `rf-store` | JSON 存储与授权缓存索引 | 已建立项目文件 / 授权缓存 / 本地包 `manifest.json` / `payload.rfpkg` 的 JSON 读写、迁移分发、版本校验与相对路径布局 |
 | `rf-ffi` | Rust 与 .NET 的 C ABI 边界 | 已建立第一版最小句柄式 C ABI，当前覆盖 `engine_create/destroy`、`flowsheet_load_json`、`property_package_load_from_files`、`property_package_list_json`、`flowsheet_solve`、`flowsheet_get_snapshot_json`、`stream_get_snapshot_json`、`engine_last_error_message`、`engine_last_error_json` 与 `rf_string_free`；当前运行时已同时支持内置 demo package、本地 `manifest/payload` 注册与 package manifest 列表导出 |
 
-当前仓库级集成测试也已正式落到 `tests/rust-integration` workspace crate，并由 `cargo test --workspace`、`scripts/check-repo.ps1` 与 `scripts/check-repo.sh` 自动覆盖五条示例 flowsheet 回归。
+当前仓库级集成测试也已正式落到 `tests/rust-integration` workspace crate，并由 `cargo test --workspace`、`scripts/check-repo.ps1` 与 `scripts/check-repo.sh` 自动覆盖示例 flowsheet 回归，以及 `Heater/Cooler/Valve/Mixer -> Flash` near-boundary flash inlet 的 DTO 一致性回归。
 
 ### Rust Studio UI
 
