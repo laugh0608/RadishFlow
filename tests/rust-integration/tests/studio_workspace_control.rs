@@ -9,9 +9,12 @@ use radishflow_studio::{
     dispatch_workspace_control_action_with_auth_cache,
 };
 use rf_rust_integration::{
-    NearBoundaryCaseKind, NearBoundaryStreamWindowCase, assert_close,
-    binary_hydrocarbon_lite_near_boundary_stream_window_cases, sample_auth_cache_index, timestamp,
-    unique_temp_path, write_binary_hydrocarbon_lite_cached_package, write_cached_package,
+    NearBoundaryCaseKind, NearBoundaryStreamWindowCase, SYNTHETIC_LIQUID_ONLY_PACKAGE_ID,
+    SYNTHETIC_VAPOR_ONLY_PACKAGE_ID, assert_close,
+    binary_hydrocarbon_lite_near_boundary_stream_window_cases, sample_auth_cache_index,
+    synthetic_single_phase_near_boundary_stream_window_cases, timestamp, unique_temp_path,
+    write_binary_hydrocarbon_lite_cached_package, write_cached_package,
+    write_synthetic_liquid_only_cached_package, write_synthetic_vapor_only_cached_package,
 };
 use rf_store::parse_project_file_json;
 use rf_types::{ComponentId, PhaseEquilibriumRegion, StreamId, UnitId};
@@ -173,6 +176,76 @@ fn assert_near_boundary_window_matches_case(
         case.expected_dew_temperature_k,
         1e-4,
     );
+}
+
+fn write_synthetic_cached_package_for_case(
+    cache_root: &Path,
+    auth_cache_index: &mut rf_store::StoredAuthCacheIndex,
+    case: &NearBoundaryStreamWindowCase,
+) {
+    match case.package_id {
+        SYNTHETIC_LIQUID_ONLY_PACKAGE_ID => {
+            write_synthetic_liquid_only_cached_package(cache_root, auth_cache_index)
+        }
+        SYNTHETIC_VAPOR_ONLY_PACKAGE_ID => {
+            write_synthetic_vapor_only_cached_package(cache_root, auth_cache_index)
+        }
+        _ => panic!("unexpected synthetic package id `{}`", case.package_id),
+    }
+}
+
+fn apply_synthetic_demo_composition(
+    app_state: &mut AppState,
+    stream_id: &str,
+    overall_mole_fractions: [f64; 2],
+) {
+    let stream = app_state
+        .workspace
+        .document
+        .flowsheet
+        .streams
+        .get_mut(&stream_id.into())
+        .expect("expected stream");
+    stream.overall_mole_fractions.clear();
+    stream
+        .overall_mole_fractions
+        .insert(ComponentId::new("component-a"), overall_mole_fractions[0]);
+    stream
+        .overall_mole_fractions
+        .insert(ComponentId::new("component-b"), overall_mole_fractions[1]);
+}
+
+fn app_state_for_synthetic_heater_boundary_case(
+    document_id: &str,
+    title: &str,
+    created_at_seconds: u64,
+    case: &NearBoundaryStreamWindowCase,
+) -> AppState {
+    let mut app_state = app_state_from_project(
+        include_str!("../../../examples/flowsheets/feed-heater-flash.rfproj.json"),
+        document_id,
+        title,
+        created_at_seconds,
+    );
+    apply_synthetic_demo_composition(&mut app_state, "stream-feed", case.overall_mole_fractions);
+    app_state
+        .workspace
+        .document
+        .flowsheet
+        .streams
+        .get_mut(&"stream-feed".into())
+        .expect("expected feed stream")
+        .pressure_pa = case.pressure_pa;
+    let heated = app_state
+        .workspace
+        .document
+        .flowsheet
+        .streams
+        .get_mut(&"stream-heated".into())
+        .expect("expected heated stream");
+    heated.temperature_k = case.temperature_k;
+    heated.pressure_pa = case.pressure_pa;
+    app_state
 }
 
 fn sample_entitlement_snapshot(package_ids: &[&str]) -> EntitlementSnapshot {
@@ -385,6 +458,125 @@ fn run_panel_primary_action_preserves_temperature_near_boundary_windows_end_to_e
     }
 
     fs::remove_dir_all(cache_root).expect("expected temp dir cleanup");
+}
+
+#[test]
+fn run_panel_primary_action_preserves_synthetic_single_phase_pressure_near_boundary_windows_end_to_end()
+ {
+    let facade = StudioAppFacade::new();
+
+    for (index, case) in synthetic_single_phase_near_boundary_stream_window_cases()
+        .into_iter()
+        .filter(|case| case.kind == NearBoundaryCaseKind::Pressure)
+        .enumerate()
+    {
+        let cache_root =
+            unique_temp_path(&format!("integration-run-panel-synthetic-pressure-{index}"));
+        let mut auth_cache_index = sample_auth_cache_index(&[]);
+        write_synthetic_cached_package_for_case(&cache_root, &mut auth_cache_index, &case);
+        let context = StudioAppAuthCacheContext::new(&cache_root, &auth_cache_index);
+        let mut app_state = app_state_for_synthetic_heater_boundary_case(
+            &format!("doc-control-synthetic-pressure-{index}"),
+            &case.label,
+            170 + index as u64,
+            &case,
+        );
+
+        let outcome =
+            dispatch_run_panel_primary_action_with_auth_cache(&facade, &mut app_state, &context)
+                .expect("expected primary action dispatch");
+
+        match outcome.dispatch {
+            RunPanelWidgetDispatchOutcome::Executed(outcome) => match outcome.dispatch {
+                StudioAppResultDispatch::WorkspaceRun(dispatch) => {
+                    assert!(matches!(
+                        dispatch.outcome,
+                        StudioWorkspaceRunOutcome::Started(_)
+                    ));
+                }
+                _ => panic!("expected workspace run dispatch"),
+            },
+            _ => panic!("expected executed run panel outcome"),
+        }
+
+        let snapshot = app_state
+            .workspace
+            .snapshot_history
+            .back()
+            .expect("expected stored snapshot");
+        let heated = find_snapshot_stream(snapshot, "stream-heated");
+        assert_near_boundary_window_matches_case(heated, &case);
+
+        let flash_step = snapshot
+            .steps
+            .iter()
+            .find(|step| step.unit_id == UnitId::new("flash-1"))
+            .expect("expected flash step");
+        assert_eq!(flash_step.consumed_streams.len(), 1, "{}", case.label);
+        assert_eq!(&flash_step.consumed_streams[0], heated, "{}", case.label);
+
+        fs::remove_dir_all(cache_root).expect("expected temp dir cleanup");
+    }
+}
+
+#[test]
+fn run_panel_primary_action_preserves_synthetic_single_phase_temperature_near_boundary_windows_end_to_end()
+ {
+    let facade = StudioAppFacade::new();
+
+    for (index, case) in synthetic_single_phase_near_boundary_stream_window_cases()
+        .into_iter()
+        .filter(|case| case.kind == NearBoundaryCaseKind::Temperature)
+        .enumerate()
+    {
+        let cache_root = unique_temp_path(&format!(
+            "integration-run-panel-synthetic-temperature-{index}"
+        ));
+        let mut auth_cache_index = sample_auth_cache_index(&[]);
+        write_synthetic_cached_package_for_case(&cache_root, &mut auth_cache_index, &case);
+        let context = StudioAppAuthCacheContext::new(&cache_root, &auth_cache_index);
+        let mut app_state = app_state_for_synthetic_heater_boundary_case(
+            &format!("doc-control-synthetic-temperature-{index}"),
+            &case.label,
+            210 + index as u64,
+            &case,
+        );
+
+        let outcome =
+            dispatch_run_panel_primary_action_with_auth_cache(&facade, &mut app_state, &context)
+                .expect("expected primary action dispatch");
+
+        match outcome.dispatch {
+            RunPanelWidgetDispatchOutcome::Executed(outcome) => match outcome.dispatch {
+                StudioAppResultDispatch::WorkspaceRun(dispatch) => {
+                    assert!(matches!(
+                        dispatch.outcome,
+                        StudioWorkspaceRunOutcome::Started(_)
+                    ));
+                }
+                _ => panic!("expected workspace run dispatch"),
+            },
+            _ => panic!("expected executed run panel outcome"),
+        }
+
+        let snapshot = app_state
+            .workspace
+            .snapshot_history
+            .back()
+            .expect("expected stored snapshot");
+        let heated = find_snapshot_stream(snapshot, "stream-heated");
+        assert_near_boundary_window_matches_case(heated, &case);
+
+        let flash_step = snapshot
+            .steps
+            .iter()
+            .find(|step| step.unit_id == UnitId::new("flash-1"))
+            .expect("expected flash step");
+        assert_eq!(flash_step.consumed_streams.len(), 1, "{}", case.label);
+        assert_eq!(&flash_step.consumed_streams[0], heated, "{}", case.label);
+
+        fs::remove_dir_all(cache_root).expect("expected temp dir cleanup");
+    }
 }
 
 #[test]

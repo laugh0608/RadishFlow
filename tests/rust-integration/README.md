@@ -7,7 +7,7 @@
 - 示例 `*.rfproj.json` 的加载
 - `rf-solver` 对示例流程的端到端求解
 - 求解输出中的关键流股状态断言
-- 非 flash 中间流股进入后续 flash inlet 时的 `phase_region` / `bubble_dew_window` near-boundary `±ΔP / ±ΔT` 稳定性回归
+- 非 flash 中间流股进入后续 flash inlet 时的 `phase_region` / `bubble_dew_window` near-boundary `±ΔP / ±ΔT` 稳定性回归，当前同时覆盖 `binary-hydrocarbon-lite-v1` three-composition two-phase 与 synthetic `liquid-only / vapor-only` 单相样例
 - `rf-ui::AppState` 对 `rf-solver::SolveSnapshot` 的仓库级映射
 - `radishflow-studio::solver_bridge` 在成功、单元执行失败和缺包失败下的诊断写回与 `RunPanel` 通知基线
 - `radishflow-studio::workspace_control` / `run_panel_driver` 对成功运行、包选择阻塞、near-boundary workspace run 和失败恢复动作的仓库级闭环

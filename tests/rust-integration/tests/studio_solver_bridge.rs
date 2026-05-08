@@ -2,9 +2,12 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use radishflow_studio::{StudioSolveRequest, solve_workspace_with_property_package};
 use rf_rust_integration::{
-    NearBoundaryCaseKind, NearBoundaryStreamWindowCase, assert_close,
+    NearBoundaryCaseKind, NearBoundaryStreamWindowCase, SYNTHETIC_LIQUID_ONLY_PACKAGE_ID,
+    SYNTHETIC_VAPOR_ONLY_PACKAGE_ID, assert_close,
     binary_hydrocarbon_lite_near_boundary_stream_window_cases, build_binary_demo_package_provider,
-    build_binary_hydrocarbon_lite_package_provider,
+    build_binary_hydrocarbon_lite_package_provider, build_synthetic_liquid_only_package_provider,
+    build_synthetic_vapor_only_package_provider,
+    synthetic_single_phase_near_boundary_stream_window_cases,
 };
 use rf_store::parse_project_file_json;
 use rf_thermo::InMemoryPropertyPackageProvider;
@@ -145,6 +148,70 @@ fn assert_near_boundary_window_matches_case(
         case.expected_dew_temperature_k,
         1e-4,
     );
+}
+
+fn synthetic_package_provider_for_case(
+    case: &NearBoundaryStreamWindowCase,
+) -> InMemoryPropertyPackageProvider {
+    match case.package_id {
+        SYNTHETIC_LIQUID_ONLY_PACKAGE_ID => build_synthetic_liquid_only_package_provider(),
+        SYNTHETIC_VAPOR_ONLY_PACKAGE_ID => build_synthetic_vapor_only_package_provider(),
+        _ => panic!("unexpected synthetic package id `{}`", case.package_id),
+    }
+}
+
+fn apply_synthetic_demo_composition(
+    app_state: &mut AppState,
+    stream_id: &str,
+    overall_mole_fractions: [f64; 2],
+) {
+    let stream = app_state
+        .workspace
+        .document
+        .flowsheet
+        .streams
+        .get_mut(&stream_id.into())
+        .expect("expected stream");
+    stream.overall_mole_fractions.clear();
+    stream
+        .overall_mole_fractions
+        .insert(ComponentId::new("component-a"), overall_mole_fractions[0]);
+    stream
+        .overall_mole_fractions
+        .insert(ComponentId::new("component-b"), overall_mole_fractions[1]);
+}
+
+fn app_state_for_synthetic_heater_boundary_case(
+    document_id: &str,
+    title: &str,
+    created_at_seconds: u64,
+    case: &NearBoundaryStreamWindowCase,
+) -> AppState {
+    let mut app_state = app_state_from_project(
+        include_str!("../../../examples/flowsheets/feed-heater-flash.rfproj.json"),
+        document_id,
+        title,
+        created_at_seconds,
+    );
+    apply_synthetic_demo_composition(&mut app_state, "stream-feed", case.overall_mole_fractions);
+    app_state
+        .workspace
+        .document
+        .flowsheet
+        .streams
+        .get_mut(&"stream-feed".into())
+        .expect("expected feed stream")
+        .pressure_pa = case.pressure_pa;
+    let heated = app_state
+        .workspace
+        .document
+        .flowsheet
+        .streams
+        .get_mut(&"stream-heated".into())
+        .expect("expected heated stream");
+    heated.temperature_k = case.temperature_k;
+    heated.pressure_pa = case.pressure_pa;
+    app_state
 }
 
 #[test]
@@ -356,6 +423,96 @@ fn studio_solver_bridge_preserves_temperature_near_boundary_windows_across_flash
             &StudioSolveRequest::new(
                 "binary-hydrocarbon-lite-v1",
                 format!("snapshot-temperature-{index}"),
+                1,
+            ),
+        )
+        .expect("expected solve");
+
+        let snapshot = app_state
+            .workspace
+            .snapshot_history
+            .back()
+            .expect("expected stored snapshot");
+        let heated = find_snapshot_stream(snapshot, "stream-heated");
+        assert_near_boundary_window_matches_case(heated, &case);
+
+        let flash_step = snapshot
+            .steps
+            .iter()
+            .find(|step| step.unit_id == UnitId::new("flash-1"))
+            .expect("expected flash step");
+        assert_eq!(flash_step.consumed_streams.len(), 1, "{}", case.label);
+        assert_eq!(&flash_step.consumed_streams[0], heated, "{}", case.label);
+    }
+}
+
+#[test]
+fn studio_solver_bridge_preserves_synthetic_single_phase_pressure_near_boundary_windows_across_flash_inlet_end_to_end()
+ {
+    for (index, case) in synthetic_single_phase_near_boundary_stream_window_cases()
+        .into_iter()
+        .filter(|case| case.kind == NearBoundaryCaseKind::Pressure)
+        .enumerate()
+    {
+        let provider = synthetic_package_provider_for_case(&case);
+        let mut app_state = app_state_for_synthetic_heater_boundary_case(
+            &format!("doc-studio-synthetic-pressure-{index}"),
+            &case.label,
+            120 + index as u64,
+            &case,
+        );
+
+        solve_workspace_with_property_package(
+            &mut app_state,
+            &provider,
+            &StudioSolveRequest::new(
+                case.package_id,
+                format!("snapshot-synthetic-pressure-{index}"),
+                1,
+            ),
+        )
+        .expect("expected solve");
+
+        let snapshot = app_state
+            .workspace
+            .snapshot_history
+            .back()
+            .expect("expected stored snapshot");
+        let heated = find_snapshot_stream(snapshot, "stream-heated");
+        assert_near_boundary_window_matches_case(heated, &case);
+
+        let flash_step = snapshot
+            .steps
+            .iter()
+            .find(|step| step.unit_id == UnitId::new("flash-1"))
+            .expect("expected flash step");
+        assert_eq!(flash_step.consumed_streams.len(), 1, "{}", case.label);
+        assert_eq!(&flash_step.consumed_streams[0], heated, "{}", case.label);
+    }
+}
+
+#[test]
+fn studio_solver_bridge_preserves_synthetic_single_phase_temperature_near_boundary_windows_across_flash_inlet_end_to_end()
+ {
+    for (index, case) in synthetic_single_phase_near_boundary_stream_window_cases()
+        .into_iter()
+        .filter(|case| case.kind == NearBoundaryCaseKind::Temperature)
+        .enumerate()
+    {
+        let provider = synthetic_package_provider_for_case(&case);
+        let mut app_state = app_state_for_synthetic_heater_boundary_case(
+            &format!("doc-studio-synthetic-temperature-{index}"),
+            &case.label,
+            160 + index as u64,
+            &case,
+        );
+
+        solve_workspace_with_property_package(
+            &mut app_state,
+            &provider,
+            &StudioSolveRequest::new(
+                case.package_id,
+                format!("snapshot-synthetic-temperature-{index}"),
                 1,
             ),
         )
