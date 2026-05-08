@@ -428,6 +428,27 @@ fn build_synthetic_package_provider(
     )])
 }
 
+pub fn near_boundary_package_provider_for_case(
+    case: &NearBoundaryStreamWindowCase,
+) -> InMemoryPropertyPackageProvider {
+    match case.package_id {
+        BINARY_HYDROCARBON_LITE_PACKAGE_ID => build_binary_hydrocarbon_lite_package_provider(),
+        SYNTHETIC_LIQUID_ONLY_PACKAGE_ID => build_synthetic_liquid_only_package_provider(),
+        SYNTHETIC_VAPOR_ONLY_PACKAGE_ID => build_synthetic_vapor_only_package_provider(),
+        _ => panic!("unexpected near-boundary package id `{}`", case.package_id),
+    }
+}
+
+pub fn near_boundary_component_ids_for_package(package_id: &str) -> [&'static str; 2] {
+    match package_id {
+        BINARY_HYDROCARBON_LITE_PACKAGE_ID => ["methane", "ethane"],
+        SYNTHETIC_LIQUID_ONLY_PACKAGE_ID | SYNTHETIC_VAPOR_ONLY_PACKAGE_ID => {
+            ["component-a", "component-b"]
+        }
+        _ => panic!("unexpected near-boundary package id `{package_id}`"),
+    }
+}
+
 pub fn unique_temp_path(name: &str) -> PathBuf {
     let unique = SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -575,6 +596,25 @@ pub fn write_binary_hydrocarbon_lite_cached_package(
     )
     .expect("expected payload write");
     auth_cache_index.property_packages.push(record);
+}
+
+pub fn write_near_boundary_cached_package_for_case(
+    cache_root: &Path,
+    auth_cache_index: &mut StoredAuthCacheIndex,
+    case: &NearBoundaryStreamWindowCase,
+) {
+    match case.package_id {
+        BINARY_HYDROCARBON_LITE_PACKAGE_ID => {
+            write_binary_hydrocarbon_lite_cached_package(cache_root, auth_cache_index)
+        }
+        SYNTHETIC_LIQUID_ONLY_PACKAGE_ID => {
+            write_synthetic_liquid_only_cached_package(cache_root, auth_cache_index)
+        }
+        SYNTHETIC_VAPOR_ONLY_PACKAGE_ID => {
+            write_synthetic_vapor_only_cached_package(cache_root, auth_cache_index)
+        }
+        _ => panic!("unexpected near-boundary package id `{}`", case.package_id),
+    }
 }
 
 pub fn write_synthetic_liquid_only_cached_package(

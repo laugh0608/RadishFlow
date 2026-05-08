@@ -1,20 +1,19 @@
-use std::fs;
-use std::path::Path;
-
 use radishflow_studio::{
     RunPanelWidgetDispatchOutcome, StudioAppAuthCacheContext, StudioAppFacade,
     StudioAppResultDispatch, StudioWorkspaceRunOutcome,
     dispatch_run_panel_primary_action_with_auth_cache,
 };
 use rf_rust_integration::{
-    NearBoundaryCaseKind, NearBoundaryStreamWindowCase, SYNTHETIC_LIQUID_ONLY_PACKAGE_ID,
-    SYNTHETIC_VAPOR_ONLY_PACKAGE_ID, assert_close, sample_auth_cache_index,
+    NearBoundaryCaseKind, NearBoundaryStreamWindowCase, assert_close,
+    binary_hydrocarbon_lite_near_boundary_stream_window_cases,
+    near_boundary_component_ids_for_package, sample_auth_cache_index,
     synthetic_single_phase_near_boundary_stream_window_cases, timestamp, unique_temp_path,
-    write_synthetic_liquid_only_cached_package, write_synthetic_vapor_only_cached_package,
+    write_near_boundary_cached_package_for_case,
 };
 use rf_store::parse_project_file_json;
 use rf_types::{ComponentId, StreamId, UnitId};
 use rf_ui::{AppState, DocumentMetadata, FlowsheetDocument};
+use std::fs;
 
 fn app_state_from_project(
     project_json: &str,
@@ -40,11 +39,14 @@ fn find_snapshot_stream<'a>(
         .expect("expected snapshot stream")
 }
 
-fn apply_synthetic_demo_composition(
+fn apply_case_composition(
     app_state: &mut AppState,
     stream_id: &str,
+    package_id: &str,
     overall_mole_fractions: [f64; 2],
 ) {
+    let [first_component_id, second_component_id] =
+        near_boundary_component_ids_for_package(package_id);
     let stream = app_state
         .workspace
         .document
@@ -53,12 +55,30 @@ fn apply_synthetic_demo_composition(
         .get_mut(&stream_id.into())
         .expect("expected stream");
     stream.overall_mole_fractions.clear();
-    stream
-        .overall_mole_fractions
-        .insert(ComponentId::new("component-a"), overall_mole_fractions[0]);
-    stream
-        .overall_mole_fractions
-        .insert(ComponentId::new("component-b"), overall_mole_fractions[1]);
+    stream.overall_mole_fractions.insert(
+        ComponentId::new(first_component_id),
+        overall_mole_fractions[0],
+    );
+    stream.overall_mole_fractions.insert(
+        ComponentId::new(second_component_id),
+        overall_mole_fractions[1],
+    );
+}
+
+fn apply_case_feed_state(
+    app_state: &mut AppState,
+    stream_id: &str,
+    case: &NearBoundaryStreamWindowCase,
+) {
+    let stream = app_state
+        .workspace
+        .document
+        .flowsheet
+        .streams
+        .get_mut(&stream_id.into())
+        .expect("expected stream");
+    stream.temperature_k = case.temperature_k;
+    stream.pressure_pa = case.pressure_pa;
 }
 
 fn assert_near_boundary_window_matches_case(
@@ -113,82 +133,58 @@ fn assert_flash_consumed_stream_matches_inlet(
     );
 }
 
-fn write_synthetic_cached_package_for_case(
-    cache_root: &Path,
-    auth_cache_index: &mut rf_store::StoredAuthCacheIndex,
+fn app_state_for_binary_mixer_boundary_case(
+    document_id: &str,
+    title: &str,
+    created_at_seconds: u64,
     case: &NearBoundaryStreamWindowCase,
-) {
-    match case.package_id {
-        SYNTHETIC_LIQUID_ONLY_PACKAGE_ID => {
-            write_synthetic_liquid_only_cached_package(cache_root, auth_cache_index)
-        }
-        SYNTHETIC_VAPOR_ONLY_PACKAGE_ID => {
-            write_synthetic_vapor_only_cached_package(cache_root, auth_cache_index)
-        }
-        _ => panic!("unexpected synthetic package id `{}`", case.package_id),
+) -> AppState {
+    let mut app_state = app_state_from_project(
+        include_str!(
+            "../../../examples/flowsheets/feed-mixer-flash-binary-hydrocarbon.rfproj.json"
+        ),
+        document_id,
+        title,
+        created_at_seconds,
+    );
+    for stream_id in ["stream-feed-a", "stream-feed-b"] {
+        apply_case_composition(
+            &mut app_state,
+            stream_id,
+            case.package_id,
+            case.overall_mole_fractions,
+        );
+        apply_case_feed_state(&mut app_state, stream_id, case);
     }
+    app_state
 }
 
-fn app_state_for_synthetic_cooler_boundary_case(
+fn app_state_for_synthetic_mixer_boundary_case(
     document_id: &str,
     title: &str,
     created_at_seconds: u64,
     case: &NearBoundaryStreamWindowCase,
 ) -> AppState {
     let mut app_state = app_state_from_project(
-        include_str!("../../../examples/flowsheets/feed-cooler-flash.rfproj.json"),
+        include_str!("../../../examples/flowsheets/feed-mixer-flash.rfproj.json"),
         document_id,
         title,
         created_at_seconds,
     );
-    apply_synthetic_demo_composition(&mut app_state, "stream-feed", case.overall_mole_fractions);
-    let cooled = app_state
-        .workspace
-        .document
-        .flowsheet
-        .streams
-        .get_mut(&"stream-cooled".into())
-        .expect("expected cooled stream");
-    cooled.temperature_k = case.temperature_k;
-    cooled.pressure_pa = case.pressure_pa;
+    for stream_id in ["stream-feed-a", "stream-feed-b"] {
+        apply_case_composition(
+            &mut app_state,
+            stream_id,
+            case.package_id,
+            case.overall_mole_fractions,
+        );
+        apply_case_feed_state(&mut app_state, stream_id, case);
+    }
     app_state
 }
 
-fn app_state_for_synthetic_valve_boundary_case(
-    document_id: &str,
-    title: &str,
-    created_at_seconds: u64,
-    case: &NearBoundaryStreamWindowCase,
-) -> AppState {
-    let mut app_state = app_state_from_project(
-        include_str!("../../../examples/flowsheets/feed-valve-flash.rfproj.json"),
-        document_id,
-        title,
-        created_at_seconds,
-    );
-    apply_synthetic_demo_composition(&mut app_state, "stream-feed", case.overall_mole_fractions);
-    let feed = app_state
-        .workspace
-        .document
-        .flowsheet
-        .streams
-        .get_mut(&"stream-feed".into())
-        .expect("expected feed stream");
-    feed.temperature_k = case.temperature_k;
-    feed.pressure_pa = case.pressure_pa.max(feed.pressure_pa) + 20_000.0;
-    app_state
-        .workspace
-        .document
-        .flowsheet
-        .streams
-        .get_mut(&"stream-throttled".into())
-        .expect("expected throttled stream")
-        .pressure_pa = case.pressure_pa;
-    app_state
-}
-
-fn assert_run_panel_synthetic_near_boundary_cases_across_chain<F>(
-    case_kind: NearBoundaryCaseKind,
+fn assert_run_panel_near_boundary_cases_across_chain<F>(
+    cases: Vec<NearBoundaryStreamWindowCase>,
     temp_prefix: &str,
     flash_inlet_stream_id: &str,
     build_app_state: F,
@@ -197,14 +193,10 @@ fn assert_run_panel_synthetic_near_boundary_cases_across_chain<F>(
 {
     let facade = StudioAppFacade::new();
 
-    for (index, case) in synthetic_single_phase_near_boundary_stream_window_cases()
-        .into_iter()
-        .filter(|case| case.kind == case_kind)
-        .enumerate()
-    {
+    for (index, case) in cases.into_iter().enumerate() {
         let cache_root = unique_temp_path(&format!("{temp_prefix}-{index}"));
         let mut auth_cache_index = sample_auth_cache_index(&[]);
-        write_synthetic_cached_package_for_case(&cache_root, &mut auth_cache_index, &case);
+        write_near_boundary_cached_package_for_case(&cache_root, &mut auth_cache_index, &case);
         let context = StudioAppAuthCacheContext::new(&cache_root, &auth_cache_index);
         let mut app_state = build_app_state(index, &case);
 
@@ -239,17 +231,20 @@ fn assert_run_panel_synthetic_near_boundary_cases_across_chain<F>(
 }
 
 #[test]
-fn run_panel_primary_action_preserves_synthetic_single_phase_pressure_near_boundary_windows_across_cooler_flash_inlet_end_to_end()
+fn run_panel_primary_action_preserves_pressure_near_boundary_windows_across_binary_mixer_flash_inlet_end_to_end()
  {
-    assert_run_panel_synthetic_near_boundary_cases_across_chain(
-        NearBoundaryCaseKind::Pressure,
-        "integration-run-panel-synthetic-cooler-pressure",
-        "stream-cooled",
+    assert_run_panel_near_boundary_cases_across_chain(
+        binary_hydrocarbon_lite_near_boundary_stream_window_cases()
+            .into_iter()
+            .filter(|case| case.kind == NearBoundaryCaseKind::Pressure)
+            .collect(),
+        "integration-run-panel-binary-mixer-pressure",
+        "stream-mix-out",
         |index, case| {
-            app_state_for_synthetic_cooler_boundary_case(
-                &format!("doc-control-synthetic-cooler-pressure-{index}"),
+            app_state_for_binary_mixer_boundary_case(
+                &format!("doc-control-binary-mixer-pressure-{index}"),
                 &case.label,
-                260 + index as u64,
+                420 + index as u64,
                 case,
             )
         },
@@ -257,17 +252,20 @@ fn run_panel_primary_action_preserves_synthetic_single_phase_pressure_near_bound
 }
 
 #[test]
-fn run_panel_primary_action_preserves_synthetic_single_phase_temperature_near_boundary_windows_across_cooler_flash_inlet_end_to_end()
+fn run_panel_primary_action_preserves_temperature_near_boundary_windows_across_binary_mixer_flash_inlet_end_to_end()
  {
-    assert_run_panel_synthetic_near_boundary_cases_across_chain(
-        NearBoundaryCaseKind::Temperature,
-        "integration-run-panel-synthetic-cooler-temperature",
-        "stream-cooled",
+    assert_run_panel_near_boundary_cases_across_chain(
+        binary_hydrocarbon_lite_near_boundary_stream_window_cases()
+            .into_iter()
+            .filter(|case| case.kind == NearBoundaryCaseKind::Temperature)
+            .collect(),
+        "integration-run-panel-binary-mixer-temperature",
+        "stream-mix-out",
         |index, case| {
-            app_state_for_synthetic_cooler_boundary_case(
-                &format!("doc-control-synthetic-cooler-temperature-{index}"),
+            app_state_for_binary_mixer_boundary_case(
+                &format!("doc-control-binary-mixer-temperature-{index}"),
                 &case.label,
-                300 + index as u64,
+                460 + index as u64,
                 case,
             )
         },
@@ -275,17 +273,20 @@ fn run_panel_primary_action_preserves_synthetic_single_phase_temperature_near_bo
 }
 
 #[test]
-fn run_panel_primary_action_preserves_synthetic_single_phase_pressure_near_boundary_windows_across_valve_flash_inlet_end_to_end()
+fn run_panel_primary_action_preserves_synthetic_single_phase_pressure_near_boundary_windows_across_mixer_flash_inlet_end_to_end()
  {
-    assert_run_panel_synthetic_near_boundary_cases_across_chain(
-        NearBoundaryCaseKind::Pressure,
-        "integration-run-panel-synthetic-valve-pressure",
-        "stream-throttled",
+    assert_run_panel_near_boundary_cases_across_chain(
+        synthetic_single_phase_near_boundary_stream_window_cases()
+            .into_iter()
+            .filter(|case| case.kind == NearBoundaryCaseKind::Pressure)
+            .collect(),
+        "integration-run-panel-synthetic-mixer-pressure",
+        "stream-mix-out",
         |index, case| {
-            app_state_for_synthetic_valve_boundary_case(
-                &format!("doc-control-synthetic-valve-pressure-{index}"),
+            app_state_for_synthetic_mixer_boundary_case(
+                &format!("doc-control-synthetic-mixer-pressure-{index}"),
                 &case.label,
-                340 + index as u64,
+                500 + index as u64,
                 case,
             )
         },
@@ -293,17 +294,20 @@ fn run_panel_primary_action_preserves_synthetic_single_phase_pressure_near_bound
 }
 
 #[test]
-fn run_panel_primary_action_preserves_synthetic_single_phase_temperature_near_boundary_windows_across_valve_flash_inlet_end_to_end()
+fn run_panel_primary_action_preserves_synthetic_single_phase_temperature_near_boundary_windows_across_mixer_flash_inlet_end_to_end()
  {
-    assert_run_panel_synthetic_near_boundary_cases_across_chain(
-        NearBoundaryCaseKind::Temperature,
-        "integration-run-panel-synthetic-valve-temperature",
-        "stream-throttled",
+    assert_run_panel_near_boundary_cases_across_chain(
+        synthetic_single_phase_near_boundary_stream_window_cases()
+            .into_iter()
+            .filter(|case| case.kind == NearBoundaryCaseKind::Temperature)
+            .collect(),
+        "integration-run-panel-synthetic-mixer-temperature",
+        "stream-mix-out",
         |index, case| {
-            app_state_for_synthetic_valve_boundary_case(
-                &format!("doc-control-synthetic-valve-temperature-{index}"),
+            app_state_for_synthetic_mixer_boundary_case(
+                &format!("doc-control-synthetic-mixer-temperature-{index}"),
                 &case.label,
-                380 + index as u64,
+                540 + index as u64,
                 case,
             )
         },
