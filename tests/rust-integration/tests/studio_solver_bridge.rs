@@ -1,14 +1,20 @@
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use radishflow_studio::{StudioSolveRequest, solve_workspace_with_property_package};
-use rf_rust_integration::build_binary_demo_package_provider;
+use rf_rust_integration::{
+    NearBoundaryCaseKind, NearBoundaryStreamWindowCase, assert_close,
+    binary_hydrocarbon_lite_near_boundary_stream_window_cases, build_binary_demo_package_provider,
+    build_binary_hydrocarbon_lite_package_provider,
+};
 use rf_store::parse_project_file_json;
 use rf_thermo::InMemoryPropertyPackageProvider;
-use rf_types::{PhaseEquilibriumRegion, StreamId, UnitId};
+use rf_types::{ComponentId, PhaseEquilibriumRegion, StreamId, UnitId};
 use rf_ui::{
     AppState, DocumentMetadata, FlowsheetDocument, RunPanelRecoveryActionKind,
     RunPanelRecoveryMutation, RunStatus,
 };
+
+const NEAR_BOUNDARY_FEED_PRESSURE_PA: f64 = 700_000.0;
 
 fn timestamp(seconds: u64) -> SystemTime {
     UNIX_EPOCH + Duration::from_secs(seconds)
@@ -49,6 +55,96 @@ fn assert_two_phase_window_spans_ui_stream(stream: &rf_ui::StreamStateSnapshot) 
     assert!(window.bubble_pressure_pa > stream.pressure_pa);
     assert!(window.bubble_temperature_k < stream.temperature_k);
     assert!(window.dew_temperature_k > stream.temperature_k);
+}
+
+fn apply_binary_demo_composition(
+    app_state: &mut AppState,
+    stream_id: &str,
+    overall_mole_fractions: [f64; 2],
+) {
+    let stream = app_state
+        .workspace
+        .document
+        .flowsheet
+        .streams
+        .get_mut(&stream_id.into())
+        .expect("expected stream");
+    stream.overall_mole_fractions.clear();
+    stream
+        .overall_mole_fractions
+        .insert(ComponentId::new("methane"), overall_mole_fractions[0]);
+    stream
+        .overall_mole_fractions
+        .insert(ComponentId::new("ethane"), overall_mole_fractions[1]);
+}
+
+fn app_state_for_heater_boundary_case(
+    document_id: &str,
+    title: &str,
+    created_at_seconds: u64,
+    case: &NearBoundaryStreamWindowCase,
+) -> AppState {
+    let mut app_state = app_state_from_project(
+        include_str!(
+            "../../../examples/flowsheets/feed-heater-flash-binary-hydrocarbon.rfproj.json"
+        ),
+        document_id,
+        title,
+        created_at_seconds,
+    );
+    apply_binary_demo_composition(&mut app_state, "stream-feed", case.overall_mole_fractions);
+    app_state
+        .workspace
+        .document
+        .flowsheet
+        .streams
+        .get_mut(&"stream-feed".into())
+        .expect("expected feed stream")
+        .pressure_pa = NEAR_BOUNDARY_FEED_PRESSURE_PA;
+    let heated = app_state
+        .workspace
+        .document
+        .flowsheet
+        .streams
+        .get_mut(&"stream-heated".into())
+        .expect("expected heated stream");
+    heated.temperature_k = case.temperature_k;
+    heated.pressure_pa = case.pressure_pa;
+    app_state
+}
+
+fn assert_near_boundary_window_matches_case(
+    stream: &rf_ui::StreamStateSnapshot,
+    case: &NearBoundaryStreamWindowCase,
+) {
+    let window = stream
+        .bubble_dew_window
+        .as_ref()
+        .expect("expected bubble/dew window");
+
+    assert_close(stream.temperature_k, case.temperature_k, 1e-12);
+    assert_close(stream.pressure_pa, case.pressure_pa, 1e-9);
+    assert_eq!(
+        window.phase_region, case.expected_phase_region,
+        "{}",
+        case.label
+    );
+    assert_close(
+        window.bubble_pressure_pa,
+        case.expected_bubble_pressure_pa,
+        1e-6,
+    );
+    assert_close(window.dew_pressure_pa, case.expected_dew_pressure_pa, 1e-6);
+    assert_close(
+        window.bubble_temperature_k,
+        case.expected_bubble_temperature_k,
+        1e-4,
+    );
+    assert_close(
+        window.dew_temperature_k,
+        case.expected_dew_temperature_k,
+        1e-4,
+    );
 }
 
 #[test]
@@ -190,6 +286,97 @@ fn studio_solver_bridge_preserves_intermediate_stream_windows_across_steps_end_t
         flash_step.consumed_streams[0].bubble_dew_window,
         heated.bubble_dew_window
     );
+}
+
+#[test]
+fn studio_solver_bridge_preserves_pressure_near_boundary_windows_across_flash_inlet_end_to_end() {
+    let provider = build_binary_hydrocarbon_lite_package_provider();
+
+    for (index, case) in binary_hydrocarbon_lite_near_boundary_stream_window_cases()
+        .into_iter()
+        .filter(|case| case.kind == NearBoundaryCaseKind::Pressure)
+        .enumerate()
+    {
+        let mut app_state = app_state_for_heater_boundary_case(
+            &format!("doc-studio-pressure-{index}"),
+            &case.label,
+            40 + index as u64,
+            &case,
+        );
+
+        solve_workspace_with_property_package(
+            &mut app_state,
+            &provider,
+            &StudioSolveRequest::new(
+                "binary-hydrocarbon-lite-v1",
+                format!("snapshot-pressure-{index}"),
+                1,
+            ),
+        )
+        .expect("expected solve");
+
+        let snapshot = app_state
+            .workspace
+            .snapshot_history
+            .back()
+            .expect("expected stored snapshot");
+        let heated = find_snapshot_stream(snapshot, "stream-heated");
+        assert_near_boundary_window_matches_case(heated, &case);
+
+        let flash_step = snapshot
+            .steps
+            .iter()
+            .find(|step| step.unit_id == UnitId::new("flash-1"))
+            .expect("expected flash step");
+        assert_eq!(flash_step.consumed_streams.len(), 1, "{}", case.label);
+        assert_eq!(&flash_step.consumed_streams[0], heated, "{}", case.label);
+    }
+}
+
+#[test]
+fn studio_solver_bridge_preserves_temperature_near_boundary_windows_across_flash_inlet_end_to_end()
+{
+    let provider = build_binary_hydrocarbon_lite_package_provider();
+
+    for (index, case) in binary_hydrocarbon_lite_near_boundary_stream_window_cases()
+        .into_iter()
+        .filter(|case| case.kind == NearBoundaryCaseKind::Temperature)
+        .enumerate()
+    {
+        let mut app_state = app_state_for_heater_boundary_case(
+            &format!("doc-studio-temperature-{index}"),
+            &case.label,
+            80 + index as u64,
+            &case,
+        );
+
+        solve_workspace_with_property_package(
+            &mut app_state,
+            &provider,
+            &StudioSolveRequest::new(
+                "binary-hydrocarbon-lite-v1",
+                format!("snapshot-temperature-{index}"),
+                1,
+            ),
+        )
+        .expect("expected solve");
+
+        let snapshot = app_state
+            .workspace
+            .snapshot_history
+            .back()
+            .expect("expected stored snapshot");
+        let heated = find_snapshot_stream(snapshot, "stream-heated");
+        assert_near_boundary_window_matches_case(heated, &case);
+
+        let flash_step = snapshot
+            .steps
+            .iter()
+            .find(|step| step.unit_id == UnitId::new("flash-1"))
+            .expect("expected flash step");
+        assert_eq!(flash_step.consumed_streams.len(), 1, "{}", case.label);
+        assert_eq!(&flash_step.consumed_streams[0], heated, "{}", case.label);
+    }
 }
 
 #[test]
