@@ -68,6 +68,42 @@ fn assert_two_phase_window_spans_solver_stream(
     assert!(window.dew_temperature_k > stream.temperature_k);
 }
 
+fn assert_flash_outlet_boundary_windows(
+    snapshot: &rf_solver::SolveSnapshot,
+    liquid_stream_id: &str,
+    vapor_stream_id: &str,
+) {
+    let liquid = snapshot
+        .stream(&StreamId::new(liquid_stream_id))
+        .expect("expected liquid outlet");
+    let liquid_window = liquid
+        .bubble_dew_window
+        .as_ref()
+        .expect("expected liquid outlet bubble/dew window");
+    assert_eq!(liquid_window.phase_region, PhaseEquilibriumRegion::TwoPhase);
+    assert_close(liquid_window.bubble_pressure_pa, liquid.pressure_pa, 1e-6);
+    assert_close(
+        liquid_window.bubble_temperature_k,
+        liquid.temperature_k,
+        1e-4,
+    );
+    assert!(liquid_window.dew_pressure_pa < liquid_window.bubble_pressure_pa);
+    assert!(liquid_window.dew_temperature_k > liquid_window.bubble_temperature_k);
+
+    let vapor = snapshot
+        .stream(&StreamId::new(vapor_stream_id))
+        .expect("expected vapor outlet");
+    let vapor_window = vapor
+        .bubble_dew_window
+        .as_ref()
+        .expect("expected vapor outlet bubble/dew window");
+    assert_eq!(vapor_window.phase_region, PhaseEquilibriumRegion::TwoPhase);
+    assert_close(vapor_window.dew_pressure_pa, vapor.pressure_pa, 1e-6);
+    assert_close(vapor_window.dew_temperature_k, vapor.temperature_k, 1e-4);
+    assert!(vapor_window.bubble_pressure_pa > vapor_window.dew_pressure_pa);
+    assert!(vapor_window.bubble_temperature_k < vapor_window.dew_temperature_k);
+}
+
 fn assert_flash_consumes_stream(snapshot: &rf_solver::SolveSnapshot, stream_id: &str) {
     let flash_step = snapshot.steps.last().expect("expected flash step");
 
@@ -111,6 +147,7 @@ fn feed_mixer_flash_project_solves_end_to_end() {
         .expect("expected vapor outlet");
     assert_eq!(liquid.phases[1].label, PhaseLabel::Liquid);
     assert_eq!(vapor.phases[1].label, PhaseLabel::Vapor);
+    assert_flash_outlet_boundary_windows(&snapshot, "stream-liquid", "stream-vapor");
 }
 
 #[test]
@@ -153,6 +190,7 @@ fn feed_mixer_heater_flash_project_solves_end_to_end() {
     assert_two_phase_window_spans_solver_stream(&snapshot, "stream-mix-out");
     assert_two_phase_window_spans_solver_stream(&snapshot, "stream-heated");
     assert_flash_consumes_stream(&snapshot, "stream-heated");
+    assert_flash_outlet_boundary_windows(&snapshot, "stream-liquid", "stream-vapor");
 }
 
 #[test]
@@ -180,6 +218,7 @@ fn feed_heater_flash_project_solves_end_to_end() {
     );
     assert_two_phase_window_spans_solver_stream(&snapshot, "stream-heated");
     assert_flash_consumes_stream(&snapshot, "stream-heated");
+    assert_flash_outlet_boundary_windows(&snapshot, "stream-liquid", "stream-vapor");
 }
 
 #[test]
@@ -207,6 +246,7 @@ fn feed_cooler_flash_project_solves_end_to_end() {
     );
     assert_two_phase_window_spans_solver_stream(&snapshot, "stream-cooled");
     assert_flash_consumes_stream(&snapshot, "stream-cooled");
+    assert_flash_outlet_boundary_windows(&snapshot, "stream-liquid", "stream-vapor");
 }
 
 #[test]
@@ -247,6 +287,7 @@ fn feed_cooler_flash_binary_hydrocarbon_project_solves_end_to_end() {
         .expect("expected vapor outlet");
     assert_eq!(liquid.phases[1].label, PhaseLabel::Liquid);
     assert_eq!(vapor.phases[1].label, PhaseLabel::Vapor);
+    assert_flash_outlet_boundary_windows(&snapshot, "stream-liquid", "stream-vapor");
 }
 
 #[test]
@@ -274,6 +315,7 @@ fn feed_valve_flash_project_solves_end_to_end() {
     );
     assert_two_phase_window_spans_solver_stream(&snapshot, "stream-throttled");
     assert_flash_consumes_stream(&snapshot, "stream-throttled");
+    assert_flash_outlet_boundary_windows(&snapshot, "stream-liquid", "stream-vapor");
 }
 
 #[test]
@@ -314,6 +356,7 @@ fn feed_valve_flash_binary_hydrocarbon_project_solves_end_to_end() {
         .expect("expected vapor outlet");
     assert_eq!(liquid.phases[1].label, PhaseLabel::Liquid);
     assert_eq!(vapor.phases[1].label, PhaseLabel::Vapor);
+    assert_flash_outlet_boundary_windows(&snapshot, "stream-liquid", "stream-vapor");
 }
 
 #[test]

@@ -88,6 +88,34 @@ fn assert_two_phase_window_spans_ui_stream(stream: &rf_ui::StreamStateSnapshot) 
     assert!(window.dew_temperature_k > stream.temperature_k);
 }
 
+fn assert_flash_outlet_boundary_windows_in_ui_snapshot(snapshot: &rf_ui::SolveSnapshot) {
+    let liquid = find_snapshot_stream(snapshot, "stream-liquid");
+    let liquid_window = liquid
+        .bubble_dew_window
+        .as_ref()
+        .expect("expected liquid outlet bubble/dew window");
+    assert_eq!(liquid_window.phase_region, PhaseEquilibriumRegion::TwoPhase);
+    assert_close(liquid_window.bubble_pressure_pa, liquid.pressure_pa, 1e-6);
+    assert_close(
+        liquid_window.bubble_temperature_k,
+        liquid.temperature_k,
+        1e-4,
+    );
+    assert!(liquid_window.dew_pressure_pa < liquid_window.bubble_pressure_pa);
+    assert!(liquid_window.dew_temperature_k > liquid_window.bubble_temperature_k);
+
+    let vapor = find_snapshot_stream(snapshot, "stream-vapor");
+    let vapor_window = vapor
+        .bubble_dew_window
+        .as_ref()
+        .expect("expected vapor outlet bubble/dew window");
+    assert_eq!(vapor_window.phase_region, PhaseEquilibriumRegion::TwoPhase);
+    assert_close(vapor_window.dew_pressure_pa, vapor.pressure_pa, 1e-6);
+    assert_close(vapor_window.dew_temperature_k, vapor.temperature_k, 1e-4);
+    assert!(vapor_window.bubble_pressure_pa > vapor_window.dew_pressure_pa);
+    assert!(vapor_window.bubble_temperature_k < vapor_window.dew_temperature_k);
+}
+
 fn apply_binary_demo_composition(
     app_state: &mut AppState,
     stream_id: &str,
@@ -344,6 +372,7 @@ fn run_panel_primary_action_executes_workspace_run_end_to_end() {
         flash_step.consumed_streams[0].bubble_dew_window,
         heated.bubble_dew_window
     );
+    assert_flash_outlet_boundary_windows_in_ui_snapshot(snapshot);
 
     fs::remove_dir_all(cache_root).expect("expected temp dir cleanup");
 }
