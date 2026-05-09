@@ -129,7 +129,10 @@ impl ReadyAppState {
         if let Some(detail) = window.runtime.active_inspector_detail.as_ref() {
             ui.add_space(8.0);
             egui::Frame::group(ui.style()).show(ui, |ui| {
-                self.render_active_inspector_detail(ui, detail);
+                ui.push_id(
+                    format!("runtime:active-inspector:{}", detail.target.command_id),
+                    |ui| self.render_active_inspector_detail(ui, detail),
+                );
             });
         }
 
@@ -358,7 +361,10 @@ impl ReadyAppState {
                         self.result_inspector.comparison_stream_id.as_deref(),
                         selected_unit_id.as_deref(),
                     );
-                    self.render_result_inspector(ui, &inspector);
+                    ui.push_id(
+                        format!("runtime:result-inspector:{}", snapshot.snapshot_id),
+                        |ui| self.render_result_inspector(ui, &inspector),
+                    );
                 }
             } else if let Some(failure) = window.runtime.latest_failure.as_ref() {
                 ui.horizontal_wrapped(|ui| {
@@ -1147,7 +1153,13 @@ impl ReadyAppState {
             ui.small(
                 egui::RichText::new(self.locale.text(ShellText::InspectorLatestResult)).strong(),
             );
-            self.render_stream_result_inspector(ui, stream);
+            ui.push_id(
+                format!(
+                    "active-inspector-latest-stream:{}",
+                    detail.target.command_id
+                ),
+                |ui| self.render_stream_result_inspector(ui, stream),
+            );
         }
 
         if !detail.related_steps.is_empty() {
@@ -1214,7 +1226,13 @@ impl ReadyAppState {
         ui.separator();
 
         if let Some(stream) = inspector.selected_stream.as_ref() {
-            self.render_stream_result_inspector(ui, stream);
+            ui.push_id(
+                format!(
+                    "result-inspector:selected-stream:{}:{}",
+                    inspector.snapshot_id, stream.stream_id
+                ),
+                |ui| self.render_stream_result_inspector(ui, stream),
+            );
         } else {
             ui.small(self.locale.text(ShellText::NoStreamResults));
             return;

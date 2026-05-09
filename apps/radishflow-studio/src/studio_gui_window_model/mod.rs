@@ -1801,5 +1801,7 @@ fn diagnostic_severity_label(severity: rf_ui::DiagnosticSeverity) -> &'static st
     }
 }
 
+#[doc(hidden)]
+pub(crate) mod test_support;
 #[cfg(test)]
 mod tests;

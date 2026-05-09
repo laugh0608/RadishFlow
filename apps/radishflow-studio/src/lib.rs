@@ -42,6 +42,8 @@ mod studio_window_host;
 mod studio_window_host_manager;
 mod studio_window_session;
 mod studio_window_timer_driver;
+#[doc(hidden)]
+pub mod test_support;
 mod workspace_control;
 mod workspace_run_command;
 mod workspace_solve_service;

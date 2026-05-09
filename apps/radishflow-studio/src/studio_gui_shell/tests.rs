@@ -143,6 +143,7 @@ mod canvas;
 mod command_palette;
 mod command_surface;
 mod project_lifecycle;
+mod runtime;
 
 fn palette_commands_for_test(commands: &[(&str, bool)]) -> Vec<&'static StudioGuiCommandEntry> {
     commands
