@@ -2,6 +2,7 @@ use rf_flash::PlaceholderTpFlashSolver;
 use rf_rust_integration::{assert_close, build_binary_demo_provider};
 use rf_solver::{FlowsheetSolver, SequentialModularSolver, SolveStatus, SolverServices};
 use rf_store::parse_project_file_json;
+use rf_thermo::{AntoineCoefficients, PlaceholderThermoProvider, ThermoComponent, ThermoSystem};
 use rf_types::{ComponentId, PhaseEquilibriumRegion, PhaseLabel, StreamId, UnitId};
 
 fn solve_example(project_json: &str) -> rf_solver::SolveSnapshot {
@@ -10,14 +11,42 @@ fn solve_example(project_json: &str) -> rf_solver::SolveSnapshot {
 
 fn solve_example_result(project_json: &str) -> rf_types::RfResult<rf_solver::SolveSnapshot> {
     let provider = build_binary_demo_provider();
+    solve_example_result_with_provider(project_json, &provider)
+}
+
+fn solve_example_with_provider(
+    project_json: &str,
+    provider: &PlaceholderThermoProvider,
+) -> rf_solver::SolveSnapshot {
+    solve_example_result_with_provider(project_json, provider).expect("expected solve snapshot")
+}
+
+fn solve_example_result_with_provider(
+    project_json: &str,
+    provider: &PlaceholderThermoProvider,
+) -> rf_types::RfResult<rf_solver::SolveSnapshot> {
     let flash_solver = PlaceholderTpFlashSolver;
     let services = SolverServices {
-        thermo: &provider,
+        thermo: provider,
         flash_solver: &flash_solver,
     };
     let project = parse_project_file_json(project_json).expect("expected example project parse");
 
     SequentialModularSolver.solve(&services, &project.document.flowsheet)
+}
+
+fn build_binary_hydrocarbon_lite_provider() -> PlaceholderThermoProvider {
+    let mut methane = ThermoComponent::new(ComponentId::new("methane"), "Methane");
+    methane.antoine = Some(AntoineCoefficients::new(8.987, 659.7, -16.7));
+    methane.liquid_heat_capacity_j_per_mol_k = Some(35.0);
+    methane.vapor_heat_capacity_j_per_mol_k = Some(36.5);
+
+    let mut ethane = ThermoComponent::new(ComponentId::new("ethane"), "Ethane");
+    ethane.antoine = Some(AntoineCoefficients::new(8.952, 699.7, -22.8));
+    ethane.liquid_heat_capacity_j_per_mol_k = Some(52.0);
+    ethane.vapor_heat_capacity_j_per_mol_k = Some(65.0);
+
+    PlaceholderThermoProvider::new(ThermoSystem::binary([methane, ethane]))
 }
 
 fn assert_two_phase_window_spans_solver_stream(
@@ -181,6 +210,46 @@ fn feed_cooler_flash_project_solves_end_to_end() {
 }
 
 #[test]
+fn feed_cooler_flash_binary_hydrocarbon_project_solves_end_to_end() {
+    let provider = build_binary_hydrocarbon_lite_provider();
+    let snapshot = solve_example_with_provider(
+        include_str!(
+            "../../../examples/flowsheets/feed-cooler-flash-binary-hydrocarbon.rfproj.json"
+        ),
+        &provider,
+    );
+
+    assert_eq!(snapshot.status, SolveStatus::Converged);
+    assert_eq!(snapshot.steps.len(), 3);
+
+    let cooled = snapshot
+        .stream(&"stream-cooled".into())
+        .expect("expected cooled outlet");
+    assert_close(cooled.temperature_k, 300.0, 1e-12);
+    assert_close(cooled.pressure_pa, 650_000.0, 1e-12);
+    assert_close(cooled.total_molar_flow_mol_s, 5.0, 1e-12);
+    assert_close(
+        *cooled
+            .overall_mole_fractions
+            .get(&ComponentId::new("methane"))
+            .expect("expected methane"),
+        0.2,
+        1e-12,
+    );
+    assert_two_phase_window_spans_solver_stream(&snapshot, "stream-cooled");
+    assert_flash_consumes_stream(&snapshot, "stream-cooled");
+
+    let liquid = snapshot
+        .stream(&"stream-liquid".into())
+        .expect("expected liquid outlet");
+    let vapor = snapshot
+        .stream(&"stream-vapor".into())
+        .expect("expected vapor outlet");
+    assert_eq!(liquid.phases[1].label, PhaseLabel::Liquid);
+    assert_eq!(vapor.phases[1].label, PhaseLabel::Vapor);
+}
+
+#[test]
 fn feed_valve_flash_project_solves_end_to_end() {
     let snapshot = solve_example(include_str!(
         "../../../examples/flowsheets/feed-valve-flash.rfproj.json"
@@ -205,6 +274,46 @@ fn feed_valve_flash_project_solves_end_to_end() {
     );
     assert_two_phase_window_spans_solver_stream(&snapshot, "stream-throttled");
     assert_flash_consumes_stream(&snapshot, "stream-throttled");
+}
+
+#[test]
+fn feed_valve_flash_binary_hydrocarbon_project_solves_end_to_end() {
+    let provider = build_binary_hydrocarbon_lite_provider();
+    let snapshot = solve_example_with_provider(
+        include_str!(
+            "../../../examples/flowsheets/feed-valve-flash-binary-hydrocarbon.rfproj.json"
+        ),
+        &provider,
+    );
+
+    assert_eq!(snapshot.status, SolveStatus::Converged);
+    assert_eq!(snapshot.steps.len(), 3);
+
+    let throttled = snapshot
+        .stream(&"stream-throttled".into())
+        .expect("expected valve outlet");
+    assert_close(throttled.temperature_k, 300.0, 1e-12);
+    assert_close(throttled.pressure_pa, 650_000.0, 1e-12);
+    assert_close(throttled.total_molar_flow_mol_s, 5.0, 1e-12);
+    assert_close(
+        *throttled
+            .overall_mole_fractions
+            .get(&ComponentId::new("methane"))
+            .expect("expected methane"),
+        0.2,
+        1e-12,
+    );
+    assert_two_phase_window_spans_solver_stream(&snapshot, "stream-throttled");
+    assert_flash_consumes_stream(&snapshot, "stream-throttled");
+
+    let liquid = snapshot
+        .stream(&"stream-liquid".into())
+        .expect("expected liquid outlet");
+    let vapor = snapshot
+        .stream(&"stream-vapor".into())
+        .expect("expected vapor outlet");
+    assert_eq!(liquid.phases[1].label, PhaseLabel::Liquid);
+    assert_eq!(vapor.phases[1].label, PhaseLabel::Vapor);
 }
 
 #[test]

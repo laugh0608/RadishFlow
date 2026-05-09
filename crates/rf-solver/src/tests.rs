@@ -82,6 +82,20 @@ fn build_provider() -> PlaceholderThermoProvider {
     PlaceholderThermoProvider::new(ThermoSystem::binary([first, second]))
 }
 
+fn build_binary_hydrocarbon_provider() -> PlaceholderThermoProvider {
+    let mut methane = ThermoComponent::new(ComponentId::new("methane"), "Methane");
+    methane.antoine = Some(AntoineCoefficients::new(8.987, 659.7, -16.7));
+    methane.liquid_heat_capacity_j_per_mol_k = Some(35.0);
+    methane.vapor_heat_capacity_j_per_mol_k = Some(36.5);
+
+    let mut ethane = ThermoComponent::new(ComponentId::new("ethane"), "Ethane");
+    ethane.antoine = Some(AntoineCoefficients::new(8.952, 699.7, -22.8));
+    ethane.liquid_heat_capacity_j_per_mol_k = Some(52.0);
+    ethane.vapor_heat_capacity_j_per_mol_k = Some(65.0);
+
+    PlaceholderThermoProvider::new(ThermoSystem::binary([methane, ethane]))
+}
+
 fn build_demo_flowsheet() -> Flowsheet {
     let mut flowsheet = Flowsheet::new("feed-mixer-flash");
     for component in [
@@ -859,6 +873,41 @@ fn sequential_solver_runs_feed_cooler_flash_example_project_file() {
 }
 
 #[test]
+fn sequential_solver_runs_feed_cooler_flash_binary_hydrocarbon_example_project_file() {
+    let provider = build_binary_hydrocarbon_provider();
+    let flash_solver = PlaceholderTpFlashSolver;
+    let services = SolverServices {
+        thermo: &provider,
+        flash_solver: &flash_solver,
+    };
+    let project = parse_project_file_json(include_str!(
+        "../../../examples/flowsheets/feed-cooler-flash-binary-hydrocarbon.rfproj.json"
+    ))
+    .expect("expected example project parse");
+
+    let snapshot = SequentialModularSolver
+        .solve(&services, &project.document.flowsheet)
+        .expect("expected solve snapshot");
+
+    let cooled = snapshot
+        .stream(&"stream-cooled".into())
+        .expect("expected cooled outlet");
+    assert_close(cooled.temperature_k, 300.0, 1e-12);
+    assert_close(cooled.pressure_pa, 650_000.0, 1e-12);
+    assert_close(
+        *cooled
+            .overall_mole_fractions
+            .get(&ComponentId::new("methane"))
+            .expect("expected methane"),
+        0.2,
+        1e-12,
+    );
+    assert_eq!(snapshot.steps.len(), 3);
+    assert!(snapshot.stream(&"stream-liquid".into()).is_some());
+    assert!(snapshot.stream(&"stream-vapor".into()).is_some());
+}
+
+#[test]
 fn sequential_solver_solves_feed_valve_flash_chain() {
     let provider = build_provider();
     let flash_solver = PlaceholderTpFlashSolver;
@@ -942,6 +991,41 @@ fn sequential_solver_runs_feed_valve_flash_example_project_file() {
         .expect("expected valve outlet");
     assert_close(throttled.temperature_k, 315.0, 1e-12);
     assert_close(throttled.pressure_pa, 90_000.0, 1e-12);
+    assert_eq!(snapshot.steps.len(), 3);
+    assert!(snapshot.stream(&"stream-liquid".into()).is_some());
+    assert!(snapshot.stream(&"stream-vapor".into()).is_some());
+}
+
+#[test]
+fn sequential_solver_runs_feed_valve_flash_binary_hydrocarbon_example_project_file() {
+    let provider = build_binary_hydrocarbon_provider();
+    let flash_solver = PlaceholderTpFlashSolver;
+    let services = SolverServices {
+        thermo: &provider,
+        flash_solver: &flash_solver,
+    };
+    let project = parse_project_file_json(include_str!(
+        "../../../examples/flowsheets/feed-valve-flash-binary-hydrocarbon.rfproj.json"
+    ))
+    .expect("expected example project parse");
+
+    let snapshot = SequentialModularSolver
+        .solve(&services, &project.document.flowsheet)
+        .expect("expected solve snapshot");
+
+    let throttled = snapshot
+        .stream(&"stream-throttled".into())
+        .expect("expected valve outlet");
+    assert_close(throttled.temperature_k, 300.0, 1e-12);
+    assert_close(throttled.pressure_pa, 650_000.0, 1e-12);
+    assert_close(
+        *throttled
+            .overall_mole_fractions
+            .get(&ComponentId::new("methane"))
+            .expect("expected methane"),
+        0.2,
+        1e-12,
+    );
     assert_eq!(snapshot.steps.len(), 3);
     assert!(snapshot.stream(&"stream-liquid".into()).is_some());
     assert!(snapshot.stream(&"stream-vapor".into()).is_some());
