@@ -11,7 +11,7 @@ use rf_rust_integration::{
     write_near_boundary_cached_package_for_case,
 };
 use rf_store::parse_project_file_json;
-use rf_types::{ComponentId, StreamId, UnitId};
+use rf_types::{ComponentId, PhaseEquilibriumRegion, StreamId, UnitId};
 use rf_ui::{AppState, DocumentMetadata, FlowsheetDocument};
 use std::fs;
 
@@ -131,6 +131,89 @@ fn assert_flash_consumed_stream_matches_inlet(
         "{}",
         case.label
     );
+}
+
+fn assert_flash_outlet_window_semantics_match_case(
+    snapshot: &rf_ui::SolveSnapshot,
+    case: &NearBoundaryStreamWindowCase,
+) {
+    let liquid = find_snapshot_stream(snapshot, "stream-liquid");
+    let vapor = find_snapshot_stream(snapshot, "stream-vapor");
+
+    match case.expected_phase_region {
+        PhaseEquilibriumRegion::LiquidOnly => {
+            assert!(liquid.total_molar_flow_mol_s > 0.0, "{}", case.label);
+            assert_close(vapor.total_molar_flow_mol_s, 0.0, 1e-12);
+            assert_eq!(
+                liquid
+                    .bubble_dew_window
+                    .as_ref()
+                    .expect("expected liquid outlet bubble/dew window")
+                    .phase_region,
+                PhaseEquilibriumRegion::LiquidOnly,
+                "{}",
+                case.label
+            );
+            assert!(
+                vapor.bubble_dew_window.is_none(),
+                "expected vapor outlet bubble/dew window to be absent for {}",
+                case.label
+            );
+        }
+        PhaseEquilibriumRegion::TwoPhase => {
+            assert!(liquid.total_molar_flow_mol_s > 0.0, "{}", case.label);
+            assert!(vapor.total_molar_flow_mol_s > 0.0, "{}", case.label);
+
+            let liquid_window = liquid
+                .bubble_dew_window
+                .as_ref()
+                .expect("expected liquid outlet bubble/dew window");
+            assert_eq!(
+                liquid_window.phase_region,
+                PhaseEquilibriumRegion::TwoPhase,
+                "{}",
+                case.label
+            );
+            assert_close(liquid_window.bubble_pressure_pa, liquid.pressure_pa, 1e-6);
+            assert_close(
+                liquid_window.bubble_temperature_k,
+                liquid.temperature_k,
+                1e-4,
+            );
+
+            let vapor_window = vapor
+                .bubble_dew_window
+                .as_ref()
+                .expect("expected vapor outlet bubble/dew window");
+            assert_eq!(
+                vapor_window.phase_region,
+                PhaseEquilibriumRegion::TwoPhase,
+                "{}",
+                case.label
+            );
+            assert_close(vapor_window.dew_pressure_pa, vapor.pressure_pa, 1e-6);
+            assert_close(vapor_window.dew_temperature_k, vapor.temperature_k, 1e-4);
+        }
+        PhaseEquilibriumRegion::VaporOnly => {
+            assert_close(liquid.total_molar_flow_mol_s, 0.0, 1e-12);
+            assert!(vapor.total_molar_flow_mol_s > 0.0, "{}", case.label);
+            assert!(
+                liquid.bubble_dew_window.is_none(),
+                "expected liquid outlet bubble/dew window to be absent for {}",
+                case.label
+            );
+            assert_eq!(
+                vapor
+                    .bubble_dew_window
+                    .as_ref()
+                    .expect("expected vapor outlet bubble/dew window")
+                    .phase_region,
+                PhaseEquilibriumRegion::VaporOnly,
+                "{}",
+                case.label
+            );
+        }
+    }
 }
 
 fn app_state_for_binary_mixer_boundary_case(
@@ -298,6 +381,7 @@ fn assert_run_panel_near_boundary_cases_across_chain<F>(
         let inlet_stream = find_snapshot_stream(snapshot, flash_inlet_stream_id);
         assert_near_boundary_window_matches_case(inlet_stream, &case);
         assert_flash_consumed_stream_matches_inlet(snapshot, inlet_stream, &case);
+        assert_flash_outlet_window_semantics_match_case(snapshot, &case);
 
         fs::remove_dir_all(cache_root).expect("expected temp dir cleanup");
     }

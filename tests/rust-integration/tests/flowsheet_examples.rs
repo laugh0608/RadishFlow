@@ -1,5 +1,11 @@
 use rf_flash::PlaceholderTpFlashSolver;
-use rf_rust_integration::{assert_close, build_binary_demo_provider};
+use rf_rust_integration::{
+    BINARY_HYDROCARBON_LITE_PACKAGE_ID, NearBoundaryCaseKind, NearBoundaryStreamWindowCase,
+    SYNTHETIC_LIQUID_ONLY_PACKAGE_ID, SYNTHETIC_VAPOR_ONLY_PACKAGE_ID, assert_close,
+    binary_hydrocarbon_lite_near_boundary_stream_window_cases, build_binary_demo_provider,
+    build_demo_antoine_coefficients, near_boundary_component_ids_for_package,
+    synthetic_single_phase_near_boundary_stream_window_cases,
+};
 use rf_solver::{FlowsheetSolver, SequentialModularSolver, SolveStatus, SolverServices};
 use rf_store::parse_project_file_json;
 use rf_thermo::{AntoineCoefficients, PlaceholderThermoProvider, ThermoComponent, ThermoSystem};
@@ -25,12 +31,25 @@ fn solve_example_result_with_provider(
     project_json: &str,
     provider: &PlaceholderThermoProvider,
 ) -> rf_types::RfResult<rf_solver::SolveSnapshot> {
+    solve_example_result_with_provider_and_edit(project_json, provider, |_| {})
+}
+
+fn solve_example_result_with_provider_and_edit<F>(
+    project_json: &str,
+    provider: &PlaceholderThermoProvider,
+    edit_project: F,
+) -> rf_types::RfResult<rf_solver::SolveSnapshot>
+where
+    F: FnOnce(&mut rf_store::StoredProjectFile),
+{
     let flash_solver = PlaceholderTpFlashSolver;
     let services = SolverServices {
         thermo: provider,
         flash_solver: &flash_solver,
     };
-    let project = parse_project_file_json(project_json).expect("expected example project parse");
+    let mut project =
+        parse_project_file_json(project_json).expect("expected example project parse");
+    edit_project(&mut project);
 
     SequentialModularSolver.solve(&services, &project.document.flowsheet)
 }
@@ -47,6 +66,27 @@ fn build_binary_hydrocarbon_lite_provider() -> PlaceholderThermoProvider {
     ethane.vapor_heat_capacity_j_per_mol_k = Some(65.0);
 
     PlaceholderThermoProvider::new(ThermoSystem::binary([methane, ethane]))
+}
+
+fn build_synthetic_near_boundary_provider(package_id: &str) -> PlaceholderThermoProvider {
+    let k_values = match package_id {
+        SYNTHETIC_LIQUID_ONLY_PACKAGE_ID => [0.8, 0.6],
+        SYNTHETIC_VAPOR_ONLY_PACKAGE_ID => [1.8, 1.3],
+        _ => panic!("unexpected synthetic near-boundary package id `{package_id}`"),
+    };
+    let pressure_pa = 100_000.0_f64;
+
+    let mut first = ThermoComponent::new(ComponentId::new("component-a"), "Component A");
+    first.antoine = Some(build_demo_antoine_coefficients(k_values[0], pressure_pa));
+    first.liquid_heat_capacity_j_per_mol_k = Some(35.0);
+    first.vapor_heat_capacity_j_per_mol_k = Some(36.5);
+
+    let mut second = ThermoComponent::new(ComponentId::new("component-b"), "Component B");
+    second.antoine = Some(build_demo_antoine_coefficients(k_values[1], pressure_pa));
+    second.liquid_heat_capacity_j_per_mol_k = Some(52.0);
+    second.vapor_heat_capacity_j_per_mol_k = Some(65.0);
+
+    PlaceholderThermoProvider::new(ThermoSystem::binary([first, second]))
 }
 
 fn assert_two_phase_window_spans_solver_stream(
@@ -112,6 +152,190 @@ fn assert_flash_consumes_stream(snapshot: &rf_solver::SolveSnapshot, stream_id: 
         flash_step.consumed_stream_ids,
         vec![StreamId::new(stream_id)]
     );
+}
+
+fn apply_case_composition(
+    project: &mut rf_store::StoredProjectFile,
+    stream_id: &str,
+    package_id: &str,
+    overall_mole_fractions: [f64; 2],
+) {
+    let [first_component_id, second_component_id] =
+        near_boundary_component_ids_for_package(package_id);
+    let stream = project
+        .document
+        .flowsheet
+        .streams
+        .get_mut(&stream_id.into())
+        .expect("expected stream");
+    stream.overall_mole_fractions.clear();
+    stream.overall_mole_fractions.insert(
+        ComponentId::new(first_component_id),
+        overall_mole_fractions[0],
+    );
+    stream.overall_mole_fractions.insert(
+        ComponentId::new(second_component_id),
+        overall_mole_fractions[1],
+    );
+}
+
+fn apply_case_feed_state(
+    project: &mut rf_store::StoredProjectFile,
+    stream_id: &str,
+    case: &NearBoundaryStreamWindowCase,
+) {
+    let stream = project
+        .document
+        .flowsheet
+        .streams
+        .get_mut(&stream_id.into())
+        .expect("expected stream");
+    stream.temperature_k = case.temperature_k;
+    stream.pressure_pa = case.pressure_pa;
+}
+
+fn assert_near_boundary_window_matches_case(
+    snapshot: &rf_solver::SolveSnapshot,
+    stream_id: &str,
+    case: &NearBoundaryStreamWindowCase,
+) {
+    let stream = snapshot
+        .stream(&StreamId::new(stream_id))
+        .expect("expected stream");
+    let window = stream
+        .bubble_dew_window
+        .as_ref()
+        .expect("expected bubble/dew window");
+
+    assert_close(stream.temperature_k, case.temperature_k, 1e-12);
+    assert_close(stream.pressure_pa, case.pressure_pa, 1e-9);
+    assert_eq!(
+        window.phase_region, case.expected_phase_region,
+        "{}",
+        case.label
+    );
+    assert_close(
+        window.bubble_pressure_pa,
+        case.expected_bubble_pressure_pa,
+        1e-6,
+    );
+    assert_close(window.dew_pressure_pa, case.expected_dew_pressure_pa, 1e-6);
+    assert_close(
+        window.bubble_temperature_k,
+        case.expected_bubble_temperature_k,
+        1e-4,
+    );
+    assert_close(
+        window.dew_temperature_k,
+        case.expected_dew_temperature_k,
+        1e-4,
+    );
+}
+
+fn assert_flash_outlet_window_semantics_match_case(
+    snapshot: &rf_solver::SolveSnapshot,
+    case: &NearBoundaryStreamWindowCase,
+) {
+    let liquid = snapshot
+        .stream(&StreamId::new("stream-liquid"))
+        .expect("expected liquid outlet");
+    let vapor = snapshot
+        .stream(&StreamId::new("stream-vapor"))
+        .expect("expected vapor outlet");
+
+    match case.expected_phase_region {
+        PhaseEquilibriumRegion::LiquidOnly => {
+            assert!(liquid.total_molar_flow_mol_s > 0.0, "{}", case.label);
+            assert_close(vapor.total_molar_flow_mol_s, 0.0, 1e-12);
+            assert_eq!(
+                liquid
+                    .bubble_dew_window
+                    .as_ref()
+                    .expect("expected liquid outlet bubble/dew window")
+                    .phase_region,
+                PhaseEquilibriumRegion::LiquidOnly,
+                "{}",
+                case.label
+            );
+            assert!(
+                vapor.bubble_dew_window.is_none(),
+                "expected vapor outlet bubble/dew window to be absent for {}",
+                case.label
+            );
+        }
+        PhaseEquilibriumRegion::TwoPhase => {
+            assert!(liquid.total_molar_flow_mol_s > 0.0, "{}", case.label);
+            assert!(vapor.total_molar_flow_mol_s > 0.0, "{}", case.label);
+
+            let liquid_window = liquid
+                .bubble_dew_window
+                .as_ref()
+                .expect("expected liquid outlet bubble/dew window");
+            assert_eq!(
+                liquid_window.phase_region,
+                PhaseEquilibriumRegion::TwoPhase,
+                "{}",
+                case.label
+            );
+            assert_close(liquid_window.bubble_pressure_pa, liquid.pressure_pa, 1e-6);
+            assert_close(
+                liquid_window.bubble_temperature_k,
+                liquid.temperature_k,
+                1e-4,
+            );
+
+            let vapor_window = vapor
+                .bubble_dew_window
+                .as_ref()
+                .expect("expected vapor outlet bubble/dew window");
+            assert_eq!(
+                vapor_window.phase_region,
+                PhaseEquilibriumRegion::TwoPhase,
+                "{}",
+                case.label
+            );
+            assert_close(vapor_window.dew_pressure_pa, vapor.pressure_pa, 1e-6);
+            assert_close(vapor_window.dew_temperature_k, vapor.temperature_k, 1e-4);
+        }
+        PhaseEquilibriumRegion::VaporOnly => {
+            assert_close(liquid.total_molar_flow_mol_s, 0.0, 1e-12);
+            assert!(vapor.total_molar_flow_mol_s > 0.0, "{}", case.label);
+            assert!(
+                liquid.bubble_dew_window.is_none(),
+                "expected liquid outlet bubble/dew window to be absent for {}",
+                case.label
+            );
+            assert_eq!(
+                vapor
+                    .bubble_dew_window
+                    .as_ref()
+                    .expect("expected vapor outlet bubble/dew window")
+                    .phase_region,
+                PhaseEquilibriumRegion::VaporOnly,
+                "{}",
+                case.label
+            );
+        }
+    }
+}
+
+fn solve_near_boundary_case_with_provider<F>(
+    project_json: &str,
+    provider: &PlaceholderThermoProvider,
+    flash_inlet_stream_id: &str,
+    case: &NearBoundaryStreamWindowCase,
+    edit_project: F,
+) where
+    F: FnOnce(&mut rf_store::StoredProjectFile),
+{
+    let snapshot =
+        solve_example_result_with_provider_and_edit(project_json, provider, edit_project)
+            .expect("expected solve snapshot");
+
+    assert_eq!(snapshot.status, SolveStatus::Converged, "{}", case.label);
+    assert_near_boundary_window_matches_case(&snapshot, flash_inlet_stream_id, case);
+    assert_flash_consumes_stream(&snapshot, flash_inlet_stream_id);
+    assert_flash_outlet_window_semantics_match_case(&snapshot, case);
 }
 
 #[test]
@@ -357,6 +581,283 @@ fn feed_valve_flash_binary_hydrocarbon_project_solves_end_to_end() {
     assert_eq!(liquid.phases[1].label, PhaseLabel::Liquid);
     assert_eq!(vapor.phases[1].label, PhaseLabel::Vapor);
     assert_flash_outlet_boundary_windows(&snapshot, "stream-liquid", "stream-vapor");
+}
+
+#[test]
+fn binary_mixer_flash_near_boundary_pressure_cases_preserve_inlet_and_outlet_windows_end_to_end() {
+    for case in binary_hydrocarbon_lite_near_boundary_stream_window_cases()
+        .into_iter()
+        .filter(|case| case.kind == NearBoundaryCaseKind::Pressure)
+    {
+        let provider = build_binary_hydrocarbon_lite_provider();
+        solve_near_boundary_case_with_provider(
+            include_str!(
+                "../../../examples/flowsheets/feed-mixer-flash-binary-hydrocarbon.rfproj.json"
+            ),
+            &provider,
+            "stream-mix-out",
+            &case,
+            |project| {
+                for stream_id in ["stream-feed-a", "stream-feed-b"] {
+                    apply_case_composition(
+                        project,
+                        stream_id,
+                        case.package_id,
+                        case.overall_mole_fractions,
+                    );
+                    apply_case_feed_state(project, stream_id, &case);
+                }
+            },
+        );
+    }
+}
+
+#[test]
+fn binary_mixer_flash_near_boundary_temperature_cases_preserve_inlet_and_outlet_windows_end_to_end()
+{
+    for case in binary_hydrocarbon_lite_near_boundary_stream_window_cases()
+        .into_iter()
+        .filter(|case| case.kind == NearBoundaryCaseKind::Temperature)
+    {
+        let provider = build_binary_hydrocarbon_lite_provider();
+        solve_near_boundary_case_with_provider(
+            include_str!(
+                "../../../examples/flowsheets/feed-mixer-flash-binary-hydrocarbon.rfproj.json"
+            ),
+            &provider,
+            "stream-mix-out",
+            &case,
+            |project| {
+                for stream_id in ["stream-feed-a", "stream-feed-b"] {
+                    apply_case_composition(
+                        project,
+                        stream_id,
+                        case.package_id,
+                        case.overall_mole_fractions,
+                    );
+                    apply_case_feed_state(project, stream_id, &case);
+                }
+            },
+        );
+    }
+}
+
+#[test]
+fn binary_cooler_flash_near_boundary_pressure_cases_preserve_inlet_and_outlet_windows_end_to_end() {
+    for case in binary_hydrocarbon_lite_near_boundary_stream_window_cases()
+        .into_iter()
+        .filter(|case| case.kind == NearBoundaryCaseKind::Pressure)
+    {
+        let provider = build_binary_hydrocarbon_lite_provider();
+        solve_near_boundary_case_with_provider(
+            include_str!(
+                "../../../examples/flowsheets/feed-cooler-flash-binary-hydrocarbon.rfproj.json"
+            ),
+            &provider,
+            "stream-cooled",
+            &case,
+            |project| {
+                apply_case_composition(
+                    project,
+                    "stream-feed",
+                    case.package_id,
+                    case.overall_mole_fractions,
+                );
+                project
+                    .document
+                    .flowsheet
+                    .streams
+                    .get_mut(&"stream-feed".into())
+                    .expect("expected feed stream")
+                    .pressure_pa = 700_000.0;
+                apply_case_feed_state(project, "stream-cooled", &case);
+            },
+        );
+    }
+}
+
+#[test]
+fn binary_cooler_flash_near_boundary_temperature_cases_preserve_inlet_and_outlet_windows_end_to_end()
+ {
+    for case in binary_hydrocarbon_lite_near_boundary_stream_window_cases()
+        .into_iter()
+        .filter(|case| case.kind == NearBoundaryCaseKind::Temperature)
+    {
+        let provider = build_binary_hydrocarbon_lite_provider();
+        solve_near_boundary_case_with_provider(
+            include_str!(
+                "../../../examples/flowsheets/feed-cooler-flash-binary-hydrocarbon.rfproj.json"
+            ),
+            &provider,
+            "stream-cooled",
+            &case,
+            |project| {
+                apply_case_composition(
+                    project,
+                    "stream-feed",
+                    case.package_id,
+                    case.overall_mole_fractions,
+                );
+                project
+                    .document
+                    .flowsheet
+                    .streams
+                    .get_mut(&"stream-feed".into())
+                    .expect("expected feed stream")
+                    .pressure_pa = 700_000.0;
+                apply_case_feed_state(project, "stream-cooled", &case);
+            },
+        );
+    }
+}
+
+#[test]
+fn binary_valve_flash_near_boundary_pressure_cases_preserve_inlet_and_outlet_windows_end_to_end() {
+    for case in binary_hydrocarbon_lite_near_boundary_stream_window_cases()
+        .into_iter()
+        .filter(|case| case.kind == NearBoundaryCaseKind::Pressure)
+    {
+        let provider = build_binary_hydrocarbon_lite_provider();
+        solve_near_boundary_case_with_provider(
+            include_str!(
+                "../../../examples/flowsheets/feed-valve-flash-binary-hydrocarbon.rfproj.json"
+            ),
+            &provider,
+            "stream-throttled",
+            &case,
+            |project| {
+                apply_case_composition(
+                    project,
+                    "stream-feed",
+                    case.package_id,
+                    case.overall_mole_fractions,
+                );
+                let feed = project
+                    .document
+                    .flowsheet
+                    .streams
+                    .get_mut(&"stream-feed".into())
+                    .expect("expected feed stream");
+                feed.temperature_k = case.temperature_k;
+                feed.pressure_pa = 700_000.0;
+                let throttled = project
+                    .document
+                    .flowsheet
+                    .streams
+                    .get_mut(&"stream-throttled".into())
+                    .expect("expected throttled stream");
+                throttled.temperature_k = case.temperature_k;
+                throttled.pressure_pa = case.pressure_pa;
+            },
+        );
+    }
+}
+
+#[test]
+fn binary_valve_flash_near_boundary_temperature_cases_preserve_inlet_and_outlet_windows_end_to_end()
+{
+    for case in binary_hydrocarbon_lite_near_boundary_stream_window_cases()
+        .into_iter()
+        .filter(|case| case.kind == NearBoundaryCaseKind::Temperature)
+    {
+        let provider = build_binary_hydrocarbon_lite_provider();
+        solve_near_boundary_case_with_provider(
+            include_str!(
+                "../../../examples/flowsheets/feed-valve-flash-binary-hydrocarbon.rfproj.json"
+            ),
+            &provider,
+            "stream-throttled",
+            &case,
+            |project| {
+                apply_case_composition(
+                    project,
+                    "stream-feed",
+                    case.package_id,
+                    case.overall_mole_fractions,
+                );
+                let feed = project
+                    .document
+                    .flowsheet
+                    .streams
+                    .get_mut(&"stream-feed".into())
+                    .expect("expected feed stream");
+                feed.temperature_k = case.temperature_k;
+                feed.pressure_pa = 700_000.0;
+                let throttled = project
+                    .document
+                    .flowsheet
+                    .streams
+                    .get_mut(&"stream-throttled".into())
+                    .expect("expected throttled stream");
+                throttled.temperature_k = case.temperature_k;
+                throttled.pressure_pa = case.pressure_pa;
+            },
+        );
+    }
+}
+
+#[test]
+fn synthetic_mixer_flash_near_boundary_pressure_cases_preserve_inlet_and_outlet_windows_end_to_end()
+{
+    for case in synthetic_single_phase_near_boundary_stream_window_cases()
+        .into_iter()
+        .filter(|case| case.kind == NearBoundaryCaseKind::Pressure)
+    {
+        let provider = if case.package_id == BINARY_HYDROCARBON_LITE_PACKAGE_ID {
+            build_binary_hydrocarbon_lite_provider()
+        } else {
+            build_synthetic_near_boundary_provider(case.package_id)
+        };
+        solve_near_boundary_case_with_provider(
+            include_str!("../../../examples/flowsheets/feed-mixer-flash.rfproj.json"),
+            &provider,
+            "stream-mix-out",
+            &case,
+            |project| {
+                for stream_id in ["stream-feed-a", "stream-feed-b"] {
+                    apply_case_composition(
+                        project,
+                        stream_id,
+                        case.package_id,
+                        case.overall_mole_fractions,
+                    );
+                    apply_case_feed_state(project, stream_id, &case);
+                }
+            },
+        );
+    }
+}
+
+#[test]
+fn synthetic_mixer_flash_near_boundary_temperature_cases_preserve_inlet_and_outlet_windows_end_to_end()
+ {
+    for case in synthetic_single_phase_near_boundary_stream_window_cases()
+        .into_iter()
+        .filter(|case| case.kind == NearBoundaryCaseKind::Temperature)
+    {
+        let provider = if case.package_id == BINARY_HYDROCARBON_LITE_PACKAGE_ID {
+            build_binary_hydrocarbon_lite_provider()
+        } else {
+            build_synthetic_near_boundary_provider(case.package_id)
+        };
+        solve_near_boundary_case_with_provider(
+            include_str!("../../../examples/flowsheets/feed-mixer-flash.rfproj.json"),
+            &provider,
+            "stream-mix-out",
+            &case,
+            |project| {
+                for stream_id in ["stream-feed-a", "stream-feed-b"] {
+                    apply_case_composition(
+                        project,
+                        stream_id,
+                        case.package_id,
+                        case.overall_mole_fractions,
+                    );
+                    apply_case_feed_state(project, stream_id, &case);
+                }
+            },
+        );
+    }
 }
 
 #[test]
