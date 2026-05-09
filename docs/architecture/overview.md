@@ -111,6 +111,7 @@ RadishFlow 的目标架构已经冻结为“桌面端三层 + 外部控制面”
 - `StudioGuiWindowModel` 作为窗口内容分区模型
 - `StudioGuiWindowDiagnosticTargetActionModel` 当前作为结果审阅/错误定位的统一 action presentation，汇总失败恢复、Inspector 目标、求解步骤单元、输入流股和产出流股跳转；真实 GUI 继续按既有 `command_id` 派发，不新增导航或 recovery 私有状态机
 - Result Inspector 当前只消费当前 `SolveSnapshot` 已物化的流股、相、焓值、求解步骤和诊断 DTO：stream-centric 与 unit-centric 视图并列，stream comparison 只比较当前快照中已有的 summary / composition / phase rows，并为 base / compared stream 暴露既有 Inspector focus action；这一层不承担结果报表、导出、跨快照历史或重新计算热力学
+- 同一股流股当前允许同时出现在 `Result Inspector`、`Active Inspector` 与 runtime 面板多个结果区；这些位置都必须继续只消费同一份 `SolveSnapshot` DTO。若某侧 outlet 的 `bubble_dew_window` 在快照中缺席，重复渲染时也必须保持缺席；真实 GUI 只能通过独立 widget id scope 解决重复渲染冲突，不能为规避 `egui` id 冲突而分叉结果语义或在 shell 层补算窗口
 - `StudioGuiWindowFailureDiagnosticDetailModel` 当前作为失败详情只读 presentation，直接承接 latest diagnostic summary 的 code / revision / severity / related targets，避免 GUI 从失败 message 中反解析结构化信息
 - Canvas attention presentation 当前也消费同一组结构化 diagnostic target：unit / stream hover、material port hover 与 object list attention summary 会展示 `related_port_targets` 归并出的只读 port 摘要，但定位仍复用现有 `InspectorTarget` command，不新增端口级私有命令
 - Active Inspector 的 unit port 列表当前也会在 diagnostic document revision 匹配当前工作区修订时，按当前 unit 和 `port_name` 匹配 `DiagnosticSummary.related_port_targets`，显示只读 attention 摘要；端口行仍只复用已有 stream Inspector action，不新增端口级 command

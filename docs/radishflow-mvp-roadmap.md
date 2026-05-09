@@ -194,6 +194,7 @@ MVP 阶段明确不做：
 - `tests/rust-integration` 当前又已把 near-boundary flash inlet 一致性回归前推到 `Heater/Cooler/Valve/Mixer -> Flash` 正式链路：`binary-hydrocarbon-lite-v1` three-composition two-phase 已覆盖 `feed-heater-flash-binary-hydrocarbon` / `feed-cooler-flash-binary-hydrocarbon` / `feed-valve-flash-binary-hydrocarbon` / `feed-mixer-flash-binary-hydrocarbon`，synthetic `liquid-only / vapor-only` 单相已覆盖 `feed-heater-flash` / `feed-cooler-flash` / `feed-valve-flash` / `feed-mixer-flash`；`studio_solver_bridge` 与 `studio_workspace_control` 会继续锁定非 flash 中间流股 `phase_region`、完整 `bubble_dew_window` 与 flash inlet consumed stream 的同一份 DTO
 - `rf-ui` 当前已具备把 `rf-solver::SolveSnapshot` 回写为 UI 层结果快照的稳定映射
 - Studio 当前又已让 Result Inspector / Active Inspector 只读消费 `SolveSnapshot` 已物化的 `bubble_dew_window`，显式展示 `phase region` 与 bubble/dew pressure / temperature；shell 继续只消费 DTO，不在界面层重算热力学
+- Studio 当前又已把这层结果展示边界前推到 `studio_gui_shell::tests::runtime`：runtime 最终渲染只会在 `bubble_dew_window` 已物化时显示 `Bubble/dew window` 区块，`liquid-only / vapor-only` case 的零流量对侧 outlet 保持窗口缺席；同一股流股同时出现在 `Result Inspector` 与 `Active Inspector` 时，shell 通过独立 widget id scope 保持重复渲染稳定，而不是在界面层分叉结果语义
 - `rf-ui` 当前已补出 `RunPanelState`，并由 `AppState` 在文档提交、快照写入、模式切换、失败记录和日志追加后自动刷新运行栏摘要
 - `rf-ui` 当前已把运行栏按钮模型冻结为 `RunPanelCommandModel`，让主按钮选择和 `Run/Resume/Hold/Active` 的启用逻辑正式留在 UI 层
 - `apps/radishflow-studio` 当前已具备 `StudioAppFacade -> WorkspaceRunCommand -> WorkspaceSolveService -> solver_bridge` 四级应用层入口，可基于 `PropertyPackageProvider` 或本地 `StoredAuthCacheIndex` 执行真实 solve
