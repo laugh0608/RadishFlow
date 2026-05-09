@@ -1,0 +1,138 @@
+{
+  "kind": "radishflow.project-file",
+  "schemaVersion": 1,
+  "document": {
+    "revision": 0,
+    "flowsheet": {
+      "name": "feed-valve-flash-binary-hydrocarbon",
+      "components": {
+        "methane": {
+          "id": "methane",
+          "name": "Methane",
+          "formula": "CH4"
+        },
+        "ethane": {
+          "id": "ethane",
+          "name": "Ethane",
+          "formula": "C2H6"
+        }
+      },
+      "streams": {
+        "stream-feed": {
+          "id": "stream-feed",
+          "name": "Feed",
+          "temperature_k": 300.0,
+          "pressure_pa": 700000.0,
+          "total_molar_flow_mol_s": 5.0,
+          "overall_mole_fractions": {
+            "methane": 0.2,
+            "ethane": 0.8
+          },
+          "phases": []
+        },
+        "stream-throttled": {
+          "id": "stream-throttled",
+          "name": "Valve Outlet",
+          "temperature_k": 300.0,
+          "pressure_pa": 650000.0,
+          "total_molar_flow_mol_s": 0.0,
+          "overall_mole_fractions": {
+            "methane": 0.2,
+            "ethane": 0.8
+          },
+          "phases": []
+        },
+        "stream-liquid": {
+          "id": "stream-liquid",
+          "name": "Liquid Outlet",
+          "temperature_k": 300.0,
+          "pressure_pa": 650000.0,
+          "total_molar_flow_mol_s": 0.0,
+          "overall_mole_fractions": {
+            "methane": 0.2,
+            "ethane": 0.8
+          },
+          "phases": []
+        },
+        "stream-vapor": {
+          "id": "stream-vapor",
+          "name": "Vapor Outlet",
+          "temperature_k": 300.0,
+          "pressure_pa": 650000.0,
+          "total_molar_flow_mol_s": 0.0,
+          "overall_mole_fractions": {
+            "methane": 0.2,
+            "ethane": 0.8
+          },
+          "phases": []
+        }
+      },
+      "units": {
+        "feed-1": {
+          "id": "feed-1",
+          "name": "Feed",
+          "kind": "feed",
+          "ports": [
+            {
+              "name": "outlet",
+              "direction": "outlet",
+              "kind": "material",
+              "stream_id": "stream-feed"
+            }
+          ]
+        },
+        "valve-1": {
+          "id": "valve-1",
+          "name": "Valve",
+          "kind": "valve",
+          "ports": [
+            {
+              "name": "inlet",
+              "direction": "inlet",
+              "kind": "material",
+              "stream_id": "stream-feed"
+            },
+            {
+              "name": "outlet",
+              "direction": "outlet",
+              "kind": "material",
+              "stream_id": "stream-throttled"
+            }
+          ]
+        },
+        "flash-1": {
+          "id": "flash-1",
+          "name": "Flash Drum",
+          "kind": "flash_drum",
+          "ports": [
+            {
+              "name": "inlet",
+              "direction": "inlet",
+              "kind": "material",
+              "stream_id": "stream-throttled"
+            },
+            {
+              "name": "liquid",
+              "direction": "outlet",
+              "kind": "material",
+              "stream_id": "stream-liquid"
+            },
+            {
+              "name": "vapor",
+              "direction": "outlet",
+              "kind": "material",
+              "stream_id": "stream-vapor"
+            }
+          ]
+        }
+      }
+    },
+    "metadata": {
+      "documentId": "example-feed-valve-flash-binary-hydrocarbon",
+      "title": "Feed Valve Flash Binary Hydrocarbon Example",
+      "schemaVersion": 1,
+      "createdAt": "2026-05-09T00:00:00Z",
+      "updatedAt": "2026-05-09T00:00:00Z"
+    }
+  }
+}

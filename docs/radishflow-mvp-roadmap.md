@@ -1,6 +1,6 @@
 # RadishFlow MVP 开发路线图
 
-更新时间：2026-05-08
+更新时间：2026-05-09
 
 ## 文档目的
 
@@ -191,7 +191,7 @@ MVP 阶段明确不做：
 - `rf-solver` 当前已补最小求解诊断层：`SolveSnapshot` 至少包含 summary、仓库级 diagnostics 和逐步执行 step 明细；失败路径至少带 step 序号、unit id / kind 与 inlet stream 上下文
 - `examples/flowsheets` 当前应维护至少三条可直接从 `*.rfproj.json` 载入并求解的示例项目，作为内核闭环回归基线
 - `tests/rust-integration` 当前应作为仓库级 Rust 集成测试入口，覆盖“加载项目 -> 求解 -> 读取结果”的示例流程回归
-- `tests/rust-integration` 当前又已把 near-boundary flash inlet 一致性回归前推到 `Heater/Cooler/Valve/Mixer -> Flash` 正式链路：`binary-hydrocarbon-lite-v1` three-composition two-phase 已覆盖 `feed-heater-flash-binary-hydrocarbon` 与 `feed-mixer-flash-binary-hydrocarbon`，synthetic `liquid-only / vapor-only` 单相已覆盖 `feed-heater-flash` / `feed-cooler-flash` / `feed-valve-flash` / `feed-mixer-flash`；`studio_solver_bridge` 与 `studio_workspace_control` 会继续锁定非 flash 中间流股 `phase_region`、完整 `bubble_dew_window` 与 flash inlet consumed stream 的同一份 DTO
+- `tests/rust-integration` 当前又已把 near-boundary flash inlet 一致性回归前推到 `Heater/Cooler/Valve/Mixer -> Flash` 正式链路：`binary-hydrocarbon-lite-v1` three-composition two-phase 已覆盖 `feed-heater-flash-binary-hydrocarbon` / `feed-cooler-flash-binary-hydrocarbon` / `feed-valve-flash-binary-hydrocarbon` / `feed-mixer-flash-binary-hydrocarbon`，synthetic `liquid-only / vapor-only` 单相已覆盖 `feed-heater-flash` / `feed-cooler-flash` / `feed-valve-flash` / `feed-mixer-flash`；`studio_solver_bridge` 与 `studio_workspace_control` 会继续锁定非 flash 中间流股 `phase_region`、完整 `bubble_dew_window` 与 flash inlet consumed stream 的同一份 DTO
 - `rf-ui` 当前已具备把 `rf-solver::SolveSnapshot` 回写为 UI 层结果快照的稳定映射
 - Studio 当前又已让 Result Inspector / Active Inspector 只读消费 `SolveSnapshot` 已物化的 `bubble_dew_window`，显式展示 `phase region` 与 bubble/dew pressure / temperature；shell 继续只消费 DTO，不在界面层重算热力学
 - `rf-ui` 当前已补出 `RunPanelState`，并由 `AppState` 在文档提交、快照写入、模式切换、失败记录和日志追加后自动刷新运行栏摘要

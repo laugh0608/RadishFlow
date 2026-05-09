@@ -159,6 +159,79 @@ fn app_state_for_binary_mixer_boundary_case(
     app_state
 }
 
+fn app_state_for_binary_cooler_boundary_case(
+    document_id: &str,
+    title: &str,
+    created_at_seconds: u64,
+    case: &NearBoundaryStreamWindowCase,
+) -> AppState {
+    let mut app_state = app_state_from_project(
+        include_str!(
+            "../../../examples/flowsheets/feed-cooler-flash-binary-hydrocarbon.rfproj.json"
+        ),
+        document_id,
+        title,
+        created_at_seconds,
+    );
+    apply_case_composition(
+        &mut app_state,
+        "stream-feed",
+        case.package_id,
+        case.overall_mole_fractions,
+    );
+    app_state
+        .workspace
+        .document
+        .flowsheet
+        .streams
+        .get_mut(&"stream-feed".into())
+        .expect("expected feed stream")
+        .pressure_pa = 700_000.0;
+    apply_case_feed_state(&mut app_state, "stream-cooled", case);
+    app_state
+}
+
+fn app_state_for_binary_valve_boundary_case(
+    document_id: &str,
+    title: &str,
+    created_at_seconds: u64,
+    case: &NearBoundaryStreamWindowCase,
+) -> AppState {
+    let mut app_state = app_state_from_project(
+        include_str!(
+            "../../../examples/flowsheets/feed-valve-flash-binary-hydrocarbon.rfproj.json"
+        ),
+        document_id,
+        title,
+        created_at_seconds,
+    );
+    apply_case_composition(
+        &mut app_state,
+        "stream-feed",
+        case.package_id,
+        case.overall_mole_fractions,
+    );
+    let feed = app_state
+        .workspace
+        .document
+        .flowsheet
+        .streams
+        .get_mut(&"stream-feed".into())
+        .expect("expected feed stream");
+    feed.temperature_k = case.temperature_k;
+    feed.pressure_pa = 700_000.0;
+    let throttled = app_state
+        .workspace
+        .document
+        .flowsheet
+        .streams
+        .get_mut(&"stream-throttled".into())
+        .expect("expected throttled stream");
+    throttled.temperature_k = case.temperature_k;
+    throttled.pressure_pa = case.pressure_pa;
+    app_state
+}
+
 fn app_state_for_synthetic_mixer_boundary_case(
     document_id: &str,
     title: &str,
@@ -266,6 +339,90 @@ fn run_panel_primary_action_preserves_temperature_near_boundary_windows_across_b
                 &format!("doc-control-binary-mixer-temperature-{index}"),
                 &case.label,
                 460 + index as u64,
+                case,
+            )
+        },
+    );
+}
+
+#[test]
+fn run_panel_primary_action_preserves_pressure_near_boundary_windows_across_binary_cooler_flash_inlet_end_to_end()
+ {
+    assert_run_panel_near_boundary_cases_across_chain(
+        binary_hydrocarbon_lite_near_boundary_stream_window_cases()
+            .into_iter()
+            .filter(|case| case.kind == NearBoundaryCaseKind::Pressure)
+            .collect(),
+        "integration-run-panel-binary-cooler-pressure",
+        "stream-cooled",
+        |index, case| {
+            app_state_for_binary_cooler_boundary_case(
+                &format!("doc-control-binary-cooler-pressure-{index}"),
+                &case.label,
+                580 + index as u64,
+                case,
+            )
+        },
+    );
+}
+
+#[test]
+fn run_panel_primary_action_preserves_temperature_near_boundary_windows_across_binary_cooler_flash_inlet_end_to_end()
+ {
+    assert_run_panel_near_boundary_cases_across_chain(
+        binary_hydrocarbon_lite_near_boundary_stream_window_cases()
+            .into_iter()
+            .filter(|case| case.kind == NearBoundaryCaseKind::Temperature)
+            .collect(),
+        "integration-run-panel-binary-cooler-temperature",
+        "stream-cooled",
+        |index, case| {
+            app_state_for_binary_cooler_boundary_case(
+                &format!("doc-control-binary-cooler-temperature-{index}"),
+                &case.label,
+                620 + index as u64,
+                case,
+            )
+        },
+    );
+}
+
+#[test]
+fn run_panel_primary_action_preserves_pressure_near_boundary_windows_across_binary_valve_flash_inlet_end_to_end()
+ {
+    assert_run_panel_near_boundary_cases_across_chain(
+        binary_hydrocarbon_lite_near_boundary_stream_window_cases()
+            .into_iter()
+            .filter(|case| case.kind == NearBoundaryCaseKind::Pressure)
+            .collect(),
+        "integration-run-panel-binary-valve-pressure",
+        "stream-throttled",
+        |index, case| {
+            app_state_for_binary_valve_boundary_case(
+                &format!("doc-control-binary-valve-pressure-{index}"),
+                &case.label,
+                660 + index as u64,
+                case,
+            )
+        },
+    );
+}
+
+#[test]
+fn run_panel_primary_action_preserves_temperature_near_boundary_windows_across_binary_valve_flash_inlet_end_to_end()
+ {
+    assert_run_panel_near_boundary_cases_across_chain(
+        binary_hydrocarbon_lite_near_boundary_stream_window_cases()
+            .into_iter()
+            .filter(|case| case.kind == NearBoundaryCaseKind::Temperature)
+            .collect(),
+        "integration-run-panel-binary-valve-temperature",
+        "stream-throttled",
+        |index, case| {
+            app_state_for_binary_valve_boundary_case(
+                &format!("doc-control-binary-valve-temperature-{index}"),
+                &case.label,
+                700 + index as u64,
                 case,
             )
         },
