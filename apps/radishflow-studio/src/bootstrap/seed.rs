@@ -4,13 +4,13 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use crate::{
     RadishFlowControlPlaneClient, RadishFlowControlPlaneClientError,
     RadishFlowControlPlaneClientErrorKind, RadishFlowControlPlaneResponse,
+    parse_property_package_download_json,
 };
 use rf_model::{Component, Flowsheet};
 use rf_store::{
-    StoredAntoineCoefficients, StoredAuthCacheIndex, StoredCredentialReference,
-    StoredEntitlementCache, StoredProjectFile, StoredPropertyPackageManifest,
-    StoredPropertyPackagePayload, StoredPropertyPackageRecord, StoredPropertyPackageSource,
-    StoredThermoComponent, property_package_payload_integrity, write_auth_cache_index,
+    StoredAuthCacheIndex, StoredCredentialReference, StoredEntitlementCache, StoredProjectFile,
+    StoredPropertyPackageManifest, StoredPropertyPackagePayload, StoredPropertyPackageRecord,
+    StoredPropertyPackageSource, property_package_payload_integrity, write_auth_cache_index,
     write_property_package_manifest, write_property_package_payload,
 };
 use rf_types::{ComponentId, RfError, RfResult};
@@ -26,9 +26,9 @@ use super::StudioBootstrapEntitlementSeed;
 pub(super) const BOOTSTRAP_MVP_PROPERTY_PACKAGE_ID: &str = "binary-hydrocarbon-lite-v1";
 const BOOTSTRAP_MVP_COMPONENT_A_ID: &str = "component-a";
 const BOOTSTRAP_MVP_COMPONENT_B_ID: &str = "component-b";
-const BOOTSTRAP_ANTOINE_BOUNDARY_SLOPE: f64 = 250.0;
-const BOOTSTRAP_REFERENCE_TEMPERATURE_K: f64 = 300.0;
-const BOOTSTRAP_REFERENCE_PRESSURE_PA: f64 = 100_000.0;
+const BOOTSTRAP_MVP_PROPERTY_PACKAGE_DOWNLOAD_JSON: &str = include_str!(
+    "../../../../examples/sample-components/property-packages/binary-hydrocarbon-lite-v1/download.json"
+);
 
 #[derive(Debug, Clone)]
 pub(super) struct BootstrapSeedState {
@@ -203,10 +203,11 @@ pub(super) fn seed_sample_auth_cache(
 ) -> RfResult<BootstrapSeedState> {
     let downloaded_at = normalized_system_time_now()?;
     let payload = build_bootstrap_payload(flowsheet, package_id)?;
+    let package_version = payload.version.clone();
     let integrity = property_package_payload_integrity(&payload)?;
     let mut manifest = StoredPropertyPackageManifest::new(
         package_id,
-        "2026.04.2",
+        &package_version,
         StoredPropertyPackageSource::RemoteDerivedPackage,
         payload.component_ids(),
     );
@@ -269,6 +270,7 @@ pub(super) fn seed_sample_auth_cache(
         snapshot,
         manifest: bootstrap_manifest(
             package_id,
+            &package_version,
             &integrity.hash,
             integrity.size_bytes,
             downloaded_at,
@@ -330,6 +332,7 @@ fn bootstrap_snapshot(
 
 fn bootstrap_manifest(
     package_id: &str,
+    version: &str,
     hash: &str,
     size_bytes: u64,
     downloaded_at: SystemTime,
@@ -337,7 +340,7 @@ fn bootstrap_manifest(
 ) -> PropertyPackageManifest {
     let mut manifest = PropertyPackageManifest::new(
         package_id,
-        "2026.04.2",
+        version,
         PropertyPackageSource::RemoteDerivedPackage,
     );
     manifest.hash = hash.to_string();
@@ -361,38 +364,28 @@ fn build_bootstrap_payload(
     flowsheet: &Flowsheet,
     package_id: &str,
 ) -> RfResult<StoredPropertyPackagePayload> {
-    let components = flowsheet.components.values().collect::<Vec<_>>();
-    if components.len() < 2 {
+    let flowsheet_components = flowsheet.components.values().collect::<Vec<_>>();
+    let mut payload =
+        parse_property_package_download_json(BOOTSTRAP_MVP_PROPERTY_PACKAGE_DOWNLOAD_JSON)?
+            .to_stored_payload()?;
+
+    if flowsheet_components.len() != payload.components.len() {
         return Err(RfError::invalid_input(format!(
-            "studio bootstrap expects at least 2 flowsheet components, got {}",
-            components.len()
+            "studio bootstrap sample package `{}` expects exactly {} flowsheet components, got {}",
+            package_id,
+            payload.components.len(),
+            flowsheet_components.len()
         )));
     }
 
-    let mut more_volatile =
-        StoredThermoComponent::new(components[0].id.clone(), components[0].name.clone());
-    more_volatile.antoine = Some(build_bootstrap_antoine_coefficients(2.0));
-    more_volatile.liquid_heat_capacity_j_per_mol_k = Some(35.0);
-    more_volatile.vapor_heat_capacity_j_per_mol_k = Some(36.5);
+    payload.package_id = package_id.to_string();
+    for (payload_component, flowsheet_component) in
+        payload.components.iter_mut().zip(flowsheet_components)
+    {
+        payload_component.id = flowsheet_component.id.clone();
+        payload_component.name = flowsheet_component.name.clone();
+    }
 
-    let mut less_volatile =
-        StoredThermoComponent::new(components[1].id.clone(), components[1].name.clone());
-    less_volatile.antoine = Some(build_bootstrap_antoine_coefficients(0.5));
-    less_volatile.liquid_heat_capacity_j_per_mol_k = Some(52.0);
-    less_volatile.vapor_heat_capacity_j_per_mol_k = Some(65.0);
-
-    Ok(StoredPropertyPackagePayload::new(
-        package_id,
-        "2026.04.2",
-        vec![more_volatile, less_volatile],
-    ))
-}
-
-fn build_bootstrap_antoine_coefficients(k_value: f64) -> StoredAntoineCoefficients {
-    StoredAntoineCoefficients::new(
-        ((k_value * BOOTSTRAP_REFERENCE_PRESSURE_PA) / 1_000.0).ln()
-            + BOOTSTRAP_ANTOINE_BOUNDARY_SLOPE / BOOTSTRAP_REFERENCE_TEMPERATURE_K,
-        BOOTSTRAP_ANTOINE_BOUNDARY_SLOPE,
-        0.0,
-    )
+    payload.validate()?;
+    Ok(payload)
 }

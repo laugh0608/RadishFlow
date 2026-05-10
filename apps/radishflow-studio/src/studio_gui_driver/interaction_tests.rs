@@ -1,15 +1,12 @@
 use std::fs;
 
-use crate::test_support::{
-    build_binary_hydrocarbon_lite_provider, solve_snapshot_model_from_project_with_provider_and_edit,
-    stream_target_detail_model,
-};
 use super::test_support::{
     assert_ignored_shortcut, flash_drum_local_rules_config, layout_persistence_config,
     lease_expiring_config, sample_canvas_suggestion, synced_workspace_example_config,
     unbound_outlet_failure_synced_config,
 };
 use super::*;
+use crate::test_support::stream_target_detail_model;
 
 #[test]
 fn gui_driver_ignores_canvas_tab_shortcut_without_canvas_command_binding() {
@@ -590,50 +587,48 @@ fn gui_driver_dispatches_result_comparison_focus_actions_through_inspector_focus
 
 #[test]
 fn gui_driver_dispatches_non_flash_unit_result_diagnostic_actions_through_inspector_focus() {
-    for (project_file_name, project_json, stream_id, stream_title, unit_id) in [
+    for (project_file_name, stream_id, stream_title, unit_id) in [
         (
             "feed-heater-flash-binary-hydrocarbon.rfproj.json",
-            include_str!(
-                "../../../../examples/flowsheets/feed-heater-flash-binary-hydrocarbon.rfproj.json"
-            ),
             "stream-heated",
             "Heated Outlet",
             "heater-1",
         ),
         (
             "feed-cooler-flash-binary-hydrocarbon.rfproj.json",
-            include_str!(
-                "../../../../examples/flowsheets/feed-cooler-flash-binary-hydrocarbon.rfproj.json"
-            ),
             "stream-cooled",
             "Cooled Outlet",
             "cooler-1",
         ),
         (
             "feed-valve-flash-binary-hydrocarbon.rfproj.json",
-            include_str!(
-                "../../../../examples/flowsheets/feed-valve-flash-binary-hydrocarbon.rfproj.json"
-            ),
             "stream-throttled",
             "Valve Outlet",
             "valve-1",
         ),
         (
             "feed-mixer-flash-binary-hydrocarbon.rfproj.json",
-            include_str!(
-                "../../../../examples/flowsheets/feed-mixer-flash-binary-hydrocarbon.rfproj.json"
-            ),
             "stream-mix-out",
             "Mixer Outlet",
             "mixer-1",
         ),
     ] {
-        let snapshot = solve_binary_hydrocarbon_snapshot(project_json);
         let mut driver = StudioGuiDriver::new(&synced_workspace_example_config(project_file_name))
             .expect("expected driver");
         driver
             .dispatch_event(StudioGuiEvent::OpenWindowRequested)
             .expect("expected open dispatch");
+        let solved = driver
+            .dispatch_event(StudioGuiEvent::UiCommandRequested {
+                command_id: "run_panel.run_manual".to_string(),
+            })
+            .expect("expected solve dispatch");
+        let snapshot = solved
+            .window
+            .runtime
+            .latest_solve_snapshot
+            .clone()
+            .expect("expected solved snapshot");
 
         assert_non_flash_result_and_step_diagnostic_focus_dispatch(
             &mut driver,
@@ -774,7 +769,8 @@ fn assert_non_flash_result_and_step_diagnostic_focus_dispatch(
         .iter()
         .find(|action| {
             action.source_label == "Selected stream"
-                && action.action.command_id == format!("inspector.focus_stream:{selected_stream_id}")
+                && action.action.command_id
+                    == format!("inspector.focus_stream:{selected_stream_id}")
         })
         .map(|action| action.action.command_id.clone())
         .expect("expected selected stream diagnostic action");
@@ -829,12 +825,4 @@ fn assert_non_flash_result_and_step_diagnostic_focus_dispatch(
         .map(|action| action.action.command_id.clone())
         .expect("expected stream detail solve step action");
     assert_inspector_focus_dispatch(driver, &active_step_unit_command, ("Unit", unit_id));
-}
-
-fn solve_binary_hydrocarbon_snapshot(project_json: &str) -> crate::StudioGuiWindowSolveSnapshotModel {
-    solve_snapshot_model_from_project_with_provider_and_edit(
-        project_json,
-        &build_binary_hydrocarbon_lite_provider(),
-        |_| {},
-    )
 }

@@ -95,6 +95,34 @@ fn bootstrap_runs_sample_workspace_from_main_entry_boundary() {
 }
 
 #[test]
+fn bootstrap_runs_cooler_workspace_from_main_entry_boundary() {
+    let report = run_studio_bootstrap(&StudioBootstrapConfig {
+        project_path: example_project_path("feed-cooler-flash-binary-hydrocarbon.rfproj.json"),
+        ..StudioBootstrapConfig::default()
+    })
+    .expect("expected bootstrap run");
+
+    let dispatch = match &app_command(&report).dispatch {
+        StudioAppResultDispatch::WorkspaceRun(dispatch) => dispatch,
+        StudioAppResultDispatch::WorkspaceMode(_) => panic!("expected workspace run dispatch"),
+        StudioAppResultDispatch::Entitlement(_) => panic!("expected workspace run dispatch"),
+    };
+    assert_eq!(dispatch.run_status, RunStatus::Converged);
+    assert_eq!(
+        dispatch.package_id.as_deref(),
+        Some("binary-hydrocarbon-lite-v1")
+    );
+    assert!(matches!(
+        dispatch.outcome,
+        StudioWorkspaceRunOutcome::Started(_)
+    ));
+    assert_eq!(
+        dispatch.latest_snapshot_summary.as_deref(),
+        Some("solved flowsheet with 3 unit(s), 4 diagnostic entry(ies), and 4 resulting stream(s)")
+    );
+}
+
+#[test]
 fn bootstrap_resumes_workspace_from_hold_via_run_panel_intent() {
     let report = run_studio_bootstrap(&StudioBootstrapConfig {
         trigger: StudioBootstrapTrigger::Intent(RunPanelIntent::resume(
@@ -904,4 +932,12 @@ fn session_event(
             panic!("expected entitlement session event dispatch")
         }
     }
+}
+
+fn example_project_path(project_file_name: &str) -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../..")
+        .join("examples")
+        .join("flowsheets")
+        .join(project_file_name)
 }
