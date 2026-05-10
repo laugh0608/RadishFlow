@@ -594,6 +594,8 @@ pub struct StepSnapshot {
     pub index: usize,
     pub unit_id: UnitId,
     pub summary: String,
+    pub execution: UnitExecutionSnapshot,
+    pub consumed_streams: Vec<StreamStateSnapshot>,
     pub streams: Vec<StreamStateSnapshot>,
 }
 ```
@@ -604,7 +606,8 @@ pub struct StepSnapshot {
 - 快照通过 `sequence` 区分同一修订号上的多次运行
 - `summary` 与 `SolveSessionState.latest_diagnostic` 共享同一摘要语义
 - 步骤序列保持稳定顺序
-- 步骤内部记录单元执行结果和流股状态
+- 步骤内部记录单元执行结果，以及结构化输入流股 `consumed_streams` 和输出流股 `streams`
+- `StepSnapshot` 的输入/输出流股应由 solver step 直接物化，UI / workspace consumer 只读消费这份 DTO，不再按 stream id 回填或临时拼装第二套 step 结果
 - 诊断信息与数值结果并列保存
 - 快照实体由 `WorkspaceState.snapshot_history` 持有，并受 `UserPreferences.snapshot_history_limit` 约束
 
