@@ -12,11 +12,11 @@ use crate::{
     StudioGuiWindowDropTargetQuery, StudioGuiWindowLayoutScopeKind,
     StudioGuiWindowStreamResultModel, StudioRuntimeConfig, StudioRuntimeEntitlementPreflight,
     StudioRuntimeEntitlementSeed, StudioRuntimeEntitlementSessionEvent, StudioRuntimeTrigger,
+    test_support::build_binary_hydrocarbon_lite_provider,
 };
 
 use super::test_support::{
-    apply_stream_state_and_composition, build_binary_demo_provider,
-    build_binary_hydrocarbon_lite_provider, build_synthetic_provider,
+    apply_stream_state_and_composition, build_binary_demo_provider, build_synthetic_provider,
     solve_snapshot_model_from_project_with_provider_and_edit, stream_target_detail_model,
     unit_target_detail_model,
 };

@@ -21,7 +21,16 @@ pub fn build_binary_demo_provider() -> PlaceholderThermoProvider {
 
 #[doc(hidden)]
 pub fn build_binary_hydrocarbon_lite_provider() -> PlaceholderThermoProvider {
-    crate::studio_gui_window_model::test_support::build_binary_hydrocarbon_lite_provider()
+    let payload = build_binary_hydrocarbon_lite_stored_payload_for_components(
+        "binary-hydrocarbon-lite-v1",
+        [("methane", "Methane"), ("ethane", "Ethane")],
+    );
+    let [first, second] = binary_hydrocarbon_lite_components(&payload);
+
+    PlaceholderThermoProvider::new(ThermoSystem::binary([
+        build_thermo_component_from_stored_component(first),
+        build_thermo_component_from_stored_component(second),
+    ]))
 }
 
 fn build_thermo_component_from_stored_component(
@@ -34,6 +43,15 @@ fn build_thermo_component_from_stored_component(
     thermo_component.liquid_heat_capacity_j_per_mol_k = component.liquid_heat_capacity_j_per_mol_k;
     thermo_component.vapor_heat_capacity_j_per_mol_k = component.vapor_heat_capacity_j_per_mol_k;
     thermo_component
+}
+
+fn binary_hydrocarbon_lite_components(
+    payload: &StoredPropertyPackagePayload,
+) -> [&rf_store::StoredThermoComponent; 2] {
+    match payload.components.as_slice() {
+        [first, second] => [first, second],
+        _ => panic!("expected property package payload to stay binary"),
+    }
 }
 
 #[doc(hidden)]
@@ -111,8 +129,7 @@ pub fn build_binary_hydrocarbon_lite_in_memory_provider_for_components(
 ) -> InMemoryPropertyPackageProvider {
     let payload =
         build_binary_hydrocarbon_lite_stored_payload_for_components(package_id, component_specs);
-    let first = build_thermo_component_from_stored_component(&payload.components[0]);
-    let second = build_thermo_component_from_stored_component(&payload.components[1]);
+    let [first, second] = binary_hydrocarbon_lite_components(&payload);
 
     InMemoryPropertyPackageProvider::new(vec![(
         ThermoPropertyPackageManifest::new(
@@ -121,7 +138,10 @@ pub fn build_binary_hydrocarbon_lite_in_memory_provider_for_components(
             ThermoPropertyPackageSource::LocalBundled,
             payload.component_ids(),
         ),
-        ThermoSystem::binary([first, second]),
+        ThermoSystem::binary([
+            build_thermo_component_from_stored_component(first),
+            build_thermo_component_from_stored_component(second),
+        ]),
     )])
 }
 
