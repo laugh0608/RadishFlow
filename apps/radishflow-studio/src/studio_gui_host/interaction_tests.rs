@@ -213,7 +213,7 @@ fn gui_host_executes_canvas_interaction_through_command_surface() {
                     .as_ref()
                     .map(|entry| entry.message.as_str()),
                 Some(
-                    "Solved document revision 1 with property package `binary-hydrocarbon-lite-v1` into snapshot `example-feed-heater-flash-rev-1-seq-1`"
+                    "Solved document revision 1 with property package `binary-hydrocarbon-lite-v1` into snapshot `example-feed-heater-flash-binary-hydrocarbon-rev-1-seq-1`"
                 )
             );
             assert!(

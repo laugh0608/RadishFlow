@@ -17,6 +17,69 @@ use rf_types::ComponentId;
 #[doc(hidden)]
 pub const OFFICIAL_BINARY_HYDROCARBON_COMPONENT_SPECS: [(&str, &str); 2] =
     [("methane", "Methane"), ("ethane", "Ethane")];
+#[doc(hidden)]
+pub const OFFICIAL_HEATER_BINARY_HYDROCARBON_PROJECT_FILE_NAME: &str =
+    "feed-heater-flash-binary-hydrocarbon.rfproj.json";
+#[doc(hidden)]
+pub const OFFICIAL_VALVE_BINARY_HYDROCARBON_PROJECT_FILE_NAME: &str =
+    "feed-valve-flash-binary-hydrocarbon.rfproj.json";
+#[doc(hidden)]
+pub const OFFICIAL_HEATER_BINARY_HYDROCARBON_AUTORUN_SNAPSHOT_ID: &str =
+    "example-feed-heater-flash-binary-hydrocarbon-rev-1-seq-1";
+
+#[doc(hidden)]
+pub fn official_heater_binary_hydrocarbon_project_json() -> &'static str {
+    include_str!("../../../examples/flowsheets/feed-heater-flash-binary-hydrocarbon.rfproj.json")
+}
+
+#[doc(hidden)]
+pub fn official_valve_binary_hydrocarbon_project_json() -> &'static str {
+    include_str!("../../../examples/flowsheets/feed-valve-flash-binary-hydrocarbon.rfproj.json")
+}
+
+#[doc(hidden)]
+pub fn build_flash_drum_local_rules_project_json() -> String {
+    official_heater_binary_hydrocarbon_project_json()
+        .replacen(
+            "\"name\": \"inlet\",\n              \"direction\": \"inlet\",\n              \"kind\": \"material\",\n              \"stream_id\": \"stream-heated\"",
+            "\"name\": \"inlet\",\n              \"direction\": \"inlet\",\n              \"kind\": \"material\",\n              \"stream_id\": null",
+            1,
+        )
+        .replacen(
+            "\"name\": \"liquid\",\n              \"direction\": \"outlet\",\n              \"kind\": \"material\",\n              \"stream_id\": \"stream-liquid\"",
+            "\"name\": \"liquid\",\n              \"direction\": \"outlet\",\n              \"kind\": \"material\",\n              \"stream_id\": null",
+            1,
+        )
+        .replacen(
+            "\"name\": \"vapor\",\n              \"direction\": \"outlet\",\n              \"kind\": \"material\",\n              \"stream_id\": \"stream-vapor\"",
+            "\"name\": \"vapor\",\n              \"direction\": \"outlet\",\n              \"kind\": \"material\",\n              \"stream_id\": null",
+            1,
+        )
+}
+
+#[doc(hidden)]
+pub fn build_flash_drum_local_rules_synced_project_json() -> String {
+    official_heater_binary_hydrocarbon_project_json()
+        .replacen(
+            ",\n        \"stream-vapor\": {\n          \"id\": \"stream-vapor\",\n          \"name\": \"Vapor Outlet\",\n          \"temperature_k\": 345.0,\n          \"pressure_pa\": 95000.0,\n          \"total_molar_flow_mol_s\": 0.0,\n          \"overall_mole_fractions\": {\n            \"methane\": 0.5,\n            \"ethane\": 0.5\n          },\n          \"phases\": []\n        }",
+            "",
+            1,
+        )
+        .replacen(
+            "\"name\": \"vapor\",\n              \"direction\": \"outlet\",\n              \"kind\": \"material\",\n              \"stream_id\": \"stream-vapor\"",
+            "\"name\": \"vapor\",\n              \"direction\": \"outlet\",\n              \"kind\": \"material\",\n              \"stream_id\": null",
+            1,
+        )
+}
+
+#[doc(hidden)]
+pub fn build_valve_solver_failure_project_json() -> String {
+    official_valve_binary_hydrocarbon_project_json().replacen(
+        "\"name\": \"Valve Outlet\",\n          \"temperature_k\": 300.0,\n          \"pressure_pa\": 650000.0,",
+        "\"name\": \"Valve Outlet\",\n          \"temperature_k\": 300.0,\n          \"pressure_pa\": 730000.0,",
+        1,
+    )
+}
 
 #[doc(hidden)]
 pub fn build_binary_hydrocarbon_lite_provider() -> PlaceholderThermoProvider {

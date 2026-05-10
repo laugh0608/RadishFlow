@@ -1455,7 +1455,7 @@ fn gui_driver_automatic_runs_after_canvas_write_when_workspace_is_active() {
                     .as_ref()
                     .map(|entry| entry.message.as_str()),
                 Some(
-                    "Solved document revision 1 with property package `binary-hydrocarbon-lite-v1` into snapshot `example-feed-heater-flash-rev-1-seq-1`"
+                    "Solved document revision 1 with property package `binary-hydrocarbon-lite-v1` into snapshot `example-feed-heater-flash-binary-hydrocarbon-rev-1-seq-1`"
                 )
             );
         }
@@ -1473,7 +1473,7 @@ fn gui_driver_automatic_runs_after_canvas_write_when_workspace_is_active() {
             .control_state
             .latest_snapshot_id
             .as_deref(),
-        Some("example-feed-heater-flash-rev-1-seq-1")
+        Some(crate::test_support::OFFICIAL_HEATER_BINARY_HYDROCARBON_AUTORUN_SNAPSHOT_ID)
     );
     assert_eq!(
         dispatch.snapshot.runtime.run_panel.view().status_label,

@@ -42,12 +42,7 @@ pub(super) fn solver_failure_config() -> (StudioRuntimeConfig, PathBuf) {
     let project_path = std::env::temp_dir().join(format!(
         "radishflow-studio-gui-host-failure-{timestamp}.rfproj.json"
     ));
-    let project =
-        include_str!("../../../../examples/flowsheets/feed-valve-flash.rfproj.json").replacen(
-            "\"name\": \"Valve Outlet\",\n          \"temperature_k\": 300.0,\n          \"pressure_pa\": 90000.0,",
-            "\"name\": \"Valve Outlet\",\n          \"temperature_k\": 300.0,\n          \"pressure_pa\": 130000.0,",
-            1,
-        );
+    let project = crate::test_support::build_valve_solver_failure_project_json();
     fs::write(&project_path, project).expect("expected failure project");
 
     (
@@ -68,17 +63,7 @@ pub(super) fn flash_drum_local_rules_synced_config() -> (StudioRuntimeConfig, Pa
     let project_path = std::env::temp_dir().join(format!(
         "radishflow-gui-host-local-rules-{timestamp}.rfproj.json"
     ));
-    let project = include_str!("../../../../examples/flowsheets/feed-heater-flash.rfproj.json")
-        .replacen(
-            ",\n        \"stream-vapor\": {\n          \"id\": \"stream-vapor\",\n          \"name\": \"Vapor Outlet\",\n          \"temperature_k\": 345.0,\n          \"pressure_pa\": 95000.0,\n          \"total_molar_flow_mol_s\": 0.0,\n          \"overall_mole_fractions\": {\n            \"component-a\": 0.5,\n            \"component-b\": 0.5\n          },\n          \"phases\": []\n        }",
-            "",
-            1,
-        )
-        .replacen(
-            "\"name\": \"vapor\",\n              \"direction\": \"outlet\",\n              \"kind\": \"material\",\n              \"stream_id\": \"stream-vapor\"",
-            "\"name\": \"vapor\",\n              \"direction\": \"outlet\",\n              \"kind\": \"material\",\n              \"stream_id\": null",
-            1,
-        );
+    let project = crate::test_support::build_flash_drum_local_rules_synced_project_json();
     fs::write(&project_path, project).expect("expected synced local rules project");
 
     (
@@ -100,22 +85,7 @@ pub(super) fn flash_drum_local_rules_config() -> (StudioRuntimeConfig, PathBuf) 
     let project_path = std::env::temp_dir().join(format!(
         "radishflow-gui-host-local-rules-unsynced-{timestamp}.rfproj.json"
     ));
-    let project = include_str!("../../../../examples/flowsheets/feed-heater-flash.rfproj.json")
-        .replacen(
-            "\"name\": \"inlet\",\n              \"direction\": \"inlet\",\n              \"kind\": \"material\",\n              \"stream_id\": \"stream-heated\"",
-            "\"name\": \"inlet\",\n              \"direction\": \"inlet\",\n              \"kind\": \"material\",\n              \"stream_id\": null",
-            1,
-        )
-        .replacen(
-            "\"name\": \"liquid\",\n              \"direction\": \"outlet\",\n              \"kind\": \"material\",\n              \"stream_id\": \"stream-liquid\"",
-            "\"name\": \"liquid\",\n              \"direction\": \"outlet\",\n              \"kind\": \"material\",\n              \"stream_id\": null",
-            1,
-        )
-        .replacen(
-            "\"name\": \"vapor\",\n              \"direction\": \"outlet\",\n              \"kind\": \"material\",\n              \"stream_id\": \"stream-vapor\"",
-            "\"name\": \"vapor\",\n              \"direction\": \"outlet\",\n              \"kind\": \"material\",\n              \"stream_id\": null",
-            1,
-        );
+    let project = crate::test_support::build_flash_drum_local_rules_project_json();
     fs::write(&project_path, project).expect("expected local rules project");
 
     (
@@ -135,7 +105,7 @@ pub(super) fn layout_persistence_config() -> (StudioRuntimeConfig, PathBuf, Path
     let project_path = std::env::temp_dir().join(format!(
         "radishflow-studio-layout-persistence-{timestamp}.rfproj.json"
     ));
-    let project = include_str!("../../../../examples/flowsheets/feed-heater-flash.rfproj.json");
+    let project = crate::test_support::official_heater_binary_hydrocarbon_project_json();
     fs::write(&project_path, project).expect("expected persistence project");
     let layout_path = studio_layout_path_for_project(&project_path);
 

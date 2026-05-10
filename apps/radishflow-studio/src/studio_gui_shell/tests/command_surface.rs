@@ -242,7 +242,7 @@ fn command_surface_interactions_converge_to_same_window_state_for_canvas_accept_
             .control_state
             .latest_snapshot_id
             .as_deref(),
-        Some("example-feed-heater-flash-rev-1-seq-1")
+        Some(OFFICIAL_HEATER_BINARY_HYDROCARBON_AUTORUN_SNAPSHOT_ID)
     );
     assert_eq!(
         menu_window.runtime.run_panel.view().status_label,

@@ -31,12 +31,7 @@ fn solver_failure_config() -> (crate::StudioRuntimeConfig, PathBuf) {
     let project_path = std::env::temp_dir().join(format!(
         "radishflow-window-host-recovery-{unique}.rfproj.json"
     ));
-    let project_json = include_str!("../../../../examples/flowsheets/feed-valve-flash.rfproj.json")
-        .replacen(
-            "\"name\": \"Valve Outlet\",\n          \"temperature_k\": 300.0,\n          \"pressure_pa\": 90000.0,",
-            "\"name\": \"Valve Outlet\",\n          \"temperature_k\": 300.0,\n          \"pressure_pa\": 130000.0,",
-            1,
-        );
+    let project_json = crate::test_support::build_valve_solver_failure_project_json();
     fs::write(&project_path, project_json).expect("expected temporary failure project");
 
     (
@@ -66,17 +61,7 @@ fn flash_drum_local_rules_synced_config() -> (crate::StudioRuntimeConfig, PathBu
     let project_path = std::env::temp_dir().join(format!(
         "radishflow-window-host-local-rules-{unique}.rfproj.json"
     ));
-    let project_json = include_str!("../../../../examples/flowsheets/feed-heater-flash.rfproj.json")
-        .replacen(
-            ",\n        \"stream-vapor\": {\n          \"id\": \"stream-vapor\",\n          \"name\": \"Vapor Outlet\",\n          \"temperature_k\": 345.0,\n          \"pressure_pa\": 95000.0,\n          \"total_molar_flow_mol_s\": 0.0,\n          \"overall_mole_fractions\": {\n            \"component-a\": 0.5,\n            \"component-b\": 0.5\n          },\n          \"phases\": []\n        }",
-            "",
-            1,
-        )
-        .replacen(
-            "\"name\": \"vapor\",\n              \"direction\": \"outlet\",\n              \"kind\": \"material\",\n              \"stream_id\": \"stream-vapor\"",
-            "\"name\": \"vapor\",\n              \"direction\": \"outlet\",\n              \"kind\": \"material\",\n              \"stream_id\": null",
-            1,
-        );
+    let project_json = crate::test_support::build_flash_drum_local_rules_synced_project_json();
     fs::write(&project_path, project_json).expect("expected local rules project");
 
     (
@@ -370,7 +355,7 @@ fn app_window_host_manager_accept_canvas_suggestion_rejoins_automatic_mainline()
     assert_eq!(app_state.workspace.run_panel.pending_reason, None);
     assert_eq!(
         app_state.workspace.run_panel.latest_snapshot_id.as_deref(),
-        Some("example-feed-heater-flash-rev-1-seq-1")
+        Some(crate::test_support::OFFICIAL_HEATER_BINARY_HYDROCARBON_AUTORUN_SNAPSHOT_ID)
     );
     assert!(
         app_state
