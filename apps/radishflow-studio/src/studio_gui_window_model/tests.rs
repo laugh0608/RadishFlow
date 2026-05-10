@@ -449,6 +449,19 @@ fn lease_expiring_config() -> StudioRuntimeConfig {
     }
 }
 
+fn synced_example_config(project_file_name: &str) -> StudioRuntimeConfig {
+    StudioRuntimeConfig {
+        project_path: PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../..")
+            .join("examples")
+            .join("flowsheets")
+            .join(project_file_name),
+        entitlement_preflight: StudioRuntimeEntitlementPreflight::Skip,
+        entitlement_seed: StudioRuntimeEntitlementSeed::Synced,
+        ..StudioRuntimeConfig::default()
+    }
+}
+
 fn flash_drum_local_rules_config() -> (StudioRuntimeConfig, PathBuf) {
     let timestamp = SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -624,12 +637,8 @@ fn studio_gui_window_model_groups_snapshot_into_window_regions() {
 }
 
 #[test]
-fn studio_gui_window_model_surfaces_workspace_results_and_diagnostics() {
-    let config = StudioRuntimeConfig {
-        entitlement_preflight: StudioRuntimeEntitlementPreflight::Skip,
-        entitlement_seed: StudioRuntimeEntitlementSeed::Synced,
-        ..StudioRuntimeConfig::default()
-    };
+fn studio_gui_window_model_surfaces_bootstrap_workspace_results_and_diagnostics() {
+    let config = synced_example_config("feed-heater-flash.rfproj.json");
     let mut driver = StudioGuiDriver::new(&config).expect("expected driver");
     let opened = driver
         .dispatch_event(StudioGuiEvent::OpenWindowRequested)
@@ -688,16 +697,41 @@ fn studio_gui_window_model_surfaces_workspace_results_and_diagnostics() {
         .find(|stream| stream.stream_id == "stream-liquid")
         .expect("expected liquid outlet stream");
     assert!(
-        liquid_stream.molar_enthalpy_j_per_mol.is_some(),
-        "expected stream summary to expose overall molar enthalpy from flash result"
+        liquid_stream.total_molar_flow_mol_s.abs() < 1e-12,
+        "expected bootstrap sample liquid outlet to stay zero-flow in the current single-phase runtime baseline"
     );
-    assert!(liquid_stream.summary_rows.iter().any(|row| {
+    assert!(
+        liquid_stream.molar_enthalpy_j_per_mol.is_none(),
+        "expected zero-flow bootstrap liquid outlet to omit overall molar enthalpy"
+    );
+    assert!(
+        !liquid_stream.summary_rows.iter().any(|row| {
+            row.label == "H" || row.detail_label == "Molar enthalpy"
+        }),
+        "expected zero-flow bootstrap liquid outlet to avoid surfacing H summary rows"
+    );
+    assert!(
+        liquid_stream.phase_rows.is_empty(),
+        "expected zero-flow bootstrap liquid outlet to avoid phase rows"
+    );
+
+    let vapor_stream = snapshot
+        .streams
+        .iter()
+        .find(|stream| stream.stream_id == "stream-vapor")
+        .expect("expected vapor outlet stream");
+    assert!(vapor_stream.total_molar_flow_mol_s > 0.0);
+    assert!(
+        vapor_stream.molar_enthalpy_j_per_mol.is_some(),
+        "expected flowing bootstrap vapor outlet to expose overall molar enthalpy from flash result"
+    );
+    assert!(vapor_stream.summary_rows.iter().any(|row| {
         row.label == "H" && row.detail_label == "Molar enthalpy" && row.value.ends_with(" J/mol")
     }));
-    assert!(liquid_stream.phase_rows.iter().any(|row| {
+    assert!(vapor_stream.phase_rows.iter().any(|row| {
         row.phase_fraction_text == "1.0000"
-            && (row.molar_flow_mol_s - liquid_stream.total_molar_flow_mol_s).abs() < 1e-9
-            && row.molar_flow_text == liquid_stream.molar_flow_text
+            && (row.molar_flow_mol_s - vapor_stream.total_molar_flow_mol_s).abs() < 1e-9
+            && row.molar_flow_text == vapor_stream.molar_flow_text
             && row.composition_text.contains("component-a=")
             && row
                 .molar_enthalpy_text
@@ -759,7 +793,7 @@ fn studio_gui_window_model_surfaces_workspace_results_and_diagnostics() {
         inspector
             .stream_options
             .iter()
-            .any(|option| option.stream_id == "stream-liquid"
+            .any(|option| option.stream_id == "stream-vapor"
                 && option.summary.contains("H ")
                 && option.summary.contains("J/mol")),
         "expected stream result options to include enthalpy when it exists"
@@ -854,7 +888,7 @@ fn studio_gui_window_model_surfaces_workspace_results_and_diagnostics() {
         flash_step
             .produced_stream_results
             .iter()
-            .any(|stream| stream.stream_id == "stream-liquid" && stream.summary.contains("H ")),
+            .any(|stream| stream.stream_id == "stream-vapor" && stream.summary.contains("H ")),
         "expected flash step produced stream summaries to expose enthalpy when materialized"
     );
     assert!(
@@ -1087,10 +1121,10 @@ fn studio_gui_window_model_surfaces_workspace_results_and_diagnostics() {
         comparison_inspector
             .comparison_options
             .iter()
-            .any(|option| option.stream_id == "stream-liquid"
+            .any(|option| option.stream_id == "stream-vapor"
                 && option.summary.contains("H ")
                 && option.summary.contains("J/mol")
-                && option.focus_action.command_id == "inspector.focus_stream:stream-liquid"),
+                && option.focus_action.command_id == "inspector.focus_stream:stream-vapor"),
         "expected comparison stream options to expose enthalpy and the same inspector focus action"
     );
     let comparison = comparison_inspector
@@ -1129,31 +1163,29 @@ fn studio_gui_window_model_surfaces_workspace_results_and_diagnostics() {
     assert!(phase_comparison.summary_rows.iter().any(|row| {
         row.label == "H"
             && row.detail_label == "Molar enthalpy"
-            && row.base_value.ends_with(" J/mol")
+            && row.base_value == "-"
             && row.compared_value.ends_with(" J/mol")
-            && row.delta_text.ends_with(" J/mol")
+            && row.delta_text == "-"
     }));
     assert!(phase_comparison.phase_rows.iter().any(|row| {
         row.phase_label == "overall"
-            && row.base_fraction_text == "1.0000"
+            && row.base_fraction_text == "-"
             && row.compared_fraction_text == "1.0000"
-            && row.fraction_delta_text == "+0.0000"
-            && row.base_molar_flow_text.ends_with(" mol/s")
+            && row.fraction_delta_text == "-"
+            && row.base_molar_flow_text == "-"
             && row.compared_molar_flow_text.ends_with(" mol/s")
-            && row.molar_flow_delta_text.ends_with(" mol/s")
-            && row.base_molar_enthalpy_text.ends_with(" J/mol")
-            && row.compared_molar_enthalpy_text.ends_with(" J/mol")
-            && row.molar_enthalpy_delta_text.ends_with(" J/mol")
-    }));
-    assert!(phase_comparison.phase_rows.iter().any(|row| {
-        row.phase_label == "liquid"
-            && row.base_molar_flow_text.ends_with(" mol/s")
-            && row.compared_molar_flow_text == "-"
             && row.molar_flow_delta_text == "-"
-            && row.base_molar_enthalpy_text.ends_with(" J/mol")
-            && row.compared_molar_enthalpy_text == "-"
+            && row.base_molar_enthalpy_text == "-"
+            && row.compared_molar_enthalpy_text.ends_with(" J/mol")
             && row.molar_enthalpy_delta_text == "-"
     }));
+    assert!(
+        !phase_comparison
+            .phase_rows
+            .iter()
+            .any(|row| row.phase_label == "liquid"),
+        "expected zero-flow bootstrap liquid outlet to contribute no liquid phase comparison row"
+    );
     assert!(phase_comparison.phase_rows.iter().any(|row| {
         row.phase_label == "vapor"
             && row.base_molar_flow_text == "-"
@@ -1309,6 +1341,150 @@ fn studio_gui_window_model_surfaces_workspace_results_and_diagnostics() {
         stale_unit.selected_unit_id.as_deref(),
         snapshot.steps.first().map(|step| step.unit_id.as_str())
     );
+}
+
+#[test]
+fn studio_gui_window_model_surfaces_official_two_phase_flash_outlet_enthalpy_in_runtime_snapshot() {
+    let config = synced_example_config("feed-cooler-flash-binary-hydrocarbon.rfproj.json");
+    let mut driver = StudioGuiDriver::new(&config).expect("expected driver");
+    let _ = driver
+        .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+        .expect("expected open dispatch");
+
+    let dispatch = driver
+        .dispatch_event(StudioGuiEvent::UiCommandRequested {
+            command_id: "run_panel.run_manual".to_string(),
+        })
+        .expect("expected run dispatch");
+    let window = dispatch.window;
+    let snapshot = window
+        .runtime
+        .latest_solve_snapshot
+        .expect("expected latest solve snapshot");
+
+    assert_eq!(snapshot.status_label, "Converged");
+    assert_eq!(snapshot.stream_count, 4);
+    assert_eq!(snapshot.step_count, 3);
+    assert_eq!(snapshot.diagnostic_count, 4);
+
+    let liquid_stream = snapshot
+        .streams
+        .iter()
+        .find(|stream| stream.stream_id == "stream-liquid")
+        .expect("expected liquid outlet stream");
+    assert!(liquid_stream.total_molar_flow_mol_s > 0.0);
+    assert!(liquid_stream.composition_text.contains("methane="));
+    assert!(liquid_stream.molar_enthalpy_j_per_mol.is_some());
+    assert!(liquid_stream.summary_rows.iter().any(|row| {
+        row.label == "H" && row.detail_label == "Molar enthalpy" && row.value.ends_with(" J/mol")
+    }));
+    assert!(liquid_stream.phase_rows.iter().any(|row| {
+        row.label == "overall"
+            && row.phase_fraction_text == "1.0000"
+            && row.molar_flow_text == liquid_stream.molar_flow_text
+            && row
+                .molar_enthalpy_text
+                .as_deref()
+                .is_some_and(|value| value.ends_with(" J/mol"))
+    }));
+    assert!(liquid_stream.phase_rows.iter().any(|row| {
+        row.label == "liquid"
+            && row.phase_fraction_text == "1.0000"
+            && row
+                .molar_enthalpy_text
+                .as_deref()
+                .is_some_and(|value| value.ends_with(" J/mol"))
+    }));
+
+    let vapor_stream = snapshot
+        .streams
+        .iter()
+        .find(|stream| stream.stream_id == "stream-vapor")
+        .expect("expected vapor outlet stream");
+    assert!(vapor_stream.total_molar_flow_mol_s > 0.0);
+    assert!(vapor_stream.composition_text.contains("methane="));
+    assert!(vapor_stream.molar_enthalpy_j_per_mol.is_some());
+    assert!(vapor_stream.summary_rows.iter().any(|row| {
+        row.label == "H" && row.detail_label == "Molar enthalpy" && row.value.ends_with(" J/mol")
+    }));
+    assert!(vapor_stream.phase_rows.iter().any(|row| {
+        row.label == "overall"
+            && row.phase_fraction_text == "1.0000"
+            && row.molar_flow_text == vapor_stream.molar_flow_text
+            && row
+                .molar_enthalpy_text
+                .as_deref()
+                .is_some_and(|value| value.ends_with(" J/mol"))
+    }));
+    assert!(vapor_stream.phase_rows.iter().any(|row| {
+        row.label == "vapor"
+            && row.phase_fraction_text == "1.0000"
+            && row
+                .molar_enthalpy_text
+                .as_deref()
+                .is_some_and(|value| value.ends_with(" J/mol"))
+    }));
+
+    let phase_comparison = snapshot
+        .result_inspector_with_comparison(Some("stream-liquid"), Some("stream-vapor"))
+        .comparison
+        .expect("expected phase outlet comparison model");
+    assert!(phase_comparison.summary_rows.iter().any(|row| {
+        row.label == "H"
+            && row.detail_label == "Molar enthalpy"
+            && row.base_value.ends_with(" J/mol")
+            && row.compared_value.ends_with(" J/mol")
+            && row.delta_text.ends_with(" J/mol")
+    }));
+    assert!(phase_comparison.phase_rows.iter().any(|row| {
+        row.phase_label == "overall"
+            && row.base_fraction_text == "1.0000"
+            && row.compared_fraction_text == "1.0000"
+            && row.fraction_delta_text == "+0.0000"
+            && row.base_molar_flow_text.ends_with(" mol/s")
+            && row.compared_molar_flow_text.ends_with(" mol/s")
+            && row.molar_flow_delta_text.ends_with(" mol/s")
+            && row.base_molar_enthalpy_text.ends_with(" J/mol")
+            && row.compared_molar_enthalpy_text.ends_with(" J/mol")
+            && row.molar_enthalpy_delta_text.ends_with(" J/mol")
+    }));
+    assert!(phase_comparison.phase_rows.iter().any(|row| {
+        row.phase_label == "liquid"
+            && row.base_molar_flow_text.ends_with(" mol/s")
+            && row.compared_molar_flow_text == "-"
+            && row.molar_flow_delta_text == "-"
+            && row.base_molar_enthalpy_text.ends_with(" J/mol")
+            && row.compared_molar_enthalpy_text == "-"
+            && row.molar_enthalpy_delta_text == "-"
+    }));
+    assert!(phase_comparison.phase_rows.iter().any(|row| {
+        row.phase_label == "vapor"
+            && row.base_molar_flow_text == "-"
+            && row.compared_molar_flow_text.ends_with(" mol/s")
+            && row.molar_flow_delta_text == "-"
+            && row.base_molar_enthalpy_text == "-"
+            && row.compared_molar_enthalpy_text.ends_with(" J/mol")
+            && row.molar_enthalpy_delta_text == "-"
+    }));
+
+    let active_detail = driver
+        .dispatch_event(StudioGuiEvent::UiCommandRequested {
+            command_id: "inspector.focus_stream:stream-liquid".to_string(),
+        })
+        .expect("expected liquid inspector target dispatch")
+        .window
+        .runtime
+        .active_inspector_detail
+        .expect("expected active liquid stream inspector detail");
+    let active_stream = active_detail
+        .latest_stream_result
+        .as_ref()
+        .expect("expected active inspector latest stream result");
+    assert_eq!(active_stream.stream_id, "stream-liquid");
+    assert!(active_stream.molar_enthalpy_j_per_mol.is_some());
+    assert!(active_stream.summary_rows.iter().any(|row| {
+        row.label == "H" && row.detail_label == "Molar enthalpy" && row.value.ends_with(" J/mol")
+    }));
 }
 
 #[test]

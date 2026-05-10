@@ -379,11 +379,26 @@ fn build_bootstrap_payload(
     }
 
     payload.package_id = package_id.to_string();
-    for (payload_component, flowsheet_component) in
-        payload.components.iter_mut().zip(flowsheet_components)
-    {
-        payload_component.id = flowsheet_component.id.clone();
-        payload_component.name = flowsheet_component.name.clone();
+    let preserves_official_component_ids = payload
+        .components
+        .iter()
+        .all(|payload_component| flowsheet.components.contains_key(&payload_component.id));
+
+    if preserves_official_component_ids {
+        for payload_component in &mut payload.components {
+            let flowsheet_component = flowsheet
+                .components
+                .get(&payload_component.id)
+                .expect("expected flowsheet component by official payload id");
+            payload_component.name = flowsheet_component.name.clone();
+        }
+    } else {
+        for (payload_component, flowsheet_component) in
+            payload.components.iter_mut().zip(flowsheet_components)
+        {
+            payload_component.id = flowsheet_component.id.clone();
+            payload_component.name = flowsheet_component.name.clone();
+        }
     }
 
     payload.validate()?;

@@ -187,6 +187,58 @@ fn bootstrap_seed_sample_auth_cache_uses_official_payload_semantics_with_compone
 }
 
 #[test]
+fn bootstrap_seed_sample_auth_cache_preserves_official_component_coefficients_by_id() {
+    let mut flowsheet = Flowsheet::new("bootstrap-official-component-ids");
+    flowsheet
+        .insert_component(Component::new("ethane", "Ethane Runtime"))
+        .expect("expected ethane component");
+    flowsheet
+        .insert_component(Component::new("methane", "Methane Runtime"))
+        .expect("expected methane component");
+    let cache_root = super::temp_cache::TemporaryCacheRoot::new("bootstrap-seed-official-id-test")
+        .expect("expected temporary cache root");
+
+    let seed = super::seed::seed_sample_auth_cache(
+        cache_root.path(),
+        &flowsheet,
+        super::seed::BOOTSTRAP_MVP_PROPERTY_PACKAGE_ID,
+        StudioBootstrapEntitlementSeed::Synced,
+    )
+    .expect("expected bootstrap seed");
+    let record = seed
+        .auth_cache_index
+        .property_packages
+        .first()
+        .expect("expected cached property package record");
+    let payload = read_property_package_payload(
+        record
+            .payload_path_under(cache_root.path())
+            .expect("expected cached payload path"),
+    )
+    .expect("expected cached payload");
+
+    let mut expected = crate::parse_property_package_download_json(include_str!(
+        "../../../../examples/sample-components/property-packages/binary-hydrocarbon-lite-v1/download.json"
+    ))
+    .expect("expected official sample download")
+    .to_stored_payload()
+    .expect("expected stored payload");
+    expected.package_id = super::seed::BOOTSTRAP_MVP_PROPERTY_PACKAGE_ID.to_string();
+    expected.components[0].name = "Methane Runtime".to_string();
+    expected.components[1].name = "Ethane Runtime".to_string();
+
+    assert_eq!(
+        payload
+            .components
+            .iter()
+            .map(|component| component.id.as_str())
+            .collect::<Vec<_>>(),
+        vec!["methane", "ethane"]
+    );
+    assert_eq!(payload, expected);
+}
+
+#[test]
 fn bootstrap_resumes_workspace_from_hold_via_run_panel_intent() {
     let report = run_studio_bootstrap(&StudioBootstrapConfig {
         trigger: StudioBootstrapTrigger::Intent(RunPanelIntent::resume(
