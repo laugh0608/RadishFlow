@@ -20,21 +20,6 @@ fn build_demo_antoine_coefficients(k_value: f64, pressure_pa: f64) -> AntoineCoe
     )
 }
 
-pub(crate) fn build_binary_demo_provider() -> PlaceholderThermoProvider {
-    let pressure_pa = 100_000.0_f64;
-    let mut first = ThermoComponent::new(ComponentId::new("component-a"), "Component A");
-    first.antoine = Some(build_demo_antoine_coefficients(2.0, pressure_pa));
-    first.liquid_heat_capacity_j_per_mol_k = Some(35.0);
-    first.vapor_heat_capacity_j_per_mol_k = Some(36.5);
-
-    let mut second = ThermoComponent::new(ComponentId::new("component-b"), "Component B");
-    second.antoine = Some(build_demo_antoine_coefficients(0.5, pressure_pa));
-    second.liquid_heat_capacity_j_per_mol_k = Some(52.0);
-    second.vapor_heat_capacity_j_per_mol_k = Some(65.0);
-
-    PlaceholderThermoProvider::new(ThermoSystem::binary([first, second]))
-}
-
 pub(crate) fn build_synthetic_provider(
     k_values: [f64; 2],
     pressure_pa: f64,

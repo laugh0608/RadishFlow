@@ -16,7 +16,7 @@ use crate::{
 };
 
 use super::test_support::{
-    apply_stream_state_and_composition, build_binary_demo_provider, build_synthetic_provider,
+    apply_stream_state_and_composition, build_synthetic_provider,
     solve_snapshot_model_from_project_with_provider_and_edit, stream_target_detail_model,
     unit_target_detail_model,
 };
@@ -634,7 +634,7 @@ fn studio_gui_window_model_groups_snapshot_into_window_regions() {
 
 #[test]
 fn studio_gui_window_model_surfaces_bootstrap_workspace_results_and_diagnostics() {
-    let config = synced_example_config("feed-heater-flash.rfproj.json");
+    let config = synced_example_config("feed-heater-flash-binary-hydrocarbon.rfproj.json");
     let mut driver = StudioGuiDriver::new(&config).expect("expected driver");
     let opened = driver
         .dispatch_event(StudioGuiEvent::OpenWindowRequested)
@@ -672,7 +672,7 @@ fn studio_gui_window_model_surfaces_bootstrap_workspace_results_and_diagnostics(
         .find(|stream| stream.stream_id == "stream-heated")
         .expect("expected heated stream");
     assert_eq!(heated_stream.temperature_text, "345.00 K");
-    assert!(heated_stream.composition_text.contains("component-a="));
+    assert!(heated_stream.composition_text.contains("methane="));
     assert_eq!(heated_stream.summary_rows.len(), 3);
     assert!(heated_stream.summary_rows.iter().any(|row| row.label == "T"
         && row.detail_label == "Temperature"
@@ -681,7 +681,7 @@ fn studio_gui_window_model_surfaces_bootstrap_workspace_results_and_diagnostics(
         heated_stream
             .composition_rows
             .iter()
-            .any(|row| row.component_id == "component-a" && !row.fraction_text.is_empty())
+            .any(|row| row.component_id == "methane" && !row.fraction_text.is_empty())
     );
     assert!(
         heated_stream.phase_text.contains("mol/s"),
@@ -729,7 +729,7 @@ fn studio_gui_window_model_surfaces_bootstrap_workspace_results_and_diagnostics(
         row.phase_fraction_text == "1.0000"
             && (row.molar_flow_mol_s - vapor_stream.total_molar_flow_mol_s).abs() < 1e-9
             && row.molar_flow_text == vapor_stream.molar_flow_text
-            && row.composition_text.contains("component-a=")
+            && row.composition_text.contains("methane=")
             && row
                 .molar_enthalpy_text
                 .as_deref()
@@ -958,11 +958,11 @@ fn studio_gui_window_model_surfaces_bootstrap_workspace_results_and_diagnostics(
     );
     assert!(
         active_detail.property_fields.iter().any(|field| {
-            field.key == "stream:stream-heated:overall_mole_fraction:component-a"
-                && field.label == "Overall mole fraction (component-a)"
+            field.key == "stream:stream-heated:overall_mole_fraction:methane"
+                && field.label == "Overall mole fraction (methane)"
                 && field.value_kind_label == "Number"
                 && field.draft_update_command_id
-                    == "inspector.update_stream_draft:stream:stream-heated:overall_mole_fraction:component-a"
+                    == "inspector.update_stream_draft:stream:stream-heated:overall_mole_fraction:methane"
         }),
         "expected stream inspector detail to expose composition field presentation"
     );
@@ -973,7 +973,7 @@ fn studio_gui_window_model_surfaces_bootstrap_workspace_results_and_diagnostics(
             .map(|summary| (
                 summary.status_label,
                 summary.current_sum_text.as_str(),
-                summary.normalized_preview_text.contains("component-a=")
+                summary.normalized_preview_text.contains("methane=")
             )),
         Some(("Synced", "1.000000", true)),
         "expected stream inspector detail to expose composition sum and normalized preview"
@@ -1146,7 +1146,7 @@ fn studio_gui_window_model_surfaces_bootstrap_workspace_results_and_diagnostics(
             && row.delta_text.ends_with(" K")
     }));
     assert!(comparison.composition_rows.iter().any(|row| {
-        row.component_id == "component-a"
+        row.component_id == "methane"
             && !row.base_fraction_text.is_empty()
             && !row.compared_fraction_text.is_empty()
             && (row.delta_text.starts_with('+') || row.delta_text.starts_with('-'))
@@ -1486,26 +1486,24 @@ fn studio_gui_window_model_surfaces_official_two_phase_flash_outlet_enthalpy_in_
 
 #[test]
 fn studio_gui_window_model_surfaces_bubble_dew_window_in_stream_inspectors() {
-    let snapshot = solve_snapshot_model_from_project_with_provider_and_edit(
-        include_str!("../../../../examples/flowsheets/feed-heater-flash.rfproj.json"),
-        &build_binary_demo_provider(),
-        |_| {},
-    );
+    let snapshot = solve_binary_hydrocarbon_lite_snapshot(include_str!(
+        "../../../../examples/flowsheets/feed-cooler-flash-binary-hydrocarbon.rfproj.json"
+    ));
 
-    let heated_stream = snapshot
+    let cooled_stream = snapshot
         .streams
         .iter()
-        .find(|stream| stream.stream_id == "stream-heated")
-        .expect("expected heated stream");
-    let heated_window = heated_stream
+        .find(|stream| stream.stream_id == "stream-cooled")
+        .expect("expected cooled stream");
+    let cooled_window = cooled_stream
         .bubble_dew_window
         .as_ref()
-        .expect("expected heated stream bubble/dew window");
-    assert_eq!(heated_window.phase_region, "two_phase");
-    assert!(heated_window.dew_pressure_pa < heated_stream.pressure_pa);
-    assert!(heated_window.bubble_pressure_pa > heated_stream.pressure_pa);
-    assert!(heated_window.bubble_temperature_k < heated_stream.temperature_k);
-    assert!(heated_window.dew_temperature_k > heated_stream.temperature_k);
+        .expect("expected cooled stream bubble/dew window");
+    assert_eq!(cooled_window.phase_region, "two_phase");
+    assert!(cooled_window.dew_pressure_pa < cooled_stream.pressure_pa);
+    assert!(cooled_window.bubble_pressure_pa > cooled_stream.pressure_pa);
+    assert!(cooled_window.bubble_temperature_k < cooled_stream.temperature_k);
+    assert!(cooled_window.dew_temperature_k > cooled_stream.temperature_k);
 
     let liquid_inspector = snapshot.result_inspector(Some("stream-liquid"));
     let liquid_stream = liquid_inspector

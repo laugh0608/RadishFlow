@@ -15,11 +15,6 @@ use rf_thermo::{
 use rf_types::ComponentId;
 
 #[doc(hidden)]
-pub fn build_binary_demo_provider() -> PlaceholderThermoProvider {
-    crate::studio_gui_window_model::test_support::build_binary_demo_provider()
-}
-
-#[doc(hidden)]
 pub fn build_binary_hydrocarbon_lite_provider() -> PlaceholderThermoProvider {
     let payload = build_binary_hydrocarbon_lite_stored_payload_for_components(
         "binary-hydrocarbon-lite-v1",
