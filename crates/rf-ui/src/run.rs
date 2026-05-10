@@ -168,17 +168,9 @@ impl SolveSnapshot {
                         .map(stream_state_snapshot_from_model)
                         .collect(),
                     streams: step
-                        .produced_stream_ids
+                        .produced_streams
                         .iter()
-                        .map(|stream_id| {
-                            stream_state_snapshot_from_model(
-                                snapshot.streams.get(stream_id).unwrap_or_else(|| {
-                                    panic!(
-                                        "solver snapshot step produced stream `{stream_id}` should be materialized"
-                                    )
-                                }),
-                            )
-                        })
+                        .map(stream_state_snapshot_from_model)
                         .collect(),
                 })
                 .collect(),

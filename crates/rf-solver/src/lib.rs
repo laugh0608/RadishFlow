@@ -101,6 +101,7 @@ pub struct UnitSolveStep {
     pub unit_kind: String,
     pub consumed_streams: Vec<MaterialStreamState>,
     pub consumed_stream_ids: Vec<StreamId>,
+    pub produced_streams: Vec<MaterialStreamState>,
     pub produced_stream_ids: Vec<StreamId>,
     pub summary: String,
 }
@@ -254,6 +255,7 @@ impl FlowsheetSolver for SequentialModularSolver {
             let outputs = operation.run(&unit_services, &inputs).map_err(|error| {
                 solver_step_execution_error(step_number, unit, &consumed_stream_ids, error)
             })?;
+            let mut produced_streams = Vec::new();
             let mut produced_stream_ids = Vec::new();
 
             for port in spec
@@ -262,6 +264,7 @@ impl FlowsheetSolver for SequentialModularSolver {
                 .filter(|port| port.direction == PortDirection::Outlet)
             {
                 let stream = materialized_output_stream(step_number, unit, port.name, &outputs)?;
+                produced_streams.push(stream.clone());
                 produced_stream_ids.push(stream.id.clone());
                 solved_streams.insert(stream.id.clone(), stream.clone());
             }
@@ -293,6 +296,7 @@ impl FlowsheetSolver for SequentialModularSolver {
                 unit_kind: unit.kind.clone(),
                 consumed_streams,
                 consumed_stream_ids,
+                produced_streams,
                 produced_stream_ids,
                 summary,
             });

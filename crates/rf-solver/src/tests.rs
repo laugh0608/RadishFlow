@@ -498,6 +498,11 @@ fn sequential_solver_solves_feed_mixer_flash_chain() {
     assert_eq!(snapshot.steps[2].consumed_stream_ids.len(), 2);
     assert_eq!(snapshot.steps[2].consumed_streams.len(), 2);
     assert_eq!(
+        snapshot.steps[2].produced_stream_ids,
+        vec!["stream-mix-out".into()]
+    );
+    assert_eq!(snapshot.steps[2].produced_streams.len(), 1);
+    assert_eq!(
         snapshot.steps[2].consumed_streams[0],
         *snapshot
             .stream(&StreamId::new("stream-feed-a"))
@@ -508,6 +513,12 @@ fn sequential_solver_solves_feed_mixer_flash_chain() {
         *snapshot
             .stream(&StreamId::new("stream-feed-b"))
             .expect("expected feed-b stream")
+    );
+    assert_eq!(
+        snapshot.steps[2].produced_streams[0],
+        *snapshot
+            .stream(&StreamId::new("stream-mix-out"))
+            .expect("expected mixer outlet stream")
     );
     assert!(
         snapshot.steps[2]
@@ -634,12 +645,23 @@ fn sequential_solver_solves_feed_heater_flash_chain() {
         vec!["stream-feed".into()]
     );
     assert_eq!(snapshot.steps[1].consumed_streams.len(), 1);
+    assert_eq!(
+        snapshot.steps[1].produced_stream_ids,
+        vec!["stream-heated".into()]
+    );
+    assert_eq!(snapshot.steps[1].produced_streams.len(), 1);
     assert!(snapshot.steps[1].summary.contains("heater-1"));
     assert_eq!(
         snapshot.steps[1].consumed_streams[0],
         *snapshot
             .stream(&StreamId::new("stream-feed"))
             .expect("expected feed stream")
+    );
+    assert_eq!(
+        snapshot.steps[1].produced_streams[0],
+        *snapshot
+            .stream(&StreamId::new("stream-heated"))
+            .expect("expected heated stream")
     );
 
     let heated = snapshot
@@ -828,12 +850,23 @@ fn sequential_solver_solves_feed_cooler_flash_chain() {
         vec!["stream-feed".into()]
     );
     assert_eq!(snapshot.steps[1].consumed_streams.len(), 1);
+    assert_eq!(
+        snapshot.steps[1].produced_stream_ids,
+        vec!["stream-cooled".into()]
+    );
+    assert_eq!(snapshot.steps[1].produced_streams.len(), 1);
     assert!(snapshot.steps[1].summary.contains("cooler-1"));
     assert_eq!(
         snapshot.steps[1].consumed_streams[0],
         *snapshot
             .stream(&StreamId::new("stream-feed"))
             .expect("expected feed stream")
+    );
+    assert_eq!(
+        snapshot.steps[1].produced_streams[0],
+        *snapshot
+            .stream(&StreamId::new("stream-cooled"))
+            .expect("expected cooled stream")
     );
 
     let cooled = snapshot
@@ -958,12 +991,23 @@ fn sequential_solver_solves_feed_valve_flash_chain() {
         vec!["stream-feed".into()]
     );
     assert_eq!(snapshot.steps[1].consumed_streams.len(), 1);
+    assert_eq!(
+        snapshot.steps[1].produced_stream_ids,
+        vec!["stream-throttled".into()]
+    );
+    assert_eq!(snapshot.steps[1].produced_streams.len(), 1);
     assert!(snapshot.steps[1].summary.contains("valve-1"));
     assert_eq!(
         snapshot.steps[1].consumed_streams[0],
         *snapshot
             .stream(&StreamId::new("stream-feed"))
             .expect("expected feed stream")
+    );
+    assert_eq!(
+        snapshot.steps[1].produced_streams[0],
+        *snapshot
+            .stream(&StreamId::new("stream-throttled"))
+            .expect("expected throttled stream")
     );
 
     let throttled = snapshot
