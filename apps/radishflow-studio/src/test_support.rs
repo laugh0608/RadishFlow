@@ -61,6 +61,15 @@ pub fn stream_target_detail_model(
 }
 
 #[doc(hidden)]
+pub fn unit_target_detail_model(
+    snapshot: &crate::StudioGuiWindowSolveSnapshotModel,
+    unit_id: &str,
+    title: &str,
+) -> crate::StudioGuiWindowInspectorTargetDetailModel {
+    crate::studio_gui_window_model::test_support::unit_target_detail_model(snapshot, unit_id, title)
+}
+
+#[doc(hidden)]
 pub fn stream_target_detail_snapshot(
     stream_id: &str,
     title: &str,

@@ -6,7 +6,7 @@ use rf_flash::PlaceholderTpFlashSolver;
 use rf_solver::{FlowsheetSolver, SequentialModularSolver, SolverServices};
 use rf_store::{StoredProjectFile, parse_project_file_json};
 use rf_thermo::{AntoineCoefficients, PlaceholderThermoProvider, ThermoComponent, ThermoSystem};
-use rf_types::{ComponentId, StreamId};
+use rf_types::{ComponentId, StreamId, UnitId};
 
 fn build_demo_antoine_coefficients(k_value: f64, pressure_pa: f64) -> AntoineCoefficients {
     const TEST_ANTOINE_BOUNDARY_SLOPE: f64 = 250.0;
@@ -133,6 +133,25 @@ pub(crate) fn stream_target_detail_snapshot(
     }
 }
 
+pub(crate) fn unit_target_detail_snapshot(
+    unit_id: &str,
+    title: &str,
+) -> crate::StudioGuiInspectorTargetDetailSnapshot {
+    crate::StudioGuiInspectorTargetDetailSnapshot {
+        target: rf_ui::InspectorTarget::Unit(UnitId::new(unit_id)),
+        title: title.to_string(),
+        summary_rows: Vec::new(),
+        property_fields: Vec::new(),
+        property_notices: Vec::new(),
+        property_composition_summary: None,
+        property_batch_commit_command_id: None,
+        property_batch_discard_command_id: None,
+        property_composition_normalize_command_id: None,
+        property_composition_component_actions: Vec::new(),
+        unit_ports: Vec::new(),
+    }
+}
+
 pub(crate) fn stream_target_detail_model(
     snapshot: &StudioGuiWindowSolveSnapshotModel,
     stream_id: &str,
@@ -140,6 +159,18 @@ pub(crate) fn stream_target_detail_model(
 ) -> StudioGuiWindowInspectorTargetDetailModel {
     inspector_target_detail_model_from_snapshot(
         &stream_target_detail_snapshot(stream_id, title),
+        Some(snapshot),
+        None,
+    )
+}
+
+pub(crate) fn unit_target_detail_model(
+    snapshot: &StudioGuiWindowSolveSnapshotModel,
+    unit_id: &str,
+    title: &str,
+) -> StudioGuiWindowInspectorTargetDetailModel {
+    inspector_target_detail_model_from_snapshot(
+        &unit_target_detail_snapshot(unit_id, title),
         Some(snapshot),
         None,
     )

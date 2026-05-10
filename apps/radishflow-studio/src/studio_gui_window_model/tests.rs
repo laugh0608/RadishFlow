@@ -18,6 +18,7 @@ use super::test_support::{
     apply_stream_state_and_composition, build_binary_demo_provider,
     build_binary_hydrocarbon_lite_provider, build_synthetic_provider,
     solve_snapshot_model_from_project_with_provider_and_edit, stream_target_detail_model,
+    unit_target_detail_model,
 };
 
 fn solve_binary_hydrocarbon_lite_snapshot(
@@ -243,6 +244,200 @@ fn assert_non_flash_intermediate_stream_summary_and_context(
     }));
     assert!(active_detail.diagnostic_actions.iter().any(|action| {
         action.source_label == "Solve step" && action.action.command_id == focus_unit_command_id
+    }));
+}
+
+fn assert_non_flash_intermediate_unit_summary_and_context(
+    snapshot: &crate::StudioGuiWindowSolveSnapshotModel,
+    selected_stream_id: &str,
+    unit_id: &str,
+    title: &str,
+    consumed_stream_ids: &[&str],
+    produced_stream_id: &str,
+) {
+    let focus_unit_command_id = format!("inspector.focus_unit:{unit_id}");
+    let consumed_focus_command_ids: Vec<String> = consumed_stream_ids
+        .iter()
+        .map(|stream_id| format!("inspector.focus_stream:{stream_id}"))
+        .collect();
+    let produced_focus_command_id = format!("inspector.focus_stream:{produced_stream_id}");
+
+    let assert_unit_result = |unit: &crate::StudioGuiWindowUnitExecutionResultModel,
+                              surface: &str| {
+        assert_eq!(unit.unit_id, unit_id);
+        assert_eq!(unit.status_label, "Converged");
+        assert!(
+            unit.step_index >= 1,
+            "expected {surface} unit `{unit_id}` to point at an executed solve step"
+        );
+        assert_eq!(
+            unit.consumed_stream_ids,
+            consumed_stream_ids
+                .iter()
+                .map(|stream_id| stream_id.to_string())
+                .collect::<Vec<_>>()
+        );
+        assert_eq!(
+            unit.produced_stream_ids,
+            vec![produced_stream_id.to_string()]
+        );
+        assert!(
+            unit.summary.contains(produced_stream_id),
+            "expected {surface} unit `{unit_id}` summary to mention produced stream `{produced_stream_id}`"
+        );
+        for command_id in &consumed_focus_command_ids {
+            assert!(
+                unit.consumed_stream_actions
+                    .iter()
+                    .any(|action| action.command_id == *command_id)
+            );
+        }
+        for stream_id in consumed_stream_ids {
+            assert!(unit.consumed_stream_results.iter().any(|stream| {
+                stream.stream_id == *stream_id
+                    && stream.summary.contains("T ")
+                    && stream.summary.contains("P ")
+                    && stream.summary.contains("F ")
+                    && !stream.summary.contains("H ")
+            }));
+        }
+        assert!(
+            unit.produced_stream_actions
+                .iter()
+                .any(|action| action.command_id == produced_focus_command_id)
+        );
+        assert!(unit.produced_stream_results.iter().any(|stream| {
+            stream.stream_id == produced_stream_id
+                && stream.summary.contains("T ")
+                && stream.summary.contains("P ")
+                && stream.summary.contains("F ")
+                && !stream.summary.contains("H ")
+        }));
+    };
+
+    let unit_inspector =
+        snapshot.result_inspector_with_unit(Some(selected_stream_id), None, Some(unit_id));
+    assert_eq!(unit_inspector.selected_unit_id.as_deref(), Some(unit_id));
+    let selected_unit = unit_inspector
+        .selected_unit
+        .as_ref()
+        .expect("expected selected unit execution result");
+    assert_unit_result(selected_unit, "result inspector");
+    assert!(
+        unit_inspector
+            .unit_options
+            .iter()
+            .any(|option| option.unit_id == unit_id
+                && option.is_selected
+                && option.focus_action.command_id == focus_unit_command_id
+                && option.summary.contains("step #")
+                && option.summary.contains(produced_stream_id)),
+        "expected unit option for `{unit_id}` to expose selected step summary"
+    );
+    assert!(
+        unit_inspector
+            .unit_related_steps
+            .iter()
+            .all(|step| step.unit_id == unit_id),
+        "expected unit-related steps to stay filtered to `{unit_id}`"
+    );
+    assert!(
+        unit_inspector
+            .unit_related_diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic
+                .related_unit_ids
+                .iter()
+                .any(|candidate| candidate == unit_id)
+                || diagnostic
+                    .related_stream_ids
+                    .iter()
+                    .any(|candidate| candidate == produced_stream_id)),
+        "expected unit-related diagnostics to include `{unit_id}` outputs"
+    );
+    assert!(
+        unit_inspector
+            .unit_related_diagnostics
+            .iter()
+            .any(
+                |diagnostic| consumed_stream_ids.iter().all(|stream_id| diagnostic
+                    .related_stream_ids
+                    .iter()
+                    .any(|candidate| candidate == *stream_id))
+                    || consumed_stream_ids.iter().any(|stream_id| diagnostic
+                        .related_stream_ids
+                        .iter()
+                        .any(|candidate| candidate == *stream_id))
+            ),
+        "expected unit-related diagnostics to include consumed stream context for `{unit_id}`"
+    );
+    assert!(unit_inspector.unit_diagnostic_actions.iter().any(|action| {
+        action.source_label == "Selected unit" && action.action.command_id == focus_unit_command_id
+    }));
+    assert!(unit_inspector.unit_diagnostic_actions.iter().any(|action| {
+        action.source_label == "Solve step" && action.action.command_id == focus_unit_command_id
+    }));
+    assert!(unit_inspector.unit_diagnostic_actions.iter().any(|action| {
+        action.source_label == "Diagnostic"
+            && consumed_focus_command_ids
+                .iter()
+                .any(|command_id| action.action.command_id == *command_id)
+    }));
+    assert!(!unit_inspector.has_stale_unit_selection);
+
+    let active_detail = unit_target_detail_model(snapshot, unit_id, title);
+    let active_unit = active_detail
+        .latest_unit_result
+        .as_ref()
+        .expect("expected active unit detail to expose latest execution result");
+    assert_eq!(active_unit, selected_unit);
+    assert_unit_result(active_unit, "active inspector");
+    assert_eq!(active_detail.latest_stream_result, None);
+    assert!(
+        active_detail
+            .related_steps
+            .iter()
+            .all(|step| step.unit_id == unit_id),
+        "expected active unit inspector related steps to stay filtered to `{unit_id}`"
+    );
+    assert!(
+        active_detail
+            .related_diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic
+                .related_unit_ids
+                .iter()
+                .any(|candidate| candidate == unit_id)
+                || diagnostic
+                    .related_stream_ids
+                    .iter()
+                    .any(|candidate| candidate == produced_stream_id)),
+        "expected active unit inspector diagnostics to include `{unit_id}` outputs"
+    );
+    assert!(
+        active_detail
+            .related_diagnostics
+            .iter()
+            .any(
+                |diagnostic| consumed_stream_ids.iter().any(|stream_id| diagnostic
+                    .related_stream_ids
+                    .iter()
+                    .any(|candidate| candidate == *stream_id))
+            ),
+        "expected active unit inspector diagnostics to include consumed stream context for `{unit_id}`"
+    );
+    assert!(active_detail.diagnostic_actions.iter().any(|action| {
+        action.source_label == "Inspector target"
+            && action.action.command_id == focus_unit_command_id
+    }));
+    assert!(active_detail.diagnostic_actions.iter().any(|action| {
+        action.source_label == "Solve step" && action.action.command_id == focus_unit_command_id
+    }));
+    assert!(active_detail.diagnostic_actions.iter().any(|action| {
+        action.source_label == "Diagnostic"
+            && consumed_focus_command_ids
+                .iter()
+                .any(|command_id| action.action.command_id == *command_id)
     }));
 }
 
@@ -1433,6 +1628,69 @@ fn studio_gui_window_model_surfaces_non_flash_intermediate_stream_summary_and_co
             stream_id,
             title,
             producer_unit_id,
+        );
+    }
+}
+
+#[test]
+fn studio_gui_window_model_surfaces_non_flash_intermediate_unit_summary_and_context() {
+    for (
+        project_json,
+        selected_stream_id,
+        unit_id,
+        title,
+        consumed_stream_ids,
+        produced_stream_id,
+    ) in [
+        (
+            include_str!(
+                "../../../../examples/flowsheets/feed-heater-flash-binary-hydrocarbon.rfproj.json"
+            ),
+            "stream-heated",
+            "heater-1",
+            "Heater",
+            &["stream-feed"][..],
+            "stream-heated",
+        ),
+        (
+            include_str!(
+                "../../../../examples/flowsheets/feed-cooler-flash-binary-hydrocarbon.rfproj.json"
+            ),
+            "stream-cooled",
+            "cooler-1",
+            "Cooler",
+            &["stream-feed"][..],
+            "stream-cooled",
+        ),
+        (
+            include_str!(
+                "../../../../examples/flowsheets/feed-valve-flash-binary-hydrocarbon.rfproj.json"
+            ),
+            "stream-throttled",
+            "valve-1",
+            "Valve",
+            &["stream-feed"][..],
+            "stream-throttled",
+        ),
+        (
+            include_str!(
+                "../../../../examples/flowsheets/feed-mixer-flash-binary-hydrocarbon.rfproj.json"
+            ),
+            "stream-mix-out",
+            "mixer-1",
+            "Mixer",
+            &["stream-feed-a", "stream-feed-b"][..],
+            "stream-mix-out",
+        ),
+    ] {
+        let snapshot = solve_binary_hydrocarbon_lite_snapshot(project_json);
+        assert_non_flash_intermediate_unit_summary_and_context(
+            &snapshot,
+            selected_stream_id,
+            unit_id,
+            title,
+            consumed_stream_ids,
+            produced_stream_id,
         );
     }
 }

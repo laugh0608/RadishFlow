@@ -1,11 +1,12 @@
 use super::*;
 use radishflow_studio::{
     StudioGuiWindowInspectorTargetDetailModel, StudioGuiWindowSolveSnapshotModel,
-    StudioGuiWindowStreamResultModel,
+    StudioGuiWindowStreamResultModel, StudioGuiWindowUnitExecutionResultModel,
     test_support::{
         apply_stream_state_and_composition, build_binary_demo_provider,
         build_binary_hydrocarbon_lite_provider, build_synthetic_provider,
         solve_snapshot_model_from_project_with_provider_and_edit, stream_target_detail_model,
+        unit_target_detail_model,
     },
 };
 use rf_flash::estimate_bubble_dew_window;
@@ -64,6 +65,17 @@ fn render_active_inspector_texts(
     render_runtime_area_texts(app, |app, ui| {
         app.render_runtime_area_contents(ui, &window, StudioGuiWindowAreaId::Runtime);
     })
+}
+
+fn render_result_inspector_with_unit_texts(
+    app: &mut ReadyAppState,
+    snapshot: &StudioGuiWindowSolveSnapshotModel,
+    selected_stream_id: &str,
+    selected_unit_id: &str,
+) -> Vec<String> {
+    let inspector =
+        snapshot.result_inspector_with_unit(Some(selected_stream_id), None, Some(selected_unit_id));
+    render_runtime_area_texts(app, |app, ui| app.render_result_inspector(ui, &inspector))
 }
 
 fn render_full_runtime_panel_texts(
@@ -152,6 +164,63 @@ fn assert_rendered_stream_summary_surface(
         stream.stream_id,
         texts
     );
+}
+
+fn assert_rendered_unit_summary_surface(
+    texts: &[String],
+    surface: &str,
+    unit: &StudioGuiWindowUnitExecutionResultModel,
+    consumed_streams_label: &str,
+    produced_streams_label: &str,
+    related_solve_steps_label: &str,
+    related_diagnostics_label: &str,
+    diagnostic_targets_label: &str,
+) {
+    assert!(
+        texts.iter().any(|text| text.contains(&unit.unit_id)),
+        "expected {surface} to render unit id `{}`, rendered texts: {:?}",
+        unit.unit_id,
+        texts
+    );
+    assert!(
+        texts
+            .iter()
+            .any(|text| text.contains(&format!("#{}", unit.step_index))),
+        "expected {surface} to render unit step index `#{}`, rendered texts: {:?}",
+        unit.step_index,
+        texts
+    );
+    assert!(
+        texts.iter().any(|text| text.contains(&unit.summary)),
+        "expected {surface} to render unit summary `{}`, rendered texts: {:?}",
+        unit.summary,
+        texts
+    );
+    for label in [
+        consumed_streams_label,
+        produced_streams_label,
+        related_solve_steps_label,
+        related_diagnostics_label,
+        diagnostic_targets_label,
+    ] {
+        assert!(
+            texts.iter().any(|text| text.contains(label)),
+            "expected {surface} to render section label `{label}`, rendered texts: {:?}",
+            texts
+        );
+    }
+    for stream in unit
+        .consumed_stream_results
+        .iter()
+        .chain(unit.produced_stream_results.iter())
+    {
+        assert!(
+            texts.iter().any(|text| text.contains(&stream.summary)),
+            "expected {surface} to render unit-related stream summary `{}`, rendered texts: {:?}",
+            stream.summary,
+            texts
+        );
+    }
 }
 
 fn solve_two_phase_snapshot() -> StudioGuiWindowSolveSnapshotModel {
@@ -484,6 +553,99 @@ fn runtime_panel_renders_summary_rows_and_context_for_non_flash_intermediate_str
             &molar_enthalpy_label,
             &related_solve_steps_label,
             &related_diagnostics_label,
+        );
+    }
+}
+
+#[test]
+fn runtime_panel_renders_unit_summary_and_context_for_non_flash_intermediate_units() {
+    let mut app = ready_app_state(&synced_workspace_config());
+    let result_unit_view_label = app.locale.text(ShellText::ResultUnitView).to_string();
+    let consumed_streams_label = app
+        .locale
+        .text(ShellText::InspectorConsumedStreams)
+        .to_string();
+    let produced_streams_label = app
+        .locale
+        .text(ShellText::InspectorProducedStreams)
+        .to_string();
+    let related_solve_steps_label = app.locale.text(ShellText::RelatedSolveSteps).to_string();
+    let related_diagnostics_label = app.locale.text(ShellText::RelatedDiagnostics).to_string();
+    let diagnostic_targets_label = app.locale.text(ShellText::DiagnosticTargets).to_string();
+
+    for (project_json, selected_stream_id, unit_id, title) in [
+        (
+            include_str!(
+                "../../../../../examples/flowsheets/feed-heater-flash-binary-hydrocarbon.rfproj.json"
+            ),
+            "stream-heated",
+            "heater-1",
+            "Heater",
+        ),
+        (
+            include_str!(
+                "../../../../../examples/flowsheets/feed-cooler-flash-binary-hydrocarbon.rfproj.json"
+            ),
+            "stream-cooled",
+            "cooler-1",
+            "Cooler",
+        ),
+        (
+            include_str!(
+                "../../../../../examples/flowsheets/feed-valve-flash-binary-hydrocarbon.rfproj.json"
+            ),
+            "stream-throttled",
+            "valve-1",
+            "Valve",
+        ),
+        (
+            include_str!(
+                "../../../../../examples/flowsheets/feed-mixer-flash-binary-hydrocarbon.rfproj.json"
+            ),
+            "stream-mix-out",
+            "mixer-1",
+            "Mixer",
+        ),
+    ] {
+        let snapshot = solve_binary_hydrocarbon_snapshot(project_json);
+        let inspector =
+            snapshot.result_inspector_with_unit(Some(selected_stream_id), None, Some(unit_id));
+        let selected_unit = inspector
+            .selected_unit
+            .as_ref()
+            .expect("expected selected non-flash intermediate unit");
+
+        let result_texts = render_result_inspector_with_unit_texts(
+            &mut app,
+            &snapshot,
+            selected_stream_id,
+            unit_id,
+        );
+        assert!(
+            result_texts
+                .iter()
+                .any(|text| text.contains(&result_unit_view_label)),
+            "expected result inspector to render unit view section for `{unit_id}`, rendered texts: {:?}",
+            result_texts
+        );
+
+        let active_detail = unit_target_detail_model(&snapshot, unit_id, title);
+        let active_unit = active_detail
+            .latest_unit_result
+            .clone()
+            .expect("expected active unit result");
+        assert_eq!(&active_unit, selected_unit);
+
+        let active_texts = render_active_inspector_texts(&mut app, active_detail);
+        assert_rendered_unit_summary_surface(
+            &active_texts,
+            "active inspector unit view",
+            &active_unit,
+            &consumed_streams_label,
+            &produced_streams_label,
+            &related_solve_steps_label,
+            &related_diagnostics_label,
+            &diagnostic_targets_label,
         );
     }
 }
