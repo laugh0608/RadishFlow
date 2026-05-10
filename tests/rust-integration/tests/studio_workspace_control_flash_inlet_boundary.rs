@@ -166,6 +166,36 @@ fn assert_flash_consumed_stream_matches_inlet(
     );
 }
 
+fn assert_step_consumes_snapshot_stream(
+    snapshot: &rf_ui::SolveSnapshot,
+    unit_id: &str,
+    stream: &rf_ui::StreamStateSnapshot,
+    case_label: &str,
+) {
+    let step = snapshot
+        .steps
+        .iter()
+        .find(|step| step.unit_id == UnitId::new(unit_id))
+        .expect("expected consumer step");
+    assert!(
+        step.consumed_streams
+            .iter()
+            .any(|candidate| candidate == stream),
+        "{}",
+        case_label
+    );
+    assert!(
+        stream
+            .phases
+            .iter()
+            .find(|phase| phase.label == "overall")
+            .and_then(|phase| phase.molar_enthalpy_j_per_mol)
+            .is_some(),
+        "{}",
+        case_label
+    );
+}
+
 fn assert_flash_outlet_window_semantics_match_case(
     snapshot: &rf_ui::SolveSnapshot,
     case: &NearBoundaryStreamWindowCase,
@@ -407,6 +437,8 @@ fn app_state_for_synthetic_mixer_boundary_case(
 fn assert_run_panel_near_boundary_cases_across_chain<F>(
     cases: Vec<NearBoundaryStreamWindowCase>,
     temp_prefix: &str,
+    source_consumer_unit_id: &str,
+    source_stream_ids: &[&str],
     flash_inlet_stream_id: &str,
     build_app_state: F,
 ) where
@@ -443,6 +475,15 @@ fn assert_run_panel_near_boundary_cases_across_chain<F>(
             .snapshot_history
             .back()
             .expect("expected stored snapshot");
+        for stream_id in source_stream_ids {
+            let source_stream = find_snapshot_stream(snapshot, stream_id);
+            assert_step_consumes_snapshot_stream(
+                snapshot,
+                source_consumer_unit_id,
+                source_stream,
+                &case.label,
+            );
+        }
         let inlet_stream = find_snapshot_stream(snapshot, flash_inlet_stream_id);
         assert_near_boundary_window_matches_case(inlet_stream, &case);
         assert_flash_consumed_stream_matches_inlet(snapshot, inlet_stream, &case);
@@ -461,6 +502,8 @@ fn run_panel_primary_action_preserves_pressure_near_boundary_windows_across_bina
             .filter(|case| case.kind == NearBoundaryCaseKind::Pressure)
             .collect(),
         "integration-run-panel-binary-heater-pressure",
+        "heater-1",
+        &["stream-feed"],
         "stream-heated",
         |index, case| {
             app_state_for_binary_heater_boundary_case(
@@ -482,6 +525,8 @@ fn run_panel_primary_action_preserves_temperature_near_boundary_windows_across_b
             .filter(|case| case.kind == NearBoundaryCaseKind::Temperature)
             .collect(),
         "integration-run-panel-binary-heater-temperature",
+        "heater-1",
+        &["stream-feed"],
         "stream-heated",
         |index, case| {
             app_state_for_binary_heater_boundary_case(
@@ -503,6 +548,8 @@ fn run_panel_primary_action_preserves_pressure_near_boundary_windows_across_bina
             .filter(|case| case.kind == NearBoundaryCaseKind::Pressure)
             .collect(),
         "integration-run-panel-binary-mixer-pressure",
+        "mixer-1",
+        &["stream-feed-a", "stream-feed-b"],
         "stream-mix-out",
         |index, case| {
             app_state_for_binary_mixer_boundary_case(
@@ -524,6 +571,8 @@ fn run_panel_primary_action_preserves_temperature_near_boundary_windows_across_b
             .filter(|case| case.kind == NearBoundaryCaseKind::Temperature)
             .collect(),
         "integration-run-panel-binary-mixer-temperature",
+        "mixer-1",
+        &["stream-feed-a", "stream-feed-b"],
         "stream-mix-out",
         |index, case| {
             app_state_for_binary_mixer_boundary_case(
@@ -545,6 +594,8 @@ fn run_panel_primary_action_preserves_pressure_near_boundary_windows_across_bina
             .filter(|case| case.kind == NearBoundaryCaseKind::Pressure)
             .collect(),
         "integration-run-panel-binary-cooler-pressure",
+        "cooler-1",
+        &["stream-feed"],
         "stream-cooled",
         |index, case| {
             app_state_for_binary_cooler_boundary_case(
@@ -566,6 +617,8 @@ fn run_panel_primary_action_preserves_temperature_near_boundary_windows_across_b
             .filter(|case| case.kind == NearBoundaryCaseKind::Temperature)
             .collect(),
         "integration-run-panel-binary-cooler-temperature",
+        "cooler-1",
+        &["stream-feed"],
         "stream-cooled",
         |index, case| {
             app_state_for_binary_cooler_boundary_case(
@@ -587,6 +640,8 @@ fn run_panel_primary_action_preserves_pressure_near_boundary_windows_across_bina
             .filter(|case| case.kind == NearBoundaryCaseKind::Pressure)
             .collect(),
         "integration-run-panel-binary-valve-pressure",
+        "valve-1",
+        &["stream-feed"],
         "stream-throttled",
         |index, case| {
             app_state_for_binary_valve_boundary_case(
@@ -608,6 +663,8 @@ fn run_panel_primary_action_preserves_temperature_near_boundary_windows_across_b
             .filter(|case| case.kind == NearBoundaryCaseKind::Temperature)
             .collect(),
         "integration-run-panel-binary-valve-temperature",
+        "valve-1",
+        &["stream-feed"],
         "stream-throttled",
         |index, case| {
             app_state_for_binary_valve_boundary_case(
@@ -629,6 +686,8 @@ fn run_panel_primary_action_preserves_synthetic_single_phase_pressure_near_bound
             .filter(|case| case.kind == NearBoundaryCaseKind::Pressure)
             .collect(),
         "integration-run-panel-synthetic-mixer-pressure",
+        "mixer-1",
+        &["stream-feed-a", "stream-feed-b"],
         "stream-mix-out",
         |index, case| {
             app_state_for_synthetic_mixer_boundary_case(
@@ -650,6 +709,8 @@ fn run_panel_primary_action_preserves_synthetic_single_phase_temperature_near_bo
             .filter(|case| case.kind == NearBoundaryCaseKind::Temperature)
             .collect(),
         "integration-run-panel-synthetic-mixer-temperature",
+        "mixer-1",
+        &["stream-feed-a", "stream-feed-b"],
         "stream-mix-out",
         |index, case| {
             app_state_for_synthetic_mixer_boundary_case(

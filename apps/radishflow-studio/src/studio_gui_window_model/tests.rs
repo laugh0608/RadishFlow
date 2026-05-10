@@ -470,7 +470,7 @@ fn assert_non_flash_intermediate_unit_summary_and_context(
                     && stream.summary.contains("T ")
                     && stream.summary.contains("P ")
                     && stream.summary.contains("F ")
-                    && !stream.summary.contains("H ")
+                    && stream.summary.contains("H ")
             }));
         }
         assert!(unit
@@ -991,8 +991,9 @@ fn studio_gui_window_model_surfaces_bootstrap_workspace_results_and_diagnostics(
             .any(|stream| stream.stream_id == "stream-feed"
                 && stream.summary.contains("T ")
                 && stream.summary.contains("P ")
-                && stream.summary.contains("F ")),
-        "expected solve step consumed stream summaries to expose T/P/F"
+                && stream.summary.contains("F ")
+                && stream.summary.contains("H ")),
+        "expected solve step consumed stream summaries to expose T/P/F/H"
     );
     assert!(related_heater_step
         .produced_stream_actions
@@ -1207,7 +1208,8 @@ fn studio_gui_window_model_surfaces_bootstrap_workspace_results_and_diagnostics(
             .any(|stream| stream.stream_id == "stream-feed"
                 && stream.summary.contains("T ")
                 && stream.summary.contains("P ")
-                && stream.summary.contains("F ")),
+                && stream.summary.contains("F ")
+                && stream.summary.contains("H ")),
         "expected active unit result to expose consumed stream numeric summary"
     );
     assert!(unit_result
@@ -1398,7 +1400,8 @@ fn studio_gui_window_model_surfaces_bootstrap_workspace_results_and_diagnostics(
             .any(|stream| stream.stream_id == "stream-feed"
                 && stream.summary.contains("T ")
                 && stream.summary.contains("P ")
-                && stream.summary.contains("F ")),
+                && stream.summary.contains("F ")
+                && stream.summary.contains("H ")),
         "expected unit execution result to expose consumed stream numeric summary"
     );
     assert!(

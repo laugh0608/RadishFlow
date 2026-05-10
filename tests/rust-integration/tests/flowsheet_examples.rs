@@ -1,4 +1,4 @@
-use rf_flash::PlaceholderTpFlashSolver;
+use rf_flash::{PlaceholderTpFlashSolver, TpFlashInput, TpFlashSolver};
 use rf_rust_integration::{
     assert_close, binary_hydrocarbon_lite_near_boundary_stream_window_cases,
     build_binary_demo_provider, build_demo_antoine_coefficients,
@@ -9,12 +9,10 @@ use rf_rust_integration::{
 };
 use rf_solver::{FlowsheetSolver, SequentialModularSolver, SolveStatus, SolverServices};
 use rf_store::parse_project_file_json;
-use rf_thermo::{AntoineCoefficients, PlaceholderThermoProvider, ThermoComponent, ThermoSystem};
+use rf_thermo::{
+    AntoineCoefficients, PlaceholderThermoProvider, ThermoComponent, ThermoProvider, ThermoSystem,
+};
 use rf_types::{ComponentId, PhaseEquilibriumRegion, PhaseLabel, StreamId, UnitId};
-
-fn solve_example(project_json: &str) -> rf_solver::SolveSnapshot {
-    solve_example_result(project_json).expect("expected solve snapshot")
-}
 
 fn solve_example_result(project_json: &str) -> rf_types::RfResult<rf_solver::SolveSnapshot> {
     let provider = build_binary_demo_provider();
@@ -155,6 +153,63 @@ fn assert_flash_consumes_stream(snapshot: &rf_solver::SolveSnapshot, stream_id: 
     );
 }
 
+fn assert_stream_materializes_overall_enthalpy(
+    snapshot: &rf_solver::SolveSnapshot,
+    stream_id: &str,
+    provider: &PlaceholderThermoProvider,
+) {
+    let stream = snapshot
+        .stream(&StreamId::new(stream_id))
+        .expect("expected stream");
+    let overall_phase = stream
+        .phases
+        .iter()
+        .find(|phase| phase.label == PhaseLabel::Overall)
+        .expect("expected overall phase");
+    let [first_component_id, second_component_id] = provider
+        .system()
+        .component_ids()
+        .try_into()
+        .expect("expected binary system");
+    let flash_solver = PlaceholderTpFlashSolver;
+    let expected_overall_enthalpy = flash_solver
+        .flash(
+            provider,
+            &TpFlashInput::new(
+                stream.id.clone(),
+                stream.name.clone(),
+                stream.temperature_k,
+                stream.pressure_pa,
+                stream.total_molar_flow_mol_s,
+                vec![
+                    *stream
+                        .overall_mole_fractions
+                        .get(&first_component_id)
+                        .expect("expected first component"),
+                    *stream
+                        .overall_mole_fractions
+                        .get(&second_component_id)
+                        .expect("expected second component"),
+                ],
+            ),
+        )
+        .expect("expected overall enthalpy reference flash")
+        .stream
+        .phases
+        .iter()
+        .find(|phase| phase.label == PhaseLabel::Overall)
+        .and_then(|phase| phase.molar_enthalpy_j_per_mol)
+        .expect("expected overall phase enthalpy");
+
+    assert_close(
+        overall_phase
+            .molar_enthalpy_j_per_mol
+            .expect("expected overall phase enthalpy"),
+        expected_overall_enthalpy,
+        1e-9,
+    );
+}
+
 fn apply_case_composition(
     project: &mut rf_store::StoredProjectFile,
     stream_id: &str,
@@ -193,6 +248,20 @@ fn apply_case_feed_state(
         .expect("expected stream");
     stream.temperature_k = case.temperature_k;
     stream.pressure_pa = case.pressure_pa;
+}
+
+fn set_stream_pressure(
+    project: &mut rf_store::StoredProjectFile,
+    stream_id: &str,
+    pressure_pa: f64,
+) {
+    project
+        .document
+        .flowsheet
+        .streams
+        .get_mut(&stream_id.into())
+        .expect("expected stream")
+        .pressure_pa = pressure_pa;
 }
 
 fn assert_near_boundary_window_matches_case(
@@ -353,6 +422,7 @@ fn assert_flash_outlet_window_semantics_match_case(
 fn solve_near_boundary_case_with_provider<F>(
     project_json: &str,
     provider: &PlaceholderThermoProvider,
+    source_stream_ids: &[&str],
     flash_inlet_stream_id: &str,
     case: &NearBoundaryStreamWindowCase,
     edit_project: F,
@@ -364,6 +434,9 @@ fn solve_near_boundary_case_with_provider<F>(
             .expect("expected solve snapshot");
 
     assert_eq!(snapshot.status, SolveStatus::Converged, "{}", case.label);
+    for stream_id in source_stream_ids {
+        assert_stream_materializes_overall_enthalpy(&snapshot, stream_id, provider);
+    }
     assert_near_boundary_window_matches_case(&snapshot, flash_inlet_stream_id, case);
     assert_flash_consumes_stream(&snapshot, flash_inlet_stream_id);
     assert_flash_outlet_window_semantics_match_case(&snapshot, case);
@@ -371,9 +444,13 @@ fn solve_near_boundary_case_with_provider<F>(
 
 #[test]
 fn feed_mixer_flash_project_solves_end_to_end() {
-    let snapshot = solve_example(include_str!(
-        "../../../examples/flowsheets/feed-mixer-flash.rfproj.json"
-    ));
+    let provider = build_binary_demo_provider();
+    let snapshot = solve_example_result_with_provider_and_edit(
+        include_str!("../../../examples/flowsheets/feed-mixer-flash.rfproj.json"),
+        &provider,
+        |project| set_stream_pressure(project, "stream-feed-a", 100_000.0),
+    )
+    .expect("expected solve snapshot");
 
     assert_eq!(snapshot.status, SolveStatus::Converged);
     assert_eq!(snapshot.steps.len(), 4);
@@ -407,9 +484,13 @@ fn feed_mixer_flash_project_solves_end_to_end() {
 
 #[test]
 fn feed_mixer_heater_flash_project_solves_end_to_end() {
-    let snapshot = solve_example(include_str!(
-        "../../../examples/flowsheets/feed-mixer-heater-flash.rfproj.json"
-    ));
+    let provider = build_binary_demo_provider();
+    let snapshot = solve_example_result_with_provider_and_edit(
+        include_str!("../../../examples/flowsheets/feed-mixer-heater-flash.rfproj.json"),
+        &provider,
+        |project| set_stream_pressure(project, "stream-feed-a", 100_000.0),
+    )
+    .expect("expected solve snapshot");
 
     assert_eq!(snapshot.status, SolveStatus::Converged);
     assert_eq!(snapshot.steps.len(), 5);
@@ -450,9 +531,13 @@ fn feed_mixer_heater_flash_project_solves_end_to_end() {
 
 #[test]
 fn feed_heater_flash_project_solves_end_to_end() {
-    let snapshot = solve_example(include_str!(
-        "../../../examples/flowsheets/feed-heater-flash.rfproj.json"
-    ));
+    let provider = build_binary_demo_provider();
+    let snapshot = solve_example_result_with_provider_and_edit(
+        include_str!("../../../examples/flowsheets/feed-heater-flash.rfproj.json"),
+        &provider,
+        |project| set_stream_pressure(project, "stream-feed", 100_000.0),
+    )
+    .expect("expected solve snapshot");
 
     assert_eq!(snapshot.status, SolveStatus::Converged);
     assert_eq!(snapshot.steps.len(), 3);
@@ -533,9 +618,13 @@ fn feed_heater_flash_binary_hydrocarbon_project_solves_end_to_end() {
 
 #[test]
 fn feed_cooler_flash_project_solves_end_to_end() {
-    let snapshot = solve_example(include_str!(
-        "../../../examples/flowsheets/feed-cooler-flash.rfproj.json"
-    ));
+    let provider = build_binary_demo_provider();
+    let snapshot = solve_example_result_with_provider_and_edit(
+        include_str!("../../../examples/flowsheets/feed-cooler-flash.rfproj.json"),
+        &provider,
+        |project| set_stream_pressure(project, "stream-feed", 100_000.0),
+    )
+    .expect("expected solve snapshot");
 
     assert_eq!(snapshot.status, SolveStatus::Converged);
     assert_eq!(snapshot.steps.len(), 3);
@@ -602,9 +691,13 @@ fn feed_cooler_flash_binary_hydrocarbon_project_solves_end_to_end() {
 
 #[test]
 fn feed_valve_flash_project_solves_end_to_end() {
-    let snapshot = solve_example(include_str!(
-        "../../../examples/flowsheets/feed-valve-flash.rfproj.json"
-    ));
+    let provider = build_binary_demo_provider();
+    let snapshot = solve_example_result_with_provider_and_edit(
+        include_str!("../../../examples/flowsheets/feed-valve-flash.rfproj.json"),
+        &provider,
+        |project| set_stream_pressure(project, "stream-feed", 100_000.0),
+    )
+    .expect("expected solve snapshot");
 
     assert_eq!(snapshot.status, SolveStatus::Converged);
     assert_eq!(snapshot.steps.len(), 3);
@@ -681,6 +774,7 @@ fn binary_heater_flash_near_boundary_pressure_cases_preserve_inlet_and_outlet_wi
                 "../../../examples/flowsheets/feed-heater-flash-binary-hydrocarbon.rfproj.json"
             ),
             &provider,
+            &["stream-feed"],
             "stream-heated",
             &case,
             |project| {
@@ -716,6 +810,7 @@ fn binary_heater_flash_near_boundary_temperature_cases_preserve_inlet_and_outlet
                 "../../../examples/flowsheets/feed-heater-flash-binary-hydrocarbon.rfproj.json"
             ),
             &provider,
+            &["stream-feed"],
             "stream-heated",
             &case,
             |project| {
@@ -750,6 +845,7 @@ fn binary_mixer_flash_near_boundary_pressure_cases_preserve_inlet_and_outlet_win
                 "../../../examples/flowsheets/feed-mixer-flash-binary-hydrocarbon.rfproj.json"
             ),
             &provider,
+            &["stream-feed-a", "stream-feed-b"],
             "stream-mix-out",
             &case,
             |project| {
@@ -780,6 +876,7 @@ fn binary_mixer_flash_near_boundary_temperature_cases_preserve_inlet_and_outlet_
                 "../../../examples/flowsheets/feed-mixer-flash-binary-hydrocarbon.rfproj.json"
             ),
             &provider,
+            &["stream-feed-a", "stream-feed-b"],
             "stream-mix-out",
             &case,
             |project| {
@@ -809,6 +906,7 @@ fn binary_cooler_flash_near_boundary_pressure_cases_preserve_inlet_and_outlet_wi
                 "../../../examples/flowsheets/feed-cooler-flash-binary-hydrocarbon.rfproj.json"
             ),
             &provider,
+            &["stream-feed"],
             "stream-cooled",
             &case,
             |project| {
@@ -844,6 +942,7 @@ fn binary_cooler_flash_near_boundary_temperature_cases_preserve_inlet_and_outlet
                 "../../../examples/flowsheets/feed-cooler-flash-binary-hydrocarbon.rfproj.json"
             ),
             &provider,
+            &["stream-feed"],
             "stream-cooled",
             &case,
             |project| {
@@ -878,6 +977,7 @@ fn binary_valve_flash_near_boundary_pressure_cases_preserve_inlet_and_outlet_win
                 "../../../examples/flowsheets/feed-valve-flash-binary-hydrocarbon.rfproj.json"
             ),
             &provider,
+            &["stream-feed"],
             "stream-throttled",
             &case,
             |project| {
@@ -921,6 +1021,7 @@ fn binary_valve_flash_near_boundary_temperature_cases_preserve_inlet_and_outlet_
                 "../../../examples/flowsheets/feed-valve-flash-binary-hydrocarbon.rfproj.json"
             ),
             &provider,
+            &["stream-feed"],
             "stream-throttled",
             &case,
             |project| {
@@ -966,6 +1067,7 @@ fn synthetic_mixer_flash_near_boundary_pressure_cases_preserve_inlet_and_outlet_
         solve_near_boundary_case_with_provider(
             include_str!("../../../examples/flowsheets/feed-mixer-flash.rfproj.json"),
             &provider,
+            &["stream-feed-a", "stream-feed-b"],
             "stream-mix-out",
             &case,
             |project| {
@@ -998,6 +1100,7 @@ fn synthetic_mixer_flash_near_boundary_temperature_cases_preserve_inlet_and_outl
         solve_near_boundary_case_with_provider(
             include_str!("../../../examples/flowsheets/feed-mixer-flash.rfproj.json"),
             &provider,
+            &["stream-feed-a", "stream-feed-b"],
             "stream-mix-out",
             &case,
             |project| {

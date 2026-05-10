@@ -471,13 +471,18 @@ impl UnitOperation for Feed {
 
     fn run(
         &self,
-        _services: &UnitOperationServices<'_>,
+        services: &UnitOperationServices<'_>,
         inputs: &UnitOperationInputs,
     ) -> RfResult<UnitOperationOutputs> {
         inputs.validate_against_spec(self.spec())?;
 
+        let mut outlet_stream = self.outlet_stream.clone();
+        if services.thermo.is_some() {
+            attach_overall_phase_enthalpy(services, &mut outlet_stream)?;
+        }
+
         let mut outputs = UnitOperationOutputs::new();
-        outputs.insert_material_stream(FEED_OUTLET_PORT, self.outlet_stream.clone());
+        outputs.insert_material_stream(FEED_OUTLET_PORT, outlet_stream);
         Ok(outputs)
     }
 }
@@ -987,14 +992,21 @@ fn attach_overall_phase_enthalpy(
         .iter()
         .find(|phase| phase.label == PhaseLabel::Overall)
         .and_then(|phase| phase.molar_enthalpy_j_per_mol);
-    let Some(overall_phase) = stream
+    if let Some(overall_phase) = stream
         .phases
         .iter_mut()
         .find(|phase| phase.label == PhaseLabel::Overall)
-    else {
-        return Ok(());
-    };
-    overall_phase.molar_enthalpy_j_per_mol = overall_enthalpy;
+    {
+        overall_phase.molar_enthalpy_j_per_mol = overall_enthalpy;
+    } else {
+        let mut overall_phase = PhaseState::new(
+            PhaseLabel::Overall,
+            1.0,
+            stream.overall_mole_fractions.clone(),
+        );
+        overall_phase.molar_enthalpy_j_per_mol = overall_enthalpy;
+        stream.phases.push(overall_phase);
+    }
     Ok(())
 }
 
@@ -1198,6 +1210,36 @@ mod tests {
             .expect("expected feed output");
 
         assert_eq!(outputs.stream(FEED_OUTLET_PORT), Some(&outlet_stream));
+    }
+
+    #[test]
+    fn feed_materializes_overall_phase_enthalpy_when_services_are_available() {
+        let provider = build_provider([2.0, 0.5], 100_000.0);
+        let flash_solver = PlaceholderTpFlashSolver;
+        let outlet_stream = build_stream(
+            "feed-out",
+            "Feed Outlet",
+            315.0,
+            100_000.0,
+            10.0,
+            binary_composition(0.25, 0.75),
+        );
+        let feed = Feed::new(outlet_stream);
+
+        let outputs = feed
+            .run(
+                &UnitOperationServices {
+                    thermo: Some(&provider),
+                    flash_solver: Some(&flash_solver as &dyn TpFlashSolver),
+                },
+                &UnitOperationInputs::new(),
+            )
+            .expect("expected feed output");
+        let outlet = outputs
+            .stream(FEED_OUTLET_PORT)
+            .expect("expected feed outlet stream");
+
+        assert_overall_phase_enthalpy_matches_flash(outlet, &provider, &flash_solver);
     }
 
     #[test]
