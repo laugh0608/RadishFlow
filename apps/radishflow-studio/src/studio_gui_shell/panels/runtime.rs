@@ -1373,7 +1373,7 @@ impl ReadyAppState {
         });
     }
 
-    fn render_result_inspector_comparison(
+    pub(in crate::studio_gui_shell) fn render_result_inspector_comparison(
         &mut self,
         ui: &mut egui::Ui,
         comparison: &radishflow_studio::StudioGuiWindowResultInspectorComparisonModel,

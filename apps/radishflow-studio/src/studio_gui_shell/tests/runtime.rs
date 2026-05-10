@@ -17,6 +17,24 @@ const BOUNDARY_DELTA_K: f64 = 0.001;
 
 fn render_runtime_area_texts(
     app: &mut ReadyAppState,
+    render: impl FnMut(&mut ReadyAppState, &mut egui::Ui),
+) -> Vec<String> {
+    render_runtime_area_texts_with_open_sections(app, &[], render)
+}
+
+fn open_collapsing_sections(ui: &mut egui::Ui, open_section_labels: &[&str]) {
+    for label in open_section_labels {
+        let id = ui.make_persistent_id(egui::Id::new(label));
+        let mut state =
+            egui::collapsing_header::CollapsingState::load_with_default_open(ui.ctx(), id, false);
+        state.set_open(true);
+        state.store(ui.ctx());
+    }
+}
+
+fn render_runtime_area_texts_with_open_sections(
+    app: &mut ReadyAppState,
+    open_section_labels: &[&str],
     mut render: impl FnMut(&mut ReadyAppState, &mut egui::Ui),
 ) -> Vec<String> {
     let ctx = egui::Context::default();
@@ -31,6 +49,7 @@ fn render_runtime_area_texts(
         },
         |ctx| {
             egui::CentralPanel::default().show(ctx, |ui| {
+                open_collapsing_sections(ui, open_section_labels);
                 render(app, ui);
             });
         },
@@ -50,6 +69,21 @@ fn render_result_inspector_texts(
 ) -> Vec<String> {
     let inspector = snapshot.result_inspector(Some(selected_stream_id));
     render_runtime_area_texts(app, |app, ui| app.render_result_inspector(ui, &inspector))
+}
+
+fn render_stream_result_inspector_texts(
+    app: &mut ReadyAppState,
+    scope_id: impl Into<String>,
+    stream: &StudioGuiWindowStreamResultModel,
+    open_section_labels: &[&str],
+) -> Vec<String> {
+    let scope_id = scope_id.into();
+    render_runtime_area_texts(app, |app, ui| {
+        ui.push_id(scope_id.clone(), |ui| {
+            open_collapsing_sections(ui, open_section_labels);
+            app.render_stream_result_inspector(ui, stream);
+        });
+    })
 }
 
 fn render_active_inspector_texts(
@@ -76,6 +110,15 @@ fn render_result_inspector_with_unit_texts(
     let inspector =
         snapshot.result_inspector_with_unit(Some(selected_stream_id), None, Some(selected_unit_id));
     render_runtime_area_texts(app, |app, ui| app.render_result_inspector(ui, &inspector))
+}
+
+fn render_result_inspector_comparison_texts(
+    app: &mut ReadyAppState,
+    comparison: &radishflow_studio::StudioGuiWindowResultInspectorComparisonModel,
+) -> Vec<String> {
+    render_runtime_area_texts(app, |app, ui| {
+        app.render_result_inspector_comparison(ui, comparison);
+    })
 }
 
 fn render_full_runtime_panel_texts(
@@ -220,6 +263,145 @@ fn assert_rendered_unit_summary_surface(
             stream.summary,
             texts
         );
+    }
+}
+
+fn assert_rendered_flash_outlet_surface(
+    texts: &[String],
+    surface: &str,
+    stream: &StudioGuiWindowStreamResultModel,
+    molar_enthalpy_label: &str,
+    phase_results_label: &str,
+) {
+    let molar_enthalpy_text = stream
+        .molar_enthalpy_text
+        .as_ref()
+        .expect("expected flash outlet enthalpy text");
+    assert_eq!(
+        rendered_text_occurrences(texts, molar_enthalpy_label),
+        1,
+        "expected {surface} to render enthalpy summary row for `{}`, rendered texts: {:?}",
+        stream.stream_id,
+        texts
+    );
+    assert!(
+        texts.iter().any(|text| text.contains(molar_enthalpy_text)),
+        "expected {surface} to render enthalpy summary value `{molar_enthalpy_text}` for `{}`, rendered texts: {:?}",
+        stream.stream_id,
+        texts
+    );
+    assert!(
+        texts.iter().any(|text| text.contains(phase_results_label)),
+        "expected {surface} to render phase results section for `{}`, rendered texts: {:?}",
+        stream.stream_id,
+        texts
+    );
+
+    for row in &stream.phase_rows {
+        assert!(
+            texts.iter().any(|text| text.contains(&row.label)),
+            "expected {surface} to render phase label `{}` for `{}`, rendered texts: {:?}",
+            row.label,
+            stream.stream_id,
+            texts
+        );
+        assert!(
+            texts
+                .iter()
+                .any(|text| text.contains(&row.phase_fraction_text)),
+            "expected {surface} to render phase fraction `{}` for `{}`, rendered texts: {:?}",
+            row.phase_fraction_text,
+            stream.stream_id,
+            texts
+        );
+        assert!(
+            texts.iter().any(|text| text.contains(&row.molar_flow_text)),
+            "expected {surface} to render phase molar flow `{}` for `{}`, rendered texts: {:?}",
+            row.molar_flow_text,
+            stream.stream_id,
+            texts
+        );
+        if let Some(molar_enthalpy_text) = row.molar_enthalpy_text.as_ref() {
+            assert!(
+                texts.iter().any(|text| text.contains(molar_enthalpy_text)),
+                "expected {surface} to render phase enthalpy `{molar_enthalpy_text}` for `{}`, rendered texts: {:?}",
+                stream.stream_id,
+                texts
+            );
+        }
+    }
+}
+
+fn assert_rendered_comparison_surface(
+    texts: &[String],
+    surface: &str,
+    comparison: &radishflow_studio::StudioGuiWindowResultInspectorComparisonModel,
+) {
+    assert!(
+        texts
+            .iter()
+            .any(|text| text.contains(&comparison.base_stream_id)),
+        "expected {surface} to render base stream id `{}`, rendered texts: {:?}",
+        comparison.base_stream_id,
+        texts
+    );
+    assert!(
+        texts
+            .iter()
+            .any(|text| text.contains(&comparison.compared_stream_id)),
+        "expected {surface} to render compared stream id `{}`, rendered texts: {:?}",
+        comparison.compared_stream_id,
+        texts
+    );
+
+    for row in &comparison.summary_rows {
+        if row.label == "H" {
+            for value in [&row.base_value, &row.compared_value, &row.delta_text] {
+                assert!(
+                    texts.iter().any(|text| text.contains(value)),
+                    "expected {surface} to render comparison enthalpy summary value `{value}`, rendered texts: {:?}",
+                    texts
+                );
+            }
+        }
+    }
+
+    for row in &comparison.phase_rows {
+        assert!(
+            texts.iter().any(|text| text.contains(&row.phase_label)),
+            "expected {surface} to render comparison phase label `{}`, rendered texts: {:?}",
+            row.phase_label,
+            texts
+        );
+        for value in [
+            &row.base_fraction_text,
+            &row.compared_fraction_text,
+            &row.base_molar_flow_text,
+            &row.compared_molar_flow_text,
+            &row.base_molar_enthalpy_text,
+            &row.compared_molar_enthalpy_text,
+        ] {
+            if value != "-" {
+                assert!(
+                    texts.iter().any(|text| text.contains(value)),
+                    "expected {surface} to render comparison phase value `{value}`, rendered texts: {:?}",
+                    texts
+                );
+            }
+        }
+        for delta in [
+            &row.fraction_delta_text,
+            &row.molar_flow_delta_text,
+            &row.molar_enthalpy_delta_text,
+        ] {
+            if delta != "-" {
+                assert!(
+                    texts.iter().any(|text| text.contains(delta)),
+                    "expected {surface} to render comparison delta `{delta}`, rendered texts: {:?}",
+                    texts
+                );
+            }
+        }
     }
 }
 
@@ -555,6 +737,130 @@ fn runtime_panel_renders_summary_rows_and_context_for_non_flash_intermediate_str
             &related_diagnostics_label,
         );
     }
+}
+
+#[test]
+fn runtime_panel_renders_official_two_phase_flash_enthalpy_and_comparison_rows() {
+    let mut app = ready_app_state(&synced_workspace_config());
+    let molar_enthalpy_label = format!("H · {}", app.locale.runtime_label("Molar enthalpy"));
+    let phase_results_label = app.locale.text(ShellText::PhaseResults).to_string();
+    let stream_comparison_label = app.locale.text(ShellText::StreamComparison).to_string();
+    let expanded_phase_sections = [phase_results_label.as_str()];
+    let snapshot = solve_binary_hydrocarbon_snapshot(include_str!(
+        "../../../../../examples/flowsheets/feed-cooler-flash-binary-hydrocarbon.rfproj.json"
+    ));
+
+    let liquid_overview_texts = render_result_inspector_texts(&mut app, &snapshot, "stream-liquid");
+    assert_eq!(
+        rendered_text_occurrences(&liquid_overview_texts, &stream_comparison_label),
+        1,
+        "expected liquid result inspector to expose stream comparison section, rendered texts: {:?}",
+        liquid_overview_texts
+    );
+
+    let liquid_result = snapshot.result_inspector(Some("stream-liquid"));
+    let liquid_stream = liquid_result
+        .selected_stream
+        .as_ref()
+        .expect("expected selected liquid outlet stream");
+    let liquid_result_texts = render_stream_result_inspector_texts(
+        &mut app,
+        format!(
+            "result-inspector:selected-stream:{}:{}",
+            snapshot.snapshot_id, liquid_stream.stream_id
+        ),
+        liquid_stream,
+        &expanded_phase_sections,
+    );
+    assert_rendered_flash_outlet_surface(
+        &liquid_result_texts,
+        "result inspector liquid outlet",
+        liquid_stream,
+        &molar_enthalpy_label,
+        &phase_results_label,
+    );
+
+    let liquid_active_detail =
+        stream_target_detail_model(&snapshot, "stream-liquid", "Liquid Outlet");
+    let liquid_active_scope_id = format!(
+        "active-inspector-latest-stream:{}",
+        liquid_active_detail.target.command_id
+    );
+    let liquid_active_stream = liquid_active_detail
+        .latest_stream_result
+        .clone()
+        .expect("expected active liquid outlet stream result");
+    let liquid_active_texts = render_stream_result_inspector_texts(
+        &mut app,
+        liquid_active_scope_id,
+        &liquid_active_stream,
+        &expanded_phase_sections,
+    );
+    assert_rendered_flash_outlet_surface(
+        &liquid_active_texts,
+        "active inspector liquid outlet",
+        &liquid_active_stream,
+        &molar_enthalpy_label,
+        &phase_results_label,
+    );
+
+    let vapor_result = snapshot.result_inspector(Some("stream-vapor"));
+    let vapor_stream = vapor_result
+        .selected_stream
+        .as_ref()
+        .expect("expected selected vapor outlet stream");
+    let vapor_result_texts = render_stream_result_inspector_texts(
+        &mut app,
+        format!(
+            "result-inspector:selected-stream:{}:{}",
+            snapshot.snapshot_id, vapor_stream.stream_id
+        ),
+        vapor_stream,
+        &expanded_phase_sections,
+    );
+    assert_rendered_flash_outlet_surface(
+        &vapor_result_texts,
+        "result inspector vapor outlet",
+        vapor_stream,
+        &molar_enthalpy_label,
+        &phase_results_label,
+    );
+
+    let vapor_active_detail = stream_target_detail_model(&snapshot, "stream-vapor", "Vapor Outlet");
+    let vapor_active_scope_id = format!(
+        "active-inspector-latest-stream:{}",
+        vapor_active_detail.target.command_id
+    );
+    let vapor_active_stream = vapor_active_detail
+        .latest_stream_result
+        .clone()
+        .expect("expected active vapor outlet stream result");
+    let vapor_active_texts = render_stream_result_inspector_texts(
+        &mut app,
+        vapor_active_scope_id,
+        &vapor_active_stream,
+        &expanded_phase_sections,
+    );
+    assert_rendered_flash_outlet_surface(
+        &vapor_active_texts,
+        "active inspector vapor outlet",
+        &vapor_active_stream,
+        &molar_enthalpy_label,
+        &phase_results_label,
+    );
+
+    let comparison_inspector =
+        snapshot.result_inspector_with_comparison(Some("stream-liquid"), Some("stream-vapor"));
+    let comparison = comparison_inspector
+        .comparison
+        .as_ref()
+        .expect("expected phase outlet comparison model");
+    let comparison_texts = render_result_inspector_comparison_texts(&mut app, comparison);
+    assert_rendered_comparison_surface(
+        &comparison_texts,
+        "result inspector comparison",
+        comparison,
+    );
 }
 
 #[test]
