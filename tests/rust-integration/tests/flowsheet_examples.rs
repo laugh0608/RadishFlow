@@ -1,11 +1,11 @@
-use rf_flash::{PlaceholderTpFlashSolver, TpFlashInput, TpFlashSolver};
+use rf_flash::{PlaceholderTpFlashSolver, TpFlashInput, TpFlashSolver, estimate_bubble_dew_window};
 use rf_rust_integration::{
-    assert_close, binary_hydrocarbon_lite_near_boundary_stream_window_cases,
-    build_binary_demo_provider, build_demo_antoine_coefficients,
-    expected_overall_molar_enthalpy_for_case, near_boundary_component_ids_for_package,
-    synthetic_single_phase_near_boundary_stream_window_cases, NearBoundaryCaseKind,
-    NearBoundaryStreamWindowCase, BINARY_HYDROCARBON_LITE_PACKAGE_ID,
-    SYNTHETIC_LIQUID_ONLY_PACKAGE_ID, SYNTHETIC_VAPOR_ONLY_PACKAGE_ID,
+    BINARY_HYDROCARBON_LITE_PACKAGE_ID, NearBoundaryCaseKind, NearBoundaryStreamWindowCase,
+    SYNTHETIC_LIQUID_ONLY_PACKAGE_ID, SYNTHETIC_VAPOR_ONLY_PACKAGE_ID, assert_close,
+    binary_hydrocarbon_lite_near_boundary_stream_window_cases, build_binary_demo_provider,
+    build_demo_antoine_coefficients, expected_overall_molar_enthalpy_for_case,
+    near_boundary_component_ids_for_package,
+    synthetic_single_phase_near_boundary_stream_window_cases,
 };
 use rf_solver::{FlowsheetSolver, SequentialModularSolver, SolveStatus, SolverServices};
 use rf_store::parse_project_file_json;
@@ -207,6 +207,59 @@ fn assert_stream_materializes_overall_enthalpy(
             .expect("expected overall phase enthalpy"),
         expected_overall_enthalpy,
         1e-9,
+    );
+}
+
+fn assert_stream_materializes_bubble_dew_window(
+    snapshot: &rf_solver::SolveSnapshot,
+    stream_id: &str,
+    provider: &PlaceholderThermoProvider,
+) {
+    let stream = snapshot
+        .stream(&StreamId::new(stream_id))
+        .expect("expected stream");
+    let window = stream
+        .bubble_dew_window
+        .as_ref()
+        .expect("expected stream bubble/dew window");
+    let expected_window = estimate_bubble_dew_window(
+        provider,
+        stream.temperature_k,
+        stream.pressure_pa,
+        provider
+            .system()
+            .component_ids()
+            .into_iter()
+            .map(|component_id| {
+                *stream
+                    .overall_mole_fractions
+                    .get(&component_id)
+                    .expect("expected component fraction")
+            })
+            .collect(),
+    )
+    .expect("expected stream bubble/dew window reference");
+
+    assert_eq!(window.phase_region, expected_window.phase_region);
+    assert_close(
+        window.bubble_pressure_pa,
+        expected_window.bubble_pressure_pa,
+        1e-6,
+    );
+    assert_close(
+        window.dew_pressure_pa,
+        expected_window.dew_pressure_pa,
+        1e-6,
+    );
+    assert_close(
+        window.bubble_temperature_k,
+        expected_window.bubble_temperature_k,
+        1e-4,
+    );
+    assert_close(
+        window.dew_temperature_k,
+        expected_window.dew_temperature_k,
+        1e-4,
     );
 }
 
@@ -436,6 +489,7 @@ fn solve_near_boundary_case_with_provider<F>(
     assert_eq!(snapshot.status, SolveStatus::Converged, "{}", case.label);
     for stream_id in source_stream_ids {
         assert_stream_materializes_overall_enthalpy(&snapshot, stream_id, provider);
+        assert_stream_materializes_bubble_dew_window(&snapshot, stream_id, provider);
     }
     assert_near_boundary_window_matches_case(&snapshot, flash_inlet_stream_id, case);
     assert_flash_consumes_stream(&snapshot, flash_inlet_stream_id);
@@ -798,8 +852,8 @@ fn binary_heater_flash_near_boundary_pressure_cases_preserve_inlet_and_outlet_wi
 }
 
 #[test]
-fn binary_heater_flash_near_boundary_temperature_cases_preserve_inlet_and_outlet_windows_end_to_end(
-) {
+fn binary_heater_flash_near_boundary_temperature_cases_preserve_inlet_and_outlet_windows_end_to_end()
+ {
     for case in binary_hydrocarbon_lite_near_boundary_stream_window_cases()
         .into_iter()
         .filter(|case| case.kind == NearBoundaryCaseKind::Temperature)
@@ -930,8 +984,8 @@ fn binary_cooler_flash_near_boundary_pressure_cases_preserve_inlet_and_outlet_wi
 }
 
 #[test]
-fn binary_cooler_flash_near_boundary_temperature_cases_preserve_inlet_and_outlet_windows_end_to_end(
-) {
+fn binary_cooler_flash_near_boundary_temperature_cases_preserve_inlet_and_outlet_windows_end_to_end()
+ {
     for case in binary_hydrocarbon_lite_near_boundary_stream_window_cases()
         .into_iter()
         .filter(|case| case.kind == NearBoundaryCaseKind::Temperature)
@@ -1086,8 +1140,8 @@ fn synthetic_mixer_flash_near_boundary_pressure_cases_preserve_inlet_and_outlet_
 }
 
 #[test]
-fn synthetic_mixer_flash_near_boundary_temperature_cases_preserve_inlet_and_outlet_windows_end_to_end(
-) {
+fn synthetic_mixer_flash_near_boundary_temperature_cases_preserve_inlet_and_outlet_windows_end_to_end()
+ {
     for case in synthetic_single_phase_near_boundary_stream_window_cases()
         .into_iter()
         .filter(|case| case.kind == NearBoundaryCaseKind::Temperature)
@@ -1127,9 +1181,11 @@ fn valve_execution_failure_reports_step_execution_code_end_to_end() {
 
     assert_eq!(error.code().as_str(), "invalid_input");
     assert!(error.message().contains("solver.step.execution:"));
-    assert!(error
-        .message()
-        .contains("solver step 2 unit execution failed"));
+    assert!(
+        error
+            .message()
+            .contains("solver step 2 unit execution failed")
+    );
     assert!(error.message().contains("unit `valve-1` (`valve`)"));
     assert!(error.message().contains("after consuming [stream-feed]"));
 }
@@ -1221,9 +1277,11 @@ fn multi_unit_cycle_reports_involved_units_end_to_end() {
         "solver.topological_ordering.two_unit_cycle: solver topological ordering failed"
     ));
     assert!(error.message().contains("form a two-unit cycle"));
-    assert!(error
-        .message()
-        .contains("streams `stream-a` and `stream-b`"));
+    assert!(
+        error
+            .message()
+            .contains("streams `stream-a` and `stream-b`")
+    );
 }
 
 #[test]
@@ -1249,9 +1307,11 @@ fn missing_upstream_source_reports_connection_validation_context_end_to_end() {
     assert!(error.message().contains(
         "solver.connection_validation.missing_upstream_source: solver connection validation failed"
     ));
-    assert!(error
-        .message()
-        .contains("missing an upstream outlet connection"));
+    assert!(
+        error
+            .message()
+            .contains("missing an upstream outlet connection")
+    );
 }
 
 #[test]
@@ -1273,9 +1333,11 @@ fn missing_stream_reference_reports_connection_validation_context_end_to_end() {
     assert!(error.message().contains(
         "solver.connection_validation.missing_stream_reference: solver connection validation failed"
     ));
-    assert!(error
-        .message()
-        .contains("references missing stream `stream-missing`"));
+    assert!(
+        error
+            .message()
+            .contains("references missing stream `stream-missing`")
+    );
 }
 
 #[test]
@@ -1331,9 +1393,11 @@ fn invalid_port_signature_reports_connection_validation_context_end_to_end() {
     assert!(error.message().contains(
         "solver.connection_validation.invalid_port_signature: solver connection validation failed"
     ));
-    assert!(error
-        .message()
-        .contains("canonical built-in port signature"));
+    assert!(
+        error
+            .message()
+            .contains("canonical built-in port signature")
+    );
     assert!(error.message().contains("missing required port `outlet`"));
 }
 
@@ -1394,9 +1458,11 @@ fn orphan_stream_reports_connection_validation_stream_context_end_to_end() {
     assert!(error.message().contains(
         "solver.connection_validation.orphan_stream: solver connection validation failed"
     ));
-    assert!(error
-        .message()
-        .contains("is not connected to any material port"));
+    assert!(
+        error
+            .message()
+            .contains("is not connected to any material port")
+    );
 }
 
 #[test]

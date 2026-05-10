@@ -2,19 +2,19 @@ use std::fs;
 use std::path::Path;
 
 use radishflow_studio::{
-    apply_run_panel_recovery_action, dispatch_run_panel_primary_action_with_auth_cache,
-    dispatch_workspace_control_action_with_auth_cache, RunPanelWidgetDispatchOutcome,
-    StudioAppAuthCacheContext, StudioAppCommand, StudioAppFacade, StudioAppResultDispatch,
-    StudioWorkspaceRunOutcome, WorkspaceControlAction, WorkspaceRunCommand,
-    WorkspaceRunPackageSelection,
+    RunPanelWidgetDispatchOutcome, StudioAppAuthCacheContext, StudioAppCommand, StudioAppFacade,
+    StudioAppResultDispatch, StudioWorkspaceRunOutcome, WorkspaceControlAction,
+    WorkspaceRunCommand, WorkspaceRunPackageSelection, apply_run_panel_recovery_action,
+    dispatch_run_panel_primary_action_with_auth_cache,
+    dispatch_workspace_control_action_with_auth_cache,
 };
 use rf_rust_integration::{
-    assert_close, binary_hydrocarbon_lite_near_boundary_stream_window_cases,
-    sample_auth_cache_index, synthetic_single_phase_near_boundary_stream_window_cases, timestamp,
-    unique_temp_path, write_binary_hydrocarbon_lite_cached_package, write_cached_package,
-    write_synthetic_liquid_only_cached_package, write_synthetic_vapor_only_cached_package,
     NearBoundaryCaseKind, NearBoundaryStreamWindowCase, SYNTHETIC_LIQUID_ONLY_PACKAGE_ID,
-    SYNTHETIC_VAPOR_ONLY_PACKAGE_ID,
+    SYNTHETIC_VAPOR_ONLY_PACKAGE_ID, assert_close,
+    binary_hydrocarbon_lite_near_boundary_stream_window_cases, sample_auth_cache_index,
+    synthetic_single_phase_near_boundary_stream_window_cases, timestamp, unique_temp_path,
+    write_binary_hydrocarbon_lite_cached_package, write_cached_package,
+    write_synthetic_liquid_only_cached_package, write_synthetic_vapor_only_cached_package,
 };
 use rf_store::parse_project_file_json;
 use rf_types::{ComponentId, PhaseEquilibriumRegion, StreamId, UnitId};
@@ -100,6 +100,11 @@ fn assert_step_consumes_snapshot_stream(
             .and_then(|phase| phase.molar_enthalpy_j_per_mol)
             .is_some(),
         "expected snapshot stream `{}` to materialize overall enthalpy",
+        stream.stream_id
+    );
+    assert!(
+        stream.bubble_dew_window.is_some(),
+        "expected snapshot stream `{}` to materialize bubble/dew window",
         stream.stream_id
     );
 }
@@ -556,8 +561,8 @@ fn run_panel_primary_action_preserves_temperature_near_boundary_windows_end_to_e
 }
 
 #[test]
-fn run_panel_primary_action_preserves_synthetic_single_phase_pressure_near_boundary_windows_end_to_end(
-) {
+fn run_panel_primary_action_preserves_synthetic_single_phase_pressure_near_boundary_windows_end_to_end()
+ {
     let facade = StudioAppFacade::new();
 
     for (index, case) in synthetic_single_phase_near_boundary_stream_window_cases()
@@ -615,8 +620,8 @@ fn run_panel_primary_action_preserves_synthetic_single_phase_pressure_near_bound
 }
 
 #[test]
-fn run_panel_primary_action_preserves_synthetic_single_phase_temperature_near_boundary_windows_end_to_end(
-) {
+fn run_panel_primary_action_preserves_synthetic_single_phase_temperature_near_boundary_windows_end_to_end()
+ {
     let facade = StudioAppFacade::new();
 
     for (index, case) in synthetic_single_phase_near_boundary_stream_window_cases()
@@ -806,9 +811,11 @@ fn workspace_control_reports_local_cache_repair_notice_end_to_end() {
         .as_ref()
         .expect("expected local cache notice");
     assert_eq!(notice.title, "Local cache unavailable");
-    assert!(notice
-        .message
-        .contains("failed to prepare local property package cache"));
+    assert!(
+        notice
+            .message
+            .contains("failed to prepare local property package cache")
+    );
     assert_eq!(
         notice
             .recovery_action
@@ -1104,11 +1111,13 @@ fn run_panel_recovery_action_focuses_failed_unit_end_to_end() {
         app_state.workspace.drafts.active_target,
         Some(InspectorTarget::Unit("valve-1".into()))
     );
-    assert!(app_state
-        .workspace
-        .selection
-        .selected_units
-        .contains(&"valve-1".into()));
+    assert!(
+        app_state
+            .workspace
+            .selection
+            .selected_units
+            .contains(&"valve-1".into())
+    );
     assert!(app_state.workspace.panels.inspector_open);
 
     fs::remove_dir_all(cache_root).expect("expected temp dir cleanup");
@@ -1147,11 +1156,13 @@ fn run_panel_recovery_action_restores_invalid_port_signature_end_to_end() {
         app_state.workspace.drafts.active_target,
         Some(InspectorTarget::Unit("feed-1".into()))
     );
-    assert!(app_state
-        .workspace
-        .selection
-        .selected_units
-        .contains(&"feed-1".into()));
+    assert!(
+        app_state
+            .workspace
+            .selection
+            .selected_units
+            .contains(&"feed-1".into())
+    );
     assert_eq!(app_state.workspace.document.revision, 1);
     assert_eq!(
         port_target_stream_id(&app_state, "feed-1", "outlet").as_deref(),
@@ -1167,14 +1178,16 @@ fn run_panel_recovery_action_restores_invalid_port_signature_end_to_end() {
             unit_id: "feed-1".into(),
         })
     );
-    assert!(app_state
-        .workspace
-        .document
-        .flowsheet
-        .units
-        .get(&"feed-1".into())
-        .and_then(|unit| unit.ports.iter().find(|port| port.name == "unexpected"))
-        .is_none());
+    assert!(
+        app_state
+            .workspace
+            .document
+            .flowsheet
+            .units
+            .get(&"feed-1".into())
+            .and_then(|unit| unit.ports.iter().find(|port| port.name == "unexpected"))
+            .is_none()
+    );
     assert!(app_state.workspace.panels.inspector_open);
 
     fs::remove_dir_all(cache_root).expect("expected temp dir cleanup");
@@ -1280,11 +1293,13 @@ fn run_panel_recovery_action_focuses_missing_upstream_source_unit_end_to_end() {
         app_state.workspace.drafts.active_target,
         Some(InspectorTarget::Unit("mixer-1".into()))
     );
-    assert!(app_state
-        .workspace
-        .selection
-        .selected_units
-        .contains(&"mixer-1".into()));
+    assert!(
+        app_state
+            .workspace
+            .selection
+            .selected_units
+            .contains(&"mixer-1".into())
+    );
     assert_eq!(app_state.workspace.document.revision, 1);
     assert_eq!(
         material_port_stream_id(&app_state, "mixer-1", "inlet_a"),
@@ -1358,11 +1373,13 @@ fn run_panel_recovery_action_disconnects_self_loop_inlet_end_to_end() {
             port: "inlet".to_string(),
         })
     );
-    assert!(app_state
-        .workspace
-        .selection
-        .selected_units
-        .contains(&"flash-1".into()));
+    assert!(
+        app_state
+            .workspace
+            .selection
+            .selected_units
+            .contains(&"flash-1".into())
+    );
     assert!(app_state.workspace.panels.inspector_open);
 
     fs::remove_dir_all(cache_root).expect("expected temp dir cleanup");
@@ -1418,11 +1435,13 @@ fn run_panel_recovery_action_disconnects_two_unit_cycle_inlet_end_to_end() {
             port: "inlet".to_string(),
         })
     );
-    assert!(app_state
-        .workspace
-        .selection
-        .selected_units
-        .contains(&"heater-1".into()));
+    assert!(
+        app_state
+            .workspace
+            .selection
+            .selected_units
+            .contains(&"heater-1".into())
+    );
     assert!(app_state.workspace.panels.inspector_open);
 
     fs::remove_dir_all(cache_root).expect("expected temp dir cleanup");
@@ -1478,11 +1497,13 @@ fn run_panel_recovery_action_disconnects_missing_stream_reference_end_to_end() {
             port: "outlet".to_string(),
         })
     );
-    assert!(app_state
-        .workspace
-        .selection
-        .selected_units
-        .contains(&"heater-1".into()));
+    assert!(
+        app_state
+            .workspace
+            .selection
+            .selected_units
+            .contains(&"heater-1".into())
+    );
     assert!(app_state.workspace.panels.inspector_open);
 
     fs::remove_dir_all(cache_root).expect("expected temp dir cleanup");
@@ -1538,11 +1559,13 @@ fn run_panel_recovery_action_disconnects_duplicate_upstream_source_end_to_end() 
             port: "outlet".to_string(),
         })
     );
-    assert!(app_state
-        .workspace
-        .selection
-        .selected_units
-        .contains(&"feed-2".into()));
+    assert!(
+        app_state
+            .workspace
+            .selection
+            .selected_units
+            .contains(&"feed-2".into())
+    );
     assert!(app_state.workspace.panels.inspector_open);
 
     fs::remove_dir_all(cache_root).expect("expected temp dir cleanup");
@@ -1598,11 +1621,13 @@ fn run_panel_recovery_action_disconnects_duplicate_downstream_sink_end_to_end() 
             port: "inlet_a".to_string(),
         })
     );
-    assert!(app_state
-        .workspace
-        .selection
-        .selected_units
-        .contains(&"mixer-1".into()));
+    assert!(
+        app_state
+            .workspace
+            .selection
+            .selected_units
+            .contains(&"mixer-1".into())
+    );
     assert!(app_state.workspace.panels.inspector_open);
 
     fs::remove_dir_all(cache_root).expect("expected temp dir cleanup");
@@ -1715,11 +1740,13 @@ fn run_panel_recovery_action_creates_stream_for_unbound_outlet_end_to_end() {
             to_port: None,
         })
     );
-    assert!(app_state
-        .workspace
-        .selection
-        .selected_units
-        .contains(&"feed-1".into()));
+    assert!(
+        app_state
+            .workspace
+            .selection
+            .selected_units
+            .contains(&"feed-1".into())
+    );
     assert!(app_state.workspace.panels.inspector_open);
 
     fs::remove_dir_all(cache_root).expect("expected temp dir cleanup");
@@ -1830,16 +1857,20 @@ fn run_panel_recovery_action_focuses_unbound_inlet_port_end_to_end() {
         material_port_stream_id(&app_state, "heater-1", "inlet"),
         None
     );
-    assert!(app_state
-        .workspace
-        .command_history
-        .current_entry()
-        .is_none());
-    assert!(app_state
-        .workspace
-        .selection
-        .selected_units
-        .contains(&"heater-1".into()));
+    assert!(
+        app_state
+            .workspace
+            .command_history
+            .current_entry()
+            .is_none()
+    );
+    assert!(
+        app_state
+            .workspace
+            .selection
+            .selected_units
+            .contains(&"heater-1".into())
+    );
     assert!(app_state.workspace.panels.inspector_open);
 
     fs::remove_dir_all(cache_root).expect("expected temp dir cleanup");

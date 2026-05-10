@@ -1,12 +1,12 @@
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-use radishflow_studio::{solve_workspace_with_property_package, StudioSolveRequest};
+use radishflow_studio::{StudioSolveRequest, solve_workspace_with_property_package};
 use rf_rust_integration::{
-    assert_close, binary_hydrocarbon_lite_near_boundary_stream_window_cases,
+    NearBoundaryCaseKind, NearBoundaryStreamWindowCase, assert_close,
+    binary_hydrocarbon_lite_near_boundary_stream_window_cases,
     expected_overall_molar_enthalpy_for_case, near_boundary_component_ids_for_package,
     near_boundary_package_provider_for_case,
-    synthetic_single_phase_near_boundary_stream_window_cases, NearBoundaryCaseKind,
-    NearBoundaryStreamWindowCase,
+    synthetic_single_phase_near_boundary_stream_window_cases,
 };
 use rf_store::parse_project_file_json;
 use rf_types::{ComponentId, PhaseEquilibriumRegion, StreamId, UnitId};
@@ -196,6 +196,7 @@ fn assert_step_consumes_snapshot_stream(
         "{}",
         case_label
     );
+    assert!(stream.bubble_dew_window.is_some(), "{}", case_label);
 }
 
 fn assert_flash_outlet_window_semantics_match_case(
@@ -479,8 +480,8 @@ fn assert_near_boundary_cases_across_chain<F>(
 }
 
 #[test]
-fn studio_solver_bridge_preserves_pressure_near_boundary_windows_across_binary_heater_flash_inlet_end_to_end(
-) {
+fn studio_solver_bridge_preserves_pressure_near_boundary_windows_across_binary_heater_flash_inlet_end_to_end()
+ {
     assert_near_boundary_cases_across_chain(
         binary_hydrocarbon_lite_near_boundary_stream_window_cases()
             .into_iter()
@@ -502,8 +503,8 @@ fn studio_solver_bridge_preserves_pressure_near_boundary_windows_across_binary_h
 }
 
 #[test]
-fn studio_solver_bridge_preserves_temperature_near_boundary_windows_across_binary_heater_flash_inlet_end_to_end(
-) {
+fn studio_solver_bridge_preserves_temperature_near_boundary_windows_across_binary_heater_flash_inlet_end_to_end()
+ {
     assert_near_boundary_cases_across_chain(
         binary_hydrocarbon_lite_near_boundary_stream_window_cases()
             .into_iter()
@@ -525,8 +526,8 @@ fn studio_solver_bridge_preserves_temperature_near_boundary_windows_across_binar
 }
 
 #[test]
-fn studio_solver_bridge_preserves_pressure_near_boundary_windows_across_binary_mixer_flash_inlet_end_to_end(
-) {
+fn studio_solver_bridge_preserves_pressure_near_boundary_windows_across_binary_mixer_flash_inlet_end_to_end()
+ {
     assert_near_boundary_cases_across_chain(
         binary_hydrocarbon_lite_near_boundary_stream_window_cases()
             .into_iter()
@@ -548,8 +549,8 @@ fn studio_solver_bridge_preserves_pressure_near_boundary_windows_across_binary_m
 }
 
 #[test]
-fn studio_solver_bridge_preserves_temperature_near_boundary_windows_across_binary_mixer_flash_inlet_end_to_end(
-) {
+fn studio_solver_bridge_preserves_temperature_near_boundary_windows_across_binary_mixer_flash_inlet_end_to_end()
+ {
     assert_near_boundary_cases_across_chain(
         binary_hydrocarbon_lite_near_boundary_stream_window_cases()
             .into_iter()
@@ -571,8 +572,8 @@ fn studio_solver_bridge_preserves_temperature_near_boundary_windows_across_binar
 }
 
 #[test]
-fn studio_solver_bridge_preserves_pressure_near_boundary_windows_across_binary_cooler_flash_inlet_end_to_end(
-) {
+fn studio_solver_bridge_preserves_pressure_near_boundary_windows_across_binary_cooler_flash_inlet_end_to_end()
+ {
     assert_near_boundary_cases_across_chain(
         binary_hydrocarbon_lite_near_boundary_stream_window_cases()
             .into_iter()
@@ -594,8 +595,8 @@ fn studio_solver_bridge_preserves_pressure_near_boundary_windows_across_binary_c
 }
 
 #[test]
-fn studio_solver_bridge_preserves_temperature_near_boundary_windows_across_binary_cooler_flash_inlet_end_to_end(
-) {
+fn studio_solver_bridge_preserves_temperature_near_boundary_windows_across_binary_cooler_flash_inlet_end_to_end()
+ {
     assert_near_boundary_cases_across_chain(
         binary_hydrocarbon_lite_near_boundary_stream_window_cases()
             .into_iter()
@@ -617,8 +618,8 @@ fn studio_solver_bridge_preserves_temperature_near_boundary_windows_across_binar
 }
 
 #[test]
-fn studio_solver_bridge_preserves_pressure_near_boundary_windows_across_binary_valve_flash_inlet_end_to_end(
-) {
+fn studio_solver_bridge_preserves_pressure_near_boundary_windows_across_binary_valve_flash_inlet_end_to_end()
+ {
     assert_near_boundary_cases_across_chain(
         binary_hydrocarbon_lite_near_boundary_stream_window_cases()
             .into_iter()
@@ -640,8 +641,8 @@ fn studio_solver_bridge_preserves_pressure_near_boundary_windows_across_binary_v
 }
 
 #[test]
-fn studio_solver_bridge_preserves_temperature_near_boundary_windows_across_binary_valve_flash_inlet_end_to_end(
-) {
+fn studio_solver_bridge_preserves_temperature_near_boundary_windows_across_binary_valve_flash_inlet_end_to_end()
+ {
     assert_near_boundary_cases_across_chain(
         binary_hydrocarbon_lite_near_boundary_stream_window_cases()
             .into_iter()
@@ -663,8 +664,8 @@ fn studio_solver_bridge_preserves_temperature_near_boundary_windows_across_binar
 }
 
 #[test]
-fn studio_solver_bridge_preserves_synthetic_single_phase_pressure_near_boundary_windows_across_mixer_flash_inlet_end_to_end(
-) {
+fn studio_solver_bridge_preserves_synthetic_single_phase_pressure_near_boundary_windows_across_mixer_flash_inlet_end_to_end()
+ {
     assert_near_boundary_cases_across_chain(
         synthetic_single_phase_near_boundary_stream_window_cases()
             .into_iter()
@@ -686,8 +687,8 @@ fn studio_solver_bridge_preserves_synthetic_single_phase_pressure_near_boundary_
 }
 
 #[test]
-fn studio_solver_bridge_preserves_synthetic_single_phase_temperature_near_boundary_windows_across_mixer_flash_inlet_end_to_end(
-) {
+fn studio_solver_bridge_preserves_synthetic_single_phase_temperature_near_boundary_windows_across_mixer_flash_inlet_end_to_end()
+ {
     assert_near_boundary_cases_across_chain(
         synthetic_single_phase_near_boundary_stream_window_cases()
             .into_iter()

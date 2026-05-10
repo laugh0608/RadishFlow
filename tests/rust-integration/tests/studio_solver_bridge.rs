@@ -1,13 +1,13 @@
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-use radishflow_studio::{solve_workspace_with_property_package, StudioSolveRequest};
+use radishflow_studio::{StudioSolveRequest, solve_workspace_with_property_package};
 use rf_rust_integration::{
-    assert_close, binary_hydrocarbon_lite_near_boundary_stream_window_cases,
-    build_binary_demo_package_provider, build_binary_hydrocarbon_lite_package_provider,
-    build_synthetic_liquid_only_package_provider, build_synthetic_vapor_only_package_provider,
-    synthetic_single_phase_near_boundary_stream_window_cases, NearBoundaryCaseKind,
-    NearBoundaryStreamWindowCase, SYNTHETIC_LIQUID_ONLY_PACKAGE_ID,
-    SYNTHETIC_VAPOR_ONLY_PACKAGE_ID,
+    NearBoundaryCaseKind, NearBoundaryStreamWindowCase, SYNTHETIC_LIQUID_ONLY_PACKAGE_ID,
+    SYNTHETIC_VAPOR_ONLY_PACKAGE_ID, assert_close,
+    binary_hydrocarbon_lite_near_boundary_stream_window_cases, build_binary_demo_package_provider,
+    build_binary_hydrocarbon_lite_package_provider, build_synthetic_liquid_only_package_provider,
+    build_synthetic_vapor_only_package_provider,
+    synthetic_single_phase_near_boundary_stream_window_cases,
 };
 use rf_store::parse_project_file_json;
 use rf_thermo::InMemoryPropertyPackageProvider;
@@ -72,6 +72,11 @@ fn assert_step_consumes_snapshot_stream(
             .and_then(|phase| phase.molar_enthalpy_j_per_mol)
             .is_some(),
         "expected snapshot stream `{}` to materialize overall enthalpy",
+        stream.stream_id
+    );
+    assert!(
+        stream.bubble_dew_window.is_some(),
+        "expected snapshot stream `{}` to materialize bubble/dew window",
         stream.stream_id
     );
 }
@@ -574,8 +579,8 @@ fn studio_solver_bridge_preserves_temperature_near_boundary_windows_across_flash
 }
 
 #[test]
-fn studio_solver_bridge_preserves_synthetic_single_phase_pressure_near_boundary_windows_across_flash_inlet_end_to_end(
-) {
+fn studio_solver_bridge_preserves_synthetic_single_phase_pressure_near_boundary_windows_across_flash_inlet_end_to_end()
+ {
     for (index, case) in synthetic_single_phase_near_boundary_stream_window_cases()
         .into_iter()
         .filter(|case| case.kind == NearBoundaryCaseKind::Pressure)
@@ -619,8 +624,8 @@ fn studio_solver_bridge_preserves_synthetic_single_phase_pressure_near_boundary_
 }
 
 #[test]
-fn studio_solver_bridge_preserves_synthetic_single_phase_temperature_near_boundary_windows_across_flash_inlet_end_to_end(
-) {
+fn studio_solver_bridge_preserves_synthetic_single_phase_temperature_near_boundary_windows_across_flash_inlet_end_to_end()
+ {
     for (index, case) in synthetic_single_phase_near_boundary_stream_window_cases()
         .into_iter()
         .filter(|case| case.kind == NearBoundaryCaseKind::Temperature)
@@ -784,9 +789,11 @@ fn studio_solver_bridge_records_invalid_port_signature_restore_target_end_to_end
     )
     .expect_err("expected invalid port signature failure");
 
-    assert!(error
-        .message()
-        .contains("solver.connection_validation.invalid_port_signature:"));
+    assert!(
+        error
+            .message()
+            .contains("solver.connection_validation.invalid_port_signature:")
+    );
     assert_eq!(app_state.workspace.solve_session.status, RunStatus::Error);
 
     let summary = app_state
@@ -859,9 +866,11 @@ fn studio_solver_bridge_records_cycle_failure_context_end_to_end() {
     )
     .expect_err("expected cycle failure");
 
-    assert!(error
-        .message()
-        .contains("solver.topological_ordering.two_unit_cycle:"));
+    assert!(
+        error
+            .message()
+            .contains("solver.topological_ordering.two_unit_cycle:")
+    );
     assert_eq!(app_state.workspace.solve_session.status, RunStatus::Error);
 
     let summary = app_state
@@ -944,9 +953,11 @@ fn studio_solver_bridge_records_self_loop_disconnect_target_end_to_end() {
     )
     .expect_err("expected self-loop failure");
 
-    assert!(error
-        .message()
-        .contains("solver.topological_ordering.self_loop_cycle:"));
+    assert!(
+        error
+            .message()
+            .contains("solver.topological_ordering.self_loop_cycle:")
+    );
     assert_eq!(app_state.workspace.solve_session.status, RunStatus::Error);
 
     let summary = app_state
@@ -1030,9 +1041,11 @@ fn studio_solver_bridge_records_missing_upstream_cleanup_target_end_to_end() {
     )
     .expect_err("expected missing upstream source failure");
 
-    assert!(error
-        .message()
-        .contains("solver.connection_validation.missing_upstream_source:"));
+    assert!(
+        error
+            .message()
+            .contains("solver.connection_validation.missing_upstream_source:")
+    );
     assert_eq!(app_state.workspace.solve_session.status, RunStatus::Error);
 
     let summary = app_state
@@ -1114,9 +1127,11 @@ fn studio_solver_bridge_records_duplicate_source_disconnect_target_end_to_end() 
     )
     .expect_err("expected duplicate source failure");
 
-    assert!(error
-        .message()
-        .contains("solver.connection_validation.duplicate_upstream_source:"));
+    assert!(
+        error
+            .message()
+            .contains("solver.connection_validation.duplicate_upstream_source:")
+    );
     assert_eq!(app_state.workspace.solve_session.status, RunStatus::Error);
 
     let summary = app_state
@@ -1195,9 +1210,11 @@ fn studio_solver_bridge_records_duplicate_sink_disconnect_target_end_to_end() {
     )
     .expect_err("expected duplicate sink failure");
 
-    assert!(error
-        .message()
-        .contains("solver.connection_validation.duplicate_downstream_sink:"));
+    assert!(
+        error
+            .message()
+            .contains("solver.connection_validation.duplicate_downstream_sink:")
+    );
     assert_eq!(app_state.workspace.solve_session.status, RunStatus::Error);
 
     let summary = app_state
@@ -1276,9 +1293,11 @@ fn studio_solver_bridge_records_orphan_stream_delete_target_end_to_end() {
     )
     .expect_err("expected orphan stream failure");
 
-    assert!(error
-        .message()
-        .contains("solver.connection_validation.orphan_stream:"));
+    assert!(
+        error
+            .message()
+            .contains("solver.connection_validation.orphan_stream:")
+    );
     assert_eq!(app_state.workspace.solve_session.status, RunStatus::Error);
 
     let summary = app_state
@@ -1344,9 +1363,11 @@ fn studio_solver_bridge_records_unbound_outlet_create_stream_target_end_to_end()
     )
     .expect_err("expected unbound outlet failure");
 
-    assert!(error
-        .message()
-        .contains("solver.connection_validation.unbound_outlet_port:"));
+    assert!(
+        error
+            .message()
+            .contains("solver.connection_validation.unbound_outlet_port:")
+    );
     assert_eq!(app_state.workspace.solve_session.status, RunStatus::Error);
 
     let summary = app_state
@@ -1420,9 +1441,11 @@ fn studio_solver_bridge_records_unbound_inlet_inspect_target_end_to_end() {
     )
     .expect_err("expected unbound inlet failure");
 
-    assert!(error
-        .message()
-        .contains("solver.connection_validation.unbound_inlet_port:"));
+    assert!(
+        error
+            .message()
+            .contains("solver.connection_validation.unbound_inlet_port:")
+    );
     assert_eq!(app_state.workspace.solve_session.status, RunStatus::Error);
 
     let summary = app_state

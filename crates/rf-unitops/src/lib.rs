@@ -1,6 +1,6 @@
 use std::collections::{BTreeMap, BTreeSet};
 
-use rf_flash::{estimate_bubble_dew_window, TpFlashInput, TpFlashSolver};
+use rf_flash::{TpFlashInput, TpFlashSolver, estimate_bubble_dew_window};
 use rf_model::{Composition, MaterialStreamState, PhaseState, UnitNode, UnitPort};
 use rf_thermo::ThermoProvider;
 use rf_types::{PhaseLabel, PortDirection, PortKind, RfError, RfResult, StreamId, UnitId};
@@ -479,6 +479,8 @@ impl UnitOperation for Feed {
         let mut outlet_stream = self.outlet_stream.clone();
         if services.thermo.is_some() {
             attach_overall_phase_enthalpy(services, &mut outlet_stream)?;
+            let thermo = services.require_thermo()?;
+            attach_bubble_dew_window(thermo, &mut outlet_stream)?;
         }
 
         let mut outputs = UnitOperationOutputs::new();
@@ -1050,17 +1052,20 @@ fn build_phase_outlet_stream(
 #[cfg(test)]
 mod tests {
     use super::{
-        build_cooler_node, build_feed_node, build_flash_drum_node, build_heater_node,
-        build_mixer_node, build_valve_node, validate_unit_node, BuiltinUnitKind, Feed, FlashDrum,
-        HeaterCooler, Mixer, StreamTarget, UnitOperation, UnitOperationInputs,
-        UnitOperationServices, Valve, FEED_OUTLET_PORT, FLASH_DRUM_INLET_PORT,
-        FLASH_DRUM_LIQUID_PORT, FLASH_DRUM_VAPOR_PORT, HEATER_COOLER_INLET_PORT,
-        HEATER_COOLER_OUTLET_PORT, MIXER_INLET_A_PORT, MIXER_INLET_B_PORT, MIXER_OUTLET_PORT,
+        BuiltinUnitKind, FEED_OUTLET_PORT, FLASH_DRUM_INLET_PORT, FLASH_DRUM_LIQUID_PORT,
+        FLASH_DRUM_VAPOR_PORT, Feed, FlashDrum, HEATER_COOLER_INLET_PORT,
+        HEATER_COOLER_OUTLET_PORT, HeaterCooler, MIXER_INLET_A_PORT, MIXER_INLET_B_PORT,
+        MIXER_OUTLET_PORT, Mixer, StreamTarget, UnitOperation, UnitOperationInputs,
+        UnitOperationServices, Valve, build_cooler_node, build_feed_node, build_flash_drum_node,
+        build_heater_node, build_mixer_node, build_valve_node, validate_unit_node,
     };
-    use rf_flash::{PlaceholderTpFlashSolver, TpFlashInput, TpFlashSolver};
+    use rf_flash::{
+        PlaceholderTpFlashSolver, TpFlashInput, TpFlashSolver, estimate_bubble_dew_window,
+    };
     use rf_model::{Composition, MaterialStreamState};
     use rf_thermo::{
-        AntoineCoefficients, PlaceholderThermoProvider, ThermoComponent, ThermoSystem,
+        AntoineCoefficients, PlaceholderThermoProvider, ThermoComponent, ThermoProvider,
+        ThermoSystem,
     };
     use rf_types::{ComponentId, PhaseLabel};
 
@@ -1213,7 +1218,8 @@ mod tests {
     }
 
     #[test]
-    fn feed_materializes_overall_phase_enthalpy_when_services_are_available() {
+    fn feed_materializes_overall_phase_enthalpy_and_bubble_dew_window_when_services_are_available()
+    {
         let provider = build_provider([2.0, 0.5], 100_000.0);
         let flash_solver = PlaceholderTpFlashSolver;
         let outlet_stream = build_stream(
@@ -1240,6 +1246,48 @@ mod tests {
             .expect("expected feed outlet stream");
 
         assert_overall_phase_enthalpy_matches_flash(outlet, &provider, &flash_solver);
+        let window = outlet
+            .bubble_dew_window
+            .as_ref()
+            .expect("expected feed outlet bubble/dew window");
+        let expected_window = estimate_bubble_dew_window(
+            &provider,
+            outlet.temperature_k,
+            outlet.pressure_pa,
+            provider
+                .system()
+                .component_ids()
+                .into_iter()
+                .map(|component_id| {
+                    *outlet
+                        .overall_mole_fractions
+                        .get(&component_id)
+                        .expect("expected component fraction")
+                })
+                .collect(),
+        )
+        .expect("expected feed outlet bubble/dew window reference");
+        assert_eq!(window.phase_region, expected_window.phase_region);
+        assert_close(
+            window.bubble_pressure_pa,
+            expected_window.bubble_pressure_pa,
+            1e-9,
+        );
+        assert_close(
+            window.dew_pressure_pa,
+            expected_window.dew_pressure_pa,
+            1e-9,
+        );
+        assert_close(
+            window.bubble_temperature_k,
+            expected_window.bubble_temperature_k,
+            1e-9,
+        );
+        assert_close(
+            window.dew_temperature_k,
+            expected_window.dew_temperature_k,
+            1e-9,
+        );
     }
 
     #[test]

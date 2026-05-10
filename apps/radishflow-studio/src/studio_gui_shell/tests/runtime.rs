@@ -1,12 +1,12 @@
 use super::*;
 use radishflow_studio::{
+    StudioGuiWindowInspectorTargetDetailModel, StudioGuiWindowSolveSnapshotModel,
+    StudioGuiWindowStreamResultModel, StudioGuiWindowUnitExecutionResultModel,
     test_support::{
         apply_stream_state_and_composition, build_binary_hydrocarbon_lite_provider,
         build_synthetic_provider, solve_snapshot_model_from_project_with_provider_and_edit,
         stream_target_detail_model, unit_target_detail_model,
     },
-    StudioGuiWindowInspectorTargetDetailModel, StudioGuiWindowSolveSnapshotModel,
-    StudioGuiWindowStreamResultModel, StudioGuiWindowUnitExecutionResultModel,
 };
 use rf_flash::estimate_bubble_dew_window;
 
@@ -610,6 +610,78 @@ fn runtime_panel_hides_bubble_dew_window_for_zero_flow_single_phase_flash_outlet
         0,
         "expected active inspector to render no bubble/dew window section for the zero-flow liquid outlet"
     );
+}
+
+#[test]
+fn runtime_panel_renders_bubble_dew_window_for_source_streams() {
+    let mut app = ready_app_state(&synced_workspace_config());
+    let bubble_dew_label = app.locale.text(ShellText::BubbleDewWindow).to_string();
+
+    for (project_json, stream_ids) in [
+        (
+            include_str!(
+                "../../../../../examples/flowsheets/feed-heater-flash-binary-hydrocarbon.rfproj.json"
+            ),
+            &["stream-feed"][..],
+        ),
+        (
+            include_str!(
+                "../../../../../examples/flowsheets/feed-cooler-flash-binary-hydrocarbon.rfproj.json"
+            ),
+            &["stream-feed"][..],
+        ),
+        (
+            include_str!(
+                "../../../../../examples/flowsheets/feed-valve-flash-binary-hydrocarbon.rfproj.json"
+            ),
+            &["stream-feed"][..],
+        ),
+        (
+            include_str!(
+                "../../../../../examples/flowsheets/feed-mixer-flash-binary-hydrocarbon.rfproj.json"
+            ),
+            &["stream-feed-a", "stream-feed-b"][..],
+        ),
+    ] {
+        let snapshot = solve_binary_hydrocarbon_snapshot(project_json);
+
+        for stream_id in stream_ids {
+            let title = snapshot
+                .streams
+                .iter()
+                .find(|stream| stream.stream_id == *stream_id)
+                .expect("expected snapshot stream")
+                .label
+                .clone();
+            let result = snapshot.result_inspector(Some(stream_id));
+            assert!(
+                result
+                    .selected_stream
+                    .as_ref()
+                    .is_some_and(|stream| stream.bubble_dew_window.is_some()),
+                "expected result inspector model to carry bubble/dew window for source stream `{stream_id}` before shell rendering"
+            );
+
+            let result_texts = render_result_inspector_texts(&mut app, &snapshot, stream_id);
+            assert_eq!(
+                rendered_text_occurrences(&result_texts, &bubble_dew_label),
+                1,
+                "expected result inspector to render the bubble/dew window for `{stream_id}`, rendered texts: {:?}",
+                result_texts
+            );
+
+            let active_texts = render_active_inspector_texts(
+                &mut app,
+                stream_target_detail_model(&snapshot, stream_id, title.as_str()),
+            );
+            assert_eq!(
+                rendered_text_occurrences(&active_texts, &bubble_dew_label),
+                1,
+                "expected active inspector to render the bubble/dew window for `{stream_id}`, rendered texts: {:?}",
+                active_texts
+            );
+        }
+    }
 }
 
 #[test]
