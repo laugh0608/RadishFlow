@@ -29,7 +29,7 @@ fn assert_close(actual: f64, expected: f64, tolerance: f64) {
 }
 
 fn build_test_antoine_coefficients(k_value: f64, pressure_pa: f64) -> AntoineCoefficients {
-    const TEST_ANTOINE_BOUNDARY_SLOPE: f64 = 250.0;
+    const TEST_ANTOINE_BOUNDARY_SLOPE: f64 = 300.0;
     const TEST_REFERENCE_TEMPERATURE_K: f64 = 300.0;
 
     AntoineCoefficients::new(
@@ -496,6 +496,19 @@ fn sequential_solver_solves_feed_mixer_flash_chain() {
     assert_eq!(snapshot.steps[2].unit_id.as_str(), "mixer-1");
     assert_eq!(snapshot.steps[3].unit_id.as_str(), "flash-1");
     assert_eq!(snapshot.steps[2].consumed_stream_ids.len(), 2);
+    assert_eq!(snapshot.steps[2].consumed_streams.len(), 2);
+    assert_eq!(
+        snapshot.steps[2].consumed_streams[0],
+        *snapshot
+            .stream(&StreamId::new("stream-feed-a"))
+            .expect("expected feed-a stream")
+    );
+    assert_eq!(
+        snapshot.steps[2].consumed_streams[1],
+        *snapshot
+            .stream(&StreamId::new("stream-feed-b"))
+            .expect("expected feed-b stream")
+    );
     assert!(
         snapshot.steps[2]
             .summary
@@ -533,8 +546,8 @@ fn sequential_solver_solves_feed_mixer_flash_chain() {
     let vapor = snapshot
         .stream(&"stream-vapor".into())
         .expect("expected vapor outlet");
-    assert_close(liquid.total_molar_flow_mol_s, 2.20118870727674, 1e-9);
-    assert_close(vapor.total_molar_flow_mol_s, 2.79881129272326, 1e-9);
+    assert_close(liquid.total_molar_flow_mol_s, 2.0153832721007348, 1e-9);
+    assert_close(vapor.total_molar_flow_mol_s, 2.9846167278992652, 1e-9);
     assert_eq!(liquid.phases[1].label, PhaseLabel::Liquid);
     assert_eq!(vapor.phases[1].label, PhaseLabel::Vapor);
     assert_eq!(
@@ -620,7 +633,14 @@ fn sequential_solver_solves_feed_heater_flash_chain() {
         snapshot.steps[1].consumed_stream_ids,
         vec!["stream-feed".into()]
     );
+    assert_eq!(snapshot.steps[1].consumed_streams.len(), 1);
     assert!(snapshot.steps[1].summary.contains("heater-1"));
+    assert_eq!(
+        snapshot.steps[1].consumed_streams[0],
+        *snapshot
+            .stream(&StreamId::new("stream-feed"))
+            .expect("expected feed stream")
+    );
 
     let heated = snapshot
         .stream(&"stream-heated".into())
@@ -807,7 +827,14 @@ fn sequential_solver_solves_feed_cooler_flash_chain() {
         snapshot.steps[1].consumed_stream_ids,
         vec!["stream-feed".into()]
     );
+    assert_eq!(snapshot.steps[1].consumed_streams.len(), 1);
     assert!(snapshot.steps[1].summary.contains("cooler-1"));
+    assert_eq!(
+        snapshot.steps[1].consumed_streams[0],
+        *snapshot
+            .stream(&StreamId::new("stream-feed"))
+            .expect("expected feed stream")
+    );
 
     let cooled = snapshot
         .stream(&"stream-cooled".into())
@@ -930,7 +957,14 @@ fn sequential_solver_solves_feed_valve_flash_chain() {
         snapshot.steps[1].consumed_stream_ids,
         vec!["stream-feed".into()]
     );
+    assert_eq!(snapshot.steps[1].consumed_streams.len(), 1);
     assert!(snapshot.steps[1].summary.contains("valve-1"));
+    assert_eq!(
+        snapshot.steps[1].consumed_streams[0],
+        *snapshot
+            .stream(&StreamId::new("stream-feed"))
+            .expect("expected feed stream")
+    );
 
     let throttled = snapshot
         .stream(&"stream-throttled".into())

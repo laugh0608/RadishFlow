@@ -155,7 +155,7 @@ fn sample_feed_flash_document() -> FlowsheetDocument {
 }
 
 fn build_test_antoine_coefficients(k_value: f64, pressure_pa: f64) -> AntoineCoefficients {
-    const TEST_ANTOINE_BOUNDARY_SLOPE: f64 = 250.0;
+    const TEST_ANTOINE_BOUNDARY_SLOPE: f64 = 300.0;
     const TEST_REFERENCE_TEMPERATURE_K: f64 = 300.0;
 
     AntoineCoefficients::new(

@@ -320,6 +320,13 @@ fn storing_solver_snapshot_maps_solver_diagnostics_into_ui_snapshot() {
     assert_eq!(stored.diagnostics[0].code, "solver.execution_order");
     assert_eq!(stored.steps.len(), 3);
     assert_eq!(stored.steps[1].unit_id.as_str(), "heater-1");
+    let feed = stored
+        .streams
+        .iter()
+        .find(|stream| stream.stream_id.as_str() == "stream-feed")
+        .expect("expected feed stream snapshot");
+    assert_eq!(stored.steps[1].consumed_streams.len(), 1);
+    assert_eq!(&stored.steps[1].consumed_streams[0], feed);
     assert_eq!(
         stored.steps[1].streams[0].stream_id.as_str(),
         "stream-heated"
