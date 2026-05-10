@@ -8,6 +8,7 @@ use super::test_support::{
     unbound_outlet_failure_synced_config,
 };
 use super::*;
+use crate::test_support::SYNTHETIC_COMPONENT_C_ID;
 
 #[test]
 fn gui_driver_opens_window_and_refreshes_command_state() {
@@ -780,7 +781,9 @@ fn gui_driver_routes_composition_component_add_through_controlled_selector_bound
     )
         .replacen(
             "        \"ethane\": {\n          \"id\": \"ethane\",\n          \"name\": \"Ethane\",\n          \"formula\": \"C2H6\"\n        }",
-            "        \"ethane\": {\n          \"id\": \"ethane\",\n          \"name\": \"Ethane\",\n          \"formula\": \"C2H6\"\n        },\n        \"component-c\": {\n          \"id\": \"component-c\",\n          \"name\": \"Component C\",\n          \"formula\": null\n        }",
+            &format!(
+                "        \"ethane\": {{\n          \"id\": \"ethane\",\n          \"name\": \"Ethane\",\n          \"formula\": \"C2H6\"\n        }},\n        \"{SYNTHETIC_COMPONENT_C_ID}\": {{\n          \"id\": \"{SYNTHETIC_COMPONENT_C_ID}\",\n          \"name\": \"Synthetic Component C\",\n          \"formula\": null\n        }}"
+            ),
             1,
         );
     fs::write(&project_path, project).expect("expected project with extra component");
@@ -806,12 +809,14 @@ fn gui_driver_routes_composition_component_add_through_controlled_selector_bound
         .expect("expected active stream inspector")
         .property_composition_component_actions
         .iter()
-        .find(|action| action.component_id == "component-c")
+        .find(|action| action.component_id == SYNTHETIC_COMPONENT_C_ID)
         .cloned()
-        .expect("expected addable component-c action");
+        .expect("expected addable synthetic component action");
     assert_eq!(
         action.action.command_id,
-        "inspector.add_stream_composition_component:stream:stream-feed:component:component-c"
+        format!(
+            "inspector.add_stream_composition_component:stream:stream-feed:component:{SYNTHETIC_COMPONENT_C_ID}"
+        )
     );
 
     let dispatch = driver
@@ -819,6 +824,8 @@ fn gui_driver_routes_composition_component_add_through_controlled_selector_bound
             command_id: action.action.command_id,
         })
         .expect("expected composition component add dispatch");
+    let expected_added_key =
+        format!("stream:stream-feed:overall_mole_fraction:{SYNTHETIC_COMPONENT_C_ID}");
 
     match dispatch.outcome {
         StudioGuiDriverOutcome::HostCommand(
@@ -830,7 +837,7 @@ fn gui_driver_routes_composition_component_add_through_controlled_selector_bound
                 assert_eq!(outcome.command_history_len, 1);
                 assert_eq!(
                     outcome.added_key.as_deref(),
-                    Some("stream:stream-feed:overall_mole_fraction:component-c")
+                    Some(expected_added_key.as_str())
                 );
             }
             other => panic!("expected inspector composition component add dispatch, got {other:?}"),
@@ -847,11 +854,11 @@ fn gui_driver_routes_composition_component_add_through_controlled_selector_bound
     assert!(detail.property_composition_component_actions.is_empty());
     assert!(
         detail.property_fields.iter().any(|field| {
-            field.key == "stream:stream-feed:overall_mole_fraction:component-c"
+            field.key == expected_added_key.as_str()
                 && field.current_value == "0"
                 && field.status_label == "Synced"
         }),
-        "expected component-c to become an explicit zero-fraction stream composition field"
+        "expected synthetic component to become an explicit zero-fraction stream composition field"
     );
 
     let _ = fs::remove_file(project_path);

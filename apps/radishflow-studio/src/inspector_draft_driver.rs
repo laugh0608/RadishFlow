@@ -334,8 +334,36 @@ mod tests {
         add_inspector_composition_component_at, commit_inspector_draft_at,
         commit_inspector_drafts_at, discard_inspector_draft, discard_inspector_drafts,
         normalize_inspector_composition_at, remove_inspector_composition_component_at,
+        test_support::{
+            SYNTHETIC_BINARY_COMPONENT_SPECS, SYNTHETIC_COMPONENT_A_ID,
+            SYNTHETIC_COMPONENT_B_ID, SYNTHETIC_COMPONENT_C_ID,
+        },
         update_inspector_draft,
     };
+
+    fn synthetic_binary_stream() -> MaterialStreamState {
+        MaterialStreamState::from_tpzf(
+            "stream-feed",
+            "Feed stream",
+            298.15,
+            101_325.0,
+            1.0,
+            [
+                (ComponentId::new(SYNTHETIC_COMPONENT_A_ID), 0.4),
+                (ComponentId::new(SYNTHETIC_COMPONENT_B_ID), 0.6),
+            ]
+            .into_iter()
+            .collect(),
+        )
+    }
+
+    fn insert_synthetic_binary_components(flowsheet: &mut Flowsheet) {
+        for (component_id, component_name) in SYNTHETIC_BINARY_COMPONENT_SPECS {
+            flowsheet
+                .insert_component(Component::new(component_id, component_name))
+                .unwrap_or_else(|_| panic!("expected {component_id} insert"));
+        }
+    }
 
     #[test]
     fn inspector_draft_driver_updates_active_stream_draft_without_document_mutation() {
@@ -620,39 +648,24 @@ mod tests {
     fn inspector_draft_driver_commits_composition_draft_through_command_id() {
         let mut flowsheet = Flowsheet::new("demo");
         flowsheet
-            .insert_stream(MaterialStreamState::from_tpzf(
-                "stream-feed",
-                "Feed stream",
-                298.15,
-                101_325.0,
-                1.0,
-                [
-                    (ComponentId::new("component-a"), 0.4),
-                    (ComponentId::new("component-b"), 0.6),
-                ]
-                .into_iter()
-                .collect(),
-            ))
+            .insert_stream(synthetic_binary_stream())
             .expect("expected stream insert");
         let mut app_state = AppState::new(FlowsheetDocument::new(
             flowsheet,
             DocumentMetadata::new("doc", "Demo", std::time::UNIX_EPOCH),
         ));
         app_state.focus_inspector_target(InspectorTarget::Stream(StreamId::new("stream-feed")));
+        let component_a_draft_key =
+            format!("stream:stream-feed:overall_mole_fraction:{SYNTHETIC_COMPONENT_A_ID}");
         update_inspector_draft(
             &mut app_state,
-            StudioInspectorDraftUpdateCommand::new(
-                "stream:stream-feed:overall_mole_fraction:component-a",
-                "0.25",
-            ),
+            StudioInspectorDraftUpdateCommand::new(&component_a_draft_key, "0.25"),
         )
         .expect("expected composition draft update");
 
         let outcome = commit_inspector_draft_at(
             &mut app_state,
-            StudioInspectorDraftCommitCommand::new(
-                "stream:stream-feed:overall_mole_fraction:component-a",
-            ),
+            StudioInspectorDraftCommitCommand::new(&component_a_draft_key),
             std::time::UNIX_EPOCH,
         )
         .expect("expected composition draft commit");
@@ -667,13 +680,13 @@ mod tests {
                 .map(|entry| &entry.command),
             Some(&DocumentCommand::SetStreamSpecification {
                 stream_id: StreamId::new("stream-feed"),
-                field: "overall_mole_fraction:component-a".to_string(),
+                field: format!("overall_mole_fraction:{SYNTHETIC_COMPONENT_A_ID}"),
                 value: CommandValue::Number(0.25),
             })
         );
         assert_eq!(
             app_state.workspace.document.flowsheet.streams[&StreamId::new("stream-feed")]
-                .overall_mole_fractions[&ComponentId::new("component-a")],
+                .overall_mole_fractions[&ComponentId::new(SYNTHETIC_COMPONENT_A_ID)],
             0.25
         );
     }
@@ -682,31 +695,20 @@ mod tests {
     fn inspector_draft_driver_normalizes_composition_drafts_as_one_history_entry() {
         let mut flowsheet = Flowsheet::new("demo");
         flowsheet
-            .insert_stream(MaterialStreamState::from_tpzf(
-                "stream-feed",
-                "Feed stream",
-                298.15,
-                101_325.0,
-                1.0,
-                [
-                    (ComponentId::new("component-a"), 0.4),
-                    (ComponentId::new("component-b"), 0.6),
-                ]
-                .into_iter()
-                .collect(),
-            ))
+            .insert_stream(synthetic_binary_stream())
             .expect("expected stream insert");
         let mut app_state = AppState::new(FlowsheetDocument::new(
             flowsheet,
             DocumentMetadata::new("doc", "Demo", std::time::UNIX_EPOCH),
         ));
         app_state.focus_inspector_target(InspectorTarget::Stream(StreamId::new("stream-feed")));
+        let component_a_draft_key =
+            format!("stream:stream-feed:overall_mole_fraction:{SYNTHETIC_COMPONENT_A_ID}");
+        let component_b_draft_key =
+            format!("stream:stream-feed:overall_mole_fraction:{SYNTHETIC_COMPONENT_B_ID}");
         update_inspector_draft(
             &mut app_state,
-            StudioInspectorDraftUpdateCommand::new(
-                "stream:stream-feed:overall_mole_fraction:component-a",
-                "0.25",
-            ),
+            StudioInspectorDraftUpdateCommand::new(&component_a_draft_key, "0.25"),
         )
         .expect("expected composition draft update");
 
@@ -723,17 +725,17 @@ mod tests {
         assert_eq!(
             outcome.committed_keys,
             vec![
-                "stream:stream-feed:overall_mole_fraction:component-a".to_string(),
-                "stream:stream-feed:overall_mole_fraction:component-b".to_string(),
+                component_a_draft_key,
+                component_b_draft_key,
             ]
         );
         let stream = &app_state.workspace.document.flowsheet.streams[&StreamId::new("stream-feed")];
         assert_eq!(
-            stream.overall_mole_fractions[&ComponentId::new("component-a")],
+            stream.overall_mole_fractions[&ComponentId::new(SYNTHETIC_COMPONENT_A_ID)],
             0.25 / 0.85
         );
         assert_eq!(
-            stream.overall_mole_fractions[&ComponentId::new("component-b")],
+            stream.overall_mole_fractions[&ComponentId::new(SYNTHETIC_COMPONENT_B_ID)],
             0.6 / 0.85
         );
         assert!(app_state.workspace.drafts.fields.is_empty());
@@ -742,29 +744,12 @@ mod tests {
     #[test]
     fn inspector_draft_driver_adds_composition_component_through_command_id_boundary() {
         let mut flowsheet = Flowsheet::new("demo");
+        insert_synthetic_binary_components(&mut flowsheet);
         flowsheet
-            .insert_component(Component::new("component-a", "Component A"))
-            .expect("expected component-a insert");
+            .insert_component(Component::new(SYNTHETIC_COMPONENT_C_ID, "Synthetic Component C"))
+            .expect("expected synthetic component insert");
         flowsheet
-            .insert_component(Component::new("component-b", "Component B"))
-            .expect("expected component-b insert");
-        flowsheet
-            .insert_component(Component::new("component-c", "Component C"))
-            .expect("expected component-c insert");
-        flowsheet
-            .insert_stream(MaterialStreamState::from_tpzf(
-                "stream-feed",
-                "Feed stream",
-                298.15,
-                101_325.0,
-                1.0,
-                [
-                    (ComponentId::new("component-a"), 0.4),
-                    (ComponentId::new("component-b"), 0.6),
-                ]
-                .into_iter()
-                .collect(),
-            ))
+            .insert_stream(synthetic_binary_stream())
             .expect("expected stream insert");
         let mut app_state = AppState::new(FlowsheetDocument::new(
             flowsheet,
@@ -774,21 +759,26 @@ mod tests {
 
         let outcome = add_inspector_composition_component_at(
             &mut app_state,
-            StudioInspectorCompositionComponentAddCommand::new("stream-feed", "component-c"),
+            StudioInspectorCompositionComponentAddCommand::new(
+                "stream-feed",
+                SYNTHETIC_COMPONENT_C_ID,
+            ),
             std::time::UNIX_EPOCH,
         )
         .expect("expected component add");
+        let component_c_field_key =
+            format!("stream:stream-feed:overall_mole_fraction:{SYNTHETIC_COMPONENT_C_ID}");
 
         assert!(outcome.applied);
         assert_eq!(outcome.document_revision, 1);
         assert_eq!(outcome.command_history_len, 1);
         assert_eq!(
             outcome.added_key.as_deref(),
-            Some("stream:stream-feed:overall_mole_fraction:component-c")
+            Some(component_c_field_key.as_str())
         );
         assert_eq!(
             app_state.workspace.document.flowsheet.streams[&StreamId::new("stream-feed")]
-                .overall_mole_fractions[&ComponentId::new("component-c")],
+                .overall_mole_fractions[&ComponentId::new(SYNTHETIC_COMPONENT_C_ID)],
             0.0
         );
     }
@@ -797,19 +787,7 @@ mod tests {
     fn inspector_draft_driver_removes_composition_component_through_command_id_boundary() {
         let mut flowsheet = Flowsheet::new("demo");
         flowsheet
-            .insert_stream(MaterialStreamState::from_tpzf(
-                "stream-feed",
-                "Feed stream",
-                298.15,
-                101_325.0,
-                1.0,
-                [
-                    (ComponentId::new("component-a"), 0.4),
-                    (ComponentId::new("component-b"), 0.6),
-                ]
-                .into_iter()
-                .collect(),
-            ))
+            .insert_stream(synthetic_binary_stream())
             .expect("expected stream insert");
         let mut app_state = AppState::new(FlowsheetDocument::new(
             flowsheet,
@@ -819,22 +797,27 @@ mod tests {
 
         let outcome = remove_inspector_composition_component_at(
             &mut app_state,
-            StudioInspectorCompositionComponentRemoveCommand::new("stream-feed", "component-b"),
+            StudioInspectorCompositionComponentRemoveCommand::new(
+                "stream-feed",
+                SYNTHETIC_COMPONENT_B_ID,
+            ),
             std::time::UNIX_EPOCH,
         )
         .expect("expected component remove");
+        let component_b_field_key =
+            format!("stream:stream-feed:overall_mole_fraction:{SYNTHETIC_COMPONENT_B_ID}");
 
         assert!(outcome.applied);
         assert_eq!(outcome.document_revision, 1);
         assert_eq!(outcome.command_history_len, 1);
         assert_eq!(
             outcome.removed_key.as_deref(),
-            Some("stream:stream-feed:overall_mole_fraction:component-b")
+            Some(component_b_field_key.as_str())
         );
         assert!(
             !app_state.workspace.document.flowsheet.streams[&StreamId::new("stream-feed")]
                 .overall_mole_fractions
-                .contains_key(&ComponentId::new("component-b"))
+                .contains_key(&ComponentId::new(SYNTHETIC_COMPONENT_B_ID))
         );
     }
 }

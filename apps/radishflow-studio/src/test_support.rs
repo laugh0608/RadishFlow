@@ -18,6 +18,17 @@ use rf_types::ComponentId;
 pub const OFFICIAL_BINARY_HYDROCARBON_COMPONENT_SPECS: [(&str, &str); 2] =
     [("methane", "Methane"), ("ethane", "Ethane")];
 #[doc(hidden)]
+pub const SYNTHETIC_COMPONENT_A_ID: &str = "synthetic-component-a";
+#[doc(hidden)]
+pub const SYNTHETIC_COMPONENT_B_ID: &str = "synthetic-component-b";
+#[doc(hidden)]
+pub const SYNTHETIC_COMPONENT_C_ID: &str = "synthetic-component-c";
+#[doc(hidden)]
+pub const SYNTHETIC_BINARY_COMPONENT_SPECS: [(&str, &str); 2] = [
+    (SYNTHETIC_COMPONENT_A_ID, "Synthetic Component A"),
+    (SYNTHETIC_COMPONENT_B_ID, "Synthetic Component B"),
+];
+#[doc(hidden)]
 pub const OFFICIAL_HEATER_BINARY_HYDROCARBON_PROJECT_FILE_NAME: &str =
     "feed-heater-flash-binary-hydrocarbon.rfproj.json";
 #[doc(hidden)]

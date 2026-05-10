@@ -248,8 +248,9 @@ mod tests {
         inspector_draft_batch_commit_command_id, inspector_draft_batch_discard_command_from_id,
         inspector_draft_batch_discard_command_id, inspector_draft_commit_command_from_id,
         inspector_draft_commit_command_id, inspector_draft_discard_command_from_id,
-        inspector_draft_discard_command_id, inspector_draft_update_command_from_id,
-        inspector_draft_update_command_id,
+        inspector_draft_discard_command_id,
+        inspector_draft_update_command_from_id, inspector_draft_update_command_id,
+        test_support::{SYNTHETIC_COMPONENT_B_ID, SYNTHETIC_COMPONENT_C_ID},
     };
 
     #[test]
@@ -426,17 +427,19 @@ mod tests {
     #[test]
     fn inspector_composition_component_add_command_round_trips_stream_and_component() {
         let command_id =
-            inspector_composition_component_add_command_id("stream-feed", "component-c");
+            inspector_composition_component_add_command_id("stream-feed", SYNTHETIC_COMPONENT_C_ID);
 
         let command = inspector_composition_component_add_command_from_id(&command_id)
             .expect("expected component add command");
 
         assert_eq!(
             command_id,
-            "inspector.add_stream_composition_component:stream:stream-feed:component:component-c"
+            format!(
+                "inspector.add_stream_composition_component:stream:stream-feed:component:{SYNTHETIC_COMPONENT_C_ID}"
+            )
         );
         assert_eq!(command.stream_id, "stream-feed");
-        assert_eq!(command.component_id, "component-c");
+        assert_eq!(command.component_id, SYNTHETIC_COMPONENT_C_ID);
     }
 
     #[test]
@@ -449,7 +452,9 @@ mod tests {
         );
         assert_eq!(
             inspector_composition_component_add_command_from_id(
-                "inspector.add_stream_composition_component:stream::component:component-c"
+                &format!(
+                    "inspector.add_stream_composition_component:stream::component:{SYNTHETIC_COMPONENT_C_ID}"
+                )
             ),
             None
         );
@@ -464,17 +469,19 @@ mod tests {
     #[test]
     fn inspector_composition_component_remove_command_round_trips_stream_and_component() {
         let command_id =
-            inspector_composition_component_remove_command_id("stream-feed", "component-b");
+            inspector_composition_component_remove_command_id("stream-feed", SYNTHETIC_COMPONENT_B_ID);
 
         let command = inspector_composition_component_remove_command_from_id(&command_id)
             .expect("expected component remove command");
 
         assert_eq!(
             command_id,
-            "inspector.remove_stream_composition_component:stream:stream-feed:component:component-b"
+            format!(
+                "inspector.remove_stream_composition_component:stream:stream-feed:component:{SYNTHETIC_COMPONENT_B_ID}"
+            )
         );
         assert_eq!(command.stream_id, "stream-feed");
-        assert_eq!(command.component_id, "component-b");
+        assert_eq!(command.component_id, SYNTHETIC_COMPONENT_B_ID);
     }
 
     #[test]
@@ -487,13 +494,17 @@ mod tests {
         );
         assert_eq!(
             inspector_composition_component_remove_command_from_id(
-                "inspector.remove_stream_composition_component:stream::component:component-b"
+                &format!(
+                    "inspector.remove_stream_composition_component:stream::component:{SYNTHETIC_COMPONENT_B_ID}"
+                )
             ),
             None
         );
         assert_eq!(
             inspector_composition_component_remove_command_from_id(
-                "inspector.add_stream_composition_component:stream:stream-feed:component:component-b"
+                &format!(
+                    "inspector.add_stream_composition_component:stream:stream-feed:component:{SYNTHETIC_COMPONENT_B_ID}"
+                )
             ),
             None
         );

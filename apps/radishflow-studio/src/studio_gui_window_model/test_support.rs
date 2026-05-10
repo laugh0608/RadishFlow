@@ -24,12 +24,18 @@ pub(crate) fn build_synthetic_provider(
     k_values: [f64; 2],
     pressure_pa: f64,
 ) -> PlaceholderThermoProvider {
-    let mut first = ThermoComponent::new(ComponentId::new("component-a"), "Component A");
+    let mut first = ThermoComponent::new(
+        ComponentId::new(crate::test_support::SYNTHETIC_COMPONENT_A_ID),
+        "Synthetic Component A",
+    );
     first.antoine = Some(build_demo_antoine_coefficients(k_values[0], pressure_pa));
     first.liquid_heat_capacity_j_per_mol_k = Some(35.0);
     first.vapor_heat_capacity_j_per_mol_k = Some(36.5);
 
-    let mut second = ThermoComponent::new(ComponentId::new("component-b"), "Component B");
+    let mut second = ThermoComponent::new(
+        ComponentId::new(crate::test_support::SYNTHETIC_COMPONENT_B_ID),
+        "Synthetic Component B",
+    );
     second.antoine = Some(build_demo_antoine_coefficients(k_values[1], pressure_pa));
     second.liquid_heat_capacity_j_per_mol_k = Some(52.0);
     second.vapor_heat_capacity_j_per_mol_k = Some(65.0);
@@ -55,10 +61,16 @@ pub(crate) fn apply_stream_state_and_composition(
     stream.overall_mole_fractions.clear();
     stream
         .overall_mole_fractions
-        .insert(ComponentId::new("component-a"), overall_mole_fractions[0]);
+        .insert(
+            ComponentId::new(crate::test_support::SYNTHETIC_COMPONENT_A_ID),
+            overall_mole_fractions[0],
+        );
     stream
         .overall_mole_fractions
-        .insert(ComponentId::new("component-b"), overall_mole_fractions[1]);
+        .insert(
+            ComponentId::new(crate::test_support::SYNTHETIC_COMPONENT_B_ID),
+            overall_mole_fractions[1],
+        );
 }
 
 pub(crate) fn solve_snapshot_model_from_project_with_provider_and_edit<F>(
