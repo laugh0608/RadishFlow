@@ -60,6 +60,17 @@ pub(super) fn synced_workspace_config() -> StudioRuntimeConfig {
     }
 }
 
+pub(super) fn synced_workspace_example_config(project_file_name: &str) -> StudioRuntimeConfig {
+    StudioRuntimeConfig {
+        project_path: PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../..")
+            .join("examples")
+            .join("flowsheets")
+            .join(project_file_name),
+        ..synced_workspace_config()
+    }
+}
+
 pub(super) fn flash_drum_local_rules_synced_config() -> (StudioRuntimeConfig, PathBuf) {
     let timestamp = SystemTime::now()
         .duration_since(UNIX_EPOCH)
