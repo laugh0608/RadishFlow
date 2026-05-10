@@ -15,10 +15,14 @@ use rf_thermo::{
 use rf_types::ComponentId;
 
 #[doc(hidden)]
+pub const OFFICIAL_BINARY_HYDROCARBON_COMPONENT_SPECS: [(&str, &str); 2] =
+    [("methane", "Methane"), ("ethane", "Ethane")];
+
+#[doc(hidden)]
 pub fn build_binary_hydrocarbon_lite_provider() -> PlaceholderThermoProvider {
     let payload = build_binary_hydrocarbon_lite_stored_payload_for_components(
         "binary-hydrocarbon-lite-v1",
-        [("methane", "Methane"), ("ethane", "Ethane")],
+        OFFICIAL_BINARY_HYDROCARBON_COMPONENT_SPECS,
     );
     let [first, second] = binary_hydrocarbon_lite_components(&payload);
 

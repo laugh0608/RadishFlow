@@ -196,6 +196,7 @@ mod tests {
     };
     use crate::test_support::{
         build_binary_hydrocarbon_lite_in_memory_provider_for_components,
+        OFFICIAL_BINARY_HYDROCARBON_COMPONENT_SPECS,
         write_binary_hydrocarbon_lite_cached_package,
     };
 
@@ -212,10 +213,7 @@ mod tests {
     fn sample_provider() -> InMemoryPropertyPackageProvider {
         build_binary_hydrocarbon_lite_in_memory_provider_for_components(
             "binary-hydrocarbon-lite-v1",
-            [
-                ("component-a", "Component A"),
-                ("component-b", "Component B"),
-            ],
+            OFFICIAL_BINARY_HYDROCARBON_COMPONENT_SPECS,
         )
     }
 
@@ -232,7 +230,7 @@ mod tests {
         let mut app_state = AppState::new(sample_document());
         let provider = sample_provider();
         let project = parse_project_file_json(include_str!(
-            "../../../examples/flowsheets/feed-heater-flash.rfproj.json"
+            "../../../examples/flowsheets/feed-heater-flash-binary-hydrocarbon.rfproj.json"
         ))
         .expect("expected project parse");
         app_state.workspace.document = FlowsheetDocument::new(
@@ -255,7 +253,7 @@ mod tests {
     fn solve_workspace_updates_app_state_with_solver_snapshot() {
         let provider = sample_provider();
         let project = parse_project_file_json(include_str!(
-            "../../../examples/flowsheets/feed-valve-flash.rfproj.json"
+            "../../../examples/flowsheets/feed-valve-flash-binary-hydrocarbon.rfproj.json"
         ))
         .expect("expected project parse");
         let mut app_state = AppState::new(FlowsheetDocument::new(
@@ -288,7 +286,7 @@ mod tests {
     fn solve_workspace_records_failure_when_package_is_missing() {
         let provider = InMemoryPropertyPackageProvider::default();
         let project = parse_project_file_json(include_str!(
-            "../../../examples/flowsheets/feed-heater-flash.rfproj.json"
+            "../../../examples/flowsheets/feed-heater-flash-binary-hydrocarbon.rfproj.json"
         ))
         .expect("expected project parse");
         let mut app_state = AppState::new(FlowsheetDocument::new(
@@ -321,7 +319,7 @@ mod tests {
     fn solve_workspace_records_solver_failure_primary_code_in_summary() {
         let provider = sample_provider();
         let project = parse_project_file_json(include_str!(
-            "../../../examples/flowsheets/feed-valve-flash.rfproj.json"
+            "../../../examples/flowsheets/feed-valve-flash-binary-hydrocarbon.rfproj.json"
         ))
         .expect("expected project parse");
         let mut flowsheet = project.document.flowsheet;
@@ -329,7 +327,7 @@ mod tests {
             .streams
             .get_mut(&"stream-throttled".into())
             .expect("expected throttled stream")
-            .pressure_pa = 130_000.0;
+            .pressure_pa = 730_000.0;
         let mut app_state = AppState::new(FlowsheetDocument::new(
             flowsheet,
             DocumentMetadata::new("doc-6", "Valve Failure Demo", timestamp(80)),
@@ -376,16 +374,13 @@ mod tests {
             &cache_root,
             &mut auth_cache_index,
             "binary-hydrocarbon-lite-v1",
-            [
-                ("component-a", "Component A"),
-                ("component-b", "Component B"),
-            ],
+            OFFICIAL_BINARY_HYDROCARBON_COMPONENT_SPECS,
             timestamp(60),
             Some(SystemTime::now() + Duration::from_secs(3_600)),
         );
 
         let project = parse_project_file_json(include_str!(
-            "../../../examples/flowsheets/feed-heater-flash.rfproj.json"
+            "../../../examples/flowsheets/feed-heater-flash-binary-hydrocarbon.rfproj.json"
         ))
         .expect("expected project parse");
         let mut app_state = AppState::new(FlowsheetDocument::new(
@@ -436,7 +431,7 @@ mod tests {
         auth_cache_index.property_packages.push(record);
 
         let project = parse_project_file_json(include_str!(
-            "../../../examples/flowsheets/feed-heater-flash.rfproj.json"
+            "../../../examples/flowsheets/feed-heater-flash-binary-hydrocarbon.rfproj.json"
         ))
         .expect("expected project parse");
         let mut app_state = AppState::new(FlowsheetDocument::new(

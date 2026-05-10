@@ -108,7 +108,10 @@ mod tests {
     };
     use crate::{
         RunPanelWidgetDispatchOutcome, StudioAppAuthCacheContext, StudioAppFacade,
-        test_support::write_binary_hydrocarbon_lite_cached_package,
+        test_support::{
+            OFFICIAL_BINARY_HYDROCARBON_COMPONENT_SPECS,
+            write_binary_hydrocarbon_lite_cached_package,
+        },
     };
 
     fn timestamp(seconds: u64) -> std::time::SystemTime {
@@ -138,10 +141,7 @@ mod tests {
             cache_root,
             auth_cache_index,
             package_id,
-            [
-                ("component-a", "Component A"),
-                ("component-b", "Component B"),
-            ],
+            OFFICIAL_BINARY_HYDROCARBON_COMPONENT_SPECS,
             timestamp(60),
             Some(SystemTime::now() + Duration::from_secs(3_600)),
         );
@@ -172,7 +172,7 @@ mod tests {
         );
         let facade = StudioAppFacade::new();
         let project = parse_project_file_json(include_str!(
-            "../../../examples/flowsheets/feed-heater-flash.rfproj.json"
+            "../../../examples/flowsheets/feed-heater-flash-binary-hydrocarbon.rfproj.json"
         ))
         .expect("expected project parse");
         let mut app_state = AppState::new(FlowsheetDocument::new(
@@ -256,7 +256,7 @@ mod tests {
         );
         let facade = StudioAppFacade::new();
         let project = parse_project_file_json(include_str!(
-            "../../../examples/flowsheets/feed-valve-flash.rfproj.json"
+            "../../../examples/flowsheets/feed-valve-flash-binary-hydrocarbon.rfproj.json"
         ))
         .expect("expected project parse");
         let mut flowsheet = project.document.flowsheet;
@@ -264,7 +264,7 @@ mod tests {
             .streams
             .get_mut(&"stream-throttled".into())
             .expect("expected throttled stream")
-            .pressure_pa = 130_000.0;
+            .pressure_pa = 730_000.0;
         let mut app_state = AppState::new(FlowsheetDocument::new(
             flowsheet,
             DocumentMetadata::new("doc-driver-recovery", "Driver Recovery Demo", timestamp(90)),

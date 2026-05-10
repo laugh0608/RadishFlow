@@ -24,7 +24,11 @@ use crate::{
     RadishFlowControlPlaneClient, RadishFlowControlPlaneClientError,
     RadishFlowControlPlaneClientErrorKind, RadishFlowControlPlaneResponse, StudioEntitlementAction,
     StudioEntitlementFailureReason, StudioEntitlementOutcome, WorkspaceRunCommand,
-    WorkspaceRunPackageSelection, test_support::write_binary_hydrocarbon_lite_cached_package,
+    WorkspaceRunPackageSelection,
+    test_support::{
+        OFFICIAL_BINARY_HYDROCARBON_COMPONENT_SPECS,
+        write_binary_hydrocarbon_lite_cached_package,
+    },
 };
 
 fn timestamp(seconds: u64) -> std::time::SystemTime {
@@ -93,10 +97,7 @@ fn write_cached_package(
         cache_root,
         auth_cache_index,
         package_id,
-        [
-            ("component-a", "Component A"),
-            ("component-b", "Component B"),
-        ],
+        OFFICIAL_BINARY_HYDROCARBON_COMPONENT_SPECS,
         timestamp(60),
         Some(SystemTime::now() + Duration::from_secs(3_600)),
     );
@@ -168,7 +169,7 @@ fn facade_runs_workspace_command_from_auth_cache() {
     );
     let facade = StudioAppFacade::new();
     let project = parse_project_file_json(include_str!(
-        "../../../../examples/flowsheets/feed-heater-flash.rfproj.json"
+        "../../../../examples/flowsheets/feed-heater-flash-binary-hydrocarbon.rfproj.json"
     ))
     .expect("expected project parse");
     let mut app_state = AppState::new(FlowsheetDocument::new(
@@ -375,7 +376,7 @@ fn facade_resumes_workspace_from_hold_and_runs_automatic_dispatch() {
     );
     let facade = StudioAppFacade::new();
     let project = parse_project_file_json(include_str!(
-        "../../../../examples/flowsheets/feed-heater-flash.rfproj.json"
+        "../../../../examples/flowsheets/feed-heater-flash-binary-hydrocarbon.rfproj.json"
     ))
     .expect("expected project parse");
     let mut app_state = AppState::new(FlowsheetDocument::new(
