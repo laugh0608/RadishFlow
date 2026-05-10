@@ -185,23 +185,17 @@ mod tests {
     use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
     use rf_model::Flowsheet;
-    use rf_store::{
-        StoredAntoineCoefficients, StoredAuthCacheIndex, StoredCredentialReference,
-        StoredPropertyPackageManifest, StoredPropertyPackagePayload, StoredPropertyPackageRecord,
-        StoredPropertyPackageSource, StoredThermoComponent, parse_project_file_json,
-        property_package_payload_integrity, write_property_package_manifest,
-        write_property_package_payload,
-    };
-    use rf_thermo::{
-        AntoineCoefficients, InMemoryPropertyPackageProvider, PropertyPackageManifest,
-        PropertyPackageSource, ThermoComponent, ThermoSystem,
-    };
-    use rf_types::ComponentId;
+    use rf_store::{StoredAuthCacheIndex, StoredCredentialReference, parse_project_file_json};
+    use rf_thermo::InMemoryPropertyPackageProvider;
     use rf_ui::{AppState, DocumentMetadata, FlowsheetDocument, RunStatus};
 
     use super::{
         WorkspaceSolveDispatch, WorkspaceSolveService, WorkspaceSolveSkipReason,
         WorkspaceSolveTrigger, build_workspace_solve_request,
+    };
+    use crate::test_support::{
+        build_binary_hydrocarbon_lite_in_memory_provider_for_components,
+        write_binary_hydrocarbon_lite_cached_package,
     };
 
     fn timestamp(seconds: u64) -> std::time::SystemTime {
@@ -214,50 +208,14 @@ mod tests {
         FlowsheetDocument::new(flowsheet, metadata)
     }
 
-    fn build_test_antoine_coefficients(k_value: f64) -> AntoineCoefficients {
-        const TEST_ANTOINE_BOUNDARY_SLOPE: f64 = 250.0;
-        const TEST_REFERENCE_TEMPERATURE_K: f64 = 300.0;
-
-        AntoineCoefficients::new(
-            ((k_value * 100_000.0) / 1_000.0).ln()
-                + TEST_ANTOINE_BOUNDARY_SLOPE / TEST_REFERENCE_TEMPERATURE_K,
-            TEST_ANTOINE_BOUNDARY_SLOPE,
-            0.0,
-        )
-    }
-
-    fn build_stored_test_antoine_coefficients(k_value: f64) -> StoredAntoineCoefficients {
-        const TEST_ANTOINE_BOUNDARY_SLOPE: f64 = 250.0;
-        const TEST_REFERENCE_TEMPERATURE_K: f64 = 300.0;
-
-        StoredAntoineCoefficients::new(
-            ((k_value * 100_000.0) / 1_000.0).ln()
-                + TEST_ANTOINE_BOUNDARY_SLOPE / TEST_REFERENCE_TEMPERATURE_K,
-            TEST_ANTOINE_BOUNDARY_SLOPE,
-            0.0,
-        )
-    }
-
     fn sample_provider() -> InMemoryPropertyPackageProvider {
-        let mut first = ThermoComponent::new("component-a", "Component A");
-        first.antoine = Some(build_test_antoine_coefficients(2.0));
-        first.liquid_heat_capacity_j_per_mol_k = Some(35.0);
-        first.vapor_heat_capacity_j_per_mol_k = Some(36.5);
-
-        let mut second = ThermoComponent::new("component-b", "Component B");
-        second.antoine = Some(build_test_antoine_coefficients(0.5));
-        second.liquid_heat_capacity_j_per_mol_k = Some(52.0);
-        second.vapor_heat_capacity_j_per_mol_k = Some(65.0);
-
-        InMemoryPropertyPackageProvider::new(vec![(
-            PropertyPackageManifest::new(
-                "binary-hydrocarbon-lite-v1",
-                "2026.03.1",
-                PropertyPackageSource::LocalBundled,
-                vec!["component-a".into(), "component-b".into()],
-            ),
-            ThermoSystem::binary([first, second]),
-        )])
+        build_binary_hydrocarbon_lite_in_memory_provider_for_components(
+            "binary-hydrocarbon-lite-v1",
+            [
+                ("component-a", "Component A"),
+                ("component-b", "Component B"),
+            ],
+        )
     }
 
     fn unique_temp_path(name: &str) -> PathBuf {
@@ -457,54 +415,17 @@ mod tests {
             "user-123",
             StoredCredentialReference::new("radishflow-studio", "user-123-primary"),
         );
-        let mut first = StoredThermoComponent::new(ComponentId::new("component-a"), "Component A");
-        first.antoine = Some(build_stored_test_antoine_coefficients(2.0));
-        first.liquid_heat_capacity_j_per_mol_k = Some(35.0);
-        first.vapor_heat_capacity_j_per_mol_k = Some(36.5);
-        let mut second = StoredThermoComponent::new(ComponentId::new("component-b"), "Component B");
-        second.antoine = Some(build_stored_test_antoine_coefficients(0.5));
-        second.liquid_heat_capacity_j_per_mol_k = Some(52.0);
-        second.vapor_heat_capacity_j_per_mol_k = Some(65.0);
-        let payload = StoredPropertyPackagePayload::new(
+        write_binary_hydrocarbon_lite_cached_package(
+            &cache_root,
+            &mut auth_cache_index,
             "binary-hydrocarbon-lite-v1",
-            "2026.03.1",
-            vec![first, second],
-        );
-        let integrity =
-            property_package_payload_integrity(&payload).expect("expected payload integrity");
-        let expires_at = Some(SystemTime::now() + Duration::from_secs(3_600));
-        let mut manifest = StoredPropertyPackageManifest::new(
-            "binary-hydrocarbon-lite-v1",
-            "2026.03.1",
-            StoredPropertyPackageSource::RemoteDerivedPackage,
-            vec![
-                ComponentId::new("component-a"),
-                ComponentId::new("component-b"),
+            [
+                ("component-a", "Component A"),
+                ("component-b", "Component B"),
             ],
-        );
-        manifest.hash = integrity.hash.clone();
-        manifest.size_bytes = integrity.size_bytes;
-        manifest.expires_at = expires_at;
-        let mut record = StoredPropertyPackageRecord::new(
-            &manifest.package_id,
-            &manifest.version,
-            StoredPropertyPackageSource::RemoteDerivedPackage,
-            manifest.hash.clone(),
-            manifest.size_bytes,
             timestamp(60),
+            Some(SystemTime::now() + Duration::from_secs(3_600)),
         );
-        record.expires_at = expires_at;
-
-        write_property_package_manifest(record.manifest_path_under(&cache_root), &manifest)
-            .expect("expected manifest write");
-        write_property_package_payload(
-            record
-                .payload_path_under(&cache_root)
-                .expect("expected payload path"),
-            &payload,
-        )
-        .expect("expected payload write");
-        auth_cache_index.property_packages.push(record);
 
         let project = parse_project_file_json(include_str!(
             "../../../examples/flowsheets/feed-heater-flash.rfproj.json"
