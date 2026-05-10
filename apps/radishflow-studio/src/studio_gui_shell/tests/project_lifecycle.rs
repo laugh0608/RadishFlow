@@ -31,7 +31,7 @@ fn open_example_project_rebuilds_runtime_for_selected_sample() {
 
     assert_eq!(
         window.runtime.workspace_document.title,
-        "Feed Valve Flash Example"
+        "Feed Valve Flash Binary Hydrocarbon Example"
     );
     assert_eq!(window.runtime.workspace_document.snapshot_history_count, 0);
     assert_eq!(
@@ -129,7 +129,7 @@ fn open_project_from_picker_rebuilds_runtime_and_records_recent_project() {
     let window = app.platform_host.snapshot().window_model();
     assert_eq!(
         window.runtime.workspace_document.title,
-        "Feed Valve Flash Example"
+        "Feed Valve Flash Binary Hydrocarbon Example"
     );
     assert_eq!(
         app.project_open.path_input,
@@ -427,7 +427,7 @@ fn successful_project_opens_keep_recent_projects_deduped_and_ordered() {
             .runtime
             .workspace_document
             .title,
-        "Feed Valve Flash Example"
+        "Feed Valve Flash Binary Hydrocarbon Example"
     );
     assert_eq!(
         app.project_open
@@ -568,7 +568,7 @@ fn open_project_from_input_requires_confirmation_when_workspace_has_unsaved_chan
     let opened_window = app.platform_host.snapshot().window_model();
     assert_eq!(
         opened_window.runtime.workspace_document.title,
-        "Feed Valve Flash Example"
+        "Feed Valve Flash Binary Hydrocarbon Example"
     );
     assert!(!opened_window.runtime.workspace_document.has_unsaved_changes);
 
@@ -667,7 +667,7 @@ fn open_recent_project_requires_confirmation_when_workspace_has_unsaved_changes(
     let opened_window = app.platform_host.snapshot().window_model();
     assert_eq!(
         opened_window.runtime.workspace_document.title,
-        "Feed Valve Flash Example"
+        "Feed Valve Flash Binary Hydrocarbon Example"
     );
     assert!(!opened_window.runtime.workspace_document.has_unsaved_changes);
 

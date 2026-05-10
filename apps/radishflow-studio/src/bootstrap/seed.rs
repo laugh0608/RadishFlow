@@ -24,8 +24,8 @@ use rf_ui::{
 use super::StudioBootstrapEntitlementSeed;
 
 pub(super) const BOOTSTRAP_MVP_PROPERTY_PACKAGE_ID: &str = "binary-hydrocarbon-lite-v1";
-const BOOTSTRAP_MVP_COMPONENT_A_ID: &str = "component-a";
-const BOOTSTRAP_MVP_COMPONENT_B_ID: &str = "component-b";
+const BOOTSTRAP_MVP_COMPONENT_SPECS: [(&str, &str); 2] =
+    [("methane", "Methane"), ("ethane", "Ethane")];
 const BOOTSTRAP_MVP_PROPERTY_PACKAGE_DOWNLOAD_JSON: &str = include_str!(
     "../../../../examples/sample-components/property-packages/binary-hydrocarbon-lite-v1/download.json"
 );
@@ -170,8 +170,9 @@ pub(super) fn initialize_blank_project_thermo_basis(
     }
 
     let mut flowsheet = app_state.workspace.document.flowsheet.clone();
-    flowsheet.insert_component(Component::new(BOOTSTRAP_MVP_COMPONENT_A_ID, "Component A"))?;
-    flowsheet.insert_component(Component::new(BOOTSTRAP_MVP_COMPONENT_B_ID, "Component B"))?;
+    for (component_id, component_name) in BOOTSTRAP_MVP_COMPONENT_SPECS {
+        flowsheet.insert_component(Component::new(component_id, component_name))?;
+    }
 
     let revision = app_state
         .workspace
@@ -185,12 +186,12 @@ pub(super) fn initialize_blank_project_thermo_basis(
     app_state.workspace.drafts.clear();
     app_state.push_log(
         AppLogLevel::Info,
-        format!(
-            "initialized blank project with MVP components `{}` / `{}` and property package `{}`",
-            BOOTSTRAP_MVP_COMPONENT_A_ID,
-            BOOTSTRAP_MVP_COMPONENT_B_ID,
-            BOOTSTRAP_MVP_PROPERTY_PACKAGE_ID
-        ),
+        match BOOTSTRAP_MVP_COMPONENT_SPECS {
+            [(first_component_id, _), (second_component_id, _)] => format!(
+                "initialized blank project with default components `{}` / `{}` and property package `{}`",
+                first_component_id, second_component_id, BOOTSTRAP_MVP_PROPERTY_PACKAGE_ID
+            ),
+        },
     );
     Ok(Some(revision))
 }

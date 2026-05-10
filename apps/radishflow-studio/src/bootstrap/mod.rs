@@ -80,7 +80,7 @@ impl Default for StudioBootstrapConfig {
             project_path: workspace_root
                 .join("examples")
                 .join("flowsheets")
-                .join("feed-heater-flash.rfproj.json"),
+                .join("feed-heater-flash-binary-hydrocarbon.rfproj.json"),
             entitlement_preflight: StudioBootstrapEntitlementPreflight::Auto,
             entitlement_seed: StudioBootstrapEntitlementSeed::Synced,
             trigger: StudioBootstrapTrigger::WidgetPrimaryAction,

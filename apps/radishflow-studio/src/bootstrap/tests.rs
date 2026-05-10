@@ -473,7 +473,7 @@ fn bootstrap_runtime_skips_automatic_run_when_no_pending_request_after_success()
     assert_eq!(dispatch.run_status, RunStatus::Converged);
     assert_eq!(
         dispatch.latest_snapshot_id.as_deref(),
-        Some("example-feed-heater-flash-rev-0-seq-1")
+        Some("example-feed-heater-flash-binary-hydrocarbon-rev-0-seq-1")
     );
     assert_eq!(automatic.control_state.run_status, RunStatus::Converged);
 }
@@ -503,7 +503,7 @@ fn bootstrap_can_dispatch_run_panel_recovery_action() {
             .join("../..")
             .join("examples")
             .join("flowsheets")
-            .join("feed-valve-flash.rfproj.json"),
+            .join("feed-valve-flash-binary-hydrocarbon.rfproj.json"),
         trigger: StudioBootstrapTrigger::WidgetRecoveryAction,
         ..StudioBootstrapConfig::default()
     })
@@ -520,7 +520,7 @@ fn bootstrap_can_dispatch_run_panel_recovery_action() {
             .join("../..")
             .join("examples")
             .join("flowsheets")
-            .join("feed-valve-flash.rfproj.json"),
+            .join("feed-valve-flash-binary-hydrocarbon.rfproj.json"),
         trigger: StudioBootstrapTrigger::WidgetAction(RunPanelActionId::RunManual),
         ..StudioBootstrapConfig::default()
     };
@@ -533,7 +533,7 @@ fn bootstrap_can_dispatch_run_panel_recovery_action() {
         .streams
         .get_mut(&rf_types::StreamId::new("stream-throttled"))
         .expect("expected throttled stream")
-        .pressure_pa = 130_000.0;
+        .pressure_pa = 730_000.0;
 
     let report = session
         .run_trigger(&StudioBootstrapTrigger::WidgetAction(

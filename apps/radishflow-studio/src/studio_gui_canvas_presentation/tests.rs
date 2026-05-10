@@ -25,23 +25,7 @@ fn flash_drum_local_rules_config() -> (StudioRuntimeConfig, PathBuf) {
     let project_path = std::env::temp_dir().join(format!(
         "radishflow-studio-canvas-presentation-{timestamp}.rfproj.json"
     ));
-    let project =
-        include_str!("../../../../examples/flowsheets/feed-heater-flash.rfproj.json")
-            .replacen(
-                "\"name\": \"inlet\",\n              \"direction\": \"inlet\",\n              \"kind\": \"material\",\n              \"stream_id\": \"stream-heated\"",
-                "\"name\": \"inlet\",\n              \"direction\": \"inlet\",\n              \"kind\": \"material\",\n              \"stream_id\": null",
-                1,
-            )
-            .replacen(
-                "\"name\": \"liquid\",\n              \"direction\": \"outlet\",\n              \"kind\": \"material\",\n              \"stream_id\": \"stream-liquid\"",
-                "\"name\": \"liquid\",\n              \"direction\": \"outlet\",\n              \"kind\": \"material\",\n              \"stream_id\": null",
-                1,
-            )
-            .replacen(
-                "\"name\": \"vapor\",\n              \"direction\": \"outlet\",\n              \"kind\": \"material\",\n              \"stream_id\": \"stream-vapor\"",
-                "\"name\": \"vapor\",\n              \"direction\": \"outlet\",\n              \"kind\": \"material\",\n              \"stream_id\": null",
-                1,
-            );
+    let project = crate::test_support::build_flash_drum_local_rules_project_json();
     fs::write(&project_path, project).expect("expected local rules project");
 
     (

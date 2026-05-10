@@ -107,8 +107,7 @@ mod tests {
     }
 
     fn app_state_from_example(path: &PathBuf) -> AppState {
-        let project_json =
-            include_str!("../../../examples/flowsheets/feed-heater-flash.rfproj.json");
+        let project_json = crate::test_support::official_heater_binary_hydrocarbon_project_json();
         fs::write(path, project_json).expect("expected temporary project file");
         let project_file = read_project_file(path).expect("expected project file");
         let metadata = &project_file.document.metadata;
