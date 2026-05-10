@@ -1,12 +1,12 @@
 use super::*;
 use radishflow_studio::{
-    StudioGuiWindowInspectorTargetDetailModel, StudioGuiWindowSolveSnapshotModel,
-    StudioGuiWindowStreamResultModel, StudioGuiWindowUnitExecutionResultModel,
     test_support::{
         apply_stream_state_and_composition, build_binary_hydrocarbon_lite_provider,
         build_synthetic_provider, solve_snapshot_model_from_project_with_provider_and_edit,
         stream_target_detail_model, unit_target_detail_model,
     },
+    StudioGuiWindowInspectorTargetDetailModel, StudioGuiWindowSolveSnapshotModel,
+    StudioGuiWindowStreamResultModel, StudioGuiWindowUnitExecutionResultModel,
 };
 use rf_flash::estimate_bubble_dew_window;
 
@@ -189,13 +189,29 @@ fn assert_rendered_stream_summary_surface(
         );
     }
 
-    assert_eq!(
-        rendered_text_occurrences(texts, labels.molar_enthalpy),
-        0,
-        "expected {surface} to avoid rendering enthalpy for non-flash intermediate stream `{}`, rendered texts: {:?}",
-        stream.stream_id,
-        texts
-    );
+    if let Some(molar_enthalpy_text) = stream.molar_enthalpy_text.as_deref() {
+        assert_eq!(
+            rendered_text_occurrences(texts, labels.molar_enthalpy),
+            1,
+            "expected {surface} to render enthalpy for stream `{}`, rendered texts: {:?}",
+            stream.stream_id,
+            texts
+        );
+        assert!(
+            texts.iter().any(|text| text.contains(molar_enthalpy_text)),
+            "expected {surface} to render enthalpy value `{molar_enthalpy_text}` for stream `{}`, rendered texts: {:?}",
+            stream.stream_id,
+            texts
+        );
+    } else {
+        assert_eq!(
+            rendered_text_occurrences(texts, labels.molar_enthalpy),
+            0,
+            "expected {surface} to avoid rendering enthalpy for stream `{}`, rendered texts: {:?}",
+            stream.stream_id,
+            texts
+        );
+    }
     assert_eq!(
         rendered_text_occurrences(texts, labels.related_solve_steps),
         1,
@@ -716,6 +732,10 @@ fn runtime_panel_renders_summary_rows_and_context_for_non_flash_intermediate_str
             .selected_stream
             .as_ref()
             .expect("expected selected non-flash intermediate stream");
+        assert!(
+            result_stream.molar_enthalpy_text.is_some(),
+            "expected snapshot stream `{stream_id}` to materialize enthalpy before shell rendering"
+        );
 
         let result_texts = render_result_inspector_texts(&mut app, &snapshot, stream_id);
         assert_rendered_stream_summary_surface(

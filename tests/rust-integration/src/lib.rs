@@ -1,12 +1,12 @@
 use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-use rf_flash::estimate_bubble_dew_window;
+use rf_flash::{estimate_bubble_dew_window, PlaceholderTpFlashSolver, TpFlashInput, TpFlashSolver};
 use rf_store::{
-    StoredAntoineCoefficients, StoredAuthCacheIndex, StoredCredentialReference,
-    StoredPropertyPackageManifest, StoredPropertyPackagePayload, StoredPropertyPackageRecord,
-    StoredPropertyPackageSource, StoredThermoComponent, property_package_payload_integrity,
-    write_property_package_manifest, write_property_package_payload,
+    property_package_payload_integrity, write_property_package_manifest,
+    write_property_package_payload, StoredAntoineCoefficients, StoredAuthCacheIndex,
+    StoredCredentialReference, StoredPropertyPackageManifest, StoredPropertyPackagePayload,
+    StoredPropertyPackageRecord, StoredPropertyPackageSource, StoredThermoComponent,
 };
 use rf_thermo::{
     AntoineCoefficients, InMemoryPropertyPackageProvider, PlaceholderThermoProvider,
@@ -45,8 +45,8 @@ pub struct NearBoundaryStreamWindowCase {
     pub expected_dew_temperature_k: f64,
 }
 
-pub fn binary_hydrocarbon_lite_near_boundary_stream_window_cases()
--> Vec<NearBoundaryStreamWindowCase> {
+pub fn binary_hydrocarbon_lite_near_boundary_stream_window_cases(
+) -> Vec<NearBoundaryStreamWindowCase> {
     let provider = build_binary_hydrocarbon_lite_provider();
     let mut cases = Vec::new();
 
@@ -163,8 +163,8 @@ pub fn binary_hydrocarbon_lite_near_boundary_stream_window_cases()
     cases
 }
 
-pub fn synthetic_single_phase_near_boundary_stream_window_cases()
--> Vec<NearBoundaryStreamWindowCase> {
+pub fn synthetic_single_phase_near_boundary_stream_window_cases(
+) -> Vec<NearBoundaryStreamWindowCase> {
     let mut cases = Vec::new();
     cases.extend(build_synthetic_near_boundary_stream_window_cases(
         SYNTHETIC_LIQUID_ONLY_PACKAGE_ID,
@@ -358,6 +358,45 @@ pub fn assert_close(actual: f64, expected: f64, tolerance: f64) {
         delta <= tolerance,
         "expected {actual} to be within {tolerance} of {expected}, delta was {delta}"
     );
+}
+
+pub fn expected_overall_molar_enthalpy_for_case(case: &NearBoundaryStreamWindowCase) -> f64 {
+    let provider = near_boundary_thermo_provider_for_case(case);
+    let flash_solver = PlaceholderTpFlashSolver;
+    flash_solver
+        .flash(
+            &provider,
+            &TpFlashInput::new(
+                "enthalpy-reference",
+                "Enthalpy Reference",
+                case.temperature_k,
+                case.pressure_pa,
+                1.0,
+                case.overall_mole_fractions.to_vec(),
+            ),
+        )
+        .expect("expected overall enthalpy reference flash")
+        .stream
+        .phases
+        .iter()
+        .find(|phase| phase.label == rf_types::PhaseLabel::Overall)
+        .and_then(|phase| phase.molar_enthalpy_j_per_mol)
+        .expect("expected overall phase enthalpy")
+}
+
+fn near_boundary_thermo_provider_for_case(
+    case: &NearBoundaryStreamWindowCase,
+) -> PlaceholderThermoProvider {
+    match case.package_id {
+        BINARY_HYDROCARBON_LITE_PACKAGE_ID => build_binary_hydrocarbon_lite_provider(),
+        SYNTHETIC_LIQUID_ONLY_PACKAGE_ID => {
+            build_synthetic_provider([0.8, 0.6], SYNTHETIC_NEAR_BOUNDARY_REFERENCE_PRESSURE_PA)
+        }
+        SYNTHETIC_VAPOR_ONLY_PACKAGE_ID => {
+            build_synthetic_provider([1.8, 1.3], SYNTHETIC_NEAR_BOUNDARY_REFERENCE_PRESSURE_PA)
+        }
+        _ => panic!("unexpected near-boundary package id `{}`", case.package_id),
+    }
 }
 
 pub fn build_binary_demo_package_provider() -> InMemoryPropertyPackageProvider {

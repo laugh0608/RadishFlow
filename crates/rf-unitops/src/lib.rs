@@ -1,6 +1,6 @@
 use std::collections::{BTreeMap, BTreeSet};
 
-use rf_flash::{TpFlashInput, TpFlashSolver, estimate_bubble_dew_window};
+use rf_flash::{estimate_bubble_dew_window, TpFlashInput, TpFlashSolver};
 use rf_model::{Composition, MaterialStreamState, PhaseState, UnitNode, UnitPort};
 use rf_thermo::ThermoProvider;
 use rf_types::{PhaseLabel, PortDirection, PortKind, RfError, RfResult, StreamId, UnitId};
@@ -541,6 +541,7 @@ impl UnitOperation for Mixer {
             overall_mole_fractions,
         ));
         let thermo = services.require_thermo()?;
+        attach_overall_phase_enthalpy(services, &mut outlet_stream)?;
         attach_bubble_dew_window(thermo, &mut outlet_stream)?;
 
         let mut outputs = UnitOperationOutputs::new();
@@ -605,6 +606,7 @@ impl UnitOperation for HeaterCooler {
             ));
         }
         let thermo = services.require_thermo()?;
+        attach_overall_phase_enthalpy(services, &mut outlet_stream)?;
         attach_bubble_dew_window(thermo, &mut outlet_stream)?;
 
         let mut outputs = UnitOperationOutputs::new();
@@ -666,6 +668,7 @@ impl UnitOperation for Valve {
             ));
         }
         let thermo = services.require_thermo()?;
+        attach_overall_phase_enthalpy(services, &mut outlet_stream)?;
         attach_bubble_dew_window(thermo, &mut outlet_stream)?;
 
         let mut outputs = UnitOperationOutputs::new();
@@ -956,6 +959,45 @@ fn attach_bubble_dew_window(
     Ok(())
 }
 
+fn attach_overall_phase_enthalpy(
+    services: &UnitOperationServices<'_>,
+    stream: &mut MaterialStreamState,
+) -> RfResult<()> {
+    if stream.total_molar_flow_mol_s <= 0.0 || stream.overall_mole_fractions.is_empty() {
+        return Ok(());
+    }
+
+    let Some(flash_solver) = services.flash_solver else {
+        return Ok(());
+    };
+
+    let thermo = services.require_thermo()?;
+    let flash_input = TpFlashInput::new(
+        stream.id.clone(),
+        stream.name.clone(),
+        validated_temperature(stream)?,
+        validated_pressure(stream)?,
+        validated_total_flow(stream)?,
+        stream_composition_vector(stream, thermo)?,
+    );
+    let flash_result = flash_solver.flash(thermo, &flash_input)?;
+    let overall_enthalpy = flash_result
+        .stream
+        .phases
+        .iter()
+        .find(|phase| phase.label == PhaseLabel::Overall)
+        .and_then(|phase| phase.molar_enthalpy_j_per_mol);
+    let Some(overall_phase) = stream
+        .phases
+        .iter_mut()
+        .find(|phase| phase.label == PhaseLabel::Overall)
+    else {
+        return Ok(());
+    };
+    overall_phase.molar_enthalpy_j_per_mol = overall_enthalpy;
+    Ok(())
+}
+
 fn build_phase_outlet_stream(
     target: &StreamTarget,
     flashed_stream: &MaterialStreamState,
@@ -996,14 +1038,14 @@ fn build_phase_outlet_stream(
 #[cfg(test)]
 mod tests {
     use super::{
-        BuiltinUnitKind, FEED_OUTLET_PORT, FLASH_DRUM_INLET_PORT, FLASH_DRUM_LIQUID_PORT,
-        FLASH_DRUM_VAPOR_PORT, Feed, FlashDrum, HEATER_COOLER_INLET_PORT,
-        HEATER_COOLER_OUTLET_PORT, HeaterCooler, MIXER_INLET_A_PORT, MIXER_INLET_B_PORT,
-        MIXER_OUTLET_PORT, Mixer, StreamTarget, UnitOperation, UnitOperationInputs,
-        UnitOperationServices, Valve, build_cooler_node, build_feed_node, build_flash_drum_node,
-        build_heater_node, build_mixer_node, build_valve_node, validate_unit_node,
+        build_cooler_node, build_feed_node, build_flash_drum_node, build_heater_node,
+        build_mixer_node, build_valve_node, validate_unit_node, BuiltinUnitKind, Feed, FlashDrum,
+        HeaterCooler, Mixer, StreamTarget, UnitOperation, UnitOperationInputs,
+        UnitOperationServices, Valve, FEED_OUTLET_PORT, FLASH_DRUM_INLET_PORT,
+        FLASH_DRUM_LIQUID_PORT, FLASH_DRUM_VAPOR_PORT, HEATER_COOLER_INLET_PORT,
+        HEATER_COOLER_OUTLET_PORT, MIXER_INLET_A_PORT, MIXER_INLET_B_PORT, MIXER_OUTLET_PORT,
     };
-    use rf_flash::{PlaceholderTpFlashSolver, TpFlashSolver};
+    use rf_flash::{PlaceholderTpFlashSolver, TpFlashInput, TpFlashSolver};
     use rf_model::{Composition, MaterialStreamState};
     use rf_thermo::{
         AntoineCoefficients, PlaceholderThermoProvider, ThermoComponent, ThermoSystem,
@@ -1071,6 +1113,48 @@ mod tests {
         PlaceholderThermoProvider::new(ThermoSystem::binary([first, second]))
     }
 
+    fn assert_overall_phase_enthalpy_matches_flash(
+        stream: &MaterialStreamState,
+        provider: &PlaceholderThermoProvider,
+        flash_solver: &dyn TpFlashSolver,
+    ) {
+        let expected_overall_enthalpy = flash_solver
+            .flash(
+                provider,
+                &TpFlashInput::new(
+                    stream.id.clone(),
+                    stream.name.clone(),
+                    stream.temperature_k,
+                    stream.pressure_pa,
+                    stream.total_molar_flow_mol_s,
+                    vec![
+                        *stream
+                            .overall_mole_fractions
+                            .get(&ComponentId::new("component-a"))
+                            .expect("expected component-a"),
+                        *stream
+                            .overall_mole_fractions
+                            .get(&ComponentId::new("component-b"))
+                            .expect("expected component-b"),
+                    ],
+                ),
+            )
+            .expect("expected flash enthalpy reference")
+            .stream
+            .phases
+            .iter()
+            .find(|phase| phase.label == PhaseLabel::Overall)
+            .and_then(|phase| phase.molar_enthalpy_j_per_mol)
+            .expect("expected overall enthalpy");
+        assert_close(
+            stream.phases[0]
+                .molar_enthalpy_j_per_mol
+                .expect("expected stream overall enthalpy"),
+            expected_overall_enthalpy,
+            1e-10,
+        );
+    }
+
     #[test]
     fn builtin_unit_nodes_match_canonical_specs() {
         let feed = build_feed_node("feed-1", "Feed", "stream-feed");
@@ -1119,6 +1203,7 @@ mod tests {
     #[test]
     fn mixer_combines_two_material_inlets_into_one_overall_stream() {
         let provider = build_provider([2.0, 0.5], 100_000.0);
+        let flash_solver = PlaceholderTpFlashSolver;
         let inlet_a = build_stream(
             "stream-a",
             "Feed A",
@@ -1142,7 +1227,7 @@ mod tests {
             .with_material_stream(MIXER_INLET_B_PORT, inlet_b);
         let services = UnitOperationServices {
             thermo: Some(&provider),
-            flash_solver: None,
+            flash_solver: Some(&flash_solver as &dyn TpFlashSolver),
         };
         let outputs = mixer
             .run(&services, &inputs)
@@ -1165,6 +1250,7 @@ mod tests {
         );
         assert_eq!(outlet.phases.len(), 1);
         assert_eq!(outlet.phases[0].label, PhaseLabel::Overall);
+        assert_overall_phase_enthalpy_matches_flash(outlet, &provider, &flash_solver);
         let window = outlet
             .bubble_dew_window
             .as_ref()
@@ -1179,6 +1265,7 @@ mod tests {
     #[test]
     fn heater_cooler_updates_outlet_tp_and_preserves_flow_and_composition() {
         let provider = build_provider([2.0, 0.5], 100_000.0);
+        let flash_solver = PlaceholderTpFlashSolver;
         let inlet = build_stream(
             "stream-feed",
             "Feed",
@@ -1202,7 +1289,7 @@ mod tests {
             UnitOperationInputs::new().with_material_stream(HEATER_COOLER_INLET_PORT, inlet);
         let services = UnitOperationServices {
             thermo: Some(&provider),
-            flash_solver: None,
+            flash_solver: Some(&flash_solver as &dyn TpFlashSolver),
         };
         let outputs = heater
             .run(&services, &inputs)
@@ -1225,6 +1312,7 @@ mod tests {
         );
         assert_eq!(outlet.phases.len(), 1);
         assert_eq!(outlet.phases[0].label, PhaseLabel::Overall);
+        assert_overall_phase_enthalpy_matches_flash(outlet, &provider, &flash_solver);
         let window = outlet
             .bubble_dew_window
             .as_ref()
@@ -1239,6 +1327,7 @@ mod tests {
     #[test]
     fn valve_updates_outlet_pressure_and_preserves_inlet_state() {
         let provider = build_provider([2.0, 0.5], 100_000.0);
+        let flash_solver = PlaceholderTpFlashSolver;
         let inlet = build_stream(
             "stream-feed",
             "Feed",
@@ -1261,7 +1350,7 @@ mod tests {
             UnitOperationInputs::new().with_material_stream(HEATER_COOLER_INLET_PORT, inlet);
         let services = UnitOperationServices {
             thermo: Some(&provider),
-            flash_solver: None,
+            flash_solver: Some(&flash_solver as &dyn TpFlashSolver),
         };
         let outputs = valve
             .run(&services, &inputs)
@@ -1284,6 +1373,7 @@ mod tests {
         );
         assert_eq!(outlet.phases.len(), 1);
         assert_eq!(outlet.phases[0].label, PhaseLabel::Overall);
+        assert_overall_phase_enthalpy_matches_flash(outlet, &provider, &flash_solver);
         let window = outlet
             .bubble_dew_window
             .as_ref()
