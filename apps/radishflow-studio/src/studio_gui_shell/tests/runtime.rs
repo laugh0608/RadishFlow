@@ -157,21 +157,25 @@ fn rendered_text_occurrences(texts: &[String], expected: &str) -> usize {
     texts.iter().filter(|text| text.contains(expected)).count()
 }
 
+struct StreamSummaryLabels<'a> {
+    temperature: &'a str,
+    pressure: &'a str,
+    molar_flow: &'a str,
+    molar_enthalpy: &'a str,
+    related_solve_steps: &'a str,
+    related_diagnostics: &'a str,
+}
+
 fn assert_rendered_stream_summary_surface(
     texts: &[String],
     surface: &str,
     stream: &StudioGuiWindowStreamResultModel,
-    temperature_label: &str,
-    pressure_label: &str,
-    molar_flow_label: &str,
-    molar_enthalpy_label: &str,
-    related_solve_steps_label: &str,
-    related_diagnostics_label: &str,
+    labels: &StreamSummaryLabels<'_>,
 ) {
     for (label, value) in [
-        (temperature_label, stream.temperature_text.as_str()),
-        (pressure_label, stream.pressure_text.as_str()),
-        (molar_flow_label, stream.molar_flow_text.as_str()),
+        (labels.temperature, stream.temperature_text.as_str()),
+        (labels.pressure, stream.pressure_text.as_str()),
+        (labels.molar_flow, stream.molar_flow_text.as_str()),
     ] {
         assert_eq!(
             rendered_text_occurrences(texts, label),
@@ -187,21 +191,21 @@ fn assert_rendered_stream_summary_surface(
     }
 
     assert_eq!(
-        rendered_text_occurrences(texts, molar_enthalpy_label),
+        rendered_text_occurrences(texts, labels.molar_enthalpy),
         0,
         "expected {surface} to avoid rendering enthalpy for non-flash intermediate stream `{}`, rendered texts: {:?}",
         stream.stream_id,
         texts
     );
     assert_eq!(
-        rendered_text_occurrences(texts, related_solve_steps_label),
+        rendered_text_occurrences(texts, labels.related_solve_steps),
         1,
         "expected {surface} to render related solve steps section for `{}`, rendered texts: {:?}",
         stream.stream_id,
         texts
     );
     assert_eq!(
-        rendered_text_occurrences(texts, related_diagnostics_label),
+        rendered_text_occurrences(texts, labels.related_diagnostics),
         1,
         "expected {surface} to render related diagnostics section for `{}`, rendered texts: {:?}",
         stream.stream_id,
@@ -209,15 +213,19 @@ fn assert_rendered_stream_summary_surface(
     );
 }
 
+struct UnitSummaryLabels<'a> {
+    consumed_streams: &'a str,
+    produced_streams: &'a str,
+    related_solve_steps: &'a str,
+    related_diagnostics: &'a str,
+    diagnostic_targets: &'a str,
+}
+
 fn assert_rendered_unit_summary_surface(
     texts: &[String],
     surface: &str,
     unit: &StudioGuiWindowUnitExecutionResultModel,
-    consumed_streams_label: &str,
-    produced_streams_label: &str,
-    related_solve_steps_label: &str,
-    related_diagnostics_label: &str,
-    diagnostic_targets_label: &str,
+    labels: &UnitSummaryLabels<'_>,
 ) {
     assert!(
         texts.iter().any(|text| text.contains(&unit.unit_id)),
@@ -240,11 +248,11 @@ fn assert_rendered_unit_summary_surface(
         texts
     );
     for label in [
-        consumed_streams_label,
-        produced_streams_label,
-        related_solve_steps_label,
-        related_diagnostics_label,
-        diagnostic_targets_label,
+        labels.consumed_streams,
+        labels.produced_streams,
+        labels.related_solve_steps,
+        labels.related_diagnostics,
+        labels.diagnostic_targets,
     ] {
         assert!(
             texts.iter().any(|text| text.contains(label)),
@@ -666,6 +674,14 @@ fn runtime_panel_renders_summary_rows_and_context_for_non_flash_intermediate_str
     let molar_enthalpy_label = format!("H · {}", app.locale.runtime_label("Molar enthalpy"));
     let related_solve_steps_label = app.locale.text(ShellText::RelatedSolveSteps).to_string();
     let related_diagnostics_label = app.locale.text(ShellText::RelatedDiagnostics).to_string();
+    let labels = StreamSummaryLabels {
+        temperature: &temperature_label,
+        pressure: &pressure_label,
+        molar_flow: &molar_flow_label,
+        molar_enthalpy: &molar_enthalpy_label,
+        related_solve_steps: &related_solve_steps_label,
+        related_diagnostics: &related_diagnostics_label,
+    };
 
     for (project_json, stream_id, title) in [
         (
@@ -709,12 +725,7 @@ fn runtime_panel_renders_summary_rows_and_context_for_non_flash_intermediate_str
             &result_texts,
             "result inspector",
             result_stream,
-            &temperature_label,
-            &pressure_label,
-            &molar_flow_label,
-            &molar_enthalpy_label,
-            &related_solve_steps_label,
-            &related_diagnostics_label,
+            &labels,
         );
 
         let active_detail = stream_target_detail_model(&snapshot, stream_id, title);
@@ -729,12 +740,7 @@ fn runtime_panel_renders_summary_rows_and_context_for_non_flash_intermediate_str
             &active_texts,
             "active inspector",
             &active_stream,
-            &temperature_label,
-            &pressure_label,
-            &molar_flow_label,
-            &molar_enthalpy_label,
-            &related_solve_steps_label,
-            &related_diagnostics_label,
+            &labels,
         );
     }
 }
@@ -878,6 +884,13 @@ fn runtime_panel_renders_unit_summary_and_context_for_non_flash_intermediate_uni
     let related_solve_steps_label = app.locale.text(ShellText::RelatedSolveSteps).to_string();
     let related_diagnostics_label = app.locale.text(ShellText::RelatedDiagnostics).to_string();
     let diagnostic_targets_label = app.locale.text(ShellText::DiagnosticTargets).to_string();
+    let labels = UnitSummaryLabels {
+        consumed_streams: &consumed_streams_label,
+        produced_streams: &produced_streams_label,
+        related_solve_steps: &related_solve_steps_label,
+        related_diagnostics: &related_diagnostics_label,
+        diagnostic_targets: &diagnostic_targets_label,
+    };
 
     for (project_json, selected_stream_id, unit_id, title) in [
         (
@@ -947,11 +960,7 @@ fn runtime_panel_renders_unit_summary_and_context_for_non_flash_intermediate_uni
             &active_texts,
             "active inspector unit view",
             &active_unit,
-            &consumed_streams_label,
-            &produced_streams_label,
-            &related_solve_steps_label,
-            &related_diagnostics_label,
-            &diagnostic_targets_label,
+            &labels,
         );
     }
 }

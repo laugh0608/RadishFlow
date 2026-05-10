@@ -775,10 +775,12 @@ fn gui_driver_routes_composition_component_add_through_controlled_selector_bound
     let project_path = std::env::temp_dir().join(format!(
         "radishflow-studio-composition-component-add-{timestamp}.rfproj.json"
     ));
-    let project = include_str!("../../../../examples/flowsheets/feed-heater-flash.rfproj.json")
+    let project = include_str!(
+        "../../../../examples/flowsheets/feed-heater-flash-binary-hydrocarbon.rfproj.json"
+    )
         .replacen(
-            "        \"component-b\": {\n          \"id\": \"component-b\",\n          \"name\": \"Component B\",\n          \"formula\": null\n        }",
-            "        \"component-b\": {\n          \"id\": \"component-b\",\n          \"name\": \"Component B\",\n          \"formula\": null\n        },\n        \"component-c\": {\n          \"id\": \"component-c\",\n          \"name\": \"Component C\",\n          \"formula\": null\n        }",
+            "        \"ethane\": {\n          \"id\": \"ethane\",\n          \"name\": \"Ethane\",\n          \"formula\": \"C2H6\"\n        }",
+            "        \"ethane\": {\n          \"id\": \"ethane\",\n          \"name\": \"Ethane\",\n          \"formula\": \"C2H6\"\n        },\n        \"component-c\": {\n          \"id\": \"component-c\",\n          \"name\": \"Component C\",\n          \"formula\": null\n        }",
             1,
         );
     fs::write(&project_path, project).expect("expected project with extra component");

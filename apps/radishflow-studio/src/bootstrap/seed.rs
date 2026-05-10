@@ -368,8 +368,12 @@ fn build_bootstrap_payload(
     let mut payload =
         parse_property_package_download_json(BOOTSTRAP_MVP_PROPERTY_PACKAGE_DOWNLOAD_JSON)?
             .to_stored_payload()?;
+    let preserves_official_component_ids = payload
+        .components
+        .iter()
+        .all(|payload_component| flowsheet.components.contains_key(&payload_component.id));
 
-    if flowsheet_components.len() != payload.components.len() {
+    if !preserves_official_component_ids && flowsheet_components.len() != payload.components.len() {
         return Err(RfError::invalid_input(format!(
             "studio bootstrap sample package `{}` expects exactly {} flowsheet components, got {}",
             package_id,
@@ -379,10 +383,6 @@ fn build_bootstrap_payload(
     }
 
     payload.package_id = package_id.to_string();
-    let preserves_official_component_ids = payload
-        .components
-        .iter()
-        .all(|payload_component| flowsheet.components.contains_key(&payload_component.id));
 
     if preserves_official_component_ids {
         for payload_component in &mut payload.components {

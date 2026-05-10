@@ -379,9 +379,7 @@ fn assert_non_flash_intermediate_unit_summary_and_context(
     }));
     assert!(unit_inspector.unit_diagnostic_actions.iter().any(|action| {
         action.source_label == "Diagnostic"
-            && consumed_focus_command_ids
-                .iter()
-                .any(|command_id| action.action.command_id == *command_id)
+            && consumed_focus_command_ids.contains(&action.action.command_id)
     }));
     assert!(!unit_inspector.has_stale_unit_selection);
 
@@ -435,9 +433,7 @@ fn assert_non_flash_intermediate_unit_summary_and_context(
     }));
     assert!(active_detail.diagnostic_actions.iter().any(|action| {
         action.source_label == "Diagnostic"
-            && consumed_focus_command_ids
-                .iter()
-                .any(|command_id| action.action.command_id == *command_id)
+            && consumed_focus_command_ids.contains(&action.action.command_id)
     }));
 }
 
@@ -705,9 +701,10 @@ fn studio_gui_window_model_surfaces_bootstrap_workspace_results_and_diagnostics(
         "expected zero-flow bootstrap liquid outlet to omit overall molar enthalpy"
     );
     assert!(
-        !liquid_stream.summary_rows.iter().any(|row| {
-            row.label == "H" || row.detail_label == "Molar enthalpy"
-        }),
+        !liquid_stream
+            .summary_rows
+            .iter()
+            .any(|row| { row.label == "H" || row.detail_label == "Molar enthalpy" }),
         "expected zero-flow bootstrap liquid outlet to avoid surfacing H summary rows"
     );
     assert!(
