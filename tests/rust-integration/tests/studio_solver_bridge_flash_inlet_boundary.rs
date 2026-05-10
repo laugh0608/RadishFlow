@@ -216,6 +216,38 @@ fn assert_flash_outlet_window_semantics_match_case(
     }
 }
 
+fn app_state_for_binary_heater_boundary_case(
+    document_id: &str,
+    title: &str,
+    created_at_seconds: u64,
+    case: &NearBoundaryStreamWindowCase,
+) -> AppState {
+    let mut app_state = app_state_from_project(
+        include_str!(
+            "../../../examples/flowsheets/feed-heater-flash-binary-hydrocarbon.rfproj.json"
+        ),
+        document_id,
+        title,
+        created_at_seconds,
+    );
+    apply_case_composition(
+        &mut app_state,
+        "stream-feed",
+        case.package_id,
+        case.overall_mole_fractions,
+    );
+    app_state
+        .workspace
+        .document
+        .flowsheet
+        .streams
+        .get_mut(&"stream-feed".into())
+        .expect("expected feed stream")
+        .pressure_pa = 700_000.0;
+    apply_case_feed_state(&mut app_state, "stream-heated", case);
+    app_state
+}
+
 fn app_state_for_binary_mixer_boundary_case(
     document_id: &str,
     title: &str,
@@ -368,6 +400,48 @@ fn assert_near_boundary_cases_across_chain<F>(
         assert_flash_consumed_stream_matches_inlet(snapshot, inlet_stream, &case);
         assert_flash_outlet_window_semantics_match_case(snapshot, &case);
     }
+}
+
+#[test]
+fn studio_solver_bridge_preserves_pressure_near_boundary_windows_across_binary_heater_flash_inlet_end_to_end()
+ {
+    assert_near_boundary_cases_across_chain(
+        binary_hydrocarbon_lite_near_boundary_stream_window_cases()
+            .into_iter()
+            .filter(|case| case.kind == NearBoundaryCaseKind::Pressure)
+            .collect(),
+        "snapshot-studio-binary-heater-pressure",
+        "stream-heated",
+        |index, case| {
+            app_state_for_binary_heater_boundary_case(
+                &format!("doc-studio-binary-heater-pressure-{index}"),
+                &case.label,
+                360 + index as u64,
+                case,
+            )
+        },
+    );
+}
+
+#[test]
+fn studio_solver_bridge_preserves_temperature_near_boundary_windows_across_binary_heater_flash_inlet_end_to_end()
+ {
+    assert_near_boundary_cases_across_chain(
+        binary_hydrocarbon_lite_near_boundary_stream_window_cases()
+            .into_iter()
+            .filter(|case| case.kind == NearBoundaryCaseKind::Temperature)
+            .collect(),
+        "snapshot-studio-binary-heater-temperature",
+        "stream-heated",
+        |index, case| {
+            app_state_for_binary_heater_boundary_case(
+                &format!("doc-studio-binary-heater-temperature-{index}"),
+                &case.label,
+                380 + index as u64,
+                case,
+            )
+        },
+    );
 }
 
 #[test]
