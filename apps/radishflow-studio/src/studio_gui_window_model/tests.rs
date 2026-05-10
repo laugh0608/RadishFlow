@@ -9,15 +9,55 @@ use rf_flash::estimate_bubble_dew_window;
 use crate::{
     StudioGuiDriver, StudioGuiDriverOutcome, StudioGuiEvent, StudioGuiHostCommandOutcome,
     StudioGuiWindowAreaId, StudioGuiWindowDockPlacement, StudioGuiWindowDockRegion,
-    StudioGuiWindowDropTargetQuery, StudioGuiWindowLayoutScopeKind, StudioRuntimeConfig,
-    StudioRuntimeEntitlementPreflight, StudioRuntimeEntitlementSeed,
-    StudioRuntimeEntitlementSessionEvent, StudioRuntimeTrigger,
+    StudioGuiWindowDropTargetQuery, StudioGuiWindowLayoutScopeKind,
+    StudioGuiWindowStreamResultModel, StudioRuntimeConfig, StudioRuntimeEntitlementPreflight,
+    StudioRuntimeEntitlementSeed, StudioRuntimeEntitlementSessionEvent, StudioRuntimeTrigger,
 };
 
 use super::test_support::{
-    apply_stream_state_and_composition, build_binary_demo_provider, build_synthetic_provider,
+    apply_stream_state_and_composition, build_binary_demo_provider,
+    build_binary_hydrocarbon_lite_provider, build_synthetic_provider,
     solve_snapshot_model_from_project_with_provider_and_edit, stream_target_detail_model,
 };
+
+fn solve_binary_hydrocarbon_lite_snapshot(
+    project_json: &str,
+) -> crate::StudioGuiWindowSolveSnapshotModel {
+    solve_snapshot_model_from_project_with_provider_and_edit(
+        project_json,
+        &build_binary_hydrocarbon_lite_provider(),
+        |_| {},
+    )
+}
+
+fn assert_stream_window_visible_in_result_and_active_inspectors(
+    snapshot: &crate::StudioGuiWindowSolveSnapshotModel,
+    stream_id: &str,
+    title: &str,
+    assert_window: impl Fn(
+        &StudioGuiWindowStreamResultModel,
+        &super::StudioGuiWindowBubbleDewWindowModel,
+    ),
+) {
+    let result_inspector = snapshot.result_inspector(Some(stream_id));
+    let result_stream = result_inspector
+        .selected_stream
+        .as_ref()
+        .expect("expected selected stream");
+    let result_window = result_stream
+        .bubble_dew_window
+        .as_ref()
+        .expect("expected result inspector bubble/dew window");
+    assert_window(result_stream, result_window);
+
+    let active_detail = stream_target_detail_model(snapshot, stream_id, title);
+    let active_window = active_detail
+        .latest_stream_result
+        .as_ref()
+        .and_then(|stream| stream.bubble_dew_window.as_ref())
+        .expect("expected active inspector bubble/dew window");
+    assert_eq!(active_window, result_window);
+}
 
 fn lease_expiring_config() -> StudioRuntimeConfig {
     StudioRuntimeConfig {
@@ -1096,6 +1136,71 @@ fn studio_gui_window_model_preserves_single_phase_flash_outlet_window_absence_in
             .as_ref()
             .and_then(|stream| stream.bubble_dew_window.as_ref()),
         Some(vapor_only_vapor_window)
+    );
+}
+
+#[test]
+fn studio_gui_window_model_surfaces_bubble_dew_window_for_non_flash_intermediate_streams() {
+    let heater_snapshot = solve_binary_hydrocarbon_lite_snapshot(include_str!(
+        "../../../../examples/flowsheets/feed-heater-flash-binary-hydrocarbon.rfproj.json"
+    ));
+    assert_stream_window_visible_in_result_and_active_inspectors(
+        &heater_snapshot,
+        "stream-heated",
+        "Heated Outlet",
+        |stream, window| {
+            assert_eq!(window.phase_region, "vapor_only");
+            assert!(stream.pressure_pa < window.dew_pressure_pa);
+            assert!(stream.temperature_k > window.dew_temperature_k);
+        },
+    );
+
+    let cooler_snapshot = solve_binary_hydrocarbon_lite_snapshot(include_str!(
+        "../../../../examples/flowsheets/feed-cooler-flash-binary-hydrocarbon.rfproj.json"
+    ));
+    assert_stream_window_visible_in_result_and_active_inspectors(
+        &cooler_snapshot,
+        "stream-cooled",
+        "Cooled Outlet",
+        |stream, window| {
+            assert_eq!(window.phase_region, "two_phase");
+            assert!(window.dew_pressure_pa < stream.pressure_pa);
+            assert!(window.bubble_pressure_pa > stream.pressure_pa);
+            assert!(window.bubble_temperature_k < stream.temperature_k);
+            assert!(window.dew_temperature_k > stream.temperature_k);
+        },
+    );
+
+    let valve_snapshot = solve_binary_hydrocarbon_lite_snapshot(include_str!(
+        "../../../../examples/flowsheets/feed-valve-flash-binary-hydrocarbon.rfproj.json"
+    ));
+    assert_stream_window_visible_in_result_and_active_inspectors(
+        &valve_snapshot,
+        "stream-throttled",
+        "Valve Outlet",
+        |stream, window| {
+            assert_eq!(window.phase_region, "two_phase");
+            assert!(window.dew_pressure_pa < stream.pressure_pa);
+            assert!(window.bubble_pressure_pa > stream.pressure_pa);
+            assert!(window.bubble_temperature_k < stream.temperature_k);
+            assert!(window.dew_temperature_k > stream.temperature_k);
+        },
+    );
+
+    let mixer_snapshot = solve_binary_hydrocarbon_lite_snapshot(include_str!(
+        "../../../../examples/flowsheets/feed-mixer-flash-binary-hydrocarbon.rfproj.json"
+    ));
+    assert_stream_window_visible_in_result_and_active_inspectors(
+        &mixer_snapshot,
+        "stream-mix-out",
+        "Mixer Outlet",
+        |stream, window| {
+            assert_eq!(window.phase_region, "two_phase");
+            assert!(window.dew_pressure_pa < stream.pressure_pa);
+            assert!(window.bubble_pressure_pa > stream.pressure_pa);
+            assert!(window.bubble_temperature_k < stream.temperature_k);
+            assert!(window.dew_temperature_k > stream.temperature_k);
+        },
     );
 }
 

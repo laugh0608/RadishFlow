@@ -7,6 +7,11 @@ pub fn build_binary_demo_provider() -> PlaceholderThermoProvider {
 }
 
 #[doc(hidden)]
+pub fn build_binary_hydrocarbon_lite_provider() -> PlaceholderThermoProvider {
+    crate::studio_gui_window_model::test_support::build_binary_hydrocarbon_lite_provider()
+}
+
+#[doc(hidden)]
 pub fn build_synthetic_provider(k_values: [f64; 2], pressure_pa: f64) -> PlaceholderThermoProvider {
     crate::studio_gui_window_model::test_support::build_synthetic_provider(k_values, pressure_pa)
 }
