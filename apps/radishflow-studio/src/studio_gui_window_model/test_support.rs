@@ -81,6 +81,22 @@ pub(crate) fn solve_snapshot_model_from_project_with_provider_and_edit<F>(
 where
     F: FnOnce(&mut StoredProjectFile),
 {
+    solve_ui_and_window_snapshot_from_project_with_provider_and_edit(
+        project_json,
+        provider,
+        edit_project,
+    )
+    .1
+}
+
+pub(crate) fn solve_ui_and_window_snapshot_from_project_with_provider_and_edit<F>(
+    project_json: &str,
+    provider: &PlaceholderThermoProvider,
+    edit_project: F,
+) -> (rf_ui::SolveSnapshot, StudioGuiWindowSolveSnapshotModel)
+where
+    F: FnOnce(&mut StoredProjectFile),
+{
     let flash_solver = PlaceholderTpFlashSolver;
     let services = SolverServices {
         thermo: provider,
@@ -94,7 +110,8 @@ where
         .expect("expected solve snapshot");
     let ui_snapshot =
         rf_ui::SolveSnapshot::from_solver_snapshot("snapshot-window-model", 0, 1, &snapshot);
-    solve_snapshot_model_from_ui(&ui_snapshot)
+    let window_snapshot = solve_snapshot_model_from_ui(&ui_snapshot);
+    (ui_snapshot, window_snapshot)
 }
 
 pub(crate) fn stream_target_detail_snapshot(
