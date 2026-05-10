@@ -574,14 +574,19 @@ mod tests {
 
     use super::generate_local_canvas_suggestions_for_flowsheet;
 
+    fn insert_official_binary_hydrocarbon_components(flowsheet: &mut Flowsheet) {
+        for (component_id, component_name) in
+            crate::test_support::OFFICIAL_BINARY_HYDROCARBON_COMPONENT_SPECS
+        {
+            flowsheet
+                .insert_component(Component::new(component_id, component_name))
+                .unwrap_or_else(|_| panic!("expected {component_id}"));
+        }
+    }
+
     fn sample_flowsheet() -> Flowsheet {
         let mut flowsheet = Flowsheet::new("demo");
-        flowsheet
-            .insert_component(Component::new("component-a", "Component A"))
-            .expect("expected component-a");
-        flowsheet
-            .insert_component(Component::new("component-b", "Component B"))
-            .expect("expected component-b");
+        insert_official_binary_hydrocarbon_components(&mut flowsheet);
         flowsheet
             .insert_stream(rf_model::MaterialStreamState::new("stream-feed", "Feed"))
             .expect("expected feed stream");
@@ -651,12 +656,7 @@ mod tests {
     #[test]
     fn local_rules_generate_feed_outlet_suggestion_for_unbound_feed() {
         let mut flowsheet = Flowsheet::new("demo");
-        flowsheet
-            .insert_component(Component::new("component-a", "Component A"))
-            .expect("expected component-a");
-        flowsheet
-            .insert_component(Component::new("component-b", "Component B"))
-            .expect("expected component-b");
+        insert_official_binary_hydrocarbon_components(&mut flowsheet);
         flowsheet
             .insert_unit(UnitNode::new(
                 "feed-1",
@@ -697,12 +697,7 @@ mod tests {
     #[test]
     fn local_rules_generate_single_inlet_outlet_unit_connection_suggestions() {
         let mut flowsheet = Flowsheet::new("demo");
-        flowsheet
-            .insert_component(Component::new("component-a", "Component A"))
-            .expect("expected component-a");
-        flowsheet
-            .insert_component(Component::new("component-b", "Component B"))
-            .expect("expected component-b");
+        insert_official_binary_hydrocarbon_components(&mut flowsheet);
         flowsheet
             .insert_stream(rf_model::MaterialStreamState::new("stream-feed", "Feed"))
             .expect("expected feed stream");
@@ -768,12 +763,7 @@ mod tests {
     #[test]
     fn local_rules_generate_mixer_connection_suggestions_when_sources_match_unbound_inlets() {
         let mut flowsheet = Flowsheet::new("demo");
-        flowsheet
-            .insert_component(Component::new("component-a", "Component A"))
-            .expect("expected component-a");
-        flowsheet
-            .insert_component(Component::new("component-b", "Component B"))
-            .expect("expected component-b");
+        insert_official_binary_hydrocarbon_components(&mut flowsheet);
         for stream_id in ["stream-feed-a", "stream-feed-b"] {
             flowsheet
                 .insert_stream(rf_model::MaterialStreamState::new(stream_id, stream_id))

@@ -669,7 +669,7 @@ fn gui_driver_routes_composition_normalize_through_driver_boundary() {
     let update = driver
         .dispatch_event(StudioGuiEvent::InspectorFieldDraftUpdateRequested {
             command_id:
-                "inspector.update_stream_draft:stream:stream-feed:overall_mole_fraction:component-a"
+                "inspector.update_stream_draft:stream:stream-feed:overall_mole_fraction:methane"
                     .to_string(),
             raw_value: "0.25".to_string(),
         })
@@ -693,7 +693,7 @@ fn gui_driver_routes_composition_normalize_through_driver_boundary() {
     assert!(
         draft_summary
             .normalized_preview_text
-            .contains("component-a=0.277778")
+            .contains("methane=0.277778")
     );
     let notices = &update
         .window
@@ -732,7 +732,7 @@ fn gui_driver_routes_composition_normalize_through_driver_boundary() {
                     assert_eq!(outcome.document_revision, 1);
                     assert_eq!(outcome.command_history_len, 1);
                     assert!(outcome.committed_keys.iter().any(|key| {
-                        key == "stream:stream-feed:overall_mole_fraction:component-a"
+                        key == "stream:stream-feed:overall_mole_fraction:methane"
                     }));
                 }
                 other => {
@@ -876,9 +876,9 @@ fn gui_driver_routes_composition_component_remove_without_compensation() {
         .expect("expected active stream inspector")
         .property_fields
         .iter()
-        .find(|field| field.key == "stream:stream-feed:overall_mole_fraction:component-b")
+        .find(|field| field.key == "stream:stream-feed:overall_mole_fraction:ethane")
         .and_then(|field| field.remove_command_id.clone())
-        .expect("expected component-b remove command");
+        .expect("expected ethane remove command");
 
     let dispatch = driver
         .dispatch_event(
@@ -898,7 +898,7 @@ fn gui_driver_routes_composition_component_remove_without_compensation() {
                 assert_eq!(outcome.command_history_len, 1);
                 assert_eq!(
                     outcome.removed_key.as_deref(),
-                    Some("stream:stream-feed:overall_mole_fraction:component-b")
+                    Some("stream:stream-feed:overall_mole_fraction:ethane")
                 );
             }
             other => {
@@ -918,11 +918,11 @@ fn gui_driver_routes_composition_component_remove_without_compensation() {
         !detail
             .property_fields
             .iter()
-            .any(|field| field.key == "stream:stream-feed:overall_mole_fraction:component-b")
+            .any(|field| field.key == "stream:stream-feed:overall_mole_fraction:ethane")
     );
     assert!(
         detail.property_fields.iter().any(|field| {
-            field.key == "stream:stream-feed:overall_mole_fraction:component-a"
+            field.key == "stream:stream-feed:overall_mole_fraction:methane"
                 && field.current_value == "0.35"
                 && field.remove_command_id.is_none()
         }),

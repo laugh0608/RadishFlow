@@ -41,6 +41,7 @@
 - `rf-thermo` / `rf-flash` 已收紧直接数值 API 的 mole fraction 输入契约，未归一组成会被拒绝；unit operation 层继续在调用 flash 前归一化文档流股组成。
 - Stream Inspector 已补正式 composition normalize / draft discard command surface，并展示当前组成总和、归一化预览与只读草稿提示；写回、归一化或丢弃草稿都必须由用户显式触发。
 - Stream Inspector 已补受控组分添加 / 删除入口：添加只能从当前 flowsheet 已定义但流股组成尚未包含的组件中显式选择；删除不能移除最后一个组成条目；新增或删除都不自动补偿其他组分。
+- `studio_gui_driver::command_surface_tests`、`studio_local_rules`、`studio_gui_shell::tests::canvas` 与 `workspace_run_command` 现在也已对齐到 official `methane/ethane` 组件目录；当前 `apps/radishflow-studio` 内剩余的 `component-a/component-b` 主要收敛在 intentional synthetic 草稿命令单元测试与 window-model synthetic helper，不再混入默认 bootstrap / local-rules / command-surface 主路径。
 - Studio 运行入口现在会在存在未提交/无效 Inspector 草稿或文档流股总体组成未归一时通过既有 run panel notice 阻塞运行，不做隐式自动补偿。
 - 仓库基础治理已继续收口：根 `README.md` 改回稳定入口，`.gitattributes` / `.gitignore` 补齐基础规则，`*.idl` 已纳入 UTF-8 / LF 文本门禁。
 - 协作文档已新增 Docs 简约入口约束与代码规范专题文档：`docs/development/code-style.md`。

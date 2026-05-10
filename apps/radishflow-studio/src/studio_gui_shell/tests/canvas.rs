@@ -430,14 +430,14 @@ fn blank_project_initializes_components_saves_reopens_and_runs_feed_flash_path()
     assert_eq!(
         feed_stream
             .overall_mole_fractions
-            .get(&rf_types::ComponentId::new("component-a"))
+            .get(&rf_types::ComponentId::new("methane"))
             .copied(),
         Some(0.5)
     );
     assert_eq!(
         feed_stream
             .overall_mole_fractions
-            .get(&rf_types::ComponentId::new("component-b"))
+            .get(&rf_types::ComponentId::new("ethane"))
             .copied(),
         Some(0.5)
     );
