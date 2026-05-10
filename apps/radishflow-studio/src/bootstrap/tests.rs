@@ -1,5 +1,7 @@
 use std::path::PathBuf;
 
+use rf_model::{Component, Flowsheet};
+use rf_store::{read_property_package_manifest, read_property_package_payload};
 use rf_ui::{
     EntitlementActionId, RunPanelActionId, RunPanelIntent, RunPanelPackageSelection, RunStatus,
     SimulationMode,
@@ -120,6 +122,68 @@ fn bootstrap_runs_cooler_workspace_from_main_entry_boundary() {
         dispatch.latest_snapshot_summary.as_deref(),
         Some("solved flowsheet with 3 unit(s), 4 diagnostic entry(ies), and 4 resulting stream(s)")
     );
+}
+
+#[test]
+fn bootstrap_seed_sample_auth_cache_uses_official_payload_semantics_with_component_mapping() {
+    let mut flowsheet = Flowsheet::new("bootstrap-payload-mapping");
+    flowsheet
+        .insert_component(Component::new("z-component", "Z Component"))
+        .expect("expected first component");
+    flowsheet
+        .insert_component(Component::new("a-component", "A Component"))
+        .expect("expected second component");
+    let cache_root = super::temp_cache::TemporaryCacheRoot::new("bootstrap-seed-payload-test")
+        .expect("expected temporary cache root");
+
+    let seed = super::seed::seed_sample_auth_cache(
+        cache_root.path(),
+        &flowsheet,
+        super::seed::BOOTSTRAP_MVP_PROPERTY_PACKAGE_ID,
+        StudioBootstrapEntitlementSeed::Synced,
+    )
+    .expect("expected bootstrap seed");
+    let record = seed
+        .auth_cache_index
+        .property_packages
+        .first()
+        .expect("expected cached property package record");
+    let payload = read_property_package_payload(
+        record
+            .payload_path_under(cache_root.path())
+            .expect("expected cached payload path"),
+    )
+    .expect("expected cached payload");
+    let manifest = read_property_package_manifest(record.manifest_path_under(cache_root.path()))
+        .expect("expected cached manifest");
+
+    let mut expected = crate::parse_property_package_download_json(include_str!(
+        "../../../../examples/sample-components/property-packages/binary-hydrocarbon-lite-v1/download.json"
+    ))
+    .expect("expected official sample download")
+    .to_stored_payload()
+    .expect("expected stored payload");
+    expected.package_id = super::seed::BOOTSTRAP_MVP_PROPERTY_PACKAGE_ID.to_string();
+    expected.components[0].id = "a-component".into();
+    expected.components[0].name = "A Component".to_string();
+    expected.components[1].id = "z-component".into();
+    expected.components[1].name = "Z Component".to_string();
+
+    assert_eq!(
+        payload
+            .components
+            .iter()
+            .map(|component| component.id.as_str())
+            .collect::<Vec<_>>(),
+        vec!["a-component", "z-component"]
+    );
+    assert_eq!(payload, expected);
+    assert_eq!(record.version, expected.version);
+    assert_eq!(manifest.version, expected.version);
+    assert_eq!(manifest.component_ids, expected.component_ids());
+    payload
+        .validate_against_manifest(&manifest)
+        .expect("expected payload and manifest to stay aligned");
 }
 
 #[test]
