@@ -59,6 +59,193 @@ fn assert_stream_window_visible_in_result_and_active_inspectors(
     assert_eq!(active_window, result_window);
 }
 
+fn assert_non_flash_intermediate_stream_summary_and_context(
+    snapshot: &crate::StudioGuiWindowSolveSnapshotModel,
+    stream_id: &str,
+    title: &str,
+    producer_unit_id: &str,
+) {
+    let focus_stream_command_id = format!("inspector.focus_stream:{stream_id}");
+    let focus_unit_command_id = format!("inspector.focus_unit:{producer_unit_id}");
+
+    let assert_summary_rows = |stream: &StudioGuiWindowStreamResultModel, surface: &str| {
+        assert_eq!(
+            stream.summary_rows.len(),
+            3,
+            "expected {surface} stream `{stream_id}` to keep only T/P/F summary rows"
+        );
+        assert!(stream.summary_rows.iter().any(|row| {
+            row.label == "T"
+                && row.detail_label == "Temperature"
+                && row.value == stream.temperature_text
+        }));
+        assert!(stream.summary_rows.iter().any(|row| {
+            row.label == "P" && row.detail_label == "Pressure" && row.value == stream.pressure_text
+        }));
+        assert!(stream.summary_rows.iter().any(|row| {
+            row.label == "F"
+                && row.detail_label == "Molar flow"
+                && row.value == stream.molar_flow_text
+        }));
+        assert!(
+            !stream
+                .summary_rows
+                .iter()
+                .any(|row| row.label == "H" || row.detail_label == "Molar enthalpy"),
+            "expected {surface} stream `{stream_id}` to avoid surfacing enthalpy before the snapshot materializes it"
+        );
+        assert!(
+            stream.phase_text.contains("mol/s"),
+            "expected {surface} stream `{stream_id}` to keep phase molar flow context"
+        );
+    };
+
+    let result_inspector = snapshot.result_inspector(Some(stream_id));
+    let result_stream = result_inspector
+        .selected_stream
+        .as_ref()
+        .expect("expected selected non-flash intermediate stream");
+    assert_summary_rows(result_stream, "result inspector");
+    assert!(
+        result_inspector.stream_options.iter().any(|option| {
+            option.stream_id == stream_id
+                && option.is_selected
+                && option.summary.contains("T ")
+                && option.summary.contains("P ")
+                && option.summary.contains("F ")
+                && !option.summary.contains("H ")
+        }),
+        "expected result inspector option summary for `{stream_id}` to keep T/P/F and omit H"
+    );
+
+    let producer_step = result_inspector
+        .related_steps
+        .iter()
+        .find(|step| step.unit_id == producer_unit_id)
+        .expect("expected producing unit step in result inspector");
+    assert!(
+        producer_step
+            .produced_stream_actions
+            .iter()
+            .any(|action| { action.command_id == focus_stream_command_id })
+    );
+    assert!(producer_step.produced_stream_results.iter().any(|stream| {
+        stream.stream_id == stream_id
+            && stream.summary.contains("T ")
+            && stream.summary.contains("P ")
+            && stream.summary.contains("F ")
+            && !stream.summary.contains("H ")
+    }));
+
+    let flash_step = result_inspector
+        .related_steps
+        .iter()
+        .find(|step| step.unit_id == "flash-1")
+        .expect("expected downstream flash step in result inspector");
+    assert!(
+        flash_step
+            .consumed_streams
+            .iter()
+            .any(|candidate| candidate == stream_id)
+    );
+    assert!(
+        flash_step
+            .consumed_stream_actions
+            .iter()
+            .any(|action| { action.command_id == focus_stream_command_id })
+    );
+    assert!(flash_step.consumed_stream_results.iter().any(|stream| {
+        stream.stream_id == stream_id
+            && stream.summary.contains("T ")
+            && stream.summary.contains("P ")
+            && stream.summary.contains("F ")
+            && !stream.summary.contains("H ")
+    }));
+
+    assert!(
+        result_inspector
+            .related_diagnostics
+            .iter()
+            .any(|diagnostic| {
+                diagnostic.code == "solver.unit_executed"
+                    && diagnostic
+                        .related_unit_ids
+                        .iter()
+                        .any(|unit_id| unit_id == producer_unit_id)
+            }),
+        "expected result inspector to keep producing unit diagnostics for `{stream_id}`"
+    );
+    assert!(
+        result_inspector
+            .related_diagnostics
+            .iter()
+            .any(|diagnostic| {
+                diagnostic.code == "solver.unit_executed"
+                    && diagnostic
+                        .related_unit_ids
+                        .iter()
+                        .any(|unit_id| unit_id == "flash-1")
+            }),
+        "expected result inspector to keep downstream flash diagnostics for `{stream_id}`"
+    );
+    assert!(result_inspector.diagnostic_actions.iter().any(|action| {
+        action.source_label == "Selected stream"
+            && action.action.command_id == focus_stream_command_id
+    }));
+    assert!(result_inspector.diagnostic_actions.iter().any(|action| {
+        action.source_label == "Solve step" && action.action.command_id == focus_unit_command_id
+    }));
+
+    let active_detail = stream_target_detail_model(snapshot, stream_id, title);
+    let active_stream = active_detail
+        .latest_stream_result
+        .as_ref()
+        .expect("expected active inspector latest stream result");
+    assert_eq!(active_stream, result_stream);
+    assert_summary_rows(active_stream, "active inspector");
+    assert!(active_detail.related_steps.iter().any(|step| {
+        step.unit_id == producer_unit_id
+            && step
+                .produced_stream_actions
+                .iter()
+                .any(|action| action.command_id == focus_stream_command_id)
+    }));
+    assert!(active_detail.related_steps.iter().any(|step| {
+        step.unit_id == "flash-1"
+            && step
+                .consumed_stream_actions
+                .iter()
+                .any(|action| action.command_id == focus_stream_command_id)
+    }));
+    assert!(
+        active_detail.related_diagnostics.iter().any(|diagnostic| {
+            diagnostic.code == "solver.unit_executed"
+                && diagnostic
+                    .related_unit_ids
+                    .iter()
+                    .any(|unit_id| unit_id == producer_unit_id)
+        }),
+        "expected active inspector to keep producing unit diagnostics for `{stream_id}`"
+    );
+    assert!(
+        active_detail.related_diagnostics.iter().any(|diagnostic| {
+            diagnostic.code == "solver.unit_executed"
+                && diagnostic
+                    .related_unit_ids
+                    .iter()
+                    .any(|unit_id| unit_id == "flash-1")
+        }),
+        "expected active inspector to keep downstream flash diagnostics for `{stream_id}`"
+    );
+    assert!(active_detail.diagnostic_actions.iter().any(|action| {
+        action.source_label == "Inspector target"
+            && action.action.command_id == focus_stream_command_id
+    }));
+    assert!(active_detail.diagnostic_actions.iter().any(|action| {
+        action.source_label == "Solve step" && action.action.command_id == focus_unit_command_id
+    }));
+}
+
 fn lease_expiring_config() -> StudioRuntimeConfig {
     StudioRuntimeConfig {
         entitlement_preflight: StudioRuntimeEntitlementPreflight::Skip,
@@ -1202,6 +1389,52 @@ fn studio_gui_window_model_surfaces_bubble_dew_window_for_non_flash_intermediate
             assert!(window.dew_temperature_k > stream.temperature_k);
         },
     );
+}
+
+#[test]
+fn studio_gui_window_model_surfaces_non_flash_intermediate_stream_summary_and_context() {
+    for (project_json, stream_id, title, producer_unit_id) in [
+        (
+            include_str!(
+                "../../../../examples/flowsheets/feed-heater-flash-binary-hydrocarbon.rfproj.json"
+            ),
+            "stream-heated",
+            "Heated Outlet",
+            "heater-1",
+        ),
+        (
+            include_str!(
+                "../../../../examples/flowsheets/feed-cooler-flash-binary-hydrocarbon.rfproj.json"
+            ),
+            "stream-cooled",
+            "Cooled Outlet",
+            "cooler-1",
+        ),
+        (
+            include_str!(
+                "../../../../examples/flowsheets/feed-valve-flash-binary-hydrocarbon.rfproj.json"
+            ),
+            "stream-throttled",
+            "Valve Outlet",
+            "valve-1",
+        ),
+        (
+            include_str!(
+                "../../../../examples/flowsheets/feed-mixer-flash-binary-hydrocarbon.rfproj.json"
+            ),
+            "stream-mix-out",
+            "Mixer Outlet",
+            "mixer-1",
+        ),
+    ] {
+        let snapshot = solve_binary_hydrocarbon_lite_snapshot(project_json);
+        assert_non_flash_intermediate_stream_summary_and_context(
+            &snapshot,
+            stream_id,
+            title,
+            producer_unit_id,
+        );
+    }
 }
 
 #[test]

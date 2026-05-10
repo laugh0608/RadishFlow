@@ -1,6 +1,7 @@
 use super::*;
 use radishflow_studio::{
     StudioGuiWindowInspectorTargetDetailModel, StudioGuiWindowSolveSnapshotModel,
+    StudioGuiWindowStreamResultModel,
     test_support::{
         apply_stream_state_and_composition, build_binary_demo_provider,
         build_binary_hydrocarbon_lite_provider, build_synthetic_provider,
@@ -99,6 +100,58 @@ fn collect_shape_texts(shape: &egui::epaint::Shape, texts: &mut Vec<String>) {
 
 fn rendered_text_occurrences(texts: &[String], expected: &str) -> usize {
     texts.iter().filter(|text| text.contains(expected)).count()
+}
+
+fn assert_rendered_stream_summary_surface(
+    texts: &[String],
+    surface: &str,
+    stream: &StudioGuiWindowStreamResultModel,
+    temperature_label: &str,
+    pressure_label: &str,
+    molar_flow_label: &str,
+    molar_enthalpy_label: &str,
+    related_solve_steps_label: &str,
+    related_diagnostics_label: &str,
+) {
+    for (label, value) in [
+        (temperature_label, stream.temperature_text.as_str()),
+        (pressure_label, stream.pressure_text.as_str()),
+        (molar_flow_label, stream.molar_flow_text.as_str()),
+    ] {
+        assert_eq!(
+            rendered_text_occurrences(texts, label),
+            1,
+            "expected {surface} to render summary row label `{label}`, rendered texts: {:?}",
+            texts
+        );
+        assert!(
+            texts.iter().any(|text| text.contains(value)),
+            "expected {surface} to render summary row value `{value}`, rendered texts: {:?}",
+            texts
+        );
+    }
+
+    assert_eq!(
+        rendered_text_occurrences(texts, molar_enthalpy_label),
+        0,
+        "expected {surface} to avoid rendering enthalpy for non-flash intermediate stream `{}`, rendered texts: {:?}",
+        stream.stream_id,
+        texts
+    );
+    assert_eq!(
+        rendered_text_occurrences(texts, related_solve_steps_label),
+        1,
+        "expected {surface} to render related solve steps section for `{}`, rendered texts: {:?}",
+        stream.stream_id,
+        texts
+    );
+    assert_eq!(
+        rendered_text_occurrences(texts, related_diagnostics_label),
+        1,
+        "expected {surface} to render related diagnostics section for `{}`, rendered texts: {:?}",
+        stream.stream_id,
+        texts
+    );
 }
 
 fn solve_two_phase_snapshot() -> StudioGuiWindowSolveSnapshotModel {
@@ -349,6 +402,88 @@ fn runtime_panel_renders_bubble_dew_window_for_non_flash_intermediate_streams() 
             1,
             "expected active inspector to render the bubble/dew window for `{stream_id}`, rendered texts: {:?}",
             active_texts
+        );
+    }
+}
+
+#[test]
+fn runtime_panel_renders_summary_rows_and_context_for_non_flash_intermediate_streams() {
+    let mut app = ready_app_state(&synced_workspace_config());
+    let temperature_label = format!("T · {}", app.locale.runtime_label("Temperature"));
+    let pressure_label = format!("P · {}", app.locale.runtime_label("Pressure"));
+    let molar_flow_label = format!("F · {}", app.locale.runtime_label("Molar flow"));
+    let molar_enthalpy_label = format!("H · {}", app.locale.runtime_label("Molar enthalpy"));
+    let related_solve_steps_label = app.locale.text(ShellText::RelatedSolveSteps).to_string();
+    let related_diagnostics_label = app.locale.text(ShellText::RelatedDiagnostics).to_string();
+
+    for (project_json, stream_id, title) in [
+        (
+            include_str!(
+                "../../../../../examples/flowsheets/feed-heater-flash-binary-hydrocarbon.rfproj.json"
+            ),
+            "stream-heated",
+            "Heated Outlet",
+        ),
+        (
+            include_str!(
+                "../../../../../examples/flowsheets/feed-cooler-flash-binary-hydrocarbon.rfproj.json"
+            ),
+            "stream-cooled",
+            "Cooled Outlet",
+        ),
+        (
+            include_str!(
+                "../../../../../examples/flowsheets/feed-valve-flash-binary-hydrocarbon.rfproj.json"
+            ),
+            "stream-throttled",
+            "Valve Outlet",
+        ),
+        (
+            include_str!(
+                "../../../../../examples/flowsheets/feed-mixer-flash-binary-hydrocarbon.rfproj.json"
+            ),
+            "stream-mix-out",
+            "Mixer Outlet",
+        ),
+    ] {
+        let snapshot = solve_binary_hydrocarbon_snapshot(project_json);
+        let result = snapshot.result_inspector(Some(stream_id));
+        let result_stream = result
+            .selected_stream
+            .as_ref()
+            .expect("expected selected non-flash intermediate stream");
+
+        let result_texts = render_result_inspector_texts(&mut app, &snapshot, stream_id);
+        assert_rendered_stream_summary_surface(
+            &result_texts,
+            "result inspector",
+            result_stream,
+            &temperature_label,
+            &pressure_label,
+            &molar_flow_label,
+            &molar_enthalpy_label,
+            &related_solve_steps_label,
+            &related_diagnostics_label,
+        );
+
+        let active_detail = stream_target_detail_model(&snapshot, stream_id, title);
+        let active_stream = active_detail
+            .latest_stream_result
+            .clone()
+            .expect("expected active stream result");
+        assert_eq!(&active_stream, result_stream);
+
+        let active_texts = render_active_inspector_texts(&mut app, active_detail);
+        assert_rendered_stream_summary_surface(
+            &active_texts,
+            "active inspector",
+            &active_stream,
+            &temperature_label,
+            &pressure_label,
+            &molar_flow_label,
+            &molar_enthalpy_label,
+            &related_solve_steps_label,
+            &related_diagnostics_label,
         );
     }
 }
