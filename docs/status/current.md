@@ -82,7 +82,7 @@
 
 - 需要仓库全局模块边界：`docs/architecture/overview.md`
 - 需要 MVP 范围和非目标：`docs/mvp/scope.md`
-- 需要最新流水和决策依据：`docs/devlogs/2026-W19.md`
+- 需要最新流水和决策依据：`docs/devlogs/2026-W20.md`
 - 需要热力学 / 闪蒸细节：`docs/thermo/mvp-model.md`
 - 需要 CAPE-OPEN / COM 边界：`docs/capeopen/boundary.md`
 - 需要桌面 App / Canvas 交互契约：`docs/architecture/app-architecture.md`、`docs/architecture/canvas-interaction-contract.md`
