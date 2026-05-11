@@ -59,18 +59,14 @@ pub(crate) fn apply_stream_state_and_composition(
     stream.temperature_k = temperature_k;
     stream.pressure_pa = pressure_pa;
     stream.overall_mole_fractions.clear();
-    stream
-        .overall_mole_fractions
-        .insert(
-            ComponentId::new(crate::test_support::SYNTHETIC_COMPONENT_A_ID),
-            overall_mole_fractions[0],
-        );
-    stream
-        .overall_mole_fractions
-        .insert(
-            ComponentId::new(crate::test_support::SYNTHETIC_COMPONENT_B_ID),
-            overall_mole_fractions[1],
-        );
+    stream.overall_mole_fractions.insert(
+        ComponentId::new(crate::test_support::SYNTHETIC_COMPONENT_A_ID),
+        overall_mole_fractions[0],
+    );
+    stream.overall_mole_fractions.insert(
+        ComponentId::new(crate::test_support::SYNTHETIC_COMPONENT_B_ID),
+        overall_mole_fractions[1],
+    );
 }
 
 pub(crate) fn solve_snapshot_model_from_project_with_provider_and_edit<F>(

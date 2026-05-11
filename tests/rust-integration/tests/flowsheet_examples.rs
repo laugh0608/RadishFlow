@@ -14,8 +14,10 @@ use rf_thermo::{
 };
 use rf_types::{ComponentId, PhaseEquilibriumRegion, PhaseLabel, StreamId, UnitId};
 
-fn solve_example_result(project_json: &str) -> rf_types::RfResult<rf_solver::SolveSnapshot> {
-    let provider = build_binary_demo_provider();
+fn solve_binary_hydrocarbon_example_result(
+    project_json: &str,
+) -> rf_types::RfResult<rf_solver::SolveSnapshot> {
+    let provider = build_binary_hydrocarbon_lite_provider();
     solve_example_result_with_provider(project_json, &provider)
 }
 
@@ -1178,7 +1180,7 @@ fn synthetic_mixer_flash_near_boundary_temperature_cases_preserve_inlet_and_outl
 
 #[test]
 fn valve_execution_failure_reports_step_execution_code_end_to_end() {
-    let error = solve_example_result(include_str!(
+    let error = solve_binary_hydrocarbon_example_result(include_str!(
         "../../../examples/flowsheets/failures/valve-execution-failure.rfproj.json"
     ))
     .expect_err("expected valve execution failure");
@@ -1196,7 +1198,7 @@ fn valve_execution_failure_reports_step_execution_code_end_to_end() {
 
 #[test]
 fn unsupported_unit_kind_reports_connection_validation_context_end_to_end() {
-    let error = solve_example_result(include_str!(
+    let error = solve_binary_hydrocarbon_example_result(include_str!(
         "../../../examples/flowsheets/failures/unsupported-unit-kind.rfproj.json"
     ))
     .expect_err("expected unsupported unit kind failure");
@@ -1215,7 +1217,7 @@ fn unsupported_unit_kind_reports_connection_validation_context_end_to_end() {
 
 #[test]
 fn self_loop_cycle_reports_topological_ordering_context_end_to_end() {
-    let error = solve_example_result(include_str!(
+    let error = solve_binary_hydrocarbon_example_result(include_str!(
         "../../../examples/flowsheets/failures/self-loop-cycle.rfproj.json"
     ))
     .expect_err("expected self-loop cycle failure");
@@ -1249,7 +1251,7 @@ fn self_loop_cycle_reports_topological_ordering_context_end_to_end() {
 
 #[test]
 fn multi_unit_cycle_reports_involved_units_end_to_end() {
-    let error = solve_example_result(include_str!(
+    let error = solve_binary_hydrocarbon_example_result(include_str!(
         "../../../examples/flowsheets/failures/multi-unit-cycle.rfproj.json"
     ))
     .expect_err("expected multi-unit cycle failure");
@@ -1290,7 +1292,7 @@ fn multi_unit_cycle_reports_involved_units_end_to_end() {
 
 #[test]
 fn missing_upstream_source_reports_connection_validation_context_end_to_end() {
-    let error = solve_example_result(include_str!(
+    let error = solve_binary_hydrocarbon_example_result(include_str!(
         "../../../examples/flowsheets/failures/missing-upstream-source.rfproj.json"
     ))
     .expect_err("expected missing upstream source failure");
@@ -1320,7 +1322,7 @@ fn missing_upstream_source_reports_connection_validation_context_end_to_end() {
 
 #[test]
 fn missing_stream_reference_reports_connection_validation_context_end_to_end() {
-    let error = solve_example_result(include_str!(
+    let error = solve_binary_hydrocarbon_example_result(include_str!(
         "../../../examples/flowsheets/failures/missing-stream-reference.rfproj.json"
     ))
     .expect_err("expected missing stream reference failure");
@@ -1346,7 +1348,7 @@ fn missing_stream_reference_reports_connection_validation_context_end_to_end() {
 
 #[test]
 fn duplicate_upstream_source_reports_connection_validation_stream_context_end_to_end() {
-    let error = solve_example_result(include_str!(
+    let error = solve_binary_hydrocarbon_example_result(include_str!(
         "../../../examples/flowsheets/failures/duplicate-upstream-source.rfproj.json"
     ))
     .expect_err("expected duplicate upstream source failure");
@@ -1383,7 +1385,7 @@ fn duplicate_upstream_source_reports_connection_validation_stream_context_end_to
 
 #[test]
 fn invalid_port_signature_reports_connection_validation_context_end_to_end() {
-    let error = solve_example_result(include_str!(
+    let error = solve_binary_hydrocarbon_example_result(include_str!(
         "../../../examples/flowsheets/failures/invalid-port-signature.rfproj.json"
     ))
     .expect_err("expected invalid port signature failure");
@@ -1407,7 +1409,7 @@ fn invalid_port_signature_reports_connection_validation_context_end_to_end() {
 
 #[test]
 fn duplicate_downstream_sink_reports_connection_validation_stream_context_end_to_end() {
-    let error = solve_example_result(include_str!(
+    let error = solve_binary_hydrocarbon_example_result(include_str!(
         "../../../examples/flowsheets/failures/duplicate-downstream-sink.rfproj.json"
     ))
     .expect_err("expected duplicate downstream sink failure");
@@ -1444,7 +1446,7 @@ fn duplicate_downstream_sink_reports_connection_validation_stream_context_end_to
 
 #[test]
 fn orphan_stream_reports_connection_validation_stream_context_end_to_end() {
-    let error = solve_example_result(include_str!(
+    let error = solve_binary_hydrocarbon_example_result(include_str!(
         "../../../examples/flowsheets/failures/orphan-stream.rfproj.json"
     ))
     .expect_err("expected orphan stream failure");
@@ -1471,7 +1473,7 @@ fn orphan_stream_reports_connection_validation_stream_context_end_to_end() {
 
 #[test]
 fn unbound_outlet_port_reports_connection_validation_context_end_to_end() {
-    let error = solve_example_result(include_str!(
+    let error = solve_binary_hydrocarbon_example_result(include_str!(
         "../../../examples/flowsheets/failures/unbound-outlet-port.rfproj.json"
     ))
     .expect_err("expected unbound outlet port failure");
@@ -1495,7 +1497,7 @@ fn unbound_outlet_port_reports_connection_validation_context_end_to_end() {
 
 #[test]
 fn unbound_inlet_port_reports_connection_validation_context_end_to_end() {
-    let error = solve_example_result(include_str!(
+    let error = solve_binary_hydrocarbon_example_result(include_str!(
         "../../../examples/flowsheets/failures/unbound-inlet-port.rfproj.json"
     ))
     .expect_err("expected unbound inlet port failure");

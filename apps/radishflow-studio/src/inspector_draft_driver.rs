@@ -335,8 +335,8 @@ mod tests {
         commit_inspector_drafts_at, discard_inspector_draft, discard_inspector_drafts,
         normalize_inspector_composition_at, remove_inspector_composition_component_at,
         test_support::{
-            SYNTHETIC_BINARY_COMPONENT_SPECS, SYNTHETIC_COMPONENT_A_ID,
-            SYNTHETIC_COMPONENT_B_ID, SYNTHETIC_COMPONENT_C_ID,
+            SYNTHETIC_BINARY_COMPONENT_SPECS, SYNTHETIC_COMPONENT_A_ID, SYNTHETIC_COMPONENT_B_ID,
+            SYNTHETIC_COMPONENT_C_ID,
         },
         update_inspector_draft,
     };
@@ -724,10 +724,7 @@ mod tests {
         assert_eq!(outcome.command_history_len, 1);
         assert_eq!(
             outcome.committed_keys,
-            vec![
-                component_a_draft_key,
-                component_b_draft_key,
-            ]
+            vec![component_a_draft_key, component_b_draft_key,]
         );
         let stream = &app_state.workspace.document.flowsheet.streams[&StreamId::new("stream-feed")];
         assert_eq!(
@@ -746,7 +743,10 @@ mod tests {
         let mut flowsheet = Flowsheet::new("demo");
         insert_synthetic_binary_components(&mut flowsheet);
         flowsheet
-            .insert_component(Component::new(SYNTHETIC_COMPONENT_C_ID, "Synthetic Component C"))
+            .insert_component(Component::new(
+                SYNTHETIC_COMPONENT_C_ID,
+                "Synthetic Component C",
+            ))
             .expect("expected synthetic component insert");
         flowsheet
             .insert_stream(synthetic_binary_stream())

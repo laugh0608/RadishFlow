@@ -1,6 +1,6 @@
 # 当前状态
 
-更新时间：2026-05-10
+更新时间：2026-05-11
 
 ## 用途
 
@@ -34,6 +34,7 @@
 - `rf-solver::UnitSolveStep` 当前已进一步移除内部 `consumed_stream_ids / produced_stream_ids` 并改为从结构化 stream 快照现场派生；`rf-ffi` 导出与 Studio 最新单元结果若仍需 stream id 列表，也只从同一份 consumed / produced stream DTO 派生，不再在 solver / Studio 结果面保留并行 id-only 真相源。
 - `apps/radishflow-studio::StudioGuiWindowSolveStepModel` 当前也已进一步移除窗口结果面内部 `consumed_streams / produced_streams` 缓存；相关筛选、摘要和 diagnostic action 现在都直接从 `consumed_stream_results / produced_stream_results` 派生 stream id，不再在 Studio solve step presentation 再保留一份并行 id-only 列表。
 - `rf-ffi` 的 demo package 与 runtime package test fixture 当前也已对齐到现行 fixed-pressure bubble/dew temperature 数值基线；先前在 `feed-1` solved path 上触发的 `Antoine correlation produced a non-finite saturation temperature` 已收敛，`cargo test -p rf-ffi` 当前恢复通过。
+- `examples/flowsheets/failures` 下仍承担连接 / 恢复 / 诊断语义的历史 failure 样例当前也已统一回到 official `methane / ethane` 组件目录；`flowsheet_examples`、`studio_solver_bridge` 与 `studio_workspace_control` 中直接消费这些 failure fixture 的路径，以及相关 cached-package helper，当前都已显式切到 `binary-hydrocarbon-lite-v1` official hydrocarbon 语义，不再借由旧 `component-a / component-b` synthetic package 混过去。
 - `tests/rust-integration` 现在已把 `binary-hydrocarbon-lite-v1` 三组 two-phase 组成 `z=[0.195, 0.805] / [0.2, 0.8] / [0.23, 0.77]` 的 near-boundary `±ΔP / ±ΔT` case 前推到 `feed-heater-flash-binary-hydrocarbon` / `feed-cooler-flash-binary-hydrocarbon` / `feed-valve-flash-binary-hydrocarbon` / `feed-mixer-flash-binary-hydrocarbon` 正式链路；同一套回归也已补到 synthetic `liquid-only / vapor-only` 单相样例的 `feed-heater-flash` / `feed-cooler-flash` / `feed-valve-flash` / `feed-mixer-flash` 链路。`flowsheet_examples`、`studio_solver_bridge` 与 `studio_workspace_control` 现在会继续锁定非 flash 中间流股 `T / P / z / overall H / phase_region / bubble_dew_window` 与后续 flash inlet consumed stream 的同一份 DTO 语义，不在 raw solver path、workspace run path 或结果消费层分叉第二套判断。
 - `flowsheet_examples`、`studio_solver_bridge` 与 `studio_workspace_control` 现在也已把 `Flash Drum` liquid / vapor outlet 自身的 `bubble_dew_window` 边界语义前推到仓库级回归：liquid outlet 会锁定 `bubble_pressure/temperature == stream pressure/temperature`，vapor outlet 会锁定 `dew_pressure/temperature == stream pressure/temperature`，避免这层语义只停留在 unit/focused tests。
 - `flowsheet_examples`、`studio_solver_bridge_flash_inlet_boundary` 与 `studio_workspace_control_flash_inlet_boundary` 现在也会在同一批 near-boundary dedicated case 上继续锁定 `Flash Drum` outlet 语义：`liquid-only / vapor-only` case 会验证零流量对侧 outlet 的 `bubble_dew_window` 明确缺席，`two-phase` case 会继续锁定 liquid/vapor outlet 的饱和边界窗口，不让这层差异只在 unit test 中成立。
@@ -57,7 +58,7 @@
 ## 下一步建议
 
 1. 若继续推进 `rf-thermo` / `rf-flash`，优先把当前 two-phase 与 synthetic 单相样例在 `Feed/Heater/Cooler/Valve/Mixer -> Flash` 已前推到 `tests/rust-integration` / workspace run path / Studio consumer 的 near-boundary `±ΔP / ±ΔT` 基线维持为正式回归，并继续锁定 source stream 与非 flash 中间流股 `T / P / z / overall H / phase_region / bubble_dew_window` 和 downstream consumed stream 的同一份 DTO，不在集成层分叉第二套判断语义。
-2. 若继续推进 `rf-thermo` / `rf-flash`，保持现有 golden 目录多样例遍历、focused tests 与 `Feed/Heater/Cooler/Valve/Mixer -> Flash` source/intermediate 到 consumer 的端到端一致性回归为同一套正式基线，不额外分叉第二套窗口估算、焓值求解或判断语义；若再收口 `SolveSnapshot`，优先继续削减 solver / ui step 上残留的重复 id-only 辅助字段或其他集成层 fallback，而不是在 UI / shell 侧继续加第二套组装逻辑。
+2. 若继续推进 `rf-thermo` / `rf-flash`，保持现有 golden 目录多样例遍历、focused tests 与 `Feed/Heater/Cooler/Valve/Mixer -> Flash` source/intermediate 到 consumer 的端到端一致性回归为同一套正式基线，不额外分叉第二套窗口估算、焓值求解或判断语义；若再收口 fixture / provider 语义，优先继续清点仍挂着 `binary-hydrocarbon-lite-v1` 包 id、但内部仍使用旧 synthetic `component-a / component-b` 的 helper / provider 命名与载荷，而不是在 failure path 和正向 demo path 之间继续保留隐式双轨。
 3. 若继续推进 Stream Inspector，优先收紧 flowsheet component catalog / presentation 边界；不要提前做完整组件库、项目级组件删除迁移或隐式差值补偿。
 4. 若推进 Studio，优先继续消费已结构化 DTO 和既有 command surface，不新增第二套 shell 私有状态机。
 5. 若发现入口文档继续膨胀，优先更新本文档和对应专题文档，不把长篇历史写回 `overview.md` 或 `scope.md`。

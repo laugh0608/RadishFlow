@@ -26,8 +26,7 @@ use crate::{
     StudioEntitlementFailureReason, StudioEntitlementOutcome, WorkspaceRunCommand,
     WorkspaceRunPackageSelection,
     test_support::{
-        OFFICIAL_BINARY_HYDROCARBON_COMPONENT_SPECS,
-        write_binary_hydrocarbon_lite_cached_package,
+        OFFICIAL_BINARY_HYDROCARBON_COMPONENT_SPECS, write_binary_hydrocarbon_lite_cached_package,
     },
 };
 

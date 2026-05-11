@@ -774,7 +774,7 @@ fn studio_solver_bridge_records_missing_package_without_solver_code_end_to_end()
 
 #[test]
 fn studio_solver_bridge_records_invalid_port_signature_restore_target_end_to_end() {
-    let provider = build_binary_demo_package_provider();
+    let provider = build_binary_hydrocarbon_lite_package_provider();
     let mut app_state = app_state_from_project(
         include_str!("../../../examples/flowsheets/failures/invalid-port-signature.rfproj.json"),
         "doc-studio-invalid-port-signature-failure",
@@ -851,7 +851,7 @@ fn studio_solver_bridge_records_invalid_port_signature_restore_target_end_to_end
 
 #[test]
 fn studio_solver_bridge_records_cycle_failure_context_end_to_end() {
-    let provider = build_binary_demo_package_provider();
+    let provider = build_binary_hydrocarbon_lite_package_provider();
     let mut app_state = app_state_from_project(
         include_str!("../../../examples/flowsheets/failures/multi-unit-cycle.rfproj.json"),
         "doc-studio-cycle-failure",
@@ -938,7 +938,7 @@ fn studio_solver_bridge_records_cycle_failure_context_end_to_end() {
 
 #[test]
 fn studio_solver_bridge_records_self_loop_disconnect_target_end_to_end() {
-    let provider = build_binary_demo_package_provider();
+    let provider = build_binary_hydrocarbon_lite_package_provider();
     let mut app_state = app_state_from_project(
         include_str!("../../../examples/flowsheets/failures/self-loop-cycle.rfproj.json"),
         "doc-studio-self-loop-failure",
@@ -1022,7 +1022,7 @@ fn studio_solver_bridge_records_self_loop_disconnect_target_end_to_end() {
 
 #[test]
 fn studio_solver_bridge_records_missing_upstream_cleanup_target_end_to_end() {
-    let provider = build_binary_demo_package_provider();
+    let provider = build_binary_hydrocarbon_lite_package_provider();
     let mut app_state = app_state_from_project(
         include_str!("../../../examples/flowsheets/failures/missing-upstream-source.rfproj.json"),
         "doc-studio-missing-upstream-failure",
@@ -1108,7 +1108,7 @@ fn studio_solver_bridge_records_missing_upstream_cleanup_target_end_to_end() {
 
 #[test]
 fn studio_solver_bridge_records_duplicate_source_disconnect_target_end_to_end() {
-    let provider = build_binary_demo_package_provider();
+    let provider = build_binary_hydrocarbon_lite_package_provider();
     let mut app_state = app_state_from_project(
         include_str!("../../../examples/flowsheets/failures/duplicate-upstream-source.rfproj.json"),
         "doc-studio-duplicate-source-failure",
@@ -1195,7 +1195,7 @@ fn studio_solver_bridge_records_duplicate_source_disconnect_target_end_to_end() 
 
 #[test]
 fn studio_solver_bridge_records_duplicate_sink_disconnect_target_end_to_end() {
-    let provider = build_binary_demo_package_provider();
+    let provider = build_binary_hydrocarbon_lite_package_provider();
     let mut app_state = app_state_from_project(
         include_str!("../../../examples/flowsheets/failures/duplicate-downstream-sink.rfproj.json"),
         "doc-studio-duplicate-sink-failure",
@@ -1278,7 +1278,7 @@ fn studio_solver_bridge_records_duplicate_sink_disconnect_target_end_to_end() {
 
 #[test]
 fn studio_solver_bridge_records_orphan_stream_delete_target_end_to_end() {
-    let provider = build_binary_demo_package_provider();
+    let provider = build_binary_hydrocarbon_lite_package_provider();
     let mut app_state = app_state_from_project(
         include_str!("../../../examples/flowsheets/failures/orphan-stream.rfproj.json"),
         "doc-studio-orphan-stream-failure",
@@ -1348,7 +1348,7 @@ fn studio_solver_bridge_records_orphan_stream_delete_target_end_to_end() {
 
 #[test]
 fn studio_solver_bridge_records_unbound_outlet_create_stream_target_end_to_end() {
-    let provider = build_binary_demo_package_provider();
+    let provider = build_binary_hydrocarbon_lite_package_provider();
     let mut app_state = app_state_from_project(
         include_str!("../../../examples/flowsheets/failures/unbound-outlet-port.rfproj.json"),
         "doc-studio-unbound-outlet-failure",
@@ -1426,7 +1426,7 @@ fn studio_solver_bridge_records_unbound_outlet_create_stream_target_end_to_end()
 
 #[test]
 fn studio_solver_bridge_records_unbound_inlet_inspect_target_end_to_end() {
-    let provider = build_binary_demo_package_provider();
+    let provider = build_binary_hydrocarbon_lite_package_provider();
     let mut app_state = app_state_from_project(
         include_str!("../../../examples/flowsheets/failures/unbound-inlet-port.rfproj.json"),
         "doc-studio-unbound-inlet-failure",

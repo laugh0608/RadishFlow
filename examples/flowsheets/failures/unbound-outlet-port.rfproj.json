@@ -6,8 +6,8 @@
     "flowsheet": {
       "name": "unbound-outlet-port",
       "components": {
-        "component-a": { "id": "component-a", "name": "Component A", "formula": null },
-        "component-b": { "id": "component-b", "name": "Component B", "formula": null }
+        "methane": { "id": "methane", "name": "Methane", "formula": "CH4" },
+        "ethane": { "id": "ethane", "name": "Ethane", "formula": "C2H6" }
       },
       "streams": {},
       "units": {
@@ -35,3 +35,4 @@
     }
   }
 }
+

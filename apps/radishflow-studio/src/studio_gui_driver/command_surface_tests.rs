@@ -732,9 +732,11 @@ fn gui_driver_routes_composition_normalize_through_driver_boundary() {
                     assert!(outcome.applied);
                     assert_eq!(outcome.document_revision, 1);
                     assert_eq!(outcome.command_history_len, 1);
-                    assert!(outcome.committed_keys.iter().any(|key| {
-                        key == "stream:stream-feed:overall_mole_fraction:methane"
-                    }));
+                    assert!(
+                        outcome.committed_keys.iter().any(|key| {
+                            key == "stream:stream-feed:overall_mole_fraction:methane"
+                        })
+                    );
                 }
                 other => {
                     panic!("expected inspector composition normalize dispatch, got {other:?}")

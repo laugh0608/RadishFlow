@@ -195,8 +195,8 @@ mod tests {
         solve_workspace_with_property_package,
     };
     use crate::test_support::{
-        build_binary_hydrocarbon_lite_in_memory_provider_for_components,
         OFFICIAL_BINARY_HYDROCARBON_COMPONENT_SPECS,
+        build_binary_hydrocarbon_lite_in_memory_provider_for_components,
         write_binary_hydrocarbon_lite_cached_package,
     };
 

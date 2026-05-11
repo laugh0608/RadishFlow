@@ -791,12 +791,7 @@ mod tests {
 
         let package_id = DEMO_PACKAGE_ID.as_bytes();
         let solve_status = flowsheet_solve(engine, package_id.as_ptr(), package_id.len());
-        assert_eq!(
-            solve_status,
-            RfFfiStatus::Ok,
-            "{}",
-            call_last_error(engine)
-        );
+        assert_eq!(solve_status, RfFfiStatus::Ok, "{}", call_last_error(engine));
 
         let stream_id = b"stream-vapor";
         let mut output = ptr::null_mut::<c_char>();

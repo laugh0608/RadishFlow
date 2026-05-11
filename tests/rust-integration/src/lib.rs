@@ -1,12 +1,12 @@
 use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-use rf_flash::{estimate_bubble_dew_window, PlaceholderTpFlashSolver, TpFlashInput, TpFlashSolver};
+use rf_flash::{PlaceholderTpFlashSolver, TpFlashInput, TpFlashSolver, estimate_bubble_dew_window};
 use rf_store::{
-    property_package_payload_integrity, write_property_package_manifest,
-    write_property_package_payload, StoredAntoineCoefficients, StoredAuthCacheIndex,
-    StoredCredentialReference, StoredPropertyPackageManifest, StoredPropertyPackagePayload,
-    StoredPropertyPackageRecord, StoredPropertyPackageSource, StoredThermoComponent,
+    StoredAntoineCoefficients, StoredAuthCacheIndex, StoredCredentialReference,
+    StoredPropertyPackageManifest, StoredPropertyPackagePayload, StoredPropertyPackageRecord,
+    StoredPropertyPackageSource, StoredThermoComponent, property_package_payload_integrity,
+    write_property_package_manifest, write_property_package_payload,
 };
 use rf_thermo::{
     AntoineCoefficients, InMemoryPropertyPackageProvider, PlaceholderThermoProvider,
@@ -45,8 +45,8 @@ pub struct NearBoundaryStreamWindowCase {
     pub expected_dew_temperature_k: f64,
 }
 
-pub fn binary_hydrocarbon_lite_near_boundary_stream_window_cases(
-) -> Vec<NearBoundaryStreamWindowCase> {
+pub fn binary_hydrocarbon_lite_near_boundary_stream_window_cases()
+-> Vec<NearBoundaryStreamWindowCase> {
     let provider = build_binary_hydrocarbon_lite_provider();
     let mut cases = Vec::new();
 
@@ -163,8 +163,8 @@ pub fn binary_hydrocarbon_lite_near_boundary_stream_window_cases(
     cases
 }
 
-pub fn synthetic_single_phase_near_boundary_stream_window_cases(
-) -> Vec<NearBoundaryStreamWindowCase> {
+pub fn synthetic_single_phase_near_boundary_stream_window_cases()
+-> Vec<NearBoundaryStreamWindowCase> {
     let mut cases = Vec::new();
     cases.extend(build_synthetic_near_boundary_stream_window_cases(
         SYNTHETIC_LIQUID_ONLY_PACKAGE_ID,
@@ -529,36 +529,23 @@ pub fn write_cached_package(
     auth_cache_index: &mut StoredAuthCacheIndex,
     package_id: &str,
 ) {
-    let mut first = StoredThermoComponent::new(ComponentId::new("component-a"), "Component A");
-    let first_antoine = build_demo_antoine_coefficients(2.0, 100_000.0);
-    first.antoine = Some(StoredAntoineCoefficients::new(
-        first_antoine.a,
-        first_antoine.b,
-        first_antoine.c,
-    ));
-    first.liquid_heat_capacity_j_per_mol_k = Some(35.0);
-    first.vapor_heat_capacity_j_per_mol_k = Some(36.5);
-    let mut second = StoredThermoComponent::new(ComponentId::new("component-b"), "Component B");
-    let second_antoine = build_demo_antoine_coefficients(0.5, 100_000.0);
-    second.antoine = Some(StoredAntoineCoefficients::new(
-        second_antoine.a,
-        second_antoine.b,
-        second_antoine.c,
-    ));
-    second.liquid_heat_capacity_j_per_mol_k = Some(52.0);
-    second.vapor_heat_capacity_j_per_mol_k = Some(65.0);
+    let mut methane = StoredThermoComponent::new(ComponentId::new("methane"), "Methane");
+    methane.antoine = Some(StoredAntoineCoefficients::new(8.987, 659.7, -16.7));
+    methane.liquid_heat_capacity_j_per_mol_k = Some(35.0);
+    methane.vapor_heat_capacity_j_per_mol_k = Some(36.5);
+    let mut ethane = StoredThermoComponent::new(ComponentId::new("ethane"), "Ethane");
+    ethane.antoine = Some(StoredAntoineCoefficients::new(8.952, 699.7, -22.8));
+    ethane.liquid_heat_capacity_j_per_mol_k = Some(52.0);
+    ethane.vapor_heat_capacity_j_per_mol_k = Some(65.0);
 
-    let payload = StoredPropertyPackagePayload::new(package_id, "2026.03.1", vec![first, second]);
+    let payload = StoredPropertyPackagePayload::new(package_id, "2026.03.1", vec![methane, ethane]);
     let integrity = property_package_payload_integrity(&payload).expect("expected payload hash");
     let expires_at = Some(SystemTime::now() + Duration::from_secs(3_600));
     let mut manifest = StoredPropertyPackageManifest::new(
         package_id,
         "2026.03.1",
         StoredPropertyPackageSource::RemoteDerivedPackage,
-        vec![
-            ComponentId::new("component-a"),
-            ComponentId::new("component-b"),
-        ],
+        vec![ComponentId::new("methane"), ComponentId::new("ethane")],
     );
     manifest.hash = integrity.hash.clone();
     manifest.size_bytes = integrity.size_bytes;
