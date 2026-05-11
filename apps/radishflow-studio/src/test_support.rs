@@ -93,8 +93,8 @@ pub fn build_valve_solver_failure_project_json() -> String {
 }
 
 #[doc(hidden)]
-pub fn build_binary_hydrocarbon_lite_provider() -> PlaceholderThermoProvider {
-    let payload = build_binary_hydrocarbon_lite_stored_payload_for_components(
+pub fn build_official_binary_hydrocarbon_provider() -> PlaceholderThermoProvider {
+    let payload = build_stored_payload_from_official_binary_hydrocarbon_sample(
         "binary-hydrocarbon-lite-v1",
         OFFICIAL_BINARY_HYDROCARBON_COMPONENT_SPECS,
     );
@@ -128,7 +128,7 @@ fn binary_hydrocarbon_lite_components(
 }
 
 #[doc(hidden)]
-pub fn build_binary_hydrocarbon_lite_stored_payload_for_components(
+fn build_stored_payload_from_official_binary_hydrocarbon_sample(
     package_id: &str,
     component_specs: [(&str, &str); 2],
 ) -> StoredPropertyPackagePayload {
@@ -152,16 +152,17 @@ pub fn build_binary_hydrocarbon_lite_stored_payload_for_components(
 }
 
 #[doc(hidden)]
-pub fn write_binary_hydrocarbon_lite_cached_package(
+pub fn write_official_binary_hydrocarbon_cached_package(
     cache_root: &Path,
     auth_cache_index: &mut StoredAuthCacheIndex,
     package_id: &str,
-    component_specs: [(&str, &str); 2],
     downloaded_at: SystemTime,
     expires_at: Option<SystemTime>,
 ) {
-    let payload =
-        build_binary_hydrocarbon_lite_stored_payload_for_components(package_id, component_specs);
+    let payload = build_stored_payload_from_official_binary_hydrocarbon_sample(
+        package_id,
+        OFFICIAL_BINARY_HYDROCARBON_COMPONENT_SPECS,
+    );
     let integrity =
         property_package_payload_integrity(&payload).expect("expected payload integrity");
     let mut manifest = StoredPropertyPackageManifest::new(
@@ -196,12 +197,13 @@ pub fn write_binary_hydrocarbon_lite_cached_package(
 }
 
 #[doc(hidden)]
-pub fn build_binary_hydrocarbon_lite_in_memory_provider_for_components(
+pub fn build_official_binary_hydrocarbon_in_memory_provider(
     package_id: &str,
-    component_specs: [(&str, &str); 2],
 ) -> InMemoryPropertyPackageProvider {
-    let payload =
-        build_binary_hydrocarbon_lite_stored_payload_for_components(package_id, component_specs);
+    let payload = build_stored_payload_from_official_binary_hydrocarbon_sample(
+        package_id,
+        OFFICIAL_BINARY_HYDROCARBON_COMPONENT_SPECS,
+    );
     let [first, second] = binary_hydrocarbon_lite_components(&payload);
 
     InMemoryPropertyPackageProvider::new(vec![(

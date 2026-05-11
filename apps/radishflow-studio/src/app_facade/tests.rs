@@ -25,9 +25,7 @@ use crate::{
     RadishFlowControlPlaneClientErrorKind, RadishFlowControlPlaneResponse, StudioEntitlementAction,
     StudioEntitlementFailureReason, StudioEntitlementOutcome, WorkspaceRunCommand,
     WorkspaceRunPackageSelection,
-    test_support::{
-        OFFICIAL_BINARY_HYDROCARBON_COMPONENT_SPECS, write_binary_hydrocarbon_lite_cached_package,
-    },
+    test_support::write_official_binary_hydrocarbon_cached_package as write_shared_official_binary_hydrocarbon_cached_package,
 };
 
 fn timestamp(seconds: u64) -> std::time::SystemTime {
@@ -92,11 +90,10 @@ fn write_official_binary_hydrocarbon_cached_package(
     auth_cache_index: &mut StoredAuthCacheIndex,
     package_id: &str,
 ) {
-    write_binary_hydrocarbon_lite_cached_package(
+    write_shared_official_binary_hydrocarbon_cached_package(
         cache_root,
         auth_cache_index,
         package_id,
-        OFFICIAL_BINARY_HYDROCARBON_COMPONENT_SPECS,
         timestamp(60),
         Some(SystemTime::now() + Duration::from_secs(3_600)),
     );

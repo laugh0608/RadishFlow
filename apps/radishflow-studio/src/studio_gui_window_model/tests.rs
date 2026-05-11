@@ -12,7 +12,7 @@ use crate::{
     StudioGuiWindowDropTargetQuery, StudioGuiWindowLayoutScopeKind,
     StudioGuiWindowStreamResultModel, StudioRuntimeConfig, StudioRuntimeEntitlementPreflight,
     StudioRuntimeEntitlementSeed, StudioRuntimeEntitlementSessionEvent, StudioRuntimeTrigger,
-    test_support::build_binary_hydrocarbon_lite_provider,
+    test_support::build_official_binary_hydrocarbon_provider,
 };
 
 use super::test_support::{
@@ -27,7 +27,7 @@ fn solve_binary_hydrocarbon_lite_snapshot(
 ) -> crate::StudioGuiWindowSolveSnapshotModel {
     solve_snapshot_model_from_project_with_provider_and_edit(
         project_json,
-        &build_binary_hydrocarbon_lite_provider(),
+        &build_official_binary_hydrocarbon_provider(),
         |_| {},
     )
 }
@@ -1791,7 +1791,7 @@ fn studio_gui_window_model_preserves_non_flash_intermediate_window_dto_from_ui_s
         let (ui_snapshot, window_snapshot) =
             solve_ui_and_window_snapshot_from_project_with_provider_and_edit(
                 project_json,
-                &build_binary_hydrocarbon_lite_provider(),
+                &build_official_binary_hydrocarbon_provider(),
                 |_| {},
             );
         assert_window_model_preserves_ui_stream_window(
@@ -1810,7 +1810,7 @@ fn studio_gui_window_model_preserves_flowing_flash_outlet_window_dto_from_ui_sna
             include_str!(
                 "../../../../examples/flowsheets/feed-cooler-flash-binary-hydrocarbon.rfproj.json"
             ),
-            &build_binary_hydrocarbon_lite_provider(),
+            &build_official_binary_hydrocarbon_provider(),
             |_| {},
         );
 
@@ -2161,7 +2161,7 @@ fn studio_gui_window_model_preserves_source_stream_bubble_dew_window_from_ui_sna
             &["stream-feed-a", "stream-feed-b"][..],
         ),
     ] {
-        let provider = build_binary_hydrocarbon_lite_provider();
+        let provider = build_official_binary_hydrocarbon_provider();
         let (ui_snapshot, window_snapshot) =
             solve_ui_and_window_snapshot_from_project_with_provider_and_edit(
                 project_json,

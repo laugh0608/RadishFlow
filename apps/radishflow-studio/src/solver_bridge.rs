@@ -195,9 +195,8 @@ mod tests {
         solve_workspace_with_property_package,
     };
     use crate::test_support::{
-        OFFICIAL_BINARY_HYDROCARBON_COMPONENT_SPECS,
-        build_binary_hydrocarbon_lite_in_memory_provider_for_components,
-        write_binary_hydrocarbon_lite_cached_package,
+        build_official_binary_hydrocarbon_in_memory_provider,
+        write_official_binary_hydrocarbon_cached_package,
     };
 
     fn timestamp(seconds: u64) -> std::time::SystemTime {
@@ -211,10 +210,7 @@ mod tests {
     }
 
     fn sample_provider() -> InMemoryPropertyPackageProvider {
-        build_binary_hydrocarbon_lite_in_memory_provider_for_components(
-            "binary-hydrocarbon-lite-v1",
-            OFFICIAL_BINARY_HYDROCARBON_COMPONENT_SPECS,
-        )
+        build_official_binary_hydrocarbon_in_memory_provider("binary-hydrocarbon-lite-v1")
     }
 
     fn unique_temp_path(name: &str) -> PathBuf {
@@ -370,11 +366,10 @@ mod tests {
             "user-123",
             StoredCredentialReference::new("radishflow-studio", "user-123-primary"),
         );
-        write_binary_hydrocarbon_lite_cached_package(
+        write_official_binary_hydrocarbon_cached_package(
             &cache_root,
             &mut auth_cache_index,
             "binary-hydrocarbon-lite-v1",
-            OFFICIAL_BINARY_HYDROCARBON_COMPONENT_SPECS,
             timestamp(60),
             Some(SystemTime::now() + Duration::from_secs(3_600)),
         );

@@ -3,7 +3,7 @@ use radishflow_studio::{
     StudioGuiWindowInspectorTargetDetailModel, StudioGuiWindowSolveSnapshotModel,
     StudioGuiWindowStreamResultModel, StudioGuiWindowUnitExecutionResultModel,
     test_support::{
-        apply_stream_state_and_composition, build_binary_hydrocarbon_lite_provider,
+        apply_stream_state_and_composition, build_official_binary_hydrocarbon_provider,
         build_synthetic_provider, solve_snapshot_model_from_project_with_provider_and_edit,
         stream_target_detail_model, unit_target_detail_model,
     },
@@ -437,7 +437,7 @@ fn solve_two_phase_snapshot() -> StudioGuiWindowSolveSnapshotModel {
 fn solve_binary_hydrocarbon_snapshot(project_json: &str) -> StudioGuiWindowSolveSnapshotModel {
     solve_snapshot_model_from_project_with_provider_and_edit(
         project_json,
-        &build_binary_hydrocarbon_lite_provider(),
+        &build_official_binary_hydrocarbon_provider(),
         |_| {},
     )
 }
