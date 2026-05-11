@@ -525,7 +525,7 @@ pub fn sample_auth_cache_index(package_ids: &[&str]) -> StoredAuthCacheIndex {
     index
 }
 
-pub fn write_cached_package(
+pub fn write_official_binary_hydrocarbon_cached_package(
     cache_root: &Path,
     auth_cache_index: &mut StoredAuthCacheIndex,
     package_id: &str,
@@ -577,52 +577,11 @@ pub fn write_binary_hydrocarbon_lite_cached_package(
     cache_root: &Path,
     auth_cache_index: &mut StoredAuthCacheIndex,
 ) {
-    let mut methane = StoredThermoComponent::new(ComponentId::new("methane"), "Methane");
-    methane.antoine = Some(StoredAntoineCoefficients::new(8.987, 659.7, -16.7));
-    methane.liquid_heat_capacity_j_per_mol_k = Some(35.0);
-    methane.vapor_heat_capacity_j_per_mol_k = Some(36.5);
-
-    let mut ethane = StoredThermoComponent::new(ComponentId::new("ethane"), "Ethane");
-    ethane.antoine = Some(StoredAntoineCoefficients::new(8.952, 699.7, -22.8));
-    ethane.liquid_heat_capacity_j_per_mol_k = Some(52.0);
-    ethane.vapor_heat_capacity_j_per_mol_k = Some(65.0);
-
-    let payload = StoredPropertyPackagePayload::new(
-        "binary-hydrocarbon-lite-v1",
-        "2026.03.1",
-        vec![methane, ethane],
+    write_official_binary_hydrocarbon_cached_package(
+        cache_root,
+        auth_cache_index,
+        BINARY_HYDROCARBON_LITE_PACKAGE_ID,
     );
-    let integrity = property_package_payload_integrity(&payload).expect("expected payload hash");
-    let expires_at = Some(SystemTime::now() + Duration::from_secs(3_600));
-    let mut manifest = StoredPropertyPackageManifest::new(
-        "binary-hydrocarbon-lite-v1",
-        "2026.03.1",
-        StoredPropertyPackageSource::RemoteDerivedPackage,
-        vec![ComponentId::new("methane"), ComponentId::new("ethane")],
-    );
-    manifest.hash = integrity.hash.clone();
-    manifest.size_bytes = integrity.size_bytes;
-    manifest.expires_at = expires_at;
-    let mut record = StoredPropertyPackageRecord::new(
-        &manifest.package_id,
-        &manifest.version,
-        StoredPropertyPackageSource::RemoteDerivedPackage,
-        manifest.hash.clone(),
-        manifest.size_bytes,
-        timestamp(60),
-    );
-    record.expires_at = expires_at;
-
-    write_property_package_manifest(record.manifest_path_under(cache_root), &manifest)
-        .expect("expected manifest write");
-    write_property_package_payload(
-        record
-            .payload_path_under(cache_root)
-            .expect("expected payload path"),
-        &payload,
-    )
-    .expect("expected payload write");
-    auth_cache_index.property_packages.push(record);
 }
 
 pub fn write_near_boundary_cached_package_for_case(
@@ -648,7 +607,7 @@ pub fn write_synthetic_liquid_only_cached_package(
     cache_root: &Path,
     auth_cache_index: &mut StoredAuthCacheIndex,
 ) {
-    write_synthetic_cached_package(
+    write_component_ab_synthetic_cached_package(
         cache_root,
         auth_cache_index,
         SYNTHETIC_LIQUID_ONLY_PACKAGE_ID,
@@ -660,7 +619,7 @@ pub fn write_synthetic_demo_cached_package(
     cache_root: &Path,
     auth_cache_index: &mut StoredAuthCacheIndex,
 ) {
-    write_synthetic_cached_package(
+    write_component_ab_synthetic_cached_package(
         cache_root,
         auth_cache_index,
         SYNTHETIC_DEMO_PACKAGE_ID,
@@ -672,7 +631,7 @@ pub fn write_synthetic_vapor_only_cached_package(
     cache_root: &Path,
     auth_cache_index: &mut StoredAuthCacheIndex,
 ) {
-    write_synthetic_cached_package(
+    write_component_ab_synthetic_cached_package(
         cache_root,
         auth_cache_index,
         SYNTHETIC_VAPOR_ONLY_PACKAGE_ID,
@@ -680,7 +639,7 @@ pub fn write_synthetic_vapor_only_cached_package(
     );
 }
 
-fn write_synthetic_cached_package(
+fn write_component_ab_synthetic_cached_package(
     cache_root: &Path,
     auth_cache_index: &mut StoredAuthCacheIndex,
     package_id: &str,

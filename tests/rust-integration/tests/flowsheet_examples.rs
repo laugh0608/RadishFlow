@@ -506,7 +506,7 @@ fn solve_near_boundary_case_with_provider<F>(
 fn feed_mixer_flash_project_solves_end_to_end() {
     let provider = build_synthetic_demo_provider();
     let snapshot = solve_example_result_with_provider_and_edit(
-        include_str!("../../../examples/flowsheets/feed-mixer-flash.rfproj.json"),
+        include_str!("../../../examples/flowsheets/feed-mixer-flash-synthetic-demo.rfproj.json"),
         &provider,
         |project| set_stream_pressure(project, "stream-feed-a", 100_000.0),
     )
@@ -546,7 +546,9 @@ fn feed_mixer_flash_project_solves_end_to_end() {
 fn feed_mixer_heater_flash_project_solves_end_to_end() {
     let provider = build_synthetic_demo_provider();
     let snapshot = solve_example_result_with_provider_and_edit(
-        include_str!("../../../examples/flowsheets/feed-mixer-heater-flash.rfproj.json"),
+        include_str!(
+            "../../../examples/flowsheets/feed-mixer-heater-flash-synthetic-demo.rfproj.json"
+        ),
         &provider,
         |project| set_stream_pressure(project, "stream-feed-a", 100_000.0),
     )
@@ -593,7 +595,7 @@ fn feed_mixer_heater_flash_project_solves_end_to_end() {
 fn feed_heater_flash_project_solves_end_to_end() {
     let provider = build_synthetic_demo_provider();
     let snapshot = solve_example_result_with_provider_and_edit(
-        include_str!("../../../examples/flowsheets/feed-heater-flash.rfproj.json"),
+        include_str!("../../../examples/flowsheets/feed-heater-flash-synthetic-demo.rfproj.json"),
         &provider,
         |project| set_stream_pressure(project, "stream-feed", 100_000.0),
     )
@@ -680,7 +682,7 @@ fn feed_heater_flash_binary_hydrocarbon_project_solves_end_to_end() {
 fn feed_cooler_flash_project_solves_end_to_end() {
     let provider = build_synthetic_demo_provider();
     let snapshot = solve_example_result_with_provider_and_edit(
-        include_str!("../../../examples/flowsheets/feed-cooler-flash.rfproj.json"),
+        include_str!("../../../examples/flowsheets/feed-cooler-flash-synthetic-demo.rfproj.json"),
         &provider,
         |project| set_stream_pressure(project, "stream-feed", 100_000.0),
     )
@@ -753,7 +755,7 @@ fn feed_cooler_flash_binary_hydrocarbon_project_solves_end_to_end() {
 fn feed_valve_flash_project_solves_end_to_end() {
     let provider = build_synthetic_demo_provider();
     let snapshot = solve_example_result_with_provider_and_edit(
-        include_str!("../../../examples/flowsheets/feed-valve-flash.rfproj.json"),
+        include_str!("../../../examples/flowsheets/feed-valve-flash-synthetic-demo.rfproj.json"),
         &provider,
         |project| set_stream_pressure(project, "stream-feed", 100_000.0),
     )
@@ -1125,7 +1127,9 @@ fn synthetic_mixer_flash_near_boundary_pressure_cases_preserve_inlet_and_outlet_
             build_synthetic_near_boundary_provider(case.package_id)
         };
         solve_near_boundary_case_with_provider(
-            include_str!("../../../examples/flowsheets/feed-mixer-flash.rfproj.json"),
+            include_str!(
+                "../../../examples/flowsheets/feed-mixer-flash-synthetic-demo.rfproj.json"
+            ),
             &provider,
             &["stream-feed-a", "stream-feed-b"],
             "stream-mix-out",
@@ -1158,7 +1162,9 @@ fn synthetic_mixer_flash_near_boundary_temperature_cases_preserve_inlet_and_outl
             build_synthetic_near_boundary_provider(case.package_id)
         };
         solve_near_boundary_case_with_provider(
-            include_str!("../../../examples/flowsheets/feed-mixer-flash.rfproj.json"),
+            include_str!(
+                "../../../examples/flowsheets/feed-mixer-flash-synthetic-demo.rfproj.json"
+            ),
             &provider,
             &["stream-feed-a", "stream-feed-b"],
             "stream-mix-out",

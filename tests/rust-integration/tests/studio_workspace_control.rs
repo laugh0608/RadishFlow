@@ -13,7 +13,7 @@ use rf_rust_integration::{
     SYNTHETIC_VAPOR_ONLY_PACKAGE_ID, assert_close,
     binary_hydrocarbon_lite_near_boundary_stream_window_cases, sample_auth_cache_index,
     synthetic_single_phase_near_boundary_stream_window_cases, timestamp, unique_temp_path,
-    write_binary_hydrocarbon_lite_cached_package, write_cached_package,
+    write_binary_hydrocarbon_lite_cached_package, write_official_binary_hydrocarbon_cached_package,
     write_synthetic_liquid_only_cached_package, write_synthetic_vapor_only_cached_package,
 };
 use rf_store::parse_project_file_json;
@@ -311,7 +311,7 @@ fn app_state_for_synthetic_heater_boundary_case(
     case: &NearBoundaryStreamWindowCase,
 ) -> AppState {
     let mut app_state = app_state_from_project(
-        include_str!("../../../examples/flowsheets/feed-heater-flash.rfproj.json"),
+        include_str!("../../../examples/flowsheets/feed-heater-flash-synthetic-demo.rfproj.json"),
         document_id,
         title,
         created_at_seconds,
@@ -684,7 +684,7 @@ fn workspace_control_reports_package_selection_required_end_to_end() {
     let auth_cache_index = sample_auth_cache_index(&["pkg-1", "pkg-2"]);
     let facade = StudioAppFacade::new();
     let mut app_state = app_state_from_project(
-        include_str!("../../../examples/flowsheets/feed-heater-flash.rfproj.json"),
+        include_str!("../../../examples/flowsheets/feed-heater-flash-synthetic-demo.rfproj.json"),
         "doc-control-blocked",
         "Control Blocked Demo",
         20,
@@ -727,7 +727,7 @@ fn workspace_control_reports_entitlement_update_required_end_to_end() {
     let auth_cache_index = sample_auth_cache_index(&["pkg-1", "pkg-2"]);
     let facade = StudioAppFacade::new();
     let mut app_state = app_state_from_project(
-        include_str!("../../../examples/flowsheets/feed-heater-flash.rfproj.json"),
+        include_str!("../../../examples/flowsheets/feed-heater-flash-synthetic-demo.rfproj.json"),
         "doc-control-entitlement-blocked",
         "Control Entitlement Blocked Demo",
         25,
@@ -778,7 +778,7 @@ fn workspace_control_reports_local_cache_repair_notice_end_to_end() {
     let auth_cache_index = sample_auth_cache_index(&["pkg-1"]);
     let facade = StudioAppFacade::new();
     let mut app_state = app_state_from_project(
-        include_str!("../../../examples/flowsheets/feed-heater-flash.rfproj.json"),
+        include_str!("../../../examples/flowsheets/feed-heater-flash-synthetic-demo.rfproj.json"),
         "doc-control-local-cache-failed",
         "Control Local Cache Failed Demo",
         28,
@@ -929,7 +929,7 @@ fn automatic_workspace_run_skips_before_package_resolution_when_no_pending_reque
     let cache_root = unique_temp_path("integration-automatic-workspace-skip");
     let mut auth_cache_index = sample_auth_cache_index(&[]);
     write_binary_hydrocarbon_lite_cached_package(&cache_root, &mut auth_cache_index);
-    write_cached_package(
+    write_official_binary_hydrocarbon_cached_package(
         &cache_root,
         &mut auth_cache_index,
         "binary-hydrocarbon-lite-v2",
@@ -1127,7 +1127,7 @@ fn run_panel_recovery_action_focuses_failed_unit_end_to_end() {
 fn run_panel_recovery_action_restores_invalid_port_signature_end_to_end() {
     let cache_root = unique_temp_path("integration-run-panel-connection-recovery");
     let mut auth_cache_index = sample_auth_cache_index(&[]);
-    write_cached_package(
+    write_official_binary_hydrocarbon_cached_package(
         &cache_root,
         &mut auth_cache_index,
         "binary-hydrocarbon-lite-v1",
@@ -1197,7 +1197,7 @@ fn run_panel_recovery_action_restores_invalid_port_signature_end_to_end() {
 fn run_panel_recovery_action_restores_invalid_port_signature_and_reruns_successfully() {
     let cache_root = unique_temp_path("integration-run-panel-connection-recovery-rerun");
     let mut auth_cache_index = sample_auth_cache_index(&[]);
-    write_cached_package(
+    write_official_binary_hydrocarbon_cached_package(
         &cache_root,
         &mut auth_cache_index,
         "binary-hydrocarbon-lite-v1",
@@ -1263,7 +1263,7 @@ fn run_panel_recovery_action_restores_invalid_port_signature_and_reruns_successf
 fn run_panel_recovery_action_focuses_missing_upstream_source_unit_end_to_end() {
     let cache_root = unique_temp_path("integration-run-panel-missing-upstream-recovery");
     let mut auth_cache_index = sample_auth_cache_index(&[]);
-    write_cached_package(
+    write_official_binary_hydrocarbon_cached_package(
         &cache_root,
         &mut auth_cache_index,
         "binary-hydrocarbon-lite-v1",
@@ -1327,7 +1327,7 @@ fn run_panel_recovery_action_focuses_missing_upstream_source_unit_end_to_end() {
 fn run_panel_recovery_action_disconnects_self_loop_inlet_end_to_end() {
     let cache_root = unique_temp_path("integration-run-panel-self-loop-recovery");
     let mut auth_cache_index = sample_auth_cache_index(&[]);
-    write_cached_package(
+    write_official_binary_hydrocarbon_cached_package(
         &cache_root,
         &mut auth_cache_index,
         "binary-hydrocarbon-lite-v1",
@@ -1389,7 +1389,7 @@ fn run_panel_recovery_action_disconnects_self_loop_inlet_end_to_end() {
 fn run_panel_recovery_action_disconnects_two_unit_cycle_inlet_end_to_end() {
     let cache_root = unique_temp_path("integration-run-panel-two-unit-cycle-recovery");
     let mut auth_cache_index = sample_auth_cache_index(&[]);
-    write_cached_package(
+    write_official_binary_hydrocarbon_cached_package(
         &cache_root,
         &mut auth_cache_index,
         "binary-hydrocarbon-lite-v1",
@@ -1451,7 +1451,7 @@ fn run_panel_recovery_action_disconnects_two_unit_cycle_inlet_end_to_end() {
 fn run_panel_recovery_action_disconnects_missing_stream_reference_end_to_end() {
     let cache_root = unique_temp_path("integration-run-panel-missing-stream-recovery");
     let mut auth_cache_index = sample_auth_cache_index(&[]);
-    write_cached_package(
+    write_official_binary_hydrocarbon_cached_package(
         &cache_root,
         &mut auth_cache_index,
         "binary-hydrocarbon-lite-v1",
@@ -1513,7 +1513,7 @@ fn run_panel_recovery_action_disconnects_missing_stream_reference_end_to_end() {
 fn run_panel_recovery_action_disconnects_duplicate_upstream_source_end_to_end() {
     let cache_root = unique_temp_path("integration-run-panel-duplicate-source-recovery");
     let mut auth_cache_index = sample_auth_cache_index(&[]);
-    write_cached_package(
+    write_official_binary_hydrocarbon_cached_package(
         &cache_root,
         &mut auth_cache_index,
         "binary-hydrocarbon-lite-v1",
@@ -1575,7 +1575,7 @@ fn run_panel_recovery_action_disconnects_duplicate_upstream_source_end_to_end() 
 fn run_panel_recovery_action_disconnects_duplicate_downstream_sink_end_to_end() {
     let cache_root = unique_temp_path("integration-run-panel-duplicate-sink-recovery");
     let mut auth_cache_index = sample_auth_cache_index(&[]);
-    write_cached_package(
+    write_official_binary_hydrocarbon_cached_package(
         &cache_root,
         &mut auth_cache_index,
         "binary-hydrocarbon-lite-v1",
@@ -1637,7 +1637,7 @@ fn run_panel_recovery_action_disconnects_duplicate_downstream_sink_end_to_end() 
 fn run_panel_recovery_action_deletes_orphan_stream_end_to_end() {
     let cache_root = unique_temp_path("integration-run-panel-orphan-stream-recovery");
     let mut auth_cache_index = sample_auth_cache_index(&[]);
-    write_cached_package(
+    write_official_binary_hydrocarbon_cached_package(
         &cache_root,
         &mut auth_cache_index,
         "binary-hydrocarbon-lite-v1",
@@ -1690,7 +1690,7 @@ fn run_panel_recovery_action_deletes_orphan_stream_end_to_end() {
 fn run_panel_recovery_action_creates_stream_for_unbound_outlet_end_to_end() {
     let cache_root = unique_temp_path("integration-run-panel-unbound-outlet-recovery");
     let mut auth_cache_index = sample_auth_cache_index(&[]);
-    write_cached_package(
+    write_official_binary_hydrocarbon_cached_package(
         &cache_root,
         &mut auth_cache_index,
         "binary-hydrocarbon-lite-v1",
@@ -1756,7 +1756,7 @@ fn run_panel_recovery_action_creates_stream_for_unbound_outlet_end_to_end() {
 fn run_panel_recovery_action_creates_stream_for_unbound_outlet_and_reruns_successfully() {
     let cache_root = unique_temp_path("integration-run-panel-unbound-outlet-recovery-rerun");
     let mut auth_cache_index = sample_auth_cache_index(&[]);
-    write_cached_package(
+    write_official_binary_hydrocarbon_cached_package(
         &cache_root,
         &mut auth_cache_index,
         "binary-hydrocarbon-lite-v1",
@@ -1822,7 +1822,7 @@ fn run_panel_recovery_action_creates_stream_for_unbound_outlet_and_reruns_succes
 fn run_panel_recovery_action_focuses_unbound_inlet_port_end_to_end() {
     let cache_root = unique_temp_path("integration-run-panel-unbound-inlet-recovery");
     let mut auth_cache_index = sample_auth_cache_index(&[]);
-    write_cached_package(
+    write_official_binary_hydrocarbon_cached_package(
         &cache_root,
         &mut auth_cache_index,
         "binary-hydrocarbon-lite-v1",

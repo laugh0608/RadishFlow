@@ -45,8 +45,8 @@ const STUDIO_EXAMPLE_PROJECTS: &[StudioExampleProjectDefinition] = &[
     StudioExampleProjectDefinition {
         id: "feed-mixer-heater-flash",
         title: "Mixer -> Heater -> Flash",
-        detail: "Two feeds, mixer, heater, flash drum",
-        file_name: "feed-mixer-heater-flash.rfproj.json",
+        detail: "Two feeds, synthetic demo mixer, heater, flash drum",
+        file_name: "feed-mixer-heater-flash-synthetic-demo.rfproj.json",
     },
     StudioExampleProjectDefinition {
         id: "water-ethanol-heater-flash",

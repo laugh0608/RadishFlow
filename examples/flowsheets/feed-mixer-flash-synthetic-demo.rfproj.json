@@ -4,7 +4,7 @@
   "document": {
     "revision": 0,
     "flowsheet": {
-      "name": "feed-cooler-flash",
+      "name": "feed-mixer-flash-synthetic-demo",
       "components": {
         "component-a": {
           "id": "component-a",
@@ -18,23 +18,35 @@
         }
       },
       "streams": {
-        "stream-feed": {
-          "id": "stream-feed",
-          "name": "Feed",
-          "temperature_k": 360.0,
+        "stream-feed-a": {
+          "id": "stream-feed-a",
+          "name": "Feed A",
+          "temperature_k": 300.0,
           "pressure_pa": 120000.0,
-          "total_molar_flow_mol_s": 5.0,
+          "total_molar_flow_mol_s": 2.0,
           "overall_mole_fractions": {
-            "component-a": 0.35,
-            "component-b": 0.65
+            "component-a": 0.25,
+            "component-b": 0.75
           },
           "phases": []
         },
-        "stream-cooled": {
-          "id": "stream-cooled",
-          "name": "Cooled Outlet",
-          "temperature_k": 305.0,
-          "pressure_pa": 98000.0,
+        "stream-feed-b": {
+          "id": "stream-feed-b",
+          "name": "Feed B",
+          "temperature_k": 360.0,
+          "pressure_pa": 100000.0,
+          "total_molar_flow_mol_s": 3.0,
+          "overall_mole_fractions": {
+            "component-a": 0.6,
+            "component-b": 0.4
+          },
+          "phases": []
+        },
+        "stream-mix-out": {
+          "id": "stream-mix-out",
+          "name": "Mixer Outlet",
+          "temperature_k": 330.0,
+          "pressure_pa": 100000.0,
           "total_molar_flow_mol_s": 0.0,
           "overall_mole_fractions": {
             "component-a": 0.5,
@@ -45,8 +57,8 @@
         "stream-liquid": {
           "id": "stream-liquid",
           "name": "Liquid Outlet",
-          "temperature_k": 305.0,
-          "pressure_pa": 98000.0,
+          "temperature_k": 330.0,
+          "pressure_pa": 100000.0,
           "total_molar_flow_mol_s": 0.0,
           "overall_mole_fractions": {
             "component-a": 0.5,
@@ -57,8 +69,8 @@
         "stream-vapor": {
           "id": "stream-vapor",
           "name": "Vapor Outlet",
-          "temperature_k": 305.0,
-          "pressure_pa": 98000.0,
+          "temperature_k": 330.0,
+          "pressure_pa": 100000.0,
           "total_molar_flow_mol_s": 0.0,
           "overall_mole_fractions": {
             "component-a": 0.5,
@@ -68,35 +80,54 @@
         }
       },
       "units": {
-        "feed-1": {
-          "id": "feed-1",
-          "name": "Feed",
+        "feed-a": {
+          "id": "feed-a",
+          "name": "Feed A",
           "kind": "feed",
           "ports": [
             {
               "name": "outlet",
               "direction": "outlet",
               "kind": "material",
-              "stream_id": "stream-feed"
+              "stream_id": "stream-feed-a"
             }
           ]
         },
-        "cooler-1": {
-          "id": "cooler-1",
-          "name": "Cooler",
-          "kind": "cooler",
+        "feed-b": {
+          "id": "feed-b",
+          "name": "Feed B",
+          "kind": "feed",
           "ports": [
             {
-              "name": "inlet",
+              "name": "outlet",
+              "direction": "outlet",
+              "kind": "material",
+              "stream_id": "stream-feed-b"
+            }
+          ]
+        },
+        "mixer-1": {
+          "id": "mixer-1",
+          "name": "Mixer",
+          "kind": "mixer",
+          "ports": [
+            {
+              "name": "inlet_a",
               "direction": "inlet",
               "kind": "material",
-              "stream_id": "stream-feed"
+              "stream_id": "stream-feed-a"
+            },
+            {
+              "name": "inlet_b",
+              "direction": "inlet",
+              "kind": "material",
+              "stream_id": "stream-feed-b"
             },
             {
               "name": "outlet",
               "direction": "outlet",
               "kind": "material",
-              "stream_id": "stream-cooled"
+              "stream_id": "stream-mix-out"
             }
           ]
         },
@@ -109,7 +140,7 @@
               "name": "inlet",
               "direction": "inlet",
               "kind": "material",
-              "stream_id": "stream-cooled"
+              "stream_id": "stream-mix-out"
             },
             {
               "name": "liquid",
@@ -128,11 +159,11 @@
       }
     },
     "metadata": {
-      "documentId": "example-feed-cooler-flash",
-      "title": "Feed Cooler Flash Example",
+      "documentId": "example-feed-mixer-flash-synthetic-demo",
+      "title": "Feed Mixer Flash Synthetic Demo",
       "schemaVersion": 1,
-      "createdAt": "2026-04-05T00:00:00Z",
-      "updatedAt": "2026-04-05T00:00:00Z"
+      "createdAt": "2026-03-31T00:00:00Z",
+      "updatedAt": "2026-03-31T00:00:00Z"
     }
   }
 }

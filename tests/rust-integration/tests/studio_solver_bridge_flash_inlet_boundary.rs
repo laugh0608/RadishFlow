@@ -420,7 +420,7 @@ fn app_state_for_synthetic_mixer_boundary_case(
     case: &NearBoundaryStreamWindowCase,
 ) -> AppState {
     let mut app_state = app_state_from_project(
-        include_str!("../../../examples/flowsheets/feed-mixer-flash.rfproj.json"),
+        include_str!("../../../examples/flowsheets/feed-mixer-flash-synthetic-demo.rfproj.json"),
         document_id,
         title,
         created_at_seconds,

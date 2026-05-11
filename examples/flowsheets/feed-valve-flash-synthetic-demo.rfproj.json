@@ -4,7 +4,7 @@
   "document": {
     "revision": 0,
     "flowsheet": {
-      "name": "feed-heater-flash",
+      "name": "feed-valve-flash-synthetic-demo",
       "components": {
         "component-a": {
           "id": "component-a",
@@ -21,7 +21,7 @@
         "stream-feed": {
           "id": "stream-feed",
           "name": "Feed",
-          "temperature_k": 300.0,
+          "temperature_k": 315.0,
           "pressure_pa": 120000.0,
           "total_molar_flow_mol_s": 5.0,
           "overall_mole_fractions": {
@@ -30,11 +30,11 @@
           },
           "phases": []
         },
-        "stream-heated": {
-          "id": "stream-heated",
-          "name": "Heated Outlet",
-          "temperature_k": 345.0,
-          "pressure_pa": 95000.0,
+        "stream-throttled": {
+          "id": "stream-throttled",
+          "name": "Valve Outlet",
+          "temperature_k": 300.0,
+          "pressure_pa": 90000.0,
           "total_molar_flow_mol_s": 0.0,
           "overall_mole_fractions": {
             "component-a": 0.5,
@@ -45,8 +45,8 @@
         "stream-liquid": {
           "id": "stream-liquid",
           "name": "Liquid Outlet",
-          "temperature_k": 345.0,
-          "pressure_pa": 95000.0,
+          "temperature_k": 315.0,
+          "pressure_pa": 90000.0,
           "total_molar_flow_mol_s": 0.0,
           "overall_mole_fractions": {
             "component-a": 0.5,
@@ -57,8 +57,8 @@
         "stream-vapor": {
           "id": "stream-vapor",
           "name": "Vapor Outlet",
-          "temperature_k": 345.0,
-          "pressure_pa": 95000.0,
+          "temperature_k": 315.0,
+          "pressure_pa": 90000.0,
           "total_molar_flow_mol_s": 0.0,
           "overall_mole_fractions": {
             "component-a": 0.5,
@@ -81,10 +81,10 @@
             }
           ]
         },
-        "heater-1": {
-          "id": "heater-1",
-          "name": "Heater",
-          "kind": "heater",
+        "valve-1": {
+          "id": "valve-1",
+          "name": "Valve",
+          "kind": "valve",
           "ports": [
             {
               "name": "inlet",
@@ -96,7 +96,7 @@
               "name": "outlet",
               "direction": "outlet",
               "kind": "material",
-              "stream_id": "stream-heated"
+              "stream_id": "stream-throttled"
             }
           ]
         },
@@ -109,7 +109,7 @@
               "name": "inlet",
               "direction": "inlet",
               "kind": "material",
-              "stream_id": "stream-heated"
+              "stream_id": "stream-throttled"
             },
             {
               "name": "liquid",
@@ -128,8 +128,8 @@
       }
     },
     "metadata": {
-      "documentId": "example-feed-heater-flash",
-      "title": "Feed Heater Flash Example",
+      "documentId": "example-feed-valve-flash-synthetic-demo",
+      "title": "Feed Valve Flash Synthetic Demo",
       "schemaVersion": 1,
       "createdAt": "2026-04-01T00:00:00Z",
       "updatedAt": "2026-04-01T00:00:00Z"

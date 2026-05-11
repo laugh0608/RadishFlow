@@ -4,7 +4,7 @@
   "document": {
     "revision": 0,
     "flowsheet": {
-      "name": "feed-mixer-heater-flash",
+      "name": "feed-mixer-heater-flash-synthetic-demo",
       "components": {
         "component-a": {
           "id": "component-a",
@@ -190,8 +190,8 @@
       }
     },
     "metadata": {
-      "documentId": "example-feed-mixer-heater-flash",
-      "title": "Feed Mixer Heater Flash Example",
+      "documentId": "example-feed-mixer-heater-flash-synthetic-demo",
+      "title": "Feed Mixer Heater Flash Synthetic Demo",
       "schemaVersion": 1,
       "createdAt": "2026-04-05T00:00:00Z",
       "updatedAt": "2026-04-05T00:00:00Z"

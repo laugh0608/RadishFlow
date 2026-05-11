@@ -290,7 +290,7 @@ fn app_state_for_synthetic_heater_boundary_case(
     case: &NearBoundaryStreamWindowCase,
 ) -> AppState {
     let mut app_state = app_state_from_project(
-        include_str!("../../../examples/flowsheets/feed-heater-flash.rfproj.json"),
+        include_str!("../../../examples/flowsheets/feed-heater-flash-synthetic-demo.rfproj.json"),
         document_id,
         title,
         created_at_seconds,
@@ -418,7 +418,9 @@ fn studio_solver_bridge_maps_project_snapshot_into_app_state_end_to_end() {
 fn studio_solver_bridge_preserves_intermediate_stream_windows_across_steps_end_to_end() {
     let provider = build_synthetic_demo_package_provider();
     let mut app_state = app_state_from_project(
-        include_str!("../../../examples/flowsheets/feed-mixer-heater-flash.rfproj.json"),
+        include_str!(
+            "../../../examples/flowsheets/feed-mixer-heater-flash-synthetic-demo.rfproj.json"
+        ),
         "doc-studio-intermediate-window-success",
         "Studio Intermediate Window Success Demo",
         15,
@@ -672,7 +674,7 @@ fn studio_solver_bridge_preserves_synthetic_single_phase_temperature_near_bounda
 fn studio_solver_bridge_records_solver_failure_notice_and_target_unit_end_to_end() {
     let provider = build_synthetic_demo_package_provider();
     let project = parse_project_file_json(include_str!(
-        "../../../examples/flowsheets/feed-valve-flash.rfproj.json"
+        "../../../examples/flowsheets/feed-valve-flash-synthetic-demo.rfproj.json"
     ))
     .expect("expected project parse");
     let mut flowsheet = project.document.flowsheet;
@@ -736,7 +738,7 @@ fn studio_solver_bridge_records_solver_failure_notice_and_target_unit_end_to_end
 fn studio_solver_bridge_records_missing_package_without_solver_code_end_to_end() {
     let provider = InMemoryPropertyPackageProvider::default();
     let mut app_state = app_state_from_project(
-        include_str!("../../../examples/flowsheets/feed-heater-flash.rfproj.json"),
+        include_str!("../../../examples/flowsheets/feed-heater-flash-synthetic-demo.rfproj.json"),
         "doc-studio-missing-package",
         "Studio Missing Package Demo",
         30,

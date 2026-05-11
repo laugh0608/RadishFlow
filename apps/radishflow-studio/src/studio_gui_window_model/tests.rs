@@ -1908,7 +1908,7 @@ fn studio_gui_window_model_preserves_single_phase_flash_outlet_window_absence_in
     )
     .expect("expected liquid-only boundary window");
     let liquid_only_snapshot = solve_snapshot_model_from_project_with_provider_and_edit(
-        include_str!("../../../../examples/flowsheets/feed-mixer-flash.rfproj.json"),
+        include_str!("../../../../examples/flowsheets/feed-mixer-flash-synthetic-demo.rfproj.json"),
         &liquid_only_provider,
         |project| {
             for stream_id in ["stream-feed-a", "stream-feed-b"] {
@@ -1960,7 +1960,7 @@ fn studio_gui_window_model_preserves_single_phase_flash_outlet_window_absence_in
     )
     .expect("expected vapor-only boundary window");
     let vapor_only_snapshot = solve_snapshot_model_from_project_with_provider_and_edit(
-        include_str!("../../../../examples/flowsheets/feed-mixer-flash.rfproj.json"),
+        include_str!("../../../../examples/flowsheets/feed-mixer-flash-synthetic-demo.rfproj.json"),
         &vapor_only_provider,
         |project| {
             for stream_id in ["stream-feed-a", "stream-feed-b"] {
@@ -2064,7 +2064,9 @@ fn studio_gui_window_model_preserves_single_phase_outlet_window_presence_and_abs
     .expect("expected liquid-only boundary window");
     let (liquid_only_ui_snapshot, liquid_only_window_snapshot) =
         solve_ui_and_window_snapshot_from_project_with_provider_and_edit(
-            include_str!("../../../../examples/flowsheets/feed-mixer-flash.rfproj.json"),
+            include_str!(
+                "../../../../examples/flowsheets/feed-mixer-flash-synthetic-demo.rfproj.json"
+            ),
             &liquid_only_provider,
             |project| {
                 for stream_id in ["stream-feed-a", "stream-feed-b"] {
@@ -2101,7 +2103,9 @@ fn studio_gui_window_model_preserves_single_phase_outlet_window_presence_and_abs
     .expect("expected vapor-only boundary window");
     let (vapor_only_ui_snapshot, vapor_only_window_snapshot) =
         solve_ui_and_window_snapshot_from_project_with_provider_and_edit(
-            include_str!("../../../../examples/flowsheets/feed-mixer-flash.rfproj.json"),
+            include_str!(
+                "../../../../examples/flowsheets/feed-mixer-flash-synthetic-demo.rfproj.json"
+            ),
             &vapor_only_provider,
             |project| {
                 for stream_id in ["stream-feed-a", "stream-feed-b"] {

@@ -487,7 +487,7 @@ mod tests {
     use rf_types::{ComponentId, PortDirection, PortKind};
 
     fn example_project_json() -> &'static str {
-        include_str!("../../../examples/flowsheets/feed-heater-flash.rfproj.json")
+        include_str!("../../../examples/flowsheets/feed-heater-flash-synthetic-demo.rfproj.json")
     }
 
     fn unique_temp_path(name: &str) -> PathBuf {

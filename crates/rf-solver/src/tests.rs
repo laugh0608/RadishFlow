@@ -613,7 +613,7 @@ fn sequential_solver_runs_example_project_file() {
         flash_solver: &flash_solver,
     };
     let project = parse_project_file_json(include_str!(
-        "../../../examples/flowsheets/feed-mixer-flash.rfproj.json"
+        "../../../examples/flowsheets/feed-mixer-flash-synthetic-demo.rfproj.json"
     ))
     .expect("expected example project parse");
 
@@ -718,7 +718,7 @@ fn sequential_solver_runs_feed_heater_flash_example_project_file() {
         flash_solver: &flash_solver,
     };
     let project = parse_project_file_json(include_str!(
-        "../../../examples/flowsheets/feed-heater-flash.rfproj.json"
+        "../../../examples/flowsheets/feed-heater-flash-synthetic-demo.rfproj.json"
     ))
     .expect("expected example project parse");
 
@@ -815,7 +815,7 @@ fn sequential_solver_runs_feed_mixer_heater_flash_example_project_file() {
         flash_solver: &flash_solver,
     };
     let project = parse_project_file_json(include_str!(
-        "../../../examples/flowsheets/feed-mixer-heater-flash.rfproj.json"
+        "../../../examples/flowsheets/feed-mixer-heater-flash-synthetic-demo.rfproj.json"
     ))
     .expect("expected example project parse");
 
@@ -921,7 +921,7 @@ fn sequential_solver_runs_feed_cooler_flash_example_project_file() {
         flash_solver: &flash_solver,
     };
     let project = parse_project_file_json(include_str!(
-        "../../../examples/flowsheets/feed-cooler-flash.rfproj.json"
+        "../../../examples/flowsheets/feed-cooler-flash-synthetic-demo.rfproj.json"
     ))
     .expect("expected example project parse");
 
@@ -1063,7 +1063,7 @@ fn sequential_solver_runs_feed_valve_flash_example_project_file() {
         flash_solver: &flash_solver,
     };
     let project = parse_project_file_json(include_str!(
-        "../../../examples/flowsheets/feed-valve-flash.rfproj.json"
+        "../../../examples/flowsheets/feed-valve-flash-synthetic-demo.rfproj.json"
     ))
     .expect("expected example project parse");
 

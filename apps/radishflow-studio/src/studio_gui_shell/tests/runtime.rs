@@ -456,7 +456,9 @@ fn solve_liquid_only_snapshot() -> (
     )
     .expect("expected liquid-only boundary window");
     let snapshot = solve_snapshot_model_from_project_with_provider_and_edit(
-        include_str!("../../../../../examples/flowsheets/feed-mixer-flash.rfproj.json"),
+        include_str!(
+            "../../../../../examples/flowsheets/feed-mixer-flash-synthetic-demo.rfproj.json"
+        ),
         &provider,
         |project| {
             for stream_id in ["stream-feed-a", "stream-feed-b"] {
@@ -488,7 +490,9 @@ fn solve_vapor_only_snapshot() -> (
     )
     .expect("expected vapor-only boundary window");
     let snapshot = solve_snapshot_model_from_project_with_provider_and_edit(
-        include_str!("../../../../../examples/flowsheets/feed-mixer-flash.rfproj.json"),
+        include_str!(
+            "../../../../../examples/flowsheets/feed-mixer-flash-synthetic-demo.rfproj.json"
+        ),
         &provider,
         |project| {
             for stream_id in ["stream-feed-a", "stream-feed-b"] {

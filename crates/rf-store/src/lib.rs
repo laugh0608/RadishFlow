@@ -335,8 +335,8 @@ mod tests {
     #[test]
     fn studio_preferences_file_round_trips_as_camel_case_json() {
         let preferences = StoredStudioPreferencesFile::new(vec![
-            "D:\\Code\\RadishFlow\\examples\\flowsheets\\feed-heater-flash.rfproj.json".to_string(),
-            "D:\\Code\\RadishFlow\\examples\\flowsheets\\feed-valve-flash.rfproj.json".to_string(),
+            "D:\\Code\\RadishFlow\\examples\\flowsheets\\feed-heater-flash-synthetic-demo.rfproj.json".to_string(),
+            "D:\\Code\\RadishFlow\\examples\\flowsheets\\feed-valve-flash-synthetic-demo.rfproj.json".to_string(),
         ]);
 
         let json = studio_preferences_file_to_pretty_json(&preferences)
