@@ -107,6 +107,196 @@ fn assert_flash_consumer_preserves_snapshot_stream_reference(
     assert_stream_reference(&unit_reference.summary, "flash unit result");
 }
 
+fn assert_stream_reference_summary_matches_stream_model(
+    summary: &str,
+    stream: &StudioGuiWindowStreamResultModel,
+    surface: &str,
+) {
+    assert!(
+        summary.contains("T "),
+        "expected {surface} to expose T for `{}`",
+        stream.stream_id
+    );
+    assert!(
+        summary.contains("P "),
+        "expected {surface} to expose P for `{}`",
+        stream.stream_id
+    );
+    assert!(
+        summary.contains("F "),
+        "expected {surface} to expose F for `{}`",
+        stream.stream_id
+    );
+    if stream.molar_enthalpy_text.is_some() {
+        assert!(
+            summary.contains("H "),
+            "expected {surface} to expose H for `{}`",
+            stream.stream_id
+        );
+    }
+}
+
+fn assert_flash_step_and_unit_preserve_outlet_summaries(
+    snapshot: &crate::StudioGuiWindowSolveSnapshotModel,
+    selected_stream_id: &str,
+) {
+    let inspector = snapshot.result_inspector_with_unit(Some(selected_stream_id), None, Some("flash-1"));
+    let flash_step = inspector
+        .related_steps
+        .iter()
+        .find(|step| step.unit_id == "flash-1")
+        .expect("expected flash solve step in result inspector");
+    let selected_unit = inspector
+        .selected_unit
+        .as_ref()
+        .expect("expected flash unit execution result");
+    assert_eq!(selected_unit.unit_id, "flash-1");
+
+    for stream_id in ["stream-liquid", "stream-vapor"] {
+        let stream = find_window_snapshot_stream(snapshot, stream_id);
+        let step_reference = flash_step
+            .produced_stream_results
+            .iter()
+            .find(|reference| reference.stream_id == stream_id)
+            .expect("expected flash step produced stream");
+        assert_stream_reference_summary_matches_stream_model(
+            &step_reference.summary,
+            stream,
+            "flash solve step",
+        );
+
+        let unit_reference = selected_unit
+            .produced_stream_results
+            .iter()
+            .find(|reference| reference.stream_id == stream_id)
+            .expect("expected flash unit produced stream");
+        assert_stream_reference_summary_matches_stream_model(
+            &unit_reference.summary,
+            stream,
+            "flash unit result",
+        );
+    }
+}
+
+fn assert_flash_outlet_comparison_matches_snapshot_stream_models(
+    snapshot: &crate::StudioGuiWindowSolveSnapshotModel,
+) {
+    let liquid = find_window_snapshot_stream(snapshot, "stream-liquid");
+    let vapor = find_window_snapshot_stream(snapshot, "stream-vapor");
+    let comparison_inspector =
+        snapshot.result_inspector_with_comparison(Some("stream-liquid"), Some("stream-vapor"));
+    let comparison = comparison_inspector
+        .comparison
+        .as_ref()
+        .expect("expected flash outlet comparison");
+
+    let enthalpy_row = comparison
+        .summary_rows
+        .iter()
+        .find(|row| row.label == "H")
+        .expect("expected comparison enthalpy row");
+    assert_eq!(
+        enthalpy_row.base_value,
+        liquid.molar_enthalpy_text.clone().unwrap_or_else(|| "-".to_string())
+    );
+    assert_eq!(
+        enthalpy_row.compared_value,
+        vapor.molar_enthalpy_text.clone().unwrap_or_else(|| "-".to_string())
+    );
+    if liquid.molar_enthalpy_text.is_some() && vapor.molar_enthalpy_text.is_some() {
+        assert!(
+            enthalpy_row.delta_text.ends_with(" J/mol"),
+            "expected comparison delta to stay materialized when both flash outlets carry enthalpy"
+        );
+    } else {
+        assert_eq!(enthalpy_row.delta_text, "-");
+    }
+
+    let overall_row = comparison
+        .phase_rows
+        .iter()
+        .find(|row| row.phase_label == "overall")
+        .expect("expected overall comparison phase row");
+    if let Some(liquid_overall) = liquid.phase_rows.iter().find(|phase| phase.label == "overall") {
+        assert_eq!(overall_row.base_fraction_text, liquid_overall.phase_fraction_text);
+        assert_eq!(overall_row.base_molar_flow_text, liquid_overall.molar_flow_text);
+        assert_eq!(
+            overall_row.base_molar_enthalpy_text,
+            liquid_overall
+                .molar_enthalpy_text
+                .clone()
+                .unwrap_or_else(|| "-".to_string())
+        );
+    } else {
+        assert_eq!(overall_row.base_fraction_text, "-");
+        assert_eq!(overall_row.base_molar_flow_text, "-");
+        assert_eq!(overall_row.base_molar_enthalpy_text, "-");
+    }
+    if let Some(vapor_overall) = vapor.phase_rows.iter().find(|phase| phase.label == "overall") {
+        assert_eq!(overall_row.compared_fraction_text, vapor_overall.phase_fraction_text);
+        assert_eq!(overall_row.compared_molar_flow_text, vapor_overall.molar_flow_text);
+        assert_eq!(
+            overall_row.compared_molar_enthalpy_text,
+            vapor_overall
+                .molar_enthalpy_text
+                .clone()
+                .unwrap_or_else(|| "-".to_string())
+        );
+    } else {
+        assert_eq!(overall_row.compared_fraction_text, "-");
+        assert_eq!(overall_row.compared_molar_flow_text, "-");
+        assert_eq!(overall_row.compared_molar_enthalpy_text, "-");
+    }
+
+    for phase_label in ["liquid", "vapor"] {
+        let comparison_row = comparison
+            .phase_rows
+            .iter()
+            .find(|row| row.phase_label == phase_label);
+        let liquid_phase = liquid.phase_rows.iter().find(|phase| phase.label == phase_label);
+        let vapor_phase = vapor.phase_rows.iter().find(|phase| phase.label == phase_label);
+
+        if liquid_phase.is_none() && vapor_phase.is_none() {
+            assert!(
+                comparison_row.is_none(),
+                "expected no comparison row for absent `{phase_label}` phase"
+            );
+            continue;
+        }
+
+        let comparison_row = comparison_row.expect("expected comparison phase row");
+        if let Some(phase) = liquid_phase {
+            assert_eq!(comparison_row.base_fraction_text, phase.phase_fraction_text);
+            assert_eq!(comparison_row.base_molar_flow_text, phase.molar_flow_text);
+            assert_eq!(
+                comparison_row.base_molar_enthalpy_text,
+                phase.molar_enthalpy_text
+                    .clone()
+                    .unwrap_or_else(|| "-".to_string())
+            );
+        } else {
+            assert_eq!(comparison_row.base_fraction_text, "-");
+            assert_eq!(comparison_row.base_molar_flow_text, "-");
+            assert_eq!(comparison_row.base_molar_enthalpy_text, "-");
+        }
+
+        if let Some(phase) = vapor_phase {
+            assert_eq!(comparison_row.compared_fraction_text, phase.phase_fraction_text);
+            assert_eq!(comparison_row.compared_molar_flow_text, phase.molar_flow_text);
+            assert_eq!(
+                comparison_row.compared_molar_enthalpy_text,
+                phase.molar_enthalpy_text
+                    .clone()
+                    .unwrap_or_else(|| "-".to_string())
+            );
+        } else {
+            assert_eq!(comparison_row.compared_fraction_text, "-");
+            assert_eq!(comparison_row.compared_molar_flow_text, "-");
+            assert_eq!(comparison_row.compared_molar_enthalpy_text, "-");
+        }
+    }
+}
+
 fn assert_result_inspector_with_unit_preserves_snapshot_stream(
     snapshot: &crate::StudioGuiWindowSolveSnapshotModel,
     selected_stream_id: &str,
@@ -2471,6 +2661,41 @@ fn studio_gui_window_model_preserves_official_near_boundary_flash_chain_consumer
                 );
             }
         }
+    }
+}
+
+#[test]
+fn studio_gui_window_model_surfaces_official_near_boundary_flash_unit_step_and_comparison_semantics()
+{
+    let provider = build_official_binary_hydrocarbon_provider();
+
+    for scenario in official_binary_hydrocarbon_near_boundary_consumer_scenarios() {
+        let snapshot = solve_snapshot_model_from_project_with_provider_and_edit(
+            scenario.project_json,
+            &provider,
+            |project| {
+                apply_official_binary_hydrocarbon_near_boundary_consumer_scenario(
+                    project,
+                    &scenario,
+                );
+            },
+        );
+
+        for selected_stream_id in ["stream-liquid", "stream-vapor"] {
+            assert_result_inspector_with_unit_preserves_snapshot_stream(
+                &snapshot,
+                selected_stream_id,
+                "flash-1",
+            );
+            assert_flash_step_and_unit_preserve_outlet_summaries(&snapshot, selected_stream_id);
+        }
+
+        assert_result_inspector_with_comparison_preserves_snapshot_streams(
+            &snapshot,
+            "stream-liquid",
+            "stream-vapor",
+        );
+        assert_flash_outlet_comparison_matches_snapshot_stream_models(&snapshot);
     }
 }
 

@@ -185,6 +185,19 @@ fn assert_stream_window_rendered(
     );
 }
 
+fn preferred_flash_unit_stream_id(snapshot: &StudioGuiWindowSolveSnapshotModel) -> &'static str {
+    let liquid = snapshot
+        .streams
+        .iter()
+        .find(|stream| stream.stream_id == "stream-liquid")
+        .expect("expected liquid outlet");
+    if liquid.total_molar_flow_mol_s > 0.0 {
+        "stream-liquid"
+    } else {
+        "stream-vapor"
+    }
+}
+
 struct StreamSummaryLabels<'a> {
     temperature: &'a str,
     pressure: &'a str,
@@ -1186,6 +1199,90 @@ fn runtime_panel_renders_official_near_boundary_flash_chain_window_semantics() {
                 );
             }
         }
+    }
+}
+
+#[test]
+fn runtime_panel_renders_official_near_boundary_flash_unit_and_comparison_surfaces() {
+    let mut app = ready_app_state(&synced_workspace_config());
+    let result_unit_view_label = app.locale.text(ShellText::ResultUnitView).to_string();
+    let consumed_streams_label = app
+        .locale
+        .text(ShellText::InspectorConsumedStreams)
+        .to_string();
+    let produced_streams_label = app
+        .locale
+        .text(ShellText::InspectorProducedStreams)
+        .to_string();
+    let related_solve_steps_label = app.locale.text(ShellText::RelatedSolveSteps).to_string();
+    let related_diagnostics_label = app.locale.text(ShellText::RelatedDiagnostics).to_string();
+    let diagnostic_targets_label = app.locale.text(ShellText::DiagnosticTargets).to_string();
+    let unit_labels = UnitSummaryLabels {
+        consumed_streams: &consumed_streams_label,
+        produced_streams: &produced_streams_label,
+        related_solve_steps: &related_solve_steps_label,
+        related_diagnostics: &related_diagnostics_label,
+        diagnostic_targets: &diagnostic_targets_label,
+    };
+
+    for scenario in official_binary_hydrocarbon_near_boundary_consumer_scenarios() {
+        let snapshot = solve_snapshot_model_from_project_with_provider_and_edit(
+            scenario.project_json,
+            &build_official_binary_hydrocarbon_provider(),
+            |project| {
+                apply_official_binary_hydrocarbon_near_boundary_consumer_scenario(
+                    project,
+                    &scenario,
+                );
+            },
+        );
+
+        let selected_stream_id = preferred_flash_unit_stream_id(&snapshot);
+        let inspector =
+            snapshot.result_inspector_with_unit(Some(selected_stream_id), None, Some("flash-1"));
+        assert!(
+            inspector.selected_unit.is_some(),
+            "expected flash unit result model before rendering"
+        );
+        let result_texts = render_result_inspector_with_unit_texts(
+            &mut app,
+            &snapshot,
+            selected_stream_id,
+            "flash-1",
+        );
+        assert!(
+            result_texts
+                .iter()
+                .any(|text| text.contains(&result_unit_view_label)),
+            "expected result inspector to render flash unit view section, rendered texts: {:?}",
+            result_texts
+        );
+
+        let active_detail = unit_target_detail_model(&snapshot, "flash-1", "Flash Drum");
+        let active_unit = active_detail
+            .latest_unit_result
+            .clone()
+            .expect("expected active flash unit result");
+        let active_texts = render_active_inspector_texts(&mut app, active_detail);
+        assert_rendered_unit_summary_surface(
+            &active_texts,
+            "active inspector flash unit view",
+            &active_unit,
+            &unit_labels,
+        );
+
+        let comparison_inspector =
+            snapshot.result_inspector_with_comparison(Some("stream-liquid"), Some("stream-vapor"));
+        let comparison = comparison_inspector
+            .comparison
+            .as_ref()
+            .expect("expected flash outlet comparison");
+        let comparison_texts = render_result_inspector_comparison_texts(&mut app, comparison);
+        assert_rendered_comparison_surface(
+            &comparison_texts,
+            "near-boundary flash outlet comparison",
+            comparison,
+        );
     }
 }
 
