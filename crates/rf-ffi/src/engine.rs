@@ -220,7 +220,7 @@ fn build_demo_package_provider() -> EnginePropertyPackageRegistry {
 }
 
 fn build_demo_antoine_coefficients(k_value: f64) -> AntoineCoefficients {
-    const DEMO_ANTOINE_BOUNDARY_SLOPE: f64 = 250.0;
+    const DEMO_ANTOINE_BOUNDARY_SLOPE: f64 = 300.0;
     const DEMO_REFERENCE_TEMPERATURE_K: f64 = 300.0;
 
     AntoineCoefficients::new(

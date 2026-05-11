@@ -716,7 +716,7 @@ mod tests {
     fn write_runtime_package_files(root: &Path, package_id: &str) -> (PathBuf, PathBuf) {
         let manifest_path = root.join("manifest.json");
         let payload_path = root.join("payload.rfpkg");
-        const TEST_ANTOINE_BOUNDARY_SLOPE: f64 = 250.0;
+        const TEST_ANTOINE_BOUNDARY_SLOPE: f64 = 300.0;
         const TEST_REFERENCE_TEMPERATURE_K: f64 = 300.0;
         let build_stored_test_antoine_coefficients = |k_value: f64| {
             StoredAntoineCoefficients::new(
@@ -791,7 +791,12 @@ mod tests {
 
         let package_id = DEMO_PACKAGE_ID.as_bytes();
         let solve_status = flowsheet_solve(engine, package_id.as_ptr(), package_id.len());
-        assert_eq!(solve_status, RfFfiStatus::Ok);
+        assert_eq!(
+            solve_status,
+            RfFfiStatus::Ok,
+            "{}",
+            call_last_error(engine)
+        );
 
         let stream_id = b"stream-vapor";
         let mut output = ptr::null_mut::<c_char>();
@@ -875,7 +880,9 @@ mod tests {
         let package_id = DEMO_PACKAGE_ID.as_bytes();
         assert_eq!(
             flowsheet_solve(engine, package_id.as_ptr(), package_id.len()),
-            RfFfiStatus::Ok
+            RfFfiStatus::Ok,
+            "{}",
+            call_last_error(engine)
         );
 
         let mut output = ptr::null_mut::<c_char>();
@@ -930,7 +937,9 @@ mod tests {
         let package_id = b"runtime-binary-package";
         assert_eq!(
             flowsheet_solve(engine, package_id.as_ptr(), package_id.len()),
-            RfFfiStatus::Ok
+            RfFfiStatus::Ok,
+            "{}",
+            call_last_error(engine)
         );
 
         let mut output = ptr::null_mut::<c_char>();

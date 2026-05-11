@@ -324,9 +324,9 @@ fn assert_non_flash_intermediate_stream_summary_and_context(
         .expect("expected downstream flash step in result inspector");
     assert!(
         flash_step
-            .consumed_streams
+            .consumed_stream_results
             .iter()
-            .any(|candidate| candidate == stream_id)
+            .any(|stream| stream.stream_id == stream_id)
     );
     assert!(
         flash_step
@@ -979,9 +979,9 @@ fn studio_gui_window_model_surfaces_bootstrap_workspace_results_and_diagnostics(
             .iter()
             .any(|step| step.unit_id == "flash-1"
                 && step
-                    .consumed_streams
+                    .consumed_stream_results
                     .iter()
-                    .any(|stream_id| stream_id == "stream-heated")),
+                    .any(|stream| stream.stream_id == "stream-heated")),
         "expected stream result inspector to include downstream consuming step"
     );
     let related_heater_step = inspector
@@ -999,7 +999,11 @@ fn studio_gui_window_model_surfaces_bootstrap_workspace_results_and_diagnostics(
             && action.action.command_id == "inspector.focus_unit:heater-1"
     }));
     assert_eq!(
-        related_heater_step.consumed_streams,
+        related_heater_step
+            .consumed_stream_results
+            .iter()
+            .map(|stream| stream.stream_id.clone())
+            .collect::<Vec<_>>(),
         vec!["stream-feed".to_string()]
     );
     assert!(

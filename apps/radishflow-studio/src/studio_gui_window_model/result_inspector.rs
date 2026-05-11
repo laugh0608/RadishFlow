@@ -73,12 +73,7 @@ impl StudioGuiWindowSolveSnapshotModel {
             .map(|selected_id| {
                 self.steps
                     .iter()
-                    .filter(|step| {
-                        step.consumed_streams
-                            .iter()
-                            .chain(step.produced_streams.iter())
-                            .any(|stream_id| stream_id == selected_id)
-                    })
+                    .filter(|step| step.has_related_stream_id(selected_id))
                     .cloned()
                     .collect()
             })
@@ -176,12 +171,7 @@ impl StudioGuiWindowSolveSnapshotModel {
             .map(|selected_unit| {
                 let step_streams: BTreeSet<&str> = unit_related_steps
                     .iter()
-                    .flat_map(|step| {
-                        step.consumed_streams
-                            .iter()
-                            .chain(step.produced_streams.iter())
-                            .map(String::as_str)
-                    })
+                    .flat_map(|step| step.consumed_stream_ids().chain(step.produced_stream_ids()))
                     .collect();
                 self.diagnostics
                     .iter()
@@ -301,11 +291,13 @@ fn result_inspector_unit_option_summary(
         format!("step #{step_index}"),
     ];
     if let Some(step) = last_step {
-        if !step.consumed_streams.is_empty() {
-            parts.push(format!("in {}", step.consumed_streams.join(", ")));
+        let consumed_streams = step.consumed_stream_ids().collect::<Vec<_>>();
+        if !consumed_streams.is_empty() {
+            parts.push(format!("in {}", consumed_streams.join(", ")));
         }
-        if !step.produced_streams.is_empty() {
-            parts.push(format!("out {}", step.produced_streams.join(", ")));
+        let produced_streams = step.produced_stream_ids().collect::<Vec<_>>();
+        if !produced_streams.is_empty() {
+            parts.push(format!("out {}", produced_streams.join(", ")));
         }
     }
     parts.join(" | ")

@@ -357,14 +357,32 @@ pub struct StudioGuiWindowSolveStepModel {
     pub unit_id: String,
     pub summary: String,
     pub execution_status_label: &'static str,
-    pub consumed_streams: Vec<String>,
     pub consumed_stream_results: Vec<StudioGuiWindowStreamResultReferenceModel>,
     pub consumed_stream_actions: Vec<StudioGuiWindowCommandActionModel>,
-    pub produced_streams: Vec<String>,
     pub unit_action: StudioGuiWindowCommandActionModel,
     pub produced_stream_results: Vec<StudioGuiWindowStreamResultReferenceModel>,
     pub produced_stream_actions: Vec<StudioGuiWindowCommandActionModel>,
     pub diagnostic_actions: Vec<StudioGuiWindowDiagnosticTargetActionModel>,
+}
+
+impl StudioGuiWindowSolveStepModel {
+    fn consumed_stream_ids(&self) -> impl Iterator<Item = &str> {
+        self.consumed_stream_results
+            .iter()
+            .map(|stream| stream.stream_id.as_str())
+    }
+
+    fn produced_stream_ids(&self) -> impl Iterator<Item = &str> {
+        self.produced_stream_results
+            .iter()
+            .map(|stream| stream.stream_id.as_str())
+    }
+
+    fn has_related_stream_id(&self, stream_id: &str) -> bool {
+        self.consumed_stream_ids()
+            .chain(self.produced_stream_ids())
+            .any(|candidate| candidate == stream_id)
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -1214,12 +1232,7 @@ fn related_steps_for_target(
         rf_ui::InspectorTarget::Stream(stream_id) => snapshot
             .steps
             .iter()
-            .filter(|step| {
-                step.consumed_streams
-                    .iter()
-                    .chain(step.produced_streams.iter())
-                    .any(|candidate| candidate == stream_id.as_str())
-            })
+            .filter(|step| step.has_related_stream_id(stream_id.as_str()))
             .cloned()
             .collect(),
     }
@@ -1340,10 +1353,8 @@ fn solve_snapshot_model_from_ui(
                     unit_id: step.unit_id.as_str().to_string(),
                     summary: step.summary.clone(),
                     execution_status_label: run_status_label(step.execution.status),
-                    consumed_streams,
                     consumed_stream_results,
                     consumed_stream_actions,
-                    produced_streams,
                     unit_action,
                     produced_stream_results,
                     produced_stream_actions,
