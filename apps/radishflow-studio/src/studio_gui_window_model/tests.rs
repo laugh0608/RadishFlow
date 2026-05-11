@@ -5,6 +5,7 @@ use std::{
 };
 
 use rf_flash::estimate_bubble_dew_window;
+use rf_store::{parse_project_file_json, project_file_to_pretty_json};
 use rf_types::PhaseEquilibriumRegion;
 
 use crate::{
@@ -876,6 +877,34 @@ fn synced_example_config(project_file_name: &str) -> StudioRuntimeConfig {
         entitlement_seed: StudioRuntimeEntitlementSeed::Synced,
         ..StudioRuntimeConfig::default()
     }
+}
+
+fn official_near_boundary_consumer_synced_config(
+    scenario: &crate::test_support::OfficialBinaryHydrocarbonNearBoundaryConsumerScenario,
+) -> (StudioRuntimeConfig, PathBuf) {
+    let timestamp = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("expected current timestamp")
+        .as_nanos();
+    let project_path = std::env::temp_dir().join(format!(
+        "radishflow-studio-near-boundary-{timestamp}.rfproj.json"
+    ));
+    let mut project =
+        parse_project_file_json(scenario.project_json).expect("expected near-boundary project");
+    apply_official_binary_hydrocarbon_near_boundary_consumer_scenario(&mut project, scenario);
+    let project_json =
+        project_file_to_pretty_json(&project).expect("expected near-boundary project json");
+    fs::write(&project_path, project_json).expect("expected near-boundary project write");
+
+    (
+        StudioRuntimeConfig {
+            project_path: project_path.clone(),
+            entitlement_preflight: StudioRuntimeEntitlementPreflight::Skip,
+            entitlement_seed: StudioRuntimeEntitlementSeed::Synced,
+            ..StudioRuntimeConfig::default()
+        },
+        project_path,
+    )
 }
 
 fn flash_drum_local_rules_config() -> (StudioRuntimeConfig, PathBuf) {
@@ -2696,6 +2725,250 @@ fn studio_gui_window_model_surfaces_official_near_boundary_flash_unit_step_and_c
             "stream-vapor",
         );
         assert_flash_outlet_comparison_matches_snapshot_stream_models(&snapshot);
+    }
+}
+
+#[test]
+fn studio_gui_window_model_surfaces_official_near_boundary_flash_focus_actions_and_diagnostic_targets(
+) {
+    let provider = build_official_binary_hydrocarbon_provider();
+
+    for scenario in official_binary_hydrocarbon_near_boundary_consumer_scenarios() {
+        let snapshot = solve_snapshot_model_from_project_with_provider_and_edit(
+            scenario.project_json,
+            &provider,
+            |project| {
+                apply_official_binary_hydrocarbon_near_boundary_consumer_scenario(
+                    project,
+                    &scenario,
+                );
+            },
+        );
+
+        let flash_unit_focus_command = "inspector.focus_unit:flash-1";
+        let flash_inlet_focus_command =
+            format!("inspector.focus_stream:{}", scenario.flash_inlet_stream_id);
+        let liquid_focus_command = "inspector.focus_stream:stream-liquid";
+        let vapor_focus_command = "inspector.focus_stream:stream-vapor";
+
+        let inlet_inspector = snapshot.result_inspector(Some(scenario.flash_inlet_stream_id));
+        assert!(inlet_inspector.diagnostic_actions.iter().any(|action| {
+            action.source_label == "Selected stream"
+                && action.action.command_id == flash_inlet_focus_command
+        }));
+        assert!(inlet_inspector.diagnostic_actions.iter().any(|action| {
+            action.source_label == "Solve step"
+                && action.action.command_id == flash_unit_focus_command
+        }));
+        let flash_related_step = inlet_inspector
+            .related_steps
+            .iter()
+            .find(|step| step.unit_id == "flash-1")
+            .expect("expected downstream flash step for near-boundary inlet");
+        assert_eq!(flash_related_step.unit_action.command_id, flash_unit_focus_command);
+        assert!(flash_related_step
+            .consumed_stream_actions
+            .iter()
+            .any(|action| action.command_id == flash_inlet_focus_command));
+        assert!(flash_related_step
+            .produced_stream_actions
+            .iter()
+            .any(|action| action.command_id == liquid_focus_command));
+        assert!(flash_related_step
+            .produced_stream_actions
+            .iter()
+            .any(|action| action.command_id == vapor_focus_command));
+
+        let comparison_inspector =
+            snapshot.result_inspector_with_comparison(Some("stream-liquid"), Some("stream-vapor"));
+        let comparison = comparison_inspector
+            .comparison
+            .as_ref()
+            .expect("expected near-boundary flash outlet comparison");
+        assert_eq!(
+            comparison.base_stream_focus_action.command_id,
+            liquid_focus_command
+        );
+        assert_eq!(
+            comparison.compared_stream_focus_action.command_id,
+            vapor_focus_command
+        );
+
+        let unit_inspector = snapshot.result_inspector_with_unit(
+            Some("stream-liquid"),
+            Some("stream-vapor"),
+            Some("flash-1"),
+        );
+        let selected_unit = unit_inspector
+            .selected_unit
+            .as_ref()
+            .expect("expected near-boundary flash unit result");
+        assert!(selected_unit
+            .consumed_stream_actions
+            .iter()
+            .any(|action| action.command_id == flash_inlet_focus_command));
+        assert!(selected_unit
+            .produced_stream_actions
+            .iter()
+            .any(|action| action.command_id == liquid_focus_command));
+        assert!(selected_unit
+            .produced_stream_actions
+            .iter()
+            .any(|action| action.command_id == vapor_focus_command));
+        assert!(unit_inspector.unit_diagnostic_actions.iter().any(|action| {
+            action.source_label == "Selected unit"
+                && action.action.command_id == flash_unit_focus_command
+        }));
+        assert!(unit_inspector.unit_diagnostic_actions.iter().any(|action| {
+            action.source_label == "Solve step"
+                && action.action.command_id == flash_unit_focus_command
+        }));
+        assert!(unit_inspector.unit_diagnostic_actions.iter().any(|action| {
+            action.source_label == "Diagnostic"
+                && action.action.command_id == flash_inlet_focus_command
+        }));
+    }
+}
+
+#[test]
+fn studio_gui_window_model_dispatches_official_near_boundary_flash_focus_commands_to_active_inspector(
+) {
+    for scenario in official_binary_hydrocarbon_near_boundary_consumer_scenarios() {
+        let (config, project_path) = official_near_boundary_consumer_synced_config(&scenario);
+        let mut driver = StudioGuiDriver::new(&config).expect("expected near-boundary driver");
+        let _ = driver
+            .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+            .expect("expected open dispatch");
+
+        let run = driver
+            .dispatch_event(StudioGuiEvent::UiCommandRequested {
+                command_id: "run_panel.run_manual".to_string(),
+            })
+            .expect("expected near-boundary run dispatch");
+        let snapshot = run
+            .window
+            .runtime
+            .latest_solve_snapshot
+            .expect("expected near-boundary solve snapshot");
+
+        let comparison = snapshot
+            .result_inspector_with_comparison(Some("stream-liquid"), Some("stream-vapor"))
+            .comparison
+            .expect("expected near-boundary comparison");
+        let liquid_detail = driver
+            .dispatch_event(StudioGuiEvent::UiCommandRequested {
+                command_id: comparison.base_stream_focus_action.command_id.clone(),
+            })
+            .expect("expected liquid focus dispatch")
+            .window
+            .runtime
+            .active_inspector_detail
+            .expect("expected active liquid inspector detail");
+        let liquid_stream = liquid_detail
+            .latest_stream_result
+            .as_ref()
+            .expect("expected active liquid stream result");
+        assert_eq!(liquid_stream.stream_id, "stream-liquid");
+        assert_eq!(
+            liquid_stream.bubble_dew_window.is_some(),
+            scenario.case.expected_phase_region != PhaseEquilibriumRegion::VaporOnly,
+            "{}",
+            scenario.case.label
+        );
+
+        let vapor_detail = driver
+            .dispatch_event(StudioGuiEvent::UiCommandRequested {
+                command_id: comparison.compared_stream_focus_action.command_id.clone(),
+            })
+            .expect("expected vapor focus dispatch")
+            .window
+            .runtime
+            .active_inspector_detail
+            .expect("expected active vapor inspector detail");
+        let vapor_stream = vapor_detail
+            .latest_stream_result
+            .as_ref()
+            .expect("expected active vapor stream result");
+        assert_eq!(vapor_stream.stream_id, "stream-vapor");
+        assert_eq!(
+            vapor_stream.bubble_dew_window.is_some(),
+            scenario.case.expected_phase_region != PhaseEquilibriumRegion::LiquidOnly,
+            "{}",
+            scenario.case.label
+        );
+
+        let unit_inspector = snapshot.result_inspector_with_unit(
+            Some("stream-liquid"),
+            Some("stream-vapor"),
+            Some("flash-1"),
+        );
+        let inlet_diagnostic_action = unit_inspector
+            .unit_diagnostic_actions
+            .iter()
+            .find(|action| {
+                action.source_label == "Diagnostic"
+                    && action.action.command_id
+                        == format!("inspector.focus_stream:{}", scenario.flash_inlet_stream_id)
+            })
+            .expect("expected flash inlet diagnostic action");
+        let inlet_detail = driver
+            .dispatch_event(StudioGuiEvent::UiCommandRequested {
+                command_id: inlet_diagnostic_action.action.command_id.clone(),
+            })
+            .expect("expected flash inlet diagnostic dispatch")
+            .window
+            .runtime
+            .active_inspector_detail
+            .expect("expected active flash inlet inspector detail");
+        assert_eq!(inlet_detail.target.target_id, scenario.flash_inlet_stream_id);
+        assert_eq!(
+            inlet_detail
+                .latest_stream_result
+                .as_ref()
+                .map(|stream| stream.stream_id.as_str()),
+            Some(scenario.flash_inlet_stream_id)
+        );
+
+        let unit_focus_command = unit_inspector
+            .unit_diagnostic_actions
+            .iter()
+            .find(|action| {
+                action.source_label == "Selected unit"
+                    && action.action.command_id == "inspector.focus_unit:flash-1"
+            })
+            .expect("expected flash unit diagnostic focus action")
+            .action
+            .command_id
+            .clone();
+        let unit_detail = driver
+            .dispatch_event(StudioGuiEvent::UiCommandRequested {
+                command_id: unit_focus_command,
+            })
+            .expect("expected flash unit focus dispatch")
+            .window
+            .runtime
+            .active_inspector_detail
+            .expect("expected active flash unit detail");
+        let active_unit = unit_detail
+            .latest_unit_result
+            .as_ref()
+            .expect("expected active flash unit result");
+        assert_eq!(unit_detail.target.target_id, "flash-1");
+        assert_eq!(active_unit.unit_id, "flash-1");
+        assert!(active_unit
+            .consumed_stream_results
+            .iter()
+            .any(|stream| stream.stream_id == scenario.flash_inlet_stream_id));
+        assert!(active_unit
+            .produced_stream_results
+            .iter()
+            .any(|stream| stream.stream_id == "stream-liquid"));
+        assert!(active_unit
+            .produced_stream_results
+            .iter()
+            .any(|stream| stream.stream_id == "stream-vapor"));
+
+        let _ = fs::remove_file(project_path);
     }
 }
 
