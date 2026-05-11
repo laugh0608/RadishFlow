@@ -1,6 +1,6 @@
 # Studio Quick Start
 
-更新时间：2026-05-10
+更新时间：2026-05-11
 
 ## 目的
 
@@ -23,6 +23,8 @@
 - 通过内置示例入口、最近项目列表、路径输入或 Windows 原生文件选择器切换项目
 - 运行仓库内的最小正向示例 flowsheet
 - 在 Runtime / Result Inspector / Active Inspector 中查看结构化结果、步骤和诊断
+- 在当前 `SolveSnapshot` 内切换 stream-centric / unit-centric / comparison 三类结果审阅面
+- 通过 `Inspect` / `DiagnosticTargets` 在 stream、unit、step 和 Active Inspector 之间定位同一份结果
 - 在 Stream Inspector 中编辑流股基础字段与组成草稿，并显式提交
 - 执行基础 `undo / redo`
 - 保存当前项目，或 `Save As` 到新路径
@@ -92,7 +94,9 @@ cargo run -p radishflow-studio
 - Runtime 区域中的运行状态和最近一次结果摘要
 - Canvas 上的单元、物流线和当前关注对象
 - Result Inspector 中的 stream-centric / unit-centric 结果审阅
+- Result Inspector 中当前快照内的 stream comparison 与 `Inspect` 跳转
 - Active Inspector 中的对象详情、端口和关联结果
+- `DiagnosticTargets` 中可直接定位的 stream / unit 结果目标
 - Diagnostics / steps / logs 等运行辅助信息
 
 如果运行成功，`Flash Drum` 相关结果当前应能进一步展示：
