@@ -1,4 +1,10 @@
 use super::*;
+use radishflow_studio::test_support::{
+    apply_official_binary_hydrocarbon_near_boundary_consumer_scenario,
+    build_official_binary_hydrocarbon_provider,
+    official_binary_hydrocarbon_near_boundary_consumer_scenarios,
+    solve_snapshot_model_from_project_with_provider_and_edit,
+};
 
 #[test]
 fn insert_neighbors_from_area_ids_returns_previous_and_next_for_middle_target() {
@@ -218,6 +224,184 @@ fn result_inspector_state_tracks_selected_unit_per_snapshot() {
             .map(|step| step.unit_id.as_str()),
         "expected unit selection to reset on snapshot identity change"
     );
+}
+
+#[test]
+fn result_inspector_state_tracks_official_near_boundary_flash_selector_transitions() {
+    let mut app = ready_app_state(&synced_workspace_config());
+    let provider = build_official_binary_hydrocarbon_provider();
+
+    for scenario in official_binary_hydrocarbon_near_boundary_consumer_scenarios() {
+        let snapshot = solve_snapshot_model_from_project_with_provider_and_edit(
+            scenario.project_json,
+            &provider,
+            |project| {
+                apply_official_binary_hydrocarbon_near_boundary_consumer_scenario(
+                    project,
+                    &scenario,
+                );
+            },
+        );
+
+        app.result_inspector
+            .select_stream(&snapshot.snapshot_id, "stream-liquid");
+        app.result_inspector
+            .select_comparison_stream(&snapshot.snapshot_id, "stream-vapor");
+        app.result_inspector.select_unit(&snapshot.snapshot_id, "flash-1");
+
+        let selected_stream_id = app
+            .result_inspector
+            .selected_stream_id_for_snapshot(&snapshot);
+        let selected_unit_id = app.result_inspector.selected_unit_id_for_snapshot(&snapshot);
+        let comparison_stream_id = app.result_inspector.comparison_stream_id.clone();
+        let inspector = snapshot.result_inspector_with_unit(
+            selected_stream_id.as_deref(),
+            comparison_stream_id.as_deref(),
+            selected_unit_id.as_deref(),
+        );
+
+        assert_eq!(
+            inspector.selected_stream_id.as_deref(),
+            Some("stream-liquid"),
+            "{}",
+            scenario.case.label
+        );
+        assert_eq!(
+            inspector.comparison_stream_id.as_deref(),
+            Some("stream-vapor"),
+            "{}",
+            scenario.case.label
+        );
+        assert_eq!(
+            inspector.selected_unit_id.as_deref(),
+            Some("flash-1"),
+            "{}",
+            scenario.case.label
+        );
+        assert!(!inspector.has_stale_selection, "{}", scenario.case.label);
+        assert!(!inspector.has_stale_comparison, "{}", scenario.case.label);
+        assert!(!inspector.has_stale_unit_selection, "{}", scenario.case.label);
+        assert!(
+            inspector
+                .comparison
+                .as_ref()
+                .is_some_and(|comparison| {
+                    comparison.base_stream_id == "stream-liquid"
+                        && comparison.compared_stream_id == "stream-vapor"
+                }),
+            "{}",
+            scenario.case.label
+        );
+        assert!(
+            inspector
+                .comparison_options
+                .iter()
+                .any(|option| option.stream_id == "stream-vapor" && option.is_selected),
+            "{}",
+            scenario.case.label
+        );
+        assert!(
+            inspector
+                .unit_options
+                .iter()
+                .any(|option| option.unit_id == "flash-1" && option.is_selected),
+            "{}",
+            scenario.case.label
+        );
+
+        app.result_inspector
+            .select_stream(&snapshot.snapshot_id, "stream-vapor");
+        let switched_stream_id = app
+            .result_inspector
+            .selected_stream_id_for_snapshot(&snapshot);
+        let switched_unit_id = app.result_inspector.selected_unit_id_for_snapshot(&snapshot);
+        let switched_comparison_stream_id = app.result_inspector.comparison_stream_id.clone();
+        let switched_inspector = snapshot.result_inspector_with_unit(
+            switched_stream_id.as_deref(),
+            switched_comparison_stream_id.as_deref(),
+            switched_unit_id.as_deref(),
+        );
+
+        assert_eq!(
+            switched_inspector.selected_stream_id.as_deref(),
+            Some("stream-vapor"),
+            "{}",
+            scenario.case.label
+        );
+        assert_eq!(
+            switched_inspector.comparison_stream_id,
+            None,
+            "{}",
+            scenario.case.label
+        );
+        assert_eq!(
+            switched_inspector.selected_unit_id.as_deref(),
+            Some("flash-1"),
+            "{}",
+            scenario.case.label
+        );
+        assert_eq!(switched_inspector.comparison, None, "{}", scenario.case.label);
+        assert!(!switched_inspector.has_stale_comparison, "{}", scenario.case.label);
+        assert!(
+            switched_inspector
+                .unit_options
+                .iter()
+                .any(|option| option.unit_id == "flash-1" && option.is_selected),
+            "{}",
+            scenario.case.label
+        );
+
+        app.result_inspector
+            .select_comparison_stream(&snapshot.snapshot_id, "stream-liquid");
+        let rearmed_stream_id = app
+            .result_inspector
+            .selected_stream_id_for_snapshot(&snapshot);
+        let rearmed_unit_id = app.result_inspector.selected_unit_id_for_snapshot(&snapshot);
+        let rearmed_comparison_stream_id = app.result_inspector.comparison_stream_id.clone();
+        let rearmed_inspector = snapshot.result_inspector_with_unit(
+            rearmed_stream_id.as_deref(),
+            rearmed_comparison_stream_id.as_deref(),
+            rearmed_unit_id.as_deref(),
+        );
+
+        assert_eq!(
+            rearmed_inspector.selected_stream_id.as_deref(),
+            Some("stream-vapor"),
+            "{}",
+            scenario.case.label
+        );
+        assert_eq!(
+            rearmed_inspector.comparison_stream_id.as_deref(),
+            Some("stream-liquid"),
+            "{}",
+            scenario.case.label
+        );
+        assert_eq!(
+            rearmed_inspector.selected_unit_id.as_deref(),
+            Some("flash-1"),
+            "{}",
+            scenario.case.label
+        );
+        assert!(
+            rearmed_inspector
+                .comparison
+                .as_ref()
+                .is_some_and(|comparison| {
+                    comparison.base_stream_id == "stream-vapor"
+                        && comparison.compared_stream_id == "stream-liquid"
+                }),
+            "{}",
+            scenario.case.label
+        );
+        assert!(
+            rearmed_inspector
+                .comparison_options
+                .iter()
+                .any(|option| option.stream_id == "stream-liquid" && option.is_selected),
+            "{}",
+            scenario.case.label
+        );
+    }
 }
 
 #[test]

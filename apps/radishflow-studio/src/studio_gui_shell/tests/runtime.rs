@@ -114,6 +114,24 @@ fn render_result_inspector_with_unit_texts(
     render_runtime_area_texts(app, |app, ui| app.render_result_inspector(ui, &inspector))
 }
 
+fn render_shell_selected_result_inspector_texts(
+    app: &mut ReadyAppState,
+    snapshot: &StudioGuiWindowSolveSnapshotModel,
+    open_section_labels: &[&str],
+) -> Vec<String> {
+    let selected_stream_id = app.result_inspector.selected_stream_id_for_snapshot(snapshot);
+    let selected_unit_id = app.result_inspector.selected_unit_id_for_snapshot(snapshot);
+    let comparison_stream_id = app.result_inspector.comparison_stream_id.clone();
+    let inspector = snapshot.result_inspector_with_unit(
+        selected_stream_id.as_deref(),
+        comparison_stream_id.as_deref(),
+        selected_unit_id.as_deref(),
+    );
+    render_runtime_area_texts_with_open_sections(app, open_section_labels, |app, ui| {
+        app.render_result_inspector(ui, &inspector);
+    })
+}
+
 fn render_result_inspector_comparison_texts(
     app: &mut ReadyAppState,
     comparison: &radishflow_studio::StudioGuiWindowResultInspectorComparisonModel,
@@ -1282,6 +1300,143 @@ fn runtime_panel_renders_official_near_boundary_flash_unit_and_comparison_surfac
             &comparison_texts,
             "near-boundary flash outlet comparison",
             comparison,
+        );
+    }
+}
+
+#[test]
+fn runtime_panel_renders_official_near_boundary_result_inspector_selector_transitions() {
+    let mut app = ready_app_state(&synced_workspace_config());
+    let stream_comparison_label = app.locale.text(ShellText::StreamComparison).to_string();
+    let result_unit_view_label = app.locale.text(ShellText::ResultUnitView).to_string();
+
+    for scenario in official_binary_hydrocarbon_near_boundary_consumer_scenarios() {
+        let snapshot = solve_snapshot_model_from_project_with_provider_and_edit(
+            scenario.project_json,
+            &build_official_binary_hydrocarbon_provider(),
+            |project| {
+                apply_official_binary_hydrocarbon_near_boundary_consumer_scenario(
+                    project,
+                    &scenario,
+                );
+            },
+        );
+
+        app.result_inspector
+            .select_stream(&snapshot.snapshot_id, "stream-liquid");
+        app.result_inspector
+            .select_comparison_stream(&snapshot.snapshot_id, "stream-vapor");
+        app.result_inspector.select_unit(&snapshot.snapshot_id, "flash-1");
+
+        let selected_stream_id = app.result_inspector.selected_stream_id_for_snapshot(&snapshot);
+        let selected_unit_id = app.result_inspector.selected_unit_id_for_snapshot(&snapshot);
+        let comparison_stream_id = app.result_inspector.comparison_stream_id.clone();
+        let inspector = snapshot.result_inspector_with_unit(
+            selected_stream_id.as_deref(),
+            comparison_stream_id.as_deref(),
+            selected_unit_id.as_deref(),
+        );
+        let comparison = inspector
+            .comparison
+            .as_ref()
+            .expect("expected flash outlet comparison from shell-selected state");
+        let selected_texts = render_shell_selected_result_inspector_texts(&mut app, &snapshot, &[]);
+        let comparison_texts = render_result_inspector_comparison_texts(&mut app, comparison);
+        assert!(
+            selected_texts
+                .iter()
+                .any(|text| text.contains(&stream_comparison_label)),
+            "expected shell-selected result inspector to keep flash comparison section visible, rendered texts: {:?}",
+            selected_texts
+        );
+        assert!(
+            selected_texts
+                .iter()
+                .any(|text| text.contains(&result_unit_view_label)),
+            "expected shell-selected result inspector to render flash unit view, rendered texts: {:?}",
+            selected_texts
+        );
+        assert_rendered_comparison_surface(
+            &comparison_texts,
+            "shell-selected near-boundary flash outlet comparison",
+            comparison,
+        );
+
+        app.result_inspector
+            .select_stream(&snapshot.snapshot_id, "stream-vapor");
+        let switched_stream_id = app.result_inspector.selected_stream_id_for_snapshot(&snapshot);
+        let switched_unit_id = app.result_inspector.selected_unit_id_for_snapshot(&snapshot);
+        let switched_comparison_stream_id = app.result_inspector.comparison_stream_id.clone();
+        let switched_inspector = snapshot.result_inspector_with_unit(
+            switched_stream_id.as_deref(),
+            switched_comparison_stream_id.as_deref(),
+            switched_unit_id.as_deref(),
+        );
+        assert_eq!(
+            switched_inspector.selected_stream_id.as_deref(),
+            Some("stream-vapor"),
+            "{}",
+            scenario.case.label
+        );
+        assert_eq!(
+            switched_inspector.comparison_stream_id,
+            None,
+            "{}",
+            scenario.case.label
+        );
+        assert_eq!(switched_inspector.comparison, None, "{}", scenario.case.label);
+        assert!(!switched_inspector.has_stale_comparison, "{}", scenario.case.label);
+        let switched_texts = render_shell_selected_result_inspector_texts(&mut app, &snapshot, &[]);
+        assert!(
+            switched_texts
+                .iter()
+                .any(|text| text.contains(&stream_comparison_label)),
+            "expected stream comparison section to stay visible after selector switch, rendered texts: {:?}",
+            switched_texts
+        );
+        assert!(
+            switched_texts
+                .iter()
+                .any(|text| text.contains(&result_unit_view_label)),
+            "expected flash unit selection to survive stream selector switch, rendered texts: {:?}",
+            switched_texts
+        );
+
+        app.result_inspector
+            .select_comparison_stream(&snapshot.snapshot_id, "stream-liquid");
+        let rearmed_stream_id = app.result_inspector.selected_stream_id_for_snapshot(&snapshot);
+        let rearmed_unit_id = app.result_inspector.selected_unit_id_for_snapshot(&snapshot);
+        let rearmed_comparison_stream_id = app.result_inspector.comparison_stream_id.clone();
+        let rearmed_inspector = snapshot.result_inspector_with_unit(
+            rearmed_stream_id.as_deref(),
+            rearmed_comparison_stream_id.as_deref(),
+            rearmed_unit_id.as_deref(),
+        );
+        let rearmed_comparison = rearmed_inspector
+            .comparison
+            .as_ref()
+            .expect("expected rearmed flash outlet comparison");
+        let rearmed_texts = render_shell_selected_result_inspector_texts(&mut app, &snapshot, &[]);
+        let rearmed_comparison_texts =
+            render_result_inspector_comparison_texts(&mut app, rearmed_comparison);
+        assert!(
+            rearmed_texts
+                .iter()
+                .any(|text| text.contains(&stream_comparison_label)),
+            "expected shell-rearmed result inspector to keep flash comparison section visible, rendered texts: {:?}",
+            rearmed_texts
+        );
+        assert!(
+            rearmed_texts
+                .iter()
+                .any(|text| text.contains(&result_unit_view_label)),
+            "expected shell-rearmed result inspector to keep flash unit view visible, rendered texts: {:?}",
+            rearmed_texts
+        );
+        assert_rendered_comparison_surface(
+            &rearmed_comparison_texts,
+            "shell-rearmed near-boundary flash outlet comparison",
+            rearmed_comparison,
         );
     }
 }
