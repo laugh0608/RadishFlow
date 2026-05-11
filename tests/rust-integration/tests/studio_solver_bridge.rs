@@ -2,11 +2,11 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use radishflow_studio::{StudioSolveRequest, solve_workspace_with_property_package};
 use rf_rust_integration::{
-    NearBoundaryCaseKind, NearBoundaryStreamWindowCase, SYNTHETIC_LIQUID_ONLY_PACKAGE_ID,
-    SYNTHETIC_VAPOR_ONLY_PACKAGE_ID, assert_close,
-    binary_hydrocarbon_lite_near_boundary_stream_window_cases, build_binary_demo_package_provider,
-    build_binary_hydrocarbon_lite_package_provider, build_synthetic_liquid_only_package_provider,
-    build_synthetic_vapor_only_package_provider,
+    NearBoundaryCaseKind, NearBoundaryStreamWindowCase, SYNTHETIC_DEMO_PACKAGE_ID,
+    SYNTHETIC_LIQUID_ONLY_PACKAGE_ID, SYNTHETIC_VAPOR_ONLY_PACKAGE_ID, assert_close,
+    binary_hydrocarbon_lite_near_boundary_stream_window_cases,
+    build_binary_hydrocarbon_lite_package_provider, build_synthetic_demo_package_provider,
+    build_synthetic_liquid_only_package_provider, build_synthetic_vapor_only_package_provider,
     synthetic_single_phase_near_boundary_stream_window_cases,
 };
 use rf_store::parse_project_file_json;
@@ -416,7 +416,7 @@ fn studio_solver_bridge_maps_project_snapshot_into_app_state_end_to_end() {
 
 #[test]
 fn studio_solver_bridge_preserves_intermediate_stream_windows_across_steps_end_to_end() {
-    let provider = build_binary_demo_package_provider();
+    let provider = build_synthetic_demo_package_provider();
     let mut app_state = app_state_from_project(
         include_str!("../../../examples/flowsheets/feed-mixer-heater-flash.rfproj.json"),
         "doc-studio-intermediate-window-success",
@@ -435,7 +435,7 @@ fn studio_solver_bridge_preserves_intermediate_stream_windows_across_steps_end_t
     solve_workspace_with_property_package(
         &mut app_state,
         &provider,
-        &StudioSolveRequest::new("binary-hydrocarbon-lite-v1", "snapshot-intermediate-1", 1),
+        &StudioSolveRequest::new(SYNTHETIC_DEMO_PACKAGE_ID, "snapshot-intermediate-1", 1),
     )
     .expect("expected solve");
 
@@ -670,7 +670,7 @@ fn studio_solver_bridge_preserves_synthetic_single_phase_temperature_near_bounda
 
 #[test]
 fn studio_solver_bridge_records_solver_failure_notice_and_target_unit_end_to_end() {
-    let provider = build_binary_demo_package_provider();
+    let provider = build_synthetic_demo_package_provider();
     let project = parse_project_file_json(include_str!(
         "../../../examples/flowsheets/feed-valve-flash.rfproj.json"
     ))
@@ -694,7 +694,7 @@ fn studio_solver_bridge_records_solver_failure_notice_and_target_unit_end_to_end
     let error = solve_workspace_with_property_package(
         &mut app_state,
         &provider,
-        &StudioSolveRequest::new("binary-hydrocarbon-lite-v1", "snapshot-failure-1", 1),
+        &StudioSolveRequest::new(SYNTHETIC_DEMO_PACKAGE_ID, "snapshot-failure-1", 1),
     )
     .expect_err("expected solve failure");
 

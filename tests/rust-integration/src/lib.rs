@@ -15,6 +15,7 @@ use rf_thermo::{
 use rf_types::{ComponentId, PhaseEquilibriumRegion};
 
 pub const BINARY_HYDROCARBON_LITE_PACKAGE_ID: &str = "binary-hydrocarbon-lite-v1";
+pub const SYNTHETIC_DEMO_PACKAGE_ID: &str = "binary-hydrocarbon-synthetic-demo-v1";
 pub const SYNTHETIC_LIQUID_ONLY_PACKAGE_ID: &str = "binary-hydrocarbon-synthetic-liquid-only-v1";
 pub const SYNTHETIC_VAPOR_ONLY_PACKAGE_ID: &str = "binary-hydrocarbon-synthetic-vapor-only-v1";
 pub const BINARY_HYDROCARBON_LITE_NEAR_BOUNDARY_REFERENCE_TEMPERATURE_K: f64 = 300.0;
@@ -305,7 +306,7 @@ pub fn build_demo_antoine_coefficients(k_value: f64, pressure_pa: f64) -> Antoin
     )
 }
 
-pub fn build_binary_demo_provider() -> PlaceholderThermoProvider {
+pub fn build_synthetic_demo_provider() -> PlaceholderThermoProvider {
     let pressure_pa = 100_000.0_f64;
     let mut first = ThermoComponent::new(ComponentId::new("component-a"), "Component A");
     first.antoine = Some(build_demo_antoine_coefficients(2.0, pressure_pa));
@@ -399,7 +400,7 @@ fn near_boundary_thermo_provider_for_case(
     }
 }
 
-pub fn build_binary_demo_package_provider() -> InMemoryPropertyPackageProvider {
+pub fn build_synthetic_demo_package_provider() -> InMemoryPropertyPackageProvider {
     let pressure_pa = 100_000.0_f64;
     let mut first = ThermoComponent::new(ComponentId::new("component-a"), "Component A");
     first.antoine = Some(build_demo_antoine_coefficients(2.0, pressure_pa));
@@ -413,7 +414,7 @@ pub fn build_binary_demo_package_provider() -> InMemoryPropertyPackageProvider {
 
     InMemoryPropertyPackageProvider::new(vec![(
         PropertyPackageManifest::new(
-            BINARY_HYDROCARBON_LITE_PACKAGE_ID,
+            SYNTHETIC_DEMO_PACKAGE_ID,
             "2026.03.1",
             PropertyPackageSource::LocalBundled,
             vec!["component-a".into(), "component-b".into()],
@@ -652,6 +653,18 @@ pub fn write_synthetic_liquid_only_cached_package(
         auth_cache_index,
         SYNTHETIC_LIQUID_ONLY_PACKAGE_ID,
         [0.8, 0.6],
+    );
+}
+
+pub fn write_synthetic_demo_cached_package(
+    cache_root: &Path,
+    auth_cache_index: &mut StoredAuthCacheIndex,
+) {
+    write_synthetic_cached_package(
+        cache_root,
+        auth_cache_index,
+        SYNTHETIC_DEMO_PACKAGE_ID,
+        [2.0, 0.5],
     );
 }
 

@@ -2,8 +2,8 @@ use rf_flash::{PlaceholderTpFlashSolver, TpFlashInput, TpFlashSolver, estimate_b
 use rf_rust_integration::{
     BINARY_HYDROCARBON_LITE_PACKAGE_ID, NearBoundaryCaseKind, NearBoundaryStreamWindowCase,
     SYNTHETIC_LIQUID_ONLY_PACKAGE_ID, SYNTHETIC_VAPOR_ONLY_PACKAGE_ID, assert_close,
-    binary_hydrocarbon_lite_near_boundary_stream_window_cases, build_binary_demo_provider,
-    build_demo_antoine_coefficients, expected_overall_molar_enthalpy_for_case,
+    binary_hydrocarbon_lite_near_boundary_stream_window_cases, build_demo_antoine_coefficients,
+    build_synthetic_demo_provider, expected_overall_molar_enthalpy_for_case,
     near_boundary_component_ids_for_package,
     synthetic_single_phase_near_boundary_stream_window_cases,
 };
@@ -504,7 +504,7 @@ fn solve_near_boundary_case_with_provider<F>(
 
 #[test]
 fn feed_mixer_flash_project_solves_end_to_end() {
-    let provider = build_binary_demo_provider();
+    let provider = build_synthetic_demo_provider();
     let snapshot = solve_example_result_with_provider_and_edit(
         include_str!("../../../examples/flowsheets/feed-mixer-flash.rfproj.json"),
         &provider,
@@ -544,7 +544,7 @@ fn feed_mixer_flash_project_solves_end_to_end() {
 
 #[test]
 fn feed_mixer_heater_flash_project_solves_end_to_end() {
-    let provider = build_binary_demo_provider();
+    let provider = build_synthetic_demo_provider();
     let snapshot = solve_example_result_with_provider_and_edit(
         include_str!("../../../examples/flowsheets/feed-mixer-heater-flash.rfproj.json"),
         &provider,
@@ -591,7 +591,7 @@ fn feed_mixer_heater_flash_project_solves_end_to_end() {
 
 #[test]
 fn feed_heater_flash_project_solves_end_to_end() {
-    let provider = build_binary_demo_provider();
+    let provider = build_synthetic_demo_provider();
     let snapshot = solve_example_result_with_provider_and_edit(
         include_str!("../../../examples/flowsheets/feed-heater-flash.rfproj.json"),
         &provider,
@@ -678,7 +678,7 @@ fn feed_heater_flash_binary_hydrocarbon_project_solves_end_to_end() {
 
 #[test]
 fn feed_cooler_flash_project_solves_end_to_end() {
-    let provider = build_binary_demo_provider();
+    let provider = build_synthetic_demo_provider();
     let snapshot = solve_example_result_with_provider_and_edit(
         include_str!("../../../examples/flowsheets/feed-cooler-flash.rfproj.json"),
         &provider,
@@ -751,7 +751,7 @@ fn feed_cooler_flash_binary_hydrocarbon_project_solves_end_to_end() {
 
 #[test]
 fn feed_valve_flash_project_solves_end_to_end() {
-    let provider = build_binary_demo_provider();
+    let provider = build_synthetic_demo_provider();
     let snapshot = solve_example_result_with_provider_and_edit(
         include_str!("../../../examples/flowsheets/feed-valve-flash.rfproj.json"),
         &provider,

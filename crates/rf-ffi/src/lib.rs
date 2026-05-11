@@ -852,7 +852,7 @@ mod tests {
 
         let packages = value.as_array().expect("expected manifest array");
         assert_eq!(packages.len(), 2);
-        assert_eq!(packages[0]["packageId"], "binary-hydrocarbon-lite-v1");
+        assert_eq!(packages[0]["packageId"], DEMO_PACKAGE_ID);
         assert_eq!(packages[0]["source"], "local-bundled");
         assert_eq!(packages[1]["packageId"], "runtime-binary-package");
         assert_eq!(packages[1]["version"], "2026.04.14");

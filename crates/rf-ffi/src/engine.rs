@@ -18,7 +18,7 @@ use rf_thermo::{
 use rf_types::{ComponentId, RfError, RfResult};
 use serde::Serialize;
 
-pub const DEMO_PACKAGE_ID: &str = "binary-hydrocarbon-lite-v1";
+pub const DEMO_PACKAGE_ID: &str = "binary-hydrocarbon-synthetic-demo-v1";
 const DEMO_PACKAGE_VERSION: &str = "2026.03.1";
 const DEMO_REFERENCE_PRESSURE_PA: f64 = 100_000.0;
 
