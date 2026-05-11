@@ -1,14 +1,17 @@
 use super::*;
 use radishflow_studio::{
+    test_support::{
+        apply_official_binary_hydrocarbon_near_boundary_consumer_scenario,
+        apply_stream_state_and_composition, build_official_binary_hydrocarbon_provider,
+        build_synthetic_provider, official_binary_hydrocarbon_near_boundary_consumer_scenarios,
+        solve_snapshot_model_from_project_with_provider_and_edit, stream_target_detail_model,
+        unit_target_detail_model,
+    },
     StudioGuiWindowInspectorTargetDetailModel, StudioGuiWindowSolveSnapshotModel,
     StudioGuiWindowStreamResultModel, StudioGuiWindowUnitExecutionResultModel,
-    test_support::{
-        apply_stream_state_and_composition, build_official_binary_hydrocarbon_provider,
-        build_synthetic_provider, solve_snapshot_model_from_project_with_provider_and_edit,
-        stream_target_detail_model, unit_target_detail_model,
-    },
 };
 use rf_flash::estimate_bubble_dew_window;
+use rf_types::PhaseEquilibriumRegion;
 
 const REFERENCE_TEMPERATURE_K: f64 = 300.0;
 const REFERENCE_PRESSURE_PA: f64 = 100_000.0;
@@ -154,6 +157,32 @@ fn collect_shape_texts(shape: &egui::epaint::Shape, texts: &mut Vec<String>) {
 
 fn rendered_text_occurrences(texts: &[String], expected: &str) -> usize {
     texts.iter().filter(|text| text.contains(expected)).count()
+}
+
+fn assert_stream_window_rendered(
+    app: &mut ReadyAppState,
+    snapshot: &StudioGuiWindowSolveSnapshotModel,
+    stream_id: &str,
+    title: &str,
+    bubble_dew_label: &str,
+    expected_count: usize,
+) {
+    let result_texts = render_result_inspector_texts(app, snapshot, stream_id);
+    assert_eq!(
+        rendered_text_occurrences(&result_texts, bubble_dew_label),
+        expected_count,
+        "expected result inspector bubble/dew window count {expected_count} for `{stream_id}`, rendered texts: {:?}",
+        result_texts
+    );
+
+    let active_texts =
+        render_active_inspector_texts(app, stream_target_detail_model(snapshot, stream_id, title));
+    assert_eq!(
+        rendered_text_occurrences(&active_texts, bubble_dew_label),
+        expected_count,
+        "expected active inspector bubble/dew window count {expected_count} for `{stream_id}`, rendered texts: {:?}",
+        active_texts
+    );
 }
 
 struct StreamSummaryLabels<'a> {
@@ -1055,6 +1084,108 @@ fn runtime_panel_renders_unit_summary_and_context_for_non_flash_intermediate_uni
             &active_unit,
             &labels,
         );
+    }
+}
+
+#[test]
+fn runtime_panel_renders_official_near_boundary_flash_chain_window_semantics() {
+    let mut app = ready_app_state(&synced_workspace_config());
+    let bubble_dew_label = app.locale.text(ShellText::BubbleDewWindow).to_string();
+
+    for scenario in official_binary_hydrocarbon_near_boundary_consumer_scenarios() {
+        let snapshot = solve_snapshot_model_from_project_with_provider_and_edit(
+            scenario.project_json,
+            &build_official_binary_hydrocarbon_provider(),
+            |project| {
+                apply_official_binary_hydrocarbon_near_boundary_consumer_scenario(
+                    project, &scenario,
+                );
+            },
+        );
+
+        for stream_id in scenario.source_stream_ids {
+            let title = snapshot
+                .streams
+                .iter()
+                .find(|stream| stream.stream_id == *stream_id)
+                .expect("expected source stream")
+                .label
+                .clone();
+            assert_stream_window_rendered(
+                &mut app,
+                &snapshot,
+                stream_id,
+                title.as_str(),
+                &bubble_dew_label,
+                1,
+            );
+        }
+
+        assert_stream_window_rendered(
+            &mut app,
+            &snapshot,
+            scenario.flash_inlet_stream_id,
+            scenario.flash_inlet_title,
+            &bubble_dew_label,
+            1,
+        );
+
+        match scenario.case.expected_phase_region {
+            PhaseEquilibriumRegion::LiquidOnly => {
+                assert_stream_window_rendered(
+                    &mut app,
+                    &snapshot,
+                    "stream-liquid",
+                    "Liquid Outlet",
+                    &bubble_dew_label,
+                    1,
+                );
+                assert_stream_window_rendered(
+                    &mut app,
+                    &snapshot,
+                    "stream-vapor",
+                    "Vapor Outlet",
+                    &bubble_dew_label,
+                    0,
+                );
+            }
+            PhaseEquilibriumRegion::TwoPhase => {
+                assert_stream_window_rendered(
+                    &mut app,
+                    &snapshot,
+                    "stream-liquid",
+                    "Liquid Outlet",
+                    &bubble_dew_label,
+                    1,
+                );
+                assert_stream_window_rendered(
+                    &mut app,
+                    &snapshot,
+                    "stream-vapor",
+                    "Vapor Outlet",
+                    &bubble_dew_label,
+                    1,
+                );
+            }
+            PhaseEquilibriumRegion::VaporOnly => {
+                assert_stream_window_rendered(
+                    &mut app,
+                    &snapshot,
+                    "stream-liquid",
+                    "Liquid Outlet",
+                    &bubble_dew_label,
+                    0,
+                );
+                assert_stream_window_rendered(
+                    &mut app,
+                    &snapshot,
+                    "stream-vapor",
+                    "Vapor Outlet",
+                    &bubble_dew_label,
+                    1,
+                );
+            }
+        }
     }
 }
 
