@@ -294,7 +294,7 @@ fn build_synthetic_near_boundary_stream_window_cases(
 }
 
 pub fn build_demo_antoine_coefficients(k_value: f64, pressure_pa: f64) -> AntoineCoefficients {
-    const TEST_ANTOINE_BOUNDARY_SLOPE: f64 = 250.0;
+    const TEST_ANTOINE_BOUNDARY_SLOPE: f64 = 300.0;
     const TEST_REFERENCE_TEMPERATURE_K: f64 = 300.0;
 
     AntoineCoefficients::new(
