@@ -1571,7 +1571,7 @@ impl ReadyAppState {
         }
     }
 
-    fn render_diagnostic_target_actions(
+    pub(crate) fn render_diagnostic_target_actions(
         &mut self,
         ui: &mut egui::Ui,
         actions: &[radishflow_studio::StudioGuiWindowDiagnosticTargetActionModel],
