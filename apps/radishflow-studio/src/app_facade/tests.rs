@@ -87,7 +87,7 @@ fn unique_temp_path(name: &str) -> PathBuf {
     std::env::temp_dir().join(format!("radishflow-{name}-{unique}"))
 }
 
-fn write_cached_package(
+fn write_official_binary_hydrocarbon_cached_package(
     cache_root: &Path,
     auth_cache_index: &mut StoredAuthCacheIndex,
     package_id: &str,
@@ -161,7 +161,7 @@ fn facade_runs_workspace_command_from_auth_cache() {
         "user-123",
         StoredCredentialReference::new("radishflow-studio", "user-123-primary"),
     );
-    write_cached_package(
+    write_official_binary_hydrocarbon_cached_package(
         &cache_root,
         &mut auth_cache_index,
         "binary-hydrocarbon-lite-v1",
@@ -368,7 +368,7 @@ fn facade_resumes_workspace_from_hold_and_runs_automatic_dispatch() {
         "user-123",
         StoredCredentialReference::new("radishflow-studio", "user-123-primary"),
     );
-    write_cached_package(
+    write_official_binary_hydrocarbon_cached_package(
         &cache_root,
         &mut auth_cache_index,
         "binary-hydrocarbon-lite-v1",

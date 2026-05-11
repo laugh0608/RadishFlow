@@ -132,7 +132,7 @@ mod tests {
         std::env::temp_dir().join(format!("radishflow-{name}-{unique}"))
     }
 
-    fn write_cached_package(
+    fn write_official_binary_hydrocarbon_cached_package(
         cache_root: &Path,
         auth_cache_index: &mut StoredAuthCacheIndex,
         package_id: &str,
@@ -165,7 +165,7 @@ mod tests {
             "user-123",
             StoredCredentialReference::new("radishflow-studio", "user-123-primary"),
         );
-        write_cached_package(
+        write_official_binary_hydrocarbon_cached_package(
             &cache_root,
             &mut auth_cache_index,
             "binary-hydrocarbon-lite-v1",
@@ -249,7 +249,7 @@ mod tests {
             "user-123",
             StoredCredentialReference::new("radishflow-studio", "user-123-primary"),
         );
-        write_cached_package(
+        write_official_binary_hydrocarbon_cached_package(
             &cache_root,
             &mut auth_cache_index,
             "binary-hydrocarbon-lite-v1",
