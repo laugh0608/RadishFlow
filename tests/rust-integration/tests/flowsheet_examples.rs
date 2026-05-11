@@ -148,7 +148,11 @@ fn assert_flash_consumes_stream(snapshot: &rf_solver::SolveSnapshot, stream_id: 
 
     assert_eq!(flash_step.unit_id, UnitId::new("flash-1"));
     assert_eq!(
-        flash_step.consumed_stream_ids,
+        flash_step
+            .consumed_streams
+            .iter()
+            .map(|stream| stream.id.clone())
+            .collect::<Vec<_>>(),
         vec![StreamId::new(stream_id)]
     );
 }

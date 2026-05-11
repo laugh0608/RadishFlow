@@ -1,6 +1,6 @@
 # Run First Flowsheet
 
-更新时间：2026-05-09
+更新时间：2026-05-10
 
 ## 目的
 
@@ -106,6 +106,17 @@ examples/flowsheets/feed-mixer-flash-binary-hydrocarbon.rfproj.json
 - `F` = `total_molar_flow_mol_s`
 - `H` = `molar_enthalpy_j_per_mol`
 
+按对象读时，建议再多看一层：
+
+- 先看 source stream，例如 `stream-feed`
+- 再看 non-flash intermediate，例如 `stream-heated`
+- 再看 step 输入/输出是否与全局流股结果保持同一份 DTO 语义
+- 最后再看 `stream-liquid / stream-vapor` 这类 flash outlet 的窗口边界和缺席语义
+
+如果你想按这条顺序系统地读一遍结果，继续阅读：
+
+- `docs/guides/review-solve-results.md`
+
 ## 5. 保存并重新打开
 
 如果只是验证运行链路，建议再顺手做一次保存与重开：
@@ -146,8 +157,10 @@ examples/flowsheets/feed-mixer-flash-binary-hydrocarbon.rfproj.json
 
 1. 修改一个流股字段并重新运行
 2. 在 Result Inspector 对比不同流股结果
-3. 阅读 `docs/reference/units-and-conventions.md`
-4. 阅读 `docs/thermo/mvp-model.md`
+3. 阅读 `docs/guides/review-solve-results.md`
+4. 阅读 `docs/reference/units-and-conventions.md`
+5. 阅读 `docs/reference/solve-snapshot-results.md`
+6. 阅读 `docs/thermo/mvp-model.md`
 
 如果你接下来更关心系统边界，而不是继续点 UI，则直接转到：
 

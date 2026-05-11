@@ -1,6 +1,6 @@
 # Studio Quick Start
 
-更新时间：2026-05-09
+更新时间：2026-05-10
 
 ## 目的
 
@@ -102,14 +102,21 @@ cargo run -p radishflow-studio
 - `liquid / vapor / overall` 相结果
 - 各相摩尔流量与 molar enthalpy
 
+如果你接下来更关心“这些结果分别代表什么”，而不是只看字段名字，直接继续读：
+
+- `docs/guides/review-solve-results.md`
+- `docs/reference/solve-snapshot-results.md`
+
 ## 下一步应该读什么
 
 按使用顺序，建议继续阅读：
 
 1. `docs/guides/run-first-flowsheet.md`
-2. `docs/reference/units-and-conventions.md`
-3. `docs/architecture/overview.md`
-4. `docs/thermo/mvp-model.md`
+2. `docs/guides/review-solve-results.md`
+3. `docs/reference/units-and-conventions.md`
+4. `docs/reference/solve-snapshot-results.md`
+5. `docs/architecture/overview.md`
+6. `docs/thermo/mvp-model.md`
 
 如果你关心的是“当前阶段做到哪了”，再读：
 

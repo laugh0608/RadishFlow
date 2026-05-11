@@ -28,6 +28,10 @@ fn assert_close(actual: f64, expected: f64, tolerance: f64) {
     );
 }
 
+fn step_stream_ids(streams: &[MaterialStreamState]) -> Vec<StreamId> {
+    streams.iter().map(|stream| stream.id.clone()).collect()
+}
+
 fn build_test_antoine_coefficients(k_value: f64, pressure_pa: f64) -> AntoineCoefficients {
     const TEST_ANTOINE_BOUNDARY_SLOPE: f64 = 300.0;
     const TEST_REFERENCE_TEMPERATURE_K: f64 = 300.0;
@@ -495,10 +499,13 @@ fn sequential_solver_solves_feed_mixer_flash_chain() {
     assert_eq!(snapshot.steps[1].unit_id.as_str(), "feed-b");
     assert_eq!(snapshot.steps[2].unit_id.as_str(), "mixer-1");
     assert_eq!(snapshot.steps[3].unit_id.as_str(), "flash-1");
-    assert_eq!(snapshot.steps[2].consumed_stream_ids.len(), 2);
+    assert_eq!(
+        step_stream_ids(&snapshot.steps[2].consumed_streams).len(),
+        2
+    );
     assert_eq!(snapshot.steps[2].consumed_streams.len(), 2);
     assert_eq!(
-        snapshot.steps[2].produced_stream_ids,
+        step_stream_ids(&snapshot.steps[2].produced_streams),
         vec!["stream-mix-out".into()]
     );
     assert_eq!(snapshot.steps[2].produced_streams.len(), 1);
@@ -641,12 +648,12 @@ fn sequential_solver_solves_feed_heater_flash_chain() {
     assert_eq!(snapshot.steps[1].unit_id.as_str(), "heater-1");
     assert_eq!(snapshot.steps[2].unit_id.as_str(), "flash-1");
     assert_eq!(
-        snapshot.steps[1].consumed_stream_ids,
+        step_stream_ids(&snapshot.steps[1].consumed_streams),
         vec!["stream-feed".into()]
     );
     assert_eq!(snapshot.steps[1].consumed_streams.len(), 1);
     assert_eq!(
-        snapshot.steps[1].produced_stream_ids,
+        step_stream_ids(&snapshot.steps[1].produced_streams),
         vec!["stream-heated".into()]
     );
     assert_eq!(snapshot.steps[1].produced_streams.len(), 1);
@@ -846,12 +853,12 @@ fn sequential_solver_solves_feed_cooler_flash_chain() {
     assert_eq!(snapshot.steps[1].unit_id.as_str(), "cooler-1");
     assert_eq!(snapshot.steps[2].unit_id.as_str(), "flash-1");
     assert_eq!(
-        snapshot.steps[1].consumed_stream_ids,
+        step_stream_ids(&snapshot.steps[1].consumed_streams),
         vec!["stream-feed".into()]
     );
     assert_eq!(snapshot.steps[1].consumed_streams.len(), 1);
     assert_eq!(
-        snapshot.steps[1].produced_stream_ids,
+        step_stream_ids(&snapshot.steps[1].produced_streams),
         vec!["stream-cooled".into()]
     );
     assert_eq!(snapshot.steps[1].produced_streams.len(), 1);
@@ -987,12 +994,12 @@ fn sequential_solver_solves_feed_valve_flash_chain() {
     assert_eq!(snapshot.steps[1].unit_id.as_str(), "valve-1");
     assert_eq!(snapshot.steps[2].unit_id.as_str(), "flash-1");
     assert_eq!(
-        snapshot.steps[1].consumed_stream_ids,
+        step_stream_ids(&snapshot.steps[1].consumed_streams),
         vec!["stream-feed".into()]
     );
     assert_eq!(snapshot.steps[1].consumed_streams.len(), 1);
     assert_eq!(
-        snapshot.steps[1].produced_stream_ids,
+        step_stream_ids(&snapshot.steps[1].produced_streams),
         vec!["stream-throttled".into()]
     );
     assert_eq!(snapshot.steps[1].produced_streams.len(), 1);

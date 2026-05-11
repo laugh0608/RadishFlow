@@ -1,6 +1,6 @@
 # Units And Conventions
 
-更新时间：2026-05-09
+更新时间：2026-05-10
 
 ## 目的
 
@@ -13,7 +13,7 @@
 - 相标签和相区间怎么表示
 - 常见字段名中的后缀各自是什么意思
 
-它不替代更完整的对象格式说明；项目文件和结果 DTO 的详细字段后续应进入独立 reference 文档。
+它不替代更完整的对象格式说明；项目文件和结果 DTO 的详细字段见独立 reference 文档。
 
 ## 物理单位
 
@@ -101,6 +101,27 @@
 
 当前 UI 和结果审阅层应继续只读消费这些 DTO，不在 shell 或展示层再分叉第二套相平衡判断。
 
+再补三条稳定约束：
+
+- `phase_region` 属于窗口语义，不直接等价于最终会显示几行 phase rows
+- zero-flow 的单相 flash 对侧 outlet 当前允许 `bubble_dew_window` 缺席
+- 结果消费层看到缺席窗口时应按缺席处理，不补造默认边界
+
+## 结果字段读取约定
+
+当前结果区里最容易混淆的是 `H`、`phase rows` 和 `bubble_dew_window`。
+
+稳定规则：
+
+- `H` 只表示已物化的 `molar_enthalpy_j_per_mol`
+- 若某股流没有 `H`，当前 consumer 应按缺失处理，不在 shell 中补算
+- `bubble_dew_window` 表示当前 overall composition 的平衡边界窗口
+- source stream、非 flash 中间流股、flash outlet，以及 step 输入/输出都应继续沿同一份结果 DTO 被消费
+
+更完整的结果 DTO 语义见：
+
+- `docs/reference/solve-snapshot-results.md`
+
 ## 字段后缀约定
 
 当前仓库中的字段命名会尽量把单位直接写进后缀。
@@ -138,5 +159,7 @@
 
 - `docs/guides/studio-quick-start.md`
 - `docs/guides/run-first-flowsheet.md`
+- `docs/guides/review-solve-results.md`
+- `docs/reference/solve-snapshot-results.md`
 - `docs/thermo/mvp-model.md`
 - `docs/mvp/scope.md`

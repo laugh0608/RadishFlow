@@ -450,14 +450,20 @@ fn assert_non_flash_intermediate_unit_summary_and_context(
             "expected {surface} unit `{unit_id}` to point at an executed solve step"
         );
         assert_eq!(
-            unit.consumed_stream_ids,
+            unit.consumed_stream_results
+                .iter()
+                .map(|stream| stream.stream_id.clone())
+                .collect::<Vec<_>>(),
             consumed_stream_ids
                 .iter()
                 .map(|stream_id| stream_id.to_string())
                 .collect::<Vec<_>>()
         );
         assert_eq!(
-            unit.produced_stream_ids,
+            unit.produced_stream_results
+                .iter()
+                .map(|stream| stream.stream_id.clone())
+                .collect::<Vec<_>>(),
             vec![produced_stream_id.to_string()]
         );
         assert!(
@@ -1213,11 +1219,19 @@ fn studio_gui_window_model_surfaces_bootstrap_workspace_results_and_diagnostics(
     assert_eq!(unit_result.status_label, "Converged");
     assert_eq!(unit_result.step_index, 1);
     assert_eq!(
-        unit_result.consumed_stream_ids,
+        unit_result
+            .consumed_stream_results
+            .iter()
+            .map(|stream| stream.stream_id.clone())
+            .collect::<Vec<_>>(),
         vec!["stream-feed".to_string()]
     );
     assert_eq!(
-        unit_result.produced_stream_ids,
+        unit_result
+            .produced_stream_results
+            .iter()
+            .map(|stream| stream.stream_id.clone())
+            .collect::<Vec<_>>(),
         vec!["stream-heated".to_string()]
     );
     assert!(unit_result.summary.contains("stream-heated"));

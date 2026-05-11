@@ -100,9 +100,7 @@ pub struct UnitSolveStep {
     pub unit_name: String,
     pub unit_kind: String,
     pub consumed_streams: Vec<MaterialStreamState>,
-    pub consumed_stream_ids: Vec<StreamId>,
     pub produced_streams: Vec<MaterialStreamState>,
-    pub produced_stream_ids: Vec<StreamId>,
     pub summary: String,
 }
 
@@ -256,7 +254,6 @@ impl FlowsheetSolver for SequentialModularSolver {
                 solver_step_execution_error(step_number, unit, &consumed_stream_ids, error)
             })?;
             let mut produced_streams = Vec::new();
-            let mut produced_stream_ids = Vec::new();
 
             for port in spec
                 .ports
@@ -265,9 +262,9 @@ impl FlowsheetSolver for SequentialModularSolver {
             {
                 let stream = materialized_output_stream(step_number, unit, port.name, &outputs)?;
                 produced_streams.push(stream.clone());
-                produced_stream_ids.push(stream.id.clone());
                 solved_streams.insert(stream.id.clone(), stream.clone());
             }
+            let produced_stream_ids = stream_ids(&produced_streams);
 
             let summary = format!(
                 "executed unit `{}` (`{}`) with {} inlet stream(s) [{}] and produced {} outlet stream(s) [{}]",
@@ -295,9 +292,7 @@ impl FlowsheetSolver for SequentialModularSolver {
                 unit_name: unit.name.clone(),
                 unit_kind: unit.kind.clone(),
                 consumed_streams,
-                consumed_stream_ids,
                 produced_streams,
-                produced_stream_ids,
                 summary,
             });
         }
@@ -662,6 +657,10 @@ fn solver_step_execution_error(
     .with_diagnostic_code(SolverDiagnosticCode::StepExecution.as_str())
     .with_related_unit_id(unit.id.clone())
     .with_related_stream_ids(consumed_stream_ids.to_vec())
+}
+
+fn stream_ids(streams: &[MaterialStreamState]) -> Vec<StreamId> {
+    streams.iter().map(|stream| stream.id.clone()).collect()
 }
 
 fn solver_context_error(context: impl AsRef<str>, error: RfError) -> RfError {

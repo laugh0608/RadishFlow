@@ -463,14 +463,14 @@ impl FfiUnitSolveStepJson {
             unit_name: step.unit_name.clone(),
             unit_kind: step.unit_kind.clone(),
             consumed_stream_ids: step
-                .consumed_stream_ids
+                .consumed_streams
                 .iter()
-                .map(|stream_id| stream_id.as_str().to_string())
+                .map(|stream| stream.id.as_str().to_string())
                 .collect(),
             produced_stream_ids: step
-                .produced_stream_ids
+                .produced_streams
                 .iter()
-                .map(|stream_id| stream_id.as_str().to_string())
+                .map(|stream| stream.id.as_str().to_string())
                 .collect(),
             summary: step.summary.clone(),
         }

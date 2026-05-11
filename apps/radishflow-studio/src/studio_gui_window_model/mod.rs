@@ -279,10 +279,8 @@ pub struct StudioGuiWindowUnitExecutionResultModel {
     pub step_index: usize,
     pub status_label: &'static str,
     pub summary: String,
-    pub consumed_stream_ids: Vec<String>,
     pub consumed_stream_results: Vec<StudioGuiWindowStreamResultReferenceModel>,
     pub consumed_stream_actions: Vec<StudioGuiWindowCommandActionModel>,
-    pub produced_stream_ids: Vec<String>,
     pub produced_stream_results: Vec<StudioGuiWindowStreamResultReferenceModel>,
     pub produced_stream_actions: Vec<StudioGuiWindowCommandActionModel>,
 }
@@ -1274,10 +1272,8 @@ fn latest_unit_result_for_target(
             step_index: step.index,
             status_label: step.execution_status_label,
             summary: step.summary.clone(),
-            consumed_stream_ids: step.consumed_streams.clone(),
             consumed_stream_results: step.consumed_stream_results.clone(),
             consumed_stream_actions: step.consumed_stream_actions.clone(),
-            produced_stream_ids: step.produced_streams.clone(),
             produced_stream_results: step.produced_stream_results.clone(),
             produced_stream_actions: step.produced_stream_actions.clone(),
         })
@@ -1511,14 +1507,14 @@ fn inspector_detail_diagnostic_actions(
         target,
     ));
     let latest_result_actions = latest_unit_result.into_iter().flat_map(|unit| {
-        unit.produced_stream_ids
+        unit.produced_stream_results
             .iter()
             .zip(unit.produced_stream_actions.iter())
-            .map(|(stream_id, action)| {
+            .map(|(stream, action)| {
                 diagnostic_target_action_from_action(
                     "Latest result",
                     "Stream",
-                    format!("Latest result output stream {stream_id}"),
+                    format!("Latest result output stream {}", stream.stream_id),
                     action,
                 )
             })
