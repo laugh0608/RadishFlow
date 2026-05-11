@@ -194,8 +194,9 @@ mod tests {
         WorkspaceSolveTrigger, build_workspace_solve_request,
     };
     use crate::test_support::{
+        OFFICIAL_BINARY_HYDROCARBON_PACKAGE_ID,
         build_official_binary_hydrocarbon_in_memory_provider,
-        write_official_binary_hydrocarbon_cached_package,
+        write_default_official_binary_hydrocarbon_cached_package,
     };
 
     fn timestamp(seconds: u64) -> std::time::SystemTime {
@@ -209,7 +210,7 @@ mod tests {
     }
 
     fn sample_provider() -> InMemoryPropertyPackageProvider {
-        build_official_binary_hydrocarbon_in_memory_provider("binary-hydrocarbon-lite-v1")
+        build_official_binary_hydrocarbon_in_memory_provider(OFFICIAL_BINARY_HYDROCARBON_PACKAGE_ID)
     }
 
     fn unique_temp_path(name: &str) -> PathBuf {
@@ -235,10 +236,15 @@ mod tests {
         );
 
         let first = service
-            .run_with_property_package(&mut app_state, &provider, "binary-hydrocarbon-lite-v1")
+            .run_with_property_package(
+                &mut app_state,
+                &provider,
+                OFFICIAL_BINARY_HYDROCARBON_PACKAGE_ID,
+            )
             .expect("expected first solve");
-        let second = build_workspace_solve_request(&app_state, "binary-hydrocarbon-lite-v1")
-            .expect("expected next request");
+        let second =
+            build_workspace_solve_request(&app_state, OFFICIAL_BINARY_HYDROCARBON_PACKAGE_ID)
+                .expect("expected next request");
 
         assert_eq!(first.snapshot_id, "heater-demo-rev-0-seq-1");
         assert_eq!(first.sequence, 1);
@@ -260,7 +266,11 @@ mod tests {
         ));
 
         let request = service
-            .run_with_property_package(&mut app_state, &provider, "binary-hydrocarbon-lite-v1")
+            .run_with_property_package(
+                &mut app_state,
+                &provider,
+                OFFICIAL_BINARY_HYDROCARBON_PACKAGE_ID,
+            )
             .expect("expected solve");
 
         assert_eq!(request.snapshot_id, "doc-3-rev-0-seq-1");
@@ -288,7 +298,7 @@ mod tests {
             .dispatch_with_property_package(
                 &mut app_state,
                 &provider,
-                "binary-hydrocarbon-lite-v1",
+                OFFICIAL_BINARY_HYDROCARBON_PACKAGE_ID,
                 WorkspaceSolveTrigger::Automatic,
             )
             .expect("expected dispatch result");
@@ -315,7 +325,11 @@ mod tests {
 
         app_state.set_simulation_mode(rf_ui::SimulationMode::Active);
         let first = service
-            .run_with_property_package(&mut app_state, &provider, "binary-hydrocarbon-lite-v1")
+            .run_with_property_package(
+                &mut app_state,
+                &provider,
+                OFFICIAL_BINARY_HYDROCARBON_PACKAGE_ID,
+            )
             .expect("expected manual solve");
         assert_eq!(first.sequence, 1);
 
@@ -323,7 +337,7 @@ mod tests {
             .dispatch_with_property_package(
                 &mut app_state,
                 &provider,
-                "binary-hydrocarbon-lite-v1",
+                OFFICIAL_BINARY_HYDROCARBON_PACKAGE_ID,
                 WorkspaceSolveTrigger::Automatic,
             )
             .expect("expected dispatch result");
@@ -362,7 +376,7 @@ mod tests {
             .dispatch_with_property_package(
                 &mut app_state,
                 &provider,
-                "binary-hydrocarbon-lite-v1",
+                OFFICIAL_BINARY_HYDROCARBON_PACKAGE_ID,
                 WorkspaceSolveTrigger::Automatic,
             )
             .expect("expected dispatch result");
@@ -409,12 +423,9 @@ mod tests {
             "user-123",
             StoredCredentialReference::new("radishflow-studio", "user-123-primary"),
         );
-        write_official_binary_hydrocarbon_cached_package(
+        write_default_official_binary_hydrocarbon_cached_package(
             &cache_root,
             &mut auth_cache_index,
-            "binary-hydrocarbon-lite-v1",
-            timestamp(60),
-            Some(SystemTime::now() + Duration::from_secs(3_600)),
         );
 
         let project = parse_project_file_json(include_str!(
@@ -431,7 +442,7 @@ mod tests {
                 &mut app_state,
                 &cache_root,
                 &auth_cache_index,
-                "binary-hydrocarbon-lite-v1",
+                OFFICIAL_BINARY_HYDROCARBON_PACKAGE_ID,
             )
             .expect("expected solve from auth cache");
 

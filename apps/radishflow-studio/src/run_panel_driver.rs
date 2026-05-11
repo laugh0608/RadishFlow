@@ -91,7 +91,7 @@ pub fn apply_run_panel_recovery_action(
 
 #[cfg(test)]
 mod tests {
-    use std::path::{Path, PathBuf};
+    use std::path::PathBuf;
     use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
     use rf_model::Flowsheet;
@@ -108,7 +108,7 @@ mod tests {
     };
     use crate::{
         RunPanelWidgetDispatchOutcome, StudioAppAuthCacheContext, StudioAppFacade,
-        test_support::write_official_binary_hydrocarbon_cached_package as write_shared_official_binary_hydrocarbon_cached_package,
+        test_support::write_default_official_binary_hydrocarbon_cached_package,
     };
 
     fn timestamp(seconds: u64) -> std::time::SystemTime {
@@ -129,20 +129,6 @@ mod tests {
         std::env::temp_dir().join(format!("radishflow-{name}-{unique}"))
     }
 
-    fn write_official_binary_hydrocarbon_cached_package(
-        cache_root: &Path,
-        auth_cache_index: &mut StoredAuthCacheIndex,
-        package_id: &str,
-    ) {
-        write_shared_official_binary_hydrocarbon_cached_package(
-            cache_root,
-            auth_cache_index,
-            package_id,
-            timestamp(60),
-            Some(SystemTime::now() + Duration::from_secs(3_600)),
-        );
-    }
-
     #[test]
     fn snapshot_run_panel_driver_state_builds_widget_and_control_state() {
         let app_state = AppState::new(sample_document());
@@ -161,10 +147,9 @@ mod tests {
             "user-123",
             StoredCredentialReference::new("radishflow-studio", "user-123-primary"),
         );
-        write_official_binary_hydrocarbon_cached_package(
+        write_default_official_binary_hydrocarbon_cached_package(
             &cache_root,
             &mut auth_cache_index,
-            "binary-hydrocarbon-lite-v1",
         );
         let facade = StudioAppFacade::new();
         let project = parse_project_file_json(include_str!(
@@ -245,10 +230,9 @@ mod tests {
             "user-123",
             StoredCredentialReference::new("radishflow-studio", "user-123-primary"),
         );
-        write_official_binary_hydrocarbon_cached_package(
+        write_default_official_binary_hydrocarbon_cached_package(
             &cache_root,
             &mut auth_cache_index,
-            "binary-hydrocarbon-lite-v1",
         );
         let facade = StudioAppFacade::new();
         let project = parse_project_file_json(include_str!(

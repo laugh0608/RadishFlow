@@ -1,5 +1,5 @@
 use std::path::Path;
-use std::time::SystemTime;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use rf_store::{
     StoredAuthCacheIndex, StoredProjectFile, StoredPropertyPackageManifest,
@@ -17,6 +17,8 @@ use rf_types::ComponentId;
 #[doc(hidden)]
 pub const OFFICIAL_BINARY_HYDROCARBON_COMPONENT_SPECS: [(&str, &str); 2] =
     [("methane", "Methane"), ("ethane", "Ethane")];
+#[doc(hidden)]
+pub const OFFICIAL_BINARY_HYDROCARBON_PACKAGE_ID: &str = "binary-hydrocarbon-lite-v1";
 #[doc(hidden)]
 pub const SYNTHETIC_COMPONENT_A_ID: &str = "synthetic-component-a";
 #[doc(hidden)]
@@ -37,6 +39,10 @@ pub const OFFICIAL_VALVE_BINARY_HYDROCARBON_PROJECT_FILE_NAME: &str =
 #[doc(hidden)]
 pub const OFFICIAL_HEATER_BINARY_HYDROCARBON_AUTORUN_SNAPSHOT_ID: &str =
     "example-feed-heater-flash-binary-hydrocarbon-rev-1-seq-1";
+
+fn fixture_timestamp(seconds: u64) -> SystemTime {
+    UNIX_EPOCH + Duration::from_secs(seconds)
+}
 
 #[doc(hidden)]
 pub fn official_heater_binary_hydrocarbon_project_json() -> &'static str {
@@ -95,7 +101,7 @@ pub fn build_valve_solver_failure_project_json() -> String {
 #[doc(hidden)]
 pub fn build_official_binary_hydrocarbon_provider() -> PlaceholderThermoProvider {
     let payload = build_stored_payload_from_official_binary_hydrocarbon_sample(
-        "binary-hydrocarbon-lite-v1",
+        OFFICIAL_BINARY_HYDROCARBON_PACKAGE_ID,
         OFFICIAL_BINARY_HYDROCARBON_COMPONENT_SPECS,
     );
     let [first, second] = binary_hydrocarbon_lite_components(&payload);
@@ -194,6 +200,20 @@ pub fn write_official_binary_hydrocarbon_cached_package(
     )
     .expect("expected payload write");
     auth_cache_index.property_packages.push(record);
+}
+
+#[doc(hidden)]
+pub fn write_default_official_binary_hydrocarbon_cached_package(
+    cache_root: &Path,
+    auth_cache_index: &mut StoredAuthCacheIndex,
+) {
+    write_official_binary_hydrocarbon_cached_package(
+        cache_root,
+        auth_cache_index,
+        OFFICIAL_BINARY_HYDROCARBON_PACKAGE_ID,
+        fixture_timestamp(60),
+        Some(SystemTime::now() + Duration::from_secs(3_600)),
+    );
 }
 
 #[doc(hidden)]

@@ -195,8 +195,9 @@ mod tests {
         solve_workspace_with_property_package,
     };
     use crate::test_support::{
+        OFFICIAL_BINARY_HYDROCARBON_PACKAGE_ID,
         build_official_binary_hydrocarbon_in_memory_provider,
-        write_official_binary_hydrocarbon_cached_package,
+        write_default_official_binary_hydrocarbon_cached_package,
     };
 
     fn timestamp(seconds: u64) -> std::time::SystemTime {
@@ -210,7 +211,7 @@ mod tests {
     }
 
     fn sample_provider() -> InMemoryPropertyPackageProvider {
-        build_official_binary_hydrocarbon_in_memory_provider("binary-hydrocarbon-lite-v1")
+        build_official_binary_hydrocarbon_in_memory_provider(OFFICIAL_BINARY_HYDROCARBON_PACKAGE_ID)
     }
 
     fn unique_temp_path(name: &str) -> PathBuf {
@@ -238,7 +239,7 @@ mod tests {
         solve_workspace_with_property_package(
             &mut app_state,
             &provider,
-            &StudioSolveRequest::new("binary-hydrocarbon-lite-v1", "snapshot-1", 1),
+            &StudioSolveRequest::new(OFFICIAL_BINARY_HYDROCARBON_PACKAGE_ID, "snapshot-1", 1),
         )
         .expect("expected solve");
 
@@ -260,7 +261,7 @@ mod tests {
         solve_workspace_with_property_package(
             &mut app_state,
             &provider,
-            &StudioSolveRequest::new("binary-hydrocarbon-lite-v1", "snapshot-1", 1),
+            &StudioSolveRequest::new(OFFICIAL_BINARY_HYDROCARBON_PACKAGE_ID, "snapshot-1", 1),
         )
         .expect("expected solve");
 
@@ -332,7 +333,11 @@ mod tests {
         let error = solve_workspace_with_property_package(
             &mut app_state,
             &provider,
-            &StudioSolveRequest::new("binary-hydrocarbon-lite-v1", "snapshot-failure-1", 1),
+            &StudioSolveRequest::new(
+                OFFICIAL_BINARY_HYDROCARBON_PACKAGE_ID,
+                "snapshot-failure-1",
+                1,
+            ),
         )
         .expect_err("expected solve failure");
 
@@ -366,12 +371,9 @@ mod tests {
             "user-123",
             StoredCredentialReference::new("radishflow-studio", "user-123-primary"),
         );
-        write_official_binary_hydrocarbon_cached_package(
+        write_default_official_binary_hydrocarbon_cached_package(
             &cache_root,
             &mut auth_cache_index,
-            "binary-hydrocarbon-lite-v1",
-            timestamp(60),
-            Some(SystemTime::now() + Duration::from_secs(3_600)),
         );
 
         let project = parse_project_file_json(include_str!(
@@ -387,7 +389,11 @@ mod tests {
             &mut app_state,
             &cache_root,
             &auth_cache_index,
-            &StudioSolveRequest::new("binary-hydrocarbon-lite-v1", "snapshot-cache-1", 1),
+            &StudioSolveRequest::new(
+                OFFICIAL_BINARY_HYDROCARBON_PACKAGE_ID,
+                "snapshot-cache-1",
+                1,
+            ),
         )
         .expect("expected solve from auth cache");
 
@@ -415,7 +421,7 @@ mod tests {
             StoredCredentialReference::new("radishflow-studio", "user-123-primary"),
         );
         let mut record = StoredPropertyPackageRecord::new(
-            "binary-hydrocarbon-lite-v1",
+            OFFICIAL_BINARY_HYDROCARBON_PACKAGE_ID,
             "2026.03.1",
             StoredPropertyPackageSource::RemoteDerivedPackage,
             "sha256:missing".to_string(),
@@ -438,7 +444,11 @@ mod tests {
             &mut app_state,
             &cache_root,
             &auth_cache_index,
-            &StudioSolveRequest::new("binary-hydrocarbon-lite-v1", "snapshot-cache-missing", 1),
+            &StudioSolveRequest::new(
+                OFFICIAL_BINARY_HYDROCARBON_PACKAGE_ID,
+                "snapshot-cache-missing",
+                1,
+            ),
         )
         .expect_err("expected cache preparation failure");
 
@@ -453,9 +463,10 @@ mod tests {
 
     #[test]
     fn solver_failure_context_extracts_lookup_unit_from_wrapped_message() {
-        let context = SolveFailureContext::from_message(
-            "flowsheet solve failed with package `binary-hydrocarbon-lite-v1`: solver.step.lookup: solver step 3 unit lookup failed for `flash-1`: missing unit `flash-1`",
-        );
+        let context = SolveFailureContext::from_message(&format!(
+            "flowsheet solve failed with package `{}`: solver.step.lookup: solver step 3 unit lookup failed for `flash-1`: missing unit `flash-1`",
+            OFFICIAL_BINARY_HYDROCARBON_PACKAGE_ID
+        ));
 
         assert_eq!(context.primary_code.as_deref(), Some("solver.step.lookup"));
         assert_eq!(

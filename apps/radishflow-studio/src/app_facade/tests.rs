@@ -1,4 +1,4 @@
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use rf_model::Flowsheet;
@@ -25,7 +25,10 @@ use crate::{
     RadishFlowControlPlaneClientErrorKind, RadishFlowControlPlaneResponse, StudioEntitlementAction,
     StudioEntitlementFailureReason, StudioEntitlementOutcome, WorkspaceRunCommand,
     WorkspaceRunPackageSelection,
-    test_support::write_official_binary_hydrocarbon_cached_package as write_shared_official_binary_hydrocarbon_cached_package,
+    test_support::{
+        OFFICIAL_BINARY_HYDROCARBON_PACKAGE_ID,
+        write_default_official_binary_hydrocarbon_cached_package,
+    },
 };
 
 fn timestamp(seconds: u64) -> std::time::SystemTime {
@@ -85,20 +88,6 @@ fn unique_temp_path(name: &str) -> PathBuf {
     std::env::temp_dir().join(format!("radishflow-{name}-{unique}"))
 }
 
-fn write_official_binary_hydrocarbon_cached_package(
-    cache_root: &Path,
-    auth_cache_index: &mut StoredAuthCacheIndex,
-    package_id: &str,
-) {
-    write_shared_official_binary_hydrocarbon_cached_package(
-        cache_root,
-        auth_cache_index,
-        package_id,
-        timestamp(60),
-        Some(SystemTime::now() + Duration::from_secs(3_600)),
-    );
-}
-
 fn sample_snapshot() -> EntitlementSnapshot {
     EntitlementSnapshot {
         schema_version: 1,
@@ -109,14 +98,14 @@ fn sample_snapshot() -> EntitlementSnapshot {
         offline_lease_expires_at: Some(timestamp(900)),
         features: std::collections::BTreeSet::from(["desktop-login".to_string()]),
         allowed_package_ids: std::collections::BTreeSet::from([
-            "binary-hydrocarbon-lite-v1".to_string()
+            OFFICIAL_BINARY_HYDROCARBON_PACKAGE_ID.to_string(),
         ]),
     }
 }
 
 fn sample_manifest() -> PropertyPackageManifest {
     let mut manifest = PropertyPackageManifest::new(
-        "binary-hydrocarbon-lite-v1",
+        OFFICIAL_BINARY_HYDROCARBON_PACKAGE_ID,
         "2026.03.1",
         PropertyPackageSource::RemoteDerivedPackage,
     );
@@ -158,11 +147,7 @@ fn facade_runs_workspace_command_from_auth_cache() {
         "user-123",
         StoredCredentialReference::new("radishflow-studio", "user-123-primary"),
     );
-    write_official_binary_hydrocarbon_cached_package(
-        &cache_root,
-        &mut auth_cache_index,
-        "binary-hydrocarbon-lite-v1",
-    );
+    write_default_official_binary_hydrocarbon_cached_package(&cache_root, &mut auth_cache_index);
     let facade = StudioAppFacade::new();
     let project = parse_project_file_json(include_str!(
         "../../../../examples/flowsheets/feed-heater-flash-binary-hydrocarbon.rfproj.json"
@@ -173,8 +158,9 @@ fn facade_runs_workspace_command_from_auth_cache() {
         DocumentMetadata::new("doc-app-facade", "App Facade Demo", timestamp(70)),
     ));
     let context = StudioAppAuthCacheContext::new(&cache_root, &auth_cache_index);
-    let command =
-        StudioAppCommand::run_workspace(WorkspaceRunCommand::manual("binary-hydrocarbon-lite-v1"));
+    let command = StudioAppCommand::run_workspace(WorkspaceRunCommand::manual(
+        OFFICIAL_BINARY_HYDROCARBON_PACKAGE_ID,
+    ));
 
     let outcome = facade
         .execute_with_auth_cache(&mut app_state, &context, &command)
@@ -191,12 +177,12 @@ fn facade_runs_workspace_command_from_auth_cache() {
     };
     assert_eq!(
         dispatch.package_id,
-        Some("binary-hydrocarbon-lite-v1".to_string())
+        Some(OFFICIAL_BINARY_HYDROCARBON_PACKAGE_ID.to_string())
     );
     assert_eq!(
         dispatch.outcome,
         StudioWorkspaceRunOutcome::Started(crate::StudioSolveRequest::new(
-            "binary-hydrocarbon-lite-v1",
+            OFFICIAL_BINARY_HYDROCARBON_PACKAGE_ID,
             "doc-app-facade-rev-0-seq-1",
             1,
         ))
@@ -213,14 +199,16 @@ fn facade_runs_workspace_command_from_auth_cache() {
     );
     assert_eq!(dispatch.run_status, RunStatus::Converged);
     assert_eq!(dispatch.log_entry_count, 1);
+    let expected_log_message = format!(
+        "Solved document revision 0 with property package `{}` into snapshot `doc-app-facade-rev-0-seq-1`",
+        OFFICIAL_BINARY_HYDROCARBON_PACKAGE_ID
+    );
     assert_eq!(
         dispatch
             .latest_log_entry
             .as_ref()
             .map(|entry| entry.message.as_str()),
-        Some(
-            "Solved document revision 0 with property package `binary-hydrocarbon-lite-v1` into snapshot `doc-app-facade-rev-0-seq-1`"
-        )
+        Some(expected_log_message.as_str())
     );
     assert_eq!(app_state.log_feed.entries.len(), 1);
 
@@ -365,11 +353,7 @@ fn facade_resumes_workspace_from_hold_and_runs_automatic_dispatch() {
         "user-123",
         StoredCredentialReference::new("radishflow-studio", "user-123-primary"),
     );
-    write_official_binary_hydrocarbon_cached_package(
-        &cache_root,
-        &mut auth_cache_index,
-        "binary-hydrocarbon-lite-v1",
-    );
+    write_default_official_binary_hydrocarbon_cached_package(&cache_root, &mut auth_cache_index);
     let facade = StudioAppFacade::new();
     let project = parse_project_file_json(include_str!(
         "../../../../examples/flowsheets/feed-heater-flash-binary-hydrocarbon.rfproj.json"
@@ -398,7 +382,7 @@ fn facade_resumes_workspace_from_hold_and_runs_automatic_dispatch() {
     assert_eq!(
         dispatch.outcome,
         StudioWorkspaceRunOutcome::Started(crate::StudioSolveRequest::new(
-            "binary-hydrocarbon-lite-v1",
+            OFFICIAL_BINARY_HYDROCARBON_PACKAGE_ID,
             "doc-app-resume-rev-0-seq-1",
             1,
         ))
@@ -407,14 +391,16 @@ fn facade_resumes_workspace_from_hold_and_runs_automatic_dispatch() {
     assert_eq!(dispatch.pending_reason, None);
     assert_eq!(dispatch.run_status, RunStatus::Converged);
     assert_eq!(dispatch.log_entry_count, 2);
+    let expected_log_message = format!(
+        "Solved document revision 0 with property package `{}` into snapshot `doc-app-resume-rev-0-seq-1`",
+        OFFICIAL_BINARY_HYDROCARBON_PACKAGE_ID
+    );
     assert_eq!(
         dispatch
             .latest_log_entry
             .as_ref()
             .map(|entry| entry.message.as_str()),
-        Some(
-            "Solved document revision 0 with property package `binary-hydrocarbon-lite-v1` into snapshot `doc-app-resume-rev-0-seq-1`"
-        )
+        Some(expected_log_message.as_str())
     );
 
     std::fs::remove_dir_all(cache_root).expect("expected temp dir cleanup");
@@ -555,7 +541,8 @@ fn facade_executes_entitlement_sync_through_control_plane_context() {
     let facade = StudioAppFacade::new();
     let mut app_state = AppState::new(sample_document());
     let cache_root = PathBuf::from("D:\\cache-root");
-    let mut auth_cache_index = sample_entitled_auth_cache_index(&["binary-hydrocarbon-lite-v1"]);
+    let mut auth_cache_index =
+        sample_entitled_auth_cache_index(&[OFFICIAL_BINARY_HYDROCARBON_PACKAGE_ID]);
     let mut context = StudioAppMutableAuthCacheContext::new(&cache_root, &mut auth_cache_index);
     let client = ScriptedControlPlaneClient::success();
 
@@ -583,7 +570,7 @@ fn facade_executes_entitlement_sync_through_control_plane_context() {
     assert!(
         app_state
             .entitlement
-            .is_package_allowed("binary-hydrocarbon-lite-v1")
+            .is_package_allowed(OFFICIAL_BINARY_HYDROCARBON_PACKAGE_ID)
     );
 }
 
@@ -594,7 +581,8 @@ fn facade_executes_offline_refresh_through_control_plane_context() {
     complete_login(&mut app_state);
     app_state.update_entitlement(sample_snapshot(), vec![sample_manifest()], timestamp(150));
     let cache_root = PathBuf::from("D:\\cache-root");
-    let mut auth_cache_index = sample_entitled_auth_cache_index(&["binary-hydrocarbon-lite-v1"]);
+    let mut auth_cache_index =
+        sample_entitled_auth_cache_index(&[OFFICIAL_BINARY_HYDROCARBON_PACKAGE_ID]);
     let mut context = StudioAppMutableAuthCacheContext::new(&cache_root, &mut auth_cache_index);
     let client = ScriptedControlPlaneClient::offline_refresh_failure(
         RadishFlowControlPlaneClientError::unauthorized("token expired"),
