@@ -122,8 +122,8 @@ impl fmt::Display for PhaseEquilibriumRegion {
     }
 }
 
-const PHASE_REGION_PRESSURE_TOLERANCE_PA: f64 = 1e-6;
-const PHASE_REGION_TEMPERATURE_TOLERANCE_K: f64 = 1e-6;
+pub const PHASE_REGION_PRESSURE_TOLERANCE_PA: f64 = 1e-6;
+pub const PHASE_REGION_TEMPERATURE_TOLERANCE_K: f64 = 1e-6;
 
 pub fn phase_equilibrium_region_from_pressure(
     pressure_pa: f64,
