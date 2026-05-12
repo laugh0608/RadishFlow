@@ -1,6 +1,6 @@
 # Studio Quick Start
 
-更新时间：2026-05-11
+更新时间：2026-05-12
 
 ## 目的
 
@@ -25,7 +25,7 @@
 - 在 Runtime / Result Inspector / Active Inspector 中查看结构化结果、步骤和诊断
 - 在当前 `SolveSnapshot` 内切换 stream-centric / unit-centric / comparison 三类结果审阅面
 - 通过 `Inspect` / `DiagnosticTargets` 在 stream、unit、step 和 Active Inspector 之间定位同一份结果
-- 在 Stream Inspector 中编辑流股基础字段与组成草稿，并显式提交
+- 在 Stream Inspector 中编辑流股基础字段与组成草稿，并显式提交、归一化或丢弃
 - 执行基础 `undo / redo`
 - 保存当前项目，或 `Save As` 到新路径
 - 保存并恢复 Canvas placement sidecar：`<project>.rfstudio-layout.json`
@@ -105,6 +105,16 @@ cargo run -p radishflow-studio
 - `bubble_dew_window`
 - `liquid / vapor / overall` 相结果
 - 各相摩尔流量与 molar enthalpy
+
+## Stream Inspector 组成编辑
+
+当前 Stream Inspector 的组成编辑遵循显式提交原则：
+
+- `Draft` 表示有未提交的组成草稿
+- `Unnormalized` 表示组成已经进入项目文档，但总和不是 1
+- `Normalize composition` 会按当前组成显式归一化
+- 组分添加 / 删除只从当前 flowsheet component catalog 派生，不创建完整组件库
+- 运行前若仍有未提交草稿或未归一化文档组成，应先阻断并显示诊断，不做隐式差值补偿
 
 如果你接下来更关心“这些结果分别代表什么”，而不是只看字段名字，直接继续读：
 

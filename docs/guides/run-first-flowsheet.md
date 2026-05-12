@@ -1,6 +1,6 @@
 # Run First Flowsheet
 
-更新时间：2026-05-10
+更新时间：2026-05-12
 
 ## 目的
 
@@ -150,6 +150,13 @@ examples/flowsheets/feed-mixer-flash-binary-hydrocarbon.rfproj.json
 - 不做隐式自动补偿
 - 不在运行前偷偷改写文档
 - 优先通过结构化诊断暴露问题
+
+组成相关提示可按下面理解：
+
+- `Draft`：当前输入值还只是草稿，尚未写入项目文档
+- `Unnormalized`：组成已经写入文档，但总和不是 1
+- `Normalize composition`：显式把当前组成归一化；它不会代替用户猜测新增或删除组分
+- `Remove` / add component：只在当前 flowsheet 已有组件目录内操作，不触发项目级组件迁移
 
 ## 7. 下一步建议
 

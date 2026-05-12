@@ -157,6 +157,8 @@ App 与交互层当前进一步冻结以下口径：
 
 截至 2026-04-27，CAPE-OPEN / PME 验证基线已阶段性冻结，仓库地基也已足以支撑短线主线回到 Rust Studio 的最小可操作工作台闭环；后续应继续保持边界清晰和验证稳定，但不再把“地基建设”作为阻止 Studio 可见闭环推进的理由。
 
+截至 2026-05-12，MVP 第一阶段的 M1-M5 最小线均已形成可验证基线：Rust Core 能跑通最小稳态流程，Rust Studio 已具备最小可操作工作台闭环，`rf-ffi` 与 `.NET 10` CAPE-OPEN / PME 路径也已有回归与人工验证记录。当前优先目标应从继续补细粒度消费面测试，切换为 MVP α 验收与发布硬化；后续只修验收路径暴露的真实 blocker，不再把 near-boundary、command surface 或 runtime click 细节扩成开放式任务池。
+
 ## 近期开发节奏
 
 当前建议以周为单位推进，先把主线拆细：
@@ -249,6 +251,7 @@ App 与交互层当前进一步冻结以下口径：
 - 2026-05-06 先完成 Docs 入口和代码规范收口，再收紧 `rf-thermo` / `rf-flash` 直接数值 API 的 mole fraction 归一契约；Studio 随后把 Stream Inspector composition normalize、草稿提示、运行阻塞、字段/整股 discard、受控添加缺失组分和受控删除非最后组分全部接到正式 presentation / command / driver / runtime 边界。新增或删除组成条目都不做隐式差值补偿，shell 不保存私有组成状态；完整组件库、项目级组件创建/删除、组分删除迁移和复杂物性包选择器仍不在当前 MVP 范围内
 - 2026-05-07 至 2026-05-08 已把主线继续收回 `rf-thermo / rf-flash` 数值稳定性：bubble/dew pressure / temperature、`phase_region` 与结构化 `bubble_dew_window` 的 golden / focused tests 已扩到 three-composition two-phase 与 synthetic `liquid-only / vapor-only` 单相 near-boundary `±ΔP / ±ΔT` 基线；同一组 DTO 又已前推到 `Heater/Cooler/Valve/Mixer -> Flash` 的 integration / workspace run path，锁定非 flash 中间流股与 flash inlet consumed stream 的正式一致性回归
 - 下一轮主线应继续围绕这套数值基线收口 `rf-thermo / rf-flash`、`SolveSnapshot` 结果消费与端到端回归，而不是回到 Canvas / Inspector 周边细节扩张；也不要把当前空白项目初始化、suggestion Apply、placement 坐标持久化、单元结果摘要、port attention 或 near-boundary 回归误扩为完整组件库、完整物性包浏览/切换、项目向导、自由连线编辑器、拖拽布局编辑器或结果报表系统
+- 2026-05-12 阶段复盘后，当前 focused 收口应视为已足够支撑 MVP α 验收；下一轮优先建立 acceptance checklist、运行仓库级验证和用户视角 smoke，而不是继续主动寻找更多 shell 消费面细节。
 - 若继续推进 Canvas，必须先补正式 `DocumentCommand` / validation / layout state 边界，不在 `egui` shell 中直接堆完整画布编辑器或拖拽布局
 
 ## 当前阶段的判断标准

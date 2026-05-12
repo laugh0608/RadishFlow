@@ -13,8 +13,8 @@
 ## 当前阶段
 
 - 产品定位：以 Rust Core + Rust UI + `.NET 10` CAPE-OPEN/COM 适配层构建稳态流程模拟软件。
-- 当前主线：在已具备最短可运行建模路径和 Stream Inspector 组成编辑安全边界后，转回数值主线和结果审阅收口。
-- 当前重点：保持 Canvas 与 Stream Inspector 不继续横向扩张，把精力放到 `SolveSnapshot` 结果消费、热力学 / 闪蒸基础能力和可验证闭环上。
+- 当前主线：MVP 第一阶段的核心里程碑已越过最小线，当前转入 MVP α 验收与发布硬化，而不是继续主动扩展周边 presentation。
+- 当前重点：用用户可复现路径和仓库级验证确认 Rust Studio、数值基线、`rf-ffi` JSON/error 与 CAPE-OPEN / PME 回归基线仍能闭环；只修验收暴露的真实 blocker。
 - 当前验证基线：功能改动优先执行相关 focused tests；阶段性收口执行 `pwsh ./scripts/check-repo.ps1`。
 
 ## 最近完成摘要
@@ -38,16 +38,17 @@
 - Stream Inspector component catalog / presentation 已完成一轮边界收口：可添加组件继续只从 `flowsheet.components` 中尚未出现在当前流股组成的条目派生；component add/remove、normalize、discard 与运行前组成校验仍沿现有 DTO / 命令语义工作，已提交但未归一化的组成在 presentation 中标为 `Unnormalized`，不再和未提交 `Draft` 混淆。
 - `SolveSnapshot` consumer 的 command surface 边界已补一层收口：最新求解快照中的 result stream / unit 目标现在以 `Results` command section 暴露，并已覆盖 palette、menu 和 command list 到同一条 `inspector.focus_*` host dispatch，不新增 shell 私有结果缓存或导航分支。
 - `SolveSnapshot` consumer 的 runtime 点击交互已补 focused 覆盖：Result Inspector / diagnostic action 共用的小型 command action button 现在用真实 `egui` pointer click 回归锁定到同一条 `dispatch_ui_command -> inspector.focus_* -> Active Inspector` 链路，不新增 runtime 私有解释层。
+- 2026-05-12 阶段复盘结论：近期 focused 收口仍在整体规划内，但继续沿 near-boundary / command surface / runtime click 细节扩测试会进入收益递减；下一轮应切到 MVP α 验收矩阵和交付硬化。
 
 完整过程和每日验证记录见 `docs/devlogs/2026-W20.md` 以及更早周志。
 
 ## 下一步建议
 
-1. 若继续推进 `rf-thermo` / `rf-flash`，优先维护现有 official / synthetic golden 与 raw solver focused tolerance 基线；新增数值样例仍应复用同一套 `bubble_dew_window` / phase result DTO 语义。
-2. 若继续前推数值回归，优先只把会影响 solver snapshot 或 Studio consumer 的缺口扩到 integration / runtime 层，不为纯内部数值容差再分叉第二套窗口估算、焓值求解或判断路径。
-3. 若继续推进 `SolveSnapshot` consumer，优先只复查仍未覆盖的真实 runtime 渲染缺口；不要为已由 window-model / runtime / selector state / `Results` command section / runtime command action click 覆盖的语义新增 shell 私有状态机。
-4. 若继续推进 Stream Inspector，优先只处理真实暴露的 command surface / presentation 缺口；不要提前做完整组件库、项目级组件删除迁移或隐式差值补偿。
-5. 若发现入口文档继续膨胀，先瘦身 `docs/status/current.md` 和对应专题文档，再把历史流水写入周志；不要把长篇背景写回 `overview.md`、`scope.md` 或协作入口文件。
+1. 先建立 MVP α acceptance checklist，覆盖 Rust Studio 打开/建模/运行/保存/重开、结果审阅、Stream Inspector 组成阻断、`rf-ffi` JSON/error 与 CAPE-OPEN / PME 回归基线。
+2. 以 `pwsh ./scripts/check-repo.ps1` 作为阶段性验证入口，并补 2-3 条用户视角手动 smoke 记录；只修验收中暴露的真实 blocker。
+3. 保持 `TP Flash` official / synthetic golden、raw solver focused tolerance 与 `rf-ffi` JSON/error 基线稳定，但不主动扩无限 near-boundary 矩阵。
+4. 暂停继续细抠 `SolveSnapshot` consumer / shell action surface，除非真实验收路径或仓库级验证暴露回归。
+5. 复查首批交付物文档：quick start、运行指南、PME validation runbook 与发布包形态是否足够让他人复现 MVP α。
 
 ## 暂不推进
 
@@ -56,6 +57,7 @@
 - 不引入第三方 CAPE-OPEN 模型加载。
 - 不把 smoke test driver、PME 调试路径或单个宿主兼容逻辑提升为通用库 API。
 - 不为未来可能需求预先堆叠不明意义的 helper / manager / orchestrator / context / adapter。
+- 不再主动扩 near-boundary / command surface / runtime click 的细枝末节测试；除非它们直接暴露 MVP α 验收 blocker。
 
 ## 按需阅读
 
