@@ -36,7 +36,7 @@
 - synthetic 单相 near-boundary 的 `SolveSnapshot -> window_model` consumer 已补 focused 覆盖：`Feed/Heater/Cooler/Valve/Mixer -> Flash` 现在会锁定 Result Inspector、comparison、unit result、Active Inspector 与 `inspector.focus_*` diagnostic action 都继续消费同一份 flash inlet / outlet / unit DTO。
 - synthetic 单相 near-boundary 的 shell selector state 已补 focused 覆盖：flowing outlet / zero-flow outlet 之间切换和重新挂 comparison 时，会继续保持 flash unit 选择、窗口缺席语义和 comparison DTO 一致。
 - Stream Inspector component catalog / presentation 已完成一轮边界收口：可添加组件继续只从 `flowsheet.components` 中尚未出现在当前流股组成的条目派生；component add/remove、normalize、discard 与运行前组成校验仍沿现有 DTO / 命令语义工作，已提交但未归一化的组成在 presentation 中标为 `Unnormalized`，不再和未提交 `Draft` 混淆。
-- `SolveSnapshot` consumer 的 command palette 边界已补一层收口：最新求解快照中的 result stream / unit 目标现在以 `Results` command section 暴露，继续复用既有 `inspector.focus_*` command id 与 host dispatch，不新增 shell 私有结果缓存或导航分支。
+- `SolveSnapshot` consumer 的 command surface 边界已补一层收口：最新求解快照中的 result stream / unit 目标现在以 `Results` command section 暴露，并已覆盖 palette、menu 和 command list 到同一条 `inspector.focus_*` host dispatch，不新增 shell 私有结果缓存或导航分支。
 
 完整过程和每日验证记录见 `docs/devlogs/2026-W20.md` 以及更早周志。
 
@@ -44,7 +44,7 @@
 
 1. 若继续推进 `rf-thermo` / `rf-flash`，优先维护现有 official / synthetic golden 与 raw solver focused tolerance 基线；新增数值样例仍应复用同一套 `bubble_dew_window` / phase result DTO 语义。
 2. 若继续前推数值回归，优先只把会影响 solver snapshot 或 Studio consumer 的缺口扩到 integration / runtime 层，不为纯内部数值容差再分叉第二套窗口估算、焓值求解或判断路径。
-3. 若继续推进 `SolveSnapshot` consumer，优先只复查真实 UI command surface / runtime 渲染缺口；不要为已由 window-model / runtime / selector state / `Results` command section 覆盖的语义新增 shell 私有状态机。
+3. 若继续推进 `SolveSnapshot` consumer，优先只复查真实 runtime 渲染 / 点击交互缺口；不要为已由 window-model / runtime / selector state / `Results` command section 覆盖的语义新增 shell 私有状态机。
 4. 若继续推进 Stream Inspector，优先只处理真实暴露的 command surface / presentation 缺口；不要提前做完整组件库、项目级组件删除迁移或隐式差值补偿。
 5. 若发现入口文档继续膨胀，先瘦身 `docs/status/current.md` 和对应专题文档，再把历史流水写入周志；不要把长篇背景写回 `overview.md`、`scope.md` 或协作入口文件。
 
