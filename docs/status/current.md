@@ -32,6 +32,7 @@
 - synthetic `liquid-only / vapor-only` near-boundary 单相样例已补齐到 raw solver、Studio solver bridge 和 workspace run path 的 `Feed/Heater/Cooler/Valve/Mixer -> Flash` dedicated 回归，继续锁定 source / intermediate / flash inlet / outlet 的同一份 DTO 语义。
 - Studio 最终 runtime 渲染面已补 synthetic 单相 `Feed/Heater/Cooler/Valve/Mixer -> Flash` 覆盖，继续锁定 Result Inspector / Active Inspector 的窗口 section、overall H 和零流量对侧 outlet 不展示伪窗口。
 - `TP Flash` boundary drift / tolerance-focused 覆盖已完成一轮盘点与补强：official / synthetic golden 当前仍覆盖 `±ΔP / ±ΔT`，raw solver 另补边界容差带内的 phase region / zero-fraction phase materialization 回归；`rf-flash` 继续复用 `rf-types` 的 tolerance 语义，不引入第二套窗口估算或 fallback。
+- `rf-ffi` thermo solve 失败基线已复核并补强：成功路径会继续导出同一份 `bubble_dew_window` / overall enthalpy JSON，运行时物性包若能加载但缺少求解所需热容，会在 `flowsheet_solve` 阶段稳定返回 `Thermo` 状态与结构化 last-error。
 
 完整过程和每日验证记录见 `docs/devlogs/2026-W20.md` 以及更早周志。
 

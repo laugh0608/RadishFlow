@@ -714,6 +714,21 @@ mod tests {
     }
 
     fn write_runtime_package_files(root: &Path, package_id: &str) -> (PathBuf, PathBuf) {
+        write_runtime_package_files_with_vapor_heat_capacity(root, package_id, Some(65.0))
+    }
+
+    fn write_runtime_package_files_with_missing_vapor_heat_capacity(
+        root: &Path,
+        package_id: &str,
+    ) -> (PathBuf, PathBuf) {
+        write_runtime_package_files_with_vapor_heat_capacity(root, package_id, None)
+    }
+
+    fn write_runtime_package_files_with_vapor_heat_capacity(
+        root: &Path,
+        package_id: &str,
+        second_vapor_heat_capacity_j_per_mol_k: Option<f64>,
+    ) -> (PathBuf, PathBuf) {
         let manifest_path = root.join("manifest.json");
         let payload_path = root.join("payload.rfpkg");
         const TEST_ANTOINE_BOUNDARY_SLOPE: f64 = 300.0;
@@ -733,7 +748,7 @@ mod tests {
         let mut second = StoredThermoComponent::new(ComponentId::new("component-b"), "Component B");
         second.antoine = Some(build_stored_test_antoine_coefficients(0.5));
         second.liquid_heat_capacity_j_per_mol_k = Some(52.0);
-        second.vapor_heat_capacity_j_per_mol_k = Some(65.0);
+        second.vapor_heat_capacity_j_per_mol_k = second_vapor_heat_capacity_j_per_mol_k;
 
         let manifest = StoredPropertyPackageManifest::new(
             package_id,
@@ -752,6 +767,54 @@ mod tests {
         write_property_package_payload(&payload_path, &payload).expect("expected payload write");
 
         (manifest_path, payload_path)
+    }
+
+    fn call_stream_snapshot_json(engine: *mut Engine, stream_id: &[u8]) -> serde_json::Value {
+        let mut output = ptr::null_mut::<c_char>();
+        let status =
+            stream_get_snapshot_json(engine, stream_id.as_ptr(), stream_id.len(), &mut output);
+        assert_eq!(status, RfFfiStatus::Ok);
+        let text = unsafe { CStr::from_ptr(output) }
+            .to_str()
+            .expect("expected utf-8")
+            .to_string();
+        rf_string_free(output);
+        serde_json::from_str(&text).expect("expected json")
+    }
+
+    fn call_flowsheet_snapshot_json(engine: *mut Engine) -> serde_json::Value {
+        let mut output = ptr::null_mut::<c_char>();
+        assert_eq!(
+            flowsheet_get_snapshot_json(engine, &mut output),
+            RfFfiStatus::Ok
+        );
+        let text = unsafe { CStr::from_ptr(output) }
+            .to_str()
+            .expect("expected utf-8")
+            .to_string();
+        rf_string_free(output);
+        serde_json::from_str(&text).expect("expected json")
+    }
+
+    fn snapshot_stream<'a>(
+        snapshot: &'a serde_json::Value,
+        stream_id: &str,
+    ) -> &'a serde_json::Value {
+        snapshot["streams"]
+            .as_array()
+            .expect("expected streams")
+            .iter()
+            .find(|stream| stream["id"] == stream_id)
+            .unwrap_or_else(|| panic!("expected stream `{stream_id}`"))
+    }
+
+    fn stream_phase<'a>(stream: &'a serde_json::Value, label: &str) -> &'a serde_json::Value {
+        stream["phases"]
+            .as_array()
+            .expect("expected phases")
+            .iter()
+            .find(|phase| phase["label"] == label)
+            .unwrap_or_else(|| panic!("expected phase `{label}`"))
     }
 
     fn call_last_error(engine: *mut Engine) -> String {
@@ -793,26 +856,19 @@ mod tests {
         let solve_status = flowsheet_solve(engine, package_id.as_ptr(), package_id.len());
         assert_eq!(solve_status, RfFfiStatus::Ok, "{}", call_last_error(engine));
 
-        let stream_id = b"stream-vapor";
-        let mut output = ptr::null_mut::<c_char>();
-        let export_status =
-            stream_get_snapshot_json(engine, stream_id.as_ptr(), stream_id.len(), &mut output);
-        assert_eq!(export_status, RfFfiStatus::Ok);
-
-        let json = unsafe { CStr::from_ptr(output) }
-            .to_str()
-            .expect("expected utf-8")
-            .to_string();
-        rf_string_free(output);
-
-        let value: serde_json::Value = serde_json::from_str(&json).expect("expected json");
+        let value = call_stream_snapshot_json(engine, b"stream-vapor");
         assert_eq!(value["id"], "stream-vapor");
         assert_eq!(value["name"], "Vapor Outlet");
+        assert_eq!(value["bubble_dew_window"]["phase_region"], "two_phase");
+        assert!(value["bubble_dew_window"]["bubble_pressure_pa"].is_number());
+        assert!(value["bubble_dew_window"]["dew_temperature_k"].is_number());
         assert!(
             value["phases"]
                 .as_array()
                 .is_some_and(|phases| !phases.is_empty())
         );
+        let overall = stream_phase(&value, "overall");
+        assert!(overall["molar_enthalpy_j_per_mol"].is_number());
         assert_eq!(call_last_error(engine), "");
 
         engine_destroy(engine);
@@ -880,22 +936,19 @@ mod tests {
             call_last_error(engine)
         );
 
-        let mut output = ptr::null_mut::<c_char>();
-        let status = flowsheet_get_snapshot_json(engine, &mut output);
-        assert_eq!(status, RfFfiStatus::Ok);
-
-        let text = unsafe { CStr::from_ptr(output) }
-            .to_str()
-            .expect("expected utf-8")
-            .to_string();
-        rf_string_free(output);
-        let value: serde_json::Value = serde_json::from_str(&text).expect("expected json");
+        let value = call_flowsheet_snapshot_json(engine);
 
         assert_eq!(value["status"], "converged");
         assert_eq!(value["summary"]["diagnosticCount"], 4);
         assert_eq!(value["steps"].as_array().map(Vec::len), Some(3));
         assert_eq!(value["streams"].as_array().map(Vec::len), Some(4));
         assert_eq!(value["diagnostics"][0]["code"], "solver.execution_order");
+        let vapor_stream = snapshot_stream(&value, "stream-vapor");
+        assert_eq!(
+            vapor_stream["bubble_dew_window"]["phase_region"],
+            "two_phase"
+        );
+        assert!(stream_phase(vapor_stream, "overall")["molar_enthalpy_j_per_mol"].is_number());
 
         engine_destroy(engine);
     }
@@ -937,19 +990,66 @@ mod tests {
             call_last_error(engine)
         );
 
+        let value = call_flowsheet_snapshot_json(engine);
+        assert_eq!(value["status"], "converged");
+        assert_eq!(value["streams"].as_array().map(Vec::len), Some(4));
+        let heated_stream = snapshot_stream(&value, "stream-heated");
+        assert!(heated_stream["bubble_dew_window"]["phase_region"].is_string());
+        assert!(stream_phase(heated_stream, "overall")["molar_enthalpy_j_per_mol"].is_number());
+
+        std::fs::remove_dir_all(&root).ok();
+        engine_destroy(engine);
+    }
+
+    #[test]
+    fn ffi_engine_reports_runtime_thermo_failure_during_solve() {
+        let mut engine = ptr::null_mut::<Engine>();
+        assert_eq!(engine_create(&mut engine), RfFfiStatus::Ok);
+
+        let root = unique_temp_path("package-thermo-failure");
+        std::fs::create_dir_all(&root).expect("expected temp dir");
+        let package_id = "runtime-binary-package-missing-vapor-heat-capacity";
+        let (manifest_path, payload_path) =
+            write_runtime_package_files_with_missing_vapor_heat_capacity(&root, package_id);
+
+        let manifest = manifest_path.to_string_lossy().to_string();
+        let payload = payload_path.to_string_lossy().to_string();
+        assert_eq!(
+            property_package_load_from_files(
+                engine,
+                manifest.as_bytes().as_ptr(),
+                manifest.len(),
+                payload.as_bytes().as_ptr(),
+                payload.len(),
+            ),
+            RfFfiStatus::Ok
+        );
+
+        let project_json = sample_runtime_project_json();
+        assert_eq!(
+            flowsheet_load_json(engine, project_json.as_bytes().as_ptr(), project_json.len()),
+            RfFfiStatus::Ok
+        );
+
+        let package_id = package_id.as_bytes();
+        let status = flowsheet_solve(engine, package_id.as_ptr(), package_id.len());
+        assert_eq!(status, RfFfiStatus::Thermo);
+        assert!(call_last_error(engine).contains("missing `vapor` heat capacity"));
+        let json = call_last_error_json(engine);
+        assert_eq!(json["ffiStatus"], "thermo");
+        assert_eq!(json["code"], "thermo");
+        assert!(
+            json["message"]
+                .as_str()
+                .is_some_and(|message| message.contains("missing `vapor` heat capacity"))
+        );
+
         let mut output = ptr::null_mut::<c_char>();
         assert_eq!(
             flowsheet_get_snapshot_json(engine, &mut output),
-            RfFfiStatus::Ok
+            RfFfiStatus::InvalidEngineState
         );
-        let text = unsafe { CStr::from_ptr(output) }
-            .to_str()
-            .expect("expected utf-8")
-            .to_string();
-        rf_string_free(output);
-        let value: serde_json::Value = serde_json::from_str(&text).expect("expected json");
-        assert_eq!(value["status"], "converged");
-        assert_eq!(value["streams"].as_array().map(Vec::len), Some(4));
+        assert!(output.is_null());
 
         std::fs::remove_dir_all(&root).ok();
         engine_destroy(engine);
