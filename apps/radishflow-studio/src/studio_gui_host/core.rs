@@ -851,8 +851,16 @@ fn stream_property_notices(
                 message: "Overall mole fraction sum must be positive and finite before it can be normalized.".to_string(),
             });
         } else if (sum - 1.0).abs() > 1e-9 {
+            let status_label = if fields
+                .iter()
+                .any(|field| field.key.contains(":overall_mole_fraction:") && field.is_dirty)
+            {
+                "Draft"
+            } else {
+                "Unnormalized"
+            };
             notices.push(crate::StudioGuiInspectorPropertyNoticeSnapshot {
-                status_label: "Draft",
+                status_label,
                 message: format!(
                     "Overall mole fraction sum is {sum:.6}, not 1.000000. Use Normalize composition or adjust the draft values explicitly; no automatic compensation is applied."
                 ),
@@ -1002,8 +1010,10 @@ fn stream_property_composition_summary(
         .map(|(component_id, value)| format!("{component_id}={:.6}", value / sum))
         .collect::<Vec<_>>()
         .join(", ");
-    let status_label = if has_dirty_composition || (sum - 1.0).abs() > 1e-9 {
+    let status_label = if has_dirty_composition {
         "Draft"
+    } else if (sum - 1.0).abs() > 1e-9 {
+        "Unnormalized"
     } else {
         "Synced"
     };

@@ -942,7 +942,19 @@ fn gui_driver_routes_composition_component_remove_without_compensation() {
             .property_composition_summary
             .as_ref()
             .map(|summary| (summary.status_label, summary.current_sum_text.as_str())),
-        Some(("Draft", "0.350000"))
+        Some(("Unnormalized", "0.350000"))
+    );
+    assert!(
+        detail.property_notices.iter().any(|notice| {
+            notice.status_label == "Unnormalized"
+                && notice
+                    .message
+                    .contains("Overall mole fraction sum is 0.350000")
+                && notice
+                    .message
+                    .contains("no automatic compensation is applied")
+        }),
+        "expected committed non-normalized composition to be surfaced separately from drafts"
     );
 }
 
