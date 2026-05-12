@@ -30,12 +30,13 @@
 - 仓库基础治理已补齐根 `README.md`、`.gitattributes`、`.gitignore`、文本格式门禁、代码规范专题文档和文档篇幅治理规则；默认入口文档应继续保持摘要化。
 - 阶段性仓库验证已恢复通过：failure fixture 换行已归一化，既有 Rust 格式漂移已由 `cargo fmt --all` 收口，`pwsh ./scripts/check-repo.ps1` 当前通过。
 - synthetic `liquid-only / vapor-only` near-boundary 单相样例已补齐到 raw solver、Studio solver bridge 和 workspace run path 的 `Feed/Heater/Cooler/Valve/Mixer -> Flash` dedicated 回归，继续锁定 source / intermediate / flash inlet / outlet 的同一份 DTO 语义。
+- Studio 最终 runtime 渲染面已补 synthetic 单相 `Feed/Heater/Cooler/Valve/Mixer -> Flash` 覆盖，继续锁定 Result Inspector / Active Inspector 的窗口 section、overall H 和零流量对侧 outlet 不展示伪窗口。
 
 完整过程和每日验证记录见 `docs/devlogs/2026-W20.md` 以及更早周志。
 
 ## 下一步建议
 
-1. 若继续推进 `rf-thermo` / `rf-flash`，优先盘点 `TP Flash` 数值 API、golden 样例和 Studio 最终 runtime 渲染面是否还有没有覆盖到的 boundary drift / tolerance-focused case。
+1. 若继续推进 `rf-thermo` / `rf-flash`，优先盘点 `TP Flash` 数值 API 与 golden 样例是否还有没有覆盖到的 boundary drift / tolerance-focused case。
 2. 若发现缺口，优先把同一套正式 DTO 语义前推到 golden / focused / integration / Studio consumer，不分叉第二套窗口估算、焓值求解或判断路径。
 3. 若继续推进 `SolveSnapshot` consumer，优先沿 selector state、focus command、diagnostic action 和 runtime 渲染这条正式消费链补薄弱环节，不新增 shell 私有状态机。
 4. 若继续推进 Stream Inspector，优先收紧 flowsheet component catalog / presentation 边界；不要提前做完整组件库、项目级组件删除迁移或隐式差值补偿。

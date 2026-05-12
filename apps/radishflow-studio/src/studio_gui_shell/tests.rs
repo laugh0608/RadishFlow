@@ -149,6 +149,7 @@ mod command_palette;
 mod command_surface;
 mod project_lifecycle;
 mod runtime;
+mod runtime_synthetic_flash_inlet_boundary;
 
 fn palette_commands_for_test(commands: &[(&str, bool)]) -> Vec<&'static StudioGuiCommandEntry> {
     commands
