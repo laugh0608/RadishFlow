@@ -417,3 +417,44 @@ fn command_palette_can_focus_canvas_object_navigation_command() {
 
     let _ = std::fs::remove_file(project_path);
 }
+
+#[test]
+fn command_palette_can_focus_latest_solve_snapshot_result_command() {
+    let mut app = ready_app_state(&synced_workspace_config());
+    app.dispatch_ui_command("run_panel.run_manual");
+    app.command_palette.open();
+    app.command_palette.query = "result snapshot stream-vapor".to_string();
+    let commands = app.platform_host.snapshot().window_model().commands;
+
+    let palette_items = commands.palette_items(&app.command_palette.query);
+    assert!(
+        palette_items.iter().any(|item| {
+            item.command_id == "inspector.focus_stream:stream-vapor"
+                && item.menu_path_text == "Results > Streams > Vapor Outlet"
+                && item.detail.contains("SolveSnapshot")
+        }),
+        "expected command palette to include latest result stream focus command: {palette_items:?}"
+    );
+
+    let selected_index = palette_items
+        .iter()
+        .position(|item| item.command_id == "inspector.focus_stream:stream-vapor")
+        .expect("expected result stream palette item");
+    app.command_palette.selected_index = selected_index;
+    let consumed = run_with_key_press(egui::Key::Enter, egui::Modifiers::NONE, |ctx| {
+        app.handle_command_palette_keyboard(ctx, &commands)
+    });
+
+    assert!(consumed);
+    assert!(!app.command_palette.open);
+    assert_eq!(
+        app.platform_host
+            .snapshot()
+            .window_model()
+            .runtime
+            .active_inspector_target
+            .as_ref()
+            .map(|target| (target.kind_label, target.target_id.as_str())),
+        Some(("Stream", "stream-vapor"))
+    );
+}

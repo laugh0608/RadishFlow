@@ -133,10 +133,12 @@ impl StudioGuiHost {
     }
 
     pub fn command_registry(&self) -> StudioGuiCommandRegistry {
-        StudioGuiCommandRegistry::from_surfaces(
+        let latest_solve_snapshot = self.controller.latest_solve_snapshot();
+        StudioGuiCommandRegistry::from_surfaces_with_results(
             &self.ui_commands(),
             &self.canvas_state(),
             self.preferred_target_window_id(),
+            latest_solve_snapshot.as_ref(),
         )
     }
 

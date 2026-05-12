@@ -1,3 +1,5 @@
+use std::collections::BTreeSet;
+
 use crate::{
     StudioAppHostUiCommandGroup, StudioAppHostUiCommandModel, StudioGuiCanvasActionId,
     StudioGuiCanvasObjectListItemViewModel, StudioGuiCanvasState, StudioWindowHostId,
@@ -132,6 +134,7 @@ pub enum StudioGuiCommandGroup {
     RunPanel,
     Recovery,
     Entitlement,
+    Result,
     Canvas,
 }
 
@@ -150,11 +153,21 @@ impl StudioGuiCommandRegistry {
         canvas: &StudioGuiCanvasState,
         canvas_target_window_id: Option<StudioWindowHostId>,
     ) -> Self {
+        Self::from_surfaces_with_results(model, canvas, canvas_target_window_id, None)
+    }
+
+    pub fn from_surfaces_with_results(
+        model: &StudioAppHostUiCommandModel,
+        canvas: &StudioGuiCanvasState,
+        canvas_target_window_id: Option<StudioWindowHostId>,
+        latest_solve_snapshot: Option<&rf_ui::SolveSnapshot>,
+    ) -> Self {
         let mut run_panel = Vec::new();
         let mut file = Vec::new();
         let mut edit = Vec::new();
         let mut recovery = Vec::new();
         let mut entitlement = Vec::new();
+        let mut result_commands = Vec::new();
         let mut canvas_commands = Vec::new();
 
         for action in &model.actions {
@@ -228,6 +241,12 @@ impl StudioGuiCommandRegistry {
                 },
             ));
         }
+        if let Some(snapshot) = latest_solve_snapshot {
+            result_commands.extend(result_snapshot_command_entries(
+                snapshot,
+                canvas_target_window_id,
+            ));
+        }
 
         let mut sections = Vec::new();
         if !file.is_empty() {
@@ -268,6 +287,14 @@ impl StudioGuiCommandRegistry {
                 group: StudioGuiCommandGroup::Entitlement,
                 title: "Entitlement",
                 commands: entitlement,
+            });
+        }
+        if !result_commands.is_empty() {
+            result_commands.sort_by_key(|entry| entry.sort_order);
+            sections.push(StudioGuiCommandSection {
+                group: StudioGuiCommandGroup::Result,
+                title: "Results",
+                commands: result_commands,
             });
         }
         if !canvas_commands.is_empty() {
@@ -321,6 +348,146 @@ impl StudioGuiCommandRegistry {
         sort_menu_nodes(&mut roots);
         roots
     }
+}
+
+fn result_snapshot_command_entries(
+    snapshot: &rf_ui::SolveSnapshot,
+    target_window_id: Option<StudioWindowHostId>,
+) -> Vec<StudioGuiCommandEntry> {
+    let Some(target_window_id) = target_window_id else {
+        return Vec::new();
+    };
+
+    let stream_commands = snapshot.streams.iter().enumerate().map(|(index, stream)| {
+        result_stream_command_entry(snapshot, stream, index, target_window_id)
+    });
+
+    let mut seen_units = BTreeSet::new();
+    let unit_commands = snapshot.steps.iter().filter_map(move |step| {
+        if !seen_units.insert(step.unit_id.clone()) {
+            return None;
+        }
+        Some(result_unit_command_entry(
+            snapshot,
+            step,
+            seen_units.len() - 1,
+            target_window_id,
+        ))
+    });
+
+    stream_commands.chain(unit_commands).collect()
+}
+
+fn result_stream_command_entry(
+    snapshot: &rf_ui::SolveSnapshot,
+    stream: &rf_ui::StreamStateSnapshot,
+    index: usize,
+    target_window_id: StudioWindowHostId,
+) -> StudioGuiCommandEntry {
+    let target = rf_ui::InspectorTarget::Stream(stream.stream_id.clone());
+    let command_id = crate::inspector_target_command_id(&target);
+    let label = if stream.label.is_empty() {
+        format!("Inspect Result Stream {}", stream.stream_id.as_str())
+    } else {
+        format!("Inspect Result Stream {}", stream.label)
+    };
+    let summary = result_stream_summary(stream);
+    StudioGuiCommandEntry {
+        command_id,
+        label,
+        detail: format!(
+            "Open the Stream Inspector for result stream `{}` from SolveSnapshot `{}`. {summary}",
+            stream.stream_id.as_str(),
+            snapshot.id.as_str()
+        ),
+        enabled: true,
+        sort_order: 500u16.saturating_add(index.min(u16::MAX as usize - 500) as u16),
+        target_window_id: Some(target_window_id),
+        menu_path: vec![
+            "Results".to_string(),
+            "Streams".to_string(),
+            stream_result_menu_label(stream),
+        ],
+        search_terms: vec![
+            "result".to_string(),
+            "results".to_string(),
+            "solve".to_string(),
+            "snapshot".to_string(),
+            "stream".to_string(),
+            "inspect".to_string(),
+            snapshot.id.as_str().to_string(),
+            stream.stream_id.as_str().to_string(),
+            stream.label.clone(),
+            summary,
+        ],
+        shortcut: None,
+    }
+}
+
+fn result_unit_command_entry(
+    snapshot: &rf_ui::SolveSnapshot,
+    step: &rf_ui::StepSnapshot,
+    index: usize,
+    target_window_id: StudioWindowHostId,
+) -> StudioGuiCommandEntry {
+    let target = rf_ui::InspectorTarget::Unit(step.unit_id.clone());
+    let command_id = crate::inspector_target_command_id(&target);
+    StudioGuiCommandEntry {
+        command_id,
+        label: format!("Inspect Result Unit {}", step.unit_id.as_str()),
+        detail: format!(
+            "Open the Unit Inspector for result unit `{}` from SolveSnapshot `{}`. Latest step #{}, {}",
+            step.unit_id.as_str(),
+            snapshot.id.as_str(),
+            step.index,
+            step.summary
+        ),
+        enabled: true,
+        sort_order: 700u16.saturating_add(index.min(u16::MAX as usize - 700) as u16),
+        target_window_id: Some(target_window_id),
+        menu_path: vec![
+            "Results".to_string(),
+            "Units".to_string(),
+            step.unit_id.as_str().to_string(),
+        ],
+        search_terms: vec![
+            "result".to_string(),
+            "results".to_string(),
+            "solve".to_string(),
+            "snapshot".to_string(),
+            "unit".to_string(),
+            "inspect".to_string(),
+            snapshot.id.as_str().to_string(),
+            step.unit_id.as_str().to_string(),
+            step.summary.clone(),
+        ],
+        shortcut: None,
+    }
+}
+
+fn stream_result_menu_label(stream: &rf_ui::StreamStateSnapshot) -> String {
+    if stream.label.is_empty() {
+        stream.stream_id.as_str().to_string()
+    } else {
+        stream.label.clone()
+    }
+}
+
+fn result_stream_summary(stream: &rf_ui::StreamStateSnapshot) -> String {
+    let mut parts = vec![
+        format!("T {:.2} K", stream.temperature_k),
+        format!("P {:.0} Pa", stream.pressure_pa),
+        format!("F {:.6} mol/s", stream.total_molar_flow_mol_s),
+    ];
+    if let Some(enthalpy) = stream
+        .phases
+        .iter()
+        .find(|phase| phase.label == "overall")
+        .and_then(|phase| phase.molar_enthalpy_j_per_mol)
+    {
+        parts.push(format!("H {enthalpy:.3} J/mol"));
+    }
+    parts.join(" | ")
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
