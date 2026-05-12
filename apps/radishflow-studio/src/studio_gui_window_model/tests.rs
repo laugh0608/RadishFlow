@@ -28,6 +28,8 @@ use super::test_support::{
     unit_target_detail_model,
 };
 
+mod synthetic_near_boundary_focus;
+
 fn solve_binary_hydrocarbon_lite_snapshot(
     project_json: &str,
 ) -> crate::StudioGuiWindowSolveSnapshotModel {
