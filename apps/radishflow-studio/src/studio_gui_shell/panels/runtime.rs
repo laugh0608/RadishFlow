@@ -783,15 +783,15 @@ impl ReadyAppState {
             );
             if !step.consumed_stream_actions.is_empty() {
                 for action in &step.consumed_stream_actions {
-                    self.render_small_command_action(ui, action);
+                    let _ = self.render_small_command_action(ui, action);
                 }
                 ui.small("->");
             }
-            self.render_small_command_action(ui, &step.unit_action);
+            let _ = self.render_small_command_action(ui, &step.unit_action);
             if !step.produced_stream_actions.is_empty() {
                 ui.small("->");
                 for action in &step.produced_stream_actions {
-                    self.render_small_command_action(ui, action);
+                    let _ = self.render_small_command_action(ui, action);
                 }
             }
         });
@@ -835,7 +835,7 @@ impl ReadyAppState {
             .striped(true)
             .show(ui, |ui| {
                 for stream in streams {
-                    self.render_small_command_action(ui, &stream.focus_action);
+                    let _ = self.render_small_command_action(ui, &stream.focus_action);
                     render_wrapped_small(ui, &stream.summary);
                     ui.end_row();
                 }
@@ -1117,7 +1117,9 @@ impl ReadyAppState {
                         render_wrapped_small(ui, &port.direction);
                         render_wrapped_small(ui, &port.kind);
                         match (&port.stream_id, &port.stream_action) {
-                            (_, Some(action)) => self.render_small_command_action(ui, action),
+                            (_, Some(action)) => {
+                                let _ = self.render_small_command_action(ui, action);
+                            }
                             (Some(stream_id), None) => render_wrapped_small(ui, stream_id),
                             (None, None) => {
                                 ui.small("-");
@@ -1217,7 +1219,7 @@ impl ReadyAppState {
                     self.result_inspector
                         .select_stream(&inspector.snapshot_id, option.stream_id.clone());
                 }
-                self.render_small_command_action(ui, &option.focus_action);
+                let _ = self.render_small_command_action(ui, &option.focus_action);
             }
         });
         if inspector.has_stale_selection {
@@ -1250,7 +1252,7 @@ impl ReadyAppState {
                             self.result_inspector
                                 .select_unit(&inspector.snapshot_id, option.unit_id.clone());
                         }
-                        self.render_small_command_action(ui, &option.focus_action);
+                        let _ = self.render_small_command_action(ui, &option.focus_action);
                     }
                 });
                 if inspector.has_stale_unit_selection {
@@ -1323,7 +1325,7 @@ impl ReadyAppState {
                                 option.stream_id.clone(),
                             );
                         }
-                        self.render_small_command_action(ui, &option.focus_action);
+                        let _ = self.render_small_command_action(ui, &option.focus_action);
                     }
                 });
                 if inspector.has_stale_comparison {
@@ -1385,13 +1387,13 @@ impl ReadyAppState {
                 self.locale.text(ShellText::BaseStream),
                 comparison.base_stream_id
             ));
-            self.render_small_command_action(ui, &comparison.base_stream_focus_action);
+            let _ = self.render_small_command_action(ui, &comparison.base_stream_focus_action);
             ui.small(format!(
                 "{}: {}",
                 self.locale.text(ShellText::ComparedStream),
                 comparison.compared_stream_id
             ));
-            self.render_small_command_action(ui, &comparison.compared_stream_focus_action);
+            let _ = self.render_small_command_action(ui, &comparison.compared_stream_focus_action);
         });
         egui::Grid::new(format!(
             "result-comparison-summary:{}:{}",
@@ -1532,7 +1534,7 @@ impl ReadyAppState {
         ui.horizontal_wrapped(|ui| {
             ui.small(self.locale.text(ShellText::DiagnosticTargets));
             for target in &diagnostic.target_candidates {
-                self.render_small_command_action(ui, &target.action);
+                let _ = self.render_small_command_action(ui, &target.action);
             }
         });
     }
@@ -1583,7 +1585,7 @@ impl ReadyAppState {
                     "{} | {} | {}",
                     action.source_label, action.target_label, action.summary
                 ));
-                self.render_small_command_action(ui, &action.action);
+                let _ = self.render_small_command_action(ui, &action.action);
             }
         });
     }
@@ -1611,7 +1613,7 @@ impl ReadyAppState {
             ui.horizontal_wrapped(|ui| {
                 ui.small("units");
                 for target in &detail.related_units {
-                    self.render_small_command_action(ui, &target.action);
+                    let _ = self.render_small_command_action(ui, &target.action);
                 }
             });
         }
@@ -1619,7 +1621,7 @@ impl ReadyAppState {
             ui.horizontal_wrapped(|ui| {
                 ui.small("streams");
                 for target in &detail.related_streams {
-                    self.render_small_command_action(ui, &target.action);
+                    let _ = self.render_small_command_action(ui, &target.action);
                 }
             });
         }
@@ -1641,9 +1643,9 @@ impl ReadyAppState {
             for target in &detail.related_ports {
                 ui.horizontal_wrapped(|ui| {
                     ui.small(format!("{}:{}", target.unit_id, target.port_name));
-                    self.render_small_command_action(ui, &target.unit_action);
+                    let _ = self.render_small_command_action(ui, &target.unit_action);
                     if let Some(stream) = target.stream_result.as_ref() {
-                        self.render_small_command_action(ui, &stream.focus_action);
+                        let _ = self.render_small_command_action(ui, &stream.focus_action);
                     }
                 });
                 if let Some(stream) = target.stream_result.as_ref() {
@@ -1653,17 +1655,17 @@ impl ReadyAppState {
         }
     }
 
-    fn render_small_command_action(
+    pub(in crate::studio_gui_shell) fn render_small_command_action(
         &mut self,
         ui: &mut egui::Ui,
         action: &radishflow_studio::StudioGuiWindowCommandActionModel,
-    ) {
-        if ui
+    ) -> egui::Response {
+        let response = ui
             .small_button(&action.label)
-            .on_hover_text(&action.hover_text)
-            .clicked()
-        {
+            .on_hover_text(&action.hover_text);
+        if response.clicked() {
             self.dispatch_ui_command(&action.command_id);
         }
+        response
     }
 }

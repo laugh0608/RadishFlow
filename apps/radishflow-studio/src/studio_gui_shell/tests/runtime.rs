@@ -178,6 +178,50 @@ fn render_diagnostic_target_actions_texts(
     })
 }
 
+fn render_command_action_button_frame(
+    ctx: &egui::Context,
+    app: &mut ReadyAppState,
+    action: &radishflow_studio::StudioGuiWindowCommandActionModel,
+    events: Vec<egui::Event>,
+) -> egui::Rect {
+    let mut rect = None;
+    let _ = ctx.run(
+        egui::RawInput {
+            screen_rect: Some(egui::Rect::from_min_size(
+                egui::Pos2::ZERO,
+                egui::vec2(1280.0, 720.0),
+            )),
+            focused: true,
+            events,
+            ..Default::default()
+        },
+        |ctx| {
+            egui::CentralPanel::default().show(ctx, |ui| {
+                rect = Some(app.render_small_command_action(ui, action).rect);
+            });
+        },
+    );
+    rect.expect("expected command action button rect")
+}
+
+fn primary_click_events(pos: egui::Pos2) -> Vec<egui::Event> {
+    vec![
+        egui::Event::PointerMoved(pos),
+        egui::Event::PointerButton {
+            pos,
+            button: egui::PointerButton::Primary,
+            pressed: true,
+            modifiers: egui::Modifiers::NONE,
+        },
+        egui::Event::PointerButton {
+            pos,
+            button: egui::PointerButton::Primary,
+            pressed: false,
+            modifiers: egui::Modifiers::NONE,
+        },
+    ]
+}
+
 fn render_full_runtime_panel_texts(
     app: &mut ReadyAppState,
     snapshot: &StudioGuiWindowSolveSnapshotModel,
@@ -1746,5 +1790,46 @@ fn runtime_panel_can_render_same_stream_in_result_and_active_inspectors() {
             .any(|text| text.contains("widget ID") || text.contains("Grid ID")),
         "expected no egui duplicate-id diagnostics after namespacing repeated stream inspector rendering, rendered texts: {:?}",
         texts
+    );
+}
+
+#[test]
+fn runtime_command_action_button_click_focuses_latest_result_stream() {
+    let mut app = ready_app_state(&synced_workspace_config());
+    app.dispatch_ui_command("run_panel.run_manual");
+    let snapshot = app
+        .platform_host
+        .snapshot()
+        .window_model()
+        .runtime
+        .latest_solve_snapshot
+        .expect("expected latest solve snapshot");
+    let inspector = snapshot.result_inspector(Some("stream-feed"));
+    let action = inspector
+        .stream_options
+        .iter()
+        .find(|option| option.stream_id == "stream-vapor")
+        .map(|option| option.focus_action.clone())
+        .expect("expected vapor result stream focus action");
+    assert_eq!(action.command_id, "inspector.focus_stream:stream-vapor");
+
+    let ctx = egui::Context::default();
+    let rect = render_command_action_button_frame(&ctx, &mut app, &action, Vec::new());
+    render_command_action_button_frame(
+        &ctx,
+        &mut app,
+        &action,
+        primary_click_events(rect.center()),
+    );
+
+    assert_eq!(
+        app.platform_host
+            .snapshot()
+            .window_model()
+            .runtime
+            .active_inspector_target
+            .as_ref()
+            .map(|target| (target.kind_label, target.target_id.as_str())),
+        Some(("Stream", "stream-vapor"))
     );
 }
