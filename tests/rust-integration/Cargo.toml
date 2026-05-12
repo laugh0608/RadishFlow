@@ -12,6 +12,7 @@ publish.workspace = true
 [dependencies]
 radishflow-studio = { path = "../../apps/radishflow-studio" }
 rf-flash = { path = "../../crates/rf-flash" }
+rf-model = { path = "../../crates/rf-model" }
 rf-solver = { path = "../../crates/rf-solver" }
 rf-store = { path = "../../crates/rf-store" }
 rf-thermo = { path = "../../crates/rf-thermo" }

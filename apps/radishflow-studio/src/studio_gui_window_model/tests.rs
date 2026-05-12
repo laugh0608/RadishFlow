@@ -9,16 +9,16 @@ use rf_store::{parse_project_file_json, project_file_to_pretty_json};
 use rf_types::PhaseEquilibriumRegion;
 
 use crate::{
-    test_support::{
-        apply_official_binary_hydrocarbon_near_boundary_consumer_scenario,
-        build_official_binary_hydrocarbon_provider,
-        official_binary_hydrocarbon_near_boundary_consumer_scenarios,
-    },
     StudioGuiDriver, StudioGuiDriverOutcome, StudioGuiEvent, StudioGuiHostCommandOutcome,
     StudioGuiWindowAreaId, StudioGuiWindowDockPlacement, StudioGuiWindowDockRegion,
     StudioGuiWindowDropTargetQuery, StudioGuiWindowLayoutScopeKind,
     StudioGuiWindowStreamResultModel, StudioRuntimeConfig, StudioRuntimeEntitlementPreflight,
     StudioRuntimeEntitlementSeed, StudioRuntimeEntitlementSessionEvent, StudioRuntimeTrigger,
+    test_support::{
+        apply_official_binary_hydrocarbon_near_boundary_consumer_scenario,
+        build_official_binary_hydrocarbon_provider,
+        official_binary_hydrocarbon_near_boundary_consumer_scenarios,
+    },
 };
 
 use super::test_support::{
@@ -141,7 +141,8 @@ fn assert_flash_step_and_unit_preserve_outlet_summaries(
     snapshot: &crate::StudioGuiWindowSolveSnapshotModel,
     selected_stream_id: &str,
 ) {
-    let inspector = snapshot.result_inspector_with_unit(Some(selected_stream_id), None, Some("flash-1"));
+    let inspector =
+        snapshot.result_inspector_with_unit(Some(selected_stream_id), None, Some("flash-1"));
     let flash_step = inspector
         .related_steps
         .iter()
@@ -198,11 +199,17 @@ fn assert_flash_outlet_comparison_matches_snapshot_stream_models(
         .expect("expected comparison enthalpy row");
     assert_eq!(
         enthalpy_row.base_value,
-        liquid.molar_enthalpy_text.clone().unwrap_or_else(|| "-".to_string())
+        liquid
+            .molar_enthalpy_text
+            .clone()
+            .unwrap_or_else(|| "-".to_string())
     );
     assert_eq!(
         enthalpy_row.compared_value,
-        vapor.molar_enthalpy_text.clone().unwrap_or_else(|| "-".to_string())
+        vapor
+            .molar_enthalpy_text
+            .clone()
+            .unwrap_or_else(|| "-".to_string())
     );
     if liquid.molar_enthalpy_text.is_some() && vapor.molar_enthalpy_text.is_some() {
         assert!(
@@ -218,9 +225,19 @@ fn assert_flash_outlet_comparison_matches_snapshot_stream_models(
         .iter()
         .find(|row| row.phase_label == "overall")
         .expect("expected overall comparison phase row");
-    if let Some(liquid_overall) = liquid.phase_rows.iter().find(|phase| phase.label == "overall") {
-        assert_eq!(overall_row.base_fraction_text, liquid_overall.phase_fraction_text);
-        assert_eq!(overall_row.base_molar_flow_text, liquid_overall.molar_flow_text);
+    if let Some(liquid_overall) = liquid
+        .phase_rows
+        .iter()
+        .find(|phase| phase.label == "overall")
+    {
+        assert_eq!(
+            overall_row.base_fraction_text,
+            liquid_overall.phase_fraction_text
+        );
+        assert_eq!(
+            overall_row.base_molar_flow_text,
+            liquid_overall.molar_flow_text
+        );
         assert_eq!(
             overall_row.base_molar_enthalpy_text,
             liquid_overall
@@ -233,9 +250,19 @@ fn assert_flash_outlet_comparison_matches_snapshot_stream_models(
         assert_eq!(overall_row.base_molar_flow_text, "-");
         assert_eq!(overall_row.base_molar_enthalpy_text, "-");
     }
-    if let Some(vapor_overall) = vapor.phase_rows.iter().find(|phase| phase.label == "overall") {
-        assert_eq!(overall_row.compared_fraction_text, vapor_overall.phase_fraction_text);
-        assert_eq!(overall_row.compared_molar_flow_text, vapor_overall.molar_flow_text);
+    if let Some(vapor_overall) = vapor
+        .phase_rows
+        .iter()
+        .find(|phase| phase.label == "overall")
+    {
+        assert_eq!(
+            overall_row.compared_fraction_text,
+            vapor_overall.phase_fraction_text
+        );
+        assert_eq!(
+            overall_row.compared_molar_flow_text,
+            vapor_overall.molar_flow_text
+        );
         assert_eq!(
             overall_row.compared_molar_enthalpy_text,
             vapor_overall
@@ -254,8 +281,14 @@ fn assert_flash_outlet_comparison_matches_snapshot_stream_models(
             .phase_rows
             .iter()
             .find(|row| row.phase_label == phase_label);
-        let liquid_phase = liquid.phase_rows.iter().find(|phase| phase.label == phase_label);
-        let vapor_phase = vapor.phase_rows.iter().find(|phase| phase.label == phase_label);
+        let liquid_phase = liquid
+            .phase_rows
+            .iter()
+            .find(|phase| phase.label == phase_label);
+        let vapor_phase = vapor
+            .phase_rows
+            .iter()
+            .find(|phase| phase.label == phase_label);
 
         if liquid_phase.is_none() && vapor_phase.is_none() {
             assert!(
@@ -271,7 +304,8 @@ fn assert_flash_outlet_comparison_matches_snapshot_stream_models(
             assert_eq!(comparison_row.base_molar_flow_text, phase.molar_flow_text);
             assert_eq!(
                 comparison_row.base_molar_enthalpy_text,
-                phase.molar_enthalpy_text
+                phase
+                    .molar_enthalpy_text
                     .clone()
                     .unwrap_or_else(|| "-".to_string())
             );
@@ -282,11 +316,18 @@ fn assert_flash_outlet_comparison_matches_snapshot_stream_models(
         }
 
         if let Some(phase) = vapor_phase {
-            assert_eq!(comparison_row.compared_fraction_text, phase.phase_fraction_text);
-            assert_eq!(comparison_row.compared_molar_flow_text, phase.molar_flow_text);
+            assert_eq!(
+                comparison_row.compared_fraction_text,
+                phase.phase_fraction_text
+            );
+            assert_eq!(
+                comparison_row.compared_molar_flow_text,
+                phase.molar_flow_text
+            );
             assert_eq!(
                 comparison_row.compared_molar_enthalpy_text,
-                phase.molar_enthalpy_text
+                phase
+                    .molar_enthalpy_text
                     .clone()
                     .unwrap_or_else(|| "-".to_string())
             );
@@ -547,10 +588,12 @@ fn assert_non_flash_intermediate_stream_summary_and_context(
         .iter()
         .find(|step| step.unit_id == producer_unit_id)
         .expect("expected producing unit step in result inspector");
-    assert!(producer_step
-        .produced_stream_actions
-        .iter()
-        .any(|action| { action.command_id == focus_stream_command_id }));
+    assert!(
+        producer_step
+            .produced_stream_actions
+            .iter()
+            .any(|action| { action.command_id == focus_stream_command_id })
+    );
     assert!(producer_step.produced_stream_results.iter().any(|stream| {
         stream.stream_id == stream_id
             && stream.summary.contains("T ")
@@ -564,14 +607,18 @@ fn assert_non_flash_intermediate_stream_summary_and_context(
         .iter()
         .find(|step| step.unit_id == "flash-1")
         .expect("expected downstream flash step in result inspector");
-    assert!(flash_step
-        .consumed_stream_results
-        .iter()
-        .any(|stream| stream.stream_id == stream_id));
-    assert!(flash_step
-        .consumed_stream_actions
-        .iter()
-        .any(|action| { action.command_id == focus_stream_command_id }));
+    assert!(
+        flash_step
+            .consumed_stream_results
+            .iter()
+            .any(|stream| stream.stream_id == stream_id)
+    );
+    assert!(
+        flash_step
+            .consumed_stream_actions
+            .iter()
+            .any(|action| { action.command_id == focus_stream_command_id })
+    );
     assert!(flash_step.consumed_stream_results.iter().any(|stream| {
         stream.stream_id == stream_id
             && stream.summary.contains("T ")
@@ -709,10 +756,11 @@ fn assert_non_flash_intermediate_unit_summary_and_context(
             "expected {surface} unit `{unit_id}` summary to mention produced stream `{produced_stream_id}`"
         );
         for command_id in &consumed_focus_command_ids {
-            assert!(unit
-                .consumed_stream_actions
-                .iter()
-                .any(|action| action.command_id == *command_id));
+            assert!(
+                unit.consumed_stream_actions
+                    .iter()
+                    .any(|action| action.command_id == *command_id)
+            );
         }
         for stream_id in consumed_stream_ids {
             assert!(unit.consumed_stream_results.iter().any(|stream| {
@@ -723,10 +771,11 @@ fn assert_non_flash_intermediate_unit_summary_and_context(
                     && stream.summary.contains("H ")
             }));
         }
-        assert!(unit
-            .produced_stream_actions
-            .iter()
-            .any(|action| action.command_id == produced_focus_command_id));
+        assert!(
+            unit.produced_stream_actions
+                .iter()
+                .any(|action| action.command_id == produced_focus_command_id)
+        );
         assert!(unit.produced_stream_results.iter().any(|stream| {
             stream.stream_id == produced_stream_id
                 && stream.summary.contains("T ")
@@ -1113,10 +1162,12 @@ fn studio_gui_window_model_surfaces_bootstrap_workspace_results_and_diagnostics(
     assert!(heated_stream.summary_rows.iter().any(|row| {
         row.label == "H" && row.detail_label == "Molar enthalpy" && row.value.ends_with(" J/mol")
     }));
-    assert!(heated_stream
-        .composition_rows
-        .iter()
-        .any(|row| row.component_id == "methane" && !row.fraction_text.is_empty()));
+    assert!(
+        heated_stream
+            .composition_rows
+            .iter()
+            .any(|row| row.component_id == "methane" && !row.fraction_text.is_empty())
+    );
     assert!(
         heated_stream.phase_text.contains("mol/s"),
         "expected phase summary text to include phase molar flow"
@@ -1169,10 +1220,12 @@ fn studio_gui_window_model_surfaces_bootstrap_workspace_results_and_diagnostics(
                 .as_deref()
                 .is_some_and(|value| value.ends_with(" J/mol"))
     }));
-    assert!(snapshot
-        .diagnostics
-        .iter()
-        .any(|diagnostic| diagnostic.code == "solver.unit_executed"));
+    assert!(
+        snapshot
+            .diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic.code == "solver.unit_executed")
+    );
     assert!(
         snapshot.diagnostics.iter().any(|diagnostic| {
             diagnostic.target_candidates.iter().any(|target| {
@@ -1207,15 +1260,17 @@ fn studio_gui_window_model_surfaces_bootstrap_workspace_results_and_diagnostics(
             .map(|stream| stream.temperature_text.as_str()),
         Some("345.00 K")
     );
-    assert!(inspector
-        .stream_options
-        .iter()
-        .any(|option| option.stream_id == "stream-heated"
-            && option.is_selected
-            && option.summary.contains("P 95000 Pa")
-            && option.summary.contains("H ")
-            && option.focus_action.label == "Inspect"
-            && option.focus_action.command_id == "inspector.focus_stream:stream-heated"));
+    assert!(
+        inspector
+            .stream_options
+            .iter()
+            .any(|option| option.stream_id == "stream-heated"
+                && option.is_selected
+                && option.summary.contains("P 95000 Pa")
+                && option.summary.contains("H ")
+                && option.focus_action.label == "Inspect"
+                && option.focus_action.command_id == "inspector.focus_stream:stream-heated")
+    );
     assert!(
         inspector
             .stream_options
@@ -1225,10 +1280,12 @@ fn studio_gui_window_model_surfaces_bootstrap_workspace_results_and_diagnostics(
                 && option.summary.contains("J/mol")),
         "expected stream result options to include enthalpy when it exists"
     );
-    assert!(inspector
-        .related_steps
-        .iter()
-        .any(|step| step.unit_id == "heater-1"));
+    assert!(
+        inspector
+            .related_steps
+            .iter()
+            .any(|step| step.unit_id == "heater-1")
+    );
     assert!(
         inspector
             .related_steps
@@ -1262,10 +1319,12 @@ fn studio_gui_window_model_surfaces_bootstrap_workspace_results_and_diagnostics(
             .collect::<Vec<_>>(),
         vec!["stream-feed".to_string()]
     );
-    assert!(related_heater_step
-        .consumed_stream_actions
-        .iter()
-        .any(|action| action.command_id == "inspector.focus_stream:stream-feed"));
+    assert!(
+        related_heater_step
+            .consumed_stream_actions
+            .iter()
+            .any(|action| action.command_id == "inspector.focus_stream:stream-feed")
+    );
     assert!(
         related_heater_step
             .consumed_stream_results
@@ -1277,10 +1336,12 @@ fn studio_gui_window_model_surfaces_bootstrap_workspace_results_and_diagnostics(
                 && stream.summary.contains("H ")),
         "expected solve step consumed stream summaries to expose T/P/F/H"
     );
-    assert!(related_heater_step
-        .produced_stream_actions
-        .iter()
-        .any(|action| action.command_id == "inspector.focus_stream:stream-heated"));
+    assert!(
+        related_heater_step
+            .produced_stream_actions
+            .iter()
+            .any(|action| action.command_id == "inspector.focus_stream:stream-heated")
+    );
     assert!(
         related_heater_step
             .produced_stream_results
@@ -1414,10 +1475,12 @@ fn studio_gui_window_model_surfaces_bootstrap_workspace_results_and_diagnostics(
             .map(|stream| stream.stream_id.as_str()),
         Some("stream-heated")
     );
-    assert!(active_detail
-        .related_steps
-        .iter()
-        .any(|step| step.unit_id == "heater-1"));
+    assert!(
+        active_detail
+            .related_steps
+            .iter()
+            .any(|step| step.unit_id == "heater-1")
+    );
     assert!(
         active_detail
             .related_steps
@@ -1448,10 +1511,12 @@ fn studio_gui_window_model_surfaces_bootstrap_workspace_results_and_diagnostics(
         action.source_label == "Solve step"
             && action.action.command_id == "inspector.focus_unit:heater-1"
     }));
-    assert!(active_detail
-        .related_diagnostics
-        .iter()
-        .any(|diagnostic| diagnostic.code == "solver.unit_executed"));
+    assert!(
+        active_detail
+            .related_diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic.code == "solver.unit_executed")
+    );
 
     let unit_target_dispatch = driver
         .dispatch_event(StudioGuiEvent::UiCommandRequested {
@@ -1487,10 +1552,12 @@ fn studio_gui_window_model_surfaces_bootstrap_workspace_results_and_diagnostics(
         vec!["stream-heated".to_string()]
     );
     assert!(unit_result.summary.contains("stream-heated"));
-    assert!(unit_result
-        .consumed_stream_actions
-        .iter()
-        .any(|action| action.command_id == "inspector.focus_stream:stream-feed"));
+    assert!(
+        unit_result
+            .consumed_stream_actions
+            .iter()
+            .any(|action| action.command_id == "inspector.focus_stream:stream-feed")
+    );
     assert!(
         unit_result
             .consumed_stream_results
@@ -1502,10 +1569,12 @@ fn studio_gui_window_model_surfaces_bootstrap_workspace_results_and_diagnostics(
                 && stream.summary.contains("H ")),
         "expected active unit result to expose consumed stream numeric summary"
     );
-    assert!(unit_result
-        .produced_stream_actions
-        .iter()
-        .any(|action| action.command_id == "inspector.focus_stream:stream-heated"));
+    assert!(
+        unit_result
+            .produced_stream_actions
+            .iter()
+            .any(|action| action.command_id == "inspector.focus_stream:stream-heated")
+    );
     assert!(
         unit_result
             .produced_stream_results
@@ -1538,10 +1607,12 @@ fn studio_gui_window_model_surfaces_bootstrap_workspace_results_and_diagnostics(
         comparison_inspector.comparison_stream_id.as_deref(),
         Some("stream-heated")
     );
-    assert!(comparison_inspector
-        .comparison_options
-        .iter()
-        .all(|option| option.stream_id != "stream-feed"));
+    assert!(
+        comparison_inspector
+            .comparison_options
+            .iter()
+            .all(|option| option.stream_id != "stream-feed")
+    );
     assert!(
         comparison_inspector
             .comparison_options
@@ -2070,8 +2141,8 @@ fn studio_gui_window_model_preserves_flowing_flash_outlet_window_dto_from_ui_sna
 }
 
 #[test]
-fn studio_gui_window_model_preserves_snapshot_stream_models_in_unit_view_for_non_flash_intermediates(
-) {
+fn studio_gui_window_model_preserves_snapshot_stream_models_in_unit_view_for_non_flash_intermediates()
+ {
     for (project_json, selected_stream_id, selected_unit_id) in [
         (
             include_str!(
@@ -2112,8 +2183,8 @@ fn studio_gui_window_model_preserves_snapshot_stream_models_in_unit_view_for_non
 }
 
 #[test]
-fn studio_gui_window_model_preserves_snapshot_stream_models_in_unit_and_comparison_views_for_flowing_flash_outlets(
-) {
+fn studio_gui_window_model_preserves_snapshot_stream_models_in_unit_and_comparison_views_for_flowing_flash_outlets()
+ {
     let snapshot = solve_binary_hydrocarbon_lite_snapshot(include_str!(
         "../../../../examples/flowsheets/feed-cooler-flash-binary-hydrocarbon.rfproj.json"
     ));
@@ -2186,10 +2257,12 @@ fn studio_gui_window_model_preserves_single_phase_flash_outlet_window_absence_in
 
     let liquid_only_vapor_detail =
         stream_target_detail_model(&liquid_only_snapshot, "stream-vapor", "Vapor Outlet");
-    assert!(liquid_only_vapor_detail
-        .latest_stream_result
-        .as_ref()
-        .is_some_and(|stream| stream.bubble_dew_window.is_none()));
+    assert!(
+        liquid_only_vapor_detail
+            .latest_stream_result
+            .as_ref()
+            .is_some_and(|stream| stream.bubble_dew_window.is_none())
+    );
 
     let vapor_only_provider = build_synthetic_provider([1.8, 1.3], REFERENCE_PRESSURE_PA);
     let vapor_only_window = estimate_bubble_dew_window(
@@ -2225,10 +2298,12 @@ fn studio_gui_window_model_preserves_single_phase_flash_outlet_window_absence_in
 
     let vapor_only_liquid_detail =
         stream_target_detail_model(&vapor_only_snapshot, "stream-liquid", "Liquid Outlet");
-    assert!(vapor_only_liquid_detail
-        .latest_stream_result
-        .as_ref()
-        .is_some_and(|stream| stream.bubble_dew_window.is_none()));
+    assert!(
+        vapor_only_liquid_detail
+            .latest_stream_result
+            .as_ref()
+            .is_some_and(|stream| stream.bubble_dew_window.is_none())
+    );
 
     let vapor_only_vapor = vapor_only_snapshot
         .result_inspector(Some("stream-vapor"))
@@ -2285,8 +2360,8 @@ fn studio_gui_window_model_preserves_single_phase_flash_outlet_window_absence_in
 }
 
 #[test]
-fn studio_gui_window_model_preserves_single_phase_outlet_window_presence_and_absence_from_ui_snapshot(
-) {
+fn studio_gui_window_model_preserves_single_phase_outlet_window_presence_and_absence_from_ui_snapshot()
+ {
     const LOCAL_REFERENCE_TEMPERATURE_K: f64 = 300.0;
     const LOCAL_REFERENCE_PRESSURE_PA: f64 = 100_000.0;
     const LOCAL_BOUNDARY_DELTA_K: f64 = 0.001;
@@ -2695,7 +2770,7 @@ fn studio_gui_window_model_preserves_official_near_boundary_flash_chain_consumer
 
 #[test]
 fn studio_gui_window_model_surfaces_official_near_boundary_flash_unit_step_and_comparison_semantics()
-{
+ {
     let provider = build_official_binary_hydrocarbon_provider();
 
     for scenario in official_binary_hydrocarbon_near_boundary_consumer_scenarios() {
@@ -2704,8 +2779,7 @@ fn studio_gui_window_model_surfaces_official_near_boundary_flash_unit_step_and_c
             &provider,
             |project| {
                 apply_official_binary_hydrocarbon_near_boundary_consumer_scenario(
-                    project,
-                    &scenario,
+                    project, &scenario,
                 );
             },
         );
@@ -2729,8 +2803,8 @@ fn studio_gui_window_model_surfaces_official_near_boundary_flash_unit_step_and_c
 }
 
 #[test]
-fn studio_gui_window_model_surfaces_official_near_boundary_flash_focus_actions_and_diagnostic_targets(
-) {
+fn studio_gui_window_model_surfaces_official_near_boundary_flash_focus_actions_and_diagnostic_targets()
+ {
     let provider = build_official_binary_hydrocarbon_provider();
 
     for scenario in official_binary_hydrocarbon_near_boundary_consumer_scenarios() {
@@ -2739,8 +2813,7 @@ fn studio_gui_window_model_surfaces_official_near_boundary_flash_focus_actions_a
             &provider,
             |project| {
                 apply_official_binary_hydrocarbon_near_boundary_consumer_scenario(
-                    project,
-                    &scenario,
+                    project, &scenario,
                 );
             },
         );
@@ -2765,19 +2838,28 @@ fn studio_gui_window_model_surfaces_official_near_boundary_flash_focus_actions_a
             .iter()
             .find(|step| step.unit_id == "flash-1")
             .expect("expected downstream flash step for near-boundary inlet");
-        assert_eq!(flash_related_step.unit_action.command_id, flash_unit_focus_command);
-        assert!(flash_related_step
-            .consumed_stream_actions
-            .iter()
-            .any(|action| action.command_id == flash_inlet_focus_command));
-        assert!(flash_related_step
-            .produced_stream_actions
-            .iter()
-            .any(|action| action.command_id == liquid_focus_command));
-        assert!(flash_related_step
-            .produced_stream_actions
-            .iter()
-            .any(|action| action.command_id == vapor_focus_command));
+        assert_eq!(
+            flash_related_step.unit_action.command_id,
+            flash_unit_focus_command
+        );
+        assert!(
+            flash_related_step
+                .consumed_stream_actions
+                .iter()
+                .any(|action| action.command_id == flash_inlet_focus_command)
+        );
+        assert!(
+            flash_related_step
+                .produced_stream_actions
+                .iter()
+                .any(|action| action.command_id == liquid_focus_command)
+        );
+        assert!(
+            flash_related_step
+                .produced_stream_actions
+                .iter()
+                .any(|action| action.command_id == vapor_focus_command)
+        );
 
         let comparison_inspector =
             snapshot.result_inspector_with_comparison(Some("stream-liquid"), Some("stream-vapor"));
@@ -2803,18 +2885,24 @@ fn studio_gui_window_model_surfaces_official_near_boundary_flash_focus_actions_a
             .selected_unit
             .as_ref()
             .expect("expected near-boundary flash unit result");
-        assert!(selected_unit
-            .consumed_stream_actions
-            .iter()
-            .any(|action| action.command_id == flash_inlet_focus_command));
-        assert!(selected_unit
-            .produced_stream_actions
-            .iter()
-            .any(|action| action.command_id == liquid_focus_command));
-        assert!(selected_unit
-            .produced_stream_actions
-            .iter()
-            .any(|action| action.command_id == vapor_focus_command));
+        assert!(
+            selected_unit
+                .consumed_stream_actions
+                .iter()
+                .any(|action| action.command_id == flash_inlet_focus_command)
+        );
+        assert!(
+            selected_unit
+                .produced_stream_actions
+                .iter()
+                .any(|action| action.command_id == liquid_focus_command)
+        );
+        assert!(
+            selected_unit
+                .produced_stream_actions
+                .iter()
+                .any(|action| action.command_id == vapor_focus_command)
+        );
         assert!(unit_inspector.unit_diagnostic_actions.iter().any(|action| {
             action.source_label == "Selected unit"
                 && action.action.command_id == flash_unit_focus_command
@@ -2831,8 +2919,8 @@ fn studio_gui_window_model_surfaces_official_near_boundary_flash_focus_actions_a
 }
 
 #[test]
-fn studio_gui_window_model_dispatches_official_near_boundary_flash_focus_commands_to_active_inspector(
-) {
+fn studio_gui_window_model_dispatches_official_near_boundary_flash_focus_commands_to_active_inspector()
+ {
     for scenario in official_binary_hydrocarbon_near_boundary_consumer_scenarios() {
         let (config, project_path) = official_near_boundary_consumer_synced_config(&scenario);
         let mut driver = StudioGuiDriver::new(&config).expect("expected near-boundary driver");
@@ -2920,7 +3008,10 @@ fn studio_gui_window_model_dispatches_official_near_boundary_flash_focus_command
             .runtime
             .active_inspector_detail
             .expect("expected active flash inlet inspector detail");
-        assert_eq!(inlet_detail.target.target_id, scenario.flash_inlet_stream_id);
+        assert_eq!(
+            inlet_detail.target.target_id,
+            scenario.flash_inlet_stream_id
+        );
         assert_eq!(
             inlet_detail
                 .latest_stream_result
@@ -2955,18 +3046,24 @@ fn studio_gui_window_model_dispatches_official_near_boundary_flash_focus_command
             .expect("expected active flash unit result");
         assert_eq!(unit_detail.target.target_id, "flash-1");
         assert_eq!(active_unit.unit_id, "flash-1");
-        assert!(active_unit
-            .consumed_stream_results
-            .iter()
-            .any(|stream| stream.stream_id == scenario.flash_inlet_stream_id));
-        assert!(active_unit
-            .produced_stream_results
-            .iter()
-            .any(|stream| stream.stream_id == "stream-liquid"));
-        assert!(active_unit
-            .produced_stream_results
-            .iter()
-            .any(|stream| stream.stream_id == "stream-vapor"));
+        assert!(
+            active_unit
+                .consumed_stream_results
+                .iter()
+                .any(|stream| stream.stream_id == scenario.flash_inlet_stream_id)
+        );
+        assert!(
+            active_unit
+                .produced_stream_results
+                .iter()
+                .any(|stream| stream.stream_id == "stream-liquid")
+        );
+        assert!(
+            active_unit
+                .produced_stream_results
+                .iter()
+                .any(|stream| stream.stream_id == "stream-vapor")
+        );
 
         let _ = fs::remove_file(project_path);
     }
@@ -3013,11 +3110,13 @@ fn studio_gui_window_model_surfaces_failure_result_until_rerun_succeeds() {
     assert_eq!(diagnostic_detail.document_revision, 0);
     assert_eq!(diagnostic_detail.severity_label, "Error");
     assert_eq!(diagnostic_detail.diagnostic_count, 1);
-    assert!(diagnostic_detail
-        .related_units
-        .iter()
-        .any(|target| target.target_id == "feed-1"
-            && target.action.command_id == "inspector.focus_unit:feed-1"));
+    assert!(
+        diagnostic_detail
+            .related_units
+            .iter()
+            .any(|target| target.target_id == "feed-1"
+                && target.action.command_id == "inspector.focus_unit:feed-1")
+    );
     assert!(diagnostic_detail.related_ports.iter().any(|target| {
         target.unit_id == "feed-1"
             && target.port_name == "outlet"
@@ -3102,10 +3201,12 @@ fn studio_gui_window_model_surfaces_failure_result_until_rerun_succeeds() {
         .active_inspector_detail
         .expect("expected active unit inspector detail");
     assert_eq!(detail.target.target_id, "feed-1");
-    assert!(detail
-        .summary_rows
-        .iter()
-        .any(|row| row.label == "Kind" && row.value == "feed"));
+    assert!(
+        detail
+            .summary_rows
+            .iter()
+            .any(|row| row.label == "Kind" && row.value == "feed")
+    );
     assert!(detail.unit_ports.iter().any(|port| port.name == "outlet"
         && port.stream_id.as_ref().is_some_and(|stream_id| {
             port.stream_action
@@ -3307,9 +3408,11 @@ fn studio_gui_window_command_area_surfaces_command_list_sections_through_shared_
             "run_panel.set_active",
         ]
     );
-    assert!(window.commands.command_list_sections[2].items[0]
-        .label
-        .contains("F5"));
+    assert!(
+        window.commands.command_list_sections[2].items[0]
+            .label
+            .contains("F5")
+    );
 
     let _ = fs::remove_file(project_path);
 }

@@ -237,8 +237,7 @@ fn result_inspector_state_tracks_official_near_boundary_flash_selector_transitio
             &provider,
             |project| {
                 apply_official_binary_hydrocarbon_near_boundary_consumer_scenario(
-                    project,
-                    &scenario,
+                    project, &scenario,
                 );
             },
         );
@@ -247,12 +246,15 @@ fn result_inspector_state_tracks_official_near_boundary_flash_selector_transitio
             .select_stream(&snapshot.snapshot_id, "stream-liquid");
         app.result_inspector
             .select_comparison_stream(&snapshot.snapshot_id, "stream-vapor");
-        app.result_inspector.select_unit(&snapshot.snapshot_id, "flash-1");
+        app.result_inspector
+            .select_unit(&snapshot.snapshot_id, "flash-1");
 
         let selected_stream_id = app
             .result_inspector
             .selected_stream_id_for_snapshot(&snapshot);
-        let selected_unit_id = app.result_inspector.selected_unit_id_for_snapshot(&snapshot);
+        let selected_unit_id = app
+            .result_inspector
+            .selected_unit_id_for_snapshot(&snapshot);
         let comparison_stream_id = app.result_inspector.comparison_stream_id.clone();
         let inspector = snapshot.result_inspector_with_unit(
             selected_stream_id.as_deref(),
@@ -280,15 +282,16 @@ fn result_inspector_state_tracks_official_near_boundary_flash_selector_transitio
         );
         assert!(!inspector.has_stale_selection, "{}", scenario.case.label);
         assert!(!inspector.has_stale_comparison, "{}", scenario.case.label);
-        assert!(!inspector.has_stale_unit_selection, "{}", scenario.case.label);
         assert!(
-            inspector
-                .comparison
-                .as_ref()
-                .is_some_and(|comparison| {
-                    comparison.base_stream_id == "stream-liquid"
-                        && comparison.compared_stream_id == "stream-vapor"
-                }),
+            !inspector.has_stale_unit_selection,
+            "{}",
+            scenario.case.label
+        );
+        assert!(
+            inspector.comparison.as_ref().is_some_and(|comparison| {
+                comparison.base_stream_id == "stream-liquid"
+                    && comparison.compared_stream_id == "stream-vapor"
+            }),
             "{}",
             scenario.case.label
         );
@@ -314,7 +317,9 @@ fn result_inspector_state_tracks_official_near_boundary_flash_selector_transitio
         let switched_stream_id = app
             .result_inspector
             .selected_stream_id_for_snapshot(&snapshot);
-        let switched_unit_id = app.result_inspector.selected_unit_id_for_snapshot(&snapshot);
+        let switched_unit_id = app
+            .result_inspector
+            .selected_unit_id_for_snapshot(&snapshot);
         let switched_comparison_stream_id = app.result_inspector.comparison_stream_id.clone();
         let switched_inspector = snapshot.result_inspector_with_unit(
             switched_stream_id.as_deref(),
@@ -329,8 +334,7 @@ fn result_inspector_state_tracks_official_near_boundary_flash_selector_transitio
             scenario.case.label
         );
         assert_eq!(
-            switched_inspector.comparison_stream_id,
-            None,
+            switched_inspector.comparison_stream_id, None,
             "{}",
             scenario.case.label
         );
@@ -340,8 +344,16 @@ fn result_inspector_state_tracks_official_near_boundary_flash_selector_transitio
             "{}",
             scenario.case.label
         );
-        assert_eq!(switched_inspector.comparison, None, "{}", scenario.case.label);
-        assert!(!switched_inspector.has_stale_comparison, "{}", scenario.case.label);
+        assert_eq!(
+            switched_inspector.comparison, None,
+            "{}",
+            scenario.case.label
+        );
+        assert!(
+            !switched_inspector.has_stale_comparison,
+            "{}",
+            scenario.case.label
+        );
         assert!(
             switched_inspector
                 .unit_options
@@ -356,7 +368,9 @@ fn result_inspector_state_tracks_official_near_boundary_flash_selector_transitio
         let rearmed_stream_id = app
             .result_inspector
             .selected_stream_id_for_snapshot(&snapshot);
-        let rearmed_unit_id = app.result_inspector.selected_unit_id_for_snapshot(&snapshot);
+        let rearmed_unit_id = app
+            .result_inspector
+            .selected_unit_id_for_snapshot(&snapshot);
         let rearmed_comparison_stream_id = app.result_inspector.comparison_stream_id.clone();
         let rearmed_inspector = snapshot.result_inspector_with_unit(
             rearmed_stream_id.as_deref(),

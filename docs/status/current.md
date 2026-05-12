@@ -28,13 +28,15 @@
 - official / synthetic fixture 语义已基本收口：official hydrocarbon case 统一使用 `binary-hydrocarbon-lite-v1` 与 `methane / ethane`，intentional synthetic demo 族改用显式 `binary-hydrocarbon-synthetic-demo-v1` 与对应文件名 / helper。
 - Stream Inspector 已补 composition normalize、draft discard、受控组分添加 / 删除和运行前组成校验；写回、归一化和丢弃草稿都必须由用户显式触发，不做隐式自动补偿。
 - 仓库基础治理已补齐根 `README.md`、`.gitattributes`、`.gitignore`、文本格式门禁、代码规范专题文档和文档篇幅治理规则；默认入口文档应继续保持摘要化。
+- 阶段性仓库验证已恢复通过：failure fixture 换行已归一化，既有 Rust 格式漂移已由 `cargo fmt --all` 收口，`pwsh ./scripts/check-repo.ps1` 当前通过。
+- synthetic `liquid-only / vapor-only` near-boundary 单相样例已补齐到 raw solver、Studio solver bridge 和 workspace run path 的 `Feed/Heater/Cooler/Valve/Mixer -> Flash` dedicated 回归，继续锁定 source / intermediate / flash inlet / outlet 的同一份 DTO 语义。
 
 完整过程和每日验证记录见 `docs/devlogs/2026-W20.md` 以及更早周志。
 
 ## 下一步建议
 
-1. 优先跑一轮阶段性仓库验证：`pwsh ./scripts/check-repo.ps1`。若出现疑似环境性失败，再区分真实代码回归与沙盒/本机环境差异。
-2. 若继续推进 `rf-thermo` / `rf-flash`，保持 golden 目录、focused tests、integration tests 与 Studio consumer 使用同一套 near-boundary phase region / bubble-dew window / enthalpy 语义，不分叉第二套估算或判断路径。
+1. 若继续推进 `rf-thermo` / `rf-flash`，优先盘点 `TP Flash` 数值 API、golden 样例和 Studio 最终 runtime 渲染面是否还有没有覆盖到的 boundary drift / tolerance-focused case。
+2. 若发现缺口，优先把同一套正式 DTO 语义前推到 golden / focused / integration / Studio consumer，不分叉第二套窗口估算、焓值求解或判断路径。
 3. 若继续推进 `SolveSnapshot` consumer，优先沿 selector state、focus command、diagnostic action 和 runtime 渲染这条正式消费链补薄弱环节，不新增 shell 私有状态机。
 4. 若继续推进 Stream Inspector，优先收紧 flowsheet component catalog / presentation 边界；不要提前做完整组件库、项目级组件删除迁移或隐式差值补偿。
 5. 若发现入口文档继续膨胀，先瘦身 `docs/status/current.md` 和对应专题文档，再把历史流水写入周志；不要把长篇背景写回 `overview.md`、`scope.md` 或协作入口文件。

@@ -437,6 +437,75 @@ fn app_state_for_synthetic_mixer_boundary_case(
     app_state
 }
 
+fn app_state_for_synthetic_heater_boundary_case(
+    document_id: &str,
+    title: &str,
+    created_at_seconds: u64,
+    case: &NearBoundaryStreamWindowCase,
+) -> AppState {
+    let mut app_state = app_state_from_project(
+        include_str!("../../../examples/flowsheets/feed-heater-flash-synthetic-demo.rfproj.json"),
+        document_id,
+        title,
+        created_at_seconds,
+    );
+    apply_case_composition(
+        &mut app_state,
+        "stream-feed",
+        case.package_id,
+        case.overall_mole_fractions,
+    );
+    apply_case_feed_state(&mut app_state, "stream-feed", case);
+    apply_case_feed_state(&mut app_state, "stream-heated", case);
+    app_state
+}
+
+fn app_state_for_synthetic_cooler_boundary_case(
+    document_id: &str,
+    title: &str,
+    created_at_seconds: u64,
+    case: &NearBoundaryStreamWindowCase,
+) -> AppState {
+    let mut app_state = app_state_from_project(
+        include_str!("../../../examples/flowsheets/feed-cooler-flash-synthetic-demo.rfproj.json"),
+        document_id,
+        title,
+        created_at_seconds,
+    );
+    apply_case_composition(
+        &mut app_state,
+        "stream-feed",
+        case.package_id,
+        case.overall_mole_fractions,
+    );
+    apply_case_feed_state(&mut app_state, "stream-feed", case);
+    apply_case_feed_state(&mut app_state, "stream-cooled", case);
+    app_state
+}
+
+fn app_state_for_synthetic_valve_boundary_case(
+    document_id: &str,
+    title: &str,
+    created_at_seconds: u64,
+    case: &NearBoundaryStreamWindowCase,
+) -> AppState {
+    let mut app_state = app_state_from_project(
+        include_str!("../../../examples/flowsheets/feed-valve-flash-synthetic-demo.rfproj.json"),
+        document_id,
+        title,
+        created_at_seconds,
+    );
+    apply_case_composition(
+        &mut app_state,
+        "stream-feed",
+        case.package_id,
+        case.overall_mole_fractions,
+    );
+    apply_case_feed_state(&mut app_state, "stream-feed", case);
+    apply_case_feed_state(&mut app_state, "stream-throttled", case);
+    app_state
+}
+
 fn assert_near_boundary_cases_across_chain<F>(
     cases: Vec<NearBoundaryStreamWindowCase>,
     snapshot_prefix: &str,
@@ -657,6 +726,144 @@ fn studio_solver_bridge_preserves_temperature_near_boundary_windows_across_binar
                 &format!("doc-studio-binary-valve-temperature-{index}"),
                 &case.label,
                 680 + index as u64,
+                case,
+            )
+        },
+    );
+}
+
+#[test]
+fn studio_solver_bridge_preserves_synthetic_single_phase_pressure_near_boundary_windows_across_heater_flash_inlet_end_to_end()
+ {
+    assert_near_boundary_cases_across_chain(
+        synthetic_single_phase_near_boundary_stream_window_cases()
+            .into_iter()
+            .filter(|case| case.kind == NearBoundaryCaseKind::Pressure)
+            .collect(),
+        "snapshot-studio-synthetic-heater-pressure",
+        "heater-1",
+        &["stream-feed"],
+        "stream-heated",
+        |index, case| {
+            app_state_for_synthetic_heater_boundary_case(
+                &format!("doc-studio-synthetic-heater-pressure-{index}"),
+                &case.label,
+                720 + index as u64,
+                case,
+            )
+        },
+    );
+}
+
+#[test]
+fn studio_solver_bridge_preserves_synthetic_single_phase_temperature_near_boundary_windows_across_heater_flash_inlet_end_to_end()
+ {
+    assert_near_boundary_cases_across_chain(
+        synthetic_single_phase_near_boundary_stream_window_cases()
+            .into_iter()
+            .filter(|case| case.kind == NearBoundaryCaseKind::Temperature)
+            .collect(),
+        "snapshot-studio-synthetic-heater-temperature",
+        "heater-1",
+        &["stream-feed"],
+        "stream-heated",
+        |index, case| {
+            app_state_for_synthetic_heater_boundary_case(
+                &format!("doc-studio-synthetic-heater-temperature-{index}"),
+                &case.label,
+                760 + index as u64,
+                case,
+            )
+        },
+    );
+}
+
+#[test]
+fn studio_solver_bridge_preserves_synthetic_single_phase_pressure_near_boundary_windows_across_cooler_flash_inlet_end_to_end()
+ {
+    assert_near_boundary_cases_across_chain(
+        synthetic_single_phase_near_boundary_stream_window_cases()
+            .into_iter()
+            .filter(|case| case.kind == NearBoundaryCaseKind::Pressure)
+            .collect(),
+        "snapshot-studio-synthetic-cooler-pressure",
+        "cooler-1",
+        &["stream-feed"],
+        "stream-cooled",
+        |index, case| {
+            app_state_for_synthetic_cooler_boundary_case(
+                &format!("doc-studio-synthetic-cooler-pressure-{index}"),
+                &case.label,
+                800 + index as u64,
+                case,
+            )
+        },
+    );
+}
+
+#[test]
+fn studio_solver_bridge_preserves_synthetic_single_phase_temperature_near_boundary_windows_across_cooler_flash_inlet_end_to_end()
+ {
+    assert_near_boundary_cases_across_chain(
+        synthetic_single_phase_near_boundary_stream_window_cases()
+            .into_iter()
+            .filter(|case| case.kind == NearBoundaryCaseKind::Temperature)
+            .collect(),
+        "snapshot-studio-synthetic-cooler-temperature",
+        "cooler-1",
+        &["stream-feed"],
+        "stream-cooled",
+        |index, case| {
+            app_state_for_synthetic_cooler_boundary_case(
+                &format!("doc-studio-synthetic-cooler-temperature-{index}"),
+                &case.label,
+                840 + index as u64,
+                case,
+            )
+        },
+    );
+}
+
+#[test]
+fn studio_solver_bridge_preserves_synthetic_single_phase_pressure_near_boundary_windows_across_valve_flash_inlet_end_to_end()
+ {
+    assert_near_boundary_cases_across_chain(
+        synthetic_single_phase_near_boundary_stream_window_cases()
+            .into_iter()
+            .filter(|case| case.kind == NearBoundaryCaseKind::Pressure)
+            .collect(),
+        "snapshot-studio-synthetic-valve-pressure",
+        "valve-1",
+        &["stream-feed"],
+        "stream-throttled",
+        |index, case| {
+            app_state_for_synthetic_valve_boundary_case(
+                &format!("doc-studio-synthetic-valve-pressure-{index}"),
+                &case.label,
+                880 + index as u64,
+                case,
+            )
+        },
+    );
+}
+
+#[test]
+fn studio_solver_bridge_preserves_synthetic_single_phase_temperature_near_boundary_windows_across_valve_flash_inlet_end_to_end()
+ {
+    assert_near_boundary_cases_across_chain(
+        synthetic_single_phase_near_boundary_stream_window_cases()
+            .into_iter()
+            .filter(|case| case.kind == NearBoundaryCaseKind::Temperature)
+            .collect(),
+        "snapshot-studio-synthetic-valve-temperature",
+        "valve-1",
+        &["stream-feed"],
+        "stream-throttled",
+        |index, case| {
+            app_state_for_synthetic_valve_boundary_case(
+                &format!("doc-studio-synthetic-valve-temperature-{index}"),
+                &case.label,
+                920 + index as u64,
                 case,
             )
         },

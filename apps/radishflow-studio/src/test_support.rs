@@ -3,10 +3,10 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use rf_flash::estimate_bubble_dew_window;
 use rf_store::{
+    StoredAuthCacheIndex, StoredProjectFile, StoredPropertyPackageManifest,
+    StoredPropertyPackagePayload, StoredPropertyPackageRecord, StoredPropertyPackageSource,
     property_package_payload_integrity, write_property_package_manifest,
-    write_property_package_payload, StoredAuthCacheIndex, StoredProjectFile,
-    StoredPropertyPackageManifest, StoredPropertyPackagePayload, StoredPropertyPackageRecord,
-    StoredPropertyPackageSource,
+    write_property_package_payload,
 };
 use rf_thermo::{
     AntoineCoefficients, InMemoryPropertyPackageProvider, PlaceholderThermoProvider,
@@ -161,8 +161,8 @@ pub fn build_official_binary_hydrocarbon_provider() -> PlaceholderThermoProvider
 }
 
 #[doc(hidden)]
-pub fn official_binary_hydrocarbon_near_boundary_stream_window_cases(
-) -> Vec<OfficialBinaryHydrocarbonNearBoundaryCase> {
+pub fn official_binary_hydrocarbon_near_boundary_stream_window_cases()
+-> Vec<OfficialBinaryHydrocarbonNearBoundaryCase> {
     let provider = build_official_binary_hydrocarbon_provider();
     let mut cases = Vec::new();
 
@@ -293,8 +293,8 @@ fn official_binary_hydrocarbon_near_boundary_case(
 }
 
 #[doc(hidden)]
-pub fn official_binary_hydrocarbon_near_boundary_consumer_scenarios(
-) -> Vec<OfficialBinaryHydrocarbonNearBoundaryConsumerScenario> {
+pub fn official_binary_hydrocarbon_near_boundary_consumer_scenarios()
+-> Vec<OfficialBinaryHydrocarbonNearBoundaryConsumerScenario> {
     vec![
         OfficialBinaryHydrocarbonNearBoundaryConsumerScenario {
             path: OfficialBinaryHydrocarbonNearBoundaryPath::Heater,

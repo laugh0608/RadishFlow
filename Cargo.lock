@@ -2875,6 +2875,7 @@ version = "0.1.0"
 dependencies = [
  "radishflow-studio",
  "rf-flash",
+ "rf-model",
  "rf-solver",
  "rf-store",
  "rf-thermo",
