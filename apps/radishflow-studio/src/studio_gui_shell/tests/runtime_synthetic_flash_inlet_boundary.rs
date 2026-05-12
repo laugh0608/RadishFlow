@@ -404,3 +404,258 @@ fn runtime_panel_renders_synthetic_single_phase_flash_chain_window_semantics() {
         }
     }
 }
+
+#[test]
+fn result_inspector_state_tracks_synthetic_single_phase_flash_selector_transitions() {
+    let mut app = ready_app_state(&synced_workspace_config());
+
+    for scenario in synthetic_chain_scenarios() {
+        for case in synthetic_cases() {
+            let snapshot = solve_synthetic_snapshot(&scenario, &case);
+
+            app.result_inspector
+                .select_stream(&snapshot.snapshot_id, case.flowing_outlet_stream_id);
+            app.result_inspector
+                .select_comparison_stream(&snapshot.snapshot_id, case.zero_outlet_stream_id);
+            app.result_inspector
+                .select_unit(&snapshot.snapshot_id, "flash-1");
+
+            let selected_stream_id = app
+                .result_inspector
+                .selected_stream_id_for_snapshot(&snapshot);
+            let selected_unit_id = app
+                .result_inspector
+                .selected_unit_id_for_snapshot(&snapshot);
+            let comparison_stream_id = app.result_inspector.comparison_stream_id.clone();
+            let inspector = snapshot.result_inspector_with_unit(
+                selected_stream_id.as_deref(),
+                comparison_stream_id.as_deref(),
+                selected_unit_id.as_deref(),
+            );
+
+            assert_eq!(
+                inspector.selected_stream_id.as_deref(),
+                Some(case.flowing_outlet_stream_id),
+                "{} {}",
+                scenario.label,
+                case.label
+            );
+            assert_eq!(
+                inspector.comparison_stream_id.as_deref(),
+                Some(case.zero_outlet_stream_id),
+                "{} {}",
+                scenario.label,
+                case.label
+            );
+            assert_eq!(
+                inspector.selected_unit_id.as_deref(),
+                Some("flash-1"),
+                "{} {}",
+                scenario.label,
+                case.label
+            );
+            assert!(
+                !inspector.has_stale_selection,
+                "{} {}",
+                scenario.label, case.label
+            );
+            assert!(
+                !inspector.has_stale_comparison,
+                "{} {}",
+                scenario.label, case.label
+            );
+            assert!(
+                !inspector.has_stale_unit_selection,
+                "{} {}",
+                scenario.label, case.label
+            );
+            assert!(
+                inspector
+                    .selected_stream
+                    .as_ref()
+                    .and_then(|stream| stream.bubble_dew_window.as_ref())
+                    .is_some_and(|window| window.phase_region == phase_region_id(case.phase_region)),
+                "{} {} expected flowing outlet to keep boundary window",
+                scenario.label,
+                case.label
+            );
+            assert!(
+                inspector
+                    .comparison_stream
+                    .as_ref()
+                    .is_some_and(|stream| stream.bubble_dew_window.is_none()),
+                "{} {} expected zero-flow comparison outlet to avoid pseudo window",
+                scenario.label,
+                case.label
+            );
+            assert!(
+                inspector.comparison.as_ref().is_some_and(|comparison| {
+                    comparison.base_stream_id == case.flowing_outlet_stream_id
+                        && comparison.compared_stream_id == case.zero_outlet_stream_id
+                }),
+                "{} {}",
+                scenario.label,
+                case.label
+            );
+            assert!(
+                inspector.comparison_options.iter().any(|option| {
+                    option.stream_id == case.zero_outlet_stream_id && option.is_selected
+                }),
+                "{} {}",
+                scenario.label,
+                case.label
+            );
+            let selected_unit = inspector
+                .selected_unit
+                .as_ref()
+                .expect("expected flash unit selection");
+            assert!(
+                selected_unit
+                    .consumed_stream_results
+                    .iter()
+                    .any(|stream| stream.stream_id == scenario.flash_inlet_stream_id),
+                "{} {}",
+                scenario.label,
+                case.label
+            );
+            assert!(
+                selected_unit
+                    .produced_stream_results
+                    .iter()
+                    .any(|stream| stream.stream_id == case.flowing_outlet_stream_id),
+                "{} {}",
+                scenario.label,
+                case.label
+            );
+            assert!(
+                selected_unit
+                    .produced_stream_results
+                    .iter()
+                    .any(|stream| stream.stream_id == case.zero_outlet_stream_id),
+                "{} {}",
+                scenario.label,
+                case.label
+            );
+
+            app.result_inspector
+                .select_stream(&snapshot.snapshot_id, case.zero_outlet_stream_id);
+            let switched_stream_id = app
+                .result_inspector
+                .selected_stream_id_for_snapshot(&snapshot);
+            let switched_unit_id = app
+                .result_inspector
+                .selected_unit_id_for_snapshot(&snapshot);
+            let switched_comparison_stream_id = app.result_inspector.comparison_stream_id.clone();
+            let switched_inspector = snapshot.result_inspector_with_unit(
+                switched_stream_id.as_deref(),
+                switched_comparison_stream_id.as_deref(),
+                switched_unit_id.as_deref(),
+            );
+
+            assert_eq!(
+                switched_inspector.selected_stream_id.as_deref(),
+                Some(case.zero_outlet_stream_id),
+                "{} {}",
+                scenario.label,
+                case.label
+            );
+            assert_eq!(
+                switched_inspector.comparison_stream_id, None,
+                "{} {}",
+                scenario.label, case.label
+            );
+            assert_eq!(
+                switched_inspector.selected_unit_id.as_deref(),
+                Some("flash-1"),
+                "{} {}",
+                scenario.label,
+                case.label
+            );
+            assert!(
+                switched_inspector
+                    .selected_stream
+                    .as_ref()
+                    .is_some_and(|stream| stream.bubble_dew_window.is_none()),
+                "{} {} expected zero-flow selected outlet to avoid pseudo window",
+                scenario.label,
+                case.label
+            );
+            assert_eq!(
+                switched_inspector.comparison, None,
+                "{} {}",
+                scenario.label, case.label
+            );
+            assert!(
+                !switched_inspector.has_stale_comparison,
+                "{} {}",
+                scenario.label, case.label
+            );
+            assert!(
+                switched_inspector
+                    .comparison_options
+                    .iter()
+                    .any(|option| option.stream_id == case.flowing_outlet_stream_id),
+                "{} {}",
+                scenario.label,
+                case.label
+            );
+
+            app.result_inspector
+                .select_comparison_stream(&snapshot.snapshot_id, case.flowing_outlet_stream_id);
+            let rearmed_stream_id = app
+                .result_inspector
+                .selected_stream_id_for_snapshot(&snapshot);
+            let rearmed_unit_id = app
+                .result_inspector
+                .selected_unit_id_for_snapshot(&snapshot);
+            let rearmed_comparison_stream_id = app.result_inspector.comparison_stream_id.clone();
+            let rearmed_inspector = snapshot.result_inspector_with_unit(
+                rearmed_stream_id.as_deref(),
+                rearmed_comparison_stream_id.as_deref(),
+                rearmed_unit_id.as_deref(),
+            );
+
+            assert_eq!(
+                rearmed_inspector.selected_stream_id.as_deref(),
+                Some(case.zero_outlet_stream_id),
+                "{} {}",
+                scenario.label,
+                case.label
+            );
+            assert_eq!(
+                rearmed_inspector.comparison_stream_id.as_deref(),
+                Some(case.flowing_outlet_stream_id),
+                "{} {}",
+                scenario.label,
+                case.label
+            );
+            assert_eq!(
+                rearmed_inspector.selected_unit_id.as_deref(),
+                Some("flash-1"),
+                "{} {}",
+                scenario.label,
+                case.label
+            );
+            assert!(
+                rearmed_inspector
+                    .comparison
+                    .as_ref()
+                    .is_some_and(|comparison| {
+                        comparison.base_stream_id == case.zero_outlet_stream_id
+                            && comparison.compared_stream_id == case.flowing_outlet_stream_id
+                    }),
+                "{} {}",
+                scenario.label,
+                case.label
+            );
+            assert!(
+                rearmed_inspector.comparison_options.iter().any(|option| {
+                    option.stream_id == case.flowing_outlet_stream_id && option.is_selected
+                }),
+                "{} {}",
+                scenario.label,
+                case.label
+            );
+        }
+    }
+}

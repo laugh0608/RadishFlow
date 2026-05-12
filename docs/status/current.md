@@ -34,6 +34,7 @@
 - `TP Flash` boundary drift / tolerance-focused 覆盖已完成一轮盘点与补强：official / synthetic golden 当前仍覆盖 `±ΔP / ±ΔT`，raw solver 另补边界容差带内的 phase region / zero-fraction phase materialization 回归；`rf-flash` 继续复用 `rf-types` 的 tolerance 语义，不引入第二套窗口估算或 fallback。
 - `rf-ffi` thermo solve 失败基线已复核并补强：成功路径会继续导出同一份 `bubble_dew_window` / overall enthalpy JSON，运行时物性包若能加载但缺少求解所需热容，会在 `flowsheet_solve` 阶段稳定返回 `Thermo` 状态与结构化 last-error。
 - synthetic 单相 near-boundary 的 `SolveSnapshot -> window_model` consumer 已补 focused 覆盖：`Feed/Heater/Cooler/Valve/Mixer -> Flash` 现在会锁定 Result Inspector、comparison、unit result、Active Inspector 与 `inspector.focus_*` diagnostic action 都继续消费同一份 flash inlet / outlet / unit DTO。
+- synthetic 单相 near-boundary 的 shell selector state 已补 focused 覆盖：flowing outlet / zero-flow outlet 之间切换和重新挂 comparison 时，会继续保持 flash unit 选择、窗口缺席语义和 comparison DTO 一致。
 
 完整过程和每日验证记录见 `docs/devlogs/2026-W20.md` 以及更早周志。
 
@@ -41,7 +42,7 @@
 
 1. 若继续推进 `rf-thermo` / `rf-flash`，优先维护现有 official / synthetic golden 与 raw solver focused tolerance 基线；新增数值样例仍应复用同一套 `bubble_dew_window` / phase result DTO 语义。
 2. 若继续前推数值回归，优先只把会影响 solver snapshot 或 Studio consumer 的缺口扩到 integration / runtime 层，不为纯内部数值容差再分叉第二套窗口估算、焓值求解或判断路径。
-3. 若继续推进 `SolveSnapshot` consumer，优先复查 shell selector state 或 UI dispatch 是否仍有未覆盖的真实消费边界；不要为已由 window-model / runtime DTO 覆盖的语义新增 shell 私有状态机。
+3. 若继续推进 `SolveSnapshot` consumer，优先只复查 UI dispatch / command palette 是否还有真实消费边界缺口；不要为已由 window-model / runtime / selector state 覆盖的语义新增 shell 私有状态机。
 4. 若继续推进 Stream Inspector，优先收紧 flowsheet component catalog / presentation 边界；不要提前做完整组件库、项目级组件删除迁移或隐式差值补偿。
 5. 若发现入口文档继续膨胀，先瘦身 `docs/status/current.md` 和对应专题文档，再把历史流水写入周志；不要把长篇背景写回 `overview.md`、`scope.md` 或协作入口文件。
 
