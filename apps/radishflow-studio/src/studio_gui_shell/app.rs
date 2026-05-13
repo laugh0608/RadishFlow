@@ -283,6 +283,7 @@ impl ReadyAppState {
                     project_path.display()
                 ));
                 self.dispatch_event(StudioGuiEvent::OpenWindowRequested);
+                self.hide_commands_panel_for_current_window();
             }
             Err(error) => {
                 self.project_open.notice = Some(ProjectOpenNotice {
@@ -510,6 +511,16 @@ impl ReadyAppState {
             window_id,
             mutation,
         });
+    }
+
+    pub(super) fn hide_commands_panel_for_current_window(&mut self) {
+        self.dispatch_layout_mutation(
+            self.current_window_id(),
+            StudioGuiWindowLayoutMutation::SetPanelVisibility {
+                area_id: StudioGuiWindowAreaId::Commands,
+                visible: false,
+            },
+        );
     }
 
     pub(super) fn begin_drag_session(

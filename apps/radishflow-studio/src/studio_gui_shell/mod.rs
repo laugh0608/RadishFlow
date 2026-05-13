@@ -16,9 +16,8 @@ use radishflow_studio::{
     StudioGuiShortcut, StudioGuiShortcutKey, StudioGuiShortcutModifier, StudioGuiWindowAreaId,
     StudioGuiWindowDockPlacement, StudioGuiWindowDockRegion, StudioGuiWindowDropTargetQuery,
     StudioGuiWindowLayoutModel, StudioGuiWindowLayoutMutation, StudioGuiWindowModel,
-    StudioGuiWindowPanelDisplayMode, StudioGuiWindowStackGroupLayout,
-    StudioGuiWindowToolbarSectionModel, StudioRuntimeConfig, StudioRuntimeTrigger,
-    StudioWindowHostId, StudioWindowHostRole,
+    StudioGuiWindowStackGroupLayout, StudioGuiWindowToolbarSectionModel, StudioRuntimeConfig,
+    StudioRuntimeTrigger, StudioWindowHostId, StudioWindowHostRole,
 };
 use rf_types::RfResult;
 use rf_ui::{
@@ -251,6 +250,7 @@ impl ReadyAppState {
             ready.project_open.notice = Some(notice);
         }
         ready.dispatch_event(StudioGuiEvent::OpenWindowRequested);
+        ready.hide_commands_panel_for_current_window();
         Ok(ready)
     }
 }

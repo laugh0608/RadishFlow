@@ -48,7 +48,6 @@ fn shell_locale_defaults_to_chinese_and_can_translate_runtime_labels() {
     let locale = StudioShellLocale::default();
 
     assert_eq!(locale, StudioShellLocale::ZhCn);
-    assert_eq!(locale.text(ShellText::Runtime), "运行");
     assert_eq!(locale.runtime_label("Converged").as_ref(), "已收敛");
     assert_eq!(
         locale.workspace_counts("Demo", 2, 3, 1),

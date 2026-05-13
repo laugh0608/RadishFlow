@@ -1,6 +1,6 @@
 # 当前状态
 
-更新时间：2026-05-12
+更新时间：2026-05-13
 
 ## 用途
 
@@ -39,13 +39,16 @@
 - `SolveSnapshot` consumer 的 command surface 边界已补一层收口：最新求解快照中的 result stream / unit 目标现在以 `Results` command section 暴露，并已覆盖 palette、menu 和 command list 到同一条 `inspector.focus_*` host dispatch，不新增 shell 私有结果缓存或导航分支。
 - `SolveSnapshot` consumer 的 runtime 点击交互已补 focused 覆盖：Result Inspector / diagnostic action 共用的小型 command action button 现在用真实 `egui` pointer click 回归锁定到同一条 `dispatch_ui_command -> inspector.focus_* -> Active Inspector` 链路，不新增 runtime 私有解释层。
 - 2026-05-12 阶段复盘结论：近期 focused 收口仍在整体规划内，但继续沿 near-boundary / command surface / runtime click 细节扩测试会进入收益递减；下一轮应切到 MVP α 验收矩阵和交付硬化。
+- 2026-05-13 已新增 `docs/mvp/alpha-acceptance-checklist.md`，把自动化验证、Studio 用户视角 smoke、`rf-ffi` JSON/error、CAPE-OPEN / PME 与文档复现检查收束为 MVP α 验收入口。
+- 2026-05-13 阶段性自动验证已通过：`git diff --check`、`pwsh ./scripts/check-doc-size.ps1` 与 `pwsh ./scripts/check-repo.ps1` 均已执行；文档体量脚本仅报告既有 roadmap / 历史周志超限项。
+- 2026-05-13 人工启动 Studio 后暴露首屏 UX blocker：顶部调试信息、命令大全和布局控制压过主路径；已把最终 shell 收敛为快速操作入口，默认显示 `打开示例 / 打开项目 / 运行 / 保存 / 命令面板`，并默认隐藏左侧命令大全。
 
 完整过程和每日验证记录见 `docs/devlogs/2026-W20.md` 以及更早周志。
 
 ## 下一步建议
 
-1. 先建立 MVP α acceptance checklist，覆盖 Rust Studio 打开/建模/运行/保存/重开、结果审阅、Stream Inspector 组成阻断、`rf-ffi` JSON/error 与 CAPE-OPEN / PME 回归基线。
-2. 以 `pwsh ./scripts/check-repo.ps1` 作为阶段性验证入口，并补 2-3 条用户视角手动 smoke 记录；只修验收中暴露的真实 blocker。
+1. 按 `docs/mvp/alpha-acceptance-checklist.md` 继续执行 MVP α 验收；下一步优先复跑 Studio 用户视角手动 smoke，确认新首屏能直接打开示例并运行。
+2. 只修人工 smoke 或仓库级验证暴露的真实 blocker；若只是收益递减的 focused 覆盖缺口，先记录而不是继续主动扩矩阵。
 3. 保持 `TP Flash` official / synthetic golden、raw solver focused tolerance 与 `rf-ffi` JSON/error 基线稳定，但不主动扩无限 near-boundary 矩阵。
 4. 暂停继续细抠 `SolveSnapshot` consumer / shell action surface，除非真实验收路径或仓库级验证暴露回归。
 5. 复查首批交付物文档：quick start、运行指南、PME validation runbook 与发布包形态是否足够让他人复现 MVP α。
@@ -63,6 +66,7 @@
 
 - 需要仓库全局模块边界：`docs/architecture/overview.md`
 - 需要 MVP 范围和非目标：`docs/mvp/scope.md`
+- 需要 MVP α 验收矩阵：`docs/mvp/alpha-acceptance-checklist.md`
 - 需要最新流水和决策依据：`docs/devlogs/2026-W20.md`
 - 需要热力学 / 闪蒸细节：`docs/thermo/mvp-model.md`
 - 需要 CAPE-OPEN / COM 边界：`docs/capeopen/boundary.md`

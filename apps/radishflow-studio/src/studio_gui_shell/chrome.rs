@@ -12,15 +12,12 @@ impl ReadyAppState {
         egui::TopBottomPanel::top("studio.titlebar").show(ctx, |ui| {
             ui.horizontal_wrapped(|ui| {
                 ui.heading(window.header.title);
-                ui.label(&window.header.status_line);
-            });
-            ui.separator();
-            ui.horizontal_wrapped(|ui| {
-                if ui
-                    .button(self.locale.text(ShellText::NewLogicalWindow))
-                    .clicked()
-                {
-                    self.dispatch_event(StudioGuiEvent::OpenWindowRequested);
+                if window.runtime.workspace_document.has_unsaved_changes {
+                    render_status_chip(
+                        ui,
+                        self.locale.text(ShellText::Unsaved),
+                        egui::Color32::from_rgb(160, 120, 40),
+                    );
                 }
                 if current_window_id.is_none() {
                     ui.small(self.locale.text(ShellText::NoActiveLogicalWindow));
@@ -28,84 +25,111 @@ impl ReadyAppState {
             });
             ui.separator();
             ui.horizontal_wrapped(|ui| {
-                ui.label(egui::RichText::new(self.locale.text(ShellText::LogicalWindows)).strong());
-                if windows.is_empty() {
-                    ui.small(self.locale.text(ShellText::None));
+                ui.label(egui::RichText::new(self.locale.text(ShellText::QuickActions)).strong());
+                ui.menu_button(self.locale.text(ShellText::OpenExample), |ui| {
+                    if window.runtime.example_projects.is_empty() {
+                        ui.small(self.locale.text(ShellText::NoRecentProjects));
+                        return;
+                    }
+                    let mut requested_project = None;
+                    for example in &window.runtime.example_projects {
+                        if ui
+                            .add_enabled(!example.is_current, egui::Button::new(example.title))
+                            .on_hover_text(example.detail)
+                            .clicked()
+                        {
+                            requested_project = Some(example.project_path.clone());
+                            ui.close_menu();
+                        }
+                    }
+                    if let Some(project_path) = requested_project {
+                        self.open_example_project(project_path);
+                    }
+                });
+                if ui
+                    .button(self.locale.text(ShellText::OpenProjectFromDisk))
+                    .clicked()
+                {
+                    self.open_project_from_picker();
+                }
+                if ui
+                    .button(self.locale.text(ShellText::RunCurrentWorkspace))
+                    .clicked()
+                {
+                    self.dispatch_ui_command("run_panel.run_manual");
+                }
+                if ui
+                    .button(self.locale.text(ShellText::SaveProject))
+                    .clicked()
+                {
+                    self.save_project();
+                }
+                let commands_visible = window
+                    .layout_state
+                    .panel(StudioGuiWindowAreaId::Commands)
+                    .map(|panel| panel.visible)
+                    .unwrap_or(false);
+                let commands_label = if commands_visible {
+                    self.locale.text(ShellText::HideCommands)
                 } else {
-                    self.render_logical_window_chips(ui, windows);
+                    self.locale.text(ShellText::ShowCommands)
+                };
+                if ui.button(commands_label).clicked() {
+                    self.dispatch_layout_mutation(
+                        current_window_id,
+                        StudioGuiWindowLayoutMutation::SetPanelVisibility {
+                            area_id: StudioGuiWindowAreaId::Commands,
+                            visible: !commands_visible,
+                        },
+                    );
+                }
+                let palette_label = if self.command_palette.open {
+                    self.locale.text(ShellText::HideCommandPalette)
+                } else {
+                    self.locale.text(ShellText::CommandPalette)
+                };
+                if ui.button(palette_label).clicked() {
+                    self.command_palette.toggle();
                 }
             });
-            ui.separator();
             ui.horizontal_wrapped(|ui| {
-                ui.label(egui::RichText::new(self.locale.text(ShellText::Language)).strong());
+                render_wrapped_small(ui, &window.runtime.workspace_document.title);
+                if let Some(path) = window.runtime.workspace_document.project_path.as_ref() {
+                    render_wrapped_small(ui, path);
+                }
+            });
+            ui.horizontal_wrapped(|ui| {
                 let english = self.locale.text(ShellText::English);
                 let chinese = self.locale.text(ShellText::Chinese);
                 ui.selectable_value(&mut self.locale, StudioShellLocale::ZhCn, chinese);
                 ui.selectable_value(&mut self.locale, StudioShellLocale::En, english);
+                if windows.len() > 1 {
+                    ui.separator();
+                    ui.label(
+                        egui::RichText::new(self.locale.text(ShellText::LogicalWindows)).strong(),
+                    );
+                    self.render_logical_window_chips(ui, windows);
+                }
+                if ui
+                    .button(self.locale.text(ShellText::NewLogicalWindow))
+                    .clicked()
+                {
+                    self.dispatch_event(StudioGuiEvent::OpenWindowRequested);
+                }
             });
-            if !window.commands.menu_tree.is_empty() {
+            if !window.commands.menu_tree.is_empty()
+                && window
+                    .layout_state
+                    .panel(StudioGuiWindowAreaId::Commands)
+                    .map(|panel| panel.visible)
+                    .unwrap_or(false)
+            {
                 ui.separator();
                 self.render_command_menu_bar(ui, &window.commands.menu_tree);
                 ui.horizontal_wrapped(|ui| {
                     self.render_command_toolbar(ui, &window.commands.toolbar_sections);
-                    let palette_label = if self.command_palette.open {
-                        self.locale.text(ShellText::HideCommandPalette)
-                    } else {
-                        self.locale.text(ShellText::CommandPalette)
-                    };
-                    if ui.button(palette_label).clicked() {
-                        self.command_palette.toggle();
-                    }
                 });
             }
-            ui.separator();
-            ui.horizontal_wrapped(|ui| {
-                self.render_panel_toggle(
-                    ui,
-                    current_window_id,
-                    &window.layout_state,
-                    StudioGuiWindowAreaId::Commands,
-                    self.locale.text(ShellText::Commands),
-                );
-                self.render_panel_toggle(
-                    ui,
-                    current_window_id,
-                    &window.layout_state,
-                    StudioGuiWindowAreaId::Canvas,
-                    self.locale.text(ShellText::Canvas),
-                );
-                self.render_panel_toggle(
-                    ui,
-                    current_window_id,
-                    &window.layout_state,
-                    StudioGuiWindowAreaId::Runtime,
-                    self.locale.text(ShellText::Runtime),
-                );
-            });
-            ui.horizontal_wrapped(|ui| {
-                ui.label(egui::RichText::new(self.locale.text(ShellText::RegionWeights)).strong());
-                self.render_region_weight_slider(
-                    ui,
-                    current_window_id,
-                    &window.layout_state,
-                    StudioGuiWindowDockRegion::LeftSidebar,
-                    self.locale.text(ShellText::Left),
-                );
-                self.render_region_weight_slider(
-                    ui,
-                    current_window_id,
-                    &window.layout_state,
-                    StudioGuiWindowDockRegion::CenterStage,
-                    self.locale.text(ShellText::Center),
-                );
-                self.render_region_weight_slider(
-                    ui,
-                    current_window_id,
-                    &window.layout_state,
-                    StudioGuiWindowDockRegion::RightSidebar,
-                    self.locale.text(ShellText::Right),
-                );
-            });
             if let Some(drag_session) = self.drag_session {
                 ui.separator();
                 ui.horizontal_wrapped(|ui| {
@@ -548,80 +572,6 @@ impl ReadyAppState {
                 ),
                 |ui| {
                     ui.vertical(|ui| {
-                        ui.horizontal_wrapped(|ui| {
-                            let is_drag_source = drag_session
-                                .map(|drag_session| drag_session.area_id == area_id)
-                                .unwrap_or(false);
-                            if is_drag_source {
-                                ui.small(
-                                    egui::RichText::new(
-                                        self.locale.text(ShellText::DraggingFromHeaderTab),
-                                    )
-                                        .color(egui::Color32::from_rgb(56, 126, 214)),
-                                );
-                            } else {
-                                ui.small(self.locale.text(ShellText::DragHeaderOrTabToMove));
-                            }
-
-                            if ui.button(self.locale.text(ShellText::CenterPanel)).clicked() {
-                                self.dispatch_layout_mutation(
-                                    window_id,
-                                    StudioGuiWindowLayoutMutation::SetCenterArea { area_id },
-                                );
-                            }
-
-                            let collapse_label = if panel.collapsed {
-                                self.locale.text(ShellText::Expand)
-                            } else {
-                                self.locale.text(ShellText::Collapse)
-                            };
-                            if ui.button(collapse_label).clicked() {
-                                self.dispatch_layout_mutation(
-                                    window_id,
-                                    StudioGuiWindowLayoutMutation::SetPanelCollapsed {
-                                        area_id,
-                                        collapsed: !panel.collapsed,
-                                    },
-                                );
-                            }
-
-                            if ui.button(self.locale.text(ShellText::Hide)).clicked() {
-                                self.dispatch_layout_mutation(
-                                    window_id,
-                                    StudioGuiWindowLayoutMutation::SetPanelVisibility {
-                                        area_id,
-                                        visible: false,
-                                    },
-                                );
-                            }
-
-                            self.render_move_menu(ui, window, area_id, panel.dock_region);
-                            self.render_stack_menu(ui, window, area_id, panel.display_mode);
-
-                            if !matches!(
-                                panel.display_mode,
-                                StudioGuiWindowPanelDisplayMode::Standalone
-                            ) {
-                                if ui.button("Prev tab").clicked() {
-                                    self.dispatch_layout_mutation(
-                                        window_id,
-                                        StudioGuiWindowLayoutMutation::ActivatePreviousPanelInStack {
-                                            area_id,
-                                        },
-                                    );
-                                }
-                                if ui.button("Next tab").clicked() {
-                                    self.dispatch_layout_mutation(
-                                        window_id,
-                                        StudioGuiWindowLayoutMutation::ActivateNextPanelInStack {
-                                            area_id,
-                                        },
-                                    );
-                                }
-                            }
-                        });
-                        ui.separator();
-
                         if panel.collapsed {
                             ui.label(self.locale.text(ShellText::PanelIsCollapsed));
                             return;
