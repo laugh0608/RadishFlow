@@ -338,7 +338,9 @@ impl ReadyAppState {
     }
 
     pub(super) fn update(&mut self, ctx: &egui::Context) {
-        self.sync_viewport_close(ctx);
+        if self.sync_viewport_close(ctx) {
+            return;
+        }
         self.sync_viewport_lifecycle(ctx);
         let toggle_shortcut_consumed = self.handle_command_palette_toggle_shortcut(ctx);
         self.drain_due_timers(ctx);
@@ -987,22 +989,26 @@ impl ReadyAppState {
         }
     }
 
-    pub(super) fn sync_viewport_close(&mut self, ctx: &egui::Context) {
+    pub(super) fn sync_viewport_close(&mut self, ctx: &egui::Context) -> bool {
         if !ctx.input(|input| input.viewport().close_requested()) {
-            return;
+            return false;
         }
 
+        let should_stop_rendering = self.close_current_window_for_viewport_request();
+        if !should_stop_rendering {
+            ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
+        }
+        should_stop_rendering
+    }
+
+    pub(super) fn close_current_window_for_viewport_request(&mut self) -> bool {
         let Some(window_id) = self.current_window_id() else {
-            return;
+            return true;
         };
 
-        ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
         self.cancel_drag_session(Some(window_id));
         self.dispatch_event(StudioGuiEvent::CloseWindowRequested { window_id });
-
-        if self.logical_window_count() == 0 {
-            ctx.send_viewport_cmd(egui::ViewportCommand::Close);
-        }
+        self.logical_window_count() == 0
     }
 
     pub(super) fn sync_viewport_lifecycle(&mut self, ctx: &egui::Context) {

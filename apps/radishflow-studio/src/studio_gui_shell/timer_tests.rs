@@ -60,6 +60,56 @@ fn startup_uses_default_hidden_commands_panel_without_layout_dispatch() {
 }
 
 #[test]
+fn viewport_close_last_window_stops_before_fallback_layout_render() {
+    let preferences_path =
+        std::env::temp_dir().join("radishflow-studio-shell-close-short-circuit.preferences.json");
+    let mut app = ReadyAppState::from_config(&synced_skip_config(), preferences_path)
+        .expect("expected ready app");
+    let startup_snapshot = app.platform_host.snapshot();
+    let startup_window = startup_snapshot.window_model();
+
+    assert_eq!(
+        startup_window
+            .layout_state
+            .panel(StudioGuiWindowAreaId::Commands)
+            .map(|panel| panel.visible),
+        Some(false)
+    );
+    assert!(app.close_current_window_for_viewport_request());
+    assert_eq!(app.logical_window_count(), 0);
+}
+
+#[test]
+fn viewport_close_last_window_does_not_cancel_native_close_request() {
+    let preferences_path =
+        std::env::temp_dir().join("radishflow-studio-shell-native-close.preferences.json");
+    let mut app = ReadyAppState::from_config(&synced_skip_config(), preferences_path)
+        .expect("expected ready app");
+    let mut viewport = egui::ViewportInfo::default();
+    viewport.events.push(egui::ViewportEvent::Close);
+    let mut raw_input = egui::RawInput {
+        viewport_id: egui::ViewportId::ROOT,
+        ..Default::default()
+    };
+    raw_input.viewports.insert(egui::ViewportId::ROOT, viewport);
+    let ctx = egui::Context::default();
+
+    ctx.begin_pass(raw_input);
+    assert!(app.sync_viewport_close(&ctx));
+    let output = ctx.end_pass();
+    let close_commands = output
+        .viewport_output
+        .get(&egui::ViewportId::ROOT)
+        .map(|viewport| viewport.commands.as_slice())
+        .unwrap_or_default();
+
+    assert!(
+        !close_commands.contains(&egui::ViewportCommand::CancelClose),
+        "last-window close must not cancel the native close request"
+    );
+}
+
+#[test]
 fn viewport_focus_tracking_does_not_dispatch_foreground_entitlement_tick() {
     let preferences_path = std::env::temp_dir()
         .join("radishflow-studio-shell-viewport-focus-no-foreground-dispatch.preferences.json");
