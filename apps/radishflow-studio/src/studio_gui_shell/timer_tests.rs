@@ -12,6 +12,77 @@ fn lease_expiring_config() -> StudioRuntimeConfig {
     }
 }
 
+fn synced_skip_config() -> StudioRuntimeConfig {
+    StudioRuntimeConfig {
+        entitlement_preflight: StudioRuntimeEntitlementPreflight::Skip,
+        entitlement_seed: StudioRuntimeEntitlementSeed::Synced,
+        ..StudioRuntimeConfig::default()
+    }
+}
+
+#[test]
+fn shell_runtime_config_skips_startup_entitlement_preflight() {
+    let config = studio_shell_runtime_config(None);
+
+    assert_eq!(
+        config.entitlement_preflight,
+        StudioRuntimeEntitlementPreflight::Skip
+    );
+    assert_eq!(
+        config.project_path,
+        StudioRuntimeConfig::default().project_path
+    );
+}
+
+#[test]
+fn startup_uses_default_hidden_commands_panel_without_layout_dispatch() {
+    let preferences_path = std::env::temp_dir()
+        .join("radishflow-studio-shell-startup-hidden-commands.preferences.json");
+    let app = ReadyAppState::from_config(&synced_skip_config(), preferences_path)
+        .expect("expected ready app");
+
+    let snapshot = app.platform_host.snapshot();
+    let window = snapshot.window_model();
+    assert_eq!(
+        window
+            .layout_state
+            .panel(StudioGuiWindowAreaId::Commands)
+            .map(|panel| panel.visible),
+        Some(false)
+    );
+    assert!(
+        app.platform_host
+            .gui_activity_lines()
+            .iter()
+            .all(|line| !line.contains("layout SetPanelVisibility")),
+        "startup should not dispatch layout mutations for default commands visibility"
+    );
+}
+
+#[test]
+fn viewport_focus_tracking_does_not_dispatch_foreground_entitlement_tick() {
+    let preferences_path = std::env::temp_dir()
+        .join("radishflow-studio-shell-viewport-focus-no-foreground-dispatch.preferences.json");
+    let mut app = ReadyAppState::from_config(&lease_expiring_config(), preferences_path)
+        .expect("expected ready app");
+    let previous_activity_count = app.platform_host.gui_activity_lines().len();
+    app.last_viewport_focused = Some(false);
+
+    let ctx = egui::Context::default();
+    ctx.begin_pass(egui::RawInput {
+        focused: true,
+        ..Default::default()
+    });
+    app.sync_viewport_lifecycle(&ctx);
+    let _ = ctx.end_pass();
+
+    assert_eq!(app.last_viewport_focused, Some(true));
+    assert_eq!(
+        app.platform_host.gui_activity_lines().len(),
+        previous_activity_count
+    );
+}
+
 #[test]
 fn egui_platform_timer_executor_allocates_and_clears_native_ids() {
     let mut executor = EguiPlatformTimerExecutor::default();

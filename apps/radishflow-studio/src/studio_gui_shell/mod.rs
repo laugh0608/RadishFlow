@@ -1,4 +1,5 @@
 use std::collections::BTreeMap;
+use std::panic::{self, AssertUnwindSafe};
 use std::path::PathBuf;
 use std::time::{Duration, SystemTime};
 
@@ -17,7 +18,8 @@ use radishflow_studio::{
     StudioGuiWindowDockPlacement, StudioGuiWindowDockRegion, StudioGuiWindowDropTargetQuery,
     StudioGuiWindowLayoutModel, StudioGuiWindowLayoutMutation, StudioGuiWindowModel,
     StudioGuiWindowStackGroupLayout, StudioGuiWindowToolbarSectionModel, StudioRuntimeConfig,
-    StudioRuntimeTrigger, StudioWindowHostId, StudioWindowHostRole,
+    StudioRuntimeEntitlementPreflight, StudioRuntimeTrigger, StudioWindowHostId,
+    StudioWindowHostRole,
 };
 use rf_types::RfResult;
 use rf_ui::{
@@ -179,7 +181,7 @@ struct EguiNativeTimerRegistration {
 
 impl RadishFlowStudioApp {
     fn new() -> Self {
-        let config = StudioRuntimeConfig::default();
+        let config = studio_shell_runtime_config(None);
         let preferences_path = default_studio_preferences_path();
         let state = match ReadyAppState::from_config(&config, preferences_path) {
             Ok(ready) => AppState::Ready(ready),
@@ -192,6 +194,17 @@ impl RadishFlowStudioApp {
 
         Self { state }
     }
+}
+
+fn studio_shell_runtime_config(project_path: Option<PathBuf>) -> StudioRuntimeConfig {
+    let mut config = StudioRuntimeConfig {
+        entitlement_preflight: StudioRuntimeEntitlementPreflight::Skip,
+        ..StudioRuntimeConfig::default()
+    };
+    if let Some(project_path) = project_path {
+        config.project_path = project_path;
+    }
+    config
 }
 
 impl ReadyAppState {
@@ -250,7 +263,7 @@ impl ReadyAppState {
             ready.project_open.notice = Some(notice);
         }
         ready.dispatch_event(StudioGuiEvent::OpenWindowRequested);
-        ready.hide_commands_panel_for_current_window();
+        ready.apply_default_hidden_commands_panel_for_current_window()?;
         Ok(ready)
     }
 }
@@ -550,15 +563,35 @@ fn paths_match(left: &std::path::Path, right: &std::path::Path) -> bool {
 
 impl eframe::App for RadishFlowStudioApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        match &mut self.state {
+        let panic_message = match &mut self.state {
             AppState::Failed(message) => {
                 egui::CentralPanel::default().show(ctx, |ui| {
                     ui.heading("RadishFlow Studio");
                     ui.separator();
                     ui.colored_label(egui::Color32::from_rgb(180, 40, 40), message);
                 });
+                None
             }
-            AppState::Ready(app) => app.update(ctx),
+            AppState::Ready(app) => panic::catch_unwind(AssertUnwindSafe(|| app.update(ctx)))
+                .err()
+                .map(panic_payload_message),
+        };
+
+        if let Some(message) = panic_message {
+            eprintln!("[radishflow-studio] fatal gui panic: {message}");
+            self.state = AppState::Failed(format!(
+                "GUI event failed with an internal panic. See stderr for details. {message}"
+            ));
         }
     }
+}
+
+fn panic_payload_message(payload: Box<dyn std::any::Any + Send>) -> String {
+    if let Some(message) = payload.downcast_ref::<String>() {
+        return message.clone();
+    }
+    if let Some(message) = payload.downcast_ref::<&'static str>() {
+        return (*message).to_string();
+    }
+    "panic payload is not a string".to_string()
 }

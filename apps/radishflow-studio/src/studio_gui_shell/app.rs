@@ -249,10 +249,7 @@ impl ReadyAppState {
     }
 
     pub(super) fn open_project(&mut self, project_path: PathBuf, source_label: &str) {
-        let config = StudioRuntimeConfig {
-            project_path: project_path.clone(),
-            ..StudioRuntimeConfig::default()
-        };
+        let config = studio_shell_runtime_config(Some(project_path.clone()));
 
         match StudioGuiPlatformHost::new(&config) {
             Ok(platform_host) => {
@@ -283,7 +280,13 @@ impl ReadyAppState {
                     project_path.display()
                 ));
                 self.dispatch_event(StudioGuiEvent::OpenWindowRequested);
-                self.hide_commands_panel_for_current_window();
+                if let Err(error) = self.apply_default_hidden_commands_panel_for_current_window() {
+                    self.platform_host.record_activity_line(format!(
+                        "apply default commands panel visibility failed [{}]: {}",
+                        error.code().as_str(),
+                        error.message()
+                    ));
+                }
             }
             Err(error) => {
                 self.project_open.notice = Some(ProjectOpenNotice {
@@ -513,14 +516,17 @@ impl ReadyAppState {
         });
     }
 
-    pub(super) fn hide_commands_panel_for_current_window(&mut self) {
-        self.dispatch_layout_mutation(
+    pub(super) fn apply_default_hidden_commands_panel_for_current_window(
+        &mut self,
+    ) -> RfResult<()> {
+        self.platform_host.apply_window_layout_preference(
             self.current_window_id(),
             StudioGuiWindowLayoutMutation::SetPanelVisibility {
                 area_id: StudioGuiWindowAreaId::Commands,
                 visible: false,
             },
-        );
+        )?;
+        Ok(())
     }
 
     pub(super) fn begin_drag_session(
@@ -1001,20 +1007,7 @@ impl ReadyAppState {
 
     pub(super) fn sync_viewport_lifecycle(&mut self, ctx: &egui::Context) {
         let focused = ctx.input(|input| input.viewport().focused.unwrap_or(input.focused));
-        let became_focused = self
-            .last_viewport_focused
-            .map(|previous| !previous && focused)
-            .unwrap_or(false);
         self.last_viewport_focused = Some(focused);
-
-        if !became_focused {
-            return;
-        }
-
-        let window_id = self.current_window_id();
-        if let Some(window_id) = window_id {
-            self.dispatch_event(StudioGuiEvent::WindowForegrounded { window_id });
-        }
     }
 
     pub(super) fn handle_command_palette_toggle_shortcut(&mut self, ctx: &egui::Context) -> bool {

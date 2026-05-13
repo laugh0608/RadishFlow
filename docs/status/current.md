@@ -42,12 +42,13 @@
 - 2026-05-13 已新增 `docs/mvp/alpha-acceptance-checklist.md`，把自动化验证、Studio 用户视角 smoke、`rf-ffi` JSON/error、CAPE-OPEN / PME 与文档复现检查收束为 MVP α 验收入口。
 - 2026-05-13 阶段性自动验证已通过：`git diff --check`、`pwsh ./scripts/check-doc-size.ps1` 与 `pwsh ./scripts/check-repo.ps1` 均已执行；文档体量脚本仅报告既有 roadmap / 历史周志超限项。
 - 2026-05-13 人工启动 Studio 后暴露首屏 UX blocker：顶部调试信息、命令大全和布局控制压过主路径；已把最终 shell 收敛为快速操作入口，默认显示 `打开示例 / 打开项目 / 运行 / 保存 / 命令面板`，并默认隐藏左侧命令大全。
+- 2026-05-13 人工点击顶部 `运行` 和启动聚焦后暴露新的 smoke blocker：GUI 回调异常时缺少外层防护，控制台没有用户操作 / 求解审计输出，且 Windows debug 构建在 bootstrap runtime dispatch 上出现栈溢出；已补 GUI panic 防护、命令可用性门控、默认 stderr 审计线，停止由 viewport focus 自动派发 foreground entitlement tick，并把默认隐藏 Commands 面板改为 shell 启动时的 host-local transient layout preference，不再通过启动时 `SetPanelVisibility` dispatch 实现。GUI shell 启动 / 打开项目现在跳过自动 entitlement preflight，Windows `radishflow-studio` 二进制显式保留 16 MiB 主线程栈，以适配 eframe 必须在主线程创建事件循环的约束；此前尝试把 `eframe` 放到后台 UI 线程会触发 `winit` 主线程约束，已回退。
 
 完整过程和每日验证记录见 `docs/devlogs/2026-W20.md` 以及更早周志。
 
 ## 下一步建议
 
-1. 按 `docs/mvp/alpha-acceptance-checklist.md` 继续执行 MVP α 验收；下一步优先复跑 Studio 用户视角手动 smoke，确认新首屏能直接打开示例并运行。
+1. 按 `docs/mvp/alpha-acceptance-checklist.md` 继续执行 MVP α 验收；下一步优先复跑 Studio 用户视角手动 smoke，确认新首屏启动不再自动触发 `WindowForegrounded` timer 链路，并能直接打开示例、运行、在控制台看到操作 / 求解审计输出。
 2. 只修人工 smoke 或仓库级验证暴露的真实 blocker；若只是收益递减的 focused 覆盖缺口，先记录而不是继续主动扩矩阵。
 3. 保持 `TP Flash` official / synthetic golden、raw solver focused tolerance 与 `rf-ffi` JSON/error 基线稳定，但不主动扩无限 near-boundary 矩阵。
 4. 暂停继续细抠 `SolveSnapshot` consumer / shell action surface，除非真实验收路径或仓库级验证暴露回归。

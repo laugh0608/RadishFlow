@@ -536,8 +536,14 @@ impl StudioGuiWindowModel {
         snapshot: &StudioGuiSnapshot,
         window_id: Option<StudioWindowHostId>,
     ) -> Self {
-        let layout_state =
+        let derived_layout_state =
             StudioGuiWindowLayoutState::from_snapshot_for_window(snapshot, window_id);
+        let layout_state =
+            if snapshot.layout_state.scope.layout_key == derived_layout_state.scope.layout_key {
+                snapshot.layout_state.clone()
+            } else {
+                derived_layout_state
+            };
         let drop_preview_state = snapshot
             .window_drop_previews
             .get(&layout_state.scope.layout_key)

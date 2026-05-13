@@ -52,8 +52,18 @@ impl ReadyAppState {
                 {
                     self.open_project_from_picker();
                 }
+                let run_command =
+                    window_command_toolbar_item(&window.commands, "run_panel.run_manual");
+                let run_enabled = run_command.map(|command| command.enabled).unwrap_or(false);
+                let run_hover = run_command
+                    .map(|command| command.hover_text.as_str())
+                    .unwrap_or("Run command is not available in the current workspace.");
                 if ui
-                    .button(self.locale.text(ShellText::RunCurrentWorkspace))
+                    .add_enabled(
+                        run_enabled,
+                        egui::Button::new(self.locale.text(ShellText::RunCurrentWorkspace)),
+                    )
+                    .on_hover_text(run_hover)
                     .clicked()
                 {
                     self.dispatch_ui_command("run_panel.run_manual");
@@ -597,4 +607,15 @@ impl ReadyAppState {
         self.update_area_focus_from_rect(ui.ctx(), area_id, header_rect);
         self.update_area_focus_from_rect(ui.ctx(), area_id, body_rect);
     }
+}
+
+fn window_command_toolbar_item<'a>(
+    commands: &'a radishflow_studio::StudioGuiWindowCommandAreaModel,
+    command_id: &str,
+) -> Option<&'a radishflow_studio::StudioGuiWindowToolbarItemModel> {
+    commands
+        .toolbar_sections
+        .iter()
+        .flat_map(|section| section.items.iter())
+        .find(|item| item.command_id == command_id)
 }

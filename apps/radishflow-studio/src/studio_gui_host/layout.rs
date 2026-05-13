@@ -29,6 +29,33 @@ impl StudioGuiHost {
         })
     }
 
+    pub fn apply_transient_window_layout(
+        &mut self,
+        window_id: Option<StudioWindowHostId>,
+        mutation: StudioGuiWindowLayoutMutation,
+    ) -> RfResult<StudioGuiHostWindowLayoutUpdateResult> {
+        self.validate_registered_window_for_layout(window_id, "transient layout updates")?;
+        let snapshot = self.snapshot();
+        let layout_state = self
+            .layout_state_for_window_from_snapshot(&snapshot, window_id)
+            .applying_mutation(&mutation);
+        self.clear_window_drop_preview_for_scope(&layout_state.scope.layout_key);
+        if let Some(legacy_layout_key) = layout_state.scope.legacy_layout_key() {
+            self.layout_state_overrides.remove(&legacy_layout_key);
+            self.window_drop_previews.remove(&legacy_layout_key);
+        }
+        self.layout_state_overrides.insert(
+            layout_state.scope.layout_key.clone(),
+            layout_state.persistence_state(),
+        );
+
+        Ok(StudioGuiHostWindowLayoutUpdateResult {
+            target_window_id: layout_state.scope.window_id,
+            mutation,
+            layout_state,
+        })
+    }
+
     pub fn query_window_drop_target(
         &self,
         window_id: Option<StudioWindowHostId>,
