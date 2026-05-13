@@ -43,16 +43,17 @@
 - 2026-05-13 阶段性自动验证已通过：`git diff --check`、`pwsh ./scripts/check-doc-size.ps1` 与 `pwsh ./scripts/check-repo.ps1` 均已执行；文档体量脚本仅报告既有 roadmap / 历史周志超限项。
 - 2026-05-13 人工启动 Studio 后暴露首屏 UX blocker：顶部调试信息、命令大全和布局控制压过主路径；已把最终 shell 收敛为快速操作入口，默认显示 `打开示例 / 打开项目 / 运行 / 保存 / 命令面板`，并默认隐藏左侧命令大全。
 - 2026-05-13 人工点击顶部 `运行` 和启动聚焦后暴露新的 smoke blocker：GUI 回调异常时缺少外层防护，控制台没有用户操作 / 求解审计输出，且 Windows debug 构建在 bootstrap runtime dispatch 上出现栈溢出；已补 GUI panic 防护、命令可用性门控、默认 stderr 审计线，停止由 viewport focus 自动派发 foreground entitlement tick，并把默认隐藏 Commands 面板改为 shell 启动时的 host-local transient layout preference，不再通过启动时 `SetPanelVisibility` dispatch 实现。GUI shell 启动 / 打开项目现在跳过自动 entitlement preflight，Windows `radishflow-studio` 二进制显式保留 16 MiB 主线程栈，以适配 eframe 必须在主线程创建事件循环的约束；此前尝试把 `eframe` 放到后台 UI 线程会触发 `winit` 主线程约束，已回退。
+- 2026-05-13 关闭 Studio 时发现最后一帧会短暂显示默认 Commands 左栏；根因是关闭最后一个逻辑窗口后仍继续渲染当帧，`window_model()` 回退到默认布局。当前已在 viewport close 处理返回“停止渲染”信号，最后窗口关闭时直接结束当帧，且不再对最后窗口关闭请求发送 `CancelClose`，避免黑屏但进程不退出。
 
 完整过程和每日验证记录见 `docs/devlogs/2026-W20.md` 以及更早周志。
 
 ## 下一步建议
 
-1. 按 `docs/mvp/alpha-acceptance-checklist.md` 继续执行 MVP α 验收；下一步优先复跑 Studio 用户视角手动 smoke，确认新首屏启动不再自动触发 `WindowForegrounded` timer 链路，并能直接打开示例、运行、在控制台看到操作 / 求解审计输出。
-2. 只修人工 smoke 或仓库级验证暴露的真实 blocker；若只是收益递减的 focused 覆盖缺口，先记录而不是继续主动扩矩阵。
-3. 保持 `TP Flash` official / synthetic golden、raw solver focused tolerance 与 `rf-ffi` JSON/error 基线稳定，但不主动扩无限 near-boundary 矩阵。
-4. 暂停继续细抠 `SolveSnapshot` consumer / shell action surface，除非真实验收路径或仓库级验证暴露回归。
-5. 复查首批交付物文档：quick start、运行指南、PME validation runbook 与发布包形态是否足够让他人复现 MVP α。
+1. 下一步先做 Studio UI 优化和规范化：收敛首屏层级、快速操作条、左右面板默认状态、Runtime / Result Inspector / Active Inspector 的信息密度和状态文案，让打开示例、运行、查看结果和保存重开成为清晰主路径。
+2. UI 规范化仍只服务 MVP α 验收，不扩自由连线编辑器、完整拖拽布局编辑器、完整报表系统或新的求解范围；结果面继续只读消费 `SolveSnapshot`，不新增 shell 私有结果缓存。
+3. UI 规范化后按 `docs/mvp/alpha-acceptance-checklist.md` 复跑 Studio 用户视角手动 smoke，确认新首屏、运行、控制台审计、结果审阅、保存重开和窗口关闭都稳定。
+4. 只修人工 smoke 或仓库级验证暴露的真实 blocker；若只是收益递减的 focused 覆盖缺口，先记录而不是继续主动扩矩阵。
+5. 保持 `TP Flash` official / synthetic golden、raw solver focused tolerance 与 `rf-ffi` JSON/error 基线稳定，但不主动扩无限 near-boundary 矩阵。
 
 ## 暂不推进
 

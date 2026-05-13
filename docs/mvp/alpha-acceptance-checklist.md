@@ -116,9 +116,12 @@
 | 仓库级验证 | Pass | `git diff --check`、`pwsh ./scripts/check-doc-size.ps1` 与 `pwsh ./scripts/check-repo.ps1` 已执行；仓库级验证通过，文档体量脚本仅报告既有超限项 |
 | 用户视角 smoke | Pending | 待人工启动 Studio 执行；默认不在非交互验证中启动桌面 UI |
 | release blocker | Pass | 2026-05-13 人工启动后发现首屏信息过载、打开示例和运行入口不清晰，已按 `StudioOpenRunSave` UX blocker 修复：顶部新增快速操作条，命令大全默认隐藏 |
+| 运行与关闭 smoke blocker | Pass | 2026-05-13 人工点击顶部运行后暴露 GUI 回调异常、缺少控制台审计、Windows debug 栈溢出和最后窗口关闭异常；已补 GUI panic 降级、命令可用性门控、默认 stderr 审计线、主线程栈保留、跳过启动 entitlement preflight，并修正最后 viewport close 不再拦截原生关闭请求 |
+| UI 规范化后续 | Pending | 当前 blocker 已收敛；下一步先做 Studio UI 信息层级、面板密度、主路径按钮状态、结果/日志展示和视觉一致性规范化，不扩 MVP 求解范围或自由连线编辑器 |
 
 ## 下一步
 
-1. 按 Smoke A / B / C 至少完成两条用户视角记录。
-2. 若人工 smoke 暴露 blocker，按分类修复；若没有 blocker，进入 MVP α 发布包形态与发布说明收口。
-3. 后续补发布操作清单时，继续沿 `docs/architecture/versioning.md` 的 tag / release 轨道口径展开，不在 quick start 中暗示已存在完整安装器。
+1. 下一轮先做 Studio UI 优化和规范化，优先收敛首屏层级、快速操作条、左右面板默认状态、Runtime / Result Inspector / Active Inspector 的信息密度和状态文案。
+2. UI 规范化后按 Smoke A / B / C 至少完成两条用户视角记录。
+3. 若人工 smoke 暴露 blocker，按分类修复；若没有 blocker，进入 MVP α 发布包形态与发布说明收口。
+4. 后续补发布操作清单时，继续沿 `docs/architecture/versioning.md` 的 tag / release 轨道口径展开，不在 quick start 中暗示已存在完整安装器。
