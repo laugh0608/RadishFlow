@@ -1,6 +1,6 @@
 # Architecture Overview
 
-更新时间：2026-05-08
+更新时间：2026-05-13
 
 ## 目标
 
@@ -61,6 +61,8 @@ RadishFlow 的目标架构已经冻结为“桌面端三层 + 外部控制面”
 
 这一路径仍坚持先消费已冻结的应用层、运行栏和 snapshot presentation 边界；真实 UI 只做最小闭环承接，不反向改写内核、求解或项目文件语义。
 
+2026-05-13 的 Studio shell 硬化进一步把最小工作台入口从开发态面板收束到用户主路径：顶部快速操作区优先暴露 `Open Example / Open Project / Run / Save / Commands / Command Palette`，低频 Commands 面板默认隐藏但仍可展开；`Run` 已接到正式 `run_panel.run_manual` command surface，保存和打开项目继续走既有文档生命周期与文件选择器边界。GUI shell 还补充了开发态 stderr 审计线、GUI panic 降级页、Windows 主线程栈保留、启动时跳过 entitlement preflight，以及最后 viewport close 不再拦截原生关闭请求的退出口径。这些都是 shell / platform host 层行为，不改变 `FlowsheetDocument`、`SolveSnapshot` 或项目文件 schema。
+
 截至 2026-05-03，Studio Canvas 已补出最小可见、只读扫读层和多单元放置反馈闭环：单元块、物流线、Inspector 焦点高亮、对象列表导航、焦点气泡、material port marker、端口 hover、运行/诊断 badge、状态 legend、viewport focus anchor、对象列表 `All / Attention / Units / Streams` 临时筛选，以及 `Feed / Mixer / Heater / Cooler / Valve / Flash Drum` 的 pending edit palette / commit 路径都通过 GUI-facing presentation 暴露并由 `egui` 渲染。`CommitPendingEditAt -> DocumentCommand::CreateUnit` 成功后会复用新单元的 object command target 和 focus anchor，统一生成 `StudioGuiCanvasCommandResultViewModel`，从而让新建提示、Inspector 焦点、Canvas 一次性定位、GUI activity 与命令面只读反馈走同一条结果路径；无 pending edit、unsupported unit kind、dispatch 失败或 anchor 过期也使用同一套 warning / error result。当前已补多单元 placement 提交端回归矩阵，逐类锁定 `CreateUnit kind`、canonical ports、Inspector 焦点、Canvas focus anchor 和 command result 反馈。2026-05-04 继续在同一边界上补出本地 Canvas suggestions，已能通过正式 `DocumentCommand::ConnectPorts` / outlet stream 创建走通 `Feed -> Flash Drum`、`Feed -> Heater/Cooler/Valve -> Flash Drum` 和 `Feed + Feed -> Mixer -> Flash Drum` 三类可求解建模路径；`Mixer` 多来源场景只在来源数量与未绑定 inlet 数量匹配时给入口建议。同日又补齐真正空白项目的 MVP 前置基线：无组件项目打开时初始化 `component-a / component-b`，并用初始化后的 flowsheet 生成本地 `binary-hydrocarbon-lite-v1` 物性包缓存，保存后重新打开仍可运行 `Feed -> Flash Drum` 最短闭环；随后又补出逐条 suggestion Apply，GUI 可显式接受指定本地建议，而不再只能接受当前 focused suggestion；同日还补出 placement 坐标最小持久化，已提交单元落点保存到 `<project>.rfstudio-layout.json` sidecar，重开后 Canvas 优先按 sidecar 坐标渲染；随后又补出 `CanvasUnitLayoutMoveRequested -> MoveCanvasUnitLayout` 离散布局移动边界，shell 可对当前选中且已有 sidecar 坐标的单元执行 nudge，保存后重开继续恢复新位置。当前画布仍只把已有 `FlowsheetDocument` 对象投影到轻量布局状态，定位滚动和高亮属于 shell-local 一次性状态；端口点击编辑、自由连线创建、拖拽布局编辑器、视口持久化、项目 schema 扩张、完整组件库、完整物性包选择器和 CAPE-OPEN 扩张都不属于当前阶段。这一层当前应视为最小建模路径收口，后续不再继续扩 hover、legend、focus 或 command feedback 细节，除非它们直接服务下一条可求解建模闭环。
 
 同时补充一条当前协作闸口：在 `apps/radishflow-studio` 还处于 GUI-facing 边界、宿主桥接和布局状态契约冻结阶段时，可以继续直接推进；但一旦工作重心切到真实界面布局、控件组织、视觉表达、交互流和较重的 UI 逻辑设计，后续实现前必须先向用户同步方向与关键取舍，并保留用户干预窗口，不把产品交互方案静默固化。
@@ -93,7 +95,7 @@ RadishFlow 的目标架构已经冻结为“桌面端三层 + 外部控制面”
 同时，Studio GUI-facing 状态边界当前也已进一步冻结为：
 
 - `StudioGuiHost` / `StudioGuiDriver` 作为 GUI 面向的平台事件与宿主命令入口
-- 当前 GUI 正式命令面已进一步冻结为 `StudioGuiEvent::UiCommandRequested { command_id } -> StudioGuiHostCommand::DispatchUiCommand { command_id }`，至少覆盖 `run_panel.recover_failure`、`entitlement.sync` 与 `entitlement.refresh_offline_lease`；GUI 壳不再继续保留 entitlement 专用事件/命令旁路
+- 当前 GUI 正式命令面已进一步冻结为 `StudioGuiEvent::UiCommandRequested { command_id } -> StudioGuiHostCommand::DispatchUiCommand { command_id }`，并已覆盖首屏 `run_panel.run_manual`、命令面板结果定位、`run_panel.recover_failure`、`entitlement.sync` 与 `entitlement.refresh_offline_lease` 等路径；GUI 壳不再继续保留 entitlement 专用事件/命令旁路
 - `StudioGuiPlatformHost` 作为平台 timer 调度适配层，负责把下一条 pending timer binding 的前后变化收口为平台侧 `Arm / Rearm / Clear` 请求，并持有平台 timer adapter、平台失败日志与 GUI 可直接消费的 `platform_notice`
 - `StudioGuiPlatformTimerDriverState` 作为平台 native timer 适配层，负责消费上述请求、保存当前 native timer id 与逻辑 binding 的映射，并在 callback 到来时反查回 `window_id + handle_id`
 - 平台若按 `native_timer_id` 回灌 callback，当前应优先消费 `StudioGuiPlatformHost::dispatch_native_timer_elapsed_by_native_id(...)` 的正式 outcome；命中有效映射时继续分发，命中不存在或过期 id 时返回显式 ignored outcome，而不是把平台层常见竞态继续上抛为 `RfError`

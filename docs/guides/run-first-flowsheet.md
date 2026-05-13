@@ -1,6 +1,6 @@
 # Run First Flowsheet
 
-更新时间：2026-05-12
+更新时间：2026-05-13
 
 ## 目的
 
@@ -39,12 +39,16 @@ cargo run -p radishflow-studio
 
 ## 1. 打开示例项目
 
-启动后，使用以下任一方式打开项目：
+启动后，优先使用顶部快速操作区打开项目：
 
-- 内置示例入口
+- `Open Example` 内置示例入口
+- `Open Project` Windows 原生文件选择器
+- `Command Palette` 中的打开项目相关命令
+
+当前仍保留以下辅助入口：
+
 - 最近项目列表
 - 手工输入项目路径
-- Windows 原生文件选择器
 
 第一次建议直接打开：
 
@@ -78,7 +82,9 @@ examples/flowsheets/feed-mixer-flash-binary-hydrocarbon.rfproj.json
 
 ## 3. 触发运行
 
-在 Runtime / Run Panel 中执行一次运行。
+优先点击顶部快速操作区的 `Run`。
+
+`Run` 会派发正式 `run_panel.run_manual` 命令。若按钮不可用，先看 hover 说明、Runtime 摘要和 Diagnostics，而不是反复点击。需要从完整命令面执行时，可打开 `Command Palette` 或显示 `Commands` 面板后查找运行命令。
 
 成功时，当前工作流应从“项目已打开”推进到“已有一份最新 `SolveSnapshot`”。  
 失败时，也应至少得到结构化诊断，而不是只有无上下文报错文本。
@@ -121,7 +127,8 @@ examples/flowsheets/feed-mixer-flash-binary-hydrocarbon.rfproj.json
 
 如果只是验证运行链路，建议再顺手做一次保存与重开：
 
-- 执行 `file.save`
+- 点击顶部快速操作区的 `Save`
+- 或通过 `Command Palette` / Commands 面板执行 `file.save`
 - 或执行 `Save As` 到新的 `*.rfproj.json` 路径
 
 当前项目保存涉及两类文件：
@@ -144,12 +151,15 @@ examples/flowsheets/feed-mixer-flash-binary-hydrocarbon.rfproj.json
 - 文档态流股组成是否未归一到 1
 - 当前运行环境下是否出现多包可选且未显式指定 package
 - 项目是否被改成了不完整连接或不一致端口绑定
+- 顶部 `Run` 是否处于 disabled 状态，以及 hover 文案给出的原因
+- 启动 Studio 的终端 stderr 是否有 `[radishflow-studio]` 审计线或 GUI panic 提示
 
 当前系统的默认处理原则是：
 
 - 不做隐式自动补偿
 - 不在运行前偷偷改写文档
 - 优先通过结构化诊断暴露问题
+- 开发态 stderr 只作为 smoke 和排查辅助，不替代 Runtime / Diagnostics 中的用户可见诊断
 
 组成相关提示可按下面理解：
 

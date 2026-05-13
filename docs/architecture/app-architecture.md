@@ -812,10 +812,11 @@ pub struct StepSnapshot {
 - `run_studio_bootstrap(...)` 当前已补出 `StudioBootstrapTrigger::{Intent, WidgetPrimaryAction, WidgetAction}`，并默认走 `WidgetPrimaryAction` 路径，作为最小桌面入口对运行栏组件驱动的第一版接线
 - `run_studio_bootstrap(...)` 与 `main.rs` 当前已开始直接消费这组运行栏组件/交互 DTO，而不再只打印控制面布尔摘要或在 Studio 里手拼文本布局
 
-当前明确还没做的事：
+当前已落地与仍待细化的边界：
 
-- 虽然已有 `StudioAppFacade` 作为应用命令入口，并且已接到 `main.rs` 的最小 bootstrap 触发点，但还没有把它正式挂到最终桌面命令、按钮或运行服务入口
-- 虽然已补出 `WorkspaceControlAction` / `WorkspaceControlState` 这一层运行栏契约，也已补出 `ResumeWorkspace` 作为 `Hold -> Active` 的显式应用命令，并已在 `rf-ui` 中冻结到 `RunPanelWidgetModel`、在 Studio 中冻结到 `run_panel_driver`；但“手动运行 / 自动运行 / Hold 恢复”的完整桌面 UI 事件流和最终按钮绑定口径仍未最终冻结
+- 手动运行已经进入真实 GUI 首屏主路径：顶部快速操作区的 `Run` 直接派发 `run_panel.run_manual`，并通过 command registry 的 availability / disabled reason 控制按钮状态
+- `Open Example / Open Project / Save / Commands / Command Palette` 当前也已作为 Studio shell 的第一视野入口；默认隐藏 Commands 面板只是 shell 启动时的 host-local transient layout preference，不写入项目文档语义
+- `StudioAppFacade`、`WorkspaceControlAction`、`WorkspaceControlState`、`RunPanelWidgetModel` 与 `run_panel_driver` 已经构成手动运行入口的稳定链路；后续仍待细化的是后台调度、取消、自动运行与 `Hold -> Active` 恢复在最终 GUI 中的完整交互表达
 - Studio 当前又已把 app-host 侧 GUI 动作入口进一步冻结为 `StudioAppHostController::dispatch_ui_command(command_id)`，让菜单、快捷键和命令面板后续都可以直接按稳定 command id 触发，而不必继续持有 `UiAction` 枚举或回退到 raw host outcome
 - 当前首批已接成真实宿主命令的 run panel command registry 为 `run_panel.run_manual`、`run_panel.resume_workspace`、`run_panel.set_hold`、`run_panel.set_active` 与 `run_panel.recover_failure`；后续桌面命令绑定应优先复用这组 registry，而不是在各入口重复解释 availability、disabled reason 或底层 widget 事件
 - Studio 当前又已把 canvas suggestion 与离散 layout nudge 交互正式纳入同一条 command surface：`canvas.accept_focused`、`canvas.reject_focused`、`canvas.focus_next`、`canvas.focus_previous` 与 `canvas.move_selected_unit.left/right/up/down` 当前也应通过 `dispatch_ui_command(command_id)`、`StudioGuiCommandRegistry` 与对应 widget action 统一派发，而不再保留一条长期并行的 widget/shortcut 私有 typed 事件主线；layout nudge 只写 `<project>.rfstudio-layout.json` sidecar，缺少 sidecar 坐标时先按 transient grid slot pin 出初始位置，不进入项目文档 revision/history；selection presentation 与 command result 应显式暴露 `sidecar position` / `transient grid` 来源，避免真实 GUI 再自行猜测 pin 语义

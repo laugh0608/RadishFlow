@@ -100,8 +100,8 @@
 
 | 文档 | 当前状态 | 通过标准 | 记录 |
 | --- | --- | --- | --- |
-| `docs/guides/studio-quick-start.md` | Pass | 能说明启动方式、当前能力和首次体验入口 | 2026-05-13 已复查；明确当前是开发态启动，不暗示正式安装包 |
-| `docs/guides/run-first-flowsheet.md` | Pass | 能指导用户打开示例、运行、审阅、保存重开 | 2026-05-13 已复查 |
+| `docs/guides/studio-quick-start.md` | Pass | 能说明启动方式、当前能力和首次体验入口 | 2026-05-13 已同步顶部快速操作、默认隐藏 Commands、运行反馈和关闭口径；明确当前是开发态启动，不暗示正式安装包 |
+| `docs/guides/run-first-flowsheet.md` | Pass | 能指导用户打开示例、运行、审阅、保存重开 | 2026-05-13 已同步 `Open Example / Open Project / Run / Save / Command Palette` 主路径和 stderr 排查信号 |
 | `docs/guides/review-solve-results.md` | Pass | 能解释 source / intermediate / step / outlet 结果审阅顺序 | 2026-05-13 已复查 |
 | `docs/capeopen/pme-validation.md` | Pass | 能说明 PME 验证门控、dry-run、register/unregister 和记录模板 | 2026-05-13 已复查；外部 PME 与 registry 操作仍需人工门控 |
 | 发布包形态说明 | Pass | 能说明当前仍是开发态或压缩包式交付边界，不暗示已存在完整安装器 | 2026-05-13 已确认 `docs/mvp/scope.md` 与 `docs/architecture/versioning.md` 保留当前发布边界；正式发布操作清单仍是后续事项 |
