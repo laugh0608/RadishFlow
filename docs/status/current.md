@@ -40,12 +40,12 @@
 - `SolveSnapshot` consumer 的 runtime 点击交互已补 focused 覆盖：Result Inspector / diagnostic action 共用的小型 command action button 现在用真实 `egui` pointer click 回归锁定到同一条 `dispatch_ui_command -> inspector.focus_* -> Active Inspector` 链路，不新增 runtime 私有解释层。
 - 2026-05-12 阶段复盘结论：近期 focused 收口仍在整体规划内，但继续沿 near-boundary / command surface / runtime click 细节扩测试会进入收益递减；下一轮应切到 MVP α 验收矩阵和交付硬化。
 - 2026-05-13 已新增 `docs/mvp/alpha-acceptance-checklist.md`，把自动化验证、Studio 用户视角 smoke、`rf-ffi` JSON/error、CAPE-OPEN / PME 与文档复现检查收束为 MVP α 验收入口。
-- 2026-05-13 阶段性自动验证已通过：`git diff --check`、`pwsh ./scripts/check-doc-size.ps1` 与 `pwsh ./scripts/check-repo.ps1` 均已执行；后续已把既有 roadmap / 历史周志超限项纳入文档体量治理。
 - 2026-05-13 人工启动 Studio 后暴露首屏 UX blocker：顶部调试信息、命令大全和布局控制压过主路径；已把最终 shell 收敛为快速操作入口，默认显示 `打开示例 / 打开项目 / 运行 / 保存 / 命令面板`，并默认隐藏左侧命令大全。
 - 2026-05-13 人工点击顶部 `运行` 和启动聚焦后暴露新的 smoke blocker：GUI 回调异常时缺少外层防护，控制台没有用户操作 / 求解审计输出，且 Windows debug 构建在 bootstrap runtime dispatch 上出现栈溢出；已补 GUI panic 防护、命令可用性门控、默认 stderr 审计线，停止由 viewport focus 自动派发 foreground entitlement tick，并把默认隐藏 Commands 面板改为 shell 启动时的 host-local transient layout preference，不再通过启动时 `SetPanelVisibility` dispatch 实现。GUI shell 启动 / 打开项目现在跳过自动 entitlement preflight，Windows `radishflow-studio` 二进制显式保留 16 MiB 主线程栈，以适配 eframe 必须在主线程创建事件循环的约束；此前尝试把 `eframe` 放到后台 UI 线程会触发 `winit` 主线程约束，已回退。
 - 2026-05-13 关闭 Studio 时发现最后一帧会短暂显示默认 Commands 左栏；根因是关闭最后一个逻辑窗口后仍继续渲染当帧，`window_model()` 回退到默认布局。当前已在 viewport close 处理返回“停止渲染”信号，最后窗口关闭时直接结束当帧，且不再对最后窗口关闭请求发送 `CancelClose`，避免黑屏但进程不退出。
 - 2026-05-14 已完成一轮 Studio UI 规范化：顶部栏第一行展示项目标题、运行模式、运行状态、pending 和未保存状态；快速操作继续保留打开示例、打开项目、运行、保存和命令面板，语言切换 / 逻辑窗口入口收进 `视图` 菜单；Runtime 面板收敛运行按钮密度，并默认折叠项目路径编辑、调度器、运行日志和 GUI 活动等低频 / 开发态信息；Studio 启动初始窗口加大到 `1280x860`，最小内尺寸为 `1024x720`。`cargo test -p radishflow-studio studio_gui_shell`、`git diff --check` 与 `pwsh ./scripts/check-repo.ps1` 均已通过。
 - 2026-05-14 已参考当前 Studio 截图和 Aspen / HYSYS / PRO/II / COFE / DWSIM 等同类软件截图，新增 `docs/architecture/studio-ui-design-guidelines.md`；后续 UI 重排以“保留 RadishFlow 轻量浅色风格，吸收成熟流程模拟软件的信息架构和任务分区”为准，不照搬参考产品视觉资产。
+- 2026-05-14 已完成 Studio shell 首轮工作台重排：左侧 `Project / Palette`，右侧 `Inspector / Results / Run / Entitlement`，底部 `Messages / Run Log / Results Table / Diagnostics` drawer 与 SI 状态栏；结果面继续只读消费 `SolveSnapshot`，不新增 shell 私有结果缓存，也不扩 MVP α 非目标。
 - 2026-05-14 已完成文档体量治理：`docs/radishflow-mvp-roadmap.md` 瘦身为路线图入口，详细里程碑和历史对齐拆入 `docs/mvp/roadmap/`；周志按月份迁入 `docs/devlogs/YYYY-MM/`，文档体量脚本默认只报告受约束文档超限。
 
 完整过程和每日验证记录见 `docs/devlogs/2026-05/2026-W20.md` 以及更早周志。
@@ -54,7 +54,7 @@
 
 1. 下一步按 `docs/mvp/alpha-acceptance-checklist.md` 复跑 Studio 用户视角手动 smoke，优先完成 Smoke A 和 Smoke C：确认新首屏、运行、控制台审计、结果审阅、保存重开、窗口关闭，以及 Stream Inspector 草稿 / 未归一组成阻断都稳定。
 2. Smoke A / C 无 blocker 后，再执行 Smoke B 的空白建模最短闭环。
-3. UI 规范化仍只服务 MVP α 验收，不扩自由连线编辑器、完整拖拽布局编辑器、完整报表系统或新的求解范围；下一轮重排参考 `docs/architecture/studio-ui-design-guidelines.md`，结果面继续只读消费 `SolveSnapshot`，不新增 shell 私有结果缓存。
+3. UI 规范化仍只服务 MVP α 验收，不扩自由连线编辑器、完整拖拽布局编辑器、完整报表系统或新的求解范围；下一轮优先做人工 smoke 反馈下的细节修正和画布对象视觉 polish，结果面继续只读消费 `SolveSnapshot`，不新增 shell 私有结果缓存。
 4. 只修人工 smoke 或仓库级验证暴露的真实 blocker；若只是收益递减的 focused 覆盖缺口，先记录而不是继续主动扩矩阵。
 5. 保持 `TP Flash` official / synthetic golden、raw solver focused tolerance 与 `rf-ffi` JSON/error 基线稳定，但不主动扩无限 near-boundary 矩阵。
 

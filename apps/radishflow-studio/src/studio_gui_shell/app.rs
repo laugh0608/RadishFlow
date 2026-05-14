@@ -361,6 +361,8 @@ impl ReadyAppState {
         );
         self.render_left_sidebar(ctx, &window, &mut hovered_drop_target);
         self.render_right_sidebar(ctx, &window, &mut hovered_drop_target);
+        self.render_bottom_status_bar(ctx, &window);
+        self.render_bottom_drawer(ctx, &window);
         self.render_center_stage(ctx, &window, &mut hovered_drop_target);
         self.render_command_palette(ctx, &window.commands);
         self.render_floating_drop_preview_overlay(ctx, &window);

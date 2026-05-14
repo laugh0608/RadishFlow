@@ -47,6 +47,36 @@ fn render_top_bar_texts(app: &mut ReadyAppState) -> Vec<String> {
     texts
 }
 
+fn render_alpha_workbench_texts(app: &mut ReadyAppState) -> Vec<String> {
+    let snapshot = app.platform_host.snapshot();
+    let window = snapshot.window_model();
+    let ctx = egui::Context::default();
+    let output = ctx.run(
+        egui::RawInput {
+            screen_rect: Some(egui::Rect::from_min_size(
+                egui::Pos2::ZERO,
+                egui::vec2(1280.0, 860.0),
+            )),
+            focused: true,
+            ..Default::default()
+        },
+        |ctx| {
+            let mut hovered_drop_target = false;
+            app.render_left_sidebar(ctx, &window, &mut hovered_drop_target);
+            app.render_right_sidebar(ctx, &window, &mut hovered_drop_target);
+            app.render_bottom_status_bar(ctx, &window);
+            app.render_bottom_drawer(ctx, &window);
+            app.render_center_stage(ctx, &window, &mut hovered_drop_target);
+        },
+    );
+
+    let mut texts = Vec::new();
+    for clipped_shape in &output.shapes {
+        collect_shape_texts(&clipped_shape.shape, &mut texts);
+    }
+    texts
+}
+
 fn collect_shape_texts(shape: &egui::epaint::Shape, texts: &mut Vec<String>) {
     match shape {
         egui::epaint::Shape::Text(text) => texts.push(text.galley.job.text.clone()),
@@ -189,6 +219,38 @@ fn top_bar_keeps_alpha_primary_path_visible_and_hides_low_frequency_controls() {
         assert!(
             !texts.iter().any(|text| text.contains(hidden)),
             "expected top bar to hide `{hidden}` behind the view menu, rendered texts: {:?}",
+            texts
+        );
+    }
+}
+
+#[test]
+fn shell_defaults_to_alpha_workbench_layout_regions() {
+    let mut app = ready_app_state(&synced_workspace_config());
+    assert_eq!(app.left_sidebar_tab, StudioShellLeftSidebarTab::Project);
+    assert_eq!(app.right_sidebar_tab, StudioShellRightSidebarTab::Inspector);
+    assert_eq!(
+        app.bottom_drawer_tab,
+        StudioShellBottomDrawerTab::ResultsTable
+    );
+
+    let texts = render_alpha_workbench_texts(&mut app);
+    for expected in [
+        "Project",
+        "Palette",
+        "Property Package",
+        "Inspector",
+        "Results",
+        "Run",
+        "Entitlement",
+        "Results Table",
+        "Units: SI",
+        "Solver: Sequential Modular",
+        "Flowsheet Mode",
+    ] {
+        assert!(
+            texts.iter().any(|text| text.contains(expected)),
+            "expected alpha workbench to render `{expected}`, rendered texts: {:?}",
             texts
         );
     }

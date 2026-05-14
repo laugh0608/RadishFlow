@@ -84,6 +84,9 @@ struct ReadyAppState {
     command_palette: CommandPaletteState,
     project_open: ProjectOpenState,
     result_inspector: ResultInspectorState,
+    left_sidebar_tab: StudioShellLeftSidebarTab,
+    right_sidebar_tab: StudioShellRightSidebarTab,
+    bottom_drawer_tab: StudioShellBottomDrawerTab,
     canvas_object_filter: CanvasObjectListFilter,
     canvas_viewport_navigation: CanvasViewportNavigationState,
     canvas_command_result: Option<radishflow_studio::StudioGuiCanvasCommandResultViewModel>,
@@ -158,6 +161,31 @@ struct ResultInspectorState {
     selected_stream_id: Option<String>,
     comparison_stream_id: Option<String>,
     selected_unit_id: Option<String>,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+enum StudioShellLeftSidebarTab {
+    #[default]
+    Project,
+    Palette,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+enum StudioShellRightSidebarTab {
+    #[default]
+    Inspector,
+    Results,
+    Run,
+    Entitlement,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+enum StudioShellBottomDrawerTab {
+    Messages,
+    RunLog,
+    #[default]
+    ResultsTable,
+    Diagnostics,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -259,6 +287,9 @@ impl ReadyAppState {
                 recent_projects,
             ),
             result_inspector: ResultInspectorState::default(),
+            left_sidebar_tab: StudioShellLeftSidebarTab::default(),
+            right_sidebar_tab: StudioShellRightSidebarTab::default(),
+            bottom_drawer_tab: StudioShellBottomDrawerTab::default(),
             canvas_object_filter: CanvasObjectListFilter::default(),
             canvas_viewport_navigation: CanvasViewportNavigationState::default(),
             canvas_command_result: None,
