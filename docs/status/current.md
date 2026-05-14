@@ -40,14 +40,15 @@
 - `SolveSnapshot` consumer 的 runtime 点击交互已补 focused 覆盖：Result Inspector / diagnostic action 共用的小型 command action button 现在用真实 `egui` pointer click 回归锁定到同一条 `dispatch_ui_command -> inspector.focus_* -> Active Inspector` 链路，不新增 runtime 私有解释层。
 - 2026-05-12 阶段复盘结论：近期 focused 收口仍在整体规划内，但继续沿 near-boundary / command surface / runtime click 细节扩测试会进入收益递减；下一轮应切到 MVP α 验收矩阵和交付硬化。
 - 2026-05-13 已新增 `docs/mvp/alpha-acceptance-checklist.md`，把自动化验证、Studio 用户视角 smoke、`rf-ffi` JSON/error、CAPE-OPEN / PME 与文档复现检查收束为 MVP α 验收入口。
-- 2026-05-13 阶段性自动验证已通过：`git diff --check`、`pwsh ./scripts/check-doc-size.ps1` 与 `pwsh ./scripts/check-repo.ps1` 均已执行；文档体量脚本仅报告既有 roadmap / 历史周志超限项。
+- 2026-05-13 阶段性自动验证已通过：`git diff --check`、`pwsh ./scripts/check-doc-size.ps1` 与 `pwsh ./scripts/check-repo.ps1` 均已执行；后续已把既有 roadmap / 历史周志超限项纳入文档体量治理。
 - 2026-05-13 人工启动 Studio 后暴露首屏 UX blocker：顶部调试信息、命令大全和布局控制压过主路径；已把最终 shell 收敛为快速操作入口，默认显示 `打开示例 / 打开项目 / 运行 / 保存 / 命令面板`，并默认隐藏左侧命令大全。
 - 2026-05-13 人工点击顶部 `运行` 和启动聚焦后暴露新的 smoke blocker：GUI 回调异常时缺少外层防护，控制台没有用户操作 / 求解审计输出，且 Windows debug 构建在 bootstrap runtime dispatch 上出现栈溢出；已补 GUI panic 防护、命令可用性门控、默认 stderr 审计线，停止由 viewport focus 自动派发 foreground entitlement tick，并把默认隐藏 Commands 面板改为 shell 启动时的 host-local transient layout preference，不再通过启动时 `SetPanelVisibility` dispatch 实现。GUI shell 启动 / 打开项目现在跳过自动 entitlement preflight，Windows `radishflow-studio` 二进制显式保留 16 MiB 主线程栈，以适配 eframe 必须在主线程创建事件循环的约束；此前尝试把 `eframe` 放到后台 UI 线程会触发 `winit` 主线程约束，已回退。
 - 2026-05-13 关闭 Studio 时发现最后一帧会短暂显示默认 Commands 左栏；根因是关闭最后一个逻辑窗口后仍继续渲染当帧，`window_model()` 回退到默认布局。当前已在 viewport close 处理返回“停止渲染”信号，最后窗口关闭时直接结束当帧，且不再对最后窗口关闭请求发送 `CancelClose`，避免黑屏但进程不退出。
 - 2026-05-14 已完成一轮 Studio UI 规范化：顶部栏第一行展示项目标题、运行模式、运行状态、pending 和未保存状态；快速操作继续保留打开示例、打开项目、运行、保存和命令面板，语言切换 / 逻辑窗口入口收进 `视图` 菜单；Runtime 面板收敛运行按钮密度，并默认折叠项目路径编辑、调度器、运行日志和 GUI 活动等低频 / 开发态信息；Studio 启动初始窗口加大到 `1280x860`，最小内尺寸为 `1024x720`。`cargo test -p radishflow-studio studio_gui_shell`、`git diff --check` 与 `pwsh ./scripts/check-repo.ps1` 均已通过。
 - 2026-05-14 已参考当前 Studio 截图和 Aspen / HYSYS / PRO/II / COFE / DWSIM 等同类软件截图，新增 `docs/architecture/studio-ui-design-guidelines.md`；后续 UI 重排以“保留 RadishFlow 轻量浅色风格，吸收成熟流程模拟软件的信息架构和任务分区”为准，不照搬参考产品视觉资产。
+- 2026-05-14 已完成文档体量治理：`docs/radishflow-mvp-roadmap.md` 瘦身为路线图入口，详细里程碑和历史对齐拆入 `docs/mvp/roadmap/`；周志按月份迁入 `docs/devlogs/YYYY-MM/`，文档体量脚本默认只报告受约束文档超限。
 
-完整过程和每日验证记录见 `docs/devlogs/2026-W20.md` 以及更早周志。
+完整过程和每日验证记录见 `docs/devlogs/2026-05/2026-W20.md` 以及更早周志。
 
 ## 下一步建议
 
@@ -71,7 +72,7 @@
 - 需要仓库全局模块边界：`docs/architecture/overview.md`
 - 需要 MVP 范围和非目标：`docs/mvp/scope.md`
 - 需要 MVP α 验收矩阵：`docs/mvp/alpha-acceptance-checklist.md`
-- 需要最新流水和决策依据：`docs/devlogs/2026-W20.md`
+- 需要最新流水和决策依据：`docs/devlogs/2026-05/2026-W20.md`
 - 需要热力学 / 闪蒸细节：`docs/thermo/mvp-model.md`
 - 需要 CAPE-OPEN / COM 边界：`docs/capeopen/boundary.md`
 - 需要桌面 App / Canvas 交互契约和 Studio UI 规范：`docs/architecture/app-architecture.md`、`docs/architecture/canvas-interaction-contract.md`、`docs/architecture/studio-ui-design-guidelines.md`

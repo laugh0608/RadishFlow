@@ -4,11 +4,15 @@ set -euo pipefail
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 repo_root="$(cd -- "${script_dir}/.." && pwd)"
 fail_on_exceeded=false
+include_advisory=false
 
 for arg in "$@"; do
   case "$arg" in
     --fail-on-exceeded)
       fail_on_exceeded=true
+      ;;
+    --include-advisory)
+      include_advisory=true
       ;;
     *)
       echo "unsupported argument: $arg" >&2
@@ -39,10 +43,10 @@ rule_for_path() {
     docs/reference/*.md)
       echo "25000 reference enforced"
       ;;
-    docs/architecture/*.md|docs/capeopen/boundary.md|docs/thermo/*.md|docs/mvp/*.md|docs/radishflow-mvp-roadmap.md)
+    docs/architecture/*.md|docs/capeopen/boundary.md|docs/thermo/*.md|docs/mvp/*.md|docs/mvp/roadmap/*.md|docs/radishflow-mvp-roadmap.md)
       echo "30000 topic enforced"
       ;;
-    docs/devlogs/*.md|docs/*draft*.md|docs/*checklist*.md)
+    docs/devlogs/*.md|docs/devlogs/*/*.md|docs/*draft*.md|docs/*checklist*.md)
       echo "30000 history advisory"
       ;;
     *)
@@ -70,6 +74,9 @@ for path in "${files[@]}"; do
   chars="$(wc -m < "$path" | tr -d '[:space:]')"
 
   if (( chars > limit )); then
+    if [[ "$mode" != "enforced" && "$include_advisory" != "true" ]]; then
+      continue
+    fi
     over_limit_rows+=("$path	$chars	$limit	$scope	$mode")
     if [[ "$mode" == "enforced" ]]; then
       enforced_count=$((enforced_count + 1))
@@ -78,9 +85,17 @@ for path in "${files[@]}"; do
 done
 
 if (( ${#over_limit_rows[@]} == 0 )); then
-  echo "doc size check: all markdown files are within target limits"
+  if [[ "$include_advisory" == "true" ]]; then
+    echo "doc size check: all markdown files are within target limits"
+  else
+    echo "doc size check: all enforced markdown files are within target limits"
+  fi
 else
-  echo "doc size check: files over target limits"
+  if [[ "$include_advisory" == "true" ]]; then
+    echo "doc size check: files over target limits"
+  else
+    echo "doc size check: enforced files over target limits"
+  fi
   printf 'path\tchars\tlimit\tscope\tmode\n'
   printf '%s\n' "${over_limit_rows[@]}"
 fi

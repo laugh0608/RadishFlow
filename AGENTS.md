@@ -47,7 +47,7 @@
 - Guide / Runbook 单篇目标上限为 15k 字符；Reference / Architecture / Boundary 单篇目标上限为 25k-30k 字符；ADR 单篇目标上限为 12k 字符
 - 超过目标上限的专题文档应优先拆成“入口摘要 + 专题正文”，或降级为历史材料并从默认阅读链移除；周志和历史草案可更长，但必须有顶部摘要和清晰索引
 - 每篇新增或大改文档应在开头说明用途、读者和不包含内容，避免把使用说明、字段参考、架构推演与历史流水混写进同一篇文档
-- 周志按 `docs/devlogs/YYYY-Www.md` 命名
+- 周志按 `docs/devlogs/YYYY-MM/YYYY-Www.md` 命名
 - 许可条款以仓库根 `LICENSE` 文件为准
 
 ## Agent 协同文件

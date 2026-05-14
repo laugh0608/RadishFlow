@@ -1,7 +1,8 @@
 [CmdletBinding()]
 param(
     [string]$RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path,
-    [switch]$FailOnExceeded
+    [switch]$FailOnExceeded,
+    [switch]$IncludeAdvisory
 )
 
 $ErrorActionPreference = "Stop"
@@ -29,10 +30,10 @@ function Get-DocSizeRule {
     if ($path -like "docs/reference/*.md") {
         return [pscustomobject]@{ Limit = 25000; Scope = "reference"; Enforced = $true }
     }
-    if ($path -like "docs/architecture/*.md" -or $path -eq "docs/capeopen/boundary.md" -or $path -like "docs/thermo/*.md" -or $path -like "docs/mvp/*.md" -or $path -eq "docs/radishflow-mvp-roadmap.md") {
+    if ($path -like "docs/architecture/*.md" -or $path -eq "docs/capeopen/boundary.md" -or $path -like "docs/thermo/*.md" -or $path -like "docs/mvp/*.md" -or $path -like "docs/mvp/roadmap/*.md" -or $path -eq "docs/radishflow-mvp-roadmap.md") {
         return [pscustomobject]@{ Limit = 30000; Scope = "topic"; Enforced = $true }
     }
-    if ($path -like "docs/devlogs/*.md" -or $path -like "docs/*draft*.md" -or $path -like "docs/*checklist*.md") {
+    if ($path -like "docs/devlogs/*.md" -or $path -like "docs/devlogs/*/*.md" -or $path -like "docs/*draft*.md" -or $path -like "docs/*checklist*.md") {
         return [pscustomobject]@{ Limit = 30000; Scope = "history"; Enforced = $false }
     }
 
@@ -64,14 +65,28 @@ $results = foreach ($file in $files) {
     }
 }
 
-$overLimit = @($results | Where-Object { $_.Status -eq "over" } | Sort-Object Enforced, Chars -Descending)
+$overLimit = @(
+    $results |
+        Where-Object { $_.Status -eq "over" -and ($_.Enforced -or $IncludeAdvisory) } |
+        Sort-Object Enforced, Chars -Descending
+)
 $enforcedOverLimit = @($overLimit | Where-Object { $_.Enforced })
 
 if ($overLimit.Count -eq 0) {
-    Write-Host "doc size check: all markdown files are within target limits"
+    if ($IncludeAdvisory) {
+        Write-Host "doc size check: all markdown files are within target limits"
+    }
+    else {
+        Write-Host "doc size check: all enforced markdown files are within target limits"
+    }
 }
 else {
-    Write-Host "doc size check: files over target limits"
+    if ($IncludeAdvisory) {
+        Write-Host "doc size check: files over target limits"
+    }
+    else {
+        Write-Host "doc size check: enforced files over target limits"
+    }
     $overLimit |
         Select-Object Path, Chars, Limit, Scope, Enforced |
         Format-Table -AutoSize
