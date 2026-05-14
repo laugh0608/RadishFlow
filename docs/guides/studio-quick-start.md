@@ -1,6 +1,6 @@
 # Studio Quick Start
 
-更新时间：2026-05-13
+更新时间：2026-05-14
 
 ## 目的
 
@@ -17,18 +17,19 @@
 
 ## 当前能做什么
 
-截至 2026-05-13，Studio 当前已经具备以下最小闭环：
+截至 2026-05-14，Studio 当前已经具备以下最小闭环：
 
+- 新建未命名空白项目，并用 MVP 默认 `methane / ethane` 二元体系进入最短建模路径
 - 打开已有 `*.rfproj.json` 项目
 - 通过内置示例入口、最近项目列表、路径输入或 Windows 原生文件选择器切换项目
-- 启动后在顶部快速操作区直接使用 `Open Example / Open Project / Run / Save / Commands / Command Palette`
+- 启动后在顶部快速操作区直接使用 `New Blank / Open Example / Open Project / Run / Save / Save As / Commands / Command Palette`
 - 运行仓库内的最小正向示例 flowsheet
-- 在 Runtime / Result Inspector / Active Inspector 中查看结构化结果、步骤和诊断
+- 在左侧 `Project / Palette`、中央 `Canvas`、右侧 `Inspector / Results / Run / Entitlement` 和底部 `Messages / Run Log / Results Table / Diagnostics` 中完成当前 MVP α 工作流
 - 在当前 `SolveSnapshot` 内切换 stream-centric / unit-centric / comparison 三类结果审阅面
 - 通过 `Inspect` / `DiagnosticTargets` 在 stream、unit、step 和 Active Inspector 之间定位同一份结果
 - 在 Stream Inspector 中编辑流股基础字段与组成草稿，并显式提交、归一化或丢弃
 - 执行基础 `undo / redo`
-- 保存当前项目，或 `Save As` 到新路径
+- 保存当前项目，或通过顶部 `Save As` / 未命名项目首次 `Save` 到新路径
 - 保存并恢复 Canvas placement sidecar：`<project>.rfstudio-layout.json`
 - 默认隐藏低频 Commands 面板；需要完整命令列表时可从顶部 `Commands` 或 `Command Palette` 展开
 
@@ -93,14 +94,30 @@ cargo run -p radishflow-studio
 
 启动后，第一视野优先看顶部快速操作区，而不是先找完整菜单或 Commands 面板：
 
+- `New Blank`：新建未命名空白项目；不会立刻弹出保存对话框
 - `Open Example`：打开仓库内置正向示例
 - `Open Project`：从磁盘选择已有 `*.rfproj.json`
 - `Run`：对当前工作区执行一次手动运行；不可用时 hover 会说明原因
 - `Save`：保存当前项目
+- `Save As`：把当前项目另存到新的 `*.rfproj.json` 路径；未命名空白项目首次 `Save` 也会进入这条选择器路径
 - `Commands`：显示或隐藏低频命令面板
 - `Command Palette`：搜索并执行当前可用命令
 
 Commands 面板默认隐藏是当前 MVP α 体验口径的一部分。它不是功能移除，而是把低频和调试型入口从首屏主路径移开。
+
+## 从空白项目开始
+
+如果不想先打开示例，可以直接走当前最小空白建模路径：
+
+1. 点击顶部 `New Blank`。
+2. 在左侧切到 `Palette`，用 `Place Feed`、`Place Flash Drum` 或 `Place Heater / Cooler / Valve / Mixer` 开始放置单元。
+3. 在 Canvas 中点击落点提交当前放置意图。
+4. 使用 Canvas 上的 `Connect` / `连接` suggestion 补齐端口绑定和必要 outlet stream。
+5. 在左侧 `Project` 或 Canvas 对象列表中选择 stream / unit，右侧 `Inspector` 会切到对应对象。
+6. 在 Stream Inspector 中编辑 `T / P / F` 和组成草稿；字段提交、`Apply all`、`Normalize composition` 都是显式动作。
+7. 点击顶部 `Run`，结果只从最新 `SolveSnapshot` 展示到右侧 `Results` 和底部 `Results Table`。
+
+当前连接仍通过本地 suggestion 和正式 `DocumentCommand::ConnectPorts` 完成，不是自由拉线编辑器；单元参数编辑也仍限制在 MVP 已暴露的 Inspector 字段和端口/结果只读信息内。
 
 ## 启动后应该看到什么
 
@@ -108,13 +125,11 @@ Commands 面板默认隐藏是当前 MVP α 体验口径的一部分。它不是
 
 - 顶部快速操作区中的打开、运行、保存和命令入口
 - 顶部当前项目标题、路径和未保存提示
-- Runtime 区域中的运行状态和最近一次结果摘要
+- 左侧 `Project / Palette`，分别用于项目树扫读和放置 MVP 内建单元
 - Canvas 上的单元、物流线和当前关注对象
-- Result Inspector 中的 stream-centric / unit-centric 结果审阅
-- Result Inspector 中当前快照内的 stream comparison 与 `Inspect` 跳转
-- Active Inspector 中的对象详情、端口和关联结果
+- 右侧 `Inspector / Results / Run / Entitlement` tabs，其中 `Inspector` 负责当前对象参数、组成、端口和关联结果，`Results` 负责只读结果审阅
+- 底部 `Messages / Run Log / Results Table / Diagnostics` drawer，其中结果表只读消费当前 `SolveSnapshot`
 - `DiagnosticTargets` 中可直接定位的 stream / unit 结果目标
-- Diagnostics / steps / logs 等运行辅助信息
 
 如果运行成功，`Flash Drum` 相关结果当前应能进一步展示：
 

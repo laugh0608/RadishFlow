@@ -1,6 +1,6 @@
 # Run First Flowsheet
 
-更新时间：2026-05-13
+更新时间：2026-05-14
 
 ## 目的
 
@@ -129,7 +129,9 @@ examples/flowsheets/feed-mixer-flash-binary-hydrocarbon.rfproj.json
 
 - 点击顶部快速操作区的 `Save`
 - 或通过 `Command Palette` / Commands 面板执行 `file.save`
-- 或执行 `Save As` 到新的 `*.rfproj.json` 路径
+- 或直接点击顶部 `Save As` 到新的 `*.rfproj.json` 路径
+
+如果当前是 `New Blank` 创建的未命名空白项目，首次点击 `Save` 会进入和 `Save As` 相同的 Windows 保存选择器；它不应阻断后续 `New Blank / Open Project / Open Example`。
 
 当前项目保存涉及两类文件：
 
@@ -143,7 +145,22 @@ examples/flowsheets/feed-mixer-flash-binary-hydrocarbon.rfproj.json
 
 如果当前项目已有 Canvas placement，保存并重开后应能恢复这份 sidecar 状态。
 
-## 6. 常见阻塞点
+## 6. 从空白项目建模
+
+如果想验证“不是只会打开示例”，可以用当前 MVP α 支持的最短空白路径：
+
+1. 点击顶部 `New Blank`，进入未命名 `Blank Project`。
+2. 左侧切到 `Palette`，放置 `Feed` 和 `Flash Drum`；需要中间设备时可加 `Heater / Cooler / Valve`，需要双入口时可加第二个 `Feed` 和 `Mixer`。
+3. 每次放置单元后，在 Canvas 中点击落点提交；这只提交当前放置意图，不是完整拖拽布局编辑器。
+4. 使用 Canvas suggestion 中的 `Connect` / `连接` 动作补齐 `source -> sink` 端口绑定和必要 outlet stream。
+5. 从左侧 `Project` 或 Canvas 对象列表选择 stream / unit，右侧 `Inspector` 会显示当前对象。
+6. Stream Inspector 当前可编辑 `name / temperature_k / pressure_pa / total_molar_flow_mol_s` 和已有 flowsheet component catalog 中的组成条目；组成修改需要显式提交、归一化或丢弃。
+7. Unit Inspector 当前以端口、关联步骤、关联诊断和最新 `SolveSnapshot` 中的单元结果为主，不等同于完整单元参数表。
+8. 点击 `Run`，再到右侧 `Results` 或底部 `Results Table` 查看只读结果。
+
+当前仍不支持自由拉线、任意端口点击创建、完整组件库、完整物性包浏览/切换或完整单元参数表。这些缺口若影响验证，应记录为 MVP α 后续任务，而不是用 shell 私有状态绕过。
+
+## 7. 常见阻塞点
 
 如果当前示例没有直接跑通，优先检查以下几类问题：
 
@@ -168,7 +185,7 @@ examples/flowsheets/feed-mixer-flash-binary-hydrocarbon.rfproj.json
 - `Normalize composition`：显式把当前组成归一化；它不会代替用户猜测新增或删除组分
 - `Remove` / add component：只在当前 flowsheet 已有组件目录内操作，不触发项目级组件迁移
 
-## 7. 下一步建议
+## 8. 下一步建议
 
 如果这次运行已经走通，下一步建议按下面顺序继续：
 
