@@ -73,7 +73,7 @@ impl ReadyAppState {
                     .button(self.locale.text(ShellText::NewBlankProject))
                     .clicked()
                 {
-                    self.create_blank_project_from_picker();
+                    self.create_blank_project();
                 }
                 if ui
                     .button(self.locale.text(ShellText::OpenProjectFromDisk))

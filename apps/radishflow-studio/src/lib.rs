@@ -329,7 +329,7 @@ pub use studio_runtime::{
     StudioRuntimeHostEffect, StudioRuntimeHostEffectId, StudioRuntimeHostFollowUp,
     StudioRuntimeOutput, StudioRuntimeReport, StudioRuntimeTimerHandleSlot,
     StudioRuntimeTimerHostCommand, StudioRuntimeTimerHostState, StudioRuntimeTimerHostTransition,
-    StudioRuntimeTrigger,
+    StudioRuntimeTrigger, StudioRuntimeUntitledProject,
 };
 pub use studio_window_host::{
     StudioRuntimeHostPort, StudioRuntimeHostPortOutput, StudioWindowHostEvent, StudioWindowHostId,

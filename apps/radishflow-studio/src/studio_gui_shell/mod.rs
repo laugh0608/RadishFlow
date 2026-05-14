@@ -18,8 +18,8 @@ use radishflow_studio::{
     StudioGuiWindowDockPlacement, StudioGuiWindowDockRegion, StudioGuiWindowDropTargetQuery,
     StudioGuiWindowLayoutModel, StudioGuiWindowLayoutMutation, StudioGuiWindowModel,
     StudioGuiWindowStackGroupLayout, StudioGuiWindowToolbarSectionModel, StudioRuntimeConfig,
-    StudioRuntimeEntitlementPreflight, StudioRuntimeTrigger, StudioWindowHostId,
-    StudioWindowHostRole,
+    StudioRuntimeEntitlementPreflight, StudioRuntimeTrigger, StudioRuntimeUntitledProject,
+    StudioWindowHostId, StudioWindowHostRole,
 };
 use rf_types::RfResult;
 use rf_ui::{
@@ -245,6 +245,23 @@ fn studio_shell_runtime_config(project_path: Option<PathBuf>) -> StudioRuntimeCo
         config.project_path = project_path;
     }
     config
+}
+
+fn studio_shell_blank_runtime_config() -> StudioRuntimeConfig {
+    let now = SystemTime::now();
+    let timestamp = now
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|duration| duration.as_secs())
+        .unwrap_or(0);
+    StudioRuntimeConfig {
+        untitled_blank_project: Some(StudioRuntimeUntitledProject::new(
+            format!("blank-project-{timestamp}"),
+            "Blank Project",
+            now,
+        )),
+        entitlement_preflight: StudioRuntimeEntitlementPreflight::Skip,
+        ..StudioRuntimeConfig::default()
+    }
 }
 
 impl ReadyAppState {

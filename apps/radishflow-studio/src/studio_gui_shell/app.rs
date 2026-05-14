@@ -37,7 +37,7 @@ impl ReadyAppState {
         self.request_open_project(project_path, "project picker");
     }
 
-    pub(super) fn create_blank_project_from_picker(&mut self) {
+    pub(super) fn create_blank_project(&mut self) {
         if self
             .platform_host
             .snapshot()
@@ -54,51 +54,74 @@ impl ReadyAppState {
             return;
         }
 
-        let Some(project_path) = self.project_file_picker.pick_save_project_file() else {
-            self.project_open.notice = Some(ProjectOpenNotice {
-                level: ProjectOpenNoticeLevel::Info,
-                title: "Blank project canceled".to_string(),
-                detail: "Current workspace remains open.".to_string(),
-            });
-            return;
-        };
+        let config = studio_shell_blank_runtime_config();
 
-        if project_path.exists() {
-            self.project_open.notice = Some(ProjectOpenNotice {
-                level: ProjectOpenNoticeLevel::Warning,
-                title: "Blank project target exists".to_string(),
-                detail: format!(
-                    "Choose a new .rfproj.json path; existing files are not overwritten: {}",
-                    project_path.display()
-                ),
-            });
-            return;
-        }
-
-        match write_blank_project_file(&project_path) {
-            Ok(()) => self.open_project(project_path, "blank project"),
+        match StudioGuiPlatformHost::new(&config) {
+            Ok(platform_host) => {
+                self.platform_host = platform_host;
+                self.platform_timer_executor = EguiPlatformTimerExecutor::default();
+                self.command_palette.close();
+                self.last_area_focus = None;
+                self.drag_session = None;
+                self.active_drop_preview = None;
+                self.drop_preview_overlay_anchor = None;
+                self.last_viewport_focused = None;
+                self.canvas_viewport_navigation = CanvasViewportNavigationState::default();
+                self.canvas_command_result = None;
+                self.result_inspector.reset();
+                self.project_open.path_input.clear();
+                self.project_open.pending_confirmation = None;
+                self.project_open.pending_save_as_overwrite = None;
+                self.project_open.notice = Some(ProjectOpenNotice {
+                    level: ProjectOpenNoticeLevel::Info,
+                    title: "Blank project created".to_string(),
+                    detail:
+                        "Created an untitled blank project. Use Save to choose a .rfproj.json path."
+                            .to_string(),
+                });
+                self.platform_host
+                    .record_activity_line("created untitled blank project".to_string());
+                self.dispatch_event(StudioGuiEvent::OpenWindowRequested);
+                if let Err(error) = self.apply_default_hidden_commands_panel_for_current_window() {
+                    self.platform_host.record_activity_line(format!(
+                        "apply default commands panel visibility failed [{}]: {}",
+                        error.code().as_str(),
+                        error.message()
+                    ));
+                }
+            }
             Err(error) => {
                 self.project_open.notice = Some(ProjectOpenNotice {
                     level: ProjectOpenNoticeLevel::Error,
                     title: "Blank project creation failed".to_string(),
                     detail: format!(
-                        "[{}] {} ({}). Current workspace remains open.",
+                        "[{}] {}. Current workspace remains open.",
                         error.code().as_str(),
-                        error.message(),
-                        project_path.display()
+                        error.message()
                     ),
                 });
                 self.platform_host.record_activity_line(format!(
-                    "create blank project failed [{}]: {} ({})",
+                    "create blank project failed [{}]: {}",
                     error.code().as_str(),
-                    error.message(),
-                    project_path.display()
+                    error.message()
                 ));
             }
         }
     }
 
     pub(super) fn save_project(&mut self) {
+        if self
+            .platform_host
+            .snapshot()
+            .runtime
+            .workspace_document
+            .project_path
+            .is_none()
+        {
+            self.save_project_as_from_picker();
+            return;
+        }
+
         match self.dispatch_event_result(StudioGuiEvent::UiCommandRequested {
             command_id: radishflow_studio::FILE_SAVE_COMMAND_ID.to_string(),
         }) {
@@ -1194,18 +1217,4 @@ impl ReadyAppState {
             self.last_area_focus = Some(area_id);
         }
     }
-}
-
-fn write_blank_project_file(project_path: &std::path::Path) -> RfResult<()> {
-    let now = SystemTime::now();
-    let timestamp = now
-        .duration_since(std::time::UNIX_EPOCH)
-        .map(|duration| duration.as_secs())
-        .unwrap_or(0);
-    let document_id = format!("blank-project-{timestamp}");
-    let project = rf_store::StoredProjectFile::new(
-        rf_model::Flowsheet::new("Blank Project"),
-        rf_store::StoredDocumentMetadata::new(&document_id, "Blank Project", now),
-    );
-    rf_store::write_project_file(project_path, &project)
 }

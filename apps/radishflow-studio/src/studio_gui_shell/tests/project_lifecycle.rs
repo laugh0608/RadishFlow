@@ -179,11 +179,62 @@ fn canceling_project_picker_keeps_current_workspace_active() {
 }
 
 #[test]
-fn create_blank_project_from_picker_writes_and_opens_blank_workspace() {
+fn create_blank_project_opens_untitled_blank_workspace_without_picker() {
     let config = synced_workspace_config();
-    let preferences_path = test_preferences_path("blank-picker");
+    let preferences_path = test_preferences_path("blank-untitled");
+    let unused_picker_target = std::env::temp_dir().join(format!(
+        "radishflow-studio-shell-unused-blank-picker-{}.rfproj.json",
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("expected current timestamp")
+            .as_nanos()
+    ));
+    let mut app = ReadyAppState::from_config_with_project_file_picker(
+        &config,
+        preferences_path.clone(),
+        Box::new(TestProjectFilePicker::new(Some(
+            unused_picker_target.clone(),
+        ))),
+    )
+    .expect("expected app state");
+
+    app.create_blank_project();
+
+    let window = app.platform_host.snapshot().window_model();
+    assert_eq!(window.runtime.workspace_document.title, "Blank Project");
+    assert_eq!(window.runtime.workspace_document.project_path, None);
+    assert!(
+        window.runtime.workspace_document.has_unsaved_changes,
+        "bootstrap should mark the default blank thermo basis as an explicit unsaved project edit"
+    );
+    assert_eq!(window.runtime.workspace_document.unit_count, 0);
+    assert_eq!(window.runtime.workspace_document.stream_count, 0);
+    assert_eq!(app.project_open.path_input, "");
+    assert!(
+        app.project_open.recent_projects.is_empty(),
+        "untitled blank projects should not enter recent projects before Save As"
+    );
+    assert_eq!(
+        app.project_open
+            .notice
+            .as_ref()
+            .map(|notice| notice.title.as_str()),
+        Some("Blank project created")
+    );
+    assert!(
+        !unused_picker_target.exists(),
+        "creating an untitled blank project should not open the save picker or create its target"
+    );
+
+    let _ = std::fs::remove_file(preferences_path);
+}
+
+#[test]
+fn saving_untitled_blank_project_uses_save_as_picker() {
+    let config = synced_workspace_config();
+    let preferences_path = test_preferences_path("blank-save-as");
     let target_project = std::env::temp_dir().join(format!(
-        "radishflow-studio-shell-new-blank-{}.rfproj.json",
+        "radishflow-studio-shell-untitled-save-as-{}.rfproj.json",
         SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .expect("expected current timestamp")
@@ -196,20 +247,15 @@ fn create_blank_project_from_picker_writes_and_opens_blank_workspace() {
     )
     .expect("expected app state");
 
-    app.create_blank_project_from_picker();
+    app.create_blank_project();
+    app.save_project();
 
     let window = app.platform_host.snapshot().window_model();
-    assert_eq!(window.runtime.workspace_document.title, "Blank Project");
     assert_eq!(
         window.runtime.workspace_document.project_path.as_deref(),
         Some(target_project.display().to_string().as_str())
     );
-    assert!(
-        window.runtime.workspace_document.has_unsaved_changes,
-        "bootstrap should mark the default blank thermo basis as an explicit unsaved project edit"
-    );
-    assert_eq!(window.runtime.workspace_document.unit_count, 0);
-    assert_eq!(window.runtime.workspace_document.stream_count, 0);
+    assert!(!window.runtime.workspace_document.has_unsaved_changes);
     assert_eq!(
         app.project_open.path_input,
         target_project.display().to_string()
@@ -223,7 +269,7 @@ fn create_blank_project_from_picker_writes_and_opens_blank_workspace() {
             .notice
             .as_ref()
             .map(|notice| notice.title.as_str()),
-        Some("Project opened")
+        Some("Project saved as")
     );
     assert!(read_project_file(&target_project).is_ok());
 
@@ -232,88 +278,24 @@ fn create_blank_project_from_picker_writes_and_opens_blank_workspace() {
 }
 
 #[test]
-fn create_blank_project_from_picker_does_not_overwrite_existing_target() {
-    let config = synced_workspace_config();
-    let preferences_path = test_preferences_path("blank-overwrite");
-    let target_project = std::env::temp_dir().join(format!(
-        "radishflow-studio-shell-new-blank-existing-{}.rfproj.json",
-        SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .expect("expected current timestamp")
-            .as_nanos()
-    ));
-    fs::write(&target_project, "existing project placeholder").expect("expected target seed");
-    let mut app = ReadyAppState::from_config_with_project_file_picker(
-        &config,
-        preferences_path.clone(),
-        Box::new(TestProjectFilePicker::new(Some(target_project.clone()))),
-    )
-    .expect("expected app state");
-    let original_title = app
-        .platform_host
-        .snapshot()
-        .window_model()
-        .runtime
-        .workspace_document
-        .title;
-
-    app.create_blank_project_from_picker();
-
-    assert_eq!(
-        fs::read_to_string(&target_project).expect("expected target read"),
-        "existing project placeholder"
-    );
-    assert_eq!(
-        app.platform_host
-            .snapshot()
-            .window_model()
-            .runtime
-            .workspace_document
-            .title,
-        original_title
-    );
-    assert_eq!(
-        app.project_open
-            .notice
-            .as_ref()
-            .map(|notice| notice.title.as_str()),
-        Some("Blank project target exists")
-    );
-
-    let _ = std::fs::remove_file(preferences_path);
-    let _ = std::fs::remove_file(target_project);
-}
-
-#[test]
-fn create_blank_project_from_picker_requires_clean_workspace() {
+fn create_blank_project_requires_clean_workspace() {
     let (config, project_path) = flash_drum_local_rules_synced_config();
-    let target_project = std::env::temp_dir().join(format!(
-        "radishflow-studio-shell-new-blank-blocked-{}.rfproj.json",
-        SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .expect("expected current timestamp")
-            .as_nanos()
-    ));
     let mut app = ReadyAppState::from_config_with_project_file_picker(
         &config,
         test_preferences_path("blank-unsaved"),
-        Box::new(TestProjectFilePicker::new(Some(target_project.clone()))),
+        Box::new(TestProjectFilePicker::new(None)),
     )
     .expect("expected app state");
     app.dispatch_ui_command("canvas.accept_focused");
     let dirty_window = app.platform_host.snapshot().window_model();
     assert!(dirty_window.runtime.workspace_document.has_unsaved_changes);
 
-    app.create_blank_project_from_picker();
+    app.create_blank_project();
 
     let blocked_window = app.platform_host.snapshot().window_model();
     assert_eq!(
         blocked_window.runtime.workspace_document.title,
         dirty_window.runtime.workspace_document.title
-    );
-    assert!(
-        !target_project.exists(),
-        "blocked blank creation should not leave a placeholder project file"
     );
     assert_eq!(
         app.project_open.notice.as_ref().map(|notice| notice.level),

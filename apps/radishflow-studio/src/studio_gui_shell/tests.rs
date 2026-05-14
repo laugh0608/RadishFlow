@@ -127,6 +127,7 @@ fn unbound_outlet_failure_synced_config() -> StudioRuntimeConfig {
             .join("flowsheets")
             .join("failures")
             .join("unbound-outlet-port.rfproj.json"),
+        untitled_blank_project: None,
         entitlement_preflight: StudioRuntimeEntitlementPreflight::Skip,
         entitlement_seed: StudioRuntimeEntitlementSeed::Synced,
         trigger: StudioRuntimeTrigger::WidgetAction(rf_ui::RunPanelActionId::RunManual),

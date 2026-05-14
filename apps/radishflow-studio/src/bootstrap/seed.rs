@@ -161,6 +161,18 @@ pub(super) fn app_state_from_project_file(
     app_state
 }
 
+pub(super) fn app_state_from_untitled_blank_project(
+    document_id: &str,
+    title: &str,
+    created_at: SystemTime,
+) -> AppState {
+    let document = FlowsheetDocument::new(
+        Flowsheet::new(title),
+        DocumentMetadata::new(document_id.to_string(), title.to_string(), created_at),
+    );
+    AppState::new(document)
+}
+
 pub(super) fn initialize_blank_project_thermo_basis(
     app_state: &mut AppState,
     changed_at: SystemTime,

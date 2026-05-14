@@ -38,6 +38,7 @@ fn solver_failure_config() -> (crate::StudioRuntimeConfig, PathBuf) {
     (
         crate::StudioRuntimeConfig {
             project_path: project_path.clone(),
+            untitled_blank_project: None,
             entitlement_preflight: StudioRuntimeEntitlementPreflight::Skip,
             entitlement_seed: StudioRuntimeEntitlementSeed::Synced,
             trigger: crate::StudioRuntimeTrigger::WidgetAction(RunPanelActionId::RunManual),
