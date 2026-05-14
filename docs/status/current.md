@@ -45,16 +45,16 @@
 - 2026-05-13 关闭 Studio 时发现最后一帧会短暂显示默认 Commands 左栏；根因是关闭最后一个逻辑窗口后仍继续渲染当帧，`window_model()` 回退到默认布局。当前已在 viewport close 处理返回“停止渲染”信号，最后窗口关闭时直接结束当帧，且不再对最后窗口关闭请求发送 `CancelClose`，避免黑屏但进程不退出。
 - 2026-05-14 已完成一轮 Studio UI 规范化：顶部栏第一行展示项目标题、运行模式、运行状态、pending 和未保存状态；快速操作继续保留打开示例、打开项目、运行、保存和命令面板，语言切换 / 逻辑窗口入口收进 `视图` 菜单；Runtime 面板收敛运行按钮密度，并默认折叠项目路径编辑、调度器、运行日志和 GUI 活动等低频 / 开发态信息；Studio 启动初始窗口加大到 `1280x860`，最小内尺寸为 `1024x720`。`cargo test -p radishflow-studio studio_gui_shell`、`git diff --check` 与 `pwsh ./scripts/check-repo.ps1` 均已通过。
 - 2026-05-14 已参考当前 Studio 截图和 Aspen / HYSYS / PRO/II / COFE / DWSIM 等同类软件截图，新增 `docs/architecture/studio-ui-design-guidelines.md`；后续 UI 重排以“保留 RadishFlow 轻量浅色风格，吸收成熟流程模拟软件的信息架构和任务分区”为准，不照搬参考产品视觉资产。
-- 2026-05-14 已完成 Studio shell 首轮工作台重排：左侧 `Project / Palette`，右侧 `Inspector / Results / Run / Entitlement`，底部 `Messages / Run Log / Results Table / Diagnostics` drawer 与 SI 状态栏；结果面继续只读消费 `SolveSnapshot`，不新增 shell 私有结果缓存，也不扩 MVP α 非目标。
+- 2026-05-14 已完成 Studio shell 首轮工作台重排并补齐顶部 `新建空白` 入口：左侧 `Project / Palette`，右侧 `Inspector / Results / Run / Entitlement`，底部 `Messages / Run Log / Results Table / Diagnostics` drawer 与 SI 状态栏；结果面继续只读消费 `SolveSnapshot`，不新增 shell 私有结果缓存，也不扩 MVP α 非目标。
 - 2026-05-14 已完成文档体量治理：`docs/radishflow-mvp-roadmap.md` 瘦身为路线图入口，详细里程碑和历史对齐拆入 `docs/mvp/roadmap/`；周志按月份迁入 `docs/devlogs/YYYY-MM/`，文档体量脚本默认只报告受约束文档超限。
 
 完整过程和每日验证记录见 `docs/devlogs/2026-05/2026-W20.md` 以及更早周志。
 
 ## 下一步建议
 
-1. 下一步按 `docs/mvp/alpha-acceptance-checklist.md` 复跑 Studio 用户视角手动 smoke，优先完成 Smoke A 和 Smoke C：确认新首屏、运行、控制台审计、结果审阅、保存重开、窗口关闭，以及 Stream Inspector 草稿 / 未归一组成阻断都稳定。
-2. Smoke A / C 无 blocker 后，再执行 Smoke B 的空白建模最短闭环。
-3. UI 规范化仍只服务 MVP α 验收，不扩自由连线编辑器、完整拖拽布局编辑器、完整报表系统或新的求解范围；下一轮优先做人工 smoke 反馈下的细节修正和画布对象视觉 polish，结果面继续只读消费 `SolveSnapshot`，不新增 shell 私有结果缓存。
+1. 下一步按 `docs/mvp/alpha-acceptance-checklist.md` 复跑 Studio 用户视角手动 smoke：确认新首屏、运行、结果审阅、保存重开、窗口关闭，以及 `新建空白` 后的空白建模最短闭环。
+2. UI 规范化仍只服务 MVP α 验收，不扩自由连线编辑器、完整拖拽布局编辑器、完整报表系统或新的求解范围；下一轮优先做人工 smoke 反馈下的细节修正和画布对象视觉 polish，结果面继续只读消费 `SolveSnapshot`，不新增 shell 私有结果缓存。
+3. Smoke 无 blocker 后，再进入 MVP α 发布包形态与发布说明收口。
 4. 只修人工 smoke 或仓库级验证暴露的真实 blocker；若只是收益递减的 focused 覆盖缺口，先记录而不是继续主动扩矩阵。
 5. 保持 `TP Flash` official / synthetic golden、raw solver focused tolerance 与 `rf-ffi` JSON/error 基线稳定，但不主动扩无限 near-boundary 矩阵。
 

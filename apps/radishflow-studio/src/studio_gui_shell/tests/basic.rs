@@ -203,6 +203,7 @@ fn top_bar_keeps_alpha_primary_path_visible_and_hides_low_frequency_controls() {
     for expected in [
         "快速操作",
         "打开示例",
+        "新建空白",
         "打开项目...",
         "运行",
         "保存",

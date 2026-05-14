@@ -37,6 +37,67 @@ impl ReadyAppState {
         self.request_open_project(project_path, "project picker");
     }
 
+    pub(super) fn create_blank_project_from_picker(&mut self) {
+        if self
+            .platform_host
+            .snapshot()
+            .runtime
+            .workspace_document
+            .has_unsaved_changes
+        {
+            self.project_open.notice = Some(ProjectOpenNotice {
+                level: ProjectOpenNoticeLevel::Warning,
+                title: "Blank project blocked".to_string(),
+                detail: "Save or discard current changes before creating a blank project."
+                    .to_string(),
+            });
+            return;
+        }
+
+        let Some(project_path) = self.project_file_picker.pick_save_project_file() else {
+            self.project_open.notice = Some(ProjectOpenNotice {
+                level: ProjectOpenNoticeLevel::Info,
+                title: "Blank project canceled".to_string(),
+                detail: "Current workspace remains open.".to_string(),
+            });
+            return;
+        };
+
+        if project_path.exists() {
+            self.project_open.notice = Some(ProjectOpenNotice {
+                level: ProjectOpenNoticeLevel::Warning,
+                title: "Blank project target exists".to_string(),
+                detail: format!(
+                    "Choose a new .rfproj.json path; existing files are not overwritten: {}",
+                    project_path.display()
+                ),
+            });
+            return;
+        }
+
+        match write_blank_project_file(&project_path) {
+            Ok(()) => self.open_project(project_path, "blank project"),
+            Err(error) => {
+                self.project_open.notice = Some(ProjectOpenNotice {
+                    level: ProjectOpenNoticeLevel::Error,
+                    title: "Blank project creation failed".to_string(),
+                    detail: format!(
+                        "[{}] {} ({}). Current workspace remains open.",
+                        error.code().as_str(),
+                        error.message(),
+                        project_path.display()
+                    ),
+                });
+                self.platform_host.record_activity_line(format!(
+                    "create blank project failed [{}]: {} ({})",
+                    error.code().as_str(),
+                    error.message(),
+                    project_path.display()
+                ));
+            }
+        }
+    }
+
     pub(super) fn save_project(&mut self) {
         match self.dispatch_event_result(StudioGuiEvent::UiCommandRequested {
             command_id: radishflow_studio::FILE_SAVE_COMMAND_ID.to_string(),
@@ -1133,4 +1194,18 @@ impl ReadyAppState {
             self.last_area_focus = Some(area_id);
         }
     }
+}
+
+fn write_blank_project_file(project_path: &std::path::Path) -> RfResult<()> {
+    let now = SystemTime::now();
+    let timestamp = now
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|duration| duration.as_secs())
+        .unwrap_or(0);
+    let document_id = format!("blank-project-{timestamp}");
+    let project = rf_store::StoredProjectFile::new(
+        rf_model::Flowsheet::new("Blank Project"),
+        rf_store::StoredDocumentMetadata::new(&document_id, "Blank Project", now),
+    );
+    rf_store::write_project_file(project_path, &project)
 }

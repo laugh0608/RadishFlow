@@ -70,6 +70,12 @@ impl ReadyAppState {
                     }
                 });
                 if ui
+                    .button(self.locale.text(ShellText::NewBlankProject))
+                    .clicked()
+                {
+                    self.create_blank_project_from_picker();
+                }
+                if ui
                     .button(self.locale.text(ShellText::OpenProjectFromDisk))
                     .clicked()
                 {
