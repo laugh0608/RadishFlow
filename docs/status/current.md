@@ -45,6 +45,7 @@
 - 2026-05-13 人工点击顶部 `运行` 和启动聚焦后暴露新的 smoke blocker：GUI 回调异常时缺少外层防护，控制台没有用户操作 / 求解审计输出，且 Windows debug 构建在 bootstrap runtime dispatch 上出现栈溢出；已补 GUI panic 防护、命令可用性门控、默认 stderr 审计线，停止由 viewport focus 自动派发 foreground entitlement tick，并把默认隐藏 Commands 面板改为 shell 启动时的 host-local transient layout preference，不再通过启动时 `SetPanelVisibility` dispatch 实现。GUI shell 启动 / 打开项目现在跳过自动 entitlement preflight，Windows `radishflow-studio` 二进制显式保留 16 MiB 主线程栈，以适配 eframe 必须在主线程创建事件循环的约束；此前尝试把 `eframe` 放到后台 UI 线程会触发 `winit` 主线程约束，已回退。
 - 2026-05-13 关闭 Studio 时发现最后一帧会短暂显示默认 Commands 左栏；根因是关闭最后一个逻辑窗口后仍继续渲染当帧，`window_model()` 回退到默认布局。当前已在 viewport close 处理返回“停止渲染”信号，最后窗口关闭时直接结束当帧，且不再对最后窗口关闭请求发送 `CancelClose`，避免黑屏但进程不退出。
 - 2026-05-14 已完成一轮 Studio UI 规范化：顶部栏第一行展示项目标题、运行模式、运行状态、pending 和未保存状态；快速操作继续保留打开示例、打开项目、运行、保存和命令面板，语言切换 / 逻辑窗口入口收进 `视图` 菜单；Runtime 面板收敛运行按钮密度，并默认折叠项目路径编辑、调度器、运行日志和 GUI 活动等低频 / 开发态信息；Studio 启动初始窗口加大到 `1280x860`，最小内尺寸为 `1024x720`。`cargo test -p radishflow-studio studio_gui_shell`、`git diff --check` 与 `pwsh ./scripts/check-repo.ps1` 均已通过。
+- 2026-05-14 已参考当前 Studio 截图和 Aspen / HYSYS / PRO/II / COFE / DWSIM 等同类软件截图，新增 `docs/architecture/studio-ui-design-guidelines.md`；后续 UI 重排以“保留 RadishFlow 轻量浅色风格，吸收成熟流程模拟软件的信息架构和任务分区”为准，不照搬参考产品视觉资产。
 
 完整过程和每日验证记录见 `docs/devlogs/2026-W20.md` 以及更早周志。
 
@@ -52,7 +53,7 @@
 
 1. 下一步按 `docs/mvp/alpha-acceptance-checklist.md` 复跑 Studio 用户视角手动 smoke，优先完成 Smoke A 和 Smoke C：确认新首屏、运行、控制台审计、结果审阅、保存重开、窗口关闭，以及 Stream Inspector 草稿 / 未归一组成阻断都稳定。
 2. Smoke A / C 无 blocker 后，再执行 Smoke B 的空白建模最短闭环。
-3. UI 规范化仍只服务 MVP α 验收，不扩自由连线编辑器、完整拖拽布局编辑器、完整报表系统或新的求解范围；结果面继续只读消费 `SolveSnapshot`，不新增 shell 私有结果缓存。
+3. UI 规范化仍只服务 MVP α 验收，不扩自由连线编辑器、完整拖拽布局编辑器、完整报表系统或新的求解范围；下一轮重排参考 `docs/architecture/studio-ui-design-guidelines.md`，结果面继续只读消费 `SolveSnapshot`，不新增 shell 私有结果缓存。
 4. 只修人工 smoke 或仓库级验证暴露的真实 blocker；若只是收益递减的 focused 覆盖缺口，先记录而不是继续主动扩矩阵。
 5. 保持 `TP Flash` official / synthetic golden、raw solver focused tolerance 与 `rf-ffi` JSON/error 基线稳定，但不主动扩无限 near-boundary 矩阵。
 
@@ -73,7 +74,7 @@
 - 需要最新流水和决策依据：`docs/devlogs/2026-W20.md`
 - 需要热力学 / 闪蒸细节：`docs/thermo/mvp-model.md`
 - 需要 CAPE-OPEN / COM 边界：`docs/capeopen/boundary.md`
-- 需要桌面 App / Canvas 交互契约：`docs/architecture/app-architecture.md`、`docs/architecture/canvas-interaction-contract.md`
+- 需要桌面 App / Canvas 交互契约和 Studio UI 规范：`docs/architecture/app-architecture.md`、`docs/architecture/canvas-interaction-contract.md`、`docs/architecture/studio-ui-design-guidelines.md`
 - 需要代码风格、命名或抽象判断：`docs/development/code-style.md`
 - 需要文档篇幅和拆分规则：`docs/README.md`
 
