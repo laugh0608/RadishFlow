@@ -278,6 +278,99 @@ fn saving_untitled_blank_project_uses_save_as_picker() {
 }
 
 #[test]
+fn saving_untitled_blank_project_allows_creating_another_blank_project() {
+    let config = synced_workspace_config();
+    let preferences_path = test_preferences_path("blank-save-then-new");
+    let target_project = std::env::temp_dir().join(format!(
+        "radishflow-studio-shell-untitled-save-then-new-{}.rfproj.json",
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("expected current timestamp")
+            .as_nanos()
+    ));
+    let mut app = ReadyAppState::from_config_with_project_file_picker(
+        &config,
+        preferences_path.clone(),
+        Box::new(TestProjectFilePicker::new(Some(target_project.clone()))),
+    )
+    .expect("expected app state");
+
+    app.create_blank_project();
+    app.save_project();
+    assert!(
+        !app.platform_host
+            .snapshot()
+            .window_model()
+            .runtime
+            .workspace_document
+            .has_unsaved_changes
+    );
+
+    app.create_blank_project();
+
+    let window = app.platform_host.snapshot().window_model();
+    assert_eq!(window.runtime.workspace_document.title, "Blank Project");
+    assert_eq!(window.runtime.workspace_document.project_path, None);
+    assert_eq!(
+        app.project_open
+            .notice
+            .as_ref()
+            .map(|notice| notice.title.as_str()),
+        Some("Blank project created")
+    );
+
+    let _ = std::fs::remove_file(preferences_path);
+    let _ = std::fs::remove_file(target_project);
+}
+
+#[test]
+fn saving_untitled_blank_project_allows_opening_example_project() {
+    let config = synced_workspace_config();
+    let example_project = config.project_path.clone();
+    let preferences_path = test_preferences_path("blank-save-then-example");
+    let target_project = std::env::temp_dir().join(format!(
+        "radishflow-studio-shell-untitled-save-then-example-{}.rfproj.json",
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("expected current timestamp")
+            .as_nanos()
+    ));
+    let mut app = ReadyAppState::from_config_with_project_file_picker(
+        &config,
+        preferences_path.clone(),
+        Box::new(TestProjectFilePicker::new(Some(target_project.clone()))),
+    )
+    .expect("expected app state");
+
+    app.create_blank_project();
+    app.save_project();
+    assert!(
+        !app.platform_host
+            .snapshot()
+            .window_model()
+            .runtime
+            .workspace_document
+            .has_unsaved_changes
+    );
+
+    app.open_example_project(example_project.clone());
+
+    let window = app.platform_host.snapshot().window_model();
+    assert_eq!(
+        window.runtime.workspace_document.project_path.as_deref(),
+        Some(example_project.display().to_string().as_str())
+    );
+    assert!(!window.runtime.workspace_document.has_unsaved_changes);
+    assert!(
+        app.project_open.pending_confirmation.is_none(),
+        "clean saved workspace should not require discard confirmation before opening another project"
+    );
+
+    let _ = std::fs::remove_file(preferences_path);
+    let _ = std::fs::remove_file(target_project);
+}
+
+#[test]
 fn create_blank_project_requires_clean_workspace() {
     let (config, project_path) = flash_drum_local_rules_synced_config();
     let mut app = ReadyAppState::from_config_with_project_file_picker(

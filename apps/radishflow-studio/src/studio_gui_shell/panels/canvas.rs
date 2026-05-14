@@ -72,7 +72,7 @@ impl ReadyAppState {
                         if ui
                             .add_enabled(
                                 suggestion.explicit_accept_enabled,
-                                egui::Button::new("Apply"),
+                                egui::Button::new(self.locale.text(ShellText::ConnectSuggestion)),
                             )
                             .clicked()
                         {
@@ -199,6 +199,7 @@ impl ReadyAppState {
                         )
                         .on_hover_text(&item.detail);
                     if response.clicked() {
+                        self.right_sidebar_tab = StudioShellRightSidebarTab::Inspector;
                         self.dispatch_ui_command(&item.command_id);
                     }
                     ui.horizontal_wrapped(|ui| {

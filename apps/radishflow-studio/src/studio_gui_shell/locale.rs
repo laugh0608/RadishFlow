@@ -22,6 +22,8 @@ pub(super) enum ShellText {
     NewBlankProject,
     OpenProjectFromDisk,
     RunCurrentWorkspace,
+    InspectObject,
+    ConnectSuggestion,
     ShowCommands,
     HideCommands,
     DropPreview,
@@ -245,6 +247,8 @@ impl ShellText {
             ShellText::NewBlankProject => "New blank",
             ShellText::OpenProjectFromDisk => "Open project...",
             ShellText::RunCurrentWorkspace => "Run",
+            ShellText::InspectObject => "Inspect",
+            ShellText::ConnectSuggestion => "Connect",
             ShellText::ShowCommands => "Show commands",
             ShellText::HideCommands => "Hide commands",
             ShellText::DropPreview => "Drop preview",
@@ -294,7 +298,9 @@ impl ShellText {
                 "Selected stream was not present in the latest snapshot."
             }
             ShellText::ActiveInspectorTarget => "Inspector target",
-            ShellText::NoActiveInspectorTarget => "Select a stream or unit on the canvas.",
+            ShellText::NoActiveInspectorTarget => {
+                "Select a stream or unit from Project or the canvas."
+            }
             ShellText::InspectorProperties => "Properties",
             ShellText::InspectorFieldName => "Field",
             ShellText::InspectorFieldKind => "Kind",
@@ -372,6 +378,8 @@ impl ShellText {
             ShellText::NewBlankProject => "新建空白",
             ShellText::OpenProjectFromDisk => "打开项目...",
             ShellText::RunCurrentWorkspace => "运行",
+            ShellText::InspectObject => "检查",
+            ShellText::ConnectSuggestion => "连接",
             ShellText::ShowCommands => "显示命令",
             ShellText::HideCommands => "隐藏命令",
             ShellText::DropPreview => "拖放预览",
@@ -419,7 +427,7 @@ impl ShellText {
             ShellText::NoRelatedDiagnostics => "没有直接关联这股流股的诊断。",
             ShellText::StaleStreamSelection => "已选流股不在最新快照中。",
             ShellText::ActiveInspectorTarget => "检查器目标",
-            ShellText::NoActiveInspectorTarget => "请在画布上选择流股或单元。",
+            ShellText::NoActiveInspectorTarget => "请从左侧 Project 或画布选择流股/单元。",
             ShellText::InspectorProperties => "属性",
             ShellText::InspectorFieldName => "字段",
             ShellText::InspectorFieldKind => "类型",

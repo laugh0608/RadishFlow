@@ -207,6 +207,7 @@ fn top_bar_keeps_alpha_primary_path_visible_and_hides_low_frequency_controls() {
         "打开项目...",
         "运行",
         "保存",
+        "另存为...",
         "命令面板 (Ctrl+K)",
         "视图",
     ] {

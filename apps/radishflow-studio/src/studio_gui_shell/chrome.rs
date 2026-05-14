@@ -104,6 +104,12 @@ impl ReadyAppState {
                 {
                     self.save_project();
                 }
+                if ui
+                    .button(self.locale.text(ShellText::SaveProjectAs))
+                    .clicked()
+                {
+                    self.save_project_as_from_picker();
+                }
                 let commands_visible = window
                     .layout_state
                     .panel(StudioGuiWindowAreaId::Commands)
@@ -161,6 +167,7 @@ impl ReadyAppState {
                     render_wrapped_small(ui, path);
                 });
             }
+            self.render_project_operation_strip(ui);
             if !window.commands.menu_tree.is_empty()
                 && window
                     .layout_state
@@ -469,16 +476,27 @@ impl ReadyAppState {
         ui: &mut egui::Ui,
         item: &radishflow_studio::StudioGuiCanvasObjectListItemViewModel,
     ) {
-        let response = ui
-            .add(
-                egui::Button::new(format!("  {}", item.label))
-                    .selected(item.is_active)
-                    .frame(false),
-            )
-            .on_hover_text(&item.detail);
-        if response.clicked() {
-            self.dispatch_ui_command(&item.command_id);
-        }
+        ui.horizontal_wrapped(|ui| {
+            let response = ui
+                .add(
+                    egui::Button::new(format!("  {}", item.label))
+                        .selected(item.is_active)
+                        .frame(false),
+                )
+                .on_hover_text(&item.detail);
+            if response.clicked() {
+                self.right_sidebar_tab = StudioShellRightSidebarTab::Inspector;
+                self.dispatch_ui_command(&item.command_id);
+            }
+            if ui
+                .small_button(self.locale.text(ShellText::InspectObject))
+                .on_hover_text(&item.detail)
+                .clicked()
+            {
+                self.right_sidebar_tab = StudioShellRightSidebarTab::Inspector;
+                self.dispatch_ui_command(&item.command_id);
+            }
+        });
         if let Some(summary) = item.attention_summary.as_ref() {
             render_wrapped_small(ui, summary);
         }
@@ -528,7 +546,7 @@ impl ReadyAppState {
                 if ui
                     .add_enabled(
                         suggestion.explicit_accept_enabled,
-                        egui::Button::new("Apply"),
+                        egui::Button::new(self.locale.text(ShellText::ConnectSuggestion)),
                     )
                     .clicked()
                 {
@@ -593,6 +611,55 @@ impl ReadyAppState {
                     self.render_runtime_entitlement_tab(ui, window)
                 }
             });
+    }
+
+    fn render_project_operation_strip(&mut self, ui: &mut egui::Ui) {
+        if self.project_open.pending_confirmation.is_none()
+            && self.project_open.pending_save_as_overwrite.is_none()
+        {
+            return;
+        }
+
+        ui.separator();
+        ui.horizontal_wrapped(|ui| {
+            if let Some(notice) = self.project_open.notice.as_ref() {
+                let color = match notice.level {
+                    ProjectOpenNoticeLevel::Info => egui::Color32::from_rgb(66, 118, 92),
+                    ProjectOpenNoticeLevel::Warning => egui::Color32::from_rgb(160, 120, 40),
+                    ProjectOpenNoticeLevel::Error => egui::Color32::from_rgb(180, 40, 40),
+                };
+                ui.colored_label(color, &notice.title);
+                render_wrapped_small(ui, &notice.detail);
+            }
+            if self.project_open.pending_confirmation.is_some() {
+                if ui
+                    .button(self.locale.text(ShellText::ContinueOpenProject))
+                    .clicked()
+                {
+                    self.confirm_pending_project_open();
+                }
+                if ui
+                    .button(self.locale.text(ShellText::CancelOpenProject))
+                    .clicked()
+                {
+                    self.cancel_pending_project_open();
+                }
+            }
+            if self.project_open.pending_save_as_overwrite.is_some() {
+                if ui
+                    .button(self.locale.text(ShellText::ConfirmSaveAsOverwrite))
+                    .clicked()
+                {
+                    self.confirm_pending_save_as_overwrite();
+                }
+                if ui
+                    .button(self.locale.text(ShellText::CancelSaveAsOverwrite))
+                    .clicked()
+                {
+                    self.cancel_pending_save_as_overwrite();
+                }
+            }
+        });
     }
 
     fn render_bottom_workbench(&mut self, ui: &mut egui::Ui, window: &StudioGuiWindowModel) {
