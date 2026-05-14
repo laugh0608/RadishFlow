@@ -44,8 +44,11 @@ use self::locale::{ShellText, StudioShellLocale};
 use self::project_picker::{NativeProjectFilePicker, ProjectFilePicker};
 use self::utils::*;
 
+const STUDIO_INITIAL_WINDOW_SIZE: [f32; 2] = [1280.0, 860.0];
+const STUDIO_MIN_WINDOW_SIZE: [f32; 2] = [1024.0, 720.0];
+
 pub fn run() -> eframe::Result<()> {
-    let native_options = eframe::NativeOptions::default();
+    let native_options = studio_native_options();
     eframe::run_native(
         "RadishFlow Studio",
         native_options,
@@ -54,6 +57,15 @@ pub fn run() -> eframe::Result<()> {
             Ok(Box::new(RadishFlowStudioApp::new()))
         }),
     )
+}
+
+fn studio_native_options() -> eframe::NativeOptions {
+    eframe::NativeOptions {
+        viewport: egui::ViewportBuilder::default()
+            .with_inner_size(STUDIO_INITIAL_WINDOW_SIZE)
+            .with_min_inner_size(STUDIO_MIN_WINDOW_SIZE),
+        ..Default::default()
+    }
 }
 
 struct RadishFlowStudioApp {

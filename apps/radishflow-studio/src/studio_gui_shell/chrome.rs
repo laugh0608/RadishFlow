@@ -12,6 +12,29 @@ impl ReadyAppState {
         egui::TopBottomPanel::top("studio.titlebar").show(ctx, |ui| {
             ui.horizontal_wrapped(|ui| {
                 ui.heading(window.header.title);
+                ui.separator();
+                render_wrapped_small(ui, &window.runtime.workspace_document.title);
+                render_status_chip(
+                    ui,
+                    self.locale
+                        .runtime_label(window.runtime.run_panel.view().mode_label)
+                        .as_ref(),
+                    egui::Color32::from_rgb(86, 118, 168),
+                );
+                render_status_chip(
+                    ui,
+                    self.locale
+                        .runtime_label(window.runtime.run_panel.view().status_label)
+                        .as_ref(),
+                    run_status_color(window.runtime.run_panel.view().status_label),
+                );
+                if let Some(pending) = window.runtime.run_panel.view().pending_label {
+                    render_status_chip(
+                        ui,
+                        self.locale.runtime_label(pending).as_ref(),
+                        egui::Color32::from_rgb(160, 120, 40),
+                    );
+                }
                 if window.runtime.workspace_document.has_unsaved_changes {
                     render_status_chip(
                         ui,
@@ -61,7 +84,8 @@ impl ReadyAppState {
                 if ui
                     .add_enabled(
                         run_enabled,
-                        egui::Button::new(self.locale.text(ShellText::RunCurrentWorkspace)),
+                        egui::Button::new(self.locale.text(ShellText::RunCurrentWorkspace))
+                            .fill(egui::Color32::from_rgb(230, 239, 252)),
                     )
                     .on_hover_text(run_hover)
                     .clicked()
@@ -101,32 +125,36 @@ impl ReadyAppState {
                 if ui.button(palette_label).clicked() {
                     self.command_palette.toggle();
                 }
-            });
-            ui.horizontal_wrapped(|ui| {
-                render_wrapped_small(ui, &window.runtime.workspace_document.title);
-                if let Some(path) = window.runtime.workspace_document.project_path.as_ref() {
-                    render_wrapped_small(ui, path);
-                }
-            });
-            ui.horizontal_wrapped(|ui| {
-                let english = self.locale.text(ShellText::English);
-                let chinese = self.locale.text(ShellText::Chinese);
-                ui.selectable_value(&mut self.locale, StudioShellLocale::ZhCn, chinese);
-                ui.selectable_value(&mut self.locale, StudioShellLocale::En, english);
-                if windows.len() > 1 {
+                ui.menu_button(self.locale.text(ShellText::ViewOptions), |ui| {
+                    let english = self.locale.text(ShellText::English);
+                    let chinese = self.locale.text(ShellText::Chinese);
+                    ui.horizontal_wrapped(|ui| {
+                        ui.selectable_value(&mut self.locale, StudioShellLocale::ZhCn, chinese);
+                        ui.selectable_value(&mut self.locale, StudioShellLocale::En, english);
+                    });
                     ui.separator();
-                    ui.label(
-                        egui::RichText::new(self.locale.text(ShellText::LogicalWindows)).strong(),
-                    );
-                    self.render_logical_window_chips(ui, windows);
-                }
-                if ui
-                    .button(self.locale.text(ShellText::NewLogicalWindow))
-                    .clicked()
-                {
-                    self.dispatch_event(StudioGuiEvent::OpenWindowRequested);
-                }
+                    if ui
+                        .button(self.locale.text(ShellText::NewLogicalWindow))
+                        .clicked()
+                    {
+                        self.dispatch_event(StudioGuiEvent::OpenWindowRequested);
+                        ui.close_menu();
+                    }
+                    if windows.len() > 1 {
+                        ui.separator();
+                        ui.label(
+                            egui::RichText::new(self.locale.text(ShellText::LogicalWindows))
+                                .strong(),
+                        );
+                        self.render_logical_window_chips(ui, windows);
+                    }
+                });
             });
+            if let Some(path) = window.runtime.workspace_document.project_path.as_ref() {
+                ui.horizontal_wrapped(|ui| {
+                    render_wrapped_small(ui, path);
+                });
+            }
             if !window.commands.menu_tree.is_empty()
                 && window
                     .layout_state

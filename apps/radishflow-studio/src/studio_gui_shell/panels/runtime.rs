@@ -55,20 +55,19 @@ impl ReadyAppState {
                 }
             });
             ui.add_space(4.0);
-            ui.vertical(|ui| {
+            ui.horizontal_wrapped(|ui| {
                 let primary = run_panel.primary_action();
                 let response = ui.add_enabled(
                     primary.enabled,
-                    egui::Button::new(self.locale.runtime_label(primary.label).as_ref()),
+                    egui::Button::new(self.locale.runtime_label(primary.label).as_ref())
+                        .fill(egui::Color32::from_rgb(230, 239, 252)),
                 );
                 let response = response.on_hover_text(primary.detail);
                 if response.clicked() {
                     self.dispatch_run_panel_widget(run_panel.activate_primary());
                 }
-                render_wrapped_small(ui, primary.detail);
 
                 for action in &run_panel_view.secondary_actions {
-                    ui.add_space(4.0);
                     let response = ui.add_enabled(
                         action.enabled,
                         egui::Button::new(self.locale.runtime_label(action.label).as_ref()),
@@ -77,7 +76,6 @@ impl ReadyAppState {
                     if response.clicked() {
                         self.dispatch_run_panel_widget(run_panel.activate(action.id));
                     }
-                    render_wrapped_small(ui, action.detail);
                 }
             });
             ui.add_space(6.0);
@@ -185,45 +183,46 @@ impl ReadyAppState {
                 render_wrapped_small(ui, path);
             }
             ui.separator();
-            ui.label(egui::RichText::new(self.locale.text(ShellText::ProjectPath)).strong());
-            ui.add(
-                egui::TextEdit::singleline(&mut self.project_open.path_input)
-                    .desired_width(f32::INFINITY),
-            );
-            ui.horizontal_wrapped(|ui| {
-                if ui
-                    .button(self.locale.text(ShellText::SaveProject))
-                    .clicked()
-                {
-                    self.save_project();
-                }
-                if ui
-                    .button(self.locale.text(ShellText::SaveProjectAs))
-                    .clicked()
-                {
-                    self.save_project_as_from_picker();
-                }
-                if ui
-                    .button(self.locale.text(ShellText::OpenProject))
-                    .clicked()
-                {
-                    self.open_project_from_input();
-                }
-                if ui
-                    .button(self.locale.text(ShellText::BrowseProject))
-                    .clicked()
-                {
-                    self.open_project_from_picker();
-                }
-                if let Some(path) = document.project_path.as_ref() {
+            ui.collapsing(self.locale.text(ShellText::ProjectPath), |ui| {
+                ui.add(
+                    egui::TextEdit::singleline(&mut self.project_open.path_input)
+                        .desired_width(f32::INFINITY),
+                );
+                ui.horizontal_wrapped(|ui| {
                     if ui
-                        .button(self.locale.text(ShellText::UseCurrentPath))
+                        .button(self.locale.text(ShellText::SaveProject))
                         .clicked()
                     {
-                        self.project_open.path_input = path.clone();
-                        self.project_open.notice = None;
+                        self.save_project();
                     }
-                }
+                    if ui
+                        .button(self.locale.text(ShellText::SaveProjectAs))
+                        .clicked()
+                    {
+                        self.save_project_as_from_picker();
+                    }
+                    if ui
+                        .button(self.locale.text(ShellText::OpenProject))
+                        .clicked()
+                    {
+                        self.open_project_from_input();
+                    }
+                    if ui
+                        .button(self.locale.text(ShellText::BrowseProject))
+                        .clicked()
+                    {
+                        self.open_project_from_picker();
+                    }
+                    if let Some(path) = document.project_path.as_ref() {
+                        if ui
+                            .button(self.locale.text(ShellText::UseCurrentPath))
+                            .clicked()
+                        {
+                            self.project_open.path_input = path.clone();
+                            self.project_open.notice = None;
+                        }
+                    }
+                });
             });
             if let Some(notice) = self.project_open.notice.as_ref() {
                 let color = match notice.level {
@@ -562,8 +561,7 @@ impl ReadyAppState {
             });
 
             ui.add_space(8.0);
-            egui::Frame::group(ui.style()).show(ui, |ui| {
-                ui.label(egui::RichText::new(self.locale.text(ShellText::Scheduler)).strong());
+            ui.collapsing(self.locale.text(ShellText::Scheduler), |ui| {
                 render_wrapped_small(
                     ui,
                     "Host lifecycle actions are routed through dedicated UI surfaces or native events.",
@@ -576,8 +574,7 @@ impl ReadyAppState {
         }
 
         ui.add_space(8.0);
-        egui::Frame::group(ui.style()).show(ui, |ui| {
-            ui.label(egui::RichText::new(self.locale.text(ShellText::RuntimeLog)).strong());
+        ui.collapsing(self.locale.text(ShellText::RuntimeLog), |ui| {
             egui::ScrollArea::vertical()
                 .id_salt(format!(
                     "scroll:{}:{}:runtime-log",
@@ -600,8 +597,7 @@ impl ReadyAppState {
         });
 
         ui.add_space(8.0);
-        egui::Frame::group(ui.style()).show(ui, |ui| {
-            ui.label(egui::RichText::new(self.locale.text(ShellText::GuiActivity)).strong());
+        ui.collapsing(self.locale.text(ShellText::GuiActivity), |ui| {
             egui::ScrollArea::vertical()
                 .id_salt(format!(
                     "scroll:{}:{}:gui-activity",

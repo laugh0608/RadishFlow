@@ -6,6 +6,59 @@ use radishflow_studio::test_support::{
     solve_snapshot_model_from_project_with_provider_and_edit,
 };
 
+fn render_top_bar_texts(app: &mut ReadyAppState) -> Vec<String> {
+    let snapshot = app.platform_host.snapshot();
+    let window = snapshot.window_model();
+    let windows = snapshot.app_host_state.windows.clone();
+    let ctx = egui::Context::default();
+    let _ = ctx.run(
+        egui::RawInput {
+            screen_rect: Some(egui::Rect::from_min_size(
+                egui::Pos2::ZERO,
+                egui::vec2(1280.0, 720.0),
+            )),
+            focused: true,
+            ..Default::default()
+        },
+        |ctx| {
+            let mut hovered_drop_target = false;
+            app.render_top_bar(ctx, &windows, &window, &mut hovered_drop_target);
+        },
+    );
+    let output = ctx.run(
+        egui::RawInput {
+            screen_rect: Some(egui::Rect::from_min_size(
+                egui::Pos2::ZERO,
+                egui::vec2(1280.0, 720.0),
+            )),
+            focused: true,
+            ..Default::default()
+        },
+        |ctx| {
+            let mut hovered_drop_target = false;
+            app.render_top_bar(ctx, &windows, &window, &mut hovered_drop_target);
+        },
+    );
+
+    let mut texts = Vec::new();
+    for clipped_shape in &output.shapes {
+        collect_shape_texts(&clipped_shape.shape, &mut texts);
+    }
+    texts
+}
+
+fn collect_shape_texts(shape: &egui::epaint::Shape, texts: &mut Vec<String>) {
+    match shape {
+        egui::epaint::Shape::Text(text) => texts.push(text.galley.job.text.clone()),
+        egui::epaint::Shape::Vec(shapes) => {
+            for shape in shapes {
+                collect_shape_texts(shape, texts);
+            }
+        }
+        _ => {}
+    }
+}
+
 #[test]
 fn insert_neighbors_from_area_ids_returns_previous_and_next_for_middle_target() {
     let area_ids = [
@@ -64,6 +117,7 @@ fn shell_locale_defaults_to_chinese_and_can_translate_runtime_labels() {
     assert_eq!(locale.text(ShellText::ResultInspector), "结果检查器");
     assert_eq!(locale.text(ShellText::StreamComparison), "流股对比");
     assert_eq!(locale.text(ShellText::Delta), "差值");
+    assert_eq!(locale.text(ShellText::ViewOptions), "视图");
     assert_eq!(locale.text(ShellText::DiagnosticTargets), "诊断目标");
     assert_eq!(
         locale.text(ShellText::StaleStreamSelection),
@@ -98,6 +152,46 @@ fn shell_locale_defaults_to_chinese_and_can_translate_runtime_labels() {
         StudioShellLocale::En.runtime_label("Converged").as_ref(),
         "Converged"
     );
+}
+
+#[test]
+fn native_options_start_with_room_for_alpha_workspace() {
+    let options = studio_native_options();
+
+    assert_eq!(options.viewport.inner_size, Some(egui::vec2(1280.0, 860.0)));
+    assert_eq!(
+        options.viewport.min_inner_size,
+        Some(egui::vec2(1024.0, 720.0))
+    );
+}
+
+#[test]
+fn top_bar_keeps_alpha_primary_path_visible_and_hides_low_frequency_controls() {
+    let mut app = ready_app_state(&synced_workspace_config());
+    let texts = render_top_bar_texts(&mut app);
+
+    for expected in [
+        "快速操作",
+        "打开示例",
+        "打开项目...",
+        "运行",
+        "保存",
+        "命令面板 (Ctrl+K)",
+        "视图",
+    ] {
+        assert!(
+            texts.iter().any(|text| text.contains(expected)),
+            "expected top bar to render `{expected}`, rendered texts: {:?}",
+            texts
+        );
+    }
+    for hidden in ["新建逻辑窗口", "English"] {
+        assert!(
+            !texts.iter().any(|text| text.contains(hidden)),
+            "expected top bar to hide `{hidden}` behind the view menu, rendered texts: {:?}",
+            texts
+        );
+    }
 }
 
 #[test]

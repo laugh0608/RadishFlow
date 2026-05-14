@@ -1,6 +1,6 @@
 # MVP Alpha Acceptance Checklist
 
-更新时间：2026-05-13
+更新时间：2026-05-14
 
 ## 用途
 
@@ -46,11 +46,12 @@
 
 | 项目 | 命令或入口 | 当前状态 | 通过标准 | 记录 |
 | --- | --- | --- | --- | --- |
-| 仓库级验证 | `pwsh ./scripts/check-repo.ps1` | Pass | Rust / 文本 / 仓库治理基线通过 | 2026-05-13 已通过；输出 `Repository checks passed.` |
-| 文本格式检查 | `git diff --check` | Pass | 无 whitespace error | 2026-05-13 已通过 |
+| 仓库级验证 | `pwsh ./scripts/check-repo.ps1` | Pass | Rust / 文本 / 仓库治理基线通过 | 2026-05-14 已通过；输出 `Repository checks passed.` |
+| 文本格式检查 | `git diff --check` | Pass | 无 whitespace error | 2026-05-14 已通过 |
 | 文档体量报告 | `pwsh ./scripts/check-doc-size.ps1` | Pass | 默认入口未重新膨胀；既有超限项可解释 | 2026-05-13 已运行；仍只报告既有 roadmap 与历史周志超限 |
 | `rf-ffi` JSON/error 基线 | `pwsh ./scripts/check-repo.ps1` 覆盖；必要时补 `cargo test -p rf-ffi` | Pass | solve snapshot / stream JSON 与 structured error 回归稳定 | 2026-05-13 仓库级验证通过 |
 | official / synthetic 数值基线 | `pwsh ./scripts/check-repo.ps1` 覆盖 | Pass | golden、raw solver 与 Studio focused 回归稳定 | 2026-05-13 仓库级验证通过 |
+| Studio shell UI presentation | `cargo test -p radishflow-studio studio_gui_shell` | Pass | 顶部主路径、结果面、命令面和 runtime focused 回归稳定 | 2026-05-14 已通过，90 个 shell focused tests 通过 |
 
 ## Studio 手动 Smoke
 
@@ -119,9 +120,18 @@
 | 运行与关闭 smoke blocker | Pass | 2026-05-13 人工点击顶部运行后暴露 GUI 回调异常、缺少控制台审计、Windows debug 栈溢出和最后窗口关闭异常；已补 GUI panic 降级、命令可用性门控、默认 stderr 审计线、主线程栈保留、跳过启动 entitlement preflight，并修正最后 viewport close 不再拦截原生关闭请求 |
 | UI 规范化后续 | Pending | 当前 blocker 已收敛；下一步先做 Studio UI 信息层级、面板密度、主路径按钮状态、结果/日志展示和视觉一致性规范化，不扩 MVP 求解范围或自由连线编辑器 |
 
+### 2026-05-14
+
+| 项目 | 状态 | 记录 |
+| --- | --- | --- |
+| Studio UI 规范化 | Pass | 顶部栏现在第一行展示项目标题、运行模式、运行状态、pending 与未保存状态；快速操作继续保留 `打开示例 / 打开项目 / 运行 / 保存 / 命令面板`，语言切换和逻辑窗口入口收进 `视图` 菜单；启动初始窗口为 `1280x860`，最小内尺寸为 `1024x720` |
+| Runtime 信息密度 | Pass | Run card 的动作按钮改为横向主路径，低频项目路径编辑、调度器、运行日志和 GUI 活动默认折叠；结果与 Active Inspector 仍只读消费同一份 `SolveSnapshot` |
+| 自动验证 | Pass | `cargo fmt --all`、`cargo test -p radishflow-studio studio_gui_shell`、`git diff --check` 与 `pwsh ./scripts/check-repo.ps1` 已通过 |
+| 用户视角 smoke | Pending | 下一步按 Smoke A / C 先做人工验证，再视情况补 Smoke B；若暴露 blocker 再按分类修复 |
+
 ## 下一步
 
-1. 下一轮先做 Studio UI 优化和规范化，优先收敛首屏层级、快速操作条、左右面板默认状态、Runtime / Result Inspector / Active Inspector 的信息密度和状态文案。
-2. UI 规范化后按 Smoke A / B / C 至少完成两条用户视角记录。
+1. 按 Smoke A / C 先完成两条用户视角记录，确认打开示例、运行、审阅、保存重开，以及 Stream Inspector 草稿 / 未归一组成阻断稳定。
+2. 若 A / C 无 blocker，再执行 Smoke B 的空白建模最短闭环。
 3. 若人工 smoke 暴露 blocker，按分类修复；若没有 blocker，进入 MVP α 发布包形态与发布说明收口。
 4. 后续补发布操作清单时，继续沿 `docs/architecture/versioning.md` 的 tag / release 轨道口径展开，不在 quick start 中暗示已存在完整安装器。

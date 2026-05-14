@@ -258,6 +258,34 @@ fn rendered_text_occurrences(texts: &[String], expected: &str) -> usize {
     texts.iter().filter(|text| text.contains(expected)).count()
 }
 
+#[test]
+fn runtime_panel_keeps_developer_activity_sections_collapsed_by_default() {
+    let mut app = ready_app_state(&synced_workspace_config());
+    let window = app.platform_host.snapshot().window_model();
+    let texts = render_runtime_area_texts(&mut app, |app, ui| {
+        app.render_runtime_area_contents(ui, &window, StudioGuiWindowAreaId::Runtime);
+    });
+
+    for expected in ["运行日志", "GUI 活动"] {
+        assert!(
+            texts.iter().any(|text| text.contains(expected)),
+            "expected runtime panel to expose collapsed `{expected}` section, rendered texts: {:?}",
+            texts
+        );
+    }
+    for hidden_detail in [
+        "Host lifecycle actions are routed",
+        "暂无运行日志。",
+        "暂无 GUI 宿主事件。",
+    ] {
+        assert!(
+            !texts.iter().any(|text| text.contains(hidden_detail)),
+            "expected runtime panel to keep `{hidden_detail}` out of the default view, rendered texts: {:?}",
+            texts
+        );
+    }
+}
+
 fn assert_stream_window_rendered(
     app: &mut ReadyAppState,
     snapshot: &StudioGuiWindowSolveSnapshotModel,
