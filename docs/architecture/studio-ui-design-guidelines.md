@@ -1,6 +1,6 @@
 # Studio UI Design Guidelines
 
-更新时间：2026-05-14
+更新时间：2026-05-16
 
 ## 用途
 
@@ -111,7 +111,9 @@ UI 参考素材当前保存在 `docs/architecture/assets/studio-ui/`。下表使
 - 建模对象、连接建议、运行、结果和错误分别属于哪个区域。
 - 人工 smoke 时应该按什么路径操作和观察结果。
 
-下一轮先讨论并冻结工作台信息架构，再进入代码实现。除非是修复阻塞性错误，不应继续在现有杂乱布局上叠加零散按钮、临时说明、调试状态或一次性 smoke 面板。
+2026-05-16 已完成 Home Dashboard 与 Workbench 第一轮真实 UI 收口。后续不再回到“先讨论首页分区”的阶段；下一轮应优先处理 Canvas viewport 初始居中 / fit-to-content，以及少量仍暴露的中英混合文案和按钮语义。
+
+除非是修复阻塞性错误，不应继续在现有布局上叠加零散按钮、临时说明、调试状态或一次性 smoke 面板。
 
 ## 信息架构
 
@@ -128,6 +130,7 @@ Studio 默认工作台建议分为六个稳定区域。
 规则：
 
 - Home Dashboard 不是营销欢迎页，也不是完整控制台；它是工程软件启动面板。
+- Home Dashboard 默认使用中文界面；工程术语、包名、版本、路径和文件扩展名保留原文，用户动作、状态、消息和环境字段使用中文。
 - 页面应保留 `radishflow-workbench-concept.png` 的轻量浅色风格、克制蓝色主强调、状态 chip 和清晰分区，但不显示流程图画布。
 - `radishflow-home-dashboard-concept-v2-20260516.png` 当前作为启动首页视觉基线：它比早期概念稿更接近当前信息架构，Start actions、Recent Cases、Example Cases、Environment 和 Messages 的职责边界更清楚。
 - `radishflow-home-dashboard-concept.png` 保留为早期概念稿参考：它的信息架构方向正确，但字段和示例数据偏概念演示，不作为后续实现的优先基线。
@@ -238,6 +241,7 @@ Studio 默认工作台建议分为六个稳定区域。
 规则：
 
 - 画布默认占窗口最大面积，左右侧栏和底部面板不得压缩到只剩小预览。
+- 打开示例或项目后，Canvas viewport 应根据当前单元与流股 bounds 做初始 fit-to-content / center；小流程不应固定在左上角。这只属于初始呈现优化，不引入自动布线、自由连线或视口持久化。
 - 画布工具条应以图标或短标签表达选择、放置、连接、平移、缩放、适配视图。
 - 本地建模 suggestion 的接受动作应使用明确的 `连接` / `Connect` 或等价动词，不用泛化的 `Apply` 让用户猜测会改写什么。
 - 长说明、状态解释和开发态计数不直接堆在画布上方；进入 legend、tooltip 或底部消息。
@@ -274,7 +278,7 @@ Studio 默认工作台建议分为六个稳定区域。
 
 规则：
 
-- 默认高度建议 180-260 px，可折叠。
+- 默认 Messages 可更紧凑；无错误、无运行日志堆积时建议约 130-160 px 保持可行动摘要。Results / Diagnostics 可按内容需要更高，后续再评估用户可手动折叠 / resize。
 - Messages 放用户可行动摘要，Run Log 放较原始的运行过程。
 - 结果表格按 stream-centric / unit-centric 组织，保持和 `SolveSnapshot` 语义一致。
 - 底部面板不应默认展示整屏原始日志；原始日志作为展开详情或复制入口。
@@ -390,14 +394,13 @@ RadishFlow 默认浅色中性底，搭配少量语义色。
 
 后续实现应按以下顺序拆分，避免一次性重写 UI：
 
-1. 先冻结首屏草图和分区职责：顶部、左侧、中央、右侧、底部各放什么，不先写代码。
-2. 顶部 command bar 定型：保留项目身份、主路径命令和运行状态，清理调试式状态常驻。
-3. 左侧区域改为 Examples / Project / Palette 三入口：示例管理、项目树和对象库分职责，不再展示完整命令大全。
-4. Canvas header / toolbar 重排：把 Place / suggestion / selection / zoom / legend 分开，长说明进入 tooltip 或底部 Messages。
-5. 右侧 Runtime 面板拆成任务化 Inspector：Inspector、Run、Results、Package 只显示当前相关内容。
-6. 底部建立 Messages / Run Log / Results drawer：把运行日志、GUI activity 和结果摘要从右侧长列表中迁出。
-7. 画布对象视觉升级：先统一 MVP 单元图形、流股标签、选中态和错误 badge，再考虑更多设备符号。
-8. 结果审阅表格化：在不改变 `SolveSnapshot` 语义的前提下提供 stream / unit 表格和诊断摘要。
+1. 已落地：首屏 Home Dashboard 分区、顶部 App Bar、Start actions、Recent / Example / Environment / Messages。
+2. 已落地：Workbench 顶部 command bar 主路径、左侧 Project / 示例入口、右侧 Inspector / Results / Run / Package、底部 Messages / Run Log / Results / Diagnostics drawer。
+3. 已落地：Canvas header / toolbar 第一轮压缩，Place / suggestion / selection / legend 不再以开发态长文本平铺。
+4. 下一步：Canvas viewport 初始 fit-to-content / center，让打开示例后的流程自然处于可视区域中央。
+5. 下一步：补齐少量中文文案和按钮语义，避免 `Open Case`、`Project opened` 等英文残留混入中文界面。
+6. 后续：画布对象视觉升级，统一 MVP 单元图形、流股标签、选中态和错误 badge，再考虑更多设备符号。
+7. 后续：结果审阅表格化，在不改变 `SolveSnapshot` 语义的前提下提供 stream / unit 表格和诊断摘要。
 
 ## 验收检查
 
