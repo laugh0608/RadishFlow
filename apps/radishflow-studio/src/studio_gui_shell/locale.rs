@@ -205,6 +205,8 @@ impl StudioShellLocale {
             "Focused" => Cow::Borrowed("已聚焦"),
             "Suggestion" => Cow::Borrowed("建议"),
             "Suggestions" => Cow::Borrowed("建议"),
+            "Place" => Cow::Borrowed("放置"),
+            "Move" => Cow::Borrowed("移动"),
             "Source" => Cow::Borrowed("源"),
             "Target" => Cow::Borrowed("目标"),
             "Ready" => Cow::Borrowed("就绪"),

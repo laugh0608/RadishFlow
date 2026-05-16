@@ -113,34 +113,37 @@ impl ReadyAppState {
                 {
                     self.save_project_as_from_picker();
                 }
-                let commands_visible = window
-                    .layout_state
-                    .panel(StudioGuiWindowAreaId::Commands)
-                    .map(|panel| panel.visible)
-                    .unwrap_or(false);
-                let commands_label = if commands_visible {
-                    self.locale.text(ShellText::HideCommands)
-                } else {
-                    self.locale.text(ShellText::ShowCommands)
-                };
-                if ui.button(commands_label).clicked() {
-                    self.dispatch_layout_mutation(
-                        current_window_id,
-                        StudioGuiWindowLayoutMutation::SetPanelVisibility {
-                            area_id: StudioGuiWindowAreaId::Commands,
-                            visible: !commands_visible,
-                        },
-                    );
-                }
-                let palette_label = if self.command_palette.open {
-                    self.locale.text(ShellText::HideCommandPalette)
-                } else {
-                    self.locale.text(ShellText::CommandPalette)
-                };
-                if ui.button(palette_label).clicked() {
-                    self.command_palette.toggle();
-                }
                 ui.menu_button(self.locale.text(ShellText::ViewOptions), |ui| {
+                    let palette_label = if self.command_palette.open {
+                        self.locale.text(ShellText::HideCommandPalette)
+                    } else {
+                        self.locale.text(ShellText::CommandPalette)
+                    };
+                    if ui.button(palette_label).clicked() {
+                        self.command_palette.toggle();
+                        ui.close_menu();
+                    }
+                    let commands_visible = window
+                        .layout_state
+                        .panel(StudioGuiWindowAreaId::Commands)
+                        .map(|panel| panel.visible)
+                        .unwrap_or(false);
+                    let commands_label = if commands_visible {
+                        self.locale.text(ShellText::HideCommands)
+                    } else {
+                        self.locale.text(ShellText::ShowCommands)
+                    };
+                    if ui.button(commands_label).clicked() {
+                        self.dispatch_layout_mutation(
+                            current_window_id,
+                            StudioGuiWindowLayoutMutation::SetPanelVisibility {
+                                area_id: StudioGuiWindowAreaId::Commands,
+                                visible: !commands_visible,
+                            },
+                        );
+                        ui.close_menu();
+                    }
+                    ui.separator();
                     let english = self.locale.text(ShellText::English);
                     let chinese = self.locale.text(ShellText::Chinese);
                     ui.horizontal_wrapped(|ui| {
@@ -165,11 +168,6 @@ impl ReadyAppState {
                     }
                 });
             });
-            if let Some(path) = window.runtime.workspace_document.project_path.as_ref() {
-                ui.horizontal_wrapped(|ui| {
-                    render_wrapped_small(ui, path);
-                });
-            }
             self.render_project_operation_strip(ui);
             if !window.commands.menu_tree.is_empty()
                 && window

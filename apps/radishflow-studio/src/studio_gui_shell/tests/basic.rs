@@ -244,7 +244,6 @@ fn top_bar_keeps_alpha_primary_path_visible_and_hides_low_frequency_controls() {
         "运行",
         "保存",
         "另存为...",
-        "命令面板 (Ctrl+K)",
         "视图",
     ] {
         assert!(
@@ -253,7 +252,12 @@ fn top_bar_keeps_alpha_primary_path_visible_and_hides_low_frequency_controls() {
             texts
         );
     }
-    for hidden in ["新建逻辑窗口", "English"] {
+    for hidden in [
+        "新建逻辑窗口",
+        "English",
+        "命令面板 (Ctrl+K)",
+        ".rfproj.json",
+    ] {
         assert!(
             !texts.iter().any(|text| text.contains(hidden)),
             "expected top bar to hide `{hidden}` behind the view menu, rendered texts: {:?}",

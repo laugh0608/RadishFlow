@@ -31,39 +31,93 @@ impl ReadyAppState {
     ) {
         ui.horizontal_wrapped(|ui| {
             ui.small(egui::RichText::new("Canvas").strong());
-            for action in &widget.actions {
-                let label = match action.shortcut.as_ref() {
-                    Some(shortcut) => format!(
-                        "{} ({})",
-                        self.locale.runtime_label(&action.label),
-                        format_shortcut(shortcut)
-                    ),
-                    None => self.locale.runtime_label(&action.label).into_owned(),
-                };
-                if ui
-                    .add_enabled(action.enabled, egui::Button::new(label))
-                    .on_hover_text(self.locale.runtime_label(&action.detail).as_ref())
-                    .clicked()
-                {
-                    match widget.activate(action.id) {
-                        radishflow_studio::StudioGuiCanvasWidgetEvent::Requested {
-                            event, ..
-                        } => self.dispatch_event(event),
-                        radishflow_studio::StudioGuiCanvasWidgetEvent::Disabled { .. }
-                        | radishflow_studio::StudioGuiCanvasWidgetEvent::Missing { .. }
-                        | radishflow_studio::StudioGuiCanvasWidgetEvent::SuggestionRequested {
-                            ..
-                        }
-                        | radishflow_studio::StudioGuiCanvasWidgetEvent::SuggestionDisabled {
-                            ..
-                        }
-                        | radishflow_studio::StudioGuiCanvasWidgetEvent::SuggestionMissing {
-                            ..
-                        } => {}
-                    }
-                }
+            ui.separator();
+            self.render_canvas_toolbar_group(ui, widget, "Place", |action| {
+                matches!(
+                    action.id,
+                    radishflow_studio::StudioGuiCanvasActionId::BeginPlaceUnit(_)
+                )
+            });
+            if !widget.view().suggestions.is_empty() {
+                ui.separator();
+                self.render_canvas_toolbar_group(ui, widget, "Suggestion", |action| {
+                    matches!(
+                        action.id,
+                        radishflow_studio::StudioGuiCanvasActionId::AcceptFocused
+                            | radishflow_studio::StudioGuiCanvasActionId::RejectFocused
+                            | radishflow_studio::StudioGuiCanvasActionId::FocusNext
+                            | radishflow_studio::StudioGuiCanvasActionId::FocusPrevious
+                    )
+                });
+            }
+            let has_edit_actions = widget.actions.iter().any(|action| {
+                action.enabled
+                    && matches!(
+                        action.id,
+                        radishflow_studio::StudioGuiCanvasActionId::CancelPendingEdit
+                            | radishflow_studio::StudioGuiCanvasActionId::MoveSelectedUnit(_)
+                    )
+            });
+            if has_edit_actions {
+                ui.separator();
+                self.render_canvas_toolbar_group(ui, widget, "Move", |action| {
+                    action.enabled
+                        && matches!(
+                            action.id,
+                            radishflow_studio::StudioGuiCanvasActionId::CancelPendingEdit
+                                | radishflow_studio::StudioGuiCanvasActionId::MoveSelectedUnit(_)
+                        )
+                });
             }
         });
+    }
+
+    fn render_canvas_toolbar_group(
+        &mut self,
+        ui: &mut egui::Ui,
+        widget: &radishflow_studio::StudioGuiCanvasWidgetModel,
+        title: &str,
+        filter: impl Fn(&radishflow_studio::StudioGuiCanvasRenderableAction) -> bool,
+    ) {
+        ui.small(
+            egui::RichText::new(self.locale.runtime_label(title).as_ref())
+                .color(egui::Color32::from_rgb(92, 104, 117)),
+        );
+        for action in widget.actions.iter().filter(|action| filter(action)) {
+            self.render_canvas_toolbar_action(ui, widget, action);
+        }
+    }
+
+    fn render_canvas_toolbar_action(
+        &mut self,
+        ui: &mut egui::Ui,
+        widget: &radishflow_studio::StudioGuiCanvasWidgetModel,
+        action: &radishflow_studio::StudioGuiCanvasRenderableAction,
+    ) {
+        let label = match action.shortcut.as_ref() {
+            Some(shortcut) => format!(
+                "{} ({})",
+                self.locale.runtime_label(&action.label),
+                format_shortcut(shortcut)
+            ),
+            None => self.locale.runtime_label(&action.label).into_owned(),
+        };
+        if ui
+            .add_enabled(action.enabled, egui::Button::new(label))
+            .on_hover_text(self.locale.runtime_label(&action.detail).as_ref())
+            .clicked()
+        {
+            match widget.activate(action.id) {
+                radishflow_studio::StudioGuiCanvasWidgetEvent::Requested { event, .. } => {
+                    self.dispatch_event(event)
+                }
+                radishflow_studio::StudioGuiCanvasWidgetEvent::Disabled { .. }
+                | radishflow_studio::StudioGuiCanvasWidgetEvent::Missing { .. }
+                | radishflow_studio::StudioGuiCanvasWidgetEvent::SuggestionRequested { .. }
+                | radishflow_studio::StudioGuiCanvasWidgetEvent::SuggestionDisabled { .. }
+                | radishflow_studio::StudioGuiCanvasWidgetEvent::SuggestionMissing { .. } => {}
+            }
+        }
     }
 
     fn render_canvas_suggestions(
@@ -312,11 +366,17 @@ impl ReadyAppState {
                         notice_color(rf_ui::RunPanelNoticeLevel::Warning),
                     );
                 }
-                if let Some(summary) = status.summary.as_ref() {
+                if let Some(summary) = status
+                    .summary
+                    .as_ref()
+                    .filter(|summary| !is_developer_canvas_status_summary(summary))
+                {
                     ui.small(truncate_canvas_label(summary, 42));
                 } else if let Some(reason) = status.pending_reason_label {
                     match self.locale {
-                        StudioShellLocale::En => ui.small(format!("pending={reason}")),
+                        StudioShellLocale::En => {
+                            ui.small(format!("pending: {}", self.locale.runtime_label(reason)))
+                        }
                         StudioShellLocale::ZhCn => {
                             ui.small(format!("待处理={}", self.locale.runtime_label(reason)))
                         }
@@ -1187,6 +1247,10 @@ fn truncate_canvas_label(value: &str, max_chars: usize) -> String {
         label.push_str("...");
     }
     label
+}
+
+fn is_developer_canvas_status_summary(summary: &str) -> bool {
+    summary.contains("pending reason") || summary.contains("diagnostics=")
 }
 
 fn canvas_status_badge_color(severity_label: &str) -> egui::Color32 {
