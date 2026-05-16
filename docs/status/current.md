@@ -34,11 +34,11 @@
 
 ## 下一步建议
 
-1. 先讨论并冻结 Studio 首屏工作台方案：顶部主路径、左侧示例 / 项目 / 对象库、中央画布、右侧 Inspector / Run / Results / Package、底部 Messages / Run Log / Results Table / Diagnostics。
-2. UI 重排作为当前首要开发任务，目标是让人工测试和首版 demo 用户能清楚知道“示例在哪里、怎么运行、结果在哪里、错误在哪里、下一步该点哪里”。
-3. 便携包和 `docs/releases/v26.5.1-dev.md` 暂作为内部验证资产保留，不创建 tag，不推进对外发布自动化。
-4. UI 方案确定后，再按工作台分区逐步实现；结果面继续只读消费 `SolveSnapshot`，不新增 shell 私有结果缓存。
-5. 在 UI 信息架构稳定后，再回到组分 / 物性包工作台、画布连线体验、结果表格和诊断体验等功能补强。
+1. 先讨论并冻结 Studio 启动首页 `Home Dashboard / Start Page`：欢迎 / 示例入口、最近 case、客户端信息、服务端信息、当前设备 / 本地环境、登录入口和环境消息。
+2. 再冻结进入 case 后的工作台方案：顶部主路径、左侧示例 / 项目 / 对象库、中央画布、右侧 Inspector / Run / Results / Package、底部 Messages / Run Log / Results Table / Diagnostics。
+3. UI 重排作为当前首要开发任务，目标是让人工测试和首版 demo 用户能清楚知道“示例在哪里、怎么运行、结果在哪里、错误在哪里、下一步该点哪里”。
+4. 便携包和 `docs/releases/v26.5.1-dev.md` 暂作为内部验证资产保留，不创建 tag，不推进对外发布自动化。
+5. UI 方案确定后，再按首页和工作台分区逐步实现；结果面继续只读消费 `SolveSnapshot`，不新增 shell 私有结果缓存。
 
 ## 暂不推进
 
