@@ -77,6 +77,31 @@ fn render_alpha_workbench_texts(app: &mut ReadyAppState) -> Vec<String> {
     texts
 }
 
+fn render_home_dashboard_texts(app: &mut ReadyAppState) -> Vec<String> {
+    let snapshot = app.platform_host.snapshot();
+    let window = snapshot.window_model();
+    let ctx = egui::Context::default();
+    let output = ctx.run(
+        egui::RawInput {
+            screen_rect: Some(egui::Rect::from_min_size(
+                egui::Pos2::ZERO,
+                egui::vec2(1280.0, 860.0),
+            )),
+            focused: true,
+            ..Default::default()
+        },
+        |ctx| {
+            app.render_home_dashboard(ctx, &window);
+        },
+    );
+
+    let mut texts = Vec::new();
+    for clipped_shape in &output.shapes {
+        collect_shape_texts(&clipped_shape.shape, &mut texts);
+    }
+    texts
+}
+
 fn collect_shape_texts(shape: &egui::epaint::Shape, texts: &mut Vec<String>) {
     match shape {
         egui::epaint::Shape::Text(text) => texts.push(text.galley.job.text.clone()),
@@ -267,6 +292,56 @@ fn shell_defaults_to_alpha_workbench_layout_regions() {
             texts
         );
     }
+}
+
+#[test]
+fn shell_starts_on_home_dashboard_with_start_environment_and_messages() {
+    let mut app = ready_app_state(&synced_workspace_config());
+
+    assert_eq!(app.screen, StudioShellScreen::Home);
+
+    let texts = render_home_dashboard_texts(&mut app);
+    for expected in [
+        "RadishFlow Studio",
+        "Start",
+        "New Blank Case",
+        "Open Case",
+        "Open Example Case",
+        "Recent Cases",
+        "Example Cases",
+        "Environment",
+        "Client",
+        "Server",
+        "Device",
+        "Messages",
+        "Local ready",
+    ] {
+        assert!(
+            texts.iter().any(|text| text.contains(expected)),
+            "expected home dashboard to render `{expected}`, rendered texts: {:?}",
+            texts
+        );
+    }
+}
+
+#[test]
+fn opening_case_from_home_switches_to_workbench() {
+    let mut app = ready_app_state(&synced_workspace_config());
+    let target_project = app
+        .platform_host
+        .snapshot()
+        .window_model()
+        .runtime
+        .example_projects
+        .iter()
+        .find(|example| example.id == "feed-valve-flash")
+        .expect("expected feed valve example")
+        .project_path
+        .clone();
+
+    app.open_example_project(target_project);
+
+    assert_eq!(app.screen, StudioShellScreen::Workbench);
 }
 
 #[test]

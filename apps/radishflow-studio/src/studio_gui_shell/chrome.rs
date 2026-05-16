@@ -49,6 +49,9 @@ impl ReadyAppState {
             ui.separator();
             ui.horizontal_wrapped(|ui| {
                 ui.label(egui::RichText::new(self.locale.text(ShellText::QuickActions)).strong());
+                if ui.button("Home").clicked() {
+                    self.screen = StudioShellScreen::Home;
+                }
                 ui.menu_button(self.locale.text(ShellText::OpenExample), |ui| {
                     if window.runtime.example_projects.is_empty() {
                         ui.small(self.locale.text(ShellText::NoRecentProjects));

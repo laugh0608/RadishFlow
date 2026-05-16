@@ -79,6 +79,7 @@ impl ReadyAppState {
                         "Created an untitled blank project. Use Save to choose a .rfproj.json path."
                             .to_string(),
                 });
+                self.screen = StudioShellScreen::Workbench;
                 self.platform_host
                     .record_activity_line("created untitled blank project".to_string());
                 self.dispatch_event(StudioGuiEvent::OpenWindowRequested);
@@ -359,6 +360,7 @@ impl ReadyAppState {
                         title: "Project opened".to_string(),
                         detail: format!("Opened {source_label}: {}", project_path.display()),
                     }));
+                self.screen = StudioShellScreen::Workbench;
                 self.platform_host.record_activity_line(format!(
                     "opened {source_label}: {}",
                     project_path.display()
@@ -437,6 +439,11 @@ impl ReadyAppState {
             self.dispatch_shortcuts(ctx);
         }
         let mut hovered_drop_target = false;
+        if self.screen == StudioShellScreen::Home {
+            self.render_home_dashboard(ctx, &window);
+            self.render_command_palette(ctx, &window.commands);
+            return;
+        }
         self.render_top_bar(
             ctx,
             &snapshot.app_host_state.windows,

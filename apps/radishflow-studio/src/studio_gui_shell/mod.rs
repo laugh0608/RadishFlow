@@ -30,6 +30,7 @@ use rf_ui::{
 mod app;
 mod chrome;
 mod fonts;
+mod home_dashboard;
 mod locale;
 mod panels;
 mod project_picker;
@@ -84,6 +85,7 @@ struct ReadyAppState {
     command_palette: CommandPaletteState,
     project_open: ProjectOpenState,
     result_inspector: ResultInspectorState,
+    screen: StudioShellScreen,
     left_sidebar_tab: StudioShellLeftSidebarTab,
     right_sidebar_tab: StudioShellRightSidebarTab,
     bottom_drawer_tab: StudioShellBottomDrawerTab,
@@ -98,6 +100,13 @@ struct ReadyAppState {
     active_drop_preview: Option<ActiveDropPreview>,
     drop_preview_overlay_anchor: Option<DropPreviewOverlayAnchor>,
     last_viewport_focused: Option<bool>,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+enum StudioShellScreen {
+    #[default]
+    Home,
+    Workbench,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -304,6 +313,7 @@ impl ReadyAppState {
                 recent_projects,
             ),
             result_inspector: ResultInspectorState::default(),
+            screen: StudioShellScreen::default(),
             left_sidebar_tab: StudioShellLeftSidebarTab::default(),
             right_sidebar_tab: StudioShellRightSidebarTab::default(),
             bottom_drawer_tab: StudioShellBottomDrawerTab::default(),
