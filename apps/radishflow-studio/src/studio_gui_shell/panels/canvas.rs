@@ -378,7 +378,7 @@ impl ReadyAppState {
                             ui.small(format!("pending: {}", self.locale.runtime_label(reason)))
                         }
                         StudioShellLocale::ZhCn => {
-                            ui.small(format!("待处理={}", self.locale.runtime_label(reason)))
+                            ui.small(format!("待处理: {}", self.locale.runtime_label(reason)))
                         }
                     };
                 }
@@ -453,7 +453,8 @@ impl ReadyAppState {
                 self.locale.runtime_label(viewport.layout_label).as_ref(),
                 egui::Color32::from_rgb(86, 96, 108),
             );
-            ui.small(&viewport.summary);
+            let viewport_summary = compact_canvas_viewport_summary(&viewport.summary, self.locale);
+            ui.small(viewport_summary).on_hover_text(&viewport.summary);
             if let Some(focus) = viewport.focus.as_ref() {
                 render_status_chip(
                     ui,
@@ -496,18 +497,8 @@ impl ReadyAppState {
             );
             for item in &legend.items {
                 let color = canvas_legend_swatch_color(item.swatch_label);
-                let label = format!(
-                    "{}: {}",
-                    self.locale.runtime_label(item.kind_label),
-                    self.locale.runtime_label(&item.label)
-                );
-                render_status_chip(ui, &label, color);
-                ui.add(
-                    egui::Label::new(egui::RichText::new(&item.detail).small())
-                        .wrap()
-                        .sense(egui::Sense::hover()),
-                )
-                .on_hover_text(&item.detail);
+                let label = compact_canvas_legend_item_label(item, self.locale);
+                render_canvas_chip_with_hover(ui, &label, color, &item.detail);
             }
         });
     }
@@ -1251,6 +1242,77 @@ fn truncate_canvas_label(value: &str, max_chars: usize) -> String {
 
 fn is_developer_canvas_status_summary(summary: &str) -> bool {
     summary.contains("pending reason") || summary.contains("diagnostics=")
+}
+
+fn compact_canvas_viewport_summary(summary: &str, locale: StudioShellLocale) -> String {
+    let Some((_, counts)) = summary.split_once(':') else {
+        return truncate_canvas_label(summary, 56);
+    };
+    let mut unit_count = None;
+    let mut stream_count = None;
+    for part in counts.split(',').map(str::trim) {
+        if part.contains("unit(s)") {
+            unit_count = part.split_whitespace().next();
+        } else if part.contains("material line(s)") {
+            stream_count = part.split_whitespace().next();
+        }
+    }
+    match (unit_count, stream_count, locale) {
+        (Some(units), Some(streams), StudioShellLocale::ZhCn) => {
+            format!("{units} 个单元 / {streams} 条物料线")
+        }
+        (Some(units), Some(streams), StudioShellLocale::En) => {
+            format!("{units} units / {streams} material lines")
+        }
+        _ => truncate_canvas_label(summary, 56),
+    }
+}
+
+fn compact_canvas_legend_item_label(
+    item: &radishflow_studio::StudioGuiCanvasLegendItemViewModel,
+    locale: StudioShellLocale,
+) -> String {
+    match item.kind_label {
+        "Run" => match locale {
+            StudioShellLocale::ZhCn => format!("运行: {}", locale.runtime_label(&item.label)),
+            StudioShellLocale::En => format!("Run: {}", item.label),
+        },
+        "Attention" => locale.runtime_label(&item.label).into_owned(),
+        "Ports" => {
+            let port_count = item.label.split_whitespace().next().unwrap_or(&item.label);
+            match locale {
+                StudioShellLocale::ZhCn => format!("端口: {port_count}"),
+                StudioShellLocale::En => format!("Ports: {port_count}"),
+            }
+        }
+        "Streams" => {
+            let stream_count = item.label.split_whitespace().next().unwrap_or(&item.label);
+            match locale {
+                StudioShellLocale::ZhCn => format!("流股: {stream_count}"),
+                StudioShellLocale::En => format!("Streams: {stream_count}"),
+            }
+        }
+        "Edit" => locale.runtime_label(&item.label).into_owned(),
+        _ => format!("{}: {}", item.kind_label, item.label),
+    }
+}
+
+fn render_canvas_chip_with_hover(
+    ui: &mut egui::Ui,
+    label: &str,
+    color: egui::Color32,
+    hover_text: &str,
+) {
+    let response = egui::Frame::new()
+        .fill(color.gamma_multiply(0.12))
+        .stroke(egui::Stroke::new(1.0, color.gamma_multiply(0.8)))
+        .corner_radius(6.0)
+        .inner_margin(egui::Margin::symmetric(8, 3))
+        .show(ui, |ui| {
+            ui.label(egui::RichText::new(label).color(color).small());
+        })
+        .response;
+    response.on_hover_text(hover_text);
 }
 
 fn canvas_status_badge_color(severity_label: &str) -> egui::Color32 {

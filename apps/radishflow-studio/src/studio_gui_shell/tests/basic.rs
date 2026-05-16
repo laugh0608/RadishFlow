@@ -290,10 +290,24 @@ fn shell_defaults_to_alpha_workbench_layout_regions() {
         "单位: SI",
         "求解器: 顺序模块法",
         "流程图模式",
+        "物料线",
     ] {
         assert!(
             texts.iter().any(|text| text.contains(expected)),
             "expected alpha workbench to render `{expected}`, rendered texts: {:?}",
+            texts
+        );
+    }
+    for hidden in [
+        "pending reason",
+        "diagnostics=0",
+        "info diagnostics stay out",
+        "green markers",
+        "arrows indicate",
+    ] {
+        assert!(
+            !texts.iter().any(|text| text.contains(hidden)),
+            "expected alpha workbench to hide developer canvas detail `{hidden}`, rendered texts: {:?}",
             texts
         );
     }
