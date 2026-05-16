@@ -202,16 +202,16 @@ pwsh ./scripts/package.ps1 -Version v26.5.1-dev -Clean
 - 不启动 PME 或外部宿主
 - 不加载第三方 CAPE-OPEN 模型
 
-Release Notes 应至少包含：
+内部包记录或 Release Notes 应至少包含：
 
-- 使用的规范版本 tag
+- 使用的包版本；若已创建规范 tag，再记录 tag
 - `pwsh ./scripts/check-repo.ps1` 结果
-- `pwsh ./scripts/package.ps1 -Version <tag> -Clean` 结果
+- `pwsh ./scripts/package.ps1 -Version <version> -Clean` 结果
 - MVP α Smoke A / B / C 记录引用
 - 当前能力边界和明确非目标
 - 已知环境前提，例如当前便携包优先面向 Windows
 
-当前版本化发布说明放在 `docs/releases/<tag>.md`。`scripts/package.ps1` 会在对应文件存在时把它复制进便携包，并在 `PACKAGE-MANIFEST.txt` 中记录 `releaseNotes` 路径；若对应文件不存在，则记录为 `not-included`。
+当前版本化说明放在 `docs/releases/<version-or-tag>.md`。`scripts/package.ps1` 会在对应文件存在时把它复制进便携包，并在 `PACKAGE-MANIFEST.txt` 中记录 `releaseNotes` 路径；若对应文件不存在，则记录为 `not-included`。`v26.5.1-dev` 当前只作为内部便携包版本号保留，暂缓创建 Git tag。
 
 ## 当前后续事项
 

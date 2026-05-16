@@ -13,8 +13,8 @@
 ## 当前阶段
 
 - 产品定位：以 Rust Core + Rust UI + `.NET 10` CAPE-OPEN/COM 适配层构建稳态流程模拟软件。
-- 当前主线：MVP 第一阶段的核心里程碑已越过最小线，当前转入 MVP α 验收与发布硬化，而不是继续主动扩展周边 presentation。
-- 当前重点：用用户可复现路径和仓库级验证确认 Rust Studio、数值基线、`rf-ffi` JSON/error 与 CAPE-OPEN / PME 回归基线仍能闭环；只修验收暴露的真实 blocker。
+- 当前主线：MVP 第一阶段最小闭环已经可验证，但尚未达到首版 demo 的产品可用水准；当前从发布 / tag 收口切回 Studio 首屏、信息架构和 UI 设计主线。
+- 当前重点：先把打开 App 后的默认工作台、示例管理、功能分区、画布主路径、Inspector / Results / Messages 的职责定清楚，降低人工测试和后续功能开发成本。
 - 当前验证基线：功能改动优先执行相关 focused tests；阶段性收口执行 `pwsh ./scripts/check-repo.ps1`。
 
 ## 最近完成摘要
@@ -27,22 +27,23 @@
 - 仓库基础治理已补齐根 `README.md`、文本格式门禁、代码规范、文档体量治理、路线图拆分和周志月份归档；默认入口文档继续保持摘要化。
 - 2026-05-13 至 2026-05-14 的人工 Studio smoke blocker 已收口：首屏主路径、运行门控、GUI panic 降级、Windows debug 主线程栈、最后窗口关闭、顶部快速操作、工作台重排和 Inspector 可发现性均已处理。
 - 2026-05-16 MVP α Studio 用户视角 Smoke A / B / C 已人工通过；同日中文界面资源已覆盖 smoke 高频路径，结构化 JSON 测试夹具也已避免 IDE 保存字段顺序导致的回归噪声。
-- 2026-05-16 已补 MVP α Windows 便携包入口：`scripts/package.ps1` 生成 staging / zip，附带 Studio exe、正向示例、样例物性包、关键文档、候选 release notes 和许可文件；Studio 打包后会优先从 exe 同目录的 `examples/flowsheets` 发现内置示例。`pwsh ./scripts/package.ps1 -Version v26.5.1-dev -Clean` 已通过。
-- 2026-05-16 已新增 `docs/releases/v26.5.1-dev.md`，记录 MVP α 候选 tag、验证结果、包内边界和创建 tag 前检查项；打包 manifest 会在对应文件存在时记录 `releaseNotes=docs/releases/v26.5.1-dev.md`。
+- 2026-05-16 已补 MVP α Windows 便携包入口：`scripts/package.ps1` 生成 staging / zip，附带 Studio exe、正向示例、样例物性包、关键文档、内部包记录和许可文件；Studio 打包后会优先从 exe 同目录的 `examples/flowsheets` 发现内置示例。该包仅作为内部验证产物，不代表首版 demo 或对外发布。
+- 2026-05-16 已新增 `docs/releases/v26.5.1-dev.md`，记录内部便携包、验证结果和包内边界；当前暂缓创建 `v26.5.1-dev` tag，后续等首版 demo 功能和 UI 可用性达到标准后再重新评估版本节点。
 
 完整过程和每日验证记录见 `docs/devlogs/2026-05/2026-W20.md` 以及更早周志。
 
 ## 下一步建议
 
-1. 从 `artifacts/packages/RadishFlow-v26.5.1-dev-windows-x64/` 直接启动包内 `radishflow-studio.exe` 做最后人工 smoke，重点确认包内示例发现、打开示例、运行、审阅和保存 / 重开。
-2. UI 规范化仍只服务 MVP α 验收，不扩自由连线编辑器、完整拖拽布局编辑器、完整报表系统或新的求解范围；结果面继续只读消费 `SolveSnapshot`，不新增 shell 私有结果缓存。
-3. 包内 smoke 无 blocker 后，执行创建 `v26.5.1-dev` tag 前最终检查；若要继续推进发布自动化，优先评估是否把 `scripts/package.ps1` 接到 tag 触发的 CI 工件归档，不要在当前便携包脚本中混入安装、COM 注册或 PME 自动化。
-4. 只修人工 smoke、打包 dry run 或仓库级验证暴露的真实 blocker；若只是收益递减的 focused 覆盖缺口，先记录而不是继续主动扩矩阵。
-5. 保持 `TP Flash` official / synthetic golden、raw solver focused tolerance 与 `rf-ffi` JSON/error 基线稳定，但不主动扩无限 near-boundary 矩阵。
+1. 先讨论并冻结 Studio 首屏工作台方案：顶部主路径、左侧示例 / 项目 / 对象库、中央画布、右侧 Inspector / Run / Results / Package、底部 Messages / Run Log / Results Table / Diagnostics。
+2. UI 重排作为当前首要开发任务，目标是让人工测试和首版 demo 用户能清楚知道“示例在哪里、怎么运行、结果在哪里、错误在哪里、下一步该点哪里”。
+3. 便携包和 `docs/releases/v26.5.1-dev.md` 暂作为内部验证资产保留，不创建 tag，不推进对外发布自动化。
+4. UI 方案确定后，再按工作台分区逐步实现；结果面继续只读消费 `SolveSnapshot`，不新增 shell 私有结果缓存。
+5. 在 UI 信息架构稳定后，再回到组分 / 物性包工作台、画布连线体验、结果表格和诊断体验等功能补强。
 
 ## 暂不推进
 
-- 不扩自由连线编辑器、拖拽布局编辑器、自动布线、视口持久化或完整结果报表。
+- 在 UI 信息架构未定稿前，不继续堆叠零散按钮、临时面板、调试状态或只为单次 smoke 服务的 presentation。
+- 不把当前 UI 重排误扩成完整自由连线编辑器、完整拖拽布局编辑器、自动布线、视口持久化或完整结果报表。
 - 不把 CAPE-OPEN / COM 语义倒灌到 Rust Core。
 - 不引入第三方 CAPE-OPEN 模型加载。
 - 不把 smoke test driver、PME 调试路径或单个宿主兼容逻辑提升为通用库 API。
