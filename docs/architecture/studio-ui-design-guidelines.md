@@ -31,6 +31,7 @@ UI 参考素材当前保存在 `docs/architecture/assets/studio-ui/`。下表使
 | 当前 RadishFlow UI | [radishflow-current-workbench-20260516.png](assets/studio-ui/radishflow-current-workbench-20260516.png) | 2026-05-16 当前真实 Studio 截图，用于识别首页 / 工作台重排前的混乱分区和测试痛点 |
 | RadishFlow 工作台概念稿 | [radishflow-workbench-concept.png](assets/studio-ui/radishflow-workbench-concept.png) | 进入 case 后的工作台概念稿，状态、SI 单位、单文档标题和结果区关系更符合当前规范 |
 | RadishFlow Home 概念稿 | [radishflow-home-dashboard-concept.png](assets/studio-ui/radishflow-home-dashboard-concept.png) | 启动首页 / 示例页概念稿，展示 Start actions、Recent Cases、Example Cases、Environment 和 Messages 分区 |
+| RadishFlow Home 概念稿 v2 | [radishflow-home-dashboard-concept-v2-20260516.png](assets/studio-ui/radishflow-home-dashboard-concept-v2-20260516.png) | 当前 Home Dashboard 视觉基线，收窄 Environment 字段，突出 Continue Last Case / 示例入口和可行动 Messages |
 | 外部参考：深色工程工作台 | [reference-dark-engineering-workbench.png](assets/studio-ui/reference-dark-engineering-workbench.png) | 深色工程工作台分区、运行状态和底部结果区参考 |
 | 外部参考：浅色 ribbon 项目状态 | [reference-light-ribbon-project-status.png](assets/studio-ui/reference-light-ribbon-project-status.png) | 浅色 ribbon / 左侧模型树 / 右侧状态面板参考 |
 | 外部参考：浅色 flowsheet 工作台 | [reference-light-flowsheet-workbench.png](assets/studio-ui/reference-light-flowsheet-workbench.png) | 接近 RadishFlow 方向的浅色流程模拟工作台参考 |
@@ -128,8 +129,9 @@ Studio 默认工作台建议分为六个稳定区域。
 
 - Home Dashboard 不是营销欢迎页，也不是完整控制台；它是工程软件启动面板。
 - 页面应保留 `radishflow-workbench-concept.png` 的轻量浅色风格、克制蓝色主强调、状态 chip 和清晰分区，但不显示流程图画布。
-- `radishflow-home-dashboard-concept.png` 当前作为启动首页概念稿参考：它的信息架构方向正确，但后续实现时仍需按真实字段、状态语义、登录边界和本地示例数据收口，不直接照搬所有示例文案或虚构数据。
-- 主操作只保留 `新建空白 Case`、`打开 Case`、`打开示例 Case` 和登录 / 刷新状态，不把完整命令面板或调试入口放进第一视野。
+- `radishflow-home-dashboard-concept-v2-20260516.png` 当前作为启动首页视觉基线：它比早期概念稿更接近当前信息架构，Start actions、Recent Cases、Example Cases、Environment 和 Messages 的职责边界更清楚。
+- `radishflow-home-dashboard-concept.png` 保留为早期概念稿参考：它的信息架构方向正确，但字段和示例数据偏概念演示，不作为后续实现的优先基线。
+- Start actions 只保留 `继续上次 Case`、`新建空白 Case`、`打开 Case`、`打开示例 Case`；登录放在顶部 App Bar，不把完整命令面板或调试入口放进第一视野。
 - 最近 case 和示例 case 必须可扫读：名称、路径或来源、最后打开时间、流程摘要、组分 / 物性包摘要、状态标签。
 - 客户端 / 服务端 / 设备信息默认以状态卡或紧凑 section 呈现；详细路径、backend、cache 细节和诊断信息进入展开项。
 - 登录入口应优先是 `登录` 按钮，而不是内嵌账号密码表单；桌面登录继续遵守 OIDC Authorization Code + PKCE + 系统浏览器 + loopback redirect 的边界。
@@ -142,6 +144,51 @@ Studio 默认工作台建议分为六个稳定区域。
 - 中央内容：最近打开的 case 列表和示例 case 列表，示例可按 Basic Flash、Heater / Cooler / Valve、Mixer、PME Sample 分组。
 - 右侧 Environment Status：客户端信息、服务端信息、设备信息、本地缓存 / 示例路径状态。
 - 底部 Messages：最近环境警告、登录 / 授权提示、示例路径或物性包缓存诊断。
+
+实现契约：
+
+| 区域 | 第一屏保留字段 | 折叠或二级字段 |
+| --- | --- | --- |
+| Top App Bar | 应用名、`v26.5.1-dev internal` 或当前版本、`Local ready`、`Server offline`、`Signed out`、单位集、登录 / 设置 / 帮助入口 | 完整 build commit、完整控制面 URL、语言高级设置、开发诊断 |
+| Start Actions | `Continue Last Case`、`New Blank Case`、`Open Case`、`Open Example Case`；有最近 case 时 `Continue Last Case` 为主按钮，无最近 case 时 `Open Example Case` 为主按钮 | 命令面板、最近工作区完整列表、保存 / 另存为、运行按钮 |
+| Recent Cases | case 名称、路径或来源、最后打开时间、物性包、状态 | 流股数、单元数、诊断数、最新求解摘要、完整路径展开 |
+| Example Cases | 示例类型、短流程图摘要、组件摘要、物性包、状态、`Open` | 长说明、教程步骤、完整 flowsheet 预览、PME 操作说明 |
+| Environment | `Client`、`Server`、`Device` 三组健康摘要；只显示影响“能否开始”的状态 | cache 根目录、examples 绝对路径、backend 细节、原始错误文本、设备资源曲线 |
+| Messages | 最近 3-5 条可行动消息、严重度、领域标签、短动作入口 | 原始日志、GUI activity、platform timer、host internals、完整 trace |
+
+状态枚举：
+
+- Recent Cases：`Ready`、`Modified`、`Missing file`、`Missing package`、`Version warning`、`Error`。
+- Example Cases：`Ready`、`Requires package`、`Requires external PME`、`Missing file`、`Error`。
+- Client：`Ready`、`Portable`、`Dev`、`Examples missing`、`Error`。
+- Server：`Signed out`、`Signed in`、`Reachable`、`Offline`、`Local only`、`Sync needed`。
+- Device：`Runtime ready`、`Cache ready`、`Cache missing`、`Runtime error`。
+- Messages：`AUTH`、`EXAMPLES`、`CACHE`、`PACKAGE`、`SERVER`、`RUNTIME`。
+
+数据来源和所有权：
+
+- Recent Cases 来自应用级偏好或 MRU 索引，不写入 `FlowsheetDocument`；读取文件元数据失败时只降级该行状态，不阻断首页。
+- Example Cases 来自内置 `examples/flowsheets` 发现结果；打包后优先从 exe 同目录发现，开发态再使用仓库路径。
+- Environment 的 Client 摘要来自应用版本、包模式和示例目录探测；Server 摘要来自 `AuthSessionState` / `EntitlementState` 和控制面可达性；Device 摘要来自本地缓存、runtime/native 依赖和操作系统摘要。
+- Messages 消费应用级事件和环境探测摘要，不反向成为环境、授权、文档或结果的真相源。
+- Home Dashboard 不读取或解释 `SolveSnapshot`；打开 case 后的结果审阅仍只在工作台中消费 `SolveSnapshot`。
+
+动作契约：
+
+- `Continue Last Case` 打开 MRU 第一项，文件缺失时不静默失败，应把该 case 行标为 `Missing file` 并产生 `Messages` 行。
+- `New Blank Case` 创建 MVP 默认空白 case，进入工作台；该动作不依赖登录或服务端。
+- `Open Case` 使用系统文件选择器打开用户项目，进入工作台；打开成功后更新 MRU。
+- `Open Example Case` 从 Example Cases 选择或打开示例文件夹，成功后进入工作台并更新 MRU 来源。
+- `Sign in` 只启动 OIDC / PKCE 系统浏览器登录；不在首页内嵌账号密码表单。
+- `Messages` 中的 `Sign in`、`Open Examples Folder`、`Open Cache Folder` 等动作应复用正式 command surface；若实现阶段暂需过渡，也不能长期保留和菜单 / 命令面板平行的私有分支。
+
+空状态和错误状态：
+
+- 无最近 case：Start Actions 中不显示失效的主按钮，改由 `Open Example Case` 成为主入口；Recent Cases 区域显示简短空状态和 `Open Case` / `Open Example Case` 动作。
+- 示例目录缺失：Example Cases 显示 `Examples missing`，Messages 给出路径和可行动入口；不要用 panic、debug path 或原始 IO error 占据第一屏。
+- 未登录或服务端离线：只影响云端包、团队 case 和授权同步；若本地示例与本地缓存可用，应明确展示 `Local ready`，避免用户误以为不能开始。
+- 物性包缺失：Recent / Example 对应行显示 `Missing package` 或 `Requires package`；打开 case 后再进入工作台处理详细修复。
+- 本地 runtime 失败：Environment 标为 `Runtime error`，Messages 给出最短诊断入口；不在首页展开完整日志。
 
 进入工作台的规则：
 
