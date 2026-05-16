@@ -1,6 +1,6 @@
 # Canvas Interaction Contract
 
-更新时间：2026-04-05
+更新时间：2026-05-16
 
 ## 文档目的
 
@@ -14,7 +14,7 @@
 
 ## 当前定位
 
-当前阶段，这份文档只冻结交互契约，不承诺以下内容立即进入实现主线：
+当前阶段，这份文档冻结交互契约，并记录 Studio 已经落地的 MVP α 画布边界。它不承诺以下内容立即进入实现主线：
 
 - 真正的 3D 渲染器
 - 高保真动画系统
@@ -26,6 +26,7 @@
 - `M2/M3` 以内核闭环和求解基线为先
 - 画布创新不反向侵入 `rf-model` / `rf-flowsheet` 核心语义
 - 模型建议不绕过本地连接校验、命令系统与求解诊断
+- 已落地的 placement palette、local suggestions、对象选择、layout sidecar 和 viewport 呈现优化都仍属于 UI / shell 边界，不改变 `FlowsheetDocument` 的求解语义
 
 ## 核心原则
 
@@ -98,6 +99,19 @@
 - 在“用户动作 -> UI suggestion 请求 -> 本地规则 / `RadishMind` 返回候选 -> 用户接受 -> 本地命令写回”之间做编排
 - 在接受 suggestion 后触发本地命令和连接校验
 - 在建议失效、文档变化或求解状态变化时使 suggestion 失效
+- 将 placement palette、suggestion 命令、对象选择、右侧检查器切换和底部消息摘要组织成可复现的 Studio 工作台流程
+- 维护 Canvas layout sidecar 的读写与 fallback pinning，但不得把 shell 私有布局状态混入流程语义或求解输入
+
+### 当前 MVP α 已落地边界
+
+截至 2026-05-16，Studio 画布已经具备以下最小闭环：
+
+- 左侧 `放置` 入口可创建 `Feed / Mixer / Heater / Cooler / Valve / Flash Drum` MVP 单元。
+- 当前最短可求解路径覆盖 `Feed -> Flash Drum`、`Feed -> Heater/Cooler/Valve -> Flash Drum`、`Feed + Feed -> Mixer -> Flash Drum`。
+- 本地 suggestion 可补齐标准材料端口连接和必要 outlet stream；显示动词为 `连接` / `Connect`，不再使用泛化 `Apply`。
+- suggestion 接受仍转换为正式 `DocumentCommand::ConnectPorts` 或等价文档命令后写回；接受 / 拒绝本身不进入 `CommandHistory`。
+- Canvas 对象选择会驱动右侧 `检查器` / 结果定位，但不缓存第二份求解结果。
+- Canvas placement sidecar 使用 `<project>.rfstudio-layout.json` 保存 shell / layout 状态；项目文件 `*.rfproj.json` 仍是流程语义真相源。
 
 ## 视图模式契约
 
@@ -126,6 +140,17 @@ pub enum CanvasViewMode {
 - 文档层继续保存稳定的 2D 几何真相源
 - 立体模式所需的深度、抬升、层级偏移和视觉装饰优先由 UI / Canvas 派生
 - 如后续确实需要少量 3D 呈现参数，也应先作为视图偏好或样式参数存在，不直接污染流程语义模型
+
+### Viewport 初始呈现
+
+当前 Canvas viewport 的初始呈现属于 UI 状态，不属于流程语义。
+
+冻结约束：
+
+- 打开示例或项目后，shell 可根据当前单元与流股 bounds 做初始 fit-to-content / center，让小流程自然处于可视区域中央。
+- 初始 fit-to-content 不写入 `FlowsheetDocument`，也不进入 `CommandHistory`。
+- 该行为不等同于自动布线、自由连线、自动整理布局或视口持久化；它只决定打开后的第一帧可视区域。
+- 若存在 `<project>.rfstudio-layout.json` sidecar，单元 placement 仍以 sidecar 为准；viewport 只基于这些位置计算初始可见范围。
 
 ## 流线视觉模型
 
@@ -364,21 +389,15 @@ pub struct GhostElement {
 - `reason` 用于解释为什么推荐，便于 UI 提示和后续调试
 - `visual_kind` / `visual_state` 允许 suggestion 与正式流线共用同一套渲染语义
 
-## 最小闭环建议
+## MVP α 画布闭环口径
 
-本项目下一轮若要进入实现，建议只做以下最小闭环：
+当前已不再停留在“下一轮才接本地 LocalRules suggestion”的阶段。MVP α 画布闭环按下面口径维护：
 
-1. 在 `rf-ui` 中冻结 `CanvasViewMode`、`CanvasInteractionState` 与 `CanvasSuggestion`
-2. 在 `rf-canvas` 中支持正式元素与 ghost element 的分层绘制
-3. 在 `apps/radishflow-studio` 中接一条本地 `LocalRules` suggestion 路径，不先依赖远端模型
-4. 先只覆盖 `Flash Drum` 放置后的 `inlet / vapor / liquid` ghost 补全
-5. 支持 `Tab` 接受第一条 suggestion，并通过本地命令写回文档
-
-这样可以先验证：
-
-- ghost suggestion 是否真的顺手
-- UI 状态边界是否足够稳定
-- 画布、UI、应用层之间是否还存在职责泄漏
+1. `Planar` 继续是默认编辑视图，`Perspective` 仍只是后续增强展示预留。
+2. MVP 单元放置、对象选择、suggestion focus / accept / reject、离散 layout nudge 都应通过正式 command surface 或 shell-local UI state 进入，不保留长期并行的 widget 私有状态改写分支。
+3. suggestion 转成正式文档命令后的实际文档变更才进入 `CommandHistory`；suggestion focus、reject、viewport、面板切换和 hover 不进入文档历史。
+4. Layout sidecar 只保存 shell / layout 相关状态；缺少 sidecar 时可以用 transient grid slot pin 出初始位置，但必须在 presentation 中保持可解释，不反向污染 flowsheet 语义。
+5. 下一步只收口 viewport 初始居中 / fit-to-content，不扩自由拉线、自动布线、完整拖拽布局编辑器或复杂视图持久化。
 
 ## 当前仍待后续细化的问题
 

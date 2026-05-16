@@ -1,10 +1,10 @@
 # App Architecture
 
-更新时间：2026-05-13
+更新时间：2026-05-16
 
 ## 当前目标
 
-现阶段 App 方向已经从“先把桌面应用架构边界和未来扩展面定清楚”推进到 MVP α 验收硬化。当前仍不做完整商业化界面或复杂交互扩张，但需要把已进入验收路径的 Studio 首屏、运行入口、日志反馈和关闭行为规范化，避免用户无法判断如何打开示例、如何运行、运行是否完成以及窗口是否正常退出。
+现阶段 App 方向已经从“先把桌面应用架构边界和未来扩展面定清楚”推进到 MVP α 验收硬化与 Studio 可用性收口。当前仍不做完整商业化界面或复杂交互扩张，但需要把已进入验收路径的 Studio 首页、工作台分区、运行入口、消息反馈和关闭行为规范化，避免用户无法判断如何打开示例、如何运行、结果在哪里、错误在哪里以及窗口是否正常退出。
 
 这意味着当前阶段关注的是：
 
@@ -54,7 +54,7 @@
 - 负责控制面 `entitlement` / `manifest` / `lease` / `offline refresh` 的 HTTP client、协议映射与应用层编排
 - 负责把下载租约、下载 fetcher 与本地缓存落盘串成单一路径
 - 负责从 `PropertyPackageProvider` 或本地 auth cache 组装最小真实求解链路，并把 `rf-solver::SolveSnapshot` 回写到 `rf-ui::AppState`
-- 负责把当前 Studio shell 的用户入口组织为可复现的 MVP α 工作流：启动后优先暴露 `打开示例 / 新建空白 / 打开项目 / 运行 / 保存 / 另存为 / 命令面板`，默认隐藏低频命令大全和调试式布局控制，保留命令面板作为高级入口
+- 负责把当前 Studio shell 的用户入口组织为可复现的 MVP α 工作流：启动后默认显示 Home Dashboard，进入 case 后再暴露 `Home / 打开示例 / 新建空白 / 打开项目... / 运行 / 保存 / 另存为... / 视图`，默认隐藏低频命令大全和调试式布局控制，保留命令面板作为高级入口
 - 负责在 GUI shell 层提供用户操作与求解审计输出；默认 stderr 日志只作为开发态 smoke 和诊断入口，不替代未来正式审计 / telemetry 设计
 - 负责遵守 `eframe` / `winit` 桌面事件循环约束：Windows 事件循环在主线程创建，最后一个 viewport close 请求不得被 `CancelClose` 拦截，关闭前只清理逻辑窗口状态并停止当帧 fallback 布局渲染
 
@@ -68,12 +68,13 @@
 
 ### Studio Shell UI 规范化边界
 
-2026-05-13 人工 smoke 已确认，当前 Studio 能打开、运行并正常关闭，但首屏和面板组织仍偏开发态。下一轮 UI 优化应优先规范以下稳定入口：
+2026-05-16 人工 smoke 已确认，当前 Studio 默认首页和进入 case 后的工作台第一轮分区已经落地。shell UI 边界按以下稳定入口治理：
 
-- 首屏信息层级：顶部只保留用户主路径、当前项目摘要和必要状态，不再把调试计数、菜单全集和布局控制置于默认第一视野
-- 操作入口：打开示例、新建空白、打开项目、运行、保存、另存为、命令面板保持可发现；低频命令进入命令面板或可展开侧栏
-- 工作台分区：左侧 `Project / Palette` 负责项目对象与 MVP 放置入口，右侧 `Inspector / Results / Run / Entitlement` 负责属性编辑、结果审阅和运行上下文，底部 `Messages / Run Log / Results Table / Diagnostics` 承接可行动消息、运行日志和表格结果
-- 结果反馈：Runtime / Result Inspector / Active Inspector 继续只读消费 `SolveSnapshot`，UI 优化不得新增第二套结果缓存或求解解释
+- Home Dashboard：应用启动后的默认首页，只承载 Start actions、Recent Cases、Example Cases、Environment 和 Messages；不读取或解释 `SolveSnapshot`，不直接承载流程图编辑。
+- 顶部主路径：进入 case 后只保留用户主路径、当前项目摘要和必要状态，不把调试计数、菜单全集和布局控制置于默认第一视野。
+- 操作入口：`Home`、打开示例、新建空白、打开项目、运行、保存、另存为和视图入口保持可发现；低频命令进入命令面板或 `视图` 菜单。
+- 工作台分区：左侧 `项目 / 示例项目 / 放置` 负责项目对象、示例入口与 MVP 放置入口；右侧 `检查器 / 结果 / 运行 / 物性包` 负责属性编辑、结果审阅、运行上下文和物性包状态；底部 `消息 / 运行日志 / 结果表 / 诊断` 承接可行动消息、运行日志和表格结果。
+- 结果反馈：右侧结果、底部结果表、Active Inspector 继续只读消费 `SolveSnapshot`，UI 优化不得新增第二套结果缓存或求解解释。
 - 日志与审计：开发态 stderr 与 GUI activity 可继续服务 smoke，但正式 UI 只展示用户能采取行动的摘要，不把平台 timer 或 host internals 混入主路径
 - 关闭行为：最后窗口关闭应自然结束进程；为避免关闭瞬间闪 fallback 布局，shell 可在逻辑窗口清理后停止当帧渲染，但不能拦截原生关闭请求
 
@@ -815,8 +816,9 @@ pub struct StepSnapshot {
 
 当前已落地与仍待细化的边界：
 
-- 手动运行已经进入真实 GUI 首屏主路径：顶部快速操作区的 `Run` 直接派发 `run_panel.run_manual`，并通过 command registry 的 availability / disabled reason 控制按钮状态
-- `Open Example / New Blank / Open Project / Save / Save As / Commands / Command Palette` 当前也已作为 Studio shell 的第一视野入口；默认隐藏 Commands 面板只是 shell 启动时的 host-local transient layout preference，不写入项目文档语义
+- 手动运行已经进入真实 GUI 工作台主路径：顶部 `运行` 直接派发 `run_panel.run_manual`，并通过 command registry 的 availability / disabled reason 控制按钮状态
+- Home Dashboard 当前是 Studio shell 的默认第一视野；`新建空白 Case / 打开 Case / 打开示例 Case / 继续上次 Case` 只触发文档生命周期动作或 MRU 打开，不写入当前 `FlowsheetDocument`
+- `Home / 打开示例 / 新建空白 / 打开项目... / 保存 / 另存为... / 视图 / 命令面板` 当前作为进入 case 后的 Studio shell 主路径；默认隐藏命令大全只是 shell 启动时的 host-local transient layout preference，不写入项目文档语义
 - `StudioAppFacade`、`WorkspaceControlAction`、`WorkspaceControlState`、`RunPanelWidgetModel` 与 `run_panel_driver` 已经构成手动运行入口的稳定链路；后续仍待细化的是后台调度、取消、自动运行与 `Hold -> Active` 恢复在最终 GUI 中的完整交互表达
 - Studio 当前又已把 app-host 侧 GUI 动作入口进一步冻结为 `StudioAppHostController::dispatch_ui_command(command_id)`，让菜单、快捷键和命令面板后续都可以直接按稳定 command id 触发，而不必继续持有 `UiAction` 枚举或回退到 raw host outcome
 - 当前首批已接成真实宿主命令的 run panel command registry 为 `run_panel.run_manual`、`run_panel.resume_workspace`、`run_panel.set_hold`、`run_panel.set_active` 与 `run_panel.recover_failure`；后续桌面命令绑定应优先复用这组 registry，而不是在各入口重复解释 availability、disabled reason 或底层 widget 事件

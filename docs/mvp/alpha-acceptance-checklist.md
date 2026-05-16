@@ -51,7 +51,7 @@
 | 文档体量报告 | `pwsh ./scripts/check-doc-size.ps1` | Pass | 默认入口未重新膨胀；既有超限项可解释 | 2026-05-14 已通过；输出 `all enforced markdown files are within target limits` |
 | `rf-ffi` JSON/error 基线 | `pwsh ./scripts/check-repo.ps1` 覆盖；必要时补 `cargo test -p rf-ffi` | Pass | solve snapshot / stream JSON 与 structured error 回归稳定 | 2026-05-13 仓库级验证通过 |
 | official / synthetic 数值基线 | `pwsh ./scripts/check-repo.ps1` 覆盖 | Pass | golden、raw solver 与 Studio focused 回归稳定 | 2026-05-13 仓库级验证通过 |
-| Studio shell UI presentation | `cargo test -p radishflow-studio studio_gui_shell` | Pass | 顶部主路径、结果面、命令面和 runtime focused 回归稳定 | 2026-05-16 已通过，97 个 shell focused tests 通过；中文 shell 高频路径资源已纳入回归 |
+| Studio shell UI presentation | `cargo test -p radishflow-studio studio_gui_shell` | Pass | 首页、顶部主路径、结果面、命令面和 runtime focused 回归稳定 | 2026-05-16 已通过；Home Dashboard、Workbench 分区、中文 shell 高频路径与底部 drawer 已纳入回归 |
 
 ## Studio 手动 Smoke
 
@@ -101,8 +101,8 @@
 
 | 文档 | 当前状态 | 通过标准 | 记录 |
 | --- | --- | --- | --- |
-| `docs/guides/studio-quick-start.md` | Pass | 能说明启动方式、当前能力和首次体验入口 | 2026-05-13 已同步顶部快速操作、默认隐藏 Commands、运行反馈和关闭口径；明确当前是开发态启动，不暗示正式安装包 |
-| `docs/guides/run-first-flowsheet.md` | Pass | 能指导用户打开示例、运行、审阅、保存重开 | 2026-05-13 已同步 `Open Example / Open Project / Run / Save / Command Palette` 主路径和 stderr 排查信号 |
+| `docs/guides/studio-quick-start.md` | Pass | 能说明启动方式、当前能力和首次体验入口 | 2026-05-16 已同步默认 Home Dashboard、中文主路径、右侧 `检查器 / 结果 / 运行 / 物性包`、底部 drawer 和关闭口径；明确当前是开发态启动，不暗示正式安装包 |
+| `docs/guides/run-first-flowsheet.md` | Pass | 能指导用户打开示例、运行、审阅、保存重开 | 2026-05-16 已同步从首页 `打开示例 Case` 进入、进入工作台后用顶部 `运行 / 保存 / 另存为...` 和右侧 / 底部结果入口复现路径 |
 | `docs/guides/review-solve-results.md` | Pass | 能解释 source / intermediate / step / outlet 结果审阅顺序 | 2026-05-13 已复查 |
 | `docs/capeopen/pme-validation.md` | Pass | 能说明 PME 验证门控、dry-run、register/unregister 和记录模板 | 2026-05-13 已复查；外部 PME 与 registry 操作仍需人工门控 |
 | 发布包形态说明 | Pass | 能说明当前仍是开发态或压缩包式交付边界，不暗示已存在完整安装器或首版 demo | 2026-05-16 已在 `docs/architecture/versioning.md` 补齐 MVP α 便携包操作清单；`docs/releases/v26.5.1-dev.md` 记录内部包边界并明确 tag 暂缓；`scripts/package.ps1` 只生成 Windows staging / zip，不执行安装、COM 注册、PME 或第三方模型加载 |
@@ -135,11 +135,12 @@
 | --- | --- | --- |
 | 仓库级验证 | Pass | `pwsh ./scripts/check-repo.ps1` 最终通过；首次运行中 `studio_gui_platform_host::tests::platform_host_batches_start_failed_feedbacks_and_refreshes_snapshot` 短暂失败，但 focused 复跑、`cargo test -p radishflow-studio --lib` 和完整仓库复跑均通过 |
 | Studio 用户视角 smoke | Pass | Smoke A / B / C 已由人工从 IDE 启动 Studio 执行并确认无 blocker；打开示例 / 运行 / 审阅 / 保存重开、空白建模最短闭环、Stream Inspector 草稿与未归一组成阻断均符合验收口径 |
-| 中文界面资源 | Pass | 已补齐 shell 高频路径的中文资源：顶部 / 状态栏、工作台 tabs、Project 树、Canvas 对象 / suggestion / 选择 / 视口、底部 drawer、命令面板计数等；同时把本地规则测试夹具改为结构化 JSON 修改，避免 IDE 保存示例项目后的字段顺序变化破坏回归 |
+| 中文界面资源 | Pass | 已补齐 shell 高频路径的中文资源：Home Dashboard、顶部 / 状态栏、工作台 tabs、Project 树、Canvas 对象 / suggestion / 选择 / 视口、底部 drawer、命令面板计数等；同时把本地规则测试夹具改为结构化 JSON 修改，避免 IDE 保存示例项目后的字段顺序变化破坏回归 |
+| Home Dashboard / Workbench 第一轮 UI | Pass | 默认首页、最近 / 示例 / 环境 / 消息、进入 case 后顶部主路径、左侧项目 / 示例 / 放置、右侧检查器 / 结果 / 运行 / 物性包、底部 drawer 已形成稳定分区；关闭最后窗口前的一帧黑屏已优化 |
 | MVP α 便携包入口 | Pass | `pwsh ./scripts/package.ps1 -Version v26.5.1-dev -Clean` 已通过；生成 `artifacts/packages/RadishFlow-v26.5.1-dev-windows-x64/` 与同名 `.zip`，包内包含 Studio exe、正向 flowsheet 示例、样例物性包、quick start / result review / acceptance / versioning / internal package note 文档和许可文件；manifest 已记录 `releaseNotes=docs/releases/v26.5.1-dev.md`；脚本不执行安装、COM 注册、PME 或第三方模型加载 |
 
 ## 下一步
 
 1. 暂缓 tag 和发布自动化，把当前便携包作为内部验证资产保留。
-2. 下一轮优先讨论并冻结 Studio 首屏工作台信息架构，解决示例管理、功能分区、画布主路径、Inspector / Results / Messages 归位问题。
-3. UI 方案明确后，再决定是否需要重新执行包内 smoke 或版本节点检查；quick start 仍不得暗示已存在完整安装器或对外 demo。
+2. 下一轮优先收口 Canvas viewport 初始自动居中 / fit-to-content，让打开示例后的流程自然处于可视区域中央；不扩自动布线、自由连线或视口持久化。
+3. 继续复核 Home / Workbench 残余中英混合文案和按钮语义；quick start 仍不得暗示已存在完整安装器或对外 demo。
