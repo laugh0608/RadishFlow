@@ -8,7 +8,29 @@ impl ReadyAppState {
         area_id: StudioGuiWindowAreaId,
     ) {
         let widget = &window.canvas.widget;
+        self.render_canvas_toolbar(ui, widget);
+        ui.add_space(4.0);
+        self.render_canvas_selection_summary(ui, widget);
+        self.render_canvas_viewport_summary(ui, widget);
+        self.render_canvas_legend(ui, widget);
+        ui.separator();
+        let hovered_stream_id = self.render_canvas_drop_surface(ui, widget);
+        ui.add_space(8.0);
+        self.render_canvas_suggestions(ui, widget, window, area_id);
+        egui::CollapsingHeader::new(self.locale.text(ShellText::Objects))
+            .default_open(false)
+            .show(ui, |ui| {
+                self.render_canvas_object_list(ui, widget, hovered_stream_id.as_deref());
+            });
+    }
+
+    fn render_canvas_toolbar(
+        &mut self,
+        ui: &mut egui::Ui,
+        widget: &radishflow_studio::StudioGuiCanvasWidgetModel,
+    ) {
         ui.horizontal_wrapped(|ui| {
+            ui.small(egui::RichText::new("Canvas").strong());
             for action in &widget.actions {
                 let label = match action.shortcut.as_ref() {
                     Some(shortcut) => format!(
@@ -20,6 +42,7 @@ impl ReadyAppState {
                 };
                 if ui
                     .add_enabled(action.enabled, egui::Button::new(label))
+                    .on_hover_text(self.locale.runtime_label(&action.detail).as_ref())
                     .clicked()
                 {
                     match widget.activate(action.id) {
@@ -41,77 +64,100 @@ impl ReadyAppState {
                 }
             }
         });
-        self.render_canvas_selection_summary(ui, widget);
-        self.render_canvas_viewport_summary(ui, widget);
-        self.render_canvas_legend(ui, widget);
-        ui.separator();
-        let hovered_stream_id = self.render_canvas_drop_surface(ui, widget);
-        ui.add_space(8.0);
-        self.render_canvas_object_list(ui, widget, hovered_stream_id.as_deref());
-        ui.add_space(8.0);
-        egui::ScrollArea::vertical()
-            .id_salt(format!(
-                "scroll:{}:{}:suggestions",
-                window.layout_state.scope.layout_key,
-                area_label(area_id)
-            ))
+    }
+
+    fn render_canvas_suggestions(
+        &mut self,
+        ui: &mut egui::Ui,
+        widget: &radishflow_studio::StudioGuiCanvasWidgetModel,
+        window: &StudioGuiWindowModel,
+        area_id: StudioGuiWindowAreaId,
+    ) {
+        if widget.view().suggestions.is_empty() {
+            return;
+        }
+
+        egui::CollapsingHeader::new(self.locale.text(ShellText::Suggestions))
+            .default_open(true)
             .show(ui, |ui| {
-                for suggestion in &widget.view().suggestions {
-                    let frame = egui::Frame::group(ui.style());
-                    frame.show(ui, |ui| {
-                        ui.horizontal_wrapped(|ui| {
-                            let focus = if suggestion.is_focused {
-                                "Focused"
-                            } else {
-                                "Suggestion"
-                            };
-                            ui.label(
-                                egui::RichText::new(self.locale.runtime_label(focus).as_ref())
-                                    .strong(),
-                            );
-                            ui.label(format!("{:.0}%", suggestion.confidence * 100.0));
-                            ui.label(format!("source={}", suggestion.source_label));
-                            ui.label(format!(
-                                "status={}",
-                                self.locale.runtime_label(suggestion.status_label)
-                            ));
-                        });
-                        ui.label(format!("target={}", suggestion.target_unit_id));
-                        ui.label(&suggestion.reason);
-                        ui.small(format!("id={}", suggestion.id));
-                        if ui
-                            .add_enabled(
-                                suggestion.explicit_accept_enabled,
-                                egui::Button::new(self.locale.text(ShellText::ConnectSuggestion)),
-                            )
-                            .clicked()
-                        {
-                            match widget.activate_suggestion(&suggestion.id) {
-                                radishflow_studio::StudioGuiCanvasWidgetEvent::SuggestionRequested {
-                                    event,
-                                    ..
-                                } => self.dispatch_event(event),
-                                radishflow_studio::StudioGuiCanvasWidgetEvent::SuggestionDisabled {
-                                    ..
-                                }
-                                | radishflow_studio::StudioGuiCanvasWidgetEvent::SuggestionMissing {
-                                    ..
-                                }
-                                | radishflow_studio::StudioGuiCanvasWidgetEvent::Requested {
-                                    ..
-                                }
-                                | radishflow_studio::StudioGuiCanvasWidgetEvent::Disabled {
-                                    ..
-                                }
-                                | radishflow_studio::StudioGuiCanvasWidgetEvent::Missing {
-                                    ..
-                                } => {}
-                            }
+                egui::ScrollArea::vertical()
+                    .id_salt(format!(
+                        "scroll:{}:{}:suggestions",
+                        window.layout_state.scope.layout_key,
+                        area_label(area_id)
+                    ))
+                    .max_height(150.0)
+                    .show(ui, |ui| {
+                        for suggestion in &widget.view().suggestions {
+                            let frame = egui::Frame::group(ui.style());
+                            frame.show(ui, |ui| {
+                                ui.set_width(ui.available_width());
+                                ui.horizontal_wrapped(|ui| {
+                                    let focus = if suggestion.is_focused {
+                                        "Focused"
+                                    } else {
+                                        "Suggestion"
+                                    };
+                                    ui.label(
+                                        egui::RichText::new(
+                                            self.locale.runtime_label(focus).as_ref(),
+                                        )
+                                        .strong(),
+                                    );
+                                    render_status_chip(
+                                        ui,
+                                        &format!("{:.0}%", suggestion.confidence * 100.0),
+                                        egui::Color32::from_rgb(86, 118, 168),
+                                    );
+                                    render_status_chip(
+                                        ui,
+                                        self.locale.runtime_label(suggestion.status_label).as_ref(),
+                                        egui::Color32::from_rgb(86, 96, 108),
+                                    );
+                                    ui.with_layout(
+                                        egui::Layout::right_to_left(egui::Align::Center),
+                                        |ui| {
+                                            if ui
+                                                .add_enabled(
+                                                    suggestion.explicit_accept_enabled,
+                                                    egui::Button::new(
+                                                        self.locale
+                                                            .text(ShellText::ConnectSuggestion),
+                                                    ),
+                                                )
+                                                .clicked()
+                                            {
+                                                self.dispatch_canvas_suggestion(
+                                                    widget,
+                                                    &suggestion.id,
+                                                );
+                                            }
+                                        },
+                                    );
+                                });
+                                render_wrapped_small(ui, &suggestion.reason);
+                            });
+                            ui.add_space(6.0);
                         }
                     });
-                    ui.add_space(6.0);
-                }
             });
+    }
+
+    fn dispatch_canvas_suggestion(
+        &mut self,
+        widget: &radishflow_studio::StudioGuiCanvasWidgetModel,
+        suggestion_id: &str,
+    ) {
+        match widget.activate_suggestion(suggestion_id) {
+            radishflow_studio::StudioGuiCanvasWidgetEvent::SuggestionRequested {
+                event, ..
+            } => self.dispatch_event(event),
+            radishflow_studio::StudioGuiCanvasWidgetEvent::SuggestionDisabled { .. }
+            | radishflow_studio::StudioGuiCanvasWidgetEvent::SuggestionMissing { .. }
+            | radishflow_studio::StudioGuiCanvasWidgetEvent::Requested { .. }
+            | radishflow_studio::StudioGuiCanvasWidgetEvent::Disabled { .. }
+            | radishflow_studio::StudioGuiCanvasWidgetEvent::Missing { .. } => {}
+        }
     }
 
     fn render_canvas_object_list(

@@ -209,6 +209,7 @@ impl StudioShellLocale {
             "Target" => Cow::Borrowed("目标"),
             "Ready" => Cow::Borrowed("就绪"),
             "Available" => Cow::Borrowed("可用"),
+            "Current" => Cow::Borrowed("当前"),
             "Blocked" => Cow::Borrowed("已阻断"),
             "accepted" => Cow::Borrowed("已接受"),
             "pending" => Cow::Borrowed("待处理"),

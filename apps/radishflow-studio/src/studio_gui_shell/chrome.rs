@@ -366,6 +366,11 @@ impl ReadyAppState {
             );
             ui.selectable_value(
                 &mut self.left_sidebar_tab,
+                StudioShellLeftSidebarTab::Examples,
+                self.locale.text(ShellText::ExampleProjects),
+            );
+            ui.selectable_value(
+                &mut self.left_sidebar_tab,
                 StudioShellLeftSidebarTab::Palette,
                 self.locale.text(ShellText::Palette),
             );
@@ -380,8 +385,57 @@ impl ReadyAppState {
             .auto_shrink([false, false])
             .show(ui, |ui| match self.left_sidebar_tab {
                 StudioShellLeftSidebarTab::Project => self.render_project_navigator(ui, window),
+                StudioShellLeftSidebarTab::Examples => self.render_examples_navigator(ui, window),
                 StudioShellLeftSidebarTab::Palette => self.render_canvas_palette(ui, window),
             });
+    }
+
+    fn render_examples_navigator(&mut self, ui: &mut egui::Ui, window: &StudioGuiWindowModel) {
+        ui.label(egui::RichText::new(self.locale.text(ShellText::ExampleProjects)).strong());
+        render_wrapped_small(
+            ui,
+            match self.locale {
+                StudioShellLocale::En => "Bundled examples open into the current workbench.",
+                StudioShellLocale::ZhCn => "内置示例会打开到当前工作台。",
+            },
+        );
+        ui.add_space(8.0);
+
+        if window.runtime.example_projects.is_empty() {
+            ui.colored_label(
+                egui::Color32::from_rgb(160, 120, 40),
+                self.locale.text(ShellText::NoRecentProjects),
+            );
+            return;
+        }
+
+        for example in &window.runtime.example_projects {
+            egui::Frame::group(ui.style()).show(ui, |ui| {
+                ui.set_width(ui.available_width());
+                ui.horizontal_wrapped(|ui| {
+                    ui.label(egui::RichText::new(example.title).strong());
+                    if example.is_current {
+                        render_status_chip(
+                            ui,
+                            self.locale.runtime_label("Current").as_ref(),
+                            egui::Color32::from_rgb(52, 128, 89),
+                        );
+                    }
+                });
+                render_wrapped_small(ui, example.detail);
+                if ui
+                    .add_enabled(
+                        !example.is_current,
+                        egui::Button::new(self.locale.text(ShellText::OpenExample)),
+                    )
+                    .on_hover_text(example.project_path.display().to_string())
+                    .clicked()
+                {
+                    self.open_example_project(example.project_path.clone());
+                }
+            });
+            ui.add_space(6.0);
+        }
     }
 
     fn render_project_navigator(&mut self, ui: &mut egui::Ui, window: &StudioGuiWindowModel) {

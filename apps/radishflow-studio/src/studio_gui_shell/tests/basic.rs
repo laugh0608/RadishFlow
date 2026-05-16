@@ -275,6 +275,7 @@ fn shell_defaults_to_alpha_workbench_layout_regions() {
     let texts = render_alpha_workbench_texts(&mut app);
     for expected in [
         "项目",
+        "示例项目",
         "放置",
         "物性包",
         "检查器",

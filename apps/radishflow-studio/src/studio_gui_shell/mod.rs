@@ -176,6 +176,7 @@ struct ResultInspectorState {
 enum StudioShellLeftSidebarTab {
     #[default]
     Project,
+    Examples,
     Palette,
 }
 
