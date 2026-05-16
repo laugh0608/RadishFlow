@@ -19,45 +19,25 @@
 
 ## 最近完成摘要
 
-- Studio Canvas 已支持 `Feed -> Flash Drum`、`Feed -> Heater/Cooler/Valve -> Flash Drum`、`Feed + Feed -> Mixer -> Flash Drum` 的最短可求解建模路径；空白项目也会补 MVP 默认二元组件与本地 `binary-hydrocarbon-lite-v1` 物性包缓存。
-- Result Inspector / Active Inspector 已形成 stream-centric 与 unit-centric 两个消费面，可审阅当前 `SolveSnapshot` 内输入/输出流股、相结果、关联步骤、关联诊断和关键 `T / P / F / H` 摘要。
-- `rf-thermo` / `rf-flash` 已补 MVP 常热容显热焓值、bubble/dew pressure 与 fixed-pressure bubble/dew temperature 边界估算；`TP Flash` 会显式物化 `liquid-only / two-phase / vapor-only` phase region 与对应边界窗口。
-- `tests/thermo-golden`、`tests/flash-golden`、Rust integration 与 Studio focused tests 已把 official `binary-hydrocarbon-lite-v1` near-boundary `±ΔP / ±ΔT` case 前推到 `Feed/Heater/Cooler/Valve/Mixer -> Flash` 正式链路。
-- `rf-model::MaterialStreamState`、`rf-solver`、`rf-ui::SolveSnapshot` 与 Studio consumer 现在会透传结构化 `bubble_dew_window`、phase result 与 overall molar enthalpy；source stream、非 flash 中间流股、flash inlet consumed stream 和 outlet stream 继续走同一份 DTO 语义。
-- `rf-solver::UnitSolveStep` 已移除内部 `consumed_stream_ids / produced_stream_ids` 并改为从结构化 stream 快照派生；`rf-ffi` 与 Studio 若仍需 id 列表，也只把它们视为 presentation / interop 派生字段。
-- official / synthetic fixture 语义已基本收口：official hydrocarbon case 统一使用 `binary-hydrocarbon-lite-v1` 与 `methane / ethane`，intentional synthetic demo 族改用显式 `binary-hydrocarbon-synthetic-demo-v1` 与对应文件名 / helper。
-- Stream Inspector 已补 composition normalize、draft discard、受控组分添加 / 删除和运行前组成校验；写回、归一化和丢弃草稿都必须由用户显式触发，不做隐式自动补偿。
-- 仓库基础治理已补齐根 `README.md`、`.gitattributes`、`.gitignore`、文本格式门禁、代码规范专题文档和文档篇幅治理规则；默认入口文档应继续保持摘要化。
-- 阶段性仓库验证已恢复通过：failure fixture 换行已归一化，既有 Rust 格式漂移已由 `cargo fmt --all` 收口，`pwsh ./scripts/check-repo.ps1` 当前通过。
-- synthetic `liquid-only / vapor-only` near-boundary 单相样例已补齐到 raw solver、Studio solver bridge 和 workspace run path 的 `Feed/Heater/Cooler/Valve/Mixer -> Flash` dedicated 回归，继续锁定 source / intermediate / flash inlet / outlet 的同一份 DTO 语义。
-- Studio 最终 runtime 渲染面已补 synthetic 单相 `Feed/Heater/Cooler/Valve/Mixer -> Flash` 覆盖，继续锁定 Result Inspector / Active Inspector 的窗口 section、overall H 和零流量对侧 outlet 不展示伪窗口。
-- `TP Flash` boundary drift / tolerance-focused 覆盖已完成一轮盘点与补强：official / synthetic golden 当前仍覆盖 `±ΔP / ±ΔT`，raw solver 另补边界容差带内的 phase region / zero-fraction phase materialization 回归；`rf-flash` 继续复用 `rf-types` 的 tolerance 语义，不引入第二套窗口估算或 fallback。
-- `rf-ffi` thermo solve 失败基线已复核并补强：成功路径会继续导出同一份 `bubble_dew_window` / overall enthalpy JSON，运行时物性包若能加载但缺少求解所需热容，会在 `flowsheet_solve` 阶段稳定返回 `Thermo` 状态与结构化 last-error。
-- synthetic 单相 near-boundary 的 `SolveSnapshot -> window_model` consumer 已补 focused 覆盖：`Feed/Heater/Cooler/Valve/Mixer -> Flash` 现在会锁定 Result Inspector、comparison、unit result、Active Inspector 与 `inspector.focus_*` diagnostic action 都继续消费同一份 flash inlet / outlet / unit DTO。
-- synthetic 单相 near-boundary 的 shell selector state 已补 focused 覆盖：flowing outlet / zero-flow outlet 之间切换和重新挂 comparison 时，会继续保持 flash unit 选择、窗口缺席语义和 comparison DTO 一致。
-- Stream Inspector component catalog / presentation 已完成一轮边界收口：可添加组件继续只从 `flowsheet.components` 中尚未出现在当前流股组成的条目派生；component add/remove、normalize、discard 与运行前组成校验仍沿现有 DTO / 命令语义工作，已提交但未归一化的组成在 presentation 中标为 `Unnormalized`，不再和未提交 `Draft` 混淆。
-- `SolveSnapshot` consumer 的 command surface 边界已补一层收口：最新求解快照中的 result stream / unit 目标现在以 `Results` command section 暴露，并已覆盖 palette、menu 和 command list 到同一条 `inspector.focus_*` host dispatch，不新增 shell 私有结果缓存或导航分支。
-- `SolveSnapshot` consumer 的 runtime 点击交互已补 focused 覆盖：Result Inspector / diagnostic action 共用的小型 command action button 现在用真实 `egui` pointer click 回归锁定到同一条 `dispatch_ui_command -> inspector.focus_* -> Active Inspector` 链路，不新增 runtime 私有解释层。
-- 2026-05-12 阶段复盘结论：近期 focused 收口仍在整体规划内，但继续沿 near-boundary / command surface / runtime click 细节扩测试会进入收益递减；下一轮应切到 MVP α 验收矩阵和交付硬化。
-- 2026-05-13 已新增 `docs/mvp/alpha-acceptance-checklist.md`，把自动化验证、Studio 用户视角 smoke、`rf-ffi` JSON/error、CAPE-OPEN / PME 与文档复现检查收束为 MVP α 验收入口。
-- 2026-05-13 人工启动 Studio 后暴露首屏 UX blocker：顶部调试信息、命令大全和布局控制压过主路径；已把最终 shell 收敛为快速操作入口，默认显示 `打开示例 / 打开项目 / 运行 / 保存 / 命令面板`，并默认隐藏左侧命令大全。
-- 2026-05-13 人工点击顶部 `运行` 和启动聚焦后暴露新的 smoke blocker：GUI 回调异常时缺少外层防护，控制台没有用户操作 / 求解审计输出，且 Windows debug 构建在 bootstrap runtime dispatch 上出现栈溢出；已补 GUI panic 防护、命令可用性门控、默认 stderr 审计线，停止由 viewport focus 自动派发 foreground entitlement tick，并把默认隐藏 Commands 面板改为 shell 启动时的 host-local transient layout preference，不再通过启动时 `SetPanelVisibility` dispatch 实现。GUI shell 启动 / 打开项目现在跳过自动 entitlement preflight，Windows `radishflow-studio` 二进制显式保留 16 MiB 主线程栈，以适配 eframe 必须在主线程创建事件循环的约束；此前尝试把 `eframe` 放到后台 UI 线程会触发 `winit` 主线程约束，已回退。
-- 2026-05-13 关闭 Studio 时发现最后一帧会短暂显示默认 Commands 左栏；根因是关闭最后一个逻辑窗口后仍继续渲染当帧，`window_model()` 回退到默认布局。当前已在 viewport close 处理返回“停止渲染”信号，最后窗口关闭时直接结束当帧，且不再对最后窗口关闭请求发送 `CancelClose`，避免黑屏但进程不退出。
-- 2026-05-14 已完成一轮 Studio UI 规范化：顶部栏第一行展示项目标题、运行模式、运行状态、pending 和未保存状态；快速操作继续保留打开示例、打开项目、运行、保存和命令面板，语言切换 / 逻辑窗口入口收进 `视图` 菜单；Runtime 面板收敛运行按钮密度，并默认折叠项目路径编辑、调度器、运行日志和 GUI 活动等低频 / 开发态信息；Studio 启动初始窗口加大到 `1280x860`，最小内尺寸为 `1024x720`。`cargo test -p radishflow-studio studio_gui_shell`、`git diff --check` 与 `pwsh ./scripts/check-repo.ps1` 均已通过。
-- 2026-05-14 已参考当前 Studio 截图和 Aspen / HYSYS / PRO/II / COFE / DWSIM 等同类软件截图，新增 `docs/architecture/studio-ui-design-guidelines.md`；后续 UI 重排以“保留 RadishFlow 轻量浅色风格，吸收成熟流程模拟软件的信息架构和任务分区”为准，不照搬参考产品视觉资产。
-- 2026-05-14 已完成 Studio shell 首轮工作台重排并补齐顶部 `新建空白` 入口：新建会直接打开未命名空白项目，后续点保存才选择 `.rfproj.json` 路径；左侧 `Project / Palette`，右侧 `Inspector / Results / Run / Entitlement`，底部 `Messages / Run Log / Results Table / Diagnostics` drawer 与 SI 状态栏；结果面继续只读消费 `SolveSnapshot`，不新增 shell 私有结果缓存，也不扩 MVP α 非目标。
-- 2026-05-14 人工 smoke 暴露项目操作和建模编辑可发现性问题：顶部补 `另存为...` 和待确认提示条；Project/Canvas 对象选择会切到 Inspector，连接建议改名 `连接`。
-- 2026-05-14 已完成文档体量治理：路线图细节拆入 `docs/mvp/roadmap/`，周志迁入 `docs/devlogs/YYYY-MM/`，体量脚本默认只报告受约束文档超限。
-- 2026-05-16 MVP α Studio 用户视角 Smoke A / B / C 已由人工从 IDE 启动 Studio 执行并确认无 blocker；同日已收口中文界面资源，补齐 smoke 高频路径上的中英文不一致问题，并把本地规则测试夹具改为结构化 JSON 修改，避免 IDE 保存后的字段顺序变化破坏测试。
+- Studio 已具备 MVP α 最小可操作闭环：打开示例、新建空白、最短建模、运行、审阅结果、保存 / 另存为和重开项目。
+- Canvas 当前覆盖 `Feed -> Flash Drum`、`Feed -> Heater/Cooler/Valve -> Flash Drum`、`Feed + Feed -> Mixer -> Flash Drum` 三条最短可求解路径；连接仍通过本地 suggestion 和正式 `DocumentCommand` 完成，不是自由连线编辑器。
+- Result Inspector / Active Inspector 只读消费同一份 `SolveSnapshot`，可审阅 stream-centric / unit-centric 结果、相结果、`bubble_dew_window`、overall enthalpy、关联步骤和诊断目标。
+- `rf-thermo` / `rf-flash` / `rf-solver` / `rf-ffi` 已围绕 official / synthetic near-boundary、phase region、enthalpy、JSON/error 与结构化 stream snapshot 形成当前回归基线。
+- Stream Inspector 已收口 composition draft、显式提交、normalize、discard、受控组件添加 / 删除和运行前阻断；不做隐式差值补偿。
+- 仓库基础治理已补齐根 `README.md`、文本格式门禁、代码规范、文档体量治理、路线图拆分和周志月份归档；默认入口文档继续保持摘要化。
+- 2026-05-13 至 2026-05-14 的人工 Studio smoke blocker 已收口：首屏主路径、运行门控、GUI panic 降级、Windows debug 主线程栈、最后窗口关闭、顶部快速操作、工作台重排和 Inspector 可发现性均已处理。
+- 2026-05-16 MVP α Studio 用户视角 Smoke A / B / C 已人工通过；同日中文界面资源已覆盖 smoke 高频路径，结构化 JSON 测试夹具也已避免 IDE 保存字段顺序导致的回归噪声。
+- 2026-05-16 已补 MVP α Windows 便携包入口：`scripts/package.ps1` 生成 staging / zip，附带 Studio exe、正向示例、样例物性包、关键文档、候选 release notes 和许可文件；Studio 打包后会优先从 exe 同目录的 `examples/flowsheets` 发现内置示例。`pwsh ./scripts/package.ps1 -Version v26.5.1-dev -Clean` 已通过。
+- 2026-05-16 已新增 `docs/releases/v26.5.1-dev.md`，记录 MVP α 候选 tag、验证结果、包内边界和创建 tag 前检查项；打包 manifest 会在对应文件存在时记录 `releaseNotes=docs/releases/v26.5.1-dev.md`。
 
 完整过程和每日验证记录见 `docs/devlogs/2026-05/2026-W20.md` 以及更早周志。
 
 ## 下一步建议
 
-1. 进入 MVP α 发布包形态与发布说明收口，先明确当前开发态 / 压缩包式交付边界，不暗示已存在完整安装器。
+1. 从 `artifacts/packages/RadishFlow-v26.5.1-dev-windows-x64/` 直接启动包内 `radishflow-studio.exe` 做最后人工 smoke，重点确认包内示例发现、打开示例、运行、审阅和保存 / 重开。
 2. UI 规范化仍只服务 MVP α 验收，不扩自由连线编辑器、完整拖拽布局编辑器、完整报表系统或新的求解范围；结果面继续只读消费 `SolveSnapshot`，不新增 shell 私有结果缓存。
-3. 发布说明应引用已通过的 Smoke A / B / C、仓库级验证和现有 quick start / runbook，不另起散文档。
-4. 只修人工 smoke 或仓库级验证暴露的真实 blocker；若只是收益递减的 focused 覆盖缺口，先记录而不是继续主动扩矩阵。
+3. 包内 smoke 无 blocker 后，执行创建 `v26.5.1-dev` tag 前最终检查；若要继续推进发布自动化，优先评估是否把 `scripts/package.ps1` 接到 tag 触发的 CI 工件归档，不要在当前便携包脚本中混入安装、COM 注册或 PME 自动化。
+4. 只修人工 smoke、打包 dry run 或仓库级验证暴露的真实 blocker；若只是收益递减的 focused 覆盖缺口，先记录而不是继续主动扩矩阵。
 5. 保持 `TP Flash` official / synthetic golden、raw solver focused tolerance 与 `rf-ffi` JSON/error 基线稳定，但不主动扩无限 near-boundary 矩阵。
 
 ## 暂不推进

@@ -105,7 +105,7 @@
 | `docs/guides/run-first-flowsheet.md` | Pass | 能指导用户打开示例、运行、审阅、保存重开 | 2026-05-13 已同步 `Open Example / Open Project / Run / Save / Command Palette` 主路径和 stderr 排查信号 |
 | `docs/guides/review-solve-results.md` | Pass | 能解释 source / intermediate / step / outlet 结果审阅顺序 | 2026-05-13 已复查 |
 | `docs/capeopen/pme-validation.md` | Pass | 能说明 PME 验证门控、dry-run、register/unregister 和记录模板 | 2026-05-13 已复查；外部 PME 与 registry 操作仍需人工门控 |
-| 发布包形态说明 | Pass | 能说明当前仍是开发态或压缩包式交付边界，不暗示已存在完整安装器 | 2026-05-13 已确认 `docs/mvp/scope.md` 与 `docs/architecture/versioning.md` 保留当前发布边界；正式发布操作清单仍是后续事项 |
+| 发布包形态说明 | Pass | 能说明当前仍是开发态或压缩包式交付边界，不暗示已存在完整安装器 | 2026-05-16 已在 `docs/architecture/versioning.md` 补齐 MVP α 便携包操作清单；`docs/releases/v26.5.1-dev.md` 记录候选 tag 与包内边界；`scripts/package.ps1` 只生成 Windows staging / zip，不执行安装、COM 注册、PME 或第三方模型加载 |
 
 ## 今日执行记录
 
@@ -136,9 +136,10 @@
 | 仓库级验证 | Pass | `pwsh ./scripts/check-repo.ps1` 最终通过；首次运行中 `studio_gui_platform_host::tests::platform_host_batches_start_failed_feedbacks_and_refreshes_snapshot` 短暂失败，但 focused 复跑、`cargo test -p radishflow-studio --lib` 和完整仓库复跑均通过 |
 | Studio 用户视角 smoke | Pass | Smoke A / B / C 已由人工从 IDE 启动 Studio 执行并确认无 blocker；打开示例 / 运行 / 审阅 / 保存重开、空白建模最短闭环、Stream Inspector 草稿与未归一组成阻断均符合验收口径 |
 | 中文界面资源 | Pass | 已补齐 shell 高频路径的中文资源：顶部 / 状态栏、工作台 tabs、Project 树、Canvas 对象 / suggestion / 选择 / 视口、底部 drawer、命令面板计数等；同时把本地规则测试夹具改为结构化 JSON 修改，避免 IDE 保存示例项目后的字段顺序变化破坏回归 |
+| MVP α 便携包入口 | Pass | `pwsh ./scripts/package.ps1 -Version v26.5.1-dev -Clean` 已通过；生成 `artifacts/packages/RadishFlow-v26.5.1-dev-windows-x64/` 与同名 `.zip`，包内包含 Studio exe、正向 flowsheet 示例、样例物性包、quick start / result review / acceptance / versioning / release notes 文档和许可文件；manifest 已记录 `releaseNotes=docs/releases/v26.5.1-dev.md`；脚本不执行安装、COM 注册、PME 或第三方模型加载 |
 
 ## 下一步
 
-1. 进入 MVP α 发布包形态与发布说明收口。
-2. 发布说明应引用已通过的 Smoke A / B / C、仓库级验证和现有 quick start / runbook。
-3. 后续补发布操作清单时，继续沿 `docs/architecture/versioning.md` 的 tag / release 轨道口径展开，不在 quick start 中暗示已存在完整安装器。
+1. 从便携包 staging 目录直接启动 `radishflow-studio.exe`，执行包内示例发现、打开示例、运行、审阅和保存 / 重开 smoke。
+2. 包内 smoke 无 blocker 后，按 `docs/releases/v26.5.1-dev.md` 的候选 tag 检查项准备 `v26.5.1-dev`。
+3. 后续补发布自动化时，继续沿 `docs/architecture/versioning.md` 的 tag / release 轨道口径展开，不在 quick start 中暗示已存在完整安装器。

@@ -1,4 +1,7 @@
-use std::path::{Path, PathBuf};
+use std::{
+    ffi::OsString,
+    path::{Path, PathBuf},
+};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StudioExampleProjectModel {
@@ -79,10 +82,37 @@ pub fn studio_example_project_models(
 }
 
 fn studio_examples_root() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+    let source_examples_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("../..")
         .join("examples")
-        .join("flowsheets")
+        .join("flowsheets");
+    let exe_path = std::env::current_exe().ok();
+    resolve_studio_examples_root(
+        std::env::var_os("RADISHFLOW_EXAMPLES_DIR"),
+        exe_path.as_deref(),
+        source_examples_root,
+    )
+}
+
+fn resolve_studio_examples_root(
+    configured_examples_dir: Option<OsString>,
+    exe_path: Option<&Path>,
+    source_examples_root: PathBuf,
+) -> PathBuf {
+    if let Some(path) = configured_examples_dir {
+        return PathBuf::from(path);
+    }
+
+    if let Some(exe_path) = exe_path {
+        if let Some(exe_dir) = exe_path.parent() {
+            let packaged_examples = exe_dir.join("examples").join("flowsheets");
+            if packaged_examples.exists() {
+                return packaged_examples;
+            }
+        }
+    }
+
+    source_examples_root
 }
 
 fn path_eq(left: &Path, right: &Path) -> bool {
@@ -97,7 +127,9 @@ fn path_eq(left: &Path, right: &Path) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::studio_example_project_models;
+    use std::{ffi::OsString, fs, path::PathBuf};
+
+    use super::{resolve_studio_examples_root, studio_example_project_models};
 
     #[test]
     fn studio_example_project_models_mark_current_project() {
@@ -119,5 +151,47 @@ mod tests {
                 .map(|model| model.id),
             Some("feed-valve-flash")
         );
+    }
+
+    #[test]
+    fn studio_examples_root_prefers_configured_directory() {
+        let configured = PathBuf::from("configured-examples");
+        let source = PathBuf::from("source-examples");
+        let resolved = resolve_studio_examples_root(
+            Some(OsString::from(configured.as_os_str())),
+            Some(PathBuf::from("package/radishflow-studio.exe").as_path()),
+            source,
+        );
+
+        assert_eq!(resolved, configured);
+    }
+
+    #[test]
+    fn studio_examples_root_uses_packaged_examples_when_present() {
+        let package_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../..")
+            .join("target")
+            .join("radishflow-studio-tests")
+            .join(format!("packaged-examples-{}", std::process::id()));
+        let packaged_examples = package_root.join("examples").join("flowsheets");
+        fs::create_dir_all(&packaged_examples).expect("create packaged examples dir");
+
+        let exe_path = package_root.join("radishflow-studio.exe");
+        let resolved =
+            resolve_studio_examples_root(None, Some(&exe_path), PathBuf::from("source-examples"));
+
+        assert_eq!(resolved, packaged_examples);
+    }
+
+    #[test]
+    fn studio_examples_root_falls_back_to_source_examples() {
+        let source = PathBuf::from("source-examples");
+        let resolved = resolve_studio_examples_root(
+            None,
+            Some(PathBuf::from("package/radishflow-studio.exe").as_path()),
+            source.clone(),
+        );
+
+        assert_eq!(resolved, source);
     }
 }
