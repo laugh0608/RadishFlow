@@ -321,22 +321,44 @@ fn shell_starts_on_home_dashboard_with_start_environment_and_messages() {
     let texts = render_home_dashboard_texts(&mut app);
     for expected in [
         "RadishFlow Studio",
-        "Start",
-        "New Blank Case",
-        "Open Case",
-        "Open Example Case",
-        "Recent Cases",
-        "Example Cases",
-        "Environment",
-        "Client",
-        "Server",
-        "Device",
-        "Messages",
-        "Local ready",
+        "稳态流程模拟",
+        "开始",
+        "新建空白 Case",
+        "打开 Case",
+        "打开示例 Case",
+        "最近 Case",
+        "示例 Case",
+        "环境",
+        "客户端",
+        "服务端",
+        "设备",
+        "消息",
+        "本地就绪",
+        "服务端离线",
+        "尚未登录",
+        "内置示例已在本地可用。",
     ] {
         assert!(
             texts.iter().any(|text| text.contains(expected)),
             "expected home dashboard to render `{expected}`, rendered texts: {:?}",
+            texts
+        );
+    }
+    for hidden in [
+        "Start",
+        "New Blank Case",
+        "Recent Cases",
+        "Example Cases",
+        "Environment",
+        "Messages",
+        "Local ready",
+        "Server offline",
+        "Signed out",
+        "You are not signed in",
+    ] {
+        assert!(
+            !texts.iter().any(|text| text.contains(hidden)),
+            "expected home dashboard to hide English `{hidden}`, rendered texts: {:?}",
             texts
         );
     }

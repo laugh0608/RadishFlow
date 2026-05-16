@@ -306,8 +306,9 @@ impl ReadyAppState {
         ctx: &egui::Context,
         window: &StudioGuiWindowModel,
     ) {
+        let height = workbench_bottom_drawer_height(self.bottom_drawer_tab, window);
         egui::TopBottomPanel::bottom("studio.bottom_drawer")
-            .exact_height(190.0)
+            .exact_height(height)
             .resizable(false)
             .show(ctx, |ui| {
                 self.render_bottom_workbench(ui, window);
@@ -1233,6 +1234,26 @@ impl ReadyAppState {
             .inner;
         self.update_area_focus_from_rect(ui.ctx(), area_id, header_rect);
         self.update_area_focus_from_rect(ui.ctx(), area_id, body_rect);
+    }
+}
+
+fn workbench_bottom_drawer_height(
+    tab: StudioShellBottomDrawerTab,
+    window: &StudioGuiWindowModel,
+) -> f32 {
+    match tab {
+        StudioShellBottomDrawerTab::Messages => {
+            if window.runtime.latest_failure.is_some()
+                || window.runtime.latest_solve_snapshot.is_some()
+                || window.runtime.run_panel.view().latest_log_message.is_some()
+            {
+                156.0
+            } else {
+                132.0
+            }
+        }
+        StudioShellBottomDrawerTab::RunLog => 156.0,
+        StudioShellBottomDrawerTab::ResultsTable | StudioShellBottomDrawerTab::Diagnostics => 190.0,
     }
 }
 
