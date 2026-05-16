@@ -424,7 +424,13 @@ impl ReadyAppState {
     }
 
     pub(super) fn update(&mut self, ctx: &egui::Context) {
+        let close_frame_snapshot = ctx
+            .input(|input| input.viewport().close_requested())
+            .then(|| self.platform_host.snapshot());
         if self.sync_viewport_close(ctx) {
+            if let Some(snapshot) = close_frame_snapshot.as_ref() {
+                self.render_viewport_close_frame(ctx, snapshot);
+            }
             return;
         }
         self.sync_viewport_lifecycle(ctx);
@@ -462,6 +468,34 @@ impl ReadyAppState {
             window.layout_state.scope.window_id,
             hovered_drop_target,
         );
+    }
+
+    fn render_viewport_close_frame(
+        &mut self,
+        ctx: &egui::Context,
+        snapshot: &radishflow_studio::StudioGuiSnapshot,
+    ) {
+        let window = snapshot.window_model();
+        let mut hovered_drop_target = false;
+        if self.screen == StudioShellScreen::Home {
+            self.render_home_dashboard(ctx, &window);
+            self.render_command_palette(ctx, &window.commands);
+            return;
+        }
+
+        self.render_top_bar(
+            ctx,
+            &snapshot.app_host_state.windows,
+            &window,
+            &mut hovered_drop_target,
+        );
+        self.render_left_sidebar(ctx, &window, &mut hovered_drop_target);
+        self.render_right_sidebar(ctx, &window, &mut hovered_drop_target);
+        self.render_bottom_status_bar(ctx, &window);
+        self.render_bottom_drawer(ctx, &window);
+        self.render_center_stage(ctx, &window, &mut hovered_drop_target);
+        self.render_command_palette(ctx, &window.commands);
+        self.render_floating_drop_preview_overlay(ctx, &window);
     }
 
     pub(super) fn dispatch_run_panel_widget(&mut self, event: RunPanelWidgetEvent) {

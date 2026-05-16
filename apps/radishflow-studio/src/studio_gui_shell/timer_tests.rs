@@ -110,6 +110,40 @@ fn viewport_close_last_window_does_not_cancel_native_close_request() {
 }
 
 #[test]
+fn viewport_close_last_window_paints_final_frame_before_native_close() {
+    let preferences_path =
+        std::env::temp_dir().join("radishflow-studio-shell-native-close-final-frame.json");
+    let mut app = ReadyAppState::from_config(&synced_skip_config(), preferences_path)
+        .expect("expected ready app");
+    let ctx = egui::Context::default();
+
+    let output = ctx.run(close_raw_input(), |ctx| {
+        app.update(ctx);
+    });
+
+    assert_eq!(app.logical_window_count(), 0);
+    let close_commands = output
+        .viewport_output
+        .get(&egui::ViewportId::ROOT)
+        .map(|viewport| viewport.commands.as_slice())
+        .unwrap_or_default();
+    assert!(
+        !close_commands.contains(&egui::ViewportCommand::CancelClose),
+        "last-window close must not cancel the native close request"
+    );
+
+    let texts = output
+        .shapes
+        .iter()
+        .flat_map(|clipped_shape| shape_texts(&clipped_shape.shape))
+        .collect::<Vec<_>>();
+    assert!(
+        texts.iter().any(|text| text.contains("RadishFlow Studio")),
+        "close request frame should still paint the existing shell before native window teardown: {texts:?}"
+    );
+}
+
+#[test]
 fn viewport_focus_tracking_does_not_dispatch_foreground_entitlement_tick() {
     let preferences_path = std::env::temp_dir()
         .join("radishflow-studio-shell-viewport-focus-no-foreground-dispatch.preferences.json");
@@ -131,6 +165,30 @@ fn viewport_focus_tracking_does_not_dispatch_foreground_entitlement_tick() {
         app.platform_host.gui_activity_lines().len(),
         previous_activity_count
     );
+}
+
+fn close_raw_input() -> egui::RawInput {
+    let mut viewport = egui::ViewportInfo::default();
+    viewport.events.push(egui::ViewportEvent::Close);
+    let mut raw_input = egui::RawInput {
+        viewport_id: egui::ViewportId::ROOT,
+        screen_rect: Some(egui::Rect::from_min_size(
+            egui::Pos2::ZERO,
+            egui::vec2(1280.0, 860.0),
+        )),
+        focused: true,
+        ..Default::default()
+    };
+    raw_input.viewports.insert(egui::ViewportId::ROOT, viewport);
+    raw_input
+}
+
+fn shape_texts(shape: &egui::epaint::Shape) -> Vec<String> {
+    match shape {
+        egui::epaint::Shape::Text(text) => vec![text.galley.job.text.clone()],
+        egui::epaint::Shape::Vec(shapes) => shapes.iter().flat_map(shape_texts).collect(),
+        _ => Vec::new(),
+    }
 }
 
 #[test]
