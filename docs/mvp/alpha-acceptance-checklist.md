@@ -1,6 +1,6 @@
 # MVP Alpha Acceptance Checklist
 
-更新时间：2026-05-14
+更新时间：2026-05-16
 
 ## 用途
 
@@ -46,12 +46,12 @@
 
 | 项目 | 命令或入口 | 当前状态 | 通过标准 | 记录 |
 | --- | --- | --- | --- | --- |
-| 仓库级验证 | `pwsh ./scripts/check-repo.ps1` | Pass | Rust / 文本 / 仓库治理基线通过 | 2026-05-14 已通过；输出 `Repository checks passed.` |
+| 仓库级验证 | `pwsh ./scripts/check-repo.ps1` | Pass | Rust / 文本 / 仓库治理基线通过 | 2026-05-16 已通过；首次运行有 1 个 Studio platform timer focused test 短暂失败，随后 focused 与完整复跑均通过；最终输出 `Repository checks passed.` |
 | 文本格式检查 | `git diff --check` | Pass | 无 whitespace error | 2026-05-14 已通过 |
 | 文档体量报告 | `pwsh ./scripts/check-doc-size.ps1` | Pass | 默认入口未重新膨胀；既有超限项可解释 | 2026-05-14 已通过；输出 `all enforced markdown files are within target limits` |
 | `rf-ffi` JSON/error 基线 | `pwsh ./scripts/check-repo.ps1` 覆盖；必要时补 `cargo test -p rf-ffi` | Pass | solve snapshot / stream JSON 与 structured error 回归稳定 | 2026-05-13 仓库级验证通过 |
 | official / synthetic 数值基线 | `pwsh ./scripts/check-repo.ps1` 覆盖 | Pass | golden、raw solver 与 Studio focused 回归稳定 | 2026-05-13 仓库级验证通过 |
-| Studio shell UI presentation | `cargo test -p radishflow-studio studio_gui_shell` | Pass | 顶部主路径、结果面、命令面和 runtime focused 回归稳定 | 2026-05-14 已通过，97 个 shell focused tests 通过 |
+| Studio shell UI presentation | `cargo test -p radishflow-studio studio_gui_shell` | Pass | 顶部主路径、结果面、命令面和 runtime focused 回归稳定 | 2026-05-16 已通过，97 个 shell focused tests 通过；中文 shell 高频路径资源已纳入回归 |
 
 ## Studio 手动 Smoke
 
@@ -59,34 +59,34 @@
 
 | 项 | 记录 |
 | --- | --- |
-| 状态 | Pending |
+| 状态 | Pass |
 | 推荐项目 | `examples/flowsheets/feed-heater-flash-binary-hydrocarbon.rfproj.json` |
 | 步骤 | 启动 Studio；打开项目；执行运行；查看 Runtime / Result Inspector / Active Inspector；保存；重开 |
 | 通过标准 | 运行成功生成最新 `SolveSnapshot`；能审阅 `T / P / F / H`、phase rows 与 `bubble_dew_window`；保存和重开不破坏项目或 sidecar |
 | Blocker 分类 | `StudioOpenRunSave`、`ResultReview`、`DocsRepro` |
-| 记录 | 待人工执行 |
+| 记录 | 2026-05-16 人工从 IDE 启动 Studio 执行，通过；打开示例、运行、结果审阅、保存 / 重开路径未发现 blocker |
 
 ### Smoke B：空白建模最短闭环
 
 | 项 | 记录 |
 | --- | --- |
-| 状态 | Pending |
+| 状态 | Pass |
 | 推荐路径 | `Feed -> Flash Drum`，再按需验证 `Feed -> Heater/Cooler/Valve -> Flash Drum` 与 `Feed + Feed -> Mixer -> Flash Drum` |
 | 步骤 | 从空白项目放置单元；显式接受 Canvas suggestion；运行；查看 flash outlet |
 | 通过标准 | 空白项目具备 MVP 默认二元组件与本地 `binary-hydrocarbon-lite-v1` 缓存；suggestion 可补齐最短链路；运行可收敛或给出结构化诊断 |
 | Blocker 分类 | `StudioModelingPath`、`NumericalBaseline`、`ResultReview` |
-| 记录 | 待人工执行 |
+| 记录 | 2026-05-16 人工执行通过；空白项目最短建模闭环可完成，Project / Canvas 到 Inspector 的入口可用，`连接` suggestion 可完成 MVP 最短连接 |
 
 ### Smoke C：Stream Inspector 组成阻断
 
 | 项 | 记录 |
 | --- | --- |
-| 状态 | Pending |
+| 状态 | Pass |
 | 推荐项目 | 任一 official hydrocarbon 示例 |
 | 步骤 | 修改流股组成形成未提交草稿；尝试运行；提交为未归一组成；再次尝试运行；显式 normalize；再次运行 |
 | 通过标准 | 未提交草稿被标记为 `Draft` 并阻断运行；已提交但未归一组成被标记为 `Unnormalized` 并阻断运行；normalize 后可继续运行 |
 | Blocker 分类 | `StreamInspectorGuard`、`StudioOpenRunSave` |
-| 记录 | 待人工执行 |
+| 记录 | 2026-05-16 人工执行通过；未提交草稿、未归一组成均按预期阻断运行，显式 normalize 后可继续运行 |
 
 ## `rf-ffi` / CAPE-OPEN 验收
 
@@ -129,9 +129,16 @@
 | 自动验证 | Pass | `cargo fmt --all`、`cargo test -p radishflow-studio studio_gui_shell`、`git diff --check` 与 `pwsh ./scripts/check-repo.ps1` 已通过 |
 | 用户视角 smoke | Partial | 人工反馈确认首屏和运行后结果面基本符合预期；已按反馈补 `新建空白`、未命名空白保存、`另存为...`、保存后切换项目回归，以及 Project / Canvas 到 Inspector 的可发现入口；下一步继续按 Smoke A / B / C 复跑完整记录 |
 
+### 2026-05-16
+
+| 项目 | 状态 | 记录 |
+| --- | --- | --- |
+| 仓库级验证 | Pass | `pwsh ./scripts/check-repo.ps1` 最终通过；首次运行中 `studio_gui_platform_host::tests::platform_host_batches_start_failed_feedbacks_and_refreshes_snapshot` 短暂失败，但 focused 复跑、`cargo test -p radishflow-studio --lib` 和完整仓库复跑均通过 |
+| Studio 用户视角 smoke | Pass | Smoke A / B / C 已由人工从 IDE 启动 Studio 执行并确认无 blocker；打开示例 / 运行 / 审阅 / 保存重开、空白建模最短闭环、Stream Inspector 草稿与未归一组成阻断均符合验收口径 |
+| 中文界面资源 | Pass | 已补齐 shell 高频路径的中文资源：顶部 / 状态栏、工作台 tabs、Project 树、Canvas 对象 / suggestion / 选择 / 视口、底部 drawer、命令面板计数等；同时把本地规则测试夹具改为结构化 JSON 修改，避免 IDE 保存示例项目后的字段顺序变化破坏回归 |
+
 ## 下一步
 
-1. 按 Smoke A / B / C 完成用户视角记录，确认打开示例、运行、结果审阅、保存 / 另存为 / 保存后切换项目、Stream Inspector 草稿 / 未归一组成阻断，以及空白建模最短闭环。
-2. Smoke B 重点观察用户能否从 Project / Canvas 自然进入 Inspector，完成流股参数、组成归一化和 suggestion 连接，而不依赖隐藏命令清单。
-3. 若人工 smoke 暴露 blocker，按分类修复；若没有 blocker，进入 MVP α 发布包形态与发布说明收口。
-4. 后续补发布操作清单时，继续沿 `docs/architecture/versioning.md` 的 tag / release 轨道口径展开，不在 quick start 中暗示已存在完整安装器。
+1. 进入 MVP α 发布包形态与发布说明收口。
+2. 发布说明应引用已通过的 Smoke A / B / C、仓库级验证和现有 quick start / runbook。
+3. 后续补发布操作清单时，继续沿 `docs/architecture/versioning.md` 的 tag / release 轨道口径展开，不在 quick start 中暗示已存在完整安装器。

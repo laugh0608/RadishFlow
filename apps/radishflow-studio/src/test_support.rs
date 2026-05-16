@@ -5,15 +5,15 @@ use rf_flash::estimate_bubble_dew_window;
 use rf_store::{
     StoredAuthCacheIndex, StoredProjectFile, StoredPropertyPackageManifest,
     StoredPropertyPackagePayload, StoredPropertyPackageRecord, StoredPropertyPackageSource,
-    property_package_payload_integrity, write_property_package_manifest,
-    write_property_package_payload,
+    parse_project_file_json, project_file_to_pretty_json, property_package_payload_integrity,
+    write_property_package_manifest, write_property_package_payload,
 };
 use rf_thermo::{
     AntoineCoefficients, InMemoryPropertyPackageProvider, PlaceholderThermoProvider,
     PropertyPackageManifest as ThermoPropertyPackageManifest,
     PropertyPackageSource as ThermoPropertyPackageSource, ThermoComponent, ThermoSystem,
 };
-use rf_types::{ComponentId, PhaseEquilibriumRegion};
+use rf_types::{ComponentId, PhaseEquilibriumRegion, StreamId, UnitId};
 
 #[doc(hidden)]
 pub const OFFICIAL_BINARY_HYDROCARBON_COMPONENT_SPECS: [(&str, &str); 2] =
@@ -104,37 +104,47 @@ pub fn official_valve_binary_hydrocarbon_project_json() -> &'static str {
 
 #[doc(hidden)]
 pub fn build_flash_drum_local_rules_project_json() -> String {
-    official_heater_binary_hydrocarbon_project_json()
-        .replacen(
-            "\"name\": \"inlet\",\n              \"direction\": \"inlet\",\n              \"kind\": \"material\",\n              \"stream_id\": \"stream-heated\"",
-            "\"name\": \"inlet\",\n              \"direction\": \"inlet\",\n              \"kind\": \"material\",\n              \"stream_id\": null",
-            1,
-        )
-        .replacen(
-            "\"name\": \"liquid\",\n              \"direction\": \"outlet\",\n              \"kind\": \"material\",\n              \"stream_id\": \"stream-liquid\"",
-            "\"name\": \"liquid\",\n              \"direction\": \"outlet\",\n              \"kind\": \"material\",\n              \"stream_id\": null",
-            1,
-        )
-        .replacen(
-            "\"name\": \"vapor\",\n              \"direction\": \"outlet\",\n              \"kind\": \"material\",\n              \"stream_id\": \"stream-vapor\"",
-            "\"name\": \"vapor\",\n              \"direction\": \"outlet\",\n              \"kind\": \"material\",\n              \"stream_id\": null",
-            1,
-        )
+    let mut project = official_heater_binary_hydrocarbon_project_file();
+    disconnect_project_unit_port(&mut project, "flash-1", "inlet");
+    disconnect_project_unit_port(&mut project, "flash-1", "liquid");
+    disconnect_project_unit_port(&mut project, "flash-1", "vapor");
+    serialize_project_file(&project)
 }
 
 #[doc(hidden)]
 pub fn build_flash_drum_local_rules_synced_project_json() -> String {
-    official_heater_binary_hydrocarbon_project_json()
-        .replacen(
-            ",\n        \"stream-vapor\": {\n          \"id\": \"stream-vapor\",\n          \"name\": \"Vapor Outlet\",\n          \"temperature_k\": 345.0,\n          \"pressure_pa\": 95000.0,\n          \"total_molar_flow_mol_s\": 0.0,\n          \"overall_mole_fractions\": {\n            \"methane\": 0.5,\n            \"ethane\": 0.5\n          },\n          \"phases\": []\n        }",
-            "",
-            1,
-        )
-        .replacen(
-            "\"name\": \"vapor\",\n              \"direction\": \"outlet\",\n              \"kind\": \"material\",\n              \"stream_id\": \"stream-vapor\"",
-            "\"name\": \"vapor\",\n              \"direction\": \"outlet\",\n              \"kind\": \"material\",\n              \"stream_id\": null",
-            1,
-        )
+    let mut project = official_heater_binary_hydrocarbon_project_file();
+    project
+        .document
+        .flowsheet
+        .streams
+        .remove(&StreamId::new("stream-vapor"));
+    disconnect_project_unit_port(&mut project, "flash-1", "vapor");
+    serialize_project_file(&project)
+}
+
+fn official_heater_binary_hydrocarbon_project_file() -> StoredProjectFile {
+    parse_project_file_json(official_heater_binary_hydrocarbon_project_json())
+        .expect("expected official heater binary hydrocarbon project")
+}
+
+fn disconnect_project_unit_port(project: &mut StoredProjectFile, unit_id: &str, port_name: &str) {
+    let unit = project
+        .document
+        .flowsheet
+        .units
+        .get_mut(&UnitId::new(unit_id))
+        .expect("expected project unit");
+    let port = unit
+        .ports
+        .iter_mut()
+        .find(|port| port.name == port_name)
+        .expect("expected project unit port");
+    port.stream_id = None;
+}
+
+fn serialize_project_file(project: &StoredProjectFile) -> String {
+    project_file_to_pretty_json(project).expect("expected project json serialization")
 }
 
 #[doc(hidden)]

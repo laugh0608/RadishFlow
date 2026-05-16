@@ -11,8 +11,12 @@ impl ReadyAppState {
         ui.horizontal_wrapped(|ui| {
             for action in &widget.actions {
                 let label = match action.shortcut.as_ref() {
-                    Some(shortcut) => format!("{} ({})", action.label, format_shortcut(shortcut)),
-                    None => action.label.to_string(),
+                    Some(shortcut) => format!(
+                        "{} ({})",
+                        self.locale.runtime_label(&action.label),
+                        format_shortcut(shortcut)
+                    ),
+                    None => self.locale.runtime_label(&action.label).into_owned(),
                 };
                 if ui
                     .add_enabled(action.enabled, egui::Button::new(label))
@@ -61,10 +65,16 @@ impl ReadyAppState {
                             } else {
                                 "Suggestion"
                             };
-                            ui.label(egui::RichText::new(focus).strong());
+                            ui.label(
+                                egui::RichText::new(self.locale.runtime_label(focus).as_ref())
+                                    .strong(),
+                            );
                             ui.label(format!("{:.0}%", suggestion.confidence * 100.0));
                             ui.label(format!("source={}", suggestion.source_label));
-                            ui.label(format!("status={}", suggestion.status_label));
+                            ui.label(format!(
+                                "status={}",
+                                self.locale.runtime_label(suggestion.status_label)
+                            ));
                         });
                         ui.label(format!("target={}", suggestion.target_unit_id));
                         ui.label(&suggestion.reason);
@@ -121,21 +131,27 @@ impl ReadyAppState {
             self.canvas_object_filter = CanvasObjectListFilter::All;
         }
         ui.horizontal_wrapped(|ui| {
-            ui.small(egui::RichText::new("Objects").strong());
+            ui.small(egui::RichText::new(self.locale.text(ShellText::Objects)).strong());
             render_status_chip(
                 ui,
-                &format!("{} units", object_list.unit_count),
+                &self
+                    .locale
+                    .count_label(object_list.unit_count, "unit", "units"),
                 egui::Color32::from_rgb(86, 118, 168),
             );
             render_status_chip(
                 ui,
-                &format!("{} streams", object_list.stream_count),
+                &self
+                    .locale
+                    .count_label(object_list.stream_count, "stream", "streams"),
                 egui::Color32::from_rgb(42, 142, 122),
             );
             if object_list.attention_count > 0 {
                 render_status_chip(
                     ui,
-                    &format!("{} attention", object_list.attention_count),
+                    &self
+                        .locale
+                        .count_label(object_list.attention_count, "attention", "attention"),
                     notice_color(rf_ui::RunPanelNoticeLevel::Warning),
                 );
             }
@@ -143,7 +159,11 @@ impl ReadyAppState {
         ui.horizontal_wrapped(|ui| {
             for option in &object_list.filter_options {
                 let selected = self.canvas_object_filter.filter_id() == option.filter_id;
-                let label = format!("{} {}", option.label, option.count);
+                let label = format!(
+                    "{} {}",
+                    self.locale.runtime_label(option.label),
+                    option.count
+                );
                 if ui
                     .add_enabled(option.enabled, egui::Button::new(label).selected(selected))
                     .on_hover_text(option.detail)
@@ -156,7 +176,7 @@ impl ReadyAppState {
             }
         });
         if object_list.items.is_empty() {
-            ui.small("none");
+            ui.small(self.locale.text(ShellText::NoneValue));
             return;
         }
         let visible_items = object_list
@@ -165,7 +185,7 @@ impl ReadyAppState {
             .filter(|item| self.canvas_object_filter.matches(item))
             .collect::<Vec<_>>();
         if visible_items.is_empty() {
-            ui.small("no objects in this filter");
+            ui.small(self.locale.text(ShellText::NoObjectsInFilter));
             return;
         }
 
@@ -183,7 +203,7 @@ impl ReadyAppState {
                         .unwrap_or(false);
                     render_status_chip(
                         ui,
-                        item.kind_label,
+                        self.locale.runtime_label(item.kind_label).as_ref(),
                         if is_hover_related {
                             egui::Color32::from_rgb(180, 124, 42)
                         } else if item.kind_label == "Unit" {
@@ -213,7 +233,7 @@ impl ReadyAppState {
                         if let Some(summary) = item.attention_summary.as_ref() {
                             render_status_chip(
                                 ui,
-                                "attention",
+                                self.locale.text(ShellText::Attention),
                                 notice_color(rf_ui::RunPanelNoticeLevel::Warning),
                             );
                             ui.small(summary);
@@ -234,28 +254,35 @@ impl ReadyAppState {
             if let Some(status) = widget.view().run_status.as_ref() {
                 render_status_chip(
                     ui,
-                    status.status_label,
+                    self.locale.runtime_label(status.status_label).as_ref(),
                     run_status_color(status.status_label),
                 );
                 if status.attention_count > 0 {
                     render_status_chip(
                         ui,
-                        &format!("{} attention", status.attention_count),
+                        &self
+                            .locale
+                            .count_label(status.attention_count, "attention", "attention"),
                         notice_color(rf_ui::RunPanelNoticeLevel::Warning),
                     );
                 }
                 if let Some(summary) = status.summary.as_ref() {
                     ui.small(truncate_canvas_label(summary, 42));
                 } else if let Some(reason) = status.pending_reason_label {
-                    ui.small(format!("pending={reason}"));
+                    match self.locale {
+                        StudioShellLocale::En => ui.small(format!("pending={reason}")),
+                        StudioShellLocale::ZhCn => {
+                            ui.small(format!("待处理={}", self.locale.runtime_label(reason)))
+                        }
+                    };
                 }
                 ui.separator();
             }
-            ui.small(egui::RichText::new("Selection").strong());
+            ui.small(egui::RichText::new(self.locale.text(ShellText::Selection)).strong());
             if let Some(selection) = widget.view().current_selection.as_ref() {
                 render_status_chip(
                     ui,
-                    selection.kind_label,
+                    self.locale.runtime_label(selection.kind_label).as_ref(),
                     egui::Color32::from_rgb(48, 112, 188),
                 );
                 ui.small(format!("{} · {}", selection.target_id, selection.summary));
@@ -266,8 +293,8 @@ impl ReadyAppState {
                     ui.small(layout_detail);
                 }
                 if ui
-                    .small_button("Focus")
-                    .on_hover_text("Focus the selected Inspector target")
+                    .small_button(self.locale.text(ShellText::Focus))
+                    .on_hover_text(self.locale.runtime_label("Focus selected object").as_ref())
                     .clicked()
                 {
                     self.dispatch_ui_command(&selection.command_id);
@@ -282,8 +309,13 @@ impl ReadyAppState {
                             ),
                         ) {
                             if ui
-                                .add_enabled(action.enabled, egui::Button::new(&action.label))
-                                .on_hover_text(&action.detail)
+                                .add_enabled(
+                                    action.enabled,
+                                    egui::Button::new(
+                                        self.locale.runtime_label(&action.label).as_ref(),
+                                    ),
+                                )
+                                .on_hover_text(self.locale.runtime_label(&action.detail).as_ref())
                                 .clicked()
                             {
                                 self.dispatch_ui_command(&action.command_id);
@@ -292,7 +324,7 @@ impl ReadyAppState {
                     }
                 }
             } else {
-                ui.small("none");
+                ui.small(self.locale.text(ShellText::NoneValue));
             }
         });
     }
@@ -304,27 +336,31 @@ impl ReadyAppState {
     ) {
         let viewport = &widget.view().viewport;
         ui.horizontal_wrapped(|ui| {
-            ui.small(egui::RichText::new("Viewport").strong());
+            ui.small(egui::RichText::new(self.locale.text(ShellText::Viewport)).strong());
             render_status_chip(
                 ui,
-                viewport.mode_label,
+                self.locale.runtime_label(viewport.mode_label).as_ref(),
                 egui::Color32::from_rgb(86, 118, 168),
             );
             render_status_chip(
                 ui,
-                viewport.layout_label,
+                self.locale.runtime_label(viewport.layout_label).as_ref(),
                 egui::Color32::from_rgb(86, 96, 108),
             );
             ui.small(&viewport.summary);
             if let Some(focus) = viewport.focus.as_ref() {
                 render_status_chip(
                     ui,
-                    &format!("{} {}", focus.kind_label, focus.target_id),
+                    &format!(
+                        "{} {}",
+                        self.locale.runtime_label(focus.kind_label),
+                        focus.target_id
+                    ),
                     egui::Color32::from_rgb(48, 112, 188),
                 );
                 ui.small(&focus.anchor_label);
                 if ui
-                    .small_button("Focus")
+                    .small_button(self.locale.text(ShellText::Focus))
                     .on_hover_text(&focus.detail)
                     .clicked()
                 {
@@ -349,10 +385,16 @@ impl ReadyAppState {
         }
 
         ui.horizontal_wrapped(|ui| {
-            ui.small(egui::RichText::new(legend.title).strong());
+            ui.small(
+                egui::RichText::new(self.locale.runtime_label(legend.title).as_ref()).strong(),
+            );
             for item in &legend.items {
                 let color = canvas_legend_swatch_color(item.swatch_label);
-                let label = format!("{}: {}", item.kind_label, item.label);
+                let label = format!(
+                    "{}: {}",
+                    self.locale.runtime_label(item.kind_label),
+                    self.locale.runtime_label(&item.label)
+                );
                 render_status_chip(ui, &label, color);
                 ui.add(
                     egui::Label::new(egui::RichText::new(&item.detail).small())
@@ -383,11 +425,11 @@ impl ReadyAppState {
 
         let title = pending_edit
             .map(|pending| pending.summary.as_str())
-            .unwrap_or("Select a canvas tool");
+            .unwrap_or(self.locale.text(ShellText::CanvasToolPrompt));
         let subtitle = if pending_edit.is_some() {
-            "Click to place the pending unit"
+            self.locale.text(ShellText::CanvasPlacePrompt)
         } else {
-            "Use a Place Unit action to start a canvas edit"
+            self.locale.text(ShellText::CanvasEditPrompt)
         };
         paint_canvas_surface_labels(&painter, rect, title, subtitle);
 

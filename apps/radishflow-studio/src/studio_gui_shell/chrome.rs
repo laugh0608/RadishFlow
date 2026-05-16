@@ -332,24 +332,23 @@ impl ReadyAppState {
                         run_status_color(run_panel_view.status_label),
                     );
                     ui.separator();
-                    ui.small("Units: SI");
+                    ui.small(self.locale.text(ShellText::UnitsSi));
                     ui.separator();
-                    ui.small("Solver: Sequential Modular");
+                    ui.small(self.locale.text(ShellText::SolverSequentialModular));
                     ui.separator();
-                    ui.small("Flowsheet Mode");
+                    ui.small(self.locale.text(ShellText::FlowsheetMode));
                     ui.separator();
-                    ui.small(format!(
-                        "{} units / {} streams",
+                    ui.small(self.locale.unit_stream_counts(
                         window.runtime.workspace_document.unit_count,
-                        window.runtime.workspace_document.stream_count
+                        window.runtime.workspace_document.stream_count,
                     ));
                     if let Some(selection) = window.canvas.widget.view().current_selection.as_ref()
                     {
                         ui.separator();
-                        ui.small(format!(
-                            "{} selected: {}",
-                            selection.kind_label, selection.target_id
-                        ));
+                        ui.small(
+                            self.locale
+                                .selected_target(selection.kind_label, &selection.target_id),
+                        );
                     }
                 });
             });
@@ -360,12 +359,12 @@ impl ReadyAppState {
             ui.selectable_value(
                 &mut self.left_sidebar_tab,
                 StudioShellLeftSidebarTab::Project,
-                "Project",
+                self.locale.text(ShellText::Project),
             );
             ui.selectable_value(
                 &mut self.left_sidebar_tab,
                 StudioShellLeftSidebarTab::Palette,
-                "Palette",
+                self.locale.text(ShellText::Palette),
             );
         });
         ui.separator();
@@ -388,8 +387,18 @@ impl ReadyAppState {
         render_wrapped_small(ui, &document.title);
         ui.add_space(8.0);
 
-        self.render_project_tree_row(ui, "Property Package", "binary-hydrocarbon-lite-v1", None);
-        self.render_project_tree_row(ui, "Streams", "", Some(document.stream_count));
+        self.render_project_tree_row(
+            ui,
+            self.locale.text(ShellText::PropertyPackage),
+            "binary-hydrocarbon-lite-v1",
+            None,
+        );
+        self.render_project_tree_row(
+            ui,
+            self.locale.text(ShellText::Streams),
+            "",
+            Some(document.stream_count),
+        );
         for item in window
             .canvas
             .widget
@@ -403,7 +412,12 @@ impl ReadyAppState {
         }
         ui.add_space(6.0);
 
-        self.render_project_tree_row(ui, "Units", "", Some(document.unit_count));
+        self.render_project_tree_row(
+            ui,
+            self.locale.text(ShellText::Units),
+            "",
+            Some(document.unit_count),
+        );
         for item in window
             .canvas
             .widget
@@ -419,7 +433,7 @@ impl ReadyAppState {
 
         self.render_project_tree_row(
             ui,
-            "Results",
+            self.locale.text(ShellText::Results),
             "",
             Some(
                 window
@@ -432,7 +446,7 @@ impl ReadyAppState {
         );
         self.render_project_tree_row(
             ui,
-            "Diagnostics",
+            self.locale.text(ShellText::Diagnostics),
             "",
             Some(
                 window
@@ -504,25 +518,30 @@ impl ReadyAppState {
 
     fn render_canvas_palette(&mut self, ui: &mut egui::Ui, window: &StudioGuiWindowModel) {
         let palette = &window.canvas.widget.view().place_unit_palette;
-        ui.label(egui::RichText::new(palette.title).strong());
+        ui.label(egui::RichText::new(self.locale.runtime_label(palette.title).as_ref()).strong());
         if let Some(active) = palette.active_unit_kind.as_ref() {
             render_status_chip(
                 ui,
-                &format!("placing {active}"),
+                &match self.locale {
+                    StudioShellLocale::En => format!("placing {active}"),
+                    StudioShellLocale::ZhCn => format!("正在放置 {active}"),
+                },
                 egui::Color32::from_rgb(52, 128, 89),
             );
             ui.add_space(6.0);
         }
 
         for option in &palette.options {
+            let option_label = self.locale.runtime_label(&option.label);
+            let option_detail = self.locale.runtime_label(&option.detail);
             let response = ui
                 .add_enabled(
                     option.enabled,
-                    egui::Button::new(&option.label)
+                    egui::Button::new(option_label.as_ref())
                         .selected(option.active)
                         .min_size(egui::vec2(ui.available_width(), 30.0)),
                 )
-                .on_hover_text(&option.detail);
+                .on_hover_text(option_detail.as_ref());
             if response.clicked() {
                 self.dispatch_ui_command(&option.command_id);
             }
@@ -532,12 +551,12 @@ impl ReadyAppState {
         let suggestions = &window.canvas.widget.view().suggestions;
         if !suggestions.is_empty() {
             ui.separator();
-            ui.label(egui::RichText::new("Suggestions").strong());
+            ui.label(egui::RichText::new(self.locale.text(ShellText::Suggestions)).strong());
             for suggestion in suggestions.iter().take(4) {
                 ui.horizontal_wrapped(|ui| {
                     render_status_chip(
                         ui,
-                        suggestion.status_label,
+                        self.locale.runtime_label(suggestion.status_label).as_ref(),
                         egui::Color32::from_rgb(86, 118, 168),
                     );
                     ui.small(format!("{:.0}%", suggestion.confidence * 100.0));
@@ -576,22 +595,22 @@ impl ReadyAppState {
             ui.selectable_value(
                 &mut self.right_sidebar_tab,
                 StudioShellRightSidebarTab::Inspector,
-                "Inspector",
+                self.locale.text(ShellText::Inspector),
             );
             ui.selectable_value(
                 &mut self.right_sidebar_tab,
                 StudioShellRightSidebarTab::Results,
-                "Results",
+                self.locale.text(ShellText::Results),
             );
             ui.selectable_value(
                 &mut self.right_sidebar_tab,
                 StudioShellRightSidebarTab::Run,
-                "Run",
+                self.locale.text(ShellText::Run),
             );
             ui.selectable_value(
                 &mut self.right_sidebar_tab,
                 StudioShellRightSidebarTab::Entitlement,
-                "Entitlement",
+                self.locale.text(ShellText::Entitlement),
             );
         });
         ui.separator();
@@ -667,22 +686,22 @@ impl ReadyAppState {
             ui.selectable_value(
                 &mut self.bottom_drawer_tab,
                 StudioShellBottomDrawerTab::Messages,
-                "Messages",
+                self.locale.text(ShellText::Messages),
             );
             ui.selectable_value(
                 &mut self.bottom_drawer_tab,
                 StudioShellBottomDrawerTab::RunLog,
-                "Run Log",
+                self.locale.text(ShellText::RuntimeLog),
             );
             ui.selectable_value(
                 &mut self.bottom_drawer_tab,
                 StudioShellBottomDrawerTab::ResultsTable,
-                "Results Table",
+                self.locale.text(ShellText::ResultsTable),
             );
             ui.selectable_value(
                 &mut self.bottom_drawer_tab,
                 StudioShellBottomDrawerTab::Diagnostics,
-                "Diagnostics",
+                self.locale.text(ShellText::Diagnostics),
             );
         });
         ui.separator();

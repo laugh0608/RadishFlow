@@ -1,6 +1,6 @@
 # 当前状态
 
-更新时间：2026-05-14
+更新时间：2026-05-16
 
 ## 用途
 
@@ -48,14 +48,15 @@
 - 2026-05-14 已完成 Studio shell 首轮工作台重排并补齐顶部 `新建空白` 入口：新建会直接打开未命名空白项目，后续点保存才选择 `.rfproj.json` 路径；左侧 `Project / Palette`，右侧 `Inspector / Results / Run / Entitlement`，底部 `Messages / Run Log / Results Table / Diagnostics` drawer 与 SI 状态栏；结果面继续只读消费 `SolveSnapshot`，不新增 shell 私有结果缓存，也不扩 MVP α 非目标。
 - 2026-05-14 人工 smoke 暴露项目操作和建模编辑可发现性问题：顶部补 `另存为...` 和待确认提示条；Project/Canvas 对象选择会切到 Inspector，连接建议改名 `连接`。
 - 2026-05-14 已完成文档体量治理：路线图细节拆入 `docs/mvp/roadmap/`，周志迁入 `docs/devlogs/YYYY-MM/`，体量脚本默认只报告受约束文档超限。
+- 2026-05-16 MVP α Studio 用户视角 Smoke A / B / C 已由人工从 IDE 启动 Studio 执行并确认无 blocker；同日已收口中文界面资源，补齐 smoke 高频路径上的中英文不一致问题，并把本地规则测试夹具改为结构化 JSON 修改，避免 IDE 保存后的字段顺序变化破坏测试。
 
 完整过程和每日验证记录见 `docs/devlogs/2026-05/2026-W20.md` 以及更早周志。
 
 ## 下一步建议
 
-1. 下一步按 `docs/mvp/alpha-acceptance-checklist.md` 复跑 Studio 用户视角手动 smoke：确认新首屏、运行、结果审阅、保存 / 另存为 / 保存后切换项目、窗口关闭，以及 `新建空白` 后的空白建模最短闭环。
-2. UI 规范化仍只服务 MVP α 验收，不扩自由连线编辑器、完整拖拽布局编辑器、完整报表系统或新的求解范围；下一轮优先做人工 smoke 反馈下的细节修正和画布对象视觉 polish，结果面继续只读消费 `SolveSnapshot`，不新增 shell 私有结果缓存。
-3. Smoke 无 blocker 后，再进入 MVP α 发布包形态与发布说明收口。
+1. 进入 MVP α 发布包形态与发布说明收口，先明确当前开发态 / 压缩包式交付边界，不暗示已存在完整安装器。
+2. UI 规范化仍只服务 MVP α 验收，不扩自由连线编辑器、完整拖拽布局编辑器、完整报表系统或新的求解范围；结果面继续只读消费 `SolveSnapshot`，不新增 shell 私有结果缓存。
+3. 发布说明应引用已通过的 Smoke A / B / C、仓库级验证和现有 quick start / runbook，不另起散文档。
 4. 只修人工 smoke 或仓库级验证暴露的真实 blocker；若只是收益递减的 focused 覆盖缺口，先记录而不是继续主动扩矩阵。
 5. 保持 `TP Flash` official / synthetic golden、raw solver focused tolerance 与 `rf-ffi` JSON/error 基线稳定，但不主动扩无限 near-boundary 矩阵。
 

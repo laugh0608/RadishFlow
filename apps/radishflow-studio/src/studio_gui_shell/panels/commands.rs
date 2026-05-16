@@ -49,9 +49,13 @@ impl ReadyAppState {
         ui: &mut egui::Ui,
         result: &radishflow_studio::StudioGuiCanvasCommandResultCommandSurfaceViewModel,
     ) {
-        ui.label(egui::RichText::new("Canvas result").strong());
+        ui.label(egui::RichText::new(self.locale.text(ShellText::CanvasResult)).strong());
         ui.horizontal_wrapped(|ui| {
-            render_status_chip(ui, result.status_label, notice_color(result.level));
+            render_status_chip(
+                ui,
+                self.locale.runtime_label(result.status_label).as_ref(),
+                notice_color(result.level),
+            );
             ui.label(egui::RichText::new(&result.title).strong());
         });
         render_wrapped_small(ui, &result.detail);
@@ -151,10 +155,9 @@ impl ReadyAppState {
                 let canvas_result = self
                     .canvas_command_result_command_surface()
                     .filter(|result| result.matches_query(&self.command_palette.query));
-                ui.small(format!(
-                    "{} / {} commands",
+                ui.small(self.locale.command_count_summary(
                     commands.total_command_count.min(palette_items.len()),
-                    commands.total_command_count
+                    commands.total_command_count,
                 ));
                 let response = ui.add(
                     egui::TextEdit::singleline(&mut self.command_palette.query)

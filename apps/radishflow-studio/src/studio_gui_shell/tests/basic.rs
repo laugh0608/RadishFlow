@@ -176,8 +176,19 @@ fn shell_locale_defaults_to_chinese_and_can_translate_runtime_labels() {
     assert_eq!(locale.text(ShellText::InspectorPorts), "端口");
     assert_eq!(locale.text(ShellText::InspectorConsumedStreams), "消费流股");
     assert_eq!(locale.text(ShellText::InspectorProducedStreams), "产出流股");
+    assert_eq!(locale.text(ShellText::Project), "项目");
+    assert_eq!(locale.text(ShellText::Palette), "放置");
+    assert_eq!(locale.text(ShellText::ResultsTable), "结果表");
+    assert_eq!(locale.text(ShellText::UnitsSi), "单位: SI");
+    assert_eq!(
+        locale.text(ShellText::SolverSequentialModular),
+        "求解器: 顺序模块法"
+    );
     assert_eq!(locale.runtime_label("Unit").as_ref(), "单元");
     assert_eq!(locale.runtime_label("Stream").as_ref(), "流股");
+    assert_eq!(locale.runtime_label("Idle").as_ref(), "空闲");
+    assert_eq!(locale.runtime_label("SnapshotMissing").as_ref(), "缺少快照");
+    assert_eq!(locale.runtime_label("Place Feed").as_ref(), "放置 Feed");
     assert_eq!(
         StudioShellLocale::En.runtime_label("Converged").as_ref(),
         "Converged"
@@ -238,17 +249,17 @@ fn shell_defaults_to_alpha_workbench_layout_regions() {
 
     let texts = render_alpha_workbench_texts(&mut app);
     for expected in [
-        "Project",
-        "Palette",
-        "Property Package",
-        "Inspector",
-        "Results",
-        "Run",
-        "Entitlement",
-        "Results Table",
-        "Units: SI",
-        "Solver: Sequential Modular",
-        "Flowsheet Mode",
+        "项目",
+        "放置",
+        "物性包",
+        "检查器",
+        "结果",
+        "运行",
+        "授权",
+        "结果表",
+        "单位: SI",
+        "求解器: 顺序模块法",
+        "流程图模式",
     ] {
         assert!(
             texts.iter().any(|text| text.contains(expected)),
