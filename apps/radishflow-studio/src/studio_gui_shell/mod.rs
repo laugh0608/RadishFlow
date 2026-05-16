@@ -186,14 +186,14 @@ enum StudioShellRightSidebarTab {
     Inspector,
     Results,
     Run,
-    Entitlement,
+    Package,
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 enum StudioShellBottomDrawerTab {
+    #[default]
     Messages,
     RunLog,
-    #[default]
     ResultsTable,
     Diagnostics,
 }

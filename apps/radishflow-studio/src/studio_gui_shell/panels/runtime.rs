@@ -268,7 +268,7 @@ impl ReadyAppState {
         });
     }
 
-    pub(in crate::studio_gui_shell) fn render_runtime_entitlement_tab(
+    pub(in crate::studio_gui_shell) fn render_runtime_package_tab(
         &mut self,
         ui: &mut egui::Ui,
         window: &StudioGuiWindowModel,
@@ -280,85 +280,102 @@ impl ReadyAppState {
             ui.separator();
         }
 
-        let Some(entitlement_host) = window.runtime.entitlement_host.as_ref() else {
-            ui.small(self.locale.text(ShellText::NoEntitlementSession));
-            return;
-        };
-
-        let entitlement = &entitlement_host.presentation.panel.view;
         ui.horizontal_wrapped(|ui| {
-            ui.label(egui::RichText::new(self.locale.text(ShellText::Entitlement)).strong());
+            ui.label(egui::RichText::new(self.locale.text(ShellText::PropertyPackage)).strong());
             render_status_chip(
                 ui,
-                self.locale.runtime_label(entitlement.auth_label).as_ref(),
+                self.locale.runtime_label("Ready").as_ref(),
                 egui::Color32::from_rgb(66, 118, 92),
-            );
-            render_status_chip(
-                ui,
-                self.locale
-                    .runtime_label(entitlement.entitlement_label)
-                    .as_ref(),
-                entitlement_status_color(entitlement.entitlement_label),
             );
         });
         ui.add_space(4.0);
-        render_wrapped_small(
-            ui,
-            format!(
-                "{}: {}",
-                self.locale.text(ShellText::AllowedPackages),
-                entitlement.allowed_package_count
-            ),
-        );
-        render_wrapped_small(
-            ui,
-            format!(
-                "{}: {}",
-                self.locale.text(ShellText::CachedManifests),
-                entitlement.package_manifest_count
-            ),
-        );
-        if let Some(user) = entitlement.current_user_label.as_deref() {
-            render_wrapped_small(ui, format!("{}: {user}", self.locale.text(ShellText::User)));
-        }
-        if let Some(authority_url) = entitlement.authority_url.as_deref() {
+
+        egui::Frame::group(ui.style()).show(ui, |ui| {
+            ui.set_width(ui.available_width());
+            ui.horizontal_wrapped(|ui| {
+                ui.label(egui::RichText::new("binary-hydrocarbon-lite-v1").strong());
+                render_status_chip(
+                    ui,
+                    self.locale.runtime_label("Ready").as_ref(),
+                    egui::Color32::from_rgb(66, 118, 92),
+                );
+            });
             render_wrapped_small(
                 ui,
-                format!(
-                    "{}: {authority_url}",
-                    self.locale.text(ShellText::Authority)
-                ),
+                match self.locale {
+                    StudioShellLocale::En => {
+                        "Local binary hydrocarbon package used by the bundled examples."
+                    }
+                    StudioShellLocale::ZhCn => "本地二元烃物性包，用于内置示例和当前工作台。",
+                },
             );
-        }
-        if let Some(notice) = entitlement.notice.as_ref() {
             ui.add_space(4.0);
-            ui.colored_label(notice_color_from_entitlement(notice.level), &notice.title);
-            render_wrapped_label(ui, &notice.message);
-        }
-        if let Some(last_error) = entitlement.last_error.as_ref() {
-            ui.add_space(4.0);
-            ui.colored_label(egui::Color32::from_rgb(180, 40, 40), last_error);
-        }
-        ui.add_space(6.0);
-        let primary = &entitlement.primary_action;
-        let response = ui.add_enabled(
-            primary.enabled,
-            egui::Button::new(primary.label).fill(egui::Color32::from_rgb(230, 239, 252)),
-        );
-        if response.on_hover_text(primary.detail).clicked() {
-            self.dispatch_ui_command(entitlement_command_id(primary.id));
-        }
-        for action in &entitlement.secondary_actions {
-            let response = ui.add_enabled(action.enabled, egui::Button::new(action.label));
-            if response.on_hover_text(action.detail).clicked() {
-                self.dispatch_ui_command(entitlement_command_id(action.id));
-            }
-        }
-        ui.collapsing(self.locale.text(ShellText::Scheduler), |ui| {
-            for line in &entitlement_host.presentation.text.lines {
-                render_wrapped_small(ui, line);
-            }
+            egui::Grid::new("runtime-package-summary")
+                .num_columns(2)
+                .striped(false)
+                .show(ui, |ui| {
+                    ui.small(match self.locale {
+                        StudioShellLocale::En => "Components",
+                        StudioShellLocale::ZhCn => "组分",
+                    });
+                    ui.small("Methane, Ethane");
+                    ui.end_row();
+
+                    ui.small(match self.locale {
+                        StudioShellLocale::En => "Cache",
+                        StudioShellLocale::ZhCn => "缓存",
+                    });
+                    ui.small(match self.locale {
+                        StudioShellLocale::En => "Ready",
+                        StudioShellLocale::ZhCn => "就绪",
+                    });
+                    ui.end_row();
+
+                    ui.small(match self.locale {
+                        StudioShellLocale::En => "Example source",
+                        StudioShellLocale::ZhCn => "示例来源",
+                    });
+                    ui.small("examples/flowsheets");
+                    ui.end_row();
+
+                    ui.small(match self.locale {
+                        StudioShellLocale::En => "Bundled examples",
+                        StudioShellLocale::ZhCn => "内置示例",
+                    });
+                    ui.small(window.runtime.example_projects.len().to_string());
+                    ui.end_row();
+                });
         });
+
+        if let Some(entitlement_host) = window.runtime.entitlement_host.as_ref() {
+            let entitlement = &entitlement_host.presentation.panel.view;
+            ui.add_space(8.0);
+            egui::Frame::group(ui.style()).show(ui, |ui| {
+                ui.set_width(ui.available_width());
+                ui.label(egui::RichText::new(self.locale.text(ShellText::Platform)).strong());
+                render_wrapped_small(
+                    ui,
+                    format!(
+                        "{}: {}",
+                        self.locale.text(ShellText::AllowedPackages),
+                        entitlement.allowed_package_count
+                    ),
+                );
+                render_wrapped_small(
+                    ui,
+                    format!(
+                        "{}: {}",
+                        self.locale.text(ShellText::CachedManifests),
+                        entitlement.package_manifest_count
+                    ),
+                );
+                if let Some(notice) = entitlement.notice.as_ref() {
+                    ui.add_space(4.0);
+                    ui.colored_label(notice_color_from_entitlement(notice.level), &notice.title);
+                    render_wrapped_label(ui, &notice.message);
+                }
+            });
+        }
     }
 
     pub(in crate::studio_gui_shell) fn render_latest_failure_summary(

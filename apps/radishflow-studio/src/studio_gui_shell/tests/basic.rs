@@ -271,10 +271,7 @@ fn shell_defaults_to_alpha_workbench_layout_regions() {
     let mut app = ready_app_state(&synced_workspace_config());
     assert_eq!(app.left_sidebar_tab, StudioShellLeftSidebarTab::Project);
     assert_eq!(app.right_sidebar_tab, StudioShellRightSidebarTab::Inspector);
-    assert_eq!(
-        app.bottom_drawer_tab,
-        StudioShellBottomDrawerTab::ResultsTable
-    );
+    assert_eq!(app.bottom_drawer_tab, StudioShellBottomDrawerTab::Messages);
 
     let texts = render_alpha_workbench_texts(&mut app);
     for expected in [
@@ -285,8 +282,9 @@ fn shell_defaults_to_alpha_workbench_layout_regions() {
         "检查器",
         "结果",
         "运行",
-        "授权",
+        "消息",
         "结果表",
+        "还没有求解快照。",
         "单位: SI",
         "求解器: 顺序模块法",
         "流程图模式",
@@ -304,6 +302,7 @@ fn shell_defaults_to_alpha_workbench_layout_regions() {
         "info diagnostics stay out",
         "green markers",
         "arrows indicate",
+        "还没有可显示的求解结果。",
     ] {
         assert!(
             !texts.iter().any(|text| text.contains(hidden)),

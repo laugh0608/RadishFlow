@@ -664,8 +664,8 @@ impl ReadyAppState {
             );
             ui.selectable_value(
                 &mut self.right_sidebar_tab,
-                StudioShellRightSidebarTab::Entitlement,
-                self.locale.text(ShellText::Entitlement),
+                StudioShellRightSidebarTab::Package,
+                self.locale.text(ShellText::PropertyPackage),
             );
         });
         ui.separator();
@@ -681,9 +681,7 @@ impl ReadyAppState {
                 }
                 StudioShellRightSidebarTab::Results => self.render_runtime_results_tab(ui, window),
                 StudioShellRightSidebarTab::Run => self.render_runtime_run_tab(ui, window),
-                StudioShellRightSidebarTab::Entitlement => {
-                    self.render_runtime_entitlement_tab(ui, window)
-                }
+                StudioShellRightSidebarTab::Package => self.render_runtime_package_tab(ui, window),
             });
     }
 
