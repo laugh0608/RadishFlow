@@ -865,6 +865,7 @@ fn canvas_content_world_bounds(
             &mut bounds,
             egui::Rect::from_two_pos(geometry.start, geometry.end).expand(16.0),
         );
+        canvas_union_rect(&mut bounds, canvas_stream_label_rect(geometry, stream));
     }
     bounds
 }
@@ -1004,23 +1005,9 @@ fn paint_canvas_stream_label(
     geometry: CanvasStreamLineGeometry,
     stream: &radishflow_studio::StudioGuiCanvasStreamLineViewModel,
 ) {
-    let label = if stream.name == stream.stream_id {
-        stream.name.clone()
-    } else {
-        format!("{} ({})", stream.name, stream.stream_id)
-    };
-    let label = truncate_canvas_label(&label, 26);
-    let delta = geometry.end - geometry.start;
-    let normal = if delta.length() > 1.0 {
-        let direction = delta.normalized();
-        egui::vec2(-direction.y, direction.x)
-    } else {
-        egui::vec2(0.0, -1.0)
-    };
-    let center = geometry.start.lerp(geometry.end, 0.5) + normal * 14.0;
-    let width = (26.0 + label.chars().count() as f32 * 6.2).clamp(54.0, 188.0);
-    let size = egui::vec2(width, 20.0);
-    let mut min = center - size * 0.5;
+    let label = canvas_stream_label_text(stream);
+    let size = canvas_stream_label_size(&label);
+    let mut min = canvas_stream_label_rect(geometry, stream).min;
     min.x = min
         .x
         .clamp(canvas_rect.left() + 8.0, canvas_rect.right() - size.x - 8.0);
@@ -1056,6 +1043,61 @@ fn paint_canvas_stream_label(
         egui::FontId::proportional(10.5),
         color,
     );
+}
+
+fn canvas_stream_label_rect(
+    geometry: CanvasStreamLineGeometry,
+    stream: &radishflow_studio::StudioGuiCanvasStreamLineViewModel,
+) -> egui::Rect {
+    let label = canvas_stream_label_text(stream);
+    let size = canvas_stream_label_size(&label);
+    let center = canvas_stream_label_center(geometry, stream);
+    egui::Rect::from_center_size(center, size)
+}
+
+fn canvas_stream_label_center(
+    geometry: CanvasStreamLineGeometry,
+    stream: &radishflow_studio::StudioGuiCanvasStreamLineViewModel,
+) -> egui::Pos2 {
+    if stream.sink.is_none() {
+        let vertical_offset = stream
+            .source
+            .as_ref()
+            .filter(|source| source.port_side_count > 1)
+            .map(|source| {
+                let middle = (source.port_side_count.saturating_sub(1)) as f32 * 0.5;
+                (source.port_side_index as f32 - middle) * 28.0
+            })
+            .unwrap_or(0.0);
+        return geometry.start.lerp(geometry.end, 0.68) + egui::vec2(0.0, vertical_offset);
+    }
+
+    let delta = geometry.end - geometry.start;
+    let normal = if delta.length() > 1.0 {
+        let direction = delta.normalized();
+        egui::vec2(-direction.y, direction.x)
+    } else {
+        egui::vec2(0.0, -1.0)
+    };
+    geometry.start.lerp(geometry.end, 0.5) + normal * 14.0
+}
+
+fn canvas_stream_label_text(
+    stream: &radishflow_studio::StudioGuiCanvasStreamLineViewModel,
+) -> String {
+    let label = if stream.name == stream.stream_id {
+        stream.name.clone()
+    } else {
+        format!("{} ({})", stream.name, stream.stream_id)
+    };
+    truncate_canvas_label(&label, 26)
+}
+
+fn canvas_stream_label_size(label: &str) -> egui::Vec2 {
+    egui::vec2(
+        (26.0 + label.chars().count() as f32 * 6.2).clamp(54.0, 188.0),
+        20.0,
+    )
 }
 
 fn paint_canvas_stream_arrow(

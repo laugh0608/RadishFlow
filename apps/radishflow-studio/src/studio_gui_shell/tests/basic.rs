@@ -323,9 +323,9 @@ fn shell_starts_on_home_dashboard_with_start_environment_and_messages() {
         "RadishFlow Studio",
         "稳态流程模拟",
         "开始",
-        "新建空白项目",
+        "新建项目",
         "打开项目",
-        "打开示例",
+        "打开示例项目",
         "最近项目",
         "示例项目",
         "环境",
@@ -344,6 +344,20 @@ fn shell_starts_on_home_dashboard_with_start_environment_and_messages() {
             texts
         );
     }
+    assert!(
+        !texts.iter().any(|text| text.contains("继续上次项目")),
+        "expected home dashboard to hide redundant continue action, rendered texts: {:?}",
+        texts
+    );
+    assert_eq!(
+        texts
+            .iter()
+            .filter(|text| text.contains("打开示例项目"))
+            .count(),
+        1,
+        "expected home dashboard to render only the left-side example open action, rendered texts: {:?}",
+        texts
+    );
     for hidden in [
         "Start",
         "New Blank Case",
@@ -366,6 +380,68 @@ fn shell_starts_on_home_dashboard_with_start_environment_and_messages() {
             texts
         );
     }
+}
+
+#[test]
+fn home_open_project_uses_selected_recent_project() {
+    let timestamp = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("expected current timestamp")
+        .as_nanos();
+    let first_project = std::env::temp_dir().join(format!(
+        "radishflow-home-selected-recent-first-{timestamp}.rfproj.json"
+    ));
+    let second_project = std::env::temp_dir().join(format!(
+        "radishflow-home-selected-recent-second-{timestamp}.rfproj.json"
+    ));
+    let project = feed_heater_flash_binary_hydrocarbon_project();
+    write_project_file(&first_project, &project).expect("expected first recent project");
+    write_project_file(&second_project, &project).expect("expected second recent project");
+    let mut app = ready_app_state(&synced_workspace_config());
+    app.project_open.recent_projects = vec![first_project.clone(), second_project.clone()];
+    app.home_selected_recent_project = Some(second_project.clone());
+
+    app.open_selected_recent_project_or_picker();
+
+    assert_eq!(app.screen, StudioShellScreen::Workbench);
+    assert_eq!(
+        app.project_open.path_input,
+        second_project.display().to_string()
+    );
+    assert_eq!(
+        app.home_selected_recent_project.as_deref(),
+        Some(second_project.as_path())
+    );
+
+    let _ = fs::remove_file(first_project);
+    let _ = fs::remove_file(second_project);
+}
+
+#[test]
+fn home_open_example_uses_selected_example_project() {
+    let mut app = ready_app_state(&synced_workspace_config());
+    let window = app.platform_host.snapshot().window_model();
+    let target_project = window
+        .runtime
+        .example_projects
+        .iter()
+        .find(|example| example.id == "feed-valve-flash")
+        .expect("expected feed valve example")
+        .project_path
+        .clone();
+    app.home_selected_example_project = Some(target_project.clone());
+
+    app.open_selected_example_project(&window);
+
+    assert_eq!(app.screen, StudioShellScreen::Workbench);
+    assert_eq!(
+        app.project_open.path_input,
+        target_project.display().to_string()
+    );
+    assert_eq!(
+        app.home_selected_example_project.as_deref(),
+        Some(target_project.as_path())
+    );
 }
 
 #[test]

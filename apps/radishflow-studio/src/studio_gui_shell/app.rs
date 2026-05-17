@@ -405,6 +405,7 @@ impl ReadyAppState {
         &mut self,
         project_path: PathBuf,
     ) -> Option<ProjectOpenNotice> {
+        self.home_selected_recent_project = Some(project_path.clone());
         self.project_open.record_recent_project(project_path);
         if let Err(error) =
             save_recent_project_paths(&self.preferences_path, &self.project_open.recent_projects)

@@ -210,9 +210,25 @@ fn command_surface_window(app: &ReadyAppState) -> radishflow_studio::StudioGuiWi
 }
 
 fn stabilize_command_surface_window(window: &mut radishflow_studio::StudioGuiWindowModel) {
+    window.runtime.control_state.latest_log_entry = None;
+    window
+        .runtime
+        .run_panel
+        .presentation
+        .view
+        .latest_log_message = None;
+    window
+        .runtime
+        .run_panel
+        .presentation
+        .text
+        .lines
+        .retain(|line| !line.starts_with("Latest log: "));
     window.runtime.entitlement_host = None;
     window.runtime.platform_timer_lines.clear();
     window.runtime.gui_activity_lines.clear();
+    window.runtime.log_entries.clear();
+    window.runtime.latest_log_entry = None;
 }
 
 fn shared_command_surface_initial_window(

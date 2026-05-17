@@ -14,7 +14,7 @@
 
 - 产品定位：以 Rust Core + Rust UI + `.NET 10` CAPE-OPEN/COM 适配层构建稳态流程模拟软件。
 - 当前主线：MVP 第一阶段最小闭环已经可验证，但尚未达到首版 demo 的产品可用水准；当前主线是 Studio 首页与工作台信息架构的可用性收口，发布 / tag 暂缓。
-- 当前重点：Home Dashboard 与进入 case 后的 Workbench 第一轮真实 UI 已落地；Canvas viewport 初始居中 / fit-to-content、首页高频中文文案、`Feed Heater Flash` 示例布局顺序和第一轮 Canvas 可读性打磨已收口。下一步继续人工视觉 smoke，重点确认真实窗口中的端口 / 标签 / 流线可读性、运行后结果 / 消息 / 物性包入口和关闭窗口路径没有回归。
+- 当前重点：Home Dashboard 与进入 case 后的 Workbench 第一轮真实 UI 已落地；Canvas viewport 初始居中 / fit-to-content、首页高频中文文案、`Feed Heater Flash` 示例布局顺序、Canvas 可读性打磨和首页项目选择交互已收口。下一步继续人工视觉 smoke，重点确认真实窗口中的端口 / 标签 / 流线可读性、运行后结果 / 消息 / 物性包入口和关闭窗口路径没有回归。
 - 当前验证基线：功能改动优先执行相关 focused tests；阶段性收口执行 `pwsh ./scripts/check-repo.ps1`。
 
 ## 最近完成摘要
@@ -33,12 +33,13 @@
 - 2026-05-17 已完成 Canvas viewport 初始自动居中：画布在打开项目后的首轮渲染根据当前单元 / 流股 bounds 计算 shell-local viewport transform，让打开示例或项目后的小流程自然位于可视区域中央；后续 layout nudge 复用同一 offset，不会被每帧重新居中抵消。点击放置会反算回原始 sidecar 坐标，不写入项目语义、不进入 CommandHistory，也不引入视口持久化。首页中文文案中的 `打开 Case` / `示例 Case` 等高频残留已改为 `打开项目` / `打开示例` / `示例项目`，Workbench 打开项目消息也已中文化。
 - 2026-05-17 人工截图审阅后已修复 `Feed Heater Flash` 示例默认布局顺序：Canvas presentation 现在按物料流依赖给未定位单元排序，`feed-1 / heater-1 / flash-1` 会按工艺顺序从左到右显示；加载本地 sidecar 时也会过滤当前项目已不存在的 unit id。首页示例项目行按钮已从 `打开项目` 改为 `打开示例`。
 - 2026-05-17 已完成人工 UI smoke 后的 Canvas 可读性第一轮打磨：流线增加名称标签和白色底衬，单元块略增高以缓解端口与文字拥挤，已绑定端口点击可直接聚焦流股 Inspector；运行命令成功后自动切到右侧结果和底部结果表，失败后切到右侧运行和底部消息。
+- 2026-05-17 已按截图审阅建议收口 Home Dashboard 打开路径：左侧只保留 `新建项目`、`打开项目`、`打开示例项目`，最近项目和示例项目列表改为可选择、可双击打开；列表行内不再重复放置打开按钮。同步修正 Canvas 终端流股标签的垂直错位和内容 bounds，降低液相 / 气相出口标签重叠和右侧裁切概率。
 
 完整过程和每日验证记录见 `docs/devlogs/2026-05/2026-W20.md` 以及更早周志。
 
 ## 下一步建议
 
-1. 继续做人工视觉 smoke，确认 Home Dashboard、进入示例、运行、结果 / 消息 / 物性包入口、Canvas 初始居中和关闭窗口路径没有回归。
+1. 继续做人工视觉 smoke，确认 Home Dashboard 列表选择 / 双击打开、进入示例、运行、结果 / 消息 / 物性包入口、Canvas 初始居中和关闭窗口路径没有回归。
 2. 复核真实窗口中的 Canvas 端口 / 标签 / 流线可读性和 Workbench 残余中文；只处理 smoke 高频路径，不展开完整本地化体系。
 3. 若视觉 smoke 暴露真实 blocker，按现有 command / presentation / shell-local state 边界修复；不要把 viewport 收口误扩成自动布线、自由连线、完整拖拽布局或视口持久化。
 4. 便携包和 `docs/releases/v26.5.1-dev.md` 暂作为内部验证资产保留，不创建 tag，不推进对外发布自动化。

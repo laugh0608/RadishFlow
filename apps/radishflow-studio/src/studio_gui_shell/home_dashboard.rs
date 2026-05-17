@@ -15,9 +15,6 @@ enum HomeText {
     SignInUnavailableTitle,
     SignInUnavailableDetail,
     Start,
-    ContinueLastCase,
-    OpenFirstExampleCase,
-    OpenFirstExampleHover,
     NewBlankCase,
     OpenCase,
     OpenExampleCase,
@@ -70,6 +67,7 @@ impl ReadyAppState {
         ctx: &egui::Context,
         window: &StudioGuiWindowModel,
     ) {
+        self.reconcile_home_case_selection(window);
         self.render_home_app_bar(ctx, window);
         self.render_home_messages(ctx, window);
         egui::SidePanel::left("studio.home_start_actions")
@@ -167,37 +165,11 @@ impl ReadyAppState {
         ui.heading(home_text(self.locale, HomeText::Start));
         ui.add_space(8.0);
 
-        if let Some(last_case) = self.project_open.recent_projects.first().cloned() {
-            let response = ui
-                .add(
-                    egui::Button::new(home_text(self.locale, HomeText::ContinueLastCase))
-                        .fill(egui::Color32::from_rgb(230, 239, 252))
-                        .min_size(egui::vec2(ui.available_width(), 44.0)),
-                )
-                .on_hover_text(last_case.display().to_string());
-            if response.clicked() {
-                self.open_recent_project(last_case);
-            }
-        } else {
-            let response = ui
-                .add(
-                    egui::Button::new(home_text(self.locale, HomeText::OpenFirstExampleCase))
-                        .fill(egui::Color32::from_rgb(230, 239, 252))
-                        .min_size(egui::vec2(ui.available_width(), 44.0)),
-                )
-                .on_hover_text(home_text(self.locale, HomeText::OpenFirstExampleHover));
-            if response.clicked() {
-                if let Some(example) = window.runtime.example_projects.first() {
-                    self.open_example_project(example.project_path.clone());
-                }
-            }
-        }
-
-        ui.add_space(8.0);
         if ui
             .add(
                 egui::Button::new(home_text(self.locale, HomeText::NewBlankCase))
-                    .min_size(egui::vec2(ui.available_width(), 36.0)),
+                    .fill(egui::Color32::from_rgb(230, 239, 252))
+                    .min_size(egui::vec2(ui.available_width(), 44.0)),
             )
             .clicked()
         {
@@ -211,7 +183,7 @@ impl ReadyAppState {
             )
             .clicked()
         {
-            self.open_project_from_picker();
+            self.open_selected_recent_project_or_picker();
         }
         ui.add_space(5.0);
         if ui
@@ -221,23 +193,13 @@ impl ReadyAppState {
             )
             .clicked()
         {
-            if let Some(example) = window.runtime.example_projects.first() {
-                self.open_example_project(example.project_path.clone());
-            }
+            self.open_selected_example_project(window);
         }
     }
 
     fn render_home_cases(&mut self, ui: &mut egui::Ui, window: &StudioGuiWindowModel) {
         ui.horizontal(|ui| {
             ui.heading(home_text(self.locale, HomeText::RecentCases));
-            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                if ui
-                    .small_button(home_text(self.locale, HomeText::OpenCase))
-                    .clicked()
-                {
-                    self.open_project_from_picker();
-                }
-            });
         });
         self.render_home_recent_cases(ui);
         ui.add_space(18.0);
@@ -255,25 +217,6 @@ impl ReadyAppState {
             ui.group(|ui| {
                 ui.set_width(ui.available_width());
                 ui.small(home_text(self.locale, HomeText::NoRecentCases));
-                ui.horizontal(|ui| {
-                    if ui
-                        .button(home_text(self.locale, HomeText::OpenCase))
-                        .clicked()
-                    {
-                        self.open_project_from_picker();
-                    }
-                    if ui
-                        .button(home_text(self.locale, HomeText::OpenExampleCase))
-                        .clicked()
-                    {
-                        self.project_open.notice = Some(ProjectOpenNotice {
-                            level: ProjectOpenNoticeLevel::Info,
-                            title: home_text(self.locale, HomeText::ChooseExampleTitle).to_string(),
-                            detail: home_text(self.locale, HomeText::ChooseExampleDetail)
-                                .to_string(),
-                        });
-                    }
-                });
             });
             return;
         }
@@ -286,14 +229,29 @@ impl ReadyAppState {
             .take(5)
         {
             let status = recent_case_status(&project_path);
+            let is_selected = self
+                .home_selected_recent_project
+                .as_ref()
+                .is_some_and(|selected| paths_match(selected, &project_path));
             let case_name = project_path
                 .file_name()
                 .and_then(|name| name.to_str())
                 .unwrap_or("case");
-            egui::Frame::group(ui.style()).show(ui, |ui| {
+            let fill = if is_selected {
+                egui::Color32::from_rgb(230, 239, 252)
+            } else {
+                ui.visuals().widgets.noninteractive.bg_fill
+            };
+            egui::Frame::group(ui.style()).fill(fill).show(ui, |ui| {
                 ui.set_width(ui.available_width());
                 ui.horizontal(|ui| {
-                    if ui.button(truncate_middle(case_name, 34)).clicked() {
+                    let response = ui
+                        .selectable_label(is_selected, truncate_middle(case_name, 34))
+                        .on_hover_text(project_path.display().to_string());
+                    if response.clicked() {
+                        self.home_selected_recent_project = Some(project_path.clone());
+                    }
+                    if response.double_clicked() {
                         self.open_recent_project(project_path.clone());
                     }
                     render_status_chip(
@@ -328,37 +286,33 @@ impl ReadyAppState {
         }
 
         for example in window.runtime.example_projects.iter().take(6) {
-            egui::Frame::group(ui.style()).show(ui, |ui| {
+            let is_selected = self
+                .home_selected_example_project
+                .as_ref()
+                .is_some_and(|selected| paths_match(selected, &example.project_path));
+            let fill = if is_selected {
+                egui::Color32::from_rgb(230, 239, 252)
+            } else {
+                ui.visuals().widgets.noninteractive.bg_fill
+            };
+            egui::Frame::group(ui.style()).fill(fill).show(ui, |ui| {
                 ui.set_width(ui.available_width());
                 ui.horizontal(|ui| {
-                    ui.label(
-                        egui::RichText::new(example_case_title(
-                            self.locale,
-                            example.id,
-                            example.title,
-                        ))
-                        .strong(),
-                    );
+                    let title = example_case_title(self.locale, example.id, example.title);
+                    let response = ui
+                        .selectable_label(is_selected, egui::RichText::new(title.as_ref()).strong())
+                        .on_hover_text(example.project_path.display().to_string());
+                    if response.clicked() {
+                        self.home_selected_example_project = Some(example.project_path.clone());
+                    }
+                    if response.double_clicked() {
+                        self.open_example_project(example.project_path.clone());
+                    }
                     render_status_chip(
                         ui,
                         home_text(self.locale, HomeText::Ready),
                         egui::Color32::from_rgb(52, 128, 89),
                     );
-                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                        if ui
-                            .add_enabled(
-                                !example.is_current,
-                                egui::Button::new(home_text(
-                                    self.locale,
-                                    HomeText::OpenExampleCase,
-                                )),
-                            )
-                            .on_hover_text(example.project_path.display().to_string())
-                            .clicked()
-                        {
-                            self.open_example_project(example.project_path.clone());
-                        }
-                    });
                 });
                 render_wrapped_small(
                     ui,
@@ -375,6 +329,70 @@ impl ReadyAppState {
                 });
             });
             ui.add_space(8.0);
+        }
+    }
+
+    fn reconcile_home_case_selection(&mut self, window: &StudioGuiWindowModel) {
+        if self
+            .home_selected_recent_project
+            .as_ref()
+            .is_none_or(|selected| {
+                !self
+                    .project_open
+                    .recent_projects
+                    .iter()
+                    .any(|project| paths_match(project, selected))
+            })
+        {
+            self.home_selected_recent_project = self.project_open.recent_projects.first().cloned();
+        }
+
+        if self
+            .home_selected_example_project
+            .as_ref()
+            .is_none_or(|selected| {
+                !window
+                    .runtime
+                    .example_projects
+                    .iter()
+                    .any(|example| paths_match(&example.project_path, selected))
+            })
+        {
+            self.home_selected_example_project = window
+                .runtime
+                .example_projects
+                .first()
+                .map(|example| example.project_path.clone());
+        }
+    }
+
+    pub(in crate::studio_gui_shell) fn open_selected_recent_project_or_picker(&mut self) {
+        if let Some(project_path) = self.home_selected_recent_project.clone() {
+            self.open_recent_project(project_path);
+        } else {
+            self.open_project_from_picker();
+        }
+    }
+
+    pub(in crate::studio_gui_shell) fn open_selected_example_project(
+        &mut self,
+        window: &StudioGuiWindowModel,
+    ) {
+        let project_path = self.home_selected_example_project.clone().or_else(|| {
+            window
+                .runtime
+                .example_projects
+                .first()
+                .map(|example| example.project_path.clone())
+        });
+        if let Some(project_path) = project_path {
+            self.open_example_project(project_path);
+        } else {
+            self.project_open.notice = Some(ProjectOpenNotice {
+                level: ProjectOpenNoticeLevel::Info,
+                title: home_text(self.locale, HomeText::ChooseExampleTitle).to_string(),
+                detail: home_text(self.locale, HomeText::ChooseExampleDetail).to_string(),
+            });
         }
     }
 
@@ -716,12 +734,9 @@ fn home_text(locale: StudioShellLocale, key: HomeText) -> &'static str {
                 "OIDC / PKCE browser sign-in is not attached to this internal build yet."
             }
             HomeText::Start => "Start",
-            HomeText::ContinueLastCase => "Continue Last Case",
-            HomeText::OpenFirstExampleCase => "Open Example Case",
-            HomeText::OpenFirstExampleHover => "Open the first bundled example case.",
-            HomeText::NewBlankCase => "New Blank Case",
-            HomeText::OpenCase => "Open Case",
-            HomeText::OpenExampleCase => "Open Example Case",
+            HomeText::NewBlankCase => "New Project",
+            HomeText::OpenCase => "Open Project",
+            HomeText::OpenExampleCase => "Open Example Project",
             HomeText::RecentCases => "Recent Cases",
             HomeText::ExampleCases => "Example Cases",
             HomeText::NoRecentCases => "No recent cases yet.",
@@ -769,12 +784,9 @@ fn home_text(locale: StudioShellLocale, key: HomeText) -> &'static str {
             HomeText::SignInUnavailableTitle => "登录暂不可用",
             HomeText::SignInUnavailableDetail => "当前内部构建尚未接入 OIDC / PKCE 浏览器登录。",
             HomeText::Start => "开始",
-            HomeText::ContinueLastCase => "继续上次项目",
-            HomeText::OpenFirstExampleCase => "打开示例",
-            HomeText::OpenFirstExampleHover => "打开第一个内置示例。",
-            HomeText::NewBlankCase => "新建空白项目",
+            HomeText::NewBlankCase => "新建项目",
             HomeText::OpenCase => "打开项目",
-            HomeText::OpenExampleCase => "打开示例",
+            HomeText::OpenExampleCase => "打开示例项目",
             HomeText::RecentCases => "最近项目",
             HomeText::ExampleCases => "示例项目",
             HomeText::NoRecentCases => "还没有最近项目。",
