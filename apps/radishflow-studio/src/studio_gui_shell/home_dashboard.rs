@@ -5,6 +5,13 @@ use super::*;
 const HOME_START_WIDTH: f32 = 220.0;
 const HOME_ENVIRONMENT_WIDTH: f32 = 280.0;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(in crate::studio_gui_shell) enum HomeCaseRowAction {
+    None,
+    Select,
+    Open,
+}
+
 #[derive(Debug, Clone, Copy)]
 enum HomeText {
     Subtitle,
@@ -242,18 +249,10 @@ impl ReadyAppState {
             } else {
                 ui.visuals().widgets.noninteractive.bg_fill
             };
-            egui::Frame::group(ui.style()).fill(fill).show(ui, |ui| {
+            let frame_response = egui::Frame::group(ui.style()).fill(fill).show(ui, |ui| {
                 ui.set_width(ui.available_width());
                 ui.horizontal(|ui| {
-                    let response = ui
-                        .selectable_label(is_selected, truncate_middle(case_name, 34))
-                        .on_hover_text(project_path.display().to_string());
-                    if response.clicked() {
-                        self.home_selected_recent_project = Some(project_path.clone());
-                    }
-                    if response.double_clicked() {
-                        self.open_recent_project(project_path.clone());
-                    }
+                    ui.label(egui::RichText::new(truncate_middle(case_name, 34)).strong());
                     render_status_chip(
                         ui,
                         recent_case_status_text(self.locale, status),
@@ -269,6 +268,24 @@ impl ReadyAppState {
                     ui.small("binary-hydrocarbon-lite-v1");
                 });
             });
+            let row_response = ui
+                .interact(
+                    frame_response.response.rect,
+                    ui.make_persistent_id((
+                        "home-recent-case-row",
+                        project_path.display().to_string(),
+                    )),
+                    egui::Sense::click(),
+                )
+                .on_hover_text(project_path.display().to_string())
+                .on_hover_cursor(egui::CursorIcon::PointingHand);
+            match home_case_row_action(row_response.clicked(), row_response.double_clicked()) {
+                HomeCaseRowAction::Open => self.open_recent_project(project_path.clone()),
+                HomeCaseRowAction::Select => {
+                    self.home_selected_recent_project = Some(project_path.clone());
+                }
+                HomeCaseRowAction::None => {}
+            }
             ui.add_space(6.0);
         }
     }
@@ -295,19 +312,12 @@ impl ReadyAppState {
             } else {
                 ui.visuals().widgets.noninteractive.bg_fill
             };
-            egui::Frame::group(ui.style()).fill(fill).show(ui, |ui| {
+            let example_path = example.project_path.clone();
+            let frame_response = egui::Frame::group(ui.style()).fill(fill).show(ui, |ui| {
                 ui.set_width(ui.available_width());
                 ui.horizontal(|ui| {
                     let title = example_case_title(self.locale, example.id, example.title);
-                    let response = ui
-                        .selectable_label(is_selected, egui::RichText::new(title.as_ref()).strong())
-                        .on_hover_text(example.project_path.display().to_string());
-                    if response.clicked() {
-                        self.home_selected_example_project = Some(example.project_path.clone());
-                    }
-                    if response.double_clicked() {
-                        self.open_example_project(example.project_path.clone());
-                    }
+                    ui.label(egui::RichText::new(title.as_ref()).strong());
                     render_status_chip(
                         ui,
                         home_text(self.locale, HomeText::Ready),
@@ -328,6 +338,24 @@ impl ReadyAppState {
                     ui.small(example_case_property_package(example.id));
                 });
             });
+            let row_response = ui
+                .interact(
+                    frame_response.response.rect,
+                    ui.make_persistent_id((
+                        "home-example-case-row",
+                        example_path.display().to_string(),
+                    )),
+                    egui::Sense::click(),
+                )
+                .on_hover_text(example_path.display().to_string())
+                .on_hover_cursor(egui::CursorIcon::PointingHand);
+            match home_case_row_action(row_response.clicked(), row_response.double_clicked()) {
+                HomeCaseRowAction::Open => self.open_example_project(example_path),
+                HomeCaseRowAction::Select => {
+                    self.home_selected_example_project = Some(example_path);
+                }
+                HomeCaseRowAction::None => {}
+            }
             ui.add_space(8.0);
         }
     }
@@ -602,6 +630,19 @@ fn parent_display(project_path: &Path) -> String {
         .map(Path::display)
         .map(|display| display.to_string())
         .unwrap_or_else(|| "local".to_string())
+}
+
+pub(in crate::studio_gui_shell) fn home_case_row_action(
+    clicked: bool,
+    double_clicked: bool,
+) -> HomeCaseRowAction {
+    if double_clicked {
+        HomeCaseRowAction::Open
+    } else if clicked {
+        HomeCaseRowAction::Select
+    } else {
+        HomeCaseRowAction::None
+    }
 }
 
 fn truncate_middle(value: &str, max_chars: usize) -> String {

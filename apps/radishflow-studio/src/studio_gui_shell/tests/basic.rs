@@ -1,4 +1,5 @@
 use super::*;
+use crate::studio_gui_shell::home_dashboard::{HomeCaseRowAction, home_case_row_action};
 use radishflow_studio::test_support::{
     apply_official_binary_hydrocarbon_near_boundary_consumer_scenario,
     build_official_binary_hydrocarbon_provider,
@@ -380,6 +381,14 @@ fn shell_starts_on_home_dashboard_with_start_environment_and_messages() {
             texts
         );
     }
+}
+
+#[test]
+fn home_case_row_action_opens_on_double_click() {
+    assert_eq!(home_case_row_action(false, false), HomeCaseRowAction::None);
+    assert_eq!(home_case_row_action(true, false), HomeCaseRowAction::Select);
+    assert_eq!(home_case_row_action(true, true), HomeCaseRowAction::Open);
+    assert_eq!(home_case_row_action(false, true), HomeCaseRowAction::Open);
 }
 
 #[test]

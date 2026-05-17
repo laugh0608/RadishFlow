@@ -210,6 +210,28 @@ fn command_surface_window(app: &ReadyAppState) -> radishflow_studio::StudioGuiWi
 }
 
 fn stabilize_command_surface_window(window: &mut radishflow_studio::StudioGuiWindowModel) {
+    let canvas_view = &mut window.canvas.widget.presentation.view;
+    canvas_view.viewport.layout_label = "normalized_layout";
+    canvas_view.viewport.summary = format!(
+        "normalized canvas layout: {} unit(s), {} material line(s)",
+        canvas_view.viewport.unit_count, canvas_view.viewport.stream_line_count
+    );
+    for unit in &mut canvas_view.unit_blocks {
+        unit.layout_position = None;
+    }
+    for stream in &mut canvas_view.stream_lines {
+        if let Some(source) = stream.source.as_mut() {
+            source.layout_position = None;
+        }
+        if let Some(sink) = stream.sink.as_mut() {
+            sink.layout_position = None;
+        }
+    }
+    for line in &mut window.canvas.widget.presentation.text.lines {
+        if line.starts_with("viewport: ") {
+            *line = "viewport: normalized canvas layout".to_string();
+        }
+    }
     window.runtime.control_state.latest_log_entry = None;
     window
         .runtime

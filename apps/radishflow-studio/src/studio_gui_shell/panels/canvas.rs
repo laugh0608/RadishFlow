@@ -1051,6 +1051,15 @@ fn canvas_stream_label_rect(
 ) -> egui::Rect {
     let label = canvas_stream_label_text(stream);
     let size = canvas_stream_label_size(&label);
+    if stream.sink.is_none() {
+        let vertical_offset = canvas_terminal_stream_label_vertical_offset(stream);
+        let min = egui::pos2(
+            geometry.start.x + 14.0,
+            geometry.start.y - size.y * 0.5 + vertical_offset,
+        );
+        return egui::Rect::from_min_size(min, size);
+    }
+
     let center = canvas_stream_label_center(geometry, stream);
     egui::Rect::from_center_size(center, size)
 }
@@ -1060,16 +1069,7 @@ fn canvas_stream_label_center(
     stream: &radishflow_studio::StudioGuiCanvasStreamLineViewModel,
 ) -> egui::Pos2 {
     if stream.sink.is_none() {
-        let vertical_offset = stream
-            .source
-            .as_ref()
-            .filter(|source| source.port_side_count > 1)
-            .map(|source| {
-                let middle = (source.port_side_count.saturating_sub(1)) as f32 * 0.5;
-                (source.port_side_index as f32 - middle) * 28.0
-            })
-            .unwrap_or(0.0);
-        return geometry.start.lerp(geometry.end, 0.68) + egui::vec2(0.0, vertical_offset);
+        return canvas_stream_label_rect(geometry, stream).center();
     }
 
     let delta = geometry.end - geometry.start;
@@ -1082,9 +1082,27 @@ fn canvas_stream_label_center(
     geometry.start.lerp(geometry.end, 0.5) + normal * 14.0
 }
 
+fn canvas_terminal_stream_label_vertical_offset(
+    stream: &radishflow_studio::StudioGuiCanvasStreamLineViewModel,
+) -> f32 {
+    stream
+        .source
+        .as_ref()
+        .filter(|source| source.port_side_count > 1)
+        .map(|source| {
+            let middle = (source.port_side_count.saturating_sub(1)) as f32 * 0.5;
+            (source.port_side_index as f32 - middle) * 28.0
+        })
+        .unwrap_or(0.0)
+}
+
 fn canvas_stream_label_text(
     stream: &radishflow_studio::StudioGuiCanvasStreamLineViewModel,
 ) -> String {
+    if stream.sink.is_none() {
+        return truncate_canvas_label(&stream.name, 18);
+    }
+
     let label = if stream.name == stream.stream_id {
         stream.name.clone()
     } else {
