@@ -1,6 +1,6 @@
 # MVP Alpha Acceptance Checklist
 
-更新时间：2026-05-16
+更新时间：2026-05-17
 
 ## 用途
 
@@ -51,7 +51,7 @@
 | 文档体量报告 | `pwsh ./scripts/check-doc-size.ps1` | Pass | 默认入口未重新膨胀；既有超限项可解释 | 2026-05-14 已通过；输出 `all enforced markdown files are within target limits` |
 | `rf-ffi` JSON/error 基线 | `pwsh ./scripts/check-repo.ps1` 覆盖；必要时补 `cargo test -p rf-ffi` | Pass | solve snapshot / stream JSON 与 structured error 回归稳定 | 2026-05-13 仓库级验证通过 |
 | official / synthetic 数值基线 | `pwsh ./scripts/check-repo.ps1` 覆盖 | Pass | golden、raw solver 与 Studio focused 回归稳定 | 2026-05-13 仓库级验证通过 |
-| Studio shell UI presentation | `cargo test -p radishflow-studio studio_gui_shell` | Pass | 首页、顶部主路径、结果面、命令面和 runtime focused 回归稳定 | 2026-05-16 已通过；Home Dashboard、Workbench 分区、中文 shell 高频路径与底部 drawer 已纳入回归 |
+| Studio shell UI presentation | `cargo test -p radishflow-studio studio_gui_shell` | Pass | 首页、顶部主路径、结果面、命令面和 runtime focused 回归稳定 | 2026-05-17 已通过；Home Dashboard、Workbench 分区、中文 shell 高频路径、Canvas viewport / 可读性、结果视图和底部 drawer 已纳入回归 |
 
 ## Studio 手动 Smoke
 
@@ -139,8 +139,17 @@
 | Home Dashboard / Workbench 第一轮 UI | Pass | 默认首页、最近 / 示例 / 环境 / 消息、进入 case 后顶部主路径、左侧项目 / 示例 / 放置、右侧检查器 / 结果 / 运行 / 物性包、底部 drawer 已形成稳定分区；关闭最后窗口前的一帧黑屏已优化 |
 | MVP α 便携包入口 | Pass | `pwsh ./scripts/package.ps1 -Version v26.5.1-dev -Clean` 已通过；生成 `artifacts/packages/RadishFlow-v26.5.1-dev-windows-x64/` 与同名 `.zip`，包内包含 Studio exe、正向 flowsheet 示例、样例物性包、quick start / result review / acceptance / versioning / internal package note 文档和许可文件；manifest 已记录 `releaseNotes=docs/releases/v26.5.1-dev.md`；脚本不执行安装、COM 注册、PME 或第三方模型加载 |
 
+### 2026-05-17
+
+| 项目 | 状态 | 记录 |
+| --- | --- | --- |
+| Studio Home / Workbench 视觉 smoke 收口 | Pass | 今日 7 个提交集中处理 Canvas 初始居中、示例布局顺序、Canvas 可读性、Home 列表选择 / 双击打开、未保存确认流程、运行后结果视图和 Workbench 高频残余文案；`pwsh ./scripts/check-repo.ps1` 在结果视图收口后已通过 |
+| 打开示例 -> 运行 -> 查看结果 -> 回 Home -> 再打开 | Pass | 已补 `studio_gui_shell::tests::project_lifecycle::open_example_project_rebuilds_runtime_for_selected_sample`，覆盖示例打开、运行、结果页切换、回 Home、从最近项目再打开并重新运行 |
+| 日终截图复核 | Partial | Home Dashboard 当前不列为 blocker；Workbench 已清掉主要开发态英文和重复按钮。剩余 demo blocker 仅保留 Canvas 中间流股标签遮挡 / 裁切，以及右侧 Result Inspector 默认正文中的 `z:` / `phases:` 原始英文摘要 |
+
 ## 下一步
 
 1. 暂缓 tag 和发布自动化，把当前便携包作为内部验证资产保留。
-2. 下一轮优先收口 Canvas viewport 初始自动居中 / fit-to-content，让打开示例后的流程自然处于可视区域中央；不扩自动布线、自由连线或视口持久化。
-3. 继续复核 Home / Workbench 残余中英混合文案和按钮语义；quick start 仍不得暗示已存在完整安装器或对外 demo。
+2. 下一轮优先修复 Canvas 中间流股标签遮挡 / 裁切，允许短化、避让或空间不足时隐藏；不扩自动布线、自由连线、完整拖拽布局或视口持久化。
+3. 下一轮优先清理右侧 Result Inspector 的 `z:` / `phases:` 原始摘要，把组成和相态改成中文结构化短行；不扩完整结果报表。
+4. 继续复核 Home / Workbench 残余中英混合文案和按钮语义；quick start 仍不得暗示已存在完整安装器或对外 demo。

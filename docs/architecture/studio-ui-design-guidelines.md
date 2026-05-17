@@ -1,6 +1,6 @@
 # Studio UI Design Guidelines
 
-更新时间：2026-05-16
+更新时间：2026-05-17
 
 ## 用途
 
@@ -111,7 +111,12 @@ UI 参考素材当前保存在 `docs/architecture/assets/studio-ui/`。下表使
 - 建模对象、连接建议、运行、结果和错误分别属于哪个区域。
 - 人工 smoke 时应该按什么路径操作和观察结果。
 
-2026-05-16 已完成 Home Dashboard 与 Workbench 第一轮真实 UI 收口。2026-05-17 已继续完成 Canvas viewport 初始居中 / fit-to-content，以及首页高频中文文案和打开项目消息收口。后续不再回到“先讨论首页分区”或继续扩画布建模能力的阶段；下一轮应优先做视觉 smoke，只修真实 demo blocker。
+2026-05-16 已完成 Home Dashboard 与 Workbench 第一轮真实 UI 收口。2026-05-17 已继续完成 Canvas viewport 初始居中 / fit-to-content、首页高频中文文案、Home 打开路径、Canvas 可读性、运行后结果视图和 Workbench 高频残余文案收口。后续不再回到“先讨论首页分区”或继续扩画布建模能力的阶段；下一轮应优先做视觉 smoke，只修真实 demo blocker。
+
+2026-05-17 日终截图复核后，下一轮 UI blocker 只保留两项：
+
+- Canvas 中间流股标签仍可能在 `Feed -> Valve -> Flash Drum` 这类短线段上被单元块或端口挤压、遮挡或裁切。下一轮应优先做标签避让、短化或空间不足时隐藏；不把这项扩张成自动布线、自由连线或完整拖拽布局。
+- 右侧 Result Inspector 的组成 / 相态摘要仍有 `z: ...`、`phases: ...` 原始英文行。下一轮应把它们收口为中文结构化短行，并继续只读消费 `SolveSnapshot`；不新增 shell-local 结果缓存或完整报表系统。
 
 除非是修复阻塞性错误，不应继续在现有布局上叠加零散按钮、临时说明、调试状态或一次性 smoke 面板。
 
@@ -245,7 +250,7 @@ Studio 默认工作台建议分为六个稳定区域。
 - 画布工具条应以图标或短标签表达选择、放置、连接、平移、缩放、适配视图。
 - 本地建模 suggestion 的接受动作应使用明确的 `连接` / `Connect` 或等价动词，不用泛化的 `Apply` 让用户猜测会改写什么。
 - 长说明、状态解释和开发态计数不直接堆在画布上方；进入 legend、tooltip 或底部消息。
-- 流股标签优先显示名称；求解后可在缩放足够时显示关键 `T / P / F / H` 摘要。
+- 流股标签优先显示名称；短线段空间不足时应避开单元块和端口，或自动短化 / 隐藏，不让标签被裁切或遮挡。求解后可在缩放足够时显示关键 `T / P / F / H` 摘要。
 - 设备图形保持简化 process symbol 风格：清晰、平面、少装饰，可区分类型，不追求拟物渲染。
 - 错误、未配置、未收敛、未授权等状态用统一 badge 和 outline 表达，不用整块高饱和背景。
 
@@ -264,6 +269,7 @@ Studio 默认工作台建议分为六个稳定区域。
 - 建议以 `Inspector / Run / Results / Package` tab 或等价分段组织；授权 / entitlement 在当前 demo 主路径中低频，默认不应压过物性包和结果审阅。
 - 属性字段采用 label + input + unit + validation 的行结构；单位必须紧贴数值，不藏在说明文字里。
 - 从左侧 Project、Canvas 对象列表或结果定位动作选择 stream / unit 后，应自然切换到对应 Inspector；stream 优先暴露 `T / P / F`、组成草稿和提交/归一化动作，unit 优先暴露端口、关联步骤、关联诊断和最新只读结果。
+- 结果检查器中面向用户的组成、相态和摘要行应优先使用本地化结构化短句；`z: ...`、`phases: ...` 这类原始调试文本只应进入 hover、日志或开发诊断，不应作为默认结果正文。
 - 草稿态、未归一组成、运行阻断和只读结果要有稳定视觉语义。
 - Runtime 中的开发态活动、平台 timer、GUI activity、原始项目路径编辑默认折叠。
 
@@ -399,8 +405,8 @@ RadishFlow 默认浅色中性底，搭配少量语义色。
 3. 已落地：Canvas header / toolbar 第一轮压缩，Place / suggestion / selection / legend 不再以开发态长文本平铺。
 4. 已落地：Canvas viewport 初始 fit-to-content / center，让打开示例后的流程自然处于可视区域中央；该行为只属于 shell-local 呈现，不写项目、不进历史、不做视口持久化。
 5. 已落地：补齐首页高频中文文案和打开项目消息，避免 `打开 Case`、`Project opened` 等残留混入中文界面。
-6. 后续：画布对象视觉升级，统一 MVP 单元图形、流股标签、选中态和错误 badge，再考虑更多设备符号。
-7. 后续：结果审阅表格化，在不改变 `SolveSnapshot` 语义的前提下提供 stream / unit 表格和诊断摘要。
+6. 已部分落地：画布对象视觉升级，MVP 单元块、端口、流线标签、运行 / 诊断 badge 和终端标签已有第一轮真实 UI；下一步只修中间流股标签遮挡 / 裁切。
+7. 已部分落地：结果审阅表格化，右侧 Result Inspector selector 和底部结果表已完成第一轮收口；下一步只清理右侧结果正文的原始 `z:` / `phases:` 摘要，不扩完整报表。
 
 ## 验收检查
 

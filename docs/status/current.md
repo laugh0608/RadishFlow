@@ -14,7 +14,7 @@
 
 - 产品定位：以 Rust Core + Rust UI + `.NET 10` CAPE-OPEN/COM 适配层构建稳态流程模拟软件。
 - 当前主线：MVP 第一阶段最小闭环已经可验证，但尚未达到首版 demo 的产品可用水准；当前主线是 Studio 首页与工作台信息架构的可用性收口，发布 / tag 暂缓。
-- 当前重点：Home Dashboard 与进入 case 后的 Workbench 第一轮真实 UI 已落地；Canvas viewport 初始居中 / fit-to-content、首页高频中文文案、`Feed Heater Flash` 示例布局顺序、Canvas 可读性打磨、首页项目选择交互、运行后结果视图和 Workbench 高频残余文案收口已完成。下一步继续人工视觉 smoke，重点确认真实窗口中的端口 / 标签 / 流线可读性、运行后结果 / 消息 / 物性包入口和关闭窗口路径没有回归。
+- 当前重点：Home Dashboard 与进入 case 后的 Workbench 第一轮真实 UI 已落地；Canvas viewport 初始居中 / fit-to-content、首页高频中文文案、`Feed Heater Flash` 示例布局顺序、Canvas 可读性打磨、首页项目选择交互、运行后结果视图和 Workbench 高频残余文案收口已完成。下一步继续人工视觉 smoke，优先处理中间流股标签遮挡 / 裁切，以及右侧结果检查器中仍可见的 `z:` / `phases:` 原始英文摘要。
 - 当前验证基线：功能改动优先执行相关 focused tests；阶段性收口执行 `pwsh ./scripts/check-repo.ps1`。
 
 ## 最近完成摘要
@@ -42,11 +42,12 @@
 
 ## 下一步建议
 
-1. 继续做人工视觉 smoke，确认 Home Dashboard 列表选择 / 双击打开、进入示例、运行、结果 / 消息 / 物性包入口、Canvas 初始居中和关闭窗口路径没有回归。
-2. 复核真实窗口中的 Canvas 端口 / 标签 / 流线可读性、底部结果表宽度和 Workbench 残余中文；只处理仍可见的 smoke 高频问题，不展开完整本地化体系。
-3. 若视觉 smoke 暴露真实 blocker，按现有 command / presentation / shell-local state 边界修复；不要把 viewport 收口误扩成自动布线、自由连线、完整拖拽布局或视口持久化。
-4. 便携包和 `docs/releases/v26.5.1-dev.md` 暂作为内部验证资产保留，不创建 tag，不推进对外发布自动化。
-5. 结果面继续只读消费 `SolveSnapshot`，不新增 shell 私有结果缓存；Canvas 下一步只处理 demo 可用性 blocker，不扩大建模能力边界。
+1. 优先修复真实窗口中 Canvas 中间流股标签遮挡 / 裁切：Feed -> Valve、Valve -> Flash Drum 这类短线段空间不足时，应避开单元块，或自动短化 / 隐藏标签。
+2. 优先清理右侧结果检查器的原始英文摘要：`z: ethane=...`、`phases: overall=...` 应改成中文结构化短行；底部结果表当前可先保持不动。
+3. 继续做人工视觉 smoke，确认 Home Dashboard 列表选择 / 双击打开、进入示例、运行、结果 / 消息 / 物性包入口、Canvas 初始居中和关闭窗口路径没有回归。
+4. 若视觉 smoke 暴露真实 blocker，按现有 command / presentation / shell-local state 边界修复；不要把 viewport 收口误扩成自动布线、自由连线、完整拖拽布局或视口持久化。
+5. 便携包和 `docs/releases/v26.5.1-dev.md` 暂作为内部验证资产保留，不创建 tag，不推进对外发布自动化。
+6. 结果面继续只读消费 `SolveSnapshot`，不新增 shell 私有结果缓存；Canvas 下一步只处理 demo 可用性 blocker，不扩大建模能力边界。
 
 ## 暂不推进
 
