@@ -1,6 +1,6 @@
 # Review Solve Results
 
-更新时间：2026-05-12
+更新时间：2026-05-17
 
 ## 目的
 
@@ -9,9 +9,9 @@
 它回答的是：
 
 - 先看哪几类流股和步骤
-- `stream selector`、`comparison`、`unit-centric` 三种结果面该怎么配合看
+- `流股选择`、`流股对比`、`单元结果` 三种结果面该怎么配合看
 - `source stream`、非 flash 中间流股、flash outlet、unit step 输入/输出各自该怎么看
-- `Inspect` / `DiagnosticTargets` / `Results` commands 应该怎样帮助你核对同一份结果
+- `检查` / `诊断目标` / `结果` commands 应该怎样帮助你核对同一份结果
 - `H`、`phase_region`、`bubble_dew_window` 在结果区里分别代表什么
 
 它不是架构文档，也不展开测试或实现细节。
@@ -30,12 +30,14 @@
 
 一次运行成功后，先按下面顺序看：
 
-1. `Result Inspector` 的 stream-centric 视图
-2. `Result Inspector` 的 unit-centric 视图
-3. `Related solve steps` / step 列表
-4. `Active Inspector`
+1. 右侧 `结果检查器` 的流股结果视图
+2. 右侧 `结果检查器` 的单元结果视图
+3. `关联求解步骤` / step 列表
+4. 当前对象 `检查器`
 
 当前这四处都应该只读消费同一份 `SolveSnapshot` DTO；如果某个字段只在其中一处出现，通常应先怀疑消费层回归，而不是先猜数值层分叉。
+
+当前中文 UI 中，这四处通常对应右侧 `结果` tab、右侧 `检查器` tab 中的关联结果、底部 `结果表 / 诊断`，以及命令入口中的结果定位项。英文术语在本文档中只用于指代内部结果组织方式，不表示默认界面必须显示英文。
 
 ## 先定 selector，再看 comparison / unit
 
@@ -57,6 +59,8 @@
 - 如果把 base stream 切成当前 compared stream，comparison 会被清空；这表示 selector state 复位，不表示结果丢失
 
 `selected unit` 也只是切换“看哪一个单元的结果面”，不应该改变任何 stream result 本身的数值语义。
+
+右侧 `结果检查器` 的选择区应是紧凑可选项：流股、对比流股和单元以按钮 / chip 形式切换，不应为每个选项重复显示 `Inspect`。需要跳到对象详情时，使用当前选项、`检查` 动作、诊断目标或命令入口定位到同一份对象结果。
 
 ## 1. 先看 source stream
 
@@ -94,7 +98,7 @@ source stream 的这些字段不是给 downstream consumer 现算的临时值。
 
 ## 3. 再看 unit step 输入/输出
 
-切到 `Result Inspector` 的 unit-centric 视图后，重点看某个 step 的：
+切到 `结果检查器` 的单元结果视图后，重点看某个 step 的：
 
 - `consumed_streams`
 - `streams`
@@ -141,27 +145,29 @@ Studio 不应再通过全局 stream 列表按 id 回填、拼装或猜测第二�
 
 这不是 UI 漏显示，而是当前稳定边界的一部分。
 
-## 5. 用 `Inspect`、`DiagnosticTargets` 和 `Results` commands 交叉核对
+## 5. 用 `检查`、`诊断目标` 和 `结果` commands 交叉核对
 
 当前结果审阅不只靠静态字段，还可以借助两类动作面：
 
-- `Inspect`
-- `DiagnosticTargets`
+- `检查`
+- `诊断目标`
 - command palette / menu / command list 里的 `Results` commands
 
 推荐用法：
 
-1. 在 stream comparison 里用 `Inspect` 从 `stream-liquid / stream-vapor` 跳到对应对象详情
-2. 在 unit-centric 视图里用输入/输出流股的 `Inspect`，核对 `Flash Drum` inlet/outlet 和 step stream 是否还是同一份结果
-3. 在 `DiagnosticTargets` 里再跳一次 flash inlet 或 flash unit，确认 `Result Inspector -> Active Inspector` 没有分叉成第二套 consumer 语义
+1. 在流股对比里用 `检查` 或当前流股选项从 `stream-liquid / stream-vapor` 跳到对应对象详情
+2. 在单元结果视图里用输入/输出流股的 `检查`，核对 `Flash Drum` inlet/outlet 和 step stream 是否还是同一份结果
+3. 在 `诊断目标` 里再跳一次 flash inlet 或 flash unit，确认 `结果检查器 -> 当前检查器` 没有分叉成第二套 consumer 语义
 4. 在 command palette 或菜单中搜索 `result` / `snapshot` / stream label，确认 `Results` command 也定位到同一份当前快照结果
 
 这里要注意：
 
-- `Inspect` 只是定位到当前已有 stream/unit 结果，不会重新求解
-- `DiagnosticTargets` 只汇总当前 `SolveSnapshot`、相关 step 和相关 diagnostic 已经存在的目标，不是 shell 私造的第三套导航模型
+- `检查` 只是定位到当前已有 stream/unit 结果，不会重新求解
+- `诊断目标` 只汇总当前 `SolveSnapshot`、相关 step 和相关 diagnostic 已经存在的目标，不是 shell 私造的第三套导航模型
 - `Results` commands 也只派发既有 `inspector.focus_stream:*` / `inspector.focus_unit:*`，不会创建第二套结果缓存
-- 如果某个 section 没有 `DiagnosticTargets`，应先理解为“当前没有已物化目标”，而不是默认它被隐藏或漏显示
+- 如果某个 section 没有 `诊断目标`，应先理解为“当前没有已物化目标”，而不是默认它被隐藏或漏显示
+
+底部 `结果表` 当前采用中文 `流股 / 相态` 表头。`相态` 列应显示短摘要，例如 `总体 1.000`、`气相 1.000`、`无`，过长的原始相态明细只适合放进 tooltip、日志或开发诊断，不应撑开表格或裁切主要数值列。
 
 ## 如何读关键字段
 
@@ -200,7 +206,7 @@ Studio 不应再通过全局 stream 列表按 id 回填、拼装或猜测第二�
 1. 全局 `stream` 结果
 2. upstream unit step 的输出流股
 3. downstream unit step 的输入流股
-4. Result Inspector 与 Active Inspector 的展示
+4. 结果检查器与当前对象检查器的展示
 
 如果 1 到 3 已经不一致，先查 solver / snapshot。  
 如果 1 到 3 一致、但 4 不一致，优先查 Studio consumer。

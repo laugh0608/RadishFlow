@@ -1,6 +1,6 @@
 # Canvas Interaction Contract
 
-更新时间：2026-05-16
+更新时间：2026-05-17
 
 ## 文档目的
 
@@ -104,14 +104,18 @@
 
 ### 当前 MVP α 已落地边界
 
-截至 2026-05-16，Studio 画布已经具备以下最小闭环：
+截至 2026-05-17，Studio 画布已经具备以下最小闭环：
 
-- 左侧 `放置` 入口可创建 `Feed / Mixer / Heater / Cooler / Valve / Flash Drum` MVP 单元。
+- 左侧 `放置` 入口可创建 `进料 / 混合器 / 加热器 / 冷却器 / 阀门 / 闪蒸罐` MVP 单元；项目对象名和示例文件仍可保留 `Feed / Mixer / Heater / Cooler / Valve / Flash Drum` 等领域英文名。
 - 当前最短可求解路径覆盖 `Feed -> Flash Drum`、`Feed -> Heater/Cooler/Valve -> Flash Drum`、`Feed + Feed -> Mixer -> Flash Drum`。
 - 本地 suggestion 可补齐标准材料端口连接和必要 outlet stream；显示动词为 `连接` / `Connect`，不再使用泛化 `Apply`。
 - suggestion 接受仍转换为正式 `DocumentCommand::ConnectPorts` 或等价文档命令后写回；接受 / 拒绝本身不进入 `CommandHistory`。
 - Canvas 对象选择会驱动右侧 `检查器` / 结果定位，但不缓存第二份求解结果。
 - Canvas placement sidecar 使用 `<project>.rfstudio-layout.json` 保存 shell / layout 状态；项目文件 `*.rfproj.json` 仍是流程语义真相源。
+- 打开示例或项目后，Canvas viewport 会按当前单元 / 流股 bounds 做 shell-local 初始 fit-to-content / center；该行为不写项目、不进历史、不代表自动布线或视口持久化。
+- 若缺少 sidecar placement，presentation 可按物料流依赖顺序给未定位单元生成可解释的 transient grid slot；加载 sidecar 时应过滤当前项目已不存在的 unit id。
+- 已绑定端口可通过点击或对象选择聚焦对应流股 / 单元检查器；运行成功后可自动切到右侧 `结果` 和底部 `结果表`，失败后可切到右侧 `运行` 和底部 `消息`。
+- 非空画布不应常驻空状态提示或开发态计数摘要；画布 header 只保留用户理解当前状态所需的短标签、legend 和可行动工具。
 
 ## 视图模式契约
 
@@ -397,7 +401,7 @@ pub struct GhostElement {
 2. MVP 单元放置、对象选择、suggestion focus / accept / reject、离散 layout nudge 都应通过正式 command surface 或 shell-local UI state 进入，不保留长期并行的 widget 私有状态改写分支。
 3. suggestion 转成正式文档命令后的实际文档变更才进入 `CommandHistory`；suggestion focus、reject、viewport、面板切换和 hover 不进入文档历史。
 4. Layout sidecar 只保存 shell / layout 相关状态；缺少 sidecar 时可以用 transient grid slot pin 出初始位置，但必须在 presentation 中保持可解释，不反向污染 flowsheet 语义。
-5. 下一步只收口 viewport 初始居中 / fit-to-content，不扩自由拉线、自动布线、完整拖拽布局编辑器或复杂视图持久化。
+5. viewport 初始居中 / fit-to-content 已落地；下一步只收口真实窗口中的流股标签避让、短化或空间不足时隐藏，不扩自由拉线、自动布线、完整拖拽布局编辑器或复杂视图持久化。
 
 ## 当前仍待后续细化的问题
 
@@ -406,3 +410,4 @@ pub struct GhostElement {
 3. suggestion 是否需要批量接受，还是严格先从单条接受开始
 4. `Tab` 接受是否需要和属性面板焦点、文本输入焦点做更细的快捷键竞争规则
 5. `RadishMind` suggestion schema 是否与本地 `LocalRules` 输出完全同构，还是允许额外解释字段
+6. 短线段流股标签在 `Feed -> Valve -> Flash Drum` 等紧凑链路中应如何避让端口和单元块，以及在什么缩放 / 空间阈值下短化或隐藏
