@@ -546,27 +546,17 @@ impl ReadyAppState {
         ui: &mut egui::Ui,
         item: &radishflow_studio::StudioGuiCanvasObjectListItemViewModel,
     ) {
-        ui.horizontal_wrapped(|ui| {
-            let response = ui
-                .add(
-                    egui::Button::new(format!("  {}", item.label))
-                        .selected(item.is_active)
-                        .frame(false),
-                )
-                .on_hover_text(&item.detail);
-            if response.clicked() {
-                self.right_sidebar_tab = StudioShellRightSidebarTab::Inspector;
-                self.dispatch_ui_command(&item.command_id);
-            }
-            if ui
-                .small_button(self.locale.text(ShellText::InspectObject))
-                .on_hover_text(&item.detail)
-                .clicked()
-            {
-                self.right_sidebar_tab = StudioShellRightSidebarTab::Inspector;
-                self.dispatch_ui_command(&item.command_id);
-            }
-        });
+        let response = ui
+            .add(
+                egui::Button::new(format!("  {}", item.label))
+                    .selected(item.is_active)
+                    .frame(false),
+            )
+            .on_hover_text(&item.detail);
+        if response.clicked() {
+            self.right_sidebar_tab = StudioShellRightSidebarTab::Inspector;
+            self.dispatch_ui_command(&item.command_id);
+        }
         if let Some(summary) = item.attention_summary.as_ref() {
             render_wrapped_small(ui, summary);
         }
@@ -816,7 +806,14 @@ impl ReadyAppState {
                     self.locale.runtime_label(snapshot.status_label).as_ref(),
                     run_status_color(snapshot.status_label),
                 );
-                render_wrapped_label(ui, &snapshot.summary);
+                render_wrapped_label(
+                    ui,
+                    self.locale.solve_snapshot_primary_summary(
+                        window.runtime.workspace_document.unit_count,
+                        snapshot.diagnostic_count,
+                        snapshot.stream_count,
+                    ),
+                );
             });
             if snapshot.diagnostics.is_empty() {
                 ui.small(self.locale.text(ShellText::NoDiagnostics));
@@ -1154,8 +1151,11 @@ impl ReadyAppState {
                 .stroke(drop_lane_stroke(is_active_preview))
                 .show(ui, |ui| {
                     ui.horizontal_wrapped(|ui| {
-                        ui.label(egui::RichText::new(panel.title).strong());
-                        if let Some(badge) = panel.badge.as_ref() {
+                        ui.label(
+                            egui::RichText::new(self.locale.runtime_label(panel.title).as_ref())
+                                .strong(),
+                        );
+                        if let Some(badge) = visible_panel_badge(area_id, panel.badge.as_deref()) {
                             ui.label(format!("[{badge}]"));
                         }
                         for badge in &preview_badges {
@@ -1165,7 +1165,11 @@ impl ReadyAppState {
                                     .color(egui::Color32::from_rgb(56, 126, 214)),
                             );
                         }
-                        ui.label(&panel.summary);
+                        if let Some(summary) =
+                            visible_panel_summary(area_id, &panel.summary, self.locale)
+                        {
+                            ui.label(summary.as_ref());
+                        }
                         ui.small("hover to preview, click to drop before this panel");
                     });
                     if let Some(preview_transition) = preview_transition.as_ref() {
@@ -1184,8 +1188,10 @@ impl ReadyAppState {
             self.process_drop_target_response(response, window_id, query, hovered_drop_target);
         } else {
             let header = ui.horizontal_wrapped(|ui| {
-                ui.label(egui::RichText::new(panel.title).strong());
-                if let Some(badge) = panel.badge.as_ref() {
+                ui.label(
+                    egui::RichText::new(self.locale.runtime_label(panel.title).as_ref()).strong(),
+                );
+                if let Some(badge) = visible_panel_badge(area_id, panel.badge.as_deref()) {
                     ui.label(format!("[{badge}]"));
                 }
                 for badge in &preview_badges {
@@ -1195,7 +1201,9 @@ impl ReadyAppState {
                             .color(egui::Color32::from_rgb(56, 126, 214)),
                     );
                 }
-                ui.label(&panel.summary);
+                if let Some(summary) = visible_panel_summary(area_id, &panel.summary, self.locale) {
+                    ui.label(summary.as_ref());
+                }
             });
             if let Some(preview_transition) = preview_transition.as_ref() {
                 ui.small(
@@ -1308,7 +1316,7 @@ fn result_table_phase_summary(
     stream: &radishflow_studio::StudioGuiWindowStreamResultModel,
 ) -> String {
     if stream.phase_rows.is_empty() {
-        return locale.text(ShellText::NoPhases).to_string();
+        return locale.text(ShellText::NoneValue).to_string();
     }
 
     let visible_rows = stream
@@ -1337,4 +1345,30 @@ fn result_table_phase_summary(
         parts.push(format!("+{hidden_count}"));
     }
     parts.join(" / ")
+}
+
+fn visible_panel_badge(area_id: StudioGuiWindowAreaId, badge: Option<&str>) -> Option<&str> {
+    let badge = badge?;
+    match area_id {
+        StudioGuiWindowAreaId::Canvas | StudioGuiWindowAreaId::Runtime if badge == "0" => None,
+        _ => Some(badge),
+    }
+}
+
+fn visible_panel_summary<'a>(
+    area_id: StudioGuiWindowAreaId,
+    summary: &'a str,
+    locale: StudioShellLocale,
+) -> Option<std::borrow::Cow<'a, str>> {
+    match area_id {
+        StudioGuiWindowAreaId::Canvas
+            if summary.contains("suggestions") && summary.contains("actions enabled") =>
+        {
+            None
+        }
+        StudioGuiWindowAreaId::Runtime if summary.contains("status=") => None,
+        StudioGuiWindowAreaId::Commands if summary.contains("commands") => None,
+        _ if summary.is_empty() => None,
+        _ => Some(locale.runtime_label(summary)),
+    }
 }

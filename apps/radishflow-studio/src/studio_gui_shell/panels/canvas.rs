@@ -30,7 +30,7 @@ impl ReadyAppState {
         widget: &radishflow_studio::StudioGuiCanvasWidgetModel,
     ) {
         ui.horizontal_wrapped(|ui| {
-            ui.small(egui::RichText::new("Canvas").strong());
+            ui.small(egui::RichText::new(self.locale.runtime_label("Canvas").as_ref()).strong());
             ui.separator();
             self.render_canvas_toolbar_group(ui, widget, "Place", |action| {
                 matches!(
@@ -369,9 +369,9 @@ impl ReadyAppState {
                 if let Some(summary) = status
                     .summary
                     .as_ref()
-                    .filter(|summary| !is_developer_canvas_status_summary(summary))
+                    .and_then(|summary| compact_canvas_status_summary(summary, self.locale))
                 {
-                    ui.small(truncate_canvas_label(summary, 42));
+                    ui.small(summary);
                 } else if let Some(reason) = status.pending_reason_label {
                     match self.locale {
                         StudioShellLocale::En => {
@@ -526,15 +526,17 @@ impl ReadyAppState {
         let painter = ui.painter_at(rect);
         paint_canvas_drop_surface(&painter, rect, pending_edit.is_some());
 
-        let title = pending_edit
-            .map(|pending| pending.summary.as_str())
-            .unwrap_or(self.locale.text(ShellText::CanvasToolPrompt));
-        let subtitle = if pending_edit.is_some() {
-            self.locale.text(ShellText::CanvasPlacePrompt)
-        } else {
-            self.locale.text(ShellText::CanvasEditPrompt)
-        };
-        paint_canvas_surface_labels(&painter, rect, title, subtitle);
+        if pending_edit.is_some() || (unit_blocks.is_empty() && stream_lines.is_empty()) {
+            let title = pending_edit
+                .map(|pending| pending.summary.as_str())
+                .unwrap_or(self.locale.text(ShellText::CanvasToolPrompt));
+            let subtitle = if pending_edit.is_some() {
+                self.locale.text(ShellText::CanvasPlacePrompt)
+            } else {
+                self.locale.text(ShellText::CanvasEditPrompt)
+            };
+            paint_canvas_surface_labels(&painter, rect, title, subtitle);
+        }
 
         let mut clicked_stream_command = None;
         for stream in stream_lines {
@@ -1533,7 +1535,19 @@ fn truncate_canvas_label(value: &str, max_chars: usize) -> String {
 }
 
 fn is_developer_canvas_status_summary(summary: &str) -> bool {
-    summary.contains("pending reason") || summary.contains("diagnostics=")
+    summary.contains("pending reason")
+        || summary.contains("diagnostics=")
+        || summary.contains("solved flowsheet with")
+}
+
+fn compact_canvas_status_summary(summary: &str, locale: StudioShellLocale) -> Option<String> {
+    if is_developer_canvas_status_summary(summary) {
+        return None;
+    }
+    Some(truncate_canvas_label(
+        locale.runtime_label(summary).as_ref(),
+        42,
+    ))
 }
 
 fn compact_canvas_viewport_summary(summary: &str, locale: StudioShellLocale) -> String {

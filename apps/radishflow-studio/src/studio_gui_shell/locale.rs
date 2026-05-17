@@ -237,12 +237,12 @@ impl StudioShellLocale {
             "mixer" => Cow::Borrowed("混合器"),
             "material line(s)" => Cow::Borrowed("物料线"),
             "no active focus target" => Cow::Borrowed("无活动聚焦目标"),
-            "Place Feed" => Cow::Borrowed("放置 Feed"),
-            "Place Flash Drum" => Cow::Borrowed("放置 Flash Drum"),
-            "Place Heater" => Cow::Borrowed("放置 Heater"),
-            "Place Cooler" => Cow::Borrowed("放置 Cooler"),
-            "Place Valve" => Cow::Borrowed("放置 Valve"),
-            "Place Mixer" => Cow::Borrowed("放置 Mixer"),
+            "Place Feed" => Cow::Borrowed("放置进料"),
+            "Place Flash Drum" => Cow::Borrowed("放置闪蒸罐"),
+            "Place Heater" => Cow::Borrowed("放置加热器"),
+            "Place Cooler" => Cow::Borrowed("放置冷却器"),
+            "Place Valve" => Cow::Borrowed("放置阀门"),
+            "Place Mixer" => Cow::Borrowed("放置混合器"),
             "Cancel canvas edit" => Cow::Borrowed("取消画布编辑"),
             "Accept suggestion (Tab)" => Cow::Borrowed("接受建议 (Tab)"),
             "Reject suggestion (Escape)" => Cow::Borrowed("拒绝建议 (Escape)"),
@@ -352,6 +352,24 @@ impl StudioShellLocale {
         match self {
             StudioShellLocale::En => format!("Snapshot {snapshot_id} seq {sequence}"),
             StudioShellLocale::ZhCn => format!("快照 {snapshot_id}，序号 {sequence}"),
+        }
+    }
+
+    pub(super) fn solve_snapshot_primary_summary(
+        self,
+        unit_count: usize,
+        diagnostic_count: usize,
+        stream_count: usize,
+    ) -> String {
+        match self {
+            StudioShellLocale::En => format!(
+                "solved flowsheet with {unit_count} unit(s), {diagnostic_count} diagnostic entry(ies), and {stream_count} resulting stream(s)"
+            ),
+            StudioShellLocale::ZhCn => {
+                format!(
+                    "已求解：{unit_count} 个单元，{diagnostic_count} 条诊断，{stream_count} 股结果流股"
+                )
+            }
         }
     }
 }

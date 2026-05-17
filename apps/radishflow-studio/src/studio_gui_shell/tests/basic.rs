@@ -239,7 +239,7 @@ fn shell_locale_defaults_to_chinese_and_can_translate_runtime_labels() {
     assert_eq!(locale.runtime_label("Stream").as_ref(), "流股");
     assert_eq!(locale.runtime_label("Idle").as_ref(), "空闲");
     assert_eq!(locale.runtime_label("SnapshotMissing").as_ref(), "缺少快照");
-    assert_eq!(locale.runtime_label("Place Feed").as_ref(), "放置 Feed");
+    assert_eq!(locale.runtime_label("Place Feed").as_ref(), "放置进料");
     assert_eq!(
         StudioShellLocale::En.runtime_label("Converged").as_ref(),
         "Converged"
@@ -315,6 +315,7 @@ fn shell_defaults_to_alpha_workbench_layout_regions() {
         "求解器: 顺序模块法",
         "流程图模式",
         "物料线",
+        "画布",
     ] {
         assert!(
             texts.iter().any(|text| text.contains(expected)),
@@ -329,6 +330,11 @@ fn shell_defaults_to_alpha_workbench_layout_regions() {
         "green markers",
         "arrows indicate",
         "还没有可显示的求解结果。",
+        "Canvas",
+        "suggestions",
+        "actions enabled",
+        "选择画布工具",
+        "使用放置单元操作开始画布编辑",
     ] {
         assert!(
             !texts.iter().any(|text| text.contains(hidden)),
@@ -336,6 +342,19 @@ fn shell_defaults_to_alpha_workbench_layout_regions() {
             texts
         );
     }
+}
+
+#[test]
+fn project_navigator_uses_row_click_without_repeated_inspect_buttons() {
+    let mut app = ready_app_state(&synced_workspace_config());
+
+    let texts = render_alpha_workbench_texts(&mut app);
+
+    assert!(
+        !texts.iter().any(|text| text == "检查"),
+        "expected project navigator rows to avoid repeated inspect buttons, rendered texts: {:?}",
+        texts
+    );
 }
 
 #[test]
@@ -627,6 +646,37 @@ fn bottom_results_table_uses_localized_compact_phase_column() {
     assert!(
         !texts.iter().any(|text| text.contains("phases:")),
         "expected result table to avoid long raw phase text in cells, rendered texts: {:?}",
+        texts
+    );
+    assert!(
+        !texts.iter().any(|text| text.contains("没有相态结果。")),
+        "expected result table to avoid long no-phase text in cells, rendered texts: {:?}",
+        texts
+    );
+    assert!(
+        texts.iter().any(|text| text == "无"),
+        "expected result table to render a compact no-phase value, rendered texts: {:?}",
+        texts
+    );
+}
+
+#[test]
+fn runtime_result_summary_is_localized_in_workbench() {
+    let mut app = ready_app_state(&synced_workspace_config());
+    app.dispatch_ui_command("run_panel.run_manual");
+    app.right_sidebar_tab = StudioShellRightSidebarTab::Results;
+    app.bottom_drawer_tab = StudioShellBottomDrawerTab::Messages;
+
+    let texts = render_alpha_workbench_texts(&mut app);
+
+    assert!(
+        texts.iter().any(|text| text.contains("已求解")),
+        "expected localized solve summary in workbench, rendered texts: {:?}",
+        texts
+    );
+    assert!(
+        !texts.iter().any(|text| text.contains("solved flowsheet")),
+        "expected workbench to hide English solve summary, rendered texts: {:?}",
         texts
     );
 }

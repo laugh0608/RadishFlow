@@ -65,7 +65,14 @@ impl ReadyAppState {
                 self.locale
                     .snapshot_identity(&snapshot.snapshot_id, snapshot.sequence),
             );
-            render_wrapped_label(ui, &snapshot.summary);
+            render_wrapped_label(
+                ui,
+                self.locale.solve_snapshot_primary_summary(
+                    window.runtime.workspace_document.unit_count,
+                    snapshot.diagnostic_count,
+                    snapshot.stream_count,
+                ),
+            );
             ui.separator();
             if snapshot.streams.is_empty() {
                 ui.small(self.locale.text(ShellText::NoStreamResults));
@@ -173,8 +180,17 @@ impl ReadyAppState {
             }
         });
         ui.add_space(6.0);
-        if let Some(summary) = run_panel_view.latest_snapshot_summary.as_ref() {
-            render_wrapped_label(ui, summary);
+        if let Some(snapshot) = window.runtime.latest_solve_snapshot.as_ref() {
+            render_wrapped_label(
+                ui,
+                self.locale.solve_snapshot_primary_summary(
+                    window.runtime.workspace_document.unit_count,
+                    snapshot.diagnostic_count,
+                    snapshot.stream_count,
+                ),
+            );
+        } else if let Some(summary) = run_panel_view.latest_snapshot_summary.as_ref() {
+            render_wrapped_label(ui, self.locale.runtime_label(summary).as_ref());
         } else {
             ui.small(self.locale.text(ShellText::NoSolveSnapshot));
         }
@@ -479,8 +495,17 @@ impl ReadyAppState {
                 }
             });
             ui.add_space(6.0);
-            if let Some(summary) = run_panel_view.latest_snapshot_summary.as_ref() {
-                render_wrapped_label(ui, summary);
+            if let Some(snapshot) = window.runtime.latest_solve_snapshot.as_ref() {
+                render_wrapped_label(
+                    ui,
+                    self.locale.solve_snapshot_primary_summary(
+                        window.runtime.workspace_document.unit_count,
+                        snapshot.diagnostic_count,
+                        snapshot.stream_count,
+                    ),
+                );
+            } else if let Some(summary) = run_panel_view.latest_snapshot_summary.as_ref() {
+                render_wrapped_label(ui, self.locale.runtime_label(summary).as_ref());
             } else {
                 ui.small(self.locale.text(ShellText::NoSolveSnapshot));
             }
@@ -760,7 +785,14 @@ impl ReadyAppState {
                     self.locale
                         .snapshot_identity(&snapshot.snapshot_id, snapshot.sequence),
                 );
-                render_wrapped_label(ui, &snapshot.summary);
+                render_wrapped_label(
+                    ui,
+                    self.locale.solve_snapshot_primary_summary(
+                        window.runtime.workspace_document.unit_count,
+                        snapshot.diagnostic_count,
+                        snapshot.stream_count,
+                    ),
+                );
                 ui.separator();
                 if snapshot.streams.is_empty() {
                     ui.small(self.locale.text(ShellText::NoStreamResults));
