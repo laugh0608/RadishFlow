@@ -688,6 +688,7 @@ impl ReadyAppState {
 
     fn render_project_operation_strip(&mut self, ui: &mut egui::Ui) {
         if self.project_open.pending_confirmation.is_none()
+            && !self.project_open.pending_blank_project_confirmation
             && self.project_open.pending_save_as_overwrite.is_none()
         {
             return;
@@ -716,6 +717,20 @@ impl ReadyAppState {
                     .clicked()
                 {
                     self.cancel_pending_project_open();
+                }
+            }
+            if self.project_open.pending_blank_project_confirmation {
+                if ui
+                    .button(self.locale.text(ShellText::ContinueNewBlankProject))
+                    .clicked()
+                {
+                    self.confirm_pending_blank_project();
+                }
+                if ui
+                    .button(self.locale.text(ShellText::CancelNewBlankProject))
+                    .clicked()
+                {
+                    self.cancel_pending_blank_project();
                 }
             }
             if self.project_open.pending_save_as_overwrite.is_some() {

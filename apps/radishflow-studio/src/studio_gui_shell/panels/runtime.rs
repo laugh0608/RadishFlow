@@ -649,6 +649,22 @@ impl ReadyAppState {
                     }
                 });
             }
+            if self.project_open.pending_blank_project_confirmation {
+                ui.horizontal_wrapped(|ui| {
+                    if ui
+                        .button(self.locale.text(ShellText::ContinueNewBlankProject))
+                        .clicked()
+                    {
+                        self.confirm_pending_blank_project();
+                    }
+                    if ui
+                        .button(self.locale.text(ShellText::CancelNewBlankProject))
+                        .clicked()
+                    {
+                        self.cancel_pending_blank_project();
+                    }
+                });
+            }
             if self.project_open.pending_save_as_overwrite.is_some() {
                 ui.horizontal_wrapped(|ui| {
                     if ui

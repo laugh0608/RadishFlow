@@ -45,15 +45,38 @@ impl ReadyAppState {
             .workspace_document
             .has_unsaved_changes
         {
+            self.project_open.pending_confirmation = None;
+            self.project_open.pending_blank_project_confirmation = true;
+            self.project_open.pending_save_as_overwrite = None;
             self.project_open.notice = Some(ProjectOpenNotice {
                 level: ProjectOpenNoticeLevel::Warning,
-                title: "Blank project blocked".to_string(),
-                detail: "Save or discard current changes before creating a blank project."
-                    .to_string(),
+                title: unsaved_changes_notice_title(self.locale).to_string(),
+                detail: create_blank_project_discard_notice_detail(self.locale),
             });
             return;
         }
 
+        self.create_blank_project_without_confirmation();
+    }
+
+    pub(super) fn confirm_pending_blank_project(&mut self) {
+        if !self.project_open.pending_blank_project_confirmation {
+            return;
+        }
+        self.project_open.pending_blank_project_confirmation = false;
+        self.create_blank_project_without_confirmation();
+    }
+
+    pub(super) fn cancel_pending_blank_project(&mut self) {
+        self.project_open.pending_blank_project_confirmation = false;
+        self.project_open.notice = Some(ProjectOpenNotice {
+            level: ProjectOpenNoticeLevel::Info,
+            title: blank_project_canceled_notice_title(self.locale).to_string(),
+            detail: current_workspace_remains_open_notice_detail(self.locale).to_string(),
+        });
+    }
+
+    fn create_blank_project_without_confirmation(&mut self) {
         let config = studio_shell_blank_runtime_config();
 
         match StudioGuiPlatformHost::new(&config) {
@@ -72,6 +95,7 @@ impl ReadyAppState {
                 self.result_inspector.reset();
                 self.project_open.path_input.clear();
                 self.project_open.pending_confirmation = None;
+                self.project_open.pending_blank_project_confirmation = false;
                 self.project_open.pending_save_as_overwrite = None;
                 self.project_open.notice = Some(ProjectOpenNotice {
                     level: ProjectOpenNoticeLevel::Info,
@@ -304,12 +328,15 @@ impl ReadyAppState {
                 project_path: project_path.clone(),
                 source_label: source_label.to_string(),
             });
+            self.project_open.pending_blank_project_confirmation = false;
+            self.project_open.pending_save_as_overwrite = None;
             self.project_open.notice = Some(ProjectOpenNotice {
                 level: ProjectOpenNoticeLevel::Warning,
-                title: "Unsaved changes".to_string(),
-                detail: format!(
-                    "Opening {source_label} will discard changes after the last saved revision: {}",
-                    project_path.display()
+                title: unsaved_changes_notice_title(self.locale).to_string(),
+                detail: open_project_discard_notice_detail(
+                    self.locale,
+                    source_label,
+                    &project_path,
                 ),
             });
             return;
@@ -355,6 +382,7 @@ impl ReadyAppState {
                 let recent_projects_notice =
                     self.record_and_persist_recent_project(project_path.clone());
                 self.project_open.pending_confirmation = None;
+                self.project_open.pending_blank_project_confirmation = false;
                 self.project_open.pending_save_as_overwrite = None;
                 self.project_open.notice =
                     Some(recent_projects_notice.unwrap_or(ProjectOpenNotice {
@@ -1311,6 +1339,55 @@ fn project_opened_notice_detail(
             localized_project_source_label(source_label),
             project_path.display()
         ),
+    }
+}
+
+fn unsaved_changes_notice_title(locale: StudioShellLocale) -> &'static str {
+    match locale {
+        StudioShellLocale::En => "Unsaved changes",
+        StudioShellLocale::ZhCn => "未保存更改",
+    }
+}
+
+fn open_project_discard_notice_detail(
+    locale: StudioShellLocale,
+    source_label: &str,
+    project_path: &std::path::Path,
+) -> String {
+    match locale {
+        StudioShellLocale::En => format!(
+            "Opening {source_label} will discard changes after the last saved revision: {}",
+            project_path.display()
+        ),
+        StudioShellLocale::ZhCn => format!(
+            "打开{}会放弃上次保存修订之后的更改: {}",
+            localized_project_source_label(source_label),
+            project_path.display()
+        ),
+    }
+}
+
+fn create_blank_project_discard_notice_detail(locale: StudioShellLocale) -> String {
+    match locale {
+        StudioShellLocale::En => {
+            "Creating a blank project will discard changes after the last saved revision."
+                .to_string()
+        }
+        StudioShellLocale::ZhCn => "新建空白项目会放弃上次保存修订之后的更改。".to_string(),
+    }
+}
+
+fn blank_project_canceled_notice_title(locale: StudioShellLocale) -> &'static str {
+    match locale {
+        StudioShellLocale::En => "Blank project canceled",
+        StudioShellLocale::ZhCn => "已取消新建项目",
+    }
+}
+
+fn current_workspace_remains_open_notice_detail(locale: StudioShellLocale) -> &'static str {
+    match locale {
+        StudioShellLocale::En => "Current workspace remains open.",
+        StudioShellLocale::ZhCn => "当前工作区保持打开。",
     }
 }
 

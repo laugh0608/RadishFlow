@@ -509,13 +509,14 @@ impl ReadyAppState {
                     .id_salt("studio.home_messages_scroll")
                     .auto_shrink([false, false])
                     .show(ui, |ui| {
-                        if let Some(notice) = self.project_open.notice.as_ref() {
+                        if let Some(notice) = self.project_open.notice.clone() {
                             self.render_home_message_row(
                                 ui,
                                 HomeMessageTag::Notice,
                                 &notice.title,
                                 Some(&notice.detail),
                             );
+                            self.render_home_project_operation_actions(ui);
                         }
                         self.render_home_message_row(
                             ui,
@@ -541,6 +542,60 @@ impl ReadyAppState {
                         );
                     });
             });
+    }
+
+    fn render_home_project_operation_actions(&mut self, ui: &mut egui::Ui) {
+        if self.project_open.pending_confirmation.is_none()
+            && !self.project_open.pending_blank_project_confirmation
+            && self.project_open.pending_save_as_overwrite.is_none()
+        {
+            return;
+        }
+
+        ui.horizontal_wrapped(|ui| {
+            if self.project_open.pending_confirmation.is_some() {
+                if ui
+                    .button(self.locale.text(ShellText::ContinueOpenProject))
+                    .clicked()
+                {
+                    self.confirm_pending_project_open();
+                }
+                if ui
+                    .button(self.locale.text(ShellText::CancelOpenProject))
+                    .clicked()
+                {
+                    self.cancel_pending_project_open();
+                }
+            }
+            if self.project_open.pending_blank_project_confirmation {
+                if ui
+                    .button(self.locale.text(ShellText::ContinueNewBlankProject))
+                    .clicked()
+                {
+                    self.confirm_pending_blank_project();
+                }
+                if ui
+                    .button(self.locale.text(ShellText::CancelNewBlankProject))
+                    .clicked()
+                {
+                    self.cancel_pending_blank_project();
+                }
+            }
+            if self.project_open.pending_save_as_overwrite.is_some() {
+                if ui
+                    .button(self.locale.text(ShellText::ConfirmSaveAsOverwrite))
+                    .clicked()
+                {
+                    self.confirm_pending_save_as_overwrite();
+                }
+                if ui
+                    .button(self.locale.text(ShellText::CancelSaveAsOverwrite))
+                    .clicked()
+                {
+                    self.cancel_pending_save_as_overwrite();
+                }
+            }
+        });
     }
 
     fn render_home_message_row(

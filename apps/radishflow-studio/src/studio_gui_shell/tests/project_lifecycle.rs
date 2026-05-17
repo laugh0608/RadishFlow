@@ -371,7 +371,7 @@ fn saving_untitled_blank_project_allows_opening_example_project() {
 }
 
 #[test]
-fn create_blank_project_requires_clean_workspace() {
+fn create_blank_project_requires_confirmation_when_workspace_has_unsaved_changes() {
     let (config, project_path) = flash_drum_local_rules_synced_config();
     let mut app = ReadyAppState::from_config_with_project_file_picker(
         &config,
@@ -394,12 +394,66 @@ fn create_blank_project_requires_clean_workspace() {
         app.project_open.notice.as_ref().map(|notice| notice.level),
         Some(ProjectOpenNoticeLevel::Warning)
     );
+    assert!(app.project_open.pending_blank_project_confirmation);
     assert_eq!(
         app.project_open
             .notice
             .as_ref()
             .map(|notice| notice.title.as_str()),
-        Some("Blank project blocked")
+        Some("未保存更改")
+    );
+
+    app.confirm_pending_blank_project();
+
+    let blank_window = app.platform_host.snapshot().window_model();
+    assert_eq!(
+        blank_window.runtime.workspace_document.title,
+        "Blank Project"
+    );
+    assert_eq!(blank_window.runtime.workspace_document.project_path, None);
+    assert!(blank_window.runtime.workspace_document.has_unsaved_changes);
+    assert!(app.project_open.pending_confirmation.is_none());
+    assert!(!app.project_open.pending_blank_project_confirmation);
+    assert_eq!(
+        app.project_open
+            .notice
+            .as_ref()
+            .map(|notice| notice.title.as_str()),
+        Some("Blank project created")
+    );
+
+    let _ = std::fs::remove_file(project_path);
+}
+
+#[test]
+fn cancel_pending_blank_project_keeps_dirty_workspace_active() {
+    let (config, project_path) = flash_drum_local_rules_synced_config();
+    let mut app = ready_app_state(&config);
+    app.dispatch_ui_command("canvas.accept_focused");
+    let dirty_window = app.platform_host.snapshot().window_model();
+    assert!(dirty_window.runtime.workspace_document.has_unsaved_changes);
+
+    app.create_blank_project();
+    app.cancel_pending_blank_project();
+
+    let canceled_window = app.platform_host.snapshot().window_model();
+    assert_eq!(
+        canceled_window.runtime.workspace_document.title,
+        dirty_window.runtime.workspace_document.title
+    );
+    assert!(
+        canceled_window
+            .runtime
+            .workspace_document
+            .has_unsaved_changes
+    );
+    assert!(!app.project_open.pending_blank_project_confirmation);
+    assert_eq!(
+        app.project_open
+            .notice
+            .as_ref()
+            .map(|notice| notice.title.as_str()),
+        Some("已取消新建项目")
     );
 
     let _ = std::fs::remove_file(project_path);

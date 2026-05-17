@@ -454,6 +454,55 @@ fn home_open_example_uses_selected_example_project() {
 }
 
 #[test]
+fn home_dashboard_renders_pending_project_operation_actions() {
+    let (config, project_path) = flash_drum_local_rules_synced_config();
+    let mut app = ready_app_state(&config);
+    let target_project = app
+        .platform_host
+        .snapshot()
+        .window_model()
+        .runtime
+        .example_projects
+        .iter()
+        .find(|example| example.id == "feed-valve-flash")
+        .expect("expected feed valve example")
+        .project_path
+        .clone();
+
+    app.dispatch_ui_command("canvas.accept_focused");
+    assert!(
+        app.platform_host
+            .snapshot()
+            .window_model()
+            .runtime
+            .workspace_document
+            .has_unsaved_changes
+    );
+
+    app.open_example_project(target_project);
+    let open_texts = render_home_dashboard_texts(&mut app);
+    for expected in ["未保存更改", "仍然打开", "取消打开"] {
+        assert!(
+            open_texts.iter().any(|text| text.contains(expected)),
+            "expected pending open action `{expected}` on home dashboard, rendered texts: {:?}",
+            open_texts
+        );
+    }
+
+    app.create_blank_project();
+    let blank_texts = render_home_dashboard_texts(&mut app);
+    for expected in ["未保存更改", "仍然新建", "取消新建"] {
+        assert!(
+            blank_texts.iter().any(|text| text.contains(expected)),
+            "expected pending blank action `{expected}` on home dashboard, rendered texts: {:?}",
+            blank_texts
+        );
+    }
+
+    let _ = fs::remove_file(project_path);
+}
+
+#[test]
 fn opening_case_from_home_switches_to_workbench() {
     let mut app = ready_app_state(&synced_workspace_config());
     let target_project = app
