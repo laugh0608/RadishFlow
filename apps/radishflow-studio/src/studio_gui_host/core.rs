@@ -6,6 +6,7 @@ use crate::{
     StudioGuiDiagnosticStreamSnapshot, StudioGuiFailureDiagnosticContextSnapshot,
     StudioGuiFailureDiagnosticPortSnapshot, WorkspaceControlState,
 };
+use std::collections::BTreeSet;
 
 impl StudioGuiHost {
     pub fn new(config: &StudioRuntimeConfig) -> RfResult<Self> {
@@ -14,10 +15,12 @@ impl StudioGuiHost {
             Some(project_path) => load_persisted_window_layouts(project_path)?,
             None => BTreeMap::new(),
         };
-        let canvas_unit_positions = match controller.document_path() {
+        let mut canvas_unit_positions = match controller.document_path() {
             Some(project_path) => load_persisted_canvas_unit_positions(project_path)?,
             None => BTreeMap::new(),
         };
+        let flowsheet = &controller.document().flowsheet;
+        canvas_unit_positions.retain(|unit_id, _| flowsheet.units.contains_key(unit_id));
 
         Ok(Self {
             controller,
@@ -48,12 +51,8 @@ impl StudioGuiHost {
             _ => None,
         };
         let flowsheet = &self.controller.document().flowsheet;
-        let units = self
-            .controller
-            .document()
-            .flowsheet
-            .units
-            .values()
+        let units = canvas_units_in_layout_order(flowsheet)
+            .into_iter()
             .map(|unit| StudioGuiCanvasUnitState {
                 unit_id: unit.id.clone(),
                 name: unit.name.clone(),
@@ -381,6 +380,73 @@ fn canvas_material_stream_endpoints(
         }
     }
     endpoints
+}
+
+fn canvas_units_in_layout_order(flowsheet: &rf_model::Flowsheet) -> Vec<&rf_model::UnitNode> {
+    let mut source_unit_by_stream = BTreeMap::new();
+    for unit in flowsheet.units.values() {
+        for port in &unit.ports {
+            if port.kind != rf_types::PortKind::Material
+                || port.direction != rf_types::PortDirection::Outlet
+            {
+                continue;
+            }
+            if let Some(stream_id) = port.stream_id.as_ref() {
+                source_unit_by_stream
+                    .entry(stream_id.clone())
+                    .or_insert_with(|| unit.id.clone());
+            }
+        }
+    }
+
+    let mut dependencies = flowsheet
+        .units
+        .keys()
+        .map(|unit_id| (unit_id.clone(), BTreeSet::new()))
+        .collect::<BTreeMap<_, _>>();
+    for unit in flowsheet.units.values() {
+        for port in &unit.ports {
+            if port.kind != rf_types::PortKind::Material
+                || port.direction != rf_types::PortDirection::Inlet
+            {
+                continue;
+            }
+            let Some(stream_id) = port.stream_id.as_ref() else {
+                continue;
+            };
+            let Some(source_unit_id) = source_unit_by_stream.get(stream_id) else {
+                continue;
+            };
+            if source_unit_id != &unit.id {
+                dependencies
+                    .entry(unit.id.clone())
+                    .or_default()
+                    .insert(source_unit_id.clone());
+            }
+        }
+    }
+
+    let mut ordered_unit_ids = Vec::new();
+    while !dependencies.is_empty() {
+        let ready = dependencies
+            .iter()
+            .find_map(|(unit_id, upstream)| upstream.is_empty().then(|| unit_id.clone()));
+        let Some(unit_id) = ready else {
+            ordered_unit_ids.extend(dependencies.keys().cloned());
+            break;
+        };
+
+        dependencies.remove(&unit_id);
+        for upstream in dependencies.values_mut() {
+            upstream.remove(&unit_id);
+        }
+        ordered_unit_ids.push(unit_id);
+    }
+
+    ordered_unit_ids
+        .into_iter()
+        .filter_map(|unit_id| flowsheet.units.get(&unit_id))
+        .collect()
 }
 
 fn canvas_diagnostics_from_runtime(
@@ -1048,5 +1114,25 @@ fn workspace_document_snapshot_from_controller(
         unit_count: document.flowsheet.units.len(),
         stream_count: document.flowsheet.streams.len(),
         snapshot_history_count: controller.snapshot_history_count(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn canvas_units_default_to_material_process_order_for_heater_flash_example() {
+        let project = rf_store::parse_project_file_json(include_str!(
+            "../../../../examples/flowsheets/feed-heater-flash-binary-hydrocarbon.rfproj.json"
+        ))
+        .expect("expected example project parse");
+
+        let unit_order = canvas_units_in_layout_order(&project.document.flowsheet)
+            .into_iter()
+            .map(|unit| unit.id.as_str().to_string())
+            .collect::<Vec<_>>();
+
+        assert_eq!(unit_order, ["feed-1", "heater-1", "flash-1"]);
     }
 }

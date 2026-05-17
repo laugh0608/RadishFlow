@@ -102,7 +102,7 @@
 | 文档 | 当前状态 | 通过标准 | 记录 |
 | --- | --- | --- | --- |
 | `docs/guides/studio-quick-start.md` | Pass | 能说明启动方式、当前能力和首次体验入口 | 2026-05-16 已同步默认 Home Dashboard、中文主路径、右侧 `检查器 / 结果 / 运行 / 物性包`、底部 drawer 和关闭口径；明确当前是开发态启动，不暗示正式安装包 |
-| `docs/guides/run-first-flowsheet.md` | Pass | 能指导用户打开示例、运行、审阅、保存重开 | 2026-05-16 已同步从首页 `打开示例 Case` 进入、进入工作台后用顶部 `运行 / 保存 / 另存为...` 和右侧 / 底部结果入口复现路径 |
+| `docs/guides/run-first-flowsheet.md` | Pass | 能指导用户打开示例、运行、审阅、保存重开 | 2026-05-17 已同步从首页 `打开示例` 进入、进入工作台后用顶部 `运行 / 保存 / 另存为...` 和右侧 / 底部结果入口复现路径 |
 | `docs/guides/review-solve-results.md` | Pass | 能解释 source / intermediate / step / outlet 结果审阅顺序 | 2026-05-13 已复查 |
 | `docs/capeopen/pme-validation.md` | Pass | 能说明 PME 验证门控、dry-run、register/unregister 和记录模板 | 2026-05-13 已复查；外部 PME 与 registry 操作仍需人工门控 |
 | 发布包形态说明 | Pass | 能说明当前仍是开发态或压缩包式交付边界，不暗示已存在完整安装器或首版 demo | 2026-05-16 已在 `docs/architecture/versioning.md` 补齐 MVP α 便携包操作清单；`docs/releases/v26.5.1-dev.md` 记录内部包边界并明确 tag 暂缓；`scripts/package.ps1` 只生成 Windows staging / zip，不执行安装、COM 注册、PME 或第三方模型加载 |

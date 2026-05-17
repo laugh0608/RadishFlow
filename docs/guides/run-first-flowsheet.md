@@ -41,9 +41,9 @@ cargo run -p radishflow-studio
 
 启动后默认进入 Home Dashboard。第一次运行建议先在首页打开内置示例：
 
-- 左侧 `开始` 区域的 `打开示例 Case`
-- 中央 `示例 Case` 列表中的示例行
-- 有最近项目时，也可以从 `最近 Case` 打开已记录的项目
+- 左侧 `开始` 区域的 `打开示例`
+- 中央 `示例项目` 列表中的示例行
+- 有最近项目时，也可以从 `最近项目` 打开已记录的项目
 
 进入工作台后，仍可通过顶部主路径打开项目：
 
@@ -150,7 +150,7 @@ examples/flowsheets/feed-mixer-flash-binary-hydrocarbon.rfproj.json
 
 如果想验证“不是只会打开示例”，可以用当前 MVP α 支持的最短空白路径：
 
-1. 在首页点击 `新建空白 Case`，或进入工作台后点击顶部 `新建空白`，进入未命名空白项目。
+1. 在首页点击 `新建空白项目`，或进入工作台后点击顶部 `新建空白`，进入未命名空白项目。
 2. 左侧切到 `放置`，放置 `Feed` 和 `Flash Drum`；需要中间设备时可加 `Heater / Cooler / Valve`，需要双入口时可加第二个 `Feed` 和 `Mixer`。
 3. 每次放置单元后，在 Canvas 中点击落点提交；这只提交当前放置意图，不是完整拖拽布局编辑器。
 4. 使用 Canvas suggestion 中的 `Connect` / `连接` 动作补齐 `source -> sink` 端口绑定和必要 outlet stream。

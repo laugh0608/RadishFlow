@@ -67,6 +67,7 @@ impl ReadyAppState {
                 self.drop_preview_overlay_anchor = None;
                 self.last_viewport_focused = None;
                 self.canvas_viewport_navigation = CanvasViewportNavigationState::default();
+                self.canvas_initial_viewport_fit.reset();
                 self.canvas_command_result = None;
                 self.result_inspector.reset();
                 self.project_open.path_input.clear();
@@ -347,6 +348,7 @@ impl ReadyAppState {
                 self.drop_preview_overlay_anchor = None;
                 self.last_viewport_focused = None;
                 self.canvas_viewport_navigation = CanvasViewportNavigationState::default();
+                self.canvas_initial_viewport_fit.reset();
                 self.canvas_command_result = None;
                 self.result_inspector.reset();
                 self.project_open.path_input = project_path.display().to_string();
@@ -357,8 +359,12 @@ impl ReadyAppState {
                 self.project_open.notice =
                     Some(recent_projects_notice.unwrap_or(ProjectOpenNotice {
                         level: ProjectOpenNoticeLevel::Info,
-                        title: "Project opened".to_string(),
-                        detail: format!("Opened {source_label}: {}", project_path.display()),
+                        title: project_opened_notice_title(self.locale).to_string(),
+                        detail: project_opened_notice_detail(
+                            self.locale,
+                            source_label,
+                            &project_path,
+                        ),
                     }));
                 self.screen = StudioShellScreen::Workbench;
                 self.platform_host.record_activity_line(format!(
@@ -1257,5 +1263,37 @@ impl ReadyAppState {
         if pointer_pos.is_some_and(|pos| rect.contains(pos)) && (pressed || released) {
             self.last_area_focus = Some(area_id);
         }
+    }
+}
+
+fn project_opened_notice_title(locale: StudioShellLocale) -> &'static str {
+    match locale {
+        StudioShellLocale::En => "Project opened",
+        StudioShellLocale::ZhCn => "项目已打开",
+    }
+}
+
+fn project_opened_notice_detail(
+    locale: StudioShellLocale,
+    source_label: &str,
+    project_path: &std::path::Path,
+) -> String {
+    match locale {
+        StudioShellLocale::En => format!("Opened {source_label}: {}", project_path.display()),
+        StudioShellLocale::ZhCn => format!(
+            "已打开{}: {}",
+            localized_project_source_label(source_label),
+            project_path.display()
+        ),
+    }
+}
+
+fn localized_project_source_label(source_label: &str) -> &'static str {
+    match source_label {
+        "example project" => "示例",
+        "recent project" => "最近项目",
+        "project picker" => "文件选择器项目",
+        "project" => "项目",
+        _ => "项目",
     }
 }

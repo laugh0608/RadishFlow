@@ -817,7 +817,7 @@ pub struct StepSnapshot {
 当前已落地与仍待细化的边界：
 
 - 手动运行已经进入真实 GUI 工作台主路径：顶部 `运行` 直接派发 `run_panel.run_manual`，并通过 command registry 的 availability / disabled reason 控制按钮状态
-- Home Dashboard 当前是 Studio shell 的默认第一视野；`新建空白 Case / 打开 Case / 打开示例 Case / 继续上次 Case` 只触发文档生命周期动作或 MRU 打开，不写入当前 `FlowsheetDocument`
+- Home Dashboard 当前是 Studio shell 的默认第一视野；`新建空白项目 / 打开项目 / 打开示例 / 继续上次项目` 只触发文档生命周期动作或 MRU 打开，不写入当前 `FlowsheetDocument`
 - `Home / 打开示例 / 新建空白 / 打开项目... / 保存 / 另存为... / 视图 / 命令面板` 当前作为进入 case 后的 Studio shell 主路径；默认隐藏命令大全只是 shell 启动时的 host-local transient layout preference，不写入项目文档语义
 - `StudioAppFacade`、`WorkspaceControlAction`、`WorkspaceControlState`、`RunPanelWidgetModel` 与 `run_panel_driver` 已经构成手动运行入口的稳定链路；后续仍待细化的是后台调度、取消、自动运行与 `Hold -> Active` 恢复在最终 GUI 中的完整交互表达
 - Studio 当前又已把 app-host 侧 GUI 动作入口进一步冻结为 `StudioAppHostController::dispatch_ui_command(command_id)`，让菜单、快捷键和命令面板后续都可以直接按稳定 command id 触发，而不必继续持有 `UiAction` 枚举或回退到 raw host outcome

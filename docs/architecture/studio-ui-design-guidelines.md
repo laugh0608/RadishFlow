@@ -111,7 +111,7 @@ UI 参考素材当前保存在 `docs/architecture/assets/studio-ui/`。下表使
 - 建模对象、连接建议、运行、结果和错误分别属于哪个区域。
 - 人工 smoke 时应该按什么路径操作和观察结果。
 
-2026-05-16 已完成 Home Dashboard 与 Workbench 第一轮真实 UI 收口。后续不再回到“先讨论首页分区”的阶段；下一轮应优先处理 Canvas viewport 初始居中 / fit-to-content，以及少量仍暴露的中英混合文案和按钮语义。
+2026-05-16 已完成 Home Dashboard 与 Workbench 第一轮真实 UI 收口。2026-05-17 已继续完成 Canvas viewport 初始居中 / fit-to-content，以及首页高频中文文案和打开项目消息收口。后续不再回到“先讨论首页分区”或继续扩画布建模能力的阶段；下一轮应优先做视觉 smoke，只修真实 demo blocker。
 
 除非是修复阻塞性错误，不应继续在现有布局上叠加零散按钮、临时说明、调试状态或一次性 smoke 面板。
 
@@ -134,7 +134,7 @@ Studio 默认工作台建议分为六个稳定区域。
 - 页面应保留 `radishflow-workbench-concept.png` 的轻量浅色风格、克制蓝色主强调、状态 chip 和清晰分区，但不显示流程图画布。
 - `radishflow-home-dashboard-concept-v2-20260516.png` 当前作为启动首页视觉基线：它比早期概念稿更接近当前信息架构，Start actions、Recent Cases、Example Cases、Environment 和 Messages 的职责边界更清楚。
 - `radishflow-home-dashboard-concept.png` 保留为早期概念稿参考：它的信息架构方向正确，但字段和示例数据偏概念演示，不作为后续实现的优先基线。
-- Start actions 只保留 `继续上次 Case`、`新建空白 Case`、`打开 Case`、`打开示例 Case`；登录放在顶部 App Bar，不把完整命令面板或调试入口放进第一视野。
+- Start actions 只保留 `继续上次项目`、`新建空白项目`、`打开项目`、`打开示例`；登录放在顶部 App Bar，不把完整命令面板或调试入口放进第一视野。
 - 最近 case 和示例 case 必须可扫读：名称、路径或来源、最后打开时间、流程摘要、组分 / 物性包摘要、状态标签。
 - 客户端 / 服务端 / 设备信息默认以状态卡或紧凑 section 呈现；详细路径、backend、cache 细节和诊断信息进入展开项。
 - 登录入口应优先是 `登录` 按钮，而不是内嵌账号密码表单；桌面登录继续遵守 OIDC Authorization Code + PKCE + 系统浏览器 + loopback redirect 的边界。
@@ -143,7 +143,7 @@ Studio 默认工作台建议分为六个稳定区域。
 建议首屏布局：
 
 - 顶部 App Bar：`RadishFlow Studio`、版本 / build commit、登录状态、服务端状态、语言 / 设置入口。
-- 左侧 Start Actions：新建空白、打开 Case、打开示例、最近工作区入口。
+- 左侧 Start Actions：新建空白项目、打开项目、打开示例、最近工作区入口。
 - 中央内容：最近打开的 case 列表和示例 case 列表，示例可按 Basic Flash、Heater / Cooler / Valve、Mixer、PME Sample 分组。
 - 右侧 Environment Status：客户端信息、服务端信息、设备信息、本地缓存 / 示例路径状态。
 - 底部 Messages：最近环境警告、登录 / 授权提示、示例路径或物性包缓存诊断。
@@ -397,8 +397,8 @@ RadishFlow 默认浅色中性底，搭配少量语义色。
 1. 已落地：首屏 Home Dashboard 分区、顶部 App Bar、Start actions、Recent / Example / Environment / Messages。
 2. 已落地：Workbench 顶部 command bar 主路径、左侧 Project / 示例入口、右侧 Inspector / Results / Run / Package、底部 Messages / Run Log / Results / Diagnostics drawer。
 3. 已落地：Canvas header / toolbar 第一轮压缩，Place / suggestion / selection / legend 不再以开发态长文本平铺。
-4. 下一步：Canvas viewport 初始 fit-to-content / center，让打开示例后的流程自然处于可视区域中央。
-5. 下一步：补齐少量中文文案和按钮语义，避免 `Open Case`、`Project opened` 等英文残留混入中文界面。
+4. 已落地：Canvas viewport 初始 fit-to-content / center，让打开示例后的流程自然处于可视区域中央；该行为只属于 shell-local 呈现，不写项目、不进历史、不做视口持久化。
+5. 已落地：补齐首页高频中文文案和打开项目消息，避免 `打开 Case`、`Project opened` 等残留混入中文界面。
 6. 后续：画布对象视觉升级，统一 MVP 单元图形、流股标签、选中态和错误 badge，再考虑更多设备符号。
 7. 后续：结果审阅表格化，在不改变 `SolveSnapshot` 语义的前提下提供 stream / unit 表格和诊断摘要。
 

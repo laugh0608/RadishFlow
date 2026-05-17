@@ -91,6 +91,7 @@ struct ReadyAppState {
     bottom_drawer_tab: StudioShellBottomDrawerTab,
     canvas_object_filter: CanvasObjectListFilter,
     canvas_viewport_navigation: CanvasViewportNavigationState,
+    canvas_initial_viewport_fit: CanvasInitialViewportFitState,
     canvas_command_result: Option<radishflow_studio::StudioGuiCanvasCommandResultViewModel>,
     project_file_picker: Box<dyn ProjectFilePicker>,
     preferences_path: PathBuf,
@@ -201,6 +202,27 @@ enum StudioShellBottomDrawerTab {
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 struct CanvasViewportNavigationState {
     active_anchor: Option<CanvasViewportAnchorNavigation>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+struct CanvasInitialViewportFitState {
+    pending: bool,
+    offset: egui::Vec2,
+}
+
+impl Default for CanvasInitialViewportFitState {
+    fn default() -> Self {
+        Self {
+            pending: true,
+            offset: egui::Vec2::ZERO,
+        }
+    }
+}
+
+impl CanvasInitialViewportFitState {
+    fn reset(&mut self) {
+        *self = Self::default();
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -320,6 +342,7 @@ impl ReadyAppState {
             bottom_drawer_tab: StudioShellBottomDrawerTab::default(),
             canvas_object_filter: CanvasObjectListFilter::default(),
             canvas_viewport_navigation: CanvasViewportNavigationState::default(),
+            canvas_initial_viewport_fit: CanvasInitialViewportFitState::default(),
             canvas_command_result: None,
             project_file_picker,
             preferences_path,

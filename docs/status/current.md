@@ -1,6 +1,6 @@
 # 当前状态
 
-更新时间：2026-05-16
+更新时间：2026-05-17
 
 ## 用途
 
@@ -14,7 +14,7 @@
 
 - 产品定位：以 Rust Core + Rust UI + `.NET 10` CAPE-OPEN/COM 适配层构建稳态流程模拟软件。
 - 当前主线：MVP 第一阶段最小闭环已经可验证，但尚未达到首版 demo 的产品可用水准；当前主线是 Studio 首页与工作台信息架构的可用性收口，发布 / tag 暂缓。
-- 当前重点：Home Dashboard 与进入 case 后的 Workbench 第一轮真实 UI 已落地；下一步优先把 Canvas viewport 初始居中 / fit-to-content 和少量中英混合文案收口，降低人工测试和首版 demo 认知成本。
+- 当前重点：Home Dashboard 与进入 case 后的 Workbench 第一轮真实 UI 已落地；Canvas viewport 初始居中 / fit-to-content、首页高频中文文案和 `Feed Heater Flash` 示例布局顺序已收口。下一步继续视觉 smoke，重点确认 Canvas 端口 / 标签拥挤、运行、结果 / 消息 / 物性包入口和关闭窗口路径没有回归。
 - 当前验证基线：功能改动优先执行相关 focused tests；阶段性收口执行 `pwsh ./scripts/check-repo.ps1`。
 
 ## 最近完成摘要
@@ -30,16 +30,18 @@
 - 2026-05-16 已补 MVP α Windows 便携包入口：`scripts/package.ps1` 生成 staging / zip，附带 Studio exe、正向示例、样例物性包、关键文档、内部包记录和许可文件；Studio 打包后会优先从 exe 同目录的 `examples/flowsheets` 发现内置示例。该包仅作为内部验证产物，不代表首版 demo 或对外发布。
 - 2026-05-16 已新增 `docs/releases/v26.5.1-dev.md`，记录内部便携包、验证结果和包内边界；当前暂缓创建 `v26.5.1-dev` tag，后续等首版 demo 功能和 UI 可用性达到标准后再重新评估版本节点。
 - 2026-05-16 晚间已完成 Studio Home Dashboard 与 Workbench 第一轮 UI 收口：Home Dashboard 默认中文、三栏布局稳定、Recent / Example / Environment / Messages 分区清晰；Workbench 顶部主路径、左侧 Project、中央 Canvas header、右侧 Inspector / Results / Run / Package 和底部 drawer 已压缩信息噪声；关闭最后窗口前的一帧黑屏也已优化。
+- 2026-05-17 已完成 Canvas viewport 初始自动居中：画布在打开项目后的首轮渲染根据当前单元 / 流股 bounds 计算 shell-local viewport transform，让打开示例或项目后的小流程自然位于可视区域中央；后续 layout nudge 复用同一 offset，不会被每帧重新居中抵消。点击放置会反算回原始 sidecar 坐标，不写入项目语义、不进入 CommandHistory，也不引入视口持久化。首页中文文案中的 `打开 Case` / `示例 Case` 等高频残留已改为 `打开项目` / `打开示例` / `示例项目`，Workbench 打开项目消息也已中文化。
+- 2026-05-17 人工截图审阅后已修复 `Feed Heater Flash` 示例默认布局顺序：Canvas presentation 现在按物料流依赖给未定位单元排序，`feed-1 / heater-1 / flash-1` 会按工艺顺序从左到右显示；加载本地 sidecar 时也会过滤当前项目已不存在的 unit id。首页示例项目行按钮已从 `打开项目` 改为 `打开示例`。
 
 完整过程和每日验证记录见 `docs/devlogs/2026-05/2026-W20.md` 以及更早周志。
 
 ## 下一步建议
 
-1. 明天优先推进 Canvas viewport 初始自动居中 / fit-to-content：打开示例或项目后，小流程应自然位于画布可视区域中央，不再固定偏左上；不扩自动布线、自由连线或视口持久化。
-2. 继续复核 Home / Workbench 残余文案和按钮语义，例如首页示例卡片的 `打开 Case` 是否改成 `打开示例`、消息区 `Project opened` 等英文是否中文化。
-3. 做一轮视觉 smoke，确认 Home Dashboard、进入示例、运行、结果 / 消息 / 物性包入口和关闭窗口路径没有回归；代码改动后继续跑 `cargo fmt --all` 与 `cargo test -p radishflow-studio studio_gui_shell`。
+1. 继续做视觉 smoke，确认 Home Dashboard、进入示例、运行、结果 / 消息 / 物性包入口、Canvas 初始居中和关闭窗口路径没有回归。
+2. 优先复核 Canvas 端口 / 标签拥挤和 Workbench 残余中文；只处理 smoke 高频路径，不展开完整本地化体系。
+3. 若视觉 smoke 暴露真实 blocker，按现有 command / presentation / shell-local state 边界修复；不要把 viewport 收口误扩成自动布线、自由连线、完整拖拽布局或视口持久化。
 4. 便携包和 `docs/releases/v26.5.1-dev.md` 暂作为内部验证资产保留，不创建 tag，不推进对外发布自动化。
-5. 结果面继续只读消费 `SolveSnapshot`，不新增 shell 私有结果缓存；Canvas 下一步只做 viewport 呈现收口，不扩大建模能力边界。
+5. 结果面继续只读消费 `SolveSnapshot`，不新增 shell 私有结果缓存；Canvas 下一步只处理 demo 可用性 blocker，不扩大建模能力边界。
 
 ## 暂不推进
 

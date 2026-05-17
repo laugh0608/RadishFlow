@@ -517,6 +517,12 @@ impl ReadyAppState {
         let available_width = ui.available_width().max(320.0);
         let desired_size = egui::vec2(available_width, 280.0);
         let (rect, response) = ui.allocate_exact_size(desired_size, egui::Sense::click());
+        let viewport_transform = canvas_initial_viewport_transform(
+            &mut self.canvas_initial_viewport_fit,
+            rect,
+            unit_blocks,
+            stream_lines,
+        );
         let painter = ui.painter_at(rect);
         paint_canvas_drop_surface(&painter, rect, pending_edit.is_some());
 
@@ -532,7 +538,7 @@ impl ReadyAppState {
 
         let mut clicked_stream_command = None;
         for stream in stream_lines {
-            let geometry = canvas_stream_line_geometry(rect, stream);
+            let geometry = canvas_stream_line_geometry(rect, &viewport_transform, stream);
             let is_viewport_focus = self
                 .canvas_viewport_navigation
                 .is_active_anchor(&stream.line_id);
@@ -567,7 +573,12 @@ impl ReadyAppState {
         let mut hovered_port_stream_id = None;
         let mut hovered_port_callout = None;
         for unit in unit_blocks {
-            let unit_rect = canvas_unit_block_rect(rect, unit.layout_slot, unit.layout_position);
+            let unit_rect = canvas_unit_block_rect(
+                rect,
+                &viewport_transform,
+                unit.layout_slot,
+                unit.layout_position,
+            );
             let anchor_label = canvas_unit_viewport_anchor_label(unit.layout_slot);
             let is_viewport_focus = self
                 .canvas_viewport_navigation
@@ -620,9 +631,13 @@ impl ReadyAppState {
         }
 
         if let Some(callout) = focus_callout {
-            if let Some(anchor) =
-                canvas_focus_callout_anchor(rect, callout, unit_blocks, stream_lines)
-            {
+            if let Some(anchor) = canvas_focus_callout_anchor(
+                rect,
+                &viewport_transform,
+                callout,
+                unit_blocks,
+                stream_lines,
+            ) {
                 paint_canvas_focus_callout(&painter, rect, anchor, callout);
             }
         }
@@ -644,10 +659,10 @@ impl ReadyAppState {
         };
         if pending_edit.is_some() && response.clicked() && !clicked_unit && !clicked_stream {
             if let Some(pointer_pos) = response.interact_pointer_pos() {
-                let local = pointer_pos - rect.min;
+                let local = viewport_transform.screen_to_world(rect, pointer_pos);
                 self.dispatch_canvas_pending_edit_commit(rf_ui::CanvasPoint::new(
-                    local.x as f64,
-                    local.y as f64,
+                    local.x.max(0.0) as f64,
+                    local.y.max(0.0) as f64,
                 ));
             }
         }
@@ -739,13 +754,127 @@ struct CanvasStreamLineGeometry {
     end: egui::Pos2,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+struct CanvasViewportTransform {
+    offset: egui::Vec2,
+}
+
+impl CanvasViewportTransform {
+    const ZERO: Self = Self {
+        offset: egui::Vec2::ZERO,
+    };
+
+    fn world_rect_to_screen(self, rect: egui::Rect, world_rect: egui::Rect) -> egui::Rect {
+        egui::Rect::from_min_size(
+            rect.min + self.offset + world_rect.min.to_vec2(),
+            world_rect.size(),
+        )
+    }
+
+    fn world_pos_to_screen(self, rect: egui::Rect, world_pos: egui::Pos2) -> egui::Pos2 {
+        rect.min + self.offset + world_pos.to_vec2()
+    }
+
+    fn screen_to_world(self, rect: egui::Rect, screen_pos: egui::Pos2) -> egui::Pos2 {
+        let world = screen_pos - rect.min - self.offset;
+        egui::pos2(world.x, world.y)
+    }
+}
+
+fn canvas_viewport_transform(
+    rect: egui::Rect,
+    unit_blocks: &[radishflow_studio::StudioGuiCanvasUnitBlockViewModel],
+    stream_lines: &[radishflow_studio::StudioGuiCanvasStreamLineViewModel],
+) -> CanvasViewportTransform {
+    let Some(bounds) = canvas_content_world_bounds(rect.width(), unit_blocks, stream_lines) else {
+        return CanvasViewportTransform::ZERO;
+    };
+
+    let margin = egui::vec2(26.0, 24.0);
+    let available = rect.size();
+    let content = bounds.size();
+    let mut offset = egui::vec2(-bounds.left(), -bounds.top());
+
+    offset.x += if content.x + margin.x * 2.0 <= available.x {
+        (available.x - content.x) * 0.5
+    } else {
+        margin.x
+    };
+    offset.y += if content.y + margin.y * 2.0 <= available.y {
+        (available.y - content.y) * 0.5
+    } else {
+        margin.y
+    };
+
+    CanvasViewportTransform { offset }
+}
+
+fn canvas_initial_viewport_transform(
+    state: &mut CanvasInitialViewportFitState,
+    rect: egui::Rect,
+    unit_blocks: &[radishflow_studio::StudioGuiCanvasUnitBlockViewModel],
+    stream_lines: &[radishflow_studio::StudioGuiCanvasStreamLineViewModel],
+) -> CanvasViewportTransform {
+    if state.pending {
+        let transform = canvas_viewport_transform(rect, unit_blocks, stream_lines);
+        state.offset = transform.offset;
+        state.pending = false;
+        return transform;
+    }
+
+    CanvasViewportTransform {
+        offset: state.offset,
+    }
+}
+
+fn canvas_content_world_bounds(
+    viewport_width: f32,
+    unit_blocks: &[radishflow_studio::StudioGuiCanvasUnitBlockViewModel],
+    stream_lines: &[radishflow_studio::StudioGuiCanvasStreamLineViewModel],
+) -> Option<egui::Rect> {
+    let mut bounds = None;
+    for unit in unit_blocks {
+        canvas_union_rect(
+            &mut bounds,
+            canvas_unit_block_world_rect(viewport_width, unit.layout_slot, unit.layout_position),
+        );
+    }
+    for stream in stream_lines {
+        let geometry = canvas_stream_line_world_geometry(viewport_width, stream);
+        canvas_union_rect(
+            &mut bounds,
+            egui::Rect::from_two_pos(geometry.start, geometry.end).expand(16.0),
+        );
+    }
+    bounds
+}
+
+fn canvas_union_rect(bounds: &mut Option<egui::Rect>, rect: egui::Rect) {
+    *bounds = Some(match bounds.take() {
+        Some(bounds) => bounds.union(rect),
+        None => rect,
+    });
+}
+
 fn canvas_stream_line_geometry(
     rect: egui::Rect,
+    viewport_transform: &CanvasViewportTransform,
+    stream: &radishflow_studio::StudioGuiCanvasStreamLineViewModel,
+) -> CanvasStreamLineGeometry {
+    let geometry = canvas_stream_line_world_geometry(rect.width(), stream);
+    CanvasStreamLineGeometry {
+        start: viewport_transform.world_pos_to_screen(rect, geometry.start),
+        end: viewport_transform.world_pos_to_screen(rect, geometry.end),
+    }
+}
+
+fn canvas_stream_line_world_geometry(
+    viewport_width: f32,
     stream: &radishflow_studio::StudioGuiCanvasStreamLineViewModel,
 ) -> CanvasStreamLineGeometry {
     let source = stream.source.as_ref().map(|endpoint| {
-        canvas_unit_port_anchor(
-            rect,
+        canvas_unit_port_world_anchor(
+            viewport_width,
             endpoint.layout_slot,
             endpoint.layout_position,
             true,
@@ -754,8 +883,8 @@ fn canvas_stream_line_geometry(
         )
     });
     let sink = stream.sink.as_ref().map(|endpoint| {
-        canvas_unit_port_anchor(
-            rect,
+        canvas_unit_port_world_anchor(
+            viewport_width,
             endpoint.layout_slot,
             endpoint.layout_position,
             false,
@@ -768,14 +897,14 @@ fn canvas_stream_line_geometry(
         (Some(start), Some(end)) => CanvasStreamLineGeometry { start, end },
         (Some(start), None) => CanvasStreamLineGeometry {
             start,
-            end: egui::pos2((start.x + 88.0).min(rect.right() - 18.0), start.y),
+            end: egui::pos2(start.x + 88.0, start.y),
         },
         (None, Some(end)) => CanvasStreamLineGeometry {
-            start: egui::pos2((end.x - 88.0).max(rect.left() + 18.0), end.y),
+            start: egui::pos2(end.x - 88.0, end.y),
             end,
         },
         (None, None) => {
-            let center = rect.center();
+            let center = egui::pos2(viewport_width * 0.5, 140.0);
             CanvasStreamLineGeometry {
                 start: center,
                 end: center,
@@ -868,30 +997,39 @@ fn paint_canvas_stream_arrow(
 
 fn canvas_unit_block_rect(
     rect: egui::Rect,
+    viewport_transform: &CanvasViewportTransform,
+    layout_slot: usize,
+    layout_position: Option<rf_ui::CanvasPoint>,
+) -> egui::Rect {
+    viewport_transform.world_rect_to_screen(
+        rect,
+        canvas_unit_block_world_rect(rect.width(), layout_slot, layout_position),
+    )
+}
+
+fn canvas_unit_block_world_rect(
+    viewport_width: f32,
     layout_slot: usize,
     layout_position: Option<rf_ui::CanvasPoint>,
 ) -> egui::Rect {
     let block_size = egui::vec2(156.0, 72.0);
     if let Some(position) = layout_position {
-        let min = egui::pos2(
-            rect.left() + (position.x as f32).clamp(0.0, (rect.width() - block_size.x).max(0.0)),
-            rect.top() + (position.y as f32).clamp(0.0, (rect.height() - block_size.y).max(0.0)),
-        );
+        let min = egui::pos2(position.x as f32, position.y as f32);
         return egui::Rect::from_min_size(min, block_size);
     }
 
     let gap = egui::vec2(22.0, 20.0);
     let left_padding = 18.0;
     let top_padding = 72.0;
-    let available_width = (rect.width() - left_padding * 2.0).max(block_size.x);
+    let available_width = (viewport_width - left_padding * 2.0).max(block_size.x);
     let columns = ((available_width + gap.x) / (block_size.x + gap.x))
         .floor()
         .max(1.0) as usize;
     let column = layout_slot % columns;
     let row = layout_slot / columns;
     let min = egui::pos2(
-        rect.left() + left_padding + column as f32 * (block_size.x + gap.x),
-        rect.top() + top_padding + row as f32 * (block_size.y + gap.y),
+        left_padding + column as f32 * (block_size.x + gap.x),
+        top_padding + row as f32 * (block_size.y + gap.y),
     );
     egui::Rect::from_min_size(min, block_size)
 }
@@ -900,15 +1038,15 @@ fn canvas_unit_viewport_anchor_label(layout_slot: usize) -> String {
     format!("unit-slot-{layout_slot}")
 }
 
-fn canvas_unit_port_anchor(
-    rect: egui::Rect,
+fn canvas_unit_port_world_anchor(
+    viewport_width: f32,
     layout_slot: usize,
     layout_position: Option<rf_ui::CanvasPoint>,
     is_outlet: bool,
     side_index: usize,
     side_count: usize,
 ) -> egui::Pos2 {
-    let unit_rect = canvas_unit_block_rect(rect, layout_slot, layout_position);
+    let unit_rect = canvas_unit_block_world_rect(viewport_width, layout_slot, layout_position);
     canvas_unit_port_anchor_in_rect(unit_rect, is_outlet, side_index, side_count)
 }
 
@@ -1150,6 +1288,7 @@ fn paint_canvas_port_hover_callout(
 
 fn canvas_focus_callout_anchor(
     rect: egui::Rect,
+    viewport_transform: &CanvasViewportTransform,
     callout: &radishflow_studio::StudioGuiCanvasFocusCalloutViewModel,
     unit_blocks: &[radishflow_studio::StudioGuiCanvasUnitBlockViewModel],
     stream_lines: &[radishflow_studio::StudioGuiCanvasStreamLineViewModel],
@@ -1159,7 +1298,13 @@ fn canvas_focus_callout_anchor(
             .iter()
             .find(|unit| unit.unit_id == callout.target_id)
             .map(|unit| {
-                canvas_unit_block_rect(rect, unit.layout_slot, unit.layout_position).right_top()
+                canvas_unit_block_rect(
+                    rect,
+                    viewport_transform,
+                    unit.layout_slot,
+                    unit.layout_position,
+                )
+                .right_top()
             });
     }
 
@@ -1167,7 +1312,7 @@ fn canvas_focus_callout_anchor(
         .iter()
         .find(|stream| stream.stream_id == callout.target_id)
         .map(|stream| {
-            let geometry = canvas_stream_line_geometry(rect, stream);
+            let geometry = canvas_stream_line_geometry(rect, viewport_transform, stream);
             geometry.start.lerp(geometry.end, 0.58)
         })
 }
@@ -1331,5 +1476,109 @@ fn canvas_legend_swatch_color(swatch_label: &str) -> egui::Color32 {
         "stream" => egui::Color32::from_rgb(42, 142, 122),
         "pending_edit" => egui::Color32::from_rgb(52, 128, 89),
         _ => egui::Color32::from_rgb(86, 96, 108),
+    }
+}
+
+#[cfg(test)]
+mod viewport_geometry_tests {
+    use super::*;
+
+    fn unit_block(
+        unit_id: &str,
+        layout_slot: usize,
+        layout_position: Option<rf_ui::CanvasPoint>,
+    ) -> radishflow_studio::StudioGuiCanvasUnitBlockViewModel {
+        radishflow_studio::StudioGuiCanvasUnitBlockViewModel {
+            unit_id: unit_id.to_string(),
+            name: unit_id.to_string(),
+            kind: "feed".to_string(),
+            ports: Vec::new(),
+            status_badges: Vec::new(),
+            port_count: 0,
+            connected_port_count: 0,
+            command_id: format!("inspector.focus_unit:{unit_id}"),
+            action_label: format!("Unit {unit_id}"),
+            hover_text: String::new(),
+            attention_summary: None,
+            layout_slot,
+            layout_position,
+            is_active_inspector_target: false,
+        }
+    }
+
+    #[test]
+    fn viewport_transform_centers_persisted_small_flowsheet_without_rewriting_coordinates() {
+        let rect = egui::Rect::from_min_size(egui::pos2(0.0, 0.0), egui::vec2(640.0, 280.0));
+        let units = vec![
+            unit_block("feed-1", 0, Some(rf_ui::CanvasPoint::new(64.0, 40.0))),
+            unit_block("flash-1", 1, Some(rf_ui::CanvasPoint::new(220.0, 40.0))),
+        ];
+
+        let transform = canvas_viewport_transform(rect, &units, &[]);
+        let feed_rect = canvas_unit_block_rect(
+            rect,
+            &transform,
+            units[0].layout_slot,
+            units[0].layout_position,
+        );
+        let flash_rect = canvas_unit_block_rect(
+            rect,
+            &transform,
+            units[1].layout_slot,
+            units[1].layout_position,
+        );
+        let visible_bounds = feed_rect.union(flash_rect);
+
+        assert!((visible_bounds.center().x - rect.center().x).abs() < 0.1);
+        assert!((visible_bounds.center().y - rect.center().y).abs() < 0.1);
+
+        let feed_world = transform.screen_to_world(rect, feed_rect.min);
+        assert!((feed_world.x - 64.0).abs() < 0.1);
+        assert!((feed_world.y - 40.0).abs() < 0.1);
+    }
+
+    #[test]
+    fn initial_viewport_fit_keeps_offset_after_layout_moves() {
+        let rect = egui::Rect::from_min_size(egui::pos2(0.0, 0.0), egui::vec2(640.0, 280.0));
+        let mut state = CanvasInitialViewportFitState::default();
+        let units = vec![unit_block(
+            "flash-1",
+            0,
+            Some(rf_ui::CanvasPoint::new(64.0, 40.0)),
+        )];
+        let moved_units = vec![unit_block(
+            "flash-1",
+            0,
+            Some(rf_ui::CanvasPoint::new(160.0, 40.0)),
+        )];
+
+        let initial_transform = canvas_initial_viewport_transform(&mut state, rect, &units, &[]);
+        let moved_transform =
+            canvas_initial_viewport_transform(&mut state, rect, &moved_units, &[]);
+
+        assert!(!state.pending);
+        assert_eq!(moved_transform, initial_transform);
+        assert_ne!(
+            canvas_viewport_transform(rect, &moved_units, &[]),
+            initial_transform
+        );
+    }
+
+    #[test]
+    fn initial_viewport_fit_does_not_wait_for_content_after_blank_render() {
+        let rect = egui::Rect::from_min_size(egui::pos2(0.0, 0.0), egui::vec2(640.0, 280.0));
+        let mut state = CanvasInitialViewportFitState::default();
+
+        let blank_transform = canvas_initial_viewport_transform(&mut state, rect, &[], &[]);
+        let later_units = vec![unit_block(
+            "feed-1",
+            0,
+            Some(rf_ui::CanvasPoint::new(64.0, 40.0)),
+        )];
+        let later_transform =
+            canvas_initial_viewport_transform(&mut state, rect, &later_units, &[]);
+
+        assert_eq!(blank_transform, CanvasViewportTransform::ZERO);
+        assert_eq!(later_transform, CanvasViewportTransform::ZERO);
     }
 }

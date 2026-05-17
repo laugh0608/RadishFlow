@@ -663,7 +663,7 @@ fn successful_project_opens_keep_recent_projects_deduped_and_ordered() {
             .map(|notice| notice.detail.as_str())
             .unwrap_or(""),
         format!(
-            "Opened recent project: {}",
+            "已打开最近项目: {}",
             app.project_open
                 .recent_projects
                 .first()
