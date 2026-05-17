@@ -1,6 +1,6 @@
 # Architecture Overview
 
-更新时间：2026-05-01
+更新时间：2026-05-13
 
 ## 目标
 
@@ -39,15 +39,15 @@ RadishFlow 的目标架构已经冻结为“桌面端三层 + 外部控制面”
 | --- | --- | --- |
 | `rf-types` | 基础 ID、枚举、错误类型 | 已建立第一批基础类型 |
 | `rf-model` | 组分、流股、单元、流程图对象模型 | 已建立第一批领域数据结构 |
-| `rf-thermo` | 热力学数据结构与热力学接口 | 已建立最小 API、内存 provider、基于本地缓存目录/授权缓存索引的 `PropertyPackageProvider` 实现，并用首个真实样例包覆盖装载测试；当前已补基于 liquid/vapor 常热容和 `298.15 K` 参考温度的 MVP 基础相焓 |
-| `rf-flash` | `TP Flash` 输入输出契约与求解器接口 | 已建立最小 API，并已实现最小二元 `TP Flash`、Rachford-Rice、相分率/相组成与基础 molar enthalpy 黄金样例 |
+| `rf-thermo` | 热力学数据结构与热力学接口 | 已建立最小 API、内存 provider、基于本地缓存目录/授权缓存索引的 `PropertyPackageProvider` 实现，并用首个真实样例包覆盖装载测试；当前已补基于 liquid/vapor 常热容和 `298.15 K` 参考温度的 MVP 基础相焓、bubble/dew pressure / fixed-pressure temperature 边界估算，以及 near-boundary golden / focused regression 基线 |
+| `rf-flash` | `TP Flash` 输入输出契约与求解器接口 | 已建立最小 API，并已实现最小二元 `TP Flash`、Rachford-Rice、相分率/相组成与基础 molar enthalpy 黄金样例；当前 `TP Flash` 结果会显式携带 `phase_region + bubble_dew_window`，并已补齐 near-boundary golden / focused regressions |
 | `rf-unitops` | 单元模块行为抽象 | 已建立内建单元规范、统一流股输入输出接口，并实现 `Feed`、`Mixer`、`Heater/Cooler`、`Valve`、`Flash Drum` 的最小行为边界 |
 | `rf-flowsheet` | 连接关系与图结构校验 | 已建立首轮材料端口连接校验，覆盖 canonical port signature、流股存在性与“一股一源一汇”约束 |
 | `rf-solver` | 顺序模块法求解器 | 已建立首轮无回路顺序模块法，可执行 `Feed + Mixer + Flash Drum`、`Feed -> Heater -> Flash Drum` 与 `Feed -> Valve -> Flash Drum` 闭环，并产出带 summary / diagnostics / step 明细的最小 `SolveSnapshot`；当前失败路径已继续收口到 solver-stage + 稳定 diagnostic code + unit/port helper 上下文 |
 | `rf-store` | JSON 存储与授权缓存索引 | 已建立项目文件 / 授权缓存 / 本地包 `manifest.json` / `payload.rfpkg` 的 JSON 读写、迁移分发、版本校验与相对路径布局 |
 | `rf-ffi` | Rust 与 .NET 的 C ABI 边界 | 已建立第一版最小句柄式 C ABI，当前覆盖 `engine_create/destroy`、`flowsheet_load_json`、`property_package_load_from_files`、`property_package_list_json`、`flowsheet_solve`、`flowsheet_get_snapshot_json`、`stream_get_snapshot_json`、`engine_last_error_message`、`engine_last_error_json` 与 `rf_string_free`；当前运行时已同时支持内置 demo package、本地 `manifest/payload` 注册与 package manifest 列表导出 |
 
-当前仓库级集成测试也已正式落到 `tests/rust-integration` workspace crate，并由 `cargo test --workspace`、`scripts/check-repo.ps1` 与 `scripts/check-repo.sh` 自动覆盖五条示例 flowsheet 回归。
+当前仓库级集成测试也已正式落到 `tests/rust-integration` workspace crate，并由 `cargo test --workspace`、`scripts/check-repo.ps1` 与 `scripts/check-repo.sh` 自动覆盖示例 flowsheet 回归，以及 `Heater/Cooler/Valve/Mixer -> Flash` near-boundary flash inlet 的 DTO 一致性回归。
 
 ### Rust Studio UI
 
@@ -60,6 +60,8 @@ RadishFlow 的目标架构已经冻结为“桌面端三层 + 外部控制面”
 | `apps/radishflow-studio` | 桌面入口程序 | 已建立 auth cache sync 桥接、控制面 HTTP client、entitlement / manifest / lease / offline refresh 编排、下载获取抽象、基于 `reqwest + rustls` 的真实 HTTP transport、HTTP 请求/响应适配层、可重试/不可重试失败分类、下载 JSON 到本地 payload DTO 的协议映射、摘要校验、失败回滚与测试；并已补上 `PropertyPackageProvider -> rf-solver -> rf-ui::AppState` 的最小工作区求解桥接，可直接基于已加载物性包或本地 auth cache 执行真实 solve 并回写 UI 快照/日志；当前又已形成 `StudioGuiHost / StudioGuiDriver / StudioGuiSnapshot / StudioGuiWindowModel / StudioGuiWindowLayoutState` 这一条 GUI-facing 宿主与窗口布局契约，并把窗口布局持久化为项目同目录 sidecar；当前又已把 drop preview 前推为 `StudioGuiWindowDropTargetQuery -> StudioGuiHost / StudioGuiDriver` 的显式查询入口，并在 host 内补出非持久化 preview 会话态；当前又已补出 `StudioGuiNativeTimerRuntime`，让 GUI 可在消费 `StudioGuiNativeTimerEffects` 后继续跟踪逻辑 timer handle、`next_due_at` 和一次性 due callback，而不必在真实框架里从零重写同一套 timer 生命周期；当前又已把原生 timer callback 正式收口为 `StudioGuiEvent::NativeTimerElapsed { window_id, handle_id }`，由 driver 先校验当前绑定再回灌 `TimerElapsed`，避免真实宿主把 stale callback 误灌进 runtime；当前又已补出 `StudioGuiPlatformHost` 与 `StudioGuiPlatformTimerDriverState`，把平台 timer request、native timer id 映射、stale callback 判定与平台 notice 固定为显式状态机；当前又已引入第一版 `eframe/egui` GUI 壳，在单原生窗口内承载逻辑窗口切换，并直接消费 `window_model.drop_preview.overlay / changed_area_ids` 画出局部插入条、anchor 顶线、target-anchored 浮动 overlay 与局部 hint pill；当前 Runtime 面板已能切换内置正向示例项目、输入路径或 Windows 原生文件选择器打开现有 `*.rfproj.json`、在未保存修订存在时先确认打开、打开成功后记录并持久化 shell 级最近项目入口、触发既有运行栏动作，并展示 `SolveSnapshot` 映射出的结构化流股结果、Result Inspector（含 stream-centric 视图与并列的 unit-centric 视图）、带修复动作和目标定位的失败结果、诊断目标、活动 Inspector 详情、单元最新执行结果、带输入/产出流股跳转的求解步骤、Stream Inspector 字段草稿/提交、诊断、日志、工作区摘要与平台/授权状态；当前 `edit.undo / edit.redo` 也已进入正式 command surface 并经由 `StudioRuntimeTrigger::DocumentHistory` 执行；当前 shell 还提供中文/英文切换，并通过系统 CJK 字体 fallback 支持中文显示 |
 
 这一路径仍坚持先消费已冻结的应用层、运行栏和 snapshot presentation 边界；真实 UI 只做最小闭环承接，不反向改写内核、求解或项目文件语义。
+
+2026-05-13 的 Studio shell 硬化进一步把最小工作台入口从开发态面板收束到用户主路径：顶部快速操作区优先暴露 `Open Example / Open Project / Run / Save / Commands / Command Palette`，低频 Commands 面板默认隐藏但仍可展开；`Run` 已接到正式 `run_panel.run_manual` command surface，保存和打开项目继续走既有文档生命周期与文件选择器边界。GUI shell 还补充了开发态 stderr 审计线、GUI panic 降级页、Windows 主线程栈保留、启动时跳过 entitlement preflight，以及最后 viewport close 不再拦截原生关闭请求的退出口径。这些都是 shell / platform host 层行为，不改变 `FlowsheetDocument`、`SolveSnapshot` 或项目文件 schema。
 
 截至 2026-05-03，Studio Canvas 已补出最小可见、只读扫读层和多单元放置反馈闭环：单元块、物流线、Inspector 焦点高亮、对象列表导航、焦点气泡、material port marker、端口 hover、运行/诊断 badge、状态 legend、viewport focus anchor、对象列表 `All / Attention / Units / Streams` 临时筛选，以及 `Feed / Mixer / Heater / Cooler / Valve / Flash Drum` 的 pending edit palette / commit 路径都通过 GUI-facing presentation 暴露并由 `egui` 渲染。`CommitPendingEditAt -> DocumentCommand::CreateUnit` 成功后会复用新单元的 object command target 和 focus anchor，统一生成 `StudioGuiCanvasCommandResultViewModel`，从而让新建提示、Inspector 焦点、Canvas 一次性定位、GUI activity 与命令面只读反馈走同一条结果路径；无 pending edit、unsupported unit kind、dispatch 失败或 anchor 过期也使用同一套 warning / error result。当前已补多单元 placement 提交端回归矩阵，逐类锁定 `CreateUnit kind`、canonical ports、Inspector 焦点、Canvas focus anchor 和 command result 反馈。2026-05-04 继续在同一边界上补出本地 Canvas suggestions，已能通过正式 `DocumentCommand::ConnectPorts` / outlet stream 创建走通 `Feed -> Flash Drum`、`Feed -> Heater/Cooler/Valve -> Flash Drum` 和 `Feed + Feed -> Mixer -> Flash Drum` 三类可求解建模路径；`Mixer` 多来源场景只在来源数量与未绑定 inlet 数量匹配时给入口建议。同日又补齐真正空白项目的 MVP 前置基线：无组件项目打开时初始化 `component-a / component-b`，并用初始化后的 flowsheet 生成本地 `binary-hydrocarbon-lite-v1` 物性包缓存，保存后重新打开仍可运行 `Feed -> Flash Drum` 最短闭环；随后又补出逐条 suggestion Apply，GUI 可显式接受指定本地建议，而不再只能接受当前 focused suggestion；同日还补出 placement 坐标最小持久化，已提交单元落点保存到 `<project>.rfstudio-layout.json` sidecar，重开后 Canvas 优先按 sidecar 坐标渲染；随后又补出 `CanvasUnitLayoutMoveRequested -> MoveCanvasUnitLayout` 离散布局移动边界，shell 可对当前选中且已有 sidecar 坐标的单元执行 nudge，保存后重开继续恢复新位置。当前画布仍只把已有 `FlowsheetDocument` 对象投影到轻量布局状态，定位滚动和高亮属于 shell-local 一次性状态；端口点击编辑、自由连线创建、拖拽布局编辑器、视口持久化、项目 schema 扩张、完整组件库、完整物性包选择器和 CAPE-OPEN 扩张都不属于当前阶段。这一层当前应视为最小建模路径收口，后续不再继续扩 hover、legend、focus 或 command feedback 细节，除非它们直接服务下一条可求解建模闭环。
 
@@ -93,7 +95,7 @@ RadishFlow 的目标架构已经冻结为“桌面端三层 + 外部控制面”
 同时，Studio GUI-facing 状态边界当前也已进一步冻结为：
 
 - `StudioGuiHost` / `StudioGuiDriver` 作为 GUI 面向的平台事件与宿主命令入口
-- 当前 GUI 正式命令面已进一步冻结为 `StudioGuiEvent::UiCommandRequested { command_id } -> StudioGuiHostCommand::DispatchUiCommand { command_id }`，至少覆盖 `run_panel.recover_failure`、`entitlement.sync` 与 `entitlement.refresh_offline_lease`；GUI 壳不再继续保留 entitlement 专用事件/命令旁路
+- 当前 GUI 正式命令面已进一步冻结为 `StudioGuiEvent::UiCommandRequested { command_id } -> StudioGuiHostCommand::DispatchUiCommand { command_id }`，并已覆盖首屏 `run_panel.run_manual`、命令面板结果定位、`run_panel.recover_failure`、`entitlement.sync` 与 `entitlement.refresh_offline_lease` 等路径；GUI 壳不再继续保留 entitlement 专用事件/命令旁路
 - `StudioGuiPlatformHost` 作为平台 timer 调度适配层，负责把下一条 pending timer binding 的前后变化收口为平台侧 `Arm / Rearm / Clear` 请求，并持有平台 timer adapter、平台失败日志与 GUI 可直接消费的 `platform_notice`
 - `StudioGuiPlatformTimerDriverState` 作为平台 native timer 适配层，负责消费上述请求、保存当前 native timer id 与逻辑 binding 的映射，并在 callback 到来时反查回 `window_id + handle_id`
 - 平台若按 `native_timer_id` 回灌 callback，当前应优先消费 `StudioGuiPlatformHost::dispatch_native_timer_elapsed_by_native_id(...)` 的正式 outcome；命中有效映射时继续分发，命中不存在或过期 id 时返回显式 ignored outcome，而不是把平台层常见竞态继续上抛为 `RfError`
@@ -111,6 +113,7 @@ RadishFlow 的目标架构已经冻结为“桌面端三层 + 外部控制面”
 - `StudioGuiWindowModel` 作为窗口内容分区模型
 - `StudioGuiWindowDiagnosticTargetActionModel` 当前作为结果审阅/错误定位的统一 action presentation，汇总失败恢复、Inspector 目标、求解步骤单元、输入流股和产出流股跳转；真实 GUI 继续按既有 `command_id` 派发，不新增导航或 recovery 私有状态机
 - Result Inspector 当前只消费当前 `SolveSnapshot` 已物化的流股、相、焓值、求解步骤和诊断 DTO：stream-centric 与 unit-centric 视图并列，stream comparison 只比较当前快照中已有的 summary / composition / phase rows，并为 base / compared stream 暴露既有 Inspector focus action；这一层不承担结果报表、导出、跨快照历史或重新计算热力学
+- 同一股流股当前允许同时出现在 `Result Inspector`、`Active Inspector` 与 runtime 面板多个结果区；这些位置都必须继续只消费同一份 `SolveSnapshot` DTO。若某侧 outlet 的 `bubble_dew_window` 在快照中缺席，重复渲染时也必须保持缺席；真实 GUI 只能通过独立 widget id scope 解决重复渲染冲突，不能为规避 `egui` id 冲突而分叉结果语义或在 shell 层补算窗口
 - `StudioGuiWindowFailureDiagnosticDetailModel` 当前作为失败详情只读 presentation，直接承接 latest diagnostic summary 的 code / revision / severity / related targets，避免 GUI 从失败 message 中反解析结构化信息
 - Canvas attention presentation 当前也消费同一组结构化 diagnostic target：unit / stream hover、material port hover 与 object list attention summary 会展示 `related_port_targets` 归并出的只读 port 摘要，但定位仍复用现有 `InspectorTarget` command，不新增端口级私有命令
 - Active Inspector 的 unit port 列表当前也会在 diagnostic document revision 匹配当前工作区修订时，按当前 unit 和 `port_name` 匹配 `DiagnosticSummary.related_port_targets`，显示只读 attention 摘要；端口行仍只复用已有 stream Inspector action，不新增端口级 command

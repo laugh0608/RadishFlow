@@ -93,14 +93,14 @@ pub struct SolveDiagnostic {
     pub related_stream_ids: Vec<StreamId>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct UnitSolveStep {
     pub index: usize,
     pub unit_id: UnitId,
     pub unit_name: String,
     pub unit_kind: String,
-    pub consumed_stream_ids: Vec<StreamId>,
-    pub produced_stream_ids: Vec<StreamId>,
+    pub consumed_streams: Vec<MaterialStreamState>,
+    pub produced_streams: Vec<MaterialStreamState>,
     pub summary: String,
 }
 
@@ -230,7 +230,7 @@ impl FlowsheetSolver for SequentialModularSolver {
                 )
             })?;
             let mut inputs = UnitOperationInputs::new();
-            let mut consumed_stream_ids = Vec::new();
+            let mut consumed_streams = Vec::new();
 
             for port in spec
                 .ports
@@ -242,14 +242,18 @@ impl FlowsheetSolver for SequentialModularSolver {
                         solver_step_error(step_number, unit, SolverDiagnosticCode::StepInlet, error)
                     },
                 )?;
-                consumed_stream_ids.push(stream.id.clone());
+                consumed_streams.push(stream.clone());
                 inputs.insert_material_stream(port.name, stream.clone());
             }
+            let consumed_stream_ids = consumed_streams
+                .iter()
+                .map(|stream| stream.id.clone())
+                .collect::<Vec<_>>();
 
             let outputs = operation.run(&unit_services, &inputs).map_err(|error| {
                 solver_step_execution_error(step_number, unit, &consumed_stream_ids, error)
             })?;
-            let mut produced_stream_ids = Vec::new();
+            let mut produced_streams = Vec::new();
 
             for port in spec
                 .ports
@@ -257,9 +261,10 @@ impl FlowsheetSolver for SequentialModularSolver {
                 .filter(|port| port.direction == PortDirection::Outlet)
             {
                 let stream = materialized_output_stream(step_number, unit, port.name, &outputs)?;
-                produced_stream_ids.push(stream.id.clone());
+                produced_streams.push(stream.clone());
                 solved_streams.insert(stream.id.clone(), stream.clone());
             }
+            let produced_stream_ids = stream_ids(&produced_streams);
 
             let summary = format!(
                 "executed unit `{}` (`{}`) with {} inlet stream(s) [{}] and produced {} outlet stream(s) [{}]",
@@ -286,8 +291,8 @@ impl FlowsheetSolver for SequentialModularSolver {
                 unit_id: unit.id.clone(),
                 unit_name: unit.name.clone(),
                 unit_kind: unit.kind.clone(),
-                consumed_stream_ids,
-                produced_stream_ids,
+                consumed_streams,
+                produced_streams,
                 summary,
             });
         }
@@ -652,6 +657,10 @@ fn solver_step_execution_error(
     .with_diagnostic_code(SolverDiagnosticCode::StepExecution.as_str())
     .with_related_unit_id(unit.id.clone())
     .with_related_stream_ids(consumed_stream_ids.to_vec())
+}
+
+fn stream_ids(streams: &[MaterialStreamState]) -> Vec<StreamId> {
+    streams.iter().map(|stream| stream.id.clone()).collect()
 }
 
 fn solver_context_error(context: impl AsRef<str>, error: RfError) -> RfError {

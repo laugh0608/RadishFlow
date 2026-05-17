@@ -1,0 +1,41 @@
+{
+  "name": "synthetic binary liquid-only flash at 300 K, 100 kPa, z=[0.25, 0.75]",
+  "temperatureK": 300.0,
+  "pressurePa": 100000.0,
+  "totalMolarFlowMolS": 10.0,
+  "overallMoleFractions": [0.25, 0.75],
+  "components": [
+    {
+      "id": "component-a",
+      "name": "Component A",
+      "antoine": {
+        "a": 5.215359968007214,
+        "b": 250.0,
+        "c": 0.0
+      },
+      "liquidHeatCapacityJPerMolK": 35.0,
+      "vaporHeatCapacityJPerMolK": 36.5
+    },
+    {
+      "id": "component-b",
+      "name": "Component B",
+      "antoine": {
+        "a": 4.9276778955554335,
+        "b": 250.0,
+        "c": 0.0
+      },
+      "liquidHeatCapacityJPerMolK": 52.0,
+      "vaporHeatCapacityJPerMolK": 65.0
+    }
+  ],
+  "expectedKValues": [0.8, 0.5999999999999999],
+  "expectedPhaseRegion": "liquidOnly",
+  "expectedBubblePressurePa": 65000.0,
+  "expectedDewPressurePa": 64000.0,
+  "expectedBubbleTemperatureK": 621.040220784083,
+  "expectedDewTemperatureK": 645.917663866654,
+  "expectedVaporFraction": 0.0,
+  "expectedOverallMolarEnthalpyJPerMol": 88.33750000000109,
+  "expectedLiquidMoleFractions": [0.25, 0.75],
+  "expectedLiquidMolarEnthalpyJPerMol": 88.33750000000109
+}

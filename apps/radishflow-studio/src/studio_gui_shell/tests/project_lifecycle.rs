@@ -31,7 +31,7 @@ fn open_example_project_rebuilds_runtime_for_selected_sample() {
 
     assert_eq!(
         window.runtime.workspace_document.title,
-        "Feed Valve Flash Example"
+        "Feed Valve Flash Binary Hydrocarbon Example"
     );
     assert_eq!(window.runtime.workspace_document.snapshot_history_count, 0);
     assert_eq!(
@@ -129,7 +129,7 @@ fn open_project_from_picker_rebuilds_runtime_and_records_recent_project() {
     let window = app.platform_host.snapshot().window_model();
     assert_eq!(
         window.runtime.workspace_document.title,
-        "Feed Valve Flash Example"
+        "Feed Valve Flash Binary Hydrocarbon Example"
     );
     assert_eq!(
         app.project_open.path_input,
@@ -176,6 +176,233 @@ fn canceling_project_picker_keeps_current_workspace_active() {
             .map(|notice| notice.title.as_str()),
         Some("Project picker canceled")
     );
+}
+
+#[test]
+fn create_blank_project_opens_untitled_blank_workspace_without_picker() {
+    let config = synced_workspace_config();
+    let preferences_path = test_preferences_path("blank-untitled");
+    let unused_picker_target = std::env::temp_dir().join(format!(
+        "radishflow-studio-shell-unused-blank-picker-{}.rfproj.json",
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("expected current timestamp")
+            .as_nanos()
+    ));
+    let mut app = ReadyAppState::from_config_with_project_file_picker(
+        &config,
+        preferences_path.clone(),
+        Box::new(TestProjectFilePicker::new(Some(
+            unused_picker_target.clone(),
+        ))),
+    )
+    .expect("expected app state");
+
+    app.create_blank_project();
+
+    let window = app.platform_host.snapshot().window_model();
+    assert_eq!(window.runtime.workspace_document.title, "Blank Project");
+    assert_eq!(window.runtime.workspace_document.project_path, None);
+    assert!(
+        window.runtime.workspace_document.has_unsaved_changes,
+        "bootstrap should mark the default blank thermo basis as an explicit unsaved project edit"
+    );
+    assert_eq!(window.runtime.workspace_document.unit_count, 0);
+    assert_eq!(window.runtime.workspace_document.stream_count, 0);
+    assert_eq!(app.project_open.path_input, "");
+    assert!(
+        app.project_open.recent_projects.is_empty(),
+        "untitled blank projects should not enter recent projects before Save As"
+    );
+    assert_eq!(
+        app.project_open
+            .notice
+            .as_ref()
+            .map(|notice| notice.title.as_str()),
+        Some("Blank project created")
+    );
+    assert!(
+        !unused_picker_target.exists(),
+        "creating an untitled blank project should not open the save picker or create its target"
+    );
+
+    let _ = std::fs::remove_file(preferences_path);
+}
+
+#[test]
+fn saving_untitled_blank_project_uses_save_as_picker() {
+    let config = synced_workspace_config();
+    let preferences_path = test_preferences_path("blank-save-as");
+    let target_project = std::env::temp_dir().join(format!(
+        "radishflow-studio-shell-untitled-save-as-{}.rfproj.json",
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("expected current timestamp")
+            .as_nanos()
+    ));
+    let mut app = ReadyAppState::from_config_with_project_file_picker(
+        &config,
+        preferences_path.clone(),
+        Box::new(TestProjectFilePicker::new(Some(target_project.clone()))),
+    )
+    .expect("expected app state");
+
+    app.create_blank_project();
+    app.save_project();
+
+    let window = app.platform_host.snapshot().window_model();
+    assert_eq!(
+        window.runtime.workspace_document.project_path.as_deref(),
+        Some(target_project.display().to_string().as_str())
+    );
+    assert!(!window.runtime.workspace_document.has_unsaved_changes);
+    assert_eq!(
+        app.project_open.path_input,
+        target_project.display().to_string()
+    );
+    assert_eq!(
+        app.project_open.recent_projects.first(),
+        Some(&target_project)
+    );
+    assert_eq!(
+        app.project_open
+            .notice
+            .as_ref()
+            .map(|notice| notice.title.as_str()),
+        Some("Project saved as")
+    );
+    assert!(read_project_file(&target_project).is_ok());
+
+    let _ = std::fs::remove_file(preferences_path);
+    let _ = std::fs::remove_file(target_project);
+}
+
+#[test]
+fn saving_untitled_blank_project_allows_creating_another_blank_project() {
+    let config = synced_workspace_config();
+    let preferences_path = test_preferences_path("blank-save-then-new");
+    let target_project = std::env::temp_dir().join(format!(
+        "radishflow-studio-shell-untitled-save-then-new-{}.rfproj.json",
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("expected current timestamp")
+            .as_nanos()
+    ));
+    let mut app = ReadyAppState::from_config_with_project_file_picker(
+        &config,
+        preferences_path.clone(),
+        Box::new(TestProjectFilePicker::new(Some(target_project.clone()))),
+    )
+    .expect("expected app state");
+
+    app.create_blank_project();
+    app.save_project();
+    assert!(
+        !app.platform_host
+            .snapshot()
+            .window_model()
+            .runtime
+            .workspace_document
+            .has_unsaved_changes
+    );
+
+    app.create_blank_project();
+
+    let window = app.platform_host.snapshot().window_model();
+    assert_eq!(window.runtime.workspace_document.title, "Blank Project");
+    assert_eq!(window.runtime.workspace_document.project_path, None);
+    assert_eq!(
+        app.project_open
+            .notice
+            .as_ref()
+            .map(|notice| notice.title.as_str()),
+        Some("Blank project created")
+    );
+
+    let _ = std::fs::remove_file(preferences_path);
+    let _ = std::fs::remove_file(target_project);
+}
+
+#[test]
+fn saving_untitled_blank_project_allows_opening_example_project() {
+    let config = synced_workspace_config();
+    let example_project = config.project_path.clone();
+    let preferences_path = test_preferences_path("blank-save-then-example");
+    let target_project = std::env::temp_dir().join(format!(
+        "radishflow-studio-shell-untitled-save-then-example-{}.rfproj.json",
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("expected current timestamp")
+            .as_nanos()
+    ));
+    let mut app = ReadyAppState::from_config_with_project_file_picker(
+        &config,
+        preferences_path.clone(),
+        Box::new(TestProjectFilePicker::new(Some(target_project.clone()))),
+    )
+    .expect("expected app state");
+
+    app.create_blank_project();
+    app.save_project();
+    assert!(
+        !app.platform_host
+            .snapshot()
+            .window_model()
+            .runtime
+            .workspace_document
+            .has_unsaved_changes
+    );
+
+    app.open_example_project(example_project.clone());
+
+    let window = app.platform_host.snapshot().window_model();
+    assert_eq!(
+        window.runtime.workspace_document.project_path.as_deref(),
+        Some(example_project.display().to_string().as_str())
+    );
+    assert!(!window.runtime.workspace_document.has_unsaved_changes);
+    assert!(
+        app.project_open.pending_confirmation.is_none(),
+        "clean saved workspace should not require discard confirmation before opening another project"
+    );
+
+    let _ = std::fs::remove_file(preferences_path);
+    let _ = std::fs::remove_file(target_project);
+}
+
+#[test]
+fn create_blank_project_requires_clean_workspace() {
+    let (config, project_path) = flash_drum_local_rules_synced_config();
+    let mut app = ReadyAppState::from_config_with_project_file_picker(
+        &config,
+        test_preferences_path("blank-unsaved"),
+        Box::new(TestProjectFilePicker::new(None)),
+    )
+    .expect("expected app state");
+    app.dispatch_ui_command("canvas.accept_focused");
+    let dirty_window = app.platform_host.snapshot().window_model();
+    assert!(dirty_window.runtime.workspace_document.has_unsaved_changes);
+
+    app.create_blank_project();
+
+    let blocked_window = app.platform_host.snapshot().window_model();
+    assert_eq!(
+        blocked_window.runtime.workspace_document.title,
+        dirty_window.runtime.workspace_document.title
+    );
+    assert_eq!(
+        app.project_open.notice.as_ref().map(|notice| notice.level),
+        Some(ProjectOpenNoticeLevel::Warning)
+    );
+    assert_eq!(
+        app.project_open
+            .notice
+            .as_ref()
+            .map(|notice| notice.title.as_str()),
+        Some("Blank project blocked")
+    );
+
+    let _ = std::fs::remove_file(project_path);
 }
 
 #[test]
@@ -427,7 +654,7 @@ fn successful_project_opens_keep_recent_projects_deduped_and_ordered() {
             .runtime
             .workspace_document
             .title,
-        "Feed Valve Flash Example"
+        "Feed Valve Flash Binary Hydrocarbon Example"
     );
     assert_eq!(
         app.project_open
@@ -436,7 +663,7 @@ fn successful_project_opens_keep_recent_projects_deduped_and_ordered() {
             .map(|notice| notice.detail.as_str())
             .unwrap_or(""),
         format!(
-            "Opened recent project: {}",
+            "已打开最近项目: {}",
             app.project_open
                 .recent_projects
                 .first()
@@ -568,7 +795,7 @@ fn open_project_from_input_requires_confirmation_when_workspace_has_unsaved_chan
     let opened_window = app.platform_host.snapshot().window_model();
     assert_eq!(
         opened_window.runtime.workspace_document.title,
-        "Feed Valve Flash Example"
+        "Feed Valve Flash Binary Hydrocarbon Example"
     );
     assert!(!opened_window.runtime.workspace_document.has_unsaved_changes);
 
@@ -667,7 +894,7 @@ fn open_recent_project_requires_confirmation_when_workspace_has_unsaved_changes(
     let opened_window = app.platform_host.snapshot().window_model();
     assert_eq!(
         opened_window.runtime.workspace_document.title,
-        "Feed Valve Flash Example"
+        "Feed Valve Flash Binary Hydrocarbon Example"
     );
     assert!(!opened_window.runtime.workspace_document.has_unsaved_changes);
 

@@ -1,4 +1,5 @@
 use std::collections::BTreeMap;
+use std::panic::{self, AssertUnwindSafe};
 use std::path::PathBuf;
 use std::time::{Duration, SystemTime};
 
@@ -16,8 +17,8 @@ use radishflow_studio::{
     StudioGuiShortcut, StudioGuiShortcutKey, StudioGuiShortcutModifier, StudioGuiWindowAreaId,
     StudioGuiWindowDockPlacement, StudioGuiWindowDockRegion, StudioGuiWindowDropTargetQuery,
     StudioGuiWindowLayoutModel, StudioGuiWindowLayoutMutation, StudioGuiWindowModel,
-    StudioGuiWindowPanelDisplayMode, StudioGuiWindowStackGroupLayout,
-    StudioGuiWindowToolbarSectionModel, StudioRuntimeConfig, StudioRuntimeTrigger,
+    StudioGuiWindowStackGroupLayout, StudioGuiWindowToolbarSectionModel, StudioRuntimeConfig,
+    StudioRuntimeEntitlementPreflight, StudioRuntimeTrigger, StudioRuntimeUntitledProject,
     StudioWindowHostId, StudioWindowHostRole,
 };
 use rf_types::RfResult;
@@ -29,6 +30,7 @@ use rf_ui::{
 mod app;
 mod chrome;
 mod fonts;
+mod home_dashboard;
 mod locale;
 mod panels;
 mod project_picker;
@@ -43,8 +45,11 @@ use self::locale::{ShellText, StudioShellLocale};
 use self::project_picker::{NativeProjectFilePicker, ProjectFilePicker};
 use self::utils::*;
 
+const STUDIO_INITIAL_WINDOW_SIZE: [f32; 2] = [1280.0, 860.0];
+const STUDIO_MIN_WINDOW_SIZE: [f32; 2] = [1024.0, 720.0];
+
 pub fn run() -> eframe::Result<()> {
-    let native_options = eframe::NativeOptions::default();
+    let native_options = studio_native_options();
     eframe::run_native(
         "RadishFlow Studio",
         native_options,
@@ -53,6 +58,15 @@ pub fn run() -> eframe::Result<()> {
             Ok(Box::new(RadishFlowStudioApp::new()))
         }),
     )
+}
+
+fn studio_native_options() -> eframe::NativeOptions {
+    eframe::NativeOptions {
+        viewport: egui::ViewportBuilder::default()
+            .with_inner_size(STUDIO_INITIAL_WINDOW_SIZE)
+            .with_min_inner_size(STUDIO_MIN_WINDOW_SIZE),
+        ..Default::default()
+    }
 }
 
 struct RadishFlowStudioApp {
@@ -71,8 +85,13 @@ struct ReadyAppState {
     command_palette: CommandPaletteState,
     project_open: ProjectOpenState,
     result_inspector: ResultInspectorState,
+    screen: StudioShellScreen,
+    left_sidebar_tab: StudioShellLeftSidebarTab,
+    right_sidebar_tab: StudioShellRightSidebarTab,
+    bottom_drawer_tab: StudioShellBottomDrawerTab,
     canvas_object_filter: CanvasObjectListFilter,
     canvas_viewport_navigation: CanvasViewportNavigationState,
+    canvas_initial_viewport_fit: CanvasInitialViewportFitState,
     canvas_command_result: Option<radishflow_studio::StudioGuiCanvasCommandResultViewModel>,
     project_file_picker: Box<dyn ProjectFilePicker>,
     preferences_path: PathBuf,
@@ -82,6 +101,13 @@ struct ReadyAppState {
     active_drop_preview: Option<ActiveDropPreview>,
     drop_preview_overlay_anchor: Option<DropPreviewOverlayAnchor>,
     last_viewport_focused: Option<bool>,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+enum StudioShellScreen {
+    #[default]
+    Home,
+    Workbench,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -147,9 +173,56 @@ struct ResultInspectorState {
     selected_unit_id: Option<String>,
 }
 
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+enum StudioShellLeftSidebarTab {
+    #[default]
+    Project,
+    Examples,
+    Palette,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+enum StudioShellRightSidebarTab {
+    #[default]
+    Inspector,
+    Results,
+    Run,
+    Package,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+enum StudioShellBottomDrawerTab {
+    #[default]
+    Messages,
+    RunLog,
+    ResultsTable,
+    Diagnostics,
+}
+
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 struct CanvasViewportNavigationState {
     active_anchor: Option<CanvasViewportAnchorNavigation>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+struct CanvasInitialViewportFitState {
+    pending: bool,
+    offset: egui::Vec2,
+}
+
+impl Default for CanvasInitialViewportFitState {
+    fn default() -> Self {
+        Self {
+            pending: true,
+            offset: egui::Vec2::ZERO,
+        }
+    }
+}
+
+impl CanvasInitialViewportFitState {
+    fn reset(&mut self) {
+        *self = Self::default();
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -180,7 +253,7 @@ struct EguiNativeTimerRegistration {
 
 impl RadishFlowStudioApp {
     fn new() -> Self {
-        let config = StudioRuntimeConfig::default();
+        let config = studio_shell_runtime_config(None);
         let preferences_path = default_studio_preferences_path();
         let state = match ReadyAppState::from_config(&config, preferences_path) {
             Ok(ready) => AppState::Ready(ready),
@@ -192,6 +265,34 @@ impl RadishFlowStudioApp {
         };
 
         Self { state }
+    }
+}
+
+fn studio_shell_runtime_config(project_path: Option<PathBuf>) -> StudioRuntimeConfig {
+    let mut config = StudioRuntimeConfig {
+        entitlement_preflight: StudioRuntimeEntitlementPreflight::Skip,
+        ..StudioRuntimeConfig::default()
+    };
+    if let Some(project_path) = project_path {
+        config.project_path = project_path;
+    }
+    config
+}
+
+fn studio_shell_blank_runtime_config() -> StudioRuntimeConfig {
+    let now = SystemTime::now();
+    let timestamp = now
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|duration| duration.as_secs())
+        .unwrap_or(0);
+    StudioRuntimeConfig {
+        untitled_blank_project: Some(StudioRuntimeUntitledProject::new(
+            format!("blank-project-{timestamp}"),
+            "Blank Project",
+            now,
+        )),
+        entitlement_preflight: StudioRuntimeEntitlementPreflight::Skip,
+        ..StudioRuntimeConfig::default()
     }
 }
 
@@ -235,8 +336,13 @@ impl ReadyAppState {
                 recent_projects,
             ),
             result_inspector: ResultInspectorState::default(),
+            screen: StudioShellScreen::default(),
+            left_sidebar_tab: StudioShellLeftSidebarTab::default(),
+            right_sidebar_tab: StudioShellRightSidebarTab::default(),
+            bottom_drawer_tab: StudioShellBottomDrawerTab::default(),
             canvas_object_filter: CanvasObjectListFilter::default(),
             canvas_viewport_navigation: CanvasViewportNavigationState::default(),
+            canvas_initial_viewport_fit: CanvasInitialViewportFitState::default(),
             canvas_command_result: None,
             project_file_picker,
             preferences_path,
@@ -251,6 +357,7 @@ impl ReadyAppState {
             ready.project_open.notice = Some(notice);
         }
         ready.dispatch_event(StudioGuiEvent::OpenWindowRequested);
+        ready.apply_default_hidden_commands_panel_for_current_window()?;
         Ok(ready)
     }
 }
@@ -550,15 +657,35 @@ fn paths_match(left: &std::path::Path, right: &std::path::Path) -> bool {
 
 impl eframe::App for RadishFlowStudioApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        match &mut self.state {
+        let panic_message = match &mut self.state {
             AppState::Failed(message) => {
                 egui::CentralPanel::default().show(ctx, |ui| {
                     ui.heading("RadishFlow Studio");
                     ui.separator();
                     ui.colored_label(egui::Color32::from_rgb(180, 40, 40), message);
                 });
+                None
             }
-            AppState::Ready(app) => app.update(ctx),
+            AppState::Ready(app) => panic::catch_unwind(AssertUnwindSafe(|| app.update(ctx)))
+                .err()
+                .map(panic_payload_message),
+        };
+
+        if let Some(message) = panic_message {
+            eprintln!("[radishflow-studio] fatal gui panic: {message}");
+            self.state = AppState::Failed(format!(
+                "GUI event failed with an internal panic. See stderr for details. {message}"
+            ));
         }
     }
+}
+
+fn panic_payload_message(payload: Box<dyn std::any::Any + Send>) -> String {
+    if let Some(message) = payload.downcast_ref::<String>() {
+        return message.clone();
+    }
+    if let Some(message) = payload.downcast_ref::<&'static str>() {
+        return (*message).to_string();
+    }
+    "panic payload is not a string".to_string()
 }

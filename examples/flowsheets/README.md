@@ -2,11 +2,13 @@
 
 该目录存放示例流程。
 
-- `feed-mixer-flash.rfproj.json`: 当前最小可求解示例，覆盖 `Feed1 + Feed2 -> Mixer -> Flash Drum`
-- `feed-mixer-heater-flash.rfproj.json`: 第二条组合示例，覆盖 `Feed1 + Feed2 -> Mixer -> Heater -> Flash Drum`
-- `feed-heater-flash.rfproj.json`: 第三条最小可求解示例，覆盖 `Feed -> Heater -> Flash Drum`
-- `feed-cooler-flash.rfproj.json`: 第四条最小可求解示例，覆盖 `Feed -> Cooler -> Flash Drum`
-- `feed-valve-flash.rfproj.json`: 第五条最小可求解示例，覆盖 `Feed -> Valve -> Flash Drum`
+当前示例分两类：
+
+- official hydrocarbon 示例：`feed-heater-flash-binary-hydrocarbon.rfproj.json`、`feed-cooler-flash-binary-hydrocarbon.rfproj.json`、`feed-valve-flash-binary-hydrocarbon.rfproj.json`、`feed-mixer-flash-binary-hydrocarbon.rfproj.json`
+- synthetic demo 示例：`feed-heater-flash-synthetic-demo.rfproj.json`、`feed-cooler-flash-synthetic-demo.rfproj.json`、`feed-valve-flash-synthetic-demo.rfproj.json`、`feed-mixer-flash-synthetic-demo.rfproj.json`、`feed-mixer-heater-flash-synthetic-demo.rfproj.json`
+- PME 验证示例：`feed-heater-flash-water-ethanol.rfproj.json`
+
+其中，synthetic demo 族继续使用 `component-a/component-b` 与 `binary-hydrocarbon-synthetic-demo-v1` 语义，主要服务 solver / integration / interop 回归，不再与 official methane/ethane 示例共用泛化命名。
 
 同时，`failures/` 子目录当前开始承载仓库级负向回归夹具：
 

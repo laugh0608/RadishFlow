@@ -73,12 +73,7 @@ impl StudioGuiWindowSolveSnapshotModel {
             .map(|selected_id| {
                 self.steps
                     .iter()
-                    .filter(|step| {
-                        step.consumed_streams
-                            .iter()
-                            .chain(step.produced_streams.iter())
-                            .any(|stream_id| stream_id == selected_id)
-                    })
+                    .filter(|step| step.has_related_stream_id(selected_id))
                     .cloned()
                     .collect()
             })
@@ -176,12 +171,7 @@ impl StudioGuiWindowSolveSnapshotModel {
             .map(|selected_unit| {
                 let step_streams: BTreeSet<&str> = unit_related_steps
                     .iter()
-                    .flat_map(|step| {
-                        step.consumed_streams
-                            .iter()
-                            .chain(step.produced_streams.iter())
-                            .map(String::as_str)
-                    })
+                    .flat_map(|step| step.consumed_stream_ids().chain(step.produced_stream_ids()))
                     .collect();
                 self.diagnostics
                     .iter()
@@ -207,9 +197,9 @@ impl StudioGuiWindowSolveSnapshotModel {
                     step_index: step.index,
                     status_label: step.execution_status_label,
                     summary: step.summary.clone(),
-                    consumed_stream_ids: step.consumed_streams.clone(),
+                    consumed_stream_results: step.consumed_stream_results.clone(),
                     consumed_stream_actions: step.consumed_stream_actions.clone(),
-                    produced_stream_ids: step.produced_streams.clone(),
+                    produced_stream_results: step.produced_stream_results.clone(),
                     produced_stream_actions: step.produced_stream_actions.clone(),
                 })
         });
@@ -276,16 +266,17 @@ impl StudioGuiWindowSolveSnapshotModel {
 }
 
 fn result_inspector_stream_option_summary(stream: &StudioGuiWindowStreamResultModel) -> String {
-    let mut parts = vec![
-        stream.stream_id.clone(),
-        format!("T {}", stream.temperature_text),
-        format!("P {}", stream.pressure_text),
-        format!("F {}", stream.molar_flow_text),
-    ];
-    if let Some(molar_enthalpy_text) = stream.molar_enthalpy_text.as_ref() {
-        parts.push(format!("H {molar_enthalpy_text}"));
-    }
-    parts.join(" | ")
+    format!(
+        "{} | {}",
+        stream.stream_id,
+        stream_result_numeric_summary(
+            &stream.temperature_text,
+            &stream.pressure_text,
+            &stream.molar_flow_text,
+            stream.molar_enthalpy_text.as_deref(),
+            None,
+        )
+    )
 }
 
 fn result_inspector_unit_option_summary(
@@ -300,11 +291,13 @@ fn result_inspector_unit_option_summary(
         format!("step #{step_index}"),
     ];
     if let Some(step) = last_step {
-        if !step.consumed_streams.is_empty() {
-            parts.push(format!("in {}", step.consumed_streams.join(", ")));
+        let consumed_streams = step.consumed_stream_ids().collect::<Vec<_>>();
+        if !consumed_streams.is_empty() {
+            parts.push(format!("in {}", consumed_streams.join(", ")));
         }
-        if !step.produced_streams.is_empty() {
-            parts.push(format!("out {}", step.produced_streams.join(", ")));
+        let produced_streams = step.produced_stream_ids().collect::<Vec<_>>();
+        if !produced_streams.is_empty() {
+            parts.push(format!("out {}", produced_streams.join(", ")));
         }
     }
     parts.join(" | ")
@@ -502,6 +495,20 @@ fn result_inspector_comparison_model(
                             compared.phase_fraction - base.phase_fraction,
                             "",
                             4,
+                        ),
+                        _ => "-".to_string(),
+                    },
+                    base_molar_flow_text: base_phase
+                        .map(|phase| phase.molar_flow_text.clone())
+                        .unwrap_or_else(|| "-".to_string()),
+                    compared_molar_flow_text: compared_phase
+                        .map(|phase| phase.molar_flow_text.clone())
+                        .unwrap_or_else(|| "-".to_string()),
+                    molar_flow_delta_text: match (base_phase, compared_phase) {
+                        (Some(base), Some(compared)) => format_signed_delta(
+                            compared.molar_flow_mol_s - base.molar_flow_mol_s,
+                            "mol/s",
+                            6,
                         ),
                         _ => "-".to_string(),
                     },

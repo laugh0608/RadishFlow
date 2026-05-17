@@ -12,15 +12,35 @@ impl ReadyAppState {
         egui::TopBottomPanel::top("studio.titlebar").show(ctx, |ui| {
             ui.horizontal_wrapped(|ui| {
                 ui.heading(window.header.title);
-                ui.label(&window.header.status_line);
-            });
-            ui.separator();
-            ui.horizontal_wrapped(|ui| {
-                if ui
-                    .button(self.locale.text(ShellText::NewLogicalWindow))
-                    .clicked()
-                {
-                    self.dispatch_event(StudioGuiEvent::OpenWindowRequested);
+                ui.separator();
+                render_wrapped_small(ui, &window.runtime.workspace_document.title);
+                render_status_chip(
+                    ui,
+                    self.locale
+                        .runtime_label(window.runtime.run_panel.view().mode_label)
+                        .as_ref(),
+                    egui::Color32::from_rgb(86, 118, 168),
+                );
+                render_status_chip(
+                    ui,
+                    self.locale
+                        .runtime_label(window.runtime.run_panel.view().status_label)
+                        .as_ref(),
+                    run_status_color(window.runtime.run_panel.view().status_label),
+                );
+                if let Some(pending) = window.runtime.run_panel.view().pending_label {
+                    render_status_chip(
+                        ui,
+                        self.locale.runtime_label(pending).as_ref(),
+                        egui::Color32::from_rgb(160, 120, 40),
+                    );
+                }
+                if window.runtime.workspace_document.has_unsaved_changes {
+                    render_status_chip(
+                        ui,
+                        self.locale.text(ShellText::Unsaved),
+                        egui::Color32::from_rgb(160, 120, 40),
+                    );
                 }
                 if current_window_id.is_none() {
                     ui.small(self.locale.text(ShellText::NoActiveLogicalWindow));
@@ -28,26 +48,72 @@ impl ReadyAppState {
             });
             ui.separator();
             ui.horizontal_wrapped(|ui| {
-                ui.label(egui::RichText::new(self.locale.text(ShellText::LogicalWindows)).strong());
-                if windows.is_empty() {
-                    ui.small(self.locale.text(ShellText::None));
-                } else {
-                    self.render_logical_window_chips(ui, windows);
+                ui.label(egui::RichText::new(self.locale.text(ShellText::QuickActions)).strong());
+                if ui.button("Home").clicked() {
+                    self.screen = StudioShellScreen::Home;
                 }
-            });
-            ui.separator();
-            ui.horizontal_wrapped(|ui| {
-                ui.label(egui::RichText::new(self.locale.text(ShellText::Language)).strong());
-                let english = self.locale.text(ShellText::English);
-                let chinese = self.locale.text(ShellText::Chinese);
-                ui.selectable_value(&mut self.locale, StudioShellLocale::ZhCn, chinese);
-                ui.selectable_value(&mut self.locale, StudioShellLocale::En, english);
-            });
-            if !window.commands.menu_tree.is_empty() {
-                ui.separator();
-                self.render_command_menu_bar(ui, &window.commands.menu_tree);
-                ui.horizontal_wrapped(|ui| {
-                    self.render_command_toolbar(ui, &window.commands.toolbar_sections);
+                ui.menu_button(self.locale.text(ShellText::OpenExample), |ui| {
+                    if window.runtime.example_projects.is_empty() {
+                        ui.small(self.locale.text(ShellText::NoRecentProjects));
+                        return;
+                    }
+                    let mut requested_project = None;
+                    for example in &window.runtime.example_projects {
+                        if ui
+                            .add_enabled(!example.is_current, egui::Button::new(example.title))
+                            .on_hover_text(example.detail)
+                            .clicked()
+                        {
+                            requested_project = Some(example.project_path.clone());
+                            ui.close_menu();
+                        }
+                    }
+                    if let Some(project_path) = requested_project {
+                        self.open_example_project(project_path);
+                    }
+                });
+                if ui
+                    .button(self.locale.text(ShellText::NewBlankProject))
+                    .clicked()
+                {
+                    self.create_blank_project();
+                }
+                if ui
+                    .button(self.locale.text(ShellText::OpenProjectFromDisk))
+                    .clicked()
+                {
+                    self.open_project_from_picker();
+                }
+                let run_command =
+                    window_command_toolbar_item(&window.commands, "run_panel.run_manual");
+                let run_enabled = run_command.map(|command| command.enabled).unwrap_or(false);
+                let run_hover = run_command
+                    .map(|command| command.hover_text.as_str())
+                    .unwrap_or("Run command is not available in the current workspace.");
+                if ui
+                    .add_enabled(
+                        run_enabled,
+                        egui::Button::new(self.locale.text(ShellText::RunCurrentWorkspace))
+                            .fill(egui::Color32::from_rgb(230, 239, 252)),
+                    )
+                    .on_hover_text(run_hover)
+                    .clicked()
+                {
+                    self.dispatch_ui_command("run_panel.run_manual");
+                }
+                if ui
+                    .button(self.locale.text(ShellText::SaveProject))
+                    .clicked()
+                {
+                    self.save_project();
+                }
+                if ui
+                    .button(self.locale.text(ShellText::SaveProjectAs))
+                    .clicked()
+                {
+                    self.save_project_as_from_picker();
+                }
+                ui.menu_button(self.locale.text(ShellText::ViewOptions), |ui| {
                     let palette_label = if self.command_palette.open {
                         self.locale.text(ShellText::HideCommandPalette)
                     } else {
@@ -55,57 +121,67 @@ impl ReadyAppState {
                     };
                     if ui.button(palette_label).clicked() {
                         self.command_palette.toggle();
+                        ui.close_menu();
+                    }
+                    let commands_visible = window
+                        .layout_state
+                        .panel(StudioGuiWindowAreaId::Commands)
+                        .map(|panel| panel.visible)
+                        .unwrap_or(false);
+                    let commands_label = if commands_visible {
+                        self.locale.text(ShellText::HideCommands)
+                    } else {
+                        self.locale.text(ShellText::ShowCommands)
+                    };
+                    if ui.button(commands_label).clicked() {
+                        self.dispatch_layout_mutation(
+                            current_window_id,
+                            StudioGuiWindowLayoutMutation::SetPanelVisibility {
+                                area_id: StudioGuiWindowAreaId::Commands,
+                                visible: !commands_visible,
+                            },
+                        );
+                        ui.close_menu();
+                    }
+                    ui.separator();
+                    let english = self.locale.text(ShellText::English);
+                    let chinese = self.locale.text(ShellText::Chinese);
+                    ui.horizontal_wrapped(|ui| {
+                        ui.selectable_value(&mut self.locale, StudioShellLocale::ZhCn, chinese);
+                        ui.selectable_value(&mut self.locale, StudioShellLocale::En, english);
+                    });
+                    ui.separator();
+                    if ui
+                        .button(self.locale.text(ShellText::NewLogicalWindow))
+                        .clicked()
+                    {
+                        self.dispatch_event(StudioGuiEvent::OpenWindowRequested);
+                        ui.close_menu();
+                    }
+                    if windows.len() > 1 {
+                        ui.separator();
+                        ui.label(
+                            egui::RichText::new(self.locale.text(ShellText::LogicalWindows))
+                                .strong(),
+                        );
+                        self.render_logical_window_chips(ui, windows);
                     }
                 });
+            });
+            self.render_project_operation_strip(ui);
+            if !window.commands.menu_tree.is_empty()
+                && window
+                    .layout_state
+                    .panel(StudioGuiWindowAreaId::Commands)
+                    .map(|panel| panel.visible)
+                    .unwrap_or(false)
+            {
+                ui.separator();
+                self.render_command_menu_bar(ui, &window.commands.menu_tree);
+                ui.horizontal_wrapped(|ui| {
+                    self.render_command_toolbar(ui, &window.commands.toolbar_sections);
+                });
             }
-            ui.separator();
-            ui.horizontal_wrapped(|ui| {
-                self.render_panel_toggle(
-                    ui,
-                    current_window_id,
-                    &window.layout_state,
-                    StudioGuiWindowAreaId::Commands,
-                    self.locale.text(ShellText::Commands),
-                );
-                self.render_panel_toggle(
-                    ui,
-                    current_window_id,
-                    &window.layout_state,
-                    StudioGuiWindowAreaId::Canvas,
-                    self.locale.text(ShellText::Canvas),
-                );
-                self.render_panel_toggle(
-                    ui,
-                    current_window_id,
-                    &window.layout_state,
-                    StudioGuiWindowAreaId::Runtime,
-                    self.locale.text(ShellText::Runtime),
-                );
-            });
-            ui.horizontal_wrapped(|ui| {
-                ui.label(egui::RichText::new(self.locale.text(ShellText::RegionWeights)).strong());
-                self.render_region_weight_slider(
-                    ui,
-                    current_window_id,
-                    &window.layout_state,
-                    StudioGuiWindowDockRegion::LeftSidebar,
-                    self.locale.text(ShellText::Left),
-                );
-                self.render_region_weight_slider(
-                    ui,
-                    current_window_id,
-                    &window.layout_state,
-                    StudioGuiWindowDockRegion::CenterStage,
-                    self.locale.text(ShellText::Center),
-                );
-                self.render_region_weight_slider(
-                    ui,
-                    current_window_id,
-                    &window.layout_state,
-                    StudioGuiWindowDockRegion::RightSidebar,
-                    self.locale.text(ShellText::Right),
-                );
-            });
             if let Some(drag_session) = self.drag_session {
                 ui.separator();
                 ui.horizontal_wrapped(|ui| {
@@ -185,34 +261,21 @@ impl ReadyAppState {
         &mut self,
         ctx: &egui::Context,
         window: &StudioGuiWindowModel,
-        hovered_drop_target: &mut bool,
+        _hovered_drop_target: &mut bool,
     ) {
         let left_width = region_panel_width(
             &window.layout_state,
             ctx,
             StudioGuiWindowDockRegion::LeftSidebar,
-        );
-        let visible = window
-            .layout_state
-            .panels_in_dock_region(StudioGuiWindowDockRegion::LeftSidebar)
-            .into_iter()
-            .any(|panel| panel.visible);
-        if !visible {
-            return;
-        }
-
+        )
+        .clamp(240.0, 280.0);
         egui::SidePanel::left("studio.left_sidebar")
             .default_width(left_width)
-            .min_width(left_width)
-            .max_width(left_width)
+            .min_width(240.0)
+            .max_width(280.0)
             .resizable(false)
             .show(ctx, |ui| {
-                self.render_region(
-                    ui,
-                    window,
-                    StudioGuiWindowDockRegion::LeftSidebar,
-                    hovered_drop_target,
-                );
+                self.render_left_workbench(ui, window);
             });
     }
 
@@ -220,35 +283,634 @@ impl ReadyAppState {
         &mut self,
         ctx: &egui::Context,
         window: &StudioGuiWindowModel,
-        hovered_drop_target: &mut bool,
+        _hovered_drop_target: &mut bool,
     ) {
         let right_width = region_panel_width(
             &window.layout_state,
             ctx,
             StudioGuiWindowDockRegion::RightSidebar,
+        )
+        .clamp(340.0, 420.0);
+        egui::SidePanel::right("studio.right_sidebar")
+            .default_width(right_width)
+            .min_width(340.0)
+            .max_width(420.0)
+            .resizable(false)
+            .show(ctx, |ui| {
+                self.render_right_workbench(ui, window);
+            });
+    }
+
+    pub(super) fn render_bottom_drawer(
+        &mut self,
+        ctx: &egui::Context,
+        window: &StudioGuiWindowModel,
+    ) {
+        let height = workbench_bottom_drawer_height(self.bottom_drawer_tab, window);
+        egui::TopBottomPanel::bottom("studio.bottom_drawer")
+            .exact_height(height)
+            .resizable(false)
+            .show(ctx, |ui| {
+                self.render_bottom_workbench(ui, window);
+            });
+    }
+
+    pub(super) fn render_bottom_status_bar(
+        &mut self,
+        ctx: &egui::Context,
+        window: &StudioGuiWindowModel,
+    ) {
+        egui::TopBottomPanel::bottom("studio.status_bar")
+            .exact_height(30.0)
+            .resizable(false)
+            .show(ctx, |ui| {
+                ui.horizontal_wrapped(|ui| {
+                    let run_panel_view = window.runtime.run_panel.view();
+                    render_status_chip(
+                        ui,
+                        self.locale
+                            .runtime_label(run_panel_view.status_label)
+                            .as_ref(),
+                        run_status_color(run_panel_view.status_label),
+                    );
+                    ui.separator();
+                    ui.small(self.locale.text(ShellText::UnitsSi));
+                    ui.separator();
+                    ui.small(self.locale.text(ShellText::SolverSequentialModular));
+                    ui.separator();
+                    ui.small(self.locale.text(ShellText::FlowsheetMode));
+                    ui.separator();
+                    ui.small(self.locale.unit_stream_counts(
+                        window.runtime.workspace_document.unit_count,
+                        window.runtime.workspace_document.stream_count,
+                    ));
+                    if let Some(selection) = window.canvas.widget.view().current_selection.as_ref()
+                    {
+                        ui.separator();
+                        ui.small(
+                            self.locale
+                                .selected_target(selection.kind_label, &selection.target_id),
+                        );
+                    }
+                });
+            });
+    }
+
+    fn render_left_workbench(&mut self, ui: &mut egui::Ui, window: &StudioGuiWindowModel) {
+        ui.horizontal(|ui| {
+            ui.selectable_value(
+                &mut self.left_sidebar_tab,
+                StudioShellLeftSidebarTab::Project,
+                self.locale.text(ShellText::Project),
+            );
+            ui.selectable_value(
+                &mut self.left_sidebar_tab,
+                StudioShellLeftSidebarTab::Examples,
+                self.locale.text(ShellText::ExampleProjects),
+            );
+            ui.selectable_value(
+                &mut self.left_sidebar_tab,
+                StudioShellLeftSidebarTab::Palette,
+                self.locale.text(ShellText::Palette),
+            );
+        });
+        ui.separator();
+
+        egui::ScrollArea::vertical()
+            .id_salt(format!(
+                "scroll:{}:left-workbench",
+                window.layout_state.scope.layout_key
+            ))
+            .auto_shrink([false, false])
+            .show(ui, |ui| match self.left_sidebar_tab {
+                StudioShellLeftSidebarTab::Project => self.render_project_navigator(ui, window),
+                StudioShellLeftSidebarTab::Examples => self.render_examples_navigator(ui, window),
+                StudioShellLeftSidebarTab::Palette => self.render_canvas_palette(ui, window),
+            });
+    }
+
+    fn render_examples_navigator(&mut self, ui: &mut egui::Ui, window: &StudioGuiWindowModel) {
+        ui.label(egui::RichText::new(self.locale.text(ShellText::ExampleProjects)).strong());
+        render_wrapped_small(
+            ui,
+            match self.locale {
+                StudioShellLocale::En => "Bundled examples open into the current workbench.",
+                StudioShellLocale::ZhCn => "内置示例会打开到当前工作台。",
+            },
         );
-        let visible = window
-            .layout_state
-            .panels_in_dock_region(StudioGuiWindowDockRegion::RightSidebar)
-            .into_iter()
-            .any(|panel| panel.visible);
-        if !visible {
+        ui.add_space(8.0);
+
+        if window.runtime.example_projects.is_empty() {
+            ui.colored_label(
+                egui::Color32::from_rgb(160, 120, 40),
+                self.locale.text(ShellText::NoRecentProjects),
+            );
             return;
         }
 
-        egui::SidePanel::right("studio.right_sidebar")
-            .default_width(right_width)
-            .min_width(right_width)
-            .max_width(right_width)
-            .resizable(false)
-            .show(ctx, |ui| {
-                self.render_region(
-                    ui,
-                    window,
-                    StudioGuiWindowDockRegion::RightSidebar,
-                    hovered_drop_target,
-                );
+        for example in &window.runtime.example_projects {
+            egui::Frame::group(ui.style()).show(ui, |ui| {
+                ui.set_width(ui.available_width());
+                ui.horizontal_wrapped(|ui| {
+                    ui.label(egui::RichText::new(example.title).strong());
+                    if example.is_current {
+                        render_status_chip(
+                            ui,
+                            self.locale.runtime_label("Current").as_ref(),
+                            egui::Color32::from_rgb(52, 128, 89),
+                        );
+                    }
+                });
+                render_wrapped_small(ui, example.detail);
+                if ui
+                    .add_enabled(
+                        !example.is_current,
+                        egui::Button::new(self.locale.text(ShellText::OpenExample)),
+                    )
+                    .on_hover_text(example.project_path.display().to_string())
+                    .clicked()
+                {
+                    self.open_example_project(example.project_path.clone());
+                }
             });
+            ui.add_space(6.0);
+        }
+    }
+
+    fn render_project_navigator(&mut self, ui: &mut egui::Ui, window: &StudioGuiWindowModel) {
+        let document = &window.runtime.workspace_document;
+        ui.label(egui::RichText::new(&document.flowsheet_name).strong());
+        render_wrapped_small(ui, &document.title);
+        ui.add_space(8.0);
+
+        self.render_project_tree_row(
+            ui,
+            self.locale.text(ShellText::PropertyPackage),
+            "binary-hydrocarbon-lite-v1",
+            None,
+        );
+        self.render_project_tree_row(
+            ui,
+            self.locale.text(ShellText::Streams),
+            "",
+            Some(document.stream_count),
+        );
+        for item in window
+            .canvas
+            .widget
+            .view()
+            .object_list
+            .items
+            .iter()
+            .filter(|item| item.kind_label == "Stream")
+        {
+            self.render_project_object_button(ui, item);
+        }
+        ui.add_space(6.0);
+
+        self.render_project_tree_row(
+            ui,
+            self.locale.text(ShellText::Units),
+            "",
+            Some(document.unit_count),
+        );
+        for item in window
+            .canvas
+            .widget
+            .view()
+            .object_list
+            .items
+            .iter()
+            .filter(|item| item.kind_label == "Unit")
+        {
+            self.render_project_object_button(ui, item);
+        }
+        ui.add_space(6.0);
+
+        self.render_project_tree_row(
+            ui,
+            self.locale.text(ShellText::Results),
+            "",
+            Some(
+                window
+                    .runtime
+                    .latest_solve_snapshot
+                    .as_ref()
+                    .map(|snapshot| snapshot.stream_count)
+                    .unwrap_or(0),
+            ),
+        );
+        self.render_project_tree_row(
+            ui,
+            self.locale.text(ShellText::Diagnostics),
+            "",
+            Some(
+                window
+                    .runtime
+                    .latest_solve_snapshot
+                    .as_ref()
+                    .map(|snapshot| snapshot.diagnostic_count)
+                    .or_else(|| {
+                        window.runtime.latest_failure.as_ref().and_then(|failure| {
+                            failure
+                                .diagnostic_detail
+                                .as_ref()
+                                .map(|detail| detail.diagnostic_count)
+                        })
+                    })
+                    .unwrap_or(0),
+            ),
+        );
+    }
+
+    fn render_project_tree_row(
+        &self,
+        ui: &mut egui::Ui,
+        title: &str,
+        detail: &str,
+        count: Option<usize>,
+    ) {
+        ui.horizontal_wrapped(|ui| {
+            ui.label(egui::RichText::new(title).strong());
+            if let Some(count) = count {
+                render_status_chip(ui, &count.to_string(), egui::Color32::from_rgb(86, 96, 108));
+            }
+        });
+        if !detail.is_empty() {
+            render_wrapped_small(ui, detail);
+        }
+    }
+
+    fn render_project_object_button(
+        &mut self,
+        ui: &mut egui::Ui,
+        item: &radishflow_studio::StudioGuiCanvasObjectListItemViewModel,
+    ) {
+        ui.horizontal_wrapped(|ui| {
+            let response = ui
+                .add(
+                    egui::Button::new(format!("  {}", item.label))
+                        .selected(item.is_active)
+                        .frame(false),
+                )
+                .on_hover_text(&item.detail);
+            if response.clicked() {
+                self.right_sidebar_tab = StudioShellRightSidebarTab::Inspector;
+                self.dispatch_ui_command(&item.command_id);
+            }
+            if ui
+                .small_button(self.locale.text(ShellText::InspectObject))
+                .on_hover_text(&item.detail)
+                .clicked()
+            {
+                self.right_sidebar_tab = StudioShellRightSidebarTab::Inspector;
+                self.dispatch_ui_command(&item.command_id);
+            }
+        });
+        if let Some(summary) = item.attention_summary.as_ref() {
+            render_wrapped_small(ui, summary);
+        }
+    }
+
+    fn render_canvas_palette(&mut self, ui: &mut egui::Ui, window: &StudioGuiWindowModel) {
+        let palette = &window.canvas.widget.view().place_unit_palette;
+        ui.label(egui::RichText::new(self.locale.runtime_label(palette.title).as_ref()).strong());
+        if let Some(active) = palette.active_unit_kind.as_ref() {
+            render_status_chip(
+                ui,
+                &match self.locale {
+                    StudioShellLocale::En => format!("placing {active}"),
+                    StudioShellLocale::ZhCn => format!("正在放置 {active}"),
+                },
+                egui::Color32::from_rgb(52, 128, 89),
+            );
+            ui.add_space(6.0);
+        }
+
+        for option in &palette.options {
+            let option_label = self.locale.runtime_label(&option.label);
+            let option_detail = self.locale.runtime_label(&option.detail);
+            let response = ui
+                .add_enabled(
+                    option.enabled,
+                    egui::Button::new(option_label.as_ref())
+                        .selected(option.active)
+                        .min_size(egui::vec2(ui.available_width(), 30.0)),
+                )
+                .on_hover_text(option_detail.as_ref());
+            if response.clicked() {
+                self.dispatch_ui_command(&option.command_id);
+            }
+            ui.add_space(4.0);
+        }
+
+        let suggestions = &window.canvas.widget.view().suggestions;
+        if !suggestions.is_empty() {
+            ui.separator();
+            ui.label(egui::RichText::new(self.locale.text(ShellText::Suggestions)).strong());
+            for suggestion in suggestions.iter().take(4) {
+                ui.horizontal_wrapped(|ui| {
+                    render_status_chip(
+                        ui,
+                        self.locale.runtime_label(suggestion.status_label).as_ref(),
+                        egui::Color32::from_rgb(86, 118, 168),
+                    );
+                    ui.small(format!("{:.0}%", suggestion.confidence * 100.0));
+                });
+                render_wrapped_small(ui, &suggestion.reason);
+                if ui
+                    .add_enabled(
+                        suggestion.explicit_accept_enabled,
+                        egui::Button::new(self.locale.text(ShellText::ConnectSuggestion)),
+                    )
+                    .clicked()
+                {
+                    match window.canvas.widget.activate_suggestion(&suggestion.id) {
+                        radishflow_studio::StudioGuiCanvasWidgetEvent::SuggestionRequested {
+                            event,
+                            ..
+                        } => self.dispatch_event(event),
+                        radishflow_studio::StudioGuiCanvasWidgetEvent::SuggestionDisabled {
+                            ..
+                        }
+                        | radishflow_studio::StudioGuiCanvasWidgetEvent::SuggestionMissing {
+                            ..
+                        }
+                        | radishflow_studio::StudioGuiCanvasWidgetEvent::Requested { .. }
+                        | radishflow_studio::StudioGuiCanvasWidgetEvent::Disabled { .. }
+                        | radishflow_studio::StudioGuiCanvasWidgetEvent::Missing { .. } => {}
+                    }
+                }
+                ui.add_space(6.0);
+            }
+        }
+    }
+
+    fn render_right_workbench(&mut self, ui: &mut egui::Ui, window: &StudioGuiWindowModel) {
+        ui.horizontal_wrapped(|ui| {
+            ui.selectable_value(
+                &mut self.right_sidebar_tab,
+                StudioShellRightSidebarTab::Inspector,
+                self.locale.text(ShellText::Inspector),
+            );
+            ui.selectable_value(
+                &mut self.right_sidebar_tab,
+                StudioShellRightSidebarTab::Results,
+                self.locale.text(ShellText::Results),
+            );
+            ui.selectable_value(
+                &mut self.right_sidebar_tab,
+                StudioShellRightSidebarTab::Run,
+                self.locale.text(ShellText::Run),
+            );
+            ui.selectable_value(
+                &mut self.right_sidebar_tab,
+                StudioShellRightSidebarTab::Package,
+                self.locale.text(ShellText::PropertyPackage),
+            );
+        });
+        ui.separator();
+        egui::ScrollArea::vertical()
+            .id_salt(format!(
+                "scroll:{}:right-workbench",
+                window.layout_state.scope.layout_key
+            ))
+            .auto_shrink([false, false])
+            .show(ui, |ui| match self.right_sidebar_tab {
+                StudioShellRightSidebarTab::Inspector => {
+                    self.render_runtime_inspector_tab(ui, window)
+                }
+                StudioShellRightSidebarTab::Results => self.render_runtime_results_tab(ui, window),
+                StudioShellRightSidebarTab::Run => self.render_runtime_run_tab(ui, window),
+                StudioShellRightSidebarTab::Package => self.render_runtime_package_tab(ui, window),
+            });
+    }
+
+    fn render_project_operation_strip(&mut self, ui: &mut egui::Ui) {
+        if self.project_open.pending_confirmation.is_none()
+            && self.project_open.pending_save_as_overwrite.is_none()
+        {
+            return;
+        }
+
+        ui.separator();
+        ui.horizontal_wrapped(|ui| {
+            if let Some(notice) = self.project_open.notice.as_ref() {
+                let color = match notice.level {
+                    ProjectOpenNoticeLevel::Info => egui::Color32::from_rgb(66, 118, 92),
+                    ProjectOpenNoticeLevel::Warning => egui::Color32::from_rgb(160, 120, 40),
+                    ProjectOpenNoticeLevel::Error => egui::Color32::from_rgb(180, 40, 40),
+                };
+                ui.colored_label(color, &notice.title);
+                render_wrapped_small(ui, &notice.detail);
+            }
+            if self.project_open.pending_confirmation.is_some() {
+                if ui
+                    .button(self.locale.text(ShellText::ContinueOpenProject))
+                    .clicked()
+                {
+                    self.confirm_pending_project_open();
+                }
+                if ui
+                    .button(self.locale.text(ShellText::CancelOpenProject))
+                    .clicked()
+                {
+                    self.cancel_pending_project_open();
+                }
+            }
+            if self.project_open.pending_save_as_overwrite.is_some() {
+                if ui
+                    .button(self.locale.text(ShellText::ConfirmSaveAsOverwrite))
+                    .clicked()
+                {
+                    self.confirm_pending_save_as_overwrite();
+                }
+                if ui
+                    .button(self.locale.text(ShellText::CancelSaveAsOverwrite))
+                    .clicked()
+                {
+                    self.cancel_pending_save_as_overwrite();
+                }
+            }
+        });
+    }
+
+    fn render_bottom_workbench(&mut self, ui: &mut egui::Ui, window: &StudioGuiWindowModel) {
+        ui.horizontal_wrapped(|ui| {
+            ui.selectable_value(
+                &mut self.bottom_drawer_tab,
+                StudioShellBottomDrawerTab::Messages,
+                self.locale.text(ShellText::Messages),
+            );
+            ui.selectable_value(
+                &mut self.bottom_drawer_tab,
+                StudioShellBottomDrawerTab::RunLog,
+                self.locale.text(ShellText::RuntimeLog),
+            );
+            ui.selectable_value(
+                &mut self.bottom_drawer_tab,
+                StudioShellBottomDrawerTab::ResultsTable,
+                self.locale.text(ShellText::ResultsTable),
+            );
+            ui.selectable_value(
+                &mut self.bottom_drawer_tab,
+                StudioShellBottomDrawerTab::Diagnostics,
+                self.locale.text(ShellText::Diagnostics),
+            );
+        });
+        ui.separator();
+        egui::ScrollArea::vertical()
+            .id_salt(format!(
+                "scroll:{}:bottom-workbench",
+                window.layout_state.scope.layout_key
+            ))
+            .auto_shrink([false, false])
+            .show(ui, |ui| match self.bottom_drawer_tab {
+                StudioShellBottomDrawerTab::Messages => self.render_bottom_messages(ui, window),
+                StudioShellBottomDrawerTab::RunLog => self.render_bottom_run_log(ui, window),
+                StudioShellBottomDrawerTab::ResultsTable => {
+                    self.render_bottom_results_table(ui, window)
+                }
+                StudioShellBottomDrawerTab::Diagnostics => {
+                    self.render_bottom_diagnostics(ui, window)
+                }
+            });
+    }
+
+    fn render_bottom_messages(&mut self, ui: &mut egui::Ui, window: &StudioGuiWindowModel) {
+        if let Some(notice) = self.project_open.notice.as_ref() {
+            ui.colored_label(
+                match notice.level {
+                    ProjectOpenNoticeLevel::Info => egui::Color32::from_rgb(66, 118, 92),
+                    ProjectOpenNoticeLevel::Warning => egui::Color32::from_rgb(160, 120, 40),
+                    ProjectOpenNoticeLevel::Error => egui::Color32::from_rgb(180, 40, 40),
+                },
+                &notice.title,
+            );
+            render_wrapped_small(ui, &notice.detail);
+            ui.add_space(4.0);
+        }
+        if let Some(failure) = window.runtime.latest_failure.as_ref() {
+            self.render_latest_failure_summary(ui, failure);
+            return;
+        }
+        if let Some(snapshot) = window.runtime.latest_solve_snapshot.as_ref() {
+            ui.horizontal_wrapped(|ui| {
+                render_status_chip(
+                    ui,
+                    self.locale.runtime_label(snapshot.status_label).as_ref(),
+                    run_status_color(snapshot.status_label),
+                );
+                render_wrapped_label(ui, &snapshot.summary);
+            });
+            if snapshot.diagnostics.is_empty() {
+                ui.small(self.locale.text(ShellText::NoDiagnostics));
+            } else {
+                ui.small(self.locale.solve_snapshot_counts(
+                    snapshot.stream_count,
+                    snapshot.step_count,
+                    snapshot.diagnostic_count,
+                ));
+            }
+            return;
+        }
+        if let Some(message) = window.runtime.run_panel.view().latest_log_message.as_ref() {
+            render_wrapped_label(ui, message);
+        } else {
+            ui.small(self.locale.text(ShellText::NoSolveSnapshot));
+        }
+    }
+
+    fn render_bottom_run_log(&self, ui: &mut egui::Ui, window: &StudioGuiWindowModel) {
+        if window.runtime.log_entries.is_empty() {
+            ui.small(self.locale.text(ShellText::NoRuntimeLog));
+            return;
+        }
+        for entry in window.runtime.log_entries.iter().rev().take(12) {
+            render_wrapped_small(
+                ui,
+                format!("[{}] {}", log_level_label(entry.level), entry.message),
+            );
+        }
+    }
+
+    fn render_bottom_results_table(&mut self, ui: &mut egui::Ui, window: &StudioGuiWindowModel) {
+        let Some(snapshot) = window.runtime.latest_solve_snapshot.as_ref() else {
+            ui.small(self.locale.text(ShellText::NoVisibleSolveResults));
+            return;
+        };
+        if snapshot.streams.is_empty() {
+            ui.small(self.locale.text(ShellText::NoStreamResults));
+            return;
+        }
+        egui::Grid::new(format!("bottom-results-table:{}", snapshot.snapshot_id))
+            .num_columns(6)
+            .striped(true)
+            .min_col_width(92.0)
+            .show(ui, |ui| {
+                ui.strong("Stream");
+                ui.strong("T (K)");
+                ui.strong("P (Pa)");
+                ui.strong("F (mol/s)");
+                ui.strong("H (J/mol)");
+                ui.strong("Phase");
+                ui.end_row();
+                for stream in &snapshot.streams {
+                    let response = ui
+                        .add(egui::Button::new(&stream.label).frame(false))
+                        .on_hover_text(&stream.stream_id);
+                    if response.clicked() {
+                        self.result_inspector
+                            .select_stream(&snapshot.snapshot_id, stream.stream_id.clone());
+                        self.right_sidebar_tab = StudioShellRightSidebarTab::Results;
+                    }
+                    ui.label(format!("{:.2}", stream.temperature_k));
+                    ui.label(format!("{:.0}", stream.pressure_pa));
+                    ui.label(format!("{:.6}", stream.total_molar_flow_mol_s));
+                    ui.label(
+                        stream
+                            .molar_enthalpy_j_per_mol
+                            .map(|value| format!("{value:.3}"))
+                            .unwrap_or_else(|| "-".to_string()),
+                    );
+                    ui.label(&stream.phase_text);
+                    ui.end_row();
+                }
+            });
+    }
+
+    fn render_bottom_diagnostics(&mut self, ui: &mut egui::Ui, window: &StudioGuiWindowModel) {
+        if let Some(snapshot) = window.runtime.latest_solve_snapshot.as_ref() {
+            if snapshot.diagnostics.is_empty() {
+                ui.small(self.locale.text(ShellText::NoDiagnostics));
+                return;
+            }
+            for (index, diagnostic) in snapshot.diagnostics.iter().enumerate() {
+                ui.horizontal_wrapped(|ui| {
+                    render_status_chip(
+                        ui,
+                        self.locale
+                            .runtime_label(diagnostic.severity_label)
+                            .as_ref(),
+                        diagnostic_color(diagnostic.severity_label),
+                    );
+                    ui.small(&diagnostic.code);
+                });
+                render_wrapped_label(ui, &diagnostic.message);
+                if !diagnostic.diagnostic_actions.is_empty() {
+                    self.render_diagnostic_target_actions(ui, &diagnostic.diagnostic_actions);
+                }
+                if index + 1 < snapshot.diagnostics.len() {
+                    ui.separator();
+                }
+            }
+            return;
+        }
+        if let Some(failure) = window.runtime.latest_failure.as_ref() {
+            self.render_latest_failure_summary(ui, failure);
+        } else {
+            ui.small(self.locale.text(ShellText::NoDiagnostics));
+        }
     }
 
     pub(super) fn render_center_stage(
@@ -548,80 +1210,6 @@ impl ReadyAppState {
                 ),
                 |ui| {
                     ui.vertical(|ui| {
-                        ui.horizontal_wrapped(|ui| {
-                            let is_drag_source = drag_session
-                                .map(|drag_session| drag_session.area_id == area_id)
-                                .unwrap_or(false);
-                            if is_drag_source {
-                                ui.small(
-                                    egui::RichText::new(
-                                        self.locale.text(ShellText::DraggingFromHeaderTab),
-                                    )
-                                        .color(egui::Color32::from_rgb(56, 126, 214)),
-                                );
-                            } else {
-                                ui.small(self.locale.text(ShellText::DragHeaderOrTabToMove));
-                            }
-
-                            if ui.button(self.locale.text(ShellText::CenterPanel)).clicked() {
-                                self.dispatch_layout_mutation(
-                                    window_id,
-                                    StudioGuiWindowLayoutMutation::SetCenterArea { area_id },
-                                );
-                            }
-
-                            let collapse_label = if panel.collapsed {
-                                self.locale.text(ShellText::Expand)
-                            } else {
-                                self.locale.text(ShellText::Collapse)
-                            };
-                            if ui.button(collapse_label).clicked() {
-                                self.dispatch_layout_mutation(
-                                    window_id,
-                                    StudioGuiWindowLayoutMutation::SetPanelCollapsed {
-                                        area_id,
-                                        collapsed: !panel.collapsed,
-                                    },
-                                );
-                            }
-
-                            if ui.button(self.locale.text(ShellText::Hide)).clicked() {
-                                self.dispatch_layout_mutation(
-                                    window_id,
-                                    StudioGuiWindowLayoutMutation::SetPanelVisibility {
-                                        area_id,
-                                        visible: false,
-                                    },
-                                );
-                            }
-
-                            self.render_move_menu(ui, window, area_id, panel.dock_region);
-                            self.render_stack_menu(ui, window, area_id, panel.display_mode);
-
-                            if !matches!(
-                                panel.display_mode,
-                                StudioGuiWindowPanelDisplayMode::Standalone
-                            ) {
-                                if ui.button("Prev tab").clicked() {
-                                    self.dispatch_layout_mutation(
-                                        window_id,
-                                        StudioGuiWindowLayoutMutation::ActivatePreviousPanelInStack {
-                                            area_id,
-                                        },
-                                    );
-                                }
-                                if ui.button("Next tab").clicked() {
-                                    self.dispatch_layout_mutation(
-                                        window_id,
-                                        StudioGuiWindowLayoutMutation::ActivateNextPanelInStack {
-                                            area_id,
-                                        },
-                                    );
-                                }
-                            }
-                        });
-                        ui.separator();
-
                         if panel.collapsed {
                             ui.label(self.locale.text(ShellText::PanelIsCollapsed));
                             return;
@@ -647,4 +1235,35 @@ impl ReadyAppState {
         self.update_area_focus_from_rect(ui.ctx(), area_id, header_rect);
         self.update_area_focus_from_rect(ui.ctx(), area_id, body_rect);
     }
+}
+
+fn workbench_bottom_drawer_height(
+    tab: StudioShellBottomDrawerTab,
+    window: &StudioGuiWindowModel,
+) -> f32 {
+    match tab {
+        StudioShellBottomDrawerTab::Messages => {
+            if window.runtime.latest_failure.is_some()
+                || window.runtime.latest_solve_snapshot.is_some()
+                || window.runtime.run_panel.view().latest_log_message.is_some()
+            {
+                156.0
+            } else {
+                132.0
+            }
+        }
+        StudioShellBottomDrawerTab::RunLog => 156.0,
+        StudioShellBottomDrawerTab::ResultsTable | StudioShellBottomDrawerTab::Diagnostics => 190.0,
+    }
+}
+
+fn window_command_toolbar_item<'a>(
+    commands: &'a radishflow_studio::StudioGuiWindowCommandAreaModel,
+    command_id: &str,
+) -> Option<&'a radishflow_studio::StudioGuiWindowToolbarItemModel> {
+    commands
+        .toolbar_sections
+        .iter()
+        .flat_map(|section| section.items.iter())
+        .find(|item| item.command_id == command_id)
 }

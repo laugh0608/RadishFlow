@@ -6,8 +6,8 @@
     "flowsheet": {
       "name": "unsupported-unit-kind",
       "components": {
-        "component-a": { "id": "component-a", "name": "Component A", "formula": null },
-        "component-b": { "id": "component-b", "name": "Component B", "formula": null }
+        "methane": { "id": "methane", "name": "Methane", "formula": "CH4" },
+        "ethane": { "id": "ethane", "name": "Ethane", "formula": "C2H6" }
       },
       "streams": {
         "stream-feed": {
@@ -17,8 +17,8 @@
           "pressure_pa": 100000.0,
           "total_molar_flow_mol_s": 5.0,
           "overall_mole_fractions": {
-            "component-a": 0.35,
-            "component-b": 0.65
+            "methane": 0.35,
+            "ethane": 0.65
           },
           "phases": []
         }
@@ -48,3 +48,4 @@
     }
   }
 }
+

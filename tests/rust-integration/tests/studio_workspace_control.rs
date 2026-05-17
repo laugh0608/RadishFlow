@@ -9,14 +9,22 @@ use radishflow_studio::{
     dispatch_workspace_control_action_with_auth_cache,
 };
 use rf_rust_integration::{
-    sample_auth_cache_index, timestamp, unique_temp_path, write_cached_package,
+    NearBoundaryCaseKind, NearBoundaryStreamWindowCase, SYNTHETIC_LIQUID_ONLY_PACKAGE_ID,
+    SYNTHETIC_VAPOR_ONLY_PACKAGE_ID, assert_close,
+    binary_hydrocarbon_lite_near_boundary_stream_window_cases, sample_auth_cache_index,
+    synthetic_single_phase_near_boundary_stream_window_cases, timestamp, unique_temp_path,
+    write_binary_hydrocarbon_lite_cached_package, write_official_binary_hydrocarbon_cached_package,
+    write_synthetic_liquid_only_cached_package, write_synthetic_vapor_only_cached_package,
 };
 use rf_store::parse_project_file_json;
+use rf_types::{ComponentId, PhaseEquilibriumRegion, StreamId, UnitId};
 use rf_ui::{
     AppState, DocumentCommand, DocumentMetadata, EntitlementSnapshot, FlowsheetDocument,
     InspectorTarget, PropertyPackageManifest, PropertyPackageSource, RunPanelRecoveryActionKind,
     RunStatus, SimulationMode,
 };
+
+const NEAR_BOUNDARY_FEED_PRESSURE_PA: f64 = 700_000.0;
 
 fn app_state_from_project(
     project_json: &str,
@@ -56,6 +64,279 @@ fn port_target_stream_id(app_state: &AppState, unit_id: &str, port_name: &str) -
     material_port_stream_id(app_state, unit_id, port_name)
 }
 
+fn find_snapshot_stream<'a>(
+    snapshot: &'a rf_ui::SolveSnapshot,
+    stream_id: &str,
+) -> &'a rf_ui::StreamStateSnapshot {
+    snapshot
+        .streams
+        .iter()
+        .find(|stream| stream.stream_id == StreamId::new(stream_id))
+        .expect("expected snapshot stream")
+}
+
+fn assert_step_consumes_snapshot_stream(
+    snapshot: &rf_ui::SolveSnapshot,
+    unit_id: &str,
+    stream: &rf_ui::StreamStateSnapshot,
+) {
+    let step = snapshot
+        .steps
+        .iter()
+        .find(|step| step.unit_id == UnitId::new(unit_id))
+        .expect("expected consumer step");
+    assert!(
+        step.consumed_streams
+            .iter()
+            .any(|candidate| candidate == stream),
+        "expected `{unit_id}` to consume snapshot stream `{}`",
+        stream.stream_id
+    );
+    assert!(
+        stream
+            .phases
+            .iter()
+            .find(|phase| phase.label == "overall")
+            .and_then(|phase| phase.molar_enthalpy_j_per_mol)
+            .is_some(),
+        "expected snapshot stream `{}` to materialize overall enthalpy",
+        stream.stream_id
+    );
+    assert!(
+        stream.bubble_dew_window.is_some(),
+        "expected snapshot stream `{}` to materialize bubble/dew window",
+        stream.stream_id
+    );
+}
+
+fn assert_flash_outlet_boundary_windows_in_ui_snapshot(snapshot: &rf_ui::SolveSnapshot) {
+    let liquid = find_snapshot_stream(snapshot, "stream-liquid");
+    let liquid_window = liquid
+        .bubble_dew_window
+        .as_ref()
+        .expect("expected liquid outlet bubble/dew window");
+    assert_eq!(liquid_window.phase_region, PhaseEquilibriumRegion::TwoPhase);
+    assert_close(liquid_window.bubble_pressure_pa, liquid.pressure_pa, 1e-6);
+    assert_close(
+        liquid_window.bubble_temperature_k,
+        liquid.temperature_k,
+        1e-4,
+    );
+    assert!(liquid_window.dew_pressure_pa < liquid_window.bubble_pressure_pa);
+    assert!(liquid_window.dew_temperature_k > liquid_window.bubble_temperature_k);
+
+    let vapor = find_snapshot_stream(snapshot, "stream-vapor");
+    let vapor_window = vapor
+        .bubble_dew_window
+        .as_ref()
+        .expect("expected vapor outlet bubble/dew window");
+    assert_eq!(vapor_window.phase_region, PhaseEquilibriumRegion::TwoPhase);
+    assert_close(vapor_window.dew_pressure_pa, vapor.pressure_pa, 1e-6);
+    assert_close(vapor_window.dew_temperature_k, vapor.temperature_k, 1e-4);
+    assert!(vapor_window.bubble_pressure_pa > vapor_window.dew_pressure_pa);
+    assert!(vapor_window.bubble_temperature_k < vapor_window.dew_temperature_k);
+}
+
+fn assert_flash_outlet_window_semantics_for_phase_region(
+    snapshot: &rf_ui::SolveSnapshot,
+    expected_phase_region: PhaseEquilibriumRegion,
+) {
+    let liquid = find_snapshot_stream(snapshot, "stream-liquid");
+    let vapor = find_snapshot_stream(snapshot, "stream-vapor");
+
+    match expected_phase_region {
+        PhaseEquilibriumRegion::LiquidOnly => {
+            assert!(liquid.total_molar_flow_mol_s > 0.0);
+            assert_close(vapor.total_molar_flow_mol_s, 0.0, 1e-12);
+            assert_eq!(
+                liquid
+                    .bubble_dew_window
+                    .as_ref()
+                    .expect("expected liquid outlet bubble/dew window")
+                    .phase_region,
+                PhaseEquilibriumRegion::LiquidOnly
+            );
+            assert!(vapor.bubble_dew_window.is_none());
+        }
+        PhaseEquilibriumRegion::TwoPhase => {
+            assert_flash_outlet_boundary_windows_in_ui_snapshot(snapshot);
+        }
+        PhaseEquilibriumRegion::VaporOnly => {
+            assert_close(liquid.total_molar_flow_mol_s, 0.0, 1e-12);
+            assert!(vapor.total_molar_flow_mol_s > 0.0);
+            assert!(liquid.bubble_dew_window.is_none());
+            assert_eq!(
+                vapor
+                    .bubble_dew_window
+                    .as_ref()
+                    .expect("expected vapor outlet bubble/dew window")
+                    .phase_region,
+                PhaseEquilibriumRegion::VaporOnly
+            );
+        }
+    }
+}
+
+fn apply_binary_demo_composition(
+    app_state: &mut AppState,
+    stream_id: &str,
+    overall_mole_fractions: [f64; 2],
+) {
+    let stream = app_state
+        .workspace
+        .document
+        .flowsheet
+        .streams
+        .get_mut(&stream_id.into())
+        .expect("expected stream");
+    stream.overall_mole_fractions.clear();
+    stream
+        .overall_mole_fractions
+        .insert(ComponentId::new("methane"), overall_mole_fractions[0]);
+    stream
+        .overall_mole_fractions
+        .insert(ComponentId::new("ethane"), overall_mole_fractions[1]);
+}
+
+fn app_state_for_heater_boundary_case(
+    document_id: &str,
+    title: &str,
+    created_at_seconds: u64,
+    case: &NearBoundaryStreamWindowCase,
+) -> AppState {
+    let mut app_state = app_state_from_project(
+        include_str!(
+            "../../../examples/flowsheets/feed-heater-flash-binary-hydrocarbon.rfproj.json"
+        ),
+        document_id,
+        title,
+        created_at_seconds,
+    );
+    apply_binary_demo_composition(&mut app_state, "stream-feed", case.overall_mole_fractions);
+    app_state
+        .workspace
+        .document
+        .flowsheet
+        .streams
+        .get_mut(&"stream-feed".into())
+        .expect("expected feed stream")
+        .pressure_pa = NEAR_BOUNDARY_FEED_PRESSURE_PA;
+    let heated = app_state
+        .workspace
+        .document
+        .flowsheet
+        .streams
+        .get_mut(&"stream-heated".into())
+        .expect("expected heated stream");
+    heated.temperature_k = case.temperature_k;
+    heated.pressure_pa = case.pressure_pa;
+    app_state
+}
+
+fn assert_near_boundary_window_matches_case(
+    stream: &rf_ui::StreamStateSnapshot,
+    case: &NearBoundaryStreamWindowCase,
+) {
+    let window = stream
+        .bubble_dew_window
+        .as_ref()
+        .expect("expected bubble/dew window");
+
+    assert_close(stream.temperature_k, case.temperature_k, 1e-12);
+    assert_close(stream.pressure_pa, case.pressure_pa, 1e-9);
+    assert_eq!(
+        window.phase_region, case.expected_phase_region,
+        "{}",
+        case.label
+    );
+    assert_close(
+        window.bubble_pressure_pa,
+        case.expected_bubble_pressure_pa,
+        1e-6,
+    );
+    assert_close(window.dew_pressure_pa, case.expected_dew_pressure_pa, 1e-6);
+    assert_close(
+        window.bubble_temperature_k,
+        case.expected_bubble_temperature_k,
+        1e-4,
+    );
+    assert_close(
+        window.dew_temperature_k,
+        case.expected_dew_temperature_k,
+        1e-4,
+    );
+}
+
+fn write_synthetic_cached_package_for_case(
+    cache_root: &Path,
+    auth_cache_index: &mut rf_store::StoredAuthCacheIndex,
+    case: &NearBoundaryStreamWindowCase,
+) {
+    match case.package_id {
+        SYNTHETIC_LIQUID_ONLY_PACKAGE_ID => {
+            write_synthetic_liquid_only_cached_package(cache_root, auth_cache_index)
+        }
+        SYNTHETIC_VAPOR_ONLY_PACKAGE_ID => {
+            write_synthetic_vapor_only_cached_package(cache_root, auth_cache_index)
+        }
+        _ => panic!("unexpected synthetic package id `{}`", case.package_id),
+    }
+}
+
+fn apply_synthetic_demo_composition(
+    app_state: &mut AppState,
+    stream_id: &str,
+    overall_mole_fractions: [f64; 2],
+) {
+    let stream = app_state
+        .workspace
+        .document
+        .flowsheet
+        .streams
+        .get_mut(&stream_id.into())
+        .expect("expected stream");
+    stream.overall_mole_fractions.clear();
+    stream
+        .overall_mole_fractions
+        .insert(ComponentId::new("component-a"), overall_mole_fractions[0]);
+    stream
+        .overall_mole_fractions
+        .insert(ComponentId::new("component-b"), overall_mole_fractions[1]);
+}
+
+fn app_state_for_synthetic_heater_boundary_case(
+    document_id: &str,
+    title: &str,
+    created_at_seconds: u64,
+    case: &NearBoundaryStreamWindowCase,
+) -> AppState {
+    let mut app_state = app_state_from_project(
+        include_str!("../../../examples/flowsheets/feed-heater-flash-synthetic-demo.rfproj.json"),
+        document_id,
+        title,
+        created_at_seconds,
+    );
+    apply_synthetic_demo_composition(&mut app_state, "stream-feed", case.overall_mole_fractions);
+    app_state
+        .workspace
+        .document
+        .flowsheet
+        .streams
+        .get_mut(&"stream-feed".into())
+        .expect("expected feed stream")
+        .pressure_pa = case.pressure_pa;
+    let heated = app_state
+        .workspace
+        .document
+        .flowsheet
+        .streams
+        .get_mut(&"stream-heated".into())
+        .expect("expected heated stream");
+    heated.temperature_k = case.temperature_k;
+    heated.pressure_pa = case.pressure_pa;
+    app_state
+}
+
 fn sample_entitlement_snapshot(package_ids: &[&str]) -> EntitlementSnapshot {
     EntitlementSnapshot {
         schema_version: 1,
@@ -85,14 +366,12 @@ fn sample_manifest(package_id: &str) -> PropertyPackageManifest {
 fn run_panel_primary_action_executes_workspace_run_end_to_end() {
     let cache_root = unique_temp_path("integration-run-panel-primary");
     let mut auth_cache_index = sample_auth_cache_index(&[]);
-    write_cached_package(
-        &cache_root,
-        &mut auth_cache_index,
-        "binary-hydrocarbon-lite-v1",
-    );
+    write_binary_hydrocarbon_lite_cached_package(&cache_root, &mut auth_cache_index);
     let facade = StudioAppFacade::new();
     let mut app_state = app_state_from_project(
-        include_str!("../../../examples/flowsheets/feed-heater-flash.rfproj.json"),
+        include_str!(
+            "../../../examples/flowsheets/feed-heater-flash-binary-hydrocarbon.rfproj.json"
+        ),
         "doc-control-success",
         "Control Success Demo",
         10,
@@ -130,7 +409,274 @@ fn run_panel_primary_action_executes_workspace_run_end_to_end() {
         Some("doc-control-success-rev-0-seq-1")
     );
 
+    let snapshot = app_state
+        .workspace
+        .snapshot_history
+        .back()
+        .expect("expected stored snapshot");
+    let feed = find_snapshot_stream(snapshot, "stream-feed");
+    assert_step_consumes_snapshot_stream(snapshot, "heater-1", feed);
+    let heated = find_snapshot_stream(snapshot, "stream-heated");
+    assert_eq!(
+        heated
+            .bubble_dew_window
+            .as_ref()
+            .expect("expected heated bubble/dew window")
+            .phase_region,
+        PhaseEquilibriumRegion::VaporOnly
+    );
+
+    let flash_step = snapshot
+        .steps
+        .iter()
+        .find(|step| step.unit_id == UnitId::new("flash-1"))
+        .expect("expected flash step");
+    assert_eq!(flash_step.consumed_streams.len(), 1);
+    assert_eq!(
+        flash_step.consumed_streams[0].stream_id,
+        StreamId::new("stream-heated")
+    );
+    assert_eq!(
+        flash_step.consumed_streams[0].bubble_dew_window,
+        heated.bubble_dew_window
+    );
+    assert_flash_outlet_window_semantics_for_phase_region(
+        snapshot,
+        PhaseEquilibriumRegion::VaporOnly,
+    );
+
     fs::remove_dir_all(cache_root).expect("expected temp dir cleanup");
+}
+
+#[test]
+fn run_panel_primary_action_preserves_pressure_near_boundary_windows_end_to_end() {
+    let cache_root = unique_temp_path("integration-run-panel-pressure-near-boundary");
+    let mut auth_cache_index = sample_auth_cache_index(&[]);
+    write_binary_hydrocarbon_lite_cached_package(&cache_root, &mut auth_cache_index);
+    let facade = StudioAppFacade::new();
+    let context = StudioAppAuthCacheContext::new(&cache_root, &auth_cache_index);
+
+    for (index, case) in binary_hydrocarbon_lite_near_boundary_stream_window_cases()
+        .into_iter()
+        .filter(|case| case.kind == NearBoundaryCaseKind::Pressure)
+        .enumerate()
+    {
+        let mut app_state = app_state_for_heater_boundary_case(
+            &format!("doc-control-pressure-{index}"),
+            &case.label,
+            110 + index as u64,
+            &case,
+        );
+        let outcome =
+            dispatch_run_panel_primary_action_with_auth_cache(&facade, &mut app_state, &context)
+                .expect("expected primary action dispatch");
+
+        match outcome.dispatch {
+            RunPanelWidgetDispatchOutcome::Executed(outcome) => match outcome.dispatch {
+                StudioAppResultDispatch::WorkspaceRun(dispatch) => {
+                    assert!(matches!(
+                        dispatch.outcome,
+                        StudioWorkspaceRunOutcome::Started(_)
+                    ));
+                }
+                _ => panic!("expected workspace run dispatch"),
+            },
+            _ => panic!("expected executed run panel outcome"),
+        }
+
+        let snapshot = app_state
+            .workspace
+            .snapshot_history
+            .back()
+            .expect("expected stored snapshot");
+        let heated = find_snapshot_stream(snapshot, "stream-heated");
+        assert_near_boundary_window_matches_case(heated, &case);
+
+        let flash_step = snapshot
+            .steps
+            .iter()
+            .find(|step| step.unit_id == UnitId::new("flash-1"))
+            .expect("expected flash step");
+        assert_eq!(flash_step.consumed_streams.len(), 1, "{}", case.label);
+        assert_eq!(&flash_step.consumed_streams[0], heated, "{}", case.label);
+    }
+
+    fs::remove_dir_all(cache_root).expect("expected temp dir cleanup");
+}
+
+#[test]
+fn run_panel_primary_action_preserves_temperature_near_boundary_windows_end_to_end() {
+    let cache_root = unique_temp_path("integration-run-panel-temperature-near-boundary");
+    let mut auth_cache_index = sample_auth_cache_index(&[]);
+    write_binary_hydrocarbon_lite_cached_package(&cache_root, &mut auth_cache_index);
+    let facade = StudioAppFacade::new();
+    let context = StudioAppAuthCacheContext::new(&cache_root, &auth_cache_index);
+
+    for (index, case) in binary_hydrocarbon_lite_near_boundary_stream_window_cases()
+        .into_iter()
+        .filter(|case| case.kind == NearBoundaryCaseKind::Temperature)
+        .enumerate()
+    {
+        let mut app_state = app_state_for_heater_boundary_case(
+            &format!("doc-control-temperature-{index}"),
+            &case.label,
+            140 + index as u64,
+            &case,
+        );
+        let outcome =
+            dispatch_run_panel_primary_action_with_auth_cache(&facade, &mut app_state, &context)
+                .expect("expected primary action dispatch");
+
+        match outcome.dispatch {
+            RunPanelWidgetDispatchOutcome::Executed(outcome) => match outcome.dispatch {
+                StudioAppResultDispatch::WorkspaceRun(dispatch) => {
+                    assert!(matches!(
+                        dispatch.outcome,
+                        StudioWorkspaceRunOutcome::Started(_)
+                    ));
+                }
+                _ => panic!("expected workspace run dispatch"),
+            },
+            _ => panic!("expected executed run panel outcome"),
+        }
+
+        let snapshot = app_state
+            .workspace
+            .snapshot_history
+            .back()
+            .expect("expected stored snapshot");
+        let heated = find_snapshot_stream(snapshot, "stream-heated");
+        assert_near_boundary_window_matches_case(heated, &case);
+
+        let flash_step = snapshot
+            .steps
+            .iter()
+            .find(|step| step.unit_id == UnitId::new("flash-1"))
+            .expect("expected flash step");
+        assert_eq!(flash_step.consumed_streams.len(), 1, "{}", case.label);
+        assert_eq!(&flash_step.consumed_streams[0], heated, "{}", case.label);
+    }
+
+    fs::remove_dir_all(cache_root).expect("expected temp dir cleanup");
+}
+
+#[test]
+fn run_panel_primary_action_preserves_synthetic_single_phase_pressure_near_boundary_windows_end_to_end()
+ {
+    let facade = StudioAppFacade::new();
+
+    for (index, case) in synthetic_single_phase_near_boundary_stream_window_cases()
+        .into_iter()
+        .filter(|case| case.kind == NearBoundaryCaseKind::Pressure)
+        .enumerate()
+    {
+        let cache_root =
+            unique_temp_path(&format!("integration-run-panel-synthetic-pressure-{index}"));
+        let mut auth_cache_index = sample_auth_cache_index(&[]);
+        write_synthetic_cached_package_for_case(&cache_root, &mut auth_cache_index, &case);
+        let context = StudioAppAuthCacheContext::new(&cache_root, &auth_cache_index);
+        let mut app_state = app_state_for_synthetic_heater_boundary_case(
+            &format!("doc-control-synthetic-pressure-{index}"),
+            &case.label,
+            170 + index as u64,
+            &case,
+        );
+
+        let outcome =
+            dispatch_run_panel_primary_action_with_auth_cache(&facade, &mut app_state, &context)
+                .expect("expected primary action dispatch");
+
+        match outcome.dispatch {
+            RunPanelWidgetDispatchOutcome::Executed(outcome) => match outcome.dispatch {
+                StudioAppResultDispatch::WorkspaceRun(dispatch) => {
+                    assert!(matches!(
+                        dispatch.outcome,
+                        StudioWorkspaceRunOutcome::Started(_)
+                    ));
+                }
+                _ => panic!("expected workspace run dispatch"),
+            },
+            _ => panic!("expected executed run panel outcome"),
+        }
+
+        let snapshot = app_state
+            .workspace
+            .snapshot_history
+            .back()
+            .expect("expected stored snapshot");
+        let heated = find_snapshot_stream(snapshot, "stream-heated");
+        assert_near_boundary_window_matches_case(heated, &case);
+
+        let flash_step = snapshot
+            .steps
+            .iter()
+            .find(|step| step.unit_id == UnitId::new("flash-1"))
+            .expect("expected flash step");
+        assert_eq!(flash_step.consumed_streams.len(), 1, "{}", case.label);
+        assert_eq!(&flash_step.consumed_streams[0], heated, "{}", case.label);
+
+        fs::remove_dir_all(cache_root).expect("expected temp dir cleanup");
+    }
+}
+
+#[test]
+fn run_panel_primary_action_preserves_synthetic_single_phase_temperature_near_boundary_windows_end_to_end()
+ {
+    let facade = StudioAppFacade::new();
+
+    for (index, case) in synthetic_single_phase_near_boundary_stream_window_cases()
+        .into_iter()
+        .filter(|case| case.kind == NearBoundaryCaseKind::Temperature)
+        .enumerate()
+    {
+        let cache_root = unique_temp_path(&format!(
+            "integration-run-panel-synthetic-temperature-{index}"
+        ));
+        let mut auth_cache_index = sample_auth_cache_index(&[]);
+        write_synthetic_cached_package_for_case(&cache_root, &mut auth_cache_index, &case);
+        let context = StudioAppAuthCacheContext::new(&cache_root, &auth_cache_index);
+        let mut app_state = app_state_for_synthetic_heater_boundary_case(
+            &format!("doc-control-synthetic-temperature-{index}"),
+            &case.label,
+            210 + index as u64,
+            &case,
+        );
+
+        let outcome =
+            dispatch_run_panel_primary_action_with_auth_cache(&facade, &mut app_state, &context)
+                .expect("expected primary action dispatch");
+
+        match outcome.dispatch {
+            RunPanelWidgetDispatchOutcome::Executed(outcome) => match outcome.dispatch {
+                StudioAppResultDispatch::WorkspaceRun(dispatch) => {
+                    assert!(matches!(
+                        dispatch.outcome,
+                        StudioWorkspaceRunOutcome::Started(_)
+                    ));
+                }
+                _ => panic!("expected workspace run dispatch"),
+            },
+            _ => panic!("expected executed run panel outcome"),
+        }
+
+        let snapshot = app_state
+            .workspace
+            .snapshot_history
+            .back()
+            .expect("expected stored snapshot");
+        let heated = find_snapshot_stream(snapshot, "stream-heated");
+        assert_near_boundary_window_matches_case(heated, &case);
+
+        let flash_step = snapshot
+            .steps
+            .iter()
+            .find(|step| step.unit_id == UnitId::new("flash-1"))
+            .expect("expected flash step");
+        assert_eq!(flash_step.consumed_streams.len(), 1, "{}", case.label);
+        assert_eq!(&flash_step.consumed_streams[0], heated, "{}", case.label);
+
+        fs::remove_dir_all(cache_root).expect("expected temp dir cleanup");
+    }
 }
 
 #[test]
@@ -138,7 +684,7 @@ fn workspace_control_reports_package_selection_required_end_to_end() {
     let auth_cache_index = sample_auth_cache_index(&["pkg-1", "pkg-2"]);
     let facade = StudioAppFacade::new();
     let mut app_state = app_state_from_project(
-        include_str!("../../../examples/flowsheets/feed-heater-flash.rfproj.json"),
+        include_str!("../../../examples/flowsheets/feed-heater-flash-synthetic-demo.rfproj.json"),
         "doc-control-blocked",
         "Control Blocked Demo",
         20,
@@ -181,7 +727,7 @@ fn workspace_control_reports_entitlement_update_required_end_to_end() {
     let auth_cache_index = sample_auth_cache_index(&["pkg-1", "pkg-2"]);
     let facade = StudioAppFacade::new();
     let mut app_state = app_state_from_project(
-        include_str!("../../../examples/flowsheets/feed-heater-flash.rfproj.json"),
+        include_str!("../../../examples/flowsheets/feed-heater-flash-synthetic-demo.rfproj.json"),
         "doc-control-entitlement-blocked",
         "Control Entitlement Blocked Demo",
         25,
@@ -232,7 +778,7 @@ fn workspace_control_reports_local_cache_repair_notice_end_to_end() {
     let auth_cache_index = sample_auth_cache_index(&["pkg-1"]);
     let facade = StudioAppFacade::new();
     let mut app_state = app_state_from_project(
-        include_str!("../../../examples/flowsheets/feed-heater-flash.rfproj.json"),
+        include_str!("../../../examples/flowsheets/feed-heater-flash-synthetic-demo.rfproj.json"),
         "doc-control-local-cache-failed",
         "Control Local Cache Failed Demo",
         28,
@@ -288,14 +834,12 @@ fn workspace_control_reports_local_cache_repair_notice_end_to_end() {
 fn automatic_workspace_run_executes_after_document_revision_advances_end_to_end() {
     let cache_root = unique_temp_path("integration-automatic-workspace-run");
     let mut auth_cache_index = sample_auth_cache_index(&[]);
-    write_cached_package(
-        &cache_root,
-        &mut auth_cache_index,
-        "binary-hydrocarbon-lite-v1",
-    );
+    write_binary_hydrocarbon_lite_cached_package(&cache_root, &mut auth_cache_index);
     let facade = StudioAppFacade::new();
     let mut app_state = app_state_from_project(
-        include_str!("../../../examples/flowsheets/feed-heater-flash.rfproj.json"),
+        include_str!(
+            "../../../examples/flowsheets/feed-heater-flash-binary-hydrocarbon.rfproj.json"
+        ),
         "doc-control-auto-run",
         "Control Automatic Run Demo",
         29,
@@ -384,19 +928,17 @@ fn automatic_workspace_run_executes_after_document_revision_advances_end_to_end(
 fn automatic_workspace_run_skips_before_package_resolution_when_no_pending_request_end_to_end() {
     let cache_root = unique_temp_path("integration-automatic-workspace-skip");
     let mut auth_cache_index = sample_auth_cache_index(&[]);
-    write_cached_package(
-        &cache_root,
-        &mut auth_cache_index,
-        "binary-hydrocarbon-lite-v1",
-    );
-    write_cached_package(
+    write_binary_hydrocarbon_lite_cached_package(&cache_root, &mut auth_cache_index);
+    write_official_binary_hydrocarbon_cached_package(
         &cache_root,
         &mut auth_cache_index,
         "binary-hydrocarbon-lite-v2",
     );
     let facade = StudioAppFacade::new();
     let mut app_state = app_state_from_project(
-        include_str!("../../../examples/flowsheets/feed-heater-flash.rfproj.json"),
+        include_str!(
+            "../../../examples/flowsheets/feed-heater-flash-binary-hydrocarbon.rfproj.json"
+        ),
         "doc-control-auto-skip",
         "Control Automatic Skip Demo",
         31,
@@ -468,14 +1010,12 @@ fn automatic_workspace_run_skips_before_package_resolution_when_no_pending_reque
 fn workspace_control_failed_rerun_clears_previous_snapshot_summary_end_to_end() {
     let cache_root = unique_temp_path("integration-run-panel-local-cache-rerun-failure");
     let mut auth_cache_index = sample_auth_cache_index(&[]);
-    write_cached_package(
-        &cache_root,
-        &mut auth_cache_index,
-        "binary-hydrocarbon-lite-v1",
-    );
+    write_binary_hydrocarbon_lite_cached_package(&cache_root, &mut auth_cache_index);
     let facade = StudioAppFacade::new();
     let mut app_state = app_state_from_project(
-        include_str!("../../../examples/flowsheets/feed-heater-flash.rfproj.json"),
+        include_str!(
+            "../../../examples/flowsheets/feed-heater-flash-binary-hydrocarbon.rfproj.json"
+        ),
         "doc-control-local-cache-rerun-failure",
         "Control Local Cache Rerun Failure Demo",
         28,
@@ -534,14 +1074,10 @@ fn workspace_control_failed_rerun_clears_previous_snapshot_summary_end_to_end() 
 fn run_panel_recovery_action_focuses_failed_unit_end_to_end() {
     let cache_root = unique_temp_path("integration-run-panel-recovery");
     let mut auth_cache_index = sample_auth_cache_index(&[]);
-    write_cached_package(
-        &cache_root,
-        &mut auth_cache_index,
-        "binary-hydrocarbon-lite-v1",
-    );
+    write_binary_hydrocarbon_lite_cached_package(&cache_root, &mut auth_cache_index);
     let facade = StudioAppFacade::new();
     let project = parse_project_file_json(include_str!(
-        "../../../examples/flowsheets/feed-valve-flash.rfproj.json"
+        "../../../examples/flowsheets/feed-valve-flash-binary-hydrocarbon.rfproj.json"
     ))
     .expect("expected project parse");
     let mut flowsheet = project.document.flowsheet;
@@ -549,7 +1085,7 @@ fn run_panel_recovery_action_focuses_failed_unit_end_to_end() {
         .streams
         .get_mut(&"stream-throttled".into())
         .expect("expected throttled stream")
-        .pressure_pa = 130_000.0;
+        .pressure_pa = 730_000.0;
     let mut app_state = AppState::new(FlowsheetDocument::new(
         flowsheet,
         DocumentMetadata::new(
@@ -591,7 +1127,7 @@ fn run_panel_recovery_action_focuses_failed_unit_end_to_end() {
 fn run_panel_recovery_action_restores_invalid_port_signature_end_to_end() {
     let cache_root = unique_temp_path("integration-run-panel-connection-recovery");
     let mut auth_cache_index = sample_auth_cache_index(&[]);
-    write_cached_package(
+    write_official_binary_hydrocarbon_cached_package(
         &cache_root,
         &mut auth_cache_index,
         "binary-hydrocarbon-lite-v1",
@@ -661,7 +1197,7 @@ fn run_panel_recovery_action_restores_invalid_port_signature_end_to_end() {
 fn run_panel_recovery_action_restores_invalid_port_signature_and_reruns_successfully() {
     let cache_root = unique_temp_path("integration-run-panel-connection-recovery-rerun");
     let mut auth_cache_index = sample_auth_cache_index(&[]);
-    write_cached_package(
+    write_official_binary_hydrocarbon_cached_package(
         &cache_root,
         &mut auth_cache_index,
         "binary-hydrocarbon-lite-v1",
@@ -727,7 +1263,7 @@ fn run_panel_recovery_action_restores_invalid_port_signature_and_reruns_successf
 fn run_panel_recovery_action_focuses_missing_upstream_source_unit_end_to_end() {
     let cache_root = unique_temp_path("integration-run-panel-missing-upstream-recovery");
     let mut auth_cache_index = sample_auth_cache_index(&[]);
-    write_cached_package(
+    write_official_binary_hydrocarbon_cached_package(
         &cache_root,
         &mut auth_cache_index,
         "binary-hydrocarbon-lite-v1",
@@ -791,7 +1327,7 @@ fn run_panel_recovery_action_focuses_missing_upstream_source_unit_end_to_end() {
 fn run_panel_recovery_action_disconnects_self_loop_inlet_end_to_end() {
     let cache_root = unique_temp_path("integration-run-panel-self-loop-recovery");
     let mut auth_cache_index = sample_auth_cache_index(&[]);
-    write_cached_package(
+    write_official_binary_hydrocarbon_cached_package(
         &cache_root,
         &mut auth_cache_index,
         "binary-hydrocarbon-lite-v1",
@@ -853,7 +1389,7 @@ fn run_panel_recovery_action_disconnects_self_loop_inlet_end_to_end() {
 fn run_panel_recovery_action_disconnects_two_unit_cycle_inlet_end_to_end() {
     let cache_root = unique_temp_path("integration-run-panel-two-unit-cycle-recovery");
     let mut auth_cache_index = sample_auth_cache_index(&[]);
-    write_cached_package(
+    write_official_binary_hydrocarbon_cached_package(
         &cache_root,
         &mut auth_cache_index,
         "binary-hydrocarbon-lite-v1",
@@ -915,7 +1451,7 @@ fn run_panel_recovery_action_disconnects_two_unit_cycle_inlet_end_to_end() {
 fn run_panel_recovery_action_disconnects_missing_stream_reference_end_to_end() {
     let cache_root = unique_temp_path("integration-run-panel-missing-stream-recovery");
     let mut auth_cache_index = sample_auth_cache_index(&[]);
-    write_cached_package(
+    write_official_binary_hydrocarbon_cached_package(
         &cache_root,
         &mut auth_cache_index,
         "binary-hydrocarbon-lite-v1",
@@ -977,7 +1513,7 @@ fn run_panel_recovery_action_disconnects_missing_stream_reference_end_to_end() {
 fn run_panel_recovery_action_disconnects_duplicate_upstream_source_end_to_end() {
     let cache_root = unique_temp_path("integration-run-panel-duplicate-source-recovery");
     let mut auth_cache_index = sample_auth_cache_index(&[]);
-    write_cached_package(
+    write_official_binary_hydrocarbon_cached_package(
         &cache_root,
         &mut auth_cache_index,
         "binary-hydrocarbon-lite-v1",
@@ -1039,7 +1575,7 @@ fn run_panel_recovery_action_disconnects_duplicate_upstream_source_end_to_end() 
 fn run_panel_recovery_action_disconnects_duplicate_downstream_sink_end_to_end() {
     let cache_root = unique_temp_path("integration-run-panel-duplicate-sink-recovery");
     let mut auth_cache_index = sample_auth_cache_index(&[]);
-    write_cached_package(
+    write_official_binary_hydrocarbon_cached_package(
         &cache_root,
         &mut auth_cache_index,
         "binary-hydrocarbon-lite-v1",
@@ -1101,7 +1637,7 @@ fn run_panel_recovery_action_disconnects_duplicate_downstream_sink_end_to_end() 
 fn run_panel_recovery_action_deletes_orphan_stream_end_to_end() {
     let cache_root = unique_temp_path("integration-run-panel-orphan-stream-recovery");
     let mut auth_cache_index = sample_auth_cache_index(&[]);
-    write_cached_package(
+    write_official_binary_hydrocarbon_cached_package(
         &cache_root,
         &mut auth_cache_index,
         "binary-hydrocarbon-lite-v1",
@@ -1154,7 +1690,7 @@ fn run_panel_recovery_action_deletes_orphan_stream_end_to_end() {
 fn run_panel_recovery_action_creates_stream_for_unbound_outlet_end_to_end() {
     let cache_root = unique_temp_path("integration-run-panel-unbound-outlet-recovery");
     let mut auth_cache_index = sample_auth_cache_index(&[]);
-    write_cached_package(
+    write_official_binary_hydrocarbon_cached_package(
         &cache_root,
         &mut auth_cache_index,
         "binary-hydrocarbon-lite-v1",
@@ -1220,7 +1756,7 @@ fn run_panel_recovery_action_creates_stream_for_unbound_outlet_end_to_end() {
 fn run_panel_recovery_action_creates_stream_for_unbound_outlet_and_reruns_successfully() {
     let cache_root = unique_temp_path("integration-run-panel-unbound-outlet-recovery-rerun");
     let mut auth_cache_index = sample_auth_cache_index(&[]);
-    write_cached_package(
+    write_official_binary_hydrocarbon_cached_package(
         &cache_root,
         &mut auth_cache_index,
         "binary-hydrocarbon-lite-v1",
@@ -1286,7 +1822,7 @@ fn run_panel_recovery_action_creates_stream_for_unbound_outlet_and_reruns_succes
 fn run_panel_recovery_action_focuses_unbound_inlet_port_end_to_end() {
     let cache_root = unique_temp_path("integration-run-panel-unbound-inlet-recovery");
     let mut auth_cache_index = sample_auth_cache_index(&[]);
-    write_cached_package(
+    write_official_binary_hydrocarbon_cached_package(
         &cache_root,
         &mut auth_cache_index,
         "binary-hydrocarbon-lite-v1",

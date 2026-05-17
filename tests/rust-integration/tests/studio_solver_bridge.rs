@@ -1,14 +1,23 @@
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use radishflow_studio::{StudioSolveRequest, solve_workspace_with_property_package};
-use rf_rust_integration::build_binary_demo_package_provider;
+use rf_rust_integration::{
+    NearBoundaryCaseKind, NearBoundaryStreamWindowCase, SYNTHETIC_DEMO_PACKAGE_ID,
+    SYNTHETIC_LIQUID_ONLY_PACKAGE_ID, SYNTHETIC_VAPOR_ONLY_PACKAGE_ID, assert_close,
+    binary_hydrocarbon_lite_near_boundary_stream_window_cases,
+    build_binary_hydrocarbon_lite_package_provider, build_synthetic_demo_package_provider,
+    build_synthetic_liquid_only_package_provider, build_synthetic_vapor_only_package_provider,
+    synthetic_single_phase_near_boundary_stream_window_cases,
+};
 use rf_store::parse_project_file_json;
 use rf_thermo::InMemoryPropertyPackageProvider;
-use rf_types::{StreamId, UnitId};
+use rf_types::{ComponentId, PhaseEquilibriumRegion, StreamId, UnitId};
 use rf_ui::{
     AppState, DocumentMetadata, FlowsheetDocument, RunPanelRecoveryActionKind,
     RunPanelRecoveryMutation, RunStatus,
 };
+
+const NEAR_BOUNDARY_FEED_PRESSURE_PA: f64 = 700_000.0;
 
 fn timestamp(seconds: u64) -> SystemTime {
     UNIX_EPOCH + Duration::from_secs(seconds)
@@ -27,11 +36,293 @@ fn app_state_from_project(
     ))
 }
 
+fn find_snapshot_stream<'a>(
+    snapshot: &'a rf_ui::SolveSnapshot,
+    stream_id: &str,
+) -> &'a rf_ui::StreamStateSnapshot {
+    snapshot
+        .streams
+        .iter()
+        .find(|stream| stream.stream_id == StreamId::new(stream_id))
+        .expect("expected snapshot stream")
+}
+
+fn assert_step_consumes_snapshot_stream(
+    snapshot: &rf_ui::SolveSnapshot,
+    unit_id: &str,
+    stream: &rf_ui::StreamStateSnapshot,
+) {
+    let step = snapshot
+        .steps
+        .iter()
+        .find(|step| step.unit_id == UnitId::new(unit_id))
+        .expect("expected consumer step");
+    assert!(
+        step.consumed_streams
+            .iter()
+            .any(|candidate| candidate == stream),
+        "expected `{unit_id}` to consume snapshot stream `{}`",
+        stream.stream_id
+    );
+    assert!(
+        stream
+            .phases
+            .iter()
+            .find(|phase| phase.label == "overall")
+            .and_then(|phase| phase.molar_enthalpy_j_per_mol)
+            .is_some(),
+        "expected snapshot stream `{}` to materialize overall enthalpy",
+        stream.stream_id
+    );
+    assert!(
+        stream.bubble_dew_window.is_some(),
+        "expected snapshot stream `{}` to materialize bubble/dew window",
+        stream.stream_id
+    );
+}
+
+fn assert_two_phase_window_spans_ui_stream(stream: &rf_ui::StreamStateSnapshot) {
+    let window = stream
+        .bubble_dew_window
+        .as_ref()
+        .expect("expected bubble/dew window");
+
+    assert_eq!(window.phase_region, PhaseEquilibriumRegion::TwoPhase);
+    assert!(window.dew_pressure_pa < stream.pressure_pa);
+    assert!(window.bubble_pressure_pa > stream.pressure_pa);
+    assert!(window.bubble_temperature_k < stream.temperature_k);
+    assert!(window.dew_temperature_k > stream.temperature_k);
+}
+
+fn assert_flash_outlet_boundary_windows_in_ui_snapshot(snapshot: &rf_ui::SolveSnapshot) {
+    let liquid = find_snapshot_stream(snapshot, "stream-liquid");
+    let liquid_window = liquid
+        .bubble_dew_window
+        .as_ref()
+        .expect("expected liquid outlet bubble/dew window");
+    assert_eq!(liquid_window.phase_region, PhaseEquilibriumRegion::TwoPhase);
+    assert_close(liquid_window.bubble_pressure_pa, liquid.pressure_pa, 1e-6);
+    assert_close(
+        liquid_window.bubble_temperature_k,
+        liquid.temperature_k,
+        1e-4,
+    );
+    assert!(liquid_window.dew_pressure_pa < liquid_window.bubble_pressure_pa);
+    assert!(liquid_window.dew_temperature_k > liquid_window.bubble_temperature_k);
+
+    let vapor = find_snapshot_stream(snapshot, "stream-vapor");
+    let vapor_window = vapor
+        .bubble_dew_window
+        .as_ref()
+        .expect("expected vapor outlet bubble/dew window");
+    assert_eq!(vapor_window.phase_region, PhaseEquilibriumRegion::TwoPhase);
+    assert_close(vapor_window.dew_pressure_pa, vapor.pressure_pa, 1e-6);
+    assert_close(vapor_window.dew_temperature_k, vapor.temperature_k, 1e-4);
+    assert!(vapor_window.bubble_pressure_pa > vapor_window.dew_pressure_pa);
+    assert!(vapor_window.bubble_temperature_k < vapor_window.dew_temperature_k);
+}
+
+fn assert_flash_outlet_window_semantics_for_phase_region(
+    snapshot: &rf_ui::SolveSnapshot,
+    expected_phase_region: PhaseEquilibriumRegion,
+) {
+    let liquid = find_snapshot_stream(snapshot, "stream-liquid");
+    let vapor = find_snapshot_stream(snapshot, "stream-vapor");
+
+    match expected_phase_region {
+        PhaseEquilibriumRegion::LiquidOnly => {
+            assert!(liquid.total_molar_flow_mol_s > 0.0);
+            assert_close(vapor.total_molar_flow_mol_s, 0.0, 1e-12);
+            assert_eq!(
+                liquid
+                    .bubble_dew_window
+                    .as_ref()
+                    .expect("expected liquid outlet bubble/dew window")
+                    .phase_region,
+                PhaseEquilibriumRegion::LiquidOnly
+            );
+            assert!(vapor.bubble_dew_window.is_none());
+        }
+        PhaseEquilibriumRegion::TwoPhase => {
+            assert_flash_outlet_boundary_windows_in_ui_snapshot(snapshot);
+        }
+        PhaseEquilibriumRegion::VaporOnly => {
+            assert_close(liquid.total_molar_flow_mol_s, 0.0, 1e-12);
+            assert!(vapor.total_molar_flow_mol_s > 0.0);
+            assert!(liquid.bubble_dew_window.is_none());
+            assert_eq!(
+                vapor
+                    .bubble_dew_window
+                    .as_ref()
+                    .expect("expected vapor outlet bubble/dew window")
+                    .phase_region,
+                PhaseEquilibriumRegion::VaporOnly
+            );
+        }
+    }
+}
+
+fn apply_binary_demo_composition(
+    app_state: &mut AppState,
+    stream_id: &str,
+    overall_mole_fractions: [f64; 2],
+) {
+    let stream = app_state
+        .workspace
+        .document
+        .flowsheet
+        .streams
+        .get_mut(&stream_id.into())
+        .expect("expected stream");
+    stream.overall_mole_fractions.clear();
+    stream
+        .overall_mole_fractions
+        .insert(ComponentId::new("methane"), overall_mole_fractions[0]);
+    stream
+        .overall_mole_fractions
+        .insert(ComponentId::new("ethane"), overall_mole_fractions[1]);
+}
+
+fn app_state_for_heater_boundary_case(
+    document_id: &str,
+    title: &str,
+    created_at_seconds: u64,
+    case: &NearBoundaryStreamWindowCase,
+) -> AppState {
+    let mut app_state = app_state_from_project(
+        include_str!(
+            "../../../examples/flowsheets/feed-heater-flash-binary-hydrocarbon.rfproj.json"
+        ),
+        document_id,
+        title,
+        created_at_seconds,
+    );
+    apply_binary_demo_composition(&mut app_state, "stream-feed", case.overall_mole_fractions);
+    app_state
+        .workspace
+        .document
+        .flowsheet
+        .streams
+        .get_mut(&"stream-feed".into())
+        .expect("expected feed stream")
+        .pressure_pa = NEAR_BOUNDARY_FEED_PRESSURE_PA;
+    let heated = app_state
+        .workspace
+        .document
+        .flowsheet
+        .streams
+        .get_mut(&"stream-heated".into())
+        .expect("expected heated stream");
+    heated.temperature_k = case.temperature_k;
+    heated.pressure_pa = case.pressure_pa;
+    app_state
+}
+
+fn assert_near_boundary_window_matches_case(
+    stream: &rf_ui::StreamStateSnapshot,
+    case: &NearBoundaryStreamWindowCase,
+) {
+    let window = stream
+        .bubble_dew_window
+        .as_ref()
+        .expect("expected bubble/dew window");
+
+    assert_close(stream.temperature_k, case.temperature_k, 1e-12);
+    assert_close(stream.pressure_pa, case.pressure_pa, 1e-9);
+    assert_eq!(
+        window.phase_region, case.expected_phase_region,
+        "{}",
+        case.label
+    );
+    assert_close(
+        window.bubble_pressure_pa,
+        case.expected_bubble_pressure_pa,
+        1e-6,
+    );
+    assert_close(window.dew_pressure_pa, case.expected_dew_pressure_pa, 1e-6);
+    assert_close(
+        window.bubble_temperature_k,
+        case.expected_bubble_temperature_k,
+        1e-4,
+    );
+    assert_close(
+        window.dew_temperature_k,
+        case.expected_dew_temperature_k,
+        1e-4,
+    );
+}
+
+fn synthetic_package_provider_for_case(
+    case: &NearBoundaryStreamWindowCase,
+) -> InMemoryPropertyPackageProvider {
+    match case.package_id {
+        SYNTHETIC_LIQUID_ONLY_PACKAGE_ID => build_synthetic_liquid_only_package_provider(),
+        SYNTHETIC_VAPOR_ONLY_PACKAGE_ID => build_synthetic_vapor_only_package_provider(),
+        _ => panic!("unexpected synthetic package id `{}`", case.package_id),
+    }
+}
+
+fn apply_synthetic_demo_composition(
+    app_state: &mut AppState,
+    stream_id: &str,
+    overall_mole_fractions: [f64; 2],
+) {
+    let stream = app_state
+        .workspace
+        .document
+        .flowsheet
+        .streams
+        .get_mut(&stream_id.into())
+        .expect("expected stream");
+    stream.overall_mole_fractions.clear();
+    stream
+        .overall_mole_fractions
+        .insert(ComponentId::new("component-a"), overall_mole_fractions[0]);
+    stream
+        .overall_mole_fractions
+        .insert(ComponentId::new("component-b"), overall_mole_fractions[1]);
+}
+
+fn app_state_for_synthetic_heater_boundary_case(
+    document_id: &str,
+    title: &str,
+    created_at_seconds: u64,
+    case: &NearBoundaryStreamWindowCase,
+) -> AppState {
+    let mut app_state = app_state_from_project(
+        include_str!("../../../examples/flowsheets/feed-heater-flash-synthetic-demo.rfproj.json"),
+        document_id,
+        title,
+        created_at_seconds,
+    );
+    apply_synthetic_demo_composition(&mut app_state, "stream-feed", case.overall_mole_fractions);
+    app_state
+        .workspace
+        .document
+        .flowsheet
+        .streams
+        .get_mut(&"stream-feed".into())
+        .expect("expected feed stream")
+        .pressure_pa = case.pressure_pa;
+    let heated = app_state
+        .workspace
+        .document
+        .flowsheet
+        .streams
+        .get_mut(&"stream-heated".into())
+        .expect("expected heated stream");
+    heated.temperature_k = case.temperature_k;
+    heated.pressure_pa = case.pressure_pa;
+    app_state
+}
+
 #[test]
 fn studio_solver_bridge_maps_project_snapshot_into_app_state_end_to_end() {
-    let provider = build_binary_demo_package_provider();
+    let provider = build_binary_hydrocarbon_lite_package_provider();
     let mut app_state = app_state_from_project(
-        include_str!("../../../examples/flowsheets/feed-heater-flash.rfproj.json"),
+        include_str!(
+            "../../../examples/flowsheets/feed-heater-flash-binary-hydrocarbon.rfproj.json"
+        ),
         "doc-studio-success",
         "Studio Success Demo",
         10,
@@ -89,16 +380,309 @@ fn studio_solver_bridge_maps_project_snapshot_into_app_state_end_to_end() {
         StreamId::new("stream-heated")
     );
     assert_eq!(snapshot.steps[1].streams[0].label, "Heated Outlet");
+
+    let feed = find_snapshot_stream(snapshot, "stream-feed");
+    assert_step_consumes_snapshot_stream(snapshot, "heater-1", feed);
+
+    let heated = find_snapshot_stream(snapshot, "stream-heated");
+    assert_eq!(
+        heated
+            .bubble_dew_window
+            .as_ref()
+            .expect("expected heated bubble/dew window")
+            .phase_region,
+        PhaseEquilibriumRegion::VaporOnly
+    );
+
+    let flash_step = snapshot
+        .steps
+        .iter()
+        .find(|step| step.unit_id == UnitId::new("flash-1"))
+        .expect("expected flash step");
+    assert_eq!(flash_step.consumed_streams.len(), 1);
+    assert_eq!(
+        flash_step.consumed_streams[0].stream_id,
+        StreamId::new("stream-heated")
+    );
+    assert_eq!(
+        flash_step.consumed_streams[0].bubble_dew_window,
+        heated.bubble_dew_window
+    );
+    assert_flash_outlet_window_semantics_for_phase_region(
+        snapshot,
+        PhaseEquilibriumRegion::VaporOnly,
+    );
+}
+
+#[test]
+fn studio_solver_bridge_preserves_intermediate_stream_windows_across_steps_end_to_end() {
+    let provider = build_synthetic_demo_package_provider();
+    let mut app_state = app_state_from_project(
+        include_str!(
+            "../../../examples/flowsheets/feed-mixer-heater-flash-synthetic-demo.rfproj.json"
+        ),
+        "doc-studio-intermediate-window-success",
+        "Studio Intermediate Window Success Demo",
+        15,
+    );
+    app_state
+        .workspace
+        .document
+        .flowsheet
+        .streams
+        .get_mut(&"stream-feed-a".into())
+        .expect("expected feed-a stream")
+        .pressure_pa = 100_000.0;
+
+    solve_workspace_with_property_package(
+        &mut app_state,
+        &provider,
+        &StudioSolveRequest::new(SYNTHETIC_DEMO_PACKAGE_ID, "snapshot-intermediate-1", 1),
+    )
+    .expect("expected solve");
+
+    let snapshot = app_state
+        .workspace
+        .snapshot_history
+        .back()
+        .expect("expected stored snapshot");
+
+    let feed_a = find_snapshot_stream(snapshot, "stream-feed-a");
+    let feed_b = find_snapshot_stream(snapshot, "stream-feed-b");
+    assert_step_consumes_snapshot_stream(snapshot, "mixer-1", feed_a);
+    assert_step_consumes_snapshot_stream(snapshot, "mixer-1", feed_b);
+
+    let mixed = find_snapshot_stream(snapshot, "stream-mix-out");
+    let heated = find_snapshot_stream(snapshot, "stream-heated");
+    assert_two_phase_window_spans_ui_stream(mixed);
+    assert_two_phase_window_spans_ui_stream(heated);
+
+    let heater_step = snapshot
+        .steps
+        .iter()
+        .find(|step| step.unit_id == UnitId::new("heater-1"))
+        .expect("expected heater step");
+    assert_eq!(heater_step.consumed_streams.len(), 1);
+    assert_eq!(
+        heater_step.consumed_streams[0].stream_id,
+        StreamId::new("stream-mix-out")
+    );
+    assert_eq!(
+        heater_step.consumed_streams[0].bubble_dew_window,
+        mixed.bubble_dew_window
+    );
+
+    let flash_step = snapshot
+        .steps
+        .iter()
+        .find(|step| step.unit_id == UnitId::new("flash-1"))
+        .expect("expected flash step");
+    assert_eq!(flash_step.consumed_streams.len(), 1);
+    assert_eq!(
+        flash_step.consumed_streams[0].stream_id,
+        StreamId::new("stream-heated")
+    );
+    assert_eq!(
+        flash_step.consumed_streams[0].bubble_dew_window,
+        heated.bubble_dew_window
+    );
+    assert_flash_outlet_boundary_windows_in_ui_snapshot(snapshot);
+}
+
+#[test]
+fn studio_solver_bridge_preserves_pressure_near_boundary_windows_across_flash_inlet_end_to_end() {
+    let provider = build_binary_hydrocarbon_lite_package_provider();
+
+    for (index, case) in binary_hydrocarbon_lite_near_boundary_stream_window_cases()
+        .into_iter()
+        .filter(|case| case.kind == NearBoundaryCaseKind::Pressure)
+        .enumerate()
+    {
+        let mut app_state = app_state_for_heater_boundary_case(
+            &format!("doc-studio-pressure-{index}"),
+            &case.label,
+            40 + index as u64,
+            &case,
+        );
+
+        solve_workspace_with_property_package(
+            &mut app_state,
+            &provider,
+            &StudioSolveRequest::new(
+                "binary-hydrocarbon-lite-v1",
+                format!("snapshot-pressure-{index}"),
+                1,
+            ),
+        )
+        .expect("expected solve");
+
+        let snapshot = app_state
+            .workspace
+            .snapshot_history
+            .back()
+            .expect("expected stored snapshot");
+        let heated = find_snapshot_stream(snapshot, "stream-heated");
+        assert_near_boundary_window_matches_case(heated, &case);
+
+        let flash_step = snapshot
+            .steps
+            .iter()
+            .find(|step| step.unit_id == UnitId::new("flash-1"))
+            .expect("expected flash step");
+        assert_eq!(flash_step.consumed_streams.len(), 1, "{}", case.label);
+        assert_eq!(&flash_step.consumed_streams[0], heated, "{}", case.label);
+    }
+}
+
+#[test]
+fn studio_solver_bridge_preserves_temperature_near_boundary_windows_across_flash_inlet_end_to_end()
+{
+    let provider = build_binary_hydrocarbon_lite_package_provider();
+
+    for (index, case) in binary_hydrocarbon_lite_near_boundary_stream_window_cases()
+        .into_iter()
+        .filter(|case| case.kind == NearBoundaryCaseKind::Temperature)
+        .enumerate()
+    {
+        let mut app_state = app_state_for_heater_boundary_case(
+            &format!("doc-studio-temperature-{index}"),
+            &case.label,
+            80 + index as u64,
+            &case,
+        );
+
+        solve_workspace_with_property_package(
+            &mut app_state,
+            &provider,
+            &StudioSolveRequest::new(
+                "binary-hydrocarbon-lite-v1",
+                format!("snapshot-temperature-{index}"),
+                1,
+            ),
+        )
+        .expect("expected solve");
+
+        let snapshot = app_state
+            .workspace
+            .snapshot_history
+            .back()
+            .expect("expected stored snapshot");
+        let heated = find_snapshot_stream(snapshot, "stream-heated");
+        assert_near_boundary_window_matches_case(heated, &case);
+
+        let flash_step = snapshot
+            .steps
+            .iter()
+            .find(|step| step.unit_id == UnitId::new("flash-1"))
+            .expect("expected flash step");
+        assert_eq!(flash_step.consumed_streams.len(), 1, "{}", case.label);
+        assert_eq!(&flash_step.consumed_streams[0], heated, "{}", case.label);
+    }
+}
+
+#[test]
+fn studio_solver_bridge_preserves_synthetic_single_phase_pressure_near_boundary_windows_across_flash_inlet_end_to_end()
+ {
+    for (index, case) in synthetic_single_phase_near_boundary_stream_window_cases()
+        .into_iter()
+        .filter(|case| case.kind == NearBoundaryCaseKind::Pressure)
+        .enumerate()
+    {
+        let provider = synthetic_package_provider_for_case(&case);
+        let mut app_state = app_state_for_synthetic_heater_boundary_case(
+            &format!("doc-studio-synthetic-pressure-{index}"),
+            &case.label,
+            120 + index as u64,
+            &case,
+        );
+
+        solve_workspace_with_property_package(
+            &mut app_state,
+            &provider,
+            &StudioSolveRequest::new(
+                case.package_id,
+                format!("snapshot-synthetic-pressure-{index}"),
+                1,
+            ),
+        )
+        .expect("expected solve");
+
+        let snapshot = app_state
+            .workspace
+            .snapshot_history
+            .back()
+            .expect("expected stored snapshot");
+        let heated = find_snapshot_stream(snapshot, "stream-heated");
+        assert_near_boundary_window_matches_case(heated, &case);
+
+        let flash_step = snapshot
+            .steps
+            .iter()
+            .find(|step| step.unit_id == UnitId::new("flash-1"))
+            .expect("expected flash step");
+        assert_eq!(flash_step.consumed_streams.len(), 1, "{}", case.label);
+        assert_eq!(&flash_step.consumed_streams[0], heated, "{}", case.label);
+    }
+}
+
+#[test]
+fn studio_solver_bridge_preserves_synthetic_single_phase_temperature_near_boundary_windows_across_flash_inlet_end_to_end()
+ {
+    for (index, case) in synthetic_single_phase_near_boundary_stream_window_cases()
+        .into_iter()
+        .filter(|case| case.kind == NearBoundaryCaseKind::Temperature)
+        .enumerate()
+    {
+        let provider = synthetic_package_provider_for_case(&case);
+        let mut app_state = app_state_for_synthetic_heater_boundary_case(
+            &format!("doc-studio-synthetic-temperature-{index}"),
+            &case.label,
+            160 + index as u64,
+            &case,
+        );
+
+        solve_workspace_with_property_package(
+            &mut app_state,
+            &provider,
+            &StudioSolveRequest::new(
+                case.package_id,
+                format!("snapshot-synthetic-temperature-{index}"),
+                1,
+            ),
+        )
+        .expect("expected solve");
+
+        let snapshot = app_state
+            .workspace
+            .snapshot_history
+            .back()
+            .expect("expected stored snapshot");
+        let heated = find_snapshot_stream(snapshot, "stream-heated");
+        assert_near_boundary_window_matches_case(heated, &case);
+
+        let flash_step = snapshot
+            .steps
+            .iter()
+            .find(|step| step.unit_id == UnitId::new("flash-1"))
+            .expect("expected flash step");
+        assert_eq!(flash_step.consumed_streams.len(), 1, "{}", case.label);
+        assert_eq!(&flash_step.consumed_streams[0], heated, "{}", case.label);
+    }
 }
 
 #[test]
 fn studio_solver_bridge_records_solver_failure_notice_and_target_unit_end_to_end() {
-    let provider = build_binary_demo_package_provider();
+    let provider = build_synthetic_demo_package_provider();
     let project = parse_project_file_json(include_str!(
-        "../../../examples/flowsheets/feed-valve-flash.rfproj.json"
+        "../../../examples/flowsheets/feed-valve-flash-synthetic-demo.rfproj.json"
     ))
     .expect("expected project parse");
     let mut flowsheet = project.document.flowsheet;
+    flowsheet
+        .streams
+        .get_mut(&"stream-feed".into())
+        .expect("expected feed stream")
+        .pressure_pa = 100_000.0;
     flowsheet
         .streams
         .get_mut(&"stream-throttled".into())
@@ -112,7 +696,7 @@ fn studio_solver_bridge_records_solver_failure_notice_and_target_unit_end_to_end
     let error = solve_workspace_with_property_package(
         &mut app_state,
         &provider,
-        &StudioSolveRequest::new("binary-hydrocarbon-lite-v1", "snapshot-failure-1", 1),
+        &StudioSolveRequest::new(SYNTHETIC_DEMO_PACKAGE_ID, "snapshot-failure-1", 1),
     )
     .expect_err("expected solve failure");
 
@@ -154,7 +738,7 @@ fn studio_solver_bridge_records_solver_failure_notice_and_target_unit_end_to_end
 fn studio_solver_bridge_records_missing_package_without_solver_code_end_to_end() {
     let provider = InMemoryPropertyPackageProvider::default();
     let mut app_state = app_state_from_project(
-        include_str!("../../../examples/flowsheets/feed-heater-flash.rfproj.json"),
+        include_str!("../../../examples/flowsheets/feed-heater-flash-synthetic-demo.rfproj.json"),
         "doc-studio-missing-package",
         "Studio Missing Package Demo",
         30,
@@ -192,7 +776,7 @@ fn studio_solver_bridge_records_missing_package_without_solver_code_end_to_end()
 
 #[test]
 fn studio_solver_bridge_records_invalid_port_signature_restore_target_end_to_end() {
-    let provider = build_binary_demo_package_provider();
+    let provider = build_binary_hydrocarbon_lite_package_provider();
     let mut app_state = app_state_from_project(
         include_str!("../../../examples/flowsheets/failures/invalid-port-signature.rfproj.json"),
         "doc-studio-invalid-port-signature-failure",
@@ -269,7 +853,7 @@ fn studio_solver_bridge_records_invalid_port_signature_restore_target_end_to_end
 
 #[test]
 fn studio_solver_bridge_records_cycle_failure_context_end_to_end() {
-    let provider = build_binary_demo_package_provider();
+    let provider = build_binary_hydrocarbon_lite_package_provider();
     let mut app_state = app_state_from_project(
         include_str!("../../../examples/flowsheets/failures/multi-unit-cycle.rfproj.json"),
         "doc-studio-cycle-failure",
@@ -356,7 +940,7 @@ fn studio_solver_bridge_records_cycle_failure_context_end_to_end() {
 
 #[test]
 fn studio_solver_bridge_records_self_loop_disconnect_target_end_to_end() {
-    let provider = build_binary_demo_package_provider();
+    let provider = build_binary_hydrocarbon_lite_package_provider();
     let mut app_state = app_state_from_project(
         include_str!("../../../examples/flowsheets/failures/self-loop-cycle.rfproj.json"),
         "doc-studio-self-loop-failure",
@@ -440,7 +1024,7 @@ fn studio_solver_bridge_records_self_loop_disconnect_target_end_to_end() {
 
 #[test]
 fn studio_solver_bridge_records_missing_upstream_cleanup_target_end_to_end() {
-    let provider = build_binary_demo_package_provider();
+    let provider = build_binary_hydrocarbon_lite_package_provider();
     let mut app_state = app_state_from_project(
         include_str!("../../../examples/flowsheets/failures/missing-upstream-source.rfproj.json"),
         "doc-studio-missing-upstream-failure",
@@ -526,7 +1110,7 @@ fn studio_solver_bridge_records_missing_upstream_cleanup_target_end_to_end() {
 
 #[test]
 fn studio_solver_bridge_records_duplicate_source_disconnect_target_end_to_end() {
-    let provider = build_binary_demo_package_provider();
+    let provider = build_binary_hydrocarbon_lite_package_provider();
     let mut app_state = app_state_from_project(
         include_str!("../../../examples/flowsheets/failures/duplicate-upstream-source.rfproj.json"),
         "doc-studio-duplicate-source-failure",
@@ -613,7 +1197,7 @@ fn studio_solver_bridge_records_duplicate_source_disconnect_target_end_to_end() 
 
 #[test]
 fn studio_solver_bridge_records_duplicate_sink_disconnect_target_end_to_end() {
-    let provider = build_binary_demo_package_provider();
+    let provider = build_binary_hydrocarbon_lite_package_provider();
     let mut app_state = app_state_from_project(
         include_str!("../../../examples/flowsheets/failures/duplicate-downstream-sink.rfproj.json"),
         "doc-studio-duplicate-sink-failure",
@@ -696,7 +1280,7 @@ fn studio_solver_bridge_records_duplicate_sink_disconnect_target_end_to_end() {
 
 #[test]
 fn studio_solver_bridge_records_orphan_stream_delete_target_end_to_end() {
-    let provider = build_binary_demo_package_provider();
+    let provider = build_binary_hydrocarbon_lite_package_provider();
     let mut app_state = app_state_from_project(
         include_str!("../../../examples/flowsheets/failures/orphan-stream.rfproj.json"),
         "doc-studio-orphan-stream-failure",
@@ -766,7 +1350,7 @@ fn studio_solver_bridge_records_orphan_stream_delete_target_end_to_end() {
 
 #[test]
 fn studio_solver_bridge_records_unbound_outlet_create_stream_target_end_to_end() {
-    let provider = build_binary_demo_package_provider();
+    let provider = build_binary_hydrocarbon_lite_package_provider();
     let mut app_state = app_state_from_project(
         include_str!("../../../examples/flowsheets/failures/unbound-outlet-port.rfproj.json"),
         "doc-studio-unbound-outlet-failure",
@@ -844,7 +1428,7 @@ fn studio_solver_bridge_records_unbound_outlet_create_stream_target_end_to_end()
 
 #[test]
 fn studio_solver_bridge_records_unbound_inlet_inspect_target_end_to_end() {
-    let provider = build_binary_demo_package_provider();
+    let provider = build_binary_hydrocarbon_lite_package_provider();
     let mut app_state = app_state_from_project(
         include_str!("../../../examples/flowsheets/failures/unbound-inlet-port.rfproj.json"),
         "doc-studio-unbound-inlet-failure",

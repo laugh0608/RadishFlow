@@ -42,6 +42,8 @@ mod studio_window_host;
 mod studio_window_host_manager;
 mod studio_window_session;
 mod studio_window_timer_driver;
+#[doc(hidden)]
+pub mod test_support;
 mod workspace_control;
 mod workspace_run_command;
 mod workspace_solve_service;
@@ -254,7 +256,8 @@ pub use studio_gui_shortcut_router::{
     StudioGuiFocusContext, StudioGuiShortcutIgnoreReason, StudioGuiShortcutRoute, route_shortcut,
 };
 pub use studio_gui_snapshot::{
-    StudioGuiInspectorCompositionComponentActionSnapshot,
+    StudioGuiDiagnosticStreamSnapshot, StudioGuiFailureDiagnosticContextSnapshot,
+    StudioGuiFailureDiagnosticPortSnapshot, StudioGuiInspectorCompositionComponentActionSnapshot,
     StudioGuiInspectorCompositionSummarySnapshot, StudioGuiInspectorPropertyNoticeSnapshot,
     StudioGuiInspectorTargetDetailSnapshot, StudioGuiInspectorTargetFieldSnapshot,
     StudioGuiInspectorTargetFieldValidationSnapshot,
@@ -296,9 +299,9 @@ pub use studio_gui_window_model::{
     StudioGuiWindowResultInspectorModel, StudioGuiWindowResultInspectorPhaseComparisonRowModel,
     StudioGuiWindowResultInspectorStreamOptionModel, StudioGuiWindowRuntimeAreaModel,
     StudioGuiWindowSolveSnapshotModel, StudioGuiWindowSolveStepModel,
-    StudioGuiWindowStreamResultModel, StudioGuiWindowStreamSummaryRowModel,
-    StudioGuiWindowToolbarItemModel, StudioGuiWindowToolbarSectionModel,
-    StudioGuiWindowUnitExecutionResultModel,
+    StudioGuiWindowStreamResultModel, StudioGuiWindowStreamResultReferenceModel,
+    StudioGuiWindowStreamSummaryRowModel, StudioGuiWindowToolbarItemModel,
+    StudioGuiWindowToolbarSectionModel, StudioGuiWindowUnitExecutionResultModel,
 };
 pub use studio_inspector_draft_command::{
     StudioInspectorCompositionComponentAddCommand,
@@ -326,7 +329,7 @@ pub use studio_runtime::{
     StudioRuntimeHostEffect, StudioRuntimeHostEffectId, StudioRuntimeHostFollowUp,
     StudioRuntimeOutput, StudioRuntimeReport, StudioRuntimeTimerHandleSlot,
     StudioRuntimeTimerHostCommand, StudioRuntimeTimerHostState, StudioRuntimeTimerHostTransition,
-    StudioRuntimeTrigger,
+    StudioRuntimeTrigger, StudioRuntimeUntitledProject,
 };
 pub use studio_window_host::{
     StudioRuntimeHostPort, StudioRuntimeHostPortOutput, StudioWindowHostEvent, StudioWindowHostId,

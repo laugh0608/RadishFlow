@@ -200,6 +200,14 @@ impl StudioGuiDriver {
         self.host.replace_canvas_suggestions(suggestions);
     }
 
+    pub fn apply_transient_window_layout(
+        &mut self,
+        window_id: Option<StudioWindowHostId>,
+        mutation: StudioGuiWindowLayoutMutation,
+    ) -> RfResult<StudioGuiHostWindowLayoutUpdateResult> {
+        self.host.apply_transient_window_layout(window_id, mutation)
+    }
+
     pub fn begin_canvas_place_unit(
         &mut self,
         unit_kind: impl Into<String>,

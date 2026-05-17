@@ -7,6 +7,7 @@ use crate::{
 };
 
 pub type StudioRuntimeConfig = crate::bootstrap::StudioBootstrapConfig;
+pub type StudioRuntimeUntitledProject = crate::bootstrap::StudioBootstrapUntitledProject;
 pub type StudioRuntimeTrigger = crate::bootstrap::StudioBootstrapTrigger;
 pub type StudioRuntimeDispatch = crate::bootstrap::StudioBootstrapDispatch;
 pub type StudioRuntimeReport = crate::bootstrap::StudioBootstrapReport;

@@ -1,10 +1,10 @@
 # App Architecture
 
-更新时间：2026-04-30
+更新时间：2026-05-16
 
 ## 当前目标
 
-现阶段 App 方向不以“尽快做出可点击界面”为优先，而以“先把桌面应用架构边界和未来扩展面定清楚”为优先。
+现阶段 App 方向已经从“先把桌面应用架构边界和未来扩展面定清楚”推进到 MVP α 验收硬化与 Studio 可用性收口。当前仍不做完整商业化界面或复杂交互扩张，但需要把已进入验收路径的 Studio 首页、工作台分区、运行入口、消息反馈和关闭行为规范化，避免用户无法判断如何打开示例、如何运行、结果在哪里、错误在哪里以及窗口是否正常退出。
 
 这意味着当前阶段关注的是：
 
@@ -13,7 +13,7 @@
 - 文档模型与状态组织方式
 - 画布、属性面板、运行控制、结果展示之间的关系
 
-而不是立即深挖视觉打磨或复杂交互实现。
+而不是立即扩展自由连线编辑器、完整拖拽布局编辑器、完整报表系统或未来型多文档工作台。
 
 ## 当前已冻结决策
 
@@ -54,6 +54,9 @@
 - 负责控制面 `entitlement` / `manifest` / `lease` / `offline refresh` 的 HTTP client、协议映射与应用层编排
 - 负责把下载租约、下载 fetcher 与本地缓存落盘串成单一路径
 - 负责从 `PropertyPackageProvider` 或本地 auth cache 组装最小真实求解链路，并把 `rf-solver::SolveSnapshot` 回写到 `rf-ui::AppState`
+- 负责把当前 Studio shell 的用户入口组织为可复现的 MVP α 工作流：启动后默认显示 Home Dashboard，进入 case 后再暴露 `Home / 打开示例 / 新建空白 / 打开项目... / 运行 / 保存 / 另存为... / 视图`，默认隐藏低频命令大全和调试式布局控制，保留命令面板作为高级入口
+- 负责在 GUI shell 层提供用户操作与求解审计输出；默认 stderr 日志只作为开发态 smoke 和诊断入口，不替代未来正式审计 / telemetry 设计
+- 负责遵守 `eframe` / `winit` 桌面事件循环约束：Windows 事件循环在主线程创建，最后一个 viewport close 请求不得被 `CancelClose` 拦截，关闭前只清理逻辑窗口状态并停止当帧 fallback 布局渲染
 
 不应承担：
 
@@ -61,6 +64,19 @@
 - 单元求解逻辑
 - 画布图元绘制细节
 - 项目文件读写细节
+- 把视觉主题、按钮样式、面板密度或日志展示直接写成求解 / 文档语义
+
+### Studio Shell UI 规范化边界
+
+2026-05-16 人工 smoke 已确认，当前 Studio 默认首页和进入 case 后的工作台第一轮分区已经落地。shell UI 边界按以下稳定入口治理：
+
+- Home Dashboard：应用启动后的默认首页，只承载 Start actions、Recent Cases、Example Cases、Environment 和 Messages；不读取或解释 `SolveSnapshot`，不直接承载流程图编辑。
+- 顶部主路径：进入 case 后只保留用户主路径、当前项目摘要和必要状态，不把调试计数、菜单全集和布局控制置于默认第一视野。
+- 操作入口：`Home`、打开示例、新建空白、打开项目、运行、保存、另存为和视图入口保持可发现；低频命令进入命令面板或 `视图` 菜单。
+- 工作台分区：左侧 `项目 / 示例项目 / 放置` 负责项目对象、示例入口与 MVP 放置入口；右侧 `检查器 / 结果 / 运行 / 物性包` 负责属性编辑、结果审阅、运行上下文和物性包状态；底部 `消息 / 运行日志 / 结果表 / 诊断` 承接可行动消息、运行日志和表格结果。
+- 结果反馈：右侧结果、底部结果表、Active Inspector 继续只读消费 `SolveSnapshot`，UI 优化不得新增第二套结果缓存或求解解释。
+- 日志与审计：开发态 stderr 与 GUI activity 可继续服务 smoke，但正式 UI 只展示用户能采取行动的摘要，不把平台 timer 或 host internals 混入主路径
+- 关闭行为：最后窗口关闭应自然结束进程；为避免关闭瞬间闪 fallback 布局，shell 可在逻辑窗口清理后停止当帧渲染，但不能拦截原生关闭请求
 
 ### `rf-ui`
 
@@ -594,6 +610,8 @@ pub struct StepSnapshot {
     pub index: usize,
     pub unit_id: UnitId,
     pub summary: String,
+    pub execution: UnitExecutionSnapshot,
+    pub consumed_streams: Vec<StreamStateSnapshot>,
     pub streams: Vec<StreamStateSnapshot>,
 }
 ```
@@ -604,7 +622,8 @@ pub struct StepSnapshot {
 - 快照通过 `sequence` 区分同一修订号上的多次运行
 - `summary` 与 `SolveSessionState.latest_diagnostic` 共享同一摘要语义
 - 步骤序列保持稳定顺序
-- 步骤内部记录单元执行结果和流股状态
+- 步骤内部记录单元执行结果，以及结构化输入流股 `consumed_streams` 和输出流股 `streams`
+- `StepSnapshot` 的输入/输出流股应由 solver step 直接物化，UI / workspace consumer 只读消费这份 DTO，不再按 stream id 回填或临时拼装第二套 step 结果
 - 诊断信息与数值结果并列保存
 - 快照实体由 `WorkspaceState.snapshot_history` 持有，并受 `UserPreferences.snapshot_history_limit` 约束
 
@@ -795,14 +814,19 @@ pub struct StepSnapshot {
 - `run_studio_bootstrap(...)` 当前已补出 `StudioBootstrapTrigger::{Intent, WidgetPrimaryAction, WidgetAction}`，并默认走 `WidgetPrimaryAction` 路径，作为最小桌面入口对运行栏组件驱动的第一版接线
 - `run_studio_bootstrap(...)` 与 `main.rs` 当前已开始直接消费这组运行栏组件/交互 DTO，而不再只打印控制面布尔摘要或在 Studio 里手拼文本布局
 
-当前明确还没做的事：
+当前已落地与仍待细化的边界：
 
-- 虽然已有 `StudioAppFacade` 作为应用命令入口，并且已接到 `main.rs` 的最小 bootstrap 触发点，但还没有把它正式挂到最终桌面命令、按钮或运行服务入口
-- 虽然已补出 `WorkspaceControlAction` / `WorkspaceControlState` 这一层运行栏契约，也已补出 `ResumeWorkspace` 作为 `Hold -> Active` 的显式应用命令，并已在 `rf-ui` 中冻结到 `RunPanelWidgetModel`、在 Studio 中冻结到 `run_panel_driver`；但“手动运行 / 自动运行 / Hold 恢复”的完整桌面 UI 事件流和最终按钮绑定口径仍未最终冻结
+- 手动运行已经进入真实 GUI 工作台主路径：顶部 `运行` 直接派发 `run_panel.run_manual`，并通过 command registry 的 availability / disabled reason 控制按钮状态
+- Home Dashboard 当前是 Studio shell 的默认第一视野；`新建空白项目 / 打开项目 / 打开示例 / 继续上次项目` 只触发文档生命周期动作或 MRU 打开，不写入当前 `FlowsheetDocument`
+- `Home / 打开示例 / 新建空白 / 打开项目... / 保存 / 另存为... / 视图 / 命令面板` 当前作为进入 case 后的 Studio shell 主路径；默认隐藏命令大全只是 shell 启动时的 host-local transient layout preference，不写入项目文档语义
+- `StudioAppFacade`、`WorkspaceControlAction`、`WorkspaceControlState`、`RunPanelWidgetModel` 与 `run_panel_driver` 已经构成手动运行入口的稳定链路；后续仍待细化的是后台调度、取消、自动运行与 `Hold -> Active` 恢复在最终 GUI 中的完整交互表达
 - Studio 当前又已把 app-host 侧 GUI 动作入口进一步冻结为 `StudioAppHostController::dispatch_ui_command(command_id)`，让菜单、快捷键和命令面板后续都可以直接按稳定 command id 触发，而不必继续持有 `UiAction` 枚举或回退到 raw host outcome
 - 当前首批已接成真实宿主命令的 run panel command registry 为 `run_panel.run_manual`、`run_panel.resume_workspace`、`run_panel.set_hold`、`run_panel.set_active` 与 `run_panel.recover_failure`；后续桌面命令绑定应优先复用这组 registry，而不是在各入口重复解释 availability、disabled reason 或底层 widget 事件
 - Studio 当前又已把 canvas suggestion 与离散 layout nudge 交互正式纳入同一条 command surface：`canvas.accept_focused`、`canvas.reject_focused`、`canvas.focus_next`、`canvas.focus_previous` 与 `canvas.move_selected_unit.left/right/up/down` 当前也应通过 `dispatch_ui_command(command_id)`、`StudioGuiCommandRegistry` 与对应 widget action 统一派发，而不再保留一条长期并行的 widget/shortcut 私有 typed 事件主线；layout nudge 只写 `<project>.rfstudio-layout.json` sidecar，缺少 sidecar 坐标时先按 transient grid slot pin 出初始位置，不进入项目文档 revision/history；selection presentation 与 command result 应显式暴露 `sidecar position` / `transient grid` 来源，避免真实 GUI 再自行猜测 pin 语义
 - Studio 当前结果审阅/错误定位入口也已进一步收口为统一 `StudioGuiWindowDiagnosticTargetActionModel`：失败摘要、Result Inspector、Active Inspector 与求解步骤都会汇总可执行诊断目标 action，真实 GUI 只消费这份 presentation 并继续通过既有 `command_id` 派发，不新增一条错误处理或导航私有分支
+- Studio 当前 `Result Inspector` 的 `selected_stream / comparison_stream / selected_unit` 也已冻结为 shell-local 视图选择态：它们只决定当前显示哪一块 `SolveSnapshot` 结果面，不缓存第二份结果；若 base stream 切换成当前 compared stream，comparison 允许按现有规则清空，但这仍只是 selector state 复位，不代表结果语义变化
+- Studio 当前 near-boundary 结果消费链又已进一步收口到 `window_model -> shell runtime` 的同一条 action surface：`inspector.focus_stream:*` / `inspector.focus_unit:*`、comparison `Inspect`、`DiagnosticTargets` section，以及 shared diagnostic action renderer 的 `source | target | summary` 文本都应继续从同一份 `StudioGuiWindowDiagnosticTargetActionModel` 或既有 focus action 派生；真实 GUI 不应在 runtime 最终渲染层再发明一套 target 语义或导航分支
+- Studio 当前 `StudioGuiCommandRegistry` 也会从最新 `SolveSnapshot` 派生 `Results` command section：result stream / unit navigation 只暴露为既有 `inspector.focus_stream:*` / `inspector.focus_unit:*` command，palette、menu、command list 与 runtime 小型 action button 都继续通过 `dispatch_ui_command(command_id)` 进入同一条 host 派发链，不在各自入口复制 target 解析
 - Studio 当前失败详情展示也只消费 `WorkspaceControlState.latest_diagnostic` 中已有结构化字段，直接显示 primary code、revision、severity、count 与相关 unit / stream / port target；port target 当前只定位所属 unit，真实 GUI 不应从错误 message 文本里反解析或私造端口级 command
 - `StudioAppHostController` 当前对 `DispatchCanvasInteraction` 不应再无条件 `refresh_local_canvas_suggestions()`；local-rules refresh 只应发生在真正改写文档或显式要求重算 suggestion 的路径上，否则会把 `FocusNext/Reject` 刚生成的正式焦点状态冲回首条 suggestion，破坏 GUI 命令面的连续交互语义
 - `studio_gui_shell` 当前也已通过 shell 级等价回归锁定 `run_panel.set_active`、`run_panel.recover_failure`、`canvas.accept_focused`、`canvas.reject_focused`、`canvas.focus_next` 与 `canvas.focus_previous` 在菜单、工具栏、命令面板与快捷键之间的共享派发语义；真实 GUI 后续不应再为某个入口保留“看起来一样、实际另走一条逻辑”的私有状态改写分支

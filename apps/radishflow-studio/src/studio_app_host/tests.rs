@@ -32,17 +32,13 @@ fn solver_failure_config() -> (crate::StudioRuntimeConfig, PathBuf) {
         .as_nanos();
     let project_path =
         std::env::temp_dir().join(format!("radishflow-app-host-recovery-{unique}.rfproj.json"));
-    let project_json = include_str!("../../../../examples/flowsheets/feed-valve-flash.rfproj.json")
-        .replacen(
-            "\"name\": \"Valve Outlet\",\n          \"temperature_k\": 300.0,\n          \"pressure_pa\": 90000.0,",
-            "\"name\": \"Valve Outlet\",\n          \"temperature_k\": 300.0,\n          \"pressure_pa\": 130000.0,",
-            1,
-        );
+    let project_json = crate::test_support::build_valve_solver_failure_project_json();
     fs::write(&project_path, project_json).expect("expected temporary failure project");
 
     (
         crate::StudioRuntimeConfig {
             project_path: project_path.clone(),
+            untitled_blank_project: None,
             entitlement_preflight: StudioRuntimeEntitlementPreflight::Skip,
             entitlement_seed: StudioRuntimeEntitlementSeed::Synced,
             trigger: crate::StudioRuntimeTrigger::WidgetAction(RunPanelActionId::RunManual),
@@ -59,18 +55,7 @@ fn flash_drum_local_rules_synced_config() -> (crate::StudioRuntimeConfig, PathBu
     let project_path = std::env::temp_dir().join(format!(
         "radishflow-app-host-local-rules-{unique}.rfproj.json"
     ));
-    let project_json =
-        include_str!("../../../../examples/flowsheets/feed-heater-flash.rfproj.json")
-            .replacen(
-                ",\n        \"stream-vapor\": {\n          \"id\": \"stream-vapor\",\n          \"name\": \"Vapor Outlet\",\n          \"temperature_k\": 345.0,\n          \"pressure_pa\": 95000.0,\n          \"total_molar_flow_mol_s\": 0.0,\n          \"overall_mole_fractions\": {\n            \"component-a\": 0.5,\n            \"component-b\": 0.5\n          },\n          \"phases\": []\n        }",
-                "",
-                1,
-            )
-            .replacen(
-                "\"name\": \"vapor\",\n              \"direction\": \"outlet\",\n              \"kind\": \"material\",\n              \"stream_id\": \"stream-vapor\"",
-                "\"name\": \"vapor\",\n              \"direction\": \"outlet\",\n              \"kind\": \"material\",\n              \"stream_id\": null",
-                1,
-            );
+    let project_json = crate::test_support::build_flash_drum_local_rules_synced_project_json();
     fs::write(&project_path, project_json).expect("expected local rules project");
 
     (

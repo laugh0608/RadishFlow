@@ -1,0 +1,1863 @@
+use super::*;
+use radishflow_studio::{
+    StudioGuiWindowInspectorTargetDetailModel, StudioGuiWindowSolveSnapshotModel,
+    StudioGuiWindowStreamResultModel, StudioGuiWindowUnitExecutionResultModel,
+    test_support::{
+        apply_official_binary_hydrocarbon_near_boundary_consumer_scenario,
+        apply_stream_state_and_composition, build_official_binary_hydrocarbon_provider,
+        build_synthetic_provider, official_binary_hydrocarbon_near_boundary_consumer_scenarios,
+        solve_snapshot_model_from_project_with_provider_and_edit, stream_target_detail_model,
+        unit_target_detail_model,
+    },
+};
+use rf_flash::estimate_bubble_dew_window;
+use rf_types::PhaseEquilibriumRegion;
+
+const REFERENCE_TEMPERATURE_K: f64 = 300.0;
+const REFERENCE_PRESSURE_PA: f64 = 100_000.0;
+const BOUNDARY_DELTA_K: f64 = 0.001;
+
+fn render_runtime_area_texts(
+    app: &mut ReadyAppState,
+    render: impl FnMut(&mut ReadyAppState, &mut egui::Ui),
+) -> Vec<String> {
+    render_runtime_area_texts_with_open_sections(app, &[], render)
+}
+
+fn open_collapsing_sections(ui: &mut egui::Ui, open_section_labels: &[&str]) {
+    for label in open_section_labels {
+        let id = ui.make_persistent_id(label);
+        let mut state =
+            egui::collapsing_header::CollapsingState::load_with_default_open(ui.ctx(), id, false);
+        state.set_open(true);
+        state.store(ui.ctx());
+    }
+}
+
+fn render_runtime_area_texts_with_open_sections(
+    app: &mut ReadyAppState,
+    open_section_labels: &[&str],
+    mut render: impl FnMut(&mut ReadyAppState, &mut egui::Ui),
+) -> Vec<String> {
+    let ctx = egui::Context::default();
+    let output = ctx.run(
+        egui::RawInput {
+            screen_rect: Some(egui::Rect::from_min_size(
+                egui::Pos2::ZERO,
+                egui::vec2(1280.0, 6000.0),
+            )),
+            focused: true,
+            ..Default::default()
+        },
+        |ctx| {
+            egui::CentralPanel::default().show(ctx, |ui| {
+                open_collapsing_sections(ui, open_section_labels);
+                render(app, ui);
+            });
+        },
+    );
+
+    let mut texts = Vec::new();
+    for clipped_shape in &output.shapes {
+        collect_shape_texts(&clipped_shape.shape, &mut texts);
+    }
+    texts
+}
+
+fn render_result_inspector_texts(
+    app: &mut ReadyAppState,
+    snapshot: &StudioGuiWindowSolveSnapshotModel,
+    selected_stream_id: &str,
+) -> Vec<String> {
+    let inspector = snapshot.result_inspector(Some(selected_stream_id));
+    render_runtime_area_texts(app, |app, ui| app.render_result_inspector(ui, &inspector))
+}
+
+fn render_stream_result_inspector_texts(
+    app: &mut ReadyAppState,
+    scope_id: impl Into<String>,
+    stream: &StudioGuiWindowStreamResultModel,
+    open_section_labels: &[&str],
+) -> Vec<String> {
+    let scope_id = scope_id.into();
+    render_runtime_area_texts(app, |app, ui| {
+        ui.push_id(scope_id.clone(), |ui| {
+            open_collapsing_sections(ui, open_section_labels);
+            app.render_stream_result_inspector(ui, stream);
+        });
+    })
+}
+
+fn render_active_inspector_texts(
+    app: &mut ReadyAppState,
+    active_detail: StudioGuiWindowInspectorTargetDetailModel,
+) -> Vec<String> {
+    render_active_inspector_texts_with_open_sections(app, active_detail, &[])
+}
+
+fn render_active_inspector_texts_with_open_sections(
+    app: &mut ReadyAppState,
+    active_detail: StudioGuiWindowInspectorTargetDetailModel,
+    open_section_labels: &[&str],
+) -> Vec<String> {
+    let mut window = app.platform_host.snapshot().window_model();
+    window.runtime.latest_solve_snapshot = None;
+    window.runtime.latest_failure = None;
+    window.runtime.active_inspector_target = Some(active_detail.target.clone());
+    window.runtime.active_inspector_detail = Some(active_detail);
+
+    render_runtime_area_texts_with_open_sections(app, open_section_labels, |app, ui| {
+        app.render_runtime_area_contents(ui, &window, StudioGuiWindowAreaId::Runtime);
+    })
+}
+
+fn render_result_inspector_with_unit_texts(
+    app: &mut ReadyAppState,
+    snapshot: &StudioGuiWindowSolveSnapshotModel,
+    selected_stream_id: &str,
+    selected_unit_id: &str,
+) -> Vec<String> {
+    render_result_inspector_with_unit_texts_with_open_sections(
+        app,
+        snapshot,
+        selected_stream_id,
+        selected_unit_id,
+        &[],
+    )
+}
+
+fn render_result_inspector_with_unit_texts_with_open_sections(
+    app: &mut ReadyAppState,
+    snapshot: &StudioGuiWindowSolveSnapshotModel,
+    selected_stream_id: &str,
+    selected_unit_id: &str,
+    open_section_labels: &[&str],
+) -> Vec<String> {
+    let inspector =
+        snapshot.result_inspector_with_unit(Some(selected_stream_id), None, Some(selected_unit_id));
+    render_runtime_area_texts_with_open_sections(app, open_section_labels, |app, ui| {
+        app.render_result_inspector(ui, &inspector);
+    })
+}
+
+fn render_shell_selected_result_inspector_texts(
+    app: &mut ReadyAppState,
+    snapshot: &StudioGuiWindowSolveSnapshotModel,
+    open_section_labels: &[&str],
+) -> Vec<String> {
+    let selected_stream_id = app
+        .result_inspector
+        .selected_stream_id_for_snapshot(snapshot);
+    let selected_unit_id = app.result_inspector.selected_unit_id_for_snapshot(snapshot);
+    let comparison_stream_id = app.result_inspector.comparison_stream_id.clone();
+    let inspector = snapshot.result_inspector_with_unit(
+        selected_stream_id.as_deref(),
+        comparison_stream_id.as_deref(),
+        selected_unit_id.as_deref(),
+    );
+    render_runtime_area_texts_with_open_sections(app, open_section_labels, |app, ui| {
+        app.render_result_inspector(ui, &inspector);
+    })
+}
+
+fn render_result_inspector_comparison_texts(
+    app: &mut ReadyAppState,
+    comparison: &radishflow_studio::StudioGuiWindowResultInspectorComparisonModel,
+) -> Vec<String> {
+    render_runtime_area_texts(app, |app, ui| {
+        app.render_result_inspector_comparison(ui, comparison);
+    })
+}
+
+fn render_diagnostic_target_actions_texts(
+    app: &mut ReadyAppState,
+    actions: &[radishflow_studio::StudioGuiWindowDiagnosticTargetActionModel],
+) -> Vec<String> {
+    render_runtime_area_texts(app, |app, ui| {
+        app.render_diagnostic_target_actions(ui, actions);
+    })
+}
+
+fn render_command_action_button_frame(
+    ctx: &egui::Context,
+    app: &mut ReadyAppState,
+    action: &radishflow_studio::StudioGuiWindowCommandActionModel,
+    events: Vec<egui::Event>,
+) -> egui::Rect {
+    let mut rect = None;
+    let _ = ctx.run(
+        egui::RawInput {
+            screen_rect: Some(egui::Rect::from_min_size(
+                egui::Pos2::ZERO,
+                egui::vec2(1280.0, 720.0),
+            )),
+            focused: true,
+            events,
+            ..Default::default()
+        },
+        |ctx| {
+            egui::CentralPanel::default().show(ctx, |ui| {
+                rect = Some(app.render_small_command_action(ui, action).rect);
+            });
+        },
+    );
+    rect.expect("expected command action button rect")
+}
+
+fn primary_click_events(pos: egui::Pos2) -> Vec<egui::Event> {
+    vec![
+        egui::Event::PointerMoved(pos),
+        egui::Event::PointerButton {
+            pos,
+            button: egui::PointerButton::Primary,
+            pressed: true,
+            modifiers: egui::Modifiers::NONE,
+        },
+        egui::Event::PointerButton {
+            pos,
+            button: egui::PointerButton::Primary,
+            pressed: false,
+            modifiers: egui::Modifiers::NONE,
+        },
+    ]
+}
+
+fn render_full_runtime_panel_texts(
+    app: &mut ReadyAppState,
+    snapshot: &StudioGuiWindowSolveSnapshotModel,
+    selected_stream_id: &str,
+    active_detail: StudioGuiWindowInspectorTargetDetailModel,
+) -> Vec<String> {
+    app.result_inspector
+        .select_stream(&snapshot.snapshot_id, selected_stream_id);
+
+    let mut window = app.platform_host.snapshot().window_model();
+    window.runtime.latest_solve_snapshot = Some(snapshot.clone());
+    window.runtime.latest_failure = None;
+    window.runtime.active_inspector_target = Some(active_detail.target.clone());
+    window.runtime.active_inspector_detail = Some(active_detail);
+
+    render_runtime_area_texts(app, |app, ui| {
+        app.render_runtime_area_contents(ui, &window, StudioGuiWindowAreaId::Runtime);
+    })
+}
+
+fn collect_shape_texts(shape: &egui::epaint::Shape, texts: &mut Vec<String>) {
+    match shape {
+        egui::epaint::Shape::Text(text) => texts.push(text.galley.job.text.clone()),
+        egui::epaint::Shape::Vec(shapes) => {
+            for shape in shapes {
+                collect_shape_texts(shape, texts);
+            }
+        }
+        _ => {}
+    }
+}
+
+fn rendered_text_occurrences(texts: &[String], expected: &str) -> usize {
+    texts.iter().filter(|text| text.contains(expected)).count()
+}
+
+#[test]
+fn runtime_panel_keeps_developer_activity_sections_collapsed_by_default() {
+    let mut app = ready_app_state(&synced_workspace_config());
+    let window = app.platform_host.snapshot().window_model();
+    let texts = render_runtime_area_texts(&mut app, |app, ui| {
+        app.render_runtime_area_contents(ui, &window, StudioGuiWindowAreaId::Runtime);
+    });
+
+    for expected in ["运行日志", "GUI 活动"] {
+        assert!(
+            texts.iter().any(|text| text.contains(expected)),
+            "expected runtime panel to expose collapsed `{expected}` section, rendered texts: {:?}",
+            texts
+        );
+    }
+    for hidden_detail in [
+        "Host lifecycle actions are routed",
+        "暂无运行日志。",
+        "暂无 GUI 宿主事件。",
+    ] {
+        assert!(
+            !texts.iter().any(|text| text.contains(hidden_detail)),
+            "expected runtime panel to keep `{hidden_detail}` out of the default view, rendered texts: {:?}",
+            texts
+        );
+    }
+}
+
+fn assert_stream_window_rendered(
+    app: &mut ReadyAppState,
+    snapshot: &StudioGuiWindowSolveSnapshotModel,
+    stream_id: &str,
+    title: &str,
+    bubble_dew_label: &str,
+    expected_count: usize,
+) {
+    let result_texts = render_result_inspector_texts(app, snapshot, stream_id);
+    assert_eq!(
+        rendered_text_occurrences(&result_texts, bubble_dew_label),
+        expected_count,
+        "expected result inspector bubble/dew window count {expected_count} for `{stream_id}`, rendered texts: {:?}",
+        result_texts
+    );
+
+    let active_texts =
+        render_active_inspector_texts(app, stream_target_detail_model(snapshot, stream_id, title));
+    assert_eq!(
+        rendered_text_occurrences(&active_texts, bubble_dew_label),
+        expected_count,
+        "expected active inspector bubble/dew window count {expected_count} for `{stream_id}`, rendered texts: {:?}",
+        active_texts
+    );
+}
+
+fn preferred_flash_unit_stream_id(snapshot: &StudioGuiWindowSolveSnapshotModel) -> &'static str {
+    let liquid = snapshot
+        .streams
+        .iter()
+        .find(|stream| stream.stream_id == "stream-liquid")
+        .expect("expected liquid outlet");
+    if liquid.total_molar_flow_mol_s > 0.0 {
+        "stream-liquid"
+    } else {
+        "stream-vapor"
+    }
+}
+
+struct StreamSummaryLabels<'a> {
+    temperature: &'a str,
+    pressure: &'a str,
+    molar_flow: &'a str,
+    molar_enthalpy: &'a str,
+    related_solve_steps: &'a str,
+    related_diagnostics: &'a str,
+}
+
+fn assert_rendered_stream_summary_surface(
+    texts: &[String],
+    surface: &str,
+    stream: &StudioGuiWindowStreamResultModel,
+    labels: &StreamSummaryLabels<'_>,
+) {
+    for (label, value) in [
+        (labels.temperature, stream.temperature_text.as_str()),
+        (labels.pressure, stream.pressure_text.as_str()),
+        (labels.molar_flow, stream.molar_flow_text.as_str()),
+    ] {
+        assert_eq!(
+            rendered_text_occurrences(texts, label),
+            1,
+            "expected {surface} to render summary row label `{label}`, rendered texts: {:?}",
+            texts
+        );
+        assert!(
+            texts.iter().any(|text| text.contains(value)),
+            "expected {surface} to render summary row value `{value}`, rendered texts: {:?}",
+            texts
+        );
+    }
+
+    if let Some(molar_enthalpy_text) = stream.molar_enthalpy_text.as_deref() {
+        assert_eq!(
+            rendered_text_occurrences(texts, labels.molar_enthalpy),
+            1,
+            "expected {surface} to render enthalpy for stream `{}`, rendered texts: {:?}",
+            stream.stream_id,
+            texts
+        );
+        assert!(
+            texts.iter().any(|text| text.contains(molar_enthalpy_text)),
+            "expected {surface} to render enthalpy value `{molar_enthalpy_text}` for stream `{}`, rendered texts: {:?}",
+            stream.stream_id,
+            texts
+        );
+    } else {
+        assert_eq!(
+            rendered_text_occurrences(texts, labels.molar_enthalpy),
+            0,
+            "expected {surface} to avoid rendering enthalpy for stream `{}`, rendered texts: {:?}",
+            stream.stream_id,
+            texts
+        );
+    }
+    assert_eq!(
+        rendered_text_occurrences(texts, labels.related_solve_steps),
+        1,
+        "expected {surface} to render related solve steps section for `{}`, rendered texts: {:?}",
+        stream.stream_id,
+        texts
+    );
+    assert_eq!(
+        rendered_text_occurrences(texts, labels.related_diagnostics),
+        1,
+        "expected {surface} to render related diagnostics section for `{}`, rendered texts: {:?}",
+        stream.stream_id,
+        texts
+    );
+}
+
+struct UnitSummaryLabels<'a> {
+    consumed_streams: &'a str,
+    produced_streams: &'a str,
+    related_solve_steps: &'a str,
+    related_diagnostics: &'a str,
+    diagnostic_targets: &'a str,
+}
+
+fn assert_rendered_unit_summary_surface(
+    texts: &[String],
+    surface: &str,
+    unit: &StudioGuiWindowUnitExecutionResultModel,
+    labels: &UnitSummaryLabels<'_>,
+) {
+    assert!(
+        texts.iter().any(|text| text.contains(&unit.unit_id)),
+        "expected {surface} to render unit id `{}`, rendered texts: {:?}",
+        unit.unit_id,
+        texts
+    );
+    assert!(
+        texts
+            .iter()
+            .any(|text| text.contains(&format!("#{}", unit.step_index))),
+        "expected {surface} to render unit step index `#{}`, rendered texts: {:?}",
+        unit.step_index,
+        texts
+    );
+    assert!(
+        texts.iter().any(|text| text.contains(&unit.summary)),
+        "expected {surface} to render unit summary `{}`, rendered texts: {:?}",
+        unit.summary,
+        texts
+    );
+    for label in [
+        labels.consumed_streams,
+        labels.produced_streams,
+        labels.related_solve_steps,
+        labels.related_diagnostics,
+        labels.diagnostic_targets,
+    ] {
+        assert!(
+            texts.iter().any(|text| text.contains(label)),
+            "expected {surface} to render section label `{label}`, rendered texts: {:?}",
+            texts
+        );
+    }
+    for stream in unit
+        .consumed_stream_results
+        .iter()
+        .chain(unit.produced_stream_results.iter())
+    {
+        assert!(
+            texts.iter().any(|text| text.contains(&stream.summary)),
+            "expected {surface} to render unit-related stream summary `{}`, rendered texts: {:?}",
+            stream.summary,
+            texts
+        );
+    }
+}
+
+fn assert_rendered_flash_outlet_surface(
+    texts: &[String],
+    surface: &str,
+    stream: &StudioGuiWindowStreamResultModel,
+    molar_enthalpy_label: &str,
+    phase_results_label: &str,
+) {
+    let molar_enthalpy_text = stream
+        .molar_enthalpy_text
+        .as_ref()
+        .expect("expected flash outlet enthalpy text");
+    assert_eq!(
+        rendered_text_occurrences(texts, molar_enthalpy_label),
+        1,
+        "expected {surface} to render enthalpy summary row for `{}`, rendered texts: {:?}",
+        stream.stream_id,
+        texts
+    );
+    assert!(
+        texts.iter().any(|text| text.contains(molar_enthalpy_text)),
+        "expected {surface} to render enthalpy summary value `{molar_enthalpy_text}` for `{}`, rendered texts: {:?}",
+        stream.stream_id,
+        texts
+    );
+    assert!(
+        texts.iter().any(|text| text.contains(phase_results_label)),
+        "expected {surface} to render phase results section for `{}`, rendered texts: {:?}",
+        stream.stream_id,
+        texts
+    );
+
+    for row in &stream.phase_rows {
+        assert!(
+            texts.iter().any(|text| text.contains(&row.label)),
+            "expected {surface} to render phase label `{}` for `{}`, rendered texts: {:?}",
+            row.label,
+            stream.stream_id,
+            texts
+        );
+        assert!(
+            texts
+                .iter()
+                .any(|text| text.contains(&row.phase_fraction_text)),
+            "expected {surface} to render phase fraction `{}` for `{}`, rendered texts: {:?}",
+            row.phase_fraction_text,
+            stream.stream_id,
+            texts
+        );
+        assert!(
+            texts.iter().any(|text| text.contains(&row.molar_flow_text)),
+            "expected {surface} to render phase molar flow `{}` for `{}`, rendered texts: {:?}",
+            row.molar_flow_text,
+            stream.stream_id,
+            texts
+        );
+        if let Some(molar_enthalpy_text) = row.molar_enthalpy_text.as_ref() {
+            assert!(
+                texts.iter().any(|text| text.contains(molar_enthalpy_text)),
+                "expected {surface} to render phase enthalpy `{molar_enthalpy_text}` for `{}`, rendered texts: {:?}",
+                stream.stream_id,
+                texts
+            );
+        }
+    }
+}
+
+fn assert_rendered_comparison_surface(
+    texts: &[String],
+    surface: &str,
+    comparison: &radishflow_studio::StudioGuiWindowResultInspectorComparisonModel,
+) {
+    assert!(
+        texts
+            .iter()
+            .any(|text| text.contains(&comparison.base_stream_id)),
+        "expected {surface} to render base stream id `{}`, rendered texts: {:?}",
+        comparison.base_stream_id,
+        texts
+    );
+    assert!(
+        texts
+            .iter()
+            .any(|text| text.contains(&comparison.compared_stream_id)),
+        "expected {surface} to render compared stream id `{}`, rendered texts: {:?}",
+        comparison.compared_stream_id,
+        texts
+    );
+    assert_eq!(
+        rendered_text_occurrences(texts, &comparison.base_stream_focus_action.label),
+        2,
+        "expected {surface} to render two comparison focus buttons labeled `{}`, rendered texts: {:?}",
+        comparison.base_stream_focus_action.label,
+        texts
+    );
+
+    for row in &comparison.summary_rows {
+        if row.label == "H" {
+            for value in [&row.base_value, &row.compared_value, &row.delta_text] {
+                assert!(
+                    texts.iter().any(|text| text.contains(value)),
+                    "expected {surface} to render comparison enthalpy summary value `{value}`, rendered texts: {:?}",
+                    texts
+                );
+            }
+        }
+    }
+
+    for row in &comparison.phase_rows {
+        assert!(
+            texts.iter().any(|text| text.contains(&row.phase_label)),
+            "expected {surface} to render comparison phase label `{}`, rendered texts: {:?}",
+            row.phase_label,
+            texts
+        );
+        for value in [
+            &row.base_fraction_text,
+            &row.compared_fraction_text,
+            &row.base_molar_flow_text,
+            &row.compared_molar_flow_text,
+            &row.base_molar_enthalpy_text,
+            &row.compared_molar_enthalpy_text,
+        ] {
+            if value != "-" {
+                assert!(
+                    texts.iter().any(|text| text.contains(value)),
+                    "expected {surface} to render comparison phase value `{value}`, rendered texts: {:?}",
+                    texts
+                );
+            }
+        }
+        for delta in [
+            &row.fraction_delta_text,
+            &row.molar_flow_delta_text,
+            &row.molar_enthalpy_delta_text,
+        ] {
+            if delta != "-" {
+                assert!(
+                    texts.iter().any(|text| text.contains(delta)),
+                    "expected {surface} to render comparison delta `{delta}`, rendered texts: {:?}",
+                    texts
+                );
+            }
+        }
+    }
+}
+
+fn assert_rendered_diagnostic_target_actions_surface(
+    texts: &[String],
+    surface: &str,
+    diagnostic_targets_label: &str,
+    expected_actions: &[&radishflow_studio::StudioGuiWindowDiagnosticTargetActionModel],
+) {
+    assert!(
+        texts
+            .iter()
+            .any(|text| text.contains(diagnostic_targets_label)),
+        "expected {surface} to render `{diagnostic_targets_label}` section, rendered texts: {:?}",
+        texts
+    );
+
+    for action in expected_actions {
+        let action_summary = format!(
+            "{} | {} | {}",
+            action.source_label, action.target_label, action.summary
+        );
+        assert!(
+            texts.iter().any(|text| text.contains(&action_summary)),
+            "expected {surface} to render diagnostic action `{action_summary}`, rendered texts: {:?}",
+            texts
+        );
+    }
+
+    let mut expected_label_counts = std::collections::BTreeMap::<&str, usize>::new();
+    for action in expected_actions {
+        *expected_label_counts
+            .entry(action.action.label.as_str())
+            .or_default() += 1;
+    }
+    for (label, count) in expected_label_counts {
+        assert!(
+            rendered_text_occurrences(texts, label) >= count,
+            "expected {surface} to render at least {count} diagnostic action button(s) labeled `{label}`, rendered texts: {:?}",
+            texts
+        );
+    }
+}
+
+fn solve_two_phase_snapshot() -> StudioGuiWindowSolveSnapshotModel {
+    solve_binary_hydrocarbon_snapshot(include_str!(
+        "../../../../../examples/flowsheets/feed-cooler-flash-binary-hydrocarbon.rfproj.json"
+    ))
+}
+
+fn solve_binary_hydrocarbon_snapshot(project_json: &str) -> StudioGuiWindowSolveSnapshotModel {
+    solve_snapshot_model_from_project_with_provider_and_edit(
+        project_json,
+        &build_official_binary_hydrocarbon_provider(),
+        |_| {},
+    )
+}
+
+fn solve_liquid_only_snapshot() -> (
+    StudioGuiWindowSolveSnapshotModel,
+    StudioGuiWindowInspectorTargetDetailModel,
+) {
+    let overall_mole_fractions = [0.25, 0.75];
+    let provider = build_synthetic_provider([0.8, 0.6], REFERENCE_PRESSURE_PA);
+    let boundary_window = estimate_bubble_dew_window(
+        &provider,
+        REFERENCE_TEMPERATURE_K,
+        REFERENCE_PRESSURE_PA,
+        overall_mole_fractions.to_vec(),
+    )
+    .expect("expected liquid-only boundary window");
+    let snapshot = solve_snapshot_model_from_project_with_provider_and_edit(
+        include_str!(
+            "../../../../../examples/flowsheets/feed-mixer-flash-synthetic-demo.rfproj.json"
+        ),
+        &provider,
+        |project| {
+            for stream_id in ["stream-feed-a", "stream-feed-b"] {
+                apply_stream_state_and_composition(
+                    project,
+                    stream_id,
+                    overall_mole_fractions,
+                    boundary_window.bubble_temperature_k - BOUNDARY_DELTA_K,
+                    REFERENCE_PRESSURE_PA,
+                );
+            }
+        },
+    );
+    let detail = stream_target_detail_model(&snapshot, "stream-vapor", "Vapor Outlet");
+    (snapshot, detail)
+}
+
+fn solve_vapor_only_snapshot() -> (
+    StudioGuiWindowSolveSnapshotModel,
+    StudioGuiWindowInspectorTargetDetailModel,
+) {
+    let overall_mole_fractions = [0.25, 0.75];
+    let provider = build_synthetic_provider([1.8, 1.3], REFERENCE_PRESSURE_PA);
+    let boundary_window = estimate_bubble_dew_window(
+        &provider,
+        REFERENCE_TEMPERATURE_K,
+        REFERENCE_PRESSURE_PA,
+        overall_mole_fractions.to_vec(),
+    )
+    .expect("expected vapor-only boundary window");
+    let snapshot = solve_snapshot_model_from_project_with_provider_and_edit(
+        include_str!(
+            "../../../../../examples/flowsheets/feed-mixer-flash-synthetic-demo.rfproj.json"
+        ),
+        &provider,
+        |project| {
+            for stream_id in ["stream-feed-a", "stream-feed-b"] {
+                apply_stream_state_and_composition(
+                    project,
+                    stream_id,
+                    overall_mole_fractions,
+                    boundary_window.dew_temperature_k + BOUNDARY_DELTA_K,
+                    REFERENCE_PRESSURE_PA,
+                );
+            }
+        },
+    );
+    let detail = stream_target_detail_model(&snapshot, "stream-liquid", "Liquid Outlet");
+    (snapshot, detail)
+}
+
+#[test]
+fn runtime_panel_renders_bubble_dew_window_for_flowing_flash_outlets() {
+    let mut app = ready_app_state(&synced_workspace_config());
+    let bubble_dew_label = app.locale.text(ShellText::BubbleDewWindow).to_string();
+
+    let two_phase_snapshot = solve_two_phase_snapshot();
+    let two_phase_result = two_phase_snapshot.result_inspector(Some("stream-liquid"));
+    assert!(
+        two_phase_result
+            .selected_stream
+            .as_ref()
+            .is_some_and(|stream| stream.bubble_dew_window.is_some()),
+        "expected two-phase result inspector model to carry bubble/dew window before shell rendering"
+    );
+    let two_phase_result_texts =
+        render_result_inspector_texts(&mut app, &two_phase_snapshot, "stream-liquid");
+    assert_eq!(
+        rendered_text_occurrences(&two_phase_result_texts, &bubble_dew_label),
+        1,
+        "expected result inspector to render the bubble/dew window for a two-phase outlet, rendered texts: {:?}",
+        two_phase_result_texts
+    );
+    let two_phase_active_texts = render_active_inspector_texts(
+        &mut app,
+        stream_target_detail_model(&two_phase_snapshot, "stream-liquid", "Liquid Outlet"),
+    );
+    assert_eq!(
+        rendered_text_occurrences(&two_phase_active_texts, &bubble_dew_label),
+        1,
+        "expected active inspector to render the bubble/dew window for a two-phase outlet, rendered texts: {:?}",
+        two_phase_active_texts
+    );
+
+    let (liquid_only_snapshot, _) = solve_liquid_only_snapshot();
+    let liquid_only_result_texts =
+        render_result_inspector_texts(&mut app, &liquid_only_snapshot, "stream-liquid");
+    assert_eq!(
+        rendered_text_occurrences(&liquid_only_result_texts, &bubble_dew_label),
+        1,
+        "expected result inspector to keep the bubble/dew window for the flowing liquid-only outlet"
+    );
+    let liquid_only_active_texts = render_active_inspector_texts(
+        &mut app,
+        stream_target_detail_model(&liquid_only_snapshot, "stream-liquid", "Liquid Outlet"),
+    );
+    assert_eq!(
+        rendered_text_occurrences(&liquid_only_active_texts, &bubble_dew_label),
+        1,
+        "expected active inspector to keep the bubble/dew window for the flowing liquid-only outlet"
+    );
+
+    let (vapor_only_snapshot, _) = solve_vapor_only_snapshot();
+    let vapor_only_result_texts =
+        render_result_inspector_texts(&mut app, &vapor_only_snapshot, "stream-vapor");
+    assert_eq!(
+        rendered_text_occurrences(&vapor_only_result_texts, &bubble_dew_label),
+        1,
+        "expected result inspector to keep the bubble/dew window for the flowing vapor-only outlet"
+    );
+    let vapor_only_active_texts = render_active_inspector_texts(
+        &mut app,
+        stream_target_detail_model(&vapor_only_snapshot, "stream-vapor", "Vapor Outlet"),
+    );
+    assert_eq!(
+        rendered_text_occurrences(&vapor_only_active_texts, &bubble_dew_label),
+        1,
+        "expected active inspector to keep the bubble/dew window for the flowing vapor-only outlet"
+    );
+}
+
+#[test]
+fn runtime_panel_hides_bubble_dew_window_for_zero_flow_single_phase_flash_outlets() {
+    let mut app = ready_app_state(&synced_workspace_config());
+    let bubble_dew_label = app.locale.text(ShellText::BubbleDewWindow).to_string();
+
+    let (liquid_only_snapshot, liquid_only_detail) = solve_liquid_only_snapshot();
+    let liquid_only_result_texts =
+        render_result_inspector_texts(&mut app, &liquid_only_snapshot, "stream-vapor");
+    assert_eq!(
+        rendered_text_occurrences(&liquid_only_result_texts, &bubble_dew_label),
+        0,
+        "expected result inspector to render no bubble/dew window section for the zero-flow vapor outlet"
+    );
+    let liquid_only_active_texts = render_active_inspector_texts(&mut app, liquid_only_detail);
+    assert_eq!(
+        rendered_text_occurrences(&liquid_only_active_texts, &bubble_dew_label),
+        0,
+        "expected active inspector to render no bubble/dew window section for the zero-flow vapor outlet"
+    );
+
+    let (vapor_only_snapshot, vapor_only_detail) = solve_vapor_only_snapshot();
+    let vapor_only_result_texts =
+        render_result_inspector_texts(&mut app, &vapor_only_snapshot, "stream-liquid");
+    assert_eq!(
+        rendered_text_occurrences(&vapor_only_result_texts, &bubble_dew_label),
+        0,
+        "expected result inspector to render no bubble/dew window section for the zero-flow liquid outlet"
+    );
+    let vapor_only_texts = render_active_inspector_texts(&mut app, vapor_only_detail);
+    assert_eq!(
+        rendered_text_occurrences(&vapor_only_texts, &bubble_dew_label),
+        0,
+        "expected active inspector to render no bubble/dew window section for the zero-flow liquid outlet"
+    );
+}
+
+#[test]
+fn runtime_panel_renders_bubble_dew_window_for_source_streams() {
+    let mut app = ready_app_state(&synced_workspace_config());
+    let bubble_dew_label = app.locale.text(ShellText::BubbleDewWindow).to_string();
+
+    for (project_json, stream_ids) in [
+        (
+            include_str!(
+                "../../../../../examples/flowsheets/feed-heater-flash-binary-hydrocarbon.rfproj.json"
+            ),
+            &["stream-feed"][..],
+        ),
+        (
+            include_str!(
+                "../../../../../examples/flowsheets/feed-cooler-flash-binary-hydrocarbon.rfproj.json"
+            ),
+            &["stream-feed"][..],
+        ),
+        (
+            include_str!(
+                "../../../../../examples/flowsheets/feed-valve-flash-binary-hydrocarbon.rfproj.json"
+            ),
+            &["stream-feed"][..],
+        ),
+        (
+            include_str!(
+                "../../../../../examples/flowsheets/feed-mixer-flash-binary-hydrocarbon.rfproj.json"
+            ),
+            &["stream-feed-a", "stream-feed-b"][..],
+        ),
+    ] {
+        let snapshot = solve_binary_hydrocarbon_snapshot(project_json);
+
+        for stream_id in stream_ids {
+            let title = snapshot
+                .streams
+                .iter()
+                .find(|stream| stream.stream_id == *stream_id)
+                .expect("expected snapshot stream")
+                .label
+                .clone();
+            let result = snapshot.result_inspector(Some(stream_id));
+            assert!(
+                result
+                    .selected_stream
+                    .as_ref()
+                    .is_some_and(|stream| stream.bubble_dew_window.is_some()),
+                "expected result inspector model to carry bubble/dew window for source stream `{stream_id}` before shell rendering"
+            );
+
+            let result_texts = render_result_inspector_texts(&mut app, &snapshot, stream_id);
+            assert_eq!(
+                rendered_text_occurrences(&result_texts, &bubble_dew_label),
+                1,
+                "expected result inspector to render the bubble/dew window for `{stream_id}`, rendered texts: {:?}",
+                result_texts
+            );
+
+            let active_texts = render_active_inspector_texts(
+                &mut app,
+                stream_target_detail_model(&snapshot, stream_id, title.as_str()),
+            );
+            assert_eq!(
+                rendered_text_occurrences(&active_texts, &bubble_dew_label),
+                1,
+                "expected active inspector to render the bubble/dew window for `{stream_id}`, rendered texts: {:?}",
+                active_texts
+            );
+        }
+    }
+}
+
+#[test]
+fn runtime_panel_renders_bubble_dew_window_for_non_flash_intermediate_streams() {
+    let mut app = ready_app_state(&synced_workspace_config());
+    let bubble_dew_label = app.locale.text(ShellText::BubbleDewWindow).to_string();
+
+    for (project_json, stream_id, title) in [
+        (
+            include_str!(
+                "../../../../../examples/flowsheets/feed-heater-flash-binary-hydrocarbon.rfproj.json"
+            ),
+            "stream-heated",
+            "Heated Outlet",
+        ),
+        (
+            include_str!(
+                "../../../../../examples/flowsheets/feed-cooler-flash-binary-hydrocarbon.rfproj.json"
+            ),
+            "stream-cooled",
+            "Cooled Outlet",
+        ),
+        (
+            include_str!(
+                "../../../../../examples/flowsheets/feed-valve-flash-binary-hydrocarbon.rfproj.json"
+            ),
+            "stream-throttled",
+            "Valve Outlet",
+        ),
+        (
+            include_str!(
+                "../../../../../examples/flowsheets/feed-mixer-flash-binary-hydrocarbon.rfproj.json"
+            ),
+            "stream-mix-out",
+            "Mixer Outlet",
+        ),
+    ] {
+        let snapshot = solve_binary_hydrocarbon_snapshot(project_json);
+        let result = snapshot.result_inspector(Some(stream_id));
+        assert!(
+            result
+                .selected_stream
+                .as_ref()
+                .is_some_and(|stream| stream.bubble_dew_window.is_some()),
+            "expected result inspector model to carry bubble/dew window for non-flash intermediate stream `{stream_id}` before shell rendering"
+        );
+
+        let result_texts = render_result_inspector_texts(&mut app, &snapshot, stream_id);
+        assert_eq!(
+            rendered_text_occurrences(&result_texts, &bubble_dew_label),
+            1,
+            "expected result inspector to render the bubble/dew window for `{stream_id}`, rendered texts: {:?}",
+            result_texts
+        );
+
+        let active_texts = render_active_inspector_texts(
+            &mut app,
+            stream_target_detail_model(&snapshot, stream_id, title),
+        );
+        assert_eq!(
+            rendered_text_occurrences(&active_texts, &bubble_dew_label),
+            1,
+            "expected active inspector to render the bubble/dew window for `{stream_id}`, rendered texts: {:?}",
+            active_texts
+        );
+    }
+}
+
+#[test]
+fn runtime_panel_renders_summary_rows_and_context_for_non_flash_intermediate_streams() {
+    let mut app = ready_app_state(&synced_workspace_config());
+    let temperature_label = format!("T · {}", app.locale.runtime_label("Temperature"));
+    let pressure_label = format!("P · {}", app.locale.runtime_label("Pressure"));
+    let molar_flow_label = format!("F · {}", app.locale.runtime_label("Molar flow"));
+    let molar_enthalpy_label = format!("H · {}", app.locale.runtime_label("Molar enthalpy"));
+    let related_solve_steps_label = app.locale.text(ShellText::RelatedSolveSteps).to_string();
+    let related_diagnostics_label = app.locale.text(ShellText::RelatedDiagnostics).to_string();
+    let labels = StreamSummaryLabels {
+        temperature: &temperature_label,
+        pressure: &pressure_label,
+        molar_flow: &molar_flow_label,
+        molar_enthalpy: &molar_enthalpy_label,
+        related_solve_steps: &related_solve_steps_label,
+        related_diagnostics: &related_diagnostics_label,
+    };
+
+    for (project_json, stream_id, title) in [
+        (
+            include_str!(
+                "../../../../../examples/flowsheets/feed-heater-flash-binary-hydrocarbon.rfproj.json"
+            ),
+            "stream-heated",
+            "Heated Outlet",
+        ),
+        (
+            include_str!(
+                "../../../../../examples/flowsheets/feed-cooler-flash-binary-hydrocarbon.rfproj.json"
+            ),
+            "stream-cooled",
+            "Cooled Outlet",
+        ),
+        (
+            include_str!(
+                "../../../../../examples/flowsheets/feed-valve-flash-binary-hydrocarbon.rfproj.json"
+            ),
+            "stream-throttled",
+            "Valve Outlet",
+        ),
+        (
+            include_str!(
+                "../../../../../examples/flowsheets/feed-mixer-flash-binary-hydrocarbon.rfproj.json"
+            ),
+            "stream-mix-out",
+            "Mixer Outlet",
+        ),
+    ] {
+        let snapshot = solve_binary_hydrocarbon_snapshot(project_json);
+        let result = snapshot.result_inspector(Some(stream_id));
+        let result_stream = result
+            .selected_stream
+            .as_ref()
+            .expect("expected selected non-flash intermediate stream");
+        assert!(
+            result_stream.molar_enthalpy_text.is_some(),
+            "expected snapshot stream `{stream_id}` to materialize enthalpy before shell rendering"
+        );
+
+        let result_texts = render_result_inspector_texts(&mut app, &snapshot, stream_id);
+        assert_rendered_stream_summary_surface(
+            &result_texts,
+            "result inspector",
+            result_stream,
+            &labels,
+        );
+
+        let active_detail = stream_target_detail_model(&snapshot, stream_id, title);
+        let active_stream = active_detail
+            .latest_stream_result
+            .clone()
+            .expect("expected active stream result");
+        assert_eq!(&active_stream, result_stream);
+
+        let active_texts = render_active_inspector_texts(&mut app, active_detail);
+        assert_rendered_stream_summary_surface(
+            &active_texts,
+            "active inspector",
+            &active_stream,
+            &labels,
+        );
+    }
+}
+
+#[test]
+fn runtime_panel_renders_official_two_phase_flash_enthalpy_and_comparison_rows() {
+    let mut app = ready_app_state(&synced_workspace_config());
+    let molar_enthalpy_label = format!("H · {}", app.locale.runtime_label("Molar enthalpy"));
+    let phase_results_label = app.locale.text(ShellText::PhaseResults).to_string();
+    let stream_comparison_label = app.locale.text(ShellText::StreamComparison).to_string();
+    let expanded_phase_sections = [phase_results_label.as_str()];
+    let snapshot = solve_binary_hydrocarbon_snapshot(include_str!(
+        "../../../../../examples/flowsheets/feed-cooler-flash-binary-hydrocarbon.rfproj.json"
+    ));
+
+    let liquid_overview_texts = render_result_inspector_texts(&mut app, &snapshot, "stream-liquid");
+    assert_eq!(
+        rendered_text_occurrences(&liquid_overview_texts, &stream_comparison_label),
+        1,
+        "expected liquid result inspector to expose stream comparison section, rendered texts: {:?}",
+        liquid_overview_texts
+    );
+
+    let liquid_result = snapshot.result_inspector(Some("stream-liquid"));
+    let liquid_stream = liquid_result
+        .selected_stream
+        .as_ref()
+        .expect("expected selected liquid outlet stream");
+    let liquid_result_texts = render_stream_result_inspector_texts(
+        &mut app,
+        format!(
+            "result-inspector:selected-stream:{}:{}",
+            snapshot.snapshot_id, liquid_stream.stream_id
+        ),
+        liquid_stream,
+        &expanded_phase_sections,
+    );
+    assert_rendered_flash_outlet_surface(
+        &liquid_result_texts,
+        "result inspector liquid outlet",
+        liquid_stream,
+        &molar_enthalpy_label,
+        &phase_results_label,
+    );
+
+    let liquid_active_detail =
+        stream_target_detail_model(&snapshot, "stream-liquid", "Liquid Outlet");
+    let liquid_active_scope_id = format!(
+        "active-inspector-latest-stream:{}",
+        liquid_active_detail.target.command_id
+    );
+    let liquid_active_stream = liquid_active_detail
+        .latest_stream_result
+        .clone()
+        .expect("expected active liquid outlet stream result");
+    let liquid_active_texts = render_stream_result_inspector_texts(
+        &mut app,
+        liquid_active_scope_id,
+        &liquid_active_stream,
+        &expanded_phase_sections,
+    );
+    assert_rendered_flash_outlet_surface(
+        &liquid_active_texts,
+        "active inspector liquid outlet",
+        &liquid_active_stream,
+        &molar_enthalpy_label,
+        &phase_results_label,
+    );
+
+    let vapor_result = snapshot.result_inspector(Some("stream-vapor"));
+    let vapor_stream = vapor_result
+        .selected_stream
+        .as_ref()
+        .expect("expected selected vapor outlet stream");
+    let vapor_result_texts = render_stream_result_inspector_texts(
+        &mut app,
+        format!(
+            "result-inspector:selected-stream:{}:{}",
+            snapshot.snapshot_id, vapor_stream.stream_id
+        ),
+        vapor_stream,
+        &expanded_phase_sections,
+    );
+    assert_rendered_flash_outlet_surface(
+        &vapor_result_texts,
+        "result inspector vapor outlet",
+        vapor_stream,
+        &molar_enthalpy_label,
+        &phase_results_label,
+    );
+
+    let vapor_active_detail = stream_target_detail_model(&snapshot, "stream-vapor", "Vapor Outlet");
+    let vapor_active_scope_id = format!(
+        "active-inspector-latest-stream:{}",
+        vapor_active_detail.target.command_id
+    );
+    let vapor_active_stream = vapor_active_detail
+        .latest_stream_result
+        .clone()
+        .expect("expected active vapor outlet stream result");
+    let vapor_active_texts = render_stream_result_inspector_texts(
+        &mut app,
+        vapor_active_scope_id,
+        &vapor_active_stream,
+        &expanded_phase_sections,
+    );
+    assert_rendered_flash_outlet_surface(
+        &vapor_active_texts,
+        "active inspector vapor outlet",
+        &vapor_active_stream,
+        &molar_enthalpy_label,
+        &phase_results_label,
+    );
+
+    let comparison_inspector =
+        snapshot.result_inspector_with_comparison(Some("stream-liquid"), Some("stream-vapor"));
+    let comparison = comparison_inspector
+        .comparison
+        .as_ref()
+        .expect("expected phase outlet comparison model");
+    let comparison_texts = render_result_inspector_comparison_texts(&mut app, comparison);
+    assert_rendered_comparison_surface(
+        &comparison_texts,
+        "result inspector comparison",
+        comparison,
+    );
+}
+
+#[test]
+fn runtime_panel_renders_unit_summary_and_context_for_non_flash_intermediate_units() {
+    let mut app = ready_app_state(&synced_workspace_config());
+    let result_unit_view_label = app.locale.text(ShellText::ResultUnitView).to_string();
+    let consumed_streams_label = app
+        .locale
+        .text(ShellText::InspectorConsumedStreams)
+        .to_string();
+    let produced_streams_label = app
+        .locale
+        .text(ShellText::InspectorProducedStreams)
+        .to_string();
+    let related_solve_steps_label = app.locale.text(ShellText::RelatedSolveSteps).to_string();
+    let related_diagnostics_label = app.locale.text(ShellText::RelatedDiagnostics).to_string();
+    let diagnostic_targets_label = app.locale.text(ShellText::DiagnosticTargets).to_string();
+    let labels = UnitSummaryLabels {
+        consumed_streams: &consumed_streams_label,
+        produced_streams: &produced_streams_label,
+        related_solve_steps: &related_solve_steps_label,
+        related_diagnostics: &related_diagnostics_label,
+        diagnostic_targets: &diagnostic_targets_label,
+    };
+
+    for (project_json, selected_stream_id, unit_id, title) in [
+        (
+            include_str!(
+                "../../../../../examples/flowsheets/feed-heater-flash-binary-hydrocarbon.rfproj.json"
+            ),
+            "stream-heated",
+            "heater-1",
+            "Heater",
+        ),
+        (
+            include_str!(
+                "../../../../../examples/flowsheets/feed-cooler-flash-binary-hydrocarbon.rfproj.json"
+            ),
+            "stream-cooled",
+            "cooler-1",
+            "Cooler",
+        ),
+        (
+            include_str!(
+                "../../../../../examples/flowsheets/feed-valve-flash-binary-hydrocarbon.rfproj.json"
+            ),
+            "stream-throttled",
+            "valve-1",
+            "Valve",
+        ),
+        (
+            include_str!(
+                "../../../../../examples/flowsheets/feed-mixer-flash-binary-hydrocarbon.rfproj.json"
+            ),
+            "stream-mix-out",
+            "mixer-1",
+            "Mixer",
+        ),
+    ] {
+        let snapshot = solve_binary_hydrocarbon_snapshot(project_json);
+        let inspector =
+            snapshot.result_inspector_with_unit(Some(selected_stream_id), None, Some(unit_id));
+        let selected_unit = inspector
+            .selected_unit
+            .as_ref()
+            .expect("expected selected non-flash intermediate unit");
+
+        let result_texts = render_result_inspector_with_unit_texts(
+            &mut app,
+            &snapshot,
+            selected_stream_id,
+            unit_id,
+        );
+        assert!(
+            result_texts
+                .iter()
+                .any(|text| text.contains(&result_unit_view_label)),
+            "expected result inspector to render unit view section for `{unit_id}`, rendered texts: {:?}",
+            result_texts
+        );
+
+        let active_detail = unit_target_detail_model(&snapshot, unit_id, title);
+        let active_unit = active_detail
+            .latest_unit_result
+            .clone()
+            .expect("expected active unit result");
+        assert_eq!(&active_unit, selected_unit);
+
+        let active_texts = render_active_inspector_texts(&mut app, active_detail);
+        assert_rendered_unit_summary_surface(
+            &active_texts,
+            "active inspector unit view",
+            &active_unit,
+            &labels,
+        );
+    }
+}
+
+#[test]
+fn runtime_panel_renders_official_near_boundary_flash_chain_window_semantics() {
+    let mut app = ready_app_state(&synced_workspace_config());
+    let bubble_dew_label = app.locale.text(ShellText::BubbleDewWindow).to_string();
+
+    for scenario in official_binary_hydrocarbon_near_boundary_consumer_scenarios() {
+        let snapshot = solve_snapshot_model_from_project_with_provider_and_edit(
+            scenario.project_json,
+            &build_official_binary_hydrocarbon_provider(),
+            |project| {
+                apply_official_binary_hydrocarbon_near_boundary_consumer_scenario(
+                    project, &scenario,
+                );
+            },
+        );
+
+        for stream_id in scenario.source_stream_ids {
+            let title = snapshot
+                .streams
+                .iter()
+                .find(|stream| stream.stream_id == *stream_id)
+                .expect("expected source stream")
+                .label
+                .clone();
+            assert_stream_window_rendered(
+                &mut app,
+                &snapshot,
+                stream_id,
+                title.as_str(),
+                &bubble_dew_label,
+                1,
+            );
+        }
+
+        assert_stream_window_rendered(
+            &mut app,
+            &snapshot,
+            scenario.flash_inlet_stream_id,
+            scenario.flash_inlet_title,
+            &bubble_dew_label,
+            1,
+        );
+
+        match scenario.case.expected_phase_region {
+            PhaseEquilibriumRegion::LiquidOnly => {
+                assert_stream_window_rendered(
+                    &mut app,
+                    &snapshot,
+                    "stream-liquid",
+                    "Liquid Outlet",
+                    &bubble_dew_label,
+                    1,
+                );
+                assert_stream_window_rendered(
+                    &mut app,
+                    &snapshot,
+                    "stream-vapor",
+                    "Vapor Outlet",
+                    &bubble_dew_label,
+                    0,
+                );
+            }
+            PhaseEquilibriumRegion::TwoPhase => {
+                assert_stream_window_rendered(
+                    &mut app,
+                    &snapshot,
+                    "stream-liquid",
+                    "Liquid Outlet",
+                    &bubble_dew_label,
+                    1,
+                );
+                assert_stream_window_rendered(
+                    &mut app,
+                    &snapshot,
+                    "stream-vapor",
+                    "Vapor Outlet",
+                    &bubble_dew_label,
+                    1,
+                );
+            }
+            PhaseEquilibriumRegion::VaporOnly => {
+                assert_stream_window_rendered(
+                    &mut app,
+                    &snapshot,
+                    "stream-liquid",
+                    "Liquid Outlet",
+                    &bubble_dew_label,
+                    0,
+                );
+                assert_stream_window_rendered(
+                    &mut app,
+                    &snapshot,
+                    "stream-vapor",
+                    "Vapor Outlet",
+                    &bubble_dew_label,
+                    1,
+                );
+            }
+        }
+    }
+}
+
+#[test]
+fn runtime_panel_renders_official_near_boundary_flash_unit_and_comparison_surfaces() {
+    let mut app = ready_app_state(&synced_workspace_config());
+    let result_unit_view_label = app.locale.text(ShellText::ResultUnitView).to_string();
+    let consumed_streams_label = app
+        .locale
+        .text(ShellText::InspectorConsumedStreams)
+        .to_string();
+    let produced_streams_label = app
+        .locale
+        .text(ShellText::InspectorProducedStreams)
+        .to_string();
+    let related_solve_steps_label = app.locale.text(ShellText::RelatedSolveSteps).to_string();
+    let related_diagnostics_label = app.locale.text(ShellText::RelatedDiagnostics).to_string();
+    let diagnostic_targets_label = app.locale.text(ShellText::DiagnosticTargets).to_string();
+    let unit_labels = UnitSummaryLabels {
+        consumed_streams: &consumed_streams_label,
+        produced_streams: &produced_streams_label,
+        related_solve_steps: &related_solve_steps_label,
+        related_diagnostics: &related_diagnostics_label,
+        diagnostic_targets: &diagnostic_targets_label,
+    };
+
+    for scenario in official_binary_hydrocarbon_near_boundary_consumer_scenarios() {
+        let snapshot = solve_snapshot_model_from_project_with_provider_and_edit(
+            scenario.project_json,
+            &build_official_binary_hydrocarbon_provider(),
+            |project| {
+                apply_official_binary_hydrocarbon_near_boundary_consumer_scenario(
+                    project, &scenario,
+                );
+            },
+        );
+
+        let selected_stream_id = preferred_flash_unit_stream_id(&snapshot);
+        let inspector =
+            snapshot.result_inspector_with_unit(Some(selected_stream_id), None, Some("flash-1"));
+        assert!(
+            inspector.selected_unit.is_some(),
+            "expected flash unit result model before rendering"
+        );
+        let result_texts = render_result_inspector_with_unit_texts(
+            &mut app,
+            &snapshot,
+            selected_stream_id,
+            "flash-1",
+        );
+        assert!(
+            result_texts
+                .iter()
+                .any(|text| text.contains(&result_unit_view_label)),
+            "expected result inspector to render flash unit view section, rendered texts: {:?}",
+            result_texts
+        );
+
+        let active_detail = unit_target_detail_model(&snapshot, "flash-1", "Flash Drum");
+        let active_unit = active_detail
+            .latest_unit_result
+            .clone()
+            .expect("expected active flash unit result");
+        let active_texts = render_active_inspector_texts(&mut app, active_detail);
+        assert_rendered_unit_summary_surface(
+            &active_texts,
+            "active inspector flash unit view",
+            &active_unit,
+            &unit_labels,
+        );
+
+        let comparison_inspector =
+            snapshot.result_inspector_with_comparison(Some("stream-liquid"), Some("stream-vapor"));
+        let comparison = comparison_inspector
+            .comparison
+            .as_ref()
+            .expect("expected flash outlet comparison");
+        let comparison_texts = render_result_inspector_comparison_texts(&mut app, comparison);
+        assert_rendered_comparison_surface(
+            &comparison_texts,
+            "near-boundary flash outlet comparison",
+            comparison,
+        );
+    }
+}
+
+#[test]
+fn runtime_panel_renders_official_near_boundary_result_inspector_selector_transitions() {
+    let mut app = ready_app_state(&synced_workspace_config());
+    let stream_comparison_label = app.locale.text(ShellText::StreamComparison).to_string();
+    let result_unit_view_label = app.locale.text(ShellText::ResultUnitView).to_string();
+
+    for scenario in official_binary_hydrocarbon_near_boundary_consumer_scenarios() {
+        let snapshot = solve_snapshot_model_from_project_with_provider_and_edit(
+            scenario.project_json,
+            &build_official_binary_hydrocarbon_provider(),
+            |project| {
+                apply_official_binary_hydrocarbon_near_boundary_consumer_scenario(
+                    project, &scenario,
+                );
+            },
+        );
+
+        app.result_inspector
+            .select_stream(&snapshot.snapshot_id, "stream-liquid");
+        app.result_inspector
+            .select_comparison_stream(&snapshot.snapshot_id, "stream-vapor");
+        app.result_inspector
+            .select_unit(&snapshot.snapshot_id, "flash-1");
+
+        let selected_stream_id = app
+            .result_inspector
+            .selected_stream_id_for_snapshot(&snapshot);
+        let selected_unit_id = app
+            .result_inspector
+            .selected_unit_id_for_snapshot(&snapshot);
+        let comparison_stream_id = app.result_inspector.comparison_stream_id.clone();
+        let inspector = snapshot.result_inspector_with_unit(
+            selected_stream_id.as_deref(),
+            comparison_stream_id.as_deref(),
+            selected_unit_id.as_deref(),
+        );
+        let comparison = inspector
+            .comparison
+            .as_ref()
+            .expect("expected flash outlet comparison from shell-selected state");
+        let selected_texts = render_shell_selected_result_inspector_texts(&mut app, &snapshot, &[]);
+        let comparison_texts = render_result_inspector_comparison_texts(&mut app, comparison);
+        assert!(
+            selected_texts
+                .iter()
+                .any(|text| text.contains(&stream_comparison_label)),
+            "expected shell-selected result inspector to keep flash comparison section visible, rendered texts: {:?}",
+            selected_texts
+        );
+        assert!(
+            selected_texts
+                .iter()
+                .any(|text| text.contains(&result_unit_view_label)),
+            "expected shell-selected result inspector to render flash unit view, rendered texts: {:?}",
+            selected_texts
+        );
+        assert_rendered_comparison_surface(
+            &comparison_texts,
+            "shell-selected near-boundary flash outlet comparison",
+            comparison,
+        );
+
+        app.result_inspector
+            .select_stream(&snapshot.snapshot_id, "stream-vapor");
+        let switched_stream_id = app
+            .result_inspector
+            .selected_stream_id_for_snapshot(&snapshot);
+        let switched_unit_id = app
+            .result_inspector
+            .selected_unit_id_for_snapshot(&snapshot);
+        let switched_comparison_stream_id = app.result_inspector.comparison_stream_id.clone();
+        let switched_inspector = snapshot.result_inspector_with_unit(
+            switched_stream_id.as_deref(),
+            switched_comparison_stream_id.as_deref(),
+            switched_unit_id.as_deref(),
+        );
+        assert_eq!(
+            switched_inspector.selected_stream_id.as_deref(),
+            Some("stream-vapor"),
+            "{}",
+            scenario.case.label
+        );
+        assert_eq!(
+            switched_inspector.comparison_stream_id, None,
+            "{}",
+            scenario.case.label
+        );
+        assert_eq!(
+            switched_inspector.comparison, None,
+            "{}",
+            scenario.case.label
+        );
+        assert!(
+            !switched_inspector.has_stale_comparison,
+            "{}",
+            scenario.case.label
+        );
+        let switched_texts = render_shell_selected_result_inspector_texts(&mut app, &snapshot, &[]);
+        assert!(
+            switched_texts
+                .iter()
+                .any(|text| text.contains(&stream_comparison_label)),
+            "expected stream comparison section to stay visible after selector switch, rendered texts: {:?}",
+            switched_texts
+        );
+        assert!(
+            switched_texts
+                .iter()
+                .any(|text| text.contains(&result_unit_view_label)),
+            "expected flash unit selection to survive stream selector switch, rendered texts: {:?}",
+            switched_texts
+        );
+
+        app.result_inspector
+            .select_comparison_stream(&snapshot.snapshot_id, "stream-liquid");
+        let rearmed_stream_id = app
+            .result_inspector
+            .selected_stream_id_for_snapshot(&snapshot);
+        let rearmed_unit_id = app
+            .result_inspector
+            .selected_unit_id_for_snapshot(&snapshot);
+        let rearmed_comparison_stream_id = app.result_inspector.comparison_stream_id.clone();
+        let rearmed_inspector = snapshot.result_inspector_with_unit(
+            rearmed_stream_id.as_deref(),
+            rearmed_comparison_stream_id.as_deref(),
+            rearmed_unit_id.as_deref(),
+        );
+        let rearmed_comparison = rearmed_inspector
+            .comparison
+            .as_ref()
+            .expect("expected rearmed flash outlet comparison");
+        let rearmed_texts = render_shell_selected_result_inspector_texts(&mut app, &snapshot, &[]);
+        let rearmed_comparison_texts =
+            render_result_inspector_comparison_texts(&mut app, rearmed_comparison);
+        assert!(
+            rearmed_texts
+                .iter()
+                .any(|text| text.contains(&stream_comparison_label)),
+            "expected shell-rearmed result inspector to keep flash comparison section visible, rendered texts: {:?}",
+            rearmed_texts
+        );
+        assert!(
+            rearmed_texts
+                .iter()
+                .any(|text| text.contains(&result_unit_view_label)),
+            "expected shell-rearmed result inspector to keep flash unit view visible, rendered texts: {:?}",
+            rearmed_texts
+        );
+        assert_rendered_comparison_surface(
+            &rearmed_comparison_texts,
+            "shell-rearmed near-boundary flash outlet comparison",
+            rearmed_comparison,
+        );
+    }
+}
+
+#[test]
+fn runtime_panel_renders_official_near_boundary_flash_diagnostic_actions_and_focus_controls() {
+    let mut app = ready_app_state(&synced_workspace_config());
+    let diagnostic_targets_label = app.locale.text(ShellText::DiagnosticTargets).to_string();
+    let result_unit_view_label = app.locale.text(ShellText::ResultUnitView).to_string();
+
+    for scenario in official_binary_hydrocarbon_near_boundary_consumer_scenarios() {
+        let snapshot = solve_snapshot_model_from_project_with_provider_and_edit(
+            scenario.project_json,
+            &build_official_binary_hydrocarbon_provider(),
+            |project| {
+                apply_official_binary_hydrocarbon_near_boundary_consumer_scenario(
+                    project, &scenario,
+                );
+            },
+        );
+
+        let inlet_inspector = snapshot.result_inspector(Some(scenario.flash_inlet_stream_id));
+        let inlet_texts =
+            render_result_inspector_texts(&mut app, &snapshot, scenario.flash_inlet_stream_id);
+        assert!(
+            inlet_texts
+                .iter()
+                .any(|text| text.contains(&diagnostic_targets_label)),
+            "expected near-boundary flash inlet result inspector to render diagnostic targets section label, rendered texts: {:?}",
+            inlet_texts
+        );
+        let inlet_action_texts =
+            render_diagnostic_target_actions_texts(&mut app, &inlet_inspector.diagnostic_actions);
+        let inlet_selected_stream_action = inlet_inspector
+            .diagnostic_actions
+            .iter()
+            .find(|action| {
+                action.source_label == "Selected stream"
+                    && action.action.command_id
+                        == format!("inspector.focus_stream:{}", scenario.flash_inlet_stream_id)
+            })
+            .expect("expected selected stream diagnostic action");
+        let inlet_step_unit_action = inlet_inspector
+            .diagnostic_actions
+            .iter()
+            .find(|action| {
+                action.source_label == "Solve step"
+                    && action.target_label == "Unit"
+                    && action.action.command_id == "inspector.focus_unit:flash-1"
+            })
+            .expect("expected solve step unit diagnostic action");
+        assert_rendered_diagnostic_target_actions_surface(
+            &inlet_action_texts,
+            "near-boundary flash inlet result inspector",
+            &diagnostic_targets_label,
+            &[inlet_selected_stream_action, inlet_step_unit_action],
+        );
+
+        let unit_inspector = snapshot.result_inspector_with_unit(
+            Some("stream-liquid"),
+            Some("stream-vapor"),
+            Some("flash-1"),
+        );
+        let unit_texts = render_runtime_area_texts(&mut app, |app, ui| {
+            app.render_result_inspector(ui, &unit_inspector)
+        });
+        assert!(
+            unit_texts
+                .iter()
+                .any(|text| text.contains(&result_unit_view_label)),
+            "expected near-boundary flash unit result inspector to render unit view section label, rendered texts: {:?}",
+            unit_texts
+        );
+        assert!(
+            unit_texts
+                .iter()
+                .any(|text| text.contains(&diagnostic_targets_label)),
+            "expected near-boundary flash unit result inspector to render diagnostic targets section label, rendered texts: {:?}",
+            unit_texts
+        );
+        let unit_action_texts = render_diagnostic_target_actions_texts(
+            &mut app,
+            &unit_inspector.unit_diagnostic_actions,
+        );
+        let unit_selected_action = unit_inspector
+            .unit_diagnostic_actions
+            .iter()
+            .find(|action| {
+                action.source_label == "Selected unit"
+                    && action.action.command_id == "inspector.focus_unit:flash-1"
+            })
+            .expect("expected selected unit diagnostic action");
+        let unit_step_action = unit_inspector
+            .unit_diagnostic_actions
+            .iter()
+            .find(|action| {
+                action.source_label == "Solve step"
+                    && action.target_label == "Unit"
+                    && action.action.command_id == "inspector.focus_unit:flash-1"
+            })
+            .expect("expected solve step unit diagnostic action");
+        let unit_inlet_action = unit_inspector
+            .unit_diagnostic_actions
+            .iter()
+            .find(|action| {
+                action.source_label == "Diagnostic"
+                    && action.target_label == "Stream"
+                    && action.action.command_id
+                        == format!("inspector.focus_stream:{}", scenario.flash_inlet_stream_id)
+            })
+            .expect("expected inlet diagnostic action");
+        assert_rendered_diagnostic_target_actions_surface(
+            &unit_action_texts,
+            "near-boundary flash unit result inspector",
+            &diagnostic_targets_label,
+            &[unit_selected_action, unit_step_action, unit_inlet_action],
+        );
+
+        let comparison_inspector =
+            snapshot.result_inspector_with_comparison(Some("stream-liquid"), Some("stream-vapor"));
+        let comparison = comparison_inspector
+            .comparison
+            .as_ref()
+            .expect("expected near-boundary flash comparison");
+        let comparison_texts = render_result_inspector_comparison_texts(&mut app, comparison);
+        assert_rendered_comparison_surface(
+            &comparison_texts,
+            "near-boundary flash comparison focus controls",
+            comparison,
+        );
+
+        let active_detail = unit_target_detail_model(&snapshot, "flash-1", "Flash Drum");
+        let active_texts = render_active_inspector_texts(&mut app, active_detail.clone());
+        assert!(
+            active_texts
+                .iter()
+                .any(|text| text.contains(&diagnostic_targets_label)),
+            "expected near-boundary flash active inspector to render diagnostic targets section label, rendered texts: {:?}",
+            active_texts
+        );
+        let active_action_texts =
+            render_diagnostic_target_actions_texts(&mut app, &active_detail.diagnostic_actions);
+        let active_target_action = active_detail
+            .diagnostic_actions
+            .iter()
+            .find(|action| {
+                action.source_label == "Inspector target"
+                    && action.target_label == "Unit"
+                    && action.action.command_id == "inspector.focus_unit:flash-1"
+            })
+            .expect("expected active inspector target action");
+        let active_liquid_action = active_detail
+            .diagnostic_actions
+            .iter()
+            .find(|action| {
+                action.source_label == "Latest result"
+                    && action.target_label == "Stream"
+                    && action.action.command_id == "inspector.focus_stream:stream-liquid"
+            })
+            .expect("expected active liquid outlet action");
+        let active_vapor_action = active_detail
+            .diagnostic_actions
+            .iter()
+            .find(|action| {
+                action.source_label == "Latest result"
+                    && action.target_label == "Stream"
+                    && action.action.command_id == "inspector.focus_stream:stream-vapor"
+            })
+            .expect("expected active vapor outlet action");
+        assert_rendered_diagnostic_target_actions_surface(
+            &active_action_texts,
+            "near-boundary flash active inspector",
+            &diagnostic_targets_label,
+            &[
+                active_target_action,
+                active_liquid_action,
+                active_vapor_action,
+            ],
+        );
+    }
+}
+
+#[test]
+fn runtime_panel_can_render_same_stream_in_result_and_active_inspectors() {
+    let mut app = ready_app_state(&synced_workspace_config());
+    let bubble_dew_label = app.locale.text(ShellText::BubbleDewWindow).to_string();
+    let snapshot = solve_two_phase_snapshot();
+    let texts = render_full_runtime_panel_texts(
+        &mut app,
+        &snapshot,
+        "stream-liquid",
+        stream_target_detail_model(&snapshot, "stream-liquid", "Liquid Outlet"),
+    );
+
+    assert_eq!(
+        rendered_text_occurrences(&texts, &bubble_dew_label),
+        2,
+        "expected the runtime panel to render bubble/dew window sections in both result and active inspector surfaces, rendered texts: {:?}",
+        texts
+    );
+    assert!(
+        !texts
+            .iter()
+            .any(|text| text.contains("widget ID") || text.contains("Grid ID")),
+        "expected no egui duplicate-id diagnostics after namespacing repeated stream inspector rendering, rendered texts: {:?}",
+        texts
+    );
+}
+
+#[test]
+fn runtime_command_action_button_click_focuses_latest_result_stream() {
+    let mut app = ready_app_state(&synced_workspace_config());
+    app.dispatch_ui_command("run_panel.run_manual");
+    let snapshot = app
+        .platform_host
+        .snapshot()
+        .window_model()
+        .runtime
+        .latest_solve_snapshot
+        .expect("expected latest solve snapshot");
+    let inspector = snapshot.result_inspector(Some("stream-feed"));
+    let action = inspector
+        .stream_options
+        .iter()
+        .find(|option| option.stream_id == "stream-vapor")
+        .map(|option| option.focus_action.clone())
+        .expect("expected vapor result stream focus action");
+    assert_eq!(action.command_id, "inspector.focus_stream:stream-vapor");
+
+    let ctx = egui::Context::default();
+    let rect = render_command_action_button_frame(&ctx, &mut app, &action, Vec::new());
+    render_command_action_button_frame(
+        &ctx,
+        &mut app,
+        &action,
+        primary_click_events(rect.center()),
+    );
+
+    assert_eq!(
+        app.platform_host
+            .snapshot()
+            .window_model()
+            .runtime
+            .active_inspector_target
+            .as_ref()
+            .map(|target| (target.kind_label, target.target_id.as_str())),
+        Some(("Stream", "stream-vapor"))
+    );
+}

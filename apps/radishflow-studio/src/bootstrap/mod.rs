@@ -6,6 +6,7 @@ mod temp_cache;
 mod tests;
 
 use std::path::PathBuf;
+use std::time::SystemTime;
 
 use crate::{
     EntitlementPreflightOutcome, EntitlementSessionEventDriverOutcome,
@@ -23,9 +24,31 @@ use self::temp_cache::TemporaryCacheRoot;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StudioBootstrapConfig {
     pub project_path: PathBuf,
+    pub untitled_blank_project: Option<StudioBootstrapUntitledProject>,
     pub entitlement_preflight: StudioBootstrapEntitlementPreflight,
     pub entitlement_seed: StudioBootstrapEntitlementSeed,
     pub trigger: StudioBootstrapTrigger,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioBootstrapUntitledProject {
+    pub document_id: String,
+    pub title: String,
+    pub created_at: SystemTime,
+}
+
+impl StudioBootstrapUntitledProject {
+    pub fn new(
+        document_id: impl Into<String>,
+        title: impl Into<String>,
+        created_at: SystemTime,
+    ) -> Self {
+        Self {
+            document_id: document_id.into(),
+            title: title.into(),
+            created_at,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -80,7 +103,8 @@ impl Default for StudioBootstrapConfig {
             project_path: workspace_root
                 .join("examples")
                 .join("flowsheets")
-                .join("feed-heater-flash.rfproj.json"),
+                .join("feed-heater-flash-binary-hydrocarbon.rfproj.json"),
+            untitled_blank_project: None,
             entitlement_preflight: StudioBootstrapEntitlementPreflight::Auto,
             entitlement_seed: StudioBootstrapEntitlementSeed::Synced,
             trigger: StudioBootstrapTrigger::WidgetPrimaryAction,

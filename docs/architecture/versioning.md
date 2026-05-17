@@ -1,6 +1,6 @@
 # Versioning And Release
 
-更新时间：2026-03-29
+更新时间：2026-05-16
 
 ## 目标
 
@@ -170,10 +170,52 @@ vYY.M.RELEASE.DDXX
 - 创建 `vYY.M.RELEASE-release`
 - 例如：`v26.3.1-release`
 
+## MVP α 便携包操作清单
+
+当前 MVP α 交付形态先冻结为 Windows 便携压缩包 / staging 目录，不代表完整安装器。包内入口是 `radishflow-studio.exe`；示例项目、样例物性包、quick start、结果审阅说明、验收清单、版本说明和许可文件随包附带。
+
+打包前必须先完成阶段性验证：
+
+```powershell
+pwsh ./scripts/check-repo.ps1
+```
+
+生成当前月份的默认 `-dev` 便携包：
+
+```powershell
+pwsh ./scripts/package.ps1 -Clean
+```
+
+生成指定规范版本包：
+
+```powershell
+pwsh ./scripts/package.ps1 -Version v26.5.1-dev -Clean
+```
+
+脚本默认执行 `cargo build -p radishflow-studio --bin radishflow-studio --release`，并输出到 `artifacts/packages/RadishFlow-<version>-windows-<arch>/` 与同名 `.zip`。若只想复用已有构建产物，可显式传入 `-SkipBuild`；若只想检查 staging 内容而不生成压缩包，可传入 `-NoArchive`。
+
+当前便携包明确不做：
+
+- 不生成安装器
+- 不写注册表
+- 不执行 COM 注册或反注册
+- 不启动 PME 或外部宿主
+- 不加载第三方 CAPE-OPEN 模型
+
+内部包记录或 Release Notes 应至少包含：
+
+- 使用的包版本；若已创建规范 tag，再记录 tag
+- `pwsh ./scripts/check-repo.ps1` 结果
+- `pwsh ./scripts/package.ps1 -Version <version> -Clean` 结果
+- MVP α Smoke A / B / C 记录引用
+- 当前能力边界和明确非目标
+- 已知环境前提，例如当前便携包优先面向 Windows
+
+当前版本化说明放在 `docs/releases/<version-or-tag>.md`。`scripts/package.ps1` 会在对应文件存在时把它复制进便携包，并在 `PACKAGE-MANIFEST.txt` 中记录 `releaseNotes` 路径；若对应文件不存在，则记录为 `not-included`。`v26.5.1-dev` 当前只作为内部便携包版本号保留，暂缓创建 Git tag。
+
 ## 当前后续事项
 
 以下内容后续仍需继续细化，但不再属于“方向未定”：
 
 1. 是否在首个对外版本前统一把 workspace crate version 从 `0.1.0` 切到发布口径
-2. 是否需要补一份 RadishFlow 的发布操作清单，覆盖 version 更新、tag、Release Notes 和验收记录
-3. tag push 后除仓库检查外，后续是否需要增加打包、工件归档或安装包产出流程
+2. tag push 后除仓库检查外，后续是否需要增加 CI 打包、工件归档或安装包产出流程

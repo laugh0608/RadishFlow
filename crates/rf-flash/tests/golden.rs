@@ -1,7 +1,9 @@
 use std::fs;
 use std::path::PathBuf;
 
-use rf_flash::{FlashStatus, PlaceholderTpFlashSolver, TpFlashInput, TpFlashSolver};
+use rf_flash::{
+    FlashPhaseRegion, FlashStatus, PlaceholderTpFlashSolver, TpFlashInput, TpFlashSolver,
+};
 use rf_thermo::{AntoineCoefficients, PlaceholderThermoProvider, ThermoComponent, ThermoSystem};
 use rf_types::{ComponentId, PhaseLabel};
 use serde::Deserialize;
@@ -34,12 +36,25 @@ struct FlashGoldenCase {
     overall_mole_fractions: Vec<f64>,
     components: Vec<GoldenComponent>,
     expected_k_values: Vec<f64>,
+    expected_phase_region: GoldenPhaseRegion,
+    expected_bubble_pressure_pa: f64,
+    expected_dew_pressure_pa: f64,
+    expected_bubble_temperature_k: f64,
+    expected_dew_temperature_k: f64,
     expected_vapor_fraction: f64,
     expected_overall_molar_enthalpy_j_per_mol: f64,
-    expected_liquid_mole_fractions: Vec<f64>,
-    expected_liquid_molar_enthalpy_j_per_mol: f64,
-    expected_vapor_mole_fractions: Vec<f64>,
-    expected_vapor_molar_enthalpy_j_per_mol: f64,
+    expected_liquid_mole_fractions: Option<Vec<f64>>,
+    expected_liquid_molar_enthalpy_j_per_mol: Option<f64>,
+    expected_vapor_mole_fractions: Option<Vec<f64>>,
+    expected_vapor_molar_enthalpy_j_per_mol: Option<f64>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+enum GoldenPhaseRegion {
+    LiquidOnly,
+    TwoPhase,
+    VaporOnly,
 }
 
 fn assert_close(actual: f64, expected: f64, tolerance: f64) {
@@ -50,12 +65,31 @@ fn assert_close(actual: f64, expected: f64, tolerance: f64) {
     );
 }
 
-fn load_case(file_name: &str) -> FlashGoldenCase {
-    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("../../tests/flash-golden")
-        .join(file_name);
-    let json = fs::read_to_string(&path).expect("expected flash golden file");
-    serde_json::from_str(&json).expect("expected flash golden json")
+fn golden_dir() -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../tests/flash-golden")
+}
+
+fn load_cases() -> Vec<(String, FlashGoldenCase)> {
+    let mut paths = fs::read_dir(golden_dir())
+        .expect("expected flash golden dir")
+        .map(|entry| entry.expect("expected flash golden dir entry").path())
+        .filter(|path| path.extension().and_then(|ext| ext.to_str()) == Some("json"))
+        .collect::<Vec<_>>();
+    paths.sort();
+
+    paths
+        .into_iter()
+        .map(|path| {
+            let file_name = path
+                .file_name()
+                .and_then(|name| name.to_str())
+                .expect("expected flash golden file name")
+                .to_string();
+            let json = fs::read_to_string(&path).expect("expected flash golden file");
+            let case = serde_json::from_str(&json).expect("expected flash golden json");
+            (file_name, case)
+        })
+        .collect()
 }
 
 fn build_provider(case: &FlashGoldenCase) -> PlaceholderThermoProvider {
@@ -84,92 +118,150 @@ fn build_provider(case: &FlashGoldenCase) -> PlaceholderThermoProvider {
 }
 
 #[test]
-fn binary_hydrocarbon_lite_flash_case_matches_expected_result() {
-    let case = load_case("binary-hydrocarbon-lite-v1-300k-650kpa-z0.2-0.8.json");
-    let provider = build_provider(&case);
-    let solver = PlaceholderTpFlashSolver;
-    let input = TpFlashInput::new(
-        "golden-stream",
-        case.name.clone(),
-        case.temperature_k,
-        case.pressure_pa,
-        case.total_molar_flow_mol_s,
-        case.overall_mole_fractions.clone(),
-    );
+fn flash_golden_cases_match_expected_results() {
+    for (file_name, case) in load_cases() {
+        let provider = build_provider(&case);
+        let solver = PlaceholderTpFlashSolver;
+        let input = TpFlashInput::new(
+            "golden-stream",
+            case.name.clone(),
+            case.temperature_k,
+            case.pressure_pa,
+            case.total_molar_flow_mol_s,
+            case.overall_mole_fractions.clone(),
+        );
 
-    let result = solver
-        .flash(&provider, &input)
-        .expect("expected flash result");
+        let result = solver
+            .flash(&provider, &input)
+            .expect("expected flash result");
 
-    assert_eq!(result.status, FlashStatus::Converged);
-    assert_close(
-        result.vapor_fraction.expect("expected vapor fraction"),
-        case.expected_vapor_fraction,
-        1e-10,
-    );
+        assert_eq!(result.status, FlashStatus::Converged);
+        let expected_phase_region = match case.expected_phase_region {
+            GoldenPhaseRegion::LiquidOnly => FlashPhaseRegion::LiquidOnly,
+            GoldenPhaseRegion::TwoPhase => FlashPhaseRegion::TwoPhase,
+            GoldenPhaseRegion::VaporOnly => FlashPhaseRegion::VaporOnly,
+        };
+        assert_eq!(result.phase_region, expected_phase_region);
+        assert_close(
+            result.bubble_pressure_pa,
+            case.expected_bubble_pressure_pa,
+            1e-6,
+        );
+        assert_close(result.dew_pressure_pa, case.expected_dew_pressure_pa, 1e-6);
+        assert_close(
+            result.bubble_temperature_k,
+            case.expected_bubble_temperature_k,
+            1e-4,
+        );
+        assert_close(
+            result.dew_temperature_k,
+            case.expected_dew_temperature_k,
+            1e-4,
+        );
+        let bubble_dew_window = result
+            .stream
+            .bubble_dew_window
+            .as_ref()
+            .expect("expected flashed stream bubble/dew window");
+        assert_eq!(bubble_dew_window.phase_region, expected_phase_region);
+        assert_close(
+            bubble_dew_window.bubble_pressure_pa,
+            case.expected_bubble_pressure_pa,
+            1e-6,
+        );
+        assert_close(
+            bubble_dew_window.dew_pressure_pa,
+            case.expected_dew_pressure_pa,
+            1e-6,
+        );
+        assert_close(
+            bubble_dew_window.bubble_temperature_k,
+            case.expected_bubble_temperature_k,
+            1e-4,
+        );
+        assert_close(
+            bubble_dew_window.dew_temperature_k,
+            case.expected_dew_temperature_k,
+            1e-4,
+        );
+        assert_close(
+            result.vapor_fraction.expect("expected vapor fraction"),
+            case.expected_vapor_fraction,
+            1e-10,
+        );
 
-    let actual_k_values = result.k_values.expect("expected K-values");
-    assert_eq!(actual_k_values.len(), case.expected_k_values.len());
-    for (actual, expected) in actual_k_values.iter().zip(case.expected_k_values.iter()) {
-        assert_close(*actual, *expected, 1e-10);
-    }
+        let actual_k_values = result.k_values.expect("expected K-values");
+        assert_eq!(actual_k_values.len(), case.expected_k_values.len());
+        for (actual, expected) in actual_k_values.iter().zip(case.expected_k_values.iter()) {
+            assert_close(*actual, *expected, 1e-10);
+        }
 
-    let liquid = result
-        .stream
-        .phases
-        .iter()
-        .find(|phase| phase.label == PhaseLabel::Liquid)
-        .expect("expected liquid phase");
-    let vapor = result
-        .stream
-        .phases
-        .iter()
-        .find(|phase| phase.label == PhaseLabel::Vapor)
-        .expect("expected vapor phase");
+        assert_close(
+            result.stream.phases[0]
+                .molar_enthalpy_j_per_mol
+                .expect("expected overall enthalpy"),
+            case.expected_overall_molar_enthalpy_j_per_mol,
+            1e-10,
+        );
 
-    assert_close(
-        result.stream.phases[0]
-            .molar_enthalpy_j_per_mol
-            .expect("expected overall enthalpy"),
-        case.expected_overall_molar_enthalpy_j_per_mol,
-        1e-10,
-    );
-    assert_close(
-        liquid
-            .molar_enthalpy_j_per_mol
-            .expect("expected liquid enthalpy"),
-        case.expected_liquid_molar_enthalpy_j_per_mol,
-        1e-10,
-    );
-    assert_close(
-        vapor
-            .molar_enthalpy_j_per_mol
-            .expect("expected vapor enthalpy"),
-        case.expected_vapor_molar_enthalpy_j_per_mol,
-        1e-10,
-    );
+        let liquid = result
+            .stream
+            .phases
+            .iter()
+            .find(|phase| phase.label == PhaseLabel::Liquid);
+        match (
+            liquid,
+            case.expected_liquid_mole_fractions.as_ref(),
+            case.expected_liquid_molar_enthalpy_j_per_mol,
+        ) {
+            (Some(liquid), Some(expected_fractions), Some(expected_enthalpy)) => {
+                assert_close(
+                    liquid
+                        .molar_enthalpy_j_per_mol
+                        .expect("expected liquid enthalpy"),
+                    expected_enthalpy,
+                    1e-10,
+                );
+                for (component, expected) in case.components.iter().zip(expected_fractions.iter()) {
+                    let actual = liquid
+                        .mole_fractions
+                        .get(&ComponentId::new(component.id.clone()))
+                        .expect("expected liquid component");
+                    assert_close(*actual, *expected, 1e-10);
+                }
+            }
+            (None, None, None) => {}
+            _ => panic!("inconsistent liquid expectation in `{file_name}`"),
+        }
 
-    for (component, expected) in case
-        .components
-        .iter()
-        .zip(case.expected_liquid_mole_fractions.iter())
-    {
-        let actual = liquid
-            .mole_fractions
-            .get(&ComponentId::new(component.id.clone()))
-            .expect("expected liquid component");
-        assert_close(*actual, *expected, 1e-10);
-    }
-
-    for (component, expected) in case
-        .components
-        .iter()
-        .zip(case.expected_vapor_mole_fractions.iter())
-    {
-        let actual = vapor
-            .mole_fractions
-            .get(&ComponentId::new(component.id.clone()))
-            .expect("expected vapor component");
-        assert_close(*actual, *expected, 1e-10);
+        let vapor = result
+            .stream
+            .phases
+            .iter()
+            .find(|phase| phase.label == PhaseLabel::Vapor);
+        match (
+            vapor,
+            case.expected_vapor_mole_fractions.as_ref(),
+            case.expected_vapor_molar_enthalpy_j_per_mol,
+        ) {
+            (Some(vapor), Some(expected_fractions), Some(expected_enthalpy)) => {
+                assert_close(
+                    vapor
+                        .molar_enthalpy_j_per_mol
+                        .expect("expected vapor enthalpy"),
+                    expected_enthalpy,
+                    1e-10,
+                );
+                for (component, expected) in case.components.iter().zip(expected_fractions.iter()) {
+                    let actual = vapor
+                        .mole_fractions
+                        .get(&ComponentId::new(component.id.clone()))
+                        .expect("expected vapor component");
+                    assert_close(*actual, *expected, 1e-10);
+                }
+            }
+            (None, None, None) => {}
+            _ => panic!("inconsistent vapor expectation in `{file_name}`"),
+        }
     }
 }

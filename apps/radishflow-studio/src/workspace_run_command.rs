@@ -260,7 +260,10 @@ mod tests {
             "2026.03.1",
             PropertyPackageSource::RemoteDerivedPackage,
         );
-        manifest.component_ids = vec!["component-a".into(), "component-b".into()];
+        manifest.component_ids = crate::test_support::OFFICIAL_BINARY_HYDROCARBON_COMPONENT_SPECS
+            .into_iter()
+            .map(|(component_id, _)| component_id.into())
+            .collect();
         app_state
             .entitlement
             .update(snapshot, vec![manifest], timestamp(31));

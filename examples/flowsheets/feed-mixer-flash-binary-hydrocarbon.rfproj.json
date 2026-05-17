@@ -1,0 +1,169 @@
+{
+  "kind": "radishflow.project-file",
+  "schemaVersion": 1,
+  "document": {
+    "revision": 0,
+    "flowsheet": {
+      "name": "feed-mixer-flash-binary-hydrocarbon",
+      "components": {
+        "methane": {
+          "id": "methane",
+          "name": "Methane",
+          "formula": "CH4"
+        },
+        "ethane": {
+          "id": "ethane",
+          "name": "Ethane",
+          "formula": "C2H6"
+        }
+      },
+      "streams": {
+        "stream-feed-a": {
+          "id": "stream-feed-a",
+          "name": "Feed A",
+          "temperature_k": 300.0,
+          "pressure_pa": 650000.0,
+          "total_molar_flow_mol_s": 2.0,
+          "overall_mole_fractions": {
+            "methane": 0.2,
+            "ethane": 0.8
+          },
+          "phases": []
+        },
+        "stream-feed-b": {
+          "id": "stream-feed-b",
+          "name": "Feed B",
+          "temperature_k": 300.0,
+          "pressure_pa": 650000.0,
+          "total_molar_flow_mol_s": 3.0,
+          "overall_mole_fractions": {
+            "methane": 0.2,
+            "ethane": 0.8
+          },
+          "phases": []
+        },
+        "stream-mix-out": {
+          "id": "stream-mix-out",
+          "name": "Mixer Outlet",
+          "temperature_k": 300.0,
+          "pressure_pa": 650000.0,
+          "total_molar_flow_mol_s": 0.0,
+          "overall_mole_fractions": {
+            "methane": 0.2,
+            "ethane": 0.8
+          },
+          "phases": []
+        },
+        "stream-liquid": {
+          "id": "stream-liquid",
+          "name": "Liquid Outlet",
+          "temperature_k": 300.0,
+          "pressure_pa": 650000.0,
+          "total_molar_flow_mol_s": 0.0,
+          "overall_mole_fractions": {
+            "methane": 0.2,
+            "ethane": 0.8
+          },
+          "phases": []
+        },
+        "stream-vapor": {
+          "id": "stream-vapor",
+          "name": "Vapor Outlet",
+          "temperature_k": 300.0,
+          "pressure_pa": 650000.0,
+          "total_molar_flow_mol_s": 0.0,
+          "overall_mole_fractions": {
+            "methane": 0.2,
+            "ethane": 0.8
+          },
+          "phases": []
+        }
+      },
+      "units": {
+        "feed-a": {
+          "id": "feed-a",
+          "name": "Feed A",
+          "kind": "feed",
+          "ports": [
+            {
+              "name": "outlet",
+              "direction": "outlet",
+              "kind": "material",
+              "stream_id": "stream-feed-a"
+            }
+          ]
+        },
+        "feed-b": {
+          "id": "feed-b",
+          "name": "Feed B",
+          "kind": "feed",
+          "ports": [
+            {
+              "name": "outlet",
+              "direction": "outlet",
+              "kind": "material",
+              "stream_id": "stream-feed-b"
+            }
+          ]
+        },
+        "mixer-1": {
+          "id": "mixer-1",
+          "name": "Mixer",
+          "kind": "mixer",
+          "ports": [
+            {
+              "name": "inlet_a",
+              "direction": "inlet",
+              "kind": "material",
+              "stream_id": "stream-feed-a"
+            },
+            {
+              "name": "inlet_b",
+              "direction": "inlet",
+              "kind": "material",
+              "stream_id": "stream-feed-b"
+            },
+            {
+              "name": "outlet",
+              "direction": "outlet",
+              "kind": "material",
+              "stream_id": "stream-mix-out"
+            }
+          ]
+        },
+        "flash-1": {
+          "id": "flash-1",
+          "name": "Flash Drum",
+          "kind": "flash_drum",
+          "ports": [
+            {
+              "name": "inlet",
+              "direction": "inlet",
+              "kind": "material",
+              "stream_id": "stream-mix-out"
+            },
+            {
+              "name": "liquid",
+              "direction": "outlet",
+              "kind": "material",
+              "stream_id": "stream-liquid"
+            },
+            {
+              "name": "vapor",
+              "direction": "outlet",
+              "kind": "material",
+              "stream_id": "stream-vapor"
+            }
+          ]
+        }
+      }
+    },
+    "metadata": {
+      "documentId": "example-feed-mixer-flash-binary-hydrocarbon",
+      "title": "Feed Mixer Flash Binary Hydrocarbon Example",
+      "schemaVersion": 1,
+      "createdAt": "2026-05-08T00:00:00Z",
+      "updatedAt": "2026-05-08T00:00:00Z"
+    }
+  }
+}

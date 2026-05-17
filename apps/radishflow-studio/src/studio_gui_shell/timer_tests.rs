@@ -12,6 +12,185 @@ fn lease_expiring_config() -> StudioRuntimeConfig {
     }
 }
 
+fn synced_skip_config() -> StudioRuntimeConfig {
+    StudioRuntimeConfig {
+        entitlement_preflight: StudioRuntimeEntitlementPreflight::Skip,
+        entitlement_seed: StudioRuntimeEntitlementSeed::Synced,
+        ..StudioRuntimeConfig::default()
+    }
+}
+
+#[test]
+fn shell_runtime_config_skips_startup_entitlement_preflight() {
+    let config = studio_shell_runtime_config(None);
+
+    assert_eq!(
+        config.entitlement_preflight,
+        StudioRuntimeEntitlementPreflight::Skip
+    );
+    assert_eq!(
+        config.project_path,
+        StudioRuntimeConfig::default().project_path
+    );
+}
+
+#[test]
+fn startup_uses_default_hidden_commands_panel_without_layout_dispatch() {
+    let preferences_path = std::env::temp_dir()
+        .join("radishflow-studio-shell-startup-hidden-commands.preferences.json");
+    let app = ReadyAppState::from_config(&synced_skip_config(), preferences_path)
+        .expect("expected ready app");
+
+    let snapshot = app.platform_host.snapshot();
+    let window = snapshot.window_model();
+    assert_eq!(
+        window
+            .layout_state
+            .panel(StudioGuiWindowAreaId::Commands)
+            .map(|panel| panel.visible),
+        Some(false)
+    );
+    assert!(
+        app.platform_host
+            .gui_activity_lines()
+            .iter()
+            .all(|line| !line.contains("layout SetPanelVisibility")),
+        "startup should not dispatch layout mutations for default commands visibility"
+    );
+}
+
+#[test]
+fn viewport_close_last_window_stops_before_fallback_layout_render() {
+    let preferences_path =
+        std::env::temp_dir().join("radishflow-studio-shell-close-short-circuit.preferences.json");
+    let mut app = ReadyAppState::from_config(&synced_skip_config(), preferences_path)
+        .expect("expected ready app");
+    let startup_snapshot = app.platform_host.snapshot();
+    let startup_window = startup_snapshot.window_model();
+
+    assert_eq!(
+        startup_window
+            .layout_state
+            .panel(StudioGuiWindowAreaId::Commands)
+            .map(|panel| panel.visible),
+        Some(false)
+    );
+    assert!(app.close_current_window_for_viewport_request());
+    assert_eq!(app.logical_window_count(), 0);
+}
+
+#[test]
+fn viewport_close_last_window_does_not_cancel_native_close_request() {
+    let preferences_path =
+        std::env::temp_dir().join("radishflow-studio-shell-native-close.preferences.json");
+    let mut app = ReadyAppState::from_config(&synced_skip_config(), preferences_path)
+        .expect("expected ready app");
+    let mut viewport = egui::ViewportInfo::default();
+    viewport.events.push(egui::ViewportEvent::Close);
+    let mut raw_input = egui::RawInput {
+        viewport_id: egui::ViewportId::ROOT,
+        ..Default::default()
+    };
+    raw_input.viewports.insert(egui::ViewportId::ROOT, viewport);
+    let ctx = egui::Context::default();
+
+    ctx.begin_pass(raw_input);
+    assert!(app.sync_viewport_close(&ctx));
+    let output = ctx.end_pass();
+    let close_commands = output
+        .viewport_output
+        .get(&egui::ViewportId::ROOT)
+        .map(|viewport| viewport.commands.as_slice())
+        .unwrap_or_default();
+
+    assert!(
+        !close_commands.contains(&egui::ViewportCommand::CancelClose),
+        "last-window close must not cancel the native close request"
+    );
+}
+
+#[test]
+fn viewport_close_last_window_paints_final_frame_before_native_close() {
+    let preferences_path =
+        std::env::temp_dir().join("radishflow-studio-shell-native-close-final-frame.json");
+    let mut app = ReadyAppState::from_config(&synced_skip_config(), preferences_path)
+        .expect("expected ready app");
+    let ctx = egui::Context::default();
+
+    let output = ctx.run(close_raw_input(), |ctx| {
+        app.update(ctx);
+    });
+
+    assert_eq!(app.logical_window_count(), 0);
+    let close_commands = output
+        .viewport_output
+        .get(&egui::ViewportId::ROOT)
+        .map(|viewport| viewport.commands.as_slice())
+        .unwrap_or_default();
+    assert!(
+        !close_commands.contains(&egui::ViewportCommand::CancelClose),
+        "last-window close must not cancel the native close request"
+    );
+
+    let texts = output
+        .shapes
+        .iter()
+        .flat_map(|clipped_shape| shape_texts(&clipped_shape.shape))
+        .collect::<Vec<_>>();
+    assert!(
+        texts.iter().any(|text| text.contains("RadishFlow Studio")),
+        "close request frame should still paint the existing shell before native window teardown: {texts:?}"
+    );
+}
+
+#[test]
+fn viewport_focus_tracking_does_not_dispatch_foreground_entitlement_tick() {
+    let preferences_path = std::env::temp_dir()
+        .join("radishflow-studio-shell-viewport-focus-no-foreground-dispatch.preferences.json");
+    let mut app = ReadyAppState::from_config(&lease_expiring_config(), preferences_path)
+        .expect("expected ready app");
+    let previous_activity_count = app.platform_host.gui_activity_lines().len();
+    app.last_viewport_focused = Some(false);
+
+    let ctx = egui::Context::default();
+    ctx.begin_pass(egui::RawInput {
+        focused: true,
+        ..Default::default()
+    });
+    app.sync_viewport_lifecycle(&ctx);
+    let _ = ctx.end_pass();
+
+    assert_eq!(app.last_viewport_focused, Some(true));
+    assert_eq!(
+        app.platform_host.gui_activity_lines().len(),
+        previous_activity_count
+    );
+}
+
+fn close_raw_input() -> egui::RawInput {
+    let mut viewport = egui::ViewportInfo::default();
+    viewport.events.push(egui::ViewportEvent::Close);
+    let mut raw_input = egui::RawInput {
+        viewport_id: egui::ViewportId::ROOT,
+        screen_rect: Some(egui::Rect::from_min_size(
+            egui::Pos2::ZERO,
+            egui::vec2(1280.0, 860.0),
+        )),
+        focused: true,
+        ..Default::default()
+    };
+    raw_input.viewports.insert(egui::ViewportId::ROOT, viewport);
+    raw_input
+}
+
+fn shape_texts(shape: &egui::epaint::Shape) -> Vec<String> {
+    match shape {
+        egui::epaint::Shape::Text(text) => vec![text.galley.job.text.clone()],
+        egui::epaint::Shape::Vec(shapes) => shapes.iter().flat_map(shape_texts).collect(),
+        _ => Vec::new(),
+    }
+}
+
 #[test]
 fn egui_platform_timer_executor_allocates_and_clears_native_ids() {
     let mut executor = EguiPlatformTimerExecutor::default();

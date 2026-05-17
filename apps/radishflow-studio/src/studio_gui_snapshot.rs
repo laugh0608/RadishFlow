@@ -27,6 +27,7 @@ pub struct StudioGuiRuntimeSnapshot {
     pub control_state: WorkspaceControlState,
     pub run_panel: rf_ui::RunPanelWidgetModel,
     pub latest_solve_snapshot: Option<rf_ui::SolveSnapshot>,
+    pub latest_failure_diagnostic_context: Option<StudioGuiFailureDiagnosticContextSnapshot>,
     pub active_inspector_target: Option<rf_ui::InspectorTarget>,
     pub active_inspector_detail: Option<StudioGuiInspectorTargetDetailSnapshot>,
     pub entitlement_host: Option<EntitlementSessionHostRuntimeOutput>,
@@ -34,6 +35,28 @@ pub struct StudioGuiRuntimeSnapshot {
     pub platform_timer_lines: Vec<String>,
     pub gui_activity_lines: Vec<String>,
     pub log_entries: Vec<rf_ui::AppLogEntry>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct StudioGuiDiagnosticStreamSnapshot {
+    pub stream_id: String,
+    pub temperature_k: f64,
+    pub pressure_pa: f64,
+    pub total_molar_flow_mol_s: f64,
+    pub overall_mole_fractions: Vec<(String, f64)>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct StudioGuiFailureDiagnosticContextSnapshot {
+    pub related_streams: Vec<StudioGuiDiagnosticStreamSnapshot>,
+    pub related_ports: Vec<StudioGuiFailureDiagnosticPortSnapshot>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct StudioGuiFailureDiagnosticPortSnapshot {
+    pub unit_id: String,
+    pub port_name: String,
+    pub stream: Option<StudioGuiDiagnosticStreamSnapshot>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

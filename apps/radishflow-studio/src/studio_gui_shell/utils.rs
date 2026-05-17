@@ -799,7 +799,7 @@ pub(super) fn diagnostic_color(severity_label: &str) -> egui::Color32 {
 
 pub(super) fn inspector_field_status_color(status_label: &str) -> egui::Color32 {
     match status_label {
-        "Draft" => egui::Color32::from_rgb(180, 120, 20),
+        "Draft" | "Unnormalized" => egui::Color32::from_rgb(180, 120, 20),
         "Invalid" => egui::Color32::from_rgb(180, 40, 40),
         "Valid" | "Synced" => egui::Color32::from_rgb(54, 128, 84),
         _ => egui::Color32::from_rgb(110, 110, 110),

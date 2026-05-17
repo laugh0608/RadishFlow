@@ -91,6 +91,7 @@ Rust 与 `.NET 10` 之间的正式边界应保持简单稳定：
 - `flowsheet_get_snapshot_json` 当前导出最近一次成功求解的整份 `SolveSnapshot` JSON
 - `stream_get_snapshot_json` 当前从最近一次成功求解的 `SolveSnapshot` 导出单股流体 JSON
 - 返回状态码当前分为两层：FFI 前置错误（如空指针、非法 UTF-8、未加载 flowsheet / 未生成 snapshot）与 `rf_types::ErrorCode` 映射的内核错误；结构化错误 JSON 当前会额外带出 `ffiStatus`、`code`、`diagnosticCode`、`relatedUnitIds`、`relatedStreamIds` 与 `relatedPortTargets`
+- 运行时物性包文件加载只验证 manifest / payload 可注册；若某个求解实际需要的热力学字段缺失，应在 `flowsheet_solve` 阶段返回对应内核状态，例如 `RfFfiStatus::Thermo` 与 `ffiStatus=thermo`，失败后不生成可导出的 solve snapshot
 
 当前这版运行时仍是最小实现，额外明确以下暂时约束：
 

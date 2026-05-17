@@ -1,0 +1,43 @@
+{
+  "name": "synthetic binary vapor-only flash at 300 K, dew-pressure + 0.1 Pa, z=[0.25, 0.75]",
+  "temperatureK": 300.0,
+  "pressurePa": 139701.5925373134,
+  "totalMolarFlowMolS": 10.0,
+  "overallMoleFractions": [0.25, 0.75],
+  "components": [
+    {
+      "id": "component-a",
+      "name": "Component A",
+      "antoine": {
+        "a": 6.0262901842235435,
+        "b": 250.0,
+        "c": 0.0
+      },
+      "liquidHeatCapacityJPerMolK": 35.0,
+      "vaporHeatCapacityJPerMolK": 36.5
+    },
+    {
+      "id": "component-b",
+      "name": "Component B",
+      "antoine": {
+        "a": 5.700867783788915,
+        "b": 250.0,
+        "c": 0.0
+      },
+      "liquidHeatCapacityJPerMolK": 52.0,
+      "vaporHeatCapacityJPerMolK": 65.0
+    }
+  ],
+  "expectedKValues": [1.2884606161660122, 0.9305548894532308],
+  "expectedPhaseRegion": "twoPhase",
+  "expectedBubblePressurePa": 142499.99999999997,
+  "expectedDewPressurePa": 139701.4925373134,
+  "expectedBubbleTemperatureK": 293.0259814729438,
+  "expectedDewTemperatureK": 300.0002576946889,
+  "expectedVaporFraction": 0.9999571566004306,
+  "expectedOverallMolarEnthalpyJPerMol": 107.06789647497864,
+  "expectedLiquidMoleFractions": [0.1940318507463936, 0.8059681492536065],
+  "expectedLiquidMolarEnthalpyJPerMol": 90.09769829402704,
+  "expectedVaporMoleFractions": [0.25000239796851875, 0.7499976020314812],
+  "expectedVaporMolarEnthalpyJPerMol": 107.06862356711117
+}

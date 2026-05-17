@@ -2,10 +2,11 @@ use std::fs;
 
 use super::test_support::{
     assert_ignored_shortcut, flash_drum_local_rules_config, layout_persistence_config,
-    lease_expiring_config, sample_canvas_suggestion, synced_workspace_config,
+    lease_expiring_config, sample_canvas_suggestion, synced_workspace_example_config,
     unbound_outlet_failure_synced_config,
 };
 use super::*;
+use crate::test_support::stream_target_detail_model;
 
 #[test]
 fn gui_driver_ignores_canvas_tab_shortcut_without_canvas_command_binding() {
@@ -459,7 +460,10 @@ fn gui_driver_routes_ctrl_tab_to_canvas_focus_next() {
 
 #[test]
 fn gui_driver_dispatches_result_and_step_diagnostic_actions_through_inspector_focus() {
-    let mut driver = StudioGuiDriver::new(&synced_workspace_config()).expect("expected driver");
+    let mut driver = StudioGuiDriver::new(&synced_workspace_example_config(
+        "feed-heater-flash-binary-hydrocarbon.rfproj.json",
+    ))
+    .expect("expected driver");
     driver
         .dispatch_event(StudioGuiEvent::OpenWindowRequested)
         .expect("expected open dispatch");
@@ -503,21 +507,6 @@ fn gui_driver_dispatches_result_and_step_diagnostic_actions_through_inspector_fo
         .expect("expected selected unit diagnostic action");
     assert_inspector_focus_dispatch(&mut driver, &unit_command, ("Unit", "heater-1"));
 
-    let comparison = snapshot
-        .result_inspector_with_comparison(Some("stream-feed"), Some("stream-heated"))
-        .comparison
-        .expect("expected comparison stream focus actions");
-    assert_inspector_focus_dispatch(
-        &mut driver,
-        &comparison.base_stream_focus_action.command_id,
-        ("Stream", "stream-feed"),
-    );
-    assert_inspector_focus_dispatch(
-        &mut driver,
-        &comparison.compared_stream_focus_action.command_id,
-        ("Stream", "stream-heated"),
-    );
-
     let step = snapshot
         .steps
         .iter()
@@ -557,6 +546,98 @@ fn gui_driver_dispatches_result_and_step_diagnostic_actions_through_inspector_fo
         .map(|action| action.action.command_id.clone())
         .expect("expected active inspector solve step action");
     assert_inspector_focus_dispatch(&mut driver, &active_step_unit_command, ("Unit", "heater-1"));
+}
+
+#[test]
+fn gui_driver_dispatches_result_comparison_focus_actions_through_inspector_focus() {
+    let mut driver = StudioGuiDriver::new(&synced_workspace_example_config(
+        "feed-heater-flash-binary-hydrocarbon.rfproj.json",
+    ))
+    .expect("expected driver");
+    driver
+        .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+        .expect("expected open dispatch");
+    let solved = driver
+        .dispatch_event(StudioGuiEvent::UiCommandRequested {
+            command_id: "run_panel.run_manual".to_string(),
+        })
+        .expect("expected solve dispatch");
+    let snapshot = solved
+        .window
+        .runtime
+        .latest_solve_snapshot
+        .clone()
+        .expect("expected solved snapshot");
+
+    let comparison = snapshot
+        .result_inspector_with_comparison(Some("stream-feed"), Some("stream-heated"))
+        .comparison
+        .expect("expected comparison stream focus actions");
+    assert_inspector_focus_dispatch(
+        &mut driver,
+        &comparison.base_stream_focus_action.command_id,
+        ("Stream", "stream-feed"),
+    );
+    assert_inspector_focus_dispatch(
+        &mut driver,
+        &comparison.compared_stream_focus_action.command_id,
+        ("Stream", "stream-heated"),
+    );
+}
+
+#[test]
+fn gui_driver_dispatches_non_flash_unit_result_diagnostic_actions_through_inspector_focus() {
+    for (project_file_name, stream_id, stream_title, unit_id) in [
+        (
+            "feed-heater-flash-binary-hydrocarbon.rfproj.json",
+            "stream-heated",
+            "Heated Outlet",
+            "heater-1",
+        ),
+        (
+            "feed-cooler-flash-binary-hydrocarbon.rfproj.json",
+            "stream-cooled",
+            "Cooled Outlet",
+            "cooler-1",
+        ),
+        (
+            "feed-valve-flash-binary-hydrocarbon.rfproj.json",
+            "stream-throttled",
+            "Valve Outlet",
+            "valve-1",
+        ),
+        (
+            "feed-mixer-flash-binary-hydrocarbon.rfproj.json",
+            "stream-mix-out",
+            "Mixer Outlet",
+            "mixer-1",
+        ),
+    ] {
+        let mut driver = StudioGuiDriver::new(&synced_workspace_example_config(project_file_name))
+            .expect("expected driver");
+        driver
+            .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+            .expect("expected open dispatch");
+        let solved = driver
+            .dispatch_event(StudioGuiEvent::UiCommandRequested {
+                command_id: "run_panel.run_manual".to_string(),
+            })
+            .expect("expected solve dispatch");
+        let snapshot = solved
+            .window
+            .runtime
+            .latest_solve_snapshot
+            .clone()
+            .expect("expected solved snapshot");
+
+        assert_non_flash_result_and_step_diagnostic_focus_dispatch(
+            &mut driver,
+            &snapshot,
+            stream_id,
+            stream_title,
+            unit_id,
+        );
+    }
 }
 
 #[test]
@@ -672,4 +753,76 @@ fn assert_inspector_focus_dispatch(
             .map(|target| (target.kind_label, target.target_id.as_str())),
         Some(expected_target)
     );
+}
+
+fn assert_non_flash_result_and_step_diagnostic_focus_dispatch(
+    driver: &mut StudioGuiDriver,
+    snapshot: &crate::StudioGuiWindowSolveSnapshotModel,
+    selected_stream_id: &str,
+    selected_stream_title: &str,
+    unit_id: &str,
+) {
+    let result_inspector =
+        snapshot.result_inspector_with_unit(Some(selected_stream_id), None, Some(unit_id));
+    let result_stream_command = result_inspector
+        .diagnostic_actions
+        .iter()
+        .find(|action| {
+            action.source_label == "Selected stream"
+                && action.action.command_id
+                    == format!("inspector.focus_stream:{selected_stream_id}")
+        })
+        .map(|action| action.action.command_id.clone())
+        .expect("expected selected stream diagnostic action");
+    assert_inspector_focus_dispatch(
+        driver,
+        &result_stream_command,
+        ("Stream", selected_stream_id),
+    );
+
+    let result_unit_command = result_inspector
+        .unit_diagnostic_actions
+        .iter()
+        .find(|action| {
+            action.source_label == "Selected unit"
+                && action.action.command_id == format!("inspector.focus_unit:{unit_id}")
+        })
+        .map(|action| action.action.command_id.clone())
+        .expect("expected selected unit diagnostic action");
+    assert_inspector_focus_dispatch(driver, &result_unit_command, ("Unit", unit_id));
+
+    let step = snapshot
+        .steps
+        .iter()
+        .find(|step| step.unit_id == unit_id)
+        .expect("expected selected unit solve step");
+    for action in &step.diagnostic_actions {
+        assert!(
+            crate::inspector_target_from_command_id(&action.action.command_id).is_some(),
+            "solve step diagnostic action should stay on inspector focus command surface: {}",
+            action.action.command_id
+        );
+    }
+    let step_stream_command = step
+        .diagnostic_actions
+        .iter()
+        .find(|action| {
+            action.action.command_id == format!("inspector.focus_stream:{selected_stream_id}")
+        })
+        .map(|action| action.action.command_id.clone())
+        .expect("expected solve step produced stream action");
+    assert_inspector_focus_dispatch(driver, &step_stream_command, ("Stream", selected_stream_id));
+
+    let active_stream_detail =
+        stream_target_detail_model(snapshot, selected_stream_id, selected_stream_title);
+    let active_step_unit_command = active_stream_detail
+        .diagnostic_actions
+        .iter()
+        .find(|action| {
+            action.source_label == "Solve step"
+                && action.action.command_id == format!("inspector.focus_unit:{unit_id}")
+        })
+        .map(|action| action.action.command_id.clone())
+        .expect("expected stream detail solve step action");
+    assert_inspector_focus_dispatch(driver, &active_step_unit_command, ("Unit", unit_id));
 }

@@ -359,16 +359,13 @@ fn notice_for_failed_outcome(
 
 #[cfg(test)]
 mod tests {
-    use std::path::{Path, PathBuf};
+    use std::path::PathBuf;
     use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
     use rf_model::Flowsheet;
     use rf_store::{
-        StoredAntoineCoefficients, StoredAuthCacheIndex, StoredCredentialReference,
-        StoredPropertyPackageManifest, StoredPropertyPackagePayload, StoredPropertyPackageRecord,
-        StoredPropertyPackageSource, StoredThermoComponent, parse_project_file_json,
-        property_package_payload_integrity, write_property_package_manifest,
-        write_property_package_payload,
+        StoredAuthCacheIndex, StoredCredentialReference, StoredPropertyPackageRecord,
+        StoredPropertyPackageSource, parse_project_file_json,
     };
     use rf_types::ComponentId;
     use rf_ui::{
@@ -388,6 +385,7 @@ mod tests {
         StudioAppAuthCacheContext, StudioAppCommand, StudioAppExecutionBoundary,
         StudioAppExecutionLane, StudioAppFacade, StudioAppResultDispatch,
         StudioWorkspaceRunOutcome, WorkspaceRunPackageSelection,
+        test_support::write_default_official_binary_hydrocarbon_cached_package,
     };
 
     fn timestamp(seconds: u64) -> std::time::SystemTime {
@@ -430,67 +428,6 @@ mod tests {
             .expect("expected time after epoch")
             .as_nanos();
         std::env::temp_dir().join(format!("radishflow-{name}-{unique}"))
-    }
-
-    fn write_cached_package(
-        cache_root: &Path,
-        auth_cache_index: &mut StoredAuthCacheIndex,
-        package_id: &str,
-    ) {
-        let mut first = StoredThermoComponent::new(ComponentId::new("component-a"), "Component A");
-        first.antoine = Some(StoredAntoineCoefficients::new(
-            ((2.0_f64 * 100_000.0_f64) / 1_000.0_f64).ln(),
-            0.0,
-            0.0,
-        ));
-        first.liquid_heat_capacity_j_per_mol_k = Some(35.0);
-        first.vapor_heat_capacity_j_per_mol_k = Some(36.5);
-        let mut second = StoredThermoComponent::new(ComponentId::new("component-b"), "Component B");
-        second.antoine = Some(StoredAntoineCoefficients::new(
-            ((0.5_f64 * 100_000.0_f64) / 1_000.0_f64).ln(),
-            0.0,
-            0.0,
-        ));
-        second.liquid_heat_capacity_j_per_mol_k = Some(52.0);
-        second.vapor_heat_capacity_j_per_mol_k = Some(65.0);
-
-        let payload =
-            StoredPropertyPackagePayload::new(package_id, "2026.03.1", vec![first, second]);
-        let integrity =
-            property_package_payload_integrity(&payload).expect("expected payload integrity");
-        let expires_at = Some(SystemTime::now() + Duration::from_secs(3_600));
-        let mut manifest = StoredPropertyPackageManifest::new(
-            package_id,
-            "2026.03.1",
-            StoredPropertyPackageSource::RemoteDerivedPackage,
-            vec![
-                ComponentId::new("component-a"),
-                ComponentId::new("component-b"),
-            ],
-        );
-        manifest.hash = integrity.hash.clone();
-        manifest.size_bytes = integrity.size_bytes;
-        manifest.expires_at = expires_at;
-        let mut record = StoredPropertyPackageRecord::new(
-            &manifest.package_id,
-            &manifest.version,
-            StoredPropertyPackageSource::RemoteDerivedPackage,
-            manifest.hash.clone(),
-            manifest.size_bytes,
-            timestamp(60),
-        );
-        record.expires_at = expires_at;
-
-        write_property_package_manifest(record.manifest_path_under(cache_root), &manifest)
-            .expect("expected manifest write");
-        write_property_package_payload(
-            record
-                .payload_path_under(cache_root)
-                .expect("expected payload path"),
-            &payload,
-        )
-        .expect("expected payload write");
-        auth_cache_index.property_packages.push(record);
     }
 
     #[test]
@@ -599,14 +536,13 @@ mod tests {
             "user-123",
             StoredCredentialReference::new("radishflow-studio", "user-123-primary"),
         );
-        write_cached_package(
+        write_default_official_binary_hydrocarbon_cached_package(
             &cache_root,
             &mut auth_cache_index,
-            "binary-hydrocarbon-lite-v1",
         );
         let facade = StudioAppFacade::new();
         let project = parse_project_file_json(include_str!(
-            "../../../examples/flowsheets/feed-heater-flash.rfproj.json"
+            "../../../examples/flowsheets/feed-heater-flash-binary-hydrocarbon.rfproj.json"
         ))
         .expect("expected project parse");
         let mut app_state = AppState::new(FlowsheetDocument::new(
@@ -668,14 +604,13 @@ mod tests {
             "user-123",
             StoredCredentialReference::new("radishflow-studio", "user-123-primary"),
         );
-        write_cached_package(
+        write_default_official_binary_hydrocarbon_cached_package(
             &cache_root,
             &mut auth_cache_index,
-            "binary-hydrocarbon-lite-v1",
         );
         let facade = StudioAppFacade::new();
         let project = parse_project_file_json(include_str!(
-            "../../../examples/flowsheets/feed-heater-flash.rfproj.json"
+            "../../../examples/flowsheets/feed-heater-flash-binary-hydrocarbon.rfproj.json"
         ))
         .expect("expected project parse");
         let mut app_state = AppState::new(FlowsheetDocument::new(
@@ -713,14 +648,13 @@ mod tests {
             "user-123",
             StoredCredentialReference::new("radishflow-studio", "user-123-primary"),
         );
-        write_cached_package(
+        write_default_official_binary_hydrocarbon_cached_package(
             &cache_root,
             &mut auth_cache_index,
-            "binary-hydrocarbon-lite-v1",
         );
         let facade = StudioAppFacade::new();
         let project = parse_project_file_json(include_str!(
-            "../../../examples/flowsheets/feed-heater-flash.rfproj.json"
+            "../../../examples/flowsheets/feed-heater-flash-binary-hydrocarbon.rfproj.json"
         ))
         .expect("expected project parse");
         let mut app_state = AppState::new(FlowsheetDocument::new(
@@ -876,14 +810,13 @@ mod tests {
             "user-123",
             StoredCredentialReference::new("radishflow-studio", "user-123-primary"),
         );
-        write_cached_package(
+        write_default_official_binary_hydrocarbon_cached_package(
             &cache_root,
             &mut auth_cache_index,
-            "binary-hydrocarbon-lite-v1",
         );
         let facade = StudioAppFacade::new();
         let project = parse_project_file_json(include_str!(
-            "../../../examples/flowsheets/feed-heater-flash.rfproj.json"
+            "../../../examples/flowsheets/feed-heater-flash-binary-hydrocarbon.rfproj.json"
         ))
         .expect("expected project parse");
         let mut app_state = AppState::new(FlowsheetDocument::new(
@@ -956,14 +889,13 @@ mod tests {
             "user-123",
             StoredCredentialReference::new("radishflow-studio", "user-123-primary"),
         );
-        write_cached_package(
+        write_default_official_binary_hydrocarbon_cached_package(
             &cache_root,
             &mut auth_cache_index,
-            "binary-hydrocarbon-lite-v1",
         );
         let facade = StudioAppFacade::new();
         let project = parse_project_file_json(include_str!(
-            "../../../examples/flowsheets/feed-heater-flash.rfproj.json"
+            "../../../examples/flowsheets/feed-heater-flash-binary-hydrocarbon.rfproj.json"
         ))
         .expect("expected project parse");
         let mut flowsheet = project.document.flowsheet;
@@ -972,7 +904,7 @@ mod tests {
             .get_mut(&"stream-feed".into())
             .expect("expected feed stream")
             .overall_mole_fractions
-            .insert(ComponentId::new("component-a"), 0.25);
+            .insert(ComponentId::new("methane"), 0.25);
         let mut app_state = AppState::new(FlowsheetDocument::new(
             flowsheet,
             DocumentMetadata::new(
@@ -1042,14 +974,13 @@ mod tests {
             "user-123",
             StoredCredentialReference::new("radishflow-studio", "user-123-primary"),
         );
-        write_cached_package(
+        write_default_official_binary_hydrocarbon_cached_package(
             &cache_root,
             &mut auth_cache_index,
-            "binary-hydrocarbon-lite-v1",
         );
         let facade = StudioAppFacade::new();
         let project = parse_project_file_json(include_str!(
-            "../../../examples/flowsheets/feed-valve-flash.rfproj.json"
+            "../../../examples/flowsheets/feed-valve-flash-binary-hydrocarbon.rfproj.json"
         ))
         .expect("expected project parse");
         let mut flowsheet = project.document.flowsheet;
@@ -1057,7 +988,7 @@ mod tests {
             .streams
             .get_mut(&"stream-throttled".into())
             .expect("expected throttled stream")
-            .pressure_pa = 130_000.0;
+            .pressure_pa = 730_000.0;
         let mut app_state = AppState::new(FlowsheetDocument::new(
             flowsheet,
             DocumentMetadata::new(

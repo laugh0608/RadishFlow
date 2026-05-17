@@ -8,100 +8,210 @@ impl ReadyAppState {
         area_id: StudioGuiWindowAreaId,
     ) {
         let widget = &window.canvas.widget;
-        ui.horizontal_wrapped(|ui| {
-            for action in &widget.actions {
-                let label = match action.shortcut.as_ref() {
-                    Some(shortcut) => format!("{} ({})", action.label, format_shortcut(shortcut)),
-                    None => action.label.to_string(),
-                };
-                if ui
-                    .add_enabled(action.enabled, egui::Button::new(label))
-                    .clicked()
-                {
-                    match widget.activate(action.id) {
-                        radishflow_studio::StudioGuiCanvasWidgetEvent::Requested {
-                            event, ..
-                        } => self.dispatch_event(event),
-                        radishflow_studio::StudioGuiCanvasWidgetEvent::Disabled { .. }
-                        | radishflow_studio::StudioGuiCanvasWidgetEvent::Missing { .. }
-                        | radishflow_studio::StudioGuiCanvasWidgetEvent::SuggestionRequested {
-                            ..
-                        }
-                        | radishflow_studio::StudioGuiCanvasWidgetEvent::SuggestionDisabled {
-                            ..
-                        }
-                        | radishflow_studio::StudioGuiCanvasWidgetEvent::SuggestionMissing {
-                            ..
-                        } => {}
-                    }
-                }
-            }
-        });
+        self.render_canvas_toolbar(ui, widget);
+        ui.add_space(4.0);
         self.render_canvas_selection_summary(ui, widget);
         self.render_canvas_viewport_summary(ui, widget);
         self.render_canvas_legend(ui, widget);
         ui.separator();
         let hovered_stream_id = self.render_canvas_drop_surface(ui, widget);
         ui.add_space(8.0);
-        self.render_canvas_object_list(ui, widget, hovered_stream_id.as_deref());
-        ui.add_space(8.0);
-        egui::ScrollArea::vertical()
-            .id_salt(format!(
-                "scroll:{}:{}:suggestions",
-                window.layout_state.scope.layout_key,
-                area_label(area_id)
-            ))
+        self.render_canvas_suggestions(ui, widget, window, area_id);
+        egui::CollapsingHeader::new(self.locale.text(ShellText::Objects))
+            .default_open(false)
             .show(ui, |ui| {
-                for suggestion in &widget.view().suggestions {
-                    let frame = egui::Frame::group(ui.style());
-                    frame.show(ui, |ui| {
-                        ui.horizontal_wrapped(|ui| {
-                            let focus = if suggestion.is_focused {
-                                "Focused"
-                            } else {
-                                "Suggestion"
-                            };
-                            ui.label(egui::RichText::new(focus).strong());
-                            ui.label(format!("{:.0}%", suggestion.confidence * 100.0));
-                            ui.label(format!("source={}", suggestion.source_label));
-                            ui.label(format!("status={}", suggestion.status_label));
-                        });
-                        ui.label(format!("target={}", suggestion.target_unit_id));
-                        ui.label(&suggestion.reason);
-                        ui.small(format!("id={}", suggestion.id));
-                        if ui
-                            .add_enabled(
-                                suggestion.explicit_accept_enabled,
-                                egui::Button::new("Apply"),
-                            )
-                            .clicked()
-                        {
-                            match widget.activate_suggestion(&suggestion.id) {
-                                radishflow_studio::StudioGuiCanvasWidgetEvent::SuggestionRequested {
-                                    event,
-                                    ..
-                                } => self.dispatch_event(event),
-                                radishflow_studio::StudioGuiCanvasWidgetEvent::SuggestionDisabled {
-                                    ..
-                                }
-                                | radishflow_studio::StudioGuiCanvasWidgetEvent::SuggestionMissing {
-                                    ..
-                                }
-                                | radishflow_studio::StudioGuiCanvasWidgetEvent::Requested {
-                                    ..
-                                }
-                                | radishflow_studio::StudioGuiCanvasWidgetEvent::Disabled {
-                                    ..
-                                }
-                                | radishflow_studio::StudioGuiCanvasWidgetEvent::Missing {
-                                    ..
-                                } => {}
-                            }
+                self.render_canvas_object_list(ui, widget, hovered_stream_id.as_deref());
+            });
+    }
+
+    fn render_canvas_toolbar(
+        &mut self,
+        ui: &mut egui::Ui,
+        widget: &radishflow_studio::StudioGuiCanvasWidgetModel,
+    ) {
+        ui.horizontal_wrapped(|ui| {
+            ui.small(egui::RichText::new("Canvas").strong());
+            ui.separator();
+            self.render_canvas_toolbar_group(ui, widget, "Place", |action| {
+                matches!(
+                    action.id,
+                    radishflow_studio::StudioGuiCanvasActionId::BeginPlaceUnit(_)
+                )
+            });
+            if !widget.view().suggestions.is_empty() {
+                ui.separator();
+                self.render_canvas_toolbar_group(ui, widget, "Suggestion", |action| {
+                    matches!(
+                        action.id,
+                        radishflow_studio::StudioGuiCanvasActionId::AcceptFocused
+                            | radishflow_studio::StudioGuiCanvasActionId::RejectFocused
+                            | radishflow_studio::StudioGuiCanvasActionId::FocusNext
+                            | radishflow_studio::StudioGuiCanvasActionId::FocusPrevious
+                    )
+                });
+            }
+            let has_edit_actions = widget.actions.iter().any(|action| {
+                action.enabled
+                    && matches!(
+                        action.id,
+                        radishflow_studio::StudioGuiCanvasActionId::CancelPendingEdit
+                            | radishflow_studio::StudioGuiCanvasActionId::MoveSelectedUnit(_)
+                    )
+            });
+            if has_edit_actions {
+                ui.separator();
+                self.render_canvas_toolbar_group(ui, widget, "Move", |action| {
+                    action.enabled
+                        && matches!(
+                            action.id,
+                            radishflow_studio::StudioGuiCanvasActionId::CancelPendingEdit
+                                | radishflow_studio::StudioGuiCanvasActionId::MoveSelectedUnit(_)
+                        )
+                });
+            }
+        });
+    }
+
+    fn render_canvas_toolbar_group(
+        &mut self,
+        ui: &mut egui::Ui,
+        widget: &radishflow_studio::StudioGuiCanvasWidgetModel,
+        title: &str,
+        filter: impl Fn(&radishflow_studio::StudioGuiCanvasRenderableAction) -> bool,
+    ) {
+        ui.small(
+            egui::RichText::new(self.locale.runtime_label(title).as_ref())
+                .color(egui::Color32::from_rgb(92, 104, 117)),
+        );
+        for action in widget.actions.iter().filter(|action| filter(action)) {
+            self.render_canvas_toolbar_action(ui, widget, action);
+        }
+    }
+
+    fn render_canvas_toolbar_action(
+        &mut self,
+        ui: &mut egui::Ui,
+        widget: &radishflow_studio::StudioGuiCanvasWidgetModel,
+        action: &radishflow_studio::StudioGuiCanvasRenderableAction,
+    ) {
+        let label = match action.shortcut.as_ref() {
+            Some(shortcut) => format!(
+                "{} ({})",
+                self.locale.runtime_label(&action.label),
+                format_shortcut(shortcut)
+            ),
+            None => self.locale.runtime_label(&action.label).into_owned(),
+        };
+        if ui
+            .add_enabled(action.enabled, egui::Button::new(label))
+            .on_hover_text(self.locale.runtime_label(&action.detail).as_ref())
+            .clicked()
+        {
+            match widget.activate(action.id) {
+                radishflow_studio::StudioGuiCanvasWidgetEvent::Requested { event, .. } => {
+                    self.dispatch_event(event)
+                }
+                radishflow_studio::StudioGuiCanvasWidgetEvent::Disabled { .. }
+                | radishflow_studio::StudioGuiCanvasWidgetEvent::Missing { .. }
+                | radishflow_studio::StudioGuiCanvasWidgetEvent::SuggestionRequested { .. }
+                | radishflow_studio::StudioGuiCanvasWidgetEvent::SuggestionDisabled { .. }
+                | radishflow_studio::StudioGuiCanvasWidgetEvent::SuggestionMissing { .. } => {}
+            }
+        }
+    }
+
+    fn render_canvas_suggestions(
+        &mut self,
+        ui: &mut egui::Ui,
+        widget: &radishflow_studio::StudioGuiCanvasWidgetModel,
+        window: &StudioGuiWindowModel,
+        area_id: StudioGuiWindowAreaId,
+    ) {
+        if widget.view().suggestions.is_empty() {
+            return;
+        }
+
+        egui::CollapsingHeader::new(self.locale.text(ShellText::Suggestions))
+            .default_open(true)
+            .show(ui, |ui| {
+                egui::ScrollArea::vertical()
+                    .id_salt(format!(
+                        "scroll:{}:{}:suggestions",
+                        window.layout_state.scope.layout_key,
+                        area_label(area_id)
+                    ))
+                    .max_height(150.0)
+                    .show(ui, |ui| {
+                        for suggestion in &widget.view().suggestions {
+                            let frame = egui::Frame::group(ui.style());
+                            frame.show(ui, |ui| {
+                                ui.set_width(ui.available_width());
+                                ui.horizontal_wrapped(|ui| {
+                                    let focus = if suggestion.is_focused {
+                                        "Focused"
+                                    } else {
+                                        "Suggestion"
+                                    };
+                                    ui.label(
+                                        egui::RichText::new(
+                                            self.locale.runtime_label(focus).as_ref(),
+                                        )
+                                        .strong(),
+                                    );
+                                    render_status_chip(
+                                        ui,
+                                        &format!("{:.0}%", suggestion.confidence * 100.0),
+                                        egui::Color32::from_rgb(86, 118, 168),
+                                    );
+                                    render_status_chip(
+                                        ui,
+                                        self.locale.runtime_label(suggestion.status_label).as_ref(),
+                                        egui::Color32::from_rgb(86, 96, 108),
+                                    );
+                                    ui.with_layout(
+                                        egui::Layout::right_to_left(egui::Align::Center),
+                                        |ui| {
+                                            if ui
+                                                .add_enabled(
+                                                    suggestion.explicit_accept_enabled,
+                                                    egui::Button::new(
+                                                        self.locale
+                                                            .text(ShellText::ConnectSuggestion),
+                                                    ),
+                                                )
+                                                .clicked()
+                                            {
+                                                self.dispatch_canvas_suggestion(
+                                                    widget,
+                                                    &suggestion.id,
+                                                );
+                                            }
+                                        },
+                                    );
+                                });
+                                render_wrapped_small(ui, &suggestion.reason);
+                            });
+                            ui.add_space(6.0);
                         }
                     });
-                    ui.add_space(6.0);
-                }
             });
+    }
+
+    fn dispatch_canvas_suggestion(
+        &mut self,
+        widget: &radishflow_studio::StudioGuiCanvasWidgetModel,
+        suggestion_id: &str,
+    ) {
+        match widget.activate_suggestion(suggestion_id) {
+            radishflow_studio::StudioGuiCanvasWidgetEvent::SuggestionRequested {
+                event, ..
+            } => self.dispatch_event(event),
+            radishflow_studio::StudioGuiCanvasWidgetEvent::SuggestionDisabled { .. }
+            | radishflow_studio::StudioGuiCanvasWidgetEvent::SuggestionMissing { .. }
+            | radishflow_studio::StudioGuiCanvasWidgetEvent::Requested { .. }
+            | radishflow_studio::StudioGuiCanvasWidgetEvent::Disabled { .. }
+            | radishflow_studio::StudioGuiCanvasWidgetEvent::Missing { .. } => {}
+        }
     }
 
     fn render_canvas_object_list(
@@ -121,21 +231,27 @@ impl ReadyAppState {
             self.canvas_object_filter = CanvasObjectListFilter::All;
         }
         ui.horizontal_wrapped(|ui| {
-            ui.small(egui::RichText::new("Objects").strong());
+            ui.small(egui::RichText::new(self.locale.text(ShellText::Objects)).strong());
             render_status_chip(
                 ui,
-                &format!("{} units", object_list.unit_count),
+                &self
+                    .locale
+                    .count_label(object_list.unit_count, "unit", "units"),
                 egui::Color32::from_rgb(86, 118, 168),
             );
             render_status_chip(
                 ui,
-                &format!("{} streams", object_list.stream_count),
+                &self
+                    .locale
+                    .count_label(object_list.stream_count, "stream", "streams"),
                 egui::Color32::from_rgb(42, 142, 122),
             );
             if object_list.attention_count > 0 {
                 render_status_chip(
                     ui,
-                    &format!("{} attention", object_list.attention_count),
+                    &self
+                        .locale
+                        .count_label(object_list.attention_count, "attention", "attention"),
                     notice_color(rf_ui::RunPanelNoticeLevel::Warning),
                 );
             }
@@ -143,7 +259,11 @@ impl ReadyAppState {
         ui.horizontal_wrapped(|ui| {
             for option in &object_list.filter_options {
                 let selected = self.canvas_object_filter.filter_id() == option.filter_id;
-                let label = format!("{} {}", option.label, option.count);
+                let label = format!(
+                    "{} {}",
+                    self.locale.runtime_label(option.label),
+                    option.count
+                );
                 if ui
                     .add_enabled(option.enabled, egui::Button::new(label).selected(selected))
                     .on_hover_text(option.detail)
@@ -156,7 +276,7 @@ impl ReadyAppState {
             }
         });
         if object_list.items.is_empty() {
-            ui.small("none");
+            ui.small(self.locale.text(ShellText::NoneValue));
             return;
         }
         let visible_items = object_list
@@ -165,7 +285,7 @@ impl ReadyAppState {
             .filter(|item| self.canvas_object_filter.matches(item))
             .collect::<Vec<_>>();
         if visible_items.is_empty() {
-            ui.small("no objects in this filter");
+            ui.small(self.locale.text(ShellText::NoObjectsInFilter));
             return;
         }
 
@@ -183,7 +303,7 @@ impl ReadyAppState {
                         .unwrap_or(false);
                     render_status_chip(
                         ui,
-                        item.kind_label,
+                        self.locale.runtime_label(item.kind_label).as_ref(),
                         if is_hover_related {
                             egui::Color32::from_rgb(180, 124, 42)
                         } else if item.kind_label == "Unit" {
@@ -199,6 +319,7 @@ impl ReadyAppState {
                         )
                         .on_hover_text(&item.detail);
                     if response.clicked() {
+                        self.right_sidebar_tab = StudioShellRightSidebarTab::Inspector;
                         self.dispatch_ui_command(&item.command_id);
                     }
                     ui.horizontal_wrapped(|ui| {
@@ -212,7 +333,7 @@ impl ReadyAppState {
                         if let Some(summary) = item.attention_summary.as_ref() {
                             render_status_chip(
                                 ui,
-                                "attention",
+                                self.locale.text(ShellText::Attention),
                                 notice_color(rf_ui::RunPanelNoticeLevel::Warning),
                             );
                             ui.small(summary);
@@ -233,28 +354,41 @@ impl ReadyAppState {
             if let Some(status) = widget.view().run_status.as_ref() {
                 render_status_chip(
                     ui,
-                    status.status_label,
+                    self.locale.runtime_label(status.status_label).as_ref(),
                     run_status_color(status.status_label),
                 );
                 if status.attention_count > 0 {
                     render_status_chip(
                         ui,
-                        &format!("{} attention", status.attention_count),
+                        &self
+                            .locale
+                            .count_label(status.attention_count, "attention", "attention"),
                         notice_color(rf_ui::RunPanelNoticeLevel::Warning),
                     );
                 }
-                if let Some(summary) = status.summary.as_ref() {
+                if let Some(summary) = status
+                    .summary
+                    .as_ref()
+                    .filter(|summary| !is_developer_canvas_status_summary(summary))
+                {
                     ui.small(truncate_canvas_label(summary, 42));
                 } else if let Some(reason) = status.pending_reason_label {
-                    ui.small(format!("pending={reason}"));
+                    match self.locale {
+                        StudioShellLocale::En => {
+                            ui.small(format!("pending: {}", self.locale.runtime_label(reason)))
+                        }
+                        StudioShellLocale::ZhCn => {
+                            ui.small(format!("待处理: {}", self.locale.runtime_label(reason)))
+                        }
+                    };
                 }
                 ui.separator();
             }
-            ui.small(egui::RichText::new("Selection").strong());
+            ui.small(egui::RichText::new(self.locale.text(ShellText::Selection)).strong());
             if let Some(selection) = widget.view().current_selection.as_ref() {
                 render_status_chip(
                     ui,
-                    selection.kind_label,
+                    self.locale.runtime_label(selection.kind_label).as_ref(),
                     egui::Color32::from_rgb(48, 112, 188),
                 );
                 ui.small(format!("{} · {}", selection.target_id, selection.summary));
@@ -265,8 +399,8 @@ impl ReadyAppState {
                     ui.small(layout_detail);
                 }
                 if ui
-                    .small_button("Focus")
-                    .on_hover_text("Focus the selected Inspector target")
+                    .small_button(self.locale.text(ShellText::Focus))
+                    .on_hover_text(self.locale.runtime_label("Focus selected object").as_ref())
                     .clicked()
                 {
                     self.dispatch_ui_command(&selection.command_id);
@@ -281,8 +415,13 @@ impl ReadyAppState {
                             ),
                         ) {
                             if ui
-                                .add_enabled(action.enabled, egui::Button::new(&action.label))
-                                .on_hover_text(&action.detail)
+                                .add_enabled(
+                                    action.enabled,
+                                    egui::Button::new(
+                                        self.locale.runtime_label(&action.label).as_ref(),
+                                    ),
+                                )
+                                .on_hover_text(self.locale.runtime_label(&action.detail).as_ref())
                                 .clicked()
                             {
                                 self.dispatch_ui_command(&action.command_id);
@@ -291,7 +430,7 @@ impl ReadyAppState {
                     }
                 }
             } else {
-                ui.small("none");
+                ui.small(self.locale.text(ShellText::NoneValue));
             }
         });
     }
@@ -303,27 +442,32 @@ impl ReadyAppState {
     ) {
         let viewport = &widget.view().viewport;
         ui.horizontal_wrapped(|ui| {
-            ui.small(egui::RichText::new("Viewport").strong());
+            ui.small(egui::RichText::new(self.locale.text(ShellText::Viewport)).strong());
             render_status_chip(
                 ui,
-                viewport.mode_label,
+                self.locale.runtime_label(viewport.mode_label).as_ref(),
                 egui::Color32::from_rgb(86, 118, 168),
             );
             render_status_chip(
                 ui,
-                viewport.layout_label,
+                self.locale.runtime_label(viewport.layout_label).as_ref(),
                 egui::Color32::from_rgb(86, 96, 108),
             );
-            ui.small(&viewport.summary);
+            let viewport_summary = compact_canvas_viewport_summary(&viewport.summary, self.locale);
+            ui.small(viewport_summary).on_hover_text(&viewport.summary);
             if let Some(focus) = viewport.focus.as_ref() {
                 render_status_chip(
                     ui,
-                    &format!("{} {}", focus.kind_label, focus.target_id),
+                    &format!(
+                        "{} {}",
+                        self.locale.runtime_label(focus.kind_label),
+                        focus.target_id
+                    ),
                     egui::Color32::from_rgb(48, 112, 188),
                 );
                 ui.small(&focus.anchor_label);
                 if ui
-                    .small_button("Focus")
+                    .small_button(self.locale.text(ShellText::Focus))
                     .on_hover_text(&focus.detail)
                     .clicked()
                 {
@@ -348,17 +492,13 @@ impl ReadyAppState {
         }
 
         ui.horizontal_wrapped(|ui| {
-            ui.small(egui::RichText::new(legend.title).strong());
+            ui.small(
+                egui::RichText::new(self.locale.runtime_label(legend.title).as_ref()).strong(),
+            );
             for item in &legend.items {
                 let color = canvas_legend_swatch_color(item.swatch_label);
-                let label = format!("{}: {}", item.kind_label, item.label);
-                render_status_chip(ui, &label, color);
-                ui.add(
-                    egui::Label::new(egui::RichText::new(&item.detail).small())
-                        .wrap()
-                        .sense(egui::Sense::hover()),
-                )
-                .on_hover_text(&item.detail);
+                let label = compact_canvas_legend_item_label(item, self.locale);
+                render_canvas_chip_with_hover(ui, &label, color, &item.detail);
             }
         });
     }
@@ -377,22 +517,28 @@ impl ReadyAppState {
         let available_width = ui.available_width().max(320.0);
         let desired_size = egui::vec2(available_width, 280.0);
         let (rect, response) = ui.allocate_exact_size(desired_size, egui::Sense::click());
+        let viewport_transform = canvas_initial_viewport_transform(
+            &mut self.canvas_initial_viewport_fit,
+            rect,
+            unit_blocks,
+            stream_lines,
+        );
         let painter = ui.painter_at(rect);
         paint_canvas_drop_surface(&painter, rect, pending_edit.is_some());
 
         let title = pending_edit
             .map(|pending| pending.summary.as_str())
-            .unwrap_or("Select a canvas tool");
+            .unwrap_or(self.locale.text(ShellText::CanvasToolPrompt));
         let subtitle = if pending_edit.is_some() {
-            "Click to place the pending unit"
+            self.locale.text(ShellText::CanvasPlacePrompt)
         } else {
-            "Use a Place Unit action to start a canvas edit"
+            self.locale.text(ShellText::CanvasEditPrompt)
         };
         paint_canvas_surface_labels(&painter, rect, title, subtitle);
 
         let mut clicked_stream_command = None;
         for stream in stream_lines {
-            let geometry = canvas_stream_line_geometry(rect, stream);
+            let geometry = canvas_stream_line_geometry(rect, &viewport_transform, stream);
             let is_viewport_focus = self
                 .canvas_viewport_navigation
                 .is_active_anchor(&stream.line_id);
@@ -427,7 +573,12 @@ impl ReadyAppState {
         let mut hovered_port_stream_id = None;
         let mut hovered_port_callout = None;
         for unit in unit_blocks {
-            let unit_rect = canvas_unit_block_rect(rect, unit.layout_slot, unit.layout_position);
+            let unit_rect = canvas_unit_block_rect(
+                rect,
+                &viewport_transform,
+                unit.layout_slot,
+                unit.layout_position,
+            );
             let anchor_label = canvas_unit_viewport_anchor_label(unit.layout_slot);
             let is_viewport_focus = self
                 .canvas_viewport_navigation
@@ -480,9 +631,13 @@ impl ReadyAppState {
         }
 
         if let Some(callout) = focus_callout {
-            if let Some(anchor) =
-                canvas_focus_callout_anchor(rect, callout, unit_blocks, stream_lines)
-            {
+            if let Some(anchor) = canvas_focus_callout_anchor(
+                rect,
+                &viewport_transform,
+                callout,
+                unit_blocks,
+                stream_lines,
+            ) {
                 paint_canvas_focus_callout(&painter, rect, anchor, callout);
             }
         }
@@ -504,10 +659,10 @@ impl ReadyAppState {
         };
         if pending_edit.is_some() && response.clicked() && !clicked_unit && !clicked_stream {
             if let Some(pointer_pos) = response.interact_pointer_pos() {
-                let local = pointer_pos - rect.min;
+                let local = viewport_transform.screen_to_world(rect, pointer_pos);
                 self.dispatch_canvas_pending_edit_commit(rf_ui::CanvasPoint::new(
-                    local.x as f64,
-                    local.y as f64,
+                    local.x.max(0.0) as f64,
+                    local.y.max(0.0) as f64,
                 ));
             }
         }
@@ -599,13 +754,127 @@ struct CanvasStreamLineGeometry {
     end: egui::Pos2,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+struct CanvasViewportTransform {
+    offset: egui::Vec2,
+}
+
+impl CanvasViewportTransform {
+    const ZERO: Self = Self {
+        offset: egui::Vec2::ZERO,
+    };
+
+    fn world_rect_to_screen(self, rect: egui::Rect, world_rect: egui::Rect) -> egui::Rect {
+        egui::Rect::from_min_size(
+            rect.min + self.offset + world_rect.min.to_vec2(),
+            world_rect.size(),
+        )
+    }
+
+    fn world_pos_to_screen(self, rect: egui::Rect, world_pos: egui::Pos2) -> egui::Pos2 {
+        rect.min + self.offset + world_pos.to_vec2()
+    }
+
+    fn screen_to_world(self, rect: egui::Rect, screen_pos: egui::Pos2) -> egui::Pos2 {
+        let world = screen_pos - rect.min - self.offset;
+        egui::pos2(world.x, world.y)
+    }
+}
+
+fn canvas_viewport_transform(
+    rect: egui::Rect,
+    unit_blocks: &[radishflow_studio::StudioGuiCanvasUnitBlockViewModel],
+    stream_lines: &[radishflow_studio::StudioGuiCanvasStreamLineViewModel],
+) -> CanvasViewportTransform {
+    let Some(bounds) = canvas_content_world_bounds(rect.width(), unit_blocks, stream_lines) else {
+        return CanvasViewportTransform::ZERO;
+    };
+
+    let margin = egui::vec2(26.0, 24.0);
+    let available = rect.size();
+    let content = bounds.size();
+    let mut offset = egui::vec2(-bounds.left(), -bounds.top());
+
+    offset.x += if content.x + margin.x * 2.0 <= available.x {
+        (available.x - content.x) * 0.5
+    } else {
+        margin.x
+    };
+    offset.y += if content.y + margin.y * 2.0 <= available.y {
+        (available.y - content.y) * 0.5
+    } else {
+        margin.y
+    };
+
+    CanvasViewportTransform { offset }
+}
+
+fn canvas_initial_viewport_transform(
+    state: &mut CanvasInitialViewportFitState,
+    rect: egui::Rect,
+    unit_blocks: &[radishflow_studio::StudioGuiCanvasUnitBlockViewModel],
+    stream_lines: &[radishflow_studio::StudioGuiCanvasStreamLineViewModel],
+) -> CanvasViewportTransform {
+    if state.pending {
+        let transform = canvas_viewport_transform(rect, unit_blocks, stream_lines);
+        state.offset = transform.offset;
+        state.pending = false;
+        return transform;
+    }
+
+    CanvasViewportTransform {
+        offset: state.offset,
+    }
+}
+
+fn canvas_content_world_bounds(
+    viewport_width: f32,
+    unit_blocks: &[radishflow_studio::StudioGuiCanvasUnitBlockViewModel],
+    stream_lines: &[radishflow_studio::StudioGuiCanvasStreamLineViewModel],
+) -> Option<egui::Rect> {
+    let mut bounds = None;
+    for unit in unit_blocks {
+        canvas_union_rect(
+            &mut bounds,
+            canvas_unit_block_world_rect(viewport_width, unit.layout_slot, unit.layout_position),
+        );
+    }
+    for stream in stream_lines {
+        let geometry = canvas_stream_line_world_geometry(viewport_width, stream);
+        canvas_union_rect(
+            &mut bounds,
+            egui::Rect::from_two_pos(geometry.start, geometry.end).expand(16.0),
+        );
+    }
+    bounds
+}
+
+fn canvas_union_rect(bounds: &mut Option<egui::Rect>, rect: egui::Rect) {
+    *bounds = Some(match bounds.take() {
+        Some(bounds) => bounds.union(rect),
+        None => rect,
+    });
+}
+
 fn canvas_stream_line_geometry(
     rect: egui::Rect,
+    viewport_transform: &CanvasViewportTransform,
+    stream: &radishflow_studio::StudioGuiCanvasStreamLineViewModel,
+) -> CanvasStreamLineGeometry {
+    let geometry = canvas_stream_line_world_geometry(rect.width(), stream);
+    CanvasStreamLineGeometry {
+        start: viewport_transform.world_pos_to_screen(rect, geometry.start),
+        end: viewport_transform.world_pos_to_screen(rect, geometry.end),
+    }
+}
+
+fn canvas_stream_line_world_geometry(
+    viewport_width: f32,
     stream: &radishflow_studio::StudioGuiCanvasStreamLineViewModel,
 ) -> CanvasStreamLineGeometry {
     let source = stream.source.as_ref().map(|endpoint| {
-        canvas_unit_port_anchor(
-            rect,
+        canvas_unit_port_world_anchor(
+            viewport_width,
             endpoint.layout_slot,
             endpoint.layout_position,
             true,
@@ -614,8 +883,8 @@ fn canvas_stream_line_geometry(
         )
     });
     let sink = stream.sink.as_ref().map(|endpoint| {
-        canvas_unit_port_anchor(
-            rect,
+        canvas_unit_port_world_anchor(
+            viewport_width,
             endpoint.layout_slot,
             endpoint.layout_position,
             false,
@@ -628,14 +897,14 @@ fn canvas_stream_line_geometry(
         (Some(start), Some(end)) => CanvasStreamLineGeometry { start, end },
         (Some(start), None) => CanvasStreamLineGeometry {
             start,
-            end: egui::pos2((start.x + 88.0).min(rect.right() - 18.0), start.y),
+            end: egui::pos2(start.x + 88.0, start.y),
         },
         (None, Some(end)) => CanvasStreamLineGeometry {
-            start: egui::pos2((end.x - 88.0).max(rect.left() + 18.0), end.y),
+            start: egui::pos2(end.x - 88.0, end.y),
             end,
         },
         (None, None) => {
-            let center = rect.center();
+            let center = egui::pos2(viewport_width * 0.5, 140.0);
             CanvasStreamLineGeometry {
                 start: center,
                 end: center,
@@ -728,30 +997,39 @@ fn paint_canvas_stream_arrow(
 
 fn canvas_unit_block_rect(
     rect: egui::Rect,
+    viewport_transform: &CanvasViewportTransform,
+    layout_slot: usize,
+    layout_position: Option<rf_ui::CanvasPoint>,
+) -> egui::Rect {
+    viewport_transform.world_rect_to_screen(
+        rect,
+        canvas_unit_block_world_rect(rect.width(), layout_slot, layout_position),
+    )
+}
+
+fn canvas_unit_block_world_rect(
+    viewport_width: f32,
     layout_slot: usize,
     layout_position: Option<rf_ui::CanvasPoint>,
 ) -> egui::Rect {
     let block_size = egui::vec2(156.0, 72.0);
     if let Some(position) = layout_position {
-        let min = egui::pos2(
-            rect.left() + (position.x as f32).clamp(0.0, (rect.width() - block_size.x).max(0.0)),
-            rect.top() + (position.y as f32).clamp(0.0, (rect.height() - block_size.y).max(0.0)),
-        );
+        let min = egui::pos2(position.x as f32, position.y as f32);
         return egui::Rect::from_min_size(min, block_size);
     }
 
     let gap = egui::vec2(22.0, 20.0);
     let left_padding = 18.0;
     let top_padding = 72.0;
-    let available_width = (rect.width() - left_padding * 2.0).max(block_size.x);
+    let available_width = (viewport_width - left_padding * 2.0).max(block_size.x);
     let columns = ((available_width + gap.x) / (block_size.x + gap.x))
         .floor()
         .max(1.0) as usize;
     let column = layout_slot % columns;
     let row = layout_slot / columns;
     let min = egui::pos2(
-        rect.left() + left_padding + column as f32 * (block_size.x + gap.x),
-        rect.top() + top_padding + row as f32 * (block_size.y + gap.y),
+        left_padding + column as f32 * (block_size.x + gap.x),
+        top_padding + row as f32 * (block_size.y + gap.y),
     );
     egui::Rect::from_min_size(min, block_size)
 }
@@ -760,15 +1038,15 @@ fn canvas_unit_viewport_anchor_label(layout_slot: usize) -> String {
     format!("unit-slot-{layout_slot}")
 }
 
-fn canvas_unit_port_anchor(
-    rect: egui::Rect,
+fn canvas_unit_port_world_anchor(
+    viewport_width: f32,
     layout_slot: usize,
     layout_position: Option<rf_ui::CanvasPoint>,
     is_outlet: bool,
     side_index: usize,
     side_count: usize,
 ) -> egui::Pos2 {
-    let unit_rect = canvas_unit_block_rect(rect, layout_slot, layout_position);
+    let unit_rect = canvas_unit_block_world_rect(viewport_width, layout_slot, layout_position);
     canvas_unit_port_anchor_in_rect(unit_rect, is_outlet, side_index, side_count)
 }
 
@@ -1010,6 +1288,7 @@ fn paint_canvas_port_hover_callout(
 
 fn canvas_focus_callout_anchor(
     rect: egui::Rect,
+    viewport_transform: &CanvasViewportTransform,
     callout: &radishflow_studio::StudioGuiCanvasFocusCalloutViewModel,
     unit_blocks: &[radishflow_studio::StudioGuiCanvasUnitBlockViewModel],
     stream_lines: &[radishflow_studio::StudioGuiCanvasStreamLineViewModel],
@@ -1019,7 +1298,13 @@ fn canvas_focus_callout_anchor(
             .iter()
             .find(|unit| unit.unit_id == callout.target_id)
             .map(|unit| {
-                canvas_unit_block_rect(rect, unit.layout_slot, unit.layout_position).right_top()
+                canvas_unit_block_rect(
+                    rect,
+                    viewport_transform,
+                    unit.layout_slot,
+                    unit.layout_position,
+                )
+                .right_top()
             });
     }
 
@@ -1027,7 +1312,7 @@ fn canvas_focus_callout_anchor(
         .iter()
         .find(|stream| stream.stream_id == callout.target_id)
         .map(|stream| {
-            let geometry = canvas_stream_line_geometry(rect, stream);
+            let geometry = canvas_stream_line_geometry(rect, viewport_transform, stream);
             geometry.start.lerp(geometry.end, 0.58)
         })
 }
@@ -1100,6 +1385,81 @@ fn truncate_canvas_label(value: &str, max_chars: usize) -> String {
     label
 }
 
+fn is_developer_canvas_status_summary(summary: &str) -> bool {
+    summary.contains("pending reason") || summary.contains("diagnostics=")
+}
+
+fn compact_canvas_viewport_summary(summary: &str, locale: StudioShellLocale) -> String {
+    let Some((_, counts)) = summary.split_once(':') else {
+        return truncate_canvas_label(summary, 56);
+    };
+    let mut unit_count = None;
+    let mut stream_count = None;
+    for part in counts.split(',').map(str::trim) {
+        if part.contains("unit(s)") {
+            unit_count = part.split_whitespace().next();
+        } else if part.contains("material line(s)") {
+            stream_count = part.split_whitespace().next();
+        }
+    }
+    match (unit_count, stream_count, locale) {
+        (Some(units), Some(streams), StudioShellLocale::ZhCn) => {
+            format!("{units} 个单元 / {streams} 条物料线")
+        }
+        (Some(units), Some(streams), StudioShellLocale::En) => {
+            format!("{units} units / {streams} material lines")
+        }
+        _ => truncate_canvas_label(summary, 56),
+    }
+}
+
+fn compact_canvas_legend_item_label(
+    item: &radishflow_studio::StudioGuiCanvasLegendItemViewModel,
+    locale: StudioShellLocale,
+) -> String {
+    match item.kind_label {
+        "Run" => match locale {
+            StudioShellLocale::ZhCn => format!("运行: {}", locale.runtime_label(&item.label)),
+            StudioShellLocale::En => format!("Run: {}", item.label),
+        },
+        "Attention" => locale.runtime_label(&item.label).into_owned(),
+        "Ports" => {
+            let port_count = item.label.split_whitespace().next().unwrap_or(&item.label);
+            match locale {
+                StudioShellLocale::ZhCn => format!("端口: {port_count}"),
+                StudioShellLocale::En => format!("Ports: {port_count}"),
+            }
+        }
+        "Streams" => {
+            let stream_count = item.label.split_whitespace().next().unwrap_or(&item.label);
+            match locale {
+                StudioShellLocale::ZhCn => format!("流股: {stream_count}"),
+                StudioShellLocale::En => format!("Streams: {stream_count}"),
+            }
+        }
+        "Edit" => locale.runtime_label(&item.label).into_owned(),
+        _ => format!("{}: {}", item.kind_label, item.label),
+    }
+}
+
+fn render_canvas_chip_with_hover(
+    ui: &mut egui::Ui,
+    label: &str,
+    color: egui::Color32,
+    hover_text: &str,
+) {
+    let response = egui::Frame::new()
+        .fill(color.gamma_multiply(0.12))
+        .stroke(egui::Stroke::new(1.0, color.gamma_multiply(0.8)))
+        .corner_radius(6.0)
+        .inner_margin(egui::Margin::symmetric(8, 3))
+        .show(ui, |ui| {
+            ui.label(egui::RichText::new(label).color(color).small());
+        })
+        .response;
+    response.on_hover_text(hover_text);
+}
+
 fn canvas_status_badge_color(severity_label: &str) -> egui::Color32 {
     match severity_label {
         "Error" => egui::Color32::from_rgb(180, 40, 40),
@@ -1116,5 +1476,109 @@ fn canvas_legend_swatch_color(swatch_label: &str) -> egui::Color32 {
         "stream" => egui::Color32::from_rgb(42, 142, 122),
         "pending_edit" => egui::Color32::from_rgb(52, 128, 89),
         _ => egui::Color32::from_rgb(86, 96, 108),
+    }
+}
+
+#[cfg(test)]
+mod viewport_geometry_tests {
+    use super::*;
+
+    fn unit_block(
+        unit_id: &str,
+        layout_slot: usize,
+        layout_position: Option<rf_ui::CanvasPoint>,
+    ) -> radishflow_studio::StudioGuiCanvasUnitBlockViewModel {
+        radishflow_studio::StudioGuiCanvasUnitBlockViewModel {
+            unit_id: unit_id.to_string(),
+            name: unit_id.to_string(),
+            kind: "feed".to_string(),
+            ports: Vec::new(),
+            status_badges: Vec::new(),
+            port_count: 0,
+            connected_port_count: 0,
+            command_id: format!("inspector.focus_unit:{unit_id}"),
+            action_label: format!("Unit {unit_id}"),
+            hover_text: String::new(),
+            attention_summary: None,
+            layout_slot,
+            layout_position,
+            is_active_inspector_target: false,
+        }
+    }
+
+    #[test]
+    fn viewport_transform_centers_persisted_small_flowsheet_without_rewriting_coordinates() {
+        let rect = egui::Rect::from_min_size(egui::pos2(0.0, 0.0), egui::vec2(640.0, 280.0));
+        let units = vec![
+            unit_block("feed-1", 0, Some(rf_ui::CanvasPoint::new(64.0, 40.0))),
+            unit_block("flash-1", 1, Some(rf_ui::CanvasPoint::new(220.0, 40.0))),
+        ];
+
+        let transform = canvas_viewport_transform(rect, &units, &[]);
+        let feed_rect = canvas_unit_block_rect(
+            rect,
+            &transform,
+            units[0].layout_slot,
+            units[0].layout_position,
+        );
+        let flash_rect = canvas_unit_block_rect(
+            rect,
+            &transform,
+            units[1].layout_slot,
+            units[1].layout_position,
+        );
+        let visible_bounds = feed_rect.union(flash_rect);
+
+        assert!((visible_bounds.center().x - rect.center().x).abs() < 0.1);
+        assert!((visible_bounds.center().y - rect.center().y).abs() < 0.1);
+
+        let feed_world = transform.screen_to_world(rect, feed_rect.min);
+        assert!((feed_world.x - 64.0).abs() < 0.1);
+        assert!((feed_world.y - 40.0).abs() < 0.1);
+    }
+
+    #[test]
+    fn initial_viewport_fit_keeps_offset_after_layout_moves() {
+        let rect = egui::Rect::from_min_size(egui::pos2(0.0, 0.0), egui::vec2(640.0, 280.0));
+        let mut state = CanvasInitialViewportFitState::default();
+        let units = vec![unit_block(
+            "flash-1",
+            0,
+            Some(rf_ui::CanvasPoint::new(64.0, 40.0)),
+        )];
+        let moved_units = vec![unit_block(
+            "flash-1",
+            0,
+            Some(rf_ui::CanvasPoint::new(160.0, 40.0)),
+        )];
+
+        let initial_transform = canvas_initial_viewport_transform(&mut state, rect, &units, &[]);
+        let moved_transform =
+            canvas_initial_viewport_transform(&mut state, rect, &moved_units, &[]);
+
+        assert!(!state.pending);
+        assert_eq!(moved_transform, initial_transform);
+        assert_ne!(
+            canvas_viewport_transform(rect, &moved_units, &[]),
+            initial_transform
+        );
+    }
+
+    #[test]
+    fn initial_viewport_fit_does_not_wait_for_content_after_blank_render() {
+        let rect = egui::Rect::from_min_size(egui::pos2(0.0, 0.0), egui::vec2(640.0, 280.0));
+        let mut state = CanvasInitialViewportFitState::default();
+
+        let blank_transform = canvas_initial_viewport_transform(&mut state, rect, &[], &[]);
+        let later_units = vec![unit_block(
+            "feed-1",
+            0,
+            Some(rf_ui::CanvasPoint::new(64.0, 40.0)),
+        )];
+        let later_transform =
+            canvas_initial_viewport_transform(&mut state, rect, &later_units, &[]);
+
+        assert_eq!(blank_transform, CanvasViewportTransform::ZERO);
+        assert_eq!(later_transform, CanvasViewportTransform::ZERO);
     }
 }

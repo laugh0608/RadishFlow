@@ -8,6 +8,7 @@ use super::test_support::{
     unbound_outlet_failure_synced_config,
 };
 use super::*;
+use crate::test_support::SYNTHETIC_COMPONENT_C_ID;
 
 #[test]
 fn gui_driver_opens_window_and_refreshes_command_state() {
@@ -669,7 +670,7 @@ fn gui_driver_routes_composition_normalize_through_driver_boundary() {
     let update = driver
         .dispatch_event(StudioGuiEvent::InspectorFieldDraftUpdateRequested {
             command_id:
-                "inspector.update_stream_draft:stream:stream-feed:overall_mole_fraction:component-a"
+                "inspector.update_stream_draft:stream:stream-feed:overall_mole_fraction:methane"
                     .to_string(),
             raw_value: "0.25".to_string(),
         })
@@ -693,7 +694,7 @@ fn gui_driver_routes_composition_normalize_through_driver_boundary() {
     assert!(
         draft_summary
             .normalized_preview_text
-            .contains("component-a=0.277778")
+            .contains("methane=0.277778")
     );
     let notices = &update
         .window
@@ -731,9 +732,11 @@ fn gui_driver_routes_composition_normalize_through_driver_boundary() {
                     assert!(outcome.applied);
                     assert_eq!(outcome.document_revision, 1);
                     assert_eq!(outcome.command_history_len, 1);
-                    assert!(outcome.committed_keys.iter().any(|key| {
-                        key == "stream:stream-feed:overall_mole_fraction:component-a"
-                    }));
+                    assert!(
+                        outcome.committed_keys.iter().any(|key| {
+                            key == "stream:stream-feed:overall_mole_fraction:methane"
+                        })
+                    );
                 }
                 other => {
                     panic!("expected inspector composition normalize dispatch, got {other:?}")
@@ -775,10 +778,14 @@ fn gui_driver_routes_composition_component_add_through_controlled_selector_bound
     let project_path = std::env::temp_dir().join(format!(
         "radishflow-studio-composition-component-add-{timestamp}.rfproj.json"
     ));
-    let project = include_str!("../../../../examples/flowsheets/feed-heater-flash.rfproj.json")
+    let project = include_str!(
+        "../../../../examples/flowsheets/feed-heater-flash-binary-hydrocarbon.rfproj.json"
+    )
         .replacen(
-            "        \"component-b\": {\n          \"id\": \"component-b\",\n          \"name\": \"Component B\",\n          \"formula\": null\n        }",
-            "        \"component-b\": {\n          \"id\": \"component-b\",\n          \"name\": \"Component B\",\n          \"formula\": null\n        },\n        \"component-c\": {\n          \"id\": \"component-c\",\n          \"name\": \"Component C\",\n          \"formula\": null\n        }",
+            "        \"ethane\": {\n          \"id\": \"ethane\",\n          \"name\": \"Ethane\",\n          \"formula\": \"C2H6\"\n        }",
+            &format!(
+                "        \"ethane\": {{\n          \"id\": \"ethane\",\n          \"name\": \"Ethane\",\n          \"formula\": \"C2H6\"\n        }},\n        \"{SYNTHETIC_COMPONENT_C_ID}\": {{\n          \"id\": \"{SYNTHETIC_COMPONENT_C_ID}\",\n          \"name\": \"Synthetic Component C\",\n          \"formula\": null\n        }}"
+            ),
             1,
         );
     fs::write(&project_path, project).expect("expected project with extra component");
@@ -804,12 +811,14 @@ fn gui_driver_routes_composition_component_add_through_controlled_selector_bound
         .expect("expected active stream inspector")
         .property_composition_component_actions
         .iter()
-        .find(|action| action.component_id == "component-c")
+        .find(|action| action.component_id == SYNTHETIC_COMPONENT_C_ID)
         .cloned()
-        .expect("expected addable component-c action");
+        .expect("expected addable synthetic component action");
     assert_eq!(
         action.action.command_id,
-        "inspector.add_stream_composition_component:stream:stream-feed:component:component-c"
+        format!(
+            "inspector.add_stream_composition_component:stream:stream-feed:component:{SYNTHETIC_COMPONENT_C_ID}"
+        )
     );
 
     let dispatch = driver
@@ -817,6 +826,8 @@ fn gui_driver_routes_composition_component_add_through_controlled_selector_bound
             command_id: action.action.command_id,
         })
         .expect("expected composition component add dispatch");
+    let expected_added_key =
+        format!("stream:stream-feed:overall_mole_fraction:{SYNTHETIC_COMPONENT_C_ID}");
 
     match dispatch.outcome {
         StudioGuiDriverOutcome::HostCommand(
@@ -828,7 +839,7 @@ fn gui_driver_routes_composition_component_add_through_controlled_selector_bound
                 assert_eq!(outcome.command_history_len, 1);
                 assert_eq!(
                     outcome.added_key.as_deref(),
-                    Some("stream:stream-feed:overall_mole_fraction:component-c")
+                    Some(expected_added_key.as_str())
                 );
             }
             other => panic!("expected inspector composition component add dispatch, got {other:?}"),
@@ -845,11 +856,11 @@ fn gui_driver_routes_composition_component_add_through_controlled_selector_bound
     assert!(detail.property_composition_component_actions.is_empty());
     assert!(
         detail.property_fields.iter().any(|field| {
-            field.key == "stream:stream-feed:overall_mole_fraction:component-c"
+            field.key == expected_added_key.as_str()
                 && field.current_value == "0"
                 && field.status_label == "Synced"
         }),
-        "expected component-c to become an explicit zero-fraction stream composition field"
+        "expected synthetic component to become an explicit zero-fraction stream composition field"
     );
 
     let _ = fs::remove_file(project_path);
@@ -874,9 +885,9 @@ fn gui_driver_routes_composition_component_remove_without_compensation() {
         .expect("expected active stream inspector")
         .property_fields
         .iter()
-        .find(|field| field.key == "stream:stream-feed:overall_mole_fraction:component-b")
+        .find(|field| field.key == "stream:stream-feed:overall_mole_fraction:ethane")
         .and_then(|field| field.remove_command_id.clone())
-        .expect("expected component-b remove command");
+        .expect("expected ethane remove command");
 
     let dispatch = driver
         .dispatch_event(
@@ -896,7 +907,7 @@ fn gui_driver_routes_composition_component_remove_without_compensation() {
                 assert_eq!(outcome.command_history_len, 1);
                 assert_eq!(
                     outcome.removed_key.as_deref(),
-                    Some("stream:stream-feed:overall_mole_fraction:component-b")
+                    Some("stream:stream-feed:overall_mole_fraction:ethane")
                 );
             }
             other => {
@@ -916,11 +927,11 @@ fn gui_driver_routes_composition_component_remove_without_compensation() {
         !detail
             .property_fields
             .iter()
-            .any(|field| field.key == "stream:stream-feed:overall_mole_fraction:component-b")
+            .any(|field| field.key == "stream:stream-feed:overall_mole_fraction:ethane")
     );
     assert!(
         detail.property_fields.iter().any(|field| {
-            field.key == "stream:stream-feed:overall_mole_fraction:component-a"
+            field.key == "stream:stream-feed:overall_mole_fraction:methane"
                 && field.current_value == "0.35"
                 && field.remove_command_id.is_none()
         }),
@@ -931,7 +942,19 @@ fn gui_driver_routes_composition_component_remove_without_compensation() {
             .property_composition_summary
             .as_ref()
             .map(|summary| (summary.status_label, summary.current_sum_text.as_str())),
-        Some(("Draft", "0.350000"))
+        Some(("Unnormalized", "0.350000"))
+    );
+    assert!(
+        detail.property_notices.iter().any(|notice| {
+            notice.status_label == "Unnormalized"
+                && notice
+                    .message
+                    .contains("Overall mole fraction sum is 0.350000")
+                && notice
+                    .message
+                    .contains("no automatic compensation is applied")
+        }),
+        "expected committed non-normalized composition to be surfaced separately from drafts"
     );
 }
 
@@ -1453,7 +1476,7 @@ fn gui_driver_automatic_runs_after_canvas_write_when_workspace_is_active() {
                     .as_ref()
                     .map(|entry| entry.message.as_str()),
                 Some(
-                    "Solved document revision 1 with property package `binary-hydrocarbon-lite-v1` into snapshot `example-feed-heater-flash-rev-1-seq-1`"
+                    "Solved document revision 1 with property package `binary-hydrocarbon-lite-v1` into snapshot `example-feed-heater-flash-binary-hydrocarbon-rev-1-seq-1`"
                 )
             );
         }
@@ -1471,7 +1494,7 @@ fn gui_driver_automatic_runs_after_canvas_write_when_workspace_is_active() {
             .control_state
             .latest_snapshot_id
             .as_deref(),
-        Some("example-feed-heater-flash-rev-1-seq-1")
+        Some(crate::test_support::OFFICIAL_HEATER_BINARY_HYDROCARBON_AUTORUN_SNAPSHOT_ID)
     );
     assert_eq!(
         dispatch.snapshot.runtime.run_panel.view().status_label,

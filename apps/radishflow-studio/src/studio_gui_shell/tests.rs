@@ -6,7 +6,11 @@ use rf_store::{
     StoredDocumentMetadata, StoredProjectFile, read_project_file, read_studio_layout_file,
     studio_layout_path_for_project, write_project_file,
 };
+use rf_types::{StreamId, UnitId};
 use std::{fs, path::PathBuf, time::UNIX_EPOCH};
+
+const OFFICIAL_HEATER_BINARY_HYDROCARBON_AUTORUN_SNAPSHOT_ID: &str =
+    "example-feed-heater-flash-binary-hydrocarbon-rev-1-seq-1";
 
 fn lease_expiring_config() -> StudioRuntimeConfig {
     StudioRuntimeConfig {
@@ -24,24 +28,11 @@ fn flash_drum_local_rules_config() -> (StudioRuntimeConfig, PathBuf) {
     let project_path = std::env::temp_dir().join(format!(
         "radishflow-studio-shell-local-rules-{timestamp}.rfproj.json"
     ));
-    let project =
-            include_str!("../../../../examples/flowsheets/feed-heater-flash.rfproj.json")
-                .replacen(
-                    "\"name\": \"inlet\",\n              \"direction\": \"inlet\",\n              \"kind\": \"material\",\n              \"stream_id\": \"stream-heated\"",
-                    "\"name\": \"inlet\",\n              \"direction\": \"inlet\",\n              \"kind\": \"material\",\n              \"stream_id\": null",
-                    1,
-                )
-                .replacen(
-                    "\"name\": \"liquid\",\n              \"direction\": \"outlet\",\n              \"kind\": \"material\",\n              \"stream_id\": \"stream-liquid\"",
-                    "\"name\": \"liquid\",\n              \"direction\": \"outlet\",\n              \"kind\": \"material\",\n              \"stream_id\": null",
-                    1,
-                )
-                .replacen(
-                    "\"name\": \"vapor\",\n              \"direction\": \"outlet\",\n              \"kind\": \"material\",\n              \"stream_id\": \"stream-vapor\"",
-                    "\"name\": \"vapor\",\n              \"direction\": \"outlet\",\n              \"kind\": \"material\",\n              \"stream_id\": null",
-                    1,
-                );
-    fs::write(&project_path, project).expect("expected local rules project");
+    let mut project = feed_heater_flash_binary_hydrocarbon_project();
+    disconnect_unit_port(&mut project, "flash-1", "inlet");
+    disconnect_unit_port(&mut project, "flash-1", "liquid");
+    disconnect_unit_port(&mut project, "flash-1", "vapor");
+    write_project_file(&project_path, &project).expect("expected local rules project");
 
     (
         StudioRuntimeConfig {
@@ -91,19 +82,14 @@ fn flash_drum_local_rules_synced_config() -> (StudioRuntimeConfig, PathBuf) {
     let project_path = std::env::temp_dir().join(format!(
         "radishflow-studio-shell-local-rules-synced-{timestamp}.rfproj.json"
     ));
-    let project =
-            include_str!("../../../../examples/flowsheets/feed-heater-flash.rfproj.json")
-                .replacen(
-                    ",\n        \"stream-vapor\": {\n          \"id\": \"stream-vapor\",\n          \"name\": \"Vapor Outlet\",\n          \"temperature_k\": 345.0,\n          \"pressure_pa\": 95000.0,\n          \"total_molar_flow_mol_s\": 0.0,\n          \"overall_mole_fractions\": {\n            \"component-a\": 0.5,\n            \"component-b\": 0.5\n          },\n          \"phases\": []\n        }",
-                    "",
-                    1,
-                )
-                .replacen(
-                    "\"name\": \"vapor\",\n              \"direction\": \"outlet\",\n              \"kind\": \"material\",\n              \"stream_id\": \"stream-vapor\"",
-                    "\"name\": \"vapor\",\n              \"direction\": \"outlet\",\n              \"kind\": \"material\",\n              \"stream_id\": null",
-                    1,
-                );
-    fs::write(&project_path, project).expect("expected synced local rules project");
+    let mut project = feed_heater_flash_binary_hydrocarbon_project();
+    project
+        .document
+        .flowsheet
+        .streams
+        .remove(&StreamId::new("stream-vapor"));
+    disconnect_unit_port(&mut project, "flash-1", "vapor");
+    write_project_file(&project_path, &project).expect("expected synced local rules project");
 
     (
         StudioRuntimeConfig {
@@ -114,6 +100,28 @@ fn flash_drum_local_rules_synced_config() -> (StudioRuntimeConfig, PathBuf) {
     )
 }
 
+fn feed_heater_flash_binary_hydrocarbon_project() -> StoredProjectFile {
+    serde_json::from_str(include_str!(
+        "../../../../examples/flowsheets/feed-heater-flash-binary-hydrocarbon.rfproj.json"
+    ))
+    .expect("expected feed heater flash project fixture")
+}
+
+fn disconnect_unit_port(project: &mut StoredProjectFile, unit_id: &str, port_name: &str) {
+    let unit = project
+        .document
+        .flowsheet
+        .units
+        .get_mut(&UnitId::new(unit_id))
+        .expect("expected fixture unit");
+    let port = unit
+        .ports
+        .iter_mut()
+        .find(|port| port.name == port_name)
+        .expect("expected fixture unit port");
+    port.stream_id = None;
+}
+
 fn unbound_outlet_failure_synced_config() -> StudioRuntimeConfig {
     StudioRuntimeConfig {
         project_path: PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -122,6 +130,7 @@ fn unbound_outlet_failure_synced_config() -> StudioRuntimeConfig {
             .join("flowsheets")
             .join("failures")
             .join("unbound-outlet-port.rfproj.json"),
+        untitled_blank_project: None,
         entitlement_preflight: StudioRuntimeEntitlementPreflight::Skip,
         entitlement_seed: StudioRuntimeEntitlementSeed::Synced,
         trigger: StudioRuntimeTrigger::WidgetAction(rf_ui::RunPanelActionId::RunManual),
@@ -143,6 +152,8 @@ mod canvas;
 mod command_palette;
 mod command_surface;
 mod project_lifecycle;
+mod runtime;
+mod runtime_synthetic_flash_inlet_boundary;
 
 fn palette_commands_for_test(commands: &[(&str, bool)]) -> Vec<&'static StudioGuiCommandEntry> {
     commands

@@ -37,7 +37,93 @@ impl ReadyAppState {
         self.request_open_project(project_path, "project picker");
     }
 
+    pub(super) fn create_blank_project(&mut self) {
+        if self
+            .platform_host
+            .snapshot()
+            .runtime
+            .workspace_document
+            .has_unsaved_changes
+        {
+            self.project_open.notice = Some(ProjectOpenNotice {
+                level: ProjectOpenNoticeLevel::Warning,
+                title: "Blank project blocked".to_string(),
+                detail: "Save or discard current changes before creating a blank project."
+                    .to_string(),
+            });
+            return;
+        }
+
+        let config = studio_shell_blank_runtime_config();
+
+        match StudioGuiPlatformHost::new(&config) {
+            Ok(platform_host) => {
+                self.platform_host = platform_host;
+                self.platform_timer_executor = EguiPlatformTimerExecutor::default();
+                self.command_palette.close();
+                self.last_area_focus = None;
+                self.drag_session = None;
+                self.active_drop_preview = None;
+                self.drop_preview_overlay_anchor = None;
+                self.last_viewport_focused = None;
+                self.canvas_viewport_navigation = CanvasViewportNavigationState::default();
+                self.canvas_initial_viewport_fit.reset();
+                self.canvas_command_result = None;
+                self.result_inspector.reset();
+                self.project_open.path_input.clear();
+                self.project_open.pending_confirmation = None;
+                self.project_open.pending_save_as_overwrite = None;
+                self.project_open.notice = Some(ProjectOpenNotice {
+                    level: ProjectOpenNoticeLevel::Info,
+                    title: "Blank project created".to_string(),
+                    detail:
+                        "Created an untitled blank project. Use Save to choose a .rfproj.json path."
+                            .to_string(),
+                });
+                self.screen = StudioShellScreen::Workbench;
+                self.platform_host
+                    .record_activity_line("created untitled blank project".to_string());
+                self.dispatch_event(StudioGuiEvent::OpenWindowRequested);
+                if let Err(error) = self.apply_default_hidden_commands_panel_for_current_window() {
+                    self.platform_host.record_activity_line(format!(
+                        "apply default commands panel visibility failed [{}]: {}",
+                        error.code().as_str(),
+                        error.message()
+                    ));
+                }
+            }
+            Err(error) => {
+                self.project_open.notice = Some(ProjectOpenNotice {
+                    level: ProjectOpenNoticeLevel::Error,
+                    title: "Blank project creation failed".to_string(),
+                    detail: format!(
+                        "[{}] {}. Current workspace remains open.",
+                        error.code().as_str(),
+                        error.message()
+                    ),
+                });
+                self.platform_host.record_activity_line(format!(
+                    "create blank project failed [{}]: {}",
+                    error.code().as_str(),
+                    error.message()
+                ));
+            }
+        }
+    }
+
     pub(super) fn save_project(&mut self) {
+        if self
+            .platform_host
+            .snapshot()
+            .runtime
+            .workspace_document
+            .project_path
+            .is_none()
+        {
+            self.save_project_as_from_picker();
+            return;
+        }
+
         match self.dispatch_event_result(StudioGuiEvent::UiCommandRequested {
             command_id: radishflow_studio::FILE_SAVE_COMMAND_ID.to_string(),
         }) {
@@ -249,10 +335,7 @@ impl ReadyAppState {
     }
 
     pub(super) fn open_project(&mut self, project_path: PathBuf, source_label: &str) {
-        let config = StudioRuntimeConfig {
-            project_path: project_path.clone(),
-            ..StudioRuntimeConfig::default()
-        };
+        let config = studio_shell_runtime_config(Some(project_path.clone()));
 
         match StudioGuiPlatformHost::new(&config) {
             Ok(platform_host) => {
@@ -265,6 +348,7 @@ impl ReadyAppState {
                 self.drop_preview_overlay_anchor = None;
                 self.last_viewport_focused = None;
                 self.canvas_viewport_navigation = CanvasViewportNavigationState::default();
+                self.canvas_initial_viewport_fit.reset();
                 self.canvas_command_result = None;
                 self.result_inspector.reset();
                 self.project_open.path_input = project_path.display().to_string();
@@ -275,14 +359,26 @@ impl ReadyAppState {
                 self.project_open.notice =
                     Some(recent_projects_notice.unwrap_or(ProjectOpenNotice {
                         level: ProjectOpenNoticeLevel::Info,
-                        title: "Project opened".to_string(),
-                        detail: format!("Opened {source_label}: {}", project_path.display()),
+                        title: project_opened_notice_title(self.locale).to_string(),
+                        detail: project_opened_notice_detail(
+                            self.locale,
+                            source_label,
+                            &project_path,
+                        ),
                     }));
+                self.screen = StudioShellScreen::Workbench;
                 self.platform_host.record_activity_line(format!(
                     "opened {source_label}: {}",
                     project_path.display()
                 ));
                 self.dispatch_event(StudioGuiEvent::OpenWindowRequested);
+                if let Err(error) = self.apply_default_hidden_commands_panel_for_current_window() {
+                    self.platform_host.record_activity_line(format!(
+                        "apply default commands panel visibility failed [{}]: {}",
+                        error.code().as_str(),
+                        error.message()
+                    ));
+                }
             }
             Err(error) => {
                 self.project_open.notice = Some(ProjectOpenNotice {
@@ -334,7 +430,15 @@ impl ReadyAppState {
     }
 
     pub(super) fn update(&mut self, ctx: &egui::Context) {
-        self.sync_viewport_close(ctx);
+        let close_frame_snapshot = ctx
+            .input(|input| input.viewport().close_requested())
+            .then(|| self.platform_host.snapshot());
+        if self.sync_viewport_close(ctx) {
+            if let Some(snapshot) = close_frame_snapshot.as_ref() {
+                self.render_viewport_close_frame(ctx, snapshot);
+            }
+            return;
+        }
         self.sync_viewport_lifecycle(ctx);
         let toggle_shortcut_consumed = self.handle_command_palette_toggle_shortcut(ctx);
         self.drain_due_timers(ctx);
@@ -347,6 +451,11 @@ impl ReadyAppState {
             self.dispatch_shortcuts(ctx);
         }
         let mut hovered_drop_target = false;
+        if self.screen == StudioShellScreen::Home {
+            self.render_home_dashboard(ctx, &window);
+            self.render_command_palette(ctx, &window.commands);
+            return;
+        }
         self.render_top_bar(
             ctx,
             &snapshot.app_host_state.windows,
@@ -355,6 +464,8 @@ impl ReadyAppState {
         );
         self.render_left_sidebar(ctx, &window, &mut hovered_drop_target);
         self.render_right_sidebar(ctx, &window, &mut hovered_drop_target);
+        self.render_bottom_status_bar(ctx, &window);
+        self.render_bottom_drawer(ctx, &window);
         self.render_center_stage(ctx, &window, &mut hovered_drop_target);
         self.render_command_palette(ctx, &window.commands);
         self.render_floating_drop_preview_overlay(ctx, &window);
@@ -363,6 +474,34 @@ impl ReadyAppState {
             window.layout_state.scope.window_id,
             hovered_drop_target,
         );
+    }
+
+    fn render_viewport_close_frame(
+        &mut self,
+        ctx: &egui::Context,
+        snapshot: &radishflow_studio::StudioGuiSnapshot,
+    ) {
+        let window = snapshot.window_model();
+        let mut hovered_drop_target = false;
+        if self.screen == StudioShellScreen::Home {
+            self.render_home_dashboard(ctx, &window);
+            self.render_command_palette(ctx, &window.commands);
+            return;
+        }
+
+        self.render_top_bar(
+            ctx,
+            &snapshot.app_host_state.windows,
+            &window,
+            &mut hovered_drop_target,
+        );
+        self.render_left_sidebar(ctx, &window, &mut hovered_drop_target);
+        self.render_right_sidebar(ctx, &window, &mut hovered_drop_target);
+        self.render_bottom_status_bar(ctx, &window);
+        self.render_bottom_drawer(ctx, &window);
+        self.render_center_stage(ctx, &window, &mut hovered_drop_target);
+        self.render_command_palette(ctx, &window.commands);
+        self.render_floating_drop_preview_overlay(ctx, &window);
     }
 
     pub(super) fn dispatch_run_panel_widget(&mut self, event: RunPanelWidgetEvent) {
@@ -510,6 +649,19 @@ impl ReadyAppState {
             window_id,
             mutation,
         });
+    }
+
+    pub(super) fn apply_default_hidden_commands_panel_for_current_window(
+        &mut self,
+    ) -> RfResult<()> {
+        self.platform_host.apply_window_layout_preference(
+            self.current_window_id(),
+            StudioGuiWindowLayoutMutation::SetPanelVisibility {
+                area_id: StudioGuiWindowAreaId::Commands,
+                visible: false,
+            },
+        )?;
+        Ok(())
     }
 
     pub(super) fn begin_drag_session(
@@ -970,40 +1122,31 @@ impl ReadyAppState {
         }
     }
 
-    pub(super) fn sync_viewport_close(&mut self, ctx: &egui::Context) {
+    pub(super) fn sync_viewport_close(&mut self, ctx: &egui::Context) -> bool {
         if !ctx.input(|input| input.viewport().close_requested()) {
-            return;
+            return false;
         }
 
+        let should_stop_rendering = self.close_current_window_for_viewport_request();
+        if !should_stop_rendering {
+            ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
+        }
+        should_stop_rendering
+    }
+
+    pub(super) fn close_current_window_for_viewport_request(&mut self) -> bool {
         let Some(window_id) = self.current_window_id() else {
-            return;
+            return true;
         };
 
-        ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
         self.cancel_drag_session(Some(window_id));
         self.dispatch_event(StudioGuiEvent::CloseWindowRequested { window_id });
-
-        if self.logical_window_count() == 0 {
-            ctx.send_viewport_cmd(egui::ViewportCommand::Close);
-        }
+        self.logical_window_count() == 0
     }
 
     pub(super) fn sync_viewport_lifecycle(&mut self, ctx: &egui::Context) {
         let focused = ctx.input(|input| input.viewport().focused.unwrap_or(input.focused));
-        let became_focused = self
-            .last_viewport_focused
-            .map(|previous| !previous && focused)
-            .unwrap_or(false);
         self.last_viewport_focused = Some(focused);
-
-        if !became_focused {
-            return;
-        }
-
-        let window_id = self.current_window_id();
-        if let Some(window_id) = window_id {
-            self.dispatch_event(StudioGuiEvent::WindowForegrounded { window_id });
-        }
     }
 
     pub(super) fn handle_command_palette_toggle_shortcut(&mut self, ctx: &egui::Context) -> bool {
@@ -1120,5 +1263,37 @@ impl ReadyAppState {
         if pointer_pos.is_some_and(|pos| rect.contains(pos)) && (pressed || released) {
             self.last_area_focus = Some(area_id);
         }
+    }
+}
+
+fn project_opened_notice_title(locale: StudioShellLocale) -> &'static str {
+    match locale {
+        StudioShellLocale::En => "Project opened",
+        StudioShellLocale::ZhCn => "项目已打开",
+    }
+}
+
+fn project_opened_notice_detail(
+    locale: StudioShellLocale,
+    source_label: &str,
+    project_path: &std::path::Path,
+) -> String {
+    match locale {
+        StudioShellLocale::En => format!("Opened {source_label}: {}", project_path.display()),
+        StudioShellLocale::ZhCn => format!(
+            "已打开{}: {}",
+            localized_project_source_label(source_label),
+            project_path.display()
+        ),
+    }
+}
+
+fn localized_project_source_label(source_label: &str) -> &'static str {
+    match source_label {
+        "example project" => "示例",
+        "recent project" => "最近项目",
+        "project picker" => "文件选择器项目",
+        "project" => "项目",
+        _ => "项目",
     }
 }

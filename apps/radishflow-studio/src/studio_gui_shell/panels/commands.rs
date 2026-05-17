@@ -49,9 +49,13 @@ impl ReadyAppState {
         ui: &mut egui::Ui,
         result: &radishflow_studio::StudioGuiCanvasCommandResultCommandSurfaceViewModel,
     ) {
-        ui.label(egui::RichText::new("Canvas result").strong());
+        ui.label(egui::RichText::new(self.locale.text(ShellText::CanvasResult)).strong());
         ui.horizontal_wrapped(|ui| {
-            render_status_chip(ui, result.status_label, notice_color(result.level));
+            render_status_chip(
+                ui,
+                self.locale.runtime_label(result.status_label).as_ref(),
+                notice_color(result.level),
+            );
             ui.label(egui::RichText::new(&result.title).strong());
         });
         render_wrapped_small(ui, &result.detail);
@@ -151,10 +155,9 @@ impl ReadyAppState {
                 let canvas_result = self
                     .canvas_command_result_command_surface()
                     .filter(|result| result.matches_query(&self.command_palette.query));
-                ui.small(format!(
-                    "{} / {} commands",
+                ui.small(self.locale.command_count_summary(
                     commands.total_command_count.min(palette_items.len()),
-                    commands.total_command_count
+                    commands.total_command_count,
                 ));
                 let response = ui.add(
                     egui::TextEdit::singleline(&mut self.command_palette.query)
@@ -231,141 +234,6 @@ impl ReadyAppState {
         render_wrapped_small(ui, &result.detail);
         ui.small(&result.menu_path_text);
         ui.add_space(6.0);
-    }
-
-    pub(in crate::studio_gui_shell) fn render_panel_toggle(
-        &mut self,
-        ui: &mut egui::Ui,
-        window_id: Option<StudioWindowHostId>,
-        layout_state: &radishflow_studio::StudioGuiWindowLayoutState,
-        area_id: StudioGuiWindowAreaId,
-        label: &str,
-    ) {
-        let visible = layout_state
-            .panel(area_id)
-            .map(|panel| panel.visible)
-            .unwrap_or(false);
-        let mut desired = visible;
-        if ui.checkbox(&mut desired, label).changed() {
-            self.dispatch_layout_mutation(
-                window_id,
-                StudioGuiWindowLayoutMutation::SetPanelVisibility {
-                    area_id,
-                    visible: desired,
-                },
-            );
-        }
-    }
-
-    pub(in crate::studio_gui_shell) fn render_region_weight_slider(
-        &mut self,
-        ui: &mut egui::Ui,
-        window_id: Option<StudioWindowHostId>,
-        layout_state: &radishflow_studio::StudioGuiWindowLayoutState,
-        dock_region: StudioGuiWindowDockRegion,
-        label: &str,
-    ) {
-        let Some(region_weight) = layout_state.region_weight(dock_region) else {
-            return;
-        };
-        let mut weight = region_weight.weight;
-        if ui
-            .add(egui::Slider::new(&mut weight, 10..=80).text(label))
-            .changed()
-        {
-            self.dispatch_layout_mutation(
-                window_id,
-                StudioGuiWindowLayoutMutation::SetRegionWeight {
-                    dock_region,
-                    weight,
-                },
-            );
-        }
-    }
-
-    pub(in crate::studio_gui_shell) fn render_move_menu(
-        &mut self,
-        ui: &mut egui::Ui,
-        window: &StudioGuiWindowModel,
-        area_id: StudioGuiWindowAreaId,
-        current_region: StudioGuiWindowDockRegion,
-    ) {
-        ui.menu_button("Move", |ui| {
-            for region in [
-                StudioGuiWindowDockRegion::LeftSidebar,
-                StudioGuiWindowDockRegion::CenterStage,
-                StudioGuiWindowDockRegion::RightSidebar,
-            ] {
-                let label = dock_region_label(region);
-                if ui
-                    .add_enabled(region != current_region, egui::Button::new(label))
-                    .clicked()
-                {
-                    self.dispatch_layout_mutation(
-                        window.layout_state.scope.window_id,
-                        StudioGuiWindowLayoutMutation::SetPanelDockRegion {
-                            area_id,
-                            dock_region: region,
-                            order: None,
-                        },
-                    );
-                    ui.close_menu();
-                }
-            }
-        });
-    }
-
-    pub(in crate::studio_gui_shell) fn render_stack_menu(
-        &mut self,
-        ui: &mut egui::Ui,
-        window: &StudioGuiWindowModel,
-        area_id: StudioGuiWindowAreaId,
-        display_mode: StudioGuiWindowPanelDisplayMode,
-    ) {
-        ui.menu_button("Stack", |ui| {
-            for target_area_id in [
-                StudioGuiWindowAreaId::Commands,
-                StudioGuiWindowAreaId::Canvas,
-                StudioGuiWindowAreaId::Runtime,
-            ] {
-                if target_area_id == area_id {
-                    continue;
-                }
-                let Some(target_panel) = window.layout().panel(target_area_id).cloned() else {
-                    continue;
-                };
-                if !target_panel.visible {
-                    continue;
-                }
-
-                if ui.button(format!("With {}", target_panel.title)).clicked() {
-                    self.dispatch_layout_mutation(
-                        window.layout_state.scope.window_id,
-                        StudioGuiWindowLayoutMutation::StackPanelWith {
-                            area_id,
-                            anchor_area_id: target_area_id,
-                            placement: radishflow_studio::StudioGuiWindowDockPlacement::Before {
-                                anchor_area_id: target_area_id,
-                            },
-                        },
-                    );
-                    ui.close_menu();
-                }
-            }
-
-            if !matches!(display_mode, StudioGuiWindowPanelDisplayMode::Standalone)
-                && ui.button("Unstack").clicked()
-            {
-                self.dispatch_layout_mutation(
-                    window.layout_state.scope.window_id,
-                    StudioGuiWindowLayoutMutation::UnstackPanelFromGroup {
-                        area_id,
-                        placement: radishflow_studio::StudioGuiWindowDockPlacement::End,
-                    },
-                );
-                ui.close_menu();
-            }
-        });
     }
 
     pub(in crate::studio_gui_shell) fn render_drop_target_lane(

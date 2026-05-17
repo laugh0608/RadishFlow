@@ -20,6 +20,406 @@ impl ReadyAppState {
             });
     }
 
+    pub(in crate::studio_gui_shell) fn render_runtime_inspector_tab(
+        &mut self,
+        ui: &mut egui::Ui,
+        window: &StudioGuiWindowModel,
+    ) {
+        if let Some(detail) = window.runtime.active_inspector_detail.as_ref() {
+            ui.push_id(
+                format!("runtime:active-inspector:{}", detail.target.command_id),
+                |ui| self.render_active_inspector_detail(ui, detail),
+            );
+            return;
+        }
+
+        ui.label(egui::RichText::new(self.locale.text(ShellText::InspectorProperties)).strong());
+        if let Some(target) = window.runtime.active_inspector_target.as_ref() {
+            render_wrapped_label(ui, &target.summary);
+            let _ = self.render_small_command_action(ui, &target.action);
+        } else {
+            ui.small(self.locale.text(ShellText::NoActiveInspectorTarget));
+        }
+    }
+
+    pub(in crate::studio_gui_shell) fn render_runtime_results_tab(
+        &mut self,
+        ui: &mut egui::Ui,
+        window: &StudioGuiWindowModel,
+    ) {
+        ui.label(egui::RichText::new(self.locale.text(ShellText::Results)).strong());
+        if let Some(snapshot) = window.runtime.latest_solve_snapshot.as_ref() {
+            ui.horizontal_wrapped(|ui| {
+                render_status_chip(
+                    ui,
+                    self.locale.runtime_label(snapshot.status_label).as_ref(),
+                    run_status_color(snapshot.status_label),
+                );
+                ui.small(self.locale.solve_snapshot_counts(
+                    snapshot.stream_count,
+                    snapshot.step_count,
+                    snapshot.diagnostic_count,
+                ));
+            });
+            ui.small(
+                self.locale
+                    .snapshot_identity(&snapshot.snapshot_id, snapshot.sequence),
+            );
+            render_wrapped_label(ui, &snapshot.summary);
+            ui.separator();
+            if snapshot.streams.is_empty() {
+                ui.small(self.locale.text(ShellText::NoStreamResults));
+            } else {
+                let selected_stream_id = self
+                    .result_inspector
+                    .selected_stream_id_for_snapshot(snapshot);
+                let selected_unit_id = self
+                    .result_inspector
+                    .selected_unit_id_for_snapshot(snapshot);
+                let inspector = snapshot.result_inspector_with_unit(
+                    selected_stream_id.as_deref(),
+                    self.result_inspector.comparison_stream_id.as_deref(),
+                    selected_unit_id.as_deref(),
+                );
+                ui.push_id(
+                    format!("runtime:result-inspector:{}", snapshot.snapshot_id),
+                    |ui| self.render_result_inspector(ui, &inspector),
+                );
+            }
+
+            ui.separator();
+            ui.collapsing(self.locale.text(ShellText::SolveSteps), |ui| {
+                if snapshot.steps.is_empty() {
+                    ui.small(self.locale.text(ShellText::NoSteps));
+                } else {
+                    for step in &snapshot.steps {
+                        self.render_solve_step_inspector(ui, step);
+                    }
+                }
+            });
+            ui.collapsing(self.locale.text(ShellText::Diagnostics), |ui| {
+                if snapshot.diagnostics.is_empty() {
+                    ui.small(self.locale.text(ShellText::NoDiagnostics));
+                } else {
+                    for (index, diagnostic) in snapshot.diagnostics.iter().enumerate() {
+                        self.render_diagnostic_summary(
+                            ui,
+                            diagnostic,
+                            format!("runtime-results-tab:diagnostic:{index}"),
+                        );
+                        ui.add_space(6.0);
+                    }
+                }
+            });
+        } else if let Some(failure) = window.runtime.latest_failure.as_ref() {
+            self.render_latest_failure_summary(ui, failure);
+        } else {
+            ui.small(self.locale.text(ShellText::NoVisibleSolveResults));
+        }
+    }
+
+    pub(in crate::studio_gui_shell) fn render_runtime_run_tab(
+        &mut self,
+        ui: &mut egui::Ui,
+        window: &StudioGuiWindowModel,
+    ) {
+        let run_panel = &window.runtime.run_panel;
+        let run_panel_view = run_panel.view();
+
+        ui.horizontal_wrapped(|ui| {
+            ui.label(egui::RichText::new(self.locale.text(ShellText::Run)).strong());
+            render_status_chip(
+                ui,
+                self.locale
+                    .runtime_label(run_panel_view.mode_label)
+                    .as_ref(),
+                egui::Color32::from_rgb(86, 118, 168),
+            );
+            render_status_chip(
+                ui,
+                self.locale
+                    .runtime_label(run_panel_view.status_label)
+                    .as_ref(),
+                run_status_color(run_panel_view.status_label),
+            );
+            if let Some(pending) = run_panel_view.pending_label {
+                render_status_chip(
+                    ui,
+                    self.locale.runtime_label(pending).as_ref(),
+                    egui::Color32::from_rgb(160, 120, 40),
+                );
+            }
+        });
+        ui.add_space(4.0);
+        ui.horizontal_wrapped(|ui| {
+            let primary = run_panel.primary_action();
+            let response = ui.add_enabled(
+                primary.enabled,
+                egui::Button::new(self.locale.runtime_label(primary.label).as_ref())
+                    .fill(egui::Color32::from_rgb(230, 239, 252)),
+            );
+            if response.on_hover_text(primary.detail).clicked() {
+                self.dispatch_run_panel_widget(run_panel.activate_primary());
+            }
+
+            for action in &run_panel_view.secondary_actions {
+                let response = ui.add_enabled(
+                    action.enabled,
+                    egui::Button::new(self.locale.runtime_label(action.label).as_ref()),
+                );
+                if response.on_hover_text(action.detail).clicked() {
+                    self.dispatch_run_panel_widget(run_panel.activate(action.id));
+                }
+            }
+        });
+        ui.add_space(6.0);
+        if let Some(summary) = run_panel_view.latest_snapshot_summary.as_ref() {
+            render_wrapped_label(ui, summary);
+        } else {
+            ui.small(self.locale.text(ShellText::NoSolveSnapshot));
+        }
+        if let Some(message) = run_panel_view.latest_log_message.as_ref() {
+            render_wrapped_small(
+                ui,
+                format!("{}: {message}", self.locale.text(ShellText::LatestLog)),
+            );
+        }
+        if let Some(notice) = run_panel_view.notice.as_ref() {
+            ui.add_space(6.0);
+            ui.colored_label(notice_color(notice.level), &notice.title);
+            render_wrapped_label(ui, &notice.message);
+            if let Some(recovery_action) = notice.recovery_action.as_ref() {
+                render_wrapped_small(ui, recovery_action.detail);
+                if ui.button(recovery_action.title).clicked() {
+                    match run_panel.activate_recovery_action() {
+                        RunPanelRecoveryWidgetEvent::Requested { .. } => {
+                            self.dispatch_ui_command("run_panel.recover_failure");
+                        }
+                        RunPanelRecoveryWidgetEvent::Missing => {}
+                    }
+                }
+            }
+        }
+
+        ui.separator();
+        let document = &window.runtime.workspace_document;
+        ui.label(egui::RichText::new(self.locale.text(ShellText::Workspace)).strong());
+        ui.horizontal_wrapped(|ui| {
+            render_wrapped_label(ui, &document.title);
+            render_status_chip(
+                ui,
+                &format!("rev {}", document.revision),
+                egui::Color32::from_rgb(86, 118, 168),
+            );
+            if document.has_unsaved_changes {
+                render_status_chip(
+                    ui,
+                    self.locale.text(ShellText::Unsaved),
+                    egui::Color32::from_rgb(160, 120, 40),
+                );
+            }
+        });
+        ui.small(self.locale.workspace_counts(
+            &document.flowsheet_name,
+            document.unit_count,
+            document.stream_count,
+            document.snapshot_history_count,
+        ));
+        if let Some(notice) = self.project_open.notice.as_ref() {
+            let color = match notice.level {
+                ProjectOpenNoticeLevel::Info => egui::Color32::from_rgb(66, 118, 92),
+                ProjectOpenNoticeLevel::Warning => egui::Color32::from_rgb(160, 120, 40),
+                ProjectOpenNoticeLevel::Error => egui::Color32::from_rgb(180, 40, 40),
+            };
+            ui.colored_label(color, &notice.title);
+            render_wrapped_small(ui, &notice.detail);
+        }
+        ui.collapsing(self.locale.text(ShellText::ProjectPath), |ui| {
+            ui.add(
+                egui::TextEdit::singleline(&mut self.project_open.path_input)
+                    .desired_width(f32::INFINITY),
+            );
+            ui.horizontal_wrapped(|ui| {
+                if ui
+                    .button(self.locale.text(ShellText::SaveProject))
+                    .clicked()
+                {
+                    self.save_project();
+                }
+                if ui
+                    .button(self.locale.text(ShellText::SaveProjectAs))
+                    .clicked()
+                {
+                    self.save_project_as_from_picker();
+                }
+                if ui
+                    .button(self.locale.text(ShellText::OpenProject))
+                    .clicked()
+                {
+                    self.open_project_from_input();
+                }
+                if ui
+                    .button(self.locale.text(ShellText::BrowseProject))
+                    .clicked()
+                {
+                    self.open_project_from_picker();
+                }
+            });
+        });
+    }
+
+    pub(in crate::studio_gui_shell) fn render_runtime_package_tab(
+        &mut self,
+        ui: &mut egui::Ui,
+        window: &StudioGuiWindowModel,
+    ) {
+        if let Some(platform_notice) = window.runtime.platform_notice.as_ref() {
+            ui.label(egui::RichText::new(self.locale.text(ShellText::PlatformNotice)).strong());
+            ui.colored_label(notice_color(platform_notice.level), &platform_notice.title);
+            render_wrapped_label(ui, &platform_notice.message);
+            ui.separator();
+        }
+
+        ui.horizontal_wrapped(|ui| {
+            ui.label(egui::RichText::new(self.locale.text(ShellText::PropertyPackage)).strong());
+            render_status_chip(
+                ui,
+                self.locale.runtime_label("Ready").as_ref(),
+                egui::Color32::from_rgb(66, 118, 92),
+            );
+        });
+        ui.add_space(4.0);
+
+        egui::Frame::group(ui.style()).show(ui, |ui| {
+            ui.set_width(ui.available_width());
+            ui.horizontal_wrapped(|ui| {
+                ui.label(egui::RichText::new("binary-hydrocarbon-lite-v1").strong());
+                render_status_chip(
+                    ui,
+                    self.locale.runtime_label("Ready").as_ref(),
+                    egui::Color32::from_rgb(66, 118, 92),
+                );
+            });
+            render_wrapped_small(
+                ui,
+                match self.locale {
+                    StudioShellLocale::En => {
+                        "Local binary hydrocarbon package used by the bundled examples."
+                    }
+                    StudioShellLocale::ZhCn => "本地二元烃物性包，用于内置示例和当前工作台。",
+                },
+            );
+            ui.add_space(4.0);
+            egui::Grid::new("runtime-package-summary")
+                .num_columns(2)
+                .striped(false)
+                .show(ui, |ui| {
+                    ui.small(match self.locale {
+                        StudioShellLocale::En => "Components",
+                        StudioShellLocale::ZhCn => "组分",
+                    });
+                    ui.small("Methane, Ethane");
+                    ui.end_row();
+
+                    ui.small(match self.locale {
+                        StudioShellLocale::En => "Cache",
+                        StudioShellLocale::ZhCn => "缓存",
+                    });
+                    ui.small(match self.locale {
+                        StudioShellLocale::En => "Ready",
+                        StudioShellLocale::ZhCn => "就绪",
+                    });
+                    ui.end_row();
+
+                    ui.small(match self.locale {
+                        StudioShellLocale::En => "Example source",
+                        StudioShellLocale::ZhCn => "示例来源",
+                    });
+                    ui.small("examples/flowsheets");
+                    ui.end_row();
+
+                    ui.small(match self.locale {
+                        StudioShellLocale::En => "Bundled examples",
+                        StudioShellLocale::ZhCn => "内置示例",
+                    });
+                    ui.small(window.runtime.example_projects.len().to_string());
+                    ui.end_row();
+                });
+        });
+
+        if let Some(entitlement_host) = window.runtime.entitlement_host.as_ref() {
+            let entitlement = &entitlement_host.presentation.panel.view;
+            ui.add_space(8.0);
+            egui::Frame::group(ui.style()).show(ui, |ui| {
+                ui.set_width(ui.available_width());
+                ui.label(egui::RichText::new(self.locale.text(ShellText::Platform)).strong());
+                render_wrapped_small(
+                    ui,
+                    format!(
+                        "{}: {}",
+                        self.locale.text(ShellText::AllowedPackages),
+                        entitlement.allowed_package_count
+                    ),
+                );
+                render_wrapped_small(
+                    ui,
+                    format!(
+                        "{}: {}",
+                        self.locale.text(ShellText::CachedManifests),
+                        entitlement.package_manifest_count
+                    ),
+                );
+                if let Some(notice) = entitlement.notice.as_ref() {
+                    ui.add_space(4.0);
+                    ui.colored_label(notice_color_from_entitlement(notice.level), &notice.title);
+                    render_wrapped_label(ui, &notice.message);
+                }
+            });
+        }
+    }
+
+    pub(in crate::studio_gui_shell) fn render_latest_failure_summary(
+        &mut self,
+        ui: &mut egui::Ui,
+        failure: &radishflow_studio::StudioGuiWindowFailureResultModel,
+    ) {
+        ui.horizontal_wrapped(|ui| {
+            render_status_chip(
+                ui,
+                self.locale.runtime_label(failure.status_label).as_ref(),
+                run_status_color(failure.status_label),
+            );
+            ui.label(egui::RichText::new(
+                self.locale.text(ShellText::LastRunFailed),
+            ));
+        });
+        ui.colored_label(
+            notice_color(rf_ui::RunPanelNoticeLevel::Error),
+            &failure.title,
+        );
+        render_wrapped_label(ui, &failure.message);
+        if let Some(detail) = failure.diagnostic_detail.as_ref() {
+            self.render_failure_diagnostic_detail(ui, detail);
+        }
+        if let Some(message) = failure.latest_log_message.as_ref() {
+            render_wrapped_small(
+                ui,
+                format!("{}: {message}", self.locale.text(ShellText::LatestLog)),
+            );
+        }
+        if let Some(recovery_detail) = failure.recovery_detail {
+            ui.add_space(4.0);
+            let title = failure
+                .recovery_title
+                .unwrap_or(self.locale.text(ShellText::SuggestedRecovery));
+            ui.small(egui::RichText::new(title).strong());
+            render_wrapped_small(ui, recovery_detail);
+        }
+        if !failure.diagnostic_actions.is_empty() {
+            self.render_diagnostic_target_actions(ui, &failure.diagnostic_actions);
+        }
+    }
+
     pub(in crate::studio_gui_shell) fn render_runtime_area_contents(
         &mut self,
         ui: &mut egui::Ui,
@@ -55,20 +455,19 @@ impl ReadyAppState {
                 }
             });
             ui.add_space(4.0);
-            ui.vertical(|ui| {
+            ui.horizontal_wrapped(|ui| {
                 let primary = run_panel.primary_action();
                 let response = ui.add_enabled(
                     primary.enabled,
-                    egui::Button::new(self.locale.runtime_label(primary.label).as_ref()),
+                    egui::Button::new(self.locale.runtime_label(primary.label).as_ref())
+                        .fill(egui::Color32::from_rgb(230, 239, 252)),
                 );
                 let response = response.on_hover_text(primary.detail);
                 if response.clicked() {
                     self.dispatch_run_panel_widget(run_panel.activate_primary());
                 }
-                render_wrapped_small(ui, primary.detail);
 
                 for action in &run_panel_view.secondary_actions {
-                    ui.add_space(4.0);
                     let response = ui.add_enabled(
                         action.enabled,
                         egui::Button::new(self.locale.runtime_label(action.label).as_ref()),
@@ -77,7 +476,6 @@ impl ReadyAppState {
                     if response.clicked() {
                         self.dispatch_run_panel_widget(run_panel.activate(action.id));
                     }
-                    render_wrapped_small(ui, action.detail);
                 }
             });
             ui.add_space(6.0);
@@ -129,7 +527,10 @@ impl ReadyAppState {
         if let Some(detail) = window.runtime.active_inspector_detail.as_ref() {
             ui.add_space(8.0);
             egui::Frame::group(ui.style()).show(ui, |ui| {
-                self.render_active_inspector_detail(ui, detail);
+                ui.push_id(
+                    format!("runtime:active-inspector:{}", detail.target.command_id),
+                    |ui| self.render_active_inspector_detail(ui, detail),
+                );
             });
         }
 
@@ -182,45 +583,46 @@ impl ReadyAppState {
                 render_wrapped_small(ui, path);
             }
             ui.separator();
-            ui.label(egui::RichText::new(self.locale.text(ShellText::ProjectPath)).strong());
-            ui.add(
-                egui::TextEdit::singleline(&mut self.project_open.path_input)
-                    .desired_width(f32::INFINITY),
-            );
-            ui.horizontal_wrapped(|ui| {
-                if ui
-                    .button(self.locale.text(ShellText::SaveProject))
-                    .clicked()
-                {
-                    self.save_project();
-                }
-                if ui
-                    .button(self.locale.text(ShellText::SaveProjectAs))
-                    .clicked()
-                {
-                    self.save_project_as_from_picker();
-                }
-                if ui
-                    .button(self.locale.text(ShellText::OpenProject))
-                    .clicked()
-                {
-                    self.open_project_from_input();
-                }
-                if ui
-                    .button(self.locale.text(ShellText::BrowseProject))
-                    .clicked()
-                {
-                    self.open_project_from_picker();
-                }
-                if let Some(path) = document.project_path.as_ref() {
+            ui.collapsing(self.locale.text(ShellText::ProjectPath), |ui| {
+                ui.add(
+                    egui::TextEdit::singleline(&mut self.project_open.path_input)
+                        .desired_width(f32::INFINITY),
+                );
+                ui.horizontal_wrapped(|ui| {
                     if ui
-                        .button(self.locale.text(ShellText::UseCurrentPath))
+                        .button(self.locale.text(ShellText::SaveProject))
                         .clicked()
                     {
-                        self.project_open.path_input = path.clone();
-                        self.project_open.notice = None;
+                        self.save_project();
                     }
-                }
+                    if ui
+                        .button(self.locale.text(ShellText::SaveProjectAs))
+                        .clicked()
+                    {
+                        self.save_project_as_from_picker();
+                    }
+                    if ui
+                        .button(self.locale.text(ShellText::OpenProject))
+                        .clicked()
+                    {
+                        self.open_project_from_input();
+                    }
+                    if ui
+                        .button(self.locale.text(ShellText::BrowseProject))
+                        .clicked()
+                    {
+                        self.open_project_from_picker();
+                    }
+                    if let Some(path) = document.project_path.as_ref() {
+                        if ui
+                            .button(self.locale.text(ShellText::UseCurrentPath))
+                            .clicked()
+                        {
+                            self.project_open.path_input = path.clone();
+                            self.project_open.notice = None;
+                        }
+                    }
+                });
             });
             if let Some(notice) = self.project_open.notice.as_ref() {
                 let color = match notice.level {
@@ -358,7 +760,10 @@ impl ReadyAppState {
                         self.result_inspector.comparison_stream_id.as_deref(),
                         selected_unit_id.as_deref(),
                     );
-                    self.render_result_inspector(ui, &inspector);
+                    ui.push_id(
+                        format!("runtime:result-inspector:{}", snapshot.snapshot_id),
+                        |ui| self.render_result_inspector(ui, &inspector),
+                    );
                 }
             } else if let Some(failure) = window.runtime.latest_failure.as_ref() {
                 ui.horizontal_wrapped(|ui| {
@@ -428,25 +833,16 @@ impl ReadyAppState {
                         ))
                         .max_height(180.0)
                         .show(ui, |ui| {
-                            for diagnostic in &snapshot.diagnostics {
-                                ui.horizontal_wrapped(|ui| {
-                                    render_status_chip(
-                                        ui,
-                                        self.locale
-                                            .runtime_label(diagnostic.severity_label)
-                                            .as_ref(),
-                                        diagnostic_color(diagnostic.severity_label),
-                                    );
-                                    ui.small(&diagnostic.code);
-                                });
-                                render_wrapped_label(ui, &diagnostic.message);
-                                self.render_diagnostic_targets(ui, diagnostic);
-                                if let Some(units) = diagnostic.related_units_text.as_ref() {
-                                    render_wrapped_small(ui, format!("units: {units}"));
-                                }
-                                if let Some(streams) = diagnostic.related_streams_text.as_ref() {
-                                    render_wrapped_small(ui, format!("streams: {streams}"));
-                                }
+                            for (index, diagnostic) in snapshot.diagnostics.iter().enumerate() {
+                                self.render_diagnostic_summary(
+                                    ui,
+                                    diagnostic,
+                                    format!(
+                                        "runtime:{}:{}:diagnostic:{index}",
+                                        window.layout_state.scope.layout_key,
+                                        area_label(area_id)
+                                    ),
+                                );
                                 ui.add_space(6.0);
                             }
                         });
@@ -565,8 +961,7 @@ impl ReadyAppState {
             });
 
             ui.add_space(8.0);
-            egui::Frame::group(ui.style()).show(ui, |ui| {
-                ui.label(egui::RichText::new(self.locale.text(ShellText::Scheduler)).strong());
+            ui.collapsing(self.locale.text(ShellText::Scheduler), |ui| {
                 render_wrapped_small(
                     ui,
                     "Host lifecycle actions are routed through dedicated UI surfaces or native events.",
@@ -579,8 +974,7 @@ impl ReadyAppState {
         }
 
         ui.add_space(8.0);
-        egui::Frame::group(ui.style()).show(ui, |ui| {
-            ui.label(egui::RichText::new(self.locale.text(ShellText::RuntimeLog)).strong());
+        ui.collapsing(self.locale.text(ShellText::RuntimeLog), |ui| {
             egui::ScrollArea::vertical()
                 .id_salt(format!(
                     "scroll:{}:{}:runtime-log",
@@ -603,8 +997,7 @@ impl ReadyAppState {
         });
 
         ui.add_space(8.0);
-        egui::Frame::group(ui.style()).show(ui, |ui| {
-            ui.label(egui::RichText::new(self.locale.text(ShellText::GuiActivity)).strong());
+        ui.collapsing(self.locale.text(ShellText::GuiActivity), |ui| {
             egui::ScrollArea::vertical()
                 .id_salt(format!(
                     "scroll:{}:{}:gui-activity",
@@ -648,6 +1041,38 @@ impl ReadyAppState {
                 }
             });
 
+        if let Some(window) = stream.bubble_dew_window.as_ref() {
+            ui.collapsing(self.locale.text(ShellText::BubbleDewWindow), |ui| {
+                egui::Grid::new(format!("stream-bubble-dew-window:{}", stream.stream_id))
+                    .num_columns(2)
+                    .striped(true)
+                    .show(ui, |ui| {
+                        ui.small(
+                            egui::RichText::new(self.locale.runtime_label("Phase region").as_ref())
+                                .strong(),
+                        );
+                        ui.small(self.locale.runtime_label(&window.phase_region).as_ref());
+                        ui.end_row();
+
+                        ui.small(self.locale.runtime_label("Bubble pressure").as_ref());
+                        ui.small(&window.bubble_pressure_text);
+                        ui.end_row();
+
+                        ui.small(self.locale.runtime_label("Dew pressure").as_ref());
+                        ui.small(&window.dew_pressure_text);
+                        ui.end_row();
+
+                        ui.small(self.locale.runtime_label("Bubble temperature").as_ref());
+                        ui.small(&window.bubble_temperature_text);
+                        ui.end_row();
+
+                        ui.small(self.locale.runtime_label("Dew temperature").as_ref());
+                        ui.small(&window.dew_temperature_text);
+                        ui.end_row();
+                    });
+            });
+        }
+
         ui.collapsing(self.locale.text(ShellText::OverallComposition), |ui| {
             if stream.composition_rows.is_empty() {
                 ui.small(self.locale.text(ShellText::NoComposition));
@@ -676,11 +1101,12 @@ impl ReadyAppState {
                 return;
             }
             egui::Grid::new(format!("stream-phases:{}", stream.stream_id))
-                .num_columns(4)
+                .num_columns(5)
                 .striped(true)
                 .show(ui, |ui| {
                     ui.small(egui::RichText::new(self.locale.text(ShellText::Phase)).strong());
                     ui.small(egui::RichText::new(self.locale.text(ShellText::Fraction)).strong());
+                    ui.small(egui::RichText::new(self.locale.runtime_label("Molar flow")).strong());
                     ui.small(
                         egui::RichText::new(self.locale.text(ShellText::OverallComposition))
                             .strong(),
@@ -690,6 +1116,7 @@ impl ReadyAppState {
                     for row in &stream.phase_rows {
                         ui.small(&row.label);
                         ui.small(&row.phase_fraction_text);
+                        ui.small(&row.molar_flow_text);
                         render_wrapped_small(ui, &row.composition_text);
                         ui.small(row.molar_enthalpy_text.as_deref().unwrap_or("-"));
                         ui.end_row();
@@ -717,21 +1144,21 @@ impl ReadyAppState {
             ui.small(format!("#{}", unit.step_index));
         });
         render_wrapped_label(ui, &unit.summary);
-        if !unit.consumed_stream_actions.is_empty() {
-            ui.horizontal_wrapped(|ui| {
-                ui.small(self.locale.text(ShellText::InspectorConsumedStreams));
-                for action in &unit.consumed_stream_actions {
-                    self.render_small_command_action(ui, action);
-                }
-            });
+        if !unit.consumed_stream_results.is_empty() {
+            self.render_stream_result_reference_grid(
+                ui,
+                format!("unit-consumed-streams:{}:{}", unit.unit_id, unit.step_index),
+                self.locale.text(ShellText::InspectorConsumedStreams),
+                &unit.consumed_stream_results,
+            );
         }
-        if !unit.produced_stream_actions.is_empty() {
-            ui.horizontal_wrapped(|ui| {
-                ui.small(self.locale.text(ShellText::InspectorProducedStreams));
-                for action in &unit.produced_stream_actions {
-                    self.render_small_command_action(ui, action);
-                }
-            });
+        if !unit.produced_stream_results.is_empty() {
+            self.render_stream_result_reference_grid(
+                ui,
+                format!("unit-produced-streams:{}:{}", unit.unit_id, unit.step_index),
+                self.locale.text(ShellText::InspectorProducedStreams),
+                &unit.produced_stream_results,
+            );
         }
         ui.add_space(8.0);
     }
@@ -752,20 +1179,63 @@ impl ReadyAppState {
             );
             if !step.consumed_stream_actions.is_empty() {
                 for action in &step.consumed_stream_actions {
-                    self.render_small_command_action(ui, action);
+                    let _ = self.render_small_command_action(ui, action);
                 }
                 ui.small("->");
             }
-            self.render_small_command_action(ui, &step.unit_action);
+            let _ = self.render_small_command_action(ui, &step.unit_action);
             if !step.produced_stream_actions.is_empty() {
                 ui.small("->");
                 for action in &step.produced_stream_actions {
-                    self.render_small_command_action(ui, action);
+                    let _ = self.render_small_command_action(ui, action);
                 }
             }
         });
         render_wrapped_label(ui, &step.summary);
+        if !step.consumed_stream_results.is_empty() {
+            self.render_stream_result_reference_grid(
+                ui,
+                format!(
+                    "solve-step-consumed-streams:{}:{}",
+                    step.unit_id, step.index
+                ),
+                self.locale.text(ShellText::InspectorConsumedStreams),
+                &step.consumed_stream_results,
+            );
+        }
+        if !step.produced_stream_results.is_empty() {
+            self.render_stream_result_reference_grid(
+                ui,
+                format!(
+                    "solve-step-produced-streams:{}:{}",
+                    step.unit_id, step.index
+                ),
+                self.locale.text(ShellText::InspectorProducedStreams),
+                &step.produced_stream_results,
+            );
+        }
         ui.add_space(4.0);
+    }
+
+    fn render_stream_result_reference_grid(
+        &mut self,
+        ui: &mut egui::Ui,
+        grid_id: String,
+        title: &str,
+        streams: &[radishflow_studio::StudioGuiWindowStreamResultReferenceModel],
+    ) {
+        ui.add_space(4.0);
+        ui.small(egui::RichText::new(title).strong());
+        egui::Grid::new(grid_id)
+            .num_columns(2)
+            .striped(true)
+            .show(ui, |ui| {
+                for stream in streams {
+                    let _ = self.render_small_command_action(ui, &stream.focus_action);
+                    render_wrapped_small(ui, &stream.summary);
+                    ui.end_row();
+                }
+            });
     }
 
     fn render_active_inspector_detail(
@@ -1043,7 +1513,9 @@ impl ReadyAppState {
                         render_wrapped_small(ui, &port.direction);
                         render_wrapped_small(ui, &port.kind);
                         match (&port.stream_id, &port.stream_action) {
-                            (_, Some(action)) => self.render_small_command_action(ui, action),
+                            (_, Some(action)) => {
+                                let _ = self.render_small_command_action(ui, action);
+                            }
                             (Some(stream_id), None) => render_wrapped_small(ui, stream_id),
                             (None, None) => {
                                 ui.small("-");
@@ -1079,7 +1551,13 @@ impl ReadyAppState {
             ui.small(
                 egui::RichText::new(self.locale.text(ShellText::InspectorLatestResult)).strong(),
             );
-            self.render_stream_result_inspector(ui, stream);
+            ui.push_id(
+                format!(
+                    "active-inspector-latest-stream:{}",
+                    detail.target.command_id
+                ),
+                |ui| self.render_stream_result_inspector(ui, stream),
+            );
         }
 
         if !detail.related_steps.is_empty() {
@@ -1101,19 +1579,15 @@ impl ReadyAppState {
         if !detail.related_diagnostics.is_empty() {
             ui.add_space(4.0);
             ui.collapsing(self.locale.text(ShellText::RelatedDiagnostics), |ui| {
-                for diagnostic in &detail.related_diagnostics {
-                    ui.horizontal_wrapped(|ui| {
-                        render_status_chip(
-                            ui,
-                            self.locale
-                                .runtime_label(diagnostic.severity_label)
-                                .as_ref(),
-                            diagnostic_color(diagnostic.severity_label),
-                        );
-                        ui.small(&diagnostic.code);
-                    });
-                    render_wrapped_label(ui, &diagnostic.message);
-                    self.render_diagnostic_targets(ui, diagnostic);
+                for (index, diagnostic) in detail.related_diagnostics.iter().enumerate() {
+                    self.render_diagnostic_summary(
+                        ui,
+                        diagnostic,
+                        format!(
+                            "active-inspector:{}:diagnostic:{index}",
+                            detail.target.command_id
+                        ),
+                    );
                     ui.add_space(4.0);
                 }
             });
@@ -1141,7 +1615,7 @@ impl ReadyAppState {
                     self.result_inspector
                         .select_stream(&inspector.snapshot_id, option.stream_id.clone());
                 }
-                self.render_small_command_action(ui, &option.focus_action);
+                let _ = self.render_small_command_action(ui, &option.focus_action);
             }
         });
         if inspector.has_stale_selection {
@@ -1150,7 +1624,13 @@ impl ReadyAppState {
         ui.separator();
 
         if let Some(stream) = inspector.selected_stream.as_ref() {
-            self.render_stream_result_inspector(ui, stream);
+            ui.push_id(
+                format!(
+                    "result-inspector:selected-stream:{}:{}",
+                    inspector.snapshot_id, stream.stream_id
+                ),
+                |ui| self.render_stream_result_inspector(ui, stream),
+            );
         } else {
             ui.small(self.locale.text(ShellText::NoStreamResults));
             return;
@@ -1168,7 +1648,7 @@ impl ReadyAppState {
                             self.result_inspector
                                 .select_unit(&inspector.snapshot_id, option.unit_id.clone());
                         }
-                        self.render_small_command_action(ui, &option.focus_action);
+                        let _ = self.render_small_command_action(ui, &option.focus_action);
                     }
                 });
                 if inspector.has_stale_unit_selection {
@@ -1205,19 +1685,17 @@ impl ReadyAppState {
                         ui.small(self.locale.text(ShellText::NoRelatedDiagnostics));
                         return;
                     }
-                    for diagnostic in &inspector.unit_related_diagnostics {
-                        ui.horizontal_wrapped(|ui| {
-                            render_status_chip(
-                                ui,
-                                self.locale
-                                    .runtime_label(diagnostic.severity_label)
-                                    .as_ref(),
-                                diagnostic_color(diagnostic.severity_label),
-                            );
-                            ui.small(&diagnostic.code);
-                        });
-                        render_wrapped_label(ui, &diagnostic.message);
-                        self.render_diagnostic_targets(ui, diagnostic);
+                    for (index, diagnostic) in inspector.unit_related_diagnostics.iter().enumerate()
+                    {
+                        self.render_diagnostic_summary(
+                            ui,
+                            diagnostic,
+                            format!(
+                                "result-unit:{}:{}:diagnostic:{index}",
+                                inspector.snapshot_id,
+                                inspector.selected_unit_id.as_deref().unwrap_or("none")
+                            ),
+                        );
                         ui.add_space(4.0);
                     }
                 });
@@ -1243,7 +1721,7 @@ impl ReadyAppState {
                                 option.stream_id.clone(),
                             );
                         }
-                        self.render_small_command_action(ui, &option.focus_action);
+                        let _ = self.render_small_command_action(ui, &option.focus_action);
                     }
                 });
                 if inspector.has_stale_comparison {
@@ -1278,25 +1756,22 @@ impl ReadyAppState {
                 ui.small(self.locale.text(ShellText::NoRelatedDiagnostics));
                 return;
             }
-            for diagnostic in &inspector.related_diagnostics {
-                ui.horizontal_wrapped(|ui| {
-                    render_status_chip(
-                        ui,
-                        self.locale
-                            .runtime_label(diagnostic.severity_label)
-                            .as_ref(),
-                        diagnostic_color(diagnostic.severity_label),
-                    );
-                    ui.small(&diagnostic.code);
-                });
-                render_wrapped_label(ui, &diagnostic.message);
-                self.render_diagnostic_targets(ui, diagnostic);
+            for (index, diagnostic) in inspector.related_diagnostics.iter().enumerate() {
+                self.render_diagnostic_summary(
+                    ui,
+                    diagnostic,
+                    format!(
+                        "result-stream:{}:{}:diagnostic:{index}",
+                        inspector.snapshot_id,
+                        inspector.selected_stream_id.as_deref().unwrap_or("none")
+                    ),
+                );
                 ui.add_space(4.0);
             }
         });
     }
 
-    fn render_result_inspector_comparison(
+    pub(in crate::studio_gui_shell) fn render_result_inspector_comparison(
         &mut self,
         ui: &mut egui::Ui,
         comparison: &radishflow_studio::StudioGuiWindowResultInspectorComparisonModel,
@@ -1308,13 +1783,13 @@ impl ReadyAppState {
                 self.locale.text(ShellText::BaseStream),
                 comparison.base_stream_id
             ));
-            self.render_small_command_action(ui, &comparison.base_stream_focus_action);
+            let _ = self.render_small_command_action(ui, &comparison.base_stream_focus_action);
             ui.small(format!(
                 "{}: {}",
                 self.locale.text(ShellText::ComparedStream),
                 comparison.compared_stream_id
             ));
-            self.render_small_command_action(ui, &comparison.compared_stream_focus_action);
+            let _ = self.render_small_command_action(ui, &comparison.compared_stream_focus_action);
         });
         egui::Grid::new(format!(
             "result-comparison-summary:{}:{}",
@@ -1370,7 +1845,7 @@ impl ReadyAppState {
             ui.add_space(4.0);
             ui.small(egui::RichText::new(self.locale.text(ShellText::PhaseResults)).strong());
             egui::Grid::new(format!(
-                "result-comparison-phases:{}:{}",
+                "result-comparison-phase-flows:{}:{}",
                 comparison.base_stream_id, comparison.compared_stream_id
             ))
             .num_columns(7)
@@ -1391,6 +1866,39 @@ impl ReadyAppState {
                 ui.small(format!(
                     "{} {}",
                     self.locale.text(ShellText::BaseStream),
+                    self.locale.runtime_label("Molar flow")
+                ));
+                ui.small(format!(
+                    "{} {}",
+                    self.locale.text(ShellText::ComparedStream),
+                    self.locale.runtime_label("Molar flow")
+                ));
+                ui.small(self.locale.text(ShellText::Delta));
+                ui.end_row();
+                for row in &comparison.phase_rows {
+                    ui.small(&row.phase_label);
+                    ui.small(&row.base_fraction_text);
+                    ui.small(&row.compared_fraction_text);
+                    ui.small(&row.fraction_delta_text);
+                    ui.small(&row.base_molar_flow_text);
+                    ui.small(&row.compared_molar_flow_text);
+                    ui.small(&row.molar_flow_delta_text);
+                    ui.end_row();
+                }
+            });
+
+            ui.add_space(4.0);
+            egui::Grid::new(format!(
+                "result-comparison-phase-enthalpy:{}:{}",
+                comparison.base_stream_id, comparison.compared_stream_id
+            ))
+            .num_columns(4)
+            .striped(true)
+            .show(ui, |ui| {
+                ui.small(self.locale.text(ShellText::Phase));
+                ui.small(format!(
+                    "{} {}",
+                    self.locale.text(ShellText::BaseStream),
                     self.locale.text(ShellText::Enthalpy)
                 ));
                 ui.small(format!(
@@ -1402,9 +1910,6 @@ impl ReadyAppState {
                 ui.end_row();
                 for row in &comparison.phase_rows {
                     ui.small(&row.phase_label);
-                    ui.small(&row.base_fraction_text);
-                    ui.small(&row.compared_fraction_text);
-                    ui.small(&row.fraction_delta_text);
                     ui.small(&row.base_molar_enthalpy_text);
                     ui.small(&row.compared_molar_enthalpy_text);
                     ui.small(&row.molar_enthalpy_delta_text);
@@ -1425,12 +1930,46 @@ impl ReadyAppState {
         ui.horizontal_wrapped(|ui| {
             ui.small(self.locale.text(ShellText::DiagnosticTargets));
             for target in &diagnostic.target_candidates {
-                self.render_small_command_action(ui, &target.action);
+                let _ = self.render_small_command_action(ui, &target.action);
             }
         });
     }
 
-    fn render_diagnostic_target_actions(
+    fn render_diagnostic_summary(
+        &mut self,
+        ui: &mut egui::Ui,
+        diagnostic: &radishflow_studio::StudioGuiWindowDiagnosticModel,
+        grid_id_prefix: String,
+    ) {
+        ui.horizontal_wrapped(|ui| {
+            render_status_chip(
+                ui,
+                self.locale
+                    .runtime_label(diagnostic.severity_label)
+                    .as_ref(),
+                diagnostic_color(diagnostic.severity_label),
+            );
+            ui.small(&diagnostic.code);
+        });
+        render_wrapped_label(ui, &diagnostic.message);
+        self.render_diagnostic_targets(ui, diagnostic);
+        if let Some(units) = diagnostic.related_units_text.as_ref() {
+            render_wrapped_small(ui, format!("units: {units}"));
+        }
+        if let Some(streams) = diagnostic.related_streams_text.as_ref() {
+            render_wrapped_small(ui, format!("streams: {streams}"));
+        }
+        if !diagnostic.related_stream_results.is_empty() {
+            self.render_stream_result_reference_grid(
+                ui,
+                format!("{grid_id_prefix}:streams"),
+                "stream context",
+                &diagnostic.related_stream_results,
+            );
+        }
+    }
+
+    pub(crate) fn render_diagnostic_target_actions(
         &mut self,
         ui: &mut egui::Ui,
         actions: &[radishflow_studio::StudioGuiWindowDiagnosticTargetActionModel],
@@ -1442,7 +1981,7 @@ impl ReadyAppState {
                     "{} | {} | {}",
                     action.source_label, action.target_label, action.summary
                 ));
-                self.render_small_command_action(ui, &action.action);
+                let _ = self.render_small_command_action(ui, &action.action);
             }
         });
     }
@@ -1470,7 +2009,7 @@ impl ReadyAppState {
             ui.horizontal_wrapped(|ui| {
                 ui.small("units");
                 for target in &detail.related_units {
-                    self.render_small_command_action(ui, &target.action);
+                    let _ = self.render_small_command_action(ui, &target.action);
                 }
             });
         }
@@ -1478,32 +2017,51 @@ impl ReadyAppState {
             ui.horizontal_wrapped(|ui| {
                 ui.small("streams");
                 for target in &detail.related_streams {
-                    self.render_small_command_action(ui, &target.action);
+                    let _ = self.render_small_command_action(ui, &target.action);
                 }
             });
         }
+        if !detail.related_stream_results.is_empty() {
+            self.render_stream_result_reference_grid(
+                ui,
+                format!(
+                    "failure-diagnostic:{}:{}:streams",
+                    detail.document_revision,
+                    detail.primary_code.as_deref().unwrap_or("none")
+                ),
+                "stream context",
+                &detail.related_stream_results,
+            );
+        }
         if !detail.related_ports.is_empty() {
-            ui.horizontal_wrapped(|ui| {
-                ui.small("ports");
-                for target in &detail.related_ports {
+            ui.add_space(4.0);
+            ui.small(egui::RichText::new("port context").strong());
+            for target in &detail.related_ports {
+                ui.horizontal_wrapped(|ui| {
                     ui.small(format!("{}:{}", target.unit_id, target.port_name));
-                    self.render_small_command_action(ui, &target.unit_action);
+                    let _ = self.render_small_command_action(ui, &target.unit_action);
+                    if let Some(stream) = target.stream_result.as_ref() {
+                        let _ = self.render_small_command_action(ui, &stream.focus_action);
+                    }
+                });
+                if let Some(stream) = target.stream_result.as_ref() {
+                    render_wrapped_small(ui, &stream.summary);
                 }
-            });
+            }
         }
     }
 
-    fn render_small_command_action(
+    pub(in crate::studio_gui_shell) fn render_small_command_action(
         &mut self,
         ui: &mut egui::Ui,
         action: &radishflow_studio::StudioGuiWindowCommandActionModel,
-    ) {
-        if ui
+    ) -> egui::Response {
+        let response = ui
             .small_button(&action.label)
-            .on_hover_text(&action.hover_text)
-            .clicked()
-        {
+            .on_hover_text(&action.hover_text);
+        if response.clicked() {
             self.dispatch_ui_command(&action.command_id);
         }
+        response
     }
 }

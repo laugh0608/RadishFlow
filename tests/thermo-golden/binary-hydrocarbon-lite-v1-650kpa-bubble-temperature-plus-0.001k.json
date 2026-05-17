@@ -1,0 +1,39 @@
+{
+  "name": "binary-hydrocarbon-lite-v1 at 650 kPa and bubble-temperature + 0.001 K",
+  "temperatureK": 299.8420613926369,
+  "pressurePa": 650000.0,
+  "overallMoleFractions": [0.2, 0.8],
+  "components": [
+    {
+      "id": "methane",
+      "name": "Methane",
+      "antoine": {
+        "a": 8.987,
+        "b": 659.7,
+        "c": -16.7
+      },
+      "liquidHeatCapacityJPerMolK": 35.0,
+      "vaporHeatCapacityJPerMolK": 36.5
+    },
+    {
+      "id": "ethane",
+      "name": "Ethane",
+      "antoine": {
+        "a": 8.952,
+        "b": 699.7,
+        "c": -22.8
+      },
+      "liquidHeatCapacityJPerMolK": 52.0,
+      "vaporHeatCapacityJPerMolK": 65.0
+    }
+  ],
+  "expectedSaturationPressurePa": [778270.5220600517, 617939.6038873664],
+  "expectedKValues": [1.1973392647077719, 0.9506763136728713],
+  "expectedPhaseRegion": "twoPhase",
+  "expectedBubblePressurePa": 650005.7875219034,
+  "expectedDewPressurePa": 644493.9453632077,
+  "expectedBubbleTemperatureK": 299.8410613926369,
+  "expectedDewTemperatureK": 300.79375964816904,
+  "expectedLiquidMolarEnthalpyJPerMol": 82.23418368215341,
+  "expectedVaporMolarEnthalpyJPerMol": 100.33924058336825
+}

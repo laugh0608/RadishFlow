@@ -5,8 +5,8 @@ use rf_model::{Component, Composition, Flowsheet, MaterialStreamState, UnitNode,
 use rf_store::parse_project_file_json;
 use rf_thermo::{AntoineCoefficients, PlaceholderThermoProvider, ThermoComponent, ThermoSystem};
 use rf_types::{
-    ComponentId, DiagnosticPortTarget, PhaseLabel, PortDirection, PortKind, RfError, StreamId,
-    UnitId,
+    ComponentId, DiagnosticPortTarget, PhaseEquilibriumRegion, PhaseLabel, PortDirection, PortKind,
+    RfError, StreamId, UnitId,
 };
 use rf_unitops::{
     UnitOperationOutputs, build_cooler_node, build_feed_node, build_flash_drum_node,
@@ -26,6 +26,22 @@ fn assert_close(actual: f64, expected: f64, tolerance: f64) {
         delta <= tolerance,
         "expected {actual} to be within {tolerance} of {expected}, delta was {delta}"
     );
+}
+
+fn step_stream_ids(streams: &[MaterialStreamState]) -> Vec<StreamId> {
+    streams.iter().map(|stream| stream.id.clone()).collect()
+}
+
+fn build_test_antoine_coefficients(k_value: f64, pressure_pa: f64) -> AntoineCoefficients {
+    const TEST_ANTOINE_BOUNDARY_SLOPE: f64 = 300.0;
+    const TEST_REFERENCE_TEMPERATURE_K: f64 = 300.0;
+
+    AntoineCoefficients::new(
+        ((k_value * pressure_pa) / 1_000.0).ln()
+            + TEST_ANTOINE_BOUNDARY_SLOPE / TEST_REFERENCE_TEMPERATURE_K,
+        TEST_ANTOINE_BOUNDARY_SLOPE,
+        0.0,
+    )
 }
 
 fn binary_composition(first: f64, second: f64) -> Composition {
@@ -58,24 +74,30 @@ fn build_stream(
 fn build_provider() -> PlaceholderThermoProvider {
     let pressure_pa = 100_000.0_f64;
     let mut first = ThermoComponent::new(ComponentId::new("component-a"), "Component A");
-    first.antoine = Some(AntoineCoefficients::new(
-        ((2.0_f64 * pressure_pa) / 1_000.0_f64).ln(),
-        0.0,
-        0.0,
-    ));
+    first.antoine = Some(build_test_antoine_coefficients(2.0, pressure_pa));
     first.liquid_heat_capacity_j_per_mol_k = Some(35.0);
     first.vapor_heat_capacity_j_per_mol_k = Some(36.5);
 
     let mut second = ThermoComponent::new(ComponentId::new("component-b"), "Component B");
-    second.antoine = Some(AntoineCoefficients::new(
-        ((0.5_f64 * pressure_pa) / 1_000.0_f64).ln(),
-        0.0,
-        0.0,
-    ));
+    second.antoine = Some(build_test_antoine_coefficients(0.5, pressure_pa));
     second.liquid_heat_capacity_j_per_mol_k = Some(52.0);
     second.vapor_heat_capacity_j_per_mol_k = Some(65.0);
 
     PlaceholderThermoProvider::new(ThermoSystem::binary([first, second]))
+}
+
+fn build_binary_hydrocarbon_provider() -> PlaceholderThermoProvider {
+    let mut methane = ThermoComponent::new(ComponentId::new("methane"), "Methane");
+    methane.antoine = Some(AntoineCoefficients::new(8.987, 659.7, -16.7));
+    methane.liquid_heat_capacity_j_per_mol_k = Some(35.0);
+    methane.vapor_heat_capacity_j_per_mol_k = Some(36.5);
+
+    let mut ethane = ThermoComponent::new(ComponentId::new("ethane"), "Ethane");
+    ethane.antoine = Some(AntoineCoefficients::new(8.952, 699.7, -22.8));
+    ethane.liquid_heat_capacity_j_per_mol_k = Some(52.0);
+    ethane.vapor_heat_capacity_j_per_mol_k = Some(65.0);
+
+    PlaceholderThermoProvider::new(ThermoSystem::binary([methane, ethane]))
 }
 
 fn build_demo_flowsheet() -> Flowsheet {
@@ -477,7 +499,34 @@ fn sequential_solver_solves_feed_mixer_flash_chain() {
     assert_eq!(snapshot.steps[1].unit_id.as_str(), "feed-b");
     assert_eq!(snapshot.steps[2].unit_id.as_str(), "mixer-1");
     assert_eq!(snapshot.steps[3].unit_id.as_str(), "flash-1");
-    assert_eq!(snapshot.steps[2].consumed_stream_ids.len(), 2);
+    assert_eq!(
+        step_stream_ids(&snapshot.steps[2].consumed_streams).len(),
+        2
+    );
+    assert_eq!(snapshot.steps[2].consumed_streams.len(), 2);
+    assert_eq!(
+        step_stream_ids(&snapshot.steps[2].produced_streams),
+        vec!["stream-mix-out".into()]
+    );
+    assert_eq!(snapshot.steps[2].produced_streams.len(), 1);
+    assert_eq!(
+        snapshot.steps[2].consumed_streams[0],
+        *snapshot
+            .stream(&StreamId::new("stream-feed-a"))
+            .expect("expected feed-a stream")
+    );
+    assert_eq!(
+        snapshot.steps[2].consumed_streams[1],
+        *snapshot
+            .stream(&StreamId::new("stream-feed-b"))
+            .expect("expected feed-b stream")
+    );
+    assert_eq!(
+        snapshot.steps[2].produced_streams[0],
+        *snapshot
+            .stream(&StreamId::new("stream-mix-out"))
+            .expect("expected mixer outlet stream")
+    );
     assert!(
         snapshot.steps[2]
             .summary
@@ -499,6 +548,15 @@ fn sequential_solver_solves_feed_mixer_flash_chain() {
         0.46,
         1e-12,
     );
+    let mixer_window = mixer_out
+        .bubble_dew_window
+        .as_ref()
+        .expect("expected mixer outlet bubble/dew window");
+    assert_eq!(mixer_window.phase_region, PhaseEquilibriumRegion::TwoPhase);
+    assert!(mixer_window.dew_pressure_pa < mixer_out.pressure_pa);
+    assert!(mixer_window.bubble_pressure_pa > mixer_out.pressure_pa);
+    assert!(mixer_window.bubble_temperature_k < mixer_out.temperature_k);
+    assert!(mixer_window.dew_temperature_k > mixer_out.temperature_k);
 
     let liquid = snapshot
         .stream(&"stream-liquid".into())
@@ -506,10 +564,44 @@ fn sequential_solver_solves_feed_mixer_flash_chain() {
     let vapor = snapshot
         .stream(&"stream-vapor".into())
         .expect("expected vapor outlet");
-    assert_close(liquid.total_molar_flow_mol_s, 3.099999999994907, 1e-9);
-    assert_close(vapor.total_molar_flow_mol_s, 1.900000000005093, 1e-9);
+    assert_close(liquid.total_molar_flow_mol_s, 2.0153832721007348, 1e-9);
+    assert_close(vapor.total_molar_flow_mol_s, 2.9846167278992652, 1e-9);
     assert_eq!(liquid.phases[1].label, PhaseLabel::Liquid);
     assert_eq!(vapor.phases[1].label, PhaseLabel::Vapor);
+    assert_eq!(
+        liquid
+            .bubble_dew_window
+            .as_ref()
+            .expect("expected liquid outlet bubble/dew window")
+            .phase_region,
+        PhaseEquilibriumRegion::TwoPhase
+    );
+    assert_close(
+        liquid
+            .bubble_dew_window
+            .as_ref()
+            .expect("expected liquid outlet bubble/dew window")
+            .bubble_pressure_pa,
+        liquid.pressure_pa,
+        1e-6,
+    );
+    assert_eq!(
+        vapor
+            .bubble_dew_window
+            .as_ref()
+            .expect("expected vapor outlet bubble/dew window")
+            .phase_region,
+        PhaseEquilibriumRegion::TwoPhase
+    );
+    assert_close(
+        vapor
+            .bubble_dew_window
+            .as_ref()
+            .expect("expected vapor outlet bubble/dew window")
+            .dew_pressure_pa,
+        vapor.pressure_pa,
+        1e-6,
+    );
 }
 
 #[test]
@@ -521,7 +613,7 @@ fn sequential_solver_runs_example_project_file() {
         flash_solver: &flash_solver,
     };
     let project = parse_project_file_json(include_str!(
-        "../../../examples/flowsheets/feed-mixer-flash.rfproj.json"
+        "../../../examples/flowsheets/feed-mixer-flash-synthetic-demo.rfproj.json"
     ))
     .expect("expected example project parse");
 
@@ -556,10 +648,28 @@ fn sequential_solver_solves_feed_heater_flash_chain() {
     assert_eq!(snapshot.steps[1].unit_id.as_str(), "heater-1");
     assert_eq!(snapshot.steps[2].unit_id.as_str(), "flash-1");
     assert_eq!(
-        snapshot.steps[1].consumed_stream_ids,
+        step_stream_ids(&snapshot.steps[1].consumed_streams),
         vec!["stream-feed".into()]
     );
+    assert_eq!(snapshot.steps[1].consumed_streams.len(), 1);
+    assert_eq!(
+        step_stream_ids(&snapshot.steps[1].produced_streams),
+        vec!["stream-heated".into()]
+    );
+    assert_eq!(snapshot.steps[1].produced_streams.len(), 1);
     assert!(snapshot.steps[1].summary.contains("heater-1"));
+    assert_eq!(
+        snapshot.steps[1].consumed_streams[0],
+        *snapshot
+            .stream(&StreamId::new("stream-feed"))
+            .expect("expected feed stream")
+    );
+    assert_eq!(
+        snapshot.steps[1].produced_streams[0],
+        *snapshot
+            .stream(&StreamId::new("stream-heated"))
+            .expect("expected heated stream")
+    );
 
     let heated = snapshot
         .stream(&"stream-heated".into())
@@ -575,6 +685,15 @@ fn sequential_solver_solves_feed_heater_flash_chain() {
         0.35,
         1e-12,
     );
+    let heated_window = heated
+        .bubble_dew_window
+        .as_ref()
+        .expect("expected heated outlet bubble/dew window");
+    assert_eq!(heated_window.phase_region, PhaseEquilibriumRegion::TwoPhase);
+    assert!(heated_window.dew_pressure_pa < heated.pressure_pa);
+    assert!(heated_window.bubble_pressure_pa > heated.pressure_pa);
+    assert!(heated_window.bubble_temperature_k < heated.temperature_k);
+    assert!(heated_window.dew_temperature_k > heated.temperature_k);
 
     let liquid = snapshot
         .stream(&"stream-liquid".into())
@@ -586,6 +705,8 @@ fn sequential_solver_solves_feed_heater_flash_chain() {
     assert!(vapor.total_molar_flow_mol_s > 0.0);
     assert_eq!(liquid.phases[1].label, PhaseLabel::Liquid);
     assert_eq!(vapor.phases[1].label, PhaseLabel::Vapor);
+    assert!(liquid.bubble_dew_window.is_some());
+    assert!(vapor.bubble_dew_window.is_some());
 }
 
 #[test]
@@ -597,7 +718,7 @@ fn sequential_solver_runs_feed_heater_flash_example_project_file() {
         flash_solver: &flash_solver,
     };
     let project = parse_project_file_json(include_str!(
-        "../../../examples/flowsheets/feed-heater-flash.rfproj.json"
+        "../../../examples/flowsheets/feed-heater-flash-synthetic-demo.rfproj.json"
     ))
     .expect("expected example project parse");
 
@@ -650,6 +771,15 @@ fn sequential_solver_solves_feed_mixer_heater_flash_chain() {
         0.46,
         1e-12,
     );
+    let mixed_window = mixed
+        .bubble_dew_window
+        .as_ref()
+        .expect("expected mixer outlet bubble/dew window");
+    assert_eq!(mixed_window.phase_region, PhaseEquilibriumRegion::TwoPhase);
+    assert!(mixed_window.dew_pressure_pa < mixed.pressure_pa);
+    assert!(mixed_window.bubble_pressure_pa > mixed.pressure_pa);
+    assert!(mixed_window.bubble_temperature_k < mixed.temperature_k);
+    assert!(mixed_window.dew_temperature_k > mixed.temperature_k);
 
     let heated = snapshot
         .stream(&"stream-heated".into())
@@ -665,6 +795,15 @@ fn sequential_solver_solves_feed_mixer_heater_flash_chain() {
         0.46,
         1e-12,
     );
+    let heated_window = heated
+        .bubble_dew_window
+        .as_ref()
+        .expect("expected heated outlet bubble/dew window");
+    assert_eq!(heated_window.phase_region, PhaseEquilibriumRegion::TwoPhase);
+    assert!(heated_window.dew_pressure_pa < heated.pressure_pa);
+    assert!(heated_window.bubble_pressure_pa > heated.pressure_pa);
+    assert!(heated_window.bubble_temperature_k < heated.temperature_k);
+    assert!(heated_window.dew_temperature_k > heated.temperature_k);
 }
 
 #[test]
@@ -676,7 +815,7 @@ fn sequential_solver_runs_feed_mixer_heater_flash_example_project_file() {
         flash_solver: &flash_solver,
     };
     let project = parse_project_file_json(include_str!(
-        "../../../examples/flowsheets/feed-mixer-heater-flash.rfproj.json"
+        "../../../examples/flowsheets/feed-mixer-heater-flash-synthetic-demo.rfproj.json"
     ))
     .expect("expected example project parse");
 
@@ -714,10 +853,28 @@ fn sequential_solver_solves_feed_cooler_flash_chain() {
     assert_eq!(snapshot.steps[1].unit_id.as_str(), "cooler-1");
     assert_eq!(snapshot.steps[2].unit_id.as_str(), "flash-1");
     assert_eq!(
-        snapshot.steps[1].consumed_stream_ids,
+        step_stream_ids(&snapshot.steps[1].consumed_streams),
         vec!["stream-feed".into()]
     );
+    assert_eq!(snapshot.steps[1].consumed_streams.len(), 1);
+    assert_eq!(
+        step_stream_ids(&snapshot.steps[1].produced_streams),
+        vec!["stream-cooled".into()]
+    );
+    assert_eq!(snapshot.steps[1].produced_streams.len(), 1);
     assert!(snapshot.steps[1].summary.contains("cooler-1"));
+    assert_eq!(
+        snapshot.steps[1].consumed_streams[0],
+        *snapshot
+            .stream(&StreamId::new("stream-feed"))
+            .expect("expected feed stream")
+    );
+    assert_eq!(
+        snapshot.steps[1].produced_streams[0],
+        *snapshot
+            .stream(&StreamId::new("stream-cooled"))
+            .expect("expected cooled stream")
+    );
 
     let cooled = snapshot
         .stream(&"stream-cooled".into())
@@ -733,6 +890,15 @@ fn sequential_solver_solves_feed_cooler_flash_chain() {
         0.35,
         1e-12,
     );
+    let cooled_window = cooled
+        .bubble_dew_window
+        .as_ref()
+        .expect("expected cooled outlet bubble/dew window");
+    assert_eq!(cooled_window.phase_region, PhaseEquilibriumRegion::TwoPhase);
+    assert!(cooled_window.dew_pressure_pa < cooled.pressure_pa);
+    assert!(cooled_window.bubble_pressure_pa > cooled.pressure_pa);
+    assert!(cooled_window.bubble_temperature_k < cooled.temperature_k);
+    assert!(cooled_window.dew_temperature_k > cooled.temperature_k);
 
     let liquid = snapshot
         .stream(&"stream-liquid".into())
@@ -755,7 +921,7 @@ fn sequential_solver_runs_feed_cooler_flash_example_project_file() {
         flash_solver: &flash_solver,
     };
     let project = parse_project_file_json(include_str!(
-        "../../../examples/flowsheets/feed-cooler-flash.rfproj.json"
+        "../../../examples/flowsheets/feed-cooler-flash-synthetic-demo.rfproj.json"
     ))
     .expect("expected example project parse");
 
@@ -768,6 +934,41 @@ fn sequential_solver_runs_feed_cooler_flash_example_project_file() {
         .expect("expected cooled outlet");
     assert_close(cooled.temperature_k, 305.0, 1e-12);
     assert_close(cooled.pressure_pa, 98_000.0, 1e-12);
+    assert_eq!(snapshot.steps.len(), 3);
+    assert!(snapshot.stream(&"stream-liquid".into()).is_some());
+    assert!(snapshot.stream(&"stream-vapor".into()).is_some());
+}
+
+#[test]
+fn sequential_solver_runs_feed_cooler_flash_binary_hydrocarbon_example_project_file() {
+    let provider = build_binary_hydrocarbon_provider();
+    let flash_solver = PlaceholderTpFlashSolver;
+    let services = SolverServices {
+        thermo: &provider,
+        flash_solver: &flash_solver,
+    };
+    let project = parse_project_file_json(include_str!(
+        "../../../examples/flowsheets/feed-cooler-flash-binary-hydrocarbon.rfproj.json"
+    ))
+    .expect("expected example project parse");
+
+    let snapshot = SequentialModularSolver
+        .solve(&services, &project.document.flowsheet)
+        .expect("expected solve snapshot");
+
+    let cooled = snapshot
+        .stream(&"stream-cooled".into())
+        .expect("expected cooled outlet");
+    assert_close(cooled.temperature_k, 300.0, 1e-12);
+    assert_close(cooled.pressure_pa, 650_000.0, 1e-12);
+    assert_close(
+        *cooled
+            .overall_mole_fractions
+            .get(&ComponentId::new("methane"))
+            .expect("expected methane"),
+        0.2,
+        1e-12,
+    );
     assert_eq!(snapshot.steps.len(), 3);
     assert!(snapshot.stream(&"stream-liquid".into()).is_some());
     assert!(snapshot.stream(&"stream-vapor".into()).is_some());
@@ -793,10 +994,28 @@ fn sequential_solver_solves_feed_valve_flash_chain() {
     assert_eq!(snapshot.steps[1].unit_id.as_str(), "valve-1");
     assert_eq!(snapshot.steps[2].unit_id.as_str(), "flash-1");
     assert_eq!(
-        snapshot.steps[1].consumed_stream_ids,
+        step_stream_ids(&snapshot.steps[1].consumed_streams),
         vec!["stream-feed".into()]
     );
+    assert_eq!(snapshot.steps[1].consumed_streams.len(), 1);
+    assert_eq!(
+        step_stream_ids(&snapshot.steps[1].produced_streams),
+        vec!["stream-throttled".into()]
+    );
+    assert_eq!(snapshot.steps[1].produced_streams.len(), 1);
     assert!(snapshot.steps[1].summary.contains("valve-1"));
+    assert_eq!(
+        snapshot.steps[1].consumed_streams[0],
+        *snapshot
+            .stream(&StreamId::new("stream-feed"))
+            .expect("expected feed stream")
+    );
+    assert_eq!(
+        snapshot.steps[1].produced_streams[0],
+        *snapshot
+            .stream(&StreamId::new("stream-throttled"))
+            .expect("expected throttled stream")
+    );
 
     let throttled = snapshot
         .stream(&"stream-throttled".into())
@@ -812,6 +1031,18 @@ fn sequential_solver_solves_feed_valve_flash_chain() {
         0.35,
         1e-12,
     );
+    let throttled_window = throttled
+        .bubble_dew_window
+        .as_ref()
+        .expect("expected valve outlet bubble/dew window");
+    assert_eq!(
+        throttled_window.phase_region,
+        PhaseEquilibriumRegion::TwoPhase
+    );
+    assert!(throttled_window.dew_pressure_pa < throttled.pressure_pa);
+    assert!(throttled_window.bubble_pressure_pa > throttled.pressure_pa);
+    assert!(throttled_window.bubble_temperature_k < throttled.temperature_k);
+    assert!(throttled_window.dew_temperature_k > throttled.temperature_k);
 
     let liquid = snapshot
         .stream(&"stream-liquid".into())
@@ -832,7 +1063,7 @@ fn sequential_solver_runs_feed_valve_flash_example_project_file() {
         flash_solver: &flash_solver,
     };
     let project = parse_project_file_json(include_str!(
-        "../../../examples/flowsheets/feed-valve-flash.rfproj.json"
+        "../../../examples/flowsheets/feed-valve-flash-synthetic-demo.rfproj.json"
     ))
     .expect("expected example project parse");
 
@@ -845,6 +1076,41 @@ fn sequential_solver_runs_feed_valve_flash_example_project_file() {
         .expect("expected valve outlet");
     assert_close(throttled.temperature_k, 315.0, 1e-12);
     assert_close(throttled.pressure_pa, 90_000.0, 1e-12);
+    assert_eq!(snapshot.steps.len(), 3);
+    assert!(snapshot.stream(&"stream-liquid".into()).is_some());
+    assert!(snapshot.stream(&"stream-vapor".into()).is_some());
+}
+
+#[test]
+fn sequential_solver_runs_feed_valve_flash_binary_hydrocarbon_example_project_file() {
+    let provider = build_binary_hydrocarbon_provider();
+    let flash_solver = PlaceholderTpFlashSolver;
+    let services = SolverServices {
+        thermo: &provider,
+        flash_solver: &flash_solver,
+    };
+    let project = parse_project_file_json(include_str!(
+        "../../../examples/flowsheets/feed-valve-flash-binary-hydrocarbon.rfproj.json"
+    ))
+    .expect("expected example project parse");
+
+    let snapshot = SequentialModularSolver
+        .solve(&services, &project.document.flowsheet)
+        .expect("expected solve snapshot");
+
+    let throttled = snapshot
+        .stream(&"stream-throttled".into())
+        .expect("expected valve outlet");
+    assert_close(throttled.temperature_k, 300.0, 1e-12);
+    assert_close(throttled.pressure_pa, 650_000.0, 1e-12);
+    assert_close(
+        *throttled
+            .overall_mole_fractions
+            .get(&ComponentId::new("methane"))
+            .expect("expected methane"),
+        0.2,
+        1e-12,
+    );
     assert_eq!(snapshot.steps.len(), 3);
     assert!(snapshot.stream(&"stream-liquid".into()).is_some());
     assert!(snapshot.stream(&"stream-vapor".into()).is_some());

@@ -6,11 +6,12 @@ use rf_ui::{AppLogEntry, AppLogLevel, RunPanelNotice, RunPanelNoticeLevel};
 use crate::{
     StudioAppHostState, StudioAppHostUiCommandModel, StudioGuiCanvasState,
     StudioGuiCommandRegistry, StudioGuiDriver, StudioGuiDriverDispatch, StudioGuiDriverOutcome,
-    StudioGuiEvent, StudioGuiNativeTimerSchedule, StudioGuiPlatformNativeTimerId,
-    StudioGuiPlatformTimerBinding, StudioGuiPlatformTimerCallbackResolution,
-    StudioGuiPlatformTimerCommand, StudioGuiPlatformTimerDriverState,
-    StudioGuiPlatformTimerStartAckResult, StudioGuiPlatformTimerStartFailureResult,
-    StudioGuiSnapshot, StudioGuiWindowModel, StudioWindowHostId,
+    StudioGuiEvent, StudioGuiHostWindowLayoutUpdateResult, StudioGuiNativeTimerSchedule,
+    StudioGuiPlatformNativeTimerId, StudioGuiPlatformTimerBinding,
+    StudioGuiPlatformTimerCallbackResolution, StudioGuiPlatformTimerCommand,
+    StudioGuiPlatformTimerDriverState, StudioGuiPlatformTimerStartAckResult,
+    StudioGuiPlatformTimerStartFailureResult, StudioGuiSnapshot, StudioGuiWindowLayoutMutation,
+    StudioGuiWindowModel, StudioWindowHostId,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -515,6 +516,7 @@ pub struct StudioGuiPlatformHost {
     platform_notice: Option<RunPanelNotice>,
     platform_log_entries: Vec<AppLogEntry>,
     gui_activity_lines: Vec<String>,
+    last_console_app_log: Option<AppLogEntry>,
     current_schedule: Option<StudioGuiNativeTimerSchedule>,
 }
 
@@ -526,6 +528,7 @@ impl StudioGuiPlatformHost {
             platform_notice: None,
             platform_log_entries: Vec::new(),
             gui_activity_lines: Vec::new(),
+            last_console_app_log: None,
             current_schedule: None,
         })
     }
@@ -536,6 +539,15 @@ impl StudioGuiPlatformHost {
 
     pub fn snapshot(&self) -> StudioGuiSnapshot {
         self.enrich_snapshot(self.driver.snapshot())
+    }
+
+    pub fn apply_window_layout_preference(
+        &mut self,
+        window_id: Option<StudioWindowHostId>,
+        mutation: StudioGuiWindowLayoutMutation,
+    ) -> RfResult<StudioGuiHostWindowLayoutUpdateResult> {
+        self.driver
+            .apply_transient_window_layout(window_id, mutation)
     }
 
     pub fn next_native_timer_due_at(&self) -> Option<SystemTime> {
@@ -1126,6 +1138,7 @@ impl StudioGuiPlatformHost {
 
     fn push_activity_line(&mut self, line: String) {
         const MAX_ENTRIES: usize = 64;
+        write_console_audit_line(&line);
         self.gui_activity_lines.push(line);
         if self.gui_activity_lines.len() > MAX_ENTRIES {
             let drain_count = self.gui_activity_lines.len() - MAX_ENTRIES;
@@ -1135,6 +1148,7 @@ impl StudioGuiPlatformHost {
 
     fn record_dispatch_activity(&mut self, dispatch: &StudioGuiPlatformDispatch) {
         self.push_activity_line(format_platform_dispatch_activity(dispatch));
+        self.record_latest_app_log_activity(dispatch);
     }
 
     fn record_timer_execution_activity(
@@ -1165,6 +1179,52 @@ impl StudioGuiPlatformHost {
             }
         }
     }
+
+    fn record_latest_app_log_activity(&mut self, dispatch: &StudioGuiPlatformDispatch) {
+        let Some(entry) = dispatch.window.runtime.latest_log_entry.as_ref() else {
+            return;
+        };
+        if self
+            .last_console_app_log
+            .as_ref()
+            .map(|last| last == entry)
+            .unwrap_or(false)
+        {
+            return;
+        }
+
+        self.last_console_app_log = Some(entry.clone());
+        self.push_activity_line(format!(
+            "app log {}: {}",
+            format_app_log_level(entry.level),
+            entry.message.as_str()
+        ));
+    }
+}
+
+fn format_app_log_level(level: AppLogLevel) -> &'static str {
+    match level {
+        AppLogLevel::Info => "info",
+        AppLogLevel::Warning => "warn",
+        AppLogLevel::Error => "error",
+    }
+}
+
+fn write_console_audit_line(line: &str) {
+    #[cfg(not(test))]
+    {
+        if std::thread::current()
+            .name()
+            .map(|name| name.contains("::"))
+            .unwrap_or(false)
+        {
+            return;
+        }
+        eprintln!("[radishflow-studio] {line}");
+    }
+
+    #[cfg(test)]
+    let _ = line;
 }
 
 fn format_platform_dispatch_activity(dispatch: &StudioGuiPlatformDispatch) -> String {

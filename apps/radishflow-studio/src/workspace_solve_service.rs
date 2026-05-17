@@ -185,23 +185,18 @@ mod tests {
     use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
     use rf_model::Flowsheet;
-    use rf_store::{
-        StoredAntoineCoefficients, StoredAuthCacheIndex, StoredCredentialReference,
-        StoredPropertyPackageManifest, StoredPropertyPackagePayload, StoredPropertyPackageRecord,
-        StoredPropertyPackageSource, StoredThermoComponent, parse_project_file_json,
-        property_package_payload_integrity, write_property_package_manifest,
-        write_property_package_payload,
-    };
-    use rf_thermo::{
-        AntoineCoefficients, InMemoryPropertyPackageProvider, PropertyPackageManifest,
-        PropertyPackageSource, ThermoComponent, ThermoSystem,
-    };
-    use rf_types::ComponentId;
+    use rf_store::{StoredAuthCacheIndex, StoredCredentialReference, parse_project_file_json};
+    use rf_thermo::InMemoryPropertyPackageProvider;
     use rf_ui::{AppState, DocumentMetadata, FlowsheetDocument, RunStatus};
 
     use super::{
         WorkspaceSolveDispatch, WorkspaceSolveService, WorkspaceSolveSkipReason,
         WorkspaceSolveTrigger, build_workspace_solve_request,
+    };
+    use crate::test_support::{
+        OFFICIAL_BINARY_HYDROCARBON_PACKAGE_ID,
+        build_official_binary_hydrocarbon_in_memory_provider,
+        write_default_official_binary_hydrocarbon_cached_package,
     };
 
     fn timestamp(seconds: u64) -> std::time::SystemTime {
@@ -215,33 +210,7 @@ mod tests {
     }
 
     fn sample_provider() -> InMemoryPropertyPackageProvider {
-        let mut first = ThermoComponent::new("component-a", "Component A");
-        first.antoine = Some(AntoineCoefficients::new(
-            ((2.0_f64 * 100_000.0_f64) / 1_000.0_f64).ln(),
-            0.0,
-            0.0,
-        ));
-        first.liquid_heat_capacity_j_per_mol_k = Some(35.0);
-        first.vapor_heat_capacity_j_per_mol_k = Some(36.5);
-
-        let mut second = ThermoComponent::new("component-b", "Component B");
-        second.antoine = Some(AntoineCoefficients::new(
-            ((0.5_f64 * 100_000.0_f64) / 1_000.0_f64).ln(),
-            0.0,
-            0.0,
-        ));
-        second.liquid_heat_capacity_j_per_mol_k = Some(52.0);
-        second.vapor_heat_capacity_j_per_mol_k = Some(65.0);
-
-        InMemoryPropertyPackageProvider::new(vec![(
-            PropertyPackageManifest::new(
-                "binary-hydrocarbon-lite-v1",
-                "2026.03.1",
-                PropertyPackageSource::LocalBundled,
-                vec!["component-a".into(), "component-b".into()],
-            ),
-            ThermoSystem::binary([first, second]),
-        )])
+        build_official_binary_hydrocarbon_in_memory_provider(OFFICIAL_BINARY_HYDROCARBON_PACKAGE_ID)
     }
 
     fn unique_temp_path(name: &str) -> PathBuf {
@@ -258,7 +227,7 @@ mod tests {
         let provider = sample_provider();
         let service = WorkspaceSolveService::new();
         let project = parse_project_file_json(include_str!(
-            "../../../examples/flowsheets/feed-heater-flash.rfproj.json"
+            "../../../examples/flowsheets/feed-heater-flash-binary-hydrocarbon.rfproj.json"
         ))
         .expect("expected project parse");
         app_state.workspace.document = FlowsheetDocument::new(
@@ -267,10 +236,15 @@ mod tests {
         );
 
         let first = service
-            .run_with_property_package(&mut app_state, &provider, "binary-hydrocarbon-lite-v1")
+            .run_with_property_package(
+                &mut app_state,
+                &provider,
+                OFFICIAL_BINARY_HYDROCARBON_PACKAGE_ID,
+            )
             .expect("expected first solve");
-        let second = build_workspace_solve_request(&app_state, "binary-hydrocarbon-lite-v1")
-            .expect("expected next request");
+        let second =
+            build_workspace_solve_request(&app_state, OFFICIAL_BINARY_HYDROCARBON_PACKAGE_ID)
+                .expect("expected next request");
 
         assert_eq!(first.snapshot_id, "heater-demo-rev-0-seq-1");
         assert_eq!(first.sequence, 1);
@@ -283,7 +257,7 @@ mod tests {
         let provider = sample_provider();
         let service = WorkspaceSolveService::new();
         let project = parse_project_file_json(include_str!(
-            "../../../examples/flowsheets/feed-valve-flash.rfproj.json"
+            "../../../examples/flowsheets/feed-valve-flash-binary-hydrocarbon.rfproj.json"
         ))
         .expect("expected project parse");
         let mut app_state = AppState::new(FlowsheetDocument::new(
@@ -292,7 +266,11 @@ mod tests {
         ));
 
         let request = service
-            .run_with_property_package(&mut app_state, &provider, "binary-hydrocarbon-lite-v1")
+            .run_with_property_package(
+                &mut app_state,
+                &provider,
+                OFFICIAL_BINARY_HYDROCARBON_PACKAGE_ID,
+            )
             .expect("expected solve");
 
         assert_eq!(request.snapshot_id, "doc-3-rev-0-seq-1");
@@ -308,7 +286,7 @@ mod tests {
         let provider = sample_provider();
         let service = WorkspaceSolveService::new();
         let project = parse_project_file_json(include_str!(
-            "../../../examples/flowsheets/feed-heater-flash.rfproj.json"
+            "../../../examples/flowsheets/feed-heater-flash-binary-hydrocarbon.rfproj.json"
         ))
         .expect("expected project parse");
         let mut app_state = AppState::new(FlowsheetDocument::new(
@@ -320,7 +298,7 @@ mod tests {
             .dispatch_with_property_package(
                 &mut app_state,
                 &provider,
-                "binary-hydrocarbon-lite-v1",
+                OFFICIAL_BINARY_HYDROCARBON_PACKAGE_ID,
                 WorkspaceSolveTrigger::Automatic,
             )
             .expect("expected dispatch result");
@@ -337,7 +315,7 @@ mod tests {
         let provider = sample_provider();
         let service = WorkspaceSolveService::new();
         let project = parse_project_file_json(include_str!(
-            "../../../examples/flowsheets/feed-heater-flash.rfproj.json"
+            "../../../examples/flowsheets/feed-heater-flash-binary-hydrocarbon.rfproj.json"
         ))
         .expect("expected project parse");
         let mut app_state = AppState::new(FlowsheetDocument::new(
@@ -347,7 +325,11 @@ mod tests {
 
         app_state.set_simulation_mode(rf_ui::SimulationMode::Active);
         let first = service
-            .run_with_property_package(&mut app_state, &provider, "binary-hydrocarbon-lite-v1")
+            .run_with_property_package(
+                &mut app_state,
+                &provider,
+                OFFICIAL_BINARY_HYDROCARBON_PACKAGE_ID,
+            )
             .expect("expected manual solve");
         assert_eq!(first.sequence, 1);
 
@@ -355,7 +337,7 @@ mod tests {
             .dispatch_with_property_package(
                 &mut app_state,
                 &provider,
-                "binary-hydrocarbon-lite-v1",
+                OFFICIAL_BINARY_HYDROCARBON_PACKAGE_ID,
                 WorkspaceSolveTrigger::Automatic,
             )
             .expect("expected dispatch result");
@@ -372,7 +354,7 @@ mod tests {
         let provider = sample_provider();
         let service = WorkspaceSolveService::new();
         let project = parse_project_file_json(include_str!(
-            "../../../examples/flowsheets/feed-heater-flash.rfproj.json"
+            "../../../examples/flowsheets/feed-heater-flash-binary-hydrocarbon.rfproj.json"
         ))
         .expect("expected project parse");
         let mut app_state = AppState::new(FlowsheetDocument::new(
@@ -394,7 +376,7 @@ mod tests {
             .dispatch_with_property_package(
                 &mut app_state,
                 &provider,
-                "binary-hydrocarbon-lite-v1",
+                OFFICIAL_BINARY_HYDROCARBON_PACKAGE_ID,
                 WorkspaceSolveTrigger::Automatic,
             )
             .expect("expected dispatch result");
@@ -441,65 +423,13 @@ mod tests {
             "user-123",
             StoredCredentialReference::new("radishflow-studio", "user-123-primary"),
         );
-        let mut first = StoredThermoComponent::new(ComponentId::new("component-a"), "Component A");
-        first.antoine = Some(StoredAntoineCoefficients::new(
-            ((2.0_f64 * 100_000.0_f64) / 1_000.0_f64).ln(),
-            0.0,
-            0.0,
-        ));
-        first.liquid_heat_capacity_j_per_mol_k = Some(35.0);
-        first.vapor_heat_capacity_j_per_mol_k = Some(36.5);
-        let mut second = StoredThermoComponent::new(ComponentId::new("component-b"), "Component B");
-        second.antoine = Some(StoredAntoineCoefficients::new(
-            ((0.5_f64 * 100_000.0_f64) / 1_000.0_f64).ln(),
-            0.0,
-            0.0,
-        ));
-        second.liquid_heat_capacity_j_per_mol_k = Some(52.0);
-        second.vapor_heat_capacity_j_per_mol_k = Some(65.0);
-        let payload = StoredPropertyPackagePayload::new(
-            "binary-hydrocarbon-lite-v1",
-            "2026.03.1",
-            vec![first, second],
+        write_default_official_binary_hydrocarbon_cached_package(
+            &cache_root,
+            &mut auth_cache_index,
         );
-        let integrity =
-            property_package_payload_integrity(&payload).expect("expected payload integrity");
-        let expires_at = Some(SystemTime::now() + Duration::from_secs(3_600));
-        let mut manifest = StoredPropertyPackageManifest::new(
-            "binary-hydrocarbon-lite-v1",
-            "2026.03.1",
-            StoredPropertyPackageSource::RemoteDerivedPackage,
-            vec![
-                ComponentId::new("component-a"),
-                ComponentId::new("component-b"),
-            ],
-        );
-        manifest.hash = integrity.hash.clone();
-        manifest.size_bytes = integrity.size_bytes;
-        manifest.expires_at = expires_at;
-        let mut record = StoredPropertyPackageRecord::new(
-            &manifest.package_id,
-            &manifest.version,
-            StoredPropertyPackageSource::RemoteDerivedPackage,
-            manifest.hash.clone(),
-            manifest.size_bytes,
-            timestamp(60),
-        );
-        record.expires_at = expires_at;
-
-        write_property_package_manifest(record.manifest_path_under(&cache_root), &manifest)
-            .expect("expected manifest write");
-        write_property_package_payload(
-            record
-                .payload_path_under(&cache_root)
-                .expect("expected payload path"),
-            &payload,
-        )
-        .expect("expected payload write");
-        auth_cache_index.property_packages.push(record);
 
         let project = parse_project_file_json(include_str!(
-            "../../../examples/flowsheets/feed-heater-flash.rfproj.json"
+            "../../../examples/flowsheets/feed-heater-flash-binary-hydrocarbon.rfproj.json"
         ))
         .expect("expected project parse");
         let mut app_state = AppState::new(FlowsheetDocument::new(
@@ -512,7 +442,7 @@ mod tests {
                 &mut app_state,
                 &cache_root,
                 &auth_cache_index,
-                "binary-hydrocarbon-lite-v1",
+                OFFICIAL_BINARY_HYDROCARBON_PACKAGE_ID,
             )
             .expect("expected solve from auth cache");
 

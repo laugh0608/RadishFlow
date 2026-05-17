@@ -1,0 +1,43 @@
+{
+  "name": "binary-hydrocarbon-lite-v1 flash at 300 K, dew-pressure - 0.1 Pa, z=[0.2, 0.8]",
+  "temperatureK": 300.0,
+  "pressurePa": 645406.9662948507,
+  "totalMolarFlowMolS": 10.0,
+  "overallMoleFractions": [0.2, 0.8],
+  "components": [
+    {
+      "id": "methane",
+      "name": "Methane",
+      "antoine": {
+        "a": 8.987,
+        "b": 659.7,
+        "c": -16.7
+      },
+      "liquidHeatCapacityJPerMolK": 35.0,
+      "vaporHeatCapacityJPerMolK": 36.5
+    },
+    {
+      "id": "ethane",
+      "name": "Ethane",
+      "antoine": {
+        "a": 8.952,
+        "b": 699.7,
+        "c": -22.8
+      },
+      "liquidHeatCapacityJPerMolK": 52.0,
+      "vaporHeatCapacityJPerMolK": 65.0
+    }
+  ],
+  "expectedKValues": [1.2074274590209566, 0.9588205462769778],
+  "expectedPhaseRegion": "vaporOnly",
+  "expectedBubblePressurePa": 650919.9866645997,
+  "expectedDewPressurePa": 645407.0662948507,
+  "expectedBubbleTemperatureK": 299.04690089204394,
+  "expectedDewTemperatureK": 299.9999827057845,
+  "expectedVaporFraction": 1.0,
+  "expectedOverallMolarEnthalpyJPerMol": 109.70500000000135,
+  "expectedLiquidMoleFractions": null,
+  "expectedLiquidMolarEnthalpyJPerMol": null,
+  "expectedVaporMoleFractions": [0.2, 0.8],
+  "expectedVaporMolarEnthalpyJPerMol": 109.70500000000135
+}

@@ -583,6 +583,127 @@ fn gui_command_registry_includes_canvas_object_navigation_commands() {
 }
 
 #[test]
+fn gui_command_registry_includes_latest_solve_snapshot_result_commands() {
+    let mut snapshot = rf_ui::SolveSnapshot::new(
+        "snapshot-result-1",
+        3,
+        1,
+        rf_ui::RunStatus::Converged,
+        rf_ui::DiagnosticSummary::new(3, rf_ui::DiagnosticSeverity::Info, "Solved"),
+    );
+    let feed = rf_ui::StreamStateSnapshot {
+        stream_id: rf_types::StreamId::new("stream-feed"),
+        label: "Feed".to_string(),
+        temperature_k: 300.0,
+        pressure_pa: 101_325.0,
+        total_molar_flow_mol_s: 1.0,
+        overall_mole_fractions: vec![("methane".to_string(), 0.5)],
+        phases: vec![rf_ui::PhaseStateSnapshot {
+            label: "overall".to_string(),
+            phase_fraction: 1.0,
+            composition: vec![("methane".to_string(), 0.5)],
+            molar_enthalpy_j_per_mol: Some(12.5),
+        }],
+        bubble_dew_window: None,
+    };
+    let outlet = rf_ui::StreamStateSnapshot {
+        stream_id: rf_types::StreamId::new("stream-out"),
+        label: "Outlet".to_string(),
+        temperature_k: 310.0,
+        pressure_pa: 95_000.0,
+        total_molar_flow_mol_s: 1.0,
+        overall_mole_fractions: vec![("methane".to_string(), 0.5)],
+        phases: Vec::new(),
+        bubble_dew_window: None,
+    };
+    snapshot.streams = vec![feed.clone(), outlet.clone()];
+    snapshot.steps = vec![rf_ui::StepSnapshot {
+        index: 0,
+        unit_id: rf_types::UnitId::new("flash-1"),
+        summary: "flash solved".to_string(),
+        execution: rf_ui::UnitExecutionSnapshot {
+            unit_id: rf_types::UnitId::new("flash-1"),
+            status: rf_ui::RunStatus::Converged,
+            summary: "ok".to_string(),
+        },
+        consumed_streams: vec![feed],
+        streams: vec![outlet],
+    }];
+
+    let registry = StudioGuiCommandRegistry::from_surfaces_with_results(
+        &StudioAppHostUiCommandModel::default(),
+        &crate::StudioGuiCanvasState::default(),
+        Some(12),
+        Some(&snapshot),
+    );
+
+    let result_section = registry
+        .sections
+        .iter()
+        .find(|section| section.group == StudioGuiCommandGroup::Result)
+        .expect("expected result command section");
+    assert_eq!(result_section.title, "Results");
+    assert_eq!(
+        result_section
+            .commands
+            .iter()
+            .map(|entry| (
+                entry.command_id.as_str(),
+                entry.menu_path.clone(),
+                entry.target_window_id
+            ))
+            .collect::<Vec<_>>(),
+        vec![
+            (
+                "inspector.focus_stream:stream-feed",
+                vec![
+                    "Results".to_string(),
+                    "Streams".to_string(),
+                    "Feed".to_string()
+                ],
+                Some(12)
+            ),
+            (
+                "inspector.focus_stream:stream-out",
+                vec![
+                    "Results".to_string(),
+                    "Streams".to_string(),
+                    "Outlet".to_string()
+                ],
+                Some(12)
+            ),
+            (
+                "inspector.focus_unit:flash-1",
+                vec![
+                    "Results".to_string(),
+                    "Units".to_string(),
+                    "flash-1".to_string()
+                ],
+                Some(12)
+            ),
+        ]
+    );
+    assert!(
+        registry
+            .filtered_commands("result snapshot stream-feed")
+            .iter()
+            .any(|entry| {
+                entry.command_id == "inspector.focus_stream:stream-feed"
+                    && entry.detail.contains("snapshot-result-1")
+                    && entry.detail.contains("H 12.500 J/mol")
+            })
+    );
+    assert_eq!(
+        registry
+            .filtered_commands("result flash solved")
+            .into_iter()
+            .map(|entry| entry.command_id.as_str())
+            .collect::<Vec<_>>(),
+        vec!["inspector.focus_unit:flash-1"]
+    );
+}
+
+#[test]
 fn gui_command_registry_includes_selected_unit_layout_nudge_commands() {
     let canvas = crate::StudioGuiCanvasState {
         units: vec![crate::StudioGuiCanvasUnitState {

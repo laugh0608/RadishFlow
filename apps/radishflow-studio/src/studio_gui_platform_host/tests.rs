@@ -55,6 +55,39 @@ fn lease_expiring_config() -> StudioRuntimeConfig {
     }
 }
 
+fn synced_config() -> StudioRuntimeConfig {
+    StudioRuntimeConfig {
+        entitlement_preflight: StudioRuntimeEntitlementPreflight::Skip,
+        entitlement_seed: StudioRuntimeEntitlementSeed::Synced,
+        ..StudioRuntimeConfig::default()
+    }
+}
+
+#[test]
+fn platform_host_records_run_command_and_latest_app_log_activity() {
+    let mut host = StudioGuiPlatformHost::new(&synced_config()).expect("expected platform host");
+    host.dispatch_event(StudioGuiEvent::OpenWindowRequested)
+        .expect("expected open dispatch");
+
+    host.dispatch_event(StudioGuiEvent::UiCommandRequested {
+        command_id: "run_panel.run_manual".to_string(),
+    })
+    .expect("expected run command dispatch");
+
+    assert!(
+        host.gui_activity_lines()
+            .iter()
+            .any(|line| line.starts_with("command dispatch #")),
+        "expected command dispatch audit line"
+    );
+    assert!(
+        host.gui_activity_lines()
+            .iter()
+            .any(|line| line.starts_with("app log info: Solved document revision")),
+        "expected latest app log audit line"
+    );
+}
+
 #[test]
 fn platform_host_reports_arm_request_when_native_timer_first_appears() {
     let mut host =

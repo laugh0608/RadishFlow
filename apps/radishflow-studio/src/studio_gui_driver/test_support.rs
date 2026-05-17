@@ -60,6 +60,17 @@ pub(super) fn synced_workspace_config() -> StudioRuntimeConfig {
     }
 }
 
+pub(super) fn synced_workspace_example_config(project_file_name: &str) -> StudioRuntimeConfig {
+    StudioRuntimeConfig {
+        project_path: PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../..")
+            .join("examples")
+            .join("flowsheets")
+            .join(project_file_name),
+        ..synced_workspace_config()
+    }
+}
+
 pub(super) fn flash_drum_local_rules_synced_config() -> (StudioRuntimeConfig, PathBuf) {
     let timestamp = SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -68,17 +79,7 @@ pub(super) fn flash_drum_local_rules_synced_config() -> (StudioRuntimeConfig, Pa
     let project_path = std::env::temp_dir().join(format!(
         "radishflow-studio-local-rules-synced-{timestamp}.rfproj.json"
     ));
-    let project = include_str!("../../../../examples/flowsheets/feed-heater-flash.rfproj.json")
-        .replacen(
-            ",\n        \"stream-vapor\": {\n          \"id\": \"stream-vapor\",\n          \"name\": \"Vapor Outlet\",\n          \"temperature_k\": 345.0,\n          \"pressure_pa\": 95000.0,\n          \"total_molar_flow_mol_s\": 0.0,\n          \"overall_mole_fractions\": {\n            \"component-a\": 0.5,\n            \"component-b\": 0.5\n          },\n          \"phases\": []\n        }",
-            "",
-            1,
-        )
-        .replacen(
-            "\"name\": \"vapor\",\n              \"direction\": \"outlet\",\n              \"kind\": \"material\",\n              \"stream_id\": \"stream-vapor\"",
-            "\"name\": \"vapor\",\n              \"direction\": \"outlet\",\n              \"kind\": \"material\",\n              \"stream_id\": null",
-            1,
-        );
+    let project = crate::test_support::build_flash_drum_local_rules_synced_project_json();
     fs::write(&project_path, project).expect("expected synced local rules project");
 
     (
@@ -98,6 +99,7 @@ pub(super) fn unbound_outlet_failure_synced_config() -> StudioRuntimeConfig {
             .join("flowsheets")
             .join("failures")
             .join("unbound-outlet-port.rfproj.json"),
+        untitled_blank_project: None,
         entitlement_preflight: crate::StudioRuntimeEntitlementPreflight::Skip,
         entitlement_seed: crate::StudioRuntimeEntitlementSeed::Synced,
         trigger: StudioRuntimeTrigger::WidgetAction(rf_ui::RunPanelActionId::RunManual),
@@ -112,22 +114,7 @@ pub(super) fn flash_drum_local_rules_config() -> (StudioRuntimeConfig, PathBuf) 
     let project_path = std::env::temp_dir().join(format!(
         "radishflow-studio-local-rules-{timestamp}.rfproj.json"
     ));
-    let project = include_str!("../../../../examples/flowsheets/feed-heater-flash.rfproj.json")
-        .replacen(
-            "\"name\": \"inlet\",\n              \"direction\": \"inlet\",\n              \"kind\": \"material\",\n              \"stream_id\": \"stream-heated\"",
-            "\"name\": \"inlet\",\n              \"direction\": \"inlet\",\n              \"kind\": \"material\",\n              \"stream_id\": null",
-            1,
-        )
-        .replacen(
-            "\"name\": \"liquid\",\n              \"direction\": \"outlet\",\n              \"kind\": \"material\",\n              \"stream_id\": \"stream-liquid\"",
-            "\"name\": \"liquid\",\n              \"direction\": \"outlet\",\n              \"kind\": \"material\",\n              \"stream_id\": null",
-            1,
-        )
-        .replacen(
-            "\"name\": \"vapor\",\n              \"direction\": \"outlet\",\n              \"kind\": \"material\",\n              \"stream_id\": \"stream-vapor\"",
-            "\"name\": \"vapor\",\n              \"direction\": \"outlet\",\n              \"kind\": \"material\",\n              \"stream_id\": null",
-            1,
-        );
+    let project = crate::test_support::build_flash_drum_local_rules_project_json();
     fs::write(&project_path, project).expect("expected local rules project");
 
     (
@@ -147,7 +134,7 @@ pub(super) fn layout_persistence_config() -> (StudioRuntimeConfig, PathBuf, Path
     let project_path = std::env::temp_dir().join(format!(
         "radishflow-studio-driver-layout-persistence-{timestamp}.rfproj.json"
     ));
-    let project = include_str!("../../../../examples/flowsheets/feed-heater-flash.rfproj.json");
+    let project = crate::test_support::official_heater_binary_hydrocarbon_project_json();
     fs::write(&project_path, project).expect("expected persistence project");
     let layout_path = rf_store::studio_layout_path_for_project(&project_path);
 

@@ -1,5 +1,7 @@
 use std::path::PathBuf;
 
+use rf_model::{Component, Flowsheet};
+use rf_store::{read_property_package_manifest, read_property_package_payload};
 use rf_ui::{
     EntitlementActionId, RunPanelActionId, RunPanelIntent, RunPanelPackageSelection, RunStatus,
     SimulationMode,
@@ -91,6 +93,212 @@ fn bootstrap_runs_sample_workspace_from_main_entry_boundary() {
             .as_ref()
             .map(|notice| notice.title.as_str()),
         Some("Automatic check scheduled")
+    );
+}
+
+#[test]
+fn bootstrap_runs_cooler_workspace_from_main_entry_boundary() {
+    let report = run_studio_bootstrap(&StudioBootstrapConfig {
+        project_path: example_project_path("feed-cooler-flash-binary-hydrocarbon.rfproj.json"),
+        ..StudioBootstrapConfig::default()
+    })
+    .expect("expected bootstrap run");
+
+    let dispatch = match &app_command(&report).dispatch {
+        StudioAppResultDispatch::WorkspaceRun(dispatch) => dispatch,
+        StudioAppResultDispatch::WorkspaceMode(_) => panic!("expected workspace run dispatch"),
+        StudioAppResultDispatch::Entitlement(_) => panic!("expected workspace run dispatch"),
+    };
+    assert_eq!(dispatch.run_status, RunStatus::Converged);
+    assert_eq!(
+        dispatch.package_id.as_deref(),
+        Some("binary-hydrocarbon-lite-v1")
+    );
+    assert!(matches!(
+        dispatch.outcome,
+        StudioWorkspaceRunOutcome::Started(_)
+    ));
+    assert_eq!(
+        dispatch.latest_snapshot_summary.as_deref(),
+        Some("solved flowsheet with 3 unit(s), 4 diagnostic entry(ies), and 4 resulting stream(s)")
+    );
+}
+
+#[test]
+fn bootstrap_seed_sample_auth_cache_uses_official_payload_semantics_with_component_mapping() {
+    let mut flowsheet = Flowsheet::new("bootstrap-payload-mapping");
+    flowsheet
+        .insert_component(Component::new("z-component", "Z Component"))
+        .expect("expected first component");
+    flowsheet
+        .insert_component(Component::new("a-component", "A Component"))
+        .expect("expected second component");
+    let cache_root = super::temp_cache::TemporaryCacheRoot::new("bootstrap-seed-payload-test")
+        .expect("expected temporary cache root");
+
+    let seed = super::seed::seed_sample_auth_cache(
+        cache_root.path(),
+        &flowsheet,
+        super::seed::BOOTSTRAP_MVP_PROPERTY_PACKAGE_ID,
+        StudioBootstrapEntitlementSeed::Synced,
+    )
+    .expect("expected bootstrap seed");
+    let record = seed
+        .auth_cache_index
+        .property_packages
+        .first()
+        .expect("expected cached property package record");
+    let payload = read_property_package_payload(
+        record
+            .payload_path_under(cache_root.path())
+            .expect("expected cached payload path"),
+    )
+    .expect("expected cached payload");
+    let manifest = read_property_package_manifest(record.manifest_path_under(cache_root.path()))
+        .expect("expected cached manifest");
+
+    let mut expected = crate::parse_property_package_download_json(include_str!(
+        "../../../../examples/sample-components/property-packages/binary-hydrocarbon-lite-v1/download.json"
+    ))
+    .expect("expected official sample download")
+    .to_stored_payload()
+    .expect("expected stored payload");
+    expected.package_id = super::seed::BOOTSTRAP_MVP_PROPERTY_PACKAGE_ID.to_string();
+    expected.components[0].id = "a-component".into();
+    expected.components[0].name = "A Component".to_string();
+    expected.components[1].id = "z-component".into();
+    expected.components[1].name = "Z Component".to_string();
+
+    assert_eq!(
+        payload
+            .components
+            .iter()
+            .map(|component| component.id.as_str())
+            .collect::<Vec<_>>(),
+        vec!["a-component", "z-component"]
+    );
+    assert_eq!(payload, expected);
+    assert_eq!(record.version, expected.version);
+    assert_eq!(manifest.version, expected.version);
+    assert_eq!(manifest.component_ids, expected.component_ids());
+    payload
+        .validate_against_manifest(&manifest)
+        .expect("expected payload and manifest to stay aligned");
+}
+
+#[test]
+fn bootstrap_seed_sample_auth_cache_preserves_official_component_coefficients_by_id() {
+    let mut flowsheet = Flowsheet::new("bootstrap-official-component-ids");
+    flowsheet
+        .insert_component(Component::new("ethane", "Ethane Runtime"))
+        .expect("expected ethane component");
+    flowsheet
+        .insert_component(Component::new("methane", "Methane Runtime"))
+        .expect("expected methane component");
+    let cache_root = super::temp_cache::TemporaryCacheRoot::new("bootstrap-seed-official-id-test")
+        .expect("expected temporary cache root");
+
+    let seed = super::seed::seed_sample_auth_cache(
+        cache_root.path(),
+        &flowsheet,
+        super::seed::BOOTSTRAP_MVP_PROPERTY_PACKAGE_ID,
+        StudioBootstrapEntitlementSeed::Synced,
+    )
+    .expect("expected bootstrap seed");
+    let record = seed
+        .auth_cache_index
+        .property_packages
+        .first()
+        .expect("expected cached property package record");
+    let payload = read_property_package_payload(
+        record
+            .payload_path_under(cache_root.path())
+            .expect("expected cached payload path"),
+    )
+    .expect("expected cached payload");
+
+    let mut expected = crate::parse_property_package_download_json(include_str!(
+        "../../../../examples/sample-components/property-packages/binary-hydrocarbon-lite-v1/download.json"
+    ))
+    .expect("expected official sample download")
+    .to_stored_payload()
+    .expect("expected stored payload");
+    expected.package_id = super::seed::BOOTSTRAP_MVP_PROPERTY_PACKAGE_ID.to_string();
+    expected.components[0].name = "Methane Runtime".to_string();
+    expected.components[1].name = "Ethane Runtime".to_string();
+
+    assert_eq!(
+        payload
+            .components
+            .iter()
+            .map(|component| component.id.as_str())
+            .collect::<Vec<_>>(),
+        vec!["methane", "ethane"]
+    );
+    assert_eq!(payload, expected);
+}
+
+#[test]
+fn bootstrap_seed_sample_auth_cache_preserves_official_payload_with_extra_catalog_component() {
+    let mut flowsheet = Flowsheet::new("bootstrap-official-component-subset");
+    flowsheet
+        .insert_component(Component::new("methane", "Methane Runtime"))
+        .expect("expected methane component");
+    flowsheet
+        .insert_component(Component::new("ethane", "Ethane Runtime"))
+        .expect("expected ethane component");
+    flowsheet
+        .insert_component(Component::new("component-c", "Component C"))
+        .expect("expected extra catalog component");
+    let cache_root = super::temp_cache::TemporaryCacheRoot::new("bootstrap-seed-official-subset")
+        .expect("expected temporary cache root");
+
+    let seed = super::seed::seed_sample_auth_cache(
+        cache_root.path(),
+        &flowsheet,
+        super::seed::BOOTSTRAP_MVP_PROPERTY_PACKAGE_ID,
+        StudioBootstrapEntitlementSeed::Synced,
+    )
+    .expect("expected bootstrap seed");
+    let record = seed
+        .auth_cache_index
+        .property_packages
+        .first()
+        .expect("expected cached property package record");
+    let payload = read_property_package_payload(
+        record
+            .payload_path_under(cache_root.path())
+            .expect("expected cached payload path"),
+    )
+    .expect("expected cached payload");
+    let manifest = read_property_package_manifest(record.manifest_path_under(cache_root.path()))
+        .expect("expected cached manifest");
+
+    let mut expected = crate::parse_property_package_download_json(include_str!(
+        "../../../../examples/sample-components/property-packages/binary-hydrocarbon-lite-v1/download.json"
+    ))
+    .expect("expected official sample download")
+    .to_stored_payload()
+    .expect("expected stored payload");
+    expected.package_id = super::seed::BOOTSTRAP_MVP_PROPERTY_PACKAGE_ID.to_string();
+    expected.components[0].name = "Methane Runtime".to_string();
+    expected.components[1].name = "Ethane Runtime".to_string();
+
+    assert_eq!(
+        payload
+            .components
+            .iter()
+            .map(|component| component.id.as_str())
+            .collect::<Vec<_>>(),
+        vec!["methane", "ethane"]
+    );
+    assert_eq!(payload, expected);
+    assert_eq!(manifest.component_ids, expected.component_ids());
+    assert!(
+        !manifest
+            .component_ids
+            .iter()
+            .any(|component_id| component_id.as_str() == "component-c")
     );
 }
 
@@ -265,7 +473,7 @@ fn bootstrap_runtime_skips_automatic_run_when_no_pending_request_after_success()
     assert_eq!(dispatch.run_status, RunStatus::Converged);
     assert_eq!(
         dispatch.latest_snapshot_id.as_deref(),
-        Some("example-feed-heater-flash-rev-0-seq-1")
+        Some("example-feed-heater-flash-binary-hydrocarbon-rev-0-seq-1")
     );
     assert_eq!(automatic.control_state.run_status, RunStatus::Converged);
 }
@@ -295,7 +503,7 @@ fn bootstrap_can_dispatch_run_panel_recovery_action() {
             .join("../..")
             .join("examples")
             .join("flowsheets")
-            .join("feed-valve-flash.rfproj.json"),
+            .join("feed-valve-flash-binary-hydrocarbon.rfproj.json"),
         trigger: StudioBootstrapTrigger::WidgetRecoveryAction,
         ..StudioBootstrapConfig::default()
     })
@@ -312,7 +520,7 @@ fn bootstrap_can_dispatch_run_panel_recovery_action() {
             .join("../..")
             .join("examples")
             .join("flowsheets")
-            .join("feed-valve-flash.rfproj.json"),
+            .join("feed-valve-flash-binary-hydrocarbon.rfproj.json"),
         trigger: StudioBootstrapTrigger::WidgetAction(RunPanelActionId::RunManual),
         ..StudioBootstrapConfig::default()
     };
@@ -325,7 +533,7 @@ fn bootstrap_can_dispatch_run_panel_recovery_action() {
         .streams
         .get_mut(&rf_types::StreamId::new("stream-throttled"))
         .expect("expected throttled stream")
-        .pressure_pa = 130_000.0;
+        .pressure_pa = 730_000.0;
 
     let report = session
         .run_trigger(&StudioBootstrapTrigger::WidgetAction(
@@ -904,4 +1112,12 @@ fn session_event(
             panic!("expected entitlement session event dispatch")
         }
     }
+}
+
+fn example_project_path(project_file_name: &str) -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../..")
+        .join("examples")
+        .join("flowsheets")
+        .join(project_file_name)
 }

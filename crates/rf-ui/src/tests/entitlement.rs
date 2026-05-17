@@ -297,7 +297,7 @@ fn storing_solver_snapshot_maps_solver_diagnostics_into_ui_snapshot() {
         flash_solver: &flash_solver,
     };
     let project = rf_store::parse_project_file_json(include_str!(
-        "../../../../examples/flowsheets/feed-heater-flash.rfproj.json"
+        "../../../../examples/flowsheets/feed-heater-flash-synthetic-demo.rfproj.json"
     ))
     .expect("expected project parse");
     let solver_snapshot = SequentialModularSolver
@@ -320,9 +320,43 @@ fn storing_solver_snapshot_maps_solver_diagnostics_into_ui_snapshot() {
     assert_eq!(stored.diagnostics[0].code, "solver.execution_order");
     assert_eq!(stored.steps.len(), 3);
     assert_eq!(stored.steps[1].unit_id.as_str(), "heater-1");
+    let feed = stored
+        .streams
+        .iter()
+        .find(|stream| stream.stream_id.as_str() == "stream-feed")
+        .expect("expected feed stream snapshot");
+    assert_eq!(stored.steps[1].consumed_streams.len(), 1);
+    assert_eq!(&stored.steps[1].consumed_streams[0], feed);
+    let heated = stored
+        .streams
+        .iter()
+        .find(|stream| stream.stream_id.as_str() == "stream-heated")
+        .expect("expected heated stream snapshot");
+    assert_eq!(stored.steps[1].streams.len(), 1);
+    assert_eq!(&stored.steps[1].streams[0], heated);
     assert_eq!(
         stored.steps[1].streams[0].stream_id.as_str(),
         "stream-heated"
+    );
+    let liquid = stored
+        .streams
+        .iter()
+        .find(|stream| stream.stream_id.as_str() == "stream-liquid")
+        .expect("expected liquid stream snapshot");
+    assert_eq!(
+        liquid
+            .bubble_dew_window
+            .as_ref()
+            .expect("expected liquid stream bubble/dew window")
+            .phase_region,
+        rf_types::PhaseEquilibriumRegion::TwoPhase
+    );
+    assert!(
+        stored.steps[2].streams[0]
+            .bubble_dew_window
+            .as_ref()
+            .is_some(),
+        "expected produced flash outlet snapshot to keep bubble/dew window"
     );
     assert_eq!(
         app_state

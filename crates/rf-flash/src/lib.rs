@@ -1,6 +1,15 @@
-use rf_model::{Composition, MaterialStreamState, PhaseState};
-use rf_thermo::{PhaseThermoState, ThermoProvider, ThermoState};
-use rf_types::{PhaseLabel, RfError, RfResult, StreamId};
+use rf_model::{BubbleDewWindow, Composition, MaterialStreamState, PhaseState};
+use rf_thermo::{
+    BubbleDewPressureInput, BubbleDewPressures, BubbleDewTemperatureInput, BubbleDewTemperatures,
+    PhaseThermoState, ThermoProvider, ThermoState,
+};
+use rf_types::{
+    PHASE_REGION_PRESSURE_TOLERANCE_PA, PHASE_REGION_TEMPERATURE_TOLERANCE_K, PhaseLabel, RfError,
+    RfResult, StreamId, phase_equilibrium_region_from_pressure,
+    phase_equilibrium_region_from_temperature,
+};
+
+pub use rf_types::PhaseEquilibriumRegion as FlashPhaseRegion;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FlashStatus {
@@ -50,12 +59,89 @@ impl TpFlashInput {
 pub struct TpFlashResult {
     pub status: FlashStatus,
     pub stream: MaterialStreamState,
+    pub phase_region: FlashPhaseRegion,
+    pub bubble_pressure_pa: f64,
+    pub dew_pressure_pa: f64,
+    pub bubble_temperature_k: f64,
+    pub dew_temperature_k: f64,
     pub vapor_fraction: Option<f64>,
     pub k_values: Option<Vec<f64>>,
 }
 
 pub trait TpFlashSolver {
     fn flash(&self, thermo: &dyn ThermoProvider, input: &TpFlashInput) -> RfResult<TpFlashResult>;
+}
+
+pub fn estimate_bubble_dew_window(
+    thermo: &dyn ThermoProvider,
+    temperature_k: f64,
+    pressure_pa: f64,
+    overall_mole_fractions: Vec<f64>,
+) -> RfResult<BubbleDewWindow> {
+    let bubble_dew_pressures = thermo.estimate_bubble_dew_pressures(
+        &BubbleDewPressureInput::new(temperature_k, overall_mole_fractions.clone()),
+    )?;
+    let bubble_dew_temperatures = thermo.estimate_bubble_dew_temperatures(
+        &BubbleDewTemperatureInput::new(pressure_pa, overall_mole_fractions),
+    )?;
+    let pressure_phase_region = phase_equilibrium_region_from_pressure(
+        pressure_pa,
+        bubble_dew_pressures.bubble_pressure_pa,
+        bubble_dew_pressures.dew_pressure_pa,
+    );
+    let temperature_phase_region = phase_equilibrium_region_from_temperature(
+        temperature_k,
+        bubble_dew_temperatures.bubble_temperature_k,
+        bubble_dew_temperatures.dew_temperature_k,
+    );
+    let phase_region = reconcile_boundary_phase_region(
+        pressure_phase_region,
+        temperature_phase_region,
+        pressure_pa,
+        temperature_k,
+        &bubble_dew_pressures,
+        &bubble_dew_temperatures,
+    )?;
+
+    Ok(BubbleDewWindow::new(
+        phase_region,
+        bubble_dew_pressures.bubble_pressure_pa,
+        bubble_dew_pressures.dew_pressure_pa,
+        bubble_dew_temperatures.bubble_temperature_k,
+        bubble_dew_temperatures.dew_temperature_k,
+    ))
+}
+
+fn reconcile_boundary_phase_region(
+    pressure_phase_region: FlashPhaseRegion,
+    temperature_phase_region: FlashPhaseRegion,
+    pressure_pa: f64,
+    temperature_k: f64,
+    bubble_dew_pressures: &BubbleDewPressures,
+    bubble_dew_temperatures: &BubbleDewTemperatures,
+) -> RfResult<FlashPhaseRegion> {
+    if pressure_phase_region == temperature_phase_region {
+        return Ok(pressure_phase_region);
+    }
+
+    let pressure_is_boundary = (pressure_pa - bubble_dew_pressures.bubble_pressure_pa).abs()
+        <= PHASE_REGION_PRESSURE_TOLERANCE_PA
+        || (pressure_pa - bubble_dew_pressures.dew_pressure_pa).abs()
+            <= PHASE_REGION_PRESSURE_TOLERANCE_PA;
+    let temperature_is_boundary = (temperature_k - bubble_dew_temperatures.bubble_temperature_k)
+        .abs()
+        <= PHASE_REGION_TEMPERATURE_TOLERANCE_K
+        || (temperature_k - bubble_dew_temperatures.dew_temperature_k).abs()
+            <= PHASE_REGION_TEMPERATURE_TOLERANCE_K;
+    if (pressure_phase_region == FlashPhaseRegion::TwoPhase && pressure_is_boundary)
+        || (temperature_phase_region == FlashPhaseRegion::TwoPhase && temperature_is_boundary)
+    {
+        return Ok(FlashPhaseRegion::TwoPhase);
+    }
+
+    Err(RfError::flash(format!(
+        "pressure and temperature phase region estimates disagree: pressure={pressure_phase_region:?}, temperature={temperature_phase_region:?}"
+    )))
 }
 
 #[derive(Debug, Default)]
@@ -169,6 +255,13 @@ impl TpFlashSolver for PlaceholderTpFlashSolver {
             ));
         }
 
+        let bubble_dew_window = estimate_bubble_dew_window(
+            thermo,
+            input.temperature_k,
+            input.pressure_pa,
+            input.overall_mole_fractions.clone(),
+        )?;
+        let phase_region = bubble_dew_window.phase_region;
         let k_values = thermo.estimate_k_values(&state)?;
         if k_values.len() != input.overall_mole_fractions.len() {
             return Err(RfError::flash(format!(
@@ -264,10 +357,16 @@ impl TpFlashSolver for PlaceholderTpFlashSolver {
             vapor_phase.molar_enthalpy_j_per_mol = vapor_enthalpy;
             stream.phases.push(vapor_phase);
         }
+        stream.bubble_dew_window = Some(bubble_dew_window.clone());
 
         Ok(TpFlashResult {
             status: FlashStatus::Converged,
             stream,
+            phase_region,
+            bubble_pressure_pa: bubble_dew_window.bubble_pressure_pa,
+            dew_pressure_pa: bubble_dew_window.dew_pressure_pa,
+            bubble_temperature_k: bubble_dew_window.bubble_temperature_k,
+            dew_temperature_k: bubble_dew_window.dew_temperature_k,
             vapor_fraction: Some(vapor_fraction),
             k_values: Some(k_values),
         })
@@ -290,7 +389,10 @@ fn phase_weighted_enthalpy(
 
 #[cfg(test)]
 mod tests {
-    use super::{FlashStatus, PlaceholderTpFlashSolver, TpFlashInput, TpFlashSolver};
+    use super::{
+        FlashPhaseRegion, FlashStatus, PlaceholderTpFlashSolver, TpFlashInput, TpFlashSolver,
+        estimate_bubble_dew_window,
+    };
     use rf_thermo::{
         AntoineCoefficients, PlaceholderThermoProvider, ThermoComponent, ThermoSystem,
     };
@@ -304,26 +406,455 @@ mod tests {
         );
     }
 
+    fn build_test_antoine_coefficients(k_value: f64, pressure_pa: f64) -> AntoineCoefficients {
+        const TEST_ANTOINE_BOUNDARY_SLOPE: f64 = 250.0;
+        const TEST_REFERENCE_TEMPERATURE_K: f64 = 300.0;
+
+        AntoineCoefficients::new(
+            ((k_value * pressure_pa) / 1_000.0).ln()
+                + TEST_ANTOINE_BOUNDARY_SLOPE / TEST_REFERENCE_TEMPERATURE_K,
+            TEST_ANTOINE_BOUNDARY_SLOPE,
+            0.0,
+        )
+    }
+
     fn build_provider(k_values: [f64; 2], pressure_pa: f64) -> PlaceholderThermoProvider {
         let mut first = ThermoComponent::new(ComponentId::new("component-a"), "Component A");
-        first.antoine = Some(AntoineCoefficients::new(
-            ((k_values[0] * pressure_pa) / 1_000.0).ln(),
-            0.0,
-            0.0,
-        ));
+        first.antoine = Some(build_test_antoine_coefficients(k_values[0], pressure_pa));
         first.liquid_heat_capacity_j_per_mol_k = Some(35.0);
         first.vapor_heat_capacity_j_per_mol_k = Some(36.5);
 
         let mut second = ThermoComponent::new(ComponentId::new("component-b"), "Component B");
-        second.antoine = Some(AntoineCoefficients::new(
-            ((k_values[1] * pressure_pa) / 1_000.0).ln(),
-            0.0,
-            0.0,
-        ));
+        second.antoine = Some(build_test_antoine_coefficients(k_values[1], pressure_pa));
         second.liquid_heat_capacity_j_per_mol_k = Some(52.0);
         second.vapor_heat_capacity_j_per_mol_k = Some(65.0);
 
         PlaceholderThermoProvider::new(ThermoSystem::binary([first, second]))
+    }
+
+    fn build_binary_hydrocarbon_lite_provider() -> PlaceholderThermoProvider {
+        let mut methane = ThermoComponent::new(ComponentId::new("methane"), "Methane");
+        methane.antoine = Some(AntoineCoefficients::new(8.987, 659.7, -16.7));
+        methane.liquid_heat_capacity_j_per_mol_k = Some(35.0);
+        methane.vapor_heat_capacity_j_per_mol_k = Some(36.5);
+
+        let mut ethane = ThermoComponent::new(ComponentId::new("ethane"), "Ethane");
+        ethane.antoine = Some(AntoineCoefficients::new(8.952, 699.7, -22.8));
+        ethane.liquid_heat_capacity_j_per_mol_k = Some(52.0);
+        ethane.vapor_heat_capacity_j_per_mol_k = Some(65.0);
+
+        PlaceholderThermoProvider::new(ThermoSystem::binary([methane, ethane]))
+    }
+
+    fn assert_expected_phase_layout(
+        result: &super::TpFlashResult,
+        expected_region: FlashPhaseRegion,
+    ) {
+        let vapor_fraction = result.vapor_fraction.expect("expected vapor fraction");
+        match expected_region {
+            FlashPhaseRegion::LiquidOnly => {
+                assert_close(vapor_fraction, 0.0, 1e-12);
+                assert!(
+                    result
+                        .stream
+                        .phases
+                        .iter()
+                        .any(|phase| phase.label == PhaseLabel::Liquid)
+                );
+                assert!(
+                    !result
+                        .stream
+                        .phases
+                        .iter()
+                        .any(|phase| phase.label == PhaseLabel::Vapor)
+                );
+            }
+            FlashPhaseRegion::TwoPhase => {
+                assert!(vapor_fraction > 0.0 && vapor_fraction < 1.0);
+                assert!(
+                    result
+                        .stream
+                        .phases
+                        .iter()
+                        .any(|phase| phase.label == PhaseLabel::Liquid)
+                );
+                assert!(
+                    result
+                        .stream
+                        .phases
+                        .iter()
+                        .any(|phase| phase.label == PhaseLabel::Vapor)
+                );
+            }
+            FlashPhaseRegion::VaporOnly => {
+                assert_close(vapor_fraction, 1.0, 1e-12);
+                assert!(
+                    !result
+                        .stream
+                        .phases
+                        .iter()
+                        .any(|phase| phase.label == PhaseLabel::Liquid)
+                );
+                assert!(
+                    result
+                        .stream
+                        .phases
+                        .iter()
+                        .any(|phase| phase.label == PhaseLabel::Vapor)
+                );
+            }
+        }
+    }
+
+    struct FlashPressureBoundaryPerturbationCase {
+        label: &'static str,
+        pressure_pa: f64,
+        expected_region: FlashPhaseRegion,
+        expected_bubble_temperature_k: f64,
+        expected_dew_temperature_k: f64,
+    }
+
+    struct FlashTemperatureBoundaryPerturbationCase {
+        label: &'static str,
+        temperature_k: f64,
+        expected_region: FlashPhaseRegion,
+        expected_bubble_pressure_pa: f64,
+        expected_dew_pressure_pa: f64,
+    }
+
+    fn assert_flash_solver_tracks_pressure_boundary_perturbations_without_window_drift(
+        provider: &PlaceholderThermoProvider,
+        overall_mole_fractions: &[f64],
+        temperature_k: f64,
+        exact_bubble_pressure_pa: f64,
+        exact_dew_pressure_pa: f64,
+        cases: &[FlashPressureBoundaryPerturbationCase],
+    ) {
+        let solver = PlaceholderTpFlashSolver;
+
+        for case in cases {
+            let input = TpFlashInput::new(
+                "stream-1",
+                case.label,
+                temperature_k,
+                case.pressure_pa,
+                10.0,
+                overall_mole_fractions.to_vec(),
+            );
+            let result = solver
+                .flash(provider, &input)
+                .expect("expected flash result");
+            let bubble_dew_window = result
+                .stream
+                .bubble_dew_window
+                .as_ref()
+                .expect("expected bubble/dew window");
+
+            assert_eq!(result.phase_region, case.expected_region, "{}", case.label);
+            assert_eq!(
+                bubble_dew_window.phase_region, case.expected_region,
+                "{}",
+                case.label
+            );
+            assert_close(
+                bubble_dew_window.bubble_pressure_pa,
+                exact_bubble_pressure_pa,
+                1e-6,
+            );
+            assert_close(
+                bubble_dew_window.dew_pressure_pa,
+                exact_dew_pressure_pa,
+                1e-6,
+            );
+            assert_close(
+                bubble_dew_window.bubble_temperature_k,
+                case.expected_bubble_temperature_k,
+                1e-4,
+            );
+            assert_close(
+                bubble_dew_window.dew_temperature_k,
+                case.expected_dew_temperature_k,
+                1e-4,
+            );
+
+            assert_expected_phase_layout(&result, case.expected_region);
+        }
+    }
+
+    fn assert_flash_solver_tracks_temperature_boundary_perturbations_without_window_drift(
+        provider: &PlaceholderThermoProvider,
+        overall_mole_fractions: &[f64],
+        pressure_pa: f64,
+        exact_bubble_temperature_k: f64,
+        exact_dew_temperature_k: f64,
+        cases: &[FlashTemperatureBoundaryPerturbationCase],
+    ) {
+        let solver = PlaceholderTpFlashSolver;
+
+        for case in cases {
+            let input = TpFlashInput::new(
+                "stream-1",
+                case.label,
+                case.temperature_k,
+                pressure_pa,
+                10.0,
+                overall_mole_fractions.to_vec(),
+            );
+            let result = solver
+                .flash(provider, &input)
+                .expect("expected flash result");
+            let bubble_dew_window = result
+                .stream
+                .bubble_dew_window
+                .as_ref()
+                .expect("expected bubble/dew window");
+
+            assert_eq!(result.phase_region, case.expected_region, "{}", case.label);
+            assert_eq!(
+                bubble_dew_window.phase_region, case.expected_region,
+                "{}",
+                case.label
+            );
+            assert_close(
+                bubble_dew_window.bubble_pressure_pa,
+                case.expected_bubble_pressure_pa,
+                1e-6,
+            );
+            assert_close(
+                bubble_dew_window.dew_pressure_pa,
+                case.expected_dew_pressure_pa,
+                1e-6,
+            );
+            assert_close(
+                bubble_dew_window.bubble_temperature_k,
+                exact_bubble_temperature_k,
+                1e-4,
+            );
+            assert_close(
+                bubble_dew_window.dew_temperature_k,
+                exact_dew_temperature_k,
+                1e-4,
+            );
+
+            assert_expected_phase_layout(&result, case.expected_region);
+        }
+    }
+
+    struct BinaryHydrocarbonLiteBoundaryScenario {
+        overall_mole_fractions: [f64; 2],
+        exact_bubble_pressure_pa: f64,
+        exact_dew_pressure_pa: f64,
+        exact_bubble_temperature_k: f64,
+        exact_dew_temperature_k: f64,
+        pressure_cases: Vec<FlashPressureBoundaryPerturbationCase>,
+        temperature_cases: Vec<FlashTemperatureBoundaryPerturbationCase>,
+    }
+
+    fn binary_hydrocarbon_lite_two_phase_boundary_scenarios()
+    -> Vec<BinaryHydrocarbonLiteBoundaryScenario> {
+        vec![
+            BinaryHydrocarbonLiteBoundaryScenario {
+                overall_mole_fractions: [0.195, 0.805],
+                exact_bubble_pressure_pa: 650_117.7234978296,
+                exact_dew_pressure_pa: 644_714.832888367,
+                exact_bubble_temperature_k: 299.9796507687297,
+                exact_dew_temperature_k: 300.9138867482865,
+                pressure_cases: vec![
+                    FlashPressureBoundaryPerturbationCase {
+                        label: "z=[0.195, 0.805] bubble-boundary - 0.1 Pa",
+                        pressure_pa: 650_117.6234978297,
+                        expected_region: FlashPhaseRegion::TwoPhase,
+                        expected_bubble_temperature_k: 299.99998271468905,
+                        expected_dew_temperature_k: 300.9342091831396,
+                    },
+                    FlashPressureBoundaryPerturbationCase {
+                        label: "z=[0.195, 0.805] bubble-boundary + 0.1 Pa",
+                        pressure_pa: 650_117.8234978296,
+                        expected_region: FlashPhaseRegion::LiquidOnly,
+                        expected_bubble_temperature_k: 300.00001728531026,
+                        expected_dew_temperature_k: 300.9342437375931,
+                    },
+                    FlashPressureBoundaryPerturbationCase {
+                        label: "z=[0.195, 0.805] dew-boundary + 0.1 Pa",
+                        pressure_pa: 644_714.932888367,
+                        expected_region: FlashPhaseRegion::TwoPhase,
+                        expected_bubble_temperature_k: 299.06534905353476,
+                        expected_dew_temperature_k: 300.00001730535257,
+                    },
+                    FlashPressureBoundaryPerturbationCase {
+                        label: "z=[0.195, 0.805] dew-boundary - 0.1 Pa",
+                        pressure_pa: 644_714.732888367,
+                        expected_region: FlashPhaseRegion::VaporOnly,
+                        expected_bubble_temperature_k: 299.0653144262868,
+                        expected_dew_temperature_k: 299.99998269464675,
+                    },
+                ],
+                temperature_cases: vec![
+                    FlashTemperatureBoundaryPerturbationCase {
+                        label: "z=[0.195, 0.805] bubble-temperature - 0.001 K",
+                        temperature_k: 299.9786507687297,
+                        expected_region: FlashPhaseRegion::LiquidOnly,
+                        expected_bubble_pressure_pa: 649_994.2149500577,
+                        expected_dew_pressure_pa: 644_591.4674174292,
+                    },
+                    FlashTemperatureBoundaryPerturbationCase {
+                        label: "z=[0.195, 0.805] bubble-temperature + 0.001 K",
+                        temperature_k: 299.9806507687297,
+                        expected_region: FlashPhaseRegion::TwoPhase,
+                        expected_bubble_pressure_pa: 650_005.7850599772,
+                        expected_dew_pressure_pa: 644_603.0241212061,
+                    },
+                    FlashTemperatureBoundaryPerturbationCase {
+                        label: "z=[0.195, 0.805] dew-temperature - 0.001 K",
+                        temperature_k: 300.9128867482865,
+                        expected_region: FlashPhaseRegion::TwoPhase,
+                        expected_bubble_pressure_pa: 655_403.161968214,
+                        expected_dew_pressure_pa: 649_994.2122419368,
+                    },
+                    FlashTemperatureBoundaryPerturbationCase {
+                        label: "z=[0.195, 0.805] dew-temperature + 0.001 K",
+                        temperature_k: 300.91488674828645,
+                        expected_region: FlashPhaseRegion::VaporOnly,
+                        expected_bubble_pressure_pa: 655_414.7506432333,
+                        expected_dew_pressure_pa: 650_005.7877680402,
+                    },
+                ],
+            },
+            BinaryHydrocarbonLiteBoundaryScenario {
+                overall_mole_fractions: [0.2, 0.8],
+                exact_bubble_pressure_pa: 650_919.9866646,
+                exact_dew_pressure_pa: 645_407.066294851,
+                exact_bubble_temperature_k: 299.8410613926369,
+                exact_dew_temperature_k: 300.79375964816904,
+                pressure_cases: vec![
+                    FlashPressureBoundaryPerturbationCase {
+                        label: "z=[0.2, 0.8] bubble-boundary - 0.1 Pa",
+                        pressure_pa: 650_919.8866645998,
+                        expected_region: FlashPhaseRegion::TwoPhase,
+                        expected_bubble_temperature_k: 299.9999827261904,
+                        expected_dew_temperature_k: 300.95260505288763,
+                    },
+                    FlashPressureBoundaryPerturbationCase {
+                        label: "z=[0.2, 0.8] bubble-boundary + 0.1 Pa",
+                        pressure_pa: 650_920.0866645997,
+                        expected_region: FlashPhaseRegion::LiquidOnly,
+                        expected_bubble_temperature_k: 300.0000172736834,
+                        expected_dew_temperature_k: 300.9526395843402,
+                    },
+                    FlashPressureBoundaryPerturbationCase {
+                        label: "z=[0.2, 0.8] dew-boundary + 0.1 Pa",
+                        pressure_pa: 645_407.1662948506,
+                        expected_region: FlashPhaseRegion::TwoPhase,
+                        expected_bubble_temperature_k: 299.04693549691126,
+                        expected_dew_temperature_k: 300.0000172943121,
+                    },
+                    FlashPressureBoundaryPerturbationCase {
+                        label: "z=[0.2, 0.8] dew-boundary - 0.1 Pa",
+                        pressure_pa: 645_406.9662948507,
+                        expected_region: FlashPhaseRegion::VaporOnly,
+                        expected_bubble_temperature_k: 299.04690089204394,
+                        expected_dew_temperature_k: 299.9999827057845,
+                    },
+                ],
+                temperature_cases: vec![
+                    FlashTemperatureBoundaryPerturbationCase {
+                        label: "z=[0.2, 0.8] bubble-temperature - 0.001 K",
+                        temperature_k: 299.8400613926369,
+                        expected_region: FlashPhaseRegion::LiquidOnly,
+                        expected_bubble_pressure_pa: 649_994.2124871389,
+                        expected_dew_pressure_pa: 644_482.3840045808,
+                    },
+                    FlashTemperatureBoundaryPerturbationCase {
+                        label: "z=[0.2, 0.8] bubble-temperature + 0.001 K",
+                        temperature_k: 299.8420613926369,
+                        expected_region: FlashPhaseRegion::TwoPhase,
+                        expected_bubble_pressure_pa: 650_005.7875219034,
+                        expected_dew_pressure_pa: 644_493.9453632077,
+                    },
+                    FlashTemperatureBoundaryPerturbationCase {
+                        label: "z=[0.2, 0.8] dew-temperature - 0.001 K",
+                        temperature_k: 300.79275964816907,
+                        expected_region: FlashPhaseRegion::TwoPhase,
+                        expected_bubble_pressure_pa: 655_512.4890424822,
+                        expected_dew_pressure_pa: 649_994.2097160413,
+                    },
+                    FlashTemperatureBoundaryPerturbationCase {
+                        label: "z=[0.2, 0.8] dew-temperature + 0.001 K",
+                        temperature_k: 300.794759648169,
+                        expected_region: FlashPhaseRegion::VaporOnly,
+                        expected_bubble_pressure_pa: 655_524.0830284748,
+                        expected_dew_pressure_pa: 650_005.7902937229,
+                    },
+                ],
+            },
+            BinaryHydrocarbonLiteBoundaryScenario {
+                overall_mole_fractions: [0.23, 0.77],
+                exact_bubble_pressure_pa: 655_733.5656652204,
+                exact_dew_pressure_pa: 649_591.885824445,
+                exact_bubble_temperature_k: 299.01269611750297,
+                exact_dew_temperature_k: 300.07030238460186,
+                pressure_cases: vec![
+                    FlashPressureBoundaryPerturbationCase {
+                        label: "z=[0.23, 0.77] bubble-boundary - 0.1 Pa",
+                        pressure_pa: 655_733.4656652204,
+                        expected_region: FlashPhaseRegion::TwoPhase,
+                        expected_bubble_temperature_k: 299.99998279487806,
+                        expected_dew_temperature_k: 301.05706034196055,
+                    },
+                    FlashPressureBoundaryPerturbationCase {
+                        label: "z=[0.23, 0.77] bubble-boundary + 0.1 Pa",
+                        pressure_pa: 655_733.6656652204,
+                        expected_region: FlashPhaseRegion::LiquidOnly,
+                        expected_bubble_temperature_k: 300.00001720512125,
+                        expected_dew_temperature_k: 301.0570947339811,
+                    },
+                    FlashPressureBoundaryPerturbationCase {
+                        label: "z=[0.23, 0.77] dew-boundary + 0.1 Pa",
+                        pressure_pa: 649_591.985824445,
+                        expected_region: FlashPhaseRegion::TwoPhase,
+                        expected_bubble_temperature_k: 298.9423728489804,
+                        expected_dew_temperature_k: 300.0000172272056,
+                    },
+                    FlashPressureBoundaryPerturbationCase {
+                        label: "z=[0.23, 0.77] dew-boundary - 0.1 Pa",
+                        pressure_pa: 649_591.7858244451,
+                        expected_region: FlashPhaseRegion::VaporOnly,
+                        expected_bubble_temperature_k: 298.9423383758716,
+                        expected_dew_temperature_k: 299.9999827727937,
+                    },
+                ],
+                temperature_cases: vec![
+                    FlashTemperatureBoundaryPerturbationCase {
+                        label: "z=[0.23, 0.77] bubble-temperature - 0.001 K",
+                        temperature_k: 299.011696117503,
+                        expected_region: FlashPhaseRegion::LiquidOnly,
+                        expected_bubble_pressure_pa: 649_994.1976695253,
+                        expected_dew_pressure_pa: 643_859.9583286671,
+                    },
+                    FlashTemperatureBoundaryPerturbationCase {
+                        label: "z=[0.23, 0.77] bubble-temperature + 0.001 K",
+                        temperature_k: 299.01369611750295,
+                        expected_region: FlashPhaseRegion::TwoPhase,
+                        expected_bubble_pressure_pa: 650_005.8023405897,
+                        expected_dew_pressure_pa: 643_871.5477872168,
+                    },
+                    FlashTemperatureBoundaryPerturbationCase {
+                        label: "z=[0.23, 0.77] dew-temperature - 0.001 K",
+                        temperature_k: 300.0693023846019,
+                        expected_region: FlashPhaseRegion::TwoPhase,
+                        expected_bubble_pressure_pa: 656_136.3903625292,
+                        expected_dew_pressure_pa: 649_994.1945257499,
+                    },
+                    FlashTemperatureBoundaryPerturbationCase {
+                        label: "z=[0.23, 0.77] dew-temperature + 0.001 K",
+                        temperature_k: 300.07130238460184,
+                        expected_region: FlashPhaseRegion::VaporOnly,
+                        expected_bubble_pressure_pa: 656_148.016201093,
+                        expected_dew_pressure_pa: 650_005.8054843098,
+                    },
+                ],
+            },
+        ]
     }
 
     #[test]
@@ -338,6 +869,25 @@ mod tests {
             .expect("expected flash result");
 
         assert_eq!(result.status, FlashStatus::Converged);
+        assert_eq!(result.phase_region, FlashPhaseRegion::TwoPhase);
+        assert_close(result.bubble_pressure_pa, 125_000.0, 1e-9);
+        assert_close(result.dew_pressure_pa, 80_000.0, 1e-9);
+        assert_close(result.bubble_temperature_k, 236.635560732978, 1e-4);
+        assert_close(result.dew_temperature_k, 409.708580367858, 1e-4);
+        let bubble_dew_window = result
+            .stream
+            .bubble_dew_window
+            .as_ref()
+            .expect("expected flashed stream bubble/dew window");
+        assert_eq!(bubble_dew_window.phase_region, FlashPhaseRegion::TwoPhase);
+        assert_close(bubble_dew_window.bubble_pressure_pa, 125_000.0, 1e-9);
+        assert_close(bubble_dew_window.dew_pressure_pa, 80_000.0, 1e-9);
+        assert_close(
+            bubble_dew_window.bubble_temperature_k,
+            236.635560732978,
+            1e-4,
+        );
+        assert_close(bubble_dew_window.dew_temperature_k, 409.708580367858, 1e-4);
         assert_close(
             result.vapor_fraction.expect("expected vapor fraction"),
             0.5,
@@ -417,6 +967,20 @@ mod tests {
             .expect("expected flash result");
 
         assert_eq!(result.status, FlashStatus::Converged);
+        assert_eq!(result.phase_region, FlashPhaseRegion::LiquidOnly);
+        assert_close(result.bubble_pressure_pa, 65_000.0, 1e-9);
+        assert_close(result.dew_pressure_pa, 64_000.0, 1e-9);
+        assert_close(result.bubble_temperature_k, 621.040220784083, 1e-4);
+        assert_close(result.dew_temperature_k, 645.917663866654, 1e-4);
+        assert_eq!(
+            result
+                .stream
+                .bubble_dew_window
+                .as_ref()
+                .expect("expected liquid-only bubble/dew window")
+                .phase_region,
+            FlashPhaseRegion::LiquidOnly
+        );
         assert_close(
             result.vapor_fraction.expect("expected vapor fraction"),
             0.0,
@@ -443,6 +1007,460 @@ mod tests {
                 .phases
                 .iter()
                 .any(|phase| phase.label == PhaseLabel::Vapor)
+        );
+    }
+
+    #[test]
+    fn flash_solver_returns_single_vapor_phase_when_all_k_values_above_one() {
+        let pressure_pa = 100_000.0;
+        let provider = build_provider([1.8, 1.3], pressure_pa);
+        let solver = PlaceholderTpFlashSolver;
+        let input = TpFlashInput::new(
+            "stream-1",
+            "Feed",
+            300.0,
+            pressure_pa,
+            10.0,
+            vec![0.25, 0.75],
+        );
+
+        let result = solver
+            .flash(&provider, &input)
+            .expect("expected flash result");
+
+        assert_eq!(result.status, FlashStatus::Converged);
+        assert_eq!(result.phase_region, FlashPhaseRegion::VaporOnly);
+        assert_close(result.bubble_pressure_pa, 142_500.0, 1e-9);
+        assert_close(result.dew_pressure_pa, 139_701.4925373134, 1e-9);
+        assert_close(result.bubble_temperature_k, 210.52540329633, 1e-4);
+        assert_close(result.dew_temperature_k, 214.101379883055, 1e-4);
+        assert_eq!(
+            result
+                .stream
+                .bubble_dew_window
+                .as_ref()
+                .expect("expected vapor-only bubble/dew window")
+                .phase_region,
+            FlashPhaseRegion::VaporOnly
+        );
+        assert_close(
+            result.vapor_fraction.expect("expected vapor fraction"),
+            1.0,
+            1e-12,
+        );
+        assert_eq!(result.stream.phases.len(), 2);
+        assert!(
+            result
+                .stream
+                .phases
+                .iter()
+                .any(|phase| phase.label == PhaseLabel::Overall)
+        );
+        assert!(
+            result
+                .stream
+                .phases
+                .iter()
+                .any(|phase| phase.label == PhaseLabel::Vapor)
+        );
+        assert!(
+            !result
+                .stream
+                .phases
+                .iter()
+                .any(|phase| phase.label == PhaseLabel::Liquid)
+        );
+    }
+
+    #[test]
+    fn bubble_dew_window_treats_exact_pressure_boundaries_as_two_phase() {
+        let provider = build_binary_hydrocarbon_lite_provider();
+
+        let bubble_boundary =
+            estimate_bubble_dew_window(&provider, 300.0, 650_919.9866646, vec![0.2, 0.8])
+                .expect("expected bubble-boundary window");
+        assert_eq!(bubble_boundary.phase_region, FlashPhaseRegion::TwoPhase);
+        assert_close(bubble_boundary.bubble_pressure_pa, 650_919.9866646, 1e-6);
+        assert_close(bubble_boundary.dew_pressure_pa, 645_407.066294851, 1e-6);
+
+        let dew_boundary =
+            estimate_bubble_dew_window(&provider, 300.0, 645_407.066294851, vec![0.2, 0.8])
+                .expect("expected dew-boundary window");
+        assert_eq!(dew_boundary.phase_region, FlashPhaseRegion::TwoPhase);
+        assert_close(dew_boundary.bubble_pressure_pa, 650_919.9866646, 1e-6);
+        assert_close(dew_boundary.dew_pressure_pa, 645_407.066294851, 1e-6);
+    }
+
+    #[test]
+    fn bubble_dew_window_treats_exact_temperature_boundaries_as_two_phase() {
+        let pressure_pa = 650_000.0;
+        let provider = build_binary_hydrocarbon_lite_provider();
+
+        let bubble_boundary =
+            estimate_bubble_dew_window(&provider, 299.841061392724, pressure_pa, vec![0.2, 0.8])
+                .expect("expected bubble-temperature boundary window");
+        assert_eq!(bubble_boundary.phase_region, FlashPhaseRegion::TwoPhase);
+        assert_close(bubble_boundary.bubble_temperature_k, 299.841061392724, 1e-4);
+        assert_close(bubble_boundary.dew_temperature_k, 300.79375395993, 1e-4);
+
+        let dew_boundary =
+            estimate_bubble_dew_window(&provider, 300.79375395993, pressure_pa, vec![0.2, 0.8])
+                .expect("expected dew-temperature boundary window");
+        assert_eq!(dew_boundary.phase_region, FlashPhaseRegion::TwoPhase);
+        assert_close(dew_boundary.bubble_temperature_k, 299.841061392724, 1e-4);
+        assert_close(dew_boundary.dew_temperature_k, 300.79375395993, 1e-4);
+    }
+
+    #[test]
+    fn flash_solver_preserves_pressure_boundary_tolerance_region_without_forcing_zero_phase() {
+        let provider = build_binary_hydrocarbon_lite_provider();
+        let solver = PlaceholderTpFlashSolver;
+
+        let bubble_input = TpFlashInput::new(
+            "stream-1",
+            "bubble pressure tolerance",
+            300.0,
+            650_919.9866646 + 5e-7,
+            10.0,
+            vec![0.2, 0.8],
+        );
+        let bubble_result = solver
+            .flash(&provider, &bubble_input)
+            .expect("expected bubble pressure tolerance result");
+        assert_eq!(bubble_result.phase_region, FlashPhaseRegion::TwoPhase);
+        assert_eq!(
+            bubble_result
+                .stream
+                .bubble_dew_window
+                .as_ref()
+                .expect("expected bubble/dew window")
+                .phase_region,
+            FlashPhaseRegion::TwoPhase
+        );
+        assert_close(
+            bubble_result
+                .vapor_fraction
+                .expect("expected vapor fraction"),
+            0.0,
+            1e-12,
+        );
+        assert!(
+            bubble_result
+                .stream
+                .phases
+                .iter()
+                .any(|phase| phase.label == PhaseLabel::Liquid)
+        );
+        assert!(
+            !bubble_result
+                .stream
+                .phases
+                .iter()
+                .any(|phase| phase.label == PhaseLabel::Vapor)
+        );
+
+        let dew_input = TpFlashInput::new(
+            "stream-1",
+            "dew pressure tolerance",
+            300.0,
+            645_407.066294851 - 5e-7,
+            10.0,
+            vec![0.2, 0.8],
+        );
+        let dew_result = solver
+            .flash(&provider, &dew_input)
+            .expect("expected dew pressure tolerance result");
+        assert_eq!(dew_result.phase_region, FlashPhaseRegion::TwoPhase);
+        assert_eq!(
+            dew_result
+                .stream
+                .bubble_dew_window
+                .as_ref()
+                .expect("expected bubble/dew window")
+                .phase_region,
+            FlashPhaseRegion::TwoPhase
+        );
+        assert_close(
+            dew_result.vapor_fraction.expect("expected vapor fraction"),
+            1.0,
+            1e-12,
+        );
+        assert!(
+            !dew_result
+                .stream
+                .phases
+                .iter()
+                .any(|phase| phase.label == PhaseLabel::Liquid)
+        );
+        assert!(
+            dew_result
+                .stream
+                .phases
+                .iter()
+                .any(|phase| phase.label == PhaseLabel::Vapor)
+        );
+    }
+
+    #[test]
+    fn flash_solver_reconciles_temperature_boundary_tolerance_without_window_drift() {
+        let pressure_pa = 650_000.0;
+        let provider = build_binary_hydrocarbon_lite_provider();
+        let solver = PlaceholderTpFlashSolver;
+
+        let bubble_input = TpFlashInput::new(
+            "stream-1",
+            "bubble temperature tolerance",
+            299.8410613926369 - 5e-7,
+            pressure_pa,
+            10.0,
+            vec![0.2, 0.8],
+        );
+        let bubble_result = solver
+            .flash(&provider, &bubble_input)
+            .expect("expected bubble temperature tolerance result");
+        assert_eq!(bubble_result.phase_region, FlashPhaseRegion::TwoPhase);
+        assert_eq!(
+            bubble_result
+                .stream
+                .bubble_dew_window
+                .as_ref()
+                .expect("expected bubble/dew window")
+                .phase_region,
+            FlashPhaseRegion::TwoPhase
+        );
+        assert_close(bubble_result.bubble_temperature_k, 299.8410613926369, 1e-4);
+        assert_close(
+            bubble_result
+                .vapor_fraction
+                .expect("expected vapor fraction"),
+            0.0,
+            1e-12,
+        );
+
+        let dew_input = TpFlashInput::new(
+            "stream-1",
+            "dew temperature tolerance",
+            300.79375964816904 + 5e-7,
+            pressure_pa,
+            10.0,
+            vec![0.2, 0.8],
+        );
+        let dew_result = solver
+            .flash(&provider, &dew_input)
+            .expect("expected dew temperature tolerance result");
+        assert_eq!(dew_result.phase_region, FlashPhaseRegion::TwoPhase);
+        assert_eq!(
+            dew_result
+                .stream
+                .bubble_dew_window
+                .as_ref()
+                .expect("expected bubble/dew window")
+                .phase_region,
+            FlashPhaseRegion::TwoPhase
+        );
+        assert_close(dew_result.dew_temperature_k, 300.79375964816904, 1e-4);
+        assert_close(
+            dew_result.vapor_fraction.expect("expected vapor fraction"),
+            1.0,
+            1e-12,
+        );
+    }
+
+    #[test]
+    fn flash_solver_tracks_binary_hydrocarbon_lite_two_phase_pressure_boundary_perturbations_without_window_drift()
+     {
+        let provider = build_binary_hydrocarbon_lite_provider();
+        for scenario in binary_hydrocarbon_lite_two_phase_boundary_scenarios() {
+            assert_flash_solver_tracks_pressure_boundary_perturbations_without_window_drift(
+                &provider,
+                &scenario.overall_mole_fractions,
+                300.0,
+                scenario.exact_bubble_pressure_pa,
+                scenario.exact_dew_pressure_pa,
+                &scenario.pressure_cases,
+            );
+        }
+    }
+
+    #[test]
+    fn flash_solver_tracks_binary_hydrocarbon_lite_two_phase_temperature_boundary_perturbations_without_window_drift()
+     {
+        let provider = build_binary_hydrocarbon_lite_provider();
+        for scenario in binary_hydrocarbon_lite_two_phase_boundary_scenarios() {
+            assert_flash_solver_tracks_temperature_boundary_perturbations_without_window_drift(
+                &provider,
+                &scenario.overall_mole_fractions,
+                650_000.0,
+                scenario.exact_bubble_temperature_k,
+                scenario.exact_dew_temperature_k,
+                &scenario.temperature_cases,
+            );
+        }
+    }
+
+    #[test]
+    fn flash_solver_tracks_synthetic_pressure_boundary_perturbations_without_window_drift() {
+        let liquid_only_provider = build_provider([0.8, 0.6], 100_000.0);
+        let liquid_only_cases = [
+            FlashPressureBoundaryPerturbationCase {
+                label: "synthetic liquid-only bubble-boundary - 0.1 Pa",
+                pressure_pa: 64_999.89999999998,
+                expected_region: FlashPhaseRegion::TwoPhase,
+                expected_bubble_temperature_k: 299.9994461564153,
+                expected_dew_temperature_k: 305.686744831391,
+            },
+            FlashPressureBoundaryPerturbationCase {
+                label: "synthetic liquid-only bubble-boundary + 0.1 Pa",
+                pressure_pa: 65_000.09999999998,
+                expected_region: FlashPhaseRegion::LiquidOnly,
+                expected_bubble_temperature_k: 300.0005538466912,
+                expected_dew_temperature_k: 305.68789492268525,
+            },
+            FlashPressureBoundaryPerturbationCase {
+                label: "synthetic liquid-only dew-boundary + 0.1 Pa",
+                pressure_pa: 64_000.099999999984,
+                expected_region: FlashPhaseRegion::TwoPhase,
+                expected_bubble_temperature_k: 294.52098232922526,
+                expected_dew_temperature_k: 300.00056250327293,
+            },
+            FlashPressureBoundaryPerturbationCase {
+                label: "synthetic liquid-only dew-boundary - 0.1 Pa",
+                pressure_pa: 63_999.89999999999,
+                expected_region: FlashPhaseRegion::VaporOnly,
+                expected_bubble_temperature_k: 294.51989804717425,
+                expected_dew_temperature_k: 299.9994375027239,
+            },
+        ];
+        assert_flash_solver_tracks_pressure_boundary_perturbations_without_window_drift(
+            &liquid_only_provider,
+            &[0.25, 0.75],
+            300.0,
+            64_999.99999999998,
+            63_999.999999999985,
+            &liquid_only_cases,
+        );
+
+        let vapor_only_provider = build_provider([1.8, 1.3], 100_000.0);
+        let vapor_only_cases = [
+            FlashPressureBoundaryPerturbationCase {
+                label: "synthetic vapor-only bubble-boundary - 0.1 Pa",
+                pressure_pa: 142_499.89999999997,
+                expected_region: FlashPhaseRegion::TwoPhase,
+                expected_bubble_temperature_k: 299.99974736774993,
+                expected_dew_temperature_k: 307.3140804747562,
+            },
+            FlashPressureBoundaryPerturbationCase {
+                label: "synthetic vapor-only bubble-boundary + 0.1 Pa",
+                pressure_pa: 142_500.09999999998,
+                expected_region: FlashPhaseRegion::LiquidOnly,
+                expected_bubble_temperature_k: 300.00025263320515,
+                expected_dew_temperature_k: 307.3146106783237,
+            },
+            FlashPressureBoundaryPerturbationCase {
+                label: "synthetic vapor-only dew-boundary + 0.1 Pa",
+                pressure_pa: 139_701.5925373134,
+                expected_region: FlashPhaseRegion::TwoPhase,
+                expected_bubble_temperature_k: 293.0259814729438,
+                expected_dew_temperature_k: 300.0002576946889,
+            },
+            FlashPressureBoundaryPerturbationCase {
+                label: "synthetic vapor-only dew-boundary - 0.1 Pa",
+                pressure_pa: 139_701.3925373134,
+                expected_region: FlashPhaseRegion::VaporOnly,
+                expected_bubble_temperature_k: 293.02548977289626,
+                expected_dew_temperature_k: 299.9997423083373,
+            },
+        ];
+        assert_flash_solver_tracks_pressure_boundary_perturbations_without_window_drift(
+            &vapor_only_provider,
+            &[0.25, 0.75],
+            300.0,
+            142_499.99999999997,
+            139_701.4925373134,
+            &vapor_only_cases,
+        );
+    }
+
+    #[test]
+    fn flash_solver_tracks_synthetic_temperature_boundary_perturbations_without_window_drift() {
+        let liquid_only_provider = build_provider([0.8, 0.6], 100_000.0);
+        let liquid_only_cases = [
+            FlashTemperatureBoundaryPerturbationCase {
+                label: "synthetic liquid-only bubble-temperature - 0.001 K",
+                temperature_k: 621.0392207837401,
+                expected_region: FlashPhaseRegion::LiquidOnly,
+                expected_bubble_pressure_pa: 99_999.93518115903,
+                expected_dew_pressure_pa: 98_461.47463991042,
+            },
+            FlashTemperatureBoundaryPerturbationCase {
+                label: "synthetic liquid-only bubble-temperature + 0.001 K",
+                temperature_k: 621.0412207837401,
+                expected_region: FlashPhaseRegion::TwoPhase,
+                expected_bubble_pressure_pa: 100_000.06481862975,
+                expected_dew_pressure_pa: 98_461.60228295853,
+            },
+            FlashTemperatureBoundaryPerturbationCase {
+                label: "synthetic liquid-only dew-temperature - 0.001 K",
+                temperature_k: 645.9166712270983,
+                expected_region: FlashPhaseRegion::TwoPhase,
+                expected_bubble_pressure_pa: 101_562.43914080938,
+                expected_dew_pressure_pa: 99_999.94007710462,
+            },
+            FlashTemperatureBoundaryPerturbationCase {
+                label: "synthetic liquid-only dew-temperature + 0.001 K",
+                temperature_k: 645.9186712270982,
+                expected_region: FlashPhaseRegion::VaporOnly,
+                expected_bubble_pressure_pa: 101_562.560857197,
+                expected_dew_pressure_pa: 100_000.05992093244,
+            },
+        ];
+        assert_flash_solver_tracks_temperature_boundary_perturbations_without_window_drift(
+            &liquid_only_provider,
+            &[0.25, 0.75],
+            100_000.0,
+            621.0402207837401,
+            645.9176712270983,
+            &liquid_only_cases,
+        );
+
+        let vapor_only_provider = build_provider([1.8, 1.3], 100_000.0);
+        let vapor_only_cases = [
+            FlashTemperatureBoundaryPerturbationCase {
+                label: "synthetic vapor-only bubble-temperature - 0.001 K",
+                temperature_k: 210.52440329728063,
+                expected_region: FlashPhaseRegion::LiquidOnly,
+                expected_bubble_pressure_pa: 99_999.43593205792,
+                expected_dew_pressure_pa: 98_035.58212349434,
+            },
+            FlashTemperatureBoundaryPerturbationCase {
+                label: "synthetic vapor-only bubble-temperature + 0.001 K",
+                temperature_k: 210.52640329728064,
+                expected_region: FlashPhaseRegion::TwoPhase,
+                expected_bubble_pressure_pa: 100_000.56406683738,
+                expected_dew_pressure_pa: 98_036.68810323098,
+            },
+            FlashTemperatureBoundaryPerturbationCase {
+                label: "synthetic vapor-only dew-temperature - 0.001 K",
+                temperature_k: 214.10038569784498,
+                expected_region: FlashPhaseRegion::TwoPhase,
+                expected_bubble_pressure_pa: 102_002.64881882841,
+                expected_dew_pressure_pa: 99_999.45461578779,
+            },
+            FlashTemperatureBoundaryPerturbationCase {
+                label: "synthetic vapor-only dew-temperature + 0.001 K",
+                temperature_k: 214.102385697845,
+                expected_region: FlashPhaseRegion::VaporOnly,
+                expected_bubble_pressure_pa: 102_003.76143371491,
+                expected_dew_pressure_pa: 100_000.54538042123,
+            },
+        ];
+        assert_flash_solver_tracks_temperature_boundary_perturbations_without_window_drift(
+            &vapor_only_provider,
+            &[0.25, 0.75],
+            100_000.0,
+            210.52540329728063,
+            214.101385697845,
+            &vapor_only_cases,
         );
     }
 

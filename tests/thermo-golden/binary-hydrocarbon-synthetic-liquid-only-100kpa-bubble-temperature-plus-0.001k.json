@@ -1,0 +1,39 @@
+{
+  "name": "synthetic binary liquid-only case at 100 kPa and bubble-temperature + 0.001 K",
+  "temperatureK": 621.0412207837401,
+  "pressurePa": 100000.0,
+  "overallMoleFractions": [0.25, 0.75],
+  "components": [
+    {
+      "id": "component-a",
+      "name": "Component A",
+      "antoine": {
+        "a": 5.215359968007214,
+        "b": 250.0,
+        "c": 0.0
+      },
+      "liquidHeatCapacityJPerMolK": 35.0,
+      "vaporHeatCapacityJPerMolK": 36.5
+    },
+    {
+      "id": "component-b",
+      "name": "Component B",
+      "antoine": {
+        "a": 4.9276778955554335,
+        "b": 250.0,
+        "c": 0.0
+      },
+      "liquidHeatCapacityJPerMolK": 52.0,
+      "vaporHeatCapacityJPerMolK": 65.0
+    }
+  ],
+  "expectedSaturationPressurePa": [123077.00285369814, 92307.75214027362],
+  "expectedKValues": [1.2307700285369814, 0.9230775214027361],
+  "expectedPhaseRegion": "twoPhase",
+  "expectedBubblePressurePa": 100000.06481862975,
+  "expectedDewPressurePa": 98461.60228295853,
+  "expectedBubbleTemperatureK": 621.0402207837401,
+  "expectedDewTemperatureK": 645.9176712270983,
+  "expectedLiquidMolarEnthalpyJPerMol": 15418.055792423589,
+  "expectedVaporMolarEnthalpyJPerMol": 18687.32940285896
+}

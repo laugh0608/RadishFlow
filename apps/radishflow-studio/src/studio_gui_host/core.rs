@@ -2,6 +2,11 @@ use super::helpers::{
     dispatch_from_controller, global_event_from_controller, ui_commands_from_projection,
 };
 use super::*;
+use crate::{
+    StudioGuiDiagnosticStreamSnapshot, StudioGuiFailureDiagnosticContextSnapshot,
+    StudioGuiFailureDiagnosticPortSnapshot, WorkspaceControlState,
+};
+use std::collections::BTreeSet;
 
 impl StudioGuiHost {
     pub fn new(config: &StudioRuntimeConfig) -> RfResult<Self> {
@@ -10,10 +15,12 @@ impl StudioGuiHost {
             Some(project_path) => load_persisted_window_layouts(project_path)?,
             None => BTreeMap::new(),
         };
-        let canvas_unit_positions = match controller.document_path() {
+        let mut canvas_unit_positions = match controller.document_path() {
             Some(project_path) => load_persisted_canvas_unit_positions(project_path)?,
             None => BTreeMap::new(),
         };
+        let flowsheet = &controller.document().flowsheet;
+        canvas_unit_positions.retain(|unit_id, _| flowsheet.units.contains_key(unit_id));
 
         Ok(Self {
             controller,
@@ -44,12 +51,8 @@ impl StudioGuiHost {
             _ => None,
         };
         let flowsheet = &self.controller.document().flowsheet;
-        let units = self
-            .controller
-            .document()
-            .flowsheet
-            .units
-            .values()
+        let units = canvas_units_in_layout_order(flowsheet)
+            .into_iter()
             .map(|unit| StudioGuiCanvasUnitState {
                 unit_id: unit.id.clone(),
                 name: unit.name.clone(),
@@ -129,34 +132,50 @@ impl StudioGuiHost {
     }
 
     pub fn command_registry(&self) -> StudioGuiCommandRegistry {
-        StudioGuiCommandRegistry::from_surfaces(
+        let latest_solve_snapshot = self.controller.latest_solve_snapshot();
+        StudioGuiCommandRegistry::from_surfaces_with_results(
             &self.ui_commands(),
             &self.canvas_state(),
             self.preferred_target_window_id(),
+            latest_solve_snapshot.as_ref(),
         )
     }
 
     pub fn snapshot(&self) -> StudioGuiSnapshot {
+        let workspace_document = workspace_document_snapshot_from_controller(&self.controller);
+        let control_state = self.controller.workspace_control_state();
+        let run_panel = self.controller.run_panel_widget();
+        let latest_solve_snapshot = self.controller.latest_solve_snapshot();
+        let latest_failure_diagnostic_context = failure_diagnostic_context_from_controller(
+            &self.controller,
+            &control_state,
+            workspace_document.revision,
+        );
+        let active_inspector_target = self.controller.active_inspector_target();
+        let active_inspector_detail = active_inspector_detail_from_controller(&self.controller);
+        let entitlement_host = self.controller.entitlement_host_output();
+        let log_entries = self.controller.log_entries();
         let mut snapshot = StudioGuiSnapshot::new(
             self.state().clone(),
             self.ui_commands(),
             self.command_registry(),
             self.canvas_state().widget(),
             StudioGuiRuntimeSnapshot {
-                workspace_document: workspace_document_snapshot_from_controller(&self.controller),
+                workspace_document,
                 example_projects: crate::studio_example_project_models(
                     self.controller.document_path(),
                 ),
-                control_state: self.controller.workspace_control_state(),
-                run_panel: self.controller.run_panel_widget(),
-                latest_solve_snapshot: self.controller.latest_solve_snapshot(),
-                active_inspector_target: self.controller.active_inspector_target(),
-                active_inspector_detail: active_inspector_detail_from_controller(&self.controller),
-                entitlement_host: self.controller.entitlement_host_output(),
+                control_state,
+                run_panel,
+                latest_solve_snapshot,
+                latest_failure_diagnostic_context,
+                active_inspector_target,
+                active_inspector_detail,
+                entitlement_host,
                 platform_notice: None,
                 platform_timer_lines: Vec::new(),
                 gui_activity_lines: Vec::new(),
-                log_entries: self.controller.log_entries(),
+                log_entries,
             },
             self.window_drop_previews.clone(),
         );
@@ -363,6 +382,73 @@ fn canvas_material_stream_endpoints(
     endpoints
 }
 
+fn canvas_units_in_layout_order(flowsheet: &rf_model::Flowsheet) -> Vec<&rf_model::UnitNode> {
+    let mut source_unit_by_stream = BTreeMap::new();
+    for unit in flowsheet.units.values() {
+        for port in &unit.ports {
+            if port.kind != rf_types::PortKind::Material
+                || port.direction != rf_types::PortDirection::Outlet
+            {
+                continue;
+            }
+            if let Some(stream_id) = port.stream_id.as_ref() {
+                source_unit_by_stream
+                    .entry(stream_id.clone())
+                    .or_insert_with(|| unit.id.clone());
+            }
+        }
+    }
+
+    let mut dependencies = flowsheet
+        .units
+        .keys()
+        .map(|unit_id| (unit_id.clone(), BTreeSet::new()))
+        .collect::<BTreeMap<_, _>>();
+    for unit in flowsheet.units.values() {
+        for port in &unit.ports {
+            if port.kind != rf_types::PortKind::Material
+                || port.direction != rf_types::PortDirection::Inlet
+            {
+                continue;
+            }
+            let Some(stream_id) = port.stream_id.as_ref() else {
+                continue;
+            };
+            let Some(source_unit_id) = source_unit_by_stream.get(stream_id) else {
+                continue;
+            };
+            if source_unit_id != &unit.id {
+                dependencies
+                    .entry(unit.id.clone())
+                    .or_default()
+                    .insert(source_unit_id.clone());
+            }
+        }
+    }
+
+    let mut ordered_unit_ids = Vec::new();
+    while !dependencies.is_empty() {
+        let ready = dependencies
+            .iter()
+            .find_map(|(unit_id, upstream)| upstream.is_empty().then(|| unit_id.clone()));
+        let Some(unit_id) = ready else {
+            ordered_unit_ids.extend(dependencies.keys().cloned());
+            break;
+        };
+
+        dependencies.remove(&unit_id);
+        for upstream in dependencies.values_mut() {
+            upstream.remove(&unit_id);
+        }
+        ordered_unit_ids.push(unit_id);
+    }
+
+    ordered_unit_ids
+        .into_iter()
+        .filter_map(|unit_id| flowsheet.units.get(&unit_id))
+        .collect()
+}
+
 fn canvas_diagnostics_from_runtime(
     latest_solve_snapshot: Option<&rf_ui::SolveSnapshot>,
     notice: Option<&rf_ui::RunPanelNotice>,
@@ -417,6 +503,61 @@ fn canvas_diagnostics_from_runtime(
         related_stream_ids,
         related_port_targets,
     }]
+}
+
+fn failure_diagnostic_context_from_controller(
+    controller: &StudioAppHostController,
+    control_state: &WorkspaceControlState,
+    document_revision: u64,
+) -> Option<StudioGuiFailureDiagnosticContextSnapshot> {
+    let diagnostic = control_state.latest_diagnostic.as_ref()?;
+    if diagnostic.document_revision != document_revision {
+        return None;
+    }
+
+    let flowsheet = &controller.document().flowsheet;
+    Some(StudioGuiFailureDiagnosticContextSnapshot {
+        related_streams: diagnostic
+            .related_stream_ids
+            .iter()
+            .filter_map(|stream_id| flowsheet.streams.get(stream_id))
+            .map(diagnostic_stream_snapshot_from_model)
+            .collect(),
+        related_ports: diagnostic
+            .related_port_targets
+            .iter()
+            .map(|target| {
+                let stream = flowsheet
+                    .units
+                    .get(&target.unit_id)
+                    .and_then(|unit| unit.ports.iter().find(|port| port.name == target.port_name))
+                    .and_then(|port| port.stream_id.as_ref())
+                    .and_then(|stream_id| flowsheet.streams.get(stream_id))
+                    .map(diagnostic_stream_snapshot_from_model);
+                StudioGuiFailureDiagnosticPortSnapshot {
+                    unit_id: target.unit_id.as_str().to_string(),
+                    port_name: target.port_name.clone(),
+                    stream,
+                }
+            })
+            .collect(),
+    })
+}
+
+fn diagnostic_stream_snapshot_from_model(
+    stream: &rf_model::MaterialStreamState,
+) -> StudioGuiDiagnosticStreamSnapshot {
+    StudioGuiDiagnosticStreamSnapshot {
+        stream_id: stream.id.as_str().to_string(),
+        temperature_k: stream.temperature_k,
+        pressure_pa: stream.pressure_pa,
+        total_molar_flow_mol_s: stream.total_molar_flow_mol_s,
+        overall_mole_fractions: stream
+            .overall_mole_fractions
+            .iter()
+            .map(|(component_id, fraction)| (component_id.as_str().to_string(), *fraction))
+            .collect(),
+    }
 }
 
 fn active_inspector_detail_from_controller(
@@ -778,8 +919,16 @@ fn stream_property_notices(
                 message: "Overall mole fraction sum must be positive and finite before it can be normalized.".to_string(),
             });
         } else if (sum - 1.0).abs() > 1e-9 {
+            let status_label = if fields
+                .iter()
+                .any(|field| field.key.contains(":overall_mole_fraction:") && field.is_dirty)
+            {
+                "Draft"
+            } else {
+                "Unnormalized"
+            };
             notices.push(crate::StudioGuiInspectorPropertyNoticeSnapshot {
-                status_label: "Draft",
+                status_label,
                 message: format!(
                     "Overall mole fraction sum is {sum:.6}, not 1.000000. Use Normalize composition or adjust the draft values explicitly; no automatic compensation is applied."
                 ),
@@ -929,8 +1078,10 @@ fn stream_property_composition_summary(
         .map(|(component_id, value)| format!("{component_id}={:.6}", value / sum))
         .collect::<Vec<_>>()
         .join(", ");
-    let status_label = if has_dirty_composition || (sum - 1.0).abs() > 1e-9 {
+    let status_label = if has_dirty_composition {
         "Draft"
+    } else if (sum - 1.0).abs() > 1e-9 {
+        "Unnormalized"
     } else {
         "Synced"
     };
@@ -963,5 +1114,25 @@ fn workspace_document_snapshot_from_controller(
         unit_count: document.flowsheet.units.len(),
         stream_count: document.flowsheet.streams.len(),
         snapshot_history_count: controller.snapshot_history_count(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn canvas_units_default_to_material_process_order_for_heater_flash_example() {
+        let project = rf_store::parse_project_file_json(include_str!(
+            "../../../../examples/flowsheets/feed-heater-flash-binary-hydrocarbon.rfproj.json"
+        ))
+        .expect("expected example project parse");
+
+        let unit_order = canvas_units_in_layout_order(&project.document.flowsheet)
+            .into_iter()
+            .map(|unit| unit.id.as_str().to_string())
+            .collect::<Vec<_>>();
+
+        assert_eq!(unit_order, ["feed-1", "heater-1", "flash-1"]);
     }
 }

@@ -1,0 +1,39 @@
+{
+  "name": "synthetic binary vapor-only case at 100 kPa and dew-temperature - 0.001 K",
+  "temperatureK": 214.10038569784498,
+  "pressurePa": 100000.0,
+  "overallMoleFractions": [0.25, 0.75],
+  "components": [
+    {
+      "id": "component-a",
+      "name": "Component A",
+      "antoine": {
+        "a": 6.0262901842235435,
+        "b": 250.0,
+        "c": 0.0
+      },
+      "liquidHeatCapacityJPerMolK": 35.0,
+      "vaporHeatCapacityJPerMolK": 36.5
+    },
+    {
+      "id": "component-b",
+      "name": "Component B",
+      "antoine": {
+        "a": 5.700867783788915,
+        "b": 250.0,
+        "c": 0.0
+      },
+      "liquidHeatCapacityJPerMolK": 52.0,
+      "vaporHeatCapacityJPerMolK": 65.0
+    }
+  ],
+  "expectedSaturationPressurePa": [128845.45113957276, 93055.04804524696],
+  "expectedKValues": [1.2884545113957275, 0.9305504804524697],
+  "expectedPhaseRegion": "twoPhase",
+  "expectedBubblePressurePa": 102002.64881882841,
+  "expectedDewPressurePa": 99999.45461578779,
+  "expectedBubbleTemperatureK": 210.52540329728063,
+  "expectedDewTemperatureK": 214.101385697845,
+  "expectedLiquidMolarEnthalpyJPerMol": -4013.3690829279008,
+  "expectedVaporMolarEnthalpyJPerMol": -4864.37142773722
+}

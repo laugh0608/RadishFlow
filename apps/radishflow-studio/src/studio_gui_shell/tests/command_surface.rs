@@ -242,7 +242,7 @@ fn command_surface_interactions_converge_to_same_window_state_for_canvas_accept_
             .control_state
             .latest_snapshot_id
             .as_deref(),
-        Some("example-feed-heater-flash-rev-1-seq-1")
+        Some(OFFICIAL_HEATER_BINARY_HYDROCARBON_AUTORUN_SNAPSHOT_ID)
     );
     assert_eq!(
         menu_window.runtime.run_panel.view().status_label,
@@ -416,4 +416,121 @@ fn command_palette_can_focus_canvas_object_navigation_command() {
     );
 
     let _ = std::fs::remove_file(project_path);
+}
+
+#[test]
+fn command_palette_can_focus_latest_solve_snapshot_result_command() {
+    let mut app = ready_app_state(&synced_workspace_config());
+    app.dispatch_ui_command("run_panel.run_manual");
+    app.command_palette.open();
+    app.command_palette.query = "result snapshot stream-vapor".to_string();
+    let commands = app.platform_host.snapshot().window_model().commands;
+
+    let palette_items = commands.palette_items(&app.command_palette.query);
+    assert!(
+        palette_items.iter().any(|item| {
+            item.command_id == "inspector.focus_stream:stream-vapor"
+                && item.menu_path_text == "Results > Streams > Vapor Outlet"
+                && item.detail.contains("SolveSnapshot")
+        }),
+        "expected command palette to include latest result stream focus command: {palette_items:?}"
+    );
+
+    let selected_index = palette_items
+        .iter()
+        .position(|item| item.command_id == "inspector.focus_stream:stream-vapor")
+        .expect("expected result stream palette item");
+    app.command_palette.selected_index = selected_index;
+    let consumed = run_with_key_press(egui::Key::Enter, egui::Modifiers::NONE, |ctx| {
+        app.handle_command_palette_keyboard(ctx, &commands)
+    });
+
+    assert!(consumed);
+    assert!(!app.command_palette.open);
+    assert_eq!(
+        app.platform_host
+            .snapshot()
+            .window_model()
+            .runtime
+            .active_inspector_target
+            .as_ref()
+            .map(|target| (target.kind_label, target.target_id.as_str())),
+        Some(("Stream", "stream-vapor"))
+    );
+}
+
+#[test]
+fn results_command_surface_can_focus_latest_solve_snapshot_from_menu_and_list() {
+    let mut menu_app = ready_app_state(&synced_workspace_config());
+    let mut list_app = ready_app_state(&synced_workspace_config());
+    menu_app.dispatch_ui_command("run_panel.run_manual");
+    list_app.dispatch_ui_command("run_panel.run_manual");
+
+    let menu_window = command_surface_window(&menu_app);
+    let stream_menu_command = find_menu_command_by_path(
+        &menu_window.commands.menu_tree,
+        &["Results", "Streams", "Vapor Outlet"],
+    )
+    .cloned()
+    .expect("expected result stream menu command");
+    assert_eq!(
+        stream_menu_command.command_id,
+        "inspector.focus_stream:stream-vapor"
+    );
+    assert!(stream_menu_command.enabled);
+    assert!(stream_menu_command.hover_text.contains("SolveSnapshot"));
+
+    menu_app.dispatch_menu_command(&stream_menu_command);
+    assert_eq!(
+        menu_app
+            .platform_host
+            .snapshot()
+            .window_model()
+            .runtime
+            .active_inspector_target
+            .as_ref()
+            .map(|target| (target.kind_label, target.target_id.as_str())),
+        Some(("Stream", "stream-vapor"))
+    );
+
+    let list_window = command_surface_window(&list_app);
+    let unit_command_id = list_window
+        .commands
+        .command_list_sections
+        .iter()
+        .find(|section| section.title == "Results")
+        .and_then(|section| {
+            section.items.iter().find(|item| {
+                item.command_id == "inspector.focus_unit:flash-1"
+                    && item.menu_path_text == "Results > Units > flash-1"
+                    && item.detail.contains("SolveSnapshot")
+            })
+        })
+        .map(|item| item.command_id.clone())
+        .expect("expected result unit command list item");
+
+    list_app.dispatch_ui_command(unit_command_id);
+    assert_eq!(
+        list_app
+            .platform_host
+            .snapshot()
+            .window_model()
+            .runtime
+            .active_inspector_target
+            .as_ref()
+            .map(|target| (target.kind_label, target.target_id.as_str())),
+        Some(("Unit", "flash-1"))
+    );
+}
+
+fn find_menu_command_by_path<'a>(
+    nodes: &'a [StudioGuiCommandMenuNode],
+    path: &[&str],
+) -> Option<&'a StudioGuiCommandMenuCommandModel> {
+    let (label, remaining) = path.split_first()?;
+    let node = nodes.iter().find(|node| node.label == *label)?;
+    if remaining.is_empty() {
+        return node.command.as_ref();
+    }
+    find_menu_command_by_path(&node.children, remaining)
 }
