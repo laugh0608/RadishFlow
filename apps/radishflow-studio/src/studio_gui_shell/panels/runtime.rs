@@ -1631,7 +1631,6 @@ impl ReadyAppState {
                     self.result_inspector
                         .select_stream(&inspector.snapshot_id, option.stream_id.clone());
                 }
-                let _ = self.render_small_command_action(ui, &option.focus_action);
             }
         });
         if inspector.has_stale_selection {
@@ -1664,7 +1663,6 @@ impl ReadyAppState {
                             self.result_inspector
                                 .select_unit(&inspector.snapshot_id, option.unit_id.clone());
                         }
-                        let _ = self.render_small_command_action(ui, &option.focus_action);
                     }
                 });
                 if inspector.has_stale_unit_selection {
@@ -1737,7 +1735,6 @@ impl ReadyAppState {
                                 option.stream_id.clone(),
                             );
                         }
-                        let _ = self.render_small_command_action(ui, &option.focus_action);
                     }
                 });
                 if inspector.has_stale_comparison {
@@ -2072,12 +2069,25 @@ impl ReadyAppState {
         ui: &mut egui::Ui,
         action: &radishflow_studio::StudioGuiWindowCommandActionModel,
     ) -> egui::Response {
+        let label = self.localized_command_action_label(action);
         let response = ui
-            .small_button(&action.label)
+            .small_button(label.as_ref())
             .on_hover_text(&action.hover_text);
         if response.clicked() {
             self.dispatch_ui_command(&action.command_id);
         }
         response
+    }
+
+    fn localized_command_action_label<'a>(
+        &'a self,
+        action: &'a radishflow_studio::StudioGuiWindowCommandActionModel,
+    ) -> std::borrow::Cow<'a, str> {
+        match self.locale {
+            StudioShellLocale::ZhCn if action.label == "Inspect" => {
+                std::borrow::Cow::Borrowed(self.locale.text(ShellText::InspectObject))
+            }
+            _ => std::borrow::Cow::Borrowed(action.label.as_str()),
+        }
     }
 }

@@ -228,6 +228,7 @@ impl StudioShellLocale {
             "inlet" => Cow::Borrowed("入口"),
             "liquid" => Cow::Borrowed("液相"),
             "vapor" => Cow::Borrowed("气相"),
+            "overall" => Cow::Borrowed("总体"),
             "feed" => Cow::Borrowed("进料"),
             "flash_drum" => Cow::Borrowed("闪蒸罐"),
             "heater" => Cow::Borrowed("加热器"),

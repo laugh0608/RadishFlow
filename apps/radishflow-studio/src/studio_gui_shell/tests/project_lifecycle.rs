@@ -26,7 +26,7 @@ fn open_example_project_rebuilds_runtime_for_selected_sample() {
         1
     );
 
-    app.open_example_project(target_project);
+    app.open_example_project(target_project.clone());
     let window = app.platform_host.snapshot().window_model();
 
     assert_eq!(
@@ -49,15 +49,41 @@ fn open_example_project_rebuilds_runtime_for_selected_sample() {
     );
 
     app.dispatch_ui_command("run_panel.run_manual");
+    let solved_window = app.platform_host.snapshot().window_model();
     assert_eq!(
-        app.platform_host
-            .snapshot()
-            .window_model()
-            .runtime
-            .control_state
-            .run_status,
+        solved_window.runtime.control_state.run_status,
         rf_ui::RunStatus::Converged
     );
+    assert!(solved_window.runtime.latest_solve_snapshot.is_some());
+    assert_eq!(app.right_sidebar_tab, StudioShellRightSidebarTab::Results);
+    assert_eq!(
+        app.bottom_drawer_tab,
+        StudioShellBottomDrawerTab::ResultsTable
+    );
+
+    app.screen = StudioShellScreen::Home;
+    app.open_recent_project(target_project);
+    let reopened_window = app.platform_host.snapshot().window_model();
+    assert_eq!(app.screen, StudioShellScreen::Workbench);
+    assert_eq!(
+        reopened_window.runtime.workspace_document.title,
+        "Feed Valve Flash Binary Hydrocarbon Example"
+    );
+    assert_eq!(
+        reopened_window
+            .runtime
+            .workspace_document
+            .snapshot_history_count,
+        0
+    );
+
+    app.dispatch_ui_command("run_panel.run_manual");
+    let rerun_window = app.platform_host.snapshot().window_model();
+    assert_eq!(
+        rerun_window.runtime.control_state.run_status,
+        rf_ui::RunStatus::Converged
+    );
+    assert!(rerun_window.runtime.latest_solve_snapshot.is_some());
 }
 
 #[test]

@@ -861,14 +861,14 @@ impl ReadyAppState {
         egui::Grid::new(format!("bottom-results-table:{}", snapshot.snapshot_id))
             .num_columns(6)
             .striped(true)
-            .min_col_width(92.0)
+            .min_col_width(78.0)
             .show(ui, |ui| {
-                ui.strong("Stream");
+                ui.strong(result_table_header(self.locale, ResultTableHeader::Stream));
                 ui.strong("T (K)");
                 ui.strong("P (Pa)");
                 ui.strong("F (mol/s)");
                 ui.strong("H (J/mol)");
-                ui.strong("Phase");
+                ui.strong(result_table_header(self.locale, ResultTableHeader::Phase));
                 ui.end_row();
                 for stream in &snapshot.streams {
                     let response = ui
@@ -888,7 +888,8 @@ impl ReadyAppState {
                             .map(|value| format!("{value:.3}"))
                             .unwrap_or_else(|| "-".to_string()),
                     );
-                    ui.label(&stream.phase_text);
+                    ui.label(result_table_phase_summary(self.locale, stream))
+                        .on_hover_text(&stream.phase_text);
                     ui.end_row();
                 }
             });
@@ -1281,4 +1282,59 @@ fn window_command_toolbar_item<'a>(
         .iter()
         .flat_map(|section| section.items.iter())
         .find(|item| item.command_id == command_id)
+}
+
+#[derive(Debug, Clone, Copy)]
+enum ResultTableHeader {
+    Stream,
+    Phase,
+}
+
+fn result_table_header(locale: StudioShellLocale, header: ResultTableHeader) -> &'static str {
+    match locale {
+        StudioShellLocale::En => match header {
+            ResultTableHeader::Stream => "Stream",
+            ResultTableHeader::Phase => "Phase",
+        },
+        StudioShellLocale::ZhCn => match header {
+            ResultTableHeader::Stream => "流股",
+            ResultTableHeader::Phase => "相态",
+        },
+    }
+}
+
+fn result_table_phase_summary(
+    locale: StudioShellLocale,
+    stream: &radishflow_studio::StudioGuiWindowStreamResultModel,
+) -> String {
+    if stream.phase_rows.is_empty() {
+        return locale.text(ShellText::NoPhases).to_string();
+    }
+
+    let visible_rows = stream
+        .phase_rows
+        .iter()
+        .filter(|row| row.label != "overall")
+        .collect::<Vec<_>>();
+    let visible_rows = if visible_rows.is_empty() {
+        stream.phase_rows.iter().collect::<Vec<_>>()
+    } else {
+        visible_rows
+    };
+    let hidden_count = visible_rows.len().saturating_sub(2);
+    let mut parts = visible_rows
+        .iter()
+        .take(2)
+        .map(|row| {
+            format!(
+                "{} {:.3}",
+                locale.runtime_label(&row.label),
+                row.phase_fraction
+            )
+        })
+        .collect::<Vec<_>>();
+    if hidden_count > 0 {
+        parts.push(format!("+{hidden_count}"));
+    }
+    parts.join(" / ")
 }

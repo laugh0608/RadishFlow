@@ -546,10 +546,9 @@ fn assert_rendered_comparison_surface(
         texts
     );
     assert_eq!(
-        rendered_text_occurrences(texts, &comparison.base_stream_focus_action.label),
+        rendered_text_occurrences(texts, "检查"),
         2,
-        "expected {surface} to render two comparison focus buttons labeled `{}`, rendered texts: {:?}",
-        comparison.base_stream_focus_action.label,
+        "expected {surface} to render two localized comparison focus buttons, rendered texts: {:?}",
         texts
     );
 
@@ -602,6 +601,33 @@ fn assert_rendered_comparison_surface(
             }
         }
     }
+}
+
+#[test]
+fn runtime_result_inspector_stream_selector_omits_repeated_inspect_buttons() {
+    let mut app = ready_app_state(&synced_workspace_config());
+    app.dispatch_ui_command("run_panel.run_manual");
+    let snapshot = app
+        .platform_host
+        .snapshot()
+        .window_model()
+        .runtime
+        .latest_solve_snapshot
+        .expect("expected latest solve snapshot");
+
+    let texts = render_result_inspector_texts(&mut app, &snapshot, "stream-feed");
+
+    assert!(
+        texts.iter().any(|text| text.contains("选择流股")),
+        "expected result inspector to render stream selector, rendered texts: {:?}",
+        texts
+    );
+    assert_eq!(
+        rendered_text_occurrences(&texts, "Inspect"),
+        0,
+        "expected compact stream selector to remove repeated English Inspect buttons, rendered texts: {:?}",
+        texts
+    );
 }
 
 fn assert_rendered_diagnostic_target_actions_surface(

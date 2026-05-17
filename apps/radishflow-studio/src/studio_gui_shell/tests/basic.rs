@@ -78,6 +78,31 @@ fn render_alpha_workbench_texts(app: &mut ReadyAppState) -> Vec<String> {
     texts
 }
 
+fn render_bottom_drawer_texts(app: &mut ReadyAppState) -> Vec<String> {
+    let snapshot = app.platform_host.snapshot();
+    let window = snapshot.window_model();
+    let ctx = egui::Context::default();
+    let output = ctx.run(
+        egui::RawInput {
+            screen_rect: Some(egui::Rect::from_min_size(
+                egui::Pos2::ZERO,
+                egui::vec2(1280.0, 360.0),
+            )),
+            focused: true,
+            ..Default::default()
+        },
+        |ctx| {
+            app.render_bottom_drawer(ctx, &window);
+        },
+    );
+
+    let mut texts = Vec::new();
+    for clipped_shape in &output.shapes {
+        collect_shape_texts(&clipped_shape.shape, &mut texts);
+    }
+    texts
+}
+
 fn render_home_dashboard_texts(app: &mut ReadyAppState) -> Vec<String> {
     let snapshot = app.platform_host.snapshot();
     let window = snapshot.window_model();
@@ -572,6 +597,38 @@ fn result_inspector_state_tracks_selected_stream_per_snapshot() {
             .map(|stream| stream.stream_id.as_str())
     );
     assert_eq!(app.result_inspector.comparison_stream_id, None);
+}
+
+#[test]
+fn bottom_results_table_uses_localized_compact_phase_column() {
+    let mut app = ready_app_state(&synced_workspace_config());
+    app.dispatch_ui_command("run_panel.run_manual");
+    app.bottom_drawer_tab = StudioShellBottomDrawerTab::ResultsTable;
+
+    let texts = render_bottom_drawer_texts(&mut app);
+
+    assert!(
+        texts.iter().any(|text| text == "流股"),
+        "expected localized stream table header, rendered texts: {:?}",
+        texts
+    );
+    assert!(
+        texts.iter().any(|text| text == "相态"),
+        "expected localized phase table header, rendered texts: {:?}",
+        texts
+    );
+    assert!(
+        texts
+            .iter()
+            .any(|text| text.contains("液相") || text.contains("气相")),
+        "expected compact localized phase summary in result table, rendered texts: {:?}",
+        texts
+    );
+    assert!(
+        !texts.iter().any(|text| text.contains("phases:")),
+        "expected result table to avoid long raw phase text in cells, rendered texts: {:?}",
+        texts
+    );
 }
 
 #[test]
