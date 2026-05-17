@@ -412,6 +412,49 @@ fn ready_failed_app_state() -> ReadyAppState {
     app
 }
 
+#[test]
+fn run_command_surfaces_results_when_solve_succeeds() {
+    let timestamp = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("expected current timestamp")
+        .as_nanos();
+    let project_path = std::env::temp_dir().join(format!(
+        "radishflow-studio-shell-successful-run-tabs-{timestamp}.rfproj.json"
+    ));
+    write_project_file(
+        &project_path,
+        &feed_heater_flash_binary_hydrocarbon_project(),
+    )
+    .expect("expected project fixture write");
+    let config = StudioRuntimeConfig {
+        project_path: project_path.clone(),
+        ..synced_workspace_config()
+    };
+    let mut app = ready_app_state(&config);
+
+    app.right_sidebar_tab = StudioShellRightSidebarTab::Package;
+    app.bottom_drawer_tab = StudioShellBottomDrawerTab::Messages;
+    app.dispatch_ui_command("run_panel.run_manual");
+
+    let window = app.platform_host.snapshot().window_model();
+    assert!(window.runtime.latest_solve_snapshot.is_some());
+    assert_eq!(app.right_sidebar_tab, StudioShellRightSidebarTab::Results);
+    assert_eq!(
+        app.bottom_drawer_tab,
+        StudioShellBottomDrawerTab::ResultsTable
+    );
+
+    let _ = fs::remove_file(project_path);
+}
+
+#[test]
+fn run_command_surfaces_messages_when_solve_fails() {
+    let app = ready_failed_app_state();
+
+    assert_eq!(app.right_sidebar_tab, StudioShellRightSidebarTab::Run);
+    assert_eq!(app.bottom_drawer_tab, StudioShellBottomDrawerTab::Messages);
+}
+
 fn ready_app_state(config: &StudioRuntimeConfig) -> ReadyAppState {
     ReadyAppState::from_config(config, test_preferences_path("default"))
         .expect("expected app state")

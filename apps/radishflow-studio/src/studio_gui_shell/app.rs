@@ -535,6 +535,7 @@ impl ReadyAppState {
                     &command_id,
                     canvas_navigation.as_ref(),
                 );
+                self.update_workbench_tabs_after_command(&command_id, &dispatch.dispatch.window);
                 self.record_canvas_object_navigation_feedback(
                     canvas_navigation.as_ref(),
                     viewport_requested,
@@ -553,6 +554,30 @@ impl ReadyAppState {
                     Some(message.as_str()),
                 );
             }
+        }
+    }
+
+    fn update_workbench_tabs_after_command(
+        &mut self,
+        command_id: &str,
+        window: &StudioGuiWindowModel,
+    ) {
+        if !matches!(
+            command_id,
+            "run_panel.run_manual" | "run_panel.resume_workspace" | "run_panel.recover_failure"
+        ) {
+            return;
+        }
+
+        if window.runtime.latest_failure.is_some() {
+            self.right_sidebar_tab = StudioShellRightSidebarTab::Run;
+            self.bottom_drawer_tab = StudioShellBottomDrawerTab::Messages;
+        } else if window.runtime.latest_solve_snapshot.is_some() {
+            self.right_sidebar_tab = StudioShellRightSidebarTab::Results;
+            self.bottom_drawer_tab = StudioShellBottomDrawerTab::ResultsTable;
+        } else {
+            self.right_sidebar_tab = StudioShellRightSidebarTab::Run;
+            self.bottom_drawer_tab = StudioShellBottomDrawerTab::RunLog;
         }
     }
 

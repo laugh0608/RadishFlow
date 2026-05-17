@@ -555,6 +555,7 @@ impl ReadyAppState {
                 paint_canvas_viewport_stream_focus(&painter, geometry);
             }
             paint_canvas_stream_line(&painter, geometry, stream);
+            paint_canvas_stream_label(&painter, rect, geometry, stream);
             paint_canvas_stream_status_badges(&painter, geometry, &stream.status_badges);
             let stream_response = ui
                 .interact(
@@ -570,6 +571,7 @@ impl ReadyAppState {
         }
 
         let mut clicked_unit = false;
+        let mut clicked_port_command = None;
         let mut hovered_port_stream_id = None;
         let mut hovered_port_callout = None;
         for unit in unit_blocks {
@@ -608,12 +610,24 @@ impl ReadyAppState {
                             "canvas-port:{}:{}",
                             unit.unit_id, port.name
                         )),
-                        egui::Sense::hover(),
+                        if port.stream_command_id.is_some() {
+                            egui::Sense::click()
+                        } else {
+                            egui::Sense::hover()
+                        },
                     )
-                    .on_hover_text(&port.hover_text);
+                    .on_hover_text(&port.hover_text)
+                    .on_hover_cursor(if port.stream_command_id.is_some() {
+                        egui::CursorIcon::PointingHand
+                    } else {
+                        egui::CursorIcon::Default
+                    });
                 if port_response.hovered() {
                     hovered_port_stream_id = port.stream_id.clone();
                     hovered_port_callout = Some((port_anchor, port));
+                }
+                if port_response.clicked() {
+                    clicked_port_command = port.stream_command_id.clone();
                 }
             }
             let unit_response = ui
@@ -624,7 +638,7 @@ impl ReadyAppState {
                 )
                 .on_hover_text(&unit.hover_text)
                 .on_hover_cursor(egui::CursorIcon::PointingHand);
-            if unit_response.clicked() {
+            if unit_response.clicked() && clicked_port_command.is_none() {
                 clicked_unit = true;
                 self.dispatch_ui_command(&unit.command_id);
             }
@@ -645,8 +659,14 @@ impl ReadyAppState {
             paint_canvas_port_hover_callout(&painter, rect, anchor, port);
         }
 
+        let clicked_port = clicked_port_command.is_some();
+        if let Some(command_id) = clicked_port_command {
+            self.right_sidebar_tab = StudioShellRightSidebarTab::Inspector;
+            self.dispatch_ui_command(command_id);
+        }
+
         let clicked_stream = clicked_stream_command.is_some();
-        if !clicked_unit {
+        if !clicked_unit && !clicked_port {
             if let Some(command_id) = clicked_stream_command {
                 self.dispatch_ui_command(command_id);
             }
@@ -941,6 +961,13 @@ fn paint_canvas_stream_line(
             egui::Stroke::new(6.0, egui::Color32::from_rgba_unmultiplied(48, 112, 188, 42)),
         );
     }
+    painter.line_segment(
+        [geometry.start, geometry.end],
+        egui::Stroke::new(
+            4.4,
+            egui::Color32::from_rgba_unmultiplied(255, 255, 255, 210),
+        ),
+    );
     painter.line_segment([geometry.start, geometry.end], stroke);
     painter.circle_filled(geometry.start, 3.5, color);
     paint_canvas_stream_arrow(painter, geometry, color);
@@ -969,6 +996,66 @@ fn paint_canvas_stream_status_badges(
 
     let anchor = geometry.start.lerp(geometry.end, 0.5) + egui::vec2(0.0, -16.0);
     paint_canvas_status_badges(painter, anchor, badges);
+}
+
+fn paint_canvas_stream_label(
+    painter: &egui::Painter,
+    canvas_rect: egui::Rect,
+    geometry: CanvasStreamLineGeometry,
+    stream: &radishflow_studio::StudioGuiCanvasStreamLineViewModel,
+) {
+    let label = if stream.name == stream.stream_id {
+        stream.name.clone()
+    } else {
+        format!("{} ({})", stream.name, stream.stream_id)
+    };
+    let label = truncate_canvas_label(&label, 26);
+    let delta = geometry.end - geometry.start;
+    let normal = if delta.length() > 1.0 {
+        let direction = delta.normalized();
+        egui::vec2(-direction.y, direction.x)
+    } else {
+        egui::vec2(0.0, -1.0)
+    };
+    let center = geometry.start.lerp(geometry.end, 0.5) + normal * 14.0;
+    let width = (26.0 + label.chars().count() as f32 * 6.2).clamp(54.0, 188.0);
+    let size = egui::vec2(width, 20.0);
+    let mut min = center - size * 0.5;
+    min.x = min
+        .x
+        .clamp(canvas_rect.left() + 8.0, canvas_rect.right() - size.x - 8.0);
+    min.y = min
+        .y
+        .clamp(canvas_rect.top() + 8.0, canvas_rect.bottom() - size.y - 8.0);
+    let rect = egui::Rect::from_min_size(min, size);
+    let color = if stream.is_active_inspector_target {
+        egui::Color32::from_rgb(32, 102, 176)
+    } else {
+        egui::Color32::from_rgb(42, 142, 122)
+    };
+
+    painter.rect_filled(
+        rect.translate(egui::vec2(0.0, 1.5)),
+        4.0,
+        egui::Color32::from_rgba_unmultiplied(30, 42, 54, 24),
+    );
+    painter.rect_filled(
+        rect,
+        4.0,
+        egui::Color32::from_rgba_unmultiplied(255, 255, 255, 238),
+    );
+    paint_canvas_rect_border(
+        painter,
+        rect,
+        egui::Stroke::new(1.0, color.gamma_multiply(0.7)),
+    );
+    painter.text(
+        rect.center(),
+        egui::Align2::CENTER_CENTER,
+        label,
+        egui::FontId::proportional(10.5),
+        color,
+    );
 }
 
 fn paint_canvas_stream_arrow(
@@ -1012,7 +1099,7 @@ fn canvas_unit_block_world_rect(
     layout_slot: usize,
     layout_position: Option<rf_ui::CanvasPoint>,
 ) -> egui::Rect {
-    let block_size = egui::vec2(156.0, 72.0);
+    let block_size = egui::vec2(168.0, 82.0);
     if let Some(position) = layout_position {
         let min = egui::pos2(position.x as f32, position.y as f32);
         return egui::Rect::from_min_size(min, block_size);
@@ -1130,7 +1217,7 @@ fn paint_canvas_unit_block(
         egui::pos2(text_left, text_top + 43.0),
         egui::Align2::LEFT_TOP,
         format!(
-            "{} | ports {}/{}",
+            "{} · {}/{}",
             unit.unit_id, unit.connected_port_count, unit.port_count
         ),
         egui::FontId::proportional(11.0),
