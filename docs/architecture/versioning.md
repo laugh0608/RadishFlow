@@ -1,6 +1,6 @@
 # Versioning And Release
 
-更新时间：2026-05-16
+更新时间：2026-05-18
 
 ## 目标
 
@@ -211,7 +211,7 @@ pwsh ./scripts/package.ps1 -Version v26.5.1-dev -Clean
 - 当前能力边界和明确非目标
 - 已知环境前提，例如当前便携包优先面向 Windows
 
-当前版本化说明放在 `docs/releases/<version-or-tag>.md`。`scripts/package.ps1` 会在对应文件存在时把它复制进便携包，并在 `PACKAGE-MANIFEST.txt` 中记录 `releaseNotes` 路径；若对应文件不存在，则记录为 `not-included`。`v26.5.1-dev` 当前只作为内部便携包版本号保留，暂缓创建 Git tag。
+当前版本化说明放在 `docs/releases/<version-or-tag>.md`。`scripts/package.ps1` 会在对应文件存在时把它复制进便携包，并在 `PACKAGE-MANIFEST.txt` 中记录 `releaseNotes` 路径；若对应文件不存在，则记录为 `not-included`。`v26.5.1-dev` 当前已作为内部验收 tag 创建并推送，tag 指向 `7479e82`；它仍只代表内部 `-dev` 验收轨道，不代表正式 demo、安装器或对外发布候选。
 
 ## 当前后续事项
 

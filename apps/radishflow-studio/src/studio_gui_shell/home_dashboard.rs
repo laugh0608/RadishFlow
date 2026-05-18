@@ -735,19 +735,20 @@ fn example_case_title<'a>(
 ) -> std::borrow::Cow<'a, str> {
     match locale {
         StudioShellLocale::En => match id {
-            "feed-heater-flash" => std::borrow::Cow::Borrowed("Heater / Cooler / Valve"),
+            "feed-heater-flash" => std::borrow::Cow::Borrowed("Heater"),
             "feed-valve-flash" => std::borrow::Cow::Borrowed("Valve"),
             "feed-cooler-flash" => std::borrow::Cow::Borrowed("Cooler"),
             "feed-mixer-flash" => std::borrow::Cow::Borrowed("Mixer"),
+            "feed-mixer-heater-flash" => std::borrow::Cow::Borrowed("Synthetic mixer + heater"),
             "water-ethanol-heater-flash" => std::borrow::Cow::Borrowed("PME Sample"),
             _ => std::borrow::Cow::Borrowed(fallback),
         },
         StudioShellLocale::ZhCn => match id {
-            "feed-heater-flash" => std::borrow::Cow::Borrowed("加热 / 冷却 / 阀门"),
+            "feed-heater-flash" => std::borrow::Cow::Borrowed("加热器"),
             "feed-valve-flash" => std::borrow::Cow::Borrowed("阀门"),
             "feed-cooler-flash" => std::borrow::Cow::Borrowed("冷却器"),
             "feed-mixer-flash" => std::borrow::Cow::Borrowed("混合器"),
-            "feed-mixer-heater-flash" => std::borrow::Cow::Borrowed("混合后加热"),
+            "feed-mixer-heater-flash" => std::borrow::Cow::Borrowed("Synthetic 混合加热"),
             "water-ethanol-heater-flash" => std::borrow::Cow::Borrowed("PME 样例"),
             _ => std::borrow::Cow::Borrowed(fallback),
         },
@@ -799,12 +800,12 @@ fn example_case_components(locale: StudioShellLocale, id: &str) -> &'static str 
     match locale {
         StudioShellLocale::En => match id {
             "water-ethanol-heater-flash" => "Water, Ethanol",
-            "feed-mixer-heater-flash" => "Methane, Ethane, Nitrogen",
+            "feed-mixer-heater-flash" => "Component A, Component B",
             _ => "Methane, Ethane",
         },
         StudioShellLocale::ZhCn => match id {
             "water-ethanol-heater-flash" => "水, 乙醇",
-            "feed-mixer-heater-flash" => "甲烷, 乙烷, 氮气",
+            "feed-mixer-heater-flash" => "Component A, Component B",
             _ => "甲烷, 乙烷",
         },
     }
@@ -812,7 +813,8 @@ fn example_case_components(locale: StudioShellLocale, id: &str) -> &'static str 
 
 fn example_case_property_package(id: &str) -> &'static str {
     match id {
-        "water-ethanol-heater-flash" => "NRTL / PME sample",
+        "feed-mixer-heater-flash" => "binary-hydrocarbon-synthetic-demo-v1",
+        "water-ethanol-heater-flash" => "water-ethanol-lite-v1 / PME sample",
         _ => "binary-hydrocarbon-lite-v1",
     }
 }

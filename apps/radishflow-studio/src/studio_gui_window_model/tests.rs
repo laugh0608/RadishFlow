@@ -1086,7 +1086,7 @@ fn studio_gui_window_model_groups_snapshot_into_window_regions() {
         window.runtime.run_panel.view().primary_action.label,
         "Resume"
     );
-    assert_eq!(window.runtime.example_projects.len(), 6);
+    assert_eq!(window.runtime.example_projects.len(), 4);
     assert_eq!(
         window
             .runtime

@@ -101,8 +101,8 @@
 
 | 文档 | 当前状态 | 通过标准 | 记录 |
 | --- | --- | --- | --- |
-| `docs/guides/studio-quick-start.md` | Pass | 能说明启动方式、当前能力和首次体验入口 | 2026-05-16 已同步默认 Home Dashboard、中文主路径、右侧 `检查器 / 结果 / 运行 / 物性包`、底部 drawer 和关闭口径；明确当前是开发态启动，不暗示正式安装包 |
-| `docs/guides/run-first-flowsheet.md` | Pass | 能指导用户打开示例、运行、审阅、保存重开 | 2026-05-17 已同步从首页 `打开示例` 进入、进入工作台后用顶部 `运行 / 保存 / 另存为...` 和右侧 / 底部结果入口复现路径 |
+| `docs/guides/studio-quick-start.md` | Pass | 能说明启动方式、当前能力和首次体验入口 | 2026-05-18 已同步 Windows 内部便携包启动入口、包内示例发现、`v26.5.1-dev` manifest 口径，以及默认示例选择器只暴露 official hydrocarbon demo-safe 路径；仍明确当前不是安装器或对外发布包 |
+| `docs/guides/run-first-flowsheet.md` | Pass | 能指导用户打开示例、运行、审阅、保存重开 | 2026-05-18 已同步包内 `radishflow-studio.exe` 启动和开发态 `cargo run` 两条入口；继续从首页 `打开示例`、顶部 `运行 / 保存 / 另存为...` 和右侧 / 底部结果入口复现路径 |
 | `docs/guides/review-solve-results.md` | Pass | 能解释 source / intermediate / step / outlet 结果审阅顺序 | 2026-05-13 已复查 |
 | `docs/capeopen/pme-validation.md` | Pass | 能说明 PME 验证门控、dry-run、register/unregister 和记录模板 | 2026-05-13 已复查；外部 PME 与 registry 操作仍需人工门控 |
 | 发布包形态说明 | Pass | 能说明当前仍是开发态或压缩包式交付边界，不暗示已存在完整安装器或首版 demo | 2026-05-16 已在 `docs/architecture/versioning.md` 补齐 MVP α 便携包操作清单；`docs/releases/v26.5.1-dev.md` 记录内部包边界与 `v26.5.1-dev` 内部验收 tag；`scripts/package.ps1` 只生成 Windows staging / zip，不执行安装、COM 注册、PME 或第三方模型加载 |
@@ -157,9 +157,10 @@
 | 便携包刷新 | Pass | `pwsh ./scripts/package.ps1 -Version v26.5.1-dev -Clean` 已在真实环境通过，生成 staging 目录与 `.zip` |
 | 包内启动 smoke | Pass | 人工从 `artifacts/packages/RadishFlow-v26.5.1-dev-windows-x64/` 启动 `radishflow-studio.exe` 复核通过；包内示例发现、打开示例、运行、结果审阅等主路径未发现 blocker |
 | 内部验收 tag | Pass | tag 前最终仓库级验证通过；包 manifest 记录 `gitCommit=7479e82`、`gitDirty=false`；`v26.5.1-dev` 已创建并推送到远端，仍只代表内部 `-dev` 验收轨道 |
+| Demo 前产品可用性评审 | Pass | 已复核 Home / Workbench 高频路径、术语一致性、结果审阅体验和 quick start / 便携包口径；默认示例选择器收窄到四条 official hydrocarbon 演示路径，避免 synthetic / PME 验证样例作为高频“就绪示例”暴露；`Feed Heater Flash` 首页标题改回单一加热器语义；未扩自由连线、自动布线、完整拖拽布局、视口持久化、完整结果报表或对外发布自动化 |
 
 ## 下一步
 
 1. 将 `v26.5.1-dev` tag 与对应便携包作为内部验收资产归档。
-2. 继续复核 Home / Workbench 残余中英混合文案和按钮语义；quick start 仍不得暗示已存在完整安装器或对外 demo。
+2. 继续复核 Home / Workbench 残余中英混合文案和按钮语义；quick start 只能描述内部便携包 / 开发态入口，不得暗示已存在完整安装器或对外 demo。
 3. 若继续发现 UI blocker，只做 demo 可用性收口，不扩自动布线、自由连线、完整拖拽布局、视口持久化或完整结果报表。

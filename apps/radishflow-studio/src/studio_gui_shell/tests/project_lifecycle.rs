@@ -96,8 +96,8 @@ fn open_project_from_input_rebuilds_runtime_and_records_feedback() {
         .runtime
         .example_projects
         .iter()
-        .find(|example| example.id == "water-ethanol-heater-flash")
-        .expect("expected water ethanol example")
+        .find(|example| example.id == "feed-cooler-flash")
+        .expect("expected feed cooler example")
         .project_path
         .clone();
 
@@ -107,7 +107,7 @@ fn open_project_from_input_rebuilds_runtime_and_records_feedback() {
     let window = app.platform_host.snapshot().window_model();
     assert_eq!(
         window.runtime.workspace_document.title,
-        "Feed Heater Flash Water Ethanol Example"
+        "Feed Cooler Flash Binary Hydrocarbon Example"
     );
     assert_eq!(
         app.project_open.notice.as_ref().map(|notice| notice.level),
@@ -712,20 +712,20 @@ fn successful_project_opens_keep_recent_projects_deduped_and_ordered() {
         .expect("expected feed valve example")
         .project_path
         .clone();
-    let ethanol_project = examples
+    let cooler_project = examples
         .iter()
-        .find(|example| example.id == "water-ethanol-heater-flash")
-        .expect("expected water ethanol example")
+        .find(|example| example.id == "feed-cooler-flash")
+        .expect("expected feed cooler example")
         .project_path
         .clone();
 
     app.open_project(valve_project.clone(), "project");
-    app.open_project(ethanol_project.clone(), "project");
+    app.open_project(cooler_project.clone(), "project");
     app.open_recent_project(valve_project.clone());
 
     assert_eq!(
         app.project_open.recent_projects,
-        vec![valve_project, ethanol_project]
+        vec![valve_project, cooler_project]
     );
     assert_eq!(
         app.platform_host
@@ -771,22 +771,22 @@ fn successful_project_opens_persist_recent_projects_for_next_shell_start() {
         .expect("expected feed valve example")
         .project_path
         .clone();
-    let ethanol_project = examples
+    let cooler_project = examples
         .iter()
-        .find(|example| example.id == "water-ethanol-heater-flash")
-        .expect("expected water ethanol example")
+        .find(|example| example.id == "feed-cooler-flash")
+        .expect("expected feed cooler example")
         .project_path
         .clone();
 
     app.open_project(valve_project.clone(), "project");
-    app.open_project(ethanol_project.clone(), "project");
+    app.open_project(cooler_project.clone(), "project");
 
     let restarted =
         ReadyAppState::from_config(&config, preferences_path.clone()).expect("expected restart");
 
     assert_eq!(
         restarted.project_open.recent_projects,
-        vec![ethanol_project, valve_project]
+        vec![cooler_project, valve_project]
     );
 
     let _ = std::fs::remove_file(preferences_path);

@@ -270,7 +270,7 @@ $manifest | Set-Content -LiteralPath (Join-Path $stagingDir 'PACKAGE-MANIFEST.tx
 $packageReadme = @'
 # RadishFlow MVP Alpha Package
 
-This package is a portable MVP alpha artifact for local review.
+This package is a portable MVP alpha artifact for internal local review. It is not an installer and does not represent a public demo or release candidate.
 
 Start:
 
@@ -278,20 +278,30 @@ Start:
 .\radishflow-studio.exe
 ```
 
+Recommended first path:
+
+- open a bundled official hydrocarbon example from Home
+- run the project
+- review Results and the bottom Results Table
+
 Included:
 
 - RadishFlow Studio executable
-- positive example flowsheets under `examples/flowsheets`
+- flowsheet files under `examples/flowsheets`
 - sample property package payloads under `examples/sample-components`
 - quick start, result review, acceptance, versioning, and license documents
 - release notes under `docs/releases` when a matching version note exists
+
+The Studio Home / Workbench example picker only surfaces the demo-safe official hydrocarbon examples. Additional synthetic or PME validation files may still be present in `examples/flowsheets` for regression and external validation.
 
 Not included:
 
 - installer
 - COM registration
+- Windows Registry writes
 - PME automation
 - third-party CAPE-OPEN model loading
+- free-form connection editing, automatic routing, full drag layout, viewport persistence, or full result reports
 
 Run repository validation before publishing a release tag:
 

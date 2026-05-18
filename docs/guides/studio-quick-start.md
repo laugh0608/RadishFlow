@@ -1,6 +1,6 @@
 # Studio Quick Start
 
-更新时间：2026-05-17
+更新时间：2026-05-18
 
 ## 目的
 
@@ -9,7 +9,7 @@
 它回答的是：
 
 - 当前 Studio 已经能做什么
-- 如何在开发态启动 Studio
+- 如何从内部便携包或开发态启动 Studio
 - 第一次建议打开哪个示例
 - 接下来应该看哪些文档
 
@@ -17,15 +17,15 @@
 
 ## 当前能做什么
 
-截至 2026-05-17，Studio 当前已经具备以下最小闭环：
+截至 2026-05-18，Studio 当前已经具备以下最小闭环：
 
 - 启动后默认进入中文 Home Dashboard，可从 `开始 / 最近项目 / 示例项目 / 环境 / 消息` 分区判断从哪里开始
 - 新建未命名空白项目，并用 MVP 默认 `methane / ethane` 二元体系进入最短建模路径
 - 打开已有 `*.rfproj.json` 项目
 - 通过首页 `新建项目`、`打开项目`、`打开示例项目` 或进入工作台后的顶部主路径切换项目
 - 最近项目和示例项目列表行可选择，也可双击整行打开；文件缺失时只降级对应行状态，不阻断首页
-- 进入 case 后在顶部主路径直接使用 `Home / 打开示例 / 新建空白 / 打开项目... / 运行 / 保存 / 另存为... / 视图`
-- 运行仓库内的最小正向示例 flowsheet
+- 进入项目后在顶部主路径直接使用 `Home / 打开示例 / 新建空白 / 打开项目... / 运行 / 保存 / 另存为... / 视图`
+- 运行仓库内或便携包内的 official hydrocarbon 正向示例 flowsheet
 - 在左侧 `项目 / 示例项目 / 放置`、中央 `Canvas`、右侧 `检查器 / 结果 / 运行 / 物性包` 和底部 `消息 / 运行日志 / 结果表 / 诊断` 中完成当前 MVP α 工作流
 - 在当前 `SolveSnapshot` 内切换 stream-centric / unit-centric / comparison 三类结果审阅面
 - 通过 `检查`、`诊断目标`、结果选择项和命令入口在流股、单元、步骤和当前检查器之间定位同一份结果
@@ -56,6 +56,34 @@ Studio 现在还不是完整产品说明书意义上的“成熟桌面软件”�
 
 ## 启动方式
 
+如果你拿到的是内部便携包，先解压或进入 staging 目录：
+
+```text
+artifacts/packages/RadishFlow-v26.5.1-dev-windows-x64/
+```
+
+然后直接启动包内入口：
+
+```powershell
+.\radishflow-studio.exe
+```
+
+包内示例目录位于 exe 同目录的：
+
+```text
+examples/flowsheets
+```
+
+当前 Studio 会优先从 exe 同目录发现内置示例；如果不是从便携包启动，则回退到仓库内 `examples/flowsheets`。
+
+说明：
+
+- 这是 Windows 内部便携包 / staging 形态，不是安装器
+- 不会执行 COM 注册、PME 自动化、Windows Registry 写入或第三方 CAPE-OPEN 模型加载
+- 包内 `PACKAGE-MANIFEST.txt` 应记录 `version=v26.5.1-dev`、`gitCommit=7479e82`、`gitDirty=false`
+
+开发态启动方式如下。
+
 如需先做仓库级验证，执行：
 
 ```powershell
@@ -68,15 +96,14 @@ pwsh ./scripts/check-repo.ps1
 cargo run -p radishflow-studio
 ```
 
-说明：
+开发态说明：
 
 - 这是长时间运行的桌面 UI 命令
-- 当前文档只描述开发态启动方式，不代表已经存在正式安装包
 - Windows 当前已接入原生打开/另存为选择器；其他平台的文件工作流暂不承诺同等完成度
 
 ## 第一次建议体验什么
 
-第一次建议直接打开以下正向示例之一：
+第一次建议直接打开以下 official hydrocarbon 正向示例之一：
 
 - `examples/flowsheets/feed-heater-flash-binary-hydrocarbon.rfproj.json`
 - `examples/flowsheets/feed-mixer-flash-binary-hydrocarbon.rfproj.json`
@@ -94,7 +121,7 @@ cargo run -p radishflow-studio
 
 ## 启动首页
 
-启动后，第一视野是 Home Dashboard，而不是直接进入某个 case 的画布。首页的稳定分区如下：
+启动后，第一视野是 Home Dashboard，而不是直接进入某个项目的画布。首页的稳定分区如下：
 
 - `开始`：`新建项目`、`打开项目`、`打开示例项目`
 - `最近项目`：显示最近项目、路径摘要、物性包和就绪 / 缺失状态；整行可选择，双击可打开
@@ -102,13 +129,15 @@ cargo run -p radishflow-studio
 - `环境`：显示客户端、服务端和设备三组摘要
 - `消息`：显示登录、示例目录、物性包缓存等可行动摘要
 
-工程术语、文件名、包名和路径会保留原文；用户动作、状态和环境字段默认使用中文。首页不承载流程图编辑，打开 case 或示例后才进入工作台。
+工程术语、文件名、包名和路径会保留原文；用户动作、状态和环境字段默认使用中文。首页不承载流程图编辑，打开项目或示例后才进入工作台。
+
+首版 demo 前，Home / Workbench 的默认示例选择器只暴露四条 official hydrocarbon 演示路径：`Feed -> Heater/Cooler/Valve -> Flash Drum` 与 `Feed + Feed -> Mixer -> Flash Drum`。仓库和便携包内仍可能附带 synthetic 或 PME 验证样例文件，但这些文件主要服务回归或外部验证，不作为首页高频演示入口。
 
 若当前工作区存在未保存变更，首页的 `新建项目`、`打开项目`、`打开示例项目` 以及工作台顶部的项目切换入口都会先进入显式确认流程；继续后才丢弃当前未保存内容，取消则保持当前项目不变。
 
 ## 工作台主路径
 
-进入 case 后，顶部第一行展示应用、当前项目和状态 chip；第二行提供当前主路径：
+进入项目后，顶部第一行展示应用、当前项目和状态 chip；第二行提供当前主路径：
 
 - `Home`：返回启动首页
 - `打开示例`：打开仓库或便携包内置正向示例

@@ -410,6 +410,8 @@ fn shell_starts_on_home_dashboard_with_start_environment_and_messages() {
         "打开示例 Case",
         "最近 Case",
         "示例 Case",
+        "PME 样例",
+        "Synthetic",
         "Recent Cases",
         "Example Cases",
         "Environment",
