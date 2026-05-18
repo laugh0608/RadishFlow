@@ -166,7 +166,7 @@ examples/flowsheets/feed-mixer-flash-binary-hydrocarbon.rfproj.json
 4. 使用 Canvas suggestion 中的 `Connect` / `连接` 动作补齐 `source -> sink` 端口绑定和必要 outlet stream。
 5. 从左侧 `项目` 或 Canvas 对象列表选择 stream / unit，右侧 `检查器` 会显示当前对象。
 6. 流股检查器当前可编辑 `name / temperature_k / pressure_pa / total_molar_flow_mol_s` 和已有 flowsheet component catalog 中的组成条目；组成修改需要显式提交、归一化或丢弃。
-7. 单元检查器当前以端口、关联步骤、关联诊断和最新 `SolveSnapshot` 中的单元结果为主，不等同于完整单元参数表。
+7. 单元检查器当前已暴露首批高频参数：Heater / Cooler 的 outlet temperature 与 Valve 的 outlet pressure；其余内容仍以端口、关联步骤、关联诊断和最新 `SolveSnapshot` 中的单元结果为主，不等同于完整单元参数表。
 8. 点击 `运行`，成功后右侧会自动切到 `结果`，底部会自动切到 `结果表`；失败时会切到右侧 `运行` 和底部 `消息`，方便先看诊断。
 
 当前仍不支持自由拉线、任意端口点击创建、完整组件库、完整物性包浏览/切换或完整单元参数表。这些缺口若影响验证，应记录为 MVP α 后续任务，而不是用 shell 私有状态绕过。

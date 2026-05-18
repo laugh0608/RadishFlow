@@ -13,8 +13,8 @@
 ## 当前阶段
 
 - 产品定位：以 Rust Core + Rust UI + `.NET 10` CAPE-OPEN/COM 适配层构建稳态流程模拟软件。
-- 当前主线：MVP 第一阶段最小闭环已经可验证，但尚未达到首版 demo 的产品可用水准；Studio 首页与工作台信息架构第一轮可用性收口已完成，`v26.5.1-dev` 已作为内部验收 tag 创建并推送。
-- 当前重点：Home Dashboard 与进入项目后的 Workbench 第一轮真实 UI 已落地；Canvas viewport 初始居中 / fit-to-content、首页高频中文文案、`Feed Heater Flash` 示例布局顺序、Canvas 可读性打磨、首页项目选择交互、运行后结果视图、Workbench 高频残余文案、短线段中间流股标签隐藏、右侧结果检查器原始 `z:` / `phases:` 摘要清理、默认示例选择器收窄到 official hydrocarbon demo-safe 路径，以及便携包 quick start / versioning 口径对齐均已完成。下一步继续按首版 demo 前产品可用性评审处理真实 blocker；若要刷新新的 demo 便携包，应创建新提交 / 新版本节点，不移动已推送的 `v26.5.1-dev` tag。
+- 当前主线：MVP 第一阶段最小闭环已经可验证，`v26.5.1-dev` 已作为内部验收 tag 创建并推送；首版 demo 前的 Home / Workbench 产品可用性 blocker 已收口，当前重新回到功能开发。
+- 当前重点：在不扩自由连线、自动布线、完整拖拽布局、视口持久化、完整结果报表或对外发布自动化的前提下，继续补齐高频建模能力。本轮已把 `Heater / Cooler / Valve` 的首批关键单元参数接入 Unit Inspector draft / commit / undo history / solver 链路：Heater/Cooler 可编辑 outlet temperature，Valve 可编辑 outlet pressure，并同步对应 outlet stream 模板，旧项目未带参数时继续按现有流股模板求解。
 - 当前验证基线：功能改动优先执行相关 focused tests；阶段性收口执行 `pwsh ./scripts/check-repo.ps1`。
 
 ## 最近完成摘要
@@ -40,15 +40,16 @@
 - 2026-05-18 已收口日终保留的两个 UI blocker：Canvas 中间连接流股在短线段空间不足时不再绘制名称标签，避免 `Feed -> Valve -> Flash Drum` 等紧凑链路遮挡单元块或端口；右侧 Result Inspector 的默认组成 / 相态摘要改为结构化短行，模型层不再生成 `z:` / `phases:` 前缀。`pwsh ./scripts/check-repo.ps1` 已在真实环境通过。
 - 2026-05-18 人工从 IDE 启动 `Feed Valve Flash Binary Hydrocarbon Example` 复核通过，未发现新的 UI blocker；同日已刷新 `v26.5.1-dev` 内部便携包 staging / zip，并从包目录启动执行 smoke，未发现包内示例发现、打开示例、运行、结果审阅等主路径问题。最终包 manifest 记录 `gitCommit=7479e82`、`gitDirty=false`，`v26.5.1-dev` tag 已推送到远端。
 - 2026-05-18 首版 demo 前产品可用性评审发现并收口 DocsRepro / Home 示例入口 blocker：默认 Home / Workbench 示例选择器只保留四条 official hydrocarbon 演示路径，避免 synthetic / PME 验证样例以“就绪示例”进入高频入口；`Feed Heater Flash` 首页标题改回单一 `加热器` 语义；quick start、run-first、versioning、release notes 与 package README 模板已同步当前 Windows 内部便携包和已推送 tag 口径。
+- 2026-05-18 在 demo blocker 收口后转回功能开发：`UnitNode` 新增可选 SI 参数结构，Unit Inspector 暴露 Heater/Cooler outlet temperature 与 Valve outlet pressure 的字段级草稿编辑；提交走 `DocumentCommand::SetUnitParameter`，同步 outlet stream 模板并触发求解 dirty 状态；顺序求解器优先使用已提交单元参数，旧项目无参数时保持原有行为。
 
 完整过程和每日验证记录见 `docs/devlogs/2026-05/2026-W21.md`、`docs/devlogs/2026-05/2026-W20.md` 以及更早周志。
 
 ## 下一步建议
 
-1. 把 `v26.5.1-dev` 作为内部验收资产归档：tag 指向 `7479e82`，便携包 manifest 记录同一 commit，当前仍是 `-dev` 内部轨道。
-2. 继续首版 demo 前产品可用性评审；若后续 smoke 再暴露真实 blocker，按现有 command / presentation / shell-local state 边界修复。
-3. 不把 UI 收口误扩成自动布线、自由连线、完整拖拽布局、视口持久化或完整结果报表。
-4. 不推进对外发布自动化，不宣称当前 `-dev` tag 是正式 demo 或安装包候选。
+1. 继续围绕真实建模链路推进：优先复核单元参数编辑后的保存 / 重开 / 运行体验，再决定是否补更窄的参数校验提示或示例初始化口径。
+2. 下一批功能建议从求解诊断可操作性、参数约束提示、或 CAPE-OPEN host-facing 验证入口中择一推进，避免回到 demo 文案和视觉细节反复打磨。
+3. 若要刷新新的便携包或 tag，应创建新提交 / 新版本节点，不移动已推送的 `v26.5.1-dev` tag。
+4. 不把当前功能推进误扩成自动布线、自由连线、完整拖拽布局、视口持久化、完整结果报表或对外发布自动化。
 
 ## 暂不推进
 

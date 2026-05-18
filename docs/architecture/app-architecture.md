@@ -704,6 +704,7 @@ pub struct StepSnapshot {
 - 草稿值不立即写回 `FlowsheetDocument`
 - 当发生 `Enter`、失焦、点击应用等语义提交时，才生成命令并写回文档
 - 写回文档后再决定是否触发结构检查与自动求解
+- Stream Inspector 当前通过 `SetStreamSpecification(s)` 写回流股规格；Unit Inspector 当前只暴露 MVP 高频单元的首批关键参数，`Heater / Cooler` 写回 `outlet_temperature_k`，`Valve` 写回 `outlet_pressure_pa`，并通过 `SetUnitParameter` 同步对应 outlet stream 模板
 
 采用这个方案的原因：
 
@@ -951,12 +952,10 @@ App 不应直接操作底层求解细节，而应通过稳定的数据结构与�
 
 在继续深化 `rf-ui` 和 `rf-canvas` 代码之前，当前更值得优先推进以下基础设计项：
 
-截至 2026-04-30，Studio 已补出 `DocumentLifecycle(Save / SaveAs)`，保存动作写回 `StoredProjectFile` 并更新 `last_saved_revision`，不进入 `CommandHistory`；同时已补出 `Ctrl+S / Ctrl+Z / Ctrl+Y` 的第一版焦点归属策略，避免文本输入框撤销/重做被文档历史抢走。
-
-项目写入当前采用 `rf-store` 同目录 staged write：先写入临时 sibling 文件并同步，再替换正式 `*.rfproj.json`。在 Unix 类平台上替换走 `rename` 语义；Windows 当前用临时备份做受控替换和失败回滚，不把半写入 JSON 直接覆盖到目标路径。`Save As` 若目标文件已存在且不是当前项目路径，shell 必须先进入显式覆盖确认，确认后才走正式 `DocumentLifecycle`；取消覆盖不改变当前工作区，也不改写目标文件。
+Studio 保存 / 另存为、快捷键焦点归属、项目 staged write 和覆盖确认已进入主线；更细实现细节以 `rf-store` 与当前测试为准。
 
 1. 在已有字段级草稿、单字段提交、多字段批量提交、基础 undo/redo、保存 / 另存为、快捷键焦点归属、staged project write 和 Save As 覆盖确认闭环上，继续明确更细的保存失败恢复提示和跨平台文件选择策略
-2. 继续观察 Stream Inspector 多字段批量提交的 UX 口径；它应继续复用 `InspectorDraftState` 和正式 document command 边界，而不是在 shell 面板里新增私有缓存
+2. 继续观察 Stream Inspector 多字段批量提交和 Unit Inspector 单字段参数提交的 UX 口径；它们应继续复用 `InspectorDraftState` 和正式 document command 边界，而不是在 shell 面板里新增私有缓存
 3. 在已接通的授权缓存桥接和控制面编排之上，细化 entitlement 刷新后的 UI 事件流与错误呈现口径
 4. 在现有 `StudioAppFacade + WorkspaceRunCommand + WorkspaceSolveService` 基础上，继续收口结果派发与后续异步执行边界
 5. 冻结求解入口只由应用层触发，画布层仍只处理几何与交互
