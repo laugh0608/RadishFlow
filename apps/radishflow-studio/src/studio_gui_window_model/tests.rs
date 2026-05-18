@@ -1532,6 +1532,18 @@ fn studio_gui_window_model_surfaces_bootstrap_workspace_results_and_diagnostics(
         .runtime
         .active_inspector_detail
         .expect("expected active unit inspector detail");
+    assert!(
+        unit_detail.property_fields.iter().any(|field| {
+            field.key == "unit:heater-1:outlet_temperature_k"
+                && field.label == "Outlet temperature (K)"
+                && field.value_kind_label == "Number"
+                && field.status_label == "Synced"
+                && field.draft_update_command_id
+                    == "inspector.update_stream_draft:unit:heater-1:outlet_temperature_k"
+                && field.commit_command_id.is_none()
+        }),
+        "expected active heater inspector detail to expose target outlet temperature"
+    );
     let unit_result = unit_detail
         .latest_unit_result
         .as_ref()

@@ -133,6 +133,134 @@ fn focusing_missing_inspector_target_keeps_current_focus() {
     );
 }
 
+fn unit_parameter_document() -> FlowsheetDocument {
+    let mut flowsheet = Flowsheet::new("demo");
+    flowsheet
+        .insert_stream(MaterialStreamState::from_tpzf(
+            "stream-feed",
+            "Feed",
+            300.0,
+            120_000.0,
+            5.0,
+            Default::default(),
+        ))
+        .expect("expected feed stream insert");
+    flowsheet
+        .insert_stream(MaterialStreamState::from_tpzf(
+            "stream-heated",
+            "Heated Outlet",
+            345.0,
+            95_000.0,
+            0.0,
+            Default::default(),
+        ))
+        .expect("expected outlet stream insert");
+    flowsheet
+        .insert_unit(UnitNode::new(
+            "heater-1",
+            "Heater",
+            "heater",
+            vec![
+                UnitPort::new(
+                    "inlet",
+                    PortDirection::Inlet,
+                    PortKind::Material,
+                    Some("stream-feed".into()),
+                ),
+                UnitPort::new(
+                    "outlet",
+                    PortDirection::Outlet,
+                    PortKind::Material,
+                    Some("stream-heated".into()),
+                ),
+            ],
+        ))
+        .expect("expected heater insert");
+
+    FlowsheetDocument::new(
+        flowsheet,
+        DocumentMetadata::new("doc-unit-parameter", "Unit Parameter Demo", timestamp(10)),
+    )
+}
+
+#[test]
+fn updating_unit_inspector_draft_keeps_document_unchanged() {
+    let mut app_state = AppState::new(unit_parameter_document());
+    app_state.focus_inspector_target(crate::InspectorTarget::Unit(UnitId::new("heater-1")));
+
+    let outcome = app_state
+        .update_unit_inspector_draft(
+            &UnitId::new("heater-1"),
+            crate::UnitInspectorDraftField::OutletTemperatureK,
+            "360.0",
+        )
+        .expect("expected unit draft update");
+
+    assert_eq!(outcome.key, "unit:heater-1:outlet_temperature_k");
+    assert!(outcome.is_dirty);
+    assert_eq!(outcome.validation, crate::DraftValidationState::Valid);
+    assert_eq!(app_state.workspace.document.revision, 0);
+    assert_eq!(
+        app_state.workspace.document.flowsheet.units[&UnitId::new("heater-1")]
+            .parameters
+            .outlet_temperature_k,
+        None
+    );
+    assert_eq!(
+        app_state.workspace.document.flowsheet.streams[&StreamId::new("stream-heated")]
+            .temperature_k,
+        345.0
+    );
+}
+
+#[test]
+fn committing_unit_inspector_draft_sets_parameter_and_syncs_outlet_template() {
+    let mut app_state = AppState::new(unit_parameter_document());
+    app_state.focus_inspector_target(crate::InspectorTarget::Unit(UnitId::new("heater-1")));
+    app_state
+        .update_unit_inspector_draft(
+            &UnitId::new("heater-1"),
+            crate::UnitInspectorDraftField::OutletTemperatureK,
+            "360.0",
+        )
+        .expect("expected unit draft update");
+
+    let outcome = app_state
+        .commit_unit_inspector_draft(
+            &UnitId::new("heater-1"),
+            crate::UnitInspectorDraftField::OutletTemperatureK,
+            timestamp(42),
+        )
+        .expect("expected unit draft commit")
+        .expect("expected committed unit draft");
+
+    assert_eq!(outcome.revision, 1);
+    assert_eq!(
+        outcome.command,
+        DocumentCommand::SetUnitParameter {
+            unit_id: UnitId::new("heater-1"),
+            parameter: "outlet_temperature_k".to_string(),
+            value: CommandValue::Number(360.0),
+        }
+    );
+    assert_eq!(
+        app_state.workspace.document.flowsheet.units[&UnitId::new("heater-1")]
+            .parameters
+            .outlet_temperature_k,
+        Some(360.0)
+    );
+    assert_eq!(
+        app_state.workspace.document.flowsheet.streams[&StreamId::new("stream-heated")]
+            .temperature_k,
+        360.0
+    );
+    assert_eq!(
+        app_state.workspace.solve_session.pending_reason,
+        Some(SolvePendingReason::DocumentRevisionAdvanced)
+    );
+    assert!(app_state.workspace.drafts.fields.is_empty());
+}
+
 #[test]
 fn updating_stream_inspector_draft_keeps_document_unchanged() {
     let document = inspector_focus_document();

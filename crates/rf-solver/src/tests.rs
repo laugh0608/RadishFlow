@@ -1,7 +1,10 @@
 use std::collections::BTreeMap;
 
 use rf_flash::PlaceholderTpFlashSolver;
-use rf_model::{Component, Composition, Flowsheet, MaterialStreamState, UnitNode, UnitPort};
+use rf_model::{
+    Component, Composition, Flowsheet, MaterialStreamState, UnitNode, UnitOperationParameters,
+    UnitPort,
+};
 use rf_store::parse_project_file_json;
 use rf_thermo::{AntoineCoefficients, PlaceholderThermoProvider, ThermoComponent, ThermoSystem};
 use rf_types::{
@@ -710,6 +713,35 @@ fn sequential_solver_solves_feed_heater_flash_chain() {
 }
 
 #[test]
+fn sequential_solver_uses_heater_unit_outlet_temperature_parameter() {
+    let provider = build_provider();
+    let flash_solver = PlaceholderTpFlashSolver;
+    let services = SolverServices {
+        thermo: &provider,
+        flash_solver: &flash_solver,
+    };
+    let mut flowsheet = build_feed_heater_flash_flowsheet();
+    flowsheet
+        .units
+        .get_mut(&UnitId::new("heater-1"))
+        .expect("expected heater")
+        .parameters = UnitOperationParameters {
+        outlet_temperature_k: Some(360.0),
+        ..Default::default()
+    };
+
+    let snapshot = SequentialModularSolver
+        .solve(&services, &flowsheet)
+        .expect("expected solve snapshot");
+
+    let heated = snapshot
+        .stream(&"stream-heated".into())
+        .expect("expected heated outlet");
+    assert_close(heated.temperature_k, 360.0, 1e-12);
+    assert_close(heated.pressure_pa, 95_000.0, 1e-12);
+}
+
+#[test]
 fn sequential_solver_runs_feed_heater_flash_example_project_file() {
     let provider = build_provider();
     let flash_solver = PlaceholderTpFlashSolver;
@@ -1052,6 +1084,35 @@ fn sequential_solver_solves_feed_valve_flash_chain() {
         .expect("expected vapor outlet");
     assert!(liquid.total_molar_flow_mol_s > 0.0);
     assert!(vapor.total_molar_flow_mol_s > 0.0);
+}
+
+#[test]
+fn sequential_solver_uses_valve_unit_outlet_pressure_parameter() {
+    let provider = build_provider();
+    let flash_solver = PlaceholderTpFlashSolver;
+    let services = SolverServices {
+        thermo: &provider,
+        flash_solver: &flash_solver,
+    };
+    let mut flowsheet = build_feed_valve_flash_flowsheet();
+    flowsheet
+        .units
+        .get_mut(&UnitId::new("valve-1"))
+        .expect("expected valve")
+        .parameters = UnitOperationParameters {
+        outlet_pressure_pa: Some(80_000.0),
+        ..Default::default()
+    };
+
+    let snapshot = SequentialModularSolver
+        .solve(&services, &flowsheet)
+        .expect("expected solve snapshot");
+
+    let throttled = snapshot
+        .stream(&"stream-throttled".into())
+        .expect("expected valve outlet");
+    assert_close(throttled.temperature_k, 315.0, 1e-12);
+    assert_close(throttled.pressure_pa, 80_000.0, 1e-12);
 }
 
 #[test]

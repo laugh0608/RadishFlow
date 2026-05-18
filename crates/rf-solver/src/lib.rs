@@ -699,22 +699,22 @@ fn instantiate_operation(
             Ok(Box::new(Mixer::new(outlet)))
         }
         HEATER_KIND => {
-            let outlet = stream_for_port(unit, HEATER_COOLER_OUTLET_PORT, flowsheet)?;
+            let outlet = heater_cooler_outlet_template(unit, flowsheet)?;
             Ok(Box::new(HeaterCooler::new(
                 BuiltinUnitKind::Heater,
-                outlet.clone(),
+                outlet,
             )?))
         }
         COOLER_KIND => {
-            let outlet = stream_for_port(unit, HEATER_COOLER_OUTLET_PORT, flowsheet)?;
+            let outlet = heater_cooler_outlet_template(unit, flowsheet)?;
             Ok(Box::new(HeaterCooler::new(
                 BuiltinUnitKind::Cooler,
-                outlet.clone(),
+                outlet,
             )?))
         }
         VALVE_KIND => {
-            let outlet = stream_for_port(unit, HEATER_COOLER_OUTLET_PORT, flowsheet)?;
-            Ok(Box::new(Valve::new(outlet.clone())))
+            let outlet = valve_outlet_template(unit, flowsheet)?;
+            Ok(Box::new(Valve::new(outlet)))
         }
         FLASH_DRUM_KIND => {
             let liquid = stream_target_for_port(unit, FLASH_DRUM_LIQUID_PORT, flowsheet)?;
@@ -728,6 +728,25 @@ fn instantiate_operation(
         ))
         .with_related_unit_id(unit.id.clone())),
     }
+}
+
+fn heater_cooler_outlet_template(
+    unit: &UnitNode,
+    flowsheet: &Flowsheet,
+) -> RfResult<MaterialStreamState> {
+    let mut outlet = stream_for_port(unit, HEATER_COOLER_OUTLET_PORT, flowsheet)?.clone();
+    if let Some(temperature_k) = unit.parameters.outlet_temperature_k {
+        outlet.temperature_k = temperature_k;
+    }
+    Ok(outlet)
+}
+
+fn valve_outlet_template(unit: &UnitNode, flowsheet: &Flowsheet) -> RfResult<MaterialStreamState> {
+    let mut outlet = stream_for_port(unit, HEATER_COOLER_OUTLET_PORT, flowsheet)?.clone();
+    if let Some(pressure_pa) = unit.parameters.outlet_pressure_pa {
+        outlet.pressure_pa = pressure_pa;
+    }
+    Ok(outlet)
 }
 
 fn stream_for_port<'a>(

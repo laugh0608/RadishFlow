@@ -69,8 +69,11 @@ pub use state::{
     StreamInspectorCompositionComponentRemoveResult, StreamInspectorDraftBatchCommitResult,
     StreamInspectorDraftBatchDiscardResult, StreamInspectorDraftCommitResult,
     StreamInspectorDraftDiscardResult, StreamInspectorDraftField, StreamInspectorDraftUpdateResult,
-    UiPanelsState, UserPreferences, WorkspaceState, latest_snapshot, latest_snapshot_id,
-    stream_inspector_draft_key, stream_inspector_draft_key_parts,
+    UiPanelsState, UnitInspectorDraftCommitResult, UnitInspectorDraftDiscardResult,
+    UnitInspectorDraftField, UnitInspectorDraftUpdateResult, UserPreferences, WorkspaceState,
+    latest_snapshot, latest_snapshot_id, stream_inspector_draft_key,
+    stream_inspector_draft_key_parts, unit_inspector_draft_key, unit_inspector_draft_key_parts,
+    unit_inspector_parameter_value,
 };
 
 #[cfg(test)]

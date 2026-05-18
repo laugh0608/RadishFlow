@@ -569,6 +569,9 @@ fn active_inspector_detail_from_controller(
     match &target {
         rf_ui::InspectorTarget::Unit(unit_id) => {
             let unit = flowsheet.units.get(unit_id)?;
+            let property_fields =
+                unit_property_fields(flowsheet, unit, controller.inspector_drafts());
+            let property_notices = inspector_property_notices(&property_fields);
             Some(StudioGuiInspectorTargetDetailSnapshot {
                 target,
                 title: unit.name.clone(),
@@ -586,8 +589,8 @@ fn active_inspector_detail_from_controller(
                         value: unit.ports.len().to_string(),
                     },
                 ],
-                property_fields: Vec::new(),
-                property_notices: Vec::new(),
+                property_fields,
+                property_notices,
                 property_composition_summary: None,
                 property_batch_commit_command_id: None,
                 property_batch_discard_command_id: None,
@@ -660,6 +663,50 @@ fn active_inspector_detail_from_controller(
             })
         }
     }
+}
+
+fn unit_property_fields(
+    flowsheet: &rf_model::Flowsheet,
+    unit: &rf_model::UnitNode,
+    drafts: &rf_ui::InspectorDraftState,
+) -> Vec<StudioGuiInspectorTargetFieldSnapshot> {
+    match unit.kind.as_str() {
+        "heater" | "cooler" => unit_number_property_field(
+            flowsheet,
+            unit,
+            drafts,
+            rf_ui::UnitInspectorDraftField::OutletTemperatureK,
+            "Outlet temperature (K)",
+        )
+        .into_iter()
+        .collect(),
+        "valve" => unit_number_property_field(
+            flowsheet,
+            unit,
+            drafts,
+            rf_ui::UnitInspectorDraftField::OutletPressurePa,
+            "Outlet pressure (Pa)",
+        )
+        .into_iter()
+        .collect(),
+        _ => Vec::new(),
+    }
+}
+
+fn unit_number_property_field(
+    flowsheet: &rf_model::Flowsheet,
+    unit: &rf_model::UnitNode,
+    drafts: &rf_ui::InspectorDraftState,
+    field: rf_ui::UnitInspectorDraftField,
+    label: &str,
+) -> Option<StudioGuiInspectorTargetFieldSnapshot> {
+    let original = rf_ui::unit_inspector_parameter_value(flowsheet, &unit.id, &field)?;
+    Some(inspector_number_field(
+        drafts,
+        rf_ui::unit_inspector_draft_key(&unit.id, &field),
+        label,
+        original,
+    ))
 }
 
 fn stream_property_fields(
@@ -895,22 +942,30 @@ fn stream_property_batch_discard_command_id(
         .then(|| crate::inspector_draft_batch_discard_command_id(stream.id.as_str()))
 }
 
+fn inspector_property_notices(
+    fields: &[StudioGuiInspectorTargetFieldSnapshot],
+) -> Vec<crate::StudioGuiInspectorPropertyNoticeSnapshot> {
+    if fields
+        .iter()
+        .any(|field| field.validation == StudioGuiInspectorTargetFieldValidationSnapshot::Invalid)
+    {
+        return vec![crate::StudioGuiInspectorPropertyNoticeSnapshot {
+            status_label: "Invalid",
+            message:
+                "Fix invalid property drafts before applying changes; invalid drafts are preserved and are not committed."
+                    .to_string(),
+        }];
+    }
+
+    Vec::new()
+}
+
 fn stream_property_notices(
     stream: &rf_model::MaterialStreamState,
     drafts: &rf_ui::InspectorDraftState,
     fields: &[StudioGuiInspectorTargetFieldSnapshot],
 ) -> Vec<crate::StudioGuiInspectorPropertyNoticeSnapshot> {
-    let mut notices = Vec::new();
-
-    if fields
-        .iter()
-        .any(|field| field.validation == StudioGuiInspectorTargetFieldValidationSnapshot::Invalid)
-    {
-        notices.push(crate::StudioGuiInspectorPropertyNoticeSnapshot {
-            status_label: "Invalid",
-            message: "Fix invalid stream property drafts before applying changes; invalid drafts are preserved and are not committed.".to_string(),
-        });
-    }
+    let mut notices = inspector_property_notices(fields);
 
     if let Some(sum) = stream_property_composition_sum(stream, drafts) {
         if !sum.is_finite() || sum <= 0.0 {

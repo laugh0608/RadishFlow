@@ -1,8 +1,14 @@
 mod actions;
+mod unit_inspector;
 use actions::*;
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::path::PathBuf;
 use std::time::SystemTime;
+pub use unit_inspector::{
+    UnitInspectorDraftCommitResult, UnitInspectorDraftDiscardResult, UnitInspectorDraftField,
+    UnitInspectorDraftUpdateResult, unit_inspector_draft_key, unit_inspector_draft_key_parts,
+    unit_inspector_parameter_value,
+};
 
 use rf_model::{Flowsheet, MaterialStreamState, UnitNode, UnitPort};
 use rf_types::{ComponentId, PortDirection, PortKind, RfError, RfResult, StreamId, UnitId};
