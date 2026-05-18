@@ -37,6 +37,19 @@
 - 温度默认按绝对温标理解
 - 当前文档、代码和测试都不应混入 `degC`、`bar`、`kmol/h` 之类第二套默认口径
 
+## 当前 MVP 单元参数字段
+
+当前 Unit Inspector 只暴露首批高频单元参数，字段仍使用 SI 单位后缀：
+
+| 单元 | 字段 | 单位 | 语义 |
+| --- | --- | --- | --- |
+| `Heater` / `Cooler` | `outlet_temperature_k` | `K` | 目标 outlet 温度 |
+| `Valve` | `outlet_pressure_pa` | `Pa` | 目标 outlet 绝压 |
+
+这些字段属于项目 flowsheet 语义，会通过正式参数提交流写回项目模型。Studio 提交时会同步对应 outlet stream 模板，求解器优先读取单元参数；旧项目或未设置参数时仍可按已有 outlet stream 模板兼容读取。
+
+当前不引入完整单元参数表，也不把这些字段扩展成第二套单位系统。
+
 ## 流股组成约定
 
 当前流股组成统一表示为摩尔分率：

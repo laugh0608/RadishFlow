@@ -30,6 +30,7 @@
 - 在当前 `SolveSnapshot` 内切换 stream-centric / unit-centric / comparison 三类结果审阅面
 - 通过 `检查`、`诊断目标`、结果选择项和命令入口在流股、单元、步骤和当前检查器之间定位同一份结果
 - 在流股检查器中编辑流股基础字段与组成草稿，并显式提交、归一化或丢弃
+- 在单元检查器中编辑首批关键单元参数：`Heater / Cooler` 的 outlet temperature 和 `Valve` 的 outlet pressure
 - 执行基础 `undo / redo`
 - 保存当前项目，或通过顶部 `另存为...` / 未命名项目首次 `保存` 到新路径
 - 保存并恢复 Canvas placement sidecar：`<project>.rfstudio-layout.json`
@@ -160,9 +161,10 @@ cargo run -p radishflow-studio
 4. 使用 Canvas 上的 `Connect` / `连接` suggestion 补齐端口绑定和必要 outlet stream。
 5. 在左侧 `项目` 或 Canvas 对象列表中选择 stream / unit，右侧 `检查器` 会切到对应对象。
 6. 在流股检查器中编辑 `T / P / F` 和组成草稿；字段提交、全部应用、组成归一化都是显式动作。
-7. 点击顶部 `运行`，结果只从最新 `SolveSnapshot` 展示到右侧 `结果` 和底部 `结果表`。
+7. 选中 `Heater / Cooler / Valve` 时，可在单元检查器中编辑已暴露的 outlet temperature 或 outlet pressure 字段；提交后会写回项目参数，并同步对应 outlet stream 模板。
+8. 点击顶部 `运行`，结果只从最新 `SolveSnapshot` 展示到右侧 `结果` 和底部 `结果表`。
 
-当前连接仍通过本地 suggestion 和正式 `DocumentCommand::ConnectPorts` 完成，不是自由拉线编辑器；单元参数编辑也仍限制在 MVP 已暴露的检查器字段和端口 / 结果只读信息内。
+当前连接仍通过本地 suggestion 和正式 `DocumentCommand::ConnectPorts` 完成，不是自由拉线编辑器；单元参数编辑也仍限制在上述 MVP 已暴露字段，不等同于完整单元参数表。
 
 ## 启动后应该看到什么
 
