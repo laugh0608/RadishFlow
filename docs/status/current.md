@@ -1,6 +1,6 @@
 # 当前状态
 
-更新时间：2026-05-17
+更新时间：2026-05-18
 
 ## 用途
 
@@ -14,7 +14,7 @@
 
 - 产品定位：以 Rust Core + Rust UI + `.NET 10` CAPE-OPEN/COM 适配层构建稳态流程模拟软件。
 - 当前主线：MVP 第一阶段最小闭环已经可验证，但尚未达到首版 demo 的产品可用水准；当前主线是 Studio 首页与工作台信息架构的可用性收口，发布 / tag 暂缓。
-- 当前重点：Home Dashboard 与进入 case 后的 Workbench 第一轮真实 UI 已落地；Canvas viewport 初始居中 / fit-to-content、首页高频中文文案、`Feed Heater Flash` 示例布局顺序、Canvas 可读性打磨、首页项目选择交互、运行后结果视图和 Workbench 高频残余文案收口已完成。下一步继续人工视觉 smoke，优先处理中间流股标签遮挡 / 裁切，以及右侧结果检查器中仍可见的 `z:` / `phases:` 原始英文摘要。
+- 当前重点：Home Dashboard 与进入 case 后的 Workbench 第一轮真实 UI 已落地；Canvas viewport 初始居中 / fit-to-content、首页高频中文文案、`Feed Heater Flash` 示例布局顺序、Canvas 可读性打磨、首页项目选择交互、运行后结果视图、Workbench 高频残余文案、短线段中间流股标签隐藏和右侧结果检查器原始 `z:` / `phases:` 摘要清理已完成。下一步继续人工视觉 smoke，只处理真实 demo blocker。
 - 当前验证基线：功能改动优先执行相关 focused tests；阶段性收口执行 `pwsh ./scripts/check-repo.ps1`。
 
 ## 最近完成摘要
@@ -37,17 +37,16 @@
 - 2026-05-17 人工复测发现首页双击只命中项目标题文本、未覆盖整行卡片；现已改为整张最近项目 / 示例项目卡片响应点击和双击打开。Canvas 终端流股标签同步改为短名称并从端口右侧绘制，避免被 Flash Drum 单元块遮住。后续 smoke 又暴露 Home 在未保存空白项目后只能显示 discard 提示、没有继续 / 取消动作；现已让打开项目、打开示例项目和新建项目统一进入可确认流程。
 - 2026-05-17 已按最新截图完成运行后结果视图收口：右侧结果检查器的流股 / 单元 / 对比 selector 不再为每个选项重复渲染 `Inspect`，中文界面中的 inspect 小按钮统一显示为 `检查`；底部结果表改为中文 `流股 / 相态` 表头，并以短相态摘要替代过长 `phases: ...` 原始文本，完整相态仍保留在 tooltip。已补回归覆盖打开示例、运行、查看结果、回 Home、再从最近项目打开并重新运行的路径。
 - 2026-05-17 已根据最新截图继续清理 Workbench 高频残余：Canvas 面板头隐藏开发态计数摘要，运行结果摘要改为中文结构化计数，左侧 Project 对象行去掉重复 `检查` 按钮，底部结果表空相态显示为短值 `无`，非空画布不再常驻“选择画布工具”提示，放置按钮中的 MVP 单元名已中文化。
+- 2026-05-18 已收口日终保留的两个 UI blocker：Canvas 中间连接流股在短线段空间不足时不再绘制名称标签，避免 `Feed -> Valve -> Flash Drum` 等紧凑链路遮挡单元块或端口；右侧 Result Inspector 的默认组成 / 相态摘要改为结构化短行，模型层不再生成 `z:` / `phases:` 前缀。`pwsh ./scripts/check-repo.ps1` 已在真实环境通过。
 
-完整过程和每日验证记录见 `docs/devlogs/2026-05/2026-W20.md` 以及更早周志。
+完整过程和每日验证记录见 `docs/devlogs/2026-05/2026-W21.md`、`docs/devlogs/2026-05/2026-W20.md` 以及更早周志。
 
 ## 下一步建议
 
-1. 优先修复真实窗口中 Canvas 中间流股标签遮挡 / 裁切：Feed -> Valve、Valve -> Flash Drum 这类短线段空间不足时，应避开单元块，或自动短化 / 隐藏标签。
-2. 优先清理右侧结果检查器的原始英文摘要：`z: ethane=...`、`phases: overall=...` 应改成中文结构化短行；底部结果表当前可先保持不动。
-3. 继续做人工视觉 smoke，确认 Home Dashboard 列表选择 / 双击打开、进入示例、运行、结果 / 消息 / 物性包入口、Canvas 初始居中和关闭窗口路径没有回归。
-4. 若视觉 smoke 暴露真实 blocker，按现有 command / presentation / shell-local state 边界修复；不要把 viewport 收口误扩成自动布线、自由连线、完整拖拽布局或视口持久化。
-5. 便携包和 `docs/releases/v26.5.1-dev.md` 暂作为内部验证资产保留，不创建 tag，不推进对外发布自动化。
-6. 结果面继续只读消费 `SolveSnapshot`，不新增 shell 私有结果缓存；Canvas 下一步只处理 demo 可用性 blocker，不扩大建模能力边界。
+1. 继续做人工视觉 smoke，确认 Home Dashboard 列表选择 / 双击打开、进入示例、运行、结果 / 消息 / 物性包入口、Canvas 初始居中、短线段流股标签隐藏和关闭窗口路径没有回归。
+2. 若视觉 smoke 暴露真实 blocker，按现有 command / presentation / shell-local state 边界修复；不要把 viewport 或标签收口误扩成自动布线、自由连线、完整拖拽布局或视口持久化。
+3. 右侧结果面继续只读消费 `SolveSnapshot`，不新增 shell 私有结果缓存；若还有文案问题，只按 smoke 高频路径清理，不扩完整结果报表。
+4. 便携包和 `docs/releases/v26.5.1-dev.md` 暂作为内部验证资产保留，不创建 tag，不推进对外发布自动化。
 
 ## 暂不推进
 

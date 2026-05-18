@@ -1172,8 +1172,19 @@ impl ReadyAppState {
                 });
         });
 
-        render_wrapped_small(ui, &stream.composition_text);
-        render_wrapped_small(ui, &stream.phase_text);
+        ui.small(egui::RichText::new(self.locale.text(ShellText::StreamSummary)).strong());
+        egui::Grid::new(format!("stream-context-summary:{}", stream.stream_id))
+            .num_columns(2)
+            .striped(true)
+            .show(ui, |ui| {
+                ui.small(self.locale.text(ShellText::OverallComposition));
+                render_wrapped_small(ui, &stream.composition_text);
+                ui.end_row();
+
+                ui.small(self.locale.text(ShellText::PhaseResults));
+                render_wrapped_small(ui, &stream.phase_text);
+                ui.end_row();
+            });
         ui.add_space(8.0);
     }
 

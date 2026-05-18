@@ -867,7 +867,9 @@ fn canvas_content_world_bounds(
             &mut bounds,
             egui::Rect::from_two_pos(geometry.start, geometry.end).expand(16.0),
         );
-        canvas_union_rect(&mut bounds, canvas_stream_label_rect(geometry, stream));
+        if let Some(label_rect) = canvas_stream_label_rect(geometry, stream) {
+            canvas_union_rect(&mut bounds, label_rect);
+        }
     }
     bounds
 }
@@ -1009,7 +1011,10 @@ fn paint_canvas_stream_label(
 ) {
     let label = canvas_stream_label_text(stream);
     let size = canvas_stream_label_size(&label);
-    let mut min = canvas_stream_label_rect(geometry, stream).min;
+    let Some(label_rect) = canvas_stream_label_rect(geometry, stream) else {
+        return;
+    };
+    let mut min = label_rect.min;
     min.x = min
         .x
         .clamp(canvas_rect.left() + 8.0, canvas_rect.right() - size.x - 8.0);
@@ -1050,7 +1055,7 @@ fn paint_canvas_stream_label(
 fn canvas_stream_label_rect(
     geometry: CanvasStreamLineGeometry,
     stream: &radishflow_studio::StudioGuiCanvasStreamLineViewModel,
-) -> egui::Rect {
+) -> Option<egui::Rect> {
     let label = canvas_stream_label_text(stream);
     let size = canvas_stream_label_size(&label);
     if stream.sink.is_none() {
@@ -1059,21 +1064,26 @@ fn canvas_stream_label_rect(
             geometry.start.x + 14.0,
             geometry.start.y - size.y * 0.5 + vertical_offset,
         );
-        return egui::Rect::from_min_size(min, size);
+        return Some(egui::Rect::from_min_size(min, size));
     }
 
-    let center = canvas_stream_label_center(geometry, stream);
-    egui::Rect::from_center_size(center, size)
+    if !canvas_connected_stream_has_label_room(geometry, size) {
+        return None;
+    }
+
+    let center = canvas_stream_label_center(geometry);
+    Some(egui::Rect::from_center_size(center, size))
 }
 
-fn canvas_stream_label_center(
+fn canvas_connected_stream_has_label_room(
     geometry: CanvasStreamLineGeometry,
-    stream: &radishflow_studio::StudioGuiCanvasStreamLineViewModel,
-) -> egui::Pos2 {
-    if stream.sink.is_none() {
-        return canvas_stream_label_rect(geometry, stream).center();
-    }
+    label_size: egui::Vec2,
+) -> bool {
+    let line_length = (geometry.end - geometry.start).length();
+    line_length >= (label_size.x + 24.0).max(86.0)
+}
 
+fn canvas_stream_label_center(geometry: CanvasStreamLineGeometry) -> egui::Pos2 {
     let delta = geometry.end - geometry.start;
     let normal = if delta.length() > 1.0 {
         let direction = delta.normalized();
@@ -1667,6 +1677,41 @@ mod viewport_geometry_tests {
         }
     }
 
+    fn stream_endpoint(
+        unit_id: &str,
+        layout_position: rf_ui::CanvasPoint,
+        is_source: bool,
+    ) -> radishflow_studio::StudioGuiCanvasStreamLineEndpointViewModel {
+        radishflow_studio::StudioGuiCanvasStreamLineEndpointViewModel {
+            unit_id: unit_id.to_string(),
+            port_name: if is_source { "outlet" } else { "inlet" }.to_string(),
+            layout_slot: 0,
+            layout_position: Some(layout_position),
+            port_side_index: 0,
+            port_side_count: 1,
+        }
+    }
+
+    fn stream_line(
+        stream_id: &str,
+        source: Option<radishflow_studio::StudioGuiCanvasStreamLineEndpointViewModel>,
+        sink: Option<radishflow_studio::StudioGuiCanvasStreamLineEndpointViewModel>,
+    ) -> radishflow_studio::StudioGuiCanvasStreamLineViewModel {
+        radishflow_studio::StudioGuiCanvasStreamLineViewModel {
+            line_id: format!("{stream_id}:0"),
+            stream_id: stream_id.to_string(),
+            name: stream_id.to_string(),
+            source,
+            sink,
+            status_badges: Vec::new(),
+            command_id: format!("inspector.focus_stream:{stream_id}"),
+            action_label: format!("Stream {stream_id}"),
+            hover_text: String::new(),
+            attention_summary: None,
+            is_active_inspector_target: false,
+        }
+    }
+
     #[test]
     fn viewport_transform_centers_persisted_small_flowsheet_without_rewriting_coordinates() {
         let rect = egui::Rect::from_min_size(egui::pos2(0.0, 0.0), egui::vec2(640.0, 280.0));
@@ -1741,5 +1786,61 @@ mod viewport_geometry_tests {
 
         assert_eq!(blank_transform, CanvasViewportTransform::ZERO);
         assert_eq!(later_transform, CanvasViewportTransform::ZERO);
+    }
+
+    #[test]
+    fn connected_stream_label_is_hidden_when_adjacent_units_leave_no_room() {
+        let stream = stream_line(
+            "stream-throttled",
+            Some(stream_endpoint(
+                "valve-1",
+                rf_ui::CanvasPoint::new(64.0, 40.0),
+                true,
+            )),
+            Some(stream_endpoint(
+                "flash-1",
+                rf_ui::CanvasPoint::new(254.0, 40.0),
+                false,
+            )),
+        );
+        let geometry = canvas_stream_line_world_geometry(640.0, &stream);
+
+        assert!(canvas_stream_label_rect(geometry, &stream).is_none());
+    }
+
+    #[test]
+    fn connected_stream_label_is_kept_when_line_has_clear_room() {
+        let stream = stream_line(
+            "s1",
+            Some(stream_endpoint(
+                "feed-1",
+                rf_ui::CanvasPoint::new(64.0, 40.0),
+                true,
+            )),
+            Some(stream_endpoint(
+                "heater-1",
+                rf_ui::CanvasPoint::new(340.0, 40.0),
+                false,
+            )),
+        );
+        let geometry = canvas_stream_line_world_geometry(640.0, &stream);
+
+        assert!(canvas_stream_label_rect(geometry, &stream).is_some());
+    }
+
+    #[test]
+    fn terminal_stream_label_is_kept_next_to_source_port() {
+        let stream = stream_line(
+            "stream-vapor",
+            Some(stream_endpoint(
+                "flash-1",
+                rf_ui::CanvasPoint::new(64.0, 40.0),
+                true,
+            )),
+            None,
+        );
+        let geometry = canvas_stream_line_world_geometry(640.0, &stream);
+
+        assert!(canvas_stream_label_rect(geometry, &stream).is_some());
     }
 }

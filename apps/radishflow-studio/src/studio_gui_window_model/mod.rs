@@ -1735,45 +1735,39 @@ fn stream_result_numeric_summary(
 
 fn format_composition(composition: &[(String, f64)]) -> String {
     if composition.is_empty() {
-        return "z: none".to_string();
+        return "none".to_string();
     }
 
-    format!(
-        "z: {}",
-        composition
-            .iter()
-            .map(|(component_id, fraction)| format!("{component_id}={fraction:.4}"))
-            .collect::<Vec<_>>()
-            .join(", ")
-    )
+    composition
+        .iter()
+        .map(|(component_id, fraction)| format!("{component_id}={fraction:.4}"))
+        .collect::<Vec<_>>()
+        .join(", ")
 }
 
 fn format_phases(phases: &[rf_ui::PhaseStateSnapshot], total_molar_flow_mol_s: f64) -> String {
     if phases.is_empty() {
-        return "phases: none".to_string();
+        return "none".to_string();
     }
 
-    format!(
-        "phases: {}",
-        phases
-            .iter()
-            .map(|phase| {
-                let molar_flow_mol_s = phase.phase_fraction * total_molar_flow_mol_s;
-                format!(
-                    "{}={} ({})",
-                    phase.label,
-                    format_fraction(phase.phase_fraction),
-                    format_molar_flow(molar_flow_mol_s)
-                )
-            })
-            .collect::<Vec<_>>()
-            .join(", ")
-    )
+    phases
+        .iter()
+        .map(|phase| {
+            let molar_flow_mol_s = phase.phase_fraction * total_molar_flow_mol_s;
+            format!(
+                "{}={} ({})",
+                phase.label,
+                format_fraction(phase.phase_fraction),
+                format_molar_flow(molar_flow_mol_s)
+            )
+        })
+        .collect::<Vec<_>>()
+        .join(", ")
 }
 
 fn format_phase_composition(composition: &[(String, f64)]) -> String {
     if composition.is_empty() {
-        return "z: none".to_string();
+        return "none".to_string();
     }
 
     composition

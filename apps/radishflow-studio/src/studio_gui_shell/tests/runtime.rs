@@ -395,6 +395,14 @@ fn assert_rendered_stream_summary_surface(
         stream.stream_id,
         texts
     );
+    assert!(
+        texts
+            .iter()
+            .all(|text| !text.contains("z:") && !text.contains("phases:")),
+        "expected {surface} to avoid raw composition or phase prefixes for `{}`, rendered texts: {:?}",
+        stream.stream_id,
+        texts
+    );
 }
 
 struct UnitSummaryLabels<'a> {

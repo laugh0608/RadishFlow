@@ -3289,7 +3289,7 @@ fn studio_gui_window_model_surfaces_failure_stream_context_from_document_state()
                     && stream.summary.contains("T ")
                     && stream.summary.contains("P ")
                     && stream.summary.contains("F ")
-                    && stream.summary.contains("z:")
+                    && stream.summary.contains("methane=")
                     && !stream.summary.contains("H ")
             }),
         "expected failure diagnostic to expose document-state stream numeric context"
@@ -3299,7 +3299,7 @@ fn studio_gui_window_model_surfaces_failure_stream_context_from_document_state()
             && target.port_name == "inlet_a"
             && target.unit_action.command_id == "inspector.focus_unit:mixer-1"
             && target.stream_result.as_ref().is_some_and(|stream| {
-                stream.stream_id == "stream-feed-a" && stream.summary.contains("z:")
+                stream.stream_id == "stream-feed-a" && stream.summary.contains("methane=")
             })
     }));
 }

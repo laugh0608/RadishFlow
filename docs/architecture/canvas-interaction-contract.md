@@ -1,6 +1,6 @@
 # Canvas Interaction Contract
 
-更新时间：2026-05-17
+更新时间：2026-05-18
 
 ## 文档目的
 
@@ -401,7 +401,7 @@ pub struct GhostElement {
 2. MVP 单元放置、对象选择、suggestion focus / accept / reject、离散 layout nudge 都应通过正式 command surface 或 shell-local UI state 进入，不保留长期并行的 widget 私有状态改写分支。
 3. suggestion 转成正式文档命令后的实际文档变更才进入 `CommandHistory`；suggestion focus、reject、viewport、面板切换和 hover 不进入文档历史。
 4. Layout sidecar 只保存 shell / layout 相关状态；缺少 sidecar 时可以用 transient grid slot pin 出初始位置，但必须在 presentation 中保持可解释，不反向污染 flowsheet 语义。
-5. viewport 初始居中 / fit-to-content 已落地；下一步只收口真实窗口中的流股标签避让、短化或空间不足时隐藏，不扩自由拉线、自动布线、完整拖拽布局编辑器或复杂视图持久化。
+5. viewport 初始居中 / fit-to-content 已落地；短线段中间流股标签已按空间不足时隐藏的策略完成第一轮收口。后续若继续优化，只处理真实 demo blocker，不扩自由拉线、自动布线、完整拖拽布局编辑器或复杂视图持久化。
 
 ## 当前仍待后续细化的问题
 
@@ -410,4 +410,4 @@ pub struct GhostElement {
 3. suggestion 是否需要批量接受，还是严格先从单条接受开始
 4. `Tab` 接受是否需要和属性面板焦点、文本输入焦点做更细的快捷键竞争规则
 5. `RadishMind` suggestion schema 是否与本地 `LocalRules` 输出完全同构，还是允许额外解释字段
-6. 短线段流股标签在 `Feed -> Valve -> Flash Drum` 等紧凑链路中应如何避让端口和单元块，以及在什么缩放 / 空间阈值下短化或隐藏
+6. 短线段流股标签当前按空间不足时隐藏处理；后续是否需要更复杂的避让、缩放阈值或多标签排布，应等待真实 smoke 继续暴露 blocker 后再专题设计

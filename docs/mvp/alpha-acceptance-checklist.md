@@ -1,6 +1,6 @@
 # MVP Alpha Acceptance Checklist
 
-更新时间：2026-05-17
+更新时间：2026-05-18
 
 ## 用途
 
@@ -147,9 +147,16 @@
 | 打开示例 -> 运行 -> 查看结果 -> 回 Home -> 再打开 | Pass | 已补 `studio_gui_shell::tests::project_lifecycle::open_example_project_rebuilds_runtime_for_selected_sample`，覆盖示例打开、运行、结果页切换、回 Home、从最近项目再打开并重新运行 |
 | 日终截图复核 | Partial | Home Dashboard 当前不列为 blocker；Workbench 已清掉主要开发态英文和重复按钮。剩余 demo blocker 仅保留 Canvas 中间流股标签遮挡 / 裁切，以及右侧 Result Inspector 默认正文中的 `z:` / `phases:` 原始英文摘要 |
 
+### 2026-05-18
+
+| 项目 | 状态 | 记录 |
+| --- | --- | --- |
+| Studio 日终 UI blocker 收口 | Pass | Canvas 短线段中间连接流股在空间不足时隐藏标签，避免紧凑链路遮挡 / 裁切；右侧 Result Inspector 默认组成 / 相态摘要不再使用 `z:` / `phases:` 原始前缀，改为结构化短行 |
+| 自动验证 | Pass | `cargo fmt --all --check`、`cargo test -p radishflow-studio studio_gui_shell`、`cargo test -p radishflow-studio studio_gui_window_model` 已通过；沙盒默认 `target/debug/.cargo-lock` 权限异常，仓库级验证改在真实环境以 `CARGO_TARGET_DIR=target/codex` 执行并通过，最终输出 `Repository checks passed.` |
+
 ## 下一步
 
 1. 暂缓 tag 和发布自动化，把当前便携包作为内部验证资产保留。
-2. 下一轮优先修复 Canvas 中间流股标签遮挡 / 裁切，允许短化、避让或空间不足时隐藏；不扩自动布线、自由连线、完整拖拽布局或视口持久化。
-3. 下一轮优先清理右侧 Result Inspector 的 `z:` / `phases:` 原始摘要，把组成和相态改成中文结构化短行；不扩完整结果报表。
-4. 继续复核 Home / Workbench 残余中英混合文案和按钮语义；quick start 仍不得暗示已存在完整安装器或对外 demo。
+2. 下一轮继续人工视觉 smoke，确认 Home / Workbench、Canvas 短线段标签、Result Inspector 摘要、结果 / 消息 / 物性包入口和关闭窗口路径没有回归。
+3. 继续复核 Home / Workbench 残余中英混合文案和按钮语义；quick start 仍不得暗示已存在完整安装器或对外 demo。
+4. 若继续发现 UI blocker，只做 demo 可用性收口，不扩自动布线、自由连线、完整拖拽布局、视口持久化或完整结果报表。
