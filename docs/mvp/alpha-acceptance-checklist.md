@@ -153,10 +153,12 @@
 | --- | --- | --- |
 | Studio 日终 UI blocker 收口 | Pass | Canvas 短线段中间连接流股在空间不足时隐藏标签，避免紧凑链路遮挡 / 裁切；右侧 Result Inspector 默认组成 / 相态摘要不再使用 `z:` / `phases:` 原始前缀，改为结构化短行 |
 | 自动验证 | Pass | `cargo fmt --all --check`、`cargo test -p radishflow-studio studio_gui_shell`、`cargo test -p radishflow-studio studio_gui_window_model` 已通过；沙盒默认 `target/debug/.cargo-lock` 权限异常，仓库级验证改在真实环境以 `CARGO_TARGET_DIR=target/codex` 执行并通过，最终输出 `Repository checks passed.` |
+| 人工视觉 smoke | Pass | 人工从 IDE 启动 `Feed Valve Flash Binary Hydrocarbon Example` 复核通过；Home / Workbench 主路径、Canvas 短线段标签、运行后结果视图、Result Inspector 结构化摘要和底部结果表未发现 blocker |
+| 便携包刷新 | Pass | `pwsh ./scripts/package.ps1 -Version v26.5.1-dev -Clean` 已在真实环境通过，生成 staging 目录与 `.zip`；包内启动 smoke 仍待从 staging 目录执行 |
 
 ## 下一步
 
 1. 暂缓 tag 和发布自动化，把当前便携包作为内部验证资产保留。
-2. 下一轮继续人工视觉 smoke，确认 Home / Workbench、Canvas 短线段标签、Result Inspector 摘要、结果 / 消息 / 物性包入口和关闭窗口路径没有回归。
+2. 下一轮从 `artifacts/packages/RadishFlow-v26.5.1-dev-windows-x64/` 启动 `radishflow-studio.exe` 做包内 smoke，确认示例发现、打开示例、运行、结果审阅和保存 / 重开路径在脱离源码树后仍可复现。
 3. 继续复核 Home / Workbench 残余中英混合文案和按钮语义；quick start 仍不得暗示已存在完整安装器或对外 demo。
 4. 若继续发现 UI blocker，只做 demo 可用性收口，不扩自动布线、自由连线、完整拖拽布局、视口持久化或完整结果报表。
