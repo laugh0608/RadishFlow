@@ -46,7 +46,7 @@
 
 | 项目 | 命令或入口 | 当前状态 | 通过标准 | 记录 |
 | --- | --- | --- | --- | --- |
-| 仓库级验证 | `pwsh ./scripts/check-repo.ps1` | Pass | Rust / 文本 / 仓库治理基线通过 | 2026-05-16 已通过；首次运行有 1 个 Studio platform timer focused test 短暂失败，随后 focused 与完整复跑均通过；最终输出 `Repository checks passed.` |
+| 仓库级验证 | `pwsh ./scripts/check-repo.ps1` | Pass | Rust / 文本 / 仓库治理基线通过 | 2026-05-16 已通过；2026-05-18 tag 前在真实环境以 `CARGO_TARGET_DIR=target/codex pwsh ./scripts/check-repo.ps1` 复验通过，最终输出 `Repository checks passed.` |
 | 文本格式检查 | `git diff --check` | Pass | 无 whitespace error | 2026-05-14 已通过 |
 | 文档体量报告 | `pwsh ./scripts/check-doc-size.ps1` | Pass | 默认入口未重新膨胀；既有超限项可解释 | 2026-05-14 已通过；输出 `all enforced markdown files are within target limits` |
 | `rf-ffi` JSON/error 基线 | `pwsh ./scripts/check-repo.ps1` 覆盖；必要时补 `cargo test -p rf-ffi` | Pass | solve snapshot / stream JSON 与 structured error 回归稳定 | 2026-05-13 仓库级验证通过 |
@@ -105,7 +105,7 @@
 | `docs/guides/run-first-flowsheet.md` | Pass | 能指导用户打开示例、运行、审阅、保存重开 | 2026-05-17 已同步从首页 `打开示例` 进入、进入工作台后用顶部 `运行 / 保存 / 另存为...` 和右侧 / 底部结果入口复现路径 |
 | `docs/guides/review-solve-results.md` | Pass | 能解释 source / intermediate / step / outlet 结果审阅顺序 | 2026-05-13 已复查 |
 | `docs/capeopen/pme-validation.md` | Pass | 能说明 PME 验证门控、dry-run、register/unregister 和记录模板 | 2026-05-13 已复查；外部 PME 与 registry 操作仍需人工门控 |
-| 发布包形态说明 | Pass | 能说明当前仍是开发态或压缩包式交付边界，不暗示已存在完整安装器或首版 demo | 2026-05-16 已在 `docs/architecture/versioning.md` 补齐 MVP α 便携包操作清单；`docs/releases/v26.5.1-dev.md` 记录内部包边界并明确 tag 暂缓；`scripts/package.ps1` 只生成 Windows staging / zip，不执行安装、COM 注册、PME 或第三方模型加载 |
+| 发布包形态说明 | Pass | 能说明当前仍是开发态或压缩包式交付边界，不暗示已存在完整安装器或首版 demo | 2026-05-16 已在 `docs/architecture/versioning.md` 补齐 MVP α 便携包操作清单；`docs/releases/v26.5.1-dev.md` 记录内部包边界与 `v26.5.1-dev` 内部验收 tag；`scripts/package.ps1` 只生成 Windows staging / zip，不执行安装、COM 注册、PME 或第三方模型加载 |
 
 ## 今日执行记录
 
@@ -156,10 +156,10 @@
 | 人工视觉 smoke | Pass | 人工从 IDE 启动 `Feed Valve Flash Binary Hydrocarbon Example` 复核通过；Home / Workbench 主路径、Canvas 短线段标签、运行后结果视图、Result Inspector 结构化摘要和底部结果表未发现 blocker |
 | 便携包刷新 | Pass | `pwsh ./scripts/package.ps1 -Version v26.5.1-dev -Clean` 已在真实环境通过，生成 staging 目录与 `.zip` |
 | 包内启动 smoke | Pass | 人工从 `artifacts/packages/RadishFlow-v26.5.1-dev-windows-x64/` 启动 `radishflow-studio.exe` 复核通过；包内示例发现、打开示例、运行、结果审阅等主路径未发现 blocker |
+| 内部验收 tag | Pass | tag 前最终仓库级验证通过；包 manifest 记录 `gitCommit=7479e82`、`gitDirty=false`；`v26.5.1-dev` 已创建并推送到远端，仍只代表内部 `-dev` 验收轨道 |
 
 ## 下一步
 
-1. 暂缓 tag 和发布自动化，把当前便携包作为内部验证资产保留。
-2. 若准备创建 `v26.5.1-dev` 内部验收 tag，先复跑最终仓库级验证，并确认当前提交是否已同步到远端。
-3. 继续复核 Home / Workbench 残余中英混合文案和按钮语义；quick start 仍不得暗示已存在完整安装器或对外 demo。
-4. 若继续发现 UI blocker，只做 demo 可用性收口，不扩自动布线、自由连线、完整拖拽布局、视口持久化或完整结果报表。
+1. 将 `v26.5.1-dev` tag 与对应便携包作为内部验收资产归档。
+2. 继续复核 Home / Workbench 残余中英混合文案和按钮语义；quick start 仍不得暗示已存在完整安装器或对外 demo。
+3. 若继续发现 UI blocker，只做 demo 可用性收口，不扩自动布线、自由连线、完整拖拽布局、视口持久化或完整结果报表。
