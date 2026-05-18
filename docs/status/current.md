@@ -14,7 +14,7 @@
 
 - 产品定位：以 Rust Core + Rust UI + `.NET 10` CAPE-OPEN/COM 适配层构建稳态流程模拟软件。
 - 当前主线：MVP 第一阶段最小闭环已经可验证，但尚未达到首版 demo 的产品可用水准；当前主线是 Studio 首页与工作台信息架构的可用性收口，发布 / tag 暂缓。
-- 当前重点：Home Dashboard 与进入 case 后的 Workbench 第一轮真实 UI 已落地；Canvas viewport 初始居中 / fit-to-content、首页高频中文文案、`Feed Heater Flash` 示例布局顺序、Canvas 可读性打磨、首页项目选择交互、运行后结果视图、Workbench 高频残余文案、短线段中间流股标签隐藏和右侧结果检查器原始 `z:` / `phases:` 摘要清理已完成，IDE 人工视觉 smoke 未发现 blocker。下一步从内部便携包 staging 目录启动 Studio 做包内 smoke，确认脱离源码树后的示例发现和主路径可复现。
+- 当前重点：Home Dashboard 与进入 case 后的 Workbench 第一轮真实 UI 已落地；Canvas viewport 初始居中 / fit-to-content、首页高频中文文案、`Feed Heater Flash` 示例布局顺序、Canvas 可读性打磨、首页项目选择交互、运行后结果视图、Workbench 高频残余文案、短线段中间流股标签隐藏和右侧结果检查器原始 `z:` / `phases:` 摘要清理已完成；IDE 人工视觉 smoke 与内部便携包 staging smoke 均未发现 blocker。下一步应评估是否创建 `v26.5.1-dev` 内部验收 tag，或在创建 tag 前补一次最终仓库级验证。
 - 当前验证基线：功能改动优先执行相关 focused tests；阶段性收口执行 `pwsh ./scripts/check-repo.ps1`。
 
 ## 最近完成摘要
@@ -38,16 +38,16 @@
 - 2026-05-17 已按最新截图完成运行后结果视图收口：右侧结果检查器的流股 / 单元 / 对比 selector 不再为每个选项重复渲染 `Inspect`，中文界面中的 inspect 小按钮统一显示为 `检查`；底部结果表改为中文 `流股 / 相态` 表头，并以短相态摘要替代过长 `phases: ...` 原始文本，完整相态仍保留在 tooltip。已补回归覆盖打开示例、运行、查看结果、回 Home、再从最近项目打开并重新运行的路径。
 - 2026-05-17 已根据最新截图继续清理 Workbench 高频残余：Canvas 面板头隐藏开发态计数摘要，运行结果摘要改为中文结构化计数，左侧 Project 对象行去掉重复 `检查` 按钮，底部结果表空相态显示为短值 `无`，非空画布不再常驻“选择画布工具”提示，放置按钮中的 MVP 单元名已中文化。
 - 2026-05-18 已收口日终保留的两个 UI blocker：Canvas 中间连接流股在短线段空间不足时不再绘制名称标签，避免 `Feed -> Valve -> Flash Drum` 等紧凑链路遮挡单元块或端口；右侧 Result Inspector 的默认组成 / 相态摘要改为结构化短行，模型层不再生成 `z:` / `phases:` 前缀。`pwsh ./scripts/check-repo.ps1` 已在真实环境通过。
-- 2026-05-18 人工从 IDE 启动 `Feed Valve Flash Binary Hydrocarbon Example` 复核通过，未发现新的 UI blocker；同日已刷新 `v26.5.1-dev` 内部便携包 staging / zip，下一步需要直接从包目录启动 `radishflow-studio.exe` 做包内 smoke。
+- 2026-05-18 人工从 IDE 启动 `Feed Valve Flash Binary Hydrocarbon Example` 复核通过，未发现新的 UI blocker；同日已刷新 `v26.5.1-dev` 内部便携包 staging / zip，并从包目录启动执行 smoke，未发现包内示例发现、打开示例、运行、结果审阅等主路径问题。
 
 完整过程和每日验证记录见 `docs/devlogs/2026-05/2026-W21.md`、`docs/devlogs/2026-05/2026-W20.md` 以及更早周志。
 
 ## 下一步建议
 
-1. 从 `artifacts/packages/RadishFlow-v26.5.1-dev-windows-x64/` 启动 `radishflow-studio.exe` 做包内 smoke，确认包内 `examples/flowsheets` 可发现，打开示例、运行、结果审阅、保存 / 重开路径可复现。
-2. 若包内 smoke 暴露真实 blocker，按现有 command / presentation / shell-local state 边界修复；不要把 viewport 或标签收口误扩成自动布线、自由连线、完整拖拽布局或视口持久化。
-3. 右侧结果面继续只读消费 `SolveSnapshot`，不新增 shell 私有结果缓存；若还有文案问题，只按 smoke 高频路径清理，不扩完整结果报表。
-4. 在包内 smoke 通过前，不创建 `v26.5.1-dev` tag，不推进对外发布自动化；当前包仍是内部验证资产。
+1. 创建 `v26.5.1-dev` 内部验收 tag 前，建议先复跑最终仓库级验证，并确认当前两个本地提交是否需要先 push 到远端。
+2. 若决定创建 tag，应继续按 `-dev` 内部验收轨道处理，不推进对外发布自动化，不宣称正式 demo。
+3. 若暂不创建 tag，下一步应把当前包作为内部验证候选归档，并转入首版 demo 前的下一轮产品可用性评审。
+4. 后续若 smoke 再暴露真实 blocker，按现有 command / presentation / shell-local state 边界修复；不要把 UI 收口误扩成自动布线、自由连线、完整拖拽布局、视口持久化或完整结果报表。
 
 ## 暂不推进
 
