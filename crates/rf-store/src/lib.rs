@@ -61,8 +61,10 @@ mod tests {
     use std::path::{Path, PathBuf};
     use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-    use rf_model::{Component, Flowsheet};
-    use rf_types::ComponentId;
+    use rf_model::{
+        Component, Flowsheet, MaterialStreamState, UnitNode, UnitOperationParameters, UnitPort,
+    };
+    use rf_types::{ComponentId, PortDirection, PortKind};
 
     use crate::{
         STORED_PROJECT_FILE_EXTENSION, StoredAuthCacheIndex, StoredAuthCacheLayout,
@@ -197,6 +199,72 @@ mod tests {
         assert!(json.contains("\"schemaVersion\": 1"));
         assert!(json.contains("\"documentId\": \"doc-1\""));
         assert!(json.contains("\"createdAt\": \"1970-01-01T00:00:10Z\""));
+    }
+
+    #[test]
+    fn project_file_round_trips_unit_operation_parameters() {
+        let mut flowsheet = Flowsheet::new("unit-parameters");
+        flowsheet
+            .insert_stream(MaterialStreamState::from_tpzf(
+                "stream-feed",
+                "Feed",
+                300.0,
+                700_000.0,
+                1.0,
+                Default::default(),
+            ))
+            .expect("expected feed stream insert");
+        flowsheet
+            .insert_stream(MaterialStreamState::from_tpzf(
+                "stream-heated",
+                "Heated Outlet",
+                360.0,
+                650_000.0,
+                0.0,
+                Default::default(),
+            ))
+            .expect("expected outlet stream insert");
+        flowsheet
+            .insert_unit(UnitNode::new(
+                "heater-1",
+                "Heater",
+                "heater",
+                vec![
+                    UnitPort::new(
+                        "inlet",
+                        PortDirection::Inlet,
+                        PortKind::Material,
+                        Some("stream-feed".into()),
+                    ),
+                    UnitPort::new(
+                        "outlet",
+                        PortDirection::Outlet,
+                        PortKind::Material,
+                        Some("stream-heated".into()),
+                    ),
+                ],
+            ))
+            .expect("expected heater insert");
+        let heater = flowsheet
+            .units
+            .get_mut(&"heater-1".into())
+            .expect("expected heater");
+        heater.parameters = UnitOperationParameters {
+            outlet_temperature_k: Some(360.0),
+            outlet_pressure_pa: None,
+        };
+        let project = StoredProjectFile::new(
+            flowsheet,
+            StoredDocumentMetadata::new("doc-1", "Unit Parameters", timestamp(10)),
+        );
+
+        let json = project_file_to_pretty_json(&project).expect("expected project json");
+        let round_trip = parse_project_file_json(&json).expect("expected project parse");
+
+        assert_eq!(round_trip, project);
+        assert!(json.contains("\"parameters\": {"));
+        assert!(json.contains("\"outlet_temperature_k\": 360.0"));
+        assert!(!json.contains("\"outlet_pressure_pa\""));
     }
 
     #[test]

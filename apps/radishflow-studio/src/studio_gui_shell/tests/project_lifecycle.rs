@@ -127,6 +127,191 @@ fn open_project_from_input_rebuilds_runtime_and_records_feedback() {
 }
 
 #[test]
+fn unit_parameter_edits_save_reopen_and_rerun_official_examples() {
+    let cases = [
+        UnitParameterShellCase {
+            name: "heater",
+            project_json: include_str!(
+                "../../../../../examples/flowsheets/feed-heater-flash-binary-hydrocarbon.rfproj.json"
+            ),
+            unit_id: "heater-1",
+            draft_key: "unit:heater-1:outlet_temperature_k",
+            raw_value: "361.25",
+            expected_value: 361.25,
+            outlet_stream_id: "stream-heated",
+            field: UnitParameterShellField::OutletTemperatureK,
+        },
+        UnitParameterShellCase {
+            name: "cooler",
+            project_json: include_str!(
+                "../../../../../examples/flowsheets/feed-cooler-flash-binary-hydrocarbon.rfproj.json"
+            ),
+            unit_id: "cooler-1",
+            draft_key: "unit:cooler-1:outlet_temperature_k",
+            raw_value: "302.75",
+            expected_value: 302.75,
+            outlet_stream_id: "stream-cooled",
+            field: UnitParameterShellField::OutletTemperatureK,
+        },
+        UnitParameterShellCase {
+            name: "valve",
+            project_json: include_str!(
+                "../../../../../examples/flowsheets/feed-valve-flash-binary-hydrocarbon.rfproj.json"
+            ),
+            unit_id: "valve-1",
+            draft_key: "unit:valve-1:outlet_pressure_pa",
+            raw_value: "640000",
+            expected_value: 640_000.0,
+            outlet_stream_id: "stream-throttled",
+            field: UnitParameterShellField::OutletPressurePa,
+        },
+    ];
+
+    for case in cases {
+        let project_path = temporary_project_path(case.name);
+        let project = serde_json::from_str(case.project_json)
+            .unwrap_or_else(|error| panic!("expected {} project fixture: {error}", case.name));
+        write_project_file(&project_path, &project)
+            .unwrap_or_else(|error| panic!("expected {} temp project write: {error}", case.name));
+        let config = StudioRuntimeConfig {
+            project_path: project_path.clone(),
+            ..synced_workspace_config()
+        };
+        let mut app = ready_app_state(&config);
+
+        app.dispatch_ui_command(format!("inspector.focus_unit:{}", case.unit_id));
+        app.dispatch_inspector_field_draft_update(
+            radishflow_studio::inspector_draft_update_command_id(case.draft_key),
+            case.raw_value,
+        );
+        app.dispatch_inspector_field_draft_commit(
+            radishflow_studio::inspector_draft_commit_command_id(case.draft_key),
+        );
+
+        let edited = app.platform_host.snapshot().window_model();
+        assert!(
+            edited.runtime.workspace_document.has_unsaved_changes,
+            "{} parameter commit should mark the project dirty",
+            case.name
+        );
+
+        app.save_project();
+        let saved = read_project_file(&project_path)
+            .unwrap_or_else(|error| panic!("expected {} saved project read: {error}", case.name));
+        assert_saved_unit_parameter(&saved, case);
+        assert_saved_outlet_template(&saved, case);
+
+        app.open_project(project_path.clone(), "project");
+        let reopened = app.platform_host.snapshot().window_model();
+        assert!(
+            !reopened.runtime.workspace_document.has_unsaved_changes,
+            "{} reopened project should be clean",
+            case.name
+        );
+
+        app.dispatch_ui_command("run_panel.run_manual");
+        let rerun = app.platform_host.snapshot().window_model();
+        assert_eq!(
+            rerun.runtime.control_state.run_status,
+            rf_ui::RunStatus::Converged,
+            "{} edited project should still converge after reopen",
+            case.name
+        );
+        let outlet = rerun
+            .runtime
+            .latest_solve_snapshot
+            .as_ref()
+            .unwrap_or_else(|| panic!("expected {} solve snapshot", case.name))
+            .streams
+            .iter()
+            .find(|stream| stream.stream_id == case.outlet_stream_id)
+            .unwrap_or_else(|| panic!("expected {} outlet stream result", case.name));
+        match case.field {
+            UnitParameterShellField::OutletTemperatureK => {
+                assert_eq!(outlet.temperature_k, case.expected_value, "{}", case.name);
+            }
+            UnitParameterShellField::OutletPressurePa => {
+                assert_eq!(outlet.pressure_pa, case.expected_value, "{}", case.name);
+            }
+        }
+
+        let _ = std::fs::remove_file(project_path);
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+struct UnitParameterShellCase {
+    name: &'static str,
+    project_json: &'static str,
+    unit_id: &'static str,
+    draft_key: &'static str,
+    raw_value: &'static str,
+    expected_value: f64,
+    outlet_stream_id: &'static str,
+    field: UnitParameterShellField,
+}
+
+#[derive(Debug, Clone, Copy)]
+enum UnitParameterShellField {
+    OutletTemperatureK,
+    OutletPressurePa,
+}
+
+fn temporary_project_path(name: &str) -> PathBuf {
+    let timestamp = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("expected current timestamp")
+        .as_nanos();
+    std::env::temp_dir().join(format!(
+        "radishflow-studio-shell-unit-parameter-{name}-{timestamp}.rfproj.json"
+    ))
+}
+
+fn assert_saved_unit_parameter(project: &StoredProjectFile, case: UnitParameterShellCase) {
+    let unit = project
+        .document
+        .flowsheet
+        .units
+        .get(&UnitId::new(case.unit_id))
+        .unwrap_or_else(|| panic!("expected {} unit", case.name));
+    match case.field {
+        UnitParameterShellField::OutletTemperatureK => {
+            assert_eq!(
+                unit.parameters.outlet_temperature_k,
+                Some(case.expected_value),
+                "{}",
+                case.name
+            );
+        }
+        UnitParameterShellField::OutletPressurePa => {
+            assert_eq!(
+                unit.parameters.outlet_pressure_pa,
+                Some(case.expected_value),
+                "{}",
+                case.name
+            );
+        }
+    }
+}
+
+fn assert_saved_outlet_template(project: &StoredProjectFile, case: UnitParameterShellCase) {
+    let stream = project
+        .document
+        .flowsheet
+        .streams
+        .get(&StreamId::new(case.outlet_stream_id))
+        .unwrap_or_else(|| panic!("expected {} outlet stream template", case.name));
+    match case.field {
+        UnitParameterShellField::OutletTemperatureK => {
+            assert_eq!(stream.temperature_k, case.expected_value, "{}", case.name);
+        }
+        UnitParameterShellField::OutletPressurePa => {
+            assert_eq!(stream.pressure_pa, case.expected_value, "{}", case.name);
+        }
+    }
+}
+
+#[test]
 fn open_project_from_picker_rebuilds_runtime_and_records_recent_project() {
     let config = synced_workspace_config();
     let preferences_path = test_preferences_path("picker-open");

@@ -462,6 +462,75 @@ fn blank_project_initializes_components_saves_reopens_and_runs_feed_flash_path()
 }
 
 #[test]
+fn blank_project_heater_parameter_saves_reopens_and_reruns() {
+    let (config, project_path) = blank_workspace_config();
+    let mut app = ready_app_state(&config);
+
+    app.dispatch_ui_command("canvas.begin_place_unit.feed");
+    app.dispatch_canvas_pending_edit_commit(rf_ui::CanvasPoint::new(64.0, 40.0));
+    accept_canvas_suggestion_by_id(&mut app, "local.feed.create_outlet.feed-1");
+
+    app.dispatch_ui_command("canvas.begin_place_unit.heater");
+    app.dispatch_canvas_pending_edit_commit(rf_ui::CanvasPoint::new(180.0, 40.0));
+    accept_canvas_suggestion_by_id(
+        &mut app,
+        "local.heater.connect_inlet.heater-1.stream-feed-1-outlet",
+    );
+    accept_canvas_suggestion_by_id(&mut app, "local.heater.create_outlet.heater-1");
+
+    app.dispatch_ui_command("canvas.begin_place_unit.flash_drum");
+    app.dispatch_canvas_pending_edit_commit(rf_ui::CanvasPoint::new(320.0, 40.0));
+    accept_canvas_suggestion_by_id(
+        &mut app,
+        "local.flash_drum.connect_inlet.flash-1.stream-heater-1-outlet",
+    );
+    accept_canvas_suggestion_by_id(&mut app, "local.flash_drum.create_outlet.flash-1.liquid");
+    accept_canvas_suggestion_by_id(&mut app, "local.flash_drum.create_outlet.flash-1.vapor");
+
+    app.dispatch_ui_command("inspector.focus_unit:heater-1");
+    app.dispatch_inspector_field_draft_update(
+        radishflow_studio::inspector_draft_update_command_id("unit:heater-1:outlet_temperature_k"),
+        "358.5",
+    );
+    app.dispatch_inspector_field_draft_commit(
+        radishflow_studio::inspector_draft_commit_command_id("unit:heater-1:outlet_temperature_k"),
+    );
+
+    app.save_project();
+    let saved = read_project_file(&project_path).expect("expected saved blank heater project");
+    assert_eq!(
+        saved.document.flowsheet.units[&UnitId::new("heater-1")]
+            .parameters
+            .outlet_temperature_k,
+        Some(358.5)
+    );
+    assert_eq!(
+        saved.document.flowsheet.streams[&StreamId::new("stream-heater-1-outlet")].temperature_k,
+        358.5
+    );
+
+    app.open_project(project_path.clone(), "project");
+    app.dispatch_ui_command("run_panel.run_manual");
+    let rerun = app.platform_host.snapshot().window_model();
+    assert_eq!(
+        rerun.runtime.control_state.run_status,
+        rf_ui::RunStatus::Converged
+    );
+    let heated = rerun
+        .runtime
+        .latest_solve_snapshot
+        .as_ref()
+        .expect("expected solve snapshot")
+        .streams
+        .iter()
+        .find(|stream| stream.stream_id == "stream-heater-1-outlet")
+        .expect("expected heater outlet result");
+    assert_eq!(heated.temperature_k, 358.5);
+
+    let _ = fs::remove_file(project_path);
+}
+
+#[test]
 fn canvas_unit_positions_persist_through_project_save_and_reopen() {
     let (config, project_path) = blank_workspace_config();
     let mut app = ready_app_state(&config);
