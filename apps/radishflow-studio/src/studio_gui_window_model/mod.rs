@@ -934,8 +934,25 @@ fn failure_diagnostic_actions(
             &port.unit_action,
         )
     });
+    let port_stream_actions = detail.related_ports.iter().filter_map(|port| {
+        let stream = port.stream_result.as_ref()?;
+        Some(diagnostic_target_action_from_action(
+            "Failure port stream",
+            "Stream",
+            format!(
+                "Unit {} port {} stream {}",
+                port.unit_id, port.port_name, stream.stream_id
+            ),
+            &stream.focus_action,
+        ))
+    });
 
-    dedupe_diagnostic_actions(unit_actions.chain(stream_actions).chain(port_actions))
+    dedupe_diagnostic_actions(
+        unit_actions
+            .chain(stream_actions)
+            .chain(port_actions)
+            .chain(port_stream_actions),
+    )
 }
 
 fn failure_recovery_action_model(

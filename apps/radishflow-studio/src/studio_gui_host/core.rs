@@ -114,7 +114,9 @@ impl StudioGuiHost {
             .collect();
         let diagnostics = canvas_diagnostics_from_runtime(
             latest_solve_snapshot.as_ref(),
+            control_state.latest_diagnostic.as_ref(),
             control_state.notice.as_ref(),
+            self.controller.document().revision,
         );
         StudioGuiCanvasState {
             view_mode: canvas.view_mode,
@@ -451,7 +453,9 @@ fn canvas_units_in_layout_order(flowsheet: &rf_model::Flowsheet) -> Vec<&rf_mode
 
 fn canvas_diagnostics_from_runtime(
     latest_solve_snapshot: Option<&rf_ui::SolveSnapshot>,
+    latest_diagnostic: Option<&rf_ui::DiagnosticSummary>,
     notice: Option<&rf_ui::RunPanelNotice>,
+    document_revision: u64,
 ) -> Vec<StudioGuiCanvasDiagnosticState> {
     if let Some(snapshot) = latest_solve_snapshot {
         return snapshot
@@ -466,6 +470,22 @@ fn canvas_diagnostics_from_runtime(
                 related_port_targets: diagnostic.related_port_targets.clone(),
             })
             .collect();
+    }
+
+    if let Some(diagnostic) =
+        latest_diagnostic.filter(|diagnostic| diagnostic.document_revision == document_revision)
+    {
+        return vec![StudioGuiCanvasDiagnosticState {
+            severity: diagnostic.highest_severity,
+            code: diagnostic
+                .primary_code
+                .clone()
+                .unwrap_or_else(|| "run_panel.diagnostic".to_string()),
+            message: diagnostic.primary_message.clone(),
+            related_unit_ids: diagnostic.related_unit_ids.clone(),
+            related_stream_ids: diagnostic.related_stream_ids.clone(),
+            related_port_targets: diagnostic.related_port_targets.clone(),
+        }];
     }
 
     let Some(notice) = notice else {
