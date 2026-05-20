@@ -122,6 +122,21 @@ fn disconnect_unit_port(project: &mut StoredProjectFile, unit_id: &str, port_nam
     port.stream_id = None;
 }
 
+fn stored_unit_port_stream_id<'a>(
+    project: &'a StoredProjectFile,
+    unit_id: &str,
+    port_name: &str,
+) -> Option<&'a str> {
+    project
+        .document
+        .flowsheet
+        .units
+        .get(&UnitId::new(unit_id))
+        .and_then(|unit| unit.ports.iter().find(|port| port.name == port_name))
+        .and_then(|port| port.stream_id.as_ref())
+        .map(|stream_id| stream_id.as_str())
+}
+
 fn unbound_outlet_failure_synced_config() -> StudioRuntimeConfig {
     StudioRuntimeConfig {
         project_path: PathBuf::from(env!("CARGO_MANIFEST_DIR"))
