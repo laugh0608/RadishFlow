@@ -1536,6 +1536,10 @@ fn studio_gui_window_model_surfaces_bootstrap_workspace_results_and_diagnostics(
         unit_detail.property_fields.iter().any(|field| {
             field.key == "unit:heater-1:outlet_temperature_k"
                 && field.label == "Outlet temperature (K)"
+                && field.constraint_text.as_deref().is_some_and(|text| {
+                    text.contains("SI unit: K")
+                        && text.contains("positive finite outlet temperature")
+                })
                 && field.value_kind_label == "Number"
                 && field.status_label == "Synced"
                 && field.draft_update_command_id
@@ -1853,6 +1857,60 @@ fn studio_gui_window_model_surfaces_bootstrap_workspace_results_and_diagnostics(
     assert_eq!(
         stale_unit.selected_unit_id.as_deref(),
         snapshot.steps.first().map(|step| step.unit_id.as_str())
+    );
+}
+
+#[test]
+fn studio_gui_window_model_surfaces_unit_parameter_constraint_for_invalid_valve_pressure() {
+    let config = synced_example_config("feed-valve-flash-binary-hydrocarbon.rfproj.json");
+    let mut driver = StudioGuiDriver::new(&config).expect("expected driver");
+    driver
+        .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+        .expect("expected open dispatch");
+    driver
+        .dispatch_event(StudioGuiEvent::UiCommandRequested {
+            command_id: "inspector.focus_unit:valve-1".to_string(),
+        })
+        .expect("expected valve focus dispatch");
+
+    let dispatch = driver
+        .dispatch_event(StudioGuiEvent::InspectorFieldDraftUpdateRequested {
+            command_id: "inspector.update_stream_draft:unit:valve-1:outlet_pressure_pa".to_string(),
+            raw_value: "730000".to_string(),
+        })
+        .expect("expected invalid valve pressure draft update");
+    let detail = dispatch
+        .window
+        .runtime
+        .active_inspector_detail
+        .expect("expected active valve inspector detail");
+    let field = detail
+        .property_fields
+        .iter()
+        .find(|field| field.key == "unit:valve-1:outlet_pressure_pa")
+        .expect("expected valve outlet pressure field");
+
+    assert_eq!(field.status_label, "Invalid");
+    assert_eq!(field.current_value, "730000");
+    assert!(field.commit_command_id.is_none());
+    assert!(field.discard_command_id.is_some());
+    assert!(
+        field
+            .constraint_text
+            .as_deref()
+            .is_some_and(|text| text.contains("SI unit: Pa")
+                && text.contains("cannot exceed the connected inlet pressure")
+                && text.contains("700000 Pa"))
+    );
+    assert!(
+        detail.property_notices.iter().any(|notice| {
+            notice.status_label == "Invalid"
+                && notice.message.contains("Outlet pressure (Pa)")
+                && notice
+                    .message
+                    .contains("cannot exceed the connected inlet pressure")
+        }),
+        "expected field-specific invalid valve pressure notice"
     );
 }
 

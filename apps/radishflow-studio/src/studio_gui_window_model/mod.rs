@@ -232,6 +232,7 @@ pub struct StudioGuiWindowInspectorTargetSummaryRowModel {
 pub struct StudioGuiWindowInspectorTargetFieldModel {
     pub key: String,
     pub label: String,
+    pub constraint_text: Option<String>,
     pub value_kind_label: &'static str,
     pub original_value: String,
     pub current_value: String,
@@ -1171,6 +1172,7 @@ fn inspector_field_model_from_snapshot(
     StudioGuiWindowInspectorTargetFieldModel {
         key: field.key.clone(),
         label: field.label.clone(),
+        constraint_text: field.constraint_text.clone(),
         value_kind_label: inspector_field_kind_label(field.value_kind),
         original_value: field.original_value.clone(),
         current_value: field.current_value.clone(),

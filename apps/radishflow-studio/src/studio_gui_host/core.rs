@@ -571,7 +571,7 @@ fn active_inspector_detail_from_controller(
             let unit = flowsheet.units.get(unit_id)?;
             let property_fields =
                 unit_property_fields(flowsheet, unit, controller.inspector_drafts());
-            let property_notices = inspector_property_notices(&property_fields);
+            let property_notices = unit_property_notices(unit, &property_fields);
             Some(StudioGuiInspectorTargetDetailSnapshot {
                 target,
                 title: unit.name.clone(),
@@ -701,12 +701,14 @@ fn unit_number_property_field(
     label: &str,
 ) -> Option<StudioGuiInspectorTargetFieldSnapshot> {
     let original = rf_ui::unit_inspector_parameter_value(flowsheet, &unit.id, &field)?;
-    Some(inspector_number_field(
+    let mut property_field = inspector_number_field(
         drafts,
         rf_ui::unit_inspector_draft_key(&unit.id, &field),
         label,
         original,
-    ))
+    );
+    property_field.constraint_text = Some(unit_parameter_constraint_text(flowsheet, unit, &field));
+    Some(property_field)
 }
 
 fn stream_property_fields(
@@ -808,6 +810,7 @@ fn inspector_text_field(
         Some(rf_ui::DraftValue::Text(draft)) => StudioGuiInspectorTargetFieldSnapshot {
             key: key.clone(),
             label: label.to_string(),
+            constraint_text: None,
             value_kind: StudioGuiInspectorTargetFieldValueKindSnapshot::Text,
             original_value: draft.original.clone(),
             current_value: draft.current.clone(),
@@ -829,6 +832,7 @@ fn inspector_text_field(
         _ => StudioGuiInspectorTargetFieldSnapshot {
             key: key.clone(),
             label: label.to_string(),
+            constraint_text: None,
             value_kind: StudioGuiInspectorTargetFieldValueKindSnapshot::Text,
             original_value: original.clone(),
             current_value: original,
@@ -852,6 +856,7 @@ fn inspector_number_field(
         Some(rf_ui::DraftValue::Number(draft)) => StudioGuiInspectorTargetFieldSnapshot {
             key: key.clone(),
             label: label.to_string(),
+            constraint_text: None,
             value_kind: StudioGuiInspectorTargetFieldValueKindSnapshot::Number,
             original_value: draft.original.clone(),
             current_value: draft.current.clone(),
@@ -873,6 +878,7 @@ fn inspector_number_field(
         _ => StudioGuiInspectorTargetFieldSnapshot {
             key: key.clone(),
             label: label.to_string(),
+            constraint_text: None,
             value_kind: StudioGuiInspectorTargetFieldValueKindSnapshot::Number,
             original_value: format_field_number(original),
             current_value: format_field_number(original),
@@ -958,6 +964,94 @@ fn inspector_property_notices(
     }
 
     Vec::new()
+}
+
+fn unit_property_notices(
+    unit: &rf_model::UnitNode,
+    fields: &[StudioGuiInspectorTargetFieldSnapshot],
+) -> Vec<crate::StudioGuiInspectorPropertyNoticeSnapshot> {
+    let notices: Vec<_> = fields
+        .iter()
+        .filter(|field| {
+            field.validation == StudioGuiInspectorTargetFieldValidationSnapshot::Invalid
+        })
+        .map(|field| crate::StudioGuiInspectorPropertyNoticeSnapshot {
+            status_label: "Invalid",
+            message: unit_parameter_invalid_notice(unit, field),
+        })
+        .collect();
+
+    if notices.is_empty() {
+        inspector_property_notices(fields)
+    } else {
+        notices
+    }
+}
+
+fn unit_parameter_invalid_notice(
+    unit: &rf_model::UnitNode,
+    field: &StudioGuiInspectorTargetFieldSnapshot,
+) -> String {
+    if field.key.ends_with(":outlet_temperature_k") {
+        return format!(
+            "{} must be a positive finite outlet temperature in K.",
+            field.label
+        );
+    }
+
+    if field.key.ends_with(":outlet_pressure_pa") {
+        if unit.kind.as_str() == "valve" {
+            return format!(
+                "{} must be a positive finite outlet absolute pressure in Pa and cannot exceed the connected inlet pressure.",
+                field.label
+            );
+        }
+        return format!(
+            "{} must be a positive finite outlet absolute pressure in Pa.",
+            field.label
+        );
+    }
+
+    "Fix invalid property drafts before applying changes; invalid drafts are preserved and are not committed.".to_string()
+}
+
+fn unit_parameter_constraint_text(
+    flowsheet: &rf_model::Flowsheet,
+    unit: &rf_model::UnitNode,
+    field: &rf_ui::UnitInspectorDraftField,
+) -> String {
+    match field {
+        rf_ui::UnitInspectorDraftField::OutletTemperatureK => {
+            "SI unit: K. Enter a positive finite outlet temperature; the committed value is used by the solver and synced to the outlet stream template.".to_string()
+        }
+        rf_ui::UnitInspectorDraftField::OutletPressurePa => {
+            let inlet_limit = if unit.kind.as_str() == "valve" {
+                connected_inlet_stream(flowsheet, unit).map(|stream| {
+                    format!(" Current inlet pressure limit: {:.0} Pa.", stream.pressure_pa)
+                })
+            } else {
+                None
+            };
+            format!(
+                "SI unit: Pa. Enter a positive finite outlet absolute pressure; Valve outlet pressure cannot exceed the connected inlet pressure.{}",
+                inlet_limit.unwrap_or_default()
+            )
+        }
+    }
+}
+
+fn connected_inlet_stream<'a>(
+    flowsheet: &'a rf_model::Flowsheet,
+    unit: &rf_model::UnitNode,
+) -> Option<&'a rf_model::MaterialStreamState> {
+    unit.ports
+        .iter()
+        .find(|port| {
+            port.direction == rf_types::PortDirection::Inlet
+                && port.kind == rf_types::PortKind::Material
+        })
+        .and_then(|port| port.stream_id.as_ref())
+        .and_then(|stream_id| flowsheet.streams.get(stream_id))
 }
 
 fn stream_property_notices(

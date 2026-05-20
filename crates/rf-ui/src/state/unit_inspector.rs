@@ -70,7 +70,14 @@ impl AppState {
         let raw_value = raw_value.into();
         let key = unit_inspector_draft_key(unit_id, &field);
         let (draft_value, is_dirty, validation) =
-            unit_draft_value_from_raw(&field, original_value, raw_value);
+            unit_draft_value_from_raw(original_value, raw_value, |value| {
+                is_valid_unit_parameter_value_for_unit(
+                    &self.workspace.document.flowsheet,
+                    unit,
+                    &field,
+                    value,
+                )
+            });
 
         if !is_dirty && validation != DraftValidationState::Invalid {
             self.workspace.drafts.fields.remove(&key);
@@ -201,13 +208,11 @@ pub fn unit_inspector_parameter_value(
 }
 
 fn unit_draft_value_from_raw(
-    field: &UnitInspectorDraftField,
     original_value: f64,
     raw_value: String,
+    is_valid_number: impl Fn(f64) -> bool,
 ) -> (DraftValue, bool, DraftValidationState) {
-    unit_number_draft_value(original_value, raw_value, |value| {
-        is_valid_unit_parameter_value(field, value)
-    })
+    unit_number_draft_value(original_value, raw_value, is_valid_number)
 }
 
 fn unit_number_draft_value<F>(
@@ -302,9 +307,13 @@ fn apply_unit_parameter_value(
             field.command_parameter()
         )));
     };
-    if !is_valid_unit_parameter_value(field, *value) {
+    let unit = flowsheet
+        .units
+        .get(unit_id)
+        .ok_or_else(|| RfError::missing_entity("unit", unit_id))?;
+    if !is_valid_unit_parameter_value_for_unit(flowsheet, unit, field, *value) {
         return Err(RfError::invalid_input(format!(
-            "unit parameter `{}` must be a positive finite SI value",
+            "unit parameter `{}` is outside the supported SI constraint",
             field.command_parameter()
         )));
     }
@@ -340,6 +349,35 @@ fn apply_unit_parameter_value(
 
 fn is_valid_unit_parameter_value(_field: &UnitInspectorDraftField, value: f64) -> bool {
     value.is_finite() && value > 0.0
+}
+
+fn is_valid_unit_parameter_value_for_unit(
+    flowsheet: &Flowsheet,
+    unit: &UnitNode,
+    field: &UnitInspectorDraftField,
+    value: f64,
+) -> bool {
+    if !is_valid_unit_parameter_value(field, value) {
+        return false;
+    }
+
+    if unit.kind.as_str() == rf_unitops::VALVE_KIND
+        && matches!(field, UnitInspectorDraftField::OutletPressurePa)
+    {
+        return inlet_stream(flowsheet, unit)
+            .map(|stream| value <= stream.pressure_pa)
+            .unwrap_or(true);
+    }
+
+    true
+}
+
+fn inlet_stream<'a>(flowsheet: &'a Flowsheet, unit: &UnitNode) -> Option<&'a MaterialStreamState> {
+    unit.ports
+        .iter()
+        .find(|port| port.direction == PortDirection::Inlet && port.kind == PortKind::Material)
+        .and_then(|port| port.stream_id.as_ref())
+        .and_then(|stream_id| flowsheet.streams.get(stream_id))
 }
 
 fn outlet_stream<'a>(flowsheet: &'a Flowsheet, unit: &UnitNode) -> Option<&'a MaterialStreamState> {

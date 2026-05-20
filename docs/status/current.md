@@ -14,7 +14,7 @@
 
 - 产品定位：以 Rust Core + Rust UI + `.NET 10` CAPE-OPEN/COM 适配层构建稳态流程模拟软件。
 - 当前主线：MVP 第一阶段最小闭环已经可验证，`v26.5.1-dev` 已作为内部验收 tag 创建并推送；首版 demo 前的 Home / Workbench 产品可用性 blocker 已收口，当前重新回到功能开发。
-- 当前重点：在不扩自由连线、自动布线、完整拖拽布局、视口持久化、完整结果报表或对外发布自动化的前提下，继续补齐高频建模能力。本轮已把 `Heater / Cooler / Valve` 的首批关键单元参数接入 Unit Inspector draft / commit / undo history / solver 链路：Heater/Cooler 可编辑 outlet temperature，Valve 可编辑 outlet pressure，并同步对应 outlet stream 模板，旧项目未带参数时继续按现有流股模板求解；2026-05-20 已补参数 JSON round-trip、官方 Heater / Cooler / Valve 示例以及空白项目 Heater 路径的“编辑参数 -> 保存 -> 重开 -> 运行”focused 回归。
+- 当前重点：在不扩自由连线、自动布线、完整拖拽布局、视口持久化、完整结果报表或对外发布自动化的前提下，继续补齐高频建模能力。本轮已把 `Heater / Cooler / Valve` 的首批关键单元参数接入 Unit Inspector draft / commit / undo history / solver 链路：Heater/Cooler 可编辑 outlet temperature，Valve 可编辑 outlet pressure，并同步对应 outlet stream 模板，旧项目未带参数时继续按现有流股模板求解；2026-05-20 已补参数 JSON round-trip、官方 Heater / Cooler / Valve 示例以及空白项目 Heater 路径的“编辑参数 -> 保存 -> 重开 -> 运行”focused 回归，并补出字段级 SI 约束提示与 Valve outlet pressure 不高于 inlet pressure 的草稿阻断。
 - 当前验证基线：功能改动优先执行相关 focused tests；阶段性收口执行 `pwsh ./scripts/check-repo.ps1`。
 
 ## 最近完成摘要
@@ -41,14 +41,14 @@
 - 2026-05-18 人工从 IDE 启动 `Feed Valve Flash Binary Hydrocarbon Example` 复核通过，未发现新的 UI blocker；同日已刷新 `v26.5.1-dev` 内部便携包 staging / zip，并从包目录启动执行 smoke，未发现包内示例发现、打开示例、运行、结果审阅等主路径问题。最终包 manifest 记录 `gitCommit=7479e82`、`gitDirty=false`，`v26.5.1-dev` tag 已推送到远端。
 - 2026-05-18 首版 demo 前产品可用性评审发现并收口 DocsRepro / Home 示例入口 blocker：默认 Home / Workbench 示例选择器只保留四条 official hydrocarbon 演示路径，避免 synthetic / PME 验证样例以“就绪示例”进入高频入口；`Feed Heater Flash` 首页标题改回单一 `加热器` 语义；quick start、run-first、versioning、release notes 与 package README 模板已同步当前 Windows 内部便携包和已推送 tag 口径。
 - 2026-05-18 在 demo blocker 收口后转回功能开发：`UnitNode` 新增可选 SI 参数结构，Unit Inspector 暴露 Heater/Cooler outlet temperature 与 Valve outlet pressure 的字段级草稿编辑；提交走 `DocumentCommand::SetUnitParameter`，同步 outlet stream 模板并触发求解 dirty 状态；顺序求解器优先使用已提交单元参数，旧项目无参数时保持原有行为。
-- 2026-05-20 已复核首批单元参数闭环：`rf-store` 现在锁定单元参数随项目 JSON round-trip，Studio shell focused 回归覆盖官方 Heater / Cooler / Valve 示例和空白项目 Heater 最短路径从 Unit Inspector 编辑参数、保存、重开到再次运行收敛，并断言求解结果使用保存后的 outlet temperature / outlet pressure。
+- 2026-05-20 已复核首批单元参数闭环：`rf-store` 现在锁定单元参数随项目 JSON round-trip，Studio shell focused 回归覆盖官方 Heater / Cooler / Valve 示例和空白项目 Heater 最短路径从 Unit Inspector 编辑参数、保存、重开到再次运行收敛，并断言求解结果使用保存后的 outlet temperature / outlet pressure；Unit Inspector 字段 presentation 现在带 SI 约束提示，Valve outlet pressure 草稿在高于已连接 inlet pressure 时直接标为 invalid，不再等到运行阶段才暴露。
 
 完整过程和每日验证记录见 `docs/devlogs/2026-05/2026-W21.md`、`docs/devlogs/2026-05/2026-W20.md` 以及更早周志。
 
 ## 下一步建议
 
-1. 继续围绕真实建模链路推进：单元参数保存 / 重开 / 运行 focused 回归已补齐，下一步优先从参数约束提示或求解诊断可操作性中择一推进。
-2. 若继续做参数体验，优先补窄口径的字段校验提示和失败定位，不扩展成完整单元参数表或完整结果报表。
+1. 继续围绕真实建模链路推进：首批单元参数保存 / 重开 / 运行与字段级约束提示已补齐，下一步优先做求解诊断可操作性。
+2. 若继续做参数体验，只补与现有 Heater / Cooler / Valve 字段直接相关的失败定位，不扩展成完整单元参数表或完整结果报表。
 3. 若要刷新新的便携包或 tag，应创建新提交 / 新版本节点，不移动已推送的 `v26.5.1-dev` tag。
 4. 不把当前功能推进误扩成自动布线、自由连线、完整拖拽布局、视口持久化、完整结果报表或对外发布自动化。
 

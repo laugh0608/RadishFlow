@@ -310,7 +310,7 @@ fn notice_title_for_blocked_outcome(
         }
         crate::StudioWorkspaceRunBlockedReason::InvalidSelection => "Run blocked",
         crate::StudioWorkspaceRunBlockedReason::PendingInspectorDrafts => {
-            "Stream edits not applied"
+            "Inspector edits not applied"
         }
         crate::StudioWorkspaceRunBlockedReason::UnnormalizedStreamComposition => {
             "Composition must be normalized"
@@ -863,7 +863,7 @@ mod tests {
                 .map(|notice| (notice.level, notice.title.as_str())),
             Some((
                 rf_ui::RunPanelNoticeLevel::Warning,
-                "Stream edits not applied"
+                "Inspector edits not applied"
             ))
         );
         assert!(

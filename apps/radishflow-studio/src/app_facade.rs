@@ -450,7 +450,7 @@ fn workspace_run_preflight_block(app_state: &AppState) -> Option<StudioWorkspace
         return Some(StudioWorkspaceRunBlocked {
             reason: StudioWorkspaceRunBlockedReason::PendingInspectorDrafts,
             message: format!(
-                "Stream Inspector has {invalid_draft_count} invalid draft{}. Fix or revert invalid values before running; drafts are not part of the document until they are applied.",
+                "Inspector has {invalid_draft_count} invalid draft{}. Fix or revert invalid values before running; drafts are not part of the document until they are applied.",
                 plural_suffix(invalid_draft_count),
             ),
         });
@@ -467,7 +467,7 @@ fn workspace_run_preflight_block(app_state: &AppState) -> Option<StudioWorkspace
         return Some(StudioWorkspaceRunBlocked {
             reason: StudioWorkspaceRunBlockedReason::PendingInspectorDrafts,
             message: format!(
-                "Stream Inspector has {dirty_draft_count} uncommitted draft{}. Apply or revert inspector drafts before running; the solver only reads the committed flowsheet document.",
+                "Inspector has {dirty_draft_count} uncommitted draft{}. Apply or revert inspector drafts before running; the solver only reads the committed flowsheet document.",
                 plural_suffix(dirty_draft_count),
             ),
         });

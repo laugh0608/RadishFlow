@@ -85,6 +85,7 @@ pub struct StudioGuiInspectorTargetSummaryRowSnapshot {
 pub struct StudioGuiInspectorTargetFieldSnapshot {
     pub key: String,
     pub label: String,
+    pub constraint_text: Option<String>,
     pub value_kind: StudioGuiInspectorTargetFieldValueKindSnapshot,
     pub original_value: String,
     pub current_value: String,

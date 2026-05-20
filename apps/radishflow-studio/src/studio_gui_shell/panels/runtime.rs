@@ -1440,7 +1440,12 @@ impl ReadyAppState {
                     );
                     ui.end_row();
                     for field in &detail.property_fields {
-                        render_wrapped_small(ui, &field.label);
+                        ui.vertical(|ui| {
+                            render_wrapped_small(ui, &field.label);
+                            if let Some(constraint_text) = field.constraint_text.as_ref() {
+                                ui.small(egui::RichText::new(constraint_text).weak());
+                            }
+                        });
                         render_wrapped_small(
                             ui,
                             self.locale.runtime_label(field.value_kind_label).as_ref(),

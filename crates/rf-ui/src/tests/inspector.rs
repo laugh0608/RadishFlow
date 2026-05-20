@@ -183,6 +183,56 @@ fn unit_parameter_document() -> FlowsheetDocument {
     )
 }
 
+fn valve_parameter_document() -> FlowsheetDocument {
+    let mut flowsheet = Flowsheet::new("valve-demo");
+    flowsheet
+        .insert_stream(MaterialStreamState::from_tpzf(
+            "stream-feed",
+            "Feed",
+            315.0,
+            120_000.0,
+            5.0,
+            Default::default(),
+        ))
+        .expect("expected feed stream insert");
+    flowsheet
+        .insert_stream(MaterialStreamState::from_tpzf(
+            "stream-throttled",
+            "Valve Outlet",
+            315.0,
+            90_000.0,
+            0.0,
+            Default::default(),
+        ))
+        .expect("expected outlet stream insert");
+    flowsheet
+        .insert_unit(UnitNode::new(
+            "valve-1",
+            "Valve",
+            "valve",
+            vec![
+                UnitPort::new(
+                    "inlet",
+                    PortDirection::Inlet,
+                    PortKind::Material,
+                    Some("stream-feed".into()),
+                ),
+                UnitPort::new(
+                    "outlet",
+                    PortDirection::Outlet,
+                    PortKind::Material,
+                    Some("stream-throttled".into()),
+                ),
+            ],
+        ))
+        .expect("expected valve insert");
+
+    FlowsheetDocument::new(
+        flowsheet,
+        DocumentMetadata::new("doc-valve-parameter", "Valve Parameter Demo", timestamp(10)),
+    )
+}
+
 #[test]
 fn updating_unit_inspector_draft_keeps_document_unchanged() {
     let mut app_state = AppState::new(unit_parameter_document());
@@ -259,6 +309,48 @@ fn committing_unit_inspector_draft_sets_parameter_and_syncs_outlet_template() {
         Some(SolvePendingReason::DocumentRevisionAdvanced)
     );
     assert!(app_state.workspace.drafts.fields.is_empty());
+}
+
+#[test]
+fn updating_valve_parameter_above_inlet_pressure_marks_draft_invalid() {
+    let mut app_state = AppState::new(valve_parameter_document());
+    app_state.focus_inspector_target(crate::InspectorTarget::Unit(UnitId::new("valve-1")));
+
+    let outcome = app_state
+        .update_unit_inspector_draft(
+            &UnitId::new("valve-1"),
+            crate::UnitInspectorDraftField::OutletPressurePa,
+            "130000",
+        )
+        .expect("expected valve draft update");
+
+    assert_eq!(outcome.key, "unit:valve-1:outlet_pressure_pa");
+    assert!(outcome.is_dirty);
+    assert_eq!(outcome.validation, crate::DraftValidationState::Invalid);
+    assert_eq!(app_state.workspace.document.revision, 0);
+    assert_eq!(
+        app_state.workspace.document.flowsheet.units[&UnitId::new("valve-1")]
+            .parameters
+            .outlet_pressure_pa,
+        None
+    );
+    assert_eq!(
+        app_state.workspace.document.flowsheet.streams[&StreamId::new("stream-throttled")]
+            .pressure_pa,
+        90_000.0
+    );
+
+    let ignored = app_state
+        .commit_unit_inspector_draft(
+            &UnitId::new("valve-1"),
+            crate::UnitInspectorDraftField::OutletPressurePa,
+            timestamp(42),
+        )
+        .expect("expected invalid commit to be ignored");
+
+    assert_eq!(ignored, None);
+    assert_eq!(app_state.workspace.document.revision, 0);
+    assert!(app_state.workspace.drafts.fields.contains_key(&outcome.key));
 }
 
 #[test]
