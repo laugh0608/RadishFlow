@@ -238,7 +238,7 @@ App 与交互层当前进一步冻结以下口径：
 - Studio / Canvas 暂停继续扩 hover、legend、focus、command feedback 等周边 presentation 细节，把当前只读扫读层和多单元 placement palette 视为已收口边界
 - 2026-05-04 已补齐三条最短可操作建模路径：`Feed -> Flash Drum`、`Feed -> Heater/Cooler/Valve -> Flash Drum`、`Feed + Feed -> Mixer -> Flash Drum`；这些路径当前通过本地 Canvas suggestions 补齐连接和必要 outlet stream，并已由 shell 回归测试锁定到手动求解收敛
 - 2026-05-04 继续补齐真正空白项目前置缺口；2026-05-14 顶部 `New Blank` 进入未命名空白项目，空白项目会初始化 MVP 默认二元 official hydrocarbon 组件 `methane / ethane`，并用初始化后的 flowsheet 生成本地 `binary-hydrocarbon-lite-v1` 物性包缓存；Feed source stream 默认值固定为 `298.15 K / 101325 Pa / 1 mol/s / 等摩尔组成`，保存后重新打开仍可继续运行 `Feed -> Flash Drum` 最短闭环
-- 2026-05-04 又补出显式 suggestion acceptance；2026-05-14 UI 文案收敛为 `连接` / `Connect`：每条带 acceptance payload 的本地建议都可单独接受，当前已验证非 focused outlet suggestion 也能先被接受，后续仍可补齐 `Feed -> Flash Drum` 并运行收敛
+- 2026-05-04 又补出显式 suggestion acceptance；2026-05-20 UI 文案进一步按 acceptance payload 区分为 `连接流股` / `Connect stream` 与 `创建流股` / `Create stream`：每条带 acceptance payload 的本地建议都可单独接受，当前已验证非 focused outlet suggestion 也能先被接受，后续仍可补齐 `Feed -> Flash Drum` 并运行收敛
 - 2026-05-04 又补出 Canvas placement 坐标最小持久化：落点保存到 `<project>.rfstudio-layout.json` sidecar，保存并重开项目后单元位置可恢复，且仍可继续显式接受 connection suggestions 并运行收敛
 - 2026-05-04 又补出 Active Inspector 单元最新执行结果审阅：选中已运行单元时，窗口模型会暴露执行状态、step 序号、summary 和产出流股跳转，并由 shell 只读展示；2026-05-05 进一步补出输入流股跳转
 - 2026-05-04 又补出求解步骤导航 action：Runtime 全局步骤、Active Inspector 关联步骤和 Result Inspector 关联步骤都可复用同一单元/产出流股跳转 presentation；2026-05-05 进一步纳入输入流股跳转

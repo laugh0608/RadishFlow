@@ -75,7 +75,7 @@
 | 步骤 | 从空白项目放置单元；显式接受 Canvas suggestion；运行；查看 flash outlet |
 | 通过标准 | 空白项目具备 MVP 默认二元组件与本地 `binary-hydrocarbon-lite-v1` 缓存；suggestion 可补齐最短链路；运行可收敛或给出结构化诊断 |
 | Blocker 分类 | `StudioModelingPath`、`NumericalBaseline`、`ResultReview` |
-| 记录 | 2026-05-16 人工执行通过；空白项目最短建模闭环可完成，Project / Canvas 到 Inspector 的入口可用，`连接` suggestion 可完成 MVP 最短连接 |
+| 记录 | 2026-05-16 人工执行通过；空白项目最短建模闭环可完成，Project / Canvas 到 Inspector 的入口可用，Canvas suggestion 可完成 MVP 最短连接和 outlet stream 创建 |
 
 ### Smoke C：Stream Inspector 组成阻断
 
