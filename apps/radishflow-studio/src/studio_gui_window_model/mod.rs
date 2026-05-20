@@ -877,13 +877,7 @@ fn failure_diagnostic_detail_model_from_summary(
                 inspector_target_model_from_ui(&rf_ui::InspectorTarget::Unit(unit_id.clone()))
             })
             .collect(),
-        related_streams: summary
-            .related_stream_ids
-            .iter()
-            .map(|stream_id| {
-                inspector_target_model_from_ui(&rf_ui::InspectorTarget::Stream(stream_id.clone()))
-            })
-            .collect(),
+        related_streams: failure_related_stream_targets(summary, diagnostic_context),
         related_stream_results: diagnostic_context
             .map(|context| {
                 context
@@ -913,6 +907,33 @@ fn failure_diagnostic_detail_model_from_summary(
             })
             .collect(),
     }
+}
+
+fn failure_related_stream_targets(
+    summary: &rf_ui::DiagnosticSummary,
+    diagnostic_context: Option<&StudioGuiFailureDiagnosticContextSnapshot>,
+) -> Vec<StudioGuiWindowInspectorTargetModel> {
+    let existing_stream_ids = diagnostic_context.map(|context| {
+        context
+            .related_streams
+            .iter()
+            .map(|stream| stream.stream_id.as_str())
+            .collect::<BTreeSet<_>>()
+    });
+
+    summary
+        .related_stream_ids
+        .iter()
+        .filter(|stream_id| {
+            existing_stream_ids
+                .as_ref()
+                .map(|ids| ids.contains(stream_id.as_str()))
+                .unwrap_or(true)
+        })
+        .map(|stream_id| {
+            inspector_target_model_from_ui(&rf_ui::InspectorTarget::Stream(stream_id.clone()))
+        })
+        .collect()
 }
 
 fn failure_diagnostic_actions(
