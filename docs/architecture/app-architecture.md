@@ -705,6 +705,7 @@ pub struct StepSnapshot {
 - 当发生 `Enter`、失焦、点击应用等语义提交时，才生成命令并写回文档
 - 写回文档后再决定是否触发结构检查与自动求解
 - Stream Inspector 当前通过 `SetStreamSpecification(s)` 写回流股规格；Unit Inspector 当前只暴露 MVP 高频单元的首批关键参数，`Heater / Cooler` 写回 `outlet_temperature_k`，`Valve` 写回 `outlet_pressure_pa`，并通过 `SetUnitParameter` 同步对应 outlet stream 模板
+- Unit Inspector 参数字段必须携带 SI 单位和约束 presentation；无效草稿不写文档/历史/模板。已入文档的无效参数由 `solver.step.parameter` 等诊断暴露，并携带 unit / port / stream context
 
 采用这个方案的原因：
 
@@ -829,9 +830,10 @@ pub struct StepSnapshot {
 - Studio 当前又已把 canvas suggestion 与离散 layout nudge 交互正式纳入同一条 command surface：`canvas.accept_focused`、`canvas.reject_focused`、`canvas.focus_next`、`canvas.focus_previous` 与 `canvas.move_selected_unit.left/right/up/down` 当前也应通过 `dispatch_ui_command(command_id)`、`StudioGuiCommandRegistry` 与对应 widget action 统一派发，而不再保留一条长期并行的 widget/shortcut 私有 typed 事件主线；layout nudge 只写 `<project>.rfstudio-layout.json` sidecar，缺少 sidecar 坐标时先按 transient grid slot pin 出初始位置，不进入项目文档 revision/history；selection presentation 与 command result 应显式暴露 `sidecar position` / `transient grid` 来源，避免真实 GUI 再自行猜测 pin 语义
 - Studio 当前结果审阅/错误定位入口也已进一步收口为统一 `StudioGuiWindowDiagnosticTargetActionModel`：失败摘要、结果检查器、当前对象检查器与求解步骤都会汇总可执行诊断目标 action，真实 GUI 只消费这份 presentation 并继续通过既有 `command_id` 派发，不新增一条错误处理或导航私有分支
 - Studio 当前结果检查器的 `selected_stream / comparison_stream / selected_unit` 也已冻结为 shell-local 视图选择态：它们只决定当前显示哪一块 `SolveSnapshot` 结果面，不缓存第二份结果；若 base stream 切换成当前 compared stream，comparison 允许按现有规则清空，但这仍只是 selector state 复位，不代表结果语义变化；最终 UI 的选择区应使用紧凑可选项，不为每个候选重复渲染 `Inspect`
-- Studio 当前 near-boundary 结果消费链又已进一步收口到 `window_model -> shell runtime` 的同一条 action surface：`inspector.focus_stream:*` / `inspector.focus_unit:*`、comparison 检查动作、诊断目标 section，以及 shared diagnostic action renderer 的 `source | target | summary` 文本都应继续从同一份 `StudioGuiWindowDiagnosticTargetActionModel` 或既有 focus action 派生；真实 GUI 不应在 runtime 最终渲染层再发明一套 target 语义或导航分支
+- Studio 当前 near-boundary 结果消费链已收口到 `window_model -> shell runtime` 的同一条 action surface：`inspector.focus_stream:*` / `inspector.focus_unit:*`、comparison 检查动作和诊断目标 section 都应从同一份 `StudioGuiWindowDiagnosticTargetActionModel` 或既有 focus action 派生；GUI 不应再发明 target 语义或导航分支
 - Studio 当前 `StudioGuiCommandRegistry` 也会从最新 `SolveSnapshot` 派生 `Results` command section：result stream / unit navigation 只暴露为既有 `inspector.focus_stream:*` / `inspector.focus_unit:*` command，palette、menu、command list 与 runtime 小型 action button 都继续通过 `dispatch_ui_command(command_id)` 进入同一条 host 派发链，不在各自入口复制 target 解析
-- Studio 当前失败详情展示也只消费 `WorkspaceControlState.latest_diagnostic` 中已有结构化字段，直接显示 primary code、revision、severity、count 与相关 unit / stream / port target；port target 当前只定位所属 unit，真实 GUI 不应从错误 message 文本里反解析或私造端口级 command
+- Studio 当前失败详情只消费 `latest_diagnostic`，显示 primary code、revision、severity、count 与相关 target；GUI 不从 message 文本反解析或私造端口级 command
+- Studio 当前 Run Panel recovery action 必须区分聚焦与修复：前者只定位 target，后者才通过 `run_panel.recover_failure` 执行断开坏引用、删除 orphan stream、创建/绑定 outlet stream 或恢复 canonical port 等 mutation
 - `StudioAppHostController` 当前对 `DispatchCanvasInteraction` 不应再无条件 `refresh_local_canvas_suggestions()`；local-rules refresh 只应发生在真正改写文档或显式要求重算 suggestion 的路径上，否则会把 `FocusNext/Reject` 刚生成的正式焦点状态冲回首条 suggestion，破坏 GUI 命令面的连续交互语义
 - `studio_gui_shell` 当前也已通过 shell 级等价回归锁定 `run_panel.set_active`、`run_panel.recover_failure`、`canvas.accept_focused`、`canvas.reject_focused`、`canvas.focus_next` 与 `canvas.focus_previous` 在菜单、工具栏、命令面板与快捷键之间的共享派发语义；真实 GUI 后续不应再为某个入口保留“看起来一样、实际另走一条逻辑”的私有状态改写分支
 - 同时已锁定 disabled 状态下 menu / toolbar / palette 不会偷偷改变工作区或 suggestion 焦点；后续若某个入口需要提示用户，也应停留在 presentation 层，而不是越过 disabled gate 直接改状态
