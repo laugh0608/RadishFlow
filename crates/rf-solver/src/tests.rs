@@ -1206,6 +1206,54 @@ fn sequential_solver_reports_step_context_for_unit_execution_failures() {
 }
 
 #[test]
+fn sequential_solver_reports_unit_parameter_context_for_invalid_valve_pressure() {
+    let provider = build_provider();
+    let flash_solver = PlaceholderTpFlashSolver;
+    let services = SolverServices {
+        thermo: &provider,
+        flash_solver: &flash_solver,
+    };
+    let mut flowsheet = build_feed_valve_flash_flowsheet();
+    flowsheet
+        .units
+        .get_mut(&"valve-1".into())
+        .expect("expected valve unit")
+        .parameters = UnitOperationParameters {
+        outlet_temperature_k: None,
+        outlet_pressure_pa: Some(130_000.0),
+    };
+
+    let error = SequentialModularSolver
+        .solve(&services, &flowsheet)
+        .expect_err("expected valve parameter validation failure");
+
+    assert_eq!(
+        error.context().diagnostic_code(),
+        Some("solver.step.parameter")
+    );
+    assert!(error.message().contains("unit parameter validation failed"));
+    assert!(error.message().contains("outlet_pressure_pa `130000` Pa"));
+    assert_eq!(
+        error.context().related_unit_ids(),
+        &[UnitId::new("valve-1")]
+    );
+    assert_eq!(
+        error.context().related_stream_ids(),
+        &[
+            StreamId::new("stream-feed"),
+            StreamId::new("stream-throttled")
+        ]
+    );
+    assert_eq!(
+        error.context().related_port_targets(),
+        &[
+            DiagnosticPortTarget::new("valve-1", "outlet"),
+            DiagnosticPortTarget::new("valve-1", "inlet")
+        ]
+    );
+}
+
+#[test]
 fn sequential_solver_reports_connection_validation_stage_context() {
     let provider = build_provider();
     let flash_solver = PlaceholderTpFlashSolver;

@@ -5,6 +5,7 @@ use std::{
 };
 
 use rf_flash::estimate_bubble_dew_window;
+use rf_model::UnitOperationParameters;
 use rf_store::{parse_project_file_json, project_file_to_pretty_json};
 use rf_types::PhaseEquilibriumRegion;
 
@@ -1006,6 +1007,44 @@ fn missing_upstream_failure_synced_config() -> StudioRuntimeConfig {
         entitlement_seed: StudioRuntimeEntitlementSeed::Synced,
         trigger: StudioRuntimeTrigger::WidgetAction(rf_ui::RunPanelActionId::RunManual),
     }
+}
+
+fn invalid_valve_parameter_failure_synced_config() -> (StudioRuntimeConfig, PathBuf) {
+    let timestamp = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("expected current timestamp")
+        .as_nanos();
+    let project_path = std::env::temp_dir().join(format!(
+        "radishflow-studio-invalid-valve-parameter-{timestamp}.rfproj.json"
+    ));
+    let mut project = parse_project_file_json(include_str!(
+        "../../../../examples/flowsheets/feed-valve-flash-binary-hydrocarbon.rfproj.json"
+    ))
+    .expect("expected valve project parse");
+    project
+        .document
+        .flowsheet
+        .units
+        .get_mut(&"valve-1".into())
+        .expect("expected valve unit")
+        .parameters = UnitOperationParameters {
+        outlet_temperature_k: None,
+        outlet_pressure_pa: Some(730_000.0),
+    };
+    let project_json =
+        project_file_to_pretty_json(&project).expect("expected invalid valve project json");
+    fs::write(&project_path, project_json).expect("expected invalid valve project write");
+
+    (
+        StudioRuntimeConfig {
+            project_path: project_path.clone(),
+            untitled_blank_project: None,
+            entitlement_preflight: StudioRuntimeEntitlementPreflight::Skip,
+            entitlement_seed: StudioRuntimeEntitlementSeed::Synced,
+            trigger: StudioRuntimeTrigger::WidgetAction(rf_ui::RunPanelActionId::RunManual),
+        },
+        project_path,
+    )
 }
 
 fn assert_close(actual: f64, expected: f64, tolerance: f64) {
@@ -3372,6 +3411,83 @@ fn studio_gui_window_model_surfaces_failure_stream_context_from_document_state()
                 stream.stream_id == "stream-feed-a" && stream.summary.contains("methane=")
             })
     }));
+}
+
+#[test]
+fn studio_gui_window_model_surfaces_unit_parameter_failure_port_context() {
+    let (config, project_path) = invalid_valve_parameter_failure_synced_config();
+    let mut driver = StudioGuiDriver::new(&config).expect("expected driver");
+    let _ = driver
+        .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+        .expect("expected open dispatch");
+
+    let failed = driver
+        .dispatch_event(StudioGuiEvent::UiCommandRequested {
+            command_id: "run_panel.run_manual".to_string(),
+        })
+        .expect("expected failed run dispatch");
+    let failure = failed
+        .window
+        .runtime
+        .latest_failure
+        .expect("expected visible failure result");
+    assert_eq!(failure.title, "Unit parameter invalid");
+    assert_eq!(failure.recovery_title, Some("Inspect unit parameters"));
+    assert_eq!(
+        failure
+            .recovery_target
+            .as_ref()
+            .map(|target| (target.kind_label, target.target_id.as_str())),
+        Some(("Unit", "valve-1"))
+    );
+    let diagnostic_detail = failure
+        .diagnostic_detail
+        .as_ref()
+        .expect("expected structured failure diagnostic detail");
+    assert_eq!(
+        diagnostic_detail.primary_code.as_deref(),
+        Some("solver.step.parameter")
+    );
+    assert!(diagnostic_detail.related_ports.iter().any(|target| {
+        target.unit_id == "valve-1"
+            && target.port_name == "outlet"
+            && target.unit_action.command_id == "inspector.focus_unit:valve-1"
+            && target.stream_result.as_ref().is_some_and(|stream| {
+                stream.stream_id == "stream-throttled" && stream.summary.contains("P ")
+            })
+    }));
+    assert!(diagnostic_detail.related_ports.iter().any(|target| {
+        target.unit_id == "valve-1"
+            && target.port_name == "inlet"
+            && target.stream_result.as_ref().is_some_and(|stream| {
+                stream.stream_id == "stream-feed" && stream.summary.contains("700000 Pa")
+            })
+    }));
+    assert!(failure.diagnostic_actions.iter().any(|action| {
+        action.source_label == "Failure port"
+            && action.target_label == "Port"
+            && action.summary == "Unit valve-1 port outlet"
+            && action.action.command_id == "inspector.focus_unit:valve-1"
+    }));
+
+    let focused_failure_unit = driver
+        .dispatch_event(StudioGuiEvent::UiCommandRequested {
+            command_id: "inspector.focus_unit:valve-1".to_string(),
+        })
+        .expect("expected failure target focus dispatch");
+    let failure_detail = focused_failure_unit
+        .window
+        .runtime
+        .active_inspector_detail
+        .expect("expected active failure unit inspector detail");
+    assert!(failure_detail.unit_ports.iter().any(|port| {
+        port.name == "outlet"
+            && port.attention_summary.as_ref().is_some_and(|summary| {
+                summary.contains("port valve-1:outlet") && summary.contains("solver.step.parameter")
+            })
+    }));
+
+    let _ = fs::remove_file(project_path);
 }
 
 #[test]

@@ -612,6 +612,65 @@ fn recording_solver_failure_uses_primary_code_for_run_panel_notice_title() {
 }
 
 #[test]
+fn recording_unit_parameter_failure_targets_related_port() {
+    let mut app_state = AppState::new(sample_document());
+    let summary = DiagnosticSummary::new(
+        0,
+        DiagnosticSeverity::Error,
+        "solver.step.parameter: solver step 2 unit parameter validation failed",
+    )
+    .with_primary_code("solver.step.parameter")
+    .with_related_unit_ids(vec![UnitId::new("valve-1")])
+    .with_related_stream_ids(vec![StreamId::new("stream-throttled")])
+    .with_related_port_targets(vec![
+        DiagnosticPortTarget::new("valve-1", "outlet"),
+        DiagnosticPortTarget::new("valve-1", "inlet"),
+    ]);
+
+    app_state.record_failure(0, RunStatus::Error, summary);
+
+    assert_eq!(
+        app_state
+            .workspace
+            .run_panel
+            .notice
+            .as_ref()
+            .map(|notice| notice.title.as_str()),
+        Some("Unit parameter invalid")
+    );
+    assert_eq!(
+        app_state
+            .workspace
+            .run_panel
+            .notice
+            .as_ref()
+            .and_then(|notice| notice.recovery_action.as_ref())
+            .map(|action| {
+                (
+                    action.title,
+                    action.detail,
+                    action
+                        .target_unit_id
+                        .as_ref()
+                        .map(|unit_id| unit_id.as_str()),
+                    action.target_port_name.as_deref(),
+                    action
+                        .target_stream_id
+                        .as_ref()
+                        .map(|stream_id| stream_id.as_str()),
+                )
+            }),
+        Some((
+            "Inspect unit parameters",
+            "检查 Unit Inspector 中的参数值和 SI 约束，确认参数与已连接入口状态一致。",
+            Some("valve-1"),
+            Some("outlet"),
+            None,
+        ))
+    );
+}
+
+#[test]
 fn recording_connection_validation_subcode_refines_run_panel_notice_and_recovery() {
     let mut app_state = AppState::new(sample_document());
     let summary = DiagnosticSummary::new(
