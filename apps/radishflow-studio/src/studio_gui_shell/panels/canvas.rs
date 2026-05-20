@@ -176,7 +176,8 @@ impl ReadyAppState {
                                                     suggestion.explicit_accept_enabled,
                                                     egui::Button::new(
                                                         self.locale
-                                                            .text(ShellText::ConnectSuggestion),
+                                                            .runtime_label(suggestion.action_label)
+                                                            .as_ref(),
                                                     ),
                                                 )
                                                 .clicked()

@@ -246,6 +246,7 @@ impl StudioGuiCanvasViewModel {
                 confidence: suggestion.confidence,
                 target_unit_id: suggestion.ghost.target_unit_id.as_str().to_string(),
                 reason: suggestion.reason.clone(),
+                action_label: suggestion_accept_action_label(suggestion),
                 is_focused: state.focused_suggestion_id.as_ref() == Some(&suggestion.id),
                 tab_accept_enabled: suggestion.can_accept_with_tab(),
                 explicit_accept_enabled: suggestion.can_accept_explicitly(),
@@ -466,7 +467,7 @@ impl StudioGuiCanvasTextView {
         lines.extend(view.suggestions.iter().map(|suggestion| {
             let focus_marker = if suggestion.is_focused { "*" } else { "-" };
             format!(
-                "{focus_marker} {} [{}] source={} confidence={:.2} target={} tab_accept={} explicit_accept={} reason={}",
+                "{focus_marker} {} [{}] source={} confidence={:.2} target={} tab_accept={} explicit_accept={} action={} reason={}",
                 suggestion.id,
                 suggestion.status_label,
                 suggestion.source_label,
@@ -474,6 +475,7 @@ impl StudioGuiCanvasTextView {
                 suggestion.target_unit_id,
                 enabled_label(suggestion.tab_accept_enabled),
                 enabled_label(suggestion.explicit_accept_enabled),
+                suggestion.action_label,
                 suggestion.reason
             )
         }));
@@ -1199,6 +1201,18 @@ fn suggestion_source_label(source: rf_ui::SuggestionSource) -> &'static str {
     match source {
         rf_ui::SuggestionSource::LocalRules => "local_rules",
         rf_ui::SuggestionSource::RadishMind => "radish_mind",
+    }
+}
+
+fn suggestion_accept_action_label(suggestion: &rf_ui::CanvasSuggestion) -> &'static str {
+    match suggestion.acceptance.as_ref() {
+        Some(rf_ui::CanvasSuggestionAcceptance::MaterialConnection(connection)) => {
+            match &connection.stream {
+                rf_ui::CanvasSuggestedStreamBinding::Existing { .. } => "Connect stream",
+                rf_ui::CanvasSuggestedStreamBinding::Create { .. } => "Create stream",
+            }
+        }
+        None => "Apply suggestion",
     }
 }
 

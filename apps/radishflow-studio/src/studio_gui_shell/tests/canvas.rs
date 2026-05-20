@@ -545,6 +545,26 @@ fn blank_project_mixer_path_saves_reopens_and_reruns() {
 
     app.dispatch_ui_command("canvas.begin_place_unit.mixer");
     app.dispatch_canvas_pending_edit_commit(rf_ui::CanvasPoint::new(210.0, 90.0));
+    let mixer_suggestions = app.platform_host.snapshot().window_model();
+    let mixer_action_labels = mixer_suggestions
+        .canvas
+        .widget
+        .view()
+        .suggestions
+        .iter()
+        .map(|suggestion| (suggestion.id.as_str(), suggestion.action_label))
+        .collect::<Vec<_>>();
+    assert!(
+        mixer_action_labels.contains(&(
+            "local.mixer.connect_inlet_a.mixer-1.stream-feed-1-outlet",
+            "Connect stream",
+        )),
+        "expected mixer inlet suggestion to render a connect action label, labels: {mixer_action_labels:?}"
+    );
+    assert!(
+        mixer_action_labels.contains(&("local.mixer.create_outlet.mixer-1", "Create stream",)),
+        "expected mixer outlet suggestion to render a create action label, labels: {mixer_action_labels:?}"
+    );
     accept_canvas_suggestion_by_id(
         &mut app,
         "local.mixer.connect_inlet_a.mixer-1.stream-feed-1-outlet",

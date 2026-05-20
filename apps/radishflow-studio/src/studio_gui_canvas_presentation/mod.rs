@@ -444,6 +444,7 @@ pub struct StudioGuiCanvasSuggestionViewModel {
     pub confidence: f32,
     pub target_unit_id: String,
     pub reason: String,
+    pub action_label: &'static str,
     pub is_focused: bool,
     pub tab_accept_enabled: bool,
     pub explicit_accept_enabled: bool,

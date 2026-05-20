@@ -691,9 +691,9 @@ fn canvas_presentation_consumes_driver_dispatch_canvas_state() {
             "  port heater-1:outlet direction=outlet kind=material stream=stream-heated binding=Heated Outlet (stream-heated) slot=1/1".to_string(),
             "- stream stream-feed feed-1:outlet -> heater-1:inlet badges=none command=inspector.focus_stream:stream-feed".to_string(),
             "- stream stream-heated heater-1:outlet -> terminal badges=none command=inspector.focus_stream:stream-heated".to_string(),
-            "* local.flash_drum.connect_inlet.flash-1.stream-heated [focused] source=local_rules confidence=0.97 target=flash-1 tab_accept=yes explicit_accept=yes reason=Connect stream `stream-heated` to flash drum inlet `inlet`".to_string(),
-            "- local.flash_drum.create_outlet.flash-1.liquid [proposed] source=local_rules confidence=0.93 target=flash-1 tab_accept=yes explicit_accept=yes reason=Create terminal stream `Flash Drum Liquid Outlet` for flash drum outlet `liquid`".to_string(),
-            "- local.flash_drum.create_outlet.flash-1.vapor [proposed] source=local_rules confidence=0.92 target=flash-1 tab_accept=yes explicit_accept=yes reason=Create terminal stream `Flash Drum Vapor Outlet` for flash drum outlet `vapor`".to_string(),
+            "* local.flash_drum.connect_inlet.flash-1.stream-heated [focused] source=local_rules confidence=0.97 target=flash-1 tab_accept=yes explicit_accept=yes action=Connect stream reason=Connect stream `stream-heated` to flash drum inlet `inlet`".to_string(),
+            "- local.flash_drum.create_outlet.flash-1.liquid [proposed] source=local_rules confidence=0.93 target=flash-1 tab_accept=yes explicit_accept=yes action=Create stream reason=Create terminal stream `Flash Drum Liquid Outlet` for flash drum outlet `liquid`".to_string(),
+            "- local.flash_drum.create_outlet.flash-1.vapor [proposed] source=local_rules confidence=0.92 target=flash-1 tab_accept=yes explicit_accept=yes action=Create stream reason=Create terminal stream `Flash Drum Vapor Outlet` for flash drum outlet `vapor`".to_string(),
         ]
     );
 
