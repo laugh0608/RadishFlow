@@ -2038,9 +2038,14 @@ impl ReadyAppState {
         ui.horizontal_wrapped(|ui| {
             ui.small(self.locale.text(ShellText::DiagnosticTargets));
             for action in actions {
+                let source_label = self.localized_diagnostic_action_label(action.source_label);
+                let target_label = self.localized_diagnostic_action_label(action.target_label);
+                let summary = self.localized_diagnostic_action_summary(&action.summary);
                 ui.small(format!(
                     "{} | {} | {}",
-                    action.source_label, action.target_label, action.summary
+                    source_label.as_ref(),
+                    target_label.as_ref(),
+                    summary.as_ref()
                 ));
                 let _ = self.render_small_command_action(ui, &action.action);
             }
@@ -2137,5 +2142,34 @@ impl ReadyAppState {
             }
             _ => std::borrow::Cow::Borrowed(action.label.as_str()),
         }
+    }
+
+    fn localized_diagnostic_action_label<'a>(&self, label: &'a str) -> std::borrow::Cow<'a, str> {
+        match self.locale {
+            StudioShellLocale::ZhCn if label == "Recovery mutation" => {
+                std::borrow::Cow::Borrowed("修复会修改文档")
+            }
+            StudioShellLocale::ZhCn if label == "Recovery focus" => {
+                std::borrow::Cow::Borrowed("修复会打开检查器")
+            }
+            StudioShellLocale::ZhCn if label == "Document" => std::borrow::Cow::Borrowed("文档"),
+            StudioShellLocale::ZhCn if label == "Inspector" => std::borrow::Cow::Borrowed("检查器"),
+            _ => std::borrow::Cow::Borrowed(label),
+        }
+    }
+
+    fn localized_diagnostic_action_summary<'a>(
+        &self,
+        summary: &'a str,
+    ) -> std::borrow::Cow<'a, str> {
+        if matches!(self.locale, StudioShellLocale::ZhCn) {
+            if let Some(rest) = summary.strip_prefix("Document mutation: ") {
+                return std::borrow::Cow::Owned(format!("修改文档: {rest}"));
+            }
+            if let Some(rest) = summary.strip_prefix("Inspector focus: ") {
+                return std::borrow::Cow::Owned(format!("打开检查器: {rest}"));
+            }
+        }
+        std::borrow::Cow::Borrowed(summary)
     }
 }

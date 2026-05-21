@@ -679,6 +679,51 @@ fn assert_rendered_diagnostic_target_actions_surface(
     }
 }
 
+#[test]
+fn runtime_panel_localizes_recovery_effect_diagnostic_actions() {
+    let mut app = ready_app_state(&synced_workspace_config());
+    let actions = vec![
+        radishflow_studio::StudioGuiWindowDiagnosticTargetActionModel {
+            source_label: "Recovery mutation",
+            target_label: "Document",
+            summary: "Document mutation: Unbound outlet port".to_string(),
+            action: radishflow_studio::StudioGuiWindowCommandActionModel {
+                label: "Create outlet stream".to_string(),
+                hover_text: "create outlet stream".to_string(),
+                command_id: "run_panel.recover_failure".to_string(),
+            },
+        },
+        radishflow_studio::StudioGuiWindowDiagnosticTargetActionModel {
+            source_label: "Recovery focus",
+            target_label: "Inspector",
+            summary: "Inspector focus: Unit parameter invalid".to_string(),
+            action: radishflow_studio::StudioGuiWindowCommandActionModel {
+                label: "Inspect unit parameters".to_string(),
+                hover_text: "inspect unit parameters".to_string(),
+                command_id: "run_panel.recover_failure".to_string(),
+            },
+        },
+    ];
+
+    let texts = render_diagnostic_target_actions_texts(&mut app, &actions);
+
+    assert!(
+        texts
+            .iter()
+            .any(|text| text.contains("修复会修改文档 | 文档 | 修改文档: Unbound outlet port")),
+        "expected mutation recovery action effect to be localized, rendered texts: {:?}",
+        texts
+    );
+    assert!(
+        texts
+            .iter()
+            .any(|text| text
+                .contains("修复会打开检查器 | 检查器 | 打开检查器: Unit parameter invalid")),
+        "expected focus recovery action effect to be localized, rendered texts: {:?}",
+        texts
+    );
+}
+
 fn solve_two_phase_snapshot() -> StudioGuiWindowSolveSnapshotModel {
     solve_binary_hydrocarbon_snapshot(include_str!(
         "../../../../../examples/flowsheets/feed-cooler-flash-binary-hydrocarbon.rfproj.json"
