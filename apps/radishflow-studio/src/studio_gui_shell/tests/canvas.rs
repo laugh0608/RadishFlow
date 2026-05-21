@@ -281,7 +281,7 @@ fn canvas_feed_to_flash_minimal_path_surfaces_local_connection_suggestions() {
         after_flash.canvas.focused_suggestion_id.as_deref(),
         Some("local.flash_drum.connect_inlet.flash-2.stream-feed-2-outlet")
     );
-    assert_eq!(after_flash.canvas.suggestion_count, 3);
+    assert_eq!(after_flash.canvas.suggestion_count, 1);
 
     app.dispatch_ui_command("canvas.accept_focused");
     let after_inlet = app.platform_host.snapshot().window_model();
@@ -289,6 +289,7 @@ fn canvas_feed_to_flash_minimal_path_surfaces_local_connection_suggestions() {
         after_inlet.canvas.focused_suggestion_id.as_deref(),
         Some("local.flash_drum.create_outlet.flash-2.liquid")
     );
+    assert_eq!(after_inlet.canvas.suggestion_count, 2);
 
     app.dispatch_ui_command("canvas.accept_focused");
     let after_liquid = app.platform_host.snapshot().window_model();
@@ -348,17 +349,14 @@ fn canvas_feed_to_flash_explicit_suggestion_selection_can_run() {
             .view()
             .suggestions
             .iter()
-            .any(
-                |suggestion| suggestion.id == "local.flash_drum.create_outlet.flash-2.vapor"
-                    && suggestion.explicit_accept_enabled
-            )
+            .all(|suggestion| !suggestion.id.contains("create_outlet")),
+        "flash outlet suggestions must wait until the flash inlet is bound"
     );
-
-    accept_canvas_suggestion_by_id(&mut app, "local.flash_drum.create_outlet.flash-2.vapor");
     accept_canvas_suggestion_by_id(
         &mut app,
         "local.flash_drum.connect_inlet.flash-2.stream-feed-2-outlet",
     );
+    accept_canvas_suggestion_by_id(&mut app, "local.flash_drum.create_outlet.flash-2.vapor");
     accept_canvas_suggestion_by_id(&mut app, "local.flash_drum.create_outlet.flash-2.liquid");
 
     app.dispatch_ui_command("run_panel.run_manual");
@@ -562,8 +560,10 @@ fn blank_project_mixer_path_saves_reopens_and_reruns() {
         "expected mixer inlet suggestion to render a connect action label, labels: {mixer_action_labels:?}"
     );
     assert!(
-        mixer_action_labels.contains(&("local.mixer.create_outlet.mixer-1", "Create stream",)),
-        "expected mixer outlet suggestion to render a create action label, labels: {mixer_action_labels:?}"
+        !mixer_action_labels
+            .iter()
+            .any(|(id, _)| *id == "local.mixer.create_outlet.mixer-1"),
+        "mixer outlet suggestion must wait until both mixer inlets are bound, labels: {mixer_action_labels:?}"
     );
     accept_canvas_suggestion_by_id(
         &mut app,
@@ -572,6 +572,20 @@ fn blank_project_mixer_path_saves_reopens_and_reruns() {
     accept_canvas_suggestion_by_id(
         &mut app,
         "local.mixer.connect_inlet_b.mixer-1.stream-feed-2-outlet",
+    );
+    let after_mixer_inlets = app.platform_host.snapshot().window_model();
+    assert!(
+        after_mixer_inlets
+            .canvas
+            .widget
+            .view()
+            .suggestions
+            .iter()
+            .any(
+                |suggestion| suggestion.id == "local.mixer.create_outlet.mixer-1"
+                    && suggestion.action_label == "Create stream"
+            ),
+        "expected mixer outlet suggestion after both inlets are bound"
     );
     accept_canvas_suggestion_by_id(&mut app, "local.mixer.create_outlet.mixer-1");
 
@@ -993,7 +1007,7 @@ fn canvas_feed_heater_flash_minimal_path_can_run_after_accepting_suggestions() {
     app.dispatch_ui_command("canvas.begin_place_unit.heater");
     app.dispatch_canvas_pending_edit_commit(rf_ui::CanvasPoint::new(180.0, 40.0));
     let after_heater = app.platform_host.snapshot().window_model();
-    assert_eq!(after_heater.canvas.suggestion_count, 2);
+    assert_eq!(after_heater.canvas.suggestion_count, 1);
     assert_eq!(
         after_heater.canvas.focused_suggestion_id.as_deref(),
         Some("local.heater.connect_inlet.heater-2.stream-feed-2-outlet")
@@ -1005,6 +1019,7 @@ fn canvas_feed_heater_flash_minimal_path_can_run_after_accepting_suggestions() {
         after_heater_inlet.canvas.focused_suggestion_id.as_deref(),
         Some("local.heater.create_outlet.heater-2")
     );
+    assert_eq!(after_heater_inlet.canvas.suggestion_count, 1);
 
     app.dispatch_ui_command("canvas.accept_focused");
     let after_heater_outlet = app.platform_host.snapshot().window_model();
@@ -1013,7 +1028,7 @@ fn canvas_feed_heater_flash_minimal_path_can_run_after_accepting_suggestions() {
     app.dispatch_ui_command("canvas.begin_place_unit.flash_drum");
     app.dispatch_canvas_pending_edit_commit(rf_ui::CanvasPoint::new(320.0, 40.0));
     let after_flash = app.platform_host.snapshot().window_model();
-    assert_eq!(after_flash.canvas.suggestion_count, 3);
+    assert_eq!(after_flash.canvas.suggestion_count, 1);
     assert_eq!(
         after_flash.canvas.focused_suggestion_id.as_deref(),
         Some("local.flash_drum.connect_inlet.flash-2.stream-heater-2-outlet")
@@ -1065,7 +1080,7 @@ fn canvas_feed_mixer_flash_minimal_path_can_run_after_accepting_suggestions() {
     app.dispatch_ui_command("canvas.begin_place_unit.mixer");
     app.dispatch_canvas_pending_edit_commit(rf_ui::CanvasPoint::new(210.0, 90.0));
     let after_mixer = app.platform_host.snapshot().window_model();
-    assert_eq!(after_mixer.canvas.suggestion_count, 3);
+    assert_eq!(after_mixer.canvas.suggestion_count, 2);
     assert_eq!(
         after_mixer.canvas.focused_suggestion_id.as_deref(),
         Some("local.mixer.connect_inlet_a.mixer-1.stream-feed-2-outlet")

@@ -1,6 +1,6 @@
 # 当前状态
 
-更新时间：2026-05-20
+更新时间：2026-05-21
 
 ## 用途
 
@@ -14,7 +14,7 @@
 
 - 产品定位：以 Rust Core + Rust UI + `.NET 10` CAPE-OPEN/COM 适配层构建稳态流程模拟软件。
 - 当前主线：MVP 第一阶段最小闭环已经可验证，`v26.5.1-dev` 已作为内部验收 tag 创建并推送；首版 demo 前的 Home / Workbench 产品可用性 blocker 已收口，当前重新回到功能开发。
-- 当前重点：在不扩自由连线、自动布线、完整拖拽布局、视口持久化、完整结果报表或对外发布自动化的前提下，继续补齐高频建模能力。本轮已把 `Heater / Cooler / Valve` 的首批关键单元参数接入 Unit Inspector draft / commit / undo history / solver 链路：Heater/Cooler 可编辑 outlet temperature，Valve 可编辑 outlet pressure，并同步对应 outlet stream 模板，旧项目未带参数时继续按现有流股模板求解；2026-05-20 已补参数 JSON round-trip、官方 Heater / Cooler / Valve 示例以及空白项目 Heater 路径的保存 / 重开 / 运行 focused 回归，并补出字段级 SI 约束提示与 Valve outlet pressure 草稿阻断；已提交但越界的 Valve outlet pressure 会在求解前归类为 `solver.step.parameter`，并携带 unit、outlet/inlet port 和 stream context。连接类失败恢复路径已继续收口，Canvas attention 优先消费当前 revision 的 solver failure diagnostic，failure action 也能从端口 context 直达关联 stream；不存在的 missing stream id 不再生成不可达 stream inspector target。空白项目 `Feed + Feed -> Mixer -> Flash Drum` 已覆盖保存、重开和重跑；Canvas suggestion 按动作显示“连接流股 / 创建流股”。
+- 当前重点：在不扩自由连线、自动布线、完整拖拽布局、视口持久化、完整结果报表或对外发布自动化的前提下，继续补齐高频建模能力。本轮已把 `Heater / Cooler / Valve` 的首批关键单元参数接入 Unit Inspector draft / commit / undo history / solver 链路：Heater/Cooler 可编辑 outlet temperature，Valve 可编辑 outlet pressure，并同步 outlet stream 模板；2026-05-20 已补参数 JSON round-trip、官方示例、空白项目 Heater 保存 / 重开 / 运行回归、字段级 SI 约束提示与 Valve 越界参数失败定位。连接类失败恢复路径已继续收口，Canvas attention 优先消费当前 revision 的 solver failure diagnostic，failure action 也能从端口 context 直达关联 stream；空白项目 `Feed + Feed -> Mixer -> Flash Drum` 已覆盖保存、重开和重跑；Canvas suggestion 已分阶段生成，必要 inlet 绑定后才建议创建 outlet stream，避免无自由连线阶段进入不可修正的额外 source-only stream 状态。
 - 当前验证基线：功能改动优先执行相关 focused tests；阶段性收口执行 `pwsh ./scripts/check-repo.ps1`。
 
 ## 最近完成摘要

@@ -619,7 +619,7 @@ fn canvas_presentation_consumes_driver_dispatch_canvas_state() {
         }),
         "expected canvas presentation to surface existing stream connection lines"
     );
-    assert_eq!(presentation.view.suggestion_count, 3);
+    assert_eq!(presentation.view.suggestion_count, 1);
     assert_eq!(presentation.view.object_list.unit_count, 3);
     assert_eq!(presentation.view.object_list.stream_count, 2);
     assert_eq!(presentation.view.object_list.attention_count, 0);
@@ -679,7 +679,7 @@ fn canvas_presentation_consumes_driver_dispatch_canvas_state() {
             "stream line count: 2".to_string(),
             "object list count: units=3 streams=2 attention=0 items=5".to_string(),
             "legend: Canvas legend items=4".to_string(),
-            "suggestion count: 3".to_string(),
+            "suggestion count: 1".to_string(),
             "- unit feed-1 kind=feed ports=1/1 badges=none command=inspector.focus_unit:feed-1".to_string(),
             "- unit flash-1 kind=flash_drum ports=0/3 badges=none command=inspector.focus_unit:flash-1".to_string(),
             "- unit heater-1 kind=heater ports=2/2 badges=none command=inspector.focus_unit:heater-1".to_string(),
@@ -692,8 +692,6 @@ fn canvas_presentation_consumes_driver_dispatch_canvas_state() {
             "- stream stream-feed feed-1:outlet -> heater-1:inlet badges=none command=inspector.focus_stream:stream-feed".to_string(),
             "- stream stream-heated heater-1:outlet -> terminal badges=none command=inspector.focus_stream:stream-heated".to_string(),
             "* local.flash_drum.connect_inlet.flash-1.stream-heated [focused] source=local_rules confidence=0.97 target=flash-1 tab_accept=yes explicit_accept=yes action=Connect stream reason=Connect stream `stream-heated` to flash drum inlet `inlet`".to_string(),
-            "- local.flash_drum.create_outlet.flash-1.liquid [proposed] source=local_rules confidence=0.93 target=flash-1 tab_accept=yes explicit_accept=yes action=Create stream reason=Create terminal stream `Flash Drum Liquid Outlet` for flash drum outlet `liquid`".to_string(),
-            "- local.flash_drum.create_outlet.flash-1.vapor [proposed] source=local_rules confidence=0.92 target=flash-1 tab_accept=yes explicit_accept=yes action=Create stream reason=Create terminal stream `Flash Drum Vapor Outlet` for flash drum outlet `vapor`".to_string(),
         ]
     );
 
