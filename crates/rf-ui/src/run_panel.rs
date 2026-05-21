@@ -186,6 +186,22 @@ impl RunPanelRecoveryAction {
         self.with_target_unit(unit_id.clone())
             .with_mutation(RunPanelRecoveryMutation::RestoreCanonicalPortSignature { unit_id })
     }
+
+    pub fn effect_label(&self) -> &'static str {
+        if self.mutation.is_some() {
+            "Document mutation"
+        } else {
+            "Inspector focus"
+        }
+    }
+
+    pub fn effect_detail(&self) -> &'static str {
+        if self.mutation.is_some() {
+            "This action changes the flowsheet document before focusing the related target."
+        } else {
+            "This action only opens the related Inspector target; it does not change the document."
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

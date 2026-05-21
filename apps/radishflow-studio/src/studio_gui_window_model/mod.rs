@@ -822,10 +822,14 @@ fn failure_result_model_from_control_state(
         .and_then(inspector_target_model_from_recovery_action);
     let mut diagnostic_actions = Vec::new();
     if let Some(action) = recovery_action.as_ref() {
+        let recovery_action = notice
+            .recovery_action
+            .as_ref()
+            .expect("expected source recovery action");
         diagnostic_actions.push(StudioGuiWindowDiagnosticTargetActionModel {
-            source_label: "Recovery",
-            target_label: "Run panel",
-            summary: notice.title.clone(),
+            source_label: recovery_action_source_label(recovery_action),
+            target_label: recovery_action_target_label(recovery_action),
+            summary: format!("{}: {}", recovery_action.effect_label(), notice.title),
             action: action.clone(),
         });
     }
@@ -981,8 +985,24 @@ fn failure_recovery_action_model(
 ) -> StudioGuiWindowCommandActionModel {
     StudioGuiWindowCommandActionModel {
         label: action.title.to_string(),
-        hover_text: action.detail.to_string(),
+        hover_text: format!("{}: {}", action.effect_detail(), action.detail),
         command_id: "run_panel.recover_failure".to_string(),
+    }
+}
+
+fn recovery_action_source_label(action: &rf_ui::RunPanelRecoveryAction) -> &'static str {
+    if action.mutation.is_some() {
+        "Recovery mutation"
+    } else {
+        "Recovery focus"
+    }
+}
+
+fn recovery_action_target_label(action: &rf_ui::RunPanelRecoveryAction) -> &'static str {
+    if action.mutation.is_some() {
+        "Document"
+    } else {
+        "Inspector"
     }
 }
 

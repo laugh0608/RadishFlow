@@ -3252,8 +3252,9 @@ fn studio_gui_window_model_surfaces_failure_result_until_rerun_succeeds() {
         Some("inspector.focus_unit:feed-1")
     );
     assert!(failure.diagnostic_actions.iter().any(|action| {
-        action.source_label == "Recovery"
-            && action.target_label == "Run panel"
+        action.source_label == "Recovery mutation"
+            && action.target_label == "Document"
+            && action.summary == "Document mutation: Unbound outlet port"
             && action.action.command_id == "run_panel.recover_failure"
     }));
     assert!(failure.diagnostic_actions.iter().any(|action| {
@@ -3514,6 +3515,19 @@ fn studio_gui_window_model_surfaces_unit_parameter_failure_port_context() {
             .map(|target| (target.kind_label, target.target_id.as_str())),
         Some(("Unit", "valve-1"))
     );
+    assert!(failure.recovery_action.as_ref().is_some_and(|action| {
+        action.label == "Inspect unit parameters"
+            && action.command_id == "run_panel.recover_failure"
+            && action
+                .hover_text
+                .starts_with("This action only opens the related Inspector target")
+    }));
+    assert!(failure.diagnostic_actions.iter().any(|action| {
+        action.source_label == "Recovery focus"
+            && action.target_label == "Inspector"
+            && action.summary == "Inspector focus: Unit parameter invalid"
+            && action.action.command_id == "run_panel.recover_failure"
+    }));
     let diagnostic_detail = failure
         .diagnostic_detail
         .as_ref()

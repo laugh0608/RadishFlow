@@ -192,6 +192,13 @@ fn run_panel_widget_exposes_recovery_action_when_solver_failure_targets_unit() {
             .iter()
             .any(|line| line == "Suggested target: unit heater-1")
     );
+    assert!(
+        widget
+            .text()
+            .lines
+            .iter()
+            .any(|line| line == "Suggested effect: Inspector focus")
+    );
 }
 
 #[test]
@@ -230,6 +237,13 @@ fn run_panel_widget_exposes_recovery_action_when_connection_failure_targets_disc
             .lines
             .iter()
             .any(|line| line == "Suggested target: unit mixer-1 port inlet_a")
+    );
+    assert!(
+        widget
+            .text()
+            .lines
+            .iter()
+            .any(|line| line == "Suggested effect: Document mutation")
     );
 }
 
@@ -658,6 +672,7 @@ fn recording_unit_parameter_failure_targets_related_port() {
                         .target_stream_id
                         .as_ref()
                         .map(|stream_id| stream_id.as_str()),
+                    action.effect_label(),
                 )
             }),
         Some((
@@ -666,6 +681,7 @@ fn recording_unit_parameter_failure_targets_related_port() {
             Some("valve-1"),
             Some("outlet"),
             None,
+            "Inspector focus",
         ))
     );
 }
