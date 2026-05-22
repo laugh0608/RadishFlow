@@ -1,6 +1,6 @@
 # 当前状态
 
-更新时间：2026-05-21
+更新时间：2026-05-22
 
 ## 用途
 
@@ -14,7 +14,7 @@
 
 - 产品定位：以 Rust Core + Rust UI + `.NET 10` CAPE-OPEN/COM 适配层构建稳态流程模拟软件。
 - 当前主线：MVP 第一阶段最小闭环已经可验证，`v26.5.1-dev` 已作为内部验收 tag 创建并推送；首版 demo 前的 Home / Workbench 产品可用性 blocker 已收口，当前重新回到功能开发。
-- 当前重点：在不扩自由连线、自动布线、完整拖拽布局、视口持久化、完整结果报表或对外发布自动化的前提下，继续补齐高频建模能力。本轮已把 `Heater / Cooler / Valve` 的首批关键单元参数接入 Unit Inspector draft / commit / undo history / solver 链路：Heater/Cooler 可编辑 outlet temperature，Valve 可编辑 outlet pressure，并同步 outlet stream 模板；2026-05-20 已补参数 JSON round-trip、官方示例、空白项目 Heater 保存 / 重开 / 运行回归、字段级 SI 约束提示与 Valve 越界参数失败定位。连接类失败恢复路径已继续收口，Canvas attention 优先消费当前 revision 的 solver failure diagnostic，failure action 也能从端口 context 直达关联 stream；空白项目 `Feed + Feed -> Mixer -> Flash Drum` 已覆盖保存、重开和重跑；Canvas suggestion 已分阶段生成，必要 inlet 绑定后才建议创建 outlet stream，避免无自由连线阶段进入不可修正的额外 source-only stream 状态。
+- 当前重点：在不扩自由连线、自动布线、完整拖拽布局、视口持久化、完整结果报表或对外发布自动化的前提下，继续补齐高频建模能力。本轮已把 `Heater / Cooler / Valve` 的首批关键单元参数接入 Unit Inspector draft / commit / undo history / solver 链路：Heater/Cooler 可编辑 outlet temperature，Valve 可编辑 outlet pressure，并同步 outlet stream 模板；2026-05-20 已补参数 JSON round-trip、官方示例、空白项目 Heater 保存 / 重开 / 运行回归、字段级 SI 约束提示与 Valve 越界参数失败定位。连接类失败恢复路径已继续收口，Canvas attention 优先消费当前 revision 的 solver failure diagnostic，failure action 也能从端口 context 直达关联 stream；空白项目 `Feed + Feed -> Mixer -> Flash Drum` 已覆盖保存、重开和重跑；Canvas suggestion 已分阶段生成，必要 inlet 绑定后才建议创建 outlet stream；2026-05-22 已补选中物料流股后的受控断开连接 / 删除流股能力，用于恢复错连状态，但仍不引入自由连线编辑器。
 - 当前验证基线：功能改动优先执行相关 focused tests；阶段性收口执行 `pwsh ./scripts/check-repo.ps1`。
 
 ## 最近完成摘要
@@ -44,12 +44,13 @@
 - 2026-05-20 已复核首批单元参数闭环：`rf-store` 现在锁定单元参数随项目 JSON round-trip，Studio shell focused 回归覆盖官方 Heater / Cooler / Valve 示例和空白项目 Heater 最短路径从 Unit Inspector 编辑参数、保存、重开到再次运行收敛，并断言求解结果使用保存后的 outlet temperature / outlet pressure；Unit Inspector 字段 presentation 现在带 SI 约束提示，Valve outlet pressure 草稿在高于已连接 inlet pressure 时直接标为 invalid；若旧项目或外部编辑仍带入已提交越界参数，求解失败会定位到 `solver.step.parameter`、`valve-1:outlet` / `valve-1:inlet` 和相关流股。
 - 2026-05-20 已补连接类失败恢复路径 focused 覆盖：`missing_upstream_source`、`missing_stream_reference`、`duplicate_upstream_source`、`duplicate_downstream_sink`、`unbound_outlet_port`、`orphan_stream`、`invalid_port_signature`、two-unit cycle 与 self-loop cycle 的失败 detail / Run Panel recovery / Canvas 或端口 attention 回归已覆盖；Canvas attention 不再只从 Run Panel notice 反推单一 recovery target，而是优先使用当前文档 revision 的 solver failure diagnostic，从而保留完整 unit / stream / port targets。
 - 2026-05-20 已补空白项目 Mixer 最短建模路径 focused 覆盖：通过 Canvas suggestion 创建 `Feed + Feed -> Mixer -> Flash Drum`，保存后断言 unit / stream / port 绑定，重开后确认 mixer outlet 总摩尔流量为两股入口之和。
+- 2026-05-22 已补 Canvas / Inspector 受控流股恢复入口：选中物料流股后可执行 `Disconnect stream` 解除所有物料端口绑定并保留流股规格，或执行 `Delete stream` 解除绑定后删除流股；两者均通过正式 `DocumentCommand` 与 undo history，不做自由连线、自动布线或完整拖拽布局。
 
 完整过程和每日验证记录见 `docs/devlogs/2026-05/2026-W21.md`、`docs/devlogs/2026-05/2026-W20.md` 以及更早周志。
 
 ## 下一步建议
 
-1. 继续围绕真实建模链路推进：首批单元参数保存 / 重开 / 运行、字段级约束提示、Valve 参数运行失败定位、连接类失败恢复路径和空白项目 Mixer 保存 / 重开 / 重跑路径已补齐；下一步可转向现有最短路径的用户可见补口，例如更明确的 suggestion/recovery 文案或下一批窄口径单元参数，但仍不扩自由连线、自动布线或完整结果报表。
+1. 继续围绕真实建模链路推进：首批单元参数保存 / 重开 / 运行、字段级约束提示、Valve 参数运行失败定位、连接类失败恢复路径、空白项目 Mixer 保存 / 重开 / 重跑路径，以及错连后受控断开 / 删除流股能力已补齐；下一步可转向现有最短路径的用户可见补口或下一批窄口径单元参数，但仍不扩自由连线、自动布线或完整结果报表。
 2. 若继续做参数体验，只补与现有 Heater / Cooler / Valve 字段直接相关的失败定位，不扩展成完整单元参数表或完整结果报表。
 3. 若要刷新新的便携包或 tag，应创建新提交 / 新版本节点，不移动已推送的 `v26.5.1-dev` tag。
 4. 不把当前功能推进误扩成自动布线、自由连线、完整拖拽布局、视口持久化、完整结果报表或对外发布自动化。
@@ -69,7 +70,7 @@
 - 需要仓库全局模块边界：`docs/architecture/overview.md`
 - 需要 MVP 范围和非目标：`docs/mvp/scope.md`
 - 需要 MVP α 验收矩阵：`docs/mvp/alpha-acceptance-checklist.md`
-- 需要最新流水和决策依据：`docs/devlogs/2026-05/2026-W20.md`
+- 需要最新流水和决策依据：`docs/devlogs/2026-05/2026-W21.md`
 - 需要热力学 / 闪蒸细节：`docs/thermo/mvp-model.md`
 - 需要 CAPE-OPEN / COM 边界：`docs/capeopen/boundary.md`
 - 需要桌面 App / Canvas 交互契约和 Studio UI 规范：`docs/architecture/app-architecture.md`、`docs/architecture/canvas-interaction-contract.md`、`docs/architecture/studio-ui-design-guidelines.md`

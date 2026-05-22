@@ -1,6 +1,6 @@
 # Studio Quick Start
 
-更新时间：2026-05-18
+更新时间：2026-05-22
 
 ## 目的
 
@@ -31,6 +31,7 @@
 - 通过 `检查`、`诊断目标`、结果选择项和命令入口在流股、单元、步骤和当前检查器之间定位同一份结果
 - 在流股检查器中编辑流股基础字段与组成草稿，并显式提交、归一化或丢弃
 - 在单元检查器中编辑首批关键单元参数：`Heater / Cooler` 的 outlet temperature 和 `Valve` 的 outlet pressure
+- 选中物料流股后，可通过 Canvas / Inspector 的 `Disconnect stream` 解除端口绑定并保留流股规格，或通过 `Delete stream` 解除绑定后删除错误流股
 - 执行基础 `undo / redo`
 - 保存当前项目，或通过顶部 `另存为...` / 未命名项目首次 `保存` 到新路径
 - 保存并恢复 Canvas placement sidecar：`<project>.rfstudio-layout.json`
@@ -158,13 +159,13 @@ cargo run -p radishflow-studio
 1. 在首页点击 `新建项目`，或进入工作台后点击顶部 `新建空白`。
 2. 在左侧切到 `放置`，用 `放置进料`、`放置闪蒸罐` 或 `放置加热器 / 放置冷却器 / 放置阀门 / 放置混合器` 开始放置单元。
 3. 在 Canvas 中点击落点提交当前放置意图。
-4. 使用 Canvas 上的 `Connect stream` / `连接流股` 或 `Create stream` / `创建流股` suggestion 补齐端口绑定和必要 outlet stream。
+4. 使用 Canvas 上的 `Connect stream` / `连接流股` 或 `Create stream` / `创建流股` suggestion 补齐端口绑定和必要 outlet stream。`Heater / Cooler / Valve`、`Mixer` 和 `Flash Drum` 的 outlet stream 建议会等必要 inlet 绑定后才出现。
 5. 在左侧 `项目` 或 Canvas 对象列表中选择 stream / unit，右侧 `检查器` 会切到对应对象。
 6. 在流股检查器中编辑 `T / P / F` 和组成草稿；字段提交、全部应用、组成归一化都是显式动作。
 7. 选中 `Heater / Cooler / Valve` 时，可在单元检查器中编辑已暴露的 outlet temperature 或 outlet pressure 字段；字段会显示 SI 单位和约束提示，提交后写回项目参数，并同步对应 outlet stream 模板。
 8. 点击顶部 `运行`，结果只从最新 `SolveSnapshot` 展示到右侧 `结果` 和底部 `结果表`。
 
-当前连接仍通过本地 suggestion 和正式 `DocumentCommand::ConnectPorts` 完成，不是自由拉线编辑器；单元参数编辑也仍限制在上述 MVP 已暴露字段，不等同于完整单元参数表。
+当前连接仍通过本地 suggestion 和正式 `DocumentCommand` 完成，不是自由拉线编辑器；单元参数编辑也仍限制在上述 MVP 已暴露字段，不等同于完整单元参数表。
 
 ## 单元参数与连接诊断
 
@@ -176,6 +177,13 @@ cargo run -p radishflow-studio
 `Valve` 的 outlet pressure 若高于已连接 inlet pressure，会在单元检查器草稿态直接标记为无效，保持草稿、不写回项目文档，也不会同步 outlet stream 模板。若旧项目或外部编辑已经把越界参数写入文档，运行会产生 `solver.step.parameter` 诊断，并把 failure detail、端口 attention 和 recovery action 指向相关 unit / port / stream。
 
 连接类失败同样会尽量携带可修复目标：例如缺失 upstream source、未绑定 outlet port、cycle、自环、坏 stream 引用、重复 source / sink 或 orphan stream。Run Panel 中的 recovery action 可能只是聚焦相关 unit / port / stream，也可能执行明确的局部修复动作；按钮文案应区分这两类行为。
+
+如果在当前无自由拉线阶段误接了流股，可以先选中这条物料流股，再使用右侧检查器或 Canvas 操作区中的恢复动作：
+
+- `Disconnect stream`：解除该流股绑定到的所有 material ports，流股规格保留在项目中，便于后续重新按 suggestion 补连。
+- `Delete stream`：解除 material port 绑定后删除该流股，适合清理误创建或错误连接的流股。
+
+这两类动作会进入文档历史，可用 `undo / redo` 回退；它们只覆盖当前 MVP material stream，不提供任意端口重连、自动布线或完整画布编辑。
 
 ## 启动后应该看到什么
 

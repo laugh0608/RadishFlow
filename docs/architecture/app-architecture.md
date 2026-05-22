@@ -1,6 +1,6 @@
 # App Architecture
 
-更新时间：2026-05-17
+更新时间：2026-05-22
 
 ## 当前目标
 
@@ -827,19 +827,19 @@ pub struct StepSnapshot {
 - `StudioAppFacade`、`WorkspaceControlAction`、`WorkspaceControlState`、`RunPanelWidgetModel` 与 `run_panel_driver` 已经构成手动运行入口的稳定链路；后续仍待细化的是后台调度、取消、自动运行与 `Hold -> Active` 恢复在最终 GUI 中的完整交互表达
 - Studio 当前又已把 app-host 侧 GUI 动作入口进一步冻结为 `StudioAppHostController::dispatch_ui_command(command_id)`，让菜单、快捷键和命令面板后续都可以直接按稳定 command id 触发，而不必继续持有 `UiAction` 枚举或回退到 raw host outcome
 - 当前首批已接成真实宿主命令的 run panel command registry 为 `run_panel.run_manual`、`run_panel.resume_workspace`、`run_panel.set_hold`、`run_panel.set_active` 与 `run_panel.recover_failure`；后续桌面命令绑定应优先复用这组 registry，而不是在各入口重复解释 availability、disabled reason 或底层 widget 事件
-- Studio 当前又已把 canvas suggestion 与离散 layout nudge 交互正式纳入同一条 command surface：`canvas.accept_focused`、`canvas.reject_focused`、`canvas.focus_next`、`canvas.focus_previous` 与 `canvas.move_selected_unit.left/right/up/down` 当前也应通过 `dispatch_ui_command(command_id)`、`StudioGuiCommandRegistry` 与对应 widget action 统一派发，而不再保留一条长期并行的 widget/shortcut 私有 typed 事件主线；layout nudge 只写 `<project>.rfstudio-layout.json` sidecar，缺少 sidecar 坐标时先按 transient grid slot pin 出初始位置，不进入项目文档 revision/history；selection presentation 与 command result 应显式暴露 `sidecar position` / `transient grid` 来源，避免真实 GUI 再自行猜测 pin 语义
+- Studio 当前又已把 canvas suggestion、离散 layout nudge 与选中流股恢复交互纳入同一条 command surface：`canvas.accept_focused`、`canvas.reject_focused`、`canvas.focus_next`、`canvas.focus_previous`、`canvas.move_selected_unit.*`、`canvas.disconnect_selected_stream` 与 `canvas.delete_selected_stream` 都通过 `dispatch_ui_command(command_id)`、`StudioGuiCommandRegistry` 与 widget action 派发；layout nudge 只写 `<project>.rfstudio-layout.json` sidecar，不进入项目文档 revision/history
+- `canvas.disconnect_selected_stream` / `canvas.delete_selected_stream` 是无自由连线阶段的受控恢复动作：前者解除 material port 绑定并保留流股，后者解除绑定后删除流股；二者进入 `CommandHistory`，但不得扩成任意重连、自动布线或完整拖拽布局
 - Studio 当前结果审阅/错误定位入口也已进一步收口为统一 `StudioGuiWindowDiagnosticTargetActionModel`：失败摘要、结果检查器、当前对象检查器与求解步骤都会汇总可执行诊断目标 action，真实 GUI 只消费这份 presentation 并继续通过既有 `command_id` 派发，不新增一条错误处理或导航私有分支
 - Studio 当前结果检查器的 `selected_stream / comparison_stream / selected_unit` 也已冻结为 shell-local 视图选择态：它们只决定当前显示哪一块 `SolveSnapshot` 结果面，不缓存第二份结果；若 base stream 切换成当前 compared stream，comparison 允许按现有规则清空，但这仍只是 selector state 复位，不代表结果语义变化；最终 UI 的选择区应使用紧凑可选项，不为每个候选重复渲染 `Inspect`
 - Studio 当前 near-boundary 结果消费链已收口到 `window_model -> shell runtime` 的同一条 action surface：`inspector.focus_stream:*` / `inspector.focus_unit:*`、comparison 检查动作和诊断目标 section 都应从同一份 `StudioGuiWindowDiagnosticTargetActionModel` 或既有 focus action 派生；GUI 不应再发明 target 语义或导航分支
 - Studio 当前 `StudioGuiCommandRegistry` 也会从最新 `SolveSnapshot` 派生 `Results` command section：result stream / unit navigation 只暴露为既有 `inspector.focus_stream:*` / `inspector.focus_unit:*` command，palette、menu、command list 与 runtime 小型 action button 都继续通过 `dispatch_ui_command(command_id)` 进入同一条 host 派发链，不在各自入口复制 target 解析
 - Studio 当前失败详情只消费 `latest_diagnostic`，显示 primary code、revision、severity、count 与相关 target；GUI 不从 message 文本反解析或私造端口级 command
-- Studio 当前 Run Panel recovery action 必须区分聚焦与修复：前者只定位 target，后者才通过 `run_panel.recover_failure` 执行断开坏引用、删除 orphan stream、创建/绑定 outlet stream 或恢复 canonical port 等 mutation
+- Studio 当前 Run Panel recovery action 必须区分聚焦与修复：前者只定位 target，后者才通过 `run_panel.recover_failure` 执行断开坏引用、删除 orphan stream、创建/绑定 outlet stream 或恢复 canonical port 等 mutation。用户主动选中流股后的断开 / 删除走 `canvas.disconnect_selected_stream` / `canvas.delete_selected_stream`，不复用 failure-only recovery command
 - `StudioAppHostController` 当前对 `DispatchCanvasInteraction` 不应再无条件 `refresh_local_canvas_suggestions()`；local-rules refresh 只应发生在真正改写文档或显式要求重算 suggestion 的路径上，否则会把 `FocusNext/Reject` 刚生成的正式焦点状态冲回首条 suggestion，破坏 GUI 命令面的连续交互语义
-- `studio_gui_shell` 当前也已通过 shell 级等价回归锁定 `run_panel.set_active`、`run_panel.recover_failure`、`canvas.accept_focused`、`canvas.reject_focused`、`canvas.focus_next` 与 `canvas.focus_previous` 在菜单、工具栏、命令面板与快捷键之间的共享派发语义；真实 GUI 后续不应再为某个入口保留“看起来一样、实际另走一条逻辑”的私有状态改写分支
+- `studio_gui_shell` 当前也已通过 shell 级等价回归锁定 run panel、canvas suggestion、layout nudge 与选中流股恢复动作在菜单、工具栏、命令面板、Canvas / Inspector 入口之间的共享派发语义；真实 GUI 后续不应再为某个入口保留“看起来一样、实际另走一条逻辑”的私有状态改写分支
 - 同时已锁定 disabled 状态下 menu / toolbar / palette 不会偷偷改变工作区或 suggestion 焦点；后续若某个入口需要提示用户，也应停留在 presentation 层，而不是越过 disabled gate 直接改状态
 - Studio 当前已冻结第一版字段编辑快捷键策略：`Ctrl+S` 绑定 `file.save`，即使焦点在文本输入框内也继续通过正式 command surface 保存当前项目；`Ctrl+Z / Ctrl+Y` 绑定 `edit.undo / edit.redo`，但文本输入焦点下由输入框自身保留撤销/重做语义，不进入文档历史；普通焦点、画布焦点和 Inspector 面板焦点下才派发文档历史命令；`Enter` 在 Stream Inspector 字段输入中继续只提交当前字段，`Apply all` 仍保持显式按钮/命令，不设置隐式 Enter 批量提交
 - `apps/radishflow-studio/src` 当前也已开始按职责做浅层目录治理；`bootstrap`、`studio_gui_shell`、`studio_gui_host`、`studio_gui_driver`、`studio_gui_window_layout`、`studio_window_host_manager`、`entitlement_session_host`、`property_package_download_client`、`auth_cache_sync`、`app_facade` 与 `control_plane_client` 已转为目录模块。后续新增实现应优先并入同域子目录，而不是把大型模块重新铺回 `src/` 根
-- 当前虽然已有 `StudioAppFacade`，但结果派发对象仍是最小摘要形态，真正的后台任务调度、取消和更细的事件总线还没有冻结
 
 ## 结果快照模型
 

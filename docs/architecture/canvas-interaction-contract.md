@@ -1,6 +1,6 @@
 # Canvas Interaction Contract
 
-更新时间：2026-05-18
+更新时间：2026-05-22
 
 ## 文档目的
 
@@ -115,6 +115,8 @@
 - 打开示例或项目后，Canvas viewport 会按当前单元 / 流股 bounds 做 shell-local 初始 fit-to-content / center；该行为不写项目、不进历史、不代表自动布线或视口持久化。
 - 若缺少 sidecar placement，presentation 可按物料流依赖顺序给未定位单元生成可解释的 transient grid slot；加载 sidecar 时应过滤当前项目已不存在的 unit id。
 - 已绑定端口可通过点击或对象选择聚焦对应流股 / 单元检查器；运行成功后可自动切到右侧 `结果` 和底部 `结果表`，失败后可切到右侧 `运行` 和底部 `消息`。
+- 选中物料流股后，Canvas / Inspector 可暴露受控恢复动作：`Disconnect stream` 解除当前流股在所有材料端口上的绑定并保留流股规格，`Delete stream` 先解除材料端口绑定再删除该流股；两者都通过正式 `DocumentCommand` 写回并进入 undo history。
+- 上述恢复动作只覆盖当前 MVP 物料流股和现有最短建模路径，用于修正错连或误建流股；它不是自由连线编辑器，不提供任意端口重连、自动布线、批量重排或完整拖拽布局编辑。
 - 非空画布不应常驻空状态提示或开发态计数摘要；画布 header 只保留用户理解当前状态所需的短标签、legend 和可行动工具。
 
 ## 视图模式契约
@@ -400,8 +402,9 @@ pub struct GhostElement {
 1. `Planar` 继续是默认编辑视图，`Perspective` 仍只是后续增强展示预留。
 2. MVP 单元放置、对象选择、suggestion focus / accept / reject、离散 layout nudge 都应通过正式 command surface 或 shell-local UI state 进入，不保留长期并行的 widget 私有状态改写分支。
 3. suggestion 转成正式文档命令后的实际文档变更才进入 `CommandHistory`；suggestion focus、reject、viewport、面板切换和 hover 不进入文档历史。
-4. Layout sidecar 只保存 shell / layout 相关状态；缺少 sidecar 时可以用 transient grid slot pin 出初始位置，但必须在 presentation 中保持可解释，不反向污染 flowsheet 语义。
-5. viewport 初始居中 / fit-to-content 已落地；短线段中间流股标签已按空间不足时隐藏的策略完成第一轮收口。后续若继续优化，只处理真实 demo blocker，不扩自由拉线、自动布线、完整拖拽布局编辑器或复杂视图持久化。
+4. 受控流股恢复动作可进入 `CommandHistory`：断开连接保留流股规格，删除流股会先解除材料端口绑定；二者都不得扩展成任意连线重编辑器。
+5. Layout sidecar 只保存 shell / layout 相关状态；缺少 sidecar 时可以用 transient grid slot pin 出初始位置，但必须在 presentation 中保持可解释，不反向污染 flowsheet 语义。
+6. viewport 初始居中 / fit-to-content 已落地；短线段中间流股标签已按空间不足时隐藏的策略完成第一轮收口。后续若继续优化，只处理真实 demo blocker，不扩自由拉线、自动布线、完整拖拽布局编辑器或复杂视图持久化。
 
 ## 当前仍待后续细化的问题
 
