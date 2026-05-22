@@ -1,6 +1,6 @@
 # Run First Flowsheet
 
-更新时间：2026-05-18
+更新时间：2026-05-22
 
 ## 目的
 
@@ -163,13 +163,15 @@ examples/flowsheets/feed-mixer-flash-binary-hydrocarbon.rfproj.json
 1. 在首页点击 `新建项目`，或进入工作台后点击顶部 `新建空白`，进入未命名空白项目。
 2. 左侧切到 `放置`，放置 `进料` 和 `闪蒸罐`；需要中间设备时可加 `加热器 / 冷却器 / 阀门`，需要双入口时可加第二个 `进料` 和 `混合器`。按钮文案当前是 `放置进料`、`放置闪蒸罐` 等，项目对象名仍可显示为 `Feed`、`Flash Drum` 等领域名。
 3. 每次放置单元后，在 Canvas 中点击落点提交；这只提交当前放置意图，不是完整拖拽布局编辑器。
-4. 使用 Canvas suggestion 中的 `Connect stream` / `连接流股` 或 `Create stream` / `创建流股` 动作补齐 `source -> sink` 端口绑定和必要 outlet stream。
+4. 使用 Canvas suggestion 中的 `Connect stream` / `连接流股` 或 `Create stream` / `创建流股` 动作补齐 `source -> sink` 端口绑定和必要 outlet stream。`Heater / Cooler / Valve`、`Mixer` 和 `Flash Drum` 的 outlet stream 建议会等必要 inlet 绑定后才出现。
 5. 从左侧 `项目` 或 Canvas 对象列表选择 stream / unit，右侧 `检查器` 会显示当前对象。
 6. 流股检查器当前可编辑 `name / temperature_k / pressure_pa / total_molar_flow_mol_s` 和已有 flowsheet component catalog 中的组成条目；组成修改需要显式提交、归一化或丢弃。
 7. 单元检查器当前已暴露首批高频参数：Heater / Cooler 的 outlet temperature 与 Valve 的 outlet pressure；字段使用 SI 单位并显示约束提示，Valve outlet pressure 若高于已连接 inlet pressure 会停留在无效草稿态。其余内容仍以端口、关联步骤、关联诊断和最新 `SolveSnapshot` 中的单元结果为主，不等同于完整单元参数表。
 8. 点击 `运行`，成功后右侧会自动切到 `结果`，底部会自动切到 `结果表`；失败时会切到右侧 `运行` 和底部 `消息`，方便先看诊断。
 
-当前仍不支持自由拉线、任意端口点击创建、完整组件库、完整物性包浏览/切换或完整单元参数表。这些缺口若影响验证，应记录为 MVP α 后续任务，而不是用 shell 私有状态绕过。
+如果误接了流股，可以选中对应 material stream 后使用右侧检查器或 Canvas 操作区中的 `Disconnect stream` / `Delete stream`。前者解除端口绑定并保留流股规格，后者解除绑定后删除流股；二者都进入 undo/redo 历史。
+
+当前仍不支持自由拉线、任意端口点击创建、任意端口重连、自动布线、完整组件库、完整物性包浏览/切换或完整单元参数表。这些缺口若影响验证，应记录为 MVP α 后续任务，而不是用 shell 私有状态绕过。
 
 ## 7. 常见阻塞点
 
@@ -189,6 +191,7 @@ examples/flowsheets/feed-mixer-flash-binary-hydrocarbon.rfproj.json
 - 不在运行前偷偷改写文档
 - 优先通过结构化诊断暴露问题
 - Run Panel recovery action 只执行明确的局部恢复；不能自动修复时，应聚焦到相关 unit / port / stream，帮助用户进入可编辑位置
+- 用户主动修正错连时，优先使用选中 stream 后的 `Disconnect stream` / `Delete stream`；不要把它理解为自由连线或任意重连工具
 - 开发态 stderr 只作为 smoke 和排查辅助，不替代右侧 `运行` 或底部 `诊断` 中的用户可见诊断
 
 连接类诊断当前应按下面理解：
