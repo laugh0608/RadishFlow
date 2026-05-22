@@ -214,6 +214,7 @@ pub struct StudioGuiWindowInspectorTargetDetailModel {
     pub property_composition_normalize_command_id: Option<String>,
     pub property_composition_component_actions:
         Vec<StudioGuiWindowInspectorCompositionComponentActionModel>,
+    pub connection_actions: Vec<StudioGuiWindowCommandActionModel>,
     pub unit_ports: Vec<StudioGuiWindowInspectorTargetPortModel>,
     pub latest_unit_result: Option<StudioGuiWindowUnitExecutionResultModel>,
     pub latest_stream_result: Option<StudioGuiWindowStreamResultModel>,
@@ -1126,6 +1127,15 @@ fn inspector_target_detail_model_from_snapshot(
             .property_composition_component_actions
             .iter()
             .map(inspector_composition_component_action_model_from_snapshot)
+            .collect(),
+        connection_actions: detail
+            .connection_actions
+            .iter()
+            .map(|action| StudioGuiWindowCommandActionModel {
+                label: action.label.clone(),
+                hover_text: action.detail.clone(),
+                command_id: action.command_id.clone(),
+            })
             .collect(),
         unit_ports: detail
             .unit_ports

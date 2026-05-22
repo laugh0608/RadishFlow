@@ -103,6 +103,18 @@ impl StudioWindowSession {
         self.host_port.focus_previous_canvas_suggestion()
     }
 
+    pub fn disconnect_selected_stream_connections(
+        &mut self,
+    ) -> RfResult<Option<rf_ui::StreamConnectionEditResult>> {
+        self.host_port.disconnect_selected_stream_connections()
+    }
+
+    pub fn delete_selected_stream_and_connections(
+        &mut self,
+    ) -> RfResult<Option<rf_ui::StreamConnectionEditResult>> {
+        self.host_port.delete_selected_stream_and_connections()
+    }
+
     pub fn open_window(&mut self) -> StudioWindowSessionOpenWindow {
         let registration = self.host_port.open_window();
         let (timer_driver_transitions, timer_driver_acks) =

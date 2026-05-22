@@ -258,9 +258,9 @@ pub use studio_gui_shortcut_router::{
 pub use studio_gui_snapshot::{
     StudioGuiDiagnosticStreamSnapshot, StudioGuiFailureDiagnosticContextSnapshot,
     StudioGuiFailureDiagnosticPortSnapshot, StudioGuiInspectorCompositionComponentActionSnapshot,
-    StudioGuiInspectorCompositionSummarySnapshot, StudioGuiInspectorPropertyNoticeSnapshot,
-    StudioGuiInspectorTargetDetailSnapshot, StudioGuiInspectorTargetFieldSnapshot,
-    StudioGuiInspectorTargetFieldValidationSnapshot,
+    StudioGuiInspectorCompositionSummarySnapshot, StudioGuiInspectorConnectionActionSnapshot,
+    StudioGuiInspectorPropertyNoticeSnapshot, StudioGuiInspectorTargetDetailSnapshot,
+    StudioGuiInspectorTargetFieldSnapshot, StudioGuiInspectorTargetFieldValidationSnapshot,
     StudioGuiInspectorTargetFieldValueKindSnapshot, StudioGuiInspectorTargetPortSnapshot,
     StudioGuiInspectorTargetSummaryRowSnapshot, StudioGuiRuntimeSnapshot, StudioGuiSnapshot,
     StudioGuiWorkspaceDocumentSnapshot,

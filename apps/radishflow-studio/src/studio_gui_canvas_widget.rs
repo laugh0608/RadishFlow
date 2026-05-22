@@ -12,6 +12,8 @@ pub enum StudioGuiCanvasActionId {
     FocusPrevious,
     CancelPendingEdit,
     MoveSelectedUnit(StudioGuiCanvasUnitLayoutNudgeDirection),
+    DisconnectSelectedStream,
+    DeleteSelectedStream,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -130,6 +132,11 @@ impl StudioGuiCanvasWidgetModel {
             .current_selection
             .as_ref()
             .filter(|selection| selection.kind_label == "Unit");
+        let selected_stream = presentation
+            .view
+            .current_selection
+            .as_ref()
+            .filter(|selection| selection.kind_label == "Stream");
         let mut actions = presentation
             .view
             .place_unit_palette
@@ -223,6 +230,38 @@ impl StudioGuiCanvasWidgetModel {
                 }
             },
         ));
+        let stream_detail = match selected_stream {
+            Some(selection) => format!(
+                "Disconnect all material port bindings for selected stream `{}` and keep the stream specification for controlled recovery.",
+                selection.target_id
+            ),
+            None => "Disconnect selected stream; select a material stream first.".to_string(),
+        };
+        actions.push(StudioGuiCanvasRenderableAction {
+            id: StudioGuiCanvasActionId::DisconnectSelectedStream,
+            command_id: canvas_command_id(StudioGuiCanvasActionId::DisconnectSelectedStream)
+                .to_string(),
+            label: "Disconnect stream".to_string(),
+            detail: stream_detail,
+            enabled: selected_stream.is_some(),
+            shortcut: None,
+        });
+        let delete_detail = match selected_stream {
+            Some(selection) => format!(
+                "Delete selected stream `{}` after removing its material port bindings.",
+                selection.target_id
+            ),
+            None => "Delete selected stream; select a material stream first.".to_string(),
+        };
+        actions.push(StudioGuiCanvasRenderableAction {
+            id: StudioGuiCanvasActionId::DeleteSelectedStream,
+            command_id: canvas_command_id(StudioGuiCanvasActionId::DeleteSelectedStream)
+                .to_string(),
+            label: "Delete stream".to_string(),
+            detail: delete_detail,
+            enabled: selected_stream.is_some(),
+            shortcut: None,
+        });
 
         Self {
             presentation,
@@ -311,6 +350,8 @@ pub(crate) fn canvas_command_id(action_id: StudioGuiCanvasActionId) -> &'static 
         StudioGuiCanvasActionId::FocusPrevious => "canvas.focus_previous",
         StudioGuiCanvasActionId::CancelPendingEdit => "canvas.cancel_pending_edit",
         StudioGuiCanvasActionId::MoveSelectedUnit(direction) => direction.command_id(),
+        StudioGuiCanvasActionId::DisconnectSelectedStream => "canvas.disconnect_selected_stream",
+        StudioGuiCanvasActionId::DeleteSelectedStream => "canvas.delete_selected_stream",
     }
 }
 
@@ -339,6 +380,10 @@ pub(crate) fn canvas_action_id_from_command_id(
         "canvas.move_selected_unit.down" => Some(StudioGuiCanvasActionId::MoveSelectedUnit(
             StudioGuiCanvasUnitLayoutNudgeDirection::Down,
         )),
+        "canvas.disconnect_selected_stream" => {
+            Some(StudioGuiCanvasActionId::DisconnectSelectedStream)
+        }
+        "canvas.delete_selected_stream" => Some(StudioGuiCanvasActionId::DeleteSelectedStream),
         _ => None,
     }
 }
@@ -404,10 +449,21 @@ mod tests {
         )
     }
 
+    fn accept_flash_inlet_suggestion(driver: &mut StudioGuiDriver) {
+        driver
+            .dispatch_event(StudioGuiEvent::CanvasSuggestionAcceptByIdRequested {
+                suggestion_id: rf_ui::CanvasSuggestionId::new(
+                    "local.flash_drum.connect_inlet.flash-1.stream-heated",
+                ),
+            })
+            .expect("expected flash inlet suggestion acceptance");
+    }
+
     #[test]
     fn canvas_widget_enables_full_action_set_for_local_rules_focus() {
         let (config, project_path) = flash_drum_local_rules_config();
-        let driver = StudioGuiDriver::new(&config).expect("expected driver");
+        let mut driver = StudioGuiDriver::new(&config).expect("expected driver");
+        accept_flash_inlet_suggestion(&mut driver);
 
         let widget = driver.canvas_state().widget();
 
@@ -555,7 +611,8 @@ mod tests {
     #[test]
     fn canvas_widget_maps_actions_to_explicit_driver_events() {
         let (config, project_path) = flash_drum_local_rules_config();
-        let driver = StudioGuiDriver::new(&config).expect("expected driver");
+        let mut driver = StudioGuiDriver::new(&config).expect("expected driver");
+        accept_flash_inlet_suggestion(&mut driver);
         let widget = driver.canvas_state().widget();
 
         assert_eq!(
@@ -667,6 +724,7 @@ mod tests {
     fn canvas_widget_maps_explicit_suggestion_acceptance_to_driver_event() {
         let (config, project_path) = flash_drum_local_rules_config();
         let mut driver = StudioGuiDriver::new(&config).expect("expected driver");
+        accept_flash_inlet_suggestion(&mut driver);
         let widget = driver.canvas_state().widget();
         let suggestion = widget
             .view()
@@ -732,6 +790,7 @@ mod tests {
     fn canvas_widget_requested_event_dispatches_through_driver() {
         let (config, project_path) = flash_drum_local_rules_config();
         let mut driver = StudioGuiDriver::new(&config).expect("expected driver");
+        accept_flash_inlet_suggestion(&mut driver);
         let widget = driver.canvas_state().widget();
         let event = match widget.activate(StudioGuiCanvasActionId::FocusNext) {
             StudioGuiCanvasWidgetEvent::Requested { event, .. } => event,
@@ -759,7 +818,7 @@ mod tests {
                         .focused
                         .as_ref()
                         .map(|suggestion| suggestion.id.as_str()),
-                    Some("local.flash_drum.create_outlet.flash-1.liquid")
+                    Some("local.flash_drum.create_outlet.flash-1.vapor")
                 );
                 assert_eq!(
                     result
@@ -767,7 +826,7 @@ mod tests {
                         .focused_suggestion_id
                         .as_ref()
                         .map(|id| id.as_str()),
-                    Some("local.flash_drum.create_outlet.flash-1.liquid")
+                    Some("local.flash_drum.create_outlet.flash-1.vapor")
                 );
                 assert_eq!(
                     dispatch
@@ -775,7 +834,7 @@ mod tests {
                         .focused_suggestion_id
                         .as_ref()
                         .map(|id| id.as_str()),
-                    Some("local.flash_drum.create_outlet.flash-1.liquid")
+                    Some("local.flash_drum.create_outlet.flash-1.vapor")
                 );
             }
             other => panic!("expected canvas ui command outcome, got {other:?}"),

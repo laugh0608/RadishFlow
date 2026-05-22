@@ -1237,7 +1237,7 @@ fn gui_driver_surfaces_local_rules_canvas_state_from_project() {
     let mut driver = StudioGuiDriver::new(&config).expect("expected driver");
 
     let initial_canvas = driver.canvas_state();
-    assert_eq!(initial_canvas.suggestions.len(), 3);
+    assert_eq!(initial_canvas.suggestions.len(), 1);
     assert_eq!(
         initial_canvas
             .focused_suggestion_id
@@ -1250,8 +1250,8 @@ fn gui_driver_surfaces_local_rules_canvas_state_from_project() {
         .dispatch_event(StudioGuiEvent::OpenWindowRequested)
         .expect("expected open dispatch");
 
-    assert_eq!(dispatch.canvas.suggestions.len(), 3);
-    assert_eq!(dispatch.snapshot.canvas.view().suggestion_count, 3);
+    assert_eq!(dispatch.canvas.suggestions.len(), 1);
+    assert_eq!(dispatch.snapshot.canvas.view().suggestion_count, 1);
     assert_eq!(
         dispatch
             .snapshot
@@ -1269,11 +1269,7 @@ fn gui_driver_surfaces_local_rules_canvas_state_from_project() {
             .iter()
             .map(|suggestion| suggestion.id.as_str())
             .collect::<Vec<_>>(),
-        vec![
-            "local.flash_drum.connect_inlet.flash-1.stream-heated",
-            "local.flash_drum.create_outlet.flash-1.liquid",
-            "local.flash_drum.create_outlet.flash-1.vapor",
-        ]
+        vec!["local.flash_drum.connect_inlet.flash-1.stream-heated"]
     );
 
     let _ = fs::remove_file(project_path);
@@ -1296,7 +1292,7 @@ fn gui_driver_dispatch_snapshot_aggregates_gui_facing_state() {
         dispatch.snapshot.canvas.primary_action().label,
         "Accept suggestion"
     );
-    assert_eq!(dispatch.window.canvas.suggestion_count, 3);
+    assert_eq!(dispatch.window.canvas.suggestion_count, 1);
     assert_eq!(
         dispatch.window.layout().default_focus_area,
         crate::StudioGuiWindowAreaId::Canvas

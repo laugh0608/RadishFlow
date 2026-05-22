@@ -53,19 +53,23 @@ impl ReadyAppState {
             let has_edit_actions = widget.actions.iter().any(|action| {
                 action.enabled
                     && matches!(
-                        action.id,
-                        radishflow_studio::StudioGuiCanvasActionId::CancelPendingEdit
-                            | radishflow_studio::StudioGuiCanvasActionId::MoveSelectedUnit(_)
-                    )
+                            action.id,
+                            radishflow_studio::StudioGuiCanvasActionId::CancelPendingEdit
+                                | radishflow_studio::StudioGuiCanvasActionId::MoveSelectedUnit(_)
+                                | radishflow_studio::StudioGuiCanvasActionId::DisconnectSelectedStream
+                                | radishflow_studio::StudioGuiCanvasActionId::DeleteSelectedStream
+                        )
             });
             if has_edit_actions {
                 ui.separator();
-                self.render_canvas_toolbar_group(ui, widget, "Move", |action| {
+                self.render_canvas_toolbar_group(ui, widget, "Edit", |action| {
                     action.enabled
                         && matches!(
                             action.id,
                             radishflow_studio::StudioGuiCanvasActionId::CancelPendingEdit
                                 | radishflow_studio::StudioGuiCanvasActionId::MoveSelectedUnit(_)
+                                | radishflow_studio::StudioGuiCanvasActionId::DisconnectSelectedStream
+                                | radishflow_studio::StudioGuiCanvasActionId::DeleteSelectedStream
                         )
                 });
             }
@@ -415,6 +419,26 @@ impl ReadyAppState {
                                 *direction,
                             ),
                         ) {
+                            if ui
+                                .add_enabled(
+                                    action.enabled,
+                                    egui::Button::new(
+                                        self.locale.runtime_label(&action.label).as_ref(),
+                                    ),
+                                )
+                                .on_hover_text(self.locale.runtime_label(&action.detail).as_ref())
+                                .clicked()
+                            {
+                                self.dispatch_ui_command(&action.command_id);
+                            }
+                        }
+                    }
+                } else if selection.kind_label == "Stream" {
+                    for action_id in [
+                        radishflow_studio::StudioGuiCanvasActionId::DisconnectSelectedStream,
+                        radishflow_studio::StudioGuiCanvasActionId::DeleteSelectedStream,
+                    ] {
+                        if let Some(action) = widget.action(action_id) {
                             if ui
                                 .add_enabled(
                                     action.enabled,

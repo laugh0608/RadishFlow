@@ -72,6 +72,7 @@ pub struct StudioGuiInspectorTargetDetailSnapshot {
     pub property_composition_normalize_command_id: Option<String>,
     pub property_composition_component_actions:
         Vec<StudioGuiInspectorCompositionComponentActionSnapshot>,
+    pub connection_actions: Vec<StudioGuiInspectorConnectionActionSnapshot>,
     pub unit_ports: Vec<StudioGuiInspectorTargetPortSnapshot>,
 }
 
@@ -114,6 +115,13 @@ pub struct StudioGuiInspectorCompositionSummarySnapshot {
 pub struct StudioGuiInspectorCompositionComponentActionSnapshot {
     pub component_id: String,
     pub component_name: String,
+    pub command_id: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioGuiInspectorConnectionActionSnapshot {
+    pub label: String,
+    pub detail: String,
     pub command_id: String,
 }
 

@@ -32,7 +32,7 @@ pub use canvas_interaction::{
 };
 pub use commands::{
     CanvasPoint, CommandHistory, CommandHistoryEntry, CommandValue, DocumentCommand,
-    StreamSpecificationValue,
+    StreamPortBinding, StreamSpecificationValue,
 };
 pub use diagnostics::{DiagnosticSeverity, DiagnosticSnapshot, DiagnosticSummary};
 pub use entitlement_panel::{
@@ -65,15 +65,15 @@ pub use state::{
     AppLogEntry, AppLogFeed, AppLogLevel, AppState, AppTheme, CanvasEditCommitResult, DateTimeUtc,
     DocumentHistoryApplyResult, DocumentHistoryDirection, DocumentMetadata, DraftValidationState,
     DraftValue, FieldDraft, FlowsheetDocument, InspectorDraftState, InspectorTarget, LocaleCode,
-    PanelLayoutPreferences, SelectionState, StreamInspectorCompositionComponentAddResult,
-    StreamInspectorCompositionComponentRemoveResult, StreamInspectorDraftBatchCommitResult,
-    StreamInspectorDraftBatchDiscardResult, StreamInspectorDraftCommitResult,
-    StreamInspectorDraftDiscardResult, StreamInspectorDraftField, StreamInspectorDraftUpdateResult,
-    UiPanelsState, UnitInspectorDraftCommitResult, UnitInspectorDraftDiscardResult,
-    UnitInspectorDraftField, UnitInspectorDraftUpdateResult, UserPreferences, WorkspaceState,
-    latest_snapshot, latest_snapshot_id, stream_inspector_draft_key,
-    stream_inspector_draft_key_parts, unit_inspector_draft_key, unit_inspector_draft_key_parts,
-    unit_inspector_parameter_value,
+    PanelLayoutPreferences, SelectionState, StreamConnectionEditResult,
+    StreamInspectorCompositionComponentAddResult, StreamInspectorCompositionComponentRemoveResult,
+    StreamInspectorDraftBatchCommitResult, StreamInspectorDraftBatchDiscardResult,
+    StreamInspectorDraftCommitResult, StreamInspectorDraftDiscardResult, StreamInspectorDraftField,
+    StreamInspectorDraftUpdateResult, UiPanelsState, UnitInspectorDraftCommitResult,
+    UnitInspectorDraftDiscardResult, UnitInspectorDraftField, UnitInspectorDraftUpdateResult,
+    UserPreferences, WorkspaceState, latest_snapshot, latest_snapshot_id,
+    stream_inspector_draft_key, stream_inspector_draft_key_parts, unit_inspector_draft_key,
+    unit_inspector_draft_key_parts, unit_inspector_parameter_value,
 };
 
 #[cfg(test)]

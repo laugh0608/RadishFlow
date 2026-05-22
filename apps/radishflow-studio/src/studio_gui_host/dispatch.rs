@@ -203,6 +203,12 @@ impl StudioGuiHost {
                         },
                     );
                 }
+                crate::StudioGuiCanvasActionId::DisconnectSelectedStream => {
+                    StudioGuiCanvasInteractionAction::DisconnectSelectedStream
+                }
+                crate::StudioGuiCanvasActionId::DeleteSelectedStream => {
+                    StudioGuiCanvasInteractionAction::DeleteSelectedStream
+                }
             };
             let mut result = self.dispatch_canvas_interaction(action)?;
             result.ui_commands = self.ui_commands();

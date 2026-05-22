@@ -18,8 +18,8 @@ use crate::{
     PropertyPackageManifestList, PropertyPackageSource, RunPanelActionId, RunPanelActionProminence,
     RunPanelPresentation, RunPanelRecoveryWidgetEvent, RunPanelState, RunPanelTextView,
     RunPanelViewModel, RunPanelWidgetEvent, RunPanelWidgetModel, RunStatus, SecureCredentialHandle,
-    SimulationMode, SolvePendingReason, SolveSnapshot, StreamVisualKind, StreamVisualState,
-    SuggestionSource, SuggestionStatus, TokenLease, latest_snapshot,
+    SimulationMode, SolvePendingReason, SolveSnapshot, StreamPortBinding, StreamVisualKind,
+    StreamVisualState, SuggestionSource, SuggestionStatus, TokenLease, latest_snapshot,
 };
 
 fn timestamp(seconds: u64) -> std::time::SystemTime {

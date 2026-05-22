@@ -380,6 +380,42 @@ pub(super) fn apply_delete_stream_mutation(
     ))
 }
 
+pub(super) fn apply_disconnect_stream_mutation(
+    flowsheet: &Flowsheet,
+    stream_id: &StreamId,
+) -> RfResult<(DocumentCommand, Flowsheet, Vec<StreamPortBinding>)> {
+    flowsheet.stream(stream_id)?;
+    let mut next_flowsheet = flowsheet.clone();
+    let disconnected_ports = disconnect_material_stream_from_ports(&mut next_flowsheet, stream_id);
+
+    Ok((
+        DocumentCommand::DisconnectStream {
+            stream_id: stream_id.clone(),
+            ports: disconnected_ports.clone(),
+        },
+        next_flowsheet,
+        disconnected_ports,
+    ))
+}
+
+pub(super) fn apply_delete_stream_and_disconnect_ports_mutation(
+    flowsheet: &Flowsheet,
+    stream_id: &StreamId,
+) -> RfResult<(DocumentCommand, Flowsheet, Vec<StreamPortBinding>)> {
+    let mut next_flowsheet = flowsheet.clone();
+    let disconnected_ports = disconnect_material_stream_from_ports(&mut next_flowsheet, stream_id);
+    next_flowsheet.remove_stream(stream_id)?;
+
+    Ok((
+        DocumentCommand::DeleteStreamAndDisconnectPorts {
+            stream_id: stream_id.clone(),
+            ports: disconnected_ports.clone(),
+        },
+        next_flowsheet,
+        disconnected_ports,
+    ))
+}
+
 pub(super) fn apply_create_and_bind_outlet_stream_mutation(
     flowsheet: &Flowsheet,
     unit_id: &UnitId,
@@ -506,6 +542,31 @@ pub(super) fn disconnect_material_stream_port(
     }
     port.stream_id = None;
     Ok(())
+}
+
+pub(super) fn disconnect_material_stream_from_ports(
+    flowsheet: &mut Flowsheet,
+    stream_id: &StreamId,
+) -> Vec<StreamPortBinding> {
+    let mut disconnected_ports = Vec::new();
+
+    for unit in flowsheet.units.values_mut() {
+        for port in &mut unit.ports {
+            if port.kind != rf_types::PortKind::Material
+                || port.stream_id.as_ref() != Some(stream_id)
+            {
+                continue;
+            }
+
+            disconnected_ports.push(StreamPortBinding {
+                unit_id: unit.id.clone(),
+                port: port.name.clone(),
+            });
+            port.stream_id = None;
+        }
+    }
+
+    disconnected_ports
 }
 
 pub(super) fn next_available_placeholder_stream_id(

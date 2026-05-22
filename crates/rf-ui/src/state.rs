@@ -27,7 +27,7 @@ use crate::canvas_interaction::{
 };
 use crate::commands::{
     CanvasPoint, CommandHistory, CommandHistoryEntry, CommandValue, DocumentCommand,
-    StreamSpecificationValue,
+    StreamPortBinding, StreamSpecificationValue,
 };
 use crate::diagnostics::DiagnosticSummary;
 use crate::ids::{CanvasSuggestionId, DocumentId, SolveSnapshotId};
@@ -328,6 +328,14 @@ pub struct StreamInspectorCompositionComponentRemoveResult {
     pub key: String,
     pub active_target: InspectorTarget,
     pub component_id: ComponentId,
+    pub command: DocumentCommand,
+    pub revision: u64,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct StreamConnectionEditResult {
+    pub stream_id: StreamId,
+    pub disconnected_ports: Vec<StreamPortBinding>,
     pub command: DocumentCommand,
     pub revision: u64,
 }
@@ -831,6 +839,72 @@ impl AppState {
 
     pub fn focus_previous_canvas_suggestion(&mut self) -> Option<CanvasSuggestion> {
         self.workspace.canvas_interaction.focus_previous()
+    }
+
+    pub fn disconnect_stream_connections(
+        &mut self,
+        stream_id: &StreamId,
+        changed_at: DateTimeUtc,
+    ) -> RfResult<Option<StreamConnectionEditResult>> {
+        if !self
+            .workspace
+            .document
+            .flowsheet
+            .streams
+            .contains_key(stream_id)
+        {
+            return Ok(None);
+        }
+
+        let (command, next_flowsheet, disconnected_ports) =
+            apply_disconnect_stream_mutation(&self.workspace.document.flowsheet, stream_id)?;
+        if disconnected_ports.is_empty() {
+            return Ok(None);
+        }
+
+        let revision = self.commit_document_change(command.clone(), next_flowsheet, changed_at);
+        self.focus_inspector_target(InspectorTarget::Stream(stream_id.clone()));
+
+        Ok(Some(StreamConnectionEditResult {
+            stream_id: stream_id.clone(),
+            disconnected_ports,
+            command,
+            revision,
+        }))
+    }
+
+    pub fn delete_stream_and_connections(
+        &mut self,
+        stream_id: &StreamId,
+        changed_at: DateTimeUtc,
+    ) -> RfResult<Option<StreamConnectionEditResult>> {
+        if !self
+            .workspace
+            .document
+            .flowsheet
+            .streams
+            .contains_key(stream_id)
+        {
+            return Ok(None);
+        }
+
+        let (command, next_flowsheet, disconnected_ports) =
+            apply_delete_stream_and_disconnect_ports_mutation(
+                &self.workspace.document.flowsheet,
+                stream_id,
+            )?;
+        let revision = self.commit_document_change(command.clone(), next_flowsheet, changed_at);
+        self.workspace.selection.selected_streams.remove(stream_id);
+        if self.workspace.drafts.active_target == Some(InspectorTarget::Stream(stream_id.clone())) {
+            self.workspace.drafts.active_target = None;
+        }
+
+        Ok(Some(StreamConnectionEditResult {
+            stream_id: stream_id.clone(),
+            disconnected_ports,
+            command,
+            revision,
+        }))
     }
 
     pub fn apply_run_panel_recovery_action(

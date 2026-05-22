@@ -1328,6 +1328,22 @@ impl ReadyAppState {
                 });
         }
 
+        if !detail.connection_actions.is_empty() {
+            ui.add_space(4.0);
+            ui.horizontal_wrapped(|ui| {
+                ui.small(egui::RichText::new("Connections").strong());
+                for action in &detail.connection_actions {
+                    if ui
+                        .small_button(self.locale.runtime_label(&action.label).as_ref())
+                        .on_hover_text(self.locale.runtime_label(&action.hover_text).as_ref())
+                        .clicked()
+                    {
+                        self.dispatch_ui_command(&action.command_id);
+                    }
+                }
+            });
+        }
+
         if !detail.property_fields.is_empty() {
             ui.add_space(4.0);
             ui.small(

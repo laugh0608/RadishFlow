@@ -103,6 +103,8 @@ pub enum StudioCanvasInteractionAction {
     RejectFocused,
     FocusNext,
     FocusPrevious,
+    DisconnectSelectedStream,
+    DeleteSelectedStream,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -233,6 +235,18 @@ impl StudioAppWindowHostManager {
         self.session.focus_previous_canvas_suggestion()
     }
 
+    pub fn disconnect_selected_stream_connections(
+        &mut self,
+    ) -> RfResult<Option<rf_ui::StreamConnectionEditResult>> {
+        self.session.disconnect_selected_stream_connections()
+    }
+
+    pub fn delete_selected_stream_and_connections(
+        &mut self,
+    ) -> RfResult<Option<rf_ui::StreamConnectionEditResult>> {
+        self.session.delete_selected_stream_and_connections()
+    }
+
     pub fn begin_canvas_place_unit(
         &mut self,
         unit_kind: impl Into<String>,
@@ -290,6 +304,14 @@ impl StudioAppWindowHostManager {
             }
             StudioCanvasInteractionAction::FocusPrevious => {
                 (None, None, None, self.focus_previous_canvas_suggestion())
+            }
+            StudioCanvasInteractionAction::DisconnectSelectedStream => {
+                self.disconnect_selected_stream_connections()?;
+                (None, None, None, None)
+            }
+            StudioCanvasInteractionAction::DeleteSelectedStream => {
+                self.delete_selected_stream_and_connections()?;
+                (None, None, None, None)
             }
         };
 

@@ -616,6 +616,7 @@ fn active_inspector_detail_from_controller(
                 property_batch_discard_command_id: None,
                 property_composition_normalize_command_id: None,
                 property_composition_component_actions: Vec::new(),
+                connection_actions: Vec::new(),
                 unit_ports: unit
                     .ports
                     .iter()
@@ -678,11 +679,31 @@ fn active_inspector_detail_from_controller(
                 property_composition_summary,
                 property_composition_normalize_command_id,
                 property_composition_component_actions,
+                connection_actions: stream_connection_actions(stream.id.as_str()),
                 property_fields,
                 unit_ports: Vec::new(),
             })
         }
     }
+}
+
+fn stream_connection_actions(stream_id: &str) -> Vec<StudioGuiInspectorConnectionActionSnapshot> {
+    vec![
+        StudioGuiInspectorConnectionActionSnapshot {
+            label: "Disconnect stream".to_string(),
+            detail: format!(
+                "Remove material port bindings for `{stream_id}` while keeping the stream specification."
+            ),
+            command_id: "canvas.disconnect_selected_stream".to_string(),
+        },
+        StudioGuiInspectorConnectionActionSnapshot {
+            label: "Delete stream".to_string(),
+            detail: format!(
+                "Remove material port bindings for `{stream_id}` and delete the stream."
+            ),
+            command_id: "canvas.delete_selected_stream".to_string(),
+        },
+    ]
 }
 
 fn unit_property_fields(

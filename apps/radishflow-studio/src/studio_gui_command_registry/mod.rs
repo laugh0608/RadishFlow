@@ -204,9 +204,14 @@ impl StudioGuiCommandRegistry {
         for action in &widget.actions {
             let is_place_unit = matches!(action.id, StudioGuiCanvasActionId::BeginPlaceUnit(_));
             let is_layout_nudge = matches!(action.id, StudioGuiCanvasActionId::MoveSelectedUnit(_));
+            let is_stream_edit = matches!(
+                action.id,
+                StudioGuiCanvasActionId::DisconnectSelectedStream
+                    | StudioGuiCanvasActionId::DeleteSelectedStream
+            );
             let should_include = if is_place_unit {
                 canvas_target_window_id.is_some()
-            } else if is_layout_nudge {
+            } else if is_layout_nudge || is_stream_edit {
                 canvas_target_window_id.is_some() && action.enabled
             } else {
                 !canvas.suggestions.is_empty() || canvas.pending_edit.is_some()
@@ -663,6 +668,30 @@ fn command_defaults(command_id: &str) -> StudioGuiCommandDefaults {
             search_terms: &["canvas", "layout", "unit", "move", "down", "nudge"],
             shortcut: None,
         },
+        "canvas.disconnect_selected_stream" => StudioGuiCommandDefaults {
+            menu_path: &["Canvas", "Stream", "Disconnect Selected Stream"],
+            search_terms: &[
+                "canvas",
+                "stream",
+                "disconnect",
+                "unbind",
+                "connection",
+                "recover",
+            ],
+            shortcut: None,
+        },
+        "canvas.delete_selected_stream" => StudioGuiCommandDefaults {
+            menu_path: &["Canvas", "Stream", "Delete Selected Stream"],
+            search_terms: &[
+                "canvas",
+                "stream",
+                "delete",
+                "remove",
+                "connection",
+                "recover",
+            ],
+            shortcut: None,
+        },
         _ => StudioGuiCommandDefaults {
             menu_path: &["Commands"],
             search_terms: &[],
@@ -685,6 +714,8 @@ fn canvas_sort_order(action_id: StudioGuiCanvasActionId) -> u16 {
             crate::StudioGuiCanvasUnitLayoutNudgeDirection::Down => 370,
             crate::StudioGuiCanvasUnitLayoutNudgeDirection::Right => 380,
         },
+        StudioGuiCanvasActionId::DisconnectSelectedStream => 390,
+        StudioGuiCanvasActionId::DeleteSelectedStream => 400,
     }
 }
 

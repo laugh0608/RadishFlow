@@ -228,6 +228,18 @@ impl StudioRuntimeHostPort {
         self.runtime.focus_previous_canvas_suggestion()
     }
 
+    pub fn disconnect_selected_stream_connections(
+        &mut self,
+    ) -> RfResult<Option<rf_ui::StreamConnectionEditResult>> {
+        self.runtime.disconnect_selected_stream_connections()
+    }
+
+    pub fn delete_selected_stream_and_connections(
+        &mut self,
+    ) -> RfResult<Option<rf_ui::StreamConnectionEditResult>> {
+        self.runtime.delete_selected_stream_and_connections()
+    }
+
     pub fn entitlement_timer_owner(&self) -> Option<StudioWindowHostId> {
         self.entitlement_timer_owner
     }

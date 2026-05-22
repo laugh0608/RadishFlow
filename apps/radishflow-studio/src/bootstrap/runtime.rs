@@ -545,6 +545,42 @@ impl BootstrapSession {
         self.app_state.focus_previous_canvas_suggestion()
     }
 
+    pub(crate) fn disconnect_selected_stream_connections(
+        &mut self,
+    ) -> RfResult<Option<rf_ui::StreamConnectionEditResult>> {
+        let Some(rf_ui::InspectorTarget::Stream(stream_id)) =
+            self.app_state.workspace.drafts.active_target.clone()
+        else {
+            return Ok(None);
+        };
+        let result = self
+            .app_state
+            .disconnect_stream_connections(&stream_id, SystemTime::now())?;
+        if result.is_some() {
+            self.refresh_local_canvas_suggestions();
+            self.dispatch_automatic_run_after_canvas_write_if_needed()?;
+        }
+        Ok(result)
+    }
+
+    pub(crate) fn delete_selected_stream_and_connections(
+        &mut self,
+    ) -> RfResult<Option<rf_ui::StreamConnectionEditResult>> {
+        let Some(rf_ui::InspectorTarget::Stream(stream_id)) =
+            self.app_state.workspace.drafts.active_target.clone()
+        else {
+            return Ok(None);
+        };
+        let result = self
+            .app_state
+            .delete_stream_and_connections(&stream_id, SystemTime::now())?;
+        if result.is_some() {
+            self.refresh_local_canvas_suggestions();
+            self.dispatch_automatic_run_after_canvas_write_if_needed()?;
+        }
+        Ok(result)
+    }
+
     fn dispatch_automatic_run_after_canvas_write_if_needed(&mut self) -> RfResult<()> {
         let run_panel = &self.app_state.workspace.run_panel;
         if !matches!(run_panel.simulation_mode, rf_ui::SimulationMode::Active)

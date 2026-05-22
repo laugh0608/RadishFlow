@@ -307,6 +307,10 @@ fn gui_host_dispatches_canvas_begin_place_unit_command_by_command_id() {
 fn gui_host_canvas_ui_command_focus_persists_for_followup_reject() {
     let (config, project_path) = flash_drum_local_rules_config();
     let mut gui_host = StudioGuiHost::new(&config).expect("expected gui host");
+    gui_host.open_window().expect("expected window open");
+    gui_host
+        .dispatch_ui_command("canvas.accept_focused")
+        .expect("expected flash inlet acceptance");
 
     let focus = gui_host
         .dispatch_ui_command("canvas.focus_next")
@@ -318,7 +322,7 @@ fn gui_host_canvas_ui_command_focus_persists_for_followup_reject() {
                     .focused
                     .as_ref()
                     .map(|suggestion| suggestion.id.as_str()),
-                Some("local.flash_drum.create_outlet.flash-1.liquid")
+                Some("local.flash_drum.create_outlet.flash-1.vapor")
             );
         }
         other => panic!("expected focus-next canvas ui command outcome, got {other:?}"),
@@ -334,13 +338,139 @@ fn gui_host_canvas_ui_command_focus_persists_for_followup_reject() {
                     .rejected
                     .as_ref()
                     .map(|suggestion| suggestion.id.as_str()),
-                Some("local.flash_drum.create_outlet.flash-1.liquid")
+                Some("local.flash_drum.create_outlet.flash-1.vapor")
             );
         }
         other => panic!("expected reject canvas ui command outcome, got {other:?}"),
     }
 
     let _ = fs::remove_file(project_path);
+}
+
+#[test]
+fn gui_host_disconnects_selected_stream_from_canvas_command_surface() {
+    let (config, project_path) = flash_drum_local_rules_config();
+    let mut gui_host = StudioGuiHost::new(&config).expect("expected gui host");
+    gui_host.open_window().expect("expected window open");
+    gui_host
+        .dispatch_ui_command("canvas.accept_focused")
+        .expect("expected flash inlet acceptance");
+    gui_host
+        .dispatch_ui_command("inspector.focus_stream:stream-heated")
+        .expect("expected stream focus dispatch");
+
+    let focused = gui_host.snapshot();
+    assert!(
+        focused
+            .runtime
+            .active_inspector_detail
+            .as_ref()
+            .is_some_and(|detail| {
+                detail
+                    .connection_actions
+                    .iter()
+                    .any(|action| action.command_id == "canvas.disconnect_selected_stream")
+                    && detail
+                        .connection_actions
+                        .iter()
+                        .any(|action| action.command_id == "canvas.delete_selected_stream")
+            }),
+        "expected focused stream inspector to expose connection recovery actions"
+    );
+
+    let disconnect = gui_host
+        .dispatch_ui_command("canvas.disconnect_selected_stream")
+        .expect("expected selected stream disconnect dispatch");
+    match disconnect {
+        StudioGuiHostUiCommandDispatchResult::ExecutedCanvasInteraction { result, .. } => {
+            assert_eq!(
+                result.action,
+                StudioGuiCanvasInteractionAction::DisconnectSelectedStream
+            );
+            assert!(
+                !result
+                    .canvas
+                    .streams
+                    .iter()
+                    .any(|stream| { stream.stream_id == rf_types::StreamId::new("stream-heated") }),
+                "endpointless stream should no longer render as a canvas line"
+            );
+            assert_eq!(
+                canvas_port_stream(&result.canvas, "heater-1", "outlet"),
+                None
+            );
+            assert_eq!(canvas_port_stream(&result.canvas, "flash-1", "inlet"), None);
+        }
+        other => panic!("expected selected stream disconnect outcome, got {other:?}"),
+    }
+
+    let snapshot = gui_host.snapshot();
+    assert_eq!(snapshot.runtime.workspace_document.stream_count, 4);
+    assert_eq!(
+        snapshot.runtime.active_inspector_target,
+        Some(rf_ui::InspectorTarget::Stream(rf_types::StreamId::new(
+            "stream-heated"
+        )))
+    );
+
+    let _ = fs::remove_file(project_path);
+}
+
+#[test]
+fn gui_host_deletes_selected_stream_from_canvas_command_surface() {
+    let (config, project_path) = flash_drum_local_rules_config();
+    let mut gui_host = StudioGuiHost::new(&config).expect("expected gui host");
+    gui_host.open_window().expect("expected window open");
+    gui_host
+        .dispatch_ui_command("canvas.accept_focused")
+        .expect("expected flash inlet acceptance");
+    gui_host
+        .dispatch_ui_command("inspector.focus_stream:stream-heated")
+        .expect("expected stream focus dispatch");
+
+    let delete = gui_host
+        .dispatch_ui_command("canvas.delete_selected_stream")
+        .expect("expected selected stream delete dispatch");
+    match delete {
+        StudioGuiHostUiCommandDispatchResult::ExecutedCanvasInteraction { result, .. } => {
+            assert_eq!(
+                result.action,
+                StudioGuiCanvasInteractionAction::DeleteSelectedStream
+            );
+            assert!(
+                !result
+                    .canvas
+                    .streams
+                    .iter()
+                    .any(|stream| { stream.stream_id == rf_types::StreamId::new("stream-heated") })
+            );
+            assert_eq!(
+                canvas_port_stream(&result.canvas, "heater-1", "outlet"),
+                None
+            );
+            assert_eq!(canvas_port_stream(&result.canvas, "flash-1", "inlet"), None);
+        }
+        other => panic!("expected selected stream delete outcome, got {other:?}"),
+    }
+
+    let snapshot = gui_host.snapshot();
+    assert_eq!(snapshot.runtime.workspace_document.stream_count, 3);
+    assert_eq!(snapshot.runtime.active_inspector_target, None);
+
+    let _ = fs::remove_file(project_path);
+}
+
+fn canvas_port_stream(
+    canvas: &StudioGuiCanvasState,
+    unit_id: &str,
+    port_name: &str,
+) -> Option<rf_types::StreamId> {
+    canvas
+        .units
+        .iter()
+        .find(|unit| unit.unit_id == rf_types::UnitId::new(unit_id))
+        .and_then(|unit| unit.ports.iter().find(|port| port.name == port_name))
+        .and_then(|port| port.stream_id.as_ref().cloned())
 }
 
 #[test]
