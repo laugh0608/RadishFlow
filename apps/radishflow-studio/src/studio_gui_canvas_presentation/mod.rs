@@ -293,6 +293,24 @@ impl StudioGuiCanvasCommandResultViewModel {
         }
     }
 
+    pub fn viewport_fit_to_content(offset_x: f32, offset_y: f32) -> Self {
+        let target = viewport_command_target();
+        let title = "Canvas viewport fit to content".to_string();
+        Self {
+            level: rf_ui::RunPanelNoticeLevel::Info,
+            status_label: "viewport_fit",
+            detail: format!(
+                "Canvas viewport offset was reset to sidecar ({offset_x:.1}, {offset_y:.1}) from the current visible content bounds."
+            ),
+            activity_line: format!(
+                "canvas viewport fit to content: offset ({offset_x:.1}, {offset_y:.1})"
+            ),
+            title,
+            target,
+            anchor_label: None,
+        }
+    }
+
     pub fn located(
         target: StudioGuiCanvasCommandTargetViewModel,
         anchor_label: impl Into<String>,
@@ -389,6 +407,16 @@ fn pending_edit_command_target() -> StudioGuiCanvasCommandTargetViewModel {
         label: "Pending canvas edit".to_string(),
         viewport_anchor_label: None,
         command_id: "canvas.commit_pending_edit_at".to_string(),
+    }
+}
+
+fn viewport_command_target() -> StudioGuiCanvasCommandTargetViewModel {
+    StudioGuiCanvasCommandTargetViewModel {
+        kind_label: "Viewport",
+        target_id: "canvas_viewport".to_string(),
+        label: "Canvas viewport".to_string(),
+        viewport_anchor_label: None,
+        command_id: "canvas.fit_to_content".to_string(),
     }
 }
 

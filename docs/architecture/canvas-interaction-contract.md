@@ -117,7 +117,7 @@
 - 打开示例或项目后，若 sidecar 尚未保存 viewport offset，Canvas viewport 会按当前单元 / 流股 bounds 做 shell-local 初始 fit-to-content / center；该行为不写项目、不进历史、不代表自动布线。
 - 若缺少 sidecar placement，presentation 可按物料流依赖顺序给未定位单元生成可解释的 transient grid slot；加载 sidecar 时应过滤当前项目已不存在的 unit id。
 - 选中单元后，Canvas 可允许在空白处点击，把该单元定位到点击对应的 world 坐标；也可直接拖动单元块，释放后把最终 world 坐标写入 layout sidecar。该行为只更新 layout sidecar，不写 `FlowsheetDocument`，不进入 `CommandHistory`，也不代表完整拖拽布局编辑器。
-- Canvas 空白区域可允许拖拽平移 viewport，并把 offset 保存到同一个 `<project>.rfstudio-layout.json` sidecar；该状态只影响 shell 初始呈现，不写 `FlowsheetDocument`，不进入 `CommandHistory`，也不代表完整视图持久化系统。
+- Canvas 空白区域可允许拖拽平移 viewport，并把 offset 保存到同一个 `<project>.rfstudio-layout.json` sidecar；Canvas 也可提供 `Fit to content` 把当前内容重新居中并覆盖该 offset。该状态只影响 shell 初始呈现，不写 `FlowsheetDocument`，不进入 `CommandHistory`，也不代表完整视图持久化系统。
 - 已绑定端口可通过点击或对象选择聚焦对应流股 / 单元检查器；运行成功后可自动切到右侧 `结果` 和底部 `结果表`，失败后可切到右侧 `运行` 和底部 `消息`。
 - 选中物料流股后，Canvas / Inspector 可暴露受控恢复动作：`Disconnect stream` 仅在流股仍有材料端口绑定时解除全部绑定并保留流股规格，`Disconnect source` / `Disconnect sink` 仅解除唯一 source 或 sink 端点绑定，`Delete stream` 先解除材料端口绑定再删除该流股；这些动作都通过正式 `DocumentCommand` 写回并进入 undo history。
 - 选中单端 material stream 时，Canvas 可启用窄口径 `Reconnect stream`：source-only 流股只允许接到唯一未绑定 material inlet；sink-only 流股只允许接到唯一未绑定 material outlet。该动作只补齐当前流股唯一缺失端点，写回为正式 `DocumentCommand::ConnectPorts` 并进入 undo history；不可用时 presentation 应解释是已双端连接、没有可用端点，还是候选不唯一。
@@ -161,6 +161,7 @@ pub enum CanvasViewMode {
 - 打开示例或项目后，若 sidecar 中没有 viewport offset，shell 可根据当前单元与流股 bounds 做初始 fit-to-content / center，让小流程自然处于可视区域中央。
 - 若 sidecar 中已有 viewport offset，shell 可优先恢复该 offset，避免用户每次重开项目后重复平移画布。
 - 用户在空白画布上拖拽平移 viewport 时，只允许保存 offset，不保存缩放、滚动历史、选区、完整 camera state 或复杂 viewport profile。
+- 用户触发 `Fit to content` 时，只允许基于当前 Canvas 内容 bounds 重算并保存 offset；不保存缩放、滚动历史、选区、完整 camera state，也不改变单元 placement。
 - 初始 fit-to-content 不写入 `FlowsheetDocument`，也不进入 `CommandHistory`。
 - 该行为不等同于自动布线、自由连线、自动整理布局或完整视图持久化系统；它只决定打开后的第一帧可视区域和后续空白拖拽的 offset 恢复。
 - 若存在 `<project>.rfstudio-layout.json` sidecar，单元 placement 仍以 sidecar 为准；viewport 可恢复 sidecar offset，缺 offset 时才基于这些位置计算初始可见范围。
@@ -411,7 +412,7 @@ pub struct GhostElement {
 3. suggestion 转成正式文档命令后的实际文档变更才进入 `CommandHistory`；suggestion focus、reject、viewport、面板切换和 hover 不进入文档历史。
 4. 受控流股恢复动作可进入 `CommandHistory`：整股断开保留流股规格，source / sink 端点级断开只解除唯一对应端点，删除流股会先解除材料端口绑定；单端重连只补齐唯一候选端点。后续继续细化时必须显式处理端口合法性、已有绑定冲突、失败恢复和 undo；不得扩展成任意自由拉线编辑器。
 5. Layout sidecar 只保存 shell / layout 相关状态；缺少 sidecar 时可以用 transient grid slot pin 出初始位置，但必须在 presentation 中保持可解释，不反向污染 flowsheet 语义。当前已允许单元块直接拖动位置，释放后仍只写 sidecar，不写 `FlowsheetDocument`、不递增 revision、不进入 `CommandHistory`。
-6. viewport 初始居中 / fit-to-content 与 sidecar 级 offset 记忆已落地；后续若继续扩展 viewport，只允许在明确 shell-local / sidecar 边界内做单能力增量，不得把 viewport 混入项目语义、求解输入或文档历史。短线段标签后续若继续优化，应作为 Canvas presentation 专题处理，不引入自动布线。
+6. viewport 初始居中、`Fit to content` 和 sidecar 级 offset 记忆已落地；后续若继续扩展 viewport，只允许在明确 shell-local / sidecar 边界内做单能力增量，不得把 viewport 混入项目语义、求解输入或文档历史。短线段标签后续若继续优化，应作为 Canvas presentation 专题处理，不引入自动布线。
 
 ## 当前仍待后续细化的问题
 

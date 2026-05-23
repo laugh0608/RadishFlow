@@ -976,6 +976,78 @@ fn canvas_viewport_offset_persists_in_layout_sidecar_without_dirtying_project() 
 }
 
 #[test]
+fn canvas_viewport_fit_to_content_resets_sidecar_offset_without_dirtying_project() {
+    let (config, project_path) = blank_workspace_config();
+    let layout_path = studio_layout_path_for_project(&project_path);
+    let mut app = ready_app_state(&config);
+
+    app.dispatch_ui_command("canvas.begin_place_unit.feed");
+    app.dispatch_canvas_pending_edit_commit(rf_ui::CanvasPoint::new(64.0, 40.0));
+    app.save_project();
+    let project_before = fs::read_to_string(&project_path).expect("expected saved project file");
+    app.update_canvas_viewport_offset(egui::vec2(42.0, -16.0));
+
+    let view = app
+        .platform_host
+        .snapshot()
+        .window_model()
+        .canvas
+        .widget
+        .view()
+        .clone();
+    let viewport_rect = egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(640.0, 280.0));
+
+    let fitted_offset =
+        app.fit_canvas_viewport_to_content(viewport_rect, &view.unit_blocks, &view.stream_lines);
+
+    assert_ne!(fitted_offset, egui::vec2(42.0, -16.0));
+    let fitted = app.platform_host.snapshot().window_model();
+    assert!(
+        !fitted.runtime.workspace_document.has_unsaved_changes,
+        "viewport fit must only update the Studio layout sidecar"
+    );
+    assert_eq!(
+        fs::read_to_string(&project_path).expect("expected project file after viewport fit"),
+        project_before,
+        "viewport fit must not rewrite the project JSON"
+    );
+    let stored_layout = read_studio_layout_file(&layout_path).expect("expected layout sidecar");
+    assert_eq!(
+        stored_layout
+            .canvas_viewport
+            .as_ref()
+            .map(|viewport| (viewport.offset_x, viewport.offset_y)),
+        Some((fitted_offset.x as f64, fitted_offset.y as f64))
+    );
+    assert_eq!(
+        app.canvas_initial_viewport_fit,
+        CanvasInitialViewportFitState::restore(fitted_offset)
+    );
+    assert_eq!(
+        app.canvas_command_result.as_ref().map(|result| (
+            result.level,
+            result.status_label,
+            result.title.as_str(),
+            result.target.command_id.as_str()
+        )),
+        Some((
+            RunPanelNoticeLevel::Info,
+            "viewport_fit",
+            "Canvas viewport fit to content",
+            "canvas.fit_to_content"
+        ))
+    );
+    assert!(
+        app.canvas_command_result_command_surface()
+            .expect("expected viewport fit command result")
+            .matches_query("canvas result viewport fit")
+    );
+
+    let _ = fs::remove_file(project_path);
+    let _ = fs::remove_file(layout_path);
+}
+
+#[test]
 fn canvas_unit_layout_nudge_pins_transient_grid_without_dirtying_project() {
     let (config, project_path) = flash_drum_local_rules_config();
     let layout_path = studio_layout_path_for_project(&project_path);

@@ -517,6 +517,13 @@ impl ReadyAppState {
             );
             let viewport_summary = compact_canvas_viewport_summary(&viewport.summary, self.locale);
             ui.small(viewport_summary).on_hover_text(&viewport.summary);
+            if ui
+                .small_button(self.locale.text(ShellText::FitToContent))
+                .on_hover_text(self.locale.text(ShellText::FitToContentDetail))
+                .clicked()
+            {
+                self.request_canvas_viewport_fit_to_content();
+            }
             if let Some(focus) = viewport.focus.as_ref() {
                 render_status_chip(
                     ui,
@@ -584,12 +591,18 @@ impl ReadyAppState {
         let available_width = ui.available_width().max(320.0);
         let desired_size = egui::vec2(available_width, 280.0);
         let (rect, response) = ui.allocate_exact_size(desired_size, egui::Sense::click_and_drag());
-        let viewport_transform = canvas_initial_viewport_transform(
-            &mut self.canvas_initial_viewport_fit,
-            rect,
-            unit_blocks,
-            stream_lines,
-        );
+        let viewport_transform = if self.canvas_viewport_fit_to_content_requested {
+            CanvasViewportTransform {
+                offset: self.fit_canvas_viewport_to_content(rect, unit_blocks, stream_lines),
+            }
+        } else {
+            canvas_initial_viewport_transform(
+                &mut self.canvas_initial_viewport_fit,
+                rect,
+                unit_blocks,
+                stream_lines,
+            )
+        };
         let current_viewport_offset = viewport_transform.offset;
         let painter = ui.painter_at(rect);
         paint_canvas_drop_surface(&painter, rect, pending_edit.is_some());
@@ -859,6 +872,28 @@ impl ReadyAppState {
         }
 
         hovered_port_stream_id
+    }
+}
+
+impl ReadyAppState {
+    pub(in crate::studio_gui_shell) fn fit_canvas_viewport_to_content(
+        &mut self,
+        rect: egui::Rect,
+        unit_blocks: &[radishflow_studio::StudioGuiCanvasUnitBlockViewModel],
+        stream_lines: &[radishflow_studio::StudioGuiCanvasStreamLineViewModel],
+    ) -> egui::Vec2 {
+        let transform = canvas_viewport_transform(rect, unit_blocks, stream_lines);
+        self.canvas_viewport_fit_to_content_requested = false;
+        self.update_canvas_viewport_offset(transform.offset);
+        let result =
+            radishflow_studio::StudioGuiCanvasCommandResultViewModel::viewport_fit_to_content(
+                transform.offset.x,
+                transform.offset.y,
+            );
+        self.platform_host
+            .record_activity_line(result.activity_line.clone());
+        self.canvas_command_result = Some(result);
+        transform.offset
     }
 }
 

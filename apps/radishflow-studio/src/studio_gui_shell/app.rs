@@ -92,6 +92,7 @@ impl ReadyAppState {
                 self.last_viewport_focused = None;
                 self.canvas_viewport_navigation = CanvasViewportNavigationState::default();
                 self.canvas_initial_viewport_fit.reset();
+                self.canvas_viewport_fit_to_content_requested = false;
                 self.canvas_viewport_drag = None;
                 self.canvas_unit_drag = None;
                 self.canvas_command_result = None;
@@ -453,6 +454,7 @@ impl ReadyAppState {
                 self.last_viewport_focused = None;
                 self.canvas_viewport_navigation = CanvasViewportNavigationState::default();
                 self.canvas_initial_viewport_fit = canvas_initial_viewport_fit_from_config(&config);
+                self.canvas_viewport_fit_to_content_requested = false;
                 self.canvas_viewport_drag = None;
                 self.canvas_unit_drag = None;
                 self.canvas_command_result = None;
@@ -809,6 +811,10 @@ impl ReadyAppState {
                 project_path.display()
             ));
         }
+    }
+
+    pub(super) fn request_canvas_viewport_fit_to_content(&mut self) {
+        self.canvas_viewport_fit_to_content_requested = true;
     }
 
     pub(super) fn dispatch_layout_mutation(
