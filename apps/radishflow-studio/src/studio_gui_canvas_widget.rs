@@ -13,6 +13,8 @@ pub enum StudioGuiCanvasActionId {
     CancelPendingEdit,
     MoveSelectedUnit(StudioGuiCanvasUnitLayoutNudgeDirection),
     DisconnectSelectedStream,
+    DisconnectSelectedStreamSource,
+    DisconnectSelectedStreamSink,
     ReconnectSelectedStream,
     DeleteSelectedStream,
 }
@@ -141,6 +143,20 @@ impl StudioGuiCanvasWidgetModel {
         let selected_stream_reconnect = selected_stream.map(|selection| {
             stream_reconnect_availability(&presentation.view, selection.target_id.as_str())
         });
+        let selected_stream_source_disconnect = selected_stream.map(|selection| {
+            stream_endpoint_disconnect_availability(
+                &presentation.view,
+                selection.target_id.as_str(),
+                StreamEndpointDisconnectTarget::Source,
+            )
+        });
+        let selected_stream_sink_disconnect = selected_stream.map(|selection| {
+            stream_endpoint_disconnect_availability(
+                &presentation.view,
+                selection.target_id.as_str(),
+                StreamEndpointDisconnectTarget::Sink,
+            )
+        });
         let mut actions = presentation
             .view
             .place_unit_palette
@@ -248,6 +264,40 @@ impl StudioGuiCanvasWidgetModel {
             label: "Disconnect stream".to_string(),
             detail: stream_detail,
             enabled: selected_stream.is_some(),
+            shortcut: None,
+        });
+        let source_disconnect_detail = stream_endpoint_disconnect_detail(
+            selected_stream,
+            selected_stream_source_disconnect.as_ref(),
+            StreamEndpointDisconnectTarget::Source,
+        );
+        actions.push(StudioGuiCanvasRenderableAction {
+            id: StudioGuiCanvasActionId::DisconnectSelectedStreamSource,
+            command_id: canvas_command_id(StudioGuiCanvasActionId::DisconnectSelectedStreamSource)
+                .to_string(),
+            label: "Disconnect source".to_string(),
+            detail: source_disconnect_detail,
+            enabled: matches!(
+                selected_stream_source_disconnect,
+                Some(StreamEndpointDisconnectAvailability::Available { .. })
+            ),
+            shortcut: None,
+        });
+        let sink_disconnect_detail = stream_endpoint_disconnect_detail(
+            selected_stream,
+            selected_stream_sink_disconnect.as_ref(),
+            StreamEndpointDisconnectTarget::Sink,
+        );
+        actions.push(StudioGuiCanvasRenderableAction {
+            id: StudioGuiCanvasActionId::DisconnectSelectedStreamSink,
+            command_id: canvas_command_id(StudioGuiCanvasActionId::DisconnectSelectedStreamSink)
+                .to_string(),
+            label: "Disconnect sink".to_string(),
+            detail: sink_disconnect_detail,
+            enabled: matches!(
+                selected_stream_sink_disconnect,
+                Some(StreamEndpointDisconnectAvailability::Available { .. })
+            ),
             shortcut: None,
         });
         let can_reconnect_selected_stream = matches!(
@@ -383,6 +433,12 @@ pub(crate) fn canvas_command_id(action_id: StudioGuiCanvasActionId) -> &'static 
         StudioGuiCanvasActionId::CancelPendingEdit => "canvas.cancel_pending_edit",
         StudioGuiCanvasActionId::MoveSelectedUnit(direction) => direction.command_id(),
         StudioGuiCanvasActionId::DisconnectSelectedStream => "canvas.disconnect_selected_stream",
+        StudioGuiCanvasActionId::DisconnectSelectedStreamSource => {
+            "canvas.disconnect_selected_stream_source"
+        }
+        StudioGuiCanvasActionId::DisconnectSelectedStreamSink => {
+            "canvas.disconnect_selected_stream_sink"
+        }
         StudioGuiCanvasActionId::ReconnectSelectedStream => "canvas.reconnect_selected_stream",
         StudioGuiCanvasActionId::DeleteSelectedStream => "canvas.delete_selected_stream",
     }
@@ -416,6 +472,12 @@ pub(crate) fn canvas_action_id_from_command_id(
         "canvas.disconnect_selected_stream" => {
             Some(StudioGuiCanvasActionId::DisconnectSelectedStream)
         }
+        "canvas.disconnect_selected_stream_source" => {
+            Some(StudioGuiCanvasActionId::DisconnectSelectedStreamSource)
+        }
+        "canvas.disconnect_selected_stream_sink" => {
+            Some(StudioGuiCanvasActionId::DisconnectSelectedStreamSink)
+        }
         "canvas.reconnect_selected_stream" => {
             Some(StudioGuiCanvasActionId::ReconnectSelectedStream)
         }
@@ -428,6 +490,106 @@ pub(crate) fn canvas_action_id_from_command_id(
 enum StreamReconnectAvailability {
     Available { detail: String },
     Unavailable { reason: String },
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum StreamEndpointDisconnectTarget {
+    Source,
+    Sink,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum StreamEndpointDisconnectAvailability {
+    Available { detail: String },
+    Unavailable { reason: String },
+}
+
+fn stream_endpoint_disconnect_detail(
+    selected_stream: Option<&crate::StudioGuiCanvasSelectionViewModel>,
+    availability: Option<&StreamEndpointDisconnectAvailability>,
+    target: StreamEndpointDisconnectTarget,
+) -> String {
+    match (selected_stream, availability) {
+        (Some(_), Some(StreamEndpointDisconnectAvailability::Available { detail })) => {
+            detail.clone()
+        }
+        (Some(selection), Some(StreamEndpointDisconnectAvailability::Unavailable { reason })) => {
+            format!(
+                "Cannot disconnect {} for selected stream `{}`: {}",
+                target.noun(),
+                selection.target_id,
+                reason
+            )
+        }
+        (None, None) => format!(
+            "Disconnect selected stream {}; select a material stream first.",
+            target.noun()
+        ),
+        (Some(_), None) => unreachable!("selected stream should have endpoint availability"),
+        (None, Some(_)) => unreachable!("endpoint availability requires a selected stream"),
+    }
+}
+
+fn stream_endpoint_disconnect_availability(
+    view: &crate::StudioGuiCanvasViewModel,
+    stream_id: &str,
+    target: StreamEndpointDisconnectTarget,
+) -> StreamEndpointDisconnectAvailability {
+    let Some(stream) = view
+        .stream_lines
+        .iter()
+        .find(|stream| stream.stream_id == stream_id)
+    else {
+        return StreamEndpointDisconnectAvailability::Unavailable {
+            reason: "the stream has no visible material endpoint on the canvas".to_string(),
+        };
+    };
+
+    match target.endpoint(stream) {
+        Some(endpoint) => StreamEndpointDisconnectAvailability::Available {
+            detail: format!(
+                "Disconnect {} `{}` from selected stream `{stream_id}`.",
+                target.endpoint_label(),
+                endpoint_label(endpoint)
+            ),
+        },
+        None => StreamEndpointDisconnectAvailability::Unavailable {
+            reason: target.missing_reason().to_string(),
+        },
+    }
+}
+
+impl StreamEndpointDisconnectTarget {
+    fn noun(self) -> &'static str {
+        match self {
+            Self::Source => "source",
+            Self::Sink => "sink",
+        }
+    }
+
+    fn endpoint_label(self) -> &'static str {
+        match self {
+            Self::Source => "upstream source",
+            Self::Sink => "downstream sink",
+        }
+    }
+
+    fn missing_reason(self) -> &'static str {
+        match self {
+            Self::Source => "the stream has no upstream source",
+            Self::Sink => "the stream has no downstream sink",
+        }
+    }
+
+    fn endpoint<'a>(
+        self,
+        stream: &'a crate::StudioGuiCanvasStreamLineViewModel,
+    ) -> Option<&'a crate::StudioGuiCanvasStreamLineEndpointViewModel> {
+        match self {
+            Self::Source => stream.source.as_ref(),
+            Self::Sink => stream.sink.as_ref(),
+        }
+    }
 }
 
 fn stream_reconnect_availability(
@@ -956,6 +1118,81 @@ mod tests {
             action
                 .detail
                 .contains("only available outlet `heater-1:outlet`")
+        );
+
+        let _ = fs::remove_file(project_path);
+    }
+
+    #[test]
+    fn canvas_widget_explains_selected_stream_endpoint_disconnect_actions() {
+        let (config, project_path) = flash_drum_local_rules_config();
+        let mut driver = StudioGuiDriver::new(&config).expect("expected driver");
+        open_window(&mut driver);
+        accept_flash_inlet_suggestion(&mut driver);
+        focus_stream(&mut driver, "stream-heated");
+
+        let widget = driver.canvas_state().widget();
+        let source_action = widget
+            .action(StudioGuiCanvasActionId::DisconnectSelectedStreamSource)
+            .expect("expected source disconnect action");
+        assert!(source_action.enabled);
+        assert_eq!(
+            source_action.command_id,
+            "canvas.disconnect_selected_stream_source"
+        );
+        assert!(
+            source_action
+                .detail
+                .contains("upstream source `heater-1:outlet`")
+        );
+        let sink_action = widget
+            .action(StudioGuiCanvasActionId::DisconnectSelectedStreamSink)
+            .expect("expected sink disconnect action");
+        assert!(sink_action.enabled);
+        assert_eq!(
+            sink_action.command_id,
+            "canvas.disconnect_selected_stream_sink"
+        );
+        assert!(
+            sink_action
+                .detail
+                .contains("downstream sink `flash-1:inlet`")
+        );
+        assert_eq!(
+            widget.activate(StudioGuiCanvasActionId::DisconnectSelectedStreamSink),
+            StudioGuiCanvasWidgetEvent::Requested {
+                action_id: StudioGuiCanvasActionId::DisconnectSelectedStreamSink,
+                event: StudioGuiEvent::UiCommandRequested {
+                    command_id: "canvas.disconnect_selected_stream_sink".to_string(),
+                },
+            }
+        );
+
+        let _ = fs::remove_file(project_path);
+    }
+
+    #[test]
+    fn canvas_widget_explains_missing_selected_stream_endpoint_disconnect_target() {
+        let (config, project_path) = flash_drum_local_rules_config();
+        let mut driver = StudioGuiDriver::new(&config).expect("expected driver");
+        open_window(&mut driver);
+        focus_stream(&mut driver, "stream-heated");
+
+        let widget = driver.canvas_state().widget();
+        let source_action = widget
+            .action(StudioGuiCanvasActionId::DisconnectSelectedStreamSource)
+            .expect("expected source disconnect action");
+        assert!(source_action.enabled);
+        let sink_action = widget
+            .action(StudioGuiCanvasActionId::DisconnectSelectedStreamSink)
+            .expect("expected sink disconnect action");
+        assert!(!sink_action.enabled);
+        assert!(sink_action.detail.contains("no downstream sink"));
+        assert_eq!(
+            widget.activate(StudioGuiCanvasActionId::DisconnectSelectedStreamSink),
+            StudioGuiCanvasWidgetEvent::Disabled {
+                action_id: StudioGuiCanvasActionId::DisconnectSelectedStreamSink,
+            }
         );
 
         let _ = fs::remove_file(project_path);

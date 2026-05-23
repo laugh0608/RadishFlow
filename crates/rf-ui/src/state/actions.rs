@@ -398,6 +398,26 @@ pub(super) fn apply_disconnect_stream_mutation(
     ))
 }
 
+pub(super) fn apply_disconnect_stream_endpoint_mutation(
+    flowsheet: &Flowsheet,
+    stream_id: &StreamId,
+    direction: PortDirection,
+) -> RfResult<Option<(DocumentCommand, Flowsheet, StreamPortBinding)>> {
+    flowsheet.stream(stream_id)?;
+    let ports = material_stream_port_bindings(flowsheet, stream_id)
+        .into_iter()
+        .filter(|binding| binding.direction == direction)
+        .map(|binding| binding.binding)
+        .collect::<Vec<_>>();
+    let [port] = ports.as_slice() else {
+        return Ok(None);
+    };
+    let (command, next_flowsheet) =
+        apply_disconnect_port_mutation(flowsheet, &port.unit_id, &port.port)?;
+
+    Ok(Some((command, next_flowsheet, port.clone())))
+}
+
 pub(super) fn apply_reconnect_stream_to_unique_available_endpoint_mutation(
     flowsheet: &Flowsheet,
     stream_id: &StreamId,

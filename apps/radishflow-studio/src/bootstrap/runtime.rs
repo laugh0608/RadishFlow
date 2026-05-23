@@ -563,6 +563,37 @@ impl BootstrapSession {
         Ok(result)
     }
 
+    pub(crate) fn disconnect_selected_stream_source_connection(
+        &mut self,
+    ) -> RfResult<Option<rf_ui::StreamConnectionEditResult>> {
+        self.disconnect_selected_stream_endpoint_connection(rf_types::PortDirection::Outlet)
+    }
+
+    pub(crate) fn disconnect_selected_stream_sink_connection(
+        &mut self,
+    ) -> RfResult<Option<rf_ui::StreamConnectionEditResult>> {
+        self.disconnect_selected_stream_endpoint_connection(rf_types::PortDirection::Inlet)
+    }
+
+    fn disconnect_selected_stream_endpoint_connection(
+        &mut self,
+        direction: rf_types::PortDirection,
+    ) -> RfResult<Option<rf_ui::StreamConnectionEditResult>> {
+        let Some(rf_ui::InspectorTarget::Stream(stream_id)) =
+            self.app_state.workspace.drafts.active_target.clone()
+        else {
+            return Ok(None);
+        };
+        let result =
+            self.app_state
+                .disconnect_stream_endpoint(&stream_id, direction, SystemTime::now())?;
+        if result.is_some() {
+            self.refresh_local_canvas_suggestions();
+            self.dispatch_automatic_run_after_canvas_write_if_needed()?;
+        }
+        Ok(result)
+    }
+
     pub(crate) fn reconnect_selected_stream_to_unique_available_endpoint(
         &mut self,
     ) -> RfResult<Option<rf_ui::StreamReconnectEditResult>> {

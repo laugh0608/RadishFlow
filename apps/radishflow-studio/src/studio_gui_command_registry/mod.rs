@@ -207,6 +207,8 @@ impl StudioGuiCommandRegistry {
             let is_stream_edit = matches!(
                 action.id,
                 StudioGuiCanvasActionId::DisconnectSelectedStream
+                    | StudioGuiCanvasActionId::DisconnectSelectedStreamSource
+                    | StudioGuiCanvasActionId::DisconnectSelectedStreamSink
                     | StudioGuiCanvasActionId::ReconnectSelectedStream
                     | StudioGuiCanvasActionId::DeleteSelectedStream
             );
@@ -681,6 +683,34 @@ fn command_defaults(command_id: &str) -> StudioGuiCommandDefaults {
             ],
             shortcut: None,
         },
+        "canvas.disconnect_selected_stream_source" => StudioGuiCommandDefaults {
+            menu_path: &["Canvas", "Stream", "Disconnect Selected Stream Source"],
+            search_terms: &[
+                "canvas",
+                "stream",
+                "disconnect",
+                "source",
+                "outlet",
+                "upstream",
+                "connection",
+                "recover",
+            ],
+            shortcut: None,
+        },
+        "canvas.disconnect_selected_stream_sink" => StudioGuiCommandDefaults {
+            menu_path: &["Canvas", "Stream", "Disconnect Selected Stream Sink"],
+            search_terms: &[
+                "canvas",
+                "stream",
+                "disconnect",
+                "sink",
+                "inlet",
+                "downstream",
+                "connection",
+                "recover",
+            ],
+            shortcut: None,
+        },
         "canvas.reconnect_selected_stream" => StudioGuiCommandDefaults {
             menu_path: &["Canvas", "Stream", "Reconnect Selected Stream"],
             search_terms: &[
@@ -728,6 +758,8 @@ fn canvas_sort_order(action_id: StudioGuiCanvasActionId) -> u16 {
             crate::StudioGuiCanvasUnitLayoutNudgeDirection::Right => 380,
         },
         StudioGuiCanvasActionId::DisconnectSelectedStream => 390,
+        StudioGuiCanvasActionId::DisconnectSelectedStreamSource => 392,
+        StudioGuiCanvasActionId::DisconnectSelectedStreamSink => 394,
         StudioGuiCanvasActionId::ReconnectSelectedStream => 400,
         StudioGuiCanvasActionId::DeleteSelectedStream => 410,
     }

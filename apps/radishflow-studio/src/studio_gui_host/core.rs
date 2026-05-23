@@ -699,6 +699,32 @@ fn stream_connection_actions(
         ),
         command_id: "canvas.disconnect_selected_stream".to_string(),
     }];
+    if let Some(detail) = stream_endpoint_disconnect_detail(
+        flowsheet,
+        stream_id,
+        rf_types::PortDirection::Outlet,
+        "upstream source",
+        "downstream bindings",
+    ) {
+        actions.push(StudioGuiInspectorConnectionActionSnapshot {
+            label: "Disconnect source".to_string(),
+            detail,
+            command_id: "canvas.disconnect_selected_stream_source".to_string(),
+        });
+    }
+    if let Some(detail) = stream_endpoint_disconnect_detail(
+        flowsheet,
+        stream_id,
+        rf_types::PortDirection::Inlet,
+        "downstream sink",
+        "upstream bindings",
+    ) {
+        actions.push(StudioGuiInspectorConnectionActionSnapshot {
+            label: "Disconnect sink".to_string(),
+            detail,
+            command_id: "canvas.disconnect_selected_stream_sink".to_string(),
+        });
+    }
     if let Some(detail) = stream_reconnect_detail(flowsheet, stream_id) {
         actions.push(StudioGuiInspectorConnectionActionSnapshot {
             label: "Reconnect stream".to_string(),
@@ -714,6 +740,40 @@ fn stream_connection_actions(
         command_id: "canvas.delete_selected_stream".to_string(),
     }]);
     actions
+}
+
+fn stream_endpoint_disconnect_detail(
+    flowsheet: &rf_model::Flowsheet,
+    stream_id: &rf_types::StreamId,
+    direction: rf_types::PortDirection,
+    endpoint_name: &str,
+    kept_bindings_name: &str,
+) -> Option<String> {
+    let endpoint = unique_material_stream_endpoint_label(flowsheet, stream_id, direction)?;
+    Some(format!(
+        "Disconnect {endpoint_name} `{endpoint}` from `{}` while keeping the stream specification and {kept_bindings_name}.",
+        stream_id.as_str()
+    ))
+}
+
+fn unique_material_stream_endpoint_label(
+    flowsheet: &rf_model::Flowsheet,
+    stream_id: &rf_types::StreamId,
+    direction: rf_types::PortDirection,
+) -> Option<String> {
+    let mut endpoints = flowsheet
+        .units
+        .values()
+        .flat_map(|unit| {
+            unit.ports.iter().filter_map(move |port| {
+                (port.kind == rf_types::PortKind::Material
+                    && port.direction == direction
+                    && port.stream_id.as_ref() == Some(stream_id))
+                .then(|| format!("{}:{}", unit.id, port.name))
+            })
+        })
+        .collect::<Vec<_>>();
+    (endpoints.len() == 1).then(|| endpoints.remove(0))
 }
 
 fn stream_reconnect_detail(

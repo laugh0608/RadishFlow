@@ -206,6 +206,12 @@ impl StudioGuiHost {
                 crate::StudioGuiCanvasActionId::DisconnectSelectedStream => {
                     StudioGuiCanvasInteractionAction::DisconnectSelectedStream
                 }
+                crate::StudioGuiCanvasActionId::DisconnectSelectedStreamSource => {
+                    StudioGuiCanvasInteractionAction::DisconnectSelectedStreamSource
+                }
+                crate::StudioGuiCanvasActionId::DisconnectSelectedStreamSink => {
+                    StudioGuiCanvasInteractionAction::DisconnectSelectedStreamSink
+                }
                 crate::StudioGuiCanvasActionId::ReconnectSelectedStream => {
                     StudioGuiCanvasInteractionAction::ReconnectSelectedStream
                 }
