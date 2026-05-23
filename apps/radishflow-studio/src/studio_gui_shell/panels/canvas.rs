@@ -57,6 +57,7 @@ impl ReadyAppState {
                             radishflow_studio::StudioGuiCanvasActionId::CancelPendingEdit
                                 | radishflow_studio::StudioGuiCanvasActionId::MoveSelectedUnit(_)
                                 | radishflow_studio::StudioGuiCanvasActionId::DisconnectSelectedStream
+                                | radishflow_studio::StudioGuiCanvasActionId::ReconnectSelectedStream
                                 | radishflow_studio::StudioGuiCanvasActionId::DeleteSelectedStream
                         )
             });
@@ -69,6 +70,7 @@ impl ReadyAppState {
                             radishflow_studio::StudioGuiCanvasActionId::CancelPendingEdit
                                 | radishflow_studio::StudioGuiCanvasActionId::MoveSelectedUnit(_)
                                 | radishflow_studio::StudioGuiCanvasActionId::DisconnectSelectedStream
+                                | radishflow_studio::StudioGuiCanvasActionId::ReconnectSelectedStream
                                 | radishflow_studio::StudioGuiCanvasActionId::DeleteSelectedStream
                         )
                 });
@@ -436,6 +438,7 @@ impl ReadyAppState {
                 } else if selection.kind_label == "Stream" {
                     for action_id in [
                         radishflow_studio::StudioGuiCanvasActionId::DisconnectSelectedStream,
+                        radishflow_studio::StudioGuiCanvasActionId::ReconnectSelectedStream,
                         radishflow_studio::StudioGuiCanvasActionId::DeleteSelectedStream,
                     ] {
                         if let Some(action) = widget.action(action_id) {

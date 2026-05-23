@@ -679,7 +679,7 @@ fn active_inspector_detail_from_controller(
                 property_composition_summary,
                 property_composition_normalize_command_id,
                 property_composition_component_actions,
-                connection_actions: stream_connection_actions(stream.id.as_str()),
+                connection_actions: stream_connection_actions(flowsheet, &stream.id),
                 property_fields,
                 unit_ports: Vec::new(),
             })
@@ -687,23 +687,80 @@ fn active_inspector_detail_from_controller(
     }
 }
 
-fn stream_connection_actions(stream_id: &str) -> Vec<StudioGuiInspectorConnectionActionSnapshot> {
-    vec![
-        StudioGuiInspectorConnectionActionSnapshot {
-            label: "Disconnect stream".to_string(),
-            detail: format!(
-                "Remove material port bindings for `{stream_id}` while keeping the stream specification."
-            ),
-            command_id: "canvas.disconnect_selected_stream".to_string(),
-        },
-        StudioGuiInspectorConnectionActionSnapshot {
-            label: "Delete stream".to_string(),
-            detail: format!(
-                "Remove material port bindings for `{stream_id}` and delete the stream."
-            ),
-            command_id: "canvas.delete_selected_stream".to_string(),
-        },
-    ]
+fn stream_connection_actions(
+    flowsheet: &rf_model::Flowsheet,
+    stream_id: &rf_types::StreamId,
+) -> Vec<StudioGuiInspectorConnectionActionSnapshot> {
+    let stream_id_label = stream_id.as_str();
+    let mut actions = vec![StudioGuiInspectorConnectionActionSnapshot {
+        label: "Disconnect stream".to_string(),
+        detail: format!(
+            "Remove material port bindings for `{stream_id_label}` while keeping the stream specification."
+        ),
+        command_id: "canvas.disconnect_selected_stream".to_string(),
+    }];
+    if stream_can_reconnect_to_unique_available_sink(flowsheet, stream_id) {
+        actions.push(StudioGuiInspectorConnectionActionSnapshot {
+            label: "Reconnect stream".to_string(),
+            detail: format!("Reconnect `{stream_id_label}` to the only available material inlet."),
+            command_id: "canvas.reconnect_selected_stream".to_string(),
+        });
+    }
+    actions.extend([StudioGuiInspectorConnectionActionSnapshot {
+        label: "Delete stream".to_string(),
+        detail: format!(
+            "Remove material port bindings for `{stream_id_label}` and delete the stream."
+        ),
+        command_id: "canvas.delete_selected_stream".to_string(),
+    }]);
+    actions
+}
+
+fn stream_can_reconnect_to_unique_available_sink(
+    flowsheet: &rf_model::Flowsheet,
+    stream_id: &rf_types::StreamId,
+) -> bool {
+    let mut source_unit_id = None;
+    let mut source_count = 0usize;
+    let mut sink_count = 0usize;
+
+    for unit in flowsheet.units.values() {
+        for port in &unit.ports {
+            if port.kind != rf_types::PortKind::Material
+                || port.stream_id.as_ref() != Some(stream_id)
+            {
+                continue;
+            }
+
+            match port.direction {
+                rf_types::PortDirection::Outlet => {
+                    source_count += 1;
+                    source_unit_id = Some(unit.id.clone());
+                }
+                rf_types::PortDirection::Inlet => sink_count += 1,
+            }
+        }
+    }
+
+    let Some(source_unit_id) = source_unit_id else {
+        return false;
+    };
+    if source_count != 1 || sink_count != 0 {
+        return false;
+    }
+
+    flowsheet
+        .units
+        .values()
+        .filter(|unit| unit.id != source_unit_id)
+        .flat_map(|unit| unit.ports.iter())
+        .filter(|port| {
+            port.kind == rf_types::PortKind::Material
+                && port.direction == rf_types::PortDirection::Inlet
+                && port.stream_id.is_none()
+        })
+        .count()
+        == 1
 }
 
 fn unit_property_fields(

@@ -341,6 +341,15 @@ pub struct StreamConnectionEditResult {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+pub struct StreamReconnectEditResult {
+    pub stream_id: StreamId,
+    pub source_port: StreamPortBinding,
+    pub sink_port: StreamPortBinding,
+    pub command: DocumentCommand,
+    pub revision: u64,
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub struct CanvasEditCommitResult {
     pub intent: CanvasEditIntent,
     pub command: DocumentCommand,
@@ -868,6 +877,42 @@ impl AppState {
         Ok(Some(StreamConnectionEditResult {
             stream_id: stream_id.clone(),
             disconnected_ports,
+            command,
+            revision,
+        }))
+    }
+
+    pub fn reconnect_stream_to_unique_available_sink(
+        &mut self,
+        stream_id: &StreamId,
+        changed_at: DateTimeUtc,
+    ) -> RfResult<Option<StreamReconnectEditResult>> {
+        if !self
+            .workspace
+            .document
+            .flowsheet
+            .streams
+            .contains_key(stream_id)
+        {
+            return Ok(None);
+        }
+
+        let Some((command, next_flowsheet, source_port, sink_port)) =
+            apply_reconnect_stream_to_unique_available_sink_mutation(
+                &self.workspace.document.flowsheet,
+                stream_id,
+            )?
+        else {
+            return Ok(None);
+        };
+
+        let revision = self.commit_document_change(command.clone(), next_flowsheet, changed_at);
+        self.focus_inspector_target(InspectorTarget::Stream(stream_id.clone()));
+
+        Ok(Some(StreamReconnectEditResult {
+            stream_id: stream_id.clone(),
+            source_port,
+            sink_port,
             command,
             revision,
         }))

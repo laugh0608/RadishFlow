@@ -563,6 +563,24 @@ impl BootstrapSession {
         Ok(result)
     }
 
+    pub(crate) fn reconnect_selected_stream_to_unique_available_sink(
+        &mut self,
+    ) -> RfResult<Option<rf_ui::StreamReconnectEditResult>> {
+        let Some(rf_ui::InspectorTarget::Stream(stream_id)) =
+            self.app_state.workspace.drafts.active_target.clone()
+        else {
+            return Ok(None);
+        };
+        let result = self
+            .app_state
+            .reconnect_stream_to_unique_available_sink(&stream_id, SystemTime::now())?;
+        if result.is_some() {
+            self.refresh_local_canvas_suggestions();
+            self.dispatch_automatic_run_after_canvas_write_if_needed()?;
+        }
+        Ok(result)
+    }
+
     pub(crate) fn delete_selected_stream_and_connections(
         &mut self,
     ) -> RfResult<Option<rf_ui::StreamConnectionEditResult>> {

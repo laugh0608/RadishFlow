@@ -207,6 +207,7 @@ impl StudioGuiCommandRegistry {
             let is_stream_edit = matches!(
                 action.id,
                 StudioGuiCanvasActionId::DisconnectSelectedStream
+                    | StudioGuiCanvasActionId::ReconnectSelectedStream
                     | StudioGuiCanvasActionId::DeleteSelectedStream
             );
             let should_include = if is_place_unit {
@@ -680,6 +681,18 @@ fn command_defaults(command_id: &str) -> StudioGuiCommandDefaults {
             ],
             shortcut: None,
         },
+        "canvas.reconnect_selected_stream" => StudioGuiCommandDefaults {
+            menu_path: &["Canvas", "Stream", "Reconnect Selected Stream"],
+            search_terms: &[
+                "canvas",
+                "stream",
+                "reconnect",
+                "connect",
+                "inlet",
+                "recover",
+            ],
+            shortcut: None,
+        },
         "canvas.delete_selected_stream" => StudioGuiCommandDefaults {
             menu_path: &["Canvas", "Stream", "Delete Selected Stream"],
             search_terms: &[
@@ -715,7 +728,8 @@ fn canvas_sort_order(action_id: StudioGuiCanvasActionId) -> u16 {
             crate::StudioGuiCanvasUnitLayoutNudgeDirection::Right => 380,
         },
         StudioGuiCanvasActionId::DisconnectSelectedStream => 390,
-        StudioGuiCanvasActionId::DeleteSelectedStream => 400,
+        StudioGuiCanvasActionId::ReconnectSelectedStream => 400,
+        StudioGuiCanvasActionId::DeleteSelectedStream => 410,
     }
 }
 

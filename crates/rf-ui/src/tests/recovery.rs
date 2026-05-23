@@ -605,6 +605,82 @@ fn disconnecting_stream_connections_unbinds_all_material_ports_and_keeps_stream(
 }
 
 #[test]
+fn reconnecting_source_only_stream_binds_unique_available_sink_and_is_undoable() {
+    let document = sample_feed_flash_document();
+    let stream_id = StreamId::new("stream-feed");
+    let mut app_state = AppState::new(document);
+    app_state.focus_inspector_target(crate::InspectorTarget::Stream(stream_id.clone()));
+
+    let result = app_state
+        .reconnect_stream_to_unique_available_sink(&stream_id, timestamp(50))
+        .expect("expected reconnect stream command")
+        .expect("expected reconnect result");
+
+    assert_eq!(result.stream_id, stream_id);
+    assert_eq!(
+        result.source_port,
+        StreamPortBinding {
+            unit_id: UnitId::new("feed-1"),
+            port: "outlet".to_string(),
+        }
+    );
+    assert_eq!(
+        result.sink_port,
+        StreamPortBinding {
+            unit_id: UnitId::new("flash-1"),
+            port: "inlet".to_string(),
+        }
+    );
+    assert_eq!(app_state.workspace.document.revision, 1);
+    assert_eq!(
+        app_state
+            .workspace
+            .document
+            .flowsheet
+            .units
+            .get(&UnitId::new("flash-1"))
+            .and_then(|unit| unit.ports.iter().find(|port| port.name == "inlet"))
+            .and_then(|port| port.stream_id.as_ref()),
+        Some(&stream_id)
+    );
+    assert_eq!(
+        app_state
+            .workspace
+            .command_history
+            .current_entry()
+            .map(|entry| &entry.command),
+        Some(&DocumentCommand::ConnectPorts {
+            stream_id: stream_id.clone(),
+            from_unit_id: UnitId::new("feed-1"),
+            from_port: "outlet".to_string(),
+            to_unit_id: Some(UnitId::new("flash-1")),
+            to_port: Some("inlet".to_string()),
+        })
+    );
+    assert_eq!(
+        app_state.workspace.drafts.active_target,
+        Some(crate::InspectorTarget::Stream(stream_id.clone()))
+    );
+
+    let undo = app_state
+        .undo_document_command(timestamp(51))
+        .expect("expected undo")
+        .expect("expected undo result");
+    assert_eq!(undo.command, result.command);
+    assert_eq!(
+        app_state
+            .workspace
+            .document
+            .flowsheet
+            .units
+            .get(&UnitId::new("flash-1"))
+            .and_then(|unit| unit.ports.iter().find(|port| port.name == "inlet"))
+            .and_then(|port| port.stream_id.as_ref()),
+        None
+    );
+}
+
+#[test]
 fn deleting_stream_and_connections_unbinds_ports_removes_stream_and_is_undoable() {
     let mut document = sample_feed_flash_document();
     let stream_id = StreamId::new("stream-feed");

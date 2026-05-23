@@ -13,6 +13,7 @@ pub enum StudioGuiCanvasActionId {
     CancelPendingEdit,
     MoveSelectedUnit(StudioGuiCanvasUnitLayoutNudgeDirection),
     DisconnectSelectedStream,
+    ReconnectSelectedStream,
     DeleteSelectedStream,
 }
 
@@ -137,6 +138,9 @@ impl StudioGuiCanvasWidgetModel {
             .current_selection
             .as_ref()
             .filter(|selection| selection.kind_label == "Stream");
+        let selected_stream_reconnect_target = selected_stream.and_then(|selection| {
+            unique_reconnect_target(&presentation.view, selection.target_id.as_str())
+        });
         let mut actions = presentation
             .view
             .place_unit_palette
@@ -246,6 +250,30 @@ impl StudioGuiCanvasWidgetModel {
             enabled: selected_stream.is_some(),
             shortcut: None,
         });
+        let can_reconnect_selected_stream = selected_stream_reconnect_target.is_some();
+        let reconnect_detail = match (selected_stream, selected_stream_reconnect_target.as_ref()) {
+            (Some(selection), Some(target)) => format!(
+                "Reconnect selected source-only stream `{}` to the only available inlet `{}`.",
+                selection.target_id, target
+            ),
+            (Some(selection), None) => format!(
+                "Reconnect selected stream `{}` only when it has one source, no sink, and exactly one available material inlet.",
+                selection.target_id
+            ),
+            (None, None) => {
+                "Reconnect selected stream; select a source-only material stream first.".to_string()
+            }
+            (None, Some(_)) => unreachable!("reconnect target requires a selected stream"),
+        };
+        actions.push(StudioGuiCanvasRenderableAction {
+            id: StudioGuiCanvasActionId::ReconnectSelectedStream,
+            command_id: canvas_command_id(StudioGuiCanvasActionId::ReconnectSelectedStream)
+                .to_string(),
+            label: "Reconnect stream".to_string(),
+            detail: reconnect_detail,
+            enabled: can_reconnect_selected_stream,
+            shortcut: None,
+        });
         let delete_detail = match selected_stream {
             Some(selection) => format!(
                 "Delete selected stream `{}` after removing its material port bindings.",
@@ -351,6 +379,7 @@ pub(crate) fn canvas_command_id(action_id: StudioGuiCanvasActionId) -> &'static 
         StudioGuiCanvasActionId::CancelPendingEdit => "canvas.cancel_pending_edit",
         StudioGuiCanvasActionId::MoveSelectedUnit(direction) => direction.command_id(),
         StudioGuiCanvasActionId::DisconnectSelectedStream => "canvas.disconnect_selected_stream",
+        StudioGuiCanvasActionId::ReconnectSelectedStream => "canvas.reconnect_selected_stream",
         StudioGuiCanvasActionId::DeleteSelectedStream => "canvas.delete_selected_stream",
     }
 }
@@ -383,9 +412,47 @@ pub(crate) fn canvas_action_id_from_command_id(
         "canvas.disconnect_selected_stream" => {
             Some(StudioGuiCanvasActionId::DisconnectSelectedStream)
         }
+        "canvas.reconnect_selected_stream" => {
+            Some(StudioGuiCanvasActionId::ReconnectSelectedStream)
+        }
         "canvas.delete_selected_stream" => Some(StudioGuiCanvasActionId::DeleteSelectedStream),
         _ => None,
     }
+}
+
+fn unique_reconnect_target(
+    view: &crate::StudioGuiCanvasViewModel,
+    stream_id: &str,
+) -> Option<String> {
+    let stream = view
+        .stream_lines
+        .iter()
+        .find(|stream| stream.stream_id == stream_id)?;
+    let source = stream.source.as_ref()?;
+    if stream.sink.is_some() {
+        return None;
+    }
+
+    let available_inlets = view
+        .unit_blocks
+        .iter()
+        .filter(|unit| unit.unit_id != source.unit_id)
+        .flat_map(|unit| {
+            unit.ports
+                .iter()
+                .filter(|port| {
+                    port.kind_label == "material"
+                        && port.direction_label == "inlet"
+                        && port.stream_id.is_none()
+                })
+                .map(|port| format!("{}:{}", unit.unit_id, port.name))
+        })
+        .collect::<Vec<_>>();
+    if available_inlets.len() == 1 {
+        return available_inlets.into_iter().next();
+    }
+
+    None
 }
 
 #[cfg(test)]

@@ -398,6 +398,53 @@ pub(super) fn apply_disconnect_stream_mutation(
     ))
 }
 
+pub(super) fn apply_reconnect_stream_to_unique_available_sink_mutation(
+    flowsheet: &Flowsheet,
+    stream_id: &StreamId,
+) -> RfResult<
+    Option<(
+        DocumentCommand,
+        Flowsheet,
+        StreamPortBinding,
+        StreamPortBinding,
+    )>,
+> {
+    flowsheet.stream(stream_id)?;
+    let existing_bindings = material_stream_port_bindings(flowsheet, stream_id);
+    let source_ports = existing_bindings
+        .iter()
+        .filter(|binding| binding.direction == PortDirection::Outlet)
+        .cloned()
+        .collect::<Vec<_>>();
+    let sink_ports = existing_bindings
+        .iter()
+        .filter(|binding| binding.direction == PortDirection::Inlet)
+        .cloned()
+        .collect::<Vec<_>>();
+    if source_ports.len() != 1 || !sink_ports.is_empty() {
+        return Ok(None);
+    }
+
+    let source_port = source_ports[0].binding.clone();
+    let available_sinks = available_material_sink_bindings(flowsheet, &source_port.unit_id);
+    if available_sinks.len() != 1 {
+        return Ok(None);
+    }
+    let sink_port = available_sinks[0].clone();
+    let connection = CanvasSuggestedMaterialConnection {
+        stream: CanvasSuggestedStreamBinding::Existing {
+            stream_id: stream_id.clone(),
+        },
+        source_unit_id: source_port.unit_id.clone(),
+        source_port: source_port.port.clone(),
+        sink_unit_id: Some(sink_port.unit_id.clone()),
+        sink_port: Some(sink_port.port.clone()),
+    };
+    let (command, next_flowsheet) = apply_material_connection_acceptance(flowsheet, &connection)?;
+
+    Ok(Some((command, next_flowsheet, source_port, sink_port)))
+}
+
 pub(super) fn apply_delete_stream_and_disconnect_ports_mutation(
     flowsheet: &Flowsheet,
     stream_id: &StreamId,
@@ -567,6 +614,65 @@ pub(super) fn disconnect_material_stream_from_ports(
     }
 
     disconnected_ports
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct DirectedStreamPortBinding {
+    binding: StreamPortBinding,
+    direction: PortDirection,
+}
+
+fn material_stream_port_bindings(
+    flowsheet: &Flowsheet,
+    stream_id: &StreamId,
+) -> Vec<DirectedStreamPortBinding> {
+    let mut bindings = Vec::new();
+
+    for unit in flowsheet.units.values() {
+        for port in &unit.ports {
+            if port.kind != rf_types::PortKind::Material
+                || port.stream_id.as_ref() != Some(stream_id)
+            {
+                continue;
+            }
+
+            bindings.push(DirectedStreamPortBinding {
+                binding: StreamPortBinding {
+                    unit_id: unit.id.clone(),
+                    port: port.name.clone(),
+                },
+                direction: port.direction,
+            });
+        }
+    }
+
+    bindings
+}
+
+fn available_material_sink_bindings(
+    flowsheet: &Flowsheet,
+    source_unit_id: &UnitId,
+) -> Vec<StreamPortBinding> {
+    let mut bindings = Vec::new();
+
+    for unit in flowsheet.units.values() {
+        if &unit.id == source_unit_id {
+            continue;
+        }
+        for port in &unit.ports {
+            if port.kind == rf_types::PortKind::Material
+                && port.direction == PortDirection::Inlet
+                && port.stream_id.is_none()
+            {
+                bindings.push(StreamPortBinding {
+                    unit_id: unit.id.clone(),
+                    port: port.name.clone(),
+                });
+            }
+        }
+    }
+
+    bindings
 }
 
 pub(super) fn next_available_placeholder_stream_id(
