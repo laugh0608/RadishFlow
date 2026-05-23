@@ -882,7 +882,7 @@ impl AppState {
         }))
     }
 
-    pub fn reconnect_stream_to_unique_available_sink(
+    pub fn reconnect_stream_to_unique_available_endpoint(
         &mut self,
         stream_id: &StreamId,
         changed_at: DateTimeUtc,
@@ -898,7 +898,7 @@ impl AppState {
         }
 
         let Some((command, next_flowsheet, source_port, sink_port)) =
-            apply_reconnect_stream_to_unique_available_sink_mutation(
+            apply_reconnect_stream_to_unique_available_endpoint_mutation(
                 &self.workspace.document.flowsheet,
                 stream_id,
             )?

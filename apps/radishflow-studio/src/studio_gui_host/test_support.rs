@@ -97,6 +97,43 @@ pub(super) fn flash_drum_local_rules_config() -> (StudioRuntimeConfig, PathBuf) 
     )
 }
 
+pub(super) fn flash_drum_sink_only_reconnect_config() -> (StudioRuntimeConfig, PathBuf) {
+    let timestamp = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("expected current timestamp")
+        .as_nanos();
+    let project_path = std::env::temp_dir().join(format!(
+        "radishflow-gui-host-sink-only-reconnect-{timestamp}.rfproj.json"
+    ));
+    let mut project = rf_store::parse_project_file_json(
+        crate::test_support::official_heater_binary_hydrocarbon_project_json(),
+    )
+    .expect("expected official heater project");
+    let heater = project
+        .document
+        .flowsheet
+        .units
+        .get_mut(&rf_types::UnitId::new("heater-1"))
+        .expect("expected heater unit");
+    let heater_outlet = heater
+        .ports
+        .iter_mut()
+        .find(|port| port.name == "outlet")
+        .expect("expected heater outlet");
+    heater_outlet.stream_id = None;
+    let project =
+        rf_store::project_file_to_pretty_json(&project).expect("expected project serialization");
+    fs::write(&project_path, project).expect("expected sink-only reconnect project");
+
+    (
+        StudioRuntimeConfig {
+            project_path: project_path.clone(),
+            ..lease_expiring_config()
+        },
+        project_path,
+    )
+}
+
 pub(super) fn layout_persistence_config() -> (StudioRuntimeConfig, PathBuf, PathBuf) {
     let timestamp = SystemTime::now()
         .duration_since(UNIX_EPOCH)

@@ -699,10 +699,10 @@ fn stream_connection_actions(
         ),
         command_id: "canvas.disconnect_selected_stream".to_string(),
     }];
-    if stream_can_reconnect_to_unique_available_sink(flowsheet, stream_id) {
+    if let Some(detail) = stream_reconnect_detail(flowsheet, stream_id) {
         actions.push(StudioGuiInspectorConnectionActionSnapshot {
             label: "Reconnect stream".to_string(),
-            detail: format!("Reconnect `{stream_id_label}` to the only available material inlet."),
+            detail,
             command_id: "canvas.reconnect_selected_stream".to_string(),
         });
     }
@@ -716,11 +716,14 @@ fn stream_connection_actions(
     actions
 }
 
-fn stream_can_reconnect_to_unique_available_sink(
+fn stream_reconnect_detail(
     flowsheet: &rf_model::Flowsheet,
     stream_id: &rf_types::StreamId,
-) -> bool {
+) -> Option<String> {
     let mut source_unit_id = None;
+    let mut source_binding = None;
+    let mut sink_unit_id = None;
+    let mut sink_binding = None;
     let mut source_count = 0usize;
     let mut sink_count = 0usize;
 
@@ -736,31 +739,72 @@ fn stream_can_reconnect_to_unique_available_sink(
                 rf_types::PortDirection::Outlet => {
                     source_count += 1;
                     source_unit_id = Some(unit.id.clone());
+                    source_binding = Some(format!("{}:{}", unit.id, port.name));
                 }
-                rf_types::PortDirection::Inlet => sink_count += 1,
+                rf_types::PortDirection::Inlet => {
+                    sink_count += 1;
+                    sink_unit_id = Some(unit.id.clone());
+                    sink_binding = Some(format!("{}:{}", unit.id, port.name));
+                }
             }
         }
     }
 
-    let Some(source_unit_id) = source_unit_id else {
-        return false;
-    };
-    if source_count != 1 || sink_count != 0 {
-        return false;
+    match (source_count, sink_count) {
+        (1, 0) => {
+            let targets = available_material_endpoint_labels(
+                flowsheet,
+                &source_unit_id?,
+                rf_types::PortDirection::Inlet,
+            );
+            (targets.len() == 1).then(|| {
+                format!(
+                    "Reconnect `{}` from `{}` to the only available material inlet `{}`.",
+                    stream_id.as_str(),
+                    source_binding.expect("checked source binding"),
+                    targets[0]
+                )
+            })
+        }
+        (0, 1) => {
+            let targets = available_material_endpoint_labels(
+                flowsheet,
+                &sink_unit_id?,
+                rf_types::PortDirection::Outlet,
+            );
+            (targets.len() == 1).then(|| {
+                format!(
+                    "Reconnect `{}` from the only available material outlet `{}` to `{}`.",
+                    stream_id.as_str(),
+                    targets[0],
+                    sink_binding.expect("checked sink binding")
+                )
+            })
+        }
+        _ => None,
     }
+}
 
+fn available_material_endpoint_labels(
+    flowsheet: &rf_model::Flowsheet,
+    excluded_unit_id: &rf_types::UnitId,
+    direction: rf_types::PortDirection,
+) -> Vec<String> {
     flowsheet
         .units
         .values()
-        .filter(|unit| unit.id != source_unit_id)
-        .flat_map(|unit| unit.ports.iter())
-        .filter(|port| {
-            port.kind == rf_types::PortKind::Material
-                && port.direction == rf_types::PortDirection::Inlet
-                && port.stream_id.is_none()
+        .filter(|unit| &unit.id != excluded_unit_id)
+        .flat_map(|unit| {
+            unit.ports
+                .iter()
+                .filter(move |port| {
+                    port.kind == rf_types::PortKind::Material
+                        && port.direction == direction
+                        && port.stream_id.is_none()
+                })
+                .map(|port| format!("{}:{}", unit.id, port.name))
         })
-        .count()
-        == 1
+        .collect()
 }
 
 fn unit_property_fields(

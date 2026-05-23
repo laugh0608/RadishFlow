@@ -255,10 +255,7 @@ impl StudioGuiCanvasWidgetModel {
             Some(StreamReconnectAvailability::Available { .. })
         );
         let reconnect_detail = match (selected_stream, selected_stream_reconnect.as_ref()) {
-            (Some(selection), Some(StreamReconnectAvailability::Available { target })) => format!(
-                "Reconnect selected source-only stream `{}` to the only available inlet `{}`.",
-                selection.target_id, target
-            ),
+            (Some(_), Some(StreamReconnectAvailability::Available { detail })) => detail.clone(),
             (Some(selection), Some(StreamReconnectAvailability::Unavailable { reason })) => {
                 format!(
                     "Cannot reconnect selected stream `{}`: {}",
@@ -266,7 +263,8 @@ impl StudioGuiCanvasWidgetModel {
                 )
             }
             (None, None) => {
-                "Reconnect selected stream; select a source-only material stream first.".to_string()
+                "Reconnect selected stream; select a source-only or sink-only material stream first."
+                    .to_string()
             }
             (Some(_), None) => unreachable!("selected stream should have reconnect availability"),
             (None, Some(_)) => unreachable!("reconnect availability requires a selected stream"),
@@ -428,7 +426,7 @@ pub(crate) fn canvas_action_id_from_command_id(
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum StreamReconnectAvailability {
-    Available { target: String },
+    Available { detail: String },
     Unavailable { reason: String },
 }
 
@@ -445,46 +443,88 @@ fn stream_reconnect_availability(
             reason: "the stream has no visible material endpoint on the canvas".to_string(),
         };
     };
-    let Some(source) = stream.source.as_ref() else {
-        return StreamReconnectAvailability::Unavailable {
-            reason: "the stream has no upstream source".to_string(),
-        };
-    };
-    if let Some(sink) = stream.sink.as_ref() {
-        return StreamReconnectAvailability::Unavailable {
-            reason: format!("it is already connected to `{}`", endpoint_label(sink)),
-        };
-    }
-
-    let available_inlets = view
-        .unit_blocks
-        .iter()
-        .filter(|unit| unit.unit_id != source.unit_id)
-        .flat_map(|unit| {
-            unit.ports
+    match (stream.source.as_ref(), stream.sink.as_ref()) {
+        (Some(source), None) => {
+            let available_inlets = view
+                .unit_blocks
                 .iter()
-                .filter(|port| {
-                    port.kind_label == "material"
-                        && port.direction_label == "inlet"
-                        && port.stream_id.is_none()
+                .filter(|unit| unit.unit_id != source.unit_id)
+                .flat_map(|unit| {
+                    unit.ports
+                        .iter()
+                        .filter(|port| {
+                            port.kind_label == "material"
+                                && port.direction_label == "inlet"
+                                && port.stream_id.is_none()
+                        })
+                        .map(|port| format!("{}:{}", unit.unit_id, port.name))
                 })
-                .map(|port| format!("{}:{}", unit.unit_id, port.name))
-        })
-        .collect::<Vec<_>>();
-    match available_inlets.len() {
-        0 => StreamReconnectAvailability::Unavailable {
-            reason: "there is no available material inlet".to_string(),
+                .collect::<Vec<_>>();
+            match available_inlets.len() {
+                0 => StreamReconnectAvailability::Unavailable {
+                    reason: "there is no available material inlet".to_string(),
+                },
+                1 => {
+                    let target = available_inlets
+                        .into_iter()
+                        .next()
+                        .expect("checked exactly one available inlet");
+                    StreamReconnectAvailability::Available {
+                        detail: format!(
+                            "Reconnect selected source-only stream `{stream_id}` to the only available inlet `{target}`."
+                        ),
+                    }
+                }
+                count => StreamReconnectAvailability::Unavailable {
+                    reason: format!(
+                        "there are {count} available material inlets; use suggestions or resolve the ambiguous target first"
+                    ),
+                },
+            }
+        }
+        (None, Some(sink)) => {
+            let available_outlets = view
+                .unit_blocks
+                .iter()
+                .filter(|unit| unit.unit_id != sink.unit_id)
+                .flat_map(|unit| {
+                    unit.ports
+                        .iter()
+                        .filter(|port| {
+                            port.kind_label == "material"
+                                && port.direction_label == "outlet"
+                                && port.stream_id.is_none()
+                        })
+                        .map(|port| format!("{}:{}", unit.unit_id, port.name))
+                })
+                .collect::<Vec<_>>();
+            match available_outlets.len() {
+                0 => StreamReconnectAvailability::Unavailable {
+                    reason: "there is no available material outlet".to_string(),
+                },
+                1 => {
+                    let target = available_outlets
+                        .into_iter()
+                        .next()
+                        .expect("checked exactly one available outlet");
+                    StreamReconnectAvailability::Available {
+                        detail: format!(
+                            "Reconnect selected sink-only stream `{stream_id}` to the only available outlet `{target}`."
+                        ),
+                    }
+                }
+                count => StreamReconnectAvailability::Unavailable {
+                    reason: format!(
+                        "there are {count} available material outlets; use suggestions or resolve the ambiguous target first"
+                    ),
+                },
+            }
+        }
+        (Some(_), Some(sink)) => StreamReconnectAvailability::Unavailable {
+            reason: format!("it is already connected to `{}`", endpoint_label(sink)),
         },
-        1 => StreamReconnectAvailability::Available {
-            target: available_inlets
-                .into_iter()
-                .next()
-                .expect("checked exactly one available inlet"),
-        },
-        count => StreamReconnectAvailability::Unavailable {
-            reason: format!(
-                "there are {count} available material inlets; use suggestions or resolve the ambiguous target first"
-            ),
+        (None, None) => StreamReconnectAvailability::Unavailable {
+            reason: "the stream has no visible material endpoint on the canvas".to_string(),
         },
     }
 }
@@ -529,6 +569,42 @@ mod tests {
         ));
         let project = crate::test_support::build_flash_drum_local_rules_project_json();
         fs::write(&project_path, project).expect("expected local rules project");
+
+        (
+            StudioRuntimeConfig {
+                project_path: project_path.clone(),
+                ..lease_expiring_config()
+            },
+            project_path,
+        )
+    }
+
+    fn flash_drum_sink_only_reconnect_config() -> (StudioRuntimeConfig, PathBuf) {
+        let timestamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("expected current timestamp")
+            .as_nanos();
+        let project_path = std::env::temp_dir().join(format!(
+            "radishflow-studio-canvas-widget-sink-only-{timestamp}.rfproj.json"
+        ));
+        let mut project = rf_store::parse_project_file_json(
+            crate::test_support::official_heater_binary_hydrocarbon_project_json(),
+        )
+        .expect("expected official heater project");
+        project
+            .document
+            .flowsheet
+            .units
+            .get_mut(&rf_types::UnitId::new("heater-1"))
+            .expect("expected heater unit")
+            .ports
+            .iter_mut()
+            .find(|port| port.name == "outlet")
+            .expect("expected heater outlet")
+            .stream_id = None;
+        let project = rf_store::project_file_to_pretty_json(&project)
+            .expect("expected project serialization");
+        fs::write(&project_path, project).expect("expected sink-only reconnect project");
 
         (
             StudioRuntimeConfig {
@@ -857,6 +933,29 @@ mod tests {
             action
                 .detail
                 .contains("only available inlet `flash-1:inlet`")
+        );
+
+        let _ = fs::remove_file(project_path);
+    }
+
+    #[test]
+    fn canvas_widget_explains_available_selected_sink_only_stream_reconnect_target() {
+        let (config, project_path) = flash_drum_sink_only_reconnect_config();
+        let mut driver = StudioGuiDriver::new(&config).expect("expected driver");
+        open_window(&mut driver);
+        focus_stream(&mut driver, "stream-heated");
+
+        let widget = driver.canvas_state().widget();
+        let action = widget
+            .action(StudioGuiCanvasActionId::ReconnectSelectedStream)
+            .expect("expected reconnect action");
+
+        assert!(action.enabled);
+        assert_eq!(action.command_id, "canvas.reconnect_selected_stream");
+        assert!(
+            action
+                .detail
+                .contains("only available outlet `heater-1:outlet`")
         );
 
         let _ = fs::remove_file(project_path);

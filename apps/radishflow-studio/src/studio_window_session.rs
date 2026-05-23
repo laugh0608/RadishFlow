@@ -109,11 +109,11 @@ impl StudioWindowSession {
         self.host_port.disconnect_selected_stream_connections()
     }
 
-    pub fn reconnect_selected_stream_to_unique_available_sink(
+    pub fn reconnect_selected_stream_to_unique_available_endpoint(
         &mut self,
     ) -> RfResult<Option<rf_ui::StreamReconnectEditResult>> {
         self.host_port
-            .reconnect_selected_stream_to_unique_available_sink()
+            .reconnect_selected_stream_to_unique_available_endpoint()
     }
 
     pub fn delete_selected_stream_and_connections(

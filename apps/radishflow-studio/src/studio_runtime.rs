@@ -416,11 +416,11 @@ impl StudioRuntime {
         self.session.disconnect_selected_stream_connections()
     }
 
-    pub fn reconnect_selected_stream_to_unique_available_sink(
+    pub fn reconnect_selected_stream_to_unique_available_endpoint(
         &mut self,
     ) -> RfResult<Option<rf_ui::StreamReconnectEditResult>> {
         self.session
-            .reconnect_selected_stream_to_unique_available_sink()
+            .reconnect_selected_stream_to_unique_available_endpoint()
     }
 
     pub fn delete_selected_stream_and_connections(

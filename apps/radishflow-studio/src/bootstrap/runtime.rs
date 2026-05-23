@@ -563,7 +563,7 @@ impl BootstrapSession {
         Ok(result)
     }
 
-    pub(crate) fn reconnect_selected_stream_to_unique_available_sink(
+    pub(crate) fn reconnect_selected_stream_to_unique_available_endpoint(
         &mut self,
     ) -> RfResult<Option<rf_ui::StreamReconnectEditResult>> {
         let Some(rf_ui::InspectorTarget::Stream(stream_id)) =
@@ -573,7 +573,7 @@ impl BootstrapSession {
         };
         let result = self
             .app_state
-            .reconnect_stream_to_unique_available_sink(&stream_id, SystemTime::now())?;
+            .reconnect_stream_to_unique_available_endpoint(&stream_id, SystemTime::now())?;
         if result.is_some() {
             self.refresh_local_canvas_suggestions();
             self.dispatch_automatic_run_after_canvas_write_if_needed()?;
