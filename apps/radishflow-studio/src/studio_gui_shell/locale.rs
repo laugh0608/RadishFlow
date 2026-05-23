@@ -211,6 +211,7 @@ impl StudioShellLocale {
             "Connect stream" => Cow::Borrowed("连接流股"),
             "Create stream" => Cow::Borrowed("创建流股"),
             "Apply suggestion" => Cow::Borrowed("应用建议"),
+            "Apply the focused canvas suggestion" => Cow::Borrowed("应用当前聚焦的画布建议"),
             "Place" => Cow::Borrowed("放置"),
             "Move" => Cow::Borrowed("移动"),
             "Source" => Cow::Borrowed("源"),

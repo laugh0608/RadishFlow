@@ -229,13 +229,6 @@ impl StudioGuiCanvasViewModel {
             current_selection.as_ref(),
             state.focused_suggestion_id.as_ref().map(|id| id.as_str()),
         );
-        let legend = canvas_legend(
-            run_status.as_ref(),
-            pending_edit.as_ref(),
-            &object_list,
-            &unit_blocks,
-            &stream_lines,
-        );
         let suggestions = state
             .suggestions
             .iter()
@@ -256,6 +249,14 @@ impl StudioGuiCanvasViewModel {
                 ),
             })
             .collect::<Vec<_>>();
+        let legend = canvas_legend(
+            run_status.as_ref(),
+            pending_edit.as_ref(),
+            &object_list,
+            &unit_blocks,
+            &stream_lines,
+            &suggestions,
+        );
 
         Self {
             run_status,
@@ -856,6 +857,7 @@ fn canvas_legend(
     object_list: &StudioGuiCanvasObjectListViewModel,
     units: &[StudioGuiCanvasUnitBlockViewModel],
     stream_lines: &[StudioGuiCanvasStreamLineViewModel],
+    suggestions: &[StudioGuiCanvasSuggestionViewModel],
 ) -> StudioGuiCanvasLegendViewModel {
     let mut items = Vec::new();
 
@@ -929,6 +931,25 @@ fn canvas_legend(
             label: "Pending placement".to_string(),
             detail: "unit placement intent is active".to_string(),
             swatch_label: "pending_edit",
+        });
+    }
+
+    if let Some(focused) = suggestions.iter().find(|suggestion| suggestion.is_focused) {
+        items.push(StudioGuiCanvasLegendItemViewModel {
+            kind_label: "Suggestion",
+            label: focused.action_label.to_string(),
+            detail: format!(
+                "focused suggestion for `{}`: {}",
+                focused.target_unit_id, focused.reason
+            ),
+            swatch_label: "suggestion",
+        });
+    } else if !suggestions.is_empty() {
+        items.push(StudioGuiCanvasLegendItemViewModel {
+            kind_label: "Suggestion",
+            label: format!("{} suggestion(s)", suggestions.len()),
+            detail: "canvas suggestions are available but none is currently focused".to_string(),
+            swatch_label: "suggestion",
         });
     }
 

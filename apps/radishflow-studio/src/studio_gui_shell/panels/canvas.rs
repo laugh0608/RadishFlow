@@ -454,6 +454,34 @@ impl ReadyAppState {
                         }
                     }
                 }
+            } else if let Some(suggestion) = widget
+                .view()
+                .suggestions
+                .iter()
+                .find(|item| item.is_focused)
+            {
+                render_status_chip(
+                    ui,
+                    self.locale.runtime_label("Suggestion").as_ref(),
+                    egui::Color32::from_rgb(86, 118, 168),
+                );
+                ui.small(&suggestion.reason);
+                if ui
+                    .add_enabled(
+                        suggestion.explicit_accept_enabled,
+                        egui::Button::new(
+                            self.locale.runtime_label(suggestion.action_label).as_ref(),
+                        ),
+                    )
+                    .on_hover_text(
+                        self.locale
+                            .runtime_label("Apply the focused canvas suggestion")
+                            .as_ref(),
+                    )
+                    .clicked()
+                {
+                    self.dispatch_canvas_suggestion(widget, &suggestion.id);
+                }
             } else {
                 ui.small(self.locale.text(ShellText::NoneValue));
             }
@@ -1634,6 +1662,10 @@ fn compact_canvas_legend_item_label(
             }
         }
         "Edit" => locale.runtime_label(&item.label).into_owned(),
+        "Suggestion" => match locale {
+            StudioShellLocale::ZhCn => format!("建议: {}", locale.runtime_label(&item.label)),
+            StudioShellLocale::En => format!("Suggestion: {}", item.label),
+        },
         _ => format!("{}: {}", item.kind_label, item.label),
     }
 }
@@ -1671,6 +1703,7 @@ fn canvas_legend_swatch_color(swatch_label: &str) -> egui::Color32 {
         "port" => egui::Color32::from_rgb(42, 142, 122),
         "stream" => egui::Color32::from_rgb(42, 142, 122),
         "pending_edit" => egui::Color32::from_rgb(52, 128, 89),
+        "suggestion" => egui::Color32::from_rgb(86, 118, 168),
         _ => egui::Color32::from_rgb(86, 96, 108),
     }
 }

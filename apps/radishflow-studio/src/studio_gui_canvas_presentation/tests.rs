@@ -664,6 +664,14 @@ fn canvas_presentation_consumes_driver_dispatch_canvas_state() {
     assert!(presentation.view.suggestions[0].is_focused);
     assert!(presentation.view.suggestions[0].tab_accept_enabled);
     assert!(presentation.view.suggestions[0].explicit_accept_enabled);
+    assert!(presentation.view.legend.items.iter().any(|item| {
+        item.kind_label == "Suggestion"
+            && item.label == "Connect stream"
+            && item
+                .detail
+                .contains("Connect stream `stream-heated` to flash drum inlet `inlet`")
+            && item.swatch_label == "suggestion"
+    }));
     assert_eq!(
         presentation.text.lines,
         vec![
@@ -678,7 +686,7 @@ fn canvas_presentation_consumes_driver_dispatch_canvas_state() {
             "unit count: 3".to_string(),
             "stream line count: 2".to_string(),
             "object list count: units=3 streams=2 attention=0 items=5".to_string(),
-            "legend: Canvas legend items=4".to_string(),
+            "legend: Canvas legend items=5".to_string(),
             "suggestion count: 1".to_string(),
             "- unit feed-1 kind=feed ports=1/1 badges=none command=inspector.focus_unit:feed-1".to_string(),
             "- unit flash-1 kind=flash_drum ports=0/3 badges=none command=inspector.focus_unit:flash-1".to_string(),
