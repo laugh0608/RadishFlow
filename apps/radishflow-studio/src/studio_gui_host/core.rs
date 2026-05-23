@@ -692,13 +692,16 @@ fn stream_connection_actions(
     stream_id: &rf_types::StreamId,
 ) -> Vec<StudioGuiInspectorConnectionActionSnapshot> {
     let stream_id_label = stream_id.as_str();
-    let mut actions = vec![StudioGuiInspectorConnectionActionSnapshot {
-        label: "Disconnect stream".to_string(),
-        detail: format!(
-            "Remove material port bindings for `{stream_id_label}` while keeping the stream specification."
-        ),
-        command_id: "canvas.disconnect_selected_stream".to_string(),
-    }];
+    let mut actions = Vec::new();
+    if has_material_stream_endpoint(flowsheet, stream_id) {
+        actions.push(StudioGuiInspectorConnectionActionSnapshot {
+            label: "Disconnect stream".to_string(),
+            detail: format!(
+                "Remove material port bindings for `{stream_id_label}` while keeping the stream specification."
+            ),
+            command_id: "canvas.disconnect_selected_stream".to_string(),
+        });
+    }
     if let Some(detail) = stream_endpoint_disconnect_detail(
         flowsheet,
         stream_id,
@@ -740,6 +743,17 @@ fn stream_connection_actions(
         command_id: "canvas.delete_selected_stream".to_string(),
     }]);
     actions
+}
+
+fn has_material_stream_endpoint(
+    flowsheet: &rf_model::Flowsheet,
+    stream_id: &rf_types::StreamId,
+) -> bool {
+    flowsheet.units.values().any(|unit| {
+        unit.ports.iter().any(|port| {
+            port.kind == rf_types::PortKind::Material && port.stream_id.as_ref() == Some(stream_id)
+        })
+    })
 }
 
 fn stream_endpoint_disconnect_detail(

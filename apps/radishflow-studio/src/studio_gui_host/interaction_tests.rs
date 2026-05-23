@@ -412,6 +412,32 @@ fn gui_host_disconnects_selected_stream_from_canvas_command_surface() {
             "stream-heated"
         )))
     );
+    let stream_detail = snapshot
+        .runtime
+        .active_inspector_detail
+        .as_ref()
+        .expect("expected focused endpointless stream detail");
+    assert!(
+        !stream_detail
+            .connection_actions
+            .iter()
+            .any(|action| action.command_id == "canvas.disconnect_selected_stream"),
+        "endpointless stream should not expose a no-op disconnect stream action"
+    );
+    assert!(
+        stream_detail
+            .connection_actions
+            .iter()
+            .any(|action| action.command_id == "canvas.delete_selected_stream"),
+        "endpointless stream should still expose delete for orphan cleanup"
+    );
+    assert!(
+        gui_host
+            .command_registry()
+            .command("canvas.disconnect_selected_stream")
+            .is_none(),
+        "disabled endpointless disconnect should not enter the command surface"
+    );
 
     let _ = fs::remove_file(project_path);
 }

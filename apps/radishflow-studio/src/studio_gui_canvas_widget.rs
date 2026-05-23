@@ -140,6 +140,9 @@ impl StudioGuiCanvasWidgetModel {
             .current_selection
             .as_ref()
             .filter(|selection| selection.kind_label == "Stream");
+        let selected_stream_disconnect = selected_stream.map(|selection| {
+            stream_disconnect_availability(&presentation.view, selection.target_id.as_str())
+        });
         let selected_stream_reconnect = selected_stream.map(|selection| {
             stream_reconnect_availability(&presentation.view, selection.target_id.as_str())
         });
@@ -250,20 +253,18 @@ impl StudioGuiCanvasWidgetModel {
                 }
             },
         ));
-        let stream_detail = match selected_stream {
-            Some(selection) => format!(
-                "Disconnect all material port bindings for selected stream `{}` and keep the stream specification for controlled recovery.",
-                selection.target_id
-            ),
-            None => "Disconnect selected stream; select a material stream first.".to_string(),
-        };
+        let stream_detail =
+            stream_disconnect_detail(selected_stream, selected_stream_disconnect.as_ref());
         actions.push(StudioGuiCanvasRenderableAction {
             id: StudioGuiCanvasActionId::DisconnectSelectedStream,
             command_id: canvas_command_id(StudioGuiCanvasActionId::DisconnectSelectedStream)
                 .to_string(),
             label: "Disconnect stream".to_string(),
             detail: stream_detail,
-            enabled: selected_stream.is_some(),
+            enabled: matches!(
+                selected_stream_disconnect,
+                Some(StreamDisconnectAvailability::Available { .. })
+            ),
             shortcut: None,
         });
         let source_disconnect_detail = stream_endpoint_disconnect_detail(
@@ -490,6 +491,58 @@ pub(crate) fn canvas_action_id_from_command_id(
 enum StreamReconnectAvailability {
     Available { detail: String },
     Unavailable { reason: String },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum StreamDisconnectAvailability {
+    Available { detail: String },
+    Unavailable { reason: String },
+}
+
+fn stream_disconnect_detail(
+    selected_stream: Option<&crate::StudioGuiCanvasSelectionViewModel>,
+    availability: Option<&StreamDisconnectAvailability>,
+) -> String {
+    match (selected_stream, availability) {
+        (Some(_), Some(StreamDisconnectAvailability::Available { detail })) => detail.clone(),
+        (Some(selection), Some(StreamDisconnectAvailability::Unavailable { reason })) => {
+            format!(
+                "Cannot disconnect selected stream `{}`: {}",
+                selection.target_id, reason
+            )
+        }
+        (None, None) => "Disconnect selected stream; select a material stream first.".to_string(),
+        (Some(_), None) => unreachable!("selected stream should have disconnect availability"),
+        (None, Some(_)) => unreachable!("disconnect availability requires a selected stream"),
+    }
+}
+
+fn stream_disconnect_availability(
+    view: &crate::StudioGuiCanvasViewModel,
+    stream_id: &str,
+) -> StreamDisconnectAvailability {
+    let Some(stream) = view
+        .stream_lines
+        .iter()
+        .find(|stream| stream.stream_id == stream_id)
+    else {
+        return StreamDisconnectAvailability::Unavailable {
+            reason: "the stream has no visible material endpoint on the canvas".to_string(),
+        };
+    };
+
+    let endpoint_count = usize::from(stream.source.is_some()) + usize::from(stream.sink.is_some());
+    if endpoint_count == 0 {
+        return StreamDisconnectAvailability::Unavailable {
+            reason: "the stream has no material port bindings to disconnect".to_string(),
+        };
+    }
+
+    StreamDisconnectAvailability::Available {
+        detail: format!(
+            "Disconnect all material port bindings for selected stream `{stream_id}` and keep the stream specification for controlled recovery."
+        ),
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

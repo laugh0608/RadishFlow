@@ -605,6 +605,28 @@ fn disconnecting_stream_connections_unbinds_all_material_ports_and_keeps_stream(
 }
 
 #[test]
+fn disconnecting_endpointless_stream_connections_is_ignored_without_document_mutation() {
+    let mut document = sample_feed_flash_document();
+    let stream_id = StreamId::new("stream-feed");
+    for unit in document.flowsheet.units.values_mut() {
+        for port in &mut unit.ports {
+            if port.stream_id.as_ref() == Some(&stream_id) {
+                port.stream_id = None;
+            }
+        }
+    }
+    let mut app_state = AppState::new(document);
+
+    let result = app_state
+        .disconnect_stream_connections(&stream_id, timestamp(50))
+        .expect("expected endpointless disconnect evaluation");
+
+    assert_eq!(result, None);
+    assert_eq!(app_state.workspace.document.revision, 0);
+    assert!(app_state.workspace.command_history.is_empty());
+}
+
+#[test]
 fn disconnecting_stream_source_endpoint_unbinds_only_source_and_is_undoable() {
     let mut document = sample_feed_flash_document();
     let stream_id = StreamId::new("stream-feed");
