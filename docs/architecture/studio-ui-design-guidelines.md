@@ -272,7 +272,7 @@ Studio 默认工作台建议分为六个稳定区域。
 - 打开示例或项目后，Canvas viewport 应根据当前单元与流股 bounds 做初始 fit-to-content / center；小流程不应固定在左上角。这只属于初始呈现优化，不引入自动布线、自由连线或视口持久化。
 - 画布工具条应以图标或短标签表达选择、放置、suggestion 接受 / 拒绝、平移、缩放、适配视图和受控恢复动作；不要把当前 MVP 误设计成自由连线工具条。
 - 本地建模 suggestion 的接受动作应使用明确的 `连接流股` / `Connect stream` 或 `创建流股` / `Create stream`，不用泛化的 `Apply` 让用户猜测会改写什么。
-- 选中 material stream 后可暴露 `Disconnect stream` / `Delete stream`，但文案必须体现这是“解除绑定 / 删除错误流股”的受控恢复，不是任意端口重连、自动布线或完整拖拽布局编辑。
+- 选中 material stream 后可暴露 `Disconnect stream`、`Disconnect source`、`Disconnect sink`、`Reconnect stream` 与 `Delete stream`；`Reconnect stream` 只允许把单端缺口接到唯一、未占用且不会形成 unit dependency cycle 的端点。文案必须体现这些动作属于受控恢复，不是任意端口重连、自动布线或完整拖拽布局编辑。
 - 长说明、状态解释和开发态计数不直接堆在画布上方；进入 legend、tooltip 或底部消息。
 - 流股标签优先显示名称；短线段空间不足时应避开单元块和端口，或自动短化 / 隐藏，不让标签被裁切或遮挡。求解后可在缩放足够时显示关键 `T / P / F / H` 摘要。
 - 设备图形保持简化 process symbol 风格：清晰、平面、少装饰，可区分类型，不追求拟物渲染。

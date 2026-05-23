@@ -1,6 +1,6 @@
 # Studio Quick Start
 
-更新时间：2026-05-22
+更新时间：2026-05-23
 
 ## 目的
 
@@ -17,7 +17,7 @@
 
 ## 当前能做什么
 
-截至 2026-05-18，Studio 当前已经具备以下最小闭环：
+截至 2026-05-23，Studio 当前已经具备以下最小闭环：
 
 - 启动后默认进入中文 Home Dashboard，可从 `开始 / 最近项目 / 示例项目 / 环境 / 消息` 分区判断从哪里开始
 - 新建未命名空白项目，并用 MVP 默认 `methane / ethane` 二元体系进入最短建模路径
@@ -28,13 +28,14 @@
 - 运行仓库内或便携包内的 official hydrocarbon 正向示例 flowsheet
 - 在左侧 `项目 / 示例项目 / 放置`、中央 `Canvas`、右侧 `检查器 / 结果 / 运行 / 物性包` 和底部 `消息 / 运行日志 / 结果表 / 诊断` 中完成当前 MVP α 工作流
 - 在当前 `SolveSnapshot` 内切换 stream-centric / unit-centric / comparison 三类结果审阅面
+- 复制当前 `SolveSnapshot` 文本，或导出当前快照为轻量 `.txt`
 - 通过 `检查`、`诊断目标`、结果选择项和命令入口在流股、单元、步骤和当前检查器之间定位同一份结果
 - 在流股检查器中编辑流股基础字段与组成草稿，并显式提交、归一化或丢弃
 - 在单元检查器中编辑首批关键单元参数：`Heater / Cooler` 的 outlet temperature / outlet pressure、`Valve` 的 outlet pressure 和 `Flash Drum` 的 flash pressure
-- 选中物料流股后，可通过 Canvas / Inspector 的 `Disconnect stream` 解除端口绑定并保留流股规格，或通过 `Delete stream` 解除绑定后删除错误流股
+- 选中物料流股后，可通过 Canvas / Inspector 的 `Disconnect stream` 解除端口绑定并保留流股规格，或通过 `Delete stream` 解除绑定后删除错误流股；单端流股还可在唯一且不会成环的候选存在时执行受控 `Reconnect stream`
 - 执行基础 `undo / redo`
 - 保存当前项目，或通过顶部 `另存为...` / 未命名项目首次 `保存` 到新路径
-- 保存并恢复 Canvas placement sidecar：`<project>.rfstudio-layout.json`
+- 保存并恢复 Canvas placement / viewport sidecar：`<project>.rfstudio-layout.json`；当前可拖动单元位置、平移 viewport，并用 `Fit to content` 重新居中
 - 默认隐藏低频命令大全；需要完整命令列表时可从顶部 `视图` 或命令面板入口展开
 
 当前最短可求解建模路径已经覆盖：
@@ -50,7 +51,7 @@ Studio 现在还不是完整产品说明书意义上的“成熟桌面软件”�
 - 完整自由连线编辑器
 - 完整拖拽式布局编辑器
 - 完整组件库和物性包浏览器
-- 结果报表导出
+- 完整结果报表、模板和批量导出
 - 跨快照历史对比系统
 - 完整 CAPE-OPEN 第三方模型加载
 
@@ -163,7 +164,8 @@ cargo run -p radishflow-studio
 5. 在左侧 `项目` 或 Canvas 对象列表中选择 stream / unit，右侧 `检查器` 会切到对应对象。
 6. 在流股检查器中编辑 `T / P / F` 和组成草稿；字段提交、全部应用、组成归一化都是显式动作。
 7. 选中 `Heater / Cooler / Valve / Flash Drum` 时，可在单元检查器中编辑已暴露的 outlet temperature、outlet pressure 或 flash pressure 字段；字段会显示 SI 单位和约束提示，提交后写回项目参数，并同步对应 outlet stream 模板。
-8. 点击顶部 `运行`，结果只从最新 `SolveSnapshot` 展示到右侧 `结果` 和底部 `结果表`。
+8. 若流股错连或漏连，先选中该 material stream，再使用 `Disconnect stream`、`Disconnect source`、`Disconnect sink`、`Reconnect stream` 或 `Delete stream` 这组受控恢复动作；`Reconnect stream` 只在单端唯一候选且不会形成 unit dependency cycle 时可用。
+9. 点击顶部 `运行`，结果只从最新 `SolveSnapshot` 展示到右侧 `结果` 和底部 `结果表`。
 
 当前连接仍通过本地 suggestion 和正式 `DocumentCommand` 完成，不是自由拉线编辑器；单元参数编辑也仍限制在上述 MVP 已暴露字段，不等同于完整单元参数表。
 
@@ -183,9 +185,25 @@ cargo run -p radishflow-studio
 如果在当前无自由拉线阶段误接了流股，可以先选中这条物料流股，再使用右侧检查器或 Canvas 操作区中的恢复动作：
 
 - `Disconnect stream`：解除该流股绑定到的所有 material ports，流股规格保留在项目中，便于后续重新按 suggestion 补连。
+- `Disconnect source` / `Disconnect sink`：只解除唯一 upstream source 或 downstream sink 端点，适合保留另一端连接后继续补齐。
+- `Reconnect stream`：只补齐 source-only 或 sink-only 流股的唯一缺失端点；若无候选、候选不唯一、已双端连接或候选会形成 unit dependency cycle，则不可用。
 - `Delete stream`：解除 material port 绑定后删除该流股，适合清理误创建或错误连接的流股。
 
-这两类动作会进入文档历史，可用 `undo / redo` 回退；它们只覆盖当前 MVP material stream，不提供任意端口重连、自动布线或完整画布编辑。
+这些动作会进入文档历史，可用 `undo / redo` 回退；它们只覆盖当前 MVP material stream，不提供任意端口重连、自动布线或完整画布编辑。
+
+## Canvas 布局与视口
+
+Canvas 中的单元位置和 viewport offset 保存到项目同目录的 `<project>.rfstudio-layout.json` sidecar，不写入 `*.rfproj.json`，也不参与求解。
+
+当前可用的布局 / 视口动作包括：
+
+- 放置单元时点击落点，写入 sidecar 中的单元位置。
+- 选中单元后在空白处点击，可把该单元定位到点击位置。
+- 直接拖动单元块，释放后保存最终位置。
+- 在空白 Canvas 上拖拽可平移 viewport，并保存 offset。
+- `Fit to content` 会按当前内容重新居中 viewport。
+
+这些动作都不进入 `CommandHistory`，不改变流程语义，也不代表完整拖拽布局编辑器、自动布线或完整 camera state 持久化。
 
 ## 启动后应该看到什么
 

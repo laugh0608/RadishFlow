@@ -1,6 +1,6 @@
 # Run First Flowsheet
 
-更新时间：2026-05-22
+更新时间：2026-05-23
 
 ## 目的
 
@@ -154,7 +154,7 @@ examples/flowsheets/feed-mixer-flash-binary-hydrocarbon.rfproj.json
 - `*.rfproj.json` 保存流程语义、参数、连接和文档元信息
 - `*.rfstudio-layout.json` 保存 Canvas placement 等 shell / layout 相关状态
 
-如果当前项目已有 Canvas placement，保存并重开后应能恢复这份 sidecar 状态。
+如果当前项目已有 Canvas placement 或 viewport offset，保存并重开后应能恢复这份 sidecar 状态。单元拖动、空白画布平移和 `Fit to content` 只更新这份 sidecar，不改变项目流程语义。
 
 ## 6. 从空白项目建模
 
@@ -169,7 +169,14 @@ examples/flowsheets/feed-mixer-flash-binary-hydrocarbon.rfproj.json
 7. 单元检查器当前已暴露首批高频参数：Heater / Cooler 的 outlet temperature / outlet pressure、Valve 的 outlet pressure 与 Flash Drum 的 flash pressure；字段使用 SI 单位并显示约束提示，Heater / Cooler / Valve outlet pressure 若高于已连接 inlet pressure 会停留在无效草稿态。其余内容仍以端口、关联步骤、关联诊断和最新 `SolveSnapshot` 中的单元结果为主，不等同于完整单元参数表。
 8. 点击 `运行`，成功后右侧会自动切到 `结果`，底部会自动切到 `结果表`；失败时会切到右侧 `运行` 和底部 `消息`，方便先看诊断。
 
-如果误接了流股，可以选中对应 material stream 后使用右侧检查器或 Canvas 操作区中的 `Disconnect stream` / `Delete stream`。前者解除端口绑定并保留流股规格，后者解除绑定后删除流股；二者都进入 undo/redo 历史。
+如果误接或漏接了流股，可以选中对应 material stream 后使用右侧检查器或 Canvas 操作区中的受控恢复动作：
+
+- `Disconnect stream`：解除所有 material port 绑定并保留流股规格。
+- `Disconnect source` / `Disconnect sink`：只解除唯一 upstream source 或 downstream sink 端点。
+- `Reconnect stream`：只补齐 source-only 或 sink-only 流股的唯一缺失端点；候选必须唯一、未绑定且不会形成 unit dependency cycle。
+- `Delete stream`：解除绑定后删除流股。
+
+这些动作都进入 undo/redo 历史，但仍不是自由连线、任意端口选择或自动布线工具。
 
 当前仍不支持自由拉线、任意端口点击创建、任意端口重连、自动布线、完整组件库、完整物性包浏览/切换或完整单元参数表。这些缺口若影响验证，应记录为 MVP α 后续任务，而不是用 shell 私有状态绕过。
 
@@ -191,7 +198,7 @@ examples/flowsheets/feed-mixer-flash-binary-hydrocarbon.rfproj.json
 - 不在运行前偷偷改写文档
 - 优先通过结构化诊断暴露问题
 - Run Panel recovery action 只执行明确的局部恢复；不能自动修复时，应聚焦到相关 unit / port / stream，帮助用户进入可编辑位置
-- 用户主动修正错连时，优先使用选中 stream 后的 `Disconnect stream` / `Delete stream`；不要把它理解为自由连线或任意重连工具
+- 用户主动修正错连或漏连时，优先使用选中 stream 后的 `Disconnect stream`、`Disconnect source`、`Disconnect sink`、`Reconnect stream` 或 `Delete stream`；不要把它理解为自由连线或任意重连工具
 - 开发态 stderr 只作为 smoke 和排查辅助，不替代右侧 `运行` 或底部 `诊断` 中的用户可见诊断
 
 连接类诊断当前应按下面理解：
