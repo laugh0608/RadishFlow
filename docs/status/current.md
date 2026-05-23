@@ -52,7 +52,7 @@
 
 ## 下一步建议
 
-1. 下一步优先做“单个受控能力”的完整闭环：下一批窄口径单元参数、selected stream 受控重连细化，或 sidecar 级布局体验的窄口径收口。
+1. 下一步做 selected stream 重连 presentation 一致性：统一 Canvas / Inspector / shell 不可用原因展示，不新增端口选择器、自由连线或自动布线。
 2. 每个新能力必须走正式 command / validation / undo，或明确标记为 shell-local state；同时补 focused tests 和必要文档。
 3. 若要刷新新的便携包或 tag，应创建新提交 / 新版本节点，不移动已推送的 `v26.5.1-dev` tag。
 4. 不把受控扩展误扩成自由连线编辑器、自动布线系统、完整拖拽布局编辑器、完整报表系统或对外发布自动化。

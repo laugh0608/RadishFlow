@@ -293,7 +293,7 @@ Studio 默认工作台建议分为六个稳定区域。
 - 建议以 `检查器 / 运行 / 结果 / 物性包` tab 或等价分段组织；授权 / entitlement 在当前 demo 主路径中低频，默认不应压过物性包和结果审阅。
 - 属性字段采用 label + input + unit + validation 的行结构；单位必须紧贴数值，不藏在说明文字里。
 - 从左侧 Project、Canvas 对象列表或结果定位动作选择 stream / unit 后，应自然切换到对应检查器；stream 优先暴露 `T / P / F`、组成草稿和提交/归一化动作，unit 优先暴露已进入 MVP 的关键参数、端口、关联步骤、关联诊断和最新只读结果。
-- Unit Inspector 当前只把 `Heater / Cooler` 的 outlet temperature 与 `Valve` 的 outlet pressure 作为可编辑参数行；其余单元信息仍以端口、关联步骤、关联诊断和最新只读结果为主，不提前设计完整单元参数表。
+- Unit Inspector 当前只把 `Heater / Cooler` 的 outlet temperature / outlet pressure、`Valve` 的 outlet pressure 与 `Flash Drum` 的 flash pressure 作为可编辑参数行；其余单元信息仍以端口、关联步骤、关联诊断和最新只读结果为主，不提前设计完整单元参数表。
 - 结果检查器中面向用户的组成、相态和摘要行应优先使用本地化结构化短句；`z: ...`、`phases: ...` 这类原始调试文本只应进入 hover、日志或开发诊断，不应作为默认结果正文。
 - 草稿态、未归一组成、运行阻断和只读结果要有稳定视觉语义。
 - Runtime 中的开发态活动、平台 timer、GUI activity、原始项目路径编辑默认折叠。
