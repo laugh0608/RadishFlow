@@ -6,7 +6,7 @@
 
 用途：为 RadishFlow Studio 的首屏、画布、示例管理、面板、按钮、文字和结果审阅建立一致的 UI 设计规范，作为下一轮 Studio 工作台重排与实现拆分依据。
 读者：负责 Studio shell、Canvas、检查器、Runtime、Result 面板的开发者和设计协作者。
-不包含：完整视觉稿、图标资产、主题系统、自由连线编辑器、完整报表系统、商业化多文档工作台或求解 / 物性模型设计。
+不包含：完整视觉稿、图标资产、主题系统、视觉 token 细则、自由连线编辑器、完整报表系统、商业化多文档工作台或求解 / 物性模型设计。
 
 ## 设计定位
 
@@ -28,6 +28,7 @@ UI 参考素材当前保存在 `docs/architecture/assets/studio-ui/`。下表使
 
 | 素材 | 路径 | 用途 |
 | --- | --- | --- |
+| Studio 视觉系统规范 | [studio-visual-system.md](studio-visual-system.md) | RadishFlow Studio 的视觉定位、token、色彩角色、控件状态和视觉验收口径 |
 | 外部优秀产品灵感参考 | [ui-inspiration-reference.md](ui-inspiration-reference.md) | AFFINE、CodexApp、Cloudflare、GitHub、Discourse、1Panel 截图的设计语言提炼，用于后续 UI 专题的视觉、排版和信息密度参考 |
 | 当前 RadishFlow UI | [radishflow-current-workbench-20260516.png](assets/studio-ui/radishflow-current-workbench-20260516.png) | 2026-05-16 当前真实 Studio 截图，用于识别首页 / 工作台重排前的混乱分区和测试痛点 |
 | RadishFlow 工作台概念稿 | [radishflow-workbench-concept.png](assets/studio-ui/radishflow-workbench-concept.png) | 进入项目后的工作台概念稿，状态、SI 单位、单文档标题和结果区关系更符合当前规范 |
@@ -123,7 +124,7 @@ UI 参考素材当前保存在 `docs/architecture/assets/studio-ui/`。下表使
 
 ## 后续 UI 专题与设计稿资产
 
-当前文档记录的是 MVP α 阶段已经形成的 Studio UI 规范和真实 UI 收口经验，不等同于完整产品 UI 设计系统。后续应在路线图中单独安排 UI 专题阶段，集中处理各端页面和单元模块 UI 缺乏统一设计的问题，而不是继续在功能开发中分散修补。
+当前文档记录的是 MVP α 阶段已经形成的 Studio UI 规范和真实 UI 收口经验，不等同于完整产品 UI 设计系统。长期视觉系统、token、色彩角色、控件状态和视觉验收口径见 `studio-visual-system.md`。后续应在路线图中单独安排 UI 专题阶段，集中处理各端页面和单元模块 UI 缺乏统一设计的问题，而不是继续在功能开发中分散修补。
 
 专题启动前应先冻结端点清单、设计稿目录和命名规则。候选端点包括但不限于：
 
@@ -369,6 +370,8 @@ MVP α 默认只把 Project / Run / Results 的核心动作摆到第一视野，
 - 面板宽度不足时优先换行和收起说明，不让文字挤出或覆盖控件。
 
 ## 视觉语言
+
+本节只保留 Studio UI 信息架构层面的视觉底线，避免后续页面重排偏离当前浅色工程工具定位。更完整的视觉系统、设计 token、控件状态、Canvas 图元和 i18n 长度规则见 `studio-visual-system.md`。
 
 ### 色彩
 

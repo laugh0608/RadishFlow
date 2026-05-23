@@ -4,8 +4,8 @@
 
 ## 用途
 
-用途：为新会话恢复上下文、判断“今天做什么”提供轻量入口。
-读者：人工开发者、用户、AI / Agent。
+用途：为新会话恢复上下文、判断“今天做什么”提供入口。
+读者：开发者、用户、AI / Agent。
 不包含：完整历史流水、详细设计推演、测试日志和长期说明书。
 
 默认先读本文档。只有当任务需要具体实现细节、历史依据或专题边界时，再读取下方“按需阅读”列表。`AGENTS.md` / `CLAUDE.md` 只保留长期协作规则，不承载当前阶段流水。
@@ -48,7 +48,7 @@
 - 2026-05-23 人工复核确认流股连接 / 断开交互已经顺滑；同日补关闭脏工作区确认、focused suggestion 下一步显示、source-only 流股受控重连与不可用原因提示。随后补选中单元在 Canvas 空白处点击定位到 sidecar 坐标，并补空白画布拖拽的 viewport offset 记忆；这些布局 / 视口状态只写 `<project>.rfstudio-layout.json`，不写项目语义、不进 undo、不扩完整拖拽布局编辑器或完整视图持久化系统。
 - 2026-05-23 已补当前结果快照轻量复制 / 导出：右侧 `结果` 区可把当前 `SolveSnapshot` 复制到剪贴板或导出 `.txt`；内容只来自结果 DTO，覆盖流股摘要、步骤和诊断，不写项目、不进 undo、不扩报表、模板或批量导出。
 
-完整过程和每日验证记录见 `docs/devlogs/2026-05/2026-W21.md`、`docs/devlogs/2026-05/2026-W20.md` 以及更早周志。
+见 `docs/devlogs/2026-05/2026-W21.md`、`docs/devlogs/2026-05/2026-W20.md`。
 
 ## 下一步建议
 
@@ -75,7 +75,7 @@
 - 需要最新流水和决策依据：`docs/devlogs/2026-05/2026-W21.md`
 - 需要热力学 / 闪蒸细节：`docs/thermo/mvp-model.md`
 - 需要 CAPE-OPEN / COM 边界：`docs/capeopen/boundary.md`
-- 需要桌面 App / Canvas 交互契约和 Studio UI 规范：`docs/architecture/app-architecture.md`、`docs/architecture/canvas-interaction-contract.md`、`docs/architecture/studio-ui-design-guidelines.md`
+- App/Canvas/UI：`docs/architecture/app-architecture.md`、`docs/architecture/canvas-interaction-contract.md`、`docs/architecture/studio-ui-design-guidelines.md`、`docs/architecture/studio-visual-system.md`
 - 需要代码风格、命名或抽象判断：`docs/development/code-style.md`
 - 需要文档篇幅和拆分规则：`docs/README.md`
 
