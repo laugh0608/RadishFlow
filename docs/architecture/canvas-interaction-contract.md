@@ -118,7 +118,7 @@
 - 若缺少 sidecar placement，presentation 可按物料流依赖顺序给未定位单元生成可解释的 transient grid slot；加载 sidecar 时应过滤当前项目已不存在的 unit id。
 - 已绑定端口可通过点击或对象选择聚焦对应流股 / 单元检查器；运行成功后可自动切到右侧 `结果` 和底部 `结果表`，失败后可切到右侧 `运行` 和底部 `消息`。
 - 选中物料流股后，Canvas / Inspector 可暴露受控恢复动作：`Disconnect stream` 解除当前流股在所有材料端口上的绑定并保留流股规格，`Delete stream` 先解除材料端口绑定再删除该流股；两者都通过正式 `DocumentCommand` 写回并进入 undo history。
-- 选中 source-only 物料流股时，若该流股已有唯一 material outlet source、没有 material inlet sink，且当前画布上只有一个未绑定 material inlet，Canvas 可启用 `Reconnect stream`。该动作只把当前流股接到这个唯一 inlet，写回为正式 `DocumentCommand::ConnectPorts` 并进入 undo history。
+- 选中 source-only 物料流股时，若该流股已有唯一 material outlet source、没有 material inlet sink，且当前画布上只有一个未绑定 material inlet，Canvas 可启用 `Reconnect stream`。该动作只把当前流股接到这个唯一 inlet，写回为正式 `DocumentCommand::ConnectPorts` 并进入 undo history；不可用时 presentation 应解释是缺 source、已有 sink、无可用 inlet，还是 inlet 候选不唯一。
 - 上述恢复 / 重连动作只覆盖当前 MVP 物料流股和现有最短建模路径，用于修正错连、漏连或误建流股；它不是自由连线编辑器，不提供任意端口重连、自动布线、批量重排或完整拖拽布局编辑。
 - 非空画布不应常驻空状态提示或开发态计数摘要；画布 header 只保留用户理解当前状态所需的短标签、legend 和可行动工具。
 

@@ -138,8 +138,8 @@ impl StudioGuiCanvasWidgetModel {
             .current_selection
             .as_ref()
             .filter(|selection| selection.kind_label == "Stream");
-        let selected_stream_reconnect_target = selected_stream.and_then(|selection| {
-            unique_reconnect_target(&presentation.view, selection.target_id.as_str())
+        let selected_stream_reconnect = selected_stream.map(|selection| {
+            stream_reconnect_availability(&presentation.view, selection.target_id.as_str())
         });
         let mut actions = presentation
             .view
@@ -250,20 +250,26 @@ impl StudioGuiCanvasWidgetModel {
             enabled: selected_stream.is_some(),
             shortcut: None,
         });
-        let can_reconnect_selected_stream = selected_stream_reconnect_target.is_some();
-        let reconnect_detail = match (selected_stream, selected_stream_reconnect_target.as_ref()) {
-            (Some(selection), Some(target)) => format!(
+        let can_reconnect_selected_stream = matches!(
+            selected_stream_reconnect,
+            Some(StreamReconnectAvailability::Available { .. })
+        );
+        let reconnect_detail = match (selected_stream, selected_stream_reconnect.as_ref()) {
+            (Some(selection), Some(StreamReconnectAvailability::Available { target })) => format!(
                 "Reconnect selected source-only stream `{}` to the only available inlet `{}`.",
                 selection.target_id, target
             ),
-            (Some(selection), None) => format!(
-                "Reconnect selected stream `{}` only when it has one source, no sink, and exactly one available material inlet.",
-                selection.target_id
-            ),
+            (Some(selection), Some(StreamReconnectAvailability::Unavailable { reason })) => {
+                format!(
+                    "Cannot reconnect selected stream `{}`: {}",
+                    selection.target_id, reason
+                )
+            }
             (None, None) => {
                 "Reconnect selected stream; select a source-only material stream first.".to_string()
             }
-            (None, Some(_)) => unreachable!("reconnect target requires a selected stream"),
+            (Some(_), None) => unreachable!("selected stream should have reconnect availability"),
+            (None, Some(_)) => unreachable!("reconnect availability requires a selected stream"),
         };
         actions.push(StudioGuiCanvasRenderableAction {
             id: StudioGuiCanvasActionId::ReconnectSelectedStream,
@@ -420,17 +426,34 @@ pub(crate) fn canvas_action_id_from_command_id(
     }
 }
 
-fn unique_reconnect_target(
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum StreamReconnectAvailability {
+    Available { target: String },
+    Unavailable { reason: String },
+}
+
+fn stream_reconnect_availability(
     view: &crate::StudioGuiCanvasViewModel,
     stream_id: &str,
-) -> Option<String> {
-    let stream = view
+) -> StreamReconnectAvailability {
+    let Some(stream) = view
         .stream_lines
         .iter()
-        .find(|stream| stream.stream_id == stream_id)?;
-    let source = stream.source.as_ref()?;
-    if stream.sink.is_some() {
-        return None;
+        .find(|stream| stream.stream_id == stream_id)
+    else {
+        return StreamReconnectAvailability::Unavailable {
+            reason: "the stream has no visible material endpoint on the canvas".to_string(),
+        };
+    };
+    let Some(source) = stream.source.as_ref() else {
+        return StreamReconnectAvailability::Unavailable {
+            reason: "the stream has no upstream source".to_string(),
+        };
+    };
+    if let Some(sink) = stream.sink.as_ref() {
+        return StreamReconnectAvailability::Unavailable {
+            reason: format!("it is already connected to `{}`", endpoint_label(sink)),
+        };
     }
 
     let available_inlets = view
@@ -448,11 +471,26 @@ fn unique_reconnect_target(
                 .map(|port| format!("{}:{}", unit.unit_id, port.name))
         })
         .collect::<Vec<_>>();
-    if available_inlets.len() == 1 {
-        return available_inlets.into_iter().next();
+    match available_inlets.len() {
+        0 => StreamReconnectAvailability::Unavailable {
+            reason: "there is no available material inlet".to_string(),
+        },
+        1 => StreamReconnectAvailability::Available {
+            target: available_inlets
+                .into_iter()
+                .next()
+                .expect("checked exactly one available inlet"),
+        },
+        count => StreamReconnectAvailability::Unavailable {
+            reason: format!(
+                "there are {count} available material inlets; use suggestions or resolve the ambiguous target first"
+            ),
+        },
     }
+}
 
-    None
+fn endpoint_label(endpoint: &crate::StudioGuiCanvasStreamLineEndpointViewModel) -> String {
+    format!("{}:{}", endpoint.unit_id, endpoint.port_name)
 }
 
 #[cfg(test)]
@@ -524,6 +562,20 @@ mod tests {
                 ),
             })
             .expect("expected flash inlet suggestion acceptance");
+    }
+
+    fn open_window(driver: &mut StudioGuiDriver) {
+        driver
+            .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+            .expect("expected window open");
+    }
+
+    fn focus_stream(driver: &mut StudioGuiDriver, stream_id: &str) {
+        driver
+            .dispatch_event(StudioGuiEvent::UiCommandRequested {
+                command_id: format!("inspector.focus_stream:{stream_id}"),
+            })
+            .expect("expected stream focus dispatch");
     }
 
     #[test]
@@ -785,6 +837,58 @@ mod tests {
                 },
             }
         );
+    }
+
+    #[test]
+    fn canvas_widget_explains_available_selected_stream_reconnect_target() {
+        let (config, project_path) = flash_drum_local_rules_config();
+        let mut driver = StudioGuiDriver::new(&config).expect("expected driver");
+        open_window(&mut driver);
+        focus_stream(&mut driver, "stream-heated");
+
+        let widget = driver.canvas_state().widget();
+        let action = widget
+            .action(StudioGuiCanvasActionId::ReconnectSelectedStream)
+            .expect("expected reconnect action");
+
+        assert!(action.enabled);
+        assert_eq!(action.command_id, "canvas.reconnect_selected_stream");
+        assert!(
+            action
+                .detail
+                .contains("only available inlet `flash-1:inlet`")
+        );
+
+        let _ = fs::remove_file(project_path);
+    }
+
+    #[test]
+    fn canvas_widget_explains_reconnect_disabled_for_connected_stream() {
+        let (config, project_path) = flash_drum_local_rules_config();
+        let mut driver = StudioGuiDriver::new(&config).expect("expected driver");
+        open_window(&mut driver);
+        accept_flash_inlet_suggestion(&mut driver);
+        focus_stream(&mut driver, "stream-heated");
+
+        let widget = driver.canvas_state().widget();
+        let action = widget
+            .action(StudioGuiCanvasActionId::ReconnectSelectedStream)
+            .expect("expected reconnect action");
+
+        assert!(!action.enabled);
+        assert!(
+            action
+                .detail
+                .contains("already connected to `flash-1:inlet`")
+        );
+        assert_eq!(
+            widget.activate(StudioGuiCanvasActionId::ReconnectSelectedStream),
+            StudioGuiCanvasWidgetEvent::Disabled {
+                action_id: StudioGuiCanvasActionId::ReconnectSelectedStream,
+            }
+        );
+
+        let _ = fs::remove_file(project_path);
     }
 
     #[test]
