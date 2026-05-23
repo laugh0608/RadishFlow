@@ -873,6 +873,55 @@ fn canvas_unit_layout_nudge_commands_move_selected_unit_from_command_surface() {
 }
 
 #[test]
+fn canvas_selected_unit_direct_position_move_updates_only_layout_sidecar() {
+    let (config, project_path) = blank_workspace_config();
+    let mut app = ready_app_state(&config);
+
+    app.dispatch_ui_command("canvas.begin_place_unit.feed");
+    app.dispatch_canvas_pending_edit_commit(rf_ui::CanvasPoint::new(64.0, 40.0));
+    app.save_project();
+    app.dispatch_ui_command("inspector.focus_unit:feed-1");
+
+    app.dispatch_canvas_unit_layout_move(
+        rf_types::UnitId::new("feed-1"),
+        rf_ui::CanvasPoint::new(180.0, 112.0),
+    );
+
+    let moved = app.platform_host.snapshot().window_model();
+    assert_eq!(
+        moved
+            .canvas
+            .widget
+            .view()
+            .unit_blocks
+            .iter()
+            .find(|unit| unit.unit_id == "feed-1")
+            .and_then(|unit| unit.layout_position),
+        Some(rf_ui::CanvasPoint::new(180.0, 112.0))
+    );
+    assert!(
+        !moved.runtime.workspace_document.has_unsaved_changes,
+        "direct canvas unit move should only update the Studio layout sidecar"
+    );
+    let result = app
+        .canvas_command_result_command_surface()
+        .expect("expected direct canvas move command result");
+    assert_eq!(result.status_label, "moved");
+    assert_eq!(result.title, "Canvas unit moved");
+    assert!(result.detail.contains("moved from sidecar (64.0, 40.0)"));
+    assert_eq!(result.target_command_id, "inspector.focus_unit:feed-1");
+
+    let layout_path = studio_layout_path_for_project(&project_path);
+    let stored_layout = read_studio_layout_file(&layout_path).expect("expected layout sidecar");
+    assert!(stored_layout.canvas_unit_positions.iter().any(|position| {
+        position.unit_id == "feed-1" && position.x == 180.0 && position.y == 112.0
+    }));
+
+    let _ = fs::remove_file(project_path);
+    let _ = fs::remove_file(layout_path);
+}
+
+#[test]
 fn canvas_unit_layout_nudge_pins_transient_grid_without_dirtying_project() {
     let (config, project_path) = flash_drum_local_rules_config();
     let layout_path = studio_layout_path_for_project(&project_path);

@@ -567,6 +567,11 @@ impl ReadyAppState {
         let view = widget.view();
         let pending_edit = view.pending_edit.as_ref();
         let focus_callout = view.focus_callout.as_ref();
+        let selected_unit_id = view
+            .current_selection
+            .as_ref()
+            .filter(|selection| selection.kind_label == "Unit")
+            .map(|selection| selection.target_id.clone());
         let unit_blocks = &view.unit_blocks;
         let stream_lines = &view.stream_lines;
         self.reconcile_canvas_viewport_navigation(view.viewport.focus.as_ref());
@@ -730,8 +735,17 @@ impl ReadyAppState {
             }
         }
 
+        let can_place_selected_unit = pending_edit.is_none() && selected_unit_id.is_some();
         let response = if pending_edit.is_some() {
             response.on_hover_cursor(egui::CursorIcon::Crosshair)
+        } else if can_place_selected_unit {
+            response
+                .on_hover_cursor(egui::CursorIcon::Grab)
+                .on_hover_text(
+                    self.locale
+                        .runtime_label("Click empty canvas to move selected unit here")
+                        .as_ref(),
+                )
         } else {
             response
         };
@@ -742,6 +756,21 @@ impl ReadyAppState {
                     local.x.max(0.0) as f64,
                     local.y.max(0.0) as f64,
                 ));
+            }
+        } else if can_place_selected_unit
+            && response.clicked()
+            && !clicked_unit
+            && !clicked_stream
+            && !clicked_port
+        {
+            if let (Some(unit_id), Some(pointer_pos)) =
+                (selected_unit_id, response.interact_pointer_pos())
+            {
+                let local = viewport_transform.screen_to_world(rect, pointer_pos);
+                self.dispatch_canvas_unit_layout_move(
+                    rf_types::UnitId::new(unit_id),
+                    rf_ui::CanvasPoint::new(local.x.max(0.0) as f64, local.y.max(0.0) as f64),
+                );
             }
         }
 

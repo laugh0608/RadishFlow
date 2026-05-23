@@ -698,6 +698,24 @@ impl ReadyAppState {
         }
     }
 
+    pub(super) fn dispatch_canvas_unit_layout_move(
+        &mut self,
+        unit_id: rf_types::UnitId,
+        position: rf_ui::CanvasPoint,
+    ) {
+        match self.dispatch_event_result(StudioGuiEvent::CanvasUnitLayoutMoveRequested {
+            unit_id,
+            position,
+        }) {
+            Ok(dispatch) => self.record_canvas_unit_layout_move_feedback(&dispatch),
+            Err(error) => {
+                let message = format!("[{}] {}", error.code().as_str(), error.message());
+                self.platform_host
+                    .record_activity_line(format!("event failed: {message}"));
+            }
+        }
+    }
+
     pub(super) fn dispatch_layout_mutation(
         &mut self,
         window_id: Option<StudioWindowHostId>,

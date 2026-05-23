@@ -263,6 +263,9 @@ impl StudioShellLocale {
             "Disconnect stream" => Cow::Borrowed("断开流股"),
             "Reconnect stream" => Cow::Borrowed("重连流股"),
             "Delete stream" => Cow::Borrowed("删除流股"),
+            "Click empty canvas to move selected unit here" => {
+                Cow::Borrowed("点击画布空白处将选中单元移动到此处")
+            }
             "Temperature" => Cow::Borrowed("温度"),
             "Pressure" => Cow::Borrowed("压力"),
             "Molar flow" => Cow::Borrowed("摩尔流量"),
