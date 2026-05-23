@@ -1,6 +1,6 @@
 # Canvas Interaction Contract
 
-更新时间：2026-05-22
+更新时间：2026-05-23
 
 ## 文档目的
 
@@ -114,9 +114,10 @@
 - suggestion 接受仍转换为正式 `DocumentCommand::ConnectPorts` 或等价文档命令后写回；接受 / 拒绝本身不进入 `CommandHistory`。
 - Canvas 对象选择会驱动右侧 `检查器` / 结果定位，但不缓存第二份求解结果。
 - Canvas placement sidecar 使用 `<project>.rfstudio-layout.json` 保存 shell / layout 状态；项目文件 `*.rfproj.json` 仍是流程语义真相源。
-- 打开示例或项目后，Canvas viewport 会按当前单元 / 流股 bounds 做 shell-local 初始 fit-to-content / center；该行为不写项目、不进历史、不代表自动布线或视口持久化。
+- 打开示例或项目后，若 sidecar 尚未保存 viewport offset，Canvas viewport 会按当前单元 / 流股 bounds 做 shell-local 初始 fit-to-content / center；该行为不写项目、不进历史、不代表自动布线。
 - 若缺少 sidecar placement，presentation 可按物料流依赖顺序给未定位单元生成可解释的 transient grid slot；加载 sidecar 时应过滤当前项目已不存在的 unit id。
 - 选中单元后，Canvas 可允许在空白处点击，把该单元定位到点击对应的 world 坐标；该行为只更新 layout sidecar，不写 `FlowsheetDocument`，不进入 `CommandHistory`，也不代表完整拖拽布局编辑器。
+- Canvas 空白区域可允许拖拽平移 viewport，并把 offset 保存到同一个 `<project>.rfstudio-layout.json` sidecar；该状态只影响 shell 初始呈现，不写 `FlowsheetDocument`，不进入 `CommandHistory`，也不代表完整视图持久化系统。
 - 已绑定端口可通过点击或对象选择聚焦对应流股 / 单元检查器；运行成功后可自动切到右侧 `结果` 和底部 `结果表`，失败后可切到右侧 `运行` 和底部 `消息`。
 - 选中物料流股后，Canvas / Inspector 可暴露受控恢复动作：`Disconnect stream` 解除当前流股在所有材料端口上的绑定并保留流股规格，`Delete stream` 先解除材料端口绑定再删除该流股；两者都通过正式 `DocumentCommand` 写回并进入 undo history。
 - 选中 source-only 物料流股时，若该流股已有唯一 material outlet source、没有 material inlet sink，且当前画布上只有一个未绑定 material inlet，Canvas 可启用 `Reconnect stream`。该动作只把当前流股接到这个唯一 inlet，写回为正式 `DocumentCommand::ConnectPorts` 并进入 undo history；不可用时 presentation 应解释是缺 source、已有 sink、无可用 inlet，还是 inlet 候选不唯一。
@@ -151,16 +152,18 @@ pub enum CanvasViewMode {
 - 立体模式所需的深度、抬升、层级偏移和视觉装饰优先由 UI / Canvas 派生
 - 如后续确实需要少量 3D 呈现参数，也应先作为视图偏好或样式参数存在，不直接污染流程语义模型
 
-### Viewport 初始呈现
+### Viewport 初始呈现与记忆
 
-当前 Canvas viewport 的初始呈现属于 UI 状态，不属于流程语义。
+当前 Canvas viewport 的初始呈现和 sidecar 级 offset 记忆属于 UI 状态，不属于流程语义。
 
 冻结约束：
 
-- 打开示例或项目后，shell 可根据当前单元与流股 bounds 做初始 fit-to-content / center，让小流程自然处于可视区域中央。
+- 打开示例或项目后，若 sidecar 中没有 viewport offset，shell 可根据当前单元与流股 bounds 做初始 fit-to-content / center，让小流程自然处于可视区域中央。
+- 若 sidecar 中已有 viewport offset，shell 可优先恢复该 offset，避免用户每次重开项目后重复平移画布。
+- 用户在空白画布上拖拽平移 viewport 时，只允许保存 offset，不保存缩放、滚动历史、选区、完整 camera state 或复杂 viewport profile。
 - 初始 fit-to-content 不写入 `FlowsheetDocument`，也不进入 `CommandHistory`。
-- 该行为不等同于自动布线、自由连线、自动整理布局或视口持久化；它只决定打开后的第一帧可视区域。
-- 若存在 `<project>.rfstudio-layout.json` sidecar，单元 placement 仍以 sidecar 为准；viewport 只基于这些位置计算初始可见范围。
+- 该行为不等同于自动布线、自由连线、自动整理布局或完整视图持久化系统；它只决定打开后的第一帧可视区域和后续空白拖拽的 offset 恢复。
+- 若存在 `<project>.rfstudio-layout.json` sidecar，单元 placement 仍以 sidecar 为准；viewport 可恢复 sidecar offset，缺 offset 时才基于这些位置计算初始可见范围。
 
 ## 流线视觉模型
 
@@ -408,7 +411,7 @@ pub struct GhostElement {
 3. suggestion 转成正式文档命令后的实际文档变更才进入 `CommandHistory`；suggestion focus、reject、viewport、面板切换和 hover 不进入文档历史。
 4. 受控流股恢复动作可进入 `CommandHistory`：断开连接保留流股规格，删除流股会先解除材料端口绑定。下一阶段可设计 selected stream 受控重连，但必须显式处理端口合法性、已有绑定冲突、失败恢复和 undo；不得扩展成任意自由拉线编辑器。
 5. Layout sidecar 只保存 shell / layout 相关状态；缺少 sidecar 时可以用 transient grid slot pin 出初始位置，但必须在 presentation 中保持可解释，不反向污染 flowsheet 语义。下一阶段允许从离散 nudge 放宽到直接拖动单元位置，仍只写 sidecar，不写 `FlowsheetDocument`、不递增 revision、不进入 `CommandHistory`。
-6. viewport 初始居中 / fit-to-content 已落地；下一阶段允许 sidecar 或 shell-local 级 viewport 记忆，但不得把 viewport 混入项目语义、求解输入或文档历史。短线段标签后续若继续优化，应作为 Canvas presentation 专题处理，不引入自动布线。
+6. viewport 初始居中 / fit-to-content 与 sidecar 级 offset 记忆已落地；后续若继续扩展 viewport，只允许在明确 shell-local / sidecar 边界内做单能力增量，不得把 viewport 混入项目语义、求解输入或文档历史。短线段标签后续若继续优化，应作为 Canvas presentation 专题处理，不引入自动布线。
 
 ## 当前仍待后续细化的问题
 

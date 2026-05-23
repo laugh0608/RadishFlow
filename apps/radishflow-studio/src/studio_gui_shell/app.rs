@@ -92,6 +92,7 @@ impl ReadyAppState {
                 self.last_viewport_focused = None;
                 self.canvas_viewport_navigation = CanvasViewportNavigationState::default();
                 self.canvas_initial_viewport_fit.reset();
+                self.canvas_viewport_drag = None;
                 self.canvas_command_result = None;
                 self.result_inspector.reset();
                 self.project_open.path_input.clear();
@@ -378,7 +379,8 @@ impl ReadyAppState {
                 self.drop_preview_overlay_anchor = None;
                 self.last_viewport_focused = None;
                 self.canvas_viewport_navigation = CanvasViewportNavigationState::default();
-                self.canvas_initial_viewport_fit.reset();
+                self.canvas_initial_viewport_fit = canvas_initial_viewport_fit_from_config(&config);
+                self.canvas_viewport_drag = None;
                 self.canvas_command_result = None;
                 self.result_inspector.reset();
                 self.project_open.path_input = project_path.display().to_string();
@@ -713,6 +715,25 @@ impl ReadyAppState {
                 self.platform_host
                     .record_activity_line(format!("event failed: {message}"));
             }
+        }
+    }
+
+    pub(super) fn update_canvas_viewport_offset(&mut self, offset: egui::Vec2) {
+        self.canvas_initial_viewport_fit.set_offset(offset);
+        let Some(project_path) = self.project_open.current_path() else {
+            return;
+        };
+
+        if let Err(error) = save_persisted_canvas_viewport(
+            &project_path,
+            rf_ui::CanvasPoint::new(offset.x as f64, offset.y as f64),
+        ) {
+            self.platform_host.record_activity_line(format!(
+                "save canvas viewport failed [{}]: {} ({})",
+                error.code().as_str(),
+                error.message(),
+                project_path.display()
+            ));
         }
     }
 

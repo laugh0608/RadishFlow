@@ -44,10 +44,10 @@ pub use project::{
 };
 pub use studio_layout::{
     STORED_STUDIO_LAYOUT_FILE_KIND, STORED_STUDIO_LAYOUT_FILE_SUFFIX,
-    STORED_STUDIO_LAYOUT_SCHEMA_VERSION, StoredStudioCanvasUnitPosition, StoredStudioLayoutFile,
-    StoredStudioLayoutPanelState, StoredStudioLayoutRegionWeight,
-    StoredStudioLayoutStackGroupState, StoredStudioWindowLayoutEntry,
-    studio_layout_path_for_project,
+    STORED_STUDIO_LAYOUT_SCHEMA_VERSION, StoredStudioCanvasUnitPosition,
+    StoredStudioCanvasViewport, StoredStudioLayoutFile, StoredStudioLayoutPanelState,
+    StoredStudioLayoutRegionWeight, StoredStudioLayoutStackGroupState,
+    StoredStudioWindowLayoutEntry, studio_layout_path_for_project,
 };
 pub use studio_preferences::{
     STORED_STUDIO_PREFERENCES_FILE_KIND, STORED_STUDIO_PREFERENCES_FILE_NAME,
@@ -71,19 +71,19 @@ mod tests {
         StoredCredentialReference, StoredDocumentMetadata, StoredEntitlementCache,
         StoredProjectFile, StoredPropertyPackageManifest, StoredPropertyPackagePayload,
         StoredPropertyPackageRecord, StoredPropertyPackageSource, StoredStudioCanvasUnitPosition,
-        StoredStudioLayoutFile, StoredStudioLayoutPanelState, StoredStudioLayoutRegionWeight,
-        StoredStudioLayoutStackGroupState, StoredStudioPreferencesFile,
-        StoredStudioWindowLayoutEntry, StoredThermoComponent, auth_cache_index_to_pretty_json,
-        parse_auth_cache_index_json, parse_project_file_json, parse_property_package_manifest_json,
-        parse_property_package_payload_json, parse_studio_layout_file_json,
-        parse_studio_preferences_file_json, project_file_to_pretty_json,
-        property_package_manifest_to_pretty_json, property_package_payload_to_pretty_json,
-        read_auth_cache_index, read_project_file, read_property_package_manifest,
-        read_property_package_payload, read_studio_layout_file, read_studio_preferences_file,
-        studio_layout_file_to_pretty_json, studio_layout_path_for_project,
-        studio_preferences_file_to_pretty_json, write_auth_cache_index, write_project_file,
-        write_property_package_manifest, write_property_package_payload, write_studio_layout_file,
-        write_studio_preferences_file,
+        StoredStudioCanvasViewport, StoredStudioLayoutFile, StoredStudioLayoutPanelState,
+        StoredStudioLayoutRegionWeight, StoredStudioLayoutStackGroupState,
+        StoredStudioPreferencesFile, StoredStudioWindowLayoutEntry, StoredThermoComponent,
+        auth_cache_index_to_pretty_json, parse_auth_cache_index_json, parse_project_file_json,
+        parse_property_package_manifest_json, parse_property_package_payload_json,
+        parse_studio_layout_file_json, parse_studio_preferences_file_json,
+        project_file_to_pretty_json, property_package_manifest_to_pretty_json,
+        property_package_payload_to_pretty_json, read_auth_cache_index, read_project_file,
+        read_property_package_manifest, read_property_package_payload, read_studio_layout_file,
+        read_studio_preferences_file, studio_layout_file_to_pretty_json,
+        studio_layout_path_for_project, studio_preferences_file_to_pretty_json,
+        write_auth_cache_index, write_project_file, write_property_package_manifest,
+        write_property_package_payload, write_studio_layout_file, write_studio_preferences_file,
     };
 
     fn timestamp(seconds: u64) -> std::time::SystemTime {
@@ -385,7 +385,11 @@ mod tests {
             unit_id: "feed-1".to_string(),
             x: 64.0,
             y: 40.0,
-        }]);
+        }])
+        .with_canvas_viewport(Some(StoredStudioCanvasViewport {
+            offset_x: 12.0,
+            offset_y: -8.0,
+        }));
 
         let json = studio_layout_file_to_pretty_json(&layout).expect("expected layout json");
         let round_trip =
@@ -398,6 +402,8 @@ mod tests {
         assert!(json.contains("\"stackGroups\""));
         assert!(json.contains("\"canvasUnitPositions\""));
         assert!(json.contains("\"unitId\": \"feed-1\""));
+        assert!(json.contains("\"canvasViewport\""));
+        assert!(json.contains("\"offsetX\": 12.0"));
     }
 
     #[test]

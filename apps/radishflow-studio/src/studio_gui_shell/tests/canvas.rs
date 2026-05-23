@@ -922,6 +922,60 @@ fn canvas_selected_unit_direct_position_move_updates_only_layout_sidecar() {
 }
 
 #[test]
+fn canvas_viewport_offset_persists_in_layout_sidecar_without_dirtying_project() {
+    let (config, project_path) = blank_workspace_config();
+    let layout_path = studio_layout_path_for_project(&project_path);
+    let mut app = ready_app_state(&config);
+
+    app.dispatch_ui_command("canvas.begin_place_unit.feed");
+    app.dispatch_canvas_pending_edit_commit(rf_ui::CanvasPoint::new(64.0, 40.0));
+    app.save_project();
+    let project_before = fs::read_to_string(&project_path).expect("expected saved project file");
+    assert!(
+        !app.platform_host
+            .snapshot()
+            .window_model()
+            .runtime
+            .workspace_document
+            .has_unsaved_changes
+    );
+
+    app.update_canvas_viewport_offset(egui::vec2(42.0, -16.0));
+
+    let moved_viewport = app.platform_host.snapshot().window_model();
+    assert!(
+        !moved_viewport
+            .runtime
+            .workspace_document
+            .has_unsaved_changes,
+        "viewport pan must only update the Studio layout sidecar"
+    );
+    assert_eq!(
+        fs::read_to_string(&project_path).expect("expected project file after viewport pan"),
+        project_before,
+        "viewport pan must not rewrite the project JSON"
+    );
+
+    let stored_layout = read_studio_layout_file(&layout_path).expect("expected layout sidecar");
+    assert_eq!(
+        stored_layout
+            .canvas_viewport
+            .as_ref()
+            .map(|viewport| (viewport.offset_x, viewport.offset_y)),
+        Some((42.0, -16.0))
+    );
+
+    app.open_project(project_path.clone(), "project");
+    assert_eq!(
+        app.canvas_initial_viewport_fit,
+        CanvasInitialViewportFitState::restore(egui::vec2(42.0, -16.0))
+    );
+
+    let _ = fs::remove_file(project_path);
+    let _ = fs::remove_file(layout_path);
+}
+
+#[test]
 fn canvas_unit_layout_nudge_pins_transient_grid_without_dirtying_project() {
     let (config, project_path) = flash_drum_local_rules_config();
     let layout_path = studio_layout_path_for_project(&project_path);

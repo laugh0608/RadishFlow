@@ -577,13 +577,14 @@ impl ReadyAppState {
         self.reconcile_canvas_viewport_navigation(view.viewport.focus.as_ref());
         let available_width = ui.available_width().max(320.0);
         let desired_size = egui::vec2(available_width, 280.0);
-        let (rect, response) = ui.allocate_exact_size(desired_size, egui::Sense::click());
+        let (rect, response) = ui.allocate_exact_size(desired_size, egui::Sense::click_and_drag());
         let viewport_transform = canvas_initial_viewport_transform(
             &mut self.canvas_initial_viewport_fit,
             rect,
             unit_blocks,
             stream_lines,
         );
+        let current_viewport_offset = viewport_transform.offset;
         let painter = ui.painter_at(rect);
         paint_canvas_drop_surface(&painter, rect, pending_edit.is_some());
 
@@ -600,6 +601,7 @@ impl ReadyAppState {
         }
 
         let mut clicked_stream_command = None;
+        let mut hovered_stream = false;
         for stream in stream_lines {
             let geometry = canvas_stream_line_geometry(rect, &viewport_transform, stream);
             let is_viewport_focus = self
@@ -628,12 +630,14 @@ impl ReadyAppState {
                 )
                 .on_hover_text(&stream.hover_text)
                 .on_hover_cursor(egui::CursorIcon::PointingHand);
+            hovered_stream |= stream_response.hovered();
             if stream_response.clicked() {
                 clicked_stream_command = Some(stream.command_id.clone());
             }
         }
 
         let mut clicked_unit = false;
+        let mut hovered_unit = false;
         let mut clicked_port_command = None;
         let mut hovered_port_stream_id = None;
         let mut hovered_port_callout = None;
@@ -701,6 +705,7 @@ impl ReadyAppState {
                 )
                 .on_hover_text(&unit.hover_text)
                 .on_hover_cursor(egui::CursorIcon::PointingHand);
+            hovered_unit |= unit_response.hovered();
             if unit_response.clicked() && clicked_port_command.is_none() {
                 clicked_unit = true;
                 self.dispatch_ui_command(&unit.command_id);
@@ -735,6 +740,25 @@ impl ReadyAppState {
             }
         }
 
+        let hovered_port = hovered_port_callout.is_some();
+        let can_pan_viewport =
+            pending_edit.is_none() && !hovered_stream && !hovered_unit && !hovered_port;
+        if can_pan_viewport && response.drag_started() {
+            self.canvas_viewport_drag = Some(CanvasViewportDragState {
+                start_offset: current_viewport_offset,
+            });
+        }
+        if can_pan_viewport && response.dragged() {
+            let start_offset = self
+                .canvas_viewport_drag
+                .map(|drag| drag.start_offset)
+                .unwrap_or(current_viewport_offset);
+            self.update_canvas_viewport_offset(start_offset + response.drag_delta());
+        }
+        if self.canvas_viewport_drag.is_some() && !ui.input(|input| input.pointer.primary_down()) {
+            self.canvas_viewport_drag = None;
+        }
+
         let can_place_selected_unit = pending_edit.is_none() && selected_unit_id.is_some();
         let response = if pending_edit.is_some() {
             response.on_hover_cursor(egui::CursorIcon::Crosshair)
@@ -746,6 +770,8 @@ impl ReadyAppState {
                         .runtime_label("Click empty canvas to move selected unit here")
                         .as_ref(),
                 )
+        } else if can_pan_viewport {
+            response.on_hover_cursor(egui::CursorIcon::Grab)
         } else {
             response
         };

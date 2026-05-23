@@ -19,7 +19,8 @@ use radishflow_studio::{
     StudioGuiWindowLayoutModel, StudioGuiWindowLayoutMutation, StudioGuiWindowModel,
     StudioGuiWindowStackGroupLayout, StudioGuiWindowToolbarSectionModel, StudioRuntimeConfig,
     StudioRuntimeEntitlementPreflight, StudioRuntimeTrigger, StudioRuntimeUntitledProject,
-    StudioWindowHostId, StudioWindowHostRole,
+    StudioWindowHostId, StudioWindowHostRole, load_persisted_canvas_viewport,
+    save_persisted_canvas_viewport,
 };
 use rf_types::RfResult;
 use rf_ui::{
@@ -94,6 +95,7 @@ struct ReadyAppState {
     canvas_object_filter: CanvasObjectListFilter,
     canvas_viewport_navigation: CanvasViewportNavigationState,
     canvas_initial_viewport_fit: CanvasInitialViewportFitState,
+    canvas_viewport_drag: Option<CanvasViewportDragState>,
     canvas_command_result: Option<radishflow_studio::StudioGuiCanvasCommandResultViewModel>,
     project_file_picker: Box<dyn ProjectFilePicker>,
     preferences_path: PathBuf,
@@ -227,6 +229,23 @@ impl CanvasInitialViewportFitState {
     fn reset(&mut self) {
         *self = Self::default();
     }
+
+    fn restore(offset: egui::Vec2) -> Self {
+        Self {
+            pending: false,
+            offset,
+        }
+    }
+
+    fn set_offset(&mut self, offset: egui::Vec2) {
+        self.pending = false;
+        self.offset = offset;
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+struct CanvasViewportDragState {
+    start_offset: egui::Vec2,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -300,6 +319,21 @@ fn studio_shell_blank_runtime_config() -> StudioRuntimeConfig {
     }
 }
 
+fn canvas_initial_viewport_fit_from_config(
+    config: &StudioRuntimeConfig,
+) -> CanvasInitialViewportFitState {
+    if config.untitled_blank_project.is_some() {
+        return CanvasInitialViewportFitState::default();
+    }
+
+    match load_persisted_canvas_viewport(&config.project_path) {
+        Ok(Some(offset)) => {
+            CanvasInitialViewportFitState::restore(egui::vec2(offset.x as f32, offset.y as f32))
+        }
+        Ok(None) | Err(_) => CanvasInitialViewportFitState::default(),
+    }
+}
+
 impl ReadyAppState {
     fn from_config(config: &StudioRuntimeConfig, preferences_path: PathBuf) -> RfResult<Self> {
         Self::from_config_with_project_file_picker(
@@ -348,7 +382,8 @@ impl ReadyAppState {
             bottom_drawer_tab: StudioShellBottomDrawerTab::default(),
             canvas_object_filter: CanvasObjectListFilter::default(),
             canvas_viewport_navigation: CanvasViewportNavigationState::default(),
-            canvas_initial_viewport_fit: CanvasInitialViewportFitState::default(),
+            canvas_initial_viewport_fit: canvas_initial_viewport_fit_from_config(config),
+            canvas_viewport_drag: None,
             canvas_command_result: None,
             project_file_picker,
             preferences_path,

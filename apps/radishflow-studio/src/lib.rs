@@ -229,6 +229,7 @@ pub use studio_gui_host::{
     StudioGuiHostWindowDropTargetQueryResult, StudioGuiHostWindowLayoutUpdateResult,
     StudioGuiHostWindowOpened,
 };
+pub use studio_gui_layout_store::{load_persisted_canvas_viewport, save_persisted_canvas_viewport};
 pub use studio_gui_platform_host::{
     StudioGuiPlatformAsyncRound, StudioGuiPlatformAsyncRoundAction,
     StudioGuiPlatformAsyncRoundInput, StudioGuiPlatformDispatch, StudioGuiPlatformDueTimerDrain,
