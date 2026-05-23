@@ -14,7 +14,7 @@
 
 - 产品定位：以 Rust Core + Rust UI + `.NET 10` CAPE-OPEN/COM 适配层构建稳态流程模拟软件。
 - 当前主线：MVP 第一阶段最小闭环已经可验证，`v26.5.1-dev` 已作为内部验收 tag 创建并推送；首版 demo 前的 Home / Workbench 产品可用性 blocker 已收口，当前重新回到功能开发。
-- 当前重点：在不扩自由连线、自动布线、完整拖拽布局、视口持久化、完整结果报表或对外发布自动化的前提下，继续补齐高频建模能力。本轮已把 `Heater / Cooler / Valve` 参数接入 Unit Inspector draft / commit / undo / solver 链路，并补参数 JSON round-trip、官方示例、保存 / 重开 / 运行回归、字段级 SI 约束提示与 Valve 越界失败定位。连接失败恢复、空白项目 `Feed + Feed -> Mixer -> Flash Drum`、Canvas suggestion 分阶段生成、选中流股受控断开 / 删除、关闭脏工作区保护和 focused suggestion 下一步可见性均已收口。
+- 当前重点：首版 demo 前硬化期已经结束，当前进入“受控扩展高频建模能力”阶段。已收口 `Heater / Cooler / Valve` 参数链路、连接失败恢复、空白项目 Mixer 路径、受控流股断开 / 删除、关闭脏工作区保护和 focused suggestion 下一步可见性。后续允许按正式边界推进下一批窄口径单元参数、受控重连、sidecar 级布局 / 视口体验和轻量结果审阅增强；仍不做自由连线编辑器、自动布线系统、完整拖拽布局编辑器、完整报表系统或第三方 CAPE-OPEN / 物性包加载。
 - 当前验证基线：功能改动优先执行相关 focused tests；阶段性收口执行 `pwsh ./scripts/check-repo.ps1`。
 
 ## 最近完成摘要
@@ -51,15 +51,15 @@
 
 ## 下一步建议
 
-1. 继续围绕真实建模链路推进：首批单元参数保存 / 重开 / 运行、字段级约束提示、Valve 参数运行失败定位、连接类失败恢复路径、空白项目 Mixer 保存 / 重开 / 重跑路径、错连后受控断开 / 删除流股能力、关闭脏工作区保护和 focused suggestion 下一步可见性已补齐；下一步可转向下一批窄口径单元参数或继续做现有最短路径的小型可见性补口，但仍不扩自由连线、自动布线或完整结果报表。
-2. 若继续做参数体验，只补与现有 Heater / Cooler / Valve 字段直接相关的失败定位，不扩展成完整单元参数表或完整结果报表。
+1. 下一步优先做“单个受控能力”的完整闭环：下一批窄口径单元参数、selected stream 受控重连、单元直接拖动位置但只写 layout sidecar、sidecar 级 viewport 记忆，或当前 snapshot 的轻量结果复制 / 导出。
+2. 每个新能力必须走正式 command / validation / undo，或明确标记为 shell-local state；同时补 focused tests 和必要文档。
 3. 若要刷新新的便携包或 tag，应创建新提交 / 新版本节点，不移动已推送的 `v26.5.1-dev` tag。
-4. 不把当前功能推进误扩成自动布线、自由连线、完整拖拽布局、视口持久化、完整结果报表或对外发布自动化。
+4. 不把受控扩展误扩成自由连线编辑器、自动布线系统、完整拖拽布局编辑器、完整报表系统或对外发布自动化。
 
 ## 暂不推进
 
-- 在 UI 信息架构未定稿前，不继续堆叠零散按钮、临时面板、调试状态或只为单次 smoke 服务的 presentation。
-- 不把当前 UI 重排误扩成完整自由连线编辑器、完整拖拽布局编辑器、自动布线、视口持久化或完整结果报表。
+- 不继续堆叠零散按钮、临时面板、调试状态或只为单次 smoke 服务的 presentation；UI 改进应按明确专题推进。
+- 不做自由连线编辑器、自动布线系统、完整拖拽布局编辑器、完整报表系统；允许受控重连、sidecar 级单元拖动、sidecar 级 viewport 记忆和轻量结果审阅增强。
 - 不把 CAPE-OPEN / COM 语义倒灌到 Rust Core。
 - 不引入第三方 CAPE-OPEN 模型加载。
 - 不把 smoke test driver、PME 调试路径或单个宿主兼容逻辑提升为通用库 API。

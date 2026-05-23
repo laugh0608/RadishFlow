@@ -28,6 +28,8 @@
 - 模型建议不绕过本地连接校验、命令系统与求解诊断
 - 已落地的 placement palette、local suggestions、对象选择、layout sidecar 和 viewport 呈现优化都仍属于 UI / shell 边界，不改变 `FlowsheetDocument` 的求解语义
 
+截至 2026-05-23，首版 demo 前硬化期已经结束。下一阶段允许在上述边界内推进受控画布能力：selected stream 受控重连、单元直接拖动但只写 layout sidecar、sidecar 级 viewport 记忆，以及更清晰的 suggestion / 诊断可见性。它们必须先补正式 command / validation / presentation 边界，或明确为 shell-local sidecar 状态；仍不得进入自由连线编辑器、自动布线系统、完整拖拽布局编辑器或复杂视图持久化。
+
 ## 核心原则
 
 ### 单一真相源
@@ -402,15 +404,16 @@ pub struct GhostElement {
 1. `Planar` 继续是默认编辑视图，`Perspective` 仍只是后续增强展示预留。
 2. MVP 单元放置、对象选择、suggestion focus / accept / reject、离散 layout nudge 都应通过正式 command surface 或 shell-local UI state 进入，不保留长期并行的 widget 私有状态改写分支。
 3. suggestion 转成正式文档命令后的实际文档变更才进入 `CommandHistory`；suggestion focus、reject、viewport、面板切换和 hover 不进入文档历史。
-4. 受控流股恢复动作可进入 `CommandHistory`：断开连接保留流股规格，删除流股会先解除材料端口绑定；二者都不得扩展成任意连线重编辑器。
-5. Layout sidecar 只保存 shell / layout 相关状态；缺少 sidecar 时可以用 transient grid slot pin 出初始位置，但必须在 presentation 中保持可解释，不反向污染 flowsheet 语义。
-6. viewport 初始居中 / fit-to-content 已落地；短线段中间流股标签已按空间不足时隐藏的策略完成第一轮收口。后续若继续优化，只处理真实 demo blocker，不扩自由拉线、自动布线、完整拖拽布局编辑器或复杂视图持久化。
+4. 受控流股恢复动作可进入 `CommandHistory`：断开连接保留流股规格，删除流股会先解除材料端口绑定。下一阶段可设计 selected stream 受控重连，但必须显式处理端口合法性、已有绑定冲突、失败恢复和 undo；不得扩展成任意自由拉线编辑器。
+5. Layout sidecar 只保存 shell / layout 相关状态；缺少 sidecar 时可以用 transient grid slot pin 出初始位置，但必须在 presentation 中保持可解释，不反向污染 flowsheet 语义。下一阶段允许从离散 nudge 放宽到直接拖动单元位置，仍只写 sidecar，不写 `FlowsheetDocument`、不递增 revision、不进入 `CommandHistory`。
+6. viewport 初始居中 / fit-to-content 已落地；下一阶段允许 sidecar 或 shell-local 级 viewport 记忆，但不得把 viewport 混入项目语义、求解输入或文档历史。短线段标签后续若继续优化，应作为 Canvas presentation 专题处理，不引入自动布线。
 
 ## 当前仍待后续细化的问题
 
 1. `Energy` / `Signal` 在核心语义未接通前，是否允许先以纯 UI 占位对象存在
 2. `Perspective` 视图是否需要单独的深度排序策略和遮挡规则
-3. suggestion 是否需要批量接受，还是严格先从单条接受开始
-4. `Tab` 接受是否需要和属性面板焦点、文本输入焦点做更细的快捷键竞争规则
-5. `RadishMind` suggestion schema 是否与本地 `LocalRules` 输出完全同构，还是允许额外解释字段
-6. 短线段流股标签当前按空间不足时隐藏处理；后续是否需要更复杂的避让、缩放阈值或多标签排布，应等待真实 smoke 继续暴露 blocker 后再专题设计
+3. selected stream 受控重连的 command / validation / undo 语义如何设计，才不会滑向自由连线编辑器
+4. suggestion 是否需要批量接受，还是严格先从单条接受开始
+5. `Tab` 接受是否需要和属性面板焦点、文本输入焦点做更细的快捷键竞争规则
+6. `RadishMind` suggestion schema 是否与本地 `LocalRules` 输出完全同构，还是允许额外解释字段
+7. 短线段流股标签当前按空间不足时隐藏处理；后续是否需要更复杂的避让、缩放阈值或多标签排布，应作为 presentation 专题设计，不引入自动布线
