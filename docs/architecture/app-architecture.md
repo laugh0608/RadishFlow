@@ -704,7 +704,7 @@ pub struct StepSnapshot {
 - 草稿值不立即写回 `FlowsheetDocument`
 - 当发生 `Enter`、失焦、点击应用等语义提交时，才生成命令并写回文档
 - 写回文档后再决定是否触发结构检查与自动求解
-- Stream Inspector 当前通过 `SetStreamSpecification(s)` 写回流股规格；Unit Inspector 当前只暴露 MVP 高频单元的首批关键参数，`Heater / Cooler` 写回 `outlet_temperature_k`，`Valve` 写回 `outlet_pressure_pa`，并通过 `SetUnitParameter` 同步对应 outlet stream 模板
+- Unit Inspector 只暴露关键参数：`Heater / Cooler` 写回 `outlet_temperature_k`，`Valve` 与 `Flash Drum` 写回 `outlet_pressure_pa`，并通过 `SetUnitParameter` 同步出口模板；Flash Drum 同步两出口模板并作为 TP Flash pressure 使用
 - Unit Inspector 参数字段必须携带 SI 单位和约束 presentation；无效草稿不写文档/历史/模板。已入文档的无效参数由 `solver.step.parameter` 等诊断暴露，并携带 unit / port / stream context
 
 采用这个方案的原因：

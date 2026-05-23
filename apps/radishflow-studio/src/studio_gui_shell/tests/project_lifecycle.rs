@@ -138,7 +138,7 @@ fn unit_parameter_edits_save_reopen_and_rerun_official_examples() {
             draft_key: "unit:heater-1:outlet_temperature_k",
             raw_value: "361.25",
             expected_value: 361.25,
-            outlet_stream_id: "stream-heated",
+            outlet_stream_ids: &["stream-heated"],
             field: UnitParameterShellField::OutletTemperatureK,
         },
         UnitParameterShellCase {
@@ -150,7 +150,7 @@ fn unit_parameter_edits_save_reopen_and_rerun_official_examples() {
             draft_key: "unit:cooler-1:outlet_temperature_k",
             raw_value: "302.75",
             expected_value: 302.75,
-            outlet_stream_id: "stream-cooled",
+            outlet_stream_ids: &["stream-cooled"],
             field: UnitParameterShellField::OutletTemperatureK,
         },
         UnitParameterShellCase {
@@ -162,7 +162,19 @@ fn unit_parameter_edits_save_reopen_and_rerun_official_examples() {
             draft_key: "unit:valve-1:outlet_pressure_pa",
             raw_value: "640000",
             expected_value: 640_000.0,
-            outlet_stream_id: "stream-throttled",
+            outlet_stream_ids: &["stream-throttled"],
+            field: UnitParameterShellField::OutletPressurePa,
+        },
+        UnitParameterShellCase {
+            name: "flash",
+            project_json: include_str!(
+                "../../../../../examples/flowsheets/feed-heater-flash-binary-hydrocarbon.rfproj.json"
+            ),
+            unit_id: "flash-1",
+            draft_key: "unit:flash-1:outlet_pressure_pa",
+            raw_value: "680000",
+            expected_value: 680_000.0,
+            outlet_stream_ids: &["stream-liquid", "stream-vapor"],
             field: UnitParameterShellField::OutletPressurePa,
         },
     ];
@@ -217,21 +229,29 @@ fn unit_parameter_edits_save_reopen_and_rerun_official_examples() {
             "{} edited project should still converge after reopen",
             case.name
         );
-        let outlet = rerun
+        let solve_snapshot = rerun
             .runtime
             .latest_solve_snapshot
             .as_ref()
-            .unwrap_or_else(|| panic!("expected {} solve snapshot", case.name))
-            .streams
-            .iter()
-            .find(|stream| stream.stream_id == case.outlet_stream_id)
-            .unwrap_or_else(|| panic!("expected {} outlet stream result", case.name));
-        match case.field {
-            UnitParameterShellField::OutletTemperatureK => {
-                assert_eq!(outlet.temperature_k, case.expected_value, "{}", case.name);
-            }
-            UnitParameterShellField::OutletPressurePa => {
-                assert_eq!(outlet.pressure_pa, case.expected_value, "{}", case.name);
+            .unwrap_or_else(|| panic!("expected {} solve snapshot", case.name));
+        for outlet_stream_id in case.outlet_stream_ids {
+            let outlet = solve_snapshot
+                .streams
+                .iter()
+                .find(|stream| stream.stream_id == *outlet_stream_id)
+                .unwrap_or_else(|| {
+                    panic!(
+                        "expected {} outlet stream result {outlet_stream_id}",
+                        case.name
+                    )
+                });
+            match case.field {
+                UnitParameterShellField::OutletTemperatureK => {
+                    assert_eq!(outlet.temperature_k, case.expected_value, "{}", case.name);
+                }
+                UnitParameterShellField::OutletPressurePa => {
+                    assert_eq!(outlet.pressure_pa, case.expected_value, "{}", case.name);
+                }
             }
         }
 
@@ -247,7 +267,7 @@ struct UnitParameterShellCase {
     draft_key: &'static str,
     raw_value: &'static str,
     expected_value: f64,
-    outlet_stream_id: &'static str,
+    outlet_stream_ids: &'static [&'static str],
     field: UnitParameterShellField,
 }
 
@@ -295,18 +315,25 @@ fn assert_saved_unit_parameter(project: &StoredProjectFile, case: UnitParameterS
 }
 
 fn assert_saved_outlet_template(project: &StoredProjectFile, case: UnitParameterShellCase) {
-    let stream = project
-        .document
-        .flowsheet
-        .streams
-        .get(&StreamId::new(case.outlet_stream_id))
-        .unwrap_or_else(|| panic!("expected {} outlet stream template", case.name));
-    match case.field {
-        UnitParameterShellField::OutletTemperatureK => {
-            assert_eq!(stream.temperature_k, case.expected_value, "{}", case.name);
-        }
-        UnitParameterShellField::OutletPressurePa => {
-            assert_eq!(stream.pressure_pa, case.expected_value, "{}", case.name);
+    for outlet_stream_id in case.outlet_stream_ids {
+        let stream = project
+            .document
+            .flowsheet
+            .streams
+            .get(&StreamId::new(*outlet_stream_id))
+            .unwrap_or_else(|| {
+                panic!(
+                    "expected {} outlet stream template {outlet_stream_id}",
+                    case.name
+                )
+            });
+        match case.field {
+            UnitParameterShellField::OutletTemperatureK => {
+                assert_eq!(stream.temperature_k, case.expected_value, "{}", case.name);
+            }
+            UnitParameterShellField::OutletPressurePa => {
+                assert_eq!(stream.pressure_pa, case.expected_value, "{}", case.name);
+            }
         }
     }
 }

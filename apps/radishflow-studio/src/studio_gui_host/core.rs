@@ -787,6 +787,15 @@ fn unit_property_fields(
         )
         .into_iter()
         .collect(),
+        "flash_drum" => unit_number_property_field(
+            flowsheet,
+            unit,
+            drafts,
+            rf_ui::UnitInspectorDraftField::OutletPressurePa,
+            "Flash pressure (Pa)",
+        )
+        .into_iter()
+        .collect(),
         _ => Vec::new(),
     }
 }
@@ -1123,17 +1132,16 @@ fn unit_parameter_constraint_text(
             "SI unit: K. Enter a positive finite outlet temperature; the committed value is used by the solver and synced to the outlet stream template.".to_string()
         }
         rf_ui::UnitInspectorDraftField::OutletPressurePa => {
-            let inlet_limit = if unit.kind.as_str() == "valve" {
-                connected_inlet_stream(flowsheet, unit).map(|stream| {
+            if unit.kind.as_str() == "valve" {
+                let inlet_limit = connected_inlet_stream(flowsheet, unit).map(|stream| {
                     format!(" Current inlet pressure limit: {:.0} Pa.", stream.pressure_pa)
-                })
-            } else {
-                None
-            };
-            format!(
-                "SI unit: Pa. Enter a positive finite outlet absolute pressure; Valve outlet pressure cannot exceed the connected inlet pressure.{}",
-                inlet_limit.unwrap_or_default()
-            )
+                });
+                return format!(
+                    "SI unit: Pa. Enter a positive finite outlet absolute pressure; Valve outlet pressure cannot exceed the connected inlet pressure.{}",
+                    inlet_limit.unwrap_or_default()
+                );
+            }
+            "SI unit: Pa. Enter a positive finite flash outlet pressure; the committed value is used by the solver and synced to the Flash Drum liquid/vapor outlet stream templates.".to_string()
         }
     }
 }

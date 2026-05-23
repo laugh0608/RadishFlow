@@ -30,7 +30,7 @@
 - 在当前 `SolveSnapshot` 内切换 stream-centric / unit-centric / comparison 三类结果审阅面
 - 通过 `检查`、`诊断目标`、结果选择项和命令入口在流股、单元、步骤和当前检查器之间定位同一份结果
 - 在流股检查器中编辑流股基础字段与组成草稿，并显式提交、归一化或丢弃
-- 在单元检查器中编辑首批关键单元参数：`Heater / Cooler` 的 outlet temperature 和 `Valve` 的 outlet pressure
+- 在单元检查器中编辑首批关键单元参数：`Heater / Cooler` 的 outlet temperature、`Valve` 的 outlet pressure 和 `Flash Drum` 的 flash pressure
 - 选中物料流股后，可通过 Canvas / Inspector 的 `Disconnect stream` 解除端口绑定并保留流股规格，或通过 `Delete stream` 解除绑定后删除错误流股
 - 执行基础 `undo / redo`
 - 保存当前项目，或通过顶部 `另存为...` / 未命名项目首次 `保存` 到新路径
@@ -162,7 +162,7 @@ cargo run -p radishflow-studio
 4. 使用 Canvas 上的 `Connect stream` / `连接流股` 或 `Create stream` / `创建流股` suggestion 补齐端口绑定和必要 outlet stream。`Heater / Cooler / Valve`、`Mixer` 和 `Flash Drum` 的 outlet stream 建议会等必要 inlet 绑定后才出现。
 5. 在左侧 `项目` 或 Canvas 对象列表中选择 stream / unit，右侧 `检查器` 会切到对应对象。
 6. 在流股检查器中编辑 `T / P / F` 和组成草稿；字段提交、全部应用、组成归一化都是显式动作。
-7. 选中 `Heater / Cooler / Valve` 时，可在单元检查器中编辑已暴露的 outlet temperature 或 outlet pressure 字段；字段会显示 SI 单位和约束提示，提交后写回项目参数，并同步对应 outlet stream 模板。
+7. 选中 `Heater / Cooler / Valve / Flash Drum` 时，可在单元检查器中编辑已暴露的 outlet temperature、outlet pressure 或 flash pressure 字段；字段会显示 SI 单位和约束提示，提交后写回项目参数，并同步对应 outlet stream 模板。
 8. 点击顶部 `运行`，结果只从最新 `SolveSnapshot` 展示到右侧 `结果` 和底部 `结果表`。
 
 当前连接仍通过本地 suggestion 和正式 `DocumentCommand` 完成，不是自由拉线编辑器；单元参数编辑也仍限制在上述 MVP 已暴露字段，不等同于完整单元参数表。
@@ -173,8 +173,9 @@ cargo run -p radishflow-studio
 
 - `Heater / Cooler`：`outlet temperature`，单位 K
 - `Valve`：`outlet pressure`，单位 Pa
+- `Flash Drum`：`flash pressure`，单位 Pa；提交后同步 liquid / vapor 两个出口流股模板，并作为 TP Flash pressure 参与求解
 
-`Valve` 的 outlet pressure 若高于已连接 inlet pressure，会在单元检查器草稿态直接标记为无效，保持草稿、不写回项目文档，也不会同步 outlet stream 模板。若旧项目或外部编辑已经把越界参数写入文档，运行会产生 `solver.step.parameter` 诊断，并把 failure detail、端口 attention 和 recovery action 指向相关 unit / port / stream。
+`Valve` 的 outlet pressure 若高于已连接 inlet pressure，会在单元检查器草稿态直接标记为无效，保持草稿、不写回项目文档，也不会同步 outlet stream 模板。Flash Drum 的 flash pressure 当前只要求正有限 Pa 值，不施加 inlet pressure 上限。若旧项目或外部编辑已经把越界参数写入文档，运行会产生 `solver.step.parameter` 诊断，并把 failure detail、端口 attention 和 recovery action 指向相关 unit / port / stream。
 
 连接类失败同样会尽量携带可修复目标：例如缺失 upstream source、未绑定 outlet port、cycle、自环、坏 stream 引用、重复 source / sink 或 orphan stream。Run Panel 中的 recovery action 可能只是聚焦相关 unit / port / stream，也可能执行明确的局部修复动作；按钮文案应区分这两类行为。
 

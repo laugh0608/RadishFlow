@@ -693,13 +693,30 @@ fn validate_step_parameters(
     inputs: &UnitOperationInputs,
     consumed_stream_ids: &[StreamId],
 ) -> RfResult<()> {
+    let Some(outlet_pressure_pa) = unit.parameters.outlet_pressure_pa else {
+        return Ok(());
+    };
+
+    if (unit.kind == VALVE_KIND || unit.kind == FLASH_DRUM_KIND)
+        && (!outlet_pressure_pa.is_finite() || outlet_pressure_pa <= 0.0)
+    {
+        let related_stream_ids = unit_parameter_related_stream_ids(unit, consumed_stream_ids);
+        return Err(solver_step_invalid_input_with_context(
+            step_number,
+            unit,
+            SolverDiagnosticCode::StepParameter,
+            format!(
+                "outlet_pressure_pa `{outlet_pressure_pa}` Pa must be a positive finite pressure"
+            ),
+            related_stream_ids,
+            unit_parameter_related_port_targets(unit),
+        ));
+    }
+
     if unit.kind != VALVE_KIND {
         return Ok(());
     }
 
-    let Some(outlet_pressure_pa) = unit.parameters.outlet_pressure_pa else {
-        return Ok(());
-    };
     let Some(inlet) = inputs.stream(HEATER_COOLER_INLET_PORT) else {
         return Ok(());
     };
@@ -726,6 +743,31 @@ fn validate_step_parameters(
             DiagnosticPortTarget::new(unit.id.clone(), HEATER_COOLER_INLET_PORT.to_string()),
         ],
     ))
+}
+
+fn unit_parameter_related_stream_ids(
+    unit: &UnitNode,
+    consumed_stream_ids: &[StreamId],
+) -> Vec<StreamId> {
+    let mut related_stream_ids = consumed_stream_ids.to_vec();
+    for port in unit
+        .ports
+        .iter()
+        .filter(|port| port.direction == rf_types::PortDirection::Outlet)
+    {
+        if let Some(stream_id) = &port.stream_id {
+            related_stream_ids.push(stream_id.clone());
+        }
+    }
+    dedupe_stream_ids(related_stream_ids)
+}
+
+fn unit_parameter_related_port_targets(unit: &UnitNode) -> Vec<DiagnosticPortTarget> {
+    unit.ports
+        .iter()
+        .filter(|port| port.direction == rf_types::PortDirection::Outlet)
+        .map(|port| DiagnosticPortTarget::new(unit.id.clone(), port.name.clone()))
+        .collect()
 }
 
 fn stream_ids(streams: &[MaterialStreamState]) -> Vec<StreamId> {
@@ -796,7 +838,11 @@ fn instantiate_operation(
         FLASH_DRUM_KIND => {
             let liquid = stream_target_for_port(unit, FLASH_DRUM_LIQUID_PORT, flowsheet)?;
             let vapor = stream_target_for_port(unit, FLASH_DRUM_VAPOR_PORT, flowsheet)?;
-            Ok(Box::new(FlashDrum::new(liquid, vapor)))
+            let mut operation = FlashDrum::new(liquid, vapor);
+            if let Some(pressure_pa) = unit.parameters.outlet_pressure_pa {
+                operation = operation.with_outlet_pressure_pa(pressure_pa);
+            }
+            Ok(Box::new(operation))
         }
         _ => Err(RfError::invalid_input(format!(
             "{} uses unsupported solver kind `{}`",

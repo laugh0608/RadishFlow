@@ -1116,6 +1116,42 @@ fn sequential_solver_uses_valve_unit_outlet_pressure_parameter() {
 }
 
 #[test]
+fn sequential_solver_uses_flash_drum_unit_outlet_pressure_parameter() {
+    let provider = build_provider();
+    let flash_solver = PlaceholderTpFlashSolver;
+    let services = SolverServices {
+        thermo: &provider,
+        flash_solver: &flash_solver,
+    };
+    let mut flowsheet = build_feed_heater_flash_flowsheet();
+    flowsheet
+        .units
+        .get_mut(&UnitId::new("flash-1"))
+        .expect("expected flash drum")
+        .parameters = UnitOperationParameters {
+        outlet_pressure_pa: Some(88_000.0),
+        ..Default::default()
+    };
+
+    let snapshot = SequentialModularSolver
+        .solve(&services, &flowsheet)
+        .expect("expected solve snapshot");
+
+    let heated = snapshot
+        .stream(&"stream-heated".into())
+        .expect("expected flash inlet");
+    assert_close(heated.pressure_pa, 95_000.0, 1e-12);
+
+    for stream_id in ["stream-liquid", "stream-vapor"] {
+        let outlet = snapshot
+            .stream(&StreamId::new(stream_id))
+            .unwrap_or_else(|| panic!("expected {stream_id} outlet"));
+        assert_close(outlet.temperature_k, 345.0, 1e-12);
+        assert_close(outlet.pressure_pa, 88_000.0, 1e-12);
+    }
+}
+
+#[test]
 fn sequential_solver_runs_feed_valve_flash_example_project_file() {
     let provider = build_provider();
     let flash_solver = PlaceholderTpFlashSolver;
@@ -1249,6 +1285,55 @@ fn sequential_solver_reports_unit_parameter_context_for_invalid_valve_pressure()
         &[
             DiagnosticPortTarget::new("valve-1", "outlet"),
             DiagnosticPortTarget::new("valve-1", "inlet")
+        ]
+    );
+}
+
+#[test]
+fn sequential_solver_reports_unit_parameter_context_for_invalid_flash_pressure() {
+    let provider = build_provider();
+    let flash_solver = PlaceholderTpFlashSolver;
+    let services = SolverServices {
+        thermo: &provider,
+        flash_solver: &flash_solver,
+    };
+    let mut flowsheet = build_feed_heater_flash_flowsheet();
+    flowsheet
+        .units
+        .get_mut(&"flash-1".into())
+        .expect("expected flash unit")
+        .parameters = UnitOperationParameters {
+        outlet_temperature_k: None,
+        outlet_pressure_pa: Some(0.0),
+    };
+
+    let error = SequentialModularSolver
+        .solve(&services, &flowsheet)
+        .expect_err("expected flash parameter validation failure");
+
+    assert_eq!(
+        error.context().diagnostic_code(),
+        Some("solver.step.parameter")
+    );
+    assert!(error.message().contains("unit parameter validation failed"));
+    assert!(error.message().contains("outlet_pressure_pa `0` Pa"));
+    assert_eq!(
+        error.context().related_unit_ids(),
+        &[UnitId::new("flash-1")]
+    );
+    assert_eq!(
+        error.context().related_stream_ids(),
+        &[
+            StreamId::new("stream-heated"),
+            StreamId::new("stream-liquid"),
+            StreamId::new("stream-vapor")
+        ]
+    );
+    assert_eq!(
+        error.context().related_port_targets(),
+        &[
+            DiagnosticPortTarget::new("flash-1", "liquid"),
+            DiagnosticPortTarget::new("flash-1", "vapor")
         ]
     );
 }

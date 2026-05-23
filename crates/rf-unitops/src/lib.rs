@@ -688,6 +688,7 @@ impl UnitOperation for Valve {
 pub struct FlashDrum {
     liquid_outlet: StreamTarget,
     vapor_outlet: StreamTarget,
+    outlet_pressure_pa: Option<f64>,
 }
 
 impl FlashDrum {
@@ -695,7 +696,13 @@ impl FlashDrum {
         Self {
             liquid_outlet,
             vapor_outlet,
+            outlet_pressure_pa: None,
         }
+    }
+
+    pub fn with_outlet_pressure_pa(mut self, pressure_pa: f64) -> Self {
+        self.outlet_pressure_pa = Some(pressure_pa);
+        self
     }
 }
 
@@ -714,12 +721,21 @@ impl UnitOperation for FlashDrum {
         let thermo = services.require_thermo()?;
         let flash_solver = services.require_flash_solver()?;
         let inlet = inputs.require_stream(FLASH_DRUM_INLET_PORT)?;
+        let flash_pressure_pa = match self.outlet_pressure_pa {
+            Some(pressure_pa) if pressure_pa.is_finite() && pressure_pa > 0.0 => pressure_pa,
+            Some(_) => {
+                return Err(RfError::invalid_input(
+                    "flash drum outlet pressure must be a finite value greater than zero pascal",
+                ));
+            }
+            None => validated_pressure(inlet)?,
+        };
 
         let flash_input = TpFlashInput::new(
             inlet.id.clone(),
             inlet.name.clone(),
             validated_temperature(inlet)?,
-            validated_pressure(inlet)?,
+            flash_pressure_pa,
             validated_total_flow(inlet)?,
             stream_composition_vector(inlet, thermo)?,
         );

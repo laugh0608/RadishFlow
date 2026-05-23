@@ -166,7 +166,7 @@ examples/flowsheets/feed-mixer-flash-binary-hydrocarbon.rfproj.json
 4. 使用 Canvas suggestion 中的 `Connect stream` / `连接流股` 或 `Create stream` / `创建流股` 动作补齐 `source -> sink` 端口绑定和必要 outlet stream。`Heater / Cooler / Valve`、`Mixer` 和 `Flash Drum` 的 outlet stream 建议会等必要 inlet 绑定后才出现。
 5. 从左侧 `项目` 或 Canvas 对象列表选择 stream / unit，右侧 `检查器` 会显示当前对象。
 6. 流股检查器当前可编辑 `name / temperature_k / pressure_pa / total_molar_flow_mol_s` 和已有 flowsheet component catalog 中的组成条目；组成修改需要显式提交、归一化或丢弃。
-7. 单元检查器当前已暴露首批高频参数：Heater / Cooler 的 outlet temperature 与 Valve 的 outlet pressure；字段使用 SI 单位并显示约束提示，Valve outlet pressure 若高于已连接 inlet pressure 会停留在无效草稿态。其余内容仍以端口、关联步骤、关联诊断和最新 `SolveSnapshot` 中的单元结果为主，不等同于完整单元参数表。
+7. 单元检查器当前已暴露首批高频参数：Heater / Cooler 的 outlet temperature、Valve 的 outlet pressure 与 Flash Drum 的 flash pressure；字段使用 SI 单位并显示约束提示，Valve outlet pressure 若高于已连接 inlet pressure 会停留在无效草稿态。其余内容仍以端口、关联步骤、关联诊断和最新 `SolveSnapshot` 中的单元结果为主，不等同于完整单元参数表。
 8. 点击 `运行`，成功后右侧会自动切到 `结果`，底部会自动切到 `结果表`；失败时会切到右侧 `运行` 和底部 `消息`，方便先看诊断。
 
 如果误接了流股，可以选中对应 material stream 后使用右侧检查器或 Canvas 操作区中的 `Disconnect stream` / `Delete stream`。前者解除端口绑定并保留流股规格，后者解除绑定后删除流股；二者都进入 undo/redo 历史。
@@ -181,7 +181,7 @@ examples/flowsheets/feed-mixer-flash-binary-hydrocarbon.rfproj.json
 - 文档态流股组成是否未归一到 1
 - 当前运行环境下是否出现多包可选且未显式指定 package
 - 项目是否被改成了不完整连接或不一致端口绑定
-- Valve outlet pressure 是否高于已连接 inlet pressure；若越界值已存在于项目文档，运行诊断会归类为 `solver.step.parameter`
+- Valve outlet pressure 是否高于已连接 inlet pressure；Flash Drum flash pressure 是否为正有限 Pa 值。若越界值已存在于项目文档，运行诊断会归类为 `solver.step.parameter`
 - 顶部 `运行` 是否处于 disabled 状态，以及 hover 文案给出的原因
 - 启动 Studio 的终端 stderr 是否有 `[radishflow-studio]` 审计线或 GUI panic 提示
 

@@ -233,6 +233,72 @@ fn valve_parameter_document() -> FlowsheetDocument {
     )
 }
 
+fn flash_parameter_document() -> FlowsheetDocument {
+    let mut flowsheet = Flowsheet::new("flash-demo");
+    flowsheet
+        .insert_stream(MaterialStreamState::from_tpzf(
+            "stream-feed",
+            "Feed",
+            345.0,
+            95_000.0,
+            5.0,
+            Default::default(),
+        ))
+        .expect("expected feed stream insert");
+    flowsheet
+        .insert_stream(MaterialStreamState::from_tpzf(
+            "stream-liquid",
+            "Liquid Outlet",
+            345.0,
+            95_000.0,
+            0.0,
+            Default::default(),
+        ))
+        .expect("expected liquid stream insert");
+    flowsheet
+        .insert_stream(MaterialStreamState::from_tpzf(
+            "stream-vapor",
+            "Vapor Outlet",
+            345.0,
+            95_000.0,
+            0.0,
+            Default::default(),
+        ))
+        .expect("expected vapor stream insert");
+    flowsheet
+        .insert_unit(UnitNode::new(
+            "flash-1",
+            "Flash Drum",
+            "flash_drum",
+            vec![
+                UnitPort::new(
+                    "inlet",
+                    PortDirection::Inlet,
+                    PortKind::Material,
+                    Some("stream-feed".into()),
+                ),
+                UnitPort::new(
+                    "liquid",
+                    PortDirection::Outlet,
+                    PortKind::Material,
+                    Some("stream-liquid".into()),
+                ),
+                UnitPort::new(
+                    "vapor",
+                    PortDirection::Outlet,
+                    PortKind::Material,
+                    Some("stream-vapor".into()),
+                ),
+            ],
+        ))
+        .expect("expected flash drum insert");
+
+    FlowsheetDocument::new(
+        flowsheet,
+        DocumentMetadata::new("doc-flash-parameter", "Flash Parameter Demo", timestamp(10)),
+    )
+}
+
 #[test]
 fn updating_unit_inspector_draft_keeps_document_unchanged() {
     let mut app_state = AppState::new(unit_parameter_document());
@@ -309,6 +375,50 @@ fn committing_unit_inspector_draft_sets_parameter_and_syncs_outlet_template() {
         Some(SolvePendingReason::DocumentRevisionAdvanced)
     );
     assert!(app_state.workspace.drafts.fields.is_empty());
+}
+
+#[test]
+fn committing_flash_pressure_parameter_syncs_both_outlet_templates() {
+    let mut app_state = AppState::new(flash_parameter_document());
+    app_state.focus_inspector_target(crate::InspectorTarget::Unit(UnitId::new("flash-1")));
+    app_state
+        .update_unit_inspector_draft(
+            &UnitId::new("flash-1"),
+            crate::UnitInspectorDraftField::OutletPressurePa,
+            "88000",
+        )
+        .expect("expected flash pressure draft update");
+
+    let outcome = app_state
+        .commit_unit_inspector_draft(
+            &UnitId::new("flash-1"),
+            crate::UnitInspectorDraftField::OutletPressurePa,
+            timestamp(42),
+        )
+        .expect("expected flash pressure draft commit")
+        .expect("expected committed flash pressure draft");
+
+    assert_eq!(outcome.revision, 1);
+    assert_eq!(
+        outcome.command,
+        DocumentCommand::SetUnitParameter {
+            unit_id: UnitId::new("flash-1"),
+            parameter: "outlet_pressure_pa".to_string(),
+            value: CommandValue::Number(88_000.0),
+        }
+    );
+    assert_eq!(
+        app_state.workspace.document.flowsheet.units[&UnitId::new("flash-1")]
+            .parameters
+            .outlet_pressure_pa,
+        Some(88_000.0)
+    );
+    for stream_id in ["stream-liquid", "stream-vapor"] {
+        assert_eq!(
+            app_state.workspace.document.flowsheet.streams[&StreamId::new(stream_id)].pressure_pa,
+            88_000.0
+        );
+    }
 }
 
 #[test]

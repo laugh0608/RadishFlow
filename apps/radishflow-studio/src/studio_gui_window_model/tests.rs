@@ -1975,6 +1975,49 @@ fn studio_gui_window_model_surfaces_unit_parameter_constraint_for_invalid_valve_
 }
 
 #[test]
+fn studio_gui_window_model_surfaces_flash_drum_pressure_parameter() {
+    let config = synced_example_config("feed-heater-flash-binary-hydrocarbon.rfproj.json");
+    let mut driver = StudioGuiDriver::new(&config).expect("expected driver");
+    driver
+        .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+        .expect("expected open dispatch");
+
+    let dispatch = driver
+        .dispatch_event(StudioGuiEvent::UiCommandRequested {
+            command_id: "inspector.focus_unit:flash-1".to_string(),
+        })
+        .expect("expected flash focus dispatch");
+    let detail = dispatch
+        .window
+        .runtime
+        .active_inspector_detail
+        .expect("expected active flash inspector detail");
+    let field = detail
+        .property_fields
+        .iter()
+        .find(|field| field.key == "unit:flash-1:outlet_pressure_pa")
+        .expect("expected flash pressure field");
+
+    assert_eq!(field.label, "Flash pressure (Pa)");
+    assert_eq!(field.value_kind_label, "Number");
+    assert_eq!(field.status_label, "Synced");
+    assert_eq!(
+        field.draft_update_command_id,
+        "inspector.update_stream_draft:unit:flash-1:outlet_pressure_pa"
+    );
+    assert!(field.commit_command_id.is_none());
+    assert!(
+        field
+            .constraint_text
+            .as_deref()
+            .is_some_and(|text| text.contains("SI unit: Pa")
+                && text.contains("positive finite flash outlet pressure")
+                && text.contains("liquid/vapor outlet stream templates")
+                && !text.contains("cannot exceed the connected inlet pressure"))
+    );
+}
+
+#[test]
 fn studio_gui_window_model_surfaces_official_two_phase_flash_outlet_enthalpy_in_runtime_snapshot() {
     let config = synced_example_config("feed-cooler-flash-binary-hydrocarbon.rfproj.json");
     let mut driver = StudioGuiDriver::new(&config).expect("expected driver");

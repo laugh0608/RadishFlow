@@ -274,7 +274,9 @@ fn unit_inspector_draft_fields(unit: &UnitNode) -> Vec<UnitInspectorDraftField> 
         rf_unitops::HEATER_KIND | rf_unitops::COOLER_KIND => {
             vec![UnitInspectorDraftField::OutletTemperatureK]
         }
-        rf_unitops::VALVE_KIND => vec![UnitInspectorDraftField::OutletPressurePa],
+        rf_unitops::VALVE_KIND | rf_unitops::FLASH_DRUM_KIND => {
+            vec![UnitInspectorDraftField::OutletPressurePa]
+        }
         _ => Vec::new(),
     }
 }
@@ -285,7 +287,7 @@ fn apply_unit_parameter_value(
     field: &UnitInspectorDraftField,
     value: &CommandValue,
 ) -> RfResult<()> {
-    let outlet_stream_id = {
+    let outlet_stream_ids = {
         let unit = flowsheet
             .units
             .get(unit_id)
@@ -298,7 +300,7 @@ fn apply_unit_parameter_value(
                 field.command_parameter()
             )));
         }
-        outlet_stream_id(unit).cloned()
+        outlet_stream_ids(unit)
     };
 
     let CommandValue::Number(value) = value else {
@@ -331,7 +333,7 @@ fn apply_unit_parameter_value(
         }
     }
 
-    if let Some(stream_id) = outlet_stream_id {
+    for stream_id in outlet_stream_ids {
         if let Some(stream) = flowsheet.streams.get_mut(&stream_id) {
             match field {
                 UnitInspectorDraftField::OutletTemperatureK => {
@@ -384,6 +386,14 @@ fn outlet_stream<'a>(flowsheet: &'a Flowsheet, unit: &UnitNode) -> Option<&'a Ma
     outlet_stream_id(unit).and_then(|stream_id| flowsheet.streams.get(stream_id))
 }
 
+fn outlet_stream_ids(unit: &UnitNode) -> Vec<StreamId> {
+    unit.ports
+        .iter()
+        .filter(|port| port.direction == PortDirection::Outlet && port.kind == PortKind::Material)
+        .filter_map(|port| port.stream_id.clone())
+        .collect()
+}
+
 fn outlet_stream_id(unit: &UnitNode) -> Option<&StreamId> {
     unit.ports
         .iter()
@@ -396,6 +406,7 @@ fn default_unit_parameter_value(unit: &UnitNode, field: &UnitInspectorDraftField
         (rf_unitops::HEATER_KIND, UnitInspectorDraftField::OutletTemperatureK) => Some(345.0),
         (rf_unitops::COOLER_KIND, UnitInspectorDraftField::OutletTemperatureK) => Some(285.0),
         (rf_unitops::VALVE_KIND, UnitInspectorDraftField::OutletPressurePa) => Some(90_000.0),
+        (rf_unitops::FLASH_DRUM_KIND, UnitInspectorDraftField::OutletPressurePa) => Some(101_325.0),
         _ => None,
     }
 }
