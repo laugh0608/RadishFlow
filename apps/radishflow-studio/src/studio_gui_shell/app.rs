@@ -48,6 +48,7 @@ impl ReadyAppState {
             self.project_open.pending_confirmation = None;
             self.project_open.pending_blank_project_confirmation = true;
             self.project_open.pending_save_as_overwrite = None;
+            self.project_open.pending_close_window_confirmation = None;
             self.project_open.notice = Some(ProjectOpenNotice {
                 level: ProjectOpenNoticeLevel::Warning,
                 title: unsaved_changes_notice_title(self.locale).to_string(),
@@ -97,6 +98,7 @@ impl ReadyAppState {
                 self.project_open.pending_confirmation = None;
                 self.project_open.pending_blank_project_confirmation = false;
                 self.project_open.pending_save_as_overwrite = None;
+                self.project_open.pending_close_window_confirmation = None;
                 self.project_open.notice = Some(ProjectOpenNotice {
                     level: ProjectOpenNoticeLevel::Info,
                     title: "Blank project created".to_string(),
@@ -330,6 +332,7 @@ impl ReadyAppState {
             });
             self.project_open.pending_blank_project_confirmation = false;
             self.project_open.pending_save_as_overwrite = None;
+            self.project_open.pending_close_window_confirmation = None;
             self.project_open.notice = Some(ProjectOpenNotice {
                 level: ProjectOpenNoticeLevel::Warning,
                 title: unsaved_changes_notice_title(self.locale).to_string(),
@@ -384,6 +387,7 @@ impl ReadyAppState {
                 self.project_open.pending_confirmation = None;
                 self.project_open.pending_blank_project_confirmation = false;
                 self.project_open.pending_save_as_overwrite = None;
+                self.project_open.pending_close_window_confirmation = None;
                 self.project_open.notice =
                     Some(recent_projects_notice.unwrap_or(ProjectOpenNotice {
                         level: ProjectOpenNoticeLevel::Info,
@@ -1193,6 +1197,74 @@ impl ReadyAppState {
             return true;
         };
 
+        if self
+            .platform_host
+            .snapshot()
+            .runtime
+            .workspace_document
+            .has_unsaved_changes
+        {
+            self.request_close_window_confirmation(window_id);
+            return false;
+        }
+
+        self.close_window_without_confirmation(window_id)
+    }
+
+    fn request_close_window_confirmation(&mut self, window_id: StudioWindowHostId) {
+        self.project_open.pending_confirmation = None;
+        self.project_open.pending_blank_project_confirmation = false;
+        self.project_open.pending_save_as_overwrite = None;
+        self.project_open.pending_close_window_confirmation = Some(window_id);
+        self.project_open.notice = Some(ProjectOpenNotice {
+            level: ProjectOpenNoticeLevel::Warning,
+            title: unsaved_changes_notice_title(self.locale).to_string(),
+            detail: close_workspace_discard_notice_detail(self.locale),
+        });
+        self.platform_host
+            .record_activity_line("close blocked by unsaved workspace changes".to_string());
+    }
+
+    pub(super) fn save_pending_close_window(&mut self) -> bool {
+        if self
+            .project_open
+            .pending_close_window_confirmation
+            .is_none()
+        {
+            return false;
+        }
+
+        self.save_project();
+        if self
+            .platform_host
+            .snapshot()
+            .runtime
+            .workspace_document
+            .has_unsaved_changes
+        {
+            return false;
+        }
+
+        self.confirm_pending_close_window()
+    }
+
+    pub(super) fn confirm_pending_close_window(&mut self) -> bool {
+        let Some(window_id) = self.project_open.pending_close_window_confirmation.take() else {
+            return false;
+        };
+        self.close_window_without_confirmation(window_id)
+    }
+
+    pub(super) fn cancel_pending_close_window(&mut self) {
+        self.project_open.pending_close_window_confirmation = None;
+        self.project_open.notice = Some(ProjectOpenNotice {
+            level: ProjectOpenNoticeLevel::Info,
+            title: close_workspace_canceled_notice_title(self.locale).to_string(),
+            detail: current_workspace_remains_open_notice_detail(self.locale).to_string(),
+        });
+    }
+
+    fn close_window_without_confirmation(&mut self, window_id: StudioWindowHostId) -> bool {
         self.cancel_drag_session(Some(window_id));
         self.dispatch_event(StudioGuiEvent::CloseWindowRequested { window_id });
         self.logical_window_count() == 0
@@ -1377,10 +1449,29 @@ fn create_blank_project_discard_notice_detail(locale: StudioShellLocale) -> Stri
     }
 }
 
+fn close_workspace_discard_notice_detail(locale: StudioShellLocale) -> String {
+    match locale {
+        StudioShellLocale::En => {
+            "Closing RadishFlow Studio will discard changes after the last saved revision."
+                .to_string()
+        }
+        StudioShellLocale::ZhCn => {
+            "关闭 RadishFlow Studio 会放弃上次保存修订之后的更改。".to_string()
+        }
+    }
+}
+
 fn blank_project_canceled_notice_title(locale: StudioShellLocale) -> &'static str {
     match locale {
         StudioShellLocale::En => "Blank project canceled",
         StudioShellLocale::ZhCn => "已取消新建项目",
+    }
+}
+
+fn close_workspace_canceled_notice_title(locale: StudioShellLocale) -> &'static str {
+    match locale {
+        StudioShellLocale::En => "Close canceled",
+        StudioShellLocale::ZhCn => "已取消关闭",
     }
 }
 

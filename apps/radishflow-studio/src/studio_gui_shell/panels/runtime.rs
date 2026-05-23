@@ -674,6 +674,34 @@ impl ReadyAppState {
                     }
                 });
             }
+            if self
+                .project_open
+                .pending_close_window_confirmation
+                .is_some()
+            {
+                ui.horizontal_wrapped(|ui| {
+                    if ui
+                        .button(self.locale.text(ShellText::SaveAndCloseProject))
+                        .clicked()
+                        && self.save_pending_close_window()
+                    {
+                        ui.ctx().send_viewport_cmd(egui::ViewportCommand::Close);
+                    }
+                    if ui
+                        .button(self.locale.text(ShellText::DiscardAndCloseProject))
+                        .clicked()
+                        && self.confirm_pending_close_window()
+                    {
+                        ui.ctx().send_viewport_cmd(egui::ViewportCommand::Close);
+                    }
+                    if ui
+                        .button(self.locale.text(ShellText::CancelCloseProject))
+                        .clicked()
+                    {
+                        self.cancel_pending_close_window();
+                    }
+                });
+            }
             if self.project_open.pending_blank_project_confirmation {
                 ui.horizontal_wrapped(|ui| {
                     if ui

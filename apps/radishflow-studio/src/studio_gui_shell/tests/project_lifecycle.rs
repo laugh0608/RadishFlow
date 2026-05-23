@@ -671,6 +671,127 @@ fn cancel_pending_blank_project_keeps_dirty_workspace_active() {
 }
 
 #[test]
+fn closing_dirty_workspace_requires_explicit_confirmation() {
+    let (config, project_path) = flash_drum_local_rules_synced_config();
+    let mut app = ready_app_state(&config);
+
+    app.dispatch_ui_command("canvas.accept_focused");
+    let dirty_window = app.platform_host.snapshot().window_model();
+    assert!(dirty_window.runtime.workspace_document.has_unsaved_changes);
+
+    assert!(!app.close_current_window_for_viewport_request());
+
+    let blocked_window = app.platform_host.snapshot().window_model();
+    assert_eq!(
+        blocked_window.runtime.workspace_document.title,
+        dirty_window.runtime.workspace_document.title
+    );
+    assert_eq!(app.logical_window_count(), 1);
+    assert!(app.project_open.pending_close_window_confirmation.is_some());
+    assert_eq!(
+        app.project_open.notice.as_ref().map(|notice| notice.level),
+        Some(ProjectOpenNoticeLevel::Warning)
+    );
+    assert_eq!(
+        app.project_open
+            .notice
+            .as_ref()
+            .map(|notice| notice.title.as_str()),
+        Some("未保存更改")
+    );
+
+    let _ = std::fs::remove_file(project_path);
+}
+
+#[test]
+fn cancel_pending_close_keeps_dirty_workspace_active() {
+    let (config, project_path) = flash_drum_local_rules_synced_config();
+    let mut app = ready_app_state(&config);
+
+    app.dispatch_ui_command("canvas.accept_focused");
+    let dirty_window = app.platform_host.snapshot().window_model();
+    assert!(dirty_window.runtime.workspace_document.has_unsaved_changes);
+    assert!(!app.close_current_window_for_viewport_request());
+
+    app.cancel_pending_close_window();
+
+    let canceled_window = app.platform_host.snapshot().window_model();
+    assert_eq!(
+        canceled_window.runtime.workspace_document.title,
+        dirty_window.runtime.workspace_document.title
+    );
+    assert!(
+        canceled_window
+            .runtime
+            .workspace_document
+            .has_unsaved_changes
+    );
+    assert!(app.project_open.pending_close_window_confirmation.is_none());
+    assert_eq!(
+        app.project_open
+            .notice
+            .as_ref()
+            .map(|notice| notice.title.as_str()),
+        Some("已取消关闭")
+    );
+
+    let _ = std::fs::remove_file(project_path);
+}
+
+#[test]
+fn discard_pending_close_closes_dirty_workspace() {
+    let (config, project_path) = flash_drum_local_rules_synced_config();
+    let mut app = ready_app_state(&config);
+
+    app.dispatch_ui_command("canvas.accept_focused");
+    assert!(
+        app.platform_host
+            .snapshot()
+            .window_model()
+            .runtime
+            .workspace_document
+            .has_unsaved_changes
+    );
+    assert!(!app.close_current_window_for_viewport_request());
+
+    assert!(app.confirm_pending_close_window());
+
+    assert_eq!(app.logical_window_count(), 0);
+    assert!(app.project_open.pending_close_window_confirmation.is_none());
+
+    let _ = std::fs::remove_file(project_path);
+}
+
+#[test]
+fn save_pending_close_writes_existing_dirty_project_before_close() {
+    let (config, project_path) = flash_drum_local_rules_synced_config();
+    let mut app = ready_app_state(&config);
+
+    app.dispatch_ui_command("canvas.accept_focused");
+    assert!(
+        app.platform_host
+            .snapshot()
+            .window_model()
+            .runtime
+            .workspace_document
+            .has_unsaved_changes
+    );
+    assert!(!app.close_current_window_for_viewport_request());
+
+    assert!(app.save_pending_close_window());
+
+    assert_eq!(app.logical_window_count(), 0);
+    assert!(app.project_open.pending_close_window_confirmation.is_none());
+    let saved = read_project_file(&project_path).expect("expected saved project");
+    assert_eq!(
+        stored_unit_port_stream_id(&saved, "flash-1", "vapor"),
+        Some("stream-flash-1-vapor")
+    );
+
+    let _ = std::fs::remove_file(project_path);
+}
+
+#[test]
 fn save_project_as_from_picker_writes_project_and_records_recent_project() {
     let config = synced_workspace_config();
     let preferences_path = test_preferences_path("save-as-picker");

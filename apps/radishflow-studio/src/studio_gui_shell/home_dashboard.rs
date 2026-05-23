@@ -548,6 +548,10 @@ impl ReadyAppState {
         if self.project_open.pending_confirmation.is_none()
             && !self.project_open.pending_blank_project_confirmation
             && self.project_open.pending_save_as_overwrite.is_none()
+            && self
+                .project_open
+                .pending_close_window_confirmation
+                .is_none()
         {
             return;
         }
@@ -579,6 +583,32 @@ impl ReadyAppState {
                     .clicked()
                 {
                     self.cancel_pending_blank_project();
+                }
+            }
+            if self
+                .project_open
+                .pending_close_window_confirmation
+                .is_some()
+            {
+                if ui
+                    .button(self.locale.text(ShellText::SaveAndCloseProject))
+                    .clicked()
+                    && self.save_pending_close_window()
+                {
+                    ui.ctx().send_viewport_cmd(egui::ViewportCommand::Close);
+                }
+                if ui
+                    .button(self.locale.text(ShellText::DiscardAndCloseProject))
+                    .clicked()
+                    && self.confirm_pending_close_window()
+                {
+                    ui.ctx().send_viewport_cmd(egui::ViewportCommand::Close);
+                }
+                if ui
+                    .button(self.locale.text(ShellText::CancelCloseProject))
+                    .clicked()
+                {
+                    self.cancel_pending_close_window();
                 }
             }
             if self.project_open.pending_save_as_overwrite.is_some() {
