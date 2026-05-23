@@ -1,6 +1,6 @@
 # Studio UI Design Guidelines
 
-更新时间：2026-05-21
+更新时间：2026-05-23
 
 ## 用途
 
@@ -24,10 +24,11 @@ RadishFlow Studio 继续走轻量、清晰、工程化的浅色桌面应用风�
 
 ## 参考图启发
 
-UI 参考素材当前保存在 `docs/architecture/assets/studio-ui/`。下表使用从本文档出发的相对路径，便于在 Markdown 预览中直接打开：
+UI 参考素材当前保存在 `docs/architecture/assets/studio-ui/`。下表使用从本文档出发的相对路径，便于在 Markdown 预览中直接打开。2026-05-23 新增的优秀产品灵感参考已单独整理到 `docs/architecture/ui-inspiration-reference.md`，用于后续 UI 专题评审，不作为当前实现可直接照抄的视觉稿。
 
 | 素材 | 路径 | 用途 |
 | --- | --- | --- |
+| 外部优秀产品灵感参考 | [ui-inspiration-reference.md](ui-inspiration-reference.md) | AFFINE、CodexApp、Cloudflare、GitHub、Discourse、1Panel 截图的设计语言提炼，用于后续 UI 专题的视觉、排版和信息密度参考 |
 | 当前 RadishFlow UI | [radishflow-current-workbench-20260516.png](assets/studio-ui/radishflow-current-workbench-20260516.png) | 2026-05-16 当前真实 Studio 截图，用于识别首页 / 工作台重排前的混乱分区和测试痛点 |
 | RadishFlow 工作台概念稿 | [radishflow-workbench-concept.png](assets/studio-ui/radishflow-workbench-concept.png) | 进入项目后的工作台概念稿，状态、SI 单位、单文档标题和结果区关系更符合当前规范 |
 | RadishFlow Home 概念稿 | [radishflow-home-dashboard-concept.png](assets/studio-ui/radishflow-home-dashboard-concept.png) | 启动首页 / 示例页概念稿，展示 Start actions、Recent Cases、Example Cases、Environment 和 Messages 分区 |
@@ -135,6 +136,7 @@ UI 参考素材当前保存在 `docs/architecture/assets/studio-ui/`。下表使
 
 - 优先使用 `pencil` 工具绘制 `.pen` 设计稿，再根据评审后的设计稿开发。
 - 设计稿必须随仓库保存和同步，不能只留在个人本地或聊天记录里。
+- 专题启动时应同时读取 `docs/architecture/ui-inspiration-reference.md`，明确每个设计稿借鉴了哪些设计原则，以及哪些视觉元素不得照抄。
 - 原则上每个明确端点或界面域维护一个独立 `*.pen` 文件，避免把客户端、单元模块、服务端管理和移动端视图混在同一个设计稿里。
 - `.pen` 文件的最终目录和命名在专题启动时确定；在此之前不预先创建空设计稿或锁死拆分粒度。
 - 每次按设计稿实现 UI 时，应同步记录该实现对应的 `.pen` 文件、评审状态和偏离设计稿的原因。
