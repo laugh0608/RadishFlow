@@ -695,6 +695,32 @@ fn gui_host_reconnects_selected_sink_only_stream_from_canvas_command_surface() {
 }
 
 #[test]
+fn gui_host_hides_selected_stream_reconnect_when_unique_target_would_create_cycle() {
+    let (config, project_path) = cycle_reconnect_config();
+    let mut gui_host = StudioGuiHost::new(&config).expect("expected gui host");
+    gui_host.open_window().expect("expected window open");
+    gui_host
+        .dispatch_ui_command("inspector.focus_stream:stream-heated")
+        .expect("expected stream focus dispatch");
+
+    let focused = gui_host.snapshot();
+    let stream_detail = focused
+        .runtime
+        .active_inspector_detail
+        .as_ref()
+        .expect("expected focused stream detail");
+    assert!(
+        !stream_detail
+            .connection_actions
+            .iter()
+            .any(|action| action.command_id == "canvas.reconnect_selected_stream"),
+        "expected cycle-forming unique target to be filtered from inspector reconnect actions"
+    );
+
+    let _ = fs::remove_file(project_path);
+}
+
+#[test]
 fn gui_host_deletes_selected_stream_from_canvas_command_surface() {
     let (config, project_path) = flash_drum_local_rules_config();
     let mut gui_host = StudioGuiHost::new(&config).expect("expected gui host");

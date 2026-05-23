@@ -882,6 +882,79 @@ fn reconnecting_source_only_stream_binds_unique_available_sink_and_is_undoable()
 }
 
 #[test]
+fn reconnecting_source_only_stream_ignores_unique_sink_that_would_create_cycle() {
+    let mut flowsheet = Flowsheet::new("reconnect-cycle");
+    flowsheet
+        .insert_stream(MaterialStreamState::new("stream-feed", "Feed"))
+        .expect("expected feed stream");
+    flowsheet
+        .insert_stream(MaterialStreamState::new("stream-heated", "Heated"))
+        .expect("expected heated stream");
+    flowsheet
+        .insert_unit(UnitNode::new(
+            "valve-1",
+            "Valve",
+            "valve",
+            vec![
+                UnitPort::new("inlet", PortDirection::Inlet, PortKind::Material, None),
+                UnitPort::new(
+                    "outlet",
+                    PortDirection::Outlet,
+                    PortKind::Material,
+                    Some("stream-feed".into()),
+                ),
+            ],
+        ))
+        .expect("expected valve insert");
+    flowsheet
+        .insert_unit(UnitNode::new(
+            "heater-1",
+            "Heater",
+            "heater",
+            vec![
+                UnitPort::new(
+                    "inlet",
+                    PortDirection::Inlet,
+                    PortKind::Material,
+                    Some("stream-feed".into()),
+                ),
+                UnitPort::new(
+                    "outlet",
+                    PortDirection::Outlet,
+                    PortKind::Material,
+                    Some("stream-heated".into()),
+                ),
+            ],
+        ))
+        .expect("expected heater insert");
+    let document = FlowsheetDocument::new(
+        flowsheet,
+        DocumentMetadata::new("doc-reconnect-cycle", "Reconnect Cycle", timestamp(10)),
+    );
+    let stream_id = StreamId::new("stream-heated");
+    let mut app_state = AppState::new(document);
+
+    let result = app_state
+        .reconnect_stream_to_unique_available_endpoint(&stream_id, timestamp(50))
+        .expect("expected reconnect evaluation");
+
+    assert_eq!(result, None);
+    assert_eq!(app_state.workspace.document.revision, 0);
+    assert!(app_state.workspace.command_history.is_empty());
+    assert_eq!(
+        app_state
+            .workspace
+            .document
+            .flowsheet
+            .units
+            .get(&UnitId::new("valve-1"))
+            .and_then(|unit| unit.ports.iter().find(|port| port.name == "inlet"))
+            .and_then(|port| port.stream_id.as_ref()),
+        None
+    );
+}
+
+#[test]
 fn reconnecting_sink_only_stream_binds_unique_available_source_and_is_undoable() {
     let mut document = sample_feed_flash_document();
     let stream_id = StreamId::new("stream-feed");

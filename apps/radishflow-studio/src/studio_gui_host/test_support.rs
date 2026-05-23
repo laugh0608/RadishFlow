@@ -134,6 +134,87 @@ pub(super) fn flash_drum_sink_only_reconnect_config() -> (StudioRuntimeConfig, P
     )
 }
 
+pub(super) fn cycle_reconnect_config() -> (StudioRuntimeConfig, PathBuf) {
+    let timestamp = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("expected current timestamp")
+        .as_nanos();
+    let project_path = std::env::temp_dir().join(format!(
+        "radishflow-gui-host-cycle-reconnect-{timestamp}.rfproj.json"
+    ));
+    let mut flowsheet = rf_model::Flowsheet::new("reconnect-cycle");
+    flowsheet
+        .insert_stream(rf_model::MaterialStreamState::new("stream-feed", "Feed"))
+        .expect("expected feed stream");
+    flowsheet
+        .insert_stream(rf_model::MaterialStreamState::new(
+            "stream-heated",
+            "Heated",
+        ))
+        .expect("expected heated stream");
+    flowsheet
+        .insert_unit(rf_model::UnitNode::new(
+            "valve-1",
+            "Valve",
+            "valve",
+            vec![
+                rf_model::UnitPort::new(
+                    "inlet",
+                    rf_types::PortDirection::Inlet,
+                    rf_types::PortKind::Material,
+                    None,
+                ),
+                rf_model::UnitPort::new(
+                    "outlet",
+                    rf_types::PortDirection::Outlet,
+                    rf_types::PortKind::Material,
+                    Some("stream-feed".into()),
+                ),
+            ],
+        ))
+        .expect("expected valve insert");
+    flowsheet
+        .insert_unit(rf_model::UnitNode::new(
+            "heater-1",
+            "Heater",
+            "heater",
+            vec![
+                rf_model::UnitPort::new(
+                    "inlet",
+                    rf_types::PortDirection::Inlet,
+                    rf_types::PortKind::Material,
+                    Some("stream-feed".into()),
+                ),
+                rf_model::UnitPort::new(
+                    "outlet",
+                    rf_types::PortDirection::Outlet,
+                    rf_types::PortKind::Material,
+                    Some("stream-heated".into()),
+                ),
+            ],
+        ))
+        .expect("expected heater insert");
+    let project = rf_store::StoredProjectFile::new(
+        flowsheet,
+        rf_store::StoredDocumentMetadata::new(
+            "doc-reconnect-cycle",
+            "Reconnect Cycle",
+            SystemTime::UNIX_EPOCH,
+        ),
+    );
+    let project =
+        rf_store::project_file_to_pretty_json(&project).expect("expected project serialization");
+    fs::write(&project_path, project).expect("expected cycle reconnect project");
+
+    (
+        StudioRuntimeConfig {
+            project_path: project_path.clone(),
+            ..lease_expiring_config()
+        },
+        project_path,
+    )
+}
+
 pub(super) fn layout_persistence_config() -> (StudioRuntimeConfig, PathBuf, PathBuf) {
     let timestamp = SystemTime::now()
         .duration_since(UNIX_EPOCH)

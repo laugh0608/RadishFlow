@@ -444,7 +444,16 @@ pub(super) fn apply_reconnect_stream_to_unique_available_endpoint_mutation(
     let (source_port, sink_port) = match (source_ports.as_slice(), sink_ports.as_slice()) {
         ([source], []) => {
             let source_port = source.binding.clone();
-            let available_sinks = available_material_sink_bindings(flowsheet, &source_port.unit_id);
+            let available_sinks = available_material_sink_bindings(flowsheet, &source_port.unit_id)
+                .into_iter()
+                .filter(|sink| {
+                    !would_create_unit_dependency_cycle(
+                        flowsheet,
+                        &source_port.unit_id,
+                        &sink.unit_id,
+                    )
+                })
+                .collect::<Vec<_>>();
             if available_sinks.len() != 1 {
                 return Ok(None);
             }
@@ -453,7 +462,16 @@ pub(super) fn apply_reconnect_stream_to_unique_available_endpoint_mutation(
         ([], [sink]) => {
             let sink_port = sink.binding.clone();
             let available_sources =
-                available_material_source_bindings(flowsheet, &sink_port.unit_id);
+                available_material_source_bindings(flowsheet, &sink_port.unit_id)
+                    .into_iter()
+                    .filter(|source| {
+                        !would_create_unit_dependency_cycle(
+                            flowsheet,
+                            &source.unit_id,
+                            &sink_port.unit_id,
+                        )
+                    })
+                    .collect::<Vec<_>>();
             if available_sources.len() != 1 {
                 return Ok(None);
             }
@@ -729,6 +747,68 @@ fn available_material_source_bindings(
     }
 
     bindings
+}
+
+fn would_create_unit_dependency_cycle(
+    flowsheet: &Flowsheet,
+    source_unit_id: &UnitId,
+    sink_unit_id: &UnitId,
+) -> bool {
+    if source_unit_id == sink_unit_id {
+        return true;
+    }
+
+    let mut source_by_stream = BTreeMap::<StreamId, UnitId>::new();
+    let mut sinks_by_stream = BTreeMap::<StreamId, Vec<UnitId>>::new();
+    for unit in flowsheet.units.values() {
+        for port in &unit.ports {
+            if port.kind != rf_types::PortKind::Material {
+                continue;
+            }
+            let Some(stream_id) = port.stream_id.as_ref() else {
+                continue;
+            };
+            match port.direction {
+                PortDirection::Outlet => {
+                    source_by_stream
+                        .entry(stream_id.clone())
+                        .or_insert_with(|| unit.id.clone());
+                }
+                PortDirection::Inlet => {
+                    sinks_by_stream
+                        .entry(stream_id.clone())
+                        .or_default()
+                        .push(unit.id.clone());
+                }
+            }
+        }
+    }
+
+    let mut downstream_units = BTreeMap::<UnitId, Vec<UnitId>>::new();
+    for (stream_id, source) in source_by_stream {
+        if let Some(sinks) = sinks_by_stream.get(&stream_id) {
+            downstream_units
+                .entry(source)
+                .or_default()
+                .extend(sinks.clone());
+        }
+    }
+
+    let mut stack = vec![sink_unit_id.clone()];
+    let mut visited = BTreeSet::new();
+    while let Some(unit_id) = stack.pop() {
+        if !visited.insert(unit_id.clone()) {
+            continue;
+        }
+        if &unit_id == source_unit_id {
+            return true;
+        }
+        if let Some(children) = downstream_units.get(&unit_id) {
+            stack.extend(children.iter().cloned());
+        }
+    }
+
+    false
 }
 
 pub(super) fn next_available_placeholder_stream_id(

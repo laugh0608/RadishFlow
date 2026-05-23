@@ -671,6 +671,11 @@ fn stream_reconnect_availability(
                             port.kind_label == "material"
                                 && port.direction_label == "inlet"
                                 && port.stream_id.is_none()
+                                && !canvas_would_create_unit_dependency_cycle(
+                                    view,
+                                    &source.unit_id,
+                                    &unit.unit_id,
+                                )
                         })
                         .map(|port| format!("{}:{}", unit.unit_id, port.name))
                 })
@@ -709,6 +714,11 @@ fn stream_reconnect_availability(
                             port.kind_label == "material"
                                 && port.direction_label == "outlet"
                                 && port.stream_id.is_none()
+                                && !canvas_would_create_unit_dependency_cycle(
+                                    view,
+                                    &unit.unit_id,
+                                    &sink.unit_id,
+                                )
                         })
                         .map(|port| format!("{}:{}", unit.unit_id, port.name))
                 })
@@ -742,6 +752,46 @@ fn stream_reconnect_availability(
             reason: "the stream has no visible material endpoint on the canvas".to_string(),
         },
     }
+}
+
+fn canvas_would_create_unit_dependency_cycle(
+    view: &crate::StudioGuiCanvasViewModel,
+    source_unit_id: &str,
+    sink_unit_id: &str,
+) -> bool {
+    if source_unit_id == sink_unit_id {
+        return true;
+    }
+
+    let mut downstream_units = std::collections::BTreeMap::<String, Vec<String>>::new();
+    for stream in &view.stream_lines {
+        let Some(source) = stream.source.as_ref() else {
+            continue;
+        };
+        let Some(sink) = stream.sink.as_ref() else {
+            continue;
+        };
+        downstream_units
+            .entry(source.unit_id.clone())
+            .or_default()
+            .push(sink.unit_id.clone());
+    }
+
+    let mut stack = vec![sink_unit_id.to_string()];
+    let mut visited = std::collections::BTreeSet::new();
+    while let Some(unit_id) = stack.pop() {
+        if !visited.insert(unit_id.clone()) {
+            continue;
+        }
+        if unit_id == source_unit_id {
+            return true;
+        }
+        if let Some(children) = downstream_units.get(&unit_id) {
+            stack.extend(children.iter().cloned());
+        }
+    }
+
+    false
 }
 
 fn endpoint_label(endpoint: &crate::StudioGuiCanvasStreamLineEndpointViewModel) -> String {
@@ -820,6 +870,87 @@ mod tests {
         let project = rf_store::project_file_to_pretty_json(&project)
             .expect("expected project serialization");
         fs::write(&project_path, project).expect("expected sink-only reconnect project");
+
+        (
+            StudioRuntimeConfig {
+                project_path: project_path.clone(),
+                ..lease_expiring_config()
+            },
+            project_path,
+        )
+    }
+
+    fn cycle_reconnect_config() -> (StudioRuntimeConfig, PathBuf) {
+        let timestamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("expected current timestamp")
+            .as_nanos();
+        let project_path = std::env::temp_dir().join(format!(
+            "radishflow-studio-canvas-widget-cycle-reconnect-{timestamp}.rfproj.json"
+        ));
+        let mut flowsheet = rf_model::Flowsheet::new("reconnect-cycle");
+        flowsheet
+            .insert_stream(rf_model::MaterialStreamState::new("stream-feed", "Feed"))
+            .expect("expected feed stream");
+        flowsheet
+            .insert_stream(rf_model::MaterialStreamState::new(
+                "stream-heated",
+                "Heated",
+            ))
+            .expect("expected heated stream");
+        flowsheet
+            .insert_unit(rf_model::UnitNode::new(
+                "valve-1",
+                "Valve",
+                "valve",
+                vec![
+                    rf_model::UnitPort::new(
+                        "inlet",
+                        rf_types::PortDirection::Inlet,
+                        rf_types::PortKind::Material,
+                        None,
+                    ),
+                    rf_model::UnitPort::new(
+                        "outlet",
+                        rf_types::PortDirection::Outlet,
+                        rf_types::PortKind::Material,
+                        Some("stream-feed".into()),
+                    ),
+                ],
+            ))
+            .expect("expected valve insert");
+        flowsheet
+            .insert_unit(rf_model::UnitNode::new(
+                "heater-1",
+                "Heater",
+                "heater",
+                vec![
+                    rf_model::UnitPort::new(
+                        "inlet",
+                        rf_types::PortDirection::Inlet,
+                        rf_types::PortKind::Material,
+                        Some("stream-feed".into()),
+                    ),
+                    rf_model::UnitPort::new(
+                        "outlet",
+                        rf_types::PortDirection::Outlet,
+                        rf_types::PortKind::Material,
+                        Some("stream-heated".into()),
+                    ),
+                ],
+            ))
+            .expect("expected heater insert");
+        let project = rf_store::StoredProjectFile::new(
+            flowsheet,
+            rf_store::StoredDocumentMetadata::new(
+                "doc-reconnect-cycle",
+                "Reconnect Cycle",
+                SystemTime::UNIX_EPOCH,
+            ),
+        );
+        let project = rf_store::project_file_to_pretty_json(&project)
+            .expect("expected project serialization");
+        fs::write(&project_path, project).expect("expected cycle reconnect project");
 
         (
             StudioRuntimeConfig {
@@ -1171,6 +1302,34 @@ mod tests {
             action
                 .detail
                 .contains("only available outlet `heater-1:outlet`")
+        );
+
+        let _ = fs::remove_file(project_path);
+    }
+
+    #[test]
+    fn canvas_widget_disables_reconnect_when_unique_target_would_create_cycle() {
+        let (config, project_path) = cycle_reconnect_config();
+        let mut driver = StudioGuiDriver::new(&config).expect("expected driver");
+        open_window(&mut driver);
+        focus_stream(&mut driver, "stream-heated");
+
+        let widget = driver.canvas_state().widget();
+        let action = widget
+            .action(StudioGuiCanvasActionId::ReconnectSelectedStream)
+            .expect("expected reconnect action");
+
+        assert!(!action.enabled);
+        assert!(
+            action.detail.contains("no available material inlet"),
+            "expected cycle candidate to be filtered from reconnect targets, got {:?}",
+            action
+        );
+        assert_eq!(
+            widget.activate(StudioGuiCanvasActionId::ReconnectSelectedStream),
+            StudioGuiCanvasWidgetEvent::Disabled {
+                action_id: StudioGuiCanvasActionId::ReconnectSelectedStream,
+            }
         );
 
         let _ = fs::remove_file(project_path);

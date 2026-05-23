@@ -826,11 +826,8 @@ fn stream_reconnect_detail(
 
     match (source_count, sink_count) {
         (1, 0) => {
-            let targets = available_material_endpoint_labels(
-                flowsheet,
-                &source_unit_id?,
-                rf_types::PortDirection::Inlet,
-            );
+            let source_unit_id = source_unit_id?;
+            let targets = available_material_reconnect_sink_labels(flowsheet, &source_unit_id);
             (targets.len() == 1).then(|| {
                 format!(
                     "Reconnect `{}` from `{}` to the only available material inlet `{}`.",
@@ -841,11 +838,8 @@ fn stream_reconnect_detail(
             })
         }
         (0, 1) => {
-            let targets = available_material_endpoint_labels(
-                flowsheet,
-                &sink_unit_id?,
-                rf_types::PortDirection::Outlet,
-            );
+            let sink_unit_id = sink_unit_id?;
+            let targets = available_material_reconnect_source_labels(flowsheet, &sink_unit_id);
             (targets.len() == 1).then(|| {
                 format!(
                     "Reconnect `{}` from the only available material outlet `{}` to `{}`.",
@@ -859,26 +853,110 @@ fn stream_reconnect_detail(
     }
 }
 
-fn available_material_endpoint_labels(
+fn available_material_reconnect_sink_labels(
     flowsheet: &rf_model::Flowsheet,
-    excluded_unit_id: &rf_types::UnitId,
-    direction: rf_types::PortDirection,
+    source_unit_id: &rf_types::UnitId,
 ) -> Vec<String> {
     flowsheet
         .units
         .values()
-        .filter(|unit| &unit.id != excluded_unit_id)
+        .filter(|unit| &unit.id != source_unit_id)
         .flat_map(|unit| {
             unit.ports
                 .iter()
                 .filter(move |port| {
                     port.kind == rf_types::PortKind::Material
-                        && port.direction == direction
+                        && port.direction == rf_types::PortDirection::Inlet
                         && port.stream_id.is_none()
+                        && !would_create_unit_dependency_cycle(flowsheet, source_unit_id, &unit.id)
                 })
                 .map(|port| format!("{}:{}", unit.id, port.name))
         })
         .collect()
+}
+
+fn available_material_reconnect_source_labels(
+    flowsheet: &rf_model::Flowsheet,
+    sink_unit_id: &rf_types::UnitId,
+) -> Vec<String> {
+    flowsheet
+        .units
+        .values()
+        .filter(|unit| &unit.id != sink_unit_id)
+        .flat_map(|unit| {
+            unit.ports
+                .iter()
+                .filter(move |port| {
+                    port.kind == rf_types::PortKind::Material
+                        && port.direction == rf_types::PortDirection::Outlet
+                        && port.stream_id.is_none()
+                        && !would_create_unit_dependency_cycle(flowsheet, &unit.id, sink_unit_id)
+                })
+                .map(|port| format!("{}:{}", unit.id, port.name))
+        })
+        .collect()
+}
+
+fn would_create_unit_dependency_cycle(
+    flowsheet: &rf_model::Flowsheet,
+    source_unit_id: &rf_types::UnitId,
+    sink_unit_id: &rf_types::UnitId,
+) -> bool {
+    if source_unit_id == sink_unit_id {
+        return true;
+    }
+
+    let mut source_by_stream = BTreeMap::<rf_types::StreamId, rf_types::UnitId>::new();
+    let mut sinks_by_stream = BTreeMap::<rf_types::StreamId, Vec<rf_types::UnitId>>::new();
+    for unit in flowsheet.units.values() {
+        for port in &unit.ports {
+            if port.kind != rf_types::PortKind::Material {
+                continue;
+            }
+            let Some(stream_id) = port.stream_id.as_ref() else {
+                continue;
+            };
+            match port.direction {
+                rf_types::PortDirection::Outlet => {
+                    source_by_stream
+                        .entry(stream_id.clone())
+                        .or_insert_with(|| unit.id.clone());
+                }
+                rf_types::PortDirection::Inlet => {
+                    sinks_by_stream
+                        .entry(stream_id.clone())
+                        .or_default()
+                        .push(unit.id.clone());
+                }
+            }
+        }
+    }
+
+    let mut downstream_units = BTreeMap::<rf_types::UnitId, Vec<rf_types::UnitId>>::new();
+    for (stream_id, source) in source_by_stream {
+        if let Some(sinks) = sinks_by_stream.get(&stream_id) {
+            downstream_units
+                .entry(source)
+                .or_default()
+                .extend(sinks.clone());
+        }
+    }
+
+    let mut stack = vec![sink_unit_id.clone()];
+    let mut visited = BTreeSet::new();
+    while let Some(unit_id) = stack.pop() {
+        if !visited.insert(unit_id.clone()) {
+            continue;
+        }
+        if &unit_id == source_unit_id {
+            return true;
+        }
+        if let Some(children) = downstream_units.get(&unit_id) {
+            stack.extend(children.iter().cloned());
+        }
+    }
+
+    false
 }
 
 fn unit_property_fields(
