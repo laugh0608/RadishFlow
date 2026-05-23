@@ -378,6 +378,94 @@ fn committing_unit_inspector_draft_sets_parameter_and_syncs_outlet_template() {
 }
 
 #[test]
+fn committing_heater_pressure_parameter_syncs_outlet_template() {
+    let mut app_state = AppState::new(unit_parameter_document());
+    app_state.focus_inspector_target(crate::InspectorTarget::Unit(UnitId::new("heater-1")));
+    app_state
+        .update_unit_inspector_draft(
+            &UnitId::new("heater-1"),
+            crate::UnitInspectorDraftField::OutletPressurePa,
+            "90000",
+        )
+        .expect("expected heater pressure draft update");
+
+    let outcome = app_state
+        .commit_unit_inspector_draft(
+            &UnitId::new("heater-1"),
+            crate::UnitInspectorDraftField::OutletPressurePa,
+            timestamp(42),
+        )
+        .expect("expected heater pressure draft commit")
+        .expect("expected committed heater pressure draft");
+
+    assert_eq!(outcome.revision, 1);
+    assert_eq!(
+        outcome.command,
+        DocumentCommand::SetUnitParameter {
+            unit_id: UnitId::new("heater-1"),
+            parameter: "outlet_pressure_pa".to_string(),
+            value: CommandValue::Number(90_000.0),
+        }
+    );
+    assert_eq!(
+        app_state.workspace.document.flowsheet.units[&UnitId::new("heater-1")]
+            .parameters
+            .outlet_pressure_pa,
+        Some(90_000.0)
+    );
+    assert_eq!(
+        app_state.workspace.document.flowsheet.streams[&StreamId::new("stream-heated")].pressure_pa,
+        90_000.0
+    );
+    assert_eq!(
+        app_state.workspace.solve_session.pending_reason,
+        Some(SolvePendingReason::DocumentRevisionAdvanced)
+    );
+    assert!(app_state.workspace.drafts.fields.is_empty());
+}
+
+#[test]
+fn updating_heater_pressure_above_inlet_marks_draft_invalid() {
+    let mut app_state = AppState::new(unit_parameter_document());
+    app_state.focus_inspector_target(crate::InspectorTarget::Unit(UnitId::new("heater-1")));
+
+    let outcome = app_state
+        .update_unit_inspector_draft(
+            &UnitId::new("heater-1"),
+            crate::UnitInspectorDraftField::OutletPressurePa,
+            "130000",
+        )
+        .expect("expected heater pressure draft update");
+
+    assert_eq!(outcome.key, "unit:heater-1:outlet_pressure_pa");
+    assert!(outcome.is_dirty);
+    assert_eq!(outcome.validation, crate::DraftValidationState::Invalid);
+    assert_eq!(app_state.workspace.document.revision, 0);
+    assert_eq!(
+        app_state.workspace.document.flowsheet.units[&UnitId::new("heater-1")]
+            .parameters
+            .outlet_pressure_pa,
+        None
+    );
+    assert_eq!(
+        app_state.workspace.document.flowsheet.streams[&StreamId::new("stream-heated")].pressure_pa,
+        95_000.0
+    );
+
+    let ignored = app_state
+        .commit_unit_inspector_draft(
+            &UnitId::new("heater-1"),
+            crate::UnitInspectorDraftField::OutletPressurePa,
+            timestamp(42),
+        )
+        .expect("expected invalid commit to be ignored");
+
+    assert_eq!(ignored, None);
+    assert_eq!(app_state.workspace.document.revision, 0);
+    assert!(app_state.workspace.drafts.fields.contains_key(&outcome.key));
+}
+
+#[test]
 fn committing_flash_pressure_parameter_syncs_both_outlet_templates() {
     let mut app_state = AppState::new(flash_parameter_document());
     app_state.focus_inspector_target(crate::InspectorTarget::Unit(UnitId::new("flash-1")));

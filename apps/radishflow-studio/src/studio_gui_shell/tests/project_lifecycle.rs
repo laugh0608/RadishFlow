@@ -142,6 +142,18 @@ fn unit_parameter_edits_save_reopen_and_rerun_official_examples() {
             field: UnitParameterShellField::OutletTemperatureK,
         },
         UnitParameterShellCase {
+            name: "heater-pressure",
+            project_json: include_str!(
+                "../../../../../examples/flowsheets/feed-heater-flash-binary-hydrocarbon.rfproj.json"
+            ),
+            unit_id: "heater-1",
+            draft_key: "unit:heater-1:outlet_pressure_pa",
+            raw_value: "90000",
+            expected_value: 90_000.0,
+            outlet_stream_ids: &["stream-heated"],
+            field: UnitParameterShellField::OutletPressurePa,
+        },
+        UnitParameterShellCase {
             name: "cooler",
             project_json: include_str!(
                 "../../../../../examples/flowsheets/feed-cooler-flash-binary-hydrocarbon.rfproj.json"
@@ -152,6 +164,18 @@ fn unit_parameter_edits_save_reopen_and_rerun_official_examples() {
             expected_value: 302.75,
             outlet_stream_ids: &["stream-cooled"],
             field: UnitParameterShellField::OutletTemperatureK,
+        },
+        UnitParameterShellCase {
+            name: "cooler-pressure",
+            project_json: include_str!(
+                "../../../../../examples/flowsheets/feed-cooler-flash-binary-hydrocarbon.rfproj.json"
+            ),
+            unit_id: "cooler-1",
+            draft_key: "unit:cooler-1:outlet_pressure_pa",
+            raw_value: "640000",
+            expected_value: 640_000.0,
+            outlet_stream_ids: &["stream-cooled"],
+            field: UnitParameterShellField::OutletPressurePa,
         },
         UnitParameterShellCase {
             name: "valve",

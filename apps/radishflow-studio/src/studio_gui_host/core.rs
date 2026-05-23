@@ -887,14 +887,20 @@ fn unit_property_fields(
     drafts: &rf_ui::InspectorDraftState,
 ) -> Vec<StudioGuiInspectorTargetFieldSnapshot> {
     match unit.kind.as_str() {
-        "heater" | "cooler" => unit_number_property_field(
-            flowsheet,
-            unit,
-            drafts,
-            rf_ui::UnitInspectorDraftField::OutletTemperatureK,
-            "Outlet temperature (K)",
-        )
+        "heater" | "cooler" => [
+            (
+                rf_ui::UnitInspectorDraftField::OutletTemperatureK,
+                "Outlet temperature (K)",
+            ),
+            (
+                rf_ui::UnitInspectorDraftField::OutletPressurePa,
+                "Outlet pressure (Pa)",
+            ),
+        ]
         .into_iter()
+        .filter_map(|(field, label)| {
+            unit_number_property_field(flowsheet, unit, drafts, field, label)
+        })
         .collect(),
         "valve" => unit_number_property_field(
             flowsheet,
@@ -1225,7 +1231,7 @@ fn unit_parameter_invalid_notice(
     }
 
     if field.key.ends_with(":outlet_pressure_pa") {
-        if unit.kind.as_str() == "valve" {
+        if unit_outlet_pressure_cannot_exceed_inlet(unit) {
             return format!(
                 "{} must be a positive finite outlet absolute pressure in Pa and cannot exceed the connected inlet pressure.",
                 field.label
@@ -1250,18 +1256,22 @@ fn unit_parameter_constraint_text(
             "SI unit: K. Enter a positive finite outlet temperature; the committed value is used by the solver and synced to the outlet stream template.".to_string()
         }
         rf_ui::UnitInspectorDraftField::OutletPressurePa => {
-            if unit.kind.as_str() == "valve" {
+            if unit_outlet_pressure_cannot_exceed_inlet(unit) {
                 let inlet_limit = connected_inlet_stream(flowsheet, unit).map(|stream| {
                     format!(" Current inlet pressure limit: {:.0} Pa.", stream.pressure_pa)
                 });
                 return format!(
-                    "SI unit: Pa. Enter a positive finite outlet absolute pressure; Valve outlet pressure cannot exceed the connected inlet pressure.{}",
+                    "SI unit: Pa. Enter a positive finite outlet absolute pressure; Heater, Cooler, and Valve outlet pressure cannot exceed the connected inlet pressure.{}",
                     inlet_limit.unwrap_or_default()
                 );
             }
             "SI unit: Pa. Enter a positive finite flash outlet pressure; the committed value is used by the solver and synced to the Flash Drum liquid/vapor outlet stream templates.".to_string()
         }
     }
+}
+
+fn unit_outlet_pressure_cannot_exceed_inlet(unit: &rf_model::UnitNode) -> bool {
+    matches!(unit.kind.as_str(), "heater" | "cooler" | "valve")
 }
 
 fn connected_inlet_stream<'a>(

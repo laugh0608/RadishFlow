@@ -272,7 +272,10 @@ fn unit_command_value_from_draft(
 fn unit_inspector_draft_fields(unit: &UnitNode) -> Vec<UnitInspectorDraftField> {
     match unit.kind.as_str() {
         rf_unitops::HEATER_KIND | rf_unitops::COOLER_KIND => {
-            vec![UnitInspectorDraftField::OutletTemperatureK]
+            vec![
+                UnitInspectorDraftField::OutletTemperatureK,
+                UnitInspectorDraftField::OutletPressurePa,
+            ]
         }
         rf_unitops::VALVE_KIND | rf_unitops::FLASH_DRUM_KIND => {
             vec![UnitInspectorDraftField::OutletPressurePa]
@@ -363,7 +366,7 @@ fn is_valid_unit_parameter_value_for_unit(
         return false;
     }
 
-    if unit.kind.as_str() == rf_unitops::VALVE_KIND
+    if unit_outlet_pressure_cannot_exceed_inlet(unit)
         && matches!(field, UnitInspectorDraftField::OutletPressurePa)
     {
         return inlet_stream(flowsheet, unit)
@@ -372,6 +375,13 @@ fn is_valid_unit_parameter_value_for_unit(
     }
 
     true
+}
+
+fn unit_outlet_pressure_cannot_exceed_inlet(unit: &UnitNode) -> bool {
+    matches!(
+        unit.kind.as_str(),
+        rf_unitops::HEATER_KIND | rf_unitops::COOLER_KIND | rf_unitops::VALVE_KIND
+    )
 }
 
 fn inlet_stream<'a>(flowsheet: &'a Flowsheet, unit: &UnitNode) -> Option<&'a MaterialStreamState> {
@@ -404,7 +414,9 @@ fn outlet_stream_id(unit: &UnitNode) -> Option<&StreamId> {
 fn default_unit_parameter_value(unit: &UnitNode, field: &UnitInspectorDraftField) -> Option<f64> {
     match (unit.kind.as_str(), field) {
         (rf_unitops::HEATER_KIND, UnitInspectorDraftField::OutletTemperatureK) => Some(345.0),
+        (rf_unitops::HEATER_KIND, UnitInspectorDraftField::OutletPressurePa) => Some(101_325.0),
         (rf_unitops::COOLER_KIND, UnitInspectorDraftField::OutletTemperatureK) => Some(285.0),
+        (rf_unitops::COOLER_KIND, UnitInspectorDraftField::OutletPressurePa) => Some(101_325.0),
         (rf_unitops::VALVE_KIND, UnitInspectorDraftField::OutletPressurePa) => Some(90_000.0),
         (rf_unitops::FLASH_DRUM_KIND, UnitInspectorDraftField::OutletPressurePa) => Some(101_325.0),
         _ => None,

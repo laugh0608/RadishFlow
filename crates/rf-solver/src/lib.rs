@@ -697,7 +697,7 @@ fn validate_step_parameters(
         return Ok(());
     };
 
-    if (unit.kind == VALVE_KIND || unit.kind == FLASH_DRUM_KIND)
+    if unit_supports_outlet_pressure_parameter(unit)
         && (!outlet_pressure_pa.is_finite() || outlet_pressure_pa <= 0.0)
     {
         let related_stream_ids = unit_parameter_related_stream_ids(unit, consumed_stream_ids);
@@ -713,7 +713,7 @@ fn validate_step_parameters(
         ));
     }
 
-    if unit.kind != VALVE_KIND {
+    if !unit_outlet_pressure_cannot_exceed_inlet(unit) {
         return Ok(());
     }
 
@@ -743,6 +743,17 @@ fn validate_step_parameters(
             DiagnosticPortTarget::new(unit.id.clone(), HEATER_COOLER_INLET_PORT.to_string()),
         ],
     ))
+}
+
+fn unit_supports_outlet_pressure_parameter(unit: &UnitNode) -> bool {
+    matches!(
+        unit.kind.as_str(),
+        HEATER_KIND | COOLER_KIND | VALVE_KIND | FLASH_DRUM_KIND
+    )
+}
+
+fn unit_outlet_pressure_cannot_exceed_inlet(unit: &UnitNode) -> bool {
+    matches!(unit.kind.as_str(), HEATER_KIND | COOLER_KIND | VALVE_KIND)
 }
 
 fn unit_parameter_related_stream_ids(
@@ -860,6 +871,9 @@ fn heater_cooler_outlet_template(
     let mut outlet = stream_for_port(unit, HEATER_COOLER_OUTLET_PORT, flowsheet)?.clone();
     if let Some(temperature_k) = unit.parameters.outlet_temperature_k {
         outlet.temperature_k = temperature_k;
+    }
+    if let Some(pressure_pa) = unit.parameters.outlet_pressure_pa {
+        outlet.pressure_pa = pressure_pa;
     }
     Ok(outlet)
 }
