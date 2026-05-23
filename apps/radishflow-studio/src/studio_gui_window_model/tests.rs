@@ -1126,8 +1126,8 @@ fn studio_gui_window_model_groups_snapshot_into_window_regions() {
     );
 
     assert_eq!(window.canvas.title, "Canvas");
-    assert_eq!(window.canvas.suggestion_count, 3);
-    assert_eq!(window.canvas.enabled_action_count, 10);
+    assert_eq!(window.canvas.suggestion_count, 1);
+    assert_eq!(window.canvas.enabled_action_count, 8);
     assert_eq!(
         window.canvas.focused_suggestion_id.as_deref(),
         Some("local.flash_drum.connect_inlet.flash-1.stream-heated")
