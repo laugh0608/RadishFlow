@@ -641,12 +641,18 @@ impl ReadyAppState {
         let mut clicked_port_command = None;
         let mut hovered_port_stream_id = None;
         let mut hovered_port_callout = None;
+        let mut completed_unit_drag = None;
         for unit in unit_blocks {
+            let drag_preview_position = self
+                .canvas_unit_drag
+                .as_ref()
+                .filter(|drag| drag.unit_id == unit.unit_id)
+                .map(|drag| drag.current_position);
             let unit_rect = canvas_unit_block_rect(
                 rect,
                 &viewport_transform,
                 unit.layout_slot,
-                unit.layout_position,
+                drag_preview_position.or(unit.layout_position),
             );
             let anchor_label = canvas_unit_viewport_anchor_label(unit.layout_slot);
             let is_viewport_focus = self
@@ -701,11 +707,51 @@ impl ReadyAppState {
                 .interact(
                     unit_rect,
                     ui.make_persistent_id(format!("canvas-unit:{}", unit.unit_id)),
-                    egui::Sense::click(),
+                    egui::Sense::click_and_drag(),
                 )
                 .on_hover_text(&unit.hover_text)
-                .on_hover_cursor(egui::CursorIcon::PointingHand);
+                .on_hover_cursor(egui::CursorIcon::Grab);
             hovered_unit |= unit_response.hovered();
+            if unit_response.drag_started()
+                && clicked_port_command.is_none()
+                && hovered_port_callout.is_none()
+            {
+                let start_position = canvas_unit_block_world_rect(
+                    rect.width(),
+                    unit.layout_slot,
+                    unit.layout_position,
+                )
+                .min;
+                self.canvas_unit_drag = Some(CanvasUnitDragState {
+                    unit_id: unit.unit_id.clone(),
+                    start_position: rf_ui::CanvasPoint::new(
+                        start_position.x as f64,
+                        start_position.y as f64,
+                    ),
+                    current_position: rf_ui::CanvasPoint::new(
+                        start_position.x as f64,
+                        start_position.y as f64,
+                    ),
+                });
+            }
+            if unit_response.dragged() {
+                if let Some(drag) = self
+                    .canvas_unit_drag
+                    .as_mut()
+                    .filter(|drag| drag.unit_id == unit.unit_id)
+                {
+                    drag.current_position =
+                        canvas_unit_drag_position(drag.start_position, unit_response.drag_delta());
+                }
+            }
+            if self
+                .canvas_unit_drag
+                .as_ref()
+                .is_some_and(|drag| drag.unit_id == unit.unit_id)
+                && !ui.input(|input| input.pointer.primary_down())
+            {
+                completed_unit_drag = self.canvas_unit_drag.take();
+            }
             if unit_response.clicked() && clicked_port_command.is_none() {
                 clicked_unit = true;
                 self.dispatch_ui_command(&unit.command_id);
@@ -758,6 +804,12 @@ impl ReadyAppState {
         if self.canvas_viewport_drag.is_some() && !ui.input(|input| input.pointer.primary_down()) {
             self.canvas_viewport_drag = None;
         }
+        if let Some(drag) = completed_unit_drag {
+            self.dispatch_canvas_unit_layout_move(
+                rf_types::UnitId::new(drag.unit_id),
+                drag.current_position,
+            );
+        }
 
         let can_place_selected_unit = pending_edit.is_none() && selected_unit_id.is_some();
         let response = if pending_edit.is_some() {
@@ -802,6 +854,16 @@ impl ReadyAppState {
 
         hovered_port_stream_id
     }
+}
+
+fn canvas_unit_drag_position(
+    start_position: rf_ui::CanvasPoint,
+    drag_delta: egui::Vec2,
+) -> rf_ui::CanvasPoint {
+    rf_ui::CanvasPoint::new(
+        (start_position.x + drag_delta.x as f64).max(0.0),
+        (start_position.y + drag_delta.y as f64).max(0.0),
+    )
 }
 
 fn paint_canvas_drop_surface(painter: &egui::Painter, rect: egui::Rect, active: bool) {
@@ -1958,5 +2020,18 @@ mod viewport_geometry_tests {
         let geometry = canvas_stream_line_world_geometry(640.0, &stream);
 
         assert!(canvas_stream_label_rect(geometry, &stream).is_some());
+    }
+
+    #[test]
+    fn unit_drag_position_offsets_from_world_start_and_clamps_to_canvas_origin() {
+        let moved =
+            canvas_unit_drag_position(rf_ui::CanvasPoint::new(64.0, 40.0), egui::vec2(32.0, 18.0));
+        assert_eq!(moved, rf_ui::CanvasPoint::new(96.0, 58.0));
+
+        let clamped = canvas_unit_drag_position(
+            rf_ui::CanvasPoint::new(20.0, 16.0),
+            egui::vec2(-48.0, -24.0),
+        );
+        assert_eq!(clamped, rf_ui::CanvasPoint::new(0.0, 0.0));
     }
 }

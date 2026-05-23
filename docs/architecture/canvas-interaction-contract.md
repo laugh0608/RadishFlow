@@ -116,7 +116,7 @@
 - Canvas placement sidecar 使用 `<project>.rfstudio-layout.json` 保存 shell / layout 状态；项目文件 `*.rfproj.json` 仍是流程语义真相源。
 - 打开示例或项目后，若 sidecar 尚未保存 viewport offset，Canvas viewport 会按当前单元 / 流股 bounds 做 shell-local 初始 fit-to-content / center；该行为不写项目、不进历史、不代表自动布线。
 - 若缺少 sidecar placement，presentation 可按物料流依赖顺序给未定位单元生成可解释的 transient grid slot；加载 sidecar 时应过滤当前项目已不存在的 unit id。
-- 选中单元后，Canvas 可允许在空白处点击，把该单元定位到点击对应的 world 坐标；该行为只更新 layout sidecar，不写 `FlowsheetDocument`，不进入 `CommandHistory`，也不代表完整拖拽布局编辑器。
+- 选中单元后，Canvas 可允许在空白处点击，把该单元定位到点击对应的 world 坐标；也可直接拖动单元块，释放后把最终 world 坐标写入 layout sidecar。该行为只更新 layout sidecar，不写 `FlowsheetDocument`，不进入 `CommandHistory`，也不代表完整拖拽布局编辑器。
 - Canvas 空白区域可允许拖拽平移 viewport，并把 offset 保存到同一个 `<project>.rfstudio-layout.json` sidecar；该状态只影响 shell 初始呈现，不写 `FlowsheetDocument`，不进入 `CommandHistory`，也不代表完整视图持久化系统。
 - 已绑定端口可通过点击或对象选择聚焦对应流股 / 单元检查器；运行成功后可自动切到右侧 `结果` 和底部 `结果表`，失败后可切到右侧 `运行` 和底部 `消息`。
 - 选中物料流股后，Canvas / Inspector 可暴露受控恢复动作：`Disconnect stream` 解除当前流股在所有材料端口上的绑定并保留流股规格，`Delete stream` 先解除材料端口绑定再删除该流股；两者都通过正式 `DocumentCommand` 写回并进入 undo history。
@@ -410,14 +410,14 @@ pub struct GhostElement {
 2. MVP 单元放置、对象选择、suggestion focus / accept / reject、离散 layout nudge 都应通过正式 command surface 或 shell-local UI state 进入，不保留长期并行的 widget 私有状态改写分支。
 3. suggestion 转成正式文档命令后的实际文档变更才进入 `CommandHistory`；suggestion focus、reject、viewport、面板切换和 hover 不进入文档历史。
 4. 受控流股恢复动作可进入 `CommandHistory`：断开连接保留流股规格，删除流股会先解除材料端口绑定。下一阶段可设计 selected stream 受控重连，但必须显式处理端口合法性、已有绑定冲突、失败恢复和 undo；不得扩展成任意自由拉线编辑器。
-5. Layout sidecar 只保存 shell / layout 相关状态；缺少 sidecar 时可以用 transient grid slot pin 出初始位置，但必须在 presentation 中保持可解释，不反向污染 flowsheet 语义。下一阶段允许从离散 nudge 放宽到直接拖动单元位置，仍只写 sidecar，不写 `FlowsheetDocument`、不递增 revision、不进入 `CommandHistory`。
+5. Layout sidecar 只保存 shell / layout 相关状态；缺少 sidecar 时可以用 transient grid slot pin 出初始位置，但必须在 presentation 中保持可解释，不反向污染 flowsheet 语义。当前已允许单元块直接拖动位置，释放后仍只写 sidecar，不写 `FlowsheetDocument`、不递增 revision、不进入 `CommandHistory`。
 6. viewport 初始居中 / fit-to-content 与 sidecar 级 offset 记忆已落地；后续若继续扩展 viewport，只允许在明确 shell-local / sidecar 边界内做单能力增量，不得把 viewport 混入项目语义、求解输入或文档历史。短线段标签后续若继续优化，应作为 Canvas presentation 专题处理，不引入自动布线。
 
 ## 当前仍待后续细化的问题
 
 1. `Energy` / `Signal` 在核心语义未接通前，是否允许先以纯 UI 占位对象存在
 2. `Perspective` 视图是否需要单独的深度排序策略和遮挡规则
-3. selected stream 受控重连的 command / validation / undo 语义如何设计，才不会滑向自由连线编辑器
+3. selected stream 受控重连的 command / validation / undo 语义如何继续细化，才不会滑向自由连线编辑器
 4. suggestion 是否需要批量接受，还是严格先从单条接受开始
 5. `Tab` 接受是否需要和属性面板焦点、文本输入焦点做更细的快捷键竞争规则
 6. `RadishMind` suggestion schema 是否与本地 `LocalRules` 输出完全同构，还是允许额外解释字段

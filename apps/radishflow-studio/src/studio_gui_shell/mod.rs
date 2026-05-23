@@ -96,6 +96,7 @@ struct ReadyAppState {
     canvas_viewport_navigation: CanvasViewportNavigationState,
     canvas_initial_viewport_fit: CanvasInitialViewportFitState,
     canvas_viewport_drag: Option<CanvasViewportDragState>,
+    canvas_unit_drag: Option<CanvasUnitDragState>,
     canvas_command_result: Option<radishflow_studio::StudioGuiCanvasCommandResultViewModel>,
     project_file_picker: Box<dyn ProjectFilePicker>,
     preferences_path: PathBuf,
@@ -118,6 +119,13 @@ enum StudioShellScreen {
 struct PanelDragSession {
     area_id: StudioGuiWindowAreaId,
     window_id: Option<StudioWindowHostId>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+struct CanvasUnitDragState {
+    unit_id: String,
+    start_position: rf_ui::CanvasPoint,
+    current_position: rf_ui::CanvasPoint,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -384,6 +392,7 @@ impl ReadyAppState {
             canvas_viewport_navigation: CanvasViewportNavigationState::default(),
             canvas_initial_viewport_fit: canvas_initial_viewport_fit_from_config(config),
             canvas_viewport_drag: None,
+            canvas_unit_drag: None,
             canvas_command_result: None,
             project_file_picker,
             preferences_path,

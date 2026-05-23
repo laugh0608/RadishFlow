@@ -93,6 +93,7 @@ impl ReadyAppState {
                 self.canvas_viewport_navigation = CanvasViewportNavigationState::default();
                 self.canvas_initial_viewport_fit.reset();
                 self.canvas_viewport_drag = None;
+                self.canvas_unit_drag = None;
                 self.canvas_command_result = None;
                 self.result_inspector.reset();
                 self.project_open.path_input.clear();
@@ -453,6 +454,7 @@ impl ReadyAppState {
                 self.canvas_viewport_navigation = CanvasViewportNavigationState::default();
                 self.canvas_initial_viewport_fit = canvas_initial_viewport_fit_from_config(&config);
                 self.canvas_viewport_drag = None;
+                self.canvas_unit_drag = None;
                 self.canvas_command_result = None;
                 self.result_inspector.reset();
                 self.project_open.path_input = project_path.display().to_string();
