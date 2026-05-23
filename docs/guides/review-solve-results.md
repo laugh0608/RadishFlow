@@ -1,6 +1,6 @@
 # Review Solve Results
 
-更新时间：2026-05-17
+更新时间：2026-05-23
 
 ## 目的
 
@@ -152,6 +152,7 @@ Studio 不应再通过全局 stream 列表按 id 回填、拼装或猜测第二�
 - `检查`
 - `诊断目标`
 - command palette / menu / command list 里的 `Results` commands
+- 右侧 `结果` 区的当前快照轻量复制 / 导出
 
 推荐用法：
 
@@ -165,6 +166,7 @@ Studio 不应再通过全局 stream 列表按 id 回填、拼装或猜测第二�
 - `检查` 只是定位到当前已有 stream/unit 结果，不会重新求解
 - `诊断目标` 只汇总当前 `SolveSnapshot`、相关 step 和相关 diagnostic 已经存在的目标，不是 shell 私造的第三套导航模型
 - `Results` commands 也只派发既有 `inspector.focus_stream:*` / `inspector.focus_unit:*`，不会创建第二套结果缓存
+- `复制快照` / `导出文本` 只把当前同一份 `SolveSnapshot` 格式化为纯文本，覆盖流股摘要、求解步骤和诊断；它们不写项目文件、不进入 undo，也不是完整报表、模板系统或批量导出入口
 - 如果某个 section 没有 `诊断目标`，应先理解为“当前没有已物化目标”，而不是默认它被隐藏或漏显示
 
 底部 `结果表` 当前采用中文 `流股 / 相态` 表头。`相态` 列应显示短摘要，例如 `总体 1.000`、`气相 1.000`、`无`，过长的原始相态明细只适合放进 tooltip、日志或开发诊断，不应撑开表格或裁切主要数值列。

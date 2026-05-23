@@ -501,6 +501,71 @@ fn run_command_surfaces_results_when_solve_succeeds() {
 }
 
 #[test]
+fn solve_snapshot_copy_and_export_use_latest_result_without_dirtying_project() {
+    let timestamp = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("expected current timestamp")
+        .as_nanos();
+    let project_path = std::env::temp_dir().join(format!(
+        "radishflow-studio-shell-result-export-{timestamp}.rfproj.json"
+    ));
+    let export_path = std::env::temp_dir().join(format!(
+        "radishflow-studio-shell-result-export-{timestamp}.txt"
+    ));
+    write_project_file(
+        &project_path,
+        &feed_heater_flash_binary_hydrocarbon_project(),
+    )
+    .expect("expected project fixture write");
+    let project_before = fs::read_to_string(&project_path).expect("expected project read");
+    let config = StudioRuntimeConfig {
+        project_path: project_path.clone(),
+        ..synced_workspace_config()
+    };
+    let mut app = ready_app_state(&config);
+    app.dispatch_ui_command("run_panel.run_manual");
+    let snapshot = app
+        .platform_host
+        .snapshot()
+        .window_model()
+        .runtime
+        .latest_solve_snapshot
+        .expect("expected latest solve snapshot");
+
+    let ctx = egui::Context::default();
+    let output = ctx.run(egui::RawInput::default(), |ctx| {
+        app.copy_solve_snapshot_to_clipboard(ctx, &snapshot);
+    });
+    assert!(
+        output.platform_output.commands.iter().any(|command| {
+            matches!(command, egui::OutputCommand::CopyText(text) if text.contains(&snapshot.snapshot_id)
+                && text.contains("stream-heated")
+                && text.contains("flash-1"))
+        }),
+        "expected copy command to contain the current snapshot text"
+    );
+
+    app.export_solve_snapshot_to_path(&snapshot, export_path.clone());
+    let exported = fs::read_to_string(&export_path).expect("expected result export read");
+    assert!(exported.contains(&snapshot.snapshot_id));
+    assert!(exported.contains("stream-heated"));
+    assert!(exported.contains("flash-1"));
+    assert_eq!(
+        fs::read_to_string(&project_path).expect("expected project reread"),
+        project_before,
+        "result export must not rewrite the project JSON"
+    );
+    let window = app.platform_host.snapshot().window_model();
+    assert!(
+        !window.runtime.workspace_document.has_unsaved_changes,
+        "result export must not dirty the workspace"
+    );
+
+    let _ = fs::remove_file(project_path);
+    let _ = fs::remove_file(export_path);
+}
+
+#[test]
 fn run_command_surfaces_messages_when_solve_fails() {
     let app = ready_failed_app_state();
 
@@ -535,6 +600,10 @@ impl ProjectFilePicker for TestProjectFilePicker {
     }
 
     fn pick_save_project_file(&mut self) -> Option<PathBuf> {
+        self.selected_project.take()
+    }
+
+    fn pick_result_export_file(&mut self) -> Option<PathBuf> {
         self.selected_project.take()
     }
 }

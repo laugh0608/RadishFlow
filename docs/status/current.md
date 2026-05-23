@@ -14,7 +14,7 @@
 
 - 产品定位：以 Rust Core + Rust UI + `.NET 10` CAPE-OPEN/COM 适配层构建稳态流程模拟软件。
 - 当前主线：MVP 第一阶段最小闭环已经可验证，`v26.5.1-dev` 已作为内部验收 tag 创建并推送；首版 demo 前的 Home / Workbench 产品可用性 blocker 已收口，当前重新回到功能开发。
-- 当前重点：首版 demo 前硬化期已经结束，当前进入“受控扩展高频建模能力”阶段。已收口 `Heater / Cooler / Valve` 参数链路、连接失败恢复、空白项目 Mixer 路径、受控流股断开 / 删除 / source-only 重连和原因提示、关闭脏工作区保护、focused suggestion 下一步可见性、选中单元 sidecar 级点击定位，以及画布空白拖拽的 sidecar 级 viewport offset 记忆。后续允许按正式边界推进下一批窄口径单元参数、受控重连细化、sidecar 级布局体验和轻量结果审阅增强；仍不做自由连线编辑器、自动布线系统、完整拖拽布局编辑器、完整报表系统或第三方 CAPE-OPEN / 物性包加载。
+- 当前重点：已进入“受控扩展高频建模能力”阶段。已收口 `Heater / Cooler / Valve` 参数链路、连接失败恢复、空白项目 Mixer 路径、受控流股断开 / 删除 / source-only 重连和原因提示、关闭脏工作区保护、focused suggestion 下一步可见性、sidecar 级单元定位 / viewport 记忆，以及当前 `SolveSnapshot` 的轻量文本复制 / 导出。后续允许推进下一批窄口径单元参数、受控重连细化和 sidecar 级布局体验；仍不做自由连线、自动布线、完整拖拽布局、完整报表或第三方 CAPE-OPEN / 物性包加载。
 - 当前验证基线：功能改动优先执行相关 focused tests；阶段性收口执行 `pwsh ./scripts/check-repo.ps1`。
 
 ## 最近完成摘要
@@ -46,12 +46,13 @@
 - 2026-05-20 已补空白项目 Mixer 最短建模路径 focused 覆盖：通过 Canvas suggestion 创建 `Feed + Feed -> Mixer -> Flash Drum`，保存后断言 unit / stream / port 绑定，重开后确认 mixer outlet 总摩尔流量为两股入口之和。
 - 2026-05-22 已补 Canvas / Inspector 受控流股恢复入口：选中物料流股后可执行 `Disconnect stream` 解除所有物料端口绑定并保留流股规格，或执行 `Delete stream` 解除绑定后删除流股；两者均通过正式 `DocumentCommand` 与 undo history，不做自由连线、自动布线或完整拖拽布局。
 - 2026-05-23 人工复核确认流股连接 / 断开交互已经顺滑；同日补关闭脏工作区确认、focused suggestion 下一步显示、source-only 流股受控重连与不可用原因提示。随后补选中单元在 Canvas 空白处点击定位到 sidecar 坐标，并补空白画布拖拽的 viewport offset 记忆；这些布局 / 视口状态只写 `<project>.rfstudio-layout.json`，不写项目语义、不进 undo、不扩完整拖拽布局编辑器或完整视图持久化系统。
+- 2026-05-23 已补当前结果快照轻量复制 / 导出：右侧 `结果` 区可把当前 `SolveSnapshot` 复制到剪贴板或导出 `.txt`；内容只来自结果 DTO，覆盖流股摘要、步骤和诊断，不写项目、不进 undo、不扩报表、模板或批量导出。
 
 完整过程和每日验证记录见 `docs/devlogs/2026-05/2026-W21.md`、`docs/devlogs/2026-05/2026-W20.md` 以及更早周志。
 
 ## 下一步建议
 
-1. 下一步优先做“单个受控能力”的完整闭环：下一批窄口径单元参数、selected stream 受控重连细化、单元直接拖动位置但只写 layout sidecar，或当前 snapshot 的轻量结果复制 / 导出。
+1. 下一步优先做“单个受控能力”的完整闭环：下一批窄口径单元参数、selected stream 受控重连细化，或单元直接拖动位置但只写 layout sidecar。
 2. 每个新能力必须走正式 command / validation / undo，或明确标记为 shell-local state；同时补 focused tests 和必要文档。
 3. 若要刷新新的便携包或 tag，应创建新提交 / 新版本节点，不移动已推送的 `v26.5.1-dev` tag。
 4. 不把受控扩展误扩成自由连线编辑器、自动布线系统、完整拖拽布局编辑器、完整报表系统或对外发布自动化。

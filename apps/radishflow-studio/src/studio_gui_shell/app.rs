@@ -303,6 +303,78 @@ impl ReadyAppState {
         });
     }
 
+    pub(super) fn copy_solve_snapshot_to_clipboard(
+        &mut self,
+        ctx: &egui::Context,
+        snapshot: &radishflow_studio::StudioGuiWindowSolveSnapshotModel,
+    ) {
+        ctx.copy_text(snapshot.light_text_export());
+        self.project_open.notice = Some(ProjectOpenNotice {
+            level: ProjectOpenNoticeLevel::Info,
+            title: solve_snapshot_copied_notice_title(self.locale).to_string(),
+            detail: solve_snapshot_copied_notice_detail(self.locale, &snapshot.snapshot_id),
+        });
+        self.platform_host.record_activity_line(format!(
+            "copied solve snapshot {} results to clipboard",
+            snapshot.snapshot_id
+        ));
+    }
+
+    pub(super) fn export_solve_snapshot_from_picker(
+        &mut self,
+        snapshot: &radishflow_studio::StudioGuiWindowSolveSnapshotModel,
+    ) {
+        let Some(path) = self.project_file_picker.pick_result_export_file() else {
+            self.project_open.notice = Some(ProjectOpenNotice {
+                level: ProjectOpenNoticeLevel::Info,
+                title: solve_snapshot_export_canceled_notice_title(self.locale).to_string(),
+                detail: current_workspace_remains_open_notice_detail(self.locale).to_string(),
+            });
+            return;
+        };
+
+        self.export_solve_snapshot_to_path(snapshot, path);
+    }
+
+    pub(super) fn export_solve_snapshot_to_path(
+        &mut self,
+        snapshot: &radishflow_studio::StudioGuiWindowSolveSnapshotModel,
+        path: PathBuf,
+    ) {
+        let snapshot_text = snapshot.light_text_export();
+        match std::fs::write(&path, snapshot_text) {
+            Ok(()) => {
+                self.project_open.notice = Some(ProjectOpenNotice {
+                    level: ProjectOpenNoticeLevel::Info,
+                    title: solve_snapshot_exported_notice_title(self.locale).to_string(),
+                    detail: solve_snapshot_exported_notice_detail(
+                        self.locale,
+                        &snapshot.snapshot_id,
+                        &path,
+                    ),
+                });
+                self.platform_host.record_activity_line(format!(
+                    "exported solve snapshot {} results to {}",
+                    snapshot.snapshot_id,
+                    path.display()
+                ));
+            }
+            Err(error) => {
+                self.project_open.notice = Some(ProjectOpenNotice {
+                    level: ProjectOpenNoticeLevel::Error,
+                    title: solve_snapshot_export_failed_notice_title(self.locale).to_string(),
+                    detail: solve_snapshot_export_failed_notice_detail(self.locale, &path, &error),
+                });
+                self.platform_host.record_activity_line(format!(
+                    "export solve snapshot {} failed: {} ({})",
+                    snapshot.snapshot_id,
+                    error,
+                    path.display()
+                ));
+            }
+        }
+    }
+
     fn save_as_requires_overwrite_confirmation(&self, project_path: &std::path::Path) -> bool {
         if !project_path.exists() {
             return false;
@@ -1518,6 +1590,79 @@ fn current_workspace_remains_open_notice_detail(locale: StudioShellLocale) -> &'
     match locale {
         StudioShellLocale::En => "Current workspace remains open.",
         StudioShellLocale::ZhCn => "当前工作区保持打开。",
+    }
+}
+
+fn solve_snapshot_copied_notice_title(locale: StudioShellLocale) -> &'static str {
+    match locale {
+        StudioShellLocale::En => "Snapshot copied",
+        StudioShellLocale::ZhCn => "快照已复制",
+    }
+}
+
+fn solve_snapshot_copied_notice_detail(locale: StudioShellLocale, snapshot_id: &str) -> String {
+    match locale {
+        StudioShellLocale::En => {
+            format!("Copied the current solve snapshot to the clipboard: {snapshot_id}.")
+        }
+        StudioShellLocale::ZhCn => {
+            format!("已将当前求解快照复制到剪贴板：{snapshot_id}。")
+        }
+    }
+}
+
+fn solve_snapshot_export_canceled_notice_title(locale: StudioShellLocale) -> &'static str {
+    match locale {
+        StudioShellLocale::En => "Snapshot export canceled",
+        StudioShellLocale::ZhCn => "已取消快照导出",
+    }
+}
+
+fn solve_snapshot_exported_notice_title(locale: StudioShellLocale) -> &'static str {
+    match locale {
+        StudioShellLocale::En => "Snapshot exported",
+        StudioShellLocale::ZhCn => "快照已导出",
+    }
+}
+
+fn solve_snapshot_exported_notice_detail(
+    locale: StudioShellLocale,
+    snapshot_id: &str,
+    path: &std::path::Path,
+) -> String {
+    match locale {
+        StudioShellLocale::En => {
+            format!(
+                "Exported current solve snapshot {snapshot_id} to {}.",
+                path.display()
+            )
+        }
+        StudioShellLocale::ZhCn => {
+            format!("已将当前求解快照 {snapshot_id} 导出到 {}。", path.display())
+        }
+    }
+}
+
+fn solve_snapshot_export_failed_notice_title(locale: StudioShellLocale) -> &'static str {
+    match locale {
+        StudioShellLocale::En => "Snapshot export failed",
+        StudioShellLocale::ZhCn => "快照导出失败",
+    }
+}
+
+fn solve_snapshot_export_failed_notice_detail(
+    locale: StudioShellLocale,
+    path: &std::path::Path,
+    error: &std::io::Error,
+) -> String {
+    match locale {
+        StudioShellLocale::En => format!(
+            "Could not write the solve snapshot to {}: {error}.",
+            path.display()
+        ),
+        StudioShellLocale::ZhCn => {
+            format!("无法将求解快照写入 {}：{error}。", path.display())
+        }
     }
 }
 

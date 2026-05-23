@@ -73,6 +73,7 @@ impl ReadyAppState {
                     snapshot.stream_count,
                 ),
             );
+            self.render_solve_snapshot_transfer_actions(ui, snapshot);
             ui.separator();
             if snapshot.streams.is_empty() {
                 ui.small(self.locale.text(ShellText::NoStreamResults));
@@ -123,6 +124,27 @@ impl ReadyAppState {
         } else {
             ui.small(self.locale.text(ShellText::NoVisibleSolveResults));
         }
+    }
+
+    fn render_solve_snapshot_transfer_actions(
+        &mut self,
+        ui: &mut egui::Ui,
+        snapshot: &radishflow_studio::StudioGuiWindowSolveSnapshotModel,
+    ) {
+        ui.horizontal_wrapped(|ui| {
+            if ui
+                .small_button(self.locale.text(ShellText::CopySnapshot))
+                .clicked()
+            {
+                self.copy_solve_snapshot_to_clipboard(ui.ctx(), snapshot);
+            }
+            if ui
+                .small_button(self.locale.text(ShellText::ExportSnapshot))
+                .clicked()
+            {
+                self.export_solve_snapshot_from_picker(snapshot);
+            }
+        });
     }
 
     pub(in crate::studio_gui_shell) fn render_runtime_run_tab(
@@ -821,6 +843,7 @@ impl ReadyAppState {
                         snapshot.stream_count,
                     ),
                 );
+                self.render_solve_snapshot_transfer_actions(ui, snapshot);
                 ui.separator();
                 if snapshot.streams.is_empty() {
                     ui.small(self.locale.text(ShellText::NoStreamResults));

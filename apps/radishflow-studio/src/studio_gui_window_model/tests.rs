@@ -63,6 +63,34 @@ fn find_window_snapshot_stream<'a>(
         .expect("expected window snapshot stream")
 }
 
+#[test]
+fn solve_snapshot_light_text_export_uses_current_snapshot_results() {
+    let snapshot = solve_binary_hydrocarbon_lite_snapshot(include_str!(
+        "../../../../examples/flowsheets/feed-cooler-flash-binary-hydrocarbon.rfproj.json"
+    ));
+
+    let text = snapshot.light_text_export();
+
+    assert!(text.contains("RadishFlow Solve Snapshot"));
+    assert!(text.contains(&format!("snapshot_id: {}", snapshot.snapshot_id)));
+    assert!(text.contains("Streams\nstream_id\tlabel\tT\tP\tF\tH"));
+    assert!(text.contains("stream-feed"));
+    assert!(text.contains("stream-cooled"));
+    assert!(text.contains("phase_region="));
+    assert!(text.contains("Steps\nindex\tunit_id\tstatus\tsummary"));
+    assert!(text.contains("cooler-1"));
+    assert!(text.contains("flash-1"));
+    assert!(text.contains("Diagnostics\nseverity\tcode\tmessage\tunits\tstreams"));
+    assert!(
+        !text.contains(".rfproj.json"),
+        "snapshot export must stay in result DTO space, not project file paths"
+    );
+    assert!(
+        !text.contains("rfstudio-layout"),
+        "snapshot export must not include shell layout sidecar state"
+    );
+}
+
 fn assert_flash_consumer_preserves_snapshot_stream_reference(
     snapshot: &crate::StudioGuiWindowSolveSnapshotModel,
     stream_id: &str,

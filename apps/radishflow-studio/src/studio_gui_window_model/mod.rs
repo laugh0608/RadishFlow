@@ -2,6 +2,7 @@ use std::collections::BTreeSet;
 
 mod drop_preview;
 mod result_inspector;
+mod snapshot_export;
 use crate::{
     EntitlementSessionHostRuntimeOutput, StudioExampleProjectModel, StudioGuiCanvasWidgetModel,
     StudioGuiCommandEntry, StudioGuiCommandMenuNode, StudioGuiCommandRegistry,
