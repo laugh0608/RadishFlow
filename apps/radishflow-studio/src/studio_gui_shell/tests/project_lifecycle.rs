@@ -130,6 +130,30 @@ fn open_project_from_input_rebuilds_runtime_and_records_feedback() {
 fn unit_parameter_edits_save_reopen_and_rerun_official_examples() {
     let cases = [
         UnitParameterShellCase {
+            name: "feed-temperature",
+            project_json: include_str!(
+                "../../../../../examples/flowsheets/feed-heater-flash-binary-hydrocarbon.rfproj.json"
+            ),
+            unit_id: "feed-1",
+            draft_key: "unit:feed-1:outlet_temperature_k",
+            raw_value: "310",
+            expected_value: 310.0,
+            outlet_stream_ids: &["stream-feed"],
+            field: UnitParameterShellField::OutletTemperatureK,
+        },
+        UnitParameterShellCase {
+            name: "feed-pressure",
+            project_json: include_str!(
+                "../../../../../examples/flowsheets/feed-heater-flash-binary-hydrocarbon.rfproj.json"
+            ),
+            unit_id: "feed-1",
+            draft_key: "unit:feed-1:outlet_pressure_pa",
+            raw_value: "130000",
+            expected_value: 130_000.0,
+            outlet_stream_ids: &["stream-feed"],
+            field: UnitParameterShellField::OutletPressurePa,
+        },
+        UnitParameterShellCase {
             name: "heater",
             project_json: include_str!(
                 "../../../../../examples/flowsheets/feed-heater-flash-binary-hydrocarbon.rfproj.json"

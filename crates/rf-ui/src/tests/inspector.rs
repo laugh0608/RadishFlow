@@ -183,6 +183,38 @@ fn unit_parameter_document() -> FlowsheetDocument {
     )
 }
 
+fn feed_parameter_document() -> FlowsheetDocument {
+    let mut flowsheet = Flowsheet::new("feed-parameter-demo");
+    flowsheet
+        .insert_stream(MaterialStreamState::from_tpzf(
+            "stream-feed",
+            "Feed",
+            300.0,
+            120_000.0,
+            5.0,
+            Default::default(),
+        ))
+        .expect("expected feed stream insert");
+    flowsheet
+        .insert_unit(UnitNode::new(
+            "feed-1",
+            "Feed",
+            "feed",
+            vec![UnitPort::new(
+                "outlet",
+                PortDirection::Outlet,
+                PortKind::Material,
+                Some("stream-feed".into()),
+            )],
+        ))
+        .expect("expected feed insert");
+
+    FlowsheetDocument::new(
+        flowsheet,
+        DocumentMetadata::new("doc-feed-parameter", "Feed Parameter Demo", timestamp(10)),
+    )
+}
+
 fn valve_parameter_document() -> FlowsheetDocument {
     let mut flowsheet = Flowsheet::new("valve-demo");
     flowsheet
@@ -709,6 +741,56 @@ fn committing_flash_temperature_parameter_syncs_both_outlet_templates() {
             335.0
         );
     }
+    assert_eq!(
+        app_state.workspace.solve_session.pending_reason,
+        Some(SolvePendingReason::DocumentRevisionAdvanced)
+    );
+}
+
+#[test]
+fn committing_feed_temperature_parameter_syncs_source_stream_template() {
+    let mut app_state = AppState::new(feed_parameter_document());
+    app_state.focus_inspector_target(crate::InspectorTarget::Unit(UnitId::new("feed-1")));
+    let update = app_state
+        .update_unit_inspector_draft(
+            &UnitId::new("feed-1"),
+            crate::UnitInspectorDraftField::OutletTemperatureK,
+            "310",
+        )
+        .expect("expected feed temperature draft update");
+
+    assert_eq!(update.key, "unit:feed-1:outlet_temperature_k");
+    assert!(update.is_dirty);
+    assert_eq!(update.validation, crate::DraftValidationState::Valid);
+
+    let outcome = app_state
+        .commit_unit_inspector_draft(
+            &UnitId::new("feed-1"),
+            crate::UnitInspectorDraftField::OutletTemperatureK,
+            timestamp(42),
+        )
+        .expect("expected feed temperature draft commit")
+        .expect("expected committed feed temperature draft");
+
+    assert_eq!(outcome.revision, 1);
+    assert_eq!(
+        outcome.command,
+        DocumentCommand::SetUnitParameter {
+            unit_id: UnitId::new("feed-1"),
+            parameter: "outlet_temperature_k".to_string(),
+            value: CommandValue::Number(310.0),
+        }
+    );
+    assert_eq!(
+        app_state.workspace.document.flowsheet.units[&UnitId::new("feed-1")]
+            .parameters
+            .outlet_temperature_k,
+        Some(310.0)
+    );
+    assert_eq!(
+        app_state.workspace.document.flowsheet.streams[&StreamId::new("stream-feed")].temperature_k,
+        310.0
+    );
     assert_eq!(
         app_state.workspace.solve_session.pending_reason,
         Some(SolvePendingReason::DocumentRevisionAdvanced)

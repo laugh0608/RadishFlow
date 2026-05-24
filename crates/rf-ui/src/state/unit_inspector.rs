@@ -271,6 +271,12 @@ fn unit_command_value_from_draft(
 
 fn unit_inspector_draft_fields(unit: &UnitNode) -> Vec<UnitInspectorDraftField> {
     match unit.kind.as_str() {
+        rf_unitops::FEED_KIND => {
+            vec![
+                UnitInspectorDraftField::OutletTemperatureK,
+                UnitInspectorDraftField::OutletPressurePa,
+            ]
+        }
         rf_unitops::HEATER_KIND | rf_unitops::COOLER_KIND => {
             vec![
                 UnitInspectorDraftField::OutletTemperatureK,
@@ -424,6 +430,8 @@ fn outlet_stream_id(unit: &UnitNode) -> Option<&StreamId> {
 
 fn default_unit_parameter_value(unit: &UnitNode, field: &UnitInspectorDraftField) -> Option<f64> {
     match (unit.kind.as_str(), field) {
+        (rf_unitops::FEED_KIND, UnitInspectorDraftField::OutletTemperatureK) => Some(298.15),
+        (rf_unitops::FEED_KIND, UnitInspectorDraftField::OutletPressurePa) => Some(101_325.0),
         (rf_unitops::HEATER_KIND, UnitInspectorDraftField::OutletTemperatureK) => Some(345.0),
         (rf_unitops::HEATER_KIND, UnitInspectorDraftField::OutletPressurePa) => Some(101_325.0),
         (rf_unitops::COOLER_KIND, UnitInspectorDraftField::OutletTemperatureK) => Some(285.0),

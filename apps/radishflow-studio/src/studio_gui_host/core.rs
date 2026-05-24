@@ -1010,6 +1010,21 @@ fn unit_property_fields(
     drafts: &rf_ui::InspectorDraftState,
 ) -> Vec<StudioGuiInspectorTargetFieldSnapshot> {
     match unit.kind.as_str() {
+        "feed" => [
+            (
+                rf_ui::UnitInspectorDraftField::OutletTemperatureK,
+                "Source temperature (K)",
+            ),
+            (
+                rf_ui::UnitInspectorDraftField::OutletPressurePa,
+                "Source pressure (Pa)",
+            ),
+        ]
+        .into_iter()
+        .filter_map(|(field, label)| {
+            unit_number_property_field(flowsheet, unit, drafts, field, label)
+        })
+        .collect(),
         "heater" | "cooler" => [
             (
                 rf_ui::UnitInspectorDraftField::OutletTemperatureK,
@@ -1391,6 +1406,9 @@ fn unit_parameter_constraint_text(
 ) -> String {
     match field {
         rf_ui::UnitInspectorDraftField::OutletTemperatureK => {
+            if unit.kind == "feed" {
+                return "SI unit: K. Enter a positive finite source outlet temperature; the committed value is used by the solver and synced to the Feed outlet stream template.".to_string();
+            }
             if unit.kind == "flash_drum" {
                 return "SI unit: K. Enter a positive finite flash temperature; the committed value is used by the solver and synced to the Flash Drum liquid/vapor outlet stream templates.".to_string();
             }
@@ -1406,6 +1424,9 @@ fn unit_parameter_constraint_text(
                     "SI unit: Pa. Enter a positive finite outlet absolute pressure; Mixer, Heater, Cooler, and Valve outlet pressure cannot exceed the connected inlet pressure limit.{}",
                     inlet_limit.unwrap_or_default()
                 );
+            }
+            if unit.kind == "feed" {
+                return "SI unit: Pa. Enter a positive finite source outlet absolute pressure; the committed value is used by the solver and synced to the Feed outlet stream template.".to_string();
             }
             "SI unit: Pa. Enter a positive finite flash outlet pressure; the committed value is used by the solver and synced to the Flash Drum liquid/vapor outlet stream templates.".to_string()
         }

@@ -774,14 +774,14 @@ fn validate_unit_outlet_temperature_parameter(
 fn unit_supports_outlet_temperature_parameter(unit: &UnitNode) -> bool {
     matches!(
         unit.kind.as_str(),
-        HEATER_KIND | COOLER_KIND | FLASH_DRUM_KIND
+        FEED_KIND | HEATER_KIND | COOLER_KIND | FLASH_DRUM_KIND
     )
 }
 
 fn unit_supports_outlet_pressure_parameter(unit: &UnitNode) -> bool {
     matches!(
         unit.kind.as_str(),
-        MIXER_KIND | HEATER_KIND | COOLER_KIND | VALVE_KIND | FLASH_DRUM_KIND
+        FEED_KIND | MIXER_KIND | HEATER_KIND | COOLER_KIND | VALVE_KIND | FLASH_DRUM_KIND
     )
 }
 
@@ -926,7 +926,7 @@ fn instantiate_operation(
 ) -> RfResult<Box<dyn UnitOperation>> {
     match unit.kind.as_str() {
         FEED_KIND => {
-            let outlet = stream_for_port(unit, FEED_OUTLET_PORT, flowsheet)?;
+            let outlet = feed_outlet_template(unit, flowsheet)?;
             Ok(Box::new(Feed::new(outlet.clone())))
         }
         MIXER_KIND => {
@@ -981,6 +981,17 @@ fn heater_cooler_outlet_template(
     flowsheet: &Flowsheet,
 ) -> RfResult<MaterialStreamState> {
     let mut outlet = stream_for_port(unit, HEATER_COOLER_OUTLET_PORT, flowsheet)?.clone();
+    if let Some(temperature_k) = unit.parameters.outlet_temperature_k {
+        outlet.temperature_k = temperature_k;
+    }
+    if let Some(pressure_pa) = unit.parameters.outlet_pressure_pa {
+        outlet.pressure_pa = pressure_pa;
+    }
+    Ok(outlet)
+}
+
+fn feed_outlet_template(unit: &UnitNode, flowsheet: &Flowsheet) -> RfResult<MaterialStreamState> {
+    let mut outlet = stream_for_port(unit, FEED_OUTLET_PORT, flowsheet)?.clone();
     if let Some(temperature_k) = unit.parameters.outlet_temperature_k {
         outlet.temperature_k = temperature_k;
     }

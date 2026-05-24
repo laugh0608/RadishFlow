@@ -43,6 +43,8 @@
 
 | 单元 | 字段 | 单位 | 语义 |
 | --- | --- | --- | --- |
+| `Feed` | `outlet_temperature_k` | `K` | source outlet 温度，同步 Feed outlet 模板 |
+| `Feed` | `outlet_pressure_pa` | `Pa` | source outlet 绝压，同步 Feed outlet 模板 |
 | `Heater` / `Cooler` | `outlet_temperature_k` | `K` | 目标 outlet 温度 |
 | `Heater` / `Cooler` | `outlet_pressure_pa` | `Pa` | 目标 outlet 绝压，不高于已连接 inlet pressure |
 | `Mixer` | `outlet_pressure_pa` | `Pa` | 目标 outlet 绝压，不高于两股已连接 inlet pressure 的较低值 |

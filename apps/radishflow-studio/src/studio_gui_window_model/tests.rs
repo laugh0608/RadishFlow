@@ -2148,6 +2148,68 @@ fn studio_gui_window_model_surfaces_flash_drum_parameters() {
 }
 
 #[test]
+fn studio_gui_window_model_surfaces_feed_source_parameters() {
+    let config = synced_example_config("feed-heater-flash-binary-hydrocarbon.rfproj.json");
+    let mut driver = StudioGuiDriver::new(&config).expect("expected driver");
+    driver
+        .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+        .expect("expected open dispatch");
+
+    let dispatch = driver
+        .dispatch_event(StudioGuiEvent::UiCommandRequested {
+            command_id: "inspector.focus_unit:feed-1".to_string(),
+        })
+        .expect("expected feed focus dispatch");
+    let detail = dispatch
+        .window
+        .runtime
+        .active_inspector_detail
+        .expect("expected active feed inspector detail");
+    let temperature_field = detail
+        .property_fields
+        .iter()
+        .find(|field| field.key == "unit:feed-1:outlet_temperature_k")
+        .expect("expected feed temperature field");
+    let pressure_field = detail
+        .property_fields
+        .iter()
+        .find(|field| field.key == "unit:feed-1:outlet_pressure_pa")
+        .expect("expected feed pressure field");
+
+    assert_eq!(temperature_field.label, "Source temperature (K)");
+    assert_eq!(temperature_field.value_kind_label, "Number");
+    assert_eq!(temperature_field.status_label, "Synced");
+    assert_eq!(
+        temperature_field.draft_update_command_id,
+        "inspector.update_stream_draft:unit:feed-1:outlet_temperature_k"
+    );
+    assert!(
+        temperature_field
+            .constraint_text
+            .as_deref()
+            .is_some_and(|text| text.contains("SI unit: K")
+                && text.contains("positive finite source outlet temperature")
+                && text.contains("Feed outlet stream template"))
+    );
+
+    assert_eq!(pressure_field.label, "Source pressure (Pa)");
+    assert_eq!(pressure_field.value_kind_label, "Number");
+    assert_eq!(pressure_field.status_label, "Synced");
+    assert_eq!(
+        pressure_field.draft_update_command_id,
+        "inspector.update_stream_draft:unit:feed-1:outlet_pressure_pa"
+    );
+    assert!(
+        pressure_field
+            .constraint_text
+            .as_deref()
+            .is_some_and(|text| text.contains("SI unit: Pa")
+                && text.contains("positive finite source outlet absolute pressure")
+                && text.contains("Feed outlet stream template"))
+    );
+}
+
+#[test]
 fn studio_gui_window_model_surfaces_mixer_pressure_parameter() {
     let config = synced_example_config("feed-mixer-flash-binary-hydrocarbon.rfproj.json");
     let mut driver = StudioGuiDriver::new(&config).expect("expected driver");
