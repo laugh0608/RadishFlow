@@ -126,6 +126,7 @@ struct PanelDragSession {
 struct CanvasUnitDragState {
     unit_id: String,
     start_position: rf_ui::CanvasPoint,
+    pointer_offset: egui::Vec2,
     current_position: rf_ui::CanvasPoint,
 }
 

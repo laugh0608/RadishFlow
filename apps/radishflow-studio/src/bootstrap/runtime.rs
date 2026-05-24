@@ -209,6 +209,10 @@ fn dispatch_bootstrap_trigger(
             }
             Ok(StudioBootstrapDispatch::InspectorTarget(outcome))
         }
+        StudioBootstrapTrigger::ClearInspectorTarget => {
+            let outcome = crate::clear_inspector_target(session.app_state);
+            Ok(StudioBootstrapDispatch::ClearInspectorTarget(outcome))
+        }
         StudioBootstrapTrigger::InspectorDraftUpdate(command) => {
             let outcome = update_inspector_draft(session.app_state, command.clone())?;
             Ok(StudioBootstrapDispatch::InspectorDraftUpdate(outcome))

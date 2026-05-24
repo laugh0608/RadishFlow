@@ -565,6 +565,7 @@ impl ReadyAppState {
         if self.screen == StudioShellScreen::Home {
             self.render_home_dashboard(ctx, &window);
             self.render_command_palette(ctx, &window.commands);
+            self.render_pending_close_window_dialog(ctx);
             return;
         }
         self.render_top_bar(
@@ -580,6 +581,7 @@ impl ReadyAppState {
         self.render_center_stage(ctx, &window, &mut hovered_drop_target);
         self.render_command_palette(ctx, &window.commands);
         self.render_floating_drop_preview_overlay(ctx, &window);
+        self.render_pending_close_window_dialog(ctx);
         self.finish_drop_preview_cycle(
             ctx,
             window.layout_state.scope.window_id,
@@ -597,6 +599,7 @@ impl ReadyAppState {
         if self.screen == StudioShellScreen::Home {
             self.render_home_dashboard(ctx, &window);
             self.render_command_palette(ctx, &window.commands);
+            self.render_pending_close_window_dialog(ctx);
             return;
         }
 
@@ -613,6 +616,7 @@ impl ReadyAppState {
         self.render_center_stage(ctx, &window, &mut hovered_drop_target);
         self.render_command_palette(ctx, &window.commands);
         self.render_floating_drop_preview_overlay(ctx, &window);
+        self.render_pending_close_window_dialog(ctx);
     }
 
     pub(super) fn dispatch_run_panel_widget(&mut self, event: RunPanelWidgetEvent) {
@@ -792,6 +796,18 @@ impl ReadyAppState {
                     .record_activity_line(format!("event failed: {message}"));
             }
         }
+    }
+
+    pub(super) fn clear_canvas_selection(&mut self) {
+        let Some(window_id) = self.current_window_id() else {
+            return;
+        };
+        self.dispatch_event(StudioGuiEvent::WindowTriggerRequested {
+            window_id,
+            trigger: StudioRuntimeTrigger::ClearInspectorTarget,
+        });
+        self.canvas_command_result = None;
+        self.canvas_viewport_navigation.active_anchor = None;
     }
 
     pub(super) fn update_canvas_viewport_offset(&mut self, offset: egui::Vec2) {
@@ -1335,13 +1351,51 @@ impl ReadyAppState {
         self.project_open.pending_blank_project_confirmation = false;
         self.project_open.pending_save_as_overwrite = None;
         self.project_open.pending_close_window_confirmation = Some(window_id);
-        self.project_open.notice = Some(ProjectOpenNotice {
-            level: ProjectOpenNoticeLevel::Warning,
-            title: unsaved_changes_notice_title(self.locale).to_string(),
-            detail: close_workspace_discard_notice_detail(self.locale),
-        });
+        self.project_open.notice = None;
         self.platform_host
             .record_activity_line("close blocked by unsaved workspace changes".to_string());
+    }
+
+    fn render_pending_close_window_dialog(&mut self, ctx: &egui::Context) {
+        if self
+            .project_open
+            .pending_close_window_confirmation
+            .is_none()
+        {
+            return;
+        }
+
+        egui::Window::new(unsaved_changes_notice_title(self.locale))
+            .collapsible(false)
+            .resizable(false)
+            .anchor(egui::Align2::CENTER_CENTER, egui::Vec2::ZERO)
+            .show(ctx, |ui| {
+                ui.set_min_width(360.0);
+                render_wrapped_label(ui, &close_workspace_discard_notice_detail(self.locale));
+                ui.add_space(8.0);
+                ui.horizontal_wrapped(|ui| {
+                    if ui
+                        .button(self.locale.text(ShellText::SaveAndCloseProject))
+                        .clicked()
+                        && self.save_pending_close_window()
+                    {
+                        ui.ctx().send_viewport_cmd(egui::ViewportCommand::Close);
+                    }
+                    if ui
+                        .button(self.locale.text(ShellText::DiscardAndCloseProject))
+                        .clicked()
+                        && self.confirm_pending_close_window()
+                    {
+                        ui.ctx().send_viewport_cmd(egui::ViewportCommand::Close);
+                    }
+                    if ui
+                        .button(self.locale.text(ShellText::CancelCloseProject))
+                        .clicked()
+                    {
+                        self.cancel_pending_close_window();
+                    }
+                });
+            });
     }
 
     pub(super) fn save_pending_close_window(&mut self) -> bool {

@@ -146,7 +146,8 @@ fn viewport_close_dirty_workspace_cancels_native_close_and_prompts() {
             .notice
             .as_ref()
             .map(|notice| notice.title.as_str()),
-        Some("未保存更改")
+        None,
+        "dirty workspace close confirmation is rendered by the close dialog, not the top notice"
     );
 }
 

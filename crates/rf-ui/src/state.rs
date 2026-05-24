@@ -1090,6 +1090,14 @@ impl AppState {
         }
     }
 
+    pub fn clear_inspector_target(&mut self) -> Option<InspectorTarget> {
+        let previous_target = self.workspace.drafts.active_target.take();
+        self.workspace.selection.selected_units.clear();
+        self.workspace.selection.selected_streams.clear();
+        self.workspace.drafts.fields.clear();
+        previous_target
+    }
+
     pub fn update_stream_inspector_draft(
         &mut self,
         stream_id: &StreamId,

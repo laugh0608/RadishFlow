@@ -47,12 +47,13 @@
 - 2026-05-23 人工复核确认流股连接 / 断开交互已经顺滑；同日补关闭脏工作区确认、focused suggestion 下一步显示、单端流股唯一候选重连、cycle-forming 候选过滤、已连接流股 source / sink 端点级断开与不可用原因提示。随后补选中单元在 Canvas 空白处点击定位、直接拖动到 sidecar 坐标，并补空白画布拖拽的 viewport offset 记忆；这些布局 / 视口状态只写 `<project>.rfstudio-layout.json`，不写项目语义、不进 undo、不扩完整拖拽布局编辑器或完整视图持久化系统。
 - 2026-05-23 已补当前结果快照轻量复制 / 导出：右侧 `结果` 区可把当前 `SolveSnapshot` 复制到剪贴板或导出 `.txt`；内容只来自结果 DTO，覆盖流股摘要、步骤和诊断，不写项目、不进 undo、不扩报表、模板或批量导出。
 - 2026-05-24 已收口 selected stream 重连 presentation 一致性：Canvas / Inspector / shell 对可用、已双端连接、候选不唯一和 cycle-forming 候选等状态使用同一套可用性判断与不可用原因；Inspector 不再隐藏不可用重连动作，而是禁用并说明原因。该补口仍不新增端口选择器、自由连线或自动布线。
+- 2026-05-24 轻量人工 smoke 暴露 Canvas 单元直接拖动时模块原地抖动且不能稳定按住拖拽，以及空白点击错误地移动选中单元、关闭脏工作区确认只显示在顶部通知区。现已把单元拖动改为按鼠标 world 坐标跟随并在拖动 active 时禁用 viewport pan；空白点击改为清空选择；关闭脏工作区改为居中确认窗口。拖动仍只写 layout sidecar，不写项目语义、不进 undo。
 
 见 `docs/devlogs/2026-05/2026-W21.md`、`docs/devlogs/2026-05/2026-W20.md`。
 
 ## 下一步建议
 
-1. 下一步优先做一轮轻量人工 smoke：复核 selected stream 重连 / 断开、关闭脏工作区提示、sidecar 级拖动 / viewport 和结果复制 / 导出在真实窗口中的高频路径。
+1. 下一步继续完成轻量人工 smoke：复核 selected stream 重连 / 断开、关闭脏工作区确认窗口、sidecar 级拖动 / viewport 和结果复制 / 导出在真实窗口中的高频路径；尤其复测单元可直接按住拖拽、空白点击只清空选择。
 2. 每个新能力必须走正式 command / validation / undo，或明确标记为 shell-local state；同时补 focused tests 和必要文档。
 3. 若要刷新新的便携包或 tag，应创建新提交 / 新版本节点，不移动已推送的 `v26.5.1-dev` tag。
 4. 不把受控扩展误扩成自由连线编辑器、自动布线系统、完整拖拽布局编辑器、完整报表系统或对外发布自动化。

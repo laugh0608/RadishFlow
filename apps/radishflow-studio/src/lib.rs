@@ -145,7 +145,10 @@ pub use inspector_draft_driver::{
     remove_inspector_composition_component, remove_inspector_composition_component_at,
     update_inspector_draft,
 };
-pub use inspector_target_driver::{InspectorTargetFocusOutcome, focus_inspector_target};
+pub use inspector_target_driver::{
+    InspectorTargetClearOutcome, InspectorTargetFocusOutcome, clear_inspector_target,
+    focus_inspector_target,
+};
 pub use property_package_download::{
     PROPERTY_PACKAGE_DOWNLOAD_KIND, PROPERTY_PACKAGE_DOWNLOAD_SCHEMA_VERSION,
     PropertyPackageDownload, PropertyPackageDownloadAntoineCoefficients,

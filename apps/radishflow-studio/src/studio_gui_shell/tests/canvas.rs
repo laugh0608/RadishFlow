@@ -922,6 +922,41 @@ fn canvas_selected_unit_direct_position_move_updates_only_layout_sidecar() {
 }
 
 #[test]
+fn canvas_empty_click_clears_selection_without_moving_selected_unit() {
+    let (config, project_path) = blank_workspace_config();
+    let layout_path = studio_layout_path_for_project(&project_path);
+    let mut app = ready_app_state(&config);
+
+    app.dispatch_ui_command("canvas.begin_place_unit.feed");
+    app.dispatch_canvas_pending_edit_commit(rf_ui::CanvasPoint::new(64.0, 40.0));
+    app.save_project();
+    app.dispatch_ui_command("inspector.focus_unit:feed-1");
+
+    app.clear_canvas_selection();
+
+    let cleared = app.platform_host.snapshot().window_model();
+    assert_eq!(cleared.runtime.active_inspector_target, None);
+    assert_eq!(
+        cleared
+            .canvas
+            .widget
+            .view()
+            .unit_blocks
+            .iter()
+            .find(|unit| unit.unit_id == "feed-1")
+            .and_then(|unit| unit.layout_position),
+        Some(rf_ui::CanvasPoint::new(64.0, 40.0))
+    );
+    assert!(
+        !cleared.runtime.workspace_document.has_unsaved_changes,
+        "clearing canvas selection must not dirty the project"
+    );
+
+    let _ = fs::remove_file(project_path);
+    let _ = fs::remove_file(layout_path);
+}
+
+#[test]
 fn canvas_viewport_offset_persists_in_layout_sidecar_without_dirtying_project() {
     let (config, project_path) = blank_workspace_config();
     let layout_path = studio_layout_path_for_project(&project_path);

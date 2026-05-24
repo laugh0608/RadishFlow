@@ -741,14 +741,8 @@ fn closing_dirty_workspace_requires_explicit_confirmation() {
     assert!(app.project_open.pending_close_window_confirmation.is_some());
     assert_eq!(
         app.project_open.notice.as_ref().map(|notice| notice.level),
-        Some(ProjectOpenNoticeLevel::Warning)
-    );
-    assert_eq!(
-        app.project_open
-            .notice
-            .as_ref()
-            .map(|notice| notice.title.as_str()),
-        Some("未保存更改")
+        None,
+        "close confirmation should be rendered as a dialog instead of a top notice"
     );
 
     let _ = std::fs::remove_file(project_path);
