@@ -1,6 +1,6 @@
 # Studio Quick Start
 
-更新时间：2026-05-23
+更新时间：2026-05-24
 
 ## 目的
 
@@ -17,7 +17,7 @@
 
 ## 当前能做什么
 
-截至 2026-05-23，Studio 当前已经具备以下最小闭环：
+截至 2026-05-24，Studio 当前已经具备以下最小闭环：
 
 - 启动后默认进入中文 Home Dashboard，可从 `开始 / 最近项目 / 示例项目 / 环境 / 消息` 分区判断从哪里开始
 - 新建未命名空白项目，并用 MVP 默认 `methane / ethane` 二元体系进入最短建模路径
@@ -31,7 +31,7 @@
 - 复制当前 `SolveSnapshot` 文本，或导出当前快照为轻量 `.txt`
 - 通过 `检查`、`诊断目标`、结果选择项和命令入口在流股、单元、步骤和当前检查器之间定位同一份结果
 - 在流股检查器中编辑流股基础字段与组成草稿，并显式提交、归一化或丢弃
-- 在单元检查器中编辑首批关键单元参数：`Heater / Cooler` 的 outlet temperature / outlet pressure、`Valve` 的 outlet pressure 和 `Flash Drum` 的 flash pressure
+- 在单元检查器中编辑首批关键单元参数：`Heater / Cooler` 的 outlet temperature / outlet pressure、`Mixer / Valve` 的 outlet pressure 和 `Flash Drum` 的 flash pressure
 - 选中物料流股后，可通过 Canvas / Inspector 的 `Disconnect stream` 解除端口绑定并保留流股规格，或通过 `Delete stream` 解除绑定后删除错误流股；单端流股还可在唯一且不会成环的候选存在时执行受控 `Reconnect stream`
 - 执行基础 `undo / redo`
 - 保存当前项目，或通过顶部 `另存为...` / 未命名项目首次 `保存` 到新路径

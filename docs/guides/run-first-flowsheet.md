@@ -188,7 +188,7 @@ examples/flowsheets/feed-mixer-flash-binary-hydrocarbon.rfproj.json
 - 文档态流股组成是否未归一到 1
 - 当前运行环境下是否出现多包可选且未显式指定 package
 - 项目是否被改成了不完整连接或不一致端口绑定
-- Heater / Cooler / Valve outlet pressure 是否高于已连接 inlet pressure；Flash Drum flash pressure 是否为正有限 Pa 值。若越界值已存在于项目文档，运行诊断会归类为 `solver.step.parameter`
+- Mixer / Heater / Cooler / Valve outlet pressure 是否高于已连接 inlet pressure 约束；Flash Drum flash pressure 是否为正有限 Pa 值。若越界值已存在于项目文档，运行诊断会归类为 `solver.step.parameter`
 - 顶部 `运行` 是否处于 disabled 状态，以及 hover 文案给出的原因
 - 启动 Studio 的终端 stderr 是否有 `[radishflow-studio]` 审计线或 GUI panic 提示
 
