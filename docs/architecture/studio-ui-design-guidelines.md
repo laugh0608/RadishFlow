@@ -269,7 +269,7 @@ Studio 默认工作台建议分为六个稳定区域。
 规则：
 
 - 画布默认占窗口最大面积，左右侧栏和底部面板不得压缩到只剩小预览。
-- 打开示例或项目后，Canvas viewport 应根据当前单元与流股 bounds 做初始 fit-to-content / center；小流程不应固定在左上角。这只属于初始呈现优化，不引入自动布线、自由连线或视口持久化。
+- 打开示例或项目后，Canvas viewport 应根据当前单元与流股 bounds 做初始 fit-to-content / center；小流程不应固定在左上角。用户拖动空白画布后的 viewport offset 可写入 layout sidecar，但仍只属于呈现状态，不引入自动布线、自由连线或完整视图持久化。
 - 画布工具条应以图标或短标签表达选择、放置、suggestion 接受 / 拒绝、平移、缩放、适配视图和受控恢复动作；不要把当前 MVP 误设计成自由连线工具条。
 - 本地建模 suggestion 的接受动作应使用明确的 `连接流股` / `Connect stream` 或 `创建流股` / `Create stream`，不用泛化的 `Apply` 让用户猜测会改写什么。
 - 选中 material stream 后可暴露 `Disconnect stream`、`Disconnect source`、`Disconnect sink`、`Reconnect stream` 与 `Delete stream`；`Reconnect stream` 只允许把单端缺口接到唯一、未占用且不会形成 unit dependency cycle 的端点。文案必须体现这些动作属于受控恢复，不是任意端口重连、自动布线或完整拖拽布局编辑。
@@ -293,7 +293,7 @@ Studio 默认工作台建议分为六个稳定区域。
 - 建议以 `检查器 / 运行 / 结果 / 物性包` tab 或等价分段组织；授权 / entitlement 在当前 demo 主路径中低频，默认不应压过物性包和结果审阅。
 - 属性字段采用 label + input + unit + validation 的行结构；单位必须紧贴数值，不藏在说明文字里。
 - 从左侧 Project、Canvas 对象列表或结果定位动作选择 stream / unit 后，应自然切换到对应检查器；stream 优先暴露 `T / P / F`、组成草稿和提交/归一化动作，unit 优先暴露已进入 MVP 的关键参数、端口、关联步骤、关联诊断和最新只读结果。
-- Unit Inspector 当前只把 `Heater / Cooler` 的 outlet temperature / outlet pressure、`Valve` 的 outlet pressure 与 `Flash Drum` 的 flash pressure 作为可编辑参数行；其余单元信息仍以端口、关联步骤、关联诊断和最新只读结果为主，不提前设计完整单元参数表。
+- Unit Inspector 当前只把 `Feed` 的 source temperature / pressure、`Heater / Cooler` 的 outlet temperature / outlet pressure、`Mixer / Valve` 的 outlet pressure 与 `Flash Drum` 的 flash temperature / pressure 作为可编辑参数行；字段必须显示 SI 单位和约束提示，提交走正式文档命令并同步对应 outlet stream 模板。其余单元信息仍以端口、关联步骤、关联诊断和最新只读结果为主，不提前设计完整单元参数表。
 - 结果检查器中面向用户的组成、相态和摘要行应优先使用本地化结构化短句；`z: ...`、`phases: ...` 这类原始调试文本只应进入 hover、日志或开发诊断，不应作为默认结果正文。
 - 草稿态、未归一组成、运行阻断和只读结果要有稳定视觉语义。
 - Runtime 中的开发态活动、平台 timer、GUI activity、原始项目路径编辑默认折叠。
@@ -311,7 +311,7 @@ Studio 默认工作台建议分为六个稳定区域。
 
 - 默认 Messages 可更紧凑；无错误、无运行日志堆积时建议约 130-160 px 保持可行动摘要。Results / Diagnostics 可按内容需要更高，后续再评估用户可手动折叠 / resize。
 - Messages 放用户可行动摘要，Run Log 放较原始的运行过程。
-- 结果表格按 stream-centric / unit-centric 组织，保持和 `SolveSnapshot` 语义一致。
+- 结果表格按 stream-centric / unit-centric 组织，保持和 `SolveSnapshot` 语义一致；当前快照复制 / 导出可包含 `Streams / Units / Steps / Diagnostics` 轻量文本区，但不应设计成完整报表、模板或批量导出系统。
 - 底部面板不应默认展示整屏原始日志；原始日志作为展开详情或复制入口。
 
 ### 底部 Status Bar

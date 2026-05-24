@@ -1,6 +1,6 @@
 # Solve Snapshot Results Reference
 
-更新时间：2026-05-23
+更新时间：2026-05-24
 
 ## 目的
 
@@ -203,7 +203,14 @@ unit-centric 视图当前只是在同一份快照里按单元重新组织结果�
 
 ### text copy / export
 
-当前快照复制和文本导出只消费同一份最新 `SolveSnapshot`，并把已物化的流股摘要、求解步骤和诊断格式化为纯文本。
+当前快照复制和文本导出只消费同一份最新 `SolveSnapshot`，并把已物化的流股摘要、单元结果、求解步骤和诊断格式化为纯文本。
+
+稳定 section 口径：
+
+- `Streams`：来自 `SolveSnapshot.streams` 的流股摘要
+- `Units`：按单元列出当前最新 step、状态、summary、输入流股和输出流股
+- `Steps`：来自 `StepSnapshot` 的求解步骤摘要
+- `Diagnostics`：来自当前快照的诊断条目
 
 稳定边界：
 
