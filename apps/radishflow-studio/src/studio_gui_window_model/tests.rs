@@ -77,6 +77,12 @@ fn solve_snapshot_light_text_export_uses_current_snapshot_results() {
     assert!(text.contains("stream-feed"));
     assert!(text.contains("stream-cooled"));
     assert!(text.contains("phase_region="));
+    assert!(
+        text.contains("Units\nunit_id\tstep\tstatus\tsummary\tconsumed_streams\tproduced_streams")
+    );
+    assert!(text.contains("cooler-1"));
+    assert!(text.contains("stream-feed"));
+    assert!(text.contains("stream-cooled"));
     assert!(text.contains("Steps\nindex\tunit_id\tstatus\tsummary"));
     assert!(text.contains("cooler-1"));
     assert!(text.contains("flash-1"));

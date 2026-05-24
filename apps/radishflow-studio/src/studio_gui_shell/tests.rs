@@ -548,6 +548,7 @@ fn solve_snapshot_copy_and_export_use_latest_result_without_dirtying_project() {
     app.export_solve_snapshot_to_path(&snapshot, export_path.clone());
     let exported = fs::read_to_string(&export_path).expect("expected result export read");
     assert!(exported.contains(&snapshot.snapshot_id));
+    assert!(exported.contains("Units\nunit_id\tstep\tstatus\tsummary"));
     assert!(exported.contains("stream-heated"));
     assert!(exported.contains("flash-1"));
     assert_eq!(

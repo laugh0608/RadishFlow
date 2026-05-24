@@ -48,6 +48,29 @@ impl StudioGuiWindowSolveSnapshotModel {
 
         lines.extend([
             String::new(),
+            "Units".to_string(),
+            tsv_row([
+                "unit_id",
+                "step",
+                "status",
+                "summary",
+                "consumed_streams",
+                "produced_streams",
+            ]),
+        ]);
+        for step in latest_unit_steps(&self.steps) {
+            lines.push(tsv_row([
+                step.unit_id.as_str(),
+                step.index.to_string().as_str(),
+                step.execution_status_label,
+                step.summary.as_str(),
+                format_stream_references(&step.consumed_stream_results).as_str(),
+                format_stream_references(&step.produced_stream_results).as_str(),
+            ]));
+        }
+
+        lines.extend([
+            String::new(),
             "Steps".to_string(),
             tsv_row([
                 "index",
@@ -87,6 +110,23 @@ impl StudioGuiWindowSolveSnapshotModel {
         lines.push(String::new());
         lines.join("\n")
     }
+}
+
+fn latest_unit_steps(
+    steps: &[StudioGuiWindowSolveStepModel],
+) -> Vec<&StudioGuiWindowSolveStepModel> {
+    let mut unit_steps: Vec<&StudioGuiWindowSolveStepModel> = Vec::new();
+    for step in steps {
+        if let Some(index) = unit_steps
+            .iter()
+            .position(|existing| existing.unit_id == step.unit_id)
+        {
+            unit_steps[index] = step;
+        } else {
+            unit_steps.push(step);
+        }
+    }
+    unit_steps
 }
 
 fn tsv_row<'a>(cells: impl IntoIterator<Item = &'a str>) -> String {
