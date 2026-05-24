@@ -531,3 +531,679 @@ fn applying_run_panel_recovery_action_disconnects_two_unit_cycle_inlet_and_opens
     );
     assert!(app_state.workspace.panels.inspector_open);
 }
+
+#[test]
+fn disconnecting_stream_connections_unbinds_all_material_ports_and_keeps_stream() {
+    let mut document = sample_feed_flash_document();
+    let stream_id = StreamId::new("stream-feed");
+    document
+        .flowsheet
+        .units
+        .get_mut(&UnitId::new("flash-1"))
+        .expect("expected flash unit")
+        .ports
+        .iter_mut()
+        .find(|port| port.name == "inlet")
+        .expect("expected inlet port")
+        .stream_id = Some(stream_id.clone());
+    let mut app_state = AppState::new(document);
+    app_state.focus_inspector_target(crate::InspectorTarget::Stream(stream_id.clone()));
+
+    let result = app_state
+        .disconnect_stream_connections(&stream_id, timestamp(50))
+        .expect("expected disconnect stream command")
+        .expect("expected disconnect result");
+
+    assert_eq!(result.stream_id, stream_id);
+    assert_eq!(
+        result.disconnected_ports,
+        vec![
+            StreamPortBinding {
+                unit_id: UnitId::new("feed-1"),
+                port: "outlet".to_string(),
+            },
+            StreamPortBinding {
+                unit_id: UnitId::new("flash-1"),
+                port: "inlet".to_string(),
+            },
+        ]
+    );
+    assert_eq!(app_state.workspace.document.revision, 1);
+    assert!(
+        app_state
+            .workspace
+            .document
+            .flowsheet
+            .streams
+            .contains_key(&stream_id)
+    );
+    assert!(
+        app_state
+            .workspace
+            .document
+            .flowsheet
+            .units
+            .values()
+            .flat_map(|unit| unit.ports.iter())
+            .all(|port| port.stream_id.as_ref() != Some(&stream_id))
+    );
+    assert_eq!(
+        app_state
+            .workspace
+            .command_history
+            .current_entry()
+            .map(|entry| &entry.command),
+        Some(&DocumentCommand::DisconnectStream {
+            stream_id: stream_id.clone(),
+            ports: result.disconnected_ports,
+        })
+    );
+    assert_eq!(
+        app_state.workspace.drafts.active_target,
+        Some(crate::InspectorTarget::Stream(stream_id))
+    );
+}
+
+#[test]
+fn disconnecting_endpointless_stream_connections_is_ignored_without_document_mutation() {
+    let mut document = sample_feed_flash_document();
+    let stream_id = StreamId::new("stream-feed");
+    for unit in document.flowsheet.units.values_mut() {
+        for port in &mut unit.ports {
+            if port.stream_id.as_ref() == Some(&stream_id) {
+                port.stream_id = None;
+            }
+        }
+    }
+    let mut app_state = AppState::new(document);
+
+    let result = app_state
+        .disconnect_stream_connections(&stream_id, timestamp(50))
+        .expect("expected endpointless disconnect evaluation");
+
+    assert_eq!(result, None);
+    assert_eq!(app_state.workspace.document.revision, 0);
+    assert!(app_state.workspace.command_history.is_empty());
+}
+
+#[test]
+fn disconnecting_stream_source_endpoint_unbinds_only_source_and_is_undoable() {
+    let mut document = sample_feed_flash_document();
+    let stream_id = StreamId::new("stream-feed");
+    document
+        .flowsheet
+        .units
+        .get_mut(&UnitId::new("flash-1"))
+        .expect("expected flash unit")
+        .ports
+        .iter_mut()
+        .find(|port| port.name == "inlet")
+        .expect("expected flash inlet")
+        .stream_id = Some(stream_id.clone());
+    let mut app_state = AppState::new(document);
+
+    let result = app_state
+        .disconnect_stream_endpoint(&stream_id, PortDirection::Outlet, timestamp(50))
+        .expect("expected source endpoint disconnect")
+        .expect("expected endpoint disconnect result");
+
+    assert_eq!(
+        result.disconnected_ports,
+        vec![StreamPortBinding {
+            unit_id: UnitId::new("feed-1"),
+            port: "outlet".to_string(),
+        }]
+    );
+    assert_eq!(
+        result.command,
+        DocumentCommand::DisconnectPorts {
+            unit_id: UnitId::new("feed-1"),
+            port: "outlet".to_string(),
+        }
+    );
+    assert_eq!(app_state.workspace.document.revision, 1);
+    assert_eq!(
+        app_state
+            .workspace
+            .document
+            .flowsheet
+            .units
+            .get(&UnitId::new("feed-1"))
+            .and_then(|unit| unit.ports.iter().find(|port| port.name == "outlet"))
+            .and_then(|port| port.stream_id.as_ref()),
+        None
+    );
+    assert_eq!(
+        app_state
+            .workspace
+            .document
+            .flowsheet
+            .units
+            .get(&UnitId::new("flash-1"))
+            .and_then(|unit| unit.ports.iter().find(|port| port.name == "inlet"))
+            .and_then(|port| port.stream_id.as_ref()),
+        Some(&stream_id)
+    );
+
+    let undo = app_state
+        .undo_document_command(timestamp(51))
+        .expect("expected undo")
+        .expect("expected undo result");
+    assert_eq!(undo.command, result.command);
+    assert_eq!(
+        app_state
+            .workspace
+            .document
+            .flowsheet
+            .units
+            .get(&UnitId::new("feed-1"))
+            .and_then(|unit| unit.ports.iter().find(|port| port.name == "outlet"))
+            .and_then(|port| port.stream_id.as_ref()),
+        Some(&stream_id)
+    );
+    assert_eq!(
+        app_state
+            .workspace
+            .document
+            .flowsheet
+            .units
+            .get(&UnitId::new("flash-1"))
+            .and_then(|unit| unit.ports.iter().find(|port| port.name == "inlet"))
+            .and_then(|port| port.stream_id.as_ref()),
+        Some(&stream_id)
+    );
+}
+
+#[test]
+fn disconnecting_stream_sink_endpoint_unbinds_only_sink_and_is_undoable() {
+    let mut document = sample_feed_flash_document();
+    let stream_id = StreamId::new("stream-feed");
+    document
+        .flowsheet
+        .units
+        .get_mut(&UnitId::new("flash-1"))
+        .expect("expected flash unit")
+        .ports
+        .iter_mut()
+        .find(|port| port.name == "inlet")
+        .expect("expected flash inlet")
+        .stream_id = Some(stream_id.clone());
+    let mut app_state = AppState::new(document);
+
+    let result = app_state
+        .disconnect_stream_endpoint(&stream_id, PortDirection::Inlet, timestamp(50))
+        .expect("expected sink endpoint disconnect")
+        .expect("expected endpoint disconnect result");
+
+    assert_eq!(
+        result.disconnected_ports,
+        vec![StreamPortBinding {
+            unit_id: UnitId::new("flash-1"),
+            port: "inlet".to_string(),
+        }]
+    );
+    assert_eq!(
+        result.command,
+        DocumentCommand::DisconnectPorts {
+            unit_id: UnitId::new("flash-1"),
+            port: "inlet".to_string(),
+        }
+    );
+    assert_eq!(
+        app_state
+            .workspace
+            .document
+            .flowsheet
+            .units
+            .get(&UnitId::new("feed-1"))
+            .and_then(|unit| unit.ports.iter().find(|port| port.name == "outlet"))
+            .and_then(|port| port.stream_id.as_ref()),
+        Some(&stream_id)
+    );
+    assert_eq!(
+        app_state
+            .workspace
+            .document
+            .flowsheet
+            .units
+            .get(&UnitId::new("flash-1"))
+            .and_then(|unit| unit.ports.iter().find(|port| port.name == "inlet"))
+            .and_then(|port| port.stream_id.as_ref()),
+        None
+    );
+
+    let undo = app_state
+        .undo_document_command(timestamp(51))
+        .expect("expected undo")
+        .expect("expected undo result");
+    assert_eq!(undo.command, result.command);
+    assert_eq!(
+        app_state
+            .workspace
+            .document
+            .flowsheet
+            .units
+            .get(&UnitId::new("flash-1"))
+            .and_then(|unit| unit.ports.iter().find(|port| port.name == "inlet"))
+            .and_then(|port| port.stream_id.as_ref()),
+        Some(&stream_id)
+    );
+}
+
+#[test]
+fn disconnecting_missing_stream_endpoint_is_ignored_without_document_mutation() {
+    let document = sample_feed_flash_document();
+    let stream_id = StreamId::new("stream-feed");
+    let mut app_state = AppState::new(document);
+
+    let result = app_state
+        .disconnect_stream_endpoint(&stream_id, PortDirection::Inlet, timestamp(50))
+        .expect("expected endpoint disconnect evaluation");
+
+    assert_eq!(result, None);
+    assert_eq!(app_state.workspace.document.revision, 0);
+    assert!(app_state.workspace.command_history.is_empty());
+}
+
+#[test]
+fn reconnecting_source_only_stream_binds_unique_available_sink_and_is_undoable() {
+    let document = sample_feed_flash_document();
+    let stream_id = StreamId::new("stream-feed");
+    let mut app_state = AppState::new(document);
+    app_state.focus_inspector_target(crate::InspectorTarget::Stream(stream_id.clone()));
+
+    let result = app_state
+        .reconnect_stream_to_unique_available_endpoint(&stream_id, timestamp(50))
+        .expect("expected reconnect stream command")
+        .expect("expected reconnect result");
+
+    assert_eq!(result.stream_id, stream_id);
+    assert_eq!(
+        result.source_port,
+        StreamPortBinding {
+            unit_id: UnitId::new("feed-1"),
+            port: "outlet".to_string(),
+        }
+    );
+    assert_eq!(
+        result.sink_port,
+        StreamPortBinding {
+            unit_id: UnitId::new("flash-1"),
+            port: "inlet".to_string(),
+        }
+    );
+    assert_eq!(app_state.workspace.document.revision, 1);
+    assert_eq!(
+        app_state
+            .workspace
+            .document
+            .flowsheet
+            .units
+            .get(&UnitId::new("flash-1"))
+            .and_then(|unit| unit.ports.iter().find(|port| port.name == "inlet"))
+            .and_then(|port| port.stream_id.as_ref()),
+        Some(&stream_id)
+    );
+    assert_eq!(
+        app_state
+            .workspace
+            .command_history
+            .current_entry()
+            .map(|entry| &entry.command),
+        Some(&DocumentCommand::ConnectPorts {
+            stream_id: stream_id.clone(),
+            from_unit_id: UnitId::new("feed-1"),
+            from_port: "outlet".to_string(),
+            to_unit_id: Some(UnitId::new("flash-1")),
+            to_port: Some("inlet".to_string()),
+        })
+    );
+    assert_eq!(
+        app_state.workspace.drafts.active_target,
+        Some(crate::InspectorTarget::Stream(stream_id.clone()))
+    );
+
+    let undo = app_state
+        .undo_document_command(timestamp(51))
+        .expect("expected undo")
+        .expect("expected undo result");
+    assert_eq!(undo.command, result.command);
+    assert_eq!(
+        app_state
+            .workspace
+            .document
+            .flowsheet
+            .units
+            .get(&UnitId::new("flash-1"))
+            .and_then(|unit| unit.ports.iter().find(|port| port.name == "inlet"))
+            .and_then(|port| port.stream_id.as_ref()),
+        None
+    );
+}
+
+#[test]
+fn reconnecting_source_only_stream_ignores_unique_sink_that_would_create_cycle() {
+    let mut flowsheet = Flowsheet::new("reconnect-cycle");
+    flowsheet
+        .insert_stream(MaterialStreamState::new("stream-feed", "Feed"))
+        .expect("expected feed stream");
+    flowsheet
+        .insert_stream(MaterialStreamState::new("stream-heated", "Heated"))
+        .expect("expected heated stream");
+    flowsheet
+        .insert_unit(UnitNode::new(
+            "valve-1",
+            "Valve",
+            "valve",
+            vec![
+                UnitPort::new("inlet", PortDirection::Inlet, PortKind::Material, None),
+                UnitPort::new(
+                    "outlet",
+                    PortDirection::Outlet,
+                    PortKind::Material,
+                    Some("stream-feed".into()),
+                ),
+            ],
+        ))
+        .expect("expected valve insert");
+    flowsheet
+        .insert_unit(UnitNode::new(
+            "heater-1",
+            "Heater",
+            "heater",
+            vec![
+                UnitPort::new(
+                    "inlet",
+                    PortDirection::Inlet,
+                    PortKind::Material,
+                    Some("stream-feed".into()),
+                ),
+                UnitPort::new(
+                    "outlet",
+                    PortDirection::Outlet,
+                    PortKind::Material,
+                    Some("stream-heated".into()),
+                ),
+            ],
+        ))
+        .expect("expected heater insert");
+    let document = FlowsheetDocument::new(
+        flowsheet,
+        DocumentMetadata::new("doc-reconnect-cycle", "Reconnect Cycle", timestamp(10)),
+    );
+    let stream_id = StreamId::new("stream-heated");
+    let mut app_state = AppState::new(document);
+
+    let result = app_state
+        .reconnect_stream_to_unique_available_endpoint(&stream_id, timestamp(50))
+        .expect("expected reconnect evaluation");
+
+    assert_eq!(result, None);
+    assert_eq!(app_state.workspace.document.revision, 0);
+    assert!(app_state.workspace.command_history.is_empty());
+    assert_eq!(
+        app_state
+            .workspace
+            .document
+            .flowsheet
+            .units
+            .get(&UnitId::new("valve-1"))
+            .and_then(|unit| unit.ports.iter().find(|port| port.name == "inlet"))
+            .and_then(|port| port.stream_id.as_ref()),
+        None
+    );
+}
+
+#[test]
+fn reconnecting_sink_only_stream_binds_unique_available_source_and_is_undoable() {
+    let mut document = sample_feed_flash_document();
+    let stream_id = StreamId::new("stream-feed");
+    document
+        .flowsheet
+        .units
+        .get_mut(&UnitId::new("feed-1"))
+        .expect("expected feed unit")
+        .ports
+        .iter_mut()
+        .find(|port| port.name == "outlet")
+        .expect("expected feed outlet")
+        .stream_id = None;
+    document
+        .flowsheet
+        .units
+        .get_mut(&UnitId::new("flash-1"))
+        .expect("expected flash unit")
+        .ports
+        .iter_mut()
+        .find(|port| port.name == "inlet")
+        .expect("expected flash inlet")
+        .stream_id = Some(stream_id.clone());
+    let mut app_state = AppState::new(document);
+    app_state.focus_inspector_target(crate::InspectorTarget::Stream(stream_id.clone()));
+
+    let result = app_state
+        .reconnect_stream_to_unique_available_endpoint(&stream_id, timestamp(50))
+        .expect("expected reconnect stream command")
+        .expect("expected reconnect result");
+
+    assert_eq!(result.stream_id, stream_id);
+    assert_eq!(
+        result.source_port,
+        StreamPortBinding {
+            unit_id: UnitId::new("feed-1"),
+            port: "outlet".to_string(),
+        }
+    );
+    assert_eq!(
+        result.sink_port,
+        StreamPortBinding {
+            unit_id: UnitId::new("flash-1"),
+            port: "inlet".to_string(),
+        }
+    );
+    assert_eq!(app_state.workspace.document.revision, 1);
+    assert_eq!(
+        app_state
+            .workspace
+            .document
+            .flowsheet
+            .units
+            .get(&UnitId::new("feed-1"))
+            .and_then(|unit| unit.ports.iter().find(|port| port.name == "outlet"))
+            .and_then(|port| port.stream_id.as_ref()),
+        Some(&stream_id)
+    );
+    assert_eq!(
+        app_state
+            .workspace
+            .command_history
+            .current_entry()
+            .map(|entry| &entry.command),
+        Some(&DocumentCommand::ConnectPorts {
+            stream_id: stream_id.clone(),
+            from_unit_id: UnitId::new("feed-1"),
+            from_port: "outlet".to_string(),
+            to_unit_id: Some(UnitId::new("flash-1")),
+            to_port: Some("inlet".to_string()),
+        })
+    );
+    assert_eq!(
+        app_state.workspace.drafts.active_target,
+        Some(crate::InspectorTarget::Stream(stream_id.clone()))
+    );
+
+    let undo = app_state
+        .undo_document_command(timestamp(51))
+        .expect("expected undo")
+        .expect("expected undo result");
+    assert_eq!(undo.command, result.command);
+    assert_eq!(
+        app_state
+            .workspace
+            .document
+            .flowsheet
+            .units
+            .get(&UnitId::new("feed-1"))
+            .and_then(|unit| unit.ports.iter().find(|port| port.name == "outlet"))
+            .and_then(|port| port.stream_id.as_ref()),
+        None
+    );
+    assert_eq!(
+        app_state
+            .workspace
+            .document
+            .flowsheet
+            .units
+            .get(&UnitId::new("flash-1"))
+            .and_then(|unit| unit.ports.iter().find(|port| port.name == "inlet"))
+            .and_then(|port| port.stream_id.as_ref()),
+        Some(&stream_id)
+    );
+}
+
+#[test]
+fn reconnecting_sink_only_stream_ignores_ambiguous_available_sources() {
+    let mut document = sample_feed_flash_document();
+    let stream_id = StreamId::new("stream-feed");
+    document
+        .flowsheet
+        .units
+        .get_mut(&UnitId::new("feed-1"))
+        .expect("expected feed unit")
+        .ports
+        .iter_mut()
+        .find(|port| port.name == "outlet")
+        .expect("expected feed outlet")
+        .stream_id = None;
+    document
+        .flowsheet
+        .units
+        .get_mut(&UnitId::new("flash-1"))
+        .expect("expected flash unit")
+        .ports
+        .iter_mut()
+        .find(|port| port.name == "inlet")
+        .expect("expected flash inlet")
+        .stream_id = Some(stream_id.clone());
+    document
+        .flowsheet
+        .insert_unit(rf_model::UnitNode::new(
+            "heater-1",
+            "Heater",
+            "heater",
+            vec![rf_model::UnitPort::new(
+                "outlet",
+                PortDirection::Outlet,
+                PortKind::Material,
+                None,
+            )],
+        ))
+        .expect("expected heater insert");
+    let mut app_state = AppState::new(document);
+
+    let result = app_state
+        .reconnect_stream_to_unique_available_endpoint(&stream_id, timestamp(50))
+        .expect("expected reconnect evaluation");
+
+    assert_eq!(result, None);
+    assert_eq!(app_state.workspace.document.revision, 0);
+    assert!(app_state.workspace.command_history.is_empty());
+}
+
+#[test]
+fn deleting_stream_and_connections_unbinds_ports_removes_stream_and_is_undoable() {
+    let mut document = sample_feed_flash_document();
+    let stream_id = StreamId::new("stream-feed");
+    document
+        .flowsheet
+        .units
+        .get_mut(&UnitId::new("flash-1"))
+        .expect("expected flash unit")
+        .ports
+        .iter_mut()
+        .find(|port| port.name == "inlet")
+        .expect("expected inlet port")
+        .stream_id = Some(stream_id.clone());
+    let mut app_state = AppState::new(document);
+    app_state.focus_inspector_target(crate::InspectorTarget::Stream(stream_id.clone()));
+
+    let result = app_state
+        .delete_stream_and_connections(&stream_id, timestamp(51))
+        .expect("expected delete stream command")
+        .expect("expected delete result");
+
+    assert_eq!(app_state.workspace.document.revision, 1);
+    assert!(
+        !app_state
+            .workspace
+            .document
+            .flowsheet
+            .streams
+            .contains_key(&stream_id)
+    );
+    assert!(
+        app_state
+            .workspace
+            .document
+            .flowsheet
+            .units
+            .values()
+            .flat_map(|unit| unit.ports.iter())
+            .all(|port| port.stream_id.as_ref() != Some(&stream_id))
+    );
+    assert_eq!(app_state.workspace.drafts.active_target, None);
+    assert!(
+        !app_state
+            .workspace
+            .selection
+            .selected_streams
+            .contains(&stream_id)
+    );
+    assert_eq!(
+        app_state
+            .workspace
+            .command_history
+            .current_entry()
+            .map(|entry| &entry.command),
+        Some(&DocumentCommand::DeleteStreamAndDisconnectPorts {
+            stream_id: stream_id.clone(),
+            ports: result.disconnected_ports,
+        })
+    );
+
+    let undo = app_state
+        .undo_document_command(timestamp(52))
+        .expect("expected undo")
+        .expect("expected undo result");
+    assert_eq!(undo.command, result.command);
+    assert!(
+        app_state
+            .workspace
+            .document
+            .flowsheet
+            .streams
+            .contains_key(&stream_id)
+    );
+    assert_eq!(
+        app_state
+            .workspace
+            .document
+            .flowsheet
+            .units
+            .get(&UnitId::new("feed-1"))
+            .and_then(|unit| unit.ports.iter().find(|port| port.name == "outlet"))
+            .and_then(|port| port.stream_id.as_ref()),
+        Some(&stream_id)
+    );
+    assert_eq!(
+        app_state
+            .workspace
+            .document
+            .flowsheet
+            .units
+            .get(&UnitId::new("flash-1"))
+            .and_then(|unit| unit.ports.iter().find(|port| port.name == "inlet"))
+            .and_then(|port| port.stream_id.as_ref()),
+        Some(&stream_id)
+    );
+}

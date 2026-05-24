@@ -110,6 +110,47 @@ fn viewport_close_last_window_does_not_cancel_native_close_request() {
 }
 
 #[test]
+fn viewport_close_dirty_workspace_cancels_native_close_and_prompts() {
+    let preferences_path =
+        std::env::temp_dir().join("radishflow-studio-shell-dirty-native-close.preferences.json");
+    let mut app = ReadyAppState::from_config(&synced_skip_config(), preferences_path)
+        .expect("expected ready app");
+    app.create_blank_project();
+    assert!(
+        app.platform_host
+            .snapshot()
+            .window_model()
+            .runtime
+            .workspace_document
+            .has_unsaved_changes
+    );
+    let ctx = egui::Context::default();
+
+    ctx.begin_pass(close_raw_input());
+    assert!(!app.sync_viewport_close(&ctx));
+    let output = ctx.end_pass();
+    let close_commands = output
+        .viewport_output
+        .get(&egui::ViewportId::ROOT)
+        .map(|viewport| viewport.commands.as_slice())
+        .unwrap_or_default();
+
+    assert!(
+        close_commands.contains(&egui::ViewportCommand::CancelClose),
+        "dirty workspace close must cancel native teardown until the user chooses save, discard, or cancel"
+    );
+    assert_eq!(app.logical_window_count(), 1);
+    assert!(app.project_open.pending_close_window_confirmation.is_some());
+    assert_eq!(
+        app.project_open
+            .notice
+            .as_ref()
+            .map(|notice| notice.title.as_str()),
+        Some("未保存更改")
+    );
+}
+
+#[test]
 fn viewport_close_last_window_paints_final_frame_before_native_close() {
     let preferences_path =
         std::env::temp_dir().join("radishflow-studio-shell-native-close-final-frame.json");

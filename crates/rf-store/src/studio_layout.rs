@@ -45,6 +45,13 @@ pub struct StoredStudioCanvasUnitPosition {
     pub y: f64,
 }
 
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct StoredStudioCanvasViewport {
+    pub offset_x: f64,
+    pub offset_y: f64,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct StoredStudioWindowLayoutEntry {
@@ -64,6 +71,8 @@ pub struct StoredStudioLayoutFile {
     pub entries: Vec<StoredStudioWindowLayoutEntry>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub canvas_unit_positions: Vec<StoredStudioCanvasUnitPosition>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub canvas_viewport: Option<StoredStudioCanvasViewport>,
 }
 
 impl StoredStudioLayoutFile {
@@ -73,6 +82,7 @@ impl StoredStudioLayoutFile {
             schema_version: STORED_STUDIO_LAYOUT_SCHEMA_VERSION,
             entries,
             canvas_unit_positions: Vec::new(),
+            canvas_viewport: None,
         }
     }
 
@@ -81,6 +91,14 @@ impl StoredStudioLayoutFile {
         canvas_unit_positions: Vec<StoredStudioCanvasUnitPosition>,
     ) -> Self {
         self.canvas_unit_positions = canvas_unit_positions;
+        self
+    }
+
+    pub fn with_canvas_viewport(
+        mut self,
+        canvas_viewport: Option<StoredStudioCanvasViewport>,
+    ) -> Self {
+        self.canvas_viewport = canvas_viewport;
         self
     }
 
@@ -119,6 +137,9 @@ impl StoredStudioLayoutFile {
                     position.unit_id
                 )));
             }
+        }
+        if let Some(viewport) = self.canvas_viewport.as_ref() {
+            viewport.validate()?;
         }
 
         Ok(())
@@ -263,6 +284,18 @@ impl StoredStudioCanvasUnitPosition {
                 self.unit_id
             )));
         }
+        Ok(())
+    }
+}
+
+impl StoredStudioCanvasViewport {
+    pub fn validate(&self) -> RfResult<()> {
+        if !self.offset_x.is_finite() || !self.offset_y.is_finite() {
+            return Err(RfError::invalid_input(
+                "stored studio canvas viewport offsets must be finite numbers",
+            ));
+        }
+
         Ok(())
     }
 }

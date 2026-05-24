@@ -114,7 +114,9 @@ impl StudioGuiHost {
             .collect();
         let diagnostics = canvas_diagnostics_from_runtime(
             latest_solve_snapshot.as_ref(),
+            control_state.latest_diagnostic.as_ref(),
             control_state.notice.as_ref(),
+            self.controller.document().revision,
         );
         StudioGuiCanvasState {
             view_mode: canvas.view_mode,
@@ -451,7 +453,9 @@ fn canvas_units_in_layout_order(flowsheet: &rf_model::Flowsheet) -> Vec<&rf_mode
 
 fn canvas_diagnostics_from_runtime(
     latest_solve_snapshot: Option<&rf_ui::SolveSnapshot>,
+    latest_diagnostic: Option<&rf_ui::DiagnosticSummary>,
     notice: Option<&rf_ui::RunPanelNotice>,
+    document_revision: u64,
 ) -> Vec<StudioGuiCanvasDiagnosticState> {
     if let Some(snapshot) = latest_solve_snapshot {
         return snapshot
@@ -466,6 +470,22 @@ fn canvas_diagnostics_from_runtime(
                 related_port_targets: diagnostic.related_port_targets.clone(),
             })
             .collect();
+    }
+
+    if let Some(diagnostic) =
+        latest_diagnostic.filter(|diagnostic| diagnostic.document_revision == document_revision)
+    {
+        return vec![StudioGuiCanvasDiagnosticState {
+            severity: diagnostic.highest_severity,
+            code: diagnostic
+                .primary_code
+                .clone()
+                .unwrap_or_else(|| "run_panel.diagnostic".to_string()),
+            message: diagnostic.primary_message.clone(),
+            related_unit_ids: diagnostic.related_unit_ids.clone(),
+            related_stream_ids: diagnostic.related_stream_ids.clone(),
+            related_port_targets: diagnostic.related_port_targets.clone(),
+        }];
     }
 
     let Some(notice) = notice else {
@@ -569,6 +589,9 @@ fn active_inspector_detail_from_controller(
     match &target {
         rf_ui::InspectorTarget::Unit(unit_id) => {
             let unit = flowsheet.units.get(unit_id)?;
+            let property_fields =
+                unit_property_fields(flowsheet, unit, controller.inspector_drafts());
+            let property_notices = unit_property_notices(unit, &property_fields);
             Some(StudioGuiInspectorTargetDetailSnapshot {
                 target,
                 title: unit.name.clone(),
@@ -586,13 +609,14 @@ fn active_inspector_detail_from_controller(
                         value: unit.ports.len().to_string(),
                     },
                 ],
-                property_fields: Vec::new(),
-                property_notices: Vec::new(),
+                property_fields,
+                property_notices,
                 property_composition_summary: None,
                 property_batch_commit_command_id: None,
                 property_batch_discard_command_id: None,
                 property_composition_normalize_command_id: None,
                 property_composition_component_actions: Vec::new(),
+                connection_actions: Vec::new(),
                 unit_ports: unit
                     .ports
                     .iter()
@@ -655,11 +679,347 @@ fn active_inspector_detail_from_controller(
                 property_composition_summary,
                 property_composition_normalize_command_id,
                 property_composition_component_actions,
+                connection_actions: stream_connection_actions(flowsheet, &stream.id),
                 property_fields,
                 unit_ports: Vec::new(),
             })
         }
     }
+}
+
+fn stream_connection_actions(
+    flowsheet: &rf_model::Flowsheet,
+    stream_id: &rf_types::StreamId,
+) -> Vec<StudioGuiInspectorConnectionActionSnapshot> {
+    let stream_id_label = stream_id.as_str();
+    let mut actions = Vec::new();
+    if has_material_stream_endpoint(flowsheet, stream_id) {
+        actions.push(StudioGuiInspectorConnectionActionSnapshot {
+            label: "Disconnect stream".to_string(),
+            detail: format!(
+                "Remove material port bindings for `{stream_id_label}` while keeping the stream specification."
+            ),
+            command_id: "canvas.disconnect_selected_stream".to_string(),
+        });
+    }
+    if let Some(detail) = stream_endpoint_disconnect_detail(
+        flowsheet,
+        stream_id,
+        rf_types::PortDirection::Outlet,
+        "upstream source",
+        "downstream bindings",
+    ) {
+        actions.push(StudioGuiInspectorConnectionActionSnapshot {
+            label: "Disconnect source".to_string(),
+            detail,
+            command_id: "canvas.disconnect_selected_stream_source".to_string(),
+        });
+    }
+    if let Some(detail) = stream_endpoint_disconnect_detail(
+        flowsheet,
+        stream_id,
+        rf_types::PortDirection::Inlet,
+        "downstream sink",
+        "upstream bindings",
+    ) {
+        actions.push(StudioGuiInspectorConnectionActionSnapshot {
+            label: "Disconnect sink".to_string(),
+            detail,
+            command_id: "canvas.disconnect_selected_stream_sink".to_string(),
+        });
+    }
+    if let Some(detail) = stream_reconnect_detail(flowsheet, stream_id) {
+        actions.push(StudioGuiInspectorConnectionActionSnapshot {
+            label: "Reconnect stream".to_string(),
+            detail,
+            command_id: "canvas.reconnect_selected_stream".to_string(),
+        });
+    }
+    actions.extend([StudioGuiInspectorConnectionActionSnapshot {
+        label: "Delete stream".to_string(),
+        detail: format!(
+            "Remove material port bindings for `{stream_id_label}` and delete the stream."
+        ),
+        command_id: "canvas.delete_selected_stream".to_string(),
+    }]);
+    actions
+}
+
+fn has_material_stream_endpoint(
+    flowsheet: &rf_model::Flowsheet,
+    stream_id: &rf_types::StreamId,
+) -> bool {
+    flowsheet.units.values().any(|unit| {
+        unit.ports.iter().any(|port| {
+            port.kind == rf_types::PortKind::Material && port.stream_id.as_ref() == Some(stream_id)
+        })
+    })
+}
+
+fn stream_endpoint_disconnect_detail(
+    flowsheet: &rf_model::Flowsheet,
+    stream_id: &rf_types::StreamId,
+    direction: rf_types::PortDirection,
+    endpoint_name: &str,
+    kept_bindings_name: &str,
+) -> Option<String> {
+    let endpoint = unique_material_stream_endpoint_label(flowsheet, stream_id, direction)?;
+    Some(format!(
+        "Disconnect {endpoint_name} `{endpoint}` from `{}` while keeping the stream specification and {kept_bindings_name}.",
+        stream_id.as_str()
+    ))
+}
+
+fn unique_material_stream_endpoint_label(
+    flowsheet: &rf_model::Flowsheet,
+    stream_id: &rf_types::StreamId,
+    direction: rf_types::PortDirection,
+) -> Option<String> {
+    let mut endpoints = flowsheet
+        .units
+        .values()
+        .flat_map(|unit| {
+            unit.ports
+                .iter()
+                .filter(move |port| {
+                    port.kind == rf_types::PortKind::Material
+                        && port.direction == direction
+                        && port.stream_id.as_ref() == Some(stream_id)
+                })
+                .map(|port| format!("{}:{}", unit.id, port.name))
+        })
+        .collect::<Vec<_>>();
+    (endpoints.len() == 1).then(|| endpoints.remove(0))
+}
+
+fn stream_reconnect_detail(
+    flowsheet: &rf_model::Flowsheet,
+    stream_id: &rf_types::StreamId,
+) -> Option<String> {
+    let mut source_unit_id = None;
+    let mut source_binding = None;
+    let mut sink_unit_id = None;
+    let mut sink_binding = None;
+    let mut source_count = 0usize;
+    let mut sink_count = 0usize;
+
+    for unit in flowsheet.units.values() {
+        for port in &unit.ports {
+            if port.kind != rf_types::PortKind::Material
+                || port.stream_id.as_ref() != Some(stream_id)
+            {
+                continue;
+            }
+
+            match port.direction {
+                rf_types::PortDirection::Outlet => {
+                    source_count += 1;
+                    source_unit_id = Some(unit.id.clone());
+                    source_binding = Some(format!("{}:{}", unit.id, port.name));
+                }
+                rf_types::PortDirection::Inlet => {
+                    sink_count += 1;
+                    sink_unit_id = Some(unit.id.clone());
+                    sink_binding = Some(format!("{}:{}", unit.id, port.name));
+                }
+            }
+        }
+    }
+
+    match (source_count, sink_count) {
+        (1, 0) => {
+            let source_unit_id = source_unit_id?;
+            let targets = available_material_reconnect_sink_labels(flowsheet, &source_unit_id);
+            (targets.len() == 1).then(|| {
+                format!(
+                    "Reconnect `{}` from `{}` to the only available material inlet `{}`.",
+                    stream_id.as_str(),
+                    source_binding.expect("checked source binding"),
+                    targets[0]
+                )
+            })
+        }
+        (0, 1) => {
+            let sink_unit_id = sink_unit_id?;
+            let targets = available_material_reconnect_source_labels(flowsheet, &sink_unit_id);
+            (targets.len() == 1).then(|| {
+                format!(
+                    "Reconnect `{}` from the only available material outlet `{}` to `{}`.",
+                    stream_id.as_str(),
+                    targets[0],
+                    sink_binding.expect("checked sink binding")
+                )
+            })
+        }
+        _ => None,
+    }
+}
+
+fn available_material_reconnect_sink_labels(
+    flowsheet: &rf_model::Flowsheet,
+    source_unit_id: &rf_types::UnitId,
+) -> Vec<String> {
+    flowsheet
+        .units
+        .values()
+        .filter(|unit| &unit.id != source_unit_id)
+        .flat_map(|unit| {
+            unit.ports
+                .iter()
+                .filter(move |port| {
+                    port.kind == rf_types::PortKind::Material
+                        && port.direction == rf_types::PortDirection::Inlet
+                        && port.stream_id.is_none()
+                        && !would_create_unit_dependency_cycle(flowsheet, source_unit_id, &unit.id)
+                })
+                .map(|port| format!("{}:{}", unit.id, port.name))
+        })
+        .collect()
+}
+
+fn available_material_reconnect_source_labels(
+    flowsheet: &rf_model::Flowsheet,
+    sink_unit_id: &rf_types::UnitId,
+) -> Vec<String> {
+    flowsheet
+        .units
+        .values()
+        .filter(|unit| &unit.id != sink_unit_id)
+        .flat_map(|unit| {
+            unit.ports
+                .iter()
+                .filter(move |port| {
+                    port.kind == rf_types::PortKind::Material
+                        && port.direction == rf_types::PortDirection::Outlet
+                        && port.stream_id.is_none()
+                        && !would_create_unit_dependency_cycle(flowsheet, &unit.id, sink_unit_id)
+                })
+                .map(|port| format!("{}:{}", unit.id, port.name))
+        })
+        .collect()
+}
+
+fn would_create_unit_dependency_cycle(
+    flowsheet: &rf_model::Flowsheet,
+    source_unit_id: &rf_types::UnitId,
+    sink_unit_id: &rf_types::UnitId,
+) -> bool {
+    if source_unit_id == sink_unit_id {
+        return true;
+    }
+
+    let mut source_by_stream = BTreeMap::<rf_types::StreamId, rf_types::UnitId>::new();
+    let mut sinks_by_stream = BTreeMap::<rf_types::StreamId, Vec<rf_types::UnitId>>::new();
+    for unit in flowsheet.units.values() {
+        for port in &unit.ports {
+            if port.kind != rf_types::PortKind::Material {
+                continue;
+            }
+            let Some(stream_id) = port.stream_id.as_ref() else {
+                continue;
+            };
+            match port.direction {
+                rf_types::PortDirection::Outlet => {
+                    source_by_stream
+                        .entry(stream_id.clone())
+                        .or_insert_with(|| unit.id.clone());
+                }
+                rf_types::PortDirection::Inlet => {
+                    sinks_by_stream
+                        .entry(stream_id.clone())
+                        .or_default()
+                        .push(unit.id.clone());
+                }
+            }
+        }
+    }
+
+    let mut downstream_units = BTreeMap::<rf_types::UnitId, Vec<rf_types::UnitId>>::new();
+    for (stream_id, source) in source_by_stream {
+        if let Some(sinks) = sinks_by_stream.get(&stream_id) {
+            downstream_units
+                .entry(source)
+                .or_default()
+                .extend(sinks.clone());
+        }
+    }
+
+    let mut stack = vec![sink_unit_id.clone()];
+    let mut visited = BTreeSet::new();
+    while let Some(unit_id) = stack.pop() {
+        if !visited.insert(unit_id.clone()) {
+            continue;
+        }
+        if &unit_id == source_unit_id {
+            return true;
+        }
+        if let Some(children) = downstream_units.get(&unit_id) {
+            stack.extend(children.iter().cloned());
+        }
+    }
+
+    false
+}
+
+fn unit_property_fields(
+    flowsheet: &rf_model::Flowsheet,
+    unit: &rf_model::UnitNode,
+    drafts: &rf_ui::InspectorDraftState,
+) -> Vec<StudioGuiInspectorTargetFieldSnapshot> {
+    match unit.kind.as_str() {
+        "heater" | "cooler" => [
+            (
+                rf_ui::UnitInspectorDraftField::OutletTemperatureK,
+                "Outlet temperature (K)",
+            ),
+            (
+                rf_ui::UnitInspectorDraftField::OutletPressurePa,
+                "Outlet pressure (Pa)",
+            ),
+        ]
+        .into_iter()
+        .filter_map(|(field, label)| {
+            unit_number_property_field(flowsheet, unit, drafts, field, label)
+        })
+        .collect(),
+        "valve" => unit_number_property_field(
+            flowsheet,
+            unit,
+            drafts,
+            rf_ui::UnitInspectorDraftField::OutletPressurePa,
+            "Outlet pressure (Pa)",
+        )
+        .into_iter()
+        .collect(),
+        "flash_drum" => unit_number_property_field(
+            flowsheet,
+            unit,
+            drafts,
+            rf_ui::UnitInspectorDraftField::OutletPressurePa,
+            "Flash pressure (Pa)",
+        )
+        .into_iter()
+        .collect(),
+        _ => Vec::new(),
+    }
+}
+
+fn unit_number_property_field(
+    flowsheet: &rf_model::Flowsheet,
+    unit: &rf_model::UnitNode,
+    drafts: &rf_ui::InspectorDraftState,
+    field: rf_ui::UnitInspectorDraftField,
+    label: &str,
+) -> Option<StudioGuiInspectorTargetFieldSnapshot> {
+    let original = rf_ui::unit_inspector_parameter_value(flowsheet, &unit.id, &field)?;
+    let mut property_field = inspector_number_field(
+        drafts,
+        rf_ui::unit_inspector_draft_key(&unit.id, &field),
+        label,
+        original,
+    );
+    property_field.constraint_text = Some(unit_parameter_constraint_text(flowsheet, unit, &field));
+    Some(property_field)
 }
 
 fn stream_property_fields(
@@ -761,6 +1121,7 @@ fn inspector_text_field(
         Some(rf_ui::DraftValue::Text(draft)) => StudioGuiInspectorTargetFieldSnapshot {
             key: key.clone(),
             label: label.to_string(),
+            constraint_text: None,
             value_kind: StudioGuiInspectorTargetFieldValueKindSnapshot::Text,
             original_value: draft.original.clone(),
             current_value: draft.current.clone(),
@@ -782,6 +1143,7 @@ fn inspector_text_field(
         _ => StudioGuiInspectorTargetFieldSnapshot {
             key: key.clone(),
             label: label.to_string(),
+            constraint_text: None,
             value_kind: StudioGuiInspectorTargetFieldValueKindSnapshot::Text,
             original_value: original.clone(),
             current_value: original,
@@ -805,6 +1167,7 @@ fn inspector_number_field(
         Some(rf_ui::DraftValue::Number(draft)) => StudioGuiInspectorTargetFieldSnapshot {
             key: key.clone(),
             label: label.to_string(),
+            constraint_text: None,
             value_kind: StudioGuiInspectorTargetFieldValueKindSnapshot::Number,
             original_value: draft.original.clone(),
             current_value: draft.current.clone(),
@@ -826,6 +1189,7 @@ fn inspector_number_field(
         _ => StudioGuiInspectorTargetFieldSnapshot {
             key: key.clone(),
             label: label.to_string(),
+            constraint_text: None,
             value_kind: StudioGuiInspectorTargetFieldValueKindSnapshot::Number,
             original_value: format_field_number(original),
             current_value: format_field_number(original),
@@ -895,22 +1259,133 @@ fn stream_property_batch_discard_command_id(
         .then(|| crate::inspector_draft_batch_discard_command_id(stream.id.as_str()))
 }
 
+fn inspector_property_notices(
+    fields: &[StudioGuiInspectorTargetFieldSnapshot],
+) -> Vec<crate::StudioGuiInspectorPropertyNoticeSnapshot> {
+    if fields
+        .iter()
+        .any(|field| field.validation == StudioGuiInspectorTargetFieldValidationSnapshot::Invalid)
+    {
+        return vec![crate::StudioGuiInspectorPropertyNoticeSnapshot {
+            status_label: "Invalid",
+            message:
+                "Fix invalid property drafts before applying changes; invalid drafts are preserved and are not committed."
+                    .to_string(),
+        }];
+    }
+
+    Vec::new()
+}
+
+fn unit_property_notices(
+    unit: &rf_model::UnitNode,
+    fields: &[StudioGuiInspectorTargetFieldSnapshot],
+) -> Vec<crate::StudioGuiInspectorPropertyNoticeSnapshot> {
+    let notices: Vec<_> = fields
+        .iter()
+        .filter(|field| {
+            field.validation == StudioGuiInspectorTargetFieldValidationSnapshot::Invalid
+        })
+        .map(|field| crate::StudioGuiInspectorPropertyNoticeSnapshot {
+            status_label: "Invalid",
+            message: unit_parameter_invalid_notice(unit, field),
+        })
+        .collect();
+
+    if notices.is_empty() {
+        inspector_property_notices(fields)
+    } else {
+        notices
+    }
+}
+
+fn unit_parameter_invalid_notice(
+    unit: &rf_model::UnitNode,
+    field: &StudioGuiInspectorTargetFieldSnapshot,
+) -> String {
+    if field.key.ends_with(":outlet_temperature_k") {
+        return format!(
+            "{} must be a positive finite outlet temperature in K.",
+            field.label
+        );
+    }
+
+    if field.key.ends_with(":outlet_pressure_pa") {
+        if unit_outlet_pressure_cannot_exceed_inlet(unit) {
+            return format!(
+                "{} must be a positive finite outlet absolute pressure in Pa and cannot exceed the connected inlet pressure.",
+                field.label
+            );
+        }
+        return format!(
+            "{} must be a positive finite outlet absolute pressure in Pa.",
+            field.label
+        );
+    }
+
+    "Fix invalid property drafts before applying changes; invalid drafts are preserved and are not committed.".to_string()
+}
+
+fn unit_parameter_constraint_text(
+    flowsheet: &rf_model::Flowsheet,
+    unit: &rf_model::UnitNode,
+    field: &rf_ui::UnitInspectorDraftField,
+) -> String {
+    match field {
+        rf_ui::UnitInspectorDraftField::OutletTemperatureK => {
+            "SI unit: K. Enter a positive finite outlet temperature; the committed value is used by the solver and synced to the outlet stream template.".to_string()
+        }
+        rf_ui::UnitInspectorDraftField::OutletPressurePa => {
+            if unit_outlet_pressure_cannot_exceed_inlet(unit) {
+                let inlet_limit = connected_inlet_stream(flowsheet, unit).map(|stream| {
+                    format!(" Current inlet pressure limit: {:.0} Pa.", stream.pressure_pa)
+                });
+                return format!(
+                    "SI unit: Pa. Enter a positive finite outlet absolute pressure; Heater, Cooler, and Valve outlet pressure cannot exceed the connected inlet pressure.{}",
+                    inlet_limit.unwrap_or_default()
+                );
+            }
+            "SI unit: Pa. Enter a positive finite flash outlet pressure; the committed value is used by the solver and synced to the Flash Drum liquid/vapor outlet stream templates.".to_string()
+        }
+    }
+}
+
+fn unit_outlet_pressure_cannot_exceed_inlet(unit: &rf_model::UnitNode) -> bool {
+    matches!(unit.kind.as_str(), "heater" | "cooler" | "valve")
+}
+
+fn connected_inlet_stream<'a>(
+    flowsheet: &'a rf_model::Flowsheet,
+    unit: &rf_model::UnitNode,
+) -> Option<&'a rf_model::MaterialStreamState> {
+    unit.ports
+        .iter()
+        .find(|port| {
+            port.direction == rf_types::PortDirection::Inlet
+                && port.kind == rf_types::PortKind::Material
+        })
+        .and_then(|port| port.stream_id.as_ref())
+        .and_then(|stream_id| flowsheet.streams.get(stream_id))
+}
+
 fn stream_property_notices(
     stream: &rf_model::MaterialStreamState,
     drafts: &rf_ui::InspectorDraftState,
     fields: &[StudioGuiInspectorTargetFieldSnapshot],
 ) -> Vec<crate::StudioGuiInspectorPropertyNoticeSnapshot> {
-    let mut notices = Vec::new();
-
-    if fields
+    let mut notices = if fields
         .iter()
         .any(|field| field.validation == StudioGuiInspectorTargetFieldValidationSnapshot::Invalid)
     {
-        notices.push(crate::StudioGuiInspectorPropertyNoticeSnapshot {
+        vec![crate::StudioGuiInspectorPropertyNoticeSnapshot {
             status_label: "Invalid",
-            message: "Fix invalid stream property drafts before applying changes; invalid drafts are preserved and are not committed.".to_string(),
-        });
-    }
+            message:
+                "Fix invalid stream property drafts before applying changes; invalid drafts are preserved and are not committed."
+                    .to_string(),
+        }]
+    } else {
+        Vec::new()
+    };
 
     if let Some(sum) = stream_property_composition_sum(stream, drafts) {
         if !sum.is_finite() || sum <= 0.0 {

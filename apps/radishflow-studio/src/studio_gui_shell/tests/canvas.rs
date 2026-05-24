@@ -281,7 +281,7 @@ fn canvas_feed_to_flash_minimal_path_surfaces_local_connection_suggestions() {
         after_flash.canvas.focused_suggestion_id.as_deref(),
         Some("local.flash_drum.connect_inlet.flash-2.stream-feed-2-outlet")
     );
-    assert_eq!(after_flash.canvas.suggestion_count, 3);
+    assert_eq!(after_flash.canvas.suggestion_count, 1);
 
     app.dispatch_ui_command("canvas.accept_focused");
     let after_inlet = app.platform_host.snapshot().window_model();
@@ -289,6 +289,7 @@ fn canvas_feed_to_flash_minimal_path_surfaces_local_connection_suggestions() {
         after_inlet.canvas.focused_suggestion_id.as_deref(),
         Some("local.flash_drum.create_outlet.flash-2.liquid")
     );
+    assert_eq!(after_inlet.canvas.suggestion_count, 2);
 
     app.dispatch_ui_command("canvas.accept_focused");
     let after_liquid = app.platform_host.snapshot().window_model();
@@ -348,17 +349,14 @@ fn canvas_feed_to_flash_explicit_suggestion_selection_can_run() {
             .view()
             .suggestions
             .iter()
-            .any(
-                |suggestion| suggestion.id == "local.flash_drum.create_outlet.flash-2.vapor"
-                    && suggestion.explicit_accept_enabled
-            )
+            .all(|suggestion| !suggestion.id.contains("create_outlet")),
+        "flash outlet suggestions must wait until the flash inlet is bound"
     );
-
-    accept_canvas_suggestion_by_id(&mut app, "local.flash_drum.create_outlet.flash-2.vapor");
     accept_canvas_suggestion_by_id(
         &mut app,
         "local.flash_drum.connect_inlet.flash-2.stream-feed-2-outlet",
     );
+    accept_canvas_suggestion_by_id(&mut app, "local.flash_drum.create_outlet.flash-2.vapor");
     accept_canvas_suggestion_by_id(&mut app, "local.flash_drum.create_outlet.flash-2.liquid");
 
     app.dispatch_ui_command("run_panel.run_manual");
@@ -458,6 +456,258 @@ fn blank_project_initializes_components_saves_reopens_and_runs_feed_flash_path()
     );
     assert_eq!(rerun.runtime.control_state.pending_reason, None);
 
+    let _ = fs::remove_file(project_path);
+}
+
+#[test]
+fn blank_project_heater_parameter_saves_reopens_and_reruns() {
+    let (config, project_path) = blank_workspace_config();
+    let mut app = ready_app_state(&config);
+
+    app.dispatch_ui_command("canvas.begin_place_unit.feed");
+    app.dispatch_canvas_pending_edit_commit(rf_ui::CanvasPoint::new(64.0, 40.0));
+    accept_canvas_suggestion_by_id(&mut app, "local.feed.create_outlet.feed-1");
+
+    app.dispatch_ui_command("canvas.begin_place_unit.heater");
+    app.dispatch_canvas_pending_edit_commit(rf_ui::CanvasPoint::new(180.0, 40.0));
+    accept_canvas_suggestion_by_id(
+        &mut app,
+        "local.heater.connect_inlet.heater-1.stream-feed-1-outlet",
+    );
+    accept_canvas_suggestion_by_id(&mut app, "local.heater.create_outlet.heater-1");
+
+    app.dispatch_ui_command("canvas.begin_place_unit.flash_drum");
+    app.dispatch_canvas_pending_edit_commit(rf_ui::CanvasPoint::new(320.0, 40.0));
+    accept_canvas_suggestion_by_id(
+        &mut app,
+        "local.flash_drum.connect_inlet.flash-1.stream-heater-1-outlet",
+    );
+    accept_canvas_suggestion_by_id(&mut app, "local.flash_drum.create_outlet.flash-1.liquid");
+    accept_canvas_suggestion_by_id(&mut app, "local.flash_drum.create_outlet.flash-1.vapor");
+
+    app.dispatch_ui_command("inspector.focus_unit:heater-1");
+    app.dispatch_inspector_field_draft_update(
+        radishflow_studio::inspector_draft_update_command_id("unit:heater-1:outlet_temperature_k"),
+        "358.5",
+    );
+    app.dispatch_inspector_field_draft_commit(
+        radishflow_studio::inspector_draft_commit_command_id("unit:heater-1:outlet_temperature_k"),
+    );
+
+    app.save_project();
+    let saved = read_project_file(&project_path).expect("expected saved blank heater project");
+    assert_eq!(
+        saved.document.flowsheet.units[&UnitId::new("heater-1")]
+            .parameters
+            .outlet_temperature_k,
+        Some(358.5)
+    );
+    assert_eq!(
+        saved.document.flowsheet.streams[&StreamId::new("stream-heater-1-outlet")].temperature_k,
+        358.5
+    );
+
+    app.open_project(project_path.clone(), "project");
+    app.dispatch_ui_command("run_panel.run_manual");
+    let rerun = app.platform_host.snapshot().window_model();
+    assert_eq!(
+        rerun.runtime.control_state.run_status,
+        rf_ui::RunStatus::Converged
+    );
+    let heated = rerun
+        .runtime
+        .latest_solve_snapshot
+        .as_ref()
+        .expect("expected solve snapshot")
+        .streams
+        .iter()
+        .find(|stream| stream.stream_id == "stream-heater-1-outlet")
+        .expect("expected heater outlet result");
+    assert_eq!(heated.temperature_k, 358.5);
+
+    let _ = fs::remove_file(project_path);
+}
+
+#[test]
+fn blank_project_mixer_path_saves_reopens_and_reruns() {
+    let (config, project_path) = blank_workspace_config();
+    let mut app = ready_app_state(&config);
+
+    app.dispatch_ui_command("canvas.begin_place_unit.feed");
+    app.dispatch_canvas_pending_edit_commit(rf_ui::CanvasPoint::new(64.0, 40.0));
+    accept_canvas_suggestion_by_id(&mut app, "local.feed.create_outlet.feed-1");
+
+    app.dispatch_ui_command("canvas.begin_place_unit.feed");
+    app.dispatch_canvas_pending_edit_commit(rf_ui::CanvasPoint::new(64.0, 140.0));
+    accept_canvas_suggestion_by_id(&mut app, "local.feed.create_outlet.feed-2");
+
+    app.dispatch_ui_command("canvas.begin_place_unit.mixer");
+    app.dispatch_canvas_pending_edit_commit(rf_ui::CanvasPoint::new(210.0, 90.0));
+    let mixer_suggestions = app.platform_host.snapshot().window_model();
+    let mixer_action_labels = mixer_suggestions
+        .canvas
+        .widget
+        .view()
+        .suggestions
+        .iter()
+        .map(|suggestion| (suggestion.id.as_str(), suggestion.action_label))
+        .collect::<Vec<_>>();
+    assert!(
+        mixer_action_labels.contains(&(
+            "local.mixer.connect_inlet_a.mixer-1.stream-feed-1-outlet",
+            "Connect stream",
+        )),
+        "expected mixer inlet suggestion to render a connect action label, labels: {mixer_action_labels:?}"
+    );
+    assert!(
+        !mixer_action_labels
+            .iter()
+            .any(|(id, _)| *id == "local.mixer.create_outlet.mixer-1"),
+        "mixer outlet suggestion must wait until both mixer inlets are bound, labels: {mixer_action_labels:?}"
+    );
+    accept_canvas_suggestion_by_id(
+        &mut app,
+        "local.mixer.connect_inlet_a.mixer-1.stream-feed-1-outlet",
+    );
+    accept_canvas_suggestion_by_id(
+        &mut app,
+        "local.mixer.connect_inlet_b.mixer-1.stream-feed-2-outlet",
+    );
+    let after_mixer_inlets = app.platform_host.snapshot().window_model();
+    assert!(
+        after_mixer_inlets
+            .canvas
+            .widget
+            .view()
+            .suggestions
+            .iter()
+            .any(
+                |suggestion| suggestion.id == "local.mixer.create_outlet.mixer-1"
+                    && suggestion.action_label == "Create stream"
+            ),
+        "expected mixer outlet suggestion after both inlets are bound"
+    );
+    accept_canvas_suggestion_by_id(&mut app, "local.mixer.create_outlet.mixer-1");
+
+    app.dispatch_ui_command("canvas.begin_place_unit.flash_drum");
+    app.dispatch_canvas_pending_edit_commit(rf_ui::CanvasPoint::new(360.0, 90.0));
+    accept_canvas_suggestion_by_id(
+        &mut app,
+        "local.flash_drum.connect_inlet.flash-1.stream-mixer-1-outlet",
+    );
+    accept_canvas_suggestion_by_id(&mut app, "local.flash_drum.create_outlet.flash-1.liquid");
+    accept_canvas_suggestion_by_id(&mut app, "local.flash_drum.create_outlet.flash-1.vapor");
+
+    app.dispatch_ui_command("run_panel.run_manual");
+    let solved = app.platform_host.snapshot().window_model();
+    assert_eq!(
+        solved.runtime.control_state.run_status,
+        rf_ui::RunStatus::Converged
+    );
+    assert_eq!(solved.runtime.control_state.pending_reason, None);
+    let solved_mixer_outlet = solved
+        .runtime
+        .latest_solve_snapshot
+        .as_ref()
+        .expect("expected solve snapshot")
+        .streams
+        .iter()
+        .find(|stream| stream.stream_id == "stream-mixer-1-outlet")
+        .expect("expected mixer outlet result");
+    assert_eq!(solved_mixer_outlet.total_molar_flow_mol_s, 2.0);
+
+    app.save_project();
+    let saved = read_project_file(&project_path).expect("expected saved blank mixer project");
+    assert_eq!(saved.document.flowsheet.components.len(), 2);
+    for unit_id in ["feed-1", "feed-2", "mixer-1", "flash-1"] {
+        assert!(
+            saved
+                .document
+                .flowsheet
+                .units
+                .contains_key(&UnitId::new(unit_id)),
+            "expected saved unit {unit_id}"
+        );
+    }
+    for stream_id in [
+        "stream-feed-1-outlet",
+        "stream-feed-2-outlet",
+        "stream-mixer-1-outlet",
+        "stream-flash-1-liquid",
+        "stream-flash-1-vapor",
+    ] {
+        assert!(
+            saved
+                .document
+                .flowsheet
+                .streams
+                .contains_key(&StreamId::new(stream_id)),
+            "expected saved stream {stream_id}"
+        );
+    }
+    assert_eq!(
+        stored_unit_port_stream_id(&saved, "mixer-1", "inlet_a"),
+        Some("stream-feed-1-outlet")
+    );
+    assert_eq!(
+        stored_unit_port_stream_id(&saved, "mixer-1", "inlet_b"),
+        Some("stream-feed-2-outlet")
+    );
+    assert_eq!(
+        stored_unit_port_stream_id(&saved, "mixer-1", "outlet"),
+        Some("stream-mixer-1-outlet")
+    );
+    assert_eq!(
+        stored_unit_port_stream_id(&saved, "flash-1", "inlet"),
+        Some("stream-mixer-1-outlet")
+    );
+    assert_eq!(
+        stored_unit_port_stream_id(&saved, "flash-1", "liquid"),
+        Some("stream-flash-1-liquid")
+    );
+    assert_eq!(
+        stored_unit_port_stream_id(&saved, "flash-1", "vapor"),
+        Some("stream-flash-1-vapor")
+    );
+
+    app.open_project(project_path.clone(), "project");
+    let reopened = app.platform_host.snapshot().window_model();
+    assert_eq!(
+        reopened.runtime.workspace_document.revision,
+        saved.document.revision
+    );
+    assert!(!reopened.runtime.workspace_document.has_unsaved_changes);
+
+    app.dispatch_ui_command("run_panel.run_manual");
+    let rerun = app.platform_host.snapshot().window_model();
+    assert_eq!(
+        rerun.runtime.control_state.run_status,
+        rf_ui::RunStatus::Converged
+    );
+    assert_eq!(rerun.runtime.control_state.pending_reason, None);
+    let rerun_streams = &rerun
+        .runtime
+        .latest_solve_snapshot
+        .as_ref()
+        .expect("expected rerun solve snapshot")
+        .streams;
+    let rerun_mixer_outlet = rerun_streams
+        .iter()
+        .find(|stream| stream.stream_id == "stream-mixer-1-outlet")
+        .expect("expected mixer outlet rerun result");
+    assert_eq!(rerun_mixer_outlet.total_molar_flow_mol_s, 2.0);
+    assert!(
+        rerun_streams
+            .iter()
+            .any(|stream| stream.stream_id == "stream-flash-1-liquid")
+    );
+    assert!(
+        rerun_streams
+            .iter()
+            .any(|stream| stream.stream_id == "stream-flash-1-vapor")
+    );
+
+    let _ = fs::remove_file(studio_layout_path_for_project(&project_path));
     let _ = fs::remove_file(project_path);
 }
 
@@ -623,6 +873,181 @@ fn canvas_unit_layout_nudge_commands_move_selected_unit_from_command_surface() {
 }
 
 #[test]
+fn canvas_selected_unit_direct_position_move_updates_only_layout_sidecar() {
+    let (config, project_path) = blank_workspace_config();
+    let mut app = ready_app_state(&config);
+
+    app.dispatch_ui_command("canvas.begin_place_unit.feed");
+    app.dispatch_canvas_pending_edit_commit(rf_ui::CanvasPoint::new(64.0, 40.0));
+    app.save_project();
+    app.dispatch_ui_command("inspector.focus_unit:feed-1");
+
+    app.dispatch_canvas_unit_layout_move(
+        rf_types::UnitId::new("feed-1"),
+        rf_ui::CanvasPoint::new(180.0, 112.0),
+    );
+
+    let moved = app.platform_host.snapshot().window_model();
+    assert_eq!(
+        moved
+            .canvas
+            .widget
+            .view()
+            .unit_blocks
+            .iter()
+            .find(|unit| unit.unit_id == "feed-1")
+            .and_then(|unit| unit.layout_position),
+        Some(rf_ui::CanvasPoint::new(180.0, 112.0))
+    );
+    assert!(
+        !moved.runtime.workspace_document.has_unsaved_changes,
+        "direct canvas unit move should only update the Studio layout sidecar"
+    );
+    let result = app
+        .canvas_command_result_command_surface()
+        .expect("expected direct canvas move command result");
+    assert_eq!(result.status_label, "moved");
+    assert_eq!(result.title, "Canvas unit moved");
+    assert!(result.detail.contains("moved from sidecar (64.0, 40.0)"));
+    assert_eq!(result.target_command_id, "inspector.focus_unit:feed-1");
+
+    let layout_path = studio_layout_path_for_project(&project_path);
+    let stored_layout = read_studio_layout_file(&layout_path).expect("expected layout sidecar");
+    assert!(stored_layout.canvas_unit_positions.iter().any(|position| {
+        position.unit_id == "feed-1" && position.x == 180.0 && position.y == 112.0
+    }));
+
+    let _ = fs::remove_file(project_path);
+    let _ = fs::remove_file(layout_path);
+}
+
+#[test]
+fn canvas_viewport_offset_persists_in_layout_sidecar_without_dirtying_project() {
+    let (config, project_path) = blank_workspace_config();
+    let layout_path = studio_layout_path_for_project(&project_path);
+    let mut app = ready_app_state(&config);
+
+    app.dispatch_ui_command("canvas.begin_place_unit.feed");
+    app.dispatch_canvas_pending_edit_commit(rf_ui::CanvasPoint::new(64.0, 40.0));
+    app.save_project();
+    let project_before = fs::read_to_string(&project_path).expect("expected saved project file");
+    assert!(
+        !app.platform_host
+            .snapshot()
+            .window_model()
+            .runtime
+            .workspace_document
+            .has_unsaved_changes
+    );
+
+    app.update_canvas_viewport_offset(egui::vec2(42.0, -16.0));
+
+    let moved_viewport = app.platform_host.snapshot().window_model();
+    assert!(
+        !moved_viewport
+            .runtime
+            .workspace_document
+            .has_unsaved_changes,
+        "viewport pan must only update the Studio layout sidecar"
+    );
+    assert_eq!(
+        fs::read_to_string(&project_path).expect("expected project file after viewport pan"),
+        project_before,
+        "viewport pan must not rewrite the project JSON"
+    );
+
+    let stored_layout = read_studio_layout_file(&layout_path).expect("expected layout sidecar");
+    assert_eq!(
+        stored_layout
+            .canvas_viewport
+            .as_ref()
+            .map(|viewport| (viewport.offset_x, viewport.offset_y)),
+        Some((42.0, -16.0))
+    );
+
+    app.open_project(project_path.clone(), "project");
+    assert_eq!(
+        app.canvas_initial_viewport_fit,
+        CanvasInitialViewportFitState::restore(egui::vec2(42.0, -16.0))
+    );
+
+    let _ = fs::remove_file(project_path);
+    let _ = fs::remove_file(layout_path);
+}
+
+#[test]
+fn canvas_viewport_fit_to_content_resets_sidecar_offset_without_dirtying_project() {
+    let (config, project_path) = blank_workspace_config();
+    let layout_path = studio_layout_path_for_project(&project_path);
+    let mut app = ready_app_state(&config);
+
+    app.dispatch_ui_command("canvas.begin_place_unit.feed");
+    app.dispatch_canvas_pending_edit_commit(rf_ui::CanvasPoint::new(64.0, 40.0));
+    app.save_project();
+    let project_before = fs::read_to_string(&project_path).expect("expected saved project file");
+    app.update_canvas_viewport_offset(egui::vec2(42.0, -16.0));
+
+    let view = app
+        .platform_host
+        .snapshot()
+        .window_model()
+        .canvas
+        .widget
+        .view()
+        .clone();
+    let viewport_rect = egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(640.0, 280.0));
+
+    let fitted_offset =
+        app.fit_canvas_viewport_to_content(viewport_rect, &view.unit_blocks, &view.stream_lines);
+
+    assert_ne!(fitted_offset, egui::vec2(42.0, -16.0));
+    let fitted = app.platform_host.snapshot().window_model();
+    assert!(
+        !fitted.runtime.workspace_document.has_unsaved_changes,
+        "viewport fit must only update the Studio layout sidecar"
+    );
+    assert_eq!(
+        fs::read_to_string(&project_path).expect("expected project file after viewport fit"),
+        project_before,
+        "viewport fit must not rewrite the project JSON"
+    );
+    let stored_layout = read_studio_layout_file(&layout_path).expect("expected layout sidecar");
+    assert_eq!(
+        stored_layout
+            .canvas_viewport
+            .as_ref()
+            .map(|viewport| (viewport.offset_x, viewport.offset_y)),
+        Some((fitted_offset.x as f64, fitted_offset.y as f64))
+    );
+    assert_eq!(
+        app.canvas_initial_viewport_fit,
+        CanvasInitialViewportFitState::restore(fitted_offset)
+    );
+    assert_eq!(
+        app.canvas_command_result.as_ref().map(|result| (
+            result.level,
+            result.status_label,
+            result.title.as_str(),
+            result.target.command_id.as_str()
+        )),
+        Some((
+            RunPanelNoticeLevel::Info,
+            "viewport_fit",
+            "Canvas viewport fit to content",
+            "canvas.fit_to_content"
+        ))
+    );
+    assert!(
+        app.canvas_command_result_command_surface()
+            .expect("expected viewport fit command result")
+            .matches_query("canvas result viewport fit")
+    );
+
+    let _ = fs::remove_file(project_path);
+    let _ = fs::remove_file(layout_path);
+}
+
+#[test]
 fn canvas_unit_layout_nudge_pins_transient_grid_without_dirtying_project() {
     let (config, project_path) = flash_drum_local_rules_config();
     let layout_path = studio_layout_path_for_project(&project_path);
@@ -757,7 +1182,7 @@ fn canvas_feed_heater_flash_minimal_path_can_run_after_accepting_suggestions() {
     app.dispatch_ui_command("canvas.begin_place_unit.heater");
     app.dispatch_canvas_pending_edit_commit(rf_ui::CanvasPoint::new(180.0, 40.0));
     let after_heater = app.platform_host.snapshot().window_model();
-    assert_eq!(after_heater.canvas.suggestion_count, 2);
+    assert_eq!(after_heater.canvas.suggestion_count, 1);
     assert_eq!(
         after_heater.canvas.focused_suggestion_id.as_deref(),
         Some("local.heater.connect_inlet.heater-2.stream-feed-2-outlet")
@@ -769,6 +1194,7 @@ fn canvas_feed_heater_flash_minimal_path_can_run_after_accepting_suggestions() {
         after_heater_inlet.canvas.focused_suggestion_id.as_deref(),
         Some("local.heater.create_outlet.heater-2")
     );
+    assert_eq!(after_heater_inlet.canvas.suggestion_count, 1);
 
     app.dispatch_ui_command("canvas.accept_focused");
     let after_heater_outlet = app.platform_host.snapshot().window_model();
@@ -777,7 +1203,7 @@ fn canvas_feed_heater_flash_minimal_path_can_run_after_accepting_suggestions() {
     app.dispatch_ui_command("canvas.begin_place_unit.flash_drum");
     app.dispatch_canvas_pending_edit_commit(rf_ui::CanvasPoint::new(320.0, 40.0));
     let after_flash = app.platform_host.snapshot().window_model();
-    assert_eq!(after_flash.canvas.suggestion_count, 3);
+    assert_eq!(after_flash.canvas.suggestion_count, 1);
     assert_eq!(
         after_flash.canvas.focused_suggestion_id.as_deref(),
         Some("local.flash_drum.connect_inlet.flash-2.stream-heater-2-outlet")
@@ -829,7 +1255,7 @@ fn canvas_feed_mixer_flash_minimal_path_can_run_after_accepting_suggestions() {
     app.dispatch_ui_command("canvas.begin_place_unit.mixer");
     app.dispatch_canvas_pending_edit_commit(rf_ui::CanvasPoint::new(210.0, 90.0));
     let after_mixer = app.platform_host.snapshot().window_model();
-    assert_eq!(after_mixer.canvas.suggestion_count, 3);
+    assert_eq!(after_mixer.canvas.suggestion_count, 2);
     assert_eq!(
         after_mixer.canvas.focused_suggestion_id.as_deref(),
         Some("local.mixer.connect_inlet_a.mixer-1.stream-feed-2-outlet")

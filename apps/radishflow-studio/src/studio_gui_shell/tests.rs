@@ -122,6 +122,21 @@ fn disconnect_unit_port(project: &mut StoredProjectFile, unit_id: &str, port_nam
     port.stream_id = None;
 }
 
+fn stored_unit_port_stream_id<'a>(
+    project: &'a StoredProjectFile,
+    unit_id: &str,
+    port_name: &str,
+) -> Option<&'a str> {
+    project
+        .document
+        .flowsheet
+        .units
+        .get(&UnitId::new(unit_id))
+        .and_then(|unit| unit.ports.iter().find(|port| port.name == port_name))
+        .and_then(|port| port.stream_id.as_ref())
+        .map(|stream_id| stream_id.as_str())
+}
+
 fn unbound_outlet_failure_synced_config() -> StudioRuntimeConfig {
     StudioRuntimeConfig {
         project_path: PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -210,9 +225,47 @@ fn command_surface_window(app: &ReadyAppState) -> radishflow_studio::StudioGuiWi
 }
 
 fn stabilize_command_surface_window(window: &mut radishflow_studio::StudioGuiWindowModel) {
+    let canvas_view = &mut window.canvas.widget.presentation.view;
+    canvas_view.viewport.layout_label = "normalized_layout";
+    canvas_view.viewport.summary = format!(
+        "normalized canvas layout: {} unit(s), {} material line(s)",
+        canvas_view.viewport.unit_count, canvas_view.viewport.stream_line_count
+    );
+    for unit in &mut canvas_view.unit_blocks {
+        unit.layout_position = None;
+    }
+    for stream in &mut canvas_view.stream_lines {
+        if let Some(source) = stream.source.as_mut() {
+            source.layout_position = None;
+        }
+        if let Some(sink) = stream.sink.as_mut() {
+            sink.layout_position = None;
+        }
+    }
+    for line in &mut window.canvas.widget.presentation.text.lines {
+        if line.starts_with("viewport: ") {
+            *line = "viewport: normalized canvas layout".to_string();
+        }
+    }
+    window.runtime.control_state.latest_log_entry = None;
+    window
+        .runtime
+        .run_panel
+        .presentation
+        .view
+        .latest_log_message = None;
+    window
+        .runtime
+        .run_panel
+        .presentation
+        .text
+        .lines
+        .retain(|line| !line.starts_with("Latest log: "));
     window.runtime.entitlement_host = None;
     window.runtime.platform_timer_lines.clear();
     window.runtime.gui_activity_lines.clear();
+    window.runtime.log_entries.clear();
+    window.runtime.latest_log_entry = None;
 }
 
 fn shared_command_surface_initial_window(
@@ -412,6 +465,114 @@ fn ready_failed_app_state() -> ReadyAppState {
     app
 }
 
+#[test]
+fn run_command_surfaces_results_when_solve_succeeds() {
+    let timestamp = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("expected current timestamp")
+        .as_nanos();
+    let project_path = std::env::temp_dir().join(format!(
+        "radishflow-studio-shell-successful-run-tabs-{timestamp}.rfproj.json"
+    ));
+    write_project_file(
+        &project_path,
+        &feed_heater_flash_binary_hydrocarbon_project(),
+    )
+    .expect("expected project fixture write");
+    let config = StudioRuntimeConfig {
+        project_path: project_path.clone(),
+        ..synced_workspace_config()
+    };
+    let mut app = ready_app_state(&config);
+
+    app.right_sidebar_tab = StudioShellRightSidebarTab::Package;
+    app.bottom_drawer_tab = StudioShellBottomDrawerTab::Messages;
+    app.dispatch_ui_command("run_panel.run_manual");
+
+    let window = app.platform_host.snapshot().window_model();
+    assert!(window.runtime.latest_solve_snapshot.is_some());
+    assert_eq!(app.right_sidebar_tab, StudioShellRightSidebarTab::Results);
+    assert_eq!(
+        app.bottom_drawer_tab,
+        StudioShellBottomDrawerTab::ResultsTable
+    );
+
+    let _ = fs::remove_file(project_path);
+}
+
+#[test]
+fn solve_snapshot_copy_and_export_use_latest_result_without_dirtying_project() {
+    let timestamp = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("expected current timestamp")
+        .as_nanos();
+    let project_path = std::env::temp_dir().join(format!(
+        "radishflow-studio-shell-result-export-{timestamp}.rfproj.json"
+    ));
+    let export_path = std::env::temp_dir().join(format!(
+        "radishflow-studio-shell-result-export-{timestamp}.txt"
+    ));
+    write_project_file(
+        &project_path,
+        &feed_heater_flash_binary_hydrocarbon_project(),
+    )
+    .expect("expected project fixture write");
+    let project_before = fs::read_to_string(&project_path).expect("expected project read");
+    let config = StudioRuntimeConfig {
+        project_path: project_path.clone(),
+        ..synced_workspace_config()
+    };
+    let mut app = ready_app_state(&config);
+    app.dispatch_ui_command("run_panel.run_manual");
+    let snapshot = app
+        .platform_host
+        .snapshot()
+        .window_model()
+        .runtime
+        .latest_solve_snapshot
+        .expect("expected latest solve snapshot");
+
+    let ctx = egui::Context::default();
+    let output = ctx.run(egui::RawInput::default(), |ctx| {
+        app.copy_solve_snapshot_to_clipboard(ctx, &snapshot);
+    });
+    assert!(
+        output.platform_output.commands.iter().any(|command| {
+            matches!(command, egui::OutputCommand::CopyText(text) if text.contains(&snapshot.snapshot_id)
+                && text.contains("stream-heated")
+                && text.contains("flash-1"))
+        }),
+        "expected copy command to contain the current snapshot text"
+    );
+
+    app.export_solve_snapshot_to_path(&snapshot, export_path.clone());
+    let exported = fs::read_to_string(&export_path).expect("expected result export read");
+    assert!(exported.contains(&snapshot.snapshot_id));
+    assert!(exported.contains("stream-heated"));
+    assert!(exported.contains("flash-1"));
+    assert_eq!(
+        fs::read_to_string(&project_path).expect("expected project reread"),
+        project_before,
+        "result export must not rewrite the project JSON"
+    );
+    let window = app.platform_host.snapshot().window_model();
+    assert!(
+        !window.runtime.workspace_document.has_unsaved_changes,
+        "result export must not dirty the workspace"
+    );
+
+    let _ = fs::remove_file(project_path);
+    let _ = fs::remove_file(export_path);
+}
+
+#[test]
+fn run_command_surfaces_messages_when_solve_fails() {
+    let app = ready_failed_app_state();
+
+    assert_eq!(app.right_sidebar_tab, StudioShellRightSidebarTab::Run);
+    assert_eq!(app.bottom_drawer_tab, StudioShellBottomDrawerTab::Messages);
+}
+
 fn ready_app_state(config: &StudioRuntimeConfig) -> ReadyAppState {
     ReadyAppState::from_config(config, test_preferences_path("default"))
         .expect("expected app state")
@@ -439,6 +600,10 @@ impl ProjectFilePicker for TestProjectFilePicker {
     }
 
     fn pick_save_project_file(&mut self) -> Option<PathBuf> {
+        self.selected_project.take()
+    }
+
+    fn pick_result_export_file(&mut self) -> Option<PathBuf> {
         self.selected_project.take()
     }
 }

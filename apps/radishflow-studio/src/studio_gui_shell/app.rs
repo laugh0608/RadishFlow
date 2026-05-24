@@ -45,15 +45,39 @@ impl ReadyAppState {
             .workspace_document
             .has_unsaved_changes
         {
+            self.project_open.pending_confirmation = None;
+            self.project_open.pending_blank_project_confirmation = true;
+            self.project_open.pending_save_as_overwrite = None;
+            self.project_open.pending_close_window_confirmation = None;
             self.project_open.notice = Some(ProjectOpenNotice {
                 level: ProjectOpenNoticeLevel::Warning,
-                title: "Blank project blocked".to_string(),
-                detail: "Save or discard current changes before creating a blank project."
-                    .to_string(),
+                title: unsaved_changes_notice_title(self.locale).to_string(),
+                detail: create_blank_project_discard_notice_detail(self.locale),
             });
             return;
         }
 
+        self.create_blank_project_without_confirmation();
+    }
+
+    pub(super) fn confirm_pending_blank_project(&mut self) {
+        if !self.project_open.pending_blank_project_confirmation {
+            return;
+        }
+        self.project_open.pending_blank_project_confirmation = false;
+        self.create_blank_project_without_confirmation();
+    }
+
+    pub(super) fn cancel_pending_blank_project(&mut self) {
+        self.project_open.pending_blank_project_confirmation = false;
+        self.project_open.notice = Some(ProjectOpenNotice {
+            level: ProjectOpenNoticeLevel::Info,
+            title: blank_project_canceled_notice_title(self.locale).to_string(),
+            detail: current_workspace_remains_open_notice_detail(self.locale).to_string(),
+        });
+    }
+
+    fn create_blank_project_without_confirmation(&mut self) {
         let config = studio_shell_blank_runtime_config();
 
         match StudioGuiPlatformHost::new(&config) {
@@ -68,11 +92,16 @@ impl ReadyAppState {
                 self.last_viewport_focused = None;
                 self.canvas_viewport_navigation = CanvasViewportNavigationState::default();
                 self.canvas_initial_viewport_fit.reset();
+                self.canvas_viewport_fit_to_content_requested = false;
+                self.canvas_viewport_drag = None;
+                self.canvas_unit_drag = None;
                 self.canvas_command_result = None;
                 self.result_inspector.reset();
                 self.project_open.path_input.clear();
                 self.project_open.pending_confirmation = None;
+                self.project_open.pending_blank_project_confirmation = false;
                 self.project_open.pending_save_as_overwrite = None;
+                self.project_open.pending_close_window_confirmation = None;
                 self.project_open.notice = Some(ProjectOpenNotice {
                     level: ProjectOpenNoticeLevel::Info,
                     title: "Blank project created".to_string(),
@@ -276,6 +305,78 @@ impl ReadyAppState {
         });
     }
 
+    pub(super) fn copy_solve_snapshot_to_clipboard(
+        &mut self,
+        ctx: &egui::Context,
+        snapshot: &radishflow_studio::StudioGuiWindowSolveSnapshotModel,
+    ) {
+        ctx.copy_text(snapshot.light_text_export());
+        self.project_open.notice = Some(ProjectOpenNotice {
+            level: ProjectOpenNoticeLevel::Info,
+            title: solve_snapshot_copied_notice_title(self.locale).to_string(),
+            detail: solve_snapshot_copied_notice_detail(self.locale, &snapshot.snapshot_id),
+        });
+        self.platform_host.record_activity_line(format!(
+            "copied solve snapshot {} results to clipboard",
+            snapshot.snapshot_id
+        ));
+    }
+
+    pub(super) fn export_solve_snapshot_from_picker(
+        &mut self,
+        snapshot: &radishflow_studio::StudioGuiWindowSolveSnapshotModel,
+    ) {
+        let Some(path) = self.project_file_picker.pick_result_export_file() else {
+            self.project_open.notice = Some(ProjectOpenNotice {
+                level: ProjectOpenNoticeLevel::Info,
+                title: solve_snapshot_export_canceled_notice_title(self.locale).to_string(),
+                detail: current_workspace_remains_open_notice_detail(self.locale).to_string(),
+            });
+            return;
+        };
+
+        self.export_solve_snapshot_to_path(snapshot, path);
+    }
+
+    pub(super) fn export_solve_snapshot_to_path(
+        &mut self,
+        snapshot: &radishflow_studio::StudioGuiWindowSolveSnapshotModel,
+        path: PathBuf,
+    ) {
+        let snapshot_text = snapshot.light_text_export();
+        match std::fs::write(&path, snapshot_text) {
+            Ok(()) => {
+                self.project_open.notice = Some(ProjectOpenNotice {
+                    level: ProjectOpenNoticeLevel::Info,
+                    title: solve_snapshot_exported_notice_title(self.locale).to_string(),
+                    detail: solve_snapshot_exported_notice_detail(
+                        self.locale,
+                        &snapshot.snapshot_id,
+                        &path,
+                    ),
+                });
+                self.platform_host.record_activity_line(format!(
+                    "exported solve snapshot {} results to {}",
+                    snapshot.snapshot_id,
+                    path.display()
+                ));
+            }
+            Err(error) => {
+                self.project_open.notice = Some(ProjectOpenNotice {
+                    level: ProjectOpenNoticeLevel::Error,
+                    title: solve_snapshot_export_failed_notice_title(self.locale).to_string(),
+                    detail: solve_snapshot_export_failed_notice_detail(self.locale, &path, &error),
+                });
+                self.platform_host.record_activity_line(format!(
+                    "export solve snapshot {} failed: {} ({})",
+                    snapshot.snapshot_id,
+                    error,
+                    path.display()
+                ));
+            }
+        }
+    }
+
     fn save_as_requires_overwrite_confirmation(&self, project_path: &std::path::Path) -> bool {
         if !project_path.exists() {
             return false;
@@ -304,12 +405,16 @@ impl ReadyAppState {
                 project_path: project_path.clone(),
                 source_label: source_label.to_string(),
             });
+            self.project_open.pending_blank_project_confirmation = false;
+            self.project_open.pending_save_as_overwrite = None;
+            self.project_open.pending_close_window_confirmation = None;
             self.project_open.notice = Some(ProjectOpenNotice {
                 level: ProjectOpenNoticeLevel::Warning,
-                title: "Unsaved changes".to_string(),
-                detail: format!(
-                    "Opening {source_label} will discard changes after the last saved revision: {}",
-                    project_path.display()
+                title: unsaved_changes_notice_title(self.locale).to_string(),
+                detail: open_project_discard_notice_detail(
+                    self.locale,
+                    source_label,
+                    &project_path,
                 ),
             });
             return;
@@ -348,14 +453,19 @@ impl ReadyAppState {
                 self.drop_preview_overlay_anchor = None;
                 self.last_viewport_focused = None;
                 self.canvas_viewport_navigation = CanvasViewportNavigationState::default();
-                self.canvas_initial_viewport_fit.reset();
+                self.canvas_initial_viewport_fit = canvas_initial_viewport_fit_from_config(&config);
+                self.canvas_viewport_fit_to_content_requested = false;
+                self.canvas_viewport_drag = None;
+                self.canvas_unit_drag = None;
                 self.canvas_command_result = None;
                 self.result_inspector.reset();
                 self.project_open.path_input = project_path.display().to_string();
                 let recent_projects_notice =
                     self.record_and_persist_recent_project(project_path.clone());
                 self.project_open.pending_confirmation = None;
+                self.project_open.pending_blank_project_confirmation = false;
                 self.project_open.pending_save_as_overwrite = None;
+                self.project_open.pending_close_window_confirmation = None;
                 self.project_open.notice =
                     Some(recent_projects_notice.unwrap_or(ProjectOpenNotice {
                         level: ProjectOpenNoticeLevel::Info,
@@ -405,6 +515,7 @@ impl ReadyAppState {
         &mut self,
         project_path: PathBuf,
     ) -> Option<ProjectOpenNotice> {
+        self.home_selected_recent_project = Some(project_path.clone());
         self.project_open.record_recent_project(project_path);
         if let Err(error) =
             save_recent_project_paths(&self.preferences_path, &self.project_open.recent_projects)
@@ -535,6 +646,7 @@ impl ReadyAppState {
                     &command_id,
                     canvas_navigation.as_ref(),
                 );
+                self.update_workbench_tabs_after_command(&command_id, &dispatch.dispatch.window);
                 self.record_canvas_object_navigation_feedback(
                     canvas_navigation.as_ref(),
                     viewport_requested,
@@ -553,6 +665,30 @@ impl ReadyAppState {
                     Some(message.as_str()),
                 );
             }
+        }
+    }
+
+    fn update_workbench_tabs_after_command(
+        &mut self,
+        command_id: &str,
+        window: &StudioGuiWindowModel,
+    ) {
+        if !matches!(
+            command_id,
+            "run_panel.run_manual" | "run_panel.resume_workspace" | "run_panel.recover_failure"
+        ) {
+            return;
+        }
+
+        if window.runtime.latest_failure.is_some() {
+            self.right_sidebar_tab = StudioShellRightSidebarTab::Run;
+            self.bottom_drawer_tab = StudioShellBottomDrawerTab::Messages;
+        } else if window.runtime.latest_solve_snapshot.is_some() {
+            self.right_sidebar_tab = StudioShellRightSidebarTab::Results;
+            self.bottom_drawer_tab = StudioShellBottomDrawerTab::ResultsTable;
+        } else {
+            self.right_sidebar_tab = StudioShellRightSidebarTab::Run;
+            self.bottom_drawer_tab = StudioShellBottomDrawerTab::RunLog;
         }
     }
 
@@ -638,6 +774,47 @@ impl ReadyAppState {
                 self.record_canvas_pending_edit_commit_error(position, &message);
             }
         }
+    }
+
+    pub(super) fn dispatch_canvas_unit_layout_move(
+        &mut self,
+        unit_id: rf_types::UnitId,
+        position: rf_ui::CanvasPoint,
+    ) {
+        match self.dispatch_event_result(StudioGuiEvent::CanvasUnitLayoutMoveRequested {
+            unit_id,
+            position,
+        }) {
+            Ok(dispatch) => self.record_canvas_unit_layout_move_feedback(&dispatch),
+            Err(error) => {
+                let message = format!("[{}] {}", error.code().as_str(), error.message());
+                self.platform_host
+                    .record_activity_line(format!("event failed: {message}"));
+            }
+        }
+    }
+
+    pub(super) fn update_canvas_viewport_offset(&mut self, offset: egui::Vec2) {
+        self.canvas_initial_viewport_fit.set_offset(offset);
+        let Some(project_path) = self.project_open.current_path() else {
+            return;
+        };
+
+        if let Err(error) = save_persisted_canvas_viewport(
+            &project_path,
+            rf_ui::CanvasPoint::new(offset.x as f64, offset.y as f64),
+        ) {
+            self.platform_host.record_activity_line(format!(
+                "save canvas viewport failed [{}]: {} ({})",
+                error.code().as_str(),
+                error.message(),
+                project_path.display()
+            ));
+        }
+    }
+
+    pub(super) fn request_canvas_viewport_fit_to_content(&mut self) {
+        self.canvas_viewport_fit_to_content_requested = true;
     }
 
     pub(super) fn dispatch_layout_mutation(
@@ -1139,6 +1316,74 @@ impl ReadyAppState {
             return true;
         };
 
+        if self
+            .platform_host
+            .snapshot()
+            .runtime
+            .workspace_document
+            .has_unsaved_changes
+        {
+            self.request_close_window_confirmation(window_id);
+            return false;
+        }
+
+        self.close_window_without_confirmation(window_id)
+    }
+
+    fn request_close_window_confirmation(&mut self, window_id: StudioWindowHostId) {
+        self.project_open.pending_confirmation = None;
+        self.project_open.pending_blank_project_confirmation = false;
+        self.project_open.pending_save_as_overwrite = None;
+        self.project_open.pending_close_window_confirmation = Some(window_id);
+        self.project_open.notice = Some(ProjectOpenNotice {
+            level: ProjectOpenNoticeLevel::Warning,
+            title: unsaved_changes_notice_title(self.locale).to_string(),
+            detail: close_workspace_discard_notice_detail(self.locale),
+        });
+        self.platform_host
+            .record_activity_line("close blocked by unsaved workspace changes".to_string());
+    }
+
+    pub(super) fn save_pending_close_window(&mut self) -> bool {
+        if self
+            .project_open
+            .pending_close_window_confirmation
+            .is_none()
+        {
+            return false;
+        }
+
+        self.save_project();
+        if self
+            .platform_host
+            .snapshot()
+            .runtime
+            .workspace_document
+            .has_unsaved_changes
+        {
+            return false;
+        }
+
+        self.confirm_pending_close_window()
+    }
+
+    pub(super) fn confirm_pending_close_window(&mut self) -> bool {
+        let Some(window_id) = self.project_open.pending_close_window_confirmation.take() else {
+            return false;
+        };
+        self.close_window_without_confirmation(window_id)
+    }
+
+    pub(super) fn cancel_pending_close_window(&mut self) {
+        self.project_open.pending_close_window_confirmation = None;
+        self.project_open.notice = Some(ProjectOpenNotice {
+            level: ProjectOpenNoticeLevel::Info,
+            title: close_workspace_canceled_notice_title(self.locale).to_string(),
+            detail: current_workspace_remains_open_notice_detail(self.locale).to_string(),
+        });
+    }
+
+    fn close_window_without_confirmation(&mut self, window_id: StudioWindowHostId) -> bool {
         self.cancel_drag_session(Some(window_id));
         self.dispatch_event(StudioGuiEvent::CloseWindowRequested { window_id });
         self.logical_window_count() == 0
@@ -1285,6 +1530,147 @@ fn project_opened_notice_detail(
             localized_project_source_label(source_label),
             project_path.display()
         ),
+    }
+}
+
+fn unsaved_changes_notice_title(locale: StudioShellLocale) -> &'static str {
+    match locale {
+        StudioShellLocale::En => "Unsaved changes",
+        StudioShellLocale::ZhCn => "未保存更改",
+    }
+}
+
+fn open_project_discard_notice_detail(
+    locale: StudioShellLocale,
+    source_label: &str,
+    project_path: &std::path::Path,
+) -> String {
+    match locale {
+        StudioShellLocale::En => format!(
+            "Opening {source_label} will discard changes after the last saved revision: {}",
+            project_path.display()
+        ),
+        StudioShellLocale::ZhCn => format!(
+            "打开{}会放弃上次保存修订之后的更改: {}",
+            localized_project_source_label(source_label),
+            project_path.display()
+        ),
+    }
+}
+
+fn create_blank_project_discard_notice_detail(locale: StudioShellLocale) -> String {
+    match locale {
+        StudioShellLocale::En => {
+            "Creating a blank project will discard changes after the last saved revision."
+                .to_string()
+        }
+        StudioShellLocale::ZhCn => "新建空白项目会放弃上次保存修订之后的更改。".to_string(),
+    }
+}
+
+fn close_workspace_discard_notice_detail(locale: StudioShellLocale) -> String {
+    match locale {
+        StudioShellLocale::En => {
+            "Closing RadishFlow Studio will discard changes after the last saved revision."
+                .to_string()
+        }
+        StudioShellLocale::ZhCn => {
+            "关闭 RadishFlow Studio 会放弃上次保存修订之后的更改。".to_string()
+        }
+    }
+}
+
+fn blank_project_canceled_notice_title(locale: StudioShellLocale) -> &'static str {
+    match locale {
+        StudioShellLocale::En => "Blank project canceled",
+        StudioShellLocale::ZhCn => "已取消新建项目",
+    }
+}
+
+fn close_workspace_canceled_notice_title(locale: StudioShellLocale) -> &'static str {
+    match locale {
+        StudioShellLocale::En => "Close canceled",
+        StudioShellLocale::ZhCn => "已取消关闭",
+    }
+}
+
+fn current_workspace_remains_open_notice_detail(locale: StudioShellLocale) -> &'static str {
+    match locale {
+        StudioShellLocale::En => "Current workspace remains open.",
+        StudioShellLocale::ZhCn => "当前工作区保持打开。",
+    }
+}
+
+fn solve_snapshot_copied_notice_title(locale: StudioShellLocale) -> &'static str {
+    match locale {
+        StudioShellLocale::En => "Snapshot copied",
+        StudioShellLocale::ZhCn => "快照已复制",
+    }
+}
+
+fn solve_snapshot_copied_notice_detail(locale: StudioShellLocale, snapshot_id: &str) -> String {
+    match locale {
+        StudioShellLocale::En => {
+            format!("Copied the current solve snapshot to the clipboard: {snapshot_id}.")
+        }
+        StudioShellLocale::ZhCn => {
+            format!("已将当前求解快照复制到剪贴板：{snapshot_id}。")
+        }
+    }
+}
+
+fn solve_snapshot_export_canceled_notice_title(locale: StudioShellLocale) -> &'static str {
+    match locale {
+        StudioShellLocale::En => "Snapshot export canceled",
+        StudioShellLocale::ZhCn => "已取消快照导出",
+    }
+}
+
+fn solve_snapshot_exported_notice_title(locale: StudioShellLocale) -> &'static str {
+    match locale {
+        StudioShellLocale::En => "Snapshot exported",
+        StudioShellLocale::ZhCn => "快照已导出",
+    }
+}
+
+fn solve_snapshot_exported_notice_detail(
+    locale: StudioShellLocale,
+    snapshot_id: &str,
+    path: &std::path::Path,
+) -> String {
+    match locale {
+        StudioShellLocale::En => {
+            format!(
+                "Exported current solve snapshot {snapshot_id} to {}.",
+                path.display()
+            )
+        }
+        StudioShellLocale::ZhCn => {
+            format!("已将当前求解快照 {snapshot_id} 导出到 {}。", path.display())
+        }
+    }
+}
+
+fn solve_snapshot_export_failed_notice_title(locale: StudioShellLocale) -> &'static str {
+    match locale {
+        StudioShellLocale::En => "Snapshot export failed",
+        StudioShellLocale::ZhCn => "快照导出失败",
+    }
+}
+
+fn solve_snapshot_export_failed_notice_detail(
+    locale: StudioShellLocale,
+    path: &std::path::Path,
+    error: &std::io::Error,
+) -> String {
+    match locale {
+        StudioShellLocale::En => format!(
+            "Could not write the solve snapshot to {}: {error}.",
+            path.display()
+        ),
+        StudioShellLocale::ZhCn => {
+            format!("无法将求解快照写入 {}：{error}。", path.display())
+        }
     }
 }
 

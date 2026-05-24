@@ -1,6 +1,6 @@
 # MVP Alpha Acceptance Checklist
 
-更新时间：2026-05-16
+更新时间：2026-05-18
 
 ## 用途
 
@@ -46,12 +46,12 @@
 
 | 项目 | 命令或入口 | 当前状态 | 通过标准 | 记录 |
 | --- | --- | --- | --- | --- |
-| 仓库级验证 | `pwsh ./scripts/check-repo.ps1` | Pass | Rust / 文本 / 仓库治理基线通过 | 2026-05-16 已通过；首次运行有 1 个 Studio platform timer focused test 短暂失败，随后 focused 与完整复跑均通过；最终输出 `Repository checks passed.` |
+| 仓库级验证 | `pwsh ./scripts/check-repo.ps1` | Pass | Rust / 文本 / 仓库治理基线通过 | 2026-05-16 已通过；2026-05-18 tag 前在真实环境以 `CARGO_TARGET_DIR=target/codex pwsh ./scripts/check-repo.ps1` 复验通过，最终输出 `Repository checks passed.` |
 | 文本格式检查 | `git diff --check` | Pass | 无 whitespace error | 2026-05-14 已通过 |
 | 文档体量报告 | `pwsh ./scripts/check-doc-size.ps1` | Pass | 默认入口未重新膨胀；既有超限项可解释 | 2026-05-14 已通过；输出 `all enforced markdown files are within target limits` |
 | `rf-ffi` JSON/error 基线 | `pwsh ./scripts/check-repo.ps1` 覆盖；必要时补 `cargo test -p rf-ffi` | Pass | solve snapshot / stream JSON 与 structured error 回归稳定 | 2026-05-13 仓库级验证通过 |
 | official / synthetic 数值基线 | `pwsh ./scripts/check-repo.ps1` 覆盖 | Pass | golden、raw solver 与 Studio focused 回归稳定 | 2026-05-13 仓库级验证通过 |
-| Studio shell UI presentation | `cargo test -p radishflow-studio studio_gui_shell` | Pass | 首页、顶部主路径、结果面、命令面和 runtime focused 回归稳定 | 2026-05-16 已通过；Home Dashboard、Workbench 分区、中文 shell 高频路径与底部 drawer 已纳入回归 |
+| Studio shell UI presentation | `cargo test -p radishflow-studio studio_gui_shell` | Pass | 首页、顶部主路径、结果面、命令面和 runtime focused 回归稳定 | 2026-05-17 已通过；Home Dashboard、Workbench 分区、中文 shell 高频路径、Canvas viewport / 可读性、结果视图和底部 drawer 已纳入回归 |
 
 ## Studio 手动 Smoke
 
@@ -75,7 +75,7 @@
 | 步骤 | 从空白项目放置单元；显式接受 Canvas suggestion；运行；查看 flash outlet |
 | 通过标准 | 空白项目具备 MVP 默认二元组件与本地 `binary-hydrocarbon-lite-v1` 缓存；suggestion 可补齐最短链路；运行可收敛或给出结构化诊断 |
 | Blocker 分类 | `StudioModelingPath`、`NumericalBaseline`、`ResultReview` |
-| 记录 | 2026-05-16 人工执行通过；空白项目最短建模闭环可完成，Project / Canvas 到 Inspector 的入口可用，`连接` suggestion 可完成 MVP 最短连接 |
+| 记录 | 2026-05-16 人工执行通过；空白项目最短建模闭环可完成，Project / Canvas 到 Inspector 的入口可用，Canvas suggestion 可完成 MVP 最短连接和 outlet stream 创建 |
 
 ### Smoke C：Stream Inspector 组成阻断
 
@@ -101,11 +101,11 @@
 
 | 文档 | 当前状态 | 通过标准 | 记录 |
 | --- | --- | --- | --- |
-| `docs/guides/studio-quick-start.md` | Pass | 能说明启动方式、当前能力和首次体验入口 | 2026-05-16 已同步默认 Home Dashboard、中文主路径、右侧 `检查器 / 结果 / 运行 / 物性包`、底部 drawer 和关闭口径；明确当前是开发态启动，不暗示正式安装包 |
-| `docs/guides/run-first-flowsheet.md` | Pass | 能指导用户打开示例、运行、审阅、保存重开 | 2026-05-17 已同步从首页 `打开示例` 进入、进入工作台后用顶部 `运行 / 保存 / 另存为...` 和右侧 / 底部结果入口复现路径 |
+| `docs/guides/studio-quick-start.md` | Pass | 能说明启动方式、当前能力和首次体验入口 | 2026-05-18 已同步 Windows 内部便携包启动入口、包内示例发现、`v26.5.1-dev` manifest 口径，以及默认示例选择器只暴露 official hydrocarbon demo-safe 路径；仍明确当前不是安装器或对外发布包 |
+| `docs/guides/run-first-flowsheet.md` | Pass | 能指导用户打开示例、运行、审阅、保存重开 | 2026-05-18 已同步包内 `radishflow-studio.exe` 启动和开发态 `cargo run` 两条入口；继续从首页 `打开示例`、顶部 `运行 / 保存 / 另存为...` 和右侧 / 底部结果入口复现路径 |
 | `docs/guides/review-solve-results.md` | Pass | 能解释 source / intermediate / step / outlet 结果审阅顺序 | 2026-05-13 已复查 |
 | `docs/capeopen/pme-validation.md` | Pass | 能说明 PME 验证门控、dry-run、register/unregister 和记录模板 | 2026-05-13 已复查；外部 PME 与 registry 操作仍需人工门控 |
-| 发布包形态说明 | Pass | 能说明当前仍是开发态或压缩包式交付边界，不暗示已存在完整安装器或首版 demo | 2026-05-16 已在 `docs/architecture/versioning.md` 补齐 MVP α 便携包操作清单；`docs/releases/v26.5.1-dev.md` 记录内部包边界并明确 tag 暂缓；`scripts/package.ps1` 只生成 Windows staging / zip，不执行安装、COM 注册、PME 或第三方模型加载 |
+| 发布包形态说明 | Pass | 能说明当前仍是开发态或压缩包式交付边界，不暗示已存在完整安装器或首版 demo | 2026-05-16 已在 `docs/architecture/versioning.md` 补齐 MVP α 便携包操作清单；`docs/releases/v26.5.1-dev.md` 记录内部包边界与 `v26.5.1-dev` 内部验收 tag；`scripts/package.ps1` 只生成 Windows staging / zip，不执行安装、COM 注册、PME 或第三方模型加载 |
 
 ## 今日执行记录
 
@@ -139,8 +139,28 @@
 | Home Dashboard / Workbench 第一轮 UI | Pass | 默认首页、最近 / 示例 / 环境 / 消息、进入 case 后顶部主路径、左侧项目 / 示例 / 放置、右侧检查器 / 结果 / 运行 / 物性包、底部 drawer 已形成稳定分区；关闭最后窗口前的一帧黑屏已优化 |
 | MVP α 便携包入口 | Pass | `pwsh ./scripts/package.ps1 -Version v26.5.1-dev -Clean` 已通过；生成 `artifacts/packages/RadishFlow-v26.5.1-dev-windows-x64/` 与同名 `.zip`，包内包含 Studio exe、正向 flowsheet 示例、样例物性包、quick start / result review / acceptance / versioning / internal package note 文档和许可文件；manifest 已记录 `releaseNotes=docs/releases/v26.5.1-dev.md`；脚本不执行安装、COM 注册、PME 或第三方模型加载 |
 
+### 2026-05-17
+
+| 项目 | 状态 | 记录 |
+| --- | --- | --- |
+| Studio Home / Workbench 视觉 smoke 收口 | Pass | 今日 7 个提交集中处理 Canvas 初始居中、示例布局顺序、Canvas 可读性、Home 列表选择 / 双击打开、未保存确认流程、运行后结果视图和 Workbench 高频残余文案；`pwsh ./scripts/check-repo.ps1` 在结果视图收口后已通过 |
+| 打开示例 -> 运行 -> 查看结果 -> 回 Home -> 再打开 | Pass | 已补 `studio_gui_shell::tests::project_lifecycle::open_example_project_rebuilds_runtime_for_selected_sample`，覆盖示例打开、运行、结果页切换、回 Home、从最近项目再打开并重新运行 |
+| 日终截图复核 | Partial | Home Dashboard 当前不列为 blocker；Workbench 已清掉主要开发态英文和重复按钮。剩余 demo blocker 仅保留 Canvas 中间流股标签遮挡 / 裁切，以及右侧 Result Inspector 默认正文中的 `z:` / `phases:` 原始英文摘要 |
+
+### 2026-05-18
+
+| 项目 | 状态 | 记录 |
+| --- | --- | --- |
+| Studio 日终 UI blocker 收口 | Pass | Canvas 短线段中间连接流股在空间不足时隐藏标签，避免紧凑链路遮挡 / 裁切；右侧 Result Inspector 默认组成 / 相态摘要不再使用 `z:` / `phases:` 原始前缀，改为结构化短行 |
+| 自动验证 | Pass | `cargo fmt --all --check`、`cargo test -p radishflow-studio studio_gui_shell`、`cargo test -p radishflow-studio studio_gui_window_model` 已通过；沙盒默认 `target/debug/.cargo-lock` 权限异常，仓库级验证改在真实环境以 `CARGO_TARGET_DIR=target/codex` 执行并通过，最终输出 `Repository checks passed.` |
+| 人工视觉 smoke | Pass | 人工从 IDE 启动 `Feed Valve Flash Binary Hydrocarbon Example` 复核通过；Home / Workbench 主路径、Canvas 短线段标签、运行后结果视图、Result Inspector 结构化摘要和底部结果表未发现 blocker |
+| 便携包刷新 | Pass | `pwsh ./scripts/package.ps1 -Version v26.5.1-dev -Clean` 已在真实环境通过，生成 staging 目录与 `.zip` |
+| 包内启动 smoke | Pass | 人工从 `artifacts/packages/RadishFlow-v26.5.1-dev-windows-x64/` 启动 `radishflow-studio.exe` 复核通过；包内示例发现、打开示例、运行、结果审阅等主路径未发现 blocker |
+| 内部验收 tag | Pass | tag 前最终仓库级验证通过；包 manifest 记录 `gitCommit=7479e82`、`gitDirty=false`；`v26.5.1-dev` 已创建并推送到远端，仍只代表内部 `-dev` 验收轨道 |
+| Demo 前产品可用性评审 | Pass | 已复核 Home / Workbench 高频路径、术语一致性、结果审阅体验和 quick start / 便携包口径；默认示例选择器收窄到四条 official hydrocarbon 演示路径，避免 synthetic / PME 验证样例作为高频“就绪示例”暴露；`Feed Heater Flash` 首页标题改回单一加热器语义；未扩自由连线、自动布线、完整拖拽布局、视口持久化、完整结果报表或对外发布自动化 |
+
 ## 下一步
 
-1. 暂缓 tag 和发布自动化，把当前便携包作为内部验证资产保留。
-2. 下一轮优先收口 Canvas viewport 初始自动居中 / fit-to-content，让打开示例后的流程自然处于可视区域中央；不扩自动布线、自由连线或视口持久化。
-3. 继续复核 Home / Workbench 残余中英混合文案和按钮语义；quick start 仍不得暗示已存在完整安装器或对外 demo。
+1. 将 `v26.5.1-dev` tag 与对应便携包作为内部验收资产归档，不移动已推送 tag。
+2. demo blocker 收口后转回功能开发；下一轮优先复核单元参数编辑后的保存 / 重开 / 运行体验。
+3. 若后续 smoke 继续发现 UI blocker，只按高频路径收口，不扩自动布线、自由连线、完整拖拽布局、视口持久化或完整结果报表。

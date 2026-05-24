@@ -125,6 +125,7 @@ pub(crate) fn stream_target_detail_snapshot(
         property_batch_discard_command_id: None,
         property_composition_normalize_command_id: None,
         property_composition_component_actions: Vec::new(),
+        connection_actions: Vec::new(),
         unit_ports: Vec::new(),
     }
 }
@@ -144,6 +145,7 @@ pub(crate) fn unit_target_detail_snapshot(
         property_batch_discard_command_id: None,
         property_composition_normalize_command_id: None,
         property_composition_component_actions: Vec::new(),
+        connection_actions: Vec::new(),
         unit_ports: Vec::new(),
     }
 }

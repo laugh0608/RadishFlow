@@ -186,6 +186,22 @@ impl RunPanelRecoveryAction {
         self.with_target_unit(unit_id.clone())
             .with_mutation(RunPanelRecoveryMutation::RestoreCanonicalPortSignature { unit_id })
     }
+
+    pub fn effect_label(&self) -> &'static str {
+        if self.mutation.is_some() {
+            "Document mutation"
+        } else {
+            "Inspector focus"
+        }
+    }
+
+    pub fn effect_detail(&self) -> &'static str {
+        if self.mutation.is_some() {
+            "This action changes the flowsheet document before focusing the related target."
+        } else {
+            "This action only opens the related Inspector target; it does not change the document."
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -291,6 +307,8 @@ pub fn run_panel_failure_title_for_diagnostic_code(primary_code: Option<&str>) -
         "Unit lookup failed"
     } else if diagnostic_code_in_family(primary_code, "solver.step.spec") {
         "Unit specification failed"
+    } else if diagnostic_code_in_family(primary_code, "solver.step.parameter") {
+        "Unit parameter invalid"
     } else if diagnostic_code_in_family(primary_code, "solver.step.instantiation") {
         "Operation instantiation failed"
     } else if diagnostic_code_in_family(primary_code, "solver.step.inlet") {
@@ -420,6 +438,12 @@ pub fn run_panel_failure_recovery_action_for_diagnostic_code(
             RunPanelRecoveryActionKind::InspectUnitSpec,
             "Inspect unit specs",
             "检查该单元的端口配置和必填规格是否完整。",
+        ))
+    } else if diagnostic_code_in_family(primary_code, "solver.step.parameter") {
+        Some(RunPanelRecoveryAction::new(
+            RunPanelRecoveryActionKind::InspectUnitSpec,
+            "Inspect unit parameters",
+            "检查 Unit Inspector 中的参数值和 SI 约束，确认参数与已连接入口状态一致。",
         ))
     } else if diagnostic_code_in_family(primary_code, "solver.step.instantiation") {
         Some(RunPanelRecoveryAction::new(

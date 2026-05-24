@@ -1,6 +1,6 @@
 # RadishFlow MVP Roadmap
 
-更新时间：2026-05-14
+更新时间：2026-05-23
 
 ## 用途
 
@@ -80,6 +80,20 @@
 - CAPE-OPEN / PME 只修真实验证暴露的 blocker，不继续主动扩第三方宿主矩阵。
 - Studio UI 优化只做信息层级、主路径和面板重排，不扩自由连线、完整拖拽布局、自动布线或完整结果报表。
 
+## 后续 UI 专题阶段
+
+MVP α 和当前功能推进不应把 UI 问题长期拆成零散按钮、临时面板或局部样式补丁。等核心建模闭环、首批单元参数和 demo blocker 稳定后，应安排一个独立 UI 专题阶段，专门统一各端页面、单元模块界面和主要工作流的设计。
+
+该专题阶段的目标：
+
+- 统一 Studio 客户端本体、Home、Workbench、Canvas、Inspector、Result、Package / Auth 等主要页面的信息架构、视觉语言和交互状态。
+- 统一单元模块 UI 的参数编辑、端口连接、运行结果、诊断和帮助入口，不让每个单元各自形成一套临时界面。
+- 梳理服务端 / 控制面 UI 管理页面、移动端或只读视图等未来端点的边界；具体端点清单在专题启动时重新评估，不在当前路线图中冻结。
+- 用设计稿先行替代边实现边调整：优先使用 `pencil` 工具产出 `.pen` 设计稿，经评审后再进入代码实现。
+- 设计稿应随项目保存和同步。原则上每个明确端点或界面域维护一个独立 `*.pen` 文件，例如客户端本体、单元模块、服务端 UI 管理页面、移动端视图等；最终拆分粒度和目录命名在专题启动时确定。
+- 专题启动时应读取 `docs/architecture/ui-inspiration-reference.md`，吸收 AFFINE、CodexApp、Cloudflare、GitHub、Discourse、1Panel 等优秀产品在排版、留白、信息密度、状态表达和管理型页面组织上的设计方法，但不得复制其品牌、图标、具体配色或页面结构。
+- 代码实现应以评审后的设计稿和 `docs/architecture/studio-ui-design-guidelines.md` 为依据，并继续遵守既有 presentation / command / state 边界，不把视觉优化变成 shell 私有状态扩张。
+
 ## 拆分后的详细文档
 
 | 文档 | 内容 |
@@ -95,5 +109,6 @@
 - MVP α 验收：`docs/mvp/alpha-acceptance-checklist.md`
 - MVP 冻结范围：`docs/mvp/scope.md`
 - Studio UI 规范：`docs/architecture/studio-ui-design-guidelines.md`
+- UI 灵感参考：`docs/architecture/ui-inspiration-reference.md`
 - CAPE-OPEN / COM 边界：`docs/capeopen/boundary.md`
 - 周志索引：`docs/devlogs/README.md`

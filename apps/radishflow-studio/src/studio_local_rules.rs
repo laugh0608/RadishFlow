@@ -122,12 +122,14 @@ fn generate_local_canvas_suggestions_for_flowsheet(flowsheet: &Flowsheet) -> Vec
             }
         }
 
-        suggestions.extend(build_missing_flash_drum_outlet_suggestions(
-            flowsheet,
-            unit.id.clone(),
-            &unit.name,
-            &unit.ports,
-        ));
+        if inlet.is_some_and(|port| port.stream_id.is_some()) {
+            suggestions.extend(build_missing_flash_drum_outlet_suggestions(
+                flowsheet,
+                unit.id.clone(),
+                &unit.name,
+                &unit.ports,
+            ));
+        }
     }
 
     suggestions
@@ -239,46 +241,52 @@ fn build_single_inlet_outlet_unit_suggestions(
         }
     }
 
+    let inlet_is_bound = inlet.is_some_and(|port| port.stream_id.is_some());
     let outlet = ports
         .iter()
         .find(|candidate| candidate.name == SINGLE_OUTLET_PORT);
-    if let Some(outlet) = outlet.filter(|port| port.stream_id.is_none()) {
-        let stream_id = unique_stream_id(flowsheet, &unit_id, SINGLE_OUTLET_PORT);
-        let stream_name = format!("{} Outlet", unit_name);
-        suggestions.push(
-            CanvasSuggestion::new(
-                CanvasSuggestionId::new(format!("local.{}.create_outlet.{}", unit_kind, unit_id)),
-                SuggestionSource::LocalRules,
-                0.94,
-                GhostElement {
-                    kind: GhostElementKind::Connection,
-                    target_unit_id: unit_id.clone(),
-                    visual_kind: StreamVisualKind::Material,
-                    visual_state: StreamVisualState::Suggested,
-                },
-                format!(
-                    "Create source stream `{}` for {} outlet `{}`",
-                    stream_name,
-                    unit_display_name(unit_kind),
-                    outlet.name
-                ),
-            )
-            .with_acceptance(CanvasSuggestionAcceptance::MaterialConnection(
-                CanvasSuggestedMaterialConnection {
-                    stream: CanvasSuggestedStreamBinding::Create {
-                        stream: default_single_inlet_outlet_stream(
-                            unit_kind,
-                            stream_id,
-                            stream_name,
-                        ),
+    if inlet_is_bound {
+        if let Some(outlet) = outlet.filter(|port| port.stream_id.is_none()) {
+            let stream_id = unique_stream_id(flowsheet, &unit_id, SINGLE_OUTLET_PORT);
+            let stream_name = format!("{} Outlet", unit_name);
+            suggestions.push(
+                CanvasSuggestion::new(
+                    CanvasSuggestionId::new(format!(
+                        "local.{}.create_outlet.{}",
+                        unit_kind, unit_id
+                    )),
+                    SuggestionSource::LocalRules,
+                    0.94,
+                    GhostElement {
+                        kind: GhostElementKind::Connection,
+                        target_unit_id: unit_id.clone(),
+                        visual_kind: StreamVisualKind::Material,
+                        visual_state: StreamVisualState::Suggested,
                     },
-                    source_unit_id: unit_id,
-                    source_port: outlet.name.clone(),
-                    sink_unit_id: None,
-                    sink_port: None,
-                },
-            )),
-        );
+                    format!(
+                        "Create source stream `{}` for {} outlet `{}`",
+                        stream_name,
+                        unit_display_name(unit_kind),
+                        outlet.name
+                    ),
+                )
+                .with_acceptance(CanvasSuggestionAcceptance::MaterialConnection(
+                    CanvasSuggestedMaterialConnection {
+                        stream: CanvasSuggestedStreamBinding::Create {
+                            stream: default_single_inlet_outlet_stream(
+                                unit_kind,
+                                stream_id,
+                                stream_name,
+                            ),
+                        },
+                        source_unit_id: unit_id,
+                        source_port: outlet.name.clone(),
+                        sink_unit_id: None,
+                        sink_port: None,
+                    },
+                )),
+            );
+        }
     }
 
     suggestions
@@ -349,40 +357,51 @@ fn build_mixer_suggestions(
         }
     }
 
+    let all_inlets_are_bound =
+        [MIXER_INLET_A_PORT, MIXER_INLET_B_PORT]
+            .into_iter()
+            .all(|port_name| {
+                ports
+                    .iter()
+                    .find(|candidate| candidate.name == port_name)
+                    .is_some_and(|port| port.stream_id.is_some())
+            });
     let outlet = ports
         .iter()
         .find(|candidate| candidate.name == MIXER_OUTLET_PORT);
-    if let Some(outlet) = outlet.filter(|port| port.stream_id.is_none()) {
-        let stream_id = unique_stream_id(flowsheet, &unit_id, MIXER_OUTLET_PORT);
-        let stream_name = format!("{unit_name} Outlet");
-        suggestions.push(
-            CanvasSuggestion::new(
-                CanvasSuggestionId::new(format!("local.mixer.create_outlet.{}", unit_id)),
-                SuggestionSource::LocalRules,
-                0.94,
-                GhostElement {
-                    kind: GhostElementKind::Connection,
-                    target_unit_id: unit_id.clone(),
-                    visual_kind: StreamVisualKind::Material,
-                    visual_state: StreamVisualState::Suggested,
-                },
-                format!(
-                    "Create source stream `{}` for mixer outlet `{}`",
-                    stream_name, outlet.name
-                ),
-            )
-            .with_acceptance(CanvasSuggestionAcceptance::MaterialConnection(
-                CanvasSuggestedMaterialConnection {
-                    stream: CanvasSuggestedStreamBinding::Create {
-                        stream: MaterialStreamState::new(stream_id, stream_name),
+    if all_inlets_are_bound {
+        if let Some(outlet) = outlet.filter(|port| port.stream_id.is_none()) {
+            let stream_id = unique_stream_id(flowsheet, &unit_id, MIXER_OUTLET_PORT);
+            let stream_name = format!("{unit_name} Outlet");
+            suggestions.push(
+                CanvasSuggestion::new(
+                    CanvasSuggestionId::new(format!("local.mixer.create_outlet.{}", unit_id)),
+                    SuggestionSource::LocalRules,
+                    0.94,
+                    GhostElement {
+                        kind: GhostElementKind::Connection,
+                        target_unit_id: unit_id.clone(),
+                        visual_kind: StreamVisualKind::Material,
+                        visual_state: StreamVisualState::Suggested,
                     },
-                    source_unit_id: unit_id,
-                    source_port: outlet.name.clone(),
-                    sink_unit_id: None,
-                    sink_port: None,
-                },
-            )),
-        );
+                    format!(
+                        "Create source stream `{}` for mixer outlet `{}`",
+                        stream_name, outlet.name
+                    ),
+                )
+                .with_acceptance(CanvasSuggestionAcceptance::MaterialConnection(
+                    CanvasSuggestedMaterialConnection {
+                        stream: CanvasSuggestedStreamBinding::Create {
+                            stream: MaterialStreamState::new(stream_id, stream_name),
+                        },
+                        source_unit_id: unit_id,
+                        source_port: outlet.name.clone(),
+                        sink_unit_id: None,
+                        sink_port: None,
+                    },
+                )),
+            );
+        }
     }
 
     suggestions
@@ -571,8 +590,9 @@ fn unique_stream_id(flowsheet: &Flowsheet, unit_id: &UnitId, port_name: &str) ->
 #[cfg(test)]
 mod tests {
     use rf_model::{Component, Flowsheet, UnitNode, UnitPort};
+    use rf_types::{StreamId, UnitId};
 
-    use super::generate_local_canvas_suggestions_for_flowsheet;
+    use super::{FLASH_DRUM_INLET_PORT, generate_local_canvas_suggestions_for_flowsheet};
 
     fn insert_official_binary_hydrocarbon_components(flowsheet: &mut Flowsheet) {
         for (component_id, component_name) in
@@ -635,20 +655,39 @@ mod tests {
     }
 
     #[test]
-    fn local_rules_generate_flash_drum_connection_and_outlet_suggestions() {
+    fn local_rules_generate_flash_drum_inlet_suggestion_before_outlet_suggestions() {
         let suggestions = generate_local_canvas_suggestions_for_flowsheet(&sample_flowsheet());
 
-        assert_eq!(suggestions.len(), 3);
+        assert_eq!(suggestions.len(), 1);
         assert_eq!(
             suggestions[0].id.as_str(),
             "local.flash_drum.connect_inlet.flash-1.stream-feed"
         );
+    }
+
+    #[test]
+    fn local_rules_generate_flash_drum_outlet_suggestions_after_inlet_is_bound() {
+        let mut flowsheet = sample_flowsheet();
+        let flash = flowsheet
+            .units
+            .get_mut(&UnitId::new("flash-1"))
+            .expect("expected flash unit");
+        flash
+            .ports
+            .iter_mut()
+            .find(|port| port.name == FLASH_DRUM_INLET_PORT)
+            .expect("expected flash inlet")
+            .stream_id = Some(StreamId::new("stream-feed"));
+
+        let suggestions = generate_local_canvas_suggestions_for_flowsheet(&flowsheet);
+
+        assert_eq!(suggestions.len(), 2);
         assert_eq!(
-            suggestions[1].id.as_str(),
+            suggestions[0].id.as_str(),
             "local.flash_drum.create_outlet.flash-1.liquid"
         );
         assert_eq!(
-            suggestions[2].id.as_str(),
+            suggestions[1].id.as_str(),
             "local.flash_drum.create_outlet.flash-1.vapor"
         );
     }
@@ -738,17 +777,64 @@ mod tests {
 
         let suggestions = generate_local_canvas_suggestions_for_flowsheet(&flowsheet);
 
-        assert_eq!(suggestions.len(), 2);
+        assert_eq!(suggestions.len(), 1);
         assert_eq!(
             suggestions[0].id.as_str(),
             "local.heater.connect_inlet.heater-1.stream-feed"
         );
+    }
+
+    #[test]
+    fn local_rules_generate_single_inlet_outlet_unit_outlet_after_inlet_is_bound() {
+        let mut flowsheet = Flowsheet::new("demo");
+        insert_official_binary_hydrocarbon_components(&mut flowsheet);
+        flowsheet
+            .insert_stream(rf_model::MaterialStreamState::new("stream-feed", "Feed"))
+            .expect("expected feed stream");
+        flowsheet
+            .insert_unit(UnitNode::new(
+                "feed-1",
+                "Feed",
+                "feed",
+                vec![UnitPort::new(
+                    "outlet",
+                    rf_types::PortDirection::Outlet,
+                    rf_types::PortKind::Material,
+                    Some("stream-feed".into()),
+                )],
+            ))
+            .expect("expected feed unit");
+        flowsheet
+            .insert_unit(UnitNode::new(
+                "heater-1",
+                "Heater",
+                "heater",
+                vec![
+                    UnitPort::new(
+                        "inlet",
+                        rf_types::PortDirection::Inlet,
+                        rf_types::PortKind::Material,
+                        Some("stream-feed".into()),
+                    ),
+                    UnitPort::new(
+                        "outlet",
+                        rf_types::PortDirection::Outlet,
+                        rf_types::PortKind::Material,
+                        None,
+                    ),
+                ],
+            ))
+            .expect("expected heater unit");
+
+        let suggestions = generate_local_canvas_suggestions_for_flowsheet(&flowsheet);
+
+        assert_eq!(suggestions.len(), 1);
         assert_eq!(
-            suggestions[1].id.as_str(),
+            suggestions[0].id.as_str(),
             "local.heater.create_outlet.heater-1"
         );
         let Some(rf_ui::CanvasSuggestionAcceptance::MaterialConnection(connection)) =
-            suggestions[1].acceptance.as_ref()
+            suggestions[0].acceptance.as_ref()
         else {
             panic!("expected outlet material connection acceptance");
         };
@@ -825,7 +911,7 @@ mod tests {
 
         let suggestions = generate_local_canvas_suggestions_for_flowsheet(&flowsheet);
 
-        assert_eq!(suggestions.len(), 3);
+        assert_eq!(suggestions.len(), 2);
         assert_eq!(
             suggestions[0].id.as_str(),
             "local.mixer.connect_inlet_a.mixer-1.stream-feed-a"
@@ -834,8 +920,76 @@ mod tests {
             suggestions[1].id.as_str(),
             "local.mixer.connect_inlet_b.mixer-1.stream-feed-b"
         );
+    }
+
+    #[test]
+    fn local_rules_generate_mixer_outlet_after_all_inlets_are_bound() {
+        let mut flowsheet = Flowsheet::new("demo");
+        insert_official_binary_hydrocarbon_components(&mut flowsheet);
+        for stream_id in ["stream-feed-a", "stream-feed-b"] {
+            flowsheet
+                .insert_stream(rf_model::MaterialStreamState::new(stream_id, stream_id))
+                .expect("expected feed stream");
+        }
+        flowsheet
+            .insert_unit(UnitNode::new(
+                "feed-a",
+                "Feed A",
+                "feed",
+                vec![UnitPort::new(
+                    "outlet",
+                    rf_types::PortDirection::Outlet,
+                    rf_types::PortKind::Material,
+                    Some("stream-feed-a".into()),
+                )],
+            ))
+            .expect("expected feed-a unit");
+        flowsheet
+            .insert_unit(UnitNode::new(
+                "feed-b",
+                "Feed B",
+                "feed",
+                vec![UnitPort::new(
+                    "outlet",
+                    rf_types::PortDirection::Outlet,
+                    rf_types::PortKind::Material,
+                    Some("stream-feed-b".into()),
+                )],
+            ))
+            .expect("expected feed-b unit");
+        flowsheet
+            .insert_unit(UnitNode::new(
+                "mixer-1",
+                "Mixer",
+                "mixer",
+                vec![
+                    UnitPort::new(
+                        "inlet_a",
+                        rf_types::PortDirection::Inlet,
+                        rf_types::PortKind::Material,
+                        Some("stream-feed-a".into()),
+                    ),
+                    UnitPort::new(
+                        "inlet_b",
+                        rf_types::PortDirection::Inlet,
+                        rf_types::PortKind::Material,
+                        Some("stream-feed-b".into()),
+                    ),
+                    UnitPort::new(
+                        "outlet",
+                        rf_types::PortDirection::Outlet,
+                        rf_types::PortKind::Material,
+                        None,
+                    ),
+                ],
+            ))
+            .expect("expected mixer unit");
+
+        let suggestions = generate_local_canvas_suggestions_for_flowsheet(&flowsheet);
+
+        assert_eq!(suggestions.len(), 1);
         assert_eq!(
-            suggestions[2].id.as_str(),
+            suggestions[0].id.as_str(),
             "local.mixer.create_outlet.mixer-1"
         );
     }
@@ -897,10 +1051,6 @@ mod tests {
 
         let suggestions = generate_local_canvas_suggestions_for_flowsheet(&flowsheet);
 
-        assert_eq!(suggestions.len(), 1);
-        assert_eq!(
-            suggestions[0].id.as_str(),
-            "local.mixer.create_outlet.mixer-1"
-        );
+        assert!(suggestions.is_empty());
     }
 }

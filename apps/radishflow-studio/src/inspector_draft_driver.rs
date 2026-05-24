@@ -93,16 +93,23 @@ pub fn update_inspector_draft(
     app_state: &mut AppState,
     command: StudioInspectorDraftUpdateCommand,
 ) -> RfResult<InspectorDraftUpdateOutcome> {
-    let (stream_id, field) = rf_ui::stream_inspector_draft_key_parts(&command.draft_key)
-        .ok_or_else(|| {
-            RfError::invalid_input(format!(
-                "inspector draft key `{}` is not a supported stream field",
-                command.draft_key
-            ))
-        })?;
-    let applied = app_state
-        .update_stream_inspector_draft(&stream_id, field, command.raw_value.clone())
-        .is_some();
+    let applied = if let Some((stream_id, field)) =
+        rf_ui::stream_inspector_draft_key_parts(&command.draft_key)
+    {
+        app_state
+            .update_stream_inspector_draft(&stream_id, field, command.raw_value.clone())
+            .is_some()
+    } else if let Some((unit_id, field)) = rf_ui::unit_inspector_draft_key_parts(&command.draft_key)
+    {
+        app_state
+            .update_unit_inspector_draft(&unit_id, field, command.raw_value.clone())
+            .is_some()
+    } else {
+        return Err(RfError::invalid_input(format!(
+            "inspector draft key `{}` is not a supported field",
+            command.draft_key
+        )));
+    };
 
     Ok(InspectorDraftUpdateOutcome {
         command,
@@ -125,16 +132,23 @@ pub fn commit_inspector_draft_at(
     command: StudioInspectorDraftCommitCommand,
     changed_at: rf_ui::DateTimeUtc,
 ) -> RfResult<InspectorDraftCommitOutcome> {
-    let (stream_id, field) = rf_ui::stream_inspector_draft_key_parts(&command.draft_key)
-        .ok_or_else(|| {
-            RfError::invalid_input(format!(
-                "inspector draft key `{}` is not a supported stream field",
-                command.draft_key
-            ))
-        })?;
-    let applied = app_state
-        .commit_stream_inspector_draft(&stream_id, field, changed_at)?
-        .is_some();
+    let applied = if let Some((stream_id, field)) =
+        rf_ui::stream_inspector_draft_key_parts(&command.draft_key)
+    {
+        app_state
+            .commit_stream_inspector_draft(&stream_id, field, changed_at)?
+            .is_some()
+    } else if let Some((unit_id, field)) = rf_ui::unit_inspector_draft_key_parts(&command.draft_key)
+    {
+        app_state
+            .commit_unit_inspector_draft(&unit_id, field, changed_at)?
+            .is_some()
+    } else {
+        return Err(RfError::invalid_input(format!(
+            "inspector draft key `{}` is not a supported field",
+            command.draft_key
+        )));
+    };
 
     Ok(InspectorDraftCommitOutcome {
         command,
@@ -149,16 +163,27 @@ pub fn discard_inspector_draft(
     app_state: &mut AppState,
     command: StudioInspectorDraftDiscardCommand,
 ) -> RfResult<InspectorDraftDiscardOutcome> {
-    let (stream_id, field) = rf_ui::stream_inspector_draft_key_parts(&command.draft_key)
-        .ok_or_else(|| {
-            RfError::invalid_input(format!(
-                "inspector draft key `{}` is not a supported stream field",
-                command.draft_key
-            ))
-        })?;
-    let result = app_state.discard_stream_inspector_draft(&stream_id, field);
-    let discarded_key = result.as_ref().map(|result| result.key.clone());
-    let applied = result.is_some();
+    let (applied, discarded_key) = if let Some((stream_id, field)) =
+        rf_ui::stream_inspector_draft_key_parts(&command.draft_key)
+    {
+        let result = app_state.discard_stream_inspector_draft(&stream_id, field);
+        (
+            result.is_some(),
+            result.as_ref().map(|result| result.key.clone()),
+        )
+    } else if let Some((unit_id, field)) = rf_ui::unit_inspector_draft_key_parts(&command.draft_key)
+    {
+        let result = app_state.discard_unit_inspector_draft(&unit_id, field);
+        (
+            result.is_some(),
+            result.as_ref().map(|result| result.key.clone()),
+        )
+    } else {
+        return Err(RfError::invalid_input(format!(
+            "inspector draft key `{}` is not a supported field",
+            command.draft_key
+        )));
+    };
 
     Ok(InspectorDraftDiscardOutcome {
         command,
@@ -318,8 +343,8 @@ pub fn remove_inspector_composition_component_at(
 
 #[cfg(test)]
 mod tests {
-    use rf_model::{Component, Flowsheet, MaterialStreamState};
-    use rf_types::{ComponentId, StreamId};
+    use rf_model::{Component, Flowsheet, MaterialStreamState, UnitNode, UnitPort};
+    use rf_types::{ComponentId, PortDirection, PortKind, StreamId, UnitId};
     use rf_ui::{
         AppState, CommandValue, DocumentCommand, DocumentMetadata, FlowsheetDocument,
         InspectorTarget, SolvePendingReason,
@@ -363,6 +388,50 @@ mod tests {
                 .insert_component(Component::new(component_id, component_name))
                 .unwrap_or_else(|_| panic!("expected {component_id} insert"));
         }
+    }
+
+    fn insert_heater_with_outlet(flowsheet: &mut Flowsheet) {
+        flowsheet
+            .insert_stream(MaterialStreamState::from_tpzf(
+                "stream-feed",
+                "Feed",
+                300.0,
+                120_000.0,
+                5.0,
+                Default::default(),
+            ))
+            .expect("expected feed stream insert");
+        flowsheet
+            .insert_stream(MaterialStreamState::from_tpzf(
+                "stream-heated",
+                "Heated Outlet",
+                345.0,
+                95_000.0,
+                0.0,
+                Default::default(),
+            ))
+            .expect("expected outlet stream insert");
+        flowsheet
+            .insert_unit(UnitNode::new(
+                "heater-1",
+                "Heater",
+                "heater",
+                vec![
+                    UnitPort::new(
+                        "inlet",
+                        PortDirection::Inlet,
+                        PortKind::Material,
+                        Some("stream-feed".into()),
+                    ),
+                    UnitPort::new(
+                        "outlet",
+                        PortDirection::Outlet,
+                        PortKind::Material,
+                        Some("stream-heated".into()),
+                    ),
+                ],
+            ))
+            .expect("expected heater insert");
     }
 
     #[test]
@@ -482,6 +551,56 @@ mod tests {
             Some(SolvePendingReason::DocumentRevisionAdvanced)
         );
         assert!(app_state.workspace.drafts.fields.is_empty());
+    }
+
+    #[test]
+    fn inspector_draft_driver_commits_active_unit_parameter_draft_into_document_command() {
+        let mut flowsheet = Flowsheet::new("demo");
+        insert_heater_with_outlet(&mut flowsheet);
+        let mut app_state = AppState::new(FlowsheetDocument::new(
+            flowsheet,
+            DocumentMetadata::new("doc", "Demo", std::time::UNIX_EPOCH),
+        ));
+        app_state.focus_inspector_target(InspectorTarget::Unit(UnitId::new("heater-1")));
+        update_inspector_draft(
+            &mut app_state,
+            StudioInspectorDraftUpdateCommand::new("unit:heater-1:outlet_temperature_k", "360.0"),
+        )
+        .expect("expected unit draft update");
+
+        let outcome = commit_inspector_draft_at(
+            &mut app_state,
+            StudioInspectorDraftCommitCommand::new("unit:heater-1:outlet_temperature_k"),
+            std::time::UNIX_EPOCH,
+        )
+        .expect("expected unit draft commit");
+
+        assert!(outcome.applied);
+        assert_eq!(outcome.document_revision, 1);
+        assert_eq!(outcome.command_history_len, 1);
+        assert_eq!(
+            app_state
+                .workspace
+                .command_history
+                .current_entry()
+                .map(|entry| &entry.command),
+            Some(&DocumentCommand::SetUnitParameter {
+                unit_id: UnitId::new("heater-1"),
+                parameter: "outlet_temperature_k".to_string(),
+                value: CommandValue::Number(360.0),
+            })
+        );
+        assert_eq!(
+            app_state.workspace.document.flowsheet.units[&UnitId::new("heater-1")]
+                .parameters
+                .outlet_temperature_k,
+            Some(360.0)
+        );
+        assert_eq!(
+            app_state.workspace.document.flowsheet.streams[&StreamId::new("stream-heated")]
+                .temperature_k,
+            360.0
+        );
     }
 
     #[test]

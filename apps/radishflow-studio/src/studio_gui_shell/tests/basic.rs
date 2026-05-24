@@ -1,4 +1,5 @@
 use super::*;
+use crate::studio_gui_shell::home_dashboard::{HomeCaseRowAction, home_case_row_action};
 use radishflow_studio::test_support::{
     apply_official_binary_hydrocarbon_near_boundary_consumer_scenario,
     build_official_binary_hydrocarbon_provider,
@@ -67,6 +68,31 @@ fn render_alpha_workbench_texts(app: &mut ReadyAppState) -> Vec<String> {
             app.render_bottom_status_bar(ctx, &window);
             app.render_bottom_drawer(ctx, &window);
             app.render_center_stage(ctx, &window, &mut hovered_drop_target);
+        },
+    );
+
+    let mut texts = Vec::new();
+    for clipped_shape in &output.shapes {
+        collect_shape_texts(&clipped_shape.shape, &mut texts);
+    }
+    texts
+}
+
+fn render_bottom_drawer_texts(app: &mut ReadyAppState) -> Vec<String> {
+    let snapshot = app.platform_host.snapshot();
+    let window = snapshot.window_model();
+    let ctx = egui::Context::default();
+    let output = ctx.run(
+        egui::RawInput {
+            screen_rect: Some(egui::Rect::from_min_size(
+                egui::Pos2::ZERO,
+                egui::vec2(1280.0, 360.0),
+            )),
+            focused: true,
+            ..Default::default()
+        },
+        |ctx| {
+            app.render_bottom_drawer(ctx, &window);
         },
     );
 
@@ -213,7 +239,7 @@ fn shell_locale_defaults_to_chinese_and_can_translate_runtime_labels() {
     assert_eq!(locale.runtime_label("Stream").as_ref(), "流股");
     assert_eq!(locale.runtime_label("Idle").as_ref(), "空闲");
     assert_eq!(locale.runtime_label("SnapshotMissing").as_ref(), "缺少快照");
-    assert_eq!(locale.runtime_label("Place Feed").as_ref(), "放置 Feed");
+    assert_eq!(locale.runtime_label("Place Feed").as_ref(), "放置进料");
     assert_eq!(
         StudioShellLocale::En.runtime_label("Converged").as_ref(),
         "Converged"
@@ -289,6 +315,7 @@ fn shell_defaults_to_alpha_workbench_layout_regions() {
         "求解器: 顺序模块法",
         "流程图模式",
         "物料线",
+        "画布",
     ] {
         assert!(
             texts.iter().any(|text| text.contains(expected)),
@@ -303,6 +330,11 @@ fn shell_defaults_to_alpha_workbench_layout_regions() {
         "green markers",
         "arrows indicate",
         "还没有可显示的求解结果。",
+        "Canvas",
+        "suggestions",
+        "actions enabled",
+        "选择画布工具",
+        "使用放置单元操作开始画布编辑",
     ] {
         assert!(
             !texts.iter().any(|text| text.contains(hidden)),
@@ -310,6 +342,19 @@ fn shell_defaults_to_alpha_workbench_layout_regions() {
             texts
         );
     }
+}
+
+#[test]
+fn project_navigator_uses_row_click_without_repeated_inspect_buttons() {
+    let mut app = ready_app_state(&synced_workspace_config());
+
+    let texts = render_alpha_workbench_texts(&mut app);
+
+    assert!(
+        !texts.iter().any(|text| text == "检查"),
+        "expected project navigator rows to avoid repeated inspect buttons, rendered texts: {:?}",
+        texts
+    );
 }
 
 #[test]
@@ -323,9 +368,9 @@ fn shell_starts_on_home_dashboard_with_start_environment_and_messages() {
         "RadishFlow Studio",
         "稳态流程模拟",
         "开始",
-        "新建空白项目",
+        "新建项目",
         "打开项目",
-        "打开示例",
+        "打开示例项目",
         "最近项目",
         "示例项目",
         "环境",
@@ -344,6 +389,20 @@ fn shell_starts_on_home_dashboard_with_start_environment_and_messages() {
             texts
         );
     }
+    assert!(
+        !texts.iter().any(|text| text.contains("继续上次项目")),
+        "expected home dashboard to hide redundant continue action, rendered texts: {:?}",
+        texts
+    );
+    assert_eq!(
+        texts
+            .iter()
+            .filter(|text| text.contains("打开示例项目"))
+            .count(),
+        1,
+        "expected home dashboard to render only the left-side example open action, rendered texts: {:?}",
+        texts
+    );
     for hidden in [
         "Start",
         "New Blank Case",
@@ -351,6 +410,8 @@ fn shell_starts_on_home_dashboard_with_start_environment_and_messages() {
         "打开示例 Case",
         "最近 Case",
         "示例 Case",
+        "PME 样例",
+        "Synthetic",
         "Recent Cases",
         "Example Cases",
         "Environment",
@@ -366,6 +427,125 @@ fn shell_starts_on_home_dashboard_with_start_environment_and_messages() {
             texts
         );
     }
+}
+
+#[test]
+fn home_case_row_action_opens_on_double_click() {
+    assert_eq!(home_case_row_action(false, false), HomeCaseRowAction::None);
+    assert_eq!(home_case_row_action(true, false), HomeCaseRowAction::Select);
+    assert_eq!(home_case_row_action(true, true), HomeCaseRowAction::Open);
+    assert_eq!(home_case_row_action(false, true), HomeCaseRowAction::Open);
+}
+
+#[test]
+fn home_open_project_uses_selected_recent_project() {
+    let timestamp = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("expected current timestamp")
+        .as_nanos();
+    let first_project = std::env::temp_dir().join(format!(
+        "radishflow-home-selected-recent-first-{timestamp}.rfproj.json"
+    ));
+    let second_project = std::env::temp_dir().join(format!(
+        "radishflow-home-selected-recent-second-{timestamp}.rfproj.json"
+    ));
+    let project = feed_heater_flash_binary_hydrocarbon_project();
+    write_project_file(&first_project, &project).expect("expected first recent project");
+    write_project_file(&second_project, &project).expect("expected second recent project");
+    let mut app = ready_app_state(&synced_workspace_config());
+    app.project_open.recent_projects = vec![first_project.clone(), second_project.clone()];
+    app.home_selected_recent_project = Some(second_project.clone());
+
+    app.open_selected_recent_project_or_picker();
+
+    assert_eq!(app.screen, StudioShellScreen::Workbench);
+    assert_eq!(
+        app.project_open.path_input,
+        second_project.display().to_string()
+    );
+    assert_eq!(
+        app.home_selected_recent_project.as_deref(),
+        Some(second_project.as_path())
+    );
+
+    let _ = fs::remove_file(first_project);
+    let _ = fs::remove_file(second_project);
+}
+
+#[test]
+fn home_open_example_uses_selected_example_project() {
+    let mut app = ready_app_state(&synced_workspace_config());
+    let window = app.platform_host.snapshot().window_model();
+    let target_project = window
+        .runtime
+        .example_projects
+        .iter()
+        .find(|example| example.id == "feed-valve-flash")
+        .expect("expected feed valve example")
+        .project_path
+        .clone();
+    app.home_selected_example_project = Some(target_project.clone());
+
+    app.open_selected_example_project(&window);
+
+    assert_eq!(app.screen, StudioShellScreen::Workbench);
+    assert_eq!(
+        app.project_open.path_input,
+        target_project.display().to_string()
+    );
+    assert_eq!(
+        app.home_selected_example_project.as_deref(),
+        Some(target_project.as_path())
+    );
+}
+
+#[test]
+fn home_dashboard_renders_pending_project_operation_actions() {
+    let (config, project_path) = flash_drum_local_rules_synced_config();
+    let mut app = ready_app_state(&config);
+    let target_project = app
+        .platform_host
+        .snapshot()
+        .window_model()
+        .runtime
+        .example_projects
+        .iter()
+        .find(|example| example.id == "feed-valve-flash")
+        .expect("expected feed valve example")
+        .project_path
+        .clone();
+
+    app.dispatch_ui_command("canvas.accept_focused");
+    assert!(
+        app.platform_host
+            .snapshot()
+            .window_model()
+            .runtime
+            .workspace_document
+            .has_unsaved_changes
+    );
+
+    app.open_example_project(target_project);
+    let open_texts = render_home_dashboard_texts(&mut app);
+    for expected in ["未保存更改", "仍然打开", "取消打开"] {
+        assert!(
+            open_texts.iter().any(|text| text.contains(expected)),
+            "expected pending open action `{expected}` on home dashboard, rendered texts: {:?}",
+            open_texts
+        );
+    }
+
+    app.create_blank_project();
+    let blank_texts = render_home_dashboard_texts(&mut app);
+    for expected in ["未保存更改", "仍然新建", "取消新建"] {
+        assert!(
+            blank_texts.iter().any(|text| text.contains(expected)),
+            "expected pending blank action `{expected}` on home dashboard, rendered texts: {:?}",
+            blank_texts
+        );
+    }
+
+    let _ = fs::remove_file(project_path);
 }
 
 #[test]
@@ -438,6 +618,69 @@ fn result_inspector_state_tracks_selected_stream_per_snapshot() {
             .map(|stream| stream.stream_id.as_str())
     );
     assert_eq!(app.result_inspector.comparison_stream_id, None);
+}
+
+#[test]
+fn bottom_results_table_uses_localized_compact_phase_column() {
+    let mut app = ready_app_state(&synced_workspace_config());
+    app.dispatch_ui_command("run_panel.run_manual");
+    app.bottom_drawer_tab = StudioShellBottomDrawerTab::ResultsTable;
+
+    let texts = render_bottom_drawer_texts(&mut app);
+
+    assert!(
+        texts.iter().any(|text| text == "流股"),
+        "expected localized stream table header, rendered texts: {:?}",
+        texts
+    );
+    assert!(
+        texts.iter().any(|text| text == "相态"),
+        "expected localized phase table header, rendered texts: {:?}",
+        texts
+    );
+    assert!(
+        texts
+            .iter()
+            .any(|text| text.contains("液相") || text.contains("气相")),
+        "expected compact localized phase summary in result table, rendered texts: {:?}",
+        texts
+    );
+    assert!(
+        !texts.iter().any(|text| text.contains("phases:")),
+        "expected result table to avoid long raw phase text in cells, rendered texts: {:?}",
+        texts
+    );
+    assert!(
+        !texts.iter().any(|text| text.contains("没有相态结果。")),
+        "expected result table to avoid long no-phase text in cells, rendered texts: {:?}",
+        texts
+    );
+    assert!(
+        texts.iter().any(|text| text == "无"),
+        "expected result table to render a compact no-phase value, rendered texts: {:?}",
+        texts
+    );
+}
+
+#[test]
+fn runtime_result_summary_is_localized_in_workbench() {
+    let mut app = ready_app_state(&synced_workspace_config());
+    app.dispatch_ui_command("run_panel.run_manual");
+    app.right_sidebar_tab = StudioShellRightSidebarTab::Results;
+    app.bottom_drawer_tab = StudioShellBottomDrawerTab::Messages;
+
+    let texts = render_alpha_workbench_texts(&mut app);
+
+    assert!(
+        texts.iter().any(|text| text.contains("已求解")),
+        "expected localized solve summary in workbench, rendered texts: {:?}",
+        texts
+    );
+    assert!(
+        !texts.iter().any(|text| text.contains("solved flowsheet")),
+        "expected workbench to hide English solve summary, rendered texts: {:?}",
+        texts
+    );
 }
 
 #[test]

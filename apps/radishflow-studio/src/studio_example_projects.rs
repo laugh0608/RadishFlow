@@ -45,18 +45,6 @@ const STUDIO_EXAMPLE_PROJECTS: &[StudioExampleProjectDefinition] = &[
         detail: "Two feeds, official binary hydrocarbon mixer, flash drum",
         file_name: "feed-mixer-flash-binary-hydrocarbon.rfproj.json",
     },
-    StudioExampleProjectDefinition {
-        id: "feed-mixer-heater-flash",
-        title: "Mixer -> Heater -> Flash",
-        detail: "Two feeds, synthetic demo mixer, heater, flash drum",
-        file_name: "feed-mixer-heater-flash-synthetic-demo.rfproj.json",
-    },
-    StudioExampleProjectDefinition {
-        id: "water-ethanol-heater-flash",
-        title: "Water/ethanol heater flash",
-        detail: "Water/ethanol PME validation sample",
-        file_name: "feed-heater-flash-water-ethanol.rfproj.json",
-    },
 ];
 
 pub fn studio_example_project_models(

@@ -47,10 +47,18 @@ pub enum DocumentCommand {
         unit_id: UnitId,
         port: String,
     },
+    DisconnectStream {
+        stream_id: StreamId,
+        ports: Vec<StreamPortBinding>,
+    },
     DisconnectPortAndDeleteStream {
         unit_id: UnitId,
         port: String,
         stream_id: StreamId,
+    },
+    DeleteStreamAndDisconnectPorts {
+        stream_id: StreamId,
+        ports: Vec<StreamPortBinding>,
     },
     RestoreCanonicalUnitPorts {
         unit_id: UnitId,
@@ -77,6 +85,12 @@ pub enum DocumentCommand {
         stream_id: StreamId,
         component_id: ComponentId,
     },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StreamPortBinding {
+    pub unit_id: UnitId,
+    pub port: String,
 }
 
 #[derive(Debug, Clone, PartialEq)]

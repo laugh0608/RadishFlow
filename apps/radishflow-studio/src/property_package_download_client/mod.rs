@@ -1,3 +1,5 @@
+use std::error::Error;
+use std::io;
 use std::path::Path;
 use std::time::Duration;
 use std::time::SystemTime;
@@ -592,15 +594,43 @@ fn property_package_download_response_from_http(
 }
 
 fn map_reqwest_transport_error(error: reqwest::Error) -> PropertyPackageDownloadHttpTransportError {
-    if error.is_connect() {
+    if error.is_connect() || reqwest_error_has_io_kind(&error, is_connection_unavailable_io_kind) {
         PropertyPackageDownloadHttpTransportError::connection_unavailable(error.to_string())
-    } else if error.is_timeout() {
+    } else if error.is_timeout()
+        || reqwest_error_has_io_kind(&error, |kind| kind == io::ErrorKind::TimedOut)
+    {
         PropertyPackageDownloadHttpTransportError::timeout(error.to_string())
     } else if error.is_body() {
         PropertyPackageDownloadHttpTransportError::other_transient(error.to_string())
     } else {
         PropertyPackageDownloadHttpTransportError::other_permanent(error.to_string())
     }
+}
+
+fn reqwest_error_has_io_kind(
+    error: &reqwest::Error,
+    matches_kind: impl Fn(io::ErrorKind) -> bool,
+) -> bool {
+    let mut source = error.source();
+    while let Some(error) = source {
+        if let Some(io_error) = error.downcast_ref::<io::Error>() {
+            return matches_kind(io_error.kind());
+        }
+        source = error.source();
+    }
+    false
+}
+
+fn is_connection_unavailable_io_kind(kind: io::ErrorKind) -> bool {
+    matches!(
+        kind,
+        io::ErrorKind::ConnectionRefused
+            | io::ErrorKind::ConnectionReset
+            | io::ErrorKind::ConnectionAborted
+            | io::ErrorKind::NotConnected
+            | io::ErrorKind::AddrNotAvailable
+            | io::ErrorKind::AddrInUse
+    )
 }
 
 #[cfg(test)]

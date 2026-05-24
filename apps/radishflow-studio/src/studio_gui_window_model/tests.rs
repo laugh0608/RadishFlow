@@ -5,6 +5,7 @@ use std::{
 };
 
 use rf_flash::estimate_bubble_dew_window;
+use rf_model::UnitOperationParameters;
 use rf_store::{parse_project_file_json, project_file_to_pretty_json};
 use rf_types::PhaseEquilibriumRegion;
 
@@ -60,6 +61,34 @@ fn find_window_snapshot_stream<'a>(
         .iter()
         .find(|stream| stream.stream_id == stream_id)
         .expect("expected window snapshot stream")
+}
+
+#[test]
+fn solve_snapshot_light_text_export_uses_current_snapshot_results() {
+    let snapshot = solve_binary_hydrocarbon_lite_snapshot(include_str!(
+        "../../../../examples/flowsheets/feed-cooler-flash-binary-hydrocarbon.rfproj.json"
+    ));
+
+    let text = snapshot.light_text_export();
+
+    assert!(text.contains("RadishFlow Solve Snapshot"));
+    assert!(text.contains(&format!("snapshot_id: {}", snapshot.snapshot_id)));
+    assert!(text.contains("Streams\nstream_id\tlabel\tT\tP\tF\tH"));
+    assert!(text.contains("stream-feed"));
+    assert!(text.contains("stream-cooled"));
+    assert!(text.contains("phase_region="));
+    assert!(text.contains("Steps\nindex\tunit_id\tstatus\tsummary"));
+    assert!(text.contains("cooler-1"));
+    assert!(text.contains("flash-1"));
+    assert!(text.contains("Diagnostics\nseverity\tcode\tmessage\tunits\tstreams"));
+    assert!(
+        !text.contains(".rfproj.json"),
+        "snapshot export must stay in result DTO space, not project file paths"
+    );
+    assert!(
+        !text.contains("rfstudio-layout"),
+        "snapshot export must not include shell layout sidecar state"
+    );
 }
 
 fn assert_flash_consumer_preserves_snapshot_stream_reference(
@@ -978,14 +1007,14 @@ fn flash_drum_local_rules_config() -> (StudioRuntimeConfig, PathBuf) {
     )
 }
 
-fn unbound_outlet_failure_synced_config() -> StudioRuntimeConfig {
+fn failure_synced_config(project_file_name: &str) -> StudioRuntimeConfig {
     StudioRuntimeConfig {
         project_path: PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("../..")
             .join("examples")
             .join("flowsheets")
             .join("failures")
-            .join("unbound-outlet-port.rfproj.json"),
+            .join(project_file_name),
         untitled_blank_project: None,
         entitlement_preflight: StudioRuntimeEntitlementPreflight::Skip,
         entitlement_seed: StudioRuntimeEntitlementSeed::Synced,
@@ -993,19 +1022,50 @@ fn unbound_outlet_failure_synced_config() -> StudioRuntimeConfig {
     }
 }
 
+fn unbound_outlet_failure_synced_config() -> StudioRuntimeConfig {
+    failure_synced_config("unbound-outlet-port.rfproj.json")
+}
+
 fn missing_upstream_failure_synced_config() -> StudioRuntimeConfig {
-    StudioRuntimeConfig {
-        project_path: PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("../..")
-            .join("examples")
-            .join("flowsheets")
-            .join("failures")
-            .join("missing-upstream-source.rfproj.json"),
-        untitled_blank_project: None,
-        entitlement_preflight: StudioRuntimeEntitlementPreflight::Skip,
-        entitlement_seed: StudioRuntimeEntitlementSeed::Synced,
-        trigger: StudioRuntimeTrigger::WidgetAction(rf_ui::RunPanelActionId::RunManual),
-    }
+    failure_synced_config("missing-upstream-source.rfproj.json")
+}
+
+fn invalid_valve_parameter_failure_synced_config() -> (StudioRuntimeConfig, PathBuf) {
+    let timestamp = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("expected current timestamp")
+        .as_nanos();
+    let project_path = std::env::temp_dir().join(format!(
+        "radishflow-studio-invalid-valve-parameter-{timestamp}.rfproj.json"
+    ));
+    let mut project = parse_project_file_json(include_str!(
+        "../../../../examples/flowsheets/feed-valve-flash-binary-hydrocarbon.rfproj.json"
+    ))
+    .expect("expected valve project parse");
+    project
+        .document
+        .flowsheet
+        .units
+        .get_mut(&"valve-1".into())
+        .expect("expected valve unit")
+        .parameters = UnitOperationParameters {
+        outlet_temperature_k: None,
+        outlet_pressure_pa: Some(730_000.0),
+    };
+    let project_json =
+        project_file_to_pretty_json(&project).expect("expected invalid valve project json");
+    fs::write(&project_path, project_json).expect("expected invalid valve project write");
+
+    (
+        StudioRuntimeConfig {
+            project_path: project_path.clone(),
+            untitled_blank_project: None,
+            entitlement_preflight: StudioRuntimeEntitlementPreflight::Skip,
+            entitlement_seed: StudioRuntimeEntitlementSeed::Synced,
+            trigger: StudioRuntimeTrigger::WidgetAction(rf_ui::RunPanelActionId::RunManual),
+        },
+        project_path,
+    )
 }
 
 fn assert_close(actual: f64, expected: f64, tolerance: f64) {
@@ -1066,8 +1126,8 @@ fn studio_gui_window_model_groups_snapshot_into_window_regions() {
     );
 
     assert_eq!(window.canvas.title, "Canvas");
-    assert_eq!(window.canvas.suggestion_count, 3);
-    assert_eq!(window.canvas.enabled_action_count, 10);
+    assert_eq!(window.canvas.suggestion_count, 1);
+    assert_eq!(window.canvas.enabled_action_count, 8);
     assert_eq!(
         window.canvas.focused_suggestion_id.as_deref(),
         Some("local.flash_drum.connect_inlet.flash-1.stream-heated")
@@ -1086,7 +1146,7 @@ fn studio_gui_window_model_groups_snapshot_into_window_regions() {
         window.runtime.run_panel.view().primary_action.label,
         "Resume"
     );
-    assert_eq!(window.runtime.example_projects.len(), 6);
+    assert_eq!(window.runtime.example_projects.len(), 4);
     assert_eq!(
         window
             .runtime
@@ -1532,6 +1592,22 @@ fn studio_gui_window_model_surfaces_bootstrap_workspace_results_and_diagnostics(
         .runtime
         .active_inspector_detail
         .expect("expected active unit inspector detail");
+    assert!(
+        unit_detail.property_fields.iter().any(|field| {
+            field.key == "unit:heater-1:outlet_temperature_k"
+                && field.label == "Outlet temperature (K)"
+                && field.constraint_text.as_deref().is_some_and(|text| {
+                    text.contains("SI unit: K")
+                        && text.contains("positive finite outlet temperature")
+                })
+                && field.value_kind_label == "Number"
+                && field.status_label == "Synced"
+                && field.draft_update_command_id
+                    == "inspector.update_stream_draft:unit:heater-1:outlet_temperature_k"
+                && field.commit_command_id.is_none()
+        }),
+        "expected active heater inspector detail to expose target outlet temperature"
+    );
     let unit_result = unit_detail
         .latest_unit_result
         .as_ref()
@@ -1841,6 +1917,206 @@ fn studio_gui_window_model_surfaces_bootstrap_workspace_results_and_diagnostics(
     assert_eq!(
         stale_unit.selected_unit_id.as_deref(),
         snapshot.steps.first().map(|step| step.unit_id.as_str())
+    );
+}
+
+#[test]
+fn studio_gui_window_model_surfaces_unit_parameter_constraint_for_invalid_valve_pressure() {
+    let config = synced_example_config("feed-valve-flash-binary-hydrocarbon.rfproj.json");
+    let mut driver = StudioGuiDriver::new(&config).expect("expected driver");
+    driver
+        .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+        .expect("expected open dispatch");
+    driver
+        .dispatch_event(StudioGuiEvent::UiCommandRequested {
+            command_id: "inspector.focus_unit:valve-1".to_string(),
+        })
+        .expect("expected valve focus dispatch");
+
+    let dispatch = driver
+        .dispatch_event(StudioGuiEvent::InspectorFieldDraftUpdateRequested {
+            command_id: "inspector.update_stream_draft:unit:valve-1:outlet_pressure_pa".to_string(),
+            raw_value: "730000".to_string(),
+        })
+        .expect("expected invalid valve pressure draft update");
+    let detail = dispatch
+        .window
+        .runtime
+        .active_inspector_detail
+        .expect("expected active valve inspector detail");
+    let field = detail
+        .property_fields
+        .iter()
+        .find(|field| field.key == "unit:valve-1:outlet_pressure_pa")
+        .expect("expected valve outlet pressure field");
+
+    assert_eq!(field.status_label, "Invalid");
+    assert_eq!(field.current_value, "730000");
+    assert!(field.commit_command_id.is_none());
+    assert!(field.discard_command_id.is_some());
+    assert!(
+        field
+            .constraint_text
+            .as_deref()
+            .is_some_and(|text| text.contains("SI unit: Pa")
+                && text.contains("cannot exceed the connected inlet pressure")
+                && text.contains("700000 Pa"))
+    );
+    assert!(
+        detail.property_notices.iter().any(|notice| {
+            notice.status_label == "Invalid"
+                && notice.message.contains("Outlet pressure (Pa)")
+                && notice
+                    .message
+                    .contains("cannot exceed the connected inlet pressure")
+        }),
+        "expected field-specific invalid valve pressure notice"
+    );
+}
+
+#[test]
+fn studio_gui_window_model_surfaces_heater_pressure_parameter() {
+    let config = synced_example_config("feed-heater-flash-binary-hydrocarbon.rfproj.json");
+    let mut driver = StudioGuiDriver::new(&config).expect("expected driver");
+    driver
+        .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+        .expect("expected open dispatch");
+
+    let dispatch = driver
+        .dispatch_event(StudioGuiEvent::UiCommandRequested {
+            command_id: "inspector.focus_unit:heater-1".to_string(),
+        })
+        .expect("expected heater focus dispatch");
+    let detail = dispatch
+        .window
+        .runtime
+        .active_inspector_detail
+        .expect("expected active heater inspector detail");
+    let temperature = detail
+        .property_fields
+        .iter()
+        .find(|field| field.key == "unit:heater-1:outlet_temperature_k")
+        .expect("expected heater outlet temperature field");
+    let pressure = detail
+        .property_fields
+        .iter()
+        .find(|field| field.key == "unit:heater-1:outlet_pressure_pa")
+        .expect("expected heater outlet pressure field");
+
+    assert_eq!(temperature.label, "Outlet temperature (K)");
+    assert_eq!(pressure.label, "Outlet pressure (Pa)");
+    assert_eq!(pressure.value_kind_label, "Number");
+    assert_eq!(pressure.status_label, "Synced");
+    assert_eq!(
+        pressure.draft_update_command_id,
+        "inspector.update_stream_draft:unit:heater-1:outlet_pressure_pa"
+    );
+    assert!(pressure.commit_command_id.is_none());
+    assert!(
+        pressure
+            .constraint_text
+            .as_deref()
+            .is_some_and(|text| text.contains("SI unit: Pa")
+                && text.contains("cannot exceed the connected inlet pressure")
+                && text.contains("120000 Pa"))
+    );
+}
+
+#[test]
+fn studio_gui_window_model_surfaces_unit_parameter_constraint_for_invalid_heater_pressure() {
+    let config = synced_example_config("feed-heater-flash-binary-hydrocarbon.rfproj.json");
+    let mut driver = StudioGuiDriver::new(&config).expect("expected driver");
+    driver
+        .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+        .expect("expected open dispatch");
+    driver
+        .dispatch_event(StudioGuiEvent::UiCommandRequested {
+            command_id: "inspector.focus_unit:heater-1".to_string(),
+        })
+        .expect("expected heater focus dispatch");
+
+    let dispatch = driver
+        .dispatch_event(StudioGuiEvent::InspectorFieldDraftUpdateRequested {
+            command_id: "inspector.update_stream_draft:unit:heater-1:outlet_pressure_pa"
+                .to_string(),
+            raw_value: "130000".to_string(),
+        })
+        .expect("expected invalid heater pressure draft update");
+    let detail = dispatch
+        .window
+        .runtime
+        .active_inspector_detail
+        .expect("expected active heater inspector detail");
+    let field = detail
+        .property_fields
+        .iter()
+        .find(|field| field.key == "unit:heater-1:outlet_pressure_pa")
+        .expect("expected heater outlet pressure field");
+
+    assert_eq!(field.status_label, "Invalid");
+    assert_eq!(field.current_value, "130000");
+    assert!(field.commit_command_id.is_none());
+    assert!(field.discard_command_id.is_some());
+    assert!(
+        field
+            .constraint_text
+            .as_deref()
+            .is_some_and(|text| text.contains("SI unit: Pa")
+                && text.contains("cannot exceed the connected inlet pressure")
+                && text.contains("120000 Pa"))
+    );
+    assert!(
+        detail.property_notices.iter().any(|notice| {
+            notice.status_label == "Invalid"
+                && notice.message.contains("Outlet pressure (Pa)")
+                && notice
+                    .message
+                    .contains("cannot exceed the connected inlet pressure")
+        }),
+        "expected field-specific invalid heater pressure notice"
+    );
+}
+
+#[test]
+fn studio_gui_window_model_surfaces_flash_drum_pressure_parameter() {
+    let config = synced_example_config("feed-heater-flash-binary-hydrocarbon.rfproj.json");
+    let mut driver = StudioGuiDriver::new(&config).expect("expected driver");
+    driver
+        .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+        .expect("expected open dispatch");
+
+    let dispatch = driver
+        .dispatch_event(StudioGuiEvent::UiCommandRequested {
+            command_id: "inspector.focus_unit:flash-1".to_string(),
+        })
+        .expect("expected flash focus dispatch");
+    let detail = dispatch
+        .window
+        .runtime
+        .active_inspector_detail
+        .expect("expected active flash inspector detail");
+    let field = detail
+        .property_fields
+        .iter()
+        .find(|field| field.key == "unit:flash-1:outlet_pressure_pa")
+        .expect("expected flash pressure field");
+
+    assert_eq!(field.label, "Flash pressure (Pa)");
+    assert_eq!(field.value_kind_label, "Number");
+    assert_eq!(field.status_label, "Synced");
+    assert_eq!(
+        field.draft_update_command_id,
+        "inspector.update_stream_draft:unit:flash-1:outlet_pressure_pa"
+    );
+    assert!(field.commit_command_id.is_none());
+    assert!(
+        field
+            .constraint_text
+            .as_deref()
+            .is_some_and(|text| text.contains("SI unit: Pa")
+                && text.contains("positive finite flash outlet pressure")
+                && text.contains("liquid/vapor outlet stream templates")
+                && !text.contains("cannot exceed the connected inlet pressure"))
     );
 }
 
@@ -3150,8 +3426,9 @@ fn studio_gui_window_model_surfaces_failure_result_until_rerun_succeeds() {
         Some("inspector.focus_unit:feed-1")
     );
     assert!(failure.diagnostic_actions.iter().any(|action| {
-        action.source_label == "Recovery"
-            && action.target_label == "Run panel"
+        action.source_label == "Recovery mutation"
+            && action.target_label == "Document"
+            && action.summary == "Document mutation: Unbound outlet port"
             && action.action.command_id == "run_panel.recover_failure"
     }));
     assert!(failure.diagnostic_actions.iter().any(|action| {
@@ -3289,7 +3566,7 @@ fn studio_gui_window_model_surfaces_failure_stream_context_from_document_state()
                     && stream.summary.contains("T ")
                     && stream.summary.contains("P ")
                     && stream.summary.contains("F ")
-                    && stream.summary.contains("z:")
+                    && stream.summary.contains("methane=")
                     && !stream.summary.contains("H ")
             }),
         "expected failure diagnostic to expose document-state stream numeric context"
@@ -3299,8 +3576,857 @@ fn studio_gui_window_model_surfaces_failure_stream_context_from_document_state()
             && target.port_name == "inlet_a"
             && target.unit_action.command_id == "inspector.focus_unit:mixer-1"
             && target.stream_result.as_ref().is_some_and(|stream| {
-                stream.stream_id == "stream-feed-a" && stream.summary.contains("z:")
+                stream.stream_id == "stream-feed-a" && stream.summary.contains("methane=")
             })
+    }));
+    assert_eq!(failure.recovery_title, Some("Remove dangling inlet stream"));
+    assert_eq!(
+        failure
+            .recovery_target
+            .as_ref()
+            .map(|target| (target.kind_label, target.target_id.as_str())),
+        Some(("Unit", "mixer-1"))
+    );
+    assert!(failure.diagnostic_actions.iter().any(|action| {
+        action.source_label == "Failure port stream"
+            && action.target_label == "Stream"
+            && action.summary == "Unit mixer-1 port inlet_a stream stream-feed-a"
+            && action.action.command_id == "inspector.focus_stream:stream-feed-a"
+    }));
+
+    let mixer = failed
+        .window
+        .canvas
+        .widget
+        .view()
+        .unit_blocks
+        .iter()
+        .find(|unit| unit.unit_id == "mixer-1")
+        .expect("expected mixer canvas block");
+    assert!(mixer.attention_summary.as_ref().is_some_and(|summary| {
+        summary.contains("ports mixer-1:inlet_a")
+            && summary.contains("solver.connection_validation.missing_upstream_source")
+    }));
+
+    let focused_failure_unit = driver
+        .dispatch_event(StudioGuiEvent::UiCommandRequested {
+            command_id: "inspector.focus_unit:mixer-1".to_string(),
+        })
+        .expect("expected failure target focus dispatch");
+    let failure_detail = focused_failure_unit
+        .window
+        .runtime
+        .active_inspector_detail
+        .expect("expected active failure unit inspector detail");
+    assert!(failure_detail.unit_ports.iter().any(|port| {
+        port.name == "inlet_a"
+            && port.stream_id.as_deref() == Some("stream-feed-a")
+            && port.attention_summary.as_ref().is_some_and(|summary| {
+                summary.contains("port mixer-1:inlet_a")
+                    && summary.contains("solver.connection_validation.missing_upstream_source")
+            })
+    }));
+
+    let recovery = driver
+        .dispatch_event(StudioGuiEvent::UiCommandRequested {
+            command_id: "run_panel.recover_failure".to_string(),
+        })
+        .expect("expected missing upstream recovery dispatch");
+    assert_eq!(
+        recovery
+            .window
+            .runtime
+            .active_inspector_target
+            .as_ref()
+            .map(|target| (target.kind_label, target.target_id.as_str())),
+        Some(("Unit", "mixer-1"))
+    );
+    let detail = recovery
+        .window
+        .runtime
+        .active_inspector_detail
+        .expect("expected recovered mixer inspector detail");
+    assert!(detail.unit_ports.iter().any(|port| {
+        port.name == "inlet_a" && port.stream_id.is_none() && port.attention_summary.is_none()
+    }));
+    assert!(
+        !recovery
+            .window
+            .canvas
+            .widget
+            .view()
+            .stream_lines
+            .iter()
+            .any(|stream| stream.stream_id == "stream-feed-a"),
+        "expected dangling inlet stream to be removed after recovery"
+    );
+}
+
+#[test]
+fn studio_gui_window_model_surfaces_unit_parameter_failure_port_context() {
+    let (config, project_path) = invalid_valve_parameter_failure_synced_config();
+    let mut driver = StudioGuiDriver::new(&config).expect("expected driver");
+    let _ = driver
+        .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+        .expect("expected open dispatch");
+
+    let failed = driver
+        .dispatch_event(StudioGuiEvent::UiCommandRequested {
+            command_id: "run_panel.run_manual".to_string(),
+        })
+        .expect("expected failed run dispatch");
+    let failure = failed
+        .window
+        .runtime
+        .latest_failure
+        .expect("expected visible failure result");
+    assert_eq!(failure.title, "Unit parameter invalid");
+    assert_eq!(failure.recovery_title, Some("Inspect unit parameters"));
+    assert_eq!(
+        failure
+            .recovery_target
+            .as_ref()
+            .map(|target| (target.kind_label, target.target_id.as_str())),
+        Some(("Unit", "valve-1"))
+    );
+    assert!(failure.recovery_action.as_ref().is_some_and(|action| {
+        action.label == "Inspect unit parameters"
+            && action.command_id == "run_panel.recover_failure"
+            && action
+                .hover_text
+                .starts_with("This action only opens the related Inspector target")
+    }));
+    assert!(failure.diagnostic_actions.iter().any(|action| {
+        action.source_label == "Recovery focus"
+            && action.target_label == "Inspector"
+            && action.summary == "Inspector focus: Unit parameter invalid"
+            && action.action.command_id == "run_panel.recover_failure"
+    }));
+    let diagnostic_detail = failure
+        .diagnostic_detail
+        .as_ref()
+        .expect("expected structured failure diagnostic detail");
+    assert_eq!(
+        diagnostic_detail.primary_code.as_deref(),
+        Some("solver.step.parameter")
+    );
+    assert!(diagnostic_detail.related_ports.iter().any(|target| {
+        target.unit_id == "valve-1"
+            && target.port_name == "outlet"
+            && target.unit_action.command_id == "inspector.focus_unit:valve-1"
+            && target.stream_result.as_ref().is_some_and(|stream| {
+                stream.stream_id == "stream-throttled" && stream.summary.contains("P ")
+            })
+    }));
+    assert!(diagnostic_detail.related_ports.iter().any(|target| {
+        target.unit_id == "valve-1"
+            && target.port_name == "inlet"
+            && target.stream_result.as_ref().is_some_and(|stream| {
+                stream.stream_id == "stream-feed" && stream.summary.contains("700000 Pa")
+            })
+    }));
+    assert!(failure.diagnostic_actions.iter().any(|action| {
+        action.source_label == "Failure port"
+            && action.target_label == "Port"
+            && action.summary == "Unit valve-1 port outlet"
+            && action.action.command_id == "inspector.focus_unit:valve-1"
+    }));
+
+    let focused_failure_unit = driver
+        .dispatch_event(StudioGuiEvent::UiCommandRequested {
+            command_id: "inspector.focus_unit:valve-1".to_string(),
+        })
+        .expect("expected failure target focus dispatch");
+    let failure_detail = focused_failure_unit
+        .window
+        .runtime
+        .active_inspector_detail
+        .expect("expected active failure unit inspector detail");
+    assert!(failure_detail.unit_ports.iter().any(|port| {
+        port.name == "outlet"
+            && port.attention_summary.as_ref().is_some_and(|summary| {
+                summary.contains("port valve-1:outlet") && summary.contains("solver.step.parameter")
+            })
+    }));
+
+    let _ = fs::remove_file(project_path);
+}
+
+#[test]
+fn studio_gui_window_model_surfaces_cycle_failure_recovery_targets() {
+    let mut driver = StudioGuiDriver::new(&failure_synced_config("multi-unit-cycle.rfproj.json"))
+        .expect("expected driver");
+    let _ = driver
+        .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+        .expect("expected open dispatch");
+
+    let failed = driver
+        .dispatch_event(StudioGuiEvent::UiCommandRequested {
+            command_id: "run_panel.run_manual".to_string(),
+        })
+        .expect("expected failed run dispatch");
+    let failure = failed
+        .window
+        .runtime
+        .latest_failure
+        .expect("expected visible cycle failure result");
+
+    assert_eq!(failure.title, "Two-unit cycle detected");
+    assert_eq!(failure.recovery_title, Some("Disconnect cycle inlet"));
+    assert_eq!(
+        failure
+            .recovery_target
+            .as_ref()
+            .map(|target| (target.kind_label, target.target_id.as_str())),
+        Some(("Unit", "heater-1"))
+    );
+    let diagnostic_detail = failure
+        .diagnostic_detail
+        .as_ref()
+        .expect("expected structured cycle diagnostic detail");
+    assert_eq!(
+        diagnostic_detail.primary_code.as_deref(),
+        Some("solver.topological_ordering.two_unit_cycle")
+    );
+    assert!(
+        diagnostic_detail
+            .related_streams
+            .iter()
+            .any(|target| target.target_id == "stream-a")
+    );
+    assert!(
+        diagnostic_detail
+            .related_streams
+            .iter()
+            .any(|target| target.target_id == "stream-b")
+    );
+    assert!(diagnostic_detail.related_ports.iter().any(|target| {
+        target.unit_id == "heater-1"
+            && target.port_name == "inlet"
+            && target.stream_result.as_ref().is_some_and(|stream| {
+                stream.stream_id == "stream-b"
+                    && stream.focus_action.command_id == "inspector.focus_stream:stream-b"
+            })
+    }));
+    assert!(failure.diagnostic_actions.iter().any(|action| {
+        action.source_label == "Failure port stream"
+            && action.target_label == "Stream"
+            && action.summary == "Unit heater-1 port inlet stream stream-b"
+            && action.action.command_id == "inspector.focus_stream:stream-b"
+    }));
+
+    let heater = failed
+        .window
+        .canvas
+        .widget
+        .view()
+        .unit_blocks
+        .iter()
+        .find(|unit| unit.unit_id == "heater-1")
+        .expect("expected heater canvas block");
+    assert!(heater.attention_summary.as_ref().is_some_and(|summary| {
+        summary.contains("ports heater-1:inlet")
+            && summary.contains("solver.topological_ordering.two_unit_cycle")
+    }));
+
+    let recovery = driver
+        .dispatch_event(StudioGuiEvent::UiCommandRequested {
+            command_id: "run_panel.recover_failure".to_string(),
+        })
+        .expect("expected cycle recovery dispatch");
+    assert_eq!(
+        recovery
+            .window
+            .runtime
+            .active_inspector_target
+            .as_ref()
+            .map(|target| (target.kind_label, target.target_id.as_str())),
+        Some(("Unit", "heater-1"))
+    );
+    let detail = recovery
+        .window
+        .runtime
+        .active_inspector_detail
+        .expect("expected recovered heater inspector detail");
+    assert!(detail.unit_ports.iter().any(|port| {
+        port.name == "inlet" && port.stream_id.is_none() && port.attention_summary.is_none()
+    }));
+}
+
+#[test]
+fn studio_gui_window_model_surfaces_self_loop_failure_recovery_targets() {
+    let mut driver = StudioGuiDriver::new(&failure_synced_config("self-loop-cycle.rfproj.json"))
+        .expect("expected driver");
+    let _ = driver
+        .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+        .expect("expected open dispatch");
+
+    let failed = driver
+        .dispatch_event(StudioGuiEvent::UiCommandRequested {
+            command_id: "run_panel.run_manual".to_string(),
+        })
+        .expect("expected failed run dispatch");
+    let failure = failed
+        .window
+        .runtime
+        .latest_failure
+        .expect("expected visible self-loop failure result");
+
+    assert_eq!(failure.title, "Self loop detected");
+    assert_eq!(failure.recovery_title, Some("Disconnect self-loop inlet"));
+    assert_eq!(
+        failure
+            .recovery_target
+            .as_ref()
+            .map(|target| (target.kind_label, target.target_id.as_str())),
+        Some(("Unit", "flash-1"))
+    );
+    let diagnostic_detail = failure
+        .diagnostic_detail
+        .as_ref()
+        .expect("expected structured self-loop diagnostic detail");
+    assert_eq!(
+        diagnostic_detail.primary_code.as_deref(),
+        Some("solver.topological_ordering.self_loop_cycle")
+    );
+    assert!(
+        diagnostic_detail
+            .related_streams
+            .iter()
+            .any(|target| target.target_id == "stream-loop")
+    );
+    assert!(diagnostic_detail.related_ports.iter().any(|target| {
+        target.unit_id == "flash-1"
+            && target.port_name == "inlet"
+            && target.stream_result.as_ref().is_some_and(|stream| {
+                stream.stream_id == "stream-loop"
+                    && stream.focus_action.command_id == "inspector.focus_stream:stream-loop"
+            })
+    }));
+    assert!(diagnostic_detail.related_ports.iter().any(|target| {
+        target.unit_id == "flash-1"
+            && target.port_name == "liquid"
+            && target.stream_result.as_ref().is_some_and(|stream| {
+                stream.stream_id == "stream-loop"
+                    && stream.focus_action.command_id == "inspector.focus_stream:stream-loop"
+            })
+    }));
+    assert!(failure.diagnostic_actions.iter().any(|action| {
+        action.source_label == "Failure port stream"
+            && action.target_label == "Stream"
+            && action.summary == "Unit flash-1 port inlet stream stream-loop"
+            && action.action.command_id == "inspector.focus_stream:stream-loop"
+    }));
+
+    let flash = failed
+        .window
+        .canvas
+        .widget
+        .view()
+        .unit_blocks
+        .iter()
+        .find(|unit| unit.unit_id == "flash-1")
+        .expect("expected flash canvas block");
+    assert!(flash.attention_summary.as_ref().is_some_and(|summary| {
+        summary.contains("ports flash-1:inlet")
+            && summary.contains("flash-1:liquid")
+            && summary.contains("solver.topological_ordering.self_loop_cycle")
+    }));
+
+    let recovery = driver
+        .dispatch_event(StudioGuiEvent::UiCommandRequested {
+            command_id: "run_panel.recover_failure".to_string(),
+        })
+        .expect("expected self-loop recovery dispatch");
+    assert_eq!(
+        recovery
+            .window
+            .runtime
+            .active_inspector_target
+            .as_ref()
+            .map(|target| (target.kind_label, target.target_id.as_str())),
+        Some(("Unit", "flash-1"))
+    );
+    let detail = recovery
+        .window
+        .runtime
+        .active_inspector_detail
+        .expect("expected recovered flash inspector detail");
+    assert!(detail.unit_ports.iter().any(|port| {
+        port.name == "inlet" && port.stream_id.is_none() && port.attention_summary.is_none()
+    }));
+}
+
+#[test]
+fn studio_gui_window_model_surfaces_missing_stream_reference_recovery_targets() {
+    let mut driver = StudioGuiDriver::new(&failure_synced_config(
+        "missing-stream-reference.rfproj.json",
+    ))
+    .expect("expected driver");
+    let _ = driver
+        .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+        .expect("expected open dispatch");
+
+    let failed = driver
+        .dispatch_event(StudioGuiEvent::UiCommandRequested {
+            command_id: "run_panel.run_manual".to_string(),
+        })
+        .expect("expected failed run dispatch");
+    let failure = failed
+        .window
+        .runtime
+        .latest_failure
+        .expect("expected visible missing stream failure result");
+
+    assert_eq!(failure.title, "Missing stream reference");
+    assert_eq!(
+        failure.recovery_title,
+        Some("Disconnect invalid stream reference")
+    );
+    assert_eq!(
+        failure
+            .recovery_target
+            .as_ref()
+            .map(|target| (target.kind_label, target.target_id.as_str())),
+        Some(("Unit", "heater-1"))
+    );
+    let diagnostic_detail = failure
+        .diagnostic_detail
+        .as_ref()
+        .expect("expected structured missing stream diagnostic detail");
+    assert_eq!(
+        diagnostic_detail.primary_code.as_deref(),
+        Some("solver.connection_validation.missing_stream_reference")
+    );
+    assert!(
+        diagnostic_detail.related_streams.is_empty(),
+        "missing stream ids must not become inspector focus targets"
+    );
+    assert!(diagnostic_detail.related_ports.iter().any(|target| {
+        target.unit_id == "heater-1"
+            && target.port_name == "outlet"
+            && target.stream_result.is_none()
+    }));
+    assert!(failure.diagnostic_actions.iter().any(|action| {
+        action.source_label == "Failure port"
+            && action.target_label == "Port"
+            && action.summary == "Unit heater-1 port outlet"
+            && action.action.command_id == "inspector.focus_unit:heater-1"
+    }));
+    assert!(!failure.diagnostic_actions.iter().any(|action| {
+        action.target_label == "Stream" && action.action.command_id.contains("stream-missing")
+    }));
+
+    let heater = failed
+        .window
+        .canvas
+        .widget
+        .view()
+        .unit_blocks
+        .iter()
+        .find(|unit| unit.unit_id == "heater-1")
+        .expect("expected heater canvas block");
+    assert!(heater.attention_summary.as_ref().is_some_and(|summary| {
+        summary.contains("ports heater-1:outlet")
+            && summary.contains("solver.connection_validation.missing_stream_reference")
+    }));
+
+    let recovery = driver
+        .dispatch_event(StudioGuiEvent::UiCommandRequested {
+            command_id: "run_panel.recover_failure".to_string(),
+        })
+        .expect("expected missing stream recovery dispatch");
+    assert_eq!(
+        recovery
+            .window
+            .runtime
+            .active_inspector_target
+            .as_ref()
+            .map(|target| (target.kind_label, target.target_id.as_str())),
+        Some(("Unit", "heater-1"))
+    );
+    let detail = recovery
+        .window
+        .runtime
+        .active_inspector_detail
+        .expect("expected recovered heater inspector detail");
+    assert!(detail.unit_ports.iter().any(|port| {
+        port.name == "outlet" && port.stream_id.is_none() && port.attention_summary.is_none()
+    }));
+}
+
+#[test]
+fn studio_gui_window_model_surfaces_duplicate_upstream_source_recovery_targets() {
+    let mut driver = StudioGuiDriver::new(&failure_synced_config(
+        "duplicate-upstream-source.rfproj.json",
+    ))
+    .expect("expected driver");
+    let _ = driver
+        .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+        .expect("expected open dispatch");
+
+    let failed = driver
+        .dispatch_event(StudioGuiEvent::UiCommandRequested {
+            command_id: "run_panel.run_manual".to_string(),
+        })
+        .expect("expected failed run dispatch");
+    let failure = failed
+        .window
+        .runtime
+        .latest_failure
+        .expect("expected visible duplicate source failure result");
+
+    assert_eq!(failure.title, "Duplicate stream source");
+    assert_eq!(
+        failure.recovery_title,
+        Some("Disconnect conflicting source")
+    );
+    assert_eq!(
+        failure
+            .recovery_target
+            .as_ref()
+            .map(|target| (target.kind_label, target.target_id.as_str())),
+        Some(("Unit", "feed-2"))
+    );
+    let diagnostic_detail = failure
+        .diagnostic_detail
+        .as_ref()
+        .expect("expected structured duplicate source diagnostic detail");
+    assert_eq!(
+        diagnostic_detail.primary_code.as_deref(),
+        Some("solver.connection_validation.duplicate_upstream_source")
+    );
+    assert!(
+        diagnostic_detail
+            .related_streams
+            .iter()
+            .any(|target| target.target_id == "shared-stream")
+    );
+    for unit_id in ["feed-1", "feed-2"] {
+        assert!(diagnostic_detail.related_ports.iter().any(|target| {
+            target.unit_id == unit_id
+                && target.port_name == "outlet"
+                && target.stream_result.as_ref().is_some_and(|stream| {
+                    stream.stream_id == "shared-stream"
+                        && stream.focus_action.command_id == "inspector.focus_stream:shared-stream"
+                })
+        }));
+    }
+    assert!(failure.diagnostic_actions.iter().any(|action| {
+        action.source_label == "Failure port stream"
+            && action.target_label == "Stream"
+            && action.summary == "Unit feed-2 port outlet stream shared-stream"
+            && action.action.command_id == "inspector.focus_stream:shared-stream"
+    }));
+
+    let feed_2 = failed
+        .window
+        .canvas
+        .widget
+        .view()
+        .unit_blocks
+        .iter()
+        .find(|unit| unit.unit_id == "feed-2")
+        .expect("expected feed-2 canvas block");
+    assert!(feed_2.attention_summary.as_ref().is_some_and(|summary| {
+        summary.contains("ports feed-1:outlet")
+            && summary.contains("feed-2:outlet")
+            && summary.contains("solver.connection_validation.duplicate_upstream_source")
+    }));
+
+    let recovery = driver
+        .dispatch_event(StudioGuiEvent::UiCommandRequested {
+            command_id: "run_panel.recover_failure".to_string(),
+        })
+        .expect("expected duplicate source recovery dispatch");
+    assert_eq!(
+        recovery
+            .window
+            .runtime
+            .active_inspector_target
+            .as_ref()
+            .map(|target| (target.kind_label, target.target_id.as_str())),
+        Some(("Unit", "feed-2"))
+    );
+    let detail = recovery
+        .window
+        .runtime
+        .active_inspector_detail
+        .expect("expected recovered feed-2 inspector detail");
+    assert!(detail.unit_ports.iter().any(|port| {
+        port.name == "outlet" && port.stream_id.is_none() && port.attention_summary.is_none()
+    }));
+}
+
+#[test]
+fn studio_gui_window_model_surfaces_duplicate_downstream_sink_recovery_targets() {
+    let mut driver = StudioGuiDriver::new(&failure_synced_config(
+        "duplicate-downstream-sink.rfproj.json",
+    ))
+    .expect("expected driver");
+    let _ = driver
+        .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+        .expect("expected open dispatch");
+
+    let failed = driver
+        .dispatch_event(StudioGuiEvent::UiCommandRequested {
+            command_id: "run_panel.run_manual".to_string(),
+        })
+        .expect("expected failed run dispatch");
+    let failure = failed
+        .window
+        .runtime
+        .latest_failure
+        .expect("expected visible duplicate sink failure result");
+
+    assert_eq!(failure.title, "Duplicate stream sink");
+    assert_eq!(failure.recovery_title, Some("Disconnect conflicting sink"));
+    assert_eq!(
+        failure
+            .recovery_target
+            .as_ref()
+            .map(|target| (target.kind_label, target.target_id.as_str())),
+        Some(("Unit", "mixer-1"))
+    );
+    let diagnostic_detail = failure
+        .diagnostic_detail
+        .as_ref()
+        .expect("expected structured duplicate sink diagnostic detail");
+    assert_eq!(
+        diagnostic_detail.primary_code.as_deref(),
+        Some("solver.connection_validation.duplicate_downstream_sink")
+    );
+    assert!(
+        diagnostic_detail
+            .related_streams
+            .iter()
+            .any(|target| target.target_id == "shared-stream")
+    );
+    assert!(diagnostic_detail.related_ports.iter().any(|target| {
+        target.unit_id == "mixer-1"
+            && target.port_name == "inlet_a"
+            && target.stream_result.as_ref().is_some_and(|stream| {
+                stream.stream_id == "shared-stream"
+                    && stream.focus_action.command_id == "inspector.focus_stream:shared-stream"
+            })
+    }));
+    assert!(failure.diagnostic_actions.iter().any(|action| {
+        action.source_label == "Failure port stream"
+            && action.target_label == "Stream"
+            && action.summary == "Unit mixer-1 port inlet_a stream shared-stream"
+            && action.action.command_id == "inspector.focus_stream:shared-stream"
+    }));
+
+    let mixer = failed
+        .window
+        .canvas
+        .widget
+        .view()
+        .unit_blocks
+        .iter()
+        .find(|unit| unit.unit_id == "mixer-1")
+        .expect("expected mixer canvas block");
+    assert!(mixer.attention_summary.as_ref().is_some_and(|summary| {
+        summary.contains("ports flash-1:inlet")
+            && summary.contains("mixer-1:inlet_a")
+            && summary.contains("solver.connection_validation.duplicate_downstream_sink")
+    }));
+
+    let recovery = driver
+        .dispatch_event(StudioGuiEvent::UiCommandRequested {
+            command_id: "run_panel.recover_failure".to_string(),
+        })
+        .expect("expected duplicate sink recovery dispatch");
+    assert_eq!(
+        recovery
+            .window
+            .runtime
+            .active_inspector_target
+            .as_ref()
+            .map(|target| (target.kind_label, target.target_id.as_str())),
+        Some(("Unit", "mixer-1"))
+    );
+    let detail = recovery
+        .window
+        .runtime
+        .active_inspector_detail
+        .expect("expected recovered mixer inspector detail");
+    assert!(detail.unit_ports.iter().any(|port| {
+        port.name == "inlet_a" && port.stream_id.is_none() && port.attention_summary.is_none()
+    }));
+}
+
+#[test]
+fn studio_gui_window_model_surfaces_orphan_stream_recovery_targets() {
+    let mut driver = StudioGuiDriver::new(&failure_synced_config("orphan-stream.rfproj.json"))
+        .expect("expected driver");
+    let _ = driver
+        .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+        .expect("expected open dispatch");
+
+    let failed = driver
+        .dispatch_event(StudioGuiEvent::UiCommandRequested {
+            command_id: "run_panel.run_manual".to_string(),
+        })
+        .expect("expected failed run dispatch");
+    let failure = failed
+        .window
+        .runtime
+        .latest_failure
+        .expect("expected visible orphan stream failure result");
+
+    assert_eq!(failure.title, "Orphan stream");
+    assert_eq!(failure.recovery_title, Some("Delete orphan stream"));
+    assert_eq!(
+        failure
+            .recovery_target
+            .as_ref()
+            .map(|target| (target.kind_label, target.target_id.as_str())),
+        Some(("Stream", "stream-orphan"))
+    );
+    let diagnostic_detail = failure
+        .diagnostic_detail
+        .as_ref()
+        .expect("expected structured orphan stream diagnostic detail");
+    assert_eq!(
+        diagnostic_detail.primary_code.as_deref(),
+        Some("solver.connection_validation.orphan_stream")
+    );
+    assert!(diagnostic_detail.related_ports.is_empty());
+    assert!(
+        diagnostic_detail
+            .related_streams
+            .iter()
+            .any(|target| target.target_id == "stream-orphan"
+                && target.action.command_id == "inspector.focus_stream:stream-orphan")
+    );
+    assert!(
+        diagnostic_detail
+            .related_stream_results
+            .iter()
+            .any(
+                |stream| stream.stream_id == "stream-orphan" && stream.summary.contains("methane=")
+            )
+    );
+    assert!(failure.diagnostic_actions.iter().any(|action| {
+        action.source_label == "Failure diagnostic"
+            && action.target_label == "Stream"
+            && action.action.command_id == "inspector.focus_stream:stream-orphan"
+    }));
+
+    let recovery = driver
+        .dispatch_event(StudioGuiEvent::UiCommandRequested {
+            command_id: "run_panel.recover_failure".to_string(),
+        })
+        .expect("expected orphan stream recovery dispatch");
+    assert_eq!(recovery.window.runtime.active_inspector_target, None);
+    assert!(
+        recovery
+            .window
+            .runtime
+            .workspace_document
+            .has_unsaved_changes
+    );
+    assert!(
+        !recovery
+            .window
+            .canvas
+            .widget
+            .view()
+            .stream_lines
+            .iter()
+            .any(|stream| stream.stream_id == "stream-orphan"),
+        "expected orphan stream to be absent from canvas lines after deletion"
+    );
+}
+
+#[test]
+fn studio_gui_window_model_surfaces_invalid_port_signature_recovery_targets() {
+    let mut driver =
+        StudioGuiDriver::new(&failure_synced_config("invalid-port-signature.rfproj.json"))
+            .expect("expected driver");
+    let _ = driver
+        .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+        .expect("expected open dispatch");
+
+    let failed = driver
+        .dispatch_event(StudioGuiEvent::UiCommandRequested {
+            command_id: "run_panel.run_manual".to_string(),
+        })
+        .expect("expected failed run dispatch");
+    let failure = failed
+        .window
+        .runtime
+        .latest_failure
+        .expect("expected visible invalid port signature failure result");
+
+    assert_eq!(failure.title, "Invalid port signature");
+    assert_eq!(failure.recovery_title, Some("Restore canonical ports"));
+    assert_eq!(
+        failure
+            .recovery_target
+            .as_ref()
+            .map(|target| (target.kind_label, target.target_id.as_str())),
+        Some(("Unit", "feed-1"))
+    );
+    let diagnostic_detail = failure
+        .diagnostic_detail
+        .as_ref()
+        .expect("expected structured invalid port signature detail");
+    assert_eq!(
+        diagnostic_detail.primary_code.as_deref(),
+        Some("solver.connection_validation.invalid_port_signature")
+    );
+    assert!(
+        diagnostic_detail
+            .related_units
+            .iter()
+            .any(|target| target.target_id == "feed-1"
+                && target.action.command_id == "inspector.focus_unit:feed-1")
+    );
+    assert!(diagnostic_detail.related_ports.is_empty());
+    assert!(failure.diagnostic_actions.iter().any(|action| {
+        action.source_label == "Recovery target"
+            && action.target_label == "Unit"
+            && action.action.command_id == "inspector.focus_unit:feed-1"
+    }));
+
+    let feed = failed
+        .window
+        .canvas
+        .widget
+        .view()
+        .unit_blocks
+        .iter()
+        .find(|unit| unit.unit_id == "feed-1")
+        .expect("expected feed canvas block");
+    assert!(feed.attention_summary.as_ref().is_some_and(|summary| {
+        summary.contains("solver.connection_validation.invalid_port_signature")
+    }));
+
+    let recovery = driver
+        .dispatch_event(StudioGuiEvent::UiCommandRequested {
+            command_id: "run_panel.recover_failure".to_string(),
+        })
+        .expect("expected invalid port signature recovery dispatch");
+    assert_eq!(
+        recovery
+            .window
+            .runtime
+            .active_inspector_target
+            .as_ref()
+            .map(|target| (target.kind_label, target.target_id.as_str())),
+        Some(("Unit", "feed-1"))
+    );
+    let detail = recovery
+        .window
+        .runtime
+        .active_inspector_detail
+        .expect("expected recovered feed inspector detail");
+    assert!(detail.unit_ports.iter().any(|port| {
+        port.name == "outlet"
+            && port.stream_id.as_deref() == Some("stream-feed")
+            && port.attention_summary.is_none()
     }));
 }
 

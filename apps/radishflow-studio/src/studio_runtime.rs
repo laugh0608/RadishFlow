@@ -410,6 +410,37 @@ impl StudioRuntime {
         self.session.focus_previous_canvas_suggestion()
     }
 
+    pub fn disconnect_selected_stream_connections(
+        &mut self,
+    ) -> RfResult<Option<rf_ui::StreamConnectionEditResult>> {
+        self.session.disconnect_selected_stream_connections()
+    }
+
+    pub fn disconnect_selected_stream_source_connection(
+        &mut self,
+    ) -> RfResult<Option<rf_ui::StreamConnectionEditResult>> {
+        self.session.disconnect_selected_stream_source_connection()
+    }
+
+    pub fn disconnect_selected_stream_sink_connection(
+        &mut self,
+    ) -> RfResult<Option<rf_ui::StreamConnectionEditResult>> {
+        self.session.disconnect_selected_stream_sink_connection()
+    }
+
+    pub fn reconnect_selected_stream_to_unique_available_endpoint(
+        &mut self,
+    ) -> RfResult<Option<rf_ui::StreamReconnectEditResult>> {
+        self.session
+            .reconnect_selected_stream_to_unique_available_endpoint()
+    }
+
+    pub fn delete_selected_stream_and_connections(
+        &mut self,
+    ) -> RfResult<Option<rf_ui::StreamConnectionEditResult>> {
+        self.session.delete_selected_stream_and_connections()
+    }
+
     pub fn acknowledge_host_effect(
         &mut self,
         effect_id: StudioRuntimeHostEffectId,

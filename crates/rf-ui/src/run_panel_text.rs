@@ -22,6 +22,10 @@ impl RunPanelTextView {
             lines.push(format!("Notice detail: {}", notice.message));
             if let Some(recovery_action) = notice.recovery_action.as_ref() {
                 lines.push(format!("Suggested action: {}", recovery_action.title));
+                lines.push(format!(
+                    "Suggested effect: {}",
+                    recovery_action.effect_label()
+                ));
                 lines.push(format!("Suggested detail: {}", recovery_action.detail));
                 if let Some(unit_id) = recovery_action.target_unit_id.as_ref() {
                     if let Some(port_name) = recovery_action.target_port_name.as_deref() {

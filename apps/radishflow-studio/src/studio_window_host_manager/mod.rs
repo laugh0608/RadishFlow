@@ -103,6 +103,11 @@ pub enum StudioCanvasInteractionAction {
     RejectFocused,
     FocusNext,
     FocusPrevious,
+    DisconnectSelectedStream,
+    DisconnectSelectedStreamSource,
+    DisconnectSelectedStreamSink,
+    ReconnectSelectedStream,
+    DeleteSelectedStream,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -233,6 +238,37 @@ impl StudioAppWindowHostManager {
         self.session.focus_previous_canvas_suggestion()
     }
 
+    pub fn disconnect_selected_stream_connections(
+        &mut self,
+    ) -> RfResult<Option<rf_ui::StreamConnectionEditResult>> {
+        self.session.disconnect_selected_stream_connections()
+    }
+
+    pub fn disconnect_selected_stream_source_connection(
+        &mut self,
+    ) -> RfResult<Option<rf_ui::StreamConnectionEditResult>> {
+        self.session.disconnect_selected_stream_source_connection()
+    }
+
+    pub fn disconnect_selected_stream_sink_connection(
+        &mut self,
+    ) -> RfResult<Option<rf_ui::StreamConnectionEditResult>> {
+        self.session.disconnect_selected_stream_sink_connection()
+    }
+
+    pub fn reconnect_selected_stream_to_unique_available_endpoint(
+        &mut self,
+    ) -> RfResult<Option<rf_ui::StreamReconnectEditResult>> {
+        self.session
+            .reconnect_selected_stream_to_unique_available_endpoint()
+    }
+
+    pub fn delete_selected_stream_and_connections(
+        &mut self,
+    ) -> RfResult<Option<rf_ui::StreamConnectionEditResult>> {
+        self.session.delete_selected_stream_and_connections()
+    }
+
     pub fn begin_canvas_place_unit(
         &mut self,
         unit_kind: impl Into<String>,
@@ -290,6 +326,26 @@ impl StudioAppWindowHostManager {
             }
             StudioCanvasInteractionAction::FocusPrevious => {
                 (None, None, None, self.focus_previous_canvas_suggestion())
+            }
+            StudioCanvasInteractionAction::DisconnectSelectedStream => {
+                self.disconnect_selected_stream_connections()?;
+                (None, None, None, None)
+            }
+            StudioCanvasInteractionAction::DisconnectSelectedStreamSource => {
+                self.disconnect_selected_stream_source_connection()?;
+                (None, None, None, None)
+            }
+            StudioCanvasInteractionAction::DisconnectSelectedStreamSink => {
+                self.disconnect_selected_stream_sink_connection()?;
+                (None, None, None, None)
+            }
+            StudioCanvasInteractionAction::ReconnectSelectedStream => {
+                self.reconnect_selected_stream_to_unique_available_endpoint()?;
+                (None, None, None, None)
+            }
+            StudioCanvasInteractionAction::DeleteSelectedStream => {
+                self.delete_selected_stream_and_connections()?;
+                (None, None, None, None)
             }
         };
 

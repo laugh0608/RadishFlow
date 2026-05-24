@@ -229,6 +229,7 @@ pub use studio_gui_host::{
     StudioGuiHostWindowDropTargetQueryResult, StudioGuiHostWindowLayoutUpdateResult,
     StudioGuiHostWindowOpened,
 };
+pub use studio_gui_layout_store::{load_persisted_canvas_viewport, save_persisted_canvas_viewport};
 pub use studio_gui_platform_host::{
     StudioGuiPlatformAsyncRound, StudioGuiPlatformAsyncRoundAction,
     StudioGuiPlatformAsyncRoundInput, StudioGuiPlatformDispatch, StudioGuiPlatformDueTimerDrain,
@@ -258,9 +259,9 @@ pub use studio_gui_shortcut_router::{
 pub use studio_gui_snapshot::{
     StudioGuiDiagnosticStreamSnapshot, StudioGuiFailureDiagnosticContextSnapshot,
     StudioGuiFailureDiagnosticPortSnapshot, StudioGuiInspectorCompositionComponentActionSnapshot,
-    StudioGuiInspectorCompositionSummarySnapshot, StudioGuiInspectorPropertyNoticeSnapshot,
-    StudioGuiInspectorTargetDetailSnapshot, StudioGuiInspectorTargetFieldSnapshot,
-    StudioGuiInspectorTargetFieldValidationSnapshot,
+    StudioGuiInspectorCompositionSummarySnapshot, StudioGuiInspectorConnectionActionSnapshot,
+    StudioGuiInspectorPropertyNoticeSnapshot, StudioGuiInspectorTargetDetailSnapshot,
+    StudioGuiInspectorTargetFieldSnapshot, StudioGuiInspectorTargetFieldValidationSnapshot,
     StudioGuiInspectorTargetFieldValueKindSnapshot, StudioGuiInspectorTargetPortSnapshot,
     StudioGuiInspectorTargetSummaryRowSnapshot, StudioGuiRuntimeSnapshot, StudioGuiSnapshot,
     StudioGuiWorkspaceDocumentSnapshot,

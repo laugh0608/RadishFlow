@@ -12,6 +12,11 @@ pub enum StudioGuiCanvasActionId {
     FocusPrevious,
     CancelPendingEdit,
     MoveSelectedUnit(StudioGuiCanvasUnitLayoutNudgeDirection),
+    DisconnectSelectedStream,
+    DisconnectSelectedStreamSource,
+    DisconnectSelectedStreamSink,
+    ReconnectSelectedStream,
+    DeleteSelectedStream,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -130,6 +135,31 @@ impl StudioGuiCanvasWidgetModel {
             .current_selection
             .as_ref()
             .filter(|selection| selection.kind_label == "Unit");
+        let selected_stream = presentation
+            .view
+            .current_selection
+            .as_ref()
+            .filter(|selection| selection.kind_label == "Stream");
+        let selected_stream_disconnect = selected_stream.map(|selection| {
+            stream_disconnect_availability(&presentation.view, selection.target_id.as_str())
+        });
+        let selected_stream_reconnect = selected_stream.map(|selection| {
+            stream_reconnect_availability(&presentation.view, selection.target_id.as_str())
+        });
+        let selected_stream_source_disconnect = selected_stream.map(|selection| {
+            stream_endpoint_disconnect_availability(
+                &presentation.view,
+                selection.target_id.as_str(),
+                StreamEndpointDisconnectTarget::Source,
+            )
+        });
+        let selected_stream_sink_disconnect = selected_stream.map(|selection| {
+            stream_endpoint_disconnect_availability(
+                &presentation.view,
+                selection.target_id.as_str(),
+                StreamEndpointDisconnectTarget::Sink,
+            )
+        });
         let mut actions = presentation
             .view
             .place_unit_palette
@@ -223,6 +253,98 @@ impl StudioGuiCanvasWidgetModel {
                 }
             },
         ));
+        let stream_detail =
+            stream_disconnect_detail(selected_stream, selected_stream_disconnect.as_ref());
+        actions.push(StudioGuiCanvasRenderableAction {
+            id: StudioGuiCanvasActionId::DisconnectSelectedStream,
+            command_id: canvas_command_id(StudioGuiCanvasActionId::DisconnectSelectedStream)
+                .to_string(),
+            label: "Disconnect stream".to_string(),
+            detail: stream_detail,
+            enabled: matches!(
+                selected_stream_disconnect,
+                Some(StreamDisconnectAvailability::Available { .. })
+            ),
+            shortcut: None,
+        });
+        let source_disconnect_detail = stream_endpoint_disconnect_detail(
+            selected_stream,
+            selected_stream_source_disconnect.as_ref(),
+            StreamEndpointDisconnectTarget::Source,
+        );
+        actions.push(StudioGuiCanvasRenderableAction {
+            id: StudioGuiCanvasActionId::DisconnectSelectedStreamSource,
+            command_id: canvas_command_id(StudioGuiCanvasActionId::DisconnectSelectedStreamSource)
+                .to_string(),
+            label: "Disconnect source".to_string(),
+            detail: source_disconnect_detail,
+            enabled: matches!(
+                selected_stream_source_disconnect,
+                Some(StreamEndpointDisconnectAvailability::Available { .. })
+            ),
+            shortcut: None,
+        });
+        let sink_disconnect_detail = stream_endpoint_disconnect_detail(
+            selected_stream,
+            selected_stream_sink_disconnect.as_ref(),
+            StreamEndpointDisconnectTarget::Sink,
+        );
+        actions.push(StudioGuiCanvasRenderableAction {
+            id: StudioGuiCanvasActionId::DisconnectSelectedStreamSink,
+            command_id: canvas_command_id(StudioGuiCanvasActionId::DisconnectSelectedStreamSink)
+                .to_string(),
+            label: "Disconnect sink".to_string(),
+            detail: sink_disconnect_detail,
+            enabled: matches!(
+                selected_stream_sink_disconnect,
+                Some(StreamEndpointDisconnectAvailability::Available { .. })
+            ),
+            shortcut: None,
+        });
+        let can_reconnect_selected_stream = matches!(
+            selected_stream_reconnect,
+            Some(StreamReconnectAvailability::Available { .. })
+        );
+        let reconnect_detail = match (selected_stream, selected_stream_reconnect.as_ref()) {
+            (Some(_), Some(StreamReconnectAvailability::Available { detail })) => detail.clone(),
+            (Some(selection), Some(StreamReconnectAvailability::Unavailable { reason })) => {
+                format!(
+                    "Cannot reconnect selected stream `{}`: {}",
+                    selection.target_id, reason
+                )
+            }
+            (None, None) => {
+                "Reconnect selected stream; select a source-only or sink-only material stream first."
+                    .to_string()
+            }
+            (Some(_), None) => unreachable!("selected stream should have reconnect availability"),
+            (None, Some(_)) => unreachable!("reconnect availability requires a selected stream"),
+        };
+        actions.push(StudioGuiCanvasRenderableAction {
+            id: StudioGuiCanvasActionId::ReconnectSelectedStream,
+            command_id: canvas_command_id(StudioGuiCanvasActionId::ReconnectSelectedStream)
+                .to_string(),
+            label: "Reconnect stream".to_string(),
+            detail: reconnect_detail,
+            enabled: can_reconnect_selected_stream,
+            shortcut: None,
+        });
+        let delete_detail = match selected_stream {
+            Some(selection) => format!(
+                "Delete selected stream `{}` after removing its material port bindings.",
+                selection.target_id
+            ),
+            None => "Delete selected stream; select a material stream first.".to_string(),
+        };
+        actions.push(StudioGuiCanvasRenderableAction {
+            id: StudioGuiCanvasActionId::DeleteSelectedStream,
+            command_id: canvas_command_id(StudioGuiCanvasActionId::DeleteSelectedStream)
+                .to_string(),
+            label: "Delete stream".to_string(),
+            detail: delete_detail,
+            enabled: selected_stream.is_some(),
+            shortcut: None,
+        });
 
         Self {
             presentation,
@@ -311,6 +433,15 @@ pub(crate) fn canvas_command_id(action_id: StudioGuiCanvasActionId) -> &'static 
         StudioGuiCanvasActionId::FocusPrevious => "canvas.focus_previous",
         StudioGuiCanvasActionId::CancelPendingEdit => "canvas.cancel_pending_edit",
         StudioGuiCanvasActionId::MoveSelectedUnit(direction) => direction.command_id(),
+        StudioGuiCanvasActionId::DisconnectSelectedStream => "canvas.disconnect_selected_stream",
+        StudioGuiCanvasActionId::DisconnectSelectedStreamSource => {
+            "canvas.disconnect_selected_stream_source"
+        }
+        StudioGuiCanvasActionId::DisconnectSelectedStreamSink => {
+            "canvas.disconnect_selected_stream_sink"
+        }
+        StudioGuiCanvasActionId::ReconnectSelectedStream => "canvas.reconnect_selected_stream",
+        StudioGuiCanvasActionId::DeleteSelectedStream => "canvas.delete_selected_stream",
     }
 }
 
@@ -339,8 +470,332 @@ pub(crate) fn canvas_action_id_from_command_id(
         "canvas.move_selected_unit.down" => Some(StudioGuiCanvasActionId::MoveSelectedUnit(
             StudioGuiCanvasUnitLayoutNudgeDirection::Down,
         )),
+        "canvas.disconnect_selected_stream" => {
+            Some(StudioGuiCanvasActionId::DisconnectSelectedStream)
+        }
+        "canvas.disconnect_selected_stream_source" => {
+            Some(StudioGuiCanvasActionId::DisconnectSelectedStreamSource)
+        }
+        "canvas.disconnect_selected_stream_sink" => {
+            Some(StudioGuiCanvasActionId::DisconnectSelectedStreamSink)
+        }
+        "canvas.reconnect_selected_stream" => {
+            Some(StudioGuiCanvasActionId::ReconnectSelectedStream)
+        }
+        "canvas.delete_selected_stream" => Some(StudioGuiCanvasActionId::DeleteSelectedStream),
         _ => None,
     }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum StreamReconnectAvailability {
+    Available { detail: String },
+    Unavailable { reason: String },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum StreamDisconnectAvailability {
+    Available { detail: String },
+    Unavailable { reason: String },
+}
+
+fn stream_disconnect_detail(
+    selected_stream: Option<&crate::StudioGuiCanvasSelectionViewModel>,
+    availability: Option<&StreamDisconnectAvailability>,
+) -> String {
+    match (selected_stream, availability) {
+        (Some(_), Some(StreamDisconnectAvailability::Available { detail })) => detail.clone(),
+        (Some(selection), Some(StreamDisconnectAvailability::Unavailable { reason })) => {
+            format!(
+                "Cannot disconnect selected stream `{}`: {}",
+                selection.target_id, reason
+            )
+        }
+        (None, None) => "Disconnect selected stream; select a material stream first.".to_string(),
+        (Some(_), None) => unreachable!("selected stream should have disconnect availability"),
+        (None, Some(_)) => unreachable!("disconnect availability requires a selected stream"),
+    }
+}
+
+fn stream_disconnect_availability(
+    view: &crate::StudioGuiCanvasViewModel,
+    stream_id: &str,
+) -> StreamDisconnectAvailability {
+    let Some(stream) = view
+        .stream_lines
+        .iter()
+        .find(|stream| stream.stream_id == stream_id)
+    else {
+        return StreamDisconnectAvailability::Unavailable {
+            reason: "the stream has no visible material endpoint on the canvas".to_string(),
+        };
+    };
+
+    let endpoint_count = usize::from(stream.source.is_some()) + usize::from(stream.sink.is_some());
+    if endpoint_count == 0 {
+        return StreamDisconnectAvailability::Unavailable {
+            reason: "the stream has no material port bindings to disconnect".to_string(),
+        };
+    }
+
+    StreamDisconnectAvailability::Available {
+        detail: format!(
+            "Disconnect all material port bindings for selected stream `{stream_id}` and keep the stream specification for controlled recovery."
+        ),
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum StreamEndpointDisconnectTarget {
+    Source,
+    Sink,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum StreamEndpointDisconnectAvailability {
+    Available { detail: String },
+    Unavailable { reason: String },
+}
+
+fn stream_endpoint_disconnect_detail(
+    selected_stream: Option<&crate::StudioGuiCanvasSelectionViewModel>,
+    availability: Option<&StreamEndpointDisconnectAvailability>,
+    target: StreamEndpointDisconnectTarget,
+) -> String {
+    match (selected_stream, availability) {
+        (Some(_), Some(StreamEndpointDisconnectAvailability::Available { detail })) => {
+            detail.clone()
+        }
+        (Some(selection), Some(StreamEndpointDisconnectAvailability::Unavailable { reason })) => {
+            format!(
+                "Cannot disconnect {} for selected stream `{}`: {}",
+                target.noun(),
+                selection.target_id,
+                reason
+            )
+        }
+        (None, None) => format!(
+            "Disconnect selected stream {}; select a material stream first.",
+            target.noun()
+        ),
+        (Some(_), None) => unreachable!("selected stream should have endpoint availability"),
+        (None, Some(_)) => unreachable!("endpoint availability requires a selected stream"),
+    }
+}
+
+fn stream_endpoint_disconnect_availability(
+    view: &crate::StudioGuiCanvasViewModel,
+    stream_id: &str,
+    target: StreamEndpointDisconnectTarget,
+) -> StreamEndpointDisconnectAvailability {
+    let Some(stream) = view
+        .stream_lines
+        .iter()
+        .find(|stream| stream.stream_id == stream_id)
+    else {
+        return StreamEndpointDisconnectAvailability::Unavailable {
+            reason: "the stream has no visible material endpoint on the canvas".to_string(),
+        };
+    };
+
+    match target.endpoint(stream) {
+        Some(endpoint) => StreamEndpointDisconnectAvailability::Available {
+            detail: format!(
+                "Disconnect {} `{}` from selected stream `{stream_id}`.",
+                target.endpoint_label(),
+                endpoint_label(endpoint)
+            ),
+        },
+        None => StreamEndpointDisconnectAvailability::Unavailable {
+            reason: target.missing_reason().to_string(),
+        },
+    }
+}
+
+impl StreamEndpointDisconnectTarget {
+    fn noun(self) -> &'static str {
+        match self {
+            Self::Source => "source",
+            Self::Sink => "sink",
+        }
+    }
+
+    fn endpoint_label(self) -> &'static str {
+        match self {
+            Self::Source => "upstream source",
+            Self::Sink => "downstream sink",
+        }
+    }
+
+    fn missing_reason(self) -> &'static str {
+        match self {
+            Self::Source => "the stream has no upstream source",
+            Self::Sink => "the stream has no downstream sink",
+        }
+    }
+
+    fn endpoint(
+        self,
+        stream: &crate::StudioGuiCanvasStreamLineViewModel,
+    ) -> Option<&crate::StudioGuiCanvasStreamLineEndpointViewModel> {
+        match self {
+            Self::Source => stream.source.as_ref(),
+            Self::Sink => stream.sink.as_ref(),
+        }
+    }
+}
+
+fn stream_reconnect_availability(
+    view: &crate::StudioGuiCanvasViewModel,
+    stream_id: &str,
+) -> StreamReconnectAvailability {
+    let Some(stream) = view
+        .stream_lines
+        .iter()
+        .find(|stream| stream.stream_id == stream_id)
+    else {
+        return StreamReconnectAvailability::Unavailable {
+            reason: "the stream has no visible material endpoint on the canvas".to_string(),
+        };
+    };
+    match (stream.source.as_ref(), stream.sink.as_ref()) {
+        (Some(source), None) => {
+            let available_inlets = view
+                .unit_blocks
+                .iter()
+                .filter(|unit| unit.unit_id != source.unit_id)
+                .flat_map(|unit| {
+                    unit.ports
+                        .iter()
+                        .filter(|port| {
+                            port.kind_label == "material"
+                                && port.direction_label == "inlet"
+                                && port.stream_id.is_none()
+                                && !canvas_would_create_unit_dependency_cycle(
+                                    view,
+                                    &source.unit_id,
+                                    &unit.unit_id,
+                                )
+                        })
+                        .map(|port| format!("{}:{}", unit.unit_id, port.name))
+                })
+                .collect::<Vec<_>>();
+            match available_inlets.len() {
+                0 => StreamReconnectAvailability::Unavailable {
+                    reason: "there is no available material inlet".to_string(),
+                },
+                1 => {
+                    let target = available_inlets
+                        .into_iter()
+                        .next()
+                        .expect("checked exactly one available inlet");
+                    StreamReconnectAvailability::Available {
+                        detail: format!(
+                            "Reconnect selected source-only stream `{stream_id}` to the only available inlet `{target}`."
+                        ),
+                    }
+                }
+                count => StreamReconnectAvailability::Unavailable {
+                    reason: format!(
+                        "there are {count} available material inlets; use suggestions or resolve the ambiguous target first"
+                    ),
+                },
+            }
+        }
+        (None, Some(sink)) => {
+            let available_outlets = view
+                .unit_blocks
+                .iter()
+                .filter(|unit| unit.unit_id != sink.unit_id)
+                .flat_map(|unit| {
+                    unit.ports
+                        .iter()
+                        .filter(|port| {
+                            port.kind_label == "material"
+                                && port.direction_label == "outlet"
+                                && port.stream_id.is_none()
+                                && !canvas_would_create_unit_dependency_cycle(
+                                    view,
+                                    &unit.unit_id,
+                                    &sink.unit_id,
+                                )
+                        })
+                        .map(|port| format!("{}:{}", unit.unit_id, port.name))
+                })
+                .collect::<Vec<_>>();
+            match available_outlets.len() {
+                0 => StreamReconnectAvailability::Unavailable {
+                    reason: "there is no available material outlet".to_string(),
+                },
+                1 => {
+                    let target = available_outlets
+                        .into_iter()
+                        .next()
+                        .expect("checked exactly one available outlet");
+                    StreamReconnectAvailability::Available {
+                        detail: format!(
+                            "Reconnect selected sink-only stream `{stream_id}` to the only available outlet `{target}`."
+                        ),
+                    }
+                }
+                count => StreamReconnectAvailability::Unavailable {
+                    reason: format!(
+                        "there are {count} available material outlets; use suggestions or resolve the ambiguous target first"
+                    ),
+                },
+            }
+        }
+        (Some(_), Some(sink)) => StreamReconnectAvailability::Unavailable {
+            reason: format!("it is already connected to `{}`", endpoint_label(sink)),
+        },
+        (None, None) => StreamReconnectAvailability::Unavailable {
+            reason: "the stream has no visible material endpoint on the canvas".to_string(),
+        },
+    }
+}
+
+fn canvas_would_create_unit_dependency_cycle(
+    view: &crate::StudioGuiCanvasViewModel,
+    source_unit_id: &str,
+    sink_unit_id: &str,
+) -> bool {
+    if source_unit_id == sink_unit_id {
+        return true;
+    }
+
+    let mut downstream_units = std::collections::BTreeMap::<String, Vec<String>>::new();
+    for stream in &view.stream_lines {
+        let Some(source) = stream.source.as_ref() else {
+            continue;
+        };
+        let Some(sink) = stream.sink.as_ref() else {
+            continue;
+        };
+        downstream_units
+            .entry(source.unit_id.clone())
+            .or_default()
+            .push(sink.unit_id.clone());
+    }
+
+    let mut stack = vec![sink_unit_id.to_string()];
+    let mut visited = std::collections::BTreeSet::new();
+    while let Some(unit_id) = stack.pop() {
+        if !visited.insert(unit_id.clone()) {
+            continue;
+        }
+        if unit_id == source_unit_id {
+            return true;
+        }
+        if let Some(children) = downstream_units.get(&unit_id) {
+            stack.extend(children.iter().cloned());
+        }
+    }
+
+    false
+}
+
+fn endpoint_label(endpoint: &crate::StudioGuiCanvasStreamLineEndpointViewModel) -> String {
+    format!("{}:{}", endpoint.unit_id, endpoint.port_name)
 }
 
 #[cfg(test)]
@@ -389,6 +844,123 @@ mod tests {
         )
     }
 
+    fn flash_drum_sink_only_reconnect_config() -> (StudioRuntimeConfig, PathBuf) {
+        let timestamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("expected current timestamp")
+            .as_nanos();
+        let project_path = std::env::temp_dir().join(format!(
+            "radishflow-studio-canvas-widget-sink-only-{timestamp}.rfproj.json"
+        ));
+        let mut project = rf_store::parse_project_file_json(
+            crate::test_support::official_heater_binary_hydrocarbon_project_json(),
+        )
+        .expect("expected official heater project");
+        project
+            .document
+            .flowsheet
+            .units
+            .get_mut(&rf_types::UnitId::new("heater-1"))
+            .expect("expected heater unit")
+            .ports
+            .iter_mut()
+            .find(|port| port.name == "outlet")
+            .expect("expected heater outlet")
+            .stream_id = None;
+        let project = rf_store::project_file_to_pretty_json(&project)
+            .expect("expected project serialization");
+        fs::write(&project_path, project).expect("expected sink-only reconnect project");
+
+        (
+            StudioRuntimeConfig {
+                project_path: project_path.clone(),
+                ..lease_expiring_config()
+            },
+            project_path,
+        )
+    }
+
+    fn cycle_reconnect_config() -> (StudioRuntimeConfig, PathBuf) {
+        let timestamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("expected current timestamp")
+            .as_nanos();
+        let project_path = std::env::temp_dir().join(format!(
+            "radishflow-studio-canvas-widget-cycle-reconnect-{timestamp}.rfproj.json"
+        ));
+        let mut flowsheet = rf_model::Flowsheet::new("reconnect-cycle");
+        flowsheet
+            .insert_stream(rf_model::MaterialStreamState::new("stream-feed", "Feed"))
+            .expect("expected feed stream");
+        flowsheet
+            .insert_stream(rf_model::MaterialStreamState::new(
+                "stream-heated",
+                "Heated",
+            ))
+            .expect("expected heated stream");
+        flowsheet
+            .insert_unit(rf_model::UnitNode::new(
+                "valve-1",
+                "Valve",
+                "valve",
+                vec![
+                    rf_model::UnitPort::new(
+                        "inlet",
+                        rf_types::PortDirection::Inlet,
+                        rf_types::PortKind::Material,
+                        None,
+                    ),
+                    rf_model::UnitPort::new(
+                        "outlet",
+                        rf_types::PortDirection::Outlet,
+                        rf_types::PortKind::Material,
+                        Some("stream-feed".into()),
+                    ),
+                ],
+            ))
+            .expect("expected valve insert");
+        flowsheet
+            .insert_unit(rf_model::UnitNode::new(
+                "heater-1",
+                "Heater",
+                "heater",
+                vec![
+                    rf_model::UnitPort::new(
+                        "inlet",
+                        rf_types::PortDirection::Inlet,
+                        rf_types::PortKind::Material,
+                        Some("stream-feed".into()),
+                    ),
+                    rf_model::UnitPort::new(
+                        "outlet",
+                        rf_types::PortDirection::Outlet,
+                        rf_types::PortKind::Material,
+                        Some("stream-heated".into()),
+                    ),
+                ],
+            ))
+            .expect("expected heater insert");
+        let project = rf_store::StoredProjectFile::new(
+            flowsheet,
+            rf_store::StoredDocumentMetadata::new(
+                "doc-reconnect-cycle",
+                "Reconnect Cycle",
+                SystemTime::UNIX_EPOCH,
+            ),
+        );
+        let project = rf_store::project_file_to_pretty_json(&project)
+            .expect("expected project serialization");
+        fs::write(&project_path, project).expect("expected cycle reconnect project");
+
+        (
+            StudioRuntimeConfig {
+                project_path: project_path.clone(),
+                ..lease_expiring_config()
+            },
+            project_path,
+        )
+    }
+
     fn sample_canvas_suggestion(id: &str, confidence: f32) -> rf_ui::CanvasSuggestion {
         rf_ui::CanvasSuggestion::new(
             rf_ui::CanvasSuggestionId::new(id),
@@ -404,10 +976,35 @@ mod tests {
         )
     }
 
+    fn accept_flash_inlet_suggestion(driver: &mut StudioGuiDriver) {
+        driver
+            .dispatch_event(StudioGuiEvent::CanvasSuggestionAcceptByIdRequested {
+                suggestion_id: rf_ui::CanvasSuggestionId::new(
+                    "local.flash_drum.connect_inlet.flash-1.stream-heated",
+                ),
+            })
+            .expect("expected flash inlet suggestion acceptance");
+    }
+
+    fn open_window(driver: &mut StudioGuiDriver) {
+        driver
+            .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+            .expect("expected window open");
+    }
+
+    fn focus_stream(driver: &mut StudioGuiDriver, stream_id: &str) {
+        driver
+            .dispatch_event(StudioGuiEvent::UiCommandRequested {
+                command_id: format!("inspector.focus_stream:{stream_id}"),
+            })
+            .expect("expected stream focus dispatch");
+    }
+
     #[test]
     fn canvas_widget_enables_full_action_set_for_local_rules_focus() {
         let (config, project_path) = flash_drum_local_rules_config();
-        let driver = StudioGuiDriver::new(&config).expect("expected driver");
+        let mut driver = StudioGuiDriver::new(&config).expect("expected driver");
+        accept_flash_inlet_suggestion(&mut driver);
 
         let widget = driver.canvas_state().widget();
 
@@ -555,7 +1152,8 @@ mod tests {
     #[test]
     fn canvas_widget_maps_actions_to_explicit_driver_events() {
         let (config, project_path) = flash_drum_local_rules_config();
-        let driver = StudioGuiDriver::new(&config).expect("expected driver");
+        let mut driver = StudioGuiDriver::new(&config).expect("expected driver");
+        accept_flash_inlet_suggestion(&mut driver);
         let widget = driver.canvas_state().widget();
 
         assert_eq!(
@@ -664,9 +1262,188 @@ mod tests {
     }
 
     #[test]
+    fn canvas_widget_explains_available_selected_stream_reconnect_target() {
+        let (config, project_path) = flash_drum_local_rules_config();
+        let mut driver = StudioGuiDriver::new(&config).expect("expected driver");
+        open_window(&mut driver);
+        focus_stream(&mut driver, "stream-heated");
+
+        let widget = driver.canvas_state().widget();
+        let action = widget
+            .action(StudioGuiCanvasActionId::ReconnectSelectedStream)
+            .expect("expected reconnect action");
+
+        assert!(action.enabled);
+        assert_eq!(action.command_id, "canvas.reconnect_selected_stream");
+        assert!(
+            action
+                .detail
+                .contains("only available inlet `flash-1:inlet`")
+        );
+
+        let _ = fs::remove_file(project_path);
+    }
+
+    #[test]
+    fn canvas_widget_explains_available_selected_sink_only_stream_reconnect_target() {
+        let (config, project_path) = flash_drum_sink_only_reconnect_config();
+        let mut driver = StudioGuiDriver::new(&config).expect("expected driver");
+        open_window(&mut driver);
+        focus_stream(&mut driver, "stream-heated");
+
+        let widget = driver.canvas_state().widget();
+        let action = widget
+            .action(StudioGuiCanvasActionId::ReconnectSelectedStream)
+            .expect("expected reconnect action");
+
+        assert!(action.enabled);
+        assert_eq!(action.command_id, "canvas.reconnect_selected_stream");
+        assert!(
+            action
+                .detail
+                .contains("only available outlet `heater-1:outlet`")
+        );
+
+        let _ = fs::remove_file(project_path);
+    }
+
+    #[test]
+    fn canvas_widget_disables_reconnect_when_unique_target_would_create_cycle() {
+        let (config, project_path) = cycle_reconnect_config();
+        let mut driver = StudioGuiDriver::new(&config).expect("expected driver");
+        open_window(&mut driver);
+        focus_stream(&mut driver, "stream-heated");
+
+        let widget = driver.canvas_state().widget();
+        let action = widget
+            .action(StudioGuiCanvasActionId::ReconnectSelectedStream)
+            .expect("expected reconnect action");
+
+        assert!(!action.enabled);
+        assert!(
+            action.detail.contains("no available material inlet"),
+            "expected cycle candidate to be filtered from reconnect targets, got {:?}",
+            action
+        );
+        assert_eq!(
+            widget.activate(StudioGuiCanvasActionId::ReconnectSelectedStream),
+            StudioGuiCanvasWidgetEvent::Disabled {
+                action_id: StudioGuiCanvasActionId::ReconnectSelectedStream,
+            }
+        );
+
+        let _ = fs::remove_file(project_path);
+    }
+
+    #[test]
+    fn canvas_widget_explains_selected_stream_endpoint_disconnect_actions() {
+        let (config, project_path) = flash_drum_local_rules_config();
+        let mut driver = StudioGuiDriver::new(&config).expect("expected driver");
+        open_window(&mut driver);
+        accept_flash_inlet_suggestion(&mut driver);
+        focus_stream(&mut driver, "stream-heated");
+
+        let widget = driver.canvas_state().widget();
+        let source_action = widget
+            .action(StudioGuiCanvasActionId::DisconnectSelectedStreamSource)
+            .expect("expected source disconnect action");
+        assert!(source_action.enabled);
+        assert_eq!(
+            source_action.command_id,
+            "canvas.disconnect_selected_stream_source"
+        );
+        assert!(
+            source_action
+                .detail
+                .contains("upstream source `heater-1:outlet`")
+        );
+        let sink_action = widget
+            .action(StudioGuiCanvasActionId::DisconnectSelectedStreamSink)
+            .expect("expected sink disconnect action");
+        assert!(sink_action.enabled);
+        assert_eq!(
+            sink_action.command_id,
+            "canvas.disconnect_selected_stream_sink"
+        );
+        assert!(
+            sink_action
+                .detail
+                .contains("downstream sink `flash-1:inlet`")
+        );
+        assert_eq!(
+            widget.activate(StudioGuiCanvasActionId::DisconnectSelectedStreamSink),
+            StudioGuiCanvasWidgetEvent::Requested {
+                action_id: StudioGuiCanvasActionId::DisconnectSelectedStreamSink,
+                event: StudioGuiEvent::UiCommandRequested {
+                    command_id: "canvas.disconnect_selected_stream_sink".to_string(),
+                },
+            }
+        );
+
+        let _ = fs::remove_file(project_path);
+    }
+
+    #[test]
+    fn canvas_widget_explains_missing_selected_stream_endpoint_disconnect_target() {
+        let (config, project_path) = flash_drum_local_rules_config();
+        let mut driver = StudioGuiDriver::new(&config).expect("expected driver");
+        open_window(&mut driver);
+        focus_stream(&mut driver, "stream-heated");
+
+        let widget = driver.canvas_state().widget();
+        let source_action = widget
+            .action(StudioGuiCanvasActionId::DisconnectSelectedStreamSource)
+            .expect("expected source disconnect action");
+        assert!(source_action.enabled);
+        let sink_action = widget
+            .action(StudioGuiCanvasActionId::DisconnectSelectedStreamSink)
+            .expect("expected sink disconnect action");
+        assert!(!sink_action.enabled);
+        assert!(sink_action.detail.contains("no downstream sink"));
+        assert_eq!(
+            widget.activate(StudioGuiCanvasActionId::DisconnectSelectedStreamSink),
+            StudioGuiCanvasWidgetEvent::Disabled {
+                action_id: StudioGuiCanvasActionId::DisconnectSelectedStreamSink,
+            }
+        );
+
+        let _ = fs::remove_file(project_path);
+    }
+
+    #[test]
+    fn canvas_widget_explains_reconnect_disabled_for_connected_stream() {
+        let (config, project_path) = flash_drum_local_rules_config();
+        let mut driver = StudioGuiDriver::new(&config).expect("expected driver");
+        open_window(&mut driver);
+        accept_flash_inlet_suggestion(&mut driver);
+        focus_stream(&mut driver, "stream-heated");
+
+        let widget = driver.canvas_state().widget();
+        let action = widget
+            .action(StudioGuiCanvasActionId::ReconnectSelectedStream)
+            .expect("expected reconnect action");
+
+        assert!(!action.enabled);
+        assert!(
+            action
+                .detail
+                .contains("already connected to `flash-1:inlet`")
+        );
+        assert_eq!(
+            widget.activate(StudioGuiCanvasActionId::ReconnectSelectedStream),
+            StudioGuiCanvasWidgetEvent::Disabled {
+                action_id: StudioGuiCanvasActionId::ReconnectSelectedStream,
+            }
+        );
+
+        let _ = fs::remove_file(project_path);
+    }
+
+    #[test]
     fn canvas_widget_maps_explicit_suggestion_acceptance_to_driver_event() {
         let (config, project_path) = flash_drum_local_rules_config();
         let mut driver = StudioGuiDriver::new(&config).expect("expected driver");
+        accept_flash_inlet_suggestion(&mut driver);
         let widget = driver.canvas_state().widget();
         let suggestion = widget
             .view()
@@ -732,6 +1509,7 @@ mod tests {
     fn canvas_widget_requested_event_dispatches_through_driver() {
         let (config, project_path) = flash_drum_local_rules_config();
         let mut driver = StudioGuiDriver::new(&config).expect("expected driver");
+        accept_flash_inlet_suggestion(&mut driver);
         let widget = driver.canvas_state().widget();
         let event = match widget.activate(StudioGuiCanvasActionId::FocusNext) {
             StudioGuiCanvasWidgetEvent::Requested { event, .. } => event,
@@ -759,7 +1537,7 @@ mod tests {
                         .focused
                         .as_ref()
                         .map(|suggestion| suggestion.id.as_str()),
-                    Some("local.flash_drum.create_outlet.flash-1.liquid")
+                    Some("local.flash_drum.create_outlet.flash-1.vapor")
                 );
                 assert_eq!(
                     result
@@ -767,7 +1545,7 @@ mod tests {
                         .focused_suggestion_id
                         .as_ref()
                         .map(|id| id.as_str()),
-                    Some("local.flash_drum.create_outlet.flash-1.liquid")
+                    Some("local.flash_drum.create_outlet.flash-1.vapor")
                 );
                 assert_eq!(
                     dispatch
@@ -775,7 +1553,7 @@ mod tests {
                         .focused_suggestion_id
                         .as_ref()
                         .map(|id| id.as_str()),
-                    Some("local.flash_drum.create_outlet.flash-1.liquid")
+                    Some("local.flash_drum.create_outlet.flash-1.vapor")
                 );
             }
             other => panic!("expected canvas ui command outcome, got {other:?}"),

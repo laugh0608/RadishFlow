@@ -2,6 +2,7 @@ use std::collections::BTreeSet;
 
 mod drop_preview;
 mod result_inspector;
+mod snapshot_export;
 use crate::{
     EntitlementSessionHostRuntimeOutput, StudioExampleProjectModel, StudioGuiCanvasWidgetModel,
     StudioGuiCommandEntry, StudioGuiCommandMenuNode, StudioGuiCommandRegistry,
@@ -214,6 +215,7 @@ pub struct StudioGuiWindowInspectorTargetDetailModel {
     pub property_composition_normalize_command_id: Option<String>,
     pub property_composition_component_actions:
         Vec<StudioGuiWindowInspectorCompositionComponentActionModel>,
+    pub connection_actions: Vec<StudioGuiWindowCommandActionModel>,
     pub unit_ports: Vec<StudioGuiWindowInspectorTargetPortModel>,
     pub latest_unit_result: Option<StudioGuiWindowUnitExecutionResultModel>,
     pub latest_stream_result: Option<StudioGuiWindowStreamResultModel>,
@@ -232,6 +234,7 @@ pub struct StudioGuiWindowInspectorTargetSummaryRowModel {
 pub struct StudioGuiWindowInspectorTargetFieldModel {
     pub key: String,
     pub label: String,
+    pub constraint_text: Option<String>,
     pub value_kind_label: &'static str,
     pub original_value: String,
     pub current_value: String,
@@ -821,10 +824,14 @@ fn failure_result_model_from_control_state(
         .and_then(inspector_target_model_from_recovery_action);
     let mut diagnostic_actions = Vec::new();
     if let Some(action) = recovery_action.as_ref() {
+        let recovery_action = notice
+            .recovery_action
+            .as_ref()
+            .expect("expected source recovery action");
         diagnostic_actions.push(StudioGuiWindowDiagnosticTargetActionModel {
-            source_label: "Recovery",
-            target_label: "Run panel",
-            summary: notice.title.clone(),
+            source_label: recovery_action_source_label(recovery_action),
+            target_label: recovery_action_target_label(recovery_action),
+            summary: format!("{}: {}", recovery_action.effect_label(), notice.title),
             action: action.clone(),
         });
     }
@@ -876,13 +883,7 @@ fn failure_diagnostic_detail_model_from_summary(
                 inspector_target_model_from_ui(&rf_ui::InspectorTarget::Unit(unit_id.clone()))
             })
             .collect(),
-        related_streams: summary
-            .related_stream_ids
-            .iter()
-            .map(|stream_id| {
-                inspector_target_model_from_ui(&rf_ui::InspectorTarget::Stream(stream_id.clone()))
-            })
-            .collect(),
+        related_streams: failure_related_stream_targets(summary, diagnostic_context),
         related_stream_results: diagnostic_context
             .map(|context| {
                 context
@@ -914,6 +915,33 @@ fn failure_diagnostic_detail_model_from_summary(
     }
 }
 
+fn failure_related_stream_targets(
+    summary: &rf_ui::DiagnosticSummary,
+    diagnostic_context: Option<&StudioGuiFailureDiagnosticContextSnapshot>,
+) -> Vec<StudioGuiWindowInspectorTargetModel> {
+    let existing_stream_ids = diagnostic_context.map(|context| {
+        context
+            .related_streams
+            .iter()
+            .map(|stream| stream.stream_id.as_str())
+            .collect::<BTreeSet<_>>()
+    });
+
+    summary
+        .related_stream_ids
+        .iter()
+        .filter(|stream_id| {
+            existing_stream_ids
+                .as_ref()
+                .map(|ids| ids.contains(stream_id.as_str()))
+                .unwrap_or(true)
+        })
+        .map(|stream_id| {
+            inspector_target_model_from_ui(&rf_ui::InspectorTarget::Stream(stream_id.clone()))
+        })
+        .collect()
+}
+
 fn failure_diagnostic_actions(
     detail: &StudioGuiWindowFailureDiagnosticDetailModel,
 ) -> Vec<StudioGuiWindowDiagnosticTargetActionModel> {
@@ -933,8 +961,25 @@ fn failure_diagnostic_actions(
             &port.unit_action,
         )
     });
+    let port_stream_actions = detail.related_ports.iter().filter_map(|port| {
+        let stream = port.stream_result.as_ref()?;
+        Some(diagnostic_target_action_from_action(
+            "Failure port stream",
+            "Stream",
+            format!(
+                "Unit {} port {} stream {}",
+                port.unit_id, port.port_name, stream.stream_id
+            ),
+            &stream.focus_action,
+        ))
+    });
 
-    dedupe_diagnostic_actions(unit_actions.chain(stream_actions).chain(port_actions))
+    dedupe_diagnostic_actions(
+        unit_actions
+            .chain(stream_actions)
+            .chain(port_actions)
+            .chain(port_stream_actions),
+    )
 }
 
 fn failure_recovery_action_model(
@@ -942,8 +987,24 @@ fn failure_recovery_action_model(
 ) -> StudioGuiWindowCommandActionModel {
     StudioGuiWindowCommandActionModel {
         label: action.title.to_string(),
-        hover_text: action.detail.to_string(),
+        hover_text: format!("{}: {}", action.effect_detail(), action.detail),
         command_id: "run_panel.recover_failure".to_string(),
+    }
+}
+
+fn recovery_action_source_label(action: &rf_ui::RunPanelRecoveryAction) -> &'static str {
+    if action.mutation.is_some() {
+        "Recovery mutation"
+    } else {
+        "Recovery focus"
+    }
+}
+
+fn recovery_action_target_label(action: &rf_ui::RunPanelRecoveryAction) -> &'static str {
+    if action.mutation.is_some() {
+        "Document"
+    } else {
+        "Inspector"
     }
 }
 
@@ -1068,6 +1129,15 @@ fn inspector_target_detail_model_from_snapshot(
             .iter()
             .map(inspector_composition_component_action_model_from_snapshot)
             .collect(),
+        connection_actions: detail
+            .connection_actions
+            .iter()
+            .map(|action| StudioGuiWindowCommandActionModel {
+                label: action.label.clone(),
+                hover_text: action.detail.clone(),
+                command_id: action.command_id.clone(),
+            })
+            .collect(),
         unit_ports: detail
             .unit_ports
             .iter()
@@ -1171,6 +1241,7 @@ fn inspector_field_model_from_snapshot(
     StudioGuiWindowInspectorTargetFieldModel {
         key: field.key.clone(),
         label: field.label.clone(),
+        constraint_text: field.constraint_text.clone(),
         value_kind_label: inspector_field_kind_label(field.value_kind),
         original_value: field.original_value.clone(),
         current_value: field.current_value.clone(),
@@ -1735,45 +1806,39 @@ fn stream_result_numeric_summary(
 
 fn format_composition(composition: &[(String, f64)]) -> String {
     if composition.is_empty() {
-        return "z: none".to_string();
+        return "none".to_string();
     }
 
-    format!(
-        "z: {}",
-        composition
-            .iter()
-            .map(|(component_id, fraction)| format!("{component_id}={fraction:.4}"))
-            .collect::<Vec<_>>()
-            .join(", ")
-    )
+    composition
+        .iter()
+        .map(|(component_id, fraction)| format!("{component_id}={fraction:.4}"))
+        .collect::<Vec<_>>()
+        .join(", ")
 }
 
 fn format_phases(phases: &[rf_ui::PhaseStateSnapshot], total_molar_flow_mol_s: f64) -> String {
     if phases.is_empty() {
-        return "phases: none".to_string();
+        return "none".to_string();
     }
 
-    format!(
-        "phases: {}",
-        phases
-            .iter()
-            .map(|phase| {
-                let molar_flow_mol_s = phase.phase_fraction * total_molar_flow_mol_s;
-                format!(
-                    "{}={} ({})",
-                    phase.label,
-                    format_fraction(phase.phase_fraction),
-                    format_molar_flow(molar_flow_mol_s)
-                )
-            })
-            .collect::<Vec<_>>()
-            .join(", ")
-    )
+    phases
+        .iter()
+        .map(|phase| {
+            let molar_flow_mol_s = phase.phase_fraction * total_molar_flow_mol_s;
+            format!(
+                "{}={} ({})",
+                phase.label,
+                format_fraction(phase.phase_fraction),
+                format_molar_flow(molar_flow_mol_s)
+            )
+        })
+        .collect::<Vec<_>>()
+        .join(", ")
 }
 
 fn format_phase_composition(composition: &[(String, f64)]) -> String {
     if composition.is_empty() {
-        return "z: none".to_string();
+        return "none".to_string();
     }
 
     composition

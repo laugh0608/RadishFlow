@@ -8,6 +8,16 @@ use super::test_support::{
 use super::*;
 use crate::test_support::stream_target_detail_model;
 
+fn accept_flash_inlet_suggestion(driver: &mut StudioGuiDriver) {
+    driver
+        .dispatch_event(StudioGuiEvent::CanvasSuggestionAcceptByIdRequested {
+            suggestion_id: rf_ui::CanvasSuggestionId::new(
+                "local.flash_drum.connect_inlet.flash-1.stream-heated",
+            ),
+        })
+        .expect("expected flash inlet suggestion acceptance");
+}
+
 #[test]
 fn gui_driver_ignores_canvas_tab_shortcut_without_canvas_command_binding() {
     let mut driver = StudioGuiDriver::new(&lease_expiring_config()).expect("expected driver");
@@ -218,6 +228,7 @@ fn gui_driver_accepts_focused_canvas_suggestion_by_tab() {
 fn gui_driver_focuses_next_canvas_suggestion_from_explicit_event() {
     let (config, project_path) = flash_drum_local_rules_config();
     let mut driver = StudioGuiDriver::new(&config).expect("expected driver");
+    accept_flash_inlet_suggestion(&mut driver);
 
     let dispatch = driver
         .dispatch_event(StudioGuiEvent::CanvasSuggestionFocusNextRequested)
@@ -231,7 +242,7 @@ fn gui_driver_focuses_next_canvas_suggestion_from_explicit_event() {
                     .focused
                     .as_ref()
                     .map(|suggestion| suggestion.id.as_str()),
-                Some("local.flash_drum.create_outlet.flash-1.liquid")
+                Some("local.flash_drum.create_outlet.flash-1.vapor")
             );
             assert_eq!(
                 dispatch
@@ -239,7 +250,7 @@ fn gui_driver_focuses_next_canvas_suggestion_from_explicit_event() {
                     .focused_suggestion_id
                     .as_ref()
                     .map(|id| id.as_str()),
-                Some("local.flash_drum.create_outlet.flash-1.liquid")
+                Some("local.flash_drum.create_outlet.flash-1.vapor")
             );
         }
         other => panic!("expected canvas interaction outcome, got {other:?}"),
@@ -365,6 +376,7 @@ fn gui_driver_moves_canvas_unit_layout_from_explicit_event_without_dirtying_docu
 fn gui_driver_rejects_focused_canvas_suggestion_from_shortcut() {
     let (config, project_path) = flash_drum_local_rules_config();
     let mut driver = StudioGuiDriver::new(&config).expect("expected driver");
+    accept_flash_inlet_suggestion(&mut driver);
 
     let dispatch = driver
         .dispatch_event(StudioGuiEvent::ShortcutPressed {
@@ -394,7 +406,7 @@ fn gui_driver_rejects_focused_canvas_suggestion_from_shortcut() {
                     .rejected
                     .as_ref()
                     .map(|suggestion| suggestion.id.as_str()),
-                Some("local.flash_drum.connect_inlet.flash-1.stream-heated")
+                Some("local.flash_drum.create_outlet.flash-1.liquid")
             );
             assert_eq!(
                 result
@@ -402,7 +414,7 @@ fn gui_driver_rejects_focused_canvas_suggestion_from_shortcut() {
                     .focused_suggestion_id
                     .as_ref()
                     .map(|id| id.as_str()),
-                Some("local.flash_drum.create_outlet.flash-1.liquid")
+                Some("local.flash_drum.create_outlet.flash-1.vapor")
             );
             assert_eq!(
                 dispatch
@@ -410,7 +422,7 @@ fn gui_driver_rejects_focused_canvas_suggestion_from_shortcut() {
                     .focused_suggestion_id
                     .as_ref()
                     .map(|id| id.as_str()),
-                Some("local.flash_drum.create_outlet.flash-1.liquid")
+                Some("local.flash_drum.create_outlet.flash-1.vapor")
             );
         }
         other => panic!("expected executed canvas ui command outcome, got {other:?}"),
@@ -423,6 +435,7 @@ fn gui_driver_rejects_focused_canvas_suggestion_from_shortcut() {
 fn gui_driver_routes_ctrl_tab_to_canvas_focus_next() {
     let (config, project_path) = flash_drum_local_rules_config();
     let mut driver = StudioGuiDriver::new(&config).expect("expected driver");
+    accept_flash_inlet_suggestion(&mut driver);
 
     let dispatch = driver
         .dispatch_event(StudioGuiEvent::ShortcutPressed {
@@ -449,7 +462,7 @@ fn gui_driver_routes_ctrl_tab_to_canvas_focus_next() {
                     .focused
                     .as_ref()
                     .map(|suggestion| suggestion.id.as_str()),
-                Some("local.flash_drum.create_outlet.flash-1.liquid")
+                Some("local.flash_drum.create_outlet.flash-1.vapor")
             );
         }
         other => panic!("expected executed canvas ui command outcome, got {other:?}"),

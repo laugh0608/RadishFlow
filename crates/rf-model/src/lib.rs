@@ -139,12 +139,28 @@ impl UnitPort {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct UnitOperationParameters {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub outlet_temperature_k: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub outlet_pressure_pa: Option<f64>,
+}
+
+impl UnitOperationParameters {
+    pub fn is_empty(&self) -> bool {
+        self.outlet_temperature_k.is_none() && self.outlet_pressure_pa.is_none()
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct UnitNode {
     pub id: UnitId,
     pub name: String,
     pub kind: String,
     pub ports: Vec<UnitPort>,
+    #[serde(default, skip_serializing_if = "UnitOperationParameters::is_empty")]
+    pub parameters: UnitOperationParameters,
 }
 
 impl UnitNode {
@@ -159,7 +175,13 @@ impl UnitNode {
             name: name.into(),
             kind: kind.into(),
             ports,
+            parameters: UnitOperationParameters::default(),
         }
+    }
+
+    pub fn with_parameters(mut self, parameters: UnitOperationParameters) -> Self {
+        self.parameters = parameters;
+        self
     }
 }
 

@@ -7,9 +7,10 @@ use rf_thermo::ThermoProvider;
 use rf_types::{DiagnosticPortTarget, PortDirection, RfError, RfResult, StreamId, UnitId};
 use rf_unitops::{
     BuiltinUnitKind, COOLER_KIND, FEED_KIND, FEED_OUTLET_PORT, FLASH_DRUM_KIND,
-    FLASH_DRUM_LIQUID_PORT, FLASH_DRUM_VAPOR_PORT, Feed, FlashDrum, HEATER_COOLER_OUTLET_PORT,
-    HEATER_KIND, HeaterCooler, MIXER_KIND, MIXER_OUTLET_PORT, Mixer, StreamTarget, UnitOperation,
-    UnitOperationInputs, UnitOperationServices, VALVE_KIND, Valve, validate_unit_node,
+    FLASH_DRUM_LIQUID_PORT, FLASH_DRUM_VAPOR_PORT, Feed, FlashDrum, HEATER_COOLER_INLET_PORT,
+    HEATER_COOLER_OUTLET_PORT, HEATER_KIND, HeaterCooler, MIXER_KIND, MIXER_OUTLET_PORT, Mixer,
+    StreamTarget, UnitOperation, UnitOperationInputs, UnitOperationServices, VALVE_KIND, Valve,
+    validate_unit_node,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -32,6 +33,7 @@ enum SolverDiagnosticCode {
     TopologicalOrdering,
     StepLookup,
     StepSpec,
+    StepParameter,
     StepInstantiation,
     StepInlet,
     StepMaterialization,
@@ -52,6 +54,7 @@ impl SolverDiagnosticCode {
             Self::TopologicalOrdering => "solver.topological_ordering",
             Self::StepLookup => "solver.step.lookup",
             Self::StepSpec => "solver.step.spec",
+            Self::StepParameter => "solver.step.parameter",
             Self::StepInstantiation => "solver.step.instantiation",
             Self::StepInlet => "solver.step.inlet",
             Self::StepMaterialization => "solver.step.materialization",
@@ -67,6 +70,7 @@ impl SolverDiagnosticCode {
             Self::TopologicalOrdering => "topological ordering",
             Self::StepLookup => "unit lookup",
             Self::StepSpec => "unit spec validation",
+            Self::StepParameter => "unit parameter validation",
             Self::StepInstantiation => "operation instantiation",
             Self::StepInlet => "inlet resolution",
             Self::StepMaterialization => "output materialization",
@@ -249,6 +253,8 @@ impl FlowsheetSolver for SequentialModularSolver {
                 .iter()
                 .map(|stream| stream.id.clone())
                 .collect::<Vec<_>>();
+
+            validate_step_parameters(step_number, unit, &inputs, &consumed_stream_ids)?;
 
             let outputs = operation.run(&unit_services, &inputs).map_err(|error| {
                 solver_step_execution_error(step_number, unit, &consumed_stream_ids, error)
@@ -636,6 +642,28 @@ fn solver_step_invalid_input(
     .with_related_unit_id(unit.id.clone())
 }
 
+fn solver_step_invalid_input_with_context(
+    step_number: usize,
+    unit: &UnitNode,
+    code: SolverDiagnosticCode,
+    message: impl AsRef<str>,
+    related_stream_ids: Vec<StreamId>,
+    related_port_targets: Vec<DiagnosticPortTarget>,
+) -> RfError {
+    RfError::invalid_input(format!(
+        "{}: solver step {} {} failed for {}: {}",
+        code.as_str(),
+        step_number,
+        code.stage_label(),
+        unit_context(unit),
+        message.as_ref()
+    ))
+    .with_diagnostic_code(code.as_str())
+    .with_related_unit_id(unit.id.clone())
+    .with_related_stream_ids(related_stream_ids)
+    .with_related_port_targets(related_port_targets)
+}
+
 fn solver_step_execution_error(
     step_number: usize,
     unit: &UnitNode,
@@ -659,8 +687,110 @@ fn solver_step_execution_error(
     .with_related_stream_ids(consumed_stream_ids.to_vec())
 }
 
+fn validate_step_parameters(
+    step_number: usize,
+    unit: &UnitNode,
+    inputs: &UnitOperationInputs,
+    consumed_stream_ids: &[StreamId],
+) -> RfResult<()> {
+    let Some(outlet_pressure_pa) = unit.parameters.outlet_pressure_pa else {
+        return Ok(());
+    };
+
+    if unit_supports_outlet_pressure_parameter(unit)
+        && (!outlet_pressure_pa.is_finite() || outlet_pressure_pa <= 0.0)
+    {
+        let related_stream_ids = unit_parameter_related_stream_ids(unit, consumed_stream_ids);
+        return Err(solver_step_invalid_input_with_context(
+            step_number,
+            unit,
+            SolverDiagnosticCode::StepParameter,
+            format!(
+                "outlet_pressure_pa `{outlet_pressure_pa}` Pa must be a positive finite pressure"
+            ),
+            related_stream_ids,
+            unit_parameter_related_port_targets(unit),
+        ));
+    }
+
+    if !unit_outlet_pressure_cannot_exceed_inlet(unit) {
+        return Ok(());
+    }
+
+    let Some(inlet) = inputs.stream(HEATER_COOLER_INLET_PORT) else {
+        return Ok(());
+    };
+    if outlet_pressure_pa <= inlet.pressure_pa {
+        return Ok(());
+    }
+
+    let mut related_stream_ids = consumed_stream_ids.to_vec();
+    if let Ok(outlet_stream_id) = port_stream_id(unit, HEATER_COOLER_OUTLET_PORT) {
+        related_stream_ids.push(outlet_stream_id.clone());
+    }
+
+    Err(solver_step_invalid_input_with_context(
+        step_number,
+        unit,
+        SolverDiagnosticCode::StepParameter,
+        format!(
+            "outlet_pressure_pa `{outlet_pressure_pa}` Pa cannot exceed inlet pressure `{}` Pa from stream `{}`",
+            inlet.pressure_pa, inlet.id
+        ),
+        dedupe_stream_ids(related_stream_ids),
+        vec![
+            DiagnosticPortTarget::new(unit.id.clone(), HEATER_COOLER_OUTLET_PORT.to_string()),
+            DiagnosticPortTarget::new(unit.id.clone(), HEATER_COOLER_INLET_PORT.to_string()),
+        ],
+    ))
+}
+
+fn unit_supports_outlet_pressure_parameter(unit: &UnitNode) -> bool {
+    matches!(
+        unit.kind.as_str(),
+        HEATER_KIND | COOLER_KIND | VALVE_KIND | FLASH_DRUM_KIND
+    )
+}
+
+fn unit_outlet_pressure_cannot_exceed_inlet(unit: &UnitNode) -> bool {
+    matches!(unit.kind.as_str(), HEATER_KIND | COOLER_KIND | VALVE_KIND)
+}
+
+fn unit_parameter_related_stream_ids(
+    unit: &UnitNode,
+    consumed_stream_ids: &[StreamId],
+) -> Vec<StreamId> {
+    let mut related_stream_ids = consumed_stream_ids.to_vec();
+    for port in unit
+        .ports
+        .iter()
+        .filter(|port| port.direction == rf_types::PortDirection::Outlet)
+    {
+        if let Some(stream_id) = &port.stream_id {
+            related_stream_ids.push(stream_id.clone());
+        }
+    }
+    dedupe_stream_ids(related_stream_ids)
+}
+
+fn unit_parameter_related_port_targets(unit: &UnitNode) -> Vec<DiagnosticPortTarget> {
+    unit.ports
+        .iter()
+        .filter(|port| port.direction == rf_types::PortDirection::Outlet)
+        .map(|port| DiagnosticPortTarget::new(unit.id.clone(), port.name.clone()))
+        .collect()
+}
+
 fn stream_ids(streams: &[MaterialStreamState]) -> Vec<StreamId> {
     streams.iter().map(|stream| stream.id.clone()).collect()
+}
+
+fn dedupe_stream_ids(stream_ids: Vec<StreamId>) -> Vec<StreamId> {
+    let mut seen = BTreeSet::new();
+    stream_ids
+        .into_iter()
+        .filter(|stream_id| seen.insert(stream_id.clone()))
+        .collect()
 }
 
 fn solver_context_error(context: impl AsRef<str>, error: RfError) -> RfError {
@@ -699,27 +829,31 @@ fn instantiate_operation(
             Ok(Box::new(Mixer::new(outlet)))
         }
         HEATER_KIND => {
-            let outlet = stream_for_port(unit, HEATER_COOLER_OUTLET_PORT, flowsheet)?;
+            let outlet = heater_cooler_outlet_template(unit, flowsheet)?;
             Ok(Box::new(HeaterCooler::new(
                 BuiltinUnitKind::Heater,
-                outlet.clone(),
+                outlet,
             )?))
         }
         COOLER_KIND => {
-            let outlet = stream_for_port(unit, HEATER_COOLER_OUTLET_PORT, flowsheet)?;
+            let outlet = heater_cooler_outlet_template(unit, flowsheet)?;
             Ok(Box::new(HeaterCooler::new(
                 BuiltinUnitKind::Cooler,
-                outlet.clone(),
+                outlet,
             )?))
         }
         VALVE_KIND => {
-            let outlet = stream_for_port(unit, HEATER_COOLER_OUTLET_PORT, flowsheet)?;
-            Ok(Box::new(Valve::new(outlet.clone())))
+            let outlet = valve_outlet_template(unit, flowsheet)?;
+            Ok(Box::new(Valve::new(outlet)))
         }
         FLASH_DRUM_KIND => {
             let liquid = stream_target_for_port(unit, FLASH_DRUM_LIQUID_PORT, flowsheet)?;
             let vapor = stream_target_for_port(unit, FLASH_DRUM_VAPOR_PORT, flowsheet)?;
-            Ok(Box::new(FlashDrum::new(liquid, vapor)))
+            let mut operation = FlashDrum::new(liquid, vapor);
+            if let Some(pressure_pa) = unit.parameters.outlet_pressure_pa {
+                operation = operation.with_outlet_pressure_pa(pressure_pa);
+            }
+            Ok(Box::new(operation))
         }
         _ => Err(RfError::invalid_input(format!(
             "{} uses unsupported solver kind `{}`",
@@ -728,6 +862,28 @@ fn instantiate_operation(
         ))
         .with_related_unit_id(unit.id.clone())),
     }
+}
+
+fn heater_cooler_outlet_template(
+    unit: &UnitNode,
+    flowsheet: &Flowsheet,
+) -> RfResult<MaterialStreamState> {
+    let mut outlet = stream_for_port(unit, HEATER_COOLER_OUTLET_PORT, flowsheet)?.clone();
+    if let Some(temperature_k) = unit.parameters.outlet_temperature_k {
+        outlet.temperature_k = temperature_k;
+    }
+    if let Some(pressure_pa) = unit.parameters.outlet_pressure_pa {
+        outlet.pressure_pa = pressure_pa;
+    }
+    Ok(outlet)
+}
+
+fn valve_outlet_template(unit: &UnitNode, flowsheet: &Flowsheet) -> RfResult<MaterialStreamState> {
+    let mut outlet = stream_for_port(unit, HEATER_COOLER_OUTLET_PORT, flowsheet)?.clone();
+    if let Some(pressure_pa) = unit.parameters.outlet_pressure_pa {
+        outlet.pressure_pa = pressure_pa;
+    }
+    Ok(outlet)
 }
 
 fn stream_for_port<'a>(

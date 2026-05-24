@@ -1,6 +1,6 @@
 # Canvas Interaction Contract
 
-更新时间：2026-05-16
+更新时间：2026-05-23
 
 ## 文档目的
 
@@ -27,6 +27,8 @@
 - 画布创新不反向侵入 `rf-model` / `rf-flowsheet` 核心语义
 - 模型建议不绕过本地连接校验、命令系统与求解诊断
 - 已落地的 placement palette、local suggestions、对象选择、layout sidecar 和 viewport 呈现优化都仍属于 UI / shell 边界，不改变 `FlowsheetDocument` 的求解语义
+
+截至 2026-05-23，首版 demo 前硬化期已经结束。下一阶段允许在上述边界内推进受控画布能力：selected stream 受控重连细化、单元直接拖动但只写 layout sidecar、sidecar 级 viewport 记忆，以及更清晰的 suggestion / 诊断可见性。它们必须先补正式 command / validation / presentation 边界，或明确为 shell-local sidecar 状态；仍不得进入自由连线编辑器、自动布线系统、完整拖拽布局编辑器或复杂视图持久化。
 
 ## 核心原则
 
@@ -104,14 +106,23 @@
 
 ### 当前 MVP α 已落地边界
 
-截至 2026-05-16，Studio 画布已经具备以下最小闭环：
+截至 2026-05-17，Studio 画布已经具备以下最小闭环：
 
-- 左侧 `放置` 入口可创建 `Feed / Mixer / Heater / Cooler / Valve / Flash Drum` MVP 单元。
+- 左侧 `放置` 入口可创建 `进料 / 混合器 / 加热器 / 冷却器 / 阀门 / 闪蒸罐` MVP 单元；项目对象名和示例文件仍可保留 `Feed / Mixer / Heater / Cooler / Valve / Flash Drum` 等领域英文名。
 - 当前最短可求解路径覆盖 `Feed -> Flash Drum`、`Feed -> Heater/Cooler/Valve -> Flash Drum`、`Feed + Feed -> Mixer -> Flash Drum`。
-- 本地 suggestion 可补齐标准材料端口连接和必要 outlet stream；显示动词为 `连接` / `Connect`，不再使用泛化 `Apply`。
+- 本地 suggestion 可补齐标准材料端口连接和必要 outlet stream；显示动词按接受载荷区分为 `连接流股` / `Connect stream` 与 `创建流股` / `Create stream`，不再使用泛化 `Apply` 或单一 `连接`。
 - suggestion 接受仍转换为正式 `DocumentCommand::ConnectPorts` 或等价文档命令后写回；接受 / 拒绝本身不进入 `CommandHistory`。
 - Canvas 对象选择会驱动右侧 `检查器` / 结果定位，但不缓存第二份求解结果。
 - Canvas placement sidecar 使用 `<project>.rfstudio-layout.json` 保存 shell / layout 状态；项目文件 `*.rfproj.json` 仍是流程语义真相源。
+- 打开示例或项目后，若 sidecar 尚未保存 viewport offset，Canvas viewport 会按当前单元 / 流股 bounds 做 shell-local 初始 fit-to-content / center；该行为不写项目、不进历史、不代表自动布线。
+- 若缺少 sidecar placement，presentation 可按物料流依赖顺序给未定位单元生成可解释的 transient grid slot；加载 sidecar 时应过滤当前项目已不存在的 unit id。
+- 选中单元后，Canvas 可允许在空白处点击，把该单元定位到点击对应的 world 坐标；也可直接拖动单元块，释放后把最终 world 坐标写入 layout sidecar。该行为只更新 layout sidecar，不写 `FlowsheetDocument`，不进入 `CommandHistory`，也不代表完整拖拽布局编辑器。
+- Canvas 空白区域可允许拖拽平移 viewport，并把 offset 保存到同一个 `<project>.rfstudio-layout.json` sidecar；Canvas 也可提供 `Fit to content` 把当前内容重新居中并覆盖该 offset。该状态只影响 shell 初始呈现，不写 `FlowsheetDocument`，不进入 `CommandHistory`，也不代表完整视图持久化系统。
+- 已绑定端口可通过点击或对象选择聚焦对应流股 / 单元检查器；运行成功后可自动切到右侧 `结果` 和底部 `结果表`，失败后可切到右侧 `运行` 和底部 `消息`。
+- 选中物料流股后，Canvas / Inspector 可暴露受控恢复动作：`Disconnect stream` 仅在流股仍有材料端口绑定时解除全部绑定并保留流股规格，`Disconnect source` / `Disconnect sink` 仅解除唯一 source 或 sink 端点绑定，`Delete stream` 先解除材料端口绑定再删除该流股；这些动作都通过正式 `DocumentCommand` 写回并进入 undo history。
+- 选中单端 material stream 时，Canvas 可启用窄口径 `Reconnect stream`：source-only 流股只允许接到唯一未绑定且不会形成 unit dependency cycle 的 material inlet；sink-only 流股只允许接到唯一未绑定且不会形成 unit dependency cycle 的 material outlet。该动作只补齐当前流股唯一缺失端点，写回为正式 `DocumentCommand::ConnectPorts` 并进入 undo history；不可用时 presentation 应解释是已双端连接、没有可用端点，还是候选不唯一。
+- 上述恢复 / 重连动作只覆盖当前 MVP 物料流股和现有最短建模路径，用于修正错连、漏连或误建流股；它不是自由连线编辑器，不提供任意端口选择、任意端口重连、自动布线、批量重排或完整拖拽布局编辑。
+- 非空画布不应常驻空状态提示或开发态计数摘要；画布 header 只保留用户理解当前状态所需的短标签、legend 和可行动工具。
 
 ## 视图模式契约
 
@@ -141,16 +152,19 @@ pub enum CanvasViewMode {
 - 立体模式所需的深度、抬升、层级偏移和视觉装饰优先由 UI / Canvas 派生
 - 如后续确实需要少量 3D 呈现参数，也应先作为视图偏好或样式参数存在，不直接污染流程语义模型
 
-### Viewport 初始呈现
+### Viewport 初始呈现与记忆
 
-当前 Canvas viewport 的初始呈现属于 UI 状态，不属于流程语义。
+当前 Canvas viewport 的初始呈现和 sidecar 级 offset 记忆属于 UI 状态，不属于流程语义。
 
 冻结约束：
 
-- 打开示例或项目后，shell 可根据当前单元与流股 bounds 做初始 fit-to-content / center，让小流程自然处于可视区域中央。
+- 打开示例或项目后，若 sidecar 中没有 viewport offset，shell 可根据当前单元与流股 bounds 做初始 fit-to-content / center，让小流程自然处于可视区域中央。
+- 若 sidecar 中已有 viewport offset，shell 可优先恢复该 offset，避免用户每次重开项目后重复平移画布。
+- 用户在空白画布上拖拽平移 viewport 时，只允许保存 offset，不保存缩放、滚动历史、选区、完整 camera state 或复杂 viewport profile。
+- 用户触发 `Fit to content` 时，只允许基于当前 Canvas 内容 bounds 重算并保存 offset；不保存缩放、滚动历史、选区、完整 camera state，也不改变单元 placement。
 - 初始 fit-to-content 不写入 `FlowsheetDocument`，也不进入 `CommandHistory`。
-- 该行为不等同于自动布线、自由连线、自动整理布局或视口持久化；它只决定打开后的第一帧可视区域。
-- 若存在 `<project>.rfstudio-layout.json` sidecar，单元 placement 仍以 sidecar 为准；viewport 只基于这些位置计算初始可见范围。
+- 该行为不等同于自动布线、自由连线、自动整理布局或完整视图持久化系统；它只决定打开后的第一帧可视区域和后续空白拖拽的 offset 恢复。
+- 若存在 `<project>.rfstudio-layout.json` sidecar，单元 placement 仍以 sidecar 为准；viewport 可恢复 sidecar offset，缺 offset 时才基于这些位置计算初始可见范围。
 
 ## 流线视觉模型
 
@@ -396,13 +410,16 @@ pub struct GhostElement {
 1. `Planar` 继续是默认编辑视图，`Perspective` 仍只是后续增强展示预留。
 2. MVP 单元放置、对象选择、suggestion focus / accept / reject、离散 layout nudge 都应通过正式 command surface 或 shell-local UI state 进入，不保留长期并行的 widget 私有状态改写分支。
 3. suggestion 转成正式文档命令后的实际文档变更才进入 `CommandHistory`；suggestion focus、reject、viewport、面板切换和 hover 不进入文档历史。
-4. Layout sidecar 只保存 shell / layout 相关状态；缺少 sidecar 时可以用 transient grid slot pin 出初始位置，但必须在 presentation 中保持可解释，不反向污染 flowsheet 语义。
-5. 下一步只收口 viewport 初始居中 / fit-to-content，不扩自由拉线、自动布线、完整拖拽布局编辑器或复杂视图持久化。
+4. 受控流股恢复动作可进入 `CommandHistory`：整股断开保留流股规格，source / sink 端点级断开只解除唯一对应端点，删除流股会先解除材料端口绑定；单端重连只补齐唯一候选端点。后续继续细化时必须显式处理端口合法性、已有绑定冲突、失败恢复和 undo；不得扩展成任意自由拉线编辑器。
+5. Layout sidecar 只保存 shell / layout 相关状态；缺少 sidecar 时可以用 transient grid slot pin 出初始位置，但必须在 presentation 中保持可解释，不反向污染 flowsheet 语义。当前已允许单元块直接拖动位置，释放后仍只写 sidecar，不写 `FlowsheetDocument`、不递增 revision、不进入 `CommandHistory`。
+6. viewport 初始居中、`Fit to content` 和 sidecar 级 offset 记忆已落地；后续若继续扩展 viewport，只允许在明确 shell-local / sidecar 边界内做单能力增量，不得把 viewport 混入项目语义、求解输入或文档历史。短线段标签后续若继续优化，应作为 Canvas presentation 专题处理，不引入自动布线。
 
 ## 当前仍待后续细化的问题
 
 1. `Energy` / `Signal` 在核心语义未接通前，是否允许先以纯 UI 占位对象存在
 2. `Perspective` 视图是否需要单独的深度排序策略和遮挡规则
-3. suggestion 是否需要批量接受，还是严格先从单条接受开始
-4. `Tab` 接受是否需要和属性面板焦点、文本输入焦点做更细的快捷键竞争规则
-5. `RadishMind` suggestion schema 是否与本地 `LocalRules` 输出完全同构，还是允许额外解释字段
+3. selected stream 端点级断开 / 单端重连的 command / validation / undo 语义如何继续细化，才不会滑向自由连线编辑器
+4. suggestion 是否需要批量接受，还是严格先从单条接受开始
+5. `Tab` 接受是否需要和属性面板焦点、文本输入焦点做更细的快捷键竞争规则
+6. `RadishMind` suggestion schema 是否与本地 `LocalRules` 输出完全同构，还是允许额外解释字段
+7. 短线段流股标签当前按空间不足时隐藏处理；后续是否需要更复杂的避让、缩放阈值或多标签排布，应作为 presentation 专题设计，不引入自动布线

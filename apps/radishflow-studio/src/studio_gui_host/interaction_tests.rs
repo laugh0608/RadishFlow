@@ -307,6 +307,10 @@ fn gui_host_dispatches_canvas_begin_place_unit_command_by_command_id() {
 fn gui_host_canvas_ui_command_focus_persists_for_followup_reject() {
     let (config, project_path) = flash_drum_local_rules_config();
     let mut gui_host = StudioGuiHost::new(&config).expect("expected gui host");
+    gui_host.open_window().expect("expected window open");
+    gui_host
+        .dispatch_ui_command("canvas.accept_focused")
+        .expect("expected flash inlet acceptance");
 
     let focus = gui_host
         .dispatch_ui_command("canvas.focus_next")
@@ -318,7 +322,7 @@ fn gui_host_canvas_ui_command_focus_persists_for_followup_reject() {
                     .focused
                     .as_ref()
                     .map(|suggestion| suggestion.id.as_str()),
-                Some("local.flash_drum.create_outlet.flash-1.liquid")
+                Some("local.flash_drum.create_outlet.flash-1.vapor")
             );
         }
         other => panic!("expected focus-next canvas ui command outcome, got {other:?}"),
@@ -334,13 +338,443 @@ fn gui_host_canvas_ui_command_focus_persists_for_followup_reject() {
                     .rejected
                     .as_ref()
                     .map(|suggestion| suggestion.id.as_str()),
-                Some("local.flash_drum.create_outlet.flash-1.liquid")
+                Some("local.flash_drum.create_outlet.flash-1.vapor")
             );
         }
         other => panic!("expected reject canvas ui command outcome, got {other:?}"),
     }
 
     let _ = fs::remove_file(project_path);
+}
+
+#[test]
+fn gui_host_disconnects_selected_stream_from_canvas_command_surface() {
+    let (config, project_path) = flash_drum_local_rules_config();
+    let mut gui_host = StudioGuiHost::new(&config).expect("expected gui host");
+    gui_host.open_window().expect("expected window open");
+    gui_host
+        .dispatch_ui_command("canvas.accept_focused")
+        .expect("expected flash inlet acceptance");
+    gui_host
+        .dispatch_ui_command("inspector.focus_stream:stream-heated")
+        .expect("expected stream focus dispatch");
+
+    let focused = gui_host.snapshot();
+    assert!(
+        focused
+            .runtime
+            .active_inspector_detail
+            .as_ref()
+            .is_some_and(|detail| {
+                detail
+                    .connection_actions
+                    .iter()
+                    .any(|action| action.command_id == "canvas.disconnect_selected_stream")
+                    && detail
+                        .connection_actions
+                        .iter()
+                        .any(|action| action.command_id == "canvas.delete_selected_stream")
+            }),
+        "expected focused stream inspector to expose connection recovery actions"
+    );
+
+    let disconnect = gui_host
+        .dispatch_ui_command("canvas.disconnect_selected_stream")
+        .expect("expected selected stream disconnect dispatch");
+    match disconnect {
+        StudioGuiHostUiCommandDispatchResult::ExecutedCanvasInteraction { result, .. } => {
+            assert_eq!(
+                result.action,
+                StudioGuiCanvasInteractionAction::DisconnectSelectedStream
+            );
+            assert!(
+                !result
+                    .canvas
+                    .streams
+                    .iter()
+                    .any(|stream| { stream.stream_id == rf_types::StreamId::new("stream-heated") }),
+                "endpointless stream should no longer render as a canvas line"
+            );
+            assert_eq!(
+                canvas_port_stream(&result.canvas, "heater-1", "outlet"),
+                None
+            );
+            assert_eq!(canvas_port_stream(&result.canvas, "flash-1", "inlet"), None);
+        }
+        other => panic!("expected selected stream disconnect outcome, got {other:?}"),
+    }
+
+    let snapshot = gui_host.snapshot();
+    assert_eq!(snapshot.runtime.workspace_document.stream_count, 4);
+    assert_eq!(
+        snapshot.runtime.active_inspector_target,
+        Some(rf_ui::InspectorTarget::Stream(rf_types::StreamId::new(
+            "stream-heated"
+        )))
+    );
+    let stream_detail = snapshot
+        .runtime
+        .active_inspector_detail
+        .as_ref()
+        .expect("expected focused endpointless stream detail");
+    assert!(
+        !stream_detail
+            .connection_actions
+            .iter()
+            .any(|action| action.command_id == "canvas.disconnect_selected_stream"),
+        "endpointless stream should not expose a no-op disconnect stream action"
+    );
+    assert!(
+        stream_detail
+            .connection_actions
+            .iter()
+            .any(|action| action.command_id == "canvas.delete_selected_stream"),
+        "endpointless stream should still expose delete for orphan cleanup"
+    );
+    assert!(
+        gui_host
+            .command_registry()
+            .command("canvas.disconnect_selected_stream")
+            .is_none(),
+        "disabled endpointless disconnect should not enter the command surface"
+    );
+
+    let _ = fs::remove_file(project_path);
+}
+
+#[test]
+fn gui_host_disconnects_selected_stream_source_from_canvas_command_surface() {
+    let (config, project_path) = flash_drum_local_rules_config();
+    let mut gui_host = StudioGuiHost::new(&config).expect("expected gui host");
+    gui_host.open_window().expect("expected window open");
+    gui_host
+        .dispatch_ui_command("canvas.accept_focused")
+        .expect("expected flash inlet acceptance");
+    gui_host
+        .dispatch_ui_command("inspector.focus_stream:stream-heated")
+        .expect("expected stream focus dispatch");
+
+    let focused = gui_host.snapshot();
+    let stream_detail = focused
+        .runtime
+        .active_inspector_detail
+        .as_ref()
+        .expect("expected focused stream detail");
+    let source_action = stream_detail
+        .connection_actions
+        .iter()
+        .find(|action| action.command_id == "canvas.disconnect_selected_stream_source")
+        .expect("expected source disconnect action");
+    assert!(
+        source_action.detail.contains("heater-1:outlet"),
+        "expected source endpoint detail, got {:?}",
+        source_action
+    );
+
+    let disconnect = gui_host
+        .dispatch_ui_command("canvas.disconnect_selected_stream_source")
+        .expect("expected selected stream source disconnect dispatch");
+    match disconnect {
+        StudioGuiHostUiCommandDispatchResult::ExecutedCanvasInteraction { result, .. } => {
+            assert_eq!(
+                result.action,
+                StudioGuiCanvasInteractionAction::DisconnectSelectedStreamSource
+            );
+            assert_eq!(
+                canvas_port_stream(&result.canvas, "heater-1", "outlet"),
+                None
+            );
+            assert_eq!(
+                canvas_port_stream(&result.canvas, "flash-1", "inlet"),
+                Some(rf_types::StreamId::new("stream-heated"))
+            );
+        }
+        other => panic!("expected selected stream source disconnect outcome, got {other:?}"),
+    }
+
+    let snapshot = gui_host.snapshot();
+    assert_eq!(snapshot.runtime.workspace_document.stream_count, 4);
+    assert_eq!(
+        snapshot.runtime.active_inspector_target,
+        Some(rf_ui::InspectorTarget::Stream(rf_types::StreamId::new(
+            "stream-heated"
+        )))
+    );
+
+    let _ = fs::remove_file(project_path);
+}
+
+#[test]
+fn gui_host_disconnects_selected_stream_sink_from_canvas_command_surface() {
+    let (config, project_path) = flash_drum_local_rules_config();
+    let mut gui_host = StudioGuiHost::new(&config).expect("expected gui host");
+    gui_host.open_window().expect("expected window open");
+    gui_host
+        .dispatch_ui_command("canvas.accept_focused")
+        .expect("expected flash inlet acceptance");
+    gui_host
+        .dispatch_ui_command("inspector.focus_stream:stream-heated")
+        .expect("expected stream focus dispatch");
+
+    let focused = gui_host.snapshot();
+    let stream_detail = focused
+        .runtime
+        .active_inspector_detail
+        .as_ref()
+        .expect("expected focused stream detail");
+    let sink_action = stream_detail
+        .connection_actions
+        .iter()
+        .find(|action| action.command_id == "canvas.disconnect_selected_stream_sink")
+        .expect("expected sink disconnect action");
+    assert!(
+        sink_action.detail.contains("flash-1:inlet"),
+        "expected sink endpoint detail, got {:?}",
+        sink_action
+    );
+
+    let disconnect = gui_host
+        .dispatch_ui_command("canvas.disconnect_selected_stream_sink")
+        .expect("expected selected stream sink disconnect dispatch");
+    match disconnect {
+        StudioGuiHostUiCommandDispatchResult::ExecutedCanvasInteraction { result, .. } => {
+            assert_eq!(
+                result.action,
+                StudioGuiCanvasInteractionAction::DisconnectSelectedStreamSink
+            );
+            assert_eq!(
+                canvas_port_stream(&result.canvas, "heater-1", "outlet"),
+                Some(rf_types::StreamId::new("stream-heated"))
+            );
+            assert_eq!(canvas_port_stream(&result.canvas, "flash-1", "inlet"), None);
+        }
+        other => panic!("expected selected stream sink disconnect outcome, got {other:?}"),
+    }
+
+    let snapshot = gui_host.snapshot();
+    assert_eq!(snapshot.runtime.workspace_document.stream_count, 4);
+    assert_eq!(
+        snapshot.runtime.active_inspector_target,
+        Some(rf_ui::InspectorTarget::Stream(rf_types::StreamId::new(
+            "stream-heated"
+        )))
+    );
+
+    let _ = fs::remove_file(project_path);
+}
+
+#[test]
+fn gui_host_reconnects_selected_source_only_stream_from_canvas_command_surface() {
+    let (config, project_path) = flash_drum_local_rules_config();
+    let mut gui_host = StudioGuiHost::new(&config).expect("expected gui host");
+    gui_host.open_window().expect("expected window open");
+    gui_host
+        .dispatch_ui_command("inspector.focus_stream:stream-heated")
+        .expect("expected stream focus dispatch");
+
+    let focused = gui_host.snapshot();
+    assert!({
+        let stream_detail = focused.runtime.active_inspector_detail.as_ref();
+        stream_detail.is_some_and(|detail| {
+            detail
+                .connection_actions
+                .iter()
+                .any(|action| action.command_id == "canvas.reconnect_selected_stream")
+        })
+    });
+    let focused_canvas = gui_host.canvas_state();
+    assert_eq!(
+        canvas_port_stream(&focused_canvas, "heater-1", "outlet"),
+        Some(rf_types::StreamId::new("stream-heated"))
+    );
+    assert_eq!(
+        canvas_port_stream(&focused_canvas, "flash-1", "inlet"),
+        None
+    );
+
+    let reconnect = gui_host
+        .dispatch_ui_command("canvas.reconnect_selected_stream")
+        .expect("expected selected stream reconnect dispatch");
+    match reconnect {
+        StudioGuiHostUiCommandDispatchResult::ExecutedCanvasInteraction { result, .. } => {
+            assert_eq!(
+                result.action,
+                StudioGuiCanvasInteractionAction::ReconnectSelectedStream
+            );
+            assert_eq!(
+                canvas_port_stream(&result.canvas, "heater-1", "outlet"),
+                Some(rf_types::StreamId::new("stream-heated"))
+            );
+            assert_eq!(
+                canvas_port_stream(&result.canvas, "flash-1", "inlet"),
+                Some(rf_types::StreamId::new("stream-heated"))
+            );
+        }
+        other => panic!("expected selected stream reconnect outcome, got {other:?}"),
+    }
+
+    let snapshot = gui_host.snapshot();
+    assert_eq!(
+        snapshot.runtime.active_inspector_target,
+        Some(rf_ui::InspectorTarget::Stream(rf_types::StreamId::new(
+            "stream-heated"
+        )))
+    );
+
+    let _ = fs::remove_file(project_path);
+}
+
+#[test]
+fn gui_host_reconnects_selected_sink_only_stream_from_canvas_command_surface() {
+    let (config, project_path) = flash_drum_sink_only_reconnect_config();
+    let mut gui_host = StudioGuiHost::new(&config).expect("expected gui host");
+    gui_host.open_window().expect("expected window open");
+    gui_host
+        .dispatch_ui_command("inspector.focus_stream:stream-heated")
+        .expect("expected stream focus dispatch");
+
+    let focused = gui_host.snapshot();
+    let stream_detail = focused
+        .runtime
+        .active_inspector_detail
+        .as_ref()
+        .expect("expected focused stream detail");
+    let reconnect_action = stream_detail
+        .connection_actions
+        .iter()
+        .find(|action| action.command_id == "canvas.reconnect_selected_stream")
+        .expect("expected reconnect action");
+    assert!(
+        reconnect_action
+            .detail
+            .contains("only available material outlet `heater-1:outlet`"),
+        "expected sink-only reconnect detail, got {:?}",
+        reconnect_action
+    );
+
+    let focused_canvas = gui_host.canvas_state();
+    assert_eq!(
+        canvas_port_stream(&focused_canvas, "heater-1", "outlet"),
+        None
+    );
+    assert_eq!(
+        canvas_port_stream(&focused_canvas, "flash-1", "inlet"),
+        Some(rf_types::StreamId::new("stream-heated"))
+    );
+
+    let reconnect = gui_host
+        .dispatch_ui_command("canvas.reconnect_selected_stream")
+        .expect("expected selected stream reconnect dispatch");
+    match reconnect {
+        StudioGuiHostUiCommandDispatchResult::ExecutedCanvasInteraction { result, .. } => {
+            assert_eq!(
+                result.action,
+                StudioGuiCanvasInteractionAction::ReconnectSelectedStream
+            );
+            assert_eq!(
+                canvas_port_stream(&result.canvas, "heater-1", "outlet"),
+                Some(rf_types::StreamId::new("stream-heated"))
+            );
+            assert_eq!(
+                canvas_port_stream(&result.canvas, "flash-1", "inlet"),
+                Some(rf_types::StreamId::new("stream-heated"))
+            );
+        }
+        other => panic!("expected selected stream reconnect outcome, got {other:?}"),
+    }
+
+    let snapshot = gui_host.snapshot();
+    assert_eq!(
+        snapshot.runtime.active_inspector_target,
+        Some(rf_ui::InspectorTarget::Stream(rf_types::StreamId::new(
+            "stream-heated"
+        )))
+    );
+
+    let _ = fs::remove_file(project_path);
+}
+
+#[test]
+fn gui_host_hides_selected_stream_reconnect_when_unique_target_would_create_cycle() {
+    let (config, project_path) = cycle_reconnect_config();
+    let mut gui_host = StudioGuiHost::new(&config).expect("expected gui host");
+    gui_host.open_window().expect("expected window open");
+    gui_host
+        .dispatch_ui_command("inspector.focus_stream:stream-heated")
+        .expect("expected stream focus dispatch");
+
+    let focused = gui_host.snapshot();
+    let stream_detail = focused
+        .runtime
+        .active_inspector_detail
+        .as_ref()
+        .expect("expected focused stream detail");
+    assert!(
+        !stream_detail
+            .connection_actions
+            .iter()
+            .any(|action| action.command_id == "canvas.reconnect_selected_stream"),
+        "expected cycle-forming unique target to be filtered from inspector reconnect actions"
+    );
+
+    let _ = fs::remove_file(project_path);
+}
+
+#[test]
+fn gui_host_deletes_selected_stream_from_canvas_command_surface() {
+    let (config, project_path) = flash_drum_local_rules_config();
+    let mut gui_host = StudioGuiHost::new(&config).expect("expected gui host");
+    gui_host.open_window().expect("expected window open");
+    gui_host
+        .dispatch_ui_command("canvas.accept_focused")
+        .expect("expected flash inlet acceptance");
+    gui_host
+        .dispatch_ui_command("inspector.focus_stream:stream-heated")
+        .expect("expected stream focus dispatch");
+
+    let delete = gui_host
+        .dispatch_ui_command("canvas.delete_selected_stream")
+        .expect("expected selected stream delete dispatch");
+    match delete {
+        StudioGuiHostUiCommandDispatchResult::ExecutedCanvasInteraction { result, .. } => {
+            assert_eq!(
+                result.action,
+                StudioGuiCanvasInteractionAction::DeleteSelectedStream
+            );
+            assert!(
+                !result
+                    .canvas
+                    .streams
+                    .iter()
+                    .any(|stream| { stream.stream_id == rf_types::StreamId::new("stream-heated") })
+            );
+            assert_eq!(
+                canvas_port_stream(&result.canvas, "heater-1", "outlet"),
+                None
+            );
+            assert_eq!(canvas_port_stream(&result.canvas, "flash-1", "inlet"), None);
+        }
+        other => panic!("expected selected stream delete outcome, got {other:?}"),
+    }
+
+    let snapshot = gui_host.snapshot();
+    assert_eq!(snapshot.runtime.workspace_document.stream_count, 3);
+    assert_eq!(snapshot.runtime.active_inspector_target, None);
+
+    let _ = fs::remove_file(project_path);
+}
+
+fn canvas_port_stream(
+    canvas: &StudioGuiCanvasState,
+    unit_id: &str,
+    port_name: &str,
+) -> Option<rf_types::StreamId> {
+    canvas
+        .units
+        .iter()
+        .find(|unit| unit.unit_id == rf_types::UnitId::new(unit_id))
+        .and_then(|unit| unit.ports.iter().find(|port| port.name == port_name))
+        .and_then(|port| port.stream_id.as_ref().cloned())
 }
 
 #[test]

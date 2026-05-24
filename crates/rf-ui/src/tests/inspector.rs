@@ -133,6 +133,424 @@ fn focusing_missing_inspector_target_keeps_current_focus() {
     );
 }
 
+fn unit_parameter_document() -> FlowsheetDocument {
+    let mut flowsheet = Flowsheet::new("demo");
+    flowsheet
+        .insert_stream(MaterialStreamState::from_tpzf(
+            "stream-feed",
+            "Feed",
+            300.0,
+            120_000.0,
+            5.0,
+            Default::default(),
+        ))
+        .expect("expected feed stream insert");
+    flowsheet
+        .insert_stream(MaterialStreamState::from_tpzf(
+            "stream-heated",
+            "Heated Outlet",
+            345.0,
+            95_000.0,
+            0.0,
+            Default::default(),
+        ))
+        .expect("expected outlet stream insert");
+    flowsheet
+        .insert_unit(UnitNode::new(
+            "heater-1",
+            "Heater",
+            "heater",
+            vec![
+                UnitPort::new(
+                    "inlet",
+                    PortDirection::Inlet,
+                    PortKind::Material,
+                    Some("stream-feed".into()),
+                ),
+                UnitPort::new(
+                    "outlet",
+                    PortDirection::Outlet,
+                    PortKind::Material,
+                    Some("stream-heated".into()),
+                ),
+            ],
+        ))
+        .expect("expected heater insert");
+
+    FlowsheetDocument::new(
+        flowsheet,
+        DocumentMetadata::new("doc-unit-parameter", "Unit Parameter Demo", timestamp(10)),
+    )
+}
+
+fn valve_parameter_document() -> FlowsheetDocument {
+    let mut flowsheet = Flowsheet::new("valve-demo");
+    flowsheet
+        .insert_stream(MaterialStreamState::from_tpzf(
+            "stream-feed",
+            "Feed",
+            315.0,
+            120_000.0,
+            5.0,
+            Default::default(),
+        ))
+        .expect("expected feed stream insert");
+    flowsheet
+        .insert_stream(MaterialStreamState::from_tpzf(
+            "stream-throttled",
+            "Valve Outlet",
+            315.0,
+            90_000.0,
+            0.0,
+            Default::default(),
+        ))
+        .expect("expected outlet stream insert");
+    flowsheet
+        .insert_unit(UnitNode::new(
+            "valve-1",
+            "Valve",
+            "valve",
+            vec![
+                UnitPort::new(
+                    "inlet",
+                    PortDirection::Inlet,
+                    PortKind::Material,
+                    Some("stream-feed".into()),
+                ),
+                UnitPort::new(
+                    "outlet",
+                    PortDirection::Outlet,
+                    PortKind::Material,
+                    Some("stream-throttled".into()),
+                ),
+            ],
+        ))
+        .expect("expected valve insert");
+
+    FlowsheetDocument::new(
+        flowsheet,
+        DocumentMetadata::new("doc-valve-parameter", "Valve Parameter Demo", timestamp(10)),
+    )
+}
+
+fn flash_parameter_document() -> FlowsheetDocument {
+    let mut flowsheet = Flowsheet::new("flash-demo");
+    flowsheet
+        .insert_stream(MaterialStreamState::from_tpzf(
+            "stream-feed",
+            "Feed",
+            345.0,
+            95_000.0,
+            5.0,
+            Default::default(),
+        ))
+        .expect("expected feed stream insert");
+    flowsheet
+        .insert_stream(MaterialStreamState::from_tpzf(
+            "stream-liquid",
+            "Liquid Outlet",
+            345.0,
+            95_000.0,
+            0.0,
+            Default::default(),
+        ))
+        .expect("expected liquid stream insert");
+    flowsheet
+        .insert_stream(MaterialStreamState::from_tpzf(
+            "stream-vapor",
+            "Vapor Outlet",
+            345.0,
+            95_000.0,
+            0.0,
+            Default::default(),
+        ))
+        .expect("expected vapor stream insert");
+    flowsheet
+        .insert_unit(UnitNode::new(
+            "flash-1",
+            "Flash Drum",
+            "flash_drum",
+            vec![
+                UnitPort::new(
+                    "inlet",
+                    PortDirection::Inlet,
+                    PortKind::Material,
+                    Some("stream-feed".into()),
+                ),
+                UnitPort::new(
+                    "liquid",
+                    PortDirection::Outlet,
+                    PortKind::Material,
+                    Some("stream-liquid".into()),
+                ),
+                UnitPort::new(
+                    "vapor",
+                    PortDirection::Outlet,
+                    PortKind::Material,
+                    Some("stream-vapor".into()),
+                ),
+            ],
+        ))
+        .expect("expected flash drum insert");
+
+    FlowsheetDocument::new(
+        flowsheet,
+        DocumentMetadata::new("doc-flash-parameter", "Flash Parameter Demo", timestamp(10)),
+    )
+}
+
+#[test]
+fn updating_unit_inspector_draft_keeps_document_unchanged() {
+    let mut app_state = AppState::new(unit_parameter_document());
+    app_state.focus_inspector_target(crate::InspectorTarget::Unit(UnitId::new("heater-1")));
+
+    let outcome = app_state
+        .update_unit_inspector_draft(
+            &UnitId::new("heater-1"),
+            crate::UnitInspectorDraftField::OutletTemperatureK,
+            "360.0",
+        )
+        .expect("expected unit draft update");
+
+    assert_eq!(outcome.key, "unit:heater-1:outlet_temperature_k");
+    assert!(outcome.is_dirty);
+    assert_eq!(outcome.validation, crate::DraftValidationState::Valid);
+    assert_eq!(app_state.workspace.document.revision, 0);
+    assert_eq!(
+        app_state.workspace.document.flowsheet.units[&UnitId::new("heater-1")]
+            .parameters
+            .outlet_temperature_k,
+        None
+    );
+    assert_eq!(
+        app_state.workspace.document.flowsheet.streams[&StreamId::new("stream-heated")]
+            .temperature_k,
+        345.0
+    );
+}
+
+#[test]
+fn committing_unit_inspector_draft_sets_parameter_and_syncs_outlet_template() {
+    let mut app_state = AppState::new(unit_parameter_document());
+    app_state.focus_inspector_target(crate::InspectorTarget::Unit(UnitId::new("heater-1")));
+    app_state
+        .update_unit_inspector_draft(
+            &UnitId::new("heater-1"),
+            crate::UnitInspectorDraftField::OutletTemperatureK,
+            "360.0",
+        )
+        .expect("expected unit draft update");
+
+    let outcome = app_state
+        .commit_unit_inspector_draft(
+            &UnitId::new("heater-1"),
+            crate::UnitInspectorDraftField::OutletTemperatureK,
+            timestamp(42),
+        )
+        .expect("expected unit draft commit")
+        .expect("expected committed unit draft");
+
+    assert_eq!(outcome.revision, 1);
+    assert_eq!(
+        outcome.command,
+        DocumentCommand::SetUnitParameter {
+            unit_id: UnitId::new("heater-1"),
+            parameter: "outlet_temperature_k".to_string(),
+            value: CommandValue::Number(360.0),
+        }
+    );
+    assert_eq!(
+        app_state.workspace.document.flowsheet.units[&UnitId::new("heater-1")]
+            .parameters
+            .outlet_temperature_k,
+        Some(360.0)
+    );
+    assert_eq!(
+        app_state.workspace.document.flowsheet.streams[&StreamId::new("stream-heated")]
+            .temperature_k,
+        360.0
+    );
+    assert_eq!(
+        app_state.workspace.solve_session.pending_reason,
+        Some(SolvePendingReason::DocumentRevisionAdvanced)
+    );
+    assert!(app_state.workspace.drafts.fields.is_empty());
+}
+
+#[test]
+fn committing_heater_pressure_parameter_syncs_outlet_template() {
+    let mut app_state = AppState::new(unit_parameter_document());
+    app_state.focus_inspector_target(crate::InspectorTarget::Unit(UnitId::new("heater-1")));
+    app_state
+        .update_unit_inspector_draft(
+            &UnitId::new("heater-1"),
+            crate::UnitInspectorDraftField::OutletPressurePa,
+            "90000",
+        )
+        .expect("expected heater pressure draft update");
+
+    let outcome = app_state
+        .commit_unit_inspector_draft(
+            &UnitId::new("heater-1"),
+            crate::UnitInspectorDraftField::OutletPressurePa,
+            timestamp(42),
+        )
+        .expect("expected heater pressure draft commit")
+        .expect("expected committed heater pressure draft");
+
+    assert_eq!(outcome.revision, 1);
+    assert_eq!(
+        outcome.command,
+        DocumentCommand::SetUnitParameter {
+            unit_id: UnitId::new("heater-1"),
+            parameter: "outlet_pressure_pa".to_string(),
+            value: CommandValue::Number(90_000.0),
+        }
+    );
+    assert_eq!(
+        app_state.workspace.document.flowsheet.units[&UnitId::new("heater-1")]
+            .parameters
+            .outlet_pressure_pa,
+        Some(90_000.0)
+    );
+    assert_eq!(
+        app_state.workspace.document.flowsheet.streams[&StreamId::new("stream-heated")].pressure_pa,
+        90_000.0
+    );
+    assert_eq!(
+        app_state.workspace.solve_session.pending_reason,
+        Some(SolvePendingReason::DocumentRevisionAdvanced)
+    );
+    assert!(app_state.workspace.drafts.fields.is_empty());
+}
+
+#[test]
+fn updating_heater_pressure_above_inlet_marks_draft_invalid() {
+    let mut app_state = AppState::new(unit_parameter_document());
+    app_state.focus_inspector_target(crate::InspectorTarget::Unit(UnitId::new("heater-1")));
+
+    let outcome = app_state
+        .update_unit_inspector_draft(
+            &UnitId::new("heater-1"),
+            crate::UnitInspectorDraftField::OutletPressurePa,
+            "130000",
+        )
+        .expect("expected heater pressure draft update");
+
+    assert_eq!(outcome.key, "unit:heater-1:outlet_pressure_pa");
+    assert!(outcome.is_dirty);
+    assert_eq!(outcome.validation, crate::DraftValidationState::Invalid);
+    assert_eq!(app_state.workspace.document.revision, 0);
+    assert_eq!(
+        app_state.workspace.document.flowsheet.units[&UnitId::new("heater-1")]
+            .parameters
+            .outlet_pressure_pa,
+        None
+    );
+    assert_eq!(
+        app_state.workspace.document.flowsheet.streams[&StreamId::new("stream-heated")].pressure_pa,
+        95_000.0
+    );
+
+    let ignored = app_state
+        .commit_unit_inspector_draft(
+            &UnitId::new("heater-1"),
+            crate::UnitInspectorDraftField::OutletPressurePa,
+            timestamp(42),
+        )
+        .expect("expected invalid commit to be ignored");
+
+    assert_eq!(ignored, None);
+    assert_eq!(app_state.workspace.document.revision, 0);
+    assert!(app_state.workspace.drafts.fields.contains_key(&outcome.key));
+}
+
+#[test]
+fn committing_flash_pressure_parameter_syncs_both_outlet_templates() {
+    let mut app_state = AppState::new(flash_parameter_document());
+    app_state.focus_inspector_target(crate::InspectorTarget::Unit(UnitId::new("flash-1")));
+    app_state
+        .update_unit_inspector_draft(
+            &UnitId::new("flash-1"),
+            crate::UnitInspectorDraftField::OutletPressurePa,
+            "88000",
+        )
+        .expect("expected flash pressure draft update");
+
+    let outcome = app_state
+        .commit_unit_inspector_draft(
+            &UnitId::new("flash-1"),
+            crate::UnitInspectorDraftField::OutletPressurePa,
+            timestamp(42),
+        )
+        .expect("expected flash pressure draft commit")
+        .expect("expected committed flash pressure draft");
+
+    assert_eq!(outcome.revision, 1);
+    assert_eq!(
+        outcome.command,
+        DocumentCommand::SetUnitParameter {
+            unit_id: UnitId::new("flash-1"),
+            parameter: "outlet_pressure_pa".to_string(),
+            value: CommandValue::Number(88_000.0),
+        }
+    );
+    assert_eq!(
+        app_state.workspace.document.flowsheet.units[&UnitId::new("flash-1")]
+            .parameters
+            .outlet_pressure_pa,
+        Some(88_000.0)
+    );
+    for stream_id in ["stream-liquid", "stream-vapor"] {
+        assert_eq!(
+            app_state.workspace.document.flowsheet.streams[&StreamId::new(stream_id)].pressure_pa,
+            88_000.0
+        );
+    }
+}
+
+#[test]
+fn updating_valve_parameter_above_inlet_pressure_marks_draft_invalid() {
+    let mut app_state = AppState::new(valve_parameter_document());
+    app_state.focus_inspector_target(crate::InspectorTarget::Unit(UnitId::new("valve-1")));
+
+    let outcome = app_state
+        .update_unit_inspector_draft(
+            &UnitId::new("valve-1"),
+            crate::UnitInspectorDraftField::OutletPressurePa,
+            "130000",
+        )
+        .expect("expected valve draft update");
+
+    assert_eq!(outcome.key, "unit:valve-1:outlet_pressure_pa");
+    assert!(outcome.is_dirty);
+    assert_eq!(outcome.validation, crate::DraftValidationState::Invalid);
+    assert_eq!(app_state.workspace.document.revision, 0);
+    assert_eq!(
+        app_state.workspace.document.flowsheet.units[&UnitId::new("valve-1")]
+            .parameters
+            .outlet_pressure_pa,
+        None
+    );
+    assert_eq!(
+        app_state.workspace.document.flowsheet.streams[&StreamId::new("stream-throttled")]
+            .pressure_pa,
+        90_000.0
+    );
+
+    let ignored = app_state
+        .commit_unit_inspector_draft(
+            &UnitId::new("valve-1"),
+            crate::UnitInspectorDraftField::OutletPressurePa,
+            timestamp(42),
+        )
+        .expect("expected invalid commit to be ignored");
+
+    assert_eq!(ignored, None);
+    assert_eq!(app_state.workspace.document.revision, 0);
+    assert!(app_state.workspace.drafts.fields.contains_key(&outcome.key));
+}
+
 #[test]
 fn updating_stream_inspector_draft_keeps_document_unchanged() {
     let document = inspector_focus_document();

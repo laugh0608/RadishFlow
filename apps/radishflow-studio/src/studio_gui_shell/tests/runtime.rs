@@ -395,6 +395,14 @@ fn assert_rendered_stream_summary_surface(
         stream.stream_id,
         texts
     );
+    assert!(
+        texts
+            .iter()
+            .all(|text| !text.contains("z:") && !text.contains("phases:")),
+        "expected {surface} to avoid raw composition or phase prefixes for `{}`, rendered texts: {:?}",
+        stream.stream_id,
+        texts
+    );
 }
 
 struct UnitSummaryLabels<'a> {
@@ -546,10 +554,9 @@ fn assert_rendered_comparison_surface(
         texts
     );
     assert_eq!(
-        rendered_text_occurrences(texts, &comparison.base_stream_focus_action.label),
+        rendered_text_occurrences(texts, "检查"),
         2,
-        "expected {surface} to render two comparison focus buttons labeled `{}`, rendered texts: {:?}",
-        comparison.base_stream_focus_action.label,
+        "expected {surface} to render two localized comparison focus buttons, rendered texts: {:?}",
         texts
     );
 
@@ -604,6 +611,33 @@ fn assert_rendered_comparison_surface(
     }
 }
 
+#[test]
+fn runtime_result_inspector_stream_selector_omits_repeated_inspect_buttons() {
+    let mut app = ready_app_state(&synced_workspace_config());
+    app.dispatch_ui_command("run_panel.run_manual");
+    let snapshot = app
+        .platform_host
+        .snapshot()
+        .window_model()
+        .runtime
+        .latest_solve_snapshot
+        .expect("expected latest solve snapshot");
+
+    let texts = render_result_inspector_texts(&mut app, &snapshot, "stream-feed");
+
+    assert!(
+        texts.iter().any(|text| text.contains("选择流股")),
+        "expected result inspector to render stream selector, rendered texts: {:?}",
+        texts
+    );
+    assert_eq!(
+        rendered_text_occurrences(&texts, "Inspect"),
+        0,
+        "expected compact stream selector to remove repeated English Inspect buttons, rendered texts: {:?}",
+        texts
+    );
+}
+
 fn assert_rendered_diagnostic_target_actions_surface(
     texts: &[String],
     surface: &str,
@@ -643,6 +677,51 @@ fn assert_rendered_diagnostic_target_actions_surface(
             texts
         );
     }
+}
+
+#[test]
+fn runtime_panel_localizes_recovery_effect_diagnostic_actions() {
+    let mut app = ready_app_state(&synced_workspace_config());
+    let actions = vec![
+        radishflow_studio::StudioGuiWindowDiagnosticTargetActionModel {
+            source_label: "Recovery mutation",
+            target_label: "Document",
+            summary: "Document mutation: Unbound outlet port".to_string(),
+            action: radishflow_studio::StudioGuiWindowCommandActionModel {
+                label: "Create outlet stream".to_string(),
+                hover_text: "create outlet stream".to_string(),
+                command_id: "run_panel.recover_failure".to_string(),
+            },
+        },
+        radishflow_studio::StudioGuiWindowDiagnosticTargetActionModel {
+            source_label: "Recovery focus",
+            target_label: "Inspector",
+            summary: "Inspector focus: Unit parameter invalid".to_string(),
+            action: radishflow_studio::StudioGuiWindowCommandActionModel {
+                label: "Inspect unit parameters".to_string(),
+                hover_text: "inspect unit parameters".to_string(),
+                command_id: "run_panel.recover_failure".to_string(),
+            },
+        },
+    ];
+
+    let texts = render_diagnostic_target_actions_texts(&mut app, &actions);
+
+    assert!(
+        texts
+            .iter()
+            .any(|text| text.contains("修复会修改文档 | 文档 | 修改文档: Unbound outlet port")),
+        "expected mutation recovery action effect to be localized, rendered texts: {:?}",
+        texts
+    );
+    assert!(
+        texts
+            .iter()
+            .any(|text| text
+                .contains("修复会打开检查器 | 检查器 | 打开检查器: Unit parameter invalid")),
+        "expected focus recovery action effect to be localized, rendered texts: {:?}",
+        texts
+    );
 }
 
 fn solve_two_phase_snapshot() -> StudioGuiWindowSolveSnapshotModel {

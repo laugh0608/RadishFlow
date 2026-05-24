@@ -1,6 +1,6 @@
 # Solve Snapshot Results Reference
 
-更新时间：2026-05-12
+更新时间：2026-05-23
 
 ## 目的
 
@@ -12,6 +12,7 @@
 - source stream、非 flash 中间流股、flash outlet、step 输入/输出的正式边界是什么
 - `comparison`、`unit-centric` 和 `diagnostic action` 这些结果消费面分别依赖什么
 - `Results` command section、palette、menu、command list 和 runtime action button 如何共享同一条定位语义
+- 当前快照文本复制 / 导出和 `SolveSnapshot` 的关系
 - 结果消费层不应该做哪些“二次组装”或私有状态分叉
 
 它不是运行指南，也不展开 UI 操作步骤。
@@ -42,6 +43,7 @@
 - stream comparison
 - diagnostic target / focus action
 - `Results` command section 中的 stream / unit result navigation
+- 当前快照文本 formatter，用于复制或导出 `.txt`
 
 ## `SolveSnapshot` 的稳定语义
 
@@ -198,6 +200,18 @@ unit-centric 视图当前只是在同一份快照里按单元重新组织结果�
 - palette、menu、command list 与 runtime action button 都应继续走 host `dispatch_ui_command`，不为各自入口复制一套 target 解析
 - `DiagnosticTargets` section 只汇总这组已存在 target，不另造 shell 私有状态机
 - runtime 最终渲染面的 `Inspect` 标签和 `source | target | summary` 文本只负责展示这组 action，不重写其语义
+
+### text copy / export
+
+当前快照复制和文本导出只消费同一份最新 `SolveSnapshot`，并把已物化的流股摘要、求解步骤和诊断格式化为纯文本。
+
+稳定边界：
+
+- 不创建第二份结果缓存
+- 不重新计算热力学、相平衡、焓值或诊断
+- 不写项目文件或 layout sidecar
+- 不进入 `CommandHistory`
+- 不承担完整结果报表、模板、批量导出或跨快照历史职责
 
 ## `H`、`phase_region` 和 `bubble_dew_window`
 

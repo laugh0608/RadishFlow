@@ -44,10 +44,10 @@ pub use project::{
 };
 pub use studio_layout::{
     STORED_STUDIO_LAYOUT_FILE_KIND, STORED_STUDIO_LAYOUT_FILE_SUFFIX,
-    STORED_STUDIO_LAYOUT_SCHEMA_VERSION, StoredStudioCanvasUnitPosition, StoredStudioLayoutFile,
-    StoredStudioLayoutPanelState, StoredStudioLayoutRegionWeight,
-    StoredStudioLayoutStackGroupState, StoredStudioWindowLayoutEntry,
-    studio_layout_path_for_project,
+    STORED_STUDIO_LAYOUT_SCHEMA_VERSION, StoredStudioCanvasUnitPosition,
+    StoredStudioCanvasViewport, StoredStudioLayoutFile, StoredStudioLayoutPanelState,
+    StoredStudioLayoutRegionWeight, StoredStudioLayoutStackGroupState,
+    StoredStudioWindowLayoutEntry, studio_layout_path_for_project,
 };
 pub use studio_preferences::{
     STORED_STUDIO_PREFERENCES_FILE_KIND, STORED_STUDIO_PREFERENCES_FILE_NAME,
@@ -61,27 +61,29 @@ mod tests {
     use std::path::{Path, PathBuf};
     use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-    use rf_model::{Component, Flowsheet};
-    use rf_types::ComponentId;
+    use rf_model::{
+        Component, Flowsheet, MaterialStreamState, UnitNode, UnitOperationParameters, UnitPort,
+    };
+    use rf_types::{ComponentId, PortDirection, PortKind};
 
     use crate::{
         STORED_PROJECT_FILE_EXTENSION, StoredAuthCacheIndex, StoredAuthCacheLayout,
         StoredCredentialReference, StoredDocumentMetadata, StoredEntitlementCache,
         StoredProjectFile, StoredPropertyPackageManifest, StoredPropertyPackagePayload,
         StoredPropertyPackageRecord, StoredPropertyPackageSource, StoredStudioCanvasUnitPosition,
-        StoredStudioLayoutFile, StoredStudioLayoutPanelState, StoredStudioLayoutRegionWeight,
-        StoredStudioLayoutStackGroupState, StoredStudioPreferencesFile,
-        StoredStudioWindowLayoutEntry, StoredThermoComponent, auth_cache_index_to_pretty_json,
-        parse_auth_cache_index_json, parse_project_file_json, parse_property_package_manifest_json,
-        parse_property_package_payload_json, parse_studio_layout_file_json,
-        parse_studio_preferences_file_json, project_file_to_pretty_json,
-        property_package_manifest_to_pretty_json, property_package_payload_to_pretty_json,
-        read_auth_cache_index, read_project_file, read_property_package_manifest,
-        read_property_package_payload, read_studio_layout_file, read_studio_preferences_file,
-        studio_layout_file_to_pretty_json, studio_layout_path_for_project,
-        studio_preferences_file_to_pretty_json, write_auth_cache_index, write_project_file,
-        write_property_package_manifest, write_property_package_payload, write_studio_layout_file,
-        write_studio_preferences_file,
+        StoredStudioCanvasViewport, StoredStudioLayoutFile, StoredStudioLayoutPanelState,
+        StoredStudioLayoutRegionWeight, StoredStudioLayoutStackGroupState,
+        StoredStudioPreferencesFile, StoredStudioWindowLayoutEntry, StoredThermoComponent,
+        auth_cache_index_to_pretty_json, parse_auth_cache_index_json, parse_project_file_json,
+        parse_property_package_manifest_json, parse_property_package_payload_json,
+        parse_studio_layout_file_json, parse_studio_preferences_file_json,
+        project_file_to_pretty_json, property_package_manifest_to_pretty_json,
+        property_package_payload_to_pretty_json, read_auth_cache_index, read_project_file,
+        read_property_package_manifest, read_property_package_payload, read_studio_layout_file,
+        read_studio_preferences_file, studio_layout_file_to_pretty_json,
+        studio_layout_path_for_project, studio_preferences_file_to_pretty_json,
+        write_auth_cache_index, write_project_file, write_property_package_manifest,
+        write_property_package_payload, write_studio_layout_file, write_studio_preferences_file,
     };
 
     fn timestamp(seconds: u64) -> std::time::SystemTime {
@@ -197,6 +199,72 @@ mod tests {
         assert!(json.contains("\"schemaVersion\": 1"));
         assert!(json.contains("\"documentId\": \"doc-1\""));
         assert!(json.contains("\"createdAt\": \"1970-01-01T00:00:10Z\""));
+    }
+
+    #[test]
+    fn project_file_round_trips_unit_operation_parameters() {
+        let mut flowsheet = Flowsheet::new("unit-parameters");
+        flowsheet
+            .insert_stream(MaterialStreamState::from_tpzf(
+                "stream-feed",
+                "Feed",
+                300.0,
+                700_000.0,
+                1.0,
+                Default::default(),
+            ))
+            .expect("expected feed stream insert");
+        flowsheet
+            .insert_stream(MaterialStreamState::from_tpzf(
+                "stream-heated",
+                "Heated Outlet",
+                360.0,
+                650_000.0,
+                0.0,
+                Default::default(),
+            ))
+            .expect("expected outlet stream insert");
+        flowsheet
+            .insert_unit(UnitNode::new(
+                "heater-1",
+                "Heater",
+                "heater",
+                vec![
+                    UnitPort::new(
+                        "inlet",
+                        PortDirection::Inlet,
+                        PortKind::Material,
+                        Some("stream-feed".into()),
+                    ),
+                    UnitPort::new(
+                        "outlet",
+                        PortDirection::Outlet,
+                        PortKind::Material,
+                        Some("stream-heated".into()),
+                    ),
+                ],
+            ))
+            .expect("expected heater insert");
+        let heater = flowsheet
+            .units
+            .get_mut(&"heater-1".into())
+            .expect("expected heater");
+        heater.parameters = UnitOperationParameters {
+            outlet_temperature_k: Some(360.0),
+            outlet_pressure_pa: None,
+        };
+        let project = StoredProjectFile::new(
+            flowsheet,
+            StoredDocumentMetadata::new("doc-1", "Unit Parameters", timestamp(10)),
+        );
+
+        let json = project_file_to_pretty_json(&project).expect("expected project json");
+        let round_trip = parse_project_file_json(&json).expect("expected project parse");
+
+        assert_eq!(round_trip, project);
+        assert!(json.contains("\"parameters\": {"));
+        assert!(json.contains("\"outlet_temperature_k\": 360.0"));
+        assert!(!json.contains("\"outlet_pressure_pa\""));
     }
 
     #[test]
@@ -317,7 +385,11 @@ mod tests {
             unit_id: "feed-1".to_string(),
             x: 64.0,
             y: 40.0,
-        }]);
+        }])
+        .with_canvas_viewport(Some(StoredStudioCanvasViewport {
+            offset_x: 12.0,
+            offset_y: -8.0,
+        }));
 
         let json = studio_layout_file_to_pretty_json(&layout).expect("expected layout json");
         let round_trip =
@@ -330,6 +402,8 @@ mod tests {
         assert!(json.contains("\"stackGroups\""));
         assert!(json.contains("\"canvasUnitPositions\""));
         assert!(json.contains("\"unitId\": \"feed-1\""));
+        assert!(json.contains("\"canvasViewport\""));
+        assert!(json.contains("\"offsetX\": 12.0"));
     }
 
     #[test]

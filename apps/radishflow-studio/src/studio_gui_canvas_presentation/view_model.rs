@@ -229,13 +229,6 @@ impl StudioGuiCanvasViewModel {
             current_selection.as_ref(),
             state.focused_suggestion_id.as_ref().map(|id| id.as_str()),
         );
-        let legend = canvas_legend(
-            run_status.as_ref(),
-            pending_edit.as_ref(),
-            &object_list,
-            &unit_blocks,
-            &stream_lines,
-        );
         let suggestions = state
             .suggestions
             .iter()
@@ -246,6 +239,7 @@ impl StudioGuiCanvasViewModel {
                 confidence: suggestion.confidence,
                 target_unit_id: suggestion.ghost.target_unit_id.as_str().to_string(),
                 reason: suggestion.reason.clone(),
+                action_label: suggestion_accept_action_label(suggestion),
                 is_focused: state.focused_suggestion_id.as_ref() == Some(&suggestion.id),
                 tab_accept_enabled: suggestion.can_accept_with_tab(),
                 explicit_accept_enabled: suggestion.can_accept_explicitly(),
@@ -255,6 +249,14 @@ impl StudioGuiCanvasViewModel {
                 ),
             })
             .collect::<Vec<_>>();
+        let legend = canvas_legend(
+            run_status.as_ref(),
+            pending_edit.as_ref(),
+            &object_list,
+            &unit_blocks,
+            &stream_lines,
+            &suggestions,
+        );
 
         Self {
             run_status,
@@ -466,7 +468,7 @@ impl StudioGuiCanvasTextView {
         lines.extend(view.suggestions.iter().map(|suggestion| {
             let focus_marker = if suggestion.is_focused { "*" } else { "-" };
             format!(
-                "{focus_marker} {} [{}] source={} confidence={:.2} target={} tab_accept={} explicit_accept={} reason={}",
+                "{focus_marker} {} [{}] source={} confidence={:.2} target={} tab_accept={} explicit_accept={} action={} reason={}",
                 suggestion.id,
                 suggestion.status_label,
                 suggestion.source_label,
@@ -474,6 +476,7 @@ impl StudioGuiCanvasTextView {
                 suggestion.target_unit_id,
                 enabled_label(suggestion.tab_accept_enabled),
                 enabled_label(suggestion.explicit_accept_enabled),
+                suggestion.action_label,
                 suggestion.reason
             )
         }));
@@ -854,6 +857,7 @@ fn canvas_legend(
     object_list: &StudioGuiCanvasObjectListViewModel,
     units: &[StudioGuiCanvasUnitBlockViewModel],
     stream_lines: &[StudioGuiCanvasStreamLineViewModel],
+    suggestions: &[StudioGuiCanvasSuggestionViewModel],
 ) -> StudioGuiCanvasLegendViewModel {
     let mut items = Vec::new();
 
@@ -927,6 +931,25 @@ fn canvas_legend(
             label: "Pending placement".to_string(),
             detail: "unit placement intent is active".to_string(),
             swatch_label: "pending_edit",
+        });
+    }
+
+    if let Some(focused) = suggestions.iter().find(|suggestion| suggestion.is_focused) {
+        items.push(StudioGuiCanvasLegendItemViewModel {
+            kind_label: "Suggestion",
+            label: focused.action_label.to_string(),
+            detail: format!(
+                "focused suggestion for `{}`: {}",
+                focused.target_unit_id, focused.reason
+            ),
+            swatch_label: "suggestion",
+        });
+    } else if !suggestions.is_empty() {
+        items.push(StudioGuiCanvasLegendItemViewModel {
+            kind_label: "Suggestion",
+            label: format!("{} suggestion(s)", suggestions.len()),
+            detail: "canvas suggestions are available but none is currently focused".to_string(),
+            swatch_label: "suggestion",
         });
     }
 
@@ -1199,6 +1222,18 @@ fn suggestion_source_label(source: rf_ui::SuggestionSource) -> &'static str {
     match source {
         rf_ui::SuggestionSource::LocalRules => "local_rules",
         rf_ui::SuggestionSource::RadishMind => "radish_mind",
+    }
+}
+
+fn suggestion_accept_action_label(suggestion: &rf_ui::CanvasSuggestion) -> &'static str {
+    match suggestion.acceptance.as_ref() {
+        Some(rf_ui::CanvasSuggestionAcceptance::MaterialConnection(connection)) => {
+            match &connection.stream {
+                rf_ui::CanvasSuggestedStreamBinding::Existing { .. } => "Connect stream",
+                rf_ui::CanvasSuggestedStreamBinding::Create { .. } => "Create stream",
+            }
+        }
+        None => "Apply suggestion",
     }
 }
 

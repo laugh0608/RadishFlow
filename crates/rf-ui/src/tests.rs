@@ -4,7 +4,7 @@ use rf_flash::PlaceholderTpFlashSolver;
 use rf_model::{Flowsheet, MaterialStreamState, UnitNode, UnitPort};
 use rf_solver::{FlowsheetSolver, SequentialModularSolver, SolverServices};
 use rf_thermo::{AntoineCoefficients, PlaceholderThermoProvider, ThermoComponent, ThermoSystem};
-use rf_types::{ComponentId, PortDirection, PortKind, StreamId, UnitId};
+use rf_types::{ComponentId, DiagnosticPortTarget, PortDirection, PortKind, StreamId, UnitId};
 use rf_unitops::{BuiltinUnitKind, builtin_unit_spec};
 
 use crate::{
@@ -18,8 +18,8 @@ use crate::{
     PropertyPackageManifestList, PropertyPackageSource, RunPanelActionId, RunPanelActionProminence,
     RunPanelPresentation, RunPanelRecoveryWidgetEvent, RunPanelState, RunPanelTextView,
     RunPanelViewModel, RunPanelWidgetEvent, RunPanelWidgetModel, RunStatus, SecureCredentialHandle,
-    SimulationMode, SolvePendingReason, SolveSnapshot, StreamVisualKind, StreamVisualState,
-    SuggestionSource, SuggestionStatus, TokenLease, latest_snapshot,
+    SimulationMode, SolvePendingReason, SolveSnapshot, StreamPortBinding, StreamVisualKind,
+    StreamVisualState, SuggestionSource, SuggestionStatus, TokenLease, latest_snapshot,
 };
 
 fn timestamp(seconds: u64) -> std::time::SystemTime {

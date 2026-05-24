@@ -4,10 +4,10 @@ use std::io::ErrorKind;
 use std::path::Path;
 
 use rf_store::{
-    StoredStudioCanvasUnitPosition, StoredStudioLayoutFile, StoredStudioLayoutPanelState,
-    StoredStudioLayoutRegionWeight, StoredStudioLayoutStackGroupState,
-    StoredStudioWindowLayoutEntry, parse_studio_layout_file_json, studio_layout_path_for_project,
-    write_studio_layout_file,
+    StoredStudioCanvasUnitPosition, StoredStudioCanvasViewport, StoredStudioLayoutFile,
+    StoredStudioLayoutPanelState, StoredStudioLayoutRegionWeight,
+    StoredStudioLayoutStackGroupState, StoredStudioWindowLayoutEntry,
+    parse_studio_layout_file_json, studio_layout_path_for_project, write_studio_layout_file,
 };
 use rf_types::{RfError, RfResult, UnitId};
 use rf_ui::CanvasPoint;
@@ -47,12 +47,20 @@ pub fn load_persisted_canvas_unit_positions(
         .collect()
 }
 
+pub fn load_persisted_canvas_viewport(project_path: &Path) -> RfResult<Option<CanvasPoint>> {
+    let layout_path = studio_layout_path_for_project(project_path);
+    Ok(read_stored_layout_or_empty(&layout_path)?
+        .canvas_viewport
+        .map(|viewport| CanvasPoint::new(viewport.offset_x, viewport.offset_y)))
+}
+
 pub fn save_persisted_window_layouts(
     project_path: &Path,
     layouts: &BTreeMap<String, StudioGuiWindowLayoutPersistenceState>,
 ) -> RfResult<()> {
     let layout_path = studio_layout_path_for_project(project_path);
     let canvas_unit_positions = load_stored_canvas_unit_positions(&layout_path)?;
+    let canvas_viewport = load_stored_canvas_viewport(&layout_path)?;
     let stored = StoredStudioLayoutFile::new(
         layouts
             .values()
@@ -60,7 +68,8 @@ pub fn save_persisted_window_layouts(
             .map(stored_entry_from_persistence)
             .collect(),
     )
-    .with_canvas_unit_positions(canvas_unit_positions);
+    .with_canvas_unit_positions(canvas_unit_positions)
+    .with_canvas_viewport(canvas_viewport);
     write_studio_layout_file(&layout_path, &stored)
 }
 
@@ -70,16 +79,30 @@ pub fn save_persisted_canvas_unit_positions(
 ) -> RfResult<()> {
     let layout_path = studio_layout_path_for_project(project_path);
     let window_entries = load_stored_window_entries(&layout_path)?;
-    let stored = StoredStudioLayoutFile::new(window_entries).with_canvas_unit_positions(
-        positions
-            .iter()
-            .map(|(unit_id, position)| StoredStudioCanvasUnitPosition {
-                unit_id: unit_id.as_str().to_string(),
-                x: position.x,
-                y: position.y,
-            })
-            .collect(),
-    );
+    let canvas_viewport = load_stored_canvas_viewport(&layout_path)?;
+    let stored = StoredStudioLayoutFile::new(window_entries)
+        .with_canvas_unit_positions(
+            positions
+                .iter()
+                .map(|(unit_id, position)| StoredStudioCanvasUnitPosition {
+                    unit_id: unit_id.as_str().to_string(),
+                    x: position.x,
+                    y: position.y,
+                })
+                .collect(),
+        )
+        .with_canvas_viewport(canvas_viewport);
+    write_studio_layout_file(&layout_path, &stored)
+}
+
+pub fn save_persisted_canvas_viewport(project_path: &Path, offset: CanvasPoint) -> RfResult<()> {
+    let layout_path = studio_layout_path_for_project(project_path);
+    let stored = read_stored_layout_or_empty(&layout_path)?.with_canvas_viewport(Some(
+        StoredStudioCanvasViewport {
+            offset_x: offset.x,
+            offset_y: offset.y,
+        },
+    ));
     write_studio_layout_file(&layout_path, &stored)
 }
 
@@ -91,6 +114,10 @@ fn load_stored_canvas_unit_positions(
     layout_path: &Path,
 ) -> RfResult<Vec<StoredStudioCanvasUnitPosition>> {
     Ok(read_stored_layout_or_empty(layout_path)?.canvas_unit_positions)
+}
+
+fn load_stored_canvas_viewport(layout_path: &Path) -> RfResult<Option<StoredStudioCanvasViewport>> {
+    Ok(read_stored_layout_or_empty(layout_path)?.canvas_viewport)
 }
 
 fn read_stored_layout_or_empty(layout_path: &Path) -> RfResult<StoredStudioLayoutFile> {
@@ -256,8 +283,9 @@ mod tests {
     use rf_ui::CanvasPoint;
 
     use super::{
-        load_persisted_canvas_unit_positions, load_persisted_window_layouts,
-        save_persisted_canvas_unit_positions, save_persisted_window_layouts,
+        load_persisted_canvas_unit_positions, load_persisted_canvas_viewport,
+        load_persisted_window_layouts, save_persisted_canvas_unit_positions,
+        save_persisted_canvas_viewport, save_persisted_window_layouts,
     };
 
     #[test]
@@ -358,6 +386,8 @@ mod tests {
         let positions = BTreeMap::from([(UnitId::new("feed-1"), CanvasPoint::new(64.0, 40.0))]);
         save_persisted_canvas_unit_positions(&project_path, &positions)
             .expect("expected canvas position save");
+        save_persisted_canvas_viewport(&project_path, CanvasPoint::new(12.0, -8.0))
+            .expect("expected canvas viewport save");
 
         assert_eq!(
             load_persisted_window_layouts(&project_path).expect("expected window load"),
@@ -367,6 +397,10 @@ mod tests {
             load_persisted_canvas_unit_positions(&project_path)
                 .expect("expected canvas position load"),
             positions
+        );
+        assert_eq!(
+            load_persisted_canvas_viewport(&project_path).expect("expected canvas viewport load"),
+            Some(CanvasPoint::new(12.0, -8.0))
         );
 
         let _ = fs::remove_dir_all(&root);

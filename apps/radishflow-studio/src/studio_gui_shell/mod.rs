@@ -19,7 +19,8 @@ use radishflow_studio::{
     StudioGuiWindowLayoutModel, StudioGuiWindowLayoutMutation, StudioGuiWindowModel,
     StudioGuiWindowStackGroupLayout, StudioGuiWindowToolbarSectionModel, StudioRuntimeConfig,
     StudioRuntimeEntitlementPreflight, StudioRuntimeTrigger, StudioRuntimeUntitledProject,
-    StudioWindowHostId, StudioWindowHostRole,
+    StudioWindowHostId, StudioWindowHostRole, load_persisted_canvas_viewport,
+    save_persisted_canvas_viewport,
 };
 use rf_types::RfResult;
 use rf_ui::{
@@ -84,6 +85,8 @@ struct ReadyAppState {
     platform_timer_executor: EguiPlatformTimerExecutor,
     command_palette: CommandPaletteState,
     project_open: ProjectOpenState,
+    home_selected_recent_project: Option<PathBuf>,
+    home_selected_example_project: Option<PathBuf>,
     result_inspector: ResultInspectorState,
     screen: StudioShellScreen,
     left_sidebar_tab: StudioShellLeftSidebarTab,
@@ -92,6 +95,9 @@ struct ReadyAppState {
     canvas_object_filter: CanvasObjectListFilter,
     canvas_viewport_navigation: CanvasViewportNavigationState,
     canvas_initial_viewport_fit: CanvasInitialViewportFitState,
+    canvas_viewport_fit_to_content_requested: bool,
+    canvas_viewport_drag: Option<CanvasViewportDragState>,
+    canvas_unit_drag: Option<CanvasUnitDragState>,
     canvas_command_result: Option<radishflow_studio::StudioGuiCanvasCommandResultViewModel>,
     project_file_picker: Box<dyn ProjectFilePicker>,
     preferences_path: PathBuf,
@@ -114,6 +120,13 @@ enum StudioShellScreen {
 struct PanelDragSession {
     area_id: StudioGuiWindowAreaId,
     window_id: Option<StudioWindowHostId>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+struct CanvasUnitDragState {
+    unit_id: String,
+    start_position: rf_ui::CanvasPoint,
+    current_position: rf_ui::CanvasPoint,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -142,7 +155,9 @@ struct ProjectOpenState {
     recent_projects: Vec<PathBuf>,
     notice: Option<ProjectOpenNotice>,
     pending_confirmation: Option<ProjectOpenRequest>,
+    pending_blank_project_confirmation: bool,
     pending_save_as_overwrite: Option<PathBuf>,
+    pending_close_window_confirmation: Option<StudioWindowHostId>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -223,6 +238,23 @@ impl CanvasInitialViewportFitState {
     fn reset(&mut self) {
         *self = Self::default();
     }
+
+    fn restore(offset: egui::Vec2) -> Self {
+        Self {
+            pending: false,
+            offset,
+        }
+    }
+
+    fn set_offset(&mut self, offset: egui::Vec2) {
+        self.pending = false;
+        self.offset = offset;
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+struct CanvasViewportDragState {
+    start_offset: egui::Vec2,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -296,6 +328,21 @@ fn studio_shell_blank_runtime_config() -> StudioRuntimeConfig {
     }
 }
 
+fn canvas_initial_viewport_fit_from_config(
+    config: &StudioRuntimeConfig,
+) -> CanvasInitialViewportFitState {
+    if config.untitled_blank_project.is_some() {
+        return CanvasInitialViewportFitState::default();
+    }
+
+    match load_persisted_canvas_viewport(&config.project_path) {
+        Ok(Some(offset)) => {
+            CanvasInitialViewportFitState::restore(egui::vec2(offset.x as f32, offset.y as f32))
+        }
+        Ok(None) | Err(_) => CanvasInitialViewportFitState::default(),
+    }
+}
+
 impl ReadyAppState {
     fn from_config(config: &StudioRuntimeConfig, preferences_path: PathBuf) -> RfResult<Self> {
         Self::from_config_with_project_file_picker(
@@ -335,6 +382,8 @@ impl ReadyAppState {
                 &config.project_path,
                 recent_projects,
             ),
+            home_selected_recent_project: None,
+            home_selected_example_project: None,
             result_inspector: ResultInspectorState::default(),
             screen: StudioShellScreen::default(),
             left_sidebar_tab: StudioShellLeftSidebarTab::default(),
@@ -342,7 +391,10 @@ impl ReadyAppState {
             bottom_drawer_tab: StudioShellBottomDrawerTab::default(),
             canvas_object_filter: CanvasObjectListFilter::default(),
             canvas_viewport_navigation: CanvasViewportNavigationState::default(),
-            canvas_initial_viewport_fit: CanvasInitialViewportFitState::default(),
+            canvas_initial_viewport_fit: canvas_initial_viewport_fit_from_config(config),
+            canvas_viewport_fit_to_content_requested: false,
+            canvas_viewport_drag: None,
+            canvas_unit_drag: None,
             canvas_command_result: None,
             project_file_picker,
             preferences_path,
@@ -615,7 +667,9 @@ impl ProjectOpenState {
             recent_projects: Vec::new(),
             notice: None,
             pending_confirmation: None,
+            pending_blank_project_confirmation: false,
             pending_save_as_overwrite: None,
+            pending_close_window_confirmation: None,
         };
         state.replace_recent_projects(recent_projects);
         state

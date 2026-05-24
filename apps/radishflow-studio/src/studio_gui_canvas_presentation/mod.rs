@@ -293,6 +293,24 @@ impl StudioGuiCanvasCommandResultViewModel {
         }
     }
 
+    pub fn viewport_fit_to_content(offset_x: f32, offset_y: f32) -> Self {
+        let target = viewport_command_target();
+        let title = "Canvas viewport fit to content".to_string();
+        Self {
+            level: rf_ui::RunPanelNoticeLevel::Info,
+            status_label: "viewport_fit",
+            detail: format!(
+                "Canvas viewport offset was reset to sidecar ({offset_x:.1}, {offset_y:.1}) from the current visible content bounds."
+            ),
+            activity_line: format!(
+                "canvas viewport fit to content: offset ({offset_x:.1}, {offset_y:.1})"
+            ),
+            title,
+            target,
+            anchor_label: None,
+        }
+    }
+
     pub fn located(
         target: StudioGuiCanvasCommandTargetViewModel,
         anchor_label: impl Into<String>,
@@ -392,6 +410,16 @@ fn pending_edit_command_target() -> StudioGuiCanvasCommandTargetViewModel {
     }
 }
 
+fn viewport_command_target() -> StudioGuiCanvasCommandTargetViewModel {
+    StudioGuiCanvasCommandTargetViewModel {
+        kind_label: "Viewport",
+        target_id: "canvas_viewport".to_string(),
+        label: "Canvas viewport".to_string(),
+        viewport_anchor_label: None,
+        command_id: "canvas.fit_to_content".to_string(),
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StudioGuiCanvasObjectListItemViewModel {
     pub kind_label: &'static str,
@@ -444,6 +472,7 @@ pub struct StudioGuiCanvasSuggestionViewModel {
     pub confidence: f32,
     pub target_unit_id: String,
     pub reason: String,
+    pub action_label: &'static str,
     pub is_focused: bool,
     pub tab_accept_enabled: bool,
     pub explicit_accept_enabled: bool,

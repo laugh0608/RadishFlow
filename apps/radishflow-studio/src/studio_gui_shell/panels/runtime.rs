@@ -65,7 +65,15 @@ impl ReadyAppState {
                 self.locale
                     .snapshot_identity(&snapshot.snapshot_id, snapshot.sequence),
             );
-            render_wrapped_label(ui, &snapshot.summary);
+            render_wrapped_label(
+                ui,
+                self.locale.solve_snapshot_primary_summary(
+                    window.runtime.workspace_document.unit_count,
+                    snapshot.diagnostic_count,
+                    snapshot.stream_count,
+                ),
+            );
+            self.render_solve_snapshot_transfer_actions(ui, snapshot);
             ui.separator();
             if snapshot.streams.is_empty() {
                 ui.small(self.locale.text(ShellText::NoStreamResults));
@@ -116,6 +124,27 @@ impl ReadyAppState {
         } else {
             ui.small(self.locale.text(ShellText::NoVisibleSolveResults));
         }
+    }
+
+    fn render_solve_snapshot_transfer_actions(
+        &mut self,
+        ui: &mut egui::Ui,
+        snapshot: &radishflow_studio::StudioGuiWindowSolveSnapshotModel,
+    ) {
+        ui.horizontal_wrapped(|ui| {
+            if ui
+                .small_button(self.locale.text(ShellText::CopySnapshot))
+                .clicked()
+            {
+                self.copy_solve_snapshot_to_clipboard(ui.ctx(), snapshot);
+            }
+            if ui
+                .small_button(self.locale.text(ShellText::ExportSnapshot))
+                .clicked()
+            {
+                self.export_solve_snapshot_from_picker(snapshot);
+            }
+        });
     }
 
     pub(in crate::studio_gui_shell) fn render_runtime_run_tab(
@@ -173,8 +202,17 @@ impl ReadyAppState {
             }
         });
         ui.add_space(6.0);
-        if let Some(summary) = run_panel_view.latest_snapshot_summary.as_ref() {
-            render_wrapped_label(ui, summary);
+        if let Some(snapshot) = window.runtime.latest_solve_snapshot.as_ref() {
+            render_wrapped_label(
+                ui,
+                self.locale.solve_snapshot_primary_summary(
+                    window.runtime.workspace_document.unit_count,
+                    snapshot.diagnostic_count,
+                    snapshot.stream_count,
+                ),
+            );
+        } else if let Some(summary) = run_panel_view.latest_snapshot_summary.as_ref() {
+            render_wrapped_label(ui, self.locale.runtime_label(summary).as_ref());
         } else {
             ui.small(self.locale.text(ShellText::NoSolveSnapshot));
         }
@@ -479,8 +517,17 @@ impl ReadyAppState {
                 }
             });
             ui.add_space(6.0);
-            if let Some(summary) = run_panel_view.latest_snapshot_summary.as_ref() {
-                render_wrapped_label(ui, summary);
+            if let Some(snapshot) = window.runtime.latest_solve_snapshot.as_ref() {
+                render_wrapped_label(
+                    ui,
+                    self.locale.solve_snapshot_primary_summary(
+                        window.runtime.workspace_document.unit_count,
+                        snapshot.diagnostic_count,
+                        snapshot.stream_count,
+                    ),
+                );
+            } else if let Some(summary) = run_panel_view.latest_snapshot_summary.as_ref() {
+                render_wrapped_label(ui, self.locale.runtime_label(summary).as_ref());
             } else {
                 ui.small(self.locale.text(ShellText::NoSolveSnapshot));
             }
@@ -649,6 +696,50 @@ impl ReadyAppState {
                     }
                 });
             }
+            if self
+                .project_open
+                .pending_close_window_confirmation
+                .is_some()
+            {
+                ui.horizontal_wrapped(|ui| {
+                    if ui
+                        .button(self.locale.text(ShellText::SaveAndCloseProject))
+                        .clicked()
+                        && self.save_pending_close_window()
+                    {
+                        ui.ctx().send_viewport_cmd(egui::ViewportCommand::Close);
+                    }
+                    if ui
+                        .button(self.locale.text(ShellText::DiscardAndCloseProject))
+                        .clicked()
+                        && self.confirm_pending_close_window()
+                    {
+                        ui.ctx().send_viewport_cmd(egui::ViewportCommand::Close);
+                    }
+                    if ui
+                        .button(self.locale.text(ShellText::CancelCloseProject))
+                        .clicked()
+                    {
+                        self.cancel_pending_close_window();
+                    }
+                });
+            }
+            if self.project_open.pending_blank_project_confirmation {
+                ui.horizontal_wrapped(|ui| {
+                    if ui
+                        .button(self.locale.text(ShellText::ContinueNewBlankProject))
+                        .clicked()
+                    {
+                        self.confirm_pending_blank_project();
+                    }
+                    if ui
+                        .button(self.locale.text(ShellText::CancelNewBlankProject))
+                        .clicked()
+                    {
+                        self.cancel_pending_blank_project();
+                    }
+                });
+            }
             if self.project_open.pending_save_as_overwrite.is_some() {
                 ui.horizontal_wrapped(|ui| {
                     if ui
@@ -744,7 +835,15 @@ impl ReadyAppState {
                     self.locale
                         .snapshot_identity(&snapshot.snapshot_id, snapshot.sequence),
                 );
-                render_wrapped_label(ui, &snapshot.summary);
+                render_wrapped_label(
+                    ui,
+                    self.locale.solve_snapshot_primary_summary(
+                        window.runtime.workspace_document.unit_count,
+                        snapshot.diagnostic_count,
+                        snapshot.stream_count,
+                    ),
+                );
+                self.render_solve_snapshot_transfer_actions(ui, snapshot);
                 ui.separator();
                 if snapshot.streams.is_empty() {
                     ui.small(self.locale.text(ShellText::NoStreamResults));
@@ -1124,8 +1223,19 @@ impl ReadyAppState {
                 });
         });
 
-        render_wrapped_small(ui, &stream.composition_text);
-        render_wrapped_small(ui, &stream.phase_text);
+        ui.small(egui::RichText::new(self.locale.text(ShellText::StreamSummary)).strong());
+        egui::Grid::new(format!("stream-context-summary:{}", stream.stream_id))
+            .num_columns(2)
+            .striped(true)
+            .show(ui, |ui| {
+                ui.small(self.locale.text(ShellText::OverallComposition));
+                render_wrapped_small(ui, &stream.composition_text);
+                ui.end_row();
+
+                ui.small(self.locale.text(ShellText::PhaseResults));
+                render_wrapped_small(ui, &stream.phase_text);
+                ui.end_row();
+            });
         ui.add_space(8.0);
     }
 
@@ -1269,6 +1379,22 @@ impl ReadyAppState {
                 });
         }
 
+        if !detail.connection_actions.is_empty() {
+            ui.add_space(4.0);
+            ui.horizontal_wrapped(|ui| {
+                ui.small(egui::RichText::new("Connections").strong());
+                for action in &detail.connection_actions {
+                    if ui
+                        .small_button(self.locale.runtime_label(&action.label).as_ref())
+                        .on_hover_text(self.locale.runtime_label(&action.hover_text).as_ref())
+                        .clicked()
+                    {
+                        self.dispatch_ui_command(&action.command_id);
+                    }
+                }
+            });
+        }
+
         if !detail.property_fields.is_empty() {
             ui.add_space(4.0);
             ui.small(
@@ -1381,7 +1507,12 @@ impl ReadyAppState {
                     );
                     ui.end_row();
                     for field in &detail.property_fields {
-                        render_wrapped_small(ui, &field.label);
+                        ui.vertical(|ui| {
+                            render_wrapped_small(ui, &field.label);
+                            if let Some(constraint_text) = field.constraint_text.as_ref() {
+                                ui.small(egui::RichText::new(constraint_text).weak());
+                            }
+                        });
                         render_wrapped_small(
                             ui,
                             self.locale.runtime_label(field.value_kind_label).as_ref(),
@@ -1615,7 +1746,6 @@ impl ReadyAppState {
                     self.result_inspector
                         .select_stream(&inspector.snapshot_id, option.stream_id.clone());
                 }
-                let _ = self.render_small_command_action(ui, &option.focus_action);
             }
         });
         if inspector.has_stale_selection {
@@ -1648,7 +1778,6 @@ impl ReadyAppState {
                             self.result_inspector
                                 .select_unit(&inspector.snapshot_id, option.unit_id.clone());
                         }
-                        let _ = self.render_small_command_action(ui, &option.focus_action);
                     }
                 });
                 if inspector.has_stale_unit_selection {
@@ -1721,7 +1850,6 @@ impl ReadyAppState {
                                 option.stream_id.clone(),
                             );
                         }
-                        let _ = self.render_small_command_action(ui, &option.focus_action);
                     }
                 });
                 if inspector.has_stale_comparison {
@@ -1977,9 +2105,14 @@ impl ReadyAppState {
         ui.horizontal_wrapped(|ui| {
             ui.small(self.locale.text(ShellText::DiagnosticTargets));
             for action in actions {
+                let source_label = self.localized_diagnostic_action_label(action.source_label);
+                let target_label = self.localized_diagnostic_action_label(action.target_label);
+                let summary = self.localized_diagnostic_action_summary(&action.summary);
                 ui.small(format!(
                     "{} | {} | {}",
-                    action.source_label, action.target_label, action.summary
+                    source_label.as_ref(),
+                    target_label.as_ref(),
+                    summary.as_ref()
                 ));
                 let _ = self.render_small_command_action(ui, &action.action);
             }
@@ -2056,12 +2189,54 @@ impl ReadyAppState {
         ui: &mut egui::Ui,
         action: &radishflow_studio::StudioGuiWindowCommandActionModel,
     ) -> egui::Response {
+        let label = self.localized_command_action_label(action);
         let response = ui
-            .small_button(&action.label)
+            .small_button(label.as_ref())
             .on_hover_text(&action.hover_text);
         if response.clicked() {
             self.dispatch_ui_command(&action.command_id);
         }
         response
+    }
+
+    fn localized_command_action_label<'a>(
+        &'a self,
+        action: &'a radishflow_studio::StudioGuiWindowCommandActionModel,
+    ) -> std::borrow::Cow<'a, str> {
+        match self.locale {
+            StudioShellLocale::ZhCn if action.label == "Inspect" => {
+                std::borrow::Cow::Borrowed(self.locale.text(ShellText::InspectObject))
+            }
+            _ => std::borrow::Cow::Borrowed(action.label.as_str()),
+        }
+    }
+
+    fn localized_diagnostic_action_label<'a>(&self, label: &'a str) -> std::borrow::Cow<'a, str> {
+        match self.locale {
+            StudioShellLocale::ZhCn if label == "Recovery mutation" => {
+                std::borrow::Cow::Borrowed("修复会修改文档")
+            }
+            StudioShellLocale::ZhCn if label == "Recovery focus" => {
+                std::borrow::Cow::Borrowed("修复会打开检查器")
+            }
+            StudioShellLocale::ZhCn if label == "Document" => std::borrow::Cow::Borrowed("文档"),
+            StudioShellLocale::ZhCn if label == "Inspector" => std::borrow::Cow::Borrowed("检查器"),
+            _ => std::borrow::Cow::Borrowed(label),
+        }
+    }
+
+    fn localized_diagnostic_action_summary<'a>(
+        &self,
+        summary: &'a str,
+    ) -> std::borrow::Cow<'a, str> {
+        if matches!(self.locale, StudioShellLocale::ZhCn) {
+            if let Some(rest) = summary.strip_prefix("Document mutation: ") {
+                return std::borrow::Cow::Owned(format!("修改文档: {rest}"));
+            }
+            if let Some(rest) = summary.strip_prefix("Inspector focus: ") {
+                return std::borrow::Cow::Owned(format!("打开检查器: {rest}"));
+            }
+        }
+        std::borrow::Cow::Borrowed(summary)
     }
 }

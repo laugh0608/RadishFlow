@@ -1,6 +1,6 @@
 # MVP Scope
 
-更新时间：2026-05-14
+更新时间：2026-05-22
 
 ## MVP 目标
 
@@ -72,7 +72,7 @@ App 与交互层当前进一步冻结以下口径：
 - `CommandHistory` 只记录语义化文档命令，运行控制和文档生命周期动作不进入撤回栈
 - `SolveSessionState` 必须绑定当前观察的文档修订号，`SolveSnapshot` 由工作区持有有界历史窗口
 - Studio 当前 GUI-facing 宿主边界已形成 `StudioGuiHost + StudioGuiDriver + StudioGuiSnapshot + StudioGuiWindowModel + StudioGuiWindowLayoutState` 这一条正式契约，不再要求 `main.rs` 或未来真实 GUI 手工拼装窗口摘要
-- Studio 当前 GUI 命令面也已进一步收口为 `StudioGuiCommandRegistry + StudioGuiShortcutRouter + dispatch_ui_command(command_id)` 这一条统一入口，至少覆盖 run panel 与 canvas suggestion 两类命令；未来真实 GUI 不应再长期保留 widget 私有 typed action 与正式 command id 并行的双轨接线
+- Studio 当前 GUI 命令面也已进一步收口为 `StudioGuiCommandRegistry + StudioGuiShortcutRouter + dispatch_ui_command(command_id)` 这一条统一入口，至少覆盖 run panel、canvas suggestion、离散 layout nudge 与选中流股恢复命令；未来真实 GUI 不应再长期保留 widget 私有 typed action 与正式 command id 并行的双轨接线
 - Studio 当前窗口布局状态已冻结为独立 UI 状态面，覆盖 `panel dock_region/stack_group/visibility/collapsed/order`、stack active tab、region 内 stack placement、`center_area`、`region_weights`、多窗口 `layout scope` 与 GUI-facing `drop target` 摘要推导
 - Studio 当前也已把 tab 展示角色冻结到 `StudioGuiWindowPanelLayout`，显式区分 `Standalone / ActiveTab / InactiveTab`，不让真实 GUI 再自行猜测 tab 化 panel 的展示模式
 - Studio 当前也已把 tab strip 交互纳入正式 mutation，至少覆盖 active tab 切换、前后循环、stack 内重排和 unstack，不再把这几类行为留给 GUI 框架私有状态
@@ -104,16 +104,17 @@ App 与交互层当前进一步冻结以下口径：
 - 当前最小桌面入口 `run_studio_bootstrap` 也已改为默认走 `StudioBootstrapTrigger::WidgetPrimaryAction`，并向入口层输出 `RunPanelWidgetModel`，确保“桌面触发点 -> UI 组件动作 -> Studio driver / 控制动作 -> UI 组件 DTO”边界在样例入口里就成立
 - 当前 `egui` Studio 壳已开始消费上述运行入口与 `SolveSnapshot` presentation：Runtime 面板可切换仓库内置正向示例项目、触发运行、按 summary / overall composition / phases 结构化显示流股结果，并展示求解步骤、诊断、日志；这一路径继续保持 `StudioAppFacade -> WorkspaceRunCommand -> WorkspaceSolveService -> solver_bridge` 边界不被绕过
 - 当前 `egui` Studio 壳又已补出项目打开入口：用户可通过路径输入或 Windows 原生文件选择器打开现有 `*.rfproj.json`，打开会重建当前 Studio runtime，打开失败会保留当前工作区并显示错误反馈；内置示例切换复用这条打开流程；若当前文档存在未保存修订，则先进入显式确认状态，避免静默丢弃当前上下文；打开成功后会记录到 shell 级最近项目列表并写入独立 Studio preferences 文件，重启后会恢复该列表；点击最近项目继续复用相同打开流程与未保存确认保护
-- 当前 `egui` Studio 壳又已补出最小 Result Inspector、失败结果 presentation、诊断目标定位命令、活动 Inspector 详情、通用 action DTO、Stream Inspector 字段级 presentation、字段 draft update / 单字段 commit / 多字段批量 commit driver，以及基础 `edit.undo / edit.redo` 文档历史命令；Stream Inspector 字段当前覆盖 `name / temperature_k / pressure_pa / total_molar_flow_mol_s` 与已有 `overall_mole_fractions` 组分条目，并已提供从 flowsheet 已定义组件中显式添加缺失组成条目、删除非最后组成条目的受控 command surface；活动 Inspector 当前也会在选中已运行单元时显示最新 `SolveSnapshot` 中的单元执行状态、step 序号、summary、输入流股和产出流股跳转；求解步骤 presentation 当前也统一携带单元、输入流股与产出流股 command action，供 Runtime、Active Inspector 和 Result Inspector 复用；失败结果 presentation 当前也携带 recovery action 与 recovery target action，分别复用 `run_panel.recover_failure` 与 `InspectorTarget` command；Active Inspector 的 unit port 列表当前也可在诊断修订号匹配当前文档时显示对应 port 的只读 attention 摘要。所有入口均通过正式 command / driver / runtime 边界执行，不由 shell 直接写 `FlowsheetDocument`
-- Result Inspector 当前只消费当前 `SolveSnapshot` 中已经 materialized 的结果：stream result summary 可显示 overall molar enthalpy，stream comparison 可比较 summary / composition / phase rows，unit-centric 视图可审阅最新 step 的输入/产出流股、关联诊断和 Inspector focus action。selector summary 与 comparison 正文定位 action 都只复用既有 `inspector.focus_stream:*` / `inspector.focus_unit:*` command，不进入完整结果表格、导出、报表或跨快照历史。
+- 当前 `egui` Studio 壳又已补出最小 Result Inspector、失败结果 presentation、诊断目标定位命令、活动 Inspector 详情、通用 action DTO、Stream Inspector 字段级 presentation、字段 draft update / 单字段 commit / 多字段批量 commit driver，以及基础 `edit.undo / edit.redo` 文档历史命令；Stream Inspector 字段当前覆盖 `name / temperature_k / pressure_pa / total_molar_flow_mol_s` 与已有 `overall_mole_fractions` 组分条目，并已提供从 flowsheet 已定义组件中显式添加缺失组成条目、删除非最后组成条目的受控 command surface；Unit Inspector 当前覆盖 Heater/Cooler outlet temperature / outlet pressure、Valve outlet pressure 与 Flash Drum flash pressure 这些关键 SI 参数，字段携带 SI 单位和约束提示，Heater / Cooler / Valve outlet pressure 高于已连接 inlet pressure 时停留在 invalid draft；提交走 `DocumentCommand::SetUnitParameter` 并同步对应 outlet stream 模板，Flash Drum 会同步 liquid / vapor 两个出口模板；若无效参数已进入文档，运行会以 `solver.step.parameter` 诊断指向相关 unit / port / stream；活动 Inspector 当前也会在选中已运行单元时显示最新 `SolveSnapshot` 中的单元执行状态、step 序号、summary、输入流股和产出流股跳转；求解步骤 presentation 当前也统一携带单元、输入流股与产出流股 command action，供 Runtime、Active Inspector 和 Result Inspector 复用；失败结果 presentation 当前也携带 recovery action 与 recovery target action，分别复用 `run_panel.recover_failure` 与 `InspectorTarget` command；Active Inspector 的 unit port 列表当前也可在诊断修订号匹配当前文档时显示对应 port 的只读 attention 摘要。所有入口均通过正式 command / driver / runtime 边界执行，不由 shell 直接写 `FlowsheetDocument`
+- 当前 Canvas / Inspector 已允许受控恢复已存在 material stream：`Disconnect stream` 解除该流股在所有材料端口上的绑定并保留流股规格，`Delete stream` 先解除材料端口绑定再删除该流股；二者均通过正式 `DocumentCommand` 与 undo history。下一阶段允许设计 selected stream 的受控重连，但必须先补正式 command、validation、冲突语义和 undo；不得直接扩成自由连线编辑器、自动布线或完整拖拽布局编辑器。
+- Result Inspector 当前只消费当前 `SolveSnapshot` 中已经 materialized 的结果：stream result summary 可显示 overall molar enthalpy，stream comparison 可比较 summary / composition / phase rows，unit-centric 视图可审阅最新 step 的输入/产出流股、关联诊断和 Inspector focus action。下一阶段允许补当前 snapshot 的轻量结果复制、摘要导出或更清晰表格审阅；不得扩成跨快照报表、模板报表、打印系统或完整导出体系。
 - 当前画布编辑前置状态先冻结为 `CanvasEditIntent` transient state：`begin_place_unit` 只表达“准备放置某类单元”的意图，不写入 `FlowsheetDocument`、不递增 revision、也不进入 `CommandHistory`；`commit_canvas_pending_edit_at(CanvasPoint)` 会把当前 `PlaceUnit` 意图提交为带 canonical ports 的 `DocumentCommand::CreateUnit`，并把动态落点写入项目同目录 `<project>.rfstudio-layout.json` sidecar 作为最小 Canvas layout state；文档语义变化会清理 pending edit。GUI 侧当前已通过 `StudioGuiCanvasState / StudioGuiCanvasPresentation / canvas.cancel_pending_edit` 展示和取消当前意图，并通过 `StudioGuiCanvasPlaceUnitPaletteViewModel` 暴露 `Feed / Mixer / Heater / Cooler / Valve / Flash Drum` 六类内建单元的 begin-place command；`egui` Canvas 面板只消费这份 palette 来发起 pending edit，点击落点仍复用同一条提交路径。提交成功后会经由新单元的 object command target / focus anchor 生成 `StudioGuiCanvasCommandResultViewModel`，统一驱动新建提示、Inspector 焦点、Canvas 一次性定位、GUI activity 与命令面只读反馈；无 pending edit、unsupported unit kind、dispatch 失败或 anchor 过期也使用同一套 warning / error result。当前又补出 `canvas.move_selected_unit.left/right/up/down`，把离散 layout nudge 前推为正式 widget action / command surface；宿主仍只更新 `<project>.rfstudio-layout.json` 中的单元坐标，缺少 sidecar 坐标时先按当前 transient grid slot pin 出初始坐标，再执行一步移动。它不写项目文档、不递增 revision、不进入 `CommandHistory`。这仍不代表已经实现完整画布单元创建器或拖拽布局编辑器
 - 当前 `egui` Studio 壳又已补出 Canvas 最小可见与只读扫读层：已有 unit 会优先按 sidecar 中的 placement 坐标投影为单元块，缺失坐标时回退临时网格；已有 material stream 绑定会投影为物流线，活动 Inspector 目标会驱动画布 selection、focus callout 和 viewport focus anchor；对象列表会统一展示 unit / stream，并可按 `All / Attention / Units / Streams` 临时筛选；material port marker、端口 hover、运行/诊断 badge、状态 legend 与 Canvas attention summary 只帮助扫读已有绑定和诊断目标；最近一次 Canvas command result 会以只读 command-surface 摘要进入命令列表 / 命令面板，但不是可执行命令、不参与 Enter 选择、不进入项目状态或跨会话历史。上述能力不引入端口点击编辑、连线创建、拖拽布局或项目 schema 扩张
-- 当前 Canvas 本地建模建议已从只读扫读继续补到最短可求解路径：`Feed -> Flash Drum`、`Feed -> Heater/Cooler/Valve -> Flash Drum` 与 `Feed + Feed -> Mixer -> Flash Drum` 都可通过 placement palette、local Canvas suggestions、`DocumentCommand::ConnectPorts` 与 `run_panel.run_manual` 走到求解收敛。suggestion acceptance 当前只校验本次 source/sink/stream 的局部一致性，不要求半成品 flowsheet 立即通过完整连接校验；完整性错误继续由运行诊断与 recovery path 承担。`Mixer` 入口建议只在可连接 source-only stream 数量与未绑定 inlet 数量一致时生成，避免多来源场景静默猜测入口；GUI 侧当前把可写回 suggestion 显示为明确的 `连接` / `Connect` 动作，使用户不必依赖当前 focused suggestion 也能显式选择要接受的连接或 outlet stream 创建
+- 当前 Canvas 本地建模建议已从只读扫读继续补到最短可求解路径：`Feed -> Flash Drum`、`Feed -> Heater/Cooler/Valve -> Flash Drum` 与 `Feed + Feed -> Mixer -> Flash Drum` 都可通过 placement palette、local Canvas suggestions、正式 `DocumentCommand` 与 `run_panel.run_manual` 走到求解收敛。suggestion acceptance 当前只校验本次 source/sink/stream 的局部一致性，不要求半成品 flowsheet 立即通过完整连接校验；完整性错误继续由运行诊断与 recovery path 承担。`Mixer` 入口建议只在可连接 source-only stream 数量与未绑定 inlet 数量一致时生成，避免多来源场景静默猜测入口；`Heater / Cooler / Valve`、`Mixer` 和 `Flash Drum` 的 outlet stream 创建建议必须等必要 inlet 已绑定后才出现，避免无自由连线阶段先制造额外 source-only stream；GUI 侧当前按 acceptance payload 把可写回 suggestion 显示为明确的 `连接流股` / `Connect stream` 或 `创建流股` / `Create stream` 动作，使用户不必依赖当前 focused suggestion 也能显式选择要接受的连接或 outlet stream 创建
 - 当前 `egui` Studio 壳又已补出 `file.save` 与 `Save As` 最小项目持久化闭环：保存命令经由 `StudioRuntimeTrigger::DocumentLifecycle` 写回当前 `*.rfproj.json`，成功后刷新 `last_saved_revision / has_unsaved_changes`；未命名空白项目首次 `Save` 会进入 Windows 原生保存选择器；顶部 `Save As` 可显式写入新路径，并更新当前项目路径、项目路径输入框与最近项目列表；若 `Save As` 目标文件已存在且不是当前项目路径，shell 先进入显式覆盖确认，确认后才写入，取消则保留当前工作区和目标文件
 - 当前 `rf-store::write_project_file` 已改为同目录 staged write：先写临时 sibling 并同步，再替换正式项目文件；Unix 类平台使用 `rename` 替换语义，Windows 当前用临时备份做受控替换和失败回滚，避免半写入 JSON 直接污染项目文件
 - 当前 Studio 字段编辑快捷键策略已冻结为最小安全闭环：`Ctrl+S` 即使在文本输入焦点下也触发 `file.save`；`Ctrl+Z / Ctrl+Y` 在普通焦点下触发 `edit.undo / edit.redo`，但文本输入焦点下保留给输入框自身的编辑撤销/重做；Stream Inspector 输入框的 `Enter` 只提交当前字段，不隐式触发 `Apply all`
 - 中文/英文切换当前只属于 GUI shell 偏好，不写入 `DocumentMetadata`、`UserPreferences` 或项目文件；系统 CJK 字体 fallback 也只在应用启动时配置，不新增仓库字体资产
-- 当前仍不把 UI 范围扩张到完整视觉设计、结果导出、跨会话历史持久化或完整画布编辑体验；当前原生文件选择器只覆盖 Windows 打开与另存为，不承诺跨平台文件工作流；当前最近项目持久化只覆盖 shell 级 MRU 路径列表，不等同于完整应用偏好系统；当前 Inspector、undo/redo、保存、快捷键、覆盖确认、画布 pending edit、多单元 palette 放置入口、最小单元创建提交、本地连接/出口建议、只读单元/连线/端口/诊断可视化、viewport/focus anchor、对象列表筛选、Canvas command result / command-surface 反馈、单元最新执行结果审阅、求解步骤跳转、当前快照内 Result Inspector 流股/单元/相结果审阅、失败摘要动作、Canvas / Active Inspector 只读 port attention 摘要与 sidecar layout nudge 仍是最小可操作边界，后续更完整画布编辑或结果报表仍应先补正式 presentation / command / state 边界再进入真实 UI
+- 当前不再把“首版 demo 前硬化期”的保守限制作为阻止主线功能推进的理由；允许按专题推进 UI 信息架构、sidecar 级单元拖动、sidecar 级 viewport 记忆和轻量结果审阅增强。当前原生文件选择器只覆盖 Windows 打开与另存为，不承诺跨平台文件工作流；最近项目持久化只覆盖 shell 级 MRU 路径列表，不等同于完整应用偏好系统。后续更完整画布编辑或结果报表仍应先补正式 presentation / command / state 边界再进入真实 UI。
 
 流程图交互增强方向当前补充冻结以下边界：
 
@@ -158,6 +159,8 @@ App 与交互层当前进一步冻结以下口径：
 截至 2026-04-27，CAPE-OPEN / PME 验证基线已阶段性冻结，仓库地基也已足以支撑短线主线回到 Rust Studio 的最小可操作工作台闭环；后续应继续保持边界清晰和验证稳定，但不再把“地基建设”作为阻止 Studio 可见闭环推进的理由。
 
 截至 2026-05-12，MVP 第一阶段的 M1-M5 最小线均已形成可验证基线：Rust Core 能跑通最小稳态流程，Rust Studio 已具备最小可操作工作台闭环，`rf-ffi` 与 `.NET 10` CAPE-OPEN / PME 路径也已有回归与人工验证记录。当前优先目标应从继续补细粒度消费面测试，切换为 MVP α 验收与发布硬化；后续只修验收路径暴露的真实 blocker，不再把 near-boundary、command surface 或 runtime click 细节扩成开放式任务池。
+
+截至 2026-05-23，首版 demo 前硬化期和 `v26.5.1-dev` 内部验收节点已收口。当前优先目标切换为受控扩展高频建模能力：每轮只放开一个明确能力，并要求它走正式 command / validation / undo，或明确为 shell-local sidecar / preference state；同时补 focused tests 和必要文档。下一阶段允许推进下一批窄口径单元参数、selected stream 受控重连、sidecar 级单元拖动、sidecar 级 viewport 记忆和当前 snapshot 的轻量结果审阅增强。仍不进入自由连线编辑器、自动布线系统、完整拖拽布局编辑器、完整报表系统、第三方 CAPE-OPEN 模型加载或第三方物性包加载。
 
 ## 近期开发节奏
 
@@ -238,7 +241,7 @@ App 与交互层当前进一步冻结以下口径：
 - Studio / Canvas 暂停继续扩 hover、legend、focus、command feedback 等周边 presentation 细节，把当前只读扫读层和多单元 placement palette 视为已收口边界
 - 2026-05-04 已补齐三条最短可操作建模路径：`Feed -> Flash Drum`、`Feed -> Heater/Cooler/Valve -> Flash Drum`、`Feed + Feed -> Mixer -> Flash Drum`；这些路径当前通过本地 Canvas suggestions 补齐连接和必要 outlet stream，并已由 shell 回归测试锁定到手动求解收敛
 - 2026-05-04 继续补齐真正空白项目前置缺口；2026-05-14 顶部 `New Blank` 进入未命名空白项目，空白项目会初始化 MVP 默认二元 official hydrocarbon 组件 `methane / ethane`，并用初始化后的 flowsheet 生成本地 `binary-hydrocarbon-lite-v1` 物性包缓存；Feed source stream 默认值固定为 `298.15 K / 101325 Pa / 1 mol/s / 等摩尔组成`，保存后重新打开仍可继续运行 `Feed -> Flash Drum` 最短闭环
-- 2026-05-04 又补出显式 suggestion acceptance；2026-05-14 UI 文案收敛为 `连接` / `Connect`：每条带 acceptance payload 的本地建议都可单独接受，当前已验证非 focused outlet suggestion 也能先被接受，后续仍可补齐 `Feed -> Flash Drum` 并运行收敛
+- 2026-05-04 又补出显式 suggestion acceptance；2026-05-20 UI 文案进一步按 acceptance payload 区分为 `连接流股` / `Connect stream` 与 `创建流股` / `Create stream`：每条带 acceptance payload 的本地建议都可单独接受，当前已验证非 focused outlet suggestion 也能先被接受，后续仍可补齐 `Feed -> Flash Drum` 并运行收敛
 - 2026-05-04 又补出 Canvas placement 坐标最小持久化：落点保存到 `<project>.rfstudio-layout.json` sidecar，保存并重开项目后单元位置可恢复，且仍可继续显式接受 connection suggestions 并运行收敛
 - 2026-05-04 又补出 Active Inspector 单元最新执行结果审阅：选中已运行单元时，窗口模型会暴露执行状态、step 序号、summary 和产出流股跳转，并由 shell 只读展示；2026-05-05 进一步补出输入流股跳转
 - 2026-05-04 又补出求解步骤导航 action：Runtime 全局步骤、Active Inspector 关联步骤和 Result Inspector 关联步骤都可复用同一单元/产出流股跳转 presentation；2026-05-05 进一步纳入输入流股跳转
@@ -253,6 +256,7 @@ App 与交互层当前进一步冻结以下口径：
 - 下一轮主线应继续围绕这套数值基线收口 `rf-thermo / rf-flash`、`SolveSnapshot` 结果消费与端到端回归，而不是回到 Canvas / Inspector 周边细节扩张；也不要把当前空白项目初始化、suggestion connection、placement 坐标持久化、单元结果摘要、port attention 或 near-boundary 回归误扩为完整组件库、完整物性包浏览/切换、项目向导、自由连线编辑器、拖拽布局编辑器或结果报表系统
 - 2026-05-12 阶段复盘后，当前 focused 收口应视为已足够支撑 MVP α 验收；下一轮优先建立 acceptance checklist、运行仓库级验证和用户视角 smoke，而不是继续主动寻找更多 shell 消费面细节。
 - 若继续推进 Canvas，必须先补正式 `DocumentCommand` / validation / layout state 边界，不在 `egui` shell 中直接堆完整画布编辑器或拖拽布局
+- 2026-05-21 至 2026-05-22 已围绕无自由连线阶段的可恢复性继续收口：先让 outlet stream suggestion 等必要 inlet 绑定后再出现，再补选中 material stream 的受控断开 / 删除动作。当前恢复能力只覆盖现有 MVP material stream，不新增任意端口重连、自动布线或完整画布编辑器
 
 ## 当前阶段的判断标准
 
@@ -262,6 +266,13 @@ App 与交互层当前进一步冻结以下口径：
 - 工作区始终可 `cargo check`
 - 文档、代码和阶段目标互相一致
 - 不把 `M4/M5` 的复杂度提前压进 `M2/M3`
+
+2026-05-23 之后，受控扩展还需满足以下准入条件：
+
+- 单次只放开一个用户可见能力，先走通真实建模路径，再考虑泛化
+- 文档语义变更必须通过正式 `DocumentCommand`、validation 和 undo history；纯布局 / 视口体验必须明确留在 sidecar 或 shell-local state
+- 新能力至少覆盖一条 focused 自动化验证；涉及主路径时补人工 smoke 记录
+- 若实现开始需要自由端口拖线、全局路由、跨快照报表、第三方模型加载或系统级副作用，必须先回到专题设计和人工确认
 
 补充对 `.NET 10` `UnitOp.Mvp` 当前子线的判断口径：
 

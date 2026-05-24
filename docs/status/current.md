@@ -1,11 +1,11 @@
 # 当前状态
 
-更新时间：2026-05-17
+更新时间：2026-05-23
 
 ## 用途
 
-用途：为新会话恢复上下文、判断“今天做什么”提供轻量入口。
-读者：人工开发者、用户、AI / Agent。
+用途：为新会话恢复上下文、判断“今天做什么”提供入口。
+读者：开发者、用户、AI / Agent。
 不包含：完整历史流水、详细设计推演、测试日志和长期说明书。
 
 默认先读本文档。只有当任务需要具体实现细节、历史依据或专题边界时，再读取下方“按需阅读”列表。`AGENTS.md` / `CLAUDE.md` 只保留长期协作规则，不承载当前阶段流水。
@@ -13,8 +13,8 @@
 ## 当前阶段
 
 - 产品定位：以 Rust Core + Rust UI + `.NET 10` CAPE-OPEN/COM 适配层构建稳态流程模拟软件。
-- 当前主线：MVP 第一阶段最小闭环已经可验证，但尚未达到首版 demo 的产品可用水准；当前主线是 Studio 首页与工作台信息架构的可用性收口，发布 / tag 暂缓。
-- 当前重点：Home Dashboard 与进入 case 后的 Workbench 第一轮真实 UI 已落地；Canvas viewport 初始居中 / fit-to-content、首页高频中文文案和 `Feed Heater Flash` 示例布局顺序已收口。下一步继续视觉 smoke，重点确认 Canvas 端口 / 标签拥挤、运行、结果 / 消息 / 物性包入口和关闭窗口路径没有回归。
+- 当前主线：MVP 第一阶段最小闭环已经可验证，`v26.5.1-dev` 已作为内部验收 tag 创建并推送；首版 demo 前的 Home / Workbench 产品可用性 blocker 已收口，当前重新回到功能开发。
+- 当前重点：进入“受控扩展高频建模能力”阶段。已收口 `Heater / Cooler / Valve / Flash Drum` 参数链路、连接失败恢复、空白项目 Mixer 路径、受控流股断开 / 删除 / 单端唯一候选重连、source / sink 断开提示、关闭脏工作区保护、suggestion 下一步可见性、sidecar 级单元定位 / 拖动 / viewport 记忆、`SolveSnapshot` 轻量文本复制 / 导出。后续允许继续推进窄口径单元参数、受控重连细化和 sidecar 级布局体验；仍不做自由连线、自动布线、完整拖拽布局、完整报表或第三方 CAPE-OPEN / 物性包加载。
 - 当前验证基线：功能改动优先执行相关 focused tests；阶段性收口执行 `pwsh ./scripts/check-repo.ps1`。
 
 ## 最近完成摘要
@@ -28,25 +28,39 @@
 - 2026-05-13 至 2026-05-14 的人工 Studio smoke blocker 已收口：首屏主路径、运行门控、GUI panic 降级、Windows debug 主线程栈、最后窗口关闭、顶部快速操作、工作台重排和 Inspector 可发现性均已处理。
 - 2026-05-16 MVP α Studio 用户视角 Smoke A / B / C 已人工通过；同日中文界面资源已覆盖 smoke 高频路径，结构化 JSON 测试夹具也已避免 IDE 保存字段顺序导致的回归噪声。
 - 2026-05-16 已补 MVP α Windows 便携包入口：`scripts/package.ps1` 生成 staging / zip，附带 Studio exe、正向示例、样例物性包、关键文档、内部包记录和许可文件；Studio 打包后会优先从 exe 同目录的 `examples/flowsheets` 发现内置示例。该包仅作为内部验证产物，不代表首版 demo 或对外发布。
-- 2026-05-16 已新增 `docs/releases/v26.5.1-dev.md`，记录内部便携包、验证结果和包内边界；当前暂缓创建 `v26.5.1-dev` tag，后续等首版 demo 功能和 UI 可用性达到标准后再重新评估版本节点。
+- 2026-05-16 已新增 `docs/releases/v26.5.1-dev.md`，记录内部便携包、验证结果和包内边界；2026-05-18 已在最终仓库级验证与包内 smoke 通过后创建并推送 `v26.5.1-dev` 内部验收 tag。
 - 2026-05-16 晚间已完成 Studio Home Dashboard 与 Workbench 第一轮 UI 收口：Home Dashboard 默认中文、三栏布局稳定、Recent / Example / Environment / Messages 分区清晰；Workbench 顶部主路径、左侧 Project、中央 Canvas header、右侧 Inspector / Results / Run / Package 和底部 drawer 已压缩信息噪声；关闭最后窗口前的一帧黑屏也已优化。
 - 2026-05-17 已完成 Canvas viewport 初始自动居中：画布在打开项目后的首轮渲染根据当前单元 / 流股 bounds 计算 shell-local viewport transform，让打开示例或项目后的小流程自然位于可视区域中央；后续 layout nudge 复用同一 offset，不会被每帧重新居中抵消。点击放置会反算回原始 sidecar 坐标，不写入项目语义、不进入 CommandHistory，也不引入视口持久化。首页中文文案中的 `打开 Case` / `示例 Case` 等高频残留已改为 `打开项目` / `打开示例` / `示例项目`，Workbench 打开项目消息也已中文化。
 - 2026-05-17 人工截图审阅后已修复 `Feed Heater Flash` 示例默认布局顺序：Canvas presentation 现在按物料流依赖给未定位单元排序，`feed-1 / heater-1 / flash-1` 会按工艺顺序从左到右显示；加载本地 sidecar 时也会过滤当前项目已不存在的 unit id。首页示例项目行按钮已从 `打开项目` 改为 `打开示例`。
+- 2026-05-17 已完成人工 UI smoke 后的 Canvas 可读性第一轮打磨：流线增加名称标签和白色底衬，单元块略增高；已绑定端口点击可直接聚焦流股 Inspector；运行成功后自动切到结果，失败后切到运行和消息。
+- 2026-05-17 已按截图审阅建议收口 Home Dashboard 打开路径：左侧只保留 `新建项目`、`打开项目`、`打开示例项目`，最近项目和示例项目列表改为可选择、可双击打开；列表行内不再重复放置打开按钮。同步修正 Canvas 终端流股标签的垂直错位和内容 bounds，降低液相 / 气相出口标签重叠和右侧裁切概率。
+- 2026-05-17 人工复测发现首页双击只命中项目标题文本、未覆盖整行卡片；现已改为整张最近项目 / 示例项目卡片响应点击和双击打开。Canvas 终端流股标签同步改为短名称并从端口右侧绘制，避免被 Flash Drum 单元块遮住。后续 smoke 又暴露 Home 在未保存空白项目后只能显示 discard 提示、没有继续 / 取消动作；现已让打开项目、打开示例项目和新建项目统一进入可确认流程。
+- 2026-05-17 已按最新截图完成运行后结果视图收口：右侧结果检查器的流股 / 单元 / 对比 selector 不再为每个选项重复渲染 `Inspect`，中文界面中的 inspect 小按钮统一显示为 `检查`；底部结果表改为中文 `流股 / 相态` 表头，并以短相态摘要替代过长 `phases: ...` 原始文本，完整相态仍保留在 tooltip。已补回归覆盖打开示例、运行、查看结果、回 Home、再从最近项目打开并重新运行的路径。
+- 2026-05-17 已根据最新截图继续清理 Workbench 高频残余：Canvas 面板头隐藏开发态计数摘要，运行结果摘要改为中文结构化计数，左侧对象行去掉重复 `检查` 按钮，底部空相态显示短值 `无`，非空画布不再常驻“选择画布工具”提示。
+- 2026-05-18 已收口日终保留的两个 UI blocker：Canvas 中间连接流股在短线段空间不足时不再绘制名称标签，避免 `Feed -> Valve -> Flash Drum` 等紧凑链路遮挡单元块或端口；右侧 Result Inspector 的默认组成 / 相态摘要改为结构化短行，模型层不再生成 `z:` / `phases:` 前缀。`pwsh ./scripts/check-repo.ps1` 已在真实环境通过。
+- 2026-05-18 人工从 IDE 启动 `Feed Valve Flash Binary Hydrocarbon Example` 复核通过，未发现新的 UI blocker；同日已刷新 `v26.5.1-dev` 内部便携包 staging / zip，并从包目录启动执行 smoke，未发现包内示例发现、打开示例、运行、结果审阅等主路径问题。最终包 manifest 记录 `gitCommit=7479e82`、`gitDirty=false`，`v26.5.1-dev` tag 已推送到远端。
+- 2026-05-18 首版 demo 前产品可用性评审发现并收口 DocsRepro / Home 示例入口 blocker：默认 Home / Workbench 示例选择器只保留四条 official hydrocarbon 演示路径，避免 synthetic / PME 验证样例以“就绪示例”进入高频入口；`Feed Heater Flash` 首页标题改回单一 `加热器` 语义；quick start、run-first、versioning、release notes 与 package README 模板已同步当前 Windows 内部便携包和已推送 tag 口径。
+- 2026-05-18 在 demo blocker 收口后转回功能开发：`UnitNode` 新增可选 SI 参数结构，Unit Inspector 暴露 Heater/Cooler outlet temperature 与 Valve outlet pressure 的字段级草稿编辑；提交走 `DocumentCommand::SetUnitParameter`，同步 outlet stream 模板并触发求解 dirty 状态；顺序求解器优先使用已提交单元参数，旧项目无参数时保持原有行为。
+- 2026-05-20 至 2026-05-23 已复核单元参数闭环：`rf-store` 锁定单元参数随项目 JSON round-trip，Studio shell focused 回归覆盖官方 Heater / Cooler / Valve / Flash Drum 示例和空白项目 Heater 最短路径从 Unit Inspector 编辑参数、保存、重开到再次运行收敛，并断言求解结果使用保存后的 outlet temperature / outlet pressure / flash pressure；Unit Inspector 字段带 SI 约束提示，Heater / Cooler / Valve outlet pressure 草稿高于已连接 inlet pressure 时标为 invalid；Flash Drum flash pressure 提交后同步 liquid / vapor 两个出口模板。
+- 2026-05-20 已补连接类失败恢复路径 focused 覆盖：`missing_upstream_source`、`missing_stream_reference`、`duplicate_upstream_source`、`duplicate_downstream_sink`、`unbound_outlet_port`、`orphan_stream`、`invalid_port_signature`、two-unit cycle 与 self-loop cycle 的失败 detail / Run Panel recovery / Canvas 或端口 attention 回归已覆盖；Canvas attention 不再只从 Run Panel notice 反推单一 recovery target，而是优先使用当前文档 revision 的 solver failure diagnostic，从而保留完整 unit / stream / port targets。
+- 2026-05-20 已补空白项目 Mixer 最短建模路径 focused 覆盖：通过 Canvas suggestion 创建 `Feed + Feed -> Mixer -> Flash Drum`，保存后断言 unit / stream / port 绑定，重开后确认 mixer outlet 总摩尔流量为两股入口之和。
+- 2026-05-22 已补 Canvas / Inspector 受控流股恢复入口：选中物料流股后可执行 `Disconnect stream` 解除所有物料端口绑定并保留流股规格，或执行 `Delete stream` 解除绑定后删除流股；两者均通过正式 `DocumentCommand` 与 undo history，不做自由连线、自动布线或完整拖拽布局。
+- 2026-05-23 人工复核确认流股连接 / 断开交互已经顺滑；同日补关闭脏工作区确认、focused suggestion 下一步显示、单端流股唯一候选重连、cycle-forming 候选过滤、已连接流股 source / sink 端点级断开与不可用原因提示。随后补选中单元在 Canvas 空白处点击定位、直接拖动到 sidecar 坐标，并补空白画布拖拽的 viewport offset 记忆；这些布局 / 视口状态只写 `<project>.rfstudio-layout.json`，不写项目语义、不进 undo、不扩完整拖拽布局编辑器或完整视图持久化系统。
+- 2026-05-23 已补当前结果快照轻量复制 / 导出：右侧 `结果` 区可把当前 `SolveSnapshot` 复制到剪贴板或导出 `.txt`；内容只来自结果 DTO，覆盖流股摘要、步骤和诊断，不写项目、不进 undo、不扩报表、模板或批量导出。
 
-完整过程和每日验证记录见 `docs/devlogs/2026-05/2026-W20.md` 以及更早周志。
+见 `docs/devlogs/2026-05/2026-W21.md`、`docs/devlogs/2026-05/2026-W20.md`。
 
 ## 下一步建议
 
-1. 继续做视觉 smoke，确认 Home Dashboard、进入示例、运行、结果 / 消息 / 物性包入口、Canvas 初始居中和关闭窗口路径没有回归。
-2. 优先复核 Canvas 端口 / 标签拥挤和 Workbench 残余中文；只处理 smoke 高频路径，不展开完整本地化体系。
-3. 若视觉 smoke 暴露真实 blocker，按现有 command / presentation / shell-local state 边界修复；不要把 viewport 收口误扩成自动布线、自由连线、完整拖拽布局或视口持久化。
-4. 便携包和 `docs/releases/v26.5.1-dev.md` 暂作为内部验证资产保留，不创建 tag，不推进对外发布自动化。
-5. 结果面继续只读消费 `SolveSnapshot`，不新增 shell 私有结果缓存；Canvas 下一步只处理 demo 可用性 blocker，不扩大建模能力边界。
+1. 下一步做 selected stream 重连 presentation 一致性：统一 Canvas / Inspector / shell 不可用原因展示，不新增端口选择器、自由连线或自动布线。
+2. 每个新能力必须走正式 command / validation / undo，或明确标记为 shell-local state；同时补 focused tests 和必要文档。
+3. 若要刷新新的便携包或 tag，应创建新提交 / 新版本节点，不移动已推送的 `v26.5.1-dev` tag。
+4. 不把受控扩展误扩成自由连线编辑器、自动布线系统、完整拖拽布局编辑器、完整报表系统或对外发布自动化。
 
 ## 暂不推进
 
-- 在 UI 信息架构未定稿前，不继续堆叠零散按钮、临时面板、调试状态或只为单次 smoke 服务的 presentation。
-- 不把当前 UI 重排误扩成完整自由连线编辑器、完整拖拽布局编辑器、自动布线、视口持久化或完整结果报表。
+- 不继续堆叠零散按钮、临时面板、调试状态或只为单次 smoke 服务的 presentation；UI 改进应按明确专题推进。
+- 不做自由连线编辑器、自动布线系统、完整拖拽布局编辑器、完整报表系统；允许受控重连、sidecar 级单元拖动 / viewport 记忆和轻量结果审阅增强。
 - 不把 CAPE-OPEN / COM 语义倒灌到 Rust Core。
 - 不引入第三方 CAPE-OPEN 模型加载。
 - 不把 smoke test driver、PME 调试路径或单个宿主兼容逻辑提升为通用库 API。
@@ -58,10 +72,10 @@
 - 需要仓库全局模块边界：`docs/architecture/overview.md`
 - 需要 MVP 范围和非目标：`docs/mvp/scope.md`
 - 需要 MVP α 验收矩阵：`docs/mvp/alpha-acceptance-checklist.md`
-- 需要最新流水和决策依据：`docs/devlogs/2026-05/2026-W20.md`
+- 需要最新流水和决策依据：`docs/devlogs/2026-05/2026-W21.md`
 - 需要热力学 / 闪蒸细节：`docs/thermo/mvp-model.md`
 - 需要 CAPE-OPEN / COM 边界：`docs/capeopen/boundary.md`
-- 需要桌面 App / Canvas 交互契约和 Studio UI 规范：`docs/architecture/app-architecture.md`、`docs/architecture/canvas-interaction-contract.md`、`docs/architecture/studio-ui-design-guidelines.md`
+- App/Canvas/UI：`docs/architecture/app-architecture.md`、`docs/architecture/canvas-interaction-contract.md`、`docs/architecture/studio-ui-design-guidelines.md`、`docs/architecture/studio-visual-system.md`
 - 需要代码风格、命名或抽象判断：`docs/development/code-style.md`
 - 需要文档篇幅和拆分规则：`docs/README.md`
 
