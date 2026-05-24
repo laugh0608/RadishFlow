@@ -160,7 +160,7 @@ App 与交互层当前进一步冻结以下口径：
 
 截至 2026-05-12，MVP 第一阶段的 M1-M5 最小线均已形成可验证基线：Rust Core 能跑通最小稳态流程，Rust Studio 已具备最小可操作工作台闭环，`rf-ffi` 与 `.NET 10` CAPE-OPEN / PME 路径也已有回归与人工验证记录。当前优先目标应从继续补细粒度消费面测试，切换为 MVP α 验收与发布硬化；后续只修验收路径暴露的真实 blocker，不再把 near-boundary、command surface 或 runtime click 细节扩成开放式任务池。
 
-截至 2026-05-23，首版 demo 前硬化期和 `v26.5.1-dev` 内部验收节点已收口。当前优先目标切换为受控扩展高频建模能力：每轮只放开一个明确能力，并要求它走正式 command / validation / undo，或明确为 shell-local sidecar / preference state；同时补 focused tests 和必要文档。下一阶段允许推进下一批窄口径单元参数、selected stream 受控重连、sidecar 级单元拖动、sidecar 级 viewport 记忆和当前 snapshot 的轻量结果审阅增强。仍不进入自由连线编辑器、自动布线系统、完整拖拽布局编辑器、完整报表系统、第三方 CAPE-OPEN 模型加载或第三方物性包加载。
+截至 2026-05-24，首版 demo 前硬化期、MVP α 内部验收节点和第一轮受控扩展均已收口。当前优先目标切换为 MVP β：高频建模能力与小案例作者体验。后续不再围绕 Canvas / Inspector 的 hover、提示、按钮、边界说明做开放式补口，而应把能力包组织成可被用户复现的小建模闭环；允许成组推进高频 Unit Inspector 参数、受控连接编辑设计和可复现示例案例。文档语义变化仍必须通过正式 command / validation / undo，布局 / 视口仍必须明确为 shell-local 或 sidecar state；仍不进入自由连线编辑器、自动布线系统、完整拖拽布局编辑器、完整报表系统、完整参数表、第三方 CAPE-OPEN 模型加载或第三方物性包加载。
 
 ## 近期开发节奏
 
@@ -257,6 +257,7 @@ App 与交互层当前进一步冻结以下口径：
 - 2026-05-12 阶段复盘后，当前 focused 收口应视为已足够支撑 MVP α 验收；下一轮优先建立 acceptance checklist、运行仓库级验证和用户视角 smoke，而不是继续主动寻找更多 shell 消费面细节。
 - 若继续推进 Canvas，必须先补正式 `DocumentCommand` / validation / layout state 边界，不在 `egui` shell 中直接堆完整画布编辑器或拖拽布局
 - 2026-05-21 至 2026-05-22 已围绕无自由连线阶段的可恢复性继续收口：先让 outlet stream suggestion 等必要 inlet 绑定后再出现，再补选中 material stream 的受控断开 / 删除动作。当前恢复能力只覆盖现有 MVP material stream，不新增任意端口重连、自动布线或完整画布编辑器
+- 2026-05-24 阶段复盘后，当前不再把“单次只放开一个窄口径补口”作为长期节奏；它只作为风险较高能力的准入方式。下一轮主线应组织为 MVP β 能力包，例如成组单元参数、受控连接编辑或可复现小案例，而不是继续追逐 Canvas / Inspector presentation 细节
 
 ## 当前阶段的判断标准
 
@@ -267,11 +268,11 @@ App 与交互层当前进一步冻结以下口径：
 - 文档、代码和阶段目标互相一致
 - 不把 `M4/M5` 的复杂度提前压进 `M2/M3`
 
-2026-05-23 之后，受控扩展还需满足以下准入条件：
+2026-05-24 之后，MVP β 能力包还需满足以下准入条件：
 
-- 单次只放开一个用户可见能力，先走通真实建模路径，再考虑泛化
+- 每个能力包必须能落到一条真实可复现建模路径，先服务 `Feed/Heater/Cooler/Valve/Mixer/Flash Drum` 小流程，再考虑泛化
 - 文档语义变更必须通过正式 `DocumentCommand`、validation 和 undo history；纯布局 / 视口体验必须明确留在 sidecar 或 shell-local state
-- 新能力至少覆盖一条 focused 自动化验证；涉及主路径时补人工 smoke 记录
+- 新能力至少覆盖 focused 自动化验证；涉及主路径时按能力包补人工 smoke 记录，不要求每个小补口都单独做完整人工 smoke
 - 若实现开始需要自由端口拖线、全局路由、跨快照报表、第三方模型加载或系统级副作用，必须先回到专题设计和人工确认
 
 补充对 `.NET 10` `UnitOp.Mvp` 当前子线的判断口径：

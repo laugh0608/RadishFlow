@@ -1,6 +1,6 @@
 # RadishFlow MVP Roadmap
 
-更新时间：2026-05-23
+更新时间：2026-05-24
 
 ## 用途
 
@@ -10,14 +10,14 @@
 
 ## 当前结论
 
-截至 2026-05-14，M1-M5 都已越过 MVP 的最小完成线：
+截至 2026-05-24，M1-M5 都已越过 MVP 的最小完成线，`v26.5.1-dev` 也已作为内部验收节点收口：
 
 - Rust 内核和 Studio 可以跑通最小稳态流程。
 - `TP Flash`、`SolveSnapshot`、结果审阅和 `rf-ffi` JSON/error 基线已经形成可复验闭环。
 - `.NET 10` CAPE-OPEN / COM 适配层已完成 DWSIM / COFE 侧的关键 PME 兼容验证。
-- 当前主线已经从“继续扩路线图功能”切到 MVP α 验收与发布硬化。
+- 当前主线已经从 MVP α 验收与发布硬化，切到 MVP β：高频建模能力与小案例作者体验。
 
-当前不再把路线图作为每日推进清单。今天做什么、当前验证基线和暂不推进项，以 `docs/status/current.md` 为准；MVP α 具体验收以 `docs/mvp/alpha-acceptance-checklist.md` 为准。
+当前不再把路线图作为每日推进清单。今天做什么、当前验证基线和暂不推进项，以 `docs/status/current.md` 为准；MVP α 验收清单保留为内部验收记录，不再作为当前日常推进主线。
 
 ## MVP 目标声明
 
@@ -73,16 +73,17 @@
 
 ## 当前计划边界
 
-后续路线图不再主动扩张新功能范围，而是服务 MVP α 验收：
+后续路线图不再服务开放式扩张，而是服务 MVP β 的高频建模能力包：
 
-- 优先复跑 Studio 用户视角 smoke，确认打开示例、运行、结果审阅、保存重开和关闭窗口稳定。
-- 继续保持 `Feed/Heater/Cooler/Valve/Mixer -> Flash` 的数值、结果 DTO 和 UI consumer 基线稳定。
+- 优先用真实窗口轻量 smoke 复核最近新增的结果导出、单元参数、受控重连、关闭确认和 sidecar 布局路径。
+- 继续保持 `Feed/Heater/Cooler/Valve/Mixer -> Flash` 的数值、结果 DTO 和 UI consumer 基线稳定，并把下一批能力组织成可复现小流程。
+- 下一阶段优先成组推进高频 Unit Inspector 参数、受控连接编辑设计和小案例作者体验，而不是继续追逐 Canvas / Inspector presentation 细节。
 - CAPE-OPEN / PME 只修真实验证暴露的 blocker，不继续主动扩第三方宿主矩阵。
-- Studio UI 优化只做信息层级、主路径和面板重排，不扩自由连线、完整拖拽布局、自动布线或完整结果报表。
+- Studio UI 优化只做主路径和明确专题；不扩自由连线、完整拖拽布局、自动布线、完整参数表或完整结果报表。
 
 ## 后续 UI 专题阶段
 
-MVP α 和当前功能推进不应把 UI 问题长期拆成零散按钮、临时面板或局部样式补丁。等核心建模闭环、首批单元参数和 demo blocker 稳定后，应安排一个独立 UI 专题阶段，专门统一各端页面、单元模块界面和主要工作流的设计。
+MVP β 功能推进不应把 UI 问题长期拆成零散按钮、临时面板或局部样式补丁。等成组高频建模能力和小案例作者体验稳定后，应安排一个独立 UI 专题阶段，专门统一各端页面、单元模块界面和主要工作流的设计。
 
 该专题阶段的目标：
 
@@ -106,7 +107,7 @@ MVP α 和当前功能推进不应把 UI 问题长期拆成零散按钮、临时
 ## 相关入口
 
 - 当前阶段和下一步：`docs/status/current.md`
-- MVP α 验收：`docs/mvp/alpha-acceptance-checklist.md`
+- MVP α 验收记录：`docs/mvp/alpha-acceptance-checklist.md`
 - MVP 冻结范围：`docs/mvp/scope.md`
 - Studio UI 规范：`docs/architecture/studio-ui-design-guidelines.md`
 - UI 灵感参考：`docs/architecture/ui-inspiration-reference.md`

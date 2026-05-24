@@ -13,8 +13,8 @@
 ## 当前阶段
 
 - 产品定位：以 Rust Core + Rust UI + `.NET 10` CAPE-OPEN/COM 适配层构建稳态流程模拟软件。
-- 当前主线：MVP 第一阶段最小闭环已经可验证，`v26.5.1-dev` 已作为内部验收 tag 创建并推送；首版 demo 前的 Home / Workbench 产品可用性 blocker 已收口，当前重新回到功能开发。
-- 当前重点：进入“受控扩展高频建模能力”阶段。已收口内建单元参数链路、连接失败恢复、空白项目 Mixer 路径、受控流股断开 / 删除 / 单端唯一候选重连、source / sink 断开提示、重连不可用原因一致展示、关闭脏工作区保护、suggestion 下一步可见性、sidecar 级单元定位 / 拖动 / viewport 记忆、`SolveSnapshot` 轻量文本复制 / 导出。后续允许继续推进窄口径单元参数、受控重连细化和 sidecar 级布局体验；仍不做自由连线、自动布线、完整拖拽布局、完整报表或第三方物性包加载。
+- 当前主线：MVP 第一阶段最小闭环和 `v26.5.1-dev` 内部验收节点已经收口；首版 demo 前硬化期结束，当前进入 MVP β：高频建模能力与小案例作者体验。
+- 当前重点：已收口内建单元参数链路、连接失败恢复、空白项目 Mixer 路径、受控流股断开 / 删除 / 单端唯一候选重连、source / sink 断开提示、重连不可用原因一致展示、关闭脏工作区保护、suggestion 下一步可见性、sidecar 级单元定位 / 拖动 / viewport 记忆、`SolveSnapshot` 轻量文本复制 / 导出。后续先做真实窗口轻量 smoke，再推进成组高频单元参数、受控连接编辑设计和可复现小案例；不再继续围绕 hover、提示、按钮等 presentation 细节做开放式补口。仍不做自由连线、自动布线、完整拖拽布局、完整报表、完整参数表或第三方物性包加载。
 - 当前验证基线：功能改动优先执行相关 focused tests；阶段性收口执行 `pwsh ./scripts/check-repo.ps1`。
 
 ## 最近完成摘要
@@ -29,13 +29,7 @@
 - 2026-05-16 MVP α Studio 用户视角 Smoke A / B / C 已人工通过；同日中文界面资源已覆盖 smoke 高频路径，结构化 JSON 测试夹具也已避免 IDE 保存字段顺序导致的回归噪声。
 - 2026-05-16 至 2026-05-18 已补 MVP α Windows 内部便携包入口、release notes 与 `v26.5.1-dev` 内部验收 tag；该包仅作为内部验证产物，不代表首版 demo 或对外发布。
 - 2026-05-16 晚间已完成 Studio Home Dashboard 与 Workbench 第一轮 UI 收口：Home 默认中文、三栏布局稳定，Workbench 信息噪声和最后窗口关闭黑屏已优化。
-- 2026-05-17 已完成 Canvas viewport 初始自动居中，打开示例或项目后的小流程会自然位于可视区域中央；该视口状态仍不写项目语义、不进入 CommandHistory。首页高频中文文案也已收口。
-- 2026-05-17 人工截图审阅后已修复 `Feed Heater Flash` 示例默认布局顺序：Canvas presentation 现在按物料流依赖给未定位单元排序，`feed-1 / heater-1 / flash-1` 会按工艺顺序从左到右显示；加载本地 sidecar 时也会过滤当前项目已不存在的 unit id。首页示例项目行按钮已从 `打开项目` 改为 `打开示例`。
-- 2026-05-17 已完成人工 UI smoke 后的 Canvas 可读性第一轮打磨：流线增加名称标签和白色底衬，单元块略增高；已绑定端口点击可直接聚焦流股 Inspector；运行成功后自动切到结果，失败后切到运行和消息。
-- 2026-05-17 已按截图审阅建议收口 Home Dashboard 打开路径：左侧只保留 `新建项目`、`打开项目`、`打开示例项目`，最近项目和示例项目列表改为可选择、可双击打开；列表行内不再重复放置打开按钮。同步修正 Canvas 终端流股标签的垂直错位和内容 bounds，降低液相 / 气相出口标签重叠和右侧裁切概率。
-- 2026-05-17 人工复测发现首页双击只命中项目标题文本、未覆盖整行卡片；现已改为整张最近项目 / 示例项目卡片响应点击和双击打开。Canvas 终端流股标签同步改为短名称并从端口右侧绘制，避免被 Flash Drum 单元块遮住。后续 smoke 又暴露 Home 在未保存空白项目后只能显示 discard 提示、没有继续 / 取消动作；现已让打开项目、打开示例项目和新建项目统一进入可确认流程。
-- 2026-05-17 已按最新截图完成运行后结果视图收口：右侧结果检查器的流股 / 单元 / 对比 selector 不再为每个选项重复渲染 `Inspect`，中文界面中的 inspect 小按钮统一显示为 `检查`；底部结果表改为中文 `流股 / 相态` 表头，并以短相态摘要替代过长 `phases: ...` 原始文本，完整相态仍保留在 tooltip。已补回归覆盖打开示例、运行、查看结果、回 Home、再从最近项目打开并重新运行的路径。
-- 2026-05-17 已根据最新截图继续清理 Workbench 高频残余：Canvas 面板头隐藏开发态计数摘要，运行结果摘要改为中文结构化计数，左侧对象行去掉重复 `检查` 按钮，底部空相态显示短值 `无`，非空画布不再常驻“选择画布工具”提示。
+- 2026-05-17 已收口 Home / Workbench / Canvas 高频 smoke 残余：Canvas 初始居中、默认工艺顺序、流线与终端标签可读性、整行示例卡片双击、未保存确认、运行后结果视图和 Workbench 中文高频文案均已处理。
 - 2026-05-18 已收口日终保留的两个 UI blocker：Canvas 中间连接流股在短线段空间不足时不再绘制名称标签，避免 `Feed -> Valve -> Flash Drum` 等紧凑链路遮挡单元块或端口；右侧 Result Inspector 的默认组成 / 相态摘要改为结构化短行，模型层不再生成 `z:` / `phases:` 前缀。`pwsh ./scripts/check-repo.ps1` 已在真实环境通过。
 - 2026-05-18 人工从 IDE 启动 `Feed Valve Flash Binary Hydrocarbon Example` 复核通过，未发现新的 UI blocker；同日已刷新 `v26.5.1-dev` 内部便携包 staging / zip，并从包目录启动执行 smoke，未发现包内示例发现、打开示例、运行、结果审阅等主路径问题。最终包 manifest 记录 `gitCommit=7479e82`、`gitDirty=false`，`v26.5.1-dev` tag 已推送到远端。
 - 2026-05-18 首版 demo 前产品可用性评审发现并收口 DocsRepro / Home 示例入口 blocker：默认 Home / Workbench 示例选择器只保留四条 official hydrocarbon 演示路径，避免 synthetic / PME 验证样例以“就绪示例”进入高频入口；`Feed Heater Flash` 首页标题改回单一 `加热器` 语义；quick start、run-first、versioning、release notes 与 package README 模板已同步当前 Windows 内部便携包和已推送 tag 口径。
@@ -56,14 +50,14 @@
 ## 下一步建议
 
 1. 明天优先真实窗口 smoke：结果 `Units` 复制 / 导出、Feed / Mixer / Flash Drum 参数重跑、selected stream 重连 / 断开、关闭确认、sidecar 拖动 / viewport。
-2. 若无 blocker，再选一个窄口径建模补口；必须走正式 command / validation / undo，或明确 shell-local state，补 focused tests 和必要文档。
+2. 若无 blocker，进入 MVP β 第一刀：选择一个成组高频建模能力包推进，例如 Unit Inspector 参数成组化或受控连接编辑设计；继续保持正式 command / validation / undo，或明确 shell-local sidecar state，并补 focused tests 和必要文档。
 3. 若要刷新便携包或 tag，应创建新提交 / 新版本节点，不移动已推送的 `v26.5.1-dev` tag。
-4. 不把受控扩展误扩成自由连线、自动布线、完整拖拽布局、完整报表、完整参数表或对外发布自动化。
+4. 不把 MVP β 误扩成自由连线、自动布线、完整拖拽布局、完整报表、完整参数表、第三方模型加载或对外发布自动化。
 
 ## 暂不推进
 
-- 不继续堆叠零散按钮、临时面板、调试状态或只为单次 smoke 服务的 presentation；UI 改进应按明确专题推进。
-- 不做自由连线编辑器、自动布线系统、完整拖拽布局编辑器、完整报表系统；允许受控重连、sidecar 级单元拖动 / viewport 记忆和轻量结果审阅增强。
+- 不继续堆叠零散按钮、临时面板、调试状态、hover 说明或只为单次 smoke 服务的 presentation；UI 改进应按明确专题推进。
+- 不做自由连线编辑器、自动布线系统、完整拖拽布局编辑器、完整报表系统；允许受控连接编辑设计、sidecar 级单元拖动 / viewport 记忆和轻量结果审阅增强。
 - 不把 CAPE-OPEN / COM 语义倒灌到 Rust Core。
 - 不引入第三方 CAPE-OPEN 模型加载。
 - 不把 smoke test driver、PME 调试路径或单个宿主兼容逻辑提升为通用库 API。
